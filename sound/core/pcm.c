@@ -160,7 +160,6 @@ static int snd_pcm_control_ioctl(struct snd_card *card,
 	case SNDRV_CTL_IOCTL_PCM_PREFER_SUBDEVICE:
 		{
 			int val;
-			
 			if (get_user(val, (int __user *)arg))
 				return -EFAULT;
 			control->prefer_pcm_subdevice = val;
