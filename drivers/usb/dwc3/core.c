@@ -52,16 +52,13 @@
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
+#include <linux/usb/of.h>
 
 #include "core.h"
 #include "gadget.h"
 #include "io.h"
 
 #include "debug.h"
-
-static char *maximum_speed = "super";
-module_param(maximum_speed, charp, 0);
-MODULE_PARM_DESC(maximum_speed, "Maximum supported speed.");
 
 /* -------------------------------------------------------------------------- */
 
@@ -597,19 +594,14 @@ static int __devinit dwc3_probe(struct platform_device *pdev)
 	dwc->regs_size	= resource_size(res);
 	dwc->dev	= dev;
 
-	if (!strncmp("super", maximum_speed, 5))
-		dwc->maximum_speed = DWC3_DCFG_SUPERSPEED;
-	else if (!strncmp("high", maximum_speed, 4))
-		dwc->maximum_speed = DWC3_DCFG_HIGHSPEED;
-	else if (!strncmp("full", maximum_speed, 4))
-		dwc->maximum_speed = DWC3_DCFG_FULLSPEED1;
-	else if (!strncmp("low", maximum_speed, 3))
-		dwc->maximum_speed = DWC3_DCFG_LOWSPEED;
-	else
-		dwc->maximum_speed = DWC3_DCFG_SUPERSPEED;
-
 	dwc->needs_fifo_resize = of_property_read_bool(node, "tx-fifo-resize");
 	host_only_mode = of_property_read_bool(node, "host-only-mode");
+	dwc->maximum_speed = of_usb_get_maximum_speed(node);
+
+	/* default to superspeed if no maximum_speed passed */
+	if (dwc->maximum_speed == USB_SPEED_UNKNOWN)
+		dwc->maximum_speed = USB_SPEED_SUPER;
+
 
 	pm_runtime_no_callbacks(dev);
 	pm_runtime_set_active(dev);
