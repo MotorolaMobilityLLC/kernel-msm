@@ -38,6 +38,7 @@
 #define gadget_is_imx(g)		(!strcmp("imx_udc", (g)->name))
 #define gadget_is_langwell(g)		(!strcmp("langwell_udc", (g)->name))
 #define gadget_is_m66592(g)		(!strcmp("m66592_udc", (g)->name))
+#define gadget_is_msm72k(g)		(!strcmp("msm72k_udc", (g)->name))
 #define gadget_is_musbhdrc(g)		(!strcmp("musb-hdrc", (g)->name))
 #define gadget_is_net2272(g)		(!strcmp("net2272", (g)->name))
 #define gadget_is_net2280(g)		(!strcmp("net2280", (g)->name))
@@ -118,6 +119,8 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x31;
 	else if (gadget_is_dwc3(gadget))
 		return 0x32;
+	else if (gadget_is_msm72k(gadget))
+		return 0x33;
 
 	return -ENOENT;
 }
