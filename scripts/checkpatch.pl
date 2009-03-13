@@ -7,6 +7,11 @@
 
 use strict;
 
+use constant BEFORE_SHORTTEXT => 0;
+use constant IN_SHORTTEXT => 1;
+use constant AFTER_SHORTTEXT => 2;
+use constant SHORTTEXT_LIMIT => 75;
+
 my $P = $0;
 $P =~ s@.*/@@g;
 
@@ -1416,6 +1421,12 @@ sub process {
 	my @setup_docs = ();
 	my $setup_docs = 0;
 
+	my $in_code_block = 0;
+	my $exec_file = "";
+
+	my $shorttext = BEFORE_SHORTTEXT;
+	my $shorttext_exspc = 0;
+
 	sanitise_line_reset();
 	my $line;
 	foreach my $rawline (@rawlines) {
@@ -1572,14 +1583,57 @@ sub process {
 				ERROR("MODIFIED_INCLUDE_ASM",
 				      "do not modify files in include/asm, change architecture specific files in include/asm-<architecture>\n" . "$here$rawline\n");
 			}
+			$in_code_block = 1;
 			next;
 		}
-
+		elsif ($rawline =~ /^diff.+a\/(.+)\sb\/.+$/) {
+			$exec_file = $1;
+			$in_code_block = 0;
+		}
+		#Check state to make sure we aren't in code block.
+		elsif  (!$in_code_block			   &&
+			$exec_file =~ /^.+\.[chS]$/	   &&
+			$rawline =~ /^new mode\s([0-9]+)$/ &&
+		        (oct($1) & 0111))  {
+			    ERROR("Source file has +x permissions: " .
+			    "$exec_file\n");
+		}
 		$here .= "FILE: $realfile:$realline:" if ($realcnt != 0);
 
 		my $hereline = "$here\n$rawline\n";
 		my $herecurr = "$here\n$rawline\n";
 		my $hereprev = "$here\n$prevrawline\n$rawline\n";
+
+		if ($shorttext != AFTER_SHORTTEXT) {
+			if ($shorttext == IN_SHORTTEXT) {
+				if ($line=~/^---/ || $line=~/^diff.*/) {
+					$shorttext = AFTER_SHORTTEXT;
+				} elsif (length($line) > (SHORTTEXT_LIMIT +
+							  $shorttext_exspc)
+					 && $line !~ /^:([0-7]{6}\s){2}
+						      ([[:xdigit:]]+\.*
+						       \s){2}\w+\s\w+/xms) {
+					WARN("commit text line over " .
+					     SHORTTEXT_LIMIT .
+					     " characters\n" . $herecurr);
+				}
+			} elsif ($line=~/^Subject: \[[^\]]*\] (.*)/) {
+				$shorttext = IN_SHORTTEXT;
+				if (length($1) > SHORTTEXT_LIMIT) {
+					WARN("summary line over " .
+					     SHORTTEXT_LIMIT .
+					     " characters\n" . $herecurr);
+				}
+			} elsif ($line=~/^    (.*)/) {
+				$shorttext = IN_SHORTTEXT;
+				$shorttext_exspc = 4;
+				if (length($1) > SHORTTEXT_LIMIT) {
+					WARN("summary line over " .
+					     SHORTTEXT_LIMIT .
+					     " characters\n" . $herecurr);
+				}
+			}
+		}
 
 		$cnt_lines++ if ($realcnt != 0);
 
