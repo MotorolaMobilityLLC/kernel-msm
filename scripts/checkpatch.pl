@@ -1593,8 +1593,8 @@ sub process {
 		#Check state to make sure we aren't in code block.
 		elsif  (!$in_code_block			   &&
 			$exec_file =~ /^.+\.[chS]$/	   &&
-			$rawline =~ /^new mode\s([0-9]+)$/ &&
-		        (oct($1) & 0111))  {
+			$rawline =~ /^new (file )?mode\s([0-9]+)$/ &&
+			(oct($2) & 0111))  {
 			    ERROR("Source file has +x permissions: " .
 			    "$exec_file\n");
 		}
