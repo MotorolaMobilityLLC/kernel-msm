@@ -131,6 +131,14 @@ config TPS65010
 	  This driver can also be built as a module.  If so, the module
 	  will be called tps65010.
 
+config MARIMBA_TSADC
+	tristate "Support for Marimba Touchscreen ADC"
+	depends on MARIMBA_CORE && ARCH_MSM7X30
+	default y if MARIMBA_CORE
+	help
+	  Say yes here if you want to include support for TSADC in the
+	  Qualcomm Marimba chip.
+
 config TPS6507X
 	tristate "TPS6507x Power Management / Touch Screen chips"
 	select MFD_CORE
