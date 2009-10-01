@@ -1592,7 +1592,14 @@ sub process {
 		}
 		#Check state to make sure we aren't in code block.
 		elsif  (!$in_code_block			   &&
-			$exec_file =~ /^.+\.[chS]$/	   &&
+			($exec_file =~ /^.+\.[chS]$/ or
+			 $exec_file =~ /^.+\.txt$/ or
+			 $exec_file =~ /^.+\.ihex$/ or
+			 $exec_file =~ /^.+\.hex$/ or
+			 $exec_file =~ /^.+\.HEX$/ or
+			 $exec_file =~ /^.+defconfig$/ or
+			 $exec_file =~ /^Makefile$/ or
+			 $exec_file =~ /^Kconfig$/) 	   &&
 			$rawline =~ /^new (file )?mode\s([0-9]+)$/ &&
 			(oct($2) & 0111))  {
 			    ERROR("Source file has +x permissions: " .
