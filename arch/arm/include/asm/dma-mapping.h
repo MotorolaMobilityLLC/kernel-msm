@@ -141,6 +141,39 @@ static inline void dma_free_noncoherent(struct device *dev, size_t size,
 {
 }
 
+/*
+ * dma_coherent_pre_ops - barrier functions for coherent memory before DMA.
+ * A barrier is required to ensure memory operations are complete before the
+ * initiation of a DMA xfer.
+ * If the coherent memory is Strongly Ordered
+ * - pre ARMv7 and 8x50 guarantees ordering wrt other mem accesses
+ * - ARMv7 guarantees ordering only within a 1KB block, so we need a barrier
+ * If coherent memory is normal then we need a barrier to prevent
+ * reordering
+ */
+static inline void dma_coherent_pre_ops(void)
+{
+#if (__LINUX_ARM_ARCH__ >= 7) && !defined(CONFIG_ARCH_QSD8X50)
+	dmb();
+#else
+	if (arch_is_coherent())
+		dmb();
+#endif
+}
+/*
+ * dma_post_coherent_ops - barrier functions for coherent memory after DMA.
+ * If the coherent memory is Strongly Ordered we dont need a barrier since
+ * there are no speculative fetches to Strongly Ordered memory.
+ * If coherent memory is normal then we need a barrier to prevent reordering
+ */
+static inline void dma_coherent_post_ops(void)
+{
+	if (arch_is_coherent())
+		dmb();
+	else
+		barrier();
+}
+
 /**
  * dma_alloc_coherent - allocate consistent memory for DMA
  * @dev: valid struct device pointer, or NULL for ISA and EISA-like devices
