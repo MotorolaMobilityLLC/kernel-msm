@@ -141,6 +141,7 @@ static inline void dma_free_noncoherent(struct device *dev, size_t size,
 {
 }
 
+
 /*
  * dma_coherent_pre_ops - barrier functions for coherent memory before DMA.
  * A barrier is required to ensure memory operations are complete before the
@@ -153,11 +154,13 @@ static inline void dma_free_noncoherent(struct device *dev, size_t size,
  */
 static inline void dma_coherent_pre_ops(void)
 {
-#if (__LINUX_ARM_ARCH__ >= 7) && !defined(CONFIG_ARCH_QSD8X50)
+#if COHERENT_IS_NORMAL == 1
 	dmb();
 #else
 	if (arch_is_coherent())
 		dmb();
+	else
+		barrier();
 #endif
 }
 /*
@@ -168,10 +171,14 @@ static inline void dma_coherent_pre_ops(void)
  */
 static inline void dma_coherent_post_ops(void)
 {
+#if COHERENT_IS_NORMAL == 1
+	dmb();
+#else
 	if (arch_is_coherent())
 		dmb();
 	else
 		barrier();
+#endif
 }
 
 /**
