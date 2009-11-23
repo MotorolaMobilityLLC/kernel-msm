@@ -399,6 +399,7 @@ int mmc_switch(struct mmc_card *card, u8 set, u8 index, u8 value,
 	if (err)
 		return err;
 
+	mmc_delay(1);
 	/* Must check status to be sure of no errors */
 	do {
 		err = mmc_send_status(card, &status);
