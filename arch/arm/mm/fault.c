@@ -521,8 +521,11 @@ do_bad(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 	asm("mrc " __str(v1) ", " __str(v2) ", %0, " __str(v4) ", "	\
 		__str(v5) ", " __str(v6) "\n" \
 		: "=r" (__##x));					\
-	printk("%s: %s = 0x%.8x\n", __func__, #x, __##x);		\
+	pr_info("%s: %s = 0x%.8x\n", __func__, #x, __##x);		\
 } while(0)
+
+#define MSM_TCSR_SPARE2 (MSM_TCSR_BASE + 0x60)
+
 #endif
 
 int
@@ -542,6 +545,9 @@ do_imprecise_ext(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 	MRC(DMACHSR,  p15, 1, c11, c0, 0);
 	MRC(DMACHESR, p15, 1, c11, c0, 1);
 	MRC(DMACHCR,  p15, 0, c11, c0, 2);
+#endif
+#ifdef CONFIG_ARCH_MSM_SCORPION
+	pr_info("%s: TCSR_SPARE2 = 0x%.8x\n", __func__, readl(MSM_TCSR_SPARE2));
 #endif
 	return 1;
 }
