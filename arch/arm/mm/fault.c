@@ -545,6 +545,11 @@ do_imprecise_ext(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 	MRC(DMACHSR,  p15, 1, c11, c0, 0);
 	MRC(DMACHESR, p15, 1, c11, c0, 1);
 	MRC(DMACHCR,  p15, 0, c11, c0, 2);
+
+	/* clear out EFSR and ADFSR after fault */
+	asm volatile ("mcr p15, 7, %0, c15, c0, 1\n\t"
+		      "mcr p15, 0, %0, c5, c1, 0"
+		      : : "r" (0));
 #endif
 #ifdef CONFIG_ARCH_MSM_SCORPION
 	pr_info("%s: TCSR_SPARE2 = 0x%.8x\n", __func__, readl(MSM_TCSR_SPARE2));
