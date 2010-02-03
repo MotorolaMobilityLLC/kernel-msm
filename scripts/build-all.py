@@ -45,7 +45,7 @@ make_command = ["-j", "6", "vmlinux", "modules"]
 make_env = os.environ
 make_env.update({
 	'ARCH': 'arm',
-	'CROSS_COMPILE': 'arm-eabi-',
+	'CROSS_COMPILE': 'arm-none-linux-gnueabi-',
 	'KCONFIG_NOTIMESTAMP': 'true' })
 all_options = {}
 
