@@ -147,6 +147,14 @@ config PMIC8058
 	help
 	  Say yes here for Qualcomm PM8058 chip.
 
+config PMIC8901
+	tristate "PMIC8901 Power Management chip"
+	depends on MSM_SSBI
+	select MFD_CORE
+	select MFD_PM8XXX
+	help
+	  Say yes here for Qualcomm PM8901 chip.
+
 config MARIMBA_TSADC
 	tristate "Support for Marimba Touchscreen ADC"
 	depends on MARIMBA_CORE && ARCH_MSM7X30
