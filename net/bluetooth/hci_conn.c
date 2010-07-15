@@ -321,7 +321,40 @@ void hci_setup_sync(struct hci_conn *conn, __u16 handle)
 
 	conn->attempt++;
 
+	BT_DBG("conn->pkt_type = %x", conn->pkt_type);
 	cp.handle   = cpu_to_le16(handle);
+
+	BT_DBG("remote features 0x%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x",
+			conn->features[0], conn->features[1],
+			conn->features[2], conn->features[3],
+			conn->features[4], conn->features[5],
+			conn->features[6], conn->features[7]);
+
+	BT_DBG("local features 0x%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x",
+			hdev->features[0], hdev->features[1],
+			hdev->features[2], hdev->features[3],
+			hdev->features[4], hdev->features[5],
+			hdev->features[6], hdev->features[7]);
+
+	if (lmp_esco_capable(hdev)) {
+		if ((conn->features[5] & LMP_EDR_ESCO_2M) &&
+				lmp_esco_capable(conn)) {
+			BT_DBG("hci params for 2EV3/S3 nego");
+			conn->pkt_type = 0x038d;
+			cp.max_latency    = cpu_to_le16(0x000a);
+			cp.retrans_effort = 0x01;
+		} else {
+			BT_DBG("hci params for EV3/HV3");
+			conn->pkt_type = 0x03c5;
+			cp.max_latency    = cpu_to_le16(0xffff);
+			cp.retrans_effort = 0xff;
+		}
+
+	} else {
+		BT_DBG("Error case:");
+	}
+
+	BT_DBG("pkt_type modified value = %x", conn->pkt_type);
 
 	cp.tx_bandwidth   = cpu_to_le32(0x00001f40);
 	cp.rx_bandwidth   = cpu_to_le32(0x00001f40);
@@ -524,6 +557,7 @@ struct hci_conn *hci_conn_add(struct hci_dev *hdev, int type,
 					__u16 pkt_type, bdaddr_t *dst)
 {
 	struct hci_conn *conn;
+	struct hci_conn *tmp_conn;
 
 	BT_DBG("%s dst %s", hdev->name, batostr(dst));
 
@@ -539,6 +573,19 @@ struct hci_conn *hci_conn_add(struct hci_dev *hdev, int type,
 	conn->auth_type = HCI_AT_GENERAL_BONDING;
 	conn->io_capability = hdev->io_capability;
 	conn->remote_auth = 0xff;
+
+	tmp_conn = hci_conn_hash_lookup_ba(hdev, ACL_LINK, dst);
+	if (tmp_conn) {
+		memcpy(conn->features, tmp_conn->features, 8);
+		BT_DBG("remote features 0x%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x",
+				conn->features[0], conn->features[1],
+				conn->features[2], conn->features[3],
+				conn->features[4], conn->features[5],
+				conn->features[6], conn->features[7]);
+	}
+
+	BT_DBG("conn->pkt_type = %x", conn->pkt_type);
+	BT_DBG("hdev->esco_type = %x", hdev->esco_type);
 
 	conn->power_save = 1;
 	conn->disc_timeout = HCI_DISCONN_TIMEOUT;
@@ -570,6 +617,7 @@ struct hci_conn *hci_conn_add(struct hci_dev *hdev, int type,
 		break;
 	}
 
+	BT_DBG("after change conn->pkt_type = %x", conn->pkt_type);
 	skb_queue_head_init(&conn->data_q);
 
 	setup_timer(&conn->disc_timer, hci_conn_timeout, (unsigned long)conn);

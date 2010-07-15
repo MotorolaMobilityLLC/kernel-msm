@@ -45,6 +45,8 @@
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
 
+struct hci_conn *temp_conn;
+
 /* Handle HCI Event packets */
 
 static void hci_cc_inquiry_cancel(struct hci_dev *hdev, struct sk_buff *skb)
@@ -242,6 +244,16 @@ static void hci_cc_read_local_name(struct hci_dev *hdev, struct sk_buff *skb)
 		return;
 
 	memcpy(hdev->dev_name, rp->name, HCI_MAX_NAME_LENGTH);
+}
+
+static void hci_cc_read_sync_conn(struct hci_dev *hdev, __u8 status)
+{
+	hci_dev_lock(hdev);
+	if ((status == 0x1c) && (temp_conn)) {
+			temp_conn->state = BT_CLOSED;
+			hci_conn_del(temp_conn);
+	}
+	hci_dev_unlock(hdev);
 }
 
 static void hci_cc_write_auth_enable(struct hci_dev *hdev, struct sk_buff *skb)
@@ -1770,13 +1782,34 @@ static inline void hci_conn_request_evt(struct hci_dev *hdev, struct sk_buff *sk
 			struct hci_cp_accept_sync_conn_req cp;
 
 			bacpy(&cp.bdaddr, &ev->bdaddr);
+			BT_DBG("incoming connec 1 conn->pkt_type %x",
+							conn->pkt_type);
+
+			if ((ev->link_type != SCO_LINK)	&&
+				(!(conn->features[5] & LMP_EDR_ESCO_2M)) &&
+					(conn->features[3] & LMP_ESCO)) {
+				/* Reject Connection */
+				BT_DBG("Reject EV3 with HV3 Setting");
+				conn->pkt_type = 0x03c5;
+				cp.max_latency    = cpu_to_le16(0xffff);
+				cp.retrans_effort = 0xff;
+				temp_conn = conn ;
+			} else if (conn->features[5] & LMP_EDR_ESCO_2M) {
+				BT_DBG("Trying eSCO-S3-2EV3");
+				conn->pkt_type = 0x38d;
+				cp.max_latency    = cpu_to_le16(0x000a);
+				cp.retrans_effort = 0x01;
+			} else {
+				BT_DBG("Trying SCO-HV3");
+				conn->pkt_type = 0x03c5;
+				cp.max_latency    = cpu_to_le16(0xffff);
+				cp.retrans_effort = 0xff;
+			}
 			cp.pkt_type = cpu_to_le16(conn->pkt_type);
 
 			cp.tx_bandwidth   = cpu_to_le32(0x00001f40);
 			cp.rx_bandwidth   = cpu_to_le32(0x00001f40);
-			cp.max_latency    = cpu_to_le16(0x000A);
 			cp.content_format = cpu_to_le16(hdev->voice_setting);
-			cp.retrans_effort = 0x01;
 
 			hci_send_cmd(hdev, HCI_OP_ACCEPT_SYNC_CONN_REQ,
 							sizeof(cp), &cp);
@@ -2411,6 +2444,10 @@ static inline void hci_cmd_status_evt(struct hci_dev *hdev, struct sk_buff *skb)
 		hci_cs_le_start_enc(hdev, ev->status);
 		break;
 
+	case HCI_OP_ACCEPT_SYNC_CONN_REQ:
+		hci_cc_read_sync_conn(hdev, ev->status);
+		break;
+
 	default:
 		BT_DBG("%s opcode 0x%x", hdev->name, opcode);
 		break;
@@ -2908,6 +2945,7 @@ static inline void hci_sync_conn_complete_evt(struct hci_dev *hdev, struct sk_bu
 {
 	struct hci_ev_sync_conn_complete *ev = (void *) skb->data;
 	struct hci_conn *conn;
+	struct hci_cp_setup_sync_conn cp;
 
 	BT_DBG("%s status %d", hdev->name, ev->status);
 
@@ -2939,10 +2977,30 @@ static inline void hci_sync_conn_complete_evt(struct hci_dev *hdev, struct sk_bu
 	case 0x1a:	/* Unsupported Remote Feature */
 	case 0x1f:	/* Unspecified error */
 		if (conn->out && conn->attempt < 2) {
+			BT_DBG("Negotiation ... ");
 			if (!conn->hdev->is_wbs)
 				conn->pkt_type =
 					(hdev->esco_type & SCO_ESCO_MASK) |
 					(hdev->esco_type & EDR_ESCO_MASK);
+
+			conn->state = BT_CONNECT;
+			conn->out = 1;
+
+			conn->attempt++;
+
+			cp.handle    = cpu_to_le16(conn->link->handle);
+			cp.pkt_type = cpu_to_le16(conn->pkt_type);
+
+			cp.tx_bandwidth   = cpu_to_le32(0x00001f40);
+			cp.rx_bandwidth   = cpu_to_le32(0x00001f40);
+			cp.max_latency    = cpu_to_le16(0xffff);
+			cp.voice_setting  =
+				cpu_to_le16(conn->hdev->voice_setting);
+			cp.retrans_effort = 0xff;
+
+			hci_send_cmd(conn->hdev,
+				HCI_OP_SETUP_SYNC_CONN, sizeof(cp), &cp);
+
 			hci_setup_sync(conn, conn->link->handle);
 			goto unlock;
 		}
