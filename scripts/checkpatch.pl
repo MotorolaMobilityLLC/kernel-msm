@@ -1714,13 +1714,13 @@ sub process {
 					     "email address '$email' might be better as '$suggested_email$comment'\n" . $herecurr);
 				}
 			}
-			if ($line =~ /^\s*signed-off-by:.*quicinc\.com/i) {
+			if ($line =~ /^\s*signed-off-by:.*(quicinc|qualcomm)\.com/i) {
 				WARN("invalid Signed-off-by identity\n" . $line );
 			}
 		}
 
 #check the patch for invalid author credentials
-		if ($line =~ /^From:.*quicinc\.com/) {
+		if ($line =~ /^From:.*(quicinc|qualcomm)\.com/) {
 			WARN("invalid author identity\n" . $line );
 		}
 
