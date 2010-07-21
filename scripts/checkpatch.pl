@@ -3246,6 +3246,11 @@ sub process {
 			}
 		}
 
+# check the patch for use of mdelay
+		if ($line =~ /\bmdelay\(/) {
+			WARN("use of mdelay() found: msleep() is the preferred API.\n" . $line );
+		}
+
 # warn about #ifdefs in C files
 #		if ($line =~ /^.\s*\#\s*if(|n)def/ && ($realfile =~ /\.c$/)) {
 #			print "#ifdef in C files should be avoided\n";
