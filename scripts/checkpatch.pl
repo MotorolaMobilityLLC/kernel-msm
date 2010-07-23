@@ -3446,6 +3446,11 @@ sub process {
 			 "Statements terminations use 1 semicolon\n" . $herecurr);
 		}
 
+# check for return codes on error paths
+		if ($line =~ /\breturn\s+-\d+/) {
+			ERROR("illegal return value, please use an error code");
+		}
+
 # check for gcc specific __FUNCTION__
 		if ($line =~ /__FUNCTION__/) {
 			WARN("USE_FUNC",
