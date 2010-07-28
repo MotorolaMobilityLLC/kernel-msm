@@ -1842,6 +1842,21 @@ sub process {
 			     "Use of $flag is deprecated, please use \`$replacement->{$flag} instead.\n" . $herecurr) if ($replacement->{$flag});
 		}
 
+# check for Kconfig help text having a real description
+		if ($realfile =~ /Kconfig/ &&
+		    $line =~ /\+?\s*(---)?help(---)?$/) {
+			my $length = 0;
+			for (my $l = $linenr; defined($lines[$l]); $l++) {
+				my $f = $lines[$l];
+				$f =~ s/#.*//;
+				$f =~ s/^\s+//;
+				next if ($f =~ /^$/);
+				last if ($f =~ /^\s*config\s/);
+				$length++;
+			}
+			WARN("please write a paragraph that describes the config symbol fully\n" . $herecurr) if ($length < 4);
+		}
+
 # check we are in a valid source file if not then ignore this hunk
 		next if ($realfile !~ /\.(h|c|s|S|pl|sh)$/);
 
@@ -1876,6 +1891,11 @@ sub process {
 		if ($rawline =~ /^.*\".*\s\\n/) {
 			WARN("QUOTED_WHITESPACE_BEFORE_NEWLINE",
 			     "unnecessary whitespace before a quoted newline\n" . $herecurr);
+		}
+
+# check for spaces before a quoted newline
+		if ($rawline =~ /^.*\".*\s\\n/) {
+			WARN("unnecessary whitespace before a quoted newline\n" . $herecurr);
 		}
 
 # check for adding lines without a newline.
@@ -1963,6 +1983,12 @@ sub process {
 			my $herevet = "$here\n" . cat_vet($rawline) . "\n";
 			WARN("LEADING_SPACE",
 			     "please, no spaces at the start of a line\n" . $herevet);
+		}
+
+# check for space before tabs.
+		if ($rawline =~ /^\+/ && $rawline =~ / \t/) {
+			my $herevet = "$here\n" . cat_vet($rawline) . "\n";
+			WARN("please, no space before tabs\n" . $herevet);
 		}
 
 # check we are in a valid C source file if not then ignore this hunk
@@ -3291,6 +3317,11 @@ sub process {
 		if ($line =~ /\b$Storage\b/ && $line !~ /^.\s*$Storage\b/) {
 			WARN("STORAGE_CLASS",
 			     "storage class should be at the beginning of the declaration\n" . $herecurr)
+		}
+
+# Check that the storage class is at the beginning of a declaration
+		if ($line =~ /\b$Storage\b/ && $line !~ /^.\s*$Storage\b/) {
+			WARN("storage class should be at the beginning of the declaration\n" . $herecurr)
 		}
 
 # check the location of the inline attribute, that it is between
