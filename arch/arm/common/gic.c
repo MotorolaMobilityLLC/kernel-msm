@@ -806,3 +806,39 @@ int __init gic_of_init(struct device_node *node, struct device_node *parent)
 	return 0;
 }
 #endif
+
+/* before calling this function the interrupts should be disabled
+ * and the irq must be disabled at gic to avoid spurious interrupts */
+bool gic_is_spi_pending(unsigned int irq)
+{
+	u32 mask, val;
+
+	WARN_ON(!irqs_disabled());
+	spin_lock(&irq_controller_lock);
+	mask = 1 << (gic_irq(irq) % 32);
+	val = readl(gic_dist_base(irq) +
+			GIC_DIST_ENABLE_SET + (gic_irq(irq) / 32) * 4);
+	/* warn if the interrupt is enabled */
+	WARN_ON(val & mask);
+	val = readl(gic_dist_base(irq) +
+			GIC_DIST_PENDING_SET + (gic_irq(irq) / 32) * 4);
+	spin_unlock(&irq_controller_lock);
+	return (bool) (val & mask);
+}
+
+/* before calling this function the interrupts should be disabled
+ * and the irq must be disabled at gic to avoid spurious interrupts */
+void gic_clear_spi_pending(unsigned int irq)
+{
+	u32 mask, val;
+	WARN_ON(!irqs_disabled());
+	spin_lock(&irq_controller_lock);
+	mask = 1 << (gic_irq(irq) % 32);
+	val = readl(gic_dist_base(irq) +
+			GIC_DIST_ENABLE_SET + (gic_irq(irq) / 32) * 4);
+	/* warn if the interrupt is enabled */
+	WARN_ON(val & mask);
+	val = writel(mask, gic_dist_base(irq) +
+			GIC_DIST_PENDING_CLEAR + (gic_irq(irq) / 32) * 4);
+	spin_unlock(&irq_controller_lock);
+}
