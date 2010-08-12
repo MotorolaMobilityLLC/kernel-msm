@@ -54,6 +54,7 @@ union gic_base {
 };
 
 struct gic_chip_data {
+	unsigned int irq_offset;
 	union gic_base dist_base;
 	union gic_base cpu_base;
 #ifdef CONFIG_CPU_PM
@@ -67,6 +68,11 @@ struct gic_chip_data {
 	unsigned int gic_irqs;
 #ifdef CONFIG_GIC_NON_BANKED
 	void __iomem *(*get_base)(union gic_base *);
+#endif
+	unsigned int max_irq;
+#ifdef CONFIG_PM
+	unsigned int wakeup_irqs[32];
+	unsigned int enabled_irqs[32];
 #endif
 };
 
@@ -165,6 +171,65 @@ static void gic_unmask_irq(struct irq_data *d)
 	raw_spin_unlock(&irq_controller_lock);
 }
 
+#ifdef CONFIG_PM
+void gic_suspend(unsigned int gic_nr)
+{
+	unsigned int i;
+	void __iomem *base = gic_data[gic_nr].dist_base;
+	/* Dont disable STI's and PPI's. Assume they are quiesced
+	 * by the suspend framework */
+	for (i = 1; i * 32 < gic_data[gic_nr].max_irq; i++) {
+		gic_data[gic_nr].enabled_irqs[i]
+			= readl(base + GIC_DIST_ENABLE_SET + i * 4);
+		/* disable all of them */
+		writel(0xffffffff, base + GIC_DIST_ENABLE_CLEAR + i * 4);
+		/* enable the wakeup set */
+		writel(gic_data[gic_nr].wakeup_irqs[i],
+			base + GIC_DIST_ENABLE_SET + i * 4);
+	}
+}
+
+void gic_resume(unsigned int gic_nr)
+{
+	unsigned int i;
+	void __iomem *base = gic_data[gic_nr].dist_base;
+	for (i = 1; i * 32 < gic_data[gic_nr].max_irq; i++) {
+		/* disable all of them */
+		writel(0xffffffff, base + GIC_DIST_ENABLE_CLEAR + i * 4);
+		/* enable the enabled set */
+		writel(gic_data[gic_nr].enabled_irqs[i],
+			base + GIC_DIST_ENABLE_SET + i * 4);
+	}
+}
+
+static int gic_set_wake(unsigned int irq, unsigned int on)
+{
+	unsigned int reg_offset, bit_offset;
+	unsigned int gicirq = gic_irq(irq);
+	struct gic_chip_data *gic_data = get_irq_chip_data(irq);
+
+	/* per-cpu interrupts cannot be wakeup interrupts */
+	WARN_ON(gicirq < 32);
+
+	reg_offset = gicirq / 32;
+	bit_offset = gicirq % 32;
+
+	if (on)
+		gic_data->wakeup_irqs[reg_offset] |=  1 << bit_offset;
+	else
+		gic_data->wakeup_irqs[reg_offset] &=  ~(1 << bit_offset);
+
+	return 0;
+}
+#else
+void gic_suspend(unsigned int gic_nr) {}
+void gic_resume(unsigned int gic_nr) {}
+static int gic_set_wake(unsigned int irq, unsigned int on)
+{
+	return 0;
+}
+#endif
+
 static void gic_eoi_irq(struct irq_data *d)
 {
 	if (gic_arch_extn.irq_eoi) {
@@ -254,21 +319,6 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 
 	return IRQ_SET_MASK_OK;
 }
-#endif
-
-#ifdef CONFIG_PM
-static int gic_set_wake(struct irq_data *d, unsigned int on)
-{
-	int ret = -ENXIO;
-
-	if (gic_arch_extn.irq_set_wake)
-		ret = gic_arch_extn.irq_set_wake(d, on);
-
-	return ret;
-}
-
-#else
-#define gic_set_wake	NULL
 #endif
 
 asmlinkage void __exception_irq_entry gic_handle_irq(struct pt_regs *regs)
@@ -372,6 +422,7 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 	for (i = 32; i < gic_irqs; i += 4)
 		writel_relaxed(cpumask, base + GIC_DIST_TARGET + i * 4 / 4);
 
+	gic_data[gic_nr].max_irq = max_irq;
 	/*
 	 * Set priority on all global interrupts.
 	 */
