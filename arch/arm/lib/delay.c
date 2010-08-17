@@ -5,6 +5,7 @@
  *  Copyright (c) 2010, Code Aurora Forum. All rights reserved.
  *  Copyright (C) 1993 Linus Torvalds
  *  Copyright (C) 1997 Martin Mares <mj@atrey.karlin.mff.cuni.cz>
+ *  Copyright (C) 2005-2006 Atmel Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -12,6 +13,7 @@
  */
 #include <linux/module.h>
 #include <linux/delay.h>
+#include <linux/timex.h>
 
 /*
  * Oh, if only we had a cycle counter...
@@ -25,6 +27,22 @@ void delay_loop(unsigned long loops)
 	: "r" (loops)
 	);
 }
+
+#ifdef ARCH_HAS_READ_CURRENT_TIMER
+/*
+ * Assuming read_current_timer() is monotonically increasing
+ * across calls.
+ */
+void read_current_timer_delay_loop(unsigned long loops)
+{
+	unsigned long bclock, now;
+
+	read_current_timer(&bclock);
+	do {
+		read_current_timer(&now);
+	} while ((now - bclock) < loops);
+}
+#endif
 
 static void (*delay_fn)(unsigned long) = delay_loop;
 
