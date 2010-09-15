@@ -754,6 +754,25 @@ init_hw_perf_events(void)
 			break;
 		}
 	}
+	/* Qualcomm CPUs */
+	} else if (0x51 == implementor) {
+		switch (part_number) {
+			case 0x00F0:    /* 8x50 & 7x30*/
+			case 0x02D0:    /* 8x60*/
+				scorpion_pmu.id = ARM_PERF_PMU_ID_SCORPION;
+				memcpy(armpmu_perf_cache_map, armv7_a8_perf_cache_map,
+						sizeof(armv7_a8_perf_cache_map));
+				scorpion_pmu.event_map = armv7_a8_pmu_event_map;
+				armpmu = &scorpion_pmu;
+
+				/* Reset PMNC and read the nb of CNTx counters
+					supported */
+
+				scorpion_pmu.num_events = armv7_reset_read_pmnc();
+				perf_max_events = scorpion_pmu.num_events;
+				break;
+		}
+	}
 
 	if (cpu_pmu) {
 		pr_info("enabled with %s PMU driver, %d counters available\n",
