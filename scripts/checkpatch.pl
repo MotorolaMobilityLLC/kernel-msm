@@ -1602,7 +1602,7 @@ sub process {
 			 $exec_file =~ /^.+\.HEX$/ or
 			 $exec_file =~ /^.+defconfig$/ or
 			 $exec_file =~ /^Makefile$/ or
-			 $exec_file =~ /^Kconfig$/) 	   &&
+			 $exec_file =~ /^Kconfig$/) &&
 			$rawline =~ /^new (file )?mode\s([0-9]+)$/ &&
 			(oct($2) & 0111))  {
 			    ERROR("Source file has +x permissions: " .
