@@ -189,6 +189,30 @@ void gic_suspend(unsigned int gic_nr)
 	}
 }
 
+void gic_show_resume_irq(unsigned int gic_nr)
+{
+	unsigned int i;
+	u32 enabled;
+	unsigned long pending[32];
+	void __iomem *base = gic_data[gic_nr].dist_base;
+
+	pending[0] = 0;
+	spin_lock(&irq_controller_lock);
+	for (i = 1; i * 32 < gic_data[gic_nr].max_irq; i++) {
+		enabled = readl(base + GIC_DIST_ENABLE_CLEAR + i * 4);
+		pending[i] = readl(base + GIC_DIST_PENDING_SET + i * 4);
+		pending[i] &= enabled;
+	}
+	spin_unlock(&irq_controller_lock);
+
+	for (i = find_first_bit(pending, gic_data[gic_nr].max_irq);
+	     i < gic_data[gic_nr].max_irq;
+	     i = find_next_bit(pending, gic_data[gic_nr].max_irq, i+1)) {
+		pr_warning("%s: %d triggered", __func__,
+					i + gic_data[gic_nr].irq_offset);
+	}
+}
+
 void gic_resume(unsigned int gic_nr)
 {
 	unsigned int i;
