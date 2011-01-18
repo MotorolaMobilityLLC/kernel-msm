@@ -20,6 +20,7 @@
 #include <linux/platform_device.h>
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
+#include <linux/irq.h>
 
 #include <asm/cputype.h>
 #include <asm/irq.h>
