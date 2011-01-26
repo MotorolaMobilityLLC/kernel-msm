@@ -269,8 +269,10 @@ trip_point_temp_set(struct device *dev, struct device_attribute *attr,
 		return -EINVAL;
 
 	ret = tz->ops->set_trip_temp(tz, trip, temperature);
+	if (ret)
+		return ret;
 
-	return ret;
+	return count;
 }
 
 static ssize_t
