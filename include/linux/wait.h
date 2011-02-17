@@ -346,6 +346,24 @@ do {									\
 	__ret;								\
 })
 
+#define __wait_io_event_interruptible(wq, condition, ret)		\
+do {									\
+	DEFINE_WAIT(__wait);						\
+									\
+	for (;;) {							\
+		prepare_to_wait(&wq, &__wait, TASK_INTERRUPTIBLE);	\
+		if (condition)						\
+			break;						\
+		if (!signal_pending(current)) {				\
+			io_schedule();					\
+			continue;					\
+		}							\
+		ret = -ERESTARTSYS;					\
+		break;							\
+	}								\
+	finish_wait(&wq, &__wait);					\
+} while (0)
+
 /**
  * wait_io_event_interruptible - sleep until an io condition gets true
  * @wq: the waitqueue to wait on
