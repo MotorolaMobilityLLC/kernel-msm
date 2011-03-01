@@ -1,6 +1,6 @@
 /*
    BlueZ - Bluetooth protocol stack for Linux
-   Copyright (C) 2000-2001 Qualcomm Incorporated
+   Copyright (c) 2000-2001, 2010-2011 Code Aurora Forum.  All rights reserved.
 
    Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
 
@@ -144,15 +144,25 @@ void bt_accept_unlink(struct sock *sk);
 struct sock *bt_accept_dequeue(struct sock *parent, struct socket *newsock);
 
 /* Skb helpers */
+struct bt_l2cap_control {
+	__u8  frame_type;
+	__u8  final;
+	__u8  sar;
+	__u8  super;
+	__u16 reqseq;
+	__u16 txseq;
+	__u8  poll;
+	__u8  fcs;
+};
+
 struct bt_skb_cb {
 	__u8 pkt_type;
 	__u8 incoming;
 	__u16 expect;
-	__u8 tx_seq;
 	__u8 retries;
-	__u8 sar;
 	__u8 force_active;
 	unsigned short channel;
+	struct bt_l2cap_control control;
 };
 #define bt_cb(skb) ((struct bt_skb_cb *)((skb)->cb))
 
