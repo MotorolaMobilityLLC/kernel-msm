@@ -1,6 +1,6 @@
 /*
    BlueZ - Bluetooth protocol stack for Linux
-   Copyright (C) 2000-2001 Qualcomm Incorporated
+   Copyright (c) 2000-2001, 2010-2011 Code Aurora Forum.  All rights reserved.
 
    Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
 
@@ -69,6 +69,10 @@ DEFINE_RWLOCK(hci_dev_list_lock);
 /* HCI callback list */
 LIST_HEAD(hci_cb_list);
 DEFINE_RWLOCK(hci_cb_list_lock);
+
+/* AMP Manager event callbacks */
+LIST_HEAD(amp_mgr_cb_list);
+DEFINE_RWLOCK(amp_mgr_cb_list_lock);
 
 /* HCI protocols */
 #define HCI_MAX_PROTO	2
@@ -221,14 +225,24 @@ static void hci_init_req(struct hci_dev *hdev, unsigned long opt)
 			hci_send_cmd(hdev, HCI_OP_RESET, 0, NULL);
 	}
 
-	/* Read Local Supported Features */
-	hci_send_cmd(hdev, HCI_OP_READ_LOCAL_FEATURES, 0, NULL);
-
 	/* Read Local Version */
 	hci_send_cmd(hdev, HCI_OP_READ_LOCAL_VERSION, 0, NULL);
 
+
+	/* Set default HCI Flow Control Mode */
+	if (hdev->dev_type == HCI_BREDR)
+		hdev->flow_ctl_mode = HCI_PACKET_BASED_FLOW_CTL_MODE;
+	else
+		hdev->flow_ctl_mode = HCI_BLOCK_BASED_FLOW_CTL_MODE;
+
+	/* Read HCI Flow Control Mode */
+	hci_send_cmd(hdev, HCI_OP_READ_FLOW_CONTROL_MODE, 0, NULL);
+
 	/* Read Buffer Size (ACL mtu, max pkt, etc.) */
 	hci_send_cmd(hdev, HCI_OP_READ_BUFFER_SIZE, 0, NULL);
+
+	/* Read Data Block Size (ACL mtu, max pkt, etc.) */
+	hci_send_cmd(hdev, HCI_OP_READ_DATA_BLOCK_SIZE, 0, NULL);
 
 #if 0
 	/* Host buffer size */
@@ -242,27 +256,44 @@ static void hci_init_req(struct hci_dev *hdev, unsigned long opt)
 	}
 #endif
 
-	/* Read BD Address */
-	hci_send_cmd(hdev, HCI_OP_READ_BD_ADDR, 0, NULL);
+	/* BR-EDR initialization */
+	if (hdev->dev_type == HCI_BREDR) {
+		/* Read Local Supported Features */
+		hci_send_cmd(hdev, HCI_OP_READ_LOCAL_FEATURES, 0, NULL);
 
-	/* Read Class of Device */
-	hci_send_cmd(hdev, HCI_OP_READ_CLASS_OF_DEV, 0, NULL);
+		/* Read BD Address */
+		hci_send_cmd(hdev, HCI_OP_READ_BD_ADDR, 0, NULL);
 
-	/* Read Local Name */
-	hci_send_cmd(hdev, HCI_OP_READ_LOCAL_NAME, 0, NULL);
+		/* Read Class of Device */
+		hci_send_cmd(hdev, HCI_OP_READ_CLASS_OF_DEV, 0, NULL);
 
-	/* Read Voice Setting */
-	hci_send_cmd(hdev, HCI_OP_READ_VOICE_SETTING, 0, NULL);
+		/* Read Local Name */
+		hci_send_cmd(hdev, HCI_OP_READ_LOCAL_NAME, 0, NULL);
 
-	/* Optional initialization */
+		/* Read Voice Setting */
+		hci_send_cmd(hdev, HCI_OP_READ_VOICE_SETTING, 0, NULL);
 
-	/* Clear Event Filters */
-	flt_type = HCI_FLT_CLEAR_ALL;
-	hci_send_cmd(hdev, HCI_OP_SET_EVENT_FLT, 1, &flt_type);
+		/* Optional initialization */
+		/* Clear Event Filters */
+		flt_type = HCI_FLT_CLEAR_ALL;
+		hci_send_cmd(hdev, HCI_OP_SET_EVENT_FLT, 1, &flt_type);
 
-	/* Connection accept timeout ~20 secs */
-	param = cpu_to_le16(0x7d00);
+		/* Connection accept timeout ~20 secs */
+		param = cpu_to_le16(0x7d00);
+		hci_send_cmd(hdev, HCI_OP_WRITE_CA_TIMEOUT, 2, &param);
+
+		return;
+	}
+
+	/* AMP initialization */
+	/* Connection accept timeout ~5 secs */
+	param = cpu_to_le16(0x1f40);
 	hci_send_cmd(hdev, HCI_OP_WRITE_CA_TIMEOUT, 2, &param);
+
+	hdev->req_last_cmd = HCI_OP_WRITE_CA_TIMEOUT;
+
+	/* Read AMP Info */
+	hci_send_cmd(hdev, HCI_OP_READ_LOCAL_AMP_INFO, 0, NULL);
 
 	bacpy(&cp.bdaddr, BDADDR_ANY);
 	cp.delete_all = 1;
@@ -340,6 +371,7 @@ struct hci_dev *hci_dev_get(int index)
 	read_unlock(&hci_dev_list_lock);
 	return hdev;
 }
+EXPORT_SYMBOL(hci_dev_get);
 
 /* ---- Inquiry support ---- */
 static void inquiry_cache_flush(struct hci_dev *hdev)
@@ -523,10 +555,6 @@ int hci_dev_open(__u16 dev)
 	}
 
 	if (test_bit(HCI_QUIRK_RAW_DEVICE, &hdev->quirks))
-		set_bit(HCI_RAW, &hdev->flags);
-
-	/* Treat all non BR/EDR controllers as raw devices for now */
-	if (hdev->dev_type != HCI_BREDR)
 		set_bit(HCI_RAW, &hdev->flags);
 
 	if (hdev->open(hdev)) {
@@ -1380,6 +1408,7 @@ int hci_register_dev(struct hci_dev *hdev)
 	inquiry_cache_init(hdev);
 
 	hci_conn_hash_init(hdev);
+	hci_chan_list_init(hdev);
 
 	INIT_LIST_HEAD(&hdev->blacklist);
 
@@ -1767,6 +1796,74 @@ int hci_unregister_cb(struct hci_cb *cb)
 }
 EXPORT_SYMBOL(hci_unregister_cb);
 
+int hci_register_amp(struct amp_mgr_cb *cb)
+{
+	BT_DBG("%p", cb);
+
+	write_lock_bh(&amp_mgr_cb_list_lock);
+	list_add(&cb->list, &amp_mgr_cb_list);
+	write_unlock_bh(&amp_mgr_cb_list_lock);
+
+	return 0;
+}
+EXPORT_SYMBOL(hci_register_amp);
+
+int hci_unregister_amp(struct amp_mgr_cb *cb)
+{
+	BT_DBG("%p", cb);
+
+	write_lock_bh(&amp_mgr_cb_list_lock);
+	list_del(&cb->list);
+	write_unlock_bh(&amp_mgr_cb_list_lock);
+
+	return 0;
+}
+EXPORT_SYMBOL(hci_unregister_amp);
+
+void hci_amp_cmd_complete(struct hci_dev *hdev, __u16 opcode,
+			struct sk_buff *skb)
+{
+	struct amp_mgr_cb *cb;
+
+	BT_DBG("opcode 0x%x", opcode);
+
+	read_lock_bh(&amp_mgr_cb_list_lock);
+	list_for_each_entry(cb, &amp_mgr_cb_list, list) {
+		if (cb->amp_cmd_complete_event)
+			cb->amp_cmd_complete_event(hdev, opcode, skb);
+	}
+	read_unlock_bh(&amp_mgr_cb_list_lock);
+}
+
+void hci_amp_cmd_status(struct hci_dev *hdev, __u16 opcode, __u8 status)
+{
+	struct amp_mgr_cb *cb;
+
+	BT_DBG("opcode 0x%x, status %d", opcode, status);
+
+	read_lock_bh(&amp_mgr_cb_list_lock);
+	list_for_each_entry(cb, &amp_mgr_cb_list, list) {
+		if (cb->amp_cmd_status_event)
+			cb->amp_cmd_status_event(hdev, opcode, status);
+	}
+	read_unlock_bh(&amp_mgr_cb_list_lock);
+}
+
+void hci_amp_event_packet(struct hci_dev *hdev, __u8 ev_code,
+			struct sk_buff *skb)
+{
+	struct amp_mgr_cb *cb;
+
+	BT_DBG("ev_code 0x%x", ev_code);
+
+	read_lock_bh(&amp_mgr_cb_list_lock);
+	list_for_each_entry(cb, &amp_mgr_cb_list, list) {
+		if (cb->amp_event)
+			cb->amp_event(hdev, ev_code, skb);
+	}
+	read_unlock_bh(&amp_mgr_cb_list_lock);
+}
+
 static int hci_send_frame(struct sk_buff *skb)
 {
 	struct hci_dev *hdev = (struct hci_dev *) skb->dev;
@@ -1826,6 +1923,7 @@ int hci_send_cmd(struct hci_dev *hdev, __u16 opcode, __u32 plen, void *param)
 
 	return 0;
 }
+EXPORT_SYMBOL(hci_send_cmd);
 
 /* Get data from the previously sent command */
 void *hci_sent_cmd_data(struct hci_dev *hdev, __u16 opcode)
@@ -1858,16 +1956,20 @@ static void hci_add_acl_hdr(struct sk_buff *skb, __u16 handle, __u16 flags)
 	hdr->dlen   = cpu_to_le16(len);
 }
 
-void hci_send_acl(struct hci_conn *conn, struct sk_buff *skb, __u16 flags)
+void hci_send_acl(struct hci_conn *conn, struct hci_chan *chan,
+		struct sk_buff *skb, __u16 flags)
 {
 	struct hci_dev *hdev = conn->hdev;
 	struct sk_buff *list;
 
-	BT_DBG("%s conn %p flags 0x%x", hdev->name, conn, flags);
+	BT_DBG("%s conn %p chan %p flags 0x%x", hdev->name, conn, chan, flags);
 
 	skb->dev = (void *) hdev;
 	bt_cb(skb)->pkt_type = HCI_ACLDATA_PKT;
-	hci_add_acl_hdr(skb, conn->handle, flags);
+	if (hdev->dev_type == HCI_BREDR)
+		hci_add_acl_hdr(skb, conn->handle, flags);
+	else
+		hci_add_acl_hdr(skb, chan->ll_handle, flags);
 
 	list = skb_shinfo(skb)->frag_list;
 	if (!list) {
@@ -2017,21 +2119,38 @@ static inline void hci_sched_acl(struct hci_dev *hdev)
 	if (!test_bit(HCI_RAW, &hdev->flags)) {
 		/* ACL tx timeout must be longer than maximum
 		 * link supervision timeout (40.9 seconds) */
-		if (!hdev->acl_cnt && time_after(jiffies, hdev->acl_last_tx + HZ * 45))
+		if (hdev->acl_cnt <= 0 &&
+			time_after(jiffies, hdev->acl_last_tx + HZ * 45))
 			hci_link_tx_to(hdev, ACL_LINK);
 	}
 
-	while (hdev->acl_cnt && (conn = hci_low_sent(hdev, ACL_LINK, &quote))) {
-		while (quote-- && (skb = skb_dequeue(&conn->data_q))) {
+	while (hdev->acl_cnt > 0 &&
+		(conn = hci_low_sent(hdev, ACL_LINK, &quote))) {
+		while (quote > 0 && (skb = skb_dequeue(&conn->data_q))) {
+			int count = 1;
+
 			BT_DBG("skb %p len %d", skb, skb->len);
+
+			if (hdev->flow_ctl_mode ==
+				HCI_BLOCK_BASED_FLOW_CTL_MODE)
+				/* Calculate count of blocks used by
+				 * this packet
+				 */
+				count = ((skb->len - HCI_ACL_HDR_SIZE - 1) /
+					hdev->data_block_len) + 1;
+
+			if (count > hdev->acl_cnt)
+				return;
 
 			hci_conn_enter_active_mode(conn, bt_cb(skb)->force_active);
 
 			hci_send_frame(skb);
 			hdev->acl_last_tx = jiffies;
 
-			hdev->acl_cnt--;
-			conn->sent++;
+			hdev->acl_cnt -= count;
+			quote -= count;
+
+			conn->sent += count;
 		}
 	}
 }

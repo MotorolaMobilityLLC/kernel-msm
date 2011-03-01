@@ -1,6 +1,6 @@
 /*
    BlueZ - Bluetooth protocol stack for Linux
-   Copyright (C) 2000-2001 Qualcomm Incorporated
+   Copyright (c) 2000-2001, 2010, Code Aurora Forum. All rights reserved.
 
    Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
 
@@ -25,7 +25,7 @@
 #ifndef __HCI_H
 #define __HCI_H
 
-#define HCI_MAX_ACL_SIZE	1024
+#define HCI_MAX_ACL_SIZE	1500
 #define HCI_MAX_SCO_SIZE	255
 #define HCI_MAX_EVENT_SIZE	260
 #define HCI_MAX_FRAME_SIZE	(HCI_MAX_ACL_SIZE + 4)
@@ -250,6 +250,10 @@ enum {
 #define HCI_AT_GENERAL_BONDING		0x04
 #define HCI_AT_GENERAL_BONDING_MITM	0x05
 
+/* Flow control modes */
+#define HCI_PACKET_BASED_FLOW_CTL_MODE	0x00
+#define HCI_BLOCK_BASED_FLOW_CTL_MODE	0x01
+
 /* -----  HCI Commands ---- */
 #define HCI_OP_NOP			0x0000
 
@@ -307,6 +311,11 @@ struct hci_cp_reject_conn_req {
 struct hci_cp_link_key_reply {
 	bdaddr_t bdaddr;
 	__u8     link_key[16];
+} __packed;
+
+struct hci_rp_link_key_reply {
+	__u8     status;
+	bdaddr_t bdaddr;
 } __packed;
 
 #define HCI_OP_LINK_KEY_NEG_REPLY	0x040c
@@ -448,6 +457,80 @@ struct hci_cp_remote_oob_data_neg_reply {
 struct hci_cp_io_capability_neg_reply {
 	bdaddr_t bdaddr;
 	__u8     reason;
+} __packed;
+
+#define HCI_OP_CREATE_PHYS_LINK		0x0435
+struct hci_cp_create_phys_link {
+	__u8     phy_handle;
+	__u8     key_len;
+	__u8     type;
+	__u8     data[32];
+} __packed;
+
+#define HCI_OP_ACCEPT_PHYS_LINK		0x0436
+struct hci_cp_accept_phys_link {
+	__u8     phy_handle;
+	__u8     key_len;
+	__u8     type;
+	__u8     data[32];
+} __packed;
+
+#define HCI_OP_DISCONN_PHYS_LINK	0x0437
+struct hci_cp_disconn_phys_link {
+	__u8     phy_handle;
+	__u8     reason;
+} __packed;
+
+#define HCI_OP_CREATE_LOGICAL_LINK	0x0438
+#define HCI_OP_ACCEPT_LOGICAL_LINK	0x0439
+struct hci_cp_create_logical_link {
+	__u8     phy_handle;
+	__u8     tx_id;
+	__u8     tx_service_type;
+	__le16   tx_max_sdu;
+	__le32   tx_interarrival;
+	__le32   tx_latency;
+	__le32   tx_flush_to;
+	__u8     rx_id;
+	__u8     rx_service_type;
+	__le16   rx_max_sdu;
+	__le32   rx_interarrival;
+	__le32   rx_latency;
+	__le32   rx_flush_to;
+} __packed;
+
+#define HCI_OP_DISCONN_LOGICAL_LINK	0x043a
+struct hci_cp_disconn_logical_link {
+	__le16   log_handle;
+} __packed;
+
+#define HCI_OP_LOGICAL_LINK_CANCEL	0x043b
+struct hci_cp_logical_link_cancel {
+	__u8     phy_handle;
+	__u8     flow_spec_id;
+} __packed;
+
+struct hci_rp_logical_link_cancel {
+	__u8     status;
+	__u8     phy_handle;
+	__u8     flow_spec_id;
+} __packed;
+
+#define HCI_OP_FLOW_SPEC_MODIFY		0x043c
+struct hci_cp_flow_spec_modify {
+	__le16   handle;
+	__u8     tx_id;
+	__u8     tx_service_type;
+	__le16   tx_max_sdu;
+	__le32   tx_interarrival;
+	__le32   tx_latency;
+	__le32   tx_flush_to;
+	__u8     rx_id;
+	__u8     rx_service_type;
+	__le16   rx_max_sdu;
+	__le32   rx_interarrival;
+	__le32   rx_latency;
+	__le32   rx_flush_to;
 } __packed;
 
 #define HCI_OP_SNIFF_MODE		0x0803
@@ -648,6 +731,72 @@ struct hci_rp_read_local_oob_data {
 
 #define HCI_OP_READ_INQ_RSP_TX_POWER	0x0c58
 
+#define HCI_OP_READ_LL_TIMEOUT		0x0c61
+struct hci_rp_read_ll_timeout {
+	__u8     status;
+	__le16   timeout;
+} __packed;
+
+#define HCI_OP_WRITE_LL_TIMEOUT		0x0c62
+struct hci_cp_write_ll_timeout {
+	__le16   timeout;
+} __packed;
+
+#define HCI_OP_SET_EVENT_MASK_PAGE2	0x0c63
+struct hci_cp_set_event_mask_page2 {
+	__u8     mask[8];
+} __packed;
+
+#define HCI_OP_READ_LOCATION_DATA	0x0c64
+struct hci_rp_read_location_data {
+	__u8     status;
+	__u8     loc_dom_aware;
+	__u8     loc_dom;
+	__u8     loc_dom_opts;
+	__u8     loc_opts;
+} __packed;
+
+#define HCI_OP_WRITE_LOCATION_DATA	0x0c65
+struct hci_cp_write_location_data {
+	__u8     loc_dom_aware;
+	__u8     loc_dom;
+	__u8     loc_dom_opts;
+	__u8     loc_opts;
+} __packed;
+
+#define HCI_OP_READ_FLOW_CONTROL_MODE	0x0c66
+struct hci_rp_read_flow_control_mode {
+	__u8     status;
+	__u8     mode;
+} __packed;
+
+#define HCI_OP_WRITE_FLOW_CONTROL_MODE	0x0c67
+struct hci_cp_write_flow_control_mode {
+	__u8     mode;
+} __packed;
+
+#define HCI_OP_READ_BE_FLUSH_TIMEOUT	0x0c69
+struct hci_cp_read_be_flush_timeout {
+	__le16   log_handle;
+} __packed;
+
+struct hci_rp_read_be_flush_timeout {
+	__u8     status;
+	__le32   timeout;
+} __packed;
+
+#define HCI_OP_WRITE_BE_FLUSH_TIMEOUT	0x0c6a
+struct hci_cp_write_be_flush_timeout {
+	__le16   log_handle;
+	__le32   timeout;
+} __packed;
+
+#define HCI_OP_SHORT_RANGE_MODE		0x0c6b
+struct hci_cp_short_range_mode {
+	__u8     phy_handle;
+	__u8     mode;
+} __packed;
+
 #define HCI_OP_READ_LOCAL_VERSION	0x1001
 struct hci_rp_read_local_version {
 	__u8     status;
@@ -691,6 +840,56 @@ struct hci_rp_read_buffer_size {
 struct hci_rp_read_bd_addr {
 	__u8     status;
 	bdaddr_t bdaddr;
+} __packed;
+
+#define HCI_OP_READ_DATA_BLOCK_SIZE	0x100a
+struct hci_rp_read_data_block_size {
+	__u8     status;
+	__le16   max_acl_len;
+	__le16   data_block_len;
+	__le16   num_blocks;
+} __packed;
+
+#define HCI_OP_READ_LOCAL_AMP_INFO	0x1409
+struct hci_rp_read_local_amp_info {
+	__u8     status;
+	__u8     amp_status;
+	__le32   total_bw;
+	__le32   max_bw;
+	__le32   min_latency;
+	__le32   max_pdu;
+	__u8     amp_type;
+	__le16   pal_cap;
+	__le16   max_assoc_size;
+	__le32   max_flush_to;
+	__le32   be_flush_to;
+} __packed;
+
+#define HCI_OP_READ_LOCAL_AMP_ASSOC	0x140a
+struct hci_cp_read_local_amp_assoc {
+	__u8     phy_handle;
+	__le16   len_so_far;
+	__le16   max_len;
+} __packed;
+
+struct hci_rp_read_local_amp_assoc {
+	__u8     status;
+	__u8     phy_handle;
+	__le16   rem_len;
+	__u8     frag[248];
+} __packed;
+
+#define HCI_OP_WRITE_REMOTE_AMP_ASSOC	0x140b
+struct hci_cp_write_remote_amp_assoc {
+	__u8     phy_handle;
+	__le16   len_so_far;
+	__le16   rem_len;
+	__u8     frag[248];
+} __packed;
+
+struct hci_rp_write_remote_amp_assoc {
+	__u8     status;
+	__u8     phy_handle;
 } __packed;
 
 #define HCI_OP_LE_SET_EVENT_MASK	0x2001
@@ -1076,6 +1275,65 @@ struct hci_ev_le_ltk_req {
 	__le16	handle;
 	__u8	random[8];
 	__le16	ediv;
+} __packed;
+
+#define HCI_EV_PHYS_LINK_COMPLETE	0x40
+struct hci_ev_phys_link_complete {
+	__u8     status;
+	__u8     phy_handle;
+} __packed;
+
+#define HCI_EV_CHANNEL_SELECTED		0x41
+struct hci_ev_channel_selected {
+	__u8     phy_handle;
+} __packed;
+
+#define HCI_EV_DISCONN_PHYS_LINK_COMPLETE	0x42
+struct hci_ev_disconn_phys_link_complete {
+	__u8     status;
+	__u8     phy_handle;
+	__u8     reason;
+} __packed;
+
+#define HCI_EV_LOG_LINK_COMPLETE	0x45
+struct hci_ev_log_link_complete {
+	__u8     status;
+	__le16   log_handle;
+	__u8     phy_handle;
+	__u8     flow_spec_id;
+} __packed;
+
+#define HCI_EV_DISCONN_LOG_LINK_COMPLETE	0x46
+struct hci_ev_disconn_log_link_complete {
+	__u8     status;
+	__le16   log_handle;
+	__u8     reason;
+} __packed;
+
+#define HCI_EV_FLOW_SPEC_MODIFY_COMPLETE	0x47
+struct hci_ev_flow_spec_modify_complete {
+	__u8     status;
+	__le16   log_handle;
+} __packed;
+
+#define HCI_EV_NUM_COMP_BLOCKS		0x48
+struct hci_ev_num_comp_blocks {
+	__le16   total_num_blocks;
+	__u8     num_hndl;
+	/* variable length part */
+} __packed;
+
+#define HCI_EV_SHORT_RANGE_MODE_COMPLETE	0x4c
+struct hci_ev_short_range_mode_complete {
+	__u8     status;
+	__u8     phy_handle;
+	__u8     mode;
+} __packed;
+
+#define HCI_EV_AMP_STATUS_CHANGE	0x4d
+struct hci_ev_amp_status_change {
+	__u8     status;
+	__u8     amp_status;
 } __packed;
 
 /* Internal events generated by Bluetooth stack */

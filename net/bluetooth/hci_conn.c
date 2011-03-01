@@ -1,6 +1,6 @@
 /*
    BlueZ - Bluetooth protocol stack for Linux
-   Copyright (c) 2000-2001, 2010, Code Aurora Forum. All rights reserved.
+   Copyright (c) 2000-2001, 2010-2011 Code Aurora Forum.  All rights reserved.
 
    Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
 
@@ -132,15 +132,22 @@ static void hci_acl_connect_cancel(struct hci_conn *conn)
 
 void hci_acl_disconn(struct hci_conn *conn, __u8 reason)
 {
-	struct hci_cp_disconnect cp;
-
 	BT_DBG("%p", conn);
 
 	conn->state = BT_DISCONN;
 
-	cp.handle = cpu_to_le16(conn->handle);
-	cp.reason = reason;
-	hci_send_cmd(conn->hdev, HCI_OP_DISCONNECT, sizeof(cp), &cp);
+	if (conn->hdev->dev_type == HCI_BREDR) {
+		struct hci_cp_disconnect cp;
+		cp.handle = cpu_to_le16(conn->handle);
+		cp.reason = reason;
+		hci_send_cmd(conn->hdev, HCI_OP_DISCONNECT, sizeof(cp), &cp);
+	} else {
+		struct hci_cp_disconn_phys_link cp;
+		cp.phy_handle = (u8) conn->handle;
+		cp.reason = reason;
+		hci_send_cmd(conn->hdev, HCI_OP_DISCONN_PHYS_LINK,
+				sizeof(cp), &cp);
+	}
 }
 
 void hci_add_sco(struct hci_conn *conn, __u16 handle)
@@ -450,6 +457,59 @@ int hci_conn_del(struct hci_conn *conn)
 	return 0;
 }
 
+struct hci_chan *hci_chan_add(struct hci_dev *hdev)
+{
+	struct hci_chan *chan;
+
+	BT_DBG("%s", hdev->name);
+
+	chan = kzalloc(sizeof(struct hci_chan), GFP_ATOMIC);
+	if (!chan)
+		return NULL;
+
+	atomic_set(&chan->refcnt, 0);
+
+	hci_dev_hold(hdev);
+
+	chan->hdev = hdev;
+
+	list_add(&chan->list, &hdev->chan_list.list);
+
+	return chan;
+}
+
+int hci_chan_del(struct hci_chan *chan)
+{
+	BT_DBG("%s chan %p", chan->hdev->name, chan);
+
+	list_del(&chan->list);
+
+	hci_conn_put(chan->conn);
+	hci_dev_put(chan->hdev);
+
+	kfree(chan);
+
+	return 0;
+}
+
+void hci_chan_put(struct hci_chan *chan)
+{
+	struct hci_cp_disconn_logical_link cp;
+
+	BT_DBG("chan %p refcnt %d", chan, atomic_read(&chan->refcnt));
+	if (!atomic_dec_and_test(&chan->refcnt))
+		return;
+
+	BT_DBG("chan->conn->state %d", chan->conn->state);
+	if (chan->conn->state == BT_CONNECTED) {
+		cp.log_handle = cpu_to_le16(chan->ll_handle);
+		hci_send_cmd(chan->conn->hdev, HCI_OP_DISCONN_LOGICAL_LINK,
+				sizeof(cp), &cp);
+	} else
+		hci_chan_del(chan);
+}
+EXPORT_SYMBOL(hci_chan_put);
+
 struct hci_dev *hci_get_route(bdaddr_t *dst, bdaddr_t *src)
 {
 	int use_src = bacmp(src, BDADDR_ANY);
@@ -463,6 +523,8 @@ struct hci_dev *hci_get_route(bdaddr_t *dst, bdaddr_t *src)
 	list_for_each(p, &hci_dev_list) {
 		struct hci_dev *d = list_entry(p, struct hci_dev, list);
 
+		if (d->dev_type != HCI_BREDR)
+			continue;
 		if (!test_bit(HCI_UP, &d->flags) || test_bit(HCI_RAW, &d->flags))
 			continue;
 
@@ -489,6 +551,58 @@ struct hci_dev *hci_get_route(bdaddr_t *dst, bdaddr_t *src)
 	return hdev;
 }
 EXPORT_SYMBOL(hci_get_route);
+
+struct hci_dev *hci_dev_get_type(u8 amp_type)
+{
+	struct hci_dev *hdev = NULL;
+	struct hci_dev *d;
+
+	BT_DBG("amp_type %d", amp_type);
+
+	read_lock_bh(&hci_dev_list_lock);
+
+	list_for_each_entry(d, &hci_dev_list, list) {
+		if ((d->amp_type == amp_type) && test_bit(HCI_UP, &d->flags)) {
+			hdev = d;
+			break;
+		}
+	}
+
+	if (hdev)
+		hdev = hci_dev_hold(hdev);
+
+	read_unlock_bh(&hci_dev_list_lock);
+	return hdev;
+}
+EXPORT_SYMBOL(hci_dev_get_type);
+
+struct hci_dev *hci_dev_get_amp(bdaddr_t *dst)
+{
+	struct hci_dev *d;
+	struct hci_dev *hdev = NULL;
+
+	BT_DBG("%s dst %s", hdev->name, batostr(dst));
+
+	read_lock_bh(&hci_dev_list_lock);
+
+	list_for_each_entry(d, &hci_dev_list, list) {
+		struct hci_conn *conn;
+		if (d->dev_type == HCI_BREDR)
+			continue;
+		conn = hci_conn_hash_lookup_ba(d, ACL_LINK, dst);
+		if (conn) {
+			hdev = d;
+			break;
+		}
+	}
+
+	if (hdev)
+		hdev = hci_dev_hold(hdev);
+
+	read_unlock_bh(&hci_dev_list_lock);
+	return hdev;
+}
+EXPORT_SYMBOL(hci_dev_get_amp);
 
 /* Create SCO, ACL or LE connection.
  * Device _must_ be locked */
@@ -574,6 +688,36 @@ struct hci_conn *hci_connect(struct hci_dev *hdev, int type,
 	return sco;
 }
 EXPORT_SYMBOL(hci_connect);
+
+void hci_disconnect(struct hci_conn *conn, __u8 reason)
+{
+	BT_DBG("conn %p", conn);
+
+	hci_proto_disconn_cfm(conn, reason);
+}
+EXPORT_SYMBOL(hci_disconnect);
+
+void hci_disconnect_amp(struct hci_conn *conn, __u8 reason)
+{
+	struct hci_dev *hdev = NULL;
+
+	BT_DBG("conn %p", conn);
+
+	read_lock_bh(&hci_dev_list_lock);
+
+	list_for_each_entry(hdev, &hci_dev_list, list) {
+		struct hci_conn *c;
+		if (hdev == conn->hdev)
+			continue;
+		if (hdev->amp_type == HCI_BREDR)
+			continue;
+		c = hci_conn_hash_lookup_ba(hdev, ACL_LINK, &conn->dst);
+		if (c)
+			hci_disconnect(c, reason);
+	}
+
+	read_unlock_bh(&hci_dev_list_lock);
+}
 
 /* Check link security requirement */
 int hci_conn_check_link_mode(struct hci_conn *conn)
@@ -744,6 +888,84 @@ void hci_conn_enter_sniff_mode(struct hci_conn *conn)
 		hci_send_cmd(hdev, HCI_OP_SNIFF_MODE, sizeof(cp), &cp);
 	}
 }
+
+struct hci_chan *hci_chan_accept(__u8 id, bdaddr_t *dst)
+{
+	struct hci_dev *hdev;
+	struct hci_conn *hcon;
+	struct hci_chan *chan;
+	struct hci_cp_create_logical_link cp = {0,
+			1, 1, 0xFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+			1, 1, 0xFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+
+	hdev = hci_dev_get(id);
+	if (!hdev)
+		return NULL;
+
+	BT_DBG("hdev %s", hdev->name);
+
+	hcon = hci_conn_hash_lookup_ba(hdev, ACL_LINK, dst);
+	if (!hcon)
+		return NULL;
+
+	chan = hci_chan_list_lookup_id(hdev, hcon->handle);
+	if (chan) {
+		BT_DBG("chan %p refcnt %d", chan, atomic_read(&chan->refcnt));
+		hci_chan_hold(chan);
+		return chan;
+	}
+
+	chan = hci_chan_add(hdev);
+	if (!chan)
+		return NULL;
+
+	chan->state = BT_CONNECT;
+	chan->conn = hcon;
+	hci_conn_hold(chan->conn);
+	cp.phy_handle = chan->conn->handle;
+	hci_send_cmd(hdev, HCI_OP_ACCEPT_LOGICAL_LINK, sizeof(cp), &cp);
+	return chan;
+}
+EXPORT_SYMBOL(hci_chan_accept);
+
+struct hci_chan *hci_chan_create(__u8 id, bdaddr_t *dst)
+{
+	struct hci_dev *hdev;
+	struct hci_conn *hcon;
+	struct hci_chan *chan;
+	struct hci_cp_create_logical_link cp = {0,
+			1, 1, 0xFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF,
+			1, 1, 0xFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+
+	hdev = hci_dev_get(id);
+	if (!hdev)
+		return NULL;
+
+	BT_DBG("hdev %s", hdev->name);
+
+	hcon = hci_conn_hash_lookup_ba(hdev, ACL_LINK, dst);
+	if (!hcon)
+		return NULL;
+
+	chan = hci_chan_list_lookup_id(hdev, hcon->handle);
+	if (chan) {
+		BT_DBG("chan %p refcnt %d", chan, atomic_read(&chan->refcnt));
+		hci_chan_hold(chan);
+		return chan;
+	}
+
+	chan = hci_chan_add(hdev);
+	if (!chan)
+		return NULL;
+
+	chan->state = BT_CONNECT;
+	chan->conn = hcon;
+	hci_conn_hold(chan->conn);
+	cp.phy_handle = chan->conn->handle;
+	hci_send_cmd(hdev, HCI_OP_CREATE_LOGICAL_LINK, sizeof(cp), &cp);
+	return chan;
+}
+EXPORT_SYMBOL(hci_chan_create);
 
 /* Drop all connection on the device */
 void hci_conn_hash_flush(struct hci_dev *hdev)
