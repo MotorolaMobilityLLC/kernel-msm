@@ -641,7 +641,7 @@ void l2cap_send_cmd(struct l2cap_conn *conn, u8 ident, u8 code, u16 len, void *d
 
 	bt_cb(skb)->force_active = 1;
 
-	hci_send_acl(conn->hcon, skb, flags);
+	hci_send_acl(conn->hcon, NULL, skb, flags);
 }
 
 static inline int __l2cap_no_conn_pending(struct sock *sk)
@@ -1218,7 +1218,7 @@ void l2cap_do_send(struct sock *sk, struct sk_buff *skb)
 		flags = ACL_START;
 
 	bt_cb(skb)->force_active = pi->force_active;
-	hci_send_acl(hcon, skb, flags);
+	hci_send_acl(hcon, NULL, skb, flags);
 }
 
 int l2cap_ertm_send(struct sock *sk)
@@ -5004,6 +5004,9 @@ static int l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 fl
 {
 	struct l2cap_conn *conn = hcon->l2cap_data;
 
+	if (!conn && hcon->hdev->dev_type != HCI_BREDR)
+		goto drop;
+
 	if (!conn)
 		conn = l2cap_conn_add(hcon, 0);
 
@@ -5012,7 +5015,7 @@ static int l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 fl
 
 	BT_DBG("conn %p len %d flags 0x%x", conn, skb->len, flags);
 
-	if (!(flags & ACL_CONT)) {
+	if (flags & ACL_START) {
 		struct l2cap_hdr *hdr;
 		struct sock *sk;
 		u16 cid;
@@ -5041,6 +5044,14 @@ static int l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 fl
 			/* Complete frame received */
 			l2cap_recv_frame(conn, skb);
 			return 0;
+		}
+
+		if (flags & ACL_CONT) {
+			BT_ERR("Complete frame is incomplete "
+				"(len %d, expected len %d)",
+				skb->len, len);
+			l2cap_conn_unreliable(conn, ECOMM);
+			goto drop;
 		}
 
 		BT_DBG("Start: total len %d, frag len %d", len, skb->len);
