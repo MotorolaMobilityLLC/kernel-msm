@@ -36,7 +36,7 @@
 #define L2CAP_DEFAULT_MAX_TX		3
 #define L2CAP_DEFAULT_RETRANS_TO	2000    /* 2 seconds */
 #define L2CAP_DEFAULT_MONITOR_TO	12000   /* 12 seconds */
-#define L2CAP_DEFAULT_MAX_PDU_SIZE	1009    /* Sized for 3-DH5 packet */
+#define L2CAP_DEFAULT_MAX_PDU_SIZE	1482    /* Sized for AMP or BR/EDR */
 #define L2CAP_DEFAULT_ACK_TO		200
 #define L2CAP_BREDR_MAX_PAYLOAD		1019    /* 3-DH5 packet */
 #define L2CAP_MAX_ERTM_QUEUED		5
@@ -48,6 +48,8 @@
 
 #define L2CAP_CONN_TIMEOUT	(40000) /* 40 seconds */
 #define L2CAP_INFO_TIMEOUT	(4000)  /*  4 seconds */
+#define L2CAP_MOVE_TIMEOUT	(2000)  /*  2 seconds */
+#define L2CAP_MOVE_ERTX_TIMEOUT	(60000) /* 60 seconds */
 
 /* L2CAP socket address */
 struct sockaddr_l2 {
@@ -85,17 +87,23 @@ struct l2cap_conninfo {
 #define L2CAP_LM_FLUSHABLE	0x0040
 
 /* L2CAP command codes */
-#define L2CAP_COMMAND_REJ	0x01
-#define L2CAP_CONN_REQ		0x02
-#define L2CAP_CONN_RSP		0x03
-#define L2CAP_CONF_REQ		0x04
-#define L2CAP_CONF_RSP		0x05
-#define L2CAP_DISCONN_REQ	0x06
-#define L2CAP_DISCONN_RSP	0x07
-#define L2CAP_ECHO_REQ		0x08
-#define L2CAP_ECHO_RSP		0x09
-#define L2CAP_INFO_REQ		0x0a
-#define L2CAP_INFO_RSP		0x0b
+#define L2CAP_COMMAND_REJ		0x01
+#define L2CAP_CONN_REQ			0x02
+#define L2CAP_CONN_RSP			0x03
+#define L2CAP_CONF_REQ			0x04
+#define L2CAP_CONF_RSP			0x05
+#define L2CAP_DISCONN_REQ		0x06
+#define L2CAP_DISCONN_RSP		0x07
+#define L2CAP_ECHO_REQ			0x08
+#define L2CAP_ECHO_RSP			0x09
+#define L2CAP_INFO_REQ			0x0a
+#define L2CAP_INFO_RSP			0x0b
+#define L2CAP_CREATE_CHAN_REQ	0x0c
+#define L2CAP_CREATE_CHAN_RSP	0x0d
+#define L2CAP_MOVE_CHAN_REQ		0x0e
+#define L2CAP_MOVE_CHAN_RSP		0x0f
+#define L2CAP_MOVE_CHAN_CFM		0x10
+#define L2CAP_MOVE_CHAN_CFM_RSP	0x11
 #define L2CAP_CONN_PARAM_UPDATE_REQ	0x12
 #define L2CAP_CONN_PARAM_UPDATE_RSP	0x13
 
@@ -199,6 +207,7 @@ struct l2cap_conn_rsp {
 /* channel indentifier */
 #define L2CAP_CID_SIGNALING	0x0001
 #define L2CAP_CID_CONN_LESS	0x0002
+#define L2CAP_CID_A2MP      0x0003
 #define L2CAP_CID_LE_DATA	0x0004
 #define L2CAP_CID_LE_SIGNALING	0x0005
 #define L2CAP_CID_SMP		0x0006
@@ -297,6 +306,79 @@ struct l2cap_info_rsp {
 	__u8        data[0];
 } __packed;
 
+struct l2cap_create_chan_req {
+	__le16      psm;
+	__le16      scid;
+	__u8        amp_id;
+} __attribute__ ((packed));
+
+struct l2cap_create_chan_rsp {
+	__le16      dcid;
+	__le16      scid;
+	__le16      result;
+	__le16      status;
+} __attribute__ ((packed));
+
+#define L2CAP_CREATE_CHAN_SUCCESS				(0x0000)
+#define L2CAP_CREATE_CHAN_PENDING				(0x0001)
+#define L2CAP_CREATE_CHAN_REFUSED_PSM			(0x0002)
+#define L2CAP_CREATE_CHAN_REFUSED_SECURITY		(0x0003)
+#define L2CAP_CREATE_CHAN_REFUSED_RESOURCES		(0x0004)
+#define L2CAP_CREATE_CHAN_REFUSED_CONTROLLER	(0x0005)
+
+#define L2CAP_CREATE_CHAN_STATUS_NONE			(0x0000)
+#define L2CAP_CREATE_CHAN_STATUS_AUTHENTICATION	(0x0001)
+#define L2CAP_CREATE_CHAN_STATUS_AUTHORIZATION	(0x0002)
+
+struct l2cap_move_chan_req {
+	__le16      icid;
+	__u8        dest_amp_id;
+} __attribute__ ((packed));
+
+struct l2cap_move_chan_rsp {
+	__le16      icid;
+	__le16      result;
+} __attribute__ ((packed));
+
+#define L2CAP_MOVE_CHAN_SUCCESS				(0x0000)
+#define L2CAP_MOVE_CHAN_PENDING				(0x0001)
+#define L2CAP_MOVE_CHAN_REFUSED_CONTROLLER	(0x0002)
+#define L2CAP_MOVE_CHAN_REFUSED_SAME_ID		(0x0003)
+#define L2CAP_MOVE_CHAN_REFUSED_CONFIG		(0x0004)
+#define L2CAP_MOVE_CHAN_REFUSED_COLLISION	(0x0005)
+#define L2CAP_MOVE_CHAN_REFUSED_NOT_ALLOWED	(0x0006)
+
+struct l2cap_move_chan_cfm {
+	__le16      icid;
+	__le16      result;
+} __attribute__ ((packed));
+
+#define L2CAP_MOVE_CHAN_CONFIRMED	(0x0000)
+#define L2CAP_MOVE_CHAN_UNCONFIRMED	(0x0001)
+
+struct l2cap_move_chan_cfm_rsp {
+	__le16      icid;
+} __attribute__ ((packed));
+
+struct l2cap_amp_signal_work {
+	struct work_struct work;
+	struct l2cap_cmd_hdr cmd;
+	struct l2cap_conn *conn;
+	struct sk_buff *skb;
+	u8 *data;
+};
+
+struct l2cap_resegment_work {
+	struct work_struct work;
+	struct sock *sk;
+};
+
+struct l2cap_logical_link_work {
+	struct work_struct work;
+	struct hci_chan *chan;
+	u8 status;
+};
+
 /* info type */
 #define L2CAP_IT_CL_MTU     0x0001
 #define L2CAP_IT_FEAT_MASK  0x0002
@@ -337,6 +419,7 @@ struct l2cap_conn {
 
 	__u32		feat_mask;
 	__u8		fc_mask;
+	struct amp_mgr *mgr;
 
 	__u8		info_state;
 	__u8		info_ident;
@@ -413,6 +496,14 @@ struct l2cap_pinfo {
 	__u8		tx_state;
 	__u8		rx_state;
 
+	__u8		amp_id;
+	__u8		amp_move_id;
+	__u8		amp_move_state;
+	__u8		amp_move_role;
+	__u8		amp_move_cmd_ident;
+	__u16		amp_move_reqseq;
+	__u16		amp_move_event;
+
 	__u16		next_tx_seq;
 	__u16		expected_ack_seq;
 	__u16		expected_tx_seq;
@@ -434,6 +525,7 @@ struct l2cap_pinfo {
 	__u16		tx_win;
 	__u16		tx_win_max;
 	__u8		max_tx;
+	__u8		amp_pref;
 	__u16		remote_tx_win;
 	__u8		remote_max_tx;
 	__u8		extended_control;
@@ -452,6 +544,8 @@ struct l2cap_pinfo {
 	struct sk_buff_head	srej_queue;
 	struct l2cap_seq_list srej_list;
 	struct l2cap_seq_list retrans_list;
+	struct hci_conn	*ampcon;
+	struct hci_chan	*ampchan;
 	struct l2cap_conn	*conn;
 	struct sock		*next_c;
 	struct sock		*prev_c;
@@ -486,6 +580,10 @@ struct l2cap_pinfo {
 
 #define L2CAP_ERTM_RX_STATE_RECV                    0x01
 #define L2CAP_ERTM_RX_STATE_SREJ_SENT               0x02
+#define L2CAP_ERTM_RX_STATE_AMP_MOVE                0x03
+#define L2CAP_ERTM_RX_STATE_WAIT_P_FLAG             0x04
+#define L2CAP_ERTM_RX_STATE_WAIT_P_FLAG_RECONFIGURE 0x05
+#define L2CAP_ERTM_RX_STATE_WAIT_F_FLAG             0x06
 
 #define L2CAP_ERTM_TXSEQ_EXPECTED        0x00
 #define L2CAP_ERTM_TXSEQ_EXPECTED_SREJ   0x01
@@ -510,6 +608,24 @@ struct l2cap_pinfo {
 #define L2CAP_ERTM_EVENT_RECV_RNR              0x0c
 #define L2CAP_ERTM_EVENT_RECV_SREJ             0x0d
 #define L2CAP_ERTM_EVENT_RECV_FRAME            0x0e
+
+#define L2CAP_AMP_MOVE_NONE      0
+#define L2CAP_AMP_MOVE_INITIATOR 1
+#define L2CAP_AMP_MOVE_RESPONDER 2
+
+#define L2CAP_AMP_STATE_STABLE			0
+#define L2CAP_AMP_STATE_WAIT_CREATE		1
+#define L2CAP_AMP_STATE_WAIT_CREATE_RSP		2
+#define L2CAP_AMP_STATE_WAIT_MOVE		3
+#define L2CAP_AMP_STATE_WAIT_MOVE_RSP		4
+#define L2CAP_AMP_STATE_WAIT_MOVE_RSP_SUCCESS	5
+#define L2CAP_AMP_STATE_WAIT_MOVE_CONFIRM	6
+#define L2CAP_AMP_STATE_WAIT_MOVE_CONFIRM_RSP	7
+#define L2CAP_AMP_STATE_WAIT_LOGICAL_COMPLETE	8
+#define L2CAP_AMP_STATE_WAIT_LOGICAL_CONFIRM	9
+#define L2CAP_AMP_STATE_WAIT_LOCAL_BUSY		10
+#define L2CAP_AMP_STATE_WAIT_PREPARE		11
+#define L2CAP_AMP_STATE_RESEGMENT		12
 
 #define __delta_seq(x, y, pi) ((x) >= (y) ? (x) - (y) : \
 				(pi)->tx_win_max + 1 - (y) + (x))

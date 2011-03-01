@@ -70,6 +70,33 @@ struct bt_power {
 	__u8 force_active;
 };
 
+#define BT_AMP_POLICY          9
+
+/* Require BR/EDR (default policy)
+ *   AMP controllers cannot be used
+ *   Channel move requests from the remote device are denied
+ *   If the L2CAP channel is currently using AMP, move the channel to BR/EDR
+ */
+#define BT_AMP_POLICY_REQUIRE_BR_EDR   0
+
+/* Prefer AMP
+ *   Allow use of AMP controllers
+ *   If the L2CAP channel is currently on BR/EDR and AMP controller
+ *     resources are available, initiate a channel move to AMP
+ *   Channel move requests from the remote device are allowed
+ *   If the L2CAP socket has not been connected yet, try to create
+ *     and configure the channel directly on an AMP controller rather
+ *     than BR/EDR
+ */
+#define BT_AMP_POLICY_PREFER_AMP       1
+
+/* Prefer BR/EDR
+ *   Allow use of AMP controllers
+ *   If the L2CAP channel is currently on AMP, move it to BR/EDR
+ *   Channel move requests from the remote device are allowed
+ */
+#define BT_AMP_POLICY_PREFER_BR_EDR    2
+
 #define BT_INFO(fmt, arg...) printk(KERN_INFO "Bluetooth: " fmt "\n" , ## arg)
 #define BT_ERR(fmt, arg...)  printk(KERN_ERR "%s: " fmt "\n" , __func__ , ## arg)
 #define BT_DBG(fmt, arg...)  pr_debug("%s: " fmt "\n" , __func__ , ## arg)

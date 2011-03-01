@@ -538,6 +538,12 @@ static int l2cap_sock_getsockopt(struct socket *sock, int level, int optname, ch
 			err = -EFAULT;
 
 		break;
+
+	case BT_AMP_POLICY:
+		if (put_user(l2cap_pi(sk)->amp_pref, (u32 __user *) optval))
+			err = -EFAULT;
+		break;
+
 	default:
 		err = -ENOPROTOOPT;
 		break;
@@ -737,6 +743,31 @@ static int l2cap_sock_setsockopt(struct socket *sock, int level, int optname, ch
 		l2cap_pi(sk)->force_active = pwr.force_active;
 		break;
 
+	case BT_AMP_POLICY:
+		if (get_user(opt, (u32 __user *) optval)) {
+			err = -EFAULT;
+			break;
+		}
+
+		if ((opt > BT_AMP_POLICY_PREFER_BR_EDR) ||
+			((l2cap_pi(sk)->mode != L2CAP_MODE_ERTM) &&
+			 (l2cap_pi(sk)->mode != L2CAP_MODE_STREAMING))) {
+			err = -EINVAL;
+			break;
+		}
+
+		l2cap_pi(sk)->amp_pref = (u8) opt;
+		BT_DBG("BT_AMP_POLICY now %d", opt);
+
+		if ((sk->sk_state == BT_CONNECTED) &&
+			(l2cap_pi(sk)->amp_move_role == L2CAP_AMP_MOVE_NONE) &&
+			(l2cap_pi(sk)->conn->fc_mask & L2CAP_FC_A2MP))
+			l2cap_amp_move_init(sk);
+		else
+			l2cap_pi(sk)->conn_state |= L2CAP_CONN_MOVE_PENDING;
+
+		break;
+
 	default:
 		err = -ENOPROTOOPT;
 		break;
@@ -753,6 +784,7 @@ static int l2cap_sock_sendmsg(struct kiocb *iocb, struct socket *sock, struct ms
 	struct sk_buff *skb;
 	struct sk_buff_head seg_queue;
 	int err;
+	u8 amp_id;
 
 	BT_DBG("sock %p, sk %p", sock, sk);
 
@@ -816,6 +848,7 @@ static int l2cap_sock_sendmsg(struct kiocb *iocb, struct socket *sock, struct ms
 		 * since it's possible to block while waiting for memory
 		 * allocation.
 		 */
+		amp_id = pi->amp_id;
 		err = l2cap_segment_sdu(sk, &seg_queue, msg, len, 0);
 
 		/* The socket lock is released while segmenting, so check
@@ -831,6 +864,14 @@ static int l2cap_sock_sendmsg(struct kiocb *iocb, struct socket *sock, struct ms
 				err, sk->sk_sndbuf,
 				atomic_read(&sk->sk_wmem_alloc));
 			break;
+		}
+
+		if (pi->amp_id != amp_id) {
+			/* Channel moved while unlocked. Resegment. */
+			err = l2cap_resegment_queue(sk, &seg_queue);
+
+			if (err)
+				break;
 		}
 
 		if (pi->mode != L2CAP_MODE_STREAMING)
@@ -1086,6 +1127,7 @@ static void l2cap_sock_init(struct sock *sk, struct sock *parent)
 		pi->force_reliable = l2cap_pi(parent)->force_reliable;
 		pi->flushable = l2cap_pi(parent)->flushable;
 		pi->force_active = l2cap_pi(parent)->force_active;
+		pi->amp_pref = l2cap_pi(parent)->amp_pref;
 	} else {
 		pi->imtu = L2CAP_DEFAULT_MTU;
 		pi->omtu = 0;
@@ -1103,10 +1145,13 @@ static void l2cap_sock_init(struct sock *sk, struct sock *parent)
 		pi->force_reliable = 0;
 		pi->flushable = 0;
 		pi->force_active = 1;
+		pi->amp_pref = BT_AMP_POLICY_REQUIRE_BR_EDR;
 	}
 
 	/* Default config options */
 	sk->sk_backlog_rcv = l2cap_data_channel;
+	pi->ampcon = NULL;
+	pi->ampchan = NULL;
 	pi->conf_len = 0;
 	pi->flush_to = L2CAP_DEFAULT_FLUSH_TO;
 	pi->scid = 0;
