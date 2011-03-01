@@ -179,7 +179,7 @@ static int l2cap_sock_connect(struct socket *sock, struct sockaddr *addr, int al
 	lock_sock(sk);
 
 	if ((sk->sk_type == SOCK_SEQPACKET || sk->sk_type == SOCK_STREAM)
-			&& !(la.l2_psm || la.l2_cid)) {
+		&& !(la.l2_psm || la.l2_cid || l2cap_pi(sk)->fixed_channel)) {
 		err = -EINVAL;
 		goto done;
 	}
@@ -221,6 +221,7 @@ static int l2cap_sock_connect(struct socket *sock, struct sockaddr *addr, int al
 
 	/* PSM must be odd and lsb of upper byte must be 0 */
 	if ((__le16_to_cpu(la.l2_psm) & 0x0101) != 0x0001 &&
+		!l2cap_pi(sk)->fixed_channel &&
 				sk->sk_type != SOCK_RAW && !la.l2_cid) {
 		BT_DBG("Bad PSM 0x%x", (int)__le16_to_cpu(la.l2_psm));
 		err = -EINVAL;

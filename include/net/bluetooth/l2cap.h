@@ -113,6 +113,10 @@ struct l2cap_conninfo {
 #define L2CAP_FCS_NONE		0x00
 #define L2CAP_FCS_CRC16		0x01
 
+/* L2CAP fixed channels */
+#define L2CAP_FC_L2CAP		0x02
+#define L2CAP_FC_A2MP		0x08
+
 /* L2CAP Control Field */
 #define L2CAP_CTRL_SAR               0xC000
 #define L2CAP_CTRL_REQSEQ            0x3F00
@@ -332,6 +336,7 @@ struct l2cap_conn {
 	unsigned int	mtu;
 
 	__u32		feat_mask;
+	__u8		fc_mask;
 
 	__u8		info_state;
 	__u8		info_ident;
@@ -390,6 +395,7 @@ struct l2cap_pinfo {
 	__u16		omtu;
 	__u16		flush_to;
 	__u8		mode;
+	__u8		fixed_channel;
 	__u8		num_conf_req;
 	__u8		num_conf_rsp;
 
@@ -550,5 +556,18 @@ void l2cap_amp_move_init(struct sock *sk);
 void l2cap_ertm_destruct(struct sock *sk);
 void l2cap_ertm_shutdown(struct sock *sk);
 void l2cap_ertm_recv_done(struct sock *sk);
+
+void l2cap_fixed_channel_config(struct sock *sk, struct l2cap_options *opt,
+				u16 cid, u16 mps);
+
+void l2cap_recv_deferred_frame(struct sock *sk, struct sk_buff *skb);
+
+void l2cap_amp_physical_complete(int result, u8 remote_id, u8 local_id,
+				struct sock *sk);
+
+void l2cap_amp_logical_complete(int result, struct hci_conn *ampcon,
+				struct hci_chan *ampchan, struct sock *sk);
+
+void l2cap_amp_logical_destroyed(struct hci_conn *ampcon);
 
 #endif /* __L2CAP_H */
