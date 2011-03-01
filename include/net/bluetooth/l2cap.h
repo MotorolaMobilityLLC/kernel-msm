@@ -280,6 +280,22 @@ struct l2cap_conf_rfc {
 	__le16     max_pdu_size;
 } __packed;
 
+struct l2cap_conf_ext_fs {
+	__u8       id;
+	__u8       type;
+	__le16     max_sdu;
+	__le32     sdu_arr_time;
+	__le32     acc_latency;
+	__le32     flush_to;
+} __packed;
+
+struct l2cap_conf_prm {
+	__u8       fcs;
+	__le16     retrans_timeout;
+	__le16     monitor_timeout;
+	__le32     flush_to;
+};
+
 #define L2CAP_MODE_BASIC	0x00
 #define L2CAP_MODE_RETRANS	0x01
 #define L2CAP_MODE_FLOWCTL	0x02
@@ -495,6 +511,7 @@ struct l2cap_pinfo {
 	__u8		conn_state;
 	__u8		tx_state;
 	__u8		rx_state;
+	__u8		reconf_state;
 
 	__u8		amp_id;
 	__u8		amp_move_id;
@@ -547,6 +564,8 @@ struct l2cap_pinfo {
 	struct hci_conn	*ampcon;
 	struct hci_chan	*ampchan;
 	struct l2cap_conn	*conn;
+	struct l2cap_conf_prm local_conf;
+	struct l2cap_conf_prm remote_conf;
 	struct sock		*next_c;
 	struct sock		*prev_c;
 };
@@ -563,6 +582,10 @@ struct l2cap_pinfo {
 
 #define L2CAP_CONF_MAX_CONF_REQ 2
 #define L2CAP_CONF_MAX_CONF_RSP 2
+
+#define L2CAP_RECONF_NONE          0x00
+#define L2CAP_RECONF_INT           0x01
+#define L2CAP_RECONF_ACC           0x02
 
 #define L2CAP_CONN_SREJ_ACT        0x01
 #define L2CAP_CONN_REJ_ACT         0x02

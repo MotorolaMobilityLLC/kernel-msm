@@ -1103,7 +1103,15 @@ static void l2cap_sock_destruct(struct sock *sk)
 	l2cap_ertm_destruct(sk);
 }
 
-static void l2cap_sock_init(struct sock *sk, struct sock *parent)
+static void set_default_config(struct l2cap_conf_prm *conf_prm)
+{
+	conf_prm->fcs = L2CAP_FCS_CRC16;
+	conf_prm->retrans_timeout = 0;
+	conf_prm->monitor_timeout = 0;
+	conf_prm->flush_to = L2CAP_DEFAULT_FLUSH_TO;
+}
+
+void l2cap_sock_init(struct sock *sk, struct sock *parent)
 {
 	struct l2cap_pinfo *pi = l2cap_pi(sk);
 
@@ -1137,6 +1145,7 @@ static void l2cap_sock_init(struct sock *sk, struct sock *parent)
 		} else {
 			pi->mode = L2CAP_MODE_BASIC;
 		}
+		pi->reconf_state = L2CAP_RECONF_NONE;
 		pi->max_tx = L2CAP_DEFAULT_MAX_TX;
 		pi->fcs = L2CAP_FCS_CRC16;
 		pi->tx_win = L2CAP_DEFAULT_TX_WINDOW;
@@ -1158,6 +1167,19 @@ static void l2cap_sock_init(struct sock *sk, struct sock *parent)
 	pi->dcid = 0;
 	pi->tx_win_max = L2CAP_TX_WIN_MAX_ENHANCED;
 	pi->extended_control = 0;
+
+	pi->local_conf.fcs = pi->fcs;
+	if (pi->mode == L2CAP_MODE_BASIC) {
+		pi->local_conf.retrans_timeout = 0;
+		pi->local_conf.monitor_timeout = 0;
+	} else {
+		pi->local_conf.retrans_timeout = L2CAP_DEFAULT_RETRANS_TO;
+		pi->local_conf.monitor_timeout = L2CAP_DEFAULT_MONITOR_TO;
+	}
+
+	pi->local_conf.flush_to = pi->flush_to;
+
+	set_default_config(&pi->remote_conf);
 
 	skb_queue_head_init(TX_QUEUE(sk));
 	skb_queue_head_init(SREJ_QUEUE(sk));
