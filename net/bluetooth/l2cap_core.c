@@ -3074,6 +3074,65 @@ done:
 	return ptr - data;
 }
 
+
+static int l2cap_build_amp_reconf_req(struct sock *sk, void *data)
+{
+	struct l2cap_pinfo *pi = l2cap_pi(sk);
+	struct l2cap_conf_req *req = data;
+	struct l2cap_conf_rfc rfc = { .mode = pi->mode };
+	void *ptr = req->data;
+	u32 be_flush_to;
+
+	BT_DBG("sk %p", sk);
+
+	/* convert to milliseconds, round up */
+	be_flush_to = (pi->conn->hcon->hdev->amp_be_flush_to + 999) / 1000;
+
+	switch (pi->mode) {
+	case L2CAP_MODE_ERTM:
+		rfc.mode            = L2CAP_MODE_ERTM;
+		rfc.txwin_size      = pi->tx_win;
+		rfc.max_transmit    = pi->max_tx;
+		if (pi->amp_move_id) {
+			rfc.retrans_timeout = (3 * be_flush_to) + 500;
+			rfc.monitor_timeout = (3 * be_flush_to) + 500;
+		} else {
+			rfc.retrans_timeout = 0;
+			rfc.monitor_timeout = 0;
+		}
+		rfc.max_pdu_size    = cpu_to_le16(L2CAP_DEFAULT_MAX_PDU_SIZE);
+		if (L2CAP_DEFAULT_MAX_PDU_SIZE > pi->imtu)
+			rfc.max_pdu_size = cpu_to_le16(pi->imtu);
+
+		break;
+
+	default:
+		return -ECONNREFUSED;
+	}
+
+	l2cap_add_conf_opt(&ptr, L2CAP_CONF_RFC, sizeof(rfc),
+						(unsigned long) &rfc);
+
+	if (pi->conn->feat_mask & L2CAP_FEAT_FCS) {
+
+		/* TODO assign fcs for br/edr based on socket config option */
+		if (pi->amp_move_id)
+			pi->local_conf.fcs = L2CAP_FCS_NONE;
+		else
+			pi->local_conf.fcs = L2CAP_FCS_CRC16;
+
+			l2cap_add_conf_opt(&ptr, L2CAP_CONF_FCS, 1,
+						pi->local_conf.fcs);
+
+			pi->fcs = pi->local_conf.fcs | pi->remote_conf.fcs;
+	}
+
+	req->dcid  = cpu_to_le16(pi->dcid);
+	req->flags = cpu_to_le16(0);
+
+	return ptr - data;
+}
+
 static int l2cap_parse_conf_req(struct sock *sk, void *data)
 {
 	struct l2cap_pinfo *pi = l2cap_pi(sk);
@@ -3102,6 +3161,7 @@ static int l2cap_parse_conf_req(struct sock *sk, void *data)
 
 		case L2CAP_CONF_FLUSH_TO:
 			pi->flush_to = val;
+			pi->remote_conf.flush_to = val;
 			break;
 
 		case L2CAP_CONF_QOS:
@@ -3115,6 +3175,7 @@ static int l2cap_parse_conf_req(struct sock *sk, void *data)
 		case L2CAP_CONF_FCS:
 			if (val == L2CAP_FCS_NONE)
 				pi->conf_state |= L2CAP_CONF_NO_FCS_RECV;
+			pi->remote_conf.fcs = val;
 			break;
 
 		case L2CAP_CONF_EXT_WINDOW:
@@ -3225,6 +3286,147 @@ done:
 		if (result == L2CAP_CONF_SUCCESS)
 			pi->conf_state |= L2CAP_CONF_OUTPUT_DONE;
 	}
+	rsp->scid   = cpu_to_le16(pi->dcid);
+	rsp->result = cpu_to_le16(result);
+	rsp->flags  = cpu_to_le16(0x0000);
+
+	return ptr - data;
+}
+
+static int l2cap_parse_amp_move_reconf_req(struct sock *sk, void *data)
+{
+	struct l2cap_pinfo *pi = l2cap_pi(sk);
+	struct l2cap_conf_rsp *rsp = data;
+	void *ptr = rsp->data;
+	void *req = pi->conf_req;
+	int len = pi->conf_len;
+	int type, hint, olen;
+	unsigned long val;
+	struct l2cap_conf_rfc rfc = { .mode = L2CAP_MODE_BASIC };
+	struct l2cap_conf_ext_fs fs;
+	u16 mtu = pi->omtu;
+	u16 tx_win = pi->remote_tx_win;
+	u16 result = L2CAP_CONF_SUCCESS;
+
+	BT_DBG("sk %p", sk);
+
+	while (len >= L2CAP_CONF_OPT_SIZE) {
+		len -= l2cap_get_conf_opt(&req, &type, &olen, &val);
+
+		hint  = type & L2CAP_CONF_HINT;
+		type &= L2CAP_CONF_MASK;
+
+		switch (type) {
+		case L2CAP_CONF_MTU:
+			mtu = val;
+			break;
+
+		case L2CAP_CONF_FLUSH_TO:
+			if (pi->amp_move_id)
+				result = L2CAP_CONF_UNACCEPT;
+			else
+				pi->remote_conf.flush_to = val;
+			break;
+
+		case L2CAP_CONF_QOS:
+			if (pi->amp_move_id)
+				result = L2CAP_CONF_UNACCEPT;
+			break;
+
+		case L2CAP_CONF_RFC:
+			if (olen == sizeof(rfc))
+				memcpy(&rfc, (void *) val, olen);
+				if (pi->mode != rfc.mode ||
+					rfc.mode == L2CAP_MODE_BASIC)
+					result = L2CAP_CONF_UNACCEPT;
+			break;
+
+		case L2CAP_CONF_FCS:
+			pi->remote_conf.fcs = val;
+			break;
+
+		case L2CAP_CONF_EXT_FS:
+			if (olen == sizeof(fs)) {
+				memcpy(&fs, (void *) val, olen);
+				if (fs.type != L2CAP_SERVICE_BEST_EFFORT)
+					result = L2CAP_CONF_FLOW_SPEC_REJECT;
+				else {
+					pi->remote_conf.flush_to =
+						le32_to_cpu(fs.flush_to);
+				}
+			}
+			break;
+
+		case L2CAP_CONF_EXT_WINDOW:
+			tx_win = val;
+			break;
+
+		default:
+			if (hint)
+				break;
+
+			result = L2CAP_CONF_UNKNOWN;
+			*((u8 *) ptr++) = type;
+			break;
+			}
+	}
+
+	BT_DBG("result 0x%2.2x cur mode 0x%2.2x req  mode 0x%2.2x",
+		result, pi->mode, rfc.mode);
+
+	if (result == L2CAP_CONF_SUCCESS) {
+		/* Configure output options and let the other side know
+		 * which ones we don't like. */
+
+		/* Don't allow mtu to decrease. */
+		if (mtu < pi->omtu)
+			result = L2CAP_CONF_UNACCEPT;
+
+		BT_DBG("mtu %d omtu %d", mtu, pi->omtu);
+
+		l2cap_add_conf_opt(&ptr, L2CAP_CONF_MTU, 2, pi->omtu);
+
+		/* Don't allow extended transmit window to change. */
+		if (tx_win != pi->remote_tx_win) {
+			result = L2CAP_CONF_UNACCEPT;
+			l2cap_add_conf_opt(&ptr, L2CAP_CONF_EXT_WINDOW, 2,
+					pi->remote_tx_win);
+		}
+
+		if (rfc.mode == L2CAP_MODE_ERTM) {
+			pi->remote_conf.retrans_timeout =
+				le16_to_cpu(rfc.retrans_timeout);
+			pi->remote_conf.monitor_timeout =
+				le16_to_cpu(rfc.monitor_timeout);
+
+			BT_DBG("remote conf monitor timeout %d",
+					pi->remote_conf.monitor_timeout);
+
+			l2cap_add_conf_opt(&ptr, L2CAP_CONF_RFC,
+					sizeof(rfc), (unsigned long) &rfc);
+		}
+
+	}
+
+	if (result != L2CAP_CONF_SUCCESS)
+		goto done;
+
+	pi->fcs = pi->remote_conf.fcs | pi->local_conf.fcs ;
+
+	if (pi->rx_state == L2CAP_ERTM_RX_STATE_WAIT_F_FLAG) {
+		pi->flush_to = pi->remote_conf.flush_to;
+		pi->retrans_timeout = pi->remote_conf.retrans_timeout;
+
+		if (pi->amp_move_id)
+			pi->monitor_timeout = pi->remote_conf.monitor_timeout;
+		else
+			pi->monitor_timeout = L2CAP_DEFAULT_MONITOR_TO;
+		BT_DBG("mode %d monitor timeout %d",
+			pi->mode, pi->monitor_timeout);
+
+	}
+
+done:
 	rsp->scid   = cpu_to_le16(pi->dcid);
 	rsp->result = cpu_to_le16(result);
 	rsp->flags  = cpu_to_le16(0x0000);
@@ -3384,6 +3586,67 @@ static int l2cap_finish_amp_move(struct sock *sk)
 
 	return err;
 }
+
+static int l2cap_amp_move_reconf_rsp(struct sock *sk, void *rsp, int len,
+					u16 result)
+{
+	int err = 0;
+	struct l2cap_conf_rfc rfc = {.mode = L2CAP_MODE_BASIC};
+	struct l2cap_pinfo *pi = l2cap_pi(sk);
+
+	BT_DBG("sk %p, rsp %p, len %d, res 0x%2.2x", sk, rsp, len, result);
+
+	if (pi->reconf_state == L2CAP_RECONF_NONE)
+		return -ECONNREFUSED;
+
+	if (result == L2CAP_CONF_SUCCESS) {
+		while (len >= L2CAP_CONF_OPT_SIZE) {
+			int type, olen;
+			unsigned long val;
+
+			len -= l2cap_get_conf_opt(&rsp, &type, &olen, &val);
+
+			if (type == L2CAP_CONF_RFC) {
+				if (olen == sizeof(rfc))
+					memcpy(&rfc, (void *)val, olen);
+				if (rfc.mode != pi->mode &&
+					rfc.mode != L2CAP_MODE_ERTM) {
+					err = -ECONNREFUSED;
+					goto done;
+				}
+				break;
+			}
+		}
+	}
+
+done:
+	l2cap_ertm_stop_ack_timer(pi);
+	l2cap_ertm_stop_retrans_timer(pi);
+	l2cap_ertm_stop_monitor_timer(pi);
+
+	if (l2cap_pi(sk)->reconf_state == L2CAP_RECONF_ACC) {
+		l2cap_pi(sk)->reconf_state = L2CAP_RECONF_NONE;
+
+		/* Respond to poll */
+		err = l2cap_answer_move_poll(sk);
+
+	} else if (l2cap_pi(sk)->reconf_state == L2CAP_RECONF_INT) {
+
+		/* If moving to BR/EDR, use default timeout defined by
+		 * the spec */
+		if (pi->amp_move_id == 0)
+			pi->monitor_timeout = L2CAP_DEFAULT_MONITOR_TO;
+
+		if (pi->mode == L2CAP_MODE_ERTM) {
+			l2cap_ertm_tx(sk, NULL, NULL,
+					L2CAP_ERTM_EVENT_EXPLICIT_POLL);
+			pi->rx_state = L2CAP_ERTM_RX_STATE_WAIT_F_FLAG;
+		}
+	}
+
+	return err;
+}
+
 
 static inline int l2cap_command_rej(struct l2cap_conn *conn, struct l2cap_cmd_hdr *cmd, u8 *data)
 {
@@ -3615,6 +3878,7 @@ static inline int l2cap_config_req(struct l2cap_conn *conn, struct l2cap_cmd_hdr
 	u8 rsp[64];
 	struct sock *sk;
 	int len;
+	u8 amp_move_reconf = 0;
 
 	dcid  = __le16_to_cpu(req->dcid);
 	flags = __le16_to_cpu(req->flags);
@@ -3625,7 +3889,24 @@ static inline int l2cap_config_req(struct l2cap_conn *conn, struct l2cap_cmd_hdr
 	if (!sk)
 		return -ENOENT;
 
-	if (sk->sk_state != BT_CONFIG) {
+	BT_DBG("sk_state 0x%2.2x rx_state 0x%2.2x "
+		"reconf_state 0x%2.2x amp_id 0x%2.2x amp_move_id 0x%2.2x",
+		sk->sk_state, l2cap_pi(sk)->rx_state,
+		l2cap_pi(sk)->reconf_state, l2cap_pi(sk)->amp_id,
+		l2cap_pi(sk)->amp_move_id);
+
+	/* Detect a reconfig request due to channel move between
+	 * BR/EDR and AMP
+	 */
+	if (sk->sk_state == BT_CONNECTED &&
+		l2cap_pi(sk)->rx_state ==
+			L2CAP_ERTM_RX_STATE_WAIT_P_FLAG_RECONFIGURE)
+		l2cap_pi(sk)->reconf_state = L2CAP_RECONF_ACC;
+
+	if (l2cap_pi(sk)->reconf_state != L2CAP_RECONF_NONE)
+		amp_move_reconf = 1;
+
+	if (sk->sk_state != BT_CONFIG && !amp_move_reconf) {
 		struct l2cap_cmd_rej rej;
 
 		rej.reason = cpu_to_le16(0x0002);
@@ -3656,17 +3937,25 @@ static inline int l2cap_config_req(struct l2cap_conn *conn, struct l2cap_cmd_hdr
 	}
 
 	/* Complete config. */
-	len = l2cap_parse_conf_req(sk, rsp);
+	if (!amp_move_reconf)
+		len = l2cap_parse_conf_req(sk, rsp);
+	else
+		len = l2cap_parse_amp_move_reconf_req(sk, rsp);
+
 	if (len < 0) {
 		l2cap_send_disconn_req(conn, sk, ECONNRESET);
 		goto unlock;
 	}
 
 	l2cap_send_cmd(conn, cmd->ident, L2CAP_CONF_RSP, len, rsp);
-	l2cap_pi(sk)->num_conf_rsp++;
 
 	/* Reset config buffer. */
 	l2cap_pi(sk)->conf_len = 0;
+
+	if (amp_move_reconf)
+		goto unlock;
+
+	l2cap_pi(sk)->num_conf_rsp++;
 
 	if (!(l2cap_pi(sk)->conf_state & L2CAP_CONF_OUTPUT_DONE))
 		goto unlock;
@@ -3714,6 +4003,11 @@ static inline int l2cap_config_rsp(struct l2cap_conn *conn, struct l2cap_cmd_hdr
 	sk = l2cap_get_chan_by_scid(&conn->chan_list, scid);
 	if (!sk)
 		return 0;
+
+	if (l2cap_pi(sk)->reconf_state != L2CAP_RECONF_NONE)  {
+		l2cap_amp_move_reconf_rsp(sk, rsp->data, len, result);
+		goto done;
+	}
 
 	switch (result) {
 	case L2CAP_CONF_SUCCESS:
@@ -5905,6 +6199,21 @@ static void l2cap_amp_move_revert(struct sock *sk)
 		pi->rx_state = L2CAP_ERTM_RX_STATE_WAIT_P_FLAG;
 }
 
+static int l2cap_amp_move_reconf(struct sock *sk)
+{
+	struct l2cap_pinfo *pi;
+	u8 buf[64];
+	int err = 0;
+
+	BT_DBG("sk %p", sk);
+
+	pi = l2cap_pi(sk);
+
+	l2cap_send_cmd(pi->conn, l2cap_get_ident(pi->conn), L2CAP_CONF_REQ,
+				l2cap_build_amp_reconf_req(sk, buf), buf);
+	return err;
+}
+
 static void l2cap_amp_move_success(struct sock *sk)
 {
 	struct l2cap_pinfo *pi;
@@ -5914,11 +6223,18 @@ static void l2cap_amp_move_success(struct sock *sk)
 	pi = l2cap_pi(sk);
 
 	if (pi->amp_move_role == L2CAP_AMP_MOVE_INITIATOR) {
+		int err = 0;
 		/* Send reconfigure request */
 		if (pi->mode == L2CAP_MODE_ERTM) {
-			l2cap_ertm_tx(sk, NULL, NULL,
-				      L2CAP_ERTM_EVENT_EXPLICIT_POLL);
-			pi->rx_state = L2CAP_ERTM_RX_STATE_WAIT_F_FLAG;
+			pi->reconf_state = L2CAP_RECONF_INT;
+			err = l2cap_amp_move_reconf(sk);
+
+			if (err) {
+				pi->reconf_state = L2CAP_RECONF_NONE;
+				l2cap_ertm_tx(sk, NULL, NULL,
+						L2CAP_ERTM_EVENT_EXPLICIT_POLL);
+				pi->rx_state = L2CAP_ERTM_RX_STATE_WAIT_F_FLAG;
+			}
 		} else
 			pi->rx_state = L2CAP_ERTM_RX_STATE_RECV;
 	} else if (pi->amp_move_role == L2CAP_AMP_MOVE_RESPONDER) {
@@ -6039,11 +6355,25 @@ static int l2cap_ertm_rx(struct sock *sk, struct bt_l2cap_control *control,
 			}
 			break;
 		case L2CAP_ERTM_RX_STATE_WAIT_P_FLAG:
-		case L2CAP_ERTM_RX_STATE_WAIT_P_FLAG_RECONFIGURE:
 			if (control->poll) {
 				pi->amp_move_reqseq = control->reqseq;
 				pi->amp_move_event = event;
 				err = l2cap_answer_move_poll(sk);
+			}
+			break;
+		case L2CAP_ERTM_RX_STATE_WAIT_P_FLAG_RECONFIGURE:
+			if (control->poll) {
+				pi->amp_move_reqseq = control->reqseq;
+				pi->amp_move_event = event;
+
+				BT_DBG("amp_move_role 0x%2.2x, "
+					"reconf_state 0x%2.2x",
+					pi->amp_move_role, pi->reconf_state);
+
+				if (pi->reconf_state == L2CAP_RECONF_ACC)
+					err = l2cap_amp_move_reconf(sk);
+				else
+					err = l2cap_answer_move_poll(sk);
 			}
 			break;
 		default:
