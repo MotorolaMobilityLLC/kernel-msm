@@ -1783,8 +1783,10 @@ done:
 		/* Configure output options and let the other side know
 		 * which ones we don't like. */
 
-		if (mtu < L2CAP_DEFAULT_MIN_MTU)
+		if (mtu < L2CAP_DEFAULT_MIN_MTU) {
 			result = L2CAP_CONF_UNACCEPT;
+			pi->omtu = L2CAP_DEFAULT_MIN_MTU;
+		}
 		else {
 			pi->omtu = mtu;
 			pi->conf_state |= L2CAP_CONF_MTU_DONE;
