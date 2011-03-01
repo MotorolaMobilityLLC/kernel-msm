@@ -162,10 +162,11 @@ static int l2cap_sock_connect(struct socket *sock, struct sockaddr *addr, int al
 	struct sockaddr_l2 la;
 	int len, err = 0;
 
-	BT_DBG("sk %p", sk);
+	BT_DBG("sk %p type %d mode %d state %d", sk, sk->sk_type,
+		l2cap_pi(sk)->mode, sk->sk_state);
 
 	if (!addr || alen < sizeof(addr->sa_family) ||
-	    addr->sa_family != AF_BLUETOOTH)
+		addr->sa_family != AF_BLUETOOTH)
 		return -EINVAL;
 
 	memset(&la, 0, sizeof(la));
@@ -221,6 +222,7 @@ static int l2cap_sock_connect(struct socket *sock, struct sockaddr *addr, int al
 	/* PSM must be odd and lsb of upper byte must be 0 */
 	if ((__le16_to_cpu(la.l2_psm) & 0x0101) != 0x0001 &&
 				sk->sk_type != SOCK_RAW && !la.l2_cid) {
+		BT_DBG("Bad PSM 0x%x", (int)__le16_to_cpu(la.l2_psm));
 		err = -EINVAL;
 		goto done;
 	}
@@ -238,6 +240,8 @@ wait:
 	err = bt_sock_wait_state(sk, BT_CONNECTED,
 			sock_sndtimeo(sk, flags & O_NONBLOCK));
 done:
+	if (err)
+		BT_ERR("failed %d", err);
 	release_sock(sk);
 	return err;
 }
@@ -404,7 +408,7 @@ static int l2cap_sock_getsockopt_old(struct socket *sock, int optname, char __us
 		opts.mode     = l2cap_pi(sk)->mode;
 		opts.fcs      = l2cap_pi(sk)->fcs;
 		opts.max_tx   = l2cap_pi(sk)->max_tx;
-		opts.txwin_size = (__u16)l2cap_pi(sk)->tx_win;
+		opts.txwin_size = l2cap_pi(sk)->tx_win;
 
 		len = min_t(unsigned int, len, sizeof(opts));
 		if (copy_to_user(optval, (char *) &opts, len))
@@ -568,7 +572,7 @@ static int l2cap_sock_setsockopt_old(struct socket *sock, int optname, char __us
 		opts.mode     = l2cap_pi(sk)->mode;
 		opts.fcs      = l2cap_pi(sk)->fcs;
 		opts.max_tx   = l2cap_pi(sk)->max_tx;
-		opts.txwin_size = (__u16)l2cap_pi(sk)->tx_win;
+		opts.txwin_size = l2cap_pi(sk)->tx_win;
 
 		len = min_t(unsigned int, sizeof(opts), optlen);
 		if (copy_from_user((char *) &opts, optval, len)) {
@@ -588,7 +592,8 @@ static int l2cap_sock_setsockopt_old(struct socket *sock, int optname, char __us
 			break;
 		}
 
-		if (opts.txwin_size > L2CAP_DEFAULT_TX_WINDOW) {
+		if (opts.txwin_size < 1 ||
+			opts.txwin_size > L2CAP_TX_WIN_MAX_EXTENDED) {
 			err = -EINVAL;
 			break;
 		}
@@ -612,7 +617,7 @@ static int l2cap_sock_setsockopt_old(struct socket *sock, int optname, char __us
 		l2cap_pi(sk)->omtu = opts.omtu;
 		l2cap_pi(sk)->fcs  = opts.fcs;
 		l2cap_pi(sk)->max_tx = opts.max_tx;
-		l2cap_pi(sk)->tx_win = (__u8)opts.txwin_size;
+		l2cap_pi(sk)->tx_win = opts.txwin_size;
 		break;
 
 	case L2CAP_LM:
@@ -745,7 +750,7 @@ static int l2cap_sock_sendmsg(struct kiocb *iocb, struct socket *sock, struct ms
 	struct sock *sk = sock->sk;
 	struct l2cap_pinfo *pi = l2cap_pi(sk);
 	struct sk_buff *skb;
-	u16 control;
+	struct sk_buff_head seg_queue;
 	int err;
 
 	BT_DBG("sock %p, sk %p", sock, sk);
@@ -797,39 +802,48 @@ static int l2cap_sock_sendmsg(struct kiocb *iocb, struct socket *sock, struct ms
 
 	case L2CAP_MODE_ERTM:
 	case L2CAP_MODE_STREAMING:
-		/* Entire SDU fits into one PDU */
-		if (len <= pi->remote_mps) {
-			control = L2CAP_SDU_UNSEGMENTED;
-			skb = l2cap_create_iframe_pdu(sk, msg, len, control, 0);
-			if (IS_ERR(skb)) {
-				err = PTR_ERR(skb);
-				goto done;
-			}
-			__skb_queue_tail(TX_QUEUE(sk), skb);
 
-			if (sk->sk_send_head == NULL)
-				sk->sk_send_head = skb;
-
-		} else {
-		/* Segment SDU into multiples PDUs */
-			err = l2cap_sar_segment_sdu(sk, msg, len);
-			if (err < 0)
-				goto done;
+		/* Check outgoing MTU */
+		if (len > pi->omtu) {
+			err = -EMSGSIZE;
+			goto done;
 		}
 
-		if (pi->mode == L2CAP_MODE_STREAMING) {
-			l2cap_streaming_send(sk);
-		} else {
-			if ((pi->conn_state & L2CAP_CONN_REMOTE_BUSY) &&
-					(pi->conn_state & L2CAP_CONN_WAIT_F)) {
-				err = len;
-				break;
-			}
-			err = l2cap_ertm_send(sk);
+		__skb_queue_head_init(&seg_queue);
+
+		/* Do segmentation before calling in to the state machine,
+		 * since it's possible to block while waiting for memory
+		 * allocation.
+		 */
+		err = l2cap_segment_sdu(sk, &seg_queue, msg, len, 0);
+
+		/* The socket lock is released while segmenting, so check
+		 * that the socket is still connected
+		 */
+		if (sk->sk_state != BT_CONNECTED) {
+			__skb_queue_purge(&seg_queue);
+			err = -ENOTCONN;
 		}
 
-		if (err >= 0)
+		if (err) {
+			BT_DBG("Error %d, sk_sndbuf %d, sk_wmem_alloc %d",
+				err, sk->sk_sndbuf,
+				atomic_read(&sk->sk_wmem_alloc));
+			break;
+		}
+
+		if (pi->mode != L2CAP_MODE_STREAMING)
+			err = l2cap_ertm_tx(sk, 0, &seg_queue,
+				L2CAP_ERTM_EVENT_DATA_REQUEST);
+		else
+			err = l2cap_strm_tx(sk, &seg_queue);
+		if (!err)
 			err = len;
+
+		/* If the skbs were not queued for sending, they'll still be in
+		 * seg_queue and need to be purged.
+		 */
+		__skb_queue_purge(&seg_queue);
 		break;
 
 	default:
@@ -845,6 +859,7 @@ done:
 static int l2cap_sock_recvmsg(struct kiocb *iocb, struct socket *sock, struct msghdr *msg, size_t len, int flags)
 {
 	struct sock *sk = sock->sk;
+	int err;
 
 	lock_sock(sk);
 
@@ -879,9 +894,13 @@ static int l2cap_sock_recvmsg(struct kiocb *iocb, struct socket *sock, struct ms
 	release_sock(sk);
 
 	if (sock->type == SOCK_STREAM)
-		return bt_sock_stream_recvmsg(iocb, sock, msg, len, flags);
+		err = bt_sock_stream_recvmsg(iocb, sock, msg, len, flags);
+	else
+		err = bt_sock_recvmsg(iocb, sock, msg, len, flags);
 
-	return bt_sock_recvmsg(iocb, sock, msg, len, flags);
+	l2cap_ertm_recv_done(sk);
+
+	return err;
 }
 
 /* Kill socket (only if zapped and orphan)
@@ -957,6 +976,7 @@ void __l2cap_sock_close(struct sock *sk, int reason)
 				result = L2CAP_CR_SEC_BLOCK;
 			else
 				result = L2CAP_CR_BAD_PSM;
+			sk->sk_state = BT_DISCONN;
 
 			rsp.scid   = cpu_to_le16(l2cap_pi(sk)->dcid);
 			rsp.dcid   = cpu_to_le16(l2cap_pi(sk)->scid);
@@ -992,8 +1012,11 @@ static int l2cap_sock_shutdown(struct socket *sock, int how)
 
 	lock_sock(sk);
 	if (!sk->sk_shutdown) {
-		if (l2cap_pi(sk)->mode == L2CAP_MODE_ERTM)
+
+		if (l2cap_pi(sk)->mode == L2CAP_MODE_ERTM) {
 			err = __l2cap_wait_ack(sk);
+			l2cap_ertm_shutdown(sk);
+		}
 
 		sk->sk_shutdown = SHUTDOWN_MASK;
 		l2cap_sock_clear_timer(sk);
@@ -1035,8 +1058,7 @@ static void l2cap_sock_destruct(struct sock *sk)
 	skb_queue_purge(&sk->sk_receive_queue);
 	skb_queue_purge(&sk->sk_write_queue);
 
-	l2cap_seq_list_free(&l2cap_pi(sk)->srej_list);
-	l2cap_seq_list_free(&l2cap_pi(sk)->retrans_list);
+	l2cap_ertm_destruct(sk);
 }
 
 static void l2cap_sock_init(struct sock *sk, struct sock *parent)
