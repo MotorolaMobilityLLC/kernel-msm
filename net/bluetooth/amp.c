@@ -367,17 +367,24 @@ static inline int discover_req(struct amp_mgr *mgr, struct sk_buff *skb)
 {
 	struct a2mp_cmd_hdr *hdr = (struct a2mp_cmd_hdr *) skb->data;
 	struct a2mp_discover_req *req;
+	u16 *efm;
 	struct a2mp_discover_rsp rsp;
 
 	req = (struct a2mp_discover_req *) skb_pull(skb, sizeof(*hdr));
-	if (le16_to_cpu(hdr->len) != sizeof(*req))
-		return -EINVAL;
 	if (skb->len < sizeof(*req))
 		return -EINVAL;
-	skb_pull(skb, sizeof(*req));
+	efm = (u16 *) skb_pull(skb, sizeof(*req));
 
 	BT_DBG("mtu %d efm 0x%4.4x", le16_to_cpu(req->mtu),
 		le16_to_cpu(req->ext_feat));
+
+	while (le16_to_cpu(req->ext_feat) & 0x8000) {
+		if (skb->len < sizeof(*efm))
+			return -EINVAL;
+		req->ext_feat = *efm;
+		BT_DBG("efm 0x%4.4x", le16_to_cpu(req->ext_feat));
+		efm = (u16 *) skb_pull(skb, sizeof(*efm));
+	}
 
 	rsp.mtu = cpu_to_le16(670);
 	rsp.ext_feat = 0;
