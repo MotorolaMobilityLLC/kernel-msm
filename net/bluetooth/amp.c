@@ -980,6 +980,18 @@ apl_finished:
 	return 1;
 }
 
+static void cancel_cpl_ctx(struct amp_ctx *ctx, u8 reason)
+{
+	struct hci_cp_disconn_phys_link dcp;
+
+	ctx->state = AMP_CPL_PL_CANCEL;
+	ctx->evt_type = AMP_HCI_EVENT;
+	ctx->evt_code = HCI_EV_DISCONN_PHYS_LINK_COMPLETE;
+	dcp.phy_handle = ctx->d.cpl.phy_handle;
+	dcp.reason = reason;
+	hci_send_cmd(ctx->hdev, HCI_OP_DISCONN_PHYS_LINK, sizeof(dcp), &dcp);
+}
+
 static u8 createphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 {
 	struct amp_ctrl *ctrl;
@@ -995,7 +1007,6 @@ static u8 createphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 	struct a2mp_getampassoc_req areq;
 	struct a2mp_getampassoc_rsp *arsp;
 	struct hci_cp_create_phys_link cp;
-	struct hci_cp_disconn_phys_link dcp;
 	struct hci_cp_write_remote_amp_assoc wcp;
 	struct hci_rp_write_remote_amp_assoc *wrp;
 	struct hci_ev_channel_selected *cev;
@@ -1021,13 +1032,7 @@ static u8 createphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 			!(ctx->evt_type & AMP_HCI_EVENT)))
 			goto cpl_finished;
 
-		ctx->state = AMP_CPL_PL_CANCEL;
-		ctx->evt_type = AMP_HCI_EVENT;
-		ctx->evt_code = HCI_EV_DISCONN_PHYS_LINK_COMPLETE;
-		dcp.phy_handle = ctx->d.cpl.phy_handle;
-		dcp.reason = 0x16;
-		hci_send_cmd(ctx->hdev, HCI_OP_DISCONN_PHYS_LINK,
-				sizeof(dcp), &dcp);
+		cancel_cpl_ctx(ctx, 0x16);
 		return 0;
 	}
 
@@ -1287,12 +1292,12 @@ static u8 createphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 			if (skb->len < sizeof(*crsp))
 				goto cpl_finished;
 			crsp = (void *) skb_pull(skb, sizeof(*hdr));
-			if (crsp->local_id != ctx->d.cpl.remote_id)
-				goto cpl_finished;
-			if (crsp->remote_id != ctx->id)
-				goto cpl_finished;
-			if (crsp->status != 0)
-				goto cpl_finished;
+			if ((crsp->local_id != ctx->d.cpl.remote_id) ||
+				(crsp->remote_id != ctx->id) ||
+				(crsp->status != 0)) {
+				cancel_cpl_ctx(ctx, 0x13);
+				break;
+			}
 
 			/* notify Qualcomm PAL */
 			if (ctx->hdev->manufacturer == 0x001d)
