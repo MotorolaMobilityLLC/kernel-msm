@@ -525,7 +525,6 @@ struct l2cap_pinfo {
 	__u16		expected_ack_seq;
 	__u16		expected_tx_seq;
 	__u16		buffer_seq;
-	__u16		buffer_seq_srej;
 	__u16		srej_save_reqseq;
 	__u16		last_acked_seq;
 	__u32		frames_sent;

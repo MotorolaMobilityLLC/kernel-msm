@@ -1992,29 +1992,14 @@ static void l2cap_ertm_send_srej_list(struct sock *sk, u16 txseq)
 	} while (pi->srej_list.head != initial_head);
 }
 
-static void l2cap_ertm_srej_list_clear(struct sock *sk)
-{
-	while (l2cap_pi(sk)->srej_list.head != L2CAP_SEQ_LIST_CLEAR) {
-		struct sk_buff *skb;
-		u16 seq = l2cap_seq_list_pop(&l2cap_pi(sk)->srej_list);
-		skb = l2cap_ertm_seq_in_queue(SREJ_QUEUE(sk), seq);
-		if (skb) {
-			skb_unlink(skb, SREJ_QUEUE(sk));
-			kfree_skb(skb);
-			BT_DBG("Removed %d from srej list", seq);
-		}
-	}
-}
-
 static void l2cap_ertm_abort_rx_srej_sent(struct sock *sk)
 {
 	struct l2cap_pinfo *pi = l2cap_pi(sk);
 	BT_DBG("sk %p", sk);
 
-	pi->buffer_seq = pi->buffer_seq_srej;
 	pi->expected_tx_seq = pi->buffer_seq;
+	l2cap_seq_list_clear(&l2cap_pi(sk)->srej_list);
 	skb_queue_purge(SREJ_QUEUE(sk));
-	l2cap_ertm_srej_list_clear(sk);
 	pi->rx_state = L2CAP_ERTM_RX_STATE_RECV;
 }
 
@@ -2047,6 +2032,9 @@ static int l2cap_ertm_tx_state_xmit(struct sock *sk,
 			 */
 			l2cap_ertm_abort_rx_srej_sent(sk);
 		}
+
+		l2cap_ertm_send_ack(sk);
+
 		break;
 	case L2CAP_ERTM_EVENT_LOCAL_BUSY_CLEAR:
 		BT_DBG("Exit LOCAL_BUSY");
@@ -2142,6 +2130,9 @@ static int l2cap_ertm_tx_state_wait_f(struct sock *sk,
 			 */
 			l2cap_ertm_abort_rx_srej_sent(sk);
 		}
+
+		l2cap_ertm_send_ack(sk);
+
 		break;
 	case L2CAP_ERTM_EVENT_LOCAL_BUSY_CLEAR:
 		BT_DBG("Exit LOCAL_BUSY");
@@ -2558,7 +2549,14 @@ static inline int l2cap_rmem_available(struct sock *sk)
 {
 	BT_DBG("sk_rmem_alloc %d, sk_rcvbuf %d",
 		atomic_read(&sk->sk_rmem_alloc), sk->sk_rcvbuf);
-	return atomic_read(&sk->sk_rmem_alloc) < (sk->sk_rcvbuf >> 1);
+	return atomic_read(&sk->sk_rmem_alloc) < sk->sk_rcvbuf / 3;
+}
+
+static inline int l2cap_rmem_full(struct sock *sk)
+{
+	BT_DBG("sk_rmem_alloc %d, sk_rcvbuf %d",
+		atomic_read(&sk->sk_rmem_alloc), sk->sk_rcvbuf);
+	return atomic_read(&sk->sk_rmem_alloc) > (2 * sk->sk_rcvbuf) / 3;
 }
 
 void l2cap_amp_move_init(struct sock *sk)
@@ -2574,17 +2572,10 @@ void l2cap_amp_move_init(struct sock *sk)
 	if (l2cap_pi(sk)->amp_id == 0) {
 		if (l2cap_pi(sk)->amp_pref != BT_AMP_POLICY_PREFER_AMP)
 			return;
-
-		l2cap_ertm_tx(sk, 0, 0, L2CAP_ERTM_EVENT_LOCAL_BUSY_DETECTED);
-		l2cap_ertm_send_ack(sk);
-
 		l2cap_pi(sk)->amp_move_role = L2CAP_AMP_MOVE_INITIATOR;
 		l2cap_pi(sk)->amp_move_state = L2CAP_AMP_STATE_WAIT_PREPARE;
 		amp_create_physical(l2cap_pi(sk)->conn, sk);
 	} else {
-		l2cap_ertm_tx(sk, 0, 0, L2CAP_ERTM_EVENT_LOCAL_BUSY_DETECTED);
-		l2cap_ertm_send_ack(sk);
-
 		l2cap_pi(sk)->amp_move_role = L2CAP_AMP_MOVE_INITIATOR;
 		l2cap_pi(sk)->amp_move_state =
 					L2CAP_AMP_STATE_WAIT_MOVE_RSP_SUCCESS;
@@ -2800,15 +2791,9 @@ static void l2cap_ertm_ack_timeout(struct work_struct *work)
 		return;
 	}
 
-	if (l2cap_pi(sk)->conn_state & L2CAP_CONN_LOCAL_BUSY) {
-		frames_to_ack = __delta_seq(l2cap_pi(sk)->expected_ack_seq,
-					l2cap_pi(sk)->last_acked_seq,
-					l2cap_pi(sk));
-	} else {
-		frames_to_ack = __delta_seq(l2cap_pi(sk)->buffer_seq,
-					l2cap_pi(sk)->last_acked_seq,
-					l2cap_pi(sk));
-	}
+	frames_to_ack = __delta_seq(l2cap_pi(sk)->buffer_seq,
+				    l2cap_pi(sk)->last_acked_seq,
+				    l2cap_pi(sk));
 
 	if (frames_to_ack)
 		l2cap_ertm_send_rr_or_rnr(sk, 0);
@@ -4814,10 +4799,7 @@ void l2cap_amp_physical_complete(int result, u8 local_id, u8 remote_id,
 		pi->amp_move_role = L2CAP_AMP_MOVE_NONE;
 		pi->amp_move_state = L2CAP_AMP_STATE_STABLE;
 
-		if (l2cap_ertm_rx_queued_iframes(sk))
-			l2cap_send_disconn_req(l2cap_pi(sk)->conn, sk,
-						ECONNRESET);
-		else if ((l2cap_pi(sk)->conn_state & L2CAP_CONN_LOCAL_BUSY) &&
+		if ((l2cap_pi(sk)->conn_state & L2CAP_CONN_LOCAL_BUSY) &&
 			l2cap_rmem_available(sk))
 			l2cap_ertm_tx(sk, 0, 0,
 					L2CAP_ERTM_EVENT_LOCAL_BUSY_CLEAR);
@@ -5512,8 +5494,7 @@ static int l2cap_ertm_rx_expected_iframe(struct sock *sk,
 	}
 
 	/* Update local busy state */
-	if (!(pi->conn_state & L2CAP_CONN_LOCAL_BUSY) &&
-		!l2cap_rmem_available(sk))
+	if (!(pi->conn_state & L2CAP_CONN_LOCAL_BUSY) && l2cap_rmem_full(sk))
 		l2cap_ertm_tx(sk, 0, 0, L2CAP_ERTM_EVENT_LOCAL_BUSY_DETECTED);
 
 	return err;
@@ -5523,11 +5504,8 @@ static int l2cap_ertm_rx_queued_iframes(struct sock *sk)
 {
 	int err = 0;
 	/* Pass sequential frames to l2cap_ertm_rx_expected_iframe()
-	   until a gap is encountered.
-
-	   Leave buffer_seq unchanged so the sender does not issue any new
-	   iframes, and just catches up with srejs.
-	*/
+	 * until a gap is encountered.
+	 */
 
 	struct l2cap_pinfo *pi;
 	struct sk_buff *skb;
@@ -5540,27 +5518,19 @@ static int l2cap_ertm_rx_queued_iframes(struct sock *sk)
 
 	while (l2cap_rmem_available(sk)) {
 		BT_DBG("Searching for skb with txseq %d (queue len %d)",
-			(int) pi->buffer_seq_srej,
-			skb_queue_len(SREJ_QUEUE(sk)));
+			(int) pi->buffer_seq, skb_queue_len(SREJ_QUEUE(sk)));
 
-		skb = l2cap_ertm_seq_in_queue(SREJ_QUEUE(sk),
-						pi->buffer_seq_srej);
+		skb = l2cap_ertm_seq_in_queue(SREJ_QUEUE(sk), pi->buffer_seq);
 
 		if (!skb)
 			break;
 
 		skb_unlink(skb, SREJ_QUEUE(sk));
-		pi->buffer_seq_srej = __next_seq(pi->buffer_seq_srej, pi);
+		pi->buffer_seq = __next_seq(pi->buffer_seq, pi);
 		err = l2cap_ertm_rx_expected_iframe(sk,
 						&bt_cb(skb)->control, skb);
 		if (err)
 			break;
-	}
-
-	if (skb_queue_empty(SREJ_QUEUE(sk))) {
-		BT_DBG("buffer_seq %d->%d", pi->buffer_seq,
-			pi->buffer_seq_srej);
-		pi->buffer_seq = pi->buffer_seq_srej;
 	}
 
 	return err;
@@ -5779,27 +5749,20 @@ static int l2cap_ertm_rx_state_recv(struct sock *sk,
 		switch (l2cap_ertm_classify_txseq(sk, control->txseq)) {
 		case L2CAP_ERTM_TXSEQ_EXPECTED:
 			l2cap_ertm_pass_to_tx(sk, control);
-			pi->expected_tx_seq = __next_seq(control->txseq, pi);
-			skb_in_use = 1;
 
 			if (pi->conn_state & L2CAP_CONN_LOCAL_BUSY) {
-				/* The frame can't be reassembled now,
-				 * so queue it for reassembly later.
-				 */
-				skb_queue_tail(SREJ_QUEUE(sk), skb);
-				BT_DBG("Queued %p (queue len %d)", skb,
-					skb_queue_len(SREJ_QUEUE(sk)));
-			} else {
-				BT_DBG("buffer_seq %d->%d", pi->buffer_seq,
-					__next_seq(pi->buffer_seq, pi));
-				pi->buffer_seq = __next_seq(pi->buffer_seq, pi);
-				pi->buffer_seq_srej = pi->buffer_seq;
-
-				err = l2cap_ertm_rx_expected_iframe(sk,
-								control, skb);
-				if (err)
-					break;
+				BT_DBG("Busy, discarding expected seq %d",
+					control->txseq);
+				break;
 			}
+
+			pi->expected_tx_seq = __next_seq(control->txseq, pi);
+			pi->buffer_seq = pi->expected_tx_seq;
+			skb_in_use = 1;
+
+			err = l2cap_ertm_rx_expected_iframe(sk, control, skb);
+			if (err)
+				break;
 
 			if (control->final) {
 				if (pi->conn_state & L2CAP_CONN_REJ_ACT)
@@ -5821,8 +5784,11 @@ static int l2cap_ertm_rx_state_recv(struct sock *sk,
 			 * Drop this frame, it will be seen as missing
 			 * when local busy is exited.
 			 */
-			if (pi->conn_state & L2CAP_CONN_LOCAL_BUSY)
+			if (pi->conn_state & L2CAP_CONN_LOCAL_BUSY) {
+				BT_DBG("Busy, discarding unexpected seq %d",
+					control->txseq);
 				break;
+			}
 
 			/* There was a gap in the sequence, so an SREJ
 			 * must be sent for each missing frame.  The
@@ -6070,29 +6036,27 @@ static int l2cap_ertm_rx_state_amp_move(struct sock *sk,
 	case L2CAP_ERTM_EVENT_RECV_IFRAME:
 		if (l2cap_ertm_classify_txseq(sk, control->txseq) ==
 				L2CAP_ERTM_TXSEQ_EXPECTED) {
-			if (pi->conn_state & L2CAP_CONN_LOCAL_BUSY) {
-				l2cap_ertm_pass_to_tx(sk, control);
-				/* Frame dropped, because we are busy. */
-			} else {
-				pi->expected_tx_seq =
-					__next_seq(control->txseq, pi);
-				skb_in_use = 1;
-				BT_DBG("buffer_seq %d->%d", pi->buffer_seq,
-					__next_seq(pi->buffer_seq, pi));
-				pi->buffer_seq = __next_seq(pi->buffer_seq, pi);
-				pi->buffer_seq_srej = pi->buffer_seq;
-				err = l2cap_ertm_rx_expected_iframe(sk,
-								control, skb);
-				if (err)
-					break;
+			l2cap_ertm_pass_to_tx(sk, control);
 
-				if (control->final) {
-					if (pi->conn_state & L2CAP_CONN_REJ_ACT)
-						pi->conn_state &=
-							~L2CAP_CONN_REJ_ACT;
-					else
-						control->final = 0;
-				}
+			if (pi->conn_state & L2CAP_CONN_LOCAL_BUSY) {
+				BT_DBG("Busy, discarding expected seq %d",
+					control->txseq);
+				break;
+			}
+
+			pi->expected_tx_seq = __next_seq(control->txseq, pi);
+			pi->buffer_seq = pi->expected_tx_seq;
+			skb_in_use = 1;
+
+			err = l2cap_ertm_rx_expected_iframe(sk, control, skb);
+			if (err)
+				break;
+
+			if (control->final) {
+				if (pi->conn_state & L2CAP_CONN_REJ_ACT)
+					pi->conn_state &= ~L2CAP_CONN_REJ_ACT;
+				else
+					control->final = 0;
 			}
 		}
 		break;
@@ -6180,14 +6144,12 @@ static void l2cap_amp_move_setup(struct sock *sk)
 			break;
 	}
 
-	if (pi->srej_list.head != L2CAP_SEQ_LIST_CLEAR)
-		pi->buffer_seq = pi->buffer_seq_srej;
-
 	pi->expected_tx_seq = pi->buffer_seq;
 
 	pi->conn_state &= ~(L2CAP_CONN_REJ_ACT | L2CAP_CONN_SREJ_ACT);
 	l2cap_seq_list_clear(&pi->retrans_list);
-	l2cap_ertm_srej_list_clear(sk);
+	l2cap_seq_list_clear(&l2cap_pi(sk)->srej_list);
+	skb_queue_purge(SREJ_QUEUE(sk));
 
 	pi->tx_state = L2CAP_ERTM_TX_STATE_XMIT;
 	pi->rx_state = L2CAP_ERTM_RX_STATE_AMP_MOVE;
@@ -6196,12 +6158,6 @@ static void l2cap_amp_move_setup(struct sock *sk)
 		pi->rx_state);
 
 	pi->conn_state |= L2CAP_CONN_REMOTE_BUSY;
-
-	if (l2cap_ertm_rx_queued_iframes(sk))
-		l2cap_send_disconn_req(l2cap_pi(sk)->conn, sk, ECONNRESET);
-	else if ((pi->conn_state & L2CAP_CONN_LOCAL_BUSY) &&
-		l2cap_rmem_available(sk))
-		l2cap_ertm_tx(sk, 0, 0, L2CAP_ERTM_EVENT_LOCAL_BUSY_CLEAR);
 }
 
 static void l2cap_amp_move_revert(struct sock *sk)
