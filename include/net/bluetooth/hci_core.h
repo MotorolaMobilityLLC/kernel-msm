@@ -184,9 +184,7 @@ struct hci_dev {
 	unsigned int	sco_pkts;
 	unsigned int	le_pkts;
 
-	unsigned int	max_acl_len;
 	unsigned int	data_block_len;
-	unsigned int	num_blocks;
 
 	unsigned long	acl_last_tx;
 	unsigned long	sco_last_tx;
