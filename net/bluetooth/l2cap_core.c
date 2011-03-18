@@ -2658,12 +2658,13 @@ static struct sk_buff *l2cap_build_cmd(struct l2cap_conn *conn,
 	struct l2cap_cmd_hdr *cmd;
 	struct l2cap_hdr *lh;
 	int len, count;
+	unsigned int mtu = conn->hcon->hdev->acl_mtu;
 
 	BT_DBG("conn %p, code 0x%2.2x, ident 0x%2.2x, len %d",
 			conn, code, ident, dlen);
 
 	len = L2CAP_HDR_SIZE + L2CAP_CMD_HDR_SIZE + dlen;
-	count = min_t(unsigned int, conn->mtu, len);
+	count = min_t(unsigned int, mtu, len);
 
 	skb = bt_skb_alloc(count, GFP_ATOMIC);
 	if (!skb)
@@ -2693,7 +2694,7 @@ static struct sk_buff *l2cap_build_cmd(struct l2cap_conn *conn,
 	/* Continuation fragments (no L2CAP header) */
 	frag = &skb_shinfo(skb)->frag_list;
 	while (len) {
-		count = min_t(unsigned int, conn->mtu, len);
+		count = min_t(unsigned int, mtu, len);
 
 		*frag = bt_skb_alloc(count, GFP_ATOMIC);
 		if (!*frag)
