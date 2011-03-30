@@ -128,7 +128,7 @@ static void __dma_free_buffer(struct page *page, size_t size)
  */
 static pte_t **consistent_pte;
 
-#define DEFAULT_CONSISTENT_DMA_SIZE SZ_2M
+#define DEFAULT_CONSISTENT_DMA_SIZE (7*SZ_2M)
 
 unsigned long consistent_base = CONSISTENT_END - DEFAULT_CONSISTENT_DMA_SIZE;
 
