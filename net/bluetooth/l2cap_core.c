@@ -2913,11 +2913,11 @@ void l2cap_ertm_recv_done(struct sock *sk)
 	}
 
 	/* Consume any queued incoming frames and update local busy status */
-	if (l2cap_ertm_rx_queued_iframes(sk))
+	if (l2cap_pi(sk)->rx_state == L2CAP_ERTM_RX_STATE_SREJ_SENT &&
+			l2cap_ertm_rx_queued_iframes(sk))
 		l2cap_send_disconn_req(l2cap_pi(sk)->conn, sk, ECONNRESET);
 	else if ((l2cap_pi(sk)->conn_state & L2CAP_CONN_LOCAL_BUSY) &&
-		l2cap_pi(sk)->amp_move_state != L2CAP_AMP_STATE_WAIT_PREPARE &&
-		l2cap_rmem_available(sk))
+			l2cap_rmem_available(sk))
 		l2cap_ertm_tx(sk, 0, 0, L2CAP_ERTM_EVENT_LOCAL_BUSY_CLEAR);
 
 	release_sock(sk);
@@ -5508,15 +5508,12 @@ static int l2cap_ertm_rx_queued_iframes(struct sock *sk)
 	 */
 
 	struct l2cap_pinfo *pi;
-	struct sk_buff *skb;
 
-	BT_DBG("sk %p", sk);\
+	BT_DBG("sk %p", sk);
 	pi = l2cap_pi(sk);
 
-	if (skb_queue_empty(SREJ_QUEUE(sk)))
-		return 0;
-
 	while (l2cap_rmem_available(sk)) {
+		struct sk_buff *skb;
 		BT_DBG("Searching for skb with txseq %d (queue len %d)",
 			(int) pi->buffer_seq, skb_queue_len(SREJ_QUEUE(sk)));
 
@@ -5531,6 +5528,11 @@ static int l2cap_ertm_rx_queued_iframes(struct sock *sk)
 						&bt_cb(skb)->control, skb);
 		if (err)
 			break;
+	}
+
+	if (skb_queue_empty(SREJ_QUEUE(sk))) {
+		pi->rx_state = L2CAP_ERTM_RX_STATE_RECV;
+		l2cap_ertm_send_ack(sk);
 	}
 
 	return err;
@@ -5907,10 +5909,6 @@ static int l2cap_ertm_rx_state_srej_sent(struct sock *sk,
 			if (err)
 				break;
 
-			if (pi->srej_list.head == L2CAP_SEQ_LIST_CLEAR) {
-				pi->rx_state = L2CAP_ERTM_RX_STATE_RECV;
-				l2cap_ertm_send_ack(sk);
-			}
 			break;
 		case L2CAP_ERTM_TXSEQ_UNEXPECTED:
 			/* Got a frame that can't be reassembled yet.
