@@ -411,7 +411,7 @@ static inline void l2cap_ertm_stop_retrans_timer(struct l2cap_pinfo *pi)
 static inline void l2cap_ertm_start_retrans_timer(struct l2cap_pinfo *pi)
 {
 	BT_DBG("pi %p", pi);
-	if (!delayed_work_pending(&pi->monitor_work)) {
+	if (!delayed_work_pending(&pi->monitor_work) && pi->retrans_timeout) {
 		__cancel_delayed_work(&pi->retrans_work);
 		queue_delayed_work(_l2cap_wq, &pi->retrans_work,
 			msecs_to_jiffies(pi->retrans_timeout));
@@ -429,8 +429,10 @@ static inline void l2cap_ertm_start_monitor_timer(struct l2cap_pinfo *pi)
 	BT_DBG("pi %p", pi);
 	l2cap_ertm_stop_retrans_timer(pi);
 	__cancel_delayed_work(&pi->monitor_work);
-	queue_delayed_work(_l2cap_wq, &pi->monitor_work,
-		msecs_to_jiffies(pi->monitor_timeout));
+	if (pi->monitor_timeout) {
+		queue_delayed_work(_l2cap_wq, &pi->monitor_work,
+				msecs_to_jiffies(pi->monitor_timeout));
+	}
 }
 
 static u16 l2cap_alloc_cid(struct l2cap_chan_list *l)
@@ -3002,8 +3004,8 @@ done:
 		else
 			rfc.txwin_size = pi->tx_win;
 		rfc.max_transmit    = pi->max_tx;
-		rfc.retrans_timeout = L2CAP_DEFAULT_RETRANS_TO;
-		rfc.monitor_timeout = L2CAP_DEFAULT_MONITOR_TO;
+		rfc.retrans_timeout = cpu_to_le16(L2CAP_DEFAULT_RETRANS_TO);
+		rfc.monitor_timeout = cpu_to_le16(L2CAP_DEFAULT_MONITOR_TO);
 		rfc.max_pdu_size    = cpu_to_le16(L2CAP_DEFAULT_MAX_PDU_SIZE);
 		if (L2CAP_DEFAULT_MAX_PDU_SIZE > pi->imtu)
 			rfc.max_pdu_size = cpu_to_le16(pi->imtu);
@@ -3081,11 +3083,15 @@ static int l2cap_build_amp_reconf_req(struct sock *sk, void *data)
 		rfc.txwin_size      = pi->tx_win;
 		rfc.max_transmit    = pi->max_tx;
 		if (pi->amp_move_id) {
-			rfc.retrans_timeout = (3 * be_flush_to) + 500;
-			rfc.monitor_timeout = (3 * be_flush_to) + 500;
+			rfc.retrans_timeout =
+					cpu_to_le16((3 * be_flush_to) + 500);
+			rfc.monitor_timeout =
+					cpu_to_le16((3 * be_flush_to) + 500);
 		} else {
-			rfc.retrans_timeout = 0;
-			rfc.monitor_timeout = 0;
+			rfc.retrans_timeout =
+					cpu_to_le16(L2CAP_DEFAULT_RETRANS_TO);
+			rfc.monitor_timeout =
+					cpu_to_le16(L2CAP_DEFAULT_MONITOR_TO);
 		}
 		rfc.max_pdu_size    = cpu_to_le16(L2CAP_DEFAULT_MAX_PDU_SIZE);
 		if (L2CAP_DEFAULT_MAX_PDU_SIZE > pi->imtu)
@@ -3242,9 +3248,9 @@ done:
 			pi->remote_mps = le16_to_cpu(rfc.max_pdu_size);
 
 			rfc.retrans_timeout =
-				le16_to_cpu(L2CAP_DEFAULT_RETRANS_TO);
+				cpu_to_le16(L2CAP_DEFAULT_RETRANS_TO);
 			rfc.monitor_timeout =
-				le16_to_cpu(L2CAP_DEFAULT_MONITOR_TO);
+				cpu_to_le16(L2CAP_DEFAULT_MONITOR_TO);
 
 			pi->conf_state |= L2CAP_CONF_MODE_DONE;
 
