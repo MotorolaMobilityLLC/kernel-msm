@@ -331,6 +331,17 @@ static int hw_device_reset(struct ci13xxx *udc)
 	hw_cwrite(CAP_USBMODE, USBMODE_CM, USBMODE_CM_DEVICE);
 	hw_cwrite(CAP_USBMODE, USBMODE_SLOM, USBMODE_SLOM);  /* HW >= 2.3 */
 
+	/*
+	 * ITC (Interrupt Threshold Control) field is to set the maximum
+	 * rate at which the device controller will issue interrupts.
+	 * The maximum interrupt interval measured in micro frames.
+	 * Valid values are 0, 1, 2, 4, 8, 16, 32, 64. The default value is
+	 * 8 micro frames. If CPU can handle interrupts at faster rate, ITC
+	 * can be set to lesser value to gain performance.
+	 */
+	if (udc->udc_driver->flags & CI13XXX_ZERO_ITC)
+		hw_cwrite(CAP_USBCMD, USBCMD_ITC_MASK, USBCMD_ITC(0));
+
 	if (hw_cread(CAP_USBMODE, USBMODE_CM) != USBMODE_CM_DEVICE) {
 		pr_err("cannot enter in device mode");
 		pr_err("lpm = %i", hw_bank.lpm);
