@@ -1001,6 +1001,7 @@ static u8 createphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 	struct amp_ctx *cplctx;
 	struct a2mp_discover_req dreq;
 	struct a2mp_discover_rsp *drsp;
+	u16 *efm;
 	struct a2mp_getinfo_req greq;
 	struct a2mp_getinfo_rsp *grsp;
 	struct a2mp_cl *cl;
@@ -1054,10 +1055,26 @@ static u8 createphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 		break;
 
 	case AMP_CPL_DISC_RSP:
-		if (skb->len < (sizeof(*hdr) + sizeof(*drsp)))
-			goto cpl_finished;
 		drsp = (struct a2mp_discover_rsp *) skb_pull(skb, sizeof(*hdr));
-		cl = (struct a2mp_cl *) skb_pull(skb, sizeof(*drsp));
+		if (skb->len < (sizeof(*drsp))) {
+			result = -EINVAL;
+			goto cpl_finished;
+		}
+
+		efm = (u16 *) skb_pull(skb, sizeof(*drsp));
+		BT_DBG("mtu %d efm 0x%4.4x", le16_to_cpu(drsp->mtu),
+						le16_to_cpu(drsp->ext_feat));
+
+		while (le16_to_cpu(drsp->ext_feat) & 0x8000) {
+			if (skb->len < sizeof(*efm)) {
+				result = -EINVAL;
+				goto cpl_finished;
+			}
+			drsp->ext_feat = *efm;
+			BT_DBG("efm 0x%4.4x", le16_to_cpu(drsp->ext_feat));
+			efm = (u16 *) skb_pull(skb, sizeof(*efm));
+		}
+		cl = (struct a2mp_cl *) efm;
 
 		/* find the first remote and local controller with the
 		 * same type
