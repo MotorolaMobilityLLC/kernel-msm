@@ -217,8 +217,8 @@ enum {
 #define LMP_EDR_3S_ESCO	0x80
 
 #define LMP_EXT_INQ	0x01
-#define LMP_NO_FLUSH	0x01
 #define LMP_SIMPLE_PAIR	0x08
+#define LMP_NO_FLUSH	0x40
 
 #define LMP_LSTO	0x01
 #define LMP_INQ_TX_PWR	0x02
