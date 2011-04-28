@@ -183,6 +183,11 @@ static struct mfd_cell debugfs_cell __devinitdata = {
 	.pdata_size	= sizeof("pm8921-dbg"),
 };
 
+static struct mfd_cell pwm_cell __devinitdata = {
+	.name           = PM8XXX_PWM_DEV_NAME,
+	.id             = -1,
+};
+
 static int __devinit pm8921_add_subdevices(const struct pm8921_platform_data
 					   *pdata,
 					   struct pm8921 *pmic,
@@ -301,6 +306,12 @@ static int __devinit pm8921_add_subdevices(const struct pm8921_platform_data
 	ret = mfd_add_devices(pmic->dev, 0, &debugfs_cell, 1, NULL, irq_base);
 	if (ret) {
 		pr_err("Failed to add debugfs subdevice ret=%d\n", ret);
+		goto bail;
+	}
+
+	ret = mfd_add_devices(pmic->dev, 0, &pwm_cell, 1, NULL, 0);
+	if (ret) {
+		pr_err("Failed to add pwm subdevice ret=%d\n", ret);
 		goto bail;
 	}
 
