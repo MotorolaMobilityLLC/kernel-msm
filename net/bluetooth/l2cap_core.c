@@ -5274,6 +5274,13 @@ static void l2cap_ertm_resend(struct sock *sk)
 		bt_cb(skb)->retries += 1;
 		control = bt_cb(skb)->control;
 
+		if ((pi->max_tx != 0) && (bt_cb(skb)->retries > pi->max_tx)) {
+			BT_DBG("Retry limit exceeded (%d)", (int) pi->max_tx);
+			l2cap_send_disconn_req(pi->conn, sk, ECONNRESET);
+			l2cap_seq_list_clear(&pi->retrans_list);
+			break;
+		}
+
 		control.reqseq = pi->buffer_seq;
 		if (pi->conn_state & L2CAP_CONN_SEND_FBIT) {
 			control.final = 1;
@@ -5570,7 +5577,7 @@ static void l2cap_ertm_handle_srej(struct sock *sk,
 		return;
 	}
 
-	if ((pi->max_tx != 0) && (bt_cb(skb)->retries > pi->max_tx)) {
+	if ((pi->max_tx != 0) && (bt_cb(skb)->retries >= pi->max_tx)) {
 		BT_DBG("Retry limit exceeded (%d)", (int) pi->max_tx);
 		l2cap_send_disconn_req(pi->conn, sk, ECONNRESET);
 		return;
@@ -5628,7 +5635,7 @@ static void l2cap_ertm_handle_rej(struct sock *sk,
 
 	skb = l2cap_ertm_seq_in_queue(TX_QUEUE(sk), control->reqseq);
 
-	if (pi->max_tx && skb && bt_cb(skb)->retries > pi->max_tx) {
+	if (pi->max_tx && skb && bt_cb(skb)->retries >= pi->max_tx) {
 		BT_DBG("Retry limit exceeded (%d)", (int) pi->max_tx);
 		l2cap_send_disconn_req(pi->conn, sk, ECONNRESET);
 		return;
