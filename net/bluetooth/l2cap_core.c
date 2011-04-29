@@ -4382,8 +4382,9 @@ static inline int l2cap_move_channel_req(struct l2cap_conn *conn,
 		goto send_move_response;
 	}
 
-	if (pi->amp_move_state != L2CAP_AMP_STATE_STABLE ||
-		pi->amp_move_role != L2CAP_AMP_MOVE_NONE) {
+	if ((pi->amp_move_state != L2CAP_AMP_STATE_STABLE ||
+		pi->amp_move_role != L2CAP_AMP_MOVE_NONE) &&
+		bacmp(conn->src, conn->dst) > 0) {
 		result = L2CAP_MOVE_CHAN_REFUSED_COLLISION;
 		goto send_move_response;
 	}
