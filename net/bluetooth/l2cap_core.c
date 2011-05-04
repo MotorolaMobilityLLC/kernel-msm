@@ -1292,7 +1292,8 @@ void l2cap_do_send(struct sock *sk, struct sk_buff *skb)
 		BT_DBG("Sending on AMP connection %p %p",
 			pi->ampcon, pi->ampchan);
 		if (pi->ampchan)
-			hci_send_acl(pi->ampcon, pi->ampchan, skb, 0);
+			hci_send_acl(pi->ampcon, pi->ampchan, skb,
+					ACL_COMPLETE);
 		else
 			kfree_skb(skb);
 	} else {
