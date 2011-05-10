@@ -3272,6 +3272,25 @@ sub process {
 			      $herecurr);
 		}
 
+# unbounded string functions are overflow risks
+		my %str_fns = (
+			"sprintf" => "snprintf",
+			"strcpy"  => "strncpy",
+			"strcat"  => "strncat",
+			"strcmp"  => "strncmp",
+			"strcasecmp" => "strncasecmp",
+			"strchr" => "strnchr",
+			"strstr" => "strnstr",
+			"strlen" => "strnlen",
+		);
+		foreach my $k (keys %str_fns) {
+			if ($line =~ /\b$k\b/) {
+				ERROR("Use of $k is deprecated: " .
+				      "use $str_fns{$k} instead.\n" .
+				      $herecurr);
+			}
+		}
+
 # warn about #if 0
 		if ($line =~ /^.\s*\#\s*if\s+0\b/) {
 			WARN("if this code is redundant consider removing it\n"
