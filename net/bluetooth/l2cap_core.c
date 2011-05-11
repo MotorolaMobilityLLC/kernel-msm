@@ -4785,7 +4785,8 @@ static inline int l2cap_conn_param_update_req(struct l2cap_conn *conn,
 }
 
 static inline int l2cap_bredr_sig_cmd(struct l2cap_conn *conn,
-			struct l2cap_cmd_hdr *cmd, u16 cmd_len, u8 *data)
+			struct l2cap_cmd_hdr *cmd, u16 cmd_len, u8 *data,
+			struct sk_buff *skb)
 {
 	int err = 0;
 
@@ -4833,6 +4834,14 @@ static inline int l2cap_bredr_sig_cmd(struct l2cap_conn *conn,
 		err = l2cap_information_rsp(conn, cmd, data);
 		break;
 
+	case L2CAP_CREATE_CHAN_REQ:
+	case L2CAP_CREATE_CHAN_RSP:
+	case L2CAP_MOVE_CHAN_REQ:
+	case L2CAP_MOVE_CHAN_RSP:
+	case L2CAP_MOVE_CHAN_CFM:
+	case L2CAP_MOVE_CHAN_CFM_RSP:
+		err = l2cap_sig_amp(conn, cmd, data, skb);
+		break;
 	default:
 		BT_ERR("Unknown BR/EDR signaling command 0x%2.2x", cmd->code);
 		err = -EINVAL;
@@ -4889,7 +4898,8 @@ static inline void l2cap_sig_channel(struct l2cap_conn *conn,
 		if (conn->hcon->type == LE_LINK)
 			err = l2cap_le_sig_cmd(conn, &cmd, data);
 		else
-			err = l2cap_bredr_sig_cmd(conn, &cmd, cmd_len, data);
+			err = l2cap_bredr_sig_cmd(conn, &cmd, cmd_len,
+							data, skb);
 
 		if (err) {
 			struct l2cap_cmd_rej rej;
