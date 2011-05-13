@@ -2443,9 +2443,10 @@ static int __devinit smsc911x_drv_probe(struct platform_device *pdev)
 	smsc911x_reg_write(pdata, INT_EN, 0);
 	smsc911x_reg_write(pdata, INT_STS, 0xFFFFFFFF);
 
-	retval = request_irq(dev->irq, smsc911x_irqhandler,
-			     irq_flags | IRQF_SHARED, dev->name, dev);
-	if (retval) {
+	retval = request_any_context_irq(dev->irq, smsc911x_irqhandler,
+					 irq_flags | IRQF_SHARED, dev->name,
+					 dev);
+	if (retval < 0) {
 		SMSC_WARN(pdata, probe,
 			  "Unable to claim requested irq: %d", dev->irq);
 		goto out_disable_resources;
