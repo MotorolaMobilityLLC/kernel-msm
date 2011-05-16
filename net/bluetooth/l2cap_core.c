@@ -73,6 +73,7 @@ static void l2cap_busy_work(struct work_struct *work);
 
 static struct sk_buff *l2cap_build_cmd(struct l2cap_conn *conn,
 				u8 code, u8 ident, u16 dlen, void *data);
+static void l2cap_chan_ready(struct sock *sk);
 static void l2cap_conn_del(struct hci_conn *hcon, int err);
 
 static int l2cap_ertm_data_rcv(struct sock *sk, struct sk_buff *skb);
