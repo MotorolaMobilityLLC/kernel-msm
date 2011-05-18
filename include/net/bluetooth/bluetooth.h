@@ -38,6 +38,7 @@
 
 /* Reserv for core and drivers use */
 #define BT_SKB_RESERVE	8
+#define BT_SKB_RESERVE_80211	32
 
 #define BTPROTO_L2CAP	0
 #define BTPROTO_HCI	1
