@@ -423,6 +423,7 @@ static int msm_otg_reset(struct usb_phy *phy)
 	u32 val = 0;
 	u32 ulpi_val = 0;
 
+	clk_enable(motg->clk);
 	ret = msm_otg_phy_reset(motg);
 	if (ret) {
 		dev_err(phy->dev, "phy_reset failed\n");
@@ -449,6 +450,7 @@ static int msm_otg_reset(struct usb_phy *phy)
 	writel(0x0, USB_AHBBURST);
 	writel(0x00, USB_AHBMODE);
 
+	clk_disable(motg->clk);
 	if (pdata->otg_control == OTG_PHY_CONTROL) {
 		val = readl(USB_OTGSC);
 		if (pdata->mode == USB_OTG) {
@@ -541,7 +543,6 @@ static int msm_otg_suspend(struct msm_otg *motg)
 		writel(readl(USB_PHY_CTRL) | PHY_RETEN, USB_PHY_CTRL);
 
 	clk_disable(motg->pclk);
-	clk_disable(motg->clk);
 	if (motg->core_clk)
 		clk_disable(motg->core_clk);
 
@@ -583,7 +584,6 @@ static int msm_otg_resume(struct msm_otg *motg)
 		clk_enable(motg->pclk_src);
 
 	clk_enable(motg->pclk);
-	clk_enable(motg->clk);
 	if (motg->core_clk)
 		clk_enable(motg->core_clk);
 
@@ -1768,7 +1768,6 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 		goto free_regs;
 	}
 
-	clk_enable(motg->clk);
 	clk_enable(motg->pclk);
 
 	ret = msm_hsusb_init_vddcx(motg, 1);
@@ -1858,7 +1857,6 @@ free_irq:
 destroy_wlock:
 	wake_lock_destroy(&motg->wlock);
 	clk_disable(motg->pclk);
-	clk_disable(motg->clk);
 ldo_exit:
 	msm_hsusb_ldo_init(motg, 0);
 vddcx_exit:
@@ -1927,7 +1925,6 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 		dev_err(phy->dev, "Unable to suspend PHY\n");
 
 	clk_disable(motg->pclk);
-	clk_disable(motg->clk);
 	if (motg->core_clk)
 		clk_disable(motg->core_clk);
 	if (!IS_ERR(motg->pclk_src)) {
