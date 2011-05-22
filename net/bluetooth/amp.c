@@ -733,7 +733,8 @@ static int physlink_security(struct hci_conn *conn, u8 *data, u8 *len, u8 *type)
 	u8 b802_key[32];
 	int result;
 
-	/* TODO verify that the link is authenticated and encrypted */
+	if (!hci_conn_check_link_mode(conn))
+		return -EACCES;
 
 	BT_DBG("key_type %d", conn->key_type);
 	if (conn->key_type < 3)
