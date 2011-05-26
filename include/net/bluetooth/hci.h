@@ -1499,6 +1499,8 @@ struct hci_conn_info {
 	__u32    mtu;
 	__u32    cnt;
 	__u32    pkts;
+	__u8     pending_sec_level;
+	__u8     ssp_mode;
 };
 
 struct hci_dev_req {

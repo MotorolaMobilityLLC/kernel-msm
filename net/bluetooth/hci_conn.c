@@ -1111,6 +1111,8 @@ int hci_get_conn_info(struct hci_dev *hdev, void __user *arg)
 			ci.cnt = hdev->acl_cnt;
 			ci.pkts = hdev->acl_pkts;
 		}
+		ci.pending_sec_level = conn->pending_sec_level;
+		ci.ssp_mode = conn->ssp_mode;
 	}
 	hci_dev_unlock_bh(hdev);
 
