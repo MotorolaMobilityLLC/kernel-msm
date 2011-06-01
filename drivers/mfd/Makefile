@@ -134,4 +134,5 @@ obj-$(CONFIG_MFD_PM8038_CORE) 	+= pm8038-core.o
 obj-$(CONFIG_MFD_PM8821_IRQ) 	+= pm8821-irq.o
 obj-$(CONFIG_MFD_PM8XXX_DEBUG) 	+= pm8xxx-debug.o
 obj-$(CONFIG_MFD_PM8XXX_PWM) 	+= pm8xxx-pwm.o
+obj-$(CONFIG_MFD_PM8XXX_MISC) 	+= pm8xxx-misc.o
 obj-$(CONFIG_MFD_ANATOP)	+= anatop-mfd.o
