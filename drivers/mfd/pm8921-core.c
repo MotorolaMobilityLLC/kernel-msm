@@ -124,11 +124,7 @@ static struct mfd_cell mpp_cell __devinitdata = {
 };
 
 static const struct resource rtc_cell_resources[] __devinitconst = {
-	[0] = {
-		.start  = PM8921_RTC_ALARM_IRQ,
-		.end    = PM8921_RTC_ALARM_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
+	[0] = SINGLE_IRQ_RESOURCE(NULL, PM8921_RTC_ALARM_IRQ),
 	[1] = {
 		.name   = "pmic_rtc_base",
 		.start  = PM8921_RTC_BASE,
@@ -145,16 +141,8 @@ static struct mfd_cell rtc_cell __devinitdata = {
 };
 
 static const struct resource resources_pwrkey[] __devinitconst = {
-	{
-		.start  = PM8921_PWRKEY_REL_IRQ,
-		.end    = PM8921_PWRKEY_REL_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
-	{
-		.start  = PM8921_PWRKEY_PRESS_IRQ,
-		.end    = PM8921_PWRKEY_PRESS_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
+	SINGLE_IRQ_RESOURCE(NULL, PM8921_PWRKEY_REL_IRQ),
+	SINGLE_IRQ_RESOURCE(NULL, PM8921_PWRKEY_PRESS_IRQ),
 };
 
 static struct mfd_cell pwrkey_cell __devinitdata = {
@@ -165,16 +153,8 @@ static struct mfd_cell pwrkey_cell __devinitdata = {
 };
 
 static const struct resource resources_keypad[] = {
-	{
-		.start  = PM8921_KEYPAD_IRQ,
-		.end    = PM8921_KEYPAD_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
-	{
-		.start  = PM8921_KEYSTUCK_IRQ,
-		.end    = PM8921_KEYSTUCK_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
+	SINGLE_IRQ_RESOURCE(NULL, PM8921_KEYPAD_IRQ),
+	SINGLE_IRQ_RESOURCE(NULL, PM8921_KEYSTUCK_IRQ),
 };
 
 static struct mfd_cell keypad_cell __devinitdata = {
