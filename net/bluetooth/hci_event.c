@@ -582,7 +582,7 @@ static void hci_cc_read_local_version(struct hci_dev *hdev, struct sk_buff *skb)
 					hdev->manufacturer,
 					hdev->hci_ver, hdev->hci_rev);
 
-	if (test_bit(HCI_INIT, &hdev->flags))
+	if (hdev->dev_type == HCI_BREDR && test_bit(HCI_INIT, &hdev->flags))
 		hci_setup(hdev);
 }
 
