@@ -509,6 +509,7 @@ struct l2cap_pinfo {
 
 	__u8		conf_req[64];
 	__u8		conf_len;
+	__u8		conf_ident;
 	__u16		conf_state;
 	__u8		conn_state;
 	__u8		tx_state;
@@ -580,6 +581,9 @@ struct l2cap_pinfo {
 #define L2CAP_CONF_NO_FCS_RECV    0x0040
 #define L2CAP_CONF_STATE2_DEVICE  0x0080
 #define L2CAP_CONF_EXT_WIN_RECV   0x0100
+#define L2CAP_CONF_LOCKSTEP       0x0200
+#define L2CAP_CONF_LOCKSTEP_PEND  0x0400
+#define L2CAP_CONF_PEND_SENT      0x0800
 
 #define L2CAP_CONF_MAX_CONF_REQ 2
 #define L2CAP_CONF_MAX_CONF_RSP 2
@@ -594,7 +598,6 @@ struct l2cap_pinfo {
 #define L2CAP_CONN_LOCAL_BUSY      0x08
 #define L2CAP_CONN_SEND_FBIT       0x10
 #define L2CAP_CONN_SENT_RNR        0x20
-#define L2CAP_CONN_MOVE_PENDING   0x40
 
 #define L2CAP_SEQ_LIST_CLEAR       0xFFFF
 #define L2CAP_SEQ_LIST_TAIL        0x8000

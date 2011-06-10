@@ -30,6 +30,7 @@
 #include <net/bluetooth/hci_core.h>
 #include <net/bluetooth/l2cap.h>
 #include <net/bluetooth/smp.h>
+#include <net/bluetooth/amp.h>
 
 /* ---- L2CAP timers ---- */
 static void l2cap_sock_timeout(unsigned long arg)
@@ -763,8 +764,6 @@ static int l2cap_sock_setsockopt(struct socket *sock, int level, int optname, ch
 			(l2cap_pi(sk)->amp_move_role == L2CAP_AMP_MOVE_NONE) &&
 			(l2cap_pi(sk)->conn->fc_mask & L2CAP_FC_A2MP))
 			l2cap_amp_move_init(sk);
-		else
-			l2cap_pi(sk)->conn_state |= L2CAP_CONN_MOVE_PENDING;
 
 		break;
 
@@ -909,6 +908,15 @@ static int l2cap_sock_recvmsg(struct kiocb *iocb, struct socket *sock, struct ms
 		struct l2cap_conn_rsp rsp;
 		struct l2cap_conn *conn = l2cap_pi(sk)->conn;
 		u8 buf[128];
+
+		if (l2cap_pi(sk)->amp_id) {
+			/* Physical link must be brought up before connection
+			 * completes.
+			 */
+			amp_accept_physical(conn, l2cap_pi(sk)->amp_id, sk);
+			release_sock(sk);
+			return 0;
+		}
 
 		sk->sk_state = BT_CONFIG;
 
