@@ -85,6 +85,7 @@ static int l2cap_ertm_rx_queued_iframes(struct sock *sk);
 static struct sk_buff *l2cap_build_cmd(struct l2cap_conn *conn,
 				u8 code, u8 ident, u16 dlen, void *data);
 static int l2cap_answer_move_poll(struct sock *sk);
+static int l2cap_create_cfm(struct hci_chan *chan, u8 status);
 static void l2cap_chan_ready(struct sock *sk);
 static void l2cap_conn_del(struct hci_conn *hcon, int err);
 
@@ -694,6 +695,32 @@ static inline int __l2cap_no_conn_pending(struct sock *sk)
 	return !(l2cap_pi(sk)->conf_state & L2CAP_CONF_CONNECT_PEND);
 }
 
+static void l2cap_send_conn_req(struct sock *sk)
+{
+	struct l2cap_conn_req req;
+	req.scid = cpu_to_le16(l2cap_pi(sk)->scid);
+	req.psm  = l2cap_pi(sk)->psm;
+
+	l2cap_pi(sk)->ident = l2cap_get_ident(l2cap_pi(sk)->conn);
+
+	l2cap_send_cmd(l2cap_pi(sk)->conn, l2cap_pi(sk)->ident,
+			L2CAP_CONN_REQ, sizeof(req), &req);
+}
+
+static void l2cap_send_create_chan_req(struct sock *sk, u8 amp_id)
+{
+	struct l2cap_create_chan_req req;
+	req.scid = cpu_to_le16(l2cap_pi(sk)->scid);
+	req.psm  = l2cap_pi(sk)->psm;
+	req.amp_id = amp_id;
+
+	l2cap_pi(sk)->conf_state |= L2CAP_CONF_LOCKSTEP;
+	l2cap_pi(sk)->ident = l2cap_get_ident(l2cap_pi(sk)->conn);
+
+	l2cap_send_cmd(l2cap_pi(sk)->conn, l2cap_pi(sk)->ident,
+			L2CAP_CREATE_CHAN_REQ, sizeof(req), &req);
+}
+
 static void l2cap_do_start(struct sock *sk)
 {
 	struct l2cap_conn *conn = l2cap_pi(sk)->conn;
@@ -703,15 +730,12 @@ static void l2cap_do_start(struct sock *sk)
 			return;
 
 		if (l2cap_check_security(sk) && __l2cap_no_conn_pending(sk)) {
-			struct l2cap_conn_req req;
-			req.scid = cpu_to_le16(l2cap_pi(sk)->scid);
-			req.psm  = l2cap_pi(sk)->psm;
-
-			l2cap_pi(sk)->ident = l2cap_get_ident(conn);
 			l2cap_pi(sk)->conf_state |= L2CAP_CONF_CONNECT_PEND;
 
-			l2cap_send_cmd(conn, l2cap_pi(sk)->ident,
-					L2CAP_CONN_REQ, sizeof(req), &req);
+			if (l2cap_pi(sk)->amp_pref == BT_AMP_POLICY_PREFER_AMP)
+				amp_create_physical(l2cap_pi(sk)->conn, sk);
+			else
+				l2cap_send_conn_req(sk);
 		}
 	} else {
 		struct l2cap_info_req req;
@@ -793,8 +817,6 @@ static void l2cap_conn_start(struct l2cap_conn *conn)
 		}
 
 		if (sk->sk_state == BT_CONNECT) {
-			struct l2cap_conn_req req;
-
 			if (!l2cap_check_security(sk) ||
 					!__l2cap_no_conn_pending(sk)) {
 				bh_unlock_sock(sk);
@@ -813,14 +835,12 @@ static void l2cap_conn_start(struct l2cap_conn *conn)
 				continue;
 			}
 
-			req.scid = cpu_to_le16(l2cap_pi(sk)->scid);
-			req.psm  = l2cap_pi(sk)->psm;
-
-			l2cap_pi(sk)->ident = l2cap_get_ident(conn);
 			l2cap_pi(sk)->conf_state |= L2CAP_CONF_CONNECT_PEND;
 
-			l2cap_send_cmd(conn, l2cap_pi(sk)->ident,
-				L2CAP_CONN_REQ, sizeof(req), &req);
+			if (l2cap_pi(sk)->amp_pref == BT_AMP_POLICY_PREFER_AMP)
+				amp_create_physical(l2cap_pi(sk)->conn, sk);
+			else
+				l2cap_send_conn_req(sk);
 
 		} else if (sk->sk_state == BT_CONNECT2) {
 			struct l2cap_conn_rsp rsp;
@@ -844,6 +864,14 @@ static void l2cap_conn_start(struct l2cap_conn *conn)
 			} else {
 				rsp.result = cpu_to_le16(L2CAP_CR_PEND);
 				rsp.status = cpu_to_le16(L2CAP_CS_AUTHEN_PEND);
+			}
+
+			if (rsp.result == cpu_to_le16(L2CAP_CR_SUCCESS) &&
+					l2cap_pi(sk)->amp_id) {
+				amp_accept_physical(conn,
+						l2cap_pi(sk)->amp_id, sk);
+				bh_unlock_sock(sk);
+				continue;
 			}
 
 			l2cap_send_cmd(conn, l2cap_pi(sk)->ident,
@@ -2639,11 +2667,6 @@ static void l2cap_chan_ready(struct sock *sk)
 		 */
 		parent->sk_data_ready(parent, 0);
 	}
-
-	if (l2cap_pi(sk)->conn_state & L2CAP_CONN_MOVE_PENDING) {
-		l2cap_pi(sk)->conn_state &= ~L2CAP_CONN_MOVE_PENDING;
-		l2cap_amp_move_init(sk);
-	}
 }
 
 /* Copy frame to all raw sockets on that connection */
@@ -3305,6 +3328,38 @@ done:
 			rfc.mode = pi->mode;
 		}
 
+		if (pi->conf_state & L2CAP_CONF_LOCKSTEP &&
+				!(pi->conf_state & L2CAP_CONF_PEND_SENT)) {
+			pi->conf_state |= L2CAP_CONF_PEND_SENT;
+			result = L2CAP_CONF_PENDING;
+
+			if (pi->conf_state & L2CAP_CONF_LOCKSTEP_PEND &&
+					pi->amp_id) {
+				/* Trigger logical link creation only on AMP */
+
+				struct hci_chan *chan;
+				u8 amp_id = A2MP_HCI_ID(pi->amp_id);
+				BT_DBG("Set up logical link");
+
+				if (bt_sk(sk)->parent) {
+					/* Incoming connection */
+					chan = hci_chan_accept(amp_id,
+								pi->conn->dst);
+				} else {
+					/* Outgoing connection */
+					chan = hci_chan_create(amp_id,
+								pi->conn->dst);
+				}
+
+				if (!chan)
+					return -ECONNREFUSED;
+
+				chan->l2cap_sk = sk;
+				if (chan->state == BT_CONNECTED)
+					l2cap_create_cfm(chan, 0);
+			}
+		}
+
 		if (result == L2CAP_CONF_SUCCESS)
 			pi->conf_state |= L2CAP_CONF_OUTPUT_DONE;
 	}
@@ -3690,7 +3745,10 @@ static inline int l2cap_command_rej(struct l2cap_conn *conn, struct l2cap_cmd_hd
 	return 0;
 }
 
-static inline int l2cap_connect_req(struct l2cap_conn *conn, struct l2cap_cmd_hdr *cmd, u8 *data)
+static struct sock *l2cap_create_connect(struct l2cap_conn *conn,
+						struct l2cap_cmd_hdr *cmd,
+						u8 *data, u8 rsp_code,
+						u8 amp_id)
 {
 	struct l2cap_chan_list *list = &conn->chan_list;
 	struct l2cap_conn_req *req = (struct l2cap_conn_req *) data;
@@ -3739,6 +3797,7 @@ static inline int l2cap_connect_req(struct l2cap_conn *conn, struct l2cap_cmd_hd
 		write_unlock_bh(&list->lock);
 		sock_set_flag(sk, SOCK_ZAPPED);
 		l2cap_sock_kill(sk);
+		sk = NULL;
 		goto response;
 	}
 
@@ -3754,6 +3813,7 @@ static inline int l2cap_connect_req(struct l2cap_conn *conn, struct l2cap_cmd_hd
 
 	__l2cap_chan_add(conn, sk);
 	dcid = l2cap_pi(sk)->scid;
+	l2cap_pi(sk)->amp_id = amp_id;
 
 	l2cap_sock_set_timer(sk, sk->sk_sndtimeo);
 
@@ -3767,8 +3827,16 @@ static inline int l2cap_connect_req(struct l2cap_conn *conn, struct l2cap_cmd_hd
 				status = L2CAP_CS_AUTHOR_PEND;
 				parent->sk_data_ready(parent, 0);
 			} else {
-				sk->sk_state = BT_CONFIG;
-				result = L2CAP_CR_SUCCESS;
+				/* Force pending result for AMP controllers.
+				 * The connection will succeed after the
+				 * physical link is up. */
+				if (amp_id) {
+					sk->sk_state = BT_CONNECT2;
+					result = L2CAP_CR_PEND;
+				} else {
+					sk->sk_state = BT_CONFIG;
+					result = L2CAP_CR_SUCCESS;
+				}
 				status = L2CAP_CS_NO_INFO;
 			}
 		} else {
@@ -3792,9 +3860,9 @@ sendresp:
 	rsp.dcid   = cpu_to_le16(dcid);
 	rsp.result = cpu_to_le16(result);
 	rsp.status = cpu_to_le16(status);
-	l2cap_send_cmd(conn, cmd->ident, L2CAP_CONN_RSP, sizeof(rsp), &rsp);
+	l2cap_send_cmd(conn, cmd->ident, rsp_code, sizeof(rsp), &rsp);
 
-	if (result == L2CAP_CR_PEND && status == L2CAP_CS_NO_INFO) {
+	if (!(conn->info_state & L2CAP_INFO_FEAT_MASK_REQ_DONE)) {
 		struct l2cap_info_req info;
 		info.type = cpu_to_le16(L2CAP_IT_FEAT_MASK);
 
@@ -3817,6 +3885,13 @@ sendresp:
 		l2cap_pi(sk)->num_conf_req++;
 	}
 
+	return sk;
+}
+
+static inline int l2cap_connect_req(struct l2cap_conn *conn,
+					struct l2cap_cmd_hdr *cmd, u8 *data)
+{
+	l2cap_create_connect(conn, cmd, data, L2CAP_CONN_RSP, 0);
 	return 0;
 }
 
@@ -3897,7 +3972,8 @@ static inline int l2cap_config_req(struct l2cap_conn *conn, struct l2cap_cmd_hdr
 {
 	struct l2cap_conf_req *req = (struct l2cap_conf_req *) data;
 	u16 dcid, flags;
-	u8 rsp[64];
+	u8 rspbuf[64];
+	struct l2cap_conf_rsp *rsp = (struct l2cap_conf_rsp *) rspbuf;
 	struct sock *sk;
 	int len;
 	u8 amp_move_reconf = 0;
@@ -3941,8 +4017,8 @@ static inline int l2cap_config_req(struct l2cap_conn *conn, struct l2cap_cmd_hdr
 	len = cmd_len - sizeof(*req);
 	if (l2cap_pi(sk)->conf_len + len > sizeof(l2cap_pi(sk)->conf_req)) {
 		l2cap_send_cmd(conn, cmd->ident, L2CAP_CONF_RSP,
-				l2cap_build_conf_rsp(sk, rsp,
-					L2CAP_CONF_REJECT, flags), rsp);
+				l2cap_build_conf_rsp(sk, rspbuf,
+					L2CAP_CONF_REJECT, flags), rspbuf);
 		goto unlock;
 	}
 
@@ -3953,23 +4029,35 @@ static inline int l2cap_config_req(struct l2cap_conn *conn, struct l2cap_cmd_hdr
 	if (flags & 0x0001) {
 		/* Incomplete config. Send empty response. */
 		l2cap_send_cmd(conn, cmd->ident, L2CAP_CONF_RSP,
-				l2cap_build_conf_rsp(sk, rsp,
-					L2CAP_CONF_SUCCESS, 0x0001), rsp);
+				l2cap_build_conf_rsp(sk, rspbuf,
+					L2CAP_CONF_SUCCESS, 0x0001), rspbuf);
 		goto unlock;
 	}
 
 	/* Complete config. */
 	if (!amp_move_reconf)
-		len = l2cap_parse_conf_req(sk, rsp);
+		len = l2cap_parse_conf_req(sk, rspbuf);
 	else
-		len = l2cap_parse_amp_move_reconf_req(sk, rsp);
+		len = l2cap_parse_amp_move_reconf_req(sk, rspbuf);
 
 	if (len < 0) {
 		l2cap_send_disconn_req(conn, sk, ECONNRESET);
 		goto unlock;
 	}
 
-	l2cap_send_cmd(conn, cmd->ident, L2CAP_CONF_RSP, len, rsp);
+	l2cap_pi(sk)->conf_ident = cmd->ident;
+	l2cap_send_cmd(conn, cmd->ident, L2CAP_CONF_RSP, len, rspbuf);
+
+	if (l2cap_pi(sk)->conf_state & L2CAP_CONF_LOCKSTEP &&
+			rsp->result == cpu_to_le16(L2CAP_CONF_PENDING) &&
+			!l2cap_pi(sk)->amp_id) {
+		/* Send success response right after pending if using
+		 * lockstep config on BR/EDR
+		 */
+		rsp->result = cpu_to_le16(L2CAP_CONF_SUCCESS);
+		l2cap_pi(sk)->conf_state |= L2CAP_CONF_OUTPUT_DONE;
+		l2cap_send_cmd(conn, cmd->ident, L2CAP_CONF_RSP, len, rspbuf);
+	}
 
 	/* Reset config buffer. */
 	l2cap_pi(sk)->conf_len = 0;
@@ -4013,6 +4101,7 @@ static inline int l2cap_config_rsp(struct l2cap_conn *conn, struct l2cap_cmd_hdr
 	struct l2cap_conf_rsp *rsp = (struct l2cap_conf_rsp *)data;
 	u16 scid, flags, result;
 	struct sock *sk;
+	struct l2cap_pinfo *pi;
 	int len = cmd->len - sizeof(*rsp);
 
 	scid   = __le16_to_cpu(rsp->scid);
@@ -4026,18 +4115,72 @@ static inline int l2cap_config_rsp(struct l2cap_conn *conn, struct l2cap_cmd_hdr
 	if (!sk)
 		return 0;
 
-	if (l2cap_pi(sk)->reconf_state != L2CAP_RECONF_NONE)  {
+	pi = l2cap_pi(sk);
+
+	if (pi->reconf_state != L2CAP_RECONF_NONE)  {
 		l2cap_amp_move_reconf_rsp(sk, rsp->data, len, result);
 		goto done;
 	}
 
 	switch (result) {
 	case L2CAP_CONF_SUCCESS:
+		if (pi->conf_state & L2CAP_CONF_LOCKSTEP &&
+				!(pi->conf_state & L2CAP_CONF_LOCKSTEP_PEND)) {
+			/* Lockstep procedure requires a pending response
+			 * before success.
+			 */
+			l2cap_send_disconn_req(conn, sk, ECONNRESET);
+			goto done;
+		}
+
 		l2cap_conf_rfc_get(sk, rsp->data, len);
 		break;
 
+	case L2CAP_CONF_PENDING:
+		if (!(pi->conf_state & L2CAP_CONF_LOCKSTEP)) {
+			l2cap_send_disconn_req(conn, sk, ECONNRESET);
+			goto done;
+		}
+
+		l2cap_conf_rfc_get(sk, rsp->data, len);
+
+		pi->conf_state |= L2CAP_CONF_LOCKSTEP_PEND;
+
+		/* Check Extended Flow Specification */
+
+		if (pi->amp_id && pi->conf_state & L2CAP_CONF_PEND_SENT) {
+			struct hci_chan *chan;
+
+			/* Already sent a 'pending' response, so set up
+			 * the logical link now
+			 */
+			BT_DBG("Set up logical link");
+
+			if (bt_sk(sk)->parent) {
+				/* Incoming connection */
+				chan = hci_chan_accept(A2MP_HCI_ID(pi->amp_id),
+								pi->conn->dst);
+			} else {
+				/* Outgoing connection */
+				chan = hci_chan_create(A2MP_HCI_ID(pi->amp_id),
+								pi->conn->dst);
+			}
+
+			if (!chan) {
+				l2cap_send_disconn_req(pi->conn, sk,
+							ECONNRESET);
+				goto done;
+			}
+
+			chan->l2cap_sk = sk;
+			if (chan->state == BT_CONNECTED)
+				l2cap_create_cfm(chan, 0);
+		}
+
+		goto done;
+
 	case L2CAP_CONF_UNACCEPT:
-		if (l2cap_pi(sk)->num_conf_rsp <= L2CAP_CONF_MAX_CONF_RSP) {
+		if (pi->num_conf_rsp <= L2CAP_CONF_MAX_CONF_RSP) {
 			char req[64];
 
 			if (len > sizeof(req) - sizeof(struct l2cap_conf_req)) {
@@ -4056,7 +4199,7 @@ static inline int l2cap_config_rsp(struct l2cap_conn *conn, struct l2cap_cmd_hdr
 
 			l2cap_send_cmd(conn, l2cap_get_ident(conn),
 						L2CAP_CONF_REQ, len, req);
-			l2cap_pi(sk)->num_conf_req++;
+			pi->num_conf_req++;
 			if (result != L2CAP_CONF_SUCCESS)
 				goto done;
 			break;
@@ -4072,15 +4215,15 @@ static inline int l2cap_config_rsp(struct l2cap_conn *conn, struct l2cap_cmd_hdr
 	if (flags & 0x01)
 		goto done;
 
-	l2cap_pi(sk)->conf_state |= L2CAP_CONF_INPUT_DONE;
+	pi->conf_state |= L2CAP_CONF_INPUT_DONE;
 
-	if (l2cap_pi(sk)->conf_state & L2CAP_CONF_OUTPUT_DONE) {
-		set_default_fcs(l2cap_pi(sk));
+	if (pi->conf_state & L2CAP_CONF_OUTPUT_DONE) {
+		set_default_fcs(pi);
 
 		sk->sk_state = BT_CONNECTED;
 
-		if (l2cap_pi(sk)->mode == L2CAP_MODE_ERTM ||
-			l2cap_pi(sk)->mode == L2CAP_MODE_STREAMING)
+		if (pi->mode == L2CAP_MODE_ERTM ||
+			pi->mode == L2CAP_MODE_STREAMING)
 			l2cap_ertm_init(sk);
 
 		l2cap_chan_ready(sk);
@@ -4334,7 +4477,7 @@ static inline int l2cap_create_channel_req(struct l2cap_conn *conn,
 {
 	struct l2cap_create_chan_req *req =
 		(struct l2cap_create_chan_req *) data;
-	struct l2cap_create_chan_rsp rsp;
+	struct sock *sk;
 	u16 psm, scid;
 
 	psm = le16_to_cpu(req->psm);
@@ -4343,15 +4486,38 @@ static inline int l2cap_create_channel_req(struct l2cap_conn *conn,
 	BT_DBG("psm %d, scid %d, amp_id %d", (int) psm, (int) scid,
 		(int) req->amp_id);
 
-	/* Refuse all requests */
+	if (req->amp_id) {
+		struct hci_dev *hdev;
 
-	rsp.dcid = 0;
-	rsp.scid = cpu_to_le16(scid);
-	rsp.result = L2CAP_CREATE_CHAN_REFUSED_RESOURCES;
-	rsp.status = L2CAP_CREATE_CHAN_STATUS_NONE;
+		/* Validate AMP controller id */
+		hdev = hci_dev_get(A2MP_HCI_ID(req->amp_id));
+		if (!hdev || !test_bit(HCI_UP, &hdev->flags)) {
+			struct l2cap_create_chan_rsp rsp;
 
-	l2cap_send_cmd(conn, cmd->ident, L2CAP_CREATE_CHAN_RSP,
-			sizeof(rsp), &rsp);
+			rsp.dcid = 0;
+			rsp.scid = cpu_to_le16(scid);
+			rsp.result = L2CAP_CREATE_CHAN_REFUSED_CONTROLLER;
+			rsp.status = L2CAP_CREATE_CHAN_STATUS_NONE;
+
+			l2cap_send_cmd(conn, cmd->ident, L2CAP_CREATE_CHAN_RSP,
+				       sizeof(rsp), &rsp);
+
+			if (hdev)
+				hci_dev_put(hdev);
+
+			return 0;
+		}
+
+		hci_dev_put(hdev);
+	}
+
+	sk = l2cap_create_connect(conn, cmd, data, L2CAP_CREATE_CHAN_RSP,
+					req->amp_id);
+
+	l2cap_pi(sk)->conf_state |= L2CAP_CONF_LOCKSTEP;
+
+	if (sk && req->amp_id)
+		amp_accept_physical(conn, req->amp_id, sk);
 
 	return 0;
 }
@@ -4359,21 +4525,9 @@ static inline int l2cap_create_channel_req(struct l2cap_conn *conn,
 static inline int l2cap_create_channel_rsp(struct l2cap_conn *conn,
 					struct l2cap_cmd_hdr *cmd, u8 *data)
 {
-	struct l2cap_create_chan_rsp *rsp =
-		(struct l2cap_create_chan_rsp *) data;
-	u16 dcid, scid, result, status;
+	BT_DBG("conn %p", conn);
 
-	dcid = le16_to_cpu(rsp->dcid);
-	scid = le16_to_cpu(rsp->scid);
-	result = le16_to_cpu(rsp->result);
-	status = le16_to_cpu(rsp->status);
-
-	BT_DBG("dcid %d, scid %d, result %d, status %d", (int) dcid,
-		(int) scid, (int) result, (int) status);
-
-	/* We never send create channel requests, so no responses expected. */
-
-	return 0;
+	return l2cap_connect_rsp(conn, cmd, data);
 }
 
 static inline int l2cap_move_channel_req(struct l2cap_conn *conn,
@@ -4725,16 +4879,6 @@ static void l2cap_amp_signal_worker(struct work_struct *work)
 		container_of(work, struct l2cap_amp_signal_work, work);
 
 	switch (ampwork->cmd.code) {
-	case L2CAP_CREATE_CHAN_REQ:
-		err = l2cap_create_channel_req(ampwork->conn, &ampwork->cmd,
-						ampwork->data);
-		break;
-
-	case L2CAP_CREATE_CHAN_RSP:
-		err = l2cap_create_channel_rsp(ampwork->conn, &ampwork->cmd,
-						ampwork->data);
-		break;
-
 	case L2CAP_MOVE_CHAN_REQ:
 		err = l2cap_move_channel_req(ampwork->conn, &ampwork->cmd,
 						ampwork->data);
@@ -4787,14 +4931,55 @@ void l2cap_amp_physical_complete(int result, u8 local_id, u8 remote_id,
 
 	lock_sock(sk);
 
-	if (sk->sk_state != BT_CONNECTED) {
+	if (sk->sk_state == BT_DISCONN || sk->sk_state == BT_CLOSED) {
 		release_sock(sk);
 		return;
 	}
 
 	pi = l2cap_pi(sk);
 
-	if (result == L2CAP_MOVE_CHAN_SUCCESS &&
+	if (sk->sk_state != BT_CONNECTED) {
+		if (bt_sk(sk)->parent) {
+			struct l2cap_conn_rsp rsp;
+			char buf[128];
+			rsp.scid = cpu_to_le16(l2cap_pi(sk)->dcid);
+			rsp.dcid = cpu_to_le16(l2cap_pi(sk)->scid);
+
+			/* Incoming channel on AMP */
+			if (result == L2CAP_CREATE_CHAN_SUCCESS) {
+				/* Send successful response */
+				rsp.result = cpu_to_le16(L2CAP_CR_SUCCESS);
+				rsp.status = cpu_to_le16(L2CAP_CS_NO_INFO);
+			} else {
+				/* Send negative response */
+				rsp.result = cpu_to_le16(L2CAP_CR_NO_MEM);
+				rsp.status = cpu_to_le16(L2CAP_CS_NO_INFO);
+			}
+
+			l2cap_send_cmd(pi->conn, pi->ident,
+					L2CAP_CREATE_CHAN_RSP,
+					sizeof(rsp), &rsp);
+
+			if (result == L2CAP_CREATE_CHAN_SUCCESS) {
+				sk->sk_state = BT_CONFIG;
+				pi->conf_state |= L2CAP_CONF_REQ_SENT;
+				l2cap_send_cmd(pi->conn,
+					l2cap_get_ident(pi->conn),
+					L2CAP_CONF_REQ,
+					l2cap_build_conf_req(sk, buf), buf);
+				l2cap_pi(sk)->num_conf_req++;
+			}
+		} else {
+			/* Outgoing channel on AMP */
+			if (result != L2CAP_CREATE_CHAN_SUCCESS) {
+				/* Revert to BR/EDR connect */
+				l2cap_send_conn_req(sk);
+			} else {
+				pi->amp_id = local_id;
+				l2cap_send_create_chan_req(sk, remote_id);
+			}
+		}
+	} else if (result == L2CAP_MOVE_CHAN_SUCCESS &&
 		pi->amp_move_role == L2CAP_AMP_MOVE_INITIATOR) {
 		l2cap_amp_move_setup(sk);
 		pi->amp_move_id = local_id;
@@ -4873,7 +5058,7 @@ int l2cap_logical_link_complete(struct hci_chan *chan, u8 status)
 
 	lock_sock(sk);
 
-	if (sk->sk_state != BT_CONNECTED) {
+	if (sk->sk_state != BT_CONNECTED && !l2cap_pi(sk)->amp_id) {
 		release_sock(sk);
 		return 0;
 	}
@@ -4885,7 +5070,31 @@ int l2cap_logical_link_complete(struct hci_chan *chan, u8 status)
 		pi->ampcon = chan->conn;
 		pi->ampcon->l2cap_data = pi->conn;
 
-		if (pi->amp_move_state ==
+		if (sk->sk_state != BT_CONNECTED) {
+			struct l2cap_conf_rsp rsp;
+
+			/* Must use spinlock to prevent concurrent
+			 * execution of l2cap_config_rsp()
+			 */
+			bh_lock_sock(sk);
+			l2cap_send_cmd(pi->conn, pi->conf_ident, L2CAP_CONF_RSP,
+					l2cap_build_conf_rsp(sk, &rsp,
+						L2CAP_CONF_SUCCESS, 0), &rsp);
+			pi->conf_state |= L2CAP_CONF_OUTPUT_DONE;
+
+			if (l2cap_pi(sk)->conf_state & L2CAP_CONF_INPUT_DONE) {
+				set_default_fcs(l2cap_pi(sk));
+
+				sk->sk_state = BT_CONNECTED;
+
+				if (l2cap_pi(sk)->mode == L2CAP_MODE_ERTM ||
+				    l2cap_pi(sk)->mode == L2CAP_MODE_STREAMING)
+					l2cap_ertm_init(sk);
+
+				l2cap_chan_ready(sk);
+			}
+			bh_unlock_sock(sk);
+		} else if (pi->amp_move_state ==
 				L2CAP_AMP_STATE_WAIT_LOGICAL_COMPLETE) {
 			/* Move confirm will be sent after a success
 			 * response is received
@@ -4921,12 +5130,11 @@ int l2cap_logical_link_complete(struct hci_chan *chan, u8 status)
 			pi->ampchan = NULL;
 		}
 	} else {
-		/* Logical link setup failed.  May be initiator or
-		 * responder.  If initiator, may have already had a
-		 * pending, success, or refused response.  If
-		 * responder, send refused response and clean up.
-		 */
-		if (pi->amp_move_role == L2CAP_AMP_MOVE_RESPONDER) {
+		/* Logical link setup failed. */
+
+		if (sk->sk_state != BT_CONNECTED)
+			l2cap_send_disconn_req(pi->conn, sk, ECONNRESET);
+		else if (pi->amp_move_role == L2CAP_AMP_MOVE_RESPONDER) {
 			l2cap_amp_move_revert(sk);
 			l2cap_pi(sk)->amp_move_role = L2CAP_AMP_MOVE_NONE;
 			pi->amp_move_state = L2CAP_AMP_STATE_STABLE;
@@ -4972,7 +5180,7 @@ static void l2cap_logical_link_worker(struct work_struct *work)
 	kfree(log_link_work);
 }
 
-int l2cap_create_cfm(struct hci_chan *chan, u8 status)
+static int l2cap_create_cfm(struct hci_chan *chan, u8 status)
 {
 	struct l2cap_logical_link_work *amp_work;
 
@@ -5165,7 +5373,13 @@ static inline int l2cap_bredr_sig_cmd(struct l2cap_conn *conn,
 		break;
 
 	case L2CAP_CREATE_CHAN_REQ:
+		err = l2cap_create_channel_req(conn, cmd, data);
+		break;
+
 	case L2CAP_CREATE_CHAN_RSP:
+		err = l2cap_create_channel_rsp(conn, cmd, data);
+		break;
+
 	case L2CAP_MOVE_CHAN_REQ:
 	case L2CAP_MOVE_CHAN_RSP:
 	case L2CAP_MOVE_CHAN_CFM:
@@ -6853,15 +7067,14 @@ static int l2cap_security_cfm(struct hci_conn *hcon, u8 status, u8 encrypt)
 
 		if (sk->sk_state == BT_CONNECT) {
 			if (!status) {
-				struct l2cap_conn_req req;
-				req.scid = cpu_to_le16(l2cap_pi(sk)->scid);
-				req.psm  = l2cap_pi(sk)->psm;
-
-				l2cap_pi(sk)->ident = l2cap_get_ident(conn);
-				l2cap_pi(sk)->conf_state |= L2CAP_CONF_CONNECT_PEND;
-
-				l2cap_send_cmd(conn, l2cap_pi(sk)->ident,
-					L2CAP_CONN_REQ, sizeof(req), &req);
+				l2cap_pi(sk)->conf_state |=
+						L2CAP_CONF_CONNECT_PEND;
+				if (l2cap_pi(sk)->amp_pref ==
+						BT_AMP_POLICY_PREFER_AMP) {
+					amp_create_physical(l2cap_pi(sk)->conn,
+								sk);
+				} else
+					l2cap_send_conn_req(sk);
 			} else {
 				l2cap_sock_clear_timer(sk);
 				l2cap_sock_set_timer(sk, HZ / 10);
@@ -6871,6 +7084,13 @@ static int l2cap_security_cfm(struct hci_conn *hcon, u8 status, u8 encrypt)
 			__u16 result;
 
 			if (!status) {
+				if (l2cap_pi(sk)->amp_id) {
+					amp_accept_physical(conn,
+						l2cap_pi(sk)->amp_id, sk);
+					bh_unlock_sock(sk);
+					continue;
+				}
+
 				sk->sk_state = BT_CONFIG;
 				result = L2CAP_CR_SUCCESS;
 			} else {
