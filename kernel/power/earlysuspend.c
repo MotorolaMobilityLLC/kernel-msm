@@ -53,6 +53,10 @@ static inline void stuck_wakelock_wdset(void) {}
 static inline void stuck_wakelock_wdclr(void) {}
 #endif
 
+static struct task_struct *current_handler;
+static void handler_timeout(unsigned long data);
+static DEFINE_TIMER(handler_wd, handler_timeout, 0, 0);
+
 void register_early_suspend(struct early_suspend *handler)
 {
 	struct list_head *pos;
@@ -78,6 +82,27 @@ void unregister_early_suspend(struct early_suspend *handler)
 	mutex_unlock(&early_suspend_lock);
 }
 EXPORT_SYMBOL(unregister_early_suspend);
+
+static void handler_timeout(unsigned long data)
+{
+	pr_emerg("**** early suspend / late resume timeout at %pf\n",
+			(void *)data);
+	sched_show_task(current_handler);
+	BUG();
+}
+
+static void handler_wdset(void *function)
+{
+	current_handler = current;
+	handler_wd.data = (unsigned long)function;
+	mod_timer(&handler_wd, jiffies + (HZ * 10));
+}
+
+static void handler_wdclr(void)
+{
+	del_timer_sync(&handler_wd);
+	current_handler = NULL;
+}
 
 static void early_suspend(struct work_struct *work)
 {
@@ -106,7 +131,9 @@ static void early_suspend(struct work_struct *work)
 		if (pos->suspend != NULL) {
 			if (debug_mask & DEBUG_VERBOSE)
 				pr_info("early_suspend: calling %pf\n", pos->suspend);
+			handler_wdset(pos->suspend);
 			pos->suspend(pos);
+			handler_wdclr();
 		}
 	}
 	mutex_unlock(&early_suspend_lock);
@@ -146,7 +173,9 @@ static void late_resume(struct work_struct *work)
 			if (debug_mask & DEBUG_VERBOSE)
 				pr_info("late_resume: calling %pf\n", pos->resume);
 
+			handler_wdset(pos->resume);
 			pos->resume(pos);
+			handler_wdclr();
 		}
 	}
 
