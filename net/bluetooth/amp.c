@@ -190,7 +190,7 @@ static void destroy_ctx(struct amp_ctx *ctx)
 	kfree(ctx);
 }
 
-static struct amp_ctx *get_ctx_type(struct amp_mgr *mgr, u8 type)
+static struct amp_ctx *get_ctx_mgr(struct amp_mgr *mgr, u8 type)
 {
 	struct amp_ctx *fnd = NULL;
 	struct amp_ctx *ctx;
@@ -198,6 +198,23 @@ static struct amp_ctx *get_ctx_type(struct amp_mgr *mgr, u8 type)
 	read_lock_bh(&mgr->ctx_list_lock);
 	list_for_each_entry(ctx, &mgr->ctx_list, list) {
 		if (ctx->type == type) {
+			fnd = ctx;
+			break;
+		}
+	}
+	read_unlock_bh(&mgr->ctx_list_lock);
+	return fnd;
+}
+
+static struct amp_ctx *get_ctx_type(struct amp_ctx *cur, u8 type)
+{
+	struct amp_mgr *mgr = cur->mgr;
+	struct amp_ctx *fnd = NULL;
+	struct amp_ctx *ctx;
+
+	read_lock_bh(&mgr->ctx_list_lock);
+	list_for_each_entry(ctx, &mgr->ctx_list, list) {
+		if ((ctx->type == type) && (ctx != cur)) {
 			fnd = ctx;
 			break;
 		}
@@ -505,7 +522,7 @@ static void accept_physical(struct l2cap_conn *lcon, u8 id, struct sock *sk)
 		remote_id = conn->dst_id;
 		goto ap_finished;
 	}
-	aplctx = get_ctx_type(mgr, AMP_ACCEPTPHYSLINK);
+	aplctx = get_ctx_mgr(mgr, AMP_ACCEPTPHYSLINK);
 	if (!aplctx)
 		goto ap_finished;
 	aplctx->sk = sk;
@@ -819,6 +836,7 @@ static u8 acceptphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 	struct hci_ev_phys_link_complete *ev;
 	struct a2mp_createphyslink_rsp rsp;
 	struct amp_ctx *cplctx;
+	struct amp_ctx *aplctx;
 	u16 frag_len;
 	struct hci_conn *conn;
 	int result;
@@ -852,7 +870,15 @@ static u8 acceptphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 			goto apl_finished;
 		}
 
-		cplctx = get_ctx_type(ctx->mgr, AMP_CREATEPHYSLINK);
+		aplctx = get_ctx_type(ctx, AMP_ACCEPTPHYSLINK);
+		if ((aplctx) &&
+			(aplctx->d.cpl.remote_id == ctx->d.apl.remote_id)) {
+			BT_DBG("deferred to %p", aplctx);
+			aplctx->deferred = ctx;
+			break;
+		}
+
+		cplctx = get_ctx_type(ctx, AMP_CREATEPHYSLINK);
 		if ((cplctx) &&
 			(cplctx->d.cpl.remote_id == ctx->d.apl.remote_id)) {
 			struct hci_conn *bcon = ctx->mgr->l2cap_conn->hcon;
@@ -1040,8 +1066,8 @@ static u8 createphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 
 	switch (ctx->state) {
 	case AMP_CPL_INIT:
-		cplctx = get_ctx_type(ctx->mgr, AMP_CREATEPHYSLINK);
-		if ((cplctx) && (cplctx != ctx)) {
+		cplctx = get_ctx_type(ctx, AMP_CREATEPHYSLINK);
+		if (cplctx) {
 			BT_DBG("deferred to %p", cplctx);
 			cplctx->deferred = ctx;
 			break;
@@ -1399,7 +1425,7 @@ static int disconnphyslink_req(struct amp_mgr *mgr, struct sk_buff *skb)
 	conn = hci_conn_hash_lookup_ba(hdev, ACL_LINK,
 					&mgr->l2cap_conn->hcon->dst);
 	if (!conn) {
-		aplctx = get_ctx_type(mgr, AMP_ACCEPTPHYSLINK);
+		aplctx = get_ctx_mgr(mgr, AMP_ACCEPTPHYSLINK);
 		if (aplctx) {
 			kill_ctx(aplctx);
 			rsp.status = 0;
