@@ -1288,7 +1288,8 @@ void l2cap_do_send(struct sock *sk, struct sk_buff *skb)
 
 	BT_DBG("sk %p, skb %p len %d", sk, skb, skb->len);
 
-	if (pi->ampcon && (pi->amp_move_state == L2CAP_AMP_STATE_STABLE)) {
+	if (pi->ampcon && (pi->amp_move_state == L2CAP_AMP_STATE_STABLE ||
+			pi->amp_move_state == L2CAP_AMP_STATE_WAIT_PREPARE)) {
 		BT_DBG("Sending on AMP connection %p %p",
 			pi->ampcon, pi->ampchan);
 		if (pi->ampchan)
@@ -1327,7 +1328,8 @@ int l2cap_ertm_send(struct sock *sk)
 	if (pi->conn_state & L2CAP_CONN_REMOTE_BUSY)
 		return 0;
 
-	if (pi->amp_move_state != L2CAP_AMP_STATE_STABLE)
+	if (pi->amp_move_state != L2CAP_AMP_STATE_STABLE &&
+			pi->amp_move_state != L2CAP_AMP_STATE_WAIT_PREPARE)
 		return 0;
 
 	while (sk->sk_send_head && (pi->unacked_frames < pi->remote_tx_win) &&
@@ -1403,7 +1405,8 @@ int l2cap_strm_tx(struct sock *sk, struct sk_buff_head *skbs)
 	if (sk->sk_state != BT_CONNECTED)
 		return -ENOTCONN;
 
-	if (pi->amp_move_state != L2CAP_AMP_STATE_STABLE)
+	if (pi->amp_move_state != L2CAP_AMP_STATE_STABLE &&
+			pi->amp_move_state != L2CAP_AMP_STATE_WAIT_PREPARE)
 		return 0;
 
 	skb_queue_splice_tail_init(skbs, TX_QUEUE(sk));
@@ -1801,6 +1804,7 @@ static void l2cap_ertm_send_sframe(struct sock *sk,
 	pi = l2cap_pi(sk);
 
 	if (pi->amp_move_state != L2CAP_AMP_STATE_STABLE &&
+		pi->amp_move_state != L2CAP_AMP_STATE_WAIT_PREPARE &&
 		pi->amp_move_state != L2CAP_AMP_STATE_RESEGMENT) {
 		BT_DBG("AMP error - attempted S-Frame send during AMP move");
 		return;
@@ -4405,7 +4409,8 @@ static inline int l2cap_move_channel_req(struct l2cap_conn *conn,
 		goto send_move_response;
 	}
 
-	if ((pi->amp_move_state != L2CAP_AMP_STATE_STABLE ||
+	if (((pi->amp_move_state != L2CAP_AMP_STATE_STABLE &&
+		pi->amp_move_state != L2CAP_AMP_STATE_WAIT_PREPARE) ||
 		pi->amp_move_role != L2CAP_AMP_MOVE_NONE) &&
 		bacmp(conn->src, conn->dst) > 0) {
 		result = L2CAP_MOVE_CHAN_REFUSED_COLLISION;
@@ -5282,7 +5287,8 @@ static void l2cap_ertm_resend(struct sock *sk)
 	if (pi->conn_state & L2CAP_CONN_REMOTE_BUSY)
 		return;
 
-	if (pi->amp_move_state != L2CAP_AMP_STATE_STABLE)
+	if (pi->amp_move_state != L2CAP_AMP_STATE_STABLE &&
+			pi->amp_move_state != L2CAP_AMP_STATE_WAIT_PREPARE)
 		return;
 
 	while (pi->retrans_list.head != L2CAP_SEQ_LIST_CLEAR) {
@@ -5864,7 +5870,9 @@ static int l2cap_ertm_rx_state_recv(struct sock *sk,
 
 			if (pi->conn_state & L2CAP_CONN_REJ_ACT)
 				pi->conn_state &= ~L2CAP_CONN_REJ_ACT;
-			else if (pi->amp_move_state == L2CAP_AMP_STATE_STABLE) {
+			else if (pi->amp_move_state == L2CAP_AMP_STATE_STABLE ||
+				pi->amp_move_state ==
+						L2CAP_AMP_STATE_WAIT_PREPARE) {
 				control->final = 0;
 				l2cap_ertm_retransmit_all(sk, control);
 			}
