@@ -6401,8 +6401,7 @@ static int l2cap_ertm_rx(struct sock *sk, struct bt_l2cap_control *control,
 	return err;
 }
 
-void l2cap_fixed_channel_config(struct sock *sk, struct l2cap_options *opt,
-				u16 mps)
+void l2cap_fixed_channel_config(struct sock *sk, struct l2cap_options *opt)
 {
 	lock_sock(sk);
 
@@ -6410,8 +6409,8 @@ void l2cap_fixed_channel_config(struct sock *sk, struct l2cap_options *opt,
 
 	l2cap_pi(sk)->imtu = opt->imtu;
 	l2cap_pi(sk)->omtu = opt->omtu;
-	l2cap_pi(sk)->remote_mps = mps;
-	l2cap_pi(sk)->mps = mps;
+	l2cap_pi(sk)->remote_mps = opt->omtu;
+	l2cap_pi(sk)->mps = opt->omtu;
 	l2cap_pi(sk)->flush_to = opt->flush_to;
 	l2cap_pi(sk)->mode = opt->mode;
 	l2cap_pi(sk)->fcs = opt->fcs;

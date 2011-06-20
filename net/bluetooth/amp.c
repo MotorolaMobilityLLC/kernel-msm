@@ -386,7 +386,7 @@ static inline int discover_req(struct amp_mgr *mgr, struct sk_buff *skb)
 		efm = (u16 *) skb_pull(skb, sizeof(*efm));
 	}
 
-	rsp.mtu = cpu_to_le16(670);
+	rsp.mtu = cpu_to_le16(L2CAP_A2MP_DEFAULT_MTU);
 	rsp.ext_feat = 0;
 
 	mgr->discovered = 1;
@@ -1049,7 +1049,7 @@ static u8 createphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 		ctx->state = AMP_CPL_DISC_RSP;
 		ctx->evt_type = AMP_A2MP_RSP;
 		ctx->rsp_ident = next_ident(ctx->mgr);
-		dreq.mtu = cpu_to_le16(670);
+		dreq.mtu = cpu_to_le16(L2CAP_A2MP_DEFAULT_MTU);
 		dreq.ext_feat = 0;
 		send_a2mp_cmd(ctx->mgr, ctx->rsp_ident, A2MP_DISCOVER_REQ,
 							sizeof(dreq), &dreq);
@@ -1690,8 +1690,9 @@ static struct socket *open_fixed_channel(bdaddr_t *src, bdaddr_t *dst)
 	struct socket *sock;
 	struct sockaddr_l2 addr;
 	struct sock *sk;
-	struct l2cap_options opts = {670, 670,
-			L2CAP_DEFAULT_FLUSH_TO, L2CAP_MODE_ERTM, 1, 0xFF, 1};
+	struct l2cap_options opts = {L2CAP_A2MP_DEFAULT_MTU,
+			L2CAP_A2MP_DEFAULT_MTU, L2CAP_DEFAULT_FLUSH_TO,
+			L2CAP_MODE_ERTM, 1, 0xFF, 1};
 
 
 	err = sock_create_kern(PF_BLUETOOTH, SOCK_SEQPACKET,
@@ -1717,7 +1718,7 @@ static struct socket *open_fixed_channel(bdaddr_t *src, bdaddr_t *dst)
 		return NULL;
 	}
 
-	l2cap_fixed_channel_config(sk, &opts, 670);
+	l2cap_fixed_channel_config(sk, &opts);
 
 	memset(&addr, 0, sizeof(addr));
 	bacpy(&addr.l2_bdaddr, dst);

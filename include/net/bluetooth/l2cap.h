@@ -42,6 +42,8 @@
 #define L2CAP_MAX_ERTM_QUEUED		5
 #define L2CAP_MIN_ERTM_QUEUED		2
 
+#define L2CAP_A2MP_DEFAULT_MTU		670
+
 #define L2CAP_TX_WIN_MAX_ENHANCED	0x3f
 #define L2CAP_TX_WIN_MAX_EXTENDED	0x3fff
 #define L2CAP_LE_DEFAULT_MTU		23
@@ -207,7 +209,7 @@ struct l2cap_conn_rsp {
 /* channel indentifier */
 #define L2CAP_CID_SIGNALING	0x0001
 #define L2CAP_CID_CONN_LESS	0x0002
-#define L2CAP_CID_A2MP      0x0003
+#define L2CAP_CID_A2MP		0x0003
 #define L2CAP_CID_LE_DATA	0x0004
 #define L2CAP_CID_LE_SIGNALING	0x0005
 #define L2CAP_CID_SMP		0x0006
@@ -695,8 +697,7 @@ void l2cap_ertm_destruct(struct sock *sk);
 void l2cap_ertm_shutdown(struct sock *sk);
 void l2cap_ertm_recv_done(struct sock *sk);
 
-void l2cap_fixed_channel_config(struct sock *sk, struct l2cap_options *opt,
-				u16 mps);
+void l2cap_fixed_channel_config(struct sock *sk, struct l2cap_options *opt);
 
 void l2cap_recv_deferred_frame(struct sock *sk, struct sk_buff *skb);
 
