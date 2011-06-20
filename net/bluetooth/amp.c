@@ -1709,6 +1709,7 @@ static struct socket *open_fixed_channel(bdaddr_t *src, bdaddr_t *dst)
 	memset(&addr, 0, sizeof(addr));
 	bacpy(&addr.l2_bdaddr, src);
 	addr.l2_family = AF_BLUETOOTH;
+	addr.l2_cid = L2CAP_CID_A2MP;
 	err = kernel_bind(sock, (struct sockaddr *) &addr, sizeof(addr));
 	if (err) {
 		BT_ERR("kernel_bind failed %d", err);
@@ -1716,11 +1717,12 @@ static struct socket *open_fixed_channel(bdaddr_t *src, bdaddr_t *dst)
 		return NULL;
 	}
 
-	l2cap_fixed_channel_config(sk, &opts, L2CAP_CID_A2MP, 670);
+	l2cap_fixed_channel_config(sk, &opts, 670);
 
 	memset(&addr, 0, sizeof(addr));
 	bacpy(&addr.l2_bdaddr, dst);
 	addr.l2_family = AF_BLUETOOTH;
+	addr.l2_cid = L2CAP_CID_A2MP;
 	err = kernel_connect(sock, (struct sockaddr *) &addr, sizeof(addr),
 							O_NONBLOCK);
 	if ((err == 0) || (err == -EINPROGRESS))
