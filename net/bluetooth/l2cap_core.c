@@ -58,6 +58,7 @@
 #include <net/bluetooth/amp.h>
 
 bool disable_ertm;
+bool enable_reconfig;
 
 static u32 l2cap_feat_mask = L2CAP_FEAT_FIXED_CHAN;
 static u8 l2cap_fixed_chan[8] = { L2CAP_FC_L2CAP | L2CAP_FC_A2MP, };
@@ -6247,9 +6248,10 @@ static void l2cap_amp_move_success(struct sock *sk)
 		/* Send reconfigure request */
 		if (pi->mode == L2CAP_MODE_ERTM) {
 			pi->reconf_state = L2CAP_RECONF_INT;
-			err = l2cap_amp_move_reconf(sk);
+			if (enable_reconfig)
+				err = l2cap_amp_move_reconf(sk);
 
-			if (err) {
+			if (err || !enable_reconfig) {
 				pi->reconf_state = L2CAP_RECONF_NONE;
 				l2cap_ertm_tx(sk, NULL, NULL,
 						L2CAP_ERTM_EVENT_EXPLICIT_POLL);
@@ -7109,3 +7111,6 @@ void l2cap_exit(void)
 
 module_param(disable_ertm, bool, 0644);
 MODULE_PARM_DESC(disable_ertm, "Disable enhanced retransmission mode");
+
+module_param(enable_reconfig, bool, 0644);
+MODULE_PARM_DESC(enable_reconfig, "Enable reconfig after initiating AMP move");
