@@ -6402,14 +6402,11 @@ static int l2cap_ertm_rx(struct sock *sk, struct bt_l2cap_control *control,
 }
 
 void l2cap_fixed_channel_config(struct sock *sk, struct l2cap_options *opt,
-				u16 cid, u16 mps)
+				u16 mps)
 {
 	lock_sock(sk);
 
 	l2cap_pi(sk)->fixed_channel = 1;
-
-	l2cap_pi(sk)->dcid = cid;
-	l2cap_pi(sk)->scid = cid;
 
 	l2cap_pi(sk)->imtu = opt->imtu;
 	l2cap_pi(sk)->omtu = opt->omtu;

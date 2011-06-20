@@ -696,7 +696,7 @@ void l2cap_ertm_shutdown(struct sock *sk);
 void l2cap_ertm_recv_done(struct sock *sk);
 
 void l2cap_fixed_channel_config(struct sock *sk, struct l2cap_options *opt,
-				u16 cid, u16 mps);
+				u16 mps);
 
 void l2cap_recv_deferred_frame(struct sock *sk, struct sk_buff *skb);
 
