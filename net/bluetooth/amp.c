@@ -489,6 +489,7 @@ static void create_physical(struct l2cap_conn *conn, struct sock *sk)
 	if (!ctx)
 		goto cp_finished;
 	ctx->sk = sk;
+	sock_hold(sk);
 	start_ctx(mgr, ctx);
 	return;
 
@@ -526,6 +527,7 @@ static void accept_physical(struct l2cap_conn *lcon, u8 id, struct sock *sk)
 	if (!aplctx)
 		goto ap_finished;
 	aplctx->sk = sk;
+	sock_hold(sk);
 	return;
 
 ap_finished:
@@ -1002,6 +1004,8 @@ apl_finished:
 				A2MP_CREATEPHYSLINK_RSP, sizeof(rsp), &rsp);
 	}
 	kfree(ctx->d.apl.remote_assoc);
+	if (ctx->sk)
+		sock_put(ctx->sk);
 	if (ctx->hdev)
 		hci_dev_put(ctx->hdev);
 	return 1;
@@ -1389,6 +1393,8 @@ static u8 createphyslink_handler(struct amp_ctx *ctx, u8 evt_type, void *data)
 cpl_finished:
 	l2cap_amp_physical_complete(result, ctx->id, ctx->d.cpl.remote_id,
 					ctx->sk);
+	if (ctx->sk)
+		sock_put(ctx->sk);
 	if (ctx->hdev)
 		hci_dev_put(ctx->hdev);
 	kfree(ctx->d.cpl.remote_assoc);
@@ -1779,6 +1785,7 @@ static void create_physical_worker(struct work_struct *w)
 		(struct amp_work_create_physical *) w;
 
 	create_physical(work->conn, work->sk);
+	sock_put(work->sk);
 	kfree(work);
 }
 
@@ -1788,6 +1795,7 @@ static void accept_physical_worker(struct work_struct *w)
 		(struct amp_work_accept_physical *) w;
 
 	accept_physical(work->conn, work->id, work->sk);
+	sock_put(work->sk);
 	kfree(work);
 }
 
@@ -1818,8 +1826,11 @@ void amp_create_physical(struct l2cap_conn *conn, struct sock *sk)
 		INIT_WORK((struct work_struct *) work, create_physical_worker);
 		work->conn = conn;
 		work->sk = sk;
-		if (queue_work(amp_workqueue, (struct work_struct *) work) == 0)
+		sock_hold(sk);
+		if (!queue_work(amp_workqueue, (struct work_struct *) work)) {
+			sock_put(sk);
 			kfree(work);
+		}
 	}
 }
 
@@ -1834,8 +1845,11 @@ void amp_accept_physical(struct l2cap_conn *conn, u8 id, struct sock *sk)
 		work->conn = conn;
 		work->sk = sk;
 		work->id = id;
-		if (queue_work(amp_workqueue, (struct work_struct *) work) == 0)
+		sock_hold(sk);
+		if (!queue_work(amp_workqueue, (struct work_struct *) work)) {
+			sock_put(sk);
 			kfree(work);
+		}
 	}
 }
 
