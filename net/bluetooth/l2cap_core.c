@@ -4410,6 +4410,18 @@ static inline int l2cap_move_channel_req(struct l2cap_conn *conn,
 		goto send_move_response;
 	}
 
+	if (req->dest_amp_id) {
+		struct hci_dev *hdev;
+		hdev = hci_dev_get(A2MP_HCI_ID(req->dest_amp_id));
+		if (!hdev || !test_bit(HCI_UP, &hdev->flags)) {
+			if (hdev)
+				hci_dev_put(hdev);
+
+			result = L2CAP_MOVE_CHAN_REFUSED_CONTROLLER;
+			goto send_move_response;
+		}
+	}
+
 	if (((pi->amp_move_state != L2CAP_AMP_STATE_STABLE &&
 		pi->amp_move_state != L2CAP_AMP_STATE_WAIT_PREPARE) ||
 		pi->amp_move_role != L2CAP_AMP_MOVE_NONE) &&
