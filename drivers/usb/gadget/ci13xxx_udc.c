@@ -1358,6 +1358,42 @@ static ssize_t show_requests(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR(requests, S_IRUSR, show_requests, NULL);
 
+static int ci13xxx_wakeup(struct usb_gadget *_gadget)
+{
+	struct ci13xxx *udc = container_of(_gadget, struct ci13xxx, gadget);
+	unsigned long flags;
+	int ret = 0;
+
+	trace();
+
+	spin_lock_irqsave(udc->lock, flags);
+	if (!udc->remote_wakeup) {
+		ret = -EOPNOTSUPP;
+		dbg_trace("remote wakeup feature is not enabled\n");
+		goto out;
+	}
+	if (!hw_cread(CAP_PORTSC, PORTSC_SUSP)) {
+		ret = -EINVAL;
+		dbg_trace("port is not suspended\n");
+		goto out;
+	}
+	hw_cwrite(CAP_PORTSC, PORTSC_FPR, PORTSC_FPR);
+out:
+	spin_unlock_irqrestore(udc->lock, flags);
+	return ret;
+}
+
+static ssize_t usb_remote_wakeup(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ci13xxx *udc = container_of(dev, struct ci13xxx, gadget.dev);
+
+	ci13xxx_wakeup(&udc->gadget);
+
+	return count;
+}
+static DEVICE_ATTR(wakeup, S_IWUSR, 0, usb_remote_wakeup);
+
 /**
  * dbg_create_files: initializes the attribute interface
  * @dev: device
@@ -1394,8 +1430,13 @@ __maybe_unused static int dbg_create_files(struct device *dev)
 	retval = device_create_file(dev, &dev_attr_requests);
 	if (retval)
 		goto rm_registers;
+	retval = device_create_file(dev, &dev_attr_wakeup);
+	if (retval)
+		goto rm_remote_wakeup;
 	return 0;
 
+rm_remote_wakeup:
+	device_remove_file(dev, &dev_attr_wakeup);
  rm_registers:
 	device_remove_file(dev, &dev_attr_registers);
  rm_qheads:
@@ -1432,6 +1473,7 @@ __maybe_unused static int dbg_remove_files(struct device *dev)
 	device_remove_file(dev, &dev_attr_events);
 	device_remove_file(dev, &dev_attr_driver);
 	device_remove_file(dev, &dev_attr_device);
+	device_remove_file(dev, &dev_attr_wakeup);
 	return 0;
 }
 
@@ -2564,31 +2606,6 @@ static int ci13xxx_vbus_session(struct usb_gadget *_gadget, int is_active)
 	}
 
 	return 0;
-}
-
-static int ci13xxx_wakeup(struct usb_gadget *_gadget)
-{
-	struct ci13xxx *udc = container_of(_gadget, struct ci13xxx, gadget);
-	unsigned long flags;
-	int ret = 0;
-
-	trace();
-
-	spin_lock_irqsave(udc->lock, flags);
-	if (!udc->remote_wakeup) {
-		ret = -EOPNOTSUPP;
-		trace("remote wakeup feature is not enabled\n");
-		goto out;
-	}
-	if (!hw_cread(CAP_PORTSC, PORTSC_SUSP)) {
-		ret = -EINVAL;
-		trace("port is not suspended\n");
-		goto out;
-	}
-	hw_cwrite(CAP_PORTSC, PORTSC_FPR, PORTSC_FPR);
-out:
-	spin_unlock_irqrestore(udc->lock, flags);
-	return ret;
 }
 
 static int ci13xxx_vbus_draw(struct usb_gadget *_gadget, unsigned mA)
