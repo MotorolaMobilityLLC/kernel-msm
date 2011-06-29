@@ -1698,7 +1698,7 @@ static struct usb_composite_driver android_usb_driver = {
 	.dev		= &device_desc,
 	.strings	= dev_strings,
 	.unbind		= android_usb_unbind,
-	.max_speed	= USB_SPEED_HIGH,
+	.max_speed	= USB_SPEED_SUPER
 };
 
 static int
