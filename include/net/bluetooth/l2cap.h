@@ -568,6 +568,8 @@ struct l2cap_pinfo {
 	struct l2cap_conn	*conn;
 	struct l2cap_conf_prm local_conf;
 	struct l2cap_conf_prm remote_conf;
+	struct l2cap_conf_ext_fs local_fs;
+	struct l2cap_conf_ext_fs remote_fs;
 	struct sock		*next_c;
 	struct sock		*prev_c;
 };
@@ -584,6 +586,7 @@ struct l2cap_pinfo {
 #define L2CAP_CONF_LOCKSTEP       0x0200
 #define L2CAP_CONF_LOCKSTEP_PEND  0x0400
 #define L2CAP_CONF_PEND_SENT      0x0800
+#define L2CAP_CONF_EFS_RECV       0x1000
 
 #define L2CAP_CONF_MAX_CONF_REQ 2
 #define L2CAP_CONF_MAX_CONF_RSP 2
