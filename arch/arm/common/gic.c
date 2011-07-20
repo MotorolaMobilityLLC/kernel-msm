@@ -38,12 +38,15 @@
 #include <linux/interrupt.h>
 #include <linux/percpu.h>
 #include <linux/slab.h>
+#include <linux/syscore_ops.h>
 
 #include <asm/irq.h>
 #include <asm/exception.h>
 #include <asm/smp_plat.h>
 #include <asm/mach/irq.h>
 #include <asm/hardware/gic.h>
+#include <asm/system.h>
+#include <asm/localtimer.h>
 
 union gic_base {
 	void __iomem *common_base;
@@ -381,6 +384,27 @@ static void __init gic_dist_init(struct gic_chip_data *gic)
 	 */
 	for (i = 32; i < gic_irqs; i += 32)
 		writel_relaxed(0xffffffff, base + GIC_DIST_ENABLE_CLEAR + i * 4 / 32);
+
+	/*
+	 * Setup the Linux IRQ subsystem.
+	 */
+	for (i = 0; i < nrppis; i++) {
+		int ppi = i + ppi_base;
+
+		irq_set_percpu_devid(ppi);
+		irq_set_chip_and_handler(ppi, &gic_chip,
+					 handle_percpu_devid_irq);
+		irq_set_chip_data(ppi, gic);
+		set_irq_flags(ppi, IRQF_VALID | IRQF_NOAUTOEN);
+	}
+
+	for (i = irq_start + nrppis; i < irq_limit; i++) {
+		irq_set_chip_and_handler(i, &gic_chip, handle_fasteoi_irq);
+		irq_set_chip_data(i, gic);
+		set_irq_flags(i, IRQF_VALID | IRQF_PROBE);
+	}
+
+	gic->max_irq = gic_irqs;
 
 	writel_relaxed(1, base + GIC_DIST_CTRL);
 }
