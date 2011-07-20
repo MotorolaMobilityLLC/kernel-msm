@@ -484,22 +484,21 @@ struct hci_cp_disconn_phys_link {
 	__u8     reason;
 } __packed;
 
+struct hci_ext_fs {
+	__u8       id;
+	__u8       type;
+	__le16     max_sdu;
+	__le32     sdu_arr_time;
+	__le32     acc_latency;
+	__le32     flush_to;
+} __packed;
+
 #define HCI_OP_CREATE_LOGICAL_LINK	0x0438
 #define HCI_OP_ACCEPT_LOGICAL_LINK	0x0439
 struct hci_cp_create_logical_link {
-	__u8     phy_handle;
-	__u8     tx_id;
-	__u8     tx_service_type;
-	__le16   tx_max_sdu;
-	__le32   tx_interarrival;
-	__le32   tx_latency;
-	__le32   tx_flush_to;
-	__u8     rx_id;
-	__u8     rx_service_type;
-	__le16   rx_max_sdu;
-	__le32   rx_interarrival;
-	__le32   rx_latency;
-	__le32   rx_flush_to;
+	__u8               phy_handle;
+	struct hci_ext_fs  tx_fs;
+	struct hci_ext_fs  rx_fs;
 } __packed;
 
 #define HCI_OP_DISCONN_LOGICAL_LINK	0x043a
@@ -521,19 +520,9 @@ struct hci_rp_logical_link_cancel {
 
 #define HCI_OP_FLOW_SPEC_MODIFY		0x043c
 struct hci_cp_flow_spec_modify {
-	__le16   handle;
-	__u8     tx_id;
-	__u8     tx_service_type;
-	__le16   tx_max_sdu;
-	__le32   tx_interarrival;
-	__le32   tx_latency;
-	__le32   tx_flush_to;
-	__u8     rx_id;
-	__u8     rx_service_type;
-	__le16   rx_max_sdu;
-	__le32   rx_interarrival;
-	__le32   rx_latency;
-	__le32   rx_flush_to;
+	__le16             handle;
+	struct hci_ext_fs  tx_fs;
+	struct hci_ext_fs  rx_fs;
 } __packed;
 
 #define HCI_OP_SNIFF_MODE		0x0803
