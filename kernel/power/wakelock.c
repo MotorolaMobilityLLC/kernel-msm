@@ -44,6 +44,8 @@ static DEFINE_SPINLOCK(list_lock);
 static LIST_HEAD(inactive_locks);
 static struct list_head active_wake_locks[WAKE_LOCK_TYPE_COUNT];
 static int current_event_num;
+static int suspend_sys_sync_count;
+static DEFINE_SPINLOCK(suspend_sys_sync_lock);
 static struct workqueue_struct *suspend_sys_sync_work_queue;
 static DECLARE_COMPLETION(suspend_sys_sync_comp);
 struct workqueue_struct *suspend_work_queue;
@@ -268,7 +270,6 @@ long has_wake_lock(int type)
 	return ret;
 }
 
-
 static void suspend_sys_sync(struct work_struct *work)
 {
 	if (debug_mask & DEBUG_SUSPEND)
@@ -278,12 +279,22 @@ static void suspend_sys_sync(struct work_struct *work)
 
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("sync done.\n");
+
+	spin_lock(&suspend_sys_sync_lock);
+	suspend_sys_sync_count--;
+	spin_unlock(&suspend_sys_sync_lock);
 }
 static DECLARE_WORK(suspend_sys_sync_work, suspend_sys_sync);
 
 void suspend_sys_sync_queue(void)
 {
-	queue_work(suspend_sys_sync_work_queue, &suspend_sys_sync_work);
+	int ret;
+
+	spin_lock(&suspend_sys_sync_lock);
+	ret = queue_work(suspend_sys_sync_work_queue, &suspend_sys_sync_work);
+	if (ret)
+		suspend_sys_sync_count++;
+	spin_unlock(&suspend_sys_sync_lock);
 }
 
 static bool suspend_sys_sync_abort;
@@ -295,12 +306,10 @@ static DEFINE_TIMER(suspend_sys_sync_timer, suspend_sys_sync_handler, 0, 0);
 #define SUSPEND_SYS_SYNC_TIMEOUT (HZ/4)
 static void suspend_sys_sync_handler(unsigned long arg)
 {
-	if (workqueue_empty(suspend_sys_sync_work_queue)) {
-		del_timer(&suspend_sys_sync_timer);
+	if (suspend_sys_sync_count == 0) {
 		complete(&suspend_sys_sync_comp);
 	} else if (has_wake_lock(WAKE_LOCK_SUSPEND)) {
 		suspend_sys_sync_abort = true;
-		del_timer(&suspend_sys_sync_timer);
 		complete(&suspend_sys_sync_comp);
 	} else {
 		mod_timer(&suspend_sys_sync_timer, jiffies +
@@ -311,7 +320,8 @@ static void suspend_sys_sync_handler(unsigned long arg)
 int suspend_sys_sync_wait(void)
 {
 	suspend_sys_sync_abort = false;
-	if (!workqueue_empty(suspend_sys_sync_work_queue)) {
+
+	if (suspend_sys_sync_count != 0) {
 		mod_timer(&suspend_sys_sync_timer, jiffies +
 				SUSPEND_SYS_SYNC_TIMEOUT);
 		wait_for_completion(&suspend_sys_sync_comp);
