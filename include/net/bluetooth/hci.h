@@ -520,7 +520,7 @@ struct hci_rp_logical_link_cancel {
 
 #define HCI_OP_FLOW_SPEC_MODIFY		0x043c
 struct hci_cp_flow_spec_modify {
-	__le16             handle;
+	__le16             log_handle;
 	struct hci_ext_fs  tx_fs;
 	struct hci_ext_fs  rx_fs;
 } __packed;

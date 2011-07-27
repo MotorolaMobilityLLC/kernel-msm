@@ -1397,6 +1397,32 @@ static void hci_cs_create_logical_link(struct hci_dev *hdev, __u8 status)
 	hci_dev_unlock(hdev);
 }
 
+static void hci_cs_flow_spec_modify(struct hci_dev *hdev, __u8 status)
+{
+	struct hci_cp_flow_spec_modify *cp;
+	struct hci_chan *chan;
+
+	BT_DBG("%s status 0x%x", hdev->name, status);
+
+	cp = hci_sent_cmd_data(hdev, HCI_OP_FLOW_SPEC_MODIFY);
+	if (!cp)
+		return;
+
+	hci_dev_lock(hdev);
+
+	chan = hci_chan_list_lookup_handle(hdev, cp->log_handle);
+	if (chan) {
+		if (status)
+			hci_proto_modify_cfm(chan, status);
+		else {
+			chan->tx_fs = cp->tx_fs;
+			chan->rx_fs = cp->rx_fs;
+		}
+	}
+
+	hci_dev_unlock(hdev);
+}
+
 static void hci_cs_disconn_logical_link(struct hci_dev *hdev, __u8 status)
 {
 	struct hci_cp_disconn_logical_link *cp;
@@ -2158,6 +2184,10 @@ static inline void hci_cmd_status_evt(struct hci_dev *hdev, struct sk_buff *skb)
 
 	case HCI_OP_DISCONN_LOGICAL_LINK:
 		hci_cs_disconn_logical_link(hdev, ev->status);
+		break;
+
+	case HCI_OP_FLOW_SPEC_MODIFY:
+		hci_cs_flow_spec_modify(hdev, ev->status);
 		break;
 
 	case HCI_OP_CREATE_PHYS_LINK:
@@ -3089,6 +3119,24 @@ static inline void hci_log_link_complete(struct hci_dev *hdev,
 	hci_dev_unlock(hdev);
 }
 
+static inline void hci_flow_spec_modify_complete(struct hci_dev *hdev,
+					struct sk_buff *skb)
+{
+	struct hci_ev_flow_spec_modify_complete *ev = (void *) skb->data;
+	struct hci_chan *chan;
+
+	BT_DBG("%s handle %d status %d", hdev->name,
+		__le16_to_cpu(ev->log_handle), ev->status);
+
+	hci_dev_lock(hdev);
+
+	chan = hci_chan_list_lookup_handle(hdev, ev->log_handle);
+	if (chan)
+		hci_proto_modify_cfm(chan, ev->status);
+
+	hci_dev_unlock(hdev);
+}
+
 static inline void hci_disconn_log_link_complete_evt(struct hci_dev *hdev,
 						struct sk_buff *skb)
 {
@@ -3295,6 +3343,10 @@ void hci_event_packet(struct hci_dev *hdev, struct sk_buff *skb)
 
 	case HCI_EV_LOG_LINK_COMPLETE:
 		hci_log_link_complete(hdev, skb);
+		break;
+
+	case HCI_EV_FLOW_SPEC_MODIFY_COMPLETE:
+		hci_flow_spec_modify_complete(hdev, skb);
 		break;
 
 	case HCI_EV_DISCONN_LOG_LINK_COMPLETE:

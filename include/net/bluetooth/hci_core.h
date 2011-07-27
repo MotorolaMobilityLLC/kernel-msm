@@ -556,6 +556,9 @@ struct hci_chan *hci_chan_accept(struct hci_conn *hcon,
 struct hci_chan *hci_chan_create(struct hci_conn *hcon,
 				struct hci_ext_fs *tx_fs,
 				struct hci_ext_fs *rx_fs);
+void hci_chan_modify(struct hci_chan *chan,
+				struct hci_ext_fs *tx_fs,
+				struct hci_ext_fs *rx_fs);
 
 struct hci_conn *hci_connect(struct hci_dev *hdev, int type,
 					__u16 pkt_type, bdaddr_t *dst,
@@ -722,6 +725,7 @@ struct hci_proto {
 	int (*recv_scodata)	(struct hci_conn *conn, struct sk_buff *skb);
 	int (*security_cfm)	(struct hci_conn *conn, __u8 status, __u8 encrypt);
 	int (*create_cfm)	(struct hci_chan *chan, __u8 status);
+	int (*modify_cfm)	(struct hci_chan *chan, __u8 status);
 	int (*destroy_cfm)	(struct hci_chan *chan, __u8 status);
 };
 
@@ -834,6 +838,15 @@ static inline void hci_proto_create_cfm(struct hci_chan *chan, __u8 status)
 	hp = hci_proto[HCI_PROTO_L2CAP];
 	if (hp && hp->create_cfm)
 		hp->create_cfm(chan, status);
+}
+
+static inline void hci_proto_modify_cfm(struct hci_chan *chan, __u8 status)
+{
+	register struct hci_proto *hp;
+
+	hp = hci_proto[HCI_PROTO_L2CAP];
+	if (hp && hp->modify_cfm)
+		hp->modify_cfm(chan, status);
 }
 
 static inline void hci_proto_destroy_cfm(struct hci_chan *chan, __u8 status)

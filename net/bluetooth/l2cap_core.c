@@ -46,6 +46,7 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/crc16.h>
+#include <linux/math64.h>
 #include <net/sock.h>
 
 #include <asm/system.h>
@@ -86,6 +87,7 @@ static struct sk_buff *l2cap_build_cmd(struct l2cap_conn *conn,
 				u8 code, u8 ident, u16 dlen, void *data);
 static int l2cap_answer_move_poll(struct sock *sk);
 static int l2cap_create_cfm(struct hci_chan *chan, u8 status);
+static int l2cap_deaggregate(struct hci_chan *chan, struct l2cap_pinfo *pi);
 static void l2cap_chan_ready(struct sock *sk);
 static void l2cap_conn_del(struct hci_conn *hcon, int err);
 
@@ -546,8 +548,12 @@ void l2cap_chan_del(struct sock *sk, int err)
 	if (l2cap_pi(sk)->ampcon) {
 		l2cap_pi(sk)->ampcon->l2cap_data = NULL;
 		l2cap_pi(sk)->ampcon = NULL;
-		if (l2cap_pi(sk)->ampchan)
+		if (l2cap_pi(sk)->ampchan) {
 			hci_chan_put(l2cap_pi(sk)->ampchan);
+			if (atomic_read(&l2cap_pi(sk)->ampchan->refcnt))
+				l2cap_deaggregate(l2cap_pi(sk)->ampchan,
+							l2cap_pi(sk));
+		}
 		l2cap_pi(sk)->ampchan = NULL;
 		l2cap_pi(sk)->amp_id = 0;
 	}
@@ -3005,6 +3011,97 @@ static void l2cap_setup_txwin(struct l2cap_pinfo *pi)
 	}
 }
 
+static void l2cap_aggregate_fs(struct hci_ext_fs *cur,
+		struct hci_ext_fs *new,
+		struct hci_ext_fs *agg)
+{
+	*agg = *cur;
+	if ((cur->max_sdu != 0xFFFF) && (cur->sdu_arr_time != 0xFFFFFFFF)) {
+		/* current flow spec has known rate */
+		if ((new->max_sdu == 0xFFFF) ||
+				(new->sdu_arr_time == 0xFFFFFFFF)) {
+			/* new fs has unknown rate, so aggregate is unknown */
+			agg->max_sdu = 0xFFFF;
+			agg->sdu_arr_time = 0xFFFFFFFF;
+		} else {
+			/* new fs has known rate, so aggregate is known */
+			u64 cur_rate;
+			u64 new_rate;
+			cur_rate = cur->max_sdu * 1000000ULL;
+			if (cur->sdu_arr_time)
+				cur_rate = div_u64(cur_rate, cur->sdu_arr_time);
+			new_rate = new->max_sdu * 1000000ULL;
+			if (new->sdu_arr_time)
+				new_rate = div_u64(new_rate, new->sdu_arr_time);
+			cur_rate = cur_rate + new_rate;
+			agg->sdu_arr_time = div64_u64(agg->max_sdu * 1000000ULL,
+				cur_rate);
+		}
+	}
+}
+
+static int l2cap_aggregate(struct hci_chan *chan, struct l2cap_pinfo *pi)
+{
+	struct hci_ext_fs tx_fs;
+	struct hci_ext_fs rx_fs;
+
+	BT_DBG("chan %p", chan);
+
+	if (((chan->tx_fs.max_sdu == 0xFFFF) ||
+			(chan->tx_fs.sdu_arr_time == 0xFFFFFFFF)) &&
+			((chan->rx_fs.max_sdu == 0xFFFF) ||
+			(chan->rx_fs.sdu_arr_time == 0xFFFFFFFF)))
+		return 0;
+
+	l2cap_aggregate_fs(&chan->tx_fs,
+				(struct hci_ext_fs *) &pi->local_fs, &tx_fs);
+	l2cap_aggregate_fs(&chan->rx_fs,
+				(struct hci_ext_fs *) &pi->remote_fs, &rx_fs);
+	hci_chan_modify(chan, &tx_fs, &rx_fs);
+	return 1;
+}
+
+static void l2cap_deaggregate_fs(struct hci_ext_fs *cur,
+		struct hci_ext_fs *old,
+		struct hci_ext_fs *agg)
+{
+	*agg = *cur;
+	if ((cur->max_sdu != 0xFFFF) && (cur->sdu_arr_time != 0xFFFFFFFF)) {
+		u64 cur_rate;
+		u64 old_rate;
+		cur_rate = cur->max_sdu * 1000000ULL;
+		if (cur->sdu_arr_time)
+			cur_rate = div_u64(cur_rate, cur->sdu_arr_time);
+		old_rate = old->max_sdu * 1000000ULL;
+		if (old->sdu_arr_time)
+			old_rate = div_u64(old_rate, old->sdu_arr_time);
+		cur_rate = cur_rate - old_rate;
+		agg->sdu_arr_time = div64_u64(agg->max_sdu * 1000000ULL,
+								cur_rate);
+	}
+}
+
+static int l2cap_deaggregate(struct hci_chan *chan, struct l2cap_pinfo *pi)
+{
+	struct hci_ext_fs tx_fs;
+	struct hci_ext_fs rx_fs;
+
+	BT_DBG("chan %p", chan);
+
+	if (((chan->tx_fs.max_sdu == 0xFFFF) ||
+			(chan->tx_fs.sdu_arr_time == 0xFFFFFFFF)) &&
+			((chan->rx_fs.max_sdu == 0xFFFF) ||
+			(chan->rx_fs.sdu_arr_time == 0xFFFFFFFF)))
+		return 0;
+
+	l2cap_deaggregate_fs(&chan->tx_fs,
+				(struct hci_ext_fs *) &pi->local_fs, &tx_fs);
+	l2cap_deaggregate_fs(&chan->rx_fs,
+				(struct hci_ext_fs *) &pi->remote_fs, &rx_fs);
+	hci_chan_modify(chan, &tx_fs, &rx_fs);
+	return 1;
+}
+
 static struct hci_chan *l2cap_chan_admit(u8 amp_id, struct l2cap_pinfo *pi)
 {
 	struct hci_dev *hdev;
@@ -3023,9 +3120,7 @@ static struct hci_chan *l2cap_chan_admit(u8 amp_id, struct l2cap_pinfo *pi)
 
 	chan = hci_chan_list_lookup_id(hdev, hcon->handle);
 	if (chan) {
-		BT_DBG("chan %p refcnt %d", chan, atomic_read(&chan->refcnt));
-		/* TODO: Aggregate existing BE flow specs (chan->xx_fs) with */
-		/*       new specs and issue flow spec modify (if different) */
+		l2cap_aggregate(chan, pi);
 		hci_chan_hold(chan);
 		return chan;
 	}
@@ -4894,10 +4989,13 @@ static inline int l2cap_move_channel_confirm(struct l2cap_conn *conn,
 		l2cap_pi(sk)->amp_move_state = L2CAP_AMP_STATE_STABLE;
 		if (result == L2CAP_MOVE_CHAN_CONFIRMED) {
 			l2cap_pi(sk)->amp_id = l2cap_pi(sk)->amp_move_id;
-			if (!l2cap_pi(sk)->amp_id) {
+			if ((!l2cap_pi(sk)->amp_id) &&
+						(l2cap_pi(sk)->ampchan)) {
 				/* Have moved off of AMP, free the channel */
-				if (l2cap_pi(sk)->ampchan)
-					hci_chan_put(l2cap_pi(sk)->ampchan);
+				hci_chan_put(l2cap_pi(sk)->ampchan);
+				if (atomic_read(&l2cap_pi(sk)->ampchan->refcnt))
+					l2cap_deaggregate(l2cap_pi(sk)->ampchan,
+								l2cap_pi(sk));
 				l2cap_pi(sk)->ampchan = NULL;
 				l2cap_pi(sk)->ampcon = NULL;
 			}
@@ -4952,8 +5050,12 @@ static inline int l2cap_move_channel_confirm_rsp(struct l2cap_conn *conn,
 		if (!l2cap_pi(sk)->amp_id) {
 			/* Have moved off of AMP, free the channel */
 			l2cap_pi(sk)->ampcon = NULL;
-			if (l2cap_pi(sk)->ampchan)
+			if (l2cap_pi(sk)->ampchan) {
 				hci_chan_put(l2cap_pi(sk)->ampchan);
+				if (atomic_read(&l2cap_pi(sk)->ampchan->refcnt))
+					l2cap_deaggregate(l2cap_pi(sk)->ampchan,
+								l2cap_pi(sk));
+			}
 			l2cap_pi(sk)->ampchan = NULL;
 		}
 
@@ -5295,6 +5397,16 @@ static int l2cap_create_cfm(struct hci_chan *chan, u8 status)
 		return -ENOMEM;
 	}
 
+	return 0;
+}
+
+int l2cap_modify_cfm(struct hci_chan *chan, u8 status)
+{
+	struct l2cap_conn *conn = chan->conn->l2cap_data;
+
+	BT_DBG("chan %p conn %p status %d", chan, conn, status);
+
+	/* TODO: if failed status restore previous fs */
 	return 0;
 }
 
@@ -7380,7 +7492,8 @@ static struct hci_proto l2cap_hci_proto = {
 	.disconn_cfm	= l2cap_disconn_cfm,
 	.security_cfm	= l2cap_security_cfm,
 	.recv_acldata	= l2cap_recv_acldata,
-	.create_cfm		= l2cap_create_cfm,
+	.create_cfm	= l2cap_create_cfm,
+	.modify_cfm	= l2cap_modify_cfm,
 	.destroy_cfm	= l2cap_destroy_cfm,
 };
 
