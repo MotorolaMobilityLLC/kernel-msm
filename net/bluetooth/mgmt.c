@@ -1376,8 +1376,6 @@ static void connect_complete_cb(struct hci_conn *conn, u8 status)
 		BT_DBG("Unable to find a pending command");
 		return;
 	}
-
-	hci_conn_put(conn);
 }
 
 static void discovery_terminated(struct pending_cmd *cmd, void *data)
@@ -1430,8 +1428,6 @@ static int pair_device(struct sock *sk, u16 index, unsigned char *data, u16 len)
 	if (hci_find_adv_entry(hdev, &cp->bdaddr)) {
 		conn = hci_connect(hdev, LE_LINK, 0, &cp->bdaddr, sec_level,
 								auth_type);
-		if (conn && !IS_ERR(conn))
-			hci_conn_hold(conn);
 	} else {
 		/* ACL-SSP does not support io_cap 0x04 (KeyboadDisplay) */
 		if (io_cap == 0x04)
