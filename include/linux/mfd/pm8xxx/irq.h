@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -36,6 +36,19 @@ struct pm8xxx_irq_platform_data {
 };
 
 struct pm_irq_chip;
+
+#ifdef CONFIG_MSM_SHOW_RESUME_IRQ
+extern int msm_show_resume_irq_mask;
+static inline int show_resume_irq(void)
+{
+	return msm_show_resume_irq_mask;
+}
+#else
+static inline int show_resume_irq(void)
+{
+	return 0;
+}
+#endif
 
 #ifdef CONFIG_MFD_PM8XXX_IRQ
 int pm8xxx_get_irq_stat(struct pm_irq_chip *chip, int irq);
