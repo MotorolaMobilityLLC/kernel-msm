@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,6 +22,7 @@
 #include <linux/mfd/pm8xxx/irq.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/syscore_ops.h>
 
 /* PMIC8xxx IRQ */
 
@@ -47,6 +48,7 @@
 					PM_IRQF_MASK_RE)
 
 struct pm_irq_chip {
+	struct list_head	link;
 	struct device		*dev;
 	spinlock_t		pm_irq_lock;
 	unsigned int		base_addr;
@@ -57,6 +59,9 @@ struct pm_irq_chip {
 	unsigned int		num_masters;
 	u8			config[0];
 };
+
+static LIST_HEAD(pm_irq_chips);
+static DEFINE_SPINLOCK(pm_irq_chips_lock);
 
 static int pm8xxx_read_root_irq(const struct pm_irq_chip *chip, u8 *rp)
 {
@@ -333,6 +338,50 @@ static struct irq_chip pm8xxx_irq_chip = {
 	.flags		= IRQCHIP_MASK_ON_SUSPEND,
 };
 
+static int pm8xxx_show_resume_irq_chip(struct pm_irq_chip *chip)
+{
+	u8 bits;
+	int i, j;
+
+	for (i = 0; i < chip->num_blocks; i++) {
+		if (!pm8xxx_read_block_irq(chip, i, &bits)) {
+			for (j = 0; j < 8; j++) {
+				if (bits & (1 << j)) {
+					pr_warning("%d triggered\n",
+					i * 8 + j + chip->irq_base);
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+static void pm8xxx_show_resume_irq(void)
+{
+	struct pm_irq_chip *chip;
+	int rc = 0;
+	unsigned long flags;
+
+	if (!show_resume_irq())
+		return;
+
+	spin_lock_irqsave(&pm_irq_chips_lock, flags);
+
+	list_for_each_entry(chip, &pm_irq_chips, link) {
+		rc = pm8xxx_show_resume_irq_chip(chip);
+
+		if (rc)
+			pr_err("Failed to show_resume_irq rc=%d\n", rc);
+	}
+
+	spin_unlock_irqrestore(&pm_irq_chips_lock, flags);
+}
+
+static struct syscore_ops pm8xxx_irq_syscore_ops = {
+	.resume	= pm8xxx_show_resume_irq,
+};
+
 /**
  * pm8xxx_get_irq_stat - get the status of the irq line
  * @chip: pointer to identify a pmic irq controller
@@ -394,6 +443,7 @@ struct pm_irq_chip *  __devinit pm8xxx_irq_init(struct device *dev,
 	struct pm_irq_chip  *chip;
 	int devirq, rc;
 	unsigned int pmirq;
+	unsigned long flags;
 
 	if (!pdata) {
 		pr_err("No platform data\n");
@@ -421,8 +471,8 @@ struct pm_irq_chip *  __devinit pm8xxx_irq_init(struct device *dev,
 	chip->base_addr = pdata->irq_cdata.base_addr;
 	chip->num_blocks = DIV_ROUND_UP(chip->num_irqs, 8);
 	chip->num_masters = DIV_ROUND_UP(chip->num_blocks, 8);
-	spin_lock_init(&chip->pm_irq_lock);
 
+	spin_lock_init(&chip->pm_irq_lock);
 	for (pmirq = 0; pmirq < chip->num_irqs; pmirq++) {
 		irq_set_chip_and_handler(chip->irq_base + pmirq,
 				&pm8xxx_irq_chip,
@@ -431,7 +481,7 @@ struct pm_irq_chip *  __devinit pm8xxx_irq_init(struct device *dev,
 #ifdef CONFIG_ARM
 		set_irq_flags(chip->irq_base + pmirq, IRQF_VALID);
 #else
-		irq_set_noprobe(chip->irq_base + pmirq);
+		set_irq_noprobe(chip->irq_base + pmirq);
 #endif
 	}
 
@@ -442,17 +492,57 @@ struct pm_irq_chip *  __devinit pm8xxx_irq_init(struct device *dev,
 		if (rc) {
 			pr_err("failed to request_irq for %d rc=%d\n",
 								devirq, rc);
+			goto err;
 		} else {
 			irq_set_irq_wake(devirq, 1);
 		}
 	}
 
+	spin_lock_irqsave(&pm_irq_chips_lock, flags);
+
+	list_add(&chip->link, &pm_irq_chips);
+
+	spin_unlock_irqrestore(&pm_irq_chips_lock, flags);
+
 	return chip;
+err:
+	for (pmirq = 0; pmirq < chip->num_irqs; pmirq++) {
+		irq_set_chip(chip->irq_base + pmirq, NULL);
+		irq_set_chip_data(chip->irq_base + pmirq, NULL);
+		irq_set_handler(chip->irq_base + pmirq, NULL);
+#ifdef CONFIG_ARM
+		set_irq_flags(chip->irq_base + pmirq, 0);
+#else
+		irq_set_probe(chip->irq_base + pmirq);
+#endif
+	}
+	kfree(chip);
+	return ERR_PTR(rc);
 }
 
 int pm8xxx_irq_exit(struct pm_irq_chip *chip)
 {
-	irq_set_chained_handler(chip->devirq, NULL);
+	unsigned long flags;
+
+	spin_lock_irqsave(&pm_irq_chips_lock, flags);
+	list_del(&chip->link);
+	spin_unlock_irqrestore(&pm_irq_chips_lock, flags);
+
 	kfree(chip);
 	return 0;
 }
+
+static int __init pm8xxx_irq_init_syscore_init(void)
+{
+	register_syscore_ops(&pm8xxx_irq_syscore_ops);
+
+	return 0;
+}
+
+static void __exit pm8xxx_irq_exit_syscore_exit(void)
+{
+	unregister_syscore_ops(&pm8xxx_irq_syscore_ops);
+}
+
+core_initcall(pm8xxx_irq_init_syscore_init);
+module_exit(pm8xxx_irq_exit_syscore_exit);
