@@ -962,7 +962,7 @@ static void hci_power_on(struct work_struct *work)
 
 	BT_DBG("%s", hdev->name);
 
-	if (hci_dev_open(hdev->id) < 0 && !test_bit(HCI_UP, &hdev->flags))
+	if (hci_dev_open(hdev->id) < 0)
 		return;
 
 	if (test_bit(HCI_AUTO_OFF, &hdev->flags))
