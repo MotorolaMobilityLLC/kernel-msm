@@ -33,6 +33,9 @@ config: $(obj)/conf
 nconfig: $(obj)/nconf
 	$< $(silent) $(Kconfig)
 
+defoldconfig: $(obj)/conf
+	$< --defconfig=.config $(Kconfig)
+
 silentoldconfig: $(obj)/conf
 	$(Q)mkdir -p include/config include/generated
 	$(Q)test -e include/generated/autoksyms.h || \
