@@ -36,6 +36,9 @@ nconfig: $(obj)/nconf
 oldconfig: $(obj)/conf
 	$< --$@ $(Kconfig)
 
+defoldconfig: $(obj)/conf
+	$< --defconfig=.config $(Kconfig)
+
 silentoldconfig: $(obj)/conf
 	$(Q)mkdir -p include/config include/generated
 	$< $(silent) --$@ $(Kconfig)
