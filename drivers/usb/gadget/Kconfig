@@ -875,6 +875,13 @@ config USB_G_ANDROID
 	  Each function can be configured and enabled/disabled
 	  dynamically from userspace through a sysfs interface.
 
+config USB_ANDROID_USBNET
+	boolean "Android gadget usbnet function"
+	depends on USB_ANDROID
+	default y
+	help
+	  Provides usbnet function for android gadget driver.
+
 config USB_CDC_COMPOSITE
 	tristate "CDC Composite Device (Ethernet and ACM)"
 	depends on NET
