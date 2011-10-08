@@ -70,6 +70,7 @@
 #include "u_bam_data.c"
 #include "f_ecm.c"
 #include "u_ether.c"
+#include "f_usbnet.c"
 #include "u_qc_ether.c"
 #ifdef CONFIG_TARGET_CORE
 #endif
@@ -2846,6 +2847,81 @@ static struct android_usb_function midi_function = {
 	.attributes	= midi_function_attributes,
 };
 #endif
+static int usbnet_function_init(struct android_usb_function *f,
+				struct usb_composite_dev *cdev)
+{
+	struct usbnet_device *dev;
+	struct usbnet_context *context;
+	struct net_device *net_dev;
+	int ret;
+
+	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
+	if (!dev)
+		return -ENOMEM;
+
+	net_dev = alloc_netdev(sizeof(struct usbnet_context),
+			   "usb%d", usb_ether_setup);
+	if (!net_dev) {
+		pr_err("%s: alloc_netdev error\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = register_netdev(net_dev);
+	if (ret) {
+		pr_err("%s: register_netdev error\n", __func__);
+		free_netdev(net_dev);
+		return -EINVAL;
+	}
+
+	ret = device_create_file(&net_dev->dev, &dev_attr_description);
+	if (ret < 0) {
+		pr_err("%s: sys file creation  error\n", __func__);
+		unregister_netdev(net_dev);
+		free_netdev(net_dev);
+		return -EINVAL;
+	}
+
+	context = netdev_priv(net_dev);
+	INIT_WORK(&context->usbnet_config_wq, usbnet_if_config);
+
+	context->config = 0;
+	dev->net_ctxt = context;
+
+	f->config = dev;
+
+	return 0;
+}
+
+static void usbnet_function_cleanup(struct android_usb_function *f)
+{
+	struct usbnet_device *dev = f->config;
+
+	usbnet_cleanup(dev);
+}
+
+static int usbnet_function_bind_config(struct android_usb_function *f, struct usb_configuration *c)
+{
+	struct usbnet_device *dev = f->config;
+
+	return usbnet_bind_config(dev, c);
+}
+
+static int usbnet_function_ctrlrequest(struct android_usb_function *f, struct usb_composite_dev *cdev,
+					const struct usb_ctrlrequest *c)
+{
+	struct usbnet_device *dev = f->config;
+
+	return usbnet_ctrlrequest(dev, cdev, c);
+}
+
+static struct android_usb_function usbnet_function = {
+	.name		= "usbnet",
+	.init		= usbnet_function_init,
+	.cleanup	= usbnet_function_cleanup,
+	.bind_config	= usbnet_function_bind_config,
+	.ctrlrequest	= usbnet_function_ctrlrequest,
+};
+
 static struct android_usb_function *supported_functions[] = {
 	&ffs_function,
 	&mbim_function,
@@ -2877,6 +2953,7 @@ static struct android_usb_function *supported_functions[] = {
 #ifdef CONFIG_SND_RAWMIDI
 	&midi_function,
 #endif
+	&usbnet_function,
 	NULL
 };
 
