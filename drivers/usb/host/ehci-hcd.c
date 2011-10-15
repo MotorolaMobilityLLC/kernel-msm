@@ -1390,6 +1390,10 @@ MODULE_LICENSE ("GPL");
 #define PLATFORM_DRIVER_PRESENT
 #endif
 
+#ifdef CONFIG_USB_EHCI_MSM_HSIC
+#include "ehci-msm-hsic.c"
+#define PLATFORM_DRIVER_PRESENT
+#endif
 
 #ifdef CONFIG_USB_PXA168_EHCI
 #include "ehci-pxa168.c"
@@ -1497,6 +1501,10 @@ static struct platform_driver *plat_drivers[]  = {
 
 #ifdef CONFIG_USB_EHCI_MSM
 	&ehci_msm_driver,
+#endif
+
+#ifdef CONFIG_USB_EHCI_MSM_HSIC
+	&ehci_msm_hsic_driver,
 #endif
 
 #ifdef CONFIG_USB_PXA168_EHCI
