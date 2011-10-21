@@ -948,7 +948,8 @@ static ssize_t rndis_manufacturer_show(struct device *dev,
 {
 	struct android_usb_function *f = dev_get_drvdata(dev);
 	struct rndis_function_config *config = f->config;
-	return sprintf(buf, "%s\n", config->manufacturer);
+
+	return snprintf(buf, PAGE_SIZE, "%s\n", config->manufacturer);
 }
 
 static ssize_t rndis_manufacturer_store(struct device *dev,
@@ -959,7 +960,8 @@ static ssize_t rndis_manufacturer_store(struct device *dev,
 
 	if (size >= sizeof(config->manufacturer))
 		return -EINVAL;
-	if (sscanf(buf, "%s", config->manufacturer) == 1)
+
+	if (sscanf(buf, "%255s", config->manufacturer) == 1)
 		return size;
 	return -1;
 }
@@ -972,7 +974,8 @@ static ssize_t rndis_wceis_show(struct device *dev,
 {
 	struct android_usb_function *f = dev_get_drvdata(dev);
 	struct rndis_function_config *config = f->config;
-	return sprintf(buf, "%d\n", config->wceis);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", config->wceis);
 }
 
 static ssize_t rndis_wceis_store(struct device *dev,
@@ -997,7 +1000,8 @@ static ssize_t rndis_ethaddr_show(struct device *dev,
 {
 	struct android_usb_function *f = dev_get_drvdata(dev);
 	struct rndis_function_config *rndis = f->config;
-	return sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x\n",
+
+	return snprintf(buf, PAGE_SIZE, "%02x:%02x:%02x:%02x:%02x:%02x\n",
 		rndis->ethaddr[0], rndis->ethaddr[1], rndis->ethaddr[2],
 		rndis->ethaddr[3], rndis->ethaddr[4], rndis->ethaddr[5]);
 }
@@ -1024,7 +1028,8 @@ static ssize_t rndis_vendorID_show(struct device *dev,
 {
 	struct android_usb_function *f = dev_get_drvdata(dev);
 	struct rndis_function_config *config = f->config;
-	return sprintf(buf, "%04x\n", config->vendorID);
+
+	return snprintf(buf, PAGE_SIZE, "%04x\n", config->vendorID);
 }
 
 static ssize_t rndis_vendorID_store(struct device *dev,
@@ -1119,7 +1124,7 @@ static ssize_t mass_storage_inquiry_show(struct device *dev,
 {
 	struct android_usb_function *f = dev_get_drvdata(dev);
 	struct mass_storage_function_config *config = f->config;
-	return sprintf(buf, "%s\n", config->common->inquiry_string);
+	return snprintf(buf, PAGE_SIZE, "%s\n", config->common->inquiry_string);
 }
 
 static ssize_t mass_storage_inquiry_store(struct device *dev,
@@ -1129,7 +1134,7 @@ static ssize_t mass_storage_inquiry_store(struct device *dev,
 	struct mass_storage_function_config *config = f->config;
 	if (size >= sizeof(config->common->inquiry_string))
 		return -EINVAL;
-	if (sscanf(buf, "%s", config->common->inquiry_string) != 1)
+	if (sscanf(buf, "%28s", config->common->inquiry_string) != 1)
 		return -EINVAL;
 	return size;
 }
@@ -1375,7 +1380,7 @@ functions_show(struct device *pdev, struct device_attribute *attr, char *buf)
 	mutex_lock(&dev->mutex);
 
 	list_for_each_entry(f, &dev->enabled_functions, enabled_list)
-		buff += sprintf(buff, "%s,", f->name);
+		buff += snprintf(buff, PAGE_SIZE, "%s,", f->name);
 
 	mutex_unlock(&dev->mutex);
 
@@ -1402,7 +1407,7 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 
 	INIT_LIST_HEAD(&dev->enabled_functions);
 
-	strncpy(buf, buff, sizeof(buf));
+	strlcpy(buf, buff, sizeof(buf));
 	b = strim(buf);
 
 	while (b) {
@@ -1423,7 +1428,8 @@ static ssize_t enable_show(struct device *pdev, struct device_attribute *attr,
 			   char *buf)
 {
 	struct android_dev *dev = dev_get_drvdata(pdev);
-	return sprintf(buf, "%d\n", dev->enabled);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", dev->enabled);
 }
 
 static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
@@ -1513,7 +1519,7 @@ static ssize_t state_show(struct device *pdev, struct device_attribute *attr,
 		state = "CONNECTED";
 	spin_unlock_irqrestore(&cdev->lock, flags);
 out:
-	return sprintf(buf, "%s\n", state);
+	return snprintf(buf, PAGE_SIZE, "%s\n", state);
 }
 
 #define DESCRIPTOR_ATTR(field, format_string)				\
@@ -1521,7 +1527,8 @@ static ssize_t								\
 field ## _show(struct device *dev, struct device_attribute *attr,	\
 		char *buf)						\
 {									\
-	return sprintf(buf, format_string, device_desc.field);		\
+	return snprintf(buf, PAGE_SIZE,					\
+			format_string, device_desc.field);		\
 }									\
 static ssize_t								\
 field ## _store(struct device *dev, struct device_attribute *attr,	\
@@ -1541,7 +1548,7 @@ static ssize_t								\
 field ## _show(struct device *dev, struct device_attribute *attr,	\
 		char *buf)						\
 {									\
-	return sprintf(buf, "%s", buffer);				\
+	return snprintf(buf, PAGE_SIZE, "%s", buffer);			\
 }									\
 static ssize_t								\
 field ## _store(struct device *dev, struct device_attribute *attr,	\
@@ -1645,9 +1652,10 @@ static int android_bind(struct usb_composite_dev *cdev)
 	device_desc.iProduct = id;
 
 	/* Default strings - should be updated by userspace */
-	strncpy(manufacturer_string, "Android", sizeof(manufacturer_string)-1);
-	strncpy(product_string, "Android", sizeof(product_string) - 1);
-	strncpy(serial_string, "0123456789ABCDEF", sizeof(serial_string) - 1);
+	strlcpy(manufacturer_string, "Android",
+		sizeof(manufacturer_string) - 1);
+	strlcpy(product_string, "Android", sizeof(product_string) - 1);
+	strlcpy(serial_string, "0123456789ABCDEF", sizeof(serial_string) - 1);
 
 	id = usb_string_id(cdev);
 	if (id < 0)
