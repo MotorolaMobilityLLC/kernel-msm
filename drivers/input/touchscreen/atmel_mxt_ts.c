@@ -239,7 +239,6 @@
 
 #define MXT_MAX_FINGER		10
 
-#define MXT_BUFF_SIZE		100
 #define T7_DATA_SIZE		3
 #define MXT_MAX_RW_TRIES	3
 #define MXT_BLOCK_SIZE		256
