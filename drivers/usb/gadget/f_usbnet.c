@@ -85,7 +85,7 @@ struct usbnet_device {
 
 /* static strings, in UTF-8 */
 static struct usb_string usbnet_string_defs[] = {
-       [STRING_INTERFACE].s = "Motorola Test Command",
+       [STRING_INTERFACE].s = "Motorola Networking Interface",
        {  /* ZEROES END LIST */ },
 };
 

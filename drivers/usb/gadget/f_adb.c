@@ -32,6 +32,26 @@
 /* number of tx requests to allocate */
 #define TX_REQ_MAX 4
 
+
+#define STRING_INTERFACE        0
+
+/* static strings, in UTF-8 */
+static struct usb_string adb_string_defs[] = {
+	[STRING_INTERFACE].s = "Motorola ADB Interface",
+		{  /* ZEROES END LIST */ },
+};
+
+static struct usb_gadget_strings adb_string_table = {
+	.language =             0x0409, /* en-us */
+	.strings =              adb_string_defs,
+};
+
+static struct usb_gadget_strings *adb_strings[] = {
+	&adb_string_table,
+	NULL,
+};
+
+
 static const char adb_shortname[] = "android_adb";
 
 struct adb_dev {
@@ -661,8 +681,15 @@ static void adb_function_disable(struct usb_function *f)
 static int adb_bind_config(struct usb_configuration *c)
 {
 	struct adb_dev *dev = _adb_dev;
+	int status = -1;
 
 	pr_debug("adb_bind_config\n");
+
+	status = usb_string_id(c->cdev);
+	if (status >= 0) {
+		adb_string_defs[STRING_INTERFACE].id = status;
+		adb_interface_desc.iInterface = status;
+	}
 
 	dev->cdev = c->cdev;
 	dev->function.name = "adb";
@@ -674,6 +701,7 @@ static int adb_bind_config(struct usb_configuration *c)
 	dev->function.unbind = adb_function_unbind;
 	dev->function.set_alt = adb_function_set_alt;
 	dev->function.disable = adb_function_disable;
+	dev->function.strings = adb_strings;
 
 	return usb_add_function(c, &dev->function);
 }
