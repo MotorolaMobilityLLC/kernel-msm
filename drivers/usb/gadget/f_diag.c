@@ -167,6 +167,24 @@ struct diag_context {
 
 static struct list_head diag_dev_list;
 
+#define STRING_INTERFACE        0
+
+/* static strings, in UTF-8 */
+static struct usb_string diag_string_defs[] = {
+	[STRING_INTERFACE].s = "Motorola QC Diag Interface",
+	{  /* ZEROES END LIST */ },
+};
+
+static struct usb_gadget_strings diag_string_table = {
+	.language =             0x0409, /* en-us */
+	.strings =              diag_string_defs,
+};
+
+static struct usb_gadget_strings *diag_strings[] = {
+	&diag_string_table,
+	NULL,
+};
+
 static inline struct diag_context *func_to_diag(struct usb_function *f)
 {
 	return container_of(f, struct diag_context, function);
@@ -724,8 +742,14 @@ int diag_function_add(struct usb_configuration *c, const char *name,
 	struct diag_context *dev;
 	struct usb_diag_ch *_ch;
 	int found = 0, ret;
+	int status;
 
 	DBG(c->cdev, "diag_function_add\n");
+	status = usb_string_id(c->cdev);
+	if (status >= 0) {
+		diag_string_defs[STRING_INTERFACE].id = status;
+		intf_desc.iInterface = status;
+	}
 
 	list_for_each_entry(_ch, &usb_diag_ch_list, list) {
 		if (!strcmp(name, _ch->name)) {
@@ -761,6 +785,7 @@ int diag_function_add(struct usb_configuration *c, const char *name,
 	dev->function.unbind = diag_function_unbind;
 	dev->function.set_alt = diag_function_set_alt;
 	dev->function.disable = diag_function_disable;
+        dev->function.strings = diag_strings;
 	spin_lock_init(&dev->lock);
 	INIT_LIST_HEAD(&dev->read_pool);
 	INIT_LIST_HEAD(&dev->write_pool);
