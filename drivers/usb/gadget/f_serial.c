@@ -283,9 +283,10 @@ static struct usb_descriptor_header *gser_ss_function[] = {
 };
 
 /* string descriptors: */
-
+#define STRING_INTERFACE        0
+/* Port 0 */
 static struct usb_string gser_string_defs[] = {
-	[0].s = "Generic Serial",
+	[STRING_INTERFACE].s = "Motorola Communication Interface",
 	{  } /* end of list */
 };
 
@@ -296,6 +297,38 @@ static struct usb_gadget_strings gser_string_table = {
 
 static struct usb_gadget_strings *gser_strings[] = {
 	&gser_string_table,
+	NULL,
+};
+
+/* Port 1 */
+static struct usb_string nmea_string_defs[] = {
+	[STRING_INTERFACE].s = "Motorola QC NMEA Interface",
+	{  } /* end of list */
+};
+
+static struct usb_gadget_strings nmea_string_table = {
+	.language =		0x0409,	/* en-us */
+	.strings =		nmea_string_defs,
+};
+
+static struct usb_gadget_strings *nmea_strings[] = {
+	&nmea_string_table,
+	NULL,
+};
+
+/* Port 2 */
+static struct usb_string modem2_string_defs[] = {
+	[STRING_INTERFACE].s = "Motorola QC Modem2 Interface",
+	{  } /* end of list */
+};
+
+static struct usb_gadget_strings modem2_string_table = {
+	.language =		0x0409,	/* en-us */
+	.strings =		modem2_string_defs,
+};
+
+static struct usb_gadget_strings *modem2_strings[] = {
+	&modem2_string_table,
 	NULL,
 };
 
@@ -926,19 +959,7 @@ gser_unbind(struct usb_configuration *c, struct usb_function *f)
 int gser_bind_config(struct usb_configuration *c, u8 port_num)
 {
 	struct f_gser	*gser;
-	int		status;
-
-	/* REVISIT might want instance-specific strings to help
-	 * distinguish instances ...
-	 */
-
-	/* maybe allocate device-global string ID */
-	if (gser_string_defs[0].id == 0) {
-		status = usb_string_id(c->cdev);
-		if (status < 0)
-			return status;
-		gser_string_defs[0].id = status;
-	}
+	int status = -1;
 
 	/* allocate and initialize one new instance */
 	gser = kzalloc(sizeof *gser, GFP_KERNEL);
@@ -951,7 +972,6 @@ int gser_bind_config(struct usb_configuration *c, u8 port_num)
 	gser->port_num = port_num;
 
 	gser->port.func.name = "gser";
-	gser->port.func.strings = gser_strings;
 	gser->port.func.bind = gser_bind;
 	gser->port.func.unbind = gser_unbind;
 	gser->port.func.set_alt = gser_set_alt;
@@ -959,12 +979,37 @@ int gser_bind_config(struct usb_configuration *c, u8 port_num)
 	gser->transport		= gserial_ports[port_num].transport;
 #ifdef CONFIG_MODEM_SUPPORT
 	/* We support only three ports for now */
-	if (port_num == 0)
+	if (port_num == 0) {
+		if (gser_string_defs[STRING_INTERFACE].id == 0) {
+			status = usb_string_id(c->cdev);
+			if (status < 0)
+				return status;
+			gser_string_defs[STRING_INTERFACE].id = status;
+		}
+		gser_interface_desc.iInterface = status;
+		gser->port.func.strings = gser_strings;
 		gser->port.func.name = "modem";
-	else if (port_num == 1)
+	} else if (port_num == 1) {
+		if (nmea_string_defs[STRING_INTERFACE].id == 0) {
+			status = usb_string_id(c->cdev);
+			if (status < 0)
+				return status;
+			nmea_string_defs[STRING_INTERFACE].id = status;
+		}
+		gser_interface_desc.iInterface = status;
+		gser->port.func.strings = nmea_strings;
 		gser->port.func.name = "nmea";
-	else
+	} else {
+		if (modem2_string_defs[STRING_INTERFACE].id == 0) {
+			status = usb_string_id(c->cdev);
+			if (status < 0)
+				return status;
+			modem2_string_defs[STRING_INTERFACE].id = status;
+		}
+		gser_interface_desc.iInterface = status;
+		gser->port.func.strings = modem2_strings;
 		gser->port.func.name = "modem2";
+	}
 	gser->port.func.setup = gser_setup;
 	gser->port.connect = gser_connect;
 	gser->port.get_dtr = gser_get_dtr;
