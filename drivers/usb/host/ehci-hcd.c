@@ -1367,6 +1367,7 @@ MODULE_LICENSE ("GPL");
 
 #ifdef CONFIG_USB_EHCI_MSM
 #include "ehci-msm.c"
+#include "ehci-msm2.c"
 #define PLATFORM_DRIVER_PRESENT
 #endif
 
@@ -1510,6 +1511,10 @@ static struct platform_driver *plat_drivers[]  = {
 
 #ifdef CONFIG_USB_EHCI_MSM_HSIC
 	&ehci_msm_hsic_driver,
+#endif
+
+#ifdef CONFIG_USB_EHCI_MSM
+	&ehci_msm2_driver,
 #endif
 
 #ifdef CONFIG_USB_PXA168_EHCI
