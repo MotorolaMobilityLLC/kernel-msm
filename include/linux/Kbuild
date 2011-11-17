@@ -411,3 +411,4 @@ header-y += x25.h
 header-y += xattr.h
 header-y += xfrm.h
 header-y += msm_mdp.h
+header-y += genlock.h
