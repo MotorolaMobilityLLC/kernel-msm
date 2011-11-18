@@ -109,7 +109,7 @@
 #define MXT_ACQUIRE_ATCHCALST	6
 #define MXT_ACQUIRE_ATCHCALSTHR	7
 
-/* MXT_TOUCH_MULTI_T9 field */
+/* MXT_TOUCH_MULT_T9 field */
 #define MXT_TOUCH_CTRL		0
 #define MXT_TOUCH_XORIGIN	1
 #define MXT_TOUCH_YORIGIN	2
@@ -361,8 +361,8 @@ static bool mxt_object_writable(unsigned int type)
 	case MXT_SPT_COMMSCONFIG_T18:
 	case MXT_SPT_GPIOPWM_T19:
 	case MXT_SPT_SELFTEST_T25:
-	case MXT_SPT_USERDATA_T38:
 	case MXT_SPT_CTECONFIG_T28:
+	case MXT_SPT_USERDATA_T38:
 	case MXT_SPT_DIGITIZER_T43:
 	case MXT_SPT_CTECONFIG_T46:
 		return true;
@@ -691,14 +691,12 @@ static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 			dev_err(dev, "Failed to read message\n");
 			goto end;
 		}
-
 		reportid = message.reportid;
 
 		/* whether reportid is thing of MXT_TOUCH_MULTI_T9 */
 		object = mxt_get_object(data, MXT_TOUCH_MULTI_T9);
 		if (!object)
 			goto end;
-
 		max_reportid = object->max_reportid;
 		min_reportid = max_reportid - object->num_report_ids + 1;
 		id = reportid - min_reportid;
@@ -887,7 +885,7 @@ static int mxt_initialize(struct mxt_data *data)
 		goto free_object_table;
 
 	/* Store T7 and T9 locally, used in suspend/resume operations */
-	t7_object = mxt_get_object(data, MXT_GEN_POWER);
+	t7_object = mxt_get_object(data, MXT_GEN_POWER_T7);
 	if (!t7_object) {
 		dev_err(&client->dev, "Failed to get T7 object\n");
 		error = -EINVAL;
@@ -902,7 +900,7 @@ static int mxt_initialize(struct mxt_data *data)
 			"Failed to save current power state\n");
 		goto free_object_table;
 	}
-	error = mxt_read_object(data, MXT_TOUCH_MULTI, MXT_TOUCH_CTRL,
+	error = mxt_read_object(data, MXT_TOUCH_MULTI_T9, MXT_TOUCH_CTRL,
 			&data->t9_ctrl);
 	if (error < 0) {
 		dev_err(&client->dev, "Failed to save current touch object\n");
@@ -915,7 +913,7 @@ static int mxt_initialize(struct mxt_data *data)
 			MXT_BACKUP_VALUE);
 	msleep(MXT_BACKUP_TIME);
 	do {
-		error =  mxt_read_object(data, MXT_GEN_COMMAND,
+		error =  mxt_read_object(data, MXT_GEN_COMMAND_T6,
 					MXT_COMMAND_BACKUPNV,
 					&command_register);
 		if (error)
@@ -1143,7 +1141,7 @@ static int mxt_start(struct mxt_data *data)
 	}
 
 	error = mxt_write_object(data,
-			MXT_TOUCH_MULTI, MXT_TOUCH_CTRL, data->t9_ctrl);
+			MXT_TOUCH_MULTI_T9, MXT_TOUCH_CTRL, data->t9_ctrl);
 	if (error < 0) {
 		dev_err(&data->client->dev, "failed to restore touch\n");
 		return error;
@@ -1158,7 +1156,7 @@ static int mxt_stop(struct mxt_data *data)
 	u8 t7_data[T7_DATA_SIZE] = {0};
 
 	/* disable touch and configure deep sleep mode */
-	error = mxt_write_object(data, MXT_TOUCH_MULTI, MXT_TOUCH_CTRL, 0);
+	error = mxt_write_object(data, MXT_TOUCH_MULTI_T9, MXT_TOUCH_CTRL, 0);
 	if (error < 0) {
 		dev_err(&data->client->dev, "failed to disable touch\n");
 		return error;
