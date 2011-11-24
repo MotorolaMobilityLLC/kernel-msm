@@ -2923,6 +2923,7 @@ static int ci13xxx_start(struct usb_gadget_driver *driver,
 	udc->softconnect = 1;
 
 	spin_unlock_irqrestore(udc->lock, flags);
+	pm_runtime_get_sync(&udc->gadget.dev);
 	retval = bind(&udc->gadget);                /* MAY SLEEP */
 	spin_lock_irqsave(udc->lock, flags);
 
@@ -2932,13 +2933,11 @@ static int ci13xxx_start(struct usb_gadget_driver *driver,
 	}
 
 	udc->driver = driver;
-	pm_runtime_get_sync(&udc->gadget.dev);
 	if (udc->udc_driver->flags & CI13XXX_PULLUP_ON_VBUS) {
 		if (udc->vbus_active) {
 			if (udc->udc_driver->flags & CI13XXX_REGS_SHARED)
 				hw_device_reset(udc);
 		} else {
-			pm_runtime_put_sync(&udc->gadget.dev);
 			goto done;
 		}
 	}
@@ -2947,11 +2946,11 @@ static int ci13xxx_start(struct usb_gadget_driver *driver,
 		goto done;
 
 	retval = hw_device_state(udc->ep0out.qh.dma);
-	if (retval)
-		pm_runtime_put_sync(&udc->gadget.dev);
 
  done:
 	spin_unlock_irqrestore(udc->lock, flags);
+	if (retval)
+		pm_runtime_put_sync(&udc->gadget.dev);
 	return retval;
 }
 
