@@ -19,6 +19,7 @@
 #ifndef __LINUX_IOMMU_H
 #define __LINUX_IOMMU_H
 
+#include <linux/types.h>
 #include <linux/errno.h>
 #include <linux/scatterlist.h>
 
@@ -79,6 +80,7 @@ struct iommu_ops {
 				    unsigned long iova);
 	int (*domain_has_cap)(struct iommu_domain *domain,
 			      unsigned long cap);
+	phys_addr_t (*get_pt_base_addr)(struct iommu_domain *domain);
 	int (*device_group)(struct device *dev, unsigned int *groupid);
 	unsigned long pgsize_bitmap;
 };
@@ -103,6 +105,7 @@ extern phys_addr_t iommu_iova_to_phys(struct iommu_domain *domain,
 				      unsigned long iova);
 extern int iommu_domain_has_cap(struct iommu_domain *domain,
 				unsigned long cap);
+extern phys_addr_t iommu_get_pt_base_addr(struct iommu_domain *domain);
 extern void iommu_set_fault_handler(struct iommu_domain *domain,
 					iommu_fault_handler_t handler);
 extern int iommu_device_group(struct device *dev, unsigned int *groupid);
@@ -208,6 +211,11 @@ static inline phys_addr_t iommu_iova_to_phys(struct iommu_domain *domain,
 
 static inline int domain_has_cap(struct iommu_domain *domain,
 				 unsigned long cap)
+{
+	return 0;
+}
+
+static inline phys_addr_t iommu_get_pt_base_addr(struct iommu_domain *domain)
 {
 	return 0;
 }
