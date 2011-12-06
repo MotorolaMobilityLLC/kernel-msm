@@ -357,6 +357,16 @@ config HID_MONTEREY
 	---help---
 	Support for Monterey Genius KB29E.
 
+config HID_MOTOROLA
+	tristate "Motorola" if EMBEDDED
+	depends on (USB_HID || BT_HIDP)
+	default !EMBEDDED
+	---help---
+	Support for Motorola HID devices.
+
+	Say Y here if you want support for the multi-touch features of the
+	Motorola Wireless Mouse or Trackpad.
+
 config HID_MULTITOUCH
 	tristate "HID Multitouch panels"
 	depends on USB_HID
