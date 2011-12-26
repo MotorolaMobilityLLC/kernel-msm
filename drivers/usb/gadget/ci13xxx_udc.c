@@ -1867,6 +1867,14 @@ __acquires(mEp->lock)
 		}
 		mReq->req.status = -ESHUTDOWN;
 
+		if (mReq->map) {
+			dma_unmap_single(mEp->device, mReq->req.dma,
+				mReq->req.length,
+				mEp->dir ? DMA_TO_DEVICE : DMA_FROM_DEVICE);
+			mReq->req.dma = DMA_ADDR_INVALID;
+			mReq->map     = 0;
+		}
+
 		if (mReq->req.complete != NULL) {
 			spin_unlock(mEp->lock);
 			if ((mEp->type == USB_ENDPOINT_XFER_CONTROL) &&
