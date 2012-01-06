@@ -967,10 +967,10 @@ void __init gic_init_bases(unsigned int gic_nr, int irq_start,
 		     irq_start);
 		irq_base = irq_start;
 	}
-	gic->domain = irq_domain_add_legacy(node, gic_irqs, irq_base,
-				    hwirq_base, &gic_irq_domain_ops, gic);
-	if (WARN_ON(!gic->domain))
-		return;
+	domain->priv = gic;
+	domain->ops = &gic_irq_domain_ops;
+	irq_domain_add(domain);
+	irq_domain_register(domain);
 
 	gic_chip.flags |= gic_arch_extn.flags;
 	gic_dist_init(gic);
