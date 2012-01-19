@@ -74,19 +74,6 @@ MODULE_PARM_DESC(mot_pass_through_mt_input, "Pass MT to FW without processing");
 #define MT_TOUCH_MAJOR_YES 0x05
 #define MT_TOUCH_MAJOR_NO 0x00
 
-/* HID LED usages. Reference Document: USB HID Usage Tables (www.usb.org) */
-#define MT_HID_LED_NUML 0x01
-#define MT_HID_LED_CAPSL 0x02
-#define MT_HID_LED_SCROLL 0x03
-#define MT_HID_LED_COMPOSE 0x04
-#define MT_HID_LED_KANA 0x05
-#define MT_HID_LED_MUTE 0x09
-#define MT_HID_LED_MSG_WAITING 0x19
-#define MT_HID_LED_STANDBY 0x27
-#define MT_HID_LED_GENERIC 0x4b
-#define MT_HID_LED_SUSPEND 0x4c
-#define MT_HID_LED_EXT_POWER_CONNECTED 0x4d
-
 #define DEBUG_MT 0
 
 static void dbg_mt_log_buffer(u8 *raw_data, int size)
@@ -154,6 +141,7 @@ struct motorola_sc {
 	int prev_btn_state;
 	int prev_mouse_touch_id;
 	bool mouse_dev_allocated;
+	bool mt_dev_allocated;
 	enum mot_mt_state driver_state;
 	unsigned long audio_cable_inserted;
 	struct work_struct work;
@@ -252,7 +240,7 @@ static void mot_mt_process_touch_input(struct motorola_sc *sc, u8 *data)
 		data_sent = true;
 	}
 	if (data_sent == true) {
-		input_report_abs(sc->input, BTN_TOUCH,
+		input_report_key(sc->input, BTN_TOUCH,
 					(sc->active_touches > 0));
 		input_sync(sc->input);
 	}
@@ -754,6 +742,29 @@ static int mot_rawevent(struct hid_device *hdev, struct hid_report *report,
 	return 0x00;
 }
 
+/* Routine to allocate, register and configure an input device for
+ * Multitouch inputs when the HID device report descriptor indicates
+ * the presence of a Multitouch report id.
+ */
+static void mot_mt_setup_mt_dev(struct input_dev *mt_input,
+		struct input_dev *input, struct hid_device *hdev)
+{
+	input_set_drvdata(mt_input, hdev);
+	mt_input->event = input->event;
+	mt_input->open = input->open;
+	mt_input->close = input->close;
+	mt_input->setkeycode = input->setkeycode;
+	mt_input->getkeycode = input->getkeycode;
+	mt_input->name = "Motorola Multitouch Absolute";
+	mt_input->phys = input->phys;
+	mt_input->uniq = input->uniq;
+	mt_input->id.bustype = input->id.bustype;
+	mt_input->id.vendor = input->id.vendor;
+	mt_input->id.product = input->id.product;
+	mt_input->id.version = input->id.version;
+	mt_input->dev.parent = input->dev.parent;
+}
+
 /* Routine to take care of Multitouch specifc Mapping */
 static int mot_input_mapping(struct hid_device *hdev,
 		struct hid_input *hi, struct hid_field *field,
@@ -761,6 +772,7 @@ static int mot_input_mapping(struct hid_device *hdev,
 {
 	struct hid_report *rep = field->report;
 	struct motorola_sc *sc = hid_get_drvdata(hdev);
+	int result;
 
 	/* Perform mapping only for a Multitouch device as necessary */
 	if ((sc->quirks) & MOT_MULTITOUCH) {
@@ -774,93 +786,51 @@ static int mot_input_mapping(struct hid_device *hdev,
 
 		case MT_KB_REPORT_ID:
 			/* Store this since we may need to send Kb events
-			 * ourselves for a double report id and also to
-			 * configure the LED inputs */
-			if (sc->kb_input == NULL)
-				sc->kb_input = hi->input;
-
-			switch (usage->hid & HID_USAGE_PAGE) {
-			case HID_UP_LED:
-				/* Set the MISC button which is required
-				 * for LED functionality in Keyboards */
-				set_bit(EV_KEY, sc->kb_input->evbit);
-				set_bit(BTN_MISC, sc->kb_input->keybit);
-
-				/* Set the corresponding LED event bits */
-				switch (usage->hid & 0xffff) {
-				case MT_HID_LED_NUML:
-					hid_map_usage(hi, usage, bit,
-						 max, EV_LED, LED_NUML);
-					break;
-				case MT_HID_LED_CAPSL:
-					hid_map_usage(hi, usage, bit,
-						 max, EV_LED, LED_CAPSL);
-					break;
-				case MT_HID_LED_SCROLL:
-					hid_map_usage(hi, usage, bit,
-						 max, EV_LED, LED_SCROLLL);
-					break;
-				case MT_HID_LED_COMPOSE:
-					hid_map_usage(hi, usage, bit,
-						 max, EV_LED, LED_COMPOSE);
-					break;
-				case MT_HID_LED_KANA:
-					hid_map_usage(hi, usage, bit,
-						 max, EV_LED, LED_KANA);
-					break;
-				case MT_HID_LED_MUTE:
-					hid_map_usage(hi, usage, bit,
-						 max, EV_LED, LED_MUTE);
-					break;
-				case MT_HID_LED_MSG_WAITING:
-					hid_map_usage(hi, usage, bit,
-						 max, EV_LED, LED_MAIL);
-					break;
-				case MT_HID_LED_STANDBY:
-					hid_map_usage(hi, usage, bit,
-						 max, EV_LED, LED_SLEEP);
-					break;
-				case MT_HID_LED_GENERIC:
-					hid_map_usage(hi, usage, bit,
-						 max, EV_LED, LED_MISC);
-					break;
-				case MT_HID_LED_SUSPEND:
-					hid_map_usage(hi, usage, bit,
-						 max, EV_LED, LED_SUSPEND);
-					break;
-				case MT_HID_LED_EXT_POWER_CONNECTED:
-					hid_map_usage(hi, usage, bit,
-						 max, EV_LED, LED_CHARGING);
-					break;
-				}
-				set_bit(usage->type, sc->kb_input->evbit);
-				set_bit(usage->code, sc->kb_input->ledbit);
-
-				return 0;
-
-			default:
-				break;
-			}
+			 * ourselves for a double report id  */
+			sc->kb_input = hi->input;
 			return 0;
 
 		case MT_REPORT_ID:
-			sc->input = hi->input;
+			if (sc->input == NULL) {
+				dbg_hid("Allocating MT virtual Device");
+				sc->input = input_allocate_device();
+				if (!sc->input) {
+					dev_err(&hdev->dev, "Unable to allocate MT dev\n");
+					sc->input = hi->input;
+				} else {
+					mot_mt_setup_mt_dev(sc->input,
+							 hi->input, hdev);
+					result = input_register_device(
+								sc->input);
+					if (result) {
+						dev_err(&hdev->dev,
+						 "input device reg failed\n");
+						input_free_device(sc->input);
+						sc->input = hi->input;
+					} else {
+						sc->mt_dev_allocated = true;
+					}
+				}
+			}
 			switch (usage->hid & HID_USAGE_PAGE) {
 			case HID_UP_DIGITIZER:
 				sc->isMultitouchDev = true;
 				switch (usage->hid) {
 					/* Used Switch case for future use*/
 				case HID_DG_TOUCH:
-					hid_map_usage_clear(hi, usage,
-						 bit, max, EV_ABS,
-						 ABS_MT_TOUCH_MAJOR);
-					set_bit(usage->type,
-						 hi->input->evbit);
-					input_set_abs_params(hi->input,
+					set_bit(EV_ABS,
+						 sc->input->evbit);
+					input_set_abs_params(sc->input,
 						 ABS_MT_TOUCH_MAJOR,
 						 MT_TOUCH_MAJOR_NO,
 						 MT_TOUCH_MAJOR_YES,
 						 0, 0);
+					input_set_abs_params(sc->input,
+						 ABS_MT_TRACKING_ID,
+						 0, MT_MAX_TOUCHES, 0, 0);
+					input_set_abs_params(sc->input,
+						 ABS_MISC, 0, 0, 0, 0);
+
 					return -1;
 				default:
 					return 0;
@@ -868,39 +838,36 @@ static int mot_input_mapping(struct hid_device *hdev,
 			case HID_UP_GENDESK:
 				switch (usage->hid) {
 				case HID_GD_X:
-					hid_map_usage_clear(hi, usage, bit, max,
-						EV_ABS, ABS_MT_POSITION_X);
-					set_bit(usage->type, hi->input->absbit);
-					input_set_abs_params(hi->input,
+					set_bit(EV_ABS, sc->input->absbit);
+					input_set_abs_params(sc->input,
 							ABS_MT_POSITION_X,
 							field->logical_minimum,
 							field->logical_maximum,
 							0, 0);
 					/* Add additional features for webtop */
 					set_bit(BTN_TOOL_FINGER,
-							hi->input->keybit);
-					input_set_abs_params(hi->input, ABS_X,
+							sc->input->keybit);
+					input_set_abs_params(sc->input, ABS_X,
 							field->logical_minimum,
 							field->logical_maximum,
 							0, 0);
 					return -1;
 				case HID_GD_Y:
-					hid_map_usage_clear(hi, usage, bit, max,
-						EV_ABS, ABS_MT_POSITION_Y);
-					set_bit(usage->type, hi->input->absbit);
-					input_set_abs_params(hi->input,
+					set_bit(EV_ABS, sc->input->absbit);
+					input_set_abs_params(sc->input,
 							ABS_MT_POSITION_Y,
 							field->logical_minimum,
 							field->logical_maximum,
 							0, 0);
 					/* Add additional features for webtop */
 					set_bit(BTN_TOOL_FINGER,
-							hi->input->keybit);
-					input_set_abs_params(hi->input, ABS_Y,
+							sc->input->keybit);
+					input_set_abs_params(sc->input, ABS_Y,
 							field->logical_minimum,
 							field->logical_maximum,
 							0, 0);
 					return -1;
+
 				default:
 					return 0;
 				}
@@ -908,11 +875,11 @@ static int mot_input_mapping(struct hid_device *hdev,
 			case HID_UP_BUTTON:
 				if (mot_pass_through_mt_input == true) {
 					dbg_hid("configuration of btn_touch");
-					set_bit(EV_KEY, hi->input->evbit);
-					set_bit(BTN_LEFT, hi->input->keybit);
-					set_bit(BTN_RIGHT, hi->input->keybit);
-					set_bit(BTN_MIDDLE, hi->input->keybit);
-					set_bit(BTN_TOUCH, hi->input->keybit);
+					set_bit(EV_KEY, sc->input->evbit);
+					set_bit(BTN_LEFT, sc->input->keybit);
+					set_bit(BTN_RIGHT, sc->input->keybit);
+					set_bit(BTN_MIDDLE, sc->input->keybit);
+					set_bit(BTN_TOUCH, sc->input->keybit);
 					return -1;
 				}
 				return 0;
@@ -980,10 +947,10 @@ static int mot_probe(struct hid_device *hdev, const struct hid_device_id *id)
 
 	sc->quirks = quirks;
 	hid_set_drvdata(hdev, sc);
-	hdev->quirks |= HID_QUIRK_MULTI_INPUT;
 	sc->driver_state = MT_TP_INITIAL_STATE;
 	sc->prev_mouse_touch_id = MT_INVALID_TOUCH;
 	sc->mouse_dev_allocated = false;
+	sc->mt_dev_allocated = false;
 	sc->isMultitouchDev = false;
 
 	ret = hid_parse(hdev);
@@ -1105,6 +1072,11 @@ static void mot_remove(struct hid_device *hdev)
 		dbg_hid("Mouse input device is not null");
 		if (sc->rel_input != NULL)
 			input_unregister_device(sc->rel_input);
+	}
+
+	if (sc->mt_dev_allocated == true) {
+		dbg_hid("MT input device is not null so de-registering");
+		input_unregister_device(sc->input);
 	}
 	hid_hw_stop(hdev);
 	kfree(hid_get_drvdata(hdev));
