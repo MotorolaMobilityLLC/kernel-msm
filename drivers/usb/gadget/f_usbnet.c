@@ -32,6 +32,7 @@
 
 #include <linux/usb/ch9.h>
 #include <asm/cacheflush.h>
+#include <linux/switch.h>
 
 
 /*
@@ -176,6 +177,10 @@ static struct usb_descriptor_header *hs_function[] = {
 	(struct usb_descriptor_header *) &usbnet_hs_bulk_out_desc,
 	(struct usb_descriptor_header *) &hs_intr_out_desc,
 	NULL,
+};
+
+static struct switch_dev usbnet_enable_device = {
+	.name = "usbnet_enable",
 };
 
 #define DO_NOT_STOP_QUEUE 0
@@ -349,6 +354,10 @@ static void usbnet_if_config(struct work_struct *work)
 	struct usbnet_context *context = container_of(work,
 				 struct usbnet_context, usbnet_config_wq);
 
+	pr_info("%s : Configuring with config = %d, ip_addr = 0x%08x,"
+		" subnet = 0x%08x, router_ip = 0x%08x, flags = 0x%08x\n",
+		__func__, context->config, context->ip_addr, context->subnet_mask,
+		context->router_ip, context->iff_flag);
 	memset(&ifr, 0, sizeof(ifr));
 	sin = (void *) &(ifr.ifr_ifru.ifru_addr);
 	strncpy(ifr.ifr_ifrn.ifrn_name, context->dev->name,
@@ -381,6 +390,7 @@ static void usbnet_if_config(struct work_struct *work)
 		USBNETDBG(context, "%s: Error in SIOCSIFFLAGS\n", __func__);
 
 	set_fs(saved_fs);
+	switch_set_state(&usbnet_enable_device, context->config);
 }
 
 static const struct net_device_ops usbnet_eth_netdev_ops = {
@@ -685,6 +695,11 @@ static void do_set_config(struct usb_function *f, u16 new_config)
 			usb_ep_disable(context->bulk_in);
 		if (context->bulk_out)
 			usb_ep_disable(context->bulk_out);
+		context->ip_addr = 0;
+		context->subnet_mask = 0;
+		context->router_ip = 0;
+		context->iff_flag = 0;
+		queue_work(system_nrt_wq, &context->usbnet_config_wq);
 	}
 }
 
