@@ -1756,6 +1756,7 @@ static int usbnet_function_init(struct android_usb_function *f,
 
 	f->config = dev;
 
+	switch_dev_register(&usbnet_enable_device);
 	return 0;
 }
 
@@ -1764,6 +1765,7 @@ static void usbnet_function_cleanup(struct android_usb_function *f)
 	struct usbnet_device *dev = f->config;
 
 	usbnet_cleanup(dev);
+	switch_dev_unregister(&usbnet_enable_device);
 }
 
 static int usbnet_function_bind_config(struct android_usb_function *f, struct usb_configuration *c)
