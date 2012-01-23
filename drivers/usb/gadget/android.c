@@ -25,6 +25,7 @@
 #include <linux/utsname.h>
 #include <linux/platform_device.h>
 #include <linux/pm_qos.h>
+#include <linux/switch.h>
 #include <linux/of.h>
 
 #include <linux/usb/ch9.h>
@@ -2889,6 +2890,9 @@ static int usbnet_function_init(struct android_usb_function *f,
 
 	f->config = dev;
 
+#ifdef CONFIG_SWITCH
+	switch_dev_register(&usbnet_enable_device);
+#endif
 	return 0;
 }
 
@@ -2897,6 +2901,9 @@ static void usbnet_function_cleanup(struct android_usb_function *f)
 	struct usbnet_device *dev = f->config;
 
 	usbnet_cleanup(dev);
+#ifdef CONFIG_SWITCH
+	switch_dev_unregister(&usbnet_enable_device);
+#endif
 }
 
 static int usbnet_function_bind_config(struct android_usb_function *f, struct usb_configuration *c)
