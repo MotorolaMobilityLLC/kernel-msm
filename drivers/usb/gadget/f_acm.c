@@ -787,6 +787,8 @@ acm_bind(struct usb_configuration *c, struct usb_function *f)
 
 		/* copy descriptors */
 		f->hs_descriptors = usb_copy_descriptors(acm_hs_function);
+		if (!f->hs_descriptors)
+			goto fail;
 	}
 	if (gadget_is_superspeed(c->cdev->gadget)) {
 		acm_ss_in_desc.bEndpointAddress =
@@ -809,6 +811,11 @@ acm_bind(struct usb_configuration *c, struct usb_function *f)
 	return 0;
 
 fail:
+	if (f->hs_descriptors)
+		usb_free_descriptors(f->hs_descriptors);
+	if (f->descriptors)
+		usb_free_descriptors(f->descriptors);
+
 	if (acm->notify_req)
 		gs_free_req(acm->notify, acm->notify_req);
 
