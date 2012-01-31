@@ -43,10 +43,6 @@
 static struct switch_dev sdev;
 #endif
 
-static bool mot_pass_through_mt_input;
-module_param(mot_pass_through_mt_input, bool, 0644);
-MODULE_PARM_DESC(mot_pass_through_mt_input, "Pass MT to FW without processing");
-
 /* Motorola Multitouch specific Macros */
 #define MT_REPORT_ID 0x33
 #define MT_DOUBLE_REPORT_ID 0x34
@@ -89,19 +85,6 @@ static void dbg_mt_log_buffer(u8 *raw_data, int size)
 	dbg_hid("Motorola Driver Received buffer=%s\n", buffer);
 }
 
-
-
-/**
- * Enumeration mot_mt_state - to represent the various states that
- * the driver can be on.
- */
-enum mot_mt_state {
-	MT_TP_INITIAL_STATE = 0x00,
-	MT_TP_MOUSE_STATE = 0x01,
-	MT_TP_GESTURE_STATE = 0x02,
-	MT_TP_ERROR_STATE = 0x03
-};
-
 /**
  * struct motorola_sc - Tracks Motorola Mobility Multitouch specific data.
  * @input: Input device through which we report multitouch events for
@@ -116,10 +99,6 @@ enum mot_mt_state {
  * @touches: Most recent data for all fingers. Indexed by the contact id sent
  * in the report.
  * @prev_btn_state: Button press/release state of the previous report.
- * @prev_mouse_touch_id: Single finger contact id from the previous report
- * which was treated as a mouse input.
- * @driver_state: The current mode of the driver indicating how to handle the
- * next incoming report.
  */
 struct motorola_sc {
 	bool isMultitouchDev;
@@ -139,10 +118,7 @@ struct motorola_sc {
 		short y;
 	} touches[MT_MAX_TOUCHES];
 	int prev_btn_state;
-	int prev_mouse_touch_id;
-	bool mouse_dev_allocated;
 	bool mt_dev_allocated;
-	enum mot_mt_state driver_state;
 	unsigned long audio_cable_inserted;
 	struct work_struct work;
 };
@@ -275,336 +251,6 @@ static void mot_mt_process_btn_input(struct motorola_sc *sc, u8 *data)
 		input_sync(sc->input);
 }
 
-/* mot_mt_mouse_state_cleanup : Function to ensure proper btn
- * release events are sent in case of a disconnect or a mode change due to
- * a different input to ensure that the protocol with the UI framework is
- * completed (in Pre Honeycomb releases)
- */
-static void mot_mt_mouse_state_cleanup(struct motorola_sc *sc)
-{
-	if (sc->prev_btn_state) {
-		if (sc->prev_btn_state & MT_LEFT_MASK)
-			input_report_key(sc->rel_input, BTN_LEFT, 0);
-		if (sc->prev_btn_state & MT_RIGHT_MASK)
-			input_report_key(sc->rel_input, BTN_RIGHT, 0);
-		if (sc->prev_btn_state & MT_MID_MASK)
-			input_report_key(sc->rel_input, BTN_MIDDLE, 0);
-		input_sync(sc->rel_input);
-	}
-	sc->prev_mouse_touch_id = MT_INVALID_TOUCH;
-	sc->prev_btn_state = MT_NO_BUTTON;
-}
-
-/* mot_mt_gesture_state_cleanup: Function to ensure proper touch
- * release data is sent in case of a disconnect or a mode change due to
- * a different input to ensure that the protocol with the UI framework
- * is completed (in Pre Honeycomb releases)
- */
-static void mot_mt_gesture_state_cleanup(struct motorola_sc *sc)
-{
-	int i;
-	bool data_sent = false;
-	for (i = 0; i < MT_MAX_TOUCHES; i++) {
-		if (sc->touches[i].active == true) {
-			sc->touches[i].active = false;
-			input_report_abs(sc->input, ABS_MT_TOUCH_MAJOR,
-						MT_TOUCH_MAJOR_NO);
-			input_report_abs(sc->input, ABS_MT_POSITION_X, 0);
-			input_report_abs(sc->input, ABS_MT_POSITION_Y, 0);
-			data_sent = true;
-			input_mt_sync(sc->input);
-		}
-	}
-	if (data_sent == true)
-		input_sync(sc->input);
-}
-
-/* mot_mt_gesture_state_raw_data : Function to handle incoming data
- * when the driver is in gesture state (in Pre Honeycomb releases)
- */
-static void mot_mt_gesture_state_raw_data(struct motorola_sc *sc,
-				struct hid_device *hdev,
-				struct hid_report *report, u8 *data, int size)
-{
-
-	int contact_id, i, offset, num_active_touches = 0;
-	int active_finger_id = MT_INVALID_TOUCH;
-	int x_val = 0;
-	int y_val = 0;
-	int drag_val = 0;
-	bool data_sent = false;
-
-	if (sc->driver_state == MT_TP_MOUSE_STATE)
-		mot_mt_mouse_state_cleanup(sc);
-
-	/* Fill the data for the one active finger if there is only 1 finger
-	 * active and all the other fingers released
-	 * so that we can handle that finger as a mouse input
-	 * CASE 6
-	 */
-	for (i = 0; i < sc->ntouches; i++) {
-		offset = MT_HDR_SIZE + (i * MT_TOUCH_SIZE);
-		if ((data[offset] & MT_TOUCH_MASK) == MT_TOUCH_MASK) {
-			num_active_touches++;
-			active_finger_id = data[offset] & MT_CONTACT_MASK;
-			x_val = data[1+offset] | ((data[2+offset] & 0x0f) << 8);
-			y_val = (data[2+offset] >> 4) | (data[3+offset] << 4);
-			drag_val = data[offset] & MT_DRAG_MASK;
-		}
-	}
-	/* Fill data for that active touch id */
-	if (num_active_touches == 1) {
-		if (sc->driver_state == MT_TP_GESTURE_STATE)
-			mot_mt_gesture_state_cleanup(sc);
-		sc->driver_state = MT_TP_MOUSE_STATE;
-		sc->prev_mouse_touch_id = active_finger_id;
-		sc->touches[active_finger_id].active = true;
-		sc->touches[active_finger_id].x = x_val;
-		sc->touches[active_finger_id].y = y_val;
-		sc->touches[active_finger_id].drag = drag_val;
-	} else {
-		sc->driver_state = MT_TP_GESTURE_STATE;
-		/* Fill data for all the touches and send the abs touch
-		 * data up for any touch with drag bit 1 */
-		for (i = 0; i < sc->ntouches; i++) {
-			offset = MT_HDR_SIZE + (i * MT_TOUCH_SIZE);
-			contact_id = data[offset] & MT_CONTACT_MASK;
-			sc->touches[contact_id].x = data[1+offset] |
-					((data[2+offset] & 0x0f) << 8);
-			sc->touches[contact_id].y = (data[2+offset] >> 4) |
-						(data[3+offset] << 4);
-			if ((data[offset] & MT_TOUCH_MASK) == MT_TOUCH_MASK)
-				sc->touches[contact_id].active = true;
-			else
-				sc->touches[contact_id].active = false;
-			sc->touches[contact_id].drag = data[offset] &
-								MT_DRAG_MASK;
-			if (sc->touches[contact_id].drag == MT_DRAG_MASK) {
-				if (sc->touches[contact_id].active == true) {
-					input_report_abs(sc->input,
-					ABS_MT_TOUCH_MAJOR, MT_TOUCH_MAJOR_YES);
-				} else {
-					input_report_abs(sc->input,
-					ABS_MT_TOUCH_MAJOR, MT_TOUCH_MAJOR_NO);
-				}
-				input_report_abs(sc->input, ABS_MT_POSITION_X,
-						 sc->touches[contact_id].x);
-				input_report_abs(sc->input, ABS_MT_POSITION_Y,
-						 sc->touches[contact_id].y);
-				input_mt_sync(sc->input);
-				data_sent = true;
-			}
-		}
-		if (data_sent == true)
-			input_sync(sc->input);
-	}
-}
-
-
-/* mot_mt_mouse_state_raw_data: Function to handle incoming data that
- * requires relative data to be sent out or if there needs to be a transition
- * from the mouse state to a different state (in Pre Honeycomb releases)
- */
-static void mot_mt_mouse_state_raw_data(struct motorola_sc *sc,
-			struct hid_device *hdev, struct hid_report *report,
-			u8 *data, int size)
-{
-	int X, Y, i, x_disp, y_disp, disp_mag, prev_magnitude;
-	int sent_btn_input = false;
-	int send_relative_input = 0;
-	int rel_x = 0; int rel_y = 0;
-	int contact_id, offset, touch_state, current_btn_state;
-	prev_magnitude = 0;
-
-	current_btn_state = data[1] & MT_ANY_BUTTON_MASK;
-
-	/* If there is a single touch and that is active */
-	if ((sc->ntouches == 1) && (data[2] & MT_TOUCH_MASK)) {
-		offset = MT_HDR_SIZE ;
-		contact_id = data[offset] & MT_CONTACT_MASK;
-		X = data[1+offset] | ((data[2+offset] & 0x0f) << 8);
-		Y = (data[2+offset] >> 4) | (data[3+offset] << 4);
-
-		/* Case 2 : Set the Mouse indicator to that touch data and
-		wait for the next report */
-		if ((current_btn_state == MT_NO_BUTTON) &&
-				(sc->prev_btn_state == MT_NO_BUTTON) &&
-				(sc->driver_state == MT_TP_INITIAL_STATE)) {
-			sc->prev_mouse_touch_id = contact_id;
-		} else if (sc->prev_mouse_touch_id == contact_id) {
-			/* Case 3 : Save the relative data to send out relative
-			inputs for the single touch*/
-			rel_x = X - (sc->touches[sc->prev_mouse_touch_id].x);
-			rel_y = Y - (sc->touches[sc->prev_mouse_touch_id].y);
-		} else if (sc->prev_mouse_touch_id != contact_id) {
-			sc->prev_mouse_touch_id = contact_id;
-		}
-
-		/* Case 8 will be taken care down the logic cause all btn
-		changes are sent out before the relative inputs and any
-		relative change is anyway tracked by case 3 */
-	} else if ((sc->ntouches == 2) &&
-			(current_btn_state == MT_NO_BUTTON)) {
-		/* CASE 4 - If 1 finger is released and replaced by another new
-		active finger */
-		if (((data[MT_HDR_SIZE] & MT_TOUCH_MASK) != MT_TOUCH_MASK) ||
-			((data[MT_HDR_SIZE + MT_TOUCH_SIZE] & MT_TOUCH_MASK)
-							!= MT_TOUCH_MASK)) {
-			if ((data[MT_HDR_SIZE] & MT_TOUCH_MASK) ==
-								MT_TOUCH_MASK)
-				sc->prev_mouse_touch_id = data[MT_HDR_SIZE] &
-								MT_CONTACT_MASK;
-			else
-				sc->prev_mouse_touch_id = data[MT_HDR_SIZE +
-					MT_TOUCH_SIZE] & MT_CONTACT_MASK;
-		}
-	} else {
-	/* CASE 7 : Extract the relative data for the mouse input */
-		for (i = 0; i < sc->ntouches; i++) {
-			offset = MT_HDR_SIZE + (MT_TOUCH_SIZE*i);
-			contact_id = data[offset] & MT_CONTACT_MASK;
-			touch_state = data[offset] & MT_TOUCH_MASK;
-			X = data[1+offset] | ((data[2+offset] & 0x0f) << 8);
-			Y = (data[2+offset] >> 4) | (data[3+offset] << 4);
-
-			/* If a finger was previously active and it is also
-			 active now */
-			if ((sc->touches[contact_id].active == true) &&
-					(touch_state == MT_TOUCH_MASK)) {
-				/* Calculate the displacement */
-				x_disp = X - sc->touches[contact_id].x ;
-				y_disp = Y - sc->touches[contact_id].y ;
-				disp_mag = (x_disp * x_disp) +
-						(y_disp * y_disp);
-				if (disp_mag > prev_magnitude) {
-					prev_magnitude = disp_mag;
-					rel_x = x_disp;
-					rel_y = y_disp;
-					sc->prev_mouse_touch_id = contact_id;
-				}
-			}
-		}
-	}
-
-	if (rel_x != 0 || rel_y != 0)
-		send_relative_input = true;
-
-	if (sc->driver_state == MT_TP_GESTURE_STATE)
-		mot_mt_gesture_state_cleanup(sc);
-
-	sc->driver_state = MT_TP_MOUSE_STATE;
-
-	/* Fill finger data */
-	for (i = 0; i < sc->ntouches; i++) {
-		offset = MT_HDR_SIZE + (MT_TOUCH_SIZE*i);
-		contact_id = data[offset] & MT_CONTACT_MASK;
-		if ((data[offset] & MT_TOUCH_MASK) == MT_TOUCH_MASK)
-			sc->touches[contact_id].active = true;
-		else
-			 sc->touches[contact_id].active = false;
-		sc->touches[contact_id].drag = data[offset] & MT_DRAG_MASK;
-		sc->touches[contact_id].x = data[1+offset] |
-						((data[2+offset] & 0x0f) << 8);
-		sc->touches[contact_id].y = (data[2+offset] >> 4) |
-						(data[3+offset] << 4);
-	}
-
-	/* Send the mouse btn events , send in priority order
-	 * left/ right/middle if more than one pressed
-	 */
-	if ((sc->prev_btn_state & MT_LEFT_MASK) ^ (data[1] & MT_LEFT_MASK)) {
-		input_report_key(sc->rel_input, BTN_LEFT,
-					(data[1] & MT_LEFT_MASK));
-		sent_btn_input = true;
-		sc->prev_btn_state = MT_LEFT_MASK;
-	} else if ((sc->prev_btn_state & MT_RIGHT_MASK) ^
-				(data[1] & MT_RIGHT_MASK)) {
-		input_report_key(sc->rel_input, BTN_RIGHT,
-					(data[1] & MT_RIGHT_MASK));
-		sent_btn_input = true;
-		sc->prev_btn_state = MT_RIGHT_MASK;
-	} else if ((sc->prev_btn_state & MT_MID_MASK) ^
-				(data[1] & MT_MID_MASK)) {
-		input_report_key(sc->rel_input, BTN_MIDDLE,
-					(data[1] & MT_MID_MASK));
-		sent_btn_input = true;
-		sc->prev_btn_state = MT_MID_MASK;
-	}
-
-	if (sent_btn_input == true)
-		input_sync(sc->rel_input);
-
-	/* Send relative data */
-	if (send_relative_input == true) {
-		input_report_rel(sc->rel_input, REL_X, rel_x);
-		input_report_rel(sc->rel_input, REL_Y, rel_y);
-		input_sync(sc->rel_input);
-	}
-}
-
-static int mot_mt_verify_raw_data(struct motorola_sc *sc, u8 *data, int size)
-{
-	int i, offset, contact_id, touch_state, j;
-	bool finger_tracked;
-	bool data_error = false;
-
-	sc->active_touches = 0;
-	/* Expect 2 bytes of prefix, and N*4 bytes of touch data. */
-	if (size < MT_HDR_SIZE ||
-			(((size - MT_HDR_SIZE) % MT_TOUCH_SIZE) != 0))
-		/* ignore since the data appears to be incomplete */
-		return 1;
-
-	sc->ntouches = (size - MT_HDR_SIZE) / MT_TOUCH_SIZE;
-
-	/* Move to Error state if the data is incorrect */
-	if (sc->ntouches > 0) {
-		for (i = 0; i < sc->ntouches; i++) {
-			offset = MT_HDR_SIZE + (i * MT_TOUCH_SIZE);
-			contact_id = data[offset] & MT_CONTACT_MASK;
-			touch_state = data[offset] & MT_TOUCH_MASK;
-			if (touch_state == MT_TOUCH_MASK)
-				sc->active_touches++;
-			if ((touch_state != MT_TOUCH_MASK) &&
-				(sc->touches[contact_id].active != true)) {
-				/* Move to error state because a finger that was
-				 * never tracked was asked to be removed*/
-				data_error = true;
-			}
-		}
-
-		/* Verify that all tracked fingers with touch 1 have a data in
-		the report data. */
-		for (i = 0; i < MT_MAX_TOUCHES; i++) {
-			finger_tracked = true;
-			if (sc->touches[i].active == true) {
-				finger_tracked = false;
-				for (j = 0; j < sc->ntouches; j++) {
-					offset = MT_HDR_SIZE +
-							(MT_TOUCH_SIZE * j);
-					contact_id = data[offset] &
-								MT_CONTACT_MASK;
-					if (contact_id == i) {
-						finger_tracked = true;
-						break;
-					}
-				}
-			}
-			/* Move to error state because a finger that was
-			 * tracked is now not present in the report */
-			if (finger_tracked == false)
-				data_error = true;
-		}
-	}
-	if (data_error == true) {
-		dbg_hid("HID_MT: Entering error state\n");
-		sc->driver_state = MT_TP_ERROR_STATE;
-		mot_mt_mouse_state_cleanup(sc);
-		mot_mt_gesture_state_cleanup(sc);
-	}
-	return 0;
-}
-
 /* mot_rawevent : Function to handle the input from the HID device
  * For a Multitouch Device:
  * Based on the various inputs, the handling is either here or the data is
@@ -626,7 +272,6 @@ static int mot_rawevent(struct hid_device *hdev, struct hid_report *report,
 		     u8 *data, int size)
 {
 	struct motorola_sc *sc = hid_get_drvdata(hdev);
-	int current_btn_state;
 
 	dbg_hid("%s\n", __func__);
 	if (DEBUG_MT)
@@ -659,71 +304,16 @@ static int mot_rawevent(struct hid_device *hdev, struct hid_report *report,
 			return 0x01;
 
 		case MT_REPORT_ID:
-			if (mot_pass_through_mt_input == true) {
-				if (size < MT_HDR_SIZE ||
-				(((size - MT_HDR_SIZE) % MT_TOUCH_SIZE) != 0)) {
-					dbg_hid("HC:Incoming data size Error");
-					return 0x01;
-				} else {
-					sc->ntouches =
-					   (size - MT_HDR_SIZE) / MT_TOUCH_SIZE;
-					mot_mt_process_touch_input(sc, data);
-					mot_mt_process_btn_input(sc, data);
-					break;
-				}
-			}
-			if (!sc->rel_input)
+			if (size < MT_HDR_SIZE ||
+			(((size - MT_HDR_SIZE) % MT_TOUCH_SIZE) != 0)) {
+				dbg_hid("HC:Incoming data size Error");
 				return 0x01;
-			if ((mot_mt_verify_raw_data(sc, data, size)) == 1)
-				return 0x01;
-
-			current_btn_state = data[1] & MT_ANY_BUTTON_MASK ;
-
-			/* CASE 1 : No active fingers and no active btns */
-			if ((sc->active_touches == 0) &&
-				(current_btn_state == MT_NO_BUTTON)) {
-
-				/* CASE 10 : Cleanup if it was in the mouse or
-				 * Gesture state when no active fingers and no
-				 *  active btns */
-				if (sc->driver_state == MT_TP_MOUSE_STATE)
-					mot_mt_mouse_state_cleanup(sc);
-				else if (sc->driver_state ==
-							MT_TP_GESTURE_STATE)
-					mot_mt_gesture_state_cleanup(sc);
-				sc->driver_state = MT_TP_INITIAL_STATE;
-			} else if (sc->driver_state == MT_TP_ERROR_STATE) {
-				/* CASE 11 :In Error state ignore all finger
-				*  data */
-				if (DEBUG_MT)
-					dbg_hid("Ignoring Data in Error State");
-			} else if ((current_btn_state > 0) ||
-						 (sc->ntouches == 1)) {
-				/* Case 7: Handle all btn data under
-				 *  mouse protocol */
-				/* Case 2,3,8:Handle 1 finger data in
-				 *  mouse protocol */
-				mot_mt_mouse_state_raw_data(sc, hdev, report,
-								data, size);
-			} else if (sc->ntouches == 2) {
-				/* Case 4 : Handle 2 finger data under mousei
-				 * protocol only if one active finger replaced
-				 *  by another */
-				if (((data[MT_HDR_SIZE] & MT_TOUCH_MASK) !=
-							MT_TOUCH_MASK) ||
-				    ((data[MT_HDR_SIZE + MT_TOUCH_SIZE] &
-					MT_TOUCH_MASK) != MT_TOUCH_MASK)) {
-					mot_mt_mouse_state_raw_data(sc,
-						      hdev, report, data, size);
-				} else {
-					mot_mt_gesture_state_raw_data(sc, hdev,
-							report, data, size);
-				}
-			} else if (sc->ntouches > 2) {
-				/* Case 5,6:Handle all finger data > 2 as ani
-				 *  MT input */
-				mot_mt_gesture_state_raw_data(sc, hdev,
-							report, data, size);
+			} else {
+				sc->ntouches =
+				   (size - MT_HDR_SIZE) / MT_TOUCH_SIZE;
+				mot_mt_process_touch_input(sc, data);
+				mot_mt_process_btn_input(sc, data);
+				break;
 			}
 			break;
 
@@ -765,6 +355,7 @@ static void mot_mt_setup_mt_dev(struct input_dev *mt_input,
 	mt_input->dev.parent = input->dev.parent;
 }
 
+
 /* Routine to take care of Multitouch specifc Mapping */
 static int mot_input_mapping(struct hid_device *hdev,
 		struct hid_input *hi, struct hid_field *field,
@@ -786,7 +377,7 @@ static int mot_input_mapping(struct hid_device *hdev,
 
 		case MT_KB_REPORT_ID:
 			/* Store this since we may need to send Kb events
-			 * ourselves for a double report id  */
+			 * ourselves for a double report id */
 			sc->kb_input = hi->input;
 			return 0;
 
@@ -873,16 +464,13 @@ static int mot_input_mapping(struct hid_device *hdev,
 				}
 
 			case HID_UP_BUTTON:
-				if (mot_pass_through_mt_input == true) {
-					dbg_hid("configuration of btn_touch");
-					set_bit(EV_KEY, sc->input->evbit);
-					set_bit(BTN_LEFT, sc->input->keybit);
-					set_bit(BTN_RIGHT, sc->input->keybit);
-					set_bit(BTN_MIDDLE, sc->input->keybit);
-					set_bit(BTN_TOUCH, sc->input->keybit);
-					return -1;
-				}
-				return 0;
+				dbg_hid("configuration of btn_touch");
+				set_bit(EV_KEY, sc->input->evbit);
+				set_bit(BTN_LEFT, sc->input->keybit);
+				set_bit(BTN_RIGHT, sc->input->keybit);
+				set_bit(BTN_MIDDLE, sc->input->keybit);
+				set_bit(BTN_TOUCH, sc->input->keybit);
+				return -1;
 
 			default:
 				return 0;
@@ -894,42 +482,9 @@ static int mot_input_mapping(struct hid_device *hdev,
 	return 0;
 }
 
-/* Routine to allocate, register and configure an input device for Mouse
- * inputs when the HID device report descriptio does not declare a mouse
- * report iddeclare a mouse. This will be used to send relative data.
- */
-static void mot_mt_setup_mouse_dev(struct input_dev *rel_input,
-		struct input_dev *input, struct hid_device *hdev)
-{
-	input_set_drvdata(rel_input, hdev);
-	rel_input->event = input->event;
-	rel_input->open = input->open;
-	rel_input->close = input->close;
-	rel_input->setkeycode = input->setkeycode;
-	rel_input->getkeycode = input->getkeycode;
-	rel_input->name = "Motorola Multitouch Relative";
-	rel_input->phys = input->phys;
-	rel_input->uniq = input->uniq;
-	rel_input->id.bustype = input->id.bustype;
-	rel_input->id.vendor = input->id.vendor;
-	rel_input->id.product = input->id.product;
-	rel_input->id.version = input->id.version;
-	rel_input->dev.parent = input->dev.parent;
-
-	__set_bit(EV_KEY, rel_input->evbit);
-	__set_bit(BTN_LEFT, rel_input->keybit);
-	__set_bit(BTN_RIGHT, rel_input->keybit);
-	__set_bit(BTN_MIDDLE, rel_input->keybit);
-
-	__set_bit(EV_REL, rel_input->evbit);
-	__set_bit(REL_X, rel_input->relbit);
-	__set_bit(REL_Y, rel_input->relbit);
-
-}
-
 static int mot_probe(struct hid_device *hdev, const struct hid_device_id *id)
 {
-	int ret, result;
+	int ret;
 	unsigned long quirks = id->driver_data;
 	struct motorola_sc *sc;
 	unsigned int connect_mask = 0;
@@ -947,9 +502,6 @@ static int mot_probe(struct hid_device *hdev, const struct hid_device_id *id)
 
 	sc->quirks = quirks;
 	hid_set_drvdata(hdev, sc);
-	sc->driver_state = MT_TP_INITIAL_STATE;
-	sc->prev_mouse_touch_id = MT_INVALID_TOUCH;
-	sc->mouse_dev_allocated = false;
 	sc->mt_dev_allocated = false;
 	sc->isMultitouchDev = false;
 
@@ -973,29 +525,6 @@ static int mot_probe(struct hid_device *hdev, const struct hid_device_id *id)
 	if (ret) {
 		dev_err(&hdev->dev, "hw start failed\n");
 		goto err_free_cancel;
-	}
-
-	/* After parsing the HID report descriptor, if we receive a Multitouch
-	 * and no mouse, then allocate an input device to send relative input */
-	if ((sc->rel_input == NULL) && (sc->input != NULL)) {
-		dbg_hid("Allocating Mouse input device");
-		sc->rel_input = input_allocate_device();
-		if (!sc->rel_input) {
-			dev_err(&hdev->dev, "Unable to allocate Mouse dev\n");
-			goto err_skip_mt;
-		} else {
-			mot_mt_setup_mouse_dev(sc->rel_input, sc->input, hdev);
-			result = input_register_device(sc->rel_input);
-			if (result) {
-				dev_err(&hdev->dev,
-					 "input device registration failed\n");
-				input_free_device(sc->rel_input);
-				sc->rel_input = NULL;
-				goto err_skip_mt;
-			} else {
-				sc->mouse_dev_allocated = true;
-			}
-		}
 	}
 
 	if (sc->isMultitouchDev == true) {
@@ -1059,21 +588,8 @@ static void mot_remove(struct hid_device *hdev)
 		switch_set_state(&sdev, 0);
 #endif
 
-	/* Verify presence of Mouse input dev for Multitouch before cleanup */
-	if (mot_pass_through_mt_input == false) {
-		if (sc->rel_input != NULL)
-			mot_mt_mouse_state_cleanup(sc);
-		mot_mt_gesture_state_cleanup(sc);
-	} else {
-		mot_mt_cleanup(sc);
-	}
-
-	if (sc->mouse_dev_allocated == true) {
-		dbg_hid("Mouse input device is not null");
-		if (sc->rel_input != NULL)
-			input_unregister_device(sc->rel_input);
-	}
-
+	/* Multitouch cleanup */
+	mot_mt_cleanup(sc);
 	if (sc->mt_dev_allocated == true) {
 		dbg_hid("MT input device is not null so de-registering");
 		input_unregister_device(sc->input);
