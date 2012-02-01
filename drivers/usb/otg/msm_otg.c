@@ -1869,7 +1869,6 @@ static void msm_otg_sm_work(struct work_struct *w)
 					otg->state = OTG_STATE_B_PERIPHERAL;
 					break;
 				case USB_SDP_CHARGER:
-					msm_otg_notify_charger(motg, IUNIT);
 					msm_otg_start_peripheral(otg->phy, 1);
 					otg->phy->state
 						= OTG_STATE_B_PERIPHERAL;
