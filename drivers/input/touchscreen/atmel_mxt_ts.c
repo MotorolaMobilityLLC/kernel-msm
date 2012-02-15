@@ -611,17 +611,9 @@ static void mxt_input_report(struct mxt_data *data, int single_id)
 		if (!finger[id].status)
 			continue;
 
-		input_report_abs(input_dev, ABS_MT_TOUCH_MAJOR,
-				finger[id].status != MXT_RELEASE ?
-				finger[id].area : 0);
-		input_report_abs(input_dev, ABS_MT_POSITION_X,
-				finger[id].x);
-		input_report_abs(input_dev, ABS_MT_POSITION_Y,
-				finger[id].y);
-		input_report_abs(input_dev, ABS_MT_PRESSURE,
-				finger[id].status != MXT_RELEASE ?
-				finger[id].pressure : 0);
-		input_mt_sync(input_dev);
+		input_mt_slot(input_dev, id);
+		input_mt_report_slot_state(input_dev, MT_TOOL_FINGER,
+				finger[id].status != MXT_RELEASE);
 
 		if (finger[id].status != MXT_RELEASE) {
 			finger_num++;
@@ -632,7 +624,7 @@ static void mxt_input_report(struct mxt_data *data, int single_id)
 			input_report_abs(input_dev, ABS_MT_POSITION_Y,
 					finger[id].y);
 			input_report_abs(input_dev, ABS_MT_PRESSURE,
-					finger[id].pressure);
+					finger[id].area);
 		} else {
 			finger[id].status = 0;
 		}
