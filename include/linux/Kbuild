@@ -417,5 +417,6 @@ header-y += xfrm.h
 header-y += msm_mdp.h
 header-y += msm_rotator.h
 header-y += tzcom.h
+header-y += qseecom.h
 header-y += qcedev.h
 header-y += genlock.h
