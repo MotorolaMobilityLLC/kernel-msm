@@ -1250,6 +1250,11 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	var->rotate = 0,	/* angle we rotate counter clockwise */
 	mfd->op_enable = FALSE;
 
+	if (panel_info->physical_height_mm)
+		var->height = panel_info->physical_height_mm;
+	if (panel_info->physical_width_mm)
+		var->width = panel_info->physical_width_mm;
+
 	switch (mfd->fb_imgType) {
 	case MDP_RGB_565:
 		fix->type = FB_TYPE_PACKED_PIXELS;
