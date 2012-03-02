@@ -669,6 +669,45 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 				rc = -EFAULT;
 			}
 			break;
+
+		case CFG_SET_GAMMA:
+			if (s_ctrl->func_tbl->sensor_set_gamma == NULL) {
+				rc = -EFAULT;
+				break;
+			}
+			rc = s_ctrl->func_tbl->sensor_set_gamma(s_ctrl,
+					cdata.cfg.fact_set.gamma_unity);
+			break;
+
+		case CFG_SET_SHARPENING:
+			if (s_ctrl->func_tbl->sensor_set_sharpening == NULL) {
+				rc = -EFAULT;
+				break;
+			}
+			rc = s_ctrl->func_tbl->sensor_set_sharpening(s_ctrl,
+					cdata.cfg.fact_set.sharpening);
+			break;
+
+		case CFG_SET_LENSSHADING:
+			if (s_ctrl->func_tbl->sensor_set_lens_shading == NULL) {
+				rc = -EFAULT;
+				break;
+			}
+			rc = s_ctrl->func_tbl->sensor_set_lens_shading(s_ctrl,
+					cdata.cfg.fact_set.lens_shading);
+			break;
+
+		case CFG_SET_TARGET_EXPOSURE:
+			if (s_ctrl->func_tbl->sensor_set_target_exposure
+					== NULL) {
+				rc = -EFAULT;
+				break;
+			}
+			rc = s_ctrl->func_tbl->sensor_set_target_exposure(
+					s_ctrl,
+					cdata.cfg.fact_set.target_exposure);
+			break;
+
 		default:
 			rc = -EFAULT;
 			break;
