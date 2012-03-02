@@ -1027,9 +1027,12 @@ struct msm_snapshot_pp_status {
 #define CFG_HDR_UPDATE                62
 #define CFG_SET_STROBE                63
 #define CFG_ACTUAOTOR_REG_INIT        64
-#define CFG_GET_SNAPSHOTDATA          65
-#define CFG_MAX                       66
-
+#define CFG_GET_SNAPSHOTDATA		65
+#define CFG_SET_GAMMA			66
+#define CFG_SET_SHARPENING		67
+#define CFG_SET_LENSSHADING		68
+#define CFG_SET_TARGET_EXPOSURE	69
+#define CFG_MAX			70
 
 #define MOVE_NEAR	0
 #define MOVE_FAR	1
@@ -1658,6 +1661,13 @@ struct snapshotdata {
 	int flash;
 };
 
+struct factory_settings {
+	uint8_t gamma_unity;
+	uint8_t lens_shading;
+	uint8_t sharpening;
+	uint8_t target_exposure;
+};
+
 struct sensor_cfg_data {
 	int cfgtype;
 	int mode;
@@ -1705,6 +1715,7 @@ struct sensor_cfg_data {
 		struct otp_info_t module_info;
 		uint8_t enable_strobe;
 		struct snapshotdata data;
+		struct factory_settings fact_set;
 	} cfg;
 };
 

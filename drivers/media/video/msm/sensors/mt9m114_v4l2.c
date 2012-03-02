@@ -225,8 +225,6 @@ static int32_t mt9m114_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	return rc;
 }
 
-/* TODO: Motorola added feature. Needs porting */
-#ifdef CONFIG_FF_TEST_PATTERNS
 static int32_t mt9m114_set_gamma(struct msm_sensor_ctrl_t *s_ctrl,
 		uint8_t unity)
 {
@@ -459,6 +457,7 @@ static int32_t mt9m114_get_exposure_time(struct msm_sensor_ctrl_t *s_ctrl,
 	return rc;
 }
 
+#ifdef MOTO_FPSRATE
 static struct msm_camera_i2c_reg_conf mt9m114_15_15_fps_settings[] = {
 	{0xC810, 0x05BD,}, /*cam_sensor_cfg_fine_integ_time_max = 1521*/
 	{0xC812, 0x07D0,}, /*cam_sensor_cfg_frame_length_lines = 1984*/
@@ -1873,13 +1872,12 @@ static struct msm_sensor_fn_t mt9m114_func_tbl = {
 	.sensor_match_id = mt9m114_match_id,
 	.sensor_csi_setting = msm_sensor_setting1,
 	.sensor_get_csi_params = msm_sensor_get_csi_params,
-/* TODO: Motorola added feature. Needs porting */
-#ifdef CONFIG_FF_TEST_PATTERNS
 	.sensor_set_gamma = mt9m114_set_gamma,
 	.sensor_set_sharpening = mt9m114_set_sharpening,
 	.sensor_set_lens_shading = mt9m114_set_lens_shading,
 	.sensor_set_target_exposure = mt9m114_set_target_exposure,
 	.sensor_get_exposure_time = mt9m114_get_exposure_time,
+#ifdef MOTO_FPSRATE
 	.sensor_set_frame_rate_range = mt9m114_set_frame_rate_range,
 #endif
 };

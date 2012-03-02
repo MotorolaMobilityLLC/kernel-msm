@@ -28,6 +28,9 @@ static struct msm_cam_clk_info cam_mot_8960_clk_info[] = {
 };
 
 
+static uint16_t sharpening_saved_5300;
+static uint16_t sharpening_saved_5301;
+
 /*=============================================================
   SENSOR REGISTER DEFINES
   ==============================================================*/
@@ -50,7 +53,7 @@ static struct msm_camera_i2c_reg_conf ov7736_stop_settings[] = {
 	{0x3008, 0x42},
 };
 
-#ifdef CONFIG_FF_TEST_PATTERNS
+#ifdef MOTO_FPSRATE
 static struct msm_camera_i2c_reg_conf ov7736_15_15_fps_settings[] = {
 	{0x380C, 0x06},
 	{0x380D, 0x28},
@@ -450,9 +453,7 @@ static int32_t ov7736_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 inorder to move sensor to proper state */
 static void ov7736_stop_stream(struct msm_sensor_ctrl_t *s_ctrl) {}
 
-/* TODO: Motorola added feature. Needs porting */
-#ifdef CONFIG_FF_TEST_PATTERNS
-
+#ifdef MOTO_FPSRATE
 static int32_t ov7736_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
 		struct fps_range_t *fps_range)
 {
@@ -487,6 +488,7 @@ static int32_t ov7736_set_frame_rate_range(struct msm_sensor_ctrl_t *s_ctrl,
 frame_rate_done:
 	return rc;
 }
+#endif
 
 static int32_t ov7736_set_gamma(struct msm_sensor_ctrl_t *s_ctrl, uint8_t unity)
 {
@@ -710,8 +712,6 @@ static int32_t ov7736_set_target_exposure(struct msm_sensor_ctrl_t *s_ctrl,
 	return rc;
 }
 
-#endif
-
 static int32_t ov7736_get_exposure_time(struct msm_sensor_ctrl_t *s_ctrl,
 		uint32_t *ex_time)
 {
@@ -811,14 +811,12 @@ static struct msm_sensor_fn_t ov7736_func_tbl = {
 	.sensor_match_id        = ov7736_sensor_match_id,
 	.sensor_csi_setting     = msm_sensor_setting1,
 	.sensor_get_csi_params  = msm_sensor_get_csi_params,
-	.sensor_get_exposure_time      = ov7736_get_exposure_time,
-/* TODO: Motorola added feature. Needs porting */
-#ifdef CONFIG_FF_TEST_PATTERNS
 	.sensor_set_gamma              = ov7736_set_gamma,
 	.sensor_set_sharpening         = ov7736_set_sharpening,
 	.sensor_set_lens_shading       = ov7736_set_lens_shading,
 	.sensor_set_target_exposure    = ov7736_set_target_exposure,
 	.sensor_get_exposure_time      = ov7736_get_exposure_time,
+#ifdef MOTO_FPSRATE
 	.sensor_set_frame_rate_range   = ov7736_set_frame_rate_range,
 #endif
 };
