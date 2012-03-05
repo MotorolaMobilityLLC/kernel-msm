@@ -614,15 +614,18 @@ EXPORT_SYMBOL(input_close_device);
 static void input_dev_release_keys(struct input_dev *dev)
 {
 	int code;
+	int pass = false;
 
 	if (is_event_supported(EV_KEY, dev->evbit, EV_MAX)) {
 		for (code = 0; code <= KEY_MAX; code++) {
 			if (is_event_supported(code, dev->keybit, KEY_MAX) &&
 			    __test_and_clear_bit(code, dev->key)) {
 				input_pass_event(dev, EV_KEY, code, 0);
+				pass = true;
 			}
 		}
-		input_pass_event(dev, EV_SYN, SYN_REPORT, 1);
+		if (pass)
+			input_pass_event(dev, EV_SYN, SYN_REPORT, 1);
 	}
 }
 
