@@ -1606,6 +1606,8 @@ static struct usb_gadget_driver composite_driver = {
 int usb_composite_probe(struct usb_composite_driver *driver,
 			       int (*bind)(struct usb_composite_dev *cdev))
 {
+	int retval;
+
 	if (!driver || !driver->dev || !bind || composite)
 		return -EINVAL;
 
@@ -1620,7 +1622,10 @@ int usb_composite_probe(struct usb_composite_driver *driver,
 	composite = driver;
 	composite_gadget_bind = bind;
 
-	return usb_gadget_probe_driver(&composite_driver, composite_bind);
+	retval = usb_gadget_probe_driver(&composite_driver, composite_bind);
+	if (retval)
+		composite = NULL;
+	return retval;
 }
 
 /**
