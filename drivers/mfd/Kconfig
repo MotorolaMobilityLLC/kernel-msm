@@ -1006,6 +1006,13 @@ config MFD_PM8XXX_MISC
 	  This driver implements several miscellaneous APIs that may be needed
 	  in order to control the PM8XXX PMIC chip.
 
+config MFD_PM8XXX_SPK
+	tristate "Support for Qualcomm PM8xxx speaker APIs"
+	depends on MFD_PM8XXX
+	help
+	  This driver implements several external speaker amplifier APIs that
+	  may be needed in order to control the PM8XXX PMIC chip.
+
 config MFD_RC5T583
 	bool "Ricoh RC5T583 Power Management system device"
 	depends on I2C=y && GENERIC_HARDIRQS
