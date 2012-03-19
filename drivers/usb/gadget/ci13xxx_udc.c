@@ -3246,7 +3246,7 @@ static int udc_probe(struct ci13xxx_udc_driver *driver, struct device *dev,
 		void __iomem *regs)
 {
 	struct ci13xxx *udc;
-	int retval = 0;
+	int retval = 0, i;
 
 	trace("%p, %p, %p", dev, regs, driver->name);
 
@@ -3291,6 +3291,11 @@ static int udc_probe(struct ci13xxx_udc_driver *driver, struct device *dev,
 			retval = -ENODEV;
 			goto free_udc;
 		}
+	}
+
+	for (i = 0; i < hw_ep_max; i++) {
+		struct ci13xxx_ep *mEp = &udc->ci13xxx_ep[i];
+		INIT_LIST_HEAD(&mEp->ep.ep_list);
 	}
 
 	if (!(udc->udc_driver->flags & CI13XXX_REGS_SHARED)) {
