@@ -1613,7 +1613,7 @@ static inline void hci_inquiry_result_evt(struct hci_dev *hdev, struct sk_buff *
 		data.rssi		= 0x00;
 		data.ssp_mode		= 0x00;
 		hci_inquiry_cache_update(hdev, &data);
-		mgmt_device_found(hdev->id, &info->bdaddr, 0, 0,
+		mgmt_device_found(hdev->id, &info->bdaddr, ACL_LINK, 0x00, 0,
 					info->dev_class, 0, 0, NULL);
 	}
 
@@ -2823,9 +2823,9 @@ static inline void hci_inquiry_result_with_rssi_evt(struct hci_dev *hdev, struct
 			data.rssi		= info->rssi;
 			data.ssp_mode		= 0x00;
 			hci_inquiry_cache_update(hdev, &data);
-			mgmt_device_found(hdev->id, &info->bdaddr, 0, 0,
-						info->dev_class, info->rssi,
-						0, NULL);
+			mgmt_device_found(hdev->id, &info->bdaddr, ACL_LINK,
+						0x00, 0, info->dev_class,
+						info->rssi, 0, NULL);
 		}
 	} else {
 		struct inquiry_info_with_rssi *info = (void *) (skb->data + 1);
@@ -2840,9 +2840,9 @@ static inline void hci_inquiry_result_with_rssi_evt(struct hci_dev *hdev, struct
 			data.rssi		= info->rssi;
 			data.ssp_mode		= 0x00;
 			hci_inquiry_cache_update(hdev, &data);
-			mgmt_device_found(hdev->id, &info->bdaddr, 0, 0,
-						info->dev_class, info->rssi,
-						0, NULL);
+			mgmt_device_found(hdev->id, &info->bdaddr, ACL_LINK,
+						0x00, 0, info->dev_class,
+						info->rssi, 0, NULL);
 		}
 	}
 
@@ -3004,7 +3004,7 @@ static inline void hci_extended_inquiry_result_evt(struct hci_dev *hdev, struct 
 		data.rssi		= info->rssi;
 		data.ssp_mode		= 0x01;
 		hci_inquiry_cache_update(hdev, &data);
-		mgmt_device_found(hdev->id, &info->bdaddr, 0, 0,
+		mgmt_device_found(hdev->id, &info->bdaddr, ACL_LINK, 0x00, 0,
 				info->dev_class, info->rssi,
 				HCI_MAX_EIR_LENGTH, info->data);
 	}
@@ -3347,8 +3347,9 @@ static inline void hci_le_adv_report_evt(struct hci_dev *hdev,
 	hci_dev_lock(hdev);
 
 	while (num_reports--) {
-		mgmt_device_found(hdev->id, &ev->bdaddr, ev->bdaddr_type,
-				1, NULL, 0, ev->length, ev->data);
+		mgmt_device_found(hdev->id, &ev->bdaddr, LE_LINK,
+					ev->bdaddr_type, 1, NULL, 0,
+					ev->length, ev->data);
 		hci_add_adv_entry(hdev, ev);
 		ev = (void *) (ev->data + ev->length + 1);
 	}
