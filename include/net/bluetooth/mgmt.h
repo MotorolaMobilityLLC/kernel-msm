@@ -131,6 +131,16 @@ struct mgmt_rp_disconnect {
 	bdaddr_t bdaddr;
 } __packed;
 
+#define MGMT_ADDR_BREDR			0x00
+#define MGMT_ADDR_LE_PUBLIC		0x01
+#define MGMT_ADDR_LE_RANDOM		0x02
+#define MGMT_ADDR_INVALID		0xff
+
+struct mgmt_addr_info {
+	bdaddr_t bdaddr;
+	__u8 type;
+} __packed;
+
 #define MGMT_OP_GET_CONNECTIONS		0x0010
 struct mgmt_rp_get_connections {
 	__le16 conn_count;
@@ -357,7 +367,7 @@ struct mgmt_ev_local_name_changed {
 
 #define MGMT_EV_DEVICE_FOUND		0x0012
 struct mgmt_ev_device_found {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 	__u8 dev_class[3];
 	__s8 rssi;
 	__u8 le;
