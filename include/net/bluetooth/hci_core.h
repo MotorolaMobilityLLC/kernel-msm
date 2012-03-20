@@ -1056,10 +1056,10 @@ int mgmt_auth_failed(u16 index, bdaddr_t *bdaddr, u8 status);
 int mgmt_set_local_name_complete(u16 index, u8 *name, u8 status);
 int mgmt_read_local_oob_data_reply_complete(u16 index, u8 *hash, u8 *randomizer,
 								u8 status);
-int mgmt_device_found(u16 index, bdaddr_t *bdaddr, u8 type, u8 le,
-				u8 *dev_class, s8 rssi, u8 eir_len, u8 *eir);
 void mgmt_read_rssi_complete(u16 index, s8 rssi, bdaddr_t *bdaddr,
 				u16 handle, u8 status);
+int mgmt_device_found(u16 index, bdaddr_t *bdaddr, u8 link_type, u8 addr_type,
+			u8 le, u8 *dev_class, s8 rssi, u8 eir_len, u8 *eir);
 int mgmt_remote_name(u16 index, bdaddr_t *bdaddr, u8 status, u8 *name);
 void mgmt_inquiry_started(u16 index);
 void mgmt_inquiry_complete_evt(u16 index, u8 status);
