@@ -74,3 +74,4 @@ obj-$(CONFIG_QPNP_MISC) += qpnp-misc.o
 obj-$(CONFIG_HAPTIC_DRV2605)	+= drv2605.o
 obj-$(CONFIG_MOT_UTAG) += utag/
 obj-$(CONFIG_MMI_FACTORY) += mmi-factory.o
+obj-$(CONFIG_SEC_DRIVER) += sec/
