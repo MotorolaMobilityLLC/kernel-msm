@@ -2742,7 +2742,51 @@ static int msm_hs_runtime_suspend(struct device *dev)
 	return 0;
 }
 
+static int msm_hs_suspend(struct device *dev)
+{
+
+	struct platform_device *pdev = to_platform_device(dev);
+
+	struct uart_port *uport;
+	struct msm_hs_port *msm_uport;
+
+	msm_uport = &q_uart_port[pdev->id];
+	uport = &msm_uport->uport;
+
+	if (uport) {
+		uart_suspend_port(&msm_hs_driver, uport);
+		if (device_may_wakeup(dev))
+			enable_irq_wake(uport->irq);
+
+	}
+
+	return 0;
+}
+
+static int msm_hs_resume(struct device *dev)
+{
+
+	struct platform_device *pdev = to_platform_device(dev);
+	struct uart_port *uport;
+	struct msm_hs_port *msm_uport;
+
+	msm_uport = &q_uart_port[pdev->id];
+	uport = &msm_uport->uport;
+
+	if (uport) {
+		uart_resume_port(&msm_hs_driver, uport);
+		if (device_may_wakeup(dev))
+			disable_irq_wake(uport->irq);
+	}
+
+	return 0;
+}
+
+
+
 static const struct dev_pm_ops msm_hs_dev_pm_ops = {
+	.suspend	 = msm_hs_suspend,
+	.resume 	 = msm_hs_resume,
 	.runtime_suspend = msm_hs_runtime_suspend,
 	.runtime_resume  = msm_hs_runtime_resume,
 	.runtime_idle    = msm_hs_runtime_idle,
