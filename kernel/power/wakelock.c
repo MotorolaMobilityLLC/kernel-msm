@@ -136,25 +136,55 @@ static int print_lock_stat(struct seq_file *m, struct wake_lock *lock)
 		     ktime_to_ns(lock->stat.last_time));
 }
 
-static int wakelock_stats_show(struct seq_file *m, void *unused)
+static int wakelock_stat_headers(struct seq_file *m)
 {
-	unsigned long irqflags;
-	struct wake_lock *lock;
-	int ret;
-	int type;
-
-	spin_lock_irqsave(&list_lock, irqflags);
-
-	ret = seq_puts(m, "name\tcount\texpire_count\twake_count\tactive_since"
+	seq_printf(m, "name\tcount\texpire_count\twake_count\tactive_since" \
 			"\ttotal_time\tsleep_time\tmax_time\tlast_change\n");
-	list_for_each_entry(lock, &inactive_locks, link)
-		ret = print_lock_stat(m, lock);
-	for (type = 0; type < WAKE_LOCK_TYPE_COUNT; type++) {
-		list_for_each_entry(lock, &active_wake_locks[type], link)
-			ret = print_lock_stat(m, lock);
-	}
-	spin_unlock_irqrestore(&list_lock, irqflags);
 	return 0;
+}
+
+static void *wakelock_find_next_lock(loff_t *pos)
+{
+	int type, n = *pos;
+	struct wake_lock *lock;
+
+	if (n == 0)
+		return SEQ_START_TOKEN;
+
+	list_for_each_entry(lock, &inactive_locks, link)
+		if (--n == 0)
+			return lock;
+
+	for (type = 0; type < WAKE_LOCK_TYPE_COUNT; type++)
+		list_for_each_entry(lock, &active_wake_locks[type], link)
+			if (--n == 0)
+				return lock;
+	return NULL;
+}
+
+static void *wakelock_seq_start(struct seq_file *m, loff_t *pos)
+{
+	spin_lock_irq(&list_lock);
+	return wakelock_find_next_lock(pos);
+}
+
+static void *wakelock_seq_next(struct seq_file *m, void *v, loff_t *pos)
+{
+	(*pos)++;
+	return wakelock_find_next_lock(pos);
+}
+
+static void wakelock_seq_stop(struct seq_file *m, void *v)
+{
+	spin_unlock_irq(&list_lock);
+}
+
+static int wakelock_seq_show(struct seq_file *m, void *v)
+{
+	if (v == SEQ_START_TOKEN)
+		return wakelock_stat_headers(m);
+
+	return print_lock_stat(m, v);
 }
 
 static void wake_unlock_stat_locked(struct wake_lock *lock, int expired)
@@ -725,9 +755,17 @@ int wake_lock_active(struct wake_lock *lock)
 }
 EXPORT_SYMBOL(wake_lock_active);
 
+#ifdef CONFIG_WAKELOCK_STAT
+static const struct seq_operations wakelock_seq_ops = {
+	.start = wakelock_seq_start,
+	.next  = wakelock_seq_next,
+	.stop  = wakelock_seq_stop,
+	.show  = wakelock_seq_show,
+};
+
 static int wakelock_stats_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, wakelock_stats_show, NULL);
+	return seq_open(file, &wakelock_seq_ops);
 }
 
 static const struct file_operations wakelock_stats_fops = {
@@ -735,8 +773,9 @@ static const struct file_operations wakelock_stats_fops = {
 	.open = wakelock_stats_open,
 	.read = seq_read,
 	.llseek = seq_lseek,
-	.release = single_release,
+	.release = seq_release,
 };
+#endif
 
 static int __init wakelocks_init(void)
 {
