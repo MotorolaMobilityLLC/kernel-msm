@@ -215,8 +215,10 @@ again:
 		if (hdr->length < DAL_HDR_SIZE)
 			goto done;
 
-		if (hdr->length > DAL_MSG_MAX)
-			panic("oversize message");
+		if (hdr->length > DAL_MSG_MAX) {
+			pr_err("oversize message");
+			BUG();
+		}
 
 		dch->count = hdr->length - DAL_HDR_SIZE;
 
@@ -241,8 +243,10 @@ check_data:
 			goto done;
 
 		r = smd_read(dch->sch, dch->ptr, len);
-		if (r != len)
-			panic("invalid read");
+		if (r != len) {
+			pr_err("invalid read");
+			BUG();
+		}
 
 #if DAL_TRACE
 		pr_info("[%s:%s] dal recv %p <- %p %02x:%04x:%02x %d\n",
