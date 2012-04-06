@@ -62,25 +62,25 @@
 #define L2ESR_CPU_SHIFT		16
 
 #ifdef CONFIG_MSM_L1_ERR_PANIC
-#define ERP_L1_ERR(a) panic(a)
+#define ERP_L1_ERR(a) do { pr_err(a); BUG(); } while (0)
 #else
 #define ERP_L1_ERR(a) do { } while (0)
 #endif
 
 #ifdef CONFIG_MSM_L1_RECOV_ERR_PANIC
-#define ERP_L1_RECOV_ERR(a) panic(a)
+#define ERP_L1_RECOV_ERR(a) do { pr_err(a); BUG(); } while (0)
 #else
 #define ERP_L1_RECOV_ERR(a) do { } while (0)
 #endif
 
 #ifdef CONFIG_MSM_L2_ERP_PORT_PANIC
-#define ERP_PORT_ERR(a) panic(a)
+#define ERP_PORT_ERR(a) do { pr_err(a); BUG(); } while (0)
 #else
 #define ERP_PORT_ERR(a) WARN(1, a)
 #endif
 
 #ifdef CONFIG_MSM_L2_ERP_1BIT_PANIC
-#define ERP_1BIT_ERR(a) panic(a)
+#define ERP_1BIT_ERR(a) do { pr_err(a); BUG(); } while (0)
 #else
 #define ERP_1BIT_ERR(a) do { } while (0)
 #endif
@@ -92,7 +92,7 @@
 #endif
 
 #ifdef CONFIG_MSM_L2_ERP_2BIT_PANIC
-#define ERP_2BIT_ERR(a) panic(a)
+#define ERP_2BIT_ERR(a) do { pr_err(a); BUG(); } while (0)
 #else
 #define ERP_2BIT_ERR(a) do { } while (0)
 #endif
