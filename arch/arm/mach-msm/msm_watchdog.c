@@ -116,8 +116,8 @@ static DECLARE_WORK(init_dogwork_struct, init_watchdog_work);
 void msm_wdog_bark_fin(void)
 {
 	flush_cache_all();
-	pr_crit("\nApps Watchdog bark received - Calling Panic\n");
-	panic("Apps Watchdog Bark received\n");
+	pr_crit("\nApps Watchdog bark received - Calling BUG()\n");
+	BUG();
 }
 
 static int msm_watchdog_suspend(struct device *dev)
@@ -325,7 +325,8 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 		msm_watchdog_resume(NULL);
 	}
 
-	panic("Apps watchdog bark received!");
+	pr_err("Apps watchdog bark received!");
+	BUG();
 	return IRQ_HANDLED;
 }
 

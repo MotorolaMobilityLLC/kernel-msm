@@ -59,8 +59,10 @@ static void smsm_state_cb_hdlr(void *data, uint32_t old_state,
 		return;
 	}
 
-	if (!enable_riva_ssr)
-		panic(MODULE_NAME ": SMSM reset request received from Riva");
+	if (!enable_riva_ssr) {
+		pr_err(MODULE_NAME ": SMSM reset request received from Riva");
+		BUG();
+	}
 
 	smem_reset_reason = smem_get_entry(SMEM_SSR_REASON_WCNSS0,
 			&smem_reset_size);
@@ -96,8 +98,10 @@ static irqreturn_t riva_wdog_bite_irq_hdlr(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
-	if (!enable_riva_ssr)
-		panic(MODULE_NAME ": Watchdog bite received from Riva");
+	if (!enable_riva_ssr) {
+		pr_err(MODULE_NAME ": Watchdog bite received from Riva");
+		BUG();
+	}
 
 	ss_restart_inprogress = true;
 	subsystem_restart_dev(riva_8960_dev);
