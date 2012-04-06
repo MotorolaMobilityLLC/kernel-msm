@@ -129,7 +129,7 @@ static void lpass_fatal_fn(struct work_struct *work)
 	set_ssr_magic_number("lpass");
 	msm_set_restart_mode(0x6d634130);
 #endif
-	panic(MODULE_NAME ": Resetting the SoC");
+	BUG();
 }
 
 static void lpass_smsm_state_cb(void *data, uint32_t old_state,
@@ -148,7 +148,7 @@ static void lpass_smsm_state_cb(void *data, uint32_t old_state,
 		set_ssr_magic_number("lpass");
 		msm_set_restart_mode(0x6d634130);
 #endif
-		panic(MODULE_NAME ": Resetting the SoC");
+		BUG();
 	}
 }
 
