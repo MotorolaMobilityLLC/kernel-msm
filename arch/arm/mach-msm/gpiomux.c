@@ -23,6 +23,10 @@ static struct msm_gpiomux_rec *msm_gpiomux_recs;
 static struct gpiomux_setting *msm_gpiomux_sets;
 static unsigned msm_gpiomux_ngpio;
 
+#ifdef CONFIG_DEBUG_FS
+static void msm_gpiomux_debugfs_init(void);
+#endif
+
 int msm_gpiomux_write(unsigned gpio, enum msm_gpiomux_setting which,
 	struct gpiomux_setting *setting, struct gpiomux_setting *old_setting)
 {
@@ -129,6 +133,10 @@ int msm_gpiomux_init(size_t ngpio)
 
 	msm_gpiomux_ngpio = ngpio;
 
+#ifdef CONFIG_DEBUG_FS
+	msm_gpiomux_debugfs_init();
+#endif
+
 	return 0;
 }
 EXPORT_SYMBOL(msm_gpiomux_init);
@@ -148,3 +156,62 @@ void msm_gpiomux_install(struct msm_gpiomux_config *configs, unsigned nconfigs)
 	}
 }
 EXPORT_SYMBOL(msm_gpiomux_install);
+
+#ifdef CONFIG_DEBUG_FS
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
+
+static int msm_gpiomux_config_show(struct seq_file *s, void *unused)
+{
+	int i;
+	struct msm_gpiomux_rec *rec;
+
+	if (!msm_gpiomux_recs)
+		return -EFAULT;
+
+	for (i = 0; i < msm_gpiomux_ngpio; i++) {
+		rec = msm_gpiomux_recs + i;
+		seq_printf(s, "GPIO-%d: ref=%d\n", i, rec->ref);
+		if (rec->sets[GPIOMUX_ACTIVE])
+			seq_printf(s, "\t Active-setting:    "
+					"func=%d drv=%d pull=%d dir=%d\n",
+					rec->sets[GPIOMUX_ACTIVE]->func,
+					rec->sets[GPIOMUX_ACTIVE]->drv,
+					rec->sets[GPIOMUX_ACTIVE]->pull,
+					rec->sets[GPIOMUX_ACTIVE]->dir);
+		if (rec->sets[GPIOMUX_SUSPENDED])
+			seq_printf(s, "\t Suspended-setting: "
+					"func=%d drv=%d pull=%d dir=%d\n",
+					rec->sets[GPIOMUX_SUSPENDED]->func,
+					rec->sets[GPIOMUX_SUSPENDED]->drv,
+					rec->sets[GPIOMUX_SUSPENDED]->pull,
+					rec->sets[GPIOMUX_SUSPENDED]->dir);
+	}
+	return 0;
+}
+
+static int msm_gpiomux_config_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, msm_gpiomux_config_show, inode->i_private);
+}
+
+static const struct file_operations msm_gpiomux_config_ops = {
+	.open		= msm_gpiomux_config_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= seq_release,
+};
+
+static void msm_gpiomux_debugfs_init()
+{
+	struct dentry *dent;
+
+	dent = debugfs_create_dir("gpiomux", 0);
+
+	if (IS_ERR(dent))
+		return;
+
+	debugfs_create_file("config", S_IRUGO, dent, NULL,
+				&msm_gpiomux_config_ops);
+}
+#endif
