@@ -903,8 +903,8 @@ static void flush_to_bottom_log(struct logger_log *log,
 
 	now = current_kernel_time();
 
-	header.pid = pid_nr(task_pid(current));
-	header.tid = current->tgid;
+	header.pid = current->tgid;
+	header.tid = task_pid_nr(current);
 	header.sec = now.tv_sec;
 	header.nsec = now.tv_nsec;
 
