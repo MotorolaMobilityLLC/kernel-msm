@@ -67,6 +67,7 @@ obj-$(CONFIG_TI_DRV2667) += ti_drv2667.o
 obj-$(CONFIG_QPNP_MISC) += qpnp-misc.o
 obj-$(CONFIG_QCOM_LIQUID_DOCK)	+= qcom_liquid_dock.o
 obj-y				+= qcom/
+obj-$(CONFIG_MMI_FACTORY) += mmi-factory.o
 obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_mpu9150.o
 obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_pedometer.o
 obj-$(CONFIG_MFD_M4SENSORHUB)   += m4sensorhub_gesture.o
