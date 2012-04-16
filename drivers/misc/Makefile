@@ -78,3 +78,4 @@ obj-$(CONFIG_BU52031NVX) += pm8xxx-cradle.o
 obj-$(CONFIG_SLIMPORT_ANX7808)	+= slimport_anx7808/
 obj-$(CONFIG_SEC_DRIVER) += sec/
 obj-$(CONFIG_C55_CTRL) += c55_ctrl.o
+obj-$(CONFIG_MMI_FACTORY) += mmi-factory.o
