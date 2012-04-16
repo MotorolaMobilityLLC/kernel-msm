@@ -640,6 +640,15 @@ config C55_CTRL
 	  is intended to be a simple driver which only exports the GPIOs
 	  for user space use.
 
+config MMI_FACTORY
+	tristate "Motorola Mobility Factory driver"
+	help
+	  This option enables a device driver that is collects many
+	  of the extensions needed by the Motorola factory.  If you
+	  aren't literally building a Motorola Device you can safely
+	  say no here.
+	default n
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
