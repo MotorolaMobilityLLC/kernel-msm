@@ -70,3 +70,5 @@ obj-$(CONFIG_QCOM_LIQUID_DOCK)	+= qcom_liquid_dock.o
 obj-y				+= qcom/
 obj-$(CONFIG_ALSA_TO_H2W) += alsa-to-h2w-headset.o
 obj-$(CONFIG_MOT_UTAG) += utag/
+obj-$(CONFIG_MMI_FACTORY) += mmi-factory.o
+
