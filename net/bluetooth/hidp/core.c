@@ -685,6 +685,13 @@ static void hidp_process_transmit(struct hidp_session *session)
 		hidp_set_timer(session);
 		kfree_skb(skb);
 	}
+}
+
+static void hidp_le_process_transmit(struct hidp_session *session)
+{
+	struct sk_buff *skb;
+
+	BT_DBG("session %p", session);
 
 	while ((skb = skb_dequeue(&session->att_transmit))) {
 		if (hidp_send_frame(session->att_sock,
@@ -749,7 +756,7 @@ static int hidp_session(void *arg)
 				kfree_skb(skb);
 		}
 
-		hidp_process_transmit(session);
+		hidp_le_process_transmit(session);
 
 		schedule();
 	}
