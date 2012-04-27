@@ -987,6 +987,7 @@ out_free:
 	return 0;
 }
 /* Allow early initialization for boot messages via boot param */
-arch_initcall(dynamic_debug_init);
+early_initcall(dynamic_debug_init);
+
 /* Debugfs setup must be done later */
-module_init(dynamic_debug_init_debugfs);
+fs_initcall(dynamic_debug_init_debugfs);
