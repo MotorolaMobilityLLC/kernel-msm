@@ -23,10 +23,12 @@
 #include <linux/kernel.h>
 #include <linux/utsname.h>
 #include <linux/platform_device.h>
+#include <linux/pm_qos.h>
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
+#include <linux/usb/android.h>
 
 #include "gadget_chips.h"
 
@@ -106,8 +108,12 @@ struct android_dev {
 	bool enabled;
 	int disable_depth;
 	struct mutex mutex;
+	struct android_usb_platform_data *pdata;
+
 	bool connected;
 	bool sw_connected;
+	char pm_qos[5];
+	struct pm_qos_request pm_qos_req_dma;
 	struct work_struct work;
 };
 
@@ -162,6 +168,26 @@ static struct usb_configuration android_config_driver = {
 	.bMaxPower	= 0xFA, /* 500ma */
 };
 
+static void android_pm_qos_update_latency(struct android_dev *dev, int vote)
+{
+	struct android_usb_platform_data *pdata = dev->pdata;
+	u32 swfi_latency = 0;
+	static int last_vote = -1;
+
+	if (!pdata || vote == last_vote
+		|| !pdata->swfi_latency)
+		return;
+
+	swfi_latency = pdata->swfi_latency + 1;
+	if (vote)
+		pm_qos_update_request(&dev->pm_qos_req_dma,
+				swfi_latency);
+	else
+		pm_qos_update_request(&dev->pm_qos_req_dma,
+				PM_QOS_DEFAULT_VALUE);
+	last_vote = vote;
+}
+
 static void android_work(struct work_struct *data)
 {
 	struct android_dev *dev = container_of(data, struct android_dev, work);
@@ -171,14 +197,23 @@ static void android_work(struct work_struct *data)
 	char *configured[2]   = { "USB_STATE=CONFIGURED", NULL };
 	char **uevent_envp = NULL;
 	unsigned long flags;
+	int pm_qos_vote = -1;
 
 	spin_lock_irqsave(&cdev->lock, flags);
 	if (cdev->config)
 		uevent_envp = configured;
-	else if (dev->connected != dev->sw_connected)
+	else if (dev->connected != dev->sw_connected) {
 		uevent_envp = dev->connected ? connected : disconnected;
+		if (dev->connected && strncmp(dev->pm_qos, "low", 3))
+			pm_qos_vote = 1;
+		else if (!dev->connected || !strncmp(dev->pm_qos, "low", 3))
+			pm_qos_vote = 0;
+	}
 	dev->sw_connected = dev->connected;
 	spin_unlock_irqrestore(&cdev->lock, flags);
+
+	if (pm_qos_vote != -1)
+		android_pm_qos_update_latency(dev, pm_qos_vote);
 
 	if (uevent_envp) {
 		kobject_uevent_env(&dev->dev->kobj, KOBJ_CHANGE, uevent_envp);
@@ -1017,6 +1052,26 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	}
 
 	mutex_unlock(&dev->mutex);
+
+	return size;
+}
+
+static ssize_t pm_qos_show(struct device *pdev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct android_dev *dev = dev_get_drvdata(pdev);
+
+	return snprintf(buf, PAGE_SIZE, "%s\n", dev->pm_qos);
+}
+
+static ssize_t pm_qos_store(struct device *pdev,
+			   struct device_attribute *attr,
+			   const char *buff, size_t size)
+{
+	struct android_dev *dev = dev_get_drvdata(pdev);
+
+	strlcpy(dev->pm_qos, buff, sizeof(dev->pm_qos));
+
 	return size;
 }
 
@@ -1092,6 +1147,8 @@ DESCRIPTOR_STRING_ATTR(iSerial, serial_string)
 static DEVICE_ATTR(functions, S_IRUGO | S_IWUSR, functions_show,
 						 functions_store);
 static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR, enable_show, enable_store);
+static DEVICE_ATTR(pm_qos, S_IRUGO | S_IWUSR,
+		pm_qos_show, pm_qos_store);
 static DEVICE_ATTR(state, S_IRUGO, state_show, NULL);
 
 static struct device_attribute *android_usb_attributes[] = {
@@ -1106,6 +1163,7 @@ static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_iSerial,
 	&dev_attr_functions,
 	&dev_attr_enable,
+	&dev_attr_pm_qos,
 	&dev_attr_state,
 	NULL
 };
@@ -1303,8 +1361,11 @@ static void android_destroy_device(struct android_dev *dev)
 
 static int __devinit android_probe(struct platform_device *pdev)
 {
+	struct android_usb_platform_data *pdata = pdev->dev.platform_data;
 	struct android_dev *dev = _android_dev;
 	int ret = 0;
+
+	dev->pdata = pdata;
 
 	android_class = class_create(THIS_MODULE, "android_usb");
 	if (IS_ERR(android_class))
@@ -1323,6 +1384,12 @@ static int __devinit android_probe(struct platform_device *pdev)
 		goto err_probe;
 	}
 
+	/* pm qos request to prevent apps idle power collapse */
+	if (pdata && pdata->swfi_latency)
+		pm_qos_add_request(&dev->pm_qos_req_dma,
+			PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
+	strlcpy(dev->pm_qos, "high", sizeof(dev->pm_qos));
+
 	return ret;
 err_probe:
 	android_destroy_device(dev);
@@ -1334,10 +1401,13 @@ err_dev:
 static int android_remove(struct platform_device *pdev)
 {
 	struct android_dev *dev = _android_dev;
+	struct android_usb_platform_data *pdata = pdev->dev.platform_data;
 
 	android_destroy_device(dev);
 	class_destroy(android_class);
 	usb_composite_unregister(&android_usb_driver);
+	if (pdata && pdata->swfi_latency)
+		pm_qos_remove_request(&dev->pm_qos_req_dma);
 
 	return 0;
 }
