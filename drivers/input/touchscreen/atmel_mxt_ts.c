@@ -232,7 +232,7 @@ struct mxt_data {
 	struct i2c_client *client;
 	struct input_dev *input_dev;
 	char phys[64];		/* device physical location */
-	const struct mxt_platform_data *pdata;
+	struct mxt_platform_data *pdata;
 	struct mxt_object *object_table;
 	struct mxt_info info;
 	unsigned int irq;
@@ -1640,18 +1640,34 @@ static void mxt_input_close(struct input_dev *dev)
 	mxt_stop(data);
 }
 
-static int __devinit mxt_probe(struct i2c_client *client,
+static int mxt_handle_pdata(struct mxt_data *data)
+{
+	data->pdata = dev_get_platdata(&data->client->dev);
+
+	/* Use provided platform data if present */
+	if (data->pdata)
+		return 0;
+
+	data->pdata = kzalloc(sizeof(*data->pdata), GFP_KERNEL);
+	if (!data->pdata) {
+		dev_err(&data->client->dev, "Failed to allocate pdata\n");
+		return -ENOMEM;
+	}
+
+	/* Set default parameters */
+	data->pdata->irqflags = IRQF_TRIGGER_FALLING;
+
+	return 0;
+}
+
+static int mxt_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
-	const struct mxt_platform_data *pdata = client->dev.platform_data;
 	struct mxt_data *data;
 	struct input_dev *input_dev;
 	int error;
 	unsigned int num_mt_slots;
 	int i;
-
-	if (!pdata)
-		return -EINVAL;
 
 	data = kzalloc(sizeof(struct mxt_data), GFP_KERNEL);
 	input_dev = input_allocate_device();
@@ -1674,19 +1690,23 @@ static int __devinit mxt_probe(struct i2c_client *client,
 
 	data->client = client;
 	data->input_dev = input_dev;
-	data->pdata = pdata;
 	data->irq = client->irq;
+	i2c_set_clientdata(client, data);
+
+	error = mxt_handle_pdata(data);
+	if (error)
+		goto err_free_mem;
 
 	init_completion(&data->bl_completion);
 	init_completion(&data->reset_completion);
 	init_completion(&data->crc_completion);
 
-	error = request_threaded_irq(client->irq, NULL, mxt_interrupt,
-				     pdata->irqflags | IRQF_ONESHOT,
+	error = request_threaded_irq(data->irq, NULL, mxt_interrupt,
+				     data->pdata->irqflags | IRQF_ONESHOT,
 				     client->name, data);
 	if (error) {
 		dev_err(&client->dev, "Failed to register interrupt\n");
-		goto err_free_mem;
+		goto err_free_pdata;
 	}
 
 	disable_irq(client->irq);
@@ -1699,13 +1719,13 @@ static int __devinit mxt_probe(struct i2c_client *client,
 	__set_bit(EV_KEY, input_dev->evbit);
 	__set_bit(BTN_TOUCH, input_dev->keybit);
 
-	if (pdata->t19_num_keys) {
+	if (data->pdata->t19_num_keys) {
 		__set_bit(INPUT_PROP_BUTTONPAD, input_dev->propbit);
 
-		for (i = 0; i < pdata->t19_num_keys; i++)
-			if (pdata->t19_keymap[i] != KEY_RESERVED)
+		for (i = 0; i < data->pdata->t19_num_keys; i++)
+			if (data->pdata->t19_keymap[i] != KEY_RESERVED)
 				input_set_capability(input_dev, EV_KEY,
-						     pdata->t19_keymap[i]);
+						data->pdata->t19_keymap[i]);
 
 		input_abs_set_res(input_dev, ABS_X, MXT_PIXELS_PER_MM);
 		input_abs_set_res(input_dev, ABS_Y, MXT_PIXELS_PER_MM);
@@ -1740,14 +1760,6 @@ static int __devinit mxt_probe(struct i2c_client *client,
 			     0, 255, 0, 0);
 
 	input_set_drvdata(input_dev, data);
-	i2c_set_clientdata(client, data);
-
-	error = request_threaded_irq(client->irq, NULL, mxt_interrupt,
-			pdata->irqflags, client->name, data);
-	if (error) {
-		dev_err(&client->dev, "Failed to register interrupt\n");
-		goto err_free_object;
-	}
 
 	error = mxt_make_highchg(data);
 	if (error)
@@ -1775,7 +1787,10 @@ err_unregister_device:
 err_free_object:
 	kfree(data->object_table);
 err_free_irq:
-	free_irq(client->irq, data);
+	free_irq(data->irq, data);
+err_free_pdata:
+	if (!dev_get_platdata(&data->client->dev))
+		kfree(data->pdata);
 err_free_mem:
 	input_free_device(input_dev);
 	kfree(data);
@@ -1790,6 +1805,8 @@ static int __devexit mxt_remove(struct i2c_client *client)
 	free_irq(data->irq, data);
 	input_unregister_device(data->input_dev);
 	kfree(data->object_table);
+	if (!dev_get_platdata(&data->client->dev))
+		kfree(data->pdata);
 	kfree(data);
 
 	return 0;
