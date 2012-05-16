@@ -3297,10 +3297,6 @@ static int udc_probe(struct ci13xxx_udc_driver *driver, struct device *dev,
 	udc->gadget.dev.parent   = dev;
 	udc->gadget.dev.release  = udc_release;
 
-	retval = hw_device_init(regs);
-	if (retval < 0)
-		goto free_udc;
-
 	udc->transceiver = usb_get_transceiver();
 
 	if (udc->udc_driver->flags & CI13XXX_REQUIRE_TRANSCEIVER) {
@@ -3309,6 +3305,10 @@ static int udc_probe(struct ci13xxx_udc_driver *driver, struct device *dev,
 			goto free_udc;
 		}
 	}
+
+	retval = hw_device_init(regs);
+	if (retval < 0)
+		goto put_transceiver;
 
 	for (i = 0; i < hw_ep_max; i++) {
 		struct ci13xxx_ep *mEp = &udc->ci13xxx_ep[i];
