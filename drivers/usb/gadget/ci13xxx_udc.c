@@ -2037,6 +2037,9 @@ static void isr_resume_handler(struct ci13xxx *udc)
 		USB_SPEED_HIGH : USB_SPEED_FULL;
 	if (udc->suspended) {
 		spin_unlock(udc->lock);
+		if (udc->udc_driver->notify_event)
+			udc->udc_driver->notify_event(udc,
+			  CI13XXX_CONTROLLER_RESUME_EVENT);
 		if (udc->transceiver)
 			usb_phy_set_suspend(udc->transceiver, 0);
 		udc->driver->resume(&udc->gadget);
@@ -2930,6 +2933,9 @@ static int ci13xxx_vbus_session(struct usb_gadget *_gadget, int is_active)
 		} else {
 			hw_device_state(0);
 			_gadget_stop_activity(&udc->gadget);
+			if (udc->udc_driver->notify_event)
+				udc->udc_driver->notify_event(udc,
+					CI13XXX_CONTROLLER_DISCONNECT_EVENT);
 			pm_runtime_put_sync(&_gadget->dev);
 		}
 	}
