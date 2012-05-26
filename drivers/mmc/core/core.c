@@ -317,9 +317,16 @@ void mmc_start_bkops(struct mmc_card *card)
 
 	spin_lock_irqsave(&card->host->lock, flags);
 	mmc_card_clr_need_bkops(card);
-	mmc_card_set_doing_bkops(card);
+
+	/*
+	 * For urgent bkops status (LEVEL_2 and more)
+	 * bkops executed synchronously, otherwise
+	 * the operation is in progress
+	 */
 	if (card->ext_csd.raw_bkops_status >= EXT_CSD_BKOPS_LEVEL_2)
 		mmc_card_set_check_bkops(card);
+	else
+		mmc_card_set_doing_bkops(card);
 
 	spin_unlock_irqrestore(&card->host->lock, flags);
 out:
@@ -2496,24 +2503,30 @@ int mmc_suspend_host(struct mmc_host *host)
 			if (!mmc_try_claim_host(host))
 				err = -EBUSY;
 
-		if (host->bus_ops->suspend)
-			err = host->bus_ops->suspend(host);
+		if (!err) {
+			if (host->bus_ops->suspend) {
+				if (mmc_card_doing_bkops(host->card))
+					mmc_interrupt_bkops(host->card);
 
-		if (err == -ENOSYS || !host->bus_ops->resume) {
-			/*
-			 * We simply "remove" the card in this case.
-			 * It will be redetected on resume.  (Calling
-			 * bus_ops->remove() with a claimed host can
-			 * deadlock.)
-			 */
-			if (host->bus_ops->remove)
-				host->bus_ops->remove(host);
-			mmc_claim_host(host);
-			mmc_detach_bus(host);
-			mmc_power_off(host);
-			mmc_release_host(host);
-			host->pm_flags = 0;
-			err = 0;
+				err = host->bus_ops->suspend(host);
+			}
+			if (!(host->card && mmc_card_sdio(host->card)))
+				mmc_release_host(host);
+
+			if (err == -ENOSYS || !host->bus_ops->resume) {
+				/*
+				 * We simply "remove" the card in this case.
+				 * It will be redetected on resume.
+				 */
+				if (host->bus_ops->remove)
+					host->bus_ops->remove(host);
+				mmc_claim_host(host);
+				mmc_detach_bus(host);
+				mmc_power_off(host);
+				mmc_release_host(host);
+				host->pm_flags = 0;
+				err = 0;
+			}
 		}
 	}
 	mmc_bus_put(host);
