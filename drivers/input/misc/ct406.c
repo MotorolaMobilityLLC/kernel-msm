@@ -19,6 +19,7 @@
 #include <linux/ct406.h>
 
 #include <linux/delay.h>
+#include <linux/earlysuspend.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/interrupt.h>
@@ -71,10 +72,10 @@
 #define CT406_PIHTH			0x0B
 
 #define CT406_PERS			0x0C
-#define CT406_PERS_PPERS		0xF0
-#define CT406_PERS_APERS		0x0F
-#define CT406_PERS_APERS_NOT_SATURATED	0x14
-#define CT406_PERS_APERS_SATURATED	0x13
+#define CT406_PERS_PPERS_MASK		0xF0
+#define CT406_PERS_APERS_MASK		0x0F
+#define CT406_PERS_PPERS		0x10
+#define CT406_PERS_APERS_SATURATED	0x03
 
 #define CT406_CONFIG			0x0D
 #define CT406_CONFIG_AGL		(1<<2)
@@ -159,6 +160,7 @@ struct ct406_data {
 	enum ct406_prox_mode prox_mode;
 	unsigned int als_requested;
 	unsigned int als_enabled;
+	unsigned int als_apers;
 	enum ct406_als_mode als_mode;
 	unsigned int wait_enabled;
 	/* numeric values */
@@ -174,6 +176,9 @@ struct ct406_data {
 	u8 prox_offset;
 	u16 pdata_max;
 	enum ct40x_hardware_type hw_type;
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	struct early_suspend ct406_early_suspend;
+#endif
 };
 
 static struct ct406_data *ct406_misc_data;
@@ -401,7 +406,7 @@ static int ct406_init_registers(struct ct406_data *ct)
 		return error;
 
 	/* write proximity offset */
-	if (reg_data[0] != CT40X_REV_ID_CT405) {
+	if (ct->hw_type != CT405_HW_TYPE) {
 		reg_data[0] = (CT406_POFFSET | CT406_COMMAND_AUTO_INCREMENT);
 		reg_data[1] = ct->prox_offset;
 		error = ct406_i2c_write(ct, reg_data, 1);
@@ -732,7 +737,7 @@ static int ct406_enable_als(struct ct406_data *ct)
 
 		/* write ALS interrupt persistence */
 		reg_data[0] = CT406_PERS;
-		reg_data[1] = CT406_PERS_APERS_NOT_SATURATED;
+		reg_data[1] = CT406_PERS_PPERS | ct->als_apers;
 		error = ct406_i2c_write(ct, reg_data, 1);
 		if (error < 0) {
 			pr_err("%s: Error  %d\n", __func__, error);
@@ -886,7 +891,7 @@ static int ct406_check_saturation(struct ct406_data *ct)
 
 	/* write ALS interrupt persistence = saturated value */
 	reg_data[0] = CT406_PERS;
-	reg_data[1] = CT406_PERS_APERS_SATURATED;
+	reg_data[1] = CT406_PERS_PPERS | CT406_PERS_APERS_SATURATED;
 	error = ct406_i2c_write(ct, reg_data, 1);
 	if (error < 0)
 		return 0;
@@ -1032,7 +1037,7 @@ static void ct406_report_als(struct ct406_data *ct)
 	/* calculate lux using piecewise function from TAOS */
 	if (c0data == 0)
 		c0data = 1;
-	ratio = 100 * c1data / c0data;
+	ratio = ((100 * c1data) + c0data - 1) / c0data;
 	switch (ct->als_mode) {
 	case CT406_ALS_MODE_SUNLIGHT:
 		if (c0data == 0x0400 || c1data == 0x0400)
@@ -1119,6 +1124,9 @@ static int ct406_set_als_enable_param(const char *char_value,
 	mutex_lock(&ct406_misc_data->mutex);
 
 	ct406_misc_data->als_requested = (int_value != 0);
+	if (ct406_debug & CT406_DBG_INPUT)
+		pr_info("%s: als enable = %d\n", __func__,
+			ct406_misc_data->als_requested);
 	if (ct406_misc_data->als_requested)
 		ret = ct406_enable_als(ct406_misc_data);
 	else
@@ -1174,6 +1182,9 @@ static int ct406_set_prox_enable_param(const char *char_value,
 	mutex_lock(&ct406_misc_data->mutex);
 
 	ct406_misc_data->prox_requested = (int_value != 0);
+	if (ct406_debug & CT406_DBG_INPUT)
+		pr_info("%s: prox enable = %d\n", __func__,
+			ct406_misc_data->prox_requested);
 	if (ct406_misc_data->prox_requested)
 		ret = ct406_enable_prox(ct406_misc_data);
 	else
@@ -1205,6 +1216,79 @@ static int ct406_get_prox_enable_param(char *buffer, struct kernel_param *kp)
 module_param_call(prox_enable, ct406_set_prox_enable_param,
 	ct406_get_prox_enable_param, &ct406_prox_enable_param, 0644);
 MODULE_PARM_DESC(prox_enable, "Enable/disable the Prox.");
+
+static int ct406_als_delay_param;
+
+static int ct406_set_als_delay_param(const char *char_value,
+	struct kernel_param *kp)
+{
+	unsigned long int_value;
+	int  ret;
+
+	if (!char_value)
+		return -EINVAL;
+
+	if (!ct406_misc_data)
+		return -EINVAL;
+
+	ret = strict_strtoul(char_value, (unsigned int)0, &int_value);
+	if (ret)
+		return ret;
+
+	*((int *)kp->arg) = int_value;
+
+	mutex_lock(&ct406_misc_data->mutex);
+
+	ct406_als_delay_param = int_value;
+	if (ct406_debug & CT406_DBG_INPUT)
+		pr_info("%s: delay = %d\n", __func__, ct406_als_delay_param);
+
+	if (ct406_als_delay_param > 982)
+		ct406_misc_data->als_apers = 0x07;
+	else if (ct406_als_delay_param > 737)
+		ct406_misc_data->als_apers = 0x06;
+	else if (ct406_als_delay_param > 491)
+		ct406_misc_data->als_apers = 0x05;
+	else if (ct406_als_delay_param > 245)
+		ct406_misc_data->als_apers = 0x04;
+	else if (ct406_als_delay_param > 147)
+		ct406_misc_data->als_apers = 0x03;
+	else if (ct406_als_delay_param > 98)
+		ct406_misc_data->als_apers = 0x02;
+	else
+		ct406_misc_data->als_apers = 0x01;
+
+	if (ct406_misc_data->als_enabled
+		&& (ct406_misc_data->als_mode != CT406_ALS_MODE_SUNLIGHT)) {
+		ct406_disable_als(ct406_misc_data);
+		ct406_enable_als(ct406_misc_data);
+	}
+
+	mutex_unlock(&ct406_misc_data->mutex);
+
+	return ret;
+}
+
+static int ct406_get_als_delay_param(char *buffer, struct kernel_param *kp)
+{
+	int num_chars;
+
+	if (!buffer)
+		return -EINVAL;
+
+	if (!ct406_misc_data) {
+		scnprintf(buffer, PAGE_SIZE, "0\n");
+		return 1;
+	}
+
+	num_chars = scnprintf(buffer, 2, "%d\n", ct406_als_delay_param);
+
+	return num_chars;
+}
+
+module_param_call(als_delay, ct406_set_als_delay_param, ct406_get_als_delay_param,
+	&ct406_als_delay_param, 0644);
+MODULE_PARM_DESC(als_delay, "Set ALS delay.");
 
 static const struct file_operations ct406_misc_fops = {
 	.owner = THIS_MODULE,
@@ -1323,56 +1407,42 @@ static void ct406_work_func(struct work_struct *work)
 	enable_irq(ct->client->irq);
 }
 
-static int ct406_suspend(struct ct406_data *ct)
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void ct406_suspend(struct early_suspend *handler)
 {
-	ct406_disable_als(ct);
-
-	if (!ct->prox_requested)
-		ct406_device_power_off(ct);
-
-	ct->suspended = 1;
-
-	return 0;
-}
-
-static int ct406_resume(struct ct406_data *ct)
-{
-	ct406_device_power_on(ct);
-	ct406_device_init(ct);
-
-	ct->suspended = 0;
-
-	if (ct->als_requested)
-		ct406_enable_als(ct);
-
-	return 0;
-}
-
-static int ct406_pm_event(struct notifier_block *this,
-			  unsigned long event,
-			  void *ptr)
-{
-	struct ct406_data *ct = container_of(this,
-		struct ct406_data, pm_notifier);
-
 	if (ct406_debug & CT406_DBG_SUSPEND_RESUME)
-		pr_info("%s: event = %lu\n", __func__, event);
+		pr_info("%s\n", __func__);
 
-	mutex_lock(&ct->mutex);
+	mutex_lock(&ct406_misc_data->mutex);
 
-	switch (event) {
-	case PM_SUSPEND_PREPARE:
-		ct406_suspend(ct);
-		break;
-	case PM_POST_SUSPEND:
-		ct406_resume(ct);
-		break;
-	}
+	ct406_disable_als(ct406_misc_data);
 
-	mutex_unlock(&ct->mutex);
+	if (!ct406_misc_data->prox_requested)
+		ct406_device_power_off(ct406_misc_data);
 
-	return NOTIFY_DONE;
+	ct406_misc_data->suspended = 1;
+
+	mutex_unlock(&ct406_misc_data->mutex);
 }
+
+static void ct406_resume(struct early_suspend *handler)
+{
+	if (ct406_debug & CT406_DBG_SUSPEND_RESUME)
+		pr_info("%s\n", __func__);
+
+	mutex_lock(&ct406_misc_data->mutex);
+
+	ct406_device_power_on(ct406_misc_data);
+	ct406_device_init(ct406_misc_data);
+
+	ct406_misc_data->suspended = 0;
+
+	if (ct406_misc_data->als_requested)
+		ct406_enable_als(ct406_misc_data);
+
+	mutex_unlock(&ct406_misc_data->mutex);
+}
+#endif /* CONFIG_HAS_EARLYSUSPEND */
 
 static int ct406_probe(struct i2c_client *client,
 		       const struct i2c_device_id *id)
@@ -1435,13 +1505,6 @@ static int ct406_probe(struct i2c_client *client,
 		goto error_misc_register_failed;
 	}
 
-	ct->pm_notifier.notifier_call = ct406_pm_event;
-	error = register_pm_notifier(&ct->pm_notifier);
-	if (error < 0) {
-		pr_err("%s: register_pm_notifier failed\n", __func__);
-		goto error_register_pm_notifier_failed;
-	}
-
 	ct->regs_initialized = 0;
 	ct->suspended = 0;
 
@@ -1451,6 +1514,7 @@ static int ct406_probe(struct i2c_client *client,
 	ct->prox_mode = CT406_PROX_MODE_SATURATED;
 	ct->als_requested = 0;
 	ct->als_enabled = 0;
+	ct->als_apers = 0x4;
 	ct->als_mode = CT406_ALS_MODE_LOW_LUX;
 
 	ct->workqueue = create_singlethread_workqueue("als_wq");
@@ -1535,6 +1599,12 @@ static int ct406_probe(struct i2c_client *client,
 		goto error_revision_read_failed;
 	}
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	ct->ct406_early_suspend.suspend = ct406_suspend;
+	ct->ct406_early_suspend.resume = ct406_resume;
+	register_early_suspend(&ct->ct406_early_suspend);
+#endif
+
 	return 0;
 
 error_revision_read_failed:
@@ -1551,8 +1621,6 @@ error_input_register_failed:
 error_req_irq_failed:
 	destroy_workqueue(ct->workqueue);
 error_create_wq_failed:
-	unregister_pm_notifier(&ct->pm_notifier);
-error_register_pm_notifier_failed:
 	misc_deregister(&ct->miscdevice);
 error_misc_register_failed:
 	ct406_misc_data = NULL;
@@ -1580,8 +1648,6 @@ static int ct406_remove(struct i2c_client *client)
 	free_irq(ct->client->irq, ct);
 
 	destroy_workqueue(ct->workqueue);
-
-	unregister_pm_notifier(&ct->pm_notifier);
 
 	misc_deregister(&ct->miscdevice);
 
