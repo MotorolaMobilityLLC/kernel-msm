@@ -205,6 +205,25 @@ struct mmc_part {
 #define MMC_BLK_DATA_AREA_GP	(1<<2)
 };
 
+enum mmc_packed_stop_reasons {
+	EXCEEDS_SEGMENTS = 0,
+	EXCEEDS_SECTORS,
+	WRONG_DATA_DIR,
+	FLUSH_OR_DISCARD,
+	EMPTY_QUEUE,
+	REL_WRITE,
+	THRESHOLD,
+	MAX_REASONS,
+};
+
+struct mmc_wr_pack_stats {
+	u32 *packing_events;
+	u32 pack_stop_reason[MAX_REASONS];
+	spinlock_t lock;
+	bool enabled;
+	bool print_in_read;
+};
+
 /*
  * MMC device
  */
@@ -281,6 +300,8 @@ struct mmc_card {
 	struct dentry		*debugfs_root;
 	struct mmc_part	part[MMC_NUM_PHY_PARTITION]; /* physical partitions */
 	unsigned int    nr_parts;
+
+	struct mmc_wr_pack_stats wr_pack_stats; /* packed commands stats*/
 };
 
 /*
@@ -510,5 +531,9 @@ extern void mmc_unregister_driver(struct mmc_driver *);
 
 extern void mmc_fixup_device(struct mmc_card *card,
 			     const struct mmc_fixup *table);
+
+extern struct mmc_wr_pack_stats *mmc_blk_get_packed_statistics(
+			struct mmc_card *card);
+extern void mmc_blk_init_packed_statistics(struct mmc_card *card);
 
 #endif /* LINUX_MMC_CARD_H */
