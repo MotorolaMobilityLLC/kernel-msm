@@ -169,6 +169,12 @@ enum pm8921_charger_source {
 void pm8921_charger_vbus_draw(unsigned int mA);
 int pm8921_charger_register_vbus_sn(void (*callback)(int));
 void pm8921_charger_unregister_vbus_sn(void (*callback)(int));
+
+/**
+ * pm8921_charger_usb_suspend_clear - clear the suspend bit
+ */
+void pm8921_charger_usb_suspend_clear(void);
+
 /**
  * pm8921_charger_enable -
  *
