@@ -69,6 +69,7 @@ struct akm8963_data {
 	uint32_t	active_flag;
 	uint32_t	busy_flag;
 	uint32_t	suspend_flag;
+	uint32_t	first_time_flag;
 
 	int64_t	delay[AKM_NUM_SENSORS];
 	char	layout;
@@ -785,6 +786,11 @@ static ssize_t akm8963_sysfs_enable_store(
 	if (false == get_value_as_int(buf, count, &en))
 		return -EINVAL;
 
+	if (akm->first_time_flag == 0) {
+		enable_irq(akm->irq);
+		akm->first_time_flag = 1;
+	}
+
 	en = en ? 1 : 0;
 
 	mutex_lock(&akm->state_mutex);
@@ -1383,8 +1389,9 @@ int akm8963_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	s_akm->active_flag = 0;
 	s_akm->busy_flag = 0;
 	s_akm->suspend_flag = 0;
-
 	s_akm->enable_flag = 0;
+	s_akm->first_time_flag = 0;
+
 	for (i = 0; i < AKM_NUM_SENSORS; i++)
 		s_akm->delay[i] = -1;
 
@@ -1408,6 +1415,7 @@ int akm8963_probe(struct i2c_client *client, const struct i2c_device_id *id)
 				"%s: request irq failed.", __func__);
 			goto exit_irq_fail;
 		}
+		disable_irq_nosync(s_akm->irq);
 	}
 
 	INIT_WORK(&s_akm->work, akm8963_work);
