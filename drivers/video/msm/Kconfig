@@ -179,6 +179,11 @@ config FB_MSM_MIPI_DSI_TOSHIBA
 	select FB_MSM_MIPI_DSI
 	default n
 
+config FB_MSM_MIPI_DSI_LGIT
+	bool
+	select FB_MSM_MIPI_DSI
+	default n
+
 config FB_MSM_MIPI_DSI_RENESAS
 	bool
 	select FB_MSM_MIPI_DSI
@@ -300,6 +305,11 @@ config FB_MSM_LCDC_NT35582_WVGA
 config FB_MSM_LCDC_WXGA
 	bool
 	select FB_MSM_LCDC_PANEL
+	default n
+
+config FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT
+	bool
+	select FB_MSM_MIPI_DSI_LGIT
 	default n
 
 config FB_MSM_LVDS_CHIMEI_WXGA
@@ -649,6 +659,10 @@ config FB_MSM_MDDI_SHARP_QVGA_128x128
 	select FB_MSM_MDDI
 	---help---
 	  Support for MDDI Sharp QVGA (240x320) and 128x128 dual panel
+
+config FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT_PANEL
+	bool "MIPI LG Display WXGA PT Panel"
+	select FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT
 
 config FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT_PANEL
 	bool "MIPI Toshiba WVGA PT Panel"
