@@ -42,6 +42,7 @@
 #include <linux/init.h>
 #include <linux/proc_fs.h>
 #include <linux/string.h>
+#include <linux/ctype.h>
 #include <asm/setup.h>
 #include <asm/system.h>
 #include <asm/bootinfo.h>
@@ -66,16 +67,14 @@
 					bi_##name()); \
 		} while (0)
 
-#define EMIT_BOOTINFO_STR(strname, name) \
+#define EMIT_BOOTINFO_STR(strname, strval) \
 		do { \
-			unsigned char *ptr; \
-			ptr = (unsigned char *)bi_##name(); \
-			if (strlen(ptr) == 0) { \
-				len += sprintf(buf+len, strname \
-							" : UNKNOWN\n"); \
+			if (strlen(strval) == 0) { \
+				len += sprintf(buf+len, "%s : UNKNOWN\n", \
+						strname); \
 			} else { \
-				len += sprintf(buf+len, strname \
-							" : %s\n", ptr); \
+				len += sprintf(buf+len, "%s : %s\n", \
+						strname, strval); \
 			} \
 		} while (0)
 
@@ -229,6 +228,75 @@ EXPORT_SYMBOL(bi_set_cid_recover_boot);
 #define EMIT_CID_RECOVER_BOOT() \
 		EMIT_BOOTINFO("CID_RECOVER_BOOT", "0x%04x", cid_recover_boot)
 
+/*
+ * BL build signature a succession of lines of text each denoting
+ * build/versioning information for each bootloader component,
+ * as passed along from bootloader via ATAG_BL_BUILD_SIG(s)
+ */
+
+#define MAX_BL_BUILD_SIG  10
+#define MAX_BLD_SIG_ITEM  20
+#define MAX_BLD_SIG_VALUE 80
+
+struct bl_build_sig {
+	char item[MAX_BLD_SIG_ITEM];
+	char value[MAX_BLD_SIG_VALUE];
+};
+
+static unsigned bl_build_sig_count;
+static struct bl_build_sig bl_build_sigs[MAX_BL_BUILD_SIG];
+
+static void convert_to_upper(char *str)
+{
+	while (*str) {
+		*str = toupper(*str);
+		str++;
+	}
+}
+
+void bi_add_bl_build_sig(char *bld_sig)
+{
+	char *item;
+	char *value = NULL;
+
+	if (!bld_sig || (bl_build_sig_count >= MAX_BL_BUILD_SIG)) {
+		return;
+	}
+
+	item = strsep(&bld_sig, "=");
+	if (!item) {
+		return;
+	}
+
+	value = strsep((char **)&bld_sig, "=");
+	if (!value) {
+		return;
+	}
+
+	convert_to_upper(item);
+	strncpy((char *)bl_build_sigs[bl_build_sig_count].item,
+		item, MAX_BLD_SIG_ITEM);
+	bl_build_sigs[bl_build_sig_count].item[MAX_BLD_SIG_ITEM - 1] = '\0';
+
+	strncpy((char *)bl_build_sigs[bl_build_sig_count].value,
+		value, MAX_BLD_SIG_VALUE);
+	bl_build_sigs[bl_build_sig_count].value[MAX_BLD_SIG_VALUE - 1] = '\0';
+
+	bl_build_sig_count++;
+
+	return;
+}
+EXPORT_SYMBOL(bi_add_bl_build_sig);
+
+#define EMIT_BL_BUILD_SIG() \
+		do { \
+			int i; \
+			for (i = 0; i < bl_build_sig_count; i++) { \
+				EMIT_BOOTINFO_STR(bl_build_sigs[i].item, \
+						bl_build_sigs[i].value); \
+			} \
+		} while (0)
+
 /* System revision s global symbol exported by setup.c
  * use wrapper to maintain coherent format with the other
  * boot info elements
@@ -273,6 +341,7 @@ static int get_bootinfo(char *buf, char **start,
 	EMIT_MBM_VERSION();
 	EMIT_BATTERY_STATUS_AT_BOOT();
 	EMIT_CID_RECOVER_BOOT();
+	EMIT_BL_BUILD_SIG();
 
 	return len;
 }
