@@ -97,6 +97,8 @@ void bi_set_battery_status_at_boot(u16 battery_status_at_boot);
 u32  bi_cid_recover_boot(void);
 void bi_set_cid_recover_boot(u32 cid_recover_boot);
 
+void bi_add_bl_build_sig(char *bld_sig);
+
 #endif /* defined(__KERNEL__) && defined(CONFIG_BOOTINFO) */
 
 #endif
