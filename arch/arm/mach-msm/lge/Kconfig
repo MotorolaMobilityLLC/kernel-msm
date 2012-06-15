@@ -1,0 +1,11 @@
+config MACH_LGE
+	bool
+
+menu "LGE Board Selection"
+source "arch/arm/mach-msm/lge/Kconfig.board"
+endmenu
+
+
+menu "LGE Specific Patches"
+
+endmenu
