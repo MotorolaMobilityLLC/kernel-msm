@@ -166,9 +166,15 @@ struct tag_battery_status_at_boot {
 };
 
 /* CID recover boot */
-#define ATAG_CID_RECOVER_BOOT 0xf1000414
+#define ATAG_CID_RECOVER_BOOT 0xf1000415
 struct tag_cid_recover_boot {
 	uint32_t cid_recover_boot;
+};
+
+/* Bootloader build signature */
+#define ATAG_BL_BUILD_SIG 0xf1000418
+struct tag_bl_build_sig {
+	char bl_build_sig[1];
 };
 
 #endif /*  CONFIG_BOOTINFO */
@@ -200,6 +206,7 @@ struct tag {
 		struct tag_mbm_version                 mbm_version;
 		struct tag_battery_status_at_boot      battery_status_at_boot;
 		struct tag_cid_recover_boot            cid_recover_boot;
+		struct tag_bl_build_sig                bl_build_sig;
 #endif /*  CONFIG_BOOTINFO */
 	} u;
 };
