@@ -919,7 +919,6 @@ void __init apq8064_init_fb(void)
 #define I2C_RUMI (1 << 2)
 #define I2C_SIM  (1 << 3)
 #define I2C_LIQUID (1 << 4)
-#define I2C_J1V (1 << 5)
 
 struct i2c_registry {
 	u8                     machs;
@@ -988,7 +987,7 @@ static struct i2c_board_info msm_i2c_backlight_info[] = {
 static struct i2c_registry apq8064_i2c_backlight_device[] __initdata = {
 
 	{
-	    I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID | I2C_J1V,
+	    I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID,
 		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
 		msm_i2c_backlight_info,
 		ARRAY_SIZE(msm_i2c_backlight_info),
@@ -1011,6 +1010,8 @@ void __init register_i2c_backlight_devices(void)
 		mach_mask = I2C_RUMI;
 	else if (machine_is_apq8064_sim())
 		mach_mask = I2C_SIM;
+	else if (machine_is_apq8064_mako())
+		mach_mask = I2C_FFA;
 	else
 		pr_err("unmatched machine ID in register_i2c_devices\n");	
 

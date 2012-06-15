@@ -982,16 +982,16 @@ void __init apq8064_init_gpiomux(void)
                 msm_gpiomux_install(mpq8064_mi2s_configs,
                         ARRAY_SIZE(mpq8064_mi2s_configs));
 
-	if (machine_is_apq8064_mtp())
+	if (machine_is_apq8064_mtp() || machine_is_apq8064_mako())
 		msm_gpiomux_install(mdm_configs,
 			ARRAY_SIZE(mdm_configs));
 
-	if (machine_is_apq8064_mtp())
+	if (machine_is_apq8064_mtp() || machine_is_apq8064_mako())
 		msm_gpiomux_install(cyts_gpio_configs,
 				ARRAY_SIZE(cyts_gpio_configs));
 
 #ifdef CONFIG_USB_EHCI_MSM_HSIC
-	if (machine_is_apq8064_mtp())
+	if (machine_is_apq8064_mtp() || machine_is_apq8064_mako())
 		msm_gpiomux_install(apq8064_hsic_configs,
 				ARRAY_SIZE(apq8064_hsic_configs));
 #endif
