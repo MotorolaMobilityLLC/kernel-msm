@@ -794,6 +794,19 @@ static int __init parse_tag_cid_recover_boot(const struct tag *tag)
 
 __tagtable(ATAG_CID_RECOVER_BOOT, parse_tag_cid_recover_boot);
 
+static int __init parse_tag_bl_build_sig(const struct tag *tag)
+{
+	char *s = (char *)tag->u.bl_build_sig.bl_build_sig;
+
+	printk(KERN_WARNING "%s: %s\n",	__func__, s);
+
+	bi_add_bl_build_sig(s);
+
+	return 0;
+}
+
+__tagtable(ATAG_BL_BUILD_SIG, parse_tag_bl_build_sig);
+
 #endif /* CONFIG_BOOTINFO */
 
 /*
