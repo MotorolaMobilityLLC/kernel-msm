@@ -2109,7 +2109,7 @@ static void __init apq8064_init_dsps(void)
 #define I2C_RUMI (1 << 2)
 #define I2C_SIM  (1 << 3)
 #define I2C_LIQUID (1 << 4)
-#define I2C_J1V		BIT(5)
+#define I2C_MPQ_CDP	BIT(5)
 #define I2C_MPQ_HRD	BIT(6)
 #define I2C_MPQ_DTV	BIT(7)
 
@@ -2206,7 +2206,7 @@ static struct i2c_board_info sx150x_gpio_exp_info[] = {
 
 static struct i2c_registry mpq8064_i2c_devices[] __initdata = {
 	{
-		I2C_J1V, //I2C_MPQ_CDP, Fix to compile
+		I2C_FFA,
 		MPQ8064_I2C_GSBI5_BUS_ID,
 		sx150x_gpio_exp_info,
 		ARRAY_SIZE(sx150x_gpio_exp_info),
@@ -2219,14 +2219,14 @@ static void __init register_i2c_devices(void)
 
 #ifdef CONFIG_MSM_CAMERA
 	struct i2c_registry apq8064_camera_i2c_devices = {
-		I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID | I2C_J1V,
+		I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID,
 		APQ_8064_GSBI4_QUP_I2C_BUS_ID,
 		apq8064_camera_board_info.board_info,
 		apq8064_camera_board_info.num_i2c_board_info,
 	};
 	/* Enabling flash LED for camera */
 	struct i2c_registry apq8064_lge_camera_i2c_devices = {
-		I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID | I2C_J1V,
+		I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID,
 		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
 		apq8064_lge_camera_board_info.board_info,
 		apq8064_lge_camera_board_info.num_i2c_board_info,
@@ -2245,7 +2245,9 @@ static void __init register_i2c_devices(void)
 	else if (machine_is_apq8064_sim())
 		mach_mask = I2C_SIM;
 	else if (PLATFORM_IS_MPQ8064())
-		mach_mask = I2C_J1V; //I2C_MPQ_CDP; Fix to compile
+		mach_mask = I2C_MPQ_CDP;
+	else if (machine_is_apq8064_mako())
+		mach_mask = I2C_FFA;
 	else
 		pr_err("unmatched machine ID in register_i2c_devices\n");
 
@@ -2325,14 +2327,14 @@ static void __init apq8064_common_init(void)
 			machine_is_mpq8064_dtv()))
 		platform_add_devices(common_not_mpq_devices,
 			ARRAY_SIZE(common_not_mpq_devices));
-	if (machine_is_apq8064_mtp()) {
+	if (machine_is_apq8064_mtp() || machine_is_apq8064_mako()) {
 		apq8064_device_hsic_host.dev.platform_data = &msm_hsic_pdata;
 		device_initialize(&apq8064_device_hsic_host.dev);
 	}
 	apq8064_pm8xxx_gpio_mpp_init();
 	apq8064_init_mmc();
 
-	if (machine_is_apq8064_mtp()) {
+	if (machine_is_apq8064_mtp() || machine_is_apq8064_mako()) {
 		mdm_8064_device.dev.platform_data = &mdm_platform_data;
 		platform_device_register(&mdm_8064_device);
 	}
@@ -2448,7 +2450,7 @@ static void __init apq8064_cdp_init(void)
 #endif
 }
 
-MACHINE_START(APQ8064_MTP, "QCT APQ8064 MTP")
+MACHINE_START(APQ8064_MAKO, "QCT APQ8064 MAKO")
 	.map_io = apq8064_map_io,
 	.reserve = apq8064_reserve,
 	.init_irq = apq8064_init_irq,
