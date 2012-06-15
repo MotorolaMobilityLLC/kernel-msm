@@ -56,9 +56,6 @@
 #include <asm/unwind.h>
 #include <asm/memblock.h>
 #include <asm/virt.h>
-#ifdef CONFIG_BOOTINFO
-#include <asm/bootinfo.h>
-#endif
 
 #include "atags.h"
 
