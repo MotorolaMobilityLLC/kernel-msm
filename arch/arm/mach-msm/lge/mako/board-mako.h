@@ -21,6 +21,7 @@
 #include <mach/irqs.h>
 #include <mach/rpm-regulator.h>
 #include <mach/msm_rtb.h>
+#include <mach/msm_cache_dump.h>
 
 /* Macros assume PMIC GPIOs and MPPs start at 1 */
 #define PM8921_GPIO_BASE		NR_GPIO_IRQS
@@ -179,6 +180,7 @@ enum {
 };
 
 extern struct msm_rtb_platform_data apq8064_rtb_pdata;
+extern struct msm_cache_dump_platform_data apq8064_cache_dump_pdata;
 
 void apq8064_init_input(void);
 void __init apq8064_init_misc(void);
