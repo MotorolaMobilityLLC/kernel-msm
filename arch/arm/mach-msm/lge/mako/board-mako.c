@@ -578,6 +578,17 @@ static void __init reserve_mdp_memory(void)
 	apq8064_mdp_writeback(apq8064_reserve_table);
 }
 
+static void __init reserve_cache_dump_memory(void)
+{
+#ifdef CONFIG_MSM_CACHE_DUMP
+	unsigned int total;
+
+	total = apq8064_cache_dump_pdata.l1_size +
+		apq8064_cache_dump_pdata.l2_size;
+	apq8064_reserve_table[MEMTYPE_EBI1].size += total;
+#endif
+}
+
 static void __init apq8064_calculate_reserve_sizes(void)
 {
 	size_pmem_devices();
@@ -585,6 +596,7 @@ static void __init apq8064_calculate_reserve_sizes(void)
 	reserve_ion_memory();
 	reserve_mdp_memory();
 	reserve_rtb_memory();
+	reserve_cache_dump_memory();
 }
 
 static struct reserve_info apq8064_reserve_info __initdata = {
@@ -1970,6 +1982,7 @@ static struct platform_device *common_devices[] __initdata = {
 #endif
 	&apq8064_iommu_domain_device,
 	&msm_tsens_device,
+	&apq8064_cache_dump_device,
 };
 
 static struct platform_device *cdp_devices[] __initdata = {
