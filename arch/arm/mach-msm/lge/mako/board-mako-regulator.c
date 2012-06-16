@@ -253,9 +253,6 @@ VREG_CONSUMERS(8821_S1) = {
 	REGULATOR_SUPPLY("8821_s1",		NULL),
 	REGULATOR_SUPPLY("krait3",		NULL),
 };
-VREG_CONSUMERS(FRC_5V) = {
-	REGULATOR_SUPPLY("frc_5v",	NULL),
-};
 VREG_CONSUMERS(AVC_1P2V) = {
 	REGULATOR_SUPPLY("avc_1p2v",	NULL),
 };
@@ -494,7 +491,6 @@ VREG_CONSUMERS(AVC_3P3V) = {
 
 struct gpio_regulator_platform_data
 mpq8064_gpio_regulator_pdata[] __devinitdata = {
-	GPIO_VREG(FRC_5V, "frc_5v", "frc_5v_en", SX150X_GPIO(4, 10), NULL),
 	GPIO_VREG(AVC_1P2V, "avc_1p2v", "avc_1p2v_en", SX150X_GPIO(4, 2), NULL),
 	GPIO_VREG(AVC_1P8V, "avc_1p8v", "avc_1p8v_en", SX150X_GPIO(4, 4), NULL),
 	GPIO_VREG(AVC_2P2V, "avc_2p2v", "avc_2p2v_en",
