@@ -79,6 +79,7 @@
 #endif
 #include <linux/fmem.h>
 #include <mach/msm_pcie.h>
+#include <mach/restart.h>
 #include <mach/board_lge.h>
 
 #include <mach/board_lge.h>
@@ -2540,4 +2541,5 @@ MACHINE_START(APQ8064_MTP, "QCT APQ8064 MTP")
 	.init_machine = apq8064_cdp_init,
 	.init_early = apq8064_allocate_memory_regions,
 	.init_very_early = apq8064_early_reserve,
+	.restart = msm_restart,
 MACHINE_END
