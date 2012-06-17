@@ -789,9 +789,9 @@ static int hdmi_cec_power(int on)
 	return 0;
 }
 
-#if defined (CONFIG_LGE_BACKLIGHT_LM3530)
+#if defined (CONFIG_BACKLIGHT_LM3530)
 extern void lm3530_lcd_backlight_set_level( int level);
-#elif defined (CONFIG_LGE_BACKLIGHT_LM3533)
+#elif defined (CONFIG_BACKLIGHT_LM3533)
 extern void lm3533_lcd_backlight_set_level( int level);
 #endif
 
@@ -1034,7 +1034,7 @@ static struct platform_device mipi_dsi_hitachi_panel_device = {
 #elif defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT)
 static int mipi_lgit_backlight_level(int level, int max, int min)
 {
-#ifdef CONFIG_LGE_BACKLIGHT_LM3530
+#ifdef CONFIG_BACKLIGHT_LM3530
 	lm3530_lcd_backlight_set_level(level);
 #endif
 
@@ -1275,7 +1275,7 @@ struct backlight_platform_data {
    int factory_brightness;
 };
 
-#if defined (CONFIG_LGE_BACKLIGHT_LM3530)
+#if defined (CONFIG_BACKLIGHT_LM3530)
 static struct backlight_platform_data lm3530_data = {
 
 	.gpio = PM8921_GPIO_PM_TO_SYS(24),
@@ -1288,7 +1288,7 @@ static struct backlight_platform_data lm3530_data = {
 	.max_brightness = 0x71,
 	
 };
-#elif defined(CONFIG_LGE_BACKLIGHT_LM3533)
+#elif defined(CONFIG_BACKLIGHT_LM3533)
 static struct backlight_platform_data lm3533_data = {
 	.gpio = PM8921_GPIO_PM_TO_SYS(24),
 #if defined(CONFIG_LGE_BACKLIGHT_CABC)
@@ -1305,10 +1305,10 @@ static struct backlight_platform_data lm3533_data = {
 static struct i2c_board_info msm_i2c_backlight_info[] = {
 	{
 
-#if defined(CONFIG_LGE_BACKLIGHT_LM3530)
+#if defined(CONFIG_BACKLIGHT_LM3530)
 		I2C_BOARD_INFO("lm3530", 0x38),
 		.platform_data = &lm3530_data,
-#elif defined(CONFIG_LGE_BACKLIGHT_LM3533)
+#elif defined(CONFIG_BACKLIGHT_LM3533)
 		I2C_BOARD_INFO("lm3533", 0x36),
 		.platform_data = &lm3533_data,
 #endif
