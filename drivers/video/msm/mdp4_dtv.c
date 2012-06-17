@@ -33,6 +33,10 @@
 #include "msm_fb.h"
 #include "mdp4.h"
 
+#ifndef LGE_DSDR_SUPPORT
+#define LGE_DSDR_SUPPORT
+#endif
+
 static int dtv_probe(struct platform_device *pdev);
 static int dtv_remove(struct platform_device *pdev);
 
@@ -258,10 +262,14 @@ static int dtv_probe(struct platform_device *pdev)
 	 * get/set panel specific fb info
 	 */
 	mfd->panel_info = pdata->panel_info;
+#ifdef LGE_DSDR_SUPPORT
+	mfd->fb_imgType = MDP_RGBA_8888;
+#else
 	if (hdmi_prim_display)
 		mfd->fb_imgType = MSMFB_DEFAULT_TYPE;
 	else
 		mfd->fb_imgType = MDP_RGB_565;
+#endif //LGE_DSDR_SUPPORT
 
 	fbi = mfd->fbi;
 	fbi->var.pixclock = mfd->panel_info.clk_rate;

@@ -49,6 +49,20 @@
 #include "mdp.h"
 #include "mdp4.h"
 
+#ifndef LGE_DSDR_SUPPORT
+#define LGE_DSDR_SUPPORT
+#endif
+
+#if defined (CONFIG_LGE_QC_LCDC_LUT)
+#include "lge_qlut.h"
+int g_qlut_change_by_kernel;
+EXPORT_SYMBOL(g_qlut_change_by_kernel);
+#endif
+
+#if (defined(CONFIG_FB_MSM_DEFAULT_DEPTH_ARGB8888) ||\
+		defined(CONFIG_FB_MSM_DEFAULT_DEPTH_RGBA8888))
+extern int load_888rle_image(char *filename);
+#endif
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MSM_FB_NUM	3
 #endif
@@ -110,6 +124,11 @@ static int msm_fb_mmap(struct fb_info *info, struct vm_area_struct * vma);
 static int mdp_bl_scale_config(struct msm_fb_data_type *mfd,
 						struct mdp_bl_scale_data *data);
 static void msm_fb_scale_bl(__u32 *bl_lvl);
+
+#ifdef CONFIG_LGE_DISP_FBREAD
+static ssize_t msm_fb_read(struct fb_info *info, char __user *buf,
+		size_t count, loff_t *ppos);
+#endif
 
 #ifdef MSM_FB_ENABLE_DBGFS
 
@@ -795,7 +814,14 @@ static void msmfb_early_resume(struct early_suspend *h)
 #endif
 
 static int unset_bl_level, bl_updated;
+#if defined(CONFIG_BACKLIGHT_LM3530)
+static int bl_level_old = 0x2A;
+#elif defined(CONFIG_BACKLIGHT_LM3533)
+static int bl_level_old = 0x2E;
+#else
 static int bl_level_old;
+#endif
+
 static int mdp_bl_scale_config(struct msm_fb_data_type *mfd,
 						struct mdp_bl_scale_data *data)
 {
@@ -833,6 +859,9 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 	__u32 temp = bkl_lvl;
 	if (!mfd->panel_power_on || !bl_updated) {
 		unset_bl_level = bkl_lvl;
+#if defined(CONFIG_BACKLIGHT_LM3530) || defined(CONFIG_BACKLIGHT_LM3533)
+		if (system_state != SYSTEM_BOOTING)
+#endif
 		return;
 	} else {
 		unset_bl_level = 0;
@@ -1085,7 +1114,11 @@ static struct fb_ops msm_fb_ops = {
 	.owner = THIS_MODULE,
 	.fb_open = msm_fb_open,
 	.fb_release = msm_fb_release,
+#ifdef CONFIG_LGE_DISP_FBREAD
+	.fb_read = msm_fb_read,
+#else
 	.fb_read = NULL,
+#endif
 	.fb_write = NULL,
 	.fb_cursor = NULL,
 	.fb_check_var = msm_fb_check_var,	/* vinfo check */
@@ -1145,8 +1178,13 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	var->grayscale = 0,	/* No graylevels */
 	var->nonstd = 0,	/* standard pixel format */
 	var->activate = FB_ACTIVATE_VBL,	/* activate it at vsync */
+#if defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT)
+	var->height = 102,      /* height of picture in mm */
+	var->width = 61,        /* width of picture in mm */
+#else
 	var->height = -1,	/* height of picture in mm */
 	var->width = -1,	/* width of picture in mm */
+#endif
 	var->accel_flags = 0,	/* acceleration flags */
 	var->sync = 0,	/* see FB_SYNC_* */
 	var->rotate = 0,	/* angle we rotate counter clockwise */
@@ -1489,9 +1527,29 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	     mfd->index, fbi->var.xres, fbi->var.yres, fbi->fix.smem_len);
 
 #ifdef CONFIG_FB_MSM_LOGO
+#if (defined(CONFIG_FB_MSM_DEFAULT_DEPTH_ARGB8888) ||\
+		defined(CONFIG_FB_MSM_DEFAULT_DEPTH_RGBA8888))
+	/* This function is used to load LG logo image in 888 rle format.
+	 * However, it is only allowed when MIPI LCD mode not other modes
+	 * such as HDMI, DTV etc.
+	 * it is also add early backlight on
+	 */
+	if (mfd->panel_info.type == MIPI_VIDEO_PANEL ||
+			mfd->panel_info.type == MIPI_CMD_PANEL){
+		msm_fb_open(mfd->fbi, 0);
+#if defined(CONFIG_LGE_QC_LCDC_LUT)
+		lge_set_qlut();
+#endif
+		if (load_888rle_image(INIT_IMAGE_FILE) < 0) /* Flip buffer */
+			printk(KERN_WARNING "fail to load 888 rle image\n");
+
+		msm_fb_set_backlight(mfd, 0);
+	}
+#else
 	/* Flip buffer */
 	if (!load_565rle_image(INIT_IMAGE_FILE, bf_supported))
 		;
+#endif
 #endif
 	ret = 0;
 
@@ -3729,6 +3787,10 @@ struct platform_device *msm_fb_add_device(struct platform_device *pdev)
 	MSM_FB_INFO("setting pdata->panel_info.fb_num to %d. type: %d\n",
 			pdata->panel_info.fb_num, type);
 #endif
+#ifdef LGE_DSDR_SUPPORT
+	if (pdata->panel_info.fb_num < 3)
+		pdata->panel_info.fb_num = 3;
+#endif //LGE_DSDR_SUPPORT
 	fb_num = pdata->panel_info.fb_num;
 
 	if (fb_num <= 0)
@@ -3855,6 +3917,111 @@ int __init msm_fb_init(void)
 
 	return 0;
 }
+
+/*
+ * To implement "msm_fb_read" for screenshot such as DDMS"
+ */
+#ifdef CONFIG_LGE_DISP_FBREAD
+static ssize_t
+msm_fb_read(struct fb_info *info, char __user *buf, size_t count, loff_t *ppos)
+{
+
+	unsigned long p = *ppos;
+	u32 *buffer;
+	u8 *dst;
+	u8 __iomem *src;
+	u8 r, g, b;
+	int c, i, cnt = 0, err = 0;
+	unsigned long total_size;
+	int line_length, xres, bpp;
+
+	total_size = info->screen_size;
+
+	if (total_size == 0)
+		total_size = info->fix.smem_len;
+
+	if (p >= total_size)
+		return 0;
+
+	if (count >= total_size)
+		count = total_size;
+
+	if (count + p > total_size)
+		count = total_size - p;
+
+	buffer = kmalloc((count > PAGE_SIZE) ? PAGE_SIZE : count,
+			GFP_KERNEL);
+
+	if (!buffer)
+		return -ENOMEM;
+
+	src = (u8 __iomem *) (info->screen_base + p);
+
+	xres = info->var.xres;
+	line_length = ALIGN(xres, 32);
+
+	bpp = info->var.bits_per_pixel/8;
+
+	for (i = 0; i < count; i += 4) {
+
+		c = 4;
+		r = fb_readb(src++);
+		g = fb_readb(src++);
+		b = fb_readb(src++);
+		src++;
+
+		*ppos += c;
+
+		if ((p+i)%(line_length*bpp) >= xres*bpp)
+			continue;
+
+		dst = (u8 *)buffer;
+		*dst++ = r;
+		*dst++ = g;
+		*dst++ = b;
+		*dst++ = 0xff;
+
+		if (copy_to_user(buf, buffer, c)) {
+			err = -EFAULT;
+			break;
+		}
+
+		cnt += c;
+		buf += c;
+	}
+
+	kfree(buffer);
+
+	return (err) ? err : cnt;
+}
+#endif
+
+#if defined(CONFIG_LGE_QC_LCDC_LUT)
+int lge_set_qlut(void)
+{
+	struct fb_cmap cmap;
+	int ret = 0;
+
+	cmap.start	= 0;
+	cmap.len	= 256;
+	cmap.transp	= 0;
+	cmap.red	= NULL;
+	cmap.green	= NULL;
+	cmap.blue	= NULL;
+
+	mutex_lock(&msm_fb_ioctl_lut_sem);
+	g_qlut_change_by_kernel = 1;
+	ret = msm_fb_set_lut(&cmap, fbi_list[0]);
+	g_qlut_change_by_kernel = 0;
+	mutex_unlock(&msm_fb_ioctl_lut_sem);
+
+	if (ret)
+		printk(KERN_ERR "lge_set_initial_lut faild : %d\n", ret);
+
+	return ret;
+}
+EXPORT_SYMBOL(lge_set_qlut);
+#endif
 
 /* Called by v4l2 driver to enable/disable overlay pipe */
 int msm_fb_v4l2_enable(struct mdp_overlay *req, bool enable, void **par)
