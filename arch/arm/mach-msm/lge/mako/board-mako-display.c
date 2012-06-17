@@ -42,9 +42,6 @@
 #define LGE_DSDR_SUPPORT
 #endif
 
-/* FIXME: temporarily undef to build */
-#undef CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT
-
 #ifdef CONFIG_LGE_KCAL
 #ifdef CONFIG_LGE_QC_LCDC_LUT
 extern int set_qlut_kcal_values(int kcal_r, int kcal_g, int kcal_b);

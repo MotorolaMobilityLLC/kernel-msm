@@ -36,6 +36,23 @@ static void memset16(void *_ptr, unsigned short val, unsigned count)
 		*ptr++ = val;
 }
 
+#if (defined(CONFIG_FB_MSM_DEFAULT_DEPTH_ARGB8888) || \
+		defined(CONFIG_FB_MSM_DEFAULT_DEPTH_RGBA8888))
+static void memset32(void *_ptr, unsigned short val, unsigned count)
+{
+	char *ptr = _ptr;
+	char r = val & 0x001f;
+	char g = (val & 0x07e0)>>5;
+	char b = (val & 0xf800)>>11;
+	count >>= 1;
+	while (count--) {
+		*ptr++ = b<<3 | b>>2;
+		*ptr++ = g<<2 | g>>4;
+		*ptr++ = r<<3 | r>>2;
+		*ptr++ = 0xff;
+	}
+}
+#endif
 /* 565RLE image format: [count(2 bytes), rle(2 bytes)] */
 int load_565rle_image(char *filename, bool bf_supported)
 {
@@ -100,4 +117,79 @@ err_logo_close_file:
 	sys_close(fd);
 	return err;
 }
+
+#if (defined(CONFIG_FB_MSM_DEFAULT_DEPTH_ARGB8888) || \
+		defined(CONFIG_FB_MSM_DEFAULT_DEPTH_RGBA8888))
+int load_888rle_image(char *filename)
+{
+	struct fb_info *info;
+	int fd, count, err = 0;
+	unsigned max;
+	unsigned short *data, *ptr;
+	char *bits;
+
+	printk(KERN_INFO "%s: load_888rle_image filename: %s\n",
+			__func__, filename);
+	info = registered_fb[0];
+	if (!info) {
+		printk(KERN_WARNING "%s: Can not access framebuffer\n",
+				__func__);
+		return -ENODEV;
+	}
+
+	fd = sys_open(filename, O_RDONLY, 0);
+	if (fd < 0) {
+		printk(KERN_WARNING "%s: Can not open %s\n",
+				__func__, filename);
+		return -ENOENT;
+	}
+	count = sys_lseek(fd, (off_t)0, 2);
+	if (count <= 0) {
+		err = -EIO;
+		goto err_logo_close_file;
+	}
+	sys_lseek(fd, (off_t)0, 0);
+	data = kmalloc(count, GFP_KERNEL);
+	if (!data) {
+		printk(KERN_WARNING "%s: Can not alloc data\n", __func__);
+		err = -ENOMEM;
+		goto err_logo_close_file;
+	}
+	if (sys_read(fd, (char *)data, count) != count) {
+		printk(KERN_WARNING "%s: Can not read data\n", __func__);
+		err = -EIO;
+		goto err_logo_free_data;
+	}
+
+	max = fb_width(info) * fb_height(info);
+	ptr = data;
+	bits = (char *)(info->screen_base);
+
+	while (count > 3) {
+		unsigned n = ptr[0];
+
+		if (n > max)
+			break;
+		if (info->var.bits_per_pixel/8 == 4)
+			memset32(bits, ptr[1], n << 1);
+		else
+			memset16(bits, ptr[1], n << 1);
+
+		bits += info->var.bits_per_pixel/8*n;
+		max -= n;
+		ptr += 2;
+		count -= 4;
+	}
+
+err_logo_free_data:
+	kfree(data);
+err_logo_close_file:
+	sys_close(fd);
+	return err;
+}
+#endif
 EXPORT_SYMBOL(load_565rle_image);
+#if (defined(CONFIG_FB_MSM_DEFAULT_DEPTH_ARGB8888) || \
+		defined(CONFIG_FB_MSM_DEFAULT_DEPTH_RGBA8888))
+EXPORT_SYMBOL(load_888rle_image);
+#endif
