@@ -15,12 +15,15 @@
 #define __ARCH_ARM_MACH_MSM_CLOCK_RPM_H
 
 #include <mach/rpm.h>
+#include <mach/rpm-smd.h>
 
 struct clk_ops;
+struct clk_rpmrs_data;
 extern struct clk_ops clk_ops_rpm;
 extern struct clk_ops clk_ops_rpm_branch;
 
 struct rpm_clk {
+	const int rpm_res_type;
 	const int rpm_clk_id;
 	const int rpm_status_id;
 	const bool active_only;
@@ -29,6 +32,7 @@ struct rpm_clk {
 	unsigned last_set_sleep_khz;
 	bool enabled;
 	bool branch; /* true: RPM only accepts 1 for ON and 0 for OFF */
+	struct clk_rpmrs_data *rpmrs_data;
 
 	struct rpm_clk *peer;
 	struct clk c;
@@ -39,12 +43,17 @@ static inline struct rpm_clk *to_rpm_clk(struct clk *clk)
 	return container_of(clk, struct rpm_clk, c);
 }
 
-#define DEFINE_CLK_RPM(name, active, r_id, dep) \
+extern struct clk_rpmrs_data clk_rpmrs_data;
+extern struct clk_rpmrs_data clk_rpmrs_data_smd;
+
+#define __DEFINE_CLK_RPM(name, active, type, r_id, stat_id, dep, rpmrsdata) \
 	static struct rpm_clk active; \
 	static struct rpm_clk name = { \
-		.rpm_clk_id = MSM_RPM_ID_##r_id##_CLK, \
-		.rpm_status_id = MSM_RPM_STATUS_ID_##r_id##_CLK, \
+		.rpm_res_type = (type), \
+		.rpm_clk_id = (r_id), \
+		.rpm_status_id = (stat_id), \
 		.peer = &active, \
+		.rpmrs_data = (rpmrsdata),\
 		.c = { \
 			.ops = &clk_ops_rpm, \
 			.flags = CLKFLAG_SKIP_AUTO_OFF, \
@@ -54,10 +63,12 @@ static inline struct rpm_clk *to_rpm_clk(struct clk *clk)
 		}, \
 	}; \
 	static struct rpm_clk active = { \
-		.rpm_clk_id = MSM_RPM_ID_##r_id##_CLK, \
-		.rpm_status_id = MSM_RPM_STATUS_ID_##r_id##_CLK, \
+		.rpm_res_type = (type), \
+		.rpm_clk_id = (r_id), \
+		.rpm_status_id = (stat_id), \
 		.peer = &name, \
 		.active_only = true, \
+		.rpmrs_data = (rpmrsdata),\
 		.c = { \
 			.ops = &clk_ops_rpm, \
 			.flags = CLKFLAG_SKIP_AUTO_OFF, \
@@ -67,15 +78,18 @@ static inline struct rpm_clk *to_rpm_clk(struct clk *clk)
 		}, \
 	};
 
-#define DEFINE_CLK_RPM_BRANCH(name, active, r_id, r) \
+#define __DEFINE_CLK_RPM_BRANCH(name, active, type, r_id, stat_id, r, \
+					rpmrsdata) \
 	static struct rpm_clk active; \
 	static struct rpm_clk name = { \
-		.rpm_clk_id = MSM_RPM_ID_##r_id##_CLK, \
-		.rpm_status_id = MSM_RPM_STATUS_ID_##r_id##_CLK, \
+		.rpm_res_type = (type), \
+		.rpm_clk_id = (r_id), \
+		.rpm_status_id = (stat_id), \
 		.peer = &active, \
 		.last_set_khz = ((r) / 1000), \
 		.last_set_sleep_khz = ((r) / 1000), \
 		.branch = true, \
+		.rpmrs_data = (rpmrsdata),\
 		.c = { \
 			.ops = &clk_ops_rpm_branch, \
 			.flags = CLKFLAG_SKIP_AUTO_OFF, \
@@ -86,12 +100,14 @@ static inline struct rpm_clk *to_rpm_clk(struct clk *clk)
 		}, \
 	}; \
 	static struct rpm_clk active = { \
-		.rpm_clk_id = MSM_RPM_ID_##r_id##_CLK, \
-		.rpm_status_id = MSM_RPM_STATUS_ID_##r_id##_CLK, \
+		.rpm_res_type = (type), \
+		.rpm_clk_id = (r_id), \
+		.rpm_status_id = (stat_id), \
 		.peer = &name, \
 		.last_set_khz = ((r) / 1000), \
 		.active_only = true, \
 		.branch = true, \
+		.rpmrs_data = (rpmrsdata),\
 		.c = { \
 			.ops = &clk_ops_rpm_branch, \
 			.flags = CLKFLAG_SKIP_AUTO_OFF, \
@@ -101,5 +117,20 @@ static inline struct rpm_clk *to_rpm_clk(struct clk *clk)
 			.warned = true, \
 		}, \
 	};
+
+#define DEFINE_CLK_RPM(name, active, r_id, dep) \
+	__DEFINE_CLK_RPM(name, active, 0, MSM_RPM_ID_##r_id##_CLK, \
+		MSM_RPM_STATUS_ID_##r_id##_CLK, dep, &clk_rpmrs_data)
+
+#define DEFINE_CLK_RPM_BRANCH(name, active, r_id, r) \
+	__DEFINE_CLK_RPM_BRANCH(name, active, 0, MSM_RPM_ID_##r_id##_CLK, \
+			MSM_RPM_STATUS_ID_##r_id##_CLK, r, &clk_rpmrs_data)
+
+#define DEFINE_CLK_RPM_SMD(name, active, type, r_id, dep) \
+	__DEFINE_CLK_RPM(name, active, type, r_id, 0, dep, &clk_rpmrs_data_smd)
+
+#define DEFINE_CLK_RPM_SMD_BRANCH(name, active, type, r_id, dep) \
+	__DEFINE_CLK_RPM_BRANCH(name, active, type, r_id, 0, dep, \
+					&clk_rpmrs_data_smd)
 
 #endif
