@@ -31,6 +31,10 @@
 #include <mach/msm_xo.h>
 #include <mach/msm_hsusb.h>
 
+#ifdef CONFIG_LGE_PM_BATTERY_ID_CHECKER
+#include <mach/board_lge.h>
+#endif
+
 #define CHG_BUCK_CLOCK_CTRL	0x14
 
 #define PBL_ACCESS1		0x04
@@ -1018,6 +1022,7 @@ static void enable_input_voltage_regulation(struct pm8921_chg_chip *chip)
 	}
 }
 
+#ifndef CONFIG_LGE_PM_BATTERY_ID_CHECKER
 static int64_t read_battery_id(struct pm8921_chg_chip *chip)
 {
 	int rc;
@@ -1033,11 +1038,20 @@ static int64_t read_battery_id(struct pm8921_chg_chip *chip)
 						result.measurement);
 	return result.physical;
 }
+#endif
 
 static int is_battery_valid(struct pm8921_chg_chip *chip)
 {
+#ifndef CONFIG_LGE_PM_BATTERY_ID_CHECKER
 	int64_t rc;
+#endif
 
+#ifdef CONFIG_LGE_PM_BATTERY_ID_CHECKER
+	if (is_lge_battery())
+		return 1;
+	else
+		return 0;
+#else
 	if (chip->batt_id_min == 0 && chip->batt_id_max == 0)
 		return 1;
 
@@ -1054,6 +1068,7 @@ static int is_battery_valid(struct pm8921_chg_chip *chip)
 		return 0;
 	}
 	return 1;
+#endif
 }
 
 static void check_battery_valid(struct pm8921_chg_chip *chip)
@@ -1387,6 +1402,11 @@ static unsigned int voltage_based_capacity(struct pm8921_chg_chip *chip)
 
 static int get_prop_batt_present(struct pm8921_chg_chip *chip)
 {
+
+#ifdef CONFIG_LGE_PM_BATTERY_ID_CHECKER
+	if (is_lge_battery() == false)
+		return 0;
+#endif
 	return pm_chg_get_rt_status(chip, BATT_INSERTED_IRQ);
 }
 
@@ -1439,6 +1459,11 @@ static int get_prop_batt_fcc(struct pm8921_chg_chip *chip)
 static int get_prop_batt_health(struct pm8921_chg_chip *chip)
 {
 	int temp;
+
+#ifdef CONFIG_LGE_PM_BATTERY_ID_CHECKER
+	if (is_lge_battery() == false)
+		return POWER_SUPPLY_HEALTH_UNSPEC_FAILURE;
+#endif
 
 	temp = pm_chg_get_rt_status(chip, BATTTEMP_HOT_IRQ);
 	if (temp)
