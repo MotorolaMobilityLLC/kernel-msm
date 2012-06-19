@@ -34,10 +34,6 @@
 #include <linux/lge_isa1200.h>
 #endif
 
-#ifdef CONFIG_SII8334_MHL_TX
-#include <linux/platform_data/mhl_device.h>
-#endif
-
 #ifdef CONFIG_BU52031NVX
 #include <linux/mfd/pm8xxx/cradle.h>
 #endif
@@ -368,174 +364,6 @@ static struct platform_device *misc_devices[] __initdata = {
 };
 #endif
 
-#if defined(CONFIG_SII8334_MHL_TX)
-
-#define MHL_RESET_N        31
-#define MHL_INT_N          43
-
-static int mhl_gpio_init(void)
-{
-	int rc;
-	
-	rc = gpio_request(MHL_INT_N, "mhl_int_n");
-	if (rc < 0) {
-		pr_err("failed to request mhl_int_n gpio\n");
-		goto error1;
-	}
-	gpio_export(MHL_INT_N, 1);
-
-	rc = gpio_request(MHL_RESET_N, "mhl_reset_n");
-	if (rc < 0) {
-		pr_err("failed to request mhl_reset_n gpio\n");
-		goto error2;
-	}
-	
-	rc = gpio_direction_output(MHL_RESET_N, 0);
-	if (rc < 0) {
-		pr_err("failed to request mhl_reset_n gpio\n");
-		goto error3;
-	}
-
-error3:
-	gpio_free(MHL_RESET_N);
-error2:
-	gpio_free(MHL_INT_N);
-error1:
-
-	return rc;
-}
-
-static struct regulator *vreg_l18_mhl;
-
-static int mhl_power_onoff(bool on, bool pm_ctrl)
-{
-	static bool power_state=0;
-	int rc = 0;
-
-	if (power_state == on) {
-		pr_info("sii_power_state is already %s \n",
-				power_state ? "on" : "off");
-		return rc;
-	}
-	power_state = on;
-
-	if (!vreg_l18_mhl)
-		vreg_l18_mhl = regulator_get(NULL, "8921_l18");
-
-	if (IS_ERR(vreg_l18_mhl)) {
-		rc = PTR_ERR(vreg_l18_mhl);
-		pr_err("%s: vreg_l18_mhl get failed (%d)\n", __func__, rc);
-		return rc;
-	}
-
-	if (on) {
-		
-		gpio_set_value(MHL_RESET_N, 0);
-	
-		rc = regulator_set_optimum_mode(vreg_l18_mhl, 100000);    
-		if (rc < 0) {
-			pr_err("%s : set optimum mode 100000,\
-				vreg_l18_mhl failed (%d)\n",
-				__func__, rc);
-			return -EINVAL;
-		}
-	 
-		rc = regulator_set_voltage(vreg_l18_mhl, 1200000, 1200000);
-		if (rc < 0) {
-			pr_err("%s : set voltage 1200000,\
-				vreg_l18_mhl failed (%d)\n",
-				__func__, rc);
-			return -EINVAL;
-		}
-
-		rc = regulator_enable(vreg_l18_mhl);
-		if (rc) {
-			pr_err("%s : vreg_l18_mhl enable failed (%d)\n",
-							__func__, rc);
-			return rc;
-		}
-
-		msleep(100);
-		gpio_set_value(MHL_RESET_N, 1);
-
-	}
-	else {
-		rc = regulator_set_optimum_mode(vreg_l18_mhl, 100);
-		if (rc < 0) {
-			pr_err("%s : set optimum mode 100,\
-				vreg_l18_mhl failed (%d)\n",
-				__func__, rc);
-			return -EINVAL;
-		}
-		
-		rc = regulator_disable(vreg_l18_mhl);
-		if (rc) {
-			pr_err("%s : vreg_l18_mhl disable failed (%d)\n",
-							__func__, rc);
-			return rc;
-		}
-		
-		gpio_set_value(MHL_RESET_N, 0);
-	}
-
-	return rc;
-}
-
-static struct mhl_platform_data mhl_pdata = {
-	.power = mhl_power_onoff,
-};
-
-
-#define I2C_SURF     1
-#define I2C_FFA     (1 << 1)
-#define I2C_RUMI    (1 << 2)
-#define I2C_SIM     (1 << 3)
-#define I2C_LIQUID  (1 << 4)
-#define I2C_J1V     (1 << 5)
-
-struct i2c_registry {
-	u8                     machs;
-	int                    bus;
-	struct i2c_board_info *info;
-	int                    len;
-};
-
-struct i2c_board_info i2c_mhl_info[] = {
-	{
-		I2C_BOARD_INFO("Sil-833x", 0x72 >> 1),  /* 0x39 */
-		.irq = MSM_GPIO_TO_INT(MHL_INT_N),
-		.platform_data = &mhl_pdata,
-	},
-	{
-		I2C_BOARD_INFO("Sil-833x", 0x7A >> 1),  /* 0x3D */
-	},
-	{
-		I2C_BOARD_INFO("Sil-833x", 0x92 >> 1), /* 0x49 */
-	},
-	{
-		I2C_BOARD_INFO("Sil-833x", 0x9A >> 1), /* 0x4D */
-	},
-	{
-		I2C_BOARD_INFO("Sil-833x", 0xC8 >> 1), /*  0x64 */
-	},
-};
-
-static struct i2c_registry i2c_mhl_devices __initdata = {
-	I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID | I2C_J1V,
-	APQ_8064_GSBI1_QUP_I2C_BUS_ID,
-	i2c_mhl_info,
-	ARRAY_SIZE(i2c_mhl_info),
-};
-
-static void __init lge_add_i2c_mhl_device(void)
-{
-	i2c_register_board_info(i2c_mhl_devices.bus,
-	i2c_mhl_devices.info,
-	i2c_mhl_devices.len);
-}
-
-#endif  /* CONFIG_SII8334_MHL_TX */
-
 #ifdef CONFIG_BU52031NVX
 #define GPIO_POUCH_INT     22
 #define GPIO_CARKIT_INT    23
@@ -618,11 +446,6 @@ void __init apq8064_init_misc(void)
 	if (vib_flag == 0)
 		platform_add_devices(misc_devices, ARRAY_SIZE(misc_devices));
 #endif
-
-#if defined(CONFIG_SII8334_MHL_TX)
-	mhl_gpio_init();
-	lge_add_i2c_mhl_device();
-#endif 
 
 #ifdef CONFIG_BU52031NVX
 	hall_ic_init();
