@@ -24,7 +24,7 @@
 #include "../../../../sound/soc/codecs/wcd9310.h"
 #endif
 
-#ifdef CONFIG_LGE_AUDIO_TPA2028D
+#ifdef CONFIG_SND_SOC_TPA2028D
 #include <sound/tpa2028d.h>
 #endif
 
@@ -77,12 +77,7 @@ struct fsa8008_platform_data {
 	unsigned int latency_for_detection;
 };
 
-#ifdef CONFIG_LGE_AUDIO_TPA2028D
-int amp_power(bool on)
-{
-	return 0;
-}
-
+#ifdef CONFIG_SND_SOC_TPA2028D
 int amp_enable(int on_state)
 {
 	int err = 0;
@@ -135,7 +130,6 @@ int amp_enable(int on_state)
 
 static struct audio_amp_platform_data amp_platform_data =  {
 	.enable = amp_enable,
-	.power = amp_power,
 	.agc_compression_rate = AGC_COMPRESIION_RATE,
 	.agc_output_limiter_disable = AGC_OUTPUT_LIMITER_DISABLE,
 	.agc_fixed_gain = AGC_FIXED_GAIN,
@@ -143,7 +137,7 @@ static struct audio_amp_platform_data amp_platform_data =  {
 #endif
 
 static struct i2c_board_info msm_i2c_audiosubsystem_info[] = {
-#ifdef CONFIG_LGE_AUDIO_TPA2028D
+#ifdef CONFIG_SND_SOC_TPA2028D
 	{
 		I2C_BOARD_INFO("tpa2028d_amp", TPA2028D_ADDRESS),
 		.platform_data = &amp_platform_data,

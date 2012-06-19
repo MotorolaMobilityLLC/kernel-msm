@@ -30,6 +30,10 @@
 #include "msm-pcm-routing.h"
 #include "../codecs/wcd9310.h"
 
+#ifdef CONFIG_SND_SOC_TPA2028D
+#include <sound/tpa2028d.h>
+#endif
+
 /* 8064 machine driver */
 
 #define PM8921_GPIO_BASE		NR_GPIO_IRQS
@@ -226,10 +230,14 @@ static void msm_ext_spk_power_amp_on(u32 spk)
 			(msm_ext_top_spk_pamp & TOP_SPK_AMP_NEG)) ||
 				(msm_ext_top_spk_pamp & TOP_SPK_AMP)) {
 
+#ifdef CONFIG_SND_SOC_TPA2028D
+			set_amp_gain(SPK_ON);
+#else
 			msm_enable_ext_spk_amp_gpio(top_spk_pamp_gpio);
 			pr_debug("%s: sleeping 4 ms after turning on "
 				" external Top Speaker Ampl\n", __func__);
 			usleep_range(4000, 4000);
+#endif
 		}
 	} else  {
 
@@ -274,6 +282,10 @@ static void msm_ext_spk_power_amp_off(u32 spk)
 		if (msm_ext_top_spk_pamp)
 			return;
 
+#ifdef CONFIG_SND_SOC_TPA2028D
+		set_amp_gain(SPK_OFF);
+		msm_ext_top_spk_pamp = 0;
+#else
 		gpio_direction_output(top_spk_pamp_gpio, 0);
 		gpio_free(top_spk_pamp_gpio);
 		msm_ext_top_spk_pamp = 0;
@@ -282,6 +294,7 @@ static void msm_ext_spk_power_amp_off(u32 spk)
 				__func__);
 
 		usleep_range(4000, 4000);
+#endif
 	} else  {
 
 		pr_err("%s: ERROR : Invalid Ext Spk Ampl. spk = 0x%08x\n",
@@ -300,11 +313,17 @@ static void msm_ext_control(struct snd_soc_codec *codec)
 		snd_soc_dapm_enable_pin(dapm, "Ext Spk Bottom Neg");
 		snd_soc_dapm_enable_pin(dapm, "Ext Spk Top Pos");
 		snd_soc_dapm_enable_pin(dapm, "Ext Spk Top Neg");
+#ifdef CONFIG_SND_SOC_TPA2028D
+		snd_soc_dapm_enable_pin(dapm, "Ext Spk Top");
+#endif
 	} else {
 		snd_soc_dapm_disable_pin(dapm, "Ext Spk Bottom Pos");
 		snd_soc_dapm_disable_pin(dapm, "Ext Spk Bottom Neg");
 		snd_soc_dapm_disable_pin(dapm, "Ext Spk Top Pos");
 		snd_soc_dapm_disable_pin(dapm, "Ext Spk Top Neg");
+#ifdef CONFIG_SND_SOC_TPA2028D
+		snd_soc_dapm_disable_pin(dapm, "Ext Spk Top");
+#endif
 	}
 
 	snd_soc_dapm_sync(dapm);
@@ -504,13 +523,16 @@ static const struct snd_soc_dapm_route apq8064_common_audio_map[] = {
 	{"HEADPHONE", NULL, "LDO_H"},
 
 	/* Speaker path */
+#ifdef CONFIG_SND_SOC_TPA2028D
+	{"Ext Spk Top", NULL, "LINEOUT1"},
+#else
 	{"Ext Spk Bottom Pos", NULL, "LINEOUT1"},
 	{"Ext Spk Bottom Neg", NULL, "LINEOUT3"},
 
 	{"Ext Spk Top Pos", NULL, "LINEOUT2"},
 	{"Ext Spk Top Neg", NULL, "LINEOUT4"},
 	{"Ext Spk Top", NULL, "LINEOUT5"},
-
+#endif
 	/************   Analog MIC Paths  ************/
 #ifdef CONFIG_SND_SOC_DUAL_AMIC
 	/* Handset Mic */
@@ -1158,10 +1180,14 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 			ARRAY_SIZE(apq8064_liquid_cdp_audio_map));
 	}
 
+#ifdef CONFIG_SND_SOC_TPA2028D
+	snd_soc_dapm_enable_pin(dapm, "Ext Spk Top");
+#else
 	snd_soc_dapm_enable_pin(dapm, "Ext Spk Bottom Pos");
 	snd_soc_dapm_enable_pin(dapm, "Ext Spk Bottom Neg");
 	snd_soc_dapm_enable_pin(dapm, "Ext Spk Top Pos");
 	snd_soc_dapm_enable_pin(dapm, "Ext Spk Top Neg");
+#endif
 
 	snd_soc_dapm_sync(dapm);
 
