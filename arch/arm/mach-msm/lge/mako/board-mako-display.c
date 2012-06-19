@@ -371,7 +371,7 @@ static struct platform_device wfd_device = {
 #define HDMI_DDC_DATA_GPIO	71
 #define HDMI_HPD_GPIO		72
 
-static bool dsi_power_on;
+static bool dsi_power_on = false;
 static int mipi_dsi_panel_power(int on)
 {
 	static struct regulator *reg_l8, *reg_l2, *reg_lvs6;
