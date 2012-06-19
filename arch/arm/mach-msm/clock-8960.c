@@ -3897,6 +3897,7 @@ static struct rcg_clk rot_clk = {
 	},
 };
 
+#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 static int hdmi_pll_clk_enable(struct clk *clk)
 {
 	int ret;
@@ -3965,6 +3966,10 @@ static struct clk_freq_tbl clk_tbl_tv[] = {
 	F_TV(148500000, hdmi_pll, 148500000, 1, 0, 0),
 	F_END
 };
+#else
+static struct clk_freq_tbl clk_tbl_tv[] = {
+};
+#endif
 
 static unsigned long fmax_tv_src_8064[MAX_VDD_LEVELS] __initdata = {
 	[VDD_DIG_LOW]     =  74250000,
