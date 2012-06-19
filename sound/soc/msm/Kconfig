@@ -200,4 +200,11 @@ config SND_SOC_MSM8660_APQ
         default n
         help
          To add support for SoC audio on APQ8060 board
+
+config SND_SOC_DUAL_AMIC
+	default y
+	bool "SoC feature for dual analog mic"
+	help
+	 To add support for dual analog mic.
+
 endmenu
