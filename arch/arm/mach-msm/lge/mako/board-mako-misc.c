@@ -30,10 +30,6 @@
 
 #include <linux/i2c.h>
 
-#ifdef CONFIG_LGE_ISA1200
-#include <linux/lge_isa1200.h>
-#endif
-
 #ifdef CONFIG_BU52031NVX
 #include <linux/mfd/pm8xxx/cradle.h>
 #endif
@@ -52,7 +48,7 @@
   230Hz motor : 29.4KHZ - M=1, N=163 ,
   */
 
-#if !defined(CONFIG_LGE_ISA1200) && !defined(CONFIG_ANDROID_VIBRATOR)
+#if !defined(CONFIG_ANDROID_VIBRATOR)
 /* temporal code due to build error..  */
 #define GPIO_LIN_MOTOR_EN    0
 #define GPIO_LIN_MOTOR_PWM   0
@@ -73,7 +69,7 @@
 #define MOTOR_AMP                        120
 #endif
 
-#if defined(CONFIG_LGE_ISA1200) || defined(CONFIG_ANDROID_VIBRATOR)
+#if defined(CONFIG_ANDROID_VIBRATOR)
 static struct gpiomux_setting vibrator_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -260,8 +256,6 @@ static int vibrator_init(void)
 	return 0;
 }
 
-
-
 static struct android_vibrator_platform_data vibrator_data = {
 	.enable_status = 0,
 	.amp = MOTOR_AMP,
@@ -281,88 +275,11 @@ static struct platform_device android_vibrator_device = {
 };
 #endif /* CONFIG_ANDROID_VIBRATOR */
 
-#ifdef CONFIG_LGE_ISA1200
-static int lge_isa1200_clock(int enable)
-{
-	if (enable) {
-		REG_WRITEL(
-		 (((0 & 0xffU) << 16U) + /* N_VAL[23:16] */
-		 (1U << 11U) +  /* CLK_ROOT_ENA[11]  : Enable(1) */
-		 (0U << 10U) +  /* CLK_INV[10]	   : Disable(0) */
-		 (1U << 9U) +    /* CLK_BRANCH_ENA[9] : Enable(1) */
-		 (0U << 8U) +   /* NMCNTR_EN[8]	   : Enable(1) */
-		 (0U << 7U) +   /* MNCNTR_RST[7]	   : Not Active(0) */
-		 (0U << 5U) +   /* MNCNTR_MODE[6:5]  : Dual-edge mode(2) */
-		 (0U << 3U) +   /* PRE_DIV_SEL[4:3]  : Div-4 (3) */
-		 (0U << 0U)),   /* SRC_SEL[2:0]	   : pxo (0)  */
-		 GPn_NS_REG(1));
-		 /* printk("GPIO_LIN_MOTOR_PWM is enabled. pxo clock."); */
-	} else {
-		 REG_WRITEL(
-		 (((0 & 0xffU) << 16U) + /* N_VAL[23:16] */
-		 (0U << 11U) +  /* CLK_ROOT_ENA[11]  : Disable(0) */
-		 (0U << 10U) +  /* CLK_INV[10]	  : Disable(0) */
-		 (0U << 9U) +    /* CLK_BRANCH_ENA[9] : Disable(0) */
-		 (0U << 8U) +   /* NMCNTR_EN[8]	   : Disable(0) */
-		 (1U << 7U) +   /* MNCNTR_RST[7]	   : Not Active(0) */
-		 (0U << 5U) +   /* MNCNTR_MODE[6:5]  : Dual-edge mode(2) */
-		 (0U << 3U) +   /* PRE_DIV_SEL[4:3]  : Div-4 (3) */
-		 (0U << 0U)),   /* SRC_SEL[2:0]	   : pxo (0)  */
-		 GPn_NS_REG(1));
-		 /* printk("GPIO_LIN_MOTOR_PWM is disabled."); */
-	}
-
-	return 0;
-}
-
-static struct isa1200_reg_cmd isa1200_init_seq[] = {
-
-	{LGE_ISA1200_HCTRL2, 0x00}, /* bk : release sw reset */
-
-	{LGE_ISA1200_SCTRL , 0x0F}, /* LDO:3V */
-
-	{LGE_ISA1200_HCTRL0, 0x10}, /* [4:3]10 : PWM Generation Mode [1:0]00 : Divider 1/128 */
-	{LGE_ISA1200_HCTRL1, 0xC0}, /* [7] 1 : Ext. Clock Selection, [5] 0:LRA, 1:ERM */
-	{LGE_ISA1200_HCTRL3, 0x33}, /* [6:4] 1:PWM/SE Generation PLL Clock Divider */
-
-	{LGE_ISA1200_HCTRL4, 0x81}, /* bk */
-	{LGE_ISA1200_HCTRL5, 0x99}, /* [7:0] PWM High Duty(PWM Gen) 0-6B-D6 */ /* TODO make it platform data? */
-	{LGE_ISA1200_HCTRL6, 0x9C}, /* [7:0] PWM Period(PWM Gen) */ /* TODO make it platform data? */
-
-};
-
-static struct isa1200_reg_seq isa1200_init = {
-	.reg_cmd_list = isa1200_init_seq,
-	.number_of_reg_cmd_list = ARRAY_SIZE(isa1200_init_seq),
-};
-
-static struct lge_isa1200_platform_data lge_isa1200_platform_data = {
-	.vibrator_name = "vibrator",
-
-	.gpio_hen = GPIO_MOTOR_EN,
-	.gpio_len = GPIO_MOTOR_EN,
-
-	.clock = lge_isa1200_clock,
-	.max_timeout = 30000,
-	.default_vib_strength = 255, /* max strength value is 255 */
-	.init_seq = &isa1200_init,
-};
-
-static struct i2c_board_info lge_i2c_isa1200_board_info[] = {
-	{
-		I2C_BOARD_INFO("lge_isa1200", ISA1200_SLAVE_ADDR>>1),
-		.platform_data = &lge_isa1200_platform_data
-	},
-};
-#endif
-
-#if defined(CONFIG_LGE_ISA1200) || defined(CONFIG_ANDROID_VIBRATOR)
 static struct platform_device *misc_devices[] __initdata = {
 #ifdef CONFIG_ANDROID_VIBRATOR
 	&android_vibrator_device,
 #endif
 };
-#endif
 
 #ifdef CONFIG_BU52031NVX
 #define GPIO_POUCH_INT     22
@@ -432,20 +349,13 @@ static struct platform_device cradle_device = {
 
 void __init apq8064_init_misc(void)
 {
-#if defined(CONFIG_ANDROID_VIBRATOR)
-	int vib_flag = 0;
-#endif
-
 	INFO_MSG("%s\n", __func__);
 
-#if defined(CONFIG_LGE_ISA1200) || defined(CONFIG_ANDROID_VIBRATOR)
+#if defined(CONFIG_ANDROID_VIBRATOR)
 	vibrator_gpio_init();
 #endif
 
-#if defined(CONFIG_ANDROID_VIBRATOR)
-	if (vib_flag == 0)
-		platform_add_devices(misc_devices, ARRAY_SIZE(misc_devices));
-#endif
+	platform_add_devices(misc_devices, ARRAY_SIZE(misc_devices));
 
 #ifdef CONFIG_BU52031NVX
 	hall_ic_init();
