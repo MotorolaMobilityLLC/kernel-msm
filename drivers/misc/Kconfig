@@ -603,6 +603,14 @@ config PMIC8XXX_VIBRATOR
 	  on the PM8XXX chips. The vibrator is controlled using the
 	  timed output class.
 
+config ANDROID_VIBRATOR
+	bool "Android vibrator support"
+	depends on ANDROID_TIMED_OUTPUT
+	default n
+	help
+	  This option enalbes device driver support for Android Vibrator driver.
+	  Some functions should be given by platform data for enable PWM, Motor IC, etc.
+
 config PMIC8XXX_NFC
 	tristate "Qualcomm PM8XXX support for Near Field Communication"
 	depends on MFD_PM8XXX
