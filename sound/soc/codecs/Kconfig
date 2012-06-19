@@ -451,6 +451,6 @@ config SND_SOC_MSM_STUB
 
 config SND_SOC_TPA2028D
 	bool "Audio subsystem TPA2028D"
-	default y
-	---help---
-		Texas Instruments 3W Mono Class-D Audio Amplifier
+	default n
+	help
+	  Texas Instruments 3W Mono Class-D Audio Amplifier

@@ -148,7 +148,9 @@ config SND_SOC_MSM8960
 	select SND_SOC_WCD9304
 	select SND_SOC_MSM_HOSTLESS_PCM
 	select SND_SOC_MSM_QDSP6_HDMI_AUDIO if FB_MSM_HDMI_MSM_PANEL
-	#select SND_SOC_CS8427
+	select SND_SOC_CS8427 if !MACH_APQ8064_MAKO
+	select SND_SOC_DUAL_AMIC if MACH_APQ8064_MAKO
+	select SND_SOC_TPA2028D if MACH_APQ8064_MAKO
 	default n
 	help
 	 To add support for SoC audio on MSM8960 and APQ8064 boards
@@ -202,7 +204,7 @@ config SND_SOC_MSM8660_APQ
          To add support for SoC audio on APQ8060 board
 
 config SND_SOC_DUAL_AMIC
-	default y
+	default n
 	bool "SoC feature for dual analog mic"
 	help
 	 To add support for dual analog mic.
