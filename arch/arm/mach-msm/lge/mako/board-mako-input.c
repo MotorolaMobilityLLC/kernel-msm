@@ -53,26 +53,41 @@
 int synaptics_t1320_power_on(int on)
 {
 	int rc = -EINVAL;
-	static struct regulator *vreg_l15;
-	static struct regulator *vreg_l22;
+	static struct regulator *vreg_l15 = NULL;
+	static struct regulator *vreg_l22 = NULL;
 
-	vreg_l15 = regulator_get(NULL, "8921_l15"); //3.3V_TOUCH_VDD, VREG_L15: 2.75 ~ 3.3
-	if (IS_ERR(vreg_l15)) {
-		pr_err("%s: regulator get of 8921_l15 failed (%ld)\n", __func__,
-		       PTR_ERR(vreg_l15));
-		rc = PTR_ERR(vreg_l15);
-		return rc;
+	/* 3.3V_TOUCH_VDD, VREG_L15: 2.75 ~ 3.3 */
+	if (!vreg_l15) {
+		vreg_l15 = regulator_get(NULL, "8921_l15");
+		if (IS_ERR(vreg_l15)) {
+			pr_err("%s: regulator get of 8921_l15 failed (%ld)\n",
+					__func__,
+			       PTR_ERR(vreg_l15));
+			rc = PTR_ERR(vreg_l15);
+			vreg_l15 = NULL;
+			return rc;
+		}
 	}
-	vreg_l22 = regulator_get(NULL, "8921_l22"); //1.8V_TOUCH_IO, VREG_L22: 1.7 ~ 2.85
-	if (IS_ERR(vreg_l22)) {
-		pr_err("%s: regulator get of 8921_l22 failed (%ld)\n", __func__,
-		       PTR_ERR(vreg_l22));
-		rc = PTR_ERR(vreg_l22);
-		return rc;
+	/* 1.8V_TOUCH_IO, VREG_L22: 1.7 ~ 2.85 */
+	if (!vreg_l22) {
+		vreg_l22 = regulator_get(NULL, "8921_l22");
+		if (IS_ERR(vreg_l22)) {
+			pr_err("%s: regulator get of 8921_l22 failed (%ld)\n",
+					__func__,
+			       PTR_ERR(vreg_l22));
+			rc = PTR_ERR(vreg_l22);
+			vreg_l22 = NULL;
+			return rc;
+		}
 	}
 
 	rc = regulator_set_voltage(vreg_l15, 3300000, 3300000);
-	rc = regulator_set_voltage(vreg_l22, 1800000, 1800000);
+	rc |= regulator_set_voltage(vreg_l22, 1800000, 1800000);
+	if (rc < 0) {
+		printk(KERN_INFO "[Touch D] %s: cannot control regulator\n",
+		       __func__);
+		return rc;
+	}
 
 	if (on) {
 		printk("[Touch D]touch enable\n");
@@ -82,12 +97,6 @@ int synaptics_t1320_power_on(int on)
 		printk("[Touch D]touch disable\n");
 		regulator_disable(vreg_l15);
 		regulator_disable(vreg_l22);
-	}
-
-	if (rc < 0) {
-		printk(KERN_INFO "[Touch D] %s: cannot request GPIO\n",
-		       __func__);
-		return rc;
 	}
 
 	return rc;
