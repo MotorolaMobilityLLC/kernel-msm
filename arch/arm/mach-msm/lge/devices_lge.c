@@ -12,6 +12,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/memory.h>
 
@@ -210,20 +211,39 @@ void lge_pm_read_cable_info(void)
 #endif
 
 #ifdef CONFIG_LGE_PM_BATTERY_ID_CHECKER
-int lge_battery_info = BATT_UNKNOWN;
+enum {
+	BATT_ID_UNKNOWN,
+	BATT_ID_DS2704_N = 17,
+	BATT_ID_DS2704_L = 32,
+	BATT_ID_ISL6296_N = 73,
+	BATT_ID_ISL6296_L = 94,
+};
+
+static int lge_battery_info = BATT_ID_UNKNOWN;
+
+bool is_lge_battery(void)
+{
+	if (lge_battery_info == BATT_ID_DS2704_N ||
+	    lge_battery_info == BATT_ID_DS2704_L ||
+	    lge_battery_info == BATT_ID_ISL6296_N ||
+	    lge_battery_info == BATT_ID_ISL6296_L)
+		return true;
+	return false;
+}
+EXPORT_SYMBOL(is_lge_battery);
 
 static int __init battery_information_setup(char *batt_info)
 {
         if(!strcmp(batt_info, "ds2704_n"))
-                lge_battery_info = BATT_DS2704_N;
+                lge_battery_info = BATT_ID_DS2704_N;
         else if(!strcmp(batt_info, "ds2704_l"))
-                lge_battery_info = BATT_DS2704_L;
+                lge_battery_info = BATT_ID_DS2704_L;
         else if(!strcmp(batt_info, "isl6296_n"))
-                lge_battery_info = BATT_ISL6296_N;
+                lge_battery_info = BATT_ID_ISL6296_N;
         else if(!strcmp(batt_info, "isl6296_l"))
-                lge_battery_info = BATT_ISL6296_L;
+                lge_battery_info = BATT_ID_ISL6296_L;
         else
-                lge_battery_info = BATT_UNKNOWN;
+                lge_battery_info = BATT_ID_UNKNOWN;
 
         printk(KERN_INFO "Battery : %s %d\n", batt_info, lge_battery_info);
 
