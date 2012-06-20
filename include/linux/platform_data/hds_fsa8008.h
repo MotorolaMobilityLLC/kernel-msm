@@ -12,8 +12,8 @@
  * GNU General Public License for more details.
  */
 
-#ifndef __LGE_ANDROID_USB_H__
-#define __LGE_ANDROID_USB_H__
+#ifndef __HDS_FSA8008_H__
+#define __HDS_FSA8008_H__
 
 struct fsa8008_platform_data {
 	const char *switch_name;  /* switch device name */
@@ -34,4 +34,4 @@ struct fsa8008_platform_data {
 	unsigned int latency_for_detection;
 };
 
-#endif /* __LGE_ANDROID_USB_H__ */
+#endif /* __HDS_FSA8008_H__ */
