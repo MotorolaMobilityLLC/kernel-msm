@@ -33,9 +33,7 @@
 #ifdef CONFIG_SND_SOC_TPA2028D
 #include <sound/tpa2028d.h>
 #endif
-
 /* 8064 machine driver */
-
 #define PM8921_GPIO_BASE		NR_GPIO_IRQS
 #define PM8921_GPIO_PM_TO_SYS(pm_gpio)  (pm_gpio - 1 + PM8921_GPIO_BASE)
 
@@ -100,6 +98,10 @@ static int rec_mode = INCALL_REC_MONO;
 
 static struct clk *codec_clk;
 static int clk_users;
+
+#ifndef CONFIG_SWITCH_FSA8008
+static int msm_headset_gpios_configured;
+#endif
 
 static struct snd_soc_jack hs_jack;
 static struct snd_soc_jack button_jack;
@@ -1143,7 +1145,9 @@ static int msm_slimbus_4_hw_params(struct snd_pcm_substream *substream,
 static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 {
 	int err;
+#ifndef CONFIG_SWITCH_FSA8008
 	uint32_t revision;
+#endif
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
@@ -1198,6 +1202,7 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 	codec_clk = clk_get(cpu_dai->dev, "osr_clk");
 
+#ifndef CONFIG_SWITCH_FSA8008
 	/* APQ8064 Rev 1.1 CDP and Liquid have mechanical switch */
 	revision = socinfo_get_version();
 	if (apq8064_hs_detect_use_gpio != -1) {
@@ -1243,6 +1248,9 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	err = tabla_hs_detect(codec, &mbhc_cfg);
 
 	return err;
+#else
+	return 0;
+#endif
 }
 
 static int msm_slim_0_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
@@ -1370,6 +1378,7 @@ static int msm_aux_pcm_get_gpios(void)
 	int ret = 0;
 
 	pr_debug("%s\n", __func__);
+
 #ifdef CONFIG_SND_SOC_QDSP6_HDMI_AUDIO
 	ret = gpio_request(GPIO_AUX_PCM_DOUT, "AUX PCM DOUT");
 	if (ret < 0) {
@@ -1398,7 +1407,6 @@ static int msm_aux_pcm_get_gpios(void)
 		goto fail_clk;
 	}
 #endif
-
 	return 0;
 
 #ifdef CONFIG_SND_SOC_QDSP6_HDMI_AUDIO
@@ -1410,7 +1418,6 @@ fail_din:
 	gpio_free(GPIO_AUX_PCM_DOUT);
 fail_dout:
 #endif
-
 	return ret;
 }
 
@@ -1517,13 +1524,11 @@ static struct snd_soc_ops msm_slimbus_4_be_ops = {
 	.hw_params = msm_slimbus_4_hw_params,
 	.shutdown = msm_shutdown,
 };
-
 static struct snd_soc_ops msm_slimbus_2_be_ops = {
 	.startup = msm_startup,
 	.hw_params = msm_slimbus_2_hw_params,
 	.shutdown = msm_shutdown,
 };
-
 
 /* Digital audio interface glue - connects codec <---> CPU */
 static struct snd_soc_dai_link msm_dai[] = {
@@ -2009,6 +2014,60 @@ struct snd_soc_card snd_soc_card_msm = {
 
 static struct platform_device *msm_snd_device;
 
+#ifndef CONFIG_SWITCH_FSA8008
+static int msm_configure_headset_mic_gpios(void)
+{
+	int ret;
+	struct pm_gpio param = {
+		.direction      = PM_GPIO_DIR_OUT,
+		.output_buffer  = PM_GPIO_OUT_BUF_CMOS,
+		.output_value   = 1,
+		.pull	   = PM_GPIO_PULL_NO,
+		.vin_sel	= PM_GPIO_VIN_S4,
+		.out_strength   = PM_GPIO_STRENGTH_MED,
+		.function       = PM_GPIO_FUNC_NORMAL,
+	};
+
+	ret = gpio_request(PM8921_GPIO_PM_TO_SYS(23), "AV_SWITCH");
+	if (ret) {
+		pr_err("%s: Failed to request gpio %d\n", __func__,
+			PM8921_GPIO_PM_TO_SYS(23));
+		return ret;
+	}
+
+	ret = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(23), &param);
+	if (ret)
+		pr_err("%s: Failed to configure gpio %d\n", __func__,
+			PM8921_GPIO_PM_TO_SYS(23));
+	else
+		gpio_direction_output(PM8921_GPIO_PM_TO_SYS(23), 0);
+
+	ret = gpio_request(PM8921_GPIO_PM_TO_SYS(35), "US_EURO_SWITCH");
+	if (ret) {
+		pr_err("%s: Failed to request gpio %d\n", __func__,
+			PM8921_GPIO_PM_TO_SYS(35));
+		gpio_free(PM8921_GPIO_PM_TO_SYS(23));
+		return ret;
+	}
+	ret = pm8xxx_gpio_config(PM8921_GPIO_PM_TO_SYS(35), &param);
+	if (ret)
+		pr_err("%s: Failed to configure gpio %d\n", __func__,
+			PM8921_GPIO_PM_TO_SYS(35));
+	else
+		gpio_direction_output(PM8921_GPIO_PM_TO_SYS(35), 0);
+	return 0;
+}
+#endif
+static void msm_free_headset_mic_gpios(void)
+{
+#ifndef CONFIG_SWITCH_FSA8008
+	if (msm_headset_gpios_configured) {
+		gpio_free(PM8921_GPIO_PM_TO_SYS(23));
+		gpio_free(PM8921_GPIO_PM_TO_SYS(35));
+	}
+#endif
+}
+
 static int __init msm_audio_init(void)
 {
 	int ret;
@@ -2040,6 +2099,15 @@ static int __init msm_audio_init(void)
 	}
 
 	mutex_init(&cdc_mclk_mutex);
+
+#ifndef CONFIG_SWITCH_FSA8008
+	if (msm_configure_headset_mic_gpios()) {
+		pr_err("%s Fail to configure headset mic gpios\n", __func__);
+		msm_headset_gpios_configured = 0;
+	} else
+		msm_headset_gpios_configured = 1;
+#endif
+
 	return ret;
 
 }
