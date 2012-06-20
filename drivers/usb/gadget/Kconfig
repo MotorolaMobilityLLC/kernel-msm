@@ -1121,4 +1121,11 @@ config RMNET_SDIO_SMD_DATA_CHANNEL
        help
 	  Data SMD channel for transferring network data
 
+config USB_ANDROID_CDC_ECM
+	boolean "Android Gadget support CDC ECM"
+	depends on USB_G_ANDROID
+	default n
+	help
+	  Android Gadget USB support CDC ECM instead of RNDIS
+
 endif # USB_GADGET
