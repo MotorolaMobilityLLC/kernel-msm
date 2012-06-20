@@ -3982,9 +3982,11 @@ static unsigned long fmax_tv_src_8064[MAX_VDD_LEVELS] __initdata = {
  */
 void set_rate_tv(struct rcg_clk *clk, struct clk_freq_tbl *nf)
 {
+#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 	unsigned long pll_rate = (unsigned long)nf->extra_freq_data;
 	if (pll_rate)
 		hdmi_pll_set_rate(pll_rate);
+#endif
 	set_rate_mnd(clk, nf);
 }
 
