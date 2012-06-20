@@ -49,7 +49,6 @@
 /* touch screen device */
 #define APQ8064_GSBI3_QUP_I2C_BUS_ID            3
 
-#if defined(CONFIG_TOUCHSCREEN_LGE_SYNAPTICS)
 int synaptics_t1320_power_on(int on)
 {
 	int rc = -EINVAL;
@@ -112,11 +111,7 @@ static struct touch_power_module touch_pwr = {
 };
 
 static struct touch_device_caps touch_caps = {
-	.button_support = 1,
-	.y_button_boundary = 0,
-	.number_of_button = 3,
-	.button_name = {KEY_BACK, KEY_HOMEPAGE, KEY_MENU},
-	.button_margin = 0,
+	.button_support = 0,
 	.is_width_supported = 1,
 	.is_pressure_supported = 1,
 	.is_id_supported = 1,
@@ -131,11 +126,10 @@ static struct touch_device_caps touch_caps = {
 
 static struct touch_operation_role touch_role = {
 	.operation_mode = INTERRUPT_MODE,
-	.key_type = TOUCH_HARD_KEY,
+	.key_type = KEY_NONE,
 	.report_mode = CONTINUOUS_REPORT_MODE,
 	.delta_pos_threshold = 0,
 	.orientation = 0,
-	.report_period = 10000000,
 	.booting_delay = 400,
 	.reset_delay = 20,
 	.suspend_pwr = POWER_OFF,
@@ -144,10 +138,8 @@ static struct touch_operation_role touch_role = {
 	.jitter_curr_ratio = 30,
 	.accuracy_filter_enable = 1,
 	.irqflags = IRQF_TRIGGER_FALLING,
-#if defined(CONFIG_TOUCH_REG_MAP_TM2000) || defined(CONFIG_TOUCH_REG_MAP_TM2372)
 	.show_touches = 0,
 	.pointer_location = 0,
-#endif
 };
 
 static struct touch_platform_data mako_ts_data = {
@@ -166,16 +158,11 @@ static struct i2c_board_info synaptics_ts_info[] = {
 		.irq = MSM_GPIO_TO_INT(SYNAPTICS_TS_I2C_INT_GPIO),
 	},
 };
-#endif
 
-
-/* common function */
 void __init apq8064_init_input(void)
 {
-#if defined(CONFIG_TOUCHSCREEN_LGE_SYNAPTICS)
 	printk(KERN_INFO "[Touch D] %s: NOT DCM KDDI, reg synaptics driver \n",
 	       __func__);
 	i2c_register_board_info(APQ8064_GSBI3_QUP_I2C_BUS_ID,
 				&synaptics_ts_info[0], 1);
-#endif
 }

@@ -56,10 +56,8 @@ struct touch_operation_role {
 	int             jitter_curr_ratio;
 	int             accuracy_filter_enable;	/* enable = 1, disable = 0 */
 	unsigned long	irqflags;
-#if defined(CONFIG_TOUCH_REG_MAP_TM2000) || defined(CONFIG_TOUCH_REG_MAP_TM2372)
 	int             show_touches;
 	int             pointer_location;
-#endif
 };
 
 struct touch_power_module {
@@ -111,11 +109,9 @@ struct touch_fw_info {
 	u8              manufacturer_id;
 	u8              product_id[11];
 	u8              fw_image_product_id[11];
-#if defined(CONFIG_TOUCH_REG_MAP_TM2000) || defined(CONFIG_TOUCH_REG_MAP_TM2372)
 	u8              fw_version[5];
 	u8              fw_image_version[5];
 	bool            fw_force_rework;
-#endif
 	unsigned char   *fw_start;
 	unsigned long   fw_size;
 };
