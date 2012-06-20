@@ -8,4 +8,11 @@ endmenu
 
 menu "LGE Specific Patches"
 
+config LGE_QFPROM_INTERFACE
+	bool "Support qfprom interface"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE QFPROM DRIVER.
+
 endmenu
