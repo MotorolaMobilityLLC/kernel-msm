@@ -1700,9 +1700,14 @@ static ssize_t								\
 field ## _store(struct device *dev, struct device_attribute *attr,	\
 		const char *buf, size_t size)				\
 {									\
+	int len;							\
 	if (size >= sizeof(buffer))					\
 		return -EINVAL;						\
-	return strlcpy(buffer, buf, sizeof(buffer));			\
+	len = strlcpy(buffer, buf, sizeof(buffer));			\
+	if (len > 0 && buffer[len-1] == '\n') {				\
+		buffer[len-1] = '\0';					\
+	}								\
+	return len;							\
 }									\
 static DEVICE_ATTR(field, S_IRUGO | S_IWUSR, field ## _show, field ## _store);
 
