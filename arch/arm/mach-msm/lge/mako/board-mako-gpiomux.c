@@ -327,19 +327,6 @@ static struct gpiomux_setting gsbi4_uart_active = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
-#if defined(CONFIG_LGE_NFC_SONY_CXD2235AGG)
-static struct gpiomux_setting gsbi6_felica = {
-	.func = GPIOMUX_FUNC_2,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_NONE,
-};    
-static struct gpiomux_setting gsbi6_felica_active = {
-	.func = GPIOMUX_FUNC_2,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_UP,
-};    
-#endif
-
 static struct gpiomux_setting gsbi1_suspended_cfg = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_2MA,
@@ -614,24 +601,6 @@ static struct msm_gpiomux_config apq8064_gsbi_configs[] __initdata = {
 	},
 };
 
-#if defined(CONFIG_LGE_NFC_SONY_CXD2235AGG)
-static struct msm_gpiomux_config apq8064_felica_uart_configs[] __initdata = {
-	{
-		.gpio      = 14,		/* GSBI6 UART TX */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gsbi6_felica_active,
-			[GPIOMUX_SUSPENDED] = &gsbi6_felica,
-		},
-	},
-	{
-		.gpio      = 15,		/* GSBI6 UART RX */
-		.settings = {
-			[GPIOMUX_ACTIVE] = &gsbi6_felica_active,
-			[GPIOMUX_SUSPENDED] = &gsbi6_felica,
-		},
-	},
-};
-#endif
 static struct msm_gpiomux_config apq8064_slimbus_config[] __initdata = {
 	{
 		.gpio   = 40,           /* slimbus clk */
@@ -991,10 +960,7 @@ void __init apq8064_init_gpiomux(void)
 		msm_gpiomux_install(apq8064_gsbi_configs,
 				ARRAY_SIZE(apq8064_gsbi_configs));
 	}
-#if defined(CONFIG_LGE_NFC_SONY_CXD2235AGG)
-	msm_gpiomux_install(apq8064_felica_uart_configs,
-			ARRAY_SIZE(apq8064_felica_uart_configs));
-#endif
+
 	msm_gpiomux_install(apq8064_slimbus_config,
 			ARRAY_SIZE(apq8064_slimbus_config));
 
