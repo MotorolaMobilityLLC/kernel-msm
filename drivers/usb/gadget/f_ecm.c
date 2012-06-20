@@ -92,7 +92,11 @@ static inline unsigned ecm_bitrate(struct usb_gadget *g)
  */
 
 #define LOG2_STATUS_INTERVAL_MSEC	5	/* 1 << 5 == 32 msec */
+#ifdef CONFIG_USB_ANDROID_CDC_ECM
+#define ECM_STATUS_BYTECOUNT		64
+#else
 #define ECM_STATUS_BYTECOUNT		16	/* 8 byte header + data */
+#endif
 
 
 /* interface descriptor: */
@@ -192,7 +196,11 @@ static struct usb_endpoint_descriptor fs_ecm_notify_desc = {
 	.bEndpointAddress =	USB_DIR_IN,
 	.bmAttributes =		USB_ENDPOINT_XFER_INT,
 	.wMaxPacketSize =	cpu_to_le16(ECM_STATUS_BYTECOUNT),
+#ifdef CONFIG_USB_CDC_ECM
+	.bInterval =		4,
+#else
 	.bInterval =		1 << LOG2_STATUS_INTERVAL_MSEC,
+#endif
 };
 
 static struct usb_endpoint_descriptor fs_ecm_in_desc = {
@@ -201,6 +209,9 @@ static struct usb_endpoint_descriptor fs_ecm_in_desc = {
 
 	.bEndpointAddress =	USB_DIR_IN,
 	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
+#ifdef CONFIG_USB_CDC_ECM
+	.wMaxPacketSize =	cpu_to_le16(64),
+#endif
 };
 
 static struct usb_endpoint_descriptor fs_ecm_out_desc = {
@@ -209,6 +220,9 @@ static struct usb_endpoint_descriptor fs_ecm_out_desc = {
 
 	.bEndpointAddress =	USB_DIR_OUT,
 	.bmAttributes =		USB_ENDPOINT_XFER_BULK,
+#ifdef CONFIG_USB_CDC_ECM
+	.wMaxPacketSize =	cpu_to_le16(64),
+#endif
 };
 
 static struct usb_descriptor_header *ecm_fs_function[] = {
@@ -239,7 +253,11 @@ static struct usb_endpoint_descriptor hs_ecm_notify_desc = {
 	.bEndpointAddress =	USB_DIR_IN,
 	.bmAttributes =		USB_ENDPOINT_XFER_INT,
 	.wMaxPacketSize =	cpu_to_le16(ECM_STATUS_BYTECOUNT),
+#ifdef CONFIG_USB_CDC_ECM
+	.bInterval =		4,
+#else
 	.bInterval =		LOG2_STATUS_INTERVAL_MSEC + 4,
+#endif
 };
 
 static struct usb_endpoint_descriptor hs_ecm_in_desc = {
@@ -578,11 +596,20 @@ static int ecm_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 		if (alt == 1) {
 			struct net_device	*net;
 
+#ifdef CONFIG_USB_CDC_ECM
+			/* Disable zlps in case of LG android USB and qct's udc.
+			 * By this, host driver can handle null packet properly.
+			 */
+			ecm->port.is_zlp_ok = !(
+					gadget_is_musbhdrc(cdev->gadget) ||
+					gadget_is_ci13xxx_msm(cdev->gadget));
+#else
 			/* Enable zlps by default for ECM conformance;
 			 * override for musb_hdrc (avoids txdma ovhead).
 			 */
 			ecm->port.is_zlp_ok = !(gadget_is_musbhdrc(cdev->gadget)
 				);
+#endif
 			ecm->port.cdc_filter = DEFAULT_FILTER;
 			DBG(cdev, "activate ecm\n");
 			net = gether_connect(&ecm->port);
@@ -869,6 +896,16 @@ ecm_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN])
 		ecm_string_defs[0].id = status;
 		ecm_control_intf.iInterface = status;
 
+#ifdef CONFIG_USB_CDC_ECM
+		/* MAC address */
+		status = usb_string_id(c->cdev);
+		if (status < 0)
+			return status;
+		ecm_string_defs[1].id = status;
+		pr_info("%s: iMACAddress = %d\n", __func__, status);
+		ecm_desc.iMACAddress = status;
+#endif
+
 		/* data interface label */
 		status = usb_string_id(c->cdev);
 		if (status < 0)
@@ -876,12 +913,14 @@ ecm_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN])
 		ecm_string_defs[2].id = status;
 		ecm_data_intf.iInterface = status;
 
+#ifndef CONFIG_USB_CDC_ECM
 		/* MAC address */
 		status = usb_string_id(c->cdev);
 		if (status < 0)
 			return status;
 		ecm_string_defs[1].id = status;
 		ecm_desc.iMACAddress = status;
+#endif
 
 		/* IAD label */
 		status = usb_string_id(c->cdev);
@@ -905,7 +944,11 @@ ecm_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN])
 
 	ecm->port.cdc_filter = DEFAULT_FILTER;
 
+#ifdef CONFIG_USB_CDC_ECM
+	ecm->port.func.name = "ecm";
+#else
 	ecm->port.func.name = "cdc_ethernet";
+#endif
 	ecm->port.func.strings = ecm_strings;
 	/* descriptors are per-instance copies */
 	ecm->port.func.bind = ecm_bind;
