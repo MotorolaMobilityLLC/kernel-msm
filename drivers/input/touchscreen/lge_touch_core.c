@@ -1196,14 +1196,14 @@ static void touch_work_func(struct work_struct *work)
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
 
-	if (likely(ts->pdata->role->operation_mode == INTERRUPT_MODE))
-		int_pin = gpio_get_value(ts->pdata->int_pin);
-
 	if (touch_device_func->data(ts->client, ts->ts_data.curr_data,
 			&ts->ts_data.curr_button, &ts->ts_data.total_num) < 0) {
 		TOUCH_ERR_MSG("get data fail\n");
 		goto err_out_critical;
 	}
+
+	if (likely(ts->pdata->role->operation_mode == INTERRUPT_MODE))
+		int_pin = gpio_get_value(ts->pdata->int_pin);
 
 	/* Ghost finger solution */
 	if (unlikely(ts->gf_ctrl.stage)) {
