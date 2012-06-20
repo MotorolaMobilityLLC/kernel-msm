@@ -16,13 +16,10 @@
 #include <linux/platform_device.h>
 #include <linux/mfd/pm8xxx/pm8921.h>
 #include <linux/regulator/consumer.h>
+#include <linux/platform_data/hds_fsa8008.h>
 #include "devices.h"
 
 #include "board-8064.h"
-
-#ifdef CONFIG_SWITCH_FSA8008
-#include "../../../../sound/soc/codecs/wcd9310.h"
-#endif
 
 #ifdef CONFIG_SND_SOC_TPA2028D
 #include <sound/tpa2028d.h>
@@ -38,6 +35,7 @@
 #define AGC_FIXED_GAIN              12
 
 
+#define GPIO_EAR_MIC_BIAS_EN        PM8921_GPIO_PM_TO_SYS(20)
 #define GPIO_EAR_SENSE_N            82
 #define GPIO_EAR_MIC_EN             PM8921_GPIO_PM_TO_SYS(31)
 #define GPIO_EARPOL_DETECT          PM8921_GPIO_PM_TO_SYS(32)
@@ -56,25 +54,6 @@ struct i2c_registry {
 	int                    bus;
 	struct i2c_board_info *info;
 	int                    len;
-};
-
-
-struct fsa8008_platform_data {
-	const char *switch_name;  /* switch device name */
-	const char *keypad_name;  /* keypad device name */
-
-	unsigned int key_code;    /* key code for hook */
-
-	unsigned int gpio_detect; /* DET : to detect jack inserted or not */
-	unsigned int gpio_mic_en; /* EN : to enable mic */
-	unsigned int gpio_jpole;  /* JPOLE : 3pole or 4pole */
-	unsigned int gpio_key;    /* S/E button */
-
-	/* callback function which is initialized while probing */
-	void (*set_headset_mic_bias)(int enable);
-
-	/* latency for pole (3 or 4)detection (in ms) */
-	unsigned int latency_for_detection;
 };
 
 #ifdef CONFIG_SND_SOC_TPA2028D
@@ -164,7 +143,11 @@ static void __init lge_add_i2c_tpa2028d_devices(void)
 }
 
 
-#ifdef CONFIG_SWITCH_FSA8008
+void enable_external_mic_bias(int status)
+{
+	gpio_set_value_cansleep(GPIO_EAR_MIC_BIAS_EN, status);
+}
+
 static struct fsa8008_platform_data lge_hs_pdata = {
 	.switch_name = "h2w",
 	.keypad_name = "hs_detect",
@@ -173,11 +156,12 @@ static struct fsa8008_platform_data lge_hs_pdata = {
 
 	.gpio_detect = GPIO_EAR_SENSE_N,
 	.gpio_mic_en = GPIO_EAR_MIC_EN,
+	.gpio_mic_bias_en = GPIO_EAR_MIC_BIAS_EN,
 	.gpio_jpole  = GPIO_EARPOL_DETECT,
 	.gpio_key    = GPIO_EAR_KEY_INT,
 
 	.latency_for_detection = 75,
-	.set_headset_mic_bias = tabla_codec_micbias2_ctl,
+	.set_headset_mic_bias = enable_external_mic_bias,
 };
 
 static struct platform_device lge_hsd_device = {
@@ -194,19 +178,8 @@ static int __init lge_hsd_fsa8008_init(void)
 	return platform_device_register(&lge_hsd_device);
 }
 
-static void __exit lge_hsd_fsa8008_exit(void)
-{
-	printk(KERN_INFO "lge_hsd_fsa8008_exit\n");
-	platform_device_unregister(&lge_hsd_device);
-}
-#endif
-
 void __init lge_add_sound_devices(void)
 {
 	lge_add_i2c_tpa2028d_devices();
-
-#ifdef CONFIG_SWITCH_FSA8008
 	lge_hsd_fsa8008_init();
-#endif
-
 }
