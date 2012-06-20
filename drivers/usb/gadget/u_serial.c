@@ -81,7 +81,7 @@
  */
 #define TX_QUEUE_SIZE		8
 #define TX_BUF_SIZE		4096
-#define WRITE_BUF_SIZE		8192		/* TX only */
+#define WRITE_BUF_SIZE		(8192+1)		/* TX only */
 
 #define RX_QUEUE_SIZE		8
 #define RX_BUF_SIZE		4096
@@ -393,6 +393,7 @@ __acquires(&port->port_lock)
 			if (prev_len && (prev_len % in->maxpacket == 0)) {
 				req->length = 0;
 				list_del(&req->list);
+				port->write_started++;
 				spin_unlock(&port->port_lock);
 				status = usb_ep_queue(in, req, GFP_ATOMIC);
 				spin_lock(&port->port_lock);
@@ -404,6 +405,7 @@ __acquires(&port->port_lock)
 					printk(KERN_ERR "%s: %s err %d\n",
 					__func__, "queue", status);
 					list_add(&req->list, pool);
+					port->write_started--;
 				}
 				prev_len = 0;
 			}
@@ -414,6 +416,7 @@ __acquires(&port->port_lock)
 
 		req->length = len;
 		list_del(&req->list);
+		port->write_started++;
 
 		pr_vdebug(PREFIX "%d: tx len=%d, 0x%02x 0x%02x 0x%02x ...\n",
 				port->port_num, len, *((u8 *)req->buf),
@@ -443,6 +446,7 @@ __acquires(&port->port_lock)
 			pr_debug("%s: %s %s err %d\n",
 					__func__, "queue", in->name, status);
 			list_add(&req->list, pool);
+			port->write_started--;
 			break;
 		}
 		prev_len = req->length;
@@ -475,8 +479,10 @@ __acquires(&port->port_lock)
 
 		/* no more rx if closed */
 		tty = port->port_tty;
-		if (!tty)
+		if (!tty) {
+			started = 0;
 			break;
+		}
 
 		if (port->read_started >= RX_QUEUE_SIZE)
 			break;
@@ -750,7 +756,8 @@ static int gs_start_io(struct gs_port *port)
 		return -EIO;
 	/* unblock any pending writes into our circular buffer */
 	if (started) {
-		tty_wakeup(port->port_tty);
+		if(port->port_tty)
+			tty_wakeup(port->port_tty);
 	} else {
 		gs_free_requests(ep, head, &port->read_allocated);
 		gs_free_requests(port->port_usb->in, &port->write_pool,
@@ -1252,6 +1259,11 @@ static ssize_t debug_read_status(struct file *file, char __user *ubuf,
 		i += scnprintf(buf + i, BUF_SIZE - i,
 			"DTR_status: %d\n", result);
 	}
+	i += scnprintf(buf + i, BUF_SIZE - i, "port_write_buf: %d\n",
+			gs_buf_data_avail(&ui_dev->port_write_buf));
+
+	i += scnprintf(buf + i, BUF_SIZE - i, "write_started: %d\n",
+			ui_dev->write_started);
 
 	spin_unlock_irqrestore(&ui_dev->port_lock, flags);
 
