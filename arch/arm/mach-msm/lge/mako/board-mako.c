@@ -83,9 +83,6 @@
 #include <mach/board_lge.h>
 
 #include <mach/board_lge.h>
-#ifdef CONFIG_USB_G_LGE_ANDROID
-#include <linux/platform_data/lge_android_usb.h>
-#endif
 
 #include "msm_watchdog.h"
 #include "board-mako.h"
@@ -97,10 +94,6 @@
 #include "pm-boot.h"
 #include "devices-msm8x60.h"
 #include "smd_private.h"
-
-#if defined(CONFIG_LGE_NFC_SONY_CXD2235AGG)
-#include <mach/msm_serial_hs_lite.h>
-#endif
 
 #define MSM_PMEM_ADSP_SIZE         0x7800000
 #define MSM_PMEM_AUDIO_SIZE        0x4CF000
@@ -836,75 +829,6 @@ static struct platform_device android_usb_device = {
 		.platform_data = &android_usb_pdata,
 	},
 };
-
-#ifdef CONFIG_USB_G_LGE_ANDROID
-static int get_factory_cable(void)
-{
-    struct chg_cable_info info;
-    enum lge_boot_mode_type boot_mode;
-    int res;
-
-    /* get cable infomation */
-    res = lge_pm_get_cable_info(&info);
-    if (res < 0) {
-	pr_err("Error get cable information from PMIC %d\n", res);
-	return 0;
-    }
-
-    switch(info.cable_type) {
-	/* It is factory cable */
-	case CABLE_56K:
-	    res = LGEUSB_FACTORY_56K;
-	    break;
-	case CABLE_130K:
-	    res = LGEUSB_FACTORY_130K;
-	    break;
-	case CABLE_910K:
-	    res = LGEUSB_FACTORY_910K;
-	    break;
-	    /* It is normal cable */
-	default:
-	    res = 0;
-	    break;
-    }
-
-    /* if boot mode is factory,
-     * cable must be factory cable.
-     */
-    boot_mode = lge_get_boot_mode();
-    switch(boot_mode) {
-	case LGE_BOOT_MODE_FACTORY:
-	    res = LGEUSB_FACTORY_130K;
-	    break;
-	case LGE_BOOT_MODE_FACTORY2:
-	//case LGE_BOOT_MODE_PIFBOOT:
-	    res = LGEUSB_FACTORY_56K;
-	    break;
-	default:
-	    break;
-    }
-
-    return res;
-}
-
-struct lge_android_usb_platform_data lge_android_usb_pdata = {
-    .vendor_id = 0x1004,
-    .factory_pid = 0x6000,
-    .iSerialNumber = 0,
-    .product_name = "LGE Android Phone",
-    .manufacturer_name = "LG Electronics Inc.",
-    .factory_composition = "acm,diag",
-    .get_factory_cable = get_factory_cable,
-};
-
-struct platform_device lge_android_usb_device = {
-    .name = "lge_android_usb",
-    .id = -1,
-    .dev = {
-	.platform_data = &lge_android_usb_pdata,
-    },
-};
-#endif /* CONFIG_USB_G_LGE_ANDROID */
 
 /* Bandwidth requests (zero) if no vote placed */
 static struct msm_bus_vectors usb_init_vectors[] = {
@@ -1791,22 +1715,8 @@ static struct msm_pm_sleep_status_data msm_pm_slp_sts_data = {
 #define MSM_GSBI1_PHYS		0x12440000
 #define MSM_GSBI4_PHYS		0x16300000
 
-#if defined(CONFIG_LGE_NFC_SONY_CXD2235AGG)
-#define MSM_GSBI6_PHYS		0x16500000
-static struct msm_serial_hslite_platform_data apq8064_felica_gsbi6_pdata = {
-	.config_gpio	= 1,
-	.uart_tx_gpio	= 14,
-	.uart_rx_gpio	= 15,
-	.line		= 2,
-};
-#endif
-
 static void __init apq8064_init_buses(void)
 {
-#if defined(CONFIG_LGE_NFC_SONY_CXD2235AGG)
-	void __iomem *gsbi6_mem;
-#endif
-
 	msm_bus_rpm_set_mt_mask();
 	msm_bus_8064_apps_fabric_pdata.rpm_enabled = 1;
 	msm_bus_8064_sys_fabric_pdata.rpm_enabled = 1;
@@ -1819,15 +1729,6 @@ static void __init apq8064_init_buses(void)
 		&msm_bus_8064_mm_fabric_pdata;
 	msm_bus_8064_sys_fpb.dev.platform_data = &msm_bus_8064_sys_fpb_pdata;
 	msm_bus_8064_cpss_fpb.dev.platform_data = &msm_bus_8064_cpss_fpb_pdata;
-
-	/* Set dual mode (I2C/UART) for GSBI_4/6 */
-#if defined(CONFIG_LGE_NFC_SONY_CXD2235AGG)
-	gsbi6_mem = ioremap_nocache(MSM_GSBI6_PHYS, 4);
-	writel_relaxed(GSBI_DUAL_MODE_CODE, gsbi6_mem);
-	wmb();
-	iounmap(gsbi6_mem);
-	apq8064_device_felica_gsbi6.dev.platform_data = &apq8064_felica_gsbi6_pdata;
-#endif
 } 
 
 /* PCIe gpios */
@@ -1884,9 +1785,6 @@ static struct platform_device *common_devices[] __initdata = {
 	&apq8064_device_gadget_peripheral,
 	&apq8064_device_hsusb_host,
 	&android_usb_device,
-#ifdef CONFIG_USB_G_LGE_ANDROID
-	&lge_android_usb_device,
-#endif
 	&msm_device_wcnss_wlan,
 #ifdef CONFIG_RADIO_IRIS
 	&msm_device_iris_fm,
@@ -2110,12 +2008,6 @@ static struct platform_device *mpq_devices[] __initdata = {
 static struct platform_device *uart_devices[] __initdata = {
 	&apq8064_device_uart_gsbi4,
 };
-
-#if defined(CONFIG_LGE_NFC_SONY_CXD2235AGG)
-static struct platform_device *felica_uart_devices[] __initdata = {
-	&apq8064_device_felica_gsbi6,
-};
-#endif
 
 static struct spi_board_info spi_board_info[] __initdata = {
 #ifdef CONFIG_SENSORS_EPM_ADC
@@ -2497,11 +2389,6 @@ static void __init apq8064_cdp_init(void)
 
 	if (lge_get_uart_mode())
 		platform_add_devices(uart_devices, ARRAY_SIZE(uart_devices));
-
-#if defined(CONFIG_LGE_NFC_SONY_CXD2235AGG)
-	platform_add_devices(felica_uart_devices, ARRAY_SIZE(felica_uart_devices));
-	pr_info("[FELICA-DEBUG] apq8064_device_uart_gsbi6.id : %d",  apq8064_device_felica_gsbi6.id);
-#endif
 
 	pr_info("[NORMAL-DEBUG] apq8064_device_uart_gsbi4.id : %d",  apq8064_device_uart_gsbi4.id);
 	pr_info("[DEBUG] uart_enable : %d", lge_get_uart_mode() );
