@@ -81,6 +81,7 @@ static unsigned int no_acm_tty_ports;
 static unsigned int no_acm_sdio_ports;
 static unsigned int no_acm_smd_ports;
 static unsigned int nr_acm_ports;
+static unsigned int no_acm_hsic_sports;
 
 static struct acm_port_info {
 	enum transport_type	transport;
@@ -101,6 +102,8 @@ static inline struct f_acm *port_to_acm(struct gserial *p)
 static int acm_port_setup(struct usb_configuration *c)
 {
 	int ret = 0;
+	int port_idx=0;
+	int i=0;
 
 	pr_debug("%s: no_acm_tty_ports:%u no_acm_sdio_ports: %u nr_acm_ports:%u\n",
 			__func__, no_acm_tty_ports, no_acm_sdio_ports,
@@ -112,13 +115,33 @@ static int acm_port_setup(struct usb_configuration *c)
 		ret = gsdio_setup(c->cdev->gadget, no_acm_sdio_ports);
 	if (no_acm_smd_ports)
 		ret = gsmd_setup(c->cdev->gadget, no_acm_smd_ports);
+	if (no_acm_hsic_sports) {
+		port_idx = ghsic_data_setup(no_acm_hsic_sports,
+				USB_GADGET_SERIAL);
+		if (port_idx < 0)
+			return port_idx;
 
+		for (i = 0; i < nr_acm_ports; i++) {
+			if (gacm_ports[i].transport ==
+					USB_GADGET_XPORT_HSIC) {
+				gacm_ports[i].client_port_num = port_idx;
+				port_idx++;
+			}
+		}
+
+		/*clinet port num is same for data setup and ctrl setup*/
+		ret = ghsic_ctrl_setup(no_acm_hsic_sports, USB_GADGET_SERIAL);
+		if (ret < 0)
+			return ret;
+		return 0;
+	}
 	return ret;
 }
 
 static int acm_port_connect(struct f_acm *acm)
 {
 	unsigned port_num;
+	int ret=0;
 
 	port_num = gacm_ports[acm->port_num].client_port_num;
 
@@ -136,6 +159,21 @@ static int acm_port_connect(struct f_acm *acm)
 		break;
 	case USB_GADGET_XPORT_SMD:
 		gsmd_connect(&acm->port, port_num);
+		break;
+	case USB_GADGET_XPORT_HSIC:
+		ret = ghsic_ctrl_connect(&acm->port, port_num);
+		if (ret) {
+			pr_err("%s: ghsic_ctrl_connect failed: err:%d\n",
+					__func__, ret);
+			return ret;
+		}
+		ret = ghsic_data_connect(&acm->port, port_num);
+		if (ret) {
+			pr_err("%s: ghsic_data_connect failed: err:%d\n",
+					__func__, ret);
+			ghsic_ctrl_disconnect(&acm->port, port_num);
+			return ret;
+		}
 		break;
 	default:
 		pr_err("%s: Un-supported transport: %s\n", __func__,
@@ -165,6 +203,10 @@ static int acm_port_disconnect(struct f_acm *acm)
 		break;
 	case USB_GADGET_XPORT_SMD:
 		gsmd_disconnect(&acm->port, port_num);
+		break;
+	case USB_GADGET_XPORT_HSIC:
+		ghsic_ctrl_disconnect(&acm->port, port_num);
+		ghsic_data_disconnect(&acm->port, port_num);
 		break;
 	default:
 		pr_err("%s: Un-supported transport:%s\n", __func__,
@@ -595,15 +637,17 @@ static int acm_cdc_notify(struct f_acm *acm, u8 type, u16 value,
 	struct usb_ep			*ep = acm->notify;
 	struct usb_request		*req;
 	struct usb_cdc_notification	*notify;
-	const unsigned			len = sizeof(*notify) + length;
 	void				*buf;
 	int				status;
+	unsigned char noti_buf[GS_NOTIFY_MAXPACKET];
+
+	memset(noti_buf, 0, GS_NOTIFY_MAXPACKET);
 
 	req = acm->notify_req;
 	acm->notify_req = NULL;
 	acm->pending = false;
 
-	req->length = len;
+	req->length = GS_NOTIFY_MAXPACKET;
 	notify = req->buf;
 	buf = notify + 1;
 
@@ -613,6 +657,8 @@ static int acm_cdc_notify(struct f_acm *acm, u8 type, u16 value,
 	notify->wValue = cpu_to_le16(value);
 	notify->wIndex = cpu_to_le16(acm->ctrl_id);
 	notify->wLength = cpu_to_le16(length);
+	memcpy(noti_buf, data, length);
+	memcpy(buf, noti_buf, GS_NOTIFY_MAXPACKET);
 	memcpy(buf, data, length);
 
 	/* ep_queue() can complete immediately if it fills the fifo... */
@@ -966,6 +1012,10 @@ static int acm_init_port(int port_num, const char *name)
 	case USB_GADGET_XPORT_SMD:
 		gacm_ports[port_num].client_port_num = no_acm_smd_ports;
 		no_acm_smd_ports++;
+		break;
+	case USB_GADGET_XPORT_HSIC:
+		/*client port number will be updated in acm_port_setup*/
+		no_acm_hsic_sports++;
 		break;
 	default:
 		pr_err("%s: Un-supported transport transport: %u\n",
