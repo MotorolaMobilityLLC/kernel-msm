@@ -611,6 +611,12 @@ config ANDROID_VIBRATOR
 	  This option enalbes device driver support for Android Vibrator driver.
 	  Some functions should be given by platform data for enable PWM, Motor IC, etc.
 
+config TOUCHSENSE_VIBRATOR
+	bool "Immersion Touchsense vibrator support"
+	help
+	  This option enables device driver support for Immersion Touchsense
+	  vibrator.
+
 config PMIC8XXX_NFC
 	tristate "Qualcomm PM8XXX support for Near Field Communication"
 	depends on MFD_PM8XXX
