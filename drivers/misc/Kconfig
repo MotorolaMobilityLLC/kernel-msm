@@ -667,6 +667,20 @@ config USB_HSIC_SMSC_HUB
 	  This adds support for connecting devices like mouse in HSIC
 	  Host mode.
 
+config BU52031NVX
+	tristate "Cradle BU52031NVX support"
+	depends on MFD_PM8XXX
+	help
+	  This option enables device driver support for the cradle
+	  on the PM8XXX chips. The cradle is controlled using the
+	  PM8XXX gpio.
+
+config BU52031NVX_POUCHDETECT
+	tristate "Cradle BU52031NVX_POUCHDETECT support"
+	depends on BU52031NVX
+	help
+	  depends on BU52031NVX
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
