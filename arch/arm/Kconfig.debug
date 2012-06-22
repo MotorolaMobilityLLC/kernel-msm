@@ -265,6 +265,11 @@ choice
 		  definition internally in order for low-level debugging to
 		  work.
 
+	config DEBUG_LL_UART
+		bool "low-level debugging UART"
+		help
+		  Say Y here if you want the debug print routines to UART
+
 	config DEBUG_ICEDCC
 		bool "Kernel low-level debugging via EmbeddedICE DCC channel"
 		help
