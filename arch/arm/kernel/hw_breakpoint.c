@@ -891,7 +891,7 @@ static struct undef_hook debug_reg_hook = {
 
 static void reset_ctrl_regs(void *unused)
 {
-	int i, raw_num_brps, err = 0, cpu = smp_processor_id();
+	int i, err = 0, cpu = smp_processor_id();
 	u32 dbg_power;
 
 	/*
