@@ -1,0 +1,18 @@
+comment "Qualcomm Atheros Prima WLAN module"
+config PRIMA_WLAN
+	tristate "Qualcomm Atheros Prima WLAN module"
+	default n
+	help
+	Add support for the Qualcomm Atheros Prima WLAN module
+
+#	depends on WLAN
+#	depends on CFG80211
+#        depends on WCNSS_CORE
+
+if PRIMA_WLAN != n
+
+config PRIMA_WLAN_BTAMP
+	bool "Enable the Prima WLAN BT-AMP feature"
+	default n
+
+endif # PRIMA_WLAN
