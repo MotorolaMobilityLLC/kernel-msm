@@ -1544,13 +1544,15 @@ void get_section(struct section_info* sc, struct touch_platform_data *pdata)
 	sc->panel.top = 0;
 	sc->panel.bottom = pdata->caps->y_button_boundary;
 
-	sc->b_width  = pdata->caps->x_max / pdata->caps->number_of_button;
-	sc->b_margin = sc->b_width * pdata->caps->button_margin / 100;
-	sc->b_inner_width = sc->b_width - (2 * sc->b_margin);
-	sc->b_height = pdata->caps->y_max - pdata->caps->y_button_boundary;
-	sc->b_num = pdata->caps->number_of_button;
-
 	if (pdata->caps->button_support) {
+		sc->b_width  = pdata->caps->x_max / 
+					pdata->caps->number_of_button;
+		sc->b_margin = sc->b_width * pdata->caps->button_margin / 100;
+		sc->b_inner_width = sc->b_width - (2 * sc->b_margin);
+		sc->b_height = pdata->caps->y_max -
+					pdata->caps->y_button_boundary;
+		sc->b_num = pdata->caps->number_of_button;
+
 		for (i = 0; i < sc->b_num; i++) {
 			sc->button[i].left = i * (pdata->caps->x_max /
 				pdata->caps->number_of_button) + sc->b_margin;
