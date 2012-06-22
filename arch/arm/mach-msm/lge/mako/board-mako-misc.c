@@ -113,11 +113,11 @@ static int vibrator_power_set(int enable)
 {
 	int rc = -EINVAL;
 	if (NULL == vreg_l16) {
-		vreg_l16 = regulator_get(NULL, "8921_l16");   //2.6 ~ 3V
+		vreg_l16 = regulator_get(NULL, "vibrator");   //2.6 ~ 3V
 		INFO_MSG("enable=%d\n", enable);
 
 		if (IS_ERR(vreg_l16)) {
-			pr_err("%s: regulator get of 8921_lvs6 failed (%ld)\n"
+			pr_err("%s: regulator get of vibrator failed (%ld)\n"
 					, __func__, PTR_ERR(vreg_l16));
 			printk("woosock ERROR\n");
 			rc = PTR_ERR(vreg_l16);
