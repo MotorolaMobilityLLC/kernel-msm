@@ -27,14 +27,7 @@
 #include <linux/input/lge_touch_core.h>
 #include <linux/input/touch_synaptics.h>
 
-#if defined(CONFIG_TOUCH_REG_MAP_TM2000)
 #include "SynaImage.h"
-#elif defined(CONFIG_TOUCH_REG_MAP_TM2372)
-#include "SynaImage_Jp.h"
-#else
-#include "SynaImage.h"
-#endif
-
 #include <linux/regulator/machine.h>
 
 /* RMI4 spec from (RMI4 spec)511-000136-01_revD
@@ -197,7 +190,7 @@ int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data,
 		TOUCH_DEBUG_MSG("\n");
 
 	if (unlikely(touch_i2c_read(client, DEVICE_STATUS_REG,
-			sizeof(ts->ts_data.interrupt_status_reg),
+			sizeof(ts->ts_data.device_status_reg),
 			&ts->ts_data.device_status_reg) < 0)) {
 		TOUCH_ERR_MSG("DEVICE_STATUS_REG read fail\n");
 		goto err_synaptics_getdata;
