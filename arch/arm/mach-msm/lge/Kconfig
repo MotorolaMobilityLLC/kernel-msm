@@ -35,4 +35,11 @@ config LGE_KCAL_QLUT
 	depends on MACH_LGE && LGE_QC_LCDC_LUT && LGE_KCAL
 	help
 	  Interface to calibrate LCD color temperature by QLUT
+
+config EARJACK_DEBUGGER
+	bool "Earjack UART debugger support"
+	depends on MACH_APQ8064_MAKO
+	default n
+	help
+	  Saying Y here will support earjack type UART debugger cable
 endmenu

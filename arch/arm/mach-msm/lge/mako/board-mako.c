@@ -2370,6 +2370,42 @@ static void __init apq8064_allocate_memory_regions(void)
 	apq8064_allocate_fb_region();
 }
 
+#ifdef CONFIG_EARJACK_DEBUGGER
+static int earjack_debugger_init(void)
+{
+	int rc = 0;
+	static struct regulator *debugger_reg = NULL;
+
+	if (NULL == debugger_reg) {
+		debugger_reg= regulator_get(NULL, "8921_l6");
+		if (IS_ERR(debugger_reg)) {
+			rc = PTR_ERR(debugger_reg);
+			pr_err("%s: regulator_get 8921_l6 failed. rc=%d\n",
+					__func__, rc);
+			goto out;
+		}
+		rc = regulator_set_voltage(debugger_reg, 3000000, 3000000);
+		if (rc ) {
+			pr_err("%s: regulator_set_voltage 8921_l6 failed rc=%d\n",
+					__func__, rc);
+			goto vreg_put;
+		}
+	}
+	rc = regulator_enable(debugger_reg);
+	if (rc) {
+		pr_err("%s: regulator_enable 8921_l6 failed rc=%d\n",
+				__func__, rc);
+		goto vreg_put;
+	}
+	goto out;
+
+vreg_put:
+	regulator_put(debugger_reg);
+out:
+	return rc;
+}
+#endif
+
 static void __init apq8064_cdp_init(void)
 {
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
@@ -2387,9 +2423,12 @@ static void __init apq8064_cdp_init(void)
 						ARRAY_SIZE(spi_board_info));
 	}
 
-	if (lge_get_uart_mode())
+	if (lge_get_uart_mode()) {
+#ifdef CONFIG_EARJACK_DEBUGGER
+		earjack_debugger_init();
+#endif
 		platform_add_devices(uart_devices, ARRAY_SIZE(uart_devices));
-
+	}
 	pr_info("[NORMAL-DEBUG] apq8064_device_uart_gsbi4.id : %d",  apq8064_device_uart_gsbi4.id);
 	pr_info("[DEBUG] uart_enable : %d", lge_get_uart_mode() );
 
