@@ -828,6 +828,12 @@
 			debounce-interval = <15>;
 		};
 	};
+
+	qcom,msm-rtb {
+		compatible = "qcom,msm-rtb";
+		qcom,memory-reservation-type = "EBI1";
+		qcom,memory-reservation-size = <0x100000>; /* 1M EBI1 buffer */
+	};
 };
 
 /include/ "msm-pm8x41-rpm-regulator.dtsi"
