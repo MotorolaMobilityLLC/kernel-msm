@@ -57,7 +57,7 @@ int synaptics_t1320_power_on(int on)
 
 	/* 3.3V_TOUCH_VDD, VREG_L15: 2.75 ~ 3.3 */
 	if (!vreg_l15) {
-		vreg_l15 = regulator_get(NULL, "8921_l15");
+		vreg_l15 = regulator_get(NULL, "touch_vdd");
 		if (IS_ERR(vreg_l15)) {
 			pr_err("%s: regulator get of 8921_l15 failed (%ld)\n",
 					__func__,
@@ -69,7 +69,7 @@ int synaptics_t1320_power_on(int on)
 	}
 	/* 1.8V_TOUCH_IO, VREG_L22: 1.7 ~ 2.85 */
 	if (!vreg_l22) {
-		vreg_l22 = regulator_get(NULL, "8921_l22");
+		vreg_l22 = regulator_get(NULL, "touch_io");
 		if (IS_ERR(vreg_l22)) {
 			pr_err("%s: regulator get of 8921_l22 failed (%ld)\n",
 					__func__,
