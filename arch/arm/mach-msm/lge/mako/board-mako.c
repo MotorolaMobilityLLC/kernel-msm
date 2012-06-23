@@ -2377,23 +2377,23 @@ static int earjack_debugger_init(void)
 	static struct regulator *debugger_reg = NULL;
 
 	if (NULL == debugger_reg) {
-		debugger_reg= regulator_get(NULL, "8921_l6");
+		debugger_reg= regulator_get(NULL, "earjack_debug");
 		if (IS_ERR(debugger_reg)) {
 			rc = PTR_ERR(debugger_reg);
-			pr_err("%s: regulator_get 8921_l6 failed. rc=%d\n",
+			pr_err("%s: regulator_get earjack_debug failed. rc=%d\n",
 					__func__, rc);
 			goto out;
 		}
 		rc = regulator_set_voltage(debugger_reg, 3000000, 3000000);
 		if (rc ) {
-			pr_err("%s: regulator_set_voltage 8921_l6 failed rc=%d\n",
+			pr_err("%s: regulator_set_voltage earjack_debug failed rc=%d\n",
 					__func__, rc);
 			goto vreg_put;
 		}
 	}
 	rc = regulator_enable(debugger_reg);
 	if (rc) {
-		pr_err("%s: regulator_enable 8921_l6 failed rc=%d\n",
+		pr_err("%s: regulator_enable earjack_debug failed rc=%d\n",
 				__func__, rc);
 		goto vreg_put;
 	}
