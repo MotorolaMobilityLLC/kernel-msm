@@ -1245,7 +1245,10 @@ static int dwc3_gadget_ep_set_wedge(struct usb_ep *ep)
 	dep->flags |= DWC3_EP_WEDGE;
 	spin_unlock_irqrestore(&dwc->lock, flags);
 
-	return dwc3_gadget_ep_set_halt(ep, 1);
+	if (dep->number == 0 || dep->number == 1)
+		return dwc3_gadget_ep0_set_halt(ep, 1);
+	else
+		return dwc3_gadget_ep_set_halt(ep, 1);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1263,7 +1266,7 @@ static const struct usb_ep_ops dwc3_gadget_ep0_ops = {
 	.free_request	= dwc3_gadget_ep_free_request,
 	.queue		= dwc3_gadget_ep0_queue,
 	.dequeue	= dwc3_gadget_ep_dequeue,
-	.set_halt	= dwc3_gadget_ep_set_halt,
+	.set_halt	= dwc3_gadget_ep0_set_halt,
 	.set_wedge	= dwc3_gadget_ep_set_wedge,
 };
 
