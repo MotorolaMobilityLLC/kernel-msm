@@ -124,21 +124,6 @@ static struct resource msm_fb_resources[] = {
 #define HDMI_PANEL_NAME "hdmi_msm"
 #define TVOUT_PANEL_NAME "tvout_msm"
 
-#ifndef CONFIG_MACH_LGE
-#ifdef CONFIG_FB_MSM_HDMI_AS_PRIMARY
-static unsigned char hdmi_is_primary = 1;
-#else
-static unsigned char hdmi_is_primary;
-#endif
-
-unsigned char apq8064_hdmi_as_primary_selected(void)
-{
-	return hdmi_is_primary;
-}
-
-static void set_mdp_clocks_for_wuxga(void);
-#endif
-
 static int msm_fb_detect_panel(const char *name)
 {
 	return 0;

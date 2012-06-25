@@ -89,10 +89,6 @@ void apq8064_init_cam(void);
 #define APQ_8064_GSBI4_QUP_I2C_BUS_ID 4
 #define APQ_8064_GSBI5_QUP_I2C_BUS_ID 5
 
-#ifndef CONFIG_MACH_LGE
-unsigned char apq8064_hdmi_as_primary_selected(void);
-#endif
-
 /* Camera GPIO Settings */
 #define GPIO_CAM_MCLK0          (5)
 
