@@ -375,9 +375,7 @@ static int read_page_description_table(struct i2c_client* client)
 	ts->finger_dsc.id = 0;
 	ts->button_dsc.id = 0;
 	ts->flash_dsc.id  = 0;
-#if defined(CONFIG_TOUCH_REG_MAP_TM2000) || defined(CONFIG_TOUCH_REG_MAP_TM2372)
 	ts->analog_dsc.id = 0;
-#endif
 
 	for (u_address = DESCRIPTION_TABLE_START; u_address > 10;
 			u_address -= sizeof(struct ts_function_descriptor)) {
@@ -399,6 +397,7 @@ static int read_page_description_table(struct i2c_client* client)
 			break;
 		case FLASH_MEMORY_MANAGEMENT:
 			ts->flash_dsc = buffer;
+			break;
 		}
 	}
 
@@ -408,18 +407,13 @@ static int read_page_description_table(struct i2c_client* client)
 		return -EIO;
 	}
 
-	u_address = DESCRIPTION_TABLE_START;
-
-	if (unlikely(touch_i2c_read(client, u_address, sizeof(buffer),
-					(unsigned char *)&buffer) < 0)) {
+	if (unlikely(touch_i2c_read(client, ANALOG_TABLE_START, sizeof(buffer), (unsigned char *)&buffer) < 0)) {
 		TOUCH_ERR_MSG("RMI4 Function Descriptor read fail\n");
 		return -EIO;
 	}
 
-	switch (buffer.id) {
-	case ANALOG_CONTROL:
+	if (buffer.id == ANALOG_CONTROL) {
 		ts->analog_dsc = buffer;
-		break;
 	}
 
 	if (unlikely(touch_i2c_write_byte(client, PAGE_SELECT_REG, 0x02) < 0)) {
@@ -427,19 +421,13 @@ static int read_page_description_table(struct i2c_client* client)
 		return -EIO;
 	}
 
-	u_address -= sizeof(struct ts_function_descriptor);
-
-	if (unlikely(touch_i2c_read(ts->client, u_address, sizeof(buffer),
-						(unsigned char *)&buffer))) {
+	if (unlikely(touch_i2c_read(ts->client, BUTTON_TABLE_START, sizeof(buffer), (unsigned char *)&buffer))) {
 		TOUCH_ERR_MSG("Button ts_function_descriptor read fail\n");
 		return -EIO;
 	}
 
-	switch (buffer.id) {
-	case CAPACITIVE_BUTTON_SENSORS:
+	if (buffer.id == CAPACITIVE_BUTTON_SENSORS)
 		ts->button_dsc = buffer;
-		break;
-	}
 
 	if (unlikely(touch_i2c_write_byte(client, PAGE_SELECT_REG, 0x00) < 0)) {
 		TOUCH_ERR_MSG("PAGE_SELECT_REG write fail\n");
@@ -911,6 +899,9 @@ int synaptics_ts_ic_ctrl(struct i2c_client *client, u8 code, u16 value)
 	case IC_CTRL_BASELINE:
 		switch (value) {
 		case BASELINE_OPEN:
+			if (!ts->analog_dsc.id) /* If not supported, ignore */
+				break;
+
 #if defined(CONFIG_TOUCH_REG_MAP_TM2000) || defined(CONFIG_TOUCH_REG_MAP_TM2372)
 			if (unlikely(touch_i2c_write_byte(client,
 						PAGE_SELECT_REG, 0x01) < 0)) {
@@ -952,6 +943,9 @@ int synaptics_ts_ic_ctrl(struct i2c_client *client, u8 code, u16 value)
 #endif
 			break;
 		case BASELINE_FIX:
+			if (!ts->analog_dsc.id) /* If not supported, ignore */
+				break;
+
 #if defined(CONFIG_TOUCH_REG_MAP_TM2000) || defined(CONFIG_TOUCH_REG_MAP_TM2372)
 			if (unlikely(touch_i2c_write_byte(client,
 						PAGE_SELECT_REG, 0x01) < 0)) {
