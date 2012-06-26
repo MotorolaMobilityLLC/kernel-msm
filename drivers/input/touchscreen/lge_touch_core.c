@@ -390,6 +390,8 @@ static int touch_ic_init(struct lge_touch_data *ts)
 		}
 	}
 
+//FIXME: Disable Ghost Stage due to touch mal function
+#if 0
 	if (ts->gf_ctrl.stage & GHOST_STAGE_2) {
 		ts->gf_ctrl.stage = GHOST_STAGE_2 | GHOST_STAGE_3;
 		if (touch_device_func->ic_ctrl) {
@@ -421,6 +423,7 @@ static int touch_ic_init(struct lge_touch_data *ts)
 		TOUCH_INFO_MSG("irq_pin[%d] next_work[%d] ghost_stage[0x%x]\n",
 			int_pin, next_work, ts->gf_ctrl.stage);
 	}
+#endif
 
 	ts->gf_ctrl.count = 0;
 	ts->gf_ctrl.ghost_check_count = 0;

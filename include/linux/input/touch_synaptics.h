@@ -27,6 +27,8 @@
 #define MAX_NUM_OF_FINGERS                      10
 
 #define DESCRIPTION_TABLE_START                 0xe9
+#define ANALOG_TABLE_START                      0xe9
+#define BUTTON_TABLE_START                      0xe3
 
 struct ts_function_descriptor {
 	u8 	query_base;
