@@ -11,8 +11,8 @@
  * GNU General Public License for more details.
  */
 
-#ifndef __ARCH_ARM_MACH_MSM_BOARD_APQ8064_H
-#define __ARCH_ARM_MACH_MSM_BOARD_APQ8064_H
+#ifndef __ARCH_ARM_MACH_MSM_BOARD_APQ8064_MAKO_H
+#define __ARCH_ARM_MACH_MSM_BOARD_APQ8064_MAKO_H
 
 #include <linux/regulator/msm-gpio-regulator.h>
 #include <linux/mfd/pm8xxx/pm8921.h>
@@ -71,8 +71,8 @@ extern struct regulator_init_data msm8064_saw_regulator_pdata_8821_s1;
 struct mmc_platform_data;
 int __init apq8064_add_sdcc(unsigned int controller,
 		struct mmc_platform_data *plat);
-extern void __init register_i2c_backlight_devices(void);
 extern void __init lge_add_sound_devices(void);
+extern void __init lge_add_backlight_devices(void);
 void apq8064_init_mmc(void);
 void apq8064_init_gpiomux(void);
 void apq8064_init_pmic(void);
@@ -92,14 +92,8 @@ void apq8064_init_cam(void);
 /* Camera GPIO Settings */
 #define GPIO_CAM_MCLK0          (5)
 
-/* FIXME: for old HW (LGU Rev.A,B VZW Rev.A,B ATT Rev.A) */
-#if 1
 #define GPIO_CAM_MCLK2          (2)
 #define GPIO_CAM_FLASH_EN       (7)
-#else
-#define GPIO_CAM_MCLK1          (4)
-#define GPIO_CAM_FLASH_EN       (2)
-#endif
 
 #define GPIO_CAM_I2C_SDA        (12)
 #define GPIO_CAM_I2C_SCL        (13)
@@ -123,13 +117,6 @@ void __init apq8064_set_display_params(char *prim_panel, char *ext_panel);
 
 void apq8064_init_gpu(void);
 void apq8064_pm8xxx_gpio_mpp_init(void);
-
-#define PLATFORM_IS_MPQ8064() \
-	(machine_is_mpq8064_hrd() || \
-	 machine_is_mpq8064_dtv() || \
-	 machine_is_mpq8064_cdp() \
-	)
-
 
 #define GPIO_EXPANDER_IRQ_BASE	(TABLA_INTERRUPT_BASE + \
 					NR_TABLA_IRQS)
@@ -179,4 +166,14 @@ extern struct msm_cache_dump_platform_data apq8064_cache_dump_pdata;
 
 void apq8064_init_input(void);
 void __init apq8064_init_misc(void);
+
+#define I2C_SURF 1
+#define I2C_FFA  (1 << 1)
+#define I2C_RUMI (1 << 2)
+#define I2C_SIM  (1 << 3)
+#define I2C_LIQUID (1 << 4)
+#define I2C_MPQ_CDP BIT(5)
+#define I2C_MPQ_HRD BIT(6)
+#define I2C_MPQ_DTV BIT(7)
+
 #endif

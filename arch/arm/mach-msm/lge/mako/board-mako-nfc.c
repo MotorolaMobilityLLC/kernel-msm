@@ -20,16 +20,9 @@
 #include "devices.h"
 
 #include "board-mako.h"
-#include "board-8064.h"
 
 #if defined(CONFIG_LGE_NFC_PN544)
 #include <linux/nfc/pn544_lge.h>
-
-#define I2C_SURF 1
-#define I2C_FFA  (1 << 1)
-#define I2C_RUMI (1 << 2)
-#define I2C_SIM  (1 << 3)
-#define I2C_LIQUID (1 << 4)
 
 struct i2c_registry {
 	u8                     machs;
@@ -57,7 +50,7 @@ static struct i2c_board_info msm_i2c_nxp_nfc_info[] = {
 };
 
 static struct  i2c_registry apq8064_i2c_devices __initdata = {
-	I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID,
+	I2C_FFA,
 	APQ_8064_GSBI1_QUP_I2C_BUS_ID,
 	msm_i2c_nxp_nfc_info,
 	ARRAY_SIZE(msm_i2c_nxp_nfc_info),

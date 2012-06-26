@@ -1,7 +1,8 @@
 #
 # Inlcude the specific Kconfig file for LGE board
 #
-
 # MAKO
 source "arch/arm/mach-msm/lge/mako/Kconfig"
 
+config MACH_LGE_DUMMY
+	bool "NONE (No device)"
