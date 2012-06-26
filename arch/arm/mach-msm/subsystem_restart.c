@@ -34,6 +34,10 @@
 #include <mach/subsystem_notif.h>
 #include <mach/subsystem_restart.h>
 
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+#include <mach/restart.h>
+#include <mach/board_lge.h>
+#endif
 #include "smd_private.h"
 
 struct subsys_soc_restart_order {
@@ -225,6 +229,9 @@ static void do_epoch_check(struct subsys_data *subsys)
 	struct restart_log *r_log, *temp;
 	static int max_restarts_check;
 	static long max_history_time_check;
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+	int ssr_magic_number = get_ssr_magic_number();
+#endif
 
 	mutex_lock(&restart_log_mutex);
 
@@ -266,10 +273,14 @@ static void do_epoch_check(struct subsys_data *subsys)
 
 	if (time_first && n >= max_restarts_check) {
 		if ((curr_time->tv_sec - time_first->tv_sec) <
-				max_history_time_check)
+				max_history_time_check) {
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+			msm_set_restart_mode(ssr_magic_number | SUB_UNAB_THD);
+#endif
 			panic("Subsystems have crashed %d times in less than "
 				"%ld seconds!", max_restarts_check,
 				max_history_time_check);
+		}
 	}
 
 out:
@@ -290,6 +301,9 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 	int i;
 	int restart_list_count = 0;
 
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+	int ssr_magic_number = get_ssr_magic_number();
+#endif
 	if (r_work->use_restart_order)
 		soc_restart_order = subsys->restart_order;
 
@@ -324,9 +338,13 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 	 * sequence for these subsystems. In the latter case, panic and bail
 	 * out, since a subsystem died in its powerup sequence.
 	 */
-	if (!mutex_trylock(powerup_lock))
+	if (!mutex_trylock(powerup_lock)) {
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+		msm_set_restart_mode(ssr_magic_number | SUB_THD_F_PWR);
+#endif
 		panic("%s[%p]: Subsystem died during powerup!",
 						__func__, current);
+	}
 
 	do_epoch_check(subsys);
 
@@ -351,9 +369,13 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 		pr_info("[%p]: Shutting down %s\n", current,
 			restart_list[i]->name);
 
-		if (restart_list[i]->shutdown(subsys) < 0)
+		if (restart_list[i]->shutdown(subsys) < 0) {
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+			msm_set_restart_mode(ssr_magic_number | SUB_THD_F_SD);
+#endif
 			panic("subsys-restart: %s[%p]: Failed to shutdown %s!",
 				__func__, current, restart_list[i]->name);
+		}
 	}
 
 	_send_notification_to_order(restart_list, restart_list_count,
@@ -390,9 +412,13 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 		pr_info("[%p]: Powering up %s\n", current,
 					restart_list[i]->name);
 
-		if (restart_list[i]->powerup(subsys) < 0)
+		if (restart_list[i]->powerup(subsys) < 0) {
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+			msm_set_restart_mode(ssr_magic_number | SUB_THD_F_PWR);
+#endif
 			panic("%s[%p]: Failed to powerup %s!", __func__,
 				current, restart_list[i]->name);
+		}
 	}
 
 	_send_notification_to_order(restart_list,
@@ -418,14 +444,21 @@ static void __subsystem_restart(struct subsys_data *subsys)
 {
 	struct restart_wq_data *data = NULL;
 	int rc;
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+	int ssr_magic_number = get_ssr_magic_number();
+#endif
 
 	pr_debug("Restarting %s [level=%d]!\n", subsys->name,
 				restart_level);
 
 	data = kzalloc(sizeof(struct restart_wq_data), GFP_ATOMIC);
-	if (!data)
+	if (!data) {
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+		msm_set_restart_mode(ssr_magic_number | SUB_UNAB_THD);
+#endif
 		panic("%s: Unable to allocate memory to restart %s.",
 		      __func__, subsys->name);
+	}
 
 	data->subsys = subsys;
 
@@ -438,14 +471,21 @@ static void __subsystem_restart(struct subsys_data *subsys)
 
 	INIT_WORK(&data->work, subsystem_restart_wq_func);
 	rc = queue_work(ssr_wq, &data->work);
-	if (rc < 0)
+	if (rc < 0) {
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+		msm_set_restart_mode(ssr_magic_number | SUB_UNAB_THD);
+#endif
 		panic("%s: Unable to schedule work to restart %s (%d).",
 		     __func__, subsys->name, rc);
+	}
 }
 
 int subsystem_restart(const char *subsys_name)
 {
 	struct subsys_data *subsys;
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+	u32 ssr_magic_number;
+#endif
 
 	if (!subsys_name) {
 		pr_err("Invalid subsystem name.\n");
@@ -465,6 +505,11 @@ int subsystem_restart(const char *subsys_name)
 		return -EINVAL;
 	}
 
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+	set_ssr_magic_number(subsys_name);
+	ssr_magic_number = get_ssr_magic_number();
+#endif
+
 	switch (restart_level) {
 
 	case RESET_SUBSYS_COUPLED:
@@ -473,11 +518,17 @@ int subsystem_restart(const char *subsys_name)
 		break;
 
 	case RESET_SOC:
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+		msm_set_restart_mode(ssr_magic_number | SUB_RESET_SOC);
+#endif
 		panic("subsys-restart: Resetting the SoC - %s crashed.",
 			subsys->name);
 		break;
 
 	default:
+#if defined(CONFIG_LGE_CRASH_HANDLER)
+		msm_set_restart_mode(ssr_magic_number | SUB_UNKNOWN);
+#endif
 		panic("subsys-restart: Unknown restart level!\n");
 	break;
 

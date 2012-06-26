@@ -340,7 +340,7 @@ void __init lge_add_ramconsole_devices(void)
 	struct resource* res = ram_console_resource;
 	struct membank* bank = &meminfo.bank[0];
 
-	res->start = PHYS_OFFSET + bank->size;
+	res->start = bank->start + bank->size;
 	res->end = res->start + LGE_RAM_CONSOLE_SIZE - 1;
 
 	printk(KERN_INFO "RAM CONSOLE START ADDR : %X\n", res->start);
@@ -348,9 +348,9 @@ void __init lge_add_ramconsole_devices(void)
 
 	platform_device_register(&ram_console_device);
 }
-#endif // CONFIG_ANDROID_RAM_CONSOLE
+#endif /* CONFIG_ANDROID_RAM_CONSOLE */
 
-#ifdef CONFIG_LGE_HANDLE_PANIC
+#ifdef CONFIG_LGE_CRASH_HANDLER
 static struct resource crash_log_resource[] = {
 	{
 		.name = "crash_log",
@@ -380,7 +380,7 @@ void __init lge_add_panic_handler_devices(void)
 
 	platform_device_register(&panic_handler_device);
 }
-#endif // CONFIG_LGE_HANDLE_PANIC
+#endif /* CONFIG_LGE_CRASH_HANDLER */
 
 #ifdef CONFIG_LGE_QFPROM_INTERFACE
 static struct platform_device qfprom_device = {

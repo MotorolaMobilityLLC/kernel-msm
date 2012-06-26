@@ -939,6 +939,9 @@ asmlinkage int vprintk(const char *fmt, va_list args)
 
 
 	p = printk_buf;
+#ifdef CONFIG_LGE_CRASH_HANDLER
+	store_crash_log(p);
+#endif
 
 	/* Read log level and handle special printk prefix */
 	plen = log_prefix(p, &current_log_level, &special);

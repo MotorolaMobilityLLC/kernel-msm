@@ -2357,11 +2357,10 @@ static void __init apq8064_common_init(void)
 	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
 	msm_spm_l2_init(msm_spm_l2_data);
 	msm_pm_init_sleep_status_data(&msm_pm_slp_sts_data);
-	/**/
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
 	lge_add_ramconsole_devices();
 #endif
-#ifdef CONFIG_LGE_HANDLE_PANIC
+#ifdef CONFIG_LGE_CRASH_HANDLER
 	lge_add_panic_handler_devices();
 #endif
 
