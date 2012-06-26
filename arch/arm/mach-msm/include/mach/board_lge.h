@@ -139,11 +139,4 @@ void __init lge_add_qfprom_devices(void);
 enum lge_boot_mode_type lge_get_boot_mode(void);
 int lge_get_factory_boot(void);
 
-#ifdef CONFIG_LGE_BOOT_TIME_CHECK
-void __init lge_add_boot_time_checker(void);
-#endif
-
-#ifdef CONFIG_LGE_ECO_MODE
-void __init lge_add_lge_kernel_devices(void);
-#endif
 #endif // __ASM_ARCH_MSM_BOARD_LGE_H
