@@ -35,4 +35,11 @@ config EARJACK_DEBUGGER
 	default n
 	help
 	  Saying Y here will support earjack type UART debugger cable
+
+config LGE_CRASH_HANDLER
+	tristate "Support LGE Crash Handler"
+	default n
+	help
+	  LGE Crash Handler
+
 endmenu
