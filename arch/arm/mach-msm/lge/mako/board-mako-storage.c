@@ -274,7 +274,7 @@ void __init apq8064_init_mmc(void)
 	if (apq8064_sdc3_pdata) {
                 if (!machine_is_apq8064_cdp()) {
                         apq8064_sdc3_pdata->wpswitch_gpio = 0;
-                        apq8064_sdc3_pdata->wpswitch_polarity = 0;
+                        apq8064_sdc3_pdata->is_wpswitch_active_low = false;
                 }
 		if (machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd() ||
 			machine_is_mpq8064_dtv()) {
