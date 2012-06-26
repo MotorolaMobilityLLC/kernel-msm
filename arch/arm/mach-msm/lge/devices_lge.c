@@ -31,10 +31,6 @@
 #include CONFIG_BOARD_HEADER_FILE
 #endif
 
-#ifdef CONFIG_LGE_BOOT_TIME_CHECK
-#include "lge_boot_time_checker.h"
-#endif
-
 /* setting whether uart console is enalbed or disabled */
 static int uart_console_mode = 0;
 
@@ -386,18 +382,6 @@ void __init lge_add_panic_handler_devices(void)
 }
 #endif // CONFIG_LGE_HANDLE_PANIC
 
-#ifdef CONFIG_LGE_ECO_MODE
-static struct platform_device lge_kernel_device = {
-	.name = "lge_kernel_driver",
-	.id = -1,
-};
-
-void __init lge_add_lge_kernel_devices(void)
-{
-	platform_device_register(&lge_kernel_device);
-}
-#endif
-
 #ifdef CONFIG_LGE_QFPROM_INTERFACE
 static struct platform_device qfprom_device = {
 	.name = "lge-apq8064-qfprom",
@@ -406,19 +390,5 @@ static struct platform_device qfprom_device = {
 void __init lge_add_qfprom_devices(void)
 {
 	platform_device_register(&qfprom_device);
-}
-#endif
-
-#ifdef CONFIG_LGE_BOOT_TIME_CHECK
-static struct platform_device boot_time_device = {
-.name = "boot_time",
-	.id = -1,
-	.dev = {
-		.platform_data = NULL,
-	},
-};
-void __init lge_add_boot_time_checker(void)
-{
-	platform_device_register(&boot_time_device);
 }
 #endif

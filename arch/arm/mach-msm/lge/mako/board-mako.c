@@ -2353,9 +2353,6 @@ static void __init apq8064_common_init(void)
 #ifdef CONFIG_LGE_HANDLE_PANIC
 	lge_add_panic_handler_devices();
 #endif
-#ifdef CONFIG_LGE_BOOT_TIME_CHECK
-	lge_add_boot_time_checker();
-#endif
 
 #ifdef CONFIG_LGE_QFPROM_INTERFACE
 	lge_add_qfprom_devices();
@@ -2445,9 +2442,6 @@ static void __init apq8064_cdp_init(void)
 
 	apq8064_init_input();
 	apq8064_init_misc();
-#ifdef CONFIG_LGE_ECO_MODE
-	lge_add_lge_kernel_devices();
-#endif
 }
 
 MACHINE_START(APQ8064_MAKO, "QCT APQ8064 MAKO")
