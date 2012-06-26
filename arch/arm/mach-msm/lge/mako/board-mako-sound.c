@@ -19,8 +19,6 @@
 #include <linux/platform_data/hds_fsa8008.h>
 #include "devices.h"
 
-#include "board-8064.h"
-
 #ifdef CONFIG_SND_SOC_TPA2028D
 #include <sound/tpa2028d.h>
 #endif
@@ -40,13 +38,6 @@
 #define GPIO_EAR_MIC_EN             PM8921_GPIO_PM_TO_SYS(31)
 #define GPIO_EARPOL_DETECT          PM8921_GPIO_PM_TO_SYS(32)
 #define GPIO_EAR_KEY_INT            83
-
-
-#define I2C_SURF 1
-#define I2C_FFA  (1 << 1)
-#define I2C_RUMI (1 << 2)
-#define I2C_SIM  (1 << 3)
-#define I2C_LIQUID (1 << 4)
 
 struct i2c_registry {
 	u8                     machs;
@@ -123,15 +114,13 @@ static struct i2c_board_info msm_i2c_audiosubsystem_info[] = {
 #endif
 };
 
-
 static struct i2c_registry msm_i2c_audiosubsystem __initdata = {
 	/* Add the I2C driver for Audio Amp */
-	I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID,
+	I2C_FFA,
 	APQ_8064_GSBI1_QUP_I2C_BUS_ID,
 	msm_i2c_audiosubsystem_info,
 	ARRAY_SIZE(msm_i2c_audiosubsystem_info),
 };
-
 
 static void __init lge_add_i2c_tpa2028d_devices(void)
 {
@@ -140,7 +129,6 @@ static void __init lge_add_i2c_tpa2028d_devices(void)
 				msm_i2c_audiosubsystem.info,
 				msm_i2c_audiosubsystem.len);
 }
-
 
 void enable_external_mic_bias(int status)
 {

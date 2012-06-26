@@ -866,6 +866,9 @@ config MACH_FSM9XXX_SURF
 	  chipset based SURF evaluation board and
 	  FFA board.
 
+config MACH_MSM_DUMMY
+	bool "NONE (No device)"
+
 endmenu
 
 source "arch/arm/mach-msm/lge/Kconfig"

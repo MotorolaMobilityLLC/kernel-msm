@@ -14,13 +14,13 @@
 
 #include <linux/init.h>
 #include <linux/ioport.h>
+#include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/bootmem.h>
 #include <linux/ion.h>
 #include <asm/mach-types.h>
 #include <mach/msm_memtypes.h>
 #include <mach/board.h>
-#include <mach/gpio.h>
 #include <mach/gpiomux.h>
 #include <mach/ion.h>
 #include <mach/msm_bus_board.h>
@@ -899,12 +899,6 @@ void __init apq8064_init_fb(void)
 
 }
 
-#define I2C_SURF 1
-#define I2C_FFA  (1 << 1)
-#define I2C_RUMI (1 << 2)
-#define I2C_SIM  (1 << 3)
-#define I2C_LIQUID (1 << 4)
-
 struct i2c_registry {
 	u8                     machs;
 	int                    bus;
@@ -918,15 +912,15 @@ struct i2c_registry {
 #endif
 
 struct backlight_platform_data {
-   void (*platform_init)(void);
-   int gpio;
-   unsigned int mode;
-   int max_current;
-   int init_on_boot;
-   int min_brightness;
-   int max_brightness;
-   int default_brightness;
-   int factory_brightness;
+	void (*platform_init)(void);
+	int gpio;
+	unsigned int mode;
+	int max_current;
+	int init_on_boot;
+	int min_brightness;
+	int max_brightness;
+	int default_brightness;
+	int factory_brightness;
 };
 
 #if defined (CONFIG_BACKLIGHT_LM3530)
@@ -958,7 +952,6 @@ static struct backlight_platform_data lm3533_data = {
 #endif
 static struct i2c_board_info msm_i2c_backlight_info[] = {
 	{
-
 #if defined(CONFIG_BACKLIGHT_LM3530)
 		I2C_BOARD_INFO("lm3530", 0x38),
 		.platform_data = &lm3530_data,
@@ -970,32 +963,21 @@ static struct i2c_board_info msm_i2c_backlight_info[] = {
 };
 
 static struct i2c_registry apq8064_i2c_backlight_device[] __initdata = {
-
 	{
-	    I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID,
+		I2C_FFA,
 		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
 		msm_i2c_backlight_info,
 		ARRAY_SIZE(msm_i2c_backlight_info),
 	},
 };
 
-void __init register_i2c_backlight_devices(void)
+void __init lge_add_backlight_devices(void)
 {
 	u8 mach_mask = 0;
 	int i;
 
 	/* Build the matching 'supported_machs' bitmask */
-	if (machine_is_apq8064_cdp())
-		mach_mask = I2C_SURF;
-	else if (machine_is_apq8064_mtp())
-		mach_mask = I2C_FFA;
-	else if (machine_is_apq8064_liquid())
-		mach_mask = I2C_LIQUID;
-	else if (machine_is_apq8064_rumi3())
-		mach_mask = I2C_RUMI;
-	else if (machine_is_apq8064_sim())
-		mach_mask = I2C_SIM;
-	else if (machine_is_apq8064_mako())
+	if (machine_is_apq8064_mako())
 		mach_mask = I2C_FFA;
 	else
 		pr_err("unmatched machine ID in register_i2c_devices\n");	

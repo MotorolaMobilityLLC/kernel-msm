@@ -253,36 +253,12 @@ static struct mmc_platform_data *apq8064_sdc3_pdata;
 
 void __init apq8064_init_mmc(void)
 {
-	if ((machine_is_apq8064_rumi3()) || machine_is_apq8064_sim()) {
-		if (apq8064_sdc1_pdata) {
-			if (machine_is_apq8064_sim())
-				apq8064_sdc1_pdata->disable_bam = true;
-			apq8064_sdc1_pdata->disable_runtime_pm = true;
-			apq8064_sdc1_pdata->disable_cmd23 = true;
-		}
-		if (apq8064_sdc3_pdata) {
-			if (machine_is_apq8064_sim())
-				apq8064_sdc3_pdata->disable_bam = true;
-			apq8064_sdc3_pdata->disable_runtime_pm = true;
-			apq8064_sdc3_pdata->disable_cmd23 = true;
-		}
-	}
-
 	if (apq8064_sdc1_pdata)
 		apq8064_add_sdcc(1, apq8064_sdc1_pdata);
 
 	if (apq8064_sdc3_pdata) {
-                if (!machine_is_apq8064_cdp()) {
-                        apq8064_sdc3_pdata->wpswitch_gpio = 0;
-                        apq8064_sdc3_pdata->is_wpswitch_active_low = false;
-                }
-		if (machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd() ||
-			machine_is_mpq8064_dtv()) {
-			apq8064_sdc3_pdata->status_gpio =
-				PM8921_GPIO_PM_TO_SYS(31);
-			apq8064_sdc3_pdata->status_irq =
-				PM8921_GPIO_IRQ(PM8921_IRQ_BASE, 31);
-		}
+		apq8064_sdc3_pdata->wpswitch_gpio = 0;
+		apq8064_sdc3_pdata->is_wpswitch_active_low = false;
 		apq8064_add_sdcc(3, apq8064_sdc3_pdata);
 	}
 }

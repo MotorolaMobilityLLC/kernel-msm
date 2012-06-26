@@ -13,6 +13,7 @@
  */
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
+#include <linux/gpio.h>
 #include <linux/io.h>
 #include <linux/irq.h>
 #include <linux/i2c.h>
@@ -53,7 +54,6 @@
 #include <mach/msm_spi.h>
 #include "timer.h"
 #include "devices.h"
-#include <mach/gpio.h>
 #include <mach/gpiomux.h>
 #include <mach/rpm.h>
 #ifdef CONFIG_ANDROID_PMEM
@@ -79,7 +79,6 @@
 #include <media/gpio-ir-recv.h>
 #endif
 #include <linux/fmem.h>
-#include <mach/msm_pcie.h>
 #include <mach/restart.h>
 #include <mach/board_lge.h>
 
@@ -884,32 +883,12 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.phy_init_seq		= phy_init_seq,
 };
 
-static struct msm_usb_host_platform_data msm_ehci_host_pdata3 = {
-	.power_budget = 500,
-};
-
 #ifdef CONFIG_USB_EHCI_MSM_HOST4
 static struct msm_usb_host_platform_data msm_ehci_host_pdata4;
 #endif
 
 static void __init apq8064_ehci_host_init(void)
 {
-	if (machine_is_apq8064_liquid() || machine_is_mpq8064_cdp() ||
-		machine_is_mpq8064_hrd() || machine_is_mpq8064_dtv()) {
-		if (machine_is_apq8064_liquid())
-			msm_ehci_host_pdata3.dock_connect_irq =
-					PM8921_MPP_IRQ(PM8921_IRQ_BASE, 9);
-
-		apq8064_device_ehci_host3.dev.platform_data =
-				&msm_ehci_host_pdata3;
-		platform_device_register(&apq8064_device_ehci_host3);
-
-#ifdef CONFIG_USB_EHCI_MSM_HOST4
-		apq8064_device_ehci_host4.dev.platform_data =
-				&msm_ehci_host_pdata4;
-		platform_device_register(&apq8064_device_ehci_host4);
-#endif
-	}
 }
 #ifdef CONFIG_SMB349_CHARGER
 static struct smb349_platform_data smb349_data __initdata = {
@@ -1739,22 +1718,6 @@ static void __init apq8064_init_buses(void)
 	msm_bus_8064_cpss_fpb.dev.platform_data = &msm_bus_8064_cpss_fpb_pdata;
 } 
 
-/* PCIe gpios */
-static struct msm_pcie_gpio_info_t msm_pcie_gpio_info[MSM_PCIE_MAX_GPIO] = {
-	{"rst_n", PM8921_MPP_PM_TO_SYS(PCIE_RST_N_PMIC_MPP), 0},
-	{"pwr_en", PM8921_GPIO_PM_TO_SYS(PCIE_PWR_EN_PMIC_GPIO), 1},
-};
-
-static struct msm_pcie_platform msm_pcie_platform_data = {
-	.gpio = msm_pcie_gpio_info,
-};
-
-static void __init mpq8064_pcie_init(void)
-{
-	msm_device_pcie.dev.platform_data = &msm_pcie_platform_data;
-	platform_device_register(&msm_device_pcie);
-}
-
 static struct platform_device apq8064_device_rpm_regulator __devinitdata = {
 	.name	= "rpm-regulator",
 	.id	= -1,
@@ -1762,6 +1725,7 @@ static struct platform_device apq8064_device_rpm_regulator __devinitdata = {
 		.platform_data = &apq8064_rpm_regulator_pdata,
 	},
 };
+
 #ifdef CONFIG_IR_GPIO_CIR
 static struct gpio_ir_recv_platform_data gpio_ir_recv_pdata = {
 	.gpio_nr = 88,
@@ -1775,11 +1739,9 @@ static struct platform_device gpio_ir_recv_pdev = {
 	},
 };
 #endif
+
 static struct platform_device *common_not_mpq_devices[] __initdata = {
 	&apq8064_device_qup_i2c_gsbi1,
-#if !defined(CONFIG_MSM_DSPS)
-	&apq8064_device_qup_i2c_gsbi2,
-#endif
 	&apq8064_device_qup_i2c_gsbi3,
 	&apq8064_device_qup_i2c_gsbi4,
 };
@@ -1867,7 +1829,7 @@ static struct platform_device *common_devices[] __initdata = {
 	&apq8064_rpm_log_device,
 	&apq8064_rpm_stat_device,
 #ifdef CONFIG_MSM_TZ_LOG
-	&msm_device_tz_log,
+	&apq_device_tz_log,
 #endif
 	&msm_bus_8064_apps_fabric,
 	&msm_bus_8064_sys_fabric,
@@ -1911,110 +1873,12 @@ static struct platform_device *cdp_devices[] __initdata = {
 #endif
 };
 
-static struct platform_device
-mpq8064_device_ext_1p2_buck_vreg __devinitdata = {
-	.name	= GPIO_REGULATOR_DEV_NAME,
-	.id	= SX150X_GPIO(4, 2),
-	.dev	= {
-		.platform_data =
-		 &mpq8064_gpio_regulator_pdata[GPIO_VREG_ID_AVC_1P2V],
-	},
-};
-
-static struct platform_device
-mpq8064_device_ext_1p8_buck_vreg __devinitdata = {
-	.name	= GPIO_REGULATOR_DEV_NAME,
-	.id	= SX150X_GPIO(4, 4),
-	.dev	= {
-		.platform_data =
-		&mpq8064_gpio_regulator_pdata[GPIO_VREG_ID_AVC_1P8V],
-	},
-};
-
-static struct platform_device
-mpq8064_device_ext_2p2_buck_vreg __devinitdata = {
-	.name	= GPIO_REGULATOR_DEV_NAME,
-	.id	= SX150X_GPIO(4, 14),
-	.dev	= {
-		.platform_data =
-		&mpq8064_gpio_regulator_pdata[GPIO_VREG_ID_AVC_2P2V],
-	},
-};
-
-static struct platform_device
-mpq8064_device_ext_5v_buck_vreg __devinitdata = {
-	.name	= GPIO_REGULATOR_DEV_NAME,
-	.id	= SX150X_GPIO(4, 3),
-	.dev	= {
-		.platform_data =
-		 &mpq8064_gpio_regulator_pdata[GPIO_VREG_ID_AVC_5V],
-	},
-};
-
-static struct platform_device
-mpq8064_device_ext_3p3v_ldo_vreg __devinitdata = {
-	.name	= GPIO_REGULATOR_DEV_NAME,
-	.id	= SX150X_GPIO(4, 15),
-	.dev	= {
-		.platform_data =
-		&mpq8064_gpio_regulator_pdata[GPIO_VREG_ID_AVC_3P3V],
-	},
-};
-
 #ifdef CONFIG_USER_RC_INPUT
 static struct platform_device rc_input_loopback_pdev = {
 	.name	= "rc-user-input",
 	.id	= -1,
 };
 #endif
-
-static int rf4ce_gpio_init(void)
-{
-	if (!machine_is_mpq8064_cdp())
-		return -EINVAL;
-
-	/* CC2533 SRDY Input */
-	if (!gpio_request(SX150X_GPIO(4, 6), "rf4ce_srdy")) {
-		gpio_direction_input(SX150X_GPIO(4, 6));
-		gpio_export(SX150X_GPIO(4, 6), true);
-	}
-
-	/* CC2533 MRDY Output */
-	if (!gpio_request(SX150X_GPIO(4, 5), "rf4ce_mrdy")) {
-		gpio_direction_output(SX150X_GPIO(4, 5), 1);
-		gpio_export(SX150X_GPIO(4, 5), true);
-	}
-
-	/* CC2533 Reset Output */
-	if (!gpio_request(SX150X_GPIO(4, 7), "rf4ce_reset")) {
-		gpio_direction_output(SX150X_GPIO(4, 7), 0);
-		gpio_export(SX150X_GPIO(4, 7), true);
-	}
-
-	return 0;
-}
-late_initcall(rf4ce_gpio_init);
-
-static struct platform_device *mpq_devices[] __initdata = {
-	&msm_device_sps_apq8064,
-#ifdef CONFIG_MSM_ROTATOR
-	&msm_rotator_device,
-#endif
-#ifdef CONFIG_IR_GPIO_CIR
-	&gpio_ir_recv_pdev,
-#endif
-	&mpq8064_device_ext_1p2_buck_vreg,
-	&mpq8064_device_ext_1p8_buck_vreg,
-	&mpq8064_device_ext_2p2_buck_vreg,
-	&mpq8064_device_ext_5v_buck_vreg,
-	&mpq8064_device_ext_3p3v_ldo_vreg,
-#ifdef CONFIG_MSM_VCAP
-	&msm8064_device_vcap,
-#endif
-#ifdef CONFIG_USER_RC_INPUT
-	&rc_input_loopback_pdev,
-#endif
-};
 
 static struct platform_device *uart_devices[] __initdata = {
 	&apq8064_device_uart_gsbi4,
@@ -2044,12 +1908,6 @@ static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi1_pdata = {
 	.clk_freq = 400000,
 	.src_clk_rate = 24000000,
 };
-#if !defined(CONFIG_MSM_DSPS)
-static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi2_pdata = {
-	.clk_freq = 100000,
-	.src_clk_rate = 24000000,
-};
-#endif
 
 static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi3_pdata = {
 	.clk_freq = 384000,
@@ -2065,10 +1923,6 @@ static void __init apq8064_i2c_init(void)
 {
 	void __iomem *gsbi_mem;
 
-#if !defined(CONFIG_MSM_DSPS)
-	apq8064_device_qup_i2c_gsbi2.dev.platform_data =
-					&apq8064_i2c_qup_gsbi2_pdata;
-#endif
 	apq8064_device_qup_i2c_gsbi1.dev.platform_data =
 					&apq8064_i2c_qup_gsbi1_pdata;
 
@@ -2097,11 +1951,6 @@ static void __init apq8064_i2c_init(void)
 	iounmap(gsbi_mem);
 }
 
-static int ethernet_init(void)
-{
-	return 0;
-}
-
 /* Sensors DSPS platform data */
 #define DSPS_PIL_GENERIC_NAME		"dsps"
 static void __init apq8064_init_dsps(void)
@@ -2114,15 +1963,6 @@ static void __init apq8064_init_dsps(void)
 
 	platform_device_register(&msm_dsps_device_8064);
 }
-
-#define I2C_SURF 1
-#define I2C_FFA  (1 << 1)
-#define I2C_RUMI (1 << 2)
-#define I2C_SIM  (1 << 3)
-#define I2C_LIQUID (1 << 4)
-#define I2C_MPQ_CDP	BIT(5)
-#define I2C_MPQ_HRD	BIT(6)
-#define I2C_MPQ_DTV	BIT(7)
 
 struct i2c_registry {
 	u8                     machs;
@@ -2222,7 +2062,8 @@ static struct i2c_registry mpq8064_i2c_devices[] __initdata = {
 		sx150x_gpio_exp_info,
 		ARRAY_SIZE(sx150x_gpio_exp_info),
 	},
- };
+};
+
 static void __init register_i2c_devices(void)
 {
 	u8 mach_mask = 0;
@@ -2230,14 +2071,14 @@ static void __init register_i2c_devices(void)
 
 #ifdef CONFIG_MSM_CAMERA
 	struct i2c_registry apq8064_camera_i2c_devices = {
-		I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID,
+		I2C_FFA,
 		APQ_8064_GSBI4_QUP_I2C_BUS_ID,
 		apq8064_camera_board_info.board_info,
 		apq8064_camera_board_info.num_i2c_board_info,
 	};
 	/* Enabling flash LED for camera */
 	struct i2c_registry apq8064_lge_camera_i2c_devices = {
-		I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID,
+		I2C_FFA,
 		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
 		apq8064_lge_camera_board_info.board_info,
 		apq8064_lge_camera_board_info.num_i2c_board_info,
@@ -2245,19 +2086,7 @@ static void __init register_i2c_devices(void)
 #endif
 
 	/* Build the matching 'supported_machs' bitmask */
-	if (machine_is_apq8064_cdp())
-		mach_mask = I2C_SURF;
-	else if (machine_is_apq8064_mtp())
-		mach_mask = I2C_FFA;
-	else if (machine_is_apq8064_liquid())
-		mach_mask = I2C_LIQUID;
-	else if (machine_is_apq8064_rumi3())
-		mach_mask = I2C_RUMI;
-	else if (machine_is_apq8064_sim())
-		mach_mask = I2C_SIM;
-	else if (PLATFORM_IS_MPQ8064())
-		mach_mask = I2C_MPQ_CDP;
-	else if (machine_is_apq8064_mako())
+	if (machine_is_apq8064_mako())
 		mach_mask = I2C_FFA;
 	else
 		pr_err("unmatched machine ID in register_i2c_devices\n");
@@ -2291,18 +2120,6 @@ static void __init register_i2c_devices(void)
 	}
 }
 
-static void enable_avc_i2c_bus(void)
-{
-	int avc_i2c_en_mpp = PM8921_MPP_PM_TO_SYS(8);
-	int rc;
-
-	rc = gpio_request(avc_i2c_en_mpp, "avc_i2c_en");
-	if (rc)
-		pr_err("request for avc_i2c_en mpp failed, rc=%d\n", rc);
-	else
-		gpio_set_value_cansleep(avc_i2c_en_mpp, 1);
-}
-
 static void __init apq8064_common_init(void)
 {
 	msm_tsens_early_init(&apq_tsens_pdata);
@@ -2319,14 +2136,7 @@ static void __init apq8064_common_init(void)
 	apq8064_init_gpiomux();
 	apq8064_i2c_init();
 	register_i2c_devices();
-	register_i2c_backlight_devices();
-	lge_add_sound_devices();   
-#if defined(CONFIG_LGE_NFC_PN544)
-	lge_add_nfc_devices();
-#endif
 	apq8064_init_pmic();
-	if (machine_is_apq8064_liquid())
-		msm_otg_pdata.mhl_enable = true;
 
 	android_usb_pdata.swfi_latency =
 		msm_rpmrs_levels[0].latency_us;
@@ -2335,18 +2145,16 @@ static void __init apq8064_common_init(void)
 	apq8064_ehci_host_init();
 	apq8064_init_buses();
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
-	if (!(machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd() ||
-			machine_is_mpq8064_dtv()))
-		platform_add_devices(common_not_mpq_devices,
+	platform_add_devices(common_not_mpq_devices,
 			ARRAY_SIZE(common_not_mpq_devices));
-	if (machine_is_apq8064_mtp() || machine_is_apq8064_mako()) {
+	if (machine_is_apq8064_mako()) {
 		apq8064_device_hsic_host.dev.platform_data = &msm_hsic_pdata;
 		device_initialize(&apq8064_device_hsic_host.dev);
 	}
 	apq8064_pm8xxx_gpio_mpp_init();
 	apq8064_init_mmc();
 
-	if (machine_is_apq8064_mtp() || machine_is_apq8064_mako()) {
+	if (machine_is_apq8064_mako()) {
 		mdm_8064_device.dev.platform_data = &mdm_platform_data;
 		platform_device_register(&mdm_8064_device);
 	}
@@ -2356,20 +2164,8 @@ static void __init apq8064_common_init(void)
 	apq8064_init_dsps();
 	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
 	msm_spm_l2_init(msm_spm_l2_data);
-	msm_pm_init_sleep_status_data(&msm_pm_slp_sts_data);
-	/**/
-#ifdef CONFIG_ANDROID_RAM_CONSOLE
-	lge_add_ramconsole_devices();
-#endif
-#ifdef CONFIG_LGE_HANDLE_PANIC
-	lge_add_panic_handler_devices();
-#endif
-
-#ifdef CONFIG_LGE_QFPROM_INTERFACE
-	lge_add_qfprom_devices();
-#endif
-
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
+	msm_pm_init_sleep_status_data(&msm_pm_slp_sts_data);
 #ifdef CONFIG_SENSORS_EPM_ADC
 	apq8064_epm_adc_init();
 #endif
@@ -2416,22 +2212,28 @@ out:
 }
 #endif
 
-static void __init apq8064_cdp_init(void)
+static void __init apq8064_mako_init(void)
 {
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
 		pr_err("meminfo_init() failed!\n");
 	apq8064_common_init();
-	if (machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd() ||
-		machine_is_mpq8064_dtv()) {
-		enable_avc_i2c_bus();
-		platform_add_devices(mpq_devices, ARRAY_SIZE(mpq_devices));
-		mpq8064_pcie_init();
-	} else {
-		ethernet_init();
-		platform_add_devices(cdp_devices, ARRAY_SIZE(cdp_devices));
-		spi_register_board_info(spi_board_info,
-						ARRAY_SIZE(spi_board_info));
-	}
+	lge_add_backlight_devices();
+	lge_add_sound_devices();
+#if defined(CONFIG_LGE_NFC_PN544)
+	lge_add_nfc_devices();
+#endif
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	lge_add_ramconsole_devices();
+#endif
+#ifdef CONFIG_LGE_CRASH_HANDLER
+	lge_add_panic_handler_devices();
+#endif
+#ifdef CONFIG_LGE_QFPROM_INTERFACE
+	lge_add_qfprom_devices();
+#endif
+	platform_add_devices(cdp_devices, ARRAY_SIZE(cdp_devices));
+	spi_register_board_info(spi_board_info,
+					ARRAY_SIZE(spi_board_info));
 
 	if (lge_get_uart_mode()) {
 #ifdef CONFIG_EARJACK_DEBUGGER
@@ -2448,7 +2250,6 @@ static void __init apq8064_cdp_init(void)
 #ifdef CONFIG_MSM_CAMERA
 	apq8064_init_cam();
 #endif
-
 	change_memory_power = &apq8064_change_memory_power;
 
 	apq8064_init_input();
@@ -2461,7 +2262,7 @@ MACHINE_START(APQ8064_MAKO, "QCT APQ8064 MAKO")
 	.init_irq = apq8064_init_irq,
 	.handle_irq = gic_handle_irq,
 	.timer = &msm_timer,
-	.init_machine = apq8064_cdp_init,
+	.init_machine = apq8064_mako_init,
 	.init_early = apq8064_allocate_memory_regions,
 	.init_very_early = apq8064_early_reserve,
 	.restart = msm_restart,
