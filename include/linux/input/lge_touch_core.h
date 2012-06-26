@@ -79,7 +79,7 @@ struct touch_platform_data {
 };
 
 struct t_data {
-	u16             id;
+	u16             state;
 	u16             x_position;
 	u16             y_position;
 	u16             width_major;
