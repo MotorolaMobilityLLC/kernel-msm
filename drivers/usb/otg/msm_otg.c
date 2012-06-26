@@ -41,6 +41,8 @@
 #include <linux/mfd/pm8xxx/misc.h>
 #include <linux/power_supply.h>
 
+#include <asm/mach-types.h>
+
 #include <mach/clk.h>
 #include <mach/msm_xo.h>
 #include <mach/msm_bus.h>
@@ -1249,11 +1251,13 @@ static int msm_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 		return -ENODEV;
 	}
 
-	if (!motg->pdata->vbus_power && host) {
-		vbus_otg = devm_regulator_get(motg->phy.dev, "vbus_otg");
-		if (IS_ERR(vbus_otg)) {
-			pr_err("Unable to get vbus_otg\n");
-			return -ENODEV;
+	if (!machine_is_apq8064_mako()) {
+		if (!motg->pdata->vbus_power && host) {
+			vbus_otg = devm_regulator_get(motg->phy.dev, "vbus_otg");
+			if (IS_ERR(vbus_otg)) {
+				pr_err("Unable to get vbus_otg\n");
+				return -ENODEV;
+			}
 		}
 	}
 
