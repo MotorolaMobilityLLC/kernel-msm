@@ -395,78 +395,45 @@ static int hsd_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&hi->work_for_key_released, button_released);
 
 	/* initialize gpio_detect */
-	ret = gpio_request(hi->gpio_detect, "gpio_detect");
+	ret = gpio_request_one(hi->gpio_detect, GPIOF_IN, "gpio_detect");
 	if (ret < 0) {
 		HSD_ERR("Failed to gpio_request gpio%d (gpio_detect)\n",
 				hi->gpio_detect);
 		goto error_01;
 	}
 
-	ret = gpio_direction_input(hi->gpio_detect);
-	if (ret < 0) {
-		HSD_ERR("Failed to gpio_direction_input gpio%d (gpio_detect)\n",
-				hi->gpio_detect);
-		goto error_02;
-	}
-
 	/* initialize gpio_jpole */
-	ret = gpio_request(hi->gpio_jpole, "gpio_jpole");
+	ret = gpio_request_one(hi->gpio_jpole, GPIOF_IN, "gpio_jpole");
 	if (ret < 0) {
 		HSD_ERR("Failed to gpio_request gpio%d (gpio_jpole)\n",
 				hi->gpio_jpole);
 		goto error_02;
 	}
 
-	ret = gpio_direction_input(hi->gpio_jpole);
-	if (ret < 0) {
-		HSD_ERR("Failed to gpio_direction_input gpio%d (gpio_jpole)\n",
-				hi->gpio_jpole);
-		goto error_03;
-	}
-
 	/* initialize gpio_key */
-	ret = gpio_request(hi->gpio_key, "gpio_key");
+	ret = gpio_request_one(hi->gpio_key, GPIOF_IN, "gpio_key");
 	if (ret < 0) {
 		HSD_ERR("Failed to gpio_request gpio%d (gpio_key)\n",
 				hi->gpio_key);
 		goto error_03;
 	}
 
-	ret = gpio_direction_input(hi->gpio_key);
-	if (ret < 0) {
-		HSD_ERR("Failed to gpio_direction_input gpio%d (gpio_key)\n",
-				hi->gpio_key);
-		goto error_04;
-	}
-
 	/* initialize gpio_mic_en */
-	ret = gpio_request(hi->gpio_mic_en, "gpio_mic_en");
+	ret = gpio_request_one(hi->gpio_mic_en, GPIOF_OUT_INIT_LOW,
+			"gpio_mic_en");
 	if (ret < 0) {
 		HSD_ERR("Failed to gpio_request gpio%d (gpio_mic_en)\n",
 				hi->gpio_mic_en);
 		goto error_04;
 	}
 
-	ret = gpio_direction_output(hi->gpio_mic_en, 0);
-	if (ret < 0) {
-		HSD_ERR("Failed to gpio_direction_output gpio%d (gpio_mic_en)\n",
-				hi->gpio_mic_en);
-		goto error_05;
-	}
-
 	/* initialize gpio_mic_bias_en */
-	ret = gpio_request(hi->gpio_mic_bias_en, "gpio_mic_bias_en");
+	ret = gpio_request_one(hi->gpio_mic_bias_en, GPIOF_OUT_INIT_LOW,
+			"gpio_mic_bias_en");
 	if (ret < 0) {
 		HSD_ERR("Failed to gpio_request gpio%d (gpio_mic_bias_en)\n",
 				hi->gpio_mic_en);
 		goto error_04;
-	}
-
-	ret = gpio_direction_output(hi->gpio_mic_bias_en, 0);
-	if (ret < 0) {
-		HSD_ERR("Failed to gpio_direction_output gpio%d (gpio_mic_bias_en)\n",
-				hi->gpio_mic_en);
-		goto error_05;
 	}
 
 	/* initialize irq of gpio_jpole */
