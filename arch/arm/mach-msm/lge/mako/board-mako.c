@@ -86,7 +86,6 @@
 
 #include "msm_watchdog.h"
 #include "board-mako.h"
-#include "acpuclock.h"
 #include "spm.h"
 #include <mach/mpm.h>
 #include "rpm_resources.h"
@@ -1777,6 +1776,7 @@ static struct platform_device *common_not_mpq_devices[] __initdata = {
 };
 
 static struct platform_device *common_devices[] __initdata = {
+	&msm8960_device_acpuclk,
 	&apq8064_device_dmov,
 	&apq8064_device_ssbi_pmic1,
 	&apq8064_device_ssbi_pmic2,
@@ -2345,7 +2345,6 @@ static void __init apq8064_common_init(void)
 		ARRAY_SIZE(apq8064_slim_devices));
 	apq8064_init_dsps();
 	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
-	acpuclk_init(&acpuclk_8064_soc_data);
 	msm_spm_l2_init(msm_spm_l2_data);
 	msm_pm_init_sleep_status_data(&msm_pm_slp_sts_data);
 	/**/
