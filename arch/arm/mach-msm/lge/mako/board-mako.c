@@ -1875,6 +1875,8 @@ static struct platform_device *common_devices[] __initdata = {
 	&apq8064_cpu_idle_device,
 	&apq8064_msm_gov_device,
 	&apq8064_device_cache_erp,
+	&msm8960_device_ebi1_ch0_erp,
+	&msm8960_device_ebi1_ch1_erp,
 #ifdef CONFIG_SENSORS_EPM_ADC
 	&epm_adc_device,
 #endif
