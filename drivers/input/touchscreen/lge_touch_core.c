@@ -71,7 +71,18 @@ struct timeval t_debug[TIME_PROFILE_MAX];
 #endif
 
 #define MAX_RETRY_COUNT         3
-#define MAX_GHOST_CHECK_COUNT   3
+
+#ifdef LGE_TOUCH_POINT_DEBUG
+#define MAX_TRACE	500
+struct pointer_trace {
+	int	x;
+	int	y;
+	s64	time;
+};
+
+static struct pointer_trace tr_data[MAX_TRACE];
+static int tr_last_index;
+#endif
 
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 static void touch_early_suspend(struct early_suspend *h);
@@ -390,41 +401,6 @@ static int touch_ic_init(struct lge_touch_data *ts)
 		}
 	}
 
-//FIXME: Disable Ghost Stage due to touch mal function
-#if 0
-	if (ts->gf_ctrl.stage & GHOST_STAGE_2) {
-		ts->gf_ctrl.stage = GHOST_STAGE_2 | GHOST_STAGE_3;
-		if (touch_device_func->ic_ctrl) {
-			if (touch_device_func->ic_ctrl(ts->client,
-					IC_CTRL_BASELINE, BASELINE_FIX) < 0) {
-				TOUCH_ERR_MSG("IC_CTRL_BASELINE handling fail\n");
-				goto err_out_retry;
-			}
-		}
-	}
-	else {
-		ts->gf_ctrl.stage = GHOST_STAGE_1;
-		if (touch_device_func->ic_ctrl) {
-			if (touch_device_func->ic_ctrl(ts->client,
-					IC_CTRL_BASELINE, BASELINE_OPEN) < 0) {
-				TOUCH_ERR_MSG("IC_CTRL_BASELINE handling fail\n");
-				goto err_out_retry;
-			}
-		}
-	}
-
-	if (unlikely(touch_debug_mask & (DEBUG_BASE_INFO | DEBUG_GHOST))) {
-		TOUCH_INFO_MSG("%s %s(%s): ID[%d], FW rev[%d], f/u[%d]\n",
-			ts->pdata->maker, ts->fw_info.product_id,
-			ts->pdata->role->operation_mode ? "Interrupt mode"
-							: "Polling mode",
-			ts->fw_info.manufacturer_id, ts->fw_info.fw_rev,
-			ts->fw_upgrade.fw_force_upgrade);
-		TOUCH_INFO_MSG("irq_pin[%d] next_work[%d] ghost_stage[0x%x]\n",
-			int_pin, next_work, ts->gf_ctrl.stage);
-	}
-#endif
-
 	ts->gf_ctrl.count = 0;
 	ts->gf_ctrl.ghost_check_count = 0;
 	memset(&ts->ts_data, 0, sizeof(ts->ts_data));
@@ -450,121 +426,6 @@ err_out_critical:
 	ts->ic_init_err_cnt = 0;
 
 	return -1;
-}
-
-/* ghost_finger_solution
- *
- * GHOST_STAGE_1
- * - melt_mode.
- * - If user press and release their finger in 1 sec, STAGE_1 will be cleared. --> STAGE_2
- * - If there is no key-guard, ghost_finger_solution is finished.
- *
- * GHOST_STAGE_2
- * - no_melt_mode
- * - if user use multi-finger, stage will be changed to STAGE_1
- *   (We assume that ghost-finger occured)
- * - if key-guard is unlocked, STAGE_2 is cleared. --> STAGE_3
- *
- * GHOST_STAGE_3
- * - when user release their finger, device re-scan the baseline.
- * - Then, GHOST_STAGE3 is cleared and ghost_finger_solution is finished.
- */
-int ghost_finger_solution(struct lge_touch_data *ts)
-{
-	if (ts->gf_ctrl.stage & GHOST_STAGE_1) {
-		if (ts->ts_data.total_num == 0 &&
-					ts->ts_data.curr_button.state == 0) {
-			if (ts->gf_ctrl.count < ts->gf_ctrl.min_count ||
-				ts->gf_ctrl.count >= ts->gf_ctrl.max_count) {
-				if (ts->gf_ctrl.stage & GHOST_STAGE_2)
-					ts->gf_ctrl.ghost_check_count =
-						MAX_GHOST_CHECK_COUNT - 1;
-				else
-					ts->gf_ctrl.ghost_check_count = 0;
-			}
-			else {
-				ts->gf_ctrl.ghost_check_count++;
-			}
-
-			if (unlikely(touch_debug_mask & DEBUG_GHOST))
-				TOUCH_INFO_MSG("ghost_stage_1: "
-						"ghost_check_count+[0x%x]\n",
-						ts->gf_ctrl.ghost_check_count);
-
-			if (ts->gf_ctrl.ghost_check_count >=
-						MAX_GHOST_CHECK_COUNT) {
-				ts->gf_ctrl.ghost_check_count = 0;
-				if (touch_device_func->ic_ctrl) {
-					if (touch_device_func->ic_ctrl(ts->client, IC_CTRL_BASELINE, BASELINE_FIX) < 0)
-						return -1;
-				}
-				ts->gf_ctrl.stage &= ~GHOST_STAGE_1;
-				if (unlikely(touch_debug_mask & DEBUG_GHOST))
-					TOUCH_INFO_MSG("ghost_stage_1: "
-							"cleared[0x%x]\n",
-							ts->gf_ctrl.stage);
-				if (!ts->gf_ctrl.stage) {
-					if (unlikely(touch_debug_mask &
-								DEBUG_GHOST ||
-						touch_debug_mask &
-							DEBUG_BASE_INFO))
-						TOUCH_INFO_MSG("ghost_stage_finished. (NON-KEYGUARD)\n");
-				}
-			}
-			ts->gf_ctrl.count = 0;
-		}
-		else if (ts->ts_data.total_num == 1 &&
-				ts->ts_data.curr_button.state == 0) {
-			ts->gf_ctrl.count++;
-			if (unlikely(touch_debug_mask & DEBUG_GHOST))
-				TOUCH_INFO_MSG("ghost_stage_1: int_count[%d/%d]\n",
-				ts->gf_ctrl.count, ts->gf_ctrl.max_count);
-		}
-		else {
-			ts->gf_ctrl.count = ts->gf_ctrl.max_count;
-		}
-	}
-	else if (ts->gf_ctrl.stage & GHOST_STAGE_2) {
-		if (ts->ts_data.total_num > 1 ||
-			(ts->ts_data.total_num == 1 &&
-					ts->ts_data.curr_button.state)) {
-			ts->gf_ctrl.ghost_check_count =
-						MAX_GHOST_CHECK_COUNT - 1;
-			ts->gf_ctrl.stage |= GHOST_STAGE_1;
-			if (touch_device_func->ic_ctrl) {
-				if (touch_device_func->ic_ctrl(ts->client,
-					IC_CTRL_BASELINE, BASELINE_OPEN) < 0)
-					return -1;
-				if (touch_device_func->ic_ctrl(ts->client,
-					IC_CTRL_BASELINE, BASELINE_REBASE) < 0)
-					return -1;
-			}
-			if (unlikely(touch_debug_mask & DEBUG_GHOST))
-				TOUCH_INFO_MSG("ghost_stage_2: multi_finger. "
-					"return to ghost_stage_1[0x%x]\n",
-					ts->gf_ctrl.stage);
-		}
-	}
-	else if (ts->gf_ctrl.stage & GHOST_STAGE_3) {
-		if (ts->ts_data.total_num == 0 &&
-					ts->ts_data.curr_button.state == 0) {
-			if (touch_device_func->ic_ctrl) {
-				if (touch_device_func->ic_ctrl(ts->client,
-					IC_CTRL_BASELINE, BASELINE_REBASE) < 0)
-					return -1;
-			}
-			ts->gf_ctrl.stage = GHOST_STAGE_CLEAR;
-			if (unlikely(touch_debug_mask & DEBUG_GHOST))
-				TOUCH_INFO_MSG("ghost_stage_3: cleared[0x%x]\n",
-						ts->gf_ctrl.stage);
-			if (unlikely(touch_debug_mask & DEBUG_GHOST
-					|| touch_debug_mask & DEBUG_BASE_INFO))
-				TOUCH_INFO_MSG("ghost_stage_finished."
-						" (KEYGUARD)\n");
-		}
-	}
-
-	return 0;
 }
 
 /* Jitter Filter
@@ -845,6 +706,35 @@ static void touch_init_func(struct work_struct *work_init)
 	touch_ic_init(ts);
 }
 
+#ifdef LGE_TOUCH_POINT_DEBUG
+static void dump_pointer_trace(void)
+{
+	int	i;
+
+	printk("Single Touch Trace: Total Points %d in %dms (%dHz)\n",
+		tr_last_index,
+		tr_last_index > 1
+			? (int)(tr_data[tr_last_index-1].time - tr_data[0].time)
+			: 0,
+		tr_last_index > 1
+			? (tr_last_index * 1000) / (int)(tr_data[tr_last_index-1].time - tr_data[0].time)
+			: 0);
+
+	for (i = 0; i < tr_last_index; i++) {
+		printk("(%x,%x,%d)",
+			tr_data[i].x, tr_data[i].y,
+			(i == 0) ? 0 : (int)(tr_data[i].time - tr_data[i-1].time));
+
+		if ((i % 4) == 3)
+			printk("\n");
+	}
+
+	printk("\n");
+
+	tr_last_index = 0;
+}
+#endif
+
 static void touch_input_report(struct lge_touch_data *ts)
 {
 	int	id;
@@ -870,9 +760,19 @@ static void touch_input_report(struct lge_touch_data *ts)
 			if (is_width)
 				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,
 					ts->ts_data.curr_data[id].width_major);
+#ifdef LGE_TOUCH_POINT_DEBUG
+			if (id == 0 && tr_last_index < MAX_TRACE) {
+				tr_data[tr_last_index].x = ts->ts_data.curr_data[id].x_position;
+				tr_data[tr_last_index].y = ts->ts_data.curr_data[id].y_position;
+				tr_data[tr_last_index++].time = ktime_to_ms(ktime_get());
+			}
+#endif
 		}
 		else {
 			ts->ts_data.curr_data[id].state = 0;
+#ifdef LGE_TOUCH_POINT_DEBUG
+			dump_pointer_trace();
+#endif
 		}
 	}
 
@@ -911,14 +811,6 @@ static void touch_work_func(struct work_struct *work)
 
 	if (likely(ts->pdata->role->operation_mode == INTERRUPT_MODE))
 		int_pin = gpio_get_value(ts->pdata->int_pin);
-
-	/* Ghost finger solution */
-	if (unlikely(ts->gf_ctrl.stage)) {
-		if (ghost_finger_solution(ts)) {
-			TOUCH_ERR_MSG("ghost_finger_solution was failed\n");
-			goto err_out_critical;
-		}
-	}
 
 	/* Accuracy Solution */
 	if (likely(ts->pdata->role->accuracy_filter_enable)) {
