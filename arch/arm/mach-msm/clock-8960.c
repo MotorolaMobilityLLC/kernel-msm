@@ -5172,9 +5172,11 @@ static struct clk_lookup msm_clocks_8064[] = {
 	CLK_LOOKUP("iface_clk",		sdc2_p_clk.c,		"msm_sdcc.2"),
 	CLK_LOOKUP("iface_clk",		sdc3_p_clk.c,		"msm_sdcc.3"),
 	CLK_LOOKUP("iface_clk",		sdc4_p_clk.c,		"msm_sdcc.4"),
+#ifdef CONFIG_MSM_PCIE
 	CLK_LOOKUP("iface_clk",		pcie_p_clk.c,		"msm_pcie"),
 	CLK_LOOKUP("ref_clk",		pcie_phy_ref_clk.c,	"msm_pcie"),
 	CLK_LOOKUP("bus_clk",		pcie_a_clk.c,		"msm_pcie"),
+#endif
 	CLK_LOOKUP("core_clk",		adm0_clk.c,		"msm_dmov"),
 	CLK_LOOKUP("iface_clk",		adm0_p_clk.c,		"msm_dmov"),
 	CLK_LOOKUP("iface_clk",		pmic_arb0_p_clk.c,	""),
