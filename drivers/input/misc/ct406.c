@@ -161,6 +161,7 @@ struct ct406_data {
 	unsigned int als_requested;
 	unsigned int als_enabled;
 	unsigned int als_apers;
+	unsigned int als_first_report;
 	enum ct406_als_mode als_mode;
 	unsigned int wait_enabled;
 	/* numeric values */
@@ -737,12 +738,13 @@ static int ct406_enable_als(struct ct406_data *ct)
 
 		/* write ALS interrupt persistence */
 		reg_data[0] = CT406_PERS;
-		reg_data[1] = CT406_PERS_PPERS | ct->als_apers;
+		reg_data[1] = CT406_PERS_PPERS;
 		error = ct406_i2c_write(ct, reg_data, 1);
 		if (error < 0) {
 			pr_err("%s: Error  %d\n", __func__, error);
 			return error;
 		}
+		ct->als_first_report = 0;
 
 		ct406_clear_als_flag(ct);
 
@@ -1078,6 +1080,17 @@ static void ct406_report_als(struct ct406_data *ct)
 
 	input_event(ct->dev, EV_LED, LED_MISC, lux);
 	input_sync(ct->dev);
+
+	if (ct->als_first_report == 0) {
+		/* write ALS interrupt persistence */
+		reg_data[0] = CT406_PERS;
+		reg_data[1] = CT406_PERS_PPERS | ct->als_apers;
+		error = ct406_i2c_write(ct, reg_data, 1);
+		if (error < 0) {
+			pr_err("%s: Error  %d\n", __func__, error);
+		}
+		ct->als_first_report = 1;
+	}
 
 	if (ct->als_mode != CT406_ALS_MODE_SUNLIGHT)
 		ct406_check_als_range(ct, lux);
@@ -1515,6 +1528,7 @@ static int ct406_probe(struct i2c_client *client,
 	ct->als_requested = 0;
 	ct->als_enabled = 0;
 	ct->als_apers = 0x4;
+	ct->als_first_report = 0;
 	ct->als_mode = CT406_ALS_MODE_LOW_LUX;
 
 	ct->workqueue = create_singlethread_workqueue("als_wq");
