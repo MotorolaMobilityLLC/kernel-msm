@@ -26,9 +26,8 @@
 #include <linux/fb.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
+#include <linux/mutex.h>
 #include <mach/board.h>
-#include <mach/board_lge.h>
-#include <linux/earlysuspend.h>
 
 #define MAX_LEVEL               0x71
 #define MIN_LEVEL               0x01
@@ -40,6 +39,8 @@
 
 #define BL_ON                   1
 #define BL_OFF                  0
+
+static DEFINE_MUTEX(backlight_mtx);
 
 static struct i2c_client *lm3530_i2c_client;
 
@@ -61,7 +62,6 @@ struct lm3530_device {
 	int min_brightness;
 	int max_brightness;
 	int factory_brightness;
-	struct mutex bl_mutex;
 };
 
 static const struct i2c_device_id lm3530_bl_id[] = {
@@ -77,10 +77,6 @@ static int saved_main_lcd_level;
 static int backlight_status = BL_ON;
 
 static struct lm3530_device *main_lm3530_dev;
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static struct early_suspend early_suspend;
-#endif
-static struct early_suspend * h;
 
 static void lm3530_hw_reset(void)
 {
@@ -120,8 +116,6 @@ static void lm3530_set_main_current_level(struct i2c_client *client, int level)
 
 	dev->bl_dev->props.brightness = cur_main_lcd_level = level;
 
-	mutex_lock(&main_lm3530_dev->bl_mutex);
-
 	if (level != 0) {
 		if (level > 0 && level <= MIN_LEVEL)
 			cal_value = min_brightness;
@@ -137,14 +131,12 @@ static void lm3530_set_main_current_level(struct i2c_client *client, int level)
 	} else
 		lm3530_write_reg(client, 0x10, 0x00);
 
-	msleep(1);
-
-	mutex_unlock(&main_lm3530_dev->bl_mutex);
+	mdelay(1);
 }
 
-void lm3530_backlight_on(int level)
+static void lm3530_backlight_on(int level)
 {
-
+	mutex_lock(&backlight_mtx);
 	if (backlight_status == BL_OFF) {
 		printk("%s, ++ lm3530_backlight_on  \n",__func__);
 		lm3530_hw_reset();
@@ -157,18 +149,21 @@ void lm3530_backlight_on(int level)
 
 	lm3530_set_main_current_level(main_lm3530_dev->client, level);
 	backlight_status = BL_ON;
-
-	return;
+	mutex_unlock(&backlight_mtx);
 }
 
-void lm3530_backlight_off(struct early_suspend * h)
+static void lm3530_backlight_off(void)
 {
 	int gpio = main_lm3530_dev->gpio;
 
-	printk("%s, backlight_status : %d\n",__func__,backlight_status);
+	printk("%s, on: %d\n", __func__, backlight_status);
 
-	if (backlight_status == BL_OFF)
+	mutex_lock(&backlight_mtx);
+	if (backlight_status == BL_OFF) {
+		mutex_unlock(&backlight_mtx);
 		return;
+	}
+
 	saved_main_lcd_level = cur_main_lcd_level;
 	lm3530_set_main_current_level(main_lm3530_dev->client, 0);
 	backlight_status = BL_OFF;
@@ -177,7 +172,7 @@ void lm3530_backlight_off(struct early_suspend * h)
 			GPIO_CFG_2MA), GPIO_CFG_ENABLE);
 	gpio_direction_output(gpio, 0);
 	msleep(6);
-	return;
+	mutex_unlock(&backlight_mtx);
 }
 
 void lm3530_lcd_backlight_set_level(int level)
@@ -187,10 +182,10 @@ void lm3530_lcd_backlight_set_level(int level)
 
 	if (lm3530_i2c_client != NULL) {
 		if (level == 0)
-			lm3530_backlight_off(h);
+			lm3530_backlight_off();
 		else
 			lm3530_backlight_on(level);
-	} else{
+	} else {
 		printk(KERN_INFO "%s(): No client\n", __func__);
 	}
 }
@@ -242,7 +237,7 @@ static int lm3530_bl_suspend(struct i2c_client *client, pm_message_t state)
 {
 	printk(KERN_INFO "%s: new state: %d\n", __func__, state.event);
 
-	lm3530_backlight_off(h);
+	lm3530_backlight_off();
 
 	return 0;
 }
@@ -334,16 +329,9 @@ static int __devinit lm3530_probe(struct i2c_client *i2c_dev,
 	if (dev->gpio && gpio_request(dev->gpio, "lm3530 reset") != 0)
 		return -ENODEV;
 
-	mutex_init(&dev->bl_mutex);
-
 	err = device_create_file(&i2c_dev->dev, &dev_attr_lm3530_level);
 	err = device_create_file(&i2c_dev->dev,
 			&dev_attr_lm3530_backlight_on_off);
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	early_suspend.suspend = lm3530_backlight_off;
-	register_early_suspend(&early_suspend);
-#endif
 
 	return 0;
 }
