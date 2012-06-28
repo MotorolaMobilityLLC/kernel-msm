@@ -77,6 +77,17 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	else
 		down(&mfd->dma->mutex);
 
+	ret = panel_next_off(pdev);
+	if (ret < 0) {
+		if (mdp_rev >= MDP_REV_41)
+			mutex_unlock(&mfd->dma->ov_mutex);
+		else
+			up(&mfd->dma->mutex);
+		return ret;
+	} else {
+		ret = 0;
+	}
+
 	mdp4_overlay_dsi_state_set(ST_DSI_SUSPEND);
 
 	/*

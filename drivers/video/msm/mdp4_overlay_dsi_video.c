@@ -300,6 +300,8 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 
+	ret = panel_next_off(pdev);
+
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
@@ -308,7 +310,6 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	mdp_pipe_ctrl(MDP_OVERLAY0_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	mdp_histogram_ctrl_all(FALSE);
-	ret = panel_next_off(pdev);
 
 	/* delay to make sure the last frame finishes */
 	msleep(20);
