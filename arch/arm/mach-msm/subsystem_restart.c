@@ -64,7 +64,7 @@ struct restart_log {
 };
 
 static int restart_level;
-static int enable_ramdumps;
+static int enable_ramdumps = 1;
 struct workqueue_struct *ssr_wq;
 
 static LIST_HEAD(restart_log_list);
