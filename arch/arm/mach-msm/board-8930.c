@@ -42,6 +42,7 @@
 #include <linux/gpio_keys.h>
 #include <linux/memory.h>
 #include <linux/memblock.h>
+#include <linux/msm_thermal.h>
 
 #include <linux/slimbus/slimbus.h>
 #include <linux/mfd/wcd9xxx/core.h>
@@ -86,7 +87,6 @@
 #include <mach/cpuidle.h>
 #include "rpm_resources.h"
 #include <mach/mpm.h>
-#include "acpuclock.h"
 #include "smd_private.h"
 #include "pm-boot.h"
 #include "msm_watchdog.h"
@@ -786,13 +786,13 @@ static struct wcd9xxx_pdata sitar_platform_data = {
 	{
 		.name = "VDDD_CDC_D",
 		.min_uV = 1200000,
-		.max_uV = 1200000,
+		.max_uV = 1250000,
 		.optimum_uA = WCD9XXX_VDDD_CDC_D_CUR_MAX,
 	},
 	{
 		.name = "CDC_VDDA_A_1P2V",
 		.min_uV = 1200000,
-		.max_uV = 1200000,
+		.max_uV = 1250000,
 		.optimum_uA = WCD9XXX_VDDD_CDC_A_CUR_MAX,
 	},
 	},
@@ -850,13 +850,13 @@ static struct wcd9xxx_pdata sitar1p1_platform_data = {
 	{
 		.name = "VDDD_CDC_D",
 		.min_uV = 1200000,
-		.max_uV = 1200000,
+		.max_uV = 1250000,
 		.optimum_uA = WCD9XXX_VDDD_CDC_D_CUR_MAX,
 	},
 	{
 		.name = "CDC_VDDA_A_1P2V",
 		.min_uV = 1200000,
-		.max_uV = 1200000,
+		.max_uV = 1250000,
 		.optimum_uA = WCD9XXX_VDDD_CDC_A_CUR_MAX,
 	},
 	},
@@ -1018,6 +1018,55 @@ static struct platform_device qseecom_device = {
 #define QCE_SHARE_CE_RESOURCE	1
 #define QCE_CE_SHARED		0
 
+/* Begin Bus scaling definitions */
+static struct msm_bus_vectors crypto_hw_init_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_ADM_PORT0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 0,
+		.ib = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_ADM_PORT1,
+		.dst = MSM_BUS_SLAVE_GSBI1_UART,
+		.ab = 0,
+		.ib = 0,
+	},
+};
+
+static struct msm_bus_vectors crypto_hw_active_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_ADM_PORT0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab = 70000000UL,
+		.ib = 70000000UL,
+	},
+	{
+		.src = MSM_BUS_MASTER_ADM_PORT1,
+		.dst = MSM_BUS_SLAVE_GSBI1_UART,
+		.ab = 2480000000UL,
+		.ib = 2480000000UL,
+	},
+};
+
+static struct msm_bus_paths crypto_hw_bus_scale_usecases[] = {
+	{
+		ARRAY_SIZE(crypto_hw_init_vectors),
+		crypto_hw_init_vectors,
+	},
+	{
+		ARRAY_SIZE(crypto_hw_active_vectors),
+		crypto_hw_active_vectors,
+	},
+};
+
+static struct msm_bus_scale_pdata crypto_hw_bus_scale_pdata = {
+		crypto_hw_bus_scale_usecases,
+		ARRAY_SIZE(crypto_hw_bus_scale_usecases),
+		.name = "cryptohw",
+};
+/* End Bus Scaling Definitions*/
+
 static struct resource qcrypto_resources[] = {
 	[0] = {
 		.start = QCE_0_BASE,
@@ -1080,6 +1129,7 @@ static struct msm_ce_hw_support qcrypto_ce_hw_suppport = {
 	.shared_ce_resource = QCE_SHARE_CE_RESOURCE,
 	.hw_key_support = QCE_HW_KEY_SUPPORT,
 	.sha_hmac = QCE_SHA_HMAC_SUPPORT,
+	.bus_scale_table = &crypto_hw_bus_scale_pdata,
 };
 
 static struct platform_device qcrypto_device = {
@@ -1102,6 +1152,7 @@ static struct msm_ce_hw_support qcedev_ce_hw_suppport = {
 	.shared_ce_resource = QCE_SHARE_CE_RESOURCE,
 	.hw_key_support = QCE_HW_KEY_SUPPORT,
 	.sha_hmac = QCE_SHA_HMAC_SUPPORT,
+	.bus_scale_table = &crypto_hw_bus_scale_pdata,
 };
 
 static struct platform_device qcedev_device = {
@@ -1202,6 +1253,7 @@ static uint16_t msm_mpm_irqs_m2a[MSM_MPM_NR_MPM_IRQS] __initdata = {
 	[23] = MSM_GPIO_TO_INT(85),
 	[24] = MSM_GPIO_TO_INT(83),
 	[25] = USB1_HS_IRQ,
+	[26] = MSM_GPIO_TO_INT(6),
 	[27] = HDMI_IRQ,
 	[29] = MSM_GPIO_TO_INT(10),
 	[30] = MSM_GPIO_TO_INT(102),
@@ -1215,15 +1267,15 @@ static uint16_t msm_mpm_irqs_m2a[MSM_MPM_NR_MPM_IRQS] __initdata = {
 	[38] = MSM_GPIO_TO_INT(50),
 	[39] = MSM_GPIO_TO_INT(42),
 	[41] = MSM_GPIO_TO_INT(62),
-	[42] = MSM_GPIO_TO_INT(76),
-	[43] = MSM_GPIO_TO_INT(75),
+	[42] = MSM_GPIO_TO_INT(8),
+	[43] = MSM_GPIO_TO_INT(33),
 	[44] = MSM_GPIO_TO_INT(70),
 	[45] = MSM_GPIO_TO_INT(69),
 	[46] = MSM_GPIO_TO_INT(67),
 	[47] = MSM_GPIO_TO_INT(65),
-	[48] = MSM_GPIO_TO_INT(58),
-	[49] = MSM_GPIO_TO_INT(54),
-	[50] = MSM_GPIO_TO_INT(52),
+	[48] = MSM_GPIO_TO_INT(55),
+	[49] = MSM_GPIO_TO_INT(74),
+	[50] = MSM_GPIO_TO_INT(98),
 	[51] = MSM_GPIO_TO_INT(49),
 	[52] = MSM_GPIO_TO_INT(40),
 	[53] = MSM_GPIO_TO_INT(37),
@@ -1362,6 +1414,14 @@ static struct msm_bus_scale_pdata usb_bus_scale_pdata = {
 	.name = "usb",
 };
 #endif
+
+static int hsusb_phy_init_seq[] = {
+	0x44, 0x80, /* set VBUS valid threshold
+			and disconnect valid threshold */
+	0x38, 0x81, /* update DC voltage level */
+	0x24, 0x82, /* set preemphasis and rise/fall time */
+	0x13, 0x83, /* set source impedance adjusment */
+	-1};
 
 static struct msm_otg_platform_data msm_otg_pdata = {
 	.mode			= USB_OTG,
@@ -1922,6 +1982,14 @@ static struct platform_device msm_tsens_device = {
 	.id = -1,
 };
 
+static struct msm_thermal_data msm_thermal_pdata = {
+	.sensor_id = 9,
+	.poll_ms = 1000,
+	.limit_temp = 60,
+	.temp_hysteresis = 10,
+	.limit_freq = 918000,
+};
+
 #ifdef CONFIG_MSM_FAKE_BATTERY
 static struct platform_device fish_battery_device = {
 	.name = "fish_battery",
@@ -1983,6 +2051,7 @@ static struct platform_device msm8930_device_rpm_regulator __devinitdata = {
 };
 
 static struct platform_device *common_devices[] __initdata = {
+	&msm8960_device_acpuclk,
 	&msm8960_device_dmov,
 	&msm_device_smd,
 	&msm8960_device_uart_gsbi5,
@@ -2332,6 +2401,7 @@ static void __init msm8930_cdp_init(void)
 		pr_err("meminfo_init() failed!\n");
 
 	msm_tsens_early_init(&msm_tsens_pdata);
+	msm_thermal_init(&msm_thermal_pdata);
 	BUG_ON(msm_rpm_init(&msm8930_rpm_data));
 	BUG_ON(msm_rpmrs_levels_init(&msm_rpmrs_data));
 
@@ -2340,6 +2410,7 @@ static void __init msm8930_cdp_init(void)
 		pr_err("Failed to initialize XO votes\n");
 	platform_device_register(&msm8930_device_rpm_regulator);
 	msm_clock_init(&msm8930_clock_init_data);
+	msm_otg_pdata.phy_init_seq = hsusb_phy_init_seq;
 	msm8960_device_otg.dev.platform_data = &msm_otg_pdata;
 	android_usb_pdata.swfi_latency =
 			msm_rpmrs_levels[0].latency_us;
@@ -2381,7 +2452,6 @@ static void __init msm8930_cdp_init(void)
 	msm8930_init_cam();
 #endif
 	msm8930_init_mmc();
-	acpuclk_init(&acpuclk_8930_soc_data);
 	mxt_init_vkeys_8930();
 	register_i2c_devices();
 	msm8930_init_fb();

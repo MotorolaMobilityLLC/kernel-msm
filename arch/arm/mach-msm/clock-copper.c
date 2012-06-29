@@ -746,6 +746,11 @@ static DEFINE_CLK_VOTER(bimc_acpu_a_clk, &bimc_a_clk.c, LONG_MAX);
 static DEFINE_CLK_VOTER(ocmemgx_msmbus_clk, &ocmemgx_clk.c, LONG_MAX);
 static DEFINE_CLK_VOTER(ocmemgx_msmbus_a_clk, &ocmemgx_a_clk.c, LONG_MAX);
 
+static DEFINE_CLK_VOTER(pnoc_sdcc1_clk, &pnoc_clk.c, 0);
+static DEFINE_CLK_VOTER(pnoc_sdcc2_clk, &pnoc_clk.c, 0);
+static DEFINE_CLK_VOTER(pnoc_sdcc3_clk, &pnoc_clk.c, 0);
+static DEFINE_CLK_VOTER(pnoc_sdcc4_clk, &pnoc_clk.c, 0);
+
 static struct clk_freq_tbl ftbl_gcc_usb30_master_clk[] = {
 	F(125000000,  gpll0,   1,   5,  24),
 	F_END
@@ -3716,7 +3721,8 @@ static struct branch_clk mmss_mmssnoc_bto_ahb_clk = {
 static struct branch_clk mmss_mmssnoc_axi_clk = {
 	.cbcr_reg = MMSS_MMSSNOC_AXI_CBCR,
 	.parent = &axi_clk_src.c,
-	.has_sibling = 1,
+	/* The bus driver needs set_rate to go through to the parent */
+	.has_sibling = 0,
 	.base = &virt_bases[MMSS_BASE],
 	.c = {
 		.dbg_name = "mmss_mmssnoc_axi_clk",
@@ -3998,7 +4004,6 @@ static struct branch_clk audio_core_lpaif_codec_spkr_osr_clk = {
 
 static struct branch_clk audio_core_lpaif_codec_spkr_ebit_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_CODEC_SPKR_EBIT_CBCR,
-	.parent = &audio_core_lpaif_codec_spkr_clk_src.c,
 	.has_sibling = 1,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
@@ -4012,7 +4017,7 @@ static struct branch_clk audio_core_lpaif_codec_spkr_ibit_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_CODEC_SPKR_IBIT_CBCR,
 	.parent = &audio_core_lpaif_codec_spkr_clk_src.c,
 	.has_sibling = 1,
-	.max_div = 16,
+	.max_div = 15,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
 		.dbg_name = "audio_core_lpaif_codec_spkr_clk_src",
@@ -4035,7 +4040,6 @@ static struct branch_clk audio_core_lpaif_pri_osr_clk = {
 
 static struct branch_clk audio_core_lpaif_pri_ebit_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_PRI_EBIT_CBCR,
-	.parent = &audio_core_lpaif_pri_clk_src.c,
 	.has_sibling = 1,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
@@ -4049,7 +4053,7 @@ static struct branch_clk audio_core_lpaif_pri_ibit_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_PRI_IBIT_CBCR,
 	.parent = &audio_core_lpaif_pri_clk_src.c,
 	.has_sibling = 1,
-	.max_div = 16,
+	.max_div = 15,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
 		.dbg_name = "audio_core_lpaif_pri_ibit_clk",
@@ -4072,7 +4076,6 @@ static struct branch_clk audio_core_lpaif_sec_osr_clk = {
 
 static struct branch_clk audio_core_lpaif_sec_ebit_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_SEC_EBIT_CBCR,
-	.parent = &audio_core_lpaif_sec_clk_src.c,
 	.has_sibling = 1,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
@@ -4086,7 +4089,7 @@ static struct branch_clk audio_core_lpaif_sec_ibit_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_SEC_IBIT_CBCR,
 	.parent = &audio_core_lpaif_sec_clk_src.c,
 	.has_sibling = 1,
-	.max_div = 16,
+	.max_div = 15,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
 		.dbg_name = "audio_core_lpaif_sec_ibit_clk",
@@ -4109,7 +4112,6 @@ static struct branch_clk audio_core_lpaif_ter_osr_clk = {
 
 static struct branch_clk audio_core_lpaif_ter_ebit_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_TER_EBIT_CBCR,
-	.parent = &audio_core_lpaif_ter_clk_src.c,
 	.has_sibling = 1,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
@@ -4123,7 +4125,7 @@ static struct branch_clk audio_core_lpaif_ter_ibit_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_TER_IBIT_CBCR,
 	.parent = &audio_core_lpaif_ter_clk_src.c,
 	.has_sibling = 1,
-	.max_div = 16,
+	.max_div = 15,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
 		.dbg_name = "audio_core_lpaif_ter_ibit_clk",
@@ -4146,7 +4148,6 @@ static struct branch_clk audio_core_lpaif_quad_osr_clk = {
 
 static struct branch_clk audio_core_lpaif_quad_ebit_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_QUAD_EBIT_CBCR,
-	.parent = &audio_core_lpaif_quad_clk_src.c,
 	.has_sibling = 1,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
@@ -4160,7 +4161,7 @@ static struct branch_clk audio_core_lpaif_quad_ibit_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_QUAD_IBIT_CBCR,
 	.parent = &audio_core_lpaif_quad_clk_src.c,
 	.has_sibling = 1,
-	.max_div = 16,
+	.max_div = 15,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
 		.dbg_name = "audio_core_lpaif_quad_ibit_clk",
@@ -4171,7 +4172,6 @@ static struct branch_clk audio_core_lpaif_quad_ibit_clk = {
 
 static struct branch_clk audio_core_lpaif_pcm0_ebit_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_PCM0_EBIT_CBCR,
-	.parent = &audio_core_lpaif_pcm0_clk_src.c,
 	.has_sibling = 1,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
@@ -4185,7 +4185,6 @@ static struct branch_clk audio_core_lpaif_pcm0_ibit_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_PCM0_IBIT_CBCR,
 	.parent = &audio_core_lpaif_pcm0_clk_src.c,
 	.has_sibling = 1,
-	.max_div = 16,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
 		.dbg_name = "audio_core_lpaif_pcm0_ibit_clk",
@@ -4210,7 +4209,6 @@ static struct branch_clk audio_core_lpaif_pcm1_ibit_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_PCM1_IBIT_CBCR,
 	.parent = &audio_core_lpaif_pcm1_clk_src.c,
 	.has_sibling = 1,
-	.max_div = 16,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
 		.dbg_name = "audio_core_lpaif_pcm1_ibit_clk",
@@ -4675,12 +4673,16 @@ static struct clk_lookup msm_clocks_copper[] = {
 
 	CLK_LOOKUP("iface_clk", gcc_sdcc1_ahb_clk.c, "msm_sdcc.1"),
 	CLK_LOOKUP("core_clk", gcc_sdcc1_apps_clk.c, "msm_sdcc.1"),
+	CLK_LOOKUP("bus_clk", pnoc_sdcc1_clk.c, "msm_sdcc.1"),
 	CLK_LOOKUP("iface_clk", gcc_sdcc2_ahb_clk.c, "msm_sdcc.2"),
 	CLK_LOOKUP("core_clk", gcc_sdcc2_apps_clk.c, "msm_sdcc.2"),
+	CLK_LOOKUP("bus_clk", pnoc_sdcc2_clk.c, "msm_sdcc.2"),
 	CLK_LOOKUP("iface_clk", gcc_sdcc3_ahb_clk.c, "msm_sdcc.3"),
 	CLK_LOOKUP("core_clk", gcc_sdcc3_apps_clk.c, "msm_sdcc.3"),
+	CLK_LOOKUP("bus_clk", pnoc_sdcc3_clk.c, "msm_sdcc.3"),
 	CLK_LOOKUP("iface_clk", gcc_sdcc4_ahb_clk.c, "msm_sdcc.4"),
 	CLK_LOOKUP("core_clk", gcc_sdcc4_apps_clk.c, "msm_sdcc.4"),
+	CLK_LOOKUP("bus_clk", pnoc_sdcc4_clk.c, "msm_sdcc.4"),
 
 	CLK_LOOKUP("iface_clk", gcc_tsif_ahb_clk.c, ""),
 	CLK_LOOKUP("ref_clk", gcc_tsif_ref_clk.c, ""),
@@ -4704,10 +4706,10 @@ static struct clk_lookup msm_clocks_copper[] = {
 	CLK_LOOKUP("core_clk", mdss_esc1_clk.c, ""),
 	CLK_LOOKUP("iface_clk", mdss_hdmi_ahb_clk.c, ""),
 	CLK_LOOKUP("core_clk", mdss_hdmi_clk.c, ""),
-	CLK_LOOKUP("core_clk", mdss_mdp_clk.c, ""),
-	CLK_LOOKUP("core_clk", mdss_mdp_lut_clk.c, ""),
-	CLK_LOOKUP("core_clk", mdp_clk_src.c, ""),
-	CLK_LOOKUP("core_clk", mdss_vsync_clk.c, ""),
+	CLK_LOOKUP("core_clk", mdss_mdp_clk.c, "mdp.0"),
+	CLK_LOOKUP("lut_clk", mdss_mdp_lut_clk.c, "mdp.0"),
+	CLK_LOOKUP("core_clk_src", mdp_clk_src.c, "mdp.0"),
+	CLK_LOOKUP("vsync_clk", mdss_vsync_clk.c, "mdp.0"),
 	CLK_LOOKUP("iface_clk", camss_cci_cci_ahb_clk.c, ""),
 	CLK_LOOKUP("core_clk", camss_cci_cci_clk.c, ""),
 	CLK_LOOKUP("iface_clk", camss_csi0_ahb_clk.c, ""),
@@ -4766,9 +4768,10 @@ static struct clk_lookup msm_clocks_copper[] = {
 	CLK_LOOKUP("iface_clk", camss_vfe_vfe_ahb_clk.c, ""),
 	CLK_LOOKUP("bus_clk", camss_vfe_vfe_axi_clk.c, ""),
 	CLK_LOOKUP("bus_clk", camss_vfe_vfe_ocmemnoc_clk.c, ""),
+	CLK_LOOKUP("iface_clk", mdss_ahb_clk.c, "mdp.0"),
 	CLK_LOOKUP("iface_clk", mdss_ahb_clk.c, "fd928000.qcom,iommu"),
 	CLK_LOOKUP("core_clk", mdss_axi_clk.c, "fd928000.qcom,iommu"),
-	CLK_LOOKUP("bus_clk", mdss_axi_clk.c, ""),
+	CLK_LOOKUP("bus_clk", mdss_axi_clk.c, "mdp.0"),
 	CLK_LOOKUP("core_clk", oxili_gfx3d_clk.c, ""),
 	CLK_LOOKUP("iface_clk", oxilicx_ahb_clk.c, ""),
 	CLK_LOOKUP("bus_clk", oxilicx_axi_clk.c, ""),
@@ -4819,6 +4822,7 @@ static struct clk_lookup msm_clocks_copper[] = {
 	CLK_DUMMY("dfab_clk",  DFAB_CLK,    "msm_sps", OFF),
 	CLK_DUMMY("mem_clk",       NULL,    "msm_sps", OFF),
 	CLK_DUMMY("bus_clk",       NULL,        "scm", OFF),
+	CLK_DUMMY("bus_clk",       NULL,    "qseecom", OFF),
 
 	CLK_LOOKUP("bus_clk", snoc_clk.c, ""),
 	CLK_LOOKUP("bus_clk", pnoc_clk.c, ""),
@@ -4844,8 +4848,8 @@ static struct clk_lookup msm_clocks_copper[] = {
 	CLK_LOOKUP("ocmem_a_clk", ocmemgx_msmbus_a_clk.c, "msm_bus"),
 	CLK_LOOKUP("bus_clk",	ocmemnoc_clk.c,		"msm_ocmem_noc"),
 	CLK_LOOKUP("bus_a_clk",	ocmemnoc_clk.c,		"msm_ocmem_noc"),
-	CLK_LOOKUP("bus_clk",	axi_clk_src.c,		"msm_mmss_noc"),
-	CLK_LOOKUP("bus_a_clk",	axi_clk_src.c,		"msm_mmss_noc"),
+	CLK_LOOKUP("bus_clk",	mmss_mmssnoc_axi_clk.c,	"msm_mmss_noc"),
+	CLK_LOOKUP("bus_a_clk",	mmss_mmssnoc_axi_clk.c,	"msm_mmss_noc"),
 };
 
 static struct pll_config_regs gpll0_regs __initdata = {

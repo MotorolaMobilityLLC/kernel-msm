@@ -24,6 +24,7 @@
 #include <linux/usb/otg.h>
 #include <linux/wakelock.h>
 #include <linux/pm_qos.h>
+#include <linux/hrtimer.h>
 
 /*
  * The following are bit fields describing the usb_request.udc_priv word.
@@ -160,6 +161,16 @@ enum usb_vdd_type {
 };
 
 /**
+ * Used different VDDCX voltage values
+ */
+enum usb_vdd_value {
+	VDD_NONE = 0,
+	VDD_MIN,
+	VDD_MAX,
+	VDD_VAL_MAX,
+};
+
+/**
  * struct msm_otg_platform_data - platform device data
  *              for msm_otg driver.
  * @phy_init_seq: PHY configuration sequence. val, reg pairs
@@ -181,6 +192,8 @@ enum usb_vdd_type {
  * @enable_lpm_on_suspend: Enable the USB core to go into Low
  *              Power Mode, when USB bus is suspended but cable
  *              is connected.
+ * @core_clk_always_on_workaround: Don't disable core_clk when
+ *              USB enters LPM.
  * @bus_scale_table: parameters for bus bandwidth requirements
  */
 struct msm_otg_platform_data {
@@ -197,6 +210,7 @@ struct msm_otg_platform_data {
 	bool disable_reset_on_disconnect;
 	bool enable_dcd;
 	bool enable_lpm_on_dev_suspend;
+	bool core_clk_always_on_workaround;
 	struct msm_bus_scale_pdata *bus_scale_table;
 };
 
@@ -355,8 +369,14 @@ struct msm_usb_host_platform_data {
 	unsigned int dock_connect_irq;
 };
 
+/**
+ * struct msm_hsic_peripheral_platform_data: HSIC peripheral
+ * platform data.
+ * @core_clk_always_on_workaround: Don't disable core_clk when
+ *                                 HSIC enters LPM.
+ */
 struct msm_hsic_peripheral_platform_data {
-	bool keep_core_clk_on_suspend_workaround;
+	bool core_clk_always_on_workaround;
 };
 
 struct usb_bam_pipe_connect {

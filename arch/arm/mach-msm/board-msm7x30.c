@@ -105,7 +105,7 @@
  */
 #define MSM_V4L2_VIDEO_OVERLAY_BUF_SIZE 2764800
 
-#ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
+#ifdef CONFIG_FB_MSM_HDMI_ADV7520_PANEL
 #define MSM_FB_EXT_BUF_SIZE (1280 * 720 * 2 * 1) /* 2 bpp x 1 page */
 #else
 #define MSM_FB_EXT_BUF_SIZE    0
@@ -880,7 +880,6 @@ static struct i2c_board_info cy8info[] __initdata = {
 static struct msm_camera_device_platform_data msm_camera_csi_device_data[] = {
 	{
 		.csid_core = 0,
-		.is_csic = 1,
 		.is_vpe    = 1,
 		.ioclk = {
 			.vfe_clk_rate =	153600000,
@@ -6957,7 +6956,7 @@ static void __init msm7x30_init(void)
 	msm7x30_init_uart2();
 #endif
 	msm_spm_init(&msm_spm_data, 1);
-	acpuclk_init(&acpuclk_7x30_soc_data);
+	platform_device_register(&msm7x30_device_acpuclk);
 	if (machine_is_msm7x30_surf() || machine_is_msm7x30_fluid())
 		msm7x30_cfg_smsc911x();
 

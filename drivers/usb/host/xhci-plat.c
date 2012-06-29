@@ -14,17 +14,30 @@
 #include <linux/platform_device.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#include <linux/usb/otg.h>
 
 #include "xhci.h"
 
+#define SYNOPSIS_DWC3_VENDOR	0x5533
+
+static struct usb_phy *phy;
+
 static void xhci_plat_quirks(struct device *dev, struct xhci_hcd *xhci)
 {
+	struct xhci_plat_data *pdata = dev->platform_data;
+
 	/*
 	 * As of now platform drivers don't provide MSI support so we ensure
 	 * here that the generic code does not try to make a pci_dev from our
 	 * dev struct in order to setup MSI
 	 */
 	xhci->quirks |= XHCI_BROKEN_MSI;
+
+	if (!pdata)
+		return;
+	else if (pdata->vendor == SYNOPSIS_DWC3_VENDOR &&
+			pdata->revision < 0x230A)
+		xhci->quirks |= XHCI_PORTSC_DELAY;
 }
 
 /* called during probe() after chip reset completes */
@@ -149,6 +162,19 @@ static int xhci_plat_probe(struct platform_device *pdev)
 	if (ret)
 		goto put_usb3_hcd;
 
+	phy = usb_get_transceiver();
+	if (phy && phy->otg) {
+		dev_dbg(&pdev->dev, "%s otg support available\n", __func__);
+		hcd->driver->stop(hcd);
+		ret = otg_set_host(phy->otg, &hcd->self);
+		if (ret) {
+			dev_err(&pdev->dev, "%s otg_set_host failed\n",
+				__func__);
+			usb_put_transceiver(phy);
+			goto put_usb3_hcd;
+		}
+	}
+
 	return 0;
 
 put_usb3_hcd:
@@ -181,6 +207,11 @@ static int xhci_plat_remove(struct platform_device *dev)
 	iounmap(hcd->regs);
 	usb_put_hcd(hcd);
 	kfree(xhci);
+
+	if (phy && phy->otg) {
+		otg_set_host(phy->otg, NULL);
+		usb_put_transceiver(phy);
+	}
 
 	return 0;
 }

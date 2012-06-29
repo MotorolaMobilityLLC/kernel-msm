@@ -212,10 +212,10 @@
 #define NR_SG		128
 
 #define MSM_MMC_IDLE_TIMEOUT	5000 /* msecs */
+#define MSM_MMC_CLK_GATE_DELAY	200 /* msecs */
 
 /* Set the request timeout to 10secs */
 #define MSM_MMC_REQ_TIMEOUT	10000 /* msecs */
-#define MSM_MMC_DISABLE_TIMEOUT        200 /* msecs */
 
 /*
  * Controller HW limitations
@@ -350,7 +350,7 @@ struct msmsdcc_host {
 	struct mmc_host		*mmc;
 	struct clk		*clk;		/* main MMC bus clock */
 	struct clk		*pclk;		/* SDCC peripheral bus clock */
-	struct clk		*dfab_pclk;	/* Daytona Fabric SDCC clock */
+	struct clk		*bus_clk;	/* SDCC bus voter clock */
 	unsigned int		clks_on;	/* set if clocks are enabled */
 
 	unsigned int		eject;		/* eject state */

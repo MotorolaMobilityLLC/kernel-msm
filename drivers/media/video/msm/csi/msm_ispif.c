@@ -571,16 +571,51 @@ void msm_ispif_vfe_get_cid(uint8_t intftype, char *cids, int *num)
 	}
 }
 
+static long msm_ispif_cmd(struct v4l2_subdev *sd, void *arg)
+{
+	long rc = 0;
+	struct ispif_cfg_data cdata;
+
+	if (copy_from_user(&cdata, (void *)arg, sizeof(struct ispif_cfg_data)))
+		return -EFAULT;
+	CDBG("%s cfgtype = %d\n", __func__, cdata.cfgtype);
+	switch (cdata.cfgtype) {
+	case ISPIF_INIT:
+		CDBG("%s csid_version = %x\n", __func__,
+			cdata.cfg.csid_version);
+		rc = msm_ispif_init(&cdata.cfg.csid_version);
+		break;
+	case ISPIF_SET_CFG:
+		CDBG("%s len = %d, intftype = %d,.cid_mask = %d, csid = %d\n",
+			__func__,
+			cdata.cfg.ispif_params.len,
+			cdata.cfg.ispif_params.params[0].intftype,
+			cdata.cfg.ispif_params.params[0].cid_mask,
+			cdata.cfg.ispif_params.params[0].csid);
+		rc = msm_ispif_config(&cdata.cfg.ispif_params);
+		break;
+
+	case ISPIF_SET_ON_FRAME_BOUNDARY:
+	case ISPIF_SET_OFF_FRAME_BOUNDARY:
+	case ISPIF_SET_OFF_IMMEDIATELY:
+		rc = msm_ispif_subdev_video_s_stream(sd, cdata.cfg.cmd);
+		break;
+	case ISPIF_RELEASE:
+		msm_ispif_release(sd);
+		break;
+	default:
+		break;
+	}
+
+	return rc;
+}
+
 static long msm_ispif_subdev_ioctl(struct v4l2_subdev *sd, unsigned int cmd,
 								void *arg)
 {
 	switch (cmd) {
 	case VIDIOC_MSM_ISPIF_CFG:
-		return msm_ispif_config((struct msm_ispif_params_list *)arg);
-	case VIDIOC_MSM_ISPIF_INIT:
-		return msm_ispif_init((uint32_t *)arg);
-	case VIDIOC_MSM_ISPIF_RELEASE:
-		msm_ispif_release(sd);
+		return msm_ispif_cmd(sd, arg);
 	default:
 		return -ENOIOCTLCMD;
 	}
@@ -605,6 +640,8 @@ static const struct v4l2_subdev_internal_ops msm_ispif_internal_ops;
 static int __devinit ispif_probe(struct platform_device *pdev)
 {
 	int rc = 0;
+	struct msm_cam_subdev_info sd_info;
+
 	CDBG("%s\n", __func__);
 	ispif = kzalloc(sizeof(struct ispif_device), GFP_KERNEL);
 	if (!ispif) {
@@ -652,7 +689,10 @@ static int __devinit ispif_probe(struct platform_device *pdev)
 	}
 
 	ispif->pdev = pdev;
-	msm_cam_register_subdev_node(&ispif->subdev, ISPIF_DEV, pdev->id);
+	sd_info.sdev_type = ISPIF_DEV;
+	sd_info.sd_index = pdev->id;
+	sd_info.irq_num = ispif->irq->start;
+	msm_cam_register_subdev_node(&ispif->subdev, &sd_info);
 	return 0;
 
 ispif_no_mem:

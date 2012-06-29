@@ -248,28 +248,17 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 	u32 enabled;
 	unsigned long pending[32];
 	void __iomem *base = gic_data_dist_base(gic);
-#ifdef CONFIG_ARCH_MSM8625
-	unsigned long flags;
-#endif
 
 	if (!msm_show_resume_irq_mask)
 		return;
 
-#ifdef CONFIG_ARCH_MSM8625
-	raw_spin_lock_irqsave(&irq_controller_lock, flags);
-#else
 	raw_spin_lock(&irq_controller_lock);
-#endif
 	for (i = 0; i * 32 < gic->max_irq; i++) {
 		enabled = readl_relaxed(base + GIC_DIST_ENABLE_CLEAR + i * 4);
 		pending[i] = readl_relaxed(base + GIC_DIST_PENDING_SET + i * 4);
 		pending[i] &= enabled;
 	}
-#ifdef CONFIG_ARCH_MSM8625
-	raw_spin_unlock_irqrestore(&irq_controller_lock, flags);
-#else
-	raw_spin_lock(&irq_controller_lock);
-#endif
+	raw_spin_unlock(&irq_controller_lock);
 
 	for (i = find_first_bit(pending, gic->max_irq);
 	     i < gic->max_irq;
@@ -283,22 +272,14 @@ static void gic_resume_one(struct gic_chip_data *gic)
 {
 	unsigned int i;
 	void __iomem *base = gic_data_dist_base(gic);
-#ifdef CONFIG_ARCH_MSM8625
-	unsigned long flags;
-#endif
+
 	gic_show_resume_irq(gic);
 	for (i = 0; i * 32 < gic->max_irq; i++) {
-#ifdef CONFIG_ARCH_MSM8625
-		raw_spin_lock_irqsave(&irq_controller_lock, flags);
-#endif
 		/* disable all of them */
 		writel_relaxed(0xffffffff, base + GIC_DIST_ENABLE_CLEAR + i * 4);
 		/* enable the enabled set */
 		writel_relaxed(gic->enabled_irqs[i],
 			base + GIC_DIST_ENABLE_SET + i * 4);
-#ifdef CONFIG_ARCH_MSM8625
-		raw_spin_unlock_irqrestore(&irq_controller_lock, flags);
-#endif
 	}
 	mb();
 }
@@ -1081,9 +1062,11 @@ int __init gic_of_init(struct device_node *node, struct device_node *parent)
 	return 0;
 }
 #endif
-/* before calling this function the interrupts should be disabled
- * and the irq must be disabled at gic to avoid spurious interrupts */
-bool gic_is_spi_pending(unsigned int irq)
+/*
+ * Before calling this function the interrupts should be disabled
+ * and the irq must be disabled at gic to avoid spurious interrupts
+ */
+bool gic_is_irq_pending(unsigned int irq)
 {
 	struct irq_data *d = irq_get_irq_data(irq);
 	struct gic_chip_data *gic_data = &gic_data[0];
@@ -1102,9 +1085,11 @@ bool gic_is_spi_pending(unsigned int irq)
 	return (bool) (val & mask);
 }
 
-/* before calling this function the interrupts should be disabled
- * and the irq must be disabled at gic to avoid spurious interrupts */
-void gic_clear_spi_pending(unsigned int irq)
+/*
+ * Before calling this function the interrupts should be disabled
+ * and the irq must be disabled at gic to avoid spurious interrupts
+ */
+void gic_clear_irq_pending(unsigned int irq)
 {
 	struct gic_chip_data *gic_data = &gic_data[0];
 	struct irq_data *d = irq_get_irq_data(irq);

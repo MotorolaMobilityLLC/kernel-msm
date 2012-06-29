@@ -107,6 +107,11 @@ struct platform_device msm9615_device_dmov = {
 	},
 };
 
+struct platform_device msm9615_device_acpuclk = {
+	.name           = "acpuclk-9615",
+	.id             = -1,
+};
+
 #define MSM_USB_BAM_BASE     0x12502000
 #define MSM_USB_BAM_SIZE     SZ_16K
 #define MSM_HSIC_BAM_BASE    0x12542000
@@ -1035,6 +1040,7 @@ struct msm_rpm_platform_data msm9615_rpm_data __initdata = {
 		MSM_RPM_MAP(9615, CXO_BUFFERS, CXO_BUFFERS, 1),
 		MSM_RPM_MAP(9615, USB_OTG_SWITCH, USB_OTG_SWITCH, 1),
 		MSM_RPM_MAP(9615, HDMI_SWITCH, HDMI_SWITCH, 1),
+		MSM_RPM_MAP(9615, VOLTAGE_CORNER, VOLTAGE_CORNER, 1),
 	},
 	.target_status = {
 		MSM_RPM_STATUS_ID_MAP(9615, VERSION_MAJOR),
@@ -1100,6 +1106,7 @@ struct msm_rpm_platform_data msm9615_rpm_data __initdata = {
 		MSM_RPM_STATUS_ID_MAP(9615, CXO_BUFFERS),
 		MSM_RPM_STATUS_ID_MAP(9615, USB_OTG_SWITCH),
 		MSM_RPM_STATUS_ID_MAP(9615, HDMI_SWITCH),
+		MSM_RPM_STATUS_ID_MAP(9615, VOLTAGE_CORNER),
 	},
 	.target_ctrl_id = {
 		MSM_RPM_CTRL_MAP(9615, VERSION_MAJOR),
@@ -1280,17 +1287,17 @@ static struct msm_rpmrs_platform_data msm_rpmrs_data __initdata = {
 		[MSM_RPMRS_VDD_MEM_MAX]         = 1150000,
 	},
 	.vdd_dig_levels = {
-		[MSM_RPMRS_VDD_DIG_RET_LOW]     = 500000,
-		[MSM_RPMRS_VDD_DIG_RET_HIGH]    = 750000,
-		[MSM_RPMRS_VDD_DIG_ACTIVE]      = 950000,
-		[MSM_RPMRS_VDD_DIG_MAX]         = 1150000,
+		[MSM_RPMRS_VDD_DIG_RET_LOW]     = 0,
+		[MSM_RPMRS_VDD_DIG_RET_HIGH]    = 0,
+		[MSM_RPMRS_VDD_DIG_ACTIVE]      = 1,
+		[MSM_RPMRS_VDD_DIG_MAX]         = 3,
 	},
 	.vdd_mask = 0x7FFFFF,
 	.rpmrs_target_id = {
 		[MSM_RPMRS_ID_PXO_CLK]          = MSM_RPM_ID_CXO_CLK,
 		[MSM_RPMRS_ID_L2_CACHE_CTL]     = MSM_RPM_ID_LAST,
-		[MSM_RPMRS_ID_VDD_DIG_0]        = MSM_RPM_ID_PM8018_S1_0,
-		[MSM_RPMRS_ID_VDD_DIG_1]        = MSM_RPM_ID_PM8018_S1_1,
+		[MSM_RPMRS_ID_VDD_DIG_0]        = MSM_RPM_ID_VOLTAGE_CORNER,
+		[MSM_RPMRS_ID_VDD_DIG_1]        = MSM_RPM_ID_LAST,
 		[MSM_RPMRS_ID_VDD_MEM_0]        = MSM_RPM_ID_PM8018_L9_0,
 		[MSM_RPMRS_ID_VDD_MEM_1]        = MSM_RPM_ID_PM8018_L9_1,
 		[MSM_RPMRS_ID_RPM_CTL]          = MSM_RPM_ID_RPM_CTL,

@@ -61,10 +61,6 @@ struct msm_camera_device_platform_data {
 	struct msm_camera_io_ext ioext;
 	struct msm_camera_io_clk ioclk;
 	uint8_t csid_core;
-	uint8_t is_csiphy;
-	uint8_t is_csic;
-	uint8_t is_csid;
-	uint8_t is_ispif;
 	uint8_t is_vpe;
 	struct msm_bus_scale_pdata *cam_bus_scale_table;
 };
@@ -187,6 +183,7 @@ enum msm_sensor_type {
 enum camera_vreg_type {
 	REG_LDO,
 	REG_VS,
+	REG_GPIO,
 };
 
 struct camera_vreg_t {
@@ -294,7 +291,6 @@ struct msm_camera_sensor_info {
 	enum msm_sensor_type sensor_type;
 	struct msm_actuator_info *actuator_info;
 	int pmic_gpio_enable;
-	int (*sensor_lcd_gpio_onoff)(int on);
 	struct msm_eeprom_info *eeprom_info;
 };
 
@@ -389,6 +385,7 @@ struct msm_panel_common_pdata {
 	int (*backlight_level)(int level, int max, int min);
 	int (*pmic_backlight)(int level);
 	int (*rotate_panel)(void);
+	int (*backlight) (int level, int mode);
 	int (*panel_num)(void);
 	void (*panel_config_gpio)(int);
 	int (*vga_switch)(int select_vga);
@@ -493,6 +490,8 @@ struct msm_hdmi_platform_data {
 	int (*enable_5v)(int on);
 	int (*core_power)(int on, int show);
 	int (*cec_power)(int on);
+	int (*panel_power)(int on);
+	int (*gpio_config)(int on);
 	int (*init_irq)(void);
 	bool (*check_hdcp_hw_support)(void);
 };

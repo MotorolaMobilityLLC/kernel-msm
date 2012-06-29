@@ -220,7 +220,7 @@ static struct msm_mmc_pin_data mmc_slot_pin_data[MAX_SDCC_CONTROLLER] = {
 #define MSM_MPM_PIN_SDC3_DAT1	21
 
 static unsigned int sdc1_sup_clk_rates[] = {
-	400000, 24000000, 48000000,
+	400000, 24000000, 48000000, 96000000
 };
 
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
@@ -239,7 +239,6 @@ static struct mmc_platform_data msm8960_sdc1_data = {
 #endif
 	.sup_clk_table	= sdc1_sup_clk_rates,
 	.sup_clk_cnt	= ARRAY_SIZE(sdc1_sup_clk_rates),
-	.pclk_src_dfab	= 1,
 	.nonremovable	= 1,
 	.vreg_data	= &mmc_slot_vreg_data[SDCC1],
 	.pin_data	= &mmc_slot_pin_data[SDCC1],
@@ -254,14 +253,13 @@ static struct mmc_platform_data msm8960_sdc3_data = {
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.sup_clk_table	= sdc3_sup_clk_rates,
 	.sup_clk_cnt	= ARRAY_SIZE(sdc3_sup_clk_rates),
-	.pclk_src_dfab	= 1,
 #ifdef CONFIG_MMC_MSM_SDC3_WP_SUPPORT
 /*TODO: Insert right replacement for PM8038 */
 #ifndef MSM8930_PHASE_2
 	.wpswitch_gpio	= PM8921_GPIO_PM_TO_SYS(16),
 #else
 	.wpswitch_gpio	= 66,
-	.wpswitch_polarity = 1,
+	.is_wpswitch_active_low = true,
 #endif
 #endif
 	.vreg_data	= &mmc_slot_vreg_data[SDCC3],
@@ -290,6 +288,16 @@ static struct mmc_platform_data msm8960_sdc3_data = {
 void __init msm8930_init_mmc(void)
 {
 #ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
+	/*
+	 * When eMMC runs in DDR mode on CDP platform, we have
+	 * seen instability due to DATA CRC errors. These errors are
+	 * attributed to long physical path between MSM and eMMC on CDP.
+	 * So let's not enable the DDR mode on CDP platform but let other
+	 * platforms take advantage of eMMC DDR mode.
+	 */
+	if (!machine_is_msm8930_cdp())
+		msm8960_sdc1_data.uhs_caps |= (MMC_CAP_1_8V_DDR |
+					       MMC_CAP_UHS_DDR50);
 	/* SDC1 : eMMC card connected */
 	msm_add_sdcc(1, &msm8960_sdc1_data);
 #endif
@@ -297,7 +305,7 @@ void __init msm8930_init_mmc(void)
 	/* SDC3: External card slot */
 	if (!machine_is_msm8930_cdp()) {
 		msm8960_sdc3_data.wpswitch_gpio = 0;
-		msm8960_sdc3_data.wpswitch_polarity = 0;
+		msm8960_sdc3_data.is_wpswitch_active_low = false;
 	}
 	msm_add_sdcc(3, &msm8960_sdc3_data);
 #endif

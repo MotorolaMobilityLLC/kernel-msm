@@ -14,6 +14,7 @@
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/delay.h>
@@ -22,6 +23,7 @@
 #include <linux/errno.h>
 #include <linux/cpufreq.h>
 #include <linux/clk.h>
+#include <linux/platform_device.h>
 
 #include <asm/cpu.h>
 
@@ -39,7 +41,6 @@
 #define REG_CLKDIV_1	(MSM_APCS_GLB_BASE + 0x14)
 #define REG_CLKOUTSEL	(MSM_APCS_GLB_BASE + 0x18)
 
-#define MAX_VDD_CPU	1150000
 #define MAX_VDD_MEM	1150000
 
 enum clk_src {
@@ -111,12 +112,12 @@ static struct msm_bus_scale_pdata bus_client_pdata = {
 static uint32_t bus_perf_client;
 
 static struct clkctl_acpu_speed acpu_freq_tbl[] = {
-	{ 0,  19200, SRC_CXO,  0, 0,  950000, 1050000, 0 },
-	{ 1, 138000, SRC_PLL0, 6, 1,  950000, 1050000, 2 },
-	{ 1, 276000, SRC_PLL0, 6, 0, 1050000, 1050000, 2 },
-	{ 1, 384000, SRC_PLL8, 3, 0, 1150000, 1150000, 4 },
+	{ 0,  19200, SRC_CXO,  0, 0, RPM_VREG_CORNER_LOW,     1050000, 0 },
+	{ 1, 138000, SRC_PLL0, 6, 1, RPM_VREG_CORNER_LOW,     1050000, 2 },
+	{ 1, 276000, SRC_PLL0, 6, 0, RPM_VREG_CORNER_NOMINAL, 1050000, 2 },
+	{ 1, 384000, SRC_PLL8, 3, 0, RPM_VREG_CORNER_HIGH,    1150000, 4 },
 	/* The row below may be changed at runtime depending on hw rev. */
-	{ 1, 440000, SRC_PLL9, 2, 0, 1150000, 1150000, 4 },
+	{ 1, 440000, SRC_PLL9, 2, 0, RPM_VREG_CORNER_HIGH,    1150000, 4 },
 	{ 0 }
 };
 
@@ -171,8 +172,8 @@ static int increase_vdd(unsigned int vdd_cpu, unsigned int vdd_mem)
 		return rc;
 	}
 
-	rc = rpm_vreg_set_voltage(RPM_VREG_ID_PM8018_S1, RPM_VREG_VOTER1,
-				  vdd_cpu, MAX_VDD_CPU, 0);
+	rc = rpm_vreg_set_voltage(RPM_VREG_ID_PM8018_VDD_DIG_CORNER,
+			RPM_VREG_VOTER1, vdd_cpu, RPM_VREG_CORNER_HIGH, 0);
 	if (rc)
 		pr_err("vdd_cpu increase failed (%d)\n", rc);
 
@@ -185,8 +186,9 @@ static void decrease_vdd(unsigned int vdd_cpu, unsigned int vdd_mem)
 	int ret;
 
 	/* Update CPU voltage. */
-	ret = rpm_vreg_set_voltage(RPM_VREG_ID_PM8018_S1, RPM_VREG_VOTER1,
-				  vdd_cpu, MAX_VDD_CPU, 0);
+	ret = rpm_vreg_set_voltage(RPM_VREG_ID_PM8018_VDD_DIG_CORNER,
+		RPM_VREG_VOTER1, vdd_cpu, RPM_VREG_CORNER_HIGH, 0);
+
 	if (ret) {
 		pr_err("vdd_cpu decrease failed (%d)\n", ret);
 		return;
@@ -306,7 +308,7 @@ static struct acpuclk_data acpuclk_9615_data = {
 	.wait_for_irq_khz = 19200,
 };
 
-static int __init acpuclk_9615_init(struct acpuclk_soc_data *soc_data)
+static int __init acpuclk_9615_probe(struct platform_device *pdev)
 {
 	unsigned long max_cpu_khz = 0;
 	int i;
@@ -351,6 +353,15 @@ static int __init acpuclk_9615_init(struct acpuclk_soc_data *soc_data)
 	return 0;
 }
 
-struct acpuclk_soc_data acpuclk_9615_soc_data __initdata = {
-	.init = acpuclk_9615_init,
+static struct platform_driver acpuclk_9615_driver = {
+	.driver = {
+		.name = "acpuclk-9615",
+		.owner = THIS_MODULE,
+	},
 };
+
+static int __init acpuclk_9615_init(void)
+{
+	return platform_driver_probe(&acpuclk_9615_driver, acpuclk_9615_probe);
+}
+device_initcall(acpuclk_9615_init);

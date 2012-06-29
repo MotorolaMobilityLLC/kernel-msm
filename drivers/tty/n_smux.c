@@ -78,6 +78,11 @@ module_param_named(simulate_wakeup_delay, smux_simulate_wakeup_delay,
 			pr_info(x);  \
 } while (0)
 
+#define SMUX_PWR(x...) do {                              \
+	if (smux_debug_mask & MSM_SMUX_POWER_INFO) \
+			pr_info(x);  \
+} while (0)
+
 #define SMUX_LOG_PKT_RX(pkt) do { \
 	if (smux_debug_mask & MSM_SMUX_PKT) \
 			smux_log_pkt(pkt, 1); \
@@ -448,6 +453,7 @@ static void smux_lch_purge(void)
 		pkt =  list_first_entry(&smux.power_queue,
 						struct smux_pkt_t,
 						list);
+		list_del(&pkt->list);
 		SMUX_DBG("%s: emptying power queue pkt=%p\n",
 				__func__, pkt);
 		smux_free_pkt(pkt);
@@ -1005,7 +1011,6 @@ static void smux_send_byte(char ch)
 	pkt->hdr.cmd = SMUX_CMD_BYTE;
 	pkt->hdr.flags = ch;
 	pkt->hdr.lcid = SMUX_BROADCAST_LCID;
-	pkt->hdr.flags = ch;
 
 	list_add_tail(&pkt->list, &smux.power_queue);
 	queue_work(smux_tx_wq, &smux_tx_work);
@@ -1601,7 +1606,7 @@ static int smux_handle_rx_power_cmd(struct smux_pkt_t *pkt)
 		/* local sleep request ack */
 		if (smux.power_state == SMUX_PWR_TURNING_OFF) {
 			/* Power-down complete, turn off UART */
-			SMUX_DBG("%s: Power %d->%d\n", __func__,
+			SMUX_PWR("%s: Power %d->%d\n", __func__,
 					smux.power_state, SMUX_PWR_OFF_FLUSH);
 			smux.power_state = SMUX_PWR_OFF_FLUSH;
 			queue_work(smux_tx_wq, &smux_inactivity_work);
@@ -1625,7 +1630,7 @@ static int smux_handle_rx_power_cmd(struct smux_pkt_t *pkt)
 			|| smux.power_state == SMUX_PWR_TURNING_OFF) {
 			ack_pkt = smux_alloc_pkt();
 			if (ack_pkt) {
-				SMUX_DBG("%s: Power %d->%d\n", __func__,
+				SMUX_PWR("%s: Power %d->%d\n", __func__,
 						smux.power_state,
 						SMUX_PWR_TURNING_OFF_FLUSH);
 
@@ -1658,24 +1663,44 @@ static int smux_handle_rx_power_cmd(struct smux_pkt_t *pkt)
  */
 static int smux_dispatch_rx_pkt(struct smux_pkt_t *pkt)
 {
-	int ret;
+	int ret = -ENXIO;
 
 	SMUX_LOG_PKT_RX(pkt);
 
 	switch (pkt->hdr.cmd) {
 	case SMUX_CMD_OPEN_LCH:
+		if (smux_assert_lch_id(pkt->hdr.lcid)) {
+			pr_err("%s: invalid channel id %d\n",
+					__func__, pkt->hdr.lcid);
+			break;
+		}
 		ret = smux_handle_rx_open_cmd(pkt);
 		break;
 
 	case SMUX_CMD_DATA:
+		if (smux_assert_lch_id(pkt->hdr.lcid)) {
+			pr_err("%s: invalid channel id %d\n",
+					__func__, pkt->hdr.lcid);
+			break;
+		}
 		ret = smux_handle_rx_data_cmd(pkt);
 		break;
 
 	case SMUX_CMD_CLOSE_LCH:
+		if (smux_assert_lch_id(pkt->hdr.lcid)) {
+			pr_err("%s: invalid channel id %d\n",
+					__func__, pkt->hdr.lcid);
+			break;
+		}
 		ret = smux_handle_rx_close_cmd(pkt);
 		break;
 
 	case SMUX_CMD_STATUS:
+		if (smux_assert_lch_id(pkt->hdr.lcid)) {
+			pr_err("%s: invalid channel id %d\n",
+					__func__, pkt->hdr.lcid);
+			break;
+		}
 		ret = smux_handle_rx_status_cmd(pkt);
 		break;
 
@@ -1705,7 +1730,6 @@ static int smux_dispatch_rx_pkt(struct smux_pkt_t *pkt)
 static int smux_deserialize(unsigned char *data, int len)
 {
 	struct smux_pkt_t recv;
-	uint8_t lcid;
 
 	smux_init_pkt(&recv);
 
@@ -1718,12 +1742,6 @@ static int smux_deserialize(unsigned char *data, int len)
 	if (recv.hdr.magic != SMUX_MAGIC) {
 		pr_err("%s: invalid header magic\n", __func__);
 		return -EINVAL;
-	}
-
-	lcid = recv.hdr.lcid;
-	if (smux_assert_lch_id(lcid)) {
-		pr_err("%s: invalid channel id %d\n", __func__, lcid);
-		return -ENXIO;
 	}
 
 	if (recv.hdr.payload_len)
@@ -1743,7 +1761,7 @@ static void smux_handle_wakeup_req(void)
 	if (smux.power_state == SMUX_PWR_OFF
 		|| smux.power_state == SMUX_PWR_TURNING_ON) {
 		/* wakeup system */
-		SMUX_DBG("%s: Power %d->%d\n", __func__,
+		SMUX_PWR("%s: Power %d->%d\n", __func__,
 				smux.power_state, SMUX_PWR_ON);
 		smux.power_state = SMUX_PWR_ON;
 		queue_work(smux_tx_wq, &smux_wakeup_work);
@@ -1767,7 +1785,7 @@ static void smux_handle_wakeup_ack(void)
 	spin_lock_irqsave(&smux.tx_lock_lha2, flags);
 	if (smux.power_state == SMUX_PWR_TURNING_ON) {
 		/* received response to wakeup request */
-		SMUX_DBG("%s: Power %d->%d\n", __func__,
+		SMUX_PWR("%s: Power %d->%d\n", __func__,
 				smux.power_state, SMUX_PWR_ON);
 		smux.power_state = SMUX_PWR_ON;
 		queue_work(smux_tx_wq, &smux_tx_work);
@@ -2201,7 +2219,7 @@ static void smux_inactivity_worker(struct work_struct *work)
 				/* start power-down sequence */
 				pkt = smux_alloc_pkt();
 				if (pkt) {
-					SMUX_DBG("%s: Power %d->%d\n", __func__,
+					SMUX_PWR("%s: Power %d->%d\n", __func__,
 						smux.power_state,
 						SMUX_PWR_TURNING_OFF);
 					smux.power_state = SMUX_PWR_TURNING_OFF;
@@ -2228,9 +2246,9 @@ static void smux_inactivity_worker(struct work_struct *work)
 
 	if (smux.power_state == SMUX_PWR_OFF_FLUSH) {
 		/* ready to power-down the UART */
-		smux.power_state = SMUX_PWR_OFF;
-		SMUX_DBG("%s: Power %d->%d\n", __func__,
+		SMUX_PWR("%s: Power %d->%d\n", __func__,
 				smux.power_state, SMUX_PWR_OFF);
+		smux.power_state = SMUX_PWR_OFF;
 
 		/* if data is pending, schedule a new wakeup */
 		if (!list_empty(&smux.lch_tx_ready_list) ||
@@ -2455,7 +2473,7 @@ static void smux_tx_worker(struct work_struct *work)
 			   !list_empty(&smux.power_queue)) {
 				/* data to transmit, do wakeup */
 				smux.pwr_wakeup_delay_us = 1;
-				SMUX_DBG("%s: Power %d->%d\n", __func__,
+				SMUX_PWR("%s: Power %d->%d\n", __func__,
 						smux.power_state,
 						SMUX_PWR_TURNING_ON);
 				smux.power_state = SMUX_PWR_TURNING_ON;
@@ -2492,7 +2510,7 @@ static void smux_tx_worker(struct work_struct *work)
 			if (smux.power_state == SMUX_PWR_TURNING_OFF_FLUSH &&
 				pkt->hdr.cmd == SMUX_CMD_PWR_CTL &&
 				(pkt->hdr.flags & SMUX_CMD_PWR_CTL_ACK)) {
-				SMUX_DBG("%s: Power %d->%d\n", __func__,
+				SMUX_PWR("%s: Power %d->%d\n", __func__,
 						smux.power_state,
 						SMUX_PWR_OFF_FLUSH);
 				smux.power_state = SMUX_PWR_OFF_FLUSH;
@@ -3106,23 +3124,38 @@ static int ssr_notifier_cb(struct notifier_block *this,
 	unsigned long flags;
 	int power_off_uart = 0;
 
-	if (code != SUBSYS_AFTER_SHUTDOWN)
+	if (code == SUBSYS_BEFORE_SHUTDOWN) {
+		SMUX_DBG("%s: ssr - before shutdown\n", __func__);
+		mutex_lock(&smux.mutex_lha0);
+		smux.in_reset = 1;
+		mutex_unlock(&smux.mutex_lha0);
 		return NOTIFY_DONE;
+	} else if (code != SUBSYS_AFTER_SHUTDOWN) {
+		return NOTIFY_DONE;
+	}
+	SMUX_DBG("%s: ssr - after shutdown\n", __func__);
 
 	/* Cleanup channels */
+	mutex_lock(&smux.mutex_lha0);
 	smux_lch_purge();
+	if (smux.tty)
+		tty_driver_flush_buffer(smux.tty);
 
 	/* Power-down UART */
 	spin_lock_irqsave(&smux.tx_lock_lha2, flags);
 	if (smux.power_state != SMUX_PWR_OFF) {
-		SMUX_DBG("%s: SSR - turning off UART\n", __func__);
+		SMUX_PWR("%s: SSR - turning off UART\n", __func__);
 		smux.power_state = SMUX_PWR_OFF;
 		power_off_uart = 1;
 	}
+	smux.powerdown_enabled = 0;
 	spin_unlock_irqrestore(&smux.tx_lock_lha2, flags);
 
 	if (power_off_uart)
 		smux_uart_power_off();
+
+	smux.in_reset = 0;
+	mutex_unlock(&smux.mutex_lha0);
 
 	return NOTIFY_DONE;
 }
@@ -3173,7 +3206,7 @@ static int smuxld_open(struct tty_struct *tty)
 	/* power-down the UART if we are idle */
 	spin_lock_irqsave(&smux.tx_lock_lha2, flags);
 	if (smux.power_state == SMUX_PWR_OFF) {
-		SMUX_DBG("%s: powering off uart\n", __func__);
+		SMUX_PWR("%s: powering off uart\n", __func__);
 		smux.power_state = SMUX_PWR_OFF_FLUSH;
 		spin_unlock_irqrestore(&smux.tx_lock_lha2, flags);
 		queue_work(smux_tx_wq, &smux_inactivity_work);
@@ -3227,6 +3260,7 @@ static void smuxld_close(struct tty_struct *tty)
 	if (smux.power_state == SMUX_PWR_OFF)
 		power_up_uart = 1;
 	smux.power_state = SMUX_PWR_OFF;
+	smux.powerdown_enabled = 0;
 	spin_unlock_irqrestore(&smux.tx_lock_lha2, flags);
 
 	if (power_up_uart)
@@ -3371,7 +3405,7 @@ static int __init smux_init(void)
 		return ret;
 	}
 
-	subsys_notif_register_notifier("qsc", &ssr_notifier);
+	subsys_notif_register_notifier("external_modem", &ssr_notifier);
 
 	ret = lch_init();
 	if (ret != 0) {

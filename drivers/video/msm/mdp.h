@@ -74,7 +74,8 @@ extern struct workqueue_struct *mdp_hist_wq;
 
 struct mdp_buf_type {
 	struct ion_handle *ihdl;
-	u32 phys_addr;
+	u32 write_addr;
+	u32 read_addr;
 	u32 size;
 };
 
@@ -836,7 +837,7 @@ int mdp_ppp_v4l2_overlay_play(struct fb_info *info,
 	unsigned long srcp0_addr, unsigned long srcp0_size,
 	unsigned long srcp1_addr, unsigned long srcp1_size);
 
-#ifdef CONFIG_FB_MSM_EXT_INTERFACE_COMMON
+#ifdef CONFIG_FB_MSM_DTV
 void mdp_vid_quant_set(void);
 #else
 static inline void mdp_vid_quant_set(void)

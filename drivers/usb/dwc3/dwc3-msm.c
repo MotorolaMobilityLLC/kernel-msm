@@ -17,6 +17,7 @@
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/ioport.h>
+#include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -30,6 +31,7 @@
 
 #include <mach/rpm-regulator.h>
 
+#include "dwc3_otg.h"
 #include "core.h"
 #include "gadget.h"
 
@@ -82,6 +84,22 @@
 
 #define DBM_MAX_EPS		4
 
+/* DBM TRB configurations */
+#define DBM_TRB_BIT		0x80000000
+#define DBM_TRB_DATA_SRC	0x40000000
+#define DBM_TRB_DMA		0x20000000
+#define DBM_TRB_EP_NUM(ep)	(ep<<24)
+/**
+ *  USB QSCRATCH Hardware registers
+ *
+ */
+#define QSCRATCH_REG_OFFSET	(0x000F8800)
+#define CHARGING_DET_CTRL_REG	(QSCRATCH_REG_OFFSET + 0x18)
+#define CHARGING_DET_OUTPUT_REG	(QSCRATCH_REG_OFFSET + 0x1C)
+#define ALT_INTERRUPT_EN_REG	(QSCRATCH_REG_OFFSET + 0x20)
+#define HS_PHY_IRQ_STAT_REG	(QSCRATCH_REG_OFFSET + 0x24)
+
+
 struct dwc3_msm_req_complete {
 	struct list_head list_item;
 	struct usb_request *req;
@@ -98,6 +116,7 @@ struct dwc3_msm {
 	u8 ep_num_mapping[DBM_MAX_EPS];
 	const struct usb_ep_ops *original_ep_ops[DWC3_ENDPOINTS_NUM];
 	struct list_head req_complete_list;
+	struct clk		*core_clk;
 	struct regulator	*hsusb_3p3;
 	struct regulator	*hsusb_1p8;
 	struct regulator	*hsusb_vddcx;
@@ -105,6 +124,11 @@ struct dwc3_msm {
 	struct regulator	*ssusb_vddcx;
 	enum usb_vdd_type	ss_vdd_type;
 	enum usb_vdd_type	hs_vdd_type;
+	struct dwc3_charger	charger;
+	struct usb_phy		*otg_xceiv;
+	struct delayed_work	chg_work;
+	enum usb_chg_state	chg_state;
+	u8			dcd_retries;
 };
 
 #define USB_HSPHY_3P3_VOL_MIN		3050000 /* uV */
@@ -144,6 +168,7 @@ static const int vdd_val[VDD_TYPE_MAX][VDD_VAL_MAX] = {
 };
 
 static struct dwc3_msm *context;
+static u64 dwc3_msm_dma_mask = DMA_BIT_MASK(64);
 
 /**
  *
@@ -212,6 +237,34 @@ static inline void dwc3_msm_write_reg_field(void *base, u32 offset,
 	tmp &= ~mask;		/* clear written bits */
 	val = tmp | (val << shift);
 	iowrite32(val, base + offset);
+}
+
+/**
+ * Write register and read back masked value to confirm it is written
+ *
+ * @base - DWC3 base virtual address.
+ * @offset - register offset.
+ * @mask - register bitmask specifying what should be updated
+ * @val - value to write.
+ *
+ */
+static inline void dwc3_msm_write_readback(void *base, u32 offset,
+					    const u32 mask, u32 val)
+{
+	u32 write_val, tmp = ioread32(base + offset);
+
+	tmp &= ~mask;		/* retain other bits */
+	write_val = tmp | val;
+
+	iowrite32(write_val, base + offset);
+
+	/* Read back to see if val was written */
+	tmp = ioread32(base + offset);
+	tmp &= mask;		/* clear other bits */
+
+	if (tmp != val)
+		dev_err(context->dev, "%s: write: %x to QSCRATCH: %x FAILED\n",
+						__func__, val, offset);
 }
 
 /**
@@ -507,18 +560,11 @@ static void dwc3_msm_req_complete_func(struct usb_ep *ep,
 */
 static int __dwc3_msm_ep_queue(struct dwc3_ep *dep, struct dwc3_request *req)
 {
-	struct dwc3_trb_hw *trb_hw;
-	struct dwc3_trb_hw *trb_link_hw;
-	struct dwc3_trb trb;
+	struct dwc3_trb *trb;
+	struct dwc3_trb *trb_link;
 	struct dwc3_gadget_ep_cmd_params params;
 	u32 cmd;
 	int ret = 0;
-
-	if ((req->request.udc_priv & MSM_IS_FINITE_TRANSFER) &&
-	    (req->request.length > 0)) {
-		/* Map the request to a DMA. */
-		dwc3_map_buffer_to_dma(req);
-	}
 
 	/* We push the request to the dep->req_queued list to indicate that
 	 * this request is issued with start transfer. The request will be out
@@ -531,31 +577,26 @@ static int __dwc3_msm_ep_queue(struct dwc3_ep *dep, struct dwc3_request *req)
 	list_add_tail(&req->list, &dep->req_queued);
 
 	/* First, prepare a normal TRB, point to the fake buffer */
-	trb_hw = &dep->trb_pool[dep->free_slot & DWC3_TRB_MASK];
+	trb = &dep->trb_pool[dep->free_slot & DWC3_TRB_MASK];
 	dep->free_slot++;
-	memset(&trb, 0, sizeof(trb));
+	memset(trb, 0, sizeof(*trb));
 
-	req->trb = trb_hw;
-
-	trb.bplh = req->request.dma;
-	trb.lst = 0;
-	trb.trbctl = DWC3_TRBCTL_NORMAL;
-	trb.length = req->request.length;
-	trb.hwo = true;
-
-	dwc3_trb_to_hw(&trb, trb_hw);
-	req->trb_dma = dep->trb_pool_dma;
+	req->trb = trb;
+	req->trb_dma = dwc3_trb_dma_offset(dep, trb);
+	trb->bph = DBM_TRB_BIT | DBM_TRB_DATA_SRC |
+		   DBM_TRB_DMA | DBM_TRB_EP_NUM(dep->number);
+	trb->size = DWC3_TRB_SIZE_LENGTH(req->request.length);
+	trb->ctrl = DWC3_TRBCTL_NORMAL | DWC3_TRB_CTRL_HWO | DWC3_TRB_CTRL_CHN;
 
 	/* Second, prepare a Link TRB that points to the first TRB*/
-	trb_link_hw = &dep->trb_pool[dep->free_slot & DWC3_TRB_MASK];
+	trb_link = &dep->trb_pool[dep->free_slot & DWC3_TRB_MASK];
 	dep->free_slot++;
-	memset(&trb, 0, sizeof(trb));
 
-	trb.bplh = dep->trb_pool_dma;
-	trb.trbctl = DWC3_TRBCTL_LINK_TRB;
-	trb.hwo = true;
-
-	dwc3_trb_to_hw(&trb, trb_link_hw);
+	trb_link->bpl = lower_32_bits(req->trb_dma);
+	trb_link->bph = DBM_TRB_BIT | DBM_TRB_DATA_SRC |
+			DBM_TRB_DMA | DBM_TRB_EP_NUM(dep->number);
+	trb_link->size = 0;
+	trb_link->ctrl = DWC3_TRBCTL_LINK_TRB | DWC3_TRB_CTRL_HWO;
 
 	/*
 	 * Now start the transfer
@@ -570,7 +611,6 @@ static int __dwc3_msm_ep_queue(struct dwc3_ep *dep, struct dwc3_request *req)
 			"%s: failed to send STARTTRANSFER command\n",
 			__func__);
 
-		dwc3_unmap_buffer_from_dma(req);
 		list_del(&req->list);
 		return ret;
 	}
@@ -1003,6 +1043,184 @@ put_1p8_lpm:
 	return rc < 0 ? rc : 0;
 }
 
+static void dwc3_chg_enable_secondary_det(struct dwc3_msm *mdwc)
+{
+	u32 chg_ctrl;
+
+	/* Turn off VDP_SRC */
+	dwc3_msm_write_reg(mdwc->base, CHARGING_DET_CTRL_REG, 0x0);
+	msleep(20);
+
+	/* Before proceeding make sure VDP_SRC is OFF */
+	chg_ctrl = dwc3_msm_read_reg(mdwc->base, CHARGING_DET_CTRL_REG);
+	if (chg_ctrl & 0x3F)
+		dev_err(mdwc->dev, "%s Unable to reset chg_det block: %x\n",
+						 __func__, chg_ctrl);
+	/*
+	 * Configure DM as current source, DP as current sink
+	 * and enable battery charging comparators.
+	 */
+	dwc3_msm_write_readback(mdwc->base, CHARGING_DET_CTRL_REG, 0x3F, 0x34);
+}
+
+static bool dwc3_chg_det_check_output(struct dwc3_msm *mdwc)
+{
+	u32 chg_det;
+	bool ret = false;
+
+	chg_det = dwc3_msm_read_reg(mdwc->base, CHARGING_DET_OUTPUT_REG);
+	ret = chg_det & 1;
+
+	return ret;
+}
+
+static void dwc3_chg_enable_primary_det(struct dwc3_msm *mdwc)
+{
+	/*
+	 * Configure DP as current source, DM as current sink
+	 * and enable battery charging comparators.
+	 */
+	dwc3_msm_write_readback(mdwc->base, CHARGING_DET_CTRL_REG, 0x3F, 0x30);
+}
+
+static inline bool dwc3_chg_check_dcd(struct dwc3_msm *mdwc)
+{
+	u32 chg_state;
+	bool ret = false;
+
+	chg_state = dwc3_msm_read_reg(mdwc->base, CHARGING_DET_OUTPUT_REG);
+	ret = chg_state & 2;
+
+	return ret;
+}
+
+static inline void dwc3_chg_disable_dcd(struct dwc3_msm *mdwc)
+{
+	dwc3_msm_write_readback(mdwc->base, CHARGING_DET_CTRL_REG, 0x3F, 0x0);
+}
+
+static inline void dwc3_chg_enable_dcd(struct dwc3_msm *mdwc)
+{
+	/* Data contact detection enable, DCDENB */
+	dwc3_msm_write_readback(mdwc->base, CHARGING_DET_CTRL_REG, 0x3F, 0x2);
+}
+
+static void dwc3_chg_block_reset(struct dwc3_msm *mdwc)
+{
+	u32 chg_ctrl;
+
+	/* Clear charger detecting control bits */
+	dwc3_msm_write_reg(mdwc->base, CHARGING_DET_CTRL_REG, 0x0);
+
+	/* Clear alt interrupt latch and enable bits */
+	dwc3_msm_write_reg(mdwc->base, HS_PHY_IRQ_STAT_REG, 0xFFF);
+	dwc3_msm_write_reg(mdwc->base, ALT_INTERRUPT_EN_REG, 0x0);
+
+	udelay(100);
+
+	/* Before proceeding make sure charger block is RESET */
+	chg_ctrl = dwc3_msm_read_reg(mdwc->base, CHARGING_DET_CTRL_REG);
+	if (chg_ctrl & 0x3F)
+		dev_err(mdwc->dev, "%s Unable to reset chg_det block: %x\n",
+						 __func__, chg_ctrl);
+}
+
+static const char *chg_to_string(enum dwc3_chg_type chg_type)
+{
+	switch (chg_type) {
+	case USB_SDP_CHARGER:		return "USB_SDP_CHARGER";
+	case USB_DCP_CHARGER:		return "USB_DCP_CHARGER";
+	case USB_CDP_CHARGER:		return "USB_CDP_CHARGER";
+	default:			return "INVALID_CHARGER";
+	}
+}
+
+#define DWC3_CHG_DCD_POLL_TIME		(100 * HZ/1000) /* 100 msec */
+#define DWC3_CHG_DCD_MAX_RETRIES	6 /* Tdcd_tmout = 6 * 100 msec */
+#define DWC3_CHG_PRIMARY_DET_TIME	(50 * HZ/1000) /* TVDPSRC_ON */
+#define DWC3_CHG_SECONDARY_DET_TIME	(50 * HZ/1000) /* TVDMSRC_ON */
+
+static void dwc3_chg_detect_work(struct work_struct *w)
+{
+	struct dwc3_msm *mdwc = container_of(w, struct dwc3_msm, chg_work.work);
+	bool is_dcd = false, tmout, vout;
+	unsigned long delay;
+
+	dev_dbg(mdwc->dev, "chg detection work\n");
+	switch (mdwc->chg_state) {
+	case USB_CHG_STATE_UNDEFINED:
+		dwc3_chg_block_reset(mdwc);
+		dwc3_chg_enable_dcd(mdwc);
+		mdwc->chg_state = USB_CHG_STATE_WAIT_FOR_DCD;
+		mdwc->dcd_retries = 0;
+		delay = DWC3_CHG_DCD_POLL_TIME;
+		break;
+	case USB_CHG_STATE_WAIT_FOR_DCD:
+		is_dcd = dwc3_chg_check_dcd(mdwc);
+		tmout = ++mdwc->dcd_retries == DWC3_CHG_DCD_MAX_RETRIES;
+		if (is_dcd || tmout) {
+			dwc3_chg_disable_dcd(mdwc);
+			dwc3_chg_enable_primary_det(mdwc);
+			delay = DWC3_CHG_PRIMARY_DET_TIME;
+			mdwc->chg_state = USB_CHG_STATE_DCD_DONE;
+		} else {
+			delay = DWC3_CHG_DCD_POLL_TIME;
+		}
+		break;
+	case USB_CHG_STATE_DCD_DONE:
+		vout = dwc3_chg_det_check_output(mdwc);
+		if (vout) {
+			dwc3_chg_enable_secondary_det(mdwc);
+			delay = DWC3_CHG_SECONDARY_DET_TIME;
+			mdwc->chg_state = USB_CHG_STATE_PRIMARY_DONE;
+		} else {
+			mdwc->charger.chg_type = USB_SDP_CHARGER;
+			mdwc->chg_state = USB_CHG_STATE_DETECTED;
+			delay = 0;
+		}
+		break;
+	case USB_CHG_STATE_PRIMARY_DONE:
+		vout = dwc3_chg_det_check_output(mdwc);
+		if (vout)
+			mdwc->charger.chg_type = USB_DCP_CHARGER;
+		else
+			mdwc->charger.chg_type = USB_CDP_CHARGER;
+		mdwc->chg_state = USB_CHG_STATE_SECONDARY_DONE;
+		/* fall through */
+	case USB_CHG_STATE_SECONDARY_DONE:
+		mdwc->chg_state = USB_CHG_STATE_DETECTED;
+		/* fall through */
+	case USB_CHG_STATE_DETECTED:
+		dwc3_chg_block_reset(mdwc);
+		dev_dbg(mdwc->dev, "chg_type = %s\n",
+			chg_to_string(mdwc->charger.chg_type));
+		mdwc->charger.notify_detection_complete(mdwc->otg_xceiv->otg,
+								&mdwc->charger);
+		return;
+	default:
+		return;
+	}
+
+	queue_delayed_work(system_nrt_wq, &mdwc->chg_work, delay);
+}
+
+static void dwc3_start_chg_det(struct dwc3_charger *charger, bool start)
+{
+	struct dwc3_msm *mdwc = context;
+
+	if (start == false) {
+		cancel_delayed_work_sync(&mdwc->chg_work);
+		mdwc->chg_state = USB_CHG_STATE_UNDEFINED;
+		charger->chg_type = DWC3_INVALID_CHARGER;
+		return;
+	}
+
+	mdwc->chg_state = USB_CHG_STATE_UNDEFINED;
+	charger->chg_type = DWC3_INVALID_CHARGER;
+	queue_delayed_work(system_nrt_wq, &mdwc->chg_work, 0);
+}
+
+
 static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -1022,6 +1240,19 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 	msm->dev = &pdev->dev;
 
 	INIT_LIST_HEAD(&msm->req_complete_list);
+	INIT_DELAYED_WORK(&msm->chg_work, dwc3_chg_detect_work);
+
+	/*
+	 * DWC3 Core requires its CORE CLK (aka master / bus clk) to
+	 * run at 125Mhz in SSUSB mode and >60MHZ for HSUSB mode.
+	 */
+	msm->core_clk = devm_clk_get(&pdev->dev, "core_clk");
+	if (IS_ERR(msm->core_clk)) {
+		dev_err(&pdev->dev, "failed to get core_clk\n");
+		return PTR_ERR(msm->core_clk);
+	}
+	clk_set_rate(msm->core_clk, 125000000);
+	clk_prepare_enable(msm->core_clk);
 
 	/* SS PHY */
 	msm->ss_vdd_type = VDDCX_CORNER;
@@ -1031,7 +1262,8 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 							"SSUSB_VDDCX");
 		if (IS_ERR(msm->ssusb_vddcx)) {
 			dev_err(&pdev->dev, "unable to get ssusb vddcx\n");
-			return PTR_ERR(msm->ssusb_vddcx);
+			ret = PTR_ERR(msm->ssusb_vddcx);
+			goto disable_core_clk;
 		}
 		msm->ss_vdd_type = VDDCX;
 		dev_dbg(&pdev->dev, "ss_vdd_type: VDDCX\n");
@@ -1040,7 +1272,7 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 	ret = dwc3_ssusb_config_vddcx(1);
 	if (ret) {
 		dev_err(&pdev->dev, "ssusb vddcx configuration failed\n");
-		return ret;
+		goto disable_core_clk;
 	}
 
 	ret = regulator_enable(context->ssusb_vddcx);
@@ -1115,17 +1347,16 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 		goto disable_hs_ldo;
 	}
 
-	dwc3 = platform_device_alloc("dwc3-msm", -1);
+	dwc3 = platform_device_alloc("dwc3", -1);
 	if (!dwc3) {
 		dev_err(&pdev->dev, "couldn't allocate dwc3 device\n");
 		ret = -ENODEV;
 		goto disable_hs_ldo;
 	}
 
-	dma_set_coherent_mask(&dwc3->dev, pdev->dev.coherent_dma_mask);
-
 	dwc3->dev.parent = &pdev->dev;
-	dwc3->dev.dma_mask = pdev->dev.dma_mask;
+	dwc3->dev.coherent_dma_mask = DMA_BIT_MASK(32);
+	dwc3->dev.dma_mask = &dwc3_msm_dma_mask;
 	dwc3->dev.dma_parms = pdev->dev.dma_parms;
 	msm->resource_size = resource_size(res);
 	msm->dwc3 = dwc3;
@@ -1162,8 +1393,24 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 	/* Reset the DBM */
 	dwc3_msm_dbm_soft_reset();
 
+	msm->otg_xceiv = usb_get_transceiver();
+	if (msm->otg_xceiv) {
+		msm->charger.start_detection = dwc3_start_chg_det;
+		ret = dwc3_set_charger(msm->otg_xceiv->otg, &msm->charger);
+		if (ret || !msm->charger.notify_detection_complete) {
+			dev_err(&pdev->dev, "failed to register charger: %d\n",
+									ret);
+			goto put_xcvr;
+		}
+	} else {
+		dev_err(&pdev->dev, "%s: No OTG transceiver found\n", __func__);
+	}
+
 	return 0;
 
+put_xcvr:
+	usb_put_transceiver(msm->otg_xceiv);
+	platform_device_del(dwc3);
 put_pdev:
 	platform_device_put(dwc3);
 disable_hs_ldo:
@@ -1182,6 +1429,8 @@ disable_ss_vddcx:
 	regulator_disable(context->ssusb_vddcx);
 unconfig_ss_vddcx:
 	dwc3_ssusb_config_vddcx(0);
+disable_core_clk:
+	clk_disable_unprepare(msm->core_clk);
 
 	return ret;
 }
@@ -1190,6 +1439,10 @@ static int __devexit dwc3_msm_remove(struct platform_device *pdev)
 {
 	struct dwc3_msm	*msm = platform_get_drvdata(pdev);
 
+	if (msm->otg_xceiv) {
+		dwc3_start_chg_det(&msm->charger, false);
+		usb_put_transceiver(msm->otg_xceiv);
+	}
 	platform_device_unregister(msm->dwc3);
 
 	dwc3_hsusb_ldo_enable(0);
@@ -1200,6 +1453,7 @@ static int __devexit dwc3_msm_remove(struct platform_device *pdev)
 	dwc3_ssusb_ldo_init(0);
 	regulator_disable(msm->ssusb_vddcx);
 	dwc3_ssusb_config_vddcx(0);
+	clk_disable_unprepare(msm->core_clk);
 
 	return 0;
 }

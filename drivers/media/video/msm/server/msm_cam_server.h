@@ -36,7 +36,7 @@ int msm_server_streamoff(struct msm_cam_v4l2_device *pcam, int idx);
 int msm_server_get_usecount(void);
 int32_t msm_find_free_queue(void);
 int msm_server_proc_ctrl_cmd(struct msm_cam_v4l2_device *pcam,
-	struct v4l2_control *ctrl, int is_set_cmd);
+	struct msm_camera_v4l2_ioctl_t *ioctl_ptr, int is_set_cmd);
 int msm_server_s_ctrl(struct msm_cam_v4l2_device *pcam,
 	struct v4l2_control *ctrl);
 int msm_server_g_ctrl(struct msm_cam_v4l2_device *pcam,
@@ -61,5 +61,7 @@ int msm_server_v4l2_unsubscribe_event(struct v4l2_fh *fh,
 	struct v4l2_event_subscription *sub);
 int msm_server_get_crop(struct msm_cam_v4l2_device *pcam,
 	int idx, struct v4l2_crop *crop);
-
+int msm_cam_server_request_irq(void *arg);
+int msm_cam_server_update_irqmap(
+	struct msm_cam_server_irqmap_entry *entry);
 #endif /* _MSM_CAM_SERVER_H */

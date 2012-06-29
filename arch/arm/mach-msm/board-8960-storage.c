@@ -271,7 +271,7 @@ static struct msm_mmc_pin_data mmc_slot_pin_data[MAX_SDCC_CONTROLLER] = {
 #define MSM_MPM_PIN_SDC3_DAT1	21
 
 static unsigned int sdc1_sup_clk_rates[] = {
-	400000, 24000000, 48000000
+	400000, 24000000, 48000000, 96000000
 };
 
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
@@ -290,7 +290,6 @@ static struct mmc_platform_data msm8960_sdc1_data = {
 #endif
 	.sup_clk_table	= sdc1_sup_clk_rates,
 	.sup_clk_cnt	= ARRAY_SIZE(sdc1_sup_clk_rates),
-	.pclk_src_dfab	= 1,
 	.nonremovable	= 1,
 	.vreg_data	= &mmc_slot_vreg_data[SDCC1],
 	.pin_data	= &mmc_slot_pin_data[SDCC1],
@@ -309,7 +308,6 @@ static struct mmc_platform_data msm8960_sdc2_data = {
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.sup_clk_table  = sdc2_sup_clk_rates,
 	.sup_clk_cnt    = ARRAY_SIZE(sdc2_sup_clk_rates),
-	.pclk_src_dfab  = 1,
 	.vreg_data      = &mmc_slot_vreg_data[SDCC2],
 	.pin_data       = &mmc_slot_pin_data[SDCC2],
 	.sdiowakeup_irq = MSM_GPIO_TO_INT(90),
@@ -323,7 +321,6 @@ static struct mmc_platform_data msm8960_sdc3_data = {
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.sup_clk_table	= sdc3_sup_clk_rates,
 	.sup_clk_cnt	= ARRAY_SIZE(sdc3_sup_clk_rates),
-	.pclk_src_dfab	= 1,
 #ifdef CONFIG_MMC_MSM_SDC3_WP_SUPPORT
 	.wpswitch_gpio	= PM8921_GPIO_PM_TO_SYS(16),
 #endif
@@ -354,7 +351,6 @@ static struct mmc_platform_data msm8960_sdc4_data = {
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.sup_clk_table  = sdc4_sup_clk_rates,
 	.sup_clk_cnt    = ARRAY_SIZE(sdc4_sup_clk_rates),
-	.pclk_src_dfab  = 1,
 	.vreg_data      = &mmc_slot_vreg_data[SDCC4],
 	.pin_data       = &mmc_slot_pin_data[SDCC4],
 	.sdiowakeup_irq = MSM_GPIO_TO_INT(85),
@@ -365,6 +361,16 @@ static struct mmc_platform_data msm8960_sdc4_data = {
 void __init msm8960_init_mmc(void)
 {
 #ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
+	/*
+	 * When eMMC runs in DDR mode on CDP platform, we have
+	 * seen instability due to DATA CRC errors. These errors are
+	 * attributed to long physical path between MSM and eMMC on CDP.
+	 * So let's not enable the DDR mode on CDP platform but let other
+	 * platforms take advantage of eMMC DDR mode.
+	 */
+	if (!machine_is_msm8960_cdp())
+		msm8960_sdc1_data.uhs_caps |= (MMC_CAP_1_8V_DDR |
+					       MMC_CAP_UHS_DDR50);
 	/* SDC1 : eMMC card connected */
 	msm_add_sdcc(1, &msm8960_sdc1_data);
 #endif

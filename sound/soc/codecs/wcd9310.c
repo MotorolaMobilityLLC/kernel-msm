@@ -4256,7 +4256,8 @@ static int tabla_codec_enable_slimrx(struct snd_soc_dapm_widget *w,
 				continue;
 			if (!strncmp(w->sname,
 				tabla_dai[j].playback.stream_name, 13)) {
-				--tabla_p->dai[j].ch_act;
+				if (tabla_p->dai[j].ch_act)
+					--tabla_p->dai[j].ch_act;
 				break;
 			}
 		}
@@ -5265,16 +5266,37 @@ static void btn_lpress_fn(struct work_struct *work)
 	wcd9xxx_unlock_sleep(core);
 }
 
+static u16 tabla_get_cfilt_reg(struct snd_soc_codec *codec, u8 cfilt)
+{
+	u16 reg;
+
+	switch (cfilt) {
+	case TABLA_CFILT1_SEL:
+		reg = TABLA_A_MICB_CFILT_1_CTL;
+		break;
+	case TABLA_CFILT2_SEL:
+		reg = TABLA_A_MICB_CFILT_2_CTL;
+		break;
+	case TABLA_CFILT3_SEL:
+		reg = TABLA_A_MICB_CFILT_3_CTL;
+		break;
+	default:
+		BUG();
+	}
+	return reg;
+}
+
 void tabla_mbhc_cal(struct snd_soc_codec *codec)
 {
 	struct tabla_priv *tabla;
 	struct tabla_mbhc_btn_detect_cfg *btn_det;
-	u8 cfilt_mode, bg_mode;
+	u8 cfilt_mode, micbias2_cfilt_mode, bg_mode;
 	u8 ncic, nmeas, navg;
 	u32 mclk_rate;
 	u32 dce_wait, sta_wait;
 	u8 *n_cic;
 	void *calibration;
+	u16 bias2_ctl;
 
 	tabla = snd_soc_codec_get_drvdata(codec);
 	calibration = tabla->mbhc_cfg.calibration;
@@ -5303,7 +5325,16 @@ void tabla_mbhc_cal(struct snd_soc_codec *codec)
 	 * Need to restore defaults once calculation is done.
 	 */
 	cfilt_mode = snd_soc_read(codec, tabla->mbhc_bias_regs.cfilt_ctl);
-	snd_soc_update_bits(codec, tabla->mbhc_bias_regs.cfilt_ctl, 0x40, 0x00);
+	micbias2_cfilt_mode =
+	    snd_soc_read(codec, tabla_get_cfilt_reg(codec,
+					tabla->pdata->micbias.bias2_cfilt_sel));
+	snd_soc_update_bits(codec, tabla->mbhc_bias_regs.cfilt_ctl, 0x40,
+			    TABLA_CFILT_FAST_MODE);
+	snd_soc_update_bits(codec,
+			    tabla_get_cfilt_reg(codec,
+					 tabla->pdata->micbias.bias2_cfilt_sel),
+			    0x40, TABLA_CFILT_FAST_MODE);
+
 	bg_mode = snd_soc_update_bits(codec, TABLA_A_BIAS_CENTRAL_BG_CTL, 0x02,
 				      0x02);
 
@@ -5316,6 +5347,12 @@ void tabla_mbhc_cal(struct snd_soc_codec *codec)
 	snd_soc_update_bits(codec, TABLA_A_LDO_H_MODE_1, 0x60, 0x60);
 	snd_soc_write(codec, TABLA_A_TX_7_MBHC_TEST_CTL, 0x78);
 	snd_soc_update_bits(codec, TABLA_A_CDC_MBHC_B1_CTL, 0x04, 0x04);
+
+	/* MICBIAS2 routing for calibration */
+	bias2_ctl = snd_soc_read(codec, TABLA_A_MICB_2_CTL);
+	snd_soc_update_bits(codec, TABLA_A_MICB_1_MBHC, 0x03, TABLA_MICBIAS2);
+	snd_soc_write(codec, TABLA_A_MICB_2_CTL,
+		      snd_soc_read(codec, tabla->mbhc_bias_regs.ctl_reg));
 
 	/* DCE measurement for 0 volts */
 	snd_soc_write(codec, TABLA_A_CDC_MBHC_CLK_CTL, 0x0A);
@@ -5354,7 +5391,15 @@ void tabla_mbhc_cal(struct snd_soc_codec *codec)
 	tabla->mbhc_data.sta_mb = tabla_codec_read_sta_result(codec);
 
 	/* Restore default settings. */
+	snd_soc_write(codec, TABLA_A_MICB_2_CTL, bias2_ctl);
+	snd_soc_update_bits(codec, TABLA_A_MICB_1_MBHC, 0x03,
+			    tabla->mbhc_cfg.micbias);
+
 	snd_soc_update_bits(codec, TABLA_A_CDC_MBHC_B1_CTL, 0x04, 0x00);
+	snd_soc_update_bits(codec,
+			    tabla_get_cfilt_reg(codec,
+				   tabla->pdata->micbias.bias2_cfilt_sel), 0x40,
+			    micbias2_cfilt_mode);
 	snd_soc_update_bits(codec, tabla->mbhc_bias_regs.cfilt_ctl, 0x40,
 			    cfilt_mode);
 	snd_soc_update_bits(codec, TABLA_A_BIAS_CENTRAL_BG_CTL, 0x02, bg_mode);
@@ -5538,6 +5583,10 @@ void tabla_mbhc_init(struct snd_soc_codec *codec)
 	snd_soc_update_bits(codec, TABLA_A_CDC_MBHC_B1_CTL, 0x02, 0x02);
 
 	snd_soc_update_bits(codec, TABLA_A_MBHC_SCALING_MUX_2, 0xF0, 0xF0);
+
+	/* override mbhc's micbias */
+	snd_soc_update_bits(codec, TABLA_A_MICB_1_MBHC, 0x03,
+			    tabla->mbhc_cfg.micbias);
 }
 
 static bool tabla_mbhc_fw_validate(const struct firmware *fw)
@@ -6081,14 +6130,14 @@ tabla_codec_get_plug_type(struct snd_soc_codec *codec, bool highhph)
 	int scaled;
 	struct tabla_mbhc_plug_type_cfg *plug_type_ptr;
 	struct tabla_priv *tabla = snd_soc_codec_get_drvdata(codec);
-	const bool vddio = (tabla->mbhc_data.micb_mv != VDDIO_MICBIAS_MV);
-	int num_det = (MBHC_NUM_DCE_PLUG_DETECT + vddio);
+	int num_det = MBHC_NUM_DCE_PLUG_DETECT + 1;
 	enum tabla_mbhc_plug_type plug_type[num_det];
 	s16 mb_v[num_det];
 	s32 mic_mv[num_det];
 	bool inval;
 	bool highdelta;
 	bool ahighv = false, highv;
+	bool gndmicswapped = false;
 
 	/* make sure override is on */
 	WARN_ON(!(snd_soc_read(codec, TABLA_A_CDC_MBHC_B1_CTL) & 0x04));
@@ -6105,11 +6154,10 @@ tabla_codec_get_plug_type(struct snd_soc_codec *codec, bool highhph)
 	 * 1st: check if voltage is in invalid range
 	 * 2nd - N-2nd: check voltage range and delta
 	 * N-1st: check voltage range, delta with HPHR GND switch
-	 * Nth: check voltage range with VDDIO switch if micbias V != vddio V*/
+	 * Nth: check voltage range with VDDIO switch */
 	for (i = 0; i < num_det; i++) {
-		gndswitch = (i == (num_det - 1 - vddio));
-		vddioswitch = (vddio && ((i == num_det - 1) ||
-					 (i == num_det - 2)));
+		gndswitch = (i == (num_det - 2));
+		vddioswitch = (i == (num_det - 1)) || (i == (num_det - 2));
 		if (i == 0) {
 			mb_v[i] = tabla_codec_setup_hs_polling(codec);
 			mic_mv[i] = tabla_codec_sta_dce_v(codec, 1 , mb_v[i]);
@@ -6135,7 +6183,7 @@ tabla_codec_get_plug_type(struct snd_soc_codec *codec, bool highhph)
 			 * was done with gndswitch, don't compare with DCE
 			 * with gndswitch */
 			highdelta = tabla_is_inval_ins_delta(codec, scaled,
-					mic_mv[i - !gndswitch - vddioswitch],
+					mic_mv[i - 1],
 					TABLA_MBHC_FAKE_INS_DELTA_SCALED_MV);
 			inval = (tabla_is_inval_ins_range(codec, mic_mv[i],
 							  highhph, &highv) ||
@@ -6150,9 +6198,13 @@ tabla_codec_get_plug_type(struct snd_soc_codec *codec, bool highhph)
 			 * good headset is detected but HPHR GND switch makes
 			 * delta difference */
 			if (i == (num_det - 2) && highdelta && !ahighv)
-				plug_type[0] = PLUG_TYPE_GND_MIC_SWAP;
-			else if (i == (num_det - 1) && inval)
-				plug_type[0] = PLUG_TYPE_INVALID;
+				gndmicswapped = true;
+			else if (i == (num_det - 1) && inval) {
+				if (gndmicswapped)
+					plug_type[0] = PLUG_TYPE_GND_MIC_SWAP;
+				else
+					plug_type[0] = PLUG_TYPE_INVALID;
+			}
 		}
 		pr_debug("%s: DCE #%d, %04x, V %d, scaled V %d, GND %d, "
 			 "VDDIO %d, inval %d\n", __func__,

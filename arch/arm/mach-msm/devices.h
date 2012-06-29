@@ -77,6 +77,8 @@ extern struct platform_device msm8960_device_ispif;
 extern struct platform_device msm8960_device_vfe;
 extern struct platform_device msm8960_device_vpe;
 extern struct platform_device msm8960_device_cache_erp;
+extern struct platform_device msm8960_device_ebi1_ch0_erp;
+extern struct platform_device msm8960_device_ebi1_ch1_erp;
 
 extern struct platform_device apq8064_device_uart_gsbi1;
 extern struct platform_device apq8064_device_uart_gsbi3;
@@ -300,6 +302,7 @@ extern struct platform_device msm_kgsl_2d0;
 extern struct platform_device msm_kgsl_2d1;
 
 extern struct platform_device msm_mipi_dsi1_device;
+extern struct platform_device msm8625_mipi_dsi_device;
 extern struct platform_device msm_lvds_device;
 extern struct platform_device msm_ebi2_lcdc_device;
 
@@ -409,3 +412,13 @@ extern struct platform_device copper_device_tz_log;
 extern struct platform_device mdm_sglte_device;
 
 extern struct platform_device apq_device_tz_log;
+
+extern struct platform_device msm7x27_device_acpuclk;
+extern struct platform_device msm7x27a_device_acpuclk;
+extern struct platform_device msm7x27aa_device_acpuclk;
+extern struct platform_device msm7x30_device_acpuclk;
+extern struct platform_device msm8625_device_acpuclk;
+extern struct platform_device msm8x50_device_acpuclk;
+extern struct platform_device msm8x60_device_acpuclk;
+extern struct platform_device msm8960_device_acpuclk;
+extern struct platform_device msm9615_device_acpuclk;

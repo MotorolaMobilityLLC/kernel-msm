@@ -247,7 +247,6 @@ static struct mmc_platform_data sdc1_data = {
 #endif
 	.sup_clk_table	= sdc1_sup_clk_rates,
 	.sup_clk_cnt	= ARRAY_SIZE(sdc1_sup_clk_rates),
-	.pclk_src_dfab	= 1,
 	.nonremovable	= 1,
 	.pin_data	= &mmc_slot_pin_data[SDCC1],
 	.vreg_data	= &mmc_slot_vreg_data[SDCC1],
@@ -270,7 +269,6 @@ static struct mmc_platform_data sdc2_data = {
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.sup_clk_table	= sdc2_sup_clk_rates,
 	.sup_clk_cnt	= ARRAY_SIZE(sdc2_sup_clk_rates),
-	.pclk_src_dfab	= 1,
 	.pin_data	= &mmc_slot_pin_data[SDCC2],
 	.sdiowakeup_irq = MSM_GPIO_TO_INT(61),
 	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
@@ -290,11 +288,10 @@ static struct mmc_platform_data sdc3_data = {
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.sup_clk_table	= sdc3_sup_clk_rates,
 	.sup_clk_cnt	= ARRAY_SIZE(sdc3_sup_clk_rates),
-	.pclk_src_dfab	= 1,
 	.pin_data	= &mmc_slot_pin_data[SDCC3],
 	.vreg_data	= &mmc_slot_vreg_data[SDCC3],
 	.wpswitch_gpio	= PM8921_GPIO_PM_TO_SYS(17),
-	.wpswitch_polarity = 1,
+	.is_wpswitch_active_low = true,
 	.status_gpio	= 26,
 	.status_irq	= MSM_GPIO_TO_INT(26),
 	.irq_flags	= IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
@@ -322,7 +319,6 @@ static struct mmc_platform_data sdc4_data = {
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.sup_clk_table	= sdc4_sup_clk_rates,
 	.sup_clk_cnt	= ARRAY_SIZE(sdc4_sup_clk_rates),
-	.pclk_src_dfab	= 1,
 	.pin_data	= &mmc_slot_pin_data[SDCC4],
 	.sdiowakeup_irq = MSM_GPIO_TO_INT(65),
 	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
@@ -358,7 +354,7 @@ void __init apq8064_init_mmc(void)
 	if (apq8064_sdc3_pdata) {
 		if (!machine_is_apq8064_cdp()) {
 			apq8064_sdc3_pdata->wpswitch_gpio = 0;
-			apq8064_sdc3_pdata->wpswitch_polarity = 0;
+			apq8064_sdc3_pdata->is_wpswitch_active_low = false;
 		}
 		if (machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd() ||
 			machine_is_mpq8064_dtv()) {

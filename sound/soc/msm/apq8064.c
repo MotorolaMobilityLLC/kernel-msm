@@ -18,6 +18,8 @@
 #include <linux/gpio.h>
 #include <linux/mfd/pm8xxx/pm8921.h>
 #include <linux/slab.h>
+#include <linux/pm_runtime.h>
+#include <linux/slimbus/slimbus.h>
 #include <sound/core.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
@@ -128,6 +130,8 @@ static struct tabla_mbhc_config mbhc_cfg = {
 	.gpio_irq = 0,
 	.gpio_level_insert = 1,
 };
+
+static struct mutex cdc_mclk_mutex;
 
 static void msm_enable_ext_spk_amp_gpio(u32 spk_amp_gpio)
 {
@@ -391,35 +395,42 @@ static int msm_spkramp_event(struct snd_soc_dapm_widget *w,
 static int msm_enable_codec_ext_clk(struct snd_soc_codec *codec, int enable,
 				    bool dapm)
 {
+	int r = 0;
 	pr_debug("%s: enable = %d\n", __func__, enable);
+
+	mutex_lock(&cdc_mclk_mutex);
 	if (enable) {
 		clk_users++;
 		pr_debug("%s: clk_users = %d\n", __func__, clk_users);
-		if (clk_users != 1)
-			return 0;
-
-		if (codec_clk) {
-			clk_set_rate(codec_clk, TABLA_EXT_CLK_RATE);
-			clk_prepare_enable(codec_clk);
-			tabla_mclk_enable(codec, 1, dapm);
-		} else {
-			pr_err("%s: Error setting Tabla MCLK\n", __func__);
-			clk_users--;
-			return -EINVAL;
+		if (clk_users == 1) {
+			if (codec_clk) {
+				clk_set_rate(codec_clk, TABLA_EXT_CLK_RATE);
+				clk_prepare_enable(codec_clk);
+				tabla_mclk_enable(codec, 1, dapm);
+			} else {
+				pr_err("%s: Error setting Tabla MCLK\n",
+				       __func__);
+				clk_users--;
+				r = -EINVAL;
+			}
 		}
 	} else {
-		pr_debug("%s: clk_users = %d\n", __func__, clk_users);
-		if (clk_users == 0)
-			return 0;
-		clk_users--;
-		if (!clk_users) {
-			pr_debug("%s: disabling MCLK. clk_users = %d\n",
+		if (clk_users > 0) {
+			clk_users--;
+			pr_debug("%s: clk_users = %d\n", __func__, clk_users);
+			if (clk_users == 0) {
+				pr_debug("%s: disabling MCLK. clk_users = %d\n",
 					 __func__, clk_users);
-			tabla_mclk_enable(codec, 0, dapm);
-			clk_disable_unprepare(codec_clk);
+				tabla_mclk_enable(codec, 0, dapm);
+				clk_disable_unprepare(codec_clk);
+			}
+		} else {
+			pr_err("%s: Error releasing Tabla MCLK\n", __func__);
+			r = -EINVAL;
 		}
 	}
-	return 0;
+	mutex_unlock(&cdc_mclk_mutex);
+	return r;
 }
 
 static int msm_mclk_event(struct snd_soc_dapm_widget *w,
@@ -1431,6 +1442,19 @@ static int msm_auxpcm_startup(struct snd_pcm_substream *substream)
 	return 0;
 }
 
+static int msm_slimbus_1_startup(struct snd_pcm_substream *substream)
+{
+	struct slim_controller *slim = slim_busnum_to_ctrl(1);
+
+	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
+		 substream->name, substream->stream);
+
+	if (slim != NULL)
+		pm_runtime_get_sync(slim->dev.parent);
+
+	return 0;
+}
+
 static void msm_auxpcm_shutdown(struct snd_pcm_substream *substream)
 {
 
@@ -1447,6 +1471,19 @@ static void msm_shutdown(struct snd_pcm_substream *substream)
 		rtd->dai_link->cpu_dai_name, rtd->dai_link->codec_dai_name);
 }
 
+static void msm_slimbus_1_shutdown(struct snd_pcm_substream *substream)
+{
+	struct slim_controller *slim = slim_busnum_to_ctrl(1);
+
+	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
+		 substream->name, substream->stream);
+
+	if (slim != NULL) {
+		pm_runtime_mark_last_busy(slim->dev.parent);
+		pm_runtime_put(slim->dev.parent);
+	}
+}
+
 static struct snd_soc_ops msm_be_ops = {
 	.startup = msm_startup,
 	.hw_params = msm_hw_params,
@@ -1459,9 +1496,9 @@ static struct snd_soc_ops msm_auxpcm_be_ops = {
 };
 
 static struct snd_soc_ops msm_slimbus_1_be_ops = {
-	.startup = msm_startup,
+	.startup = msm_slimbus_1_startup,
 	.hw_params = msm_slimbus_1_hw_params,
-	.shutdown = msm_shutdown,
+	.shutdown = msm_slimbus_1_shutdown,
 };
 
 static struct snd_soc_ops msm_slimbus_3_be_ops = {
@@ -2023,6 +2060,8 @@ static int __init msm_audio_init(void)
 	} else
 		msm_headset_gpios_configured = 1;
 #endif
+
+	mutex_init(&cdc_mclk_mutex);
 	return ret;
 
 }
@@ -2039,6 +2078,7 @@ static void __exit msm_audio_exit(void)
 	if (mbhc_cfg.gpio)
 		gpio_free(mbhc_cfg.gpio);
 	kfree(mbhc_cfg.calibration);
+	mutex_destroy(&cdc_mclk_mutex);
 }
 module_exit(msm_audio_exit);
 

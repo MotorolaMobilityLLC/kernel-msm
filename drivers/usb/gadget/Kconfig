@@ -506,6 +506,32 @@ config USB_CI13XXX_MSM_HSIC
 	  dynamically linked module called "ci13xxx_msm_hsic" and force all
 	  gadget drivers to also be dynamically linked.
 
+config USB_DWC3_MSM
+	tristate "DesignWare USB3.0 (DRD) Controller for MSM"
+	depends on ARCH_MSM
+	select USB_DWC3
+	select USB_GADGET_DUALSPEED
+	select USB_GADGET_SELECTED
+	help
+	  The DesignWare USB3.0 controller is a SuperSpeed USB3.0 Controller
+	  integrated into the Qualcomm MSM chipset series, supporting host,
+	  device and otg modes of operation. For more information please
+	  refer to http://www.qualcomm.com/chipsets.
+
+config USB_DWC3_OMAP
+	tristate "DesignWare USB3.0 (DRD) Controller for OMAP"
+	depends on ARCH_OMAP
+	select USB_DWC3
+	select USB_GADGET_DUALSPEED
+	select USB_GADGET_SUPERSPEED
+	select USB_GADGET_SELECTED
+	help
+	  DesignWare USB3.0 controller is a SuperSpeed USB3.0 Controller
+	  which can be configured for peripheral-only, host-only, hub-only
+	  and Dual-Role operation. This Controller was first integrated into
+	  the OMAP5 series of processors. More information about the OMAP5
+	  version of this controller, refer to http://www.ti.com/omap5.
+
 #
 # LAST -- dummy/emulated controller
 #
@@ -556,8 +582,15 @@ config USB_GADGET_DUALSPEED
 
 # Selected by UDC drivers that support super-speed opperation
 config USB_GADGET_SUPERSPEED
-	bool
+	bool "Operate as superspeed"
+	depends on USB_GADGET
 	depends on USB_GADGET_DUALSPEED
+	default n
+	help
+	 When a superspeed peripheral controller is selected
+	 (for example DesignWare USB3.0 controller), use this flag to
+	 indicate if the device should operate in superspeed(=y)
+	 or not.
 
 #
 # USB Gadget Drivers
@@ -820,6 +853,16 @@ config USB_MASS_STORAGE
 
 	  Say "y" to link the driver statically, or "m" to build
 	  a dynamically linked module called "g_mass_storage".
+
+config USB_GADGET_TARGET
+	tristate "USB Gadget Target Fabric Module"
+	depends on TARGET_CORE
+	help
+	  This fabric is an USB gadget. Two USB protocols are supported that is
+	  BBB or BOT (Bulk Only Transport) and UAS (USB Attached SCSI). BOT is
+	  advertised on alternative interface 0 (primary) and UAS is on
+	  alternative interface 1. Both protocols can work on USB2.0 and USB3.0.
+	  UAS utilizes the USB 3.0 feature called streams support.
 
 config USB_G_SERIAL
 	tristate "Serial Gadget (with CDC ACM and CDC OBEX support)"

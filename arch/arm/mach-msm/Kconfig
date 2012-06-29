@@ -243,6 +243,9 @@ config ARCH_MSMCOPPER
 	select SPARSE_IRQ
 	select MSM_RPM_SMD
 	select REGULATOR
+	select MSM_QDSP6_APR
+	select MSM_QDSP6V2_CODECS
+	select MSM_AUDIO_QDSP6V2 if SND_SOC
 
 config ARCH_FSM9XXX
 	bool "FSM9XXX"
@@ -2088,6 +2091,17 @@ config MSM_QDSS
 	help
 	  Enables support for Qualcomm Debug Subsystem.
 
+config MSM_QDSS_STM_DEFAULT_ENABLE
+	bool "Turn on QDSS STM Tracing by Default"
+	depends on MSM_QDSS
+	help
+	  Turns on QDSS STM tracing (hardware assisted software
+	  instrumentation based tracing) by default. Otherwise, tracing is
+	  disabled by default but can be enabled via sysfs.
+
+	  For production builds, you should probably say 'N' here to avoid
+	  potential power, performance and memory penalty.
+
 config MSM_QDSS_ETM_DEFAULT_ENABLE
 	bool "Turn on QDSS ETM Tracing by Default"
 	depends on MSM_QDSS
@@ -2176,6 +2190,15 @@ config MSM_QDSP6_CODECS
 	  used by audio driver to configure QDSP6's
 	  ASM, ADM and AFE.
 
+config MSM_QDSP6V2_CODECS
+	bool "Audio QDSP6V2 APR support"
+	depends on MSM_SMD
+	help
+	  Enable Audio codecs with APR IPC protocol support between
+	  application processor and QDSP6 for B-family. APR is
+	  used by audio driver to configure QDSP6's
+	  ASM, ADM and AFE.
+
 config MSM_AUDIO_QDSP6
         bool "QDSP6 HW Audio support"
         select SND_SOC_MSM_QDSP6_INTF
@@ -2183,6 +2206,16 @@ config MSM_AUDIO_QDSP6
         help
           Enable HW audio support in QDSP6.
           QDSP6 can support HW encoder & decoder and audio processing
+
+config MSM_AUDIO_QDSP6V2
+        bool "QDSP6V2 HW Audio support"
+        select SND_SOC_MSM_QDSP6V2_INTF
+        help
+          Enable HW audio support in QDSP6V2.
+          QDSP6V2 can support HW encoder & decoder and
+          audio processing. It will enable support for
+          AAC, AMRNB, AMRWB, EVRC, MP3, QCELP among
+          others.
 
 config MSM_ULTRASOUND
 	bool "MSM ultrasound support"
@@ -2259,6 +2292,16 @@ config MSM_RTB_SEPARATE_CPUS
 	  for each cpu to log accesses. Selecting this option will log each cpu
 	  separately. This will guarantee that the last acesses for each cpu
 	  will be logged but there will be fewer entries per cpu
+
+config MSM_EBI_ERP
+	bool "External Bus Interface (EBI) error reporting"
+	help
+	  Say 'Y' here to enable reporting of external bus interface errors to
+	  the kernel log. Information such as the offending address and
+	  transaction type will be logged. This may be useful for debugging
+	  seemingly broken memory accesses.
+
+	  For production builds, you should probably say 'N' here.
 
 config MSM_CACHE_ERP
 	bool "Cache / CPU error reporting"

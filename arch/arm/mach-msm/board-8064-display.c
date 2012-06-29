@@ -58,10 +58,14 @@ static struct resource msm_fb_resources[] = {
 };
 
 #define LVDS_CHIMEI_PANEL_NAME "lvds_chimei_wxga"
+#define LVDS_FRC_PANEL_NAME "lvds_frc_fhd"
 #define MIPI_VIDEO_TOSHIBA_WSVGA_PANEL_NAME "mipi_video_toshiba_wsvga"
 #define MIPI_VIDEO_CHIMEI_WXGA_PANEL_NAME "mipi_video_chimei_wxga"
 #define HDMI_PANEL_NAME "hdmi_msm"
 #define TVOUT_PANEL_NAME "tvout_msm"
+
+#define LVDS_PIXEL_MAP_PATTERN_1	1
+#define LVDS_PIXEL_MAP_PATTERN_2	2
 
 #ifdef CONFIG_FB_MSM_HDMI_AS_PRIMARY
 static unsigned char hdmi_is_primary = 1;
@@ -98,12 +102,18 @@ static int msm_fb_detect_panel(const char *name)
 			strnlen(MIPI_VIDEO_TOSHIBA_WSVGA_PANEL_NAME,
 				PANEL_NAME_MAX_LEN)))
 			return 0;
-	} else if (machine_is_apq8064_cdp() ||
-		       machine_is_mpq8064_dtv()) {
+	} else if (machine_is_apq8064_cdp()) {
 		if (!strncmp(name, LVDS_CHIMEI_PANEL_NAME,
 			strnlen(LVDS_CHIMEI_PANEL_NAME,
 				PANEL_NAME_MAX_LEN)))
 			return 0;
+	} else if (machine_is_mpq8064_dtv()) {
+		if (!strncmp(name, LVDS_FRC_PANEL_NAME,
+			strnlen(LVDS_FRC_PANEL_NAME,
+			PANEL_NAME_MAX_LEN))) {
+			set_mdp_clocks_for_wuxga();
+			return 0;
+		}
 	}
 
 	if (!strncmp(name, HDMI_PANEL_NAME,
@@ -283,12 +293,16 @@ static struct resource hdmi_msm_resources[] = {
 static int hdmi_enable_5v(int on);
 static int hdmi_core_power(int on, int show);
 static int hdmi_cec_power(int on);
+static int hdmi_gpio_config(int on);
+static int hdmi_panel_power(int on);
 
 static struct msm_hdmi_platform_data hdmi_msm_data = {
 	.irq = HDMI_IRQ,
 	.enable_5v = hdmi_enable_5v,
 	.core_power = hdmi_core_power,
 	.cec_power = hdmi_cec_power,
+	.panel_power = hdmi_panel_power,
+	.gpio_config = hdmi_gpio_config,
 };
 
 static struct platform_device hdmi_msm_device = {
@@ -459,11 +473,18 @@ static int mipi_dsi_panel_power(int on)
 			}
 		}
 
+		rc = regulator_disable(reg_l11);
+		if (rc) {
+			pr_err("disable reg_l1 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+
 		rc = regulator_disable(reg_lvs7);
 		if (rc) {
 			pr_err("disable reg_lvs7 failed, rc=%d\n", rc);
 			return -ENODEV;
 		}
+
 		rc = regulator_disable(reg_l2);
 		if (rc) {
 			pr_err("disable reg_l2 failed, rc=%d\n", rc);
@@ -599,7 +620,9 @@ static int lvds_pixel_remap(void)
 		u32 ver = socinfo_get_version();
 		if ((SOCINFO_VERSION_MAJOR(ver) == 1) &&
 		    (SOCINFO_VERSION_MINOR(ver) == 0))
-			return 1;
+			return LVDS_PIXEL_MAP_PATTERN_1;
+	} else if (machine_is_mpq8064_dtv()) {
+		return LVDS_PIXEL_MAP_PATTERN_2;
 	}
 	return 0;
 }
@@ -621,6 +644,23 @@ static struct platform_device lvds_chimei_panel_device = {
 	.id = 0,
 	.dev = {
 		.platform_data = &lvds_chimei_pdata,
+	}
+};
+
+#define FRC_GPIO_UPDATE	(SX150X_EXP4_GPIO_BASE + 8)
+#define FRC_GPIO_RESET	(SX150X_EXP4_GPIO_BASE + 9)
+#define FRC_GPIO_PWR	(SX150X_EXP4_GPIO_BASE + 10)
+
+static int lvds_frc_gpio[] = {FRC_GPIO_UPDATE, FRC_GPIO_RESET, FRC_GPIO_PWR};
+static struct lvds_panel_platform_data lvds_frc_pdata = {
+	.gpio = lvds_frc_gpio,
+};
+
+static struct platform_device lvds_frc_panel_device = {
+	.name = "lvds_frc_fhd",
+	.id = 0,
+	.dev = {
+		.platform_data = &lvds_frc_pdata,
 	}
 };
 
@@ -687,7 +727,21 @@ static struct msm_bus_scale_pdata dtv_bus_scale_pdata = {
 
 static struct lcdc_platform_data dtv_pdata = {
 	.bus_scale_table = &dtv_bus_scale_pdata,
+	.lcdc_power_save = hdmi_panel_power,
 };
+
+static int hdmi_panel_power(int on)
+{
+	int rc;
+
+	pr_debug("%s: HDMI Core: %s\n", __func__, (on ? "ON" : "OFF"));
+	rc = hdmi_core_power(on, 1);
+	if (rc)
+		rc = hdmi_cec_power(on);
+
+	pr_debug("%s: HDMI Core: %s Success\n", __func__, (on ? "ON" : "OFF"));
+	return rc;
+}
 
 static int hdmi_enable_5v(int on)
 {
@@ -736,7 +790,6 @@ static int hdmi_core_power(int on, int show)
 	static struct regulator *reg_8921_lvs7, *reg_8921_s4, *reg_ext_3p3v;
 	static int prev_on;
 	int rc;
-	int pmic_gpio14 = PM8921_GPIO_PM_TO_SYS(14);
 
 	if (on == prev_on)
 		return 0;
@@ -793,20 +846,61 @@ static int hdmi_core_power(int on, int show)
 		rc = regulator_enable(reg_ext_3p3v);
 		if (rc) {
 			pr_err("enable reg_ext_3p3v failed, rc=%d\n", rc);
-			return -ENODEV;
+			return rc;
 		}
 		rc = regulator_enable(reg_8921_lvs7);
 		if (rc) {
 			pr_err("'%s' regulator enable failed, rc=%d\n",
 				"hdmi_vdda", rc);
-			return rc;
+			goto error1;
 		}
 		rc = regulator_enable(reg_8921_s4);
 		if (rc) {
 			pr_err("'%s' regulator enable failed, rc=%d\n",
 				"hdmi_lvl_tsl", rc);
-			return rc;
+			goto error2;
 		}
+		pr_debug("%s(on): success\n", __func__);
+	} else {
+		rc = regulator_disable(reg_ext_3p3v);
+		if (rc) {
+			pr_err("disable reg_ext_3p3v failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+		rc = regulator_disable(reg_8921_lvs7);
+		if (rc) {
+			pr_err("disable reg_8921_l23 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+		rc = regulator_disable(reg_8921_s4);
+		if (rc) {
+			pr_err("disable reg_8921_s4 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+		pr_debug("%s(off): success\n", __func__);
+	}
+
+	prev_on = on;
+
+	return 0;
+
+error2:
+	regulator_disable(reg_8921_lvs7);
+error1:
+	regulator_disable(reg_ext_3p3v);
+	return rc;
+}
+
+static int hdmi_gpio_config(int on)
+{
+	int rc = 0;
+	static int prev_on;
+	int pmic_gpio14 = PM8921_GPIO_PM_TO_SYS(14);
+
+	if (on == prev_on)
+		return 0;
+
+	if (on) {
 		rc = gpio_request(HDMI_DDC_CLK_GPIO, "HDMI_DDC_CLK");
 		if (rc) {
 			pr_err("'%s'(%d) gpio_request failed, rc=%d\n",
@@ -844,27 +938,10 @@ static int hdmi_core_power(int on, int show)
 			gpio_set_value_cansleep(pmic_gpio14, 1);
 			gpio_free(pmic_gpio14);
 		}
-
-		rc = regulator_disable(reg_ext_3p3v);
-		if (rc) {
-			pr_err("disable reg_ext_3p3v failed, rc=%d\n", rc);
-			return -ENODEV;
-		}
-		rc = regulator_disable(reg_8921_lvs7);
-		if (rc) {
-			pr_err("disable reg_8921_l23 failed, rc=%d\n", rc);
-			return -ENODEV;
-		}
-		rc = regulator_disable(reg_8921_s4);
-		if (rc) {
-			pr_err("disable reg_8921_s4 failed, rc=%d\n", rc);
-			return -ENODEV;
-		}
 		pr_debug("%s(off): success\n", __func__);
 	}
 
 	prev_on = on;
-
 	return 0;
 
 error4:
@@ -874,8 +951,6 @@ error3:
 error2:
 	gpio_free(HDMI_DDC_CLK_GPIO);
 error1:
-	regulator_disable(reg_8921_lvs7);
-	regulator_disable(reg_8921_s4);
 	return rc;
 }
 
@@ -921,6 +996,8 @@ void __init apq8064_init_fb(void)
 		platform_device_register(&mipi_dsi2lvds_bridge_device);
 	if (machine_is_apq8064_mtp())
 		platform_device_register(&mipi_dsi_toshiba_panel_device);
+	if (machine_is_mpq8064_dtv())
+		platform_device_register(&lvds_frc_panel_device);
 
 	msm_fb_register_device("mdp", &mdp_pdata);
 	msm_fb_register_device("lvds", &lvds_pdata);

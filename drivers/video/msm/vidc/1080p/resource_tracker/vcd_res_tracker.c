@@ -536,6 +536,9 @@ int res_trk_update_bus_perf_level(struct vcd_dev_ctxt *dev_ctxt, u32 perf_level)
 	u32 bus_clk_index, client_type = 0;
 	int rc = 0;
 
+	if (dev_ctxt->turbo_mode_set)
+		return rc;
+
 	cctxt_itr = dev_ctxt->cctxt_list_head;
 	while (cctxt_itr) {
 		if (cctxt_itr->decoding)
@@ -565,6 +568,9 @@ int res_trk_update_bus_perf_level(struct vcd_dev_ctxt *dev_ctxt, u32 perf_level)
 		bus_clk_index = 2;
 	}
 
+	if (bus_clk_index == 3)
+		dev_ctxt->turbo_mode_set = 1;
+
 	bus_clk_index = (bus_clk_index << 1) + (client_type + 1);
 	VCDRES_MSG_LOW("%s(), bus_clk_index = %d", __func__, bus_clk_index);
 	VCDRES_MSG_LOW("%s(),context.pcl = %x", __func__, resource_context.pcl);
@@ -584,6 +590,12 @@ u32 res_trk_set_perf_level(u32 req_perf_lvl, u32 *pn_set_perf_lvl,
 			__func__, dev_ctxt);
 		return false;
 	}
+	if (dev_ctxt->turbo_mode_set &&
+			(req_perf_lvl < RESTRK_1080P_TURBO_PERF_LEVEL)) {
+		VCDRES_MSG_MED("%s(): TURBO MODE!!\n", __func__);
+		return true;
+	}
+
 	VCDRES_MSG_LOW("%s(), req_perf_lvl = %d", __func__, req_perf_lvl);
 
 	if (resource_context.vidc_platform_data->disable_turbo

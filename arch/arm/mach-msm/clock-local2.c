@@ -408,6 +408,19 @@ static int branch_clk_set_rate(struct clk *c, unsigned long rate)
 	return -EPERM;
 }
 
+static long branch_clk_round_rate(struct clk *c, unsigned long rate)
+{
+	struct branch_clk *branch = to_branch_clk(c);
+
+	if (branch->max_div)
+		return rate <= (branch->max_div) ? rate : -EPERM;
+
+	if (!branch->has_sibling)
+		return clk_round_rate(branch->parent, rate);
+
+	return -EPERM;
+}
+
 static unsigned long branch_clk_get_rate(struct clk *c)
 {
 	struct branch_clk *branch = to_branch_clk(c);
@@ -457,16 +470,11 @@ static enum handoff branch_clk_handoff(struct clk *c)
 }
 
 static int __branch_clk_reset(void __iomem *bcr_reg,
-				enum clk_reset_action action, const char *name)
+				enum clk_reset_action action)
 {
 	int ret = 0;
 	unsigned long flags;
 	u32 reg_val;
-
-	if (!bcr_reg) {
-		WARN("clk_reset called on an unsupported clock (%s)\n", name);
-		return -EPERM;
-	}
 
 	spin_lock_irqsave(&local_clock_reg_lock, flags);
 	reg_val = readl_relaxed(bcr_reg);
@@ -492,7 +500,13 @@ static int __branch_clk_reset(void __iomem *bcr_reg,
 static int branch_clk_reset(struct clk *c, enum clk_reset_action action)
 {
 	struct branch_clk *branch = to_branch_clk(c);
-	return __branch_clk_reset(BCR_REG(branch), action, c->dbg_name);
+
+	if (!branch->bcr_reg) {
+		WARN("clk_reset called on an unsupported clock (%s)\n",
+			c->dbg_name);
+		return -EPERM;
+	}
+	return __branch_clk_reset(BCR_REG(branch), action);
 }
 
 /*
@@ -501,7 +515,13 @@ static int branch_clk_reset(struct clk *c, enum clk_reset_action action)
 static int local_vote_clk_reset(struct clk *c, enum clk_reset_action action)
 {
 	struct local_vote_clk *vclk = to_local_vote_clk(c);
-	return __branch_clk_reset(BCR_REG(vclk), action, c->dbg_name);
+
+	if (!vclk->bcr_reg) {
+		WARN("clk_reset called on an unsupported clock (%s)\n",
+			c->dbg_name);
+		return -EPERM;
+	}
+	return __branch_clk_reset(BCR_REG(vclk), action);
 }
 
 static int local_vote_clk_enable(struct clk *c)
@@ -573,6 +593,7 @@ struct clk_ops clk_ops_branch = {
 	.set_rate = branch_clk_set_rate,
 	.get_rate = branch_clk_get_rate,
 	.list_rate = branch_clk_list_rate,
+	.round_rate = branch_clk_round_rate,
 	.reset = branch_clk_reset,
 	.get_parent = branch_clk_get_parent,
 	.handoff = branch_clk_handoff,

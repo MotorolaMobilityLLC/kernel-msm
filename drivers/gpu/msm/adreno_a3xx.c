@@ -433,6 +433,9 @@ static unsigned int *build_gmem2sys_cmds(struct adreno_device *adreno_dev,
 	unsigned int *cmds = tmp_ctx.cmd;
 	unsigned int *start = cmds;
 
+	*cmds++ = cp_type0_packet(A3XX_RBBM_CLOCK_CTL, 1);
+	*cmds++ = A3XX_RBBM_CLOCK_CTL_DEFAULT;
+
 	*cmds++ = cp_type3_packet(CP_SET_CONSTANT, 3);
 	*cmds++ = CP_REG(A3XX_RB_MODE_CONTROL);
 
@@ -1161,6 +1164,9 @@ static unsigned int *build_sys2gmem_cmds(struct adreno_device *adreno_dev,
 {
 	unsigned int *cmds = tmp_ctx.cmd;
 	unsigned int *start = cmds;
+
+	*cmds++ = cp_type0_packet(A3XX_RBBM_CLOCK_CTL, 1);
+	*cmds++ = A3XX_RBBM_CLOCK_CTL_DEFAULT;
 
 	*cmds++ = cp_type3_packet(CP_SET_CONSTANT, 5);
 	*cmds++ = CP_REG(A3XX_HLSQ_CONTROL_0_REG);
@@ -2409,30 +2415,29 @@ static void a3xx_err_callback(struct adreno_device *adreno_dev, int bit)
 
 static void a3xx_cp_callback(struct adreno_device *adreno_dev, int irq)
 {
-	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
+	struct kgsl_device *device = &adreno_dev->dev;
 
 	if (irq == A3XX_INT_CP_RB_INT) {
 		unsigned int context_id;
-		kgsl_sharedmem_readl(&adreno_dev->dev.memstore,
-				&context_id,
+		kgsl_sharedmem_readl(&device->memstore, &context_id,
 				KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL,
 					current_context));
 		if (context_id < KGSL_MEMSTORE_MAX) {
-			kgsl_sharedmem_writel(&rb->device->memstore,
+			kgsl_sharedmem_writel(&device->memstore,
 					KGSL_MEMSTORE_OFFSET(context_id,
 						ts_cmp_enable), 0);
 			wmb();
 		}
-		KGSL_CMD_WARN(rb->device, "ringbuffer rb interrupt\n");
+		KGSL_CMD_WARN(device, "ringbuffer rb interrupt\n");
 	}
 
-	wake_up_interruptible_all(&rb->device->wait_queue);
+	wake_up_interruptible_all(&device->wait_queue);
 
 	/* Schedule work to free mem and issue ibs */
-	queue_work(rb->device->work_queue, &rb->device->ts_expired_ws);
+	queue_work(device->work_queue, &device->ts_expired_ws);
 
-	atomic_notifier_call_chain(&rb->device->ts_notifier_list,
-				   rb->device->id, NULL);
+	atomic_notifier_call_chain(&device->ts_notifier_list,
+				   device->id, NULL);
 }
 
 #define A3XX_IRQ_CALLBACK(_c) { .func = _c }
@@ -2552,11 +2557,6 @@ static unsigned int a3xx_busy_cycles(struct adreno_device *adreno_dev)
 static void a3xx_start(struct adreno_device *adreno_dev)
 {
 	struct kgsl_device *device = &adreno_dev->dev;
-
-	/* Reset the core */
-	adreno_regwrite(device, A3XX_RBBM_SW_RESET_CMD,
-		0x00000001);
-	msleep(20);
 
 	/* Set up 16 deep read/write request queues */
 

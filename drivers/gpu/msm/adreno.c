@@ -267,7 +267,7 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 				KGSL_IOMMU_CONTEXT_USER))
 		goto done;
 
-	if (adreno_is_a225(adreno_dev))
+	if (cpu_is_msm8960())
 		cmds += adreno_add_change_mh_phys_limit_cmds(cmds, 0xFFFFF000,
 					device->mmu.setstate_memory.gpuaddr +
 					KGSL_IOMMU_SETSTATE_NOP_OFFSET);
@@ -362,7 +362,7 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 		}
 	}
 
-	if (adreno_is_a225(adreno_dev))
+	if (cpu_is_msm8960())
 		cmds += adreno_add_change_mh_phys_limit_cmds(cmds,
 			reg_map_desc[num_iommu_units - 1]->gpuaddr - PAGE_SIZE,
 			device->mmu.setstate_memory.gpuaddr +
@@ -1592,9 +1592,16 @@ void adreno_irqctrl(struct kgsl_device *device, int state)
 	adreno_dev->gpudev->irq_control(adreno_dev, state);
 }
 
-static unsigned int adreno_gpuid(struct kgsl_device *device)
+static unsigned int adreno_gpuid(struct kgsl_device *device,
+	unsigned int *chipid)
 {
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+
+	/* Some applications need to know the chip ID too, so pass
+	 * that as a parameter */
+
+	if (chipid != NULL)
+		*chipid = adreno_dev->chip_id;
 
 	/* Standard KGSL gpuid format:
 	 * top word is 0x0002 for 2D or 0x0003 for 3D

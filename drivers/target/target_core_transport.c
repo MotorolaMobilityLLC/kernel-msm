@@ -1550,11 +1550,11 @@ static int transport_check_alloc_task_attr(struct se_cmd *cmd)
 	return 0;
 }
 
-/*	transport_generic_allocate_tasks():
+/*	target_setup_cmd_from_cdb():
  *
  *	Called from fabric RX Thread.
  */
-int transport_generic_allocate_tasks(
+int target_setup_cmd_from_cdb(
 	struct se_cmd *cmd,
 	unsigned char *cdb)
 {
@@ -1620,7 +1620,7 @@ int transport_generic_allocate_tasks(
 	spin_unlock(&cmd->se_lun->lun_sep_lock);
 	return 0;
 }
-EXPORT_SYMBOL(transport_generic_allocate_tasks);
+EXPORT_SYMBOL(target_setup_cmd_from_cdb);
 
 /*
  * Used by fabric module frontends to queue tasks directly.
@@ -1701,6 +1701,8 @@ void target_submit_cmd(struct se_cmd *se_cmd, struct se_session *se_sess,
 	 */
 	transport_init_se_cmd(se_cmd, se_tpg->se_tpg_tfo, se_sess,
 				data_length, data_dir, task_attr, sense);
+	if (flags & TARGET_SCF_UNKNOWN_SIZE)
+		se_cmd->unknown_data_length = 1;
 	/*
 	 * Obtain struct se_cmd->cmd_kref reference and add new cmd to
 	 * se_sess->sess_cmd_list.  A second kref_get here is necessary
@@ -1726,7 +1728,7 @@ void target_submit_cmd(struct se_cmd *se_cmd, struct se_session *se_sess,
 	 * Sanitize CDBs via transport_generic_cmd_sequencer() and
 	 * allocate the necessary tasks to complete the received CDB+data
 	 */
-	rc = transport_generic_allocate_tasks(se_cmd, cdb);
+	rc = target_setup_cmd_from_cdb(se_cmd, cdb);
 	if (rc != 0) {
 		transport_generic_request_failure(se_cmd);
 		return;
@@ -2581,7 +2583,7 @@ static int target_check_write_same_discard(unsigned char *flags, struct se_devic
  *	Generic Command Sequencer that should work for most DAS transport
  *	drivers.
  *
- *	Called from transport_generic_allocate_tasks() in the $FABRIC_MOD
+ *	Called from target_setup_cmd_from_cdb() in the $FABRIC_MOD
  *	RX Thread.
  *
  *	FIXME: Need to support other SCSI OPCODES where as well.
@@ -3141,6 +3143,9 @@ static int transport_generic_cmd_sequencer(
 			cmd->se_tfo->get_fabric_name(), cdb[0]);
 		goto out_unsupported_cdb;
 	}
+
+	if (cmd->unknown_data_length)
+		cmd->data_length = size;
 
 	if (size != cmd->data_length) {
 		pr_warn("TARGET_CORE[%s]: Expected Transfer Length:"

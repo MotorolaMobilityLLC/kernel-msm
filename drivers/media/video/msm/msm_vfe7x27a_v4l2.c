@@ -370,6 +370,7 @@ static void vfe_send_outmsg(struct v4l2_subdev *sd, uint8_t msgid,
 	struct isp_msg_output msg;
 
 	msg.output_id = msgid;
+	msg.buf.image_mode = -1;
 	msg.buf.ch_paddr[0]     = ch0_paddr;
 	msg.buf.ch_paddr[1]     = ch1_paddr;
 	msg.frameCounter = vfe2x_ctrl->vfeFrameId;
@@ -859,6 +860,7 @@ static void vfe2x_subdev_notify(int id, int path)
 	CDBG("vfe2x_subdev_notify : msgId = %d\n", id);
 	rp.evt_msg.type   = MSM_CAMERA_MSG;
 	rp.evt_msg.msg_id = path;
+	rp.evt_msg.data = NULL;
 	rp.type	   = id;
 	v4l2_subdev_notify(&vfe2x_ctrl->subdev, NOTIFY_VFE_BUF_EVT, &rp);
 	spin_unlock_irqrestore(&vfe2x_ctrl->sd_notify_lock, flags);
@@ -1264,6 +1266,16 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 				vfestopped = 1;
 				spin_lock_irqsave(&vfe2x_ctrl->table_lock,
 						flags);
+				if (op_mode & SNAPSHOT_MASK_MODE) {
+					vfe2x_ctrl->stop_pending = 0;
+					vfe2x_send_isp_msg(vfe2x_ctrl,
+						msgs_map[MSG_STOP_ACK].
+						isp_id);
+					spin_unlock_irqrestore(
+							&vfe2x_ctrl->table_lock,
+							flags);
+					return 0;
+				}
 				if ((!list_empty(&vfe2x_ctrl->table_q)) ||
 						vfe2x_ctrl->tableack_pending) {
 					CDBG("stop pending\n");
@@ -1783,6 +1795,8 @@ static const struct v4l2_subdev_internal_ops msm_vfe_internal_ops;
 
 static int __devinit vfe2x_probe(struct platform_device *pdev)
 {
+	struct msm_cam_subdev_info sd_info;
+
 	CDBG("%s: device id = %d\n", __func__, pdev->id);
 	vfe2x_ctrl = kzalloc(sizeof(struct vfe2x_ctrl_type), GFP_KERNEL);
 	if (!vfe2x_ctrl) {
@@ -1799,7 +1813,10 @@ static int __devinit vfe2x_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, &vfe2x_ctrl->subdev);
 
 	vfe2x_ctrl->pdev = pdev;
-	msm_cam_register_subdev_node(&vfe2x_ctrl->subdev, VFE_DEV, 0);
+	sd_info.sdev_type = VFE_DEV;
+	sd_info.sd_index = 0;
+	sd_info.irq_num = 0;
+	msm_cam_register_subdev_node(&vfe2x_ctrl->subdev, &sd_info);
 	return 0;
 }
 

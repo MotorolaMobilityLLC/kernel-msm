@@ -87,6 +87,9 @@
  * the luma samples.  JPEG 4:2:2 */
 #define VFE_CHROMA_UPSAMPLE_INTERPOLATED 0
 
+/* wm bit offset for IRQ MASK and IRQ STATUS register */
+#define VFE_WM_OFFSET 6
+
 /* constants for irq registers */
 #define VFE_DISABLE_ALL_IRQS 0
 /* bit =1 is to clear the corresponding bit in VFE_IRQ_STATUS.  */
@@ -114,6 +117,17 @@
 #define VFE_IRQ_STATUS0_ASYNC_TIMER1  0x20000000  /* bit 29 */
 #define VFE_IRQ_STATUS0_ASYNC_TIMER2  0x40000000  /* bit 30 */
 #define VFE_IRQ_STATUS0_ASYNC_TIMER3  0x80000000  /* bit 32 */
+
+#define VFE_IRQ_STATUS1_RDI0_REG_UPDATE_MASK  0x4000000 /*bit 26*/
+#define VFE_IRQ_STATUS1_RDI1_REG_UPDATE_MASK  0x8000000 /*bit 27*/
+
+/*TODOs the irq status passed from axi to vfe irq handler does not account
+* for 2 irq status registers. So below macro is added to differentiate between
+* same bit set on both irq status registers. This wil be fixed later by passing
+*entire payload to vfe irq handler and parsing there instead of passing just the
+*status bit*/
+#define VFE_IRQ_STATUS1_RDI0_REG_UPDATE  0x84000000 /*bit 26*/
+#define VFE_IRQ_STATUS1_RDI1_REG_UPDATE  0x88000000 /*bit 27*/
 
 /* imask for while waiting for stop ack,  driver has already
  * requested stop, waiting for reset irq, and async timer irq.
@@ -741,7 +755,7 @@ struct vfe32_free_buf {
 struct vfe32_output_ch {
 	struct list_head free_buf_queue;
 	spinlock_t free_buf_lock;
-	uint16_t output_fmt;
+	uint16_t image_mode;
 	int8_t ch0;
 	int8_t ch1;
 	int8_t ch2;
@@ -788,7 +802,7 @@ struct vfe32_output_path {
 
 	struct vfe32_output_ch out0; /* preview and thumbnail */
 	struct vfe32_output_ch out1; /* snapshot */
-	struct vfe32_output_ch out2; /* video    */
+	struct vfe32_output_ch out2; /* rdi0    */
 };
 
 struct vfe32_frame_extra {
@@ -893,12 +907,37 @@ struct vfe32_frame_extra {
 #define VFE32_OUTPUT_MODE_PRIMARY_ALL_CHNLS	BIT(7)
 #define VFE32_OUTPUT_MODE_SECONDARY		BIT(8)
 #define VFE32_OUTPUT_MODE_SECONDARY_ALL_CHNLS	BIT(9)
+#define VFE32_OUTPUT_MODE_TERTIARY1		BIT(10)
 
 struct vfe_stats_control {
 	uint8_t  ackPending;
 	uint32_t nextFrameAddrBuf;
 	uint32_t droppedStatsFrameCount;
 	uint32_t bufToRender;
+};
+struct axi_ctrl_t;
+struct vfe32_ctrl_type;
+
+struct vfe_share_ctrl_t {
+	void __iomem *vfebase;
+	uint32_t register_total;
+
+	atomic_t vstate;
+	uint32_t vfeFrameId;
+	uint32_t stats_comp;
+	spinlock_t  stop_flag_lock;
+	int8_t stop_ack_pending;
+	enum vfe_output_state liveshot_state;
+	uint32_t vfe_capture_count;
+
+	uint16_t operation_mode;     /* streaming or snapshot */
+	struct vfe32_output_path outpath;
+
+	uint32_t ref_count;
+	spinlock_t  sd_notify_lock;
+
+	struct axi_ctrl_t *axi_ctrl;
+	struct vfe32_ctrl_type *vfe32_ctrl;
 };
 
 struct axi_ctrl_t {
@@ -908,7 +947,6 @@ struct axi_ctrl_t {
 	spinlock_t  tasklet_lock;
 	struct list_head tasklet_q;
 
-	void __iomem *vfebase;
 	void *syncdata;
 
 	struct resource	*vfemem;
@@ -916,16 +954,14 @@ struct axi_ctrl_t {
 	struct regulator *fs_vfe;
 	struct clk *vfe_clk[3];
 	struct tasklet_struct vfe32_tasklet;
+	struct vfe_share_ctrl_t *share_ctrl;
 };
 
 struct vfe32_ctrl_type {
-	uint16_t operation_mode;     /* streaming or snapshot */
-	struct vfe32_output_path outpath;
-
 	uint32_t vfeImaskCompositePacked;
 
-	spinlock_t  stop_flag_lock;
 	spinlock_t  update_ack_lock;
+	spinlock_t  start_ack_lock;
 	spinlock_t  state_lock;
 	spinlock_t  io_lock;
 
@@ -941,7 +977,6 @@ struct vfe32_ctrl_type {
 	void *extdata;
 
 	int8_t start_ack_pending;
-	int8_t stop_ack_pending;
 	int8_t reset_ack_pending;
 	int8_t update_ack_pending;
 	enum vfe_output_state recording_state;
@@ -949,19 +984,13 @@ struct vfe32_ctrl_type {
 	int8_t update_rolloff;
 	int8_t update_la;
 	int8_t update_gamma;
-	enum vfe_output_state liveshot_state;
 
-	void __iomem *vfebase;
-	uint32_t register_total;
+	struct vfe_share_ctrl_t *share_ctrl;
 
-	uint32_t stats_comp;
-	atomic_t vstate;
-	uint32_t vfe_capture_count;
 	uint32_t sync_timer_repeat_count;
 	uint32_t sync_timer_state;
 	uint32_t sync_timer_number;
 
-	uint32_t vfeFrameId;
 	uint32_t output1Pattern;
 	uint32_t output1Period;
 	uint32_t output2Pattern;
@@ -978,7 +1007,6 @@ struct vfe32_ctrl_type {
 	/* v4l2 subdev */
 	struct v4l2_subdev subdev;
 	struct platform_device *pdev;
-	spinlock_t  sd_notify_lock;
 	uint32_t hfr_mode;
 	uint32_t frame_skip_cnt;
 	uint32_t frame_skip_pattern;
@@ -1014,5 +1042,8 @@ struct vfe_cmd_stats_buf {
 
 #define VIDIOC_MSM_AXI_IRQ \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 21, void *)
+
+#define VIDIOC_MSM_AXI_BUF_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 22, void *)
 
 #endif /* __MSM_VFE32_H__ */
