@@ -15,6 +15,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/memory.h>
+#include <linux/persistent_ram.h>
 
 #include <asm/setup.h>
 #include <asm/sizes.h>
@@ -320,64 +321,55 @@ int lge_get_factory_boot(void)
 	return res;
 }
 
-#ifdef CONFIG_ANDROID_RAM_CONSOLE
-static struct resource ram_console_resource[] = {
+#ifdef CONFIG_ANDROID_PERSISTENT_RAM
+static struct persistent_ram_descriptor pram_descs[] = {
 	{
 		.name = "ram_console",
-		.flags = IORESOURCE_MEM,
-	}
+		.size = LGE_RAM_CONSOLE_SIZE,
+	},
+	{
+		.name = "panic-handler",
+		.size = LGE_CRASH_LOG_SIZE,
+	},
 };
 
+static struct persistent_ram lge_persistent_ram = {
+	.size = LGE_PERSISTENT_RAM_SIZE,
+	.num_descs = ARRAY_SIZE(pram_descs),
+	.descs = pram_descs,
+};
+
+void __init lge_add_persistent_ram(void)
+{
+	struct persistent_ram *pram = &lge_persistent_ram;
+	struct membank* bank = &meminfo.bank[0];
+
+	pram->start = bank->start + bank->size - LGE_PERSISTENT_RAM_SIZE;
+
+	persistent_ram_early_init(pram);
+}
+#endif
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
 static struct platform_device ram_console_device = {
 	.name = "ram_console",
 	.id = -1,
-	.num_resources = ARRAY_SIZE(ram_console_resource),
-	.resource = ram_console_resource,
 };
 
 void __init lge_add_ramconsole_devices(void)
 {
-	struct resource* res = ram_console_resource;
-	struct membank* bank = &meminfo.bank[0];
-
-	res->start = bank->start + bank->size;
-	res->end = res->start + LGE_RAM_CONSOLE_SIZE - 1;
-
-	printk(KERN_INFO "RAM CONSOLE START ADDR : %X\n", res->start);
-	printk(KERN_INFO "RAM CONSOLE END ADDR   : %X\n", res->end);
-
 	platform_device_register(&ram_console_device);
 }
 #endif /* CONFIG_ANDROID_RAM_CONSOLE */
 
 #ifdef CONFIG_LGE_CRASH_HANDLER
-static struct resource crash_log_resource[] = {
-	{
-		.name = "crash_log",
-		.flags = IORESOURCE_MEM,
-	}
-};
-
 static struct platform_device panic_handler_device = {
 	.name = "panic-handler",
-	.num_resources = ARRAY_SIZE(crash_log_resource),
-	.resource = crash_log_resource,
-	.dev = {
-		.platform_data = NULL,
-	}
+	.id = -1,
 };
 
 void __init lge_add_panic_handler_devices(void)
 {
-	struct resource* res = crash_log_resource;
-	struct membank* bank = &meminfo.bank[0];
-
-	res->start = bank->start + bank->size + LGE_RAM_CONSOLE_SIZE;
-	res->end = res->start + LGE_CRASH_LOG_SIZE - 1;
-
-	printk(KERN_INFO "CRASH LOG START ADDR : %X\n", res->start);
-	printk(KERN_INFO "CRASH LOG END ADDR   : %X\n", res->end);
-
 	platform_device_register(&panic_handler_device);
 }
 #endif /* CONFIG_LGE_CRASH_HANDLER */
