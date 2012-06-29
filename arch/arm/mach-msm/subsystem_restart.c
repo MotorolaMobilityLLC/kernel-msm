@@ -277,7 +277,7 @@ static void do_epoch_check(struct subsys_data *subsys)
 #if defined(CONFIG_LGE_CRASH_HANDLER)
 			msm_set_restart_mode(ssr_magic_number | SUB_UNAB_THD);
 #endif
-			panic("Subsystems have crashed %d times in less than "
+			WARN(1, "Subsystems have crashed %d times in less than "\
 				"%ld seconds!", max_restarts_check,
 				max_history_time_check);
 		}
@@ -342,7 +342,7 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 #if defined(CONFIG_LGE_CRASH_HANDLER)
 		msm_set_restart_mode(ssr_magic_number | SUB_THD_F_PWR);
 #endif
-		panic("%s[%p]: Subsystem died during powerup!",
+		WARN(1, "%s[%p]: Subsystem died during powerup!",
 						__func__, current);
 	}
 
@@ -373,7 +373,7 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 #if defined(CONFIG_LGE_CRASH_HANDLER)
 			msm_set_restart_mode(ssr_magic_number | SUB_THD_F_SD);
 #endif
-			panic("subsys-restart: %s[%p]: Failed to shutdown %s!",
+			WARN(1, "subsys-restart: %s[%p]: Failed to shutdown %s!",
 				__func__, current, restart_list[i]->name);
 		}
 	}
@@ -416,7 +416,7 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 #if defined(CONFIG_LGE_CRASH_HANDLER)
 			msm_set_restart_mode(ssr_magic_number | SUB_THD_F_PWR);
 #endif
-			panic("%s[%p]: Failed to powerup %s!", __func__,
+			WARN(1, "%s[%p]: Failed to powerup %s!", __func__,
 				current, restart_list[i]->name);
 		}
 	}
@@ -456,8 +456,9 @@ static void __subsystem_restart(struct subsys_data *subsys)
 #if defined(CONFIG_LGE_CRASH_HANDLER)
 		msm_set_restart_mode(ssr_magic_number | SUB_UNAB_THD);
 #endif
-		panic("%s: Unable to allocate memory to restart %s.",
+		pr_err("%s: Unable to allocate memory to restart %s.",
 		      __func__, subsys->name);
+		return;
 	}
 
 	data->subsys = subsys;
@@ -475,7 +476,7 @@ static void __subsystem_restart(struct subsys_data *subsys)
 #if defined(CONFIG_LGE_CRASH_HANDLER)
 		msm_set_restart_mode(ssr_magic_number | SUB_UNAB_THD);
 #endif
-		panic("%s: Unable to schedule work to restart %s (%d).",
+		pr_err("%s: Unable to schedule work to restart %s (%d).",
 		     __func__, subsys->name, rc);
 	}
 }
@@ -521,7 +522,7 @@ int subsystem_restart(const char *subsys_name)
 #if defined(CONFIG_LGE_CRASH_HANDLER)
 		msm_set_restart_mode(ssr_magic_number | SUB_RESET_SOC);
 #endif
-		panic("subsys-restart: Resetting the SoC - %s crashed.",
+		WARN(1, "subsys-restart: Resetting the SoC - %s crashed.",
 			subsys->name);
 		break;
 
@@ -529,7 +530,7 @@ int subsystem_restart(const char *subsys_name)
 #if defined(CONFIG_LGE_CRASH_HANDLER)
 		msm_set_restart_mode(ssr_magic_number | SUB_UNKNOWN);
 #endif
-		panic("subsys-restart: Unknown restart level!\n");
+		pr_err("subsys-restart: Unknown restart level!\n");
 	break;
 
 	}
@@ -622,18 +623,16 @@ static int __init ssr_init_soc_restart_orders(void)
 
 static int __init subsys_restart_init(void)
 {
-	int ret = 0;
-
 	restart_level = RESET_SOC;
 
 	ssr_wq = alloc_workqueue("ssr_wq", 0, 0);
 
-	if (!ssr_wq)
-		panic("Couldn't allocate workqueue for subsystem restart.\n");
+	if (!ssr_wq) {
+		pr_err("%s: out of memory\n", __func__);
+		return -ENOMEM;
+	}
 
-	ret = ssr_init_soc_restart_orders();
-
-	return ret;
+	return ssr_init_soc_restart_orders();
 }
 
 arch_initcall(subsys_restart_init);
