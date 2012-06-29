@@ -21,6 +21,7 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/module.h>
+#include <linux/persistent_ram.h>
 #include <asm/setup.h>
 #include <mach/board_lge.h>
 
@@ -243,32 +244,20 @@ static struct notifier_block panic_handler_block = {
 
 static int __init panic_handler_probe(struct platform_device *pdev)
 {
-	struct resource *res = pdev->resource;
-	size_t start;
+	struct persistent_ram_zone *prz;
 	size_t buffer_size;
 	void *buffer;
 	int ret = 0;
 #ifdef CONFIG_CPU_CP15_MMU
 	void *ctx_buf;
-	size_t ctx_start;
 #endif
-	if (res == NULL || pdev->num_resources != 1 ||
-			!(res->flags & IORESOURCE_MEM)) {
-		printk(KERN_ERR "lge_panic_handler: invalid resource, %p %d "
-				"flags %lx\n", res, pdev->num_resources,
-				res ? res->flags : 0);
-		return -ENXIO;
-	}
 
-	buffer_size = res->end - res->start + 1;
-	start = res->start;
-	printk(KERN_INFO "lge_panic_handler: got buffer at %zx, size %zx\n",
-			start, buffer_size);
-	buffer = ioremap(res->start, buffer_size);
-	if (buffer == NULL) {
-		printk(KERN_ERR "lge_panic_handler: failed to map memory\n");
-		return -ENOMEM;
-	}
+	prz = persistent_ram_init_ringbuffer(&pdev->dev, false);
+	if (IS_ERR(prz))
+		return PTR_ERR(prz);
+
+	buffer_size = prz->buffer_size - SZ_1K;
+	buffer = (void *)prz->buffer;;
 
 	crash_dump_log = (struct crash_log_dump *)buffer;
 	memset(crash_dump_log, 0, buffer_size);
@@ -276,13 +265,7 @@ static int __init panic_handler_probe(struct platform_device *pdev)
 	crash_dump_log->size = 0;
 	crash_buf_size = buffer_size - offsetof(struct crash_log_dump, buffer);
 #ifdef CONFIG_CPU_CP15_MMU
-	ctx_start = res->end + 1;
-	ctx_buf = ioremap(ctx_start,1024);
-	if (ctx_buf == NULL) {
-		printk(KERN_ERR "cpu crash ctx buffer: "
-				"failed to map memory\n");
-		return -ENOMEM;
-	}
+	ctx_buf = (void *)(buffer + buffer_size);
 	cpu_crash_ctx = (unsigned long *)ctx_buf;
 #endif
 	atomic_notifier_chain_register(&panic_notifier_list,

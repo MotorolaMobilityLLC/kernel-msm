@@ -2075,12 +2075,9 @@ static void __init apq8064_mako_init(void)
 	lge_add_backlight_devices();
 	lge_add_sound_devices();
 	lge_add_bcm2079x_device();
-#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	lge_add_persistent_ram
 	lge_add_ramconsole_devices();
-#endif
-#ifdef CONFIG_LGE_CRASH_HANDLER
 	lge_add_panic_handler_devices();
-#endif
 #ifdef CONFIG_LGE_QFPROM_INTERFACE
 	lge_add_qfprom_devices();
 #endif
