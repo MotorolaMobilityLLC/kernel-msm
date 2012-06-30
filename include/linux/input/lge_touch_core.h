@@ -24,21 +24,23 @@
 #define MAX_BUTTON	4
 
 struct touch_device_caps {
-	u8		button_support;
-	u16		y_button_boundary;
-	u32		button_margin;
-	u8		number_of_button;
-	u32		button_name[MAX_BUTTON];
-	u8		is_width_supported;
-	u8	 	is_pressure_supported;
-	u8		is_id_supported;
-	u32		max_width;
-	u32		max_pressure;
-	u32		max_id;
-	u32		x_max;
-	u32		y_max;
-	u32		lcd_x;
-	u32		lcd_y;
+	u8              button_support;
+	u16             y_button_boundary;
+	u32             button_margin;
+	u8              number_of_button;
+	u32             button_name[MAX_BUTTON];
+	u8              is_width_major_supported;
+	u8              is_width_minor_supported;
+	u8              is_pressure_supported;
+	u8              is_id_supported;
+	u32             max_width_major;
+	u32             max_width_minor;
+	u32             max_pressure;
+	u32             max_id;
+	u32             x_max;
+	u32             y_max;
+	u32             lcd_x;
+	u32             lcd_y;
 };
 
 struct touch_operation_role {
@@ -80,6 +82,7 @@ struct touch_platform_data {
 
 struct t_data {
 	u16             state;
+	u16             tool_type;
 	u16             x_position;
 	u16             y_position;
 	u16             width_major;
