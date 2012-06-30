@@ -87,7 +87,7 @@ typedef struct sCsrNeighborRoamBSSInfo
 #define CSR_NEIGHBOR_ROAM_REPORT_QUERY_TIMEOUT  1000    //in milliseconds
 #define CSR_NEIGHBOR_ROAM_PREAUTH_RSP_WAIT_MULTIPLIER   5     //in milliseconds
 #define MAX_NUM_PREAUTH_FAIL_LIST_ADDRESS       10 //Max number of MAC addresses with which the pre-auth was failed
-#define MAX_BSS_IN_NEIGHBOR_RPT                 4
+#define MAX_BSS_IN_NEIGHBOR_RPT                 15
 #define CSR_NEIGHBOR_ROAM_MAX_NUM_PREAUTH_RETRIES 3
 
 /* Black listed APs. List of MAC Addresses with which the Preauthentication was failed. */

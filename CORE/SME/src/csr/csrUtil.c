@@ -3124,6 +3124,8 @@ tANI_U8 csrConstructRSNIe( tHalHandle hHal, tANI_U32 sessionId, tCsrRoamProfile 
     tANI_U8 PMKId[CSR_RSN_PMKID_SIZE];
     tDot11fBeaconIEs *pIesLocal = pIes;
 
+    smsLog(pMac, LOGW, "%s called...", __FUNCTION__);
+
     do
     {
         if ( !csrIsProfileRSN( pProfile ) ) break;
@@ -3808,8 +3810,18 @@ tANI_U8 csrRetrieveRsnIe( tHalHandle hHal, tANI_U32 sessionId, tCsrRoamProfile *
     do
     {
         if ( !csrIsProfileRSN( pProfile ) ) break;
+#ifdef FEATURE_WLAN_LFR
+        if (csrRoamIsFastRoamEnabled(pMac))
+        {
+            // If "Legacy Fast Roaming" is enabled ALWAYS rebuild the RSN IE from 
+            // scratch. So it contains the current PMK-IDs
+            cbRsnIe = csrConstructRSNIe(pMac, sessionId, pProfile, pSirBssDesc, pIes, pRsnIe);
+        }
+        else 
+#endif
         if(pProfile->nRSNReqIELength && pProfile->pRSNReqIE)
         {
+            // If you have one started away, re-use it. 
             if(SIR_MAC_WPA_IE_MAX_LENGTH >= pProfile->nRSNReqIELength)
             {
                 cbRsnIe = (tANI_U8)pProfile->nRSNReqIELength;

@@ -539,7 +539,29 @@ VOS_STATUS hddDevTmRegisterNotifyCallback(hdd_context_t *pHddCtx)
 ----------------------------------------------------------------------------*/
 VOS_STATUS hddDevTmUnregisterNotifyCallback(hdd_context_t *pHddCtx)
 {
+   VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
+
    wcnss_unregister_thermal_mitigation(hddDevTmLevelChangedHandler);
+
+   if(VOS_TIMER_STATE_RUNNING ==
+           vos_timer_getCurrentState(&pHddCtx->tmInfo.txSleepTimer))
+   {
+       vosStatus = vos_timer_stop(&pHddCtx->tmInfo.txSleepTimer);
+       if(!VOS_IS_STATUS_SUCCESS(vosStatus))
+       {
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                                "%s: Timer stop fail", __func__);
+       }
+   }
+
+   // Destroy the vos timer...
+   vosStatus = vos_timer_destroy(&pHddCtx->tmInfo.txSleepTimer);
+   if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_ERROR,
+                            "%s: Fail to destroy timer", __func__);
+   }
+
    return VOS_STATUS_SUCCESS;
 }
 

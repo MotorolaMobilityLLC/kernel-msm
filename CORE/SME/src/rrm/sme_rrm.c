@@ -1134,20 +1134,38 @@ VOS_STATUS rrmClose (tpAniSirGlobal pMac)
    {
       vosStatus = vos_timer_stop( &pSmeRrmContext->IterMeasTimer );
       if(!VOS_IS_STATUS_SUCCESS(vosStatus))
-      { 
+      {
          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, FL("Timer stop fail") );
       }
-   } 
+   }
 
-   vosStatus = vos_timer_destroy( &pSmeRrmContext->IterMeasTimer ); 
-   if (!VOS_IS_STATUS_SUCCESS(vosStatus)) {
+   vosStatus = vos_timer_destroy( &pSmeRrmContext->IterMeasTimer );
+   if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+   {
 
        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, FL("Fail to destroy timer") );
 
    }
 
+   if( VOS_TIMER_STATE_RUNNING ==
+          vos_timer_getCurrentState( &pSmeRrmContext->neighborReqControlInfo.neighborRspWaitTimer ) )
+   {
+      vosStatus = vos_timer_stop( &pSmeRrmContext->neighborReqControlInfo.neighborRspWaitTimer );
+      if(!VOS_IS_STATUS_SUCCESS(vosStatus))
+      {
+         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL, FL("Timer stop fail") );
+      }
+   }
+
+   vosStatus = vos_timer_destroy( &pSmeRrmContext->neighborReqControlInfo.neighborRspWaitTimer );
+   if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+   {
+       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL, FL("Fail to destroy timer") );
+
+   }
+
    rrmLLPurgeNeighborCache(pMac, &pSmeRrmContext->neighborReportCache);
-      
+
    csrLLClose(&pSmeRrmContext->neighborReportCache);
 
    return vosStatus;

@@ -651,7 +651,14 @@ typedef enum
 #define CFG_CCX_FEATURE_ENABLED_DEFAULT                     (0) //disabled
 #endif // FEATURE_WLAN_CCX
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
+#ifdef FEATURE_WLAN_LFR
+#define CFG_LFR_FEATURE_ENABLED_NAME                       "FastRoamEnabled"
+#define CFG_LFR_FEATURE_ENABLED_MIN                         (0)
+#define CFG_LFR_FEATURE_ENABLED_MAX                         (1)
+#define CFG_LFR_FEATURE_ENABLED_DEFAULT                     (0) //disabled
+#endif // FEATURE_WLAN_LFR
+
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
 #define CFG_FT_RSSI_FILTER_PERIOD_NAME                     "FTRssiFilterPeriod"
 #define CFG_FT_RSSI_FILTER_PERIOD_MIN                      WNI_CFG_FT_RSSI_FILTER_PERIOD_STAMIN
 #define CFG_FT_RSSI_FILTER_PERIOD_MAX                      WNI_CFG_FT_RSSI_FILTER_PERIOD_STAMAX
@@ -1323,11 +1330,14 @@ typedef struct
    v_U32_t                      InfraUapsdBeSuspIntv;
    v_U32_t                      InfraUapsdBkSrvIntv;
    v_U32_t                      InfraUapsdBkSuspIntv;
+#ifdef FEATURE_WLAN_LFR
+   v_BOOL_t                     isFastRoamIniFeatureEnabled;
+#endif
 #ifdef FEATURE_WLAN_CCX
    v_U32_t                      InfraInactivityInterval;
    v_BOOL_t                     isCcxIniFeatureEnabled;
 #endif
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
    v_U8_t                       FTRssiFilterPeriod;
    v_BOOL_t                     isFastTransitionEnabled;
 #endif

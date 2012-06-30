@@ -249,8 +249,11 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
         {
            //a state m/c implementation in PAL is TBD to avoid this delay
            msleep(500);
-           pHddCtx->isAmpAllowed = VOS_FALSE;
-           WLANBAP_DeregisterFromHCI();
+           if ( pHddCtx->isAmpAllowed )
+           {
+                WLANBAP_DeregisterFromHCI();
+                pHddCtx->isAmpAllowed = VOS_FALSE;
+           }
         }
 #endif //WLAN_BTAMP_FEATURE
         break;
@@ -3574,7 +3577,7 @@ int hdd_wlan_startup(struct device *dev )
           (versionCompiled.version != versionReported.version) ||
           (versionCompiled.revision != versionReported.revision))
       {
-         pr_err("%s: WCNSS WlAN Version %u.%u.%u.%u, "
+         pr_err("%s: WCNSS WLAN Version %u.%u.%u.%u, "
                 "Host expected %u.%u.%u.%u\n",
                 WLAN_MODULE_NAME,
                 (int)versionReported.major,

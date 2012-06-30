@@ -1097,7 +1097,7 @@ static int iw_get_freq(struct net_device *dev, struct iw_request_info *info,
 
    if( pHddStaCtx->conn_info.connState== eConnectionState_Associated )
    {
-       if (sme_GetOperationChannel(hHal, &channel) != eHAL_STATUS_SUCCESS)
+       if (sme_GetOperationChannel(hHal, &channel, pAdapter->sessionId) != eHAL_STATUS_SUCCESS)
        {
            return -EIO;
        }
@@ -2242,6 +2242,17 @@ VOS_STATUS wlan_hdd_enter_lowpower(hdd_context_t *pHddCtx)
    return vos_Status;
 }
 
+
+void* wlan_hdd_change_country_code_callback(void *pAdapter)
+{
+
+    hdd_adapter_t *call_back_pAdapter = pAdapter;
+  
+    complete(&call_back_pAdapter->change_country_code);
+
+    return NULL;
+}
+
 static int iw_set_priv(struct net_device *dev,
                        struct iw_request_info *info,
                        union iwreq_data *wrqu, char *extra)
@@ -2337,19 +2348,33 @@ static int iw_set_priv(struct net_device *dev,
     }
     else if( strncasecmp(cmd, "COUNTRY", 7) == 0 ) {
         char *country_code;
+        long lrc;
 
         country_code =  cmd + 8;
 
+        init_completion(&pAdapter->change_country_code);
+
         status = (int)sme_ChangeCountryCode(pHddCtx->hHal,
-                                            NULL,
+                                            (void *)(tSmeChangeCountryCallback)wlan_hdd_change_country_code_callback,
                                             country_code,
                                             pAdapter,
                                             pHddCtx->pvosContext);
+
+        /* Wait for completion */
+        lrc = wait_for_completion_interruptible_timeout(&pAdapter->change_country_code,
+                                    msecs_to_jiffies(WLAN_WAIT_TIME_STATS));
+
+        if (lrc <= 0)
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR,"%s: SME %s while setting country code ",
+                 __FUNCTION__, "Timed out");
+        }
+
         if( 0 != status )
         {
-             VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                        "%s: SME Change Country code fail \n",__func__);
-             return VOS_STATUS_E_FAILURE;
+            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                       "%s: SME Change Country code fail \n",__func__);
+            return VOS_STATUS_E_FAILURE;
         }
     }
     else if( strncasecmp(cmd, "rssi", 4) == 0 )
@@ -5253,6 +5278,16 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                "%s: Invalid band value %u", __FUNCTION__, band);
         return -EIO;
+    }
+
+    if ( (band == eCSR_BAND_24 && pHddCtx->cfg_ini->nBandCapability==2) || 
+         (band == eCSR_BAND_5G && pHddCtx->cfg_ini->nBandCapability==1) || 
+         (band == eCSR_BAND_ALL && pHddCtx->cfg_ini->nBandCapability!=0)) 
+    {       
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+             "%s: band value %u violate INI settings %u", __FUNCTION__,
+             band, pHddCtx->cfg_ini->nBandCapability);
+         return -EIO;
     }
 
     if (eHAL_STATUS_SUCCESS != sme_GetFreqBand(hHal, &currBand))

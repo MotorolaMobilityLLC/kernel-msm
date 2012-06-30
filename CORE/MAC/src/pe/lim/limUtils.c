@@ -4462,7 +4462,7 @@ limEnable11gProtection(tpAniSirGlobal pMac, tANI_U8 enable,
                                 psessionEntry->gLimOverlapNonGfParams.protectionEnabled))
                     {
                         //Check if there is a need to change HT OP mode.
-                        if(eSIR_HT_OP_MODE_OVERLAP_LEGACY == pMac->lim.gHTOperMode)
+                        if(eSIR_HT_OP_MODE_OVERLAP_LEGACY == psessionEntry->htOperMode)
                         {
                             limEnableHtRifsProtection(pMac, false, overlap, pBeaconParams,psessionEntry);
                             limEnableHtOBSSProtection(pMac,  false, overlap, pBeaconParams,psessionEntry);            

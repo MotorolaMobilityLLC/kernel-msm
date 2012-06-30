@@ -81,13 +81,16 @@ typedef struct _smeConfigParams
 #if defined WLAN_FEATURE_VOWIFI
    tRrmConfigParam  rrmConfig;
 #endif
+#if defined FEATURE_WLAN_LFR
+    tANI_U8   isFastRoamIniFeatureEnabled;
+#endif
 #if defined FEATURE_WLAN_CCX
     tANI_U8   isCcxIniFeatureEnabled;
 #endif
 #if defined WLAN_FEATURE_P2P_INTERNAL
    tP2PConfigParam  p2pConfig;
 #endif
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
     tANI_U8   isFastTransitionEnabled;
 #endif
 } tSmeConfigParams, *tpSmeConfigParams;
@@ -1630,11 +1633,11 @@ eHalStatus sme_AbortMacScan(tHalHandle hHal);
    \fn sme_GetOperationChannel
    \brief API to get current channel on which STA is parked
    this function gives channel information only of infra station or IBSS station.
-   \param hHal and poiter to memory location 
+   \param hHal, pointer to memory location and sessionId 
    \returns eHAL_STATUS_SUCCESS
             eHAL_STATUS_FAILURE
 -------------------------------------------------------------------------------*/
-eHalStatus sme_GetOperationChannel(tHalHandle hHal, tANI_U32 *pChannel);
+eHalStatus sme_GetOperationChannel(tHalHandle hHal, tANI_U32 *pChannel, tANI_U8 sessionId);
 
 #ifdef WLAN_FEATURE_P2P
 /* ---------------------------------------------------------------------------

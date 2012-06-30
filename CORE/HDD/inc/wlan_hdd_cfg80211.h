@@ -73,6 +73,13 @@
 struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_db( hdd_adapter_t *pAdapter,
                                       tCsrRoamInfo *pRoamInfo
                                       );
+
+#ifdef FEATURE_WLAN_LFR
+int wlan_hdd_cfg80211_pmksa_candidate_notify(
+                    hdd_adapter_t *pAdapter, tCsrRoamInfo *pRoamInfo,
+                    int index, bool preauth );
+#endif
+
 #ifdef FEATURE_WLAN_WAPI
 void wlan_hdd_cfg80211_set_key_wapi(hdd_adapter_t* pAdapter,
               u8 key_index, const u8 *mac_addr, u8 *key , int key_Len);

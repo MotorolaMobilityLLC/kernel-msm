@@ -539,11 +539,15 @@ typedef struct tagCsrConfig
     tCsr11rConfig csr11rConfig;
 #endif
 
+#ifdef FEATURE_WLAN_LFR
+    tANI_U8   isFastRoamIniFeatureEnabled;
+#endif
+
 #ifdef FEATURE_WLAN_CCX
     tANI_U8   isCcxIniFeatureEnabled;
 #endif
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
     tANI_U8   isFastTransitionEnabled;
 #endif
 
@@ -851,6 +855,9 @@ typedef struct tagCsrRoamStruct
     tANI_U32 transactionId;        // Current transaction ID for internal use. 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING    
     tCsrNeighborRoamControlInfo neighborRoamInfo;
+#endif
+#ifdef FEATURE_WLAN_LFR
+    tANI_U8   isFastRoamIniFeatureEnabled;
 #endif
 #ifdef FEATURE_WLAN_CCX
     tANI_U8   isCcxIniFeatureEnabled;
@@ -1174,4 +1181,10 @@ tANI_BOOLEAN csrRoamIs11rAssoc(tpAniSirGlobal pMac);
 tANI_BOOLEAN csrRoamIsCCXAssoc(tpAniSirGlobal pMac);
 #endif
 
+
 void csrDisconnectAllActiveSessions(tpAniSirGlobal pMac);
+#ifdef FEATURE_WLAN_LFR
+//Returns whether "Legacy Fast Roaming" is enabled...or not
+tANI_BOOLEAN csrRoamIsFastRoamEnabled(tpAniSirGlobal pMac);
+#endif
+
