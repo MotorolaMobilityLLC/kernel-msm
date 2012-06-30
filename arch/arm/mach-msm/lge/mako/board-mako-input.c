@@ -112,10 +112,12 @@ static struct touch_power_module touch_pwr = {
 
 static struct touch_device_caps touch_caps = {
 	.button_support = 0,
-	.is_width_supported = 1,
+	.is_width_major_supported = 1,
+	.is_width_minor_supported = 0,
 	.is_pressure_supported = 1,
 	.is_id_supported = 1,
-	.max_width = 15,
+	.max_width_major = 15,
+	.max_width_minor = 15,
 	.max_pressure = 0xFF,
 	.max_id = 10,
 	.lcd_x = 768,

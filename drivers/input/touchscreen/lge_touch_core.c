@@ -46,8 +46,8 @@ struct lge_touch_attribute {
 };
 
 static int is_pressure;
-static int is_width;
-static int is_id;
+static int is_width_major;
+static int is_width_minor;
 
 #define LGE_TOUCH_ATTR(_name, _mode, _show, _store)               \
 	struct lge_touch_attribute lge_touch_attr_##_name =       \
@@ -257,12 +257,13 @@ static void release_all_ts_event(struct lge_touch_data *ts)
 {
 	int id;
 
-	for (id = 0; id < MAX_FINGER; id++) {
+	for (id = 0; id < ts->pdata->caps->max_id; id++) {
 		if (!ts->ts_data.curr_data[id].state)
 			continue;
 
 		input_mt_slot(ts->input_dev, id);
-		input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER, 0);
+		input_mt_report_slot_state(ts->input_dev,
+				ts->ts_data.curr_data[id].tool_type, 0);
 		ts->ts_data.curr_data[id].state = 0;
 	}
 
@@ -574,7 +575,7 @@ static int jitter_filter_func(struct lge_touch_data *ts)
 	if (ts->accuracy_filter.finish_filter)
 		return 0;
 
-	for (id = 0; id < MAX_FINGER; id++) {
+	for (id = 0; id < ts->pdata->caps->max_id; id++) {
 		u16 width;
 
 		if (!ts->ts_data.curr_data[id].state)
@@ -642,7 +643,7 @@ static int jitter_filter_func(struct lge_touch_data *ts)
 
 	bit_mask = ts->jitter_filter.id_mask ^ new_id_mask;
 
-	for (id = 0, bit_id = 1; id < MAX_FINGER; id++) {
+	for (id = 0, bit_id = 1; id < ts->pdata->caps->max_id; id++) {
 		if ((ts->jitter_filter.id_mask & bit_id) &&
 						!(new_id_mask & bit_id)) {
 			if (unlikely(touch_debug_mask & DEBUG_JITTER))
@@ -655,7 +656,7 @@ static int jitter_filter_func(struct lge_touch_data *ts)
 		bit_id = bit_id << 1;
 	}
 
-	for (id = 0; id < MAX_FINGER; id++) {
+	for (id = 0; id < ts->pdata->caps->max_id; id++) {
 		if (!ts->ts_data.curr_data[id].state)
 			continue;
 
@@ -673,7 +674,7 @@ static int jitter_filter_func(struct lge_touch_data *ts)
 		return -1;
 	}
 
-	for (id = 0; id < MAX_FINGER; id++) {
+	for (id = 0; id < ts->pdata->caps->max_id; id++) {
 		if (!ts->ts_data.curr_data[id].state)
 			continue;
 
@@ -739,12 +740,13 @@ static void touch_input_report(struct lge_touch_data *ts)
 {
 	int	id;
 
-	for (id = 0; id < MAX_FINGER; id++) {
+	for (id = 0; id < ts->pdata->caps->max_id; id++) {
 		if (!ts->ts_data.curr_data[id].state)
 			continue;
 
 		input_mt_slot(ts->input_dev, id);
-		input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER,
+		input_mt_report_slot_state(ts->input_dev,
+				ts->ts_data.curr_data[id].tool_type,
 				ts->ts_data.curr_data[id].state != ABS_RELEASE);
 
 		if (ts->ts_data.curr_data[id].state != ABS_RELEASE) {
@@ -757,9 +759,15 @@ static void touch_input_report(struct lge_touch_data *ts)
 					ts->ts_data.curr_data[id].pressure);
 
 			/* Only support circle region */
-			if (is_width)
-				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,
+			if (is_width_major)
+				input_report_abs(ts->input_dev,
+					ABS_MT_TOUCH_MAJOR,
 					ts->ts_data.curr_data[id].width_major);
+
+			if (is_width_minor)
+				input_report_abs(ts->input_dev,
+					ABS_MT_TOUCH_MINOR,
+					ts->ts_data.curr_data[id].width_minor);
 #ifdef LGE_TOUCH_POINT_DEBUG
 			if (id == 0 && tr_last_index < MAX_TRACE) {
 				tr_data[tr_last_index].x = ts->ts_data.curr_data[id].x_position;
@@ -1166,14 +1174,18 @@ static ssize_t show_platform_data(struct lge_touch_data *ts, char *buf)
 			pdata->caps->button_name[2],
 			pdata->caps->button_name[3]);
 	}
-	ret += sprintf(buf+ret, "\tis_width_supported    = %d\n",
-			pdata->caps->is_width_supported);
+	ret += sprintf(buf+ret, "\tis_width_major_supported    = %d\n",
+			pdata->caps->is_width_major_supported);
+	ret += sprintf(buf+ret, "\tis_width_minor_supported    = %d\n",
+			pdata->caps->is_width_minor_supported);
 	ret += sprintf(buf+ret, "\tis_pressure_supported = %d\n",
 			pdata->caps->is_pressure_supported);
 	ret += sprintf(buf+ret, "\tis_id_supported       = %d\n",
 			pdata->caps->is_id_supported);
-	ret += sprintf(buf+ret, "\tmax_width             = %d\n",
-			pdata->caps->max_width);
+	ret += sprintf(buf+ret, "\tmax_width_major       = %d\n",
+			pdata->caps->max_width_major);
+	ret += sprintf(buf+ret, "\tmax_width_minor       = %d\n",
+			pdata->caps->max_width_minor);
 	ret += sprintf(buf+ret, "\tmax_pressure          = %d\n",
 			pdata->caps->max_pressure);
 	ret += sprintf(buf+ret, "\tmax_id                = %d\n",
@@ -1700,7 +1712,11 @@ static int touch_probe(struct i2c_client *client,
 		}
 	}
 
-	input_mt_init_slots(ts->input_dev, MAX_FINGER);
+	if (ts->pdata->caps->max_id > MAX_FINGER) {
+		ts->pdata->caps->max_id = MAX_FINGER;
+	}
+
+	input_mt_init_slots(ts->input_dev, ts->pdata->caps->max_id);
 	input_set_abs_params(ts->input_dev,
 			ABS_MT_POSITION_X, 0, ts->pdata->caps->x_max, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, 0,
@@ -1711,20 +1727,20 @@ static int touch_probe(struct i2c_client *client,
 
 	/* Copy for efficient handling */
 	is_pressure = ts->pdata->caps->is_pressure_supported;
-	is_width = ts->pdata->caps->is_width_supported;
-	is_id = ts->pdata->caps->is_id_supported;
+	is_width_major = ts->pdata->caps->is_width_major_supported;
+	is_width_minor = ts->pdata->caps->is_width_minor_supported;
 
 	if (is_pressure)
 		input_set_abs_params(ts->input_dev, ABS_MT_PRESSURE,
 				0, ts->pdata->caps->max_pressure, 0, 0);
 
-	if (ts->pdata->caps->is_width_supported) {
-		/* Only circle supported */
+	if (is_width_major)
 		input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR,
-				0, ts->pdata->caps->max_width, 0, 0);
-		input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR,
-				0, ts->pdata->caps->max_width, 0, 0);
-	}
+				0, ts->pdata->caps->max_width_major, 0, 0);
+
+	if (is_width_minor)
+		input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MINOR,
+				0, ts->pdata->caps->max_width_minor, 0, 0);
 
 	ret = input_register_device(ts->input_dev);
 	if (ret < 0) {
