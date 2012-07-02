@@ -1192,6 +1192,17 @@ struct sensor_init_cfg {
 	uint8_t pict_res;
 };
 
+#define ROLLOFF_CALDATA_SIZE    (17 * 13)
+typedef struct
+{
+    unsigned short          mesh_rolloff_table_size;     // TableSize
+    uint8_t                 r_gain[ROLLOFF_CALDATA_SIZE];   // RGain
+    uint8_t                 gr_gain[ROLLOFF_CALDATA_SIZE];  // GRGain
+    uint8_t                 gb_gain[ROLLOFF_CALDATA_SIZE];  // GBGain
+    uint8_t                 b_gain[ROLLOFF_CALDATA_SIZE];   // BGain
+    uint8_t                 red_ref[17];
+} rolloff_caldata_array_type;
+
 struct sensor_calib_data {
 	/* Color Related Measurements */
 	uint16_t r_over_g;
@@ -1204,6 +1215,8 @@ struct sensor_calib_data {
 	uint16_t stroke_amt;
 	uint16_t af_pos_1m;
 	uint16_t af_pos_inf;
+	/* Lens Shading Calibration Data */
+	rolloff_caldata_array_type rolloff;
 };
 
 enum msm_sensor_resolution_t {

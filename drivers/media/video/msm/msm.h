@@ -142,6 +142,7 @@ struct isp_msg_output {
 
 /* message id for v4l2_subdev_notify*/
 enum msm_camera_v4l2_subdev_notify {
+	NOTIFY_CID_CHANGE, /* arg = msm_camera_csid_params */
 	NOTIFY_ISP_MSG_EVT, /* arg = enum ISP_MESSAGE_ID */
 	NOTIFY_VFE_MSG_OUT, /* arg = struct isp_msg_output */
 	NOTIFY_VFE_MSG_STATS,  /* arg = struct isp_msg_stats */
@@ -149,6 +150,8 @@ enum msm_camera_v4l2_subdev_notify {
 	NOTIFY_VFE_BUF_EVT, /* arg = struct msm_vfe_resp */
 	NOTIFY_VFE_CAMIF_ERROR,
 	NOTIFY_VFE_SOF_COUNT, /*arg = int*/
+	NOTIFY_ISPIF_STREAM, /* arg = enable parameter for s_stream */
+	NOTIFY_VPE_MSG_EVT,
 	NOTIFY_PCLK_CHANGE, /* arg = pclk */
 	NOTIFY_CSIPHY_CFG, /* arg = msm_camera_csiphy_params */
 	NOTIFY_CSID_CFG, /* arg = msm_camera_csid_params */
