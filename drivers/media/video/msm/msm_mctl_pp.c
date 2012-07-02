@@ -486,6 +486,70 @@ int msm_mctl_pp_ioctl(struct msm_cam_media_controller *p_mctl,
 	return rc;
 }
 
+int msm_mctl_pp_notify(struct msm_cam_media_controller *p_mctl,
+			struct msm_mctl_pp_frame_info *pp_frame_info)
+{
+		struct msm_mctl_pp_frame_cmd *pp_frame_cmd;
+		pp_frame_cmd = &pp_frame_info->pp_frame_cmd;
+
+		D("%s: msm_cam_evt_divert_frame=%d",
+			__func__, sizeof(struct msm_mctl_pp_event_info));
+		if ((MSM_MCTL_PP_VPE_FRAME_TO_APP &
+			pp_frame_cmd->vpe_output_action)) {
+			struct msm_free_buf done_frame;
+			int img_mode =
+				msm_mctl_pp_path_to_img_mode(
+					pp_frame_cmd->path);
+			if (img_mode < 0) {
+				pr_err("%s Invalid image mode\n", __func__);
+				return img_mode;
+			}
+			done_frame.ch_paddr[0] =
+				pp_frame_info->dest_frame.sp.phy_addr;
+			done_frame.vb =
+				pp_frame_info->dest_frame.handle;
+			msm_mctl_buf_done_pp(
+				p_mctl, img_mode, &done_frame, 0, 0);
+			D("%s: vpe done to app, vb=0x%x, path=%d, phy=0x%x",
+				__func__, done_frame.vb,
+				pp_frame_cmd->path, done_frame.ch_paddr[0]);
+		}
+		if ((MSM_MCTL_PP_VPE_FRAME_ACK &
+			pp_frame_cmd->vpe_output_action)) {
+			struct v4l2_event v4l2_evt;
+			struct msm_mctl_pp_event_info *pp_event_info;
+			struct msm_isp_event_ctrl *isp_event;
+			isp_event = kzalloc(sizeof(struct msm_isp_event_ctrl),
+								GFP_ATOMIC);
+			if (!isp_event) {
+				pr_err("%s Insufficient memory.", __func__);
+				return -ENOMEM;
+			}
+			memset(&v4l2_evt, 0, sizeof(v4l2_evt));
+			*((uint32_t *)v4l2_evt.u.data) = (uint32_t)isp_event;
+
+			/* Get hold of pp event info struct inside event ctrl.*/
+			pp_event_info = &(isp_event->isp_data.pp_event_info);
+
+			pp_event_info->event = MCTL_PP_EVENT_CMD_ACK;
+			pp_event_info->ack.cmd = pp_frame_info->user_cmd;
+			pp_event_info->ack.status = 0;
+			pp_event_info->ack.cookie = pp_frame_cmd->cookie;
+			v4l2_evt.type = V4L2_EVENT_PRIVATE_START +
+						MSM_CAM_RESP_MCTL_PP_EVENT;
+
+			v4l2_event_queue(
+				p_mctl->config_device->
+					config_stat_event_queue.pvdev,
+				&v4l2_evt);
+			D("%s: ack to daemon, cookie=0x%x, event = 0x%x",
+				__func__, pp_frame_info->pp_frame_cmd.cookie,
+				v4l2_evt.type);
+		}
+		kfree(pp_frame_info); /* free mem */
+		return 0;
+}
+
 int msm_mctl_pp_reserve_free_frame(
 	struct msm_cam_media_controller *p_mctl,
 	void __user *arg)
