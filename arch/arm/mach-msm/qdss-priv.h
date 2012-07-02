@@ -15,7 +15,6 @@
 
 #include <linux/bitops.h>
 #include <mach/qdss.h>
-#include <asm/hw_breakpoint.h>
 
 /* Coresight management registers (0xF00-0xFCC)
  * 0xFA0 - 0xFA4: Management	registers in PFTv1.0
@@ -48,6 +47,7 @@
 #define ARM_DEBUG_ARCH_V7B	(0x3)
 /* DBGv7 with all CP14 registers implemented */
 #define ARM_DEBUG_ARCH_V7	(0x4)
+#define ARM_DEBUG_ARCH_V7_1	(0x5)
 #define ETM_ARCH_V3_3		(0x23)
 #define PFT_ARCH_V1_1		(0x31)
 
