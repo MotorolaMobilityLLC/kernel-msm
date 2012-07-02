@@ -130,7 +130,8 @@ static int msm_vb2_ops_buf_init(struct vb2_buffer *vb)
 			rc = videobuf2_pmem_contig_user_get(mem, &offset,
 				buf_type,
 				pcam_inst->buf_offset[buf_idx][i].addr_offset,
-				pcam_inst->path, pmctl->client);
+				pcam_inst->path, pmctl->client,
+				pmctl->domain_num);
 		else
 			rc = videobuf2_pmem_contig_mmap_get(mem, &offset,
 				buf_type, pcam_inst->path);
@@ -265,7 +266,8 @@ static void msm_vb2_ops_buf_cleanup(struct vb2_buffer *vb)
 	}
 	for (i = 0; i < vb->num_planes; i++) {
 		mem = vb2_plane_cookie(vb, i);
-		videobuf2_pmem_contig_user_put(mem, pmctl->client);
+		videobuf2_pmem_contig_user_put(mem, pmctl->client,
+			pmctl->domain_num);
 	}
 	buf->state = MSM_BUFFER_STATE_UNUSED;
 }
