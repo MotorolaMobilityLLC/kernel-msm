@@ -20,7 +20,6 @@
 #ifdef CONFIG_SMB349_CHARGER
 #include <linux/i2c/smb349.h>
 #endif
-#include <linux/i2c/sx150x.h>
 #include <linux/slimbus/slimbus.h>
 #include <linux/mfd/wcd9xxx/core.h>
 #include <linux/mfd/wcd9xxx/pdata.h>
@@ -35,10 +34,6 @@
 #include <linux/msm_thermal.h>
 #include <linux/i2c/isa1200.h>
 #include <linux/gpio_keys.h>
-#ifdef CONFIG_SENSORS_EPM_ADC
-#include <linux/epm_adc.h>
-#endif
-#include <linux/i2c/sx150x.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/hardware/gic.h>
@@ -902,62 +897,6 @@ static struct i2c_board_info smb349_charger_i2c_info[] __initdata = {
 		I2C_BOARD_INFO(SMB349_NAME, 0x1B),
 		.platform_data	= &smb349_data,
 	},
-};
-#endif
-
-struct sx150x_platform_data apq8064_sx150x_data[] = {
-	[SX150X_EPM] = {
-		.gpio_base	= GPIO_EPM_EXPANDER_BASE,
-		.oscio_is_gpo	= false,
-		.io_pullup_ena	= 0x0,
-		.io_pulldn_ena	= 0x0,
-		.io_open_drain_ena = 0x0,
-		.io_polarity	= 0,
-		.irq_summary	= -1,
-	},
-};
-
-#ifdef CONFIG_SENSORS_EPM_ADC
-static struct epm_chan_properties ads_adc_channel_data[] = {
-	{10, 100}, {500, 50}, {1, 1}, {1, 1},
-	{20, 50}, {10, 100}, {1, 1}, {1, 1},
-	{10, 100}, {10, 100}, {100, 100}, {200, 100},
-	{100, 50}, {2000, 50}, {1000, 50}, {200, 50},
-	{200, 100}, {1, 1}, {20, 50}, {500, 50},
-	{50, 50}, {200, 100}, {500, 100}, {20, 50},
-	{200, 50}, {2000, 100}, {1000, 50}, {100, 50},
-	{200, 100}, {500, 50}, {1000, 100}, {200, 50},
-	{1000, 50}, {50, 50}, {100, 50}, {100, 50},
-	{1, 1}, {1, 1}, {20, 100}, {20, 50},
-	{500, 100}, {1000, 100}, {100, 50}, {1000, 50},
-	{100, 50}, {1000, 100}, {100, 50}, {100, 50},
-};
-
-static struct epm_adc_platform_data epm_adc_pdata = {
-	.channel		= ads_adc_channel_data,
-	.bus_id	= 0x0,
-	.epm_i2c_board_info = {
-		.type	= "sx1509q",
-		.addr = 0x3e,
-		.platform_data = &apq8064_sx150x_data[SX150X_EPM],
-	},
-	.gpio_expander_base_addr = GPIO_EPM_EXPANDER_BASE,
-};
-
-static struct platform_device epm_adc_device = {
-	.name   = "epm_adc",
-	.id = -1,
-	.dev = {
-		.platform_data = &epm_adc_pdata,
-	},
-};
-
-static void __init apq8064_epm_adc_init(void)
-{
-	epm_adc_pdata.num_channels = 32;
-	epm_adc_pdata.num_adc = 2;
-	epm_adc_pdata.chan_per_adc = 16;
-	epm_adc_pdata.chan_per_mux = 8;
 };
 #endif
 
@@ -1858,9 +1797,6 @@ static struct platform_device *common_devices[] __initdata = {
 	&apq8064_device_cache_erp,
 	&msm8960_device_ebi1_ch0_erp,
 	&msm8960_device_ebi1_ch1_erp,
-#ifdef CONFIG_SENSORS_EPM_ADC
-	&epm_adc_device,
-#endif
 	&apq8064_qdss_device,
 	&msm_etb_device,
 	&msm_tpiu_device,
@@ -1895,15 +1831,6 @@ static struct platform_device *uart_devices[] __initdata = {
 };
 
 static struct spi_board_info spi_board_info[] __initdata = {
-#ifdef CONFIG_SENSORS_EPM_ADC
-	{
-		.modalias		= "epm_adc",
-		.max_speed_hz		= 1100000,
-		.bus_num		= 0,
-		.chip_select		= 3,
-		.mode			= SPI_MODE_0,
-	},
-#endif
 };
 
 static struct slim_boardinfo apq8064_slim_devices[] = {
@@ -2000,80 +1927,6 @@ static struct i2c_registry apq8064_i2c_devices[] __initdata = {
 #endif
 };
 
-#define SX150X_EXP1_INT_N	PM8921_MPP_IRQ(PM8921_IRQ_BASE, 9)
-#define SX150X_EXP2_INT_N	MSM_GPIO_TO_INT(81)
-
-struct sx150x_platform_data mpq8064_sx150x_pdata[] = {
-	[SX150X_EXP1] = {
-		.gpio_base	= SX150X_EXP1_GPIO_BASE,
-		.oscio_is_gpo	= false,
-		.io_pullup_ena	= 0x0,
-		.io_pulldn_ena	= 0x0,
-		.io_open_drain_ena = 0x0,
-		.io_polarity	= 0,
-		.irq_summary	= SX150X_EXP1_INT_N,
-		.irq_base	= SX150X_EXP1_IRQ_BASE,
-	},
-	[SX150X_EXP2] = {
-		.gpio_base	= SX150X_EXP2_GPIO_BASE,
-		.oscio_is_gpo	= false,
-		.io_pullup_ena	= 0x0f,
-		.io_pulldn_ena	= 0x70,
-		.io_open_drain_ena = 0x0,
-		.io_polarity	= 0,
-		.irq_summary	= SX150X_EXP2_INT_N,
-		.irq_base	= SX150X_EXP2_IRQ_BASE,
-	},
-	[SX150X_EXP3] = {
-		.gpio_base	= SX150X_EXP3_GPIO_BASE,
-		.oscio_is_gpo	= false,
-		.io_pullup_ena	= 0x0,
-		.io_pulldn_ena	= 0x0,
-		.io_open_drain_ena = 0x0,
-		.io_polarity	= 0,
-		.irq_summary	= -1,
-	},
-	[SX150X_EXP4] = {
-		.gpio_base	= SX150X_EXP4_GPIO_BASE,
-		.oscio_is_gpo	= false,
-		.io_pullup_ena	= 0x0,
-		.io_pulldn_ena	= 0x0,
-		.io_open_drain_ena = 0x0,
-		.io_polarity	= 0,
-		.irq_summary	= -1,
-	},
-};
-
-static struct i2c_board_info sx150x_gpio_exp_info[] = {
-	{
-		I2C_BOARD_INFO("sx1509q", 0x70),
-		.platform_data = &mpq8064_sx150x_pdata[SX150X_EXP1],
-	},
-	{
-		I2C_BOARD_INFO("sx1508q", 0x23),
-		.platform_data = &mpq8064_sx150x_pdata[SX150X_EXP2],
-	},
-	{
-		I2C_BOARD_INFO("sx1508q", 0x22),
-		.platform_data = &mpq8064_sx150x_pdata[SX150X_EXP3],
-	},
-	{
-		I2C_BOARD_INFO("sx1509q", 0x3E),
-		.platform_data = &mpq8064_sx150x_pdata[SX150X_EXP4],
-	},
-};
-
-#define MPQ8064_I2C_GSBI5_BUS_ID	5
-
-static struct i2c_registry mpq8064_i2c_devices[] __initdata = {
-	{
-		I2C_FFA,
-		MPQ8064_I2C_GSBI5_BUS_ID,
-		sx150x_gpio_exp_info,
-		ARRAY_SIZE(sx150x_gpio_exp_info),
-	},
-};
-
 static void __init register_i2c_devices(void)
 {
 	u8 mach_mask = 0;
@@ -2120,14 +1973,6 @@ static void __init register_i2c_devices(void)
 			apq8064_lge_camera_i2c_devices.info,
 			apq8064_lge_camera_i2c_devices.len);
 #endif
-
-	for (i = 0; i < ARRAY_SIZE(mpq8064_i2c_devices); ++i) {
-		if (mpq8064_i2c_devices[i].machs & mach_mask)
-			i2c_register_board_info(
-					mpq8064_i2c_devices[i].bus,
-					mpq8064_i2c_devices[i].info,
-					mpq8064_i2c_devices[i].len);
-	}
 }
 
 static void __init apq8064_common_init(void)
@@ -2176,9 +2021,6 @@ static void __init apq8064_common_init(void)
 	msm_spm_l2_init(msm_spm_l2_data);
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
 	msm_pm_init_sleep_status_data(&msm_pm_slp_sts_data);
-#ifdef CONFIG_SENSORS_EPM_ADC
-	apq8064_epm_adc_init();
-#endif
 }
 
 static void __init apq8064_allocate_memory_regions(void)
