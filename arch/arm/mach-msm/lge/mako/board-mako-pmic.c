@@ -276,12 +276,10 @@ static int apq8064_pm8921_therm_mitigation[] = {
 	325,
 };
 
-#if (defined(CONFIG_LGE_PM) && defined(CONFIG_LGE_PM_435V_BATT))
 /*
- * J1 battery characteristic
- * Typ.1900mAh capacity, Li-Ion Polymer 3.8V
+ * Battery characteristic
+ * Typ.2100mAh capacity, Li-Ion Polymer 3.8V
  * Battery/VDD voltage programmable range, 20mV steps.
- * it will be changed in future
  */
 #define MAX_VOLTAGE_MV		4360
 
@@ -336,28 +334,6 @@ static struct pm8921_charger_platform_data apq8064_pm8921_chg_pdata __devinitdat
 	/* for led on, off control */
 	.led_src_config		= LED_SRC_MIN_VPH_5V,
 };
-#else /* qualcomm original code */
-#define MAX_VOLTAGE_MV          4200
-static struct pm8921_charger_platform_data
-apq8064_pm8921_chg_pdata __devinitdata = {
-	.safety_time		= 180,
-	.update_time		= 60000,
-	.max_voltage		= MAX_VOLTAGE_MV,
-	.min_voltage		= 3200,
-	.resume_voltage_delta	= 100,
-	.term_current		= 100,
-	.cool_temp		= 10,
-	.warm_temp		= 40,
-	.temp_check_period	= 1,
-	.max_bat_chg_current	= 1100,
-	.cool_bat_chg_current	= 350,
-	.warm_bat_chg_current	= 350,
-	.cool_bat_voltage	= 4100,
-	.warm_bat_voltage	= 4100,
-	.thermal_mitigation	= apq8064_pm8921_therm_mitigation,
-	.thermal_levels		= ARRAY_SIZE(apq8064_pm8921_therm_mitigation),
-};
-#endif
 
 static struct pm8xxx_ccadc_platform_data
 apq8064_pm8xxx_ccadc_pdata = {
