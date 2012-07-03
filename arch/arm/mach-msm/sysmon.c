@@ -183,6 +183,9 @@ int sysmon_get_reason(enum subsys_id dest_ss, char *buf, size_t len)
 	    buf == NULL || len == 0)
 		return -EINVAL;
 
+	if (!ss->chan_open)
+		return -ENODEV;
+
 	mutex_lock(&ss->lock);
 	ret = sysmon_send_msg(ss, tx_buf, ARRAY_SIZE(tx_buf));
 	if (ret)
