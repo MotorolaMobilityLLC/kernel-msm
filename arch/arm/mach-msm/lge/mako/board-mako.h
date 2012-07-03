@@ -57,9 +57,6 @@ extern int msm8064_pm8921_regulator_pdata_len __devinitdata;
 extern struct gpio_regulator_platform_data
 	apq8064_gpio_regulator_pdata[] __devinitdata;
 
-extern struct gpio_regulator_platform_data
-	mpq8064_gpio_regulator_pdata[] __devinitdata;
-
 extern struct rpm_regulator_platform_data
 	apq8064_rpm_regulator_pdata __devinitdata;
 
@@ -117,49 +114,6 @@ void __init apq8064_set_display_params(char *prim_panel, char *ext_panel);
 
 void apq8064_init_gpu(void);
 void apq8064_pm8xxx_gpio_mpp_init(void);
-
-#define GPIO_EXPANDER_IRQ_BASE	(TABLA_INTERRUPT_BASE + \
-					NR_TABLA_IRQS)
-#define GPIO_EXPANDER_GPIO_BASE	(PM8821_MPP_BASE + PM8821_NR_MPPS)
-
-#define GPIO_EPM_EXPANDER_BASE	GPIO_EXPANDER_GPIO_BASE
-#define SX150X_EPM_NR_GPIOS	16
-#define SX150X_EPM_NR_IRQS	8
-
-#define SX150X_EXP1_GPIO_BASE	(GPIO_EPM_EXPANDER_BASE + \
-					SX150X_EPM_NR_GPIOS)
-#define SX150X_EXP1_IRQ_BASE	(GPIO_EXPANDER_IRQ_BASE + \
-				SX150X_EPM_NR_IRQS)
-#define SX150X_EXP1_NR_IRQS	16
-#define SX150X_EXP1_NR_GPIOS	16
-
-#define SX150X_EXP2_GPIO_BASE	(SX150X_EXP1_GPIO_BASE + \
-					SX150X_EXP1_NR_GPIOS)
-#define SX150X_EXP2_IRQ_BASE	(SX150X_EXP1_IRQ_BASE + SX150X_EXP1_NR_IRQS)
-#define SX150X_EXP2_NR_IRQS	8
-#define SX150X_EXP2_NR_GPIOS	8
-
-#define SX150X_EXP3_GPIO_BASE	(SX150X_EXP2_GPIO_BASE + \
-					SX150X_EXP2_NR_GPIOS)
-#define SX150X_EXP3_IRQ_BASE	(SX150X_EXP2_IRQ_BASE + SX150X_EXP2_NR_IRQS)
-#define SX150X_EXP3_NR_IRQS	8
-#define SX150X_EXP3_NR_GPIOS	8
-
-#define SX150X_EXP4_GPIO_BASE	(SX150X_EXP3_GPIO_BASE + \
-					SX150X_EXP3_NR_GPIOS)
-#define SX150X_EXP4_IRQ_BASE	(SX150X_EXP3_IRQ_BASE + SX150X_EXP3_NR_IRQS)
-#define SX150X_EXP4_NR_IRQS	16
-#define SX150X_EXP4_NR_GPIOS	16
-
-#define SX150X_GPIO(_expander, _pin) (SX150X_EXP##_expander##_GPIO_BASE + _pin)
-
-enum {
-	SX150X_EPM,
-	SX150X_EXP1,
-	SX150X_EXP2,
-	SX150X_EXP3,
-	SX150X_EXP4,
-};
 
 extern struct msm_rtb_platform_data apq8064_rtb_pdata;
 extern struct msm_cache_dump_platform_data apq8064_cache_dump_pdata;

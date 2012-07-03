@@ -257,21 +257,6 @@ VREG_CONSUMERS(8821_S1) = {
 	REGULATOR_SUPPLY("8821_s1",		NULL),
 	REGULATOR_SUPPLY("krait3",		NULL),
 };
-VREG_CONSUMERS(AVC_1P2V) = {
-	REGULATOR_SUPPLY("avc_1p2v",	NULL),
-};
-VREG_CONSUMERS(AVC_1P8V) = {
-	REGULATOR_SUPPLY("avc_1p8v",	NULL),
-};
-VREG_CONSUMERS(AVC_2P2V) = {
-	REGULATOR_SUPPLY("avc_2p2v",	NULL),
-};
-VREG_CONSUMERS(AVC_5V) = {
-	REGULATOR_SUPPLY("avc_5v",	NULL),
-};
-VREG_CONSUMERS(AVC_3P3V) = {
-	REGULATOR_SUPPLY("avc_3p3v",	NULL),
-};
 
 #define PM8XXX_VREG_INIT(_id, _name, _min_uV, _max_uV, _modes, _ops, \
 			 _apply_uV, _pull_down, _always_on, _supply_regulator, \
@@ -492,17 +477,6 @@ VREG_CONSUMERS(AVC_3P3V) = {
 		.pin_fn	  = RPM_VREG_PIN_FN_8960_##_pin_fn, \
 		.pin_ctrl = _pin_ctrl, \
 	}
-
-struct gpio_regulator_platform_data
-mpq8064_gpio_regulator_pdata[] __devinitdata = {
-	GPIO_VREG(AVC_1P2V, "avc_1p2v", "avc_1p2v_en", SX150X_GPIO(4, 2), NULL),
-	GPIO_VREG(AVC_1P8V, "avc_1p8v", "avc_1p8v_en", SX150X_GPIO(4, 4), NULL),
-	GPIO_VREG(AVC_2P2V, "avc_2p2v", "avc_2p2v_en",
-						 SX150X_GPIO(4, 14), NULL),
-	GPIO_VREG(AVC_5V, "avc_5v", "avc_5v_en", SX150X_GPIO(4, 3), NULL),
-	GPIO_VREG(AVC_3P3V, "avc_3p3v", "avc_3p3v_en",
-					SX150X_GPIO(4, 15), "avc_5v"),
-};
 
 /* SAW regulator constraints */
 struct regulator_init_data msm8064_saw_regulator_pdata_8921_s5 =
