@@ -117,8 +117,6 @@ static struct msm_gpiomux_config apq8064_cam_common_configs[] = {
 		},
 	},
 
-/* FIXME: for old HW (LGU Rev.A,B VZW Rev.A,B ATT Rev.A) */
-#if 1
 	{
 		.gpio = GPIO_CAM_MCLK2, /* 2 */
 		.settings = {
@@ -126,15 +124,6 @@ static struct msm_gpiomux_config apq8064_cam_common_configs[] = {
 			[GPIOMUX_SUSPENDED] = &cam_settings[0],
 		},
 	},
-#else
-	{
-		.gpio = GPIO_CAM_MCLK1, /* 4 */
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[1],
-			[GPIOMUX_SUSPENDED] = &cam_settings[0],
-		},
-	},
-#endif
 	{
 		.gpio = GPIO_CAM2_RST_N, /* 34 */
 		.settings = {
@@ -365,12 +354,7 @@ static struct msm_camera_gpio_conf apq8064_back_cam_gpio_conf = {
 
 #ifdef CONFIG_IMX119
 static struct gpio apq8064_front_cam_gpio[] = {
-/* FIXME: for old HW (LGU Rev.A,B VZW Rev.A,B ATT Rev.A) */
-#if 1
 	{GPIO_CAM_MCLK2, GPIOF_DIR_IN, "CAMIF_MCLK"},
-#else
-	{GPIO_CAM_MCLK1, GPIOF_DIR_IN, "CAMIF_MCLK"},
-#endif
 	{GPIO_CAM2_RST_N, GPIOF_DIR_OUT, "CAM_RESET"},
 };
 
@@ -440,7 +424,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_imx111_data = {
 	.camera_type = BACK_CAMERA_2D,
 	.sensor_type = BAYER_SENSOR,
 #ifdef CONFIG_IMX111_ACT
-		.actuator_info = &msm_act_main_cam_0_info,
+	.actuator_info = &msm_act_main_cam_0_info,
 
 #endif
 };
