@@ -1291,6 +1291,7 @@ static struct mdm_platform_data sglte_platform_data = {
 	.ramdump_delay_ms = 1000,
 	.soft_reset_inverted = 1,
 	.peripheral_platform_device = NULL,
+	.ramdump_timeout_ms = 600000,
 };
 
 #define MSM_TSIF0_PHYS			(0x18200000)
@@ -1416,6 +1417,7 @@ static void __init msm8960_init_buses(void)
 
 static struct msm_spi_platform_data msm8960_qup_spi_gsbi1_pdata = {
 	.max_clock_speed = 15060000,
+	.infinite_mode	 = 1
 };
 
 #ifdef CONFIG_USB_MSM_OTG_72K

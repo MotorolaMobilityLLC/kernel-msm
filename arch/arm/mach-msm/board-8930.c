@@ -78,6 +78,11 @@
 #include <mach/mdm2.h>
 #include <mach/msm_rtb.h>
 #include <linux/fmem.h>
+#include <mach/msm_cache_dump.h>
+
+#ifdef CONFIG_INPUT_MPU3050
+#include <linux/input/mpu3050.h>
+#endif
 
 #include "timer.h"
 #include "devices.h"
@@ -625,6 +630,19 @@ static void __init reserve_mdp_memory(void)
 	msm8930_mdp_writeback(msm8930_reserve_table);
 }
 
+#ifdef CONFIG_MSM_CACHE_DUMP
+static void __init reserve_cache_dump_memory(void)
+{
+	unsigned int total;
+
+	total = msm8930_cache_dump_pdata.l1_size +
+		msm8930_cache_dump_pdata.l2_size;
+	msm8930_reserve_table[MEMTYPE_EBI1].size += total;
+}
+#else
+static void __init reserve_cache_dump_memory(void) { }
+#endif
+
 static void __init msm8930_calculate_reserve_sizes(void)
 {
 	size_pmem_devices();
@@ -632,6 +650,7 @@ static void __init msm8930_calculate_reserve_sizes(void)
 	reserve_ion_memory();
 	reserve_mdp_memory();
 	reserve_rtb_memory();
+	reserve_cache_dump_memory();
 }
 
 static struct reserve_info msm8930_reserve_info __initdata = {
@@ -2145,6 +2164,7 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm8960_device_cache_erp,
 	&msm8930_iommu_domain_device,
 	&msm_tsens_device,
+	&msm8930_cache_dump_device,
 };
 
 static struct platform_device *cdp_devices[] __initdata = {
@@ -2311,6 +2331,21 @@ struct i2c_registry {
 	int                    len;
 };
 
+#ifdef CONFIG_INPUT_MPU3050
+#define MPU3050_INT_GPIO		69
+
+static struct mpu3050_gyro_platform_data mpu3050_gyro = {
+	.gpio_int = MPU3050_INT_GPIO,
+};
+
+static struct i2c_board_info __initdata mpu3050_i2c_boardinfo[] = {
+	{
+		I2C_BOARD_INFO("mpu3050", 0x68),
+		.platform_data = &mpu3050_gyro,
+	},
+};
+#endif
+
 #ifdef CONFIG_ISL9519_CHARGER
 static struct isl_platform_data isl_data __initdata = {
 	.valid_n_gpio		= 0,	/* Not required when notify-by-pmic */
@@ -2340,6 +2375,14 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 		ARRAY_SIZE(isl_charger_i2c_info),
 	},
 #endif /* CONFIG_ISL9519_CHARGER */
+#ifdef CONFIG_INPUT_MPU3050
+	{
+		I2C_FFA | I2C_FLUID,
+		MSM_8930_GSBI12_QUP_I2C_BUS_ID,
+		mpu3050_i2c_boardinfo,
+		ARRAY_SIZE(mpu3050_i2c_boardinfo),
+	},
+#endif
 	{
 		I2C_SURF | I2C_FFA | I2C_FLUID,
 		MSM_8930_GSBI9_QUP_I2C_BUS_ID,

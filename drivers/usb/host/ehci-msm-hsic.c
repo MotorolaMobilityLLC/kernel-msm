@@ -328,6 +328,29 @@ reg_enable_err:
 
 }
 
+static int ulpi_read(struct msm_hsic_hcd *mehci, u32 reg)
+{
+	struct usb_hcd *hcd = hsic_to_hcd(mehci);
+	unsigned long timeout;
+
+	/* initiate read operation */
+	writel_relaxed(ULPI_RUN | ULPI_READ | ULPI_ADDR(reg),
+	       USB_ULPI_VIEWPORT);
+
+	/* wait for completion */
+	timeout = jiffies + usecs_to_jiffies(ULPI_IO_TIMEOUT_USEC);
+	while (readl_relaxed(USB_ULPI_VIEWPORT) & ULPI_RUN) {
+		if (time_after(jiffies, timeout)) {
+			dev_err(mehci->dev, "ulpi_read: timeout %08x\n",
+				readl_relaxed(USB_ULPI_VIEWPORT));
+			return -ETIMEDOUT;
+		}
+		udelay(1);
+	}
+
+	return ULPI_DATA_READ(readl_relaxed(USB_ULPI_VIEWPORT));
+}
+
 static int ulpi_write(struct msm_hsic_hcd *mehci, u32 val, u32 reg)
 {
 	struct usb_hcd *hcd = hsic_to_hcd(mehci);
@@ -352,6 +375,37 @@ static int ulpi_write(struct msm_hsic_hcd *mehci, u32 val, u32 reg)
 	}
 
 	return 0;
+}
+
+#define HSIC_DBG1		0X38
+#define ULPI_MANUAL_ENABLE	BIT(4)
+#define ULPI_LINESTATE_DATA	BIT(5)
+#define ULPI_LINESTATE_STROBE	BIT(6)
+static void ehci_msm_enable_ulpi_control(struct usb_hcd *hcd, u32 linestate)
+{
+	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
+	int val;
+
+	switch (linestate) {
+	case PORT_RESET:
+		val = ulpi_read(mehci, HSIC_DBG1);
+		val |= ULPI_MANUAL_ENABLE;
+		val &= ~(ULPI_LINESTATE_DATA | ULPI_LINESTATE_STROBE);
+		ulpi_write(mehci, val, HSIC_DBG1);
+		break;
+	default:
+		pr_info("%s: Unknown linestate:%0x\n", __func__, linestate);
+	}
+}
+
+static void ehci_msm_disable_ulpi_control(struct usb_hcd *hcd)
+{
+	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
+	int val;
+
+	val = ulpi_read(mehci, HSIC_DBG1);
+	val &= ~ULPI_MANUAL_ENABLE;
+	ulpi_write(mehci, val, HSIC_DBG1);
 }
 
 static int msm_hsic_config_gpios(struct msm_hsic_hcd *mehci, int gpio_en)
@@ -406,50 +460,28 @@ free_strobe:
 	return rc;
 }
 
-static int msm_hsic_phy_clk_reset(struct msm_hsic_hcd *mehci)
+static void msm_hsic_clk_reset(struct msm_hsic_hcd *mehci)
 {
 	int ret;
-
-	clk_prepare_enable(mehci->alt_core_clk);
 
 	ret = clk_reset(mehci->core_clk, CLK_RESET_ASSERT);
 	if (ret) {
-		clk_disable_unprepare(mehci->alt_core_clk);
-		dev_err(mehci->dev, "usb phy clk assert failed\n");
-		return ret;
+		dev_err(mehci->dev, "hsic clk assert failed:%d\n", ret);
+		return;
 	}
-	usleep_range(10000, 12000);
-	clk_disable_unprepare(mehci->alt_core_clk);
+	clk_disable(mehci->core_clk);
 
 	ret = clk_reset(mehci->core_clk, CLK_RESET_DEASSERT);
 	if (ret)
-		dev_err(mehci->dev, "usb phy clk deassert failed\n");
+		dev_err(mehci->dev, "hsic clk deassert failed:%d\n", ret);
 
-	return ret;
+	usleep_range(10000, 12000);
+
+	clk_enable(mehci->core_clk);
 }
 
-static int msm_hsic_phy_reset(struct msm_hsic_hcd *mehci)
-{
-	struct usb_hcd *hcd = hsic_to_hcd(mehci);
-	u32 val;
-	int ret;
-
-	ret = msm_hsic_phy_clk_reset(mehci);
-	if (ret)
-		return ret;
-
-	val = readl_relaxed(USB_PORTSC) & ~PORTSC_PTS_MASK;
-	writel_relaxed(val | PORTSC_PTS_ULPI, USB_PORTSC);
-
-	/* Ensure that RESET operation is completed before turning off clock */
-	mb();
-	dev_dbg(mehci->dev, "phy_reset: success\n");
-
-	return 0;
-}
-
-#define HSIC_GPIO150_PAD_CTL   (MSM_TLMM_BASE+0x20C0)
-#define HSIC_GPIO151_PAD_CTL   (MSM_TLMM_BASE+0x20C4)
+#define HSIC_STROBE_GPIO_PAD_CTL	(MSM_TLMM_BASE+0x20C0)
+#define HSIC_DATA_GPIO_PAD_CTL		(MSM_TLMM_BASE+0x20C4)
 #define HSIC_CAL_PAD_CTL       (MSM_TLMM_BASE+0x20C8)
 #define HSIC_LV_MODE		0x04
 #define HSIC_PAD_CALIBRATION	0xA8
@@ -458,33 +490,15 @@ static int msm_hsic_phy_reset(struct msm_hsic_hcd *mehci)
 static int msm_hsic_reset(struct msm_hsic_hcd *mehci)
 {
 	struct usb_hcd *hcd = hsic_to_hcd(mehci);
-	int cnt = 0;
 	int ret;
 	struct msm_hsic_host_platform_data *pdata = mehci->dev->platform_data;
 
-	ret = msm_hsic_phy_reset(mehci);
-	if (ret) {
-		dev_err(mehci->dev, "phy_reset failed\n");
-		return ret;
-	}
+	msm_hsic_clk_reset(mehci);
 
-	writel_relaxed(USBCMD_RESET, USB_USBCMD);
-	while (cnt < LINK_RESET_TIMEOUT_USEC) {
-		if (!(readl_relaxed(USB_USBCMD) & USBCMD_RESET))
-			break;
-		udelay(1);
-		cnt++;
-	}
-	if (cnt >= LINK_RESET_TIMEOUT_USEC)
-		return -ETIMEDOUT;
-
-	/* Reset PORTSC and select ULPI phy */
+	/* select ulpi phy */
 	writel_relaxed(0x80000000, USB_PORTSC);
 
-	/* TODO: Need to confirm if HSIC PHY also requires delay after RESET */
-	msleep(100);
-
-	/* HSIC PHY Initialization */
+	mb();
 
 	/* HSIC init sequence when HSIC signals (Strobe/Data) are
 	routed via GPIOs */
@@ -493,6 +507,8 @@ static int msm_hsic_reset(struct msm_hsic_hcd *mehci)
 		/* Enable LV_MODE in HSIC_CAL_PAD_CTL register */
 		writel_relaxed(HSIC_LV_MODE, HSIC_CAL_PAD_CTL);
 
+		mb();
+
 		/*set periodic calibration interval to ~2.048sec in
 		  HSIC_IO_CAL_REG */
 		ulpi_write(mehci, 0xFF, 0x33);
@@ -500,16 +516,18 @@ static int msm_hsic_reset(struct msm_hsic_hcd *mehci)
 		/* Enable periodic IO calibration in HSIC_CFG register */
 		ulpi_write(mehci, HSIC_PAD_CALIBRATION, 0x30);
 
-		/* Configure GPIO 150/151 pins for HSIC functionality mode */
+		/* Configure GPIO pins for HSIC functionality mode */
 		ret = msm_hsic_config_gpios(mehci, 1);
 		if (ret) {
 			dev_err(mehci->dev, " gpio configuarion failed\n");
 			return ret;
 		}
-		/* Set LV_MODE=0x1 and DCC=0x2 in HSIC_GPIO150/151_PAD_CTL
-		   register */
-		writel_relaxed(HSIC_GPIO_PAD_VAL, HSIC_GPIO150_PAD_CTL);
-		writel_relaxed(HSIC_GPIO_PAD_VAL, HSIC_GPIO151_PAD_CTL);
+		/* Set LV_MODE=0x1 and DCC=0x2 in HSIC_GPIO PAD_CTL register */
+		writel_relaxed(HSIC_GPIO_PAD_VAL, HSIC_STROBE_GPIO_PAD_CTL);
+		writel_relaxed(HSIC_GPIO_PAD_VAL, HSIC_DATA_GPIO_PAD_CTL);
+
+		mb();
+
 		/* Enable HSIC mode in HSIC_CFG register */
 		ulpi_write(mehci, 0x01, 0x31);
 	} else {
@@ -712,13 +730,6 @@ static int msm_hsic_resume(struct msm_hsic_hcd *mehci)
 
 skip_phy_resume:
 
-	if (!(readl_relaxed(USB_USBCMD) & CMD_RUN) &&
-			(readl_relaxed(USB_PORTSC) & PORT_SUSPEND)) {
-		writel_relaxed(readl_relaxed(USB_USBCMD) | CMD_RUN ,
-				USB_USBCMD);
-		dbg_log_event(NULL, "Set RS", readl_relaxed(USB_USBCMD));
-	}
-
 	usb_hcd_resume_root_hub(hcd);
 
 	atomic_set(&mehci->in_lpm, 0);
@@ -824,7 +835,7 @@ static struct hc_driver msm_hsic_driver = {
 	 * generic hardware linkage
 	 */
 	.irq			= msm_hsic_irq,
-	.flags			= HCD_USB2 | HCD_MEMORY,
+	.flags			= HCD_USB2 | HCD_MEMORY | HCD_OLD_ENUM,
 
 	.reset			= ehci_hsic_reset,
 	.start			= ehci_run,
@@ -861,6 +872,9 @@ static struct hc_driver msm_hsic_driver = {
 	.bus_resume		= ehci_hsic_bus_resume,
 
 	.log_urb_complete	= dbg_log_event,
+
+	.enable_ulpi_control	= ehci_msm_enable_ulpi_control,
+	.disable_ulpi_control	= ehci_msm_disable_ulpi_control,
 };
 
 static int msm_hsic_init_clocks(struct msm_hsic_hcd *mehci, u32 init)
@@ -1223,6 +1237,9 @@ static int __devinit ehci_hsic_msm_probe(struct platform_device *pdev)
 	mehci->dev = &pdev->dev;
 
 	mehci->ehci.susp_sof_bug = 1;
+	mehci->ehci.reset_sof_bug = 1;
+
+	mehci->ehci.resume_sof_bug = 1;
 
 	mehci->ehci.max_log2_irq_thresh = 6;
 

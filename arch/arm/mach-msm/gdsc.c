@@ -63,10 +63,18 @@ static int gdsc_enable(struct regulator_dev *rdev)
 
 	ret = readl_tight_poll_timeout(sc->gdscr, regval, regval & PWR_ON_MASK,
 				       TIMEOUT_US);
-	if (ret)
+	if (ret) {
 		dev_err(&rdev->dev, "%s enable timed out\n", sc->rdesc.name);
+		return ret;
+	}
 
-	return ret;
+	/*
+	 * If clocks to this power domain were already on, they will take an
+	 * additional 4 clock cycles to re-enable after the rail is enabled.
+	 */
+	udelay(1);
+
+	return 0;
 }
 
 static int gdsc_disable(struct regulator_dev *rdev)
@@ -189,4 +197,4 @@ static void __exit gdsc_exit(void)
 module_exit(gdsc_exit);
 
 MODULE_LICENSE("GPL v2");
-MODULE_DESCRIPTION("Copper GDSC power rail regulator driver");
+MODULE_DESCRIPTION("MSM8974 GDSC power rail regulator driver");

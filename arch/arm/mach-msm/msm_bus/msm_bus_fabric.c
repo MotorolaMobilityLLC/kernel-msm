@@ -131,7 +131,7 @@ static int register_fabric_info(struct platform_device *pdev,
 		fabric->pdata->id, fabric->pdata->len);
 	fabric->hw_data = fabric->fabdev.hw_algo.allocate_hw_data(pdev,
 		fabric->pdata);
-	if (ZERO_OR_NULL_PTR(fabric->hw_data)) {
+	if (ZERO_OR_NULL_PTR(fabric->hw_data) && fabric->pdata->ahb == 0) {
 		MSM_BUS_ERR("Couldn't allocate hw_data for fab: %d\n",
 			fabric->fabdev.id);
 		goto error;
@@ -337,8 +337,8 @@ void msm_bus_fabric_update_bw(struct msm_bus_fabric_device *fabdev,
 	struct msm_bus_fabric *fabric = to_msm_bus_fabric(fabdev);
 	void *sel_cdata;
 
-	/* Temporarily stub out arbitration settings for copper */
-	if (machine_is_copper())
+	/* Temporarily stub out arbitration settings for msm8974 */
+	if (machine_is_msm8974())
 		return;
 
 	sel_cdata = fabric->cdata[ctx];

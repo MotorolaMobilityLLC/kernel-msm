@@ -38,6 +38,7 @@ config ARCH_MSM7X27
 	select MSM_PM2 if PM
 	select MSM_RUN_QUEUE_STATS if MSM_SOC_REV_A
 	select DONT_MAP_HOLE_AFTER_MEMBANK0
+	select MIGHT_HAVE_CACHE_L2X0
 
 config ARCH_MSM7X30
 	bool "MSM7x30"
@@ -224,8 +225,8 @@ config ARCH_APQ8064
 	select MIGHT_HAVE_PCI
 	select ARCH_SUPPORTS_MSI
 
-config ARCH_MSMCOPPER
-	bool "MSM Copper"
+config ARCH_MSM8974
+	bool "MSM8974"
 	select ARCH_MSM_KRAITMP
 	select GPIO_MSM_V3
 	select ARM_GIC
@@ -288,6 +289,7 @@ config ARCH_MSM8625
 	select MULTI_IRQ_HANDLER
 	select ARM_TICKET_LOCKS
 	select MSM_RUN_QUEUE_STATS
+	select MIGHT_HAVE_CACHE_L2X0
 
 config ARCH_MSM9625
 	bool "MSM9625"
@@ -345,12 +347,14 @@ config  ARCH_MSM_SCORPIONMP
 	select ARCH_MSM_SCORPION
 	select MSM_SMP
 	select HAVE_ARCH_HAS_CURRENT_TIMER
+	select MSM_JTAG if MSM_QDSS
 	bool
 
 config  ARCH_MSM_KRAITMP
 	select ARCH_MSM_KRAIT
 	select MSM_SMP
 	select HAVE_ARCH_HAS_CURRENT_TIMER
+	select MSM_JTAG if MSM_QDSS
 	bool
 	select HAVE_HW_BRKPT_RESERVED_RW_ACCESS
 
@@ -369,6 +373,7 @@ config ARCH_MSM7X27A
 	select MULTI_IRQ_HANDLER
 	select ARM_GIC
 	select ARCH_MSM_CORTEXMP
+	select MIGHT_HAVE_CACHE_L2X0
 
 config  MSM_VIC
 	bool
@@ -877,7 +882,7 @@ config PHYS_OFFSET
 	default "0x80200000" if ARCH_APQ8064
 	default "0x80200000" if ARCH_MSM8960
 	default "0x80200000" if ARCH_MSM8930
-	default "0x00000000" if ARCH_MSMCOPPER
+	default "0x00000000" if ARCH_MSM8974
 	default "0x10000000" if ARCH_FSM9XXX
 	default "0x20200000" if ARCH_MSM9625
 	default "0x00200000" if !MSM_STACKED_MEMORY
@@ -889,7 +894,7 @@ config PHYS_OFFSET
 config KERNEL_PMEM_EBI_REGION
 	bool "Enable in-kernel PMEM region for EBI"
 	default y if ARCH_MSM8X60
-	depends on ANDROID_PMEM && (ARCH_MSM8X60 || ARCH_MSM8960 || ARCH_MSMCOPPER)
+	depends on ANDROID_PMEM && (ARCH_MSM8X60 || ARCH_MSM8960 || ARCH_MSM8974)
 	help
 	   Enable the in-kernel PMEM allocator to use EBI memory.
 
@@ -1007,13 +1012,13 @@ choice
 		Say Y here if you want the debug print routines to direct
 		their output to the serial port on APQ 8064 devices.
 
-	config DEBUG_MSMCOPPER_UART
-		bool "Kernel low-level debugging messages via MSM Copper UART"
-		depends on ARCH_MSMCOPPER
+	config DEBUG_MSM8974_UART
+		bool "Kernel low-level debugging messages via MSM 8974 UART"
+		depends on ARCH_MSM8974
 		select MSM_HAS_DEBUG_UART_HS_V14
 		help
 		  Say Y here if you want the debug print routines to direct
-		  their output to the serial port on MSM Copper devices.
+		  their output to the serial port on MSM 8974 devices.
 endchoice
 
 choice
@@ -2076,9 +2081,15 @@ config MSM_DLOAD_MODE
 		enabled via another mechanism.
 
 config MSM_JTAG
-        bool "JTAG debug and trace support"
+	bool "JTAG and kernel debug and trace support across power collapse"
 	help
-          Add additional support for JTAG kernel debugging and tracing.
+	  Enables support for kernel debugging (specifically breakpoints) and
+	  processor tracing across power collapse both for JTag and OS hosted
+	  software running on the target. Enabling this will ensure debug
+	  and ETM registers are saved and restored across power collapse.
+
+	  For production builds, you should probably say 'N' here to avoid
+	  potential power, performance and memory penalty.
 
 config MSM_ETM
 	tristate "Enable MSM ETM and ETB"
@@ -2086,30 +2097,6 @@ config MSM_ETM
 	select MSM_JTAG
 	help
 	  Enables embedded trace collection on MSM8660
-
-config MSM_QDSS
-	bool "Qualcomm Debug Subsystem"
-	select MSM_JTAG
-	help
-	  Enables support for Qualcomm Debug Subsystem.
-
-config MSM_QDSS_STM_DEFAULT_ENABLE
-	bool "Turn on QDSS STM Tracing by Default"
-	depends on MSM_QDSS
-	help
-	  Turns on QDSS STM tracing (hardware assisted software
-	  instrumentation based tracing) by default. Otherwise, tracing is
-	  disabled by default but can be enabled via sysfs.
-
-	  For production builds, you should probably say 'N' here to avoid
-	  potential power, performance and memory penalty.
-
-config MSM_QDSS_ETM_DEFAULT_ENABLE
-	bool "Turn on QDSS ETM Tracing by Default"
-	depends on MSM_QDSS
-	help
-	  Turns on QDSS ETM tracing by default. Otherwise, tracing is
-	  disabled by default but can be enabled by other means.
 
 config MSM_SLEEP_STATS
 	bool "Enable exporting of MSM sleep stats to userspace"

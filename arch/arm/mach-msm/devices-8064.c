@@ -17,6 +17,7 @@
 #include <linux/msm_rotator.h>
 #include <linux/clkdev.h>
 #include <linux/dma-mapping.h>
+#include <linux/coresight.h>
 #include <mach/irqs-8064.h>
 #include <mach/board.h>
 #include <mach/msm_iomap.h>
@@ -32,7 +33,6 @@
 #include <mach/msm_smd.h>
 #include <mach/msm_dcvs.h>
 #include <mach/msm_rtb.h>
-#include <mach/qdss.h>
 #include <linux/ion.h>
 #include "clock.h"
 #include "devices.h"
@@ -1943,6 +1943,7 @@ struct msm_rpm_platform_data apq8064_rpm_data __initdata = {
 		MSM_RPM_MAP(8064, HDMI_SWITCH, HDMI_SWITCH, 1),
 		MSM_RPM_MAP(8064, DDR_DMM_0, DDR_DMM, 2),
 		MSM_RPM_MAP(8064, QDSS_CLK, QDSS_CLK, 1),
+		MSM_RPM_MAP(8064, VDDMIN_GPIO, VDDMIN_GPIO, 1),
 	},
 	.target_status = {
 		MSM_RPM_STATUS_ID_MAP(8064, VERSION_MAJOR),
@@ -2076,6 +2077,7 @@ struct msm_rpm_platform_data apq8064_rpm_data __initdata = {
 		MSM_RPM_STATUS_ID_MAP(8064, PM8821_S2_1),
 		MSM_RPM_STATUS_ID_MAP(8064, PM8821_L1_0),
 		MSM_RPM_STATUS_ID_MAP(8064, PM8821_L1_1),
+		MSM_RPM_STATUS_ID_MAP(8064, VDDMIN_GPIO),
 	},
 	.target_ctrl_id = {
 		MSM_RPM_CTRL_MAP(8064, VERSION_MAJOR),
@@ -2297,6 +2299,7 @@ struct msm_mpm_device_data apq8064_mpm_dev_data __initdata = {
 #define AP2MDM_STATUS			48
 #define AP2MDM_SOFT_RESET		27
 #define AP2MDM_WAKEUP			35
+#define MDM2AP_PBLRDY			46
 
 static struct resource mdm_resources[] = {
 	{
@@ -2333,6 +2336,12 @@ static struct resource mdm_resources[] = {
 		.start	= AP2MDM_WAKEUP,
 		.end	= AP2MDM_WAKEUP,
 		.name	= "AP2MDM_WAKEUP",
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.start	= MDM2AP_PBLRDY,
+		.end	= MDM2AP_PBLRDY,
+		.name	= "MDM2AP_PBLRDY",
 		.flags	= IORESOURCE_IO,
 	},
 };
@@ -2612,15 +2621,15 @@ struct msm_iommu_domain_name apq8064_iommu_ctx_names[] = {
 		.name = "jpegd_dst",
 		.domain = CAMERA_DOMAIN,
 	},
-	/* Rotator src*/
+	/* Rotator */
 	{
 		.name = "rot_src",
-		.domain = ROTATOR_SRC_DOMAIN,
+		.domain = ROTATOR_DOMAIN,
 	},
-	/* Rotator dst */
+	/* Rotator */
 	{
 		.name = "rot_dst",
-		.domain = ROTATOR_DST_DOMAIN,
+		.domain = ROTATOR_DOMAIN,
 	},
 	/* Video */
 	{
@@ -2676,36 +2685,18 @@ static struct mem_pool apq8064_camera_pools[] =  {
 		},
 };
 
-static struct mem_pool apq8064_display_read_pools[] =  {
+static struct mem_pool apq8064_display_pools[] =  {
 	[GEN_POOL] =
-	/* One address space for display reads */
+	/* One address space for display */
 		{
 			.paddr	= SZ_128K,
 			.size	= SZ_2G - SZ_128K,
 		},
 };
 
-static struct mem_pool apq8064_display_write_pools[] =  {
+static struct mem_pool apq8064_rotator_pools[] =  {
 	[GEN_POOL] =
-	/* One address space for display writes */
-		{
-			.paddr	= SZ_128K,
-			.size	= SZ_2G - SZ_128K,
-		},
-};
-
-static struct mem_pool apq8064_rotator_src_pools[] =  {
-	[GEN_POOL] =
-	/* One address space for rotator src */
-		{
-			.paddr	= SZ_128K,
-			.size	= SZ_2G - SZ_128K,
-		},
-};
-
-static struct mem_pool apq8064_rotator_dst_pools[] =  {
-	[GEN_POOL] =
-	/* One address space for rotator dst */
+	/* One address space for rotator */
 		{
 			.paddr	= SZ_128K,
 			.size	= SZ_2G - SZ_128K,
@@ -2721,21 +2712,13 @@ static struct msm_iommu_domain apq8064_iommu_domains[] = {
 			.iova_pools = apq8064_camera_pools,
 			.npools = ARRAY_SIZE(apq8064_camera_pools),
 		},
-		[DISPLAY_READ_DOMAIN] = {
-			.iova_pools = apq8064_display_read_pools,
-			.npools = ARRAY_SIZE(apq8064_display_read_pools),
+		[DISPLAY_DOMAIN] = {
+			.iova_pools = apq8064_display_pools,
+			.npools = ARRAY_SIZE(apq8064_display_pools),
 		},
-		[DISPLAY_WRITE_DOMAIN] = {
-			.iova_pools = apq8064_display_write_pools,
-			.npools = ARRAY_SIZE(apq8064_display_write_pools),
-		},
-		[ROTATOR_SRC_DOMAIN] = {
-			.iova_pools = apq8064_rotator_src_pools,
-			.npools = ARRAY_SIZE(apq8064_rotator_src_pools),
-		},
-		[ROTATOR_DST_DOMAIN] = {
-			.iova_pools = apq8064_rotator_dst_pools,
-			.npools = ARRAY_SIZE(apq8064_rotator_dst_pools),
+		[ROTATOR_DOMAIN] = {
+			.iova_pools = apq8064_rotator_pools,
+			.npools = ARRAY_SIZE(apq8064_rotator_pools),
 		},
 };
 

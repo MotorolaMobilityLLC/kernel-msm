@@ -29,6 +29,8 @@
 
 #include <linux/ion.h>
 
+#define BIT(nr)   (1UL << (nr))
+
 #define MSM_CAM_IOCTL_MAGIC 'm'
 
 #define MSM_CAM_IOCTL_GET_SENSOR_INFO \
@@ -446,12 +448,12 @@ struct msm_camera_cfg_cmd {
 #define CMD_VFE_BUFFER_RELEASE 51
 #define CMD_VFE_PROCESS_IRQ 52
 
-#define CMD_AXI_CFG_PRIM		0xc1
-#define CMD_AXI_CFG_PRIM_ALL_CHNLS	0xc2
-#define CMD_AXI_CFG_SEC			0xc4
-#define CMD_AXI_CFG_SEC_ALL_CHNLS	0xc8
-#define CMD_AXI_CFG_TERT1		0xd0
-
+#define CMD_AXI_CFG_PRIM               BIT(8)
+#define CMD_AXI_CFG_PRIM_ALL_CHNLS     BIT(9)
+#define CMD_AXI_CFG_SEC                BIT(10)
+#define CMD_AXI_CFG_SEC_ALL_CHNLS      BIT(11)
+#define CMD_AXI_CFG_TERT1              BIT(12)
+#define CMD_AXI_CFG_TERT2              BIT(13)
 
 #define CMD_AXI_START  0xE1
 #define CMD_AXI_STOP   0xE2
@@ -551,25 +553,31 @@ struct outputCfg {
 #define OUTPUT_ZSL_ALL_CHNLS 10
 #define LAST_AXI_OUTPUT_MODE_ENUM = OUTPUT_ZSL_ALL_CHNLS
 
-#define OUTPUT_PRIM		0xC1
-#define OUTPUT_PRIM_ALL_CHNLS	0xC2
-#define OUTPUT_SEC		0xC4
-#define OUTPUT_SEC_ALL_CHNLS	0xC8
-#define OUTPUT_TERT1		0xD0
+#define OUTPUT_PRIM              BIT(8)
+#define OUTPUT_PRIM_ALL_CHNLS    BIT(9)
+#define OUTPUT_SEC               BIT(10)
+#define OUTPUT_SEC_ALL_CHNLS     BIT(11)
+#define OUTPUT_TERT1             BIT(12)
+#define OUTPUT_TERT2             BIT(13)
+
 
 
 #define MSM_FRAME_PREV_1	0
 #define MSM_FRAME_PREV_2	1
 #define MSM_FRAME_ENC		2
 
-#define OUTPUT_TYPE_P    (1<<0)
-#define OUTPUT_TYPE_T    (1<<1)
-#define OUTPUT_TYPE_S    (1<<2)
-#define OUTPUT_TYPE_V    (1<<3)
-#define OUTPUT_TYPE_L    (1<<4)
-#define OUTPUT_TYPE_ST_L (1<<5)
-#define OUTPUT_TYPE_ST_R (1<<6)
-#define OUTPUT_TYPE_ST_D (1<<7)
+#define OUTPUT_TYPE_P    BIT(0)
+#define OUTPUT_TYPE_T    BIT(1)
+#define OUTPUT_TYPE_S    BIT(2)
+#define OUTPUT_TYPE_V    BIT(3)
+#define OUTPUT_TYPE_L    BIT(4)
+#define OUTPUT_TYPE_ST_L BIT(5)
+#define OUTPUT_TYPE_ST_R BIT(6)
+#define OUTPUT_TYPE_ST_D BIT(7)
+#define OUTPUT_TYPE_R    BIT(8)
+#define OUTPUT_TYPE_R1   BIT(9)
+
+
 
 struct fd_roi_info {
 	void *info;
@@ -685,7 +693,13 @@ struct msm_stats_buf {
 	(MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+4)
 #define MSM_V4L2_EXT_CAPTURE_MODE_RAW \
 	(MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+5)
-#define MSM_V4L2_EXT_CAPTURE_MODE_MAX (MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+6)
+#define MSM_V4L2_EXT_CAPTURE_MODE_RDI \
+	(MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+6)
+#define MSM_V4L2_EXT_CAPTURE_MODE_RDI1 \
+	(MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+7)
+#define MSM_V4L2_EXT_CAPTURE_MODE_RDI2 \
+	(MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+8)
+#define MSM_V4L2_EXT_CAPTURE_MODE_MAX (MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+9)
 
 
 #define MSM_V4L2_PID_MOTION_ISO              V4L2_CID_PRIVATE_BASE
@@ -1658,5 +1672,87 @@ struct msm_camera_irq_cfg {
 
 #define MSM_IRQROUTER_CFG_COMPIRQ \
 	_IOWR('V', BASE_VIDIOC_PRIVATE, void __user *)
+
+#define MAX_NUM_CPP_STRIPS 8
+
+enum msm_cpp_frame_type {
+	MSM_CPP_OFFLINE_FRAME,
+	MSM_CPP_REALTIME_FRAME,
+};
+
+struct msm_cpp_frame_strip_info {
+	int scale_v_en;
+	int scale_h_en;
+
+	int upscale_v_en;
+	int upscale_h_en;
+
+	int src_start_x;
+	int src_end_x;
+	int src_start_y;
+	int src_end_y;
+
+	/* Padding is required for upscaler because it does not
+	 * pad internally like other blocks, also needed for rotation
+	 * rotation expects all the blocks in the stripe to be the same size
+	 * Padding is done such that all the extra padded pixels
+	 * are on the right and bottom
+	*/
+	int pad_bottom;
+	int pad_top;
+	int pad_right;
+	int pad_left;
+
+	int v_init_phase;
+	int h_init_phase;
+	int h_phase_step;
+	int v_phase_step;
+
+	int prescale_crop_width_first_pixel;
+	int prescale_crop_width_last_pixel;
+	int prescale_crop_height_first_line;
+	int prescale_crop_height_last_line;
+
+	int postscale_crop_height_first_line;
+	int postscale_crop_height_last_line;
+	int postscale_crop_width_first_pixel;
+	int postscale_crop_width_last_pixel;
+
+	int dst_start_x;
+	int dst_end_x;
+	int dst_start_y;
+	int dst_end_y;
+
+	int bytes_per_pixel;
+	unsigned int source_address;
+	unsigned int destination_address;
+	unsigned int src_stride;
+	unsigned int dst_stride;
+	int rotate_270;
+	int horizontal_flip;
+	int vertical_flip;
+	int scale_output_width;
+	int scale_output_height;
+};
+
+struct msm_cpp_frame_info_t {
+	int32_t frame_id;
+	uint32_t inst_id;
+	uint32_t client_id;
+	enum msm_cpp_frame_type frame_type;
+	uint32_t num_strips;
+	struct msm_cpp_frame_strip_info *strip_info;
+};
+
+#define VIDIOC_MSM_CPP_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE, struct msm_camera_v4l2_ioctl_t)
+
+#define VIDIOC_MSM_CPP_GET_EVENTPAYLOAD \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 1, struct msm_camera_v4l2_ioctl_t)
+
+#define VIDIOC_MSM_CPP_GET_INST_INFO \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 2, struct msm_camera_v4l2_ioctl_t)
+
+#define V4L2_EVENT_CPP_FRAME_DONE  (V4L2_EVENT_PRIVATE_START + 0)
 
 #endif /* __LINUX_MSM_CAMERA_H */

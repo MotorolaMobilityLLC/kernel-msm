@@ -380,6 +380,9 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 	ehci_writel(ehci, ehci->periodic_dma, &ehci->regs->frame_list);
 	ehci_writel(ehci, (u32) ehci->async->qh_dma, &ehci->regs->async_next);
 
+	/*CMD_RUN will be set after, PORT_RESUME gets cleared*/
+	if (ehci->resume_sof_bug)
+		ehci->command &= ~CMD_RUN;
 	/* restore CMD_RUN, framelist size, and irq threshold */
 	ehci_writel(ehci, ehci->command, &ehci->regs->command);
 	ehci->rh_state = EHCI_RH_RUNNING;
@@ -422,6 +425,17 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 		ehci_writel(ehci, temp, &ehci->regs->port_status [i]);
 	}
 
+	if (ehci->resume_sof_bug && resume_needed) {
+		/* root hub has only one port.
+		 * PORT_RESUME gets cleared automatically. */
+		handshake(ehci, &ehci->regs->port_status[0], PORT_RESUME, 0,
+				20000);
+		ehci_writel(ehci, ehci_readl(ehci,
+				&ehci->regs->command) | CMD_RUN,
+				&ehci->regs->command);
+		goto skip_clear_resume;
+	}
+
 	/* msleep for 20ms only if code is trying to resume port */
 	if (resume_needed) {
 		spin_unlock_irq(&ehci->lock);
@@ -438,6 +452,8 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 			ehci_vdbg (ehci, "resumed port %d\n", i + 1);
 		}
 	}
+
+skip_clear_resume:
 	(void) ehci_readl(ehci, &ehci->regs->command);
 
 	/* maybe re-activate the schedule(s) */
@@ -823,7 +839,7 @@ static int ehci_hub_control (
 	u32 __iomem	*status_reg = &ehci->regs->port_status[
 				(wIndex & 0xff) - 1];
 	u32 __iomem	*hostpc_reg = NULL;
-	u32		temp, temp1, status;
+	u32		temp, temp1, status, cmd = 0;
 	unsigned long	flags;
 	int		retval = 0;
 	unsigned	selector;
@@ -1202,7 +1218,32 @@ static int ehci_hub_control (
 				ehci->reset_done [wIndex] = jiffies
 						+ msecs_to_jiffies (50);
 			}
+
+			if (ehci->reset_sof_bug && (temp & PORT_RESET)) {
+				cmd = ehci_readl(ehci, &ehci->regs->command);
+				cmd &= ~CMD_RUN;
+				ehci_writel(ehci, cmd, &ehci->regs->command);
+				if (handshake(ehci, &ehci->regs->status,
+						STS_HALT, STS_HALT, 16 * 125))
+					ehci_info(ehci,
+						"controller halt failed\n");
+			}
 			ehci_writel(ehci, temp, status_reg);
+			if (ehci->reset_sof_bug && (temp & PORT_RESET)
+				&& hcd->driver->enable_ulpi_control) {
+				hcd->driver->enable_ulpi_control(hcd,
+						PORT_RESET);
+				spin_unlock_irqrestore(&ehci->lock, flags);
+				usleep_range(50000, 55000);
+				if (handshake(ehci, status_reg,
+						PORT_RESET, 0, 10 * 1000))
+					ehci_info(ehci,
+						"failed to clear reset\n");
+				spin_lock_irqsave(&ehci->lock, flags);
+				hcd->driver->disable_ulpi_control(hcd);
+				cmd |= CMD_RUN;
+				ehci_writel(ehci, cmd, &ehci->regs->command);
+			}
 			break;
 
 		/* For downstream facing ports (these):  one hub port is put

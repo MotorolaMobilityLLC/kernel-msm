@@ -850,7 +850,7 @@ static int msm_mi2s_free_gpios(void)
 static void msm_mi2s_shutdown(struct snd_pcm_substream *substream)
 {
 	if (mi2s_bit_clk) {
-		clk_disable(mi2s_bit_clk);
+		clk_disable_unprepare(mi2s_bit_clk);
 		clk_put(mi2s_bit_clk);
 		mi2s_bit_clk = NULL;
 	}
@@ -892,7 +892,7 @@ static int msm_mi2s_startup(struct snd_pcm_substream *substream)
 	if (IS_ERR(mi2s_bit_clk))
 		return PTR_ERR(mi2s_bit_clk);
 	clk_set_rate(mi2s_bit_clk, 0);
-	ret = clk_enable(mi2s_bit_clk);
+	ret = clk_prepare_enable(mi2s_bit_clk);
 	if (IS_ERR_VALUE(ret)) {
 		pr_err("Unable to enable mi2s_bit_clk\n");
 		clk_put(mi2s_bit_clk);
@@ -1257,8 +1257,8 @@ static struct snd_soc_dai_link msm_dai[] = {
 		.cpu_dai_name	= "MultiMedia5",
 		.platform_name  = "msm-multi-ch-pcm-dsp",
 		.dynamic = 1,
-		.trigger = {SND_SOC_DPCM_TRIGGER_BESPOKE,
-					SND_SOC_DPCM_TRIGGER_BESPOKE},
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+					SND_SOC_DPCM_TRIGGER_POST},
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 		.ignore_suspend = 1,
@@ -1271,8 +1271,8 @@ static struct snd_soc_dai_link msm_dai[] = {
 		.cpu_dai_name	= "MultiMedia6",
 		.platform_name  = "msm-multi-ch-pcm-dsp",
 		.dynamic = 1,
-		.trigger = {SND_SOC_DPCM_TRIGGER_BESPOKE,
-					SND_SOC_DPCM_TRIGGER_BESPOKE},
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+					SND_SOC_DPCM_TRIGGER_POST},
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 		.ignore_suspend = 1,
@@ -1285,8 +1285,8 @@ static struct snd_soc_dai_link msm_dai[] = {
 		.cpu_dai_name   = "MultiMedia7",
 		.platform_name  = "msm-compr-dsp",
 		.dynamic = 1,
-		.trigger = {SND_SOC_DPCM_TRIGGER_BESPOKE,
-					SND_SOC_DPCM_TRIGGER_BESPOKE},
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+					SND_SOC_DPCM_TRIGGER_POST},
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 		.ignore_suspend = 1,
@@ -1299,8 +1299,8 @@ static struct snd_soc_dai_link msm_dai[] = {
 		.cpu_dai_name   = "MultiMedia8",
 		.platform_name  = "msm-compr-dsp",
 		.dynamic = 1,
-		.trigger = {SND_SOC_DPCM_TRIGGER_BESPOKE,
-					SND_SOC_DPCM_TRIGGER_BESPOKE},
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+					SND_SOC_DPCM_TRIGGER_POST},
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 		.ignore_suspend = 1,

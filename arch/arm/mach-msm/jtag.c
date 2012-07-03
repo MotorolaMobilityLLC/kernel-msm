@@ -19,10 +19,15 @@
 #include <linux/export.h>
 #include <linux/printk.h>
 #include <linux/ratelimit.h>
+#include <linux/coresight.h>
 #include <mach/scm.h>
+#include <mach/jtag.h>
 
-#include "qdss-priv.h"
 #include "cp14.h"
+
+#define BM(lsb, msb)		((BIT(msb) - BIT(lsb)) + BIT(msb))
+#define BMVAL(val, lsb, msb)	((val & BM(lsb, msb)) >> lsb)
+#define BVAL(val, n)		((val & BIT(n)) >> n)
 
 /* no of dbg regs + 1 (for storing the reg count) */
 #define MAX_DBG_REGS		(90)

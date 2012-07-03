@@ -573,10 +573,10 @@ msm_free_irq(int irq)
  */
 static int msm_test_set_ev_constraint(struct perf_event *event)
 {
-	u32 krait_evt_type = event->attr.config & KRAIT_EVENT_MASK;
-	u8 prefix = (krait_evt_type & 0xF0000) >> 16;
-	u8 reg = (krait_evt_type & 0x0F000) >> 12;
-	u8 group = krait_evt_type & 0x0000F;
+	u32 evt_type = event->attr.config & KRAIT_EVENT_MASK;
+	u8 prefix = (evt_type & 0xF0000) >> 16;
+	u8 reg = (evt_type & 0x0F000) >> 12;
+	u8 group = evt_type & 0x0000F;
 	u64 cpu_pmu_bitmap = __get_cpu_var(pmu_bitmap);
 	u64 bitmap_t;
 
@@ -598,10 +598,10 @@ static int msm_test_set_ev_constraint(struct perf_event *event)
 
 static int msm_clear_ev_constraint(struct perf_event *event)
 {
-	u32 krait_evt_type = event->attr.config & KRAIT_EVENT_MASK;
-	u8 prefix = (krait_evt_type & 0xF0000) >> 16;
-	u8 reg = (krait_evt_type & 0x0F000) >> 12;
-	u8 group = krait_evt_type & 0x0000F;
+	u32 evt_type = event->attr.config & KRAIT_EVENT_MASK;
+	u8 prefix = (evt_type & 0xF0000) >> 16;
+	u8 reg = (evt_type & 0x0F000) >> 12;
+	u8 group = evt_type & 0x0000F;
 	u64 cpu_pmu_bitmap = __get_cpu_var(pmu_bitmap);
 	u64 bitmap_t;
 
@@ -636,6 +636,34 @@ static struct arm_pmu krait_pmu = {
 	.max_period		= (1LLU << 32) - 1,
 };
 
+/* NRCCG format for perf RAW codes. */
+PMU_FORMAT_ATTR(prefix,	"config:16-19");
+PMU_FORMAT_ATTR(reg,	"config:12-15");
+PMU_FORMAT_ATTR(code,	"config:4-11");
+PMU_FORMAT_ATTR(grp,	"config:0-3");
+
+static struct attribute *msm_l1_ev_formats[] = {
+	&format_attr_prefix.attr,
+	&format_attr_reg.attr,
+	&format_attr_code.attr,
+	&format_attr_grp.attr,
+	NULL,
+};
+
+/*
+ * Format group is essential to access PMU's from userspace
+ * via their .name field.
+ */
+static struct attribute_group msm_pmu_format_group = {
+	.name = "format",
+	.attrs = msm_l1_ev_formats,
+};
+
+static const struct attribute_group *msm_l1_pmu_attr_grps[] = {
+	&msm_pmu_format_group,
+	NULL,
+};
+
 int get_krait_ver(void)
 {
 	int ver = 0;
@@ -655,6 +683,7 @@ static struct arm_pmu *__init armv7_krait_pmu_init(void)
 	krait_pmu.name	        = "ARMv7 Krait";
 	krait_pmu.map_event	= krait_8960_map_event;
 	krait_pmu.num_events	= armv7_read_num_pmnc_events();
+	krait_pmu.pmu.attr_groups	= msm_l1_pmu_attr_grps;
 	krait_clear_pmuregs();
 
 	krait_ver = get_krait_ver();

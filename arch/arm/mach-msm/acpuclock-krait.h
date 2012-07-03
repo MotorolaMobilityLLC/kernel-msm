@@ -40,6 +40,7 @@ enum src_id {
 	PLL_0 = 0,
 	HFPLL,
 	QSB,
+	PLL_8,
 };
 
 /**
@@ -91,18 +92,17 @@ enum vregs {
  * struct vreg - Voltage regulator data.
  * @name: Name of requlator.
  * @max_vdd: Limit the maximum-settable voltage.
- * @rpm_vreg_id: ID to use with rpm_vreg_*() APIs.
  * @reg: Regulator handle.
+ * @rpm_reg: RPM Regulator handle.
  * @cur_vdd: Last-set voltage in uV.
  * @peak_ua: Maximum current draw expected in uA.
  */
 struct vreg {
-	const char name[15];
+	const char *name;
 	const int max_vdd;
 	const int peak_ua;
-	const int rpm_vreg_voter;
-	const int rpm_vreg_id;
 	struct regulator *reg;
+	struct rpm_regulator *rpm_reg;
 	int cur_vdd;
 };
 
@@ -147,7 +147,7 @@ struct acpu_level {
 	const int use_for_scaling;
 	const struct core_speed speed;
 	const struct l2_level *l2_level;
-	const int vdd_core;
+	int vdd_core;
 };
 
 /**
@@ -158,6 +158,10 @@ struct acpu_level {
  * @n_offset: "N" value register offset from base address.
  * @config_offset: Configuration register offset from base address.
  * @config_val: Value to initialize the @config_offset register to.
+ * @has_droop_ctl: Indicates the presence of a voltage droop controller.
+ * @droop_offset: Droop controller register offset from base address.
+ * @droop_val: Value to initialize the @config_offset register to.
+ * @low_vdd_l_max: Maximum "L" value supported at HFPLL_VDD_LOW.
  * @vdd: voltage requirements for each VDD level.
  */
 struct hfpll_data {
@@ -167,6 +171,9 @@ struct hfpll_data {
 	const u32 n_offset;
 	const u32 config_offset;
 	const u32 config_val;
+	const bool has_droop_ctl;
+	const u32 droop_offset;
+	const u32 droop_val;
 	const u32 low_vdd_l_max;
 	const int vdd[NUM_HFPLL_VDD];
 };
@@ -175,7 +182,7 @@ struct hfpll_data {
  * struct scalable - Register locations and state associated with a scalable HW.
  * @hfpll_phys_base: Physical base address of HFPLL register.
  * @hfpll_base: Virtual base address of HFPLL registers.
- * @aux_clk_sel_addr: Virtual address of auxiliary MUX.
+ * @aux_clk_sel_phys: Physical address of auxiliary MUX.
  * @aux_clk_sel: Auxiliary mux input to select at boot.
  * @l2cpmr_iaddr: Indirect address of the CPMR MUX/divider CP15 register.
  * @hfpll_data: Descriptive data of HFPLL hardware.
@@ -184,9 +191,9 @@ struct hfpll_data {
  * @vreg: Array of voltage regulators needed by the scalable.
  */
 struct scalable {
-	const u32 hfpll_phys_base;
+	const phys_addr_t hfpll_phys_base;
 	void __iomem *hfpll_base;
-	void __iomem *aux_clk_sel_addr;
+	const phys_addr_t aux_clk_sel_phys;
 	const u32 aux_clk_sel;
 	const u32 l2cpmr_iaddr;
 	const struct hfpll_data *hfpll_data;
@@ -206,10 +213,10 @@ struct scalable {
  */
 struct acpuclk_krait_params {
 	struct scalable *scalable;
-	const struct acpu_level *pvs_acpu_freq_tbl[NUM_PVS];
+	struct acpu_level *pvs_acpu_freq_tbl[NUM_PVS];
 	const struct l2_level *l2_freq_tbl;
 	const size_t l2_freq_tbl_size;
-	const u32 qfprom_phys_base;
+	const phys_addr_t qfprom_phys_base;
 	struct msm_bus_scale_pdata *bus_scale_data;
 };
 

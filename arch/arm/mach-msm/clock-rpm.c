@@ -51,16 +51,18 @@ static int clk_rpmrs_get_rate(struct rpm_clk *r)
 	int rc;
 	struct msm_rpm_iv_pair iv = { .id = r->rpm_status_id, };
 	rc = msm_rpm_get_status(&iv, 1);
-	return (rc < 0) ? rc : iv.value * 1000;
+	return (rc < 0) ? rc : iv.value * r->factor;
 }
 
-#define RPM_SMD_KEY_CLOCK_SET_RATE	0x007A484B
+#define RPM_SMD_KEY_RATE	0x007A484B
+#define RPM_SMD_KEY_ENABLE	0x62616E45
 
 static int clk_rpmrs_set_rate_smd(struct rpm_clk *r, uint32_t value,
 				uint32_t context, int noirq)
 {
+	u32 rpm_key = r->branch ? RPM_SMD_KEY_ENABLE : RPM_SMD_KEY_RATE;
 	struct msm_rpm_kvp kvp = {
-		.key = RPM_SMD_KEY_CLOCK_SET_RATE,
+		.key = rpm_key,
 		.data = (void *)&value,
 		.length = sizeof(value),
 	};
@@ -190,7 +192,7 @@ static int rpm_clk_set_rate(struct clk *clk, unsigned long rate)
 	unsigned long this_khz, this_sleep_khz;
 	int rc = 0;
 
-	this_khz = DIV_ROUND_UP(rate, 1000);
+	this_khz = DIV_ROUND_UP(rate, r->factor);
 
 	spin_lock_irqsave(&rpm_clock_lock, flags);
 
@@ -275,7 +277,7 @@ static enum handoff rpm_clk_handoff(struct clk *clk)
 	if (!r->branch) {
 		r->last_set_khz = iv.value;
 		r->last_set_sleep_khz = iv.value;
-		clk->rate = iv.value * 1000;
+		clk->rate = iv.value * r->factor;
 	}
 
 	return HANDOFF_ENABLED_CLK;

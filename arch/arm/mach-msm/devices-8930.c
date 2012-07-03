@@ -25,6 +25,7 @@
 #include <mach/socinfo.h>
 #include <mach/iommu_domains.h>
 #include <mach/msm_rtb.h>
+#include <mach/msm_cache_dump.h>
 
 #include "devices.h"
 #include "rpm_log.h"
@@ -765,12 +766,12 @@ struct msm_iommu_domain_name msm8930_iommu_ctx_names[] = {
 	/* Rotator */
 	{
 		.name = "rot_src",
-		.domain = ROTATOR_SRC_DOMAIN,
+		.domain = ROTATOR_DOMAIN,
 	},
 	/* Rotator */
 	{
 		.name = "rot_dst",
-		.domain = ROTATOR_DST_DOMAIN,
+		.domain = ROTATOR_DOMAIN,
 	},
 	/* Video */
 	{
@@ -826,36 +827,18 @@ static struct mem_pool msm8930_camera_pools[] =  {
 		},
 };
 
-static struct mem_pool msm8930_display_read_pools[] =  {
+static struct mem_pool msm8930_display_pools[] =  {
 	[GEN_POOL] =
-	/* One address space for display reads */
+	/* One address space for display */
 		{
 			.paddr	= SZ_128K,
 			.size	= SZ_2G - SZ_128K,
 		},
 };
 
-static struct mem_pool msm8930_display_write_pools[] =  {
+static struct mem_pool msm8930_rotator_pools[] =  {
 	[GEN_POOL] =
-	/* One address space for display writes */
-		{
-			.paddr	= SZ_128K,
-			.size	= SZ_2G - SZ_128K,
-		},
-};
-
-static struct mem_pool msm8930_rotator_src_pools[] =  {
-	[GEN_POOL] =
-	/* One address space for rotator src */
-		{
-			.paddr	= SZ_128K,
-			.size	= SZ_2G - SZ_128K,
-		},
-};
-
-static struct mem_pool msm8930_rotator_dst_pools[] =  {
-	[GEN_POOL] =
-	/* One address space for rotator dst */
+	/* One address space for rotator */
 		{
 			.paddr	= SZ_128K,
 			.size	= SZ_2G - SZ_128K,
@@ -871,21 +854,13 @@ static struct msm_iommu_domain msm8930_iommu_domains[] = {
 			.iova_pools = msm8930_camera_pools,
 			.npools = ARRAY_SIZE(msm8930_camera_pools),
 		},
-		[DISPLAY_READ_DOMAIN] = {
-			.iova_pools = msm8930_display_read_pools,
-			.npools = ARRAY_SIZE(msm8930_display_read_pools),
+		[DISPLAY_DOMAIN] = {
+			.iova_pools = msm8930_display_pools,
+			.npools = ARRAY_SIZE(msm8930_display_pools),
 		},
-		[DISPLAY_WRITE_DOMAIN] = {
-			.iova_pools = msm8930_display_write_pools,
-			.npools = ARRAY_SIZE(msm8930_display_write_pools),
-		},
-		[ROTATOR_SRC_DOMAIN] = {
-			.iova_pools = msm8930_rotator_src_pools,
-			.npools = ARRAY_SIZE(msm8930_rotator_src_pools),
-		},
-		[ROTATOR_DST_DOMAIN] = {
-			.iova_pools = msm8930_rotator_dst_pools,
-			.npools = ARRAY_SIZE(msm8930_rotator_dst_pools),
+		[ROTATOR_DOMAIN] = {
+			.iova_pools = msm8930_rotator_pools,
+			.npools = ARRAY_SIZE(msm8930_rotator_pools),
 		},
 };
 
@@ -925,5 +900,25 @@ struct platform_device msm8930_rtb_device = {
 	.id             = -1,
 	.dev            = {
 		.platform_data = &msm8930_rtb_pdata,
+	},
+};
+
+#define MSM8930_L1_SIZE  SZ_1M
+/*
+ * The actual L2 size is smaller but we need a larger buffer
+ * size to store other dump information
+ */
+#define MSM8930_L2_SIZE  SZ_4M
+
+struct msm_cache_dump_platform_data msm8930_cache_dump_pdata = {
+	.l2_size = MSM8930_L2_SIZE,
+	.l1_size = MSM8930_L1_SIZE,
+};
+
+struct platform_device msm8930_cache_dump_device = {
+	.name           = "msm_cache_dump",
+	.id             = -1,
+	.dev            = {
+		.platform_data = &msm8930_cache_dump_pdata,
 	},
 };

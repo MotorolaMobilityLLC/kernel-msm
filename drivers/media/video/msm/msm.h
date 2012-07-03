@@ -59,6 +59,7 @@
 #define MSM_MERCURY_DRV_NAME "msm_mercury"
 #define MSM_I2C_MUX_DRV_NAME "msm_cam_i2c_mux"
 #define MSM_IRQ_ROUTER_DRV_NAME "msm_cam_irq_router"
+#define MSM_CPP_DRV_NAME "msm_cpp"
 
 #define MAX_NUM_CSIPHY_DEV 3
 #define MAX_NUM_CSID_DEV 4
@@ -68,6 +69,7 @@
 #define MAX_NUM_AXI_DEV 2
 #define MAX_NUM_VPE_DEV 1
 #define MAX_NUM_JPEG_DEV 3
+#define MAX_NUM_CPP_DEV 1
 
 enum msm_cam_subdev_type {
 	CSIPHY_DEV,
@@ -82,6 +84,7 @@ enum msm_cam_subdev_type {
 	EEPROM_DEV,
 	GESTURE_DEV,
 	IRQ_ROUTER_DEV,
+	CPP_DEV,
 };
 
 /* msm queue management APIs*/
@@ -178,7 +181,7 @@ enum isp_vfe_cmd_id {
 
 struct msm_cam_v4l2_device;
 struct msm_cam_v4l2_dev_inst;
-#define MSM_MAX_IMG_MODE                8
+#define MSM_MAX_IMG_MODE                MSM_V4L2_EXT_CAPTURE_MODE_MAX
 
 enum msm_buffer_state {
 	MSM_BUFFER_STATE_UNUSED,
@@ -261,6 +264,7 @@ struct msm_cam_media_controller {
 	struct v4l2_subdev *vpe_sdev; /* vpe sub device */
 	struct v4l2_subdev *axi_sdev; /* axi sub device */
 	struct v4l2_subdev *eeprom_sdev; /* eeprom sub device */
+	struct v4l2_subdev *cpp_sdev;/*cpp sub device*/
 
 	struct msm_isp_ops *isp_sdev;    /* isp sub device : camif/VFE */
 	struct msm_cam_config_dev *config_device;
@@ -343,6 +347,7 @@ struct msm_cam_v4l2_dev_inst {
 	int is_mem_map_inst;
 	struct img_plane_info plane_info;
 	int vbqueue_initialized;
+	struct mutex inst_lock;
 };
 
 struct msm_cam_mctl_node {
@@ -540,6 +545,7 @@ struct msm_cam_server_dev {
 	struct v4l2_subdev *axi_device[MAX_NUM_AXI_DEV];
 	struct v4l2_subdev *vpe_device[MAX_NUM_VPE_DEV];
 	struct v4l2_subdev *gesture_device;
+	struct v4l2_subdev *cpp_device[MAX_NUM_CPP_DEV];
 	struct v4l2_subdev *irqr_device;
 
 	spinlock_t  intr_table_lock;

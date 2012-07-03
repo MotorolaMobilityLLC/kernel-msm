@@ -637,6 +637,7 @@ end:
 		__func__, tmp_cmd.type, (uint32_t)tmp_cmd.value,
 		tmp_cmd.length, tmp_cmd.status, rc);
 	kfree(ctrl_data);
+	ctrl_data = NULL;
 	return rc;
 }
 
@@ -899,6 +900,12 @@ static int msm_cam_server_open_session(struct msm_cam_server_dev *ps,
 	/*for single VFE msms (8660, 8960v1), just populate the session
 	with our VFE devices that registered*/
 	pmctl = msm_cam_server_get_mctl(pcam->mctl_handle);
+	if (pmctl == NULL) {
+		pr_err("%s: cannot find mctl\n", __func__);
+		msm_mctl_free(pcam);
+		atomic_dec(&ps->number_pcam_active);
+		return -ENODEV;
+	}
 	pmctl->axi_sdev = ps->axi_device[0];
 	pmctl->isp_sdev = ps->isp_subdev[0];
 	return rc;
@@ -1888,8 +1895,17 @@ int msm_cam_register_subdev_node(struct v4l2_subdev *sd,
 	case GESTURE_DEV:
 		g_server_dev.gesture_device = sd;
 		break;
+
 	case IRQ_ROUTER_DEV:
 		g_server_dev.irqr_device = sd;
+
+	case CPP_DEV:
+		if (index >= MAX_NUM_CPP_DEV) {
+			pr_err("%s Invalid CPP idx %d", __func__, index);
+			err = -EINVAL;
+			break;
+		}
+		g_server_dev.cpp_device[index] = sd;
 		break;
 	default:
 		break;
@@ -2019,7 +2035,7 @@ int msm_cam_server_open_mctl_session(struct msm_cam_v4l2_device *pcam,
 	}
 
 	pmctl = msm_cam_server_get_mctl(pcam->mctl_handle);
-	if (!pmctl->mctl_open) {
+	if (!pmctl || !pmctl->mctl_open) {
 		D("%s: media contoller is not inited\n",
 			 __func__);
 		rc = -ENODEV;
@@ -2297,7 +2313,10 @@ static int msm_open_config(struct inode *inode, struct file *fp)
 	/* assume there is only one active camera possible*/
 	config_cam->p_mctl =
 		msm_cam_server_get_mctl(g_server_dev.pcam_active->mctl_handle);
-
+	if (!config_cam->p_mctl) {
+		pr_err("%s: cannot find mctl\n", __func__);
+		return -ENODEV;
+	}
 	INIT_HLIST_HEAD(&config_cam->p_mctl->stats_info.pmem_stats_list);
 	spin_lock_init(&config_cam->p_mctl->stats_info.pmem_stats_spinlock);
 
@@ -2387,6 +2406,7 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 		/* Next, copy the userspace event ctrl structure */
 		if (copy_from_user((void *)&u_isp_event, user_ptr,
 				   sizeof(struct msm_isp_event_ctrl))) {
+			rc = -EFAULT;
 			break;
 		}
 		/* Save the pointer of the user allocated command buffer*/
@@ -2398,6 +2418,7 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 			&ev, fp->f_flags & O_NONBLOCK);
 		if (rc < 0) {
 			pr_err("no pending events?");
+			rc = -EFAULT;
 			break;
 		}
 		/* Use k_isp_event to point to the event_ctrl structure
@@ -2427,6 +2448,7 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 						break;
 					}
 					kfree(k_msg_value);
+					k_msg_value = NULL;
 				}
 			}
 		}
@@ -2439,6 +2461,7 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 			break;
 		}
 		kfree(k_isp_event);
+		k_isp_event = NULL;
 
 		/* Copy the v4l2_event structure back to the user*/
 		if (copy_to_user((void __user *)arg, &ev,
