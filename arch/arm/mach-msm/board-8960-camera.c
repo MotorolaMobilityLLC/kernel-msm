@@ -21,6 +21,7 @@
 
 #ifdef CONFIG_MSM_CAMERA
 
+#ifdef CONFIG_MSM_CAMERA_FLASH
 #if (defined(CONFIG_GPIO_SX150X) || defined(CONFIG_GPIO_SX150X_MODULE)) && \
 	defined(CONFIG_I2C)
 
@@ -37,6 +38,7 @@ static struct msm_cam_expander_info cam_expander_info[] = {
 		MSM_8960_GSBI4_QUP_I2C_BUS_ID,
 	},
 };
+#endif
 #endif
 
 static struct gpiomux_setting cam_settings[] = {
@@ -767,6 +769,7 @@ void __init msm8960_init_cam(void)
 	if (machine_is_msm8960_cdp()) {
 		msm_gpiomux_install(msm8960_cdp_flash_configs,
 			ARRAY_SIZE(msm8960_cdp_flash_configs));
+#ifdef CONFIG_MSM_CAMERA_FLASH
 		msm_flash_src._fsrc.ext_driver_src.led_en =
 			GPIO_CAM_GP_LED_EN1;
 		msm_flash_src._fsrc.ext_driver_src.led_flash_en =
@@ -776,6 +779,7 @@ void __init msm8960_init_cam(void)
 		msm_flash_src._fsrc.ext_driver_src.expander_info =
 			cam_expander_info;
 		#endif
+#endif
 	}
 
 	if (machine_is_msm8960_liquid()) {
