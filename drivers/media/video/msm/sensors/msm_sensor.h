@@ -278,7 +278,14 @@ int32_t msm_sensor_get_csi_params(struct msm_sensor_ctrl_t *s_ctrl,
 
 int32_t msm_sensor_free_sensor_data(struct msm_sensor_ctrl_t *s_ctrl);
 
+#ifdef CONFIG_MSM_CAMERA_SENSOR
 struct msm_sensor_ctrl_t *get_sctrl(struct v4l2_subdev *sd);
+#else
+static inline struct msm_sensor_ctrl_t *get_sctrl(struct v4l2_subdev *sd)
+{
+	return NULL;
+}
+#endif
 
 #define VIDIOC_MSM_SENSOR_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 10, void __user *)
