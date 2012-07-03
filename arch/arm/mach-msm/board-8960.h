@@ -48,7 +48,7 @@ extern struct regulator_init_data msm_saw_regulator_pdata_s6;
 
 extern struct rpm_regulator_platform_data msm_rpm_regulator_pdata __devinitdata;
 
-#if defined(CONFIG_GPIO_SX150X) || defined(CONFIG_GPIO_SX150X_MODULE)
+/* GPIO SX150X */
 enum {
 	GPIO_EXPANDER_IRQ_BASE = (PM8921_IRQ_BASE + PM8921_NR_IRQS),
 	GPIO_EXPANDER_GPIO_BASE = (PM8921_MPP_BASE + PM8921_NR_MPPS),
@@ -64,7 +64,6 @@ enum {
 	GPIO_CAM_GP_LED_EN2,
 	GPIO_LIQUID_EXPANDER_BASE = GPIO_CAM_EXPANDER_BASE + 8,
 };
-#endif
 
 enum {
 	SX150X_CAM,
