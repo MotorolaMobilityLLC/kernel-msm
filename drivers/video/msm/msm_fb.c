@@ -936,6 +936,10 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mfd->panel_power_on = FALSE;
 			bl_updated = 0;
 
+			/* clean fb to prevent displaying old fb */
+			memset((void *)info->screen_base, 0,
+					info->fix.smem_len);
+
 			ret = pdata->off(mfd->pdev);
 			if (ret)
 				mfd->panel_power_on = curr_pwr_state;
