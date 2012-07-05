@@ -387,9 +387,9 @@ static int kgsl_page_alloc_map_kernel(struct kgsl_memdesc *memdesc)
 			sglen--;
 
 		/* create a list of pages to call vmap */
-		pages = vmalloc(sglen * sizeof(struct page *));
+		pages = kmalloc(sglen * sizeof(struct page *), GFP_KERNEL);
 		if (!pages) {
-			KGSL_CORE_ERR("vmalloc(%d) failed\n",
+			KGSL_CORE_ERR("kmalloc(%d) failed\n",
 				sglen * sizeof(struct page *));
 			return -ENOMEM;
 		}
@@ -399,7 +399,7 @@ static int kgsl_page_alloc_map_kernel(struct kgsl_memdesc *memdesc)
 					VM_IOREMAP, page_prot);
 		KGSL_STATS_ADD(memdesc->size, kgsl_driver.stats.vmalloc,
 				kgsl_driver.stats.vmalloc_max);
-		vfree(pages);
+		kfree(pages);
 	}
 	if (!memdesc->hostptr)
 		return -ENOMEM;
