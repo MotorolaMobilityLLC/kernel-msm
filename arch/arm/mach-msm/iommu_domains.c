@@ -15,10 +15,8 @@
 #include <linux/iommu.h>
 #include <linux/memory_alloc.h>
 #include <linux/platform_device.h>
-#include <linux/vmalloc.h>
 #include <linux/rbtree.h>
 #include <linux/slab.h>
-#include <linux/vmalloc.h>
 #include <asm/sizes.h>
 #include <asm/page.h>
 #include <mach/iommu.h>
@@ -56,7 +54,7 @@ int msm_iommu_map_extra(struct iommu_domain *domain,
 		unsigned int nrpages = PFN_ALIGN(size) >> PAGE_SHIFT;
 		struct page *dummy_page = phys_to_page(phy_addr);
 
-		sglist = vmalloc(sizeof(*sglist) * nrpages);
+		sglist = kmalloc(sizeof(*sglist) * nrpages, GFP_KERNEL);
 		if (!sglist) {
 			ret = -ENOMEM;
 			goto out;
@@ -73,7 +71,7 @@ int msm_iommu_map_extra(struct iommu_domain *domain,
 				__func__, start_iova, domain);
 		}
 
-		vfree(sglist);
+		kfree(sglist);
 	} else {
 		unsigned long order = get_order(page_size);
 		unsigned long aligned_size = ALIGN(size, page_size);
@@ -128,7 +126,7 @@ static int msm_iommu_map_iova_phys(struct iommu_domain *domain,
 	int prot = IOMMU_WRITE | IOMMU_READ;
 	prot |= cached ? IOMMU_CACHE : 0;
 
-	sglist = vmalloc(sizeof(*sglist));
+	sglist = kmalloc(sizeof(*sglist), GFP_KERNEL);
 	if (!sglist) {
 		ret = -ENOMEM;
 		goto err1;
@@ -145,7 +143,7 @@ static int msm_iommu_map_iova_phys(struct iommu_domain *domain,
 			__func__, iova, domain);
 	}
 
-	vfree(sglist);
+	kfree(sglist);
 err1:
 	return ret;
 
