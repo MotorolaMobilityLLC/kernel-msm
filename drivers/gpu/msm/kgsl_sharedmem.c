@@ -386,6 +386,7 @@ static int kgsl_page_alloc_map_kernel(struct kgsl_memdesc *memdesc)
 			sglen--;
 
 		/* create a list of pages to call vmap */
+		pr_info("%s: sglen = %d\n", __func__, sglen);
 		pages = kmalloc(sglen * sizeof(struct page *), GFP_KERNEL);
 		if (!pages) {
 			KGSL_CORE_ERR("kmalloc(%d) failed\n",

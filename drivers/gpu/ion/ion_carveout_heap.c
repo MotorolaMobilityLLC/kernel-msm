@@ -23,7 +23,6 @@
 #include <linux/mm.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
-#include <linux/vmalloc.h>
 #include <linux/iommu.h>
 #include <linux/seq_file.h>
 #include "ion_priv.h"
@@ -113,7 +112,7 @@ struct scatterlist *ion_carveout_heap_map_dma(struct ion_heap *heap,
 {
 	struct scatterlist *sglist;
 
-	sglist = vmalloc(sizeof(struct scatterlist));
+	sglist = kmalloc(sizeof(struct scatterlist), GFP_KERNEL);
 	if (!sglist)
 		return ERR_PTR(-ENOMEM);
 
@@ -129,7 +128,7 @@ void ion_carveout_heap_unmap_dma(struct ion_heap *heap,
 				 struct ion_buffer *buffer)
 {
 	if (buffer->sglist)
-		vfree(buffer->sglist);
+		kfree(buffer->sglist);
 }
 
 static int ion_carveout_request_region(struct ion_carveout_heap *carveout_heap)
@@ -348,7 +347,7 @@ int ion_carveout_heap_map_iommu(struct ion_buffer *buffer,
 		goto out1;
 	}
 
-	sglist = vmalloc(sizeof(*sglist));
+	sglist = kmalloc(sizeof(*sglist), GFP_KERNEL);
 	if (!sglist)
 		goto out1;
 
@@ -372,13 +371,13 @@ int ion_carveout_heap_map_iommu(struct ion_buffer *buffer,
 		if (ret)
 			goto out2;
 	}
-	vfree(sglist);
+	kfree(sglist);
 	return ret;
 
 out2:
 	iommu_unmap_range(domain, data->iova_addr, buffer->size);
 out1:
-	vfree(sglist);
+	kfree(sglist);
 	msm_free_iova_address(data->iova_addr, domain_num, partition_num,
 				data->mapped_size);
 

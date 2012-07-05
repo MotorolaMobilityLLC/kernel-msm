@@ -59,8 +59,8 @@ static int ion_iommu_heap_allocate(struct ion_heap *heap,
 			ret = -ENOMEM;
 			goto err1;
 		}
-		data->iommu_sglist = vmalloc(sizeof(*data->iommu_sglist) *
-						data->nrpages);
+		data->iommu_sglist = kmalloc(sizeof(*data->iommu_sglist) *
+						data->nrpages, GFP_KERNEL);
 		if (!data->iommu_sglist) {
 			ret = -ENOMEM;
 			goto err1;
@@ -87,7 +87,7 @@ static int ion_iommu_heap_allocate(struct ion_heap *heap,
 
 
 err2:
-	vfree(data->iommu_sglist);
+	kfree(data->iommu_sglist);
 	data->iommu_sglist = NULL;
 
 	for (i = 0; i < data->nrpages; i++) {
@@ -111,7 +111,7 @@ static void ion_iommu_heap_free(struct ion_buffer *buffer)
 	for (i = 0; i < data->nrpages; i++)
 		__free_page(data->pages[i]);
 
-	vfree(data->iommu_sglist);
+	kfree(data->iommu_sglist);
 	data->iommu_sglist = NULL;
 
 	kfree(data->pages);

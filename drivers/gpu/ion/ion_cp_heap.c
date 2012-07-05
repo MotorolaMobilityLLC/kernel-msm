@@ -23,7 +23,6 @@
 #include <linux/mm.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
-#include <linux/vmalloc.h>
 #include <linux/memory_alloc.h>
 #include <linux/seq_file.h>
 #include <linux/fmem.h>
@@ -370,7 +369,7 @@ struct scatterlist *ion_cp_heap_create_sglist(struct ion_buffer *buffer)
 {
 	struct scatterlist *sglist;
 
-	sglist = vmalloc(sizeof(*sglist));
+	sglist = kzalloc(sizeof(*sglist), GFP_KERNEL);
 	if (!sglist)
 		return ERR_PTR(-ENOMEM);
 
@@ -392,7 +391,7 @@ void ion_cp_heap_unmap_dma(struct ion_heap *heap,
 				 struct ion_buffer *buffer)
 {
 	if (buffer->sglist)
-		vfree(buffer->sglist);
+		kfree(buffer->sglist);
 }
 
 /**
@@ -839,14 +838,14 @@ static int ion_cp_heap_map_iommu(struct ion_buffer *buffer,
 		if (ret)
 			goto out2;
 	}
-	vfree(sglist);
+	kfree(sglist);
 	return ret;
 
 out2:
 	iommu_unmap_range(domain, data->iova_addr, buffer->size);
 out1:
 	if (!IS_ERR_OR_NULL(sglist))
-		vfree(sglist);
+		kfree(sglist);
 	msm_free_iova_address(data->iova_addr, domain_num, partition_num,
 				data->mapped_size);
 out:
