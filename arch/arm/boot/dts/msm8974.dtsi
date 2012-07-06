@@ -83,12 +83,21 @@
 		compatible = "qcom,msm-sdcc";
 		reg = <0xf9824000 0x1000>;
 		interrupts = <0 123 0>;
+		vdd-supply = <&pm8941_l20>;
+		vdd-io-supply = <&pm8941_s3>;
+
+		qcom,sdcc-vdd-voltage_level = <2950000 2950000>;
+		qcom,sdcc-vdd-current_level = <800 500000>;
+
+		qcom,sdcc-vdd-io-always_on;
+		qcom,sdcc-vdd-io-voltage_level = <1800000 1800000>;
+		qcom,sdcc-vdd-io-current_level = <250 154000>;
 
 		qcom,sdcc-clk-rates = <400000 25000000 50000000 100000000 200000000>;
 		qcom,sdcc-sup-voltages = <2950 2950>;
 		qcom,sdcc-bus-width = <8>;
-		qcom,sdcc-hs200;
 		qcom,sdcc-nonremovable;
+		qcom,sdcc-bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
 	};
 
 	qcom,sdcc@f98a4000 {
@@ -96,10 +105,23 @@
 		compatible = "qcom,msm-sdcc";
 		reg = <0xf98a4000 0x1000>;
 		interrupts = <0 125 0>;
+		vdd-supply = <&pm8941_l21>;
+		vdd-io-supply = <&pm8941_l13>;
+
+		qcom,sdcc-vdd-voltage_level = <2950000 2950000>;
+		qcom,sdcc-vdd-current_level = <9000 800000>;
+
+		qcom,sdcc-vdd-io-always_on;
+		qcom,sdcc-vdd-io-lpm_sup;
+		qcom,sdcc-vdd-io-voltage_level = <1800000 2950000>;
+		qcom,sdcc-vdd-io-current_level = <6 22000>;
 
 		qcom,sdcc-clk-rates = <400000 25000000 50000000 100000000 200000000>;
 		qcom,sdcc-sup-voltages = <2950 2950>;
 		qcom,sdcc-bus-width = <4>;
+		qcom,sdcc-xpc;
+		qcom,sdcc-bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50", "SDR104";
+		qcom,sdcc-current-limit = <800>;
 	};
 
 	qcom,sdcc@f9864000 {
@@ -111,6 +133,7 @@
 		qcom,sdcc-clk-rates = <400000 25000000 50000000 100000000>;
 		qcom,sdcc-sup-voltages = <1800 1800>;
 		qcom,sdcc-bus-width = <4>;
+		qcom,sdcc-bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50";
 		status = "disable";
 	};
 
@@ -123,6 +146,7 @@
 		qcom,sdcc-clk-rates = <400000 25000000 50000000 100000000>;
 		qcom,sdcc-sup-voltages = <1800 1800>;
 		qcom,sdcc-bus-width = <4>;
+		qcom,sdcc-bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50";
 		status = "disable";
 	};
 
@@ -297,7 +321,8 @@
 	qcom,ssusb@F9200000 {
 		compatible = "qcom,dwc-usb3-msm";
 		reg = <0xF9200000 0xFA000>;
-		interrupts = <0 131 0>;
+		interrupts = <0 131 0 0 179 0>;
+		interrupt-names = "irq", "otg_irq";
 		SSUSB_VDDCX-supply = <&pm8841_s2>;
 		SSUSB_1p8-supply = <&pm8941_l6>;
 		HSUSB_VDDCX-supply = <&pm8841_s2>;
@@ -318,52 +343,55 @@
 		qcom,firmware-name = "adsp";
 	};
 
-        qcom,msm-pcm {
-                compatible = "qcom,msm-pcm-dsp";
-        };
+	qcom,msm-pcm {
+		compatible = "qcom,msm-pcm-dsp";
+	};
 
-        qcom,msm-pcm-routing {
-                compatible = "qcom,msm-pcm-routing";
-        };
+	qcom,msm-pcm-routing {
+		compatible = "qcom,msm-pcm-routing";
+	};
 
-        qcom,msm-pcm-lpa {
-                compatible = "qcom,msm-pcm-lpa";
-        };
+	qcom,msm-pcm-lpa {
+		compatible = "qcom,msm-pcm-lpa";
+	};
 
-        qcom,msm-voip-dsp {
-                compatible = "qcom,msm-voip-dsp";
-        };
+	qcom,msm-voip-dsp {
+		compatible = "qcom,msm-voip-dsp";
+	};
 
-        qcom,msm-stub-codec {
-                compatible = "qcom,msm-stub-codec";
-        };
+	qcom,msm-stub-codec {
+		compatible = "qcom,msm-stub-codec";
+	};
 
-        qcom,msm-dai-fe {
-                compatible = "qcom,msm-dai-fe";
-        };
+	qcom,msm-dai-fe {
+		compatible = "qcom,msm-dai-fe";
+	};
 
-        qcom,msm-dai-q6 {
-                compatible = "qcom,msm-dai-q6";
-                qcom,msm-cpudai-auxpcm-clk = "pcm_clk";
-                qcom,msm-cpudai-auxpcm-mode = <0>;
-                qcom,msm-cpudai-auxpcm-sync = <1>;
-                qcom,msm-cpudai-auxpcm-frame = <5>;
-                qcom,msm-cpudai-auxpcm-quant = <2>;
-                qcom,msm-cpudai-auxpcm-slot = <1>;
-                qcom,msm-cpudai-auxpcm-data = <0>;
-                qcom,msm-cpudai-auxpcm-pcm-clk-rate = <2048000>;
+	qcom,msm-auxpcm {
+		compatible = "qcom,msm-auxpcm-resource";
+		qcom,msm-cpudai-auxpcm-clk = "pcm_clk";
+		qcom,msm-cpudai-auxpcm-mode = <0>;
+		qcom,msm-cpudai-auxpcm-sync = <1>;
+		qcom,msm-cpudai-auxpcm-frame = <5>;
+		qcom,msm-cpudai-auxpcm-quant = <2>;
+		qcom,msm-cpudai-auxpcm-slot = <1>;
+		qcom,msm-cpudai-auxpcm-data = <0>;
+		qcom,msm-cpudai-auxpcm-pcm-clk-rate = <2048000>;
 
-                qcom,msm-dai-q6-rx {
-                        qcom,msm-dai-q6-id = <4106>;
-                };
-                qcom,msm-dai-q6-tx {
-                        qcom,msm-dai-q6-id = <4107>;
-                };
-        };
+		qcom,msm-auxpcm-rx {
+			qcom,msm-auxpcm-dev-id = <4106>;
+			compatible = "qcom,msm-auxpcm-dev";
+		};
 
-        qcom,msm-pcm-hostless {
-                compatible = "qcom,msm-pcm-hostless";
-        };
+		qcom,msm-auxpcm-tx {
+			qcom,msm-auxpcm-dev-id = <4107>;
+			compatible = "qcom,msm-auxpcm-dev";
+		};
+	};
+
+	qcom,msm-pcm-hostless {
+		compatible = "qcom,msm-pcm-hostless";
+	};
 
 	qcom,mss@fc880000 {
 		compatible = "qcom,pil-q6v5-mss";

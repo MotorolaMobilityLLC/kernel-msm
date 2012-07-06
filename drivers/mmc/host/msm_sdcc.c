@@ -2112,8 +2112,15 @@ static inline int msmsdcc_vreg_init_reg(struct msm_mmc_reg_data *vreg,
 		goto out;
 	}
 
-	if (regulator_count_voltages(vreg->reg) > 0)
+	if (regulator_count_voltages(vreg->reg) > 0) {
 		vreg->set_voltage_sup = 1;
+		/* sanity check */
+		if (!vreg->high_vol_level || !vreg->hpm_uA) {
+			pr_err("%s: %s invalid constraints specified\n",
+					__func__, vreg->name);
+			rc = -EINVAL;
+		}
+	}
 
 out:
 	return rc;
@@ -4594,16 +4601,78 @@ static void msmsdcc_req_tout_timer_hdlr(unsigned long data)
 	spin_unlock_irqrestore(&host->lock, flags);
 }
 
+#define MAX_PROP_SIZE 32
+static int msmsdcc_dt_parse_vreg_info(struct device *dev,
+		struct msm_mmc_reg_data **vreg_data, const char *vreg_name)
+{
+	int len, ret = 0;
+	const __be32 *prop;
+	char prop_name[MAX_PROP_SIZE];
+	struct msm_mmc_reg_data *vreg;
+	struct device_node *np = dev->of_node;
+
+	snprintf(prop_name, MAX_PROP_SIZE, "%s-supply", vreg_name);
+	if (of_parse_phandle(np, prop_name, 0)) {
+		vreg = devm_kzalloc(dev, sizeof(*vreg), GFP_KERNEL);
+		if (!vreg) {
+			dev_err(dev, "No memory for vreg: %s\n", vreg_name);
+			ret = -ENOMEM;
+			goto err;
+		}
+
+		vreg->name = vreg_name;
+
+		snprintf(prop_name, MAX_PROP_SIZE,
+				"qcom,sdcc-%s-always_on", vreg_name);
+		if (of_get_property(np, prop_name, NULL))
+			vreg->always_on = true;
+
+		snprintf(prop_name, MAX_PROP_SIZE,
+				"qcom,sdcc-%s-lpm_sup", vreg_name);
+		if (of_get_property(np, prop_name, NULL))
+			vreg->lpm_sup = true;
+
+		snprintf(prop_name, MAX_PROP_SIZE,
+				"qcom,sdcc-%s-voltage_level", vreg_name);
+		prop = of_get_property(np, prop_name, &len);
+		if (!prop || (len != (2 * sizeof(__be32)))) {
+			dev_warn(dev, "%s %s property\n",
+				prop ? "invalid format" : "no", prop_name);
+		} else {
+			vreg->low_vol_level = be32_to_cpup(&prop[0]);
+			vreg->high_vol_level = be32_to_cpup(&prop[1]);
+		}
+
+		snprintf(prop_name, MAX_PROP_SIZE,
+				"qcom,sdcc-%s-current_level", vreg_name);
+		prop = of_get_property(np, prop_name, &len);
+		if (!prop || (len != (2 * sizeof(__be32)))) {
+			dev_warn(dev, "%s %s property\n",
+				prop ? "invalid format" : "no", prop_name);
+		} else {
+			vreg->lpm_uA = be32_to_cpup(&prop[0]);
+			vreg->hpm_uA = be32_to_cpup(&prop[1]);
+		}
+
+		*vreg_data = vreg;
+		dev_dbg(dev, "%s: %s %s vol=[%d %d]uV, curr=[%d %d]uA\n",
+			vreg->name, vreg->always_on ? "always_on," : "",
+			vreg->lpm_sup ? "lpm_sup," : "", vreg->low_vol_level,
+			vreg->high_vol_level, vreg->lpm_uA, vreg->hpm_uA);
+	}
+
+err:
+	return ret;
+}
+
 static struct mmc_platform_data *msmsdcc_populate_pdata(struct device *dev)
 {
 	int i, ret;
 	struct mmc_platform_data *pdata;
 	struct device_node *np = dev->of_node;
-	u32 bus_width = 0;
-	u32 *clk_table;
-	int clk_table_len;
-	u32 *sup_voltages;
-	int sup_volt_len;
+	u32 bus_width = 0, current_limit = 0;
+	u32 *clk_table, *sup_voltages;
+	int clk_table_len, sup_volt_len, len;
 
 	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
@@ -4686,6 +4755,65 @@ static struct mmc_platform_data *msmsdcc_populate_pdata(struct device *dev)
 		dev_err(dev, "Supported clock rates not specified\n");
 	}
 
+	pdata->vreg_data = devm_kzalloc(dev,
+			sizeof(struct msm_mmc_slot_reg_data), GFP_KERNEL);
+	if (!pdata->vreg_data) {
+		dev_err(dev, "could not allocate memory for vreg_data\n");
+		goto err;
+	}
+
+	if (msmsdcc_dt_parse_vreg_info(dev,
+			&pdata->vreg_data->vdd_data, "vdd"))
+		goto err;
+
+	if (msmsdcc_dt_parse_vreg_info(dev,
+			&pdata->vreg_data->vdd_io_data, "vdd-io"))
+		goto err;
+
+	len = of_property_count_strings(np, "qcom,sdcc-bus-speed-mode");
+
+	for (i = 0; i < len; i++) {
+		const char *name = NULL;
+
+		of_property_read_string_index(np,
+			"qcom,sdcc-bus-speed-mode", i, &name);
+		if (!name)
+			continue;
+
+		if (!strncmp(name, "SDR12", sizeof("SDR12")))
+			pdata->uhs_caps |= MMC_CAP_UHS_SDR12;
+		else if (!strncmp(name, "SDR25", sizeof("SDR25")))
+			pdata->uhs_caps |= MMC_CAP_UHS_SDR25;
+		else if (!strncmp(name, "SDR50", sizeof("SDR50")))
+			pdata->uhs_caps |= MMC_CAP_UHS_SDR50;
+		else if (!strncmp(name, "DDR50", sizeof("DDR50")))
+			pdata->uhs_caps |= MMC_CAP_UHS_DDR50;
+		else if (!strncmp(name, "SDR104", sizeof("SDR104")))
+			pdata->uhs_caps |= MMC_CAP_UHS_SDR104;
+		else if (!strncmp(name, "HS200_1p8v", sizeof("HS200_1p8v")))
+			pdata->uhs_caps2 |= MMC_CAP2_HS200_1_8V_SDR;
+		else if (!strncmp(name, "HS200_1p2v", sizeof("HS200_1p2v")))
+			pdata->uhs_caps2 |= MMC_CAP2_HS200_1_2V_SDR;
+		else if (!strncmp(name, "DDR_1p8v", sizeof("DDR_1p8v")))
+			pdata->uhs_caps |= MMC_CAP_1_8V_DDR
+						| MMC_CAP_UHS_DDR50;
+		else if (!strncmp(name, "DDR_1p2v", sizeof("DDR_1p2v")))
+			pdata->uhs_caps |= MMC_CAP_1_2V_DDR
+						| MMC_CAP_UHS_DDR50;
+	}
+
+	of_property_read_u32(np, "qcom,sdcc-current-limit", &current_limit);
+	if (current_limit == 800)
+		pdata->uhs_caps |= MMC_CAP_MAX_CURRENT_800;
+	else if (current_limit == 600)
+		pdata->uhs_caps |= MMC_CAP_MAX_CURRENT_600;
+	else if (current_limit == 400)
+		pdata->uhs_caps |= MMC_CAP_MAX_CURRENT_400;
+	else if (current_limit == 200)
+		pdata->uhs_caps |= MMC_CAP_MAX_CURRENT_200;
+
+	if (of_get_property(np, "qcom,sdcc-xpc", NULL))
+		pdata->xpc_cap = true;
 	if (of_get_property(np, "qcom,sdcc-nonremovable", NULL))
 		pdata->nonremovable = true;
 	if (of_get_property(np, "qcom,sdcc-disable_cmd23", NULL))
@@ -4998,6 +5126,7 @@ msmsdcc_probe(struct platform_device *pdev)
 		mmc->caps |= MMC_CAP_CMD23;
 
 	mmc->caps |= plat->uhs_caps;
+	mmc->caps2 |= plat->uhs_caps2;
 	/*
 	 * XPC controls the maximum current in the default speed mode of SDXC
 	 * card. XPC=0 means 100mA (max.) but speed class is not supported.
@@ -5011,12 +5140,6 @@ msmsdcc_probe(struct platform_device *pdev)
 	mmc->caps2 |= MMC_CAP2_PACKED_WR_CONTROL;
 	mmc->caps2 |= (MMC_CAP2_BOOTPART_NOACC | MMC_CAP2_DETECT_ON_ERR);
 	mmc->caps2 |= MMC_CAP2_SANITIZE;
-
-	if (pdev->dev.of_node) {
-		if (of_get_property((&pdev->dev)->of_node,
-					"qcom,sdcc-hs200", NULL))
-			mmc->caps2 |= MMC_CAP2_HS200_1_8V_SDR;
-	}
 
 	if (plat->nonremovable)
 		mmc->caps |= MMC_CAP_NONREMOVABLE;

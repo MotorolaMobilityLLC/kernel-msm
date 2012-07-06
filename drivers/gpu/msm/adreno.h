@@ -82,6 +82,7 @@ struct adreno_device {
 	unsigned int pix_shader_start;
 	unsigned int instruction_size;
 	unsigned int ib_check_level;
+	unsigned int fast_hang_detect;
 };
 
 struct adreno_gpudev {
@@ -99,7 +100,8 @@ struct adreno_gpudev {
 	int (*ctxt_create)(struct adreno_device *, struct adreno_context *);
 	void (*ctxt_save)(struct adreno_device *, struct adreno_context *);
 	void (*ctxt_restore)(struct adreno_device *, struct adreno_context *);
-	void (*ctxt_draw_workaround)(struct adreno_device *);
+	void (*ctxt_draw_workaround)(struct adreno_device *,
+					struct adreno_context *);
 	irqreturn_t (*irq_handler)(struct adreno_device *);
 	void (*irq_control)(struct adreno_device *, int);
 	void * (*snapshot)(struct adreno_device *, void *, int *, int);
@@ -123,6 +125,10 @@ extern const unsigned int a225_registers_count;
 extern const unsigned int a3xx_registers[];
 extern const unsigned int a3xx_registers_count;
 
+extern unsigned int hang_detect_regs[];
+extern const unsigned int hang_detect_regs_count;
+
+
 int adreno_idle(struct kgsl_device *device, unsigned int timeout);
 void adreno_regread(struct kgsl_device *device, unsigned int offsetwords,
 				unsigned int *value);
@@ -142,6 +148,11 @@ struct kgsl_memdesc *adreno_find_ctxtmem(struct kgsl_device *device,
 
 void *adreno_snapshot(struct kgsl_device *device, void *snapshot, int *remain,
 		int hang);
+
+int adreno_dump_and_recover(struct kgsl_device *device);
+
+unsigned int adreno_hang_detect(struct kgsl_device *device,
+						unsigned int *prev_reg_val);
 
 static inline int adreno_is_a200(struct adreno_device *adreno_dev)
 {
@@ -250,7 +261,6 @@ static inline int adreno_add_change_mh_phys_limit_cmds(unsigned int *cmds,
 {
 	unsigned int *start = cmds;
 
-	cmds += __adreno_add_idle_indirect_cmds(cmds, nop_gpuaddr);
 	*cmds++ = cp_type0_packet(MH_MMU_MPU_END, 1);
 	*cmds++ = new_phys_limit;
 	cmds += __adreno_add_idle_indirect_cmds(cmds, nop_gpuaddr);
@@ -263,7 +273,6 @@ static inline int adreno_add_bank_change_cmds(unsigned int *cmds,
 {
 	unsigned int *start = cmds;
 
-	cmds += __adreno_add_idle_indirect_cmds(cmds, nop_gpuaddr);
 	*cmds++ = cp_type0_packet(REG_CP_STATE_DEBUG_INDEX, 1);
 	*cmds++ = (cur_ctx_bank ? 0 : 0x20);
 	cmds += __adreno_add_idle_indirect_cmds(cmds, nop_gpuaddr);

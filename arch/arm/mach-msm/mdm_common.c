@@ -313,8 +313,8 @@ static int mdm_panic_prep(struct notifier_block *this,
 	if (i <= 0) {
 		pr_err("%s: MDM2AP_STATUS never went low\n", __func__);
 		/* Reset the modem so that it will go into download mode. */
-		if (mdm_drv && mdm_drv->ops->reset_mdm_cb)
-			mdm_drv->ops->reset_mdm_cb(mdm_drv);
+		if (mdm_drv && mdm_drv->ops->atomic_reset_mdm_cb)
+			mdm_drv->ops->atomic_reset_mdm_cb(mdm_drv);
 	}
 	return NOTIFY_DONE;
 }
@@ -351,6 +351,7 @@ static irqreturn_t mdm_pblrdy_change(int irq, void *dev_id)
 
 static int mdm_subsys_shutdown(const struct subsys_data *crashed_subsys)
 {
+	mdm_drv->mdm_ready = 0;
 	gpio_direction_output(mdm_drv->ap2mdm_errfatal_gpio, 1);
 	if (mdm_drv->pdata->ramdump_delay_ms > 0) {
 		/* Wait for the external modem to complete

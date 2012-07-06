@@ -76,7 +76,7 @@ static struct regulator *hsusb_3p3;
 static struct regulator *hsusb_1p8;
 static struct regulator *hsusb_vddcx;
 static struct regulator *vbus_otg;
-static struct regulator *mhl_analog_switch;
+static struct regulator *mhl_usb_hs_switch;
 static struct power_supply *psy;
 
 static bool aca_id_turned_on;
@@ -252,16 +252,16 @@ static void msm_hsusb_mhl_switch_enable(struct msm_otg *motg, bool on)
 	if (!pdata->mhl_enable)
 		return;
 
-	if (!mhl_analog_switch) {
-		pr_err("%s: mhl_analog_switch is NULL.\n", __func__);
+	if (!mhl_usb_hs_switch) {
+		pr_err("%s: mhl_usb_hs_switch is NULL.\n", __func__);
 		return;
 	}
 
 	if (on) {
-		if (regulator_enable(mhl_analog_switch))
-			pr_err("unable to enable mhl_analog_switch\n");
+		if (regulator_enable(mhl_usb_hs_switch))
+			pr_err("unable to enable mhl_usb_hs_switch\n");
 	} else {
-		regulator_disable(mhl_analog_switch);
+		regulator_disable(mhl_usb_hs_switch);
 	}
 }
 
@@ -974,6 +974,21 @@ skip_phy_resume:
 }
 #endif
 
+static int msm_otg_notify_host_mode(struct msm_otg *motg, bool host_mode)
+{
+	if (!psy)
+		goto psy_not_supported;
+
+	if (host_mode)
+		power_supply_set_scope(psy, POWER_SUPPLY_SCOPE_SYSTEM);
+	else
+		power_supply_set_scope(psy, POWER_SUPPLY_SCOPE_DEVICE);
+
+psy_not_supported:
+	dev_dbg(motg->phy.dev, "Power Supply doesn't support USB charger\n");
+	return -ENXIO;
+}
+
 static int msm_otg_notify_chg_type(struct msm_otg *motg)
 {
 	static int charger_type;
@@ -1222,7 +1237,7 @@ static void msm_hsusb_vbus_power(struct msm_otg *motg, bool on)
 	 * current from the source.
 	 */
 	if (on) {
-		pm8921_disable_source_current(on);
+		msm_otg_notify_host_mode(motg, on);
 		ret = regulator_enable(vbus_otg);
 		if (ret) {
 			pr_err("unable to enable vbus_otg\n");
@@ -1235,7 +1250,7 @@ static void msm_hsusb_vbus_power(struct msm_otg *motg, bool on)
 			pr_err("unable to disable vbus_otg\n");
 			return;
 		}
-		pm8921_disable_source_current(on);
+		msm_otg_notify_host_mode(motg, on);
 		vbus_is_on = false;
 	}
 }
@@ -3344,10 +3359,10 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	}
 
 	if (pdata->mhl_enable) {
-		mhl_analog_switch = devm_regulator_get(motg->phy.dev,
-							"mhl_ext_3p3v");
-		if (IS_ERR(mhl_analog_switch)) {
-			dev_err(&pdev->dev, "Unable to get mhl_analog_switch\n");
+		mhl_usb_hs_switch = devm_regulator_get(motg->phy.dev,
+							"mhl_usb_hs_switch");
+		if (IS_ERR(mhl_usb_hs_switch)) {
+			dev_err(&pdev->dev, "Unable to get mhl_usb_hs_switch\n");
 			goto free_ldo_init;
 		}
 	}

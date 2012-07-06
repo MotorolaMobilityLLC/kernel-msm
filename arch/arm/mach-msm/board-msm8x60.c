@@ -5216,6 +5216,7 @@ static struct platform_device *surf_devices[] __initdata = {
 	&msm_pil_modem,
 	&msm_pil_tzapps,
 	&msm_pil_dsps,
+	&msm_pil_vidc,
 	&qseecom_device,
 #ifdef CONFIG_I2C_QUP
 	&msm_gsbi3_qup_i2c_device,
@@ -5768,7 +5769,6 @@ static int pm8058_gpios_init(void)
 				.inv_int_pol    = 0,
 			},
 		},
-#ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
 		{
 			PM8058_GPIO_PM_TO_SYS(PMIC_GPIO_SDC3_DET - 1),
 			{
@@ -5779,7 +5779,6 @@ static int pm8058_gpios_init(void)
 				.inv_int_pol    = 0,
 			},
 		},
-#endif
 		{ /* core&surf gpio expander */
 			PM8058_GPIO_PM_TO_SYS(UI_INT1_N),
 			{
@@ -8429,7 +8428,6 @@ static int msm8x60_multi_sdio_init(void)
 }
 
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
-#ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
 static unsigned int msm8x60_sdcc_slot_status(struct device *dev)
 {
 	int status;
@@ -8449,7 +8447,6 @@ static unsigned int msm8x60_sdcc_slot_status(struct device *dev)
 	}
 	return (unsigned int) status;
 }
-#endif
 #endif
 #endif
 
@@ -8497,12 +8494,10 @@ static struct mmc_platform_data msm8x60_sdc3_data = {
 	.translate_vdd  = msm_sdcc_setup_power,
 	.mmc_bus_width  = MMC_CAP_4_BIT_DATA,
 	.wpswitch  	= msm_sdc3_get_wpswitch,
-#ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
 	.status      = msm8x60_sdcc_slot_status,
 	.status_irq  = PM8058_GPIO_IRQ(PM8058_IRQ_BASE,
 				       PMIC_GPIO_SDC3_DET - 1),
 	.irq_flags   = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-#endif
 	.msmsdcc_fmin	= 400000,
 	.msmsdcc_fmid	= 24000000,
 	.msmsdcc_fmax	= 48000000,

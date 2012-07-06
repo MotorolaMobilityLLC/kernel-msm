@@ -295,6 +295,7 @@ static struct mmc_platform_data msm8960_sdc1_data = {
 	.pin_data	= &mmc_slot_pin_data[SDCC1],
 	.mpm_sdiowakeup_int = MSM_MPM_PIN_SDC1_DAT1,
 	.msm_bus_voting_data = &sps_to_ddr_bus_voting_data,
+	.uhs_caps2	= MMC_CAP2_HS200_1_8V_SDR,
 };
 #endif
 
@@ -326,12 +327,10 @@ static struct mmc_platform_data msm8960_sdc3_data = {
 #endif
 	.vreg_data	= &mmc_slot_vreg_data[SDCC3],
 	.pin_data	= &mmc_slot_pin_data[SDCC3],
-#ifdef CONFIG_MMC_MSM_CARD_HW_DETECTION
 	.status_gpio	= PM8921_GPIO_PM_TO_SYS(26),
 	.status_irq	= PM8921_GPIO_IRQ(PM8921_IRQ_BASE, 26),
 	.irq_flags	= IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 	.is_status_gpio_active_low = true,
-#endif
 	.xpc_cap	= 1,
 	.uhs_caps	= (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
 			MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 |

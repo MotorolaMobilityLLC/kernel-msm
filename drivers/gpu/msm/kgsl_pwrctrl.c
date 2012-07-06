@@ -439,6 +439,8 @@ void kgsl_pwrctrl_pwrrail(struct kgsl_device *device, int state)
 		if (test_and_clear_bit(KGSL_PWRFLAGS_POWER_ON,
 			&pwr->power_flags)) {
 			trace_kgsl_rail(device, state);
+			if (pwr->gpu_dig)
+				regulator_disable(pwr->gpu_dig);
 			if (pwr->gpu_reg)
 				regulator_disable(pwr->gpu_reg);
 		}
@@ -449,8 +451,18 @@ void kgsl_pwrctrl_pwrrail(struct kgsl_device *device, int state)
 			if (pwr->gpu_reg) {
 				int status = regulator_enable(pwr->gpu_reg);
 				if (status)
-					KGSL_DRV_ERR(device, "regulator_enable "
-							"failed: %d\n", status);
+					KGSL_DRV_ERR(device,
+							"core regulator_enable "
+							"failed: %d\n",
+							status);
+			}
+			if (pwr->gpu_dig) {
+				int status = regulator_enable(pwr->gpu_dig);
+				if (status)
+					KGSL_DRV_ERR(device,
+							"cx regulator_enable "
+							"failed: %d\n",
+							status);
 			}
 		}
 	}
@@ -534,6 +546,13 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 	if (IS_ERR(pwr->gpu_reg))
 		pwr->gpu_reg = NULL;
 
+	if (pwr->gpu_reg) {
+		pwr->gpu_dig = regulator_get(&pdev->dev, "vdd_dig");
+		if (IS_ERR(pwr->gpu_dig))
+			pwr->gpu_dig = NULL;
+	} else
+		pwr->gpu_dig = NULL;
+
 	pwr->power_flags = 0;
 
 	pwr->nap_allowed = pdata->nap_allowed;
@@ -594,6 +613,11 @@ void kgsl_pwrctrl_close(struct kgsl_device *device)
 	if (pwr->gpu_reg) {
 		regulator_put(pwr->gpu_reg);
 		pwr->gpu_reg = NULL;
+	}
+
+	if (pwr->gpu_dig) {
+		regulator_put(pwr->gpu_dig);
+		pwr->gpu_dig = NULL;
 	}
 
 	for (i = 1; i < KGSL_MAX_CLKS; i++)
@@ -713,7 +737,6 @@ _nap(struct kgsl_device *device)
 		}
 		kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
 		kgsl_pwrctrl_clk(device, KGSL_PWRFLAGS_OFF, KGSL_STATE_NAP);
-		kgsl_mmu_disable_clk(&device->mmu);
 		kgsl_pwrctrl_set_state(device, KGSL_STATE_NAP);
 	case KGSL_STATE_NAP:
 	case KGSL_STATE_SLEEP:
@@ -755,7 +778,6 @@ _sleep(struct kgsl_device *device)
 				gpu_freq);
 		_sleep_accounting(device);
 		kgsl_pwrctrl_clk(device, KGSL_PWRFLAGS_OFF, KGSL_STATE_SLEEP);
-		kgsl_mmu_disable_clk(&device->mmu);
 		kgsl_pwrctrl_set_state(device, KGSL_STATE_SLEEP);
 		pm_qos_update_request(&device->pm_qos_req_dma,
 					PM_QOS_DEFAULT_VALUE);
@@ -888,7 +910,6 @@ void kgsl_pwrctrl_disable(struct kgsl_device *device)
 	/* Order pwrrail/clk sequence based upon platform */
 	kgsl_pwrctrl_axi(device, KGSL_PWRFLAGS_OFF);
 	kgsl_pwrctrl_clk(device, KGSL_PWRFLAGS_OFF, KGSL_STATE_SLEEP);
-	kgsl_mmu_disable_clk(&device->mmu);
 	kgsl_pwrctrl_pwrrail(device, KGSL_PWRFLAGS_OFF);
 }
 EXPORT_SYMBOL(kgsl_pwrctrl_disable);

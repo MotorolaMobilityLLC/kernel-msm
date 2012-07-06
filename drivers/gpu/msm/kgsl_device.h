@@ -25,6 +25,7 @@
 
 #define KGSL_TIMEOUT_NONE       0
 #define KGSL_TIMEOUT_DEFAULT    0xFFFFFFFF
+#define KGSL_TIMEOUT_PART       2000 /* 2 sec */
 
 #define FIRST_TIMEOUT (HZ / 2)
 
@@ -97,7 +98,8 @@ struct kgsl_functable {
 	/* Optional functions - these functions are not mandatory.  The
 	   driver will check that the function pointer is not NULL before
 	   calling the hook */
-	void (*setstate) (struct kgsl_device *device, uint32_t flags);
+	void (*setstate) (struct kgsl_device *device, unsigned int context_id,
+			uint32_t flags);
 	int (*drawctxt_create) (struct kgsl_device *device,
 		struct kgsl_pagetable *pagetable, struct kgsl_context *context,
 		uint32_t flags);
@@ -125,7 +127,7 @@ struct kgsl_event {
 	void (*func)(struct kgsl_device *, void *, u32, u32);
 	void *priv;
 	struct list_head list;
-	struct kgsl_device_private *owner;
+	void *owner;
 };
 
 
