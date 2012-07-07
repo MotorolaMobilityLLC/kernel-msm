@@ -141,9 +141,9 @@
 #define WDA_TX_COMPLETE_TIME_OUT_VALUE 1000
   
 
-#define WDA_MAX_RETRIES_TILL_RING_EMPTY  100   /* MAX 1000msec wait */
+#define WDA_MAX_RETRIES_TILL_RING_EMPTY  1000   /* MAX 10000 msec = 10 seconds wait */
 
-#define WDA_WAIT_MSEC_TILL_RING_EMPTY    100    /* 100 msec wait per cycle */
+#define WDA_WAIT_MSEC_TILL_RING_EMPTY    10    /* 10 msec wait per cycle */
 /* extern declarations */
 extern void vos_WDAComplete_cback(v_PVOID_t pVosContext);
 
@@ -10033,7 +10033,7 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          wpt_uint8  staIdx;
          wpt_uint8  bssIdx = ((tDeleteBssParams *)pMsg->bodyptr)->bssIdx;
          wpt_uint8  reservedResourceBySta;
-         wpt_uint8  waitLoop = 0;
+         wpt_uint16  waitLoop = 0;
 
          if (WDI_DS_GetStaIdxFromBssIdx(pWDA->pWdiContext, bssIdx, &staIdx))
          {
@@ -10072,7 +10072,7 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
       {
          tDeleteStaParams *delSta = (tDeleteStaParams *)pMsg->bodyptr;
          wpt_uint8 reservedResourceBySta;
-         wpt_uint8  waitLoop = 0;
+         wpt_uint16  waitLoop = 0;
 
          while (1) 
          {

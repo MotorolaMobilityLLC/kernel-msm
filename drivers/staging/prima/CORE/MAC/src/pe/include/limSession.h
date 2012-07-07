@@ -257,7 +257,7 @@ typedef struct sPESession           // Added to Support BT-AMP
     tAniBool            isCCXconnection;
     tCcxPEContext       ccxContext;
 #endif
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
     tAniBool            isFastTransitionEnabled;
 #endif
 #ifdef WLAN_FEATURE_P2P

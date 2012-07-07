@@ -729,6 +729,11 @@ limSendSmeScanRsp(tpAniSirGlobal pMac, tANI_U16 length,
     if(0 == bssCount)
     {
        limPostSmeScanRspMessage(pMac, length, resultCode, smesessionId, smetranscationId);
+       if (NULL != pSirSmeScanRsp)
+       {
+           palFreeMemory( pMac->hHdd, pSirSmeScanRsp);
+           pSirSmeScanRsp = NULL;
+       }
     }
     else
     {

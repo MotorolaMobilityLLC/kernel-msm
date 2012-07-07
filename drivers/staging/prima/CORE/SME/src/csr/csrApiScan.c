@@ -117,6 +117,7 @@ static tANI_BOOLEAN csrScanValidateScanResult( tpAniSirGlobal pMac, tANI_U8 *pCh
 eHalStatus csrSetBGScanChannelList( tpAniSirGlobal pMac, tANI_U8 *pAdjustChannels, tANI_U8 NumAdjustChannels);
 void csrReleaseCmdSingle(tpAniSirGlobal pMac, tSmeCmd *pCommand);
 tANI_BOOLEAN csrRoamIsValidChannel( tpAniSirGlobal pMac, tANI_U8 channel );
+void csrPruneChannelListForMode( tpAniSirGlobal pMac, tCsrChannel *pChannelList );
 
 //pResult is invalid calling this function.
 void csrFreeScanResultEntry( tpAniSirGlobal pMac, tCsrScanResult *pResult )
@@ -2703,6 +2704,10 @@ void csrResetCountryInformation( tpAniSirGlobal pMac, tANI_BOOLEAN fForce )
         {
             pMac->scan.curScanType = eSIR_PASSIVE_SCAN;
         }
+
+        csrPruneChannelListForMode(pMac, &pMac->scan.baseChannels);
+        csrPruneChannelListForMode(pMac, &pMac->scan.base20MHzChannels);
+
         csrSaveChannelPowerForBand(pMac, eANI_BOOLEAN_FALSE);
         csrSaveChannelPowerForBand(pMac, eANI_BOOLEAN_TRUE);
         // ... and apply the channel list, power settings, and the country code.
@@ -5369,8 +5374,11 @@ eHalStatus csrScanTriggerIdleScan(tpAniSirGlobal pMac, tANI_U32 *pTimeInterval)
     eHalStatus status = eHAL_STATUS_CSR_WRONG_STATE;
 
     //Do not trigger IMPS in case of concurrency
-    if (vos_concurrent_sessions_running())
+    if (vos_concurrent_sessions_running() && csrIsAnySessionInConnectState(pMac))
+    {
+        smsLog( pMac, LOGW, FL("Cannot request IMPS because Concurrent Sessions Running\n") );
         return (status);
+    }
 
     if(pTimeInterval)
     {
