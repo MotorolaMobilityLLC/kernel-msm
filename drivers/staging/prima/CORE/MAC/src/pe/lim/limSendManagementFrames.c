@@ -2528,8 +2528,7 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
 } // End limSendAssocReqMgmtFrame
 
 
-
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
 /*------------------------------------------------------------------------------------
  *
  * Send Reassoc Req with FTIEs.
@@ -2555,7 +2554,7 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
     tANI_U8               *pBody;
     tANI_U16              nAddIELen; 
     tANI_U8               *pAddIE;
-#ifdef FEATURE_WLAN_CCX
+#if defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
     tANI_U8               *wpsIe = NULL;
 #endif
     tANI_U8               txFlag = 0;
@@ -2666,7 +2665,7 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
     // for rsnie and fties. Instead we just add
     // the rsnie and fties at the end of the pack routine for 11r.
     // This should ideally! be fixed.
-#ifdef FEATURE_WLAN_CCX
+#if defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
     //
     // The join request *should* contain zero or one of the WPA and RSN
     // IEs.  The payload send along with the request is a
@@ -2702,20 +2701,24 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
                     &frm.WPAOpaque );
         }
 
+#ifdef FEATURE_WLAN_CCX
         if(psessionEntry->pLimReAssocReq->cckmIE.length)
         {
             PopulateDot11fCCXCckmOpaque( pMac, &( psessionEntry->pLimReAssocReq->cckmIE ),
                     &frm.CCXCckmOpaque );
         }
+#endif //FEATURE_WLAN_CCX
     }
 
+#ifdef FEATURE_WLAN_CCX
     // For CCX Associations fill the CCX IEs
     if (psessionEntry->isCCXconnection)
     {
         PopulateDot11fCCXRadMgmtCap(&frm.CCXRadMgmtCap);
         PopulateDot11fCCXVersion(&frm.CCXVersion);
     }
-#endif
+#endif //FEATURE_WLAN_CCX 
+#endif //FEATURE_WLAN_CCX || FEATURE_WLAN_LFR
 
     // include WME EDCA IE as well
     if ( fWmeEnabled )
@@ -2808,7 +2811,7 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
     // Paranoia:
     palZeroMemory( pMac->hHdd, pFrame, nBytes + ft_ies_length);
 
-#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG || defined FEATURE_WLAN_CCX
+#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
     limPrintMacAddr(pMac, psessionEntry->limReAssocbssId, LOGE);
 #endif
     // Next, we fill out the buffer descriptor:

@@ -150,12 +150,15 @@ ap_beacon_process(
         }        
         // handling the case when HT AP has overlapping legacy BSS.
         else if(psessionEntry->htCapabality)
-        {
+        {             
             if (pBcnStruct->channelNumber == psessionEntry->currentOperChannel)
             {
-              if (pBcnStruct->erpPresent &&
-                    (pBcnStruct->erpIEInfo.useProtection ||
-                    pBcnStruct->erpIEInfo.nonErpPresent))
+              if (((!(pBcnStruct->erpPresent)) && 
+                    !(pBcnStruct->HTInfo.present))|| 
+                  //if erp not present then  11B AP overlapping
+                  (pBcnStruct->erpPresent &&
+                  (pBcnStruct->erpIEInfo.useProtection ||
+                  pBcnStruct->erpIEInfo.nonErpPresent)))
               {
 #ifdef FEATURE_WLAN_CCX
                   if( psessionEntry->isCCXconnection )
@@ -510,7 +513,7 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
            {
               localConstraint = pBeacon->ccxTxPwr.power_limit;
               regMax = cfgGetRegulatoryMaxTransmitPower( pMac, psessionEntry->currentOperChannel ); 
-              maxTxPower = limGetMaxTxPower(regMax, localConstraint);
+              maxTxPower = limGetMaxTxPower(regMax, localConstraint, pMac->roam.configParam.nTxPowerCap);
 
               //If maxTxPower is increased or decreased
              if( maxTxPower != psessionEntry->maxTxPower )

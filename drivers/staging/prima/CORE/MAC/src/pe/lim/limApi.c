@@ -2684,10 +2684,7 @@ tMgmtFrmDropReason limIsPktCandidateForDrop(tpAniSirGlobal pMac, tANI_U8 *pRxPac
         }
         if (limIsSystemInScanState(pMac))
         {
-            if( WDA_IS_RX_IN_SCAN(pRxPacketInfo) )
-                return eMGMT_DROP_NO_DROP;
-            else
-                return eMGMT_DROP_NON_SCAN_MODE_FRAME;
+            return eMGMT_DROP_NO_DROP;
         }
         else if (WDA_IS_RX_IN_SCAN(pRxPacketInfo))
         {
