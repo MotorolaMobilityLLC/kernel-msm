@@ -399,8 +399,10 @@ struct msm_panel_common_pdata {
 	int mdp_rev;
 	void *power_on_set_1;
 	void *power_on_set_2;
+	void *power_on_set_3;
 	ssize_t power_on_set_size_1;
 	ssize_t power_on_set_size_2;
+	ssize_t power_on_set_size_3;
 	void *power_off_set_1;
 	void *power_off_set_2;
 	ssize_t power_off_set_size_1;

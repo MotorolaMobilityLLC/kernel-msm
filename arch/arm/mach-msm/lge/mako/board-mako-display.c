@@ -681,153 +681,155 @@ static int mipi_lgit_backlight_level(int level, int max, int min)
 char lcd_mirror [2] = {0x36, 0x02};
 
 // values of DSV setting START
-static char panel_setting_1_for_DSV [6] = {0xB0, 0x43, 0xFF, 0x80, 0x00, 0x00};
-static char panel_setting_2_for_DSV [3] = {0xB3, 0x0A, 0x9F};
-//static char panel_setting_3_for_DSV [2] = {0xB4, 0x02}; //2 dot inversion
+static char panel_setting_1 [6] = {0xB0, 0x43, 0x00, 0x00, 0x00, 0x00};
+static char panel_setting_2 [3] = {0xB3, 0x0A, 0x9F};
 
-static char display_mode1_for_DSV [6] = {0xB5, 0x50, 0x20, 0x40, 0x00, 0x20};
-static char display_mode2_for_DSV [8] = {0xB6, 0x00, 0x14, 0x0F, 0x16, 0x13, 0x05, 0x05};
+static char display_mode1 [6] = {0xB5, 0x50, 0x20, 0x40, 0x00, 0x20};
+static char display_mode2 [8] = {0xB6, 0x00, 0x14, 0x0F, 0x16, 0x13, 0x05, 0x05};
 
-static char p_gamma_r_setting_for_DSV[10] = {0xD0, 0x40, 0x14, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
-static char n_gamma_r_setting_for_DSV[10] = {0xD1, 0x40, 0x14, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
-static char p_gamma_g_setting_for_DSV[10] = {0xD2, 0x40, 0x14, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
-static char n_gamma_g_setting_for_DSV[10] = {0xD3, 0x40, 0x14, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
-static char p_gamma_b_setting_for_DSV[10] = {0xD4, 0x40, 0x14, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
-static char n_gamma_b_setting_for_DSV[10] = {0xD5, 0x40, 0x14, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
+static char p_gamma_r_setting[10] = {0xD0, 0x72, 0x15, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
+static char n_gamma_r_setting[10] = {0xD1, 0x72, 0x15, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
+static char p_gamma_g_setting[10] = {0xD2, 0x72, 0x15, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
+static char n_gamma_g_setting[10] = {0xD3, 0x72, 0x15, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
+static char p_gamma_b_setting[10] = {0xD4, 0x72, 0x15, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
+static char n_gamma_b_setting[10] = {0xD5, 0x72, 0x15, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
 
-static char ief_set0_for_DSV[2] = {0xE0, 0x07};
-static char ief_set1_for_DSV[5] = {0xE1, 0x00, 0x00, 0x01, 0x01};
-static char ief_set2_for_DSV[3] = {0xE2, 0x01, 0x0F};
-static char ief_set3_for_DSV[6] = {0xE3, 0x00, 0x00, 0x42, 0x35, 0x00};
-static char ief_set4_for_DSV[4] = {0xE4, 0x04, 0x01, 0x17};
-static char ief_set5_for_DSV[4] = {0xE5, 0x03, 0x0F, 0x17};
-static char ief_set6_for_DSV[4] = {0xE6, 0x07, 0x00, 0x15};
-static char ief_set7_for_DSV[9] = {0xE7, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40};
-static char ief_set8_for_DSV[9] = {0xE8, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40};
-static char ief_set9_for_DSV[9] = {0xE9, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40};
-static char ief_setA_for_DSV[9] = {0xEA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-static char ief_setB_for_DSV[9] = {0xEB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-static char ief_setC_for_DSV[9] = {0xEC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static char ief_on_set0[2] = {0xE0, 0x07};
+static char ief_on_set4[4] = {0xE4, 0x07, 0x00, 0x06};
+static char ief_on_set5[4] = {0xE5, 0x02, 0x88, 0x22};
+static char ief_on_set6[4] = {0xE6, 0x04, 0x08, 0x05};
 
-static char osc_setting_for_DSV[4] =     {0xC0, 0x00, 0x0A, 0x10};
-static char power_setting3_for_DSV[13] = {0xC3, 0x00, 0x88, 0x03, 0x20, 0x00, 0x55, 0x4F, 0x33,0x02,0x38,0x38,0x00};
-static char power_setting4_for_DSV[6] =  {0xC4, 0x22, 0x24, 0x13, 0x13, 0x3D};
-static char power_setting5_for_DSV[4] =  {0xC5, 0x3B, 0x3B, 0x03};
-static char power_setting6_for_DSV[2] =  {0x11,0x00};
+static char ief_set1[5] = {0xE1, 0x00, 0x00, 0x01, 0x01};
+static char ief_set2[3] = {0xE2, 0x01, 0x0F};
+static char ief_set3[6] = {0xE3, 0x00, 0x00, 0x42, 0x35, 0x00};
+static char ief_set7[9] = {0xE7, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E, 0x3E};
+static char ief_set8[9] = {0xE8, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40};
+static char ief_set9[9] = {0xE9, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40};
+static char ief_setA[9] = {0xEA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static char ief_setB[9] = {0xEB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static char ief_setC[9] = {0xEC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+static char osc_setting[4] =     {0xC0, 0x00, 0x0A, 0x10};
+static char power_setting3[13] = {0xC3, 0x00, 0x88, 0x03, 0x20, 0x00, 0x55, 0x4F, 0x33,0x02,0x38,0x38,0x00};
+static char power_setting4[6] =  {0xC4, 0x22, 0x24, 0x11, 0x11, 0x3D};
+static char power_setting5[4] =  {0xC5, 0x3B, 0x3B, 0x03};
 
 #if defined(CONFIG_BACKLIGHT_LM3530_CABC)
 static char cabc_set0[2] = {0x51, 0xFF};
 static char cabc_set1[2] = {0x5E, 0x00}; // CABC MIN
 static char cabc_set2[2] = {0x53, 0x2C};
 static char cabc_set3[2] = {0x55, 0x02};
-static char cabc_set4[6] = {0xC8, 0x21, 0x21, 0x21, 0x33, 0x80};//A-CABC applied
+static char cabc_set4[6] = {0xC8, 0x22, 0x22, 0x22, 0x33, 0x80};//A-CABC applied
 #endif
 
-static char exit_sleep_power_control_1_for_DSV[2] =  {0xC2,0x02};
-static char exit_sleep_power_control_2_for_DSV[2] =  {0xC2,0x06};
-static char exit_sleep_power_control_3_for_DSV[2] =  {0xC2,0x0E};
-static char exit_sleep_power_control_4_for_DSV[2] =  {0xC1,0x08};
+static char exit_sleep_power_control_1[2] =  {0xC2,0x02};
+static char exit_sleep_power_control_2[2] =  {0xC2,0x06};
+static char exit_sleep_power_control_3[2] =  {0xC2,0x0E};
+static char otp_protection[3] =  {0xF1,0x15,0x01};
+static char sleep_out_for_cabc[2] = {0x11,0x00};
+static char gate_output_enabled_by_manual[2] = {0xC1,0x08};
 
-static char display_on_for_DSV[2] =  {0x29,0x00};
+static char display_on[2] =  {0x29,0x00};
 
-static char display_off_for_DSV[2] = {0x28,0x00};
+static char display_off[2] = {0x28,0x00};
 
-static char enter_sleep_for_DSV[2] = {0x10,0x00};
+static char enter_sleep[2] = {0x10,0x00};
 
-static char enter_sleep_power_control_1_for_DSV[2] = {0xC1,0x00};
-static char enter_sleep_power_control_3_for_DSV[2] = {0xC2,0x01};
-static char enter_sleep_power_control_2_for_DSV[2] = {0xC2,0x00};
+static char enter_sleep_power_control_1[2] = {0xC1,0x00};
+static char analog_boosting_power_control[2] = {0xC2,0x00};
+static char enter_sleep_power_control_3[2] = {0xC2,0x01};
+static char enter_sleep_power_control_2[2] = {0xC2,0x00};
 
-static char deep_standby_for_DSV[2] = {0xC1,0x03};
+static char deep_standby[2] = {0xC1,0x03};
 
-/* initialize device */
-static struct dsi_cmd_desc lgit_power_on_set_1_for_DSV[] = {
+static struct dsi_cmd_desc lgit_power_on_set_1[] = {
 	// Display Initial Set
-	
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(lcd_mirror ),lcd_mirror},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(lcd_mirror), lcd_mirror},
 
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(panel_setting_1_for_DSV ),panel_setting_1_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(panel_setting_2_for_DSV ),panel_setting_2_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(display_mode1_for_DSV ),display_mode1_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(display_mode2_for_DSV ),display_mode2_for_DSV},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(panel_setting_1), panel_setting_1},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(panel_setting_2), panel_setting_2},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(display_mode1), display_mode1},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(display_mode2), display_mode2},
 
 	// Gamma Set
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(p_gamma_r_setting_for_DSV),p_gamma_r_setting_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(n_gamma_r_setting_for_DSV),n_gamma_r_setting_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(p_gamma_g_setting_for_DSV),p_gamma_g_setting_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(n_gamma_g_setting_for_DSV),n_gamma_g_setting_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(p_gamma_b_setting_for_DSV),p_gamma_b_setting_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(n_gamma_b_setting_for_DSV),n_gamma_b_setting_for_DSV},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(p_gamma_r_setting), p_gamma_r_setting},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(n_gamma_r_setting), n_gamma_r_setting},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(p_gamma_g_setting), p_gamma_g_setting},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(n_gamma_g_setting), n_gamma_g_setting},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(p_gamma_b_setting), p_gamma_b_setting},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(n_gamma_b_setting), n_gamma_b_setting},
 
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set0_for_DSV),ief_set0_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set1_for_DSV),ief_set1_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set2_for_DSV),ief_set2_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set3_for_DSV),ief_set3_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set4_for_DSV),ief_set4_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set5_for_DSV),ief_set5_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set6_for_DSV),ief_set6_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set7_for_DSV),ief_set7_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set8_for_DSV),ief_set8_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set9_for_DSV),ief_set9_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_setA_for_DSV),ief_setA_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_setB_for_DSV),ief_setB_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_setC_for_DSV),ief_setC_for_DSV},
+	// IEF set
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_on_set0), ief_on_set0},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set1), ief_set1},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set2), ief_set2},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set3), ief_set3},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_on_set4), ief_on_set4},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_on_set5), ief_on_set5},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_on_set6), ief_on_set6},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set7), ief_set7},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set8), ief_set8},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set9), ief_set9},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_setA), ief_setA},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_setB), ief_setB},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_setC), ief_setC},
 
 	// Power Supply Set
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(osc_setting_for_DSV   ),osc_setting_for_DSV   }, 
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(power_setting3_for_DSV),power_setting3_for_DSV}, 
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(power_setting4_for_DSV),power_setting4_for_DSV},
-
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(power_setting5_for_DSV),power_setting5_for_DSV},
-	{DTYPE_DCS_WRITE, 1, 0, 0, 5, sizeof(power_setting6_for_DSV),power_setting6_for_DSV},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(osc_setting), osc_setting},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(power_setting3), power_setting3},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(power_setting4), power_setting4},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(power_setting5), power_setting5},
 		
 #if defined(CONFIG_BACKLIGHT_LM3530_CABC)
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set0),cabc_set0},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set1),cabc_set1},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set2),cabc_set2},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set3),cabc_set3},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set4),cabc_set4},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set0), cabc_set0},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set1), cabc_set1},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set2), cabc_set2},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set3), cabc_set3},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set4), cabc_set4},
 #endif
-	
-	{DTYPE_GEN_LWRITE,  1, 0, 0, 20, sizeof(exit_sleep_power_control_1_for_DSV	),exit_sleep_power_control_1_for_DSV	},
-	{DTYPE_GEN_LWRITE,  1, 0, 0, 20, sizeof(exit_sleep_power_control_2_for_DSV	),exit_sleep_power_control_2_for_DSV	},
-	{DTYPE_GEN_LWRITE,  1, 0, 0, 0, sizeof(exit_sleep_power_control_3_for_DSV	),exit_sleep_power_control_3_for_DSV	},
-	
 };
 
-static struct dsi_cmd_desc lgit_power_on_set_2_for_DSV[] = {
+static struct dsi_cmd_desc lgit_power_on_set_2[] = {
+	{DTYPE_GEN_LWRITE,  1, 0, 0, 20, sizeof(exit_sleep_power_control_1), exit_sleep_power_control_1},
+	{DTYPE_GEN_LWRITE,  1, 0, 0, 20, sizeof(exit_sleep_power_control_2), exit_sleep_power_control_2},
+	{DTYPE_GEN_LWRITE,  1, 0, 0, 5, sizeof(exit_sleep_power_control_3),exit_sleep_power_control_3	},
+};
+
+static struct dsi_cmd_desc lgit_power_on_set_3[] = {
 	// Power Supply Set
-	{DTYPE_GEN_LWRITE,  1, 0, 0, 20, sizeof(exit_sleep_power_control_4_for_DSV	),exit_sleep_power_control_4_for_DSV	},
-	{DTYPE_DCS_WRITE,  1, 0, 0, 20, sizeof(display_on_for_DSV	),display_on_for_DSV	},
+	{DTYPE_GEN_LWRITE,  1, 0, 0, 0, sizeof(otp_protection), otp_protection},
+	{DTYPE_GEN_LWRITE,  1, 0, 0, 100, sizeof(sleep_out_for_cabc), sleep_out_for_cabc},
+	{DTYPE_GEN_LWRITE,  1, 0, 0, 0, sizeof(gate_output_enabled_by_manual), gate_output_enabled_by_manual},
+	{DTYPE_DCS_WRITE,  1, 0, 0, 0, sizeof(display_on), display_on},
 };
 
-static struct dsi_cmd_desc lgit_power_off_set_1_for_DSV[] = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, 20, sizeof(display_off_for_DSV), display_off_for_DSV},
-	{DTYPE_DCS_WRITE, 1, 0, 0, 20, sizeof(enter_sleep_for_DSV), enter_sleep_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 20, sizeof(enter_sleep_power_control_1_for_DSV), enter_sleep_power_control_1_for_DSV},
+static struct dsi_cmd_desc lgit_power_off_set_1[] = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 20, sizeof(display_off), display_off},
+	{DTYPE_DCS_WRITE, 1, 0, 0, 20, sizeof(enter_sleep), enter_sleep},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 20, sizeof(enter_sleep_power_control_1), enter_sleep_power_control_1},
 };
 
-static struct dsi_cmd_desc lgit_power_off_set_2_for_DSV[] = {
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 20, sizeof(enter_sleep_power_control_3_for_DSV), enter_sleep_power_control_3_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 20, sizeof(enter_sleep_power_control_2_for_DSV), enter_sleep_power_control_2_for_DSV},
-	{DTYPE_GEN_LWRITE, 1, 0, 0, 20, sizeof(deep_standby_for_DSV), deep_standby_for_DSV}	
+static struct dsi_cmd_desc lgit_power_off_set_2[] = {
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 20, sizeof(analog_boosting_power_control), analog_boosting_power_control},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 10, sizeof(enter_sleep_power_control_3), enter_sleep_power_control_3},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 10, sizeof(enter_sleep_power_control_2), enter_sleep_power_control_2},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 10, sizeof(deep_standby), deep_standby}
 };
-// values of DSV setting END
-
-// values of normal setting START(not DSV)
-
 
 static struct msm_panel_common_pdata mipi_lgit_pdata = {
 	.backlight_level = mipi_lgit_backlight_level,
-	.power_on_set_1 = lgit_power_on_set_1_for_DSV,
-	.power_on_set_2 = lgit_power_on_set_2_for_DSV,
-	.power_on_set_size_1 = ARRAY_SIZE(lgit_power_on_set_1_for_DSV),
-	.power_on_set_size_2 =ARRAY_SIZE(lgit_power_on_set_2_for_DSV),
-	.power_off_set_1 = lgit_power_off_set_1_for_DSV,
-	.power_off_set_2 = lgit_power_off_set_2_for_DSV,
-	.power_off_set_size_1 = ARRAY_SIZE(lgit_power_off_set_1_for_DSV),
-	.power_off_set_size_2 =ARRAY_SIZE(lgit_power_off_set_2_for_DSV),
+	.power_on_set_1 = lgit_power_on_set_1,
+	.power_on_set_2 = lgit_power_on_set_2,
+	.power_on_set_3 = lgit_power_on_set_3,
 
+	.power_on_set_size_1 = ARRAY_SIZE(lgit_power_on_set_1),
+	.power_on_set_size_2 = ARRAY_SIZE(lgit_power_on_set_2),
+	.power_on_set_size_3 = ARRAY_SIZE(lgit_power_on_set_3),
+
+	.power_off_set_1 = lgit_power_off_set_1,
+	.power_off_set_2 = lgit_power_off_set_2,
+	.power_off_set_size_1 = ARRAY_SIZE(lgit_power_off_set_1),
+	.power_off_set_size_2 =ARRAY_SIZE(lgit_power_off_set_2),
 };
 
 static struct platform_device mipi_dsi_lgit_panel_device = {
