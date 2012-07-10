@@ -77,16 +77,17 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	else
 		down(&mfd->dma->mutex);
 
+#if defined(CONFIG_FB_MSM_MIPI_DSI_LGIT)
 	ret = panel_next_off(pdev);
 	if (ret < 0) {
+		pr_err("%s: failed to turn off the panel\n", __func__);
 		if (mdp_rev >= MDP_REV_41)
 			mutex_unlock(&mfd->dma->ov_mutex);
 		else
 			up(&mfd->dma->mutex);
 		return ret;
-	} else {
-		ret = 0;
 	}
+#endif
 
 	mdp4_overlay_dsi_state_set(ST_DSI_SUSPEND);
 
@@ -290,24 +291,9 @@ static int mipi_dsi_on(struct platform_device *pdev)
 	else
 		down(&mfd->dma->mutex);
 
-#if defined(CONFIG_FB_MSM_MIPI_DSI_LGIT)
-	mipi_dsi_op_mode_config(mipi->mode);
-	mdp4_overlay_dsi_video_start();
-	ret = panel_next_on(pdev);
-	if (ret < 0)
-	{
-		if (mdp_rev >= MDP_REV_41)
-			mutex_unlock(&mfd->dma->ov_mutex);
-		else
-			up(&mfd->dma->mutex);
-
-		return ret;
-	} else {
-		ret = 0;
-	}
-#else
 	ret = panel_next_on(pdev);
 
+#if !defined(CONFIG_FB_MSM_MIPI_DSI_LGIT)
 	mipi_dsi_op_mode_config(mipi->mode);
 #endif
 
