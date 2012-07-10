@@ -49,10 +49,6 @@
 #include "mdp.h"
 #include "mdp4.h"
 
-#ifndef LGE_DSDR_SUPPORT
-#define LGE_DSDR_SUPPORT
-#endif
-
 #if defined (CONFIG_LGE_QC_LCDC_LUT)
 #include "lge_qlut.h"
 int g_qlut_change_by_kernel;
@@ -1531,29 +1527,9 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	     mfd->index, fbi->var.xres, fbi->var.yres, fbi->fix.smem_len);
 
 #ifdef CONFIG_FB_MSM_LOGO
-#if (defined(CONFIG_FB_MSM_DEFAULT_DEPTH_ARGB8888) ||\
-		defined(CONFIG_FB_MSM_DEFAULT_DEPTH_RGBA8888))
-	/* This function is used to load LG logo image in 888 rle format.
-	 * However, it is only allowed when MIPI LCD mode not other modes
-	 * such as HDMI, DTV etc.
-	 * it is also add early backlight on
-	 */
-	if (mfd->panel_info.type == MIPI_VIDEO_PANEL ||
-			mfd->panel_info.type == MIPI_CMD_PANEL){
-		msm_fb_open(mfd->fbi, 0);
-#if defined(CONFIG_LGE_QC_LCDC_LUT)
-		lge_set_qlut();
-#endif
-		if (load_888rle_image(INIT_IMAGE_FILE) < 0) /* Flip buffer */
-			printk(KERN_WARNING "fail to load 888 rle image\n");
-
-		msm_fb_set_backlight(mfd, 0);
-	}
-#else
 	/* Flip buffer */
 	if (!load_565rle_image(INIT_IMAGE_FILE, bf_supported))
 		;
-#endif
 #endif
 	ret = 0;
 
@@ -3791,10 +3767,6 @@ struct platform_device *msm_fb_add_device(struct platform_device *pdev)
 	MSM_FB_INFO("setting pdata->panel_info.fb_num to %d. type: %d\n",
 			pdata->panel_info.fb_num, type);
 #endif
-#ifdef LGE_DSDR_SUPPORT
-	if (pdata->panel_info.fb_num < 3)
-		pdata->panel_info.fb_num = 3;
-#endif //LGE_DSDR_SUPPORT
 	fb_num = pdata->panel_info.fb_num;
 
 	if (fb_num <= 0)
