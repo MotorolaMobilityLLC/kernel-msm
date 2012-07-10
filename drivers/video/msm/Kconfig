@@ -184,11 +184,6 @@ config FB_MSM_MIPI_DSI_LGIT
 	select FB_MSM_MIPI_DSI
 	default n
 
-config FB_MSM_MIPI_DSI_HITACHI
-	bool
-	select FB_MSM_MIPI_DSI
-	default n
-
 config FB_MSM_MIPI_DSI_RENESAS
 	bool
 	select FB_MSM_MIPI_DSI
@@ -312,29 +307,9 @@ config FB_MSM_LCDC_WXGA
 	select FB_MSM_LCDC_PANEL
 	default n
 
-config FB_MSM_MIPI_LGIT_VIDEO_HD_PT
-	bool
-	select FB_MSM_MIPI_DSI_LGIT
-	default n
-
-config FB_MSM_MIPI_LGIT_CMD_WVGA_PT
-	bool
-	select FB_MSM_MIPI_DSI_LGIT
-	default n
-
-config FB_MSM_MIPI_LGIT_VIDEO_WVGA_PT
-	bool
-	select FB_MSM_MIPI_DSI_LGIT
-	default n
-
 config FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT
 	bool
 	select FB_MSM_MIPI_DSI_LGIT
-	default n
-
-config FB_MSM_MIPI_HITACHI_VIDEO_HD_PT
-	bool
-	select FB_MSM_MIPI_DSI_HITACHI
 	default n
 
 config FB_MSM_LVDS_CHIMEI_WXGA
@@ -688,10 +663,6 @@ config FB_MSM_MDDI_SHARP_QVGA_128x128
 config FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT_PANEL
 	bool "MIPI LG Display WXGA PT Panel"
 	select FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT
-
-config FB_MSM_MIPI_HITACHI_VIDEO_HD_PT_PANEL
-	bool "MIPI LG Display WXGA PT Panel"
-	select FB_MSM_MIPI_HITACHI_VIDEO_HD_PT
 
 config FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT_PANEL
 	bool "MIPI Toshiba WVGA PT Panel"
