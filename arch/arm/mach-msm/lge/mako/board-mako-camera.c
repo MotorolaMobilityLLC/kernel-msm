@@ -12,9 +12,10 @@
  *
  */
 
-#include <asm/mach-types.h>
 #include <linux/i2c.h>
 #include <linux/gpio.h>
+#include <linux/platform_data/flash_lm3559.h>
+#include <asm/mach-types.h>
 #include <mach/board.h>
 #include <mach/msm_bus_board.h>
 #include <mach/gpiomux.h>
@@ -542,13 +543,7 @@ static struct msm_camera_sensor_info msm_camera_sensor_imx119_data = {
 #endif
 
 /* Enabling flash LED for camera */
-struct led_flash_platform_data {
-	unsigned gpio_en;
-	unsigned scl_gpio;
-	unsigned sda_gpio;
-};
-
-static struct led_flash_platform_data lm3559_flash_pdata[] = {
+static struct lm3559_flash_platform_data lm3559_flash_pdata[] = {
 	{
 		.scl_gpio = GPIO_CAM_FLASH_I2C_SCL,
 		.sda_gpio = GPIO_CAM_FLASH_I2C_SDA,
