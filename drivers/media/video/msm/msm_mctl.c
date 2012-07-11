@@ -460,6 +460,8 @@ static int msm_mctl_open(struct msm_cam_media_controller *p_mctl,
 	if (!p_mctl->opencnt) {
 		struct msm_sensor_csi_info csi_info;
 		uint32_t csid_version = 0;
+		uint32_t csic_version;
+
 		wake_lock(&p_mctl->wake_lock);
 
 		csid_core = camdev->csid_core;
@@ -508,7 +510,7 @@ static int msm_mctl_open(struct msm_cam_media_controller *p_mctl,
 
 		if (p_mctl->csic_sdev) {
 			rc = v4l2_subdev_call(p_mctl->csic_sdev, core, ioctl,
-				VIDIOC_MSM_CSIC_INIT, &csid_version);
+				VIDIOC_MSM_CSIC_INIT, &csic_version);
 			if (rc < 0) {
 				pr_err("%s: csic initialization failed %d\n",
 					__func__, rc);
