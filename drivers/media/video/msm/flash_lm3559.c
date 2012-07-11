@@ -22,10 +22,11 @@
 #include <linux/leds.h>
 #include <linux/errno.h>
 #include <linux/i2c.h>
-#include <mach/gpio.h>
+#include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/hrtimer.h>
 #include <linux/types.h>
+#include <linux/platform_data/flash_lm3559.h>
 #include <mach/camera.h>
 
 
@@ -58,26 +59,10 @@ enum led_status {
 	LM3559_LED_HIGH,
 	LM3559_LED_MAX
 };
- #ifdef CONFIG_MACH_LGE
- /* LGE_CHANGE
-* [To fix for flash LED]
-* 2012-01-30, jinsool.lee@lge.com
-*/
-struct led_flash_platform_data {
-	unsigned gpio_en;
-	unsigned scl_gpio;
-	unsigned sda_gpio;
-};
-#else
-/* LED flash platform data */
-struct led_flash_platform_data {
-	int gpio_en;
-};
-#endif
 
 static int lm3559_onoff_state = LM3559_POWER_OFF;
 
-static struct led_flash_platform_data *lm3559_led_flash_pdata = NULL;
+static struct lm3559_flash_platform_data *lm3559_led_flash_pdata = NULL;
 static struct i2c_client *lm3559_i2c_client = NULL;
 
 int lm3559_write_reg(struct i2c_client *client, unsigned char addr, unsigned char data)
@@ -182,7 +167,7 @@ void lm3559_enable_flash_mode(enum led_status state)
 	pr_err("%s: After - LM3559_REG_FLASH_DURATION[0x%x]\n",__func__,data);
 	lm3559_write_reg(lm3559_i2c_client, LM3559_REG_FLASH_DURATION, data);
 
-	if(state == LM3559_LED_LOW){
+	if (state == LM3559_LED_LOW) {
 		/* 0001 0001 : 112.5 mA */
 		CDBG("[LM3559_LED_LOW]LM3559_REG_FLASH_BRIGHTNESS \n");
 		lm3559_write_reg(lm3559_i2c_client, LM3559_REG_FLASH_BRIGHTNESS, 0x11);
@@ -268,14 +253,14 @@ static void lm3559_flash_led_set(struct led_classdev *led_cdev,
 
 	led_cdev->brightness = value;
 
-	if(value)
+	if (value)
 		lm3559_enable_torch_mode(LM3559_LED_LOW);
 	else
 		lm3559_led_disable();
 }
 
 static struct led_classdev lm3559_flash_led = {
-	.name			= "spotlight",
+	.name = "spotlight",
 	.brightness_set	= lm3559_flash_led_set,
 };
 
@@ -286,7 +271,7 @@ static int lm3559_probe(struct i2c_client *client, const struct i2c_device_id *i
 	lm3559_i2c_client = client;
 	lm3559_led_flash_pdata = client->dev.platform_data;
 
-	if(lm3559_led_flash_pdata == NULL) {
+	if (lm3559_led_flash_pdata == NULL) {
 	    pr_err("%s: platform_data is NULL\n", __func__);
 	    return -EINVAL;
 	}
@@ -304,6 +289,11 @@ static int lm3559_probe(struct i2c_client *client, const struct i2c_device_id *i
 
 static int lm3559_remove(struct i2c_client *client)
 {
+	led_classdev_unregister(&lm3559_flash_led);
+
+	lm3559_i2c_client = NULL;
+	lm3559_led_flash_pdata = NULL;
+
 	return 0;
 }
 
