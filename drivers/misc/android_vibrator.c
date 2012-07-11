@@ -84,8 +84,7 @@ static int android_vibrator_force_set(struct timed_vibrator_data *vib,
 
 		atomic_set(&vib->vib_status, true);
 		hrtimer_start(&vib->timer,
-				ktime_set(vib_dutation_ms / 1000,
-					(vib_dutation_ms % 1000) * 1000000),
+				ns_to_ktime((u64)vib_dutation_ms * NSEC_PER_MSEC),
 				HRTIMER_MODE_REL);
 	}
 	return 0;
