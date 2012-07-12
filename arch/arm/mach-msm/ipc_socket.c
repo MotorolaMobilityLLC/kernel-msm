@@ -26,6 +26,8 @@
 
 #include <net/sock.h>
 
+#include <mach/msm_ipc_router.h>
+
 #include "ipc_router.h"
 #include "msm_ipc_router_security.h"
 
