@@ -514,7 +514,6 @@ static wpt_uint8      gWDIInitialized = eWLAN_PAL_FALSE;
 const wpt_uint8 szTransportChName[] = "WLAN_CTRL"; 
 
 /*Helper routine for retrieving the PAL Context from WDI*/
-WPT_INLINE 
 void* WDI_GET_PAL_CTX( void )
 {
   return gWDICb.pPALContext; 
