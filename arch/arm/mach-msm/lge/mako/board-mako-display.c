@@ -14,6 +14,8 @@
 
 #include <linux/init.h>
 #include <linux/ioport.h>
+#include <linux/i2c.h>
+#include <linux/kernel.h>
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/platform_data/lm35xx_bl.h>
@@ -22,26 +24,18 @@
 #include <asm/mach-types.h>
 #include <mach/msm_memtypes.h>
 #include <mach/board.h>
+#include <mach/board_lge.h>
 #include <mach/gpiomux.h>
 #include <mach/ion.h>
 #include <mach/msm_bus_board.h>
 #include <mach/socinfo.h>
 
+#include <msm/msm_fb.h>
+#include <msm/msm_fb_def.h>
+#include <msm/mipi_dsi.h>
+
 #include "devices.h"
 #include "board-mako.h"
-
-#include "../../../../drivers/video/msm/msm_fb.h"
-#include "../../../../drivers/video/msm/msm_fb_def.h"
-#include "../../../../drivers/video/msm/mipi_dsi.h"
-
-#include <mach/board_lge.h>
-
-#include <linux/i2c.h>
-#include <linux/kernel.h>
-
-#ifndef LGE_DSDR_SUPPORT
-#define LGE_DSDR_SUPPORT
-#endif
 
 #ifdef CONFIG_LGE_KCAL
 #ifdef CONFIG_LGE_QC_LCDC_LUT
@@ -68,10 +62,6 @@ extern int refresh_qlut_display(void);
 #endif
 #endif /*CONFIG_FB_MSM_TRIPLE_BUFFER */
 
-#ifdef LGE_DSDR_SUPPORT
-#define MSM_FB_EXT_BUF_SIZE \
-        (roundup((1920 * 1088 * 4), 4096) * 3) /* 4 bpp x 3 page */
-#else  /* LGE_DSDR_SUPPORT */
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 #define MSM_FB_EXT_BUF_SIZE \
 		(roundup((1920 * 1088 * 2), 4096) * 1) /* 2 bpp x 1 page */
@@ -81,7 +71,6 @@ extern int refresh_qlut_display(void);
 #else
 #define MSM_FB_EXT_BUF_SIZE	0
 #endif /* CONFIG_FB_MSM_HDMI_MSM_PANEL */
-#endif /* LGE_DSDR_SUPPORT */
 
 #ifdef CONFIG_FB_MSM_WRITEBACK_MSM_PANEL
 #define MSM_FB_WFD_BUF_SIZE \
@@ -110,20 +99,11 @@ extern int refresh_qlut_display(void);
 #define MSM_FB_OVERLAY1_WRITEBACK_SIZE (0)
 #endif  /* CONFIG_FB_MSM_OVERLAY1_WRITEBACK */
 
-#if defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT)
-#define LGIT_IEF
-#endif
 static struct resource msm_fb_resources[] = {
 	{
 		.flags = IORESOURCE_DMA,
 	}
 };
-
-#define LVDS_CHIMEI_PANEL_NAME "lvds_chimei_wxga"
-#define MIPI_VIDEO_TOSHIBA_WSVGA_PANEL_NAME "mipi_video_toshiba_wsvga"
-#define MIPI_VIDEO_CHIMEI_WXGA_PANEL_NAME "mipi_video_chimei_wxga"
-#define HDMI_PANEL_NAME "hdmi_msm"
-#define TVOUT_PANEL_NAME "tvout_msm"
 
 static int msm_fb_detect_panel(const char *name)
 {
@@ -697,7 +677,6 @@ static int mipi_lgit_backlight_level(int level, int max, int min)
 	return 0;
 }
 
-
 /* for making one source of DSV feature. */
 char lcd_mirror [2] = {0x36, 0x02};
 
@@ -716,7 +695,6 @@ static char n_gamma_g_setting_for_DSV[10] = {0xD3, 0x40, 0x14, 0x76, 0x00, 0x00,
 static char p_gamma_b_setting_for_DSV[10] = {0xD4, 0x40, 0x14, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
 static char n_gamma_b_setting_for_DSV[10] = {0xD5, 0x40, 0x14, 0x76, 0x00, 0x00, 0x00, 0x50, 0x30, 0x02};
 
-#if defined(LGIT_IEF)
 static char ief_set0_for_DSV[2] = {0xE0, 0x07};
 static char ief_set1_for_DSV[5] = {0xE1, 0x00, 0x00, 0x01, 0x01};
 static char ief_set2_for_DSV[3] = {0xE2, 0x01, 0x0F};
@@ -730,7 +708,6 @@ static char ief_set9_for_DSV[9] = {0xE9, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x4
 static char ief_setA_for_DSV[9] = {0xEA, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static char ief_setB_for_DSV[9] = {0xEB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static char ief_setC_for_DSV[9] = {0xEC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-#endif
 
 static char osc_setting_for_DSV[4] =     {0xC0, 0x00, 0x0A, 0x10};
 static char power_setting3_for_DSV[13] = {0xC3, 0x00, 0x88, 0x03, 0x20, 0x00, 0x55, 0x4F, 0x33,0x02,0x38,0x38,0x00};
@@ -738,16 +715,12 @@ static char power_setting4_for_DSV[6] =  {0xC4, 0x22, 0x24, 0x13, 0x13, 0x3D};
 static char power_setting5_for_DSV[4] =  {0xC5, 0x3B, 0x3B, 0x03};
 static char power_setting6_for_DSV[2] =  {0x11,0x00};
 
-#if defined(CONFIG_LGE_BACKLIGHT_CABC)
+#if defined(CONFIG_BACKLIGHT_LM3530_CABC)
 static char cabc_set0[2] = {0x51, 0xFF};
 static char cabc_set1[2] = {0x5E, 0x00}; // CABC MIN
-//static char cabc_set1[2] = {0x5E, 0x00};   //CABC MAX
 static char cabc_set2[2] = {0x53, 0x2C};
 static char cabc_set3[2] = {0x55, 0x02};
 static char cabc_set4[6] = {0xC8, 0x21, 0x21, 0x21, 0x33, 0x80};//A-CABC applied
-//static char cabc_set4[6] = {0xC8, 0x04, 0x04, 0x04, 0x33, 0x9F};//CABC MIN
-//static char cabc_set4[6] = {0xC8, 0x74, 0x74, 0x74, 0x33, 0x9F};//CABC MAX
-//static char cabc_set4[6] = {0xC8, 0x74, 0x74, 0x74, 0x33, 0x80};//CABC MAX - Tuning
 #endif
 
 static char exit_sleep_power_control_1_for_DSV[2] =  {0xC2,0x02};
@@ -775,7 +748,6 @@ static struct dsi_cmd_desc lgit_power_on_set_1_for_DSV[] = {
 
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(panel_setting_1_for_DSV ),panel_setting_1_for_DSV},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(panel_setting_2_for_DSV ),panel_setting_2_for_DSV},
-//	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(panel_setting_3_for_DSV ),panel_setting_3_for_DSV},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(display_mode1_for_DSV ),display_mode1_for_DSV},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(display_mode2_for_DSV ),display_mode2_for_DSV},
 
@@ -787,7 +759,6 @@ static struct dsi_cmd_desc lgit_power_on_set_1_for_DSV[] = {
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(p_gamma_b_setting_for_DSV),p_gamma_b_setting_for_DSV},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(n_gamma_b_setting_for_DSV),n_gamma_b_setting_for_DSV},
 
-#if defined(LGIT_IEF)
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set0_for_DSV),ief_set0_for_DSV},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set1_for_DSV),ief_set1_for_DSV},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_set2_for_DSV),ief_set2_for_DSV},
@@ -801,7 +772,6 @@ static struct dsi_cmd_desc lgit_power_on_set_1_for_DSV[] = {
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_setA_for_DSV),ief_setA_for_DSV},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_setB_for_DSV),ief_setB_for_DSV},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(ief_setC_for_DSV),ief_setC_for_DSV},
-#endif
 
 	// Power Supply Set
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(osc_setting_for_DSV   ),osc_setting_for_DSV   }, 
@@ -811,7 +781,7 @@ static struct dsi_cmd_desc lgit_power_on_set_1_for_DSV[] = {
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(power_setting5_for_DSV),power_setting5_for_DSV},
 	{DTYPE_DCS_WRITE, 1, 0, 0, 5, sizeof(power_setting6_for_DSV),power_setting6_for_DSV},
 		
-#if defined(CONFIG_LGE_BACKLIGHT_CABC)
+#if defined(CONFIG_BACKLIGHT_LM3530_CABC)
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set0),cabc_set0},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set1),cabc_set1},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set2),cabc_set2},
@@ -905,7 +875,7 @@ struct i2c_registry {
 	int                    len;
 };
 
-#if defined(CONFIG_LGE_BACKLIGHT_CABC)
+#if defined(CONFIG_BACKLIGHT_LM3530_CABC)
 #define PWM_SIMPLE_EN 0xA0
 #define PWM_BRIGHTNESS 0x20
 #endif
@@ -914,7 +884,7 @@ struct i2c_registry {
 static struct backlight_platform_data lm3530_data = {
 
 	.gpio = PM8921_GPIO_PM_TO_SYS(24),
-#if defined(CONFIG_LGE_BACKLIGHT_CABC)
+#if defined(CONFIG_BACKLIGHT_LM3530_CABC)
 	.max_current = 0x17 | PWM_BRIGHTNESS,
 #else
 	.max_current = 0x17,
