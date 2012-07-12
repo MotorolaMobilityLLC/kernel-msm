@@ -121,6 +121,8 @@ endif
 endif
 endif
 endif
+
+obj-$(CONFIG_MSM_HSIC_TTY) += hsic_tty.o
 obj-$(CONFIG_MSM_SDIO_TTY) += sdio_tty.o
 obj-$(CONFIG_MSM_SMD_TTY) += smd_tty.o
 obj-$(CONFIG_MSM_SMD_QMI) += smd_qmi.o

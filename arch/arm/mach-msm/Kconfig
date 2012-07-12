@@ -1361,6 +1361,15 @@ config MSM_SDIO_TTY
 	  applications for passing data through the
 	  SDIO interface.
 
+config MSM_HSIC_TTY
+	bool "HSIC TTY Driver"
+	default n
+	help
+	  Provides a TTY driver HSIC TTY
+	  This driver can be used by user space
+	  applications for passing data through the
+	  HSIC interface.
+
 config MSM_SMD_TTY
 	bool "SMD TTY Driver"
 	depends on MSM_SMD
