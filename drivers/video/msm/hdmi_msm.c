@@ -30,6 +30,10 @@
 #include "msm_fb.h"
 #include "hdmi_msm.h"
 
+#ifdef CONFIG_SLIMPORT_ANX7808
+#include "../../misc/slimport_anx7808/slimport.h"
+#endif
+
 /* Supported HDMI Audio channels */
 #define MSM_HDMI_AUDIO_CHANNEL_2		0
 #define MSM_HDMI_AUDIO_CHANNEL_4		1
@@ -2139,6 +2143,10 @@ static int hdmi_msm_read_edid(void)
 	}
 
 	external_common_state->read_edid_block = hdmi_msm_read_edid_block;
+#ifdef CONFIG_SLIMPORT_ANX7808
+	external_common_state->read_edid_block = slimport_read_edid_block;
+#endif
+
 	status = hdmi_common_read_edid();
 	if (!status)
 		DEV_DBG("EDID: successfully read\n");

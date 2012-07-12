@@ -108,6 +108,7 @@ VREG_CONSUMERS(L17) = {
 };
 VREG_CONSUMERS(L18) = {
 	REGULATOR_SUPPLY("8921_l18",		NULL),
+	REGULATOR_SUPPLY("slimport_dvdd",		NULL),
 };
 
 /* Power setting for 13M AF */
@@ -533,7 +534,7 @@ apq8064_rpm_regulator_init_data[] __devinitdata = {
 	RPM_LDO(L15, 0, 1, 0, 3300000, 3300000, NULL,          0,    19),
 	RPM_LDO(L16, 0, 1, 0, 2800000, 2800000, NULL,          0,     0),
 	RPM_LDO(L17, 0, 1, 0, 2800000, 2800000, NULL,          0,     0),
-	RPM_LDO(L18, 0, 1, 0, 1100000, 1300000, NULL,          0,     0),  
+	RPM_LDO(L18, 0, 1, 0, 1100000, 1100000, NULL,          0,     0),
 #if defined(CONFIG_IMX091)
 	RPM_LDO(L21, 0, 1, 0, 1800000, 1800000, "8921_s8",     0,     0),
 #else

@@ -30,6 +30,9 @@
 
 #include <linux/i2c.h>
 
+#ifdef CONFIG_SLIMPORT_ANX7808
+#include <linux/platform_data/slimport_device.h>
+#endif
 #ifdef CONFIG_BU52031NVX
 #include <linux/mfd/pm8xxx/cradle.h>
 #endif
@@ -281,6 +284,133 @@ static struct platform_device *misc_devices[] __initdata = {
 #endif
 };
 
+#ifdef CONFIG_SLIMPORT_ANX7808
+#define GPIO_SLIMPORT_CBL_DET    PM8921_GPIO_PM_TO_SYS(14)
+#define GPIO_SLIMPORT_PWR_DWN    PM8921_GPIO_PM_TO_SYS(15)
+#define ANX_AVDD33_EN            PM8921_GPIO_PM_TO_SYS(16)
+#define GPIO_SLIMPORT_RESET_N    31
+#define GPIO_SLIMPORT_INT_N      43
+
+static int anx7808_dvdd_onoff(bool on)
+{
+	static bool power_state = 0;
+	static struct regulator *anx7808_dvdd_reg = NULL;
+	int rc = 0;
+
+	if (power_state == on) {
+		pr_info("anx7808 dvdd is already %s \n", power_state ? "on" : "off");
+		goto out;
+	}
+
+	if (!anx7808_dvdd_reg) {
+		anx7808_dvdd_reg= regulator_get(NULL, "slimport_dvdd");
+		if (IS_ERR(anx7808_dvdd_reg)) {
+			rc = PTR_ERR(anx7808_dvdd_reg);
+			pr_err("%s: regulator_get anx7808_dvdd_reg failed. rc=%d\n",
+					__func__, rc);
+			anx7808_dvdd_reg = NULL;
+			goto out;
+		}
+		rc = regulator_set_voltage(anx7808_dvdd_reg, 1100000, 1100000);
+		if (rc ) {
+			pr_err("%s: regulator_set_voltage anx7808_dvdd_reg failed\
+				rc=%d\n", __func__, rc);
+			goto out;
+		}
+	}
+
+	if (on) {
+		rc = regulator_set_optimum_mode(anx7808_dvdd_reg, 100000);
+		if (rc < 0) {
+			pr_err("%s : set optimum mode 100000, anx7808_dvdd_reg failed \
+					(%d)\n", __func__, rc);
+			goto out;
+		}
+		rc = regulator_enable(anx7808_dvdd_reg);
+		if (rc) {
+			pr_err("%s : anx7808_dvdd_reg enable failed (%d)\n",
+					__func__, rc);
+			goto out;
+		}
+	}
+	else {
+		rc = regulator_disable(anx7808_dvdd_reg);
+		if (rc) {
+			pr_err("%s : anx7808_dvdd_reg disable failed (%d)\n",
+				__func__, rc);
+			goto out;
+		}
+		rc = regulator_set_optimum_mode(anx7808_dvdd_reg, 100);
+		if (rc < 0) {
+			pr_err("%s : set optimum mode 100, anx7808_dvdd_reg failed \
+				(%d)\n", __func__, rc);
+			goto out;
+		}
+	}
+	power_state = on;
+
+out:
+	return rc;
+
+}
+
+static int anx7808_avdd_onoff(bool on)
+{
+	static bool init_done = 0;
+	int rc = 0;
+
+	if (!init_done) {
+		rc = gpio_request_one(ANX_AVDD33_EN,
+					GPIOF_OUT_INIT_HIGH, "anx_avdd33_en");
+		if (rc) {
+			pr_err("request anx_avdd33_en failed, rc=%d\n", rc);
+			return rc;
+		}
+		init_done = 1;
+	}
+
+	gpio_set_value(ANX_AVDD33_EN, on);
+	return 0;
+}
+
+static struct anx7808_platform_data anx7808_pdata = {
+	.gpio_p_dwn = GPIO_SLIMPORT_PWR_DWN,
+	.gpio_reset = GPIO_SLIMPORT_RESET_N,
+	.gpio_int = GPIO_SLIMPORT_INT_N,
+	.gpio_cbl_det = GPIO_SLIMPORT_CBL_DET,
+	.dvdd_power = anx7808_dvdd_onoff,
+	.avdd_power = anx7808_avdd_onoff,
+};
+
+struct i2c_registry {
+	u8                     machs;
+	int                    bus;
+	struct i2c_board_info *info;
+	int                    len;
+};
+
+struct i2c_board_info i2c_anx7808_info[] = {
+	{
+		I2C_BOARD_INFO("anx7808", 0x72 >> 1),
+		.platform_data = &anx7808_pdata,
+	},
+};
+
+static struct i2c_registry i2c_anx7808_devices __initdata = {
+	I2C_FFA,
+	APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+	i2c_anx7808_info,
+	ARRAY_SIZE(i2c_anx7808_info),
+};
+
+static void __init lge_add_i2c_anx7808_device(void)
+{
+	i2c_register_board_info(i2c_anx7808_devices.bus,
+		i2c_anx7808_devices.info,
+		i2c_anx7808_devices.len);
+}
+#endif
+
 #ifdef CONFIG_BU52031NVX
 #define GPIO_POUCH_INT     22
 #define GPIO_CARKIT_INT    23
@@ -357,6 +487,9 @@ void __init apq8064_init_misc(void)
 
 	platform_add_devices(misc_devices, ARRAY_SIZE(misc_devices));
 
+#ifdef CONFIG_SLIMPORT_ANX7808
+	lge_add_i2c_anx7808_device();
+#endif
 #ifdef CONFIG_BU52031NVX
 	hall_ic_init();
 	platform_device_register(&cradle_device);
