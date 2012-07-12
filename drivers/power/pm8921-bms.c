@@ -2651,7 +2651,7 @@ restore_sbi_config:
 static int __devinit pm8921_bms_probe(struct platform_device *pdev)
 {
 	int rc = 0;
-	int vbatt;
+	int vbatt = 0;
 	struct pm8921_bms_chip *chip;
 	const struct pm8921_bms_platform_data *pdata
 				= pdev->dev.platform_data;
