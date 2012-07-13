@@ -1004,9 +1004,9 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct pm_gpio jack_gpio_cfg = {
 		.direction = PM_GPIO_DIR_IN,
-		.pull = PM_GPIO_PULL_UP_1P5,
+		.pull = PM_GPIO_PULL_NO,
 		.function = PM_GPIO_FUNC_NORMAL,
-		.vin_sel = 2,
+		.vin_sel = PM_GPIO_VIN_L17,
 		.inv_int_pol = 0,
 	};
 
