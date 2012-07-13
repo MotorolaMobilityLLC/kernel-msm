@@ -172,7 +172,7 @@ config MT9E013
 config MSM_CAMERA_FLASH_LM3559
 	bool "Qualcomm MSM camera lm3559 flash support"
 	depends on MSM_CAMERA
-	default y
+	default n
 	---help---
 	  Enable support for LED flash for msm camera.
 
