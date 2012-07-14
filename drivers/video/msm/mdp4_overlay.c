@@ -3457,8 +3457,7 @@ static struct msm_iommu_ctx msm_iommu_split_ctx_names[] = {
 static int mdp_iommu_fault_handler(struct iommu_domain *domain,
 	struct device *dev, unsigned long iova, int flags)
 {
-	/* FIXME: temporarily blocked until enabling LCD */
-	/* pr_err("MDP IOMMU page fault: iova 0x%lx", iova); */
+	pr_err("MDP IOMMU page fault: iova 0x%lx", iova);
 	return 0;
 }
 
