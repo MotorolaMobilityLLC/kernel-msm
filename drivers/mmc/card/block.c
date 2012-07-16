@@ -1354,6 +1354,10 @@ static void mmc_blk_write_packing_control(struct mmc_queue *mq,
 	struct mmc_host *host = mq->card->host;
 	int data_dir;
 
+	/* Support for the write packing on eMMC 4.5 or later */
+	if (mq->card->ext_csd.rev <= 5)
+		return;
+
 	if (!(host->caps2 & MMC_CAP2_PACKED_WR))
 		return;
 
