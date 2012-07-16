@@ -2080,6 +2080,7 @@ static void __init apq8064_mako_init(void)
 #ifdef CONFIG_LGE_QFPROM_INTERFACE
 	lge_add_qfprom_devices();
 #endif
+	msm_rotator_set_split_iommu_domain();
 	platform_add_devices(cdp_devices, ARRAY_SIZE(cdp_devices));
 	spi_register_board_info(spi_board_info,
 					ARRAY_SIZE(spi_board_info));
