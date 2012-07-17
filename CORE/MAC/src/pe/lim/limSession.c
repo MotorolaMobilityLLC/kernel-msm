@@ -147,6 +147,9 @@ tpPESession peCreateSession(tpAniSirGlobal pMac, tANI_U8 *bssid , tANI_U8* sessi
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
             pMac->lim.gpSession[i].isFastTransitionEnabled = FALSE;
 #endif
+#ifdef FEATURE_WLAN_LFR
+            pMac->lim.gpSession[i].isFastRoamIniFeatureEnabled = FALSE;
+#endif
             *sessionId = i;
 
             pMac->lim.gpSession[i].gLimPhyMode = WNI_CFG_PHY_MODE_11G; //TODO :Check with the team what should be default mode 

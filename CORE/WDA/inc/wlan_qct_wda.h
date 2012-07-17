@@ -300,8 +300,8 @@ typedef enum
 
 #define WDA_TX_PACKET_FREED      0X0
 
-/* Approximate amount of time to wait for WDA to stop WDI */
-#define WDA_STOP_TIMEOUT (WDI_RESPONSE_TIMEOUT + WDI_SET_POWER_STATE_TIMEOUT + 5)
+/* Approximate amount of time to wait for WDA to stop WDI considering 1 pendig req too*/
+#define WDA_STOP_TIMEOUT ( (WDI_RESPONSE_TIMEOUT * 2) + WDI_SET_POWER_STATE_TIMEOUT + 5)
 /*--------------------------------------------------------------------------
   Functions
  --------------------------------------------------------------------------*/

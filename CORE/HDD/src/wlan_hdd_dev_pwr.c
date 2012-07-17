@@ -115,9 +115,6 @@ static int wlan_suspend(hdd_context_t* pHddCtx)
        return -1;
    }
 
-   /* Set the Station state as Suspended */
-   pHddCtx->isWlanSuspended = TRUE;
-
    /*
      Suspending MC Thread, Rx Thread and Tx Thread as the platform driver is going to Suspend.     
    */

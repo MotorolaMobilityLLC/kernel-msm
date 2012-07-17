@@ -171,23 +171,27 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
         else if (psessionEntry->limMlmState ==
                                      eLIM_MLM_WT_JOIN_BEACON_STATE)
         {
-            if( psessionEntry->beacon != NULL ) //Either Beacon/probe response is required. Hence store it in same buffer.
+            if( psessionEntry->beacon != NULL )//Either Beacon/probe response is required. Hence store it in same buffer.
             {
                 palFreeMemory(pMac->hHdd, psessionEntry->beacon);
                 psessionEntry->beacon = NULL;
-             }
-             psessionEntry->bcnLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
-             if( (palAllocateMemory(pMac->hHdd, (void**)&psessionEntry->beacon, psessionEntry->bcnLen)) != eSIR_SUCCESS)
-             {
-                PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store beacon"));)
-              }
-              else
-              {
+            }
+            psessionEntry->bcnLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
+            if ((palAllocateMemory(pMac->hHdd, (void**)&psessionEntry->beacon,
+                                   psessionEntry->bcnLen))
+                != eHAL_STATUS_SUCCESS)
+            {
+                PELOGE(limLog(pMac, LOGE,
+                              FL("Unable to allocate memory to store beacon"));)
+            }
+            else
+            {
                 //Store the Beacon/ProbeRsp. This is sent to csr/hdd in join cnf response. 
-                palCopyMemory(pMac->hHdd, psessionEntry->beacon, WDA_GET_RX_MPDU_DATA(pRxPacketInfo), psessionEntry->bcnLen);
-               }
-             
-        
+                palCopyMemory(pMac->hHdd, psessionEntry->beacon,
+                              WDA_GET_RX_MPDU_DATA(pRxPacketInfo),
+                              psessionEntry->bcnLen);
+            }
+
             // STA in WT_JOIN_BEACON_STATE
             limCheckAndAnnounceJoinSuccess(pMac, &probeRsp, pHdr,psessionEntry);
         }

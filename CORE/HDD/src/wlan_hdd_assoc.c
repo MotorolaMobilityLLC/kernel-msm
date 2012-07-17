@@ -638,7 +638,7 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
                                             eCsrRoamResult roamResult )
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
-
+    VOS_STATUS vstatus;
     struct net_device *dev = pAdapter->dev;
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
@@ -718,8 +718,8 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
     
 
     //We should clear all sta register with TL, for now, only one.
-    status = hdd_roamDeregisterSTA( pAdapter, pHddStaCtx->conn_info.staId [0] );
-    if ( !VOS_IS_STATUS_SUCCESS(status ) )
+    vstatus = hdd_roamDeregisterSTA( pAdapter, pHddStaCtx->conn_info.staId [0] );
+    if ( !VOS_IS_STATUS_SUCCESS(vstatus ) )
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                   "hdd_roamDeregisterSTA() failed to for staID %d.  "
@@ -1699,8 +1699,11 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
 #endif
 #ifdef FEATURE_WLAN_LFR
         case eCSR_ROAM_PMK_NOTIFY:
-           /* Notify the supplicant of a new candidate */
-           halStatus = wlan_hdd_cfg80211_pmksa_candidate_notify(pAdapter, pRoamInfo, 1, false);
+           if (eCSR_AUTH_TYPE_RSN == pHddStaCtx->conn_info.authType) 
+           {
+               /* Notify the supplicant of a new candidate */
+               halStatus = wlan_hdd_cfg80211_pmksa_candidate_notify(pAdapter, pRoamInfo, 1, false);
+           }
            break;
 #endif
 
@@ -2100,7 +2103,7 @@ int hdd_set_csr_auth_type ( hdd_adapter_t  *pAdapter, eCsrAuthType RSNAuthType)
                 ((pWextState->authKeyMgmt & IW_AUTH_KEY_MGMT_802_1X) 
                  == IW_AUTH_KEY_MGMT_802_1X)) {
                pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_FT_RSN;   
-            }
+            }else
             if ((RSNAuthType == eCSR_AUTH_TYPE_FT_RSN_PSK) && 
                 ((pWextState->authKeyMgmt & IW_AUTH_KEY_MGMT_PSK)
                  == IW_AUTH_KEY_MGMT_PSK)) {

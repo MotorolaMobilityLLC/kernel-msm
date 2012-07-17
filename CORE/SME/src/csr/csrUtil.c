@@ -5405,35 +5405,6 @@ v_REGDOMAIN_t csrGetCurrentRegulatoryDomain(tpAniSirGlobal pMac)
     return (pMac->scan.domainIdCurrent);
 }
 
-#if 0
-eHalStatus csrGetRegulatoryDomainForCountry(tpAniSirGlobal pMac, tANI_U8 *pCountry, eRegDomainId *pDomainId)
-{
-    eHalStatus status = eHAL_STATUS_SUCCESS;
-    tANI_U32 i, count = sizeof( gCsrCountryInfo ) / sizeof( gCsrCountryInfo[0] );
-
-    if(pCountry)
-    {
-        for(i = 0; i < count; i++)
-        {
-            if(palEqualMemory(pMac->hHdd, gCsrCountryInfo[i].countryCode, pCountry, 2))
-            {
-                if( pDomainId )
-                {
-                    *pDomainId = gCsrCountryInfo[i].domainId;
-                }
-                break;
-            }
-        }
-        if(i == count)
-        {
-            smsLog(pMac, LOGW, FL("  doesn't match country %c%c\n"), pCountry[0], pCountry[1]);
-            status = eHAL_STATUS_INVALID_PARAMETER;
-        }
-    }
-
-    return (status);
-}
-#endif
 
 eHalStatus csrGetRegulatoryDomainForCountry(tpAniSirGlobal pMac, tANI_U8 *pCountry, v_REGDOMAIN_t *pDomainId)
 {
@@ -5474,7 +5445,7 @@ eHalStatus csrGetRegulatoryDomainForCountry(tpAniSirGlobal pMac, tANI_U8 *pCount
 tANI_BOOLEAN csrMatchCountryCode( tpAniSirGlobal pMac, tANI_U8 *pCountry, tDot11fBeaconIEs *pIes )
 {
     tANI_BOOLEAN fRet = eANI_BOOLEAN_TRUE;
-    v_REGDOMAIN_t domainId = NUM_REG_DOMAINS;   //This is init to invalid value
+    v_REGDOMAIN_t domainId = REGDOMAIN_COUNT;   //This is init to invalid value
     eHalStatus status;
 
     do
@@ -5491,7 +5462,7 @@ tANI_BOOLEAN csrMatchCountryCode( tpAniSirGlobal pMac, tANI_U8 *pCountry, tDot11
         //Make sure this country is recognizable
         if( pIes->Country.present )
         {
-            status = csrGetRegulatoryDomainForCountry( pMac, pIes->Country.country,(v_REGDOMAIN_t *) &domainId );
+            status = csrGetRegulatoryDomainForCountry( pMac, pIes->Country.country, &domainId );
             if( !HAL_STATUS_SUCCESS( status ) )
             {
                 fRet = eANI_BOOLEAN_FALSE;
@@ -5509,7 +5480,7 @@ tANI_BOOLEAN csrMatchCountryCode( tpAniSirGlobal pMac, tANI_U8 *pCountry, tDot11
         }
         if( pMac->roam.configParam.fEnforceCountryCodeMatch )
         {
-            if( domainId >= NUM_REG_DOMAINS )
+            if( domainId >= REGDOMAIN_COUNT )
             {
                 fRet = eANI_BOOLEAN_FALSE;
                 break;

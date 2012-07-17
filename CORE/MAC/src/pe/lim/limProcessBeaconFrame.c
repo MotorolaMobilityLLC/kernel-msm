@@ -159,7 +159,7 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                 psessionEntry->beacon = NULL;
              }
              psessionEntry->bcnLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
-             if( (palAllocateMemory(pMac->hHdd, (void**)&psessionEntry->beacon, psessionEntry->bcnLen)) != eSIR_SUCCESS)
+             if( (palAllocateMemory(pMac->hHdd, (void**)&psessionEntry->beacon, psessionEntry->bcnLen)) != eHAL_STATUS_SUCCESS)
              {
                 PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store beacon"));)
               }

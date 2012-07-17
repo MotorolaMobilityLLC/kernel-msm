@@ -340,7 +340,7 @@ tSirRetStatus macOpen(tHalHandle *pHalHandle, tHddHandle hHdd, tMacOpenParameter
 
     {
         /* Call various PE (and other layer init here) */
-        if( eHAL_STATUS_SUCCESS != logInit(pMac))
+        if( eSIR_SUCCESS != logInit(pMac))
            return eSIR_FAILURE;
             
         /* Call routine to initialize CFG data structures */

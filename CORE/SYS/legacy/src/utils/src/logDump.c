@@ -336,7 +336,7 @@ static void Log_getCfg(tpAniSirGlobal pMac, tANI_U16 cfgId)
         tANI_U32  val;
 
         // Get integer parameter
-        if (wlan_cfgGetInt(pMac, (tANI_U16)cfgId, &val) != eHAL_STATUS_SUCCESS)
+        if (wlan_cfgGetInt(pMac, (tANI_U16)cfgId, &val) != eSIR_SUCCESS)
         {
             sysLog(pMac, LOGE, FL("Get cfgId 0x%x failed\n"), cfgId);
         }
@@ -371,7 +371,7 @@ static void Log_setCfg(tpAniSirGlobal pMac, tANI_U16 cfgId, tANI_U32 val)
     sysLog(pMac, LOGE, FL("Set %s(0x%x) to value 0x%x\n"),
            gCfgParamName[cfgId], cfgId, val);
 
-    if (cfgSetInt(pMac, (tANI_U16)cfgId, val) != eHAL_STATUS_SUCCESS)
+    if (cfgSetInt(pMac, (tANI_U16)cfgId, val) != eSIR_SUCCESS)
         sysLog(pMac, LOGE, FL("setting cfgId 0x%x to value 0x%x failed \n"),
                cfgId, val);
      return;
