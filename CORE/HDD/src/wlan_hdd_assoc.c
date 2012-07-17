@@ -102,6 +102,7 @@ v_U8_t ccpRSNOui06[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x40, 0x96, 0x00 }; // CCKM
 extern void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set);
 #endif
 
+void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter);
 
 static inline v_VOID_t hdd_connSetConnectionState( hdd_station_ctx_t *pHddStaCtx, eConnectionState connState )
 {         
@@ -1114,8 +1115,6 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
     }  
     else 
     {
-        char country_code[3] = SME_INVALID_COUNTRY_CODE;
-        eHalStatus status = eHAL_STATUS_SUCCESS;
         hdd_context_t* pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
 
         hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
@@ -1168,18 +1167,7 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
 
         /* Association failed; Reset the country code information
          * so that it re-initialize the valid channel list*/
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                "%s: Association failed and resetting the country code"
-                "to default \n",__func__);
-
-        status = (int)sme_ChangeCountryCode(pHddCtx->hHal, NULL, 
-                                            &country_code[0], pAdapter,
-                                            pHddCtx->pvosContext);
-        if( 0 != status )
-        {
-            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                    "%s: SME Change Country code to default failed \n",__func__);
-        }
+        hdd_ResetCountryCodeAfterDisAssoc(pAdapter);
     }
 
     return eHAL_STATUS_SUCCESS;
@@ -1629,10 +1617,7 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
         case eCSR_ROAM_LOSTLINK:
         case eCSR_ROAM_DISASSOCIATED:
             {
-                char country_code[3] = SME_INVALID_COUNTRY_CODE;
-                eHalStatus status = eHAL_STATUS_SUCCESS;
                 hdd_context_t* pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
-
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                         "****eCSR_ROAM_DISASSOCIATED****");
                 halStatus = hdd_DisConnectHandler( pAdapter, pRoamInfo, roamId, roamStatus, roamResult );
@@ -1653,20 +1638,10 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
                     }
                 }
 #endif
+                /* Disconnected from current AP. Reset the country code information
+                 * so that it re-initialize the valid channel list*/
+                hdd_ResetCountryCodeAfterDisAssoc(pAdapter);
 
-                VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                        "%s: Disconnected from the AP and "
-                        "resetting the country code to default\n",__func__);
-                /*reset the country code of previous connection*/
-                status = (int)sme_ChangeCountryCode(pHddCtx->hHal, NULL,
-                        &country_code[0], pAdapter,
-                        pHddCtx->pvosContext
-                        );
-                if( 0 != status )
-                {
-                    VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                            "%s: SME Change Country code to default failed \n",__func__);
-                }
             }
             break;
         case eCSR_ROAM_IBSS_LEAVE:
@@ -2770,3 +2745,62 @@ int iw_get_ap_address(struct net_device *dev,
     EXIT();
     return 0;
 }
+
+
+/**---------------------------------------------------------------------------
+
+  \brief hdd_ResetCountryCodeAfterDisAssoc -
+  This function reset the country code to default
+  \param  - pAdapter - Pointer to HDD adaptor
+  \return - nothing
+
+  --------------------------------------------------------------------------*/
+void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter)
+{
+    hdd_context_t* pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
+    tSmeConfigParams smeConfig;
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tANI_U8 defaultCountryCode[3] = SME_INVALID_COUNTRY_CODE;
+    tANI_U8 currentCountryCode[3] = SME_INVALID_COUNTRY_CODE;
+
+    sme_GetConfigParam(pHddCtx->hHal, &smeConfig);
+
+    VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+            "%s: 11d is %s\n",__func__,
+            smeConfig.csrConfig.Is11dSupportEnabled ? "Enabled" : "Disabled");
+    /* Reset country code only when 11d is enabled
+    */
+    if (smeConfig.csrConfig.Is11dSupportEnabled)
+    {
+        sme_GetDefaultCountryCodeFrmNv(pHddCtx->hHal, &defaultCountryCode[0]);
+        sme_GetCurrentCountryCode(pHddCtx->hHal, &currentCountryCode[0]);
+
+        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                "%s: Default country code: %c%c%c, Current Country code: %c%c%c \n",
+                __func__,
+                defaultCountryCode[0], defaultCountryCode[1], defaultCountryCode[2],
+                currentCountryCode[0], currentCountryCode[1], currentCountryCode[2]);
+        /* Reset country code only when there is a mismatch
+         * between current country code and default country code
+         */
+        if ((defaultCountryCode[0] != currentCountryCode[0]) ||
+                (defaultCountryCode[1] != currentCountryCode[1]) ||
+                (defaultCountryCode[2] != currentCountryCode[2]))
+        {
+            VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                    "%s: Disconnected from the AP/Assoc failed and "
+                    "resetting the country code to default\n",__func__);
+            /*reset the country code of previous connection*/
+            status = (int)sme_ChangeCountryCode(pHddCtx->hHal, NULL,
+                    &defaultCountryCode[0], pAdapter,
+                    pHddCtx->pvosContext
+                    );
+            if( 0 != status )
+            {
+                VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                        "%s: failed to Reset the Country Code\n",__func__);
+            }
+        }
+    }
+}
+

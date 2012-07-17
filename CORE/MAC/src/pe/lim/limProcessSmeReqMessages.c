@@ -4945,11 +4945,57 @@ __limProcessSmeRegisterMgmtFrameReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     VOS_STATUS vosStatus;
     tpSirRegisterMgmtFrame pSmeReq = (tpSirRegisterMgmtFrame)pMsgBuf;
     tpLimMgmtFrameRegistration pLimMgmtRegistration = NULL, pNext = NULL;
-
+    tANI_BOOLEAN match = VOS_FALSE;
     PELOG1(limLog(pMac, LOG1, 
            FL("%s: registerFrame %d, frameType %d, matchLen %d\n", 
            __func__, pSmeReq->registerFrame, pSmeReq->frameType, 
        pSmeReq->matchLen)));
+
+    /* First check whether entry exists already*/
+
+    vos_list_peek_front(&pMac->lim.gLimMgmtFrameRegistratinQueue,
+            (vos_list_node_t**)&pLimMgmtRegistration);
+
+    while(pLimMgmtRegistration != NULL)
+    {
+        if (pLimMgmtRegistration->frameType == pSmeReq->frameType)
+        {
+            if(pSmeReq->matchLen)
+            {
+                if (pLimMgmtRegistration->matchLen == pSmeReq->matchLen)
+                {
+                    if (palEqualMemory(pMac, pLimMgmtRegistration->matchData, 
+                                pSmeReq->matchData, pLimMgmtRegistration->matchLen))
+                    {
+                        /* found match! */   
+                        match = VOS_TRUE;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                /* found match! */   
+                match = VOS_TRUE;
+                break;
+            }
+        }
+        vosStatus = vos_list_peek_next (
+                &pMac->lim.gLimMgmtFrameRegistratinQueue,
+                (vos_list_node_t*) pLimMgmtRegistration,
+                (vos_list_node_t**) &pNext );
+
+        pLimMgmtRegistration = pNext;
+        pNext = NULL; 
+
+    }
+
+    if (match)
+    {
+        vos_list_remove_node(&pMac->lim.gLimMgmtFrameRegistratinQueue,
+                (vos_list_node_t*)pLimMgmtRegistration);
+        palFreeMemory(pMac,pLimMgmtRegistration);
+    }
 
     if(pSmeReq->registerFrame)
     {
@@ -4970,54 +5016,6 @@ __limProcessSmeRegisterMgmtFrameReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
      
             vos_list_insert_front(&pMac->lim.gLimMgmtFrameRegistratinQueue,
                               &pLimMgmtRegistration->node);
-        }
-    }
-    else
-    {
-        tANI_BOOLEAN match = VOS_FALSE;
-
-        vos_list_peek_front(&pMac->lim.gLimMgmtFrameRegistratinQueue,
-                   (vos_list_node_t**)&pLimMgmtRegistration);
-
-        while(pLimMgmtRegistration != NULL)
-        {
-            if (pLimMgmtRegistration->frameType == pSmeReq->frameType)
-            {
-                if(pSmeReq->matchLen)
-                {
-                    if (pLimMgmtRegistration->matchLen == pSmeReq->matchLen)
-                    {
-                        if (palEqualMemory(pMac, pLimMgmtRegistration->matchData, 
-                          pSmeReq->matchData, pLimMgmtRegistration->matchLen))
-                        {
-                            /* found match! */   
-                            match = VOS_TRUE;
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    /* found match! */   
-                    match = VOS_TRUE;
-                    break;
-                }
-            }
-            vosStatus = vos_list_peek_next (
-                                 &pMac->lim.gLimMgmtFrameRegistratinQueue,
-                                   (vos_list_node_t*) pLimMgmtRegistration,
-                                 (vos_list_node_t**) &pNext );
-
-            pLimMgmtRegistration = pNext;
-            pNext = NULL; 
-
-        }
-
-        if (match)
-        {
-            vos_list_remove_node(&pMac->lim.gLimMgmtFrameRegistratinQueue,
-                                (vos_list_node_t*)pLimMgmtRegistration);
-            palFreeMemory(pMac,pLimMgmtRegistration);
         }
     }
 

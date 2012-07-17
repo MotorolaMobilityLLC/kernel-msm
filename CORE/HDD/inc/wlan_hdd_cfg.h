@@ -1172,6 +1172,15 @@ typedef enum
 #define CFG_ENABLE_MODULATED_DTIM_MAX        ( 5 )
 #define CFG_ENABLE_MODULATED_DTIM_DEFAULT    ( 0 )
 
+/*
+ * Enable/Disable Multicast MAC Address List feature
+ * Default: Disable
+ */
+#define CFG_MC_ADDR_LIST_ENABLE_NAME          "gMCAddrListEnable"
+#define CFG_MC_ADDR_LIST_ENABLE_MIN           ( 0 )
+#define CFG_MC_ADDR_LIST_ENABLE_MAX           ( 1 )
+#define CFG_MC_ADDR_LIST_ENABLE_DEFAULT       ( 0 )
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -1441,6 +1450,8 @@ typedef struct
    v_BOOL_t                    isMcAddrListFilter;
 #endif
    v_U8_t                      enableModulatedDTIM;
+   v_U32_t                     fEnableMCAddrList;
+   
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

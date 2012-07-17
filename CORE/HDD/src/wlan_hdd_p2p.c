@@ -916,9 +916,9 @@ int wlan_hdd_add_virtual_intf( struct wiphy *wiphy, char *name,
 
     if(hdd_get_adapter(pHddCtx, wlan_hdd_get_session_type(type)) != NULL)
     {
-	  hddLog(VOS_TRACE_LEVEL_ERROR,"%s: Interface type %d already exists. Two"
+       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: Interface type %d already exists. Two"
                      "interfaces of same type are not supported currently.",__func__, type);
-	  return NULL;
+       return NULL;
     }
 
     if ( pHddCtx->cfg_ini->isP2pDeviceAddrAdministrated )

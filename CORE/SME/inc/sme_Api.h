@@ -2089,4 +2089,31 @@ eHalStatus sme_SetTmLevel(tHalHandle hHal, v_U16_t newTMLevel, v_U16_t tmMode);
 ---------------------------------------------------------------------------*/
 void sme_featureCapsExchange(tHalHandle hHal);
 
+/*---------------------------------------------------------------------------
+
+  \brief sme_GetDefaultCountryCodeFrmNv() - SME interface to get the default 
+         country code
+  Host and FW.
+
+  \param  hHal - HAL handle for device
+  \param  pCountry - pointer to country code
+
+  \return Sucess or failure
+
+  ---------------------------------------------------------------------------*/
+eHalStatus sme_GetDefaultCountryCodeFrmNv(tHalHandle hHal, tANI_U8 *pCountry);
+
+/*---------------------------------------------------------------------------
+
+  \brief sme_GetCurrentCountryCode() - SME interface to get the current operating
+          country code.
+
+  \param  hHal - HAL handle for device
+  \param  pCountry - pointer to country code
+
+  \return Success or failure
+
+  ---------------------------------------------------------------------------*/
+eHalStatus sme_GetCurrentCountryCode(tHalHandle hHal, tANI_U8 *pCountry);
+
 #endif //#if !defined( __SME_API_H )

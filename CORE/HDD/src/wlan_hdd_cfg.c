@@ -1456,6 +1456,13 @@ REG_VARIABLE( CFG_ENABLE_MODULATED_DTIM_NAME, WLAN_PARAM_Integer,
               CFG_ENABLE_MODULATED_DTIM_MIN, 
               CFG_ENABLE_MODULATED_DTIM_MAX ),
 
+ REG_VARIABLE( CFG_MC_ADDR_LIST_ENABLE_NAME, WLAN_PARAM_Integer,
+              hdd_config_t, fEnableMCAddrList,
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+              CFG_MC_ADDR_LIST_ENABLE_DEFAULT,
+              CFG_MC_ADDR_LIST_ENABLE_MIN,
+              CFG_MC_ADDR_LIST_ENABLE_MAX ),
+
 };
 
 /*
@@ -2741,6 +2748,14 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
       fStatus = FALSE;
       hddLog(LOGE, "Could not pass on WNI_CFG_SHORT_GI_40MHZ to CCM\n");
    }
+
+
+     if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_ENABLE_MC_ADDR_LIST, pConfig->fEnableMCAddrList, 
+        NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+     {
+        fStatus = FALSE;
+        hddLog(LOGE, "Could not pass on WNI_CFG_ENABLE_MC_ADDR_LIST to CCM\n");
+     }
 
    return fStatus;
 }

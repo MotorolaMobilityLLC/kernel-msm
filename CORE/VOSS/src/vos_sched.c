@@ -447,10 +447,24 @@ VosMCThread
                   ("Servicing the VOS MC WDI Message queue"));
 
         pMsgWrapper = vos_mq_get(&pSchedContext->wdiMcMq);
-        VOS_ASSERT(NULL != pMsgWrapper);
+
+        if (pMsgWrapper == NULL)
+        {
+           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+               "%s: pMsgWrapper is NULL", __FUNCTION__);
+           VOS_ASSERT(0);
+           break;
+        }
 
         pWdiMsg = (wpt_msg *)pMsgWrapper->pVosMsg->bodyptr;
-        VOS_ASSERT(pWdiMsg->callback);
+
+        if(pWdiMsg == NULL || pWdiMsg->callback == NULL)
+        {
+           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+               "%s: WDI Msg or Callback is NULL", __FUNCTION__);
+           VOS_ASSERT(0);
+           break;
+        }
 
         pWdiMsg->callback(pWdiMsg);
 
@@ -958,11 +972,25 @@ static int VosTXThread ( void * Arg )
                   "%s: Servicing the VOS TX WDI Message queue",__func__);
 
         pMsgWrapper = vos_mq_get(&pSchedContext->wdiTxMq);
-        VOS_ASSERT(NULL != pMsgWrapper);
+
+        if (pMsgWrapper == NULL)
+        {
+           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+               "%s: pMsgWrapper is NULL", __FUNCTION__);
+           VOS_ASSERT(0);
+           break;
+        }
 
         pWdiMsg = (wpt_msg *)pMsgWrapper->pVosMsg->bodyptr;
-        VOS_ASSERT(pWdiMsg->callback);
 
+        if(pWdiMsg == NULL || pWdiMsg->callback == NULL)
+        {
+           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+               "%s: WDI Msg or Callback is NULL", __FUNCTION__);
+           VOS_ASSERT(0);
+           break;
+        }
+        
         pWdiMsg->callback(pWdiMsg);
 
         // return message to the Core
