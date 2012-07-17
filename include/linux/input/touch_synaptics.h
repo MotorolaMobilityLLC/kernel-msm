@@ -18,11 +18,7 @@
 #ifndef LGE_TOUCH_SYNAPTICS_H
 #define LGE_TOUCH_SYNAPTICS_H
 
-#if defined(CONFIG_TOUCH_REG_MAP_TM2000) || defined(CONFIG_TOUCH_REG_MAP_TM2372)
-//do nothing
-#else
 #define ARRAYED_TOUCH_FW_BIN
-#endif
 #define NUM_OF_EACH_FINGER_DATA_REG             5
 #define MAX_NUM_OF_FINGERS                      10
 

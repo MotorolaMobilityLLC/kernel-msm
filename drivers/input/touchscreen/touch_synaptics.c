@@ -130,6 +130,8 @@
 
 #define FLASH_CONTROL_REG           (ts->flash_dsc.data_base+18)     /* Flash Control */
 #define FLASH_STATUS_MASK           0xF0
+#define FW_OFFSET_PRODUCT_ID        0x40
+#define FW_OFFSET_IMAGE_VERSION     0xB100
 
 /* Get user-finger-data from register.
  */
@@ -146,36 +148,6 @@
 #define TS_SNTS_GET_ORIENTATION(_width) \
 	((((((_width) & 0xF0) >> 4) - ((_width) & 0x0F)) > 0) ? 0 : 1)
 #define TS_SNTS_GET_PRESSURE(_pressure) (_pressure)
-
-
-/* GET_BIT_MASK & GET_INDEX_FROM_MASK
- *
- * For easily checking the user input.
- * Usually, User use only one or two fingers.
- * However, we should always check all finger-status-register
- * because we can't know the total number of fingers.
- * These Macro will prevent it.
- */
-#define GET_BIT_MASK(_finger_status_reg)	\
-	((_finger_status_reg[2] & 0x04) << 7 |  \
-	(_finger_status_reg[2] & 0x01) << 8 |   \
-	(_finger_status_reg[1] & 0x40) << 1 |   \
-	(_finger_status_reg[1] & 0x10) << 2 |   \
-	(_finger_status_reg[1] & 0x04) << 3 |   \
-	(_finger_status_reg[1] & 0x01) << 4 |   \
-	(_finger_status_reg[0] & 0x40) >> 3 |   \
-	(_finger_status_reg[0] & 0x10) >> 2 |   \
-	(_finger_status_reg[0] & 0x04) >> 1 |   \
-	(_finger_status_reg[0] & 0x01))
-
-#define GET_INDEX_FROM_MASK(_index, _bit_mask, _max_finger)              \
-	do {                                                             \
-		for (; !((_bit_mask>>_index)&0x01)                       \
-				&& _index <= _max_finger; _index++);     \
-		if (_index <= _max_finger)                               \
-			_bit_mask &= ~(_bit_mask & (1<<(_index)));       \
-	} while (0)
-
 
 #define FINGER_STATE_NO_PRESENT         0
 #define FINGER_STATE_PRESENT_VALID      1
@@ -262,7 +234,7 @@ int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data,
 			TOUCH_INFO_MSG("Touch_bit_mask: 0x%x\n", finger_status);
 		}
 
-		for (id = 0; id < MAX_FINGER; id++) {
+		for (id = 0; id < ts->pdata->caps->max_id; id++) {
 			switch (((finger_status >> (id*2)) & 0x3)) {
 			case FINGER_STATE_PRESENT_VALID:
 				touch_i2c_read(ts->client,
@@ -511,42 +483,13 @@ int get_ic_info(struct synaptics_ts_data* ts, struct touch_fw_info* fw_info)
 		return -EIO;
 	}
 
-#if defined(CONFIG_TOUCH_REG_MAP_TM2000)
-	if ((strncmp(fw_info->fw_version, "0000", 4) == 0) ||
-   			(strncmp(fw_info->fw_version, "S001", 4) == 0)) {
-		ts->ic_panel_type = IC7020_GFF;
-		TOUCH_INFO_MSG("IC is 7020, panel is GFF.");
-	} else {
-		if (fw_info->fw_version[0] == 'E' &&
-			(int)simple_strtol(&fw_info->fw_version[1], NULL, 10) < 14) {
-			ts->ic_panel_type = IC7020_G2;
-			TOUCH_INFO_MSG("IC is 7020, panel is G2.");
-		} else if ((fw_info->fw_version[0] == 'E'
-			&& (int)simple_strtol(&fw_info->fw_version[1], NULL, 10) >= 14
-			&& (int)simple_strtol(&fw_info->fw_version[1], NULL, 10) < 27)
-			|| fw_info->fw_version[0] == 'T') {
-			ts->ic_panel_type = IC3203_G2;
-			TOUCH_INFO_MSG("IC is 3203, panel is G2.");
-		} else {
-			ts->ic_panel_type = IC7020_G2_H_PTN;
-			TOUCH_INFO_MSG("IC is 7020, H pattern, panel is G2.");
-
-			if ((fw_info->fw_version[0] == 'E')
-				&& ((int)simple_strtol(&fw_info->fw_version[1],
-							NULL, 10) >= 40)) {
-				ts->interrupt_mask.button = 0x10;
-			}
-		}
-	}
-#elif defined(CONFIG_TOUCH_REG_MAP_TM2372)
-	ts->ic_panel_type = IC7020_GFF_H_PTN;
-	TOUCH_INFO_MSG("IC is 7020, H pattern, panel is GFF.");
-#endif
+	ts->ic_panel_type = IC7020_G2_H_PTN;
+	TOUCH_INFO_MSG("IC is 7020, H pattern, panel is G2.");
 
 #if defined(ARRAYED_TOUCH_FW_BIN)
 	for (cnt = 0; cnt < sizeof(SynaFirmware)/sizeof(SynaFirmware[0]); cnt++) {
 		strncpy(fw_info->fw_image_product_id,
-					&SynaFirmware[cnt][16], 10);
+				&SynaFirmware[cnt][FW_OFFSET_PRODUCT_ID], 10);
 		if (!(strncmp(fw_info->product_id,
 				fw_info->fw_image_product_id, 10)))
 			break;
@@ -554,15 +497,14 @@ int get_ic_info(struct synaptics_ts_data* ts, struct touch_fw_info* fw_info)
 	fw_info->fw_start = (unsigned char *)&SynaFirmware[cnt][0];
 	fw_info->fw_size = sizeof(SynaFirmware[0]);
 #else
-	strncpy(fw_info->fw_image_product_id, &SynaFirmware[16], 10);
-#if defined(CONFIG_TOUCH_REG_MAP_TM2000) || defined(CONFIG_TOUCH_REG_MAP_TM2372)
-	strncpy(fw_info->fw_image_version, &SynaFirmware[0xb100],4);
-#endif
 	fw_info->fw_start = (unsigned char *)&SynaFirmware[0];
 	fw_info->fw_size = sizeof(SynaFirmware);
 #endif
 
-	fw_info->fw_image_rev = fw_info->fw_start[31];
+	strncpy(fw_info->fw_image_product_id,
+				&fw_info->fw_start[FW_OFFSET_PRODUCT_ID], 10);
+	strncpy(fw_info->fw_image_version,
+					&fw_info->fw_start[FW_OFFSET_IMAGE_VERSION],4);
 
 	if (unlikely(touch_i2c_read(ts->client, FLASH_CONTROL_REG,
 				sizeof(flash_control), &flash_control) < 0)) {
@@ -1083,64 +1025,16 @@ int synaptics_ts_ic_ctrl(struct i2c_client *client, u8 code, u16 value)
 
 int synaptics_ts_fw_upgrade_check(struct lge_touch_data *ts)
 {
-#if defined(CONFIG_TOUCH_REG_MAP_TM2000)
-	if (ts->fw_info.fw_force_rework) {
+	if (ts->fw_info.fw_force_rework || ts->fw_upgrade.fw_force_upgrade) {
 		TOUCH_INFO_MSG("FW-upgrade Force Rework.\n");
 	} else {
-		/* do not update 7020 gff, 7020 g2, 3203 g2 */
-		if (((ts->fw_info.fw_version[0] == '0' &&
-			(int)simple_strtoul(&ts->fw_info.fw_version[1], NULL, 10) == 0) ||
-		     (ts->fw_info.fw_version[0] == 'S' &&
-			(int)simple_strtoul(&ts->fw_info.fw_version[1], NULL, 10) == 1) ||
-		     (ts->fw_info.fw_version[0] == 'E' &&
-			(int)simple_strtoul(&ts->fw_info.fw_version[1], NULL, 10) < 27) ||
-		     (ts->fw_info.fw_version[0] == 'T'))) {
-			TOUCH_INFO_MSG("DO NOT UPDATE 7020 gff, 7020 g2, 3203 " "g2 FW-upgrade is not executed\n");
+		if (((int)simple_strtoul(&ts->fw_info.fw_version[1], NULL, 10) >= (int)simple_strtoul(&ts->fw_info.fw_image_version[1], NULL, 10))) {
+			TOUCH_INFO_MSG("DO NOT UPDATE 7020 G2 H " "pattern FW-upgrade is not executed\n");
 			return -1;
-		}
-
-		if ((ts->fw_info.fw_version[0] == 'E' &&
-			(int)simple_strtoul(&ts->fw_info.fw_version[1], NULL, 10) >= 27) && !ts->fw_upgrade.fw_force_upgrade) { /* 7020 g2 h pattern */
-
-			if (((int)simple_strtoul(&ts->fw_info.fw_version[1], NULL, 10) >= (int)simple_strtoul(&ts->fw_info.fw_image_version[1], NULL, 10))) {
-	   			TOUCH_INFO_MSG("DO NOT UPDATE 7020 G2 H " "pattern FW-upgrade is not executed\n");
-				return -1;
-			} else {
-				TOUCH_INFO_MSG("7020 G2 H pattern FW-upgrade " "is executed\n");
-			}
 		} else {
-			if (!ts->fw_upgrade.fw_force_upgrade) {
-				TOUCH_INFO_MSG("UNKNOWN PANEL. FW-upgrade is" " not executed\n");
-				return -1;
-			}
+			TOUCH_INFO_MSG("7020 G2 H pattern FW-upgrade " "is executed\n");
 		}
 	}
-#elif defined(CONFIG_TOUCH_REG_MAP_TM2372)
-	if (ts->fw_info.fw_force_rework) {
-		TOUCH_INFO_MSG("FW-upgrade Force Rework.\n");
-	} else {
-		if ((ts->fw_info.fw_version[0] == 'E' &&
-			(int)simple_strtoul(&ts->fw_info.fw_version[1], NULL, 10) >= 1) &&
-			!ts->fw_upgrade.fw_force_upgrade) {
-
-			if (((int)simple_strtoul(&ts->fw_info.fw_version[1], NULL, 10) >=
-				(int)simple_strtoul(&ts->fw_info.fw_image_version[1],
-							NULL, 10))) {
-				TOUCH_INFO_MSG("DO NOT UPDATE 7020 GFF H " "pattern FW-upgrade is not executed\n");
-				return -1;
-			} else {
-				TOUCH_INFO_MSG("7020 GFF H pattern FW-upgrade " "is executed\n");
-			}
-		} else {
-			if (!ts->fw_upgrade.fw_force_upgrade) {
-				TOUCH_INFO_MSG("UNKNOWN PANEL. FW-upgrade is not executed\n");
-				return -1;
-			}
-		}
-	}
-#else
-#error NOT SUPPORTED TYPE
-#endif
 
 	return 0;
 }
