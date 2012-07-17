@@ -281,7 +281,8 @@ static int __init modem_8960_init(void)
 {
 	int ret;
 
-	if (!cpu_is_msm8960() && !cpu_is_msm8930() && !cpu_is_msm9615())
+	if (!cpu_is_msm8960() && !cpu_is_msm8930() && !cpu_is_msm8930aa() &&
+	    !cpu_is_msm9615() && !cpu_is_msm8627())
 		return -ENODEV;
 
 	ret = smsm_state_cb_register(SMSM_MODEM_STATE, SMSM_RESET,
@@ -336,7 +337,7 @@ static int __init modem_8960_init(void)
 		goto out;
 	}
 
-	smem_ramdump_dev = create_ramdump_device("smem");
+	smem_ramdump_dev = create_ramdump_device("smem-modem");
 
 	if (!smem_ramdump_dev) {
 		pr_err("%s: Unable to create smem ramdump device. (%d)\n",

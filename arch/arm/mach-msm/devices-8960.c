@@ -2156,8 +2156,8 @@ struct platform_device *msm8960_footswitch[] __initdata = {
 	FS_8X60(FS_MDP,    "vdd",	"mdp.0",	&mdp_fs_data),
 	FS_8X60(FS_ROT,    "vdd",	"msm_rotator.0", &rot_fs_data),
 	FS_8X60(FS_IJPEG,  "vdd",	"msm_gemini.0",	&ijpeg_fs_data),
-	FS_8X60(FS_VFE,    "fs_vfe",	NULL,	&vfe_fs_data),
-	FS_8X60(FS_VPE,    "fs_vpe",	NULL,	&vpe_fs_data),
+	FS_8X60(FS_VFE,    "vdd",	"msm_vfe.0",	&vfe_fs_data),
+	FS_8X60(FS_VPE,    "vdd",	"msm_vpe.0",	&vpe_fs_data),
 	FS_8X60(FS_GFX3D,  "vdd",	"kgsl-3d0.0",	&gfx3d_fs_data),
 	FS_8X60(FS_GFX2D0, "vdd",	"kgsl-2d0.0",	&gfx2d0_fs_data),
 	FS_8X60(FS_GFX2D1, "vdd",	"kgsl-2d1.1",	&gfx2d1_fs_data),
@@ -2291,6 +2291,11 @@ struct platform_device msm_rotator_device = {
 		.platform_data = &rotator_pdata,
 	},
 };
+
+void __init msm_rotator_set_split_iommu_domain(void)
+{
+	rotator_pdata.rot_iommu_split_domain = 1;
+}
 #endif
 
 #define MIPI_DSI_HW_BASE        0x04700000
@@ -3643,12 +3648,12 @@ struct msm_iommu_domain_name msm8960_iommu_ctx_names[] = {
 	/* Rotator */
 	{
 		.name = "rot_src",
-		.domain = ROTATOR_DOMAIN,
+		.domain = ROTATOR_SRC_DOMAIN,
 	},
 	/* Rotator */
 	{
 		.name = "rot_dst",
-		.domain = ROTATOR_DOMAIN,
+		.domain = ROTATOR_SRC_DOMAIN,
 	},
 	/* Video */
 	{
@@ -3704,18 +3709,18 @@ static struct mem_pool msm8960_camera_pools[] =  {
 		},
 };
 
-static struct mem_pool msm8960_display_pools[] =  {
+static struct mem_pool msm8960_display_read_pools[] =  {
 	[GEN_POOL] =
-	/* One address space for display */
+	/* One address space for display reads */
 		{
 			.paddr	= SZ_128K,
 			.size	= SZ_2G - SZ_128K,
 		},
 };
 
-static struct mem_pool msm8960_rotator_pools[] =  {
+static struct mem_pool msm8960_rotator_src_pools[] =  {
 	[GEN_POOL] =
-	/* One address space for rotator */
+	/* One address space for rotator src */
 		{
 			.paddr	= SZ_128K,
 			.size	= SZ_2G - SZ_128K,
@@ -3731,13 +3736,13 @@ static struct msm_iommu_domain msm8960_iommu_domains[] = {
 			.iova_pools = msm8960_camera_pools,
 			.npools = ARRAY_SIZE(msm8960_camera_pools),
 		},
-		[DISPLAY_DOMAIN] = {
-			.iova_pools = msm8960_display_pools,
-			.npools = ARRAY_SIZE(msm8960_display_pools),
+		[DISPLAY_READ_DOMAIN] = {
+			.iova_pools = msm8960_display_read_pools,
+			.npools = ARRAY_SIZE(msm8960_display_read_pools),
 		},
-		[ROTATOR_DOMAIN] = {
-			.iova_pools = msm8960_rotator_pools,
-			.npools = ARRAY_SIZE(msm8960_rotator_pools),
+		[ROTATOR_SRC_DOMAIN] = {
+			.iova_pools = msm8960_rotator_src_pools,
+			.npools = ARRAY_SIZE(msm8960_rotator_src_pools),
 		},
 };
 

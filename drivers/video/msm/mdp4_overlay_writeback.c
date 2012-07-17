@@ -272,11 +272,11 @@ void mdp4_writeback_kickoff_video(struct msm_fb_data_type *mfd,
 	}
 	mutex_unlock(&mfd->writeback_mutex);
 
-	writeback_pipe->blt_addr = (ulong) (node ? node->addr : NULL);
+	writeback_pipe->ov_blt_addr = (ulong) (node ? node->addr : NULL);
 
-	if (!writeback_pipe->blt_addr) {
+	if (!writeback_pipe->ov_blt_addr) {
 		pr_err("%s: no writeback buffer 0x%x, %p\n", __func__,
-				(unsigned int)writeback_pipe->blt_addr, node);
+			(unsigned int)writeback_pipe->ov_blt_addr, node);
 		mutex_unlock(&mfd->unregister_mutex);
 		return;
 	}
@@ -324,13 +324,13 @@ void mdp4_writeback_overlay(struct msm_fb_data_type *mfd)
 	}
 	mutex_unlock(&mfd->writeback_mutex);
 
-	writeback_pipe->blt_addr = (ulong) (node ? node->addr : NULL);
+	writeback_pipe->ov_blt_addr = (ulong) (node ? node->addr : NULL);
 
 	mutex_lock(&mfd->dma->ov_mutex);
 	pr_debug("%s in writeback\n", __func__);
-	if (writeback_pipe && !writeback_pipe->blt_addr) {
+	if (writeback_pipe && !writeback_pipe->ov_blt_addr) {
 		pr_err("%s: no writeback buffer 0x%x\n", __func__,
-				(unsigned int)writeback_pipe->blt_addr);
+				(unsigned int)writeback_pipe->ov_blt_addr);
 		ret = mdp4_overlay_writeback_update(mfd);
 		if (ret)
 			pr_err("%s: update failed writeback pipe NULL\n",
@@ -351,7 +351,7 @@ void mdp4_writeback_overlay(struct msm_fb_data_type *mfd)
 		}
 
 		pr_debug("%s: in writeback pan display 0x%x\n", __func__,
-				(unsigned int)writeback_pipe->blt_addr);
+				(unsigned int)writeback_pipe->ov_blt_addr);
 		mdp4_writeback_kickoff_ui(mfd, writeback_pipe);
 		mdp4_iommu_unmap(writeback_pipe);
 
@@ -390,6 +390,8 @@ static struct msmfb_writeback_data_list *get_if_registered(
 {
 	struct msmfb_writeback_data_list *temp;
 	bool found = false;
+	int domain;
+
 	if (!list_empty(&mfd->writeback_register_queue)) {
 		list_for_each_entry(temp,
 				&mfd->writeback_register_queue,
@@ -420,9 +422,14 @@ static struct msmfb_writeback_data_list *get_if_registered(
 				goto register_ion_fail;
 			}
 
+			if (mdp_iommu_split_domain)
+				domain = DISPLAY_WRITE_DOMAIN;
+			else
+				domain = DISPLAY_READ_DOMAIN;
+
 			if (ion_map_iommu(mfd->iclient,
 					  srcp_ihdl,
-					  DISPLAY_DOMAIN,
+					  domain,
 					  GEN_POOL,
 					  SZ_4K,
 					  0,
@@ -501,7 +508,7 @@ int mdp4_writeback_dequeue_buffer(struct fb_info *info, struct msmfb_data *data)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct msmfb_writeback_data_list *node = NULL;
-	int rc = 0;
+	int rc = 0, domain;
 
 	rc = wait_event_interruptible(mfd->wait_q, is_buffer_ready(mfd));
 	if (rc) {
@@ -523,9 +530,14 @@ int mdp4_writeback_dequeue_buffer(struct fb_info *info, struct msmfb_data *data)
 		memcpy(data, &node->buf_info, sizeof(struct msmfb_data));
 		if (!data->iova)
 			if (mfd->iclient && node->ihdl) {
+				if (mdp_iommu_split_domain)
+					domain = DISPLAY_WRITE_DOMAIN;
+				else
+					domain = DISPLAY_READ_DOMAIN;
+
 				ion_unmap_iommu(mfd->iclient,
 						node->ihdl,
-						DISPLAY_DOMAIN,
+						domain,
 						GEN_POOL);
 				ion_free(mfd->iclient,
 					 node->ihdl);

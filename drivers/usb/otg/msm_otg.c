@@ -1003,7 +1003,8 @@ static int msm_otg_notify_chg_type(struct msm_otg *motg)
 		charger_type = POWER_SUPPLY_TYPE_USB;
 	else if (motg->chg_type == USB_CDP_CHARGER)
 		charger_type = POWER_SUPPLY_TYPE_USB_CDP;
-	else if (motg->chg_type == USB_DCP_CHARGER)
+	else if (motg->chg_type == USB_DCP_CHARGER ||
+			motg->chg_type == USB_PROPRIETARY_CHARGER)
 		charger_type = POWER_SUPPLY_TYPE_USB_DCP;
 	else if ((motg->chg_type == USB_ACA_DOCK_CHARGER ||
 		motg->chg_type == USB_ACA_A_CHARGER ||
@@ -1631,9 +1632,6 @@ static void msm_chg_enable_secondary_det(struct msm_otg *motg)
 		ulpi_write(phy, chg_det, 0x34);
 		break;
 	case SNPS_28NM_INTEGRATED_PHY:
-		/* Turn off VDP_SRC */
-		ulpi_write(phy, 0x3, 0x86);
-		msleep(20);
 		/*
 		 * Configure DM as current source, DP as current sink
 		 * and enable battery charging comparators.
@@ -1661,6 +1659,9 @@ static bool msm_chg_check_primary_det(struct msm_otg *motg)
 	case SNPS_28NM_INTEGRATED_PHY:
 		chg_det = ulpi_read(phy, 0x87);
 		ret = chg_det & 1;
+		/* Turn off VDP_SRC */
+		ulpi_write(phy, 0x3, 0x86);
+		msleep(20);
 		break;
 	default:
 		break;
@@ -1829,6 +1830,7 @@ static const char *chg_to_string(enum usb_chg_type chg_type)
 	case USB_ACA_B_CHARGER:		return "USB_ACA_B_CHARGER";
 	case USB_ACA_C_CHARGER:		return "USB_ACA_C_CHARGER";
 	case USB_ACA_DOCK_CHARGER:	return "USB_ACA_DOCK_CHARGER";
+	case USB_PROPRIETARY_CHARGER:	return "USB_PROPRIETARY_CHARGER";
 	default:			return "INVALID_CHARGER";
 	}
 }
@@ -1842,6 +1844,7 @@ static void msm_chg_detect_work(struct work_struct *w)
 	struct msm_otg *motg = container_of(w, struct msm_otg, chg_work.work);
 	struct usb_phy *phy = &motg->phy;
 	bool is_dcd = false, tmout, vout, is_aca;
+	u32 line_state, dm_vlgc;
 	unsigned long delay;
 
 	dev_dbg(phy->dev, "chg detection work\n");
@@ -1884,24 +1887,37 @@ static void msm_chg_detect_work(struct work_struct *w)
 		break;
 	case USB_CHG_STATE_DCD_DONE:
 		vout = msm_chg_check_primary_det(motg);
-		if (vout) {
+		line_state = readl_relaxed(USB_PORTSC) & PORTSC_LS;
+		dm_vlgc = line_state & PORTSC_LS_DM;
+		if (vout && !dm_vlgc) { /* VDAT_REF < DM < VLGC */
 			if (test_bit(ID_A, &motg->inputs)) {
 				motg->chg_type = USB_ACA_DOCK_CHARGER;
 				motg->chg_state = USB_CHG_STATE_DETECTED;
 				delay = 0;
 				break;
 			}
-			msm_chg_enable_secondary_det(motg);
-			delay = MSM_CHG_SECONDARY_DET_TIME;
-			motg->chg_state = USB_CHG_STATE_PRIMARY_DONE;
-		} else {
+			if (line_state) { /* DP > VLGC */
+				motg->chg_type = USB_PROPRIETARY_CHARGER;
+				motg->chg_state = USB_CHG_STATE_DETECTED;
+				delay = 0;
+			} else {
+				msm_chg_enable_secondary_det(motg);
+				delay = MSM_CHG_SECONDARY_DET_TIME;
+				motg->chg_state = USB_CHG_STATE_PRIMARY_DONE;
+			}
+		} else { /* DM < VDAT_REF || DM > VLGC */
 			if (test_bit(ID_A, &motg->inputs)) {
 				motg->chg_type = USB_ACA_A_CHARGER;
 				motg->chg_state = USB_CHG_STATE_DETECTED;
 				delay = 0;
 				break;
 			}
-			motg->chg_type = USB_SDP_CHARGER;
+
+			if (line_state) /* DP > VLGC or/and DM > VLGC */
+				motg->chg_type = USB_PROPRIETARY_CHARGER;
+			else
+				motg->chg_type = USB_SDP_CHARGER;
+
 			motg->chg_state = USB_CHG_STATE_DETECTED;
 			delay = 0;
 		}
@@ -2054,6 +2070,8 @@ static void msm_otg_sm_work(struct work_struct *w)
 				case USB_DCP_CHARGER:
 					/* Enable VDP_SRC */
 					ulpi_write(otg->phy, 0x2, 0x85);
+					/* fall through */
+				case USB_PROPRIETARY_CHARGER:
 					msm_otg_notify_charger(motg,
 							IDEV_CHG_MAX);
 					pm_runtime_put_noidle(otg->phy->dev);
@@ -2725,6 +2743,11 @@ static void msm_otg_set_vbus_state(int online)
 {
 	static bool init;
 	struct msm_otg *motg = the_msm_otg;
+	struct usb_otg *otg = motg->phy.otg;
+
+	/* In A Host Mode, ignore received BSV interrupts */
+	if (otg->phy->state >= OTG_STATE_A_IDLE)
+		return;
 
 	if (online) {
 		pr_debug("PMIC: BSV set\n");
@@ -2747,28 +2770,46 @@ static void msm_otg_set_vbus_state(int online)
 		queue_work(system_nrt_wq, &motg->sm_work);
 }
 
-static irqreturn_t msm_pmic_id_irq(int irq, void *data)
+static void msm_pmic_id_status_w(struct work_struct *w)
 {
-	struct msm_otg *motg = data;
+	struct msm_otg *motg = container_of(w, struct msm_otg,
+						pmic_id_status_work.work);
+	int work = 0;
+	unsigned long flags;
 
-	if (aca_id_turned_on)
-		return IRQ_HANDLED;
-
+	local_irq_save(flags);
 	if (irq_read_line(motg->pdata->pmic_id_irq)) {
-		pr_debug("PMIC: ID set\n");
-		set_bit(ID, &motg->inputs);
+		if (!test_and_set_bit(ID, &motg->inputs)) {
+			pr_debug("PMIC: ID set\n");
+			work = 1;
+		}
 	} else {
-		pr_debug("PMIC: ID clear\n");
-		clear_bit(ID, &motg->inputs);
-		set_bit(A_BUS_REQ, &motg->inputs);
+		if (test_and_clear_bit(ID, &motg->inputs)) {
+			pr_debug("PMIC: ID clear\n");
+			set_bit(A_BUS_REQ, &motg->inputs);
+			work = 1;
+		}
 	}
 
-	if (motg->phy.state != OTG_STATE_UNDEFINED) {
+	if (work && (motg->phy.state != OTG_STATE_UNDEFINED)) {
 		if (atomic_read(&motg->pm_suspended))
 			motg->sm_work_pending = true;
 		else
 			queue_work(system_nrt_wq, &motg->sm_work);
 	}
+	local_irq_restore(flags);
+
+}
+
+#define MSM_PMIC_ID_STATUS_DELAY	5 /* 5msec */
+static irqreturn_t msm_pmic_id_irq(int irq, void *data)
+{
+	struct msm_otg *motg = data;
+
+	if (!aca_id_turned_on)
+		/*schedule delayed work for 5msec for ID line state to settle*/
+		queue_delayed_work(system_nrt_wq, &motg->pmic_id_status_work,
+				msecs_to_jiffies(MSM_PMIC_ID_STATUS_DELAY));
 
 	return IRQ_HANDLED;
 }
@@ -3383,6 +3424,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	msm_otg_init_timer(motg);
 	INIT_WORK(&motg->sm_work, msm_otg_sm_work);
 	INIT_DELAYED_WORK(&motg->chg_work, msm_chg_detect_work);
+	INIT_DELAYED_WORK(&motg->pmic_id_status_work, msm_pmic_id_status_w);
 	setup_timer(&motg->id_timer, msm_otg_id_timer_func,
 				(unsigned long) motg);
 	ret = request_irq(motg->irq, msm_otg_irq, IRQF_SHARED,
@@ -3527,6 +3569,7 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 		pm8921_charger_unregister_vbus_sn(0);
 	msm_otg_debugfs_cleanup();
 	cancel_delayed_work_sync(&motg->chg_work);
+	cancel_delayed_work_sync(&motg->pmic_id_status_work);
 	cancel_work_sync(&motg->sm_work);
 
 	pm_runtime_resume(&pdev->dev);

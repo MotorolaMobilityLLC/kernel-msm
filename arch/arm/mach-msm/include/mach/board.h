@@ -411,6 +411,7 @@ struct msm_panel_common_pdata {
 	u32 ov1_wb_size;  /* overlay1 writeback size */
 	u32 mem_hid;
 	char cont_splash_enabled;
+	char mdp_iommu_split_domain;
 };
 
 
@@ -476,6 +477,10 @@ struct lvds_panel_platform_data {
 	int *gpio;
 };
 
+struct msm_wfd_platform_data {
+	char (*wfd_check_mdp_iommu_split)(void);
+};
+
 #define PANEL_NAME_MAX_LEN 50
 struct msm_fb_platform_data {
 	int (*detect_client)(const char *name);
@@ -496,12 +501,23 @@ struct msm_hdmi_platform_data {
 	int (*gpio_config)(int on);
 	int (*init_irq)(void);
 	bool (*check_hdcp_hw_support)(void);
+	bool is_mhl_enabled;
 };
 
 struct msm_mhl_platform_data {
 	int irq;
-	int (*gpio_setup)(int on);
-	void (*reset_pin)(int on);
+	/* GPIO no. for mhl intr */
+	uint32_t gpio_mhl_int;
+	/* GPIO no. for mhl block reset */
+	uint32_t gpio_mhl_reset;
+	/*
+	 * below gpios are specific to targets
+	 * that have the integrated MHL soln.
+	 */
+	/* GPIO no. for mhl block power */
+	uint32_t gpio_mhl_power;
+	/* GPIO no. for hdmi-mhl mux */
+	uint32_t gpio_hdmi_mhl_mux;
 };
 
 struct msm_i2c_platform_data {

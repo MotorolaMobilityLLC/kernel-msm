@@ -31,11 +31,21 @@
 #include <mach/mpm.h>
 #include "gpio-msm-common.h"
 
+#ifdef CONFIG_GPIO_MSM_V3
+enum msm_tlmm_register {
+	SDC4_HDRV_PULL_CTL = 0x0, /* NOT USED */
+	SDC3_HDRV_PULL_CTL = 0x0, /* NOT USED */
+	SDC2_HDRV_PULL_CTL = 0x2048,
+	SDC1_HDRV_PULL_CTL = 0x2044,
+};
+#else
 enum msm_tlmm_register {
 	SDC4_HDRV_PULL_CTL = 0x20a0,
 	SDC3_HDRV_PULL_CTL = 0x20a4,
+	SDC2_HDRV_PULL_CTL = 0x0, /* NOT USED */
 	SDC1_HDRV_PULL_CTL = 0x20a0,
 };
+#endif
 
 struct tlmm_field_cfg {
 	enum msm_tlmm_register reg;
@@ -49,17 +59,24 @@ static const struct tlmm_field_cfg tlmm_hdrv_cfgs[] = {
 	{SDC3_HDRV_PULL_CTL, 6}, /* TLMM_HDRV_SDC3_CLK  */
 	{SDC3_HDRV_PULL_CTL, 3}, /* TLMM_HDRV_SDC3_CMD  */
 	{SDC3_HDRV_PULL_CTL, 0}, /* TLMM_HDRV_SDC3_DATA */
+	{SDC2_HDRV_PULL_CTL, 6}, /* TLMM_HDRV_SDC2_CLK  */
+	{SDC2_HDRV_PULL_CTL, 3}, /* TLMM_HDRV_SDC2_CMD  */
+	{SDC2_HDRV_PULL_CTL, 0}, /* TLMM_HDRV_SDC2_DATA */
 	{SDC1_HDRV_PULL_CTL, 6}, /* TLMM_HDRV_SDC1_CLK  */
 	{SDC1_HDRV_PULL_CTL, 3}, /* TLMM_HDRV_SDC1_CMD  */
 	{SDC1_HDRV_PULL_CTL, 0}, /* TLMM_HDRV_SDC1_DATA */
 };
 
 static const struct tlmm_field_cfg tlmm_pull_cfgs[] = {
+	{SDC4_HDRV_PULL_CTL, 14}, /* TLMM_PULL_SDC4_CLK */
 	{SDC4_HDRV_PULL_CTL, 11}, /* TLMM_PULL_SDC4_CMD  */
 	{SDC4_HDRV_PULL_CTL, 9},  /* TLMM_PULL_SDC4_DATA */
 	{SDC3_HDRV_PULL_CTL, 14}, /* TLMM_PULL_SDC3_CLK  */
 	{SDC3_HDRV_PULL_CTL, 11}, /* TLMM_PULL_SDC3_CMD  */
 	{SDC3_HDRV_PULL_CTL, 9},  /* TLMM_PULL_SDC3_DATA */
+	{SDC2_HDRV_PULL_CTL, 14}, /* TLMM_PULL_SDC2_CLK  */
+	{SDC2_HDRV_PULL_CTL, 11}, /* TLMM_PULL_SDC2_CMD  */
+	{SDC2_HDRV_PULL_CTL, 9},  /* TLMM_PULL_SDC2_DATA */
 	{SDC1_HDRV_PULL_CTL, 13}, /* TLMM_PULL_SDC1_CLK  */
 	{SDC1_HDRV_PULL_CTL, 11}, /* TLMM_PULL_SDC1_CMD  */
 	{SDC1_HDRV_PULL_CTL, 9},  /* TLMM_PULL_SDC1_DATA */
@@ -153,7 +170,7 @@ static int msm_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 {
 	struct msm_gpio_dev *g_dev = to_msm_gpio_dev(chip);
 	struct irq_domain *domain = g_dev->domain;
-	return irq_linear_revmap(domain, offset - chip->base);
+	return irq_linear_revmap(domain, offset);
 }
 
 static inline int msm_irq_to_gpio(struct gpio_chip *chip, unsigned irq)
@@ -393,7 +410,10 @@ static struct lock_class_key msm_gpio_lock_class;
 /* TODO: This should be a real platform_driver */
 static int __devinit msm_gpio_probe(void)
 {
-	int i, irq, ret;
+	int ret;
+#ifndef CONFIG_OF
+	int irq, i;
+#endif
 
 	spin_lock_init(&tlmm_lock);
 	bitmap_zero(msm_gpio.enabled_irqs, NR_MSM_GPIOS);
@@ -403,6 +423,7 @@ static int __devinit msm_gpio_probe(void)
 	if (ret < 0)
 		return ret;
 
+#ifndef CONFIG_OF
 	for (i = 0; i < msm_gpio.gpio_chip.ngpio; ++i) {
 		irq = msm_gpio_to_irq(&msm_gpio.gpio_chip, i);
 		irq_set_lockdep_class(irq, &msm_gpio_lock_class);
@@ -410,7 +431,7 @@ static int __devinit msm_gpio_probe(void)
 					 handle_level_irq);
 		set_irq_flags(irq, IRQF_VALID);
 	}
-
+#endif
 	ret = request_irq(TLMM_MSM_SUMMARY_IRQ, msm_summary_irq_handler,
 			IRQF_TRIGGER_HIGH, "msmgpio", NULL);
 	if (ret) {
@@ -593,14 +614,14 @@ static int msm_gpio_irq_domain_xlate(struct irq_domain *d,
 	return 0;
 }
 
-/*
- * TODO: this really should be doing all the things that msm_gpio_probe() does,
- * but since the msm_gpio_probe is called unconditionally for DT and non-DT
- * configs, we can't duplicate it here. This should be fixed.
- */
-int msm_gpio_irq_domain_map(struct irq_domain *d, unsigned int irq,
-			  irq_hw_number_t hwirq)
+static int msm_gpio_irq_domain_map(struct irq_domain *d, unsigned int irq,
+				   irq_hw_number_t hwirq)
 {
+	irq_set_lockdep_class(irq, &msm_gpio_lock_class);
+	irq_set_chip_and_handler(irq, &msm_gpio_irq_chip,
+			handle_level_irq);
+	set_irq_flags(irq, IRQF_VALID);
+
 	return 0;
 }
 

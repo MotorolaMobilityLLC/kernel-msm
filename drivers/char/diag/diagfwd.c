@@ -129,10 +129,12 @@ int chk_config_get_id(void)
 		case MSM_CPU_8X60:
 			return APQ8060_TOOLS_ID;
 		case MSM_CPU_8960:
+		case MSM_CPU_8960AB:
 			return AO8960_TOOLS_ID;
 		case MSM_CPU_8064:
 			return APQ8064_TOOLS_ID;
 		case MSM_CPU_8930:
+		case MSM_CPU_8930AA:
 			return MSM8930_TOOLS_ID;
 		case MSM_CPU_8974:
 			return MSM8974_TOOLS_ID;
@@ -155,8 +157,10 @@ int chk_apps_only(void)
 
 	switch (socinfo_get_msm_cpu()) {
 	case MSM_CPU_8960:
+	case MSM_CPU_8960AB:
 	case MSM_CPU_8064:
 	case MSM_CPU_8930:
+	case MSM_CPU_8930AA:
 	case MSM_CPU_8627:
 	case MSM_CPU_9615:
 	case MSM_CPU_8974:
@@ -175,8 +179,9 @@ int chk_apps_master(void)
 {
 	if (driver->use_device_tree)
 		return 1;
-	else if (cpu_is_msm8960() || cpu_is_msm8930() || cpu_is_msm9615() ||
-		cpu_is_apq8064() || cpu_is_msm8627())
+	else if (cpu_is_msm8960() || cpu_is_msm8930() || cpu_is_msm8930aa() ||
+		cpu_is_msm9615() || cpu_is_apq8064() || cpu_is_msm8627() ||
+		cpu_is_msm8960ab())
 		return 1;
 	else
 		return 0;
@@ -511,6 +516,7 @@ void diag_create_msg_mask_table(void)
 	CREATE_MSG_MASK_TBL_ROW(20);
 	CREATE_MSG_MASK_TBL_ROW(21);
 	CREATE_MSG_MASK_TBL_ROW(22);
+	CREATE_MSG_MASK_TBL_ROW(23);
 }
 
 static void diag_set_msg_mask(int rt_mask)
@@ -1229,7 +1235,8 @@ static int diag_process_apps_pkt(unsigned char *buf, int len)
 		driver->apps_rsp_buf[1] = 0x1;
 		driver->apps_rsp_buf[2] = 0x1;
 		driver->apps_rsp_buf[3] = 0x0;
-		*(int *)(driver->apps_rsp_buf + 4) = MSG_MASK_TBL_CNT;
+		/* -1 to un-account for OEM SSID range */
+		*(int *)(driver->apps_rsp_buf + 4) = MSG_MASK_TBL_CNT - 1;
 		*(uint16_t *)(driver->apps_rsp_buf + 8) = MSG_SSID_0;
 		*(uint16_t *)(driver->apps_rsp_buf + 10) = MSG_SSID_0_LAST;
 		*(uint16_t *)(driver->apps_rsp_buf + 12) = MSG_SSID_1;

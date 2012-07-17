@@ -247,6 +247,7 @@ static int __init msm_pm_mode_sysfs_add_cpu(
 			if ((k == MSM_PM_MODE_ATTR_SUSPEND) &&
 			     !msm_pm_sleep_modes[idx].suspend_supported)
 				continue;
+			sysfs_attr_init(&mode->kas[j].ka.attr);
 			mode->kas[j].cpu = cpu;
 			mode->kas[j].ka.attr.mode = 0644;
 			mode->kas[j].ka.show = msm_pm_mode_attr_show;
@@ -807,10 +808,15 @@ bool msm_pm_verify_cpu_pc(unsigned int cpu)
 {
 	enum msm_pm_sleep_mode mode = per_cpu(msm_pm_last_slp_mode, cpu);
 
-	if (msm_pm_slp_sts)
-		if ((mode == MSM_PM_SLEEP_MODE_POWER_COLLAPSE) ||
-			(mode == MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE))
+	if (msm_pm_slp_sts) {
+		int acc_sts = __raw_readl(msm_pm_slp_sts->base_addr
+					+ cpu * msm_pm_slp_sts->cpu_offset);
+
+		if ((acc_sts & msm_pm_slp_sts->mask) &&
+			((mode == MSM_PM_SLEEP_MODE_POWER_COLLAPSE) ||
+			 (mode == MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE)))
 			return true;
+	}
 
 	return false;
 }

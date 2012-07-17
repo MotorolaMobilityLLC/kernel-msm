@@ -31,6 +31,7 @@ struct msm_rotator_img_info {
 	unsigned char   rotations;
 	int enable;
 	unsigned int	downscale_ratio;
+	unsigned int secure;
 };
 
 struct msm_rotator_data_info {
@@ -55,6 +56,7 @@ struct msm_rotator_platform_data {
 #ifdef CONFIG_MSM_BUS_SCALING
 	struct msm_bus_scale_pdata *bus_scale_table;
 #endif
+	char rot_iommu_split_domain;
 };
 #endif
 

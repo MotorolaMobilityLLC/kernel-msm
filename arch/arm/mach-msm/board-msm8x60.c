@@ -5368,6 +5368,7 @@ static struct platform_device *surf_devices[] __initdata = {
 	&msm8660_device_watchdog,
 	&msm_device_tz_log,
 	&msm_rtb_device,
+	&msm8660_iommu_domain_device,
 };
 
 #ifdef CONFIG_ION_MSM
@@ -9787,6 +9788,7 @@ static struct msm_panel_common_pdata mdp_pdata = {
 #else
 	.mem_hid = MEMTYPE_EBI1,
 #endif
+	.mdp_iommu_split_domain = 0,
 };
 
 static void __init reserve_mdp_memory(void)

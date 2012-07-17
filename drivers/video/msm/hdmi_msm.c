@@ -767,8 +767,17 @@ static void hdmi_msm_hpd_off(void);
 
 static void hdmi_msm_hpd_state_work(struct work_struct *work)
 {
-	boolean hpd_state;
+	boolean hpd_state = false;
 	char *envp[2];
+
+	if (hdmi_msm_state->is_mhl_enabled) {
+		/*
+		 * HPD will be controlled from MHL
+		 */
+		envp[0] = "";
+		DEV_DBG("%s %u\n", envp[0], hpd_state);
+		return;
+	}
 
 	if (!hdmi_msm_state || !hdmi_msm_state->hpd_initialized ||
 		!MSM_HDMI_BASE) {
@@ -4282,14 +4291,14 @@ static int hdmi_msm_hpd_on(bool trigger_handler)
 
 	if (trigger_handler) {
 		/* Set HPD state machine: ensure at least 2 readouts */
+		mutex_lock(&external_common_state_hpd_mutex);
 		mutex_lock(&hdmi_msm_state_mutex);
 		hdmi_msm_state->hpd_stable = 0;
 		hdmi_msm_state->hpd_prev_state = TRUE;
-		mutex_lock(&external_common_state_hpd_mutex);
 		external_common_state->hpd_state = FALSE;
-		mutex_unlock(&external_common_state_hpd_mutex);
 		hdmi_msm_state->hpd_cable_chg_detected = TRUE;
 		mutex_unlock(&hdmi_msm_state_mutex);
+		mutex_unlock(&external_common_state_hpd_mutex);
 		mod_timer(&hdmi_msm_state->hpd_state_timer,
 			jiffies + HZ/2);
 	}
@@ -4309,12 +4318,17 @@ error1:
 static int hdmi_msm_power_ctrl(boolean enable)
 {
 	int rc = 0;
-	if (!hdmi_prim_display && !external_common_state->hpd_feature_on)
-		return 0;
 
 	if (enable) {
-		DEV_DBG("%s: Turning HPD ciruitry on\n", __func__);
-		rc = hdmi_msm_hpd_on(true);
+		/*
+		 * Enable HPD only if the UI option is on or if
+		 * HDMI is configured as the primary display
+		 */
+		if (hdmi_prim_display ||
+			external_common_state->hpd_feature_on) {
+			DEV_DBG("%s: Turning HPD ciruitry on\n", __func__);
+			rc = hdmi_msm_hpd_on(true);
+		}
 	} else {
 		DEV_DBG("%s: Turning HPD ciruitry off\n", __func__);
 		hdmi_msm_hpd_off();
@@ -4363,6 +4377,50 @@ static int hdmi_msm_power_on(struct platform_device *pdev)
 		hdmi_msm_is_dvi_mode() ? "ON" : "OFF");
 	return 0;
 }
+
+void mhl_connect_api(boolean on)
+{
+	char *envp[2];
+
+	/* Simulating a HPD event based on MHL event */
+	hdmi_msm_state->hpd_cable_chg_detected = FALSE;
+	/* QDSP OFF preceding the HPD event notification */
+	switch_set_state(&external_common_state->sdev, 0);
+	DEV_INFO("Hdmi state switch to %d: %s\n",
+		 external_common_state->sdev.state,  __func__);
+	if (on) {
+		hdmi_msm_read_edid();
+		if (hdmi_msm_has_hdcp())
+			hdmi_msm_state->reauth = FALSE ;
+		/* Build EDID table */
+		hdmi_msm_turn_on();
+		DEV_INFO("HDMI HPD: sense CONNECTED: send ONLINE\n");
+		kobject_uevent(external_common_state->uevent_kobj,
+			       KOBJ_ONLINE);
+		hdmi_msm_hdcp_enable();
+		envp[0] = 0;
+		if (!hdmi_msm_has_hdcp()) {
+			/* Send Audio for HDMI Compliance Cases*/
+			envp[0] = "HDCP_STATE=PASS";
+			envp[1] = NULL;
+			DEV_INFO("HDMI HPD: sense : send HDCP_PASS\n");
+			kobject_uevent_env(external_common_state->uevent_kobj,
+					   KOBJ_CHANGE, envp);
+			switch_set_state(&external_common_state->sdev, 1);
+			DEV_INFO("Hdmi state switch to %d: %s\n",
+				 external_common_state->sdev.state, __func__);
+		}
+	} else {
+		DEV_INFO("HDMI HPD: sense DISCONNECTED: send OFFLINE\n"
+			);
+		kobject_uevent(external_common_state->uevent_kobj,
+			       KOBJ_OFFLINE);
+		switch_set_state(&external_common_state->sdev, 0);
+		DEV_INFO("Hdmi state switch to %d: %s\n",
+			 external_common_state->sdev.state,  __func__);
+	}
+}
+EXPORT_SYMBOL(mhl_connect_api);
 
 /* Note that power-off will also be called when the cable-remove event is
  * processed on the user-space and as a result the framebuffer is powered
@@ -4469,6 +4527,8 @@ static int __devinit hdmi_msm_probe(struct platform_device *pdev)
 		goto error;
 	}
 
+	hdmi_msm_state->is_mhl_enabled = hdmi_msm_state->pd->is_mhl_enabled;
+
 	rc = check_hdmi_features();
 	if (rc) {
 		DEV_ERR("Init FAILED: check_hdmi_features rc=%d\n", rc);
@@ -4536,10 +4596,11 @@ static int __devinit hdmi_msm_probe(struct platform_device *pdev)
 	} else
 		DEV_ERR("Init FAILED: failed to add fb device\n");
 
-	rc = hdmi_msm_hpd_on(true);
-	if (rc)
-		goto error;
-	DEV_INFO("HDMI HPD: ON\n");
+	if (hdmi_prim_display) {
+		rc = hdmi_msm_hpd_on(true);
+		if (rc)
+			goto error;
+	}
 
 	if (hdmi_msm_has_hdcp()) {
 		/* Don't Set Encryption in case of non HDCP builds */
@@ -4686,7 +4747,7 @@ static int __init hdmi_msm_init(void)
 	}
 
 	external_common_state = &hdmi_msm_state->common;
-	external_common_state->video_resolution = HDMI_VFRMT_1920x1080p60_16_9;
+	external_common_state->video_resolution = HDMI_VFRMT_1920x1080p30_16_9;
 #ifdef CONFIG_FB_MSM_HDMI_3D
 	external_common_state->switch_3d = hdmi_msm_switch_3d;
 #endif

@@ -289,10 +289,6 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 				KGSL_IOMMU_CONTEXT_USER))
 		goto done;
 
-	cmds += __adreno_add_idle_indirect_cmds(cmds,
-		device->mmu.setstate_memory.gpuaddr +
-		KGSL_IOMMU_SETSTATE_NOP_OFFSET);
-
 	if (cpu_is_msm8960())
 		cmds += adreno_add_change_mh_phys_limit_cmds(cmds, 0xFFFFF000,
 					device->mmu.setstate_memory.gpuaddr +
@@ -361,9 +357,10 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 		*cmds++ = cp_type3_packet(CP_INVALIDATE_STATE, 1);
 		*cmds++ = 0x7fff;
 
-		cmds += __adreno_add_idle_indirect_cmds(cmds,
-			device->mmu.setstate_memory.gpuaddr +
-			KGSL_IOMMU_SETSTATE_NOP_OFFSET);
+		if (flags & KGSL_MMUFLAGS_TLBFLUSH)
+			cmds += __adreno_add_idle_indirect_cmds(cmds,
+				device->mmu.setstate_memory.gpuaddr +
+				KGSL_IOMMU_SETSTATE_NOP_OFFSET);
 	}
 	if (flags & KGSL_MMUFLAGS_TLBFLUSH) {
 		/*
@@ -376,6 +373,11 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 				KGSL_IOMMU_CTX_SHIFT) +
 				KGSL_IOMMU_CTX_TLBIASID);
 			*cmds++ = kgsl_mmu_get_hwpagetable_asid(&device->mmu);
+
+			cmds += __adreno_add_idle_indirect_cmds(cmds,
+			device->mmu.setstate_memory.gpuaddr +
+			KGSL_IOMMU_SETSTATE_NOP_OFFSET);
+
 			cmds += adreno_add_read_cmds(device, cmds,
 				reg_map_desc[i]->gpuaddr +
 				(KGSL_IOMMU_CONTEXT_USER <<
@@ -570,7 +572,7 @@ a3xx_getchipid(struct kgsl_device *device)
 			patchid = 1;
 		else
 			patchid = 0;
-	} else if (cpu_is_msm8930()) {
+	} else if (cpu_is_msm8930() || cpu_is_msm8930aa() || cpu_is_msm8627()) {
 
 		/* A305 */
 		majorid = 0;
@@ -636,7 +638,8 @@ a2xx_getchipid(struct kgsl_device *device)
 static unsigned int
 adreno_getchipid(struct kgsl_device *device)
 {
-	if (cpu_is_apq8064() || cpu_is_msm8930())
+	if (cpu_is_apq8064() || cpu_is_msm8930() || cpu_is_msm8930aa() ||
+	    cpu_is_msm8627())
 		return a3xx_getchipid(device);
 	else
 		return a2xx_getchipid(device);
@@ -738,7 +741,8 @@ static int adreno_start(struct kgsl_device *device, unsigned int init_ram)
 	int status = -EINVAL;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 
-	kgsl_pwrctrl_set_state(device, KGSL_STATE_INIT);
+	if (KGSL_STATE_DUMP_AND_RECOVER != device->state)
+		kgsl_pwrctrl_set_state(device, KGSL_STATE_INIT);
 
 	/* Power up the device */
 	kgsl_pwrctrl_enable(device);
@@ -782,7 +786,10 @@ static int adreno_start(struct kgsl_device *device, unsigned int init_ram)
 
 	status = adreno_ringbuffer_start(&adreno_dev->ringbuffer, init_ram);
 	if (status == 0) {
-		mod_timer(&device->idle_timer, jiffies + FIRST_TIMEOUT);
+		/* While recovery is on we do not want timer to
+		 * fire and attempt to change any device state */
+		if (KGSL_STATE_DUMP_AND_RECOVER != device->state)
+			mod_timer(&device->idle_timer, jiffies + FIRST_TIMEOUT);
 		return 0;
 	}
 
@@ -931,6 +938,8 @@ adreno_recover_hang(struct kgsl_device *device)
 	/* Restore valid commands in ringbuffer */
 	adreno_ringbuffer_restore(rb, rb_buffer, num_rb_contents);
 	rb->timestamp[KGSL_MEMSTORE_GLOBAL] = timestamp;
+	/* wait for idle */
+	ret = adreno_idle(device, KGSL_TIMEOUT_DEFAULT);
 done:
 	vfree(rb_buffer);
 	return ret;
@@ -1198,7 +1207,8 @@ retry:
 
 err:
 	KGSL_DRV_ERR(device, "spun too long waiting for RB to idle\n");
-	if (!adreno_dump_and_recover(device)) {
+	if (KGSL_STATE_DUMP_AND_RECOVER != device->state &&
+		!adreno_dump_and_recover(device)) {
 		wait_time = jiffies + wait_timeout;
 		goto retry;
 	}
@@ -1592,10 +1602,9 @@ hang_dump:
 		      context_id, timestamp, context_id, ts_issued,
 		      adreno_dev->ringbuffer.wptr);
 	if (!adreno_dump_and_recover(device)) {
-		/* wait for idle after recovery as the
-		 * timestamp that this process wanted
-		 * to wait on may be invalid */
-		if (!adreno_idle(device, KGSL_TIMEOUT_DEFAULT))
+		/* The timestamp that this process wanted
+		 * to wait on may be invalid or expired now
+		 * after successful recovery */
 			status = 0;
 	}
 done:

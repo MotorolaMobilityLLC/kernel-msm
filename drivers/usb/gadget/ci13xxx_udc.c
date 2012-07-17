@@ -1957,6 +1957,8 @@ __acquires(mEp->lock)
 				mReq->req.length)
 				mEpTemp = &_udc->ep0in;
 			mReq->req.complete(&mEpTemp->ep, &mReq->req);
+			if (mEp->type == USB_ENDPOINT_XFER_CONTROL)
+				mReq->req.complete = NULL;
 			spin_lock(mEp->lock);
 		}
 	}
@@ -2803,7 +2805,12 @@ static int ep_dequeue(struct usb_ep *ep, struct usb_request *req)
 
 	dbg_event(_usb_addr(mEp), "DEQUEUE", 0);
 
-	hw_ep_flush(mEp->num, mEp->dir);
+	if ((mEp->type == USB_ENDPOINT_XFER_CONTROL)) {
+		hw_ep_flush(_udc->ep0out.num, RX);
+		hw_ep_flush(_udc->ep0in.num, TX);
+	} else {
+		hw_ep_flush(mEp->num, mEp->dir);
+	}
 
 	/* pop request */
 	list_del_init(&mReq->queue);
@@ -2821,6 +2828,8 @@ static int ep_dequeue(struct usb_ep *ep, struct usb_request *req)
 				mReq->req.length)
 			mEpTemp = &_udc->ep0in;
 		mReq->req.complete(&mEpTemp->ep, &mReq->req);
+		if (mEp->type == USB_ENDPOINT_XFER_CONTROL)
+			mReq->req.complete = NULL;
 		spin_lock(mEp->lock);
 	}
 
@@ -3334,6 +3343,8 @@ static int udc_probe(struct ci13xxx_udc_driver *driver, struct device *dev,
 		void __iomem *regs)
 {
 	struct ci13xxx *udc;
+	struct ci13xxx_platform_data *pdata =
+		(struct ci13xxx_platform_data *)(dev->platform_data);
 	int retval = 0, i;
 
 	trace("%p, %p, %p", dev, regs, driver->name);
@@ -3361,6 +3372,9 @@ static int udc_probe(struct ci13xxx_udc_driver *driver, struct device *dev,
 
 	INIT_LIST_HEAD(&udc->gadget.ep_list);
 	udc->gadget.ep0 = NULL;
+
+	if (pdata)
+		udc->gadget.usb_core_id = pdata->usb_core_id;
 
 	dev_set_name(&udc->gadget.dev, "gadget");
 	udc->gadget.dev.dma_mask = dev->dma_mask;

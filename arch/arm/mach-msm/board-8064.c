@@ -124,6 +124,10 @@
 #define QFPROM_RAW_FEAT_CONFIG_ROW0_MSB     (MSM_QFPROM_BASE + 0x23c)
 #define QFPROM_RAW_OEM_CONFIG_ROW0_LSB      (MSM_QFPROM_BASE + 0x220)
 
+/* PCIE AXI address space */
+#define PCIE_AXI_BAR_PHYS   0x08000000
+#define PCIE_AXI_BAR_SIZE   SZ_128M
+
 /* PCIe power enable pmic gpio */
 #define PCIE_PWR_EN_PMIC_GPIO 13
 #define PCIE_RST_N_PMIC_MPP 1
@@ -2063,6 +2067,8 @@ static struct msm_pcie_gpio_info_t msm_pcie_gpio_info[MSM_PCIE_MAX_GPIO] = {
 
 static struct msm_pcie_platform msm_pcie_platform_data = {
 	.gpio = msm_pcie_gpio_info,
+	.axi_addr = PCIE_AXI_BAR_PHYS,
+	.axi_size = PCIE_AXI_BAR_SIZE,
 };
 
 static int __init mpq8064_pcie_enabled(void)
@@ -2969,6 +2975,7 @@ static void __init apq8064_rumi3_init(void)
 {
 	apq8064_common_init();
 	ethernet_init();
+	msm_rotator_set_split_iommu_domain();
 	platform_add_devices(rumi3_devices, ARRAY_SIZE(rumi3_devices));
 	spi_register_board_info(spi_board_info, ARRAY_SIZE(spi_board_info));
 }
@@ -2981,10 +2988,12 @@ static void __init apq8064_cdp_init(void)
 	if (machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd() ||
 		machine_is_mpq8064_dtv()) {
 		enable_avc_i2c_bus();
+		msm_rotator_set_split_iommu_domain();
 		platform_add_devices(mpq_devices, ARRAY_SIZE(mpq_devices));
 		mpq8064_pcie_init();
 	} else {
 		ethernet_init();
+		msm_rotator_set_split_iommu_domain();
 		platform_add_devices(cdp_devices, ARRAY_SIZE(cdp_devices));
 		spi_register_board_info(spi_board_info,
 						ARRAY_SIZE(spi_board_info));

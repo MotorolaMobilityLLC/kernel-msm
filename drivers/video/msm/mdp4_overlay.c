@@ -126,7 +126,7 @@ int mdp4_overlay_iommu_map_buf(int mem_id,
 	pr_debug("mixer %u, pipe %u, plane %u\n", pipe->mixer_num,
 		pipe->pipe_ndx, plane);
 	if (ion_map_iommu(display_iclient, *srcp_ihdl,
-		DISPLAY_DOMAIN, GEN_POOL, SZ_4K, 0, start,
+		DISPLAY_READ_DOMAIN, GEN_POOL, SZ_4K, 0, start,
 		len, 0, ION_IOMMU_UNMAP_DELAYED)) {
 		ion_free(display_iclient, *srcp_ihdl);
 		pr_err("ion_map_iommu() failed\n");
@@ -140,7 +140,7 @@ int mdp4_overlay_iommu_map_buf(int mem_id,
 		if (iom_pipe_info->prev_ihdl[plane]) {
 			ion_unmap_iommu(display_iclient,
 				iom_pipe_info->prev_ihdl[plane],
-				DISPLAY_DOMAIN, GEN_POOL);
+				DISPLAY_READ_DOMAIN, GEN_POOL);
 			ion_free(display_iclient,
 				iom_pipe_info->prev_ihdl[plane]);
 			pr_debug("Previous: mixer %u, pipe %u, plane %u, "
@@ -175,7 +175,7 @@ void mdp4_iommu_unmap(struct mdp4_overlay_pipe *pipe)
 					iom_pipe_info->prev_ihdl[i]);
 				ion_unmap_iommu(display_iclient,
 					iom_pipe_info->prev_ihdl[i],
-					DISPLAY_DOMAIN, GEN_POOL);
+					DISPLAY_READ_DOMAIN, GEN_POOL);
 				ion_free(display_iclient,
 					iom_pipe_info->prev_ihdl[i]);
 				iom_pipe_info->prev_ihdl[i] = NULL;
@@ -191,7 +191,7 @@ void mdp4_iommu_unmap(struct mdp4_overlay_pipe *pipe)
 						iom_pipe_info->ihdl[i]);
 					ion_unmap_iommu(display_iclient,
 						iom_pipe_info->ihdl[i],
-						DISPLAY_DOMAIN, GEN_POOL);
+						DISPLAY_READ_DOMAIN, GEN_POOL);
 					ion_free(display_iclient,
 						iom_pipe_info->ihdl[i]);
 					iom_pipe_info->ihdl[i] = NULL;
@@ -346,7 +346,7 @@ void mdp4_overlay_dmae_xy(struct mdp4_overlay_pipe *pipe)
 
 	MDP_OUTP(MDP_BASE + 0xb0004,
 			(pipe->src_height << 16 | pipe->src_width));
-	if (pipe->blt_addr) {
+	if (pipe->dma_blt_addr) {
 		uint32 off, bpp;
 #ifdef BLT_RGB565
 		bpp = 2; /* overlay ouput is RGB565 */
@@ -356,7 +356,7 @@ void mdp4_overlay_dmae_xy(struct mdp4_overlay_pipe *pipe)
 		off = 0;
 		if (pipe->ov_cnt & 0x01)
 			off = pipe->src_height * pipe->src_width * bpp;
-		MDP_OUTP(MDP_BASE + 0xb0008, pipe->blt_addr + off);
+		MDP_OUTP(MDP_BASE + 0xb0008, pipe->dma_blt_addr + off);
 		/* RGB888, output of overlay blending */
 		MDP_OUTP(MDP_BASE + 0xb000c, pipe->src_width * bpp);
 	} else {
@@ -424,10 +424,7 @@ void mdp4_overlay_dmap_xy(struct mdp4_overlay_pipe *pipe)
 	if (mdp_is_in_isr == FALSE)
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 
-	/* dma_p source */
-	MDP_OUTP(MDP_BASE + 0x90004,
-			(pipe->src_height << 16 | pipe->src_width));
-	if (pipe->blt_addr) {
+	if (pipe->dma_blt_addr) {
 #ifdef BLT_RGB565
 		bpp = 2; /* overlay ouput is RGB565 */
 #else
@@ -436,13 +433,16 @@ void mdp4_overlay_dmap_xy(struct mdp4_overlay_pipe *pipe)
 		off = 0;
 		if (pipe->dmap_cnt & 0x01)
 			off = pipe->src_height * pipe->src_width * bpp;
-		MDP_OUTP(MDP_BASE + 0x90008, pipe->blt_addr + off);
+		MDP_OUTP(MDP_BASE + 0x90008, pipe->dma_blt_addr + off);
 		/* RGB888, output of overlay blending */
 		MDP_OUTP(MDP_BASE + 0x9000c, pipe->src_width * bpp);
 	} else {
 		MDP_OUTP(MDP_BASE + 0x90008, pipe->srcp0_addr);
 		MDP_OUTP(MDP_BASE + 0x9000c, pipe->srcp0_ystride);
 	}
+	/* dma_p source */
+	MDP_OUTP(MDP_BASE + 0x90004,
+			(pipe->src_height << 16 | pipe->src_width));
 
 	/* dma_p dest */
 	MDP_OUTP(MDP_BASE + 0x90010, (pipe->dst_y << 16 | pipe->dst_x));
@@ -1321,7 +1321,7 @@ void mdp4_overlayproc_cfg(struct mdp4_overlay_pipe *pipe)
 	/*
 	 * BLT support both primary and external external
 	 */
-	if (pipe->blt_addr) {
+	if (pipe->ov_blt_addr) {
 		int off, bpp;
 #ifdef BLT_RGB565
 		bpp = 2;  /* overlay ouput is RGB565 */
@@ -1338,10 +1338,10 @@ void mdp4_overlayproc_cfg(struct mdp4_overlay_pipe *pipe)
 			if (pipe->ov_cnt & 0x01)
 				off = pipe->src_height * pipe->src_width * bpp;
 
-			outpdw(overlay_base + 0x000c, pipe->blt_addr + off);
+			outpdw(overlay_base + 0x000c, pipe->ov_blt_addr + off);
 			/* overlay ouput is RGB888 */
 			outpdw(overlay_base + 0x0010, pipe->src_width * bpp);
-			outpdw(overlay_base + 0x001c, pipe->blt_addr + off);
+			outpdw(overlay_base + 0x001c, pipe->ov_blt_addr + off);
 			/* MDDI - BLT + on demand */
 			outpdw(overlay_base + 0x0004, 0x08);
 
@@ -1361,19 +1361,19 @@ void mdp4_overlayproc_cfg(struct mdp4_overlay_pipe *pipe)
 							pipe->src_width * bpp;
 
 				outpdw(overlay_base + 0x000c,
-						pipe->blt_addr + off);
+						pipe->ov_blt_addr + off);
 				/* overlay ouput is RGB888 */
 				outpdw(overlay_base + 0x0010,
 					((pipe->src_width << 16) |
 					 pipe->src_width));
 				outpdw(overlay_base + 0x001c,
-						pipe->blt_addr + off);
+						pipe->ov_blt_addr + off);
 				off = pipe->src_height * pipe->src_width;
 				/* align chroma to 2k address */
 				off = (off + 2047) & ~2047;
 				/* UV plane adress */
 				outpdw(overlay_base + 0x0020,
-						pipe->blt_addr + off);
+						pipe->ov_blt_addr + off);
 				/* MDDI - BLT + on demand */
 				outpdw(overlay_base + 0x0004, 0x08);
 				/* pseudo planar + writeback */
@@ -3122,7 +3122,6 @@ int mdp4_overlay_play(struct fb_info *info, struct msmfb_overlay_data *req)
 		/* primary interface */
 		ctrl->mixer0_played++;
 		if (ctrl->panel_mode & MDP4_PANEL_LCDC) {
-			mdp4_overlay_reg_flush(pipe, 0);
 			mdp4_overlay_lcdc_start();
 			mdp4_overlay_lcdc_vsync_push(mfd, pipe);
 			if (!mfd->use_ov0_blt &&
@@ -3131,7 +3130,6 @@ int mdp4_overlay_play(struct fb_info *info, struct msmfb_overlay_data *req)
 		}
 #ifdef CONFIG_FB_MSM_MIPI_DSI
 		else if (ctrl->panel_mode & MDP4_PANEL_DSI_VIDEO) {
-			mdp4_overlay_reg_flush(pipe, 0);
 			mdp4_overlay_dsi_video_start();
 			mdp4_overlay_dsi_video_vsync_push(mfd, pipe);
 			if (!mfd->use_ov0_blt &&
@@ -3184,29 +3182,54 @@ end:
 	return ret;
 }
 
-static struct {
+struct msm_iommu_ctx {
 	char *name;
 	int  domain;
-} msm_iommu_ctx_names[] = {
-	/* Display */
+};
+
+static struct msm_iommu_ctx msm_iommu_ctx_names[] = {
+	/* Display read*/
 	{
 		.name = "mdp_port0_cb0",
-		.domain = DISPLAY_DOMAIN,
+		.domain = DISPLAY_READ_DOMAIN,
 	},
-	/* Display */
+	/* Display read*/
 	{
 		.name = "mdp_port0_cb1",
-		.domain = DISPLAY_DOMAIN,
+		.domain = DISPLAY_READ_DOMAIN,
 	},
-	/* Display */
+	/* Display write */
 	{
 		.name = "mdp_port1_cb0",
-		.domain = DISPLAY_DOMAIN,
+		.domain = DISPLAY_READ_DOMAIN,
 	},
-	/* Display */
+	/* Display write */
 	{
 		.name = "mdp_port1_cb1",
-		.domain = DISPLAY_DOMAIN,
+		.domain = DISPLAY_READ_DOMAIN,
+	},
+};
+
+static struct msm_iommu_ctx msm_iommu_split_ctx_names[] = {
+	/* Display read*/
+	{
+		.name = "mdp_port0_cb0",
+		.domain = DISPLAY_READ_DOMAIN,
+	},
+	/* Display read*/
+	{
+		.name = "mdp_port0_cb1",
+		.domain = DISPLAY_WRITE_DOMAIN,
+	},
+	/* Display write */
+	{
+		.name = "mdp_port1_cb0",
+		.domain = DISPLAY_READ_DOMAIN,
+	},
+	/* Display write */
+	{
+		.name = "mdp_port1_cb1",
+		.domain = DISPLAY_WRITE_DOMAIN,
 	},
 };
 
@@ -3220,19 +3243,28 @@ static int mdp_iommu_fault_handler(struct iommu_domain *domain,
 void mdp4_iommu_attach(void)
 {
 	static int done;
+	struct msm_iommu_ctx *ctx_names;
 	struct iommu_domain *domain;
-	int i;
+	int i, arr_size;
 
 	if (!done) {
-		for (i = 0; i < ARRAY_SIZE(msm_iommu_ctx_names); i++) {
+		if (mdp_iommu_split_domain) {
+			ctx_names = msm_iommu_split_ctx_names;
+			arr_size = ARRAY_SIZE(msm_iommu_split_ctx_names);
+		} else {
+			ctx_names = msm_iommu_ctx_names;
+			arr_size = ARRAY_SIZE(msm_iommu_ctx_names);
+		}
+
+		for (i = 0; i < arr_size; i++) {
 			int domain_idx;
 			struct device *ctx = msm_iommu_get_ctx(
-				msm_iommu_ctx_names[i].name);
+				ctx_names[i].name);
 
 			if (!ctx)
 				continue;
 
-			domain_idx = msm_iommu_ctx_names[i].domain;
+			domain_idx = ctx_names[i].domain;
 
 			domain = msm_get_iommu_domain(domain_idx);
 			if (!domain)
@@ -3244,7 +3276,7 @@ void mdp4_iommu_attach(void)
 				WARN(1, "%s: could not attach domain %d to context %s."
 					" iommu programming will not occur.\n",
 					__func__, domain_idx,
-					msm_iommu_ctx_names[i].name);
+					ctx_names[i].name);
 				continue;
 			}
 		}

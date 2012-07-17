@@ -12,11 +12,6 @@
 
 /include/ "skeleton.dtsi"
 /include/ "msm8974_pm.dtsi"
-/include/ "msm-pm8x41-rpm-regulator.dtsi"
-/include/ "msm-pm8841.dtsi"
-/include/ "msm-pm8941.dtsi"
-/include/ "msm8974-regulator.dtsi"
-/include/ "msm8974-gpio.dtsi"
 /include/ "msm8974-iommu.dtsi"
 /include/ "msm-gdsc.dtsi"
 
@@ -173,7 +168,7 @@
 		qcom,min-clk-gear = <10>;
 	};
 
-	qcom,spmi@fc4c0000 {
+	spmi_bus: qcom,spmi@fc4c0000 {
 		cell-index = <0>;
 		compatible = "qcom,spmi-pmic-arb";
 		reg = <0xfc4cf000 0x1000>,
@@ -423,7 +418,7 @@
 		compatible = "qcom,msm_ocmem";
 	};
 
-	qcom,rpm-smd {
+	rpm_bus: qcom,rpm-smd {
 		compatible = "qcom,rpm-smd";
 		rpm-channel-name = "rpm_requests";
 		rpm-channel-type = <15>; /* SMD_APPS_RPM */
@@ -461,4 +456,26 @@
 		qcom,pet-time = <10000>;
 		qcom,ipi-ping = <1>;
 	};
+
+	qcom,tz-log@fe805720 {
+		compatible = "qcom,tz-log";
+		reg = <0xfe805720 0x1000>;
+	};
+
+	qcom,venus@fdce0000 {
+		compatible = "qcom,pil-venus";
+		reg = <0xfdce0000 0x4000>,
+		      <0xfdc80208 0x8>;
+		vdd-supply = <&gdsc_venus>;
+
+		qcom,firmware-name = "venus";
+		qcom,firmware-min-paddr = <0xF500000>;
+		qcom,firmware-max-paddr = <0xFA00000>;
+	};
 };
+
+/include/ "msm-pm8x41-rpm-regulator.dtsi"
+/include/ "msm-pm8841.dtsi"
+/include/ "msm-pm8941.dtsi"
+/include/ "msm8974-regulator.dtsi"
+/include/ "msm8974-gpio.dtsi"

@@ -64,6 +64,7 @@ config ARCH_MSM7X30
 	select MSM_PROC_COMM_REGULATOR
 	select MULTI_IRQ_HANDLER
 	select MSM_PM2 if PM
+	select HOLES_IN_ZONE if SPARSEMEM
 
 config ARCH_QSD8X50
 	bool "QSD8X50"
@@ -1911,6 +1912,13 @@ config MSM_PIL_VIDC
 	help
 	  Support for authenticating the video core image.
 
+config MSM_PIL_VENUS
+	tristate "VENUS (Video) Boot Support"
+	depends on MSM_PIL
+	help
+	  Support for booting and shutting down the VENUS processor (Video).
+	  Venus is the Video subsystem processor used for video codecs.
+
 config MSM_PIL_GSS
 	tristate "GSS (Coretx A5) Boot Support"
 	depends on MSM_PIL
@@ -2076,6 +2084,14 @@ config MSM_WATCHDOG
 		core 0's watchdog, and reset the entire SoC if it times out. It does
 		not run during the bootup process, so it will not catch any early
 		lockups.
+
+config MSM_WATCHDOG_V2
+	bool "MSM Watchdog Support"
+	help
+		This enables the watchdog module. It causes kernel panic if the
+		watchdog times out. It allows for detection of cpu hangs and
+		deadlocks. It does not run during the bootup process, so it will
+		not catch any early lockups.
 
 config MSM_DLOAD_MODE
 	bool "Enable download mode on crashes"

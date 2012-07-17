@@ -79,6 +79,7 @@ obj-$(CONFIG_MSM_PIL_MODEM) += pil-modem.o
 obj-$(CONFIG_MSM_PIL_DSPS) += pil-dsps.o
 obj-$(CONFIG_MSM_PIL_GSS) += pil-gss.o
 obj-$(CONFIG_MSM_PIL_PRONTO) += pil-pronto.o
+obj-$(CONFIG_MSM_PIL_VENUS) += pil-venus.o
 obj-$(CONFIG_ARCH_QSD8X50) += sirc.o
 obj-$(CONFIG_ARCH_FSM9XXX) += sirc-fsm9xxx.o
 obj-$(CONFIG_MSM_FIQ_SUPPORT) += fiq_glue.o
@@ -225,6 +226,7 @@ obj-$(CONFIG_ARCH_FSM9XXX) += restart-fsm9xxx.o xo-fsm9xxx.o
 
 obj-$(CONFIG_MSM_WATCHDOG) += msm_watchdog.o
 obj-$(CONFIG_MSM_WATCHDOG) += msm_watchdog_asm.o
+obj-$(CONFIG_MSM_WATCHDOG_V2) += msm_watchdog_v2.o
 obj-$(CONFIG_MACH_MSM8X60_RUMI3) += board-msm8x60.o
 obj-$(CONFIG_MACH_MSM8X60_SIM) += board-msm8x60.o
 obj-$(CONFIG_MACH_MSM8X60_SURF) += board-msm8x60.o
@@ -301,6 +303,7 @@ obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-rfkill.o msm_vibrator.o
 obj-$(CONFIG_MACH_LGE) += lge/
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
+CFLAGS_board-9615.o += -Idrivers/usb/gadget
 
 obj-$(CONFIG_ARCH_FSM9XXX) += board-fsm9xxx.o
 

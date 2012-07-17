@@ -131,6 +131,8 @@ struct isp_msg_stats {
 	uint32_t    id;
 	uint32_t    buffer;
 	uint32_t    frameCounter;
+	int32_t     buf_idx;
+	int32_t     fd;
 };
 
 struct msm_free_buf {
@@ -161,6 +163,7 @@ enum msm_camera_v4l2_subdev_notify {
 	NOTIFY_VFE_BUF_EVT, /* arg = struct msm_vfe_resp */
 	NOTIFY_ISPIF_STREAM, /* arg = enable parameter for s_stream */
 	NOTIFY_VPE_MSG_EVT,
+	NOTIFY_VFE_CAMIF_ERROR,
 	NOTIFY_PCLK_CHANGE, /* arg = pclk */
 	NOTIFY_CSIPHY_CFG, /* arg = msm_camera_csiphy_params */
 	NOTIFY_CSID_CFG, /* arg = msm_camera_csid_params */
