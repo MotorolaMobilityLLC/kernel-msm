@@ -274,6 +274,7 @@ struct diagchar_dev {
 	unsigned char *buf_in_smux;
 	int in_busy_smux;
 	int diag_smux_enabled;
+	int smux_connected;
 	struct diag_request *write_ptr_mdm;
 	/* HSIC variables */
 	int hsic_ch;
