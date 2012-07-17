@@ -1256,6 +1256,8 @@ static ssize_t show_fw_info(struct lge_touch_data *ts, char *buf)
 			ts->fw_info.product_id);
 	ret += sprintf(buf+ret, "fw_version       = %s\n",
 			ts->fw_info.fw_version);
+	ret += sprintf(buf+ret, "fw_image_product_id = %s\n",
+			ts->fw_info.fw_image_product_id);
 	ret += sprintf(buf+ret, "fw_image_version = %s\n",
 			ts->fw_info.fw_image_version);
 	return ret;

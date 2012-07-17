@@ -34,15 +34,6 @@
 #include <mach/gpio.h>
 #include <linux/slab.h>
 #include <linux/jiffies.h>
-//#include "SynaImage.h"
-//#include "TM2000-E010-PR1084335-DS4_120211.h"
-
-
-/////////////////////////////////////
-//#ifdef CONFIG_TS_INFO_CLASS
-//#include "ts_class.h"
-//#endif
-
 #include <linux/syscalls.h>
 #include <linux/uaccess.h>
 #include <linux/earlysuspend.h>
@@ -164,44 +155,9 @@ int FirmwareUpgrade(struct synaptics_ts_data *ts, const char* fw_path){
 
 	TOUCH_INFO_MSG("fw_image_confid_id = %s\n", fw_image_config_id);
 
-	switch( ts->ic_panel_type ) {
-
-		case IC7020_G2_H_PTN:
-			if (fw_image_config_id[0] == 'E' && (int)simple_strtoul(&fw_image_config_id[1], NULL, 10) >= 27) {
-				TOUCH_INFO_MSG("Firmware Upgrade / IC is 7020, "
-						"H pattern, panel is G2.\n");
-			} else {
-				TOUCH_ERR_MSG("Firmware Version mismatch / "
-						"IC is 7020, H pattern, panel is G2.\n");
-				ret = -1;
-				goto fw_version_mismatch;
-			}
-			break;
-
-		case IC7020_GFF_H_PTN:
-			if (fw_image_config_id[0] == 'E' && (int)simple_strtoul(&fw_image_config_id[1], NULL, 10) >= 1) {
-				TOUCH_INFO_MSG("Firmware Upgrade / IC is 7020, "
-						"H pattern, panel is GFF.\n");
-			} else {
-				TOUCH_ERR_MSG("Firmware Version mismatch / "
-						"IC is 7020, H pattern, panel is GFF.\n");
-				ret = -1;
-				goto fw_version_mismatch;
-			}
-			break;
-
-
-		default:
-			TOUCH_ERR_MSG("DO NOT UPDATE EXCEPT 7020 G2 H pattern\n");
-			ret = -1;
-			goto fw_version_mismatch;
-			break;
-	}
-
 	//CompleteReflash(ts);
 	CompleteReflash_Lockdown(ts);
 
-fw_version_mismatch:
 	if (unlikely(fw_path[0] != 0))
 		kfree(my_image_bin);
 
