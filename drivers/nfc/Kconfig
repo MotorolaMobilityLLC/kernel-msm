@@ -39,3 +39,10 @@ config NFC_WILINK
 	  into the kernel or say M to compile it as module.
 
 endmenu
+
+config BCM2079X
+	bool "Broadcom 2079X NFC Controller Driver"
+	depends on I2C
+	select CRC_CCITT
+	help
+	  Broadcom 2079X Near Field Communication controller support.
