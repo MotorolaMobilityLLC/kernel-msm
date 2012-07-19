@@ -291,6 +291,10 @@ static struct pm8921_chg_chip *the_chip;
 
 static struct pm8xxx_adc_arb_btm_param btm_config;
 
+#ifdef CONFIG_WIRELESS_CHARGER
+static int wireless_charging;
+#endif
+
 static int pm_chg_masked_write(struct pm8921_chg_chip *chip, u16 addr,
 							u8 mask, u8 val)
 {
@@ -1551,6 +1555,12 @@ static int pm_batt_power_get_property(struct power_supply *psy,
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
+#ifdef CONFIG_WIRELESS_CHARGER
+		if(wireless_charging) {
+			val->intval = 1;	//POWER_SUPPLY_STATUS_CHARGING
+			break;
+		}
+#endif
 		val->intval = get_prop_batt_status(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
@@ -1953,6 +1963,22 @@ int pm8921_set_usb_power_supply_type(enum power_supply_type type)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(pm8921_set_usb_power_supply_type);
+
+#ifdef CONFIG_WIRELESS_CHARGER
+int set_wireless_power_supply_control(int value)
+{
+	if (!the_chip) {
+		pr_err("called before init\n");
+		return -EINVAL;
+	}
+
+	wireless_charging = value;
+	power_supply_changed(&the_chip->batt_psy);
+
+	return 0;
+}
+EXPORT_SYMBOL(set_wireless_power_supply_control);
+#endif
 
 int pm8921_batt_temperature(void)
 {
