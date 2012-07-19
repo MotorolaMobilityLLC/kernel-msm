@@ -244,7 +244,7 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
             )
     {
         //call sme API to start remain on channel.
-        if (eHAL_STATUS_SUCCESS != WLANSAP_RemainOnChannel(
+        if (VOS_STATUS_SUCCESS != WLANSAP_RemainOnChannel(
                           (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
                           chan->hw_value, duration,
                           wlan_hdd_remain_on_channel_callback, pAdapter ))
@@ -258,7 +258,7 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
         }
 
 
-        if (eHAL_STATUS_SUCCESS != WLANSAP_RegisterMgmtFrame(
+        if (VOS_STATUS_SUCCESS != WLANSAP_RegisterMgmtFrame(
                     (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
                     (SIR_MAC_MGMT_FRAME << 2) | ( SIR_MAC_MGMT_PROBE_REQ << 4),
                     NULL, 0 ))
@@ -580,7 +580,7 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
               ( WLAN_HDD_P2P_GO == pAdapter->device_mode )
             )
      {
-        if( eHAL_STATUS_SUCCESS !=
+        if( VOS_STATUS_SUCCESS !=
              WLANSAP_SendAction( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
                                   buf, len ) )
         {
@@ -916,9 +916,9 @@ int wlan_hdd_add_virtual_intf( struct wiphy *wiphy, char *name,
 
     if(hdd_get_adapter(pHddCtx, wlan_hdd_get_session_type(type)) != NULL)
     {
-	  hddLog(VOS_TRACE_LEVEL_ERROR,"%s: Interface type %d already exists. Two"
+       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: Interface type %d already exists. Two"
                      "interfaces of same type are not supported currently.",__func__, type);
-	  return NULL;
+       return NULL;
     }
 
     if ( pHddCtx->cfg_ini->isP2pDeviceAddrAdministrated )

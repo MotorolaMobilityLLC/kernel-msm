@@ -2730,7 +2730,8 @@ eHalStatus csrResetCountryCodeInformation(tpAniSirGlobal pMac, tANI_BOOLEAN *pfR
     //Use the Country code and domain from EEPROM
     palCopyMemory(pMac->hHdd, pMac->scan.countryCodeCurrent, pMac->scan.countryCodeDefault, WNI_CFG_COUNTRY_CODE_LEN);
     csrSetRegulatoryDomain(pMac, pMac->scan.domainIdCurrent, &fRestart);
-    if(eANI_BOOLEAN_FALSE == fRestart || (pfRestartNeeded == NULL))
+    if( ((eANI_BOOLEAN_FALSE == fRestart) || (pfRestartNeeded == NULL) )
+          && !csrIsInfraConnected(pMac))
     {
         //Only reset the country info if we don't need to restart
         csrResetCountryInformation(pMac, eANI_BOOLEAN_TRUE);
@@ -4622,11 +4623,8 @@ eHalStatus csrProcessScanCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
     // Transition to Scanning state...
     for( i = 0; i < CSR_ROAM_SESSION_MAX; i++ )
     {
-       if(CSR_IS_SESSION_VALID(pMac, i))
-       {
       pCommand->u.scanCmd.lastRoamState[i] = csrRoamStateChange( pMac, eCSR_ROAMING_STATE_SCANNING, i);
       smsLog( pMac, LOG3, "starting SCAN command from %d state.... reason is %d\n", pCommand->u.scanCmd.lastRoamState[i], pCommand->u.scanCmd.reason );
-       }
     }
 
     switch(pCommand->u.scanCmd.reason)
@@ -5653,8 +5651,7 @@ void csrReleaseScanCommand(tpAniSirGlobal pMac, tSmeCmd *pCommand, eCsrScanStatu
     tANI_U32 i;
     for( i = 0; i < CSR_ROAM_SESSION_MAX; i++ )
     {
-       if(CSR_IS_SESSION_VALID(pMac, i))
-           csrRoamStateChange( pMac, pCommand->u.scanCmd.lastRoamState[i], i);
+         csrRoamStateChange( pMac, pCommand->u.scanCmd.lastRoamState[i], i);
     }
 
         csrScanCallCallback(pMac, pCommand, scanStatus);

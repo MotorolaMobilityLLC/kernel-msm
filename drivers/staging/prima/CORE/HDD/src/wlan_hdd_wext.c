@@ -2062,7 +2062,7 @@ static int iw_softap_set_channel_range( struct net_device *dev,
                                         int endChannel,
                                         int band)
 {
-    eHalStatus status;
+    VOS_STATUS status;
     int ret = 0;
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
@@ -2601,7 +2601,7 @@ static int iw_set_encode(struct net_device *dev,struct iw_request_info *info,
        {
            INIT_COMPLETION(pAdapter->disconnect_comp_var);
            status = sme_RoamDisconnect( WLAN_HDD_GET_HAL_CTX(pAdapter), pAdapter->sessionId, eCSR_DISCONNECT_REASON_UNSPECIFIED );
-           if(VOS_STATUS_SUCCESS == status)
+           if(eHAL_STATUS_SUCCESS == status)
                  wait_for_completion_interruptible_timeout(&pAdapter->disconnect_comp_var,
                      msecs_to_jiffies(WLAN_WAIT_TIME_DISCONNECT));
        }
@@ -3074,7 +3074,7 @@ static int iw_set_mlme(struct net_device *dev,
                 INIT_COMPLETION(pAdapter->disconnect_comp_var);
                 status = sme_RoamDisconnect( WLAN_HDD_GET_HAL_CTX(pAdapter), pAdapter->sessionId,reason);
 
-                if(VOS_STATUS_SUCCESS == status)
+                if(eHAL_STATUS_SUCCESS == status)
                     wait_for_completion_interruptible_timeout(&pAdapter->disconnect_comp_var,
                         msecs_to_jiffies(WLAN_WAIT_TIME_DISCONNECT));
                 else
@@ -5327,7 +5327,7 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
              status = sme_RoamDisconnect( WLAN_HDD_GET_HAL_CTX(pAdapter),
              pAdapter->sessionId, eCSR_DISCONNECT_REASON_UNSPECIFIED);
 
-             if ( VOS_STATUS_SUCCESS != status)
+             if ( eHAL_STATUS_SUCCESS != status)
              {
                  hddLog(VOS_TRACE_LEVEL_ERROR,
                          "%s csrRoamDisconnect failure, returned %d \n",

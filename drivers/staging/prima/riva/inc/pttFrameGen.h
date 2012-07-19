@@ -80,12 +80,12 @@ typedef PACKED_PRE struct PACKED_POST {
 typedef PACKED_PRE struct PACKED_POST {
    tANI_U32 legacy;             //11g OFDM preamble
    tANI_U32 gfSimo20;           //greenfield preamble
-   tANI_U32 gfMimo20;           //greenfield preamble
    tANI_U32 mmSimo20;           //mixed mode preamble
-   tANI_U32 mmMimo20;           //mixed mode preamble
-   tANI_U32 txbShort;
-   tANI_U32 txbLong;
-   tANI_U32 txbSlr;
+   tANI_U32 gfSimo40;           //greenfield preamble
+   tANI_U32 mmSimo40;           //mixed mode preamble
+   tANI_U32 txbShort;           //11b short
+   tANI_U32 txbLong;	        //11b long
+   tANI_U32 acSimo204080;       //11ac SIMO 20,40,80
    tANI_U32 total;
 } sTxFrameCounters;
 

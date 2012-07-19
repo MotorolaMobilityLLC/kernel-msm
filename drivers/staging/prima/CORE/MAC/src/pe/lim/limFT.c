@@ -712,6 +712,10 @@ void limFTSetupAuthSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
         pftSessionEntry->isFastTransitionEnabled = psessionEntry->isFastTransitionEnabled;
 #endif
+
+#ifdef FEATURE_WLAN_LFR
+        pftSessionEntry->isFastRoamIniFeatureEnabled = psessionEntry->isFastRoamIniFeatureEnabled; 
+#endif
         limFTPrepareAddBssReq( pMac, FALSE, pftSessionEntry, 
             pMac->ft.ftPEContext.pFTPreAuthReq->pbssDescription );
         pMac->ft.ftPEContext.pftSessionEntry = pftSessionEntry;
@@ -1408,6 +1412,9 @@ int limisFastTransitionRequired(tpAniSirGlobal pMac, int sessionId)
            (((pMac->lim.gpSession[sessionId].is11Rconnection) 
 #ifdef FEATURE_WLAN_CCX
            || (pMac->lim.gpSession[sessionId].isCCXconnection)
+#endif
+#ifdef FEATURE_WLAN_LFR
+           || (pMac->lim.gpSession[sessionId].isFastRoamIniFeatureEnabled)
 #endif
            )&& 
             pMac->lim.gpSession[sessionId].isFastTransitionEnabled))

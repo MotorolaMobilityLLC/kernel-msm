@@ -514,6 +514,7 @@ static wpt_uint8      gWDIInitialized = eWLAN_PAL_FALSE;
 const wpt_uint8 szTransportChName[] = "WLAN_CTRL"; 
 
 /*Helper routine for retrieving the PAL Context from WDI*/
+WPT_INLINE 
 void* WDI_GET_PAL_CTX( void )
 {
   return gWDICb.pPALContext; 
@@ -1346,6 +1347,7 @@ WDI_Stop
 )
 {
   WDI_EventInfoType      wdiEventData;
+  WDI_ControlBlockType*  pWDICtx = &gWDICb;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
   /*------------------------------------------------------------------------
@@ -1358,6 +1360,15 @@ WDI_Stop
 
     return WDI_STATUS_E_NOT_ALLOWED; 
   }
+
+  /*Access to the global state must be locked before cleaning */
+  wpalMutexAcquire(&pWDICtx->wptMutex);
+
+  /*Clear all pending request*/
+  WDI_ClearPendingRequests(pWDICtx);
+
+  /*We have completed cleaning unlock now*/
+  wpalMutexRelease(&pWDICtx->wptMutex);
 
   /* Free the global variables */
   wpalMemoryFree(gpHostWlanFeatCaps);
@@ -6302,7 +6313,7 @@ WDI_ProcessStopReq
   wpt_uint8*             pSendBuffer         = NULL; 
   wpt_uint16             usDataOffset        = 0;
   wpt_uint16             usSendSize          = 0;
-
+  wpt_status             status;
   tHalMacStopReqMsg      halStopReq; 
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -6355,7 +6366,8 @@ WDI_ProcessStopReq
      WDI_STATableStop(pWDICtx);
 
      /* Reset the event to be not signalled */
-     if(WDI_STATUS_SUCCESS != wpalEventReset(&pWDICtx->setPowerStateEvent) )
+     status = wpalEventReset(&pWDICtx->setPowerStateEvent);
+     if (eWLAN_PAL_STATUS_SUCCESS != status)
      {
         WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                   "WDI Init failed to reset power state event");
@@ -6368,8 +6380,9 @@ WDI_ProcessStopReq
      /*
       * Wait for the event to be set once the ACK comes back from DXE 
       */
-     if(WDI_STATUS_SUCCESS != wpalEventWait(&pWDICtx->setPowerStateEvent, 
-                                            WDI_SET_POWER_STATE_TIMEOUT))
+     status = wpalEventWait(&pWDICtx->setPowerStateEvent, 
+                            WDI_SET_POWER_STATE_TIMEOUT);
+     if (eWLAN_PAL_STATUS_SUCCESS != status)
      {
         WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                   "WDI Init failed to wait on an event");
@@ -11398,6 +11411,7 @@ WDI_ProcessEnterImpsReq
   WDI_EventInfoType*     pEventData
 )
 {
+   wpt_status               wptStatus; 
    WDI_EnterImpsRspCb       wdiEnterImpsRspCb = NULL;
    wpt_uint8*               pSendBuffer         = NULL; 
    wpt_uint16               usDataOffset        = 0;
@@ -11433,7 +11447,8 @@ WDI_ProcessEnterImpsReq
    }
 
    /* Reset the event to be not signalled */
-   if(WDI_STATUS_SUCCESS != wpalEventReset(&pWDICtx->setPowerStateEvent) )
+   wptStatus = wpalEventReset(&pWDICtx->setPowerStateEvent);
+   if ( eWLAN_PAL_STATUS_SUCCESS != wptStatus ) 
    {
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                 "WDI Init failed to reset an event");
@@ -11448,8 +11463,9 @@ WDI_ProcessEnterImpsReq
    /*
     * Wait for the event to be set once the ACK comes back from DXE 
     */
-   if(WDI_STATUS_SUCCESS != wpalEventWait(&pWDICtx->setPowerStateEvent, 
-                                          WDI_SET_POWER_STATE_TIMEOUT))
+   wptStatus = wpalEventWait(&pWDICtx->setPowerStateEvent, 
+                             WDI_SET_POWER_STATE_TIMEOUT);
+   if ( eWLAN_PAL_STATUS_SUCCESS != wptStatus ) 
    {
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                 "WDI Init failed to wait on an event");
@@ -11546,6 +11562,8 @@ WDI_ProcessEnterBmpsReq
    wpt_uint16               usDataOffset        = 0;
    wpt_uint16               usSendSize          = 0;
    tHalEnterBmpsReqParams   enterBmpsReq;
+   wpt_status               wptStatus; 
+
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
   /*-------------------------------------------------------------------------
@@ -11578,7 +11596,8 @@ WDI_ProcessEnterBmpsReq
    }
 
    /* Reset the event to be not signalled */
-   if(WDI_STATUS_SUCCESS != wpalEventReset(&pWDICtx->setPowerStateEvent) )
+   wptStatus = wpalEventReset(&pWDICtx->setPowerStateEvent);
+   if ( eWLAN_PAL_STATUS_SUCCESS != wptStatus )
    {
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                 "WDI Init failed to reset an event");
@@ -11593,8 +11612,9 @@ WDI_ProcessEnterBmpsReq
 /*
     * Wait for the event to be set once the ACK comes back from DXE 
     */
-   if(WDI_STATUS_SUCCESS != wpalEventWait(&pWDICtx->setPowerStateEvent, 
-                                          WDI_SET_POWER_STATE_TIMEOUT))
+   wptStatus = wpalEventWait(&pWDICtx->setPowerStateEvent, 
+                             WDI_SET_POWER_STATE_TIMEOUT);
+   if ( eWLAN_PAL_STATUS_SUCCESS != wptStatus )
    {
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                 "WDI Init failed to wait on an event");
@@ -14979,7 +14999,7 @@ WDI_ProcessAddBASessionRsp
 
   wdiBASessionRsp.wdiStatus = WDI_HAL_2_WDI_STATUS(halBASessionRsp.status);
 
-  if ( eHAL_STATUS_SUCCESS == wdiBASessionRsp.wdiStatus )
+  if ( WDI_STATUS_SUCCESS == wdiBASessionRsp.wdiStatus )
   {
     wdiBASessionRsp.ucBaDialogToken = halBASessionRsp.baDialogToken;
     wdiBASessionRsp.ucBaTID = halBASessionRsp.baTID;
@@ -15897,7 +15917,7 @@ WDI_ProcessAddBARsp
 
   wdiAddBARsp.wdiStatus = WDI_HAL_2_WDI_STATUS(halAddBARsp.status);
 
-  if ( eHAL_STATUS_SUCCESS == wdiAddBARsp.wdiStatus )
+  if ( WDI_STATUS_SUCCESS == wdiAddBARsp.wdiStatus )
   {
     wdiAddBARsp.ucBaDialogToken = halAddBARsp.baDialogToken;
   }
@@ -18625,6 +18645,7 @@ WDI_SendMsg
   WDI_ResponseEnumType   wdiExpectedResponse
 )
 {
+  WDI_Status wdiStatus = WDI_STATUS_SUCCESS;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
   /*------------------------------------------------------------------------
@@ -18641,43 +18662,44 @@ WDI_SendMsg
    -----------------------------------------------------------------------*/
    if ( 0 != WCTS_SendMessage( pWDICtx->wctsHandle, (void*)pSendBuffer, usSendSize ))
    {
-      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+     WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
                 "Failed to send message over the bus - catastrophic failure");
 
-      /*Inform Upper MAC that the request could not go through*/
-      if ( NULL != pWDICtx->wdiReqStatusCB )
-      {
-        pWDICtx->wdiReqStatusCB( WDI_STATUS_E_FAILURE, 
-                                 pWDICtx->pReqStatusUserData ); 
-        //Setting the wdiReqStatusCB and pReqStatusUserData to NULL
-        //just in case the following request fails to set them.
-        pWDICtx->wdiReqStatusCB = NULL;
-        pWDICtx->pReqStatusUserData = NULL;
-      }
-
-      /*Free the buffer to prevent memory leak*/
-      /*wpalMemoryFree( pSendBuffer);
-        WCTS API takes ownership of this pointer and it is therefore in charge
-        of freeing it
-      **/
-      WDI_DetectedDeviceError( pWDICtx, WDI_ERR_TRANSPORT_FAILURE);
-      return WDI_STATUS_E_FAILURE;
+     wdiStatus = WDI_STATUS_E_FAILURE;
    }
 
-   /*Inform Upper MAC that the request went through*/
+  /*Check if originator provided a request status callback*/
    if ( NULL != pWDICtx->wdiReqStatusCB )
    {
-     pWDICtx->wdiReqStatusCB( WDI_STATUS_SUCCESS, pWDICtx->pReqStatusUserData); 
-     //Setting the wdiReqStatusCB and pReqStatusUserData to NULL
-     //just in case the following request fails to set them.
+     /*Inform originator whether request went through or not*/
+     WDI_ReqStatusCb callback = pWDICtx->wdiReqStatusCB; 
+     void *callbackContext = pWDICtx->pReqStatusUserData; 
      pWDICtx->wdiReqStatusCB = NULL;
      pWDICtx->pReqStatusUserData = NULL;
+     callback(wdiStatus, callbackContext);
+     
+     /*For WDI requests which have registered a request callback,
+     inform the WDA caller of the same via setting the return value
+     (wdiStatus) to WDI_STATUS_PENDING. This makes sure that WDA doesnt
+     end up repeating the functonality in the req callback  for the
+     WDI_STATUS_E_FAILURE case*/
+     if (wdiStatus == WDI_STATUS_E_FAILURE)
+       wdiStatus = WDI_STATUS_PENDING;
    }
 
+  if ( wdiStatus == WDI_STATUS_SUCCESS )
+  {
    /*Start timer for the expected response */
    wpalTimerStart(&pWDICtx->wptResponseTimer, WDI_RESPONSE_TIMEOUT);
+  }
+  else
+  {
+     /*Inform upper stack layers that a transport fatal error occured*/
+     WDI_DetectedDeviceError(pWDICtx, WDI_ERR_TRANSPORT_FAILURE);
+  }
 
-   return WDI_STATUS_SUCCESS; 
+  return wdiStatus;
+
 }/*WDI_SendMsg*/
 
 

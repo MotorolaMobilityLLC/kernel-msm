@@ -1852,7 +1852,7 @@ void pmmEnterUapsdResponseHandler(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
         return;
     }
 
-    if(pUapsdRspMsg->status == eSIR_SUCCESS)
+    if(pUapsdRspMsg->status == eHAL_STATUS_SUCCESS)
     {
         PELOGW(pmmLog(pMac, LOGW,
             FL("pmmUapsd: Received successful response from HAL to enter UAPSD mode \n"));)

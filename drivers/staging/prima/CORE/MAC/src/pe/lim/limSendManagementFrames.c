@@ -411,7 +411,7 @@ tSirRetStatus limGetAddnIeForProbeResp(tpAniSirGlobal pMac,
         }
 
         if( (palAllocateMemory(pMac->hHdd, (void**)&tempbuf,
-             left)) != eSIR_SUCCESS)
+             left)) != eHAL_STATUS_SUCCESS)
         {
             PELOGE(limLog(pMac, LOGE,
                  FL("Unable to allocate memory to store addn IE"));)
@@ -668,7 +668,7 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     if (addnIEPresent)
     {
         if( (palAllocateMemory(pMac->hHdd, (void**)&addIE, 
-             WNI_CFG_PROBE_RSP_ADDNIE_DATA1_LEN*3 )) != eSIR_SUCCESS)
+             WNI_CFG_PROBE_RSP_ADDNIE_DATA1_LEN*3 )) != eHAL_STATUS_SUCCESS)
         {
             PELOGE(limLog(pMac, LOGE,
                  FL("Unable to allocate memory to store addn IE"));)
@@ -845,7 +845,7 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     if ( addnIEPresent )
     {
         if (palCopyMemory ( pMac->hHdd, pFrame+sizeof(tSirMacMgmtHdr)+nPayload,
-             &addIE[0], totalAddnIeLen) != eSIR_SUCCESS)
+             &addIE[0], totalAddnIeLen) != eHAL_STATUS_SUCCESS)
         {
             limLog(pMac, LOGP, FL("Additional Probe Rp IE request failed while Appending: %x"),halstatus);
             palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
@@ -861,7 +861,7 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     if (noaLen != 0)
     {
         if (palCopyMemory ( pMac->hHdd, &pFrame[nBytes - (total_noaLen)],
-                                       &noaIe[0], total_noaLen) != eSIR_SUCCESS)
+                            &noaIe[0], total_noaLen) != eHAL_STATUS_SUCCESS)
         {
             limLog(pMac, LOGE,
                   FL("Not able to insert NoA because of length constraint"));
@@ -1686,7 +1686,7 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
     if ( addnIEPresent )
     {
         if (palCopyMemory ( pMac->hHdd, pFrame+sizeof(tSirMacMgmtHdr)+nPayload,
-                           &addIE[0], addnIELen ) != eSIR_SUCCESS)
+                           &addIE[0], addnIELen ) != eHAL_STATUS_SUCCESS)
         {
             limLog(pMac, LOGP, FL("Additional Assoc IEs request failed while Appending: %x\n"),halstatus);
             palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
@@ -2488,7 +2488,8 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
         nPayload += nAddIELen;
     }
 
-    if( (palAllocateMemory(pMac->hHdd, (void**)&psessionEntry->assocReq, nPayload)) != eSIR_SUCCESS)
+    if( (palAllocateMemory(pMac->hHdd, (void**)&psessionEntry->assocReq,
+                           nPayload)) != eHAL_STATUS_SUCCESS)
     {
         PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store assoc request"));)
     }
@@ -2863,16 +2864,17 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
         nPayload += nAddIELen;
     }
 
-    if( (palAllocateMemory(pMac->hHdd, (void**)&psessionEntry->assocReq, nPayload)) != eSIR_SUCCESS)
+    if( (palAllocateMemory(pMac->hHdd, (void**)&psessionEntry->assocReq,
+                           nPayload)) != eHAL_STATUS_SUCCESS)
     {
         PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store assoc request"));)
-     }
-     else
-     {
+    }
+    else
+    {
         //Store the Assoc request. This is sent to csr/hdd in join cnf response. 
         palCopyMemory(pMac->hHdd, psessionEntry->assocReq, pFrame + sizeof(tSirMacMgmtHdr), nPayload);
         psessionEntry->assocReqLen = nPayload;
-     }
+    }
 
     if (psessionEntry->is11Rconnection)
     {
@@ -3176,16 +3178,17 @@ limSendReassocReqMgmtFrame(tpAniSirGlobal     pMac,
         nPayload += nAddIELen;
     }
 
-    if( (palAllocateMemory(pMac->hHdd, (void**)&psessionEntry->assocReq, nPayload)) != eSIR_SUCCESS)
+    if( (palAllocateMemory(pMac->hHdd, (void**)&psessionEntry->assocReq,
+                           nPayload)) != eHAL_STATUS_SUCCESS)
     {
         PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store assoc request"));)
-     }
-     else
-     {
+    }
+    else
+    {
         //Store the Assoc request. This is sent to csr/hdd in join cnf response. 
         palCopyMemory(pMac->hHdd, psessionEntry->assocReq, pFrame + sizeof(tSirMacMgmtHdr), nPayload);
         psessionEntry->assocReqLen = nPayload;
-     }
+    }
 
     if( ( SIR_BAND_5_GHZ == limGetRFBand(psessionEntry->currentOperChannel))
 #ifdef WLAN_FEATURE_P2P

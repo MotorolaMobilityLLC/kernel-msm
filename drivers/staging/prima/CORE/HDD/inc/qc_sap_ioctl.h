@@ -237,10 +237,12 @@ typedef struct
 
 enum { 
     QCSAP_PARAM_MAX_ASSOC = 1,
+    QCSAP_PARAM_GET_WLAN_DBG = 4,
     QCSAP_PARAM_MODULE_DOWN_IND = 5,
     QCSAP_PARAM_CLR_ACL = 6,
     QCSAP_PARAM_ACL_MODE = 7,
     QCSAP_PARAM_HIDE_SSID = 8,
+    QCSAP_PARAM_AUTO_CHANNEL = 9,
 };
 
 int iw_softap_get_channel_list(struct net_device *dev, 

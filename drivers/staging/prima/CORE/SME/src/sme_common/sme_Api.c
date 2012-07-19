@@ -6350,3 +6350,39 @@ void sme_featureCapsExchange( tHalHandle hHal)
     v_CONTEXT_t vosContext = vos_get_global_context(VOS_MODULE_ID_SME, NULL);
     WDA_featureCapsExchange(vosContext);
 }
+
+
+/* ---------------------------------------------------------------------------
+
+    \fn sme_GetDefaultCountryCode
+
+    \brief Get the default country code from NV
+
+    \param  hHal
+    \param  pCountry
+    \- return eHalStatus
+
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_GetDefaultCountryCodeFrmNv(tHalHandle hHal, tANI_U8 *pCountry)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    return csrGetDefaultCountryCodeFrmNv(pMac, pCountry);
+}
+
+/* ---------------------------------------------------------------------------
+
+    \fn sme_GetCurrentCountryCode
+
+    \brief Get the current country code
+
+    \param  hHal
+    \param  pCountry
+    \- return eHalStatus
+
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_GetCurrentCountryCode(tHalHandle hHal, tANI_U8 *pCountry)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    return csrGetCurrentCountryCode(pMac, pCountry);
+}
+
