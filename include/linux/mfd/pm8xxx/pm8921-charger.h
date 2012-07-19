@@ -288,6 +288,9 @@ int pm8921_usb_ovp_disable(int disable);
  * batfet this will return 0.
  */
 int pm8921_is_batfet_closed(void);
+#ifdef CONFIG_WIRELESS_CHARGER
+int set_wireless_power_supply_control(int value);
+#endif
 #else
 static inline void pm8921_charger_vbus_draw(unsigned int mA)
 {

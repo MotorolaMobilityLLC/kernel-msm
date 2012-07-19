@@ -440,4 +440,17 @@ config LGE_PM_BATTERY_ID_CHECKER
 	bool "LGE battery id checker"
 	help
 	  LGE Battery Id Checker Configuration
+
+config WIRELESS_CHARGER
+	bool "Wireless Charger Configuration"
+	default n
+	help
+	  wireless charger configuration
+
+config BQ51051B_CHARGER
+	bool "TI BQ51051B Wireless Charging control Driver"
+	depends on WIRELESS_CHARGER
+	help
+	  TI BQ51051B wireless charging control driver
+
 endif # POWER_SUPPLY
