@@ -100,7 +100,7 @@ static int mipi_lgit_lcd_on(struct platform_device *pdev)
 
 	ret = lgit_external_dsv_onoff(1);
 	if (ret < 0) {
-		pr_err("%s: failed to turn on exteranl dsv\n", __func__);
+		pr_err("%s: failed to turn on external dsv\n", __func__);
 		return ret;
 	}
 
@@ -148,7 +148,7 @@ static int mipi_lgit_lcd_off(struct platform_device *pdev)
 
 	ret = lgit_external_dsv_onoff(0);
 	if (ret < 0) {
-		pr_err("%s: failed to turn off exteranl dsv\n", __func__);
+		pr_err("%s: failed to turn off external dsv\n", __func__);
 		return ret;
 	}
 
@@ -164,6 +164,11 @@ static int mipi_lgit_lcd_off(struct platform_device *pdev)
 
 	pr_info("%s finished\n", __func__);
 	return 0;
+}
+
+static int mipi_lgit_backlight_on_status(void)
+{
+	return (mipi_lgit_pdata->bl_on_status());
 }
 
 static void mipi_lgit_set_backlight_board(struct msm_fb_data_type *mfd)
@@ -199,6 +204,7 @@ static struct msm_fb_panel_data lgit_panel_data = {
 	.on = mipi_lgit_lcd_on,
 	.off = mipi_lgit_lcd_off,
 	.set_backlight = mipi_lgit_set_backlight_board,
+	.get_backlight_on_status = mipi_lgit_backlight_on_status,
 };
 
 static int ch_used[3];
