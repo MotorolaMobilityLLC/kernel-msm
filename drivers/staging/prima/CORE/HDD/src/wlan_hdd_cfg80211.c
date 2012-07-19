@@ -5355,7 +5355,7 @@ static int wlan_hdd_cfg80211_add_station(struct wiphy *wiphy,
 
 #ifdef FEATURE_WLAN_LFR
 static int wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *dev,
-				struct cfg80211_pmksa *pmksa)
+            struct cfg80211_pmksa *pmksa)
 {
 #define MAX_PMKSAIDS_IN_CACHE 8
     static tPmkidCacheInfo PMKIDCache[MAX_PMKSAIDS_IN_CACHE]; // HDD Local cache
@@ -5442,7 +5442,7 @@ static int wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *d
 
 
 static int wlan_hdd_cfg80211_del_pmksa(struct wiphy *wiphy, struct net_device *dev,
-				struct cfg80211_pmksa *pmksa)
+            struct cfg80211_pmksa *pmksa)
 {
     // TODO: Implement this later.
     return 0;

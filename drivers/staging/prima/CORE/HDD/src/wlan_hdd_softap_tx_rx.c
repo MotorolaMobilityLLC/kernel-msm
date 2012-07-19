@@ -1497,7 +1497,7 @@ VOS_STATUS hdd_softap_stop_bss( hdd_adapter_t *pAdapter)
 
     vosStatus = hdd_softap_Deregister_BC_STA( pAdapter);
 
-    if (!HAL_STATUS_SUCCESS(vosStatus))
+    if (!VOS_IS_STATUS_SUCCESS(vosStatus))
     {
         VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
                    "%s: Failed to deregister BC sta Id %d", __FUNCTION__, (WLAN_HDD_GET_AP_CTX_PTR(pAdapter))->uBCStaId);
@@ -1508,7 +1508,7 @@ VOS_STATUS hdd_softap_stop_bss( hdd_adapter_t *pAdapter)
         if (pAdapter->aStaInfo[staId].isUsed)// This excludes BC sta as it is already deregistered
             vosStatus = hdd_softap_DeregisterSTA( pAdapter, staId);
 
-        if (!HAL_STATUS_SUCCESS(vosStatus))
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
         {
             VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
                        "%s: Failed to deregister sta Id %d", __FUNCTION__, staId);
@@ -1546,7 +1546,7 @@ VOS_STATUS hdd_softap_change_STA_state( hdd_adapter_t *pAdapter, v_MACADDR_t *pD
         return VOS_STATUS_E_FAILURE;
     }
 #else
-    if (eHAL_STATUS_SUCCESS != hdd_softap_GetStaId(pAdapter, pDestMacAddress, &ucSTAId))
+    if (VOS_STATUS_SUCCESS != hdd_softap_GetStaId(pAdapter, pDestMacAddress, &ucSTAId))
     {
         VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
                     "%s: Failed to find right station", __FUNCTION__);
@@ -1565,7 +1565,7 @@ VOS_STATUS hdd_softap_change_STA_state( hdd_adapter_t *pAdapter, v_MACADDR_t *pD
     VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
                    "%s: change station to state %d succeed", __FUNCTION__, state);
 
-    if (eHAL_STATUS_SUCCESS == vosStatus)
+    if (VOS_STATUS_SUCCESS == vosStatus)
     {
        pAdapter->aStaInfo[ucSTAId].tlSTAState = WLANTL_STA_AUTHENTICATED;
     }

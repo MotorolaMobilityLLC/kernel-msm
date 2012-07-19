@@ -1219,6 +1219,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
         pMac->roam.configParam.isFastTransitionEnabled = pParam->isFastTransitionEnabled;
+        pMac->roam.configParam.RoamRssiDiff = pParam->RoamRssiDiff;
 #endif
 
 #ifdef FEATURE_WLAN_LFR 
@@ -1758,7 +1759,8 @@ void csrRoamRemoveDuplicateCommand(tpAniSirGlobal pMac, tANI_U32 sessionId, tSme
                     eCsrHddIssued == pCommand->u.roamCmd.roamReason))) 
                 ||
             //below the pCommand is NULL
-            ( (sessionId == pDupCommand->sessionId) && (eCsrRoamCommandRoam == pDupCommand->command) &&
+            ( (sessionId == pDupCommand->sessionId) &&
+              (eSmeCommandRoam == pDupCommand->command) &&
                  ((eCsrForcedDisassoc == eRoamReason) ||
                     (eCsrHddIssued == eRoamReason))
                )
@@ -8651,7 +8653,7 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
                                 csrRoamLinkUp(pMac, pSession->connectedProfile.bssid);
                             }
                         }
-                        if( eSIR_SUCCESS == pRsp->statusCode )
+                        if( eSIR_SME_SUCCESS == pRsp->statusCode )
                         {
                             palCopyMemory( pMac, &roamInfo.peerMac, &pRsp->peerMacAddr, sizeof(tCsrBssid) );
                             //Make sure we install the GTK before indicating to HDD as authenticated
@@ -8748,7 +8750,7 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
                         }
 #endif //FEATURE_WLAN_DIAG_SUPPORT_CSR
 
-                        if( eSIR_SUCCESS == pRsp->statusCode )
+                        if( eSIR_SME_SUCCESS == pRsp->statusCode )
                         {
                             palCopyMemory( pMac, &roamInfo.peerMac, &pRsp->peerMacAddr, sizeof(tCsrBssid) );
                             result = eCSR_ROAM_RESULT_NONE;
@@ -11295,6 +11297,21 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         }
 #endif
 
+#ifdef FEATURE_WLAN_LFR
+        if(csrRoamIsFastRoamEnabled(pMac))
+        {
+            //legacy fast roaming enabled
+            dwTmp = pal_cpu_to_be32(TRUE); 
+            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
+            pBuf += sizeof(tAniBool);        
+        }
+        else
+        {
+            dwTmp = pal_cpu_to_be32(FALSE); 
+            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
+            pBuf += sizeof(tAniBool);        
+        }
+#endif
         //BssDesc
         csrPrepareJoinReassocReqBuffer( pMac, pBssDescription, pBuf, 
                 (tANI_U8)pProfile->uapsd_mask);
@@ -11708,6 +11725,21 @@ eHalStatus csrSendSmeReassocReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSi
         }
 #endif
 
+#ifdef FEATURE_WLAN_LFR
+        if(csrRoamIsFastRoamEnabled(pMac))
+        {
+            //legacy fast roaming enabled
+            dwTmp = pal_cpu_to_be32(TRUE); 
+            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
+            pBuf += sizeof(tAniBool);        
+        }
+        else
+        {
+            dwTmp = pal_cpu_to_be32(FALSE); 
+            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
+            pBuf += sizeof(tAniBool);        
+        }
+#endif
         csrPrepareJoinReassocReqBuffer( pMac, pBssDescription, pBuf, uapsd_mask);
         
 #ifndef WLAN_MDM_CODE_REDUCTION_OPT
@@ -13927,12 +13959,16 @@ eHalStatus csrGetStatistics(tpAniSirGlobal pMac, eCsrStatsRequesterType requeste
       {
          //clean up & return
          pStaEntry = GET_BASE_ADDR( pEntry, tCsrStatsClientReqInfo, link );
+         if(NULL != pStaEntry->pPeStaEntry)
+         {
          pStaEntry->pPeStaEntry->numClient--;
          //check if we need to delete the entry from peStatsReqList too
          if(!pStaEntry->pPeStaEntry->numClient)
          {
             csrRoamRemoveEntryFromPeStatsReqList(pMac, pStaEntry->pPeStaEntry);
          }
+         }
+
          //check if we need to stop the tl stats timer too 
          pMac->roam.tlStatsReqInfo.numClient--;
          if(!pMac->roam.tlStatsReqInfo.numClient)
@@ -15170,3 +15206,34 @@ static void csrSerDesUnpackDiassocRsp(tANI_U8 *pBuf, tSirSmeDisassocRsp *pRsp)
    }
 }
 
+eHalStatus csrGetDefaultCountryCodeFrmNv(tpAniSirGlobal pMac, tANI_U8 *pCountry)
+{
+   static uNvTables nvTables;
+   eHalStatus status = eHAL_STATUS_SUCCESS;
+   VOS_STATUS vosStatus = vos_nv_readDefaultCountryTable( &nvTables );
+
+   /* read the country code from NV and use it */
+   if ( VOS_IS_STATUS_SUCCESS(vosStatus) )
+   {
+      palCopyMemory( pMac->hHdd, pCountry,
+            nvTables.defaultCountryTable.countryCode,
+            WNI_CFG_COUNTRY_CODE_LEN );
+      return status;
+   }
+   else
+   {
+      palCopyMemory( pMac->hHdd, pCountry,
+            "XXX",
+            WNI_CFG_COUNTRY_CODE_LEN );
+      status = eHAL_STATUS_FAILURE;
+      return status;
+   }
+}
+
+eHalStatus csrGetCurrentCountryCode(tpAniSirGlobal pMac, tANI_U8 *pCountry)
+{
+   palCopyMemory( pMac->hHdd, pCountry,
+         pMac->scan.countryCode11d,
+         WNI_CFG_COUNTRY_CODE_LEN );
+   return eHAL_STATUS_SUCCESS;
+}

@@ -3999,3 +3999,16 @@ HAL
 V    RW    NP
 HAL
 1    255    20
+
+*
+* MC Addr List power control will be enabled if value is set to 1
+* 
+*
+*
+WNI_CFG_ENABLE_MC_ADDR_LIST  I   4   0
+V    RW    NP
+HAL
+0    1     0
+V    RW    NP
+HAL
+0    1     0

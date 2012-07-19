@@ -14,11 +14,6 @@ HAVE_CFG80211 := 0
 endif
 endif
 
-GCC_VERSION := $(shell $(CONFIG_SHELL) $(PWD)/scripts/gcc-version.sh $(CROSS_COMPILE)gcc)
-ifneq ($(GCC_VERSION),0404)
-EXTRA_CFLAGS += -Wno-enum-compare -Wno-switch
-endif
-
 INC_PRE := drivers/staging/prima
 
 ############ BAP ############

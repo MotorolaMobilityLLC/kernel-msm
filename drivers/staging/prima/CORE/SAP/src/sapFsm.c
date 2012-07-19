@@ -158,7 +158,7 @@ sapGotoChannelSel
 )
 {
     /* Initiate a SCAN request */
-    eSapStatus sapStatus = eSAP_STATUS_SUCCESS;
+    eHalStatus halStatus;
     tCsrScanRequest scanRequest;/* To be initialised if scan is required */
     v_U32_t    scanRequestID = 0;
     VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
@@ -231,15 +231,15 @@ sapGotoChannelSel
 
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, calling sme_ScanRequest", __FUNCTION__);
 
-        sapStatus = sme_ScanRequest(hHal,
+        halStatus = sme_ScanRequest(hHal,
                             0,//Not used in csrScanRequest
                             &scanRequest,
                             &scanRequestID,//, when ID == 0 11D scan/active scan with callback, min-maxChntime set in csrScanRequest()?
                             &WLANSAP_ScanCallback,//csrScanCompleteCallback callback,
                             sapContext);//void * pContext scanRequestID filled up
-        if (!VOS_IS_STATUS_SUCCESS(sapStatus))
+        if (eHAL_STATUS_SUCCESS != halStatus)
         {
-            VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "%s:sme_ScanRequest  fail %d!!!", __FUNCTION__, sapStatus);
+            VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "%s:sme_ScanRequest  fail %d!!!", __FUNCTION__, halStatus);
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "SoftAP Configuring for default channel, Ch= %d", sapContext->channel);
             /* In case of error, switch to default channel */
             sapContext->channel = SAP_DEFAULT_CHANNEL;

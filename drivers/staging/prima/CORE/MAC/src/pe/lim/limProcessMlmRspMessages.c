@@ -2083,6 +2083,7 @@ void limProcessApMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ)
 void limProcessBtAmpApMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession psessionEntry)
 {
     tSirResultCodes rc = eSIR_SME_SUCCESS;
+    tSirRetStatus status;
     tpDeleteBssParams pDelBss = (tpDeleteBssParams) limMsgQ->bodyptr;
     tSirMacAddr             nullBssid = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
@@ -2101,10 +2102,11 @@ void limProcessBtAmpApMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPES
     pMac->lim.gLimMlmState = eLIM_MLM_IDLE_STATE;
     if( eLIM_MLM_WT_DEL_BSS_RSP_STATE != psessionEntry->limMlmState)
     {
-            limLog( pMac, LOGE,
-                        FL( "Received unexpected WDA_DEL_BSS_RSP in state %X\n" ),psessionEntry->limMlmState);
-            rc = eSIR_SME_REFUSED;
-           goto end;
+        limLog(pMac, LOGE,
+               FL( "Received unexpected WDA_DEL_BSS_RSP in state %X" ),
+               psessionEntry->limMlmState);
+        rc = eSIR_SME_REFUSED;
+        goto end;
     }
     if (pDelBss->status != eHAL_STATUS_SUCCESS)
     {
@@ -2113,10 +2115,13 @@ void limProcessBtAmpApMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPES
         rc = eSIR_SME_STOP_BSS_FAILURE;
         goto end;
     }
-    rc = limSetLinkState(pMac, eSIR_LINK_IDLE_STATE, nullBssid,
+    status = limSetLinkState(pMac, eSIR_LINK_IDLE_STATE, nullBssid,
            psessionEntry->selfMacAddr, NULL, NULL);
-    if( rc != eSIR_SUCCESS )
+    if (status != eSIR_SUCCESS)
+    {
+        rc = eSIR_SME_REFUSED;
         goto end;
+    }
     /** Softmac may send all the buffered packets right after resuming the transmission hence
      * to occupy the medium during non channel occupancy period. So resume the transmission after
      * HAL gives back the response.
@@ -4296,12 +4301,12 @@ pMlmAddBACnf = (tpLimMlmAddBACnf) pMsgBuf;
     PELOGE(limLog( pMac, LOGE,
         FL( "Received unexpected ADDBA CNF when STA BA state is %d\n" ),
         curBaState );)
-      palFreeMemory( pMac->hHdd, (void *) pMsgBuf );
+    palFreeMemory( pMac->hHdd, (void *) pMsgBuf );
     return;
   }
   // Restore STA BA state
   LIM_SET_STA_BA_STATE(pSta, pMlmAddBACnf->baTID, eLIM_BA_STATE_IDLE);
-  if( eSIR_SUCCESS == pMlmAddBACnf->addBAResultCode )
+  if( eSIR_MAC_SUCCESS_STATUS == pMlmAddBACnf->addBAResultCode )
   {
     // Update LIM internal cache...
     if( eBA_RECIPIENT == pMlmAddBACnf->baDirection )
