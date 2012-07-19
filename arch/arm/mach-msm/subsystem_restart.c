@@ -647,7 +647,7 @@ static int __init ssr_init_soc_restart_orders(void)
 
 static int __init subsys_restart_init(void)
 {
-	restart_level = RESET_SOC;
+	restart_level = RESET_SUBSYS_INDEPENDENT;
 
 	ssr_wq = alloc_workqueue("ssr_wq", 0, 0);
 
