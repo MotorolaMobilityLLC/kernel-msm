@@ -187,6 +187,18 @@ void lm3530_lcd_backlight_set_level(int level)
 }
 EXPORT_SYMBOL(lm3530_lcd_backlight_set_level);
 
+void lm3530_lcd_backlight_pwm_disable(void)
+{
+	struct i2c_client *client = lm3530_i2c_client;
+	struct lm3530_device *dev = i2c_get_clientdata(client);
+
+	if (backlight_status == BL_OFF)
+		return;
+
+	lm3530_write_reg(client, 0x10, dev->max_current & 0x1F);
+}
+EXPORT_SYMBOL(lm3530_lcd_backlight_pwm_disable);
+
 static int bl_set_intensity(struct backlight_device *bd)
 {
 	lm3530_lcd_backlight_set_level(bd->props.brightness);
