@@ -725,7 +725,7 @@ static char power_setting3[13] = {0xC3, 0x00, 0x88, 0x03, 0x20, 0x00, 0x55, 0x4F
 static char power_setting4[6] =  {0xC4, 0x22, 0x24, 0x11, 0x11, 0x3D};
 static char power_setting5[4] =  {0xC5, 0x3B, 0x3B, 0x03};
 
-#if defined(CONFIG_BACKLIGHT_LM3530_CABC)
+#ifdef CONFIG_LGIT_VIDEO_WXGA_CABC
 static char cabc_set0[2] = {0x51, 0xFF};
 static char cabc_set1[2] = {0x5E, 0x00}; // CABC MIN
 static char cabc_set2[2] = {0x53, 0x2C};
@@ -791,7 +791,7 @@ static struct dsi_cmd_desc lgit_power_on_set_1[] = {
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(power_setting4), power_setting4},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(power_setting5), power_setting5},
 		
-#if defined(CONFIG_BACKLIGHT_LM3530_CABC)
+#ifdef CONFIG_LGIT_VIDEO_WXGA_CABC
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set0), cabc_set0},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set1), cabc_set1},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set2), cabc_set2},
@@ -841,6 +841,10 @@ static struct msm_panel_common_pdata mipi_lgit_pdata = {
 	.power_off_set_2 = lgit_power_off_set_2,
 	.power_off_set_size_1 = ARRAY_SIZE(lgit_power_off_set_1),
 	.power_off_set_size_2 =ARRAY_SIZE(lgit_power_off_set_2),
+
+#ifdef CONFIG_LGIT_VIDEO_WXGA_CABC
+	.bl_pwm_disable = lm3530_lcd_backlight_pwm_disable,
+#endif
 };
 
 static struct platform_device mipi_dsi_lgit_panel_device = {
@@ -888,7 +892,7 @@ struct i2c_registry {
 	int                    len;
 };
 
-#if defined(CONFIG_BACKLIGHT_LM3530_CABC)
+#ifdef CONFIG_LGIT_VIDEO_WXGA_CABC
 #define PWM_SIMPLE_EN 0xA0
 #define PWM_BRIGHTNESS 0x20
 #endif
@@ -897,7 +901,7 @@ struct i2c_registry {
 static struct backlight_platform_data lm3530_data = {
 
 	.gpio = PM8921_GPIO_PM_TO_SYS(24),
-#if defined(CONFIG_BACKLIGHT_LM3530_CABC)
+#ifdef CONFIG_LGIT_VIDEO_WXGA_CABC
 	.max_current = 0x17 | PWM_BRIGHTNESS,
 #else
 	.max_current = 0x17,
