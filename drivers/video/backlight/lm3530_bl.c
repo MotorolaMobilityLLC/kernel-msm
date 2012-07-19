@@ -135,7 +135,6 @@ static void lm3530_backlight_on(struct i2c_client *client, int level)
 
 		lm3530_write_reg(dev->client, 0xA0, 0x00);
 		lm3530_write_reg(dev->client, 0x10, dev->max_current);
-		lm3530_write_reg(dev->client, 0x30, 0x25);
 	}
 
 	lm3530_set_main_current_level(dev->client, level);
@@ -198,6 +197,12 @@ void lm3530_lcd_backlight_pwm_disable(void)
 	lm3530_write_reg(client, 0x10, dev->max_current & 0x1F);
 }
 EXPORT_SYMBOL(lm3530_lcd_backlight_pwm_disable);
+
+int lm3530_lcd_backlight_on_status(void)
+{
+	return backlight_status;
+}
+EXPORT_SYMBOL(lm3530_lcd_backlight_on_status);
 
 static int bl_set_intensity(struct backlight_device *bd)
 {
