@@ -741,6 +741,14 @@ config FB_MSM_PANEL_NONE
 	  This will disable LCD panel
 endchoice
 
+config LGIT_VIDEO_WXGA_CABC
+	bool "Content Adaptive Backlight Control on LGIT WXGA Panel"
+	default y
+	depends on FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT_PANEL
+	help
+	  Enable CABC(Content Apaptive Backlight Control) on LGIT Panel
+	  to reduce power consumption
+
 choice
 	prompt "Secondary LCD Panel"
 	depends on  FB_MSM_MDP31
