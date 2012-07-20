@@ -83,9 +83,9 @@ static irqreturn_t mdm_vddmin_change(int irq, void *dev_id)
 		mdm_drv->pdata->vddmin_resource->mdm2ap_vddmin_gpio);
 
 	if (value == 0)
-		pr_info("External Modem entered Vddmin\n");
+		pr_debug("External Modem entered Vddmin\n");
 	else
-		pr_info("External Modem exited Vddmin\n");
+		pr_debug("External Modem exited Vddmin\n");
 
 	return IRQ_HANDLED;
 }
