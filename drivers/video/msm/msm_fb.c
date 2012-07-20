@@ -762,8 +762,6 @@ static void msmfb_early_resume(struct early_suspend *h)
 static int unset_bl_level, bl_updated;
 #if defined(CONFIG_BACKLIGHT_LM3530)
 static int bl_level_old = 0x2A;
-#elif defined(CONFIG_BACKLIGHT_LM3533)
-static int bl_level_old = 0x2E;
 #else
 static int bl_level_old;
 #endif
@@ -771,16 +769,7 @@ static int bl_level_old;
 void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 {
 	struct msm_fb_panel_data *pdata;
-
-	if (!mfd->panel_power_on || !bl_updated) {
-		unset_bl_level = bkl_lvl;
-#if defined(CONFIG_BACKLIGHT_LM3530) || defined(CONFIG_BACKLIGHT_LM3533)
-		if (system_state != SYSTEM_BOOTING)
-#endif
-		return;
-	} else {
-		unset_bl_level = 0;
-	}
+	int time_out = 300;
 
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
 
@@ -791,6 +780,14 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 			return;
 		}
 		mfd->bl_level = bkl_lvl;
+
+		while (!mfd->panel_power_on && time_out) {
+			msleep(1);
+			time_out --;
+		}
+		if (time_out == 0)
+			pr_err("%s : timeout for waitng lcd turn on\n", __func__);
+
 		pdata->set_backlight(mfd);
 		bl_level_old = mfd->bl_level;
 		up(&mfd->sem);
@@ -803,6 +800,7 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct msm_fb_panel_data *pdata = NULL;
 	int ret = 0;
+	int time_out = 300;
 
 	if (!op_enable)
 		return -EPERM;
@@ -816,21 +814,9 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		if (!mfd->panel_power_on) {
-			msleep(16);
 			ret = pdata->on(mfd->pdev);
 			if (ret == 0) {
 				mfd->panel_power_on = TRUE;
-
-/* ToDo: possible conflict with android which doesn't expect sw refresher */
-/*
-	  if (!mfd->hw_refresh)
-	  {
-	    if ((ret = msm_fb_resume_sw_refresher(mfd)) != 0)
-	    {
-	      MSM_FB_INFO("msm_fb_blank_sub: msm_fb_resume_sw_refresher failed = %d!\n",ret);
-	    }
-	  }
-*/
 			}
 		}
 		break;
@@ -845,9 +831,12 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 			mfd->op_enable = FALSE;
 			curr_pwr_state = mfd->panel_power_on;
-			msleep(300); // HACK: wait for backlight control
-			mfd->panel_power_on = FALSE;
-			bl_updated = 0;
+			while (pdata->get_backlight_on_status() && time_out) {
+				msleep(1);
+				time_out --;
+			}
+			if (time_out == 0)
+				pr_err("%s : timeout for waiting backlight turn on\n", __func__);
 
 			/* clean fb to prevent displaying old fb */
 			memset((void *)info->screen_base, 0,
@@ -856,6 +845,8 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			ret = pdata->off(mfd->pdev);
 			if (ret)
 				mfd->panel_power_on = curr_pwr_state;
+			else
+				mfd->panel_power_on = FALSE;
 
 			mfd->op_enable = TRUE;
 		}
