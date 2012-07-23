@@ -3970,6 +3970,105 @@ static void create_debugfs_entries(struct pm8921_chg_chip *chip)
 	}
 }
 
+int pm8921_stop_chg_disable_irq(void)
+{
+
+	struct pm8921_chg_chip *chip = the_chip;
+
+	pm8921_chg_disable_irq(chip, ATCFAIL_IRQ);
+	pm8921_chg_disable_irq(chip, CHGHOT_IRQ);
+	pm8921_chg_disable_irq(chip, ATCDONE_IRQ);
+	pm8921_chg_disable_irq(chip, FASTCHG_IRQ);
+	pm8921_chg_disable_irq(chip, CHGDONE_IRQ);
+	pm8921_chg_disable_irq(chip, VBATDET_IRQ);
+	pm8921_chg_disable_irq(chip, VBATDET_LOW_IRQ);
+
+	return 1;
+}
+int pm8921_start_chg_enable_irq(void)
+{
+
+	struct pm8921_chg_chip *chip = the_chip;
+
+	pm8921_chg_enable_irq(chip, ATCFAIL_IRQ);
+	pm8921_chg_enable_irq(chip, CHGHOT_IRQ);
+	pm8921_chg_enable_irq(chip, ATCDONE_IRQ);
+	pm8921_chg_enable_irq(chip, FASTCHG_IRQ);
+	pm8921_chg_enable_irq(chip, CHGDONE_IRQ);
+	pm8921_chg_enable_irq(chip, VBATDET_IRQ);
+	pm8921_chg_enable_irq(chip, VBATDET_LOW_IRQ);
+
+	return 1;
+}
+
+static ssize_t pm8921_chg_status_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	int fsm_state, is_charging, r;
+	bool b_chg_ok = false;
+
+	if (!the_chip) {
+		pr_err("called before init\n");
+		return -EINVAL;
+	}
+
+	fsm_state = pm_chg_get_fsm_state(the_chip);
+	is_charging = is_battery_charging(fsm_state);
+
+	if (is_charging) {
+		b_chg_ok = true;
+		r = sprintf(buf, "%d\n", b_chg_ok);
+		pr_info("pm8921_chg_status_show , true ! buf = %s, is_charging = %d\n",
+							buf, is_charging);
+	} else {
+		b_chg_ok = false;
+		r = sprintf(buf, "%d\n", b_chg_ok);
+		pr_info("pm8921_chg_status_show , false ! buf = %s, is_charging = %d\n",
+							buf, is_charging);
+	}
+
+	return r;
+}
+
+static ssize_t pm8921_chg_status_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	int ret = 0, batt_status = 0;
+	struct pm8921_chg_chip *chip = the_chip;
+
+	if (!count)
+		return -EINVAL;
+
+	batt_status = get_prop_batt_status(chip);
+
+	if (strncmp(buf, "0", 1) == 0) {
+		/* stop charging */
+		pr_info("pm8921_chg_status_store : stop charging start\n");
+		if (batt_status == POWER_SUPPLY_STATUS_CHARGING) {
+			ret = pm8921_stop_chg_disable_irq();
+			pm_chg_auto_enable(chip, 0);
+			pm_chg_charge_dis(chip,1);
+			pr_info("pm8921_chg_status_store : stop charging end\n");
+		}
+	} else if (strncmp(buf, "1", 1) == 0) {
+		/* start charging */
+		pr_info("pm8921_chg_status_store : start charging start\n");
+		if (batt_status != POWER_SUPPLY_STATUS_CHARGING) {
+			ret = pm8921_start_chg_enable_irq();
+			pm_chg_auto_enable(chip, 1);
+			pm_chg_charge_dis(chip,0);
+			pr_info("pm8921_chg_status_store : start charging end\n");
+		}
+	}
+
+	if(ret == 0)
+		return -EINVAL;
+
+	return ret;
+}
+DEVICE_ATTR(charge, 0664, pm8921_chg_status_show, pm8921_chg_status_store);
+
 static int pm8921_charger_suspend_noirq(struct device *dev)
 {
 	int rc;
