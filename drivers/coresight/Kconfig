@@ -24,8 +24,15 @@ if CORESIGHT
 config HAVE_CORESIGHT_SINK
 	bool
 
+config CORESIGHT_CSR
+	bool "CoreSight Slave Register driver"
+	help
+	  This driver provides support for CoreSight Slave Register block
+	  that hosts miscellaneous configuration registers.
+
 config CORESIGHT_TMC
 	bool "CoreSight Trace Memory Controller driver"
+	select CORESIGHT_CSR
 	select HAVE_CORESIGHT_SINK
 	help
 	  This driver provides support for Trace Memory Controller which
