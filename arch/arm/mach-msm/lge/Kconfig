@@ -15,26 +15,19 @@ config LGE_QFPROM_INTERFACE
 	help
 	  LGE QFPROM DRIVER.
 
-config LGE_QC_LCDC_LUT
+config UPDATE_LCDC_LUT
 	bool "Set initial Qualcomm LCDC lut"
 	default n
 	depends on MACH_LGE
 	help
 	  Set initial Qualcomm LCDC Look Up Table.
 
-config LGE_KCAL
+config LCD_KCAL
 	bool "Interface to calibrate LCD color temperature"
 	default n
-	depends on MACH_LGE
+	depends on MACH_LGE && UPDATE_LCDC_LUT
 	help
 	  Interface to calibrate LCD color temperature
-
-config LGE_KCAL_QLUT
-	bool "Interface to calibrate LCD color temperature by QLUT"
-	default n
-	depends on MACH_LGE && LGE_QC_LCDC_LUT && LGE_KCAL
-	help
-	  Interface to calibrate LCD color temperature by QLUT
 
 config EARJACK_DEBUGGER
 	bool "Earjack UART debugger support"

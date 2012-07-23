@@ -490,6 +490,7 @@ struct msm_fb_platform_data {
 	int (*allow_set_offset)(void);
 	char prim_panel_name[PANEL_NAME_MAX_LEN];
 	char ext_panel_name[PANEL_NAME_MAX_LEN];
+	int (*update_lcdc_lut)(void);
 };
 
 struct msm_hdmi_platform_data {
