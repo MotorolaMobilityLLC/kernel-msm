@@ -121,6 +121,10 @@ static int dload_set(const char *val, struct kernel_param *kp)
 void msm_set_restart_mode(int mode)
 {
 	restart_mode = mode;
+#ifdef CONFIG_LGE_CRASH_HANDLER
+	if (download_mode == 1 && (mode & 0xFFFF0000) == 0x6D630000)
+		panic("LGE crash handler detected panic");
+#endif
 }
 EXPORT_SYMBOL(msm_set_restart_mode);
 
