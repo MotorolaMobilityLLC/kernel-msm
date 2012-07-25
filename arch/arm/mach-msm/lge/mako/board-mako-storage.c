@@ -22,6 +22,7 @@
 #include <mach/msm_bus_board.h>
 #include <mach/board.h>
 #include <mach/gpiomux.h>
+#include <mach/board_lge.h>
 #include "devices.h"
 #include "board-mako.h"
 #include "board-storage-common-a.h"
@@ -251,10 +252,21 @@ static struct mmc_platform_data *apq8064_sdc3_pdata = &sdc3_data;
 static struct mmc_platform_data *apq8064_sdc3_pdata;
 #endif
 
+static void __init mako_fixup_sdc1(void)
+{
+	if (lge_get_board_revno() >= HW_REV_D) {
+		/* enable the packed write on eMMC 4.5 */
+		apq8064_sdc1_pdata->packed_write =
+			MMC_CAP2_PACKED_WR | MMC_CAP2_PACKED_WR_CONTROL;
+	}
+}
+
 void __init apq8064_init_mmc(void)
 {
-	if (apq8064_sdc1_pdata)
+	if (apq8064_sdc1_pdata) {
+		mako_fixup_sdc1();
 		apq8064_add_sdcc(1, apq8064_sdc1_pdata);
+	}
 
 	if (apq8064_sdc3_pdata) {
 		apq8064_sdc3_pdata->wpswitch_gpio = 0;
