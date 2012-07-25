@@ -31,6 +31,10 @@
 #include "devices.h"
 #include "board-mako.h"
 
+#ifdef CONFIG_WIRELESS_CHARGER
+#include <linux/power/bq51051b_charger.h>
+#endif
+
 struct pm8xxx_gpio_init {
 	unsigned gpio;
 	struct pm_gpio config;
@@ -121,6 +125,10 @@ static struct pm8xxx_gpio_init pm8921_gpios[] __initdata = {
 	PM8921_GPIO_OUTPUT(17, 0, HIGH), /* CAM_VCM_EN */
 	PM8921_GPIO_OUTPUT(19, 0, HIGH), /* AMP_EN_AMP */
 	PM8921_GPIO_OUTPUT(20, 0, HIGH), /* PMIC - FSA8008 EAR_MIC_BIAS_EN */
+#ifdef CONFIG_WIRELESS_CHARGER
+	PM8921_GPIO_INPUT(25,PM_GPIO_PULL_UP_1P5_30), /* WLC ACTIVE_N */
+	PM8921_GPIO_OUTPUT(26, 0, HIGH), /* WLC CHG_STAT */
+#endif
 	PM8921_GPIO_OUTPUT(31, 0, HIGH), /* PMIC - FSA8008_EAR_MIC_EN */
 	PM8921_GPIO_INPUT(32, PM_GPIO_PULL_UP_1P5), /* PMIC - FSA8008_EARPOL_DETECT */
 	PM8921_GPIO_OUTPUT(33, 0, HIGH), /* HAPTIC_EN */
@@ -435,6 +443,21 @@ static struct msm_ssbi_platform_data apq8064_ssbi_pm8821_pdata __devinitdata = {
 		.platform_data = &apq8064_pm8821_platform_data,
 	},
 };
+
+#ifdef CONFIG_WIRELESS_CHARGER
+static struct bq51051b_wlc_platform_data bq51051b_wlc_pmic_pdata = {
+	.chg_state_gpio		= PM8921_GPIO_PM_TO_SYS(26),
+	.active_n_gpio		= PM8921_GPIO_PM_TO_SYS(25),
+};
+
+struct platform_device wireless_charger = {
+	.name		= "bq51051b_wlc",
+	.id		= -1,
+	.dev = {
+		.platform_data = &bq51051b_wlc_pmic_pdata,
+	},
+};
+#endif
 
 void __init apq8064_init_pmic(void)
 {
