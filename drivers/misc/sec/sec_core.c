@@ -63,6 +63,8 @@ static struct miscdevice sec_dev = {
 	&sec_fops
 };
 
+static DEFINE_MUTEX(sec_core_lock);
+
 /****************************************************************************/
 /*   KERNEL DRIVER APIs, ONLY IOCTL RESPONDS BACK TO USER SPACE REQUESTS    */
 /****************************************************************************/
@@ -107,6 +109,16 @@ ssize_t sec_read(struct file *filp, char *buf,
 	return 0;
 }
 
+static int data_was_updated(u8 *buffer, int size)
+{
+	int i;
+	for (i = 0; i < size; i++)
+		if (buffer[i] != 0xff)
+			return 1;
+
+	return 0;
+}
+
 long sec_ioctl(struct file *file, unsigned int ioctl_num,
 		unsigned long ioctl_param)
 {
@@ -119,29 +131,47 @@ long sec_ioctl(struct file *file, unsigned int ioctl_num,
 
 	struct SEC_EFUSE_PARM_T efuse_data;
 
-	u32 *shared_mem;
+	u8 *shared_mem;
 	long ret_val = SEC_KM_FAIL;
+	u32 ctr;
+
+	mutex_lock(&sec_core_lock);
 
 	switch (ioctl_num) {
 
 	case SEC_IOCTL_READ_PROC_ID:
 
-		shared_mem = kmalloc(SEC_PROC_ID_SIZE, GFP_KERNEL);
-		my_cmd.mot_cmd = 10;
-		my_cmd.parm1 = virt_to_phys(shared_mem);
-		my_cmd.parm2 = SEC_PROC_ID_SIZE;
+		for (ctr = 0; ctr < 10 && ret_val != SEC_KM_SUCCESS; ctr++) {
 
-		if (scm_call(TZBSP_SVC_OEM, 1, &my_cmd,
-			sizeof(my_cmd), NULL, 0) == 0) {
+			shared_mem = kmalloc(SEC_PROC_ID_SIZE,
+					GFP_KERNEL | GFP_DMA);
 
-			if (copy_to_user((void __user *)ioctl_param,
-			(const void *) shared_mem, SEC_PROC_ID_SIZE) == 0) {
+			if (!shared_mem)
+				continue;
 
-				ret_val = SEC_KM_SUCCESS;
-			}
+			memset(shared_mem, 0xff, SEC_PROC_ID_SIZE);
+			my_cmd.mot_cmd = 10;
+			my_cmd.parm1 = virt_to_phys(shared_mem);
+			my_cmd.parm2 = SEC_PROC_ID_SIZE;
+
+			if (scm_call(TZBSP_SVC_OEM, 1, &my_cmd,
+				sizeof(my_cmd), NULL, 0) == 0) {
+
+				if (copy_to_user((void __user *)ioctl_param,
+					(const void *) shared_mem, SEC_PROC_ID_SIZE) == 0) {
+
+					/* check data was actually updated */
+					if (data_was_updated(shared_mem,
+								SEC_PROC_ID_SIZE))
+						ret_val = SEC_KM_SUCCESS;
+					else
+						printk(KERN_ERR "sec: not updated.\n");
+				}
+			} else
+				printk(KERN_ERR "sec: scm call failed!\n");
+
+			kfree(shared_mem);
 		}
-
-		kfree(shared_mem);
 		break;
 
 	case SEC_IOCTL_WRITE_FUSE:
@@ -167,29 +197,44 @@ long sec_ioctl(struct file *file, unsigned int ioctl_num,
 	case SEC_IOCTL_READ_FUSE:
 
 		if (copy_from_user(&efuse_data,
-			(void *)ioctl_param, sizeof(efuse_data)) != 0) {
+					(void *)ioctl_param,
+					sizeof(efuse_data)) != 0) {
 
 			break;
 		}
 
-		shared_mem = kmalloc(4, GFP_KERNEL);
-		my_cmd.mot_cmd = 1;
-		my_cmd.parm1 = efuse_data.which_bank;
-		my_cmd.parm2 = virt_to_phys(shared_mem);
+		for (ctr = 0; ctr < 10 && ret_val != SEC_KM_SUCCESS; ctr++) {
 
-		if (scm_call(TZBSP_SVC_OEM, 1, &my_cmd,
-			sizeof(my_cmd), NULL, 0) == 0) {
+			shared_mem = kmalloc(4, GFP_KERNEL | GFP_DMA);
 
-			efuse_data.efuse_value = *shared_mem;
+			if (!shared_mem)
+				continue;
 
-			if (copy_to_user((void *)ioctl_param,
-				&efuse_data, sizeof(efuse_data)) == 0) {
+			memset(shared_mem, 0xff, 4);
+			my_cmd.mot_cmd = 1;
+			my_cmd.parm1 = efuse_data.which_bank;
+			my_cmd.parm2 = virt_to_phys(shared_mem);
 
-				ret_val = SEC_KM_SUCCESS;
-			}
+			if (scm_call(TZBSP_SVC_OEM, 1, &my_cmd,
+						sizeof(my_cmd), NULL, 0) == 0) {
+
+				efuse_data.efuse_value = *(u32 *)shared_mem;
+
+				if (copy_to_user((void *)ioctl_param,
+					&efuse_data, sizeof(efuse_data)) == 0) {
+
+					/* check data was actually updated */
+					if (data_was_updated(shared_mem, 4))
+						ret_val = SEC_KM_SUCCESS;
+					else
+						printk(KERN_ERR "sec: not updated!\n");
+				}
+			} else
+				printk(KERN_ERR "sec: scm call failed!\n");
+
+			kfree(shared_mem);
 		}
 
-		kfree(shared_mem);
 		break;
 
 	case SEC_IOCTL_GET_TZ_VERSION:
@@ -213,6 +258,8 @@ long sec_ioctl(struct file *file, unsigned int ioctl_num,
 	default:
 		break;
 	}
+
+	mutex_unlock(&sec_core_lock);
 
 	return ret_val;
 }
