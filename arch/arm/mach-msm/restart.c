@@ -265,7 +265,7 @@ void msm_restart(char mode, const char *cmd)
 			} else if (!strncmp(cmd, "oem-", 4)) {
 				unsigned long code;
 				code = simple_strtoul(cmd+4, NULL, 16) & 0xff;
-				__raw_writel(0x6f656d00, restart_reason);
+				__raw_writel(0x6f656d00 | code, restart_reason);
 			} else if (!strncmp(cmd, "recovery", 8)) {
 				__raw_writel(0x77665502, restart_reason);
 			} else {
