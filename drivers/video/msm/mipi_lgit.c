@@ -28,6 +28,7 @@ static struct msm_panel_common_pdata *mipi_lgit_pdata;
 
 static struct dsi_buf lgit_tx_buf;
 static struct dsi_buf lgit_rx_buf;
+static int skip_init;
 
 #define DSV_ONBST 57
 
@@ -88,15 +89,18 @@ static int mipi_lgit_lcd_on(struct platform_device *pdev)
 
 	mdelay(10);
 
-	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
-	ret = mipi_dsi_cmds_tx(&lgit_tx_buf,
-			mipi_lgit_pdata->power_on_set_2,
-			mipi_lgit_pdata->power_on_set_size_2);
-	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x14000000);
-	if (ret < 0) {
-		pr_err("%s: failed to transmit power_on_set_2 cmds\n", __func__);
-		return ret;
+	if(!skip_init){
+		MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
+		ret = mipi_dsi_cmds_tx(&lgit_tx_buf,
+				mipi_lgit_pdata->power_on_set_2,
+				mipi_lgit_pdata->power_on_set_size_2);
+		MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x14000000);
+		if (ret < 0) {
+			pr_err("%s: failed to transmit power_on_set_2 cmds\n", __func__);
+			return ret;
+		}
 	}
+	skip_init = false;
 
 	ret = lgit_external_dsv_onoff(1);
 	if (ret < 0) {
@@ -188,6 +192,7 @@ static int mipi_lgit_lcd_probe(struct platform_device *pdev)
 
 	pr_info("%s start\n", __func__);
 
+	skip_init = true;
 	msm_fb_add_device(pdev);
 
 	return 0;
