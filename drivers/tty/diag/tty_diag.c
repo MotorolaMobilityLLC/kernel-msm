@@ -9,26 +9,31 @@
 #include <linux/tty_driver.h>
 #include <linux/tty_flip.h>
 
+#include <mach/socinfo.h>
 #include <mach/tty_diag.h>
 
 #define DIAG_MAJOR 185
-#define DIAG_TTY_MINOR_COUNT 3
+#define DIAG_MDM_MINOR_COUNT 3
+#define DIAG_LEGACY_MINOR_COUNT 2
+#define DIAG_LEGACY_MINOR_START DIAG_MDM_MINOR_COUNT
+#define DIAG_MINOR_COUNT (DIAG_MDM_MINOR_COUNT + DIAG_LEGACY_MINOR_COUNT)
 
 static DEFINE_MUTEX(diag_tty_lock);
 
 static struct tty_driver *diag_tty_driver;
-static struct legacy_diag_ch legacy_ch;
-static struct diag_request *d_req_ptr;
+static struct legacy_diag_ch legacy_ch, mdm_ch;
 
 struct diag_tty_data {
 	struct tty_struct *tty;
 	int open_count;
+	struct legacy_diag_ch *ch_ptr; /* owner */
+	struct diag_request *d_req_ptr;
 };
 
-static struct diag_tty_data diag_tty[DIAG_TTY_MINOR_COUNT];
-static int diag_packet_incomplete;
+static struct diag_tty_data diag_tty[DIAG_MINOR_COUNT];
+static struct diag_tty_data *dbg_tty_target, *last_tty;
 
-static int ttydiag_dbg_cmd_code, ttydiag_dbg_subsys_id, dbg_tty_minor;
+static int ttydiag_dbg_cmd_code, ttydiag_dbg_subsys_id, diag_packet_incomplete;
 
 /* 1 - would add channel dispatch checking logic
  *
@@ -46,11 +51,11 @@ static int diag_tty_open(struct tty_struct *tty, struct file *f)
 
 	tty_data = diag_tty + n;
 
-	if (n < 0 || n >= DIAG_TTY_MINOR_COUNT)
+	if (n < 0 || n >= DIAG_MINOR_COUNT)
 		return -ENODEV;
 
 	/* Diag kernel driver not ready */
-	if (!(legacy_ch.priv))
+	if (!(tty_data->ch_ptr->priv))
 		return -EAGAIN;
 
 	if (tty_data->open_count >= 1)
@@ -64,7 +69,8 @@ static int diag_tty_open(struct tty_struct *tty, struct file *f)
 
 	mutex_unlock(&diag_tty_lock);
 
-	legacy_ch.notify(legacy_ch.priv, CHANNEL_DIAG_CONNECT, NULL);
+	tty_data->ch_ptr->notify(tty_data->ch_ptr->priv,
+				CHANNEL_DIAG_CONNECT, NULL);
 
 	return 0;
 }
@@ -81,15 +87,27 @@ static void diag_tty_close(struct tty_struct *tty, struct file *f)
 	mutex_lock(&diag_tty_lock);
 	tty_data->open_count--;
 
-	for (i = 0; i < DIAG_TTY_MINOR_COUNT; i++) {
-		if (diag_tty[i].open_count) {
-			disconnect_channel = 0;
-			break;
+	if (tty_data->ch_ptr == &mdm_ch) {
+		for (i = 0; i < DIAG_MDM_MINOR_COUNT; i++) {
+			if (diag_tty[i].open_count) {
+				disconnect_channel = 0;
+				break;
+			}
+		}
+	} else if (tty_data->ch_ptr == &legacy_ch) {
+		for (i = DIAG_LEGACY_MINOR_START; i < DIAG_MINOR_COUNT; i++) {
+			if (diag_tty[i].open_count) {
+				disconnect_channel = 0;
+				break;
+			}
 		}
 	}
 
-	if (disconnect_channel && legacy_ch.notify && legacy_ch.priv)
-		legacy_ch.priv_channel = NULL;
+	if (disconnect_channel && tty_data->ch_ptr->notify &&
+			tty_data->ch_ptr->priv)
+		tty_data->ch_ptr->priv_channel = NULL;
+		/* Could send disconnect notification here but that doesn't
+		   buy us anything */
 
 	if (tty_data->open_count == 0)
 		tty->driver_data = NULL;
@@ -101,83 +119,75 @@ static int diag_tty_write(struct tty_struct *tty,
 				const unsigned char *buf, int len)
 {
 	struct diag_tty_data *tty_data = tty->driver_data;
-	struct diag_request *d_req_temp = d_req_ptr;
+	struct diag_request *d_req = tty_data->d_req_ptr;
 
 	mutex_lock(&diag_tty_lock);
 
 	/* Make sure diag char driver is ready and no outstanding request */
-	if ((d_req_ptr == NULL) || legacy_ch.priv_channel) {
+	if ((d_req == NULL) || tty_data->ch_ptr->priv_channel) {
 		mutex_unlock(&diag_tty_lock);
 		return -EAGAIN;
 	}
 
 	/* Diag packet must fit in buff and be written all at once */
-	if (len > d_req_ptr->length) {
+	if (len > d_req->length) {
 		mutex_unlock(&diag_tty_lock);
 		return -EMSGSIZE;
 	}
 
 	/* Check whether fresh packet */
 	if (!diag_packet_incomplete) {
-		memcpy(d_req_ptr->buf, buf, len);
-		d_req_ptr->actual = len;
+		memcpy(d_req->buf, buf, len);
+		d_req->actual = len;
 	} else {
-		if (d_req_ptr->actual + len > d_req_ptr->length) {
-			d_req_ptr->actual = 0;
+		if (d_req->actual + len > d_req->length) {
+			d_req->actual = 0;
 			diag_packet_incomplete = 0;
 			return -EMSGSIZE;
 		} else {
-			memcpy(d_req_ptr->buf + d_req_ptr->actual, buf, len);
-			d_req_ptr->actual += len;
+			memcpy(d_req->buf + d_req->actual, buf, len);
+			d_req->actual += len;
 		}
 	}
 
 	/* Check if packet is now complete */
-	if (d_req_ptr->buf[d_req_ptr->actual - 1] != 0x7E) {
+	if (d_req->buf[d_req->actual - 1] != 0x7E) {
 		diag_packet_incomplete = 1;
 		mutex_unlock(&diag_tty_lock);
 		return len;
 	} else
 		diag_packet_incomplete = 0;
 
-	if (dbg_ftm_flag == 1) {
-
+	if (dbg_ftm_flag == 1 && tty_data->ch_ptr == &mdm_ch) {
 		if (tty_data != NULL) {
-			if (!strncmp(tty_data->tty->name, "ttydiag0",
-						strlen("ttydiag0"))) {
-				dbg_tty_minor = 0;
-				ttydiag_dbg_cmd_code =
-					(int)(*(char *)d_req_ptr->buf);
-				ttydiag_dbg_subsys_id =
-					(int)(*(char *)(d_req_ptr->buf+1));
-			}
-			if (!strncmp(tty_data->tty->name, "ttydiag1",
-						strlen("ttydiag1"))) {
-				dbg_tty_minor = 1;
-				ttydiag_dbg_cmd_code =
-					(int)(*(char *)d_req_ptr->buf);
-				ttydiag_dbg_subsys_id =
-					(int)(*(char *)(d_req_ptr->buf+1));
-			}
+			dbg_tty_target = tty_data;
+			ttydiag_dbg_cmd_code =
+				(int)(*(unsigned char *)d_req->buf);
+			ttydiag_dbg_subsys_id =
+				(int)(*(unsigned char *)(d_req->buf+1));
 		}
 	}
 
 	/* Set active tty for responding */
-	legacy_ch.priv_channel = tty_data;
+	tty_data->ch_ptr->priv_channel = tty_data;
+	last_tty = tty_data;
 
 	mutex_unlock(&diag_tty_lock);
 
-	legacy_ch.notify(legacy_ch.priv, CHANNEL_DIAG_READ_DONE, d_req_temp);
+	tty_data->ch_ptr->notify(tty_data->ch_ptr->priv,
+				CHANNEL_DIAG_READ_DONE, d_req);
 
 	return len;
 }
 
 static int diag_tty_write_room(struct tty_struct *tty)
 {
-	if ((d_req_ptr == NULL) || legacy_ch.priv_channel)
+	struct diag_tty_data *tty_data = tty->driver_data;
+
+	if (tty_data->d_req_ptr == NULL || tty_data->ch_ptr->priv_channel)
 		return 0;
 	else
-		return d_req_ptr->length;
+		return tty_data->d_req_ptr->length;
 }
 
 static int diag_tty_chars_in_buffer(struct tty_struct *tty)
@@ -195,28 +205,48 @@ static const struct tty_operations diag_tty_ops = {
 	.chars_in_buffer = diag_tty_chars_in_buffer,
 };
 
-/* Diag char driver ready */
+/* Diag master is ready */
 struct legacy_diag_ch *tty_diag_channel_open(const char *name, void *priv,
 		void (*notify)(void *, unsigned, struct diag_request *))
 {
 	int i;
 
-	if (legacy_ch.priv != NULL)
-		return ERR_PTR(-EBUSY);
-
 	mutex_lock(&diag_tty_lock);
-	legacy_ch.priv = priv;
-	legacy_ch.notify = notify;
+
+	if (!strncmp(name, DIAG_LEGACY, 9) && cpu_is_apq8064()) {
+		legacy_ch.priv = priv;
+		legacy_ch.notify = notify;
+
+		for (i = DIAG_LEGACY_MINOR_START; i < DIAG_MINOR_COUNT; i++) {
+			tty_register_device(diag_tty_driver, i, NULL);
+			diag_tty[i].ch_ptr = &legacy_ch;
+		}
+
+		mutex_unlock(&diag_tty_lock);
+
+		return &legacy_ch;
+	} else if ((!strncmp(name, DIAG_MDM, 9) && cpu_is_apq8064()) ||
+			(!strcmp(name, DIAG_LEGACY) && cpu_is_msm8960())) {
+		mdm_ch.priv = priv;
+		mdm_ch.notify = notify;
+
+		for (i = 0; i < DIAG_MDM_MINOR_COUNT; i++) {
+			tty_register_device(diag_tty_driver, i, NULL);
+			diag_tty[i].ch_ptr = &mdm_ch;
+		}
+
+		mutex_unlock(&diag_tty_lock);
+
+		return &mdm_ch;
+	}
+
 	mutex_unlock(&diag_tty_lock);
 
-	for (i = 0; i < DIAG_TTY_MINOR_COUNT; i++)
-		tty_register_device(diag_tty_driver, i, NULL);
-
-	return &legacy_ch;
+	return ERR_PTR(-EINVAL);
 }
 EXPORT_SYMBOL(tty_diag_channel_open);
 
-/* Diag char driver no longer ready */
+/* Diag master no longer ready */
 void tty_diag_channel_close(struct legacy_diag_ch *diag_ch)
 {
 	struct diag_tty_data *priv_channel = diag_ch->priv_channel;
@@ -230,8 +260,14 @@ void tty_diag_channel_close(struct legacy_diag_ch *diag_ch)
 	diag_ch->priv = NULL;
 	diag_ch->notify = NULL;
 
-	for (i = DIAG_TTY_MINOR_COUNT - 1; i >= 0; i--)
-		tty_unregister_device(diag_tty_driver, i);
+	if (diag_ch == &mdm_ch) {
+		for (i = DIAG_MDM_MINOR_COUNT - 1; i >= 0; i--)
+			tty_unregister_device(diag_tty_driver, i);
+	} else if (diag_ch == &legacy_ch) {
+		for (i = DIAG_MINOR_COUNT - 1;
+			i >= DIAG_LEGACY_MINOR_START; i--)
+			tty_unregister_device(diag_tty_driver, i);
+	}
 
 	mutex_unlock(&diag_tty_lock);
 }
@@ -241,7 +277,15 @@ EXPORT_SYMBOL(tty_diag_channel_close);
 int tty_diag_channel_read(struct legacy_diag_ch *diag_ch,
 				struct diag_request *d_req)
 {
-	d_req_ptr = d_req;
+	int i;
+
+	if (diag_ch == &mdm_ch) {
+		for (i = 0; i < DIAG_MDM_MINOR_COUNT; i++)
+			diag_tty[i].d_req_ptr = d_req;
+	} else if (diag_ch == &legacy_ch) {
+		for (i = DIAG_LEGACY_MINOR_START; i < DIAG_MINOR_COUNT; i++)
+			diag_tty[i].d_req_ptr = d_req;
+	}
 
 	return 0;
 }
@@ -257,24 +301,24 @@ int tty_diag_channel_write(struct legacy_diag_ch *diag_ch,
 	int cmd_code, subsys_id;
 
 	/* If diag packet is not 1:1 response (perhaps logging packet?),
-	   try primary channel */
+	   try last tty */
 	if (tty_data == NULL)
-		tty_data = &(diag_tty[0]);
+		tty_data = last_tty;
 
 	mutex_lock(&diag_tty_lock);
 
-	if (dbg_ftm_flag == 1) {
-		cmd_code = (int)(*(char *)d_req->buf);
-		subsys_id = (int)(*(char *)(d_req->buf+1));
+	if (dbg_ftm_flag == 1 && diag_ch == &mdm_ch) {
+		cmd_code = (int)(*(unsigned char *)d_req->buf);
+		subsys_id = (int)(*(unsigned char *)(d_req->buf+1));
 
 		if (cmd_code == ttydiag_dbg_cmd_code &&
 				subsys_id == ttydiag_dbg_subsys_id &&
-				dbg_tty_minor != -1) {
+				dbg_tty_target != NULL) {
 			/* respond to last tty */
-			ttydiag_dbg_cmd_code = 0;
-			ttydiag_dbg_subsys_id = 0;
-			tty_data = &(diag_tty[dbg_tty_minor]);
-			dbg_tty_minor = -1;
+			ttydiag_dbg_cmd_code = -1;
+			ttydiag_dbg_subsys_id = -1;
+			tty_data = dbg_tty_target;
+			dbg_tty_target = NULL;
 		} else {
 			tty_data = &(diag_tty[2]);
 		}
@@ -311,6 +355,7 @@ void tty_diag_channel_abandon_request()
 {
 	mutex_lock(&diag_tty_lock);
 	legacy_ch.priv_channel = NULL;
+	mdm_ch.priv_channel = NULL;
 	mutex_unlock(&diag_tty_lock);
 }
 EXPORT_SYMBOL(tty_diag_channel_abandon_request);
@@ -335,10 +380,14 @@ static int __init diag_tty_init(void)
 	legacy_ch.notify = NULL;
 	legacy_ch.priv = NULL;
 	legacy_ch.priv_channel = NULL;
+	mdm_ch.notify = NULL;
+	mdm_ch.priv = NULL;
+	mdm_ch.priv_channel = NULL;
 	diag_packet_incomplete = 0;
-	dbg_tty_minor = -1;
+	dbg_tty_target = NULL;
+	last_tty = &(diag_tty[0]);
 
-	diag_tty_driver = alloc_tty_driver(DIAG_TTY_MINOR_COUNT);
+	diag_tty_driver = alloc_tty_driver(DIAG_MINOR_COUNT);
 	if (diag_tty_driver == NULL)
 		return -ENOMEM;
 
