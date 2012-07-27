@@ -526,12 +526,18 @@ void diag_switch_logging_mode(unsigned long logging_mode)
 #if defined(CONFIG_DIAG_OVER_USB) && defined(CONFIG_DIAG_INTERNAL)
 	else if (temp == USB_MODE && driver->logging_mode == INTERNAL_MODE) {
 		usb_diag_close(driver->legacy_ch);
+		usb_diag_close(driver->mdm_ch);
 		driver->legacy_ch = tty_diag_channel_open(DIAG_LEGACY,
 						driver, diag_legacy_notifier);
+		driver->mdm_ch = tty_diag_channel_open(DIAG_MDM,
+						driver, diagfwd_bridge_notifier);
 	} else if (temp == INTERNAL_MODE && driver->logging_mode == USB_MODE) {
 		tty_diag_channel_close(driver->legacy_ch);
+		tty_diag_channel_close(driver->mdm_ch);
 		driver->legacy_ch = usb_diag_open(DIAG_LEGACY,
 						driver, diag_legacy_notifier);
+		driver->mdm_ch = usb_diag_open(DIAG_MDM,
+						driver, diagfwd_bridge_notifier);
 	}
 #endif
 }
