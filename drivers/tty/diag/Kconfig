@@ -1,0 +1,9 @@
+menu "DIAG traffic through userspace"
+
+config DIAG_INTERNAL
+	bool "Enable DIAG traffic on tty to userspace"
+        depends on ARCH_MSM
+	default n
+	help
+	 This feature helps segregate code required for DIAG traffic to be routed to userspace.
+endmenu

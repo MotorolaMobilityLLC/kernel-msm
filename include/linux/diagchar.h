@@ -25,6 +25,38 @@
 #define NO_LOGGING_MODE			3
 #define UART_MODE			4
 #define SOCKET_MODE			5
+#define INTERNAL_MODE			6
+
+#define USB_MODE_NAME			"usb"
+#define MEMORY_DEVICE_MODE_NAME		"memory"
+#define NO_LOGGING_MODE_NAME		"none"
+#define UART_MODE_NAME			"uart"
+#define INTERNAL_MODE_NAME		"internal"
+
+#define USB_DIAG_CONNECT		0
+#define USB_DIAG_DISCONNECT		1
+#define USB_DIAG_WRITE_DONE		2
+#define USB_DIAG_READ_DONE		3
+#define CHANNEL_DIAG_CONNECT		USB_DIAG_CONNECT
+#define CHANNEL_DIAG_DISCONNECT		USB_DIAG_DISCONNECT
+#define CHANNEL_DIAG_WRITE_DONE		USB_DIAG_WRITE_DONE
+#define CHANNEL_DIAG_READ_DONE		USB_DIAG_READ_DONE
+
+struct diag_request {
+	char *buf;
+	int length;
+	int actual;
+	int status;
+	void *context;
+};
+
+struct legacy_diag_ch {
+	const char *name;
+	struct list_head list;
+	void (*notify)(void *priv, unsigned event, struct diag_request *d_req);
+	void *priv;
+	void *priv_channel;
+};
 
 /* different values that go in for diag_data_type */
 #define DATA_TYPE_EVENT         	0
