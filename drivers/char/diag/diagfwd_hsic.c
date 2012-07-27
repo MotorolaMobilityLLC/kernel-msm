@@ -277,15 +277,18 @@ int diagfwd_connect_bridge(int process_cable)
 	pr_debug("diag: in %s\n", __func__);
 
 	/* If the usb cable is being connected */
-	if (process_cable) {
+	if (driver->logging_mode != INTERNAL_MODE && process_cable) {
 		err = usb_diag_alloc_req(driver->mdm_ch, N_MDM_WRITE,
-			N_MDM_READ);
+							N_MDM_READ);
 		if (err)
 			pr_err("diag: unable to alloc USB req on mdm"
 				" ch err:%d\n", err);
+		else
+			driver->usb_mdm_req_allocated = 1;
 
 		driver->usb_mdm_connected = 1;
-	}
+	} else if(driver->logging_mode == INTERNAL_MODE)
+		driver->usb_mdm_connected = 1;
 
 	if (driver->hsic_device_enabled) {
 		driver->in_busy_hsic_read_on_device = 0;
@@ -319,7 +322,7 @@ int diagfwd_connect_bridge(int process_cable)
 			driver->hsic_ch = 1;
 
 		/* Poll USB mdm channel to check for data */
-		if (driver->logging_mode == USB_MODE)
+		if (driver->logging_mode == USB_MODE || driver->logging_mode == INTERNAL_MODE)
 			queue_work(driver->diag_bridge_wq,
 					&driver->diag_read_mdm_work);
 
@@ -343,9 +346,12 @@ int diagfwd_disconnect_bridge(int process_cable)
 	pr_debug("diag: In %s, process_cable: %d\n", __func__, process_cable);
 
 	/* If the usb cable is being disconnected */
-	if (process_cable) {
+	if (process_cable)
 		driver->usb_mdm_connected = 0;
+
+	if (driver->usb_req_allocated) {
 		usb_diag_free_req(driver->mdm_ch);
+		driver->usb_mdm_req_allocated = 0;
 	}
 
 	if (driver->logging_mode != MEMORY_DEVICE_MODE) {
@@ -449,22 +455,22 @@ static int diagfwd_read_complete_bridge(struct diag_request *diag_read_ptr)
 	return 0;
 }
 
-static void diagfwd_bridge_notifier(void *priv, unsigned event,
+void diagfwd_bridge_notifier(void *priv, unsigned event,
 					struct diag_request *d_req)
 {
 	switch (event) {
-	case USB_DIAG_CONNECT:
+	case CHANNEL_DIAG_CONNECT:
 		diagfwd_connect_bridge(1);
 		break;
-	case USB_DIAG_DISCONNECT:
+	case CHANNEL_DIAG_DISCONNECT:
 		queue_work(driver->diag_bridge_wq,
 			 &driver->diag_disconnect_work);
 		break;
-	case USB_DIAG_READ_DONE:
+	case CHANNEL_DIAG_READ_DONE:
 		queue_work(driver->diag_bridge_wq,
 				&driver->diag_usb_read_complete_work);
 		break;
-	case USB_DIAG_WRITE_DONE:
+	case CHANNEL_DIAG_WRITE_DONE:
 		if (driver->hsic_device_enabled)
 			diagfwd_write_complete_hsic(d_req);
 		else if (driver->diag_smux_enabled)
@@ -523,8 +529,8 @@ static void diag_read_mdm_work_fn(struct work_struct *work)
 		/* Setup the next read from usb mdm channel */
 		driver->in_busy_hsic_read_on_device = 1;
 		driver->usb_read_mdm_ptr->buf = driver->usb_buf_mdm_out;
-		driver->usb_read_mdm_ptr->length = USB_MAX_OUT_BUF;
-		usb_diag_read(driver->mdm_ch, driver->usb_read_mdm_ptr);
+		driver->usb_read_mdm_ptr->length = MAX_OUT_BUF;
+		channel_diag_read(driver->mdm_ch, driver->usb_read_mdm_ptr);
 		APPEND_DEBUG('y');
 	}
 
@@ -553,7 +559,7 @@ static int diag_hsic_probe(struct platform_device *pdev)
 	 * on the legacy channel OR ODL is turned on. Communication over usb
 	 * mdm and hsic needs to be turned on.
 	 */
-	if (driver->usb_mdm_connected || (driver->logging_mode ==
+	if (driver->channel_connected || (driver->logging_mode ==
 							 MEMORY_DEVICE_MODE)) {
 		/* The hsic (diag_bridge) platform device driver is enabled */
 		err = diag_bridge_open(&hsic_diag_bridge_ops);
@@ -665,11 +671,11 @@ void diagfwd_bridge_init(void)
 	INIT_WORK(&(driver->diag_disconnect_work), diag_disconnect_work_fn);
 	INIT_WORK(&(driver->diag_usb_read_complete_work),
 			diag_usb_read_complete_fn);
-#ifdef CONFIG_DIAG_OVER_USB
-	driver->mdm_ch = usb_diag_open(DIAG_MDM, driver,
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
+	driver->mdm_ch = channel_diag_open(DIAG_MDM, driver,
 						 diagfwd_bridge_notifier);
 	if (IS_ERR(driver->mdm_ch)) {
-		pr_err("diag: Unable to open USB diag MDM channel\n");
+		pr_err("diag: Unable to open client diag MDM channel\n");
 		goto err;
 	}
 #endif
@@ -713,9 +719,13 @@ void diagfwd_bridge_exit(void)
 	platform_driver_unregister(&msm_diagfwd_smux_driver);
 	/* destroy USB MDM specific variables */
 #ifdef CONFIG_DIAG_OVER_USB
-	if (driver->usb_mdm_connected)
+	if (driver->usb_mdm_connected && driver->usb_mdm_req_allocated) {
+		driver->usb_mdm_req_allocated = 0;
 		usb_diag_free_req(driver->mdm_ch);
-	usb_diag_close(driver->mdm_ch);
+	}
+#endif
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
+	channel_diag_close(driver->mdm_ch);
 #endif
 	kfree(driver->usb_buf_mdm_out);
 	kfree(driver->hsic_buf_tbl);

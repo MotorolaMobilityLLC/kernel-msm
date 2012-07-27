@@ -19,9 +19,6 @@
 #include <linux/uaccess.h>
 #include <linux/diagchar.h>
 #include <linux/sched.h>
-#ifdef CONFIG_DIAG_OVER_USB
-#include <mach/usbdiag.h>
-#endif
 #include <asm/current.h>
 #include "diagchar_hdlc.h"
 #include "diagmem.h"
@@ -237,10 +234,15 @@ static int diagchar_close(struct inode *inode, struct file *file)
 		driver->socket_process = NULL;
 	}
 
-#ifdef CONFIG_DIAG_OVER_USB
-	/* If the SD logging process exits, change logging to USB mode */
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
+	/* If the SD logging process exits, change logging to
+		appropriate channel mode */
 	if (driver->logging_process_id == current->tgid) {
+#if defined(CONFIG_DIAG_OVER_USB)
 		driver->logging_mode = USB_MODE;
+#elif defined(CONFIG_DIAG_INTERNAL)
+		driver->logging_mode = INTERNAL_MODE;
+#endif
 		diagfwd_connect();
 #ifdef CONFIG_DIAG_BRIDGE_CODE
 		driver->num_hsic_buf_tbl_entries = 0;
@@ -354,15 +356,194 @@ void diag_add_reg(int j, struct bindpkt_params *params,
 	(*count_entries)++;
 }
 
+void diag_switch_logging_mode(unsigned long logging_mode)
+{
+	int temp;
+	int status;
+	int i;
+
+	mutex_lock(&driver->diagchar_mutex);
+	temp = driver->logging_mode;
+	driver->logging_mode = (int)logging_mode;
+	if (driver->logging_mode == MEMORY_DEVICE_MODE) {
+		driver->mask_check = 1;
+		if (driver->socket_process) {
+			/*
+			 * Notify the socket logging process that we
+			 * are switching to MEMORY_DEVICE_MODE
+			 */
+			status = send_sig(SIGCONT,
+				driver->socket_process, 0);
+			if (status) {
+				pr_err("diag: %s, Error notifying ",
+					__func__);
+				pr_err("socket process, status: %d\n",
+					status);
+			}
+		}
+	}
+	if (driver->logging_mode == UART_MODE) {
+		driver->mask_check = 0;
+		driver->logging_mode = MEMORY_DEVICE_MODE;
+	}
+	if (driver->logging_mode == SOCKET_MODE) {
+		driver->socket_process = current;
+		driver->mask_check = 0;
+		driver->logging_mode = MEMORY_DEVICE_MODE;
+	}
+	driver->logging_process_id = current->tgid;
+	mutex_unlock(&driver->diagchar_mutex);
+	if (temp == MEMORY_DEVICE_MODE && driver->logging_mode
+						== NO_LOGGING_MODE) {
+		driver->in_busy_1 = 1;
+		driver->in_busy_2 = 1;
+		driver->in_busy_qdsp_1 = 1;
+		driver->in_busy_qdsp_2 = 1;
+		driver->in_busy_wcnss_1 = 1;
+		driver->in_busy_wcnss_2 = 1;
+#ifdef CONFIG_DIAG_SDIO_PIPE
+		driver->in_busy_sdio = 1;
+#endif
+#ifdef CONFIG_DIAG_BRIDGE_CODE
+		driver->num_hsic_buf_tbl_entries = 0;
+		for (i = 0; i < driver->poolsize_hsic_write; i++) {
+			if (driver->hsic_buf_tbl[i].buf) {
+				/* Return the buffer to the pool */
+				diagmem_free(driver, (unsigned char *)
+					(driver->hsic_buf_tbl[i].buf),
+					POOL_TYPE_HSIC);
+				driver->hsic_buf_tbl[i].buf = 0;
+				driver->hsic_buf_tbl[i].length = 0;
+			}
+		}
+		diagfwd_disconnect_bridge(0);
+#endif
+	} else if (temp == NO_LOGGING_MODE && driver->logging_mode
+						== MEMORY_DEVICE_MODE) {
+		driver->in_busy_1 = 0;
+		driver->in_busy_2 = 0;
+		driver->in_busy_qdsp_1 = 0;
+		driver->in_busy_qdsp_2 = 0;
+		driver->in_busy_wcnss_1 = 0;
+		driver->in_busy_wcnss_2 = 0;
+		/* Poll SMD channels to check for data*/
+		if (driver->ch)
+			queue_work(driver->diag_wq,
+				&(driver->diag_read_smd_work));
+		if (driver->chqdsp)
+			queue_work(driver->diag_wq,
+				&(driver->diag_read_smd_qdsp_work));
+		if (driver->ch_wcnss)
+			queue_work(driver->diag_wq,
+				&(driver->diag_read_smd_wcnss_work));
+#ifdef CONFIG_DIAG_SDIO_PIPE
+		driver->in_busy_sdio = 0;
+		/* Poll SDIO channel to check for data */
+		if (driver->sdio_ch)
+			queue_work(driver->diag_sdio_wq,
+				&(driver->diag_read_sdio_work));
+#endif
+#ifdef CONFIG_DIAG_BRIDGE_CODE
+		driver->num_hsic_buf_tbl_entries = 0;
+		for (i = 0; i < driver->poolsize_hsic_write; i++) {
+			driver->hsic_buf_tbl[i].buf = 0;
+			driver->hsic_buf_tbl[i].length = 0;
+		}
+		diagfwd_connect_bridge(0);
+#endif
+	}
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
+	else if ((temp == USB_MODE || temp == INTERNAL_MODE) &&
+			driver->logging_mode == NO_LOGGING_MODE) {
+		diagfwd_disconnect();
+#ifdef CONFIG_DIAG_BRIDGE_CODE
+		diagfwd_disconnect_bridge(0);
+#endif
+	} else if (temp == NO_LOGGING_MODE &&
+		(driver->logging_mode == USB_MODE ||
+		driver->logging_mode == INTERNAL_MODE)) {
+		diagfwd_connect();
+#ifdef CONFIG_DIAG_BRIDGE_CODE
+		diagfwd_connect_bridge(0);
+#endif
+	} else if ((temp == USB_MODE || temp == INTERNAL_MODE) &&
+			driver->logging_mode == MEMORY_DEVICE_MODE) {
+		diagfwd_disconnect();
+		driver->in_busy_1 = 0;
+		driver->in_busy_2 = 0;
+		driver->in_busy_qdsp_1 = 0;
+		driver->in_busy_qdsp_2 = 0;
+		driver->in_busy_wcnss_1 = 0;
+		driver->in_busy_wcnss_2 = 0;
+
+		/* Poll SMD channels to check for data*/
+		if (driver->ch)
+			queue_work(driver->diag_wq,
+				 &(driver->diag_read_smd_work));
+		if (driver->chqdsp)
+			queue_work(driver->diag_wq,
+				&(driver->diag_read_smd_qdsp_work));
+		if (driver->ch_wcnss)
+			queue_work(driver->diag_wq,
+				&(driver->diag_read_smd_wcnss_work));
+#ifdef CONFIG_DIAG_SDIO_PIPE
+		driver->in_busy_sdio = 0;
+		/* Poll SDIO channel to check for data */
+		if (driver->sdio_ch)
+			queue_work(driver->diag_sdio_wq,
+				&(driver->diag_read_sdio_work));
+#endif
+#ifdef CONFIG_DIAG_BRIDGE_CODE
+		driver->num_hsic_buf_tbl_entries = 0;
+		for (i = 0; i < driver->poolsize_hsic_write; i++) {
+			driver->hsic_buf_tbl[i].buf = 0;
+			driver->hsic_buf_tbl[i].length = 0;
+		}
+		diagfwd_cancel_hsic();
+		diagfwd_connect_bridge(0);
+#endif
+	} else if (temp == MEMORY_DEVICE_MODE &&
+			(driver->logging_mode == USB_MODE ||
+			driver->logging_mode == INTERNAL_MODE)) {
+		diagfwd_connect();
+#ifdef CONFIG_DIAG_BRIDGE_CODE
+		driver->num_hsic_buf_tbl_entries = 0;
+		for (i = 0; i < driver->poolsize_hsic_write; i++) {
+			if (driver->hsic_buf_tbl[i].buf) {
+				/* Return the buffer to the pool */
+				diagmem_free(driver, (unsigned char *)
+					(driver->hsic_buf_tbl[i].buf),
+					POOL_TYPE_HSIC);
+				driver->hsic_buf_tbl[i].buf = 0;
+				driver->hsic_buf_tbl[i].length = 0;
+			}
+		}
+		diagfwd_cancel_hsic();
+		diagfwd_connect_bridge(0);
+#endif
+	}
+#endif
+#if defined(CONFIG_DIAG_OVER_USB) && defined(CONFIG_DIAG_INTERNAL)
+	else if (temp == USB_MODE && driver->logging_mode == INTERNAL_MODE) {
+		usb_diag_close(driver->legacy_ch);
+		driver->legacy_ch = tty_diag_channel_open(DIAG_LEGACY,
+						driver, diag_legacy_notifier);
+	} else if (temp == INTERNAL_MODE && driver->logging_mode == USB_MODE) {
+		tty_diag_channel_close(driver->legacy_ch);
+		driver->legacy_ch = usb_diag_open(DIAG_LEGACY,
+						driver, diag_legacy_notifier);
+	}
+#endif
+}
+
 long diagchar_ioctl(struct file *filp,
 			   unsigned int iocmd, unsigned long ioarg)
 {
-	int i, j, count_entries = 0, temp;
+	int i, j, count_entries = 0;
 	int success = -1;
 	void *temp_buf;
 	uint16_t support_list = 0;
 	struct dci_notification_tbl *notify_params;
-	int status;
 
 	if (iocmd == DIAG_IOCTL_COMMAND_REG) {
 		struct bindpkt_params_per_process *pkt_params =
@@ -496,165 +677,7 @@ long diagchar_ioctl(struct file *filp,
 		wake_up_interruptible(&driver->wait_q);
 		success = 1;
 	} else if (iocmd == DIAG_IOCTL_SWITCH_LOGGING) {
-		mutex_lock(&driver->diagchar_mutex);
-		temp = driver->logging_mode;
-		driver->logging_mode = (int)ioarg;
-		if (driver->logging_mode == MEMORY_DEVICE_MODE) {
-			driver->mask_check = 1;
-			if (driver->socket_process) {
-				/*
-				 * Notify the socket logging process that we
-				 * are switching to MEMORY_DEVICE_MODE
-				 */
-				status = send_sig(SIGCONT,
-					 driver->socket_process, 0);
-				if (status) {
-					pr_err("diag: %s, Error notifying ",
-						__func__);
-					pr_err("socket process, status: %d\n",
-						status);
-				}
-			}
-		}
-		if (driver->logging_mode == UART_MODE) {
-			driver->mask_check = 0;
-			driver->logging_mode = MEMORY_DEVICE_MODE;
-		}
-		if (driver->logging_mode == SOCKET_MODE) {
-			driver->socket_process = current;
-			driver->mask_check = 0;
-			driver->logging_mode = MEMORY_DEVICE_MODE;
-		}
-		driver->logging_process_id = current->tgid;
-		mutex_unlock(&driver->diagchar_mutex);
-		if (temp == MEMORY_DEVICE_MODE && driver->logging_mode
-							== NO_LOGGING_MODE) {
-			driver->in_busy_1 = 1;
-			driver->in_busy_2 = 1;
-			driver->in_busy_qdsp_1 = 1;
-			driver->in_busy_qdsp_2 = 1;
-			driver->in_busy_wcnss_1 = 1;
-			driver->in_busy_wcnss_2 = 1;
-#ifdef CONFIG_DIAG_SDIO_PIPE
-			driver->in_busy_sdio = 1;
-#endif
-#ifdef CONFIG_DIAG_BRIDGE_CODE
-			driver->num_hsic_buf_tbl_entries = 0;
-			for (i = 0; i < driver->poolsize_hsic_write; i++) {
-				if (driver->hsic_buf_tbl[i].buf) {
-					/* Return the buffer to the pool */
-					diagmem_free(driver, (unsigned char *)
-						(driver->hsic_buf_tbl[i].buf),
-						POOL_TYPE_HSIC);
-					driver->hsic_buf_tbl[i].buf = 0;
-					driver->hsic_buf_tbl[i].length = 0;
-				}
-			}
-			diagfwd_disconnect_bridge(0);
-#endif
-		} else if (temp == NO_LOGGING_MODE && driver->logging_mode
-							== MEMORY_DEVICE_MODE) {
-			driver->in_busy_1 = 0;
-			driver->in_busy_2 = 0;
-			driver->in_busy_qdsp_1 = 0;
-			driver->in_busy_qdsp_2 = 0;
-			driver->in_busy_wcnss_1 = 0;
-			driver->in_busy_wcnss_2 = 0;
-			/* Poll SMD channels to check for data*/
-			if (driver->ch)
-				queue_work(driver->diag_wq,
-					&(driver->diag_read_smd_work));
-			if (driver->chqdsp)
-				queue_work(driver->diag_wq,
-					&(driver->diag_read_smd_qdsp_work));
-			if (driver->ch_wcnss)
-				queue_work(driver->diag_wq,
-					&(driver->diag_read_smd_wcnss_work));
-#ifdef CONFIG_DIAG_SDIO_PIPE
-			driver->in_busy_sdio = 0;
-			/* Poll SDIO channel to check for data */
-			if (driver->sdio_ch)
-				queue_work(driver->diag_sdio_wq,
-					&(driver->diag_read_sdio_work));
-#endif
-#ifdef CONFIG_DIAG_BRIDGE_CODE
-			driver->num_hsic_buf_tbl_entries = 0;
-			for (i = 0; i < driver->poolsize_hsic_write; i++) {
-				driver->hsic_buf_tbl[i].buf = 0;
-				driver->hsic_buf_tbl[i].length = 0;
-			}
-			diagfwd_connect_bridge(0);
-#endif
-		}
-#ifdef CONFIG_DIAG_OVER_USB
-		else if (temp == USB_MODE && driver->logging_mode
-							 == NO_LOGGING_MODE) {
-			diagfwd_disconnect();
-#ifdef CONFIG_DIAG_BRIDGE_CODE
-			diagfwd_disconnect_bridge(0);
-#endif
-		} else if (temp == NO_LOGGING_MODE && driver->logging_mode
-								== USB_MODE) {
-			diagfwd_connect();
-#ifdef CONFIG_DIAG_BRIDGE_CODE
-			diagfwd_connect_bridge(0);
-#endif
-		} else if (temp == USB_MODE && driver->logging_mode
-							== MEMORY_DEVICE_MODE) {
-			diagfwd_disconnect();
-			driver->in_busy_1 = 0;
-			driver->in_busy_2 = 0;
-			driver->in_busy_qdsp_1 = 0;
-			driver->in_busy_qdsp_2 = 0;
-			driver->in_busy_wcnss_1 = 0;
-			driver->in_busy_wcnss_2 = 0;
-
-			/* Poll SMD channels to check for data*/
-			if (driver->ch)
-				queue_work(driver->diag_wq,
-					 &(driver->diag_read_smd_work));
-			if (driver->chqdsp)
-				queue_work(driver->diag_wq,
-					&(driver->diag_read_smd_qdsp_work));
-			if (driver->ch_wcnss)
-				queue_work(driver->diag_wq,
-					&(driver->diag_read_smd_wcnss_work));
-#ifdef CONFIG_DIAG_SDIO_PIPE
-			driver->in_busy_sdio = 0;
-			/* Poll SDIO channel to check for data */
-			if (driver->sdio_ch)
-				queue_work(driver->diag_sdio_wq,
-					&(driver->diag_read_sdio_work));
-#endif
-#ifdef CONFIG_DIAG_BRIDGE_CODE
-			driver->num_hsic_buf_tbl_entries = 0;
-			for (i = 0; i < driver->poolsize_hsic_write; i++) {
-				driver->hsic_buf_tbl[i].buf = 0;
-				driver->hsic_buf_tbl[i].length = 0;
-			}
-			diagfwd_cancel_hsic();
-			diagfwd_connect_bridge(0);
-#endif
-		} else if (temp == MEMORY_DEVICE_MODE &&
-				 driver->logging_mode == USB_MODE) {
-			diagfwd_connect();
-#ifdef CONFIG_DIAG_BRIDGE_CODE
-			driver->num_hsic_buf_tbl_entries = 0;
-			for (i = 0; i < driver->poolsize_hsic_write; i++) {
-				if (driver->hsic_buf_tbl[i].buf) {
-					/* Return the buffer to the pool */
-					diagmem_free(driver, (unsigned char *)
-						(driver->hsic_buf_tbl[i].buf),
-						POOL_TYPE_HSIC);
-					driver->hsic_buf_tbl[i].buf = 0;
-					driver->hsic_buf_tbl[i].length = 0;
-				}
-			}
-			diagfwd_cancel_hsic();
-			diagfwd_connect_bridge(0);
-#endif
-		}
-#endif /* DIAG over USB */
+		diag_switch_logging_mode(ioarg);
 		success = 1;
 	}
 
@@ -961,13 +984,15 @@ static int diagchar_write(struct file *file, const char __user *buf,
 	struct diag_hdlc_dest_type enc = { NULL, NULL, 0 };
 	void *buf_copy = NULL;
 	int payload_size;
-#ifdef CONFIG_DIAG_OVER_USB
-	if (((driver->logging_mode == USB_MODE) && (!driver->usb_connected)) ||
-				(driver->logging_mode == NO_LOGGING_MODE)) {
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
+	if (((driver->logging_mode == USB_MODE ||
+		driver->logging_mode == INTERNAL_MODE) &&
+		(!driver->channel_connected)) ||
+		(driver->logging_mode == NO_LOGGING_MODE)) {
 		/*Drop the diag payload */
 		return -EIO;
 	}
-#endif /* DIAG over USB */
+#endif /* DIAG over USB or internal*/
 	/* Get the packet type F3/log/event/Pkt response */
 	err = copy_from_user((&pkt_type), buf, 4);
 	/* First 4 bytes indicate the type of payload - ignore these */
@@ -1251,10 +1276,95 @@ static const struct file_operations diagcharfops = {
 	.release = diagchar_close
 };
 
+static ssize_t diag_logging_mode_show(struct device *dev,
+		struct device_attribute *attr, char *buff)
+{
+
+	switch (driver->logging_mode) {
+	case USB_MODE:
+		return snprintf(buff, PAGE_SIZE, "%s", USB_MODE_NAME);
+	case MEMORY_DEVICE_MODE:
+		return snprintf(buff, PAGE_SIZE, "%s", MEMORY_DEVICE_MODE_NAME);
+	case NO_LOGGING_MODE:
+		return snprintf(buff, PAGE_SIZE, "%s", NO_LOGGING_MODE_NAME);
+	case UART_MODE:
+		return snprintf(buff, PAGE_SIZE, "%s", UART_MODE_NAME);
+	case INTERNAL_MODE:
+		return snprintf(buff, PAGE_SIZE, "%s", INTERNAL_MODE_NAME);
+	default:
+		return snprintf(buff, PAGE_SIZE, "%s", "invalid");
+	}
+}
+
+static ssize_t diag_logging_mode_store(struct device *dev,
+		struct device_attribute *attr, const char *buff, size_t size)
+{
+	char buf[256], *b;
+
+	strlcpy(buf, buff, sizeof(buf));
+	b = strim(buf);
+
+	if (strlen(b)) {
+		if (!strcmp(b, MEMORY_DEVICE_MODE_NAME))
+			diag_switch_logging_mode(MEMORY_DEVICE_MODE);
+		else if (!strcmp(b, NO_LOGGING_MODE_NAME))
+			diag_switch_logging_mode(NO_LOGGING_MODE);
+		else if (!strcmp(b, UART_MODE_NAME))
+			diag_switch_logging_mode(UART_MODE);
+#ifdef CONFIG_DIAG_OVER_USB
+		else if (!strcmp(b, USB_MODE_NAME))
+			diag_switch_logging_mode(USB_MODE);
+#endif
+#ifdef CONFIG_DIAG_INTERNAL
+		else if (!strcmp(b, INTERNAL_MODE_NAME))
+			diag_switch_logging_mode(INTERNAL_MODE);
+#endif
+	}
+
+	return size;
+}
+
+#ifdef CONFIG_DIAG_INTERNAL
+static ssize_t diag_dbg_ftm_show(struct device *dev,
+		struct device_attribute *attr, char *buff)
+{
+	/* print current dbg_ftm flag value */
+	return snprintf(buff, PAGE_SIZE, "%d",
+			tty_diag_get_dbg_ftm_flag_value());
+}
+
+static ssize_t diag_dbg_ftm_store(struct device *dev,
+		struct device_attribute *attr, const char *buff, size_t size)
+{
+	char buf[256], *b;
+
+	strlcpy(buf, buff, sizeof(buf));
+	b = strim(buf);
+
+	if (strnlen(b, 1)) {
+		if (!strncmp(b, "0", 1)) {
+			tty_diag_set_dbg_ftm_flag_value(0);
+		} else {
+			/* we consider other non-ZERO value as "1" here */
+			tty_diag_set_dbg_ftm_flag_value(1);
+		}
+	}
+
+	return size;
+}
+
+static DEVICE_ATTR(dbg_ftm, S_IRUGO | S_IWUSR, diag_dbg_ftm_show,
+						diag_dbg_ftm_store);
+#endif
+
+static DEVICE_ATTR(logging_mode, S_IRUGO | S_IWUSR, diag_logging_mode_show,
+						 diag_logging_mode_store);
+
 static int diagchar_setup_cdev(dev_t devno)
 {
 
 	int err;
+	struct device *dev;
 
 	cdev_init(driver->cdev, &diagcharfops);
 
@@ -1275,11 +1385,27 @@ static int diagchar_setup_cdev(dev_t devno)
 		return -1;
 	}
 
-	device_create(driver->diagchar_class, NULL, devno,
+	dev = device_create(driver->diagchar_class, NULL, devno,
 				  (void *)driver, "diag");
+	if (dev)
+		err = device_create_file(dev, &dev_attr_logging_mode);
+
+	if (!dev || err) {
+		printk(KERN_ERR "Error creating diag sysfs\n");
+		return -1;
+	}
+
+#ifdef CONFIG_DIAG_INTERNAL
+	if (dev)
+		err = device_create_file(dev, &dev_attr_dbg_ftm);
+
+	if (!dev || err) {
+		printk(KERN_ERR "Error creating diag sysfs on dbg_ftm_mode\n");
+		return -ENXIO;
+	}
+#endif
 
 	return 0;
-
 }
 
 static int diagchar_cleanup(void)
@@ -1346,9 +1472,14 @@ static int __init diagchar_init(void)
 		driver->itemsize_write_struct = itemsize_write_struct;
 		driver->poolsize_write_struct = poolsize_write_struct;
 		driver->num_clients = max_clients;
+#if defined(CONFIG_DIAG_OVER_USB)
 		driver->logging_mode = USB_MODE;
 		driver->socket_process = NULL;
 		driver->mask_check = 0;
+#elif defined(CONFIG_DIAG_INTERNAL)
+		driver->logging_mode = INTERNAL_MODE;
+		driver->mask_check = 0;
+#endif
 		mutex_init(&driver->diagchar_mutex);
 		init_waitqueue_head(&driver->wait_q);
 		INIT_WORK(&(driver->diag_drain_work), diag_drain_work_fn);

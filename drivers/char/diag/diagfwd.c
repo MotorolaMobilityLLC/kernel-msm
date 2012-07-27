@@ -303,8 +303,8 @@ int diag_device_write(void *buf, int proc_num, struct diag_request *write_ptr)
 #ifdef DIAG_DEBUG
 					pr_debug("diag: ENQUEUE buf ptr"
 						   " and length is %x , %d\n",
-						   (unsigned int)(driver->buf_
-				tbl[i].buf), driver->buf_tbl[i].length);
+				(unsigned int)(driver->buf_tbl[i].length),
+				driver->buf_tbl[i].length);
 #endif
 					break;
 				}
@@ -372,8 +372,9 @@ int diag_device_write(void *buf, int proc_num, struct diag_request *write_ptr)
 #endif
 		err = -1;
 	}
-#ifdef CONFIG_DIAG_OVER_USB
-	else if (driver->logging_mode == USB_MODE) {
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
+	else if (driver->logging_mode == USB_MODE ||
+			driver->logging_mode == INTERNAL_MODE) {
 		if (proc_num == APPS_DATA) {
 			driver->write_ptr_svc = (struct diag_request *)
 			(diagmem_alloc(driver, sizeof(struct diag_request),
@@ -381,36 +382,37 @@ int diag_device_write(void *buf, int proc_num, struct diag_request *write_ptr)
 			if (driver->write_ptr_svc) {
 				driver->write_ptr_svc->length = driver->used;
 				driver->write_ptr_svc->buf = buf;
-				err = usb_diag_write(driver->legacy_ch,
+				err = channel_diag_write(driver->legacy_ch,
 						driver->write_ptr_svc);
 			} else
 				err = -1;
 		} else if (proc_num == MODEM_DATA) {
 			write_ptr->buf = buf;
 #ifdef DIAG_DEBUG
-			printk(KERN_INFO "writing data to USB,"
+			printk(KERN_INFO "writing data to channel,"
 				"pkt length %d\n", write_ptr->length);
 			print_hex_dump(KERN_DEBUG, "Written Packet Data to"
-					   " USB: ", 16, 1, DUMP_PREFIX_ADDRESS,
+				" CHANNEL: ", 16, 1, DUMP_PREFIX_ADDRESS,
 					    buf, write_ptr->length, 1);
 #endif /* DIAG DEBUG */
-			err = usb_diag_write(driver->legacy_ch, write_ptr);
+			err = channel_diag_write(driver->legacy_ch, write_ptr);
 		} else if (proc_num == QDSP_DATA) {
 			write_ptr->buf = buf;
-			err = usb_diag_write(driver->legacy_ch, write_ptr);
+			err = channel_diag_write(driver->legacy_ch, write_ptr);
 		} else if (proc_num == WCNSS_DATA) {
 			write_ptr->buf = buf;
-			err = usb_diag_write(driver->legacy_ch, write_ptr);
+			err = channel_diag_write(driver->legacy_ch, write_ptr);
 		}
 #ifdef CONFIG_DIAG_SDIO_PIPE
 		else if (proc_num == SDIO_DATA) {
 			if (machine_is_msm8x60_fusion() ||
 					 machine_is_msm8x60_fusn_ffa()) {
 				write_ptr->buf = buf;
-				err = usb_diag_write(driver->mdm_ch, write_ptr);
+				err = channel_diag_write(driver->mdm_ch,
+							write_ptr);
 			} else
 				pr_err("diag: Incorrect sdio data "
-						"while USB write\n");
+						"while channel write\n");
 		}
 #endif
 #ifdef CONFIG_DIAG_BRIDGE_CODE
@@ -425,8 +427,10 @@ int diag_device_write(void *buf, int proc_num, struct diag_request *write_ptr)
 					write_ptr_mdm->buf = buf;
 					write_ptr_mdm->length =
 						driver->write_len_mdm;
-					err = usb_diag_write(driver->mdm_ch,
+
+					err = channel_diag_write(driver->mdm_ch,
 								write_ptr_mdm);
+
 					/* Return to the pool immediately */
 					if (err) {
 						diagmem_free(driver,
@@ -451,7 +455,7 @@ int diag_device_write(void *buf, int proc_num, struct diag_request *write_ptr)
 #endif
 		APPEND_DEBUG('d');
 	}
-#endif /* DIAG OVER USB */
+#endif /* DIAG OVER USB OR INTERNAL*/
     return err;
 }
 
@@ -1021,7 +1025,7 @@ static int diag_process_apps_pkt(unsigned char *buf, int len)
 	unsigned char *temp = buf;
 	uint8_t *rt_mask_ptr;
 	int data_type;
-#if defined(CONFIG_DIAG_OVER_USB)
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
 	int payload_length;
 	unsigned char *ptr;
 #endif
@@ -1032,7 +1036,7 @@ static int diag_process_apps_pkt(unsigned char *buf, int len)
 		/* Read Equip ID and pass as first param below*/
 		diag_update_log_mask(*(int *)buf, buf+8, *(int *)(buf+4));
 		diag_update_userspace_clients(LOG_MASKS_TYPE);
-#if defined(CONFIG_DIAG_OVER_USB)
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
 		if (chk_apps_only()) {
 			driver->apps_rsp_buf[0] = 0x73;
 			*(int *)(driver->apps_rsp_buf + 4) = 0x3; /* op. ID */
@@ -1120,7 +1124,7 @@ static int diag_process_apps_pkt(unsigned char *buf, int len)
 				" ssid_last = %d", ssid_first, ssid_last);
 		diag_update_msg_mask(ssid_first, ssid_last , buf + 8);
 		diag_update_userspace_clients(MSG_MASKS_TYPE);
-#if defined(CONFIG_DIAG_OVER_USB)
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
 		if (chk_apps_only()) {
 			for (i = 0; i < 8 + ssid_range; i++)
 				*(driver->apps_rsp_buf + i) = *(buf+i);
@@ -1171,7 +1175,7 @@ static int diag_process_apps_pkt(unsigned char *buf, int len)
 		diag_event_num_bytes =  (*(uint16_t *)buf)/8+1;
 		diag_update_event_mask(buf, 1, (*(uint16_t *)buf)/8+1);
 		diag_update_userspace_clients(EVENT_MASKS_TYPE);
-#if defined(CONFIG_DIAG_OVER_USB)
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
 		if (chk_apps_only()) {
 			driver->apps_rsp_buf[0] = 0x82;
 			driver->apps_rsp_buf[1] = 0x0;
@@ -1198,7 +1202,8 @@ static int diag_process_apps_pkt(unsigned char *buf, int len)
 		diag_event_config = *(buf+1);
 		diag_toggle_event_mask(*(buf+1));
 		diag_update_userspace_clients(EVENT_MASKS_TYPE);
-#if defined(CONFIG_DIAG_OVER_USB)
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
+
 		if (chk_apps_only()) {
 			driver->apps_rsp_buf[0] = 0x60;
 			driver->apps_rsp_buf[1] = 0x0;
@@ -1266,7 +1271,7 @@ static int diag_process_apps_pkt(unsigned char *buf, int len)
 			}
 		}
 	}
-#if defined(CONFIG_DIAG_OVER_USB)
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
 	/* Check for the command/respond msg for the maximum packet length */
 	if ((*buf == 0x4b) && (*(buf+1) == 0x12) &&
 		(*(uint16_t *)(buf+2) == 0x0055)) {
@@ -1538,7 +1543,7 @@ static int diag_process_apps_pkt(unsigned char *buf, int len)
 		return packet_type;
 }
 
-#ifdef CONFIG_DIAG_OVER_USB
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
 void diag_send_error_rsp(int index)
 {
 	int i;
@@ -1560,9 +1565,12 @@ void diag_process_hdlc(void *data, unsigned len)
 {
 	struct diag_hdlc_decode_type hdlc;
 	int ret, type = 0;
+#ifdef DIAG_DEBUG
+	int i;
+#endif
 	pr_debug("diag: HDLC decode fn, len of data  %d\n", len);
 	hdlc.dest_ptr = driver->hdlc_buf;
-	hdlc.dest_size = USB_MAX_OUT_BUF;
+	hdlc.dest_size = MAX_OUT_BUF;
 	hdlc.src_ptr = data;
 	hdlc.src_size = len;
 	hdlc.src_idx = 0;
@@ -1571,10 +1579,7 @@ void diag_process_hdlc(void *data, unsigned len)
 
 	ret = diag_hdlc_decode(&hdlc);
 
-	if (ret)
-		type = diag_process_apps_pkt(driver->hdlc_buf,
-							  hdlc.dest_idx - 3);
-	else if (driver->debug_flag) {
+	if (!ret && driver->debug_flag) {
 		printk(KERN_ERR "Packet dropped due to bad HDLC coding/CRC"
 				" errors or partial packet received, packet"
 				" length = %d\n", len);
@@ -1582,6 +1587,16 @@ void diag_process_hdlc(void *data, unsigned len)
 					   DUMP_PREFIX_ADDRESS, data, len, 1);
 		driver->debug_flag = 0;
 	}
+
+	if (ret)
+		type = diag_process_apps_pkt(driver->hdlc_buf,
+							  hdlc.dest_idx - 3);
+#ifdef CONFIG_DIAG_INTERNAL
+	else if (driver->logging_mode == INTERNAL_MODE) {
+		tty_diag_channel_abandon_request();
+	}
+#endif
+
 	/* send error responses from APPS for Central Routing */
 	if (type == 1 && chk_apps_only()) {
 		diag_send_error_rsp(hdlc.dest_idx);
@@ -1618,22 +1633,29 @@ void diag_process_hdlc(void *data, unsigned len)
 	}
 }
 
-#ifdef CONFIG_DIAG_OVER_USB
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
 /* 2+1 for modem ; 2 for LPASS ; 1 for WCNSS */
 #define N_LEGACY_WRITE	(driver->poolsize + 6)
 #define N_LEGACY_READ	1
 
 int diagfwd_connect(void)
 {
+#ifdef CONFIG_DIAG_OVER_USB
 	int err;
 
-	printk(KERN_DEBUG "diag: USB connected\n");
-	err = usb_diag_alloc_req(driver->legacy_ch, N_LEGACY_WRITE,
-			N_LEGACY_READ);
-	if (err)
-		printk(KERN_ERR "diag: unable to alloc USB req on legacy ch");
+	if (driver->logging_mode == USB_MODE) {
+		err = usb_diag_alloc_req(driver->legacy_ch, N_LEGACY_WRITE,
+				N_LEGACY_READ);
+		if (err)
+			printk(KERN_ERR "diag: unable to alloc USB req on legacy ch");
+		else
+			driver->usb_req_allocated = 1;
+	}
+#endif
 
-	driver->usb_connected = 1;
+	printk(KERN_DEBUG "diag: channel connected\n");
+
+	driver->channel_connected = 1;
 	driver->in_busy_1 = 0;
 	driver->in_busy_2 = 0;
 	driver->in_busy_qdsp_1 = 0;
@@ -1664,11 +1686,13 @@ int diagfwd_connect(void)
 
 int diagfwd_disconnect(void)
 {
-	printk(KERN_DEBUG "diag: USB disconnected\n");
-	driver->usb_connected = 0;
+	printk(KERN_DEBUG "diag: channel disconnected\n");
+	driver->channel_connected = 0;
 	driver->debug_flag = 1;
-	usb_diag_free_req(driver->legacy_ch);
-	if (driver->logging_mode == USB_MODE) {
+#ifdef CONFIG_DIAG_OVER_USB
+	/* Logging mode may have changed */
+	if (driver->usb_req_allocated) {
+		usb_diag_free_req(driver->legacy_ch);
 		driver->in_busy_1 = 1;
 		driver->in_busy_2 = 1;
 		driver->in_busy_qdsp_1 = 1;
@@ -1676,6 +1700,7 @@ int diagfwd_disconnect(void)
 		driver->in_busy_wcnss_1 = 1;
 		driver->in_busy_wcnss_2 = 1;
 	}
+#endif
 #ifdef CONFIG_DIAG_SDIO_PIPE
 	if (machine_is_msm8x60_fusion() || machine_is_msm8x60_fusn_ffa())
 		if (driver->mdm_ch && !IS_ERR(driver->mdm_ch))
@@ -1690,6 +1715,7 @@ int diagfwd_write_complete(struct diag_request *diag_write_ptr)
 	unsigned char *buf = diag_write_ptr->buf;
 	/*Determine if the write complete is for data from modem/apps/q6 */
 	/* Need a context variable here instead */
+
 	if (buf == (void *)driver->buf_in_1) {
 		driver->in_busy_1 = 0;
 		APPEND_DEBUG('o');
@@ -1731,6 +1757,7 @@ int diagfwd_write_complete(struct diag_request *diag_write_ptr)
 						 POOL_TYPE_WRITE_STRUCT);
 		APPEND_DEBUG('q');
 	}
+
 	return 0;
 }
 
@@ -1740,15 +1767,15 @@ int diagfwd_read_complete(struct diag_request *diag_read_ptr)
 	unsigned char *buf = diag_read_ptr->buf;
 
 	/* Determine if the read complete is for data on legacy/mdm ch */
-	if (buf == (void *)driver->usb_buf_out) {
+	if (buf == (void *)driver->buf_out) {
 		driver->read_len_legacy = diag_read_ptr->actual;
 		APPEND_DEBUG('s');
 #ifdef DIAG_DEBUG
-		printk(KERN_INFO "read data from USB, pkt length %d",
+		printk(KERN_INFO "read data from channel, pkt length %d",
 		    diag_read_ptr->actual);
-		print_hex_dump(KERN_DEBUG, "Read Packet Data from USB: ", 16, 1,
-		       DUMP_PREFIX_ADDRESS, diag_read_ptr->buf,
-		       diag_read_ptr->actual, 1);
+		print_hex_dump(KERN_DEBUG, "Read Packet Data from channel: ",
+				16, 1, DUMP_PREFIX_ADDRESS, diag_read_ptr->buf,
+				diag_read_ptr->actual, 1);
 #endif /* DIAG DEBUG */
 		if (driver->logging_mode == USB_MODE) {
 			if (status != -ECONNRESET && status != -ESHUTDOWN)
@@ -1757,6 +1784,9 @@ int diagfwd_read_complete(struct diag_request *diag_read_ptr)
 			else
 				queue_work(driver->diag_wq,
 						 &(driver->diag_read_work));
+		} else if (driver->logging_mode == INTERNAL_MODE) {
+			queue_work(driver->diag_wq,
+				&(driver->diag_proc_hdlc_work));
 		}
 	}
 #ifdef CONFIG_DIAG_SDIO_PIPE
@@ -1770,7 +1800,7 @@ int diagfwd_read_complete(struct diag_request *diag_read_ptr)
 	}
 #endif
 	else
-		printk(KERN_ERR "diag: Unknown buffer ptr from USB");
+		printk(KERN_ERR "diag: Unknown buffer ptr from channel");
 
 	return 0;
 }
@@ -1778,43 +1808,99 @@ int diagfwd_read_complete(struct diag_request *diag_read_ptr)
 void diag_read_work_fn(struct work_struct *work)
 {
 	APPEND_DEBUG('d');
-	driver->usb_read_ptr->buf = driver->usb_buf_out;
-	driver->usb_read_ptr->length = USB_MAX_OUT_BUF;
-	usb_diag_read(driver->legacy_ch, driver->usb_read_ptr);
+	driver->channel_read_ptr->buf = driver->buf_out;
+	driver->channel_read_ptr->length = MAX_OUT_BUF;
+	channel_diag_read(driver->legacy_ch, driver->channel_read_ptr);
 	APPEND_DEBUG('e');
 }
 
 void diag_process_hdlc_fn(struct work_struct *work)
 {
 	APPEND_DEBUG('D');
-	diag_process_hdlc(driver->usb_buf_out, driver->read_len_legacy);
+	diag_process_hdlc(driver->buf_out, driver->read_len_legacy);
 	diag_read_work_fn(work);
 	APPEND_DEBUG('E');
 }
 
-void diag_usb_legacy_notifier(void *priv, unsigned event,
+void diag_legacy_notifier(void *priv, unsigned event,
 			struct diag_request *d_req)
 {
 	switch (event) {
-	case USB_DIAG_CONNECT:
+	case CHANNEL_DIAG_CONNECT:
 		diagfwd_connect();
 		break;
-	case USB_DIAG_DISCONNECT:
+	case CHANNEL_DIAG_DISCONNECT:
 		diagfwd_disconnect();
 		break;
-	case USB_DIAG_READ_DONE:
+	case CHANNEL_DIAG_READ_DONE:
 		diagfwd_read_complete(d_req);
 		break;
-	case USB_DIAG_WRITE_DONE:
+	case CHANNEL_DIAG_WRITE_DONE:
 		diagfwd_write_complete(d_req);
 		break;
 	default:
-		printk(KERN_ERR "Unknown event from USB diag\n");
+		printk(KERN_ERR "Unknown event from diag channel\n");
 		break;
 	}
 }
 
-#endif /* DIAG OVER USB */
+struct legacy_diag_ch *channel_diag_open(const char *name, void *priv,
+			void (*notify)(void *, unsigned, struct diag_request *))
+{
+#ifdef CONFIG_DIAG_OVER_USB
+	if (driver->logging_mode == USB_MODE)
+		return usb_diag_open(name, priv, notify);
+#endif
+#ifdef CONFIG_DIAG_INTERNAL
+	if (driver->logging_mode == INTERNAL_MODE)
+		return tty_diag_channel_open(name, priv, notify);
+#endif
+	return ERR_PTR(-ENODEV);
+}
+
+void channel_diag_close(struct legacy_diag_ch *ch)
+{
+#ifdef CONFIG_DIAG_OVER_USB
+	if (driver->logging_mode == USB_MODE) {
+		usb_diag_close(ch);
+		return;
+	}
+#endif
+#ifdef CONFIG_DIAG_INTERNAL
+	if (driver->logging_mode == INTERNAL_MODE) {
+		tty_diag_channel_close(ch);
+		return;
+	}
+#endif
+}
+
+int channel_diag_read(struct legacy_diag_ch *ch, struct diag_request *d_req)
+{
+#ifdef CONFIG_DIAG_OVER_USB
+	if (driver->logging_mode == USB_MODE)
+		return usb_diag_read(ch, d_req);
+#endif
+#ifdef CONFIG_DIAG_INTERNAL
+	if (driver->logging_mode == INTERNAL_MODE)
+		return tty_diag_channel_read(ch, d_req);
+#endif
+	return -1;
+}
+
+int channel_diag_write(struct legacy_diag_ch *ch, struct diag_request *d_req)
+{
+#ifdef CONFIG_DIAG_OVER_USB
+	if (driver->logging_mode == USB_MODE)
+		return usb_diag_write(ch, d_req);
+#endif
+#ifdef CONFIG_DIAG_INTERNAL
+	if (driver->logging_mode == INTERNAL_MODE)
+		return tty_diag_channel_write(ch, d_req);
+#endif
+	return -1;
+}
+
+#endif /* DIAG OVER USB OR DIAG INTERNAL */
 
 static void diag_smd_notify(void *ctxt, unsigned event)
 {
@@ -2010,8 +2096,8 @@ void diagfwd_init(void)
 			goto err;
 		kmemleak_not_leak(driver->buf_event_mask_update);
 	}
-	if (driver->usb_buf_out  == NULL &&
-	     (driver->usb_buf_out = kzalloc(USB_MAX_OUT_BUF,
+	if (driver->buf_out == NULL &&
+	     (driver->buf_out = kzalloc(MAX_OUT_BUF,
 					 GFP_KERNEL)) == NULL)
 		goto err;
 	kmemleak_not_leak(driver->usb_buf_out);
@@ -2106,13 +2192,12 @@ void diagfwd_init(void)
 			goto err;
 		kmemleak_not_leak(driver->write_ptr_wcnss_2);
 	}
-
-	if (driver->usb_read_ptr == NULL) {
-		driver->usb_read_ptr = kzalloc(
+	if (driver->channel_read_ptr == NULL) {
+		driver->channel_read_ptr = kzalloc(
 			sizeof(struct diag_request), GFP_KERNEL);
-		if (driver->usb_read_ptr == NULL)
+		if (driver->channel_read_ptr == NULL)
 			goto err;
-		kmemleak_not_leak(driver->usb_read_ptr);
+		kmemleak_not_leak(driver->channel_read_ptr);
 	}
 	if (driver->pkt_buf == NULL &&
 	     (driver->pkt_buf = kzalloc(PKT_SIZE,
@@ -2126,7 +2211,7 @@ void diagfwd_init(void)
 		kmemleak_not_leak(driver->apps_rsp_buf);
 	}
 	driver->diag_wq = create_singlethread_workqueue("diag_wq");
-#ifdef CONFIG_DIAG_OVER_USB
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
 	INIT_WORK(&(driver->diag_proc_hdlc_work), diag_process_hdlc_fn);
 	INIT_WORK(&(driver->diag_read_work), diag_read_work_fn);
 	INIT_WORK(&(driver->diag_modem_mask_update_work),
@@ -2135,10 +2220,11 @@ void diagfwd_init(void)
 						 diag_qdsp_mask_update_fn);
 	INIT_WORK(&(driver->diag_wcnss_mask_update_work),
 						 diag_wcnss_mask_update_fn);
-	driver->legacy_ch = usb_diag_open(DIAG_LEGACY, driver,
-			diag_usb_legacy_notifier);
+	driver->legacy_ch = channel_diag_open(DIAG_LEGACY, driver,
+			diag_legacy_notifier);
+
 	if (IS_ERR(driver->legacy_ch)) {
-		printk(KERN_ERR "Unable to open USB diag legacy channel\n");
+		printk(KERN_ERR "Unable to open diag legacy channel\n");
 		goto err;
 	}
 #endif
@@ -2160,7 +2246,7 @@ err:
 		kfree(driver->buf_msg_mask_update);
 		kfree(driver->buf_log_mask_update);
 		kfree(driver->buf_event_mask_update);
-		kfree(driver->usb_buf_out);
+		kfree(driver->buf_out);
 		kfree(driver->hdlc_buf);
 		kfree(driver->msg_masks);
 		kfree(driver->log_masks);
@@ -2176,7 +2262,7 @@ err:
 		kfree(driver->write_ptr_qdsp_2);
 		kfree(driver->write_ptr_wcnss_1);
 		kfree(driver->write_ptr_wcnss_2);
-		kfree(driver->usb_read_ptr);
+		kfree(driver->channel_read_ptr);
 		kfree(driver->apps_rsp_buf);
 		kfree(driver->user_space_data);
 		if (driver->diag_wq)
@@ -2192,9 +2278,13 @@ void diagfwd_exit(void)
 	driver->chqdsp = 0;
 	driver->ch_wcnss = 0;
 #ifdef CONFIG_DIAG_OVER_USB
-	if (driver->usb_connected)
+	if (driver->channel_connected && driver->usb_req_allocated) {
+		driver->usb_req_allocated = 0;
 		usb_diag_free_req(driver->legacy_ch);
-	usb_diag_close(driver->legacy_ch);
+	}
+#endif
+#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
+	channel_diag_close(driver->legacy_ch);
 #endif
 	platform_driver_unregister(&msm_smd_ch1_driver);
 	platform_driver_unregister(&msm_diag_dci_driver);
@@ -2211,7 +2301,7 @@ void diagfwd_exit(void)
 	kfree(driver->buf_msg_mask_update);
 	kfree(driver->buf_log_mask_update);
 	kfree(driver->buf_event_mask_update);
-	kfree(driver->usb_buf_out);
+	kfree(driver->buf_out);
 	kfree(driver->hdlc_buf);
 	kfree(driver->msg_masks);
 	kfree(driver->log_masks);
@@ -2227,7 +2317,7 @@ void diagfwd_exit(void)
 	kfree(driver->write_ptr_qdsp_2);
 	kfree(driver->write_ptr_wcnss_1);
 	kfree(driver->write_ptr_wcnss_2);
-	kfree(driver->usb_read_ptr);
+	kfree(driver->channel_read_ptr);
 	kfree(driver->apps_rsp_buf);
 	kfree(driver->user_space_data);
 	destroy_workqueue(driver->diag_wq);
