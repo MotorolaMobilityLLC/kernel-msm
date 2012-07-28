@@ -206,7 +206,15 @@ EXPORT_SYMBOL(lm3530_lcd_backlight_on_status);
 
 static int bl_set_intensity(struct backlight_device *bd)
 {
-	lm3530_lcd_backlight_set_level(bd->props.brightness);
+	int brightness = bd->props.brightness;
+
+	if ((bd->props.state & BL_CORE_FBBLANK) ||
+			(bd->props.state & BL_CORE_SUSPENDED))
+		brightness = 0;
+	else if (brightness == 0)
+		brightness = DEFAULT_LEVEL;
+
+	lm3530_lcd_backlight_set_level(brightness);
 	return 0;
 }
 
