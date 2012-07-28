@@ -135,4 +135,11 @@ void __init apq8064_init_misc(void);
 #define I2C_MPQ_HRD BIT(6)
 #define I2C_MPQ_DTV BIT(7)
 
+struct i2c_registry {
+	u8                     machs;
+	int                    bus;
+	struct i2c_board_info *info;
+	int                    len;
+};
+
 #endif

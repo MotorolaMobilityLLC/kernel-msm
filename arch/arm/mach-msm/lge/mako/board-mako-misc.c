@@ -382,13 +382,6 @@ static struct anx7808_platform_data anx7808_pdata = {
 	.avdd_power = anx7808_avdd_onoff,
 };
 
-struct i2c_registry {
-	u8                     machs;
-	int                    bus;
-	struct i2c_board_info *info;
-	int                    len;
-};
-
 struct i2c_board_info i2c_anx7808_info[] = {
 	{
 		I2C_BOARD_INFO("anx7808", 0x72 >> 1),
