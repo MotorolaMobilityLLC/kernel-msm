@@ -39,13 +39,6 @@
 #define GPIO_EARPOL_DETECT          PM8921_GPIO_PM_TO_SYS(32)
 #define GPIO_EAR_KEY_INT            83
 
-struct i2c_registry {
-	u8                     machs;
-	int                    bus;
-	struct i2c_board_info *info;
-	int                    len;
-};
-
 #ifdef CONFIG_SND_SOC_TPA2028D
 int amp_enable(int on_state)
 {

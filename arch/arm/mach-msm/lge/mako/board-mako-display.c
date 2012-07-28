@@ -925,13 +925,6 @@ void __init apq8064_init_fb(void)
 
 }
 
-struct i2c_registry {
-	u8                     machs;
-	int                    bus;
-	struct i2c_board_info *info;
-	int                    len;
-};
-
 #ifdef CONFIG_LGIT_VIDEO_WXGA_CABC
 #define PWM_SIMPLE_EN 0xA0
 #define PWM_BRIGHTNESS 0x20
@@ -972,20 +965,12 @@ static struct i2c_registry apq8064_i2c_backlight_device[] __initdata = {
 
 void __init lge_add_backlight_devices(void)
 {
-	u8 mach_mask = 0;
 	int i;
-
-	/* Build the matching 'supported_machs' bitmask */
-	if (machine_is_apq8064_mako())
-		mach_mask = I2C_FFA;
-	else
-		pr_err("unmatched machine ID in register_i2c_devices\n");	
 
 	/* Run the array and install devices as appropriate */
 	for (i = 0; i < ARRAY_SIZE(apq8064_i2c_backlight_device); ++i) {
-		if (apq8064_i2c_backlight_device[i].machs & mach_mask)
-			i2c_register_board_info(apq8064_i2c_backlight_device[i].bus,
-						apq8064_i2c_backlight_device[i].info,
-						apq8064_i2c_backlight_device[i].len);
+		i2c_register_board_info(apq8064_i2c_backlight_device[i].bus,
+					apq8064_i2c_backlight_device[i].info,
+					apq8064_i2c_backlight_device[i].len);
 	}
 }

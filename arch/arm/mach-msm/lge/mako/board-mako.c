@@ -1898,37 +1898,8 @@ static void __init apq8064_init_dsps(void)
 	platform_device_register(&msm_dsps_device_8064);
 }
 
-struct i2c_registry {
-	u8                     machs;
-	int                    bus;
-	struct i2c_board_info *info;
-	int                    len;
-};
-
-static struct i2c_registry apq8064_i2c_devices[] __initdata = {
-#ifdef CONFIG_SMB349_CHARGER
-	{
-		I2C_LIQUID,
-		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
-		smb349_charger_i2c_info,
-		ARRAY_SIZE(smb349_charger_i2c_info)
-	},
-#endif
-#ifdef CONFIG_SND_SOC_CS8427
-	{
-		I2C_MPQ_CDP,
-		APQ_8064_GSBI5_QUP_I2C_BUS_ID,
-		cs8427_device_info,
-		ARRAY_SIZE(cs8427_device_info),
-	},
-#endif
-};
-
 static void __init register_i2c_devices(void)
 {
-	u8 mach_mask = 0;
-	int i;
-
 #ifdef CONFIG_MSM_CAMERA
 	struct i2c_registry apq8064_camera_i2c_devices = {
 		I2C_FFA,
@@ -1945,30 +1916,16 @@ static void __init register_i2c_devices(void)
 	};
 #endif
 
-	/* Build the matching 'supported_machs' bitmask */
-	if (machine_is_apq8064_mako())
-		mach_mask = I2C_FFA;
-	else
-		pr_err("unmatched machine ID in register_i2c_devices\n");
-
-	/* Run the array and install devices as appropriate */
-	for (i = 0; i < ARRAY_SIZE(apq8064_i2c_devices); ++i) {
-		if (apq8064_i2c_devices[i].machs & mach_mask)
-			i2c_register_board_info(apq8064_i2c_devices[i].bus,
-						apq8064_i2c_devices[i].info,
-						apq8064_i2c_devices[i].len);
-	}
 
 #ifdef CONFIG_MSM_CAMERA
-	if (apq8064_camera_i2c_devices.machs & mach_mask)
-		i2c_register_board_info(apq8064_camera_i2c_devices.bus,
-			apq8064_camera_i2c_devices.info,
-			apq8064_camera_i2c_devices.len);
+	i2c_register_board_info(apq8064_camera_i2c_devices.bus,
+		apq8064_camera_i2c_devices.info,
+		apq8064_camera_i2c_devices.len);
+
 	/* Enabling flash LED for camera */
-	if (apq8064_camera_i2c_devices.machs & mach_mask)
-		i2c_register_board_info(apq8064_lge_camera_i2c_devices.bus,
-			apq8064_lge_camera_i2c_devices.info,
-			apq8064_lge_camera_i2c_devices.len);
+	i2c_register_board_info(apq8064_lge_camera_i2c_devices.bus,
+		apq8064_lge_camera_i2c_devices.info,
+		apq8064_lge_camera_i2c_devices.len);
 #endif
 }
 
@@ -1999,17 +1956,14 @@ static void __init apq8064_common_init(void)
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	platform_add_devices(common_not_mpq_devices,
 			ARRAY_SIZE(common_not_mpq_devices));
-	if (machine_is_apq8064_mako()) {
-		apq8064_device_hsic_host.dev.platform_data = &msm_hsic_pdata;
-		device_initialize(&apq8064_device_hsic_host.dev);
-	}
+	apq8064_device_hsic_host.dev.platform_data = &msm_hsic_pdata;
+	device_initialize(&apq8064_device_hsic_host.dev);
 	apq8064_pm8xxx_gpio_mpp_init();
 	apq8064_init_mmc();
 
-	if (machine_is_apq8064_mako()) {
-		mdm_8064_device.dev.platform_data = &mdm_platform_data;
-		platform_device_register(&mdm_8064_device);
-	}
+	mdm_8064_device.dev.platform_data = &mdm_platform_data;
+	platform_device_register(&mdm_8064_device);
+
 	platform_device_register(&apq8064_slim_ctrl);
 	slim_register_board_info(apq8064_slim_devices,
 		ARRAY_SIZE(apq8064_slim_devices));
