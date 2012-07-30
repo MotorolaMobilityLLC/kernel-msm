@@ -21,54 +21,6 @@
 
 #include "board-mako.h"
 
-#if defined(CONFIG_LGE_NFC_PN544)
-#include <linux/nfc/pn544_lge.h>
-
-struct i2c_registry {
-	u8                     machs;
-	int                    bus;
-	struct i2c_board_info *info;
-	int                    len;
-};
-
-typedef void (gpio_i2c_init_func_t)(int bus_num);
-
-static struct pn544_i2c_platform_data pn544_i2c_platform_data[] = {
-	{
-		.ven_gpio = NFC_GPIO_VEN,
-		.irq_gpio = NFC_GPIO_IRQ,
-		.firm_gpio = NFC_GPIO_FIRM,
-	},
-};
-
-static struct i2c_board_info msm_i2c_nxp_nfc_info[] = {
-	{
-		I2C_BOARD_INFO("pn544", NFC_I2C_SLAVE_ADDR),
-		.platform_data = &pn544_i2c_platform_data,
-		.irq = MSM_GPIO_TO_INT(NFC_GPIO_IRQ),
-	}
-};
-
-static struct  i2c_registry apq8064_i2c_devices __initdata = {
-	I2C_FFA,
-	APQ_8064_GSBI1_QUP_I2C_BUS_ID,
-	msm_i2c_nxp_nfc_info,
-	ARRAY_SIZE(msm_i2c_nxp_nfc_info),
-};
-
-static void __init lge_add_i2c_nfc_devices(void)
-{
-	i2c_register_board_info(apq8064_i2c_devices.bus,
-			       apq8064_i2c_devices.info,
-			       apq8064_i2c_devices.len);
-}
-
-void __init lge_add_nfc_devices(void)
-{
-	lge_add_i2c_nfc_devices();
-}
-#endif
-
 #include <linux/nfc/bcm2079x.h>
 
 #define NFC_GPIO_VEN            55

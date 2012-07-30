@@ -2074,9 +2074,6 @@ static void __init apq8064_mako_init(void)
 	apq8064_common_init();
 	lge_add_backlight_devices();
 	lge_add_sound_devices();
-#if defined(CONFIG_LGE_NFC_PN544)
-	lge_add_nfc_devices();
-#endif
 	lge_add_bcm2079x_device();
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
 	lge_add_ramconsole_devices();

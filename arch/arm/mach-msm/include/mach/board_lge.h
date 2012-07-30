@@ -115,9 +115,6 @@ struct pseudo_batt_info_type {
 #endif
 int __init lge_get_uart_mode(void);
 
-#if defined(CONFIG_LGE_NFC_PN544)
-void __init lge_add_nfc_devices(void);
-#endif
 /* from androidboot.mode */
 enum lge_boot_mode_type {
 	LGE_BOOT_MODE_NORMAL = 0,
