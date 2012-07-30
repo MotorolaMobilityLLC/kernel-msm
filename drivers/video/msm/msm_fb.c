@@ -905,13 +905,16 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 			mfd->op_enable = FALSE;
 			curr_pwr_state = mfd->panel_power_on;
-			while (pdata->get_backlight_on_status() && time_out) {
-				msleep(1);
-				time_out --;
+			if (pdata->get_backlight_on_status) {
+				while (pdata->get_backlight_on_status()
+						&& time_out) {
+					msleep(1);
+					time_out --;
+				}
+				if (time_out == 0)
+					pr_err("%s : timeout for waiting backlight turn on\n",
+							__func__);
 			}
-			if (time_out == 0)
-				pr_err("%s : timeout for waiting backlight turn on\n", __func__);
-
 			/* clean fb to prevent displaying old fb */
 			memset((void *)info->screen_base, 0,
 					info->fix.smem_len);
