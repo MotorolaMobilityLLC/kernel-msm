@@ -721,50 +721,6 @@ static struct msm_gpiomux_config wcnss_5wire_interface[] = {
 	},
 };
 
-#if defined(CONFIG_LGE_NFC_PN544)
-static struct gpiomux_setting nfc_pn544_ven_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_OUT_LOW,
-};
-
-static struct gpiomux_setting nfc_pn544_irq_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_DOWN,
-	.dir = GPIOMUX_IN,
-};
-
-static struct gpiomux_setting nfc_pn544_firm_cfg = {
-	.func = GPIOMUX_FUNC_GPIO,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_NONE,
-	.dir = GPIOMUX_OUT_LOW,
-};
-
-static struct msm_gpiomux_config apq8064_nfc_configs[] __initdata = {
-	{
-		.gpio = 37,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &nfc_pn544_firm_cfg,
-		},
-	},
-	{
-		.gpio = 29,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &nfc_pn544_irq_cfg,
-		},
-	},
-	{
-		.gpio = 55,
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &nfc_pn544_ven_cfg,
-		},
-	},
-};
-#endif
-
 static struct gpiomux_setting nfc_bcm2079x_ven_cfg = { // NFC_WAKE
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -845,10 +801,6 @@ void __init apq8064_init_gpiomux(void)
 	if (machine_is_apq8064_mako())
 		msm_gpiomux_install(apq8064_hsic_configs,
 				ARRAY_SIZE(apq8064_hsic_configs));
-#endif
-#if defined(CONFIG_LGE_NFC_PN544)
-	msm_gpiomux_install(apq8064_nfc_configs,
-			ARRAY_SIZE(apq8064_nfc_configs));
 #endif
 
 	msm_gpiomux_install(apq8064_bcm2079x_nfc_configs,
