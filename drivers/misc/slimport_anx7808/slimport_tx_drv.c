@@ -11,6 +11,7 @@
  * GNU General Public License for more details.
  *
  */
+#define pr_fmt(fmt)	"%s: " fmt, __func__
 
 #include <linux/delay.h>
 #include <linux/module.h>
@@ -125,6 +126,8 @@ void sp_tx_initialization(void)
 	sp_tx_write_reg(SP_TX_PORT2_ADDR, SP_TX_RST_CTRL_REG, c);
 	c &= ~SP_TX_RST_SW_RST;
 	sp_tx_write_reg(SP_TX_PORT2_ADDR, SP_TX_RST_CTRL_REG, c);
+
+	sp_tx_write_reg(SP_TX_PORT2_ADDR, SP_TX_DP_ADD_REG1, 0xbc);
 
 	sp_tx_write_reg(SP_TX_PORT0_ADDR, SP_TX_EXTRA_ADDR_REG, 0x50);
 	/* disable HDCP polling mode. */
