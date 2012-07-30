@@ -15,7 +15,7 @@
 #ifndef __SP_TX_REG_DEF_H
 #define __SP_TX_REG_DEF_H
 
-#define SP_TX_PORT0_ADDR 0x70
+#define SP_TX_PORT0_ADDR 0x78
 #define SP_TX_PORT1_ADDR 0x7A
 #define SP_TX_PORT2_ADDR 0x72
 
@@ -994,8 +994,7 @@
 
 #define SPDIF_AUDIO_STATUS1 0x39
 
-#define AUDIO_BIST_CTRL 0x3c
-#define AUDIO_BIST_EN 0x01
+#define SP_TX_DP_ADD_REG1 0x3E
 
 #define SP_TX_VIDEO_BIT_CTRL_0_REG	0x40
 #define SP_TX_VIDEO_BIT_CTRL_1_REG	0x41
