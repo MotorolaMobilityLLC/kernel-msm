@@ -695,6 +695,7 @@ static inline int msm_ion_do_cache_op(struct ion_client *client,
  * struct ion_allocation_data - metadata passed from userspace for allocations
  * @len:	size of the allocation
  * @align:	required alignment of the allocation
+ * @heap_mask:	mask of heaps to allocate from
  * @flags:	flags passed to heap
  * @handle:	pointer that will be populated with a cookie to use to refer
  *		to this allocation
@@ -704,6 +705,7 @@ static inline int msm_ion_do_cache_op(struct ion_client *client,
 struct ion_allocation_data {
 	size_t len;
 	size_t align;
+	unsigned int heap_mask;
 	unsigned int flags;
 	struct ion_handle *handle;
 };
