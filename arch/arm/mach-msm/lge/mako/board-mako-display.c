@@ -392,7 +392,7 @@ static struct platform_device wfd_device = {
 static bool dsi_power_on = false;
 static int mipi_dsi_panel_power(int on)
 {
-	static struct regulator *reg_l8, *reg_l2, *reg_lvs6;
+	static struct regulator *reg_l8, *reg_l2, *reg_lvs6, *ext_dsv_load;
 	static int gpio42;
 	int rc;
 
@@ -421,6 +421,15 @@ static int mipi_dsi_panel_power(int on)
 			return -ENODEV;
 		}
 
+		if (lge_get_board_revno() > HW_REV_C) {
+			ext_dsv_load = regulator_get(NULL, "ext_dsv_load");
+			if (IS_ERR(ext_dsv_load)) {
+				pr_err("could not get ext_dsv_load, rc = %ld\n",
+					PTR_ERR(ext_dsv_load));
+				return -ENODEV;
+			}
+		}
+
 		reg_l8 = regulator_get(&msm_mipi_dsi1_device.dev, "dsi_vci");
 		if (IS_ERR(reg_l8)) {
 			pr_err("could not get 8921_l8, rc = %ld\n",
@@ -447,7 +456,7 @@ static int mipi_dsi_panel_power(int on)
 			pr_err("set_voltage l8 failed, rc=%d\n", rc);
 			return -EINVAL;
 		}
-		
+
 		rc = regulator_set_voltage(reg_l2, 1200000, 1200000);
 		if (rc) {
 			pr_err("set_voltage l2 failed, rc=%d\n", rc);
@@ -457,6 +466,14 @@ static int mipi_dsi_panel_power(int on)
 		dsi_power_on = true;
 	}
 	if (on) {
+
+		if (lge_get_board_revno() > HW_REV_C) {
+			rc = regulator_enable(ext_dsv_load);
+			if (rc) {
+				pr_err("enable ext_dsv_load failed, rc=%d\n", rc);
+				return -ENODEV;
+			}
+		}
 
 		rc = regulator_set_optimum_mode(reg_l8, 100000);
 		if (rc < 0) {
@@ -469,14 +486,14 @@ static int mipi_dsi_panel_power(int on)
 			pr_err("set_optimum_mode l2 failed, rc=%d\n", rc);
 			return -EINVAL;
 		}
-		
+
 #if defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT)
 		rc = regulator_enable(reg_l8);  // dsi_vci
 		if (rc) {
 			pr_err("enable l8 failed, rc=%d\n", rc);
 			return -ENODEV;
 		}
-		
+
 		udelay(100);
 
 		rc = regulator_enable(reg_lvs6); // IOVCC
@@ -487,7 +504,7 @@ static int mipi_dsi_panel_power(int on)
 
 		udelay(100);
 #endif
-		
+
 		rc = regulator_enable(reg_l2);  // DSI
 		if (rc) {
 			pr_err("enable l2 failed, rc=%d\n", rc);
@@ -498,7 +515,7 @@ static int mipi_dsi_panel_power(int on)
 		/* LCD RESET HIGH */
 		mdelay(2);
 		gpio42_param.output_value = 1;
-		rc = pm8xxx_gpio_config(gpio42,&gpio42_param);	
+		rc = pm8xxx_gpio_config(gpio42,&gpio42_param);
 		if (rc) {
 			pr_err("gpio_config 42 failed (3), rc=%d\n", rc);
 			return -EINVAL;
@@ -522,7 +539,7 @@ static int mipi_dsi_panel_power(int on)
 			return -ENODEV;
 		}
 		udelay(100);
-			
+
 		rc = regulator_disable(reg_l8);	//VCI
 		if (rc) {
 			pr_err("disable reg_l8  failed, rc=%d\n", rc);
@@ -546,6 +563,14 @@ static int mipi_dsi_panel_power(int on)
 		if (rc < 0) {
 			pr_err("set_optimum_mode l2 failed, rc=%d\n", rc);
 			return -EINVAL;
+		}
+
+		if (lge_get_board_revno() > HW_REV_C) {
+			rc = regulator_disable(ext_dsv_load);
+			if (rc) {
+				pr_err("disable ext_dsv_load  failed, rc=%d\n", rc);
+				return -ENODEV;
+			}
 		}
 	}
 	
@@ -638,7 +663,7 @@ static int hdmi_core_power(int on, int show)
 			return -ENODEV;
 		}
 	}
-	
+
 	if (on) {
 		rc = regulator_enable(reg_8921_lvs7);
 		if (rc) {
@@ -709,7 +734,7 @@ error3:
 error2:
 	gpio_free(HDMI_DDC_CLK_GPIO);
 error1:
-	return rc;	
+	return rc;
 }
 
 static int hdmi_cec_power(int on)
@@ -829,7 +854,7 @@ static struct dsi_cmd_desc lgit_power_on_set_1[] = {
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(power_setting3), power_setting3},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(power_setting4), power_setting4},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(power_setting5), power_setting5},
-		
+
 #ifdef CONFIG_LGIT_VIDEO_WXGA_CABC
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set0), cabc_set0},
 	{DTYPE_GEN_LWRITE, 1, 0, 0, 0, sizeof(cabc_set1), cabc_set1},
@@ -941,7 +966,7 @@ static struct backlight_platform_data lm3530_data = {
 #endif
 	.min_brightness = 0x01,
 	.max_brightness = 0x71,
-	
+
 };
 #endif
 
