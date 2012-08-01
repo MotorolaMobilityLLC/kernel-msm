@@ -49,7 +49,7 @@ static void bms_notify(struct bq51051b_wlc_chip *chip, int value)
 	if (value)
 		pm8921_bms_charging_began();
 	else
-		pm8921_bms_charging_end(1);
+		pm8921_bms_charging_end(0);
 }
 
 static enum power_supply_property pm_power_props_wireless[] = {
