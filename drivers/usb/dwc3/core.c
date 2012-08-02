@@ -373,6 +373,17 @@ static int __devinit dwc3_core_init(struct dwc3 *dwc)
 	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
 
 	/*
+	 * The default value of GUCTL[31:22] should be 0x8. But on cores
+	 * revision < 2.30a, the default value is mistakenly overridden
+	 * with 0x0. Restore the correct default value.
+	 */
+	if (dwc->revision < DWC3_REVISION_230A) {
+		reg = dwc3_readl(dwc->regs, DWC3_GUCTL);
+		reg &= ~DWC3_GUCTL_REFCLKPER;
+		reg |= 0x8 << __ffs(DWC3_GUCTL_REFCLKPER);
+		dwc3_writel(dwc->regs, DWC3_GUCTL, reg);
+	}
+	/*
 	 * Currently, the default and the recommended value for GUSB3PIPECTL
 	 * [21:19] in the RTL is 3'b100 or 32 consecutive errors. Based on
 	 * analysis and experiments in the lab, it is found that there is a
@@ -395,6 +406,11 @@ static int __devinit dwc3_core_init(struct dwc3 *dwc)
 		reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
 		reg &= ~DWC3_GUSB3PIPECTL_DELAY_P1P2P3;
 		reg |= 1 << __ffs(DWC3_GUSB3PIPECTL_DELAY_P1P2P3);
+		/*
+		 * Receiver Detection in U3/Rx.Det is mistakenly disabled in
+		 * cores < 2.30a. Fix it here.
+		 */
+		reg &= ~DWC3_GUSB3PIPECTL_DIS_RXDET_U3_RXDET;
 		dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
 	}
 
@@ -506,9 +522,9 @@ static int __devinit dwc3_probe(struct platform_device *pdev)
 	if (of_get_property(node, "tx-fifo-resize", NULL))
 		dwc->needs_fifo_resize = true;
 
+	pm_runtime_no_callbacks(dev);
+	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
-	pm_runtime_get_sync(dev);
-	pm_runtime_forbid(dev);
 
 	ret = dwc3_core_init(dwc);
 	if (ret) {
@@ -570,8 +586,6 @@ static int __devinit dwc3_probe(struct platform_device *pdev)
 		goto err2;
 	}
 
-	pm_runtime_allow(dev);
-
 	return 0;
 
 err2:
@@ -605,7 +619,6 @@ static int __devexit dwc3_remove(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
-	pm_runtime_put(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
 
 	dwc3_debugfs_exit(dwc);

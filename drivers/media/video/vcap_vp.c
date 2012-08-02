@@ -117,21 +117,21 @@ static void mov_buf_to_vc(struct work_struct *work)
 	struct vcap_buffer *buf_vp;
 	int rc;
 
-	p.type = V4L2_BUF_TYPE_INTERLACED_IN_DECODER;
 	p.memory = V4L2_MEMORY_USERPTR;
 
 	/* This loop exits when there is no more buffers left */
 	while (1) {
+		p.type = V4L2_BUF_TYPE_INTERLACED_IN_DECODER;
 		if (!vp_work->cd->streaming)
 			return;
-		rc = vb2_dqbuf(&vp_work->cd->vp_in_vidq, &p, O_NONBLOCK);
+		rc = vcvp_dqbuf(&vp_work->cd->vp_in_vidq, &p);
 		if (rc < 0)
 			return;
 
 		vb_vc = vp_work->cd->vc_vidq.bufs[p.index];
 		if (NULL == vb_vc) {
 			dprintk(1, "%s: buffer is NULL\n", __func__);
-			vb2_qbuf(&vp_work->cd->vp_in_vidq, &p);
+			vcvp_qbuf(&vp_work->cd->vp_in_vidq, &p);
 			return;
 		}
 		buf_vc = container_of(vb_vc, struct vcap_buffer, vb);
@@ -139,7 +139,7 @@ static void mov_buf_to_vc(struct work_struct *work)
 		vb_vp = vp_work->cd->vp_in_vidq.bufs[p.index];
 		if (NULL == vb_vp) {
 			dprintk(1, "%s: buffer is NULL\n", __func__);
-			vb2_qbuf(&vp_work->cd->vp_in_vidq, &p);
+			vcvp_qbuf(&vp_work->cd->vp_in_vidq, &p);
 			return;
 		}
 		buf_vp = container_of(vb_vp, struct vcap_buffer, vb);
@@ -150,7 +150,7 @@ static void mov_buf_to_vc(struct work_struct *work)
 
 		p.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 		/* This call should not fail */
-		rc = vb2_qbuf(&vp_work->cd->vc_vidq, &p);
+		rc = vcvp_qbuf(&vp_work->cd->vc_vidq, &p);
 		if (rc < 0) {
 			dprintk(1, "%s: qbuf to vc failed\n", __func__);
 			buf_vp->ion_handle = buf_vc->ion_handle;
@@ -158,7 +158,7 @@ static void mov_buf_to_vc(struct work_struct *work)
 			buf_vc->ion_handle = NULL;
 			buf_vc->paddr = 0;
 			p.type = V4L2_BUF_TYPE_INTERLACED_IN_DECODER;
-			vb2_qbuf(&vp_work->cd->vp_in_vidq, &p);
+			vcvp_qbuf(&vp_work->cd->vp_in_vidq, &p);
 		}
 	}
 }
@@ -180,11 +180,12 @@ static void vp_wq_fnc(struct work_struct *work)
 		return;
 
 	vp_act = &dev->vp_client->vid_vp_action;
-	irq = vp_work->irq;
 
 	rc = readl_relaxed(VCAP_OFFSET(0x048));
 	while (!(rc & 0x00000100))
 		rc = readl_relaxed(VCAP_OFFSET(0x048));
+
+	irq = readl_relaxed(VCAP_VP_INT_STATUS);
 
 	writel_relaxed(0x00000000, VCAP_VP_BAL_VMOTION_STATE);
 	writel_relaxed(0x40000000, VCAP_VP_REDUCT_AVG_MOTION2);
@@ -260,6 +261,12 @@ irqreturn_t vp_handler(struct vcap_dev *dev)
 	int rc;
 
 	irq = readl_relaxed(VCAP_VP_INT_STATUS);
+	if (dev->vp_dummy_event == true) {
+		writel_relaxed(irq, VCAP_VP_INT_CLEAR);
+		dev->vp_dummy_complete = true;
+		wake_up(&dev->vp_dummy_waitq);
+		return IRQ_HANDLED;
+	}
 
 	if (irq & 0x02000000) {
 		v4l2_evt.type = V4L2_EVENT_PRIVATE_START +
@@ -283,7 +290,7 @@ irqreturn_t vp_handler(struct vcap_dev *dev)
 	}
 
 	dprintk(1, "%s: irq=0x%08x\n", __func__, irq);
-	if (!(irq & VP_PIC_DONE)) {
+	if (!(irq & (VP_PIC_DONE || VP_MODE_CHANGE))) {
 		writel_relaxed(irq, VCAP_VP_INT_CLEAR);
 		pr_err("VP IRQ shows some error\n");
 		return IRQ_HANDLED;
@@ -307,7 +314,6 @@ irqreturn_t vp_handler(struct vcap_dev *dev)
 
 	INIT_WORK(&dev->vp_work.work, vp_wq_fnc);
 	dev->vp_work.cd = c_data;
-	dev->vp_work.irq = irq;
 	rc = queue_work(dev->vcap_wq, &dev->vp_work.work);
 
 	disable_irq_nosync(dev->vpirq->start);
@@ -411,7 +417,7 @@ void deinit_motion_buf(struct vcap_client_data *c_data)
 	void *buf;
 
 	if (!c_data->vid_vp_action.bufMotion) {
-		dprintk(1, "Motion buffer has not been created");
+		pr_err("Motion buffer has not been created");
 		return;
 	}
 
@@ -434,6 +440,8 @@ int init_nr_buf(struct vcap_client_data *c_data)
 		return -ENOEXEC;
 	}
 	buf = &c_data->vid_vp_action.bufNR;
+	if (!buf)
+		return -ENOMEM;
 
 	frame_size = c_data->vp_in_fmt.width * c_data->vp_in_fmt.height;
 	if (c_data->vp_in_fmt.pixfmt == V4L2_PIX_FMT_NV16)
@@ -442,7 +450,7 @@ int init_nr_buf(struct vcap_client_data *c_data)
 		tot_size = frame_size / 2 * 3;
 
 	buf->vaddr = kzalloc(tot_size, GFP_KERNEL);
-	if (!buf)
+	if (!buf->vaddr)
 		return -ENOMEM;
 
 	buf->paddr = virt_to_phys(buf->vaddr);
@@ -476,6 +484,74 @@ void deinit_nr_buf(struct vcap_client_data *c_data)
 	buf->paddr = 0;
 	buf->vaddr = NULL;
 	return;
+}
+
+int vp_dummy_event(struct vcap_client_data *c_data)
+{
+	struct vcap_dev *dev = c_data->dev;
+	unsigned int width, height;
+	unsigned long paddr;
+	void *temp;
+	uint32_t reg;
+	int rc = 0;
+
+	dprintk(2, "%s: Start VP dummy event\n", __func__);
+	temp = kzalloc(0x1200, GFP_KERNEL);
+	if (!temp) {
+		pr_err("%s: Failed to alloc mem", __func__);
+		return -ENOMEM;
+	}
+	paddr = virt_to_phys(temp);
+
+	width = c_data->vp_out_fmt.width;
+	height = c_data->vp_out_fmt.height;
+
+	c_data->vp_out_fmt.width = 0x3F;
+	c_data->vp_out_fmt.height = 0x16;
+
+	config_vp_format(c_data);
+	writel_relaxed(paddr, VCAP_VP_T1_Y_BASE_ADDR);
+	writel_relaxed(paddr + 0x2C0, VCAP_VP_T1_C_BASE_ADDR);
+	writel_relaxed(paddr + 0x440, VCAP_VP_T2_Y_BASE_ADDR);
+	writel_relaxed(paddr + 0x700, VCAP_VP_T2_C_BASE_ADDR);
+	writel_relaxed(paddr + 0x880, VCAP_VP_OUT_Y_BASE_ADDR);
+	writel_relaxed(paddr + 0xB40, VCAP_VP_OUT_C_BASE_ADDR);
+	writel_iowmb(paddr + 0x1100, VCAP_VP_MOTION_EST_ADDR);
+	writel_relaxed(4 << 20 | 0x2 << 4, VCAP_VP_IN_CONFIG);
+	writel_relaxed(4 << 20 | 0x1 << 4, VCAP_VP_OUT_CONFIG);
+
+	dev->vp_dummy_event = true;
+
+	writel_relaxed(0x01100101, VCAP_VP_INTERRUPT_ENABLE);
+	writel_iowmb(0x00000000, VCAP_VP_CTRL);
+	writel_iowmb(0x00030000, VCAP_VP_CTRL);
+
+	enable_irq(dev->vpirq->start);
+	rc = wait_event_interruptible_timeout(dev->vp_dummy_waitq,
+		dev->vp_dummy_complete, msecs_to_jiffies(50));
+	if (!rc && !dev->vp_dummy_complete) {
+		pr_err("%s: VP dummy event timeout", __func__);
+		rc = -ETIME;
+		writel_iowmb(0x00000000, VCAP_VP_CTRL);
+
+		writel_iowmb(0x00000001, VCAP_VP_SW_RESET);
+		writel_iowmb(0x00000000, VCAP_VP_SW_RESET);
+		dev->vp_dummy_complete = false;
+	}
+
+	writel_relaxed(0x00000000, VCAP_VP_INTERRUPT_ENABLE);
+	disable_irq(dev->vpirq->start);
+	dev->vp_dummy_event = false;
+
+	reg = readl_relaxed(VCAP_OFFSET(0x0D94));
+	writel_relaxed(reg, VCAP_OFFSET(0x0D9C));
+
+	c_data->vp_out_fmt.width = width;
+	c_data->vp_out_fmt.height = height;
+	kfree(temp);
+
+	dprintk(2, "%s: Exit VP dummy event\n", __func__);
+	return rc;
 }
 
 int kickoff_vp(struct vcap_client_data *c_data)
@@ -556,7 +632,7 @@ int kickoff_vp(struct vcap_client_data *c_data)
 	if (c_data->vp_out_fmt.pixfmt == V4L2_PIX_FMT_NV16)
 		chroma_fmt = 1;
 
-	writel_relaxed((c_data->vp_in_fmt.width / 16) << 20 |
+	writel_relaxed((c_data->vp_out_fmt.width / 16) << 20 |
 			chroma_fmt << 11 | 0x1 << 4, VCAP_VP_OUT_CONFIG);
 
 	/* Enable Interrupt */

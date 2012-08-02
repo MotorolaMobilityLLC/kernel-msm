@@ -19,7 +19,7 @@
 #include <linux/gpio.h>
 #include <linux/coresight.h>
 #include <asm/clkdev.h>
-#include <linux/msm_kgsl.h>
+#include <mach/kgsl.h>
 #include <linux/android_pmem.h>
 #include <mach/irqs-8960.h>
 #include <mach/dma.h>
@@ -292,6 +292,52 @@ struct platform_device msm_device_uart_dm6 = {
 		.coherent_dma_mask	= DMA_BIT_MASK(32),
 	},
 };
+
+/* GSBI 8 used into UARTDM Mode */
+static struct resource msm_uart_dm8_resources[] = {
+	{
+		.start	= MSM_UART8DM_PHYS,
+		.end	= MSM_UART8DM_PHYS + PAGE_SIZE - 1,
+		.name	= "uartdm_resource",
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= GSBI8_UARTDM_IRQ,
+		.end	= GSBI8_UARTDM_IRQ,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= MSM_GSBI8_PHYS,
+		.end	= MSM_GSBI8_PHYS + 4 - 1,
+		.name	= "gsbi_resource",
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= DMOV_HSUART_GSBI8_TX_CHAN,
+		.end	= DMOV_HSUART_GSBI8_RX_CHAN,
+		.name	= "uartdm_channels",
+		.flags	= IORESOURCE_DMA,
+	},
+	{
+		.start	= DMOV_HSUART_GSBI8_TX_CRCI,
+		.end	= DMOV_HSUART_GSBI8_RX_CRCI,
+		.name	= "uartdm_crci",
+		.flags	= IORESOURCE_DMA,
+	},
+};
+
+static u64 msm_uart_dm8_dma_mask = DMA_BIT_MASK(32);
+struct platform_device msm_device_uart_dm8 = {
+	.name	= "msm_serial_hs",
+	.id	= 2,
+	.num_resources	= ARRAY_SIZE(msm_uart_dm8_resources),
+	.resource	= msm_uart_dm8_resources,
+	.dev	= {
+		.dma_mask		= &msm_uart_dm8_dma_mask,
+		.coherent_dma_mask	= DMA_BIT_MASK(32),
+	},
+};
+
 /*
  * GSBI 9 used into UARTDM Mode
  * For 8960 Fusion 2.2 Primary IPC
@@ -3812,6 +3858,7 @@ struct platform_device msm8960_cache_dump_device = {
 #define AP2MDM_PMIC_PWR_EN		22
 #define AP2MDM_KPDPWR_N			79
 #define AP2MDM_SOFT_RESET		78
+#define USB_SW				25
 
 static struct resource sglte_resources[] = {
 	{
@@ -3854,6 +3901,12 @@ static struct resource sglte_resources[] = {
 		.start	= AP2MDM_SOFT_RESET,
 		.end	= AP2MDM_SOFT_RESET,
 		.name	= "AP2MDM_SOFT_RESET",
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.start	= USB_SW,
+		.end	= USB_SW,
+		.name	= "USB_SW",
 		.flags	= IORESOURCE_IO,
 	},
 };

@@ -20,6 +20,7 @@
 #include <linux/init.h>
 #include <linux/ioport.h>
 #include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/device.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
@@ -235,6 +236,14 @@ static void msmsdcc_sps_pipes_reset_and_restore(struct msmsdcc_host *host)
 	if (rc)
 		pr_err("%s:msmsdcc_sps_reset_ep(cons) error=%d\n",
 				mmc_hostname(host->mmc), rc);
+
+	if (host->sps.reset_device) {
+		rc = sps_device_reset(host->sps.bam_handle);
+		if (rc)
+			pr_err("%s: sps_device_reset error=%d\n",
+				mmc_hostname(host->mmc), rc);
+		host->sps.reset_device = false;
+	}
 
 	/* Restore all BAM pipes connections */
 	rc = msmsdcc_sps_restore_ep(host, &host->sps.prod);
@@ -2084,7 +2093,14 @@ msmsdcc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 	if (mrq->data && (mrq->data->flags & MMC_DATA_WRITE)) {
 		if (is_auto_prog_done(host)) {
-			if (!mrq->stop)
+			/*
+			 * Auto-prog done will be enabled for following cases:
+			 * mrq->sbc	|	mrq->stop
+			 * _____________|________________
+			 *	True	|	Don't care
+			 *	False	|	False (CMD24, ACMD25 use case)
+			 */
+			if (mrq->sbc || !mrq->stop)
 				host->curr.wait_for_auto_prog_done = true;
 		} else {
 			if ((mrq->cmd->opcode == SD_IO_RW_EXTENDED) ||
@@ -2521,6 +2537,12 @@ static int msmsdcc_setup_gpio(struct msmsdcc_host *host, bool enable)
 
 	curr = host->plat->pin_data->gpio_data;
 	for (i = 0; i < curr->size; i++) {
+		if (!gpio_is_valid(curr->gpio[i].no)) {
+			rc = -EINVAL;
+			pr_err("%s: Invalid gpio = %d\n",
+				mmc_hostname(host->mmc), curr->gpio[i].no);
+			goto free_gpios;
+		}
 		if (enable) {
 			if (curr->gpio[i].is_always_on &&
 				curr->gpio[i].is_enabled)
@@ -2545,7 +2567,7 @@ static int msmsdcc_setup_gpio(struct msmsdcc_host *host, bool enable)
 	goto out;
 
 free_gpios:
-	for (; i >= 0; i--) {
+	for (i--; i >= 0; i--) {
 		gpio_free(curr->gpio[i].no);
 		curr->gpio[i].is_enabled = false;
 	}
@@ -4323,6 +4345,96 @@ out:
 }
 
 /**
+ * Handle BAM device's global error condition
+ *
+ * This is an error handler for the SDCC bam device
+ *
+ * This function is registered as a callback with SPS-BAM
+ * driver and will called in case there are an errors for
+ * the SDCC BAM deivce. Any error conditions in the BAM
+ * device are global and will be result in this function
+ * being called once per device.
+ *
+ * This function will be called from the sps driver's
+ * interrupt context.
+ *
+ * @sps_cb_case - indicates what error it is
+ * @user - Pointer to sdcc host structure
+ */
+static void
+msmsdcc_sps_bam_global_irq_cb(enum sps_callback_case sps_cb_case, void *user)
+{
+	struct msmsdcc_host *host = (struct msmsdcc_host *)user;
+	struct mmc_request *mrq;
+	unsigned long flags;
+	int32_t error = 0;
+
+	BUG_ON(!host);
+	BUG_ON(!is_sps_mode(host));
+
+	if (sps_cb_case == SPS_CALLBACK_BAM_ERROR_IRQ) {
+		/**
+		 * Reset the all endpoints along with reseting the sps device.
+		 */
+		host->sps.pipe_reset_pending = true;
+		host->sps.reset_device = true;
+
+		pr_err("%s: BAM Global ERROR IRQ happened\n",
+			mmc_hostname(host->mmc));
+		error = EAGAIN;
+	} else if (sps_cb_case == SPS_CALLBACK_BAM_HRESP_ERR_IRQ) {
+		/**
+		 *  This means that there was an AHB access error and
+		 *  the address we are trying to read/write is something
+		 *  we dont have priviliges to do so.
+		 */
+		pr_err("%s: BAM HRESP_ERR_IRQ happened\n",
+			mmc_hostname(host->mmc));
+		error = EACCES;
+	} else {
+		/**
+		 * This should not have happened ideally. If this happens
+		 * there is some seriously wrong.
+		 */
+		pr_err("%s: BAM global IRQ callback received, type:%d\n",
+			mmc_hostname(host->mmc), (u32) sps_cb_case);
+		error = EIO;
+	}
+
+	spin_lock_irqsave(&host->lock, flags);
+
+	mrq = host->curr.mrq;
+
+	if (mrq && mrq->cmd) {
+		msmsdcc_dump_sdcc_state(host);
+
+		if (!mrq->cmd->error)
+			mrq->cmd->error = -error;
+		if (host->curr.data) {
+			if (mrq->data && !mrq->data->error)
+				mrq->data->error = -error;
+			host->curr.data_xfered = 0;
+			if (host->sps.sg && is_sps_mode(host)) {
+				/* Stop current SPS transfer */
+				msmsdcc_sps_exit_curr_xfer(host);
+			} else {
+				/* this condition should not have happened */
+				pr_err("%s: something is seriously wrong. "\
+					"Funtion: %s, line: %d\n",
+					mmc_hostname(host->mmc),
+					__func__, __LINE__);
+			}
+		} else {
+			/* this condition should not have happened */
+			pr_err("%s: something is seriously wrong. Funtion: "\
+				"%s, line: %d\n", mmc_hostname(host->mmc),
+				__func__, __LINE__);
+		}
+	}
+	spin_unlock_irqrestore(&host->lock, flags);
+}
+
+/**
  * Initialize SPS HW connected with SDCC core
  *
  * This function register BAM HW resources with
@@ -4371,6 +4483,8 @@ static int msmsdcc_sps_init(struct msmsdcc_host *host)
 	/* SPS driver wll handle the SDCC BAM IRQ */
 	bam.irq = (u32)host->bam_irqres->start;
 	bam.manage = SPS_BAM_MGR_LOCAL;
+	bam.callback = msmsdcc_sps_bam_global_irq_cb;
+	bam.user = (void *)host;
 
 	pr_info("%s: bam physical base=0x%x\n", mmc_hostname(host->mmc),
 			(u32)bam.phys_addr);
@@ -4502,6 +4616,35 @@ store_sdcc_to_mem_max_bus_bw(struct device *dev, struct device_attribute *attr,
 		spin_unlock_irqrestore(&host->lock, flags);
 	}
 
+	return count;
+}
+
+static ssize_t
+show_idle_timeout(struct device *dev, struct device_attribute *attr,
+		char *buf)
+{
+	struct mmc_host *mmc = dev_get_drvdata(dev);
+	struct msmsdcc_host *host = mmc_priv(mmc);
+
+	return snprintf(buf, PAGE_SIZE, "%u (Min 5 sec)\n",
+		host->idle_tout_ms / 1000);
+}
+
+static ssize_t
+store_idle_timeout(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct mmc_host *mmc = dev_get_drvdata(dev);
+	struct msmsdcc_host *host = mmc_priv(mmc);
+	unsigned int long flags;
+	int timeout; /* in secs */
+
+	if (!kstrtou32(buf, 0, &timeout)
+			&& (timeout > MSM_MMC_DEFAULT_IDLE_TIMEOUT / 1000)) {
+		spin_lock_irqsave(&host->lock, flags);
+		host->idle_tout_ms = timeout * 1000;
+		spin_unlock_irqrestore(&host->lock, flags);
+	}
 	return count;
 }
 
@@ -4649,6 +4792,298 @@ static void msmsdcc_req_tout_timer_hdlr(unsigned long data)
 	spin_unlock_irqrestore(&host->lock, flags);
 }
 
+/*
+ * msmsdcc_dt_get_array - Wrapper fn to read an array of 32 bit integers
+ *
+ * @dev:	device node from which the property value is to be read.
+ * @prop_name:	name of the property to be searched.
+ * @out_array:	filled array returned to caller
+ * @len:	filled array size returned to caller
+ * @size:	expected size of the array
+ *
+ * If expected "size" doesn't match with "len" an error is returned. If
+ * expected size is zero, the length of actual array is returned provided
+ * return value is zero.
+ *
+ * RETURNS:
+ * zero on success, negative error if failed.
+ */
+static int msmsdcc_dt_get_array(struct device *dev, const char *prop_name,
+		u32 **out_array, int *len, int size)
+{
+	int ret = 0;
+	u32 *array = NULL;
+	struct device_node *np = dev->of_node;
+
+	if (of_get_property(np, prop_name, len)) {
+		size_t sz;
+		sz = *len = *len / sizeof(*array);
+
+		if (sz > 0 && !(size > 0 && (sz != size))) {
+			array = devm_kzalloc(dev, sz * sizeof(*array),
+					GFP_KERNEL);
+			if (!array) {
+				dev_err(dev, "%s: no memory\n", prop_name);
+				ret = -ENOMEM;
+				goto out;
+			}
+
+			ret = of_property_read_u32_array(np, prop_name,
+					array, sz);
+			if (ret < 0) {
+				dev_err(dev, "%s: error reading array %d\n",
+						prop_name, ret);
+				goto out;
+			}
+		} else {
+			dev_err(dev, "%s invalid size\n", prop_name);
+			ret = -EINVAL;
+			goto out;
+		}
+	} else {
+		dev_err(dev, "%s not specified\n", prop_name);
+		ret = -EINVAL;
+		goto out;
+	}
+	*out_array = array;
+out:
+	if (ret)
+		*len = 0;
+	return ret;
+}
+
+static int msmsdcc_dt_get_pad_pull_info(struct device *dev, int id,
+		struct msm_mmc_pad_pull_data **pad_pull_data)
+{
+	int ret = 0, base = 0, len, i;
+	u32 *tmp;
+	struct msm_mmc_pad_pull_data *pull_data;
+	struct msm_mmc_pad_pull *pull;
+
+	switch (id) {
+	case 1:
+		base = TLMM_PULL_SDC1_CLK;
+		break;
+	case 2:
+		base = TLMM_PULL_SDC2_CLK;
+		break;
+	case 3:
+		base = TLMM_PULL_SDC3_CLK;
+		break;
+	case 4:
+		base = TLMM_PULL_SDC4_CLK;
+		break;
+	default:
+		dev_err(dev, "%s: Invalid slot id\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	pull_data = devm_kzalloc(dev, sizeof(struct msm_mmc_pad_pull_data),
+			GFP_KERNEL);
+	if (!pull_data) {
+		dev_err(dev, "No memory msm_mmc_pad_pull_data\n");
+		ret = -ENOMEM;
+		goto err;
+	}
+	pull_data->size = 3; /* array size for clk, cmd, data */
+
+	/* Allocate on, off configs for clk, cmd, data */
+	pull = devm_kzalloc(dev, 2 * pull_data->size *\
+			sizeof(struct msm_mmc_pad_pull), GFP_KERNEL);
+	if (!pull) {
+		dev_err(dev, "No memory for msm_mmc_pad_pull\n");
+		ret = -ENOMEM;
+		goto err;
+	}
+	pull_data->on = pull;
+	pull_data->off = pull + pull_data->size;
+
+	ret = msmsdcc_dt_get_array(dev, "qcom,sdcc-pad-pull-on",
+			&tmp, &len, pull_data->size);
+	if (!ret) {
+		for (i = 0; i < len; i++) {
+			pull_data->on[i].no = base + i;
+			pull_data->on[i].val = tmp[i];
+			dev_dbg(dev, "%s: val[%d]=0x%x\n", __func__,
+					i, pull_data->on[i].val);
+		}
+	} else {
+		goto err;
+	}
+
+	ret = msmsdcc_dt_get_array(dev, "qcom,sdcc-pad-pull-off",
+			&tmp, &len, pull_data->size);
+	if (!ret) {
+		for (i = 0; i < len; i++) {
+			pull_data->off[i].no = base + i;
+			pull_data->off[i].val = tmp[i];
+			dev_dbg(dev, "%s: val[%d]=0x%x\n", __func__,
+					i, pull_data->off[i].val);
+		}
+	} else {
+		goto err;
+	}
+
+	*pad_pull_data = pull_data;
+err:
+	return ret;
+}
+
+static int msmsdcc_dt_get_pad_drv_info(struct device *dev, int id,
+		struct msm_mmc_pad_drv_data **pad_drv_data)
+{
+	int ret = 0, base = 0, len, i;
+	u32 *tmp;
+	struct msm_mmc_pad_drv_data *drv_data;
+	struct msm_mmc_pad_drv *drv;
+
+	switch (id) {
+	case 1:
+		base = TLMM_HDRV_SDC1_CLK;
+		break;
+	case 2:
+		base = TLMM_HDRV_SDC2_CLK;
+		break;
+	case 3:
+		base = TLMM_HDRV_SDC3_CLK;
+		break;
+	case 4:
+		base = TLMM_HDRV_SDC4_CLK;
+		break;
+	default:
+		dev_err(dev, "%s: Invalid slot id\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	drv_data = devm_kzalloc(dev, sizeof(struct msm_mmc_pad_drv_data),
+			GFP_KERNEL);
+	if (!drv_data) {
+		dev_err(dev, "No memory for msm_mmc_pad_drv_data\n");
+		ret = -ENOMEM;
+		goto err;
+	}
+	drv_data->size = 3; /* array size for clk, cmd, data */
+
+	/* Allocate on, off configs for clk, cmd, data */
+	drv = devm_kzalloc(dev, 2 * drv_data->size *\
+			sizeof(struct msm_mmc_pad_drv), GFP_KERNEL);
+	if (!drv) {
+		dev_err(dev, "No memory msm_mmc_pad_drv\n");
+		ret = -ENOMEM;
+		goto err;
+	}
+	drv_data->on = drv;
+	drv_data->off = drv + drv_data->size;
+
+	ret = msmsdcc_dt_get_array(dev, "qcom,sdcc-pad-drv-on",
+			&tmp, &len, drv_data->size);
+	if (!ret) {
+		for (i = 0; i < len; i++) {
+			drv_data->on[i].no = base + i;
+			drv_data->on[i].val = tmp[i];
+			dev_dbg(dev, "%s: val[%d]=0x%x\n", __func__,
+					i, drv_data->on[i].val);
+		}
+	} else {
+		goto err;
+	}
+
+	ret = msmsdcc_dt_get_array(dev, "qcom,sdcc-pad-drv-off",
+			&tmp, &len, drv_data->size);
+	if (!ret) {
+		for (i = 0; i < len; i++) {
+			drv_data->off[i].no = base + i;
+			drv_data->off[i].val = tmp[i];
+			dev_dbg(dev, "%s: val[%d]=0x%x\n", __func__,
+					i, drv_data->off[i].val);
+		}
+	} else {
+		goto err;
+	}
+
+	*pad_drv_data = drv_data;
+err:
+	return ret;
+}
+
+static int msmsdcc_dt_parse_gpio_info(struct device *dev,
+		struct mmc_platform_data *pdata)
+{
+	int ret = 0, id = 0, cnt, i;
+	struct msm_mmc_pin_data *pin_data;
+	struct device_node *np = dev->of_node;
+
+	pin_data = devm_kzalloc(dev, sizeof(*pin_data), GFP_KERNEL);
+	if (!pin_data) {
+		dev_err(dev, "No memory for pin_data\n");
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	cnt = of_gpio_count(np);
+	if (cnt > 0) {
+		pin_data->is_gpio = true;
+
+		pin_data->gpio_data = devm_kzalloc(dev,
+				sizeof(struct msm_mmc_gpio_data), GFP_KERNEL);
+		if (!pin_data->gpio_data) {
+			dev_err(dev, "No memory for gpio_data\n");
+			ret = -ENOMEM;
+			goto err;
+		}
+		pin_data->gpio_data->size = cnt;
+		pin_data->gpio_data->gpio = devm_kzalloc(dev,
+				cnt * sizeof(struct msm_mmc_gpio), GFP_KERNEL);
+		if (!pin_data->gpio_data->gpio) {
+			dev_err(dev, "No memory for gpio\n");
+			ret = -ENOMEM;
+			goto err;
+		}
+
+		for (i = 0; i < cnt; i++) {
+			const char *name = NULL;
+			char result[32];
+			pin_data->gpio_data->gpio[i].no = of_get_gpio(np, i);
+			of_property_read_string_index(np,
+					"qcom,sdcc-gpio-names", i, &name);
+
+			snprintf(result, 32, "%s-%s",
+					dev_name(dev), name ? name : "?");
+			pin_data->gpio_data->gpio[i].name = result;
+			dev_dbg(dev, "%s: gpio[%s] = %d\n", __func__,
+					pin_data->gpio_data->gpio[i].name,
+					pin_data->gpio_data->gpio[i].no);
+		}
+	} else {
+		pin_data->pad_data = devm_kzalloc(dev,
+				sizeof(struct msm_mmc_pad_data), GFP_KERNEL);
+		if (!pin_data->pad_data) {
+			dev_err(dev, "No memory for pin_data->pad_data\n");
+			ret = -ENOMEM;
+			goto err;
+		}
+
+		of_property_read_u32(np, "cell-index", &id);
+
+		ret = msmsdcc_dt_get_pad_pull_info(dev, id,
+				&pin_data->pad_data->pull);
+		if (ret)
+			goto err;
+		ret = msmsdcc_dt_get_pad_drv_info(dev, id,
+				&pin_data->pad_data->drv);
+		if (ret)
+			goto err;
+	}
+
+	pdata->pin_data = pin_data;
+err:
+	if (ret)
+		dev_err(dev, "%s failed with err %d\n", __func__, ret);
+	return ret;
+}
+
 #define MAX_PROP_SIZE 32
 static int msmsdcc_dt_parse_vreg_info(struct device *dev,
 		struct msm_mmc_reg_data **vreg_data, const char *vreg_name)
@@ -4738,29 +5173,10 @@ static struct mmc_platform_data *msmsdcc_populate_pdata(struct device *dev)
 		pdata->mmc_bus_width = 0;
 	}
 
-	if (of_get_property(np, "qcom,sdcc-sup-voltages", &sup_volt_len)) {
-		size_t sz;
-		sz = sup_volt_len / sizeof(*sup_voltages);
-		if (sz > 0) {
-			sup_voltages = devm_kzalloc(dev,
-					sz * sizeof(*sup_voltages), GFP_KERNEL);
-			if (!sup_voltages) {
-				dev_err(dev, "No memory for supported voltage\n");
-				goto err;
-			}
-
-			ret = of_property_read_u32_array(np,
-				"qcom,sdcc-sup-voltages", sup_voltages, sz);
-			if (ret < 0) {
-				dev_err(dev, "error while reading voltage"
-						"ranges %d\n", ret);
-				goto err;
-			}
-		} else {
-			dev_err(dev, "No supported voltages\n");
-			goto err;
-		}
-		for (i = 0; i < sz; i += 2) {
+	ret = msmsdcc_dt_get_array(dev, "qcom,sdcc-sup-voltages",
+			&sup_voltages, &sup_volt_len, 0);
+	if (!ret) {
+		for (i = 0; i < sup_volt_len; i += 2) {
 			u32 mask;
 
 			mask = mmc_vddrange_to_ocrmask(sup_voltages[i],
@@ -4770,37 +5186,13 @@ static struct mmc_platform_data *msmsdcc_populate_pdata(struct device *dev)
 			pdata->ocr_mask |= mask;
 		}
 		dev_dbg(dev, "OCR mask=0x%x\n", pdata->ocr_mask);
-	} else {
-		dev_err(dev, "Supported voltage range not specified\n");
 	}
 
-	if (of_get_property(np, "qcom,sdcc-clk-rates", &clk_table_len)) {
-		size_t sz;
-		sz = clk_table_len / sizeof(*clk_table);
-
-		if (sz > 0) {
-			clk_table = devm_kzalloc(dev, sz * sizeof(*clk_table),
-					GFP_KERNEL);
-			if (!clk_table) {
-				dev_err(dev, "No memory for clock table\n");
-				goto err;
-			}
-
-			ret = of_property_read_u32_array(np,
-				"qcom,sdcc-clk-rates", clk_table, sz);
-			if (ret < 0) {
-				dev_err(dev, "error while reading clk"
-						"table %d\n", ret);
-				goto err;
-			}
-		} else {
-			dev_err(dev, "clk_table not specified\n");
-			goto err;
-		}
+	ret = msmsdcc_dt_get_array(dev, "qcom,sdcc-clk-rates",
+			&clk_table, &clk_table_len, 0);
+	if (!ret) {
 		pdata->sup_clk_table = clk_table;
-		pdata->sup_clk_cnt = sz;
-	} else {
-		dev_err(dev, "Supported clock rates not specified\n");
+		pdata->sup_clk_cnt = clk_table_len;
 	}
 
 	pdata->vreg_data = devm_kzalloc(dev,
@@ -4816,6 +5208,9 @@ static struct mmc_platform_data *msmsdcc_populate_pdata(struct device *dev)
 
 	if (msmsdcc_dt_parse_vreg_info(dev,
 			&pdata->vreg_data->vdd_io_data, "vdd-io"))
+		goto err;
+
+	if (msmsdcc_dt_parse_gpio_info(dev, pdata))
 		goto err;
 
 	len = of_property_count_strings(np, "qcom,sdcc-bus-speed-mode");
@@ -5322,6 +5717,7 @@ msmsdcc_probe(struct platform_device *pdev)
 		pm_runtime_enable(&(pdev)->dev);
 	}
 #endif
+	host->idle_tout_ms = MSM_MMC_DEFAULT_IDLE_TIMEOUT;
 	setup_timer(&host->req_tout_timer, msmsdcc_req_tout_timer_hdlr,
 			(unsigned long)host);
 
@@ -5393,8 +5789,19 @@ msmsdcc_probe(struct platform_device *pdev)
 		if (ret)
 			goto remove_max_bus_bw_file;
 	}
+	host->idle_timeout.show = show_idle_timeout;
+	host->idle_timeout.store = store_idle_timeout;
+	sysfs_attr_init(&host->idle_timeout.attr);
+	host->idle_timeout.attr.name = "idle_timeout";
+	host->idle_timeout.attr.mode = S_IRUGO | S_IWUSR;
+	ret = device_create_file(&pdev->dev, &host->idle_timeout);
+	if (ret)
+		goto remove_polling_file;
 	return 0;
 
+ remove_polling_file:
+	if (!plat->status_irq)
+		device_remove_file(&pdev->dev, &host->polling);
  remove_max_bus_bw_file:
 	device_remove_file(&pdev->dev, &host->max_bus_bw);
  platform_irq_free:
@@ -5475,6 +5882,7 @@ static int msmsdcc_remove(struct platform_device *pdev)
 	device_remove_file(&pdev->dev, &host->max_bus_bw);
 	if (!plat->status_irq)
 		device_remove_file(&pdev->dev, &host->polling);
+	device_remove_file(&pdev->dev, &host->idle_timeout);
 
 	del_timer_sync(&host->req_tout_timer);
 	tasklet_kill(&host->dma_tlet);
@@ -5772,7 +6180,7 @@ static int msmsdcc_runtime_idle(struct device *dev)
 		return 0;
 
 	/* Idle timeout is not configurable for now */
-	pm_schedule_suspend(dev, MSM_MMC_IDLE_TIMEOUT);
+	pm_schedule_suspend(dev, host->idle_tout_ms);
 
 	return -EAGAIN;
 }

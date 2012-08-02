@@ -63,14 +63,51 @@
  */
 
 enum dmx_success {
-  DMX_OK = 0, /* Received Ok */
-  DMX_LENGTH_ERROR, /* Incorrect length */
-  DMX_OVERRUN_ERROR, /* Receiver ring buffer overrun */
-  DMX_CRC_ERROR, /* Incorrect CRC */
-  DMX_FRAME_ERROR, /* Frame alignment error */
-  DMX_FIFO_ERROR, /* Receiver FIFO overrun */
-  DMX_MISSED_ERROR /* Receiver missed packet */
+	DMX_OK = 0, /* Received Ok */
+	DMX_OK_PES_END, /* Received ok, data reached end of PES packet */
+	DMX_OK_PCR, /* Received OK, data with new PCR/STC pair */
+	DMX_LENGTH_ERROR, /* Incorrect length */
+	DMX_OVERRUN_ERROR, /* Receiver ring buffer overrun */
+	DMX_CRC_ERROR, /* Incorrect CRC */
+	DMX_FRAME_ERROR, /* Frame alignment error */
+	DMX_FIFO_ERROR, /* Receiver FIFO overrun */
+	DMX_MISSED_ERROR /* Receiver missed packet */
 } ;
+
+
+/*
+ * struct dmx_data_ready: Parameters for event notification callback.
+ * Event notification notifies demux device that data is written
+ * and available in the device's output buffer or provides
+ * notification on errors and other events. In the latter case
+ * data_length is zero.
+ */
+struct dmx_data_ready {
+	enum dmx_success status;
+
+	/*
+	 * data_length may be 0 in case of DMX_OK_PES_END
+	 * and in non-DMX_OK_XXX events. In DMX_OK_PES_END,
+	 * data_length is for data comming after the end of PES.
+	 */
+	int data_length;
+
+	union {
+		struct {
+			int start_gap;
+			int actual_length;
+			int disc_indicator_set;
+			int pes_length_mismatch;
+			u64 stc;
+		} pes_end;
+
+		struct {
+			u64 pcr;
+			u64 stc;
+			int disc_indicator_set;
+		} pcr;
+	};
+};
 
 /*--------------------------------------------------------------------------*/
 /* TS packet reception */
@@ -123,10 +160,15 @@ enum dmx_ts_pes
 #define DMX_TS_PES_SUBTITLE DMX_TS_PES_SUBTITLE0
 #define DMX_TS_PES_PCR      DMX_TS_PES_PCR0
 
+struct dmx_ts_feed;
+typedef int (*dmx_ts_data_ready_cb)(
+		struct dmx_ts_feed *source,
+		struct dmx_data_ready *dmx_data_ready);
 
 struct dmx_ts_feed {
 	int is_filtering; /* Set to non-zero when filtering in progress */
 	struct dmx_demux *parent; /* Back-pointer */
+	const struct dvb_ringbuffer *buffer;
 	void *priv; /* Pointer to private data of the API client */
 	int (*set) (struct dmx_ts_feed *feed,
 		    u16 pid,
@@ -141,6 +183,10 @@ struct dmx_ts_feed {
 	int (*get_decoder_buff_status)(
 			struct dmx_ts_feed *feed,
 			struct dmx_buffer_status *dmx_buffer_status);
+	int (*data_ready_cb)(struct dmx_ts_feed *feed,
+			dmx_ts_data_ready_cb callback);
+	int (*notify_data_read)(struct dmx_ts_feed *feed,
+			u32 bytes_num);
 };
 
 /*--------------------------------------------------------------------------*/
@@ -152,8 +198,14 @@ struct dmx_section_filter {
 	u8 filter_mask [DMX_MAX_FILTER_SIZE];
 	u8 filter_mode [DMX_MAX_FILTER_SIZE];
 	struct dmx_section_feed* parent; /* Back-pointer */
+	const struct dvb_ringbuffer *buffer;
 	void* priv; /* Pointer to private data of the API client */
 };
+
+struct dmx_section_feed;
+typedef int (*dmx_section_data_ready_cb)(
+		struct dmx_section_filter *source,
+		struct dmx_data_ready *dmx_data_ready);
 
 struct dmx_section_feed {
 	int is_filtering; /* Set to non-zero when filtering in progress */
@@ -177,6 +229,10 @@ struct dmx_section_feed {
 			       struct dmx_section_filter* filter);
 	int (*start_filtering) (struct dmx_section_feed* feed);
 	int (*stop_filtering) (struct dmx_section_feed* feed);
+	int (*data_ready_cb)(struct dmx_section_feed *feed,
+			dmx_section_data_ready_cb callback);
+	int (*notify_data_read)(struct dmx_section_filter *filter,
+			u32 bytes_num);
 };
 
 /*--------------------------------------------------------------------------*/

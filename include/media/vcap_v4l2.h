@@ -126,7 +126,6 @@ struct vp_action {
 struct vp_work_t {
 	struct work_struct work;
 	struct vcap_client_data *cd;
-	uint32_t irq;
 };
 
 struct vcap_dev {
@@ -159,10 +158,13 @@ struct vcap_dev {
 	atomic_t			    vc_enabled;
 	atomic_t			    vp_enabled;
 
-	spinlock_t				dev_slock;
+	struct mutex			dev_mutex;
 	atomic_t			    open_clients;
 	bool					vc_resource;
 	bool					vp_resource;
+	bool					vp_dummy_event;
+	bool					vp_dummy_complete;
+	wait_queue_head_t		vp_dummy_waitq;
 
 	struct workqueue_struct	*vcap_wq;
 	struct vp_work_t		vp_work;
@@ -221,9 +223,6 @@ struct vcap_hacked_vals {
 extern struct vcap_hacked_vals hacked_buf[];
 
 #endif
-int free_ion_handle(struct vcap_dev *dev, struct vb2_queue *q,
-					 struct v4l2_buffer *b);
-
-int get_phys_addr(struct vcap_dev *dev, struct vb2_queue *q,
-				  struct v4l2_buffer *b);
+int vcvp_qbuf(struct vb2_queue *q, struct v4l2_buffer *b);
+int vcvp_dqbuf(struct vb2_queue *q, struct v4l2_buffer *b);
 #endif

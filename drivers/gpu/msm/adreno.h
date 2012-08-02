@@ -24,11 +24,15 @@
 #define ADRENO_DEVICE(device) \
 		KGSL_CONTAINER_OF(device, struct adreno_device, dev)
 
+#define ADRENO_CHIPID_CORE(_id) (((_id) >> 24) & 0xFF)
+#define ADRENO_CHIPID_MAJOR(_id) (((_id) >> 16) & 0xFF)
+#define ADRENO_CHIPID_MINOR(_id) (((_id) >> 8) & 0xFF)
+#define ADRENO_CHIPID_PATCH(_id) ((_id) & 0xFF)
+
 /* Flags to control command packet settings */
 #define KGSL_CMD_FLAGS_NONE             0x00000000
 #define KGSL_CMD_FLAGS_PMODE		0x00000001
 #define KGSL_CMD_FLAGS_NO_TS_CMP	0x00000002
-#define KGSL_CMD_FLAGS_NOT_KERNEL_CMD	0x00000004
 
 /* Command identifiers */
 #define KGSL_CONTEXT_TO_MEM_IDENTIFIER	0x2EADBEEF
@@ -108,6 +112,30 @@ struct adreno_gpudev {
 	void (*rb_init)(struct adreno_device *, struct adreno_ringbuffer *);
 	void (*start)(struct adreno_device *);
 	unsigned int (*busy_cycles)(struct adreno_device *);
+};
+
+/*
+ * struct adreno_recovery_data - Structure that contains all information to
+ * perform gpu recovery from hangs
+ * @ib1 - IB1 that the GPU was executing when hang happened
+ * @context_id - Context which caused the hang
+ * @global_eop - eoptimestamp at time of hang
+ * @rb_buffer - Buffer that holds the commands from good contexts
+ * @rb_size - Number of valid dwords in rb_buffer
+ * @bad_rb_buffer - Buffer that holds commands from the hanging context
+ * bad_rb_size - Number of valid dwords in bad_rb_buffer
+ * @last_valid_ctx_id - The last context from which commands were placed in
+ * ringbuffer before the GPU hung
+ */
+struct adreno_recovery_data {
+	unsigned int ib1;
+	unsigned int context_id;
+	unsigned int global_eop;
+	unsigned int *rb_buffer;
+	unsigned int rb_size;
+	unsigned int *bad_rb_buffer;
+	unsigned int bad_rb_size;
+	unsigned int last_valid_ctx_id;
 };
 
 extern struct adreno_gpudev adreno_a2xx_gpudev;
@@ -261,7 +289,6 @@ static inline int adreno_add_change_mh_phys_limit_cmds(unsigned int *cmds,
 {
 	unsigned int *start = cmds;
 
-	cmds += __adreno_add_idle_indirect_cmds(cmds, nop_gpuaddr);
 	*cmds++ = cp_type0_packet(MH_MMU_MPU_END, 1);
 	*cmds++ = new_phys_limit;
 	cmds += __adreno_add_idle_indirect_cmds(cmds, nop_gpuaddr);
@@ -274,7 +301,6 @@ static inline int adreno_add_bank_change_cmds(unsigned int *cmds,
 {
 	unsigned int *start = cmds;
 
-	cmds += __adreno_add_idle_indirect_cmds(cmds, nop_gpuaddr);
 	*cmds++ = cp_type0_packet(REG_CP_STATE_DEBUG_INDEX, 1);
 	*cmds++ = (cur_ctx_bank ? 0 : 0x20);
 	cmds += __adreno_add_idle_indirect_cmds(cmds, nop_gpuaddr);

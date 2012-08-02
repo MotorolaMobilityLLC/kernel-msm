@@ -13,6 +13,10 @@
 
 #include <linux/sched.h>
 #include <linux/slab.h>
+#include <linux/iommu.h>
+#include <mach/iommu.h>
+#include <mach/iommu_domains.h>
+#include <mach/peripheral-loader.h>
 
 #include "msm_vidc_common.h"
 #include "vidc_hal_api.h"
@@ -50,6 +54,60 @@ struct msm_vidc_core *get_vidc_core(int core_id)
 	if (found)
 		return core;
 	return NULL;
+}
+
+static int msm_comm_iommu_attach(struct msm_vidc_core *core)
+{
+	int rc;
+	struct iommu_domain *domain;
+	int i;
+	struct iommu_info *io_map;
+	struct device *dev;
+	for (i = 0; i < MAX_MAP; i++) {
+		io_map = &core->resources.io_map[i];
+		dev = msm_iommu_get_ctx(io_map->ctx);
+		domain = msm_get_iommu_domain(io_map->domain);
+		if (IS_ERR_OR_NULL(domain)) {
+			pr_err("Failed to get domain: %s\n", io_map->name);
+			rc = PTR_ERR(domain);
+			break;
+		}
+		rc = iommu_attach_device(domain, dev);
+		if (rc) {
+			pr_err("IOMMU attach failed: %s\n", io_map->name);
+			break;
+		}
+	}
+	if (i < MAX_MAP) {
+		i--;
+		for (; i >= 0; i--) {
+			io_map = &core->resources.io_map[i];
+			dev = msm_iommu_get_ctx(io_map->ctx);
+			domain = msm_get_iommu_domain(io_map->domain);
+			if (dev && domain)
+				iommu_detach_device(domain, dev);
+		}
+	}
+	return rc;
+}
+
+static void msm_comm_iommu_detach(struct msm_vidc_core *core)
+{
+	struct device *dev;
+	struct iommu_domain *domain;
+	struct iommu_info *io_map;
+	int i;
+	if (!core) {
+		pr_err("Invalid paramter: %p\n", core);
+		return;
+	}
+	for (i = 0; i < MAX_MAP; i++) {
+		io_map = &core->resources.io_map[i];
+		dev = msm_iommu_get_ctx(io_map->ctx);
+		domain = msm_get_iommu_domain(io_map->domain);
+		if (dev && domain)
+			iommu_detach_device(domain, dev);
+	}
 }
 
 const struct msm_vidc_format *msm_comm_get_pixel_fmt_index(
@@ -454,6 +512,47 @@ void handle_cmd_response(enum command_response cmd, void *data)
 		break;
 	}
 }
+static int msm_comm_load_fw(struct msm_vidc_core *core)
+{
+	int rc = 0;
+	if (!core) {
+		pr_err("Invalid paramter: %p\n", core);
+		return -EINVAL;
+	}
+
+	if (!core->resources.fw.cookie)
+		core->resources.fw.cookie = pil_get("venus");
+
+	if (IS_ERR_OR_NULL(core->resources.fw.cookie)) {
+		pr_err("Failed to download firmware\n");
+		rc = -ENOMEM;
+		goto fail_pil_get;
+	}
+	rc = msm_comm_iommu_attach(core);
+	if (rc) {
+		pr_err("Failed to attach iommu");
+		goto fail_iommu_attach;
+	}
+	return rc;
+fail_iommu_attach:
+	pil_put(core->resources.fw.cookie);
+	core->resources.fw.cookie = NULL;
+fail_pil_get:
+	return rc;
+}
+
+static void msm_comm_unload_fw(struct msm_vidc_core *core)
+{
+	if (!core) {
+		pr_err("Invalid paramter: %p\n", core);
+		return;
+	}
+	if (core->resources.fw.cookie) {
+		pil_put(core->resources.fw.cookie);
+		core->resources.fw.cookie = NULL;
+		msm_comm_iommu_detach(core);
+	}
+}
 
 static int msm_comm_init_core_done(struct msm_vidc_inst *inst)
 {
@@ -499,18 +598,28 @@ static int msm_comm_init_core(struct msm_vidc_inst *inst)
 				core->id, core->state);
 		goto core_already_inited;
 	}
+	rc = msm_comm_load_fw(core);
+	if (rc) {
+		pr_err("Failed to load video firmware\n");
+		goto fail_fw_download;
+	}
 	init_completion(&core->completions[SYS_MSG_INDEX(SYS_INIT_DONE)]);
-	rc = vidc_hal_core_init(core->device);
+	rc = vidc_hal_core_init(core->device,
+		core->resources.io_map[NS_MAP].domain);
 	if (rc) {
 		pr_err("Failed to init core, id = %d\n", core->id);
-		goto exit;
+		goto fail_core_init;
 	}
 	spin_lock_irqsave(&core->lock, flags);
 	core->state = VIDC_CORE_INIT;
 	spin_unlock_irqrestore(&core->lock, flags);
 core_already_inited:
 	change_inst_state(inst, MSM_VIDC_CORE_INIT);
-exit:
+	mutex_unlock(&core->sync_lock);
+	return rc;
+fail_core_init:
+	msm_comm_unload_fw(core);
+fail_fw_download:
 	mutex_unlock(&core->sync_lock);
 	return rc;
 }
@@ -536,6 +645,7 @@ static int msm_vidc_deinit_core(struct msm_vidc_inst *inst)
 		spin_lock_irqsave(&core->lock, flags);
 		core->state = VIDC_CORE_UNINIT;
 		spin_unlock_irqrestore(&core->lock, flags);
+		msm_comm_unload_fw(core);
 	}
 core_already_uninited:
 	change_inst_state(inst, MSM_VIDC_CORE_UNINIT);
@@ -587,6 +697,9 @@ static enum hal_video_codec get_hal_codec_type(int fourcc)
 	case V4L2_PIX_FMT_VC1_ANNEX_L:
 		codec = HAL_VIDEO_CODEC_VC1;
 		break;
+	case V4L2_PIX_FMT_VP8:
+		codec = HAL_VIDEO_CODEC_VP8;
+		break;
 	case V4L2_PIX_FMT_DIVX_311:
 		codec = HAL_VIDEO_CODEC_DIVX_311;
 		break;
@@ -596,8 +709,7 @@ static enum hal_video_codec get_hal_codec_type(int fourcc)
 		/*HAL_VIDEO_CODEC_MVC
 		  HAL_VIDEO_CODEC_SPARK
 		  HAL_VIDEO_CODEC_VP6
-		  HAL_VIDEO_CODEC_VP7
-		  HAL_VIDEO_CODEC_VP8*/
+		  HAL_VIDEO_CODEC_VP7*/
 	default:
 		pr_err("Wrong codec: %d\n", fourcc);
 		codec = HAL_UNUSED_CODEC;
@@ -887,9 +999,16 @@ int msm_comm_qbuf(struct vb2_buffer *vb)
 		} else if (q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 			frame_data.filled_len = 0;
 			frame_data.buffer_type = HAL_BUFFER_OUTPUT;
-			frame_data.extradata_addr = 0;
-			pr_debug("Sending ftb to hal..: Alloc: %d :filled: %d\n",
+			if (inst->extradata_handle) {
+				frame_data.extradata_addr =
+					inst->extradata_handle->device_addr;
+			} else {
+				frame_data.extradata_addr = 0;
+			}
+			pr_debug("Sending ftb to hal..: Alloc: %d :filled: %d",
 				frame_data.alloc_len, frame_data.filled_len);
+			pr_debug(" extradata_addr: %d\n",
+				frame_data.extradata_addr);
 			rc = vidc_hal_session_ftb((void *) inst->session,
 					&frame_data);
 		} else {
@@ -933,12 +1052,56 @@ int msm_vidc_decoder_cmd(void *instance, struct v4l2_decoder_cmd *dec)
 {
 	int rc = 0;
 	struct msm_vidc_inst *inst = (struct msm_vidc_inst *)instance;
+	bool ip_flush = false,
+	     op_flush = false;
+
 	mutex_lock(&inst->sync_lock);
-	if (dec->cmd != V4L2_DEC_CMD_STOP)
-		return -EINVAL;
-	rc = vidc_hal_session_flush((void *)inst->session, HAL_FLUSH_OUTPUT);
+
+	switch (dec->cmd) {
+	case V4L2_DEC_QCOM_CMD_FLUSH:
+		ip_flush = dec->flags & V4L2_DEC_QCOM_CMD_FLUSH_OUTPUT;
+		op_flush = dec->flags & V4L2_DEC_QCOM_CMD_FLUSH_CAPTURE;
+		/* Only support flush on decoder (for now)*/
+		if (inst->session_type == MSM_VIDC_ENCODER) {
+			pr_err("Buffer flushing not supported for encoder\n");
+			rc = -ENOTSUPP;
+			break;
+		}
+
+		/* Certain types of flushes aren't supported such as: */
+		/* 1) Input only flush */
+		if (ip_flush && !op_flush) {
+			pr_err("Input only flush not supported\n");
+			rc = -ENOTSUPP;
+			break;
+		}
+
+		/* 2) Output only flush when in reconfig */
+		if (!ip_flush && op_flush && !inst->in_reconfig) {
+			pr_err("Output only flush only supported when reconfiguring\n");
+			rc = -ENOTSUPP;
+			break;
+		}
+
+		/* Finally flush */
+		if (op_flush && ip_flush)
+			rc = vidc_hal_session_flush(inst->session,
+					HAL_FLUSH_ALL);
+		else if (ip_flush)
+			rc = vidc_hal_session_flush(inst->session,
+					HAL_FLUSH_INPUT);
+		else if (op_flush)
+			rc = vidc_hal_session_flush(inst->session,
+					HAL_FLUSH_OUTPUT);
+
+		break;
+	default:
+		rc = -ENOTSUPP;
+		goto exit;
+	}
+
 	if (rc) {
-		pr_err("Failed to get property\n");
+		pr_err("Failed to exec decoder cmd %d\n", dec->cmd);
 		goto exit;
 	}
 exit:
@@ -974,7 +1137,8 @@ int msm_comm_set_scratch_buffers(struct msm_vidc_inst *inst)
 	for (i = 0; i < inst->buff_req.buffer[6].buffer_count_actual;
 				i++) {
 		handle = msm_smem_alloc(inst->mem_client,
-				inst->buff_req.buffer[6].buffer_size, 1, 0);
+				inst->buff_req.buffer[6].buffer_size, 1, 0,
+				inst->core->resources.io_map[NS_MAP].domain, 0);
 		if (!handle) {
 			pr_err("Failed to allocate scratch memory\n");
 			rc = -ENOMEM;

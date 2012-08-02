@@ -678,8 +678,8 @@ static void mdp4_dtv_do_blt(struct msm_fb_data_type *mfd, int enable)
 		msleep(20);
 	}
 
-	mdp4_overlayproc_cfg(dtv_pipe);
 	mdp4_overlay_dmae_xy(dtv_pipe);
+	mdp4_overlayproc_cfg(dtv_pipe);
 	MDP_OUTP(MDP_BASE + DTV_BASE, 1);	/* start dtv */
 }
 
@@ -698,11 +698,7 @@ void mdp4_dtv_overlay(struct msm_fb_data_type *mfd)
 	struct mdp4_overlay_pipe *pipe;
 	if (!mfd->panel_power_on)
 		return;
-	if (!dtv_pipe) {
-		pr_debug("%s: no mixer1 base layer pipe allocated!\n",
-			 __func__);
-		return;
-	}
+
 	mutex_lock(&mfd->dma->ov_mutex);
 	if (dtv_pipe == NULL) {
 		if (mdp4_overlay_dtv_set(mfd, NULL)) {

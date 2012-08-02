@@ -180,6 +180,9 @@
 #define DWC3_GCTL_DISSCRAMBLE	(1 << 3)
 #define DWC3_GCTL_DSBLCLKGTNG	(1 << 0)
 
+/* Global User Control Register */
+#define DWC3_GUCTL_REFCLKPER (0x3FF << 22)
+
 /* Global USB2 PHY Configuration Register */
 #define DWC3_GUSB2PHYCFG_PHYSOFTRST (1 << 31)
 #define DWC3_GUSB2PHYCFG_SUSPHY	(1 << 6)
@@ -188,6 +191,7 @@
 #define DWC3_GUSB3PIPECTL_PHYSOFTRST (1 << 31)
 #define DWC3_GUSB3PIPECTL_SUSPHY (1 << 17)
 #define DWC3_GUSB3PIPECTL_DELAY_P1P2P3 (7 << 19)
+#define DWC3_GUSB3PIPECTL_DIS_RXDET_U3_RXDET (1 << 22)
 
 /* Global TX Fifo Size Register */
 #define DWC3_GTXFIFOSIZ_TXFDEF(n) ((n) & 0xffff)

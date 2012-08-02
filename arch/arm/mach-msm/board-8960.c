@@ -26,7 +26,6 @@
 #include <linux/spi/spi.h>
 #include <linux/slimbus/slimbus.h>
 #include <linux/bootmem.h>
-#include <linux/msm_kgsl.h>
 #ifdef CONFIG_ANDROID_PMEM
 #include <linux/android_pmem.h>
 #endif
@@ -87,6 +86,7 @@
 #include <mach/scm.h>
 #include <mach/iommu_domains.h>
 
+#include <mach/kgsl.h>
 #include <linux/fmem.h>
 
 #include "timer.h"
@@ -1293,6 +1293,7 @@ static struct mdm_platform_data sglte_platform_data = {
 	.peripheral_platform_device = NULL,
 	.ramdump_timeout_ms = 600000,
 	.no_powerdown_after_ramdumps = 1,
+	.image_upgrade_supported = 1,
 };
 
 #define MSM_TSIF0_PHYS			(0x18200000)
@@ -1487,6 +1488,9 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.power_budget		= 750,
 #ifdef CONFIG_MSM_BUS_SCALING
 	.bus_scale_table	= &usb_bus_scale_pdata,
+#endif
+#ifdef CONFIG_FB_MSM_HDMI_MHL_8334
+	.mhl_dev_name		= "sii8334",
 #endif
 };
 #endif
@@ -1911,18 +1915,9 @@ static struct cyttsp_platform_data cyttsp_pdata = {
 	.gest_set = CY_GEST_GRP1 | CY_GEST_GRP2 |
 				CY_GEST_GRP3 | CY_GEST_GRP4 |
 				CY_ACT_DIST,
-	/* change act_intrvl to customize the Active power state
-	 * scanning/processing refresh interval for Operating mode
-	 */
-	.act_intrvl = CY_ACT_INTRVL_DFLT,
-	/* change tch_tmout to customize the touch timeout for the
-	 * Active power state for Operating mode
-	 */
-	.tch_tmout = CY_TCH_TMOUT_DFLT,
-	/* change lp_intrvl to customize the Low Power power state
-	 * scanning/processing refresh interval for Operating mode
-	 */
-	.lp_intrvl = CY_LP_INTRVL_DFLT,
+	.act_intrvl = 10,
+	.tch_tmout = 200,
+	.lp_intrvl = 30,
 	.sleep_gpio = CYTTSP_TS_SLEEP_GPIO,
 	.resout_gpio = CYTTSP_TS_RESOUT_N_GPIO,
 	.irq_gpio = CYTTSP_TS_GPIO_IRQ,
@@ -2326,12 +2321,6 @@ static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi12_pdata = {
 	.src_clk_rate = 24000000,
 };
 
-static struct msm_pm_sleep_status_data msm_pm_slp_sts_data = {
-	.base_addr = MSM_ACC0_BASE + 0x08,
-	.cpu_offset = MSM_ACC1_BASE - MSM_ACC0_BASE,
-	.mask = 1UL << 13,
-};
-
 static struct ks8851_pdata spi_eth_pdata = {
 	.irq_gpio = KS8851_IRQ_GPIO,
 	.rst_gpio = KS8851_RST_GPIO,
@@ -2467,7 +2456,36 @@ static int configure_uart_gpios(int on)
 static struct msm_serial_hs_platform_data msm_uart_dm9_pdata = {
 	.gpio_config	= configure_uart_gpios,
 };
+
+static int configure_gsbi8_uart_gpios(int on)
+{
+	int ret = 0, i;
+	int uart_gpios[] = {34, 35, 36, 37};
+
+	for (i = 0; i < ARRAY_SIZE(uart_gpios); i++) {
+		if (on) {
+			ret = gpio_request(uart_gpios[i], NULL);
+			if (ret) {
+				pr_err("%s: unable to request uart gpio[%d]\n",
+						__func__, uart_gpios[i]);
+				break;
+			}
+		} else {
+			gpio_free(uart_gpios[i]);
+		}
+	}
+
+	if (ret && on && i)
+		for (; i >= 0; i--)
+			gpio_free(uart_gpios[i]);
+	return ret;
+}
+
+static struct msm_serial_hs_platform_data msm_uart_dm8_pdata = {
+	.gpio_config	= configure_gsbi8_uart_gpios,
+};
 #else
+static struct msm_serial_hs_platform_data msm_uart_dm8_pdata;
 static struct msm_serial_hs_platform_data msm_uart_dm9_pdata;
 #endif
 
@@ -2476,7 +2494,6 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm8960_device_dmov,
 	&msm_device_smd,
 	&msm_device_uart_dm6,
-	&msm_device_uart_dm9,
 	&msm_device_saw_core0,
 	&msm_device_saw_core1,
 	&msm8960_device_ext_5v_vreg,
@@ -2696,12 +2713,25 @@ static void __init msm8960_i2c_init(void)
 
 static void __init msm8960_gfx_init(void)
 {
+	struct kgsl_device_platform_data *kgsl_3d0_pdata =
+		msm_kgsl_3d0.dev.platform_data;
 	uint32_t soc_platform_version = socinfo_get_version();
+
 	if (SOCINFO_VERSION_MAJOR(soc_platform_version) == 1) {
-		struct kgsl_device_platform_data *kgsl_3d0_pdata =
-				msm_kgsl_3d0.dev.platform_data;
 		kgsl_3d0_pdata->pwrlevel[0].gpu_freq = 320000000;
 		kgsl_3d0_pdata->pwrlevel[1].gpu_freq = 266667000;
+	}
+	if (cpu_is_msm8960ab()) {
+		kgsl_3d0_pdata->chipid = ADRENO_CHIPID(3, 2, 1, 0);
+	} else {
+
+		/* 8960v3 GPU registers returns 5 for patch release
+		 * but it should be 6, so dummy up the chipid here
+		 * based the platform type
+		 */
+
+		if (SOCINFO_VERSION_MAJOR(soc_platform_version) >= 3)
+			kgsl_3d0_pdata->chipid = ADRENO_CHIPID(2, 2, 0, 6);
 	}
 }
 
@@ -3040,7 +3070,6 @@ static void __init msm8960_sim_init(void)
 	slim_register_board_info(msm_slim_devices,
 		ARRAY_SIZE(msm_slim_devices));
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
-	msm_pm_init_sleep_status_data(&msm_pm_slp_sts_data);
 }
 
 static void __init msm8960_rumi3_init(void)
@@ -3070,7 +3099,6 @@ static void __init msm8960_rumi3_init(void)
 	slim_register_board_info(msm_slim_devices,
 		ARRAY_SIZE(msm_slim_devices));
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
-	msm_pm_init_sleep_status_data(&msm_pm_slp_sts_data);
 }
 
 static void __init msm8960_cdp_init(void)
@@ -3133,8 +3161,14 @@ static void __init msm8960_cdp_init(void)
 	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
 		msm_uart_dm9_pdata.wakeup_irq = gpio_to_irq(94); /* GSBI9(2) */
 		msm_device_uart_dm9.dev.platform_data = &msm_uart_dm9_pdata;
+		platform_device_register(&msm_device_uart_dm9);
 	}
 
+	/* For 8960 Standalone External Bluetooth Interface */
+	if (socinfo_get_platform_subtype() != PLATFORM_SUBTYPE_SGLTE) {
+		msm_device_uart_dm8.dev.platform_data = &msm_uart_dm8_pdata;
+		platform_device_register(&msm_device_uart_dm8);
+	}
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	msm8960_pm8921_gpio_mpp_init();
 	platform_add_devices(cdp_devices, ARRAY_SIZE(cdp_devices));
@@ -3153,7 +3187,6 @@ static void __init msm8960_cdp_init(void)
 	msm8960_init_dsps();
 	change_memory_power = &msm8960_change_memory_power;
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
-	msm_pm_init_sleep_status_data(&msm_pm_slp_sts_data);
 	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
 		mdm_sglte_device.dev.platform_data = &sglte_platform_data;
 		platform_device_register(&mdm_sglte_device);

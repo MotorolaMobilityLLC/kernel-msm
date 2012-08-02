@@ -241,8 +241,8 @@ enum vfe_output_state {
 #define V32_OPERATION_CFG_LEN     44
 
 #define V32_AXI_OUT_OFF           0x00000038
-#define V32_AXI_OUT_LEN           224
-#define V32_AXI_CH_INF_LEN        32
+#define V32_AXI_OUT_LEN           240
+#define V32_AXI_CH_INF_LEN        48
 #define V32_AXI_CFG_LEN           47
 #define V32_AXI_BUS_FMT_OFF    1
 #define V32_AXI_BUS_FMT_LEN    4
@@ -756,7 +756,7 @@ struct vfe32_free_buf {
 struct vfe32_output_ch {
 	struct list_head free_buf_queue;
 	spinlock_t free_buf_lock;
-	uint16_t image_mode;
+	uint32_t inst_handle;
 	int8_t ch0;
 	int8_t ch1;
 	int8_t ch2;
@@ -1006,6 +1006,8 @@ struct vfe32_ctrl_type {
 	uint32_t snapshot_frame_cnt;
 	struct msm_stats_bufq_ctrl stats_ctrl;
 	struct msm_stats_ops stats_ops;
+
+	uint32_t simultaneous_sof_stat;
 };
 
 #define statsAeNum      0
@@ -1025,20 +1027,5 @@ struct vfe_cmd_stats_ack {
 struct vfe_cmd_stats_buf {
 	uint32_t statsBuf[VFE_STATS_BUFFER_COUNT];
 };
-
-#define VIDIOC_MSM_AXI_INIT \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 18, struct msm_cam_media_controller *)
-
-#define VIDIOC_MSM_AXI_RELEASE \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 19, struct msm_cam_media_controller *)
-
-#define VIDIOC_MSM_AXI_CFG \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 20, void *)
-
-#define VIDIOC_MSM_AXI_IRQ \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 21, void *)
-
-#define VIDIOC_MSM_AXI_BUF_CFG \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 22, void *)
 
 #endif /* __MSM_VFE32_H__ */

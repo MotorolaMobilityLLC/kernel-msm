@@ -26,7 +26,6 @@
 #include <linux/spi/spi.h>
 #include <linux/slimbus/slimbus.h>
 #include <linux/bootmem.h>
-#include <linux/msm_kgsl.h>
 #ifdef CONFIG_ANDROID_PMEM
 #include <linux/android_pmem.h>
 #endif
@@ -80,6 +79,7 @@
 #include <linux/fmem.h>
 #include <mach/msm_cache_dump.h>
 
+#include <mach/kgsl.h>
 #ifdef CONFIG_INPUT_MPU3050
 #include <linux/input/mpu3050.h>
 #endif
@@ -1460,6 +1460,9 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 #ifdef CONFIG_MSM_BUS_SCALING
 	.bus_scale_table	= &usb_bus_scale_pdata,
 #endif
+#ifdef CONFIG_FB_MSM_HDMI_MHL_8334
+	.mhl_dev_name		= "sii8334",
+#endif
 };
 #endif
 
@@ -2159,7 +2162,6 @@ static struct platform_device msm8930_device_rpm_regulator __devinitdata = {
 };
 
 static struct platform_device *common_devices[] __initdata = {
-	&msm8960_device_acpuclk,
 	&msm8960_device_dmov,
 	&msm_device_smd,
 	&msm8960_device_uart_gsbi5,
@@ -2399,12 +2401,6 @@ static struct msm_pm_boot_platform_data msm_pm_boot_pdata __initdata = {
 	.mode = MSM_PM_BOOT_CONFIG_TZ,
 };
 
-static struct msm_pm_sleep_status_data msm_pm_slp_sts_data = {
-	.base_addr = MSM_ACC0_BASE + 0x08,
-	.cpu_offset = MSM_ACC1_BASE - MSM_ACC0_BASE,
-	.mask = 1UL << 13,
-};
-
 #ifdef CONFIG_I2C
 #define I2C_SURF 1
 #define I2C_FFA  (1 << 1)
@@ -2573,6 +2569,10 @@ static void __init msm8930_cdp_init(void)
 	msm_spm_l2_init(msm_spm_l2_data);
 	msm8930_init_buses();
 	platform_add_devices(msm8930_footswitch, msm8930_num_footswitch);
+	if (cpu_is_msm8627())
+		platform_device_register(&msm8627_device_acpuclk);
+	else if (cpu_is_msm8930() || cpu_is_msm8930aa())
+		platform_device_register(&msm8930_device_acpuclk);
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	msm8930_add_vidc_device();
 	/*
@@ -2597,7 +2597,6 @@ static void __init msm8930_cdp_init(void)
 		ARRAY_SIZE(msm_slim_devices));
 	change_memory_power = &msm8930_change_memory_power;
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
-	msm_pm_init_sleep_status_data(&msm_pm_slp_sts_data);
 
 	if (PLATFORM_IS_CHARM25())
 		platform_add_devices(mdm_devices, ARRAY_SIZE(mdm_devices));

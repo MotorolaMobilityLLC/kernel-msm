@@ -201,8 +201,8 @@ struct msm_gpio_set_tbl {
 };
 
 struct msm_camera_csi_lane_params {
-	uint8_t csi_lane_assign;
-	uint8_t csi_lane_mask;
+	uint16_t csi_lane_assign;
+	uint16_t csi_lane_mask;
 };
 
 struct msm_camera_gpio_conf {
@@ -487,6 +487,7 @@ struct msm_wfd_platform_data {
 struct msm_fb_platform_data {
 	int (*detect_client)(const char *name);
 	int mddi_prescan;
+	unsigned char ext_resolution;
 	int (*allow_set_offset)(void);
 	char prim_panel_name[PANEL_NAME_MAX_LEN];
 	char ext_panel_name[PANEL_NAME_MAX_LEN];

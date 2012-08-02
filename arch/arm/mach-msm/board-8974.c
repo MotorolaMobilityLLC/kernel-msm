@@ -208,12 +208,12 @@ static void __init reserve_ion_memory(void)
 static struct resource smd_resource[] = {
 	{
 		.name	= "modem_smd_in",
-		.start	= 32 + 17,		/* mss_sw_to_kpss_ipc_irq0  */
+		.start	= 32 + 25,		/* mss_sw_to_kpss_ipc_irq0  */
 		.flags	= IORESOURCE_IRQ,
 	},
 	{
 		.name	= "modem_smsm_in",
-		.start	= 32 + 18,		/* mss_sw_to_kpss_ipc_irq1  */
+		.start	= 32 + 26,		/* mss_sw_to_kpss_ipc_irq1  */
 		.flags	= IORESOURCE_IRQ,
 	},
 	{
@@ -383,6 +383,7 @@ static struct reserve_info msm_8974_reserve_info __initdata = {
 static void __init msm_8974_early_memory(void)
 {
 	reserve_info = &msm_8974_reserve_info;
+	of_scan_flat_dt(dt_scan_for_memory_reserve, msm_8974_reserve_table);
 }
 
 void __init msm_8974_reserve(void)
@@ -640,6 +641,8 @@ static struct of_dev_auxdata msm_8974_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,qseecom", 0xFE806000, \
 			"qseecom", NULL),
 	OF_DEV_AUXDATA("qcom,mdss_mdp", 0xFD900000, "mdp.0", NULL),
+	OF_DEV_AUXDATA("qcom,msm-tsens", 0xFC4A8000, \
+			"msm-tsens", NULL),
 	{}
 };
 

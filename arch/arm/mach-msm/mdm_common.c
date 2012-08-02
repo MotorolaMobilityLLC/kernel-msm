@@ -56,6 +56,7 @@ static unsigned int dump_timeout_ms;
 #define EXTERNAL_MODEM "external_modem"
 
 static struct mdm_modem_drv *mdm_drv;
+static struct subsys_device *mdm_subsys_dev;
 
 DECLARE_COMPLETION(mdm_needs_reload);
 DECLARE_COMPLETION(mdm_boot);
@@ -150,11 +151,13 @@ static void mdm2ap_status_check(struct work_struct *work)
 	 * If the mdm modem did not pull the MDM2AP_STATUS gpio
 	 * high then call subsystem_restart.
 	 */
-	if (gpio_get_value(mdm_drv->mdm2ap_status_gpio) == 0) {
-		pr_err("%s: MDM2AP_STATUS gpio did not go high\n",
-			   __func__);
-		mdm_drv->mdm_ready = 0;
-		subsystem_restart(EXTERNAL_MODEM);
+	if (!mdm_drv->disable_status_check) {
+		if (gpio_get_value(mdm_drv->mdm2ap_status_gpio) == 0) {
+			pr_err("%s: MDM2AP_STATUS gpio did not go high\n",
+					__func__);
+			mdm_drv->mdm_ready = 0;
+			subsystem_restart_dev(mdm_subsys_dev);
+		}
 	}
 }
 
@@ -238,6 +241,15 @@ long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 		else
 			put_user(0, (unsigned long __user *) arg);
 		break;
+	case IMAGE_UPGRADE:
+		pr_debug("%s Image upgrade ioctl recieved\n", __func__);
+		if (mdm_drv->pdata->image_upgrade_supported &&
+				mdm_drv->ops->image_upgrade_cb) {
+			get_user(status, (unsigned long __user *) arg);
+			mdm_drv->ops->image_upgrade_cb(mdm_drv, status);
+		} else
+			pr_debug("%s Image upgrade not supported\n", __func__);
+		break;
 	default:
 		pr_err("%s: invalid ioctl cmd = %d\n", __func__, _IOC_NR(cmd));
 		ret = -EINVAL;
@@ -271,7 +283,7 @@ static irqreturn_t mdm_errfatal(int irq, void *dev_id)
 		(gpio_get_value(mdm_drv->mdm2ap_status_gpio) == 1)) {
 		pr_info("%s: Reseting the mdm due to an errfatal\n", __func__);
 		mdm_drv->mdm_ready = 0;
-		subsystem_restart(EXTERNAL_MODEM);
+		subsystem_restart_dev(mdm_subsys_dev);
 	}
 	return IRQ_HANDLED;
 }
@@ -332,7 +344,7 @@ static irqreturn_t mdm_status_change(int irq, void *dev_id)
 		pr_info("%s: unexpected reset external modem\n", __func__);
 		mdm_drv->mdm_unexpected_reset_occurred = 1;
 		mdm_drv->mdm_ready = 0;
-		subsystem_restart(EXTERNAL_MODEM);
+		subsystem_restart_dev(mdm_subsys_dev);
 	} else if (value == 1) {
 		cancel_delayed_work(&mdm2ap_status_check_work);
 		pr_info("%s: status = 1: mdm is now ready\n", __func__);
@@ -349,7 +361,7 @@ static irqreturn_t mdm_pblrdy_change(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static int mdm_subsys_shutdown(const struct subsys_data *crashed_subsys)
+static int mdm_subsys_shutdown(const struct subsys_desc *crashed_subsys)
 {
 	mdm_drv->mdm_ready = 0;
 	gpio_direction_output(mdm_drv->ap2mdm_errfatal_gpio, 1);
@@ -363,11 +375,10 @@ static int mdm_subsys_shutdown(const struct subsys_data *crashed_subsys)
 		mdm_drv->ops->reset_mdm_cb(mdm_drv);
 	else
 		mdm_drv->mdm_unexpected_reset_occurred = 0;
-
 	return 0;
 }
 
-static int mdm_subsys_powerup(const struct subsys_data *crashed_subsys)
+static int mdm_subsys_powerup(const struct subsys_desc *crashed_subsys)
 {
 	gpio_direction_output(mdm_drv->ap2mdm_errfatal_gpio, 0);
 	gpio_direction_output(mdm_drv->ap2mdm_status_gpio, 1);
@@ -390,7 +401,7 @@ static int mdm_subsys_powerup(const struct subsys_data *crashed_subsys)
 }
 
 static int mdm_subsys_ramdumps(int want_dumps,
-				const struct subsys_data *crashed_subsys)
+				const struct subsys_desc *crashed_subsys)
 {
 	mdm_drv->mdm_ram_dump_status = 0;
 	if (want_dumps) {
@@ -411,7 +422,7 @@ static int mdm_subsys_ramdumps(int want_dumps,
 	return mdm_drv->mdm_ram_dump_status;
 }
 
-static struct subsys_data mdm_subsystem = {
+static struct subsys_desc mdm_subsystem = {
 	.shutdown = mdm_subsys_shutdown,
 	.ramdump = mdm_subsys_ramdumps,
 	.powerup = mdm_subsys_powerup,
@@ -514,6 +525,12 @@ static void mdm_modem_initialize_data(struct platform_device  *pdev,
 	if (pres)
 		mdm_drv->mdm2ap_pblrdy = pres->start;
 
+	/*USB_SW*/
+	pres = platform_get_resource_byname(pdev, IORESOURCE_IO,
+							"USB_SW");
+	if (pres)
+		mdm_drv->usb_switch_gpio = pres->start;
+
 	mdm_drv->boot_type                  = CHARM_NORMAL_BOOT;
 
 	mdm_drv->ops      = mdm_ops;
@@ -556,6 +573,13 @@ int mdm_common_create(struct platform_device  *pdev,
 	if (mdm_drv->ap2mdm_wakeup_gpio > 0)
 		gpio_request(mdm_drv->ap2mdm_wakeup_gpio, "AP2MDM_WAKEUP");
 
+	if (mdm_drv->usb_switch_gpio > 0) {
+		if (gpio_request(mdm_drv->usb_switch_gpio, "USB_SW")) {
+			pr_err("%s Failed to get usb switch gpio\n", __func__);
+			mdm_drv->usb_switch_gpio = -1;
+		}
+	}
+
 	gpio_direction_output(mdm_drv->ap2mdm_status_gpio, 1);
 	gpio_direction_output(mdm_drv->ap2mdm_errfatal_gpio, 0);
 
@@ -588,7 +612,11 @@ int mdm_common_create(struct platform_device  *pdev,
 	mdm_debugfs_init();
 
 	/* Register subsystem handlers */
-	ssr_register_subsystem(&mdm_subsystem);
+	mdm_subsys_dev = subsys_register(&mdm_subsystem);
+	if (IS_ERR(mdm_subsys_dev)) {
+		ret = PTR_ERR(mdm_subsys_dev);
+		goto fatal_err;
+	}
 
 	/* ERR_FATAL irq. */
 	irq = MSM_GPIO_TO_INT(mdm_drv->mdm2ap_errfatal_gpio);

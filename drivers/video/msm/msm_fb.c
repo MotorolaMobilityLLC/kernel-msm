@@ -107,6 +107,9 @@ static int msm_fb_suspend_sub(struct msm_fb_data_type *mfd);
 static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			unsigned long arg);
 static int msm_fb_mmap(struct fb_info *info, struct vm_area_struct * vma);
+static int mdp_bl_scale_config(struct msm_fb_data_type *mfd,
+						struct mdp_bl_scale_data *data);
+static void msm_fb_scale_bl(__u32 *bl_lvl);
 
 #ifdef CONFIG_LGE_DISP_FBREAD
 static ssize_t msm_fb_read(struct fb_info *info, char __user *buf,
@@ -121,6 +124,7 @@ static ssize_t msm_fb_read(struct fb_info *info, char __user *buf,
 int msm_fb_debugfs_file_index;
 struct dentry *msm_fb_debugfs_root;
 struct dentry *msm_fb_debugfs_file[MSM_FB_MAX_DBGFS];
+static int bl_scale, bl_min_lvl;
 
 DEFINE_MUTEX(msm_fb_notify_update_sem);
 void msmfb_no_update_notify_timer_cb(unsigned long data)
@@ -194,6 +198,7 @@ static struct led_classdev backlight_led = {
 
 static struct msm_fb_platform_data *msm_fb_pdata;
 unsigned char hdmi_prim_display;
+unsigned char hdmi_prim_resolution;
 
 int msm_fb_detect_client(const char *name)
 {
@@ -214,6 +219,8 @@ int msm_fb_detect_client(const char *name)
 			if (!strncmp((char *)msm_fb_pdata->prim_panel_name,
 				"hdmi_msm", len))
 				hdmi_prim_display = 1;
+				hdmi_prim_resolution =
+					msm_fb_pdata->ext_resolution;
 			return 0;
 		} else {
 			ret = -EPERM;
@@ -377,6 +384,8 @@ static int msm_fb_probe(struct platform_device *pdev)
 
 	mfd->panel_info.frame_count = 0;
 	mfd->bl_level = 0;
+	bl_scale = 1024;
+	bl_min_lvl = 255;
 #ifdef CONFIG_FB_MSM_OVERLAY
 	mfd->overlay_play_enable = 1;
 #endif
@@ -638,6 +647,12 @@ static int msm_fb_ext_suspend(struct device *dev)
 	struct msm_fb_panel_data *pdata = NULL;
 	int ret = 0;
 
+	if (hdmi_prim_display) {
+		MSM_FB_INFO("%s: hdmi primary handles early suspend only\n",
+			__func__);
+		return 0;
+	}
+
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
 
@@ -663,6 +678,12 @@ static int msm_fb_ext_resume(struct device *dev)
 	struct msm_fb_panel_data *pdata = NULL;
 	int ret = 0;
 
+	if (hdmi_prim_display) {
+		MSM_FB_INFO("%s: hdmi primary handles early resume only\n",
+			__func__);
+		return 0;
+	}
+
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
 
@@ -687,7 +708,8 @@ static struct dev_pm_ops msm_fb_dev_pm_ops = {
 	.runtime_suspend = msm_fb_runtime_suspend,
 	.runtime_resume = msm_fb_runtime_resume,
 	.runtime_idle = msm_fb_runtime_idle,
-#if (defined(CONFIG_SUSPEND) && defined(CONFIG_FB_MSM_HDMI_MSM_PANEL))
+#if (defined(CONFIG_SUSPEND) && defined(CONFIG_FB_MSM_HDMI_MSM_PANEL) && \
+	!defined(CONFIG_FB_MSM_HDMI_AS_PRIMARY))
 	.suspend = msm_fb_ext_suspend,
 	.resume = msm_fb_ext_resume,
 #endif
@@ -721,7 +743,9 @@ static void memset32_io(u32 __iomem *_ptr, u32 val, size_t count)
 static void msmfb_early_suspend(struct early_suspend *h)
 {
 	struct msm_fb_data_type *mfd = container_of(h, struct msm_fb_data_type,
-						    early_suspend);
+						early_suspend);
+	struct msm_fb_panel_data *pdata = NULL;
+
 #if defined(CONFIG_FB_MSM_MDP303)
 	/*
 	* For MDP with overlay, set framebuffer with black pixels
@@ -739,12 +763,37 @@ static void msmfb_early_suspend(struct early_suspend *h)
 	}
 #endif
 	msm_fb_suspend_sub(mfd);
+
+	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
+	if (hdmi_prim_display &&
+		(mfd->panel_info.type == HDMI_PANEL ||
+		 mfd->panel_info.type == DTV_PANEL)) {
+		/* Turn off the HPD circuitry */
+		if (pdata->power_ctrl) {
+			MSM_FB_INFO("%s: Turning off HPD circuitry\n",
+				__func__);
+			pdata->power_ctrl(FALSE);
+		}
+	}
 }
 
 static void msmfb_early_resume(struct early_suspend *h)
 {
 	struct msm_fb_data_type *mfd = container_of(h, struct msm_fb_data_type,
-						    early_suspend);
+						early_suspend);
+	struct msm_fb_panel_data *pdata = NULL;
+
+	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
+	if (hdmi_prim_display &&
+		(mfd->panel_info.type == HDMI_PANEL ||
+		 mfd->panel_info.type == DTV_PANEL)) {
+		/* Turn on the HPD circuitry */
+		if (pdata->power_ctrl) {
+			MSM_FB_INFO("%s: Turning on HPD circuitry\n", __func__);
+			pdata->power_ctrl(TRUE);
+		}
+	}
+
 	msm_fb_resume_sub(mfd);
 }
 #endif
@@ -756,20 +805,54 @@ static int bl_level_old = 0x2A;
 static int bl_level_old;
 #endif
 
+static int mdp_bl_scale_config(struct msm_fb_data_type *mfd,
+						struct mdp_bl_scale_data *data)
+{
+	int ret = 0;
+	int curr_bl = mfd->bl_level;
+	bl_scale = data->scale;
+	bl_min_lvl = data->min_lvl;
+	pr_debug("%s: update scale = %d, min_lvl = %d\n", __func__, bl_scale,
+								bl_min_lvl);
+
+	/* update current backlight to use new scaling*/
+	msm_fb_set_backlight(mfd, curr_bl);
+
+	return ret;
+}
+
+static void msm_fb_scale_bl(__u32 *bl_lvl)
+{
+	__u32 temp = *bl_lvl;
+	if (temp >= bl_min_lvl) {
+		/* bl_scale is the numerator of scaling fraction (x/1024)*/
+		temp = ((*bl_lvl) * bl_scale) / 1024;
+
+		/*if less than minimum level, use min level*/
+		if (temp < bl_min_lvl)
+			temp = bl_min_lvl;
+	}
+
+	(*bl_lvl) = temp;
+}
+
 void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 {
 	struct msm_fb_panel_data *pdata;
 	int time_out = 300;
+	__u32 temp = bkl_lvl;
 
+	msm_fb_scale_bl(&temp);
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
 
 	if ((pdata) && (pdata->set_backlight)) {
 		down(&mfd->sem);
-		if (bl_level_old == bkl_lvl) {
+		if (bl_level_old == temp) {
 			up(&mfd->sem);
 			return;
 		}
-		mfd->bl_level = bkl_lvl;
+
+		mfd->bl_level = temp;
 
 		while (!mfd->panel_power_on && time_out) {
 			msleep(1);
@@ -779,7 +862,8 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 			pr_err("%s : timeout for waitng lcd turn on\n", __func__);
 
 		pdata->set_backlight(mfd);
-		bl_level_old = mfd->bl_level;
+		mfd->bl_level = bkl_lvl;
+		bl_level_old = temp;
 		up(&mfd->sem);
 	}
 }
@@ -1416,7 +1500,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	ret = 0;
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
-	if (mfd->panel_info.type != DTV_PANEL) {
+	if (hdmi_prim_display || mfd->panel_info.type != DTV_PANEL) {
 		mfd->early_suspend.suspend = msmfb_early_suspend;
 		mfd->early_suspend.resume = msmfb_early_resume;
 		mfd->early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB - 2;
@@ -3155,7 +3239,8 @@ static int msmfb_notify_update(struct fb_info *info, unsigned long *argp)
 	return 0;
 }
 
-static int msmfb_handle_pp_ioctl(struct msmfb_mdp_pp *pp_ptr)
+static int msmfb_handle_pp_ioctl(struct msm_fb_data_type *mfd,
+						struct msmfb_mdp_pp *pp_ptr)
 {
 	int ret = -1;
 
@@ -3200,6 +3285,11 @@ static int msmfb_handle_pp_ioctl(struct msmfb_mdp_pp *pp_ptr)
 						&pp_ptr->data.qseed_cfg_data);
 		break;
 #endif
+	case mdp_bl_scale_cfg:
+		ret = mdp_bl_scale_config(mfd, (struct mdp_bl_scale_data *)
+				&pp_ptr->data.bl_scale_data);
+		break;
+
 	default:
 		pr_warn("Unsupported request to MDP_PP IOCTL.\n");
 		ret = -EINVAL;
@@ -3518,7 +3608,7 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		if (ret)
 			return ret;
 
-		ret = msmfb_handle_pp_ioctl(&mdp_pp);
+		ret = msmfb_handle_pp_ioctl(mfd, &mdp_pp);
 		break;
 
 	default:

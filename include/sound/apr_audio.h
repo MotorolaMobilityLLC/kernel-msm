@@ -402,11 +402,15 @@ struct afe_param_loopback_cfg {
 #define AFE_MODULE_ID_PORT_INFO		0x00010200
 /* Module ID for the loopback-related parameters. */
 #define AFE_MODULE_LOOPBACK           0x00010205
-struct afe_param_payload {
+struct afe_param_payload_base {
 	u32 module_id;
 	u32 param_id;
 	u16 param_size;
 	u16 reserved;
+} __packed;
+
+struct afe_param_payload {
+	struct afe_param_payload_base base;
 	union {
 		struct afe_param_sidetone_gain sidetone_gain;
 		struct afe_param_sampling_rate sampling_rate;
@@ -1348,6 +1352,14 @@ struct asm_stream_cmd_read{
 	u32	uid;
 } __attribute__((packed));
 
+#define ASM_DATA_CMD_READ_COMPRESSED                     0x00010DBC
+struct asm_stream_cmd_read_compressed {
+	struct apr_hdr     hdr;
+	u32	buf_add;
+	u32	buf_size;
+	u32	uid;
+} __packed;
+
 #define ASM_DATA_CMD_MEDIA_FORMAT_UPDATE                 0x00010BDC
 #define ASM_DATA_EVENT_ENC_SR_CM_NOTIFY                  0x00010BDE
 struct asm_stream_media_format_update{
@@ -1410,6 +1422,19 @@ struct asm_data_event_read_done{
 	u32            num_frames;
 	u32            id;
 } __attribute__((packed));
+
+#define ASM_DATA_EVENT_READ_COMPRESSED_DONE              0x00010DBD
+struct asm_data_event_read_compressed_done {
+	u32            status;
+	u32            buffer_add;
+	u32            enc_frame_size;
+	u32            offset;
+	u32            msw_ts;
+	u32            lsw_ts;
+	u32            flags;
+	u32            num_frames;
+	u32            id;
+} __packed;
 
 #define ASM_DATA_EVENT_SR_CM_CHANGE_NOTIFY               0x00010C65
 struct asm_data_event_sr_cm_change_notify {

@@ -593,10 +593,12 @@ static DEFINE_VDD_CLASS(vdd_dig, set_vdd_dig);
 #define RPM_MEM_CLK_TYPE  0x326b6c63
 
 #define CXO_ID		0x0
+#define QDSS_ID		0x1
 
 #define PNOC_ID		0x0
 #define SNOC_ID		0x1
 #define CNOC_ID		0x2
+#define MMSSNOC_AHB_ID  0x4
 
 #define BIMC_ID		0x0
 #define OCMEM_ID	0x1
@@ -604,6 +606,8 @@ static DEFINE_VDD_CLASS(vdd_dig, set_vdd_dig);
 DEFINE_CLK_RPM_SMD(pnoc_clk, pnoc_a_clk, RPM_BUS_CLK_TYPE, PNOC_ID, NULL);
 DEFINE_CLK_RPM_SMD(snoc_clk, snoc_a_clk, RPM_BUS_CLK_TYPE, SNOC_ID, NULL);
 DEFINE_CLK_RPM_SMD(cnoc_clk, cnoc_a_clk, RPM_BUS_CLK_TYPE, CNOC_ID, NULL);
+DEFINE_CLK_RPM_SMD(mmssnoc_ahb_clk, mmssnoc_ahb_a_clk, RPM_BUS_CLK_TYPE,
+			MMSSNOC_AHB_ID, NULL);
 
 DEFINE_CLK_RPM_SMD(bimc_clk, bimc_a_clk, RPM_MEM_CLK_TYPE, BIMC_ID, NULL);
 DEFINE_CLK_RPM_SMD(ocmemgx_clk, ocmemgx_a_clk, RPM_MEM_CLK_TYPE, OCMEM_ID,
@@ -611,10 +615,10 @@ DEFINE_CLK_RPM_SMD(ocmemgx_clk, ocmemgx_a_clk, RPM_MEM_CLK_TYPE, OCMEM_ID,
 
 DEFINE_CLK_RPM_SMD_BRANCH(cxo_clk_src, cxo_a_clk_src,
 				RPM_MISC_CLK_TYPE, CXO_ID, 19200000);
+DEFINE_CLK_RPM_SMD_QDSS(qdss_clk, qdss_a_clk, RPM_MISC_CLK_TYPE, QDSS_ID);
 
 static struct pll_vote_clk gpll0_clk_src = {
 	.en_reg = (void __iomem *)APCS_GPLL_ENA_VOTE_REG,
-	.en_mask = BIT(0),
 	.status_reg = (void __iomem *)GPLL0_STATUS_REG,
 	.status_mask = BIT(17),
 	.parent = &cxo_clk_src.c,
@@ -2111,6 +2115,7 @@ static struct branch_clk gcc_tsif_ref_clk = {
 
 static struct branch_clk gcc_usb30_master_clk = {
 	.cbcr_reg = USB30_MASTER_CBCR,
+	.bcr_reg = USB_30_BCR,
 	.parent = &usb30_master_clk_src.c,
 	.has_sibling = 1,
 	.base = &virt_bases[GCC_BASE],
@@ -2145,6 +2150,7 @@ static struct branch_clk gcc_usb_hs_ahb_clk = {
 
 static struct branch_clk gcc_usb_hs_system_clk = {
 	.cbcr_reg = USB_HS_SYSTEM_CBCR,
+	.bcr_reg = USB_HS_BCR,
 	.parent = &usb_hs_system_clk_src.c,
 	.base = &virt_bases[GCC_BASE],
 	.c = {
@@ -2167,6 +2173,7 @@ static struct branch_clk gcc_usb_hsic_ahb_clk = {
 
 static struct branch_clk gcc_usb_hsic_clk = {
 	.cbcr_reg = USB_HSIC_CBCR,
+	.bcr_reg = USB_HS_HSIC_BCR,
 	.parent = &usb_hsic_clk_src.c,
 	.base = &virt_bases[GCC_BASE],
 	.c = {
@@ -3963,15 +3970,29 @@ static struct rcg_clk audio_core_lpaif_pcm1_clk_src = {
 	},
 };
 
+struct rcg_clk audio_core_lpaif_pcmoe_clk_src = {
+	.cmd_rcgr_reg = LPAIF_PCMOE_CMD_RCGR,
+	.set_rate = set_rate_mnd,
+	.freq_tbl = ftbl_audio_core_lpaif_clock,
+	.current_freq = &rcg_dummy_freq,
+	.base = &virt_bases[LPASS_BASE],
+	.c = {
+		.dbg_name = "audio_core_lpaif_pcmoe_clk_src",
+		.ops = &clk_ops_rcg_mnd,
+		VDD_DIG_FMAX_MAP1(LOW, 12290000),
+		CLK_INIT(audio_core_lpaif_pcmoe_clk_src.c),
+	},
+};
+
 static struct branch_clk audio_core_lpaif_codec_spkr_osr_clk = {
 	.cbcr_reg = AUDIO_CORE_LPAIF_CODEC_SPKR_OSR_CBCR,
 	.parent = &audio_core_lpaif_codec_spkr_clk_src.c,
 	.has_sibling = 1,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
-		.dbg_name = "audio_core_lpaif_codec_spkr_clk_src",
+		.dbg_name = "audio_core_lpaif_codec_spkr_osr_clk",
 		.ops = &clk_ops_branch,
-		CLK_INIT(audio_core_lpaif_codec_spkr_clk_src.c),
+		CLK_INIT(audio_core_lpaif_codec_spkr_osr_clk.c),
 	},
 };
 
@@ -3980,9 +4001,9 @@ static struct branch_clk audio_core_lpaif_codec_spkr_ebit_clk = {
 	.has_sibling = 1,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
-		.dbg_name = "audio_core_lpaif_codec_spkr_clk_src",
+		.dbg_name = "audio_core_lpaif_codec_spkr_ebit_clk",
 		.ops = &clk_ops_branch,
-		CLK_INIT(audio_core_lpaif_codec_spkr_clk_src.c),
+		CLK_INIT(audio_core_lpaif_codec_spkr_ebit_clk.c),
 	},
 };
 
@@ -3993,9 +4014,9 @@ static struct branch_clk audio_core_lpaif_codec_spkr_ibit_clk = {
 	.max_div = 15,
 	.base = &virt_bases[LPASS_BASE],
 	.c = {
-		.dbg_name = "audio_core_lpaif_codec_spkr_clk_src",
+		.dbg_name = "audio_core_lpaif_codec_spkr_ibit_clk",
 		.ops = &clk_ops_branch,
-		CLK_INIT(audio_core_lpaif_codec_spkr_clk_src.c),
+		CLK_INIT(audio_core_lpaif_codec_spkr_ibit_clk.c),
 	},
 };
 
@@ -4187,6 +4208,17 @@ static struct branch_clk audio_core_lpaif_pcm1_ibit_clk = {
 		.dbg_name = "audio_core_lpaif_pcm1_ibit_clk",
 		.ops = &clk_ops_branch,
 		CLK_INIT(audio_core_lpaif_pcm1_ibit_clk.c),
+	},
+};
+
+struct branch_clk audio_core_lpaif_pcmoe_clk = {
+	.cbcr_reg = AUDIO_CORE_LPAIF_PCM_DATA_OE_CBCR,
+	.parent = &audio_core_lpaif_pcmoe_clk_src.c,
+	.base = &virt_bases[LPASS_BASE],
+	.c = {
+		.dbg_name = "audio_core_lpaif_pcmoe_clk",
+		.ops = &clk_ops_branch,
+		CLK_INIT(audio_core_lpaif_pcmoe_clk.c),
 	},
 };
 
@@ -4386,6 +4418,7 @@ struct measure_mux_entry measure_mux[] = {
 	{&audio_core_lpaif_quad_clk_src.c,	LPASS_BASE, 0x0014},
 	{&audio_core_lpaif_pcm0_clk_src.c,	LPASS_BASE, 0x0013},
 	{&audio_core_lpaif_pcm1_clk_src.c,	LPASS_BASE, 0x0012},
+	{&audio_core_lpaif_pcmoe_clk_src.c,	LPASS_BASE, 0x000f},
 	{&audio_core_slimbus_core_clk.c,	LPASS_BASE, 0x003d},
 	{&audio_core_slimbus_lfabif_clk.c,	LPASS_BASE, 0x003e},
 	{&q6ss_xo_clk.c,			LPASS_BASE, 0x002b},
@@ -4789,6 +4822,8 @@ static struct clk_lookup msm_clocks_8974[] = {
 	CLK_LOOKUP("core_clk", audio_core_lpaif_pcm1_clk_src.c, ""),
 	CLK_LOOKUP("ebit_clk", audio_core_lpaif_pcm1_ebit_clk.c, ""),
 	CLK_LOOKUP("ibit_clk", audio_core_lpaif_pcm1_ibit_clk.c, ""),
+	CLK_LOOKUP("core_clk_src", audio_core_lpaif_pcmoe_clk_src.c, ""),
+	CLK_LOOKUP("core_clk", audio_core_lpaif_pcmoe_clk.c, ""),
 
 	CLK_LOOKUP("core_clk",       mss_xo_q6_clk.c, "pil-q6v5-mss"),
 	CLK_LOOKUP("bus_clk",       mss_bus_q6_clk.c, "pil-q6v5-mss"),
@@ -4830,6 +4865,36 @@ static struct clk_lookup msm_clocks_8974[] = {
 	CLK_LOOKUP("bus_a_clk",	ocmemnoc_clk.c,		"msm_ocmem_noc"),
 	CLK_LOOKUP("bus_clk",	mmss_mmssnoc_axi_clk.c,	"msm_mmss_noc"),
 	CLK_LOOKUP("bus_a_clk",	mmss_mmssnoc_axi_clk.c,	"msm_mmss_noc"),
+
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-tmc-etr"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-tpiu"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-replicator"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-tmc-etf"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-funnel-merg"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-funnel-in0"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-funnel-in1"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-funnel-kpss"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-funnel-mmss"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-stm"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-etm0"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-etm1"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-etm2"),
+	CLK_LOOKUP("core_clk", qdss_clk.c, "coresight-etm3"),
+
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-tmc-etr"),
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-tpiu"),
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-replicator"),
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-tmc-etf"),
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-funnel-merg"),
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-funnel-in0"),
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-funnel-in1"),
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-funnel-kpss"),
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-funnel-mmss"),
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-stm"),
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-etm0"),
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-etm1"),
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-etm2"),
+	CLK_LOOKUP("core_a_clk", qdss_a_clk.c, "coresight-etm3"),
 };
 
 static struct pll_config_regs gpll0_regs __initdata = {
@@ -4986,7 +5051,7 @@ static struct pll_config lpapll0_config __initdata = {
 	.main_output_mask = BIT(0),
 };
 
-#define PLL_AUX_OUTPUT BIT(1)
+#define PLL_AUX_OUTPUT_BIT 1
 
 static void __init reg_init(void)
 {
@@ -5007,7 +5072,7 @@ static void __init reg_init(void)
 
 	/* Active GPLL0's aux output. This is needed by acpuclock. */
 	regval = readl_relaxed(GCC_REG_BASE(GPLL0_USER_CTL_REG));
-	regval |= BIT(PLL_AUX_OUTPUT);
+	regval |= BIT(PLL_AUX_OUTPUT_BIT);
 	writel_relaxed(regval, GCC_REG_BASE(GPLL0_USER_CTL_REG));
 
 	/* Vote for GPLL0 to turn on. Needed by acpuclock. */
@@ -5026,6 +5091,13 @@ static void __init msm8974_clock_post_init(void)
 {
 	clk_set_rate(&axi_clk_src.c, 333330000);
 	clk_set_rate(&ocmemnoc_clk_src.c, 333330000);
+
+	/*
+	 * Hold an active set vote at a rate of 40MHz for the MMSS NOC AHB
+	 * source. Sleep set vote is 0.
+	 */
+	clk_set_rate(&mmssnoc_ahb_a_clk.c, 40000000);
+	clk_prepare_enable(&mmssnoc_ahb_a_clk.c);
 
 	/*
 	 * Hold an active set vote for CXO; this is because CXO is expected

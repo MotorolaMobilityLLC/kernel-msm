@@ -844,6 +844,9 @@ static void hdmi_msm_hpd_state_work(struct work_struct *work)
 			DEV_INFO("HDMI HPD: sense CONNECTED: send ONLINE\n");
 			kobject_uevent(external_common_state->uevent_kobj,
 				KOBJ_ONLINE);
+			switch_set_state(&external_common_state->sdev, 1);
+				DEV_INFO("Hdmi state switch to %d: %s\n",
+			external_common_state->sdev.state,  __func__);
 #ifndef CONFIG_FB_MSM_HDMI_MSM_PANEL_HDCP_SUPPORT
 			/* Send Audio for HDMI Compliance Cases*/
 			envp[0] = "HDCP_STATE=PASS";
@@ -4747,7 +4750,14 @@ static int __init hdmi_msm_init(void)
 	}
 
 	external_common_state = &hdmi_msm_state->common;
-	external_common_state->video_resolution = HDMI_VFRMT_1920x1080p30_16_9;
+
+	if (hdmi_prim_display && hdmi_prim_resolution)
+		external_common_state->video_resolution =
+			hdmi_prim_resolution - 1;
+	else
+		external_common_state->video_resolution =
+			HDMI_VFRMT_1920x1080p60_16_9;
+
 #ifdef CONFIG_FB_MSM_HDMI_3D
 	external_common_state->switch_3d = hdmi_msm_switch_3d;
 #endif

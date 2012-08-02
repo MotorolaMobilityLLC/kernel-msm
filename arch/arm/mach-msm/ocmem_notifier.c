@@ -24,11 +24,6 @@ struct ocmem_notifier {
 	unsigned listeners;
 } notifiers[OCMEM_CLIENT_MAX];
 
-static int check_id(int id)
-{
-	return (id < OCMEM_CLIENT_MAX && id >= OCMEM_GRAPHICS);
-}
-
 int check_notifier(int id)
 {
 	int ret = 0;
@@ -75,7 +70,8 @@ int dispatch_notification(int id, enum ocmem_notif_type notif,
 	return ret;
 }
 
-void *ocmem_notifier_register(int client_id, struct notifier_block *nb)
+struct ocmem_notifier *ocmem_notifier_register(int client_id,
+						struct notifier_block *nb)
 {
 
 	int ret = 0;
@@ -115,12 +111,11 @@ void *ocmem_notifier_register(int client_id, struct notifier_block *nb)
 }
 EXPORT_SYMBOL(ocmem_notifier_register);
 
-int ocmem_notifier_unregister(void *hndl, struct notifier_block *nb)
+int ocmem_notifier_unregister(struct ocmem_notifier *nc_hndl,
+				struct notifier_block *nb)
 {
 
 	int ret = 0;
-
-	struct ocmem_notifier *nc_hndl = (struct ocmem_notifier *) hndl;
 
 	if (!nc_hndl) {
 		pr_err("ocmem: Invalid notification handle\n");
