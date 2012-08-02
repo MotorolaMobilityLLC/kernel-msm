@@ -15,28 +15,28 @@
 #ifndef __SP_TX_DRV_H
 #define __SP_TX_DRV_H
 
-/*#define D(fmt, arg...) printk("<1>```%s:%d: " fmt, __func__, __LINE__, ##arg)*/
-
-#define MAX_BUF_CNT 6
-#define DVI_MODE 0x00
-#define HDMI_MODE 0x01
+#define MAX_BUF_CNT 10
+#define VID_DVI_MODE 0x00
+#define VID_HDMI_MODE 0x01
 #define VIDEO_STABLE_TH 3
 #define AUDIO_STABLE_TH 1
 #define SCDT_EXPIRE_TH 10
 #define SP_TX_HDCP_FAIL_THRESHOLD         10
 
-extern unchar bEDID_extblock[128];
-extern unchar bEDID_firstblock[128];
+extern unchar bedid_extblock[128];
+extern unchar bedid_firstblock[128];
+
+extern bool anx7808_ver_ba;
 
 enum SP_TX_System_State {
-	SP_TX_INITIAL = 1,
-	SP_TX_WAIT_SLIMPORT_PLUGIN,
-	SP_TX_PARSE_EDID,
-	SP_TX_CONFIG_HDMI_INPUT,
-	SP_TX_LINK_TRAINING,
-	SP_TX_CONFIG_SLIMPORT_OUTPUT,
-	SP_TX_HDCP_AUTHENTICATION,
-	SP_TX_PLAY_BACK
+	STATE_INIT = 1,
+	STATE_CABLE_PLUG,
+	STATE_PARSE_EDID,
+	STATE_CONFIG_HDMI,
+	STATE_LINK_TRAINING,
+	STATE_CONFIG_OUTPUT,
+	STATE_HDCP_AUTH,
+	STATE_PLAY_BACK
 };
 
 enum HDMI_RX_System_State {
@@ -74,7 +74,8 @@ enum PACKETS_TYPE {
 	AVI_PACKETS,
 	SPD_PACKETS,
 	MPEG_PACKETS,
-	VSI_PACKETS
+	VSI_PACKETS,
+	AUDIF_PACKETS
 };
 
 struct Packet_AVI {
@@ -131,7 +132,7 @@ void sp_tx_set_3d_packets(void);
 void sp_tx_int_irq_handler(void);
 void sp_tx_send_message(enum SP_TX_SEND_MSG message);
 void sp_tx_hdcp_process(void);
-void sp_tx_set_system_state(enum SP_TX_System_State ss);
+void sp_tx_set_sys_state(enum SP_TX_System_State ss);
 unchar sp_tx_get_cable_type(void);
 unchar sp_tx_get_dp_connection(void);
 unchar sp_tx_get_hdmi_connection(void);
@@ -145,10 +146,9 @@ void sp_tx_eye_diagram_test(void);
 /* ***************************************************************** */
 
 void sp_tx_config_hdmi_input(void);
-void hdmi_rx_set_hpd(unchar Enable);
-void hdmi_rx_tmds_en(void);
-void hdmi_rx_initialize(void);
+void hdmi_rx_set_hpd(unchar enable);
+void hdmi_rx_initialization(void);
 void hdmi_rx_int_irq_handler(void);
-void hdmi_rx_set_termination(unchar Enable);
+void hdmi_rx_set_termination(unchar enable);
 
 #endif
