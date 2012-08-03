@@ -2699,6 +2699,7 @@ static irqreturn_t chg_gone_irq_handler(int irq, void *data)
 
 	power_supply_changed(&chip->batt_psy);
 	power_supply_changed(&chip->usb_psy);
+	power_supply_changed(&chip->dc_psy);
 	return IRQ_HANDLED;
 }
 /*
