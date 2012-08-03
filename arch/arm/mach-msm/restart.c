@@ -221,6 +221,7 @@ void set_ssr_magic_number(const char* subsys_name)
 
 void set_kernel_crash_magic_number(void)
 {
+	pet_watchdog();
 	if (ssr_magic_number == 0)
 		__raw_writel(0x6d630100, restart_reason);
 	else
