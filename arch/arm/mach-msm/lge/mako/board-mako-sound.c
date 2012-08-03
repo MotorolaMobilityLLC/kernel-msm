@@ -17,6 +17,7 @@
 #include <linux/mfd/pm8xxx/pm8921.h>
 #include <linux/regulator/consumer.h>
 #include <linux/platform_data/hds_fsa8008.h>
+#include <mach/board_lge.h>
 #include "devices.h"
 
 #ifdef CONFIG_SND_SOC_TPA2028D
@@ -123,9 +124,43 @@ static void __init lge_add_i2c_tpa2028d_devices(void)
 				msm_i2c_audiosubsystem.len);
 }
 
-void enable_external_mic_bias(int status)
+static void enable_external_mic_bias(int status)
 {
+	static struct regulator *reg_mic_bias = NULL;
+	static int prev_on;
+	int rc = 0;
+
+	if (status == prev_on)
+		return;
+
+	if (lge_get_board_revno() > HW_REV_C) {
+		if (!reg_mic_bias) {
+			reg_mic_bias = regulator_get(NULL, "mic_bias");
+			if (IS_ERR(reg_mic_bias)) {
+				pr_err("%s: could not regulator_get\n",
+						__func__);
+				reg_mic_bias = NULL;
+				return;
+			}
+		}
+
+		if (status) {
+			rc = regulator_enable(reg_mic_bias);
+			if (rc)
+				pr_err("%s: regulator enable failed\n",
+						__func__);
+			pr_debug("%s: mic_bias is on\n", __func__);
+		} else {
+			rc = regulator_disable(reg_mic_bias);
+			if (rc)
+				pr_warn("%s: regulator disable failed\n",
+						__func__);
+			pr_debug("%s: mic_bias is off\n", __func__);
+		}
+	}
+
 	gpio_set_value_cansleep(GPIO_EAR_MIC_BIAS_EN, status);
+	prev_on = status;
 }
 
 static struct fsa8008_platform_data lge_hs_pdata = {
