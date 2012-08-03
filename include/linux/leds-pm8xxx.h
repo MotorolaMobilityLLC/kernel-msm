@@ -126,10 +126,14 @@ struct pm8xxx_led_config {
  *	for each LED. It maps one-to-one with
  *	array of LEDs
  * @num_configs - count of members of configs array
+ * @max_brightness - max brightness
+ * @use_pwm - controlled by userspace
  */
 struct pm8xxx_led_platform_data {
 	struct	led_platform_data	*led_core;
 	struct	pm8xxx_led_config	*configs;
 	u32				num_configs;
+	u32				max_brightness;
+	int				use_pwm;
 };
 #endif /* __LEDS_PM8XXX_H__ */
