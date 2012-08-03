@@ -888,13 +888,15 @@ static int msm_xfer_msg(struct slim_controller *ctrl, struct slim_msg_txn *txn)
 			}
 		}
 	}
+	if (!timeout) {
+		dev_err(dev->dev, "TX timed out:MC:0x%x,mt:0x%x",
+				txn->mc, txn->mt);
+		dev->wr_comp = NULL;
+	}
+
 	mutex_unlock(&dev->tx_lock);
 	if (msgv >= 0)
 		msm_slim_put_ctrl(dev);
-
-	if (!timeout)
-		dev_err(dev->dev, "TX timed out:MC:0x%x,mt:0x%x", txn->mc,
-					txn->mt);
 
 	return timeout ? dev->err : -ETIMEDOUT;
 }
@@ -918,6 +920,8 @@ static int msm_set_laddr(struct slim_controller *ctrl, const u8 *ea,
 	dev->wr_comp = &done;
 	msm_send_msg_buf(ctrl, buf, 9);
 	timeout = wait_for_completion_timeout(&done, HZ);
+	if (!timeout)
+		dev->wr_comp = NULL;
 	mutex_unlock(&dev->tx_lock);
 	return timeout ? dev->err : -ETIMEDOUT;
 }
