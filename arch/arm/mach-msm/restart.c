@@ -51,6 +51,7 @@
 #define LGE_ERROR_HANDLER_MAGIC_NUM	0xA97F2C46
 #define LGE_ERROR_HANDLER_MAGIC_ADDR	0x18
 void *lge_error_handler_cookie_addr;
+static int ssr_magic_number = 0;
 #endif
 
 static int restart_mode;
@@ -111,6 +112,9 @@ static int dload_set(const char *val, struct kernel_param *kp)
 	}
 
 	set_dload_mode(download_mode);
+#ifdef CONFIG_LGE_CRASH_HANDLER
+	ssr_magic_number = 0;
+#endif
 
 	return 0;
 }
@@ -192,7 +196,6 @@ static irqreturn_t resout_irq_handler(int irq, void *dev_id)
 }
 
 #ifdef CONFIG_LGE_CRASH_HANDLER
-static int ssr_magic_number = 0;
 #define SUBSYS_NAME_MAX_LENGTH	40
 
 int get_ssr_magic_number(void)
