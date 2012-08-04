@@ -153,7 +153,7 @@ void __init lge_add_panic_handler_devices(void);
 int get_ssr_magic_number(void);
 void set_ssr_magic_number(const char *subsys_name);
 #else
-static void __init lge_add_panic_handler_devices(void)
+static inline void __init lge_add_panic_handler_devices(void)
 {
 	/* empty */
 }
