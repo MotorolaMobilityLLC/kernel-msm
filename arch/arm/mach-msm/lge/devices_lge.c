@@ -326,14 +326,18 @@ int lge_get_factory_boot(void)
 
 #ifdef CONFIG_ANDROID_PERSISTENT_RAM
 static struct persistent_ram_descriptor pram_descs[] = {
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
 	{
 		.name = "ram_console",
 		.size = LGE_RAM_CONSOLE_SIZE,
 	},
+#endif
+#ifdef CONFIG_LGE_CRASH_HANDLER
 	{
 		.name = "panic-handler",
 		.size = LGE_CRASH_LOG_SIZE,
 	},
+#endif
 };
 
 static struct persistent_ram lge_persistent_ram = {
