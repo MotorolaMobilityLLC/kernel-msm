@@ -683,6 +683,7 @@ static void __init apq8064_reserve(void)
 		}
 #endif
 	}
+	lge_reserve();
 }
 
 static void __init place_movable_zone(void)
@@ -2022,7 +2023,6 @@ static void __init apq8064_mako_init(void)
 	lge_add_backlight_devices();
 	lge_add_sound_devices();
 	lge_add_bcm2079x_device();
-	lge_add_persistent_ram
 	lge_add_ramconsole_devices();
 	lge_add_panic_handler_devices();
 #ifdef CONFIG_LGE_QFPROM_INTERFACE
