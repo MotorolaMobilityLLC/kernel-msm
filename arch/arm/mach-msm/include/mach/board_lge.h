@@ -130,6 +130,8 @@ enum lge_boot_mode_type {
 	LGE_BOOT_MODE_PIFBOOT2,
 };
 
+void __init lge_reserve(void);
+
 #ifdef CONFIG_ANDROID_PERSISTENT_RAM
 void __init lge_add_persistent_ram(void);
 #else
