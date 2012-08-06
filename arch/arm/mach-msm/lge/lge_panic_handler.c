@@ -33,6 +33,7 @@
 #define PANIC_HANDLER_NAME "panic-handler"
 #define PANIC_DUMP_CONSOLE 0
 #define PANIC_MAGIC_KEY    0x12345678
+#define NORMAL_MAGIC_KEY   0x4E4F524D
 #define CRASH_ARM9         0x87654321
 #define CRASH_REBOOT       0x618E1000
 
@@ -160,7 +161,8 @@ module_param_call(gen_hw_reset, gen_hw_reset, param_get_bool,
 
 void set_crash_store_enable(void)
 {
-	crash_store_flag = 1;
+	if (crash_dump_log->magic_key == NORMAL_MAGIC_KEY)
+		crash_store_flag = 1;
 	return;
 }
 
@@ -261,7 +263,7 @@ static int __init panic_handler_probe(struct platform_device *pdev)
 
 	crash_dump_log = (struct crash_log_dump *)buffer;
 	memset(crash_dump_log, 0, buffer_size);
-	crash_dump_log->magic_key = 0;
+	crash_dump_log->magic_key = NORMAL_MAGIC_KEY;
 	crash_dump_log->size = 0;
 	crash_buf_size = buffer_size - offsetof(struct crash_log_dump, buffer);
 #ifdef CONFIG_CPU_CP15_MMU
