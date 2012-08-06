@@ -847,6 +847,14 @@ config MACH_MSM9615_MTP
 	help
 	  Support for the Qualcomm MSM9615 MTP device.
 
+config MACH_MSM8960_MMI
+	depends on ARCH_MSM8960
+	bool "MSM8960 MMI"
+	select USE_OF
+	select OF_FLATTREE_HOST_BYTEORDER
+	help
+	  Support for Motorola Mobility MSM8960 devices.
+
 config MSM_USE_TSIF1
 	depends on ARCH_MSM8X60
 	bool "MSM8x60 use TSIF1"
