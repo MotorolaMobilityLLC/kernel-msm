@@ -462,7 +462,7 @@ static int accuracy_filter_func(struct lge_touch_data *ts)
 
 	/* finish the accuracy_filter */
 	if (ts->accuracy_filter.finish_filter == 1 &&
-	   		(ts->accuracy_filter.his_data.count >
+			(ts->accuracy_filter.his_data.count >
 				ts->accuracy_filter.touch_max_count ||
 			ts->ts_data.total_num != 1)) {
 		ts->accuracy_filter.finish_filter = 0;
@@ -1674,7 +1674,7 @@ static int touch_probe(struct i2c_client *client,
 			TOUCH_ERR_MSG("FAIL: touch_reset gpio_request\n");
 			goto err_assign_platform_data;
 		}
-		gpio_direction_output(ts->pdata->reset_pin, 1);
+		gpio_direction_output(ts->pdata->reset_pin, 0);
 	}
 
 	atomic_set(&ts->device_init, 0);
