@@ -258,6 +258,9 @@ VREG_CONSUMERS(8821_S1) = {
 	REGULATOR_SUPPLY("8821_s1",		NULL),
 	REGULATOR_SUPPLY("krait3",		"acpuclk-8064"),
 };
+VREG_CONSUMERS(EXT_DSV_LOAD) = {
+	REGULATOR_SUPPLY("ext_dsv_load",		NULL),
+};
 
 #define PM8XXX_VREG_INIT(_id, _name, _min_uV, _max_uV, _modes, _ops, \
 			 _apply_uV, _pull_down, _always_on, _supply_regulator, \
@@ -478,6 +481,13 @@ VREG_CONSUMERS(8821_S1) = {
 		.pin_fn	  = RPM_VREG_PIN_FN_8960_##_pin_fn, \
 		.pin_ctrl = _pin_ctrl, \
 	}
+
+/* GPIO regulator constraints */
+struct gpio_regulator_platform_data
+apq8064_gpio_regulator_pdata[] __devinitdata = {
+	/*	ID	vreg_name gpio_label	gpio		supply */
+	GPIO_VREG(EXT_DSV_LOAD, "ext_dsv_load", "ext_dsv_load_en", APQ8064_EXT_DSV_LOAD_EN_GPIO, NULL),
+};
 
 /* SAW regulator constraints */
 struct regulator_init_data msm8064_saw_regulator_pdata_8921_s5 =
