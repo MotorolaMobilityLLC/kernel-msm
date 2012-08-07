@@ -305,6 +305,7 @@ static struct pm8921_charger_platform_data apq8064_pm8921_chg_pdata __devinitdat
 	 * This is also the minimum voltage the system operates at */
 	.min_voltage		= 3200,
 	/* the (mV) drop to wait for before resume charging after the battery has been fully charged */
+	.alarm_voltage		= 3400,
 	.resume_voltage_delta	= 50,
 	.term_current		= 100,
 
