@@ -68,7 +68,7 @@
 
 #define DEVICE_CONTROL_REG (ts->common_dsc.control_base)  /* Device Control */
 #define DEVICE_CONTROL_NORMAL_OP    0x00    /* sleep mode : go to doze mode after 500 ms */
-#define DEVICE_CONTROL_SLEEP 	    0x01    /* sleep mode : go to sleep */
+#define DEVICE_CONTROL_SLEEP        0x01    /* sleep mode : go to sleep */
 #define DEVICE_CONTROL_SPECIFIC     0x02    /* sleep mode : go to doze mode after 5 sec */
 #define DEVICE_CONTROL_NOSLEEP      0x04
 #define DEVICE_CONTROL_CONFIGURED   0x80
@@ -666,13 +666,15 @@ int synaptics_ts_power(struct i2c_client* client, int power_ctrl)
 
 	switch (power_ctrl) {
 	case POWER_OFF:
+		if (ts->pdata->reset_pin > 0)
+			gpio_set_value(ts->pdata->reset_pin, 0);
+
 		if (ts->pdata->pwr->use_regulator) {
 			regulator_disable(ts->regulator_vio);
 			regulator_disable(ts->regulator_vdd);
 		}
 		else
 			ts->pdata->pwr->power(0);
-
 		break;
 	case POWER_ON:
 		if (ts->pdata->pwr->use_regulator) {
@@ -682,13 +684,8 @@ int synaptics_ts_power(struct i2c_client* client, int power_ctrl)
 		else
 			ts->pdata->pwr->power(1);
 
-		/* P2 H/W bug fix */
-		if (ts->pdata->reset_pin > 0) {
-			msleep(10);
-			gpio_set_value(ts->pdata->reset_pin, 0);
-			msleep(ts->pdata->role->reset_delay);
+		if (ts->pdata->reset_pin > 0)
 			gpio_set_value(ts->pdata->reset_pin, 1);
-		}
 		break;
 	case POWER_SLEEP:
 		if (unlikely(touch_i2c_write_byte(client, DEVICE_CONTROL_REG,
