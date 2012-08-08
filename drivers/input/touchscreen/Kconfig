@@ -11,6 +11,14 @@ menuconfig INPUT_TOUCHSCREEN
 
 if INPUT_TOUCHSCREEN
 
+config TOUCHSCREEN_ATMXT
+	tristate "Atmel mXT Touchscreen Driver"
+	depends on I2C
+	help
+	  Say Y here if you have an Atmel mXT touchscreen.
+
+	  If unsure, say N.
+
 config TOUCHSCREEN_88PM860X
 	tristate "Marvell 88PM860x touchscreen"
 	depends on MFD_88PM860X
