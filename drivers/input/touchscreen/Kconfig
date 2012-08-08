@@ -199,6 +199,15 @@ config TOUCHSCREEN_CYTTSP3
 
 	  If unsure, say N.
 
+config TOUCHSCREEN_MELFAS100_TS
+	tristate "Melfas MMS-100 based touchscreens"
+	depends on I2C
+	default n
+	help
+	  Say Y here if you have a Melfas touchscreen controller.
+
+	  If unsure, say N.
+
 config TOUCHSCREEN_DA9034
 	tristate "Touchscreen support for Dialog Semiconductor DA9034"
 	depends on PMIC_DA903X
