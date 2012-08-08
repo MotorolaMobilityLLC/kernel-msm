@@ -291,6 +291,14 @@ config ARM_USER_ACCESSIBLE_TIMER_BASE
 	 timer counter page should be mapped by the kernel.  User-space apps
 	 will read directly from the page at this address.
 
+config BOOTINFO
+	bool "Boot Information Feature"
+	default n
+	help
+	  This feature provides access to certain boot information
+	  from both kernel context (via function call) and user
+	  context (via /proc/bootinfo).
+
 config ARCH_RANDOM
 	bool "SOC specific random number generation"
 	help
