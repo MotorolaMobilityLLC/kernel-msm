@@ -156,6 +156,36 @@ struct tag_display {
 	char display[1];
 };
 
+#ifdef CONFIG_BOOTINFO
+
+/* Powerup Reason */
+#define ATAG_POWERUP_REASON 0xf1000401
+
+struct tag_powerup_reason {
+	uint32_t powerup_reason;
+};
+
+/* MBM version */
+#define ATAG_MBM_VERSION 0xf1000407
+struct tag_mbm_version {
+	uint32_t mbm_version;
+};
+
+/* Battery status at boot */
+#define ATAG_BATTERY_STATUS_AT_BOOT 0xf100040E
+struct tag_battery_status_at_boot {
+	uint16_t battery_status_at_boot;
+	uint16_t padding;
+};
+
+/* CID recover boot */
+#define ATAG_CID_RECOVER_BOOT 0xf1000414
+struct tag_cid_recover_boot {
+	uint32_t cid_recover_boot;
+};
+
+#endif /*  CONFIG_BOOTINFO */
+
 struct tag {
 	struct tag_header hdr;
 	union {
@@ -184,6 +214,12 @@ struct tag {
 		 */
 		struct tag_flat_dev_tree_address        fdt_addr;
 		struct tag_display	display;
+#ifdef CONFIG_BOOTINFO
+		struct tag_powerup_reason	       powerup_reason;
+		struct tag_mbm_version                 mbm_version;
+		struct tag_battery_status_at_boot      battery_status_at_boot;
+		struct tag_cid_recover_boot            cid_recover_boot;
+#endif /*  CONFIG_BOOTINFO */
 	} u;
 };
 
