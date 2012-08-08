@@ -87,3 +87,4 @@ obj-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE) 	+= synaptics_fw_update.o
 obj-$(CONFIG_TOUCHSCREEN_GT9XX)		+= gt9xx/
 obj-$(CONFIG_TOUCHSCREEN_MELFAS100_TS) += melfas100_ts.o
 obj-$(CONFIG_TOUCHSCREEN_MELFAS100_TS) += melfas_instr.o
+obj-$(CONFIG_TOUCHSCREEN_ATMXT)		+= atmxt.o
