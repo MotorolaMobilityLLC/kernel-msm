@@ -255,6 +255,14 @@ config GENERIC_BUG
 	def_bool y
 	depends on BUG
 
+config BOOTINFO
+	bool "Boot Information Feature"
+	default n
+	help
+	  This feature provides access to certain boot information
+	  from both kernel context (via function call) and user
+	  context (via /proc/bootinfo).
+
 source "init/Kconfig"
 
 source "kernel/Kconfig.freezer"
