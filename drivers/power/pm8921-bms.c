@@ -1780,12 +1780,8 @@ static int adjust_soc(struct pm8921_bms_chip *chip, int soc,
 	soc = soc_new;
 
 out:
-	pr_debug("ibat_ua = %d, vbat_uv = %d, ocv_est_uv = %d, pc_est = %d, "
-		"soc_est = %d, n = %d, delta_ocv_uv = %d, last_ocv_uv = %d, "
-		"pc_new = %d, soc_new = %d, rbatt = %d, m = %d\n",
-		ibat_ua, vbat_uv, ocv_est_uv, pc_est,
-		soc_est, n, delta_ocv_uv, chip->last_ocv_uv,
-		pc_new, soc_new, rbatt, m);
+	pr_info("ibat_ua = %d, vbat_uv = %d, soc = %d, batt_temp=%d\n",
+			ibat_ua, vbat_uv, soc, batt_temp);
 
 	return soc;
 }
