@@ -55,6 +55,9 @@
 #include <asm/traps.h>
 #include <asm/unwind.h>
 #include <asm/memblock.h>
+#ifdef CONFIG_BOOTINFO
+#include <asm/bootinfo.h>
+#endif
 
 #if defined(CONFIG_DEPRECATED_PARAM_STRUCT)
 #include "compat.h"
@@ -747,6 +750,51 @@ static int __init parse_tag_cmdline(const struct tag *tag)
 }
 
 __tagtable(ATAG_CMDLINE, parse_tag_cmdline);
+
+#ifdef CONFIG_BOOTINFO
+
+static int __init parse_tag_powerup_reason(const struct tag *tag)
+{
+	bi_set_powerup_reason(tag->u.powerup_reason.powerup_reason);
+	printk(KERN_WARNING "%s: powerup reason=0x%08x\n",
+				__func__, bi_powerup_reason());
+	return 0;
+}
+
+__tagtable(ATAG_POWERUP_REASON, parse_tag_powerup_reason);
+
+static int __init parse_tag_mbm_version(const struct tag *tag)
+{
+	bi_set_mbm_version(tag->u.mbm_version.mbm_version);
+	printk(KERN_INFO "%s: mbm_version=0x%08x\n",
+				__func__, bi_mbm_version());
+	return 0;
+}
+
+__tagtable(ATAG_MBM_VERSION, parse_tag_mbm_version);
+
+static int __init parse_tag_battery_status_at_boot(const struct tag *tag)
+{
+	bi_set_battery_status_at_boot(tag->
+			u.battery_status_at_boot.battery_status_at_boot);
+	printk(KERN_INFO "%s: battery_status_at_boot=0x%08x\n",
+				__func__, bi_battery_status_at_boot());
+	return 0;
+}
+
+__tagtable(ATAG_BATTERY_STATUS_AT_BOOT, parse_tag_battery_status_at_boot);
+
+static int __init parse_tag_cid_recover_boot(const struct tag *tag)
+{
+	bi_set_cid_recover_boot(tag->u.cid_recover_boot.cid_recover_boot);
+	printk(KERN_INFO "%s: cid_recover_boot=\"%d\"\n",
+				__func__, bi_cid_recover_boot());
+	return 0;
+}
+
+__tagtable(ATAG_CID_RECOVER_BOOT, parse_tag_cid_recover_boot);
+
+#endif /* CONFIG_BOOTINFO */
 
 /*
  * Scan the tag table for this tag, and call its parse function.
