@@ -31,6 +31,7 @@
 #include <mach/board_lge.h>
 #include "devices.h"
 #include "board-mako.h"
+#include "board-mako-pmic.h"
 
 #ifdef CONFIG_WIRELESS_CHARGER
 #include <linux/power/bq51051b_charger.h>
@@ -614,11 +615,24 @@ struct platform_device wireless_charger = {
 };
 #endif
 
+void __init mako_set_adcmap(void)
+{
+	pm8xxx_set_adcmap_btm_threshold(adcmap_btm_threshold,
+			ARRAY_SIZE(adcmap_btm_threshold));
+	pm8xxx_set_adcmap_pa_therm(adcmap_pa_therm,
+			ARRAY_SIZE(adcmap_pa_therm));
+	/*
+	pm8xxx_set_adcmap_ntcg_104ef_104fb(adcmap_ntcg_104ef_104fb,
+			ARRAY_SIZE(adcmap_ntcg_104ef_104fb));
+	*/
+}
+
 void __init apq8064_init_pmic(void)
 {
 	pmic_reset_irq = PM8921_IRQ_BASE + PM8921_RESOUT_IRQ;
 
 	mako_fixed_keymap();
+	mako_set_adcmap();
 
 	apq8064_device_ssbi_pmic1.dev.platform_data =
 		&apq8064_ssbi_pm8921_pdata;
