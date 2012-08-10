@@ -1150,6 +1150,7 @@ void mdp4_dsi_video_overlay(struct msm_fb_data_type *mfd)
 
 	mutex_lock(&mfd->dma->ov_mutex);
 	mdp4_dsi_video_pipe_commit(0, 0);
+	mutex_unlock(&mfd->dma->ov_mutex);
 
 	if (pipe->ov_blt_addr)
 		mdp4_dsi_video_wait4ov(0);
