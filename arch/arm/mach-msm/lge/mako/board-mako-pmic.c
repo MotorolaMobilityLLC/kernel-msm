@@ -161,6 +161,7 @@ static struct pm8xxx_misc_platform_data apq8064_pm8921_misc_pdata = {
 
 #define PM8921_LC_LED_MAX_CURRENT 4	/* I = 4mA */
 #define PM8921_LC_LED_LOW_CURRENT 1	/* I = 1mA */
+#define PM8921_PWM_LED_MAX_CURRENT 10	/* max duty percentage */
 #define PM8XXX_LED_PWM_PERIOD     1000
 #define PM8XXX_LED_PWM_DUTY_MS    50
 #define PM8XXX_LED_PWM_DUTY_PCTS  16
@@ -220,7 +221,7 @@ static struct pm8xxx_led_config pm8921_led_configs[] = {
 	[0] = {
 		.id = PM8XXX_ID_LED_0,
 		.mode = PM8XXX_LED_MODE_PWM3,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
+		.max_current = PM8921_PWM_LED_MAX_CURRENT,
 		.pwm_channel = 6,
 		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
 		.pwm_duty_cycles = &pm8921_led0_pwm_duty_cycles,
@@ -228,7 +229,7 @@ static struct pm8xxx_led_config pm8921_led_configs[] = {
 	[1] = {
 		.id = PM8XXX_ID_LED_1,
 		.mode = PM8XXX_LED_MODE_PWM2,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
+		.max_current = PM8921_PWM_LED_MAX_CURRENT,
 		.pwm_channel = 5,
 		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
 		.pwm_duty_cycles = &pm8921_led1_pwm_duty_cycles,
@@ -236,7 +237,7 @@ static struct pm8xxx_led_config pm8921_led_configs[] = {
 	[2] = {
 		.id = PM8XXX_ID_LED_2,
 		.mode = PM8XXX_LED_MODE_PWM1,
-		.max_current = PM8921_LC_LED_MAX_CURRENT,
+		.max_current = PM8921_PWM_LED_MAX_CURRENT,
 		.pwm_channel = 4,
 		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
 		.pwm_duty_cycles = &pm8921_led2_pwm_duty_cycles,
@@ -247,7 +248,6 @@ static struct pm8xxx_led_platform_data apq8064_pm8921_leds_pdata = {
 		.led_core = &pm8921_led_core_pdata,
 		.configs = pm8921_led_configs,
 		.num_configs = ARRAY_SIZE(pm8921_led_configs),
-		.max_brightness = 100,
 		.use_pwm = 1,
 };
 
