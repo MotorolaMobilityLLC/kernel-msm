@@ -172,6 +172,7 @@ struct pm8xxx_led_data {
 	struct wled_config_data *wled_cfg;
 	int			max_current;
 	int			use_pwm;
+	int			adjust_brightness;
 };
 
 static void led_kp_set(struct pm8xxx_led_data *led, enum led_brightness value)
@@ -382,19 +383,43 @@ led_rgb_set(struct pm8xxx_led_data *led, enum led_brightness value)
 	}
 }
 
+static int pm8xxx_adjust_brightness(struct led_classdev *led_cdev,
+		enum led_brightness value)
+{
+	int level = 0;
+	struct	pm8xxx_led_data *led;
+	led = container_of(led_cdev, struct pm8xxx_led_data, cdev);
+
+	if (!led->adjust_brightness)
+		return value;
+
+	if (led->adjust_brightness == led->cdev.max_brightness)
+		return value;
+
+	level = (2 * value * led->adjust_brightness
+			+ led->cdev.max_brightness)
+		/ (2 * led->cdev.max_brightness);
+
+	if (!level && value)
+		level = 1;
+
+	return level;
+}
+
 static int pm8xxx_led_pwm_pattern_update(struct pm8xxx_led_data * led)
 {
 	int start_idx, idx_len;
 	int *pcts = NULL;
 	int i, rc = 0;
 	int temp = 0;
-	int pwm_max = led->cdev.brightness;
+	int pwm_max = 0;
 
 	if (!led->pwm_duty_cycles || !led->pwm_duty_cycles->duty_pcts) {
 		dev_err(led->cdev.dev, "duty_cycles and duty_pcts is not exist\n");
 		return -EINVAL;
 	}
 
+	pwm_max = pm8xxx_adjust_brightness(&led->cdev, led->cdev.brightness);
 	start_idx = led->pwm_duty_cycles->start_idx;
 	idx_len = led->pwm_duty_cycles->num_duty_pcts;
 	pcts = led->pwm_duty_cycles->duty_pcts;
@@ -431,10 +456,12 @@ static int pm8xxx_led_pwm_work(struct pm8xxx_led_data *led)
 {
 	int duty_us;
 	int rc = 0;
+	int level = 0;
+
+	level = pm8xxx_adjust_brightness(&led->cdev, led->cdev.brightness);
 
 	if (led->pwm_duty_cycles == NULL) {
-		duty_us = (led->pwm_period_us * led->cdev.brightness) /
-								LED_FULL;
+		duty_us = (led->pwm_period_us * level) / LED_FULL;
 		rc = pwm_config(led->pwm_dev, duty_us, led->pwm_period_us);
 		if (led->cdev.brightness) {
 			led_rgb_write(led, SSBI_REG_ADDR_RGB_CNTL1,
@@ -447,27 +474,28 @@ static int pm8xxx_led_pwm_work(struct pm8xxx_led_data *led)
 		}
 	} else {
 
-		if (led->cdev.brightness) {
+		if (level) {
 			pm8xxx_led_pwm_pattern_update(led);
-			led_rgb_write(led, SSBI_REG_ADDR_RGB_CNTL1,
-				led->cdev.brightness);
+			led_rgb_write(led, SSBI_REG_ADDR_RGB_CNTL1, level);
 		}
 
-		rc = pm8xxx_pwm_lut_enable(led->pwm_dev, led->cdev.brightness);
-		if (!led->cdev.brightness)
-			led_rgb_write(led, SSBI_REG_ADDR_RGB_CNTL1,
-				led->cdev.brightness);
+		rc = pm8xxx_pwm_lut_enable(led->pwm_dev, level);
+		if (!level)
+			led_rgb_write(led, SSBI_REG_ADDR_RGB_CNTL1, level);
 	}
 
 	return rc;
 }
 
 static void __pm8xxx_led_work(struct pm8xxx_led_data *led,
-					enum led_brightness level)
+					enum led_brightness value)
 {
 	int rc;
+	int level = 0;
 
 	mutex_lock(&led->lock);
+
+	level = pm8xxx_adjust_brightness(&led->cdev, value);
 
 	switch (led->id) {
 	case PM8XXX_ID_LED_KB_LIGHT:
@@ -541,26 +569,30 @@ static void pm8xxx_led_set(struct led_classdev *led_cdev,
 	}
 }
 
-static int pm8xxx_set_led_mode_and_max_brightness(struct pm8xxx_led_data *led,
+static int pm8xxx_set_led_mode_and_adjust_brightness(struct pm8xxx_led_data *led,
 		enum pm8xxx_led_modes led_mode, int max_current)
 {
 	switch (led->id) {
 	case PM8XXX_ID_LED_0:
 	case PM8XXX_ID_LED_1:
 	case PM8XXX_ID_LED_2:
-		led->cdev.max_brightness = max_current /
-						PM8XXX_ID_LED_CURRENT_FACTOR;
-		if (led->cdev.max_brightness > MAX_LC_LED_BRIGHTNESS)
-			led->cdev.max_brightness = MAX_LC_LED_BRIGHTNESS;
+		if (led_mode == PM8XXX_LED_MODE_MANUAL) {
+			led->adjust_brightness = max_current /
+				PM8XXX_ID_LED_CURRENT_FACTOR;
+			if (led->adjust_brightness > MAX_LC_LED_BRIGHTNESS)
+				led->adjust_brightness = MAX_LC_LED_BRIGHTNESS;
+		} else {
+			led->adjust_brightness = max_current;
+		}
 		led->reg = led_mode;
 		break;
 	case PM8XXX_ID_LED_KB_LIGHT:
 	case PM8XXX_ID_FLASH_LED_0:
 	case PM8XXX_ID_FLASH_LED_1:
-		led->cdev.max_brightness = max_current /
+		led->adjust_brightness = max_current /
 						PM8XXX_ID_FLASH_CURRENT_FACTOR;
-		if (led->cdev.max_brightness > MAX_FLASH_BRIGHTNESS)
-			led->cdev.max_brightness = MAX_FLASH_BRIGHTNESS;
+		if (led->adjust_brightness > MAX_FLASH_BRIGHTNESS)
+			led->adjust_brightness = MAX_FLASH_BRIGHTNESS;
 
 		switch (led_mode) {
 		case PM8XXX_LED_MODE_PWM1:
@@ -580,12 +612,11 @@ static int pm8xxx_set_led_mode_and_max_brightness(struct pm8xxx_led_data *led,
 		}
 		break;
 	case PM8XXX_ID_WLED:
-		led->cdev.max_brightness = WLED_MAX_LEVEL;
+		led->adjust_brightness = WLED_MAX_LEVEL;
 		break;
 	case PM8XXX_ID_RGB_LED_RED:
 	case PM8XXX_ID_RGB_LED_GREEN:
 	case PM8XXX_ID_RGB_LED_BLUE:
-		led->cdev.max_brightness = LED_FULL;
 		break;
 	default:
 		dev_err(led->cdev.dev, "LED Id is invalid");
@@ -1098,6 +1129,7 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 		led_dat->cdev.default_trigger   = curr_led->default_trigger;
 		led_dat->cdev.brightness_set    = pm8xxx_led_set;
 		led_dat->cdev.brightness_get    = pm8xxx_led_get;
+		led_dat->cdev.max_brightness    = LED_FULL;
 		led_dat->cdev.brightness	= LED_OFF;
 		led_dat->cdev.flags		= curr_led->flags;
 		led_dat->dev			= &pdev->dev;
@@ -1106,7 +1138,7 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 		if (rc < 0)
 			goto fail_id_check;
 
-		rc = pm8xxx_set_led_mode_and_max_brightness(led_dat,
+		rc = pm8xxx_set_led_mode_and_adjust_brightness(led_dat,
 					led_cfg->mode, led_cfg->max_current);
 		if (rc < 0)
 			goto fail_id_check;
@@ -1137,12 +1169,6 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 					led_dat->cdev.max_brightness);
 
 			if (led_dat->pwm_channel != -1) {
-				if (pdata->max_brightness)
-					led_dat->cdev.max_brightness =
-						pdata->max_brightness;
-				else
-					led_dat->cdev.max_brightness =
-						LED_FULL;
 				rc = pm8xxx_led_pwm_configure(led_dat);
 				if (rc) {
 					dev_err(&pdev->dev, "failed to "
