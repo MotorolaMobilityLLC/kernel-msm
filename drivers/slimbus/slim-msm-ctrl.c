@@ -235,6 +235,7 @@ enum frm_cfg {
 	CLK_GEAR	= 7,
 	ROOT_FREQ	= 11,
 	REF_CLK_GEAR	= 15,
+	INTR_WAKE	= 19,
 };
 
 enum msm_ctrl_state {
@@ -282,6 +283,7 @@ struct msm_slim_ctrl {
 	struct completion	rx_msgq_notify;
 	struct task_struct	*rx_msgq_thread;
 	struct clk		*rclk;
+	struct clk		*hclk;
 	struct mutex		tx_lock;
 	u8			pgdla;
 	bool			use_rx_msgqs;
@@ -2035,6 +2037,12 @@ static int __devinit msm_slim_probe(struct platform_device *pdev)
 	dev->irq = irq->start;
 	dev->bam.irq = bam_irq->start;
 
+	dev->hclk = clk_get(dev->dev, "iface_clk");
+	if (IS_ERR(dev->hclk))
+		dev->hclk = NULL;
+	else
+		clk_prepare_enable(dev->hclk);
+
 	ret = msm_slim_sps_init(dev, bam_mem);
 	if (ret != 0) {
 		dev_err(dev->dev, "error SPS init\n");
@@ -2104,8 +2112,8 @@ static int __devinit msm_slim_probe(struct platform_device *pdev)
 	wmb();
 
 	/* Framer register initialization */
-	writel_relaxed((0xA << REF_CLK_GEAR) | (0xA << CLK_GEAR) |
-		(1 << ROOT_FREQ) | (1 << FRM_ACTIVE) | 1,
+	writel_relaxed((1 << INTR_WAKE) | (0xA << REF_CLK_GEAR) |
+		(0xA << CLK_GEAR) | (1 << ROOT_FREQ) | (1 << FRM_ACTIVE) | 1,
 		dev->base + FRM_CFG);
 	/*
 	 * Make sure that framer wake-up and enabling writes go through
@@ -2164,6 +2172,10 @@ err_clk_get_failed:
 err_request_irq_failed:
 	msm_slim_sps_exit(dev);
 err_sps_init_failed:
+	if (dev->hclk) {
+		clk_disable_unprepare(dev->hclk);
+		clk_put(dev->hclk);
+	}
 err_of_init_failed:
 	iounmap(dev->bam.base);
 err_ioremap_bam_failed:
@@ -2200,6 +2212,8 @@ static int __devexit msm_slim_remove(struct platform_device *pdev)
 	free_irq(dev->irq, dev);
 	slim_del_controller(&dev->ctrl);
 	clk_put(dev->rclk);
+	if (dev->hclk)
+		clk_put(dev->hclk);
 	msm_slim_sps_exit(dev);
 	kthread_stop(dev->rx_msgq_thread);
 	iounmap(dev->bam.base);
@@ -2271,8 +2285,14 @@ static int msm_slim_suspend(struct device *dev)
 {
 	int ret = 0;
 	if (!pm_runtime_enabled(dev) || !pm_runtime_suspended(dev)) {
+		struct platform_device *pdev = to_platform_device(dev);
+		struct msm_slim_ctrl *cdev = platform_get_drvdata(pdev);
 		dev_dbg(dev, "system suspend");
 		ret = msm_slim_runtime_suspend(dev);
+		if (!ret) {
+			if (cdev->hclk)
+				clk_disable_unprepare(cdev->hclk);
+		}
 	}
 	if (ret == -EBUSY) {
 		/*
@@ -2292,8 +2312,12 @@ static int msm_slim_resume(struct device *dev)
 {
 	/* If runtime_pm is enabled, this resume shouldn't do anything */
 	if (!pm_runtime_enabled(dev) || !pm_runtime_suspended(dev)) {
+		struct platform_device *pdev = to_platform_device(dev);
+		struct msm_slim_ctrl *cdev = platform_get_drvdata(pdev);
 		int ret;
 		dev_dbg(dev, "system resume");
+		if (cdev->hclk)
+			clk_prepare_enable(cdev->hclk);
 		ret = msm_slim_runtime_resume(dev);
 		if (!ret) {
 			pm_runtime_mark_last_busy(dev);
