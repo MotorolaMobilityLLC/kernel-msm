@@ -304,21 +304,6 @@ VOS_STATUS csrNeighborRoamReassocIndCallback(v_PVOID_t pAdapter,
     }
     else
 #endif
-#ifdef FEATURE_WLAN_LFR
-    if (csrRoamIsFastRoamEnabled(pMac))
-    {
-        if (eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN == pNeighborRoamInfo->neighborRoamState)
-        {
-            csrNeighborRoamIssuePreauthReq(pMac);
-        }
-        else
-        {
-            smsLog(pMac, LOGE, FL("LFR Reassoc indication received in unexpected state %d"), pNeighborRoamInfo->neighborRoamState);
-            VOS_ASSERT(0);
-        }
-    }
-    else
-#endif
     {
         if (eCSR_NEIGHBOR_ROAM_STATE_CFG_CHAN_LIST_SCAN == pNeighborRoamInfo->neighborRoamState)
         {
@@ -420,7 +405,7 @@ void csrNeighborRoamResetInitStateControlInfo(tpAniSirGlobal pMac)
     vos_mem_set(pNeighborRoamInfo->currAPbssid, sizeof(tCsrBssid), 0);
     pNeighborRoamInfo->neighborScanTimerInfo.pMac = pMac;
     pNeighborRoamInfo->neighborScanTimerInfo.sessionId = CSR_SESSION_ID_INVALID;
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
     pNeighborRoamInfo->is11rAssoc = eANI_BOOLEAN_FALSE;
     pNeighborRoamInfo->FTRoamInfo.preAuthRspWaitTimerInfo.pMac = pMac;
     pNeighborRoamInfo->FTRoamInfo.preAuthRspWaitTimerInfo.sessionId = CSR_SESSION_ID_INVALID;
@@ -865,37 +850,6 @@ eHalStatus csrNeighborRoamPrepareScanProfileFilter(tpAniSirGlobal pMac, tCsrScan
     return eHAL_STATUS_SUCCESS;
 }
 
-tANI_U32 csrGetCurrentAPRssi(tpAniSirGlobal pMac, tScanResultHandle *pScanResultList)
-{
-        tCsrScanResultInfo *pScanResult;
-        tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
-        tANI_U32 CurrAPRssi = -125; /* We are setting this as default value to make sure we return this value,
-                                       when we do not see this AP in the scan result for some reason.However,it is 
-                                       less likely that we are associated to an AP and do not see it in the scan list*/
-
-        while (NULL != (pScanResult = csrScanResultGetNext(pMac, *pScanResultList)))
-        {
-
-                if (VOS_TRUE == vos_mem_compare(pScanResult->BssDescriptor.bssId,
-                                                pNeighborRoamInfo->currAPbssid, sizeof(tSirMacAddr)))
-                {
-                        /* We got a match with the currently associated AP.
-                         * Capture the RSSI value and complete the while loop.
-                         * The while loop is completed in order to make the current entry go back to NULL,
-                         * and in the next while loop, it properly starts searching from the head of the list.
-                         * TODO: Can also try setting the current entry directly to NULL as soon as we find the new AP*/
-
-                         CurrAPRssi = (int)pScanResult->BssDescriptor.rssi * (-1) ;
-
-                } else {
-                        continue;
-                }
-        }
-
-        return CurrAPRssi;
-
-}
-
 /* ---------------------------------------------------------------------------
 
     \fn csrNeighborRoamProcessScanResults
@@ -915,16 +869,6 @@ static void csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac, tScanResultHa
     tCsrScanResultInfo *pScanResult;
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     tpCsrNeighborRoamBSSInfo    pBssInfo;
-    tANI_U32 CurrAPRssi;
-    tANI_U8 RoamRssiDiff = pMac->roam.configParam.RoamRssiDiff;
-
-    /***************************************************************
-     * Find out the Current AP RSSI and keep it handy to check if
-     * it is better than the RSSI of the AP which we are
-     * going to roam.If so, we are going to continue with the
-     * current AP.
-     ***************************************************************/
-    CurrAPRssi = csrGetCurrentAPRssi(pMac, pScanResultList);
 
     /* Expecting the scan result already to be in the sorted order based on the RSSI */
     /* Based on the previous state we need to check whether the list should be sorted again taking neighbor score into consideration */
@@ -943,40 +887,21 @@ static void csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac, tScanResultHa
                         pScanResult->BssDescriptor.bssId[4],
                         pScanResult->BssDescriptor.bssId[5]);
 
-       if (VOS_TRUE == vos_mem_compare(pScanResult->BssDescriptor.bssId, 
+        if (VOS_TRUE == vos_mem_compare(pScanResult->BssDescriptor.bssId, 
                        pNeighborRoamInfo->currAPbssid, sizeof(tSirMacAddr)))
         {
-            /* currently associated AP. Do not have this in the roamable AP list */
+            //currently associated AP. Do not have this in the roamable AP list
             continue;
         }
 
-       /* This condition is to ensure to roam to an AP with better RSSI. if the value of RoamRssiDiff is Zero, this feature
-        * is disabled and we continue to roam without any check*/
-       if(RoamRssiDiff > 0)
-       {
-               if (abs(CurrAPRssi) < abs(pScanResult->BssDescriptor.rssi))
-               {
-                       /*Do not roam to an AP with worse RSSI than the current*/
-                       VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                                 "%s: [INFOLOG]Current AP rssi=%d new ap rssi worse=%d\n", __func__,
-                                 CurrAPRssi,
-                                 (int)pScanResult->BssDescriptor.rssi * (-1) );
-                       continue;
-               } else {
-                       /*Do not roam to an AP which is having better RSSI than the current AP, but still less than the
-                        * margin that is provided by user from the ini file (RoamRssiDiff)*/
-                       if (abs(abs(CurrAPRssi) - abs(pScanResult->BssDescriptor.rssi)) < RoamRssiDiff)
-                       {
-                          continue;
-                       }
-                       else {
-                                 VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                                            "%s: [INFOLOG]Current AP rssi=%d new ap rssi better=%d\n", __func__,
-                                            CurrAPRssi,
-                                            (int)pScanResult->BssDescriptor.rssi * (-1) );
-                       }
-               }
-       }
+        if (abs(pNeighborRoamInfo->cfgParams.neighborReassocThreshold) < abs(pScanResult->BssDescriptor.rssi))
+        {
+            VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                  "%s: [INFOLOG]Current reassoc threshold %d new ap rssi worse=%d\n", __func__,
+                      (int)pNeighborRoamInfo->cfgParams.neighborReassocThreshold * (-1),
+                      (int)pScanResult->BssDescriptor.rssi * (-1) );
+            continue;
+        }        
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
         if (pNeighborRoamInfo->is11rAssoc)
@@ -1036,19 +961,6 @@ static void csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac, tScanResultHa
             }
         }
 #endif /* FEATURE_WLAN_CCX */
-
-#ifdef FEATURE_WLAN_LFR
-        // If we are supporting legacy roaming, and 
-        // if the candidate is on the "pre-auth failed" list, ignore it. 
-        if (csrRoamIsFastRoamEnabled(pMac))
-        {
-            if (!csrNeighborRoamIsPreauthCandidate(pMac, pScanResult->BssDescriptor.bssId))
-            {
-                smsLog(pMac, LOGE, FL("BSSID present in pre-auth fail list.. Ignoring"));
-                continue;
-            }
-        }
-#endif /* FEATURE_WLAN_LFR */
 
         /* If the received timestamp in BSS description is earlier than the scan request timestamp, skip 
          * this result */
@@ -1215,7 +1127,7 @@ static eHalStatus csrNeighborRoamScanRequestCallback(tHalHandle halHandle, void 
         NEIGHBOR_ROAM_DEBUG(pMac, LOGW, FL("Channel list scan completed. Current chan index = %d"), currentChanIndex);
         VOS_ASSERT(pNeighborRoamInfo->roamChannelInfo.currentChanIndex == 0);
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
         /* If the state is REPORT_SCAN, then this must be the scan after the REPORT_QUERY state. So, we 
            should use the BSSID filter made out of neighbor reports */
         if (eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN == pNeighborRoamInfo->neighborRoamState)
@@ -1264,16 +1176,6 @@ static eHalStatus csrNeighborRoamScanRequestCallback(tHalHandle halHandle, void 
                     /* If this is a non-11r association, then we can register the reassoc callback here as we have some 
                                         APs in the roamable AP list */
                     if (pNeighborRoamInfo->isCCXAssoc)
-                    {
-                        /* Valid APs are found after scan. Now we can initiate pre-authentication */
-                        CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN)
-                    }
-                    else
-#endif
-#ifdef FEATURE_WLAN_LFR
-                    /* If LFR is enabled, then we can register the reassoc callback here as we have some 
-                                        APs in the roamable AP list */
-                    if (csrRoamIsFastRoamEnabled(pMac))
                     {
                         /* Valid APs are found after scan. Now we can initiate pre-authentication */
                         CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN)
@@ -1936,10 +1838,10 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
     int numOfChannels = 0;
     tANI_U8   channelList[MAX_BSS_IN_NEIGHBOR_RPT];
 
-    if ( 
+    if (
 #ifdef FEATURE_WLAN_CCX
         ((pNeighborRoamInfo->isCCXAssoc) && 
-                    (pNeighborRoamInfo->roamChannelInfo.IAPPNeighborListReceived == eANI_BOOLEAN_FALSE)) ||
+        (pNeighborRoamInfo->roamChannelInfo.IAPPNeighborListReceived == eANI_BOOLEAN_FALSE)) ||
         (pNeighborRoamInfo->isCCXAssoc == eANI_BOOLEAN_FALSE) || 
 #endif // CCX
         pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.numOfChannels == 0)
@@ -2359,9 +2261,8 @@ eHalStatus csrNeighborRoamIndicateConnect(tpAniSirGlobal pMac, tANI_U8 sessionId
 {
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     eHalStatus  status = eHAL_STATUS_SUCCESS;
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
     VOS_STATUS  vstatus;
-
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
     int  init_ft_flag = FALSE;
 #endif
 
@@ -2390,7 +2291,7 @@ eHalStatus csrNeighborRoamIndicateConnect(tpAniSirGlobal pMac, tANI_U8 sessionId
             pNeighborRoamInfo->neighborScanTimerInfo.pMac = pMac;
             pNeighborRoamInfo->neighborScanTimerInfo.sessionId = sessionId;
             
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
             /* Now we can clear the preauthDone that was saved as we are connected afresh */
             csrNeighborRoamFreeRoamableBSSList(pMac, &pMac->roam.neighborRoamInfo.FTRoamInfo.preAuthDoneList);
 #endif
@@ -2424,15 +2325,7 @@ eHalStatus csrNeighborRoamIndicateConnect(tpAniSirGlobal pMac, tANI_U8 sessionId
                             
 #endif
 
-#ifdef FEATURE_WLAN_LFR
-            // If "Legacy Fast Roaming" is enabled 
-            if (csrRoamIsFastRoamEnabled(pMac))
-            {
-                init_ft_flag = TRUE;
-            }
-#endif
-
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
             if ( init_ft_flag == TRUE )
             {
                 /* Initialize all the data structures needed for the 11r FT Preauth */
@@ -2892,15 +2785,6 @@ void csrNeighborRoamGetHandoffAPInfo(tpAniSirGlobal pMac, tpCsrNeighborRoamBSSIn
 #endif
 #ifdef FEATURE_WLAN_CCX
     if (pNeighborRoamInfo->isCCXAssoc)
-    {
-        /* Always the BSS info in the head is the handoff candidate */
-        pBssNode = csrNeighborRoamGetRoamableAPListNextEntry(pMac, &pNeighborRoamInfo->FTRoamInfo.preAuthDoneList, NULL);
-        NEIGHBOR_ROAM_DEBUG(pMac, LOG1, FL("Number of Handoff candidates = %d"), csrLLCount(&pNeighborRoamInfo->FTRoamInfo.preAuthDoneList));
-    }
-    else
-#endif
-#ifdef FEATURE_WLAN_LFR
-    if (csrRoamIsFastRoamEnabled(pMac))
     {
         /* Always the BSS info in the head is the handoff candidate */
         pBssNode = csrNeighborRoamGetRoamableAPListNextEntry(pMac, &pNeighborRoamInfo->FTRoamInfo.preAuthDoneList, NULL);

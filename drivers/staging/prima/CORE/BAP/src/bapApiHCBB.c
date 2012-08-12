@@ -163,15 +163,11 @@ WLAN_BAPReset
     }
 
     //csrRoamDisconnect();
-    /* To avoid sending Disassoc on STA interface */
-    if( TRUE == btampContext->isBapSessionOpen )
-    {
-        sme_RoamDisconnect(hHal,
+    sme_RoamDisconnect(hHal,
                        btampContext->sessionId,
                        // Danlin, where are the richer reason codes?
                        // I want to be able to convey everything 802.11 supports...
                        eCSR_DISCONNECT_REASON_UNSPECIFIED);
-    }
 
     /* Need to reset the timers as well*/
     /* Connection Accept Timer interval*/

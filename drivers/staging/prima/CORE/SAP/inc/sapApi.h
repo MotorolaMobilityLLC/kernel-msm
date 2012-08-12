@@ -1375,7 +1375,7 @@ VOS_STATUS WLANSAP_GetStatistics(v_PVOID_t pvosGCtx, tSap_SoftapStats *statBuf, 
   SIDE EFFECTS   
 ============================================================================*/
 VOS_STATUS WLANSAP_SendAction( v_PVOID_t pvosGCtx, const tANI_U8 *pBuf, 
-                               tANI_U32 len );
+                               tANI_U32 len, tANI_U16 wait );
 
 /*==========================================================================
 

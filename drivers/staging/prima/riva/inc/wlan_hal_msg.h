@@ -5195,4 +5195,3 @@ typedef PACKED_PRE struct PACKED_POST{
 #endif
 
 #endif /* _WLAN_HAL_MSG_H_ */
-

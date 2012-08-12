@@ -5324,7 +5324,8 @@ eHalStatus sme_updateP2pIe(tHalHandle hHal, void *p2pIe, tANI_U32 p2pIeLength)
   ---------------------------------------------------------------------------*/
 
 eHalStatus sme_sendAction(tHalHandle hHal, tANI_U8 sessionId,
-                          const tANI_U8 *pBuf, tANI_U32 len)
+                          const tANI_U8 *pBuf, tANI_U32 len,
+                          tANI_U16 wait, tANI_BOOLEAN noack)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
@@ -5333,7 +5334,7 @@ eHalStatus sme_sendAction(tHalHandle hHal, tANI_U8 sessionId,
     status = sme_AcquireGlobalLock(&pMac->sme);
     if(HAL_STATUS_SUCCESS(status))
     {
-        p2pSendAction(hHal, sessionId, pBuf, len);
+        p2pSendAction(hHal, sessionId, pBuf, len, wait, noack);
         //release the lock for the sme object
         sme_ReleaseGlobalLock( &pMac->sme );
     }
@@ -6350,39 +6351,3 @@ void sme_featureCapsExchange( tHalHandle hHal)
     v_CONTEXT_t vosContext = vos_get_global_context(VOS_MODULE_ID_SME, NULL);
     WDA_featureCapsExchange(vosContext);
 }
-
-
-/* ---------------------------------------------------------------------------
-
-    \fn sme_GetDefaultCountryCode
-
-    \brief Get the default country code from NV
-
-    \param  hHal
-    \param  pCountry
-    \- return eHalStatus
-
-  -------------------------------------------------------------------------------*/
-eHalStatus sme_GetDefaultCountryCodeFrmNv(tHalHandle hHal, tANI_U8 *pCountry)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    return csrGetDefaultCountryCodeFrmNv(pMac, pCountry);
-}
-
-/* ---------------------------------------------------------------------------
-
-    \fn sme_GetCurrentCountryCode
-
-    \brief Get the current country code
-
-    \param  hHal
-    \param  pCountry
-    \- return eHalStatus
-
-  -------------------------------------------------------------------------------*/
-eHalStatus sme_GetCurrentCountryCode(tHalHandle hHal, tANI_U8 *pCountry)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    return csrGetCurrentCountryCode(pMac, pCountry);
-}
-

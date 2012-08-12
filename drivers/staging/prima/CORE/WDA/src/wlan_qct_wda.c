@@ -1353,6 +1353,34 @@ VOS_STATUS WDA_prepareConfigTLV(v_PVOID_t pVosContext,
 
    tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
                             + sizeof(tHalCfg) + tlvStruct->length) ; 
+   /* QWLAN_HAL_CFG_AP_KEEPALIVE_TIMEOUT   */
+   tlvStruct->type = QWLAN_HAL_CFG_AP_KEEPALIVE_TIMEOUT  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   if(wlan_cfgGetInt(pMac, WNI_CFG_AP_KEEP_ALIVE_TIMEOUT, 
+                                            configDataValue ) != eSIR_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+               "Failed to get value for WNI_CFG_AP_KEEP_ALIVE_TIMEOUT");
+      goto handle_failure;
+   }
+
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+   /* QWLAN_HAL_CFG_GO_KEEPALIVE_TIMEOUT   */
+   tlvStruct->type = QWLAN_HAL_CFG_GO_KEEPALIVE_TIMEOUT  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   if(wlan_cfgGetInt(pMac, WNI_CFG_GO_KEEP_ALIVE_TIMEOUT, 
+                                            configDataValue ) != eSIR_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+               "Failed to get value for WNI_CFG_GO_KEEP_ALIVE_TIMEOUT");
+      goto handle_failure;
+   }
+
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
 
    /* [COEX] strictly speaking, the Coex parameters are not part of the WLAN_CFG_FILE binary, 
    * but are from the WLAN_INI_FILE file.  However, this is the only parameter download routine
@@ -1392,50 +1420,6 @@ VOS_STATUS WDA_prepareConfigTLV(v_PVOID_t pVosContext,
                                       wcnssCompiledApiVersion.minor,
                                       wcnssCompiledApiVersion.version,
                                       wcnssCompiledApiVersion.revision);
-   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
-                            + sizeof(tHalCfg) + tlvStruct->length) ; 
-
-   /* QWLAN_HAL_CFG_AP_KEEPALIVE_TIMEOUT   */
-   tlvStruct->type = QWLAN_HAL_CFG_AP_KEEPALIVE_TIMEOUT  ;
-   tlvStruct->length = sizeof(tANI_U32);
-   configDataValue = (tANI_U32 *)(tlvStruct + 1);
-   if(wlan_cfgGetInt(pMac, WNI_CFG_AP_KEEP_ALIVE_TIMEOUT, 
-                                            configDataValue ) != eSIR_SUCCESS)
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-               "Failed to get value for WNI_CFG_AP_KEEP_ALIVE_TIMEOUT");
-      goto handle_failure;
-   }
-
-   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
-                            + sizeof(tHalCfg) + tlvStruct->length) ; 
-   /* QWLAN_HAL_CFG_GO_KEEPALIVE_TIMEOUT   */
-   tlvStruct->type = QWLAN_HAL_CFG_GO_KEEPALIVE_TIMEOUT  ;
-   tlvStruct->length = sizeof(tANI_U32);
-   configDataValue = (tANI_U32 *)(tlvStruct + 1);
-   if(wlan_cfgGetInt(pMac, WNI_CFG_GO_KEEP_ALIVE_TIMEOUT, 
-                                            configDataValue ) != eSIR_SUCCESS)
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-               "Failed to get value for WNI_CFG_GO_KEEP_ALIVE_TIMEOUT");
-      goto handle_failure;
-   }
-
-   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
-                            + sizeof(tHalCfg) + tlvStruct->length) ; 
-
-   /* QWLAN_HAL_CFG_ENABLE_MC_ADDR_LIST */
-   tlvStruct->type = QWLAN_HAL_CFG_ENABLE_MC_ADDR_LIST;
-   tlvStruct->length = sizeof(tANI_U32);
-   configDataValue = (tANI_U32 *)(tlvStruct + 1);
-   if(wlan_cfgGetInt(pMac, WNI_CFG_ENABLE_MC_ADDR_LIST, configDataValue) 
-                                                      != eSIR_SUCCESS)
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                    "Failed to get value for WNI_CFG_ENABLE_MC_ADDR_LIST");
-      goto handle_failure;
-   }
-
    tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
                             + sizeof(tHalCfg) + tlvStruct->length) ; 
 
@@ -1632,21 +1616,21 @@ VOS_STATUS WDA_close(v_PVOID_t pVosContext)
    }
 
    vstatus = vos_event_destroy(&wdaContext->txFrameEvent);
-   if(!VOS_IS_STATUS_SUCCESS(status))
+   if(!VOS_IS_STATUS_SUCCESS(vstatus))
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                   "VOS Event destroy failed - status = %d\n", status);
       status = VOS_STATUS_E_FAILURE;
    }
    vstatus = vos_event_destroy(&wdaContext->suspendDataTxEvent);
-   if(!VOS_IS_STATUS_SUCCESS(status))
+   if(!VOS_IS_STATUS_SUCCESS(vstatus))
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                   "VOS Event destroy failed - status = %d\n", status);
       status = VOS_STATUS_E_FAILURE;
    }
    vstatus = vos_event_destroy(&wdaContext->waitOnWdiIndicationCallBack);
-   if(!VOS_IS_STATUS_SUCCESS(status))
+   if(!VOS_IS_STATUS_SUCCESS(vstatus))
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                   "VOS Event destroy failed - status = %d\n", status);
@@ -1655,7 +1639,7 @@ VOS_STATUS WDA_close(v_PVOID_t pVosContext)
 
    /* free WDA context */
    vstatus = vos_free_context(pVosContext, VOS_MODULE_ID_WDA, wdaContext);
-   if ( !VOS_IS_STATUS_SUCCESS(status) )
+   if ( !VOS_IS_STATUS_SUCCESS(vstatus) )
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                                   "error in WDA close " );
@@ -9813,28 +9797,37 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
    /* store the call back for the function of ackTxComplete */
    if( pAckTxComp )
    {
-      if( NULL == pWDA->pAckTxCbFunc )
-      {
-         txFlag |= HAL_TXCOMP_REQUESTED_MASK;
-         pWDA->pAckTxCbFunc = pAckTxComp;
-         if( VOS_STATUS_SUCCESS !=
-                 WDA_START_TIMER(&pWDA->wdaTimers.TxCompleteTimer) ) 
-         {
-            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
-                                "Tx Complete Timer Start Failed ");
-            pWDA->pAckTxCbFunc = NULL;
-            pCompFunc(VOS_GET_MAC_CTXT(pWDA->pVosContext), (vos_pkt_t *)pFrmBuf);
-            return VOS_STATUS_E_FAILURE;
-         }
-      }
-      else
-      {
-         /* Already TxComp is active no need to active again */
-         VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR, 
-                       "There is already one request pending for tx complete\n");
-         pCompFunc(pWDA->pVosContext, (vos_pkt_t *)pFrmBuf);
-         return VOS_STATUS_E_FAILURE;
-      }
+       if( NULL != pWDA->pAckTxCbFunc )
+       {
+           /* Already TxComp is active no need to active again */
+           VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR, 
+                   "There is already one request pending for tx complete\n");
+           pWDA->pAckTxCbFunc( pMac, 0);
+           pWDA->pAckTxCbFunc = NULL;
+
+           if( VOS_STATUS_SUCCESS !=
+                   WDA_STOP_TIMER(&pWDA->wdaTimers.TxCompleteTimer))
+           {
+               VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                       "Tx Complete timeout Timer Stop Failed ");
+           }
+           else
+           {
+               VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                       "Tx Complete timeout Timer Stop Sucess ");
+           }
+       }
+
+       txFlag |= HAL_TXCOMP_REQUESTED_MASK;
+       pWDA->pAckTxCbFunc = pAckTxComp;
+       if( VOS_STATUS_SUCCESS !=
+               WDA_START_TIMER(&pWDA->wdaTimers.TxCompleteTimer) ) 
+       {
+           VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                   "Tx Complete Timer Start Failed ");
+           pWDA->pAckTxCbFunc = NULL;
+           return eHAL_STATUS_FAILURE;
+       }
    } 
 
    /* Reset the event to be not signalled */
