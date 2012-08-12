@@ -410,9 +410,6 @@ typedef enum
     //this mean error happens before association_start or roaming_start is called.
     eCSR_ROAM_SESSION_OPENED,
     eCSR_ROAM_FT_REASSOC_FAILED,
-#ifdef FEATURE_WLAN_LFR
-    eCSR_ROAM_PMK_NOTIFY,
-#endif
 }eRoamCmdStatus;
 
 
@@ -952,13 +949,9 @@ typedef struct tagCsrConfigParam
 #ifdef FEATURE_WLAN_CCX
     tANI_U8   isCcxIniFeatureEnabled;
 #endif
-#ifdef FEATURE_WLAN_LFR
-    tANI_U8   isFastRoamIniFeatureEnabled;
-#endif
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
     tANI_U8   isFastTransitionEnabled;
-    tANI_U8   RoamRssiDiff;
 #endif
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING

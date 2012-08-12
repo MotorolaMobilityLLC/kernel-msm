@@ -3901,7 +3901,7 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
         }
         case WE_DISABLE_AMP:
         {
-            hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
+            hdd_context_t *p pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
             VOS_STATUS status;
 
             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"%s: disabling AMP", __FUNCTION__);

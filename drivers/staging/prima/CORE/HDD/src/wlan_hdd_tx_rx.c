@@ -319,7 +319,7 @@ void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
 
    if (VOS_STATUS_SUCCESS != 
       WLANSAP_SendAction( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
-                           skb->data, skb->len) )
+                           skb->data, skb->len, 0) )
    {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
           "%s: WLANSAP_SendAction returned fail", __func__);

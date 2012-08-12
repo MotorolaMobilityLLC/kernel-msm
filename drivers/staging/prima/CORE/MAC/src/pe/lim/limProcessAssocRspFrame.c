@@ -314,7 +314,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
          (psessionEntry->limMlmState != eLIM_MLM_WT_ASSOC_RSP_STATE)) ||
         ((subType == LIM_REASSOC) &&
          ((psessionEntry->limMlmState != eLIM_MLM_WT_REASSOC_RSP_STATE) 
-#if defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
          && (psessionEntry->limMlmState != eLIM_MLM_WT_FT_REASSOC_RSP_STATE)
 #endif
          )))
@@ -613,7 +613,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
             goto assocReject;
         }
 
-#if defined(WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if defined(WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
         if (psessionEntry->limMlmState == eLIM_MLM_WT_FT_REASSOC_RSP_STATE)
         {
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG

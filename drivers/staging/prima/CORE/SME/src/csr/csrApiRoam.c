@@ -1217,13 +1217,8 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         smsLog( pMac, LOG1, "IsFTResourceReqSupp = %d\n", pMac->roam.configParam.csr11rConfig.IsFTResourceReqSupported); 
 #endif
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
         pMac->roam.configParam.isFastTransitionEnabled = pParam->isFastTransitionEnabled;
-        pMac->roam.configParam.RoamRssiDiff = pParam->RoamRssiDiff;
-#endif
-
-#ifdef FEATURE_WLAN_LFR 
-        pMac->roam.configParam.isFastRoamIniFeatureEnabled = pParam->isFastRoamIniFeatureEnabled;
 #endif
 
 #ifdef FEATURE_WLAN_CCX 
@@ -4361,14 +4356,6 @@ tANI_BOOLEAN csrRoamIsCCXAssoc(tpAniSirGlobal pMac)
 }
 #endif
 
-#ifdef FEATURE_WLAN_LFR
-//Returns whether "Legacy Fast Roaming" is currently enabled...or not
-tANI_BOOLEAN csrRoamIsFastRoamEnabled(tpAniSirGlobal pMac)
-{
-    return pMac->roam.configParam.isFastRoamIniFeatureEnabled;
-}
-#endif
-
 //Return true means the command can be release, else not
 static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pCommand,
                                        eCsrRoamCompleteResult Result, void *Context )
@@ -6188,15 +6175,7 @@ eHalStatus csrRoamSaveConnectedInfomation(tpAniSirGlobal pMac, tANI_U32 sessionI
     }
 #endif
 #ifdef FEATURE_WLAN_CCX
-    if ((csrIsProfileCCX(pProfile) || 
-         ((pIesTemp->CCXVersion.present) 
-          && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM) 
-              || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA) 
-              || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA_PSK) 
-              || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN) 
-              || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK)))) 
-        && (!(csrIsProfile11r( pProfile ))) 
-        && (pMac->roam.configParam.isCcxIniFeatureEnabled))
+    if ((csrIsProfileCCX(pProfile) || ((pIesTemp->CCXVersion.present) && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM) || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA)))) && (!(csrIsProfile11r( pProfile ))) && (pMac->roam.configParam.isCcxIniFeatureEnabled))
     {
         pConnectProfile->isCCXAssoc = 1;
     }
@@ -6708,15 +6687,6 @@ static void csrRoamingStateConfigCnfProcessor( tpAniSirGlobal pMac, tANI_U32 res
 #ifdef FEATURE_WLAN_CCX
                         if (csrRoamIsHandoffInProgress(pMac) && 
                                                 csrRoamIsCCXAssoc(pMac))
-                        {
-                            // Now serialize the reassoc command.
-                            status = csrRoamIssueReassociateCmd(pMac, sessionId);
-                        }
-                        else
-#endif
-#ifdef FEATURE_WLAN_LFR
-                        if (csrRoamIsHandoffInProgress(pMac) && 
-                                                csrRoamIsFastRoamEnabled(pMac))
                         {
                             // Now serialize the reassoc command.
                             status = csrRoamIssueReassociateCmd(pMac, sessionId);
@@ -8120,12 +8090,6 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
                     csrNeighborRoamTranistionPreauthDoneToDisconnected(pMac);
                 }
 #endif
-#ifdef FEATURE_WLAN_LFR
-                if (csrRoamIsFastRoamEnabled(pMac) && (csrNeighborRoamStatePreauthDone(pMac)))
-                {
-                    csrNeighborRoamTranistionPreauthDoneToDisconnected(pMac);
-                }
-#endif
                 pSession = CSR_GET_SESSION( pMac, sessionId );
 
                 if ( csrIsConnStateInfra( pMac, sessionId ) )
@@ -8176,12 +8140,6 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
 #endif
 #ifdef FEATURE_WLAN_CCX
                 if (csrRoamIsCCXAssoc(pMac) && (csrNeighborRoamStatePreauthDone(pMac)))
-                {
-                    csrNeighborRoamTranistionPreauthDoneToDisconnected(pMac);
-                }
-#endif
-#ifdef FEATURE_WLAN_LFR
-                if (csrRoamIsFastRoamEnabled(pMac) && (csrNeighborRoamStatePreauthDone(pMac)))
                 {
                     csrNeighborRoamTranistionPreauthDoneToDisconnected(pMac);
                 }
@@ -11245,15 +11203,7 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
          * If we are associating explictly 11R only then we will get
          * 11R.
          */
-        if ((csrIsProfileCCX(pProfile) || 
-             ((pIes->CCXVersion.present) 
-              && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM) 
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA) 
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA_PSK) 
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN) 
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK)))) 
-            && (!(csrIsProfile11r( pProfile ))) 
-            && (pMac->roam.configParam.isCcxIniFeatureEnabled))
+        if ((csrIsProfileCCX(pProfile) || ((pIes->CCXVersion.present) && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM) || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA)))) && (!(csrIsProfile11r( pProfile ))) && (pMac->roam.configParam.isCcxIniFeatureEnabled))
         {
             // isCCXconnection;
             dwTmp = pal_cpu_to_be32(TRUE); 
@@ -11277,13 +11227,9 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         }
 #endif
 
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX
         // Fill in isFastTransitionEnabled
-        if (pMac->roam.configParam.isFastTransitionEnabled
-#ifdef FEATURE_WLAN_LFR
-        || csrRoamIsFastRoamEnabled(pMac)
-#endif
-        )
+        if (pMac->roam.configParam.isFastTransitionEnabled)
         {
             dwTmp = pal_cpu_to_be32(TRUE); 
             palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
@@ -11297,21 +11243,6 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         }
 #endif
 
-#ifdef FEATURE_WLAN_LFR
-        if(csrRoamIsFastRoamEnabled(pMac))
-        {
-            //legacy fast roaming enabled
-            dwTmp = pal_cpu_to_be32(TRUE); 
-            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
-        }
-        else
-        {
-            dwTmp = pal_cpu_to_be32(FALSE); 
-            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
-        }
-#endif
         //BssDesc
         csrPrepareJoinReassocReqBuffer( pMac, pBssDescription, pBuf, 
                 (tANI_U8)pProfile->uapsd_mask);
@@ -11652,31 +11583,14 @@ eHalStatus csrSendSmeReassocReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSi
 #ifdef FEATURE_WLAN_CCX
         //isCCXconnection;
         //CCKM profile, ccxversion ie present, not 11r and ini file has CCX enabled
-        dwTmp = ( ((csrIsProfileCCX(pProfile) || 
-                  ((pIes->CCXVersion.present) 
-                   && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM) 
-                       || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA)
-                       || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA_PSK)
-                       || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN)
-                       || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK)))) 
-                 && (!(csrIsProfile11r( pProfile ))) 
-                 && (pMac->roam.configParam.isCcxIniFeatureEnabled)) 
-                ? pal_cpu_to_be32(TRUE) : 0);
+        dwTmp = ((csrIsProfileCCX(pProfile) || ((pIes->CCXVersion.present) && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM) || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA)))) && (!(csrIsProfile11r( pProfile ))) && (pMac->roam.configParam.isCcxIniFeatureEnabled)) ? pal_cpu_to_be32(TRUE) : 0;
         palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
         pBuf += sizeof(tAniBool);        
 #endif // FEATURE_WLAN_CCX
 #endif // WLAN_FEATURE_VOWIFI_11R
 
 #ifdef FEATURE_WLAN_CCX
-        if ((csrIsProfileCCX(pProfile) || 
-             ((pIes->CCXVersion.present) 
-              && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM) 
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA)
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA_PSK)
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN)
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK)))) 
-            && (!(csrIsProfile11r( pProfile ))) 
-            && (pMac->roam.configParam.isCcxIniFeatureEnabled))
+        if ((csrIsProfileCCX(pProfile) || ((pIes->CCXVersion.present) && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM) || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA)))) && (!(csrIsProfile11r( pProfile ))) && (pMac->roam.configParam.isCcxIniFeatureEnabled))
         {
            tCCXTspecInfo ccxTspec;
 
@@ -11705,13 +11619,9 @@ eHalStatus csrSendSmeReassocReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSi
         }
 #endif // FEATURE_WLAN_CCX
 
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX
         // Fill in isFastTransitionEnabled
-        if (pMac->roam.configParam.isFastTransitionEnabled
-#ifdef FEATURE_WLAN_LFR
-         || csrRoamIsFastRoamEnabled(pMac)
-#endif
-         )
+        if (pMac->roam.configParam.isFastTransitionEnabled)
         {
             dwTmp = pal_cpu_to_be32(TRUE); 
             palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
@@ -11725,21 +11635,6 @@ eHalStatus csrSendSmeReassocReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSi
         }
 #endif
 
-#ifdef FEATURE_WLAN_LFR
-        if(csrRoamIsFastRoamEnabled(pMac))
-        {
-            //legacy fast roaming enabled
-            dwTmp = pal_cpu_to_be32(TRUE); 
-            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
-        }
-        else
-        {
-            dwTmp = pal_cpu_to_be32(FALSE); 
-            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
-        }
-#endif
         csrPrepareJoinReassocReqBuffer( pMac, pBssDescription, pBuf, uapsd_mask);
         
 #ifndef WLAN_MDM_CODE_REDUCTION_OPT
@@ -13959,16 +13854,12 @@ eHalStatus csrGetStatistics(tpAniSirGlobal pMac, eCsrStatsRequesterType requeste
       {
          //clean up & return
          pStaEntry = GET_BASE_ADDR( pEntry, tCsrStatsClientReqInfo, link );
-         if(NULL != pStaEntry->pPeStaEntry)
-         {
          pStaEntry->pPeStaEntry->numClient--;
          //check if we need to delete the entry from peStatsReqList too
          if(!pStaEntry->pPeStaEntry->numClient)
          {
             csrRoamRemoveEntryFromPeStatsReqList(pMac, pStaEntry->pPeStaEntry);
          }
-         }
-
          //check if we need to stop the tl stats timer too 
          pMac->roam.tlStatsReqInfo.numClient--;
          if(!pMac->roam.tlStatsReqInfo.numClient)
@@ -15062,9 +14953,6 @@ void csrRoamFTPreAuthRspProcessor( tHalHandle hHal, tpSirFTPreAuthRsp pFTPreAuth
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     eHalStatus  status = eHAL_STATUS_SUCCESS;
-#ifdef FEATURE_WLAN_LFR
-    tCsrRoamInfo roamInfo;
-#endif
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
     smsLog( pMac, LOGE, FL("Preauth response status code %d"), pFTPreAuthRsp->status); 
@@ -15103,18 +14991,7 @@ void csrRoamFTPreAuthRspProcessor( tHalHandle hHal, tpSirFTPreAuthRsp pFTPreAuth
                         eCSR_ROAM_FT_RESPONSE, eCSR_ROAM_RESULT_NONE);
 
     // Currently we dont do anything special for CCX connection.
-
-#ifdef FEATURE_WLAN_LFR
-    // If Legacy Fast Roaming is enabled, signal the supplicant  
-    // So he can send us a PMK-ID for this candidate AP.
-    if (csrRoamIsFastRoamEnabled(pMac))
-    {
-        // Save the bssid from the received response 
-        palCopyMemory(pMac->hHdd, (void *)&roamInfo.bssid, (void *)pFTPreAuthRsp->preAuthbssId, sizeof(tCsrBssid));
-        csrRoamCallCallback(pMac, pFTPreAuthRsp->smeSessionId, &roamInfo, 0, eCSR_ROAM_PMK_NOTIFY, 0);
-    }
-
-#endif
+    
 
     // Done with it, init it.
     pMac->ft.ftSmeContext.psavedFTPreAuthRsp = NULL;
@@ -15206,34 +15083,3 @@ static void csrSerDesUnpackDiassocRsp(tANI_U8 *pBuf, tSirSmeDisassocRsp *pRsp)
    }
 }
 
-eHalStatus csrGetDefaultCountryCodeFrmNv(tpAniSirGlobal pMac, tANI_U8 *pCountry)
-{
-   static uNvTables nvTables;
-   eHalStatus status = eHAL_STATUS_SUCCESS;
-   VOS_STATUS vosStatus = vos_nv_readDefaultCountryTable( &nvTables );
-
-   /* read the country code from NV and use it */
-   if ( VOS_IS_STATUS_SUCCESS(vosStatus) )
-   {
-      palCopyMemory( pMac->hHdd, pCountry,
-            nvTables.defaultCountryTable.countryCode,
-            WNI_CFG_COUNTRY_CODE_LEN );
-      return status;
-   }
-   else
-   {
-      palCopyMemory( pMac->hHdd, pCountry,
-            "XXX",
-            WNI_CFG_COUNTRY_CODE_LEN );
-      status = eHAL_STATUS_FAILURE;
-      return status;
-   }
-}
-
-eHalStatus csrGetCurrentCountryCode(tpAniSirGlobal pMac, tANI_U8 *pCountry)
-{
-   palCopyMemory( pMac->hHdd, pCountry,
-         pMac->scan.countryCode11d,
-         WNI_CFG_COUNTRY_CODE_LEN );
-   return eHAL_STATUS_SUCCESS;
-}

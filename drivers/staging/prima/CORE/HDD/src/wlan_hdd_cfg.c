@@ -796,17 +796,7 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_CCX_FEATURE_ENABLED_MAX),
 #endif // FEATURE_WLAN_CCX
 
-#ifdef FEATURE_WLAN_LFR
-   // flag to turn ON/OFF Legacy Fast Roaming
-   REG_VARIABLE( CFG_LFR_FEATURE_ENABLED_NAME, WLAN_PARAM_Integer,
-                 hdd_config_t, isFastRoamIniFeatureEnabled, 
-                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
-                 CFG_LFR_FEATURE_ENABLED_DEFAULT, 
-                 CFG_LFR_FEATURE_ENABLED_MIN, 
-                 CFG_LFR_FEATURE_ENABLED_MAX),
-#endif // FEATURE_WLAN_LFR
-
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
    REG_VARIABLE( CFG_FT_RSSI_FILTER_PERIOD_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, FTRssiFilterPeriod,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
@@ -822,15 +812,6 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_FAST_TRANSITION_ENABLED_NAME_DEFAULT, 
                  CFG_FAST_TRANSITION_ENABLED_NAME_MIN, 
                  CFG_FAST_TRANSITION_ENABLED_NAME_MAX),
-
-   /* Variable to specify the delta/difference between the RSSI of current AP 
-    * and roamable AP while roaming */
-   REG_VARIABLE( CFG_ROAM_RSSI_DIFF_NAME, WLAN_PARAM_Integer,
-                 hdd_config_t, RoamRssiDiff, 
-                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
-                 CFG_ROAM_RSSI_DIFF_DEFAULT, 
-                 CFG_ROAM_RSSI_DIFF_MIN, 
-                 CFG_ROAM_RSSI_DIFF_MAX),
 #endif
 
    REG_VARIABLE( CFG_QOS_WMM_PKT_CLASSIFY_BASIS_NAME , WLAN_PARAM_Integer,
@@ -1465,13 +1446,6 @@ REG_VARIABLE( CFG_ENABLE_MODULATED_DTIM_NAME, WLAN_PARAM_Integer,
               CFG_ENABLE_MODULATED_DTIM_MIN, 
               CFG_ENABLE_MODULATED_DTIM_MAX ),
 
- REG_VARIABLE( CFG_MC_ADDR_LIST_ENABLE_NAME, WLAN_PARAM_Integer,
-              hdd_config_t, fEnableMCAddrList,
-              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
-              CFG_MC_ADDR_LIST_ENABLE_DEFAULT,
-              CFG_MC_ADDR_LIST_ENABLE_MIN,
-              CFG_MC_ADDR_LIST_ENABLE_MAX ),
-
 };
 
 /*
@@ -1756,12 +1730,6 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [FastTransitionEnabled] Value = [%lu] ",pHddCtx->cfg_ini->isFastTransitionEnabled);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gTxPowerCap] Value = [%lu] dBm ",pHddCtx->cfg_ini->nTxPowerCap);
 #endif 
-#ifdef FEATURE_WLAN_LFR
-  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [FastRoamEnabled] Value = [%lu] ",pHddCtx->cfg_ini->isFastRoamIniFeatureEnabled);
-#endif 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [RoamRssiDiff] Value = [%lu] ",pHddCtx->cfg_ini->RoamRssiDiff);
-#endif
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [InfraDirAcVo] Value = [%u] ",pHddCtx->cfg_ini->InfraDirAcVo);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [InfraNomMsduSizeAcVo] Value = [0x%x] ",pHddCtx->cfg_ini->InfraNomMsduSizeAcVo);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [InfraMeanDataRateAcVo] Value = [0x%lx] ",pHddCtx->cfg_ini->InfraMeanDataRateAcVo);
@@ -2519,7 +2487,7 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
       hddLog(LOGE, "Could not pass on WNI_CFG_RSSI_FILTER_PERIOD to CCM\n");
    }
 
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
    if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_FT_RSSI_FILTER_PERIOD, pConfig->FTRssiFilterPeriod,
          NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
    {
@@ -2761,14 +2729,6 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
       hddLog(LOGE, "Could not pass on WNI_CFG_SHORT_GI_40MHZ to CCM\n");
    }
 
-
-     if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_ENABLE_MC_ADDR_LIST, pConfig->fEnableMCAddrList, 
-        NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
-     {
-        fStatus = FALSE;
-        hddLog(LOGE, "Could not pass on WNI_CFG_ENABLE_MC_ADDR_LIST to CCM\n");
-     }
-
    return fStatus;
 }
 
@@ -2887,15 +2847,11 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 #ifdef WLAN_FEATURE_VOWIFI_11R   
    smeConfig.csrConfig.csr11rConfig.IsFTResourceReqSupported = pConfig->fFTResourceReqSupported;
 #endif
-#ifdef FEATURE_WLAN_LFR
-   smeConfig.csrConfig.isFastRoamIniFeatureEnabled = pConfig->isFastRoamIniFeatureEnabled;
-#endif
 #ifdef FEATURE_WLAN_CCX
    smeConfig.csrConfig.isCcxIniFeatureEnabled = pConfig->isCcxIniFeatureEnabled;
 #endif
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX)
    smeConfig.csrConfig.isFastTransitionEnabled = pConfig->isFastTransitionEnabled;
-   smeConfig.csrConfig.RoamRssiDiff = pConfig->RoamRssiDiff;
 #endif
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING

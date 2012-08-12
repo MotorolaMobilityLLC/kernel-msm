@@ -342,6 +342,7 @@ typedef struct sAniSirLim
 #ifdef WLAN_FEATURE_P2P
     // This variable store the total duration to do scan
     tANI_U32 gTotalScanDuration;
+    tANI_U32 p2pRemOnChanTimeStamp;
 #endif    
 
     // abort scan is used to abort an on-going scan

@@ -1074,6 +1074,9 @@ tSirRetStatus peOpen(tpAniSirGlobal pMac, tMacOpenParameters *pMacOpenParam)
     }
 #endif
 
+#ifdef WLAN_FEATURE_P2P
+    pMac->lim.actionFrameSessionId = 0xff;
+#endif
 
     return eSIR_SUCCESS;
 }
