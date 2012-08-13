@@ -89,15 +89,23 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	}
 #endif
 
+	ret = panel_next_off(pdev);
+	if (ret < 0) {
+		pr_err("%s: failed to turn off the panel\n", __func__);
+		if (mdp_rev >= MDP_REV_41)
+			mutex_unlock(&mfd->dma->ov_mutex);
+		else
+			up(&mfd->dma->mutex);
+		return ret;
+	}
+
 	mdp4_overlay_dsi_state_set(ST_DSI_SUSPEND);
 
 	/*
 	 * Desctiption: change to DSI_CMD_MODE since it needed to
 	 * tx DCS dsiplay off comamnd to panel
 	 */
-#if !defined(CONFIG_FB_MSM_MIPI_DSI_LGIT)
 	mipi_dsi_op_mode_config(DSI_CMD_MODE);
-#endif
 
 	if (mfd->panel_info.type == MIPI_CMD_PANEL) {
 		if (pinfo->lcd.vsync_enable) {
@@ -108,10 +116,6 @@ static int mipi_dsi_off(struct platform_device *pdev)
 			mipi_dsi_set_tear_off(mfd);
 		}
 	}
-
-#if !defined(CONFIG_FB_MSM_MIPI_DSI_LGIT)
-	ret = panel_next_off(pdev);
-#endif
 
 #ifdef CONFIG_MSM_BUS_SCALING
 	mdp_bus_scale_update_request(0);
@@ -268,9 +272,7 @@ static int mipi_dsi_on(struct platform_device *pdev)
 
 	ret = panel_next_on(pdev);
 
-#if !defined(CONFIG_FB_MSM_MIPI_DSI_LGIT)
 	mipi_dsi_op_mode_config(mipi->mode);
-#endif
 
 	if (mfd->panel_info.type == MIPI_CMD_PANEL) {
 		if (pinfo->lcd.vsync_enable) {
