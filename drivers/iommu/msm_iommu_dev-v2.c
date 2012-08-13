@@ -69,7 +69,7 @@ static int __devinit msm_iommu_probe(struct platform_device *pdev)
 {
 	struct msm_iommu_drvdata *drvdata;
 	struct resource *r;
-	int ret;
+	int ret, needs_alt_core_clk;
 
 	if (msm_iommu_root_dev == pdev)
 		return 0;
@@ -93,55 +93,42 @@ static int __devinit msm_iommu_probe(struct platform_device *pdev)
 	if (IS_ERR(drvdata->gdsc))
 		return -EINVAL;
 
-	drvdata->pclk = clk_get(&pdev->dev, "iface_clk");
+	drvdata->pclk = devm_clk_get(&pdev->dev, "iface_clk");
 	if (IS_ERR(drvdata->pclk))
 		return PTR_ERR(drvdata->pclk);
 
-	ret = clk_prepare_enable(drvdata->pclk);
-	if (ret)
-		goto fail_enable;
+	drvdata->clk = devm_clk_get(&pdev->dev, "core_clk");
+	if (IS_ERR(drvdata->clk))
+		return PTR_ERR(drvdata->clk);
 
-	drvdata->clk = clk_get(&pdev->dev, "core_clk");
-	if (!IS_ERR(drvdata->clk)) {
-		if (clk_get_rate(drvdata->clk) == 0) {
-			ret = clk_round_rate(drvdata->clk, 1);
-			clk_set_rate(drvdata->clk, ret);
-		}
+	needs_alt_core_clk = of_property_read_bool(pdev->dev.of_node,
+						   "qcom,needs-alt-core-clk");
+	if (needs_alt_core_clk) {
+		drvdata->aclk = devm_clk_get(&pdev->dev, "alt_core_clk");
+		if (IS_ERR(drvdata->aclk))
+			return PTR_ERR(drvdata->aclk);
+	}
 
-		ret = clk_prepare_enable(drvdata->clk);
-		if (ret) {
-			clk_put(drvdata->clk);
-			goto fail_pclk;
-		}
-	} else
-		drvdata->clk = NULL;
+	if (clk_get_rate(drvdata->clk) == 0) {
+		ret = clk_round_rate(drvdata->clk, 1);
+		clk_set_rate(drvdata->clk, ret);
+	}
+
+	if (drvdata->aclk && clk_get_rate(drvdata->aclk) == 0) {
+		ret = clk_round_rate(drvdata->aclk, 1);
+		clk_set_rate(drvdata->aclk, ret);
+	}
 
 	ret = msm_iommu_parse_dt(pdev, drvdata);
 	if (ret)
-		goto fail_clk;
+		return ret;
 
 	pr_info("device %s mapped at %p, with %d ctx banks\n",
 		drvdata->name, drvdata->base, drvdata->ncb);
 
 	platform_set_drvdata(pdev, drvdata);
 
-	if (drvdata->clk)
-		clk_disable_unprepare(drvdata->clk);
-
-	clk_disable_unprepare(drvdata->pclk);
-
 	return 0;
-
-fail_clk:
-	if (drvdata->clk) {
-		clk_disable_unprepare(drvdata->clk);
-		clk_put(drvdata->clk);
-	}
-fail_pclk:
-	clk_disable_unprepare(drvdata->pclk);
-fail_enable:
-	clk_put(drvdata->pclk);
-	return ret;
 }
 
 static int __devexit msm_iommu_remove(struct platform_device *pdev)
@@ -192,7 +179,7 @@ static int msm_iommu_ctx_parse_dt(struct platform_device *pdev,
 	 */
 	ctx_drvdata->num = ((r->start - rp.start) >> CTX_SHIFT) - 8;
 
-	if (of_property_read_string(pdev->dev.of_node, "qcom,iommu-ctx-name",
+	if (of_property_read_string(pdev->dev.of_node, "label",
 					&ctx_drvdata->name))
 		ctx_drvdata->name = dev_name(&pdev->dev);
 
@@ -232,7 +219,7 @@ static int __devinit msm_iommu_ctx_probe(struct platform_device *pdev)
 	ret = msm_iommu_ctx_parse_dt(pdev, ctx_drvdata);
 	if (!ret)
 		dev_info(&pdev->dev, "context %s using bank %d\n",
-				dev_name(&pdev->dev), ctx_drvdata->num);
+			 ctx_drvdata->name, ctx_drvdata->num);
 
 	return ret;
 }

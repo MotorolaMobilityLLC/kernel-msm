@@ -188,9 +188,9 @@ static int msm_isp_notify_VFE_BUF_EVT(struct v4l2_subdev *sd, void *arg)
 	}
 
 	switch (vdata->type) {
-	case VFE_MSG_V32_START:
-	case VFE_MSG_V32_START_RECORDING:
-	case VFE_MSG_V2X_PREVIEW:
+	case VFE_MSG_START:
+	case VFE_MSG_START_RECORDING:
+	case VFE_MSG_PREVIEW:
 		D("%s Got V32_START_*: Getting ping addr id = %d",
 						__func__, vfe_id);
 		msm_mctl_reserve_free_buf(pmctl, NULL,
@@ -208,8 +208,7 @@ static int msm_isp_notify_VFE_BUF_EVT(struct v4l2_subdev *sd, void *arg)
 		vfe_params.data = (void *)&free_buf;
 		rc = v4l2_subdev_call(sd, core, ioctl, 0, &vfe_params);
 		break;
-	case VFE_MSG_V32_CAPTURE:
-	case VFE_MSG_V2X_CAPTURE:
+	case VFE_MSG_CAPTURE:
 		pr_debug("%s Got V32_CAPTURE: getting buffer for id = %d",
 						__func__, vfe_id);
 		msm_mctl_reserve_free_buf(pmctl, NULL,
@@ -231,8 +230,8 @@ static int msm_isp_notify_VFE_BUF_EVT(struct v4l2_subdev *sd, void *arg)
 		vfe_params.data = (void *)&free_buf;
 		rc = v4l2_subdev_call(sd, core, ioctl, 0, &vfe_params);
 		break;
-	case VFE_MSG_V32_JPEG_CAPTURE:
-		D("%s:VFE_MSG_V32_JPEG_CAPTURE vdata->type %d\n", __func__,
+	case VFE_MSG_JPEG_CAPTURE:
+		D("%s:VFE_MSG_JPEG_CAPTURE vdata->type %d\n", __func__,
 			vdata->type);
 		free_buf.num_planes = 2;
 		free_buf.ch_paddr[0] = pmctl->ping_imem_y;
@@ -241,7 +240,7 @@ static int msm_isp_notify_VFE_BUF_EVT(struct v4l2_subdev *sd, void *arg)
 		cfgcmd.value = &vfe_id;
 		vfe_params.vfe_cfg = &cfgcmd;
 		vfe_params.data = (void *)&free_buf;
-		D("%s:VFE_MSG_V32_JPEG_CAPTURE y_ping=%x cbcr_ping=%x\n",
+		D("%s:VFE_MSG_JPEG_CAPTURE y_ping=%x cbcr_ping=%x\n",
 			__func__, free_buf.ch_paddr[0], free_buf.ch_paddr[1]);
 		rc = v4l2_subdev_call(sd, core, ioctl, 0, &vfe_params);
 		/* Write the same buffer into PONG */
@@ -251,7 +250,7 @@ static int msm_isp_notify_VFE_BUF_EVT(struct v4l2_subdev *sd, void *arg)
 		cfgcmd.value = &vfe_id;
 		vfe_params.vfe_cfg = &cfgcmd;
 		vfe_params.data = (void *)&free_buf;
-		D("%s:VFE_MSG_V32_JPEG_CAPTURE y_pong=%x cbcr_pong=%x\n",
+		D("%s:VFE_MSG_JPEG_CAPTURE y_pong=%x cbcr_pong=%x\n",
 			__func__, free_buf.ch_paddr[0], free_buf.ch_paddr[1]);
 		rc = v4l2_subdev_call(sd, core, ioctl, 0, &vfe_params);
 		break;
@@ -424,10 +423,12 @@ static int msm_isp_notify_vfe(struct v4l2_subdev *sd,
 		stats.buf_idx = isp_stats->buf_idx;
 		switch (isp_stats->id) {
 		case MSG_ID_STATS_AEC:
+		case MSG_ID_STATS_BG:
 			stats.aec.buff = stats.buffer;
 			stats.aec.fd = stats.fd;
 			break;
 		case MSG_ID_STATS_AF:
+		case MSG_ID_STATS_BF:
 			stats.af.buff = stats.buffer;
 			stats.af.fd = stats.fd;
 			break;
@@ -446,6 +447,10 @@ static int msm_isp_notify_vfe(struct v4l2_subdev *sd,
 		case MSG_ID_STATS_CS:
 			stats.cs.buff = stats.buffer;
 			stats.cs.fd = stats.fd;
+			break;
+		case MSG_ID_STATS_BHIST:
+			stats.skin.buff = stats.buffer;
+			stats.skin.fd = stats.fd;
 			break;
 		case MSG_ID_STATS_AWB_AEC:
 			break;
@@ -537,6 +542,9 @@ static int msm_config_vfe(struct v4l2_subdev *sd,
 	memset(&axi_data, 0, sizeof(axi_data));
 	CDBG("%s: cmd_type %d\n", __func__, cfgcmd.cmd_type);
 	switch (cfgcmd.cmd_type) {
+	case CMD_STATS_BG_ENABLE:
+	case CMD_STATS_BF_ENABLE:
+	case CMD_STATS_BHIST_ENABLE:
 	case CMD_STATS_AF_ENABLE:
 	case CMD_STATS_AEC_ENABLE:
 	case CMD_STATS_AWB_ENABLE:
@@ -629,6 +637,12 @@ static int msm_put_stats_buffer(struct v4l2_subdev *sd,
 			cfgcmd.cmd_type = CMD_STATS_CS_BUF_RELEASE;
 		else if (buf.type == STAT_AEAW)
 			cfgcmd.cmd_type = CMD_STATS_BUF_RELEASE;
+		else if (buf.type == STAT_BG)
+			cfgcmd.cmd_type = CMD_STATS_BG_BUF_RELEASE;
+		else if (buf.type == STAT_BF)
+			cfgcmd.cmd_type = CMD_STATS_BF_BUF_RELEASE;
+		else if (buf.type == STAT_BHIST)
+			cfgcmd.cmd_type = CMD_STATS_BHIST_BUF_RELEASE;
 
 		else {
 			pr_err("%s: invalid buf type %d\n",
@@ -673,7 +687,6 @@ static int msm_vfe_stats_buf_ioctl(struct v4l2_subdev *sd,
 	}
 	case MSM_CAM_IOCTL_STATS_ENQUEUEBUF: {
 		struct msm_stats_buf_info buf_info;
-
 		if (copy_from_user(&buf_info, arg,
 			sizeof(struct msm_stats_buf_info))) {
 			ERR_COPY_FROM_USER();
@@ -687,16 +700,28 @@ static int msm_vfe_stats_buf_ioctl(struct v4l2_subdev *sd,
 	}
 	case MSM_CAM_IOCTL_STATS_FLUSH_BUFQ: {
 		struct msm_stats_flush_bufq bufq_info;
-
 		if (copy_from_user(&bufq_info, arg,
 			sizeof(struct msm_stats_flush_bufq))) {
 			ERR_COPY_FROM_USER();
 			return -EFAULT;
-	}
+		}
 	cfgcmd.cmd_type = VFE_CMD_STATS_FLUSH_BUFQ;
 	cfgcmd.value = (void *)&bufq_info;
 	cfgcmd.length = sizeof(struct msm_stats_flush_bufq);
 	rc = msm_isp_subdev_ioctl(sd, &cfgcmd, NULL);
+	break;
+	}
+	case MSM_CAM_IOCTL_STATS_UNREG_BUF: {
+		struct msm_stats_reqbuf reqbuf;
+		if (copy_from_user(&reqbuf, arg,
+			sizeof(struct msm_stats_reqbuf))) {
+			ERR_COPY_FROM_USER();
+			return -EFAULT;
+		}
+	cfgcmd.cmd_type = VFE_CMD_STATS_UNREGBUF;
+	cfgcmd.value = (void *)&reqbuf;
+	cfgcmd.length = sizeof(struct msm_stats_reqbuf);
+	rc = msm_isp_subdev_ioctl(sd, &cfgcmd, (void *)mctl->client);
 	break;
 	}
 	default:
@@ -734,6 +759,7 @@ static int msm_isp_config(struct msm_cam_media_controller *pmctl,
 	case MSM_CAM_IOCTL_STATS_REQBUF:
 	case MSM_CAM_IOCTL_STATS_ENQUEUEBUF:
 	case MSM_CAM_IOCTL_STATS_FLUSH_BUFQ:
+	case MSM_CAM_IOCTL_STATS_UNREG_BUF:
 		rc = msm_vfe_stats_buf_ioctl(sd, cmd, pmctl, argp);
 		break;
 

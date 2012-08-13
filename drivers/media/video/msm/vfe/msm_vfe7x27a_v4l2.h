@@ -18,6 +18,9 @@
 #include "msm.h"
 #include "msm_vfe_stats_buf.h"
 
+/*8 DSP buffers, 3 - ping, pong, free*/
+#define FREE_BUF_ARR_SIZE 5
+
 struct cmd_id_map {
 	uint32_t isp_id;
 	uint32_t vfe_id;
@@ -50,6 +53,10 @@ struct buf_info {
 	struct msm_free_buf ping;
 	struct msm_free_buf pong;
 	struct msm_free_buf free_buf;
+	/*Array for holding the free buffer if more than one*/
+	struct msm_free_buf free_buf_arr[FREE_BUF_ARR_SIZE];
+	int free_buf_cnt;
+	int frame_cnt;
 } __packed;
 
 struct prev_free_buf_info {
@@ -105,6 +112,9 @@ struct vfe2x_ctrl_type {
 	uint32_t stop_pending;
 	uint32_t update_pending;
 
+	spinlock_t liveshot_enabled_lock;
+	uint32_t liveshot_enabled;
+
 	/* v4l2 subdev */
 	struct v4l2_subdev subdev;
 	struct platform_device *pdev;
@@ -117,6 +127,7 @@ struct vfe2x_ctrl_type {
 	struct msm_stats_ops stats_ops;
 	unsigned long stats_we_buf_ptr[3];
 	unsigned long stats_af_buf_ptr[3];
+	int num_snap;
 } __packed;
 
 struct vfe_frame_extra {

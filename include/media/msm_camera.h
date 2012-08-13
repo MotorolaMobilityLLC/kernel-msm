@@ -213,6 +213,10 @@
 #define MSM_CAM_IOCTL_GET_INST_HANDLE \
 	_IOR(MSM_CAM_IOCTL_MAGIC, 60, uint32_t *)
 
+#define MSM_CAM_IOCTL_STATS_UNREG_BUF \
+	_IOR(MSM_CAM_IOCTL_MAGIC, 61, struct msm_stats_flush_bufq *)
+
+
 struct msm_stats_reqbuf {
 	int num_buf;		/* how many buffers requested */
 	int stats_type;	/* stats type */
@@ -468,6 +472,7 @@ struct msm_camera_cfg_cmd {
 #define CMD_AXI_CFG_ZSL 43
 #define CMD_AXI_CFG_SNAP_VPE 44
 #define CMD_AXI_CFG_SNAP_THUMB_VPE 45
+
 #define CMD_CONFIG_PING_ADDR 46
 #define CMD_CONFIG_PONG_ADDR 47
 #define CMD_CONFIG_FREE_BUF_ADDR 48
@@ -475,6 +480,13 @@ struct msm_camera_cfg_cmd {
 #define CMD_AXI_CFG_VIDEO_ALL_CHNLS 50
 #define CMD_VFE_BUFFER_RELEASE 51
 #define CMD_VFE_PROCESS_IRQ 52
+#define CMD_STATS_BG_ENABLE 53
+#define CMD_STATS_BF_ENABLE 54
+#define CMD_STATS_BHIST_ENABLE 55
+#define CMD_STATS_BG_BUF_RELEASE 56
+#define CMD_STATS_BF_BUF_RELEASE 57
+#define CMD_STATS_BHIST_BUF_RELEASE 58
+
 
 #define CMD_AXI_CFG_PRIM               BIT(8)
 #define CMD_AXI_CFG_PRIM_ALL_CHNLS     BIT(9)
@@ -485,6 +497,15 @@ struct msm_camera_cfg_cmd {
 
 #define CMD_AXI_START  0xE1
 #define CMD_AXI_STOP   0xE2
+
+
+#define AXI_CMD_PREVIEW      BIT(0)
+#define AXI_CMD_CAPTURE      BIT(1)
+#define AXI_CMD_RECORD       BIT(2)
+#define AXI_CMD_ZSL          BIT(3)
+#define AXI_CMD_RAW_CAPTURE  BIT(4)
+
+
 
 /* vfe config command: config command(from config thread)*/
 struct msm_vfe_cfg_cmd {
@@ -524,7 +545,10 @@ struct camera_enable_cmd {
 #define MSM_PMEM_C2D			17
 #define MSM_PMEM_MAINIMG_VPE    18
 #define MSM_PMEM_THUMBNAIL_VPE  19
-#define MSM_PMEM_MAX            20
+#define MSM_PMEM_BAYER_GRID		20
+#define MSM_PMEM_BAYER_FOCUS	21
+#define MSM_PMEM_BAYER_HIST		22
+#define MSM_PMEM_MAX            23
 
 #define STAT_AEAW			0
 #define STAT_AEC			1
@@ -534,7 +558,10 @@ struct camera_enable_cmd {
 #define STAT_CS				5
 #define STAT_IHIST			6
 #define STAT_SKIN			7
-#define STAT_MAX			8
+#define STAT_BG				8
+#define STAT_BF				9
+#define STAT_BHIST			10
+#define STAT_MAX			11
 
 #define FRAME_PREVIEW_OUTPUT1		0
 #define FRAME_PREVIEW_OUTPUT2		1
@@ -1248,27 +1275,31 @@ struct csi_lane_params_t {
 #define CSI_DECODE_10BIT 2
 #define CSI_DECODE_DPCM_10_8_10 5
 
-#define ISPIF_STREAM(intf, action) (((intf)<<ISPIF_S_STREAM_SHIFT)+(action))
-#define ISPIF_ON_FRAME_BOUNDARY	(0x01 << 0)
-#define ISPIF_OFF_FRAME_BOUNDARY    (0x01 << 1)
-#define ISPIF_OFF_IMMEDIATELY       (0x01 << 2)
-#define ISPIF_S_STREAM_SHIFT	4
-
+#define ISPIF_STREAM(intf, action, vfe) (((intf)<<ISPIF_S_STREAM_SHIFT)+\
+	(action)+((vfe)<<ISPIF_VFE_INTF_SHIFT))
+#define ISPIF_ON_FRAME_BOUNDARY   (0x01 << 0)
+#define ISPIF_OFF_FRAME_BOUNDARY  (0x01 << 1)
+#define ISPIF_OFF_IMMEDIATELY     (0x01 << 2)
+#define ISPIF_S_STREAM_SHIFT      4
+#define ISPIF_VFE_INTF_SHIFT      12
 
 #define PIX_0 (0x01 << 0)
 #define RDI_0 (0x01 << 1)
 #define PIX_1 (0x01 << 2)
 #define RDI_1 (0x01 << 3)
-#define PIX_2 (0x01 << 4)
-#define RDI_2 (0x01 << 5)
+#define RDI_2 (0x01 << 4)
 
+enum msm_ispif_vfe_intf {
+	VFE0,
+	VFE1,
+	VFE_MAX,
+};
 
 enum msm_ispif_intftype {
 	PIX0,
 	RDI0,
 	PIX1,
 	RDI1,
-	PIX2,
 	RDI2,
 	INTF_MAX,
 };
@@ -1303,6 +1334,7 @@ struct msm_ispif_params {
 	uint8_t intftype;
 	uint16_t cid_mask;
 	uint8_t csid;
+	uint8_t vfe_intf;
 };
 
 struct msm_ispif_params_list {
@@ -1668,6 +1700,7 @@ enum msm_cam_subdev_type {
 	GESTURE_DEV,
 	IRQ_ROUTER_DEV,
 	CPP_DEV,
+	CCI_DEV,
 };
 
 struct msm_mctl_set_sdev_data {
@@ -1736,6 +1769,14 @@ struct msm_camera_v4l2_ioctl_t {
 	uint32_t id;
 	void __user *ioctl_ptr;
 	uint32_t len;
+};
+
+struct msm_camera_vfe_params_t {
+	uint32_t operation_mode;
+	uint32_t capture_count;
+	uint32_t skip_abort;
+	uint16_t port_info;
+	uint16_t cmd_type;
 };
 
 enum msm_camss_irq_idx {
@@ -1869,6 +1910,12 @@ struct msm_cpp_frame_info_t {
 	enum msm_cpp_frame_type frame_type;
 	uint32_t num_strips;
 	struct msm_cpp_frame_strip_info *strip_info;
+};
+
+struct msm_ver_num_info {
+	uint32_t main;
+	uint32_t minor;
+	uint32_t rev;
 };
 
 #define VIDIOC_MSM_CPP_CFG \

@@ -1,4 +1,4 @@
-Qualcomm audio devices for ALSA sound soc
+Qualcomm audio devices for ALSA sound SoC
 
 * msm-pcm
 
@@ -41,6 +41,22 @@ Required properties:
 Required properties:
 
  - compatible : "qcom,msm-dai-fe"
+
+* msm-dai-q6
+
+[First Level Nodes]
+
+Required properties:
+
+ - compatible : "msm-dai-q6"
+
+[Second Level Nodes]
+
+Required properties:
+
+ - compatible : "qcom,msm-dai-q6-dev"
+ - qcom,msm-dai-q6-dev-id : The slimbus multi channel port ID
+                            Value is from 16384 to 16393
 
 * msm-auxpcm
 
@@ -87,6 +103,22 @@ Required properties:
 
  - compatible : "qcom,msm-pcm-hostless"
 
+* msm-ocmem-audio
+
+Required properties:
+
+ - compatible :                            "qcom,msm-ocmem-audio"
+
+ - qcom,msm-ocmem-audio-src-id:            Master port id
+
+ - qcom,msm-ocmem-audio-dst-id:            Slave port id
+
+ - qcom,msm-ocmem-audio-ab:                arbitrated bandwidth
+                                           in Bytes/s
+
+ - qcom,msm-ocmem-audio-ib:                instantaneous bandwidth
+                                           in Bytes/s
+
 Example:
 
         qcom,msm-pcm {
@@ -117,6 +149,19 @@ Example:
                 compatible = "qcom,msm-dai-fe";
         };
 
+	qcom,msm-dai-q6 {
+		compatible = "qcom,msm-dai-q6";
+		qcom,msm-dai-q6-sb-0-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16384>;
+		};
+
+		qcom,msm-dai-q6-sb-0-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16385>;
+		};
+	};
+
         qcom,msm-auxpcm {
                 compatible = "qcom,msm-auxpcm-resource";
                 qcom,msm-cpudai-auxpcm-clk = "pcm_clk";
@@ -142,4 +187,12 @@ Example:
         qcom,msm-pcm-hostless {
                 compatible = "qcom,msm-pcm-hostless";
         };
+
+	qcom,msm-ocmem-audio {
+		compatible = "qcom,msm-ocmem-audio";
+		qcom,msm-ocmem-audio-src-id = <11>;
+		qcom,msm-ocmem-audio-dst-id = <604>;
+		qcom,msm-ocmem-audio-ab = <209715200>;
+		qcom,msm-ocmem-audio-ib = <471859200>;
+	};
 

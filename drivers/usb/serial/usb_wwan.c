@@ -360,7 +360,7 @@ static void usb_wwan_indat_callback(struct urb *urb)
 
 	usb_mark_last_busy(port->serial->dev);
 
-	if (!status && urb->actual_length) {
+	if ((status == -ENOENT || !status) && urb->actual_length) {
 		spin_lock_irqsave(&portdata->in_lock, flags);
 		list_add_tail(&urb->urb_list, &portdata->in_urb_list);
 		spin_unlock_irqrestore(&portdata->in_lock, flags);
@@ -759,7 +759,7 @@ int usb_wwan_suspend(struct usb_serial *serial, pm_message_t message)
 		b = intfdata->in_flight;
 		spin_unlock_irq(&intfdata->susp_lock);
 
-		if (b)
+		if (b || pm_runtime_autosuspend_expiration(&serial->dev->dev))
 			return -EBUSY;
 	}
 

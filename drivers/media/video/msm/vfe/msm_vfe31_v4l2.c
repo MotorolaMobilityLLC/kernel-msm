@@ -63,12 +63,6 @@ struct vfe31_isr_queue_cmd {
 	uint32_t		vfeInterruptStatus1;
 };
 
-/*TODO: Why is V32 reference in arch/arm/mach-msm/include/mach/camera.h?*/
-#define VFE_MSG_V31_START VFE_MSG_V32_START
-#define VFE_MSG_V31_CAPTURE VFE_MSG_V32_CAPTURE
-#define VFE_MSG_V31_JPEG_CAPTURE VFE_MSG_V32_JPEG_CAPTURE
-#define VFE_MSG_V31_START_RECORDING VFE_MSG_V32_START_RECORDING
-
 static struct vfe31_cmd_type vfe31_cmd[] = {
 /* 0*/	{VFE_CMD_DUMMY_0},
 		{VFE_CMD_SET_CLK},
@@ -417,6 +411,25 @@ static unsigned long vfe31_stats_flush_enqueue(
 	return 0L;
 }
 
+static unsigned long vfe31_stats_unregbuf(
+	struct msm_stats_reqbuf *req_buf)
+{
+	int i = 0, rc = 0;
+
+	for (i = 0; i < req_buf->num_buf; i++) {
+		rc = vfe31_ctrl->stats_ops.buf_unprepare(
+			vfe31_ctrl->stats_ops.stats_ctrl,
+			req_buf->stats_type, i,
+			vfe31_ctrl->stats_ops.client);
+		if (rc < 0) {
+			pr_err("%s: unreg stats buf (type = %d) err = %d",
+				__func__, req_buf->stats_type, rc);
+		return rc;
+		}
+	}
+	return 0L;
+}
+
 static int vfe_stats_awb_buf_init(
 	struct vfe_cmd_stats_buf *in)
 {
@@ -664,6 +677,9 @@ static int vfe31_config_axi(int mode, uint32_t *ao)
 {
 	uint32_t *ch_info;
 	uint32_t *axi_cfg = ao + V31_AXI_RESERVED;
+	uint32_t bus_cmd = *axi_cfg;
+	int i;
+
 	/* Update the corresponding write masters for each output*/
 	ch_info = axi_cfg + V31_AXI_CFG_LEN;
 	vfe31_ctrl->outpath.out0.ch0 = 0x0000FFFF & *ch_info;
@@ -711,10 +727,23 @@ static int vfe31_config_axi(int mode, uint32_t *ao)
 		return -EINVAL;
 	}
 
+	axi_cfg++;
 	msm_camera_io_memcpy(vfe31_ctrl->vfebase +
 		vfe31_cmd[VFE_CMD_AXI_OUT_CFG].offset, axi_cfg,
-		vfe31_cmd[VFE_CMD_AXI_OUT_CFG].length - V31_AXI_CH_INF_LEN -
-			V31_AXI_RESERVED_LEN);
+		V31_AXI_BUS_CFG_LEN);
+	axi_cfg += V31_AXI_BUS_CFG_LEN/4;
+	for (i = 0; i < ARRAY_SIZE(vfe31_AXI_WM_CFG); i++) {
+		msm_camera_io_w(*axi_cfg,
+		vfe31_ctrl->vfebase+vfe31_AXI_WM_CFG[i]);
+		axi_cfg += 3;
+		msm_camera_io_memcpy(
+			vfe31_ctrl->vfebase+vfe31_AXI_WM_CFG[i]+12,
+							axi_cfg, 12);
+		axi_cfg += 3;
+	}
+	msm_camera_io_w(bus_cmd, vfe31_ctrl->vfebase +
+					V31_AXI_BUS_CMD_OFF);
+
 	return 0;
 }
 
@@ -1401,11 +1430,11 @@ static int vfe31_proc_general(
 				VFE_OUTPUTS_PREVIEW))
 			/* Configure primary channel */
 			rc = vfe31_configure_pingpong_buffers(
-				VFE_MSG_V31_START, VFE_MSG_OUTPUT_PRIMARY);
+				VFE_MSG_START, VFE_MSG_OUTPUT_PRIMARY);
 		else
 			/* Configure secondary channel */
 			rc = vfe31_configure_pingpong_buffers(
-				VFE_MSG_V31_START, VFE_MSG_OUTPUT_SECONDARY);
+				VFE_MSG_START, VFE_MSG_OUTPUT_SECONDARY);
 		if (rc < 0) {
 			pr_err("%s error configuring pingpong buffers"
 				" for preview", __func__);
@@ -1424,7 +1453,7 @@ static int vfe31_proc_general(
 			rc = -EFAULT;
 			goto proc_general_done;
 		}
-		rc = vfe31_configure_pingpong_buffers(VFE_MSG_V31_CAPTURE,
+		rc = vfe31_configure_pingpong_buffers(VFE_MSG_CAPTURE,
 			VFE_MSG_OUTPUT_PRIMARY);
 		if (rc < 0) {
 			pr_err("%s error configuring pingpong buffers"
@@ -1450,12 +1479,12 @@ static int vfe31_proc_general(
 			}
 			/* Configure primary channel for JPEG */
 			rc = vfe31_configure_pingpong_buffers(
-				VFE_MSG_V31_JPEG_CAPTURE,
+				VFE_MSG_JPEG_CAPTURE,
 				VFE_MSG_OUTPUT_PRIMARY);
 		} else {
 			/* Configure primary channel */
 			rc = vfe31_configure_pingpong_buffers(
-				VFE_MSG_V31_CAPTURE,
+				VFE_MSG_CAPTURE,
 				VFE_MSG_OUTPUT_PRIMARY);
 		}
 		if (rc < 0) {
@@ -1465,7 +1494,7 @@ static int vfe31_proc_general(
 			goto proc_general_done;
 		}
 		/* Configure secondary channel */
-		rc = vfe31_configure_pingpong_buffers(VFE_MSG_V31_CAPTURE,
+		rc = vfe31_configure_pingpong_buffers(VFE_MSG_CAPTURE,
 			VFE_MSG_OUTPUT_SECONDARY);
 		if (rc < 0) {
 			pr_err("%s error configuring pingpong buffers"
@@ -1489,13 +1518,13 @@ static int vfe31_proc_general(
 			VFE_OUTPUTS_PREVIEW_AND_VIDEO) {
 			vfe31_ctrl->outpath.out1.inst_handle = temp1;
 			rc = vfe31_configure_pingpong_buffers(
-				VFE_MSG_V31_START_RECORDING,
+				VFE_MSG_START_RECORDING,
 				VFE_MSG_OUTPUT_SECONDARY);
 		} else if (vfe31_ctrl->operation_mode ==
 			VFE_OUTPUTS_VIDEO_AND_PREVIEW) {
 			vfe31_ctrl->outpath.out0.inst_handle = temp1;
 			rc = vfe31_configure_pingpong_buffers(
-				VFE_MSG_V31_START_RECORDING,
+				VFE_MSG_START_RECORDING,
 				VFE_MSG_OUTPUT_PRIMARY);
 		}
 		if (rc < 0) {
@@ -1936,7 +1965,7 @@ static int vfe31_proc_general(
 		}
 		vfe31_ctrl->outpath.out0.inst_handle = temp1;
 		/* Configure primary channel */
-		rc = vfe31_configure_pingpong_buffers(VFE_MSG_V31_CAPTURE,
+		rc = vfe31_configure_pingpong_buffers(VFE_MSG_CAPTURE,
 			VFE_MSG_OUTPUT_PRIMARY);
 		if (rc < 0) {
 			pr_err("%s error configuring pingpong buffers"
@@ -2242,11 +2271,11 @@ static int vfe31_proc_general(
 		break;
 
 	case VFE_CMD_ZSL:
-		rc = vfe31_configure_pingpong_buffers(VFE_MSG_V31_START,
+		rc = vfe31_configure_pingpong_buffers(VFE_MSG_START,
 			VFE_MSG_OUTPUT_PRIMARY);
 		if (rc < 0)
 			goto proc_general_done;
-		rc = vfe31_configure_pingpong_buffers(VFE_MSG_V31_START,
+		rc = vfe31_configure_pingpong_buffers(VFE_MSG_START,
 			VFE_MSG_OUTPUT_SECONDARY);
 		if (rc < 0)
 			goto proc_general_done;
@@ -3334,6 +3363,22 @@ static long vfe_stats_bufq_sub_ioctl(struct msm_vfe_cfg_cmd *cmd,
 				vfe31_ctrl->stats_ops.client);
 	}
 	break;
+	case VFE_CMD_STATS_UNREGBUF:
+	{
+		struct msm_stats_reqbuf *req_buf = NULL;
+		req_buf = (struct msm_stats_reqbuf *)cmd->value;
+		if (sizeof(struct msm_stats_reqbuf) != cmd->length) {
+			/* error. the length not match */
+			pr_err("%s: stats reqbuf input size = %d,\n"
+				"struct size = %d, mitch match\n",
+				 __func__, cmd->length,
+				sizeof(struct msm_stats_reqbuf));
+			rc = -EINVAL ;
+			goto end;
+		}
+		rc = vfe31_stats_unregbuf(req_buf);
+	}
+	break;
 	default:
 		rc = -1;
 		pr_err("%s: cmd_type %d not supported", __func__,
@@ -3583,6 +3628,7 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 	case VFE_CMD_STATS_REQBUF:
 	case VFE_CMD_STATS_ENQUEUEBUF:
 	case VFE_CMD_STATS_FLUSH_BUFQ:
+	case VFE_CMD_STATS_UNREGBUF:
 		/* for easy porting put in one envelope */
 		rc = vfe_stats_bufq_sub_ioctl(cmd, vfe_params->data);
 		return rc;

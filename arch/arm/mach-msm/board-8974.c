@@ -44,6 +44,7 @@
 #include <mach/qpnp-int.h>
 #include <mach/socinfo.h>
 #include <mach/msm_bus_board.h>
+#include <mach/mpm.h>
 #include "clock.h"
 #include "devices.h"
 #include "spm.h"
@@ -58,7 +59,7 @@
 #endif
 #define MSM_ION_MM_FW_SIZE	0xa00000 /* (10MB) */
 #define MSM_ION_MM_SIZE		0x7800000 /* (120MB) */
-#define MSM_ION_QSECOM_SIZE	0x100000 /* (1MB) */
+#define MSM_ION_QSECOM_SIZE	0x600000 /* (6MB) */
 #define MSM_ION_MFC_SIZE	SZ_8K
 #define MSM_ION_AUDIO_SIZE	0x2B4000
 #define MSM_ION_HEAP_NUM	8
@@ -605,10 +606,22 @@ static struct of_device_id irq_match[] __initdata  = {
 	{ .compatible = "qcom,spmi-pmic-arb", .data = qpnpint_of_init, },
 	{}
 };
+static struct of_device_id mpm_match[] __initdata = {
+	{.compatible = "qcom,mpm-v2", },
+	{},
+};
 
 void __init msm_8974_init_irq(void)
 {
+	struct device_node *node;
+
 	of_irq_init(irq_match);
+	node = of_find_matching_node(NULL, mpm_match);
+
+	WARN_ON(!node);
+
+	if (node)
+		of_mpm_init(node);
 }
 
 static struct of_dev_auxdata msm_8974_auxdata_lookup[] __initdata = {
@@ -643,6 +656,10 @@ static struct of_dev_auxdata msm_8974_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,mdss_mdp", 0xFD900000, "mdp.0", NULL),
 	OF_DEV_AUXDATA("qcom,msm-tsens", 0xFC4A8000, \
 			"msm-tsens", NULL),
+	OF_DEV_AUXDATA("qcom,qcedev", 0xFD440000, \
+			"qcedev.0", NULL),
+	OF_DEV_AUXDATA("qcom,qcrypto", 0xFD440000, \
+			"qcrypto.0", NULL),
 	{}
 };
 

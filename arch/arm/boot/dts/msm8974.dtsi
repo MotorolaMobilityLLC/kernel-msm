@@ -48,6 +48,12 @@
 		interrupts = <0 44 0>;
 		vidc-cp-map = <0x1000000 0x40000000>;
 		vidc-ns-map = <0x40000000 0x40000000>;
+		load-freq-tbl = <979200 410000000>,
+				<560145 266670000>,
+				<421161 200000000>,
+				<243000 133330000>,
+				<108000 100000000>,
+				<36000 50000000>;
 	};
 
 	serial@f991f000 {
@@ -394,6 +400,19 @@
 		compatible = "qcom,msm-dai-fe";
 	};
 
+	qcom,msm-dai-q6 {
+		compatible = "qcom,msm-dai-q6";
+		qcom,msm-dai-q6-sb-0-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16384>;
+		};
+
+		qcom,msm-dai-q6-sb-0-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <16385>;
+		};
+	};
+
 	qcom,msm-auxpcm {
 		compatible = "qcom,msm-auxpcm-resource";
 		qcom,msm-cpudai-auxpcm-clk = "pcm_clk";
@@ -418,6 +437,14 @@
 
 	qcom,msm-pcm-hostless {
 		compatible = "qcom,msm-pcm-hostless";
+	};
+
+	qcom,msm-ocmem-audio {
+		compatible = "qcom,msm-ocmem-audio";
+		qcom,msm-ocmem-audio-src-id = <11>;
+		qcom,msm-ocmem-audio-dst-id = <604>;
+		qcom,msm-ocmem-audio-ab = <32505856>;
+		qcom,msm-ocmem-audio-ib = <32505856>;
 	};
 
 	qcom,mss@fc880000 {
@@ -551,6 +578,12 @@
 		qcom,firmware-max-paddr = <0xFA00000>;
 	};
 
+	qcom,cache_erp {
+		compatible = "qcom,cache_erp";
+		interrupts = <1 9 0>, <0 2 0>;
+		interrupt-names = "l1_irq", "l2_irq";
+	};
+
 	tsens@fc4a8000 {
 		compatible = "qcom,msm-tsens";
 		reg = <0xfc4a8000 0x2000>,
@@ -560,6 +593,28 @@
 		qcom,sensors = <11>;
 		qcom,slope = <1134 1122 1142 1123 1176 1176 1176 1186 1176
 				1176 1176>;
+	};
+
+	qcom,msm-rtb {
+		compatible = "qcom,msm-rtb";
+		qcom,memory-reservation-type = "EBI1";
+		qcom,memory-reservation-size = <0x100000>; /* 1M EBI1 buffer */
+	};
+
+        qcom,qcedev@fd440000 {
+		compatible = "qcom,qcedev";
+		reg = <0xfd440000 0x20000>,
+		      <0xfd444000 0x8000>;
+		interrupts = <0 235 0>;
+		qcom,bam-pipes = <0>;
+	};
+
+        qcom,qcrypto@fd444000 {
+		compatible = "qcom,qcrypto";
+		reg = <0xfd440000 0x20000>,
+		      <0xfd444000 0x8000>;
+		interrupts = <0 235 0>;
+		qcom,bam-pipes = <1>;
 	};
 };
 

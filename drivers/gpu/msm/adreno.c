@@ -303,8 +303,8 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 					device->mmu.setstate_memory.gpuaddr +
 					KGSL_IOMMU_SETSTATE_NOP_OFFSET);
 
+	pt_val = kgsl_mmu_pt_get_base_addr(device->mmu.hwpagetable);
 	if (flags & KGSL_MMUFLAGS_PTUPDATE) {
-		pt_val = kgsl_mmu_pt_get_base_addr(device->mmu.hwpagetable);
 		/*
 		 * We need to perfrom the following operations for all
 		 * IOMMU units
@@ -338,24 +338,6 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 				reg_pt_val,
 				device->mmu.setstate_memory.gpuaddr +
 				KGSL_IOMMU_SETSTATE_NOP_OFFSET);
-
-			/* set the asid */
-			*cmds++ = cp_type3_packet(CP_MEM_WRITE, 2);
-			*cmds++ = reg_map_desc[i]->gpuaddr +
-				(KGSL_IOMMU_CONTEXT_USER <<
-				KGSL_IOMMU_CTX_SHIFT) + KGSL_IOMMU_CONTEXTIDR;
-			*cmds++ = kgsl_mmu_get_hwpagetable_asid(&device->mmu);
-			*cmds++ = cp_type3_packet(CP_WAIT_FOR_IDLE, 1);
-			*cmds++ = 0x00000000;
-
-			/* Read back asid to ensure above write completes */
-			cmds += adreno_add_read_cmds(device, cmds,
-				reg_map_desc[i]->gpuaddr +
-				(KGSL_IOMMU_CONTEXT_USER <<
-				KGSL_IOMMU_CTX_SHIFT) + KGSL_IOMMU_CONTEXTIDR,
-				kgsl_mmu_get_hwpagetable_asid(&device->mmu),
-				device->mmu.setstate_memory.gpuaddr +
-				KGSL_IOMMU_SETSTATE_NOP_OFFSET);
 		}
 		/* invalidate all base pointers */
 		*cmds++ = cp_type3_packet(CP_INVALIDATE_STATE, 1);
@@ -367,15 +349,21 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 	}
 	if (flags & KGSL_MMUFLAGS_TLBFLUSH) {
 		/*
-		 * tlb flush based on asid, no need to flush entire tlb
+		 * tlb flush
 		 */
 		for (i = 0; i < num_iommu_units; i++) {
+			reg_pt_val = (pt_val &
+				(KGSL_IOMMU_TTBR0_PA_MASK <<
+				KGSL_IOMMU_TTBR0_PA_SHIFT)) +
+				kgsl_mmu_get_pt_lsb(&device->mmu, i,
+					KGSL_IOMMU_CONTEXT_USER);
+
 			*cmds++ = cp_type3_packet(CP_MEM_WRITE, 2);
 			*cmds++ = (reg_map_desc[i]->gpuaddr +
 				(KGSL_IOMMU_CONTEXT_USER <<
 				KGSL_IOMMU_CTX_SHIFT) +
-				KGSL_IOMMU_CTX_TLBIASID);
-			*cmds++ = kgsl_mmu_get_hwpagetable_asid(&device->mmu);
+				KGSL_IOMMU_CTX_TLBIALL);
+			*cmds++ = 1;
 
 			cmds += __adreno_add_idle_indirect_cmds(cmds,
 			device->mmu.setstate_memory.gpuaddr +
@@ -384,9 +372,8 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 			cmds += adreno_add_read_cmds(device, cmds,
 				reg_map_desc[i]->gpuaddr +
 				(KGSL_IOMMU_CONTEXT_USER <<
-				KGSL_IOMMU_CTX_SHIFT) +
-				KGSL_IOMMU_CONTEXTIDR,
-				kgsl_mmu_get_hwpagetable_asid(&device->mmu),
+				KGSL_IOMMU_CTX_SHIFT) + KGSL_IOMMU_TTBR0,
+				reg_pt_val,
 				device->mmu.setstate_memory.gpuaddr +
 				KGSL_IOMMU_SETSTATE_NOP_OFFSET);
 		}
@@ -948,6 +935,15 @@ _adreno_recover_hang(struct kgsl_device *device,
 		kgsl_mmu_setstate(&device->mmu, adreno_context->pagetable,
 			KGSL_MEMSTORE_GLOBAL);
 
+	/* If iommu is used then we need to make sure that the iommu clocks
+	 * are on since there could be commands in pipeline that touch iommu */
+	if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_get_mmutype()) {
+		ret = kgsl_mmu_enable_clk(&device->mmu,
+			KGSL_IOMMU_CONTEXT_USER);
+		if (ret)
+			goto done;
+	}
+
 	/* Do not try the bad caommands if recovery has failed bad commands
 	 * once already */
 	if (!try_bad_commands)
@@ -973,6 +969,18 @@ _adreno_recover_hang(struct kgsl_device *device,
 				"Device start failed in recovery\n");
 				goto done;
 			}
+			if (context)
+				kgsl_mmu_setstate(&device->mmu,
+						adreno_context->pagetable,
+						KGSL_MEMSTORE_GLOBAL);
+
+			if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_get_mmutype()) {
+				ret = kgsl_mmu_enable_clk(&device->mmu,
+						KGSL_IOMMU_CONTEXT_USER);
+				if (ret)
+					goto done;
+			}
+
 			ret = idle_ret;
 			KGSL_DRV_ERR(device,
 			"Bad context commands hung in recovery\n");
@@ -1008,6 +1016,9 @@ _adreno_recover_hang(struct kgsl_device *device,
 		}
 	}
 done:
+	/* Turn off iommu clocks */
+	if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_get_mmutype())
+		kgsl_mmu_disable_clk_on_ts(&device->mmu, 0, false);
 	return ret;
 }
 
@@ -1170,7 +1181,7 @@ static int adreno_getproperty(struct kgsl_device *device,
 				/*NOTE: with mmu enabled, gpuaddr doesn't mean
 				 * anything to mmap().
 				 */
-				shadowprop.gpuaddr = device->memstore.physaddr;
+				shadowprop.gpuaddr = device->memstore.gpuaddr;
 				shadowprop.size = device->memstore.size;
 				/* GSL needs this to be set, even if it
 				   appears to be meaningless */
@@ -1735,6 +1746,13 @@ static int adreno_waittimestamp(struct kgsl_device *device,
 	} while (time_elapsed < msecs);
 
 hang_dump:
+	/*
+	 * Check if timestamp has retired here because we may have hit
+	 * recovery which can take some time and cause waiting threads
+	 * to timeout
+	 */
+	if (kgsl_check_timestamp(device, context, timestamp))
+		goto done;
 	status = -ETIMEDOUT;
 	KGSL_DRV_ERR(device,
 		     "Device hang detected while waiting for timestamp: "

@@ -190,6 +190,7 @@ extern struct msm_bus_scale_pdata rotator_bus_scale_pdata;
 #endif
 
 extern struct platform_device msm_device_tsif[2];
+extern struct platform_device msm_8064_device_tsif[2];
 
 extern struct platform_device msm_device_ssbi_pmic1;
 extern struct platform_device msm_device_ssbi_pmic2;
@@ -328,6 +329,7 @@ extern struct platform_device msm8960_rpm_log_device;
 extern struct platform_device msm8930_rpm_device;
 extern struct platform_device msm8930_rpm_stat_device;
 extern struct platform_device msm8930_rpm_log_device;
+extern struct platform_device msm8930_rpm_rbcpr_device;
 
 extern struct platform_device msm8660_rpm_device;
 extern struct platform_device msm8660_rpm_stat_device;
@@ -423,8 +425,10 @@ extern struct platform_device msm7x30_device_acpuclk;
 extern struct platform_device apq8064_device_acpuclk;
 extern struct platform_device msm8625_device_acpuclk;
 extern struct platform_device msm8627_device_acpuclk;
+extern struct platform_device msm8625ab_device_acpuclk;
 extern struct platform_device msm8x50_device_acpuclk;
 extern struct platform_device msm8x60_device_acpuclk;
 extern struct platform_device msm8930_device_acpuclk;
+extern struct platform_device msm8930aa_device_acpuclk;
 extern struct platform_device msm8960_device_acpuclk;
 extern struct platform_device msm9615_device_acpuclk;

@@ -47,6 +47,10 @@
 #include <linux/mfd/wcd9xxx/core.h>
 #include <linux/mfd/wcd9xxx/pdata.h>
 
+#ifdef CONFIG_STM_LIS3DH
+#include <linux/input/lis3dh.h>
+#endif
+
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/setup.h>
@@ -2095,10 +2099,10 @@ static struct platform_device msm_tsens_device = {
 
 static struct msm_thermal_data msm_thermal_pdata = {
 	.sensor_id = 9,
-	.poll_ms = 1000,
-	.limit_temp = 60,
-	.temp_hysteresis = 10,
-	.limit_freq = 918000,
+	.poll_ms = 250,
+	.limit_temp_degC = 60,
+	.temp_hysteresis_degC = 10,
+	.freq_step = 2,
 };
 
 #ifdef CONFIG_MSM_FAKE_BATTERY
@@ -2226,6 +2230,7 @@ static struct platform_device *common_devices[] __initdata = {
 #endif
 	&msm8930_rpm_device,
 	&msm8930_rpm_log_device,
+	&msm8930_rpm_rbcpr_device,
 	&msm8930_rpm_stat_device,
 #ifdef CONFIG_ION_MSM
 	&msm8930_ion_dev,
@@ -2451,6 +2456,31 @@ static struct i2c_board_info isl_charger_i2c_info[] __initdata = {
 };
 #endif /* CONFIG_ISL9519_CHARGER */
 
+#ifdef CONFIG_STM_LIS3DH
+static struct lis3dh_acc_platform_data lis3dh_accel = {
+	.poll_interval = 200,
+	.min_interval = 10,
+	.g_range = LIS3DH_ACC_G_2G,
+	.axis_map_x = 1,
+	.axis_map_y = 0,
+	.axis_map_z = 2,
+	.negate_x = 0,
+	.negate_y = 0,
+	.negate_z = 1,
+	.init = NULL,
+	.exit = NULL,
+	.gpio_int1 = -EINVAL,
+	.gpio_int2 = -EINVAL,
+};
+
+static struct i2c_board_info __initdata lis3dh_i2c_boardinfo[] = {
+	{
+		I2C_BOARD_INFO(LIS3DH_ACC_DEV_NAME, 0x18),
+		.platform_data = &lis3dh_accel,
+	},
+};
+#endif /* CONFIG_STM_LIS3DH */
+
 static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 #ifdef CONFIG_ISL9519_CHARGER
 	{
@@ -2486,6 +2516,14 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 		sii_device_info,
 		ARRAY_SIZE(sii_device_info),
 	},
+#ifdef CONFIG_STM_LIS3DH
+	{
+		I2C_FFA | I2C_FLUID,
+		MSM_8930_GSBI12_QUP_I2C_BUS_ID,
+		lis3dh_i2c_boardinfo,
+		ARRAY_SIZE(lis3dh_i2c_boardinfo),
+	},
+#endif
 };
 #endif /* CONFIG_I2C */
 
@@ -2571,8 +2609,10 @@ static void __init msm8930_cdp_init(void)
 	platform_add_devices(msm8930_footswitch, msm8930_num_footswitch);
 	if (cpu_is_msm8627())
 		platform_device_register(&msm8627_device_acpuclk);
-	else if (cpu_is_msm8930() || cpu_is_msm8930aa())
+	else if (cpu_is_msm8930())
 		platform_device_register(&msm8930_device_acpuclk);
+	else if (cpu_is_msm8930aa())
+		platform_device_register(&msm8930aa_device_acpuclk);
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	msm8930_add_vidc_device();
 	/*

@@ -119,6 +119,7 @@ static void mmc_should_fail_request(struct mmc_host *host,
 
 	data->error = data_errors[random32() % ARRAY_SIZE(data_errors)];
 	data->bytes_xfered = (random32() % (data->bytes_xfered >> 9)) << 9;
+	data->fault_injected = true;
 }
 
 #else /* CONFIG_FAIL_MMC_REQUEST */
@@ -369,7 +370,7 @@ static void mmc_wait_for_req_done(struct mmc_host *host,
 	struct mmc_command *cmd;
 
 	while (1) {
-		wait_for_completion(&mrq->completion);
+		wait_for_completion_io(&mrq->completion);
 
 		cmd = mrq->cmd;
 		if (!cmd->error || !cmd->retries ||

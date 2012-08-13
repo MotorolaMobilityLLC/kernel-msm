@@ -496,7 +496,7 @@ int32_t imx111_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 
 	v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
 		NOTIFY_ISPIF_STREAM, (void *)ISPIF_STREAM(
-		PIX_0, ISPIF_OFF_IMMEDIATELY));
+		PIX_0, ISPIF_OFF_IMMEDIATELY, VFE0));
 	s_ctrl->func_tbl->sensor_stop_stream(s_ctrl);
 	msleep(30);
 	if (update_type == MSM_SENSOR_REG_INIT) {
@@ -538,7 +538,7 @@ int32_t imx111_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 				output_settings[res].op_pixel_clk);
 			v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
 				NOTIFY_ISPIF_STREAM, (void *)ISPIF_STREAM(
-				PIX_0, ISPIF_ON_FRAME_BOUNDARY));
+				PIX_0, ISPIF_ON_FRAME_BOUNDARY, VFE0));
 			s_ctrl->func_tbl->sensor_start_stream(s_ctrl);
 			msleep(30);
 		}
@@ -633,7 +633,7 @@ int32_t imx111_sensor_write_exp_gain1(struct msm_sensor_ctrl_t *s_ctrl,
 			output_settings[s_ctrl->curr_res].op_pixel_clk);
 		v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
 			NOTIFY_ISPIF_STREAM, (void *)ISPIF_STREAM(
-			PIX_0, ISPIF_ON_FRAME_BOUNDARY));
+			PIX_0, ISPIF_ON_FRAME_BOUNDARY, VFE0));
 		s_ctrl->func_tbl->sensor_start_stream(s_ctrl);
 	} else {
 		s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);

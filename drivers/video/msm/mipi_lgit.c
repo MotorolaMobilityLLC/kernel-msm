@@ -75,7 +75,7 @@ static int mipi_lgit_lcd_on(struct platform_device *pdev)
 		return -EINVAL;
 
 	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
-	ret = mipi_dsi_cmds_tx(mfd, &lgit_tx_buf,
+	ret = mipi_dsi_cmds_tx(&lgit_tx_buf,
 			mipi_lgit_pdata->power_on_set_1,
 			mipi_lgit_pdata->power_on_set_size_1);
 	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x14000000);
@@ -84,14 +84,9 @@ static int mipi_lgit_lcd_on(struct platform_device *pdev)
 		return ret;
 	}
 
-	mipi_dsi_op_mode_config(DSI_VIDEO_MODE);
-	mdp4_overlay_dsi_video_start();
-
-	mdelay(10);
-
 	if(!skip_init){
 		MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
-		ret = mipi_dsi_cmds_tx(mfd, &lgit_tx_buf,
+		ret = mipi_dsi_cmds_tx(&lgit_tx_buf,
 				mipi_lgit_pdata->power_on_set_2,
 				mipi_lgit_pdata->power_on_set_size_2);
 		MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x14000000);
@@ -109,7 +104,7 @@ static int mipi_lgit_lcd_on(struct platform_device *pdev)
 	}
 
 	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
-	ret = mipi_dsi_cmds_tx(mfd, &lgit_tx_buf,
+	ret = mipi_dsi_cmds_tx(&lgit_tx_buf,
 			mipi_lgit_pdata->power_on_set_3,
 			mipi_lgit_pdata->power_on_set_size_3);
 	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x14000000);
@@ -141,7 +136,7 @@ static int mipi_lgit_lcd_off(struct platform_device *pdev)
 		return -EINVAL;
 
 	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
-	ret = mipi_dsi_cmds_tx(mfd, &lgit_tx_buf,
+	ret = mipi_dsi_cmds_tx(&lgit_tx_buf,
 			mipi_lgit_pdata->power_off_set_1,
 			mipi_lgit_pdata->power_off_set_size_1);
 	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x14000000);
@@ -157,7 +152,7 @@ static int mipi_lgit_lcd_off(struct platform_device *pdev)
 	}
 
 	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
-	ret = mipi_dsi_cmds_tx(mfd, &lgit_tx_buf,
+	ret = mipi_dsi_cmds_tx(&lgit_tx_buf,
 			mipi_lgit_pdata->power_off_set_2,
 			mipi_lgit_pdata->power_off_set_size_2);
 	MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x14000000);

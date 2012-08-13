@@ -400,6 +400,54 @@ static void msmsdcc_reset_and_restore(struct msmsdcc_host *host)
 		host->dummy_52_needed = 0;
 }
 
+static void msmsdcc_reset_dpsm(struct msmsdcc_host *host)
+{
+	struct mmc_request *mrq = host->curr.mrq;
+
+	if (!mrq || !mrq->cmd || (!mrq->data && !host->pending_dpsm_reset))
+			goto out;
+
+	/*
+	 * For CMD24, if auto prog done is not supported defer
+	 * dpsm reset until prog done is received. Otherwise,
+	 * we poll here unnecessarily as TXACTIVE will not be
+	 * deasserted until DAT0 goes high.
+	 */
+	if ((mrq->cmd->opcode == MMC_WRITE_BLOCK) && !is_auto_prog_done(host)) {
+		host->pending_dpsm_reset = true;
+		goto out;
+	}
+
+	/* Make sure h/w (TX/RX) is inactive before resetting DPSM */
+	if (is_wait_for_tx_rx_active(host)) {
+		ktime_t start = ktime_get();
+
+		while (readl_relaxed(host->base + MMCISTATUS) &
+				(MCI_TXACTIVE | MCI_RXACTIVE)) {
+			/*
+			 * TX/RX active bits may be asserted for 4HCLK + 4MCLK
+			 * cycles (~11us) after data transfer due to clock mux
+			 * switching delays. Let's poll for 1ms and panic if
+			 * still active.
+			 */
+			if (ktime_to_us(ktime_sub(ktime_get(), start)) > 1000) {
+				pr_err("%s: %s still active\n",
+					mmc_hostname(host->mmc),
+					readl_relaxed(host->base + MMCISTATUS)
+					& MCI_TXACTIVE ? "TX" : "RX");
+				msmsdcc_dump_sdcc_state(host);
+				BUG();
+			}
+		}
+	}
+
+	writel_relaxed(0, host->base + MMCIDATACTRL);
+	msmsdcc_sync_reg_wr(host); /* Allow the DPSM to be reset */
+	host->pending_dpsm_reset = false;
+out:
+	return;
+}
+
 static int
 msmsdcc_request_end(struct msmsdcc_host *host, struct mmc_request *mrq)
 {
@@ -413,6 +461,8 @@ msmsdcc_request_end(struct msmsdcc_host *host, struct mmc_request *mrq)
 		mrq->data->bytes_xfered = host->curr.data_xfered;
 	if (mrq->cmd->error == -ETIMEDOUT)
 		mdelay(5);
+
+	msmsdcc_reset_dpsm(host);
 
 	/* Clear current request information as current request has ended */
 	memset(&host->curr, 0, sizeof(struct msmsdcc_curr_req));
@@ -435,8 +485,6 @@ msmsdcc_stop_data(struct msmsdcc_host *host)
 	host->curr.got_dataend = 0;
 	host->curr.wait_for_auto_prog_done = false;
 	host->curr.got_auto_prog_done = false;
-	writel_relaxed(0, host->base + MMCIDATACTRL);
-	msmsdcc_sync_reg_wr(host); /* Allow the DPSM to be reset */
 }
 
 static inline uint32_t msmsdcc_fifo_addr(struct msmsdcc_host *host)
@@ -582,6 +630,7 @@ msmsdcc_dma_complete_tlet(unsigned long data)
 		if (!mrq->data->stop || mrq->cmd->error ||
 			(mrq->sbc && !mrq->data->error)) {
 			mrq->data->bytes_xfered = host->curr.data_xfered;
+			msmsdcc_reset_dpsm(host);
 			del_timer(&host->req_tout_timer);
 			/*
 			 * Clear current request information as current
@@ -742,6 +791,7 @@ static void msmsdcc_sps_complete_tlet(unsigned long data)
 		if (!mrq->data->stop || mrq->cmd->error ||
 			(mrq->sbc && !mrq->data->error)) {
 			mrq->data->bytes_xfered = host->curr.data_xfered;
+			msmsdcc_reset_dpsm(host);
 			del_timer(&host->req_tout_timer);
 			/*
 			 * Clear current request information as current
@@ -1136,13 +1186,19 @@ msmsdcc_start_command_deferred(struct msmsdcc_host *host,
 		}
 	}
 
-	/* Clear CDR_EN bit for write operations */
-	if (host->tuning_needed && cmd->mrq->data &&
-			(cmd->mrq->data->flags & MMC_DATA_WRITE))
-		writel_relaxed((readl_relaxed(host->base + MCI_DLL_CONFIG) &
-				~MCI_CDR_EN), host->base + MCI_DLL_CONFIG);
+	if (cmd->mrq->data && (cmd->mrq->data->flags & MMC_DATA_READ))
+		writel_relaxed((readl_relaxed(host->base +
+				MCI_DLL_CONFIG) | MCI_CDR_EN),
+				host->base + MCI_DLL_CONFIG);
+	else
+		/* Clear CDR_EN bit for non read operations */
+		writel_relaxed((readl_relaxed(host->base +
+				MCI_DLL_CONFIG) & ~MCI_CDR_EN),
+				host->base + MCI_DLL_CONFIG);
 
-	if ((cmd->flags & MMC_RSP_R1B) == MMC_RSP_R1B) {
+	if (((cmd->flags & MMC_RSP_R1B) == MMC_RSP_R1B) ||
+			(cmd->opcode == MMC_SEND_STATUS &&
+			 !(cmd->flags & MMC_CMD_ADTC))) {
 		*c |= MCI_CPSM_PROGENA;
 		host->prog_enable = 1;
 	}
@@ -3083,8 +3139,10 @@ msmsdcc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	 * Select the controller timing mode according
 	 * to current bus speed mode
 	 */
-	if ((ios->timing == MMC_TIMING_UHS_SDR104) ||
-		(ios->timing == MMC_TIMING_MMC_HS200)) {
+	if (host->clk_rate > (100 * 1000 * 1000) &&
+	    (ios->timing == MMC_TIMING_UHS_SDR104 ||
+	    ios->timing == MMC_TIMING_MMC_HS200)) {
+		/* Card clock frequency must be > 100MHz to enable tuning */
 		clk |= (4 << 14);
 		host->tuning_needed = 1;
 	} else if (ios->timing == MMC_TIMING_UHS_DDR50) {
@@ -3165,7 +3223,7 @@ static int msmsdcc_get_ro(struct mmc_host *mmc)
 
 	if (host->plat->wpswitch) {
 		status = host->plat->wpswitch(mmc_dev(mmc));
-	} else if (host->plat->wpswitch_gpio) {
+	} else if (gpio_is_valid(host->plat->wpswitch_gpio)) {
 		status = gpio_request(host->plat->wpswitch_gpio,
 					"SD_WP_Switch");
 		if (status) {
@@ -3969,7 +4027,7 @@ msmsdcc_check_status(unsigned long data)
 	struct msmsdcc_host *host = (struct msmsdcc_host *)data;
 	unsigned int status;
 
-	if (host->plat->status || host->plat->status_gpio) {
+	if (host->plat->status || gpio_is_valid(host->plat->status_gpio)) {
 		if (host->plat->status)
 			status = host->plat->status(mmc_dev(host->mmc));
 		else
@@ -5006,12 +5064,33 @@ err:
 	return ret;
 }
 
+static void msmsdcc_dt_get_cd_wp_gpio(struct device *dev,
+		struct mmc_platform_data *pdata)
+{
+	enum of_gpio_flags flags = OF_GPIO_ACTIVE_LOW;
+	struct device_node *np = dev->of_node;
+
+	pdata->status_gpio = of_get_named_gpio_flags(np,
+			"cd-gpios", 0, &flags);
+	if (gpio_is_valid(pdata->status_gpio)) {
+		pdata->status_irq = gpio_to_irq(pdata->status_gpio);
+		pdata->is_status_gpio_active_low = flags & OF_GPIO_ACTIVE_LOW;
+	}
+
+	pdata->wpswitch_gpio = of_get_named_gpio_flags(np,
+			"wp-gpios", 0, &flags);
+	if (gpio_is_valid(pdata->wpswitch_gpio))
+		pdata->is_wpswitch_active_low = flags & OF_GPIO_ACTIVE_LOW;
+}
+
 static int msmsdcc_dt_parse_gpio_info(struct device *dev,
 		struct mmc_platform_data *pdata)
 {
 	int ret = 0, id = 0, cnt, i;
 	struct msm_mmc_pin_data *pin_data;
 	struct device_node *np = dev->of_node;
+
+	msmsdcc_dt_get_cd_wp_gpio(dev, pdata);
 
 	pin_data = devm_kzalloc(dev, sizeof(*pin_data), GFP_KERNEL);
 	if (!pin_data) {
@@ -5655,7 +5734,12 @@ msmsdcc_probe(struct platform_device *pdev)
 	 * Setup card detect change
 	 */
 
-	if (plat->status || plat->status_gpio) {
+	if (!plat->status_gpio)
+		plat->status_gpio = -ENOENT;
+	if (!plat->wpswitch_gpio)
+		plat->wpswitch_gpio = -ENOENT;
+
+	if (plat->status || gpio_is_valid(plat->status_gpio)) {
 		if (plat->status)
 			host->oldstat = plat->status(mmc_dev(host->mmc));
 		else

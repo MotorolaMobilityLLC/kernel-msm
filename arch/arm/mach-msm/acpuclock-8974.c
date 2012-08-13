@@ -33,20 +33,26 @@ static struct hfpll_data hfpll_data __initdata = {
 	.l_offset = 0x04,
 	.m_offset = 0x08,
 	.n_offset = 0x0C,
+	.has_user_reg = true,
+	.user_offset = 0x10,
 	.config_offset = 0x14,
-	/* TODO: Verify magic number for 8974 when available. */
-	.config_val = 0x7845C665,
+	/* TODO: Verify magic numbers when final values are available. */
+	.user_val = 0x8,
+	.config_val = 0x04D0405D,
+	.low_vco_l_max = 65,
 	.low_vdd_l_max = 52,
+	.nom_vdd_l_max = 104,
 	.vdd[HFPLL_VDD_NONE] = LVL_NONE,
 	.vdd[HFPLL_VDD_LOW]  = LVL_LOW,
 	.vdd[HFPLL_VDD_NOM]  = LVL_NOM,
+	.vdd[HFPLL_VDD_HIGH] = LVL_HIGH,
 };
 
 static struct scalable scalable[] __initdata = {
 	[CPU0] = {
 		.hfpll_phys_base = 0xF908A000,
 		.l2cpmr_iaddr = 0x4501,
-		.vreg[VREG_CORE] = { "krait0",     1050000, 3200000 },
+		.vreg[VREG_CORE] = { "krait0",     1050000 },
 		.vreg[VREG_MEM]  = { "krait0_mem", 1050000 },
 		.vreg[VREG_DIG]  = { "krait0_dig", LVL_HIGH },
 		.vreg[VREG_HFPLL_A] = { "krait0_hfpll_a", 2150000 },
@@ -55,7 +61,7 @@ static struct scalable scalable[] __initdata = {
 	[CPU1] = {
 		.hfpll_phys_base = 0xF909A000,
 		.l2cpmr_iaddr = 0x5501,
-		.vreg[VREG_CORE] = { "krait1",     1050000, 3200000 },
+		.vreg[VREG_CORE] = { "krait1",     1050000 },
 		.vreg[VREG_MEM]  = { "krait1_mem", 1050000 },
 		.vreg[VREG_DIG]  = { "krait1_dig", LVL_HIGH },
 		.vreg[VREG_HFPLL_A] = { "krait1_hfpll_a", 2150000 },
@@ -64,7 +70,7 @@ static struct scalable scalable[] __initdata = {
 	[CPU2] = {
 		.hfpll_phys_base = 0xF90AA000,
 		.l2cpmr_iaddr = 0x6501,
-		.vreg[VREG_CORE] = { "krait2",     1050000, 3200000 },
+		.vreg[VREG_CORE] = { "krait2",     1050000 },
 		.vreg[VREG_MEM]  = { "krait2_mem", 1050000 },
 		.vreg[VREG_DIG]  = { "krait2_dig", LVL_HIGH },
 		.vreg[VREG_HFPLL_A] = { "krait2_hfpll_a", 2150000 },
@@ -73,7 +79,7 @@ static struct scalable scalable[] __initdata = {
 	[CPU3] = {
 		.hfpll_phys_base = 0xF90BA000,
 		.l2cpmr_iaddr = 0x7501,
-		.vreg[VREG_CORE] = { "krait3",     1050000, 3200000 },
+		.vreg[VREG_CORE] = { "krait3",     1050000 },
 		.vreg[VREG_MEM]  = { "krait3_mem", 1050000 },
 		.vreg[VREG_DIG]  = { "krait3_dig", LVL_HIGH },
 		.vreg[VREG_HFPLL_A] = { "krait3_hfpll_a", 2150000 },
@@ -103,33 +109,31 @@ static struct msm_bus_scale_pdata bus_scale_data __initdata = {
 };
 
 static struct l2_level l2_freq_tbl[] __initdata = {
-	[0]  = { {STBY_KHZ, QSB,   0, 0,   0 }, LVL_LOW, 1050000, 0 },
-	[1]  = { {  300000, PLL_0, 0, 2,   0 }, LVL_LOW, 1050000, 2 },
-	[2]  = { {  384000, HFPLL, 2, 0,  40 }, LVL_NOM, 1050000, 2 },
-	[3]  = { {  460800, HFPLL, 2, 0,  48 }, LVL_NOM, 1050000, 2 },
-	[4]  = { {  537600, HFPLL, 1, 0,  28 }, LVL_NOM, 1050000, 2 },
-	[5]  = { {  576000, HFPLL, 1, 0,  30 }, LVL_NOM, 1050000, 3 },
-	[6]  = { {  652800, HFPLL, 1, 0,  34 }, LVL_NOM, 1050000, 3 },
-	[7]  = { {  729600, HFPLL, 1, 0,  38 }, LVL_NOM, 1050000, 3 },
-	[8]  = { {  806400, HFPLL, 1, 0,  42 }, LVL_NOM, 1050000, 3 },
-	[9]  = { {  883200, HFPLL, 1, 0,  46 }, LVL_NOM, 1050000, 4 },
-	[10] = { {  960000, HFPLL, 1, 0,  50 }, LVL_NOM, 1050000, 4 },
-	[11] = { { 1036800, HFPLL, 1, 0,  54 }, LVL_NOM, 1050000, 4 },
+	[0]  = { {  300000, PLL_0, 0, 2,   0 }, LVL_LOW, 1050000, 2 },
+	[1]  = { {  384000, HFPLL, 2, 0,  40 }, LVL_NOM, 1050000, 2 },
+	[2]  = { {  460800, HFPLL, 2, 0,  48 }, LVL_NOM, 1050000, 2 },
+	[3]  = { {  537600, HFPLL, 1, 0,  28 }, LVL_NOM, 1050000, 2 },
+	[4]  = { {  576000, HFPLL, 1, 0,  30 }, LVL_NOM, 1050000, 3 },
+	[5]  = { {  652800, HFPLL, 1, 0,  34 }, LVL_NOM, 1050000, 3 },
+	[6]  = { {  729600, HFPLL, 1, 0,  38 }, LVL_NOM, 1050000, 3 },
+	[7]  = { {  806400, HFPLL, 1, 0,  42 }, LVL_NOM, 1050000, 3 },
+	[8]  = { {  883200, HFPLL, 1, 0,  46 }, LVL_NOM, 1050000, 4 },
+	[9]  = { {  960000, HFPLL, 1, 0,  50 }, LVL_NOM, 1050000, 4 },
+	[10] = { { 1036800, HFPLL, 1, 0,  54 }, LVL_NOM, 1050000, 4 },
 };
 
 static struct acpu_level acpu_freq_tbl[] __initdata = {
-	{ 0, {STBY_KHZ, QSB,   0, 0,   0 }, L2(0),  1050000 },
-	{ 1, {  300000, PLL_0, 0, 2,   0 }, L2(1),  1050000 },
-	{ 1, {  384000, HFPLL, 2, 0,  40 }, L2(2),  1050000 },
-	{ 1, {  460800, HFPLL, 2, 0,  48 }, L2(3),  1050000 },
-	{ 1, {  537600, HFPLL, 1, 0,  28 }, L2(4),  1050000 },
-	{ 1, {  576000, HFPLL, 1, 0,  30 }, L2(5),  1050000 },
-	{ 1, {  652800, HFPLL, 1, 0,  34 }, L2(6),  1050000 },
-	{ 1, {  729600, HFPLL, 1, 0,  38 }, L2(7),  1050000 },
-	{ 1, {  806400, HFPLL, 1, 0,  42 }, L2(8),  1050000 },
-	{ 1, {  883200, HFPLL, 1, 0,  46 }, L2(9),  1050000 },
-	{ 1, {  960000, HFPLL, 1, 0,  50 }, L2(10), 1050000 },
-	{ 1, { 1036800, HFPLL, 1, 0,  54 }, L2(11), 1050000 },
+	{ 1, {  300000, PLL_0, 0, 2,   0 }, L2(0),  1050000, 3200000 },
+	{ 1, {  384000, HFPLL, 2, 0,  40 }, L2(1),  1050000, 3200000 },
+	{ 1, {  460800, HFPLL, 2, 0,  48 }, L2(2),  1050000, 3200000 },
+	{ 1, {  537600, HFPLL, 1, 0,  28 }, L2(3),  1050000, 3200000 },
+	{ 1, {  576000, HFPLL, 1, 0,  30 }, L2(4),  1050000, 3200000 },
+	{ 1, {  652800, HFPLL, 1, 0,  34 }, L2(5),  1050000, 3200000 },
+	{ 1, {  729600, HFPLL, 1, 0,  38 }, L2(6),  1050000, 3200000 },
+	{ 1, {  806400, HFPLL, 1, 0,  42 }, L2(7),  1050000, 3200000 },
+	{ 1, {  883200, HFPLL, 1, 0,  46 }, L2(8),  1050000, 3200000 },
+	{ 1, {  960000, HFPLL, 1, 0,  50 }, L2(9),  1050000, 3200000 },
+	{ 1, { 1036800, HFPLL, 1, 0,  54 }, L2(10), 1050000, 3200000 },
 	{ 0, { 0 } }
 };
 
@@ -148,6 +152,7 @@ static struct acpuclk_krait_params acpuclk_8974_params __initdata = {
 	.l2_freq_tbl_size = sizeof(l2_freq_tbl),
 	.bus_scale = &bus_scale_data,
 	.qfprom_phys_base = 0xFC4A8000,
+	.stby_khz = 300000,
 };
 
 static int __init acpuclk_8974_probe(struct platform_device *pdev)

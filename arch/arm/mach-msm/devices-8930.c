@@ -30,6 +30,7 @@
 #include "devices.h"
 #include "rpm_log.h"
 #include "rpm_stats.h"
+#include "rpm_rbcpr_stats.h"
 #include "footswitch.h"
 
 #ifdef CONFIG_MSM_MPM
@@ -287,6 +288,31 @@ struct platform_device msm8930_rpm_stat_device = {
 	},
 };
 
+static struct resource msm_rpm_rbcpr_resource = {
+	.start = 0x0010CB00,
+	.end = 0x0010CB00 + SZ_8K - 1,
+	.flags = IORESOURCE_MEM,
+};
+
+static struct msm_rpmrbcpr_platform_data msm_rpm_rbcpr_pdata = {
+	.rbcpr_data = {
+		.upside_steps = 1,
+		.downside_steps = 2,
+		.svs_voltage = 1050000,
+		.nominal_voltage = 1162500,
+		.turbo_voltage = 1287500,
+	},
+};
+
+struct platform_device msm8930_rpm_rbcpr_device = {
+	.name = "msm_rpm_rbcpr",
+	.id = -1,
+	.dev = {
+		.platform_data = &msm_rpm_rbcpr_pdata,
+	},
+	.resource = &msm_rpm_rbcpr_resource,
+};
+
 static int msm8930_LPM_latency = 1000; /* >100 usec for WFI */
 
 struct platform_device msm8930_cpu_idle_device = {
@@ -362,6 +388,11 @@ struct platform_device msm8627_device_acpuclk = {
 
 struct platform_device msm8930_device_acpuclk = {
 	.name		= "acpuclk-8930",
+	.id		= -1,
+};
+
+struct platform_device msm8930aa_device_acpuclk = {
+	.name		= "acpuclk-8930aa",
 	.id		= -1,
 };
 
@@ -636,6 +667,58 @@ static struct msm_bus_vectors vidc_vdec_1080p_vectors[] = {
 		.ib  = 10000000,
 	},
 };
+static struct msm_bus_vectors vidc_venc_1080p_turbo_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 222298112,
+		.ib  = 3522000000U,
+	},
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT1,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 330301440,
+		.ib  = 3522000000U,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 2500000,
+		.ib  = 700000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 2500000,
+		.ib  = 10000000,
+	},
+};
+static struct msm_bus_vectors vidc_vdec_1080p_turbo_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 222298112,
+		.ib  = 3522000000U,
+	},
+	{
+		.src = MSM_BUS_MASTER_HD_CODEC_PORT1,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 330301440,
+		.ib  = 3522000000U,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 2500000,
+		.ib  = 700000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_AMPSS_M0,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 2500000,
+		.ib  = 10000000,
+	},
+};
 
 static struct msm_bus_paths vidc_bus_client_config[] = {
 	{
@@ -665,6 +748,14 @@ static struct msm_bus_paths vidc_bus_client_config[] = {
 	{
 		ARRAY_SIZE(vidc_vdec_1080p_vectors),
 		vidc_vdec_1080p_vectors,
+	},
+	{
+		ARRAY_SIZE(vidc_venc_1080p_turbo_vectors),
+		vidc_vdec_1080p_turbo_vectors,
+	},
+	{
+		ARRAY_SIZE(vidc_vdec_1080p_turbo_vectors),
+		vidc_vdec_1080p_turbo_vectors,
 	},
 };
 

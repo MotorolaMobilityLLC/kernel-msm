@@ -34,6 +34,128 @@
 #define V4L2_EVENT_SEQ_CHANGED_INSUFFICIENT \
 		V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_INSUFFICIENT
 
+#define NUM_MBS_PER_SEC(__height, __width, __fps) ({\
+	(__height >> 4) * (__width >> 4) * __fps; \
+})
+
+#define VIDC_BUS_LOAD(__height, __width, __fps, __br) ({\
+	__height * __width * __fps; \
+})
+
+#define GET_NUM_MBS(__h, __w) ({\
+	u32 __mbs = (__h >> 4) * (__w >> 4);\
+	__mbs;\
+})
+
+/*While adding entries to this array make sure
+ * they are in descending order.
+ * Look @ msm_comm_get_load function*/
+static const u32 clocks_table[][2] = {
+	{979200, 410000000},
+	{560145, 266670000},
+	{421161, 200000000},
+	{243000, 133330000},
+	{108000, 100000000},
+	{36000, 50000000},
+};
+
+static const u32 bus_table[] = {
+	0,
+	9216000,
+	27648000,
+	62208000,
+};
+
+static int msm_comm_get_bus_load(struct msm_vidc_core *core)
+{
+	struct msm_vidc_inst *inst = NULL;
+	int load = 0;
+	if (!core) {
+		pr_err("Invalid args: %p\n", core);
+		return -EINVAL;
+	}
+	list_for_each_entry(inst, &core->instances, list) {
+		load += VIDC_BUS_LOAD(inst->prop.height,
+				inst->prop.width, inst->prop.fps,
+				2000000);
+	}
+	return load;
+}
+
+static int get_bus_vector(int load)
+{
+	int num_rows = sizeof(bus_table)/(sizeof(u32));
+	int i;
+	for (i = num_rows - 1; i > 0; i--) {
+		if ((load >= bus_table[i]) || (i == 1))
+			break;
+	}
+	pr_err("Required bus = %d\n", i);
+	return i;
+}
+
+int msm_comm_scale_bus(struct msm_vidc_core *core)
+{
+	int load;
+	int rc = 0;
+	if (!core) {
+		pr_err("Invalid args: %p\n", core);
+		return -EINVAL;
+	}
+	load = msm_comm_get_bus_load(core);
+	if (load <= 0) {
+		pr_err("Failed to scale bus for %d load\n",
+			load);
+		goto fail_scale_bus;
+	}
+	rc = msm_bus_scale_client_update_request(
+			core->resources.bus_info.vcodec_handle,
+			get_bus_vector(load));
+	if (rc) {
+		pr_err("Failed to scale bus: %d\n", rc);
+		goto fail_scale_bus;
+	}
+	rc = msm_bus_scale_client_update_request(
+			core->resources.bus_info.ocmem_handle,
+			get_bus_vector(load));
+	if (rc) {
+		pr_err("Failed to scale bus: %d\n", rc);
+		goto fail_scale_bus;
+	}
+fail_scale_bus:
+	return rc;
+}
+
+static int msm_comm_get_load(struct msm_vidc_core *core)
+{
+	struct msm_vidc_inst *inst = NULL;
+	int num_mbs_per_sec = 0;
+	if (!core) {
+		pr_err("Invalid args: %p\n", core);
+		return -EINVAL;
+	}
+	list_for_each_entry(inst, &core->instances, list)
+		num_mbs_per_sec += NUM_MBS_PER_SEC(inst->prop.height,
+				inst->prop.width, inst->prop.fps);
+	return num_mbs_per_sec;
+}
+
+static unsigned long get_clock_rate(struct core_clock *clock,
+	int num_mbs_per_sec)
+{
+	int num_rows = clock->count;
+	struct load_freq_table *table = clock->load_freq_tbl;
+	unsigned long ret = table[num_rows-1].freq;
+	int i;
+	for (i = 0; i < num_rows; i++) {
+		if (num_mbs_per_sec > table[i].load)
+			break;
+		ret = table[i].freq;
+	}
+	pr_err("Required clock rate = %lu\n", ret);
+	return ret;
+}
+
 struct msm_vidc_core *get_vidc_core(int core_id)
 {
 	struct msm_vidc_core *core;
@@ -184,6 +306,23 @@ static void handle_sys_init_done(enum command_response cmd, void *data)
 		pr_err("sys_init_done message not proper\n");
 		return;
 	}
+}
+
+static void handle_sys_release_res_done(
+	enum command_response cmd, void *data)
+{
+	struct msm_vidc_cb_cmd_done *response = data;
+	struct msm_vidc_core *core;
+	if (!response) {
+		pr_err("Failed to get valid response for sys init\n");
+		return;
+	}
+	core = get_vidc_core(response->device_id);
+	if (!core) {
+		pr_err("Wrong device_id received\n");
+		return;
+	}
+	complete(&core->completions[SYS_MSG_INDEX(cmd)]);
 }
 
 static inline void change_inst_state(struct msm_vidc_inst *inst,
@@ -474,6 +613,9 @@ void handle_cmd_response(enum command_response cmd, void *data)
 	case SYS_INIT_DONE:
 		handle_sys_init_done(cmd, data);
 		break;
+	case RELEASE_RESOURCE_DONE:
+		handle_sys_release_res_done(cmd, data);
+		break;
 	case SESSION_INIT_DONE:
 		handle_session_init_done(cmd, data);
 		break;
@@ -512,12 +654,84 @@ void handle_cmd_response(enum command_response cmd, void *data)
 		break;
 	}
 }
+
+int msm_comm_scale_clocks(struct msm_vidc_core *core)
+{
+	int num_mbs_per_sec;
+	int rc = 0;
+	if (!core) {
+		pr_err("Invalid args: %p\n", core);
+		return -EINVAL;
+	}
+	num_mbs_per_sec = msm_comm_get_load(core);
+	pr_err("num_mbs_per_sec = %d\n", num_mbs_per_sec);
+	rc = clk_set_rate(core->resources.clock[VCODEC_CLK].clk,
+			get_clock_rate(&core->resources.clock[VCODEC_CLK],
+				num_mbs_per_sec));
+	if (rc) {
+		pr_err("Failed to set clock rate: %d\n", rc);
+		goto fail_clk_set_rate;
+	}
+	rc = msm_comm_scale_bus(core);
+	if (rc)
+		pr_err("Failed to scale bus bandwidth\n");
+fail_clk_set_rate:
+	return rc;
+}
+
+static inline int msm_comm_enable_clks(struct msm_vidc_core *core)
+{
+	int i;
+	struct core_clock *cl;
+	int rc = 0;
+	if (!core) {
+		pr_err("Invalid params: %p\n", core);
+		return -EINVAL;
+	}
+	for (i = 0; i < VCODEC_MAX_CLKS; i++) {
+		cl = &core->resources.clock[i];
+		rc = clk_prepare_enable(cl->clk);
+		if (rc) {
+			pr_err("Failed to enable clocks\n");
+			goto fail_clk_enable;
+		} else {
+			pr_err("Clock: %s enabled\n", cl->name);
+		}
+	}
+	return rc;
+fail_clk_enable:
+	for (; i >= 0; i--) {
+		cl = &core->resources.clock[i];
+		clk_disable_unprepare(cl->clk);
+	}
+	return rc;
+}
+
+static inline void msm_comm_disable_clks(struct msm_vidc_core *core)
+{
+	int i;
+	struct core_clock *cl;
+	if (!core) {
+		pr_err("Invalid params: %p\n", core);
+		return;
+	}
+	for (i = 0; i < VCODEC_MAX_CLKS; i++) {
+		cl = &core->resources.clock[i];
+		clk_disable_unprepare(cl->clk);
+	}
+}
+
 static int msm_comm_load_fw(struct msm_vidc_core *core)
 {
 	int rc = 0;
 	if (!core) {
 		pr_err("Invalid paramter: %p\n", core);
 		return -EINVAL;
+	}
+	rc = msm_comm_scale_clocks(core);
+	if (rc) {
+		pr_err("Failed to set clock rate: %d\n", rc);
+		goto fail_pil_get;
 	}
 
 	if (!core->resources.fw.cookie)
@@ -528,6 +742,13 @@ static int msm_comm_load_fw(struct msm_vidc_core *core)
 		rc = -ENOMEM;
 		goto fail_pil_get;
 	}
+
+	rc = msm_comm_enable_clks(core);
+	if (rc) {
+		pr_err("Failed to enable clocks: %d\n", rc);
+		goto fail_enable_clks;
+	}
+
 	rc = msm_comm_iommu_attach(core);
 	if (rc) {
 		pr_err("Failed to attach iommu");
@@ -535,6 +756,8 @@ static int msm_comm_load_fw(struct msm_vidc_core *core)
 	}
 	return rc;
 fail_iommu_attach:
+	msm_comm_disable_clks(core);
+fail_enable_clks:
 	pil_put(core->resources.fw.cookie);
 	core->resources.fw.cookie = NULL;
 fail_pil_get:
@@ -551,7 +774,150 @@ static void msm_comm_unload_fw(struct msm_vidc_core *core)
 		pil_put(core->resources.fw.cookie);
 		core->resources.fw.cookie = NULL;
 		msm_comm_iommu_detach(core);
+		msm_comm_disable_clks(core);
 	}
+}
+
+static inline unsigned long get_ocmem_requirement(u32 height, u32 width)
+{
+	int num_mbs = 0;
+	num_mbs = GET_NUM_MBS(height, width);
+	/*TODO: This should be changes once the numbers are
+	 * available from firmware*/
+	return 512 * 1024;
+}
+
+static int msm_comm_set_ocmem(struct msm_vidc_core *core,
+	struct ocmem_buf *ocmem)
+{
+	struct vidc_resource_hdr rhdr;
+	int rc = 0;
+	if (!core || !ocmem) {
+		pr_err("Invalid params, core:%p, ocmem: %p\n",
+			core, ocmem);
+		return -EINVAL;
+	}
+	rhdr.resource_id = VIDC_RESOURCE_OCMEM;
+	rhdr.resource_handle = (u32) &core->resources.ocmem;
+	rhdr.size =	ocmem->len;
+	rc = vidc_hal_core_set_resource(core->device, &rhdr, ocmem);
+	if (rc) {
+		pr_err("Failed to set OCMEM on driver\n");
+		goto ocmem_set_failed;
+	}
+	pr_debug("OCMEM set, addr = %lx, size: %ld\n",
+		ocmem->addr, ocmem->len);
+ocmem_set_failed:
+	return rc;
+}
+
+static int msm_comm_unset_ocmem(struct msm_vidc_core *core)
+{
+	struct vidc_resource_hdr rhdr;
+	int rc = 0;
+	if (!core || !core->resources.ocmem.buf) {
+		pr_err("Invalid params, core:%p\n",	core);
+		return -EINVAL;
+	}
+	rhdr.resource_id = VIDC_RESOURCE_OCMEM;
+	rhdr.resource_handle = (u32) &core->resources.ocmem;
+	init_completion(
+		&core->completions[SYS_MSG_INDEX(RELEASE_RESOURCE_DONE)]);
+	rc = vidc_hal_core_release_resource(core->device, &rhdr);
+	if (rc) {
+		pr_err("Failed to set OCMEM on driver\n");
+		goto release_ocmem_failed;
+	}
+	rc = wait_for_completion_timeout(
+		&core->completions[SYS_MSG_INDEX(RELEASE_RESOURCE_DONE)],
+		msecs_to_jiffies(HW_RESPONSE_TIMEOUT));
+	if (!rc) {
+		pr_err("Wait interrupted or timeout: %d\n", rc);
+		rc = -EIO;
+		goto release_ocmem_failed;
+	}
+release_ocmem_failed:
+	return rc;
+}
+
+static int msm_comm_alloc_ocmem(struct msm_vidc_core *core,
+		unsigned long size)
+{
+	int rc = 0;
+	unsigned long flags;
+	struct ocmem_buf *ocmem_buffer;
+	if (!core || !size) {
+		pr_err("Invalid param, core: %p, size: %lu\n", core, size);
+		return -EINVAL;
+	}
+	spin_lock_irqsave(&core->lock, flags);
+	ocmem_buffer = core->resources.ocmem.buf;
+	if (!ocmem_buffer ||
+		ocmem_buffer->len < size) {
+		ocmem_buffer = ocmem_allocate_nb(OCMEM_VIDEO, size);
+		if (IS_ERR_OR_NULL(ocmem_buffer)) {
+			pr_err("ocmem_allocate_nb failed: %d\n",
+				(u32) ocmem_buffer);
+			rc = -ENOMEM;
+		}
+		core->resources.ocmem.buf = ocmem_buffer;
+		rc = msm_comm_set_ocmem(core, ocmem_buffer);
+		if (rc) {
+			pr_err("Failed to set ocmem: %d\n", rc);
+			goto ocmem_set_failed;
+		}
+	} else
+		pr_debug("OCMEM is enough. reqd: %lu, available: %lu\n",
+			size, ocmem_buffer->len);
+
+ocmem_set_failed:
+	spin_unlock_irqrestore(&core->lock, flags);
+	return rc;
+}
+
+static int msm_comm_free_ocmem(struct msm_vidc_core *core)
+{
+	int rc = 0;
+	unsigned long flags;
+	spin_lock_irqsave(&core->lock, flags);
+	if (core->resources.ocmem.buf) {
+		rc = ocmem_free(OCMEM_VIDEO, core->resources.ocmem.buf);
+		if (rc)
+			pr_err("Failed to free ocmem\n");
+	}
+	core->resources.ocmem.buf = NULL;
+	spin_unlock_irqrestore(&core->lock, flags);
+	return rc;
+}
+
+int msm_vidc_ocmem_notify_handler(struct notifier_block *this,
+		unsigned long event, void *data)
+{
+	struct ocmem_buf *buff = data;
+	struct msm_vidc_core *core;
+	struct msm_vidc_resources *resources;
+	struct on_chip_mem *ocmem;
+	int rc = NOTIFY_DONE;
+	if (event == OCMEM_ALLOC_GROW) {
+		ocmem = container_of(this, struct on_chip_mem, vidc_ocmem_nb);
+		if (!ocmem) {
+			pr_err("Wrong handler passed\n");
+			rc = NOTIFY_BAD;
+			goto bad_notfier;
+		}
+		resources = container_of(ocmem,
+			struct msm_vidc_resources, ocmem);
+		core = container_of(resources,
+			struct msm_vidc_core, resources);
+		if (msm_comm_set_ocmem(core, buff)) {
+			pr_err("Failed to set ocmem: %d\n", rc);
+			goto ocmem_set_failed;
+		}
+		rc = NOTIFY_OK;
+	}
+ocmem_set_failed:
+bad_notfier:
+	return rc;
 }
 
 static int msm_comm_init_core_done(struct msm_vidc_inst *inst)
@@ -601,7 +967,7 @@ static int msm_comm_init_core(struct msm_vidc_inst *inst)
 	rc = msm_comm_load_fw(core);
 	if (rc) {
 		pr_err("Failed to load video firmware\n");
-		goto fail_fw_download;
+		goto fail_load_fw;
 	}
 	init_completion(&core->completions[SYS_MSG_INDEX(SYS_INIT_DONE)]);
 	rc = vidc_hal_core_init(core->device,
@@ -619,7 +985,7 @@ core_already_inited:
 	return rc;
 fail_core_init:
 	msm_comm_unload_fw(core);
-fail_fw_download:
+fail_load_fw:
 	mutex_unlock(&core->sync_lock);
 	return rc;
 }
@@ -636,7 +1002,8 @@ static int msm_vidc_deinit_core(struct msm_vidc_inst *inst)
 		goto core_already_uninited;
 	}
 	if (list_empty(&core->instances)) {
-		pr_debug("Calling vidc_hal_core_release\n");
+		msm_comm_unset_ocmem(core);
+		msm_comm_free_ocmem(core);
 		rc = vidc_hal_core_release(core->device);
 		if (rc) {
 			pr_err("Failed to release core, id = %d\n", core->id);
@@ -754,10 +1121,16 @@ static int msm_vidc_load_resources(int flipped_state,
 	struct msm_vidc_inst *inst)
 {
 	int rc = 0;
+	u32 ocmem_sz = 0;
 	if (IS_ALREADY_IN_STATE(flipped_state, MSM_VIDC_LOAD_RESOURCES)) {
 		pr_err("inst: %p is already in state: %d\n", inst, inst->state);
 		goto exit;
 	}
+	ocmem_sz = get_ocmem_requirement(inst->height, inst->width);
+	rc = msm_comm_alloc_ocmem(inst->core, ocmem_sz);
+	if (rc)
+		pr_warn("Failed to allocate OCMEM. Performance will be impacted\n");
+
 	rc = vidc_hal_session_load_res((void *) inst->session);
 	if (rc) {
 		pr_err("Failed to send load resources\n");

@@ -1751,10 +1751,10 @@ static struct platform_device msm_tsens_device = {
 
 static struct msm_thermal_data msm_thermal_pdata = {
 	.sensor_id = 7,
-	.poll_ms = 1000,
-	.limit_temp = 60,
-	.temp_hysteresis = 10,
-	.limit_freq = 918000,
+	.poll_ms = 250,
+	.limit_temp_degC = 60,
+	.temp_hysteresis_degC = 10,
+	.freq_step = 2,
 };
 
 #define MSM_SHARED_RAM_PHYS 0x80000000
@@ -2190,6 +2190,9 @@ static struct platform_device *common_devices[] __initdata = {
 	&qseecom_device,
 #endif
 
+	&msm_8064_device_tsif[0],
+	&msm_8064_device_tsif[1],
+
 #if defined(CONFIG_CRYPTO_DEV_QCRYPTO) || \
 		defined(CONFIG_CRYPTO_DEV_QCRYPTO_MODULE)
 	&qcrypto_device,
@@ -2252,7 +2255,6 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm_gss,
 	&apq8064_rtb_device,
 	&apq8064_cpu_idle_device,
-	&apq8064_msm_gov_device,
 	&apq8064_device_cache_erp,
 	&msm8960_device_ebi1_ch0_erp,
 	&msm8960_device_ebi1_ch1_erp,
@@ -2270,19 +2272,6 @@ static struct platform_device *common_devices[] __initdata = {
 	&apq8064_iommu_domain_device,
 	&msm_tsens_device,
 	&apq8064_cache_dump_device,
-};
-
-static struct platform_device *sim_devices[] __initdata = {
-	&apq8064_device_uart_gsbi3,
-	&msm_device_sps_apq8064,
-};
-
-static struct platform_device *rumi3_devices[] __initdata = {
-	&apq8064_device_uart_gsbi1,
-	&msm_device_sps_apq8064,
-#ifdef CONFIG_MSM_ROTATOR
-	&msm_rotator_device,
-#endif
 };
 
 static struct platform_device *cdp_devices[] __initdata = {
@@ -2846,10 +2835,6 @@ static void __init register_i2c_devices(void)
 		mach_mask = I2C_FFA;
 	else if (machine_is_apq8064_liquid())
 		mach_mask = I2C_LIQUID;
-	else if (machine_is_apq8064_rumi3())
-		mach_mask = I2C_RUMI;
-	else if (machine_is_apq8064_sim())
-		mach_mask = I2C_SIM;
 	else if (PLATFORM_IS_MPQ8064())
 		mach_mask = I2C_MPQ_CDP;
 	else
@@ -2966,25 +2951,6 @@ static void __init apq8064_allocate_memory_regions(void)
 	apq8064_allocate_fb_region();
 }
 
-static void __init apq8064_sim_init(void)
-{
-	struct msm_watchdog_pdata *wdog_pdata = (struct msm_watchdog_pdata *)
-		&msm8064_device_watchdog.dev.platform_data;
-
-	wdog_pdata->bark_time = 15000;
-	apq8064_common_init();
-	platform_add_devices(sim_devices, ARRAY_SIZE(sim_devices));
-}
-
-static void __init apq8064_rumi3_init(void)
-{
-	apq8064_common_init();
-	ethernet_init();
-	msm_rotator_set_split_iommu_domain();
-	platform_add_devices(rumi3_devices, ARRAY_SIZE(rumi3_devices));
-	spi_register_board_info(spi_board_info, ARRAY_SIZE(spi_board_info));
-}
-
 static void __init apq8064_cdp_init(void)
 {
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
@@ -3023,27 +2989,6 @@ static void __init apq8064_cdp_init(void)
 		platform_device_register(&mpq_keypad_device);
 	}
 }
-
-MACHINE_START(APQ8064_SIM, "QCT APQ8064 SIMULATOR")
-	.map_io = apq8064_map_io,
-	.reserve = apq8064_reserve,
-	.init_irq = apq8064_init_irq,
-	.handle_irq = gic_handle_irq,
-	.timer = &msm_timer,
-	.init_machine = apq8064_sim_init,
-	.restart = msm_restart,
-MACHINE_END
-
-MACHINE_START(APQ8064_RUMI3, "QCT APQ8064 RUMI3")
-	.map_io = apq8064_map_io,
-	.reserve = apq8064_reserve,
-	.init_irq = apq8064_init_irq,
-	.handle_irq = gic_handle_irq,
-	.timer = &msm_timer,
-	.init_machine = apq8064_rumi3_init,
-	.init_early = apq8064_allocate_memory_regions,
-	.restart = msm_restart,
-MACHINE_END
 
 MACHINE_START(APQ8064_CDP, "QCT APQ8064 CDP")
 	.map_io = apq8064_map_io,
