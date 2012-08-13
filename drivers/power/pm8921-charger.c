@@ -4405,6 +4405,12 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	/* determine what state the charger is in */
 	determine_initial_state(chip);
 
+	rc = device_create_file(&pdev->dev, &dev_attr_charge);
+	if (rc) {
+		pr_err("Couldn't device_create_file charge! rc=%d\n",rc);
+		goto free_irq;
+	}
+
 	if (chip->update_time) {
 		INIT_DELAYED_WORK(&chip->update_heartbeat_work,
 							update_heartbeat);
@@ -4431,6 +4437,7 @@ static int __devexit pm8921_charger_remove(struct platform_device *pdev)
 {
 	struct pm8921_chg_chip *chip = platform_get_drvdata(pdev);
 
+	device_remove_file(&pdev->dev, &dev_attr_charge);
 	free_irqs(chip);
 	platform_set_drvdata(pdev, NULL);
 	the_chip = NULL;
