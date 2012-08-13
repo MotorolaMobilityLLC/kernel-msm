@@ -855,7 +855,7 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 		mfd->bl_level = temp;
 
 		while (!mfd->panel_power_on && time_out) {
-			msleep(1);
+			mdelay(1);
 			time_out --;
 		}
 		if (time_out == 0)
@@ -908,7 +908,7 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			if (pdata->get_backlight_on_status) {
 				while (pdata->get_backlight_on_status()
 						&& time_out) {
-					msleep(1);
+					mdelay(1);
 					time_out --;
 				}
 				if (time_out == 0)
@@ -1795,6 +1795,7 @@ static int msm_fb_pan_display(struct fb_var_screeninfo *var,
 		mdp_set_dma_pan_info(info, NULL, TRUE);
 		if (msm_fb_blank_sub(FB_BLANK_UNBLANK, info, mfd->op_enable)) {
 			pr_err("%s: can't turn on display!\n", __func__);
+			up(&msm_fb_pan_sem);
 			return -EINVAL;
 		}
 	}
