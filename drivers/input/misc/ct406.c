@@ -128,6 +128,7 @@ enum ct406_prox_mode {
 	CT406_PROX_MODE_SATURATED,
 	CT406_PROX_MODE_UNCOVERED,
 	CT406_PROX_MODE_COVERED,
+	CT406_PROX_MODE_STARTUP,
 };
 
 enum ct406_als_mode {
@@ -711,7 +712,10 @@ static int ct406_enable_als(struct ct406_data *ct)
 	int error;
 	u8 reg_data[5] = {0};
 
-	if (!ct->suspended && ct->als_mode != CT406_ALS_MODE_SUNLIGHT) {
+	if (ct->suspended && !ct->prox_enabled)
+		return 0;
+
+	if (ct->als_mode != CT406_ALS_MODE_SUNLIGHT) {
 		error = ct406_set_als_enable(ct, 0);
 		if (error) {
 			pr_err("%s: Unable to turn off ALS: %d\n",
@@ -863,7 +867,11 @@ static void ct406_measure_noise_floor(struct ct406_data *ct)
 		pr_info("%s: Noise floor is 0x%x\n", __func__,
 			ct->prox_noise_floor);
 
-	ct406_prox_mode_uncovered(ct);
+	ct->prox_mode = CT406_PROX_MODE_STARTUP;
+	ct->prox_low_threshold = 0;
+	ct->prox_high_threshold = 0;
+	ct406_write_prox_thresholds(ct);
+	pr_info("%s: Prox mode startup\n", __func__);
 
 	error = ct406_set_prox_enable(ct, 1);
 	if (error)
@@ -1007,6 +1015,19 @@ static void ct406_report_prox(struct ct406_data *ct)
 				CT406_PROXIMITY_FAR);
 			input_sync(ct->dev);
 			ct406_prox_mode_uncovered(ct);
+		}
+		break;
+	case CT406_PROX_MODE_STARTUP:
+		if (pdata < (ct->prox_noise_floor + ct->prox_covered_offset)) {
+			input_event(ct->dev, EV_MSC, MSC_RAW,
+				CT406_PROXIMITY_FAR);
+			input_sync(ct->dev);
+			ct406_prox_mode_uncovered(ct);
+		} else {
+			input_event(ct->dev, EV_MSC, MSC_RAW,
+				CT406_PROXIMITY_NEAR);
+			input_sync(ct->dev);
+			ct406_prox_mode_covered(ct);
 		}
 		break;
 	default:
@@ -1405,6 +1426,9 @@ static void ct406_work_func_locked(struct ct406_data *ct)
 
 	if (ct->prox_enabled && (reg_data[0] & CT406_STATUS_PINT))
 		ct406_report_prox(ct);
+
+	if (ct->suspended)
+		ct406_disable_als(ct);
 }
 
 static void ct406_work_func(struct work_struct *work)
