@@ -1347,14 +1347,11 @@ int akm8963_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		s_akm->layout = pdata->layout;
 		s_akm->outbit = pdata->outbit;
 		s_akm->rstn = pdata->gpio_RST;
+		s_akm->irq = pdata->gpio_IRQ;
 	} else {
-		/* Platform data is not available.
-		   Layout and Outbit information should
-		   be set by each application. */
-		dev_dbg(&client->dev, "%s: No platform data.", __func__);
-		s_akm->layout = 0;
-		s_akm->outbit = 0;
-		s_akm->rstn = 0;
+		/* Platform data is not available. */
+		dev_err(&client->dev, "%s: No platform data.", __func__);
+		goto exit_device_fail;
 	}
 
 	/***** I2C initialization *****/
@@ -1394,10 +1391,6 @@ int akm8963_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	for (i = 0; i < AKM_NUM_SENSORS; i++)
 		s_akm->delay[i] = -1;
-
-
-	/***** IRQ setup *****/
-	s_akm->irq = client->irq;
 
 	if (s_akm->irq == 0) {
 		dev_dbg(&client->dev, "%s: IRQ is not set.", __func__);
