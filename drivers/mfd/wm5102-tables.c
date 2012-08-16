@@ -598,7 +598,6 @@ const struct regmap_irq_chip wm5102_aod = {
 	.status_base = ARIZONA_AOD_IRQ1,
 	.mask_base = ARIZONA_AOD_IRQ_MASK_IRQ1,
 	.ack_base = ARIZONA_AOD_IRQ1,
-	.wake_base = ARIZONA_WAKE_CONTROL,
 	.num_regs = 1,
 	.irqs = wm5102_aod_irqs,
 	.num_irqs = ARRAY_SIZE(wm5102_aod_irqs),
