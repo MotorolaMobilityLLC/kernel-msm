@@ -381,7 +381,7 @@ static struct msm_sensor_output_info_t imx111_dimensions[] = {
 		.x_output = 0x0CD0, /* 3280 */
 		.y_output = 0x9A0, /* 2464 */
 		.line_length_pclk = 0xDD0, /* 3536 */
-		.frame_length_lines = 0x9D4, /* 2490 */
+		.frame_length_lines = 0x9BA, /* 2490 */
 		.vt_pixel_clk = 199200000,
 		.op_pixel_clk = 199200000,
 	},
@@ -430,8 +430,7 @@ static struct msm_camera_csi2_params imx111_csi_params = {
 	},
 	.csiphy_params = {
 		.lane_cnt = 2,
-		//.settle_cnt = 0x14,
-		.settle_cnt = 0x12,
+		.settle_cnt = 0x14,
 	},
 };
 
@@ -494,9 +493,6 @@ int32_t imx111_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 {
 	int32_t rc = 0;
 
-	v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
-		NOTIFY_ISPIF_STREAM, (void *)ISPIF_STREAM(
-		PIX_0, ISPIF_OFF_IMMEDIATELY, VFE0));
 	s_ctrl->func_tbl->sensor_stop_stream(s_ctrl);
 	msleep(30);
 	if (update_type == MSM_SENSOR_REG_INIT) {
@@ -523,8 +519,6 @@ int32_t imx111_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 				v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
 						NOTIFY_CSID_CFG,
 						&s_ctrl->curr_csi_params->csid_params);
-				v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
-							NOTIFY_CID_CHANGE, NULL);
 				mb();
 				v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
 						NOTIFY_CSIPHY_CFG,
@@ -536,9 +530,6 @@ int32_t imx111_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 			v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
 				NOTIFY_PCLK_CHANGE, &s_ctrl->msm_sensor_reg->
 				output_settings[res].op_pixel_clk);
-			v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
-				NOTIFY_ISPIF_STREAM, (void *)ISPIF_STREAM(
-				PIX_0, ISPIF_ON_FRAME_BOUNDARY, VFE0));
 			s_ctrl->func_tbl->sensor_start_stream(s_ctrl);
 			msleep(30);
 		}
@@ -618,8 +609,6 @@ int32_t imx111_sensor_write_exp_gain1(struct msm_sensor_ctrl_t *s_ctrl,
 			v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
 					NOTIFY_CSID_CFG,
 					&s_ctrl->curr_csi_params->csid_params);
-			v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
-						NOTIFY_CID_CHANGE, NULL);
 			mb();
 			v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
 					NOTIFY_CSIPHY_CFG,
@@ -631,9 +620,6 @@ int32_t imx111_sensor_write_exp_gain1(struct msm_sensor_ctrl_t *s_ctrl,
 		v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
 			NOTIFY_PCLK_CHANGE, &s_ctrl->msm_sensor_reg->
 			output_settings[s_ctrl->curr_res].op_pixel_clk);
-		v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
-			NOTIFY_ISPIF_STREAM, (void *)ISPIF_STREAM(
-			PIX_0, ISPIF_ON_FRAME_BOUNDARY, VFE0));
 		s_ctrl->func_tbl->sensor_start_stream(s_ctrl);
 	} else {
 		s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);
@@ -763,7 +749,7 @@ static int imx111_read_eeprom_data(struct msm_sensor_ctrl_t *s_ctrl, struct sens
 
 	memset(eepromdata, 0, sizeof(eepromdata));
 	if(imx_i2c_read_eeprom_burst(IMX111_EEPROM_SADDR | 0x3 /* page_no:3 */,
-		eepromdata, ROLLOFF_CALDATA_SIZE + BLUE_START - IMX111_EEPROM_PAGE_SIZE + 4 /*checksum*/ + 17 /*red_ref*/) < 0) {
+		eepromdata, IMX111_EEPROM_PAGE_SIZE) < 0) {
 		pr_err("%s: Error Reading EEPROM : page_no:3 \n", __func__);
 		return rc;
 	}
@@ -773,23 +759,18 @@ static int imx111_read_eeprom_data(struct msm_sensor_ctrl_t *s_ctrl, struct sens
 		//printk("[QCTK_EEPROM] B(0x%x, %d)\n", i, eepromdata[i]);
 	}
 
-	for (i = 0; i < 17; i++) {
-		cfg->cfg.calib_info.rolloff.red_ref[i] = eepromdata[R_REF_ADDR + i];
-		//printk("[QCTK_EEPROM] R_ref(0x%x)\n", cfg->cfg.calib_info.rolloff.red_ref[i]);
+	if (eepromdata[0xCA] != 1) {
+		for (i = 0; i < 17; i++) {
+			cfg->cfg.calib_info.rolloff.red_ref[i] = eepromdata[R_REF_ADDR + i];
+			printk("[QCTK_EEPROM] R_ref(0x%x)\n", cfg->cfg.calib_info.rolloff.red_ref[i]);
 		}
-
-	printk("%s: crc_from_eeprom(0x%x), cal_crc(0x%x)\n", __func__,
-		(eepromdata[CRC_ADDR] << 8) | eepromdata[CRC_ADDR+1], crc_5100& 0xFFFF);
-	#if 0
-	// CRC check
-	if (((eepromdata[CRC_ADDR]<<8)+eepromdata[CRC_ADDR+1]) != crc_5100)
-		{
-			pr_err("%s: CRC error R(read crc:0x%x, cal crc:0x%x)\n", __func__,
-			(eepromdata[CRC_ADDR]<<8)+eepromdata[CRC_ADDR+1], crc_red);
-			// return -EFAULT;
-		}
-	#endif
-
+	} else {
+		cfg->cfg.calib_info.rolloff.red_ref[0] = 0xFE;
+		cfg->cfg.calib_info.rolloff.red_ref[1] = eepromdata[0xC6];
+		cfg->cfg.calib_info.rolloff.red_ref[2] = eepromdata[0xC7];
+		cfg->cfg.calib_info.rolloff.red_ref[3] = eepromdata[0xC8];
+		cfg->cfg.calib_info.rolloff.red_ref[4] = eepromdata[0xC9];
+	}
 	printk("%s: X\n", __func__);
 	return 0;
 }
@@ -807,14 +788,6 @@ static struct msm_sensor_fn_t imx111_func_tbl = {
 	.sensor_stop_stream = msm_sensor_stop_stream,
 	.sensor_group_hold_on = msm_sensor_group_hold_on,
 	.sensor_group_hold_off = msm_sensor_group_hold_off,
-#if 0 /* removed at M8960AAAAANLYA1022 */
-	.sensor_get_prev_lines_pf = msm_sensor_get_prev_lines_pf,
-	.sensor_get_prev_pixels_pl = msm_sensor_get_prev_pixels_pl,
-	.sensor_get_pict_lines_pf = msm_sensor_get_pict_lines_pf,
-	.sensor_get_pict_pixels_pl = msm_sensor_get_pict_pixels_pl,
-	.sensor_get_pict_max_exp_lc = msm_sensor_get_pict_max_exp_lc,
-	.sensor_get_pict_fps = msm_sensor_get_pict_fps,
-#endif
 	.sensor_set_fps = imx111_sensor_set_fps,
 	.sensor_write_exp_gain = imx111_sensor_write_exp_gain1,
 	.sensor_write_snapshot_exp_gain = imx111_sensor_write_exp_gain1,
@@ -862,7 +835,7 @@ static struct msm_sensor_ctrl_t imx111_s_ctrl = {
 	.sensor_v4l2_subdev_info_size = ARRAY_SIZE(imx111_subdev_info),
 	.sensor_v4l2_subdev_ops = &imx111_subdev_ops,
 	.func_tbl = &imx111_func_tbl,
-.clk_rate = MSM_SENSOR_MCLK_24HZ, // ADD
+	.clk_rate = MSM_SENSOR_MCLK_24HZ, // ADD
 };
 
 module_init(msm_sensor_init_module);
