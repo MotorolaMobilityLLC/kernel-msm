@@ -75,7 +75,7 @@ static int pm_power_get_property_wireless(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = wireless_charging;
 
-		WLC_DBG(KERN_INFO "[wireless_charging] = %d",
+		WLC_DBG("[wireless_charging] = %d",
 			wireless_charging);
 
 		break;
@@ -85,10 +85,20 @@ static int pm_power_get_property_wireless(struct power_supply *psy,
 	return 0;
 }
 
-int wireless_is_plugged(struct bq51051b_wlc_chip *chip)
+static int wireless_is_plugged(struct bq51051b_wlc_chip *chip)
 {
 	return !(gpio_get_value(chip->active_n_gpio));
 }
+
+int bq51051b_wireless_plugged_in(void)
+{
+	if (!the_chip) {
+		WLC_DBG_ERROR("called before init\n");
+		return -EINVAL;
+	}
+	return wireless_is_plugged(the_chip);
+}
+EXPORT_SYMBOL(bq51051b_wireless_plugged_in);
 
 static void wireless_set(struct bq51051b_wlc_chip *chip)
 {

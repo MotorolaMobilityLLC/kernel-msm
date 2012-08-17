@@ -21,6 +21,7 @@
 #include <linux/mfd/pm8xxx/core.h>
 #include <linux/mfd/pm8xxx/pm8xxx-adc.h>
 #include <linux/mfd/pm8xxx/ccadc.h>
+#include <linux/power/bq51051b_charger.h>
 #include <linux/interrupt.h>
 #include <linux/bitops.h>
 #include <linux/debugfs.h>
@@ -352,24 +353,16 @@ static int usb_chg_plugged_in(void)
 	return ret.intval;
 }
 
-#ifdef CONFIG_WIRELESS_CHARGER
 static int wireless_chg_plugged_in(void)
 {
-	union power_supply_propval ret = {0,};
-	static struct power_supply *psy;
+	int val = bq51051b_wireless_plugged_in();
 
-	if (psy == NULL) {
-		psy = power_supply_get_by_name("wireless");
-		if (psy == NULL)
-			return 0;
-	}
+	/* treat as if usb is not present in case of error */
+	if (val == -EINVAL)
+		val = 0;
 
-	if (psy->get_property(psy, POWER_SUPPLY_PROP_ONLINE, &ret))
-		return 0;
-
-	return ret.intval;
+	return val;
 }
-#endif
 
 #define HOLD_OREG_DATA		BIT(1)
 static int pm_bms_lock_output_data(struct pm8921_bms_chip *chip)
@@ -888,10 +881,7 @@ int pm8921_bms_get_simultaneous_battery_voltage_and_current(int *ibat_ua,
 	mutex_unlock(&the_chip->bms_output_lock);
 
 	usb_chg = usb_chg_plugged_in();
-
-#ifdef CONFIG_WIRELESS_CHARGER
 	usb_chg |= wireless_chg_plugged_in();
-#endif
 
 	convert_vbatt_raw_to_uv(the_chip, usb_chg, vbat_raw, vbat_uv);
 	convert_vsense_to_uv(the_chip, vsense_raw, &vsense_uv);
@@ -973,10 +963,7 @@ static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 	mutex_unlock(&chip->bms_output_lock);
 
 	usb_chg =  usb_chg_plugged_in();
-
-#ifdef CONFIG_WIRELESS_CHARGER
 	usb_chg |= wireless_chg_plugged_in();
-#endif
 
 	if (chip->prev_last_good_ocv_raw == 0) {
 		chip->prev_last_good_ocv_raw = raw->last_good_ocv_raw;
@@ -1723,10 +1710,8 @@ static void calib_hkadc(struct pm8921_bms_chip *chip)
 	voltage = xoadc_reading_to_microvolt(result.adc_code);
 
 	usb_chg = usb_chg_plugged_in();
-
-#ifdef CONFIG_WIRELESS_CHARGER
 	usb_chg |= wireless_chg_plugged_in();
-#endif
+
 	pr_debug("result 0.625V = 0x%x, voltage = %duV adc_meas = %lld "
 				"usb_chg = %d\n",
 				result.adc_code, voltage, result.measurement,
@@ -2313,10 +2298,8 @@ static void check_initial_ocv(struct pm8921_bms_chip *chip)
 	ocv_uv = 0;
 	pm_bms_read_output_data(chip, LAST_GOOD_OCV_VALUE, &ocv_raw);
 	usb_chg = usb_chg_plugged_in();
-
-#ifdef CONFIG_WIRELESS_CHARGER
 	usb_chg |= wireless_chg_plugged_in();
-#endif
+
 	rc = convert_vbatt_raw_to_uv(chip, usb_chg, ocv_raw, &ocv_uv);
 	if (rc || ocv_uv == 0) {
 		rc = adc_based_ocv(chip, &ocv_uv);
