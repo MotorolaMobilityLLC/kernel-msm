@@ -573,6 +573,17 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 				rc = -EFAULT;
 			break;
 
+		case CFG_GET_CALIB_DATA:
+			if (s_ctrl->func_tbl->sensor_get_eeprom_data == NULL) {
+				rc = -EFAULT;
+				break;
+			}
+			rc = s_ctrl->func_tbl->sensor_get_eeprom_data(s_ctrl, &cdata);
+
+			if (copy_to_user((void *)argp, &cdata, sizeof(cdata)))
+				rc = -EFAULT;
+			break;
+
 		default:
 			rc = -EFAULT;
 			break;
