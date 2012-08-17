@@ -224,12 +224,13 @@ static void sync_pt_activate(struct sync_pt *pt)
 	spin_lock_irqsave(&obj->active_list_lock, flags);
 
 	err = _sync_pt_has_signaled(pt);
-	if (err != 0)
-		goto out;
+	if (err != 0) {
+		spin_unlock_irqrestore(&obj->active_list_lock, flags);
+		sync_fence_signal_pt(pt);
+		return;
+	}
 
 	list_add_tail(&pt->active_list, &obj->active_list_head);
-
-out:
 	spin_unlock_irqrestore(&obj->active_list_lock, flags);
 }
 
