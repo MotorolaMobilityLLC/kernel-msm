@@ -21,16 +21,8 @@
 #include <asm/sizes.h>
 #include <asm/system_info.h>
 #include <asm/memory.h>
-#ifdef CONFIG_LGE_PM
-#include <linux/mfd/pm8xxx/pm8921.h>
-#include <linux/delay.h>
-#endif
 
 #include <mach/board_lge.h>
-
-#ifdef CONFIG_LGE_PM
-#include CONFIG_BOARD_HEADER_FILE
-#endif
 
 /* setting whether uart console is enalbed or disabled */
 static int uart_console_mode = 0;
@@ -52,36 +44,6 @@ static int __init lge_uart_mode(char *uart_mode)
 	return 1;
 }
 __setup("uart_console=", lge_uart_mode);
-
-
-#ifdef CONFIG_LGE_PM
-/* Implement cable detection */
-struct chg_cable_info_table {
-	int threshhold;
-	acc_cable_type type;
-	unsigned ta_ma;
-	unsigned usb_ma;
-};
-
-/* This table is only for J1 */
-static struct chg_cable_info_table pm8921_acc_cable_type_data[]={
-	{ADC_NO_INIT_CABLE, NO_INIT_CABLE,  C_NO_INIT_TA_MA,    C_NO_INIT_USB_MA},
-	{ADC_CABLE_MHL_1K,  CABLE_MHL_1K,   C_MHL_1K_TA_MA,     C_MHL_1K_USB_MA},
-	{ADC_CABLE_U_28P7K, CABLE_U_28P7K,  C_U_28P7K_TA_MA,    C_U_28P7K_USB_MA},
-	{ADC_CABLE_28P7K,   CABLE_28P7K,    C_28P7K_TA_MA,      C_28P7K_USB_MA},
-	{ADC_CABLE_56K,     CABLE_56K,      C_56K_TA_MA,        C_56K_USB_MA},
-	{ADC_CABLE_100K,    CABLE_100K,     C_100K_TA_MA,       C_100K_USB_MA},
-	{ADC_CABLE_130K,    CABLE_130K,     C_130K_TA_MA,       C_130K_USB_MA},
-	{ADC_CABLE_180K,    CABLE_180K,     C_180K_TA_MA,       C_180K_USB_MA},
-	{ADC_CABLE_200K,    CABLE_200K,     C_200K_TA_MA,       C_200K_USB_MA},
-	{ADC_CABLE_220K,    CABLE_220K,     C_220K_TA_MA,       C_220K_USB_MA},
-	{ADC_CABLE_270K,    CABLE_270K,     C_270K_TA_MA,       C_270K_USB_MA},
-	{ADC_CABLE_330K,    CABLE_330K,     C_330K_TA_MA,       C_330K_USB_MA},
-	{ADC_CABLE_620K,    CABLE_620K,     C_620K_TA_MA,       C_620K_USB_MA},
-	{ADC_CABLE_910K,    CABLE_910K,     C_910K_TA_MA,       C_910K_USB_MA},
-	{ADC_CABLE_NONE,    CABLE_NONE,     C_NONE_TA_MA,       C_NONE_USB_MA},
-};
-#endif
 
 /* for board revision */
 static hw_rev_type lge_bd_rev = HW_REV_EVB1;
@@ -112,123 +74,6 @@ hw_rev_type lge_get_board_revno(void)
 {
     return lge_bd_rev;
 }
-
-#ifdef CONFIG_LGE_PM
-int lge_pm_get_cable_info(struct chg_cable_info *cable_info)
-{
-	char *type_str[] = {"NOT INIT", "MHL 1K", "U_28P7K", "28P7K", "56K",
-		"100K", "130K", "180K", "200K", "220K", "270K", "330K", "620K", "910K",
-		"OPEN"};
-
-	struct pm8xxx_adc_chan_result result;
-	struct chg_cable_info *info = cable_info;
-	struct chg_cable_info_table *table;
-	int table_size = ARRAY_SIZE(pm8921_acc_cable_type_data);
-	int acc_read_value = 0;
-	int i, rc;
-	int count = 5;
-
-	if (!info) {
-		pr_err("lge_pm_get_cable_info: invalid info parameters\n");
-		return -1;
-	}
-
-	for (i = 0; i < count; i++) {
-		rc = pm8xxx_adc_mpp_config_read(PM8XXX_AMUX_MPP_12,
-				ADC_MPP_1_AMUX6, &result);
-
-		if (rc < 0) {
-			if (rc == -ETIMEDOUT) {
-				/* reason: adc read timeout, assume it is open cable */
-				info->cable_type = CABLE_NONE;
-				info->ta_ma = C_NONE_TA_MA;
-				info->usb_ma = C_NONE_USB_MA;
-				pr_err("[DEBUG] lge_pm_get_cable_info : adc read timeout \n");
-			} else {
-	    			pr_err("lge_pm_get_cable_info: adc read error - %d\n", rc);
-			}
-			return rc;
-		}
-
-		acc_read_value = (int)result.physical;
-		pr_info("%s: acc_read_value - %d\n", __func__, (int)result.physical);
-		mdelay(10);
-	}
-
-	info->cable_type = NO_INIT_CABLE;
-	info->ta_ma = C_NO_INIT_TA_MA;
-	info->usb_ma = C_NO_INIT_USB_MA;
-
-	/* assume: adc value must be existed in ascending order */
-	for (i = 0; i < table_size; i++) {
-			table = &pm8921_acc_cable_type_data[i];
-
-		if (acc_read_value <= table->threshhold) {
-			info->cable_type = table->type;
-			info->ta_ma = table->ta_ma;
-			info->usb_ma = table->usb_ma;
-			break;
-		}
-	}
-
-	pr_info("\n\n[PM]Cable detected: %d(%s)(%d, %d)\n\n",
-			acc_read_value, type_str[info->cable_type],
-			info->ta_ma, info->usb_ma);
-
-	return 0;
-}
-
-/* Belows are for using in interrupt context */
-static struct chg_cable_info lge_cable_info;
-
-acc_cable_type lge_pm_get_cable_type(void)
-{
-	return lge_cable_info.cable_type;
-}
-
-unsigned lge_pm_get_ta_current(void)
-{
-	return lge_cable_info.ta_ma;
-}
-
-unsigned lge_pm_get_usb_current(void)
-{
-	return lge_cable_info.usb_ma;
-}
-
-/* This must be invoked in process context */
-void lge_pm_read_cable_info(void)
-{
-	lge_cable_info.cable_type = NO_INIT_CABLE;
-	lge_cable_info.ta_ma = C_NO_INIT_TA_MA;
-	lge_cable_info.usb_ma = C_NO_INIT_USB_MA;
-
-	lge_pm_get_cable_info(&lge_cable_info);
-}
-#endif
-
-#ifdef CONFIG_LGE_PM_BATTERY_ID_CHECKER
-int lge_battery_info = BATT_UNKNOWN;
-
-static int __init battery_information_setup(char *batt_info)
-{
-        if(!strcmp(batt_info, "ds2704_n"))
-                lge_battery_info = BATT_DS2704_N;
-        else if(!strcmp(batt_info, "ds2704_l"))
-                lge_battery_info = BATT_DS2704_L;
-        else if(!strcmp(batt_info, "isl6296_n"))
-                lge_battery_info = BATT_ISL6296_N;
-        else if(!strcmp(batt_info, "isl6296_l"))
-                lge_battery_info = BATT_ISL6296_L;
-        else
-                lge_battery_info = BATT_UNKNOWN;
-
-        printk(KERN_INFO "Battery : %s %d\n", batt_info, lge_battery_info);
-
-        return 1;
-}
-__setup("lge.batt_info=", battery_information_setup);
-#endif
 
 #ifdef CONFIG_LCD_KCAL
 extern int kcal_set_values(int kcal_r, int kcal_g, int kcal_b);
