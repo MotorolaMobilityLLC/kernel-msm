@@ -84,12 +84,14 @@ unsigned lge_pm_get_usb_current(void);
 #endif
 
 #ifdef CONFIG_LGE_PM_BATTERY_ID_CHECKER
-bool is_lge_battery(void);
-#else
-static inline bool is_lge_battery(void)
-{
-	return true;
-}
+enum {
+	BATT_UNKNOWN,
+	BATT_DS2704_N = 17,
+	BATT_DS2704_L = 32,
+	BATT_ISL6296_N = 73,
+	BATT_ISL6296_L = 94,
+};
+extern int lge_battery_info;
 #endif
 
 #ifdef CONFIG_LCD_KCAL
