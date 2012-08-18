@@ -2611,8 +2611,13 @@ static void unplug_check_worker(struct work_struct *work)
 		return;
 	}
 	chip->active_path = active_path;
-
-	active_chg_plugged_in = is_active_chg_plugged_in(chip, active_path);
+	if(the_chip->usb_present) {
+		active_path = USB_ACTIVE_BIT;
+		active_chg_plugged_in =the_chip->usb_present;
+	} else {
+		active_chg_plugged_in = is_active_chg_plugged_in(chip,
+				active_path);
+	}
 	pr_debug("active_path = 0x%x, active_chg_plugged_in = %d\n",
 			active_path, active_chg_plugged_in);
 	if (active_path & USB_ACTIVE_BIT) {
@@ -2694,8 +2699,13 @@ static void unplug_check_worker(struct work_struct *work)
 			}
 		}
 	}
-
-	active_chg_plugged_in = is_active_chg_plugged_in(chip, active_path);
+	if(the_chip->usb_present) {
+		active_path = USB_ACTIVE_BIT;
+		active_chg_plugged_in =the_chip->usb_present;
+	} else {
+		active_chg_plugged_in = is_active_chg_plugged_in(chip,
+				active_path);
+	}
 	pr_debug("active_path = 0x%x, active_chg = %d\n",
 			active_path, active_chg_plugged_in);
 	chg_gone = pm_chg_get_rt_status(chip, CHG_GONE_IRQ);
