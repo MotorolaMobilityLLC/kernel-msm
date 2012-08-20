@@ -167,22 +167,27 @@ static void msm_ispif_sel_csid_core(struct ispif_device *ispif,
 		(0x200 * vfe_intf));
 	switch (intftype) {
 	case PIX0:
+		data &= ~(0xF);
 		data |= csid;
 		break;
 
 	case RDI0:
+		data &= ~(0xF << 4);
 		data |= (csid << 4);
 		break;
 
 	case PIX1:
+		data &= ~(0xF << 8);
 		data |= (csid << 8);
 		break;
 
 	case RDI1:
+		data &= ~(0xF << 12);
 		data |= (csid << 12);
 		break;
 
 	case RDI2:
+		data &= ~(0xF << 20);
 		data |= (csid << 20);
 		break;
 	}
