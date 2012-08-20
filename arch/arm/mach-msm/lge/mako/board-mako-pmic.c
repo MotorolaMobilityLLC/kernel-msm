@@ -354,7 +354,7 @@ static struct pm8921_charger_platform_data apq8064_pm8921_chg_pdata __devinitdat
 	.update_time  = 60000,
 	.max_voltage  = MAX_VOLTAGE_MV,
 	.min_voltage  = 3200,
-	.alarm_voltage  = 3400,
+	.alarm_voltage  = 3500,
 	.resume_voltage_delta  = 50,
 	.term_current  = CHG_TERM_MA,
 
@@ -384,7 +384,7 @@ static struct pm8921_bms_platform_data
 apq8064_pm8921_bms_pdata __devinitdata = {
 	.battery_type		= BATT_LGE,
 	.r_sense		= 10,
-	.v_cutoff		= 3400,
+	.v_cutoff		= 3500,
 	.max_voltage_uv		= MAX_VOLTAGE_MV * 1000,
 	.rconn_mohm			= 18,
 	.shutdown_soc_valid_limit = 20,
