@@ -158,6 +158,59 @@ static inline int is_blocked(int id)
 	return ocmem_client_table[id].hw_interconnect == OCMEM_BLOCKED ? 1 : 0;
 }
 
+inline struct ocmem_buf *handle_to_buffer(struct ocmem_handle *handle)
+{
+	if (handle)
+		return &handle->buffer;
+	else
+		return NULL;
+}
+
+inline struct ocmem_handle *buffer_to_handle(struct ocmem_buf *buffer)
+{
+	if (buffer)
+		return container_of(buffer, struct ocmem_handle, buffer);
+	else
+		return NULL;
+}
+
+inline struct ocmem_req *handle_to_req(struct ocmem_handle *handle)
+{
+	if (handle)
+		return handle->req;
+	else
+		return NULL;
+}
+
+inline struct ocmem_handle *req_to_handle(struct ocmem_req *req)
+{
+	if (req && req->buffer)
+		return container_of(req->buffer, struct ocmem_handle, buffer);
+	else
+		return NULL;
+}
+
+/* Simple wrappers which will have debug features added later */
+inline int ocmem_read(void *at)
+{
+	return readl_relaxed(at);
+}
+
+inline int ocmem_write(unsigned long val, void *at)
+{
+	writel_relaxed(val, at);
+	return 0;
+}
+
+inline int get_mode(int id)
+{
+	if (!check_id(id))
+		return MODE_NOT_SET;
+	else
+		return ocmem_client_table[id].mode == OCMEM_PERFORMANCE ?
+							WIDE_MODE : THIN_MODE;
+}
+
 /* Returns the address that can be used by a device core to access OCMEM */
 static unsigned long device_address(int id, unsigned long addr)
 {
@@ -524,10 +577,33 @@ static int process_map(struct ocmem_req *req, unsigned long start,
 	rc = ocmem_enable_iface_clock();
 
 	if (rc < 0)
+		goto iface_clock_fail;
+
+	rc = ocmem_enable_br_clock();
+
+	if (rc < 0)
+		goto br_clock_fail;
+
+	rc = do_map(req);
+
+	if (rc < 0) {
+		pr_err("ocmem: Failed to map request %p for %d\n",
+							req, req->owner);
 		goto process_map_fail;
 
-	return do_map(req);
+	}
 
+	if (ocmem_lock(req->owner, phys_to_offset(req->req_start), req->req_sz,
+							get_mode(req->owner))) {
+		pr_err("ocmem: Failed to secure request %p for %d\n", req,
+				req->owner);
+		rc = -EINVAL;
+		goto lock_failed;
+	}
+
+	return 0;
+lock_failed:
+	do_unmap(req);
 process_map_fail:
 	ocmem_disable_core_clock();
 core_clock_fail:
@@ -540,6 +616,14 @@ static int process_unmap(struct ocmem_req *req, unsigned long start,
 {
 	int rc = 0;
 
+	if (ocmem_unlock(req->owner, phys_to_offset(req->req_start),
+							req->req_sz)) {
+		pr_err("ocmem: Failed to un-secure request %p for %d\n", req,
+				req->owner);
+		rc = -EINVAL;
+		goto unlock_failed;
+	}
+
 	rc = do_unmap(req);
 
 	if (rc < 0)
@@ -547,9 +631,9 @@ static int process_unmap(struct ocmem_req *req, unsigned long start,
 
 	ocmem_disable_iface_clock();
 	ocmem_disable_core_clock();
-
 	return 0;
 
+unlock_failed:
 process_unmap_fail:
 	pr_err("ocmem: Failed to unmap ocmem request\n");
 	return rc;
@@ -1254,7 +1338,6 @@ int process_free(int id, struct ocmem_handle *handle)
 			return -EINVAL;
 	}
 
-
 	if (req->req_sz != 0) {
 
 		offset = phys_to_offset(req->req_start);
@@ -1269,7 +1352,6 @@ int process_free(int id, struct ocmem_handle *handle)
 	}
 
 	rc = do_free(req);
-
 	if (rc < 0)
 		return -EINVAL;
 
