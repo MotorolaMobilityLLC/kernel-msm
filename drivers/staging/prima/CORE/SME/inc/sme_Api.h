@@ -54,6 +54,9 @@
 #include "halFw.h"
 #endif
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+#include "oemDataApi.h"
+#endif
 
 #if defined WLAN_FEATURE_VOWIFI
 #include "smeRrmInternal.h"
@@ -1544,6 +1547,35 @@ eHalStatus sme_ScanGetBKIDCandidateList(tHalHandle hHal, tANI_U32 sessionId,
                                         tANI_U32 *pNumItems );
 #endif /* FEATURE_WLAN_WAPI */
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+/********************************************************************************************
+  Oem data related modifications
+*********************************************************************************************/
+/* ---------------------------------------------------------------------------
+    \fn sme_OemDataReq
+    \param sessionId - session id of session to be used for oem data req.
+    \param pOemDataReqID - pointer to an object to get back the request ID
+    \param callback - a callback function that is called upon finish
+    \param pContext - a pointer passed in for the callback
+    \return eHalStatus     
+  ---------------------------------------------------------------------------*/
+eHalStatus sme_OemDataReq(tHalHandle hHal, 
+                                       tANI_U8 sessionId,
+                                       tOemDataReqConfig *, 
+                                       tANI_U32 *pOemDataReqID, 
+                                       oemData_OemDataReqCompleteCallback callback, 
+                                       void *pContext);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_getOemDataRsp
+    \param pOemDataRsp - A pointer to the response object
+    \param pOemDataReqID - pointer to an object to get back the request ID
+    \return eHalStatus     
+  ---------------------------------------------------------------------------*/
+eHalStatus sme_getOemDataRsp(tHalHandle hHal, 
+                                         tOemDataRsp **pOemDataRsp);
+
+#endif /*FEATURE_OEM_DATA_SUPPORT*/
 
 
 #ifdef WLAN_SOFTAP_FEATURE

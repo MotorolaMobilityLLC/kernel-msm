@@ -105,9 +105,6 @@ typedef tANI_U8 tHalIpv4Addr[4];
 /*Version string max length (including NUL) */
 #define WLAN_HAL_VERSION_LENGTH  64
 
-/*Max Num Of BSSIDS in INNAV_MEAS_REQ*/
-#define MAX_BSSIDS_IN_INNAV_MEAS_REQ 1
-
 /* Message types for messages exchanged between WDI and HAL */
 typedef enum 
 {
@@ -266,9 +263,9 @@ typedef enum
    WLAN_HAL_DUMP_COMMAND_REQ       = 121,
    WLAN_HAL_DUMP_COMMAND_RSP       = 122,
 
-   //INNAV FEATURE SUPPORT
-   WLAN_HAL_START_INNAV_MEAS_REQ   = 123,
-   WLAN_HAL_START_INNAV_MEAS_RSP   = 124,
+   //OEM_DATA FEATURE SUPPORT
+   WLAN_HAL_START_OEM_DATA_REQ   = 123,
+   WLAN_HAL_START_OEM_DATA_RSP   = 124,
 
    //ADD SELF STA REQ and RSP
    WLAN_HAL_ADD_STA_SELF_REQ       = 125,
@@ -1907,7 +1904,48 @@ typedef PACKED_PRE struct PACKED_POST
    tRemoveStaKeyRspParams removeStaKeyRspParams;
 }  tRemoveStaKeyRspMsg, *tpRemoveStaKeyRspMsg;
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
 
+#ifndef OEM_DATA_REQ_SIZE
+#define OEM_DATA_REQ_SIZE 70
+#endif
+
+#ifndef OEM_DATA_RSP_SIZE
+#define OEM_DATA_RSP_SIZE 968
+#endif
+
+/*-------------------------------------------------------------------------
+WLAN_HAL_START_OEM_DATA_REQ
+--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+    tANI_U32                status;
+    tSirMacAddr             selfMacAddr;
+    tANI_U8                 oemDataReq[OEM_DATA_REQ_SIZE];
+} tStartOemDataReqParams, *tpStartOemDataReqParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader           header;
+    tStartOemDataReqParams  startOemDataReqParams;
+} tStartOemDataReqMsg, *tpStartOemDataReqMsg;
+
+/*-------------------------------------------------------------------------
+WLAN_HAL_START_OEM_DATA_RSP
+--------------------------------------------------------------------------*/
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tANI_U8                   oemDataRsp[OEM_DATA_RSP_SIZE];
+} tStartOemDataRspParams, *tpStartOemDataRspParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader             header;
+   tStartOemDataRspParams    startOemDataRspParams;
+} tStartOemDataRspMsg, *tpStartOemDataRspMsg;
+
+#endif
 
 
 

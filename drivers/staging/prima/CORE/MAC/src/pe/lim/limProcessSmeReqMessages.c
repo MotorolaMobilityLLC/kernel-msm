@@ -1265,7 +1265,36 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
 } /*** end __limProcessSmeScanReq() ***/
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
 
+static void __limProcessSmeOemDataReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
+{
+    tpSirOemDataReq    pOemDataReq;
+    tLimMlmOemDataReq* pMlmOemDataReq;
+
+    pOemDataReq = (tpSirOemDataReq) pMsgBuf; 
+
+    //post the lim mlm message now
+    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, (void**)&pMlmOemDataReq, (sizeof(tLimMlmOemDataReq))))
+    {
+        limLog(pMac, LOGP, FL("palAllocateMemory failed for mlmOemDataReq\n"));
+        return;
+    }
+
+    //Initialize this buffer
+    palZeroMemory(pMac->hHdd, pMlmOemDataReq, (sizeof(tLimMlmOemDataReq)));
+
+    palCopyMemory(pMac->hHdd, pMlmOemDataReq->selfMacAddr, pOemDataReq->selfMacAddr, sizeof(tSirMacAddr)); 
+    palCopyMemory(pMac->hHdd, pMlmOemDataReq->oemDataReq, pOemDataReq->oemDataReq, OEM_DATA_REQ_SIZE);
+
+    //Issue LIM_MLM_OEM_DATA_REQ to MLM
+    limPostMlmMessage(pMac, LIM_MLM_OEM_DATA_REQ, (tANI_U32*)pMlmOemDataReq);
+
+    return;
+
+} /*** end __limProcessSmeOemDataReq() ***/
+
+#endif //FEATURE_OEM_DATA_SUPPORT
 
 
 /**
@@ -5078,6 +5107,12 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 
             break;
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+        case eWNI_SME_OEM_DATA_REQ:
+            __limProcessSmeOemDataReq(pMac, pMsgBuf);
+
+            break;
+#endif
 #ifdef WLAN_FEATURE_P2P
         case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
             bufConsumed = limProcessRemainOnChnlReq(pMac, pMsgBuf);

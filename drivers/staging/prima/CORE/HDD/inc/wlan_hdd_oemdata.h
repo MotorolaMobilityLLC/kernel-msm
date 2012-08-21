@@ -19,54 +19,54 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#if !defined( HDD_INCLUDES_H__ )
-#define HDD_INCLUDES_H__
+#ifdef FEATURE_OEM_DATA_SUPPORT
 
 /**===========================================================================
   
-  \file  wlan_hdd_includes.h
+  \file  wlan_hdd_oemdata.h
   
-  \brief Internal includes for the Linux HDD 
+  \brief Internal includes for the oem data
   
                Copyright 2008 (c) Qualcomm, Incorporated.
                All Rights Reserved.
                Qualcomm Confidential and Proprietary.
   
   ==========================================================================*/
-  
-/* $HEADER$ */
-  
-/*--------------------------------------------------------------------------- 
-  Include files
-  -------------------------------------------------------------------------*/ 
-
-// throw all the includes in here f to get the .c files  in the HDD to compile.
-
-#include <linux/version.h>
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/init.h>
-#include <linux/wireless.h>
-#include <linux/if_arp.h>
 
 
-#include <vos_api.h>
+#ifndef __WLAN_HDD_OEM_DATA_H__
+#define __WLAN_HDD_OEM_DATA_H__
 
-#include <sme_Api.h>
-#include <wlan_qct_tl.h>
-
-#include "wlan_hdd_assoc.h"
-#include "wlan_hdd_dp_utils.h"
-#include "wlan_hdd_mib.h"
-#include "wlan_hdd_wext.h"
-#include "wlan_hdd_main.h"
-#include "wlan_hdd_version.h"
-#include "wlan_hdd_tx_rx.h"
-
-#ifdef FEATURE_OEM_DATA_SUPPORT
-/*include for oem data req specific structures*/
-/*and function declarations*/
-#include "wlan_hdd_oemdata.h" 
+#ifndef OEM_DATA_REQ_SIZE
+#define OEM_DATA_REQ_SIZE 70
 #endif
 
-#endif    // end #if !defined( HDD_INCLUDES_H__ )
+#ifndef OEM_DATA_RSP_SIZE
+#define OEM_DATA_RSP_SIZE 968
+#endif
+
+struct iw_oem_data_req
+{
+    v_U8_t                  oemDataReq[OEM_DATA_REQ_SIZE];
+};
+
+int iw_set_oem_data_req(
+        struct net_device *dev,
+        struct iw_request_info *info,
+        union iwreq_data *wrqu,
+        char *extra);
+
+int iw_get_oem_data_rsp(
+        struct net_device *dev,
+        struct iw_request_info *info,
+        union iwreq_data *wrqu,
+        char *extra);
+
+struct iw_oem_data_rsp
+{
+    tANI_U8           oemDataRsp[OEM_DATA_RSP_SIZE];
+};
+
+#endif //__WLAN_HDD_OEM_DATA_H__
+
+#endif //FEATURE_OEM_DATA_SUPPORT
