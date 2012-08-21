@@ -1270,14 +1270,14 @@ static void akm8963_work(struct work_struct *work)
 
 work_func_end:
 	wake_up(&akm->drdy_wq);
-	enable_irq(akm->i2c->irq);
+	enable_irq(akm->irq);
 }
 
 static irqreturn_t akm8963_irq(int irq, void *handle)
 {
 	struct akm8963_data *akm = handle;
 
-	disable_irq_nosync(akm->i2c->irq);
+	disable_irq_nosync(akm->irq);
 	schedule_work(&akm->work);
 
 	return IRQ_HANDLED;
