@@ -869,6 +869,8 @@ static int phy_init_seq[] = {
 	-1
 };
 
+#define MSM_MPM_PIN_USB1_OTGSESSVLD     40
+
 static struct msm_otg_platform_data msm_otg_pdata = {
 	.mode			= USB_OTG,
 	.otg_control		= OTG_PMIC_CONTROL,
@@ -877,6 +879,7 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.power_budget		= 750,
 	.bus_scale_table	= &usb_bus_scale_pdata,
 	.phy_init_seq		= phy_init_seq,
+	.mpm_otgsessvld_int     = MSM_MPM_PIN_USB1_OTGSESSVLD,
 };
 
 #ifdef CONFIG_USB_EHCI_MSM_HOST4
