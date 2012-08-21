@@ -618,6 +618,8 @@ VOS_STATUS vos_preStart( v_CONTEXT_t vosContext )
          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
            "%s: WDA_preStart reporting other error", __func__);
       }
+      macStop(gpVosContext->pMACContext, HAL_STOP_TYPE_SYS_DEEP_SLEEP);
+      ccmStop(gpVosContext->pMACContext);
       VOS_ASSERT( 0 );
       return VOS_STATUS_E_FAILURE;
    }

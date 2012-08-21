@@ -3558,6 +3558,52 @@ typedef struct
   void*             pUserData;
 }WDI_BtAmpEventParamsType;
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+
+#ifndef OEM_DATA_REQ_SIZE
+#define OEM_DATA_REQ_SIZE 70
+#endif
+#ifndef OEM_DATA_RSP_SIZE
+#define OEM_DATA_RSP_SIZE 968
+#endif
+
+/*----------------------------------------------------------------------------
+  WDI_oemDataReqInfoType
+----------------------------------------------------------------------------*/
+typedef struct
+{
+  wpt_macAddr                  selfMacAddr;
+  wpt_uint8                    oemDataReq[OEM_DATA_REQ_SIZE];
+}WDI_oemDataReqInfoType;
+
+/*----------------------------------------------------------------------------
+  WDI_oemDataReqParamsType
+----------------------------------------------------------------------------*/
+typedef struct
+{
+  /*Request status callback offered by UMAC - it is called if the current
+    req has returned PENDING as status; it delivers the status of sending
+    the message over the BUS */
+  WDI_ReqStatusCb                wdiReqStatusCB; 
+
+  /*The user data passed in by UMAC, it will be sent back when the above
+    function pointer will be called */
+  void*                          pUserData;
+
+  /*OEM DATA REQ Info */
+  WDI_oemDataReqInfoType         wdiOemDataReqInfo;
+
+}WDI_oemDataReqParamsType;
+
+/*----------------------------------------------------------------------------
+  WDI_oemDataRspParamsType
+----------------------------------------------------------------------------*/
+typedef struct
+{
+  wpt_uint8           oemDataRsp[OEM_DATA_RSP_SIZE];
+}WDI_oemDataRspParamsType;
+
+#endif /* FEATURE_OEM_DATA_SUPPORT */
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
 /*---------------------------------------------------------------------------
@@ -5596,6 +5642,30 @@ typedef void  (*WDI_FlushAcRspCb)(WDI_Status   wdiStatus,
 typedef void  (*WDI_BtAmpEventRspCb)(WDI_Status   wdiStatus,
                                      void*        pUserData);
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+/*---------------------------------------------------------------------------
+   WDI_oemDataRspCb
+ 
+   DESCRIPTION   
+ 
+   This callback is invoked by DAL when it has received a Start oem data response from
+   the underlying device.
+ 
+   PARAMETERS 
+
+    IN
+    wdiStatus:  response status received from HAL
+    pUserData:  user data  
+    
+    
+  
+  RETURN VALUE 
+    The result code associated with performing the operation
+---------------------------------------------------------------------------*/
+typedef void  (*WDI_oemDataRspCb)(WDI_oemDataRspParamsType* wdiOemDataRspParams, 
+                                  void*                     pUserData);
+
+#endif
 
 /*---------------------------------------------------------------------------
    WDI_HostResumeEventRspCb
@@ -7787,6 +7857,38 @@ WDI_BtAmpEventReq
   void*                     pUserData
 );
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+/**
+ @brief WDI_Start oem data Req will be called when the upper MAC 
+        wants to notify the lower mac on a oem data Req event.Upon
+        the call of this API the WLAN DAL will pack and send a
+        HAL OEM Data Req event request message to the lower RIVA
+        sub-system if DAL is in state STARTED.
+
+        In state BUSY this request will be queued. Request won't
+        be allowed in any other state. 
+
+  
+ @param pWdiOemDataReqParams: the oem data req parameters as 
+                      specified by the Device Interface
+  
+        wdiStartOemDataRspCb: callback for passing back the
+        response of the Oem Data Req received from the
+        device
+  
+        pUserData: user data will be passed back with the
+        callback 
+ 
+ @return Result of the function call
+*/
+WDI_Status 
+WDI_StartOemDataReq
+(
+  WDI_oemDataReqParamsType*       pWdiOemDataReqParams,
+  WDI_oemDataRspCb                wdiOemDataRspCb,
+  void*                           pUserData
+);
+#endif
 
 /*======================================================================== 
  

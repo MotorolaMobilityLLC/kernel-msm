@@ -1550,6 +1550,56 @@ tANI_BOOLEAN csrIsBTAMPStarted( tpAniSirGlobal pMac )
     return ( fRc );
 }
 
+#ifndef BMPS_WORKAROUND_NOT_NEEDED
+tANI_BOOLEAN csrIsConcurrentSessionRunning( tpAniSirGlobal pMac )
+{
+    tANI_U32 sessionId, noOfCocurrentSession = 0;
+    eCsrConnectState connectState;
+
+    tANI_BOOLEAN fRc = eANI_BOOLEAN_FALSE;
+
+    for( sessionId = 0; sessionId < CSR_ROAM_SESSION_MAX; sessionId++ )
+    {
+        if( CSR_IS_SESSION_VALID( pMac, sessionId ) )
+        {
+           connectState =  pMac->roam.roamSession[sessionId].connectState;
+           if( (eCSR_ASSOC_STATE_TYPE_INFRA_ASSOCIATED == connectState) ||
+               (eCSR_ASSOC_STATE_TYPE_INFRA_CONNECTED == connectState) ||
+               (eCSR_ASSOC_STATE_TYPE_INFRA_DISCONNECTED == connectState) )
+           {
+              ++noOfCocurrentSession;
+           }
+        }
+    }
+
+    // More than one session is Up and Running
+    if(noOfCocurrentSession > 1)
+    {
+        fRc = eANI_BOOLEAN_TRUE;
+    }
+
+    return ( fRc );
+}
+
+tANI_BOOLEAN csrIsInfraApStarted( tpAniSirGlobal pMac )
+{
+    tANI_U32 sessionId;
+    tANI_BOOLEAN fRc = eANI_BOOLEAN_FALSE;
+
+    for( sessionId = 0; sessionId < CSR_ROAM_SESSION_MAX; sessionId++ )
+    {
+        if( CSR_IS_SESSION_VALID( pMac, sessionId ) && (csrIsConnStateConnectedInfraAp(pMac, sessionId)) )
+        {
+            fRc = eANI_BOOLEAN_TRUE;
+            break;
+        }
+    }
+
+    return ( fRc );
+
+}
+#endif
+
 tANI_BOOLEAN csrIsBTAMP( tpAniSirGlobal pMac, tANI_U32 sessionId )
 {
     return ( csrIsConnStateConnectedWds( pMac, sessionId ) );
@@ -5796,6 +5846,7 @@ tANI_U16 sme_ChnToFreq(tANI_U8 chanNum)
    return (0);
 }
 
+#ifndef BMPS_WORKAROUND_NOT_NEEDED
 /* Disconnect all active sessions by sending disassoc. This is mainly used to disconnect the remaining session when we 
  * transition from concurrent sessions to a single session. The use case is Infra STA and wifi direct multiple sessions are up and 
  * P2P session is removed. The Infra STA session remains and should resume BMPS if BMPS is enabled by default. However, there
@@ -5815,3 +5866,4 @@ void csrDisconnectAllActiveSessions(tpAniSirGlobal pMac)
         }
     }
 }
+#endif

@@ -966,8 +966,21 @@ static iw_softap_getparam(struct net_device *dev,
 #endif            
             *value = 0;
             break;
-         }
-    
+        }
+
+    case QCSAP_PARAM_GET_WLAN_DBG:
+        {
+            vos_trace_display();
+            *value = 0;
+            break;
+        }
+
+    case QCSAP_PARAM_AUTO_CHANNEL:
+        {
+            *value = (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->apAutoChannelSelection;
+             break;
+        }
+
     default:
         hddLog(LOGE, FL("Invalid getparam command %d"), sub_cmd);
         ret = -EINVAL;
@@ -1038,10 +1051,9 @@ static iw_softap_getchannel(struct net_device *dev,
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
 
-    *(v_U32_t *)(wrqu->data.pointer) = (WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter))->operatingChannel;
+    int *value = (int *)extra;
 
-    wrqu->data.length = sizeof((WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter))->operatingChannel);
-
+    *value = (WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter))->operatingChannel;
     return 0;
 }
 
@@ -1821,11 +1833,11 @@ static int iw_get_ap_frag_threshold(struct net_device *dev,
 static int iw_get_ap_freq(struct net_device *dev, struct iw_request_info *info,
              struct iw_freq *fwrq, char *extra)
 {
-   v_U32_t status = 0,channel,freq;
+   v_U32_t status = FALSE, channel = 0, freq = 0;
    hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
    tHalHandle hHal;
    hdd_hostapd_state_t *pHostapdState;
-   hdd_ap_ctx_t *pHddApCtx = WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter);  
+   hdd_ap_ctx_t *pHddApCtx = WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter);
 
    ENTER();
 
@@ -1848,18 +1860,30 @@ static int iw_get_ap_freq(struct net_device *dev, struct iw_request_info *info,
        else
        {
           status = hdd_wlan_get_freq(channel, &freq);
-          fwrq->m = freq;
-          fwrq->e = 0;
+          if( TRUE == status)
+          {
+              /* Set Exponent parameter as 6 (MHZ) in struct iw_freq
+               * iwlist & iwconfig command shows frequency into proper
+               * format (2.412 GHz instead of 246.2 MHz)*/
+              fwrq->m = freq;
+              fwrq->e = MHZ;
+          }
        }
     }
     else
     {
        channel = pHddApCtx->operatingChannel;
        status = hdd_wlan_get_freq(channel, &freq);
-       fwrq->m = freq;
-       fwrq->e = 0;
+       if( TRUE == status)
+       {
+          /* Set Exponent parameter as 6 (MHZ) in struct iw_freq
+           * iwlist & iwconfig command shows frequency into proper
+           * format (2.412 GHz instead of 246.2 MHz)*/
+           fwrq->m = freq;
+           fwrq->e = MHZ;
+       }
     }
-   return status;
+   return 0;
 }
 
 static int iw_softap_setwpsie(struct net_device *dev,
@@ -2433,6 +2457,10 @@ static const struct iw_priv_args hostapd_private_args[] = {
       IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "" },
   { QCSAP_PARAM_MAX_ASSOC, 0,
       IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "getMaxAssoc" },
+  { QCSAP_PARAM_GET_WLAN_DBG, 0,
+      IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "getwlandbg" },
+  { QCSAP_PARAM_AUTO_CHANNEL, 0,
+      IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "getAutoChannel" },
   { QCSAP_PARAM_MODULE_DOWN_IND, 0,
       IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,    "moduleDownInd" },
   { QCSAP_PARAM_CLR_ACL, 0,
@@ -2454,7 +2482,7 @@ static const struct iw_priv_args hostapd_private_args[] = {
   { QCSAP_IOCTL_GET_WPS_PBC_PROBE_REQ_IES,
       IW_PRIV_TYPE_BYTE | sizeof(sQcSapreq_WPSPBCProbeReqIES_t) | IW_PRIV_SIZE_FIXED | 1, 0, "getProbeReqIEs" },
   { QCSAP_IOCTL_GET_CHANNEL, 0,
-      IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | sizeof(signed long int), "getchannel" },
+      IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1, "getchannel" },
   { QCSAP_IOCTL_ASSOC_STA_MACADDR, 0,
       IW_PRIV_TYPE_BYTE | /*((WLAN_MAX_STA_COUNT*6)+100)*/1 , "get_assoc_stamac" },
     { QCSAP_IOCTL_DISASSOC_STA,

@@ -492,6 +492,8 @@ typedef enum
 #endif
     // peer rejected assoc because max assoc limit reached. callback gets pointer to peer
     eCSR_ROAM_RESULT_MAX_ASSOC_EXCEEDED,
+    //Assoc rejected due to concurrent session running on a different channel
+    eCSR_ROAM_RESULT_ASSOC_FAIL_CON_CHANNEL,
 }eCsrRoamResult;
 
 

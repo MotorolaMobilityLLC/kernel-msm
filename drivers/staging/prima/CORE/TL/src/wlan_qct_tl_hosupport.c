@@ -1092,6 +1092,14 @@ VOS_STATUS WLANTL_HSHandleRXFrame
    }
    currentHO->sampleTime = currentTimestamp;
 
+   /* Get Current RSSI from BD Heaser */
+   status = WLANTL_HSGetRSSI(pAdapter, pBDHeader, STAid, &currentAvgRSSI);
+   if(!VOS_IS_STATUS_SUCCESS(status))
+   {
+      TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"Get RSSI Fail"));
+      return status;
+   }
+
    /* If any threshold is not registerd, DO NOTHING! */
    if(0 == tlCtxt->hoSupport.currentHOState.numThreshold)
    {
@@ -1099,13 +1107,6 @@ VOS_STATUS WLANTL_HSHandleRXFrame
    }
    else
    {
-      /* Get Current RSSI from BD Heaser */
-      status = WLANTL_HSGetRSSI(pAdapter, pBDHeader, STAid, &currentAvgRSSI);
-      if(!VOS_IS_STATUS_SUCCESS(status))
-      {
-         TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"Get RSSI Fail"));
-         return status;
-      }
       /* Handle current RSSI value, region, notification, etc */
       status = WLANTL_HSHandleRSSIChange(pAdapter, currentAvgRSSI);
       if(!VOS_IS_STATUS_SUCCESS(status))

@@ -237,6 +237,7 @@ eHalStatus csrRoamStopWaitForKeyTimer(tpAniSirGlobal pMac);
 static void csrRoamWaitForKeyTimeOutHandler(void *pv);
  
 static eHalStatus CsrInit11dInfo(tpAniSirGlobal pMac, tCsr11dinfo *ps11dinfo);
+static eHalStatus csrInitChannelPowerList( tpAniSirGlobal pMac, tCsr11dinfo *ps11dinfo);
 static eHalStatus csrRoamFreeConnectedInfo( tpAniSirGlobal pMac, tCsrRoamConnectedInfo *pConnectedInfo );
 eHalStatus csrSendMBSetContextReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, 
            tSirMacAddr peerMacAddr, tANI_U8 numKeys, tAniEdType edType, 
@@ -989,7 +990,7 @@ static void initConfigParam(tpAniSirGlobal pMac)
     pMac->roam.configParam.Is11dSupportEnabled = eANI_BOOLEAN_FALSE;
     pMac->roam.configParam.Is11dSupportEnabledOriginal = eANI_BOOLEAN_FALSE;
     pMac->roam.configParam.Is11eSupportEnabled = eANI_BOOLEAN_TRUE;
-    pMac->roam.configParam.Is11hSupportEnabled = eANI_BOOLEAN_FALSE;
+    pMac->roam.configParam.Is11hSupportEnabled = eANI_BOOLEAN_TRUE;
     pMac->roam.configParam.RTSThreshold = 2346;
     pMac->roam.configParam.shortSlotTime = eANI_BOOLEAN_TRUE;
     pMac->roam.configParam.WMMSupportMode = eCsrRoamWmmAuto;
@@ -1041,6 +1042,10 @@ static void initConfigParam(tpAniSirGlobal pMac)
 
     pMac->roam.configParam.addTSWhenACMIsOff = 0;
     pMac->roam.configParam.fScanTwice = eANI_BOOLEAN_FALSE;
+#ifndef BMPS_WORKAROUND_NOT_NEEDED
+    pMac->roam.configParam.doBMPSWorkaround = 0;
+#endif
+
 }
 
 eCsrBand csrGetCurrentBand(tHalHandle hHal)
@@ -1212,6 +1217,15 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         {
             pMac->scan.curScanType = eSIR_ACTIVE_SCAN;
         }
+
+        /* Initialize the power + channel information if 11h is enabled.
+        If 11d is enabled this information has already been initialized */
+        if( csrIs11hSupported( pMac ) && !csrIs11dSupported( pMac ) )
+        {
+            csrInitChannelPowerList(pMac, &pParam->Csr11dinfo);
+        }
+
+
 #ifdef WLAN_FEATURE_VOWIFI_11R 
         palCopyMemory( pMac->hHdd, &pMac->roam.configParam.csr11rConfig, &pParam->csr11rConfig, sizeof(tCsr11rConfigParams) );
         smsLog( pMac, LOG1, "IsFTResourceReqSupp = %d\n", pMac->roam.configParam.csr11rConfig.IsFTResourceReqSupported); 
@@ -1253,6 +1267,15 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         pMac->scan.fEnableBypass11d = pParam->fEnableBypass11d;
         pMac->scan.fEnableDFSChnlScan = pParam->fEnableDFSChnlScan;
         pMac->roam.configParam.fScanTwice = pParam->fScanTwice;
+        /* This parameter is not available in cfg and not passed from upper layers. Instead it is initialized here
+         * This paramtere is used in concurrency to determine if there are concurrent active sessions.
+         * Is used as a temporary fix to disconnect all active sessions when BMPS enabled so the active session if Infra STA
+         * will automatically connect back and resume BMPS since resume BMPS is not working when moving from concurrent to
+         * single session
+         */
+#ifndef BMPS_WORKAROUND_NOT_NEEDED
+       pMac->roam.configParam.doBMPSWorkaround = 0;
+#endif
     }
     
     return status;
@@ -1718,6 +1741,42 @@ static eHalStatus CsrInit11dInfo(tpAniSirGlobal pMac, tCsr11dinfo *ps11dinfo)
   }
 
   return (status);
+}
+
+/* Initialize the Channel + Power List in the local cache and in the CFG */
+eHalStatus csrInitChannelPowerList( tpAniSirGlobal pMac, tCsr11dinfo *ps11dinfo)
+{
+  tANI_U8  index;
+  tANI_U32 count=0;
+  tSirMacChanInfo *pChanInfo;
+  tSirMacChanInfo *pChanInfoStart;
+
+  if(!ps11dinfo || !pMac)
+  {
+     return eHAL_STATUS_FAILURE;
+  }
+
+  if(HAL_STATUS_SUCCESS(palAllocateMemory(pMac->hHdd, (void **)&pChanInfo, sizeof(tSirMacChanInfo) * WNI_CFG_VALID_CHANNEL_LIST_LEN)))
+  {
+      palZeroMemory(pMac->hHdd, pChanInfo, sizeof(tSirMacChanInfo) * WNI_CFG_VALID_CHANNEL_LIST_LEN);
+      pChanInfoStart = pChanInfo;
+
+      for(index = 0; index < ps11dinfo->Channels.numChannels; index++)
+      {
+        pChanInfo->firstChanNum = ps11dinfo->ChnPower[index].firstChannel;
+        pChanInfo->numChannels  = ps11dinfo->ChnPower[index].numChannels;
+        pChanInfo->maxTxPower   = CSR_ROAM_MIN( ps11dinfo->ChnPower[index].maxtxPower, pMac->roam.configParam.nTxPowerCap );
+        pChanInfo++;
+        count++;
+      }
+      if(count)
+      {
+          csrSaveToChannelPower2G_5G( pMac, count * sizeof(tSirMacChanInfo), pChanInfoStart );
+      }
+      palFreeMemory(pMac->hHdd, pChanInfoStart);
+  }
+
+  return eHAL_STATUS_SUCCESS;
 }
 
 //pCommand may be NULL
@@ -2338,11 +2397,11 @@ eHalStatus csrRoamPrepareBssConfig(tpAniSirGlobal pMac, tCsrRoamProfile *pProfil
         }
         //Join timeout
         // if we find a BeaconInterval in the BssDescription, then set the Join Timeout to 
-        // be 3 x the BeaconInterval.                          
+        // be 10 x the BeaconInterval.                          
         if ( pBssDesc->beaconInterval )
         {
             //Make sure it is bigger than the minimal
-            pBssConfig->uJoinTimeOut = CSR_ROAM_MAX(3 * pBssDesc->beaconInterval, CSR_JOIN_FAILURE_TIMEOUT_MIN);
+            pBssConfig->uJoinTimeOut = CSR_ROAM_MAX(10 * pBssDesc->beaconInterval, CSR_JOIN_FAILURE_TIMEOUT_MIN);
         }
         else 
         {
@@ -3554,11 +3613,6 @@ static eCsrJoinState csrRoamJoinNextBss( tpAniSirGlobal pMac, tSmeCmd *pCommand,
 
                         }
                     }
-                    if ((vos_concurrent_sessions_running()) && 
-                         csrIsAnySessionInConnectState( pMac ))
-                    {
-                        pMac->roam.configParam.concurrencyEnabled = 1;
-                    }
 
                     if (!concurrentChannel)
                     {
@@ -3570,6 +3624,10 @@ static eCsrJoinState csrRoamJoinNextBss( tpAniSirGlobal pMac, tSmeCmd *pCommand,
                             //Ok to roam this
                             break;
                         }
+                     }
+                     else
+                     {
+                         eRoamState = eCsrStopRoamingDueToConcurrency;
                      }
                     pCommand->u.roamCmd.pRoamBssEntry = csrLLNext(&pBSSList->List, pCommand->u.roamCmd.pRoamBssEntry, LL_ACCESS_LOCK);
                     if(NULL == pCommand->u.roamCmd.pRoamBssEntry)
@@ -3757,9 +3815,9 @@ static eHalStatus csrRoam( tpAniSirGlobal pMac, tSmeCmd *pCommand )
     {
         // Attept to join a Bss...
         RoamState = csrRoamJoinNextBss( pMac, pCommand, eANI_BOOLEAN_FALSE );
-    
+
         // if nothing to join..
-        if ( eCsrStopRoaming == RoamState ) 
+        if (( eCsrStopRoaming == RoamState ) || ( eCsrStopRoamingDueToConcurrency == RoamState))
         {
             tANI_BOOLEAN fComplete = eANI_BOOLEAN_FALSE;
 
@@ -3804,7 +3862,14 @@ static eHalStatus csrRoam( tpAniSirGlobal pMac, tSmeCmd *pCommand )
             if(fComplete)
             {
                // ... otherwise, we can complete the Roam command here.
-               csrRoamComplete( pMac, eCsrNothingToJoin, NULL );
+               if(eCsrStopRoamingDueToConcurrency == RoamState)
+               {
+                   csrRoamComplete( pMac, eCsrJoinFailureDueToConcurrency, NULL );
+               }
+               else
+               {
+                   csrRoamComplete( pMac, eCsrNothingToJoin, NULL );
+               }
             }    
        }
        else if ( eCsrReassocToSelfNoCapChange == RoamState )
@@ -4634,6 +4699,12 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                 if( pSession->bRefAssocStartCnt > 0 )
                 {
                     pSession->bRefAssocStartCnt--;
+#ifndef BMPS_WORKAROUND_NOT_NEEDED
+                    if(  csrIsConcurrentSessionRunning( pMac ) )
+                    {
+                       pMac->roam.configParam.doBMPSWorkaround = 1;
+                    }
+#endif
                     csrRoamCallCallback(pMac, sessionId, &roamInfo, pCommand->u.roamCmd.roamId, eCSR_ROAM_ASSOCIATION_COMPLETION, eCSR_ROAM_RESULT_ASSOCIATED);
                 }
                 
@@ -4847,6 +4918,12 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
 #ifdef WLAN_SOFTAP_FEATURE
                 roamInfo.staId = (tANI_U8)pSmeStartBssRsp->staId;
 #endif
+#ifndef BMPS_WORKAROUND_NOT_NEEDED
+                if(  csrIsConcurrentSessionRunning( pMac ) )
+                {
+                   pMac->roam.configParam.doBMPSWorkaround = 1;
+                }
+#endif
                 csrRoamCallCallback( pMac, sessionId, &roamInfo, pCommand->u.roamCmd.roamId, roamStatus, roamResult );
             }
     
@@ -4989,6 +5066,7 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
 
         case eCsrJoinFailure:
         case eCsrNothingToJoin:
+        case eCsrJoinFailureDueToConcurrency:
         default:
         {
             smsLog(pMac, LOGW, FL("receives no association indication\n"));
@@ -5030,9 +5108,18 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                         if(pSession->bRefAssocStartCnt > 0)
                         {
                             pSession->bRefAssocStartCnt--;
-                            csrRoamCallCallback(pMac, sessionId, &roamInfo, pCommand->u.roamCmd.roamId, 
+                            if(eCsrJoinFailureDueToConcurrency == Result)
+                            {
+                                csrRoamCallCallback(pMac, sessionId, &roamInfo, pCommand->u.roamCmd.roamId, 
+                                                eCSR_ROAM_ASSOCIATION_COMPLETION, 
+                                                eCSR_ROAM_RESULT_ASSOC_FAIL_CON_CHANNEL);
+                            }
+                            else
+                            {
+                                csrRoamCallCallback(pMac, sessionId, &roamInfo, pCommand->u.roamCmd.roamId, 
                                                 eCSR_ROAM_ASSOCIATION_COMPLETION, 
                                                 eCSR_ROAM_RESULT_FAILURE);
+                            }
                         }
                     }
                     smsLog(pMac, LOG1, FL("  roam(reason %d) failed\n"), pCommand->u.roamCmd.roamReason);
@@ -13128,6 +13215,13 @@ static void csrRoamLinkDown(tpAniSirGlobal pMac, tANI_U32 sessionId)
    /* Indicate the neighbor roal algorithm about the disconnect indication */
    csrNeighborRoamIndicateDisconnect(pMac, sessionId);
 #endif
+
+#ifndef BMPS_WORKAROUND_NOT_NEEDED
+   if(csrIsInfraApStarted( pMac ) &&  pMac->roam.configParam.doBMPSWorkaround)
+   {
+       pMac->roam.configParam.doBMPSWorkaround = 0;
+   }
+#endif
    
 }
 
@@ -13854,12 +13948,16 @@ eHalStatus csrGetStatistics(tpAniSirGlobal pMac, eCsrStatsRequesterType requeste
       {
          //clean up & return
          pStaEntry = GET_BASE_ADDR( pEntry, tCsrStatsClientReqInfo, link );
-         pStaEntry->pPeStaEntry->numClient--;
-         //check if we need to delete the entry from peStatsReqList too
-         if(!pStaEntry->pPeStaEntry->numClient)
+         if(NULL != pStaEntry->pPeStaEntry)
          {
-            csrRoamRemoveEntryFromPeStatsReqList(pMac, pStaEntry->pPeStaEntry);
+            pStaEntry->pPeStaEntry->numClient--;
+            //check if we need to delete the entry from peStatsReqList too
+            if(!pStaEntry->pPeStaEntry->numClient)
+            {
+               csrRoamRemoveEntryFromPeStatsReqList(pMac, pStaEntry->pPeStaEntry);
+            }
          }
+
          //check if we need to stop the tl stats timer too 
          pMac->roam.tlStatsReqInfo.numClient--;
          if(!pMac->roam.tlStatsReqInfo.numClient)

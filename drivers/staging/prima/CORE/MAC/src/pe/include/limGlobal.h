@@ -395,6 +395,27 @@ struct tLimScanResultNode
     tSirBssDescription bssDescription;
 };
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+
+#ifndef OEM_DATA_REQ_SIZE 
+#define OEM_DATA_REQ_SIZE 70
+#endif
+#ifndef OEM_DATA_RSP_SIZE
+#define OEM_DATA_RSP_SIZE 968
+#endif
+
+// OEM Data related structure definitions
+typedef struct sLimMlmOemDataReq
+{
+    tSirMacAddr           selfMacAddr;
+    tANI_U8               oemDataReq[OEM_DATA_REQ_SIZE];
+} tLimMlmOemDataReq, *tpLimMlmOemDataReq;
+
+typedef struct sLimMlmOemDataRsp
+{
+   tANI_U8                oemDataRsp[OEM_DATA_RSP_SIZE];
+} tLimMlmOemDataRsp, *tpLimMlmOemDataRsp;
+#endif
 
 // Pre-authentication structure definition
 typedef struct tLimPreAuthNode
