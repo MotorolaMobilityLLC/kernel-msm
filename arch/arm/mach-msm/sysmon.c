@@ -183,7 +183,7 @@ int sysmon_get_reason(enum subsys_id dest_ss, char *buf, size_t len)
 	    buf == NULL || len == 0)
 		return -EINVAL;
 
-	if (!ss->chan_open)
+	if ((!ss->chan_open) && (dest_ss != SYSMON_SS_EXT_MODEM))
 		return -ENODEV;
 
 	mutex_lock(&ss->lock);
