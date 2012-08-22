@@ -145,6 +145,9 @@ defMsgDecision(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 #ifdef WLAN_FEATURE_P2P 
         (limMsg->type != WDA_P2P_NOA_ATTR_IND) &&
 #endif
+#ifdef FEATURE_OEM_DATA_SUPPORT
+        (limMsg->type != WDA_START_OEM_DATA_RSP) &&
+#endif
         (limMsg->type != WDA_ADD_TS_RSP))
     {
         PELOG1(limLog(pMac, LOG1, FL("Defer the current message %s , gLimProcessDefdMsgs is false and system is not in scan/learn mode\n"),
@@ -1082,6 +1085,61 @@ void limMessageProcessor(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     }
 }
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+
+void limOemDataRspHandleResumeLinkRsp(tpAniSirGlobal pMac, eHalStatus status, tANI_U32* mlmOemDataRsp)
+{
+    if(status != eHAL_STATUS_SUCCESS)
+    {
+        limLog(pMac, LOGE, FL("OEM Data Rsp failed to get the response for resume link\n"));
+    }
+
+    if(NULL != pMac->lim.gpLimMlmOemDataReq)
+    {
+        palFreeMemory(pMac->hHdd, pMac->lim.gpLimMlmOemDataReq);
+        pMac->lim.gpLimMlmOemDataReq = NULL;
+    }
+
+    //"Failure" status doesn't mean that Oem Data Rsp did not happen
+    //and hence we need to respond to upper layers. Only Resume link is failed, but
+    //we got the oem data response already.
+    //Post the meessage to MLM
+    limPostSmeMessage(pMac, LIM_MLM_OEM_DATA_CNF, (tANI_U32*)(mlmOemDataRsp));
+
+    return;
+}
+
+void limProcessOemDataRsp(tpAniSirGlobal pMac, tANI_U32* body)
+{
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tpLimMlmOemDataRsp mlmOemDataRsp = NULL;
+    tpStartOemDataRsp oemDataRsp = NULL;
+
+    //Process all the messages for the lim queue
+    SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
+
+    oemDataRsp = (tpStartOemDataRsp)(body);
+
+    status = palAllocateMemory(pMac->hHdd, (void**)(&mlmOemDataRsp), sizeof(tLimMlmOemDataRsp));
+    if(status != eHAL_STATUS_SUCCESS)
+    {
+        limLog(pMac, LOGP, FL("could not allocate memory for mlmOemDataRsp\n"));
+        return;
+    }
+
+    //copy the memory into tLimMlmOemDataRsp and free the tStartOemDataRsp
+    //the structures tStartOemDataRsp and tLimMlmOemDataRsp have the same structure
+    palCopyMemory(pMac->hHdd, (void*)(mlmOemDataRsp), (void*)(oemDataRsp), sizeof(tLimMlmOemDataRsp));
+
+    //Now free the incoming memory
+    palFreeMemory(pMac->hHdd, (void*)(oemDataRsp));
+
+    limResumeLink(pMac, limOemDataRspHandleResumeLinkRsp, (tANI_U32*)mlmOemDataRsp);
+
+    return;
+}
+
+#endif
 
 
 /**
@@ -1223,6 +1281,11 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case WDA_FINISH_SCAN_RSP:
             limProcessFinishScanRsp(pMac, limMsg->bodyptr);
             break;
+#ifdef FEATURE_OEM_DATA_SUPPORT
+        case WDA_START_OEM_DATA_RSP:
+            limProcessOemDataRsp(pMac, limMsg->bodyptr);
+            break;
+#endif
 
         case WDA_SWITCH_CHANNEL_RSP:
             limProcessSwitchChannelRsp(pMac, limMsg->bodyptr);
@@ -1305,6 +1368,9 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case eWNI_SME_STAT_SUMM_REQ:
         case eWNI_SME_GET_SCANNED_CHANNEL_REQ:
         case eWNI_SME_GET_STATISTICS_REQ:
+#ifdef FEATURE_OEM_DATA_SUPPORT
+        case eWNI_SME_OEM_DATA_REQ:
+#endif
             // These messages are from HDD
             limProcessNormalHddMsg(pMac, limMsg, true);  //need to response to hdd
             break;

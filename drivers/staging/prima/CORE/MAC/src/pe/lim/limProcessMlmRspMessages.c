@@ -59,6 +59,9 @@
 
 static void limHandleSmeJoinResult(tpAniSirGlobal, tSirResultCodes, tANI_U16,tpPESession);
 void limProcessMlmScanCnf(tpAniSirGlobal, tANI_U32 *);
+#ifdef FEATURE_OEM_DATA_SUPPORT
+void limProcessMlmOemDataReqCnf(tpAniSirGlobal, tANI_U32 *);
+#endif
 void limProcessMlmJoinCnf(tpAniSirGlobal, tANI_U32 *);
 void limProcessMlmAuthCnf(tpAniSirGlobal, tANI_U32 *);
 void limProcessMlmStartCnf(tpAniSirGlobal, tANI_U32 *);
@@ -114,6 +117,11 @@ limProcessMlmRspMessages(tpAniSirGlobal pMac, tANI_U32 msgType, tANI_U32 *pMsgBu
             limProcessMlmScanCnf(pMac, pMsgBuf);
             break;
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+        case LIM_MLM_OEM_DATA_CNF:
+            limProcessMlmOemDataReqCnf(pMac, pMsgBuf);
+            break;
+#endif
 
         case LIM_MLM_AUTH_CNF:
             limProcessMlmAuthCnf(pMac, pMsgBuf);
@@ -270,6 +278,43 @@ limProcessMlmScanCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     }
 } /*** end limProcessMlmScanCnf() ***/
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+
+/**
+ * limProcessMlmOemDataReqCnf()
+ *
+ *FUNCTION:
+ * This function is called to processes LIM_MLM_OEM_DATA_REQ_CNF
+ * message from MLM State machine.
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ *
+ *NOTE:
+ *
+ * @param pMac       Pointer to Global MAC structure
+ * @param pMsgBuf    A pointer to the MLM message buffer
+ *
+ * @return None
+ */
+
+void limProcessMlmOemDataReqCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
+{
+    tLimMlmOemDataRsp*    measRsp;
+
+    tSirResultCodes resultCode = eSIR_SME_SUCCESS;
+
+    measRsp = (tLimMlmOemDataRsp*)(pMsgBuf);
+
+    //Now send the meas confirm message to the sme
+    limSendSmeOemDataRsp(pMac, (tANI_U32*)measRsp, resultCode);
+
+    //Dont free the memory here. It will be freed up by the callee
+
+    return;
+}
+#endif
 
 /**
  * limProcessMlmStartCnf()
@@ -1801,6 +1846,9 @@ limHandleSmeJoinResult(tpAniSirGlobal pMac, tSirResultCodes resultCode, tANI_U16
     {
         if(NULL != psessionEntry)
         {
+           if(limSetLinkState(pMac, eSIR_LINK_IDLE_STATE,psessionEntry->bssId,
+                psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS)
+               PELOGE(limLog(pMac, LOGE,  FL("Failed to set the LinkState.\n"));)
             peDeleteSession(pMac,psessionEntry);
             psessionEntry = NULL;
         }
@@ -3814,17 +3862,7 @@ static void limProcessSwitchChannelJoinReq(tpAniSirGlobal pMac, tpPESession pses
         goto error;
     }
 
-    // Activate Join failure timer
-    MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, 0, eLIM_JOIN_FAIL_TIMER));
-    if (tx_timer_activate(&pMac->lim.limTimers.gLimJoinFailureTimer) != TX_SUCCESS)
-    {
-        limLog(pMac, LOGP, FL("could not activate Join failure timer\n"));
-        psessionEntry->limMlmState = psessionEntry->limPrevMlmState;
-         MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, 0, pMac->lim.gLimMlmState));
-        //memory is freed up below.
-        psessionEntry->pLimMlmJoinReq = NULL;
-        goto error;
-    }
+   
     /* eSIR_BTAMP_AP_MODE stroed as bss type in session Table when join req is received, is to be veified   */
     if(psessionEntry->bssType == eSIR_BTAMP_AP_MODE)
     {
@@ -3867,6 +3905,19 @@ static void limProcessSwitchChannelJoinReq(tpAniSirGlobal pMac, tpPESession pses
            psessionEntry->pLimMlmJoinReq->bssDescription.bssId, psessionEntry->currentOperChannel/*chanNum*/,
            psessionEntry->selfMacAddr, psessionEntry->dot11mode,
            psessionEntry->pLimJoinReq->addIEScan.length, psessionEntry->pLimJoinReq->addIEScan.addIEdata);
+
+    // Sending mgmt frame is a blocking call activate Join failure timer now
+    MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, 0, eLIM_JOIN_FAIL_TIMER));
+    if (tx_timer_activate(&pMac->lim.limTimers.gLimJoinFailureTimer) != TX_SUCCESS)
+    {
+        limLog(pMac, LOGP, FL("could not activate Join failure timer\n"));
+        psessionEntry->limMlmState = psessionEntry->limPrevMlmState;
+         MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, 0, pMac->lim.gLimMlmState));
+        //memory is freed up below.
+        psessionEntry->pLimMlmJoinReq = NULL;
+        goto error;
+    }
+
     return;
 error:  
     if(NULL != psessionEntry)

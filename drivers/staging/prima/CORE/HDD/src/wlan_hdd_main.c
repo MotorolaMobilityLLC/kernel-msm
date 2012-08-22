@@ -3552,11 +3552,20 @@ int hdd_wlan_startup(struct device *dev )
       pr_info("%s: WCNSS hardware version %s\n",
               WLAN_MODULE_NAME, versionString);
 
-      /* Check if FW version is greater than 0.1.1.0. Only then send host-FW capability exchange message */
-      if ((versionReported.major>0) || (versionReported.minor>1) || ((versionReported.minor>=1) && (versionReported.version>=1)))
+      /* 1.Check if FW version is greater than 0.1.1.0. Only then send host-FW capability exchange message 
+              2.Host-FW capability exchange message  is only present on riva 1.1 so 
+                send the message only if it the riva is 1.1
+                minor numbers for different riva branches:
+                0 -> (1.0)Mainline Build
+                1 -> (1.1)Mainline Build
+                2->(1.04) Stability Build
+         */
+      if (((versionReported.major>0) || (versionReported.minor>1) || 
+         ((versionReported.minor>=1) && (versionReported.version>=1)))
+         && ((versionReported.major == 1) && (versionReported.minor == 1)))
          fwFeatCapsMsgSupported = 1;
       if (fwFeatCapsMsgSupported)
-        sme_featureCapsExchange(pHddCtx->hHal);
+         sme_featureCapsExchange(pHddCtx->hHal);
    } while (0);
 
 #endif // FEATURE_WLAN_INTEGRATED_SOC
@@ -4098,7 +4107,6 @@ static void __exit hdd_module_exit(void)
 {
    hdd_context_t *pHddCtx = NULL;
    v_CONTEXT_t pVosContext = NULL;
-   int attempts = 0;
 
    pr_info("%s: unloading driver v%s\n", WLAN_MODULE_NAME, QWLAN_VERSIONSTR);
 
@@ -4120,13 +4128,10 @@ static void __exit hdd_module_exit(void)
    }
    else
    {
+      /* module exit should never proceed if SSR is not completed */
       while(isWDresetInProgress()){
-         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:Reset in Progress by LOGP. Block rmmod for 500ms!!!",__func__);
-         VOS_ASSERT(0);
-         msleep(500);
-         attempts++;
-         if(attempts==MAX_EXIT_ATTEMPTS_DURING_LOGP)
-           break;
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:SSR in Progress; block rmmod for 1 second!!!",__func__);
+         msleep(1000);
        }
 
       pHddCtx->isLoadUnloadInProgress = TRUE;

@@ -61,6 +61,9 @@
 // MLM REQ processing function templates
 static void limProcessMlmStartReq(tpAniSirGlobal, tANI_U32 *);
 static void limProcessMlmScanReq(tpAniSirGlobal, tANI_U32 *);
+#ifdef FEATURE_OEM_DATA_SUPPORT
+static void limProcessMlmOemDataReq(tpAniSirGlobal, tANI_U32 *);
+#endif
 static void limProcessMlmJoinReq(tpAniSirGlobal, tANI_U32 *);
 static void limProcessMlmAuthReq(tpAniSirGlobal, tANI_U32 *);
 static void limProcessMlmAssocReq(tpAniSirGlobal, tANI_U32 *);
@@ -141,6 +144,9 @@ limProcessMlmReqMessages(tpAniSirGlobal pMac, tpSirMsgQ Msg)
     {
         case LIM_MLM_START_REQ:             limProcessMlmStartReq(pMac, Msg->bodyptr);   break;
         case LIM_MLM_SCAN_REQ:              limProcessMlmScanReq(pMac, Msg->bodyptr);    break;
+#ifdef FEATURE_OEM_DATA_SUPPORT
+        case LIM_MLM_OEM_DATA_REQ: limProcessMlmOemDataReq(pMac, Msg->bodyptr); break;
+#endif
         case LIM_MLM_JOIN_REQ:              limProcessMlmJoinReq(pMac, Msg->bodyptr);    break;
         case LIM_MLM_AUTH_REQ:              limProcessMlmAuthReq(pMac, Msg->bodyptr);    break;
         case LIM_MLM_ASSOC_REQ:             limProcessMlmAssocReq(pMac, Msg->bodyptr);   break;
@@ -1256,6 +1262,154 @@ limRestorePreScanState(tpAniSirGlobal pMac)
     PELOG1(limLog(pMac, LOG1, FL("Scan ended, took %d tu\n"), (tx_time_get() - pMac->lim.scanStartTime));)
 } /*** limRestorePreScanState() ***/
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+
+void limSendHalOemDataReq(tpAniSirGlobal pMac)
+{
+    tSirMsgQ msg;
+    tpStartOemDataReq pStartOemDataReq = NULL;
+    tSirRetStatus rc = eSIR_SUCCESS;
+    tpLimMlmOemDataRsp pMlmOemDataRsp;
+    tANI_U32 reqLen = 0;
+    if(NULL == pMac->lim.gpLimMlmOemDataReq)
+    {
+        PELOGE(limLog(pMac, LOGE,  FL("Null pointer\n"));)
+        goto error;
+    }
+
+    reqLen = sizeof(tStartOemDataReq);
+
+    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, (void**)&pStartOemDataReq, reqLen))
+    {
+        PELOGE(limLog(pMac, LOGE,  FL("OEM_DATA: Could not allocate memory for pStartOemDataReq\n"));)
+        goto error;
+    }
+
+    palZeroMemory(pMac->hHdd, (tANI_U8*)(pStartOemDataReq), reqLen);
+
+    //Now copy over the information to the OEM DATA REQ to HAL
+    palCopyMemory(pMac->hHdd, pStartOemDataReq->selfMacAddr, pMac->lim.gpLimMlmOemDataReq->selfMacAddr, sizeof(tSirMacAddr));
+
+    palCopyMemory(pMac->hHdd, pStartOemDataReq->oemDataReq, pMac->lim.gpLimMlmOemDataReq->oemDataReq, OEM_DATA_REQ_SIZE);
+
+    //Create the message to be passed to HAL
+    msg.type = WDA_START_OEM_DATA_REQ;
+    msg.bodyptr = pStartOemDataReq;
+    msg.bodyval = 0;
+
+    SET_LIM_PROCESS_DEFD_MESGS(pMac, false);
+    MTRACE(macTraceMsgTx(pMac, 0, msg.type));
+
+    rc = wdaPostCtrlMsg(pMac, &msg);
+    if(rc == eSIR_SUCCESS)
+    {
+        return;
+    }
+
+    SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
+    palFreeMemory(pMac->hHdd, (void*)pStartOemDataReq);
+    PELOGE(limLog(pMac, LOGE,  FL("OEM_DATA: posting WDA_START_OEM_DATA_REQ to HAL failed\n"));)
+
+error:
+    pMac->lim.gLimMlmState = pMac->lim.gLimPrevMlmState;
+
+    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, (void**)(&pMlmOemDataRsp), sizeof(tLimMlmOemDataRsp)))
+    {
+        limLog(pMac->hHdd, LOGP, FL("OEM_DATA: memory allocation for pMlmOemDataRsp failed under suspend link failure\n"));
+        return;
+    }
+
+    if(NULL != pMac->lim.gpLimMlmOemDataReq)
+    {
+        palFreeMemory(pMac->hHdd, pMac->lim.gpLimMlmOemDataReq);
+        pMac->lim.gpLimMlmOemDataReq = NULL;
+    }
+
+    limPostSmeMessage(pMac, LIM_MLM_OEM_DATA_CNF, (tANI_U32*)pMlmOemDataRsp);
+
+    return;
+}
+/**
+ * limSetOemDataReqModeFailed()
+ *
+ * FUNCTION:
+ *  This function is used as callback to resume link after the suspend fails while
+ *  starting oem data req mode.
+ * LOGIC:
+ *  NA
+ *
+ * ASSUMPTIONS:
+ *  NA
+ *
+ * NOTE:
+ *
+ * @param pMac - Pointer to Global MAC structure
+ * @return None
+ */
+
+void limSetOemDataReqModeFailed(tpAniSirGlobal pMac, eHalStatus status, tANI_U32* data)
+{
+    tpLimMlmOemDataRsp pMlmOemDataRsp;
+
+    pMac->lim.gLimMlmState = pMac->lim.gLimPrevMlmState;
+
+    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, (void**)(&pMlmOemDataRsp), sizeof(tLimMlmOemDataRsp)))
+    {
+        limLog(pMac->hHdd, LOGP, FL("OEM_DATA: memory allocation for pMlmOemDataRsp failed under suspend link failure\n"));
+        return;
+    }
+
+    if(NULL != pMac->lim.gpLimMlmOemDataReq)
+    {
+        palFreeMemory(pMac->hHdd, pMac->lim.gpLimMlmOemDataReq);
+        pMac->lim.gpLimMlmOemDataReq = NULL;
+    }
+
+    palZeroMemory(pMac->hHdd, pMlmOemDataRsp, sizeof(tLimMlmOemDataRsp));
+
+    limPostSmeMessage(pMac, LIM_MLM_OEM_DATA_CNF, (tANI_U32*)pMlmOemDataRsp);
+
+    return;
+}
+
+/**
+ * limSetOemDataReqMode()
+ *
+ *FUNCTION:
+ * This function is called to setup system into OEM DATA REQ mode
+ *
+ *LOGIC:
+ * NA
+ *
+ *ASSUMPTIONS:
+ * NA
+ *
+ *NOTE:
+ *
+ * @param  pMac - Pointer to Global MAC structure
+ * @return None
+ */
+
+void limSetOemDataReqMode(tpAniSirGlobal pMac, eHalStatus status, tANI_U32* data)
+{
+    if(status != eHAL_STATUS_SUCCESS)
+    {
+        limLog(pMac, LOGE, FL("OEM_DATA: failed in suspend link\n"));
+        goto error;
+    }
+    else
+    {
+        PELOGE(limLog(pMac, LOGE, FL("OEM_DATA: Calling limSendHalOemDataReq\n"));)
+        limSendHalOemDataReq(pMac);
+        return;
+    }
+
+error:
+    limResumeLink(pMac, limSetOemDataReqModeFailed, NULL);
+    return ;
+} /*** end limSendHalOemDataReq() ***/
+
+#endif //FEATURE_OEM_DATA_SUPPORT
 
 static void
 mlm_add_sta(
@@ -1775,6 +1929,57 @@ limProcessMlmScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     }
 } /*** limProcessMlmScanReq() ***/
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+static void limProcessMlmOemDataReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
+{
+    tLimMlmOemDataRsp*     pMlmOemDataRsp;
+    
+    if (((pMac->lim.gLimMlmState == eLIM_MLM_IDLE_STATE) ||
+         (pMac->lim.gLimMlmState == eLIM_MLM_JOINED_STATE) ||
+         (pMac->lim.gLimMlmState == eLIM_MLM_AUTHENTICATED_STATE) ||
+         (pMac->lim.gLimMlmState == eLIM_MLM_BSS_STARTED_STATE) ||
+         (pMac->lim.gLimMlmState == eLIM_MLM_LINK_ESTABLISHED_STATE)))
+    {
+        //Hold onto the oem data request criteria
+        pMac->lim.gpLimMlmOemDataReq = (tLimMlmOemDataReq*)pMsgBuf;
+
+        pMac->lim.gLimPrevMlmState = pMac->lim.gLimMlmState;
+
+        MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, 0, pMac->lim.gLimMlmState));
+
+        //Now request for link suspension
+        limSuspendLink(pMac, eSIR_CHECK_LINK_TRAFFIC_BEFORE_SCAN, limSetOemDataReqMode, NULL);
+    }
+    else
+    {
+        /**
+         * Should not have received oem data req in other states
+         * Log error
+         */
+
+        PELOGW(limLog(pMac, LOGW, FL("OEM_DATA: unexpected LIM_MLM_OEM_DATA_REQ in invalid state %X\n"),pMac->lim.gLimMlmState);)
+
+        limPrintMlmState(pMac, LOGW, pMac->lim.gLimMlmState);
+
+        /// Free up buffer allocated
+        palFreeMemory( pMac->hHdd, (tANI_U8 *) pMsgBuf);
+
+        /// Return Meas confirm with INVALID_PARAMETERS
+        if(eHAL_STATUS_SUCCESS == palAllocateMemory(pMac->hHdd, (void**)&pMlmOemDataRsp, sizeof(tLimMlmOemDataRsp)))
+        {
+            limPostSmeMessage(pMac, LIM_MLM_OEM_DATA_CNF, (tANI_U32*)pMlmOemDataRsp);
+            palFreeMemory(pMac->hHdd, pMlmOemDataRsp);
+        }
+        else
+        {
+            limLog(pMac, LOGP, FL("Could not allocate memory for pMlmOemDataRsp\n"));
+            return;
+        }
+    }
+
+    return;
+}
+#endif //FEATURE_OEM_DATA_SUPPORT
 
 
 /**
@@ -2230,6 +2435,8 @@ limProcessMlmAssocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
          (palEqualMemory(pMac->hHdd,pMlmAssocReq->peerMacAddr, currentBssId, sizeof(tSirMacAddr))) )
     {
 
+        /// map the session entry pointer to the AssocFailureTimer 
+        pMac->lim.limTimers.gLimAssocFailureTimer.sessionId = pMlmAssocReq->sessionId;
 
         psessionEntry->limPrevMlmState = psessionEntry->limMlmState;
         psessionEntry->limMlmState = eLIM_MLM_WT_ASSOC_RSP_STATE;
@@ -2250,9 +2457,6 @@ limProcessMlmAssocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
            psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS)
             PELOGE(limLog(pMac, LOGE,  FL("Failed to set the LinkState\n"));)
     }
-        /// map the session entry pointer to the AssocFailureTimer 
-        pMac->lim.limTimers.gLimAssocFailureTimer.sessionId = pMlmAssocReq->sessionId;
-
         /// Start association failure timer
         MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, 0, eLIM_ASSOC_FAIL_TIMER));
         if (tx_timer_activate(&pMac->lim.limTimers.gLimAssocFailureTimer)

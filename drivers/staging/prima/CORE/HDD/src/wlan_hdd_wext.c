@@ -100,6 +100,9 @@ extern void hdd_suspend_wlan(struct early_suspend *wlan_suspend);
 extern void hdd_resume_wlan(struct early_suspend *wlan_suspend);
 #endif
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+#define MAX_OEM_DATA_RSP_LEN 1024
+#endif
 
 #define HDD_FINISH_ULA_TIME_OUT    800
 
@@ -219,6 +222,11 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WAPI_CERT_AKM_SUITE 0x01721400
 #endif
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+/* Private ioctls for setting the measurement configuration */
+#define WLAN_PRIV_SET_OEM_DATA_REQ (SIOCIWFIRSTPRIV + 17)
+#define WLAN_PRIV_GET_OEM_DATA_RSP (SIOCIWFIRSTPRIV + 19)
+#endif
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
 #define WLAN_PRIV_SET_FTIES             (SIOCIWFIRSTPRIV + 20)
@@ -408,13 +416,21 @@ int hdd_wlan_get_frag_threshold(hdd_adapter_t *pAdapter, union iwreq_data *wrqu)
 
 int hdd_wlan_get_freq(v_U32_t channel, v_U32_t *pfreq)
 {
-     if((channel > 0) && (channel <= (FREQ_CHAN_MAP_TABLE_SIZE - 1)))
-     {
-       *pfreq = freq_chan_map[channel - 1].freq * 100000;
-       return 0;
-     }
-     else
-       return -EINVAL;
+    int i;
+    if (channel > 0)
+    {
+        for (i=0; i < FREQ_CHAN_MAP_TABLE_SIZE; i++)
+        {
+            if (channel == freq_chan_map[i].chan)
+            {
+                *pfreq = freq_chan_map[i].freq;
+                return 1;
+            }
+        }
+    }
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                               ("Invalid channel no=%d!!\n"), channel);
+    return -EINVAL;
 }
 
 static v_BOOL_t
@@ -1076,7 +1092,7 @@ static int iw_set_freq(struct net_device *dev, struct iw_request_info *info,
 static int iw_get_freq(struct net_device *dev, struct iw_request_info *info,
              struct iw_freq *fwrq, char *extra)
 {
-   v_U32_t status = 0,channel,freq = 0;
+   v_U32_t status = FALSE, channel = 0, freq = 0;
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    tHalHandle hHal;
    hdd_wext_state_t *pWextState;
@@ -1103,18 +1119,31 @@ static int iw_get_freq(struct net_device *dev, struct iw_request_info *info,
        }
        else
        {
-          fwrq->m = channel;
-          fwrq->e = 0;
+           status = hdd_wlan_get_freq(channel, &freq);
+           if( TRUE == status )
+           {
+               /* Set Exponent parameter as 6 (MHZ) in struct iw_freq
+                * iwlist & iwconfig command shows frequency into proper
+                * format (2.412 GHz instead of 246.2 MHz)*/
+               fwrq->m = freq;
+               fwrq->e = MHZ;
+           }
        }
     }
     else
     {
        channel = pHddStaCtx->conn_info.operationChannel;
-       status = hdd_wlan_get_freq(channel,&freq);
-       fwrq->m = freq;
-       fwrq->e = 0;
+       status = hdd_wlan_get_freq(channel, &freq);
+       if( TRUE == status )
+       {
+          /* Set Exponent parameter as 6 (MHZ) in struct iw_freq
+           * iwlist & iwconfig command shows frequency into proper
+           * format (2.412 GHz instead of 246.2 MHz)*/
+           fwrq->m = freq;
+           fwrq->e = MHZ;
+       }
     }
-   return status;
+   return 0;
 }
 
 static int iw_get_tx_power(struct net_device *dev,
@@ -5582,6 +5611,10 @@ static const iw_handler we_private[] = {
    [WLAN_PRIV_ADD_TSPEC             - SIOCIWFIRSTPRIV]   = iw_add_tspec,
    [WLAN_PRIV_DEL_TSPEC             - SIOCIWFIRSTPRIV]   = iw_del_tspec,
    [WLAN_PRIV_GET_TSPEC             - SIOCIWFIRSTPRIV]   = iw_get_tspec,
+#ifdef FEATURE_OEM_DATA_SUPPORT
+   [WLAN_PRIV_SET_OEM_DATA_REQ - SIOCIWFIRSTPRIV] = iw_set_oem_data_req, //oem data req Specifc
+   [WLAN_PRIV_GET_OEM_DATA_RSP - SIOCIWFIRSTPRIV] = iw_get_oem_data_rsp, //oem data req Specifc
+#endif
 
 #ifdef FEATURE_WLAN_WAPI
    [WLAN_PRIV_SET_WAPI_MODE             - SIOCIWFIRSTPRIV]  = iw_qcom_set_wapi_mode,
@@ -5869,6 +5902,21 @@ static const struct iw_priv_args we_private_args[] = {
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
         "getTspec" },
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+    /* handlers for main ioctl - OEM DATA */
+    {
+        WLAN_PRIV_SET_OEM_DATA_REQ,
+        IW_PRIV_TYPE_BYTE | sizeof(struct iw_oem_data_req) | IW_PRIV_SIZE_FIXED,
+        0,
+        "set_oem_data_req" },
+
+    /* handlers for main ioctl - OEM DATA */
+    {
+        WLAN_PRIV_GET_OEM_DATA_RSP,
+        0,
+        IW_PRIV_TYPE_BYTE | MAX_OEM_DATA_RSP_LEN,
+        "get_oem_data_rsp" },
+#endif
 
 #ifdef FEATURE_WLAN_WAPI
    /* handlers for main ioctl SET_WAPI_MODE */
