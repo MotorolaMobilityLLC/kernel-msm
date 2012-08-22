@@ -75,6 +75,16 @@ static bool debug_aca_enabled;
 static bool debug_bus_voting_enabled;
 static bool mhl_det_in_progress;
 
+enum check_ta_state_type {
+	CHECK_TA_STATE_UNDEFINED = 0,
+	CHECK_TA_STATE_FIRST_RETRY,
+	CHECK_TA_STATE_SECOND_RETRY,
+	CHECK_TA_STATE_TA_DETECTED,
+	CHECK_TA_STATE_DONE,
+};
+
+enum check_ta_state_type check_ta_state = CHECK_TA_STATE_UNDEFINED;
+
 static struct regulator *hsusb_3p3;
 static struct regulator *hsusb_1p8;
 static struct regulator *hsusb_vddcx;
@@ -1971,6 +1981,64 @@ static const char *chg_to_string(enum usb_chg_type chg_type)
 	default:			return "INVALID_CHARGER";
 	}
 }
+#define MSM_CHECK_TA_DELAY (5 *HZ)
+#define PORTSC_LS  (3 << 10) /* Read - Port's Line status */
+
+static void msm_ta_detect_work(struct work_struct *w)
+{
+	struct msm_otg *motg = the_msm_otg;
+	struct usb_otg *otg = motg->phy.otg;
+	unsigned long delay = MSM_CHECK_TA_DELAY;
+
+	switch (check_ta_state) {
+	case CHECK_TA_STATE_UNDEFINED:
+		pr_info("msm_ta_detect_work: ta detection work\n");
+		if ((readl(USB_PORTSC) & PORTSC_LS) == PORTSC_LS) {
+			check_ta_state = CHECK_TA_STATE_TA_DETECTED;
+			delay = 0;
+		} else {
+			check_ta_state = CHECK_TA_STATE_FIRST_RETRY;
+			delay = MSM_CHECK_TA_DELAY;
+		}
+		break;
+	case CHECK_TA_STATE_FIRST_RETRY:
+		pr_info("msm_ta_detect_work: ta detection first retry\n");
+		if ((readl(USB_PORTSC) & PORTSC_LS) == PORTSC_LS) {
+			check_ta_state = CHECK_TA_STATE_TA_DETECTED;
+			delay = 0;
+		} else {
+			check_ta_state = CHECK_TA_STATE_SECOND_RETRY;
+			delay = MSM_CHECK_TA_DELAY;
+		}
+		break;
+	case CHECK_TA_STATE_SECOND_RETRY:
+		pr_info("msm_ta_detect_work: ta detection second retry\n");
+		if ((readl(USB_PORTSC) & PORTSC_LS) == PORTSC_LS)
+			check_ta_state = CHECK_TA_STATE_TA_DETECTED;
+		else
+			check_ta_state = CHECK_TA_STATE_DONE;
+		delay = 0;
+		break;
+	case CHECK_TA_STATE_TA_DETECTED:
+		pr_info("msm_ta_detect_work: ta dectection detected\n");
+		/* inform to user space that SDP is no longer detected */
+		msm_otg_notify_charger(motg, 0);
+		motg->chg_state = USB_CHG_STATE_DETECTED;
+		motg->chg_type = USB_DCP_CHARGER;
+		motg->cur_power = 0;
+		msm_otg_start_peripheral(otg, 0);
+		otg->phy->state = OTG_STATE_B_IDLE;
+		schedule_work(&motg->sm_work);
+		return;
+	case CHECK_TA_STATE_DONE:
+	/* Fall through */
+	default:
+		pr_info("msm_ta_detect_work: ta detection done\n");
+		return;
+	}
+
+	schedule_delayed_work(&motg->check_ta_work, delay);
+}
 
 #define MSM_CHG_DCD_POLL_TIME		(100 * HZ/1000) /* 100 msec */
 #define MSM_CHG_DCD_MAX_RETRIES		6 /* Tdcd_tmout = 6 * 100 msec */
@@ -2263,6 +2331,8 @@ static void msm_otg_sm_work(struct work_struct *w)
 					msm_otg_start_peripheral(otg, 1);
 					otg->phy->state =
 						OTG_STATE_B_PERIPHERAL;
+					schedule_delayed_work(&motg->check_ta_work,
+						MSM_CHECK_TA_DELAY);
 					break;
 				default:
 					break;
@@ -2284,6 +2354,8 @@ static void msm_otg_sm_work(struct work_struct *w)
 		} else {
 			pr_debug("chg_work cancel");
 			cancel_delayed_work_sync(&motg->chg_work);
+			cancel_delayed_work_sync(&motg->check_ta_work);
+			check_ta_state = CHECK_TA_STATE_UNDEFINED;
 			motg->chg_state = USB_CHG_STATE_UNDEFINED;
 			motg->chg_type = USB_INVALID_CHARGER;
 			msm_otg_notify_charger(motg, 0);
@@ -3615,6 +3687,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	INIT_WORK(&motg->sm_work, msm_otg_sm_work);
 	INIT_DELAYED_WORK(&motg->chg_work, msm_chg_detect_work);
 	INIT_DELAYED_WORK(&motg->pmic_id_status_work, msm_pmic_id_status_w);
+	INIT_DELAYED_WORK(&motg->check_ta_work, msm_ta_detect_work);
 	setup_timer(&motg->id_timer, msm_otg_id_timer_func,
 				(unsigned long) motg);
 	ret = request_irq(motg->irq, msm_otg_irq, IRQF_SHARED,
@@ -3777,6 +3850,7 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 	msm_otg_debugfs_cleanup();
 	cancel_delayed_work_sync(&motg->chg_work);
 	cancel_delayed_work_sync(&motg->pmic_id_status_work);
+	cancel_delayed_work_sync(&motg->check_ta_work);
 	cancel_work_sync(&motg->sm_work);
 
 	pm_runtime_resume(&pdev->dev);
