@@ -81,6 +81,7 @@ void apq8064_init_pmic(void);
 #ifdef CONFIG_WIRELESS_CHARGER
 extern struct platform_device wireless_charger;
 #endif
+extern struct platform_device batt_temp_ctrl;
 
 extern struct msm_camera_board_info apq8064_camera_board_info;
 /* Enabling flash LED for camera */
