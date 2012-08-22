@@ -38,7 +38,7 @@ config EARJACK_DEBUGGER
 
 config LGE_CRASH_HANDLER
 	tristate "Support LGE Crash Handler"
-	depends on !S390 && !UML && HAVE_MEMBLOCK
+	depends on !S390 && !UML && HAVE_MEMBLOCK && MSM_DLOAD_MODE
 	select ANDROID_PERSISTENT_RAM
 	default n
 	help

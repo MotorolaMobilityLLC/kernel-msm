@@ -261,28 +261,6 @@ void msm_restart(char mode, const char *cmd)
 
 	pm8xxx_reset_pwr_off(1);
 
-#ifdef CONFIG_LGE_CRASH_HANDLER
-	if (in_panic == 1) {
-		set_kernel_crash_magic_number();
-	} else {
-		if (cmd != NULL) {
-			if (!strncmp(cmd, "bootloader", 10)) {
-				__raw_writel(0x77665500, restart_reason);
-			} else if (!strncmp(cmd, "recovery", 8)) {
-				__raw_writel(0x77665502, restart_reason);
-			} else if (!strncmp(cmd, "oem-", 4)) {
-				unsigned long code;
-				code = simple_strtoul(cmd+4, NULL, 16) & 0xff;
-				__raw_writel(0x6f656d00 | code, restart_reason);
-			} else if (!strncmp(cmd, "recovery", 8)) {
-				__raw_writel(0x77665502, restart_reason);
-			} else {
-				__raw_writel(0x77665501, restart_reason);
-			}
-		}
-	}
-reset:
-#else
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
 			__raw_writel(0x77665500, restart_reason);
@@ -296,6 +274,10 @@ reset:
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}
+#ifdef CONFIG_LGE_CRASH_HANDLER
+	if (in_panic == 1)
+		set_kernel_crash_magic_number();
+reset:
 #endif /* CONFIG_LGE_CRASH_HANDLER */
 
 	__raw_writel(0, msm_tmr0_base + WDT0_EN);
