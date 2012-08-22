@@ -447,4 +447,11 @@ config BQ51051B_CHARGER
 	help
 	  TI BQ51051B wireless charging control driver
 
+config BATTERY_TEMP_CONTROL
+	default n
+	bool "Battery Temperature Control Configuration"
+	help
+	  Say Y to enable battery temperature control for safty.
+	  It controls charging current depending on battery temperature.
+
 endif # POWER_SUPPLY

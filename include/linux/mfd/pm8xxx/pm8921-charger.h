@@ -137,6 +137,7 @@ struct pm8921_charger_platform_data {
 	unsigned int			max_bat_chg_current;
 	unsigned int			cool_bat_chg_current;
 	unsigned int			warm_bat_chg_current;
+	int				ext_batt_temp_monitor;
 	unsigned int			cool_bat_voltage;
 	unsigned int			warm_bat_voltage;
 	unsigned int			(*get_batt_capacity_percent) (void);
@@ -293,6 +294,9 @@ int pm8921_is_batfet_closed(void);
 #ifdef CONFIG_WIRELESS_CHARGER
 int set_wireless_power_supply_control(int value);
 #endif
+
+int pm8921_set_ext_battery_health(int health);
+
 #else
 static inline void pm8921_charger_vbus_draw(unsigned int mA)
 {
