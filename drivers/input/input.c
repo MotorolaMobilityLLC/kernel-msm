@@ -515,11 +515,14 @@ int input_open_device(struct input_handle *handle)
 
 	handle->open++;
 
-	if (!dev->users++ && dev->open && !dev->disabled)
+	dev->users_private++;
+	if (!dev->disabled && !dev->users++ && dev->open)
 		retval = dev->open(dev);
 
 	if (retval) {
-		dev->users--;
+		dev->users_private--;
+		if (!dev->disabled)
+			dev->users--;
 		if (!--handle->open) {
 			/*
 			 * Make sure we are not delivering any more events
@@ -567,7 +570,8 @@ void input_close_device(struct input_handle *handle)
 
 	__input_release_device(handle);
 
-	if (!--dev->users && dev->close && !dev->disabled)
+	--dev->users_private;
+	if (!dev->disabled && !--dev->users && dev->close)
 		dev->close(dev);
 
 	if (!--handle->open) {
@@ -594,11 +598,12 @@ static int input_enable_device(struct input_dev *dev)
 	if (!dev->disabled)
 		goto out;
 
-	if (dev->users && dev->open) {
+	if (dev->users_private && dev->open) {
 		retval = dev->open(dev);
 		if (retval)
 			goto out;
 	}
+	dev->users = dev->users_private;
 	dev->disabled = false;
 
 out:
@@ -619,6 +624,7 @@ static int input_disable_device(struct input_dev *dev)
 		dev->disabled = true;
 		if (dev->users && dev->close)
 			dev->close(dev);
+		dev->users = 0;
 	}
 
 	mutex_unlock(&dev->mutex);
