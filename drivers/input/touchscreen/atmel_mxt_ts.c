@@ -2559,6 +2559,14 @@ static const struct i2c_device_id mxt_id[] = {
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, mxt_id);
+#ifdef CONFIG_OF
+static struct of_device_id mxt_match_table[] = {
+	{ .compatible = "atmel,mxt-ts",},
+	{ },
+};
+#else
+#define mxt_match_table NULL
+#endif
 
 static struct i2c_driver mxt_driver = {
 	.driver = {
