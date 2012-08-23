@@ -44,6 +44,16 @@
 	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm9625")
 #define machine_is_msm9625()		\
 	of_machine_is_compatible("qcom,msm9625")
+#define early_machine_is_mpq8092()	\
+	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,mpq8092")
+#define machine_is_mpq8092_sim()           \
+	of_machine_is_compatible("qcom,mpq8092-sim")
+#define early_machine_is_msm8226()	\
+	of_flat_dt_is_compatible(of_get_flat_dt_root(), "qcom,msm8226")
+#define machine_is_msm8226()		\
+	of_machine_is_compatible("qcom,msm8226")
+#define machine_is_msm8226_sim()		\
+	of_machine_is_compatible("qcom,msm8226-sim")
 #else
 #define early_machine_is_msm8974()	0
 #define machine_is_msm8974()		0
@@ -51,6 +61,12 @@
 #define machine_is_msm8974_rumi()	0
 #define early_machine_is_msm9625()	0
 #define machine_is_msm9625()		0
+#define early_machine_is_mpq8092()	0
+#define machine_is_mpq8092_sim()	0
+#define early_machine_is_msm8226()	0
+#define machine_is_msm8226()		0
+#define machine_is_msm8226_sim()	0
+
 #endif
 
 #define PLATFORM_SUBTYPE_SGLTE	6
@@ -80,7 +96,9 @@ enum msm_cpu {
 	MSM_CPU_8974,
 	MSM_CPU_8627,
 	MSM_CPU_8625,
-	MSM_CPU_9625
+	MSM_CPU_9625,
+	MSM_CPU_8092,
+	MSM_CPU_8226
 };
 
 enum pmic_model {
@@ -356,6 +374,31 @@ static inline int cpu_is_msm8974(void)
 
 	BUG_ON(cpu == MSM_CPU_UNKNOWN);
 	return cpu == MSM_CPU_8974;
+#else
+	return 0;
+#endif
+}
+
+static inline int cpu_is_mpq8092(void)
+{
+#ifdef CONFIG_ARCH_MPQ8092
+	enum msm_cpu cpu = socinfo_get_msm_cpu();
+
+	BUG_ON(cpu == MSM_CPU_UNKNOWN);
+	return cpu == MSM_CPU_8092;
+#else
+	return 0;
+#endif
+
+}
+
+static inline int cpu_is_msm8226(void)
+{
+#ifdef CONFIG_ARCH_MSM8226
+	enum msm_cpu cpu = socinfo_get_msm_cpu();
+
+	BUG_ON(cpu == MSM_CPU_UNKNOWN);
+	return cpu == MSM_CPU_8226;
 #else
 	return 0;
 #endif
