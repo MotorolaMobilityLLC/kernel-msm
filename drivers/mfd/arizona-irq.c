@@ -14,7 +14,6 @@
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
-#include <linux/irqdomain.h>
 #include <linux/module.h>
 #include <linux/pm_runtime.h>
 #include <linux/regmap.h>
@@ -28,13 +27,15 @@
 
 static int arizona_map_irq(struct arizona *arizona, int irq)
 {
-	int ret;
+	if ( (ARIZONA_IRQ_GP5_FALL==irq) ||
+	     (ARIZONA_IRQ_GP5_RISE==irq) ||
+	     (ARIZONA_IRQ_JD_FALL==irq) ||
+	     (ARIZONA_IRQ_JD_RISE==irq))
+		irq = arizona->virq[0] + irq;
+	else
+		irq = arizona->virq[1] + irq;
 
-	ret = regmap_irq_get_virq(arizona->aod_irq_chip, irq);
-	if (ret < 0)
-		ret = regmap_irq_get_virq(arizona->irq_chip, irq);
-
-	return ret;
+	return irq;
 }
 
 int arizona_request_irq(struct arizona *arizona, int irq, char *name,
@@ -95,7 +96,7 @@ static irqreturn_t arizona_irq_thread(int irq, void *data)
 {
 	struct arizona *arizona = data;
 	unsigned int val;
-	int i, ret;
+	int ret;
 
 	ret = pm_runtime_get_sync(arizona->dev);
 	if (ret < 0) {
@@ -104,7 +105,7 @@ static irqreturn_t arizona_irq_thread(int irq, void *data)
 	}
 
 	/* Always handle the AoD domain */
-	handle_nested_irq(irq_find_mapping(arizona->virq, 0));
+	handle_nested_irq(arizona->virq[0]);
 
 	/*
 	 * Check if one of the main interrupts is asserted and only
@@ -112,7 +113,7 @@ static irqreturn_t arizona_irq_thread(int irq, void *data)
 	 */
 	ret = regmap_read(arizona->regmap, ARIZONA_IRQ_PIN_STATUS, &val);
 	if (ret == 0 && val & ARIZONA_IRQ1_STS) {
-		handle_nested_irq(irq_find_mapping(arizona->virq, 1));
+		handle_nested_irq(arizona->virq[1]);
 	} else if (ret != 0) {
 		dev_err(arizona->dev, "Failed to read main IRQ status: %d\n",
 			ret);
@@ -136,31 +137,6 @@ static struct irq_chip arizona_irq_chip = {
 	.name			= "arizona",
 	.irq_disable		= arizona_irq_disable,
 	.irq_enable		= arizona_irq_enable,
-};
-
-static int arizona_irq_map(struct irq_domain *h, unsigned int virq,
-			      irq_hw_number_t hw)
-{
-	struct regmap_irq_chip_data *data = h->host_data;
-
-	irq_set_chip_data(virq, data);
-	irq_set_chip_and_handler(virq, &arizona_irq_chip, handle_edge_irq);
-	irq_set_nested_thread(virq, 1);
-
-	/* ARM needs us to explicitly flag the IRQ as valid
-	 * and will set them noprobe when we do so. */
-#ifdef CONFIG_ARM
-	set_irq_flags(virq, IRQF_VALID);
-#else
-	irq_set_noprobe(virq);
-#endif
-
-	return 0;
-}
-
-static struct irq_domain_ops arizona_domain_ops = {
-	.map	= arizona_irq_map,
-	.xlate	= irq_domain_xlate_twocell,
 };
 
 int arizona_irq_init(struct arizona *arizona)
@@ -218,29 +194,24 @@ int arizona_irq_init(struct arizona *arizona)
 		flags |= IRQF_TRIGGER_LOW;
 	}
 
-	/* Allocate a virtual IRQ domain to distribute to the regmap domains */
-	arizona->virq = irq_domain_add_linear(NULL, 2, &arizona_domain_ops,
-					      arizona);
-	if (!arizona->virq) {
-		ret = -EINVAL;
-		goto err;
-	}
 
+	int irq_base = arizona->virq[0];
 	ret = regmap_add_irq_chip(arizona->regmap,
-				  irq_create_mapping(arizona->virq, 0),
-				  IRQF_ONESHOT, -1, aod,
+				  arizona->virq[0],
+				  IRQF_ONESHOT, irq_base, aod,
 				  &arizona->aod_irq_chip);
 	if (ret != 0) {
 		dev_err(arizona->dev, "Failed to add AOD IRQs: %d\n", ret);
 		goto err_domain;
 	}
 
+	irq_base = arizona->virq[1];
 	ret = regmap_add_irq_chip(arizona->regmap,
-				  irq_create_mapping(arizona->virq, 1),
-				  IRQF_ONESHOT, -1, irq,
+				  arizona->virq[1],
+				  IRQF_ONESHOT, irq_base, irq,
 				  &arizona->irq_chip);
 	if (ret != 0) {
-		dev_err(arizona->dev, "Failed to add AOD IRQs: %d\n", ret);
+		dev_err(arizona->dev, "Failed to add IRQs: %d\n", ret);
 		goto err_aod;
 	}
 
@@ -284,10 +255,10 @@ err_main_irq:
 err_ctrlif:
 	free_irq(arizona_map_irq(arizona, ARIZONA_IRQ_BOOT_DONE), arizona);
 err_boot_done:
-	regmap_del_irq_chip(irq_create_mapping(arizona->virq, 1),
+	regmap_del_irq_chip(arizona->virq[0],
 			    arizona->irq_chip);
 err_aod:
-	regmap_del_irq_chip(irq_create_mapping(arizona->virq, 0),
+	regmap_del_irq_chip(arizona->virq[1],
 			    arizona->aod_irq_chip);
 err_domain:
 err:
@@ -298,11 +269,12 @@ int arizona_irq_exit(struct arizona *arizona)
 {
 	free_irq(arizona_map_irq(arizona, ARIZONA_IRQ_CTRLIF_ERR), arizona);
 	free_irq(arizona_map_irq(arizona, ARIZONA_IRQ_BOOT_DONE), arizona);
-	regmap_del_irq_chip(irq_create_mapping(arizona->virq, 1),
+	regmap_del_irq_chip(arizona->irq,
 			    arizona->irq_chip);
-	regmap_del_irq_chip(irq_create_mapping(arizona->virq, 0),
+	regmap_del_irq_chip(arizona->irq,
 			    arizona->aod_irq_chip);
 	free_irq(arizona->irq, arizona);
 
 	return 0;
 }
+
