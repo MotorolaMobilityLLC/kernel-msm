@@ -282,6 +282,7 @@ struct pm8921_chg_chip {
 	int				rconn_mohm;
 	enum pm8921_chg_led_src_config	led_src_config;
 	bool				host_mode;
+	bool				has_dc_supply;
 	u8				active_path;
 	int				recent_reported_soc;
 	unsigned int			ext_warm_i_limit;
@@ -1216,6 +1217,12 @@ static int pm_power_get_property_mains(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PRESENT:
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = 0;
+
+		if (the_chip->has_dc_supply) {
+			val->intval = 1;
+			return 0;
+		}
+
 		if (charging_disabled)
 			return 0;
 
@@ -1737,8 +1744,10 @@ void pm8921_charger_vbus_draw(unsigned int mA)
 	 */
 	if (!get_prop_batt_present(the_chip)
 		&& !is_dc_chg_plugged_in(the_chip)) {
-		pr_err("rejected: no other power source connected\n");
-		return;
+		if (!the_chip->has_dc_supply) {
+			pr_err("rejected: no other power source connected\n");
+			return;
+		}
 	}
 
 	if (usb_max_current && mA > usb_max_current) {
@@ -4511,6 +4520,7 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	chip->hot_thr = pdata->hot_thr;
 	chip->rconn_mohm = pdata->rconn_mohm;
 	chip->led_src_config = pdata->led_src_config;
+        chip->has_dc_supply = pdata->has_dc_supply;
 	chip->ext_batt_temp_monitor = pdata->ext_batt_temp_monitor;
 	chip->eoc_check_soc = pdata->eoc_check_soc;
 	if (chip->ext_batt_temp_monitor)
