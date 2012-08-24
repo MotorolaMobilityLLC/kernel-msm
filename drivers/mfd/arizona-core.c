@@ -501,6 +501,10 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 					   arizona->pdata.spk_fmt[i]);
 	}
 
+	/* set virtual IRQs */
+	arizona->virq[0] = arizona->pdata.irq_base;
+	arizona->virq[1] = arizona->pdata.irq_base + ARIZONA_NUM_IRQ;
+
 	/* Set up for interrupts */
 	ret = arizona_irq_init(arizona);
 	if (ret != 0)
