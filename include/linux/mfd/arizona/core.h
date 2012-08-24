@@ -92,7 +92,7 @@ struct arizona {
 	struct arizona_pdata pdata;
 
 	int irq;
-	struct irq_domain *virq;
+	int virq[2];
 	struct regmap_irq_chip_data *aod_irq_chip;
 	struct regmap_irq_chip_data *irq_chip;
 
