@@ -161,7 +161,6 @@ int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data,
 			(struct synaptics_ts_data*)get_touch_handle(client);
 
 	u32 finger_status=0;
-	u8 finger_index=0;
 	u8 id=0;
 	u8 cnt;
 
@@ -248,13 +247,13 @@ int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data,
 				data[id].y_position = TS_SNTS_GET_Y_POSITION(ts->ts_data.finger.finger_reg[id][REG_Y_POSITION], ts->ts_data.finger.finger_reg[id][REG_YX_POSITION]);
 				data[id].width_major = TS_SNTS_GET_WIDTH_MAJOR(ts->ts_data.finger.finger_reg[id][REG_WY_WX]);
 				data[id].width_minor = TS_SNTS_GET_WIDTH_MINOR(ts->ts_data.finger.finger_reg[id][REG_WY_WX]);
-				data[id].tool_type = (data[id].width_major == 0 && data[id].width_minor == 0) ? MT_TOOL_PEN : MT_TOOL_FINGER;
+				data[id].tool_type = MT_TOOL_FINGER;
 				data[id].width_orientation = TS_SNTS_GET_ORIENTATION(ts->ts_data.finger.finger_reg[id][REG_WY_WX]);
 				data[id].pressure = TS_SNTS_GET_PRESSURE(ts->ts_data.finger.finger_reg[id][REG_Z]);
 
 				if (unlikely(touch_debug_mask & DEBUG_GET_DATA))
 					TOUCH_INFO_MSG("[%d] pos(%4d,%4d) w_m[%2d] w_n[%2d] w_o[%2d] p[%2d]\n",
-						finger_index,
+						id,
 						data[id].x_position,
 						data[id].y_position,
 						data[id].width_major,
