@@ -1775,7 +1775,7 @@ static int adjust_soc(struct pm8921_bms_chip *chip, int soc,
 	 * soc = 0 should happen only when soc_est == 0
 	 */
 	if (soc_new == 0 && soc_est != 0)
-		soc_new = 1;
+		soc_new = 2;
 
 	soc = soc_new;
 
