@@ -114,6 +114,9 @@ struct arizona_pdata {
 
 	/** PDM speaker format */
 	unsigned int spk_fmt[ARIZONA_MAX_PDM_SPK];
+	
+	/** IRQ base */
+	int irq_base;
 };
 
 #endif
