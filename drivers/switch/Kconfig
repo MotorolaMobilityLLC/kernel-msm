@@ -12,4 +12,10 @@ config SWITCH_GPIO
 	help
 	  Say Y here to enable GPIO based switch support.
 
+config SWITCH_ARIZONA
+	tristate "Arizona Switch support"
+	depends on SWITCH
+	help
+	  Say Y here to enable Arizona switch support.
+
 endif # SWITCH
