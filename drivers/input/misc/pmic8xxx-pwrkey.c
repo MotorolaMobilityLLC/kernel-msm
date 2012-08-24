@@ -51,6 +51,7 @@ static irqreturn_t pwrkey_press_irq(int irq, void *_pwrkey)
 		pwrkey->press = true;
 	}
 
+	pr_info("Report pwrkey press event\n");
 	input_report_key(pwrkey->pwr, KEY_POWER, 1);
 	input_sync(pwrkey->pwr);
 
@@ -69,6 +70,7 @@ static irqreturn_t pwrkey_release_irq(int irq, void *_pwrkey)
 		pwrkey->press = false;
 	}
 
+	pr_info("Report pwrkey release event\n");
 	input_report_key(pwrkey->pwr, KEY_POWER, 0);
 	input_sync(pwrkey->pwr);
 
