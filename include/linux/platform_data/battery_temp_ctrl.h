@@ -18,7 +18,7 @@
 struct batt_temp_pdata {
 	int (*set_chg_i_limit)(int max_current);
 	int (*get_chg_i_limit)(void);
-	int (*set_health_state)(int state);
+	int (*set_health_state)(int state, int i_value);
 	int (*enable_charging)(void);
 	int (*disable_charging)(void);
 	int (*is_ext_power)(void);
