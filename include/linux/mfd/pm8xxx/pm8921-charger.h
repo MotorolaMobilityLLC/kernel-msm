@@ -295,7 +295,7 @@ int pm8921_is_batfet_closed(void);
 int set_wireless_power_supply_control(int value);
 #endif
 
-int pm8921_set_ext_battery_health(int health);
+int pm8921_set_ext_battery_health(int health, int i_limit);
 
 #else
 static inline void pm8921_charger_vbus_draw(unsigned int mA)
