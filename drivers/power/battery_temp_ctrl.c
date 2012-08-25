@@ -151,16 +151,17 @@ static void batt_temp_monitor_work(struct work_struct *work)
 		pr_info("%s: stop charging!! state = %d temp = %d mvolt = %d \n",
 				__func__, temp_state, batt_temp, batt_mvolt);
 		pdata->disable_charging();
-		pdata->set_health_state(POWER_SUPPLY_HEALTH_OVERHEAT);
+		pdata->set_health_state(POWER_SUPPLY_HEALTH_OVERHEAT, 0);
 		break;
 	case TEMP_LEVEL_WARNINGOVERHEAT:
-		pdata->set_health_state(POWER_SUPPLY_HEALTH_OVERHEAT);
+		pdata->set_health_state(POWER_SUPPLY_HEALTH_OVERHEAT, 0);
 		break;
 	case TEMP_LEVEL_DECREASING:
 		pr_info("%s: decrease current!! state = %d temp = %d mvolt = %d \n",
 				__func__, temp_state, batt_temp, batt_mvolt);
 		pdata->set_chg_i_limit(pdata->i_decrease);
-		pdata->set_health_state(POWER_SUPPLY_HEALTH_GOOD);
+		pdata->set_health_state(POWER_SUPPLY_HEALTH_GOOD,
+				pdata->i_decrease);
 		break;
 	case TEMP_LEVEL_COLD_RECHARGING:
 	case TEMP_LEVEL_HOT_RECHARGING:
@@ -168,8 +169,11 @@ static void batt_temp_monitor_work(struct work_struct *work)
 				__func__, temp_state, batt_temp, batt_mvolt);
 		pdata->set_chg_i_limit(pdata->i_restore);
 		pdata->enable_charging();
+		pdata->set_health_state(POWER_SUPPLY_HEALTH_GOOD,
+				pdata->i_restore);
+		break;
 	case TEMP_LEVEL_NORMAL:
-		pdata->set_health_state(POWER_SUPPLY_HEALTH_GOOD);
+		pdata->set_health_state(POWER_SUPPLY_HEALTH_GOOD, 0);
 	default:
 		break;
 	}
