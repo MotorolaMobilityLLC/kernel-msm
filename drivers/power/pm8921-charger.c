@@ -285,6 +285,7 @@ struct pm8921_chg_chip {
 	int				ext_batt_health;
 	int				ext_batt_temp_monitor;
 	int				recent_reported_soc;
+	unsigned int			ext_warm_i_limit;
 };
 
 /* user space parameter to limit usb current */
@@ -1823,6 +1824,11 @@ int pm8921_set_max_battery_charge_current(int ma)
 		pr_err("called before init\n");
 		return -EINVAL;
 	}
+
+	if (thermal_mitigation != 0 && the_chip->thermal_mitigation)
+		ma = min((unsigned int)ma,
+			the_chip->thermal_mitigation[thermal_mitigation]);
+
 	return pm_chg_ibatmax_set(the_chip, ma);
 }
 EXPORT_SYMBOL(pm8921_set_max_battery_charge_current);
@@ -1990,16 +1996,18 @@ int set_wireless_power_supply_control(int value)
 EXPORT_SYMBOL(set_wireless_power_supply_control);
 #endif
 
-int pm8921_set_ext_battery_health(int health)
+int pm8921_set_ext_battery_health(int health, int i_limit)
 {
 	if (!the_chip) {
 		pr_err("called before init\n");
 		return -EINVAL;
 	}
 
-	the_chip->ext_batt_health  = health;
+	the_chip->ext_batt_health = health;
+	the_chip->ext_warm_i_limit = i_limit;
 
-	pr_debug("health = %d\n", the_chip->ext_batt_health);
+	pr_debug("health = %d i_decrease = %d\n", the_chip->ext_batt_health,
+			the_chip->ext_warm_i_limit);
 	return 0;
 }
 EXPORT_SYMBOL(pm8921_set_ext_battery_health);
@@ -3251,6 +3259,9 @@ static void set_appropriate_battery_current(struct pm8921_chg_chip *chip)
 
 	if (chip->is_bat_warm)
 		chg_current = min(chg_current, chip->warm_bat_chg_current);
+
+	if (chip->ext_warm_i_limit && chip->ext_batt_temp_monitor)
+		chg_current = min(chg_current, chip->ext_warm_i_limit);
 
 	if (thermal_mitigation != 0 && chip->thermal_mitigation)
 		chg_current = min(chg_current,

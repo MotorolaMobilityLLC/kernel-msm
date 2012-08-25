@@ -288,7 +288,7 @@ int pm8921_usb_ovp_disable(int disable);
 int set_wireless_power_supply_control(int value);
 #endif
 
-int pm8921_set_ext_battery_health(int health);
+int pm8921_set_ext_battery_health(int health, int i_limit);
 
 /**
  * pm8921_is_batfet_closed - battery fet status
