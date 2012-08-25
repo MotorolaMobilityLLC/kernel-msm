@@ -35,6 +35,8 @@ static int get_device_address(struct ion_client *clnt,
 	if (align < 4096)
 		align = 4096;
 	flags |= UNCACHED;
+	pr_debug("\n In %s  domain: %d, Partition: %d\n",
+		__func__, domain_num, partition_num);
 	rc = ion_map_iommu(clnt, hndl, domain_num, partition_num, align,
 			0, iova, buffer_size, flags, 0);
 	if (rc)
@@ -45,9 +47,9 @@ static int get_device_address(struct ion_client *clnt,
 }
 
 static void put_device_address(struct ion_client *clnt,
-		struct ion_handle *hndl, int domain_num)
+		struct ion_handle *hndl, int domain_num, int partition_num)
 {
-	ion_unmap_iommu(clnt, hndl, domain_num, 0);
+	ion_unmap_iommu(clnt, hndl, domain_num, partition_num);
 }
 
 static int ion_user_to_kernel(struct smem_client *client,
@@ -91,6 +93,8 @@ static int ion_user_to_kernel(struct smem_client *client,
 	mem->smem_priv = hndl;
 	mem->device_addr = iova + offset;
 	mem->size = buffer_size;
+	pr_debug("Buffer device address: 0x%lx, size: %d\n",
+		mem->device_addr, mem->size);
 	return rc;
 fail_device_address:
 	ion_unmap_kernel(client->clnt, hndl);
@@ -108,12 +112,12 @@ static int alloc_ion_mem(struct smem_client *client, size_t size,
 	unsigned long iova = 0;
 	unsigned long buffer_size = 0;
 	int rc = 0;
-	if (size == 0)
-		goto skip_mem_alloc;
 	flags = flags | ION_HEAP(ION_CP_MM_HEAP_ID);
 	if (align < 4096)
 		align = 4096;
 	size = (size + 4095) & (~4095);
+	pr_debug("\n in %s domain: %d, Partition: %d\n",
+		__func__, domain, partition);
 	hndl = ion_alloc(client->clnt, size, align, flags);
 	if (IS_ERR_OR_NULL(hndl)) {
 		pr_err("Failed to allocate shared memory = %p, %d, %d, 0x%x\n",
@@ -138,7 +142,7 @@ static int alloc_ion_mem(struct smem_client *client, size_t size,
 		goto fail_device_address;
 	}
 	mem->device_addr = iova;
-	pr_err("device_address = 0x%lx, kvaddr = 0x%p\n",
+	pr_debug("device_address = 0x%lx, kvaddr = 0x%p\n",
 		mem->device_addr, mem->kvaddr);
 	mem->size = size;
 	return rc;
@@ -147,14 +151,13 @@ fail_device_address:
 fail_map:
 	ion_free(client->clnt, hndl);
 fail_shared_mem_alloc:
-skip_mem_alloc:
 	return rc;
 }
 
 static void free_ion_mem(struct smem_client *client, struct msm_smem *mem)
 {
 	put_device_address(client->clnt,
-		mem->smem_priv, mem->domain);
+		mem->smem_priv, mem->domain, mem->partition_num);
 	ion_unmap_kernel(client->clnt, mem->smem_priv);
 	ion_free(client->clnt, mem->smem_priv);
 }
@@ -236,10 +239,13 @@ struct msm_smem *msm_smem_alloc(void *clt, size_t size, u32 align, u32 flags,
 	struct smem_client *client;
 	int rc = 0;
 	struct msm_smem *mem;
-
 	client = clt;
 	if (!client) {
 		pr_err("Invalid  client passed\n");
+		return NULL;
+	}
+	if (!size) {
+		pr_err("No need to allocate memory of size: %d\n", size);
 		return NULL;
 	}
 	mem = kzalloc(sizeof(*mem), GFP_KERNEL);

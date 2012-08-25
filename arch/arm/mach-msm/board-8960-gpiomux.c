@@ -55,6 +55,19 @@ static struct gpiomux_setting gsbi3_active_cfg = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+static struct gpiomux_setting gsbi6_active_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gsbi6_suspended_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+
 static struct gpiomux_setting external_vfr[] = {
 	/* Suspended state */
 	{
@@ -436,6 +449,27 @@ static struct msm_gpiomux_config msm8960_gsbi_configs[] __initdata = {
 		},
 	},
 	{
+		.gpio      = 27,        /* GSBI6 BT_INT2AP_N for AR3002 */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi6_suspended_cfg,
+			[GPIOMUX_ACTIVE]    = &gsbi6_active_cfg,
+		},
+	},
+	{
+		.gpio      = 28,        /* GSBI6 BT_EN for AR3002 */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi6_suspended_cfg,
+			[GPIOMUX_ACTIVE]    = &gsbi6_active_cfg,
+		},
+	},
+	{
+		.gpio      = 29,        /* GSBI6 BT_WAKE for AR3002 */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi6_suspended_cfg,
+			[GPIOMUX_ACTIVE]    = &gsbi6_active_cfg,
+		},
+	},
+	{
 		.gpio      = 44,	/* GSBI12 I2C QUP SDA */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gsbi12,
@@ -759,6 +793,16 @@ static struct msm_gpiomux_config hap_lvl_shft_config[] __initdata = {
 	},
 };
 
+static struct msm_gpiomux_config hap_lvl_shft_config_sglte[] __initdata = {
+	{
+		.gpio = 89,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &hap_lvl_shft_suspended_config,
+			[GPIOMUX_ACTIVE] = &hap_lvl_shft_active_config,
+		},
+	},
+};
+
 static struct msm_gpiomux_config sglte_configs[] __initdata = {
 	/* AP2MDM_STATUS */
 	{
@@ -979,8 +1023,9 @@ int __init msm8960_init_gpiomux(void)
 	}
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
-	msm_gpiomux_install(msm8960_ethernet_configs,
-			ARRAY_SIZE(msm8960_ethernet_configs));
+	if (socinfo_get_platform_subtype() != PLATFORM_SUBTYPE_SGLTE)
+		msm_gpiomux_install(msm8960_ethernet_configs,
+				ARRAY_SIZE(msm8960_ethernet_configs));
 #endif
 
 	msm_gpiomux_install(msm8960_gsbi_configs,
@@ -1007,9 +1052,15 @@ int __init msm8960_init_gpiomux(void)
 #endif
 
 	if (machine_is_msm8960_mtp() || machine_is_msm8960_fluid() ||
-		machine_is_msm8960_liquid() || machine_is_msm8960_cdp())
-		msm_gpiomux_install(hap_lvl_shft_config,
-			ARRAY_SIZE(hap_lvl_shft_config));
+		machine_is_msm8960_liquid() || machine_is_msm8960_cdp()) {
+		if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)
+			msm_gpiomux_install(hap_lvl_shft_config_sglte,
+				ARRAY_SIZE(hap_lvl_shft_config_sglte));
+
+		else
+			msm_gpiomux_install(hap_lvl_shft_config,
+				ARRAY_SIZE(hap_lvl_shft_config));
+	}
 
 #ifdef CONFIG_USB_EHCI_MSM_HSIC
 	if ((SOCINFO_VERSION_MAJOR(socinfo_get_version()) != 1) &&

@@ -21,6 +21,7 @@
 #include <linux/of_irq.h>
 #include <linux/memory.h>
 #include <asm/mach/map.h>
+#include <asm/hardware/cache-l2x0.h>
 #include <asm/hardware/gic.h>
 #include <asm/arch_timer.h>
 #include <asm/mach/arch.h>
@@ -29,6 +30,10 @@
 #include <mach/board.h>
 #include <mach/gpio.h>
 #include "clock.h"
+
+#define L2CC_AUX_CTRL	((0x1 << L2X0_AUX_CTRL_SHARE_OVERRIDE_SHIFT) | \
+			(0x2 << L2X0_AUX_CTRL_WAY_SIZE_SHIFT) | \
+			(0x1 << L2X0_AUX_CTRL_EVNT_MON_BUS_EN_SHIFT))
 
 static struct clk_lookup msm_clocks_dummy[] = {
 	CLK_DUMMY("core_clk",   BLSP1_UART_CLK, "msm_serial_hsl.0", OFF),
@@ -41,8 +46,8 @@ static struct clk_lookup msm_clocks_dummy[] = {
 	CLK_DUMMY("dfab_clk",	DFAB_CLK,	NULL, 0),
 	CLK_DUMMY("dma_bam_pclk",	DMA_BAM_P_CLK,	NULL, 0),
 	CLK_DUMMY("mem_clk",	NULL,	NULL, 0),
-	CLK_DUMMY("core_clk",	NULL,	"spi_qsd.1",	OFF),
-	CLK_DUMMY("iface_clk",	NULL,	"spi_qsd.1",	OFF),
+	CLK_DUMMY("core_clk",	SPI_CLK,	"spi_qsd.1",	OFF),
+	CLK_DUMMY("iface_clk",	SPI_P_CLK,	"spi_qsd.1",	OFF),
 	CLK_DUMMY("core_clk",	NULL,	"f9966000.i2c", 0),
 	CLK_DUMMY("iface_clk",	NULL,	"f9966000.i2c", 0),
 	CLK_DUMMY("core_clk",	NULL,	"fe12f000.slim",	OFF),
@@ -67,11 +72,14 @@ static const char *msm9625_dt_match[] __initconst = {
 static struct of_dev_auxdata msm9625_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-lsuart-v14", 0xF991F000, \
 			"msm_serial_hsl.0", NULL),
+	OF_DEV_AUXDATA("qcom,spi-qup-v2", 0xF9928000, \
+			"spi_qsd.1", NULL),
 	{}
 };
 
 void __init msm9625_init_irq(void)
 {
+	l2x0_of_init(L2CC_AUX_CTRL, L2X0_AUX_CTRL_MASK);
 	of_irq_init(irq_match);
 }
 
@@ -88,6 +96,8 @@ void __init msm9625_init(void)
 {
 	if (socinfo_init() < 0)
 		pr_err("%s: socinfo_init() failed\n", __func__);
+
+	msm9625_init_gpiomux();
 	msm_clock_init(&msm_dummy_clock_init_data);
 	of_platform_populate(NULL, of_default_bus_match_table,
 			msm9625_auxdata_lookup, NULL);

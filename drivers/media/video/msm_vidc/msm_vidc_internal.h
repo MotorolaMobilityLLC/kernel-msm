@@ -201,14 +201,13 @@ struct msm_vidc_inst {
 	int session_type;
 	void *session;
 	struct session_prop prop;
-	u32 width;
-	u32 height;
 	int state;
 	const struct msm_vidc_format *fmts[MAX_PORT_NUM];
 	struct vb2_queue vb2_bufq[MAX_PORT_NUM];
 	spinlock_t lock;
 	struct list_head pendingq;
 	struct list_head internalbufs;
+	struct list_head persistbufs;
 	struct buffer_requirements buff_req;
 	void *mem_client;
 	struct v4l2_ctrl_handler ctrl_handler;

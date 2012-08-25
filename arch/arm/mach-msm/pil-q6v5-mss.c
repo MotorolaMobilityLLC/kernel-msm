@@ -38,6 +38,9 @@
 #define MSS_MODEM_HALT_BASE		0x200
 #define MSS_NC_HALT_BASE		0x280
 
+/* MSS_CLAMP_IO Register Value */
+#define MSS_IO_UNCLAMP_ALL		0x40
+
 /* RMB Status Register Values */
 #define STATUS_PBL_SUCCESS		0x1
 #define STATUS_XPU_UNLOCKED		0x1
@@ -69,6 +72,55 @@ static int pil_mss_power_down(struct device *dev)
 	struct q6v5_data *drv = dev_get_drvdata(dev);
 
 	return regulator_disable(drv->vreg);
+}
+
+static int pil_mss_enable_clks(struct q6v5_data *drv)
+{
+	int ret;
+
+	ret = clk_prepare_enable(drv->ahb_clk);
+	if (ret)
+		goto err_ahb_clk;
+	ret = clk_reset(drv->core_clk, CLK_RESET_DEASSERT);
+	if (ret)
+		goto err_reset;
+	ret = clk_prepare_enable(drv->core_clk);
+	if (ret)
+		goto err_core_clk;
+	ret = clk_prepare_enable(drv->axi_clk);
+	if (ret)
+		goto err_axi_clk;
+	ret = clk_prepare_enable(drv->reg_clk);
+	if (ret)
+		goto err_reg_clk;
+	ret = clk_prepare_enable(drv->rom_clk);
+	if (ret)
+		goto err_rom_clk;
+
+	return 0;
+
+err_rom_clk:
+	clk_disable_unprepare(drv->reg_clk);
+err_reg_clk:
+	clk_disable_unprepare(drv->axi_clk);
+err_axi_clk:
+	clk_disable_unprepare(drv->core_clk);
+err_core_clk:
+	clk_reset(drv->core_clk, CLK_RESET_ASSERT);
+err_reset:
+	clk_disable_unprepare(drv->ahb_clk);
+err_ahb_clk:
+	return ret;
+}
+
+static void pil_mss_disable_clks(struct q6v5_data *drv)
+{
+	clk_disable_unprepare(drv->rom_clk);
+	clk_disable_unprepare(drv->reg_clk);
+	clk_disable_unprepare(drv->axi_clk);
+	clk_disable_unprepare(drv->core_clk);
+	clk_reset(drv->core_clk, CLK_RESET_ASSERT);
+	clk_disable_unprepare(drv->ahb_clk);
 }
 
 static int wait_for_mba_ready(struct device *dev)
@@ -120,11 +172,11 @@ static int pil_mss_shutdown(struct pil_desc *pil)
 	 */
 	if (drv->is_booted == false) {
 		pil_mss_power_up(pil->dev);
-		pil_q6v5_enable_clks(pil);
+		pil_mss_enable_clks(drv);
 	}
 	pil_q6v5_shutdown(pil);
 
-	pil_q6v5_disable_clks(pil);
+	pil_mss_disable_clks(drv);
 	pil_mss_power_down(pil->dev);
 
 	writel_relaxed(1, drv->restart_reg);
@@ -139,8 +191,10 @@ static int pil_mss_reset(struct pil_desc *pil)
 	struct q6v5_data *drv = dev_get_drvdata(pil->dev);
 	int ret;
 
+	/* Deassert reset to subsystem and wait for propagation */
 	writel_relaxed(0, drv->restart_reg);
 	mb();
+	udelay(2);
 
 	/*
 	 * Bring subsystem out of reset and enable required
@@ -150,7 +204,7 @@ static int pil_mss_reset(struct pil_desc *pil)
 	if (ret)
 		goto err_power;
 
-	ret = pil_q6v5_enable_clks(pil);
+	ret = pil_mss_enable_clks(drv);
 	if (ret)
 		goto err_clks;
 
@@ -163,6 +217,9 @@ static int pil_mss_reset(struct pil_desc *pil)
 		writel_relaxed((drv->start_addr >> 4) & 0x0FFFFFF0,
 				drv->reg_base + QDSP6SS_RST_EVB);
 	}
+
+	/* De-assert MSS IO clamps */
+	writel_relaxed(MSS_IO_UNCLAMP_ALL, drv->io_clamp_reg);
 
 	ret = pil_q6v5_reset(pil);
 	if (ret)
@@ -182,7 +239,7 @@ static int pil_mss_reset(struct pil_desc *pil)
 err_auth:
 	pil_q6v5_shutdown(pil);
 err_q6v5_reset:
-	pil_q6v5_disable_clks(pil);
+	pil_mss_disable_clks(drv);
 err_clks:
 	pil_mss_power_down(pil->dev);
 err_power:
@@ -231,11 +288,17 @@ static int __devinit pil_mss_driver_probe(struct platform_device *pdev)
 	if (!drv->restart_reg)
 		return -ENOMEM;
 
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 4);
+	drv->io_clamp_reg = devm_ioremap(&pdev->dev, res->start,
+					resource_size(res));
+	if (!drv->io_clamp_reg)
+		return -ENOMEM;
+
 	drv->vreg = devm_regulator_get(&pdev->dev, "vdd_mss");
 	if (IS_ERR(drv->vreg))
 		return PTR_ERR(drv->vreg);
 
-	ret = regulator_set_voltage(drv->vreg, 1150000, 1150000);
+	ret = regulator_set_voltage(drv->vreg, 1050000, 1050000);
 	if (ret)
 		dev_err(&pdev->dev, "Failed to set regulator's voltage.\n");
 
@@ -245,9 +308,25 @@ static int __devinit pil_mss_driver_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	drv->mem_clk = devm_clk_get(&pdev->dev, "mem_clk");
-	if (IS_ERR(drv->mem_clk))
-		return PTR_ERR(drv->mem_clk);
+	drv->ahb_clk = devm_clk_get(&pdev->dev, "iface_clk");
+	if (IS_ERR(drv->ahb_clk))
+		return PTR_ERR(drv->ahb_clk);
+
+	drv->core_clk = devm_clk_get(&pdev->dev, "core_clk");
+	if (IS_ERR(drv->core_clk))
+		return PTR_ERR(drv->core_clk);
+
+	drv->axi_clk = devm_clk_get(&pdev->dev, "bus_clk");
+	if (IS_ERR(drv->axi_clk))
+		return PTR_ERR(drv->axi_clk);
+
+	drv->reg_clk = devm_clk_get(&pdev->dev, "reg_clk");
+	if (IS_ERR(drv->reg_clk))
+		return PTR_ERR(drv->reg_clk);
+
+	drv->rom_clk = devm_clk_get(&pdev->dev, "mem_clk");
+	if (IS_ERR(drv->rom_clk))
+		return PTR_ERR(drv->rom_clk);
 
 	drv->pil = msm_pil_register(desc);
 	if (IS_ERR(drv->pil))

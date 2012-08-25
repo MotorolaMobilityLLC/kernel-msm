@@ -205,6 +205,7 @@ int kgsl_mmu_enabled(void);
 void kgsl_mmu_set_mmutype(char *mmutype);
 enum kgsl_mmutype kgsl_mmu_get_mmutype(void);
 unsigned int kgsl_mmu_get_ptsize(void);
+int kgsl_mmu_gpuaddr_in_range(unsigned int gpuaddr);
 
 /*
  * Static inline functions of MMU that simply call the SMMU specific
@@ -293,10 +294,14 @@ static inline void kgsl_mmu_disable_clk_on_ts(struct kgsl_mmu *mmu,
 		mmu->mmu_ops->mmu_disable_clk_on_ts(mmu, ts, ts_valid);
 }
 
-static inline int kgsl_mmu_gpuaddr_in_range(unsigned int gpuaddr)
+static inline unsigned int kgsl_mmu_get_int_mask(void)
 {
-	return ((gpuaddr >= KGSL_PAGETABLE_BASE) &&
-		(gpuaddr < (KGSL_PAGETABLE_BASE + kgsl_mmu_get_ptsize())));
+	/* Dont enable gpummu interrupts, if iommu is enabled */
+	if (KGSL_MMU_TYPE_GPU == kgsl_mmu_get_mmutype())
+		return KGSL_MMU_INT_MASK;
+	else
+		return (MH_INTERRUPT_MASK__AXI_READ_ERROR |
+			MH_INTERRUPT_MASK__AXI_WRITE_ERROR);
 }
 
 #endif /* __KGSL_MMU_H */

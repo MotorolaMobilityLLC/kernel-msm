@@ -187,6 +187,8 @@ enum usb_vdd_value {
  * @default_mode: Default operational mode. Applicable only if
  *              OTG switch is controller by user.
  * @pmic_id_irq: IRQ number assigned for PMIC USB ID line.
+ * @mpm_otgsessvld_int: MPM wakeup pin assigned for OTG SESSVLD
+ *              interrupt. Used when .otg_control == OTG_PHY_CONTROL.
  * @mhl_enable: indicates MHL connector or not.
  * @disable_reset_on_disconnect: perform USB PHY and LINK reset
  *              on USB cable disconnection.
@@ -211,6 +213,7 @@ struct msm_otg_platform_data {
 	enum msm_usb_phy_type phy_type;
 	void (*setup_gpio)(enum usb_otg_state state);
 	int pmic_id_irq;
+	unsigned int mpm_otgsessvld_int;
 	bool mhl_enable;
 	bool disable_reset_on_disconnect;
 	bool enable_dcd;
@@ -265,6 +268,7 @@ struct msm_otg_platform_data {
  * @otg: USB OTG Transceiver structure.
  * @pdata: otg device platform data.
  * @irq: IRQ number assigned for HSUSB controller.
+ * @async_irq: IRQ number used by some controllers during low power state
  * @clk: clock struct of alt_core_clk.
  * @pclk: clock struct of iface_clk.
  * @phy_reset_clk: clock struct of phy_clk.
@@ -273,7 +277,7 @@ struct msm_otg_platform_data {
  * @inputs: OTG state machine inputs(Id, SessValid etc).
  * @sm_work: OTG state machine work.
  * @in_lpm: indicates low power mode (LPM) state.
- * @async_int: Async interrupt arrived.
+ * @async_int: IRQ line on which ASYNC interrupt arrived in LPM.
  * @cur_power: The amount of mA available from downstream port.
  * @chg_work: Charger detection work.
  * @chg_state: The state of charger detection process.
@@ -295,6 +299,7 @@ struct msm_otg {
 	struct usb_phy phy;
 	struct msm_otg_platform_data *pdata;
 	int irq;
+	int async_irq;
 	struct clk *clk;
 	struct clk *pclk;
 	struct clk *phy_reset_clk;
@@ -360,6 +365,7 @@ struct msm_otg {
 #define PHY_PWR_COLLAPSED		BIT(0)
 #define PHY_RETENTIONED			BIT(1)
 #define XO_SHUTDOWN			BIT(2)
+#define CLOCKS_DOWN			BIT(3)
 	int reset_counter;
 	unsigned long b_last_se0_sess;
 	unsigned long tmouts;
@@ -376,6 +382,7 @@ struct msm_hsic_host_platform_data {
 
 struct msm_usb_host_platform_data {
 	unsigned int power_budget;
+	int pmic_gpio_dp_irq;
 	unsigned int dock_connect_irq;
 };
 
@@ -389,21 +396,46 @@ struct msm_hsic_peripheral_platform_data {
 	bool core_clk_always_on_workaround;
 };
 
+/**
+ * struct usb_bam_pipe_connect: pipe connection information
+ * between USB/HSIC BAM and another BAM. USB/HSIC BAM can be
+ * either src BAM or dst BAM
+ * @src_phy_addr: src bam physical address.
+ * @src_pipe_index: src bam pipe index.
+ * @dst_phy_addr: dst bam physical address.
+ * @dst_pipe_index: dst bam pipe index.
+ * @data_fifo_base_offset: data fifo offset.
+ * @data_fifo_size: data fifo size.
+ * @desc_fifo_base_offset: descriptor fifo offset.
+ * @desc_fifo_size: descriptor fifo size.
+ */
 struct usb_bam_pipe_connect {
 	u32 src_phy_addr;
-	int src_pipe_index;
+	u32 src_pipe_index;
 	u32 dst_phy_addr;
-	int dst_pipe_index;
+	u32 dst_pipe_index;
 	u32 data_fifo_base_offset;
 	u32 data_fifo_size;
 	u32 desc_fifo_base_offset;
 	u32 desc_fifo_size;
 };
 
+/**
+ * struct msm_usb_bam_platform_data: pipe connection information
+ * between USB/HSIC BAM and another BAM. USB/HSIC BAM can be
+ * either src BAM or dst BAM
+ * @connections: holds all pipe connections data.
+ * @usb_active_bam: set USB or HSIC as the active BAM.
+ * @usb_bam_num_pipes: max number of pipes to use.
+ * @active_conn_num: number of active pipe connections.
+ * @usb_base_address: BAM physical address.
+ */
 struct msm_usb_bam_platform_data {
 	struct usb_bam_pipe_connect *connections;
 	int usb_active_bam;
 	int usb_bam_num_pipes;
+	u32 total_bam_num;
+	u32 usb_base_address;
 };
 
 enum usb_bam {
@@ -411,8 +443,27 @@ enum usb_bam {
 	HSIC_BAM,
 };
 
+#ifdef CONFIG_USB_DWC3_MSM
 int msm_ep_config(struct usb_ep *ep);
 int msm_ep_unconfig(struct usb_ep *ep);
-int msm_data_fifo_config(struct usb_ep *ep, u32 addr, u32 size);
+int msm_data_fifo_config(struct usb_ep *ep, u32 addr, u32 size,
+	u8 dst_pipe_idx);
 
+#else
+static inline int msm_data_fifo_config(struct usb_ep *ep, u32 addr, u32 size,
+	u8 dst_pipe_idx)
+{
+	return -ENODEV;
+}
+
+static inline int msm_ep_config(struct usb_ep *ep)
+{
+	return -ENODEV;
+}
+
+static inline int msm_ep_unconfig(struct usb_ep *ep)
+{
+	return -ENODEV;
+}
+#endif
 #endif

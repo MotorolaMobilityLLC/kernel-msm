@@ -24,6 +24,7 @@
 #define MEMORY_DEVICE_MODE		2
 #define NO_LOGGING_MODE			3
 #define UART_MODE			4
+#define SOCKET_MODE			5
 
 /* different values that go in for diag_data_type */
 #define DATA_TYPE_EVENT         	0
@@ -111,7 +112,7 @@ the appropriate macros. */
 #define EVENT_LAST_ID			0x08AD
 
 #define MSG_SSID_0			0
-#define MSG_SSID_0_LAST			91
+#define MSG_SSID_0_LAST			93
 #define MSG_SSID_1			500
 #define MSG_SSID_1_LAST			506
 #define MSG_SSID_2			1000

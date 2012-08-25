@@ -440,14 +440,16 @@ int msm_vdec_g_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 	if (fmt) {
 		f->fmt.pix_mp.pixelformat = fmt->fourcc;
 		if (inst->in_reconfig == true) {
-			inst->height = inst->reconfig_height;
-			inst->width = inst->reconfig_width;
+			inst->prop.height = inst->reconfig_height;
+			inst->prop.width = inst->reconfig_width;
 		}
-		f->fmt.pix_mp.height = inst->height;
-		f->fmt.pix_mp.width = inst->width;
+		f->fmt.pix_mp.height = inst->prop.height;
+		f->fmt.pix_mp.width = inst->prop.width;
+		f->fmt.pix_mp.num_planes = fmt->num_planes;
 		for (i = 0; i < fmt->num_planes; ++i) {
 			f->fmt.pix_mp.plane_fmt[i].sizeimage =
-			fmt->get_frame_size(i, inst->height, inst->width);
+			fmt->get_frame_size(i, inst->prop.height,
+				inst->prop.width);
 		}
 	} else {
 		pr_err("Buf type not recognized, type = %d\n",
@@ -491,6 +493,7 @@ int msm_vdec_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 	}
 
 	if (fmt) {
+		f->fmt.pix_mp.num_planes = fmt->num_planes;
 		for (i = 0; i < fmt->num_planes; ++i) {
 			f->fmt.pix_mp.plane_fmt[i].sizeimage =
 				fmt->get_frame_size(i, f->fmt.pix_mp.height,
@@ -582,7 +585,7 @@ static int msm_vdec_queue_setup(struct vb2_queue *q,
 			*num_buffers = MIN_NUM_OUTPUT_BUFFERS;
 		for (i = 0; i < *num_planes; i++) {
 			sizes[i] = inst->fmts[OUTPUT_PORT]->get_frame_size(
-					i, inst->height, inst->width);
+					i, inst->prop.height, inst->prop.width);
 		}
 		break;
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
@@ -643,6 +646,11 @@ static inline int start_streaming(struct msm_vidc_inst *inst)
 	rc = msm_comm_set_scratch_buffers(inst);
 	if (rc) {
 		pr_err("Failed to set scratch buffers: %d\n", rc);
+		goto fail_start;
+	}
+	rc = msm_comm_set_persist_buffers(inst);
+	if (rc) {
+		pr_err("Failed to set persist buffers: %d\n", rc);
 		goto fail_start;
 	}
 	rc = msm_comm_try_state(inst, MSM_VIDC_START_DONE);
@@ -714,11 +722,13 @@ static int msm_vdec_stop_streaming(struct vb2_queue *q)
 	switch (q->type) {
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
 		if (!inst->vb2_bufq[CAPTURE_PORT].streaming)
-			rc = msm_comm_try_state(inst, MSM_VIDC_CLOSE_DONE);
+			rc = msm_comm_try_state(inst,
+				MSM_VIDC_RELEASE_RESOURCES_DONE);
 		break;
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
 		if (!inst->vb2_bufq[OUTPUT_PORT].streaming)
-			rc = msm_comm_try_state(inst, MSM_VIDC_CLOSE_DONE);
+			rc = msm_comm_try_state(inst,
+				MSM_VIDC_RELEASE_RESOURCES_DONE);
 		break;
 	default:
 		pr_err("Q-type is not supported: %d\n", q->type);
@@ -727,7 +737,7 @@ static int msm_vdec_stop_streaming(struct vb2_queue *q)
 	}
 	if (rc)
 		pr_err("Failed to move inst: %p, cap = %d to state: %d\n",
-				inst, q->type, MSM_VIDC_CLOSE_DONE);
+				inst, q->type, MSM_VIDC_RELEASE_RESOURCES_DONE);
 	return rc;
 }
 
@@ -738,6 +748,74 @@ static void msm_vdec_buf_queue(struct vb2_buffer *vb)
 	if (rc)
 		pr_err("Failed to queue buffer: %d\n", rc);
 }
+
+int msm_vdec_cmd(struct msm_vidc_inst *inst, struct v4l2_decoder_cmd *dec)
+{
+	int rc = 0;
+	bool ip_flush = false,
+	     op_flush = false;
+
+	switch (dec->cmd) {
+	case V4L2_DEC_QCOM_CMD_FLUSH:
+		mutex_lock(&inst->sync_lock);
+		ip_flush = dec->flags & V4L2_DEC_QCOM_CMD_FLUSH_OUTPUT;
+		op_flush = dec->flags & V4L2_DEC_QCOM_CMD_FLUSH_CAPTURE;
+		/* Only support flush on decoder (for now)*/
+		if (inst->session_type == MSM_VIDC_ENCODER) {
+			pr_err("Buffer flushing not supported for encoder\n");
+			rc = -ENOTSUPP;
+			mutex_unlock(&inst->sync_lock);
+			break;
+		}
+
+		/* Certain types of flushes aren't supported such as: */
+		/* 1) Input only flush */
+		if (ip_flush && !op_flush) {
+			pr_err("Input only flush not supported\n");
+			rc = -ENOTSUPP;
+			mutex_unlock(&inst->sync_lock);
+			break;
+		}
+
+		/* 2) Output only flush when in reconfig */
+		if (!ip_flush && op_flush && !inst->in_reconfig) {
+			pr_err("Output only flush only supported when reconfiguring\n");
+			rc = -ENOTSUPP;
+			mutex_unlock(&inst->sync_lock);
+			break;
+		}
+
+		/* Finally flush */
+		if (op_flush && ip_flush)
+			rc = vidc_hal_session_flush(inst->session,
+					HAL_FLUSH_ALL);
+		else if (ip_flush)
+			rc = vidc_hal_session_flush(inst->session,
+					HAL_FLUSH_INPUT);
+		else if (op_flush)
+			rc = vidc_hal_session_flush(inst->session,
+					HAL_FLUSH_OUTPUT);
+		mutex_unlock(&inst->sync_lock);
+		break;
+	case V4L2_DEC_CMD_STOP:
+		rc = msm_comm_try_state(inst, MSM_VIDC_CLOSE_DONE);
+		if (rc)
+			pr_err("Failed to close instance\n");
+		break;
+	default:
+		pr_err("Unknown Decoder Command\n");
+		rc = -ENOTSUPP;
+		goto exit;
+	}
+
+	if (rc) {
+		pr_err("Failed to exec decoder cmd %d\n", dec->cmd);
+		goto exit;
+	}
+exit:
+	return rc;
+}
+
 
 static const struct vb2_ops msm_vdec_vb2q_ops = {
 	.queue_setup = msm_vdec_queue_setup,

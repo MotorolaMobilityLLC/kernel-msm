@@ -22,22 +22,69 @@
 #include <linux/miscdevice.h>
 #include <linux/uaccess.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 #include <linux/clk.h>
+#include <linux/of_coresight.h>
 #include <linux/coresight.h>
 #include <linux/coresight-stm.h>
 #include <asm/unaligned.h>
 
 #include "coresight-priv.h"
 
-#define stm_writel(drvdata, val, off)	\
-			__raw_writel((val), drvdata->base + off)
-#define stm_readl(drvdata, val, off)	\
-			__raw_readl(drvdata->base + off)
+#define stm_writel(drvdata, val, off)	__raw_writel((val), drvdata->base + off)
+#define stm_readl(drvdata, off)		__raw_readl(drvdata->base + off)
+
+#define STM_LOCK(drvdata)						\
+do {									\
+	mb();								\
+	stm_writel(drvdata, 0x0, CORESIGHT_LAR);			\
+} while (0)
+#define STM_UNLOCK(drvdata)						\
+do {									\
+	stm_writel(drvdata, CORESIGHT_UNLOCK, CORESIGHT_LAR);		\
+	mb();								\
+} while (0)
+
+#define STMDMASTARTR		(0xC04)
+#define STMDMASTOPR		(0xC08)
+#define STMDMASTATR		(0xC0C)
+#define STMDMACTLR		(0xC10)
+#define STMDMAIDR		(0xCFC)
+#define STMHEER			(0xD00)
+#define STMHETER		(0xD20)
+#define STMHEMCR		(0xD64)
+#define STMHEMASTR		(0xDF4)
+#define STMHEFEAT1R		(0xDF8)
+#define STMHEIDR		(0xDFC)
+#define STMSPER			(0xE00)
+#define STMSPTER		(0xE20)
+#define STMSPSCR		(0xE60)
+#define STMSPMSCR		(0xE64)
+#define STMSPOVERRIDER		(0xE68)
+#define STMSPMOVERRIDER		(0xE6C)
+#define STMSPTRIGCSR		(0xE70)
+#define STMTCSR			(0xE80)
+#define STMTSSTIMR		(0xE84)
+#define STMTSFREQR		(0xE8C)
+#define STMSYNCR		(0xE90)
+#define STMAUXCR		(0xE94)
+#define STMSPFEAT1R		(0xEA0)
+#define STMSPFEAT2R		(0xEA4)
+#define STMSPFEAT3R		(0xEA8)
+#define STMITTRIGGER		(0xEE8)
+#define STMITATBDATA0		(0xEEC)
+#define STMITATBCTR2		(0xEF0)
+#define STMITATBID		(0xEF4)
+#define STMITATBCTR0		(0xEF8)
 
 #define NR_STM_CHANNEL		(32)
 #define BYTES_PER_CHANNEL	(256)
+#define STM_TRACE_BUF_SIZE	(1024)
 
-enum {
+#define OST_START_TOKEN		(0x30)
+#define OST_VERSION		(0x1)
+
+enum stm_pkt_type {
 	STM_PKT_TYPE_DATA	= 0x98,
 	STM_PKT_TYPE_FLAG	= 0xE8,
 	STM_PKT_TYPE_TRIG	= 0xF8,
@@ -47,45 +94,24 @@ enum {
 	STM_OPTION_MARKED	= 0x10,
 };
 
-#define STM_TRACE_BUF_SIZE	(1024)
-
-#define OST_START_TOKEN		(0x30)
-#define OST_VERSION		(0x1)
-
-#define stm_channel_addr(ch)						\
-				(drvdata->chs.base + (ch * BYTES_PER_CHANNEL))
+#define stm_channel_addr(drvdata, ch)	(drvdata->chs.base +	\
+					(ch * BYTES_PER_CHANNEL))
 #define stm_channel_off(type, opts)	(type & ~opts)
 
-#define STM_LOCK()							\
-do {									\
-	mb();								\
-	stm_writel(drvdata, 0x0, CORESIGHT_LAR);			\
-} while (0)
-#define STM_UNLOCK()							\
-do {									\
-	stm_writel(drvdata, CORESIGHT_UNLOCK, CORESIGHT_LAR);		\
-	mb();								\
-} while (0)
-
-#define STMSPER		(0xE00)
-#define STMSPTER	(0xE20)
-#define STMTCSR		(0xE80)
-#define STMSYNCR	(0xE90)
-
 #ifdef CONFIG_MSM_QDSS_STM_DEFAULT_ENABLE
-static int stm_boot_enable = 1;
+static int boot_enable = 1;
 #else
-static int stm_boot_enable;
+static int boot_enable;
 #endif
 
 module_param_named(
-	stm_boot_enable, stm_boot_enable, int, S_IRUGO
+	boot_enable, boot_enable, int, S_IRUGO
 );
 
-static int stm_boot_nr_channel;
+static int boot_nr_channel;
 
 module_param_named(
-	stm_boot_nr_channel, stm_boot_nr_channel, int, S_IRUGO
+	boot_nr_channel, boot_nr_channel, int, S_IRUGO
 );
 
 struct channel_space {
@@ -95,99 +121,202 @@ struct channel_space {
 
 struct stm_drvdata {
 	void __iomem		*base;
-	bool			enabled;
-	struct qdss_source	*src;
 	struct device		*dev;
-	struct kobject		*kobj;
+	struct coresight_device	*csdev;
+	struct miscdevice	miscdev;
 	struct clk		*clk;
-	uint32_t		entity;
+	spinlock_t		spinlock;
 	struct channel_space	chs;
+	bool			enable;
+	uint32_t		entity;
 };
 
-static struct stm_drvdata *drvdata;
+static struct stm_drvdata *stmdrvdata;
 
-static void __stm_enable(void)
+static int stm_hwevent_isenable(struct stm_drvdata *drvdata)
 {
-	STM_UNLOCK();
+	int ret = 0;
 
-	stm_writel(drvdata, 0x80, STMSYNCR);
-	stm_writel(drvdata, 0xFFFFFFFF, STMSPTER);
-	stm_writel(drvdata, 0xFFFFFFFF, STMSPER);
-	stm_writel(drvdata, 0x30003, STMTCSR);
+	spin_lock(&drvdata->spinlock);
+	if (drvdata->enable)
+		if (BVAL(stm_readl(drvdata, STMHEMCR), 0))
+			ret = stm_readl(drvdata, STMHEER) == 0 ? 0 : 1;
+	spin_unlock(&drvdata->spinlock);
 
-	STM_LOCK();
-}
-
-static int stm_enable(void)
-{
-	int ret;
-
-	if (drvdata->enabled) {
-		dev_err(drvdata->dev, "STM tracing already enabled\n");
-		ret = -EINVAL;
-		goto err;
-	}
-
-	ret = clk_prepare_enable(drvdata->clk);
-	if (ret)
-		goto err_clk;
-
-	ret = qdss_enable(drvdata->src);
-	if (ret)
-		goto err_qdss;
-
-	__stm_enable();
-
-	drvdata->enabled = true;
-
-	dev_info(drvdata->dev, "STM tracing enabled\n");
-	return 0;
-
-err_qdss:
-	clk_disable_unprepare(drvdata->clk);
-err_clk:
-err:
 	return ret;
 }
 
-static void __stm_disable(void)
+static void __stm_hwevent_enable(struct stm_drvdata *drvdata)
 {
-	STM_UNLOCK();
+	STM_UNLOCK(drvdata);
 
-	stm_writel(drvdata, 0x30000, STMTCSR);
+	stm_writel(drvdata, 0x0, STMHETER);
+	stm_writel(drvdata, 0xFFFFFFFF, STMHEER);
+	stm_writel(drvdata, 0x5, STMHEMCR);
+
+	STM_LOCK(drvdata);
+}
+
+static int stm_hwevent_enable(struct stm_drvdata *drvdata)
+{
+	int ret = 0;
+
+	spin_lock(&drvdata->spinlock);
+	if (drvdata->enable)
+		__stm_hwevent_enable(drvdata);
+	else
+		ret = -EINVAL;
+	spin_unlock(&drvdata->spinlock);
+
+	return ret;
+}
+
+static int stm_port_isenable(struct stm_drvdata *drvdata)
+{
+	int ret = 0;
+
+	spin_lock(&drvdata->spinlock);
+	if (drvdata->enable)
+		ret = stm_readl(drvdata, STMSPER) == 0 ? 0 : 1;
+	spin_unlock(&drvdata->spinlock);
+
+	return ret;
+}
+
+static void __stm_port_enable(struct stm_drvdata *drvdata)
+{
+	STM_UNLOCK(drvdata);
+
+	stm_writel(drvdata, 0xFFFFFFFF, STMSPTER);
+	stm_writel(drvdata, 0xFFFFFFFF, STMSPER);
+
+	STM_LOCK(drvdata);
+}
+
+static int stm_port_enable(struct stm_drvdata *drvdata)
+{
+	int ret = 0;
+
+	spin_lock(&drvdata->spinlock);
+	if (drvdata->enable)
+		__stm_port_enable(drvdata);
+	else
+		ret = -EINVAL;
+	spin_unlock(&drvdata->spinlock);
+
+	return ret;
+}
+
+static void __stm_enable(struct stm_drvdata *drvdata)
+{
+	__stm_hwevent_enable(drvdata);
+	__stm_port_enable(drvdata);
+
+	STM_UNLOCK(drvdata);
+
+	stm_writel(drvdata, 0x80, STMSYNCR);
+	/* SYNCEN is read-only and HWTEN is not implemented */
+	stm_writel(drvdata, 0x30003, STMTCSR);
+
+	STM_LOCK(drvdata);
+}
+
+static int stm_enable(struct coresight_device *csdev)
+{
+	struct stm_drvdata *drvdata = dev_get_drvdata(csdev->dev.parent);
+	int ret;
+
+	ret = clk_prepare_enable(drvdata->clk);
+	if (ret)
+		return ret;
+
+	spin_lock(&drvdata->spinlock);
+	__stm_enable(drvdata);
+	drvdata->enable = true;
+	spin_unlock(&drvdata->spinlock);
+
+	dev_info(drvdata->dev, "STM tracing enabled\n");
+	return 0;
+}
+
+static void __stm_hwevent_disable(struct stm_drvdata *drvdata)
+{
+	STM_UNLOCK(drvdata);
+
+	stm_writel(drvdata, 0x0, STMHETER);
+	stm_writel(drvdata, 0x0, STMHEER);
+	stm_writel(drvdata, 0x0, STMHEMCR);
+
+	STM_LOCK(drvdata);
+}
+
+static void stm_hwevent_disable(struct stm_drvdata *drvdata)
+{
+	spin_lock(&drvdata->spinlock);
+	if (drvdata->enable)
+		__stm_hwevent_disable(drvdata);
+	spin_unlock(&drvdata->spinlock);
+}
+
+static void __stm_port_disable(struct stm_drvdata *drvdata)
+{
+	STM_UNLOCK(drvdata);
+
 	stm_writel(drvdata, 0x0, STMSPER);
 	stm_writel(drvdata, 0x0, STMSPTER);
 
-	STM_LOCK();
+	STM_LOCK(drvdata);
 }
 
-static int stm_disable(void)
+static void stm_port_disable(struct stm_drvdata *drvdata)
 {
-	int ret;
+	spin_lock(&drvdata->spinlock);
+	if (drvdata->enable)
+		__stm_port_disable(drvdata);
+	spin_unlock(&drvdata->spinlock);
+}
 
-	if (!drvdata->enabled) {
-		dev_err(drvdata->dev, "STM tracing already disabled\n");
-		ret = -EINVAL;
-		goto err;
-	}
+static void __stm_disable(struct stm_drvdata *drvdata)
+{
+	STM_UNLOCK(drvdata);
 
-	__stm_disable();
+	stm_writel(drvdata, 0x30000, STMTCSR);
 
-	drvdata->enabled = false;
+	STM_LOCK(drvdata);
 
-	qdss_disable(drvdata->src);
+	__stm_hwevent_disable(drvdata);
+	__stm_port_disable(drvdata);
+}
+
+static void stm_disable(struct coresight_device *csdev)
+{
+	struct stm_drvdata *drvdata = dev_get_drvdata(csdev->dev.parent);
+
+	spin_lock(&drvdata->spinlock);
+	__stm_disable(drvdata);
+	drvdata->enable = false;
+	spin_unlock(&drvdata->spinlock);
+
+	/* Wait for 100ms so that pending data has been written to HW */
+	msleep(100);
 
 	clk_disable_unprepare(drvdata->clk);
 
 	dev_info(drvdata->dev, "STM tracing disabled\n");
-	return 0;
-
-err:
-	return ret;
 }
+
+static const struct coresight_ops_source stm_source_ops = {
+	.enable		= stm_enable,
+	.disable	= stm_disable,
+};
+
+static const struct coresight_ops stm_cs_ops = {
+	.source_ops	= &stm_source_ops,
+};
 
 static uint32_t stm_channel_alloc(uint32_t off)
 {
+	struct stm_drvdata *drvdata = stmdrvdata;
 	uint32_t ch;
 
 	do {
@@ -201,6 +330,8 @@ static uint32_t stm_channel_alloc(uint32_t off)
 
 static void stm_channel_free(uint32_t ch)
 {
+	struct stm_drvdata *drvdata = stmdrvdata;
+
 	clear_bit(ch, drvdata->chs.bitmap);
 }
 
@@ -301,13 +432,14 @@ static int stm_trace_ost_tail(unsigned long ch_addr, uint32_t options)
 static inline int __stm_trace(uint32_t options, uint8_t entity_id,
 			      uint8_t proto_id, const void *data, uint32_t size)
 {
+	struct stm_drvdata *drvdata = stmdrvdata;
 	int len = 0;
 	uint32_t ch;
 	unsigned long ch_addr;
 
 	/* allocate channel and get the channel address */
 	ch = stm_channel_alloc(0);
-	ch_addr = (unsigned long)stm_channel_addr(ch);
+	ch_addr = (unsigned long)stm_channel_addr(drvdata, ch);
 
 	/* send the ost header */
 	len += stm_trace_ost_header(ch_addr, options, entity_id, proto_id, data,
@@ -344,21 +476,25 @@ static inline int __stm_trace(uint32_t options, uint8_t entity_id,
 int stm_trace(uint32_t options, uint8_t entity_id, uint8_t proto_id,
 			const void *data, uint32_t size)
 {
+	struct stm_drvdata *drvdata = stmdrvdata;
+
 	/* we don't support sizes more than 24bits (0 to 23) */
-	if (!(drvdata->enabled && (drvdata->entity & entity_id) &&
+	if (!(drvdata && drvdata->enable && (drvdata->entity & entity_id) &&
 	      (size < 0x1000000)))
 		return 0;
 
 	return __stm_trace(options, entity_id, proto_id, data, size);
 }
-EXPORT_SYMBOL(stm_trace);
+EXPORT_SYMBOL_GPL(stm_trace);
 
 static ssize_t stm_write(struct file *file, const char __user *data,
 			 size_t size, loff_t *ppos)
 {
+	struct stm_drvdata *drvdata = container_of(file->private_data,
+						   struct stm_drvdata, miscdev);
 	char *buf;
 
-	if (!drvdata->enabled)
+	if (!drvdata->enable)
 		return -EINVAL;
 
 	if (!(drvdata->entity & OST_ENTITY_DEV_NODE))
@@ -386,49 +522,81 @@ static ssize_t stm_write(struct file *file, const char __user *data,
 
 static const struct file_operations stm_fops = {
 	.owner		= THIS_MODULE,
+	.open		= nonseekable_open,
 	.write		= stm_write,
 	.llseek		= no_llseek,
 };
 
-static struct miscdevice stm_misc = {
-	.name		= "msm_stm",
-	.minor		= MISC_DYNAMIC_MINOR,
-	.fops		= &stm_fops,
-};
-
-static ssize_t stm_show_enabled(struct device *dev,
-				struct device_attribute *attr, char *buf)
+static ssize_t stm_show_hwevent_enable(struct device *dev,
+				       struct device_attribute *attr, char *buf)
 {
-	unsigned long val = drvdata->enabled;
+	struct stm_drvdata *drvdata = dev_get_drvdata(dev->parent);
+	unsigned long val = stm_hwevent_isenable(drvdata);
+
 	return scnprintf(buf, PAGE_SIZE, "%#lx\n", val);
 }
 
-static ssize_t stm_store_enabled(struct device *dev,
-				 struct device_attribute *attr,
-				const char *buf, size_t size)
+static ssize_t stm_store_hwevent_enable(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf, size_t size)
 {
-	int ret = 0;
+	struct stm_drvdata *drvdata = dev_get_drvdata(dev->parent);
 	unsigned long val;
+	int ret = 0;
 
 	if (sscanf(buf, "%lx", &val) != 1)
 		return -EINVAL;
 
 	if (val)
-		ret = stm_enable();
+		ret = stm_hwevent_enable(drvdata);
 	else
-		ret = stm_disable();
+		stm_hwevent_disable(drvdata);
 
 	if (ret)
 		return ret;
 	return size;
 }
-static DEVICE_ATTR(enabled, S_IRUGO | S_IWUSR, stm_show_enabled,
-		   stm_store_enabled);
+static DEVICE_ATTR(hwevent_enable, S_IRUGO | S_IWUSR, stm_show_hwevent_enable,
+		   stm_store_hwevent_enable);
+
+static ssize_t stm_show_port_enable(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	struct stm_drvdata *drvdata = dev_get_drvdata(dev->parent);
+	unsigned long val = stm_port_isenable(drvdata);
+
+	return scnprintf(buf, PAGE_SIZE, "%#lx\n", val);
+}
+
+static ssize_t stm_store_port_enable(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t size)
+{
+	struct stm_drvdata *drvdata = dev_get_drvdata(dev->parent);
+	unsigned long val;
+	int ret = 0;
+
+	if (sscanf(buf, "%lx", &val) != 1)
+		return -EINVAL;
+
+	if (val)
+		ret = stm_port_enable(drvdata);
+	else
+		stm_port_disable(drvdata);
+
+	if (ret)
+		return ret;
+	return size;
+}
+static DEVICE_ATTR(port_enable, S_IRUGO | S_IWUSR, stm_show_port_enable,
+		   stm_store_port_enable);
 
 static ssize_t stm_show_entity(struct device *dev,
 			       struct device_attribute *attr, char *buf)
 {
+	struct stm_drvdata *drvdata = dev_get_drvdata(dev->parent);
 	unsigned long val = drvdata->entity;
+
 	return scnprintf(buf, PAGE_SIZE, "%#lx\n", val);
 }
 
@@ -436,6 +604,7 @@ static ssize_t stm_store_entity(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t size)
 {
+	struct stm_drvdata *drvdata = dev_get_drvdata(dev->parent);
 	unsigned long val;
 
 	if (sscanf(buf, "%lx", &val) != 1)
@@ -447,167 +616,131 @@ static ssize_t stm_store_entity(struct device *dev,
 static DEVICE_ATTR(entity, S_IRUGO | S_IWUSR, stm_show_entity,
 		   stm_store_entity);
 
-static int __devinit stm_sysfs_init(void)
-{
-	int ret;
+static struct attribute *stm_attrs[] = {
+	&dev_attr_hwevent_enable.attr,
+	&dev_attr_port_enable.attr,
+	&dev_attr_entity.attr,
+	NULL,
+};
 
-	drvdata->kobj = kobject_create_and_add("stm", qdss_get_modulekobj());
-	if (!drvdata->kobj) {
-		dev_err(drvdata->dev, "failed to create STM sysfs kobject\n");
-		ret = -ENOMEM;
-		goto err_create;
-	}
+static struct attribute_group stm_attr_grp = {
+	.attrs = stm_attrs,
+};
 
-	ret = sysfs_create_file(drvdata->kobj, &dev_attr_enabled.attr);
-	if (ret) {
-		dev_err(drvdata->dev, "failed to create STM sysfs enabled attr\n");
-		goto err_file;
-	}
-
-	if (sysfs_create_file(drvdata->kobj, &dev_attr_entity.attr))
-		dev_err(drvdata->dev, "failed to create STM sysfs entity attr\n");
-
-	return 0;
-err_file:
-	kobject_put(drvdata->kobj);
-err_create:
-	return ret;
-}
-
-static void __devexit stm_sysfs_exit(void)
-{
-	sysfs_remove_file(drvdata->kobj, &dev_attr_entity.attr);
-	sysfs_remove_file(drvdata->kobj, &dev_attr_enabled.attr);
-	kobject_put(drvdata->kobj);
-}
+static const struct attribute_group *stm_attr_grps[] = {
+	&stm_attr_grp,
+	NULL,
+};
 
 static int __devinit stm_probe(struct platform_device *pdev)
 {
 	int ret;
+	struct device *dev = &pdev->dev;
+	struct coresight_platform_data *pdata;
+	struct stm_drvdata *drvdata;
 	struct resource *res;
 	size_t res_size, bitmap_size;
+	struct coresight_desc *desc;
 
-	drvdata = kzalloc(sizeof(*drvdata), GFP_KERNEL);
-	if (!drvdata) {
-		ret = -ENOMEM;
-		goto err_kzalloc_drvdata;
+	if (pdev->dev.of_node) {
+		pdata = of_get_coresight_platform_data(dev, pdev->dev.of_node);
+		if (IS_ERR(pdata))
+			return PTR_ERR(pdata);
+		pdev->dev.platform_data = pdata;
 	}
+
+	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
+	if (!drvdata)
+		return -ENOMEM;
+	/* Store the driver data pointer for use in exported functions */
+	stmdrvdata = drvdata;
+	drvdata->dev = &pdev->dev;
+	platform_set_drvdata(pdev, drvdata);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		ret = -EINVAL;
-		goto err_res0;
-	}
+	if (!res)
+		return -ENODEV;
 
-	drvdata->base = ioremap_nocache(res->start, resource_size(res));
-	if (!drvdata->base) {
-		ret = -EINVAL;
-		goto err_ioremap0;
-	}
+	drvdata->base = devm_ioremap(dev, res->start, resource_size(res));
+	if (!drvdata->base)
+		return -ENOMEM;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (!res) {
-		ret = -EINVAL;
-		goto err_res1;
-	}
+	if (!res)
+		return -ENODEV;
 
-	if (stm_boot_nr_channel) {
-		res_size = min((resource_size_t)(stm_boot_nr_channel *
+	if (boot_nr_channel) {
+		res_size = min((resource_size_t)(boot_nr_channel *
 				  BYTES_PER_CHANNEL), resource_size(res));
-		bitmap_size = stm_boot_nr_channel * sizeof(long);
+		bitmap_size = boot_nr_channel * sizeof(long);
 	} else {
 		res_size = min((resource_size_t)(NR_STM_CHANNEL *
 				 BYTES_PER_CHANNEL), resource_size(res));
 		bitmap_size = NR_STM_CHANNEL * sizeof(long);
 	}
+	drvdata->chs.base = devm_ioremap(dev, res->start, res_size);
+	if (!drvdata->chs.base)
+		return -ENOMEM;
+	drvdata->chs.bitmap = devm_kzalloc(dev, bitmap_size, GFP_KERNEL);
+	if (!drvdata->chs.bitmap)
+		return -ENOMEM;
 
-	drvdata->chs.bitmap = kzalloc(bitmap_size, GFP_KERNEL);
-	if (!drvdata->chs.bitmap) {
-		ret = -ENOMEM;
-		goto err_bitmap;
-	}
+	spin_lock_init(&drvdata->spinlock);
 
-	drvdata->chs.base = ioremap_nocache(res->start, res_size);
-	if (!drvdata->chs.base) {
-		ret = -EINVAL;
-		goto err_ioremap1;
-	}
-
-	drvdata->dev = &pdev->dev;
-
-	ret = misc_register(&stm_misc);
-	if (ret)
-		goto err_misc;
-
-	drvdata->src = qdss_get("msm_stm");
-	if (IS_ERR(drvdata->src)) {
-		ret = PTR_ERR(drvdata->src);
-		goto err_qdssget;
-	}
-
-	drvdata->clk = clk_get(drvdata->dev, "core_clk");
-	if (IS_ERR(drvdata->clk)) {
-		ret = PTR_ERR(drvdata->clk);
-		goto err_clk_get;
-	}
+	drvdata->clk = devm_clk_get(dev, "core_clk");
+	if (IS_ERR(drvdata->clk))
+		return PTR_ERR(drvdata->clk);
 
 	ret = clk_set_rate(drvdata->clk, CORESIGHT_CLK_RATE_TRACE);
 	if (ret)
-		goto err_clk_rate;
+		return ret;
 
 	drvdata->entity = OST_ENTITY_ALL;
 
-	ret = stm_sysfs_init();
-	if (ret)
-		goto err_sysfs;
+	desc = devm_kzalloc(dev, sizeof(*desc), GFP_KERNEL);
+	if (!desc)
+		return -ENOMEM;
+	desc->type = CORESIGHT_DEV_TYPE_SOURCE;
+	desc->subtype.source_subtype = CORESIGHT_DEV_SUBTYPE_SOURCE_SOFTWARE;
+	desc->ops = &stm_cs_ops;
+	desc->pdata = pdev->dev.platform_data;
+	desc->dev = &pdev->dev;
+	desc->groups = stm_attr_grps;
+	desc->owner = THIS_MODULE;
+	drvdata->csdev = coresight_register(desc);
+	if (IS_ERR(drvdata->csdev))
+		return PTR_ERR(drvdata->csdev);
 
-	if (stm_boot_enable)
-		stm_enable();
+	drvdata->miscdev.name = ((struct coresight_platform_data *)
+				 (pdev->dev.platform_data))->name;
+	drvdata->miscdev.minor = MISC_DYNAMIC_MINOR;
+	drvdata->miscdev.fops = &stm_fops;
+	ret = misc_register(&drvdata->miscdev);
+	if (ret)
+		goto err;
 
 	dev_info(drvdata->dev, "STM initialized\n");
+
+	if (boot_enable)
+		coresight_enable(drvdata->csdev);
+
 	return 0;
-
-err_sysfs:
-err_clk_rate:
-	clk_put(drvdata->clk);
-err_clk_get:
-	qdss_put(drvdata->src);
-err_qdssget:
-	misc_deregister(&stm_misc);
-err_misc:
-	iounmap(drvdata->chs.base);
-err_ioremap1:
-	kfree(drvdata->chs.bitmap);
-err_bitmap:
-err_res1:
-	iounmap(drvdata->base);
-err_ioremap0:
-err_res0:
-	kfree(drvdata);
-err_kzalloc_drvdata:
-
-	dev_err(drvdata->dev, "STM init failed\n");
+err:
+	coresight_unregister(drvdata->csdev);
 	return ret;
 }
 
 static int __devexit stm_remove(struct platform_device *pdev)
 {
-	if (drvdata->enabled)
-		stm_disable();
-	stm_sysfs_exit();
-	clk_put(drvdata->clk);
-	qdss_put(drvdata->src);
-	misc_deregister(&stm_misc);
-	iounmap(drvdata->chs.base);
-	kfree(drvdata->chs.bitmap);
-	iounmap(drvdata->base);
-	kfree(drvdata);
+	struct stm_drvdata *drvdata = platform_get_drvdata(pdev);
 
+	misc_deregister(&drvdata->miscdev);
+	coresight_unregister(drvdata->csdev);
 	return 0;
 }
 
 static struct of_device_id stm_match[] = {
-	{.compatible = "qcom,msm-stm"},
+	{.compatible = "arm,coresight-stm"},
 	{}
 };
 
@@ -615,7 +748,7 @@ static struct platform_driver stm_driver = {
 	.probe          = stm_probe,
 	.remove         = __devexit_p(stm_remove),
 	.driver         = {
-		.name   = "msm_stm",
+		.name   = "coresight-stm",
 		.owner	= THIS_MODULE,
 		.of_match_table = stm_match,
 	},

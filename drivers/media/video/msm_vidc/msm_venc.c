@@ -22,13 +22,13 @@
 #define DEFAULT_WIDTH 1280
 #define MIN_NUM_OUTPUT_BUFFERS 2
 #define MAX_NUM_OUTPUT_BUFFERS 8
-#define MIN_BIT_RATE 64
-#define MAX_BIT_RATE 160000
-#define DEFAULT_BIT_RATE 64
-#define BIT_RATE_STEP 1
-#define MIN_FRAME_RATE 1
-#define MAX_FRAME_RATE 240
-#define DEFAULT_FRAME_RATE 30
+#define MIN_BIT_RATE 64000
+#define MAX_BIT_RATE 160000000
+#define DEFAULT_BIT_RATE 64000
+#define BIT_RATE_STEP 100
+#define MIN_FRAME_RATE 65536
+#define MAX_FRAME_RATE 15728640
+#define DEFAULT_FRAME_RATE 1966080
 #define DEFAULT_IR_MBS 30
 #define MAX_SLICE_BYTE_SIZE 1024
 #define MIN_SLICE_BYTE_SIZE 1024
@@ -621,9 +621,19 @@ static inline int start_streaming(struct msm_vidc_inst *inst)
 	unsigned long flags;
 	struct vb2_buf_entry *temp;
 	struct list_head *ptr, *next;
+	rc = msm_comm_try_get_bufreqs(inst);
+	if (rc) {
+		pr_err("Failed to get Buffer Requirements : %d\n", rc);
+		goto fail_start;
+	}
 	rc = msm_comm_set_scratch_buffers(inst);
 	if (rc) {
 		pr_err("Failed to set scratch buffers: %d\n", rc);
+		goto fail_start;
+	}
+	rc = msm_comm_set_persist_buffers(inst);
+	if (rc) {
+		pr_err("Failed to set persist buffers: %d\n", rc);
 		goto fail_start;
 	}
 	rc = msm_comm_try_state(inst, MSM_VIDC_START_DONE);
@@ -696,7 +706,7 @@ static int msm_venc_stop_streaming(struct vb2_queue *q)
 	case V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE:
 		break;
 	case V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE:
-		rc = msm_comm_try_state(inst, MSM_VIDC_CLOSE_DONE);
+		rc = msm_comm_try_state(inst, MSM_VIDC_RELEASE_RESOURCES_DONE);
 		break;
 	default:
 		pr_err("Q-type is not supported: %d\n", q->type);
@@ -752,7 +762,12 @@ static int msm_venc_op_s_ctrl(struct v4l2_ctrl *ctrl)
 	void *pdata;
 	struct msm_vidc_inst *inst = container_of(ctrl->handler,
 					struct msm_vidc_inst, ctrl_handler);
-
+	rc = msm_comm_try_state(inst, MSM_VIDC_OPEN_DONE);
+	if (rc) {
+		pr_err("Failed to move inst: %p to start done state\n",
+				inst);
+		goto failed_open_done;
+	}
 	control.id = ctrl->id;
 	control.value = ctrl->val;
 
@@ -1172,6 +1187,7 @@ static int msm_venc_op_s_ctrl(struct v4l2_ctrl *ctrl)
 	}
 	if (rc)
 		pr_err("Failed to set hal property for framesize\n");
+failed_open_done:
 	return rc;
 }
 static int msm_venc_op_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
@@ -1201,7 +1217,7 @@ int msm_venc_inst_init(struct msm_vidc_inst *inst)
 	inst->fmts[OUTPUT_PORT] = &venc_formats[0];
 	inst->prop.height = DEFAULT_HEIGHT;
 	inst->prop.width = DEFAULT_WIDTH;
-	inst->prop.height = 30;
+	inst->prop.fps = 30;
 	return rc;
 }
 
@@ -1212,6 +1228,15 @@ int msm_venc_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_control *ctrl)
 int msm_venc_g_ctrl(struct msm_vidc_inst *inst, struct v4l2_control *ctrl)
 {
 	return v4l2_g_ctrl(&inst->ctrl_handler, ctrl);
+}
+
+int msm_venc_cmd(struct msm_vidc_inst *inst, struct v4l2_encoder_cmd *enc)
+{
+	int rc = 0;
+	rc = msm_comm_try_state(inst, MSM_VIDC_CLOSE_DONE);
+	if (rc)
+		pr_err("Failed to close instance\n");
+	return rc;
 }
 
 int msm_venc_querycap(struct msm_vidc_inst *inst, struct v4l2_capability *cap)
@@ -1294,6 +1319,7 @@ int msm_venc_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 	}
 
 	if (fmt) {
+		f->fmt.pix_mp.num_planes = fmt->num_planes;
 		for (i = 0; i < fmt->num_planes; ++i) {
 			f->fmt.pix_mp.plane_fmt[i].sizeimage =
 				fmt->get_frame_size(i, f->fmt.pix_mp.height,
@@ -1334,6 +1360,7 @@ int msm_venc_g_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 		f->fmt.pix_mp.pixelformat = fmt->fourcc;
 		f->fmt.pix_mp.height = inst->prop.height;
 		f->fmt.pix_mp.width = inst->prop.width;
+		f->fmt.pix_mp.num_planes = fmt->num_planes;
 		for (i = 0; i < fmt->num_planes; ++i) {
 			f->fmt.pix_mp.plane_fmt[i].sizeimage =
 			fmt->get_frame_size(i, inst->prop.height,

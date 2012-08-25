@@ -1822,7 +1822,8 @@ static void a2xx_irq_control(struct adreno_device *adreno_dev, int state)
 	if (state) {
 		adreno_regwrite(device, REG_RBBM_INT_CNTL, RBBM_INT_MASK);
 		adreno_regwrite(device, REG_CP_INT_CNTL, CP_INT_MASK);
-		adreno_regwrite(device, MH_INTERRUPT_MASK, KGSL_MMU_INT_MASK);
+		adreno_regwrite(device, MH_INTERRUPT_MASK,
+			kgsl_mmu_get_int_mask());
 	} else {
 		adreno_regwrite(device, REG_RBBM_INT_CNTL, 0);
 		adreno_regwrite(device, REG_CP_INT_CNTL, 0);
@@ -1982,7 +1983,13 @@ static void a2xx_start(struct adreno_device *adreno_dev)
 			0x18000000);
 	}
 
-	adreno_regwrite(device, REG_RBBM_CNTL, 0x00004442);
+	if (adreno_is_a203(adreno_dev))
+		/* For A203 increase number of clocks that RBBM
+		 * will wait before de-asserting Register Clock
+		 * Active signal */
+		adreno_regwrite(device, REG_RBBM_CNTL, 0x0000FFFF);
+	else
+		adreno_regwrite(device, REG_RBBM_CNTL, 0x00004442);
 
 	adreno_regwrite(device, REG_SQ_VS_PROGRAM, 0x00000000);
 	adreno_regwrite(device, REG_SQ_PS_PROGRAM, 0x00000000);

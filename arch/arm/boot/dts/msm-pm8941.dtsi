@@ -25,11 +25,27 @@
 		qcom,power-on@800 {
 			compatible = "qcom,qpnp-power-on";
 			reg = <0x800 0x100>;
-			interrupts = <0x0 0x8 0x0>;
-			interrupt-names = "power-key";
-			qcom,pon-key-enable = <1>;
-			qcom,pon-key-dbc-delay = <15625>;
-			qcom,pon-key-pull-up = <1>;
+			interrupts = <0x0 0x8 0x0>,
+				     <0x0 0x8 0x1>,
+				     <0x0 0x8 0x4>;
+			interrupt-names = "kpdpwr", "resin", "resin-bark";
+			qcom,pon-dbc-delay = <15625>;
+
+			qcom,pon_1 {
+				qcom,pon-type = <0>;
+				qcom,pull-up = <1>;
+				linux,code = <116>;
+			};
+
+			qcom,pon_2 {
+				qcom,pon-type = <1>;
+				qcom,support-reset = <1>;
+				qcom,pull-up = <1>;
+				qcom,s1-timer = <0>;
+				qcom,s2-timer = <2000>;
+				qcom,s2-type = <1>;
+				linux,code = <114>;
+			};
 		};
 
 		pm8941_gpios {
@@ -350,6 +366,92 @@
 				qcom,hw-settle-time = <0>;
 				qcom,fast-avg-setup = <0>;
 			};
+
+			chan@2 {
+				label = "vchg_sns";
+				qcom,channel-num = <2>;
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <6>;
+				qcom,calibration-type = "absolute";
+				qcom,scale-function = <0>;
+				qcom,hw-settle-time = <0>;
+				qcom,fast-avg-setup = <0>;
+			};
+
+			chan@5 {
+				label = "vcoin";
+				qcom,channel-num = <5>;
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <3>;
+				qcom,calibration-type = "absolute";
+				qcom,scale-function = <0>;
+				qcom,hw-settle-time = <0>;
+				qcom,fast-avg-setup = <0>;
+			};
+
+			chan@6 {
+				label = "vbat_sns";
+				qcom,channel-num = <6>;
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <3>;
+				qcom,calibration-type = "absolute";
+				qcom,scale-function = <0>;
+				qcom,hw-settle-time = <0>;
+				qcom,fast-avg-setup = <0>;
+			};
+
+			chan@7 {
+				label = "vph_pwr";
+				qcom,channel-num = <7>;
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <3>;
+				qcom,calibration-type = "absolute";
+				qcom,scale-function = <0>;
+				qcom,hw-settle-time = <0>;
+				qcom,fast-avg-setup = <0>;
+			};
+
+			chan@9 {
+				label = "ref_625mv";
+				qcom,channel-num = <9>;
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <1>;
+				qcom,calibration-type = "absolute";
+				qcom,scale-function = <0>;
+				qcom,hw-settle-time = <0>;
+				qcom,fast-avg-setup = <0>;
+			};
+
+			chan@10 {
+				label = "ref_1125v";
+				qcom,channel-num = <10>;
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <1>;
+				qcom,calibration-type = "absolute";
+				qcom,scale-function = <0>;
+				qcom,hw-settle-time = <0>;
+				qcom,fast-avg-setup = <0>;
+			};
+		};
+
+		iadc@3600 {
+			compatible = "qcom,qpnp-iadc";
+			reg = <0x3600 0x100>;
+			interrupts = <0x0 0x36 0x0>;
+			qcom,adc-bit-resolution = <16>;
+			qcom,adc-vdd-reference = <1800>;
+			qcom,rsense = <1500>;
+
+			chan@0 {
+				label = "internal_rsense";
+				qcom,channel-num = <0>;
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <1>;
+				qcom,calibration-type = "absolute";
+				qcom,scale-function = <0>;
+				qcom,hw-settle-time = <0>;
+				qcom,fast-avg-setup = <0>;
+			};
 		};
 	};
 
@@ -405,7 +507,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			compatible = "qcom,qpnp-regulator";
-			reg = <0x1400 0x300>;
+			reg = <0x1a00 0x300>;
 			status = "disabled";
 
 			qcom,ctl@1a00 {
@@ -458,6 +560,7 @@
 			regulator-name = "8941_l5";
 			reg = <0x4400 0x100>;
 			compatible = "qcom,qpnp-regulator";
+			qcom,force-type = <0x04 0x10>;
 			status = "disabled";
 		};
 
@@ -472,6 +575,7 @@
 			regulator-name = "8941_l7";
 			reg = <0x4600 0x100>;
 			compatible = "qcom,qpnp-regulator";
+			qcom,force-type = <0x04 0x10>;
 			status = "disabled";
 		};
 

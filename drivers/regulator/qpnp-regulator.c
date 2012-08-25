@@ -268,8 +268,8 @@ static struct qpnp_voltage_range smps_ranges[] = {
 };
 
 static struct qpnp_voltage_range ftsmps_ranges[] = {
-	VOLTAGE_RANGE(0,   80000,  350000, 1355000,  5000),
-	VOLTAGE_RANGE(1,  160000, 1360000, 2710000, 10000),
+	VOLTAGE_RANGE(0,       0,  350000, 1275000,  5000),
+	VOLTAGE_RANGE(1,       0, 1280000, 2040000, 10000),
 };
 
 static struct qpnp_voltage_range boost_ranges[] = {
@@ -982,16 +982,26 @@ static const struct qpnp_regulator_mapping supported_regulators[] = {
 static int qpnp_regulator_match(struct qpnp_regulator *vreg)
 {
 	const struct qpnp_regulator_mapping *mapping;
+	struct device_node *node = vreg->spmi_dev->dev.of_node;
 	int rc, i;
 	u8 raw_type[2], type, subtype;
+	u32 type_reg[2];
 
-	rc = qpnp_vreg_read(vreg, QPNP_COMMON_REG_TYPE, raw_type, 2);
-	if (rc) {
-		vreg_err(vreg, "could not read type register, rc=%d\n", rc);
-		return rc;
+	rc = of_property_read_u32_array(node, "qcom,force-type",
+								type_reg, 2);
+	if (!rc) {
+		type = type_reg[0];
+		subtype = type_reg[1];
+	} else {
+		rc = qpnp_vreg_read(vreg, QPNP_COMMON_REG_TYPE, raw_type, 2);
+		if (rc) {
+			vreg_err(vreg,
+				"could not read type register, rc=%d\n", rc);
+			return rc;
+		}
+		type = raw_type[0];
+		subtype = raw_type[1];
 	}
-	type = raw_type[0];
-	subtype = raw_type[1];
 
 	rc = -ENODEV;
 	for (i = 0; i < ARRAY_SIZE(supported_regulators); i++) {

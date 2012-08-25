@@ -17,6 +17,7 @@
 #include "adreno_drawctxt.h"
 #include "adreno_ringbuffer.h"
 #include "kgsl_iommu.h"
+#include <mach/ocmem.h>
 
 #define DEVICE_3D_NAME "kgsl-3d"
 #define DEVICE_3D0_NAME "kgsl-3d0"
@@ -32,7 +33,7 @@
 /* Flags to control command packet settings */
 #define KGSL_CMD_FLAGS_NONE             0x00000000
 #define KGSL_CMD_FLAGS_PMODE		0x00000001
-#define KGSL_CMD_FLAGS_NO_TS_CMP	0x00000002
+#define KGSL_CMD_FLAGS_DUMMY_INTR_CMD	0x00000002
 
 /* Command identifiers */
 #define KGSL_CONTEXT_TO_MEM_IDENTIFIER	0x2EADBEEF
@@ -48,9 +49,17 @@
 #define ADRENO_DEFAULT_PWRSCALE_POLICY  NULL
 #endif
 
+void adreno_debugfs_init(struct kgsl_device *device);
+
 #define ADRENO_ISTORE_START 0x5000 /* Istore offset */
 
 #define ADRENO_NUM_CTX_SWITCH_ALLOWED_BEFORE_DRAW	50
+
+/* One cannot wait forever for the core to idle, so set an upper limit to the
+ * amount of time to wait for the core to go idle
+ */
+
+#define ADRENO_IDLE_TIMEOUT (20 * 1000)
 
 enum adreno_gpurev {
 	ADRENO_REV_UNKNOWN = 0,
@@ -61,6 +70,7 @@ enum adreno_gpurev {
 	ADRENO_REV_A225 = 225,
 	ADRENO_REV_A305 = 305,
 	ADRENO_REV_A320 = 320,
+	ADRENO_REV_A330 = 330,
 };
 
 struct adreno_gpudev;
@@ -87,6 +97,7 @@ struct adreno_device {
 	unsigned int instruction_size;
 	unsigned int ib_check_level;
 	unsigned int fast_hang_detect;
+	struct ocmem_buf *ocmem_hdl;
 };
 
 struct adreno_gpudev {
@@ -157,11 +168,13 @@ extern unsigned int hang_detect_regs[];
 extern const unsigned int hang_detect_regs_count;
 
 
-int adreno_idle(struct kgsl_device *device, unsigned int timeout);
+int adreno_idle(struct kgsl_device *device);
 void adreno_regread(struct kgsl_device *device, unsigned int offsetwords,
 				unsigned int *value);
 void adreno_regwrite(struct kgsl_device *device, unsigned int offsetwords,
 				unsigned int value);
+
+int adreno_dump(struct kgsl_device *device, int manual);
 
 struct kgsl_memdesc *adreno_find_region(struct kgsl_device *device,
 						unsigned int pt_base,

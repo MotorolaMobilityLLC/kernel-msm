@@ -274,6 +274,7 @@ struct smux_ldisc_t {
 	struct mutex mutex_lha0;
 
 	int is_initialized;
+	int platform_devs_registered;
 	int in_reset;
 	int ld_open_count;
 	struct tty_struct *tty;
@@ -359,6 +360,7 @@ static int ssr_notifier_cb(struct notifier_block *this,
 static void smux_uart_power_on_atomic(void);
 static int smux_rx_flow_control_updated(struct smux_lch_t *ch);
 static void smux_flush_workqueues(void);
+static void smux_pdev_release(struct device *dev);
 
 /**
  * Convert TTY Error Flags to string for logging purposes.
@@ -3362,12 +3364,33 @@ static int ssr_notifier_cb(struct notifier_block *this,
 				void *data)
 {
 	unsigned long flags;
+	int i;
+	int tmp;
 	int power_off_uart = 0;
 
 	if (code == SUBSYS_BEFORE_SHUTDOWN) {
 		SMUX_DBG("%s: ssr - before shutdown\n", __func__);
 		mutex_lock(&smux.mutex_lha0);
 		smux.in_reset = 1;
+		mutex_unlock(&smux.mutex_lha0);
+		return NOTIFY_DONE;
+	} else if (code == SUBSYS_AFTER_POWERUP) {
+		/* re-register platform devices */
+		SMUX_DBG("%s: ssr - after power-up\n", __func__);
+		mutex_lock(&smux.mutex_lha0);
+		if (smux.ld_open_count > 0
+				&& !smux.platform_devs_registered) {
+			for (i = 0; i < ARRAY_SIZE(smux_devs); ++i) {
+				SMUX_DBG("%s: register pdev '%s'\n",
+					__func__, smux_devs[i].name);
+				smux_devs[i].dev.release = smux_pdev_release;
+				tmp = platform_device_register(&smux_devs[i]);
+				if (tmp)
+					pr_err("%s: error %d registering device %s\n",
+					   __func__, tmp, smux_devs[i].name);
+			}
+			smux.platform_devs_registered = 1;
+		}
 		mutex_unlock(&smux.mutex_lha0);
 		return NOTIFY_DONE;
 	} else if (code != SUBSYS_AFTER_SHUTDOWN) {
@@ -3378,23 +3401,34 @@ static int ssr_notifier_cb(struct notifier_block *this,
 	/* Cleanup channels */
 	smux_flush_workqueues();
 	mutex_lock(&smux.mutex_lha0);
-	smux_lch_purge();
-	if (smux.tty)
-		tty_driver_flush_buffer(smux.tty);
+	if (smux.ld_open_count > 0) {
+		smux_lch_purge();
+		if (smux.tty)
+			tty_driver_flush_buffer(smux.tty);
 
-	/* Power-down UART */
-	spin_lock_irqsave(&smux.tx_lock_lha2, flags);
-	if (smux.power_state != SMUX_PWR_OFF) {
-		SMUX_PWR("%s: SSR - turning off UART\n", __func__);
-		smux.power_state = SMUX_PWR_OFF;
-		power_off_uart = 1;
+		/* Unregister platform devices */
+		if (smux.platform_devs_registered) {
+			for (i = 0; i < ARRAY_SIZE(smux_devs); ++i) {
+				SMUX_DBG("%s: unregister pdev '%s'\n",
+						__func__, smux_devs[i].name);
+				platform_device_unregister(&smux_devs[i]);
+			}
+			smux.platform_devs_registered = 0;
+		}
+
+		/* Power-down UART */
+		spin_lock_irqsave(&smux.tx_lock_lha2, flags);
+		if (smux.power_state != SMUX_PWR_OFF) {
+			SMUX_PWR("%s: SSR - turning off UART\n", __func__);
+			smux.power_state = SMUX_PWR_OFF;
+			power_off_uart = 1;
+		}
+		smux.powerdown_enabled = 0;
+		spin_unlock_irqrestore(&smux.tx_lock_lha2, flags);
+
+		if (power_off_uart)
+			smux_uart_power_off_atomic();
 	}
-	smux.powerdown_enabled = 0;
-	spin_unlock_irqrestore(&smux.tx_lock_lha2, flags);
-
-	if (power_off_uart)
-		smux_uart_power_off_atomic();
-
 	smux.tx_activity_flag = 0;
 	smux.rx_activity_flag = 0;
 	smux.rx_state = SMUX_RX_IDLE;
@@ -3468,6 +3502,7 @@ static int smuxld_open(struct tty_struct *tty)
 			pr_err("%s: error %d registering device %s\n",
 				   __func__, tmp, smux_devs[i].name);
 	}
+	smux.platform_devs_registered = 1;
 	mutex_unlock(&smux.mutex_lha0);
 	return 0;
 }
@@ -3494,10 +3529,13 @@ static void smuxld_close(struct tty_struct *tty)
 	smux_lch_purge();
 
 	/* Unregister platform devices */
-	for (i = 0; i < ARRAY_SIZE(smux_devs); ++i) {
-		SMUX_DBG("%s: unregister pdev '%s'\n",
-				__func__, smux_devs[i].name);
-		platform_device_unregister(&smux_devs[i]);
+	if (smux.platform_devs_registered) {
+		for (i = 0; i < ARRAY_SIZE(smux_devs); ++i) {
+			SMUX_DBG("%s: unregister pdev '%s'\n",
+					__func__, smux_devs[i].name);
+			platform_device_unregister(&smux_devs[i]);
+		}
+		smux.platform_devs_registered = 0;
 	}
 
 	/* Schedule UART power-up if it's down */
@@ -3643,6 +3681,7 @@ static int __init smux_init(void)
 	smux.ld_open_count = 0;
 	smux.in_reset = 0;
 	smux.is_initialized = 1;
+	smux.platform_devs_registered = 0;
 	smux_byte_loopback = 0;
 
 	spin_lock_init(&smux.tx_lock_lha2);

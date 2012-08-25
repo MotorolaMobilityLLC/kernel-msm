@@ -36,13 +36,4 @@
 #define BMVAL(val, lsb, msb)	((val & BM(lsb, msb)) >> lsb)
 #define BVAL(val, n)		((val & BIT(n)) >> n)
 
-int etb_enable(void);
-void etb_disable(void);
-void etb_dump(void);
-void tpiu_disable(void);
-int funnel_enable(uint8_t id, uint32_t port_mask);
-void funnel_disable(uint8_t id, uint32_t port_mask);
-
-struct kobject *qdss_get_modulekobj(void);
-
 #endif

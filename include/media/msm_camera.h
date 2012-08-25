@@ -486,7 +486,8 @@ struct msm_camera_cfg_cmd {
 #define CMD_STATS_BG_BUF_RELEASE 56
 #define CMD_STATS_BF_BUF_RELEASE 57
 #define CMD_STATS_BHIST_BUF_RELEASE 58
-
+#define CMD_VFE_SOF_COUNT_UPDATE 59
+#define CMD_VFE_COUNT_SOF_ENABLE 60
 
 #define CMD_AXI_CFG_PRIM               BIT(8)
 #define CMD_AXI_CFG_PRIM_ALL_CHNLS     BIT(9)
@@ -497,6 +498,7 @@ struct msm_camera_cfg_cmd {
 
 #define CMD_AXI_START  0xE1
 #define CMD_AXI_STOP   0xE2
+#define CMD_AXI_RESET  0xE3
 
 
 #define AXI_CMD_PREVIEW      BIT(0)
@@ -504,8 +506,7 @@ struct msm_camera_cfg_cmd {
 #define AXI_CMD_RECORD       BIT(2)
 #define AXI_CMD_ZSL          BIT(3)
 #define AXI_CMD_RAW_CAPTURE  BIT(4)
-
-
+#define AXI_CMD_LIVESHOT     BIT(5)
 
 /* vfe config command: config command(from config thread)*/
 struct msm_vfe_cfg_cmd {
@@ -785,8 +786,19 @@ struct msm_stats_buf {
 	(MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+7)
 #define MSM_V4L2_EXT_CAPTURE_MODE_RDI2 \
 	(MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+8)
-#define MSM_V4L2_EXT_CAPTURE_MODE_MAX (MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+9)
-
+#define MSM_V4L2_EXT_CAPTURE_MODE_AEC \
+	(MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+9)
+#define MSM_V4L2_EXT_CAPTURE_MODE_AWB \
+	(MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+10)
+#define MSM_V4L2_EXT_CAPTURE_MODE_AF \
+	(MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+11)
+#define MSM_V4L2_EXT_CAPTURE_MODE_IHIST \
+	(MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+12)
+#define MSM_V4L2_EXT_CAPTURE_MODE_CS \
+	(MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+13)
+#define MSM_V4L2_EXT_CAPTURE_MODE_RS \
+	(MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+14)
+#define MSM_V4L2_EXT_CAPTURE_MODE_MAX (MSM_V4L2_EXT_CAPTURE_MODE_DEFAULT+15)
 
 #define MSM_V4L2_PID_MOTION_ISO              V4L2_CID_PRIVATE_BASE
 #define MSM_V4L2_PID_EFFECT                 (V4L2_CID_PRIVATE_BASE+1)
@@ -1776,6 +1788,7 @@ struct msm_camera_vfe_params_t {
 	uint32_t capture_count;
 	uint32_t skip_abort;
 	uint16_t port_info;
+	uint32_t inst_handle;
 	uint16_t cmd_type;
 };
 

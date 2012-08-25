@@ -59,6 +59,9 @@
 #define SPS_IOVEC_FLAG_NO_SUBMIT 0x0002  /* Do not submit descriptor to HW */
 #define SPS_IOVEC_FLAG_DEFAULT   0x0001  /* Use driver default */
 
+/* Maximum descriptor/iovec size */
+#define SPS_IOVEC_MAX_SIZE   (32 * 1024 - 1)  /* 32K-1 bytes due to HW limit */
+
 /* BAM device options flags */
 
 /*
@@ -102,6 +105,9 @@
 #define SPS_BAM_NUM_EES             4
 #define SPS_BAM_SEC_DO_NOT_CONFIG   0
 #define SPS_BAM_SEC_DO_CONFIG       0x0A434553
+
+/* BAM pipe selection */
+#define SPS_BAM_PIPE(n)             (1UL << (n))
 
 /* This enum specifies the operational mode for an SPS connection */
 enum sps_mode {
@@ -1232,6 +1238,20 @@ int sps_setup_bam2bam_fifo(struct sps_mem_buffer *mem_buffer,
  */
 int sps_get_unused_desc_num(struct sps_pipe *h, u32 *desc_num);
 
+/**
+ * Get the debug info of BAM registers and descriptor FIFOs
+ *
+ * @dev - BAM device handle
+ *
+ * @option - debugging option
+ *
+ * @para - parameter used for an option (such as pipe combination)
+ *
+ * @return 0 on success, negative value on error
+ *
+ */
+int sps_get_bam_debug_info(u32 dev, u32 option, u32 para);
+
 #else
 static inline int sps_register_bam_device(const struct sps_bam_props
 			*bam_props, u32 *dev_handle)
@@ -1385,6 +1405,11 @@ static inline int sps_setup_bam2bam_fifo(struct sps_mem_buffer *mem_buffer,
 }
 
 static inline int sps_get_unused_desc_num(struct sps_pipe *h, u32 *desc_num)
+{
+	return -EPERM;
+}
+
+static inline int sps_get_bam_debug_info(u32 dev, u32 option, u32 para)
 {
 	return -EPERM;
 }

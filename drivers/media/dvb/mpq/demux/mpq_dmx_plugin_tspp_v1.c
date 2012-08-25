@@ -47,22 +47,29 @@
 
 #define TSPP_RAW_TTS_SIZE				192
 
-/* Size of single descriptor.
- * Assuming 20MBit/sec stream, with 200 packets
- * per descriptor there would be about 68 descriptors.
- * Meanning about 68 interrupts per second.
+/* Size of single descriptor. Using max descriptor size (170 packets).
+ * Assuming 20MBit/sec stream, with 170 packets
+ * per descriptor there would be about 82 descriptors,
+ * Meanning about 82 notifications per second.
  */
-#define TSPP_BUFFER_SIZE			(TSPP_RAW_TTS_SIZE * 200)
+#define MAX_BAM_DESCRIPTOR_SIZE		(32*1024 - 1)
+#define TSPP_BUFFER_SIZE			\
+	((MAX_BAM_DESCRIPTOR_SIZE / TSPP_RAW_TTS_SIZE) * TSPP_RAW_TTS_SIZE)
 
 /* Number of descriptors, total size: TSPP_BUFFER_SIZE*TSPP_BUFFER_COUNT */
-#define TSPP_BUFFER_COUNT				(16)
+#define TSPP_BUFFER_COUNT				(32)
 
 /* When TSPP notifies demux that new packets are received */
-#define TSPP_NOTIFICATION_SIZE			(TSPP_RAW_TTS_SIZE * 100)
+#define TSPP_NOTIFICATION_SIZE			1
 
 /* Channel timeout in msec */
 #define TSPP_CHANNEL_TIMEOUT			16
 
+/* module parameters for load time configuration */
+static int tsif0_mode = TSPP_TSIF_MODE_2;
+static int tsif1_mode = TSPP_TSIF_MODE_2;
+module_param(tsif0_mode, int, S_IRUGO);
+module_param(tsif1_mode, int, S_IRUGO);
 
 /*
  * Work scheduled each time TSPP notifies dmx
@@ -232,7 +239,7 @@ static void mpq_dmx_tspp_work(struct work_struct *worker)
  * @channel_id: Channel with new TS packets
  * @user: user-data holding TSIF number
  */
-static void mpq_tspp_callback(u32 channel_id, void *user)
+static void mpq_tspp_callback(int channel_id, void *user)
 {
 	int tsif = (int)user;
 	struct work_struct *work;
@@ -271,14 +278,17 @@ static int mpq_tspp_dmx_add_channel(struct dvb_demux_feed *feed)
 	int ret;
 	int channel_id;
 	int *channel_ref_count;
+	enum tspp_tsif_mode mode;
 
 	/* determine the TSIF we are reading from */
 	if (mpq_demux->source == DMX_SOURCE_FRONT0) {
 		tsif = 0;
 		tspp_source = TSPP_SOURCE_TSIF0;
+		mode = (enum tspp_tsif_mode)tsif0_mode;
 	} else if (mpq_demux->source == DMX_SOURCE_FRONT1) {
 		tsif = 1;
 		tspp_source = TSPP_SOURCE_TSIF1;
+		mode = (enum tspp_tsif_mode)tsif1_mode;
 	} else {
 		/* invalid source */
 		MPQ_DVB_ERR_PRINT(
@@ -331,7 +341,7 @@ static int mpq_tspp_dmx_add_channel(struct dvb_demux_feed *feed)
 		}
 
 		/* set TSPP source */
-		ret = tspp_open_stream(0, channel_id, tspp_source);
+		ret = tspp_open_stream(0, channel_id, tspp_source, mode);
 		if (ret < 0) {
 			MPQ_DVB_ERR_PRINT(
 				"%s: tspp_select_source(%d,%d) failed (%d)\n",

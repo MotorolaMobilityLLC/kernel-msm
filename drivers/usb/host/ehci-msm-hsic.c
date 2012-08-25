@@ -27,7 +27,6 @@
 #include <linux/err.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-#include <linux/wakelock.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 
@@ -48,6 +47,8 @@
 #define USB_REG_START_OFFSET 0x90
 #define USB_REG_END_OFFSET 0x250
 
+static struct workqueue_struct  *ehci_wq;
+
 struct msm_hsic_hcd {
 	struct ehci_hcd		ehci;
 	struct device		*dev;
@@ -57,17 +58,19 @@ struct msm_hsic_hcd {
 	struct clk		*phy_clk;
 	struct clk		*cal_clk;
 	struct regulator	*hsic_vddcx;
-	bool			async_int;
 	atomic_t                in_lpm;
-	struct wake_lock	wlock;
 	int			peripheral_status_irq;
 	int			wakeup_irq;
 	int			wakeup_gpio;
 	bool			wakeup_irq_enabled;
-	atomic_t		pm_usage_cnt;
+	bool			irq_enabled;
+	bool			async_int;
 	uint32_t		bus_perf_client;
 	uint32_t		wakeup_int_cnt;
 	enum usb_vdd_type	vdd_type;
+
+	struct work_struct	bus_vote_w;
+	bool			bus_vote;
 };
 
 struct msm_hsic_hcd *__mehci;
@@ -599,13 +602,15 @@ static int msm_hsic_suspend(struct msm_hsic_hcd *mehci)
 
 	disable_irq(hcd->irq);
 
-	/* make sure we don't race against a remote wakeup */
-	if (test_bit(HCD_FLAG_WAKEUP_PENDING, &hcd->flags) ||
+	/* make sure we don't race against the root hub being resumed */
+	if (HCD_RH_RUNNING(hcd) || HCD_WAKEUP_PENDING(hcd) ||
 	    readl_relaxed(USB_PORTSC) & PORT_RESUME) {
-		dev_dbg(mehci->dev, "wakeup pending, aborting suspend\n");
+		dev_warn(mehci->dev, "%s: Root hub is not suspended\n",
+				__func__);
 		enable_irq(hcd->irq);
 		return -EBUSY;
 	}
+	mehci->irq_enabled = false;
 
 	/*
 	 * PHY may take some time or even fail to enter into low power
@@ -658,21 +663,17 @@ static int msm_hsic_suspend(struct msm_hsic_hcd *mehci)
 		dev_err(mehci->dev, "unable to set vddcx voltage for VDD MIN\n");
 
 	if (mehci->bus_perf_client && debug_bus_voting_enabled) {
-		ret = msm_bus_scale_client_update_request(
-				mehci->bus_perf_client, 0);
-		if (ret)
-			dev_err(mehci->dev, "%s: Failed to dvote for "
-				   "bus bandwidth %d\n", __func__, ret);
+		mehci->bus_vote = false;
+		queue_work(ehci_wq, &mehci->bus_vote_w);
 	}
 
 	atomic_set(&mehci->in_lpm, 1);
+	mehci->irq_enabled = true;
 	enable_irq(hcd->irq);
 
 	mehci->wakeup_irq_enabled = 1;
 	enable_irq_wake(mehci->wakeup_irq);
 	enable_irq(mehci->wakeup_irq);
-
-	wake_unlock(&mehci->wlock);
 
 	dev_dbg(mehci->dev, "HSIC-USB in low power mode\n");
 
@@ -697,14 +698,9 @@ static int msm_hsic_resume(struct msm_hsic_hcd *mehci)
 		mehci->wakeup_irq_enabled = 0;
 	}
 
-	wake_lock(&mehci->wlock);
-
 	if (mehci->bus_perf_client && debug_bus_voting_enabled) {
-		ret = msm_bus_scale_client_update_request(
-				mehci->bus_perf_client, 1);
-		if (ret)
-			dev_err(mehci->dev, "%s: Failed to vote for "
-				   "bus bandwidth %d\n", __func__, ret);
+		mehci->bus_vote = true;
+		queue_work(ehci_wq, &mehci->bus_vote_w);
 	}
 
 	min_vol = vdd_val[mehci->vdd_type][VDD_MIN];
@@ -757,13 +753,14 @@ skip_phy_resume:
 	if (mehci->async_int) {
 		mehci->async_int = false;
 		pm_runtime_put_noidle(mehci->dev);
-		enable_irq(hcd->irq);
 	}
 
-	if (atomic_read(&mehci->pm_usage_cnt)) {
-		atomic_set(&mehci->pm_usage_cnt, 0);
-		pm_runtime_put_noidle(mehci->dev);
+	if (!mehci->irq_enabled) {
+		enable_irq(hcd->irq);
+		mehci->irq_enabled = true;
 	}
+
+	pm_relax(mehci->dev);
 
 	dev_dbg(mehci->dev, "HSIC-USB exited from low power mode\n");
 
@@ -771,15 +768,30 @@ skip_phy_resume:
 }
 #endif
 
+static void ehci_hsic_bus_vote_w(struct work_struct *w)
+{
+	struct msm_hsic_hcd *mehci =
+			container_of(w, struct msm_hsic_hcd, bus_vote_w);
+	int ret;
+
+	ret = msm_bus_scale_client_update_request(mehci->bus_perf_client,
+			mehci->bus_vote);
+	if (ret)
+		dev_err(mehci->dev, "%s: Failed to vote for bus bandwidth %d\n",
+				__func__, ret);
+}
+
 static irqreturn_t msm_hsic_irq(struct usb_hcd *hcd)
 {
 	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
 
 	if (atomic_read(&mehci->in_lpm)) {
 		disable_irq_nosync(hcd->irq);
+		mehci->irq_enabled = false;
 		dev_dbg(mehci->dev, "phy async intr\n");
 		mehci->async_int = true;
 		pm_runtime_get(mehci->dev);
+		pm_stay_awake(mehci->dev);
 		return IRQ_HANDLED;
 	}
 
@@ -996,17 +1008,14 @@ static irqreturn_t msm_hsic_wakeup_irq(int irq, void *data)
 	dev_dbg(mehci->dev, "%s: hsic remote wakeup interrupt cnt: %u\n",
 			__func__, mehci->wakeup_int_cnt);
 
-	wake_lock(&mehci->wlock);
+	mehci->async_int = true;
+	pm_runtime_get(mehci->dev);
+	pm_stay_awake(mehci->dev);
 
 	if (mehci->wakeup_irq_enabled) {
 		mehci->wakeup_irq_enabled = 0;
 		disable_irq_wake(irq);
 		disable_irq_nosync(irq);
-	}
-
-	if (!atomic_read(&mehci->pm_usage_cnt)) {
-		atomic_set(&mehci->pm_usage_cnt, 1);
-		pm_runtime_get(mehci->dev);
 	}
 
 	return IRQ_HANDLED;
@@ -1297,15 +1306,23 @@ static int __devinit ehci_hsic_msm_probe(struct platform_device *pdev)
 		goto deinit_vddcx;
 	}
 
+	ehci_wq = create_singlethread_workqueue("ehci_wq");
+	if (!ehci_wq) {
+		dev_err(&pdev->dev, "unable to create workqueue\n");
+		ret = -ENOMEM;
+		goto deinit_vddcx;
+	}
+
+	INIT_WORK(&mehci->bus_vote_w, ehci_hsic_bus_vote_w);
+
 	ret = usb_add_hcd(hcd, hcd->irq, IRQF_SHARED);
 	if (ret) {
 		dev_err(&pdev->dev, "unable to register HCD\n");
 		goto unconfig_gpio;
 	}
 
+	mehci->irq_enabled = true;
 	device_init_wakeup(&pdev->dev, 1);
-	wake_lock_init(&mehci->wlock, WAKE_LOCK_SUSPEND, dev_name(&pdev->dev));
-	wake_lock(&mehci->wlock);
 
 	if (mehci->peripheral_status_irq) {
 		ret = request_threaded_irq(mehci->peripheral_status_irq,
@@ -1343,11 +1360,8 @@ static int __devinit ehci_hsic_msm_probe(struct platform_device *pdev)
 		    msm_bus_scale_register_client(pdata->bus_scale_table);
 		/* Configure BUS performance parameters for MAX bandwidth */
 		if (mehci->bus_perf_client) {
-			ret = msm_bus_scale_client_update_request(
-					mehci->bus_perf_client, 1);
-			if (ret)
-				dev_err(&pdev->dev, "%s: Failed to vote for "
-					   "bus bandwidth %d\n", __func__, ret);
+			mehci->bus_vote = true;
+			queue_work(ehci_wq, &mehci->bus_vote_w);
 		} else {
 			dev_err(&pdev->dev, "%s: Failed to register BUS "
 						"scaling client!!\n", __func__);
@@ -1373,6 +1387,7 @@ static int __devinit ehci_hsic_msm_probe(struct platform_device *pdev)
 	return 0;
 
 unconfig_gpio:
+	destroy_workqueue(ehci_wq);
 	msm_hsic_config_gpios(mehci, 0);
 deinit_vddcx:
 	msm_hsic_init_vddcx(mehci, 0);
@@ -1400,6 +1415,14 @@ static int __devexit ehci_hsic_msm_remove(struct platform_device *pdev)
 		free_irq(mehci->wakeup_irq, mehci);
 	}
 
+	/*
+	 * If the update request is called after unregister, the request will
+	 * fail. Results are undefined if unregister is called in the middle of
+	 * update request.
+	 */
+	mehci->bus_vote = false;
+	cancel_work_sync(&mehci->bus_vote_w);
+
 	if (mehci->bus_perf_client)
 		msm_bus_scale_unregister_client(mehci->bus_perf_client);
 
@@ -1407,12 +1430,13 @@ static int __devexit ehci_hsic_msm_remove(struct platform_device *pdev)
 	device_init_wakeup(&pdev->dev, 0);
 	pm_runtime_set_suspended(&pdev->dev);
 
+	destroy_workqueue(ehci_wq);
+
 	usb_remove_hcd(hcd);
 	msm_hsic_config_gpios(mehci, 0);
 	msm_hsic_init_vddcx(mehci, 0);
 
 	msm_hsic_init_clocks(mehci, 0);
-	wake_lock_destroy(&mehci->wlock);
 	iounmap(hcd->regs);
 	usb_put_hcd(hcd);
 
@@ -1441,12 +1465,26 @@ static int msm_hsic_pm_suspend(struct device *dev)
 	return ret;
 }
 
+static int msm_hsic_pm_suspend_noirq(struct device *dev)
+{
+	struct usb_hcd *hcd = dev_get_drvdata(dev);
+	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
+
+	if (mehci->async_int) {
+		dev_dbg(dev, "suspend_noirq: Aborting due to pending interrupt\n");
+		return -EBUSY;
+	}
+
+	return 0;
+}
+
 static int msm_hsic_pm_resume(struct device *dev)
 {
 	int ret;
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
 	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
 
+	dev_dbg(dev, "ehci-msm-hsic PM resume\n");
 	dbg_log_event(NULL, "PM Resume", 0);
 
 	if (device_may_wakeup(dev))
@@ -1500,6 +1538,7 @@ static int msm_hsic_runtime_resume(struct device *dev)
 #ifdef CONFIG_PM
 static const struct dev_pm_ops msm_hsic_dev_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(msm_hsic_pm_suspend, msm_hsic_pm_resume)
+	.suspend_noirq = msm_hsic_pm_suspend_noirq,
 	SET_RUNTIME_PM_OPS(msm_hsic_runtime_suspend, msm_hsic_runtime_resume,
 				msm_hsic_runtime_idle)
 };

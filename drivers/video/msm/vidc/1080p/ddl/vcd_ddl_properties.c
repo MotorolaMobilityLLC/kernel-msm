@@ -201,6 +201,7 @@ static u32 ddl_set_dec_property(struct ddl_client_context *ddl,
 			decoder->dynamic_prop_change |=
 				DDL_DEC_REQ_OUTPUT_FLUSH;
 			decoder->dpb_mask.client_mask = 0;
+			decoder->field_needed_for_prev_ip = 0;
 			vcd_status = VCD_S_SUCCESS;
 		}
 	break;
@@ -1952,11 +1953,7 @@ u32 ddl_get_yuv_buffer_size(struct vcd_property_frame_size *frame_size,
 					DDL_TILE_MULTIPLY_FACTOR);
 		total_memory_size += component_mem_size;
 	} else {
-		if (decoding)
-			total_memory_size = frame_sz.scan_lines *
-						frame_sz.stride;
-		else
-			total_memory_size = frame_sz.height * frame_sz.stride;
+		total_memory_size = frame_sz.scan_lines * frame_sz.stride;
 		c_offset = DDL_ALIGN(total_memory_size,
 			DDL_LINEAR_MULTIPLY_FACTOR);
 		total_memory_size = c_offset + DDL_ALIGN(

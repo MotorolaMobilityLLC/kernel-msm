@@ -65,7 +65,9 @@
 #define MSG_ID_STATS_BG                 46
 #define MSG_ID_STATS_BF                 47
 #define MSG_ID_STATS_BHIST              48
-
+#define MSG_ID_RDI0_UPDATE_ACK          49
+#define MSG_ID_RDI1_UPDATE_ACK          50
+#define MSG_ID_RDI2_UPDATE_ACK          51
 
 /* ISP command IDs */
 #define VFE_CMD_DUMMY_0                                 0
@@ -218,6 +220,19 @@
 #define VFE_CMD_STATS_BHIST_START                       147
 #define VFE_CMD_STATS_BHIST_STOP                        148
 #define VFE_CMD_RESET_2                                 149
+#define VFE_CMD_FOV_ENC_CFG                             150
+#define VFE_CMD_FOV_VIEW_CFG                            151
+#define VFE_CMD_FOV_ENC_UPDATE                          152
+#define VFE_CMD_FOV_VIEW_UPDATE                         153
+#define VFE_CMD_SCALER_ENC_CFG                          154
+#define VFE_CMD_SCALER_VIEW_CFG                         155
+#define VFE_CMD_SCALER_ENC_UPDATE                       156
+#define VFE_CMD_SCALER_VIEW_UPDATE                      157
+#define VFE_CMD_COLORXFORM_ENC_CFG                      158
+#define VFE_CMD_COLORXFORM_VIEW_CFG                     159
+#define VFE_CMD_COLORXFORM_ENC_UPDATE                   160
+#define VFE_CMD_COLORXFORM_VIEW_UPDATE                  161
+#define VFE_CMD_TEST_GEN_CFG                            162
 
 struct msm_isp_cmd {
 	int32_t  id;

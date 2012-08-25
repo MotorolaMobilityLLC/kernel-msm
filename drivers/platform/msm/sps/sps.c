@@ -461,6 +461,98 @@ static void sps_debugfs_exit(void)
 }
 #endif
 
+/* Get the debug info of BAM registers and descriptor FIFOs */
+int sps_get_bam_debug_info(u32 dev, u32 option, u32 para)
+{
+	int res = 0;
+	struct sps_bam *bam;
+	u32 i;
+	u32 num_pipes = 0;
+	void *vir_addr;
+
+	if (dev == 0) {
+		SPS_ERR("sps:%s:device handle should not be 0.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	mutex_lock(&sps->lock);
+	/* Search for the target BAM device */
+	bam = sps_h2bam(dev);
+	if (bam == NULL) {
+		pr_err("sps:Can't find any BAM with handle 0x%x.", dev);
+		mutex_unlock(&sps->lock);
+		return SPS_ERROR;
+	}
+	mutex_unlock(&sps->lock);
+
+	vir_addr = bam->base;
+	num_pipes = bam->props.num_pipes;
+
+	switch (option) {
+	case 1: /* output all registers of this BAM */
+		print_bam_reg(vir_addr);
+		for (i = 0; i < num_pipes; i++)
+			print_bam_pipe_reg(vir_addr, i);
+		break;
+	case 2: /* output BAM-level registers */
+		print_bam_reg(vir_addr);
+		break;
+	case 3: /* output selected BAM-level registers */
+		print_bam_selected_reg(vir_addr);
+		break;
+	case 4: /* output selected registers of all pipes */
+		for (i = 0; i < num_pipes; i++)
+			print_bam_pipe_selected_reg(vir_addr, i);
+		break;
+	case 5: /* output selected registers of selected pipes */
+		for (i = 0; i < num_pipes; i++)
+			if (para & (1UL << i))
+				print_bam_pipe_selected_reg(vir_addr, i);
+		break;
+	case 6: /* output selected registers of typical pipes */
+		print_bam_pipe_selected_reg(vir_addr, 4);
+		print_bam_pipe_selected_reg(vir_addr, 5);
+		break;
+	case 7: /* output desc FIFO of all pipes */
+		for (i = 0; i < num_pipes; i++)
+			print_bam_pipe_desc_fifo(vir_addr, i);
+		break;
+	case 8: /* output desc FIFO of selected pipes */
+		for (i = 0; i < num_pipes; i++)
+			if (para & (1UL << i))
+				print_bam_pipe_desc_fifo(vir_addr, i);
+		break;
+	case 9: /* output desc FIFO of typical pipes */
+		print_bam_pipe_desc_fifo(vir_addr, 4);
+		print_bam_pipe_desc_fifo(vir_addr, 5);
+		break;
+	case 10: /* output selected registers and desc FIFO of all pipes */
+		for (i = 0; i < num_pipes; i++) {
+			print_bam_pipe_selected_reg(vir_addr, i);
+			print_bam_pipe_desc_fifo(vir_addr, i);
+		}
+		break;
+	case 11: /* output selected registers and desc FIFO of selected pipes */
+		for (i = 0; i < num_pipes; i++)
+			if (para & (1UL << i)) {
+				print_bam_pipe_selected_reg(vir_addr, i);
+				print_bam_pipe_desc_fifo(vir_addr, i);
+			}
+		break;
+	case 12: /* output selected registers and desc FIFO of typical pipes */
+		print_bam_pipe_selected_reg(vir_addr, 4);
+		print_bam_pipe_desc_fifo(vir_addr, 4);
+		print_bam_pipe_selected_reg(vir_addr, 5);
+		print_bam_pipe_desc_fifo(vir_addr, 5);
+		break;
+	default:
+		pr_info("sps:no option is chosen yet.");
+	}
+
+	return res;
+}
+EXPORT_SYMBOL(sps_get_bam_debug_info);
+
 /**
  * Initialize SPS device
  *
@@ -1099,6 +1191,49 @@ int sps_flow_off(struct sps_pipe *h, enum sps_flow_off mode)
 EXPORT_SYMBOL(sps_flow_off);
 
 /**
+ * Check if the flags on a descriptor/iovec are valid
+ *
+ * @flags - flags on a descriptor/iovec
+ *
+ * @return 0 on success, negative value on error
+ *
+ */
+static int sps_check_iovec_flags(u32 flags)
+{
+	if ((flags & SPS_IOVEC_FLAG_NWD) &&
+		!(flags & (SPS_IOVEC_FLAG_EOT | SPS_IOVEC_FLAG_CMD))) {
+		SPS_ERR("sps:NWD is only valid with EOT or CMD.\n");
+		return SPS_ERROR;
+	} else if ((flags & SPS_IOVEC_FLAG_EOT) &&
+		(flags & SPS_IOVEC_FLAG_CMD)) {
+		SPS_ERR("sps:EOT and CMD are not allowed to coexist.\n");
+		return SPS_ERROR;
+	} else if (!(flags & SPS_IOVEC_FLAG_CMD) &&
+		(flags & (SPS_IOVEC_FLAG_LOCK | SPS_IOVEC_FLAG_UNLOCK))) {
+		static char err_msg[] =
+		"pipe lock/unlock flags are only valid with Command Descriptor";
+		SPS_ERR("sps:%s.\n", err_msg);
+		return SPS_ERROR;
+	} else if ((flags & SPS_IOVEC_FLAG_LOCK) &&
+		(flags & SPS_IOVEC_FLAG_UNLOCK)) {
+		static char err_msg[] =
+		"Can't lock and unlock a pipe by the same Command Descriptor";
+		SPS_ERR("sps:%s.\n", err_msg);
+		return SPS_ERROR;
+	} else if ((flags & SPS_IOVEC_FLAG_IMME) &&
+		(flags & SPS_IOVEC_FLAG_CMD)) {
+		SPS_ERR("sps:Immediate and CMD are not allowed to coexist.\n");
+		return SPS_ERROR;
+	} else if ((flags & SPS_IOVEC_FLAG_IMME) &&
+		(flags & SPS_IOVEC_FLAG_NWD)) {
+		SPS_ERR("sps:Immediate and NWD are not allowed to coexist.\n");
+		return SPS_ERROR;
+	}
+
+	return 0;
+}
+
+/**
  * Perform a DMA transfer on an SPS connection end point
  *
  */
@@ -1107,6 +1242,8 @@ int sps_transfer(struct sps_pipe *h, struct sps_transfer *transfer)
 	struct sps_pipe *pipe = h;
 	struct sps_bam *bam;
 	int result;
+	struct sps_iovec *iovec;
+	int i;
 
 	SPS_DBG("sps:%s.", __func__);
 
@@ -1116,6 +1253,34 @@ int sps_transfer(struct sps_pipe *h, struct sps_transfer *transfer)
 	} else if (transfer == NULL) {
 		SPS_ERR("sps:%s:transfer is NULL.\n", __func__);
 		return SPS_ERROR;
+	} else if (transfer->iovec == NULL) {
+		SPS_ERR("sps:%s:iovec list is NULL.\n", __func__);
+		return SPS_ERROR;
+	} else if (transfer->iovec_count == 0) {
+		SPS_ERR("sps:%s:iovec list is empty.\n", __func__);
+		return SPS_ERROR;
+	} else if (transfer->iovec_phys == 0) {
+		SPS_ERR("sps:%s:iovec list address is invalid.\n", __func__);
+		return SPS_ERROR;
+	}
+
+	/* Verify content of IOVECs */
+	iovec = transfer->iovec;
+	for (i = 0; i < transfer->iovec_count; i++) {
+		u32 flags = iovec->flags;
+
+		if (iovec->addr == 0) {
+			SPS_ERR("sps:%s:iovec address is invalid.\n", __func__);
+			return SPS_ERROR;
+		} else if (iovec->size > SPS_IOVEC_MAX_SIZE) {
+			SPS_ERR("sps:%s:iovec size is invalid.\n", __func__);
+			return SPS_ERROR;
+		}
+
+		if (sps_check_iovec_flags(flags))
+			return SPS_ERROR;
+
+		iovec++;
 	}
 
 	bam = sps_bam_lock(pipe);
@@ -1148,33 +1313,8 @@ int sps_transfer_one(struct sps_pipe *h, u32 addr, u32 size,
 		return SPS_ERROR;
 	}
 
-	if ((flags & SPS_IOVEC_FLAG_NWD) &&
-		!(flags & (SPS_IOVEC_FLAG_EOT | SPS_IOVEC_FLAG_CMD))) {
-		SPS_ERR("sps:NWD is only valid with EOT or CMD.\n");
+	if (sps_check_iovec_flags(flags))
 		return SPS_ERROR;
-	} else if ((flags & SPS_IOVEC_FLAG_EOT) &&
-		(flags & SPS_IOVEC_FLAG_CMD)) {
-		SPS_ERR("sps:EOT and CMD are not allowed to coexist.\n");
-		return SPS_ERROR;
-	} else if (!(flags & SPS_IOVEC_FLAG_CMD) &&
-		(flags & (SPS_IOVEC_FLAG_LOCK | SPS_IOVEC_FLAG_UNLOCK))) {
-		SPS_ERR("sps:pipe lock and unlock flags are only valid with "
-			"Command Descriptor.\n");
-		return SPS_ERROR;
-	} else if ((flags & SPS_IOVEC_FLAG_LOCK) &&
-		(flags & SPS_IOVEC_FLAG_UNLOCK)) {
-		SPS_ERR("sps:Can't lock and unlock a pipe by the same"
-			"Command Descriptor.\n");
-		return SPS_ERROR;
-	} else if ((flags & SPS_IOVEC_FLAG_IMME) &&
-		(flags & SPS_IOVEC_FLAG_CMD)) {
-		SPS_ERR("sps:Immediate and CMD are not allowed to coexist.\n");
-		return SPS_ERROR;
-	} else if ((flags & SPS_IOVEC_FLAG_IMME) &&
-		(flags & SPS_IOVEC_FLAG_NWD)) {
-		SPS_ERR("sps:Immediate and NWD are not allowed to coexist.\n");
-		return SPS_ERROR;
-	}
 
 	bam = sps_bam_lock(pipe);
 	if (bam == NULL)

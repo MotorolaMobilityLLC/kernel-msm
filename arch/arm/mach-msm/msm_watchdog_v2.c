@@ -22,6 +22,8 @@
 #include <linux/of.h>
 #include <linux/cpu.h>
 #include <linux/platform_device.h>
+#include <mach/scm.h>
+#include <mach/msm_memory_dump.h>
 
 #define MODULE_NAME "msm_watchdog"
 #define WDT0_ACCSCSSNBARK_INT 0
@@ -32,7 +34,8 @@
 #define WDT0_BARK_TIME	0x10
 #define WDT0_BITE_TIME	0x14
 
-#define MASK_SIZE	32
+#define MASK_SIZE		32
+#define SCM_SET_REGSAVE_CMD	0x2
 
 struct msm_watchdog_data {
 	unsigned int __iomem phys_base;
@@ -47,6 +50,7 @@ struct msm_watchdog_data {
 	unsigned long long last_pet;
 	unsigned min_slack_ticks;
 	unsigned long long min_slack_ns;
+	void *scm_regsave;
 	cpumask_t alive_mask;
 	struct work_struct init_dogwork_struct;
 	struct delayed_work dogwork_struct;
@@ -88,11 +92,9 @@ static void init_watchdog_work(struct work_struct *work);
 static void dump_cpu_alive_mask(struct msm_watchdog_data *wdog_dd)
 {
 	static char alive_mask_buf[MASK_SIZE];
-	size_t count = cpulist_scnprintf(alive_mask_buf, MASK_SIZE,
+	cpulist_scnprintf(alive_mask_buf, MASK_SIZE,
 						&wdog_dd->alive_mask);
-	alive_mask_buf[count] = '\n';
-	alive_mask_buf[count++] = '\0';
-	printk(KERN_INFO "cpu alive mask from last pet\n%s", alive_mask_buf);
+	printk(KERN_INFO "cpu alive mask from last pet %s\n", alive_mask_buf);
 }
 
 static int msm_watchdog_suspend(struct device *dev)
@@ -196,8 +198,6 @@ static void pet_watchdog_work(struct work_struct *work)
 	if (wdog_dd->do_ipi_ping)
 		ping_other_cpus(wdog_dd);
 	pet_watchdog(wdog_dd);
-	if (wdog_dd->do_ipi_ping)
-		dump_cpu_alive_mask(wdog_dd);
 	if (enable)
 		schedule_delayed_work(&wdog_dd->dogwork_struct,
 							delay_time);
@@ -242,6 +242,44 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static void configure_bark_dump(struct msm_watchdog_data *wdog_dd)
+{
+	int ret;
+	struct msm_client_dump dump_entry;
+	struct {
+		unsigned addr;
+		int len;
+	} cmd_buf;
+
+	wdog_dd->scm_regsave = (void *)__get_free_page(GFP_KERNEL);
+	if (wdog_dd->scm_regsave) {
+		cmd_buf.addr = virt_to_phys(wdog_dd->scm_regsave);
+		cmd_buf.len  = PAGE_SIZE;
+		ret = scm_call(SCM_SVC_UTIL, SCM_SET_REGSAVE_CMD,
+					&cmd_buf, sizeof(cmd_buf), NULL, 0);
+		if (ret)
+			pr_err("Setting register save address failed.\n"
+				       "Registers won't be dumped on a dog "
+				       "bite\n");
+		dump_entry.id = MSM_CPU_CTXT;
+		dump_entry.start_addr = virt_to_phys(wdog_dd->scm_regsave);
+		dump_entry.end_addr = dump_entry.start_addr + PAGE_SIZE;
+		ret = msm_dump_table_register(&dump_entry);
+		if (ret)
+			pr_err("Setting cpu dump region failed\n"
+				"Registers wont be dumped during cpu hang\n");
+	} else {
+		pr_err("Allocating register save space failed\n"
+			       "Registers won't be dumped on a dog bite\n");
+		/*
+		 * No need to bail if allocation fails. Simply don't
+		 * send the command, and the secure side will reset
+		 * without saving registers.
+		 */
+	}
+}
+
+
 static void init_watchdog_work(struct work_struct *work)
 {
 	struct msm_watchdog_data *wdog_dd = container_of(work,
@@ -252,6 +290,7 @@ static void init_watchdog_work(struct work_struct *work)
 	delay_time = msecs_to_jiffies(wdog_dd->pet_time);
 	wdog_dd->min_slack_ticks = UINT_MAX;
 	wdog_dd->min_slack_ns = ULLONG_MAX;
+	configure_bark_dump(wdog_dd);
 	timeout = (wdog_dd->bark_time * WDT_HZ)/1000;
 	__raw_writel(timeout, wdog_dd->base + WDT0_BARK_TIME);
 	__raw_writel(timeout + 3*WDT_HZ, wdog_dd->base + WDT0_BITE_TIME);

@@ -20,9 +20,7 @@
 #include <linux/err.h>
 #include <linux/of.h>
 #include <linux/clk.h>
-
 #include <mach/clk.h>
-
 #include "peripheral-loader.h"
 #include "pil-q6v5.h"
 
@@ -30,6 +28,7 @@
 #define QDSP6SS_RESET			0x014
 #define QDSP6SS_GFMUX_CTL		0x020
 #define QDSP6SS_PWR_CTL			0x030
+#define QDSP6SS_CGC_OVERRIDE		0x034
 
 /* AXI Halt Register Offsets */
 #define AXI_HALTREQ			0x0
@@ -39,21 +38,25 @@
 #define HALT_ACK_TIMEOUT_US		100000
 
 /* QDSP6SS_RESET */
+#define Q6SS_STOP_CORE			BIT(0)
 #define Q6SS_CORE_ARES			BIT(1)
-#define Q6SS_ETM_ISDB_ARES		BIT(3)
-#define Q6SS_STOP_CORE			BIT(4)
+#define Q6SS_BUS_ARES_ENA		BIT(2)
 
 /* QDSP6SS_GFMUX_CTL */
 #define Q6SS_CLK_ENA			BIT(1)
 
 /* QDSP6SS_PWR_CTL */
-#define Q6SS_L2DATA_SLP_NRET_N		BIT(0)
+#define Q6SS_L2DATA_SLP_NRET_N		(BIT(0)|BIT(1)|BIT(2))
 #define Q6SS_L2TAG_SLP_NRET_N		BIT(16)
 #define Q6SS_ETB_SLP_NRET_N		BIT(17)
 #define Q6SS_L2DATA_STBY_N		BIT(18)
 #define Q6SS_SLP_RET_N			BIT(19)
 #define Q6SS_CLAMP_IO			BIT(20)
 #define QDSS_BHS_ON			BIT(21)
+
+/* QDSP6SS_CGC_OVERRIDE */
+#define Q6SS_CORE_CLK_EN		BIT(0)
+#define Q6SS_CORE_RCLK_EN		BIT(1)
 
 int pil_q6v5_make_proxy_votes(struct pil_desc *pil)
 {
@@ -107,50 +110,6 @@ int pil_q6v5_init_image(struct pil_desc *pil, const u8 *metadata,
 }
 EXPORT_SYMBOL(pil_q6v5_init_image);
 
-int pil_q6v5_enable_clks(struct pil_desc *pil)
-{
-	struct q6v5_data *drv = dev_get_drvdata(pil->dev);
-	int ret;
-
-	ret = clk_reset(drv->core_clk, CLK_RESET_DEASSERT);
-	if (ret)
-		goto err_reset;
-	ret = clk_prepare_enable(drv->core_clk);
-	if (ret)
-		goto err_core_clk;
-	ret = clk_prepare_enable(drv->bus_clk);
-	if (ret)
-		goto err_bus_clk;
-	if (drv->mem_clk) {
-		ret = clk_prepare_enable(drv->mem_clk);
-		if (ret)
-			goto err_mem_clk;
-	}
-
-	return 0;
-
-err_mem_clk:
-	clk_disable_unprepare(drv->bus_clk);
-err_bus_clk:
-	clk_disable_unprepare(drv->core_clk);
-err_core_clk:
-	clk_reset(drv->core_clk, CLK_RESET_ASSERT);
-err_reset:
-	return ret;
-}
-EXPORT_SYMBOL(pil_q6v5_enable_clks);
-
-void pil_q6v5_disable_clks(struct pil_desc *pil)
-{
-	struct q6v5_data *drv = dev_get_drvdata(pil->dev);
-
-	clk_disable_unprepare(drv->bus_clk);
-	clk_disable_unprepare(drv->core_clk);
-	clk_disable_unprepare(drv->mem_clk);
-	clk_reset(drv->core_clk, CLK_RESET_ASSERT);
-}
-EXPORT_SYMBOL(pil_q6v5_disable_clks);
-
 void pil_q6v5_shutdown(struct pil_desc *pil)
 {
 	u32 val;
@@ -174,7 +133,7 @@ void pil_q6v5_shutdown(struct pil_desc *pil)
 
 	/* Assert Q6 resets */
 	val = readl_relaxed(drv->reg_base + QDSP6SS_RESET);
-	val = (Q6SS_CORE_ARES | Q6SS_ETM_ISDB_ARES);
+	val = (Q6SS_CORE_ARES | Q6SS_BUS_ARES_ENA);
 	writel_relaxed(val, drv->reg_base + QDSP6SS_RESET);
 
 	/* Kill power at block headswitch (affects LPASS only) */
@@ -191,7 +150,7 @@ int pil_q6v5_reset(struct pil_desc *pil)
 
 	/* Assert resets, stop core */
 	val = readl_relaxed(drv->reg_base + QDSP6SS_RESET);
-	val |= (Q6SS_CORE_ARES | Q6SS_ETM_ISDB_ARES | Q6SS_STOP_CORE);
+	val |= (Q6SS_CORE_ARES | Q6SS_BUS_ARES_ENA | Q6SS_STOP_CORE);
 	writel_relaxed(val, drv->reg_base + QDSP6SS_RESET);
 
 	/* Enable power block headswitch (only affects LPASS) */
@@ -211,8 +170,14 @@ int pil_q6v5_reset(struct pil_desc *pil)
 	writel_relaxed(val, drv->reg_base + QDSP6SS_PWR_CTL);
 
 	/* Bring core out of reset */
-	val = Q6SS_STOP_CORE;
+	val = readl_relaxed(drv->reg_base + QDSP6SS_RESET);
+	val &= ~Q6SS_CORE_ARES;
 	writel_relaxed(val, drv->reg_base + QDSP6SS_RESET);
+
+	/* Disable clock gating for core and rclk */
+	val = readl_relaxed(drv->reg_base + QDSP6SS_CGC_OVERRIDE);
+	val |= Q6SS_CORE_RCLK_EN | Q6SS_CORE_CLK_EN;
+	writel_relaxed(val, drv->reg_base + QDSP6SS_CGC_OVERRIDE);
 
 	/* Turn on core clock */
 	val = readl_relaxed(drv->reg_base + QDSP6SS_GFMUX_CTL);
@@ -265,14 +230,6 @@ struct pil_desc __devinit *pil_q6v5_init(struct platform_device *pdev)
 	drv->xo = devm_clk_get(&pdev->dev, "xo");
 	if (IS_ERR(drv->xo))
 		return ERR_CAST(drv->xo);
-
-	drv->bus_clk = devm_clk_get(&pdev->dev, "bus_clk");
-	if (IS_ERR(drv->bus_clk))
-		return ERR_CAST(drv->bus_clk);
-
-	drv->core_clk = devm_clk_get(&pdev->dev, "core_clk");
-	if (IS_ERR(drv->core_clk))
-		return ERR_CAST(drv->core_clk);
 
 	desc->dev = &pdev->dev;
 

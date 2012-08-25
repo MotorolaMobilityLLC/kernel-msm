@@ -174,6 +174,8 @@ int mdp4_overlay_writeback_update(struct msm_fb_data_type *mfd)
 	pipe->dst_y = 0;
 	pipe->dst_x = 0;
 
+	mdp4_overlay_mdp_pipe_req(pipe, mfd);
+
 	if (mfd->display_iova)
 		pipe->srcp0_addr = mfd->display_iova + buf_offset;
 	else
@@ -182,7 +184,7 @@ int mdp4_overlay_writeback_update(struct msm_fb_data_type *mfd)
 	mdp4_mixer_stage_up(pipe);
 
 	mdp4_overlayproc_cfg(pipe);
-
+	mdp4_mixer_stage_commit(pipe->mixer_num);
 	/* MDP cmd block disable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 
@@ -286,6 +288,8 @@ void mdp4_writeback_kickoff_video(struct msm_fb_data_type *mfd,
 
 	pr_debug("%s: pid=%d\n", __func__, current->pid);
 
+	mdp4_mixer_stage_commit(pipe->mixer_num);
+
 	mdp4_writeback_overlay_kickoff(mfd, pipe);
 
 	mutex_lock(&mfd->writeback_mutex);
@@ -299,6 +303,7 @@ void mdp4_writeback_kickoff_video(struct msm_fb_data_type *mfd,
 void mdp4_writeback_kickoff_ui(struct msm_fb_data_type *mfd,
 		struct mdp4_overlay_pipe *pipe)
 {
+	mdp4_mixer_stage_commit(pipe->mixer_num);
 
 	pr_debug("%s: pid=%d\n", __func__, current->pid);
 	mdp4_writeback_overlay_kickoff(mfd, pipe);

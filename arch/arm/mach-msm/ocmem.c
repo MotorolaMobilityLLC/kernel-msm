@@ -24,14 +24,8 @@
 #include <linux/seq_file.h>
 #include <mach/ocmem_priv.h>
 
-/* This code is to temporarily work around the default state of OCMEM
-   regions in Virtio. These registers will be read from DT in a subsequent
-   patch which initializes the regions to appropriate default state.
-*/
-
 #define OCMEM_REGION_CTL_BASE 0xFDD0003C
 #define OCMEM_REGION_CTL_SIZE 0xFD0
-#define REGION_ENABLE 0x00003333
 #define GRAPHICS_REGION_CTL (0x17F000)
 
 struct ocmem_partition {
@@ -109,7 +103,7 @@ int check_id(int id)
 const char *get_name(int id)
 {
 	if (!check_id(id))
-		return NULL;
+		return "Unknown";
 	return client_names[id];
 }
 
@@ -130,6 +124,15 @@ inline unsigned long offset_to_phys(unsigned long offset)
 	if (offset > ocmem_pdata->size)
 		return 0;
 	return offset + ocmem_pdata->base;
+}
+
+inline int zone_active(int id)
+{
+	struct ocmem_zone *z = get_zone(id);
+	if (z)
+		return z->active == true ? 1 : 0;
+	else
+		return 0;
 }
 
 static struct ocmem_plat_data *parse_static_config(struct platform_device *pdev)
@@ -269,6 +272,68 @@ int __devinit of_ocmem_parse_regions(struct device *dev,
 	return i;
 }
 
+#if defined(CONFIG_MSM_OCMEM_LOCAL_POWER_CTRL)
+static int parse_power_ctrl_config(struct ocmem_plat_data *pdata,
+					struct device_node *node)
+{
+	pdata->rpm_pwr_ctrl = false;
+	pdata->rpm_rsc_type = ~0x0;
+	return 0;
+}
+#else
+static int parse_power_ctrl_config(struct ocmem_plat_data *pdata,
+					struct device_node *node)
+{
+	unsigned rsc_type = ~0x0;
+	pdata->rpm_pwr_ctrl = false;
+	if (of_property_read_u32(node, "qcom,resource-type",
+					&rsc_type))
+		return -EINVAL;
+	pdata->rpm_pwr_ctrl = true;
+	pdata->rpm_rsc_type = rsc_type;
+	return 0;
+
+}
+#endif /* CONFIG_MSM_OCMEM_LOCAL_POWER_CTRL */
+
+/* Core Clock Operations */
+int ocmem_enable_core_clock(void)
+{
+	int ret;
+	ret = clk_prepare_enable(ocmem_pdata->core_clk);
+	if (ret) {
+		pr_err("ocmem: Failed to enable core clock\n");
+		return ret;
+	}
+	pr_debug("ocmem: Enabled core clock\n");
+	return 0;
+}
+
+void ocmem_disable_core_clock(void)
+{
+	clk_disable_unprepare(ocmem_pdata->core_clk);
+	pr_debug("ocmem: Disabled core clock\n");
+}
+
+/* Branch Clock Operations */
+int ocmem_enable_iface_clock(void)
+{
+	int ret;
+	ret = clk_prepare_enable(ocmem_pdata->iface_clk);
+	if (ret) {
+		pr_err("ocmem: Failed to disable branch clock\n");
+		return ret;
+	}
+	pr_debug("ocmem: Enabled iface clock\n");
+	return 0;
+}
+
+void ocmem_disable_iface_clock(void)
+{
+	clk_disable_unprepare(ocmem_pdata->iface_clk);
+	pr_debug("ocmem: Disabled iface clock\n");
+}
+
 static struct ocmem_plat_data *parse_dt_config(struct platform_device *pdev)
 {
 	struct device   *dev = &pdev->dev;
@@ -393,6 +458,11 @@ static struct ocmem_plat_data *parse_dt_config(struct platform_device *pdev)
 	} else
 		dev_dbg(dev, "Found %d ocmem partitions\n", nr_parts);
 
+	if (parse_power_ctrl_config(pdata, node)) {
+		dev_err(dev, "No OCMEM RPM Resource specified\n");
+		return NULL;
+	}
+
 	pdata->nr_parts = nr_parts;
 	pdata->parts = parts;
 	pdata->nr_regions = nr_regions;
@@ -421,6 +491,7 @@ static int ocmem_zone_init(struct platform_device *pdev)
 	for (i = 0; i < pdata->nr_parts; i++) {
 		struct ocmem_partition *part = &pdata->parts[i];
 		zone = get_zone(part->id);
+		zone->active = false;
 
 		dev_dbg(dev, "Partition %d, start %lx, size %lx for %s\n",
 				i, part->p_start, part->p_size,
@@ -478,6 +549,7 @@ static int ocmem_zone_init(struct platform_device *pdev)
 			z_ops->allocate = allocate_head;
 			z_ops->free = free_head;
 		}
+		zone->active = true;
 		active_zones++;
 
 		if (active_zones == 1)
@@ -492,10 +564,34 @@ static int ocmem_zone_init(struct platform_device *pdev)
 	return 0;
 }
 
+/* Enable the ocmem graphics mpU as a workaround */
+/* This will be programmed by TZ after TZ support is integrated */
+static int ocmem_init_gfx_mpu(struct platform_device *pdev)
+{
+	int rc;
+	struct device *dev = &pdev->dev;
+	void __iomem *ocmem_region_vbase = NULL;
+
+	ocmem_region_vbase = devm_ioremap_nocache(dev, OCMEM_REGION_CTL_BASE,
+							OCMEM_REGION_CTL_SIZE);
+	if (!ocmem_region_vbase)
+		return -EBUSY;
+
+	rc = ocmem_enable_core_clock();
+
+	if (rc < 0)
+		return rc;
+
+	writel_relaxed(GRAPHICS_REGION_CTL, ocmem_region_vbase + 0xFCC);
+	ocmem_disable_core_clock();
+	return 0;
+}
+
 static int __devinit msm_ocmem_probe(struct platform_device *pdev)
 {
 	struct device   *dev = &pdev->dev;
-	void *ocmem_region_vbase = NULL;
+	struct clk *ocmem_core_clk = NULL;
+	struct clk *ocmem_iface_clk = NULL;
 
 	if (!pdev->dev.of_node) {
 		dev_info(dev, "Missing Configuration in Device Tree\n");
@@ -514,7 +610,33 @@ static int __devinit msm_ocmem_probe(struct platform_device *pdev)
 
 	dev_info(dev, "OCMEM Virtual addr %p\n", ocmem_pdata->vbase);
 
+	ocmem_core_clk = devm_clk_get(dev, "core_clk");
+
+	if (IS_ERR(ocmem_core_clk)) {
+		dev_err(dev, "Unable to get the core clock\n");
+		return PTR_ERR(ocmem_core_clk);
+	}
+
+	/* The core clock is synchronous with graphics */
+	if (clk_set_rate(ocmem_core_clk, 1000) < 0) {
+		dev_err(dev, "Set rate failed on the core clock\n");
+		return -EBUSY;
+	}
+
+	ocmem_iface_clk = devm_clk_get(dev, "iface_clk");
+
+	if (IS_ERR(ocmem_iface_clk)) {
+		dev_err(dev, "Unable to get the memory interface clock\n");
+		return PTR_ERR(ocmem_core_clk);
+	};
+
+	ocmem_pdata->core_clk = ocmem_core_clk;
+	ocmem_pdata->iface_clk = ocmem_iface_clk;
+
 	platform_set_drvdata(pdev, ocmem_pdata);
+
+	if (ocmem_core_init(pdev))
+		return -EBUSY;
 
 	if (ocmem_zone_init(pdev))
 		return -EBUSY;
@@ -525,20 +647,13 @@ static int __devinit msm_ocmem_probe(struct platform_device *pdev)
 	if (ocmem_sched_init())
 		return -EBUSY;
 
-	ocmem_region_vbase = devm_ioremap_nocache(dev, OCMEM_REGION_CTL_BASE,
-							OCMEM_REGION_CTL_SIZE);
-	if (!ocmem_region_vbase)
-		return -EBUSY;
-	/* Enable all the 3 regions until we have support for power features */
-	writel_relaxed(REGION_ENABLE, ocmem_region_vbase);
-	writel_relaxed(REGION_ENABLE, ocmem_region_vbase + 4);
-	writel_relaxed(REGION_ENABLE, ocmem_region_vbase + 8);
-	/* Enable the ocmem graphics mpU as a workaround in Virtio */
-	/* This will be programmed by TZ after TZ support is integrated */
-	writel_relaxed(GRAPHICS_REGION_CTL, ocmem_region_vbase + 0xFCC);
-
 	if (ocmem_rdm_init(pdev))
 		return -EBUSY;
+
+	if (ocmem_init_gfx_mpu(pdev)) {
+		dev_err(dev, "Unable to initialize Graphics mPU\n");
+		return -EBUSY;
+	}
 
 	dev_dbg(dev, "initialized successfully\n");
 	return 0;
