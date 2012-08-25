@@ -58,6 +58,7 @@ struct ks_bridge {
 	struct list_head	to_mdm_list;
 	struct list_head	to_ks_list;
 	wait_queue_head_t	ks_wait_q;
+	struct miscdevice	*fs_dev;
 
 	/* usb specific */
 	struct usb_device	*udev;
@@ -530,7 +531,6 @@ ksb_usb_probe(struct usb_interface *ifc, const struct usb_device_id *id)
 	struct usb_endpoint_descriptor	*ep_desc;
 	int				i;
 	struct ks_bridge		*ksb;
-	struct miscdevice		*fs_dev;
 
 	ifc_num = ifc->cur_altsetting->desc.bInterfaceNumber;
 
@@ -584,8 +584,8 @@ ksb_usb_probe(struct usb_interface *ifc, const struct usb_device_id *id)
 
 	dbg_log_event(ksb, "PID-ATT", id->idProduct, 0);
 
-	fs_dev = (struct miscdevice *)id->driver_info;
-	misc_register(fs_dev);
+	ksb->fs_dev = (struct miscdevice *)id->driver_info;
+	misc_register(ksb->fs_dev);
 
 	ifc->needs_remote_wakeup = 1;
 	usb_enable_autosuspend(ksb->udev);
@@ -630,8 +630,9 @@ static void ksb_usb_disconnect(struct usb_interface *ifc)
 	wake_up(&ksb->ks_wait_q);
 	cancel_work_sync(&ksb->to_mdm_work);
 
-	usb_kill_anchored_urbs(&ksb->submitted);
+	misc_deregister(ksb->fs_dev);
 
+	usb_kill_anchored_urbs(&ksb->submitted);
 	spin_lock_irqsave(&ksb->lock, flags);
 	while (!list_empty(&ksb->to_ks_list)) {
 		pkt = list_first_entry(&ksb->to_ks_list,
@@ -712,7 +713,8 @@ static int __init ksb_init(void)
 		ksb = kzalloc(sizeof(struct ks_bridge), GFP_KERNEL);
 		if (!ksb) {
 			pr_err("unable to allocat mem for ks_bridge");
-			return -ENOMEM;
+			ret =  -ENOMEM;
+			goto dev_free;
 		}
 		__ksb[i] = ksb;
 
