@@ -672,11 +672,11 @@ static int batt_temp_get_current_limit(void)
 	return ret.intval;
 }
 
-static int batt_temp_set_state(int health)
+static int batt_temp_set_state(int health, int i_value)
 {
 	int ret = 0;
 
-	ret = pm8921_set_ext_battery_health(health);
+	ret = pm8921_set_ext_battery_health(health, i_value);
 	if (ret)
 		pr_err("%s: failed to set health\n", __func__);
 
