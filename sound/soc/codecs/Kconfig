@@ -140,6 +140,8 @@ config SND_SOC_WM_HUBS
 
 config SND_SOC_WM_ADSP
 	tristate
+	default y if SND_SOC_WM5102=y
+	default m if SND_SOC_WM5102=m
 
 config SND_SOC_AC97_CODEC
 	tristate
