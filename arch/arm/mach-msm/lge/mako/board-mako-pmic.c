@@ -166,9 +166,9 @@ static struct pm8xxx_misc_platform_data apq8064_pm8921_misc_pdata = {
 #define PM8XXX_LED_PWM_PERIOD     1000
 #define PM8XXX_LED_PWM_DUTY_MS    50
 #define PM8XXX_LED_PWM_DUTY_PCTS  16
-#define PM8XXX_LED_PWM_START_IDX0 0
-#define PM8XXX_LED_PWM_START_IDX1 16
-#define PM8XXX_LED_PWM_START_IDX2 32
+#define PM8XXX_LED_PWM_START_IDX0 16
+#define PM8XXX_LED_PWM_START_IDX1 32
+#define PM8XXX_LED_PWM_START_IDX2 48
 
 /**
  * PM8XXX_PWM_CHANNEL_NONE shall be used when LED shall not be
