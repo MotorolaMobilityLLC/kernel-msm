@@ -43,12 +43,10 @@ static struct msm_camera_i2c_reg_conf imx111_prev_settings[] = {
 	{0x0307, 0x38},
 	{0x30A4, 0x02},
 	{0x303C, 0x4B},
-// randy added : s
 	{0x0202, 0x03},
 	{0x0203, 0xCE},
 	{0x0204, 0x00},
 	{0x0205, 0xC0},
-// randy added : e
 	{0x0340, 0x04},
 	{0x0341, 0xE6},
 	{0x0342, 0x0D},
@@ -121,8 +119,6 @@ static struct msm_camera_i2c_reg_conf imx111_video_settings[] = {
 	{0x0307, 0x32},
 	{0x30A4, 0x02},
 	{0x303C, 0x4B},
-//	{0x0340, 0x07},	/* randy blocked*/
-//	{0x0341, 0x5C},
 	{0x0342, 0x0D},
 	{0x0343, 0xAC},
 	{0x0344, 0x00},
@@ -193,12 +189,10 @@ static struct msm_camera_i2c_reg_conf imx111_snap_settings[] = {
 	{0x0307, 0x53},
 	{0x30A4, 0x02},
 	{0x303C, 0x4B},
-// randy added : s
 	{0x0202, 0x04},
 	{0x0203, 0xEC},
 	{0x0204, 0x00},
 	{0x0205, 0xAC},
-// randy added : e
 	{0x0340, 0x09},
 	{0x0341, 0xBA},
 	{0x0342, 0x0D},
@@ -688,6 +682,7 @@ static int imx111_read_eeprom_data(struct msm_sensor_ctrl_t *s_ctrl, struct sens
 		pr_err("%s: Error Reading EEPROM : page_no:0 \n", __func__);
 		return rc;
 	}
+	#if 0
 	// for AWB data
 	cfg->cfg.calib_info.r_over_g = (eepromdata[1]<<8) |eepromdata[0];
 	printk("[QCTK_EEPROM] r_over_g = 0x%4x\n", cfg->cfg.calib_info.r_over_g);
@@ -695,6 +690,7 @@ static int imx111_read_eeprom_data(struct msm_sensor_ctrl_t *s_ctrl, struct sens
 	printk("[QCTK_EEPROM] b_over_g = 0x%4x\n", cfg->cfg.calib_info.b_over_g);
 	cfg->cfg.calib_info.gr_over_gb = (eepromdata[5]<<8) |eepromdata[4];
 	printk("[QCTK_EEPROM] gr_over_gb = 0x%4x\n", cfg->cfg.calib_info.gr_over_gb);
+	#endif
 
 	for (i = 0; i < ROLLOFF_CALDATA_SIZE; i++) {
 		cfg->cfg.calib_info.rolloff.r_gain[i] = eepromdata[RED_START + i];
@@ -749,9 +745,9 @@ static int imx111_read_eeprom_data(struct msm_sensor_ctrl_t *s_ctrl, struct sens
 
 	memset(eepromdata, 0, sizeof(eepromdata));
 	if(imx_i2c_read_eeprom_burst(IMX111_EEPROM_SADDR | 0x3 /* page_no:3 */,
-		eepromdata, IMX111_EEPROM_PAGE_SIZE) < 0) {
-		pr_err("%s: Error Reading EEPROM : page_no:3 \n", __func__);
-		return rc;
+		eepromdata, ROLLOFF_CALDATA_SIZE + BLUE_START - IMX111_EEPROM_PAGE_SIZE + 4 /*checksum*/ + 17 /*red_ref*/) < 0) {
+			pr_err("%s: Error Reading EEPROM : page_no:3 \n", __func__);
+			return rc;
 	}
 	for (i = 0; i < ROLLOFF_CALDATA_SIZE + BLUE_START - IMX111_EEPROM_PAGE_SIZE; i++) {
 		cfg->cfg.calib_info.rolloff.b_gain[IMX111_EEPROM_PAGE_SIZE - BLUE_START + i] = eepromdata[i];
@@ -759,21 +755,32 @@ static int imx111_read_eeprom_data(struct msm_sensor_ctrl_t *s_ctrl, struct sens
 		//printk("[QCTK_EEPROM] B(0x%x, %d)\n", i, eepromdata[i]);
 	}
 
-	if (eepromdata[0xCA] != 1) {
-		for (i = 0; i < 17; i++) {
-			cfg->cfg.calib_info.rolloff.red_ref[i] = eepromdata[R_REF_ADDR + i];
-			printk("[QCTK_EEPROM] R_ref(0x%x)\n", cfg->cfg.calib_info.rolloff.red_ref[i]);
+	for (i = 0; i < 17; i++) {
+		cfg->cfg.calib_info.rolloff.red_ref[i] = eepromdata[R_REF_ADDR + i];
+		//printk("[QCTK_EEPROM] R_ref(0x%x)\n", cfg->cfg.calib_info.rolloff.red_ref[i]);
 		}
-	} else {
-		cfg->cfg.calib_info.rolloff.red_ref[0] = 0xFE;
-		cfg->cfg.calib_info.rolloff.red_ref[1] = eepromdata[0xC6];
-		cfg->cfg.calib_info.rolloff.red_ref[2] = eepromdata[0xC7];
-		cfg->cfg.calib_info.rolloff.red_ref[3] = eepromdata[0xC8];
-		cfg->cfg.calib_info.rolloff.red_ref[4] = eepromdata[0xC9];
-	}
+
+	printk("%s: crc_from_eeprom(0x%x), cal_crc(0x%x)\n", __func__,
+		(eepromdata[CRC_ADDR] << 8) | eepromdata[CRC_ADDR+1], crc_5100& 0xFFFF);
+
+	// for AWB data - from Rolloff data
+	cfg->cfg.calib_info.r_over_g = (uint16_t)(((((uint32_t)cfg->cfg.calib_info.rolloff.r_gain[ROLLOFF_CALDATA_SIZE / 2])<<10)
+						+ ((uint32_t)(cfg->cfg.calib_info.rolloff.gr_gain[ROLLOFF_CALDATA_SIZE / 2]) >> 1))
+						/ (uint32_t)cfg->cfg.calib_info.rolloff.gr_gain[ROLLOFF_CALDATA_SIZE / 2]);
+	printk("[QCTK_EEPROM] r_over_g = 0x%4x\n", cfg->cfg.calib_info.r_over_g);
+	cfg->cfg.calib_info.b_over_g = (uint16_t)(((((uint32_t)cfg->cfg.calib_info.rolloff.b_gain[ROLLOFF_CALDATA_SIZE / 2])<<10)
+						+ ((uint32_t)(cfg->cfg.calib_info.rolloff.gb_gain[ROLLOFF_CALDATA_SIZE / 2]) >> 1))
+						/ (uint32_t)cfg->cfg.calib_info.rolloff.gb_gain[ROLLOFF_CALDATA_SIZE / 2]);
+	printk("[QCTK_EEPROM] b_over_g = 0x%4x\n", cfg->cfg.calib_info.b_over_g);
+	cfg->cfg.calib_info.gr_over_gb = (uint16_t)(((((uint32_t)cfg->cfg.calib_info.rolloff.gr_gain[ROLLOFF_CALDATA_SIZE / 2])<<10)
+						+ ((uint32_t)(cfg->cfg.calib_info.rolloff.gb_gain[ROLLOFF_CALDATA_SIZE / 2]) >> 1))
+						/ (uint32_t)cfg->cfg.calib_info.rolloff.gb_gain[ROLLOFF_CALDATA_SIZE / 2]);
+	printk("[QCTK_EEPROM] gr_over_gb = 0x%4x\n", cfg->cfg.calib_info.gr_over_gb);
+
 	printk("%s: X\n", __func__);
 	return 0;
 }
+
 static struct v4l2_subdev_video_ops imx111_subdev_video_ops = {
 	.enum_mbus_fmt = msm_sensor_v4l2_enum_fmt,
 };
