@@ -23,6 +23,7 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <linux/workqueue.h>
+#include <linux/wakelock.h>
 
 #include "slimport_tx_drv.h"
 #include "slimport.h"
@@ -34,6 +35,7 @@ struct anx7808_data {
 	struct delayed_work    work;
 	struct workqueue_struct    *workqueue;
 	struct mutex    lock;
+	struct wake_lock slimport_lock;
 };
 
 #ifdef HDCP_EN
@@ -126,8 +128,8 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 				sp_tx_hardware_poweron();
 				sp_tx_power_on(SP_TX_PWR_REG);
 				sp_tx_power_on(SP_TX_PWR_TOTAL);
-				sp_tx_initialization();
 				hdmi_rx_initialization();
+				sp_tx_initialization();
 				sp_tx_vbus_poweron();
 				msleep(300);
 				if (!sp_tx_get_cable_type()) {
@@ -338,11 +340,14 @@ static irqreturn_t anx7808_cbl_det_isr(int irq, void *data)
 
 
 	if (gpio_get_value(anx7808->pdata->gpio_cbl_det)) {
+		wake_lock(&anx7808->slimport_lock);
 		pr_info("%s : detect cable insertion\n", __func__);
 		queue_delayed_work(anx7808->workqueue, &anx7808->work, 0);
 	} else {
 		pr_info("%s : detect cable removal\n", __func__);
 		cancel_delayed_work_sync(&anx7808->work);
+		wake_unlock(&anx7808->slimport_lock);
+		wake_lock_timeout(&anx7808->slimport_lock, 2*HZ);
 	}
 	return IRQ_HANDLED;
 }
@@ -442,6 +447,7 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 			"interrupt wake enable fail\n", __func__);
 		goto err2;
 	}
+	wake_lock_init(&anx7808->slimport_lock, WAKE_LOCK_SUSPEND, "slimport_wake_lock");
 	goto out;
 
 err2:
@@ -461,6 +467,7 @@ static int anx7808_i2c_remove(struct i2c_client *client)
 	free_irq(client->irq, anx7808);
 	anx7808_free_gpio(anx7808);
 	destroy_workqueue(anx7808->workqueue);
+	wake_lock_destroy(&anx7808->slimport_lock);
 	kfree(anx7808);
 	return 0;
 }
