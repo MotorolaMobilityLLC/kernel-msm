@@ -371,7 +371,7 @@ static int __devinit arizona_switch_probe(struct platform_device *pdev)
 				  "MICDET", arizona_micdet, info);
 	if (ret != 0) {
 		dev_err(&pdev->dev, "Failed to get MICDET IRQ: %d\n", ret);
-		goto err_fall_wake;
+		goto err_micdet;
 	}
 
 	regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_1,
@@ -390,7 +390,8 @@ static int __devinit arizona_switch_probe(struct platform_device *pdev)
 
 	return 0;
 
-err_fall_wake:
+err_micdet:
+	arizona_free_irq(arizona, ARIZONA_IRQ_MICDET, info);
 	regmap_update_bits(arizona->regmap, ARIZONA_WAKE_CONTROL, ARIZONA_WKUP_JD1_FALL,0);
 err_fall:
 	arizona_free_irq(arizona, ARIZONA_IRQ_JD_FALL, info);
