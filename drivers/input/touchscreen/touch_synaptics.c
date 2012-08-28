@@ -146,7 +146,7 @@
 	((((((_width) & 0xF0) >> 4) - ((_width) & 0x0F)) > 0) ? \
 		(_width) & 0x0F : ((_width) & 0xF0) >> 4)
 #define TS_SNTS_GET_ORIENTATION(_width) \
-	((((((_width) & 0xF0) >> 4) - ((_width) & 0x0F)) > 0) ? 0 : 1)
+	((((((_width) & 0xF0) >> 4) - ((_width) & 0x0F)) >= 0) ? 0 : 1)
 #define TS_SNTS_GET_PRESSURE(_pressure) (_pressure)
 
 #define FINGER_STATE_NO_PRESENT         0
@@ -576,15 +576,20 @@ int synaptics_ts_init(struct i2c_client* client, struct touch_fw_info* fw_info)
 	}
 
 #if defined(CONFIG_TOUCH_REG_MAP_TM2000) || defined(CONFIG_TOUCH_REG_MAP_TM2372)
+	if (unlikely(touch_i2c_read(client, TWO_D_REPORTING_MODE, 1, &buf) < 0)) {
+		TOUCH_ERR_MSG("TWO_D_REPORTING_MODE read fail\n");
+		return -EIO;
+	}
+
 	if (ts->pdata->role->report_mode == CONTINUOUS_REPORT_MODE) {
 		if (unlikely(touch_i2c_write_byte(client, TWO_D_REPORTING_MODE,
-				REPORT_MODE_CONTINUOUS) < 0)) {
+				(buf & ~7) | REPORT_MODE_CONTINUOUS) < 0)) {
 			TOUCH_ERR_MSG("TWO_D_REPORTING_MODE write fail\n");
 			return -EIO;
 		}
 	} else {	/* REDUCED_REPORT_MODE */
 		if (unlikely(touch_i2c_write_byte(client, TWO_D_REPORTING_MODE,
-				REPORT_MODE_REDUCED) < 0)) {
+				(buf & ~7) | REPORT_MODE_REDUCED) < 0)) {
 			TOUCH_ERR_MSG("TWO_D_REPORTING_MODE write fail\n");
 			return -EIO;
 		}
@@ -611,15 +616,20 @@ int synaptics_ts_init(struct i2c_client* client, struct touch_fw_info* fw_info)
 		return -EIO;
 	}
 
+	if (unlikely(touch_i2c_read(client, TWO_D_REPORTING_MODE, 1, &buf) < 0)) {
+		TOUCH_ERR_MSG("TWO_D_REPORTING_MODE read fail\n");
+		return -EIO;
+	}
+
 	if (ts->pdata->role->report_mode == CONTINUOUS_REPORT_MODE) {
 		if (unlikely(touch_i2c_write_byte(client, TWO_D_REPORTING_MODE,
-				REPORT_MODE_CONTINUOUS) < 0)) {
+				(buf & ~7) | REPORT_MODE_CONTINUOUS) < 0)) {
 			TOUCH_ERR_MSG("TWO_D_REPORTING_MODE write fail\n");
 			return -EIO;
 		}
 	} else {	/* REDUCED_REPORT_MODE */
 		if (unlikely(touch_i2c_write_byte(client, TWO_D_REPORTING_MODE,
-				REPORT_MODE_REDUCED) < 0)) {
+				(buf & ~7) | REPORT_MODE_REDUCED) < 0)) {
 			TOUCH_ERR_MSG("TWO_D_REPORTING_MODE write fail\n");
 			return -EIO;
 		}
