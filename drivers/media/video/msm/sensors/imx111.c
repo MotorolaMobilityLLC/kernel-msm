@@ -194,7 +194,7 @@ static struct msm_camera_i2c_reg_conf imx111_snap_settings[] = {
 	{0x0204, 0x00},
 	{0x0205, 0xAC},
 	{0x0340, 0x09},
-	{0x0341, 0xBA},
+	{0x0341, 0xD4},
 	{0x0342, 0x0D},
 	{0x0343, 0xD0},
 	{0x0344, 0x00},
@@ -297,7 +297,7 @@ static struct msm_camera_i2c_reg_conf imx111_comm1_settings[] = {
 static struct msm_camera_i2c_reg_conf imx111_comm2_part1_settings[] = {
 	{0x0307, 0x53},
 	{0x0340, 0x09},
-	{0x0341, 0xBA},
+	{0x0341, 0xD4},
 	{0x034C, 0x0C},
 	{0x034D, 0xD0},
 	{0x034E, 0x09},
@@ -375,7 +375,7 @@ static struct msm_sensor_output_info_t imx111_dimensions[] = {
 		.x_output = 0x0CD0, /* 3280 */
 		.y_output = 0x9A0, /* 2464 */
 		.line_length_pclk = 0xDD0, /* 3536 */
-		.frame_length_lines = 0x9BA, /* 2490 */
+		.frame_length_lines = 0x9D4, /* 2516 */
 		.vt_pixel_clk = 199200000,
 		.op_pixel_clk = 199200000,
 	},
@@ -796,9 +796,9 @@ static struct msm_sensor_fn_t imx111_func_tbl = {
 	.sensor_group_hold_on = msm_sensor_group_hold_on,
 	.sensor_group_hold_off = msm_sensor_group_hold_off,
 	.sensor_set_fps = imx111_sensor_set_fps,
-	.sensor_write_exp_gain = imx111_sensor_write_exp_gain1,
-	.sensor_write_snapshot_exp_gain = imx111_sensor_write_exp_gain1,
-	.sensor_setting = imx111_sensor_setting,
+	.sensor_write_exp_gain = msm_sensor_write_exp_gain1,
+	.sensor_write_snapshot_exp_gain = msm_sensor_write_exp_gain1,
+	.sensor_setting = msm_sensor_setting,
 	.sensor_set_sensor_mode = msm_sensor_set_sensor_mode,
 	.sensor_mode_init = msm_sensor_mode_init,
 	.sensor_get_output_info = msm_sensor_get_output_info,
