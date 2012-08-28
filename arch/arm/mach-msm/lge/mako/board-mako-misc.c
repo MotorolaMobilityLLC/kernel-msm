@@ -15,28 +15,21 @@
 
 #include <linux/types.h>
 #include <linux/err.h>
-#include <mach/msm_iomap.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include <linux/android_vibrator.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
-#include <mach/gpiomux.h>
-
-#include <mach/board_lge.h>
-
-#include "devices.h"
-#include <linux/android_vibrator.h>
-
 #include <linux/i2c.h>
-
 #ifdef CONFIG_SLIMPORT_ANX7808
 #include <linux/platform_data/slimport_device.h>
 #endif
-#ifdef CONFIG_BU52031NVX
-#include <linux/mfd/pm8xxx/cradle.h>
-#endif
+#include <mach/gpiomux.h>
+#include <mach/msm_iomap.h>
+#include <mach/board_lge.h>
 
+#include "devices.h"
 #include "board-mako.h"
 /* gpio and clock control for vibrator */
 
@@ -404,72 +397,6 @@ static void __init lge_add_i2c_anx7808_device(void)
 }
 #endif
 
-#ifdef CONFIG_BU52031NVX
-#define GPIO_POUCH_INT     22
-#define GPIO_CARKIT_INT    23
-
-static unsigned hall_ic_int_gpio[] = {GPIO_POUCH_INT, GPIO_CARKIT_INT};
-
-static unsigned hall_ic_gpio[] = {	
-	GPIO_CFG(22, 0, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA),	
-	GPIO_CFG(23, 0, GPIO_CFG_INPUT,  GPIO_CFG_NO_PULL, GPIO_CFG_2MA),
-};
-
-static void __init hall_ic_init(void)
-{
-	int rc = 0;
-	int i = 0;
-
-	printk(KERN_INFO "%s, line: %d\n", __func__, __LINE__);
-
-	rc = gpio_request(GPIO_POUCH_INT, "cradle_detect_s");	
-	if (rc) {		
-		printk(KERN_ERR	"%s: pouch_int  %d request failed\n",
-			__func__, GPIO_POUCH_INT);
-		return;
-	}
-
-	rc = gpio_request(GPIO_CARKIT_INT, "cradle_detect_n");	
-	if (rc) {		
-		printk(KERN_ERR	"%s: pouch_int  %d request failed\n",
-			__func__, GPIO_CARKIT_INT);
-		return;
-	}
-
-	for (i=0; i<ARRAY_SIZE(hall_ic_gpio); i++) {
-		rc = gpio_tlmm_config(hall_ic_gpio[i], GPIO_CFG_ENABLE);
-		gpio_direction_input(hall_ic_int_gpio[i]);
-
-		if (rc) {
-			printk(KERN_ERR "%s: gpio_tlmm_config(%#x)=fg%d\n",
-				__func__, hall_ic_gpio[i], rc);			
-			return;			
-		}
-	}
-
-	printk(KERN_INFO "yoogyeong.lee@%s_END\n", __func__);
-}
-
-static struct pm8xxx_cradle_platform_data cradle_data = {
-#if defined(CONFIG_BU52031NVX_POUCHDETECT)
-	.pouch_detect_pin = GPIO_POUCH_INT,
-	.pouch_irq = MSM_GPIO_TO_INT(GPIO_POUCH_INT),
-#endif
-	.carkit_detect_pin = GPIO_CARKIT_INT,
-	.carkit_irq = MSM_GPIO_TO_INT(GPIO_CARKIT_INT),
-	.irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
-};
-
-static struct platform_device cradle_device = {
-	.name = PM8XXX_CRADLE_DEV_NAME,
-	.id = -1,
-	.dev = {
-		.platform_data = &cradle_data,
-	},
-};
-
-#endif
-
 void __init apq8064_init_misc(void)
 {
 	INFO_MSG("%s\n", __func__);
@@ -482,9 +409,5 @@ void __init apq8064_init_misc(void)
 
 #ifdef CONFIG_SLIMPORT_ANX7808
 	lge_add_i2c_anx7808_device();
-#endif
-#ifdef CONFIG_BU52031NVX
-	hall_ic_init();
-	platform_device_register(&cradle_device);
 #endif
 }
