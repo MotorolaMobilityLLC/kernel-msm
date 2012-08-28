@@ -44,12 +44,6 @@
   230Hz motor : 29.4KHZ - M=1, N=163 ,
   */
 
-#if !defined(CONFIG_ANDROID_VIBRATOR)
-/* temporal code due to build error..  */
-#define GPIO_LIN_MOTOR_EN    0
-#define GPIO_LIN_MOTOR_PWM   0
-#endif
-
 /* Vibrator GPIOs */
 #ifdef CONFIG_ANDROID_VIBRATOR
 #define GPIO_LIN_MOTOR_EN                33
@@ -63,9 +57,7 @@
 #define GP_CLK_D_HALF                    (GP_CLK_N_DEFAULT >> 1)
 
 #define MOTOR_AMP                        120
-#endif
 
-#if defined(CONFIG_ANDROID_VIBRATOR)
 static struct gpiomux_setting vibrator_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -99,9 +91,7 @@ static int vibrator_gpio_init(void)
 	gpio_vibrator_pwm = GPIO_LIN_MOTOR_PWM;
 	return 0;
 }
-#endif
 
-#ifdef CONFIG_ANDROID_VIBRATOR
 static struct regulator *vreg_l16 = NULL;
 static bool snddev_reg_8921_l16_status = false;
 
@@ -110,7 +100,7 @@ static int vibrator_power_set(int enable)
 	int rc = -EINVAL;
 	if (NULL == vreg_l16) {
 		vreg_l16 = regulator_get(NULL, "vibrator");   //2.6 ~ 3V
-		INFO_MSG("enable=%d\n", enable);
+		pr_debug("%s: enable=%d\n", __func__, enable);
 
 		if (IS_ERR(vreg_l16)) {
 			pr_err("%s: regulator get of vibrator failed (%ld)\n"
@@ -155,7 +145,7 @@ static int vibrator_pwm_set(int enable, int amp, int n_value)
 	uint D_INV = 0;                 /* QCT support invert bit for msm8960 */
 	uint clk_id = gp_clk_id;
 
-	INFO_MSG("amp=%d, n_value=%d\n", amp, n_value);
+	pr_debug("%s: amp=%d, n_value=%d\n", __func__, amp, n_value);
 
 	if (enable) {
 		D_VAL = ((GP_CLK_D_MAX * amp) >> 7);
@@ -184,7 +174,8 @@ static int vibrator_pwm_set(int enable, int amp, int n_value)
 			(3U << 3U) +   /* PRE_DIV_SEL[4:3]  : Div-4 (3) */
 			(5U << 0U)),   /* SRC_SEL[2:0]      : CXO (5)  */
 			GPn_NS_REG(clk_id));
-		INFO_MSG("GPIO_LIN_MOTOR_PWM is enable with M=%d N=%d D=%d\n",
+		pr_debug("%s: PWM is enable with M=%d N=%d D=%d\n",
+				__func__,
 				M_VAL, n_value, D_VAL);
 	} else {
 		REG_WRITEL(
@@ -198,7 +189,7 @@ static int vibrator_pwm_set(int enable, int amp, int n_value)
 			(3U << 3U) +   /* PRE_DIV_SEL[4:3]  : Div-4 (3) */
 			(5U << 0U)),   /* SRC_SEL[2:0]      : CXO (5)  */
 			GPn_NS_REG(clk_id));
-		INFO_MSG("GPIO_LIN_MOTOR_PWM is disalbe \n");
+		pr_debug("%s: PWM is disable\n", __func__);
 	}
 
 	return 0;
@@ -209,7 +200,7 @@ static int vibrator_ic_enable_set(int enable)
 	int gpio_lin_motor_en = 0;
 	gpio_lin_motor_en = PM8921_GPIO_PM_TO_SYS(GPIO_LIN_MOTOR_EN);
 
-	INFO_MSG("enable=%d\n", enable);
+	pr_debug("%s: enable=%d\n", __func__, enable);
 
 	if (enable)
 		gpio_direction_output(gpio_lin_motor_en, 1);
@@ -235,15 +226,20 @@ static int vibrator_init(void)
 	/* GPIO setting for Motor EN in pmic8921 */
 	gpio_motor_en = PM8921_GPIO_PM_TO_SYS(GPIO_LIN_MOTOR_EN);
 	rc = gpio_request(gpio_motor_en, "lin_motor_en");
-	if (rc) {
-		ERR_MSG("GPIO_LIN_MOTOR_EN %d request failed\n", gpio_motor_en);
-		return 0;
+	if (rc < 0) {
+		pr_err("%s: MOTOR_EN %d request failed\n",
+				__func__, gpio_motor_en);
+		return rc;
 	}
 
 	/* gpio init */
 	rc = gpio_request(gpio_motor_pwm, "lin_motor_pwm");
-	if (unlikely(rc < 0))
-		ERR_MSG("not able to get gpio\n");
+	if (rc < 0) {
+		gpio_free(gpio_motor_en);
+		pr_err("%s: MOTOR_PWM %d request failed\n",
+				__func__, gpio_motor_pwm);
+		return rc;
+	}
 
 	vibrator_ic_enable_set(0);
 	vibrator_pwm_set(0, 0, GP_CLK_N_DEFAULT);
@@ -399,8 +395,6 @@ static void __init lge_add_i2c_anx7808_device(void)
 
 void __init apq8064_init_misc(void)
 {
-	INFO_MSG("%s\n", __func__);
-
 #if defined(CONFIG_ANDROID_VIBRATOR)
 	vibrator_gpio_init();
 #endif
