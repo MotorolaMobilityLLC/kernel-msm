@@ -106,7 +106,11 @@
 
 #define PM8XXX_LED_OFFSET(id) ((id) - PM8XXX_ID_LED_0)
 
-#define PM8XXX_LED_PWM_FLAGS	(PM_PWM_LUT_LOOP | PM_PWM_LUT_RAMP_UP | PM_PWM_LUT_REVERSE)
+#define PM8XXX_LED_PWM_FLAGS	(PM_PWM_LUT_LOOP | PM_PWM_LUT_RAMP_UP | PM_PWM_LUT_REVERSE | \
+				PM_PWM_LUT_PAUSE_LO_EN | PM_PWM_LUT_PAUSE_HI_EN)
+
+#define PM8XXX_LED_PWM_GRPFREQ_MAX	255
+#define PM8XXX_LED_PWM_GRPPWM_MAX	255
 
 #define LED_MAP(_version, _kb, _led0, _led1, _led2, _flash_led0, _flash_led1, \
 	_wled, _rgb_led_red, _rgb_led_green, _rgb_led_blue)\
@@ -173,6 +177,10 @@ struct pm8xxx_led_data {
 	int			max_current;
 	int			use_pwm;
 	int			adjust_brightness;
+	u16			pwm_grppwm;
+	u16			pwm_grpfreq;
+	u16			pwm_pause_hi;
+	u16			pwm_pause_lo;
 };
 
 static void led_kp_set(struct pm8xxx_led_data *led, enum led_brightness value)
@@ -413,10 +421,31 @@ static int pm8xxx_led_pwm_pattern_update(struct pm8xxx_led_data * led)
 	int i, rc = 0;
 	int temp = 0;
 	int pwm_max = 0;
+	int total_ms, on_ms;
 
 	if (!led->pwm_duty_cycles || !led->pwm_duty_cycles->duty_pcts) {
 		dev_err(led->cdev.dev, "duty_cycles and duty_pcts is not exist\n");
 		return -EINVAL;
+	}
+
+	if (led->pwm_grppwm > 0 && led->pwm_grpfreq > 0) {
+		total_ms = led->pwm_grpfreq * 50;
+		on_ms = (led->pwm_grppwm * total_ms) >> 8;
+		if (PM8XXX_LED_PWM_FLAGS & PM_PWM_LUT_REVERSE) {
+			led->pwm_duty_cycles->duty_ms = on_ms /
+				(led->pwm_duty_cycles->num_duty_pcts << 1);
+			led->pwm_pause_hi = on_ms %
+				(led->pwm_duty_cycles->num_duty_pcts << 1);
+		} else {
+			led->pwm_duty_cycles->duty_ms = on_ms /
+				(led->pwm_duty_cycles->num_duty_pcts);
+			led->pwm_pause_hi = on_ms %
+				(led->pwm_duty_cycles->num_duty_pcts);
+		}
+		led->pwm_pause_lo = total_ms - on_ms;
+		dev_dbg(led->cdev.dev, "duty_ms %d, pause_hi %d, pause_lo %d, total_ms %d, on_ms %d\n",
+				led->pwm_duty_cycles->duty_ms, led->pwm_pause_hi, led->pwm_pause_lo,
+				total_ms, on_ms);
 	}
 
 	pwm_max = pm8xxx_adjust_brightness(&led->cdev, led->cdev.brightness);
@@ -446,7 +475,7 @@ static int pm8xxx_led_pwm_pattern_update(struct pm8xxx_led_data * led)
 	rc = pm8xxx_pwm_lut_config(led->pwm_dev, led->pwm_period_us,
 			led->pwm_duty_cycles->duty_pcts,
 			led->pwm_duty_cycles->duty_ms,
-			start_idx, idx_len, 0, 0,
+			start_idx, idx_len, led->pwm_pause_lo, led->pwm_pause_hi,
 			PM8XXX_LED_PWM_FLAGS);
 
 	return rc;
@@ -473,7 +502,6 @@ static int pm8xxx_led_pwm_work(struct pm8xxx_led_data *led)
 				led->cdev.brightness);
 		}
 	} else {
-
 		if (level) {
 			pm8xxx_led_pwm_pattern_update(led);
 			led_rgb_write(led, SSBI_REG_ADDR_RGB_CNTL1, level);
@@ -902,7 +930,7 @@ static ssize_t pm8xxx_led_grppwm_show(struct device *dev,
 
 	for (i = 0; i < pdata->num_configs; i++)
 	{
-		n += sprintf(&buf[n], "%s period_us is %d\n", leds[i].cdev.name, leds[i].pwm_period_us);
+		n += sprintf(&buf[n], "%s period_us is %d\n", leds[i].cdev.name, leds[i].pwm_grppwm);
 	}
 	return n;
 }
@@ -923,15 +951,15 @@ static ssize_t pm8xxx_led_grppwm_store(struct device *dev,
 
 	if (count == size) {
 		rc = count;
-
-		if(state < PM8XXX_PWM_PERIOD_MIN)
-			state = PM8XXX_PWM_PERIOD_MIN;
-		if(state > PM8XXX_PWM_PERIOD_MAX)
-			state = PM8XXX_PWM_PERIOD_MAX;
+		if (state < 0)
+			state = 0;
+		if (state > PM8XXX_LED_PWM_GRPPWM_MAX)
+			state = PM8XXX_LED_PWM_GRPPWM_MAX;
 
 		for (i = 0; i < pdata->num_configs; i++)
 		{
-			leds[i].pwm_period_us = state;
+			leds[i].pwm_grppwm = state;
+			dev_dbg(leds[i].cdev.dev, "set grppwm %lu\n", state);
 		}
 	}
 	return rc;
@@ -948,12 +976,7 @@ static ssize_t pm8xxx_led_grpfreq_show(struct device *dev,
 
 	for (i = 0; i < pdata->num_configs; i++)
 	{
-		if (leds[i].pwm_duty_cycles != NULL) {
-			n += sprintf(&buf[n], "%s freq %d\n", leds[i].cdev.name, leds[i].pwm_duty_cycles->duty_ms);
-		}
-		else
-			n += sprintf(&buf[n], "%s's duty cycles is not exist\n", leds[i].cdev.name);
-
+		n += sprintf(&buf[n], "%s freq %d\n", leds[i].cdev.name, leds[i].pwm_grpfreq);
 	}
 	return n;
 }
@@ -975,16 +998,15 @@ static ssize_t pm8xxx_led_grpfreq_store(struct device *dev,
 	if (count == size) {
 		rc = count;
 
-		if(state == 0)
-			state = 32;
-		if(state > PM_PWM_LUT_DUTY_TIME_MAX)
-			state = PM_PWM_LUT_DUTY_TIME_MAX;
+		if(state < 0)
+			state = 0;
+		if(state > PM8XXX_LED_PWM_GRPFREQ_MAX)
+			state = PM8XXX_LED_PWM_GRPFREQ_MAX;
 
 		for (i = 0; i < pdata->num_configs; i++)
 		{
-			if (leds[i].pwm_duty_cycles != NULL) {
-				leds[i].pwm_duty_cycles->duty_ms = state;
-			}
+			leds[i].pwm_grpfreq = state;
+			dev_dbg(leds[i].cdev.dev, "set grpfreq %lu\n", state);
 		}
 	}
 	return rc;
