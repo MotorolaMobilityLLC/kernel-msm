@@ -201,9 +201,8 @@ int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data,
 
 	/* IC bug Exception handling - Interrupt status reg is 0 when interrupt occur */
 	if (ts->ts_data.interrupt_status_reg == 0) {
-		TOUCH_ERR_MSG("Interrupt_status reg is 0. "
-				"Something is wrong in IC\n");
-		goto err_synaptics_device_damage;
+		TOUCH_ERR_MSG("Interrupt_status reg is 0. -> ignore\n");
+		goto err_synaptics_ignore;
 	}
 
 	/* Because of ESD damage... */
@@ -330,6 +329,8 @@ int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data,
 err_synaptics_device_damage:
 err_synaptics_getdata:
 	return -EIO;
+err_synaptics_ignore:
+	return -EINVAL;
 }
 
 static int read_page_description_table(struct i2c_client* client)
@@ -483,7 +484,7 @@ int get_ic_info(struct synaptics_ts_data* ts, struct touch_fw_info* fw_info)
 	}
 
 	ts->ic_panel_type = IC7020_G2_H_PTN;
-	TOUCH_INFO_MSG("IC is 7020, H pattern, panel is G2.");
+	TOUCH_INFO_MSG("IC is 7020, H pattern, panel is G2, Firmware: %s.", fw_info->fw_version);
 
 #if defined(ARRAYED_TOUCH_FW_BIN)
 	for (cnt = 0; cnt < sizeof(SynaFirmware)/sizeof(SynaFirmware[0]); cnt++) {
