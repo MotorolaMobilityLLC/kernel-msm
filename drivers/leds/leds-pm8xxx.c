@@ -576,14 +576,10 @@ static int pm8xxx_set_led_mode_and_adjust_brightness(struct pm8xxx_led_data *led
 	case PM8XXX_ID_LED_0:
 	case PM8XXX_ID_LED_1:
 	case PM8XXX_ID_LED_2:
-		if (led_mode == PM8XXX_LED_MODE_MANUAL) {
-			led->adjust_brightness = max_current /
-				PM8XXX_ID_LED_CURRENT_FACTOR;
-			if (led->adjust_brightness > MAX_LC_LED_BRIGHTNESS)
-				led->adjust_brightness = MAX_LC_LED_BRIGHTNESS;
-		} else {
-			led->adjust_brightness = max_current;
-		}
+		led->adjust_brightness = max_current /
+			PM8XXX_ID_LED_CURRENT_FACTOR;
+		if (led->adjust_brightness > MAX_LC_LED_BRIGHTNESS)
+			led->adjust_brightness = MAX_LC_LED_BRIGHTNESS;
 		led->reg = led_mode;
 		break;
 	case PM8XXX_ID_LED_KB_LIGHT:
@@ -1169,6 +1165,12 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 					led_dat->cdev.max_brightness);
 
 			if (led_dat->pwm_channel != -1) {
+				if (led_cfg->pwm_adjust_brightness) {
+					led_dat->adjust_brightness = led_cfg->pwm_adjust_brightness;
+				} else {
+					led_dat->adjust_brightness = 100;
+				}
+
 				rc = pm8xxx_led_pwm_configure(led_dat);
 				if (rc) {
 					dev_err(&pdev->dev, "failed to "
