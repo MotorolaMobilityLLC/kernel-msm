@@ -26,8 +26,6 @@
  * HEADSET_STATE_PATH = /sys/class/switch/h2w/state
  * HEADSET_NAME_PATH = /sys/class/switch/h2w/name
  */
-#ifdef CONFIG_SWITCH_FSA8008
-#define CONFIG_FSA8008_USE_LOCAL_WORK_QUEUE
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -46,8 +44,9 @@
 #include <linux/wakelock.h>
 #include <linux/platform_data/hds_fsa8008.h>
 
+#define FSA8008_USE_WORK_QUEUE
+
 #undef  HSD_DEBUG_PRINT
-#undef  HSD_ERROR_PRINT
 
 /* TODO */
 /* 1. coding for additional excetion case in probe function */
@@ -59,13 +58,7 @@
 #define HSD_DBG(fmt, args...) do {} while (0)
 #endif
 
-#if defined(HSD_ERROR_PRINT)
-#define HSD_ERR(fmt, args...) printk(KERN_ERR "HSD.fsa8008[%-18s:%5d]" fmt, __func__, __LINE__, ## args)
-#else
-#define HSD_ERR(fmt, args...) do { } while (0)
-#endif
-
-#ifdef CONFIG_FSA8008_USE_LOCAL_WORK_QUEUE
+#ifdef FSA8008_USE_WORK_QUEUE
 static struct workqueue_struct *local_fsa8008_workqueue;
 #endif
 
@@ -152,8 +145,8 @@ static void button_pressed(struct work_struct *work)
 
 	if (gpio_get_value_cansleep(hi->gpio_detect) &&
 			(switch_get_state(&hi->sdev)== HEADSET_WITH_MIC)) {
-		HSD_ERR("button_pressed but ear jack is plugged out already!"
-			"just ignore the event.\n");
+		pr_warn("%s: ear jack was plugged out already!"
+			"just ignore the event.\n", __func__);
 		return;
 	}
 
@@ -173,8 +166,8 @@ static void button_released(struct work_struct *work)
 
 	if (gpio_get_value_cansleep(hi->gpio_detect) &&
 			(switch_get_state(&hi->sdev)== HEADSET_WITH_MIC)){
-		HSD_ERR("button_released but ear jack is plugged out already!"
-			"just ignore the event.\n");
+		pr_warn("%s: ear jack was plugged out already!"
+			"just ignore the event.\n", __func__);
 		return;
 	}
 
@@ -264,7 +257,7 @@ static void remove_headset(struct hsd_info *hi)
 	}
 
 	if (atomic_read(&hi->btn_state))
-#ifdef	CONFIG_FSA8008_USE_LOCAL_WORK_QUEUE
+#ifdef	FSA8008_USE_WORK_QUEUE
 	queue_delayed_work(local_fsa8008_workqueue,
 			&(hi->work_for_key_released), hi->latency_for_key );
 #else
@@ -315,7 +308,7 @@ static irqreturn_t gpio_irq_handler(int irq, void *dev_id)
 
 	HSD_DBG("gpio_irq_handler");
 
-#ifdef CONFIG_FSA8008_USE_LOCAL_WORK_QUEUE
+#ifdef FSA8008_USE_WORK_QUEUE
 	queue_delayed_work(local_fsa8008_workqueue, &(hi->work), HZ/2 ); /* 500ms */
 #else
 	schedule_delayed_work(&(hi->work), HZ/2); /* 500ms */
@@ -335,7 +328,7 @@ static irqreturn_t button_irq_handler(int irq, void *dev_id)
 
 	value = gpio_get_value_cansleep(hi->gpio_key);
 
-#ifdef	CONFIG_FSA8008_USE_LOCAL_WORK_QUEUE
+#ifdef	FSA8008_USE_WORK_QUEUE
 	if (value)
 		queue_delayed_work(local_fsa8008_workqueue,
 				&(hi->work_for_key_pressed),
@@ -360,14 +353,13 @@ static int hsd_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct fsa8008_platform_data *pdata = pdev->dev.platform_data;
-
 	struct hsd_info *hi;
 
 	HSD_DBG("hsd_probe");
 
 	hi = kzalloc(sizeof(struct hsd_info), GFP_KERNEL);
 	if (NULL == hi) {
-		HSD_ERR("Failed to allloate headset per device info\n");
+		pr_err("%s: out of memory\n", __func__);
 		return -ENOMEM;
 	}
 
@@ -397,24 +389,24 @@ static int hsd_probe(struct platform_device *pdev)
 	/* initialize gpio_detect */
 	ret = gpio_request_one(hi->gpio_detect, GPIOF_IN, "gpio_detect");
 	if (ret < 0) {
-		HSD_ERR("Failed to gpio_request gpio%d (gpio_detect)\n",
-				hi->gpio_detect);
+		pr_err("%s: Failed to gpio_request gpio%d (gpio_detect)\n",
+				__func__, hi->gpio_detect);
 		goto error_01;
 	}
 
 	/* initialize gpio_jpole */
 	ret = gpio_request_one(hi->gpio_jpole, GPIOF_IN, "gpio_jpole");
 	if (ret < 0) {
-		HSD_ERR("Failed to gpio_request gpio%d (gpio_jpole)\n",
-				hi->gpio_jpole);
+		pr_err("%s: Failed to gpio_request gpio%d (gpio_jpole)\n",
+				__func__, hi->gpio_jpole);
 		goto error_02;
 	}
 
 	/* initialize gpio_key */
 	ret = gpio_request_one(hi->gpio_key, GPIOF_IN, "gpio_key");
 	if (ret < 0) {
-		HSD_ERR("Failed to gpio_request gpio%d (gpio_key)\n",
-				hi->gpio_key);
+		pr_err("%s: Failed to gpio_request gpio%d (gpio_key)\n",
+				__func__, hi->gpio_key);
 		goto error_03;
 	}
 
@@ -422,8 +414,8 @@ static int hsd_probe(struct platform_device *pdev)
 	ret = gpio_request_one(hi->gpio_mic_en, GPIOF_OUT_INIT_LOW,
 			"gpio_mic_en");
 	if (ret < 0) {
-		HSD_ERR("Failed to gpio_request gpio%d (gpio_mic_en)\n",
-				hi->gpio_mic_en);
+		pr_err("%s: Failed to gpio_request gpio%d (gpio_mic_en)\n",
+				__func__, hi->gpio_mic_en);
 		goto error_04;
 	}
 
@@ -431,8 +423,8 @@ static int hsd_probe(struct platform_device *pdev)
 	ret = gpio_request_one(hi->gpio_mic_bias_en, GPIOF_OUT_INIT_LOW,
 			"gpio_mic_bias_en");
 	if (ret < 0) {
-		HSD_ERR("Failed to gpio_request gpio%d (gpio_mic_bias_en)\n",
-				hi->gpio_mic_en);
+		pr_err("%s: Failed to gpio_request gpio%d (gpio_mic_bias_en)\n",
+				__func__, hi->gpio_mic_en);
 		goto error_04;
 	}
 
@@ -440,7 +432,7 @@ static int hsd_probe(struct platform_device *pdev)
 	hi->irq_detect = gpio_to_irq(hi->gpio_detect);
 	HSD_DBG("hi->irq_detect = %d\n", hi->irq_detect);
 	if (hi->irq_detect < 0) {
-		HSD_ERR("Failed to get interrupt number\n");
+		pr_err("%s: Failed to get interrupt number\n", __func__);
 		ret = hi->irq_detect;
 		goto error_05;
 	}
@@ -449,13 +441,14 @@ static int hsd_probe(struct platform_device *pdev)
 			IRQF_TRIGGER_RISING|IRQF_TRIGGER_FALLING,
 			pdev->name, hi);
 	if (ret) {
-		HSD_ERR("failed to request button irq");
+		pr_err("%s: failed to request button irq\n", __func__);
 		goto error_05;
 	}
 
 	ret = irq_set_irq_wake(hi->irq_detect, 1);
 	if (ret < 0) {
-		HSD_ERR("Failed to set irq_detect interrupt wake\n");
+		pr_err("%s: Failed to set irq_detect interrupt wake\n",
+				__func__);
 		goto error_06;
 	}
 
@@ -463,7 +456,7 @@ static int hsd_probe(struct platform_device *pdev)
 	hi->irq_key = gpio_to_irq(hi->gpio_key);
 	HSD_DBG("hi->irq_key = %d\n", hi->irq_key);
 	if (hi->irq_key < 0) {
-		HSD_ERR("Failed to get interrupt number\n");
+		pr_err("%s: Failed to get interrupt number\n", __func__);
 		ret = hi->irq_key;
 		goto error_06;
 	}
@@ -472,7 +465,7 @@ static int hsd_probe(struct platform_device *pdev)
 			IRQF_TRIGGER_RISING|IRQF_TRIGGER_FALLING,
 			pdev->name, hi);
 	if (ret) {
-		HSD_ERR("failed to request button irq");
+		pr_err("%s: failed to request button irq\n", __func__);
 		goto error_06;
 	}
 
@@ -480,7 +473,7 @@ static int hsd_probe(struct platform_device *pdev)
 
 	ret = irq_set_irq_wake(hi->irq_key, 1);
 	if (ret < 0) {
-		HSD_ERR("Failed to set irq_key interrupt wake\n");
+		pr_err("%s: Failed to set irq_key interrupt wake\n", __func__);
 		goto error_07;
 	}
 
@@ -491,14 +484,14 @@ static int hsd_probe(struct platform_device *pdev)
 
 	ret = switch_dev_register(&hi->sdev);
 	if (ret < 0) {
-		HSD_ERR("Failed to register switch device\n");
+		pr_err("%s: Failed to register switch device\n", __func__);
 		goto error_07;
 	}
 
 	/* initialize input device */
 	hi->input = input_allocate_device();
 	if (!hi->input) {
-		HSD_ERR("Failed to allocate input device\n");
+		pr_err("%s: Failed to allocate input device\n", __func__);
 		ret = -ENOMEM;
 		goto error_08;
 	}
@@ -518,12 +511,12 @@ static int hsd_probe(struct platform_device *pdev)
 
 	ret = input_register_device(hi->input);
 	if (ret) {
-		HSD_ERR("Failed to register input device\n");
+		pr_err("%s: Failed to register input device\n", __func__);
 		goto error_09;
 	}
 
 	if (!gpio_get_value_cansleep(hi->gpio_detect)) {
-#ifdef CONFIG_FSA8008_USE_LOCAL_WORK_QUEUE
+#ifdef FSA8008_USE_WORK_QUEUE
 		/* to detect in initialization with eacjack insertion */
 		queue_delayed_work(local_fsa8008_workqueue, &(hi->work), 0);
 #else
@@ -531,10 +524,6 @@ static int hsd_probe(struct platform_device *pdev)
 		schedule_delayed_work(&(hi->work), 0);
 #endif
 	}
-
-#ifdef AT_TEST_GPKD
-	ret = device_create_file(&pdev->dev, &dev_attr_hookkeylog);
-#endif
 
 	return ret;
 
@@ -604,24 +593,36 @@ static int __init hsd_init(void)
 
 	HSD_DBG("hsd_init");
 
-#ifdef CONFIG_FSA8008_USE_LOCAL_WORK_QUEUE
+#ifdef FSA8008_USE_WORK_QUEUE
 	local_fsa8008_workqueue = create_workqueue("fsa8008");
-	if(!local_fsa8008_workqueue)
+	if (!local_fsa8008_workqueue) {
+		pr_err("%s: out of memory\n", __func__);
 		return -ENOMEM;
+	}
 #endif
 
 	ret = platform_driver_register(&hsd_driver);
-	if (ret)
-		HSD_ERR("Fail to register platform driver\n");
+	if (ret< 0) {
+		pr_err("%s: Fail to register platform driver\n", __func__);
+		goto err;
+	}
 
 	wake_lock_init(&ear_hook_wake_lock, WAKE_LOCK_SUSPEND, "ear_hook");
 
+	return ret;
+
+err:
+#ifdef FSA8008_USE_WORK_QUEUE
+	if (local_fsa8008_workqueue)
+		destroy_workqueue(local_fsa8008_workqueue);
+	local_fsa8008_workqueue = NULL;
+#endif
 	return ret;
 }
 
 static void __exit hsd_exit(void)
 {
-#ifdef CONFIG_FSA8008_USE_LOCAL_WORK_QUEUE
+#ifdef FSA8008_USE_WORK_QUEUE
 	if (local_fsa8008_workqueue)
 		destroy_workqueue(local_fsa8008_workqueue);
 	local_fsa8008_workqueue = NULL;
@@ -639,4 +640,3 @@ module_exit(hsd_exit);
 MODULE_AUTHOR("Yoon Gi Souk <gisouk.yoon@lge.com>");
 MODULE_DESCRIPTION("FSA8008 Headset detection driver");
 MODULE_LICENSE("GPL");
-#endif
