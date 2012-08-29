@@ -111,6 +111,7 @@ struct pm8xxx_led_config {
 	u8	id;
 	u8	mode;
 	u16	max_current;
+	u16	pwm_adjust_brightness;
 	int	pwm_channel;
 	u32	pwm_period_us;
 	bool	default_state;
