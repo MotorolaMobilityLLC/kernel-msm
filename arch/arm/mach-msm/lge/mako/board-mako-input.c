@@ -122,15 +122,15 @@ static struct touch_device_caps touch_caps = {
 	.max_id = 10,
 	.lcd_x = 768,
 	.lcd_y = 1280,
-	.x_max = 1536,
-	.y_max = 2560,
+	.x_max = 1536-1,
+	.y_max = 2560-1,
 };
 
 static struct touch_operation_role touch_role = {
 	.operation_mode = INTERRUPT_MODE,
 	.key_type = KEY_NONE,
 	.report_mode = REDUCED_REPORT_MODE,
-	.delta_pos_threshold = 5,
+	.delta_pos_threshold = 1,
 	.orientation = 0,
 	.booting_delay = 400,
 	.reset_delay = 20,
