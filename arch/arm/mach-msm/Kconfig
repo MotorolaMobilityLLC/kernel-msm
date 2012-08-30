@@ -2590,4 +2590,11 @@ config MSM_HSIC_SYSMON_TEST
 	  can be read and written to send character data to the sysmon port of
 	  the modem over USB.
 
+config HOB_SHARED_RAM_MMI
+	depends on ARCH_MSM
+	default n
+	bool "Motorola Mobility HOB RAM MMAP Client"
+	help
+	Provide mechanism to access hob storage shared memory on apps processor.
+	HOB or the HandOver Block is the staging area for Phasing Data.
 endif
