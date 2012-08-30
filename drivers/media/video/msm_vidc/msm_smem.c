@@ -112,19 +112,20 @@ static int alloc_ion_mem(struct smem_client *client, size_t size,
 	unsigned long iova = 0;
 	unsigned long buffer_size = 0;
 	unsigned long ionflags = 0;
+	unsigned long heap_mask = 0;
 	int rc = 0;
 	if (flags == SMEM_CACHED)
 		ionflags = ION_SET_CACHED(ionflags);
 	else
 		ionflags = ION_SET_UNCACHED(ionflags);
 
-	ionflags = ionflags | ION_HEAP(ION_CP_MM_HEAP_ID);
+	heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID);
 	if (align < 4096)
 		align = 4096;
 	size = (size + 4095) & (~4095);
 	pr_debug("\n in %s domain: %d, Partition: %d\n",
 		__func__, domain, partition);
-	hndl = ion_alloc(client->clnt, size, align, ionflags);
+	hndl = ion_alloc(client->clnt, size, align, heap_mask, ionflags);
 	if (IS_ERR_OR_NULL(hndl)) {
 		pr_err("Failed to allocate shared memory = %p, %d, %d, 0x%x\n",
 				client, size, align, ionflags);
