@@ -745,6 +745,15 @@ config ALSA_TO_H2W
 	  /sys/class/switch/h2w/state used by Android headset observer.
 	default n
 
+config HOB_SHARED_RAM
+	tristate "HOB RAM MMAP Client"
+	depends on ARCH_MSM
+	help
+	  Provide mechanism to access hob storage shared memory on apps
+	  processor. HOB - or the Hand Over Block - is the staging area for
+	  phasing data.
+	default n
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
