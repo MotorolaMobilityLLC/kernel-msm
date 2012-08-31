@@ -39,6 +39,8 @@
 #include <linux/notifier.h>
 #include <linux/swap.h>
 
+#include <trace/events/memkill.h>
+
 static uint32_t lowmem_debug_level = 1;
 static int lowmem_adj[6] = {
 	0,
@@ -377,6 +379,9 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			     selected->pid, selected->comm,
 			     selected_oom_score_adj, selected_tasksize);
 		lowmem_deathpending_timeout = jiffies + HZ;
+		trace_lmk_kill(selected->pid, selected->comm,
+				selected_oom_score_adj, selected_tasksize,
+				min_score_adj);
 		send_sig(SIGKILL, selected, 0);
 		set_tsk_thread_flag(selected, TIF_MEMDIE);
 		rem -= selected_tasksize;
