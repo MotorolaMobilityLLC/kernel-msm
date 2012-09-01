@@ -1286,16 +1286,36 @@ static int pm_power_set_property_usb(struct power_supply *psy,
 				  enum power_supply_property psp,
 				  const union power_supply_propval *val)
 {
+	struct pm8921_chg_chip *chip = the_chip;
+
 	/* Check if called before init */
-	if (!the_chip)
+	if (!chip)
 		return -EINVAL;
 
 	switch (psp) {
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		if (val->intval &&
+		    val->intval <= (USB_WALL_THRESHOLD_MA*1000)) {
+			usb_target_ma = 0;
+		} else {
+			usb_target_ma = val->intval/1000;
+			if (!delayed_work_pending(&chip->unplug_check_work)) {
+				schedule_delayed_work(
+					&chip->unplug_check_work,
+					round_jiffies_relative(msecs_to_jiffies
+						(UNPLUG_CHECK_WAIT_PERIOD_MS)));
+			}
+		}
+		pr_info("usb_target_ma %d\n", usb_target_ma);
+		break;
+	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_ONLINE:
+		break;
 	case POWER_SUPPLY_PROP_SCOPE:
 		if (val->intval == POWER_SUPPLY_SCOPE_SYSTEM)
-			return switch_usb_to_host_mode(the_chip);
+			return switch_usb_to_host_mode(chip);
 		if (val->intval == POWER_SUPPLY_SCOPE_DEVICE)
-			return switch_usb_to_charge_mode(the_chip);
+			return switch_usb_to_charge_mode(chip);
 		else
 			return -EINVAL;
 		break;
@@ -1341,7 +1361,7 @@ static int pm_power_get_property_usb(struct power_supply *psy,
 		if (usb_target_ma < USB_WALL_THRESHOLD_MA)
 			val->intval = is_usb_chg_plugged_in(the_chip);
 		else
-		    return 0;
+			return 0;
 		break;
 
 	case POWER_SUPPLY_PROP_SCOPE:
@@ -1708,8 +1728,6 @@ void pm8921_charger_vbus_draw(unsigned int mA)
 					usb_max_current, mA);
 		mA = usb_max_current;
 	}
-	if (usb_target_ma == 0 && mA > USB_WALL_THRESHOLD_MA)
-		usb_target_ma = mA;
 
 	spin_lock_irqsave(&vbus_lock, flags);
 	if (the_chip) {
@@ -2111,7 +2129,7 @@ static void handle_usb_insertion_removal(struct pm8921_chg_chip *chip)
 		pm8921_chg_enable_irq(chip, CHG_GONE_IRQ);
 	} else {
 		/* USB unplugged reset target current */
-		usb_target_ma = 0;
+		usb_target_ma = 1;
 		pm8921_chg_disable_irq(chip, CHG_GONE_IRQ);
 	}
 	enable_input_voltage_regulation(chip);
@@ -2615,13 +2633,13 @@ static void unplug_check_worker(struct work_struct *work)
 
 	rc = pm8xxx_readb(chip->dev->parent, PBL_ACCESS1, &active_path);
 	if (rc) {
-		pr_err("Failed to read PBL_ACCESS1 rc=%d\n", rc);
-		return;
+		pr_warn("Failed to read PBL_ACCESS1 rc=%d\n", rc);
+		//return;
 	}
 	chip->active_path = active_path;
-	if(the_chip->usb_present) {
+	if (the_chip->usb_present) {
 		active_path = USB_ACTIVE_BIT;
-		active_chg_plugged_in =the_chip->usb_present;
+		active_chg_plugged_in = the_chip->usb_present;
 	} else {
 		active_chg_plugged_in = is_active_chg_plugged_in(chip,
 				active_path);
@@ -2632,36 +2650,32 @@ static void unplug_check_worker(struct work_struct *work)
 		pr_debug("USB charger active\n");
 
 		pm_chg_iusbmax_get(chip, &usb_ma);
-		if (usb_ma == 500 && !usb_target_ma) {
-			pr_debug("Stopping Unplug Check Worker USB == 500mA\n");
-			disable_input_voltage_regulation(chip);
-			return;
-		}
-
-		if (usb_ma <= 100) {
-			pr_debug(
-				"Unenumerated or suspended usb_ma = %d skip\n",
-				usb_ma);
-			goto check_again_later;
+		if (!usb_target_ma) {
+			if (usb_ma > 500) {
+				usb_ma = 500;
+				__pm8921_charger_vbus_draw(usb_ma);
+				pr_info("usb_now=%d, usb_target = %d\n",
+					usb_ma, 500);
+			}
 		}
 	} else if (active_path & DC_ACTIVE_BIT) {
 		pr_debug("DC charger active\n");
 		/* Some board designs are not prone to reverse boost on DC
 		 * charging path */
 		if (!chip->dc_unplug_check)
-			return;
+			goto done;
 	} else {
 		/* No charger active */
 		if (!(is_usb_chg_plugged_in(chip)
 				&& !(is_dc_chg_plugged_in(chip)))) {
-			pr_debug(
+			pr_info(
 			"Stop: chg removed reg_loop = %d, fsm = %d ibat = %d\n",
 				pm_chg_get_regulation_loop(chip),
 				pm_chg_get_fsm_state(chip),
 				get_prop_batt_current(chip)
 				);
 		}
-		return;
+		goto done;
 	}
 
 	if (active_path & USB_ACTIVE_BIT) {
@@ -2673,7 +2687,7 @@ static void unplug_check_worker(struct work_struct *work)
 			usb_target_ma = usb_ma;
 			/* end AICL here */
 			__pm8921_charger_vbus_draw(usb_ma);
-			pr_debug("usb_now=%d, usb_target = %d\n",
+			pr_info("usb_now=%d, usb_target = %d\n",
 				usb_ma, usb_target_ma);
 		}
 	}
@@ -2729,17 +2743,18 @@ static void unplug_check_worker(struct work_struct *work)
 		if (usb_ma < usb_target_ma) {
 			increase_usb_ma_value(&usb_ma);
 			__pm8921_charger_vbus_draw(usb_ma);
-			pr_debug("usb_now=%d, usb_target = %d\n",
+			pr_info("usb_now=%d, usb_target = %d\n",
 					usb_ma, usb_target_ma);
-		} else {
-			usb_target_ma = usb_ma;
 		}
 	}
-check_again_later:
+
 	/* schedule to check again later */
 	schedule_delayed_work(&chip->unplug_check_work,
 		      round_jiffies_relative(msecs_to_jiffies
 				(UNPLUG_CHECK_WAIT_PERIOD_MS)));
+	return;
+done:
+	usb_target_ma = 1;
 }
 
 static irqreturn_t loop_change_irq_handler(int irq, void *data)
