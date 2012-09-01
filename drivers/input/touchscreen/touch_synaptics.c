@@ -154,6 +154,8 @@
 #define FINGER_STATE_PRESENT_NOVALID    2
 #define FINGER_STATE_REVSERVED          3
 
+#define CHARGER_CONNECTED               0x20
+
 int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data,
 					struct b_data* button, u8* total_num)
 {
@@ -554,7 +556,8 @@ int synaptics_ts_init(struct i2c_client* client, struct touch_fw_info* fw_info)
 			return -EIO;
 
 	if (unlikely(touch_i2c_write_byte(client, DEVICE_CONTROL_REG,
-		DEVICE_CONTROL_NOSLEEP | DEVICE_CONTROL_CONFIGURED) < 0)) {
+		DEVICE_CONTROL_NOSLEEP | DEVICE_CONTROL_CONFIGURED |
+		(lg_ts->charger_type ? CHARGER_CONNECTED : 0)) < 0)) {
 		TOUCH_ERR_MSG("DEVICE_CONTROL_REG write fail\n");
 		return -EIO;
 	}
@@ -670,6 +673,8 @@ int synaptics_ts_power(struct i2c_client* client, int power_ctrl)
 {
 	struct synaptics_ts_data* ts =
 			(struct synaptics_ts_data*)get_touch_handle(client);
+	struct lge_touch_data *lg_ts =
+			(struct lge_touch_data *) i2c_get_clientdata(client);
 
 	if (touch_debug_mask & DEBUG_TRACE)
 		TOUCH_DEBUG_MSG("\n");
@@ -699,16 +704,18 @@ int synaptics_ts_power(struct i2c_client* client, int power_ctrl)
 		break;
 	case POWER_SLEEP:
 		if (unlikely(touch_i2c_write_byte(client, DEVICE_CONTROL_REG,
-					DEVICE_CONTROL_SLEEP |
-					DEVICE_CONTROL_CONFIGURED) < 0)) {
+				DEVICE_CONTROL_SLEEP |
+				(lg_ts->charger_type ? CHARGER_CONNECTED : 0) |
+				DEVICE_CONTROL_CONFIGURED) < 0)) {
 			TOUCH_ERR_MSG("DEVICE_CONTROL_REG write fail\n");
 			return -EIO;
 		}
 		break;
 	case POWER_WAKE:
 		if (unlikely(touch_i2c_write_byte(client, DEVICE_CONTROL_REG,
-					DEVICE_CONTROL_SPECIFIC |
-					DEVICE_CONTROL_CONFIGURED) < 0)) {
+				DEVICE_CONTROL_SPECIFIC |
+				(lg_ts->charger_type ? CHARGER_CONNECTED : 0) |
+				DEVICE_CONTROL_CONFIGURED) < 0)) {
 			TOUCH_ERR_MSG("DEVICE_CONTROL_REG write fail\n");
 			return -EIO;
 		}
@@ -845,6 +852,7 @@ int synaptics_ts_ic_ctrl(struct i2c_client *client, u8 code, u16 value)
 	struct synaptics_ts_data* ts =
 			(struct synaptics_ts_data*)get_touch_handle(client);
 	u8 buf = 0;
+	u8 new;
 
 	switch (code) {
 	case IC_CTRL_BASELINE:
@@ -1022,6 +1030,25 @@ int synaptics_ts_ic_ctrl(struct i2c_client *client, u8 code, u16 value)
 			TOUCH_ERR_MSG("IC Reset command write fail\n");
 			return -EIO;
 		}
+		break;
+	case IC_CTRL_CHARGER:
+		if (touch_i2c_read(client, DEVICE_CONTROL_REG, 1, &buf) < 0) {
+			TOUCH_ERR_MSG("IC register read fail\n");
+			return -EIO;
+		}
+
+		new = buf & ~CHARGER_CONNECTED;
+		new |= value ? CHARGER_CONNECTED : 0;
+
+		if (new != buf) {
+			if (unlikely(touch_i2c_write_byte(client,
+					DEVICE_CONTROL_REG, new) < 0)) {
+				TOUCH_ERR_MSG("IC Reset command write fail\n");
+				return -EIO;
+			}
+			TOUCH_INFO_MSG("CHARGER = %d\n", !!value);
+		}
+
 		break;
 	default:
 		break;

@@ -196,6 +196,7 @@ struct lge_touch_data {
 	atomic_t                        device_init;
 	u8                              work_sync_err_cnt;
 	u8                              ic_init_err_cnt;
+	u8                              charger_type;
 	volatile int                    curr_pwr_state;
 	struct i2c_client               *client;
 	struct input_dev                *input_dev;
@@ -320,6 +321,7 @@ enum {
 	IC_CTRL_READ,
 	IC_CTRL_WRITE,
 	IC_CTRL_RESET_CMD,
+	IC_CTRL_CHARGER,
 };
 
 enum {

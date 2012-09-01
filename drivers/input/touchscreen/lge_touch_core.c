@@ -1541,6 +1541,53 @@ static ssize_t store_pointer_location(struct lge_touch_data *ts, const char *buf
 	return count;
 }
 
+/* show_charger
+ *
+ * Show the current charger status
+ */
+static ssize_t show_charger(struct lge_touch_data *ts, char *buf)
+{
+	int ret = 0;
+
+	switch (ts->charger_type) {
+	case 0:
+		ret = sprintf(buf, "%s\n", "NO CHARGER");
+		break;
+	case 1:
+		ret = sprintf(buf, "%s\n", "WIRELESS");
+		break;
+	case 2:
+		ret = sprintf(buf, "%s\n", "USB");
+		break;
+	case 3:
+		ret = sprintf(buf, "%s\n", "AC");
+		break;
+	}
+
+	return ret;
+}
+
+/* store_charger
+ *
+ * Store the charger status
+ * Syntax: <type> <1:0>  type: 0: NO Charger, 1: WIRELESS, 2: USB, 3: AC
+ */
+static ssize_t store_charger(struct lge_touch_data *ts, const char *buf, size_t count)
+{
+	long type;
+
+	if (!kstrtol(buf, 10, &type)) {
+		if (type >= 0 && type <= 3) {
+			/* regardless of charger type */
+			ts->charger_type = type;
+			touch_device_func->ic_ctrl(ts->client,
+				IC_CTRL_CHARGER, ts->charger_type);
+		}
+	}
+
+	return count;
+}
+
 static LGE_TOUCH_ATTR(platform_data, S_IRUGO | S_IWUSR, show_platform_data, NULL);
 static LGE_TOUCH_ATTR(firmware, S_IRUGO | S_IWUSR, show_fw_info, store_fw_upgrade);
 static LGE_TOUCH_ATTR(fw_ver, S_IRUGO | S_IWUSR, show_fw_ver, NULL);
@@ -1551,6 +1598,7 @@ static LGE_TOUCH_ATTR(accuracy, S_IRUGO | S_IWUSR, NULL, store_accuracy_solution
 static LGE_TOUCH_ATTR(show_touches, S_IRUGO | S_IWUSR, show_show_touches, store_show_touches);
 static LGE_TOUCH_ATTR(pointer_location, S_IRUGO | S_IWUSR, show_pointer_location,
 					store_pointer_location);
+static LGE_TOUCH_ATTR(charger, S_IRUGO | S_IWUSR, show_charger, store_charger);
 
 static struct attribute *lge_touch_attribute_list[] = {
 	&lge_touch_attr_platform_data.attr,
@@ -1562,6 +1610,7 @@ static struct attribute *lge_touch_attribute_list[] = {
 	&lge_touch_attr_accuracy.attr,
 	&lge_touch_attr_show_touches.attr,
 	&lge_touch_attr_pointer_location.attr,
+	&lge_touch_attr_charger.attr,
 	NULL,
 };
 
