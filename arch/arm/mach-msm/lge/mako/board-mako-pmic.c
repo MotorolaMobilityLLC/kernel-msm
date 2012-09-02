@@ -359,7 +359,7 @@ static int batt_temp_ctrl_level[] = {
  */
 #define MAX_VOLTAGE_MV		4360
 #define CHG_TERM_MA		100
-#define MAX_BATT_CHG_I_MA	1350
+#define MAX_BATT_CHG_I_MA	900
 #define WARM_BATT_CHG_I_MA	400
 
 static struct pm8921_charger_platform_data apq8064_pm8921_chg_pdata __devinitdata = {
