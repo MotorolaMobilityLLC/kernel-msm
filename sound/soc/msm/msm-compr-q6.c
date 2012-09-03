@@ -944,6 +944,7 @@ static int msm_compr_ioctl(struct snd_pcm_substream *substream,
 			compr->codec = FORMAT_DTS_LBR;
 			break;
 		default:
+			/*Needed for the HDMI IN compressed use case*/
 			pr_debug("FORMAT_LINEAR_PCM\n");
 			compr->codec = FORMAT_LINEAR_PCM;
 			break;
