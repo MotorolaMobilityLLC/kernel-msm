@@ -43,4 +43,13 @@ int sp_write_reg(uint8_t slave_addr, uint8_t offset, uint8_t value);
 void sp_tx_hardware_poweron(void);
 void sp_tx_hardware_powerdown(void);
 int slimport_read_edid_block(int block, uint8_t *edid_buf);
+
+#ifdef CONFIG_SLIMPORT_ANX7808
+bool slimport_is_connected(void);
+#else
+static inline bool slimport_is_connected(void)
+{
+	return false;
+}
+#endif
 #endif

@@ -22,6 +22,8 @@ struct anx7808_platform_data
 	int gpio_int;
 	int gpio_cbl_det;
 
+	spinlock_t lock;
+
 	int (*dvdd_power)(bool on);
 	int (*avdd_power)(bool on);
 };
