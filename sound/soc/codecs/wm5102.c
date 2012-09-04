@@ -37,6 +37,30 @@ struct wm5102_priv {
 	struct arizona_fll fll[2];
 };
 
+static struct regulator *micvdd_reg;
+
+static int micbias_ev(struct snd_soc_dapm_widget *w,
+		      struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
+	struct arizona *arizona = priv->arizona;
+	struct device *dev = arizona->dev;
+
+	if (!IS_ERR(micvdd_reg)) {
+		switch (event) {
+		case SND_SOC_DAPM_PRE_PMU:
+			regulator_enable(micvdd_reg);
+			break;
+		case SND_SOC_DAPM_POST_PMD:
+			regulator_disable(micvdd_reg);
+			break;
+		}
+	}
+
+	return 0;
+}
+
 static DECLARE_TLV_DB_SCALE(ana_tlv, 0, 100, 0);
 static DECLARE_TLV_DB_SCALE(eq_tlv, -1200, 100, 0);
 static DECLARE_TLV_DB_SCALE(digital_tlv, -6400, 50, 0);
@@ -892,11 +916,14 @@ SND_SOC_DAPM_PGA_E("IN3R PGA", ARIZONA_INPUT_ENABLES, ARIZONA_IN3R_ENA_SHIFT,
 		   SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMU),
 
 SND_SOC_DAPM_SUPPLY("MICBIAS1", ARIZONA_MIC_BIAS_CTRL_1,
-		    ARIZONA_MICB1_ENA_SHIFT, 0, NULL, 0),
+		    ARIZONA_MICB1_ENA_SHIFT, 0, micbias_ev,
+		    SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 SND_SOC_DAPM_SUPPLY("MICBIAS2", ARIZONA_MIC_BIAS_CTRL_2,
-		    ARIZONA_MICB2_ENA_SHIFT, 0, NULL, 0),
+		    ARIZONA_MICB2_ENA_SHIFT, 0, micbias_ev,
+		    SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 SND_SOC_DAPM_SUPPLY("MICBIAS3", ARIZONA_MIC_BIAS_CTRL_3,
-		    ARIZONA_MICB3_ENA_SHIFT, 0, NULL, 0),
+		    ARIZONA_MICB3_ENA_SHIFT, 0, micbias_ev,
+		    SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
 SND_SOC_DAPM_PGA("Noise Generator", ARIZONA_COMFORT_NOISE_GENERATOR,
 		 ARIZONA_NOISE_GEN_ENA_SHIFT, 0, NULL, 0),
@@ -1286,6 +1313,10 @@ static const struct snd_soc_dapm_route wm5102_dapm_routes[] = {
 	{ "AEC Loopback", "SPKDAT1R", "OUT5R" },
 	{ "SPKDAT1L", NULL, "OUT5L" },
 	{ "SPKDAT1R", NULL, "OUT5R" },
+
+	{ "MICBIAS1", NULL, "SYSCLK" },
+	{ "MICBIAS2", NULL, "SYSCLK" },
+	{ "MICBIAS3", NULL, "SYSCLK" },
 };
 
 static int wm5102_set_fll(struct snd_soc_codec *codec, int fll_id, int source,
@@ -1452,6 +1483,12 @@ static int __devinit wm5102_probe(struct platform_device *pdev)
 		regmap_update_bits(arizona->regmap, wm5102_digital_vu[i],
 				   WM5102_DIG_VU, WM5102_DIG_VU);
 
+	micvdd_reg = regulator_get(arizona->dev, "MICVDD");
+
+	if (IS_ERR(micvdd_reg)) {
+		dev_err(arizona->dev, "Failed to get MICVDD regulator\n");
+	}
+
 	pm_runtime_enable(&pdev->dev);
 	pm_runtime_idle(&pdev->dev);
 
@@ -1461,6 +1498,9 @@ static int __devinit wm5102_probe(struct platform_device *pdev)
 
 static int __devexit wm5102_remove(struct platform_device *pdev)
 {
+	if (micvdd_reg)
+		regulator_put(micvdd_reg);
+
 	snd_soc_unregister_codec(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
 
