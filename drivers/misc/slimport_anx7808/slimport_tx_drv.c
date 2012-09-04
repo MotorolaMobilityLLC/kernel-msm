@@ -18,9 +18,9 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/kernel.h>
+#include <linux/slimport.h>
 #include "slimport_tx_drv.h"
 #include "slimport_tx_reg.h"
-#include "slimport.h"
 
 static unchar bytebuf[MAX_BUF_CNT];
 

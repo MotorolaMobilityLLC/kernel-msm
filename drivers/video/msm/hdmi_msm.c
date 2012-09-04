@@ -22,6 +22,7 @@
 #include <linux/bitops.h>
 #include <linux/clk.h>
 #include <linux/mutex.h>
+#include <linux/slimport.h>
 #include <mach/msm_hdmi_audio.h>
 #include <mach/clk.h>
 #include <mach/msm_iomap.h>
@@ -29,10 +30,6 @@
 
 #include "msm_fb.h"
 #include "hdmi_msm.h"
-
-#ifdef CONFIG_SLIMPORT_ANX7808
-#include "../../misc/slimport_anx7808/slimport.h"
-#endif
 
 /* Supported HDMI Audio channels */
 #define MSM_HDMI_AUDIO_CHANNEL_2		0

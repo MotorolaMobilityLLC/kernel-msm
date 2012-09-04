@@ -24,9 +24,9 @@
 #include <linux/types.h>
 #include <linux/workqueue.h>
 #include <linux/wakelock.h>
+#include <linux/slimport.h>
 
 #include "slimport_tx_drv.h"
-#include "slimport.h"
 
 struct i2c_client *anx7808_client;
 
@@ -116,6 +116,7 @@ int slimport_read_edid_block(int block, uint8_t *edid_buf)
 
 	return 0;
 }
+EXPORT_SYMBOL(slimport_read_edid_block);
 
 static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 {
@@ -390,7 +391,7 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 
 	anx7808->pdata = client->dev.platform_data;
 	i2c_set_clientdata(client, anx7808);
-	memcpy(&anx7808_client, &client, sizeof(client));
+	anx7808_client = client;
 
 	mutex_init(&anx7808->lock);
 
@@ -460,10 +461,39 @@ err2:
 err1:
 	anx7808_free_gpio(anx7808);
 err0:
+	anx7808_client = NULL;
 	kfree(anx7808);
 exit:
 	return ret;
 }
+
+bool slimport_is_connected(void)
+{
+	struct anx7808_platform_data *pdata = NULL;
+	bool result = false;
+
+	if (!anx7808_client)
+		return false;
+
+	pdata = anx7808_client->dev.platform_data;
+	if (!pdata)
+		return false;
+
+	spin_lock(&pdata->lock);
+
+	if (gpio_get_value_cansleep(pdata->gpio_cbl_det)) {
+		mdelay(10);
+		if (gpio_get_value_cansleep(pdata->gpio_cbl_det)) {
+			pr_info("%s : Slimport Dongle is detected\n", __func__);
+			result = true;
+		}
+	}
+
+	spin_unlock(&pdata->lock);
+
+	return result;
+}
+EXPORT_SYMBOL(slimport_is_connected);
 
 static int anx7808_i2c_remove(struct i2c_client *client)
 {
