@@ -29,7 +29,7 @@
 #define AUX_OK   0
 
 extern unchar  sp_tx_hw_lt_done;
-extern unchar  sp_tx_hw_lt_enable;
+extern bool  sp_tx_hw_lt_enable;
 extern unchar	sp_tx_link_config_done ;
 extern enum SP_TX_System_State sp_tx_system_state;
 extern unchar sp_tx_rx_anx7730;

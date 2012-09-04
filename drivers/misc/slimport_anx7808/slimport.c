@@ -80,6 +80,7 @@ void sp_tx_hardware_poweron(void)
 	gpio_set_value(pdata->gpio_reset, 0);
 	msleep(20);
 	gpio_set_value(pdata->gpio_p_dwn, 0);
+	msleep(10);
 	pdata->dvdd_power(1);
 	msleep(100);
 	gpio_set_value(pdata->gpio_reset, 1);
@@ -131,7 +132,7 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 				hdmi_rx_initialization();
 				sp_tx_initialization();
 				sp_tx_vbus_poweron();
-				msleep(300);
+				msleep(200);
 				if (!sp_tx_get_cable_type()) {
 					pr_err("%s:AUX ERR\n", __func__);
 					sp_tx_vbus_powerdown();
@@ -193,6 +194,7 @@ static void slimport_config_output(void)
 	sp_tx_set_colorspace();
 	sp_tx_avi_setup();
 	sp_tx_config_packets(AVI_PACKETS);
+	sp_tx_enable_video_input(1);
 	sp_tx_set_sys_state(STATE_HDCP_AUTH);
 }
 
@@ -229,13 +231,14 @@ static void slimport_main_proc(struct anx7808_data *anx7808)
 		slimport_config_output();
 
 	if (sp_tx_system_state == STATE_HDCP_AUTH) {
-		if ((!hdcp_enable) || (!sp_tx_rx_anx7730)) {
-			sp_tx_power_down(SP_TX_PWR_HDCP);
-			sp_tx_show_infomation();
-			sp_tx_video_mute(0);
-			sp_tx_set_sys_state(STATE_PLAY_BACK);
-		} else {
+		if (hdcp_enable && (sp_tx_rx_anx7730
+			|| sp_tx_rx_mydp)) {
 			sp_tx_hdcp_process();
+		} else {
+			sp_tx_power_down(SP_TX_PWR_HDCP);
+			sp_tx_video_mute(0);
+			sp_tx_show_infomation();
+			sp_tx_set_sys_state(STATE_PLAY_BACK);
 		}
 	}
 
@@ -360,7 +363,7 @@ static void anx7808_work_func(struct work_struct *work)
 
 	slimport_main_proc(td);
 	queue_delayed_work(td->workqueue, &td->work,
-			msecs_to_jiffies(500));
+			msecs_to_jiffies(300));
 #endif
 }
 
@@ -375,14 +378,14 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 			I2C_FUNC_SMBUS_I2C_BLOCK)) {
 		pr_err("%s: i2c bus does not support the anx7808\n", __func__);
 		ret = -ENODEV;
-		goto out;
+		goto exit;
 	}
 
 	anx7808 = kzalloc(sizeof(struct anx7808_data), GFP_KERNEL);
 	if (!anx7808) {
 		pr_err("%s: failed to allocate driver data\n", __func__);
 		ret = -ENOMEM;
-		goto out;
+		goto exit;
 	}
 
 	anx7808->pdata = client->dev.platform_data;
@@ -399,7 +402,7 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 	ret = anx7808_init_gpio(anx7808);
 	if (ret) {
 		pr_err("%s: failed to initialize gpio\n", __func__);
-		goto err0;
+		goto err1;
 	}
 
 	INIT_DELAYED_WORK(&anx7808->work, anx7808_work_func);
@@ -408,7 +411,7 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 	if (anx7808->workqueue == NULL) {
 		pr_err("%s: failed to create work queue\n", __func__);
 		ret = -ENOMEM;
-		goto err0;
+		goto err2;
 	}
 
 	anx7808->pdata->avdd_power(1);
@@ -417,13 +420,13 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 	ret = anx7808_system_init();
 	if (ret) {
 		pr_err("%s: failed to initialize anx7808\n", __func__);
-		goto err1;
+		goto err2;
 	}
 
 	client->irq = gpio_to_irq(anx7808->pdata->gpio_cbl_det);
 	if (client->irq < 0) {
 		pr_err("%s : failed to get gpio irq\n", __func__);
-		goto err1;
+		goto err3;
 	}
 
 	ret = request_threaded_irq(client->irq, NULL, anx7808_cbl_det_isr,
@@ -431,32 +434,34 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 					"anx7808", anx7808);
 	if (ret  < 0) {
 		pr_err("%s : failed to request irq \n", __func__);
-		goto err1;
+		goto err3;
 	}
 
 	ret = irq_set_irq_wake(client->irq, 1);
 	if (ret  < 0) {
 		pr_err("%s : Request irq for cable detect"
 			"interrupt wake set fail\n", __func__);
-		goto err2;
+		goto err3;
 	}
 
 	ret = enable_irq_wake(client->irq);
 	if (ret  < 0) {
 		pr_err("%s : Enable irq for cable detect"
 			"interrupt wake enable fail\n", __func__);
-		goto err2;
+		goto err3;
 	}
 	wake_lock_init(&anx7808->slimport_lock, WAKE_LOCK_SUSPEND, "slimport_wake_lock");
-	goto out;
+	goto exit;
 
-err2:
+err3:
 	free_irq(client->irq, anx7808);
-err1:
+err2:
 	destroy_workqueue(anx7808->workqueue);
+err1:
+	anx7808_free_gpio(anx7808);
 err0:
 	kfree(anx7808);
-out:
+exit:
 	return ret;
 }
 
