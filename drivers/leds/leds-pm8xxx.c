@@ -106,7 +106,7 @@
 
 #define PM8XXX_LED_OFFSET(id) ((id) - PM8XXX_ID_LED_0)
 
-#define PM8XXX_LED_PWM_FLAGS	(PM_PWM_LUT_LOOP | PM_PWM_LUT_RAMP_UP | PM_PWM_LUT_REVERSE | \
+#define PM8XXX_LED_PWM_FLAGS	(PM_PWM_LUT_LOOP | PM_PWM_LUT_RAMP_UP | \
 				PM_PWM_LUT_PAUSE_LO_EN | PM_PWM_LUT_PAUSE_HI_EN)
 
 #define PM8XXX_LED_PWM_GRPFREQ_MAX	255
@@ -434,15 +434,15 @@ static int pm8xxx_led_pwm_pattern_update(struct pm8xxx_led_data * led)
 		if (PM8XXX_LED_PWM_FLAGS & PM_PWM_LUT_REVERSE) {
 			led->pwm_duty_cycles->duty_ms = on_ms /
 				(led->pwm_duty_cycles->num_duty_pcts << 1);
-			led->pwm_pause_hi = on_ms %
+			led->pwm_pause_lo = on_ms %
 				(led->pwm_duty_cycles->num_duty_pcts << 1);
 		} else {
 			led->pwm_duty_cycles->duty_ms = on_ms /
 				(led->pwm_duty_cycles->num_duty_pcts);
-			led->pwm_pause_hi = on_ms %
+			led->pwm_pause_lo = on_ms %
 				(led->pwm_duty_cycles->num_duty_pcts);
 		}
-		led->pwm_pause_lo = total_ms - on_ms;
+		led->pwm_pause_hi = total_ms - on_ms;
 		dev_dbg(led->cdev.dev, "duty_ms %d, pause_hi %d, pause_lo %d, total_ms %d, on_ms %d\n",
 				led->pwm_duty_cycles->duty_ms, led->pwm_pause_hi, led->pwm_pause_lo,
 				total_ms, on_ms);
@@ -453,13 +453,16 @@ static int pm8xxx_led_pwm_pattern_update(struct pm8xxx_led_data * led)
 	idx_len = led->pwm_duty_cycles->num_duty_pcts;
 	pcts = led->pwm_duty_cycles->duty_pcts;
 
-	for (i = 0; i < idx_len; i++)
-	{
-		if (led->blink == 1) {
-                        temp = ((pwm_max * i) << 1) / (idx_len - 1);
-			pcts[i] = (temp  + 1) >> 1;
-		} else {
-			pcts[i] = (pwm_max);
+	if (led->blink) {
+		int mid = (idx_len - 1) >> 1;
+		for (i = 0; i <= mid; i++) {
+			temp = ((pwm_max * i) << 1) / mid + 1;
+			pcts[i] = temp >> 1;
+			pcts[idx_len - 1 - i] = temp >> 1;
+		}
+	} else {
+		for (i = 0; i < idx_len; i++) {
+			pcts[i] = pwm_max;
 		}
 	}
 
@@ -1019,27 +1022,14 @@ static ssize_t pm8xxx_led_blink_show(struct device *dev,
 {
 	const struct pm8xxx_led_platform_data *pdata = dev->platform_data;
 	struct pm8xxx_led_data *leds =  (struct pm8xxx_led_data *)dev_get_drvdata(dev);
-	int start_idx = 0, idx_len = 0;
-	int i, j, n = 0;
+	int i, blink = 0;
 
 	for (i = 0; i < pdata->num_configs; i++)
 	{
-		n += sprintf(&buf[n], "[%d] %s pwm pattern %d\n", i, leds[i].cdev.name, leds[i].blink);
-		if (leds[i].pwm_duty_cycles != NULL && leds[i].pwm_duty_cycles->duty_pcts != NULL) {
-			start_idx = leds[i].pwm_duty_cycles->start_idx;
-			idx_len = leds[i].pwm_duty_cycles->num_duty_pcts;
-			for (j = 0; j < idx_len; j++)
-			{
-				n += sprintf(&buf[n], "%d ",
-						leds[i].pwm_duty_cycles->duty_pcts[j]);
-			}
-			n += sprintf(&buf[n], "\n");
-		}
-		else
-			n += sprintf(&buf[n], "not exist\n");
-
+		if (leds[i].blink)
+			blink |= 1 << i;
 	}
-	return n;
+	return sprintf(buf, "%d", blink);
 }
 
 static ssize_t pm8xxx_led_blink_store(struct device *dev,
@@ -1063,7 +1053,8 @@ static ssize_t pm8xxx_led_blink_store(struct device *dev,
 		{
 			if (leds[i].blink != state) {
 				leds[i].blink = state;
-				rc = pm8xxx_led_pwm_pattern_update(&leds[i]);
+				if(!leds[i].lock_update)
+					rc = pm8xxx_led_pwm_pattern_update(&leds[i]);
 			}
 		}
 	}
