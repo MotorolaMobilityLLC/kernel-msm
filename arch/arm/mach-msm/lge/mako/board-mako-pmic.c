@@ -385,6 +385,7 @@ static struct pm8921_charger_platform_data apq8064_pm8921_chg_pdata __devinitdat
 	.thermal_mitigation  = apq8064_pm8921_therm_mitigation,
 	.thermal_levels  = ARRAY_SIZE(apq8064_pm8921_therm_mitigation),
 	.led_src_config  = LED_SRC_5V,
+	.rconn_mohm	 = 37,
 };
 
 static struct pm8xxx_ccadc_platform_data
@@ -399,7 +400,7 @@ apq8064_pm8921_bms_pdata __devinitdata = {
 	.r_sense		= 10,
 	.v_cutoff		= 3500,
 	.max_voltage_uv		= MAX_VOLTAGE_MV * 1000,
-	.rconn_mohm			= 18,
+	.rconn_mohm		= 37,
 	.shutdown_soc_valid_limit = 20,
 	.adjust_soc_low_threshold = 25,
 	.chg_term_ua			= CHG_TERM_MA * 1000,
