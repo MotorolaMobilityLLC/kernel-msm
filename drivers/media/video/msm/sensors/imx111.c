@@ -411,6 +411,7 @@ static struct msm_sensor_output_info_t imx111_dimensions[] = {
 static struct msm_camera_csid_vc_cfg imx111_cid_cfg[] = {
 	{0, CSI_RAW10, CSI_DECODE_10BIT},
 	{1, CSI_EMBED_DATA, CSI_DECODE_8BIT},
+	{2, CSI_RESERVED_DATA_0, CSI_DECODE_8BIT},
 };
 
 static struct msm_camera_csi2_params imx111_csi_params = {
@@ -418,7 +419,7 @@ static struct msm_camera_csi2_params imx111_csi_params = {
 		.lane_assign = 0xe4,
 		.lane_cnt = 2,
 		.lut_params = {
-			.num_cid = 3,
+			.num_cid = ARRAY_SIZE(imx111_cid_cfg),
 			.vc_cfg = imx111_cid_cfg,
 		},
 	},
