@@ -29,6 +29,8 @@ struct backlight_platform_data {
 	int init_on_boot;
 	int min_brightness;
 	int max_brightness;
+	char *blmap;
+	int blmap_size;
 };
 
 #endif

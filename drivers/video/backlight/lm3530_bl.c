@@ -54,6 +54,8 @@ struct lm3530_device {
 	int min_brightness;
 	int max_brightness;
 	int factory_brightness;
+	char *blmap;
+	int blmap_size;
 };
 
 static const struct i2c_device_id lm3530_bl_id[] = {
@@ -117,7 +119,17 @@ static void lm3530_set_main_current_level(struct i2c_client *client, int level)
 		else if (level > MAX_LEVEL)
 			cal_value = max_brightness;
 
-		lm3530_write_reg(client, 0xA0, cal_value);
+		if (dev->blmap) {
+			if (cal_value < dev->blmap_size)
+				lm3530_write_reg(client, 0xA0,
+						dev->blmap[cal_value]);
+			else
+				dev_warn(&client->dev, "invalid index %d:%d\n",
+						dev->blmap_size,
+						cal_value);
+		} else {
+			lm3530_write_reg(client, 0xA0, cal_value);
+		}
 	} else
 		lm3530_write_reg(client, 0x10, 0x00);
 
@@ -341,6 +353,8 @@ static int __devinit lm3530_probe(struct i2c_client *i2c_dev,
 	dev->max_current = pdata->max_current;
 	dev->min_brightness = pdata->min_brightness;
 	dev->max_brightness = pdata->max_brightness;
+	dev->blmap = pdata->blmap;
+	dev->blmap_size = pdata->blmap_size;
 	i2c_set_clientdata(i2c_dev, dev);
 
 	dev->factory_brightness = DEFAULT_FTM_BRIGHTNESS;
