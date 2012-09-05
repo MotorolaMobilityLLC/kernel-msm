@@ -37,7 +37,6 @@
 #include <linux/fb.h>
 #include <linux/list.h>
 #include <linux/types.h>
-
 #include <linux/msm_mdp.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
@@ -191,6 +190,7 @@ struct msm_fb_data_type {
 	u32 writeback_state;
 	bool writeback_active_cnt;
 	int cont_splash_done;
+	void *cpu_pm_hdl;
 	u32 acq_fen_cnt;
 	struct sync_fence *acq_fen[MDP_MAX_FENCE_FD];
 	int cur_rel_fen_fd;
