@@ -1358,7 +1358,9 @@ static int pm_power_get_property_usb(struct power_supply *psy,
 			return 0;
 
 		/* USB charging */
-		if (usb_target_ma < USB_WALL_THRESHOLD_MA)
+		if (usb_target_ma == 0)
+			val->intval = the_chip->usb_present;
+		else if (usb_target_ma <= USB_WALL_THRESHOLD_MA)
 			val->intval = is_usb_chg_plugged_in(the_chip);
 		else
 			return 0;
@@ -1728,6 +1730,8 @@ void pm8921_charger_vbus_draw(unsigned int mA)
 					usb_max_current, mA);
 		mA = usb_max_current;
 	}
+	if (usb_target_ma == 0 && mA > USB_WALL_THRESHOLD_MA)
+		usb_target_ma = mA;
 
 	spin_lock_irqsave(&vbus_lock, flags);
 	if (the_chip) {
@@ -2129,7 +2133,7 @@ static void handle_usb_insertion_removal(struct pm8921_chg_chip *chip)
 		pm8921_chg_enable_irq(chip, CHG_GONE_IRQ);
 	} else {
 		/* USB unplugged reset target current */
-		usb_target_ma = 1;
+		usb_target_ma = 0;
 		pm8921_chg_disable_irq(chip, CHG_GONE_IRQ);
 	}
 	enable_input_voltage_regulation(chip);
@@ -2656,6 +2660,19 @@ static void unplug_check_worker(struct work_struct *work)
 				__pm8921_charger_vbus_draw(usb_ma);
 				pr_info("usb_now=%d, usb_target = %d\n",
 					usb_ma, 500);
+				goto check_again_later;
+			} else if (usb_ma == 500) {
+				pr_info("Stopping Unplug Check Worker"
+					 " USB == 500mA\n");
+				disable_input_voltage_regulation(chip);
+				return;
+			}
+
+			if (usb_ma <= 100) {
+				pr_debug(
+					"Unenumerated or suspended usb_ma = %d"
+					" skip\n", usb_ma);
+				goto check_again_later;
 			}
 		}
 	} else if (active_path & DC_ACTIVE_BIT) {
@@ -2663,7 +2680,7 @@ static void unplug_check_worker(struct work_struct *work)
 		/* Some board designs are not prone to reverse boost on DC
 		 * charging path */
 		if (!chip->dc_unplug_check)
-			goto done;
+			return;
 	} else {
 		/* No charger active */
 		if (!(is_usb_chg_plugged_in(chip)
@@ -2675,7 +2692,7 @@ static void unplug_check_worker(struct work_struct *work)
 				get_prop_batt_current(chip)
 				);
 		}
-		goto done;
+		return;
 	}
 
 	if (active_path & USB_ACTIVE_BIT) {
@@ -2687,7 +2704,7 @@ static void unplug_check_worker(struct work_struct *work)
 			usb_target_ma = usb_ma;
 			/* end AICL here */
 			__pm8921_charger_vbus_draw(usb_ma);
-			pr_info("usb_now=%d, usb_target = %d\n",
+			pr_info("VIN: usb_now=%d, usb_target = %d\n",
 				usb_ma, usb_target_ma);
 		}
 	}
@@ -2745,16 +2762,16 @@ static void unplug_check_worker(struct work_struct *work)
 			__pm8921_charger_vbus_draw(usb_ma);
 			pr_info("usb_now=%d, usb_target = %d\n",
 					usb_ma, usb_target_ma);
+		} else {
+			usb_target_ma = usb_ma;
 		}
 	}
 
+check_again_later:
 	/* schedule to check again later */
 	schedule_delayed_work(&chip->unplug_check_work,
 		      round_jiffies_relative(msecs_to_jiffies
 				(UNPLUG_CHECK_WAIT_PERIOD_MS)));
-	return;
-done:
-	usb_target_ma = 1;
 }
 
 static irqreturn_t loop_change_irq_handler(int irq, void *data)
