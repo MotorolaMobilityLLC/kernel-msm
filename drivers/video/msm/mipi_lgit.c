@@ -84,11 +84,6 @@ static int mipi_lgit_lcd_on(struct platform_device *pdev)
 		return ret;
 	}
 
-	mipi_dsi_op_mode_config(DSI_VIDEO_MODE);
-	mdp4_overlay_dsi_video_start();
-
-	mdelay(10);
-
 	if(!skip_init){
 		MIPI_OUTP(MIPI_DSI_BASE + 0x38, 0x10000000);
 		ret = mipi_dsi_cmds_tx(&lgit_tx_buf,
