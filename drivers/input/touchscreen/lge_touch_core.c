@@ -926,6 +926,11 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 
 	if (touch_device_func->fw_upgrade(ts->client, ts->fw_upgrade.fw_path) < 0) {
 		TOUCH_ERR_MSG("Firmware upgrade was failed\n");
+
+		if (ts->curr_resume_state)
+			if (ts->pdata->role->operation_mode == INTERRUPT_MODE)
+				enable_irq(ts->client->irq);
+
 		goto err_out;
 	}
 
@@ -933,12 +938,10 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 	do_gettimeofday(&t_debug[TIME_FW_UPGRADE_END]);
 #endif
 
-	touch_power_cntl(ts, POWER_OFF);
-
-	if (saved_state != POWER_OFF) {
-		touch_power_cntl(ts, POWER_ON);
-		msleep(ts->pdata->role->booting_delay);
-
+	if (!ts->curr_resume_state) {
+		touch_power_cntl(ts, POWER_OFF);
+	}
+	else {
 		if (ts->pdata->role->operation_mode == INTERRUPT_MODE)
 			enable_irq(ts->client->irq);
 		else
@@ -1730,6 +1733,7 @@ static int touch_probe(struct i2c_client *client,
 	}
 
 	atomic_set(&ts->device_init, 0);
+	ts->curr_resume_state = 1;
 
 	/* Power on */
 	if (touch_power_cntl(ts, POWER_ON) < 0)
@@ -1953,6 +1957,8 @@ static void touch_early_suspend(struct early_suspend *h)
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
 
+	ts->curr_resume_state = 0;
+
 	if (ts->fw_upgrade.is_downloading == UNDER_DOWNLOADING) {
 		TOUCH_INFO_MSG("early_suspend is not executed\n");
 		return;
@@ -1980,6 +1986,8 @@ static void touch_late_resume(struct early_suspend *h)
 
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
+
+	ts->curr_resume_state = 1;
 
 	if (ts->fw_upgrade.is_downloading == UNDER_DOWNLOADING) {
 		TOUCH_INFO_MSG("late_resume is not executed\n");
