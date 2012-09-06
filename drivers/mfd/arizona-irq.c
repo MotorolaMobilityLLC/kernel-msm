@@ -27,15 +27,15 @@
 
 static int arizona_map_irq(struct arizona *arizona, int irq)
 {
-	if ( (ARIZONA_IRQ_GP5_FALL==irq) ||
-	     (ARIZONA_IRQ_GP5_RISE==irq) ||
-	     (ARIZONA_IRQ_JD_FALL==irq) ||
-	     (ARIZONA_IRQ_JD_RISE==irq))
-		irq = arizona->virq[0] + irq;
-	else
-		irq = arizona->virq[1] + irq;
-
-	return irq;
+	switch (irq) {
+	case ARIZONA_IRQ_GP5_FALL:
+	case ARIZONA_IRQ_GP5_RISE:
+	case ARIZONA_IRQ_JD_FALL:
+	case ARIZONA_IRQ_JD_RISE:
+		return arizona->virq[0] + irq;
+	default:
+		return arizona->virq[1] + irq;
+	}
 }
 
 int arizona_request_irq(struct arizona *arizona, int irq, char *name,
