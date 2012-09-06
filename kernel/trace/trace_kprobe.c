@@ -17,6 +17,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#define REALLY_WANT_DEBUGFS
 #include <linux/module.h>
 #include <linux/uaccess.h>
 #include <linux/kprobes.h>
