@@ -974,9 +974,12 @@ static void hidp_stop(struct hid_device *hid)
 {
 	struct hidp_session *session = hid->driver_data;
 
-	skb_queue_purge(&session->ctrl_transmit);
-	skb_queue_purge(&session->intr_transmit);
-	skb_queue_purge(&session->att_transmit);
+	if (session->ctrl_sock) {
+		skb_queue_purge(&session->ctrl_transmit);
+		skb_queue_purge(&session->intr_transmit);
+	} else if (session->att_sock) {
+		skb_queue_purge(&session->att_transmit);
+	}
 
 	hid->claimed = 0;
 }
@@ -1289,9 +1292,12 @@ int hidp_del_connection(struct hidp_conndel_req *req)
 				HIDP_TRANS_HID_CONTROL | HIDP_CTRL_VIRTUAL_CABLE_UNPLUG, NULL, 0);
 		} else {
 			/* Flush the transmit queues */
-			skb_queue_purge(&session->ctrl_transmit);
-			skb_queue_purge(&session->intr_transmit);
-			skb_queue_purge(&session->att_transmit);
+			if (session->ctrl_sock) {
+				skb_queue_purge(&session->ctrl_transmit);
+				skb_queue_purge(&session->intr_transmit);
+			} else if (session->att_sock) {
+				skb_queue_purge(&session->att_transmit);
+			}
 
 			/* Wakeup user-space polling for socket errors */
 			if (session->ctrl_sock) {
