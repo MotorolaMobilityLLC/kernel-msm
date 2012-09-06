@@ -947,17 +947,32 @@ void __init apq8064_init_fb(void)
 #endif
 
 #if defined (CONFIG_BACKLIGHT_LM3530)
+static char backlight_map[] = {
+	54, 54, 55, 59, 63, 66, 69, 72, 75, 77, 78,
+	80, 82, 83, 84, 86, 87, 88, 89, 90, 91, 92,
+	93, 93, 94, 95, 96, 96, 97, 98, 99, 99, 100,
+	100, 101, 101, 102, 102, 103, 104, 104, 104, 105, 105,
+	106, 106, 106, 107, 108, 108, 109, 109, 110, 110, 110,
+	110, 110, 111, 111, 111, 112, 112, 112, 113, 113, 114,
+	114, 114, 114, 114, 115, 115, 115, 116, 116, 116, 117,
+	117, 117, 117, 118, 118, 118, 118, 119, 119, 119, 119,
+	120, 120, 120, 120, 120, 121, 121, 121, 121, 121, 121,
+	121, 122, 122, 122, 123, 123, 123, 123, 124, 124, 124,
+	124, 125, 125, 125
+};
+
 static struct backlight_platform_data lm3530_data = {
 
 	.gpio = PM8921_GPIO_PM_TO_SYS(24),
 #ifdef CONFIG_LGIT_VIDEO_WXGA_CABC
-	.max_current = 0x17 | PWM_BRIGHTNESS,
+	.max_current = 0x15 | PWM_BRIGHTNESS,
 #else
-	.max_current = 0x17,
+	.max_current = 0x15,
 #endif
 	.min_brightness = 0x01,
 	.max_brightness = 0x71,
-
+	.blmap = backlight_map,
+	.blmap_size = ARRAY_SIZE(backlight_map),
 };
 #endif
 
