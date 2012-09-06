@@ -187,14 +187,6 @@ limGetBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pBssDescription,
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
-    // Extract the TITAN capability info
-    // NOTE - titanHtCaps is now DWORD aligned
-    pBssDescription->titanHtCaps = limGetU32( pBuf );
-    pBuf += sizeof(tANI_U32);
-    len  -= sizeof(tANI_U32);
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
     //pass the timestamp
     pBssDescription->nReceivedTime = limGetU32( pBuf );
     pBuf += sizeof(tANI_TIMESTAMP);
@@ -593,15 +585,11 @@ limCopyNeighborBssInfo(tpAniSirGlobal pMac, tANI_U8 *pBuf, tpSirNeighborBssInfo 
     pBuf       += sizeof(tSirMacAddr);
     bssInfoLen += sizeof(tSirMacAddr);
    PELOG3(limLog(pMac, LOG3,
-       FL("Copying new NeighborWds node:channel is %d, TITAN HT Caps are %1d, wniIndicator is %d, bssType is %d, bssId is "),
-       pBssInfo->channelId, pBssInfo->titanHtCaps, pBssInfo->wniIndicator,
-       pBssInfo->bssType);
+       FL("Copying new NeighborWds node:channel is %d, wniIndicator is %d, bssType is %d, bssId is "),
+       pBssInfo->channelId, pBssInfo->wniIndicator, pBssInfo->bssType);
     limPrintMacAddr(pMac, pBssInfo->bssId, LOG3);)
 
     *pBuf++ = pBssInfo->channelId;
-    bssInfoLen++;
-
-    *pBuf++ = pBssInfo->titanHtCaps;
     bssInfoLen++;
 
     limCopyU32(pBuf, pBssInfo->wniIndicator);
@@ -1366,7 +1354,7 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
     len--;
 
     // Extract CB secondary channel info
-    pStartBssReq->cbMode = (tAniCBSecondaryMode)limGetU32( pBuf );
+    pStartBssReq->cbMode = (ePhyChanBondState)limGetU32( pBuf );
     pBuf += sizeof( tANI_U32 );
     len -= sizeof( tANI_U32 );
 
@@ -1789,6 +1777,12 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
+    // Extract cbMode
+    pJoinReq->cbMode = *pBuf++;
+    len--;
+    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
+        return eSIR_FAILURE;
+
     // Extract uapsdPerAcBitmask
     pJoinReq->uapsdPerAcBitmask = *pBuf++;
     len--;
@@ -2192,11 +2186,6 @@ limAssocIndSerDes(tpAniSirGlobal pMac, tpLimMlmAssocInd pAssocInd, tANI_U8 *pBuf
     mLen += sizeof(tANI_U32);
 
 #endif
-
-    // Copy the new TITAN capabilities
-    *pBuf = pAssocInd->titanHtCaps;
-    pBuf++;
-    mLen++;
 
     limCopyU32(pBuf, pAssocInd->spectrumMgtIndicator);
     pBuf += sizeof(tAniBool);
@@ -2765,11 +2754,6 @@ limReassocIndSerDes(tpAniSirGlobal pMac, tpLimMlmReassocInd pReassocInd, tANI_U8
     pBuf += sizeof(tANI_U32); // nwType
     mLen += sizeof(tANI_U32);
 #endif
-
-    // Copy the new TITAN capabilities
-    *pBuf = pReassocInd->titanHtCaps;
-    pBuf++;
-    mLen++;
 
     limCopyU32(pBuf, pReassocInd->spectrumMgtIndicator);
     pBuf += sizeof(tAniBool);
@@ -3425,7 +3409,7 @@ limCopyNeighborInfoToCfg(tpAniSirGlobal pMac, tSirNeighborBssInfo neighborBssInf
         pMac->lim.htCapabilityPresentInBeacon = 1;
     else
         pMac->lim.htCapabilityPresentInBeacon = 0;
-    if (neighborBssInfo.localPowerConstraints && pMac->lim.gLim11hEnable)
+    if (neighborBssInfo.localPowerConstraints && pSessionEntry->lim11hEnable)
     {
         localPowerConstraints = neighborBssInfo.localPowerConstraints;
     }

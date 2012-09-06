@@ -152,7 +152,11 @@ tpPESession peCreateSession(tpAniSirGlobal pMac, tANI_U8 *bssid , tANI_U8* sessi
 #endif
             *sessionId = i;
 
-            pMac->lim.gpSession[i].gLimPhyMode = WNI_CFG_PHY_MODE_11G; //TODO :Check with the team what should be default mode 
+            pMac->lim.gpSession[i].gLimPhyMode = WNI_CFG_PHY_MODE_11G; //TODO :Check with the team what should be default mode
+            /* Initialize CB mode variables when session is created */
+            pMac->lim.gpSession[i].htSupportedChannelWidthSet = 0;
+            pMac->lim.gpSession[i].htRecommendedTxWidthSet = 0;
+            pMac->lim.gpSession[i].htSecondaryChannelOffset = 0;
             return(&pMac->lim.gpSession[i]);
         }
     }
@@ -262,7 +266,7 @@ tpPESession peFindSessionByStaId(tpAniSirGlobal pMac,  tANI_U8  staid,    tANI_U
        }
     }
 
-    limLog(pMac, LOG4, FL("Session lookup fails for StaId: \n "));
+    limLog(pMac, LOG4, FL("Session lookup fails for StaId: %d\n "), staid);
     return(NULL);
 }
 
@@ -280,9 +284,24 @@ tpPESession peFindSessionByStaId(tpAniSirGlobal pMac,  tANI_U8  staid,    tANI_U
 void peDeleteSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
 {
     tANI_U16 i = 0;
+    tANI_U16 n;
+    TX_TIMER *timer_ptr;
 
     limLog(pMac, LOGW, FL("Trying to delete a session %d.\n "), psessionEntry->peSessionId);
 
+    for (n = 0; n < pMac->lim.maxStation; n++)
+    {
+        timer_ptr = &pMac->lim.limTimers.gpLimCnfWaitTimer[n];
+
+        if(psessionEntry->peSessionId == timer_ptr->sessionId)
+        {
+            if(VOS_TRUE == tx_timer_running(timer_ptr))
+            {
+                tx_timer_deactivate(timer_ptr);
+            }
+        }
+    }
+    
     if(psessionEntry->pLimStartBssReq != NULL)
     {
         palFreeMemory( pMac->hHdd, psessionEntry->pLimStartBssReq );
@@ -404,7 +423,9 @@ tpPESession peFindSessionByPeerSta(tpAniSirGlobal pMac,  tANI_U8*  sa,    tANI_U
          }
       }
    }   
-   
+
+   limLog(pMac, LOG1, FL("Session lookup fails for Peer StaId: \n "));
+   limPrintMacAddr(pMac, sa, LOG1);
    return NULL;
 }
 

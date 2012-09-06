@@ -363,6 +363,7 @@ typedef struct sLimMlmScanReq
 
 #ifdef WLAN_FEATURE_P2P
     tANI_BOOLEAN   p2pSearch;
+    tANI_BOOLEAN   skipDfsChnlInP2pSearch;
 #endif
     tANI_U16           uIEFieldLen;
     tANI_U16           uIEFieldOffset;
@@ -395,6 +396,27 @@ struct tLimScanResultNode
     tSirBssDescription bssDescription;
 };
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+
+#ifndef OEM_DATA_REQ_SIZE 
+#define OEM_DATA_REQ_SIZE 70
+#endif
+#ifndef OEM_DATA_RSP_SIZE
+#define OEM_DATA_RSP_SIZE 968
+#endif
+
+// OEM Data related structure definitions
+typedef struct sLimMlmOemDataReq
+{
+    tSirMacAddr           selfMacAddr;
+    tANI_U8               oemDataReq[OEM_DATA_REQ_SIZE];
+} tLimMlmOemDataReq, *tpLimMlmOemDataReq;
+
+typedef struct sLimMlmOemDataRsp
+{
+   tANI_U8                oemDataRsp[OEM_DATA_RSP_SIZE];
+} tLimMlmOemDataRsp, *tpLimMlmOemDataRsp;
+#endif
 
 // Pre-authentication structure definition
 typedef struct tLimPreAuthNode
@@ -438,6 +460,9 @@ typedef struct sLimMlmStaContext
     tANI_U8                 schClean:1;
     // 802.11n HT Capability in Station: Enabled 1 or DIsabled 0
     tANI_U8                 htCapability:1;
+#ifdef WLAN_FEATURE_11AC
+    tANI_U8                 vhtCapability:1;
+#endif
 } tLimMlmStaContext, *tpLimMlmStaContext;
 
 // Structure definition to hold deferred messages queue parameters
@@ -615,7 +640,7 @@ typedef struct sLimChannelSwitchInfo
 {
     tLimChannelSwitchState   state;
     tANI_U8                  primaryChannel;
-    tAniCBSecondaryMode      secondarySubBand;
+    ePhyChanBondState        secondarySubBand;
     tANI_U32                 switchCount;
     tANI_U32                 switchTimeoutValue;
     tANI_U8                  switchMode;

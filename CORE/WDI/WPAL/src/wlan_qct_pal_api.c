@@ -376,3 +376,17 @@ wpt_status wpalRivaSubystemRestart(void)
     }
     return eWLAN_PAL_STATUS_E_FAILURE;
 }
+
+/*---------------------------------------------------------------------------
+    wpalWlanReload -  Initiate WLAN Driver reload
+
+    Param:
+       None
+    Return:
+       NONE
+---------------------------------------------------------------------------*/
+void wpalWlanReload(void)
+{
+   vos_wlanRestart();
+   return;
+}

@@ -1472,6 +1472,50 @@ REG_VARIABLE( CFG_ENABLE_MODULATED_DTIM_NAME, WLAN_PARAM_Integer,
               CFG_MC_ADDR_LIST_ENABLE_MIN,
               CFG_MC_ADDR_LIST_ENABLE_MAX ),
 
+#ifdef WLAN_FEATURE_11AC              
+REG_VARIABLE( CFG_VHT_CHANNEL_WIDTH, WLAN_PARAM_Integer,
+              hdd_config_t, vhtChannelWidth, 
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK, 
+              CFG_VHT_CHANNEL_WIDTH_DEFAULT, 
+              CFG_VHT_CHANNEL_WIDTH_MIN, 
+              CFG_VHT_CHANNEL_WIDTH_MAX),
+
+REG_VARIABLE( CFG_VHT_ENABLE_RX_MCS_8_9, WLAN_PARAM_Integer,
+              hdd_config_t, vhtRxMCS, 
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK, 
+              CFG_VHT_ENABLE_RX_MCS_8_9_DEFAULT, 
+              CFG_VHT_ENABLE_RX_MCS_8_9_MIN, 
+              CFG_VHT_ENABLE_RX_MCS_8_9_MAX),
+
+REG_VARIABLE( CFG_VHT_ENABLE_TX_MCS_8_9, WLAN_PARAM_Integer,
+              hdd_config_t, vhtTxMCS, 
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK, 
+              CFG_VHT_ENABLE_TX_MCS_8_9_DEFAULT, 
+              CFG_VHT_ENABLE_TX_MCS_8_9_MIN, 
+              CFG_VHT_ENABLE_TX_MCS_8_9_MAX),
+#endif
+
+REG_VARIABLE( CFG_ENABLE_FIRST_SCAN_2G_ONLY_NAME, WLAN_PARAM_Integer,
+              hdd_config_t, enableFirstScan2GOnly, 
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
+              CFG_ENABLE_FIRST_SCAN_2G_ONLY_DEFAULT, 
+              CFG_ENABLE_FIRST_SCAN_2G_ONLY_MIN, 
+              CFG_ENABLE_FIRST_SCAN_2G_ONLY_MAX ),
+
+REG_VARIABLE( CFG_ENABLE_SKIP_DFS_IN_P2P_SEARCH_NAME, WLAN_PARAM_Integer,
+              hdd_config_t, skipDfsChnlInP2pSearch, 
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
+              CFG_ENABLE_SKIP_DFS_IN_P2P_SEARCH_DEFAULT, 
+              CFG_ENABLE_SKIP_DFS_IN_P2P_SEARCH_MIN, 
+              CFG_ENABLE_SKIP_DFS_IN_P2P_SEARCH_MAX ),
+
+REG_VARIABLE( CFG_IGNORE_DYNAMIC_DTIM_IN_P2P_MODE_NAME, WLAN_PARAM_Integer,
+              hdd_config_t, ignoreDynamicDtimInP2pMode, 
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
+              CFG_IGNORE_DYNAMIC_DTIM_IN_P2P_MODE_DEFAULT, 
+              CFG_IGNORE_DYNAMIC_DTIM_IN_P2P_MODE_MIN, 
+              CFG_IGNORE_DYNAMIC_DTIM_IN_P2P_MODE_MAX ),
+
 };
 
 /*
@@ -1834,6 +1878,12 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gEnableDFSChnlScan] Value = [%u] ",pHddCtx->cfg_ini->enableDFSChnlScan);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gReportMaxLinkSpeed] Value = [%u] ",pHddCtx->cfg_ini->reportMaxLinkSpeed);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [thermalMitigationEnable] Value = [%u] ",pHddCtx->cfg_ini->thermalMitigationEnable);
+#ifdef WLAN_FEATURE_11AC
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gVhtChannelWidth] value = [%u]\n",pHddCtx->cfg_ini->vhtChannelWidth);
+#endif
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [enableFirstScan2GOnly] Value = [%u] ",pHddCtx->cfg_ini->enableFirstScan2GOnly);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [skipDfsChnlInP2pSearch] Value = [%u] ",pHddCtx->cfg_ini->skipDfsChnlInP2pSearch);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [ignoreDynamicDtimInP2pMode] Value = [%u] ",pHddCtx->cfg_ini->ignoreDynamicDtimInP2pMode);
 }
 
 
@@ -2216,6 +2266,12 @@ eCsrPhyMode hdd_cfg_xlate_to_csr_phy_mode( eHddDot11Mode dot11Mode )
          return eCSR_DOT11_MODE_11n_ONLY;
       case (eHDD_DOT11_MODE_11b_ONLY):
          return eCSR_DOT11_MODE_11b_ONLY;
+#ifdef WLAN_FEATURE_11AC
+      case (eHDD_DOT11_MODE_11ac_ONLY):
+         return eCSR_DOT11_MODE_11ac_ONLY;
+      case (eHDD_DOT11_MODE_11ac):
+         return eCSR_DOT11_MODE_11ac;
+#endif
       case (eHDD_DOT11_MODE_AUTO):
          return eCSR_DOT11_MODE_AUTO;
    }
@@ -2769,6 +2825,53 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
         hddLog(LOGE, "Could not pass on WNI_CFG_ENABLE_MC_ADDR_LIST to CCM\n");
      }
 
+#ifdef WLAN_FEATURE_11AC
+   /* Based on cfg.ini, update the Basic MCS set, RX/TX MCS map in the cfg.dat */
+   /* valid values are 0(MCS0-7), 1(MCS0-8), 2(MCS0-9) */
+   /* we update only the least significant 2 bits in the corresponding fields */
+   if( (pConfig->dot11Mode == eHDD_DOT11_MODE_AUTO) ||
+       (pConfig->dot11Mode == eHDD_DOT11_MODE_11ac_ONLY) ||
+       (pConfig->dot11Mode == eHDD_DOT11_MODE_11ac) )
+   {
+       {
+           tANI_U32 temp = 0;
+
+           ccmCfgGetInt(pHddCtx->hHal, WNI_CFG_VHT_BASIC_MCS_SET, &temp);
+           temp = (temp & 0xFFFC) | pConfig->vhtRxMCS; 
+
+           if(ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_VHT_BASIC_MCS_SET, 
+                           temp, NULL, eANI_BOOLEAN_FALSE)
+               ==eHAL_STATUS_FAILURE)
+           {
+               fStatus = FALSE;
+               hddLog(LOGE, "Could not pass on WNI_CFG_VHT_BASIC_MCS_SET to CCM\n");
+           }
+
+           ccmCfgGetInt(pHddCtx->hHal, WNI_CFG_VHT_RX_MCS_MAP, &temp);
+           temp = (temp & 0xFFFC) | pConfig->vhtRxMCS; 
+
+           if(ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_VHT_RX_MCS_MAP, 
+                           temp, NULL, eANI_BOOLEAN_FALSE)
+               ==eHAL_STATUS_FAILURE)
+           {
+              fStatus = FALSE;
+              hddLog(LOGE, "Could not pass on WNI_CFG_VHT_RX_MCS_MAP to CCM\n");
+           }
+
+           ccmCfgGetInt(pHddCtx->hHal, WNI_CFG_VHT_TX_MCS_MAP, &temp);
+           temp = (temp & 0xFFFC) | pConfig->vhtTxMCS; 
+
+           if(ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_VHT_TX_MCS_MAP, 
+                           temp, NULL, eANI_BOOLEAN_FALSE)
+               ==eHAL_STATUS_FAILURE)
+           {
+               fStatus = FALSE;
+               hddLog(LOGE, "Could not pass on WNI_CFG_VHT_TX_MCS_MAP to CCM\n");
+           }
+       }
+   }
+#endif
+
    return fStatus;
 }
 
@@ -2839,18 +2942,13 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 #endif
    //Remaining config params not obtained from registry
    // On RF EVB beacon using channel 1.
-   
+#ifdef WLAN_FEATURE_11AC
+    smeConfig.csrConfig.nVhtChannelWidth = pConfig->vhtChannelWidth;
+#endif
    smeConfig.csrConfig.AdHocChannel5G            = 44; 
    smeConfig.csrConfig.ProprietaryRatesEnabled   = 0;  
    smeConfig.csrConfig.HeartbeatThresh50         = 40; 
-   if( smeConfig.csrConfig.Is11dSupportEnabled )
-   {
-      smeConfig.csrConfig.Is11hSupportEnabled    = 1;
-   }
-   else
-   {
-      smeConfig.csrConfig.Is11hSupportEnabled    = 0;
-   }
+   smeConfig.csrConfig.Is11hSupportEnabled       = 1;
    smeConfig.csrConfig.bandCapability            = pConfig->nBandCapability; 
    smeConfig.csrConfig.cbChoice                  = 0;   
    smeConfig.csrConfig.bgScanInterval            = 0; 
@@ -2858,7 +2956,8 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig.csrConfig.nTxPowerCap = pConfig->nTxPowerCap;
    smeConfig.csrConfig.fEnableBypass11d          = pConfig->enableBypass11d;
    smeConfig.csrConfig.fEnableDFSChnlScan        = pConfig->enableDFSChnlScan;
-   
+   smeConfig.csrConfig.fFirstScanOnly2GChnl      = pConfig->enableFirstScan2GOnly;
+
    //FIXME 11d config is hardcoded
 #ifdef WLAN_SOFTAP_FEATURE
    if ( VOS_STA_SAP_MODE != hdd_get_conparam()){

@@ -148,7 +148,10 @@ typedef enum {
     eSAP_DOT11_MODE_11g_ONLY = 0x0080,
     eSAP_DOT11_MODE_11n_ONLY = 0x0100,
     eSAP_DOT11_MODE_11b_ONLY = 0x0400,
-
+#ifdef WLAN_FEATURE_11AC
+    eSAP_DOT11_MODE_11ac     = 0x1000,
+    eSAP_DOT11_MODE_11ac_ONLY = 0x2000
+#endif
 } eSapPhyMode;
 
 typedef enum {
@@ -1375,7 +1378,7 @@ VOS_STATUS WLANSAP_GetStatistics(v_PVOID_t pvosGCtx, tSap_SoftapStats *statBuf, 
   SIDE EFFECTS   
 ============================================================================*/
 VOS_STATUS WLANSAP_SendAction( v_PVOID_t pvosGCtx, const tANI_U8 *pBuf, 
-                               tANI_U32 len );
+                               tANI_U32 len, tANI_U16 wait );
 
 /*==========================================================================
 

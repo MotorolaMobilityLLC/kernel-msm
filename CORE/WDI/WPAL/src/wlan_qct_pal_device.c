@@ -67,9 +67,12 @@
  * Preprocessor Definitions and Constants
  * -------------------------------------------------------------------------*/
 
-// address in the 8960 physical memory map
+// address in the Host physical memory map
+#ifdef WCN_PRONTO
+#define WCNSS_BASE_ADDRESS 0xFB000000
+#else
 #define WCNSS_BASE_ADDRESS 0x03000000
-
+#endif
 /*----------------------------------------------------------------------------
  * Type Declarations
  * -------------------------------------------------------------------------*/

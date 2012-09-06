@@ -36,6 +36,7 @@
 #include "sirTypes.h"
 #include "sirMacProtDef.h"
 #include "aniSystemDefs.h"
+#include "sirParams.h"
 
 #ifdef FEATURE_WLAN_CCX
 #include "ccxGlobal.h"
@@ -293,6 +294,9 @@ typedef enum eSirResultCodes
     eSIR_SME_CHANNEL_SWITCH_DISABLED,    // either 11h is disabled or channelSwitch is currently active
     eSIR_SME_HAL_SEND_MESSAGE_FAIL,      // Failed to send a message to HAL
 #endif // GEN4_SCAN
+#ifdef FEATURE_OEM_DATA_SUPPORT
+    eSIR_SME_HAL_OEM_DATA_REQ_START_FAILED,
+#endif
     eSIR_SME_STOP_BSS_FAILURE,           // Failed to stop the bss
     eSIR_SME_STA_ASSOCIATED,
     eSIR_SME_INVALID_PMM_STATE,
@@ -320,22 +324,6 @@ typedef enum eSirResultCodes
     eSIR_DONOT_USE_RESULT_CODE = SIR_MAX_ENUM_SIZE    
 } tSirResultCodes;
 
-//
-// Enumerated constants to identify
-// 1) the operating state of Channel Bonding
-// 2) the secondary CB channel to be used
-//
-typedef enum eAniCBSecondaryMode
-{
-    eANI_CB_SECONDARY_NONE,
-    eANI_CB_SECONDARY_DOWN,
-    eANI_CB_SECONDARY_UP,
-    eANI_DONOT_USE_SECONDARY_MODE = SIR_MAX_ENUM_SIZE
-} tAniCBSecondaryMode;
-
-
-
-
 /* each station added has a rate mode which specifies the sta attributes */
 typedef enum eStaRateMode {
     eSTA_TAURUS = 0,
@@ -345,6 +333,9 @@ typedef enum eStaRateMode {
     eSTA_11bg,
     eSTA_11a,
     eSTA_11n,
+#ifdef WLAN_FEATURE_11AC
+    eSTA_11ac,
+#endif
     eSTA_INVALID_RATE_MODE
 } tStaRateMode, *tpStaRateMode;
 
@@ -393,6 +384,18 @@ typedef struct sSirSupportedRates {
      */
     tANI_U16 rxHighestDataRate;
 
+#ifdef WLAN_FEATURE_11AC
+   /*Indicates the Maximum MCS that can be received for each number
+        of spacial streams */
+    tANI_U16 vhtRxMCSMap;
+   /*Indicate the highest VHT data rate that the STA is able to receive*/
+    tANI_U16 vhtRxHighestDataRate;
+   /*Indicates the Maximum MCS that can be transmitted	for each number
+        of spacial streams */
+    tANI_U16 vhtTxMCSMap;
+   /*Indicate the highest VHT data rate that the STA is able to transmit*/
+    tANI_U16 vhtTxHighestDataRate;
+#endif
 } tSirSupportedRates, *tpSirSupportedRates;
 
 
@@ -443,47 +446,6 @@ typedef struct sSirRegisterMgmtFrame
 #endif
 
 //
-// A bit-encoding, identifying the new TITAN capabilities
-// and state information. The capabilities being exposed
-// are -
-// Concatenation
-// Compression
-//FIXME_CBMODE: need to seperate out HT and TITAN CB mode fields.
-// Channel Bonding - Only this filed is used for HT also. 
-// Reverse FCS
-//
-// The bitfield encoding is as follows -
-//
-//  b7  b6   b5   b4   b3   b2   b1   b0
-// --------------------------------------
-// | X | X |CB/O|CB/O|CB/A|RFCS| CP | CC |
-// --------------------------------------
-// where,
-// CC   - Concatenation: 1 - ON, 0 - OFF
-// CP   - Compression: 1 - ON, 0 - OFF
-// RFCS - Reverse FCS Support: 1 - ON, 0 - OFF
-// CB/A - Channel Bonding "Admin" state: 1 - ON, 0 - OFF
-// CB/O - Channel Bonding "Oper" state:
-//        00 - CB Oper state OFF
-//        01 - CB Secondary channel DOWN
-//        10 - CB Secondary channel UP
-//        11 - Reserved
-// X    - Don't care
-//
-// This enumerated data type is used for IPC between the
-// LIM and SME (WSM/HDD) for the following northbound
-// interfaces -
-// LIM -> WSM
-// tSirNeighborBssInfo,
-// tSirSmeAssocInd,
-// tSirSmeReassocInd
-//
-// LIM -> HDD/Roaming
-// tSirBssDescription
-//
-typedef tANI_U8 tAniTitanHtCapabilityInfo;
-
-//
 // Identifies the neighbor BSS' that was(were) detected
 // by an STA and reported to the AP
 //
@@ -499,45 +461,6 @@ typedef struct sAniTitanCBNeighborInfo
   tANI_U8 cbBssFoundSecDown;
 
 } tAniTitanCBNeighborInfo, *tpAniTitanCBNeighborInfo;
-
-//
-// MACRO's to extract info from tAniTitanHtCapabilityInfo
-//
-#define SME_GET_CONCAT_STATE(titanHtCaps) \
-        (titanHtCaps & 0x01)
-#define SME_SET_CONCAT_STATE(titanHtCaps,state) \
-        (((state) == eHAL_CLEAR)? \
-          ((titanHtCaps) = (titanHtCaps) & (0x3E)): \
-          ((titanHtCaps) = (titanHtCaps) | (0x01)))
-
-#define SME_GET_COMPRESSION_STATE(titanHtCaps) \
-        ((titanHtCaps & 0x02) >> 1)
-#define SME_SET_COMPRESSION_STATE(titanHtCaps,state) \
-        (((state) == eHAL_CLEAR)? \
-          ((titanHtCaps) = (titanHtCaps) & (0x3D)): \
-          ((titanHtCaps) = (titanHtCaps) | (0x02)))
-
-#define SME_GET_RFCS_STATE(titanHtCaps) \
-        ((titanHtCaps & 0x04) >> 2)
-#define SME_SET_RFCS_STATE(titanHtCaps,state) \
-        (((state) == eHAL_CLEAR)? \
-          ((titanHtCaps) = (titanHtCaps) & (0x3B)): \
-          ((titanHtCaps) = (titanHtCaps) | (0x04)))
-
-#define SME_GET_CB_ADMIN_STATE(titanHtCaps) \
-        ((titanHtCaps & 0x08) >> 3)
-#define SME_SET_CB_ADMIN_STATE(titanHtCaps,state) \
-        (((state) == eHAL_CLEAR)? \
-          ((titanHtCaps) = (titanHtCaps) & (0x37)): \
-          ((titanHtCaps) = (titanHtCaps) | (0x08)))
-
-// NOTE - The value returned by this MACRO, SME_GET_CB_OPER_STATE,
-// can be used along with the enumerated type,
-// tAniCBSecondaryMode, to identify the Admin/Oper state of CB
-#define SME_GET_CB_OPER_STATE(titanHtCaps) \
-        ((titanHtCaps & 0x30) >> 4)
-#define SME_SET_CB_OPER_STATE(titanHtCaps,state) \
-        ((titanHtCaps) = (tANI_U8)(((titanHtCaps) & (0x0F)) | ((state) << 4)))
 
 /// Generic type for sending a response message
 /// with result code to host software
@@ -642,6 +565,9 @@ typedef enum eSirNwType
     eSIR_11B_NW_TYPE,
     eSIR_11G_NW_TYPE,
     eSIR_11N_NW_TYPE,
+#ifdef WLAN_FEATURE_11AC
+    eSIR_11AC_NW_TYPE,
+#endif
     eSIR_DONOT_USE_NW_TYPE = SIR_MAX_ENUM_SIZE
 } tSirNwType;
 
@@ -695,7 +621,7 @@ typedef struct sSirSmeStartBssReq
     tSirBssType             bssType;
     tSirMacSSid             ssId;
     tANI_U8                 channelId;
-    tAniCBSecondaryMode     cbMode;
+    ePhyChanBondState       cbMode;
 #if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
     tSirAlternateRadioList  alternateRadioList;
     tANI_S8                 powerLevel;
@@ -753,12 +679,6 @@ typedef struct sSirBssDescription
     //used only in scan case.
     tANI_U8              channelIdSelf;
     tANI_U8              sSirBssDescriptionRsvd[3];
-    //
-    // FIXME - This structure is not packed!
-    // Thus, the fields should be aligned at DWORD boundaries
-    // Elsewhere, titanHtCaps is of type tAniTitanHtCapabilityInfo
-    //
-    tANI_U32             titanHtCaps;
     tANI_TIMESTAMP nReceivedTime;     //base on a tick count. It is a time stamp, not a relative time.
 #if defined WLAN_FEATURE_VOWIFI
     tANI_U32       parentTSF;
@@ -862,7 +782,6 @@ typedef struct sSirNeighborBssInfo
 {
     tSirMacAddr             bssId;
     tANI_U8                 channelId;
-    tAniTitanHtCapabilityInfo titanHtCaps;
     tAniBool                wniIndicator;
     tSirBssType             bssType;
     tANI_U8                 sinr;
@@ -1113,6 +1032,7 @@ typedef struct sSirSmeScanReq
  
 #ifdef WLAN_FEATURE_P2P
     tANI_BOOLEAN         p2pSearch;
+    tANI_BOOLEAN         skipDfsChnlInP2pSearch;
 #endif
     tANI_U16             uIEFieldLen;
     tANI_U16             uIEFieldOffset;
@@ -1138,6 +1058,30 @@ typedef struct sSirSmeScanReq
       -----------------------------*/
 } tSirSmeScanReq, *tpSirSmeScanReq;
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+
+#ifndef OEM_DATA_REQ_SIZE
+#define OEM_DATA_REQ_SIZE 70
+#endif
+#ifndef OEM_DATA_RSP_SIZE
+#define OEM_DATA_RSP_SIZE 968
+#endif
+
+typedef struct sSirOemDataReq
+{
+    tANI_U16              messageType; //eWNI_SME_OEM_DATA_REQ
+    tSirMacAddr           selfMacAddr;
+    tANI_U8               oemDataReq[OEM_DATA_REQ_SIZE];
+} tSirOemDataReq, *tpSirOemDataReq;
+
+typedef struct sSirOemDataRsp
+{
+    tANI_U16             messageType;
+    tANI_U16             length;
+    tANI_U8              oemDataRsp[OEM_DATA_RSP_SIZE];
+} tSirOemDataRsp, *tpSirOemDataRsp;
+    
+#endif //FEATURE_OEM_DATA_SUPPORT
 
 /// Definition for response message to previously issued scan request
 typedef struct sSirSmeScanRsp
@@ -1235,13 +1179,14 @@ typedef struct sSirSmeJoinReq
 {
     tANI_U16            messageType;            // eWNI_SME_JOIN_REQ
     tANI_U16            length;
-    tANI_U8             sessionId;              
+    tANI_U8             sessionId;
     tANI_U16            transactionId;  
     tSirMacSSid         ssId;
     tSirMacAddr         selfMacAddr;            // self Mac address
     tSirBssType         bsstype;                // add new type for BT -AMP STA and AP Modules
     tANI_U8             dot11mode;              // to support BT-AMP     
-    tVOS_CON_MODE       staPersona;        //Persona
+    tVOS_CON_MODE       staPersona;             //Persona
+    ePhyChanBondState   cbMode;                 // Pass CB mode value in Join.
 
     /*This contains the UAPSD Flag for all 4 AC
      * B0: AC_VO UAPSD FLAG
@@ -1400,7 +1345,6 @@ typedef struct sSirSmeAssocInd
     tANI_U16                  capabilityInfo; // STA capability
     tSirNwType           nwType;            // Indicates 11a/b/g
 #endif
-    tAniTitanHtCapabilityInfo titanHtCaps;
     // powerCap & supportedChannels are present only when
     // spectrumMgtIndicator flag is set
     tAniBool                spectrumMgtIndicator;
@@ -1449,7 +1393,8 @@ typedef struct sSirSmeReassocReq
     tSirMacAddr         selfMacAddr;            // self Mac address
     tSirBssType         bsstype;                // add new type for BT -AMP STA and AP Modules
     tANI_U8             dot11mode;              // to support BT-AMP     
-    tVOS_CON_MODE       staPersona;        //Persona
+    tVOS_CON_MODE       staPersona;             //Persona
+    ePhyChanBondState   cbMode;                 // CBMode value to be passed with reassoc req
 
     /*This contains the UAPSD Flag for all 4 AC
      * B0: AC_VO UAPSD FLAG
@@ -1557,7 +1502,6 @@ typedef struct sSirSmeReassocInd
     tANI_U16             capabilityInfo; // STA capability
     tSirNwType           nwType;            // Indicates 11a/b/g
 #endif
-    tAniTitanHtCapabilityInfo titanHtCaps;
     // powerCap & supportedChannels are present only when
     // spectrumMgtIndicator flag is set
     tAniBool                spectrumMgtIndicator;
@@ -2130,7 +2074,7 @@ typedef struct sSirSmeSwitchChannelReq
     // In a non-CB environment, with 11H enabled,
     // this field will be ignored
     //
-    tAniCBSecondaryMode cbMode;
+    ePhyChanBondState    cbMode;
 
     // dtimFactor indicates the number of DTIM
     // Beacon before LIM switches channel
@@ -3796,6 +3740,7 @@ typedef struct sSirHostOffloadReq
 #ifdef WLAN_NS_OFFLOAD
     tSirNsOffloadReq nsOffloadInfo;
 #endif //WLAN_NS_OFFLOAD
+    tANI_U8 bssIdx;
 } tSirHostOffloadReq, *tpSirHostOffloadReq;
 
 /* Packet Types. */
@@ -3814,7 +3759,7 @@ typedef struct sSirKeepAliveReq
     tSirIpv4Addr    hostIpv4Addr; 
     tSirIpv4Addr    destIpv4Addr;
     tSirMacAddr     destMacAddr;
-
+    v_U8_t          bssIdx;
 } tSirKeepAliveReq, *tpSirKeepAliveReq;
 
 typedef struct sSirSmeAddStaSelfReq
@@ -4117,6 +4062,8 @@ typedef struct sSirRcvPktFilterCfg
   tANI_U32                        numFieldParams;
   tANI_U32                        coalesceTime;
   tSirRcvPktFilterFieldParams     paramsData[SIR_MAX_NUM_TESTS_PER_FILTER];
+  tSirMacAddr                     selfMacAddr;
+  tSirMacAddr                     bssId; //Bssid of the connected AP
 }tSirRcvPktFilterCfgType, *tpSirRcvPktFilterCfgType;
 
 //
@@ -4145,6 +4092,8 @@ typedef struct sSirRcvFltPktClearParam
 {
   tANI_U32   status;  /* only valid for response message */
   tANI_U8    filterId;
+  tSirMacAddr selfMacAddr;
+  tSirMacAddr bssId;
 }tSirRcvFltPktClearParam, *tpSirRcvFltPktClearParam;
 
 //
@@ -4154,6 +4103,8 @@ typedef struct sSirRcvFltMcAddrList
 {
   tANI_U32       ulMulticastAddrCnt;
   tSirMacAddr    multicastAddr[SIR_MAX_NUM_MULTICAST_ADDRESS];
+  tSirMacAddr    selfMacAddr;
+  tSirMacAddr    bssId;
 } tSirRcvFltMcAddrList, *tpSirRcvFltMcAddrList;
 #endif // WLAN_FEATURE_PACKET_FILTERING
 

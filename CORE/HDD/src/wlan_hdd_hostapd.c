@@ -203,7 +203,7 @@ int hdd_hostapd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        goto exit;
     }
 
-    if ((!ifr) && (!ifr->ifr_data))
+    if ((!ifr) || (!ifr->ifr_data))
     {
         ret = -EINVAL;
         goto exit;
@@ -1057,6 +1057,43 @@ static iw_softap_getchannel(struct net_device *dev,
     return 0;
 }
 
+int
+static iw_softap_set_tx_power(struct net_device *dev,
+                        struct iw_request_info *info,
+                        union iwreq_data *wrqu, char *extra)
+{
+    hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
+    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
+    int cmd_len = wrqu->data.length;
+    int *value = (int *) kmalloc(cmd_len+1, GFP_KERNEL);
+    int set_value;
+    tSirMacAddr bssid = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+    tSirMacAddr selfMac = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
+
+    if(value == NULL)
+        return -ENOMEM;
+
+    if(copy_from_user((char *) value, (char*)(wrqu->data.pointer), cmd_len)) {
+        hddLog(VOS_TRACE_LEVEL_FATAL, "%s -- copy_from_user --data pointer failed! bailing",
+                __FUNCTION__);
+        kfree(value);
+        return -EFAULT;
+    }
+
+    set_value = value[0];
+    kfree(value);
+
+    if( sme_SetMaxTxPower(hHal, bssid, selfMac, set_value) !=
+            eHAL_STATUS_SUCCESS )
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Setting maximum tx power failed",
+                __func__);
+        return -EIO;
+    }
+
+    return 0;
+}
+
 #define IS_BROADCAST_MAC(x) (((x[0] & x[1] & x[2] & x[3] & x[4] & x[5]) == 0xff) ? 1 : 0)
 
 int
@@ -1833,11 +1870,11 @@ static int iw_get_ap_frag_threshold(struct net_device *dev,
 static int iw_get_ap_freq(struct net_device *dev, struct iw_request_info *info,
              struct iw_freq *fwrq, char *extra)
 {
-   v_U32_t status = 0,channel,freq;
+   v_U32_t status = FALSE, channel = 0, freq = 0;
    hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
    tHalHandle hHal;
    hdd_hostapd_state_t *pHostapdState;
-   hdd_ap_ctx_t *pHddApCtx = WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter);  
+   hdd_ap_ctx_t *pHddApCtx = WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter);
 
    ENTER();
 
@@ -1860,18 +1897,30 @@ static int iw_get_ap_freq(struct net_device *dev, struct iw_request_info *info,
        else
        {
           status = hdd_wlan_get_freq(channel, &freq);
-          fwrq->m = freq;
-          fwrq->e = 0;
+          if( TRUE == status)
+          {
+              /* Set Exponent parameter as 6 (MHZ) in struct iw_freq
+               * iwlist & iwconfig command shows frequency into proper
+               * format (2.412 GHz instead of 246.2 MHz)*/
+              fwrq->m = freq;
+              fwrq->e = MHZ;
+          }
        }
     }
     else
     {
        channel = pHddApCtx->operatingChannel;
        status = hdd_wlan_get_freq(channel, &freq);
-       fwrq->m = freq;
-       fwrq->e = 0;
+       if( TRUE == status)
+       {
+          /* Set Exponent parameter as 6 (MHZ) in struct iw_freq
+           * iwlist & iwconfig command shows frequency into proper
+           * format (2.412 GHz instead of 246.2 MHz)*/
+           fwrq->m = freq;
+           fwrq->e = MHZ;
+       }
     }
-   return status;
+   return 0;
 }
 
 static int iw_softap_setwpsie(struct net_device *dev,
@@ -2518,7 +2567,13 @@ static const struct iw_priv_args hostapd_private_args[] = {
         IW_PRIV_TYPE_BYTE | sizeof(tChannelListInfo),
         "getChannelList" },
 
+    /* handlers for main ioctl */
+    {   QCSAP_IOCTL_SET_TX_POWER,
+        IW_PRIV_TYPE_INT| IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "" },
 };
+
 static const iw_handler hostapd_private[] = {
    [QCSAP_IOCTL_SETPARAM - SIOCIWFIRSTPRIV] = iw_softap_setparam,  //set priv ioctl
    [QCSAP_IOCTL_GETPARAM - SIOCIWFIRSTPRIV] = iw_softap_getparam,  //get priv ioctl   
@@ -2538,7 +2593,8 @@ static const iw_handler hostapd_private[] = {
    [QCSAP_IOCTL_SET_CHANNEL_RANGE - SIOCIWFIRSTPRIV] = iw_softap_set_channel_range,
    [QCSAP_IOCTL_MODIFY_ACL - SIOCIWFIRSTPRIV]   = iw_softap_modify_acl,
    [QCSAP_IOCTL_GET_CHANNEL_LIST - SIOCIWFIRSTPRIV]   = iw_softap_get_channel_list,
-   [QCSAP_IOCTL_PRIV_GET_SOFTAP_LINK_SPEED - SIOCIWFIRSTPRIV]     = iw_get_softap_linkspeed
+   [QCSAP_IOCTL_PRIV_GET_SOFTAP_LINK_SPEED - SIOCIWFIRSTPRIV]     = iw_get_softap_linkspeed,
+   [QCSAP_IOCTL_SET_TX_POWER - SIOCIWFIRSTPRIV]   = iw_softap_set_tx_power,
 };
 const struct iw_handler_def hostapd_handler_def = {
    .num_standard     = sizeof(hostapd_handler) / sizeof(hostapd_handler[0]),
@@ -2641,20 +2697,11 @@ VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter )
             ( pAdapter->device_mode == WLAN_HDD_SOFTAP ) && 
             ( !strncmp( pAdapter->dev->name, "wlan", 4 )) )
     {
-        hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
-        if (pHddCtx->cfg_ini->isP2pDeviceAddrAdministrated)
-        {
-            INIT_COMPLETION(pAdapter->session_close_comp_var);
-            if( eHAL_STATUS_SUCCESS == sme_CloseSession( pHddCtx->hHal,
-                        pAdapter->p2pSessionId,
-                        hdd_smeCloseSessionCallback, pAdapter ) )
-            {
-                //Block on a completion variable. Can't wait forever though.
-                wait_for_completion_interruptible_timeout(
-                        &pAdapter->session_close_comp_var,
-                        msecs_to_jiffies(WLAN_WAIT_TIME_SESSIONOPENCLOSE));
-            }
-        }
+       /* TODO: Revisit this later, either unregister p2p0 
+                interface here or make change in wifi.c file to pass 
+                information, that driver is getting loaded for SAP interface, 
+                in that case, during load time don't start p2p0 interface 
+        */
     }
 #endif
     EXIT();

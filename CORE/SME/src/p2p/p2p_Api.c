@@ -766,7 +766,7 @@ eHalStatus p2pRemainOnChannel(tHalHandle hHal, tANI_U8 sessionId,
 }
 
 eHalStatus p2pSendAction(tHalHandle hHal, tANI_U8 sessionId,
-         const tANI_U8 *pBuf, tANI_U32 len)
+         const tANI_U8 *pBuf, tANI_U32 len, tANI_U16 wait, tANI_BOOLEAN noack)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
@@ -783,9 +783,11 @@ eHalStatus p2pSendAction(tHalHandle hHal, tANI_U8 sessionId,
         pMsg->type = pal_cpu_to_be16((tANI_U16)eWNI_SME_SEND_ACTION_FRAME_IND);
         pMsg->msgLen = pal_cpu_to_be16(msgLen);
         pMsg->sessionId = sessionId;
-        palCopyMemory( pMac->hHdd, pMsg->data, pBuf, len ); 
+        pMsg->noack = noack;
+        pMsg->wait = (tANI_U16)wait;
+        palCopyMemory( pMac->hHdd, pMsg->data, pBuf, len );
         status = palSendMBMessage(pMac->hHdd, pMsg);
-    }                             
+    }
 
     return( status );
 }

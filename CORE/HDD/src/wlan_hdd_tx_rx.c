@@ -319,7 +319,7 @@ void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter)
 
    if (VOS_STATUS_SUCCESS != 
       WLANSAP_SendAction( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
-                           skb->data, skb->len) )
+                           skb->data, skb->len, 0) )
    {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
           "%s: WLANSAP_SendAction returned fail", __func__);
@@ -1316,13 +1316,23 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
          VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: Failure extracting skb from vos pkt", __FUNCTION__);
          return VOS_STATUS_E_FAILURE;
       }
-   
+
+      if (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic)
+      {
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+           "Magic cookie(%x) for adapter sanity verification is invalid", pAdapter->magic);
+         return eHAL_STATUS_FAILURE;
+      }
+
       skb->dev = pAdapter->dev;
       skb->protocol = eth_type_trans(skb, skb->dev);
       skb->ip_summed = CHECKSUM_UNNECESSARY;
       ++pAdapter->hdd_stats.hddTxRxStats.rxPackets;
       ++pAdapter->stats.rx_packets;
       pAdapter->stats.rx_bytes += skb->len;
+#ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
+      wake_lock_timeout(&pHddCtx->rx_wake_lock, HDD_WAKE_LOCK_DURATION);
+#endif
       rxstat = netif_rx_ni(skb);
       if (NET_RX_SUCCESS == rxstat)
       {

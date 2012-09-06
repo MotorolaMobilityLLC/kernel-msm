@@ -177,7 +177,17 @@ typedef enum
 {
   WDI_SECONDARY_CHANNEL_OFFSET_NONE   = 0,
   WDI_SECONDARY_CHANNEL_OFFSET_UP     = 1,
-  WDI_SECONDARY_CHANNEL_OFFSET_DOWN   = 3
+  WDI_SECONDARY_CHANNEL_OFFSET_DOWN   = 3,
+#ifdef WLAN_FEATURE_11AC
+  WDI_CHANNEL_20MHZ_LOW_40MHZ_CENTERED = 4, //20/40MHZ offset LOW 40/80MHZ offset CENTERED
+  WDI_CHANNEL_20MHZ_CENTERED_40MHZ_CENTERED = 5, //20/40MHZ offset CENTERED 40/80MHZ offset CENTERED
+  WDI_CHANNEL_20MHZ_HIGH_40MHZ_CENTERED = 6, //20/40MHZ offset HIGH 40/80MHZ offset CENTERED
+  WDI_CHANNEL_20MHZ_LOW_40MHZ_LOW = 7,//20/40MHZ offset LOW 40/80MHZ offset LOW
+  WDI_CHANNEL_20MHZ_HIGH_40MHZ_LOW = 8, //20/40MHZ offset HIGH 40/80MHZ offset LOW
+  WDI_CHANNEL_20MHZ_LOW_40MHZ_HIGH = 9, //20/40MHZ offset LOW 40/80MHZ offset HIGH
+  WDI_CHANNEL_20MHZ_HIGH_40MHZ_HIGH = 10,//20/40MHZ offset-HIGH 40/80MHZ offset HIGH
+#endif
+  WDI_SECONDARY_CHANNEL_OFFSET_MAX
 }WDI_HTSecondaryChannelOffset;
 
 /*---------------------------------------------------------------------------
@@ -883,7 +893,17 @@ typedef enum
   WDI_PHY_SINGLE_CHANNEL_CENTERED = 0,            
   WDI_PHY_DOUBLE_CHANNEL_LOW_PRIMARY = 1,     
   WDI_PHY_DOUBLE_CHANNEL_CENTERED = 2,            
-  WDI_PHY_DOUBLE_CHANNEL_HIGH_PRIMARY = 3     
+  WDI_PHY_DOUBLE_CHANNEL_HIGH_PRIMARY = 3,
+#ifdef WLAN_FEATURE_11AC
+  WDI_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_CENTERED = 4, //20/40MHZ offset LOW 40/80MHZ offset CENTERED
+  WDI_QUADRUPLE_CHANNEL_20MHZ_CENTERED_40MHZ_CENTERED = 5, //20/40MHZ offset CENTERED 40/80MHZ offset CENTERED
+  WDI_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_CENTERED = 6, //20/40MHZ offset HIGH 40/80MHZ offset CENTERED
+  WDI_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_LOW = 7,//20/40MHZ offset LOW 40/80MHZ offset LOW
+  WDI_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_LOW = 8, //20/40MHZ offset HIGH 40/80MHZ offset LOW
+  WDI_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_HIGH = 9, //20/40MHZ offset LOW 40/80MHZ offset HIGH
+  WDI_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_HIGH = 10,//20/40MHZ offset-HIGH 40/80MHZ offset HIGH
+#endif
+  WDI_MAX_CB_STATE
 } WDI_PhyChanBondState;
 
 /*---------------------------------------------------------------------------
@@ -1151,6 +1171,20 @@ typedef struct
      */
     wpt_uint16         aRxHighestDataRate;
 
+   
+#ifdef WLAN_FEATURE_11AC
+   /*Indicates the Maximum MCS that can be received for each number
+        of spacial streams */
+    wpt_uint16         vhtRxMCSMap;
+  /*Indicate the highest VHT data rate that the STA is able to receive*/
+    wpt_uint16         vhtRxHighestDataRate;
+  /*Indicates the Maximum MCS that can be transmitted  for each number
+       of spacial streams */
+    wpt_uint16         vhtTxMCSMap;
+  /*Indicate the highest VHT data rate that the STA is able to transmit*/
+    wpt_uint16         vhtTxHighestDataRate;
+#endif
+
 } WDI_SupportedRates;
 
 /*-------------------------------------------------------------------------- 
@@ -1263,6 +1297,10 @@ typedef struct
   wpt_uint8                 ucDsssCckMode40Mhz;
 
   wpt_uint8                 ucP2pCapableSta;
+#ifdef WLAN_FEATURE_11AC
+  wpt_uint8                 ucVhtCapableSta;
+  wpt_uint8                 ucVhtTxChannelWidthSet;
+#endif
 }WDI_ConfigStaReqInfoType;
 
 
@@ -1794,6 +1832,11 @@ typedef struct
 #ifdef WLAN_FEATURE_VOWIFI_11R
   wpt_uint8                 bExtSetStaKeyParamValid;
   WDI_SetSTAKeyReqInfoType  wdiExtSetKeyParam;
+#endif
+
+#ifdef WLAN_FEATURE_11AC
+  wpt_uint8                 ucVhtCapableSta;
+  wpt_uint8                 ucVhtTxChannelWidthSet;
 #endif
 
 }WDI_ConfigBSSReqInfoType;
@@ -3032,6 +3075,7 @@ typedef struct
 typedef struct
 {
    wpt_uint8     ucSendDataNull;
+   wpt_uint8     bssIdx;
 }WDI_ExitBmpsReqinfoType;
 
 /*---------------------------------------------------------------------------
@@ -3065,6 +3109,7 @@ typedef struct
    wpt_uint8     ucBeTriggerEnabled:1;
    wpt_uint8     ucViTriggerEnabled:1;
    wpt_uint8     ucVoTriggerEnabled:1;
+   wpt_uint8     bssIdx;
 }WDI_EnterUapsdReqinfoType;
 
 /*---------------------------------------------------------------------------
@@ -3249,6 +3294,7 @@ typedef struct
    wpt_uint8 srcIPv6AddrValid : 1;
    wpt_uint8 targetIPv6Addr1Valid : 1;
    wpt_uint8 targetIPv6Addr2Valid : 1;
+   wpt_uint8 bssIdx;
 } WDI_NSOffloadParams;
 #endif //WLAN_NS_OFFLOAD
 
@@ -3256,6 +3302,7 @@ typedef struct
 {
    wpt_uint8 ucOffloadType;
    wpt_uint8 ucEnableOrDisable;
+   wpt_uint8 bssIdx;
    union
    {
        wpt_uint8 aHostIpv4Addr [4];
@@ -3294,6 +3341,7 @@ typedef struct
     wpt_uint8  aHostIpv4Addr[4];
     wpt_uint8  aDestIpv4Addr[4];
     wpt_uint8  aDestMacAddr[6];
+    wpt_uint8  bssIdx;
 } WDI_KeepAliveReqType;
 
 /*---------------------------------------------------------------------------
@@ -3329,6 +3377,7 @@ typedef struct
    wpt_uint8  ucPatternMask[WDI_WOWL_BCAST_PATTERN_MAX_SIZE]; // Pattern mask
    wpt_uint8  ucPatternExt[WDI_WOWL_BCAST_PATTERN_MAX_SIZE]; // Extra pattern
    wpt_uint8  ucPatternMaskExt[WDI_WOWL_BCAST_PATTERN_MAX_SIZE]; // Extra pattern mask
+   wpt_uint8  bssIdx;
 } WDI_WowlAddBcPtrnInfoType;
 
 /*---------------------------------------------------------------------------
@@ -3558,6 +3607,52 @@ typedef struct
   void*             pUserData;
 }WDI_BtAmpEventParamsType;
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+
+#ifndef OEM_DATA_REQ_SIZE
+#define OEM_DATA_REQ_SIZE 70
+#endif
+#ifndef OEM_DATA_RSP_SIZE
+#define OEM_DATA_RSP_SIZE 968
+#endif
+
+/*----------------------------------------------------------------------------
+  WDI_oemDataReqInfoType
+----------------------------------------------------------------------------*/
+typedef struct
+{
+  wpt_macAddr                  selfMacAddr;
+  wpt_uint8                    oemDataReq[OEM_DATA_REQ_SIZE];
+}WDI_oemDataReqInfoType;
+
+/*----------------------------------------------------------------------------
+  WDI_oemDataReqParamsType
+----------------------------------------------------------------------------*/
+typedef struct
+{
+  /*Request status callback offered by UMAC - it is called if the current
+    req has returned PENDING as status; it delivers the status of sending
+    the message over the BUS */
+  WDI_ReqStatusCb                wdiReqStatusCB; 
+
+  /*The user data passed in by UMAC, it will be sent back when the above
+    function pointer will be called */
+  void*                          pUserData;
+
+  /*OEM DATA REQ Info */
+  WDI_oemDataReqInfoType         wdiOemDataReqInfo;
+
+}WDI_oemDataReqParamsType;
+
+/*----------------------------------------------------------------------------
+  WDI_oemDataRspParamsType
+----------------------------------------------------------------------------*/
+typedef struct
+{
+  wpt_uint8           oemDataRsp[OEM_DATA_RSP_SIZE];
+}WDI_oemDataRspParamsType;
+
+#endif /* FEATURE_OEM_DATA_SUPPORT */
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
 /*---------------------------------------------------------------------------
@@ -4165,6 +4260,8 @@ typedef struct
   wpt_uint32                      numFieldParams;
   wpt_uint32                      coalesceTime;
   WDI_RcvPktFilterFieldParams     paramsData[1];
+  wpt_macAddr                     selfMacAddr;
+  wpt_macAddr                     bssId;
 }WDI_RcvPktFilterCfgType;
 
 typedef struct 
@@ -4240,6 +4337,8 @@ typedef struct
 {
   wpt_uint32   status;  /* only valid for response message */
   wpt_uint8    filterId;
+  wpt_macAddr  selfMacAddr;
+  wpt_macAddr  bssId;
 }WDI_RcvFltPktClearParam;
 
 typedef struct
@@ -4262,6 +4361,8 @@ typedef struct
 {
   wpt_uint32     ulMulticastAddrCnt;
   wpt_macAddr    multicastAddr[WDI_MAX_NUM_MULTICAST_ADDRESS];
+  wpt_macAddr    selfMacAddr;
+  wpt_macAddr    bssId;
 } WDI_RcvFltMcAddrListType;
 
 typedef struct
@@ -5596,6 +5697,30 @@ typedef void  (*WDI_FlushAcRspCb)(WDI_Status   wdiStatus,
 typedef void  (*WDI_BtAmpEventRspCb)(WDI_Status   wdiStatus,
                                      void*        pUserData);
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+/*---------------------------------------------------------------------------
+   WDI_oemDataRspCb
+ 
+   DESCRIPTION   
+ 
+   This callback is invoked by DAL when it has received a Start oem data response from
+   the underlying device.
+ 
+   PARAMETERS 
+
+    IN
+    wdiStatus:  response status received from HAL
+    pUserData:  user data  
+    
+    
+  
+  RETURN VALUE 
+    The result code associated with performing the operation
+---------------------------------------------------------------------------*/
+typedef void  (*WDI_oemDataRspCb)(WDI_oemDataRspParamsType* wdiOemDataRspParams, 
+                                  void*                     pUserData);
+
+#endif
 
 /*---------------------------------------------------------------------------
    WDI_HostResumeEventRspCb
@@ -7787,6 +7912,38 @@ WDI_BtAmpEventReq
   void*                     pUserData
 );
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+/**
+ @brief WDI_Start oem data Req will be called when the upper MAC 
+        wants to notify the lower mac on a oem data Req event.Upon
+        the call of this API the WLAN DAL will pack and send a
+        HAL OEM Data Req event request message to the lower RIVA
+        sub-system if DAL is in state STARTED.
+
+        In state BUSY this request will be queued. Request won't
+        be allowed in any other state. 
+
+  
+ @param pWdiOemDataReqParams: the oem data req parameters as 
+                      specified by the Device Interface
+  
+        wdiStartOemDataRspCb: callback for passing back the
+        response of the Oem Data Req received from the
+        device
+  
+        pUserData: user data will be passed back with the
+        callback 
+ 
+ @return Result of the function call
+*/
+WDI_Status 
+WDI_StartOemDataReq
+(
+  WDI_oemDataReqParamsType*       pWdiOemDataReqParams,
+  WDI_oemDataRspCb                wdiOemDataRspCb,
+  void*                           pUserData
+);
+#endif
 
 /*======================================================================== 
  
@@ -8633,8 +8790,8 @@ wpt_uint8 WDI_getHostWlanFeatCaps(wpt_uint8 feat_enum_value);
  
  @param 
   
-        feat_enum_value: enum value for the feature as in placeHolderInCapBitmap
-                                    in wlan_hal_msg.h.
+        feat_enum_value: enum value for the feature as in placeHolderInCapBitmap 
+        in wlan_hal_msg.h.
 
  @see
  @return 

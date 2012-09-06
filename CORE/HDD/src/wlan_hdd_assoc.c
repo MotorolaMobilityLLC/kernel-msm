@@ -99,7 +99,7 @@ v_U8_t ccpRSNOui06[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x40, 0x96, 0x00 }; // CCKM
 #define BEACON_FRAME_IES_OFFSET 12
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
-extern void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set);
+extern void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set, v_U8_t sessionId);
 #endif
 
 void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter);
@@ -655,7 +655,8 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
     netif_tx_disable(dev);
     netif_carrier_off(dev);
     
-    hdd_connSetConnectionState( pHddStaCtx, eConnectionState_NotConnected );
+    INIT_COMPLETION(pAdapter->disconnect_comp_var);
+    hdd_connSetConnectionState( pHddStaCtx, eConnectionState_Disconnecting );
     /* If only STA mode is on */
     if((pHddCtx->concurrency_mode <= 1) && (pHddCtx->no_of_sessions[WLAN_HDD_INFRA_STATION] <=1))
     {
@@ -679,7 +680,13 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
             /* To avoid wpa_supplicant sending "HANGED" CMD to ICS UI */
             if( eCSR_ROAM_LOSTLINK == roamStatus )
             {
-                cfg80211_disconnected(dev, WLAN_REASON_DISASSOC_DUE_TO_INACTIVITY, NULL, 0, GFP_KERNEL);
+                /* TODO: Need to pass proper reason code
+                   currently we are passing only one reason code.
+                   Currently we are passing WLAN_REASON_DISASSOC_STA_HAS_LEFT
+                   rather than WLAN_REASON_DISASSOC_DUE_TO_INACTIVITY
+                   to avoid the supplicant fast reconnect */
+
+                cfg80211_disconnected(dev, WLAN_REASON_DISASSOC_STA_HAS_LEFT, NULL, 0, GFP_KERNEL);
             }
             else
             {
@@ -689,7 +696,11 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
             //If the Device Mode is Station
             // and the P2P Client is Connected
             //Enable BMPS
-            if((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) &&
+
+            // In case of JB, as Change-Iface may or maynot be called for p2p0
+            // Enable BMPS/IMPS in case P2P_CLIENT disconnected   
+            if(((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+                (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode)) &&
                 (vos_concurrent_sessions_running()))
             {
                //Enable BMPS only of other Session is P2P Client
@@ -704,8 +715,7 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
                    {
                        //Only P2P Client is there Enable Bmps back
                        if((0 == pHddCtx->no_of_sessions[VOS_STA_SAP_MODE]) &&
-                          (0 == pHddCtx->no_of_sessions[VOS_P2P_GO_MODE]) &&
-                          (1 == pHddCtx->no_of_sessions[VOS_P2P_CLIENT_MODE]))
+                          (0 == pHddCtx->no_of_sessions[VOS_P2P_GO_MODE]))
                        {
                            hdd_enable_bmps_imps(pHddCtx);
                        }
@@ -1130,7 +1140,11 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
         //If the Device Mode is Station
         // and the P2P Client is Connected
         //Enable BMPS
-        if((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) &&
+
+        // In case of JB, as Change-Iface may or maynot be called for p2p0
+        // Enable BMPS/IMPS in case P2P_CLIENT disconnected   
+        if(((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+            (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode)) &&
             (vos_concurrent_sessions_running()))
         {
            //Enable BMPS only of other Session is P2P Client
@@ -1145,8 +1159,7 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                {
                    //Only P2P Client is there Enable Bmps back
                    if((0 == pHddCtx->no_of_sessions[VOS_STA_SAP_MODE]) &&
-                      (0 == pHddCtx->no_of_sessions[VOS_P2P_GO_MODE]) &&
-                      (1 == pHddCtx->no_of_sessions[VOS_P2P_CLIENT_MODE]))
+                      (0 == pHddCtx->no_of_sessions[VOS_P2P_GO_MODE]))
                    {
                        hdd_enable_bmps_imps(pHddCtx);
                    }
@@ -1156,18 +1169,31 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
 
 #ifdef CONFIG_CFG80211
         /* inform association failure event to nl80211 */
-        cfg80211_connect_result(dev, pWextState->req_bssId,
+        if(eCSR_ROAM_RESULT_ASSOC_FAIL_CON_CHANNEL == roamResult)
+        {
+           cfg80211_connect_result(dev, pWextState->req_bssId,
+                NULL, 0, NULL, 0,
+                WLAN_STATUS_ASSOC_DENIED_UNSPEC, 
+                GFP_KERNEL);
+        }
+        else
+        {
+           cfg80211_connect_result(dev, pWextState->req_bssId,
                 NULL, 0, NULL, 0,
                 WLAN_STATUS_UNSPECIFIED_FAILURE, 
                 GFP_KERNEL);
+        }
 #endif 
 
         netif_tx_disable(dev);
         netif_carrier_off(dev);
-
-        /* Association failed; Reset the country code information
-         * so that it re-initialize the valid channel list*/
-        hdd_ResetCountryCodeAfterDisAssoc(pAdapter);
+        
+        if (WLAN_HDD_P2P_CLIENT != pAdapter->device_mode)
+        {
+            /* Association failed; Reset the country code information
+             * so that it re-initialize the valid channel list*/
+            hdd_ResetCountryCodeAfterDisAssoc(pAdapter);
+        }
     }
 
     return eHAL_STATUS_SUCCESS;
@@ -1634,14 +1660,17 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
                     {
                         /*Filter applied during suspend mode*/
                         /*Clear it here*/
-                        wlan_hdd_set_mc_addr_list(pHddCtx, FALSE);
+                        wlan_hdd_set_mc_addr_list(pHddCtx, FALSE, pAdapter->sessionId);
                     }
                 }
 #endif
-                /* Disconnected from current AP. Reset the country code information
-                 * so that it re-initialize the valid channel list*/
-                hdd_ResetCountryCodeAfterDisAssoc(pAdapter);
 
+                if (WLAN_HDD_P2P_CLIENT != pAdapter->device_mode)
+                {
+                    /* Disconnected from current AP. Reset the country code information
+                     * so that it re-initialize the valid channel list*/
+                    hdd_ResetCountryCodeAfterDisAssoc(pAdapter);
+                }
             }
             break;
         case eCSR_ROAM_IBSS_LEAVE:

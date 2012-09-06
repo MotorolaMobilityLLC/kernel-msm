@@ -100,6 +100,9 @@ extern void hdd_suspend_wlan(struct early_suspend *wlan_suspend);
 extern void hdd_resume_wlan(struct early_suspend *wlan_suspend);
 #endif
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+#define MAX_OEM_DATA_RSP_LEN 1024
+#endif
 
 #define HDD_FINISH_ULA_TIME_OUT    800
 
@@ -182,6 +185,9 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_GET_CFG           3
 #define WE_GET_WMM_STATUS    4
 #define WE_GET_CHANNEL_LIST  5
+#ifdef WLAN_FEATURE_11AC
+#define WE_GET_RSSI          6
+#endif
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_NONE_GET_NONE   (SIOCIWFIRSTPRIV + 6)
@@ -219,6 +225,11 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WAPI_CERT_AKM_SUITE 0x01721400
 #endif
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+/* Private ioctls for setting the measurement configuration */
+#define WLAN_PRIV_SET_OEM_DATA_REQ (SIOCIWFIRSTPRIV + 17)
+#define WLAN_PRIV_GET_OEM_DATA_RSP (SIOCIWFIRSTPRIV + 19)
+#endif
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
 #define WLAN_PRIV_SET_FTIES             (SIOCIWFIRSTPRIV + 20)
@@ -267,6 +278,13 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WLAN_STATS_RX_RATE            14
 #define WLAN_STATS_TX_RATE            15
 
+#define WLAN_STATS_RX_UC_BYTE_CNT     16
+#define WLAN_STATS_RX_MC_BYTE_CNT     17
+#define WLAN_STATS_RX_BC_BYTE_CNT     18
+#define WLAN_STATS_TX_UC_BYTE_CNT     19
+#define WLAN_STATS_TX_MC_BYTE_CNT     20
+#define WLAN_STATS_TX_BC_BYTE_CNT     21
+
 #define FILL_TLV(__p, __type, __size, __val, __tlen) \
 {\
     if ((__tlen + __size + 2) < WE_MAX_STR_LEN) \
@@ -295,8 +313,9 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WLAN_HDD_UI_SET_BAND_VALUE_OFFSET         8
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
-int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest);
-void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set);
+int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest, 
+                           v_U8_t sessionId);
+void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set, v_U8_t sessionId);
 #endif
 
 #ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
@@ -408,13 +427,21 @@ int hdd_wlan_get_frag_threshold(hdd_adapter_t *pAdapter, union iwreq_data *wrqu)
 
 int hdd_wlan_get_freq(v_U32_t channel, v_U32_t *pfreq)
 {
-     if((channel > 0) && (channel <= (FREQ_CHAN_MAP_TABLE_SIZE - 1)))
-     {
-       *pfreq = freq_chan_map[channel - 1].freq * 100000;
-       return 0;
-     }
-     else
-       return -EINVAL;
+    int i;
+    if (channel > 0)
+    {
+        for (i=0; i < FREQ_CHAN_MAP_TABLE_SIZE; i++)
+        {
+            if (channel == freq_chan_map[i].chan)
+            {
+                *pfreq = freq_chan_map[i].freq;
+                return 1;
+            }
+        }
+    }
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                               ("Invalid channel no=%d!!\n"), channel);
+    return -EINVAL;
 }
 
 static v_BOOL_t
@@ -1076,7 +1103,7 @@ static int iw_set_freq(struct net_device *dev, struct iw_request_info *info,
 static int iw_get_freq(struct net_device *dev, struct iw_request_info *info,
              struct iw_freq *fwrq, char *extra)
 {
-   v_U32_t status = 0,channel,freq = 0;
+   v_U32_t status = FALSE, channel = 0, freq = 0;
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
    tHalHandle hHal;
    hdd_wext_state_t *pWextState;
@@ -1103,18 +1130,31 @@ static int iw_get_freq(struct net_device *dev, struct iw_request_info *info,
        }
        else
        {
-          fwrq->m = channel;
-          fwrq->e = 0;
+           status = hdd_wlan_get_freq(channel, &freq);
+           if( TRUE == status )
+           {
+               /* Set Exponent parameter as 6 (MHZ) in struct iw_freq
+                * iwlist & iwconfig command shows frequency into proper
+                * format (2.412 GHz instead of 246.2 MHz)*/
+               fwrq->m = freq;
+               fwrq->e = MHZ;
+           }
        }
     }
     else
     {
        channel = pHddStaCtx->conn_info.operationChannel;
-       status = hdd_wlan_get_freq(channel,&freq);
-       fwrq->m = freq;
-       fwrq->e = 0;
+       status = hdd_wlan_get_freq(channel, &freq);
+       if( TRUE == status )
+       {
+          /* Set Exponent parameter as 6 (MHZ) in struct iw_freq
+           * iwlist & iwconfig command shows frequency into proper
+           * format (2.412 GHz instead of 246.2 MHz)*/
+           fwrq->m = freq;
+           fwrq->e = MHZ;
+       }
     }
-   return status;
+   return 0;
 }
 
 static int iw_get_tx_power(struct net_device *dev,
@@ -3760,7 +3800,17 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
             wrqu->data.length = strlen(extra)+1;
             break;
         }
-
+#ifdef WLAN_FEATURE_11AC
+        case WE_GET_RSSI:
+        {
+            v_S7_t s7Rssi = 0;
+            wlan_hdd_get_rssi(pAdapter, &s7Rssi);
+            snprintf(extra, WE_MAX_STR_LEN, "rssi=%d",s7Rssi);
+            wrqu->data.length = strlen(extra)+1;
+            break;
+        }
+#endif
+           
         case WE_GET_WMM_STATUS:
         {
             snprintf(extra, WE_MAX_STR_LEN,
@@ -3785,6 +3835,7 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
                     pAdapter->hddWmmStatus.wmmAcStatus[WLANTL_AC_BK].wmmAcAccessRequired,
                     pAdapter->hddWmmStatus.wmmAcStatus[WLANTL_AC_BK].wmmAcAccessAllowed?"YES":"NO",
                     pAdapter->hddWmmStatus.wmmAcStatus[WLANTL_AC_BK].wmmAcTspecInfo.ts_info.direction);
+
 
             wrqu->data.length = strlen(extra)+1;
             break;
@@ -4565,7 +4616,8 @@ static int iw_set_host_offload(struct net_device *dev, struct iw_request_info *i
        exactly the same.  Otherwise, each piece of information would have to be
        copied individually. */
     memcpy(&offloadRequest, pRequest, wrqu->data.length);
-    if (eHAL_STATUS_SUCCESS != sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter), &offloadRequest))
+    if (eHAL_STATUS_SUCCESS != sme_SetHostOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                        pAdapter->sessionId, &offloadRequest))
     {
         hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Failure to execute host offload request\n",
                __func__);
@@ -4628,7 +4680,8 @@ static int iw_set_keepalive_params(struct net_device *dev, struct iw_request_inf
 
        hddLog(VOS_TRACE_LEVEL_ERROR, "set Keep: TP before SME %d\n", keepaliveRequest.timePeriod);
 
-    if (eHAL_STATUS_SUCCESS != sme_SetKeepAlive(WLAN_HDD_GET_HAL_CTX(pAdapter), &keepaliveRequest))
+    if (eHAL_STATUS_SUCCESS != sme_SetKeepAlive(WLAN_HDD_GET_HAL_CTX(pAdapter), 
+                                        pAdapter->sessionId, &keepaliveRequest))
     {
         hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Failure to execute Keep Alive\n",
                __func__);
@@ -4639,7 +4692,8 @@ static int iw_set_keepalive_params(struct net_device *dev, struct iw_request_inf
 }
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
-int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest)
+int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest, 
+                            tANI_U8 sessionId)
 {
     tSirRcvPktFilterCfgType    packetFilterSetReq;
     tSirRcvFltPktClearParam    packetFilterClrReq;
@@ -4703,7 +4757,7 @@ int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest)
                         pRequest->paramsData[i].dataMask[4], pRequest->paramsData[i].dataMask[5]);
             }
 
-            if (eHAL_STATUS_SUCCESS != sme_ReceiveFilterSetFilter(pHddCtx, &packetFilterSetReq))
+            if (eHAL_STATUS_SUCCESS != sme_ReceiveFilterSetFilter(pHddCtx, &packetFilterSetReq, sessionId))
             {
                 hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Failure to execute Set Filter\n",
                         __func__);
@@ -4717,7 +4771,7 @@ int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest)
             hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "%s: Clear Packet Filter Request for Id: %d\n",
                     __FUNCTION__, pRequest->filterId);
             packetFilterClrReq.filterId = pRequest->filterId;
-            if (eHAL_STATUS_SUCCESS != sme_ReceiveFilterClearFilter(pHddCtx, &packetFilterClrReq))
+            if (eHAL_STATUS_SUCCESS != sme_ReceiveFilterClearFilter(pHddCtx, &packetFilterClrReq, sessionId))
             {
                 hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Failure to execute Clear Filter\n",
                         __func__);
@@ -4733,7 +4787,7 @@ int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest)
     return 0;
 }
 
-void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set)
+void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set, v_U8_t sessionId)
 {
     v_U8_t filterAction = 0; 
     tPacketFilterCfg request = {0}; 
@@ -4768,7 +4822,7 @@ void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set)
                     request.paramsData[0].compareData[4], 
                     request.paramsData[0].compareData[5]);
         }
-        wlan_hdd_set_filter(pHddCtx, &request);
+        wlan_hdd_set_filter(pHddCtx, &request, sessionId);
     }
     pHddCtx->mc_addr_list.isFilterApplied = set ? TRUE : FALSE;
 }
@@ -4778,7 +4832,7 @@ static int iw_set_packet_filter_params(struct net_device *dev, struct iw_request
 {   
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tpPacketFilterCfg pRequest = (tpPacketFilterCfg)wrqu->data.pointer;
-    return wlan_hdd_set_filter(WLAN_HDD_GET_CTX(pAdapter), pRequest);
+    return wlan_hdd_set_filter(WLAN_HDD_GET_CTX(pAdapter), pRequest, pAdapter->sessionId);
 }
 #endif
 static int iw_get_statistics(struct net_device *dev,
@@ -4904,9 +4958,9 @@ static int iw_get_statistics(struct net_device *dev,
               (char*) &(pStats->rx_error_cnt),
               tlen);
 
-    FILL_TLV(p, (tANI_U8)WLAN_STATS_TX_BYTE_CNT,
-              (tANI_U8) sizeof (pStats->tx_byte_cnt),
-              (char*) &(pStats->tx_byte_cnt),
+    FILL_TLV(p, (tANI_U8)WLAN_STATS_TX_BYTE_CNT, 
+              (tANI_U8) sizeof (dStats->tx_uc_byte_cnt[0]),
+              (char*) &(dStats->tx_uc_byte_cnt[0]), 
               tlen);
 
     FILL_TLV(p, (tANI_U8)WLAN_STATS_RX_BYTE_CNT,
@@ -4923,6 +4977,31 @@ static int iw_get_statistics(struct net_device *dev,
     FILL_TLV(p, (tANI_U8)WLAN_STATS_TX_RATE,
               (tANI_U8) sizeof (aStats->tx_rate),
               (char*) &(aStats->tx_rate),
+              tlen);
+
+    FILL_TLV(p, (tANI_U8)WLAN_STATS_RX_UC_BYTE_CNT, 
+              (tANI_U8) sizeof (dStats->rx_uc_byte_cnt[0]), 
+              (char*) &(dStats->rx_uc_byte_cnt[0]), 
+              tlen);
+    FILL_TLV(p, (tANI_U8)WLAN_STATS_RX_MC_BYTE_CNT, 
+              (tANI_U8) sizeof (dStats->rx_mc_byte_cnt), 
+              (char*) &(dStats->rx_mc_byte_cnt), 
+              tlen);
+    FILL_TLV(p, (tANI_U8)WLAN_STATS_RX_BC_BYTE_CNT, 
+              (tANI_U8) sizeof (dStats->rx_bc_byte_cnt), 
+              (char*) &(dStats->rx_bc_byte_cnt), 
+              tlen);
+    FILL_TLV(p, (tANI_U8)WLAN_STATS_TX_UC_BYTE_CNT, 
+              (tANI_U8) sizeof (dStats->tx_uc_byte_cnt[0]), 
+              (char*) &(dStats->tx_uc_byte_cnt[0]), 
+              tlen);
+    FILL_TLV(p, (tANI_U8)WLAN_STATS_TX_MC_BYTE_CNT, 
+              (tANI_U8) sizeof (dStats->tx_mc_byte_cnt), 
+              (char*) &(dStats->tx_mc_byte_cnt), 
+              tlen);
+    FILL_TLV(p, (tANI_U8)WLAN_STATS_TX_BC_BYTE_CNT, 
+              (tANI_U8) sizeof (dStats->tx_bc_byte_cnt), 
+              (char*) &(dStats->tx_bc_byte_cnt), 
               tlen);
 
     wrqu->data.length = tlen;
@@ -5491,7 +5570,16 @@ VOS_STATUS iw_set_power_params(struct net_device *dev, struct iw_request_info *i
     }
 
     uTotalSize -= nOffset;
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
+              "Power request parameter %d Total size", 
+              uTotalSize);
     ptr += nOffset;
+    /* This is added for dynamic Tele LI enable (0xF1) /disable (0xF0)*/
+    if(!(uTotalSize - nOffset) && 
+       (powerRequest.uListenInterval != SIR_NOCHANGE_POWER_VALUE))
+    {
+        uTotalSize = 0;
+    }
 
   }/*Go for as long as we have a valid string*/
 
@@ -5582,6 +5670,10 @@ static const iw_handler we_private[] = {
    [WLAN_PRIV_ADD_TSPEC             - SIOCIWFIRSTPRIV]   = iw_add_tspec,
    [WLAN_PRIV_DEL_TSPEC             - SIOCIWFIRSTPRIV]   = iw_del_tspec,
    [WLAN_PRIV_GET_TSPEC             - SIOCIWFIRSTPRIV]   = iw_get_tspec,
+#ifdef FEATURE_OEM_DATA_SUPPORT
+   [WLAN_PRIV_SET_OEM_DATA_REQ - SIOCIWFIRSTPRIV] = iw_set_oem_data_req, //oem data req Specifc
+   [WLAN_PRIV_GET_OEM_DATA_RSP - SIOCIWFIRSTPRIV] = iw_get_oem_data_rsp, //oem data req Specifc
+#endif
 
 #ifdef FEATURE_WLAN_WAPI
    [WLAN_PRIV_SET_WAPI_MODE             - SIOCIWFIRSTPRIV]  = iw_qcom_set_wapi_mode,
@@ -5801,6 +5893,12 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
         "getConfig" },
+#ifdef WLAN_FEATURE_11AC
+    {   WE_GET_RSSI,
+        0,
+        IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
+        "getRSSI" },
+#endif
     {   WE_GET_WMM_STATUS,
         0,
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
@@ -5869,6 +5967,21 @@ static const struct iw_priv_args we_private_args[] = {
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
         "getTspec" },
 
+#ifdef FEATURE_OEM_DATA_SUPPORT
+    /* handlers for main ioctl - OEM DATA */
+    {
+        WLAN_PRIV_SET_OEM_DATA_REQ,
+        IW_PRIV_TYPE_BYTE | sizeof(struct iw_oem_data_req) | IW_PRIV_SIZE_FIXED,
+        0,
+        "set_oem_data_req" },
+
+    /* handlers for main ioctl - OEM DATA */
+    {
+        WLAN_PRIV_GET_OEM_DATA_RSP,
+        0,
+        IW_PRIV_TYPE_BYTE | MAX_OEM_DATA_RSP_LEN,
+        "get_oem_data_rsp" },
+#endif
 
 #ifdef FEATURE_WLAN_WAPI
    /* handlers for main ioctl SET_WAPI_MODE */

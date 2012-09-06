@@ -497,11 +497,9 @@ WLANSAP_pmcFullPwrReqCB
     }
     else
     {
-        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, 
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL, 
                "WLANSAP_pmcFullPwrReqCB: PMC failed to put the chip in Full power\n");
 
-        //ASSERT
-        VOS_ASSERT(0);
     }
 
 }// WLANSAP_pmcFullPwrReqCB
@@ -2001,7 +1999,7 @@ VOS_STATUS WLANSAP_GetStatistics(v_PVOID_t pvosGCtx, tSap_SoftapStats *statBuf, 
   SIDE EFFECTS   
 ============================================================================*/
 VOS_STATUS WLANSAP_SendAction( v_PVOID_t pvosGCtx, const tANI_U8 *pBuf,
-                               tANI_U32 len )
+                               tANI_U32 len, tANI_U16 wait )
 {
     ptSapContext  pSapCtx = NULL;
     v_PVOID_t hHal = NULL;
@@ -2025,7 +2023,7 @@ VOS_STATUS WLANSAP_SendAction( v_PVOID_t pvosGCtx, const tANI_U8 *pBuf,
             return VOS_STATUS_E_FAULT;
         }
 
-        halStatus = sme_sendAction( hHal, pSapCtx->sessionId, pBuf, len );
+        halStatus = sme_sendAction( hHal, pSapCtx->sessionId, pBuf, len, 0 , 0);
 
         if ( eHAL_STATUS_SUCCESS == halStatus )
         {

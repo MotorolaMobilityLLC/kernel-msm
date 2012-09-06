@@ -176,7 +176,7 @@ WLANDXE_ChannelConfigType chanRXLowPriConfig =
    WLANDXE_CHANNEL_HANDLE_CIRCULA,
 
    /* Number of Descriptor, NOT CLEAR YET !!! */
-   256,
+   512,
 
    /* MAX num RX Buffer, NOT CLEAR YET !!! */
    1,

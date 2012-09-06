@@ -128,6 +128,7 @@ typedef enum
  * Check the version number and find if MCC feature is supported or not
  */
 #define IS_MCC_SUPPORTED (WDA_IsWcnssWlanReportedVersionGreaterThanOrEqual( 0, 1, 1, 0))
+#define IS_SLM_SESSIONIZED (WDA_IsWcnssWlanReportedVersionGreaterThanOrEqual( 7, 0, 0, 0))
 
 /*--------------------------------------------------------------------------
   Definitions for Data path APIs
@@ -419,6 +420,7 @@ typedef struct
    /* set, when BT AMP session is going on */
    v_BOOL_t             wdaAmpSessionOn;
    v_U32_t              VosPacketToFree;
+   v_BOOL_t             needShutdown;
 } tWDA_CbContext ; 
 
 typedef struct
@@ -465,6 +467,17 @@ VOS_STATUS WDA_close(v_PVOID_t pVosContext);
  * Shutdown will not close the control transport, added by SSR
  */
 VOS_STATUS WDA_shutdown(v_PVOID_t pVosContext, wpt_boolean closeTransport);
+
+/*
+ * FUNCTION: WDA_stopFailed
+ * WDA stop is failed
+ */
+void WDA_stopFailed(v_PVOID_t pVosContext);
+/*
+ * FUNCTION: WDA_needShutdown
+ * WDA requires a shutdown rather than a close
+ */
+v_BOOL_t WDA_needShutdown(v_PVOID_t pVosContext);
 
 /*
  * FUNCTION: WDA_McProcessMsg
@@ -1174,6 +1187,12 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_SIGNAL_BTAMP_EVENT         SIR_HAL_SIGNAL_BTAMP_EVENT
 
 #ifdef ANI_CHIPSET_VOLANS
+#ifdef FEATURE_OEM_DATA_SUPPORT
+/* PE <-> HAL OEM_DATA RELATED MESSAGES */
+#define WDA_START_OEM_DATA_REQ         SIR_HAL_START_OEM_DATA_REQ 
+#define WDA_START_OEM_DATA_RSP         SIR_HAL_START_OEM_DATA_RSP
+#define WDA_FINISH_OEM_DATA_REQ        SIR_HAL_FINISH_OEM_DATA_REQ
+#endif
 #endif
 
 #define WDA_SET_MAX_TX_POWER_REQ       SIR_HAL_SET_MAX_TX_POWER_REQ
@@ -1201,9 +1220,6 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_WLAN_SUSPEND_IND           SIR_HAL_WLAN_SUSPEND_IND
 #define WDA_WLAN_RESUME_REQ           SIR_HAL_WLAN_RESUME_REQ
 #define WDA_MSG_TYPES_END    SIR_HAL_MSG_TYPES_END
-
-#define WDA_SUSPEND_ACTIVITY_RSP SIR_HAL_SUSPEND_ACTIVITY_RSP
-
 
 #define WDA_MMH_TXMB_READY_EVT SIR_HAL_MMH_TXMB_READY_EVT     
 #define WDA_MMH_RXMB_DONE_EVT  SIR_HAL_MMH_RXMB_DONE_EVT    

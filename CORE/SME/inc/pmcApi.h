@@ -420,7 +420,8 @@ extern eHalStatus pmcEnterWowl (
 extern eHalStatus pmcExitWowl (tHalHandle hHal);
 
 
-extern eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest);
+extern eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest,
+                                          tANI_U8 *bssId);
 
 /* ---------------------------------------------------------------------------
     \fn pmcSetKeepAlive
@@ -431,7 +432,7 @@ extern eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pReque
             eHAL_STATUS_FAILURE  Cannot set the keepalive.
             eHAL_STATUS_SUCCESS  Request accepted. 
   ---------------------------------------------------------------------------*/
-extern eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest);
+extern eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest, tANI_U8 *bssId);
 
 extern tANI_BOOLEAN pmcValidateConnectState( tHalHandle hHal );
 

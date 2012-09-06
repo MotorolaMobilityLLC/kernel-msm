@@ -106,6 +106,10 @@ enum eWniMsgTypes
     eWNI_SME_SCAN_REQ,
     eWNI_SME_SCAN_ABORT_IND,
     eWNI_SME_SCAN_RSP,
+#ifdef FEATURE_OEM_DATA_SUPPORT
+    eWNI_SME_OEM_DATA_REQ,
+    eWNI_SME_OEM_DATA_RSP,
+#endif
     eWNI_SME_JOIN_REQ,
     eWNI_SME_JOIN_RSP,
     eWNI_SME_SETCONTEXT_REQ,
@@ -323,7 +327,8 @@ enum eWniMsgTypes
 #ifdef WLAN_WAKEUP_EVENTS
     eWNI_SME_WAKE_REASON_IND,
 #endif // WLAN_WAKEUP_EVENTS
-
+    eWNI_SME_EXCLUDE_UNENCRYPTED,
+    eWNI_SME_RSSI_IND, //RSSI indication from TL to be serialized on MC thread
     eWNI_SME_MSG_TYPES_END
 };
 

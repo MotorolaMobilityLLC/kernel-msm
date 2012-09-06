@@ -49,12 +49,31 @@
 #if defined( FEATURE_WLAN_INTEGRATED_SOC )
 typedef enum
 {
-    PHY_SINGLE_CHANNEL_CENTERED = 0,        // 20MHz IF bandwidth centered on IF carrier
-    PHY_DOUBLE_CHANNEL_LOW_PRIMARY = 1,     // 40MHz IF bandwidth with lower 20MHz supporting the primary channel
-    //not allowed PHY_DOUBLE_CHANNEL_CENTERED = 2,        // 40MHz IF bandwidth centered on IF carrier
-    PHY_DOUBLE_CHANNEL_HIGH_PRIMARY = 3     // 40MHz IF bandwidth with higher 20MHz supporting the primary channel
+    PHY_SINGLE_CHANNEL_CENTERED     = 0,        // 20MHz IF bandwidth centered on IF carrier
+    PHY_DOUBLE_CHANNEL_LOW_PRIMARY  = 1,        // 40MHz IF bandwidth with lower 20MHz supporting the primary channel
+    PHY_DOUBLE_CHANNEL_HIGH_PRIMARY = 3,        // 40MHz IF bandwidth with higher 20MHz supporting the primary channel
+#ifdef WLAN_FEATURE_11AC    
+    PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_CENTERED = 4, //20/40MHZ offset LOW 40/80MHZ offset CENTERED
+    PHY_QUADRUPLE_CHANNEL_20MHZ_CENTERED_40MHZ_CENTERED = 5, //20/40MHZ offset CENTERED 40/80MHZ offset CENTERED
+    PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_CENTERED = 6, //20/40MHZ offset HIGH 40/80MHZ offset CENTERED
+    PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_LOW = 7,//20/40MHZ offset LOW 40/80MHZ offset LOW
+    PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_LOW = 8, //20/40MHZ offset HIGH 40/80MHZ offset LOW
+    PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_HIGH = 9, //20/40MHZ offset LOW 40/80MHZ offset HIGH
+    PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_HIGH = 10,//20/40MHZ offset-HIGH 40/80MHZ offset HIGH
+#endif
+    PHY_CHANNEL_BONDING_STATE_MAX   = 11
 }ePhyChanBondState;
 #endif /* FEATURE_WLAN_INTEGRATED_SOC */
+
+#define SIR_MIN(a,b)   (((a) < (b)) ? (a) : (b))
+#define SIR_MAX(a,b)   (((a) > (b)) ? (a) : (b))
+
+typedef enum {
+   MCC	   = 0,
+   P2P	   = 1,
+   DOT11AC = 2,
+   MAX_FEATURE_SUPPORTED = 128,
+} placeHolderInCapBitmap;
 
 typedef enum eSriLinkState {
     eSIR_LINK_IDLE_STATE        = 0,
@@ -135,7 +154,10 @@ typedef struct sSirMbMsgP2p
      */
     tANI_U16 msgLen;
 
-    tANI_U32 sessionId;
+    tANI_U8 sessionId;
+    tANI_U8 noack;
+    tANI_U16 wait;
+
     /**
      * This is the first data word in the mailbox message.
      * It is followed by n words of data.
@@ -423,6 +445,12 @@ typedef struct sSirMbMsgP2p
 #ifdef ANI_CHIPSET_VOLANS
 /* PE <-> HAL addr2 mismatch message */
 #define SIR_LIM_ADDR2_MISS_IND             SIR_HAL_ITC_MSG_TYPES_BEGIN + 142
+#ifdef FEATURE_OEM_DATA_SUPPORT
+/* PE <-> HAL OEM_DATA RELATED MESSAGES */
+#define SIR_HAL_START_OEM_DATA_REQ         SIR_HAL_ITC_MSG_TYPES_BEGIN + 143
+#define SIR_HAL_START_OEM_DATA_RSP       SIR_HAL_ITC_MSG_TYPES_BEGIN + 144
+#define SIR_HAL_FINISH_OEM_DATA_REQ      SIR_HAL_ITC_MSG_TYPES_BEGIN + 145
+#endif
 #endif
 
 #define SIR_HAL_SET_MAX_TX_POWER_REQ       SIR_HAL_ITC_MSG_TYPES_BEGIN + 146
@@ -519,10 +547,10 @@ typedef struct sSirMbMsgP2p
 // LIM message types
 #define SIR_LIM_MSG_TYPES_BEGIN        (SIR_LIM_MODULE_ID << 8)
 #define SIR_LIM_ITC_MSG_TYPES_BEGIN    SIR_LIM_MSG_TYPES_BEGIN+0xB0
+
 // Messages to/from HAL
-#define SIR_LIM_RESUME_ACTIVITY_NTF        SIR_LIM_ITC_MSG_TYPES_BEGIN
-#define SIR_LIM_SUSPEND_ACTIVITY_REQ       SIR_LIM_ITC_MSG_TYPES_BEGIN + 1
-#define SIR_HAL_SUSPEND_ACTIVITY_RSP       SIR_LIM_ITC_MSG_TYPES_BEGIN + 2
+// Removed as part of moving HAL down to FW
+
 // Message from ISR upon TFP retry interrupt
 #define SIR_LIM_RETRY_INTERRUPT_MSG        SIR_LIM_ITC_MSG_TYPES_BEGIN + 3
 // Message from BB Transport
