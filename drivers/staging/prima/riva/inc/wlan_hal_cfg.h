@@ -134,11 +134,13 @@
 #define QWLAN_HAL_CFG_WCNSS_API_VERSION                  80
 #define QWLAN_HAL_CFG_AP_KEEPALIVE_TIMEOUT               81
 #define QWLAN_HAL_CFG_GO_KEEPALIVE_TIMEOUT               82
-#define QWLAN_HAL_CFG_MAX_PARAMS                         83
+#define QWLAN_HAL_CFG_ENABLE_MC_ADDR_LIST                83
+#define QWLAN_HAL_CFG_MAX_PARAMS                         84
 
 
 /* Total number of Integer CFGs. This is used while allocating the memory for TLV */
-#define QWLAN_HAL_CFG_INTEGER_PARAM                      79
+#define QWLAN_HAL_CFG_INTEGER_PARAM                      80
+
 
 /*-------------------------------------------------------------------------
   Configuration Parameter min, max, defaults
@@ -626,6 +628,11 @@
 #define QWLAN_HAL_CFG_GO_KEEPALIVE_TIMEOUT_MAX  255
 #define QWLAN_HAL_CFG_GO_KEEPALIVE_TIMEOUT_DEF  20
 
+/* QWLAN_HAL_CFG_ENABLE_MC_ADDR_LIST */
+#define QWLAN_HAL_CFG_ENABLE_MC_ADDR_LIST_MIN  0
+#define QWLAN_HAL_CFG_ENABLE_MC_ADDR_LIST_MAX  1
+#define QWLAN_HAL_CFG_ENABLE_MC_ADDR_LIST_DEF  0
+
 typedef struct 
 {
    uint8    cfgStaId[QCOM_WLAN_CFG_STA_ID_LEN]; //QWLAN_HAL_CFG_STA_ID
@@ -712,6 +719,7 @@ typedef struct
    uint32   cfgWcnssApiVersion;               //QWLAN_HAL_CFG_WCNSS_API_VERSION
    uint32   cfgApKeepAliveTimeout;            //QWLAN_HAL_CFG_AP_KEEPALIVE_TIMEOUT
    uint32   cfgGoKeepAliveTimeout;            //QWLAN_HAL_CFG_GO_KEEPALIVE_TIMEOUT
+   uint32   cfgEnableMCAddrList;              //QWLAN_HAL_CFG_ENABLE_MC_ADDR_LIST   
 }tAniHalCfg, *tpAniHalCfg;
 
 #endif //__WLAN_HAL_CFG_H__

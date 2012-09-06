@@ -39,8 +39,11 @@ typedef enum
    eConnectionState_IbssDisconnected,
 
    /** Participating in an IBSS network with partner stations also present*/
-   eConnectionState_IbssConnected
+   eConnectionState_IbssConnected,
 
+   /** Disconnecting in an Infrastructure network.*/
+   eConnectionState_Disconnecting
+	
 }eConnectionState;
 /**This structure stores the connection information */
 typedef struct connection_info_s

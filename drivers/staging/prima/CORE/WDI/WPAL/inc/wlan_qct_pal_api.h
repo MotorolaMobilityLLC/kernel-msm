@@ -295,4 +295,13 @@ wpt_status wpalDriverReInit(void);
 ---------------------------------------------------------------------------*/
 wpt_status wpalRivaSubystemRestart(void);
 
+/*---------------------------------------------------------------------------
+    wpalWlanReload -  Initiate WLAN Driver reload
+
+    Param:
+       None
+    Return:
+       NONE
+---------------------------------------------------------------------------*/
+void wpalWlanReload(void);
 #endif // __WLAN_QCT_PAL_API_H

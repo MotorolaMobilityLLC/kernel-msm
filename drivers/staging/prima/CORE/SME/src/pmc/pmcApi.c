@@ -1624,8 +1624,10 @@ tANI_BOOLEAN pmcValidateConnectState( tHalHandle hHal )
       smsLog(pMac, LOGW, "PMC: BT-AMP exists. BMPS cannot be entered\n");
       return eANI_BOOLEAN_FALSE;
    }
-   if ((vos_concurrent_sessions_running()) && 
-        csrIsConcurrentInfraConnected( pMac ))
+   if ((vos_concurrent_sessions_running()) &&
+       (csrIsConcurrentInfraConnected( pMac ) ||
+       (vos_get_concurrency_mode()& VOS_SAP) ||
+       (vos_get_concurrency_mode()& VOS_P2P_GO)))
    {
       smsLog(pMac, LOGW, "PMC: Multiple active sessions exists. BMPS cannot be entered\n");
       return eANI_BOOLEAN_FALSE;
@@ -2426,10 +2428,21 @@ eHalStatus pmcExitWowl (tHalHandle hHal)
             eHAL_STATUS_FAILURE  Cannot set the offload.
             eHAL_STATUS_SUCCESS  Request accepted. 
   ---------------------------------------------------------------------------*/
-eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest)
+eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest, tANI_U8 *bssId)
 {
     tpSirHostOffloadReq pRequestBuf;
     vos_msg_t msg;
+    tpPESession     psessionEntry;
+    tANI_U8   sessionId;
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+
+    if((psessionEntry = peFindSessionByBssid( pMac, bssId,&sessionId)) == NULL )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Unable to find"
+        "the psessionEntry for bssid : 0x%x:0x%x:0x%x:0x%x:0x%x:0x%x", 
+        __FUNCTION__,bssId[5],bssId[4],bssId[3],bssId[2],bssId[1],bssId[0]);
+        return eHAL_STATUS_FAILURE;
+    }
 
     VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s: IP address = %d.%d.%d.%d", __FUNCTION__,
         pRequest->params.hostIpv4Addr[0], pRequest->params.hostIpv4Addr[1],
@@ -2442,6 +2455,8 @@ eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest)
         return eHAL_STATUS_FAILED_ALLOC;
     }
     vos_mem_copy(pRequestBuf, pRequest, sizeof(tSirHostOffloadReq));
+
+    pRequestBuf->bssIdx = psessionEntry->bssIdx;
 
     msg.type = WDA_SET_HOST_OFFLOAD;
     msg.reserved = 0;
@@ -2465,10 +2480,20 @@ eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest)
             eHAL_STATUS_FAILURE  Cannot set the keepalive.
             eHAL_STATUS_SUCCESS  Request accepted. 
   ---------------------------------------------------------------------------*/
-eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest)
+eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest, tANI_U8 *bssId)
 {
     tpSirKeepAliveReq pRequestBuf;
     vos_msg_t msg;
+    tpPESession     psessionEntry;
+    tANI_U8   sessionId;
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+    if((psessionEntry = peFindSessionByBssid( pMac, bssId,&sessionId)) == NULL )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Unable to find"
+        "the psessionEntry for bssid : 0x%x:0x%x:0x%x:0x%x:0x%x:0x%x", 
+        __FUNCTION__,bssId[5],bssId[4],bssId[3],bssId[2],bssId[1],bssId[0]);
+        return eHAL_STATUS_FAILURE;
+    }
 
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_LOW, "%s: "
                   "WDA_SET_KEEP_ALIVE message", __FUNCTION__);
@@ -2482,7 +2507,9 @@ eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest)
         return eHAL_STATUS_FAILED_ALLOC;
     }
     vos_mem_copy(pRequestBuf, pRequest, sizeof(tSirKeepAliveReq));
-    
+
+    pRequestBuf->bssIdx = psessionEntry->bssIdx;
+
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_LOW, "buff TP %d "
               "input TP %d ", pRequestBuf->timePeriod, pRequest->timePeriod);
 
@@ -2513,11 +2540,21 @@ eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest)
             eHAL_STATUS_FAILURE  Cannot set the offload.
             eHAL_STATUS_SUCCESS  Request accepted. 
   ---------------------------------------------------------------------------*/
-eHalStatus pmcSetNSOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest)
+eHalStatus pmcSetNSOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest, tANI_U8 *bssId)
 {
     tpSirHostOffloadReq pRequestBuf;
     vos_msg_t msg;
     int i;
+    tpPESession     psessionEntry;
+    tANI_U8   sessionId;
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+    if((psessionEntry = peFindSessionByBssid( pMac, bssId,&sessionId)) == NULL )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Unable to find"
+        "the psessionEntry for bssid : 0x%x:0x%x:0x%x:0x%x:0x%x:0x%x", 
+        __FUNCTION__,bssId[5],bssId[4],bssId[3],bssId[2],bssId[1],bssId[0]);
+        return eHAL_STATUS_FAILURE;
+    }
 
     pRequestBuf = vos_mem_malloc(sizeof(tSirHostOffloadReq));
     if (NULL == pRequestBuf)
@@ -2526,6 +2563,8 @@ eHalStatus pmcSetNSOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest)
         return eHAL_STATUS_FAILED_ALLOC;
     }
     vos_mem_copy(pRequestBuf, pRequest, sizeof(tSirHostOffloadReq));
+
+    pRequestBuf->bssIdx = psessionEntry->bssIdx;
 
     msg.type = WDA_SET_NS_OFFLOAD;
     msg.reserved = 0;
@@ -2737,7 +2776,7 @@ pmcPrepareProbeReqTemplate(tpAniSirGlobal pMac,
     
     if (IS_DOT11_MODE_HT(dot11mode))
     {
-       PopulateDot11fHTCaps( pMac, &pr.HTCaps );
+       PopulateDot11fHTCaps( pMac, NULL, &pr.HTCaps );
     }
     
     // That's it-- now we pack it.  First, how much space are we going to

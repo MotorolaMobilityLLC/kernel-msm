@@ -94,13 +94,32 @@ typedef struct
         /** This bit filled by rxp when set indicates if the current tsf is smaller
         than received tsf */
         wpt_uint32 rtsf:1;
-    
+
+#ifdef WCN_PRONTO_CSU
+        /** No valid header found during parsing. Therefore no checksum was validated */
+        wpt_uint32 csuNoValHd:1;
+
+        /** 0 = CSU did not verify TCP/UDP (Transport Layer TL) checksum; 1 = CSU verified TCP/UDP checksum */
+        wpt_uint32 csuVerifiedTLChksum:1;
+
+        /** 0 = CSU did not verify IP checksum; 1 = CSU verified IP checksum */
+        wpt_uint32 csuVerifiedIPChksum:1;
+
+        /** 0 = BD field checksum is not valid; 1 = BD field checksum is valid */
+        wpt_uint32 csuChksumValid:1;
+
+        /** 0 = No TCP/UDP checksum error; 1 = Has TCP/UDP checksum error */
+        wpt_uint32 csuTLChksumError:1;
+
+        /** 0 = No IPv4/IPv6 checksum error; 1 = Has IPv4/IPv6 checksum error */
+        wpt_uint32 csuIPChksumError:1;
+#else /*WCN_PRONTO*/
         /** These two fields are used by SW to carry the Rx Channel number and SCAN bit in RxBD*/
         wpt_uint32 rxChannel:4;
         wpt_uint32 scanLearn:1;
-
         wpt_uint32 reserved0:1;
-    
+#endif /*WCN_PRONTO*/
+
         /** LLC Removed
         This bit is only used in Libra rsvd for Virgo1.0/Virgo2.0
         Filled by ADU when it is set LLC is removed from packet */
@@ -167,11 +186,22 @@ typedef struct
         wpt_uint32 rxKeyId:3;
         wpt_uint32 ub:1;
         wpt_uint32 rmf:1;
-        wpt_uint32 reserved1:1;
-        wpt_uint32 llc:1;
+        wpt_uint32 umaByPass:1;
+        wpt_uint32 llcr:1;
+
+#ifdef WCN_PRONTO_CSU
+        wpt_uint32 csuIPChksumError:1;
+        wpt_uint32 csuTLChksumError:1;
+        wpt_uint32 csuChksumValid:1;
+        wpt_uint32 csuVerifiedIPChksum:1;
+        wpt_uint32 csuVerifiedTLChksum:1;
+        wpt_uint32 csuNoValHd:1;
+#else /*WCN_PRONTO*/
         wpt_uint32 reserved0:1;
         wpt_uint32 scanLearn:1;
         wpt_uint32 rxChannel:4;
+#endif /*WCN_PRONTO*/
+
         wpt_uint32 rtsf:1;
         wpt_uint32 bsf:1;
         wpt_uint32 A2HF:1;
@@ -188,14 +218,24 @@ typedef struct
         Used in ADU (for AMSDU deaggregation) */
         wpt_uint32 penultimatePduIdx:16;
     
+#ifdef WCN_PRONTO 
+        wpt_uint32 aduFeedback:7;
+        wpt_uint32 dpuMagicPacket: 1; 
+#else
         wpt_uint32 aduFeedback:8;
+#endif //WCN_PRONTO
     
         /** DPU feedback */
         wpt_uint32 dpuFeedback:8;
         
 #else
         wpt_uint32 dpuFeedback:8;
+#ifdef WCN_PRONTO 
+        wpt_uint32 dpuMagicPacket: 1; 
+        wpt_uint32 aduFeedback:7;
+#else
         wpt_uint32 aduFeedback:8;
+#endif //WCN_PRONTO
         wpt_uint32 penultimatePduIdx:16;
 #endif
     
@@ -254,7 +294,13 @@ typedef struct
         (header and data). Note that the length does not include FCS field. */
         wpt_uint32 mpduLength:16;
     
+#ifdef WCN_PRONTO
+        wpt_uint32 reserved3: 3;
+        wpt_uint32 rxDXEPriorityRouting:1; 
+#else
         wpt_uint32 reserved3:4;
+#endif //WCN_PRONTO
+    
     
         /** Traffic Identifier
         Indicates the traffic class the frame belongs to. For non QoS frames,
@@ -265,7 +311,13 @@ typedef struct
 #else
         wpt_uint32 reserved4:8;
         wpt_uint32 tid:4;
+#ifdef WCN_PRONTO
+        wpt_uint32 rxDXEPriorityRouting:1; 
+        wpt_uint32 reserved3: 3;
+#else
         wpt_uint32 reserved3:4;
+#endif //WCN_PRONTO
+    
         wpt_uint32 mpduLength:16;
 #endif
     
@@ -329,9 +381,22 @@ typedef struct
         wpt_uint32 pmiCmd4to23[5];               /* PMI cmd rcvd from RxP */
     
         /* 0x3c */
+#ifdef WCN_PRONTO
+#ifdef WPT_BIG_BYTE_ENDIAN
+        /** The bits from the PMI command as received from the PHY RX. */
+        wpt_uint32 pmiCmd24to25:16;
+
+        /* 16-bit CSU Checksum value for the fragmented receive frames */
+        wpt_uint32 csuChecksum:16;
+#else
+        wpt_uint32 csuChecksum:16;
+        wpt_uint32 pmiCmd24to25:16;
+#endif
+#else /*WCN_PRONTO*/
         /** The bits from the PMI command as received from the PHY RX. */
         wpt_uint32 pmiCmd24to25;
-    
+#endif /*WCN_PRONTO*/
+
         /* 0x40 */
 #ifdef WPT_BIG_BYTE_ENDIAN
     
@@ -352,9 +417,23 @@ typedef struct
         applied to AMPDU packets. */
         wpt_uint32 reorderSlotIdx:6;
         
-        wpt_uint32 reserved7:4;
+#ifdef WCN_PRONTO
+        wpt_uint32 reserved7: 2;
+        wpt_uint32 outOfOrderForward: 1;
+        wpt_uint32 reorderEnable: 1;
 #else
         wpt_uint32 reserved7:4;
+#endif //WCN_PRONTO
+
+#else
+
+#ifdef WCN_PRONTO
+        wpt_uint32 reorderEnable: 1;
+        wpt_uint32 outOfOrderForward: 1;
+        wpt_uint32 reserved7: 2;
+#else
+        wpt_uint32 reserved7:4;
+#endif //WCN_PRONTO
         wpt_uint32 reorderSlotIdx:6;
         wpt_uint32 reorderFwdIdx:6;
         wpt_uint32 reserved6:12;
@@ -736,9 +815,65 @@ typedef struct
     
         /** DPU signature. Filled by Host in Virgo 1.0 but by ADU in Virgo 2.0 */
         wpt_uint32 dpuSignature:3;
-    
+
+#ifdef WCN_PRONTO        
+        /** Reserved  */
+        wpt_uint32 reserved0:2;
+
+         /** Set to '1' to terminate the current AMPDU session. Added based on the 
+        request for WiFi Display */
+        wpt_uint32 terminateAMPDU:1;
+
+       /** Bssid index to indicate ADU to use which of the 4 default MAC address 
+        to use while 802.3 to 802.11 translation in case search in ADU UMA table 
+        fails. The default MAC address should be appropriately programmed in the 
+        uma_tx_default_wmacaddr_u(_1,_2,_3) and uma_tx_default_wmacaddr_l(_1,_2,_3)
+         registers */
+        wpt_uint32 umaBssidIdx:2;
+
+        /** Set to 1 to enable uma filling the BD when FT is not enabled.
+        Ignored when FT is enabled. */
+        wpt_uint32 umaBDEnable:1;
+
+        /** (Only used by the CSU)
+        0: No action
+        1: Host will indicate TCP/UPD header start location and provide pseudo header value in BD.
+        */
+        wpt_uint32 csuSWMode:1;
+
+        /** Enable/Disable CSU on TX direction.
+        0: Disable Checksum Unit (CSU) for Transmit.
+        1: Enable 
+        */
+        wpt_uint32 csuTXEnable:1;
+
+        /** Enable/Disable Transport layer Checksum in CSU
+        0: Disable TCP UDP checksum generation for TX.
+        1: Enable TCP UDP checksum generation for TX.
+        */
+        wpt_uint32 csuEnableTLCksum:1;
+
+        /** Enable/Disable IP layer Checksum in CSU
+        0: Disable IPv4/IPv6 checksum generation for TX
+        1: Enable  IPv4/IPv6 checksum generation for TX
+        */
+        wpt_uint32 csuEnableIPCksum:1;
+
+        /** Filled by CSU to indicate whether transport layer Checksum is generated by CSU or not
+        0: TCP/UDP checksum is being generated for TX.
+        1: TCP/UDP checksum is NOT being generated for TX.
+         */
+        wpt_uint32 csuTLCksumGenerated:1;
+
+        /** Filled by CSU in error scenario
+        1: No valid header found during parsing. Therefore no checksum was validated.
+        0: Valid header found
+        */
+        wpt_uint32 csuNoValidHeader:1;
+#else /*WCN_PRONTO*/
         wpt_uint32 reserved0:12;
-    
+#endif /*WCN_PRONTO*/
+
         /** Only available in Virgo 2.0 and reserved in Virgo 1.0.
         This bit indicates to DPU that the packet is a robust management frame
         which requires  encryption(this bit is only valid for certain management
@@ -794,7 +929,20 @@ typedef struct
         wpt_uint32 reserved1:1;
         wpt_uint32 ub:1;
         wpt_uint32 rmf:1;
+#ifdef WCN_PRONTO        
+        wpt_uint32 csuNoValidHeader:1;
+        wpt_uint32 csuTLCksumGenerated:1;
+        wpt_uint32 csuEnableIPCksum:1;
+        wpt_uint32 csuEnableTLCksum:1;
+        wpt_uint32 csuTXEnable:1;
+        wpt_uint32 csuSWMode:1;
+        wpt_uint32 umaBDEnable:1;
+        wpt_uint32 umaBssidIdx:2;
+        wpt_uint32 terminateAMPDU:1;
+        wpt_uint32 reserved0:2;
+#else /*WCN_PRONTO*/
         wpt_uint32 reserved0:12;
+#endif /*WCN_PRONTO*/
         wpt_uint32 dpuSignature:3;
         wpt_uint32 dpuRF:8;
 #endif
@@ -950,6 +1098,24 @@ typedef struct
         /* 0x24 */
         /* Timestamp filled by DXE. Timestamp for previous transfer */
         wpt_uint32 dxeH2BEndTimestamp;
+
+#ifdef WCN_PRONTO
+#ifdef WPT_BIG_BYTE_ENDIAN
+        /** 10 bit value to indicate the start of TCP UDP frame relative to 
+         * the first IP frame header */
+        wpt_uint32 csuTcpUdpStartOffset:10;
+
+        /** 16 bit pseudo header for TCP UDP used by CSU to generate TCP/UDP 
+         * frame checksum */
+        wpt_uint32 csuPseudoHeaderCksum:16;
+
+        wpt_uint32 reserved7:6;
+#else
+        wpt_uint32 reserved7:6;
+        wpt_uint32 csuPseudoHeaderCksum:16;
+        wpt_uint32 csuTcpUdpStartOffset:10;
+#endif
+#endif /*WCN_PRONTO*/
 
 } WDI_TxBdType;
 

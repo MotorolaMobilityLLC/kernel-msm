@@ -20,7 +20,7 @@
  */
 
 /*
- * Qualcomm Networks, Inc proprietary. All rights reserved.
+ * Airgo Networks, Inc proprietary. All rights reserved.
  * This file sirWrapper.h contains the common definitions used by all
  * Firmware modules.
  *

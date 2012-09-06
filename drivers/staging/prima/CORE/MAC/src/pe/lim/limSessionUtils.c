@@ -20,11 +20,9 @@
  */
 
 /**=========================================================================
-  
-  \file  limSessionUtils.c
-  
-  \brief implementation for lim Session Utility  APIs
 
+  \file  limSessionUtils.c
+  \brief implementation for lim Session Utility  APIs
   \author Sunit Bhatia
   
   Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
@@ -40,8 +38,63 @@
 #include "limSessionUtils.h"
 #include "limUtils.h"
 
+/*--------------------------------------------------------------------------
+  \brief peGetVhtCapable() - Returns the Vht capable from a valid session.
+
+  This function itrates the session Table and returns the VHT capable from first valid session
+   if no sessions are valid/present  it returns FALSE
+    
+  \param pMac                   - pointer to global adapter context
+  \return                           - channel to scan from valid session else zero.
+  
+  \sa
+  
+  --------------------------------------------------------------------------*/
+tANI_U8 peGetVhtCapable(tpAniSirGlobal pMac)
+
+{
+#ifdef WLAN_FEATURE_11AC
+    tANI_U8 i;
+    //assumption here is that all the sessions will be on the same channel.
+    //This function will not work, once we have multiple channel support.
+    for(i =0; i < pMac->lim.maxBssId; i++)
+    {
+        if(pMac->lim.gpSession[i].valid)
+        {
+            return(pMac->lim.gpSession[i].vhtCapability);  
+        }
+    }
+#endif
+    return FALSE;
+}
+/*--------------------------------------------------------------------------
+  \brief peGetCurrentChannel() - Returns the  channel number for scanning, 
+                                from a valid session.
+   This function itrates the session Table and returns the channel number 
+   from first valid session if no sessions are valid/present  it returns zero
+
+  \param pMac                   - pointer to global adapter context
+  \return                       - channel to scan from valid session else zero.
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_U8 peGetCurrentChannel(tpAniSirGlobal pMac)
+{
+    tANI_U8 i;
+    //assumption here is that all the sessions will be on the same channel.
+    //This function will not work, once we have multiple channel support.
+    for(i =0; i < pMac->lim.maxBssId; i++)
+    {
+        if(pMac->lim.gpSession[i].valid)
+        {
+            return(pMac->lim.gpSession[i].currentOperChannel);
+        }
+    }
+    return(HAL_INVALID_CHANNEL_ID);
+}
+
 
 /*--------------------------------------------------------------------------
+
   \brief peValidateJoinReq() - validates the Join request .
 
   This function is called to validate the Join Request for a BT-AMP station. If start BSS session is present
@@ -179,7 +232,7 @@ isLimSessionOffChannel(tpAniSirGlobal pMac, tANI_U8 sessionId)
           //Skip the sessionId that is to be joined.
           continue;
         }
-        //if snother ession is valid and it is on different channel
+        //if another ession is valid and it is on different channel
         //it is an off channel operation.
         if( (pMac->lim.gpSession[i].valid) && 
             (pMac->lim.gpSession[i].currentOperChannel != 
@@ -193,22 +246,156 @@ isLimSessionOffChannel(tpAniSirGlobal pMac, tANI_U8 sessionId)
 
 }
 
+/*--------------------------------------------------------------------------
+  \brief peGetActiveSessionChannel() - Gets the operating channel of first  
+                                    valid session. Returns 0 if there is no
+									valid session.
+
+  \param pMac                   - pointer to global adapter context
+  
+  \return tANI_U8               - operating channel.
+  
+  \sa
+  --------------------------------------------------------------------------*/
+void
+peGetActiveSessionChannel (tpAniSirGlobal pMac, tANI_U8* resumeChannel, ePhyChanBondState* resumePhyCbState)
+{
+    tANI_U8 i;
+
+    // Initialize the pointers passed to INVALID values in case we don't find a valid session
+    *resumeChannel = 0;
+    *resumePhyCbState = 0;
+    for(i =0; i < pMac->lim.maxBssId; i++)
+    {
+        if(pMac->lim.gpSession[i].valid)
+        {
+            *resumeChannel = pMac->lim.gpSession[i].currentOperChannel;
+            *resumePhyCbState = pMac->lim.gpSession[i].htSecondaryChannelOffset;
+            
+#ifdef WLAN_FEATURE_11AC
+            if ((pMac->lim.gpSession[i].vhtCapability))
+            {
+               /*Get 11ac cbState from 11n cbState*/
+                *resumePhyCbState = limGet11ACPhyCBState(pMac, 
+                                    pMac->lim.gpSession[i].currentOperChannel,
+                                    pMac->lim.gpSession[i].htSecondaryChannelOffset);
+            }
+#endif
+        }
+    }
+    return;
+}
+
+/*--------------------------------------------------------------------------
+  \brief limIsChanSwitchRunning() - Check if channel switch is running on any  
+                                    valid session.
+
+  \param pMac                   - pointer to global adapter context
+  
+  \return tANI_U8               - 1 - if chann switching running.
+                                  0 - if chann switching is not running. 
+  
+  \sa
+  --------------------------------------------------------------------------*/
 tANI_U8
-peGetActiveSessionChannel (tpAniSirGlobal pMac)
+limIsChanSwitchRunning (tpAniSirGlobal pMac)
 {
     tANI_U8 i;
 
     for(i =0; i < pMac->lim.maxBssId; i++)
     {
-        //if snother ession is valid and it is on different channel
-        //it is an off channel operation.
-        if(pMac->lim.gpSession[i].valid)
+        if(pMac->lim.gpSession[i].valid && 
+            pMac->lim.gpSession[i].gLimSpecMgmt.dot11hChanSwState == eLIM_11H_CHANSW_RUNNING)
         {
-            return pMac->lim.gpSession[i].currentOperChannel;
+            return 1;
         }
     }
-
     return 0;
+}
+/*--------------------------------------------------------------------------
+  \brief limIsInQuietDuration() - Check if channel quieting is running on any  
+                                    valid session.
 
+  \param pMac                   - pointer to global adapter context
+  
+  \return tANI_U8               - 1 - if chann quiet running.
+                                  0 - if chann quiet is not running. 
+  
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_U8
+limIsInQuietDuration (tpAniSirGlobal pMac)
+{
+    tANI_U8 i;
+
+    for(i =0; i < pMac->lim.maxBssId; i++)
+    {
+        if(pMac->lim.gpSession[i].valid && 
+            pMac->lim.gpSession[i].gLimSpecMgmt.quietState == eLIM_QUIET_RUNNING)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+/*--------------------------------------------------------------------------
+  \brief limIsQuietBegin() - Check if channel quieting is begining on any  
+                                    valid session.
+
+  \param pMac                   - pointer to global adapter context
+  
+  \return tANI_U8               - 1 - if chann quiet running.
+                                  0 - if chann quiet is not running. 
+  
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_U8
+limIsQuietBegin (tpAniSirGlobal pMac)
+{
+    tANI_U8 i;
+
+    for(i =0; i < pMac->lim.maxBssId; i++)
+    {
+        if(pMac->lim.gpSession[i].valid && 
+            pMac->lim.gpSession[i].gLimSpecMgmt.quietState == eLIM_QUIET_BEGIN)
+        {
+            return 1;
+        }
+    }
+    return 0;
 }
 
+/*--------------------------------------------------------------------------
+  \brief limIsInMCC() - Check if Device is in MCC.
+
+  \param pMac                   - pointer to global adapter context
+  
+  \return tANI_U8               - TRUE - if in MCC.
+                                  FALSE - NOT in MCC. 
+  
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_U8
+limIsInMCC (tpAniSirGlobal pMac)
+{
+    tANI_U8 i;
+    tANI_U8 chan = 0;
+
+    for(i = 0; i < pMac->lim.maxBssId; i++)
+    {
+        //if another session is valid and it is on different channel
+        //it is an off channel operation.
+        if( (pMac->lim.gpSession[i].valid) )
+        { 
+            if( chan == 0 )
+            {
+                chan = pMac->lim.gpSession[i].currentOperChannel;
+            } 
+            else if( chan != pMac->lim.gpSession[i].currentOperChannel)
+            {
+                return TRUE; 
+            }        
+        }
+    }
+    return FALSE;
+}

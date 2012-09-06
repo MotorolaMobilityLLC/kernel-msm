@@ -267,22 +267,24 @@ PopulateDot11fCapabilities2(tpAniSirGlobal         pMac,
 
 void
 PopulateDot11fChanSwitchAnn(tpAniSirGlobal          pMac,
-                            tDot11fIEChanSwitchAnn *pDot11f)
+                            tDot11fIEChanSwitchAnn *pDot11f,
+                            tpPESession psessionEntry)
 {
-    pDot11f->switchMode = pMac->lim.gLimChannelSwitch.switchMode;
-    pDot11f->newChannel = pMac->lim.gLimChannelSwitch.primaryChannel;
-    pDot11f->switchCount = ( tANI_U8 ) pMac->lim.gLimChannelSwitch.switchCount;
+    pDot11f->switchMode = psessionEntry->gLimChannelSwitch.switchMode;
+    pDot11f->newChannel = psessionEntry->gLimChannelSwitch.primaryChannel;
+    pDot11f->switchCount = ( tANI_U8 ) psessionEntry->gLimChannelSwitch.switchCount;
 
     pDot11f->present = 1;
 } // End PopulateDot11fChanSwitchAnn.
 
 void
 PopulateDot11fExtChanSwitchAnn(tpAniSirGlobal pMac,
-                               tDot11fIEExtChanSwitchAnn *pDot11f)
+                               tDot11fIEExtChanSwitchAnn *pDot11f,
+                               tpPESession psessionEntry)
 {
     //Has to be updated on the cb state basis
     pDot11f->secondaryChannelOffset = 
-             limGetHTCBState(pMac->lim.gLimChannelSwitch.secondarySubBand);
+             psessionEntry->gLimChannelSwitch.secondarySubBand;
 
     pDot11f->present = 1;
 }
@@ -542,7 +544,8 @@ PopulateDot11fExtSuppRates1(tpAniSirGlobal         pMac,
 
 tSirRetStatus
 PopulateDot11fHTCaps(tpAniSirGlobal           pMac,
-                             tDot11fIEHTCaps *pDot11f)
+                           tpPESession      psessionEntry,
+                           tDot11fIEHTCaps *pDot11f)
 {
     tANI_U32                         nCfgValue, nCfgLen;
     tANI_U8                          nCfgValue8;
@@ -572,12 +575,8 @@ PopulateDot11fHTCaps(tpAniSirGlobal           pMac,
     pHTCapabilityInfo = ( tSirMacHTCapabilityInfo* ) &nCfgValue16;
 #endif
 
-    dot11fLog( pMac, LOG1, FL( "HT Caps: %x\n" ), nCfgValue);
-
-
 #ifdef WLAN_SOFTAP_FEATURE  // this is added for fixing CRs on MDM9K platform - 257951, 259577
     pDot11f->advCodingCap             = uHTCapabilityInfo.htCapInfo.advCodingCap;
-    pDot11f->supportedChannelWidthSet = uHTCapabilityInfo.htCapInfo.supportedChannelWidthSet;
     pDot11f->mimoPowerSave            = uHTCapabilityInfo.htCapInfo.mimoPowerSave;
     pDot11f->greenField               = uHTCapabilityInfo.htCapInfo.greenField;
     pDot11f->shortGI20MHz             = uHTCapabilityInfo.htCapInfo.shortGI20MHz;
@@ -592,7 +591,6 @@ PopulateDot11fHTCaps(tpAniSirGlobal           pMac,
     pDot11f->lsigTXOPProtection       = uHTCapabilityInfo.htCapInfo.lsigTXOPProtection;
 #else
     pDot11f->advCodingCap             = pHTCapabilityInfo->advCodingCap;
-    pDot11f->supportedChannelWidthSet = pHTCapabilityInfo->supportedChannelWidthSet;
     pDot11f->mimoPowerSave            = pHTCapabilityInfo->mimoPowerSave;
     pDot11f->greenField               = pHTCapabilityInfo->greenField;
     pDot11f->shortGI20MHz             = pHTCapabilityInfo->shortGI20MHz;
@@ -606,6 +604,16 @@ PopulateDot11fHTCaps(tpAniSirGlobal           pMac,
     pDot11f->stbcControlFrame         = pHTCapabilityInfo->stbcControlFrame;
     pDot11f->lsigTXOPProtection       = pHTCapabilityInfo->lsigTXOPProtection;
 #endif
+
+    // All sessionized entries will need the check below
+    if (psessionEntry == NULL) // Only in case of NO session
+    {
+        pDot11f->supportedChannelWidthSet = uHTCapabilityInfo.htCapInfo.supportedChannelWidthSet;
+    }
+    else
+    {
+        pDot11f->supportedChannelWidthSet = psessionEntry->htSupportedChannelWidthSet;
+    }
 
     /* Ensure that shortGI40MHz is Disabled if supportedChannelWidthSet is
        eHT_CHANNEL_WIDTH_20MHZ */
@@ -690,7 +698,247 @@ PopulateDot11fHTCaps(tpAniSirGlobal           pMac,
     return eSIR_SUCCESS;
 
 } // End PopulateDot11fHTCaps.
+#ifdef WLAN_FEATURE_11AC
 
+void limLogVHTCap(tpAniSirGlobal pMac,
+                              tDot11fIEVHTCaps *pDot11f)
+{
+
+    limLog(pMac, LOGW, FL("maxMPDULen (2): %d\n"), pDot11f->maxMPDULen);
+    limLog(pMac, LOGW, FL("supportedChannelWidthSet (2): %d\n"), pDot11f->supportedChannelWidthSet);
+    limLog(pMac, LOGW, FL("ldpcCodingCap (1): %d\n"), pDot11f->ldpcCodingCap);
+    limLog(pMac, LOGW, FL("shortGI80MHz (1): %d\n"), pDot11f->shortGI80MHz);
+    limLog(pMac, LOGW, FL("shortGI160and80plus80MHz (1): %d\n"), pDot11f->shortGI160and80plus80MHz);
+    limLog(pMac, LOGW, FL("txSTBC (1): %d\n"), pDot11f->txSTBC);
+    limLog(pMac, LOGW, FL("rxSTBC (3): %d\n"), pDot11f->rxSTBC);
+    limLog(pMac, LOGW, FL("suBeamFormerCap (1): %d\n"), pDot11f->suBeamFormerCap);
+    limLog(pMac, LOGW, FL("suBeamformeeCap (1): %d\n"), pDot11f->suBeamformeeCap);
+    limLog(pMac, LOGW, FL("csnofBeamformerAntSup (3): %d\n"), pDot11f->csnofBeamformerAntSup);
+    limLog(pMac, LOGW, FL("numSoundingDim (3): %d\n"), pDot11f->numSoundingDim);
+    limLog(pMac, LOGW, FL("muBeamformerCap (1): %d\n"), pDot11f->muBeamformerCap);
+    limLog(pMac, LOGW, FL("muBeamformeeCap (1): %d\n"), pDot11f->muBeamformeeCap);
+    limLog(pMac, LOGW, FL("vhtTXOPPS (1): %d\n"), pDot11f->vhtTXOPPS);
+    limLog(pMac, LOGW, FL("htcVHTCap (1): %d\n"), pDot11f->htcVHTCap);
+    limLog(pMac, LOGW, FL("maxAMPDULenExp (3): %d\n"), pDot11f->maxAMPDULenExp);
+    limLog(pMac, LOGW, FL("vhtLinkAdaptCap (2): %d\n"), pDot11f->vhtLinkAdaptCap);
+    limLog(pMac, LOGW, FL("rxAntPattern (1): %d\n"), pDot11f->vhtLinkAdaptCap);
+    limLog(pMac, LOGW, FL("txAntPattern (1): %d\n"), pDot11f->vhtLinkAdaptCap);
+    limLog(pMac, LOGW, FL("reserved1 (2): %d\n"), pDot11f->reserved1);
+    limLog(pMac, LOGW, FL("rxMCSMap (16): %d\n"), pDot11f->rxMCSMap);
+    limLog(pMac, LOGW, FL("rxHighSupDataRate (13): %d\n"), pDot11f->rxHighSupDataRate);
+    limLog(pMac, LOGW, FL("reserve (3): %d\n"), pDot11f->reserved2);
+    limLog(pMac, LOGW, FL("txMCSMap (16): %d\n"), pDot11f->txMCSMap);
+    limLog(pMac, LOGW, FL("txSupDataRate (13): %d\n"), pDot11f->txSupDataRate);
+    limLog(pMac, LOGW, FL("reserv (3): %d\n"), pDot11f->reserved3);
+}
+
+void limLogVHTOperation(tpAniSirGlobal pMac,
+                              tDot11fIEVHTOperation *pDot11f)
+{
+
+    limLog(pMac, LOGW, FL("chanWidth : %d\n"), pDot11f->chanWidth);
+    limLog(pMac, LOGW, FL("chanCenterFreqSeg1: %d\n"), pDot11f->chanCenterFreqSeg1);
+    limLog(pMac, LOGW, FL("chanCenterFreqSeg2: %d\n"), pDot11f->chanCenterFreqSeg2);
+    limLog(pMac, LOGW, FL("basicMCSSet: %d\n"), pDot11f->basicMCSSet);
+}
+
+void limLogVHTExtBssLoad(tpAniSirGlobal pMac,
+                              tDot11fIEVHTExtBssLoad *pDot11f)
+{
+    limLog(pMac, LOGW, FL("muMIMOCapStaCount : %d\n"), pDot11f->muMIMOCapStaCount);
+    limLog(pMac, LOGW, FL("ssUnderUtil: %d\n"), pDot11f->ssUnderUtil);
+    limLog(pMac, LOGW, FL("FortyMHzUtil: %d\n"), pDot11f->FortyMHzUtil);
+    limLog(pMac, LOGW, FL("EightyMHzUtil: %d\n"), pDot11f->EightyMHzUtil);
+    limLog(pMac, LOGW, FL("OneSixtyMHzUtil: %d\n"), pDot11f->OneSixtyMHzUtil);
+}
+
+
+tSirRetStatus
+PopulateDot11fVHTCaps(tpAniSirGlobal           pMac,
+                           tDot11fIEVHTCaps *pDot11f)
+{
+    tSirRetStatus        nStatus;
+    tANI_U32             nCfgValue=0;
+
+    pDot11f->present = 1;
+
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_MAX_MPDU_LENGTH, nCfgValue );
+    pDot11f->maxMPDULen =  (nCfgValue & 0x0003);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_SUPPORTED_CHAN_WIDTH_SET,
+                                                             nCfgValue );
+    pDot11f->supportedChannelWidthSet = (nCfgValue & 0x0003);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_LDPC_CODING_CAP, nCfgValue );
+    pDot11f->ldpcCodingCap = (nCfgValue & 0x0001);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_SHORT_GI_80MHZ, nCfgValue );
+    pDot11f->shortGI80MHz= (nCfgValue & 0x0001);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_SHORT_GI_160_AND_80_PLUS_80MHZ,
+                                                                nCfgValue );
+    pDot11f->shortGI160and80plus80MHz = (nCfgValue & 0x0001);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_TXSTBC, nCfgValue );
+    pDot11f->txSTBC = (nCfgValue & 0x0001);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_RXSTBC, nCfgValue );
+    pDot11f->rxSTBC = (nCfgValue & 0x0007);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_SU_BEAMFORMER_CAP, nCfgValue );
+    pDot11f->suBeamFormerCap = (nCfgValue & 0x0001);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_SU_BEAMFORMEE_CAP, nCfgValue );
+    pDot11f->suBeamformeeCap = (nCfgValue & 0x0001);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED,
+                                                               nCfgValue );
+    pDot11f->csnofBeamformerAntSup = (nCfgValue & 0x0007);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_NUM_SOUNDING_DIMENSIONS,
+                                                               nCfgValue );
+    pDot11f->numSoundingDim = (nCfgValue & 0x0007);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_MU_BEAMFORMER_CAP, nCfgValue );
+    pDot11f->muBeamformerCap = (nCfgValue & 0x0001);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_MU_BEAMFORMEE_CAP, nCfgValue );
+    pDot11f->muBeamformeeCap = (nCfgValue & 0x0001);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_TXOP_PS, nCfgValue );
+    pDot11f->vhtTXOPPS = (nCfgValue & 0x0001);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_HTC_VHTC_CAP, nCfgValue );
+    pDot11f->htcVHTCap = (nCfgValue & 0x0001);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_AMPDU_LEN_EXPONENT, nCfgValue );
+    pDot11f->maxAMPDULenExp = (nCfgValue & 0x0007);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_LINK_ADAPTATION_CAP, nCfgValue );
+    pDot11f->vhtLinkAdaptCap = (nCfgValue & 0x0003);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_RX_ANT_PATTERN, nCfgValue );
+    pDot11f->rxAntPattern = nCfgValue;
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_TX_ANT_PATTERN, nCfgValue );
+    pDot11f->txAntPattern = nCfgValue;
+
+    pDot11f->reserved1= 0;
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_RX_MCS_MAP, nCfgValue );
+    pDot11f->rxMCSMap = (nCfgValue & 0x0000FFFF);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE,
+                                                                  nCfgValue );
+    pDot11f->rxHighSupDataRate = (nCfgValue & 0x00001FFF);
+
+    pDot11f->reserved2= 0;
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_TX_MCS_MAP, nCfgValue );
+    pDot11f->txMCSMap = (nCfgValue & 0x0000FFFF);
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE,
+                                                                  nCfgValue );
+    pDot11f->txSupDataRate = (nCfgValue & 0x00001FFF);
+
+    pDot11f->reserved3= 0;
+
+    limLogVHTCap(pMac, pDot11f);
+
+    return eSIR_SUCCESS;
+
+}
+
+tSirRetStatus
+PopulateDot11fVHTOperation(tpAniSirGlobal   pMac,
+                               tDot11fIEVHTOperation  *pDot11f)
+{
+    tSirRetStatus        nStatus;
+    tANI_U32             nCfgValue=0;
+
+    pDot11f->present = 1;
+
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_CHANNEL_WIDTH, nCfgValue );
+    pDot11f->chanWidth = (tANI_U8)nCfgValue;
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_CHANNEL_CENTER_FREQ_SEGMENT1,
+                                                               nCfgValue );
+    pDot11f->chanCenterFreqSeg1 = (tANI_U8)nCfgValue;
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_CHANNEL_CENTER_FREQ_SEGMENT2,
+                                                               nCfgValue );
+    pDot11f->chanCenterFreqSeg2 = (tANI_U8)nCfgValue;
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_BASIC_MCS_SET,nCfgValue );
+    pDot11f->basicMCSSet = (tANI_U16)nCfgValue;
+
+    limLogVHTOperation(pMac,pDot11f);
+
+    return eSIR_SUCCESS;
+
+}
+
+tSirRetStatus
+PopulateDot11fVHTExtBssLoad(tpAniSirGlobal      pMac,
+                           tDot11fIEVHTExtBssLoad   *pDot11f)
+{
+    tSirRetStatus    nStatus;
+    tANI_U32         nCfgValue=0;
+
+    pDot11f->present = 1;
+
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_MU_MIMO_CAP_STA_COUNT,
+                                                         nCfgValue );
+    pDot11f->muMIMOCapStaCount = (tANI_U8)nCfgValue;
+
+    nCfgValue = 0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_SS_UNDER_UTIL,nCfgValue );
+    pDot11f->ssUnderUtil = (tANI_U8)nCfgValue;
+
+    nCfgValue=0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_40MHZ_UTILIZATION,nCfgValue );
+    pDot11f->FortyMHzUtil = (tANI_U8)nCfgValue;
+
+    nCfgValue=0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_80MHZ_UTILIZATION,nCfgValue );
+    pDot11f->EightyMHzUtil = (tANI_U8)nCfgValue;
+
+    nCfgValue=0;
+    CFG_GET_INT( nStatus, pMac, WNI_CFG_VHT_160MHZ_UTILIZATION,nCfgValue );
+    pDot11f->EightyMHzUtil = (tANI_U8)nCfgValue;
+
+    limLogVHTExtBssLoad(pMac,pDot11f);
+
+    return eSIR_SUCCESS;
+}
+
+
+#endif
 #ifdef WLAN_SOFTAP_FEATURE
 tSirRetStatus
 PopulateDot11fHTInfo(tpAniSirGlobal   pMac,
@@ -737,11 +985,19 @@ PopulateDot11fHTInfo(tpAniSirGlobal   pMac,
     htInfoField1 = ( tANI_U8 ) nCfgValue;
 
     pHTInfoField1 = ( tSirMacHTInfoField1* ) &htInfoField1;
-    pHTInfoField1->secondaryChannelOffset     = pMac->lim.gHTSecondaryChannelOffset;
-    pHTInfoField1->recommendedTxWidthSet      = pMac->lim.gHTRecommendedTxWidthSet;
     pHTInfoField1->rifsMode                   = psessionEntry->beaconParams.fRIFSMode;
     pHTInfoField1->serviceIntervalGranularity = pMac->lim.gHTServiceIntervalGranularity;
 
+    if (psessionEntry == NULL)
+    {
+        PELOGE(limLog(pMac, LOG1,
+            FL("Keep the value retrieved from cfg for secondary channel offset and recommended Tx Width set\n"));)
+    }
+    else
+    {
+        pHTInfoField1->secondaryChannelOffset     = psessionEntry->htSecondaryChannelOffset;
+        pHTInfoField1->recommendedTxWidthSet      = psessionEntry->htRecommendedTxWidthSet;
+    }
 
 #ifdef WLAN_SOFTAP_FEATURE
     if(psessionEntry->limSystemRole == eLIM_AP_ROLE ){
@@ -1591,11 +1847,19 @@ sirConvertProbeReqFrame2Struct(tpAniSirGlobal  pMac,
         pProbeReq->wscIePresent = 1;
         memcpy(&pProbeReq->probeReqWscIeInfo, &pr.WscProbeReq, sizeof(tDot11fIEWscProbeReq));
     }
+#ifdef WLAN_FEATURE_11AC
+    if ( pr.VHTCaps.present )
+    {
+        palCopyMemory( pMac, &pProbeReq->VHTCaps, &pr.VHTCaps, sizeof( tDot11fIEVHTCaps ) );
+    }
+#endif
+
 
     if ( pr.P2PProbeReq.present )
     {
         pProbeReq->p2pIePresent = 1;
     }
+
     return eSIR_SUCCESS;
 
 } // End sirConvertProbeReqFrame2Struct.
@@ -1817,6 +2081,20 @@ tSirRetStatus sirConvertProbeFrame2Struct(tpAniSirGlobal       pMac,
                                                 sizeof(tDot11fIEP2PProbeRes) );
     }
 #endif
+#ifdef WLAN_FEATURE_11AC
+    if ( pr.VHTCaps.present )
+    {
+       palCopyMemory( pMac, &pProbeResp->VHTCaps, &pr.VHTCaps, sizeof( tDot11fIEVHTCaps ) );
+    }
+    if ( pr.VHTOperation.present )
+    {
+        palCopyMemory( pMac, &pProbeResp->VHTOperation, &pr.VHTOperation, sizeof( tDot11fIEVHTOperation) );
+    }
+    if ( pr.VHTExtBssLoad.present )
+    {
+        palCopyMemory( pMac, &pProbeResp->VHTExtBssLoad, &pr.VHTExtBssLoad, sizeof( tDot11fIEVHTExtBssLoad) );
+    }
+#endif
     return eSIR_SUCCESS;
 
 } // End sirConvertProbeFrame2Struct.
@@ -1934,6 +2212,14 @@ sirConvertAssocReqFrame2Struct(tpAniSirGlobal pMac,
     }
 #endif
 
+#ifdef WLAN_FEATURE_WFD
+    if(ar.WFDIEOpaque.present)
+    {
+        pAssocReq->addIEPresent = 1;
+        ConvertWFDOpaque( pMac, &pAssocReq->addIE, &ar.WFDIEOpaque);
+    }
+#endif
+
     // Power Capabilities
     if ( ar.PowerCaps.present )
     {
@@ -1976,6 +2262,15 @@ sirConvertAssocReqFrame2Struct(tpAniSirGlobal pMac,
         PELOG2(limLog(pMac, LOG2, FL("Received Assoc without supp rate IE.\n"));)
         return eSIR_FAILURE;
     }
+
+#ifdef WLAN_FEATURE_11AC
+    if ( ar.VHTCaps.present )
+    {
+        palCopyMemory( pMac, &pAssocReq->VHTCaps, &ar.VHTCaps, sizeof( tDot11fIEVHTCaps ) );
+        limLog( pMac, LOGW, FL("Received Assoc Req with VHT Cap\n"));
+        limLogVHTCap( pMac, &pAssocReq->VHTCaps);
+    }
+#endif
 
     return eSIR_SUCCESS;
 
@@ -2127,6 +2422,21 @@ sirConvertAssocRespFrame2Struct(tpAniSirGlobal pMac,
         palCopyMemory(pMac->hHdd,&pAssocRsp->tsmIE.tsid,
                 &ar.CCXTrafStrmMet.tsid,sizeof(tSirMacCCXTSMIE));
     }    
+#endif
+
+#ifdef WLAN_FEATURE_11AC
+    if ( ar.VHTCaps.present )
+    {
+        palCopyMemory( pMac, &pAssocRsp->VHTCaps, &ar.VHTCaps, sizeof( tDot11fIEVHTCaps ) );
+        limLog( pMac, LOGW, FL("Received Assoc Response with VHT Cap\n"));
+        limLogVHTCap(pMac, &pAssocRsp->VHTCaps);
+    }
+    if ( ar.VHTOperation.present )
+    {
+        palCopyMemory( pMac, &pAssocRsp->VHTOperation, &ar.VHTOperation, sizeof( tDot11fIEVHTOperation) );
+        limLog( pMac, LOGW, FL("Received Assoc Response with VHT Operation\n"));
+        limLogVHTOperation(pMac, &pAssocRsp->VHTOperation);
+    }
 #endif
 
     return eSIR_SUCCESS;
@@ -2291,6 +2601,20 @@ sirConvertReassocReqFrame2Struct(tpAniSirGlobal pMac,
     }
 #endif
 
+#ifdef WLAN_FEATURE_WFD
+    if(ar.WFDIEOpaque.present)
+    {
+        pAssocReq->addIEPresent = 1;
+        ConvertWFDOpaque( pMac, &pAssocReq->addIE, &ar.WFDIEOpaque);
+    }
+#endif
+
+#ifdef WLAN_FEATURE_11AC
+    if ( ar.VHTCaps.present )
+    {
+        palCopyMemory( pMac, &pAssocReq->VHTCaps, &ar.VHTCaps, sizeof( tDot11fIEVHTCaps ) );
+    }
+#endif
     return eSIR_SUCCESS;
 
 } // End sirConvertReassocReqFrame2Struct.
@@ -2496,7 +2820,25 @@ sirParseBeaconIE(tpAniSirGlobal        pMac,
         ConvertERPInfo( pMac, &pBeaconStruct->erpIEInfo, &pBies->ERPInfo );
     }
 
+#ifdef WLAN_FEATURE_11AC
+    if ( pBies->VHTCaps.present )
+    {
+        pBeaconStruct->VHTCaps.present = 1;
+        palCopyMemory( pMac, &pBeaconStruct->VHTCaps, &pBies->VHTCaps, sizeof( tDot11fIEVHTCaps ) );
+    }
+    if ( pBies->VHTOperation.present )
+    {
+         pBeaconStruct->VHTOperation.present = 1;
+         palCopyMemory( pMac, &pBeaconStruct->VHTOperation, &pBies->VHTOperation, sizeof( tDot11fIEVHTOperation) );
+    }
+    if ( pBies->VHTExtBssLoad.present )
+    {
+         pBeaconStruct->VHTExtBssLoad.present = 1;
+         palCopyMemory( pMac, &pBeaconStruct->VHTExtBssLoad, &pBies->VHTExtBssLoad, sizeof( tDot11fIEVHTExtBssLoad) );
+    }
+#endif
     palFreeMemory(pMac->hHdd, pBies);
+
 
     return eSIR_SUCCESS;
 
@@ -2738,6 +3080,21 @@ sirConvertBeaconFrame2Struct(tpAniSirGlobal       pMac,
         palCopyMemory( pMac->hHdd, (tANI_U8 *)&(pBeaconStruct->mdie[0]), (tANI_U8 *)&(beacon.MobilityDomain.MDID), sizeof(tANI_U16) );
         pBeaconStruct->mdie[2] = ((beacon.MobilityDomain.overDSCap << 0) | (beacon.MobilityDomain.resourceReqCap << 1));
 
+    }
+#endif
+
+#ifdef WLAN_FEATURE_11AC
+    if ( beacon.VHTCaps.present )
+    {
+        palCopyMemory( pMac, &pBeaconStruct->VHTCaps, &beacon.VHTCaps, sizeof( tDot11fIEVHTCaps ) );
+    }
+    if ( beacon.VHTOperation.present )
+    {
+        palCopyMemory( pMac, &pBeaconStruct->VHTOperation, &beacon.VHTOperation, sizeof( tDot11fIEVHTOperation) );
+    }
+    if ( beacon.VHTExtBssLoad.present )
+    {
+        palCopyMemory( pMac, &pBeaconStruct->VHTExtBssLoad, &beacon.VHTExtBssLoad, sizeof( tDot11fIEVHTExtBssLoad) );
     }
 #endif
 

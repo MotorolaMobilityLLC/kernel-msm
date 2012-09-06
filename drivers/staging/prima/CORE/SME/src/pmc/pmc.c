@@ -2533,6 +2533,15 @@ tANI_BOOLEAN pmcShouldBmpsTimerRun( tpAniSirGlobal pMac )
         return eANI_BOOLEAN_FALSE;
     }
 
+    if ((vos_concurrent_sessions_running()) &&
+        ((csrIsConcurrentInfraConnected( pMac ) ||
+        (vos_get_concurrency_mode()& VOS_SAP) ||
+        (vos_get_concurrency_mode()& VOS_P2P_GO))))
+    {
+        smsLog(pMac, LOG1, FL("Multiple Sessions/GO/SAP sessions . BMPS should not be started"));
+        return eANI_BOOLEAN_FALSE;
+    }
+
     /* Check if there is an Infra session. BMPS is possible only if there is
      * an Infra session */
     if (!csrIsInfraConnected(pMac))

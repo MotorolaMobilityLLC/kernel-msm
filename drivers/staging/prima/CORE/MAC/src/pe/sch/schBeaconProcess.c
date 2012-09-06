@@ -85,7 +85,7 @@ ap_beacon_process(
 
     if(SIR_BAND_5_GHZ == rfBand)
     {
-        if (psessionEntry->htCapabality)
+        if (psessionEntry->htCapability)
         {
             if (pBcnStruct->channelNumber == psessionEntry->currentOperChannel)
             {
@@ -122,7 +122,7 @@ ap_beacon_process(
     {
         //We are 11G AP.
         if ((phyMode == WNI_CFG_PHY_MODE_11G) &&
-              (false == psessionEntry->htCapabality))
+              (false == psessionEntry->htCapability))
         {
             if (pBcnStruct->channelNumber == psessionEntry->currentOperChannel)        
             {
@@ -149,7 +149,7 @@ ap_beacon_process(
             }
         }        
         // handling the case when HT AP has overlapping legacy BSS.
-        else if(psessionEntry->htCapabality)
+        else if(psessionEntry->htCapability)
         {             
             if (pBcnStruct->channelNumber == psessionEntry->currentOperChannel)
             {
@@ -396,8 +396,8 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
 
 
 
-        MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT_TSF, 0, pBeacon->timeStamp[0]);)
-        MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT_TSF, 0, pBeacon->timeStamp[1]);)
+        MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT_TSF, psessionEntry->peSessionId, pBeacon->timeStamp[0]);)
+        MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT_TSF, psessionEntry->peSessionId, pBeacon->timeStamp[1]);)
 
         /* Read beacon interval session Entry */
         bi = psessionEntry->beaconParams.beaconInterval;
@@ -472,7 +472,7 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
             sendProbeReq = TRUE;
     }
 
-    if ( pMac->lim.htCapability && pBeacon->HTInfo.present )
+    if ( psessionEntry->htCapability && pBeacon->HTInfo.present )
     {
         limUpdateStaRunTimeHTSwitchChnlParams( pMac, &pBeacon->HTInfo, bssIdx,psessionEntry);
     }
@@ -485,8 +485,8 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         {
             limUpdateQuietIEFromBeacon(pMac, &(pBeacon->quietIE), psessionEntry);
         }
-        else if ((pMac->lim.gLimSpecMgmt.quietState == eLIM_QUIET_BEGIN) ||
-             (pMac->lim.gLimSpecMgmt.quietState == eLIM_QUIET_RUNNING))
+        else if ((psessionEntry->gLimSpecMgmt.quietState == eLIM_QUIET_BEGIN) ||
+             (psessionEntry->gLimSpecMgmt.quietState == eLIM_QUIET_RUNNING))
         {
             PELOG1(limLog(pMac, LOG1, FL("Received a beacon without Quiet IE\n"));)
             limCancelDot11hQuiet(pMac, psessionEntry);
@@ -498,7 +498,7 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         {
             limUpdateChannelSwitch(pMac, pBeacon, psessionEntry);
         }
-        else if (pMac->lim.gLimSpecMgmt.dot11hChanSwState == eLIM_11H_CHANSW_RUNNING)
+        else if (psessionEntry->gLimSpecMgmt.dot11hChanSwState == eLIM_11H_CHANSW_RUNNING)
         {
             limCancelDot11hChannelSwitch(pMac, psessionEntry);
         }   
@@ -520,7 +520,7 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
              {
                 limLog( pMac, LOG1, "RegMax = %d, lpc = %d, MaxTx = %d", regMax, localConstraint, maxTxPower );
                 limLog( pMac, LOG1, "Local power constraint change..updating new maxTx power to HAL");
-                if( limSendSetMaxTxPowerReq ( pMac, maxTxPower, psessionEntry ) == eHAL_STATUS_SUCCESS )
+                if( limSendSetMaxTxPowerReq ( pMac, maxTxPower, psessionEntry ) == eSIR_SUCCESS )
                    psessionEntry->maxTxPower = maxTxPower;
              }
            }
@@ -568,9 +568,6 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         limSendProbeReqMgmtFrame(pMac, &psessionEntry->ssId,
             psessionEntry->bssId, psessionEntry->currentOperChannel,psessionEntry->selfMacAddr,
             psessionEntry->dot11mode, 0, NULL);
-
-   PELOG2(schLog(pMac, LOG2, "Received Beacon's SeqNum=%d\n",
-           (pMh->seqControl.seqNumHi << 4) | (pMh->seqControl.seqNumLo));)
 
     if(beaconParams.paramChangeBitmap)
     {

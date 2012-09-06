@@ -836,6 +836,22 @@ limIsSmeJoinReqValid(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq)
         goto end;
     }
 
+    /*
+       Reject Join Req if the Self Mac Address and 
+       the Ap's Mac Address is same
+    */
+    if( palEqualMemory( pMac->hHdd, (tANI_U8* ) pJoinReq->selfMacAddr, 
+                       (tANI_U8 *) pJoinReq->bssDescription.bssId, 
+                       (tANI_U8) (sizeof(tSirMacAddr))))
+    {
+        // Log the event
+        limLog(pMac, LOGE,
+               FL("received SME_JOIN_REQ with Self Mac and BSSID Same\n"));
+
+        valid = false;
+        goto end;
+    }
+
 end:
     return valid;
 } /*** end limIsSmeJoinReqValid() ***/

@@ -303,14 +303,14 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
         PopulateDot11fEDCAParamSet( pMac, &bcn2.EDCAParamSet, psessionEntry);
     }
 
-    if(pMac->lim.gLim11hEnable)
+    if(psessionEntry->lim11hEnable)
     {
       PopulateDot11fPowerConstraints( pMac, &bcn2.PowerConstraints );
       PopulateDot11fTPCReport( pMac, &bcn2.TPCReport, psessionEntry);
     }
 
 #ifdef ANI_PRODUCT_TYPE_AP
-    if( pMac->lim.gLim11hEnable && (eLIM_QUIET_RUNNING == pMac->lim.gLimSpecMgmt.quietState))
+    if( psessionEntry->lim11hEnable && (eLIM_QUIET_RUNNING == psessionEntry->gLimSpecMgmt.quietState))
     {
       PopulateDot11fQuiet( pMac, &bcn2.Quiet );
     }
@@ -321,28 +321,38 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
      * populate the 802.11h channel switch IE in its Beacons and Probe
      * Responses.
      */
-    if ( (pMac->lim.gLim11hEnable) &&
-         (pMac->lim.gLimChannelSwitch.switchCount != 0) &&
-         (pMac->lim.gLimSpecMgmt.dot11hChanSwState == eLIM_11H_CHANSW_RUNNING))
+    if ( (psessionEntry->lim11hEnable) &&
+         (psessionEntry->gLimChannelSwitch.switchCount != 0) &&
+         (psessionEntry->gLimSpecMgmt.dot11hChanSwState == eLIM_11H_CHANSW_RUNNING))
 
     {
-      PopulateDot11fChanSwitchAnn( pMac, &bcn2.ChanSwitchAnn );
-      PopulateDot11fExtChanSwitchAnn(pMac, &bcn2.ExtChanSwitchAnn);
+      PopulateDot11fChanSwitchAnn( pMac, &bcn2.ChanSwitchAnn, psessionEntry );
+      PopulateDot11fExtChanSwitchAnn(pMac, &bcn2.ExtChanSwitchAnn, psessionEntry );
     }
 #endif
 
     if (psessionEntry->dot11mode != WNI_CFG_DOT11_MODE_11B)
         PopulateDot11fERPInfo( pMac, &bcn2.ERPInfo, psessionEntry );
 
-    if(psessionEntry->htCapabality)
+    if(psessionEntry->htCapability)
     {
-        PopulateDot11fHTCaps( pMac, &bcn2.HTCaps );
+        PopulateDot11fHTCaps( pMac, psessionEntry, &bcn2.HTCaps );
 #ifdef WLAN_SOFTAP_FEATURE
         PopulateDot11fHTInfo( pMac, &bcn2.HTInfo, psessionEntry );
 #else
         PopulateDot11fHTInfo( pMac, &bcn2.HTInfo );
 #endif
     }
+#ifdef WLAN_FEATURE_11AC
+    if(psessionEntry->vhtCapability)
+    {        
+        limLog( pMac, LOGW, FL("Populate VHT IEs in Beacon\n"));
+        PopulateDot11fVHTCaps( pMac, &bcn2.VHTCaps );
+        PopulateDot11fVHTOperation( pMac, &bcn2.VHTOperation);
+        // we do not support multi users yet
+        //PopulateDot11fVHTExtBssLoad( pMac, &bcn2.VHTExtBssLoad);
+    }
+#endif
 
     PopulateDot11fExtSuppRates( pMac, POPULATE_DOT11F_RATES_OPERATIONAL,
                                 &bcn2.ExtSuppRates, psessionEntry );
@@ -627,6 +637,30 @@ void limUpdateProbeRspTemplateIeBitmapBeacon2(tpAniSirGlobal pMac,
                             (void *)&beacon2->HTInfo,
                             sizeof(beacon2->HTInfo));
     }
+
+#ifdef WLAN_FEATURE_11AC
+    if(beacon2->VHTCaps.present)
+    {
+        SetProbeRspIeBitmap(DefProbeRspIeBitmap,SIR_MAC_VHT_CAPABILITIES_EID);
+        palCopyMemory(pMac->hHdd,(void *)&prb_rsp->VHTCaps,
+                            (void *)&beacon2->VHTCaps,
+                            sizeof(beacon2->VHTCaps));
+    }
+    if(beacon2->VHTOperation.present)
+    {
+        SetProbeRspIeBitmap(DefProbeRspIeBitmap,SIR_MAC_VHT_OPERATION_EID);
+        palCopyMemory(pMac->hHdd,(void *)&prb_rsp->VHTOperation,
+                            (void *)&beacon2->VHTOperation,
+                            sizeof(beacon2->VHTOperation));
+    }
+    if(beacon2->VHTExtBssLoad.present)
+    {
+        SetProbeRspIeBitmap(DefProbeRspIeBitmap,SIR_MAC_VHT_EXT_BSS_LOAD_EID);
+        palCopyMemory(pMac->hHdd,(void *)&prb_rsp->VHTExtBssLoad,
+                            (void *)&beacon2->VHTExtBssLoad,
+                            sizeof(beacon2->VHTExtBssLoad));
+    }
+#endif
 
     //WMM IE
     if(beacon2->WMMParams.present)
@@ -957,12 +991,12 @@ specialBeaconProcessing( tpAniSirGlobal pMac, tANI_U32 beaconSize)
                     limSwitchPrimaryChannel(pMac, pMac->lim.gLimChannelSwitch.primaryChannel);
                     break;
                 case eLIM_CHANNEL_SWITCH_SECONDARY_ONLY:
-                    limSwitchPrimarySecondaryChannel(pMac,
+                    limSwitchPrimarySecondaryChannel(pMac, psessionEntry,
                                              psessionEntry->currentOperChannel,
                                              pMac->lim.gLimChannelSwitch.secondarySubBand);
                     break;
                 case eLIM_CHANNEL_SWITCH_PRIMARY_AND_SECONDARY:
-                    limSwitchPrimarySecondaryChannel(pMac,
+                    limSwitchPrimarySecondaryChannel(pMac, psessionEntry,
                                              pMac->lim.gLimChannelSwitch.primaryChannel,
                                              pMac->lim.gLimChannelSwitch.secondarySubBand);
                     break;

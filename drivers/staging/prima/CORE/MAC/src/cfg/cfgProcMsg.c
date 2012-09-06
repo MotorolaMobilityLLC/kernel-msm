@@ -415,7 +415,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     mmhMsg.bodyptr = NULL;
     mmhMsg.bodyval = 0;
 
-    MTRACE(macTraceMsgTx(pMac, 0, mmhMsg.type));
+    MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
     if (wdaPostCtrlMsg(pMac, &mmhMsg) != eSIR_SUCCESS)
     {
         PELOGE(cfgLog(pMac, LOGE, FL("WDAPostMsgApi failed!\n"));)

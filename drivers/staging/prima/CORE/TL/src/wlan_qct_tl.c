@@ -5100,12 +5100,15 @@ WLANTL_RxFrames
           continue;
         }
 
+/* This will be handled within statistics module */
+#ifndef FEATURE_WLAN_INTEGRATED_SOC
 #ifdef WLAN_SOFTAP_FEATURE
     /* RX Statistics Data */
       /* This is RX UC data frame */
       pTLCb->atlSTAClients[ucSTAId].trafficStatistics.rxUCFcnt++;
       pTLCb->atlSTAClients[ucSTAId].trafficStatistics.rxUCBcnt += usPktLen;
 #endif
+#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
     }/* else data frame*/
 
@@ -5879,6 +5882,10 @@ WLANTL_STATxAuth
 
     return vosStatus;
   }
+
+#ifdef FEATURE_WLAN_INTEGRATED_SOC
+  WLANTL_StatHandleTXFrame(pvosGCtx, ucSTAId, vosDataBuff, NULL, &tlMetaInfo);
+#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 #ifdef WLAN_SOFTAP_FEATURE
   /*There are still packets in HDD - set back the pending packets and 

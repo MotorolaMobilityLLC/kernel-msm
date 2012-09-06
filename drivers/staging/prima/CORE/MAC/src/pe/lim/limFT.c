@@ -316,7 +316,7 @@ void limPerformFTPreAuth(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data,
         // receive Auth2.
         authFrame.authAlgoNumber = eSIR_FT_AUTH; // Set the auth type to FT
     }
-#if defined FEATURE_WLAN_CCX
+#if defined FEATURE_WLAN_CCX || defined FEATURE_WLAN_LFR
     else
     {
         // Will need to make isCCXconnection a enum may be for further
@@ -442,7 +442,7 @@ tSirRetStatus limFTPrepareAddBssReq( tpAniSirGlobal pMac,
             else
             {
                 pAddBssParams->txChannelWidthSet = WNI_CFG_CHANNEL_BONDING_MODE_DISABLE;
-                pAddBssParams->currentExtChannel = eHT_SECONDARY_CHANNEL_OFFSET_NONE;
+                pAddBssParams->currentExtChannel = PHY_SINGLE_CHANNEL_CENTERED;
             }
             pAddBssParams->llnNonGFCoexist = (tANI_U8)beaconStruct.HTInfo.nonGFDevicesPresent;
             pAddBssParams->fLsigTXOPProtectionFullSupport = (tANI_U8)beaconStruct.HTInfo.lsigTXOPProtectionFullSupport;
@@ -510,9 +510,14 @@ tSirRetStatus limFTPrepareAddBssReq( tpAniSirGlobal pMac,
             pAddBssParams->staContext.wmmEnabled = 0;
 
         //Update the rates
-        
+#ifdef WLAN_FEATURE_11AC
+        limPopulateOwnRateSet(pMac, &pAddBssParams->staContext.supportedRates, 
+                             beaconStruct.HTCaps.supportedMCSSet, 
+                             false,pftSessionEntry,&beaconStruct.VHTCaps);
+#else
         limPopulateOwnRateSet(pMac, &pAddBssParams->staContext.supportedRates, 
                                                     beaconStruct.HTCaps.supportedMCSSet, false,pftSessionEntry);
+#endif
         limFillSupportedRatesInfo(pMac, NULL, &pAddBssParams->staContext.supportedRates,pftSessionEntry);
 
     }
@@ -575,7 +580,7 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
         return NULL;
     }
         
-#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG || defined FEATURE_WLAN_CCX
+#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
     limPrintMacAddr(pMac, pbssDescription->bssId, LOGE);
 #endif
 
@@ -583,7 +588,7 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
     pftSessionEntry->peSessionId = sessionId;
 
     pftSessionEntry->dot11mode = psessionEntry->dot11mode;
-    pftSessionEntry->htCapabality = psessionEntry->htCapabality;
+    pftSessionEntry->htCapability = psessionEntry->htCapability;
 
     pftSessionEntry->limWmeEnabled = psessionEntry->limWmeEnabled;
     pftSessionEntry->limQosEnabled = psessionEntry->limQosEnabled;
@@ -617,7 +622,7 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
     // Self Mac
     sirCopyMacAddr(pftSessionEntry->selfMacAddr, psessionEntry->selfMacAddr);
     sirCopyMacAddr(pftSessionEntry->limReAssocbssId, pbssDescription->bssId);
-#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG || defined FEATURE_WLAN_CCX
+#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
     limPrintMacAddr(pMac, pftSessionEntry->limReAssocbssId, LOGE);
 #endif
 
@@ -649,11 +654,6 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
                        
     pftSessionEntry->limCurrentBssCaps = pbssDescription->capabilityInfo;
     pftSessionEntry->limReassocBssCaps = pbssDescription->capabilityInfo;
-            
-    pftSessionEntry->limCurrentTitanHtCaps=
-                    pbssDescription->titanHtCaps;
-    pftSessionEntry->limReassocTitanHtCaps=
-        pftSessionEntry->limCurrentTitanHtCaps;
 
     regMax = cfgGetRegulatoryMaxTransmitPower( pMac, pftSessionEntry->currentOperChannel ); 
     localPowerConstraint = regMax;
@@ -709,8 +709,12 @@ void limFTSetupAuthSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
 #ifdef FEATURE_WLAN_CCX
         pftSessionEntry->isCCXconnection = psessionEntry->isCCXconnection;
 #endif
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
         pftSessionEntry->isFastTransitionEnabled = psessionEntry->isFastTransitionEnabled;
+#endif
+
+#ifdef FEATURE_WLAN_LFR
+        pftSessionEntry->isFastRoamIniFeatureEnabled = psessionEntry->isFastRoamIniFeatureEnabled; 
 #endif
         limFTPrepareAddBssReq( pMac, FALSE, pftSessionEntry, 
             pMac->ft.ftPEContext.pFTPreAuthReq->pbssDescription );
@@ -1078,7 +1082,7 @@ void limProcessMlmFTReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf,
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
     limLog( pMac, LOGE, FL( "Sending SIR_HAL_ADD_BSS_REQ..." ));
 #endif
-    MTRACE(macTraceMsgTx(pMac, 0, msgQ.type));
+    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
 
     retCode = wdaPostCtrlMsg( pMac, &msgQ );
     if( eSIR_SUCCESS != retCode) 
@@ -1267,7 +1271,7 @@ limProcessFTAggrQosReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf )
      * WDA_AGGR_QOS_RSP from HAL.
      */
     SET_LIM_PROCESS_DEFD_MESGS(pMac, false);
-    MTRACE(macTraceMsgTx(pMac, 0, msg.type));
+    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msg.type));
 
     if(eSIR_SUCCESS != wdaPostCtrlMsg(pMac, &msg))
     {
@@ -1408,6 +1412,9 @@ int limisFastTransitionRequired(tpAniSirGlobal pMac, int sessionId)
            (((pMac->lim.gpSession[sessionId].is11Rconnection) 
 #ifdef FEATURE_WLAN_CCX
            || (pMac->lim.gpSession[sessionId].isCCXconnection)
+#endif
+#ifdef FEATURE_WLAN_LFR
+           || (pMac->lim.gpSession[sessionId].isFastRoamIniFeatureEnabled)
 #endif
            )&& 
             pMac->lim.gpSession[sessionId].isFastTransitionEnabled))

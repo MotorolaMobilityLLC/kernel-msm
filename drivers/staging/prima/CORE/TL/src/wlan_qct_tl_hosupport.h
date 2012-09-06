@@ -258,6 +258,46 @@ VOS_STATUS WLANTL_SetFWRSSIThresholds
    v_PVOID_t                       pAdapter
 );
 
+/*==========================================================================
+
+   FUNCTION
+
+   DESCRIPTION 
+    
+   PARAMETERS 
+
+   RETURN VALUE
+
+============================================================================*/
+VOS_STATUS WLANTL_HSSerializeTlIndication
+(
+   v_PVOID_t   pAdapter,
+   v_U8_t      rssiNotification,
+   v_PVOID_t   pUserCtxt,
+   WLANTL_RSSICrossThresholdCBType cbFunction
+);
+
+/*==========================================================================
+
+   FUNCTION
+
+   DESCRIPTION 
+    
+   PARAMETERS 
+
+   RETURN VALUE
+
+============================================================================*/
+VOS_STATUS WLANTL_StatHandleTXFrame
+(
+   v_PVOID_t        pAdapter,
+   v_U8_t           STAid,
+   vos_pkt_t       *dataBuffer,
+   v_PVOID_t        pBDHeader
+#ifdef FEATURE_WLAN_INTEGRATED_SOC
+  ,WLANTL_MetaInfoType *txMetaInfo
+#endif /* FEATURE_WLAN_INTEGRATED_SOC */
+);
 
 #endif //FEATURE_WLAN_GEN6_ROAMING
 

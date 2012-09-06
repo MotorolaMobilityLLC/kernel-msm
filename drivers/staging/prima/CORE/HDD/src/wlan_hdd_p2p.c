@@ -218,7 +218,7 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
          ( WLAN_HDD_P2P_DEVICE == pAdapter->device_mode )
        )
     {
-        tANI_U8 sessionId = pAdapter->sessionId; 
+        tANI_U8 sessionId = pAdapter->sessionId;
         //call sme API to start remain on channel.
         sme_RemainOnChannel(
                        WLAN_HDD_GET_HAL_CTX(pAdapter), sessionId,
@@ -407,6 +407,11 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
     noack = dont_wait_for_ack;
 #endif
 
+    //If the wait is coming as 0 with off channel set
+    //then set the wait to 200 ms
+    if (offchan && !wait)
+        wait = ACTION_FRAME_DEFAULT_WAIT;
+
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d",
                             __func__,pAdapter->device_mode);
 
@@ -429,23 +434,21 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
             else if ((subType == SIR_MAC_MGMT_DISASSOC) ||
                     (subType == SIR_MAC_MGMT_DEAUTH))
             {
-                /* Deauth/Disassoc received from supplicant, If we simply 
-                 * transmit the frame over air, driver doesn't come to know 
-                 * about the deauth/disassoc. Because of this reason the 
-                 * supplicant and driver will be out of sync.
-                 * Drop the frame here and initiate the disassoc procedure 
-                 * from driver, the core stack will take care of sending
-                 * disassoc frame and indicating corresponding events to supplicant.
+                /* During EAP failure or P2P Group Remove supplicant
+                 * is sending del_station command to driver. From
+                 * del_station function, Driver will send deauth frame to
+                 * p2p client. No need to send disassoc frame from here.
+                 * so Drop the frame here and send tx indication back to
+                 * supplicant.
                  */
                 tANI_U8 dstMac[ETH_ALEN] = {0};
                 memcpy(&dstMac, &buf[WLAN_HDD_80211_FRM_DA_OFFSET], ETH_ALEN);
-                hddLog(VOS_TRACE_LEVEL_INFO, 
+                hddLog(VOS_TRACE_LEVEL_INFO,
                         "%s: Deauth/Disassoc received for STA:"
-                        "%02x:%02x:%02x:%02x:%02x:%02x", 
-                        __func__, 
-                        dstMac[0], dstMac[1], dstMac[2], 
+                        "%02x:%02x:%02x:%02x:%02x:%02x",
+                        __func__,
+                        dstMac[0], dstMac[1], dstMac[2],
                         dstMac[3], dstMac[4], dstMac[5]);
-                hdd_softap_sta_disassoc(pAdapter, (v_U8_t *)&dstMac);
                 goto err_rem_channel;
             }
         }
@@ -555,9 +558,8 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
          ( WLAN_HDD_P2P_DEVICE == pAdapter->device_mode )
        )
     {
-        tANI_U8 sessionId = pAdapter->sessionId;         
-        
-        if ((type == SIR_MAC_MGMT_FRAME) && 
+        tANI_U8 sessionId = pAdapter->sessionId;
+        if ((type == SIR_MAC_MGMT_FRAME) &&
                 (subType == SIR_MAC_MGMT_ACTION) &&
                 (buf[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_PUBLIC_ACTION_FRAME))
         {
@@ -928,9 +930,9 @@ int wlan_hdd_add_virtual_intf( struct wiphy *wiphy, char *name,
 
     if(hdd_get_adapter(pHddCtx, wlan_hdd_get_session_type(type)) != NULL)
     {
-	  hddLog(VOS_TRACE_LEVEL_ERROR,"%s: Interface type %d already exists. Two"
+       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: Interface type %d already exists. Two"
                      "interfaces of same type are not supported currently.",__func__, type);
-	  return NULL;
+       return NULL;
     }
 
     if ( pHddCtx->cfg_ini->isP2pDeviceAddrAdministrated )
@@ -1000,7 +1002,9 @@ void hdd_sendMgmtFrameOverMonitorIface( hdd_adapter_t *pMonAdapter,
     int needed_headroom = 0;
     int flag = HDD_RX_FLAG_IV_STRIPPED | HDD_RX_FLAG_DECRYPTED |
                HDD_RX_FLAG_MMIC_STRIPPED;
-
+#ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
+    hdd_context_t* pHddCtx = (hdd_context_t*)(pMonAdapter->pHddCtx);
+#endif
     hddLog( LOG1, FL("Indicate Frame over Monitor Intf"));
 
     VOS_ASSERT( (pbFrames != NULL) );
@@ -1043,6 +1047,9 @@ void hdd_sendMgmtFrameOverMonitorIface( hdd_adapter_t *pMonAdapter,
      skb->dev = pMonAdapter->dev;
      skb->protocol = eth_type_trans( skb, skb->dev );
      skb->ip_summed = CHECKSUM_UNNECESSARY;
+#ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
+     wake_lock_timeout(&pHddCtx->rx_wake_lock, HDD_WAKE_LOCK_DURATION);
+#endif
      rxstat = netif_rx_ni(skb);
      if( NET_RX_SUCCESS == rxstat )
      {
@@ -1203,6 +1210,9 @@ static void hdd_wlan_tx_complete( hdd_adapter_t* pAdapter,
     struct ieee80211_radiotap_header *rthdr;
     unsigned char *pos;
     struct sk_buff *skb = cfgState->skb;
+#ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
+    hdd_context_t *pHddCtx = (hdd_context_t*)(pAdapter->pHddCtx);
+#endif
 
     /* 2 Byte for TX flags and 1 Byte for Retry count */
     u32 rtHdrLen = sizeof(*rthdr) + 3;
@@ -1262,6 +1272,9 @@ static void hdd_wlan_tx_complete( hdd_adapter_t* pAdapter,
     skb->pkt_type  = PACKET_OTHERHOST;
     skb->protocol  = htons(ETH_P_802_2);
     memset( skb->cb, 0, sizeof( skb->cb ) );
+#ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
+    wake_lock_timeout(&pHddCtx->rx_wake_lock, HDD_WAKE_LOCK_DURATION);
+#endif
     if (in_interrupt())
         netif_rx( skb );
     else

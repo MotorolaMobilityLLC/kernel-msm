@@ -97,7 +97,16 @@ typedef struct sPESession           // Added to Support BT-AMP
     void                    *pLimMlmReassocReq;      //handle to MLM reassoc Req
     tANI_U16                channelChangeReasonCode;
     tANI_U8                 dot11mode;
-    tANI_U8                 htCapabality;
+    tANI_U8                 htCapability;
+    /* Supported Channel Width Set: 0-20MHz 1 - 40MHz */
+    tANI_U8                 htSupportedChannelWidthSet;
+    /* Recommended Tx Width Set
+     * 0 - use 20 MHz channel (control channel)
+     * 1 - use channel width enabled under Supported Channel Width Set
+     */
+    tANI_U8                 htRecommendedTxWidthSet;
+    /* Identifies the 40 MHz extension channel */
+    ePhyChanBondState       htSecondaryChannelOffset;
     tSirRFBand              limRFBand;
     tANI_U8                 limIbssActive;          //TO SUPPORT CONCURRENCY
 
@@ -107,17 +116,19 @@ typedef struct sPESession           // Added to Support BT-AMP
     tANI_U8                 limCurrentBssQosCaps;
     tANI_U16                limCurrentBssPropCap;
     tANI_U8                 limSentCapsChangeNtf;
-    tANI_U32                limCurrentTitanHtCaps;
     tANI_U16                limAID;
 
     /* Parameters  For Reassociation */
     tSirMacAddr             limReAssocbssId;
     tSirMacChanNum          limReassocChannelId;
+    /* CB paramaters required/duplicated for Reassoc since re-assoc mantains its own params in lim */
+    tANI_U8                 reAssocHtSupportedChannelWidthSet;
+    tANI_U8                 reAssocHtRecommendedTxWidthSet;
+    ePhyChanBondState       reAssocHtSecondaryChannelOffset;
     tSirMacSSid             limReassocSSID;
     tANI_U16                limReassocBssCaps;
     tANI_U8                 limReassocBssQosCaps;
     tANI_U16                limReassocBssPropCap;
-    tANI_U32                limReassocTitanHtCaps;
 
     // Assoc or ReAssoc Response Data/Frame
     void                   *limAssocResponseData;
@@ -257,8 +268,11 @@ typedef struct sPESession           // Added to Support BT-AMP
     tAniBool            isCCXconnection;
     tCcxPEContext       ccxContext;
 #endif
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
     tAniBool            isFastTransitionEnabled;
+#endif
+#ifdef FEATURE_WLAN_LFR
+    tAniBool            isFastRoamIniFeatureEnabled;
 #endif
 #ifdef WLAN_FEATURE_P2P
     tSirNoAParam p2pNoA;
@@ -285,12 +299,22 @@ typedef struct sPESession           // Added to Support BT-AMP
     tANI_U8  gLimEdcaParamSetCount;
 
     tBeaconParams beaconParams;
-
+#ifdef WLAN_FEATURE_11AC
+    tANI_U8 vhtCapability;
+    tANI_U8 vhtTxChannelWidthSet;
+#endif
     tANI_U8            spectrumMgtEnabled;
+    /* *********************11H related*****************************/
+    //tANI_U32           gLim11hEnable;
+    tLimSpecMgmtInfo   gLimSpecMgmt;
+    // CB Primary/Secondary Channel Switch Info
+    tLimChannelSwitchInfo  gLimChannelSwitch;
+    /* *********************End 11H related*****************************/
 
     /*Flag to Track Status/Indicate HBFailure on this session */
     tANI_BOOLEAN LimHBFailureStatus;
     tANI_U32           gLimPhyMode;
+
 }tPESession, *tpPESession;
 
 #define LIM_MAX_ACTIVE_SESSIONS 4

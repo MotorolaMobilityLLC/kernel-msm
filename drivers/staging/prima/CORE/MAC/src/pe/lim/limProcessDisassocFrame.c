@@ -206,7 +206,7 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
             case eSIR_MAC_DISASSOC_LEAVING_BSS_REASON:
                 // Valid reasonCode in received Disassociation frame
                 // as long as we're not about to channel switch
-                if(pMac->lim.gLimChannelSwitch.state != eLIM_CHANNEL_SWITCH_IDLE)
+                if(psessionEntry->gLimChannelSwitch.state != eLIM_CHANNEL_SWITCH_IDLE)
                 {
                     limLog(pMac, LOGW,
                         FL("Ignoring disassoc frame due to upcoming "

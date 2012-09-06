@@ -497,11 +497,9 @@ WLANSAP_pmcFullPwrReqCB
     }
     else
     {
-        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, 
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL, 
                "WLANSAP_pmcFullPwrReqCB: PMC failed to put the chip in Full power\n");
 
-        //ASSERT
-        VOS_ASSERT(0);
     }
 
 }// WLANSAP_pmcFullPwrReqCB
