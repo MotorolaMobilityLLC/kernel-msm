@@ -72,6 +72,7 @@ struct hsd_info {
 	struct mutex mutex_lock;
 	/* h/w configuration : initilized by platform data */
 	unsigned int gpio_detect; /* DET : to detect jack inserted or not */
+	unsigned int gpio_detect_can_wakeup;
 	unsigned int gpio_mic_en; /* EN : to enable mic */
 	unsigned int gpio_mic_bias_en; /* EN : to enable mic bias */
 	unsigned int gpio_jpole;  /* JPOLE : 3pole or 4pole */
@@ -92,6 +93,7 @@ struct hsd_info {
 	atomic_t irq_key_enabled;
 	atomic_t is_3_pole_or_not;
 	atomic_t btn_state;
+	int saved_detect;
 	/* work for detect_work */
 	struct delayed_work work;
 	struct delayed_work work_for_key_pressed;
@@ -218,11 +220,8 @@ static void insert_headset(struct hsd_info *hi)
 		mutex_unlock(&hi->mutex_lock);
 
 		if (!atomic_read(&hi->irq_key_enabled)) {
-			unsigned long irq_flags;
 			HSD_DBG("enable_irq - irq_key");
-			local_irq_save(irq_flags);
 			enable_irq(hi->irq_key);
-			local_irq_restore(irq_flags);
 
 			atomic_set(&hi->irq_key_enabled, TRUE);
 		}
@@ -248,11 +247,7 @@ static void remove_headset(struct hsd_info *hi)
 	mutex_unlock(&hi->mutex_lock);
 
 	if (atomic_read(&hi->irq_key_enabled)) {
-		unsigned long irq_flags;
-
-		local_irq_save(irq_flags);
 		disable_irq(hi->irq_key);
-		local_irq_restore(irq_flags);
 		atomic_set(&hi->irq_key_enabled, FALSE);
 	}
 
@@ -300,19 +295,24 @@ static void detect_work(struct work_struct *work)
 
 }
 
-static irqreturn_t gpio_irq_handler(int irq, void *dev_id)
+static void schedule_detect_work(struct hsd_info *hi)
 {
-	struct hsd_info *hi = (struct hsd_info *) dev_id;
-
 	wake_lock_timeout(&ear_hook_wake_lock, 2 * HZ);
-
-	HSD_DBG("gpio_irq_handler");
 
 #ifdef FSA8008_USE_WORK_QUEUE
 	queue_delayed_work(local_fsa8008_workqueue, &(hi->work), HZ/2 ); /* 500ms */
 #else
 	schedule_delayed_work(&(hi->work), HZ/2); /* 500ms */
 #endif
+}
+
+static irqreturn_t gpio_irq_handler(int irq, void *dev_id)
+{
+	struct hsd_info *hi = (struct hsd_info *) dev_id;
+
+	HSD_DBG("gpio_irq_handler");
+
+	schedule_detect_work(hi);
 
 	return IRQ_HANDLED;
 }
@@ -322,9 +322,9 @@ static irqreturn_t button_irq_handler(int irq, void *dev_id)
 	struct hsd_info *hi = (struct hsd_info *) dev_id;
 	int value;
 
-	wake_lock_timeout(&ear_hook_wake_lock, 2 * HZ);
-
 	HSD_DBG("button_irq_handler");
+
+	wake_lock_timeout(&ear_hook_wake_lock, 2 * HZ);
 
 	value = gpio_get_value_cansleep(hi->gpio_key);
 
@@ -371,6 +371,7 @@ static int hsd_probe(struct platform_device *pdev)
 	atomic_set(&hi->is_3_pole_or_not, 1);
 
 	hi->gpio_detect = pdata->gpio_detect;
+	hi->gpio_detect_can_wakeup = pdata->gpio_detect_can_wakeup;
 	hi->gpio_mic_en = pdata->gpio_mic_en;
 	hi->gpio_mic_bias_en = pdata->gpio_mic_bias_en;
 	hi->gpio_jpole = pdata->gpio_jpole;
@@ -445,11 +446,13 @@ static int hsd_probe(struct platform_device *pdev)
 		goto error_05;
 	}
 
-	ret = irq_set_irq_wake(hi->irq_detect, 1);
-	if (ret < 0) {
-		pr_err("%s: Failed to set irq_detect interrupt wake\n",
-				__func__);
-		goto error_06;
+	if (hi->gpio_detect_can_wakeup) {
+		ret = irq_set_irq_wake(hi->irq_detect, 1);
+		if (ret < 0) {
+			pr_err("%s: Failed to set irq_detect interrupt wake\n",
+					__func__);
+			goto error_06;
+		}
 	}
 
 	/* initialize irq of gpio_key */
@@ -578,9 +581,46 @@ static int hsd_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int hsd_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct hsd_info *hi = platform_get_drvdata(pdev);
+
+	HSD_DBG("hsd_suspend");
+
+	if (!hi->gpio_detect_can_wakeup) {
+		disable_irq(hi->irq_detect);
+		hi->saved_detect = gpio_get_value(hi->gpio_detect);
+	}
+
+	return 0;
+}
+
+static int hsd_resume(struct platform_device *pdev)
+{
+	struct hsd_info *hi = platform_get_drvdata(pdev);
+	int detect = 0;
+
+	HSD_DBG("hsd_resume");
+
+	if (!hi->gpio_detect_can_wakeup) {
+		enable_irq(hi->irq_detect);
+		detect = gpio_get_value(hi->gpio_detect);
+		if (hi->saved_detect != detect)
+			schedule_detect_work(hi);
+	}
+
+	return 0;
+}
+#endif
+
 static struct platform_driver hsd_driver = {
 	.probe          = hsd_probe,
 	.remove         = hsd_remove,
+#ifdef CONFIG_PM
+	.suspend        = hsd_suspend,
+	.resume         = hsd_resume,
+#endif
 	.driver         = {
 		.name   = "fsa8008",
 		.owner  = THIS_MODULE,
