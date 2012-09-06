@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2009 Steven Rostedt <srostedt@redhat.com>
  */
+#define REALLY_WANT_DEBUGFS
 #include <linux/stringify.h>
 #include <linux/kallsyms.h>
 #include <linux/seq_file.h>

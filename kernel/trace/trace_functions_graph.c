@@ -6,6 +6,7 @@
  * is Copyright (c) Steven Rostedt <srostedt@redhat.com>
  *
  */
+#define REALLY_WANT_DEBUGFS
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
 #include <linux/ftrace.h>

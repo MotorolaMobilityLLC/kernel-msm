@@ -4,6 +4,7 @@
  * Copyright (C) 2008 Lai Jiangshan <laijs@cn.fujitsu.com>
  *
  */
+#define REALLY_WANT_DEBUGFS
 #include <linux/seq_file.h>
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>

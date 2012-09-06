@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2008 Steven Rostedt <srostedt@redhat.com>
  */
+#define REALLY_WANT_DEBUGFS
 #include <linux/ring_buffer.h>
 #include <linux/trace_clock.h>
 #include <linux/spinlock.h>
