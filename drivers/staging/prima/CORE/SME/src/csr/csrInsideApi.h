@@ -51,6 +51,8 @@
 
 #define CSR_MAX_NUM_SUPPORTED_CHANNELS 55
 
+#define CSR_MAX_2_4_GHZ_SUPPORTED_CHANNELS 14
+
 #define CSR_MAX_BSS_SUPPORT            100
 
 //This number minus 1 means the number of times a channel is scanned before a BSS is remvoed from
@@ -368,7 +370,7 @@ void csrResetPMKIDCandidateList( tpAniSirGlobal pMac, tANI_U32 sessionId );
 #ifdef FEATURE_WLAN_WAPI
 void csrResetBKIDCandidateList( tpAniSirGlobal pMac, tANI_U32 sessionId );
 #endif /* FEATURE_WLAN_WAPI */
-void csrSaveToChannelPower2G_5G( tpAniSirGlobal pMac, tANI_U32 tableSize, tSirMacChanInfo *channelTable );
+eHalStatus csrSaveToChannelPower2G_5G( tpAniSirGlobal pMac, tANI_U32 tableSize, tSirMacChanInfo *channelTable );
 //Get the list of the base channels to scan for passively 11d info
 eHalStatus csrScanGetSupportedChannels( tpAniSirGlobal pMac );
 //To check whether a country code matches the one in the IE
@@ -916,5 +918,9 @@ void csrRoamFTPreAuthRspProcessor( tHalHandle hHal, tpSirFTPreAuthRsp pFTPreAuth
 #ifdef FEATURE_WLAN_CCX
 void csrCcxSendAdjacentApRepMsg(tpAniSirGlobal pMac, tCsrRoamSession *pSession);
 #endif
+
+eHalStatus csrGetDefaultCountryCodeFrmNv(tpAniSirGlobal pMac, tANI_U8 *pCountry);
+eHalStatus csrGetCurrentCountryCode(tpAniSirGlobal pMac, tANI_U8 *pCountry);
+
 #endif
 

@@ -148,7 +148,10 @@ typedef enum {
     eSAP_DOT11_MODE_11g_ONLY = 0x0080,
     eSAP_DOT11_MODE_11n_ONLY = 0x0100,
     eSAP_DOT11_MODE_11b_ONLY = 0x0400,
-
+#ifdef WLAN_FEATURE_11AC
+    eSAP_DOT11_MODE_11ac     = 0x1000,
+    eSAP_DOT11_MODE_11ac_ONLY = 0x2000
+#endif
 } eSapPhyMode;
 
 typedef enum {

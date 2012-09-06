@@ -110,7 +110,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
 
     PELOGE(limLog(pMac, LOGE,
         FL("received Deauth frame (mlm state = %s) with reason code %d from "),
-        limMlmStateStr(pMac->lim.gLimMlmState), reasonCode);
+        limMlmStateStr(psessionEntry->limMlmState), reasonCode);
     limPrintMacAddr(pMac, pHdr->sa, LOGE);)
       
     if ( (psessionEntry->limSystemRole == eLIM_AP_ROLE )||(psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE) )
@@ -259,7 +259,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
                         mlmDeauthInd.reasonCode = reasonCode;
 
                         psessionEntry->limMlmState = eLIM_MLM_IDLE_STATE;
-                        MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, 0, pMac->lim.gLimMlmState));
+                        MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
 
                         
                         limPostSmeMessage(pMac,
@@ -290,7 +290,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
 
                         psessionEntry->limMlmState =
                                    psessionEntry->limPrevMlmState;
-                        MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, 0, psessionEntry->limMlmState));
+                        MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
 
                         // Deactive Association response timeout
                         limDeactivateAndChangeTimer(

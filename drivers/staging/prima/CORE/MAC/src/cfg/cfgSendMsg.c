@@ -139,7 +139,7 @@ cfgSendHostMsg(tpAniSirGlobal pMac, tANI_U16 msgType, tANI_U32 msgLen, tANI_U32 
     }
 
     // Ship it
-    MTRACE(macTraceMsgTx(pMac, 0, mmhMsg.type));
+    MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
     SysProcessMmhMsg(pMac, &mmhMsg);
 
 } /*** end cfgSendHostMsg() ***/

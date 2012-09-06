@@ -144,11 +144,25 @@ static char fwpath[BUF_LEN];
 module_param_string(fwpath, fwpath, BUF_LEN,
                     S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
+/*
+ * The rate at which the driver sends RESTART event to supplicant
+ * once the function 'vos_wlanRestart()' is called
+ *
+ */
+#define WLAN_HDD_RESTART_RETRY_DELAY_MS 5000  /* 5 second */
+#define WLAN_HDD_RESTART_RETRY_MAX_CNT  5     /* 5 retries */
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
 static struct wake_lock wlan_wake_lock;
+#endif
 /* set when SSR is needed after unload */
 static v_U8_t      isSsrRequired;
 
 //internal function declaration
+static VOS_STATUS wlan_hdd_framework_restart(hdd_context_t *pHddCtx);
+static void wlan_hdd_restart_init(hdd_context_t *pHddCtx);
+static void wlan_hdd_restart_deinit(hdd_context_t *pHddCtx);
+void wlan_hdd_restart_timer_cb(v_PVOID_t usrDataForCallback);
+
 v_U16_t hdd_select_queue(struct net_device *dev,
     struct sk_buff *skb);
 
@@ -173,7 +187,7 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
 
    //Make sure that this callback corresponds to our device.
    if((strncmp( dev->name, "wlan", 4 )) && 
-      (strncmp( dev->name, "p2p-wlan", 8))
+      (strncmp( dev->name, "p2p", 3))
      )
       return NOTIFY_DONE;
 
@@ -207,11 +221,8 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
         break;
 
    case NETDEV_CHANGE:
-        if(VOS_STA_MODE == hdd_get_conparam()) 
-        {
-            if(TRUE == pAdapter->isLinkUpSvcNeeded)
-               complete(&pAdapter->linkup_event_var);
-           }
+        if(TRUE == pAdapter->isLinkUpSvcNeeded)
+           complete(&pAdapter->linkup_event_var);
         break;
 
    case NETDEV_GOING_DOWN:
@@ -342,7 +353,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
       goto exit; 
    }
 
-   if ((!ifr) && (!ifr->ifr_data))
+   if ((!ifr) || (!ifr->ifr_data))
    {
        ret = -EINVAL;
        goto exit; 
@@ -2621,6 +2632,9 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
 
    ENTER();
 
+   // Unloading, restart logic is no more required.
+   wlan_hdd_restart_deinit(pHddCtx);
+
 #ifdef CONFIG_CFG80211
 #ifdef WLAN_SOFTAP_FEATURE
    if (VOS_STA_SAP_MODE != hdd_get_conparam())
@@ -2863,7 +2877,11 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
          "%s: Failed to close VOSS Scheduler",__func__);
       VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
    }
-   
+
+#ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
+   /* Destroy the wake lock */
+   wake_lock_destroy(&pHddCtx->rx_wake_lock);
+#endif
 
    //Close VOSS
    //This frees pMac(HAL) context. There should not be any call that requires pMac access after this.
@@ -3106,12 +3124,20 @@ void wlan_hdd_enable_deepsleep(v_VOID_t * pVosContext)
 /* wake lock APIs for HDD */
 void hdd_prevent_suspend(void)
 {
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
     wake_lock(&wlan_wake_lock);
+#else
+    wcnss_prevent_suspend();
+#endif
 }
 
 void hdd_allow_suspend(void)
 {
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
     wake_unlock(&wlan_wake_lock);
+#else
+    wcnss_allow_suspend();
+#endif
 }
 
 /**---------------------------------------------------------------------------
@@ -3345,6 +3371,17 @@ int hdd_wlan_startup(struct device *dev )
       goto err_vosclose;
    }
 
+#ifdef FEATURE_WLAN_INTEGRATED_SOC
+      /* Vos preStart is calling */
+      /* vos preStart which does cfg download should be called before set sme config which accesses/sets some cfgs */
+      status = vos_preStart( pHddCtx->pvosContext );
+      if ( !VOS_IS_STATUS_SUCCESS( status ) )
+      {
+         hddLog(VOS_TRACE_LEVEL_FATAL,"%s: vos_preStart failed",__func__);
+         goto err_vosclose;
+      }
+#endif
+
    // Set the SME configuration parameters...
    status = hdd_set_sme_config( pHddCtx );
 
@@ -3361,16 +3398,6 @@ int hdd_wlan_startup(struct device *dev )
       hddLog(VOS_TRACE_LEVEL_FATAL, "%s: hdd_wmm_init failed", __FUNCTION__);
       goto err_vosclose;
    }
-
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
-   /* Vos preStart is calling */
-   status = vos_preStart( pHddCtx->pvosContext );
-   if ( !VOS_IS_STATUS_SUCCESS( status ) )
-   {
-      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: vos_preStart failed",__func__);
-      goto err_vosclose;
-   }
-#endif
 
 #ifdef FEATURE_WLAN_INTEGRATED_SOC
    /* In the integrated architecture we update the configuration from
@@ -3562,7 +3589,7 @@ int hdd_wlan_startup(struct device *dev )
          */
       if (((versionReported.major>0) || (versionReported.minor>1) || 
          ((versionReported.minor>=1) && (versionReported.version>=1)))
-         && ((versionReported.major == 1) && (versionReported.minor == 1)))
+         && ((versionReported.major == 1) && (versionReported.minor >= 1)))
          fwFeatCapsMsgSupported = 1;
       if (fwFeatCapsMsgSupported)
          sme_featureCapsExchange(pHddCtx->hHal);
@@ -3772,11 +3799,21 @@ int hdd_wlan_startup(struct device *dev )
 
    pHddCtx->isLoadUnloadInProgress = FALSE;
 
+#ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
+   /* Initialize the wake lcok */
+   wake_lock_init(&pHddCtx->rx_wake_lock,
+           WAKE_LOCK_SUSPEND,
+           "qcom_rx_wakelock");
+#endif
+
    vos_event_init(&pAdapter->scan_info.scan_finished_event);
    pAdapter->scan_info.scan_pending_option = WEXT_SCAN_PENDING_GIVEUP;
 
    vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, FALSE);
    hdd_allow_suspend();
+   
+   // Initialize the restart logic
+   wlan_hdd_restart_init(pHddCtx);
   
    goto success;
 
@@ -3896,7 +3933,9 @@ static int __init hdd_module_init ( void)
 
    ENTER();
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
    wake_lock_init(&wlan_wake_lock, WAKE_LOCK_SUSPEND, "wlan");
+#endif
 
    pr_info("%s: loading driver v%s\n", WLAN_MODULE_NAME,
            QWLAN_VERSIONSTR TIMER_MANAGER_STR MEMORY_DEBUG_STR);
@@ -4074,7 +4113,9 @@ static int __init hdd_module_init ( void)
       vos_mem_exit();
 #endif
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
       wake_lock_destroy(&wlan_wake_lock);
+#endif
       pr_err("%s: driver load failure\n", WLAN_MODULE_NAME);
    }
    else
@@ -4155,7 +4196,9 @@ static void __exit hdd_module_exit(void)
 #endif
 
 done:
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
    wake_lock_destroy(&wlan_wake_lock);
+#endif
    pr_info("%s: driver unloaded\n", WLAN_MODULE_NAME);
 }
 
@@ -4382,6 +4425,189 @@ void wlan_hdd_clear_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode)
    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: concurrency_mode = 0x%x NumberofSessions for mode %d = %d",
     __func__,pHddCtx->concurrency_mode,mode,pHddCtx->no_of_sessions[mode]);
 }
+
+/**---------------------------------------------------------------------------
+ *
+ *   \brief wlan_hdd_restart_init
+ *
+ *   This function initalizes restart timer/flag. An internal function.
+ *
+ *   \param  - pHddCtx
+ *
+ *   \return - None
+ *             
+ * --------------------------------------------------------------------------*/
+
+static void wlan_hdd_restart_init(hdd_context_t *pHddCtx)
+{
+   /* Initialize */
+   pHddCtx->hdd_restart_retries = 0;
+   atomic_set(&pHddCtx->isRestartInProgress, 0);
+   vos_timer_init(&pHddCtx->hdd_restart_timer, 
+                     VOS_TIMER_TYPE_SW, 
+                     wlan_hdd_restart_timer_cb,
+                     pHddCtx);
+}
+/**---------------------------------------------------------------------------
+ *
+ *   \brief wlan_hdd_restart_deinit
+ *
+ *   This function cleans up the resources used. An internal function.
+ *
+ *   \param  - pHddCtx
+ *
+ *   \return - None
+ *             
+ * --------------------------------------------------------------------------*/
+
+static void wlan_hdd_restart_deinit(hdd_context_t* pHddCtx)
+{
+ 
+   VOS_STATUS vos_status;
+   /* Block any further calls */
+   atomic_set(&pHddCtx->isRestartInProgress, 1);
+   /* Cleanup */
+   vos_status = vos_timer_stop( &pHddCtx->hdd_restart_timer );
+   if (!VOS_IS_STATUS_SUCCESS(vos_status))
+          hddLog(LOGE, FL("Failed to stop HDD restart timer\n"));
+   vos_status = vos_timer_destroy(&pHddCtx->hdd_restart_timer);
+   if (!VOS_IS_STATUS_SUCCESS(vos_status))
+          hddLog(LOGE, FL("Failed to destroy HDD restart timer\n"));
+
+}
+
+/**---------------------------------------------------------------------------
+ *
+ *   \brief wlan_hdd_framework_restart
+ *
+ *   This function uses a cfg80211 API to start a framework initiated WLAN
+ *   driver module unload/load.
+ *
+ *   Also this API keep retrying (WLAN_HDD_RESTART_RETRY_MAX_CNT).
+ *
+ *
+ *   \param  - pHddCtx
+ *
+ *   \return - VOS_STATUS_SUCCESS: Success
+ *             VOS_STATUS_E_EMPTY: Adapter is Empty
+ *             VOS_STATUS_E_NOMEM: No memory
+
+ * --------------------------------------------------------------------------*/
+
+static VOS_STATUS wlan_hdd_framework_restart(hdd_context_t *pHddCtx) 
+{
+   VOS_STATUS status = VOS_STATUS_SUCCESS;
+   hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
+   int len = (sizeof (struct ieee80211_mgmt));
+   struct ieee80211_mgmt *mgmt = NULL; 
+   
+   /* Prepare the DEAUTH managment frame with reason code */
+   mgmt =  kzalloc(len, GFP_KERNEL);
+   if(mgmt == NULL) 
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, 
+            "%s: memory allocatoin failed (%d bytes)", __func__, len);
+      return VOS_STATUS_E_NOMEM;
+   }
+   mgmt->u.deauth.reason_code = WLAN_REASON_DISASSOC_LOW_ACK;
+
+   /* Iterate over all adapters/devices */
+   status =  hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
+   do 
+   {
+      if( (status == VOS_STATUS_SUCCESS) && 
+                           pAdapterNode  && 
+                           pAdapterNode->pAdapter)
+      {
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, 
+               "restarting the driver(intf:\'%s\' mode:%d :try %d)",
+               pAdapterNode->pAdapter->dev->name,
+               pAdapterNode->pAdapter->device_mode,
+               pHddCtx->hdd_restart_retries + 1);
+         /* 
+          * CFG80211 event to restart the driver
+          * 
+          * 'cfg80211_send_unprot_deauth' sends a 
+          * NL80211_CMD_UNPROT_DEAUTHENTICATE event to supplicant at any state 
+          * of SME(Linux Kernel) state machine.
+          *
+          * Reason code WLAN_REASON_DISASSOC_LOW_ACK is currently used to restart
+          * the driver.
+          *
+          */
+         
+         cfg80211_send_unprot_deauth(pAdapterNode->pAdapter->dev, (u_int8_t*)mgmt, len );  
+      }
+      status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
+      pAdapterNode = pNext;
+   } while((NULL != pAdapterNode) && (VOS_STATUS_SUCCESS == status));
+
+
+   /* Free the allocated management frame */
+   kfree(mgmt);
+
+   /* Retry until we unload or reach max count */
+   if(++pHddCtx->hdd_restart_retries < WLAN_HDD_RESTART_RETRY_MAX_CNT) 
+      vos_timer_start(&pHddCtx->hdd_restart_timer, WLAN_HDD_RESTART_RETRY_DELAY_MS);
+
+   return status;
+
+}
+/**---------------------------------------------------------------------------
+ *
+ *   \brief wlan_hdd_restart_timer_cb
+ *
+ *   Restart timer callback. An internal function.
+ *
+ *   \param  - User data:
+ *
+ *   \return - None
+ *             
+ * --------------------------------------------------------------------------*/
+
+void wlan_hdd_restart_timer_cb(v_PVOID_t usrDataForCallback)
+{
+   hdd_context_t *pHddCtx = usrDataForCallback;
+   wlan_hdd_framework_restart(pHddCtx);
+   return;
+
+}
+
+
+/**---------------------------------------------------------------------------
+ *
+ *   \brief wlan_hdd_restart_driver
+ *
+ *   This function sends an event to supplicant to restart the WLAN driver. 
+ *   
+ *   This function is called from vos_wlanRestart.
+ *
+ *   \param  - pHddCtx
+ *
+ *   \return - VOS_STATUS_SUCCESS: Success
+ *             VOS_STATUS_E_EMPTY: Adapter is Empty
+ *             VOS_STATUS_E_ALREADY: Request already in progress
+
+ * --------------------------------------------------------------------------*/
+VOS_STATUS wlan_hdd_restart_driver(hdd_context_t *pHddCtx) 
+{
+   VOS_STATUS status = VOS_STATUS_SUCCESS;
+
+   /* A tight check to make sure reentrancy */
+   if(atomic_xchg(&pHddCtx->isRestartInProgress, 1))
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, 
+            "%s: WLAN restart is already in progress", __func__);
+
+      return VOS_STATUS_E_ALREADY;
+   }
+
+   /* Restart API */
+   status = wlan_hdd_framework_restart(pHddCtx);
+   
+   return status;
+}
+
 
 //Register the module init/exit functions
 module_init(hdd_module_init);

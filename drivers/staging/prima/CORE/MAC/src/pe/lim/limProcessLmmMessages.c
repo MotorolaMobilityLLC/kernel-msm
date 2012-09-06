@@ -674,7 +674,7 @@ limProcessLearnIntervalTimeout(tpAniSirGlobal pMac)
         pMac->lim.gLimSmeState = eLIM_SME_LINK_EST_WT_SCAN_STATE;
     else
         return;
-    MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, 0, pMac->lim.gLimSmeState));
+    MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, NO_SESSION, pMac->lim.gLimSmeState));
 
     /* The commented piece of code here is to handle the Measurement Request from WSM as Scan
      * request in the LIM in Linux Station. Currently, the station uses Measurement request to 
@@ -686,7 +686,7 @@ limProcessLearnIntervalTimeout(tpAniSirGlobal pMac)
     {
         pMac->lim.gLimPrevMlmState = pMac->lim.gLimMlmState;
         pMac->lim.gLimMlmState     = eLIM_MLM_LEARN_STATE;
-        MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, 0, pMac->lim.gLimMlmState));
+        MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, NO_SESSION, pMac->lim.gLimMlmState));
         pMac->lim.gLimSystemInScanLearnMode = eANI_BOOLEAN_TRUE;
     }
 #if 0

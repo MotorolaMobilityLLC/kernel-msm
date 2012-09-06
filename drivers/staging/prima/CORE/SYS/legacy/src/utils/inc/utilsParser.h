@@ -67,6 +67,9 @@ tSirRetStatus ConvertWscOpaque      (tpAniSirGlobal, tSirAddie*,                
 #ifdef WLAN_FEATURE_P2P
 tSirRetStatus ConvertP2POpaque      (tpAniSirGlobal, tSirAddie*,                 tDot11fIEP2PIEOpaque*);
 #endif
+#ifdef WLAN_FEATURE_WFD
+tSirRetStatus ConvertWFDOpaque      (tpAniSirGlobal, tSirAddie*,                 tDot11fIEWFDIEOpaque*);
+#endif
 
 
 #endif

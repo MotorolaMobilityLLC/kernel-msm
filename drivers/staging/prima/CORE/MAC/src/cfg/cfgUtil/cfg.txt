@@ -604,10 +604,10 @@ NONE
 WNI_CFG_DOT11_MODE     I     4     9
 V    RW    NP RESTART
 LIM
-0    9    0
+0    11    0
 V    RW    NP RESTART
 LIM
-0    9    0
+0    11    0
 
 #ENUM  ALL           0
 #ENUM  11A           1
@@ -619,6 +619,8 @@ LIM
 #ENUM  TAURUS        7
 #ENUM  11G_ONLY      8
 #ENUM  11N_ONLY      9
+#ENUM  11AC          10
+#ENUM  11AC_ONLY     11
 
 
 
@@ -2244,10 +2246,10 @@ NONE
 WNI_CFG_CHANNEL_BONDING_MODE    I    4    12
 V    RW    NP    RESTART
 LIM
-0    4     0
+0    10     0
 V    RW    NP    RESTART
 LIM
-0    4     0
+0    10     0
 
 #ENUM DISABLE          0
 #ENUM ENABLE           1
@@ -2263,21 +2265,35 @@ LIM
 *  lower frequency). 
 *
 *  0 - There is no secondary channel. The channel is 20Mhz
-*  1 - LOWER:  Secondary channel is located below the primary channel
-*  2 - HIGHER: Secondary channel is located above the primary channel   
+*  1 - LOWER:  Secondary channel 40MHZ is located below the primary channel
+*  2 - CENTERED:Secondary channel and primary located at centered
+*  3 - HIGHER: Secondary channel 40 MHZ is located above the primary channel
+*  4 - 80MHZ_LOW_CENTERED : 20/40MHZ offset LOW 40/80MHZ offset CENTERED
+*  5 - 80MHZ_CENTERED_CENTERED : 20/40MHZ offset CENTERED 40/80MHZ offset CENTERED
+*  6 - 80MHZ_HIGH_CENTERED : 20/40MHZ offset HIGH 40/80MHZ offset CENTERED
+*  7 - 80MHZ_LOW_LOW: 20/40MHZ offset LOW 40/80MHZ offset LOW
+*  8 - 80MHZ_HIGH_LOW: 20/40MHZ offset HIGH 40/80MHZ offset LOW
+*  9 - 80MHZ_LOW_HIGH: 20/40MHZ offset LOW 40/80MHZ offset HIGH
+*  10 - 80MHZ_HIGH_HIGH: 20/40MHZ offset HIGH 40/80MHZ offset HIGH
 *
 WNI_CFG_CB_SECONDARY_CHANNEL_STATE    I    4    12
 V    RW    NP
 NONE
-0    2     0
+0    10     0
 V    RW    NP
 NONE
-0    2     0
+0    10     0
 
 #ENUM NONE             0
 #ENUM LOWER            1
 #ENUM HIGHER           2
-
+#ENUM 11AC_20MHZ_LOW_40MHZ_CENTERED       3
+#ENUM 11AC_20MHZ_CENTERED_40MHZ_CENTERED  4
+#ENUM 11AC_20MHZ_HIGH_40MHZ_CENTERED      5
+#ENUM 11AC_20MHZ_LOW_40MHZ_LOW            6
+#ENUM 11AC_20MHZ_HIGH_40MHZ_LOW           7
+#ENUM 11AC_20MHZ_LOW_40MHZ_HIGH           8
+#ENUM 11AC_20MHZ_HIGH_40MHZ_HIGH          9
 
 *************************************
 * Feature:   Dynamic Retry Rates
@@ -2693,6 +2709,385 @@ LIM
 #ENUM ENABLE    1
 #ENUM DISABLE   0
 
+*
+* Maximum AMPDU Length
+* By default set to zero for 3895 octets
+*
+WNI_CFG_VHT_MAX_MPDU_LENGTH  I    4    19
+V    RW    NP    
+LIM
+0    2    0
+V    RW    NP    
+LIM
+0    2    0
+
+*
+* Supported Channel Width Set
+* By default set to zero for 
+* STAs does not support either 160 or 80+80MHz
+*
+WNI_CFG_VHT_SUPPORTED_CHAN_WIDTH_SET  I    4    19
+V    RW    NP    
+LIM
+0    0    0
+V    RW    NP    
+LIM
+0    0    0
+
+*
+* LDPC Coding Capability
+* Riva/Pronto supports, default set to 1
+*
+WNI_CFG_VHT_LDPC_CODING_CAP  I    4    19
+V    RW    NP    
+LIM
+0    1    0
+V    RW    NP    
+LIM
+0    1    0
+
+*
+* Short GI for 80MHz
+* Riva/Pronto supports, default set to 1
+*
+WNI_CFG_VHT_SHORT_GI_80MHZ  I    4    19
+V    RW    NP    
+LIM
+0    1    1
+V    RW    NP    
+LIM
+0    1    1
+
+*
+* Short GI for 160MHz and 80+80MHz
+* Riva/Pronto does not supports, default set to 0
+*
+WNI_CFG_VHT_SHORT_GI_160_AND_80_PLUS_80MHZ  I    4    19
+V    RW    NP    
+LIM
+0    1    0
+V    RW    NP    
+LIM
+0    1    0
+
+*
+* Support for Transmission of 2x1 STBC
+* Riva/Pronto does not supports, default set to 0
+*
+WNI_CFG_VHT_TXSTBC  I    4    19
+V    RW    NP    
+LIM
+0    1    0
+V    RW    NP    
+LIM
+0    1    0
+
+*
+* Support for Reception of PPDUs using STBC
+* Riva/Pronto supports, default set to 1
+*
+WNI_CFG_VHT_RXSTBC  I    4    19
+V    RW    NP    
+LIM
+0    1    1
+V    RW    NP    
+LIM
+0    1    1
+
+*
+* Support for Operating as SU Beamformer
+* Riva/Pronto does not supports, default set to 0
+*
+WNI_CFG_VHT_SU_BEAMFORMER_CAP  I    4    19
+V    RW    NP    
+LIM
+0    1    0
+V    RW    NP    
+LIM
+0    1    0
+
+*
+* Support for Operating as SU Beamformee
+* Riva does not support, But Pronto supports, default set to 0
+*
+WNI_CFG_VHT_SU_BEAMFORMEE_CAP  I    4    19
+V    RW    NP    
+LIM
+0    1    1
+V    RW    NP    
+LIM
+0    1    1
+
+*
+* Compressed Steering Number of Beamformer Antennas Supported
+* Riva/Pronto does not support, default set to 0
+*
+WNI_CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED  I    4    19
+V    RW    NP    
+LIM
+0    1    0
+V    RW    NP    
+LIM
+0    1    0
+
+*
+* Number of Sounding Dimensions indicates Number
+* of antennas used by the beamformer when sending beamformed transmissions
+* Riva/Pronto does not support beamformer, default set to 0
+*
+WNI_CFG_VHT_NUM_SOUNDING_DIMENSIONS  I    4    19
+V    RW    NP    
+LIM
+0    1    1
+V    RW    NP    
+LIM
+0    1    1
+
+*
+* MU Beamformer Capable
+* Riva/Pronto does not support, default set to 0
+*
+WNI_CFG_VHT_MU_BEAMFORMER_CAP  I    4    19
+V    RW    NP    
+LIM
+0    1    0
+V    RW    NP    
+LIM
+0    1    0
+
+*
+* MU Beamformee Capable
+* Riva does not support but pronto supports, default set to 0
+*
+WNI_CFG_VHT_MU_BEAMFORMEE_CAP  I    4    19
+V    RW    NP    
+LIM
+0    1    0
+V    RW    NP    
+LIM
+0    1    0
+
+*
+* VHT TXOP PS
+* Riva does not support but pronto supports, default set to 0
+*
+WNI_CFG_VHT_TXOP_PS  I    4    19
+V    RW    NP    
+LIM
+0    1    0
+V    RW    NP    
+LIM
+0    1    0
+
+*
+* +HTC-VHT Capable
+* Riva does not support but pronto supports, default set to 0
+*
+WNI_CFG_VHT_HTC_VHTC_CAP  I    4    19
+V    RW    NP    
+LIM
+0    1    0
+V    RW    NP    
+LIM
+0    1    0
+
+*
+* Maximum AMPDU Length exponent range 0-7
+* 2^(13+Max AMPDU Length)-1, default set to 0
+*
+WNI_CFG_VHT_AMPDU_LEN_EXPONENT  I    4    19
+V    RW    NP    
+LIM
+0    7    3
+V    RW    NP    
+LIM
+0    7    3
+
+*
+* VHT Link Adaptation Capable
+* Riva does not support but pronto supports, default set to 0
+*
+WNI_CFG_VHT_LINK_ADAPTATION_CAP  I    4    19
+V    RW    NP    
+LIM
+0    3    0
+V    RW    NP    
+LIM
+0    3    0
+
+*
+* VHT Rx Antenna Pattern Consistency
+*
+WNI_CFG_VHT_RX_ANT_PATTERN  I    4    19
+V    RW    NP    
+LIM
+0    1    1
+V    RW    NP    
+LIM
+0    1    1
+
+*
+* VHT Tx Antenna Pattern Consistency
+*
+WNI_CFG_VHT_TX_ANT_PATTERN  I    4    19
+V    RW    NP    
+LIM
+0    1    1
+V    RW    NP    
+LIM
+0    1    1
+
+*
+* RxMCS Map is 16 bits, The 2bit Max MCS for n SS field.
+* Indicates the maximum MCS that can be received for each
+* number of spacial streams. Riva supports MCS 0-9
+*
+WNI_CFG_VHT_RX_MCS_MAP  I    4    19
+V    RW    NP    
+LIM
+0    0xFFFF    0xFFFE
+V    RW    NP    
+LIM
+0    0xFFFF    0xFFFE
+
+* TxMCS Map is 16 bits, The 2bit Max MCS for n SS field.
+* Indicates the maximum MCS that can be transmitted for each
+* number of spacial streams.
+*
+WNI_CFG_VHT_TX_MCS_MAP  I    4    19
+V    RW    NP    
+LIM
+0    0xFFFF    0xFFFE
+V    RW    NP    
+LIM
+0    0xFFFF    0xFFFE
+
+*
+* Rx Highest supported data rate.
+*
+WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE  I    4    19
+V    RW    NP    
+LIM
+1    434   434
+V    RW    NP    
+LIM
+1    434   434
+
+*
+* Tx Highest supported data rate.
+*
+WNI_CFG_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE  I    4    19
+V    RW    NP    
+LIM
+1    434    434
+V    RW    NP    
+LIM
+1    434    434
+
+*
+* VHT Operation Information
+* Channel Width set to zero for 20/40MHz.
+* set to 1 for 80MHz. 2->160Mhz, 3->80+80MHz
+*
+WNI_CFG_VHT_CHANNEL_WIDTH  I    4    19
+V    RW    NP    
+LIM
+0    3    0
+V    RW    NP    
+LIM
+0    3    0
+
+#ENUM 20_40MHZ       0
+#ENUM 80MHZ          1
+#ENUM 160MHZ         2
+#ENUM 80_PLUS_80MHZ  3
+*
+* Channel center freq Seg1 
+*
+WNI_CFG_VHT_CHANNEL_CENTER_FREQ_SEGMENT1  I    4    19
+V    RW    NP    
+LIM
+0    256   0 
+V    RW    NP    
+LIM
+0    256   0
+
+*
+* Channel center freq Seg2 for 80+80 Mhz
+*
+WNI_CFG_VHT_CHANNEL_CENTER_FREQ_SEGMENT2  I    4    19
+V    RW    NP    
+LIM
+0    0     0 
+V    RW    NP    
+LIM
+0    0     0
+
+*
+* Basic MCS Set
+*
+WNI_CFG_VHT_BASIC_MCS_SET  I    4    19
+V    RW    NP    
+LIM
+0    3     0 
+V    RW    NP    
+LIM
+0    3     0
+
+*
+* MU-MIMO Capable STA Count
+*
+WNI_CFG_VHT_MU_MIMO_CAP_STA_COUNT  I    4    19
+V    RW    NP    
+LIM
+0     4    0 
+V    RW    NP    
+LIM
+0     4     0
+
+*
+* Spatial Stream Under-Utilization
+*
+WNI_CFG_VHT_SS_UNDER_UTIL  I    4    19
+V    RW    NP    
+LIM
+0     0    0 
+V    RW    NP    
+LIM
+0     0     0
+
+*
+* Forty MHZ Utilization
+*
+WNI_CFG_VHT_40MHZ_UTILIZATION  I    4    19
+V    RW    NP    
+LIM
+0     0    0 
+V    RW    NP    
+LIM
+0     0     0
+
+*
+* Eighty MHz Utilization
+*
+WNI_CFG_VHT_80MHZ_UTILIZATION  I    4    19
+V    RW    NP    
+LIM
+0     0    0 
+V    RW    NP    
+LIM
+0     0     0
+
+*
+* Hundred Sixty MHz Utilization
+*
+WNI_CFG_VHT_160MHZ_UTILIZATION  I    4    19
+V    RW    NP    
+LIM
+0     0    0 
+V    RW    NP    
+LIM
+0     0     0
 
 *
 * Maximum AMSDU length
@@ -3999,3 +4394,16 @@ HAL
 V    RW    NP
 HAL
 1    255    20
+
+*
+* MC Addr List power control will be enabled if value is set to 1
+* 
+*
+*
+WNI_CFG_ENABLE_MC_ADDR_LIST  I   4   0
+V    RW    NP
+HAL
+0    1     0
+V    RW    NP
+HAL
+0    1     0

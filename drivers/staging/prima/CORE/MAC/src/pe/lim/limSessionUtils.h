@@ -58,6 +58,20 @@
 /*------------------------------------------------------------------------- 
   Function declarations and documenation
   ------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------
+  
+          \brief peGetVhtCapable() - Returns the Vht capable from a valid session.
+ 
+          This function itrates the session Table and returns the VHT capable from first valid session
+          if no sessions are valid/present  it returns FALSE
+
+         \param pMac	                - pointer to global adapter context
+          \return                        - channel to scan from valid session else zero.
+          
+          \sa
+           
+ --------------------------------------------------------------------------*/
+   tANI_U8 peGetVhtCapable(tpAniSirGlobal pMac);
 
 
 /*--------------------------------------------------------------------------
@@ -130,7 +144,68 @@ tANI_U8
 isLimSessionOffChannel(tpAniSirGlobal pMac, tANI_U8 sessionId);
 /* --------------------------------------------------------------------------*/
 
+/*--------------------------------------------------------------------------
+  \brief peGetActiveSessionChannel() - Gets the first valid sessions primary and secondary
+                                        channel. If not found returns invalid channel ID (=0)
+  \param pMac              - pointer to global adapter context
+  \param resumeChannel     - Primary channel of the first valid session. This is an output argument.
+  \return resumePhyCbState - Secondary channel of the first valid session. This is an output argument.
+--------------------------------------------------------------------------*/
+void
+peGetActiveSessionChannel(tpAniSirGlobal pMac, tANI_U8* resumeChannel, ePhyChanBondState* resumePhyCbState);
+
+/*--------------------------------------------------------------------------
+  \brief limIsChanSwitchRunning() - Check if channel switch is running on any  
+                                    valid session.
+
+  \param pMac                   - pointer to global adapter context
+  
+  \return tANI_U8               - 1 - if chann switching running.
+                                  0 - if chann switching is not running. 
+  
+  \sa
+  --------------------------------------------------------------------------*/
 tANI_U8
-peGetActiveSessionChannel( tpAniSirGlobal pMac );
+limIsChanSwitchRunning (tpAniSirGlobal pMac);
+
+/*--------------------------------------------------------------------------
+  \brief limIsInQuietDuration() - Check if channel quieting is running on any  
+                                    valid session.
+
+  \param pMac                   - pointer to global adapter context
+  
+  \return tANI_U8               - 1 - if chann quiet running.
+                                  0 - if chann quiet is not running. 
+  
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_U8
+limIsInQuietDuration (tpAniSirGlobal pMac);
+
+/*--------------------------------------------------------------------------
+  \brief limIsQuietBegin() - Check if channel quieting is begining on any  
+                                    valid session.
+
+  \param pMac                   - pointer to global adapter context
+  
+  \return tANI_U8               - 1 - if chann quiet running.
+                                  0 - if chann quiet is not running. 
+  
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_U8
+limIsQuietBegin (tpAniSirGlobal pMac);
+/*--------------------------------------------------------------------------
+  \brief limIsInMCC() - Check if Device is in MCC.
+
+  \param pMac                   - pointer to global adapter context
+  
+  \return tANI_U8               - TRUE - if in MCC.
+                                  FALSE - NOT in MCC. 
+  
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_U8
+limIsInMCC (tpAniSirGlobal pMac);
 #endif //#if !defined( __LIM_SESSION_UTILS_H )
 

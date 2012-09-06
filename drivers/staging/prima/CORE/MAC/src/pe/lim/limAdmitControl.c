@@ -1099,7 +1099,7 @@ limSendHalMsgAddTs(
      * WDA_ADD_TS_RSP from HAL.
      */
     SET_LIM_PROCESS_DEFD_MESGS(pMac, false);
-    MTRACE(macTraceMsgTx(pMac, 0, msg.type));
+    MTRACE(macTraceMsgTx(pMac, sessionId, msg.type));
 
     if(eSIR_SUCCESS != wdaPostCtrlMsg(pMac, &msg))
     {
@@ -1126,7 +1126,8 @@ limSendHalMsgDelTs(
   tpAniSirGlobal pMac,
   tANI_U16       staIdx,
   tANI_U8         tspecIdx,
-  tSirDeltsReqInfo delts)
+  tSirDeltsReqInfo delts,
+  tANI_U8        sessionId)
 {
   tSirMsgQ msg;
   tpDelTsParams pDelTsParam;
@@ -1147,7 +1148,7 @@ limSendHalMsgDelTs(
   pDelTsParam->tspecIdx = tspecIdx;
 
   PELOGW(limLog(pMac, LOGW, FL("calling wdaPostCtrlMsg()\n"));)
-  MTRACE(macTraceMsgTx(pMac, 0, msg.type));
+  MTRACE(macTraceMsgTx(pMac, sessionId, msg.type));
 
   if(eSIR_SUCCESS != wdaPostCtrlMsg(pMac, &msg))
   {

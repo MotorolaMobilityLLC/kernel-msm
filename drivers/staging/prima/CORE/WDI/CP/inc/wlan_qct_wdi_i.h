@@ -654,8 +654,8 @@ typedef enum
 
   WDI_TSM_STATS_RESP                            = 74,
   /* GTK Rekey Offload */
-  WDI_GTK_OFFLOAD_RESP                    = 75, 
-  WDI_GTK_OFFLOAD_GETINFO_RESP         = 76, 
+  WDI_GTK_OFFLOAD_RESP                          = 75, 
+  WDI_GTK_OFFLOAD_GETINFO_RESP                  = 76, 
 
   WDI_SET_TM_LEVEL_RESP                         = 77,
 

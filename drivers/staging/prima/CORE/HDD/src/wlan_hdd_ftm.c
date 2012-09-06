@@ -2607,6 +2607,9 @@ void wlan_hdd_process_ftm_cmd
 
     ENTER();
 
+    //Delay to fix NV write failure on JB
+    vos_busy_wait(10000); //10ms
+
     if (!pRequestBuf) {
 
         hddLog(VOS_TRACE_LEVEL_ERROR,"%s: request buffer is null\n",__func__);

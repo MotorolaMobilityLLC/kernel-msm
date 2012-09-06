@@ -963,18 +963,7 @@ VOS_STATUS vos_stop( v_CONTEXT_t vosContext )
         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
          "%s: WDA_stop reporting other error", __func__ );
      }
-     /* if WDA stop failed, call WDA shutdown to cleanup WDA/WDI */
-     vosStatus = WDA_shutdown( vosContext, VOS_TRUE );
-     if (VOS_IS_STATUS_SUCCESS( vosStatus ) )
-     {
-        hdd_set_ssr_required( VOS_TRUE );
-     }
-     else
-     {
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                               "%s: Failed to shutdown WDA", __func__ );
-        VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
-     }
+     WDA_stopFailed(vosContext);
   }
 #endif
 
@@ -1072,12 +1061,30 @@ VOS_STATUS vos_close( v_CONTEXT_t vosContext )
   }
 
 #ifdef FEATURE_WLAN_INTEGRATED_SOC
-  vosStatus = WDA_close( vosContext );
-  if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+  if ( TRUE == WDA_needShutdown(vosContext ))
   {
-     VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: Failed to close WDA", __func__);
-     VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
+     /* if WDA stop failed, call WDA shutdown to cleanup WDA/WDI */
+     vosStatus = WDA_shutdown( vosContext, VOS_TRUE );
+     if (VOS_IS_STATUS_SUCCESS( vosStatus ) )
+     {
+        hdd_set_ssr_required( VOS_TRUE );
+     }
+     else
+     {
+        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+                               "%s: Failed to shutdown WDA", __func__ );
+        VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
+     }
+  } 
+  else 
+  {
+     vosStatus = WDA_close( vosContext );
+     if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+     {
+        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+            "%s: Failed to close WDA", __func__);
+        VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
+     }
   }
   
   /* Let DXE return packets in WDA_close and then free them here */
@@ -2370,5 +2377,58 @@ VOS_STATUS vos_wlanReInit(void)
 {
    VOS_STATUS vstatus;
    vstatus = vos_watchdog_wlan_re_init();
+   return vstatus;
+}
+/**
+  @brief vos_wlanRestart() - This API will reload WLAN driver.
+
+  This function is called if driver detects any fatal state which 
+  can be recovered by a WLAN module reload ( Android framwork initiated ).
+  Note that this API will not initiate any RIVA subsystem restart.
+
+  The function wlan_hdd_restart_driver protects against re-entrant calls.
+
+  @param
+       NONE
+  @return
+       VOS_STATUS_SUCCESS   - Operation completed successfully.
+       VOS_STATUS_E_FAILURE - Operation failed.
+       VOS_STATUS_E_EMPTY   - No configured interface
+       VOS_STATUS_E_ALREADY - Request already in progress
+
+
+*/
+VOS_STATUS vos_wlanRestart(void)
+{
+   VOS_STATUS vstatus;
+   hdd_context_t *pHddCtx = NULL;
+   v_CONTEXT_t pVosContext        = NULL;
+
+   /* Check whether driver load unload is in progress */
+   if(vos_is_load_unload_in_progress( VOS_MODULE_ID_VOSS, NULL)) 
+   {
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
+               "%s: Driver load/unload is in progress, retry later.", __func__);
+      return VOS_STATUS_E_AGAIN;
+   }
+
+   /* Get the Global VOSS Context */
+   pVosContext = vos_get_global_context(VOS_MODULE_ID_VOSS, NULL);
+   if(!pVosContext) {
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL, 
+               "%s: Global VOS context is Null", __func__);
+      return VOS_STATUS_E_FAILURE;
+   }
+    
+   /* Get the HDD context */
+   pHddCtx = (hdd_context_t *)vos_get_context(VOS_MODULE_ID_HDD, pVosContext );
+   if(!pHddCtx) {
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL, 
+               "%s: HDD context is Null", __func__);
+      return VOS_STATUS_E_FAILURE;
+   }
+
+   /* Reload the driver */
+   vstatus = wlan_hdd_restart_driver(pHddCtx);
    return vstatus;
 }
