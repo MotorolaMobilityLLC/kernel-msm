@@ -13,6 +13,7 @@
  *  Copyright (C) 2004 William Lee Irwin III
  */
 
+#define REALLY_WANT_DEBUGFS
 #include <linux/stop_machine.h>
 #include <linux/clocksource.h>
 #include <linux/kallsyms.h>
