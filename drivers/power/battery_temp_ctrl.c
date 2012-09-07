@@ -62,30 +62,43 @@ static int determin_batt_temp_state(struct batt_temp_pdata *pdata,
 		} else if (batt_temp >= pdata->temp_level[TEMP_LEVEL_HOT_STOPCHARGING]) {
 			temp_state = TEMP_LEVEL_HOT_STOPCHARGING;
 		} else if (batt_temp >= pdata->temp_level[TEMP_LEVEL_DECREASING]) {
-				if (batt_mvolt > pdata->thr_mvolt)
-					temp_state = TEMP_LEVEL_HOT_STOPCHARGING;
-				else
-					temp_state = TEMP_LEVEL_DECREASING;
-		} else if (batt_temp >= pdata->temp_level[TEMP_LEVEL_HOT_RECHARGING]) {
-				if (temp_state == TEMP_LEVEL_HOT_STOPCHARGING)
-					temp_state = TEMP_LEVEL_HOT_STOPCHARGING;
-				else
-					temp_state = TEMP_LEVEL_NORMAL;
-		} else if (batt_temp <= pdata->temp_level[TEMP_LEVEL_COLD_RECHARGING]) {
+			if (batt_mvolt > pdata->thr_mvolt
+					|| temp_state == TEMP_LEVEL_HOT_STOPCHARGING)
+				temp_state = TEMP_LEVEL_HOT_STOPCHARGING;
+			else
+				temp_state = TEMP_LEVEL_DECREASING;
+		} else if (batt_temp > pdata->temp_level[TEMP_LEVEL_HOT_RECHARGING]) {
+			if (temp_state == TEMP_LEVEL_HOT_STOPCHARGING
+					|| temp_state == TEMP_LEVEL_DECREASING)
+				temp_state = TEMP_LEVEL_HOT_STOPCHARGING;
+			else if (temp_state == TEMP_LEVEL_DECREASING)
+				temp_state = TEMP_LEVEL_DECREASING;
+			else
+				temp_state = TEMP_LEVEL_NORMAL;
+		} else if (batt_temp >= pdata->temp_level[TEMP_LEVEL_COLD_RECHARGING]) {
+			if (temp_state == TEMP_LEVEL_HOT_STOPCHARGING
+					|| temp_state == TEMP_LEVEL_DECREASING)
+				temp_state = TEMP_LEVEL_HOT_RECHARGING;
+			else if (temp_state == TEMP_LEVEL_COLD_STOPCHARGING)
+				temp_state = TEMP_LEVEL_COLD_RECHARGING;
+			else
+				temp_state = TEMP_LEVEL_NORMAL;
+		} else if (batt_temp <= pdata->temp_level[TEMP_LEVEL_COLD_STOPCHARGING]) {
 			temp_state = TEMP_LEVEL_COLD_STOPCHARGING;
 		} else if (batt_temp < pdata->temp_level[TEMP_LEVEL_COLD_RECHARGING]) {
 			if (temp_state == TEMP_LEVEL_COLD_STOPCHARGING)
 				temp_state = TEMP_LEVEL_COLD_STOPCHARGING;
 			else
 				temp_state = TEMP_LEVEL_NORMAL;
-		} else {
-			if (temp_state == TEMP_LEVEL_HOT_STOPCHARGING
-					||temp_state == TEMP_LEVEL_DECREASING)
+		} else if (batt_temp <= pdata->temp_level[TEMP_LEVEL_HOT_RECHARGING]) {
+			if (temp_state == TEMP_LEVEL_HOT_STOPCHARGING)
 				temp_state = TEMP_LEVEL_HOT_RECHARGING;
-			else if (temp_state == TEMP_LEVEL_COLD_RECHARGING)
+			else if (temp_state == TEMP_LEVEL_COLD_STOPCHARGING)
 				temp_state = TEMP_LEVEL_COLD_RECHARGING;
 			else
 				temp_state = TEMP_LEVEL_NORMAL;
+		} else {
+			temp_state = TEMP_LEVEL_NORMAL;
 		}
 	} else {
 		pr_debug("%s : is_ext_power = false\n", __func__);
@@ -111,6 +124,7 @@ static void batt_temp_monitor_work(struct work_struct *work)
 	int batt_temp = 0;
 	int batt_mvolt = 0;
 	int temp_state = TEMP_LEVEL_NORMAL;
+	static int temp_old_state = TEMP_LEVEL_NORMAL;
 	union power_supply_propval ret = {0,};
 	int rc;
 
@@ -150,6 +164,7 @@ static void batt_temp_monitor_work(struct work_struct *work)
 	case TEMP_LEVEL_COLD_STOPCHARGING:
 		pr_info("%s: stop charging!! state = %d temp = %d mvolt = %d \n",
 				__func__, temp_state, batt_temp, batt_mvolt);
+		pdata->set_chg_i_limit(pdata->i_restore);
 		pdata->disable_charging();
 		pdata->set_health_state(POWER_SUPPLY_HEALTH_OVERHEAT, 0);
 		break;
@@ -173,11 +188,16 @@ static void batt_temp_monitor_work(struct work_struct *work)
 				pdata->i_restore);
 		break;
 	case TEMP_LEVEL_NORMAL:
+		if (temp_old_state != TEMP_LEVEL_NORMAL) {
+			pdata->set_chg_i_limit(pdata->i_restore);
+			pdata->enable_charging();
+		}
 		pdata->set_health_state(POWER_SUPPLY_HEALTH_GOOD, 0);
 	default:
 		break;
 	}
 
+	temp_old_state=temp_state;
 	power_supply_changed(psy);
 	schedule_delayed_work(&chip->monitor_work,
 			round_jiffies_relative(msecs_to_jiffies(pdata->update_time)));
@@ -198,7 +218,7 @@ static int batt_temp_ctrl_resume(struct device *dev)
 
 	schedule_delayed_work(&chip->monitor_work,
 			  round_jiffies_relative(msecs_to_jiffies
-				 (60000)));
+				 (30000)));
 
 	return 0;
 }
