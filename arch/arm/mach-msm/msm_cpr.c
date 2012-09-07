@@ -15,6 +15,7 @@
 #define pr_fmt(fmt) "%s: " fmt, __func__
 
 #include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/kernel.h>
 #include <linux/io.h>
 #include <linux/irq.h>
@@ -38,6 +39,10 @@
 
 /* Need platform device handle for suspend and resume APIs */
 static struct platform_device *cpr_pdev;
+
+static bool enable = 1;
+module_param(enable, bool, 0644);
+MODULE_PARM_DESC(enable, "CPR Enable");
 
 struct msm_cpr {
 	int curr_osc;
@@ -700,6 +705,9 @@ static int __devinit msm_cpr_probe(struct platform_device *pdev)
 	const struct msm_cpr_config *pdata = pdev->dev.platform_data;
 	void __iomem *base;
 	struct resource *mem;
+
+	if (!enable)
+		return -EPERM;
 
 	if (!pdata) {
 		pr_err("CPR: Platform data is not available\n");
