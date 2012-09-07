@@ -143,7 +143,7 @@ int arizona_irq_init(struct arizona *arizona)
 {
 	int flags = IRQF_ONESHOT;
 	int ret, i;
-	const struct regmap_irq_chip *aod, *irq;
+	struct regmap_irq_chip *aod, *irq;
 	bool ctrlif_error = true;
 	int irq_base;
 
