@@ -145,6 +145,7 @@ int arizona_irq_init(struct arizona *arizona)
 	int ret, i;
 	const struct regmap_irq_chip *aod, *irq;
 	bool ctrlif_error = true;
+	int irq_base;
 
 	switch (arizona->type) {
 #ifdef CONFIG_MFD_WM5102
@@ -195,7 +196,7 @@ int arizona_irq_init(struct arizona *arizona)
 	}
 
 
-	int irq_base = arizona->virq[0];
+	irq_base = arizona->virq[0];
 	ret = regmap_add_irq_chip(arizona->regmap,
 				  arizona->virq[0],
 				  IRQF_ONESHOT, irq_base, aod,
