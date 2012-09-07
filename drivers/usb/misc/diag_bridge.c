@@ -96,6 +96,12 @@ static void diag_bridge_read_cb(struct urb *urb)
 	dev_dbg(&dev->ifc->dev, "%s: status:%d actual:%d\n", __func__,
 			urb->status, urb->actual_length);
 
+	if (cbs && cbs->read_complete_cb)
+		cbs->read_complete_cb(cbs->ctxt,
+			urb->transfer_buffer,
+			urb->transfer_buffer_length,
+			urb->status < 0 ? urb->status : urb->actual_length);
+
 	if (urb->status == -EPROTO) {
 		dev_err(&dev->ifc->dev, "%s: proto error\n", __func__);
 		/* save error so that subsequent read/write returns ENODEV */
@@ -103,12 +109,6 @@ static void diag_bridge_read_cb(struct urb *urb)
 		kref_put(&dev->kref, diag_bridge_delete);
 		return;
 	}
-
-	if (cbs && cbs->read_complete_cb)
-		cbs->read_complete_cb(cbs->ctxt,
-			urb->transfer_buffer,
-			urb->transfer_buffer_length,
-			urb->status < 0 ? urb->status : urb->actual_length);
 
 	dev->bytes_to_host += urb->actual_length;
 	dev->pending_reads--;
