@@ -125,20 +125,6 @@ static irqreturn_t arizona_irq_thread(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static void arizona_irq_enable(struct irq_data *data)
-{
-}
-
-static void arizona_irq_disable(struct irq_data *data)
-{
-}
-
-static struct irq_chip arizona_irq_chip = {
-	.name			= "arizona",
-	.irq_disable		= arizona_irq_disable,
-	.irq_enable		= arizona_irq_enable,
-};
-
 int arizona_irq_init(struct arizona *arizona)
 {
 	int flags = IRQF_ONESHOT;
