@@ -26,11 +26,11 @@ extern const struct regmap_config wm5110_spi_regmap;
 
 extern const struct dev_pm_ops arizona_pm_ops;
 
-extern const struct regmap_irq_chip wm5102_aod;
-extern const struct regmap_irq_chip wm5102_irq;
+extern struct regmap_irq_chip wm5102_aod;
+extern struct regmap_irq_chip wm5102_irq;
 
-extern const struct regmap_irq_chip wm5110_aod;
-extern const struct regmap_irq_chip wm5110_irq;
+extern struct regmap_irq_chip wm5110_aod;
+extern struct regmap_irq_chip wm5110_irq;
 
 int arizona_dev_init(struct arizona *arizona);
 int arizona_dev_exit(struct arizona *arizona);
