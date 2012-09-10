@@ -45,12 +45,11 @@
 #include <linux/platform_data/hds_fsa8008.h>
 
 #define FSA8008_USE_WORK_QUEUE
+#define FSA8008_KEY_LATENCY_TIME	200 /* in ms */
+#define FSA8008_DEBOUNCE_TIME		500 /* in ms */
+#define FSA8008_WAKELOCK_TIMEOUT	(2*HZ)
 
 #undef  HSD_DEBUG_PRINT
-
-/* TODO */
-/* 1. coding for additional excetion case in probe function */
-/* 2. additional sleep related/excetional case  */
 
 #if defined(HSD_DEBUG_PRINT)
 #define HSD_DBG(fmt, args...) printk(KERN_INFO "HSD.fsa8008[%-18s:%5d]" fmt, __func__, __LINE__, ## args)
@@ -113,11 +112,6 @@ enum {
 enum {
 	HEADSET_4POLE = 0,
 	HEADSET_3POLE = 1,
-};
-
-enum {
-	FALSE = 0,
-	TRUE = 1,
 };
 
 static ssize_t hsd_print_name(struct switch_dev *sdev, char *buf)
@@ -187,7 +181,7 @@ static void insert_headset(struct hsd_info *hi)
 	HSD_DBG("insert_headset");
 
 	if (hi->set_headset_mic_bias)
-		hi->set_headset_mic_bias(TRUE);
+		hi->set_headset_mic_bias(1);
 
 	gpio_set_value_cansleep(hi->gpio_mic_en, 1);
 
@@ -206,7 +200,7 @@ static void insert_headset(struct hsd_info *hi)
 
 		gpio_set_value_cansleep(hi->gpio_mic_en, 0);
 		if (hi->set_headset_mic_bias)
-			hi->set_headset_mic_bias(FALSE);
+			hi->set_headset_mic_bias(0);
 
 		input_report_switch(hi->input, SW_HEADPHONE_INSERT, 1);
 		input_sync(hi->input);
@@ -223,7 +217,7 @@ static void insert_headset(struct hsd_info *hi)
 			HSD_DBG("enable_irq - irq_key");
 			enable_irq(hi->irq_key);
 
-			atomic_set(&hi->irq_key_enabled, TRUE);
+			atomic_set(&hi->irq_key_enabled, 1);
 		}
 		input_report_switch(hi->input, SW_HEADPHONE_INSERT, 1);
 		input_report_switch(hi->input, SW_MICROPHONE_INSERT, 1);
@@ -239,7 +233,7 @@ static void remove_headset(struct hsd_info *hi)
 
 	gpio_set_value_cansleep(hi->gpio_mic_en, 0);
 	if (hi->set_headset_mic_bias)
-		hi->set_headset_mic_bias(FALSE);
+		hi->set_headset_mic_bias(0);
 
 	atomic_set(&hi->is_3_pole_or_not, 1);
 	mutex_lock(&hi->mutex_lock);
@@ -248,7 +242,7 @@ static void remove_headset(struct hsd_info *hi)
 
 	if (atomic_read(&hi->irq_key_enabled)) {
 		disable_irq(hi->irq_key);
-		atomic_set(&hi->irq_key_enabled, FALSE);
+		atomic_set(&hi->irq_key_enabled, 0);
 	}
 
 	if (atomic_read(&hi->btn_state))
@@ -297,12 +291,14 @@ static void detect_work(struct work_struct *work)
 
 static void schedule_detect_work(struct hsd_info *hi)
 {
-	wake_lock_timeout(&ear_hook_wake_lock, 2 * HZ);
+	wake_lock_timeout(&ear_hook_wake_lock, FSA8008_WAKELOCK_TIMEOUT);
 
 #ifdef FSA8008_USE_WORK_QUEUE
-	queue_delayed_work(local_fsa8008_workqueue, &(hi->work), HZ/2 ); /* 500ms */
+	queue_delayed_work(local_fsa8008_workqueue, &(hi->work),
+			msecs_to_jiffies(FSA8008_DEBOUNCE_TIME));
 #else
-	schedule_delayed_work(&(hi->work), HZ/2); /* 500ms */
+	schedule_delayed_work(&(hi->work),
+			msecs_to_jiffies(FSA8008_DEBOUNCE_TIME));
 #endif
 }
 
@@ -324,7 +320,7 @@ static irqreturn_t button_irq_handler(int irq, void *dev_id)
 
 	HSD_DBG("button_irq_handler");
 
-	wake_lock_timeout(&ear_hook_wake_lock, 2 * HZ);
+	wake_lock_timeout(&ear_hook_wake_lock, FSA8008_WAKELOCK_TIMEOUT);
 
 	value = gpio_get_value_cansleep(hi->gpio_key);
 
@@ -349,43 +345,9 @@ static irqreturn_t button_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static int hsd_probe(struct platform_device *pdev)
+static int hsd_gpio_init(struct hsd_info *hi)
 {
-	int ret = 0;
-	struct fsa8008_platform_data *pdata = pdev->dev.platform_data;
-	struct hsd_info *hi;
-
-	HSD_DBG("hsd_probe");
-
-	hi = kzalloc(sizeof(struct hsd_info), GFP_KERNEL);
-	if (NULL == hi) {
-		pr_err("%s: out of memory\n", __func__);
-		return -ENOMEM;
-	}
-
-	hi->key_code = pdata->key_code;
-
-	platform_set_drvdata(pdev, hi);
-
-	atomic_set(&hi->btn_state, 0);
-	atomic_set(&hi->is_3_pole_or_not, 1);
-
-	hi->gpio_detect = pdata->gpio_detect;
-	hi->gpio_detect_can_wakeup = pdata->gpio_detect_can_wakeup;
-	hi->gpio_mic_en = pdata->gpio_mic_en;
-	hi->gpio_mic_bias_en = pdata->gpio_mic_bias_en;
-	hi->gpio_jpole = pdata->gpio_jpole;
-	hi->gpio_key = pdata->gpio_key;
-	hi->set_headset_mic_bias = pdata->set_headset_mic_bias;
-
-	hi->latency_for_detection = pdata->latency_for_detection;
-
-	/* 200 ms * HZ / 100 */
-	hi->latency_for_key = 200 * HZ / 1000; /* convert milli to jiffies */
-	mutex_init(&hi->mutex_lock);
-	INIT_DELAYED_WORK(&hi->work, detect_work);
-	INIT_DELAYED_WORK(&hi->work_for_key_pressed, button_pressed);
-	INIT_DELAYED_WORK(&hi->work_for_key_released, button_released);
+	int ret;
 
 	/* initialize gpio_detect */
 	ret = gpio_request_one(hi->gpio_detect, GPIOF_IN, "gpio_detect");
@@ -426,8 +388,76 @@ static int hsd_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		pr_err("%s: Failed to gpio_request gpio%d (gpio_mic_bias_en)\n",
 				__func__, hi->gpio_mic_en);
-		goto error_04;
+		goto error_05;
 	}
+
+	return 0;
+
+error_05:
+	gpio_free(hi->gpio_mic_en);
+error_04:
+	gpio_free(hi->gpio_key);
+error_03:
+	gpio_free(hi->gpio_jpole);
+error_02:
+	gpio_free(hi->gpio_detect);
+error_01:
+	return ret;
+}
+
+static void hsd_gpio_free(struct hsd_info *hi)
+{
+	gpio_free(hi->gpio_mic_en);
+	gpio_free(hi->gpio_mic_bias_en);
+	gpio_free(hi->gpio_key);
+	gpio_free(hi->gpio_jpole);
+	gpio_free(hi->gpio_detect);
+}
+
+static int hsd_probe(struct platform_device *pdev)
+{
+	int ret = 0;
+	struct fsa8008_platform_data *pdata = pdev->dev.platform_data;
+	struct hsd_info *hi;
+
+	HSD_DBG("hsd_probe");
+
+	if (!pdata) {
+		pr_err("%s: no pdata\n", __func__);
+		return -ENODEV;
+	}
+
+	hi = kzalloc(sizeof(struct hsd_info), GFP_KERNEL);
+	if (NULL == hi) {
+		pr_err("%s: out of memory\n", __func__);
+		return -ENOMEM;
+	}
+
+	hi->key_code = pdata->key_code;
+
+	platform_set_drvdata(pdev, hi);
+
+	atomic_set(&hi->btn_state, 0);
+	atomic_set(&hi->is_3_pole_or_not, 1);
+
+	hi->gpio_detect = pdata->gpio_detect;
+	hi->gpio_detect_can_wakeup = pdata->gpio_detect_can_wakeup;
+	hi->gpio_mic_en = pdata->gpio_mic_en;
+	hi->gpio_mic_bias_en = pdata->gpio_mic_bias_en;
+	hi->gpio_jpole = pdata->gpio_jpole;
+	hi->gpio_key = pdata->gpio_key;
+	hi->set_headset_mic_bias = pdata->set_headset_mic_bias;
+	hi->latency_for_detection = pdata->latency_for_detection;
+	hi->latency_for_key = msecs_to_jiffies(FSA8008_KEY_LATENCY_TIME);
+
+	mutex_init(&hi->mutex_lock);
+
+	INIT_DELAYED_WORK(&hi->work, detect_work);
+	INIT_DELAYED_WORK(&hi->work_for_key_pressed, button_pressed);
+	INIT_DELAYED_WORK(&hi->work_for_key_released, button_released);
+
+	if (hsd_gpio_init(hi) < 0)
+		goto error_01;
 
 	/* initialize irq of gpio_jpole */
 	hi->irq_detect = gpio_to_irq(hi->gpio_detect);
@@ -435,7 +465,7 @@ static int hsd_probe(struct platform_device *pdev)
 	if (hi->irq_detect < 0) {
 		pr_err("%s: Failed to get interrupt number\n", __func__);
 		ret = hi->irq_detect;
-		goto error_05;
+		goto error_02;
 	}
 
 	ret = request_threaded_irq(hi->irq_detect, NULL, gpio_irq_handler,
@@ -443,7 +473,7 @@ static int hsd_probe(struct platform_device *pdev)
 			pdev->name, hi);
 	if (ret) {
 		pr_err("%s: failed to request button irq\n", __func__);
-		goto error_05;
+		goto error_02;
 	}
 
 	if (hi->gpio_detect_can_wakeup) {
@@ -451,7 +481,7 @@ static int hsd_probe(struct platform_device *pdev)
 		if (ret < 0) {
 			pr_err("%s: Failed to set irq_detect interrupt wake\n",
 					__func__);
-			goto error_06;
+			goto error_03;
 		}
 	}
 
@@ -461,7 +491,7 @@ static int hsd_probe(struct platform_device *pdev)
 	if (hi->irq_key < 0) {
 		pr_err("%s: Failed to get interrupt number\n", __func__);
 		ret = hi->irq_key;
-		goto error_06;
+		goto error_03;
 	}
 
 	ret = request_threaded_irq(hi->irq_key, NULL, button_irq_handler,
@@ -469,7 +499,7 @@ static int hsd_probe(struct platform_device *pdev)
 			pdev->name, hi);
 	if (ret) {
 		pr_err("%s: failed to request button irq\n", __func__);
-		goto error_06;
+		goto error_03;
 	}
 
 	disable_irq(hi->irq_key);
@@ -477,7 +507,7 @@ static int hsd_probe(struct platform_device *pdev)
 	ret = irq_set_irq_wake(hi->irq_key, 1);
 	if (ret < 0) {
 		pr_err("%s: Failed to set irq_key interrupt wake\n", __func__);
-		goto error_07;
+		goto error_04;
 	}
 
 	/* initialize switch device */
@@ -488,7 +518,7 @@ static int hsd_probe(struct platform_device *pdev)
 	ret = switch_dev_register(&hi->sdev);
 	if (ret < 0) {
 		pr_err("%s: Failed to register switch device\n", __func__);
-		goto error_07;
+		goto error_04;
 	}
 
 	/* initialize input device */
@@ -496,7 +526,7 @@ static int hsd_probe(struct platform_device *pdev)
 	if (!hi->input) {
 		pr_err("%s: Failed to allocate input device\n", __func__);
 		ret = -ENOMEM;
-		goto error_08;
+		goto error_05;
 	}
 
 	hi->input->name = pdata->keypad_name;
@@ -515,7 +545,7 @@ static int hsd_probe(struct platform_device *pdev)
 	ret = input_register_device(hi->input);
 	if (ret) {
 		pr_err("%s: Failed to register input device\n", __func__);
-		goto error_09;
+		goto error_06;
 	}
 
 	if (!gpio_get_value_cansleep(hi->gpio_detect)) {
@@ -530,22 +560,16 @@ static int hsd_probe(struct platform_device *pdev)
 
 	return ret;
 
-error_09:
-	input_free_device(hi->input);
-error_08:
-	switch_dev_unregister(&hi->sdev);
-error_07:
-	free_irq(hi->irq_key, 0);
 error_06:
-	free_irq(hi->irq_detect, 0);
+	input_free_device(hi->input);
 error_05:
-	gpio_free(hi->gpio_mic_en);
+	switch_dev_unregister(&hi->sdev);
 error_04:
-	gpio_free(hi->gpio_key);
+	free_irq(hi->irq_key, 0);
 error_03:
-	gpio_free(hi->gpio_jpole);
+	free_irq(hi->irq_detect, 0);
 error_02:
-	gpio_free(hi->gpio_detect);
+	hsd_gpio_free(hi);
 error_01:
 	mutex_destroy(&hi->mutex_lock);
 	kfree(hi);
@@ -568,14 +592,9 @@ static int hsd_remove(struct platform_device *pdev)
 	free_irq(hi->irq_key, 0);
 	free_irq(hi->irq_detect, 0);
 
-	gpio_free(hi->gpio_mic_en);
-	gpio_free(hi->gpio_mic_bias_en);
-	gpio_free(hi->gpio_key);
-	gpio_free(hi->gpio_jpole);
-	gpio_free(hi->gpio_detect);
+	hsd_gpio_free(hi);
 
 	mutex_destroy(&hi->mutex_lock);
-
 	kfree(hi);
 
 	return 0;
@@ -662,6 +681,8 @@ err:
 
 static void __exit hsd_exit(void)
 {
+	HSD_DBG("hsd_exit");
+
 #ifdef FSA8008_USE_WORK_QUEUE
 	if (local_fsa8008_workqueue)
 		destroy_workqueue(local_fsa8008_workqueue);
@@ -670,10 +691,9 @@ static void __exit hsd_exit(void)
 
 	platform_driver_unregister(&hsd_driver);
 	wake_lock_destroy(&ear_hook_wake_lock);
-	HSD_DBG("hsd_exit");
 }
 
-/* to make init after pmic8058-othc module */
+/* to make init after pmicxxxx module */
 late_initcall_sync(hsd_init);
 module_exit(hsd_exit);
 
