@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -2208,11 +2208,20 @@ VOS_STATUS hdd_wlan_re_init(void)
    goto success;
 
 err_unregister_pmops:
+#ifdef CONFIG_HAS_EARLYSUSPEND
+   /* unregister suspend/resume callbacks */
+   if (pHddCtx->cfg_ini->nEnableSuspend)
+      unregister_wlan_suspend();
+#endif
    hddDeregisterPmOps(pHddCtx);
 
 err_bap_stop:
+#ifdef CONFIG_HAS_EARLYSUSPEND
+   hdd_unregister_mcast_bcast_filter(pHddCtx);
+#endif
+   hdd_close_all_adapters(pHddCtx);
 #ifdef WLAN_BTAMP_FEATURE
-  WLANBAP_Stop(pVosContext);
+   WLANBAP_Stop(pVosContext);
 #endif
 
 #ifdef WLAN_BTAMP_FEATURE
@@ -2228,17 +2237,11 @@ err_vosclose:
    vos_sched_close(pVosContext);
    if (pHddCtx)
    {
-#ifdef CONFIG_HAS_EARLYSUSPEND
-       /* unregister suspend/resume callbacks */
-       if (pHddCtx->cfg_ini->nEnableSuspend)
-           unregister_wlan_suspend();
-#endif
        /* Unregister the Net Device Notifier */
        unregister_netdevice_notifier(&hdd_netdev_notifier);
        /* Clean up HDD Nlink Service */
        send_btc_nlink_msg(WLAN_MODULE_DOWN_IND, 0);
        nl_srv_exit();
-       hdd_close_all_adapters(pHddCtx);
        /* Free up dynamically allocated members inside HDD Adapter */
        kfree(pHddCtx->cfg_ini);
        pHddCtx->cfg_ini= NULL;

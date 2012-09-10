@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -104,7 +104,7 @@
 #define WDA_START_TIMER(a) tx_timer_activate(a)
 #define WDA_STOP_TIMER(a) tx_timer_deactivate(a)
 #define WDA_DESTROY_TIMER(a) tx_timer_delete(a)
-#define WDA_WDI_START_TIMEOUT 15000
+#define WDA_WDI_START_TIMEOUT (WDI_RESPONSE_TIMEOUT + 5000)
 
 #define WDA_LAST_POLLED_THRESHOLD(a, curSta, tid) \
    ((a)->wdaStaInfo[curSta].framesTxed[tid] + WDA_BA_TX_FRM_THRESHOLD)
@@ -1210,7 +1210,111 @@ VOS_STATUS WDA_prepareConfigTLV(v_PVOID_t pVosContext,
    *configDataValue = pMac->btc.btcConfig.btcA2DPBtSubIntervalsDuringDhcp; 
    tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
                             + sizeof(tHalCfg) + tlvStruct->length) ; 
-   /* [COEX] QWLAN_HAL_CFG_WCNSS_API_VERSION */
+   /* [COEX] QWLAN_HAL_CFG_BTC_STATIC_LEN_INQ_BT */
+   tlvStruct->type = QWLAN_HAL_CFG_BTC_STATIC_LEN_INQ_BT  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   *configDataValue = pMac->btc.btcConfig.btcStaticLenInqBt; 
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
+   /* [COEX] QWLAN_HAL_CFG_BTC_STATIC_LEN_PAGE_BT */
+   tlvStruct->type = QWLAN_HAL_CFG_BTC_STATIC_LEN_PAGE_BT  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   *configDataValue = pMac->btc.btcConfig.btcStaticLenPageBt; 
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
+   /* [COEX] QWLAN_HAL_CFG_BTC_STATIC_LEN_CONN_BT */
+   tlvStruct->type = QWLAN_HAL_CFG_BTC_STATIC_LEN_CONN_BT  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   *configDataValue = pMac->btc.btcConfig.btcStaticLenConnBt; 
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
+   /* [COEX] QWLAN_HAL_CFG_BTC_STATIC_LEN_LE_BT */
+   tlvStruct->type = QWLAN_HAL_CFG_BTC_STATIC_LEN_LE_BT  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   *configDataValue = pMac->btc.btcConfig.btcStaticLenLeBt; 
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
+   /* [COEX] QWLAN_HAL_CFG_BTC_STATIC_LEN_INQ_WLAN */
+   tlvStruct->type = QWLAN_HAL_CFG_BTC_STATIC_LEN_INQ_WLAN  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   *configDataValue = pMac->btc.btcConfig.btcStaticLenInqWlan; 
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
+   /* [COEX] QWLAN_HAL_CFG_BTC_STATIC_LEN_PAGE_WLAN */
+   tlvStruct->type = QWLAN_HAL_CFG_BTC_STATIC_LEN_PAGE_WLAN  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   *configDataValue = pMac->btc.btcConfig.btcStaticLenPageWlan; 
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
+   /* [COEX] QWLAN_HAL_CFG_BTC_STATIC_LEN_CONN_WLAN */
+   tlvStruct->type = QWLAN_HAL_CFG_BTC_STATIC_LEN_CONN_WLAN  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   *configDataValue = pMac->btc.btcConfig.btcStaticLenConnWlan; 
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
+   /* [COEX] QWLAN_HAL_CFG_BTC_STATIC_LEN_LE_WLAN */
+   tlvStruct->type = QWLAN_HAL_CFG_BTC_STATIC_LEN_LE_WLAN  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   *configDataValue = pMac->btc.btcConfig.btcStaticLenLeWlan; 
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
+   /* [COEX] QWLAN_HAL_CFG_BTC_DYN_MAX_LEN_BT */
+   tlvStruct->type = QWLAN_HAL_CFG_BTC_DYN_MAX_LEN_BT  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   *configDataValue = pMac->btc.btcConfig.btcDynMaxLenBt; 
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
+   /* [COEX] QWLAN_HAL_CFG_BTC_DYN_MAX_LEN_WLAN */
+   tlvStruct->type = QWLAN_HAL_CFG_BTC_DYN_MAX_LEN_WLAN  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   *configDataValue = pMac->btc.btcConfig.btcDynMaxLenWlan; 
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
+   /* [COEX] QWLAN_HAL_CFG_BTC_MAX_SCO_BLOCK_PERC */
+   tlvStruct->type = QWLAN_HAL_CFG_BTC_MAX_SCO_BLOCK_PERC  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   *configDataValue = pMac->btc.btcConfig.btcMaxScoBlockPerc; 
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
+   /* [COEX] QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_A2DP */
+   tlvStruct->type = QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_A2DP  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   *configDataValue = pMac->btc.btcConfig.btcDhcpProtOnA2dp; 
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
+   /* [COEX] QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_SCO */
+   tlvStruct->type = QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_SCO  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   *configDataValue = pMac->btc.btcConfig.btcDhcpProtOnSco; 
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
+   /* QWLAN_HAL_CFG_WCNSS_API_VERSION */
    tlvStruct->type = QWLAN_HAL_CFG_WCNSS_API_VERSION  ;
    tlvStruct->length = sizeof(tANI_U32);
    configDataValue = (tANI_U32 *)(tlvStruct + 1);
@@ -8940,86 +9044,11 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
       }
       case WDA_DELETE_BSS_REQ:
       {
-         wpt_uint8  staIdx;
-         wpt_uint8  bssIdx = ((tDeleteBssParams *)pMsg->bodyptr)->bssIdx;
-         wpt_uint8  reservedResourceBySta;
-         wpt_uint16  waitLoop = 0;
-
-         if (WDI_DS_GetStaIdxFromBssIdx(pWDA->pWdiContext, bssIdx, &staIdx))
-         {
-            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Get STA index from BSS index Fail", __FUNCTION__);
-            VOS_ASSERT(0) ;
-         }
-         while (1) 
-         {
-             reservedResourceBySta = WDI_DS_GetReservedResCountPerSTA(pWDA->pWdiContext, WDI_DATA_POOL_ID, staIdx);
-             /* Wait till reserved resource by STA must be none */
-             if (reservedResourceBySta == 0)
-             {
-                 VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
-                            "STA %d BSS %d TX RING empty %d", staIdx, bssIdx );
-                 break;
-             }
-             else
-             {
-                 if(waitLoop > WDA_MAX_RETRIES_TILL_RING_EMPTY)
-                 {
-                     VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_FATAL,
-                                "TX Ring could not empty, not normal" );
-                     VOS_ASSERT(0);
-                     /* STA mode, stall detected, reload driver */
-                     if(VOS_STA_MODE == vos_get_conparam())
-                     {
-                        vos_mem_free(pMsg->bodyptr);
-                        vos_wlanRestart();
-                        return VOS_STATUS_E_FAILURE;
-                     }
-                     break;
-                 }
-                 vos_sleep(WDA_WAIT_MSEC_TILL_RING_EMPTY);
-                 waitLoop++;
-             }
-         }
          WDA_ProcessDelBssReq(pWDA, (tDeleteBssParams *)pMsg->bodyptr) ;
          break ;
       }
       case WDA_DELETE_STA_REQ:
       {
-         tDeleteStaParams *delSta = (tDeleteStaParams *)pMsg->bodyptr;
-         wpt_uint8 reservedResourceBySta;
-         wpt_uint16  waitLoop = 0;
-
-         while (1) 
-         {
-             reservedResourceBySta = WDI_DS_GetReservedResCountPerSTA(pWDA->pWdiContext, WDI_DATA_POOL_ID, delSta->staIdx);
-             /* Wait till reserved resource by STA must be none */
-             if (reservedResourceBySta == 0)
-             {
-                 VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
-                            "STA %d TX RING empty %d", delSta->staIdx );
-                 break;
-             }
-             else
-             {
-                 if(waitLoop > WDA_MAX_RETRIES_TILL_RING_EMPTY)
-                 {
-                     VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_FATAL,
-                                "TX Ring could not empty, not normal" );
-                     VOS_ASSERT(0);
-                     /* STA mode, stall detected, reload driver */
-                     if(VOS_STA_MODE == vos_get_conparam())
-                     {
-                        vos_mem_free(pMsg->bodyptr);
-                        vos_wlanRestart();
-                        return VOS_STATUS_E_FAILURE;
-                     }
-                     break;
-                 }
-                 vos_sleep(WDA_WAIT_MSEC_TILL_RING_EMPTY);
-                 waitLoop++;
-             }
-         }
          WDA_ProcessDelStaReq(pWDA, (tDeleteStaParams *)pMsg->bodyptr) ;
          break ;
       }

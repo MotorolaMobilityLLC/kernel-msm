@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -3486,6 +3486,12 @@ tANI_BOOLEAN csrLookupPMKID( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U8 *p
     tANI_U32 Index;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
 
+    if(!pSession)
+    {
+        smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
+        return FALSE;
+    }
+
     do
     {
         for( Index=0; Index < pSession->NumPmkidCache; Index++ )
@@ -3737,6 +3743,12 @@ tANI_BOOLEAN csrLookupBKID( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U8 *pB
     tANI_BOOLEAN fRC = FALSE, fMatchFound = FALSE;
     tANI_U32 Index;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
+
+    if(!pSession)
+    {
+        smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
+        return FALSE;
+    }
 
     do
     {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1054,6 +1054,97 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_BTC_A2DP_DHCP_PROTECTION_DEFAULT,
                  CFG_BTC_A2DP_DHCP_PROTECTION_MIN,
                  CFG_BTC_A2DP_DHCP_PROTECTION_MAX ),
+
+   REG_VARIABLE( CFG_BTC_STATIC_LEN_INQ_BT_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, btcStaticLenInqBt,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_STATIC_LEN_INQ_BT_DEFAULT,
+                 CFG_BTC_STATIC_LEN_INQ_BT_MIN,
+                 CFG_BTC_STATIC_LEN_INQ_BT_MAX ),
+
+   REG_VARIABLE( CFG_BTC_STATIC_LEN_PAGE_BT_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, btcStaticLenPageBt,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_STATIC_LEN_PAGE_BT_DEFAULT,
+                 CFG_BTC_STATIC_LEN_PAGE_BT_MIN,
+                 CFG_BTC_STATIC_LEN_PAGE_BT_MAX ),
+
+   REG_VARIABLE( CFG_BTC_STATIC_LEN_CONN_BT_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, btcStaticLenConnBt,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_STATIC_LEN_CONN_BT_DEFAULT,
+                 CFG_BTC_STATIC_LEN_CONN_BT_MIN,
+                 CFG_BTC_STATIC_LEN_CONN_BT_MAX ),
+
+   REG_VARIABLE( CFG_BTC_STATIC_LEN_LE_BT_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, btcStaticLenLeBt,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_STATIC_LEN_LE_BT_DEFAULT,
+                 CFG_BTC_STATIC_LEN_LE_BT_MIN,
+                 CFG_BTC_STATIC_LEN_LE_BT_MAX ),
+
+   REG_VARIABLE( CFG_BTC_STATIC_LEN_INQ_WLAN_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, btcStaticLenInqWlan,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_STATIC_LEN_INQ_WLAN_DEFAULT,
+                 CFG_BTC_STATIC_LEN_INQ_WLAN_MIN,
+                 CFG_BTC_STATIC_LEN_INQ_WLAN_MAX ),
+
+   REG_VARIABLE( CFG_BTC_STATIC_LEN_PAGE_WLAN_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, btcStaticLenPageWlan,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_STATIC_LEN_PAGE_WLAN_DEFAULT,
+                 CFG_BTC_STATIC_LEN_PAGE_WLAN_MIN,
+                 CFG_BTC_STATIC_LEN_PAGE_WLAN_MAX ),
+
+   REG_VARIABLE( CFG_BTC_STATIC_LEN_CONN_WLAN_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, btcStaticLenConnWlan,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_STATIC_LEN_CONN_WLAN_DEFAULT,
+                 CFG_BTC_STATIC_LEN_CONN_WLAN_MIN,
+                 CFG_BTC_STATIC_LEN_CONN_WLAN_MAX ),
+
+   REG_VARIABLE( CFG_BTC_STATIC_LEN_LE_WLAN_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, btcStaticLenLeWlan,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_STATIC_LEN_LE_WLAN_DEFAULT,
+                 CFG_BTC_STATIC_LEN_LE_WLAN_MIN,
+                 CFG_BTC_STATIC_LEN_LE_WLAN_MAX ),
+
+   REG_VARIABLE( CFG_BTC_DYN_MAX_LEN_BT_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, btcDynMaxLenBt,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_DYN_MAX_LEN_BT_DEFAULT,
+                 CFG_BTC_DYN_MAX_LEN_BT_MIN,
+                 CFG_BTC_DYN_MAX_LEN_BT_MAX ),
+
+   REG_VARIABLE( CFG_BTC_DYN_MAX_LEN_WLAN_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, btcDynMaxLenWlan,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_DYN_MAX_LEN_WLAN_DEFAULT,
+                 CFG_BTC_DYN_MAX_LEN_WLAN_MIN,
+                 CFG_BTC_DYN_MAX_LEN_WLAN_MAX ),
+
+   REG_VARIABLE( CFG_BTC_MAX_SCO_BLOCK_PERC_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, btcMaxScoBlockPerc,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_MAX_SCO_BLOCK_PERC_DEFAULT,
+                 CFG_BTC_MAX_SCO_BLOCK_PERC_MIN,
+                 CFG_BTC_MAX_SCO_BLOCK_PERC_MAX ),
+
+   REG_VARIABLE( CFG_BTC_DHCP_PROT_ON_A2DP_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, btcDhcpProtOnA2dp,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_DHCP_PROT_ON_A2DP_DEFAULT,
+                 CFG_BTC_DHCP_PROT_ON_A2DP_MIN,
+                 CFG_BTC_DHCP_PROT_ON_A2DP_MAX ),
+
+   REG_VARIABLE( CFG_BTC_DHCP_PROT_ON_SCO_NAME , WLAN_PARAM_Integer,
+                 hdd_config_t, btcDhcpProtOnSco,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_BTC_DHCP_PROT_ON_SCO_DEFAULT,
+                 CFG_BTC_DHCP_PROT_ON_SCO_MIN,
+                 CFG_BTC_DHCP_PROT_ON_SCO_MAX ),
 
 #ifdef WLAN_SOFTAP_FEATURE
    REG_VARIABLE( CFG_AP_LISTEN_MODE_NAME , WLAN_PARAM_Integer,
@@ -2286,10 +2377,22 @@ static void hdd_set_btc_config(hdd_context_t *pHddCtx)
    sme_BtcGetConfig(pHddCtx->hHal, &btcParams);
 
    btcParams.btcExecutionMode = pConfig->btcExecutionMode;
-
    btcParams.btcConsBtSlotsToBlockDuringDhcp = pConfig->btcConsBtSlotsToBlockDuringDhcp;
-
    btcParams.btcA2DPBtSubIntervalsDuringDhcp = pConfig->btcA2DPBtSubIntervalsDuringDhcp;
+
+   btcParams.btcStaticLenInqBt = pConfig->btcStaticLenInqBt;
+   btcParams.btcStaticLenPageBt = pConfig->btcStaticLenPageBt;
+   btcParams.btcStaticLenConnBt = pConfig->btcStaticLenConnBt;
+   btcParams.btcStaticLenLeBt = pConfig->btcStaticLenLeBt;
+   btcParams.btcStaticLenInqWlan = pConfig->btcStaticLenInqWlan;
+   btcParams.btcStaticLenPageWlan = pConfig->btcStaticLenPageWlan;
+   btcParams.btcStaticLenConnWlan = pConfig->btcStaticLenConnWlan;
+   btcParams.btcStaticLenLeWlan = pConfig->btcStaticLenLeWlan;
+   btcParams.btcDynMaxLenBt = pConfig->btcDynMaxLenBt;
+   btcParams.btcDynMaxLenWlan = pConfig->btcDynMaxLenWlan;
+   btcParams.btcMaxScoBlockPerc = pConfig->btcMaxScoBlockPerc;
+   btcParams.btcDhcpProtOnA2dp = pConfig->btcDhcpProtOnA2dp;
+   btcParams.btcDhcpProtOnSco = pConfig->btcDhcpProtOnSco;
 
    sme_BtcSetConfig(pHddCtx->hHal, &btcParams);
 }

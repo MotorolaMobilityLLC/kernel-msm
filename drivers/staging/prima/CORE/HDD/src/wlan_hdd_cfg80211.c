@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1240,32 +1240,38 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
                                       pConfig->dtim_period);
 
 
-    pIe = wlan_hdd_cfg80211_get_ie_ptr(pBeacon->tail, pBeacon->tail_len, 
+    if (pHostapdAdapter->device_mode == WLAN_HDD_SOFTAP)
+    {
+        pIe = wlan_hdd_cfg80211_get_ie_ptr(pBeacon->tail, pBeacon->tail_len,
                                        WLAN_EID_COUNTRY);
-    if(pIe)
-    { 
-        tANI_BOOLEAN restartNeeded;
-        tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
-
-        pConfig->ieee80211d = 1;
-        vos_mem_copy(pConfig->countryCode, &pIe[2], 3);
-        sme_setRegInfo(hHal, pConfig->countryCode);
-        sme_ResetCountryCodeInformation(hHal, &restartNeeded);
-        /*
-         * If auto channel is configured i.e. channel is 0,
-         * so skip channel validation.
-        */
-        if( AUTO_CHANNEL_SELECT != pConfig->channel )
+        if(pIe)
         {
-            if(VOS_STATUS_SUCCESS != wlan_hdd_validate_operation_channel(pHostapdAdapter,pConfig->channel))
+            tANI_BOOLEAN restartNeeded;
+            tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
+            pConfig->ieee80211d = 1;
+            vos_mem_copy(pConfig->countryCode, &pIe[2], 3);
+            sme_setRegInfo(hHal, pConfig->countryCode);
+            sme_ResetCountryCodeInformation(hHal, &restartNeeded);
+            /*
+             * If auto channel is configured i.e. channel is 0,
+             * so skip channel validation.
+             */
+            if( AUTO_CHANNEL_SELECT != pConfig->channel )
             {
-                hddLog(VOS_TRACE_LEVEL_ERROR,
-                         "%s: Invalid Channel [%d] \n", __func__, pConfig->channel);
-                return -EINVAL;
+                if(VOS_STATUS_SUCCESS != wlan_hdd_validate_operation_channel(pHostapdAdapter,pConfig->channel))
+                {
+                    hddLog(VOS_TRACE_LEVEL_ERROR,
+                            "%s: Invalid Channel [%d] \n", __func__, pConfig->channel);
+                    return -EINVAL;
+                }
             }
         }
+        else
+        {
+            pConfig->ieee80211d = 0;
+        }
     }
-    else 
+    else
     {
         pConfig->ieee80211d = 0;
     }
@@ -2014,6 +2020,19 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
 #else
                 pAdapter->device_mode = WLAN_HDD_SOFTAP;
 #endif
+
+                //Disable BMPS and IMPS if enabled
+                //before starting Go
+                if(WLAN_HDD_P2P_GO == pAdapter->device_mode)
+                {
+                    if(VOS_STATUS_E_FAILURE == 
+                       hdd_disable_bmps_imps(pHddCtx, WLAN_HDD_P2P_GO))
+                    {
+                       //Fail to Exit BMPS
+                       VOS_ASSERT(0);
+                    }
+                }
+
                 hdd_set_ap_ops( pAdapter->dev );
 
                 status = hdd_init_ap_mode(pAdapter);
@@ -2060,6 +2079,8 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
            case NL80211_IFTYPE_P2P_CLIENT:
 #endif
            case NL80211_IFTYPE_ADHOC:
+                hdd_stop_adapter( pHddCtx, pAdapter );
+                hdd_deinit_adapter( pHddCtx, pAdapter );
                 wdev->iftype = type;
 #ifdef WLAN_FEATURE_P2P
                 pAdapter->device_mode = (type == NL80211_IFTYPE_STATION) ?
@@ -2067,8 +2088,6 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
 #endif
                 hdd_set_conparam(0);
                 pHddCtx->change_iface = type;
-                hdd_stop_adapter( pHddCtx, pAdapter );
-                hdd_deinit_adapter( pHddCtx, pAdapter );
                 memset(&pAdapter->sessionCtx, 0, sizeof(pAdapter->sessionCtx));
                 hdd_set_station_ops( pAdapter->dev );
                 status = hdd_init_station_mode( pAdapter );
@@ -3560,6 +3579,16 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
         return -EAGAIN;
     }
 
+    //Don't Allow Scan and return busy if Remain On 
+    //Channel and action frame is pending
+    //Otherwise Cancel Remain On Channel and allow Scan
+    //If no action frame pending
+    if(0 != wlan_hdd_check_remain_on_channel(pAdapter))
+    {
+        hddLog(VOS_TRACE_LEVEL_INFO, "%s: Remain On Channel Pending", __func__);
+        return -EBUSY;
+    }
+
     if (mutex_lock_interruptible(&pHddCtx->tmInfo.tmOperationLock))
     {
         VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_ERROR,
@@ -3586,7 +3615,7 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
          * Becasue of this, driver is assuming that this is not wildcard scan and so
          * is not aging out the scan results.
          */
-        if ('\0' == request->ssids->ssid[0])
+        if (request->ssids && '\0' == request->ssids->ssid[0])
         {
             request->n_ssids = 0;
         }
@@ -3788,7 +3817,7 @@ free_mem:
  * This function is used to start the association process 
  */
 int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter, 
-        const u8 *ssid, size_t ssid_len, const u8 *bssid)
+        const u8 *ssid, size_t ssid_len, const u8 *bssid, u8 operatingChannel)
 {
     int status = 0;
     hdd_wext_state_t *pWextState;
@@ -3939,10 +3968,16 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
 #endif /* FEATURE_WLAN_WAPI */
         pRoamProfile->csrPersona = pAdapter->device_mode;
 
+        if( operatingChannel )
+        {
+           pRoamProfile->ChannelInfo.ChannelList = &operatingChannel;
+           pRoamProfile->ChannelInfo.numOfChannels = 1;
+        }
+
         status = sme_RoamConnect( WLAN_HDD_GET_HAL_CTX(pAdapter), 
                             pAdapter->sessionId, pRoamProfile, &roamId);
 
-        pRoamProfile->ChannelInfo.ChannelList = NULL; 
+        pRoamProfile->ChannelInfo.ChannelList = NULL;
         pRoamProfile->ChannelInfo.numOfChannels = 0;
     }
     else
@@ -4533,7 +4568,8 @@ static int wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
     }
 
     status = wlan_hdd_cfg80211_connect_start(pAdapter, req->ssid, 
-                                                req->ssid_len, req->bssid);
+                                                req->ssid_len, req->bssid,
+                                                req->channel->hw_value);
 
     if (0 > status)
     {
@@ -4826,7 +4862,7 @@ static int wlan_hdd_cfg80211_join_ibss( struct wiphy *wiphy,
 
     /* Issue connect start */
     status = wlan_hdd_cfg80211_connect_start(pAdapter, params->ssid, 
-            params->ssid_len, params->bssid);
+            params->ssid_len, params->bssid, 0);
 
     if (0 > status)
     {
