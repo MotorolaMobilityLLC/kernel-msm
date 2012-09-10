@@ -17,6 +17,7 @@
 #include <linux/mfd/pm8xxx/pm8921.h>
 #include <linux/regulator/consumer.h>
 #include <linux/platform_data/hds_fsa8008.h>
+#include <linux/console.h>
 #include <mach/board_lge.h>
 #include "devices.h"
 
@@ -163,6 +164,39 @@ static void enable_external_mic_bias(int status)
 	prev_on = status;
 }
 
+static int console_enabled = 1;
+int mako_console_stopped(void)
+{
+	return !console_enabled;
+}
+
+static void fsa8008_set_uart_console(int enable)
+{
+	static struct console *uart_con = NULL;
+
+	if (!uart_con) {
+		struct console *con;
+		for_each_console(con) {
+			if (!strcmp(con->name, "ttyHSL")) {
+				uart_con = con;
+				break;
+			}
+		}
+	}
+
+	if (!uart_con) {
+		pr_debug("%s: no uart console\n", __func__);
+		return;
+	}
+
+	console_enabled = enable;
+	pr_info("%s: %d\n", __func__, enable);
+	if (enable)
+		console_start(uart_con);
+	else
+		console_stop(uart_con);
+}
+
 static struct fsa8008_platform_data lge_hs_pdata = {
 	.switch_name = "h2w",
 	.keypad_name = "hs_detect",
@@ -177,6 +211,7 @@ static struct fsa8008_platform_data lge_hs_pdata = {
 
 	.latency_for_detection = 75,
 	.set_headset_mic_bias = enable_external_mic_bias,
+	.set_uart_console = fsa8008_set_uart_console,
 };
 
 static struct platform_device lge_hsd_device = {
