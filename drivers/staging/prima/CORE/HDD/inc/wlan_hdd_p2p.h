@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -94,6 +94,7 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
 
 void hdd_remainChanReadyHandler( hdd_adapter_t *pAdapter );
 void hdd_sendActionCnf( hdd_adapter_t *pAdapter, tANI_BOOLEAN actionSendSuccess );
+int wlan_hdd_check_remain_on_channel(hdd_adapter_t *pAdapter);
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,3,0))
 int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
