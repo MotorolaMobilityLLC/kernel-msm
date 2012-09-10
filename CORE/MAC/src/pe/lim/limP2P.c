@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -60,8 +60,8 @@
 #define   BSSID_OFFSET           16
 #define   ADDR2_OFFSET           10
 #define   ACTION_OFFSET          24
-#define   LIM_MIN_REM_TIME_FOR_TX_ACTION_FRAME                     30
-#define   LIM_MIN_REM_TIME_EXT_FOR_TX_ACTION_FRAME                 40
+#define   LIM_MIN_REM_TIME_FOR_TX_ACTION_FRAME                     50
+#define   LIM_MIN_REM_TIME_EXT_FOR_TX_ACTION_FRAME                 60
 
 
 
@@ -582,7 +582,7 @@ void limSendSmeMgmtFrameInd(
             pMac->lim.p2pRemOnChanTimeStamp = vos_timer_get_system_time();
             pMac->lim.gTotalScanDuration = LIM_MIN_REM_TIME_EXT_FOR_TX_ACTION_FRAME;
 
-            chanWaitTime = SYS_MS_TO_TICKS(40);
+            chanWaitTime = SYS_MS_TO_TICKS(LIM_MIN_REM_TIME_EXT_FOR_TX_ACTION_FRAME);
             vStatus = tx_timer_deactivate(&pMac->lim.limTimers.gLimRemainOnChannelTimer);
 
             if (VOS_STATUS_SUCCESS != vStatus)

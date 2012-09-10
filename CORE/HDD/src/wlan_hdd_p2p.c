@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -118,29 +118,18 @@ eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
     return eHAL_STATUS_SUCCESS;
 }
 
-static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
-                                   struct net_device *dev,
-                                   struct ieee80211_channel *chan,
-                                   enum nl80211_channel_type channel_type,
-                                   unsigned int duration, u64 *cookie,
-                                   rem_on_channel_request_type_t request_type )
+static void wlan_hdd_cancel_existing_remain_on_channel(hdd_adapter_t *pAdapter)
 {
-    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-    hdd_remain_on_chan_ctx_t *pRemainChanCtx;
     hdd_cfg80211_state_t *cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
     int status = 0;
-    hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d",
-                                 __func__,pAdapter->device_mode);
 
-    hddLog( LOG1,
-        "chan(hw_val)0x%x chan(centerfreq) %d chan type 0x%x, duration %d",
-        chan->hw_value, chan->center_freq, channel_type, duration );
-
-    if( cfgState->remain_on_chan_ctx != NULL)
+    if(cfgState->remain_on_chan_ctx != NULL)
     {
-        /* Wait till remain on channel ready indication before issuing cancel
-         * remain on channel request, otherwise if remain on channel not
-         * received and if the driver issues cancel remain on channel then lim
+        hddLog( LOG1, "Cancel Existing Remain on Channel");
+
+        /* Wait till remain on channel ready indication before issuing cancel 
+         * remain on channel request, otherwise if remain on channel not 
+         * received and if the driver issues cancel remain on channel then lim 
          * will be in unknown state.
          */
         status = wait_for_completion_interruptible_timeout(&pAdapter->rem_on_chan_ready_event,
@@ -153,7 +142,7 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
         }
 
         INIT_COMPLETION(pAdapter->cancel_rem_on_chan_var);
-
+        
         /* Issue abort remain on chan request to sme.
          * The remain on channel callback will make sure the remain_on_chan
          * expired event is sent.
@@ -174,9 +163,63 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
                                      (WLAN_HDD_GET_CTX(pAdapter))->pvosContext);
         }
 
-        wait_for_completion_interruptible_timeout(&pAdapter->cancel_rem_on_chan_var,
+        status = wait_for_completion_interruptible_timeout(&pAdapter->cancel_rem_on_chan_var,
                msecs_to_jiffies(WAIT_CANCEL_REM_CHAN));
+
+        if (!status)
+        {
+            hddLog( LOGE, 
+                    "%s: timeout waiting for cancel remain on channel ready indication",
+                    __func__);
+        }
     }
+}
+
+int wlan_hdd_check_remain_on_channel(hdd_adapter_t *pAdapter)
+{
+   int status = 0;
+   hdd_cfg80211_state_t *cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
+
+   if(WLAN_HDD_P2P_GO != pAdapter->device_mode)
+   {
+     //Cancel Existing Remain On Channel
+     //If no action frame is pending
+     if( cfgState->remain_on_chan_ctx != NULL)
+     {
+        //Check whether Action Frame is pending or not
+        if( cfgState->buf == NULL)
+        {
+           wlan_hdd_cancel_existing_remain_on_channel(pAdapter);
+        }
+        else
+        {
+           hddLog( LOG1, "Cannot Cancel Existing Remain on Channel");
+           status = -EBUSY;
+        }
+     }
+   }
+   return status;
+}
+
+static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
+                                   struct net_device *dev,
+                                   struct ieee80211_channel *chan,
+                                   enum nl80211_channel_type channel_type,
+                                   unsigned int duration, u64 *cookie,
+                                   rem_on_channel_request_type_t request_type )
+{
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    hdd_remain_on_chan_ctx_t *pRemainChanCtx;
+    hdd_cfg80211_state_t *cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
+    hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d",
+                                 __func__,pAdapter->device_mode);
+
+    hddLog( LOG1,
+        "chan(hw_val)0x%x chan(centerfreq) %d chan type 0x%x, duration %d",
+        chan->hw_value, chan->center_freq, channel_type, duration );
+
+    //Cancel existing remain On Channel if any
+    wlan_hdd_cancel_existing_remain_on_channel(pAdapter);
 
     /* When P2P-GO and if we are trying to unload the driver then
      * wlan driver is keep on receiving the remain on channel command

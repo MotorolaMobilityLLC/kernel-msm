@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -409,23 +409,22 @@ limSendSmeJoinReassocRsp(tpAniSirGlobal pMac, tANI_U16 msgType,
     
     if(IS_MCC_SUPPORTED && limIsLinkSuspended( pMac ) )
     {
-        ePhyChanBondState htSecondaryChannelOffset;
         if( psessionEntry && psessionEntry->limSmeState == eLIM_SME_LINK_EST_STATE )
         {
             
 #ifdef WLAN_FEATURE_11AC
             if (psessionEntry->vhtCapability)
             {
+                ePhyChanBondState htSecondaryChannelOffset;
                /*Get 11ac cbState from 11n cbState*/
                  htSecondaryChannelOffset = limGet11ACPhyCBState(pMac, 
                                     psessionEntry->currentOperChannel,
                                     psessionEntry->htSecondaryChannelOffset);
                 peSetResumeChannel( pMac, psessionEntry->currentOperChannel, htSecondaryChannelOffset);
             }
-            else {
+            else 
 #endif
-            peSetResumeChannel( pMac, psessionEntry->currentOperChannel, psessionEntry->htSecondaryChannelOffset);
-        }
+               peSetResumeChannel( pMac, psessionEntry->currentOperChannel, psessionEntry->htSecondaryChannelOffset);
         }
         else
         {

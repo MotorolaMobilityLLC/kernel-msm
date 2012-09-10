@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -2138,8 +2138,6 @@ WLANTL_GetRssi
     {
       *pRssi = pTLCb->atlSTAClients[ucSTAId].rssiAvg;
     }
-    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-                                 "WLAN TL:bmpsRssi %d \n",*pRssi));
   }
   else
   {
@@ -2147,7 +2145,9 @@ WLANTL_GetRssi
   }
 
   TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
-            "WLAN TL:WLANTL_GetRssi for STA: %d RSSI: %d", ucSTAId, *puRssi));
+                    "WLAN TL:WLANTL_GetRssi for STA: %d RSSI: %d%s",
+                    ucSTAId, *pRssi,
+                    pTLCb->isBMPS ? " in BMPS" : ""));
 
   return VOS_STATUS_SUCCESS;
 }/* WLANTL_GetRssi */
