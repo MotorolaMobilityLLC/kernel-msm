@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1963,7 +1963,7 @@ failure:
     PELOGE(pmmLog(pMac, LOGE,
         FL("pmmUapsd: Waking up from UAPSD mode failed, Ret Code: %d, Next State: %d\n"),
         retStatus, pMac->pmm.gPmmState);)
-    limSendSmeRsp(pMac, eWNI_PMC_EXIT_IMPS_RSP, resultCode, 0, 0);
+    limSendSmeRsp(pMac, eWNI_PMC_EXIT_UAPSD_RSP, resultCode, 0, 0);
 }
 
 

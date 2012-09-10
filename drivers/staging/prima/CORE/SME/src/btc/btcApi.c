@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -70,6 +70,21 @@ VOS_STATUS btcOpen (tHalHandle hHal)
    pMac->btc.btcConfig.btcBtIntervalMode1 = BTC_BT_INTERVAL_MODE1_DEFAULT;
    pMac->btc.btcConfig.btcWlanIntervalMode1 = BTC_WLAN_INTERVAL_MODE1_DEFAULT;
    pMac->btc.btcConfig.btcActionOnPmFail = BTC_START_NEXT;
+
+   pMac->btc.btcConfig.btcStaticLenInqBt = BTC_STATIC_BT_LEN_INQ_DEF;
+   pMac->btc.btcConfig.btcStaticLenPageBt = BTC_STATIC_BT_LEN_PAGE_DEF;
+   pMac->btc.btcConfig.btcStaticLenConnBt = BTC_STATIC_BT_LEN_CONN_DEF;
+   pMac->btc.btcConfig.btcStaticLenLeBt = BTC_STATIC_BT_LEN_LE_DEF;
+   pMac->btc.btcConfig.btcStaticLenInqWlan = BTC_STATIC_WLAN_LEN_INQ_DEF;
+   pMac->btc.btcConfig.btcStaticLenPageWlan = BTC_STATIC_WLAN_LEN_PAGE_DEF;
+   pMac->btc.btcConfig.btcStaticLenConnWlan = BTC_STATIC_WLAN_LEN_CONN_DEF;
+   pMac->btc.btcConfig.btcStaticLenLeWlan = BTC_STATIC_WLAN_LEN_LE_DEF;
+   pMac->btc.btcConfig.btcDynMaxLenBt = BTC_DYNAMIC_BT_LEN_MAX_DEF;
+   pMac->btc.btcConfig.btcDynMaxLenWlan = BTC_DYNAMIC_WLAN_LEN_MAX_DEF;
+   pMac->btc.btcConfig.btcMaxScoBlockPerc = BTC_SCO_BLOCK_PERC_DEF;
+   pMac->btc.btcConfig.btcDhcpProtOnA2dp = BTC_DHCP_ON_A2DP_DEF;
+   pMac->btc.btcConfig.btcDhcpProtOnSco = BTC_DHCP_ON_SCO_DEF;
+
    pMac->btc.btcReady = VOS_FALSE;
    pMac->btc.btcEventState = 0;
    pMac->btc.btcHBActive = VOS_TRUE;

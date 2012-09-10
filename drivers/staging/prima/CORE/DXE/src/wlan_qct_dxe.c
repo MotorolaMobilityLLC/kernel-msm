@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1770,7 +1770,10 @@ static wpt_status dxeRXFrameReady
             descCtrl       = currentDesc->descCtrl.ctrl;
          }
 
-         if(invalidatedFound)
+         /* Invalidated descriptor found, and that is not head descriptor
+          * This means HW/SW descriptor miss match happen, and we may recover with just resync
+          * Try re-sync here */
+         if((invalidatedFound) && (0 != descLoop))
          {
             HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                      "Found New Sync location with HW, handle frames from there");
@@ -1779,6 +1782,16 @@ static wpt_status dxeRXFrameReady
                      "re-sync routed %d frames to upper layer", (int)frameCount);
             frameCount = 0;
          }
+         /* Successive Empty interrupt
+          * But this case, first descriptor also invalidated, then it means head descriptor 
+          * is linked with already handled RX frame, then could not unlock RX frame
+          * This is just Out of RX buffer pool, not need to anything here */
+         else if((invalidatedFound) && (0 == descLoop))
+         {
+            HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                     "Out of RX Low resource, and INT came in, do nothing till get RX resource");
+         }
+         /* Critical error, reload driver */
          else
          {
             HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
@@ -1955,6 +1968,7 @@ void dxeRXEventHandler
    {
       HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                "RX Ready WLAN Driver re-loading in progress");
+      return;
    }
 
    /* Now try to refill the ring with empty Rx buffers to keep DXE busy */
@@ -2034,7 +2048,8 @@ void dxeRXEventHandler
       {
          /* Error Happen during transaction, Handle it */
       }
-      else if(WLANDXE_CH_STAT_INT_DONE_MASK & chHighStat)
+      else if((WLANDXE_CH_STAT_INT_DONE_MASK & chHighStat) ||
+              (WLANDXE_CH_STAT_INT_ED_MASK & chHighStat))
       {
          /* Handle RX Ready for high priority channel */
          status = dxeRXFrameReady(dxeCtxt,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -75,7 +75,7 @@ void
 limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession psessionEntry)
 {
     tpSirMacMgmtHdr      pHdr;
-    tSchBeaconStruct     beacon;
+    tSchBeaconStruct    *pBeacon;
 
     pMac->lim.gLimNumBeaconsRcvd++;
 
@@ -93,6 +93,7 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
     if (limDeactivateMinChannelTimerDuringScan(pMac) != eSIR_SUCCESS)
         return;
 
+
     /**
      * Expect Beacon only when
      * 1. STA is in Scan mode waiting for Beacon/Probe response or
@@ -105,9 +106,16 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
         (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE) ||
         (psessionEntry->limMlmState == eLIM_MLM_WT_JOIN_BEACON_STATE))
     {
+        if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
+                                                    (void **)&pBeacon, sizeof(tSchBeaconStruct)))
+        {
+            limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessBeaconFrame\n") );
+            return;
+        }
+
         // Parse received Beacon
         if (sirConvertBeaconFrame2Struct(pMac, (tANI_U8 *) pRxPacketInfo,
-                                         &beacon) != eSIR_SUCCESS)
+                                         pBeacon) != eSIR_SUCCESS)
         {
             // Received wrongly formatted/invalid Beacon.
             // Ignore it and move on.
@@ -115,12 +123,13 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                    FL("Received invalid Beacon in state %X\n"),
                    psessionEntry->limMlmState);
             limPrintMlmState(pMac, LOGW,  psessionEntry->limMlmState);
+            palFreeMemory(pMac->hHdd, pBeacon);
             return;
         }
 
 
-       MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT_TSF, psessionEntry->peSessionId, beacon.timeStamp[0]);)
-       MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT_TSF, psessionEntry->peSessionId, beacon.timeStamp[1]);)
+        MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT_TSF, 0, pBeacon->timeStamp[0]);)
+        MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT_TSF, 0, pBeacon->timeStamp[1]);)
 
 
         if ((pMac->lim.gLimMlmState  == eLIM_MLM_WT_PROBE_RESP_STATE) ||
@@ -132,7 +141,7 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                || !pMac->lim.gpLimMlmScanReq->p2pSearch )
 #endif
             {
-                limCheckAndAddBssDescription(pMac, &beacon, pRxPacketInfo, 
+                limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo, 
                        ((pMac->lim.gLimHalScanState == eLIM_HAL_SCANNING_STATE) ? eANI_BOOLEAN_TRUE : eANI_BOOLEAN_FALSE), 
                        eANI_BOOLEAN_FALSE);
             }
@@ -145,10 +154,10 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
              * uncommented. Also when we tested enabling this, there is a crash as soon as the station
              * comes up which needs to be fixed*/
             //if (pMac->lim.gLimSystemRole == eLIM_STA_ROLE)
-              //  limCheckAndAddBssDescription(pMac, &beacon, pRxPacketInfo, eANI_BOOLEAN_TRUE);
-            limCollectMeasurementData(pMac, pRxPacketInfo, &beacon);
+              //  limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo, eANI_BOOLEAN_TRUE);
+            limCollectMeasurementData(pMac, pRxPacketInfo, pBeacon);
            PELOG3(limLog(pMac, LOG3, FL("Parsed WDS info in Beacon frames: wdsLength=%d\n"),
-               beacon.propIEinfo.wdsLength);)
+               pBeacon->propIEinfo.wdsLength);)
 #endif
         }
         else
@@ -171,8 +180,9 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                }
              
              // STA in WT_JOIN_BEACON_STATE (IBSS)
-            limCheckAndAnnounceJoinSuccess(pMac, &beacon, pHdr,psessionEntry);
+            limCheckAndAnnounceJoinSuccess(pMac, pBeacon, pHdr,psessionEntry);
         } // if (pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE)
+        palFreeMemory(pMac->hHdd, pBeacon);
     } // if ((pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) || ...
     else
     {
@@ -221,7 +231,7 @@ void
 limProcessBeaconFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
 {
     tpSirMacMgmtHdr      pHdr;
-    tSchBeaconStruct     beacon;
+    tSchBeaconStruct    *pBeacon;
 
     pMac->lim.gLimNumBeaconsRcvd++;
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
@@ -233,6 +243,7 @@ limProcessBeaconFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     if (limDeactivateMinChannelTimerDuringScan(pMac) != eSIR_SUCCESS)
         return;
 
+
     /**
      * No session has been established. Expect Beacon only when
      * 1. STA is in Scan mode waiting for Beacon/Probe response or
@@ -242,11 +253,19 @@ limProcessBeaconFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         (pMac->lim.gLimMlmState == eLIM_MLM_PASSIVE_SCAN_STATE) ||
         (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE))
     {
-        if (sirConvertBeaconFrame2Struct(pMac, (tANI_U8 *) pRxPacketInfo, &beacon) != eSIR_SUCCESS)
+        if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
+                                                    (void **)&pBeacon, sizeof(tSchBeaconStruct)))
+        {
+            limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessBeaconFrameNoSession\n") );
+            return;
+        }
+
+        if (sirConvertBeaconFrame2Struct(pMac, (tANI_U8 *) pRxPacketInfo, pBeacon) != eSIR_SUCCESS)
         {
             // Received wrongly formatted/invalid Beacon. Ignore and move on. 
             limLog(pMac, LOGW, FL("Received invalid Beacon in global MLM state %X\n"), pMac->lim.gLimMlmState);
             limPrintMlmState(pMac, LOGW,  pMac->lim.gLimMlmState);
+            palFreeMemory(pMac->hHdd, pBeacon);
             return;
         }
 
@@ -259,7 +278,7 @@ limProcessBeaconFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
                || !pMac->lim.gpLimMlmScanReq->p2pSearch )
 #endif
             {
-                limCheckAndAddBssDescription(pMac, &beacon, pRxPacketInfo, eANI_BOOLEAN_TRUE, eANI_BOOLEAN_FALSE);
+                limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo, eANI_BOOLEAN_TRUE, eANI_BOOLEAN_FALSE);
             }
         }
         else if (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE)
@@ -270,12 +289,13 @@ limProcessBeaconFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
              * uncommented. Also when we tested enabling this, there is a crash as soon as the station
              * comes up which needs to be fixed*/
             //if (pMac->lim.gLimSystemRole == eLIM_STA_ROLE)
-              //  limCheckAndAddBssDescription(pMac, &beacon, pRxPacketInfo, eANI_BOOLEAN_TRUE);
-            limCollectMeasurementData(pMac, pRxPacketInfo, &beacon);
+              //  limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo, eANI_BOOLEAN_TRUE);
+            limCollectMeasurementData(pMac, pRxPacketInfo, pBeacon);
             limLog(pMac, LOG3, FL("Parsed WDS info in Beacon frames: wdsLength=%d\n"),
-               beacon.propIEinfo.wdsLength);
+               pBeacon->propIEinfo.wdsLength);
 #endif
         }  // end of eLIM_MLM_LEARN_STATE)       
+        palFreeMemory(pMac->hHdd, pBeacon);
     } // end of (eLIM_MLM_WT_PROBE_RESP_STATE) || (eLIM_MLM_PASSIVE_SCAN_STATE)
     else
     {

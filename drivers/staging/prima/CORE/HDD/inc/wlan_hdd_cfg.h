@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -883,6 +883,71 @@ typedef enum
 #define CFG_BTC_A2DP_DHCP_PROTECTION_MAX                     ( 0xFF )
 #define CFG_BTC_A2DP_DHCP_PROTECTION_DEFAULT                 ( 7 )
 
+#define CFG_BTC_STATIC_LEN_INQ_BT_NAME       "btcStaticLenInqBt"
+#define CFG_BTC_STATIC_LEN_INQ_BT_MIN        ( 5000 )
+#define CFG_BTC_STATIC_LEN_INQ_BT_MAX        ( 500000 )
+#define CFG_BTC_STATIC_LEN_INQ_BT_DEFAULT    ( 120000 )
+
+#define CFG_BTC_STATIC_LEN_PAGE_BT_NAME      "btcStaticLenPageBt"
+#define CFG_BTC_STATIC_LEN_PAGE_BT_MIN       ( 5000 )
+#define CFG_BTC_STATIC_LEN_PAGE_BT_MAX       ( 500000 )
+#define CFG_BTC_STATIC_LEN_PAGE_BT_DEFAULT   ( 10000 )
+
+#define CFG_BTC_STATIC_LEN_CONN_BT_NAME      "btcStaticLenConnBt"
+#define CFG_BTC_STATIC_LEN_CONN_BT_MIN       ( 5000 )
+#define CFG_BTC_STATIC_LEN_CONN_BT_MAX       ( 500000 )
+#define CFG_BTC_STATIC_LEN_CONN_BT_DEFAULT   ( 10000 )
+
+#define CFG_BTC_STATIC_LEN_LE_BT_NAME        "btcStaticLenLeBt"
+#define CFG_BTC_STATIC_LEN_LE_BT_MIN         ( 5000 )
+#define CFG_BTC_STATIC_LEN_LE_BT_MAX         ( 500000 )
+#define CFG_BTC_STATIC_LEN_LE_BT_DEFAULT     ( 10000 )
+  
+#define CFG_BTC_STATIC_LEN_INQ_WLAN_NAME     "btcStaticLenInqWlan"
+#define CFG_BTC_STATIC_LEN_INQ_WLAN_MIN      ( 0 )
+#define CFG_BTC_STATIC_LEN_INQ_WLAN_MAX      ( 500000 )
+#define CFG_BTC_STATIC_LEN_INQ_WLAN_DEFAULT  ( 30000 )
+
+#define CFG_BTC_STATIC_LEN_PAGE_WLAN_NAME    "btcStaticLenPageWlan"
+#define CFG_BTC_STATIC_LEN_PAGE_WLAN_MIN     ( 0 )
+#define CFG_BTC_STATIC_LEN_PAGE_WLAN_MAX     ( 500000 )
+#define CFG_BTC_STATIC_LEN_PAGE_WLAN_DEFAULT ( 0 )
+
+#define CFG_BTC_STATIC_LEN_CONN_WLAN_NAME    "btcStaticLenConnWlan"
+#define CFG_BTC_STATIC_LEN_CONN_WLAN_MIN     ( 0 )
+#define CFG_BTC_STATIC_LEN_CONN_WLAN_MAX     ( 500000 )
+#define CFG_BTC_STATIC_LEN_CONN_WLAN_DEFAULT ( 0 )
+
+#define CFG_BTC_STATIC_LEN_LE_WLAN_NAME      "btcStaticLenLeWlan"
+#define CFG_BTC_STATIC_LEN_LE_WLAN_MIN       ( 0 )
+#define CFG_BTC_STATIC_LEN_LE_WLAN_MAX       ( 500000 )
+#define CFG_BTC_STATIC_LEN_LE_WLAN_DEFAULT   ( 0 )
+
+#define CFG_BTC_DYN_MAX_LEN_BT_NAME          "btcDynMaxLenBt"
+#define CFG_BTC_DYN_MAX_LEN_BT_MIN           ( 25000 )
+#define CFG_BTC_DYN_MAX_LEN_BT_MAX           ( 500000 )
+#define CFG_BTC_DYN_MAX_LEN_BT_DEFAULT       ( 250000 )
+
+#define CFG_BTC_DYN_MAX_LEN_WLAN_NAME        "btcDynMaxLenWlan"
+#define CFG_BTC_DYN_MAX_LEN_WLAN_MIN         ( 15000 )
+#define CFG_BTC_DYN_MAX_LEN_WLAN_MAX         ( 500000 )
+#define CFG_BTC_DYN_MAX_LEN_WLAN_DEFAULT     ( 45000 )
+
+#define CFG_BTC_MAX_SCO_BLOCK_PERC_NAME      "btcMaxScoBlockPerc"
+#define CFG_BTC_MAX_SCO_BLOCK_PERC_MIN       ( 0 )
+#define CFG_BTC_MAX_SCO_BLOCK_PERC_MAX       ( 100 )
+#define CFG_BTC_MAX_SCO_BLOCK_PERC_DEFAULT   ( 1 )
+
+#define CFG_BTC_DHCP_PROT_ON_A2DP_NAME       "btcDhcpProtOnA2dp"
+#define CFG_BTC_DHCP_PROT_ON_A2DP_MIN        ( 0 )
+#define CFG_BTC_DHCP_PROT_ON_A2DP_MAX        ( 1 )
+#define CFG_BTC_DHCP_PROT_ON_A2DP_DEFAULT    ( 1 )
+
+#define CFG_BTC_DHCP_PROT_ON_SCO_NAME        "btcDhcpProtOnSco"
+#define CFG_BTC_DHCP_PROT_ON_SCO_MIN         ( 0 )
+#define CFG_BTC_DHCP_PROT_ON_SCO_MAX         ( 1 )
+#define CFG_BTC_DHCP_PROT_ON_SCO_DEFAULT     ( 0 )
+
 #if defined WLAN_FEATURE_VOWIFI_11R
 #define CFG_FT_ENABLE_NAME                              "gFtEnabled"
 #define CFG_FT_ENABLE_MIN                               (0)
@@ -1293,6 +1358,19 @@ typedef struct
    v_U8_t        btcExecutionMode;
    v_U8_t        btcConsBtSlotsToBlockDuringDhcp;
    v_U8_t        btcA2DPBtSubIntervalsDuringDhcp;
+   v_U32_t       btcStaticLenInqBt;
+   v_U32_t       btcStaticLenPageBt;
+   v_U32_t       btcStaticLenConnBt;
+   v_U32_t       btcStaticLenLeBt;
+   v_U32_t       btcStaticLenInqWlan;
+   v_U32_t       btcStaticLenPageWlan;
+   v_U32_t       btcStaticLenConnWlan;
+   v_U32_t       btcStaticLenLeWlan;
+   v_U32_t       btcDynMaxLenBt;
+   v_U32_t       btcDynMaxLenWlan;
+   v_U32_t       btcMaxScoBlockPerc;
+   v_U32_t       btcDhcpProtOnA2dp;
+   v_U32_t       btcDhcpProtOnSco;
    v_U32_t       nImpsModSleepTime;
    v_U32_t       nImpsMaxSleepTime;
    v_U32_t       nImpsMinSleepTime;

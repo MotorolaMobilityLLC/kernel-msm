@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1128,7 +1128,11 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
         hdd_context_t* pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
 
         hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
-        pr_info("wlan: connection failed\n");
+        pr_info("wlan: connection failed with %02x:%02x:%02x:%02x:%02x:%02x"
+                " reason:%d and Status:%d\n", pWextState->req_bssId[0],
+                pWextState->req_bssId[1], pWextState->req_bssId[2],
+                pWextState->req_bssId[3], pWextState->req_bssId[4],
+                pWextState->req_bssId[5], roamResult, roamStatus);
 
         /*Handle all failure conditions*/
         hdd_connSetConnectionState( pHddStaCtx, eConnectionState_NotConnected);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1186,7 +1186,8 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         {
           for(i=0;i<pMac->lim.maxBssId;i++)
           {
-            if((pMac->lim.gpSession[i].valid == TRUE) &&
+            if((peFindSessionBySessionId(pMac,i) != NULL) &&
+               (pMac->lim.gpSession[i].valid == TRUE) &&
                (eLIM_MLM_LINK_ESTABLISHED_STATE == pMac->lim.gpSession[i].limMlmState))
             {
                limHeartBeatDeactivateAndChangeTimer(pMac, peFindSessionBySessionId(pMac,i));
@@ -1529,7 +1530,7 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         psessionEntry->nwType = pSmeJoinReq->bssDescription.nwType;
 #ifdef WLAN_FEATURE_11AC
         psessionEntry->vhtCapability = IS_DOT11_MODE_VHT(psessionEntry->dot11mode);
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_FATAL,
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO_MED,
             "***__limProcessSmeJoinReq: vhtCapability=%d****\n",psessionEntry->vhtCapability);
 #endif
 
