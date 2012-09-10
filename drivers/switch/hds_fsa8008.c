@@ -79,6 +79,7 @@ struct hsd_info {
 
 	/* callback function which is initialized while probing */
 	void (*set_headset_mic_bias)(int enable);
+	void (*set_uart_console)(int enable);
 
 	unsigned int latency_for_detection;
 	unsigned int latency_for_key;
@@ -201,6 +202,8 @@ static void insert_headset(struct hsd_info *hi)
 		gpio_set_value_cansleep(hi->gpio_mic_en, 0);
 		if (hi->set_headset_mic_bias)
 			hi->set_headset_mic_bias(0);
+		if (hi->set_uart_console)
+			hi->set_uart_console(0);
 
 		input_report_switch(hi->input, SW_HEADPHONE_INSERT, 1);
 		input_sync(hi->input);
@@ -219,6 +222,8 @@ static void insert_headset(struct hsd_info *hi)
 
 			atomic_set(&hi->irq_key_enabled, 1);
 		}
+		if (hi->set_uart_console)
+			hi->set_uart_console(0);
 		input_report_switch(hi->input, SW_HEADPHONE_INSERT, 1);
 		input_report_switch(hi->input, SW_MICROPHONE_INSERT, 1);
 		input_sync(hi->input);
@@ -257,6 +262,8 @@ static void remove_headset(struct hsd_info *hi)
 	if (has_mic == HEADSET_WITH_MIC)
 		input_report_switch(hi->input, SW_MICROPHONE_INSERT, 0);
 	input_sync(hi->input);
+	if (hi->set_uart_console)
+		hi->set_uart_console(1);
 }
 
 static void detect_work(struct work_struct *work)
@@ -275,6 +282,8 @@ static void detect_work(struct work_struct *work)
 			HSD_DBG("headset removing\n");
 			remove_headset(hi);
 		} else {
+			if (hi->set_uart_console)
+				hi->set_uart_console(1);
 			HSD_DBG("err_invalid_state state = %d\n", state);
 		}
 	} else {
@@ -447,6 +456,7 @@ static int hsd_probe(struct platform_device *pdev)
 	hi->gpio_jpole = pdata->gpio_jpole;
 	hi->gpio_key = pdata->gpio_key;
 	hi->set_headset_mic_bias = pdata->set_headset_mic_bias;
+	hi->set_uart_console = pdata->set_uart_console;
 	hi->latency_for_detection = pdata->latency_for_detection;
 	hi->latency_for_key = msecs_to_jiffies(FSA8008_KEY_LATENCY_TIME);
 
@@ -600,9 +610,9 @@ static int hsd_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_PM
-static int hsd_suspend(struct platform_device *pdev, pm_message_t state)
+static int hsd_suspend(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct hsd_info *hi = platform_get_drvdata(pdev);
 
 	HSD_DBG("hsd_suspend");
@@ -615,34 +625,40 @@ static int hsd_suspend(struct platform_device *pdev, pm_message_t state)
 	return 0;
 }
 
-static int hsd_resume(struct platform_device *pdev)
+static int hsd_resume(struct device *dev)
 {
+
+	struct platform_device *pdev = to_platform_device(dev);
 	struct hsd_info *hi = platform_get_drvdata(pdev);
 	int detect = 0;
 
 	HSD_DBG("hsd_resume");
 
+	detect = gpio_get_value(hi->gpio_detect);
+	if (HEADSET_INSERT == detect)
+		if (hi->set_uart_console)
+			hi->set_uart_console(0);
+
 	if (!hi->gpio_detect_can_wakeup) {
 		enable_irq(hi->irq_detect);
-		detect = gpio_get_value(hi->gpio_detect);
 		if (hi->saved_detect != detect)
 			schedule_detect_work(hi);
 	}
 
 	return 0;
 }
-#endif
+
+static const struct dev_pm_ops hsd_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(hsd_suspend, hsd_resume)
+};
 
 static struct platform_driver hsd_driver = {
 	.probe          = hsd_probe,
 	.remove         = hsd_remove,
-#ifdef CONFIG_PM
-	.suspend        = hsd_suspend,
-	.resume         = hsd_resume,
-#endif
 	.driver         = {
 		.name   = "fsa8008",
 		.owner  = THIS_MODULE,
+		.pm = &hsd_pm_ops,
 	},
 };
 

@@ -28,11 +28,12 @@ struct fsa8008_platform_data {
 	unsigned int gpio_jpole;  /* JPOLE : 3pole or 4pole */
 	unsigned int gpio_key;    /* S/E button */
 
-	/* callback function which is initialized while probing */
-	void (*set_headset_mic_bias)(int enable);
-
 	/* latency for pole (3 or 4)detection (in ms) */
 	unsigned int latency_for_detection;
+
+	/* callback function which is initialized while probing */
+	void (*set_headset_mic_bias)(int enable);
+	void (*set_uart_console)(int enable);
 };
 
 #endif /* __HDS_FSA8008_H__ */
