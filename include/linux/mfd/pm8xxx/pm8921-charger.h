@@ -156,6 +156,7 @@ struct pm8921_charger_platform_data {
 	enum pm8921_chg_hot_thr		hot_thr;
 	int				rconn_mohm;
 	enum pm8921_chg_led_src_config	led_src_config;
+	int				eoc_check_soc;
 };
 
 enum pm8921_charger_source {
@@ -289,6 +290,8 @@ int set_wireless_power_supply_control(int value);
 #endif
 
 int pm8921_set_ext_battery_health(int health, int i_limit);
+int pm8921_get_batt_state(void);
+int pm8921_force_start_charging(void);
 
 /**
  * pm8921_is_batfet_closed - battery fet status

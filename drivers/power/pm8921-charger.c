@@ -287,6 +287,7 @@ struct pm8921_chg_chip {
 	int				ext_batt_temp_monitor;
 	int				recent_reported_soc;
 	unsigned int			ext_warm_i_limit;
+	int				eoc_check_soc;
 };
 
 /* user space parameter to limit usb current */
@@ -546,6 +547,7 @@ static int pm_chg_vddmax_set(struct pm8921_chg_chip *chip, int voltage)
 			ret |= __pm_chg_vddmax_set(chip, current_mv);
 		}
 	}
+
 	ret |= __pm_chg_vddmax_set(chip, voltage);
 	return ret;
 }
@@ -1541,12 +1543,25 @@ static int get_prop_batt_status(struct pm8921_chg_chip *chip)
 		if (!pm_chg_get_rt_status(chip, BATT_INSERTED_IRQ)
 			|| !pm_chg_get_rt_status(chip, BAT_TEMP_OK_IRQ)
 			|| pm_chg_get_rt_status(chip, CHGHOT_IRQ)
-			|| pm_chg_get_rt_status(chip, VBATDET_LOW_IRQ)
+			|| (!chip->eoc_check_soc &&
+				pm_chg_get_rt_status(chip, VBATDET_LOW_IRQ))
 			|| (chip->ext_batt_temp_monitor &&
 				(chip->ext_batt_health == POWER_SUPPLY_HEALTH_OVERHEAT)))
 
 			batt_state = POWER_SUPPLY_STATUS_NOT_CHARGING;
 	}
+
+	if (chip->eoc_check_soc) {
+		if (get_prop_batt_capacity(chip) == 100) {
+			if (batt_state == POWER_SUPPLY_STATUS_CHARGING)
+				batt_state = POWER_SUPPLY_STATUS_FULL;
+		} else {
+			if (batt_state == POWER_SUPPLY_STATUS_FULL)
+				batt_state = POWER_SUPPLY_STATUS_CHARGING;
+		}
+	}
+
+	pr_debug("batt_state = %d fsm_state = %d \n",batt_state, fsm_state);
 	return batt_state;
 }
 
@@ -1769,6 +1784,32 @@ int pm8921_charger_enable(bool enable)
 	return rc;
 }
 EXPORT_SYMBOL(pm8921_charger_enable);
+
+int pm8921_force_start_charging(void)
+{
+	int rc;
+
+	if (!the_chip) {
+		pr_err("called before init\n");
+		return -EINVAL;
+	}
+
+	if (the_chip->eoc_check_soc) {
+		rc = pm_chg_vbatdet_set(the_chip,
+				the_chip->max_voltage_mv);
+		if (rc) {
+			pr_err("failed to set vbatdet\n");
+			return rc;
+		}
+	}
+
+	rc = pm_chg_auto_enable(the_chip, 1);
+	if (rc)
+		pr_err("Failed rc=%d\n", rc);
+
+	return rc;
+}
+EXPORT_SYMBOL(pm8921_force_start_charging);
 
 int pm8921_is_usb_chg_plugged_in(void)
 {
@@ -2035,6 +2076,27 @@ int pm8921_set_ext_battery_health(int health, int i_limit)
 }
 EXPORT_SYMBOL(pm8921_set_ext_battery_health);
 
+int pm8921_get_batt_state(void)
+{
+	int batt_state = POWER_SUPPLY_STATUS_DISCHARGING;
+	int fsm_state;
+	int i;
+
+	if (!the_chip) {
+		pr_err("called before init\n");
+		return -EINVAL;
+	}
+
+	fsm_state = pm_chg_get_fsm_state(the_chip);
+
+	for (i = 0; i < ARRAY_SIZE(map); i++)
+		if (map[i].fsm_state == fsm_state)
+			batt_state = map[i].batt_state;
+
+	pr_debug("batt_state = %d fsm_state = %d \n",batt_state, fsm_state);
+	return batt_state;
+}
+EXPORT_SYMBOL(pm8921_get_batt_state);
 
 int pm8921_batt_temperature(void)
 {
@@ -2496,11 +2558,15 @@ static irqreturn_t vbatdet_low_irq_handler(int irq, void *data)
 	high_transition = pm_chg_get_rt_status(chip, VBATDET_LOW_IRQ);
 
 	if (high_transition) {
-		/* enable auto charging */
-		pm_chg_auto_enable(chip, !charging_disabled);
-		pr_info("batt fell below resume voltage %s\n",
-			charging_disabled ? "" : "charger enabled");
+		if (!chip->eoc_check_soc
+				|| pm_chg_get_fsm_state(data) == FSM_STATE_ON_BAT_3) {
+			/* enable auto charging */
+			pm_chg_auto_enable(chip, !charging_disabled);
+			pr_info("batt fell below resume voltage %s\n",
+				charging_disabled ? "" : "charger enabled");
+		}
 	}
+
 	pr_debug("fsm_state=%d\n", pm_chg_get_fsm_state(data));
 
 	power_supply_changed(&chip->batt_psy);
@@ -2790,6 +2856,15 @@ static irqreturn_t fastchg_irq_handler(int irq, void *data)
 {
 	struct pm8921_chg_chip *chip = data;
 	int high_transition;
+	int rc;
+
+	if (chip->eoc_check_soc) {
+		rc = pm_chg_vbatdet_set(chip,
+				chip->max_voltage_mv
+				- chip->resume_voltage_delta);
+	if (rc)
+		pr_err("failed to set vbatdet rc=%d\n", rc);
+	}
 
 	high_transition = pm_chg_get_rt_status(chip, FASTCHG_IRQ);
 	if (high_transition && !delayed_work_pending(&chip->eoc_work)) {
@@ -2798,6 +2873,7 @@ static irqreturn_t fastchg_irq_handler(int irq, void *data)
 				      round_jiffies_relative(msecs_to_jiffies
 						     (EOC_CHECK_PERIOD_MS)));
 	}
+
 	power_supply_changed(&chip->batt_psy);
 	bms_notify_check(chip);
 	return IRQ_HANDLED;
@@ -3248,6 +3324,7 @@ static void eoc_worker(struct work_struct *work)
 				struct pm8921_chg_chip, eoc_work);
 	static int count;
 	int end;
+	int percent_soc;
 
 	pm_chg_failed_clear(chip, 1);
 	end = is_charging_finished(chip);
@@ -3274,6 +3351,12 @@ static void eoc_worker(struct work_struct *work)
 		count++;
 	} else {
 		count = 0;
+	}
+
+	if (chip->eoc_check_soc) {
+		percent_soc = get_prop_batt_capacity(chip);
+		if (percent_soc == 100)
+			count = CONSECUTIVE_COUNT;
 	}
 
 	if (count == CONSECUTIVE_COUNT) {
@@ -4419,7 +4502,7 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	chip->rconn_mohm = pdata->rconn_mohm;
 	chip->led_src_config = pdata->led_src_config;
 	chip->ext_batt_temp_monitor = pdata->ext_batt_temp_monitor;
-
+	chip->eoc_check_soc = pdata->eoc_check_soc;
 	if (chip->ext_batt_temp_monitor)
 		chip->ext_batt_health = POWER_SUPPLY_HEALTH_GOOD;
 
