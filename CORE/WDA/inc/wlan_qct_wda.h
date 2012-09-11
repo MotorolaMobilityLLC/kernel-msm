@@ -1269,6 +1269,10 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 
 #define WDA_SET_TM_LEVEL_REQ       SIR_HAL_SET_TM_LEVEL_REQ
 
+#ifdef WLAN_FEATURE_11AC
+#define WDA_UPDATE_OP_MODE         SIR_HAL_UPDATE_OP_MODE
+#endif
+
 #ifdef FEATURE_WLAN_INTEGRATED_SOC
 tSirRetStatus wdaPostCtrlMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 #endif

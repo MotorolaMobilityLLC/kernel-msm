@@ -7915,3 +7915,17 @@ tANI_BOOLEAN limIsconnectedOnDFSChannel(tANI_U8 currentChannel)
         return eANI_BOOLEAN_FALSE;
     }
 }
+	    
+#ifdef WLAN_FEATURE_11AC
+tANI_BOOLEAN limCheckVHTOpModeChange( tpAniSirGlobal pMac, tpPESession psessionEntry, tANI_U8 chanWidth, tANI_U8 staId)
+{
+    tUpdateVHTOpMode tempParam;
+    
+    tempParam.opMode = chanWidth;
+    tempParam.staId  = staId;
+
+    limSendModeUpdate( pMac, &tempParam, psessionEntry );
+
+    return eANI_BOOLEAN_TRUE;
+}
+#endif 

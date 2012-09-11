@@ -61,6 +61,9 @@ static tBeaconFilterIe beaconFilterTable[] = {
 #if defined WLAN_FEATURE_VOWIFI
    ,{SIR_MAC_PWR_CONSTRAINT_EID,  0, {0, 0, 0, 0}}
 #endif
+#ifdef WLAN_FEATURE_11AC
+   ,{SIR_MAC_VHT_OPMODE_EID,     0,  {0, 0, 0, 0}}
+#endif
 };
 
 /**
@@ -658,3 +661,39 @@ tSirRetStatus limSendBeaconFilterInfo(tpAniSirGlobal pMac)
     }
     return retCode;
 }
+
+#ifdef WLAN_FEATURE_11AC
+tSirRetStatus limSendModeUpdate(tpAniSirGlobal pMac, 
+                                tUpdateVHTOpMode *pTempParam,
+                                tpPESession  psessionEntry )
+{
+    tUpdateVHTOpMode *pVhtOpMode = NULL;
+    tSirRetStatus   retCode = eSIR_SUCCESS;
+    tSirMsgQ msgQ;
+
+    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
+          (void **) &pVhtOpMode, sizeof(tUpdateVHTOpMode)))
+    {
+        limLog( pMac, LOGP,
+            FL( "Unable to PAL allocate memory during Update Op Mode\n" ));
+        return eSIR_MEM_ALLOC_FAILED;
+    }
+    palCopyMemory( pMac->hHdd, (tANI_U8 *)pVhtOpMode, pTempParam, sizeof(tUpdateVHTOpMode));
+    msgQ.type =  WDA_UPDATE_OP_MODE;
+    msgQ.reserved = 0;
+    msgQ.bodyptr = pVhtOpMode;
+    msgQ.bodyval = 0;
+    PELOG3(limLog( pMac, LOG3,
+                FL( "Sending WDA_UPDATE_OP_MODE" ));)
+    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
+    if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
+    {
+        palFreeMemory(pMac->hHdd, pVhtOpMode);
+        limLog( pMac, LOGP,
+                    FL("Posting  WDA_UPDATE_OP_MODE to WDA failed, reason=%X\n"),
+                    retCode );
+    }
+
+    return retCode;
+}
+#endif 

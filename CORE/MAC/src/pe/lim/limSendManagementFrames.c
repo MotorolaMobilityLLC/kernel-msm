@@ -639,6 +639,7 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
         PopulateDot11fVHTOperation( pMac, &frm.VHTOperation );
         // we do not support multi users yet
         //PopulateDot11fVHTExtBssLoad( pMac, &frm.VHTExtBssLoad );
+        PopulateDot11fExtCap( pMac, &frm.ExtCap);
     }
 #endif
 
@@ -1577,6 +1578,7 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
             limLog( pMac, LOGW, FL("Populate VHT IEs in Assoc Response\n"));
             PopulateDot11fVHTCaps( pMac, &frm.VHTCaps );
             PopulateDot11fVHTOperation( pMac, &frm.VHTOperation);
+            PopulateDot11fExtCap( pMac, &frm.ExtCap);
         }
 #endif
 
@@ -2415,6 +2417,7 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
     {
         limLog( pMac, LOGW, FL("Populate VHT IEs in Assoc Request\n"));
         PopulateDot11fVHTCaps( pMac, &frm.VHTCaps );
+        PopulateDot11fExtCap( pMac, &frm.ExtCap);
     }
 #endif
 
@@ -3156,6 +3159,7 @@ limSendReassocReqMgmtFrame(tpAniSirGlobal     pMac,
     {
         limLog( pMac, LOGW, FL("Populate VHT IEs in Re-Assoc Request\n"));
         PopulateDot11fVHTCaps( pMac, &frm.VHTCaps );
+        PopulateDot11fExtCap( pMac, &frm.ExtCap);
     }
 #endif
 
@@ -4387,6 +4391,122 @@ limSendChannelSwitchMgmtFrame(tpAniSirGlobal pMac,
 
 #endif // (ANI_PRODUCT_TYPE_AP)
 
+
+#ifdef WLAN_FEATURE_11AC    
+tSirRetStatus
+limSendVHTOpmodeNotificationFrame(tpAniSirGlobal pMac,
+                              tSirMacAddr    peer,
+                              tANI_U8        nMode,
+                              tpPESession    psessionEntry )
+{
+    tDot11fOperatingMode  frm;
+    tANI_U8                  *pFrame;
+    tSirRetStatus        nSirStatus;
+    tpSirMacMgmtHdr      pMacHdr;
+    tANI_U32                  nBytes, nPayload = 0, nStatus;//, nCfg;
+    void               *pPacket;
+    eHalStatus          halstatus;
+    tANI_U8 txFlag = 0;
+    
+    palZeroMemory( pMac->hHdd, ( tANI_U8* )&frm, sizeof( frm ) );
+
+    frm.Category.category     = SIR_MAC_ACTION_VHT;
+    frm.Action.action         = SIR_MAC_VHT_OPMODE_NOTIFICATION;
+    frm.OperatingMode.chanWidth    = nMode;
+    frm.OperatingMode.rxNSS   = 0;
+    frm.OperatingMode.rxNSSType    = 0;
+
+    nStatus = dot11fGetPackedOperatingModeSize( pMac, &frm, &nPayload );
+    if ( DOT11F_FAILED( nStatus ) )
+    {
+        limLog( pMac, LOGP, FL("Failed to calculate the packed size f"
+                               "or a Operating Mode (0x%08x).\n"),
+                nStatus );
+        // We'll fall back on the worst case scenario:
+        nPayload = sizeof( tDot11fOperatingMode);
+    }
+    else if ( DOT11F_WARNED( nStatus ) )
+    {
+        limLog( pMac, LOGW, FL("There were warnings while calculating"
+                               "the packed size for a Operating Mode (0x"
+                               "%08x).\n"), nStatus );
+    }
+
+    nBytes = nPayload + sizeof( tSirMacMgmtHdr );
+
+    halstatus = palPktAlloc( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, ( tANI_U16 )nBytes, ( void** ) &pFrame, ( void** ) &pPacket );
+    if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
+    {
+        limLog( pMac, LOGP, FL("Failed to allocate %d bytes for a Operating Mode"
+                               " Report.\n"), nBytes );
+        return eSIR_FAILURE;
+    }
+
+    // Paranoia:
+    palZeroMemory( pMac->hHdd, pFrame, nBytes );
+
+
+    // Next, we fill out the buffer descriptor:
+    if(psessionEntry->pePersona == VOS_STA_SAP_MODE) {
+        nSirStatus = limPopulateMacHeader( pMac, pFrame, SIR_MAC_MGMT_FRAME,
+                                           SIR_MAC_MGMT_ACTION, peer, psessionEntry->selfMacAddr);
+    } else
+        nSirStatus = limPopulateMacHeader( pMac, pFrame, SIR_MAC_MGMT_FRAME,
+                                           SIR_MAC_MGMT_ACTION, psessionEntry->bssId, psessionEntry->selfMacAddr);
+    pMacHdr = ( tpSirMacMgmtHdr ) pFrame;
+    palCopyMemory( pMac->hHdd,
+                   (tANI_U8 *) pMacHdr->bssId,
+                   (tANI_U8 *) psessionEntry->bssId,
+                   sizeof( tSirMacAddr ));
+    if ( eSIR_SUCCESS != nSirStatus )
+    {
+        limLog( pMac, LOGE, FL("Failed to populate the buffer descrip"
+                               "tor for a Operating Mode (%d).\n"),
+                nSirStatus );
+        palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, ( void* ) pFrame, ( void* ) pPacket );
+        return eSIR_FAILURE;    // just allocated...
+    }
+    nStatus = dot11fPackOperatingMode( pMac, &frm, pFrame +
+                                       sizeof(tSirMacMgmtHdr),
+                                       nPayload, &nPayload );
+    if ( DOT11F_FAILED( nStatus ) )
+    {
+        limLog( pMac, LOGE, FL("Failed to pack a Operating Mode (0x%08x).\n"),
+                nStatus );
+        palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, ( void* ) pFrame, ( void* ) pPacket );
+        return eSIR_FAILURE;    // allocated!
+    }
+    else if ( DOT11F_WARNED( nStatus ) )
+    {
+        limLog( pMac, LOGW, FL("There were warnings while packing a Operating Mode"
+                               " (0x%08x).\n") );
+    }
+    if( ( SIR_BAND_5_GHZ == limGetRFBand(psessionEntry->currentOperChannel))
+#ifdef WLAN_FEATURE_P2P
+       || ( psessionEntry->pePersona == VOS_P2P_CLIENT_MODE ) ||
+         ( psessionEntry->pePersona == VOS_P2P_GO_MODE)
+#endif
+         )
+    {
+        txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
+    }
+    halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
+                            HAL_TXRX_FRM_802_11_MGMT,
+                            ANI_TXDIR_TODS,
+                            7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
+                            limTxComplete, pFrame, txFlag );
+    if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
+    {
+        limLog( pMac, LOGE, FL("Failed to send a Channel Switch "
+                               "(%X)!\n"),
+                nSirStatus );
+        //Pkt will be freed up by the callback
+        return eSIR_FAILURE;
+    }
+
+    return eSIR_SUCCESS;
+}
+#endif
 
 /**
  * \brief Send an ADDBA Req Action Frame to peer

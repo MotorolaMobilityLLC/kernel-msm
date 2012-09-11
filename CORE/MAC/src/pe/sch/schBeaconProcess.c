@@ -353,6 +353,11 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
     tUpdateBeaconParams beaconParams;
     tANI_U8 sendProbeReq = FALSE;
     tpDphHashNode pStaDs = NULL;
+#ifdef WLAN_FEATURE_11AC
+    tpSirMacMgmtHdr    pMh = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
+    tANI_U16  aid;
+    tANI_U8  operMode;
+#endif
 
 
     beaconParams.paramChangeBitmap = 0;
@@ -502,6 +507,48 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         {
             limCancelDot11hChannelSwitch(pMac, psessionEntry);
         }   
+    }
+#endif
+
+#ifdef WLAN_FEATURE_11AC
+    if ( (psessionEntry->limSystemRole == eLIM_STA_ROLE) ||(psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE) || (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE) ) 
+    {
+        // check for VHT capability
+        if(psessionEntry->vhtCapability && pBeacon->OperatingMode.present)
+        {
+            pStaDs = dphLookupHashEntry(pMac, pMh->sa, &aid, &psessionEntry->dph.dphHashTable);
+            operMode = pStaDs->vhtSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_80MHZ : pStaDs->htSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_40MHZ: eHT_CHANNEL_WIDTH_20MHZ;
+            if( operMode != pBeacon->OperatingMode.chanWidth)
+            {
+                PELOG1(limLog(pMac, LOG1, FL(" recevied Chanwidth %d, staIdx = %d\n"),
+                                          pBeacon->OperatingMode.chanWidth, 
+                                          pStaDs->staIndex);)
+                PELOG1(limLog(pMac, LOG1, FL(" MAC - %0x:%0x:%0x:%0x:%0x:%0x\n"),
+                                          pMh->sa[0],
+                                          pMh->sa[1],
+                                          pMh->sa[2],
+                                          pMh->sa[3],
+                                          pMh->sa[4],
+                                          pMh->sa[5]);)
+                
+                if(pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_80MHZ)
+                {
+                    pStaDs->vhtSupportedChannelWidthSet =  WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
+                    pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ ;
+                }
+                else if(pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_40MHZ)
+                {
+                    pStaDs->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
+                    pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
+                }
+                else if(pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_20MHZ)
+                {
+                    pStaDs->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
+                    pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_20MHZ;
+                }
+                limCheckVHTOpModeChange(pMac, psessionEntry, pBeacon->OperatingMode.chanWidth, pStaDs->staIndex); 
+            }
+        }
     }
 #endif
 

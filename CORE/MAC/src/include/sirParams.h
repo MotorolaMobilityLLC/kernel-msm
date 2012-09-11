@@ -72,6 +72,8 @@ typedef enum {
    MCC	   = 0,
    P2P	   = 1,
    DOT11AC = 2,
+   SLM_SESSIONIZATION = 3,
+   DOT11AC_OPMODE = 4,
    MAX_FEATURE_SUPPORTED = 128,
 } placeHolderInCapBitmap;
 
@@ -535,6 +537,10 @@ typedef struct sSirMbMsgP2p
 #endif //WLAN_WAKEUP_EVENTS
 
 #define SIR_HAL_SET_TM_LEVEL_REQ           SIR_HAL_ITC_MSG_TYPES_BEGIN + 187
+
+#ifdef WLAN_FEATURE_11AC
+#define SIR_HAL_UPDATE_OP_MODE             SIR_HAL_ITC_MSG_TYPES_BEGIN + 188
+#endif
 
 #define SIR_HAL_MSG_TYPES_END              SIR_HAL_ITC_MSG_TYPES_BEGIN + 0xFF
 // CFG message types

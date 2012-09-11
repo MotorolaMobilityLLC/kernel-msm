@@ -646,6 +646,16 @@ typedef struct sLimChannelSwitchInfo
     tANI_U8                  switchMode;
 } tLimChannelSwitchInfo, *tpLimChannelSwitchInfo;
 
+#ifdef WLAN_FEATURE_11AC
+typedef struct sLimOperatingModeInfo
+{
+    tANI_U8        present;
+    tANI_U8        chanWidth: 2;
+    tANI_U8         reserved: 2;
+    tANI_U8            rxNSS: 3;
+    tANI_U8        rxNSSType: 1;
+}tLimOperatingModeInfo, *tpLimOperatingModeInfo;
+#endif
 // Enums used when stopping the Tx.
 typedef enum eLimQuietTxMode
 {

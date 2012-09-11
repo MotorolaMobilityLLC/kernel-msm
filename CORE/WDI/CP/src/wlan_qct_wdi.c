@@ -107,7 +107,7 @@ static tWlanFeatCaps *gpFwWlanFeatCaps = NULL;
  * and other two places - wlan_hal_msg.h and halMsg.c (FW file)
  */
 static placeHolderInCapBitmap supportEnabledFeatures[] =
-   {MCC, P2P, DOT11AC};
+   {MCC, P2P, DOT11AC, SLM_SESSIONIZATION, DOT11AC_OPMODE};
 
 /*-------------------------------------------------------------------------- 
    WLAN DAL  State Machine
@@ -310,6 +310,9 @@ WDI_ReqProcFuncType  pfnReqProcTbl[WDI_MAX_UMAC_IND] =
 
   WDI_ProcessSetTmLevelReq,             /*WDI_SET_TM_LEVEL_REQ*/
   WDI_ProcessFeatureCapsExchangeReq,    /* WDI_FEATURE_CAPS_EXCHANGE_REQ */
+#ifdef WLAN_FEATURE_11AC
+  WDI_ProcessUpdateVHTOpModeReq,        /* WDI_UPDATE_VHT_OP_MODE_REQ */
+#endif
   /*-------------------------------------------------------------------------
     Indications
   -------------------------------------------------------------------------*/
@@ -479,6 +482,9 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
 #endif // WLAN_FEATURE_GTK_OFFLOAD
   WDI_ProcessSetTmLevelRsp,             /* WDI_SET_TM_LEVEL_RESP */
   WDI_ProcessFeatureCapsExchangeRsp,    /* WDI_FEATURE_CAPS_EXCHANGE_RESP */
+#ifdef WLAN_FEATURE_11AC
+  WDI_ProcessUpdateVHTOpModeRsp,        /* WDI_UPDATE_VHT_OP_MODE_RESP */
+#endif
 
   /*---------------------------------------------------------------------
     Indications
@@ -20526,6 +20532,10 @@ WDI_2_HAL_REQ_TYPE
     return WLAN_HAL_SET_THERMAL_MITIGATION_REQ; 
   case WDI_FEATURE_CAPS_EXCHANGE_REQ:
     return WLAN_HAL_FEATURE_CAPS_EXCHANGE_REQ;
+#ifdef WLAN_FEATURE_11AC
+  case WDI_UPDATE_VHT_OP_MODE_REQ:
+    return WLAN_HAL_UPDATE_VHT_OP_MODE_REQ;
+#endif
   default:
     return WLAN_HAL_MSG_MAX;
   }
@@ -20745,6 +20755,10 @@ case WLAN_HAL_DEL_STA_SELF_RSP:
     return WDI_SET_TM_LEVEL_RESP;
   case WLAN_HAL_FEATURE_CAPS_EXCHANGE_RSP:
       return WDI_FEATURE_CAPS_EXCHANGE_RESP;
+#ifdef WLAN_FEATURE_11AC
+  case WLAN_HAL_UPDATE_VHT_OP_MODE_RSP:
+      return WDI_UPDATE_VHT_OP_MODE_RESP;
+#endif
   default:
     return eDRIVER_TYPE_MAX;
   }
@@ -24484,6 +24498,45 @@ WDI_ProcessFeatureCapsExchangeRsp
    return WDI_STATUS_SUCCESS; 
 }
 
+#ifdef WLAN_FEATURE_11AC
+WDI_Status
+WDI_ProcessUpdateVHTOpModeRsp
+( 
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+   WDI_UpdateVHTOpModeCb   wdiVHTOpModeCb = NULL;
+   WDI_Status           wdiStatus;
+   eHalStatus           halStatus;
+   
+   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+   /*-------------------------------------------------------------------------
+     Sanity check
+   -------------------------------------------------------------------------*/
+   if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+       ( NULL == pEventData->pEventData))
+   {
+      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                  "%s: Invalid parameters", __FUNCTION__);
+      WDI_ASSERT(0);
+      return WDI_STATUS_E_FAILURE;
+   }
+   wdiVHTOpModeCb = (WDI_UpdateVHTOpModeCb)pEventData->pCBfnc;
+
+   /*-------------------------------------------------------------------------
+     Extract response and send it to UMAC
+   -------------------------------------------------------------------------*/
+   halStatus = *((eHalStatus*)pEventData->pEventData);
+   wdiStatus   =   WDI_HAL_2_WDI_STATUS(halStatus);
+
+   /*Notify UMAC*/
+   wdiVHTOpModeCb( wdiStatus, pEventData->pUserData);
+
+   return WDI_STATUS_SUCCESS; 
+}
+#endif
 /**
  @brief WDI_getHostWlanFeatCaps
         WDI API that returns whether the feature passed to it as enum value in
@@ -24548,3 +24601,102 @@ wpt_uint8 WDI_getFwWlanFeatCaps(wpt_uint8 feat_enum_value)
     }
     return featSupported;
 }
+
+#ifdef WLAN_FEATURE_11AC
+WDI_Status
+WDI_ProcessUpdateVHTOpModeReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_UpdateVHTOpMode*    pwdiVHTOpModeParams = NULL;
+  WDI_UpdateVHTOpModeCb   wdiVHTOpModeCb = NULL;
+  wpt_uint8*              pSendBuffer        = NULL; 
+  wpt_uint16              usDataOffset       = 0;
+  wpt_uint16              usSendSize         = 0;
+
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
+         "%s", __FUNCTION__);
+
+  /*-------------------------------------------------------------------------
+    Sanity check 
+  -------------------------------------------------------------------------*/
+   if (( NULL == pEventData ) ||
+       ( NULL == (pwdiVHTOpModeParams = (WDI_UpdateVHTOpMode*)pEventData->pEventData)) ||
+       ( NULL == (wdiVHTOpModeCb   = (WDI_UpdateVHTOpModeCb)pEventData->pCBfnc)))
+   {
+      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                  "%s: Invalid parameters", __FUNCTION__);
+      WDI_ASSERT(0);
+      return WDI_STATUS_E_FAILURE;
+   }
+  
+  /*-----------------------------------------------------------------------
+    Get message buffer
+  -----------------------------------------------------------------------*/
+  if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx, WDI_UPDATE_VHT_OP_MODE_REQ,
+                        sizeof(WDI_UpdateVHTOpMode),
+                        &pSendBuffer, &usDataOffset, &usSendSize))||
+      ( usSendSize < (usDataOffset + sizeof(WDI_UpdateVHTOpMode) )))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+              "Unable to get send buffer in update vht opMode req");
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+            "pwdiVHTOpModeParams->opMode=%d, pwdiVHTOpModeParams->staId=%d\n", pwdiVHTOpModeParams->opMode, pwdiVHTOpModeParams->staId);
+
+  wpalMemoryCopy( pSendBuffer+usDataOffset, pwdiVHTOpModeParams,
+                  sizeof(WDI_UpdateVHTOpMode));
+
+  /*-------------------------------------------------------------------------
+    Send Start Request to HAL 
+  -------------------------------------------------------------------------*/
+  return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize, 
+                       wdiVHTOpModeCb,
+                       pEventData->pUserData, WDI_UPDATE_VHT_OP_MODE_RESP);
+
+}
+
+WDI_Status
+WDI_UpdateVHTOpModeReq
+(
+  WDI_UpdateVHTOpMode    *pData,
+  WDI_UpdateVHTOpModeCb  wdiUpdateVHTOpModeCb,
+  void*                  pUserData
+)
+{
+  WDI_EventInfoType      wdiEventData;
+
+  /*------------------------------------------------------------------------
+    Sanity Check
+  ------------------------------------------------------------------------*/
+  if ( eWLAN_PAL_FALSE == gWDIInitialized )
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+              "WDI API call before module is initialized - Fail request");
+
+    return WDI_STATUS_E_NOT_ALLOWED;
+  }
+
+  /*------------------------------------------------------------------------
+    Fill in Event data and post to the Main FSM
+  ------------------------------------------------------------------------*/
+  wdiEventData.wdiRequest      = WDI_UPDATE_VHT_OP_MODE_REQ;
+  wdiEventData.pEventData      = pData;
+  wdiEventData.uEventDataSize  = sizeof(WDI_UpdateVHTOpMode); 
+  wdiEventData.pCBfnc          = wdiUpdateVHTOpModeCb;
+  wdiEventData.pUserData       = pUserData;
+  
+  WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+            "pData->opMode=%d, pData->staId=%d\n", pData->opMode, pData->staId);
+
+  return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+
+} 
+#endif

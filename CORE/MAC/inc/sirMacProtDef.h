@@ -163,6 +163,9 @@
 #if defined WLAN_FEATURE_P2P
 #define SIR_MAC_ACTION_PUBLIC_USAGE 4
 #endif
+#ifdef WLAN_FEATURE_11AC
+#define SIR_MAC_ACTION_VHT            21
+#endif
 
 // QoS management action codes
 
@@ -213,6 +216,11 @@
 #define SIR_MAC_RRM_NEIGHBOR_REQ               4
 #define SIR_MAC_RRM_NEIGHBOR_RPT               5
 
+#endif
+
+//VHT Action Field 
+#ifdef WLAN_FEATURE_11AC
+#define SIR_MAC_VHT_OPMODE_NOTIFICATION        2
 #endif
 
 // HT Action Field Codes
@@ -371,6 +379,7 @@
 #define SIR_MAC_VHT_CAPABILITIES_EID   191
 #define SIR_MAC_VHT_OPERATION_EID      192
 #define SIR_MAC_VHT_EXT_BSS_LOAD_EID   193
+#define SIR_MAC_VHT_OPMODE_EID         199
 #endif
 #define SIR_MAC_MAX_SUPPORTED_MCS_SET    16
 

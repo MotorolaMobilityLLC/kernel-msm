@@ -351,6 +351,9 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
         PopulateDot11fVHTOperation( pMac, &bcn2.VHTOperation);
         // we do not support multi users yet
         //PopulateDot11fVHTExtBssLoad( pMac, &bcn2.VHTExtBssLoad);
+        PopulateDot11fExtCap( pMac, &bcn2.ExtCap);
+        if(psessionEntry->gLimOperatingMode.present)
+            PopulateDot11fOperatingMode( pMac, &bcn2.OperatingMode, psessionEntry );
     }
 #endif
 

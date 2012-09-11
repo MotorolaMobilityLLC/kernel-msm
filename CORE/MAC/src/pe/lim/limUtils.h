@@ -397,6 +397,11 @@ v_U8_t* limGetVendorIEOuiPtr(tpAniSirGlobal pMac, tANI_U8 *oui, tANI_U8 oui_size
 tANI_BOOLEAN limIsconnectedOnDFSChannel(tANI_U8 currentChannel);
 tANI_U8 limGetCurrentOperatingChannel(tpAniSirGlobal pMac);
 
+#ifdef WLAN_FEATURE_11AC
+tANI_BOOLEAN limCheckVHTOpModeChange( tpAniSirGlobal pMac, 
+		                      tpPESession psessionEntry, tANI_U8 chanWidth, tANI_U8 staId);
+#endif
+
 #ifdef FEATURE_WLAN_DIAG_SUPPORT
 
 typedef enum

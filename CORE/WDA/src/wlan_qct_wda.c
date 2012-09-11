@@ -185,6 +185,10 @@ static VOS_STATUS WDA_ProcessGTKOffloadGetInfoReq(tWDA_CbContext *pWDA, tpSirGtk
 
 VOS_STATUS WDA_ProcessSetTmLevelReq(tWDA_CbContext *pWDA,
                                     tAniSetTmLevelReq *setTmLevelReq);
+#ifdef WLAN_FEATURE_11AC
+VOS_STATUS WDA_ProcessUpdateOpMode(tWDA_CbContext *pWDA, 
+                                   tUpdateVHTOpMode *pData);
+#endif
 /*
  * FUNCTION: WDA_open
  * Allocate the WDA context 
@@ -9523,7 +9527,23 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          WDA_ProcessSetTmLevelReq(pWDA, (tAniSetTmLevelReq *)pMsg->bodyptr);
          break;
       }
-
+#ifdef WLAN_FEATURE_11AC
+      case WDA_UPDATE_OP_MODE:
+      {
+          if(WDA_getHostWlanFeatCaps(DOT11AC) && WDA_getFwWlanFeatCaps(DOT11AC))
+          {
+              if(WDA_getHostWlanFeatCaps(DOT11AC_OPMODE) && WDA_getFwWlanFeatCaps(DOT11AC_OPMODE))
+                   WDA_ProcessUpdateOpMode(pWDA, (tUpdateVHTOpMode *)pMsg->bodyptr);
+              else
+                   VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                                            " VHT OpMode Feature is Not Supported \n");
+          } 
+          else 
+                   VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                                            " 11AC Feature is Not Supported \n");
+          break;
+      }
+#endif
       default:
       {
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
@@ -11396,4 +11416,78 @@ v_BOOL_t WDA_needShutdown(v_PVOID_t pVosContext)
    return pWDA->needShutdown;   
 }
 
+#ifdef WLAN_FEATURE_11AC
+/*
+ * FUNCTION: WDA_SetBeaconFilterReqCallback
+ * 
+ */
+void WDA_SetUpdateOpModeReqCallback(WDI_Status status, void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                                          "<------ %s " ,__FUNCTION__);
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __FUNCTION__);
+      VOS_ASSERT(0) ;
+      return ;
+   }
 
+   vos_mem_free(pWdaParams->wdaMsgParam) ;
+   vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+   vos_mem_free(pWdaParams) ;
+   /* 
+    * No respone required for SetBeaconFilter req so just free the request 
+    * param here
+    */
+
+   return ;
+}
+
+VOS_STATUS WDA_ProcessUpdateOpMode(tWDA_CbContext *pWDA, 
+                                   tUpdateVHTOpMode *pData)
+{
+   WDI_Status status = WDI_STATUS_SUCCESS ;
+   tWDA_ReqParams *pWdaParams ;
+   WDI_UpdateVHTOpMode *wdiTemp = (WDI_UpdateVHTOpMode *)vos_mem_malloc(
+                                             sizeof(WDI_UpdateVHTOpMode)) ;
+   if(NULL == wdiTemp) 
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __FUNCTION__); 
+      VOS_ASSERT(0);
+      return VOS_STATUS_E_NOMEM;
+   }
+   pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams)) ;
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __FUNCTION__); 
+      VOS_ASSERT(0);
+      vos_mem_free(wdiTemp);
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   wdiTemp->opMode = pData->opMode;
+   wdiTemp->staId  = pData->staId;
+   
+   pWdaParams->pWdaContext = pWDA;
+   /* Store Req pointer, as this will be used for response */
+   pWdaParams->wdaMsgParam = (void *)pData;
+   /* store Params pass it to WDI */
+   pWdaParams->wdaWdiApiMsgParam = (void *)wdiTemp ;
+
+   status = WDI_UpdateVHTOpModeReq( wdiTemp, (WDI_UpdateVHTOpModeCb) WDA_SetUpdateOpModeReqCallback, pWdaParams);
+
+   if(IS_WDI_STATUS_FAILURE(status))
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+        "Failure in UPDATE VHT OP_MODE REQ Params WDI API, free all the memory " );
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
+      vos_mem_free(pWdaParams->wdaMsgParam);
+      vos_mem_free(pWdaParams);
+   }
+   return CONVERT_WDI2VOS_STATUS(status) ;
+} 
+#endif

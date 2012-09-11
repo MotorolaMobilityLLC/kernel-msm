@@ -947,6 +947,29 @@ PopulateDot11fVHTExtBssLoad(tpAniSirGlobal      pMac,
     return eSIR_SUCCESS;
 }
 
+tSirRetStatus
+PopulateDot11fExtCap(tpAniSirGlobal      pMac,
+                           tDot11fIEExtCap  *pDot11f)
+{
+    pDot11f->present = 1;
+    pDot11f->operModeNotification = 1;
+    
+    return eSIR_SUCCESS;
+}
+
+tSirRetStatus
+PopulateDot11fOperatingMode(tpAniSirGlobal      pMac,
+                           tDot11fIEOperatingMode  *pDot11f,
+                           tpPESession   psessionEntry)
+{
+    pDot11f->present = 1;
+    
+    pDot11f->chanWidth = psessionEntry->gLimOperatingMode.chanWidth;
+    pDot11f->rxNSS = psessionEntry->gLimOperatingMode.rxNSS;
+    pDot11f->rxNSSType = psessionEntry->gLimOperatingMode.rxNSSType;
+    
+    return eSIR_SUCCESS;
+}
 
 #endif
 #ifdef WLAN_SOFTAP_FEATURE
@@ -2866,6 +2889,12 @@ sirParseBeaconIE(tpAniSirGlobal        pMac,
          pBeaconStruct->VHTExtBssLoad.present = 1;
          palCopyMemory( pMac, &pBeaconStruct->VHTExtBssLoad, &pBies->VHTExtBssLoad, sizeof( tDot11fIEVHTExtBssLoad) );
     }
+    if( pBies->OperatingMode.present)
+    {
+        pBeaconStruct->OperatingMode.present = 1;
+        palCopyMemory( pMac, &pBeaconStruct->OperatingMode, &pBies->OperatingMode, sizeof( tDot11fIEOperatingMode) );
+    }
+
 #endif
     palFreeMemory(pMac->hHdd, pBies);
 
@@ -3125,6 +3154,11 @@ sirConvertBeaconFrame2Struct(tpAniSirGlobal       pMac,
     {
         palCopyMemory( pMac, &pBeaconStruct->VHTExtBssLoad, &pBeacon->VHTExtBssLoad, sizeof( tDot11fIEVHTExtBssLoad) );
     }
+    if(pBeacon->OperatingMode.present)
+    {
+        palCopyMemory( pMac, &pBeaconStruct->OperatingMode, &pBeacon->OperatingMode, sizeof( tDot11fIEOperatingMode) );
+    }
+      
 #endif
 
     palFreeMemory(pMac->hHdd, pBeacon);

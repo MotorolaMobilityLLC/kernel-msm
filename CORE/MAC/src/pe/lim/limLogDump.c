@@ -2336,6 +2336,34 @@ dump_lim_channel_switch_announcement( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U
   return p;
 }
 
+#ifdef WLAN_FEATURE_11AC
+static char *
+dump_lim_vht_opmode_notification(tpAniSirGlobal pMac, tANI_U32 arg1,tANI_U32 arg2,tANI_U32 arg3, tANI_U32 arg4, char *p)
+{
+    tANI_U8 peer[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    tANI_U8 nMode = arg2;
+    tpPESession psessionEntry;
+
+    if((psessionEntry = peFindSessionBySessionId(pMac,(tANI_U8)arg1) )== NULL)
+    {
+        p += log_sprintf( pMac,
+            p,"Session does not exist usage: 366 <0> sessionid channel \n");
+        return p;
+    }
+    
+    limSendVHTOpmodeNotificationFrame(pMac, peer, nMode,psessionEntry);
+    
+    psessionEntry->gLimOperatingMode.present = 1;
+    psessionEntry->gLimOperatingMode.chanWidth = nMode;
+    psessionEntry->gLimOperatingMode.rxNSS   = 0;
+    psessionEntry->gLimOperatingMode.rxNSSType    = 0;
+
+    schSetFixedBeaconFields(pMac, psessionEntry);
+    limSendBeaconInd(pMac, psessionEntry); 
+
+    return p;
+}
+#endif
 static char *
 dump_lim_cancel_channel_switch_announcement( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
 {
@@ -2424,7 +2452,9 @@ static tDumpFuncEntry limMenuDumpTable[] = {
 #endif
     {364,   "PE.LIM: Send a channel switch announcement",            dump_lim_channel_switch_announcement},
     {365,   "PE.LIM: Cancel channel switch announcement",            dump_lim_cancel_channel_switch_announcement},
-
+#ifdef WLAN_FEATURE_11AC
+    {366,   "PE.LIM: Send a VHT OPMode Action Frame",                dump_lim_vht_opmode_notification},
+#endif
 };
 
 

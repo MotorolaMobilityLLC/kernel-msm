@@ -2450,7 +2450,13 @@ typedef struct
     wpt_uint16 usChangeBitmap;
 }WDI_UpdateBeaconParamsInfoType;
 
-
+#ifdef WLAN_FEATURE_11AC
+typedef struct
+{
+   wpt_uint16  opMode;
+   wpt_uint16  staId;
+}WDI_UpdateVHTOpMode;
+#endif
 
 /*---------------------------------------------------------------------------
   WDI_UpdateBeaconParamsType
@@ -6155,6 +6161,12 @@ typedef void  (*WDI_SetTmLevelCb)(WDI_Status  wdiStatus,
 typedef void  (*WDI_featureCapsExchangeCb)(void* wdiFeatCapRspParams,
                                                 void*        pUserData);
 
+#ifdef WLAN_FEATURE_11AC
+typedef void  (*WDI_UpdateVHTOpModeCb)(WDI_Status   wdiStatus,
+                                void*        pUserData);
+#endif
+
+
 /*========================================================================
  *     Function Declarations and Documentation
  ==========================================================================*/
@@ -8814,8 +8826,16 @@ void WDI_GetWcnssCompiledApiVersion
   WDI_WlanVersionType     *pWcnssApiVersion
 );
 
+#ifdef WLAN_FEATURE_11AC
+WDI_Status
+WDI_UpdateVHTOpModeReq
+(
+  WDI_UpdateVHTOpMode    *pData,
+  WDI_UpdateVHTOpModeCb  wdiUpdateVHTOpModeCb, 
+  void*                  pUserData
+);
 
-
+#endif
 #ifdef __cplusplus
  }
 #endif 

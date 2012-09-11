@@ -347,6 +347,95 @@ __limProcessChannelSwitchActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
 } /*** end limProcessChannelSwitchActionFrame() ***/
 
 
+#ifdef WLAN_FEATURE_11AC
+static void
+__limProcessOperatingModeActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession psessionEntry)
+{
+
+    tpSirMacMgmtHdr         pHdr;
+    tANI_U8                 *pBody;
+    tDot11fOperatingMode    *pOperatingModeframe;
+    tANI_U32                frameLen;
+    tANI_U32                nStatus;
+    eHalStatus              status;
+    tpDphHashNode           pSta;
+    tANI_U16                aid;
+    tANI_U8  operMode;
+
+    pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
+    pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
+    frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
+
+    PELOG3(limLog(pMac, LOG3, FL("Received Operating Mode action frame\n"));)
+    status = palAllocateMemory( pMac->hHdd, (void **)&pOperatingModeframe, sizeof(*pOperatingModeframe));
+    if (eHAL_STATUS_SUCCESS != status)
+    {
+        limLog(pMac, LOGE,
+            FL("palAllocateMemory failed, status = %d \n"), status);
+        return;
+    }
+
+    /* Unpack channel switch frame */
+    nStatus = dot11fUnpackOperatingMode(pMac, pBody, frameLen, pOperatingModeframe);
+
+    if( DOT11F_FAILED( nStatus ))
+    {
+        limLog( pMac, LOGE,
+            FL( "Failed to unpack and parse an 11h-CHANSW Request (0x%08x, %d bytes):\n"),
+            nStatus,
+            frameLen);
+        palFreeMemory(pMac->hHdd, pOperatingModeframe);
+        return;
+    }
+    else if(DOT11F_WARNED( nStatus ))
+    {
+        limLog( pMac, LOGW,
+            FL( "There were warnings while unpacking an 11h-CHANSW Request (0x%08x, %d bytes):\n"),
+            nStatus,
+            frameLen);
+    }
+    pSta = dphLookupHashEntry(pMac, pHdr->sa, &aid, &psessionEntry->dph.dphHashTable);
+    
+    operMode = pSta->vhtSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_80MHZ : pSta->htSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_40MHZ: eHT_CHANNEL_WIDTH_20MHZ;
+    if( operMode != pOperatingModeframe->OperatingMode.chanWidth)
+    {
+        limLog(pMac, LOGE, 
+            FL(" recevied Chanwidth %d, staIdx = %d\n"),
+            (pOperatingModeframe->OperatingMode.chanWidth ),
+            pSta->staIndex);
+
+        limLog(pMac, LOGE, 
+            FL(" MAC - %0x:%0x:%0x:%0x:%0x:%0x\n"),
+            pHdr->sa[0],
+            pHdr->sa[1],
+            pHdr->sa[2],
+            pHdr->sa[3],
+            pHdr->sa[4],
+            pHdr->sa[5]);
+	
+        if(pOperatingModeframe->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_80MHZ)
+        {
+            pSta->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
+            pSta->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
+        } 
+        else if(pOperatingModeframe->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_40MHZ)
+        {
+            pSta->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
+            pSta->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
+        }
+        else if(pOperatingModeframe->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_20MHZ)
+        {
+            pSta->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
+            pSta->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_20MHZ;
+        }
+        limCheckVHTOpModeChange( pMac, psessionEntry, 
+                                 (pOperatingModeframe->OperatingMode.chanWidth), pSta->staIndex);\
+    }
+    palFreeMemory(pMac->hHdd, pOperatingModeframe);
+    return;
+}
+#endif
+
 static void
 __limProcessAddTsReq(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession psessionEntry)
 {
@@ -2033,7 +2122,22 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
         break;
      }
 #endif
-
+#ifdef WLAN_FEATURE_11AC
+    case SIR_MAC_ACTION_VHT:
+    {
+        if (psessionEntry->vhtCapability)
+        {
+            switch (pActionHdr->actionID)
+            {
+                case  SIR_MAC_VHT_OPMODE_NOTIFICATION:
+                    __limProcessOperatingModeActionFrame(pMac,pRxPacketInfo,psessionEntry);                
+                break;
+                default:
+                break;
+            }
+        }
+    }		
+#endif
     default:
        PELOGE(limLog(pMac, LOGE, FL("Action category %d not handled\n"), pActionHdr->category);)
        break;

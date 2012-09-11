@@ -43,6 +43,11 @@ tSirRetStatus limSendBeaconParams(tpAniSirGlobal pMac,
                                   tpUpdateBeaconParams pUpdatedBcnParams,
                                   tpPESession  psessionEntry );
 //tSirRetStatus limSendBeaconParams(tpAniSirGlobal pMac, tpUpdateBeaconParams pUpdatedBcnParams);
+#ifdef WLAN_FEATURE_11AC
+tSirRetStatus limSendModeUpdate(tpAniSirGlobal pMac, 
+                                tUpdateVHTOpMode *tempParam,
+                                tpPESession  psessionEntry );
+#endif
 #if defined WLAN_FEATURE_VOWIFI  
 tSirRetStatus limSendSwitchChnlParams(tpAniSirGlobal pMac, tANI_U8 chnlNumber, 
                                       ePhyChanBondState secondaryChnlOffset, 
