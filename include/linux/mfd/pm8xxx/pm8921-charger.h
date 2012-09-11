@@ -156,6 +156,7 @@ struct pm8921_charger_platform_data {
 	enum pm8921_chg_hot_thr		hot_thr;
 	int				rconn_mohm;
 	enum pm8921_chg_led_src_config	led_src_config;
+	int				eoc_check_soc;
 };
 
 enum pm8921_charger_source {
@@ -284,6 +285,10 @@ int pm8921_usb_ovp_set_hystersis(enum pm8921_usb_debounce_time ms);
  *
  */
 int pm8921_usb_ovp_disable(int disable);
+
+int pm8921_get_batt_state(void);
+int pm8921_force_start_charging(void);
+
 /**
  * pm8921_is_batfet_closed - battery fet status
  *

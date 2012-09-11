@@ -148,6 +148,9 @@ struct pm8921_bms_chip {
 	int			ibat_at_cv_ua;
 	int			soc_at_cv;
 	int			prev_chg_soc;
+	int			last_reported_soc;
+	int			eoc_check_soc;
+	int			soc_adjusted;
 };
 
 /*
@@ -1928,6 +1931,43 @@ static bool is_shutdown_soc_within_limits(struct pm8921_bms_chip *chip, int soc)
 
 	return 1;
 }
+
+static int is_eoc_adjust(struct pm8921_bms_chip *chip, int soc)
+{
+	int batt_state = pm8921_get_batt_state();
+	int ret = 0;
+
+	if (soc != 100)
+		return 0;
+
+	switch (batt_state) {
+	case POWER_SUPPLY_STATUS_CHARGING:
+		if (chip->start_percent != -EINVAL
+				&& chip->start_percent != 100)
+			ret = 1;
+		break;
+	case POWER_SUPPLY_STATUS_DISCHARGING:
+	case POWER_SUPPLY_STATUS_NOT_CHARGING:
+		if (chip->soc_adjusted == 1)
+			ret = 1;
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
+static int is_recharging(struct pm8921_bms_chip *chip, int soc)
+{
+	if (soc == -EINVAL)
+		return 0;
+	if (pm8921_get_batt_state() ==  POWER_SUPPLY_STATUS_FULL
+			&& soc < 100)
+		return 1;
+	return 0;
+}
+
 /*
  * Remaining Usable Charge = remaining_charge (charge at ocv instance)
  *				- coloumb counter charge
@@ -2105,6 +2145,13 @@ static void calculate_soc_work(struct work_struct *work)
 
 	soc = calculate_state_of_charge(chip, &raw,
 					batt_temp, last_chargecycles);
+
+	if (chip->eoc_check_soc
+			&& is_recharging(chip, chip->last_reported_soc)) {
+		pm8921_force_start_charging();
+		pr_info("Recharging is started\n");
+	}
+
 	mutex_unlock(&chip->last_ocv_uv_mutex);
 
 	schedule_delayed_work(&chip->calculate_soc_delayed_work,
@@ -2177,10 +2224,18 @@ static int report_state_of_charge(struct pm8921_bms_chip *chip)
 	if (last_soc != -EINVAL && last_soc < soc && soc != 100)
 		soc = scale_soc_while_chg(chip, delta_time_us, soc, last_soc);
 
+	if (chip->eoc_check_soc && is_eoc_adjust(chip, soc)) {
+		soc = soc - 1;
+		chip->soc_adjusted = 1;
+	} else {
+		chip->soc_adjusted = 0;
+	}
+
 	last_soc = soc;
 	backup_soc_and_iavg(chip, batt_temp, last_soc);
 	pr_debug("Reported SOC = %d\n", last_soc);
 	chip->t_soc_queried = now;
+	chip->last_reported_soc = last_soc;
 
 	return last_soc;
 }
@@ -3224,6 +3279,9 @@ static int __devinit pm8921_bms_probe(struct platform_device *pdev)
 	chip->batt_id_channel = pdata->bms_cdata.batt_id_channel;
 	chip->revision = pm8xxx_get_revision(chip->dev->parent);
 	chip->enable_fcc_learning = pdata->enable_fcc_learning;
+	chip->last_reported_soc = -EINVAL;
+	chip->eoc_check_soc = pdata->eoc_check_soc;
+	chip->soc_adjusted = 0;
 
 	mutex_init(&chip->calib_mutex);
 	INIT_WORK(&chip->calib_hkadc_work, calibrate_hkadc_work);
