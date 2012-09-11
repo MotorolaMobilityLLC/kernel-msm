@@ -2170,7 +2170,7 @@ limAddSta(
 #ifdef WLAN_FEATURE_11AC
     if(pAddStaParams->vhtCapable)
     {
-        pAddStaParams->vhtTxChannelWidthSet = psessionEntry->vhtTxChannelWidthSet;
+        pAddStaParams->vhtTxChannelWidthSet = pStaDs->vhtSupportedChannelWidthSet;
 
         /* TODO. Need to discuss this. Overwriting here.
          * Stick to SAP's configuration for HT supported Channel width */

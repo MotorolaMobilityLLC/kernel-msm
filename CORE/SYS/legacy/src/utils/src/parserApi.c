@@ -753,6 +753,16 @@ void limLogVHTExtBssLoad(tpAniSirGlobal pMac,
 }
 
 
+void limLogOperatingMode( tpAniSirGlobal pMac, 
+                               tDot11fIEOperatingMode *pDot11f)
+{
+    limLog(pMac, LOGW, FL("ChanWidth : %d\n"), pDot11f->chanWidth);
+    limLog(pMac, LOGW, FL("reserved: %d\n"), pDot11f->reserved);
+    limLog(pMac, LOGW, FL("rxNSS: %d\n"), pDot11f->rxNSS);
+    limLog(pMac, LOGW, FL("rxNSS Type: %d\n"), pDot11f->rxNSSType);
+}
+
+
 tSirRetStatus
 PopulateDot11fVHTCaps(tpAniSirGlobal           pMac,
                            tDot11fIEVHTCaps *pDot11f)
@@ -2278,6 +2288,12 @@ sirConvertAssocReqFrame2Struct(tpAniSirGlobal pMac,
         limLog( pMac, LOGW, FL("Received Assoc Req with VHT Cap\n"));
         limLogVHTCap( pMac, &pAssocReq->VHTCaps);
     }
+    if ( ar.OperatingMode.present )
+    {
+        palCopyMemory( pMac, &pAssocReq->operMode, &ar.OperatingMode, sizeof( tDot11fIEVHTCaps ) );
+        limLog( pMac, LOGW, FL("Received Assoc Req with Operating Mode IE\n"));
+        limLogOperatingMode( pMac, &pAssocReq->operMode);
+    }
 #endif
 
     return eSIR_SUCCESS;
@@ -2621,6 +2637,12 @@ sirConvertReassocReqFrame2Struct(tpAniSirGlobal pMac,
     if ( ar.VHTCaps.present )
     {
         palCopyMemory( pMac, &pAssocReq->VHTCaps, &ar.VHTCaps, sizeof( tDot11fIEVHTCaps ) );
+    }
+    if ( ar.OperatingMode.present )
+    {
+        palCopyMemory( pMac, &pAssocReq->operMode, &ar.OperatingMode, sizeof( tDot11fIEVHTCaps ) );
+        limLog( pMac, LOGW, FL("Received Assoc Req with Operating Mode IE\n"));
+        limLogOperatingMode( pMac, &pAssocReq->operMode);
     }
 #endif
     return eSIR_SUCCESS;

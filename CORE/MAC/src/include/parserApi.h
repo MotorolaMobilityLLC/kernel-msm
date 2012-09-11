@@ -203,6 +203,7 @@ typedef struct sSirAssocReq
 #endif
 #ifdef WLAN_FEATURE_11AC
     tDot11fIEVHTCaps          VHTCaps;
+    tDot11fIEOperatingMode    operMode;
 #endif
 } tSirAssocReq, *tpSirAssocReq;
 
