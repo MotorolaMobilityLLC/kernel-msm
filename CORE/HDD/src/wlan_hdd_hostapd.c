@@ -2686,24 +2686,6 @@ VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter )
 #ifdef CONFIG_CFG80211
     wlan_hdd_set_monitor_tx_adapter( WLAN_HDD_GET_CTX(pAdapter), pAdapter );
 #endif
-#ifdef WLAN_FEATURE_P2P
-    /* If administrative interface is enabled then one interface being
-     * created for p2p device address. This will take one HW STA and 
-     * the max number of clients that can connect to softAP will be 
-     * reduced by one. So as soon as SoftAP interface got created remove 
-     * the session for p2p device address.
-     */
-    if ( VOS_IS_STATUS_SUCCESS( status ) && 
-            ( pAdapter->device_mode == WLAN_HDD_SOFTAP ) && 
-            ( !strncmp( pAdapter->dev->name, "wlan", 4 )) )
-    {
-       /* TODO: Revisit this later, either unregister p2p0 
-                interface here or make change in wifi.c file to pass 
-                information, that driver is getting loaded for SAP interface, 
-                in that case, during load time don't start p2p0 interface 
-        */
-    }
-#endif
     EXIT();
     return status;
 }
