@@ -3600,6 +3600,12 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
         return -EAGAIN;
     }
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLoadUnloadInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "%s:Unloading/Loading in Progress. Ignore!!!", __func__);
+        return -EAGAIN;
+    }
     //Don't Allow Scan and return busy if Remain On 
     //Channel and action frame is pending
     //Otherwise Cancel Remain On Channel and allow Scan
