@@ -1889,7 +1889,7 @@ VOS_STATUS hdd_wmm_acquire_access( hdd_adapter_t* pAdapter,
 
    pAdapter->hddWmmStatus.wmmAcStatus[acType].wmmAcAccessNeeded = VOS_TRUE;
 
-   pQosContext = kmalloc(sizeof(*pQosContext), GFP_KERNEL);
+   pQosContext = kmalloc(sizeof(*pQosContext), GFP_ATOMIC);
    if (NULL == pQosContext)
    {
       // no memory for QoS context.  Nothing we can do but let data flow
