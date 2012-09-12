@@ -753,6 +753,7 @@ static struct msm_bus_scale_pdata hsic_bus_scale_pdata = {
 };
 
 static struct msm_hsic_host_platform_data msm_hsic_pdata = {
+	.log2_irq_thresh	= 5,
 	.strobe			= 88,
 	.data			= 89,
 	.bus_scale_table	= &hsic_bus_scale_pdata,
