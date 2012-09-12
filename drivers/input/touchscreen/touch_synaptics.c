@@ -156,6 +156,17 @@
 
 #define CHARGER_CONNECTED               0x20
 
+static inline int get_highest_id(u32 fs)
+{
+	int id = 10;
+	int tmp = 0x000C0000;
+	while(!(fs & tmp)) {
+		id--;
+		tmp >>= 2;
+	}
+	return id;
+}
+
 int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data,
 					struct b_data* button, u8* total_num)
 {
@@ -234,13 +245,20 @@ int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data,
 			TOUCH_INFO_MSG("Touch_bit_mask: 0x%x\n", finger_status);
 		}
 
+		if (finger_status) {
+			int max_id = get_highest_id(finger_status);
+			if (unlikely(touch_i2c_read(ts->client,
+					FINGER_DATA_REG_START,
+					NUM_OF_EACH_FINGER_DATA_REG * max_id,
+					ts->ts_data.finger.finger_reg[0]) < 0)) {
+				TOUCH_ERR_MSG("FINGER_STATE_REG read fail\n");
+				goto err_synaptics_getdata;
+			}
+		}
+
 		for (id = 0; id < ts->pdata->caps->max_id; id++) {
 			switch (((finger_status >> (id*2)) & 0x3)) {
 			case FINGER_STATE_PRESENT_VALID:
-				touch_i2c_read(ts->client,
-					FINGER_DATA_REG_START + NUM_OF_EACH_FINGER_DATA_REG * id,
-					NUM_OF_EACH_FINGER_DATA_REG,
-					ts->ts_data.finger.finger_reg[id]);
 				data[id].state = ABS_PRESS;
 				data[id].x_position = TS_SNTS_GET_X_POSITION(
 					ts->ts_data.finger.finger_reg[id][REG_X_POSITION],
