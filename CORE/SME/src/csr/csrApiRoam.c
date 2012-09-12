@@ -1097,6 +1097,8 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         pMac->roam.configParam.Is11hSupportEnabled = pParam->Is11hSupportEnabled;
 
         pMac->roam.configParam.fenableMCCMode = pParam->fEnableMCCMode;
+        pMac->roam.configParam.fAllowMCCGODiffBI = pParam->fAllowMCCGODiffBI;
+        
         /* channelBondingMode5GHz plays a dual role right now
          * INFRA STA will use this non zero value as CB enabled and SOFTAP will use this non-zero value to determine the secondary channel offset
          * This is how channelBondingMode5GHz works now and this is kept intact to avoid any cfg.ini change

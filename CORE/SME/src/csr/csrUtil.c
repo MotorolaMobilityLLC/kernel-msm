@@ -2807,6 +2807,10 @@ eHalStatus csrValidateBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
                     else if(pMac->roam.roamSession[sessionId].bssParams.bssPersona
                                       == VOS_P2P_GO_MODE) //Check for P2P go scenario
                     {
+                        /* if GO in MCC support different beacon interval, return success */
+                        if ( pMac->roam.configParam.fAllowMCCGODiffBI == TRUE)
+                            return eHAL_STATUS_SUCCESS;
+                        
                         if ((pMac->roam.roamSession[sessionId].bssParams.operationChn 
                                 != channelId ) &&
                             (pMac->roam.roamSession[sessionId].bssParams.beaconInterval 
