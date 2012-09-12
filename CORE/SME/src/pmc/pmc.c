@@ -40,6 +40,7 @@
 #include "sme_Api.h"
 #include "smsDebug.h"
 #include "pmc.h"
+#include "wlan_qct_wda.h"
 #include "wlan_ps_wow_diag.h"
 #include <vos_power.h>
 #include "csrInsideApi.h"
@@ -2504,17 +2505,19 @@ eHalStatus pmcEnterBmpsCheck( tpAniSirGlobal pMac )
       return eHAL_STATUS_PMC_NOT_NOW;
    }
 
-#ifndef BMPS_WORKAROUND_NOT_NEEDED
-   smsLog(pMac, LOG1, FL("doBMPSWorkaround %u\n"), pMac->roam.configParam.doBMPSWorkaround);
-   if (pMac->roam.configParam.doBMPSWorkaround)
-   {
-      pMac->roam.configParam.doBMPSWorkaround = 0;
-      smsLog(pMac, LOG1, FL("reset doBMPSWorkaround to disabled %u\n"), pMac->roam.configParam.doBMPSWorkaround);
-      csrDisconnectAllActiveSessions(pMac);
-      smsLog(pMac, LOGE, "PMC: doBMPSWorkaround was enabled. First Disconnect all sessions. pmcState %d\n", pMac->pmc.pmcState);
-      return eHAL_STATUS_FAILURE;
-   }
-#endif
+    if(!IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW)
+    {
+        smsLog(pMac, LOG1, FL("doBMPSWorkaround %u\n"), pMac->roam.configParam.doBMPSWorkaround);
+        if (pMac->roam.configParam.doBMPSWorkaround)
+        {
+            pMac->roam.configParam.doBMPSWorkaround = 0;
+            smsLog(pMac, LOG1, FL("reset doBMPSWorkaround to disabled %u\n"), pMac->roam.configParam.doBMPSWorkaround);
+            csrDisconnectAllActiveSessions(pMac);
+            smsLog(pMac, LOGE, "PMC: doBMPSWorkaround was enabled. First Disconnect all sessions. pmcState %d\n", pMac->pmc.pmcState);
+            return eHAL_STATUS_FAILURE;
+        }
+     }
+
    return ( eHAL_STATUS_SUCCESS );
 }
 

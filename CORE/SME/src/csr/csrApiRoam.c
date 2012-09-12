@@ -926,9 +926,8 @@ static void initConfigParam(tpAniSirGlobal pMac)
 
     pMac->roam.configParam.addTSWhenACMIsOff = 0;
     pMac->roam.configParam.fScanTwice = eANI_BOOLEAN_FALSE;
-#ifndef BMPS_WORKAROUND_NOT_NEEDED
+
     pMac->roam.configParam.doBMPSWorkaround = 0;
-#endif
 
 }
 eCsrBand csrGetCurrentBand(tHalHandle hHal)
@@ -1267,9 +1266,8 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
          * will automatically connect back and resume BMPS since resume BMPS is not working when moving from concurrent to
          * single session
          */
-#ifndef BMPS_WORKAROUND_NOT_NEEDED
-       pMac->roam.configParam.doBMPSWorkaround = 0;
-#endif
+        pMac->roam.configParam.doBMPSWorkaround = 0;
+
 #ifdef WLAN_FEATURE_11AC
         pMac->roam.configParam.nVhtChannelWidth = pParam->nVhtChannelWidth;
 #endif
@@ -4602,12 +4600,10 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                 if( pSession->bRefAssocStartCnt > 0 )
                 {
                     pSession->bRefAssocStartCnt--;
-#ifndef BMPS_WORKAROUND_NOT_NEEDED
-                    if(  csrIsConcurrentSessionRunning( pMac ) )
+                    if(!IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW && ( csrIsConcurrentSessionRunning( pMac )))
                     {
                        pMac->roam.configParam.doBMPSWorkaround = 1;
                     }
-#endif
                     csrRoamCallCallback(pMac, sessionId, &roamInfo, pCommand->u.roamCmd.roamId, eCSR_ROAM_ASSOCIATION_COMPLETION, eCSR_ROAM_RESULT_ASSOCIATED);
                 }
                 
@@ -4814,12 +4810,12 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
 #ifdef WLAN_SOFTAP_FEATURE
                 roamInfo.staId = (tANI_U8)pSmeStartBssRsp->staId;
 #endif
-#ifndef BMPS_WORKAROUND_NOT_NEEDED
-                if(  csrIsConcurrentSessionRunning( pMac ) )
+                if(!IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW &&
+                   ( csrIsConcurrentSessionRunning( pMac )))
                 {
                    pMac->roam.configParam.doBMPSWorkaround = 1;
                 }
-#endif
+
                 csrRoamCallCallback( pMac, sessionId, &roamInfo, pCommand->u.roamCmd.roamId, roamStatus, roamResult );
             }
     
@@ -12922,13 +12918,12 @@ static void csrRoamLinkDown(tpAniSirGlobal pMac, tANI_U32 sessionId)
    csrNeighborRoamIndicateDisconnect(pMac, sessionId);
 #endif
    
-#ifndef BMPS_WORKAROUND_NOT_NEEDED
-   if(csrIsInfraApStarted( pMac ) &&  pMac->roam.configParam.doBMPSWorkaround)
+    if(!IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW && 
+        csrIsInfraApStarted( pMac ) &&  
+        pMac->roam.configParam.doBMPSWorkaround)
    {
        pMac->roam.configParam.doBMPSWorkaround = 0;
    }
-#endif
-   
 }
 
 void csrRoamTlStatsTimerHandler(void *pv)

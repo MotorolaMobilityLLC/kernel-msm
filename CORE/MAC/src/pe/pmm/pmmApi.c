@@ -911,7 +911,7 @@ void pmmExitBmpsResponseHandler(tpAniSirGlobal pMac,  tpSirMsgQ limMsg)
     pMac->sys.gSysEnableScanMode = true;
 
     // send response to PMC
-   if(IS_SLM_SESSIONIZED )
+   if(IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW )
    {
        limSendSmeRsp(pMac, eWNI_PMC_EXIT_BMPS_RSP, retStatus, 
                   psessionEntry->smeSessionId, psessionEntry->transactionId);
@@ -1894,7 +1894,7 @@ void pmmEnterUapsdResponseHandler(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
         retStatus = eSIR_SME_UAPSD_REQ_FAILED;
     }
 
-    if(IS_SLM_SESSIONIZED )
+    if(IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW)
     {
         limSendSmeRsp(pMac, eWNI_PMC_ENTER_UAPSD_RSP, retStatus, 
                         psessionEntry->smeSessionId, psessionEntry->transactionId);
@@ -2025,7 +2025,7 @@ void pmmExitUapsdResponseHandler(tpAniSirGlobal pMac, eHalStatus rspStatus)
 
     pMac->pmm.gPmmState = ePMM_STATE_BMPS_SLEEP;
 
-    if(IS_SLM_SESSIONIZED)
+    if(IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW)
     {
         limSendSmeRsp(pMac, eWNI_PMC_EXIT_UAPSD_RSP, resultCode, psessionEntry->smeSessionId,
                       psessionEntry->transactionId);

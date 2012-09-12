@@ -1596,7 +1596,6 @@ tANI_BOOLEAN csrIsConcurrentSessionRunning( tpAniSirGlobal pMac )
     return ( fRc );
 }
 
-#ifndef BMPS_WORKAROUND_NOT_NEEDED
 tANI_BOOLEAN csrIsInfraApStarted( tpAniSirGlobal pMac )
 {
     tANI_U32 sessionId;
@@ -1614,7 +1613,6 @@ tANI_BOOLEAN csrIsInfraApStarted( tpAniSirGlobal pMac )
     return ( fRc );
 
 }
-#endif
 
 tANI_BOOLEAN csrIsBTAMP( tpAniSirGlobal pMac, tANI_U32 sessionId )
 {
@@ -6241,7 +6239,6 @@ tANI_U16 sme_ChnToFreq(tANI_U8 chanNum)
    return (0);
 }
 
-#ifndef BMPS_WORKAROUND_NOT_NEEDED
 /* Disconnect all active sessions by sending disassoc. This is mainly used to disconnect the remaining session when we 
  * transition from concurrent sessions to a single session. The use case is Infra STA and wifi direct multiple sessions are up and 
  * P2P session is removed. The Infra STA session remains and should resume BMPS if BMPS is enabled by default. However, there
@@ -6261,4 +6258,4 @@ void csrDisconnectAllActiveSessions(tpAniSirGlobal pMac)
         }
     }
 }
-#endif
+
