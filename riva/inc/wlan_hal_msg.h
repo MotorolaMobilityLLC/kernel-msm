@@ -5397,23 +5397,23 @@ typedef enum {
 tANI_U8 halMsg_GetHostWlanFeatCaps(tANI_U8 feat_enum_value);
 
 #define setFeatCaps(a,b)   {  tANI_U32 arr_index, bit_index; \
-                              if ((b<=127)) { \
-                                arr_index = b/32; \
-                                bit_index = b % 32; \
+                              if ((b)<=127) { \
+                                arr_index = (b)/32; \
+                                bit_index = (b)%32; \
                                 (a)->featCaps[arr_index] |= (1<<bit_index); \
                               } \
                            }
 #define getFeatCaps(a,b,c) {  tANI_U32 arr_index, bit_index; \
-                              if ((b<=127)) { \
-                                arr_index = b/32; \
-                                bit_index = b % 32; \
-                                c = (a)->featCaps[arr_index] & (1<<bit_index); \
+                              if ((b)<=127) { \
+                                arr_index = (b)/32; \
+                                bit_index = (b)%32; \
+                                (c) = ((a)->featCaps[arr_index] & (1<<bit_index))?1:0; \
                               } \
                            }
 #define clearFeatCaps(a,b) {  tANI_U32 arr_index, bit_index; \
-                              if ((b<=127)) { \
-                                arr_index = b/32; \
-                                bit_index = b % 32; \
+                              if ((b)<=127) { \
+                                arr_index = (b)/32; \
+                                bit_index = (b)%32; \
                                 (a)->featCaps[arr_index] &= ~(1<<bit_index); \
                               } \
                            }
