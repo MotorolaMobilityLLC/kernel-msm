@@ -257,7 +257,7 @@ VOS_STATUS vos_list_remove_front( vos_list_t *pList, vos_list_node_t **ppNode )
 
    if ( list_empty( &pList->anchor ) )
    {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
                 "%s: list empty", __FUNCTION__);
       mutex_unlock(&pList->lock);
       return VOS_STATUS_E_EMPTY;

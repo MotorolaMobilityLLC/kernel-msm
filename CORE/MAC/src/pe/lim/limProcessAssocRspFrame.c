@@ -373,9 +373,9 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
              */
 
             // Log error
-            PELOG1(limLog(pMac, LOG1,
-                   FL("received AssocRsp frame from unexpected peer "));
-            limPrintMacAddr(pMac, pHdr->sa, LOG1);)
+            PELOGW(limLog(pMac, LOGW,
+                   FL("received AssocRsp frame from unexpected peer "MAC_ADDRESS_STR),
+                   MAC_ADDR_ARRAY(pHdr->sa));)
 
             return;
         }
@@ -391,9 +391,9 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
              */
 
             // Log error
-            PELOG1(limLog(pMac, LOG1,
-               FL("received ReassocRsp frame from unexpected peer "));)
-            PELOG1(limPrintMacAddr(pMac, pHdr->sa, LOG1);)
+            PELOGW(limLog(pMac, LOGW,
+                   FL("received ReassocRsp frame from unexpected peer "MAC_ADDRESS_STR),
+                   MAC_ADDR_ARRAY(pHdr->sa));)
 
             return;
         }
@@ -669,7 +669,8 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     }
 
     // Log success
-    PELOG1(limLog(pMac, LOG1, FL("Successfully Associated with BSS\n"));)
+    PELOGE(limLog(pMac, LOGE, FL("Successfully Associated with BSS "MAC_ADDRESS_STR),
+           MAC_ADDR_ARRAY(pHdr->sa));)
 #ifdef FEATURE_WLAN_CCX
     if(psessionEntry->ccxContext.tsm.tsmInfo.state)
     {

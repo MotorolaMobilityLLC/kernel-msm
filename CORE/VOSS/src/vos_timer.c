@@ -720,7 +720,7 @@ VOS_STATUS vos_timer_start( vos_timer_t *timer, v_U32_t expirationTime )
    if ( VOS_TIMER_STATE_STOPPED != timer->state )
    {  
       spin_unlock_irqrestore( &timer->platformInfo.spinlock,flags );
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN, 
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH, 
                 "%s: Cannot start timer in state = %d ",__func__, timer->state);
       return VOS_STATUS_E_ALREADY;
    }
@@ -805,7 +805,7 @@ VOS_STATUS vos_timer_stop ( vos_timer_t *timer )
    if ( VOS_TIMER_STATE_RUNNING != timer->state )
    {
       spin_unlock_irqrestore( &timer->platformInfo.spinlock,flags );
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
                 "%s: Cannot stop timer in state = %d",
                 __func__, timer->state);
       return VOS_STATUS_E_FAULT;

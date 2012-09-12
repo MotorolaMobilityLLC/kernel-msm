@@ -483,7 +483,7 @@ v_UINT_t tx_timer_deactivate(TX_TIMER *timer_ptr)
    vStatus = vos_timer_stop( &timer_ptr->vosTimer );
    if (VOS_STATUS_SUCCESS != vStatus)
    {
-      VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_WARN, 
+      VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO_HIGH, 
                 "Unable to stop timer %s; status =%d\n", 
                 TIMER_NAME, vStatus);
    }

@@ -817,7 +817,7 @@ limSendHalStartScanReq(tpAniSirGlobal pMac, tANI_U8 channelNum, tLimLimHalScanSt
         SET_LIM_PROCESS_DEFD_MESGS(pMac, false);
 
         MTRACE(macTraceMsgTx(pMac, NO_SESSION, msg.type));
-        PELOGW(limLog(pMac, LOGW, FL("Channel %d\n"), channelNum);)
+        limLog(pMac, LOG1, FL("Channel %d\n"), channelNum);
 
             rc = wdaPostCtrlMsg(pMac, &msg);
         if (rc == eSIR_SUCCESS) {
@@ -3687,7 +3687,7 @@ limProcessPeriodicProbeReqTimer(tpAniSirGlobal pMac)
          * in states other than wait_scan.
          * Log error.
          */
-        limLog(pMac, LOGW,
+        limLog(pMac, LOG1,
            FL("received unexpected Periodic scan timeout in state %X\n"),
            pMac->lim.gLimMlmState);
     }

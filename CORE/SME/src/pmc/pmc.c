@@ -201,7 +201,7 @@ eHalStatus pmcEnterFullPowerState (tHalHandle hHal)
         return eHAL_STATUS_FAILURE;
     }
 
-    smsLog(pMac, LOGW, "PMC: Enter full power done: Cancel XO Core ON vote\n");
+    smsLog(pMac, LOG1, "PMC: Enter full power done: Cancel XO Core ON vote\n");
     if (vos_chipVoteXOCore(NULL, NULL, NULL, VOS_FALSE) != VOS_STATUS_SUCCESS)
     {
         smsLog(pMac, LOGE, "Could not cancel XO Core ON vote. Not returning failure. "
@@ -406,7 +406,7 @@ eHalStatus pmcEnterRequestImpsState (tHalHandle hHal)
         return eHAL_STATUS_FAILURE;
      }
 
-    smsLog(pMac, LOGW, FL("eWNI_PMC_ENTER_IMPS_REQ sent to PE\n"));
+    smsLog(pMac, LOG2, FL("eWNI_PMC_ENTER_IMPS_REQ sent to PE\n"));
 
     return eHAL_STATUS_SUCCESS;
 }
@@ -1014,7 +1014,7 @@ void pmcTrafficTimerExpired (tHalHandle hHal)
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
     VOS_STATUS vosStatus;
 
-    smsLog(pMac, LOGW, FL("BMPS Traffic timer expired"));
+    smsLog(pMac, LOG2, FL("BMPS Traffic timer expired"));
 
     /* If timer expires and we are in a state other than Full Power State then something is wrong. */
     if (pMac->pmc.pmcState != FULL_POWER)
@@ -1026,7 +1026,7 @@ void pmcTrafficTimerExpired (tHalHandle hHal)
     /* Untill DHCP is not completed remain in power active */
     if(pMac->pmc.remainInPowerActiveTillDHCP)
     {
-        smsLog(pMac, LOGE, FL("BMPS Traffic Timer expired before DHCP completion ignore enter BMPS\n"));
+        smsLog(pMac, LOG2, FL("BMPS Traffic Timer expired before DHCP completion ignore enter BMPS\n"));
         pMac->pmc.remainInPowerActiveThreshold++;
         if( pMac->pmc.remainInPowerActiveThreshold >= DHCP_REMAIN_POWER_ACTIVE_THRESHOLD)
         {
@@ -2174,7 +2174,7 @@ tANI_BOOLEAN pmcProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
                 if ( HAL_STATUS_SUCCESS( status ) )
                 {
                     pMac->pmc.pmcState = REQUEST_FULL_POWER;
-                    smsLog(pMac, LOGW, FL("eWNI_PMC_EXIT_IMPS_REQ sent to PE\n"));
+                    smsLog(pMac, LOG2, FL("eWNI_PMC_EXIT_IMPS_REQ sent to PE\n"));
                     fRemoveCmd = eANI_BOOLEAN_FALSE;
                 }
                 else
@@ -2195,7 +2195,7 @@ tANI_BOOLEAN pmcProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
                 {
                     /* Change PMC state */
                     pMac->pmc.pmcState = REQUEST_BMPS;
-                    smsLog(pMac, LOGW, "PMC: Enter BMPS req done: Force XO Core ON\n");
+                    smsLog(pMac, LOG2, "PMC: Enter BMPS req done: Force XO Core ON\n");
                     vstatus = vos_chipVoteXOCore(NULL, NULL, NULL, VOS_TRUE);
                     if ( !VOS_IS_STATUS_SUCCESS(vstatus) )
                     {
@@ -2249,7 +2249,7 @@ tANI_BOOLEAN pmcProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
                 {
                     pMac->pmc.pmcState = REQUEST_FULL_POWER;
                     fRemoveCmd = eANI_BOOLEAN_FALSE;
-                    smsLog(pMac, LOGW, FL("eWNI_PMC_EXIT_BMPS_REQ sent to PE\n"));
+                    smsLog(pMac, LOG2, FL("eWNI_PMC_EXIT_BMPS_REQ sent to PE\n"));
 
                 }
                 else

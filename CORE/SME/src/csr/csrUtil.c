@@ -6207,7 +6207,7 @@ tANI_BOOLEAN csrIsSetKeyAllowed(tpAniSirGlobal pMac, tANI_U32 sessionId)
     * The current work-around is to process setcontext_rsp and removekey_rsp no matter what the 
     * state is.
     */
-    smsLog( pMac, LOGE, FL(" is not what it intends to. Must be revisit or removed\n") );
+    smsLog( pMac, LOG2, FL(" is not what it intends to. Must be revisit or removed\n") );
     if( (NULL == pSession) || 
         ( csrIsConnStateDisconnected( pMac, sessionId ) && 
         (pSession->pCurRoamProfile != NULL) &&

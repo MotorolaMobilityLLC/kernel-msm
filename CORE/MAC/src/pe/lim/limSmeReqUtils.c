@@ -705,7 +705,7 @@ limIsSmeStartBssReqValid(tpAniSirGlobal pMac,
             // Reject START_BSS_REQ
             limLog(pMac, LOGW,
                FL("Invalid operational rates in eWNI_SME_START_BSS_REQ\n"));
-            sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOGW,
+            sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG2,
                        pStartBssReq->operationalRateSet.rate,
                        pStartBssReq->operationalRateSet.numRates);
 
@@ -723,7 +723,7 @@ limIsSmeStartBssReqValid(tpAniSirGlobal pMac,
             // Reject START_BSS_REQ
             limLog(pMac, LOGW,
                FL("Invalid operational rates in eWNI_SME_START_BSS_REQ\n"));
-            sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOGW,
+            sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG2,
                        pStartBssReq->operationalRateSet.rate,
                        pStartBssReq->operationalRateSet.numRates);
 
@@ -740,7 +740,7 @@ limIsSmeStartBssReqValid(tpAniSirGlobal pMac,
             // Reject START_BSS_REQ
             limLog(pMac, LOGW,
                FL("Invalid operational rates in eWNI_SME_START_BSS_REQ\n"));
-            sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOGW,
+            sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG2,
                        pStartBssReq->operationalRateSet.rate,
                        pStartBssReq->operationalRateSet.numRates);
 
