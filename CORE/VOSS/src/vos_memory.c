@@ -54,6 +54,11 @@
 #include "vos_memory.h"
 #include "vos_trace.h"
 
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+#include <linux/wcnss_wlan.h>
+#define WCNSS_PRE_ALLOC_GET_THRESHOLD (4*1024)
+#endif
+
 #ifdef MEMORY_DEBUG
 #include "wlan_hdd_dp_utils.h"
 
@@ -220,6 +225,9 @@ v_VOID_t vos_mem_free( v_VOID_t *ptr )
 #else
 v_VOID_t * vos_mem_malloc( v_SIZE_t size )
 {
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+    v_VOID_t* pmem;
+#endif    
    if (size > (1024*1024))
    {
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: called with arg > 1024K; passed in %d !!!", __FUNCTION__,size); 
@@ -230,6 +238,14 @@ v_VOID_t * vos_mem_malloc( v_SIZE_t size )
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s cannot be called from interrupt context!!!", __FUNCTION__);
       return NULL;
    }
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+   if(size > WCNSS_PRE_ALLOC_GET_THRESHOLD)
+   {
+       pmem = wcnss_prealloc_get(size);
+       if(NULL != pmem) 
+           return pmem;
+   }
+#endif
    return kmalloc(size, GFP_KERNEL);
 }   
 
@@ -237,6 +253,17 @@ v_VOID_t vos_mem_free( v_VOID_t *ptr )
 {
     if (ptr == NULL)
       return;
+
+    if (in_interrupt())
+    {
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s cannot be called from interrupt context!!!", __FUNCTION__);
+      return;
+    }
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+    if(wcnss_prealloc_put(ptr))
+        return;
+#endif
+
     kfree(ptr);
 }
 #endif
