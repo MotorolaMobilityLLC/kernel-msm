@@ -604,7 +604,7 @@ static int mdss_fb_alloc_fbmem(struct msm_fb_data_type *mfd)
 				return -ENOMEM;
 			}
 
-			virt = ion_map_kernel(iclient, mfd->ihdl, 0);
+			virt = ion_map_kernel(iclient, mfd->ihdl);
 			ion_phys(iclient, mfd->ihdl, &phys, &size);
 		} else {
 			virt = dma_alloc_coherent(NULL, size,
