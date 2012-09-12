@@ -1485,6 +1485,13 @@ static int msm_serial_hsl_suspend(struct device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_MACH_APQ8064_MAKO
+/* HACK: earjack noise due to HW flaw. disable console to avoid this issue */
+extern int mako_console_stopped(void);
+#else
+static inline int mako_console_stopped(void) { return 0; }
+#endif
+
 static int msm_serial_hsl_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -1499,7 +1506,8 @@ static int msm_serial_hsl_resume(struct device *dev)
 
 		if (is_console(port)) {
 			struct msm_hsl_port *msm_hsl_port = UART_TO_MSM(port);
-			if (!(msm_hsl_port->cons_flags & CON_ENABLED))
+			if (!(msm_hsl_port->cons_flags & CON_ENABLED) ||
+			    mako_console_stopped())
 				console_stop(port->cons);
 			msm_hsl_init_clock(port);
 		}
