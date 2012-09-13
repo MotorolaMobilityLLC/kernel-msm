@@ -30,6 +30,7 @@
 #include <linux/timer.h>
 #include <linux/err.h>
 #include <linux/android_vibrator.h>
+#include <linux/mutex.h>
 #include "../staging/android/timed_output.h"
 
 #define ANDROID_VIBRATOR_USE_WORKQUEUE
@@ -42,9 +43,8 @@ struct timed_vibrator_data {
 	struct timed_output_dev dev;
 	struct hrtimer timer;
 	spinlock_t lock;
-	atomic_t vib_status; /* on/off */
-
 	int max_timeout;
+	atomic_t vib_status; /* 1:on,0:off */
 	atomic_t gain;    /* default max gain */
 	atomic_t pwm;
 	atomic_t ms_time; /* vibrator duration */
@@ -52,6 +52,23 @@ struct timed_vibrator_data {
 	struct work_struct work_vibrator_off;
 	struct work_struct work_vibrator_on;
 };
+
+#ifdef ANDROID_VIBRATOR_USE_WORKQUEUE
+static inline void vibrator_work(struct work_struct *work)
+{
+	if (!work_pending(work))
+		queue_work(vibrator_workqueue, work);
+}
+
+#else
+static inline void vibrator_work(struct work_struct *work)
+{
+	if (!work_pending(work))
+		schedule_work(work);
+}
+#endif
+
+static DEFINE_MUTEX(vib_lock);
 
 static int android_vibrator_force_set(struct timed_vibrator_data *vib,
 		int intensity, int pwm)
@@ -65,28 +82,34 @@ static int android_vibrator_force_set(struct timed_vibrator_data *vib,
 	if (intensity < -127)
 		intensity = -127;
 
+	mutex_lock(&vib_lock);
+
 	/* TODO: control the gain of vibrator */
 	if (intensity == 0) {
 		vib->pdata->ic_enable_set(0);
 		vib->pdata->pwm_set(0, 0, pwm);
 		/* should be checked for vibrator response time */
 		vib->pdata->power_set(0);
-
-		atomic_set(&vib->vib_status, false);
+		atomic_set(&vib->vib_status, 0);
 	} else {
-		cancel_work_sync(&vib->work_vibrator_off);
+		if (work_pending(&vib->work_vibrator_off))
+			cancel_work_sync(&vib->work_vibrator_off);
 		hrtimer_cancel(&vib->timer);
+
 		vib_duration_ms = atomic_read(&vib->ms_time);
 		/* should be checked for vibrator response time */
 		vib->pdata->power_set(1);
 		vib->pdata->pwm_set(1, intensity, pwm);
 		vib->pdata->ic_enable_set(1);
+		atomic_set(&vib->vib_status, 1);
 
-		atomic_set(&vib->vib_status, true);
 		hrtimer_start(&vib->timer,
 				ns_to_ktime((u64)vib_duration_ms * NSEC_PER_MSEC),
 				HRTIMER_MODE_REL);
 	}
+
+	mutex_unlock(&vib_lock);
+
 	return 0;
 }
 
@@ -118,9 +141,7 @@ static enum hrtimer_restart vibrator_timer_func(struct hrtimer *timer)
 {
 	struct timed_vibrator_data *vib =
 		container_of(timer, struct timed_vibrator_data, timer);
-#ifdef ANDROID_VIBRATOR_USE_WORKQUEUE
-	queue_work(vibrator_workqueue,&vib->work_vibrator_off);
-#endif
+	vibrator_work(&vib->work_vibrator_off);
 	return HRTIMER_NORESTART;
 }
 
@@ -152,13 +173,9 @@ static void vibrator_enable(struct timed_output_dev *dev, int ms_time)
 
 		atomic_set(&vib->ms_time, ms_time);
 
-#ifdef ANDROID_VIBRATOR_USE_WORKQUEUE
-		queue_work(vibrator_workqueue,&vib->work_vibrator_on);
-#endif
+		vibrator_work(&vib->work_vibrator_on);
 	} else {
-#ifdef ANDROID_VIBRATOR_USE_WORKQUEUE
-		queue_work(vibrator_workqueue,&vib->work_vibrator_off);
-#endif
+		vibrator_work(&vib->work_vibrator_off);
 	}
 	spin_unlock_irqrestore(&vib->lock, flags);
 }
@@ -233,7 +250,6 @@ struct timed_vibrator_data android_vibrator_data = {
 	.dev.enable = vibrator_enable,
 	.dev.get_time = vibrator_get_time,
 	.max_timeout = 30000, /* max time for vibrator enable 30 sec. */
-	.pdata = NULL,
 };
 
 static int android_vibrator_probe(struct platform_device *pdev)
@@ -260,7 +276,7 @@ static int android_vibrator_probe(struct platform_device *pdev)
 
 	atomic_set(&vib->gain, vib->pdata->amp); /* max value is 128 */
 	atomic_set(&vib->pwm, vib->pdata->vibe_n_value);
-	atomic_set(&vib->vib_status, false);
+	atomic_set(&vib->vib_status, 0);
 	pr_info("android_vibrator: default amplitude %d \n",
 			vib->pdata->amp);
 
@@ -306,9 +322,7 @@ static int android_vibrator_remove(struct platform_device *pdev)
 		(struct timed_vibrator_data *)platform_get_drvdata(pdev);
 	int i;
 
-#ifdef ANDROID_VIBRATOR_USE_WORKQUEUE
-	queue_work(vibrator_workqueue, &vib->work_vibrator_off);
-#endif
+	vibrator_work(&vib->work_vibrator_off);
 	for (i = ARRAY_SIZE(android_vibrator_device_attrs); i >= 0; i--) {
 		device_remove_file(vib->dev.dev,
 				&android_vibrator_device_attrs[i]);
@@ -331,7 +345,6 @@ static int __init android_vibrator_init(void)
 {
 #ifdef ANDROID_VIBRATOR_USE_WORKQUEUE
 	vibrator_workqueue = create_workqueue("vibrator");
-
 	if (!vibrator_workqueue) {
 		pr_err("%s: out of memory\n", __func__);
 		return -ENOMEM;
@@ -345,7 +358,6 @@ static void __exit android_vibrator_exit(void)
 #ifdef ANDROID_VIBRATOR_USE_WORKQUEUE
 	if (vibrator_workqueue)
 		destroy_workqueue(vibrator_workqueue);
-
 	vibrator_workqueue = NULL;
 #endif
 	platform_driver_unregister(&android_vibrator_driver);
