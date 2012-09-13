@@ -274,6 +274,7 @@ struct pm8921_chg_chip {
 	struct delayed_work		update_heartbeat_work;
 	struct delayed_work		eoc_work;
 	struct delayed_work		unplug_check_work;
+	struct delayed_work		unplug_usbcheck_work;
 	struct delayed_work		vin_collapse_check_work;
 	struct wake_lock		eoc_wake_lock;
 	enum pm8921_chg_cold_thr	cold_thr;
@@ -2855,6 +2856,27 @@ static irqreturn_t batttemp_cold_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static void unplug_usbcheck_work(struct work_struct *work)
+{
+	int usb_vin;
+	struct pm8xxx_adc_chan_result vchg;
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct pm8921_chg_chip *chip = container_of(dwork,
+			struct pm8921_chg_chip, unplug_usbcheck_work);
+
+	pm8xxx_adc_read(CHANNEL_USBIN, &vchg);
+	usb_vin = vchg.physical;
+	pr_info("usb_vin : %d, max_voltage_mv=%d\n", usb_vin, chip->max_voltage_mv);
+
+	if (usb_vin/1000 <= chip->max_voltage_mv) {
+		unplug_ovp_fet_open(chip);
+	}
+	pr_debug(" Notify USB update here \n");
+	power_supply_changed(&chip->batt_psy);
+	power_supply_changed(&chip->usb_psy);
+	power_supply_changed(&chip->dc_psy);
+}
+
 static irqreturn_t chg_gone_irq_handler(int irq, void *data)
 {
 	struct pm8921_chg_chip *chip = data;
@@ -2863,8 +2885,16 @@ static irqreturn_t chg_gone_irq_handler(int irq, void *data)
 	usb_chg_plugged_in = is_usb_chg_plugged_in(chip);
 	chg_gone = pm_chg_get_rt_status(chip, CHG_GONE_IRQ);
 
-	pr_debug("chg_gone=%d, usb_valid = %d\n", chg_gone, usb_chg_plugged_in);
-	pr_debug("Chg gone fsm_state=%d\n", pm_chg_get_fsm_state(data));
+	pr_info("chg_gone=%d, usb_valid = %d\n", chg_gone, usb_chg_plugged_in);
+	pr_info("Chg gone fsm_state=%d\n", pm_chg_get_fsm_state(data));
+
+	if (chg_gone && usb_chg_plugged_in) {
+		pr_info("schedule to check again here\n");
+		/* schedule to check again later */
+		schedule_delayed_work(&chip->unplug_usbcheck_work,
+				  round_jiffies_relative(msecs_to_jiffies
+					(UNPLUG_CHECK_WAIT_PERIOD_MS)));
+	}
 
 	power_supply_changed(&chip->batt_psy);
 	power_supply_changed(&chip->usb_psy);
@@ -4448,6 +4478,7 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&chip->vin_collapse_check_work,
 						vin_collapse_check_worker);
 	INIT_DELAYED_WORK(&chip->unplug_check_work, unplug_check_worker);
+	INIT_DELAYED_WORK(&chip->unplug_usbcheck_work, unplug_usbcheck_work);
 
 	rc = request_irqs(chip, pdev);
 	if (rc) {
