@@ -148,9 +148,9 @@ void diag_read_smd_work_fn(struct work_struct *work)
 	__diag_smd_send_req();
 }
 
-void diag_read_smd_qdsp_work_fn(struct work_struct *work)
+void diag_read_smd_lpass_work_fn(struct work_struct *work)
 {
-	__diag_smd_qdsp_send_req();
+	__diag_smd_lpass_send_req();
 }
 
 void diag_read_smd_wcnss_work_fn(struct work_struct *work)
@@ -586,8 +586,8 @@ long diagchar_ioctl(struct file *filp,
 							== NO_LOGGING_MODE) {
 			driver->in_busy_1 = 1;
 			driver->in_busy_2 = 1;
-			driver->in_busy_qdsp_1 = 1;
-			driver->in_busy_qdsp_2 = 1;
+			driver->in_busy_lpass_1 = 1;
+			driver->in_busy_lpass_2 = 1;
 			driver->in_busy_wcnss_1 = 1;
 			driver->in_busy_wcnss_2 = 1;
 #ifdef CONFIG_DIAG_SDIO_PIPE
@@ -601,17 +601,17 @@ long diagchar_ioctl(struct file *filp,
 							== MEMORY_DEVICE_MODE) {
 			driver->in_busy_1 = 0;
 			driver->in_busy_2 = 0;
-			driver->in_busy_qdsp_1 = 0;
-			driver->in_busy_qdsp_2 = 0;
+			driver->in_busy_lpass_1 = 0;
+			driver->in_busy_lpass_2 = 0;
 			driver->in_busy_wcnss_1 = 0;
 			driver->in_busy_wcnss_2 = 0;
 			/* Poll SMD channels to check for data*/
 			if (driver->ch)
 				queue_work(driver->diag_wq,
 					&(driver->diag_read_smd_work));
-			if (driver->chqdsp)
+			if (driver->chlpass)
 				queue_work(driver->diag_wq,
-					&(driver->diag_read_smd_qdsp_work));
+					&(driver->diag_read_smd_lpass_work));
 			if (driver->ch_wcnss)
 				queue_work(driver->diag_wq,
 					&(driver->diag_read_smd_wcnss_work));
@@ -644,8 +644,8 @@ long diagchar_ioctl(struct file *filp,
 			diagfwd_disconnect();
 			driver->in_busy_1 = 0;
 			driver->in_busy_2 = 0;
-			driver->in_busy_qdsp_1 = 0;
-			driver->in_busy_qdsp_2 = 0;
+			driver->in_busy_lpass_1 = 0;
+			driver->in_busy_lpass_2 = 0;
 			driver->in_busy_wcnss_1 = 0;
 			driver->in_busy_wcnss_2 = 0;
 
@@ -653,9 +653,9 @@ long diagchar_ioctl(struct file *filp,
 			if (driver->ch)
 				queue_work(driver->diag_wq,
 					 &(driver->diag_read_smd_work));
-			if (driver->chqdsp)
+			if (driver->chlpass)
 				queue_work(driver->diag_wq,
-					&(driver->diag_read_smd_qdsp_work));
+					&(driver->diag_read_smd_lpass_work));
 			if (driver->ch_wcnss)
 				queue_work(driver->diag_wq,
 					&(driver->diag_read_smd_wcnss_work));
@@ -782,27 +782,27 @@ drop:
 			driver->in_busy_2 = 0;
 		}
 		/* copy lpass data */
-		if (driver->in_busy_qdsp_1 == 1) {
+		if (driver->in_busy_lpass_1 == 1) {
 			num_data++;
 			/*Copy the length of data being passed*/
 			COPY_USER_SPACE_OR_EXIT(buf+ret,
-				 (driver->write_ptr_qdsp_1->length), 4);
+				 (driver->write_ptr_lpass_1->length), 4);
 			/*Copy the actual data being passed*/
 			COPY_USER_SPACE_OR_EXIT(buf+ret, *(driver->
-							buf_in_qdsp_1),
-					 driver->write_ptr_qdsp_1->length);
-			driver->in_busy_qdsp_1 = 0;
+							buf_in_lpass_1),
+					 driver->write_ptr_lpass_1->length);
+			driver->in_busy_lpass_1 = 0;
 		}
-		if (driver->in_busy_qdsp_2 == 1) {
+		if (driver->in_busy_lpass_2 == 1) {
 			num_data++;
 			/*Copy the length of data being passed*/
 			COPY_USER_SPACE_OR_EXIT(buf+ret,
-				 (driver->write_ptr_qdsp_2->length), 4);
+				 (driver->write_ptr_lpass_2->length), 4);
 			/*Copy the actual data being passed*/
 			COPY_USER_SPACE_OR_EXIT(buf+ret, *(driver->
-				buf_in_qdsp_2), driver->
-					write_ptr_qdsp_2->length);
-			driver->in_busy_qdsp_2 = 0;
+				buf_in_lpass_2), driver->
+					write_ptr_lpass_2->length);
+			driver->in_busy_lpass_2 = 0;
 		}
 		/* copy wncss data */
 		if (driver->in_busy_wcnss_1 == 1) {
@@ -896,9 +896,9 @@ drop_hsic:
 		if (driver->ch)
 			queue_work(driver->diag_wq,
 					 &(driver->diag_read_smd_work));
-		if (driver->chqdsp)
+		if (driver->chlpass)
 			queue_work(driver->diag_wq,
-					 &(driver->diag_read_smd_qdsp_work));
+					 &(driver->diag_read_smd_lpass_work));
 		if (driver->ch_wcnss)
 			queue_work(driver->diag_wq,
 					 &(driver->diag_read_smd_wcnss_work));
@@ -1399,10 +1399,10 @@ static int __init diagchar_init(void)
 		INIT_WORK(&(driver->diag_read_smd_work), diag_read_smd_work_fn);
 		INIT_WORK(&(driver->diag_read_smd_cntl_work),
 						 diag_read_smd_cntl_work_fn);
-		INIT_WORK(&(driver->diag_read_smd_qdsp_work),
-			   diag_read_smd_qdsp_work_fn);
-		INIT_WORK(&(driver->diag_read_smd_qdsp_cntl_work),
-			   diag_read_smd_qdsp_cntl_work_fn);
+		INIT_WORK(&(driver->diag_read_smd_lpass_work),
+			   diag_read_smd_lpass_work_fn);
+		INIT_WORK(&(driver->diag_read_smd_lpass_cntl_work),
+			   diag_read_smd_lpass_cntl_work_fn);
 		INIT_WORK(&(driver->diag_read_smd_wcnss_work),
 			diag_read_smd_wcnss_work_fn);
 		INIT_WORK(&(driver->diag_read_smd_wcnss_cntl_work),
