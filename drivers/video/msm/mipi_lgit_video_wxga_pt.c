@@ -76,7 +76,7 @@ static int __init mipi_video_lgit_wxga_pt_init(void)
 	pinfo.mipi.hbp_power_stop = FALSE;
 	pinfo.mipi.hsa_power_stop = FALSE;
 
-	pinfo.mipi.eof_bllp_power_stop = TRUE;
+	pinfo.mipi.eof_bllp_power_stop = FALSE;
 	pinfo.mipi.bllp_power_stop = TRUE;
 	pinfo.mipi.traffic_mode = DSI_NON_BURST_SYNCH_EVENT;
 	pinfo.mipi.dst_format = DSI_VIDEO_DST_FORMAT_RGB888;
@@ -89,6 +89,7 @@ static int __init mipi_video_lgit_wxga_pt_init(void)
 	pinfo.mipi.t_clk_post = 0x22;
 	pinfo.mipi.t_clk_pre = 0x36;
 	pinfo.clk_rate = 470360000;
+	pinfo.mipi.esc_byte_ratio = 6;
 	pinfo.mipi.frame_rate = 60;
 	pinfo.mipi.stream = 0;
 	pinfo.mipi.mdp_trigger = 0;
