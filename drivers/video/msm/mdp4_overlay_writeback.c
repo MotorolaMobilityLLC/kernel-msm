@@ -81,8 +81,10 @@ int mdp4_overlay_writeback_on(struct platform_device *pdev)
 
 	if (writeback_pipe == NULL) {
 		pipe = mdp4_overlay_pipe_alloc(OVERLAY_TYPE_BF, MDP4_MIXER2);
-		if (pipe == NULL)
+		if (pipe == NULL) {
 			pr_info("%s: pipe_alloc failed\n", __func__);
+			return -EIO;
+		}
 		pipe->pipe_used++;
 		pipe->mixer_stage  = MDP4_MIXER_STAGE_BASE;
 		pipe->mixer_num  = MDP4_MIXER2;
