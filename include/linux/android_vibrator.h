@@ -19,6 +19,7 @@ struct android_vibrator_platform_data {
 	int enable_status;
 	int amp;
 	int vibe_n_value;
+	int vibe_warmup_delay; /* in ms */
 	int (*power_set)(int enable); /* LDO Power Set Function */
 	int (*pwm_set)(int enable, int gain, int n_value); /* PWM Set Function */
 	int (*ic_enable_set)(int enable); /* Motor IC Set Function */
