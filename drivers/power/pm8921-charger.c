@@ -2728,6 +2728,11 @@ static void unplug_check_worker(struct work_struct *work)
 				pr_info("usb_now=%d, usb_target = %d\n",
 					usb_ma, 500);
 				goto check_again_later;
+			} else if (usb_ma == 500) {
+				pr_info("Stopping Unplug Check Worker"
+					 " USB == 500mA\n");
+				disable_input_voltage_regulation(chip);
+				return;
 			}
 
 			if (usb_ma <= 100) {
