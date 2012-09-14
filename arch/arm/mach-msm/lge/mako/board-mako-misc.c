@@ -245,6 +245,7 @@ static struct android_vibrator_platform_data vibrator_data = {
 	.enable_status = 0,
 	.amp = MOTOR_AMP,
 	.vibe_n_value = GP_CLK_N_DEFAULT,
+	.vibe_warmup_delay = 15,
 	.power_set = vibrator_power_set,
 	.pwm_set = vibrator_pwm_set,
 	.ic_enable_set = vibrator_ic_enable_set,
