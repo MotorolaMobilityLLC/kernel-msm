@@ -73,10 +73,12 @@ static DEFINE_MUTEX(vib_lock);
 static int android_vibrator_force_set(struct timed_vibrator_data *vib,
 		int intensity, int pwm)
 {
-	/* Check the Force value with Max and Min force value */
+	struct android_vibrator_platform_data *pdata = vib->pdata;
 	int vib_duration_ms = 0;
+
 	pr_debug("%s: intensity : %d\n", __func__, intensity);
 
+	/* Check the Force value with Max and Min force value */
 	if (intensity > 127)
 		intensity = 127;
 	if (intensity < -127)
@@ -84,12 +86,17 @@ static int android_vibrator_force_set(struct timed_vibrator_data *vib,
 
 	mutex_lock(&vib_lock);
 
+	if (pdata->vibe_warmup_delay > 0) {
+		if (atomic_read(&vib->vib_status))
+			msleep(pdata->vibe_warmup_delay);
+	}
+
 	/* TODO: control the gain of vibrator */
 	if (intensity == 0) {
-		vib->pdata->ic_enable_set(0);
-		vib->pdata->pwm_set(0, 0, pwm);
+		pdata->ic_enable_set(0);
+		pdata->pwm_set(0, 0, pwm);
 		/* should be checked for vibrator response time */
-		vib->pdata->power_set(0);
+		pdata->power_set(0);
 		atomic_set(&vib->vib_status, 0);
 	} else {
 		if (work_pending(&vib->work_vibrator_off))
@@ -98,9 +105,9 @@ static int android_vibrator_force_set(struct timed_vibrator_data *vib,
 
 		vib_duration_ms = atomic_read(&vib->ms_time);
 		/* should be checked for vibrator response time */
-		vib->pdata->power_set(1);
-		vib->pdata->pwm_set(1, intensity, pwm);
-		vib->pdata->ic_enable_set(1);
+		pdata->power_set(1);
+		pdata->pwm_set(1, intensity, pwm);
+		pdata->ic_enable_set(1);
 		atomic_set(&vib->vib_status, 1);
 
 		hrtimer_start(&vib->timer,
