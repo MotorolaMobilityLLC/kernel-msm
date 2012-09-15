@@ -841,7 +841,20 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 {
 	struct msm_fb_panel_data *pdata;
 	__u32 temp = bkl_lvl;
-	int time_out = 300;
+
+	if (!mfd->panel_power_on || !bl_updated) {
+		unset_bl_level = bkl_lvl;
+		return;
+	} else {
+		unset_bl_level = 0;
+	}
+
+	if (!mfd->panel_power_on || !bl_updated) {
+		unset_bl_level = bkl_lvl;
+		return;
+	} else {
+		unset_bl_level = 0;
+	}
 
 	msm_fb_scale_bl(&temp);
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
@@ -853,14 +866,6 @@ void msm_fb_set_backlight(struct msm_fb_data_type *mfd, __u32 bkl_lvl)
 			return;
 		}
 		mfd->bl_level = temp;
-
-		while (!mfd->panel_power_on && time_out) {
-			msleep(1);
-			time_out --;
-		}
-		if (time_out == 0)
-			pr_err("%s : timeout for waitng lcd turn on\n", __func__);
-
 		pdata->set_backlight(mfd);
 		mfd->bl_level = bkl_lvl;
 		bl_level_old = temp;
@@ -874,7 +879,6 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct msm_fb_panel_data *pdata = NULL;
 	int ret = 0;
-	int time_out = 300;
 
 	if (!op_enable)
 		return -EPERM;
@@ -905,16 +909,9 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 
 			mfd->op_enable = FALSE;
 			curr_pwr_state = mfd->panel_power_on;
-			if (pdata->get_backlight_on_status) {
-				while (pdata->get_backlight_on_status()
-						&& time_out) {
-					msleep(1);
-					time_out --;
-				}
-				if (time_out == 0)
-					pr_err("%s : timeout for waiting backlight turn on\n",
-							__func__);
-			}
+			mfd->panel_power_on = FALSE;
+			bl_updated = 0;
+
 			/* clean fb to prevent displaying old fb */
 			memset((void *)info->screen_base, 0,
 					info->fix.smem_len);
@@ -922,8 +919,6 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			ret = pdata->off(mfd->pdev);
 			if (ret)
 				mfd->panel_power_on = curr_pwr_state;
-			else
-				mfd->panel_power_on = FALSE;
 
 			mfd->op_enable = TRUE;
 		}
