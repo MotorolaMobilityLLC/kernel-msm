@@ -16,13 +16,13 @@
 #define WLC_DEG
 
 #ifdef WLC_DEG
-#define WLC_DBG_ERROR(fmt, args...) \
-    printk(KERN_ERR "wlc: %s: %d :" fmt, __func__, __LINE__, ##args);
+#define WLC_DBG_INFO(fmt, args...) \
+	pr_info("wlc: %s: " fmt, __func__, ##args)
 #define WLC_DBG(fmt, args...) \
-    printk(KERN_DEBUG"wlc: %s : " fmt, __func__, ##args);
+	pr_debug("wlc: %s: " fmt, __func__, ##args)
 #else
-#define WLC_DBG_ERROR(fmt, args...)
-#define WLC_DBG(fmt, arges...)
+#define WLC_DBG_INFO(fmt, args...)  do { } while(0)
+#define WLC_DBG(fmt, arges...)      do { } while(0)
 #endif
 
 struct bq51051b_wlc_platform_data {

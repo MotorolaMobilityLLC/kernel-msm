@@ -74,10 +74,6 @@ static int pm_power_get_property_wireless(struct power_supply *psy,
 		val->intval = 1;	//always battery_on
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = wireless_charging;
-
-		WLC_DBG("[wireless_charging] = %d",
-			wireless_charging);
-
 		break;
 	default:
 		return -EINVAL;
@@ -93,7 +89,7 @@ static int wireless_is_plugged(struct bq51051b_wlc_chip *chip)
 int bq51051b_wireless_plugged_in(void)
 {
 	if (!the_chip) {
-		WLC_DBG_ERROR("called before init\n");
+		pr_err("wlc: called before init\n");
 		return -EINVAL;
 	}
 	return wireless_is_plugged(the_chip);
@@ -102,7 +98,7 @@ EXPORT_SYMBOL(bq51051b_wireless_plugged_in);
 
 static void wireless_set(struct bq51051b_wlc_chip *chip)
 {
-	WLC_DBG_ERROR("wireless_set\n");
+	WLC_DBG_INFO("wireless_set\n");
 
 	wake_lock(&chip->wireless_chip_wake_lock);
 
@@ -117,7 +113,7 @@ static void wireless_set(struct bq51051b_wlc_chip *chip)
 
 static void wireless_reset(struct bq51051b_wlc_chip *chip)
 {
-	WLC_DBG_ERROR("wireless_reset\n");
+	WLC_DBG_INFO("wireless_reset\n");
 
 	wireless_charging = false;
 	wireless_charge_done = false;
@@ -147,23 +143,21 @@ static irqreturn_t wireless_interrupt_handler(int irq, void *data)
 	int chg_state;
 	struct bq51051b_wlc_chip *chip = data;
 
-	WLC_DBG_ERROR("=========== ACTIVE INT START ==============\n");
 	chg_state = wireless_is_plugged(chip);
-	WLC_DBG_ERROR("wireless is plugged state = %d\n", chg_state);
+	WLC_DBG_INFO("\nwireless is plugged state = %d\n\n", chg_state);
 	schedule_work(&chip->wireless_interrupt_work);
-	WLC_DBG_ERROR("==========  ACTIVE INT END  ===============\n");
 	return IRQ_HANDLED;
 }
 
 static int __devinit bq51051b_wlc_hw_init(struct bq51051b_wlc_chip *chip)
 {
 	int ret;
-	WLC_DBG_ERROR("hw_init");
+	WLC_DBG_INFO("hw_init");
 
 	/* active_n pin is the bq51051b status, High = no charging, Low = charging */
 	ret =  gpio_request_one(chip->active_n_gpio, GPIOF_DIR_IN, "active_n_gpio");
 	if (ret < 0) {
-		WLC_DBG_ERROR("active_n gpio request failed");
+		pr_err("wlc: active_n gpio request failed\n");
 		goto active_n_error;
 	}
 
@@ -173,7 +167,7 @@ static int __devinit bq51051b_wlc_hw_init(struct bq51051b_wlc_chip *chip)
 			IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 			"wireless_charger", chip);
 	if (ret < 0) {
-		WLC_DBG_ERROR("wireless_charger request irq failed\n");
+		pr_err("wlc: wireless_charger request irq failed\n");
 		goto active_n_irq_error;
 	}
 	enable_irq_wake(gpio_to_irq(chip->active_n_gpio));
@@ -188,13 +182,11 @@ active_n_error:
 
 static int bq51051b_wlc_resume(struct device *dev)
 {
-	WLC_DBG_ERROR("resume\n");
 	return 0;
 }
 
 static int bq51051b_wlc_suspend(struct device *dev)
 {
-	WLC_DBG_ERROR("suspend\n");
 	return 0;
 }
 
@@ -202,19 +194,19 @@ static int __devinit bq51051b_wlc_probe(struct platform_device *pdev)
 {
 	int rc = 0;
 	struct bq51051b_wlc_chip *chip;
-	const struct bq51051b_wlc_platform_data *pdata
-	    = pdev->dev.platform_data;
+	const struct bq51051b_wlc_platform_data *pdata =
+		pdev->dev.platform_data;
 
-	WLC_DBG_ERROR("probe\n");
+	WLC_DBG_INFO("probe\n");
 
 	if (!pdata) {
-		WLC_DBG_ERROR("missing platform data\n");
-		return -EINVAL;
+		pr_err("wlc: missing platform data\n");
+		return -ENODEV;
 	}
 
 	chip = kzalloc(sizeof(struct bq51051b_wlc_chip), GFP_KERNEL);
 	if (!chip) {
-		WLC_DBG_ERROR("Cannot allocate bq51051b_wlc_chip\n");
+		pr_err("wlc: Cannot allocate bq51051b_wlc_chip\n");
 		return -ENOMEM;
 	}
 
@@ -224,7 +216,7 @@ static int __devinit bq51051b_wlc_probe(struct platform_device *pdev)
 
 	rc = bq51051b_wlc_hw_init(chip);
 	if (rc) {
-		WLC_DBG_ERROR("couldn't init hardware rc = %d\n", rc);
+		pr_err("wlc: couldn't init hardware rc = %d\n", rc);
 		goto free_chip;
 	}
 
@@ -238,7 +230,7 @@ static int __devinit bq51051b_wlc_probe(struct platform_device *pdev)
 
 	rc = power_supply_register(chip->dev, &chip->wireless_psy);
 	if (rc < 0) {
-		WLC_DBG_ERROR("power_supply_register wireless failed rx = %d\n",
+		pr_err("wlc: power_supply_register wireless failed rx = %d\n",
 			      rc);
 		goto free_chip;
 	}
@@ -265,7 +257,7 @@ static int __devexit bq51051b_wlc_remove(struct platform_device *pdev)
 {
 	struct bq51051b_wlc_chip *chip = platform_get_drvdata(pdev);
 
-	WLC_DBG_ERROR("remove\n");
+	WLC_DBG_INFO("remove\n");
 	wake_lock_destroy(&chip->wireless_chip_wake_lock);
 	the_chip = NULL;
 	platform_set_drvdata(pdev, NULL);
