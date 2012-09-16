@@ -139,11 +139,16 @@ static void smd_tty_read(unsigned long param)
 		return;
 
 	for (;;) {
+		unsigned int n = info->tty->index;
 		if (is_in_reset(info)) {
+			if (n == BT_ACL_IDX || n == BT_CMD_IDX)
+				pr_err("%s: BT_IDX read in reset %d \n", __func__, n);
+			if ((n != BT_ACL_IDX) && (n != BT_CMD_IDX)) {
 			/* signal TTY clients using TTY_BREAK */
-			tty_insert_flip_char(tty, 0x00, TTY_BREAK);
-			tty_flip_buffer_push(tty);
-			break;
+				tty_insert_flip_char(tty, 0x00, TTY_BREAK);
+				tty_flip_buffer_push(tty);
+				break;
+			}
 		}
 
 		if (test_bit(TTY_THROTTLED, &tty->flags)) break;
@@ -184,6 +189,7 @@ static void smd_tty_notify(void *priv, unsigned event)
 {
 	struct smd_tty_info *info = priv;
 	unsigned long flags;
+	unsigned char *ptr;
 
 	switch (event) {
 	case SMD_EVENT_DATA:
@@ -213,12 +219,24 @@ static void smd_tty_notify(void *priv, unsigned event)
 		break;
 
 	case SMD_EVENT_OPEN:
+		if (is_in_reset(info)) {
+			unsigned int n = info->tty->index;
+			if (n == BT_CMD_IDX) {
+				pr_err("%s:  BT_CMD_IDX Sending hardware error event to stack\n", __func__);
+				tty_prepare_flip_string(info->tty, &ptr, 0x03);
+				ptr[0] = 0x10;
+				ptr[1] = 0x01;
+				ptr[2] = 0x0A;
+				tty_flip_buffer_push(info->tty);
+			}
+		}
 		spin_lock_irqsave(&info->reset_lock, flags);
 		info->in_reset = 0;
 		info->in_reset_updated = 1;
 		info->is_open = 1;
 		wake_up_interruptible(&info->ch_opened_wait_queue);
 		spin_unlock_irqrestore(&info->reset_lock, flags);
+
 		break;
 
 	case SMD_EVENT_CLOSE:
