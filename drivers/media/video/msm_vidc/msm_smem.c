@@ -23,7 +23,7 @@ struct smem_client {
 static int get_device_address(struct ion_client *clnt,
 		struct ion_handle *hndl, int domain_num, int partition_num,
 		unsigned long align, unsigned long *iova,
-		unsigned long *buffer_size,	unsigned long flags)
+		unsigned long *buffer_size)
 {
 	int rc;
 
@@ -34,11 +34,10 @@ static int get_device_address(struct ion_client *clnt,
 	}
 	if (align < 4096)
 		align = 4096;
-	flags |= UNCACHED;
 	pr_debug("\n In %s  domain: %d, Partition: %d\n",
 		__func__, domain_num, partition_num);
 	rc = ion_map_iommu(clnt, hndl, domain_num, partition_num, align,
-			0, iova, buffer_size, flags, 0);
+			0, iova, buffer_size, 0, 0);
 	if (rc)
 		pr_err("ion_map_iommu failed(%d).domain: %d,partition: %d\n",
 				rc, domain_num, partition_num);
@@ -82,7 +81,7 @@ static int ion_user_to_kernel(struct smem_client *client,
 	mem->domain = domain;
 	mem->partition_num = partition;
 	rc = get_device_address(client->clnt, hndl, mem->domain,
-		mem->partition_num, 4096, &iova, &buffer_size, UNCACHED);
+		mem->partition_num, 4096, &iova, &buffer_size);
 	if (rc) {
 		pr_err("Failed to get device address: %d\n", rc);
 		goto fail_device_address;
@@ -143,7 +142,7 @@ static int alloc_ion_mem(struct smem_client *client, size_t size,
 		goto fail_map;
 	}
 	rc = get_device_address(client->clnt, hndl, mem->domain,
-		mem->partition_num, align, &iova, &buffer_size, UNCACHED);
+		mem->partition_num, align, &iova, &buffer_size);
 	if (rc) {
 		pr_err("Failed to get device address: %d\n", rc);
 		goto fail_device_address;
