@@ -184,7 +184,7 @@ static void riva_crash_shutdown(const struct subsys_desc *subsys)
 		smsm_riva_reset();
 		/* give sufficient time for wcnss to finish it's error
 		 * fatal routine */
-		msleep(3000);
+		mdelay(3000);
 	}
 
 }
