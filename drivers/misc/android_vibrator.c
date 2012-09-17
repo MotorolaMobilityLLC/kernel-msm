@@ -54,21 +54,28 @@ struct timed_vibrator_data {
 };
 
 #ifdef ANDROID_VIBRATOR_USE_WORKQUEUE
-static inline void vibrator_work(struct work_struct *work)
+static inline void vibrator_work_on(struct work_struct *work)
+{
+	queue_work(vibrator_workqueue, work);
+}
+
+static inline void vibrator_work_off(struct work_struct *work)
 {
 	if (!work_pending(work))
 		queue_work(vibrator_workqueue, work);
 }
-
 #else
-static inline void vibrator_work(struct work_struct *work)
+static inline void vibrator_work_on(struct work_struct *work)
+{
+	schedule_work(work);
+}
+
+static inline void vibrator_work_off(struct work_struct *work)
 {
 	if (!work_pending(work))
 		schedule_work(work);
 }
 #endif
-
-static DEFINE_MUTEX(vib_lock);
 
 static int android_vibrator_force_set(struct timed_vibrator_data *vib,
 		int intensity, int pwm)
@@ -83,8 +90,6 @@ static int android_vibrator_force_set(struct timed_vibrator_data *vib,
 		intensity = 127;
 	if (intensity < -127)
 		intensity = -127;
-
-	mutex_lock(&vib_lock);
 
 	if (pdata->vibe_warmup_delay > 0) {
 		if (atomic_read(&vib->vib_status))
@@ -114,8 +119,6 @@ static int android_vibrator_force_set(struct timed_vibrator_data *vib,
 				ns_to_ktime((u64)vib_duration_ms * NSEC_PER_MSEC),
 				HRTIMER_MODE_REL);
 	}
-
-	mutex_unlock(&vib_lock);
 
 	return 0;
 }
@@ -148,7 +151,7 @@ static enum hrtimer_restart vibrator_timer_func(struct hrtimer *timer)
 {
 	struct timed_vibrator_data *vib =
 		container_of(timer, struct timed_vibrator_data, timer);
-	vibrator_work(&vib->work_vibrator_off);
+	vibrator_work_off(&vib->work_vibrator_off);
 	return HRTIMER_NORESTART;
 }
 
@@ -180,9 +183,9 @@ static void vibrator_enable(struct timed_output_dev *dev, int ms_time)
 
 		atomic_set(&vib->ms_time, ms_time);
 
-		vibrator_work(&vib->work_vibrator_on);
+		vibrator_work_on(&vib->work_vibrator_on);
 	} else {
-		vibrator_work(&vib->work_vibrator_off);
+		vibrator_work_off(&vib->work_vibrator_off);
 	}
 	spin_unlock_irqrestore(&vib->lock, flags);
 }
@@ -329,7 +332,7 @@ static int android_vibrator_remove(struct platform_device *pdev)
 		(struct timed_vibrator_data *)platform_get_drvdata(pdev);
 	int i;
 
-	vibrator_work(&vib->work_vibrator_off);
+	vibrator_work_off(&vib->work_vibrator_off);
 	for (i = ARRAY_SIZE(android_vibrator_device_attrs); i >= 0; i--) {
 		device_remove_file(vib->dev.dev,
 				&android_vibrator_device_attrs[i]);
