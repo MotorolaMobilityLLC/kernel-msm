@@ -77,18 +77,6 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	else
 		down(&mfd->dma->mutex);
 
-#if defined(CONFIG_FB_MSM_MIPI_DSI_LGIT)
-	ret = panel_next_off(pdev);
-	if (ret < 0) {
-		pr_err("%s: failed to turn off the panel\n", __func__);
-		if (mdp_rev >= MDP_REV_41)
-			mutex_unlock(&mfd->dma->ov_mutex);
-		else
-			up(&mfd->dma->mutex);
-		return ret;
-	}
-#endif
-
 	ret = panel_next_off(pdev);
 	if (ret < 0) {
 		pr_err("%s: failed to turn off the panel\n", __func__);
