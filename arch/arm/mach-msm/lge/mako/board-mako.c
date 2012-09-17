@@ -1875,7 +1875,7 @@ static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi3_pdata = {
 };
 
 static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi4_pdata = {
-	.clk_freq = 384000,
+	.clk_freq = 100000,
 	.src_clk_rate = 24000000,
 };
 
