@@ -190,7 +190,6 @@ static void fsa8008_set_uart_console(int enable)
 	}
 
 	console_enabled = enable;
-	pr_info("%s: %d\n", __func__, enable);
 	if (enable)
 		console_start(uart_con);
 	else
