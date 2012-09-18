@@ -2540,7 +2540,7 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
     }
 #ifdef WLAN_FEATURE_11AC
     pAddStaParams->vhtCapable = psessionEntry->vhtCapability;
-    pAddStaParams->vhtTxChannelWidthSet = pMac->lim.apChanWidth;
+    pAddStaParams->vhtTxChannelWidthSet = psessionEntry->apChanWidth;
 #endif
     if(wlan_cfgGetInt(pMac, WNI_CFG_LISTEN_INTERVAL, &listenInterval) != eSIR_SUCCESS)
        limLog(pMac, LOGP, FL("Couldn't get LISTEN_INTERVAL\n"));
@@ -3113,8 +3113,10 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
         pAddBssParams->vhtCapable = pAssocRsp->VHTCaps.present;
         pAddBssParams->vhtTxChannelWidthSet = pAssocRsp->VHTOperation.chanWidth; 
         pAddBssParams->currentExtChannel = limGet11ACPhyCBState ( pMac, 
-                                           pAddBssParams->currentOperChannel,
-                                           pAddBssParams->currentExtChannel );
+                                                                  pAddBssParams->currentOperChannel,
+                                                                  pAddBssParams->currentExtChannel,
+                                                                  psessionEntry->apCenterChan,
+                                                                  psessionEntry);
     }
     else 
     {
@@ -3403,9 +3405,11 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
     {
         pAddBssParams->vhtCapable = pBeaconStruct->VHTCaps.present;
         pAddBssParams->vhtTxChannelWidthSet = pBeaconStruct->VHTOperation.chanWidth; 
-        pAddBssParams->currentExtChannel = limGet11ACPhyCBState ( pMac, 
-                                           pAddBssParams->currentOperChannel,
-                                           pAddBssParams->currentExtChannel );
+        pAddBssParams->currentExtChannel = limGet11ACPhyCBState ( pMac,
+                                                                  pAddBssParams->currentOperChannel,
+                                                                  pAddBssParams->currentExtChannel,
+                                                                  psessionEntry->apCenterChan,
+                                                                  psessionEntry);
     }
     else 
     {

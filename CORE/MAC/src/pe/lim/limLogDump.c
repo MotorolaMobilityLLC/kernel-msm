@@ -2363,6 +2363,40 @@ dump_lim_vht_opmode_notification(tpAniSirGlobal pMac, tANI_U32 arg1,tANI_U32 arg
 
     return p;
 }
+
+static char *
+dump_lim_vht_channel_switch_notification(tpAniSirGlobal pMac, tANI_U32 arg1,tANI_U32 arg2,tANI_U32 arg3, tANI_U32 arg4, char *p)
+{
+    tpPESession psessionEntry;
+    tANI_U8 nChanWidth = arg2;
+    tANI_U8 nNewChannel = arg3;
+    tANI_U8 ncbMode = arg4;
+    tANI_U8 peer[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+    if((psessionEntry = peFindSessionBySessionId(pMac,(tANI_U8)arg1) )== NULL)
+    {
+        p += log_sprintf( pMac,
+            p,"Session does not exist usage: 367 <0> sessionid channel \n");
+        printk("Session Not found!!!!\n");
+        return p;
+    }
+
+    limSendVHTChannelSwitchMgmtFrame( pMac, peer, nChanWidth, nNewChannel, (ncbMode+1), psessionEntry );
+
+    psessionEntry->gLimChannelSwitch.switchCount = 0;
+    psessionEntry->gLimSpecMgmt.dot11hChanSwState = eLIM_11H_CHANSW_RUNNING;
+    psessionEntry->gLimChannelSwitch.switchMode = 1;
+    psessionEntry->gLimChannelSwitch.primaryChannel = nNewChannel;
+    psessionEntry->gLimWiderBWChannelSwitch.newChanWidth = nChanWidth;
+    psessionEntry->gLimWiderBWChannelSwitch.newCenterChanFreq0 = limGetCenterChannel(pMac,nNewChannel,(ncbMode+1),nChanWidth);
+    psessionEntry->gLimWiderBWChannelSwitch.newCenterChanFreq1 = 0;
+    
+    schSetFixedBeaconFields(pMac, psessionEntry);
+    limSendBeaconInd(pMac, psessionEntry);    
+
+    return p;
+}
+
 #endif
 static char *
 dump_lim_cancel_channel_switch_announcement( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
@@ -2454,6 +2488,7 @@ static tDumpFuncEntry limMenuDumpTable[] = {
     {365,   "PE.LIM: Cancel channel switch announcement",            dump_lim_cancel_channel_switch_announcement},
 #ifdef WLAN_FEATURE_11AC
     {366,   "PE.LIM: Send a VHT OPMode Action Frame",                dump_lim_vht_opmode_notification},
+    {367,   "PE.LIM: Send a VHT Channel Switch Announcement",        dump_lim_vht_channel_switch_notification},
 #endif
 };
 

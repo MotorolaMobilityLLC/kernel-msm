@@ -39,6 +39,7 @@
 #include "limTypes.h"
 #include "limUtils.h"
 #include "limSecurityUtils.h"
+#include "limPropExtsUtils.h"
 #include "dot11f.h"
 #include "limStaHashApi.h"
 #include "schApi.h"
@@ -2413,7 +2414,7 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
     }
 #ifdef WLAN_FEATURE_11AC
     if ( psessionEntry->vhtCapability &&
-        pMac->lim.vhtCapabilityPresentInBeacon)
+        psessionEntry->vhtCapabilityPresentInBeacon)
     {
         limLog( pMac, LOGW, FL("Populate VHT IEs in Assoc Request\n"));
         PopulateDot11fVHTCaps( pMac, &frm.VHTCaps );
@@ -3155,7 +3156,7 @@ limSendReassocReqMgmtFrame(tpAniSirGlobal     pMac,
     }
 #ifdef WLAN_FEATURE_11AC
     if ( psessionEntry->vhtCapability &&
-             pMac->lim.vhtCapabilityPresentInBeacon)
+             psessionEntry->vhtCapabilityPresentInBeacon)
     {
         limLog( pMac, LOGW, FL("Populate VHT IEs in Re-Assoc Request\n"));
         PopulateDot11fVHTCaps( pMac, &frm.VHTCaps );
@@ -4506,6 +4507,147 @@ limSendVHTOpmodeNotificationFrame(tpAniSirGlobal pMac,
 
     return eSIR_SUCCESS;
 }
+
+/**
+ * \brief Send a VHT Channel Switch Announcement
+ *
+ *
+ * \param pMac Pointer to the global MAC datastructure
+ *
+ * \param peer MAC address to which this frame will be sent
+ *
+ * \param nChanWidth
+ *
+ * \param nNewChannel
+ *
+ *
+ * \return eSIR_SUCCESS on success, eSIR_FAILURE else
+ *
+ *
+ */
+
+tSirRetStatus
+limSendVHTChannelSwitchMgmtFrame(tpAniSirGlobal pMac,
+                              tSirMacAddr    peer,
+                              tANI_U8        nChanWidth,
+                              tANI_U8        nNewChannel,
+                              tANI_U8        ncbMode,
+                              tpPESession    psessionEntry )
+{
+    tDot11fChannelSwitch  frm;
+    tANI_U8                  *pFrame;
+    tSirRetStatus        nSirStatus;
+    tpSirMacMgmtHdr      pMacHdr;
+    tANI_U32                  nBytes, nPayload, nStatus;//, nCfg;
+    void               *pPacket;
+    eHalStatus          halstatus;
+    tANI_U8 txFlag = 0;
+    
+    palZeroMemory( pMac->hHdd, ( tANI_U8* )&frm, sizeof( frm ) );
+                
+
+    frm.Category.category     = SIR_MAC_ACTION_SPECTRUM_MGMT;
+    frm.Action.action         = SIR_MAC_ACTION_CHANNEL_SWITCH_ID;
+    frm.ChanSwitchAnn.switchMode    = 1;
+    frm.ChanSwitchAnn.newChannel    = nNewChannel;
+    frm.ChanSwitchAnn.switchCount   = 1;
+    frm.ExtChanSwitchAnn.secondaryChannelOffset =  limGetHTCBState(ncbMode); 
+    frm.ExtChanSwitchAnn.present = 1; 
+    frm.WiderBWChanSwitchAnn.newChanWidth = nChanWidth;
+    frm.WiderBWChanSwitchAnn.newCenterChanFreq0 = limGetCenterChannel(pMac,nNewChannel,ncbMode,nChanWidth);
+    frm.WiderBWChanSwitchAnn.newCenterChanFreq1 = 0;
+    frm.ChanSwitchAnn.present = 1;
+    frm.WiderBWChanSwitchAnn.present = 1;
+
+    nStatus = dot11fGetPackedChannelSwitchSize( pMac, &frm, &nPayload );
+    if ( DOT11F_FAILED( nStatus ) )
+    {
+        limLog( pMac, LOGP, FL("Failed to calculate the packed size f"
+                               "or a Channel Switch (0x%08x).\n"),
+                nStatus );
+        // We'll fall back on the worst case scenario:
+        nPayload = sizeof( tDot11fChannelSwitch );
+    }
+    else if ( DOT11F_WARNED( nStatus ) )
+    {
+        limLog( pMac, LOGW, FL("There were warnings while calculating"
+                               "the packed size for a Channel Switch (0x"
+                               "%08x).\n"), nStatus );
+    }
+
+    nBytes = nPayload + sizeof( tSirMacMgmtHdr );
+
+    halstatus = palPktAlloc( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, ( tANI_U16 )nBytes, ( void** ) &pFrame, ( void** ) &pPacket );
+    if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
+    {
+        limLog( pMac, LOGP, FL("Failed to allocate %d bytes for a TPC"
+                               " Report.\n"), nBytes );
+        return eSIR_FAILURE;
+    }
+   // Paranoia:
+    palZeroMemory( pMac->hHdd, pFrame, nBytes );
+
+    // Next, we fill out the buffer descriptor:
+    nSirStatus = limPopulateMacHeader( pMac, pFrame, SIR_MAC_MGMT_FRAME,
+                                SIR_MAC_MGMT_ACTION, peer, psessionEntry->selfMacAddr);
+    pMacHdr = ( tpSirMacMgmtHdr ) pFrame;
+    palCopyMemory( pMac->hHdd,
+                   (tANI_U8 *) pMacHdr->bssId,
+                   (tANI_U8 *) psessionEntry->bssId,
+                   sizeof( tSirMacAddr ));
+    if ( eSIR_SUCCESS != nSirStatus )
+    {
+        limLog( pMac, LOGE, FL("Failed to populate the buffer descrip"
+                               "tor for a Channel Switch (%d).\n"),
+                nSirStatus );
+        palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, ( void* ) pFrame, ( void* ) pPacket );
+        return eSIR_FAILURE;    // just allocated...
+    }
+    nStatus = dot11fPackChannelSwitch( pMac, &frm, pFrame +
+                                       sizeof(tSirMacMgmtHdr),
+                                       nPayload, &nPayload );
+    if ( DOT11F_FAILED( nStatus ) )
+    {
+        limLog( pMac, LOGE, FL("Failed to pack a Channel Switch (0x%08x).\n"),
+                nStatus );
+        palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, ( void* ) pFrame, ( void* ) pPacket );
+        return eSIR_FAILURE;    // allocated!
+    }
+    else if ( DOT11F_WARNED( nStatus ) )
+    {
+        limLog( pMac, LOGW, FL("There were warnings while packing a C"
+                               "hannel Switch (0x%08x).\n") );
+    }
+
+    if( ( SIR_BAND_5_GHZ == limGetRFBand(psessionEntry->currentOperChannel))
+#ifdef WLAN_FEATURE_P2P
+       || ( psessionEntry->pePersona == VOS_P2P_CLIENT_MODE ) ||
+         ( psessionEntry->pePersona == VOS_P2P_GO_MODE)
+#endif
+         )
+    {
+        txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
+    }
+    halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
+                            HAL_TXRX_FRM_802_11_MGMT,
+                            ANI_TXDIR_TODS,
+                            7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
+                            limTxComplete, pFrame, txFlag );
+    if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
+    {
+        limLog( pMac, LOGE, FL("Failed to send a Channel Switch "
+                               "(%X)!\n"),
+                nSirStatus );
+        //Pkt will be freed up by the callback
+        return eSIR_FAILURE;
+    }
+
+    return eSIR_SUCCESS;
+
+} // End limSendVHTChannelSwitchMgmtFrame.
+    
+    
+
 #endif
 
 /**

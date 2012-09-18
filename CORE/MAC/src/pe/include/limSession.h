@@ -303,6 +303,10 @@ typedef struct sPESession           // Added to Support BT-AMP
     tANI_U8 vhtCapability;
     tANI_U8 vhtTxChannelWidthSet;
     tLimOperatingModeInfo  gLimOperatingMode;
+    tLimWiderBWChannelSwitchInfo  gLimWiderBWChannelSwitch;
+    tANI_U8    vhtCapabilityPresentInBeacon;
+    tANI_U8    apCenterChan;
+    tANI_U8    apChanWidth;
 #endif
     tANI_U8            spectrumMgtEnabled;
     /* *********************11H related*****************************/

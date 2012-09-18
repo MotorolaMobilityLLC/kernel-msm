@@ -655,6 +655,13 @@ typedef struct sLimOperatingModeInfo
     tANI_U8            rxNSS: 3;
     tANI_U8        rxNSSType: 1;
 }tLimOperatingModeInfo, *tpLimOperatingModeInfo;
+
+typedef struct sLimWiderBWChannelSwitch
+{
+    tANI_U8      newChanWidth;
+    tANI_U8      newCenterChanFreq0;
+    tANI_U8      newCenterChanFreq1;
+}tLimWiderBWChannelSwitchInfo, *tpLimWiderBWChannelSwitchInfo;
 #endif
 // Enums used when stopping the Tx.
 typedef enum eLimQuietTxMode

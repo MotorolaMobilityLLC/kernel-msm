@@ -189,7 +189,7 @@ extern void limSendDeltsReq (tpAniSirGlobal pMac, tANI_U16 staid, tANI_U8 tsid, 
 /// creates a SM Power State Mode update request action frame and sends it out to staid
 extern void limPostStartLearnModeMsgToSch(tpAniSirGlobal pMac);
 #ifdef WLAN_FEATURE_11AC
-extern ePhyChanBondState limGet11ACPhyCBState(tpAniSirGlobal pMac, tANI_U8 channel, tANI_U8 htSecondaryChannelOffset );
+extern ePhyChanBondState limGet11ACPhyCBState(tpAniSirGlobal pMac, tANI_U8 channel, tANI_U8 htSecondaryChannelOffset, tANI_U8 CenterChan,tpPESession );
 #endif
 tANI_U8 limIsSystemInActiveState(tpAniSirGlobal pMac);
 #if 0 /* Currently, this function is not used but keep it around for when we do need it */

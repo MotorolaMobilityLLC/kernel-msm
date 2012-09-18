@@ -55,7 +55,7 @@ void limMeasurementTimerHandler(VOID*, tANI_U32);
 #endif
 
 /// Function to extract AP's HCF capability from IE fields
-void limExtractApCapability(tpAniSirGlobal, tANI_U8 *, tANI_U16, tANI_U8 *, tANI_U16 *, tANI_U8 *, tPowerdBm*);
+void limExtractApCapability(tpAniSirGlobal, tANI_U8 *, tANI_U16, tANI_U8 *, tANI_U16 *, tANI_U8 *, tPowerdBm*, tpPESession);
 
 #if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
 /// Function to extract current Learn channel

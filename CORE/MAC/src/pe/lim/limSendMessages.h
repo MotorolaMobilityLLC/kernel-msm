@@ -47,6 +47,11 @@ tSirRetStatus limSendBeaconParams(tpAniSirGlobal pMac,
 tSirRetStatus limSendModeUpdate(tpAniSirGlobal pMac, 
                                 tUpdateVHTOpMode *tempParam,
                                 tpPESession  psessionEntry );
+
+tANI_U32 limGetCenterChannel(tpAniSirGlobal pMac,
+                             tANI_U8 primarychanNum,
+                             ePhyChanBondState secondaryChanOffset, 
+                             tANI_U8 chanWidth);
 #endif
 #if defined WLAN_FEATURE_VOWIFI  
 tSirRetStatus limSendSwitchChnlParams(tpAniSirGlobal pMac, tANI_U8 chnlNumber, 

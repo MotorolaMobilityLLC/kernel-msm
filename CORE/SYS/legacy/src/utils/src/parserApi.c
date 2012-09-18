@@ -289,6 +289,19 @@ PopulateDot11fExtChanSwitchAnn(tpAniSirGlobal pMac,
     pDot11f->present = 1;
 }
 
+#ifdef WLAN_FEATURE_11AC
+void
+PopulateDot11fWiderBWChanSwitchAnn(tpAniSirGlobal pMac,
+                                   tDot11fIEWiderBWChanSwitchAnn *pDot11f,
+				   tpPESession psessionEntry)
+{
+    pDot11f->present = 1;
+    pDot11f->newChanWidth = psessionEntry->gLimWiderBWChannelSwitch.newChanWidth;
+    pDot11f->newCenterChanFreq0 = psessionEntry->gLimWiderBWChannelSwitch.newCenterChanFreq0;
+    pDot11f->newCenterChanFreq1 = psessionEntry->gLimWiderBWChannelSwitch.newCenterChanFreq1;
+}
+#endif
+
 tSirRetStatus
 PopulateDot11fCountry(tpAniSirGlobal    pMac,
                       tDot11fIECountry *pDot11f,
@@ -3158,7 +3171,11 @@ sirConvertBeaconFrame2Struct(tpAniSirGlobal       pMac,
     {
         palCopyMemory( pMac, &pBeaconStruct->OperatingMode, &pBeacon->OperatingMode, sizeof( tDot11fIEOperatingMode) );
     }
-      
+    if(pBeacon->WiderBWChanSwitchAnn.present)
+    {
+        pBeaconStruct->WiderBWChanSwitchAnnPresent = 1;
+        palCopyMemory( pMac, &pBeaconStruct->WiderBWChanSwitchAnn, &pBeacon->WiderBWChanSwitchAnn, sizeof( tDot11fIEWiderBWChanSwitchAnn));
+    }      
 #endif
 
     palFreeMemory(pMac->hHdd, pBeacon);

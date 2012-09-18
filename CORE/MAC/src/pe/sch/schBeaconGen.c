@@ -328,6 +328,10 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     {
       PopulateDot11fChanSwitchAnn( pMac, &bcn2.ChanSwitchAnn, psessionEntry );
       PopulateDot11fExtChanSwitchAnn(pMac, &bcn2.ExtChanSwitchAnn, psessionEntry );
+#ifdef WLAN_FEATURE_11AC
+      if(psessionEntry->vhtCapability)
+          PopulateDot11fWiderBWChanSwitchAnn(pMac, &bcn2.WiderBWChanSwitchAnn, psessionEntry );
+#endif
     }
 #endif
 

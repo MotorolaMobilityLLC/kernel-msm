@@ -1683,7 +1683,8 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
            &psessionEntry->limCurrentBssQosCaps,
            &psessionEntry->limCurrentBssPropCap,
            &pMac->lim.gLimCurrentBssUapsd //TBD-RAJESH  make gLimCurrentBssUapsd this session specific
-           , &localPowerConstraint
+           , &localPowerConstraint,
+           psessionEntry
            ); 
 #ifdef FEATURE_WLAN_CCX
             psessionEntry->maxTxPower = limGetMaxTxPower(regMax, localPowerConstraint, pMac->roam.configParam.nTxPowerCap);
@@ -1947,7 +1948,8 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
               &psessionEntry->limReassocBssQosCaps,
               &psessionEntry->limReassocBssPropCap,
               &pMac->lim.gLimCurrentBssUapsd //TBD-RAJESH make gLimReassocBssUapsd session specific
-              , &localPowerConstraint
+              , &localPowerConstraint,
+              psessionEntry
               );
 
     psessionEntry->maxTxPower = VOS_MIN( regMax , (localPowerConstraint) );

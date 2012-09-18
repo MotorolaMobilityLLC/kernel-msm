@@ -4462,11 +4462,11 @@ return eSIR_SUCCESS;
 }
 
 #ifdef WLAN_FEATURE_11AC
-ePhyChanBondState limGet11ACPhyCBState(tpAniSirGlobal pMac, tANI_U8 channel, tANI_U8 htSecondaryChannelOffset )
+ePhyChanBondState limGet11ACPhyCBState(tpAniSirGlobal pMac, tANI_U8 channel, tANI_U8 htSecondaryChannelOffset,tANI_U8 peerCenterChan, tpPESession  psessionEntry)
 {
     ePhyChanBondState cbState = PHY_SINGLE_CHANNEL_CENTERED;
 
-    if(!pMac->lim.apChanWidth)
+    if(!psessionEntry->apChanWidth)
     {
         return htSecondaryChannelOffset;
     }
@@ -4475,31 +4475,31 @@ ePhyChanBondState limGet11ACPhyCBState(tpAniSirGlobal pMac, tANI_U8 channel, tAN
                  == PHY_DOUBLE_CHANNEL_LOW_PRIMARY)
        )
     {
-        if ((channel + 2 ) == pMac->lim.apCenterChan )
+        if ((channel + 2 ) == peerCenterChan )
             cbState =  PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_CENTERED;
-        else if ((channel + 6 ) == pMac->lim.apCenterChan )
+        else if ((channel + 6 ) == peerCenterChan )
             cbState =  PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_LOW;
-        else if ((channel - 2 ) == pMac->lim.apCenterChan )
+        else if ((channel - 2 ) == peerCenterChan )
             cbState =  PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_HIGH;
         else 
             limLog (pMac, LOGP, 
                        FL("Invalid Channel Number = %d Center Chan = %d \n"), 
-                                 channel, pMac->lim.apCenterChan);
+                                 channel, peerCenterChan);
     }
     if ( (htSecondaryChannelOffset 
                  == PHY_DOUBLE_CHANNEL_HIGH_PRIMARY)
        )
     {
-        if ((channel - 2 ) == pMac->lim.apCenterChan )
+        if ((channel - 2 ) == peerCenterChan )
             cbState =  PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_CENTERED;
-        else if ((channel + 2 ) == pMac->lim.apCenterChan )
+        else if ((channel + 2 ) == peerCenterChan )
             cbState =  PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_LOW;
-        else if ((channel - 6 ) == pMac->lim.apCenterChan )
+        else if ((channel - 6 ) == peerCenterChan )
             cbState =  PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_HIGH;
         else 
            limLog (pMac, LOGP, 
                          FL("Invalid Channel Number = %d Center Chan = %d \n"),
-                                            channel, pMac->lim.apCenterChan);
+                                            channel, peerCenterChan);
     }
     return cbState;
 }
@@ -4525,7 +4525,7 @@ limSetChannel(tpAniSirGlobal pMac, tANI_U8 channel, tANI_U8 secChannelOffset, tP
 #ifdef WLAN_FEATURE_11AC
     if ( peSession->vhtCapability )
     {
-        limSendSwitchChnlParams( pMac, channel, limGet11ACPhyCBState( pMac,channel,secChannelOffset ), maxTxPower, peSessionId);
+        limSendSwitchChnlParams( pMac, channel, limGet11ACPhyCBState( pMac,channel,secChannelOffset,peSession->apCenterChan, peSession), maxTxPower, peSessionId);
     }
     else
 #endif
@@ -4539,9 +4539,9 @@ limSetChannel(tpAniSirGlobal pMac, tANI_U8 channel, tANI_U8 secChannelOffset, tP
     }
     // Send WDA_CHNL_SWITCH_IND to HAL
 #ifdef WLAN_FEATURE_11AC
-    if ( peSession->vhtCapability && pMac->lim.vhtCapabilityPresentInBeacon)
+    if ( peSession->vhtCapability && peSession->vhtCapabilityPresentInBeacon)
     {
-        limSendSwitchChnlParams( pMac, channel, limGet11ACPhyCBState( pMac,channel,secChannelOffset ), maxTxPower, peSessionId);
+        limSendSwitchChnlParams( pMac, channel, limGet11ACPhyCBState( pMac,channel,secChannelOffset,peSession->apCenterChan, peSession), maxTxPower, peSessionId);
     }
     else
 #endif

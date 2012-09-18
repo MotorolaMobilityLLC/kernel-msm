@@ -278,7 +278,9 @@ peGetActiveSessionChannel (tpAniSirGlobal pMac, tANI_U8* resumeChannel, ePhyChan
                /*Get 11ac cbState from 11n cbState*/
                 *resumePhyCbState = limGet11ACPhyCBState(pMac, 
                                     pMac->lim.gpSession[i].currentOperChannel,
-                                    pMac->lim.gpSession[i].htSecondaryChannelOffset);
+                                    pMac->lim.gpSession[i].htSecondaryChannelOffset,
+                                    pMac->lim.gpSession[i].apCenterChan,
+                                    &pMac->lim.gpSession[i]);
             }
 #endif
         }

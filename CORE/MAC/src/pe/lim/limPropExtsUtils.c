@@ -106,7 +106,8 @@ limGetCurrentLearnChannel(tpAniSirGlobal pMac)
 void
 limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
                        tANI_U8 *qosCap, tANI_U16 *propCap, tANI_U8 *uapsd, 
-                       tPowerdBm *localConstraint
+                       tPowerdBm *localConstraint,
+                       tpPESession psessionEntry
                        )
 {
     tSirProbeRespBeacon beaconStruct;
@@ -144,13 +145,13 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
 
         if ( beaconStruct.VHTCaps.present && beaconStruct.VHTOperation.present)
         {
-            pMac->lim.vhtCapabilityPresentInBeacon = 1;
-            pMac->lim.apCenterChan = beaconStruct.VHTOperation.chanCenterFreqSeg1;
-            pMac->lim.apChanWidth = beaconStruct.VHTOperation.chanWidth;
+            psessionEntry->vhtCapabilityPresentInBeacon = 1;
+            psessionEntry->apCenterChan = beaconStruct.VHTOperation.chanCenterFreqSeg1;
+            psessionEntry->apChanWidth = beaconStruct.VHTOperation.chanWidth;
         }
         else
         {
-            pMac->lim.vhtCapabilityPresentInBeacon = 0;
+            psessionEntry->vhtCapabilityPresentInBeacon = 0;
         }
 #endif
         // Extract the UAPSD flag from WMM Parameter element
