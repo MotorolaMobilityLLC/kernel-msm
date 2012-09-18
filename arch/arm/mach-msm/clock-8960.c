@@ -4054,6 +4054,7 @@ void set_rate_tv(struct rcg_clk *rcg, struct clk_freq_tbl *nf)
 #ifdef CONFIG_FB_MSM_HDMI_MSM_PANEL
 	unsigned long pll_rate = (unsigned long)nf->extra_freq_data;
 	if (pll_rate) {
+		hdmi_pll_set_rate(pll_rate);
 		hdmi_pll_clk.rate = pll_rate;
 	}
 #endif
