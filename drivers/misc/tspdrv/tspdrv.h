@@ -1,30 +1,27 @@
 /*
-** =========================================================================
-** File:
-**     tspdrv.h
-**
-** Description:
-**     Constants and type definitions for the TouchSense Kernel Module.
-**
-** Portions Copyright (c) 2008-2010 Immersion Corporation. All Rights Reserved.
-**
-** This file contains Original Code and/or Modifications of Original Code
-** as defined in and that are subject to the GNU Public License v2 -
-** (the 'License'). You may not use this file except in compliance with the
-** License. You should have received a copy of the GNU General Public License
-** along with this program; if not, write to the Free Software Foundation, Inc.,
-** 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or contact
-** TouchSenseSales@immersion.com.
-**
-** The Original Code and all software distributed under the License are
-** distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
-** EXPRESS OR IMPLIED, AND IMMERSION HEREBY DISCLAIMS ALL SUCH WARRANTIES,
-** INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY, FITNESS
-** FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT. Please see
-** the License for the specific language governing rights and limitations
-** under the License.
-** =========================================================================
-*/
+ * File: tspdrv.h
+ *
+ * Description:
+ *     Constants and type definitions for the TouchSense Kernel Module.
+ *
+ * Portions Copyright (c) 2008-2010 Immersion Corporation. All Rights Reserved.
+ *
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the GNU Public License v2 -
+ * (the 'License'). You may not use this file except in compliance with the
+ * License. You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or contact
+ * TouchSenseSales@immersion.com.
+ *
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND IMMERSION HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT. Please see
+ * the License for the specific language governing rights and limitations
+ * under the License.
+ */
 
 #ifndef _TSPDRV_H
 #define _TSPDRV_H
@@ -41,7 +38,7 @@
 #define TSPDRV_ENABLE_AMP                   _IO(TSPDRV_MAGIC_NUMBER & 0xFF, 3)
 #define TSPDRV_DISABLE_AMP                  _IO(TSPDRV_MAGIC_NUMBER & 0xFF, 4)
 #define TSPDRV_GET_NUM_ACTUATORS            _IO(TSPDRV_MAGIC_NUMBER & 0xFF, 5)
-#define VIBE_MAX_DEVICE_NAME_LENGTH			64
+#define VIBE_MAX_DEVICE_NAME_LENGTH         64
 #define SPI_HEADER_SIZE                     3   /* DO NOT CHANGE - SPI buffer header size */
 #define VIBE_OUTPUT_SAMPLE_SIZE             50  /* DO NOT CHANGE - maximum number of samples */
 

@@ -1,31 +1,28 @@
 /*
-** =========================================================================
-** File:
-**     ImmVibeSPI.c
-**
-** Description:
-**     Device-dependent functions called by Immersion TSP API
-**     to control PWM duty cycle, amp enable/disable, save IVT file, etc...
-**
-** Portions Copyright (c) 2008-2010 Immersion Corporation. All Rights Reserved.
-**
-** This file contains Original Code and/or Modifications of Original Code
-** as defined in and that are subject to the GNU Public License v2 -
-** (the 'License'). You may not use this file except in compliance with the
-** License. You should have received a copy of the GNU General Public License
-** along with this program; if not, write to the Free Software Foundation, Inc.,
-** 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or contact
-** TouchSenseSales@immersion.com.
-**
-** The Original Code and all software distributed under the License are
-** distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
-** EXPRESS OR IMPLIED, AND IMMERSION HEREBY DISCLAIMS ALL SUCH WARRANTIES,
-** INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY, FITNESS
-** FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT. Please see
-** the License for the specific language governing rights and limitations
-** under the License.
-** =========================================================================
-*/
+ * File: ImmVibeSPI.c
+ *
+ * Description:
+ *     Device-dependent functions called by Immersion TSP API
+ *     to control PWM duty cycle, amp enable/disable, save IVT file, etc...
+ *
+ * Portions Copyright (c) 2008-2010 Immersion Corporation. All Rights Reserved.
+ *
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the GNU Public License v2 -
+ * (the 'License'). You may not use this file except in compliance with the
+ * License. You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or contact
+ * TouchSenseSales@immersion.com.
+ *
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND IMMERSION HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT. Please see
+ * the License for the specific language governing rights and limitations
+ * under the License.
+ */
 
 #include <linux/io.h>
 #include <linux/err.h>
@@ -36,18 +33,6 @@
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
 #include <mach/msm_xo.h>
-
-#ifdef IMMVIBESPIAPI
-#undef IMMVIBESPIAPI
-#endif
-#define IMMVIBESPIAPI static
-
-/*
-** This SPI supports only one actuator.
-*/
-#define NUM_ACTUATORS 1
-
-#define PWM_DUTY_MAX 579 /* 13MHz / (579 + 1) = 22.4kHz */
 
 static bool g_bAmpEnabled = false;
 
@@ -78,8 +63,6 @@ static bool g_bAmpEnabled = false;
 #define GP_CLK_N_DEFAULT                166
 #define GP_CLK_D_MAX                    GP_CLK_N_DEFAULT
 #define GP_CLK_D_HALF                   (GP_CLK_N_DEFAULT >> 1)
-
-#define MOTOR_AMP                       120
 
 
 static struct gpiomux_setting vibrator_suspend_cfg = {
@@ -174,7 +157,6 @@ static int vibrator_power_set(int enable)
 		pr_warn("%s: regulator_is_enabled failed\n", __func__);
 	}
 
-	//rc = regulator_set_voltage(vreg_l16, 3000000, 3000000);
 	rc = regulator_set_voltage(vreg_l16, 2800000, 2800000);
 
 	if(enable) {
@@ -257,7 +239,7 @@ static void vibrator_ic_enable_set(int enable)
 /*
 ** Called to disable amp (disable output force)
 */
-IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_AmpDisable(VibeUInt8 nActuatorIndex)
+static VibeStatus ImmVibeSPI_ForceOut_AmpDisable(VibeUInt8 nActuatorIndex)
 {
 
 	if (g_bAmpEnabled) {
@@ -276,7 +258,7 @@ IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_AmpDisable(VibeUInt8 nActuatorIndex
 /*
 ** Called to enable amp (enable output force)
 */
-IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_AmpEnable(VibeUInt8 nActuatorIndex)
+static VibeStatus ImmVibeSPI_ForceOut_AmpEnable(VibeUInt8 nActuatorIndex)
 {
 
 	if (!g_bAmpEnabled) {
@@ -298,7 +280,7 @@ IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_AmpEnable(VibeUInt8 nActuatorIndex)
 /*
 ** Called at initialization time to set PWM freq, disable amp, etc...
 */
-IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_Initialize(void)
+static VibeStatus ImmVibeSPI_ForceOut_Initialize(void)
 {
 	int rc;
 	int gpio_motor_en = 0;
@@ -347,7 +329,7 @@ IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_Initialize(void)
 /*
 ** Called at termination time to set PWM freq, disable amp, etc...
 */
-IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_Terminate(void)
+static VibeStatus ImmVibeSPI_ForceOut_Terminate(void)
 {
 
 	DbgOut((KERN_DEBUG "ImmVibeSPI_ForceOut_Terminate.\n"));
@@ -366,7 +348,7 @@ IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_Terminate(void)
 /*
 ** Called by the real-time loop to set PWM duty cycle
 */
-IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_SetSamples(VibeUInt8 nActuatorIndex, VibeUInt16 nOutputSignalBitDepth, VibeUInt16 nBufferSizeInBytes, VibeInt8* pForceOutputBuffer)
+static VibeStatus ImmVibeSPI_ForceOut_SetSamples(VibeUInt8 nActuatorIndex, VibeUInt16 nOutputSignalBitDepth, VibeUInt16 nBufferSizeInBytes, VibeInt8* pForceOutputBuffer)
 {
 	VibeInt8 nForce;
 
@@ -405,22 +387,7 @@ IMMVIBESPIAPI VibeStatus ImmVibeSPI_ForceOut_SetSamples(VibeUInt8 nActuatorIndex
 /*
 ** Called to get the device name (device name must be returned as ANSI char)
 */
-IMMVIBESPIAPI VibeStatus ImmVibeSPI_Device_GetName(VibeUInt8 nActuatorIndex, char *szDevName, int nSize)
+static VibeStatus ImmVibeSPI_Device_GetName(VibeUInt8 nActuatorIndex, char *szDevName, int nSize)
 {
-#if 0
-	/* The following code is provided as a sample.
-	 * Please modify as required.
-	 */
-
-	if ((!szDevName) || (nSize < 1))
-		return VIBE_E_FAIL;
-
-	DbgOut((KERN_DEBUG "ImmVibeSPI_Device_GetName.\n"));
-
-	strncpy(szDevName, "Generic Linux Device", nSize-1);
-	/* make sure the string is NULL terminated */
-	szDevName[nSize - 1] = '\0';
-#endif
-
 	return VIBE_S_SUCCESS;
 }
