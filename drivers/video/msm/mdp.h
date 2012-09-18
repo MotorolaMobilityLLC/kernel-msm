@@ -97,6 +97,10 @@ struct vsync {
 	struct work_struct vsync_work;
 	int vsync_irq_enabled;
 	int disabled_clocks;
+	struct completion vsync_wait;
+	atomic_t suspend;
+	atomic_t vsync_resume;
+	int sysfs_created;
 };
 
 extern struct vsync vsync_cntrl;
