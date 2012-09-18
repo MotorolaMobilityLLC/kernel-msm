@@ -1,34 +1,27 @@
 /*
-** =========================================================================
-** File:
-**     tspdrv.c
-**
-** Description:
-**     TouchSense Kernel Module main entry-point.
-**
-** Portions Copyright (c) 2008-2011 Immersion Corporation. All Rights Reserved.
-**
-** This file contains Original Code and/or Modifications of Original Code
-** as defined in and that are subject to the GNU Public License v2 -
-** (the 'License'). You may not use this file except in compliance with the
-** License. You should have received a copy of the GNU General Public License
-** along with this program; if not, write to the Free Software Foundation, Inc.,
-** 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or contact
-** TouchSenseSales@immersion.com.
-**
-** The Original Code and all software distributed under the License are
-** distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
-** EXPRESS OR IMPLIED, AND IMMERSION HEREBY DISCLAIMS ALL SUCH WARRANTIES,
-** INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY, FITNESS
-** FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT. Please see
-** the License for the specific language governing rights and limitations
-** under the License.
-** =========================================================================
-*/
-
-#ifndef __KERNEL__
-#define __KERNEL__
-#endif
+ * File: tspdrv.c
+ *
+ * Description:
+ *     TouchSense Kernel Module main entry-point.
+ *
+ * Portions Copyright (c) 2008-2011 Immersion Corporation. All Rights Reserved.
+ *
+ * This file contains Original Code and/or Modifications of Original Code
+ * as defined in and that are subject to the GNU Public License v2 -
+ * (the 'License'). You may not use this file except in compliance with the
+ * License. You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA or contact
+ * TouchSenseSales@immersion.com.
+ *
+ * The Original Code and all software distributed under the License are
+ * distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+ * EXPRESS OR IMPLIED, AND IMMERSION HEREBY DISCLAIMS ALL SUCH WARRANTIES,
+ * INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR NON-INFRINGEMENT. Please see
+ * the License for the specific language governing rights and limitations
+ * under the License.
+ */
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -232,17 +225,17 @@ static int release(struct inode *inode, struct file *file)
 	DbgOut((KERN_INFO "tspdrv: release.\n"));
 
 	/*
-	** Reset force and stop timer when the driver is closed, to make sure
-	** no dangling semaphore remains in the system, especially when the
-	** driver is run outside of immvibed for testing purposes.
-	*/
+	 * Reset force and stop timer when the driver is closed, to make sure
+	 * no dangling semaphore remains in the system, especially when the
+	 * driver is run outside of immvibed for testing purposes.
+	 */
 	VibeOSKernelLinuxStopTimer();
 
 	/*
-	** Clear the variable used to store the magic number to prevent
-	** unauthorized caller to write data. TouchSense service is the only
-	** valid caller.
-	*/
+	 * Clear the variable used to store the magic number to prevent
+	 * unauthorized caller to write data. TouchSense service is the only
+	 * valid caller.
+	 */
 	file->private_data = (void*)NULL;
 
 	module_put(THIS_MODULE);
@@ -277,9 +270,9 @@ static ssize_t write(struct file *file, const char *buf, size_t count, loff_t *p
 	*ppos = 0;  /* file position not used, always set to 0 */
 
 	/*
-	** Prevent unauthorized caller to write data.
-	** TouchSense service is the only valid caller.
-	*/
+	 * Prevent unauthorized caller to write data.
+	 * TouchSense service is the only valid caller.
+	 */
 	if (file->private_data != (void*)TSPDRV_MAGIC_NUMBER) {
 		DbgOut((KERN_ERR "tspdrv: unauthorized write.\n"));
 		return 0;
@@ -305,9 +298,9 @@ static ssize_t write(struct file *file, const char *buf, size_t count, loff_t *p
 
 		if ((i + SPI_HEADER_SIZE) >= count) {
 			/*
-			** Index is about to go beyond the buffer size.
-			** (Should never happen).
-			*/
+			 * Index is about to go beyond the buffer size.
+			 * (Should never happen).
+			 */
 			DbgOut((KERN_EMERG "tspdrv: invalid buffer index.\n"));
 		}
 
@@ -352,7 +345,10 @@ static ssize_t write(struct file *file, const char *buf, size_t count, loff_t *p
 		/* Store the data in the free buffer of the given actuator */
 		memcpy(&(g_SamplesBuffer[pInputBuffer->nActuatorIndex].actuatorSamples[nIndexFreeBuffer]), &g_cWriteBuffer[i], (SPI_HEADER_SIZE + pInputBuffer->nBufferSize));
 
-		/* If the no buffer is playing, prepare to play g_SamplesBuffer[pInputBuffer->nActuatorIndex].actuatorSamples[nIndexFreeBuffer] */
+		/* If the no buffer is playing,prepare to play
+		 * g_SamplesBuffer[pInputBuffer->nActuatorIndex]
+		 * .actuatorSamples[nIndexFreeBuffer]
+		 */
 		if ( -1 == g_SamplesBuffer[pInputBuffer->nActuatorIndex].nIndexPlayingBuffer) {
 			g_SamplesBuffer[pInputBuffer->nActuatorIndex].nIndexPlayingBuffer = nIndexFreeBuffer;
 			g_SamplesBuffer[pInputBuffer->nActuatorIndex].nIndexOutputValue = 0;
@@ -392,22 +388,24 @@ static int ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsig
 
 	switch (cmd) {
 	case TSPDRV_STOP_KERNEL_TIMER:
-            /*
-            ** As we send one sample ahead of time, we need to finish playing the last sample
-            ** before stopping the timer. So we just set a flag here.
-            */
+		/*
+		 * As we send one sample ahead of time, we need to finish
+		 * playing the last samplebefore stopping the timer.
+		 * So we just set a flag here.
+		 */
 		if (true == g_bIsPlaying)
 			g_bStopRequested = true;
 
 #ifdef VIBEOSKERNELPROCESSDATA
-            /* Last data processing to disable amp and stop timer */
+		/* Last data processing to disable amp and stop timer */
 		VibeOSKernelProcessData(NULL);
 #endif
 
 #ifdef QA_TEST
 		if (g_nForceLogIndex) {
-			for (i=0; i<g_nForceLogIndex; i++) {
-				printk("<6>%d\t%d\n", g_nTime, g_nForceLog[i]);
+			for (i = 0; i < g_nForceLogIndex; i++) {
+				printk(KERN_INFO "%d\t%d\n", g_nTime,
+						g_nForceLog[i]);
 				g_nTime += TIME_INCREMENT;
 			}
 		}
@@ -423,12 +421,16 @@ static int ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsig
 	case TSPDRV_ENABLE_AMP:
 		ImmVibeSPI_ForceOut_AmpEnable(arg);
 		DbgRecorderReset((arg));
-		DbgRecord((arg,";------- TSPDRV_ENABLE_AMP ---------\n"));
+		DbgRecord((arg,";TSPDRV_ENABLE_AMP\n"));
 		break;
 
 	case TSPDRV_DISABLE_AMP:
-	/* Small fix for now to handle proper combination of TSPDRV_STOP_KERNEL_TIMER and TSPDRV_DISABLE_AMP together */
-	/* If a stop was requested, ignore the request as the amp will be disabled by the timer proc when it's ready */
+		/* Small fix for now to handle proper combination of
+		 * TSPDRV_STOP_KERNEL_TIMER and TSPDRV_DISABLE_AMP together
+		 * If a stop was requested, ignore the request
+		 * as the amp will be disabled by the timer proc
+		 * when it's ready
+		 */
 		if (!g_bStopRequested) {
 			ImmVibeSPI_ForceOut_AmpDisable(arg);
 		}
