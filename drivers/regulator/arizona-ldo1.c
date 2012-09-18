@@ -83,7 +83,7 @@ static struct regulator_ops arizona_ldo1_ops = {
 	.set_voltage_sel = arizona_ldo_reg_set_voltage_sel,
 };
 
-static const struct regulator_desc arizona_ldo1 = {
+static struct regulator_desc arizona_ldo1 = {
 	.name = "LDO1",
 	.type = REGULATOR_VOLTAGE,
 	.ops = &arizona_ldo1_ops,
