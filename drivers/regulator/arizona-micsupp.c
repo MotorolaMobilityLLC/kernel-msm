@@ -143,7 +143,7 @@ static struct regulator_ops arizona_micsupp_ops = {
 	.set_voltage_sel = arizona_micsupp_reg_set_voltage_sel,
 };
 
-static const struct regulator_desc arizona_micsupp = {
+static struct regulator_desc arizona_micsupp = {
 	.name = "MICVDD",
 	.type = REGULATOR_VOLTAGE,
 	.n_voltages = ARIZONA_MICSUPP_MAX_SELECTOR + 1,
@@ -198,8 +198,8 @@ static __devinit int arizona_micsupp_probe(struct platform_device *pdev)
 			   ARIZONA_CPMIC_BYPASS, 0);
 
 	micsupp->regulator = regulator_register(&arizona_micsupp,
-						 arizona->dev, init_data,
-						 micsupp, NULL);
+						arizona->dev, init_data,
+						micsupp, NULL);
 
 	if (IS_ERR(micsupp->regulator)) {
 		ret = PTR_ERR(micsupp->regulator);
