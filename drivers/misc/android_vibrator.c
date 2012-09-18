@@ -85,12 +85,6 @@ static int android_vibrator_force_set(struct timed_vibrator_data *vib,
 
 	pr_debug("%s: intensity : %d\n", __func__, intensity);
 
-	/* Check the Force value with Max and Min force value */
-	if (intensity > 127)
-		intensity = 127;
-	if (intensity < -127)
-		intensity = -127;
-
 	if (pdata->vibe_warmup_delay > 0) {
 		if (atomic_read(&vib->vib_status))
 			msleep(pdata->vibe_warmup_delay);
@@ -212,6 +206,10 @@ static ssize_t vibrator_amp_store(struct device *dev,
 
 	int gain;
 	sscanf(buf, "%d", &gain);
+	if (gain > 100)
+		gain = 100;
+	else if (gain < -100)
+		gain = -100;
 	atomic_set(&vib->gain, gain);
 
 	return size;
@@ -284,7 +282,11 @@ static int android_vibrator_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, &android_vibrator_data);
 
-	atomic_set(&vib->gain, vib->pdata->amp); /* max value is 128 */
+	if (vib->pdata->amp > 100)
+		vib->pdata->amp = 100;
+	else if (vib->pdata->amp < -100)
+		vib->pdata->amp = -100;
+	atomic_set(&vib->gain, vib->pdata->amp); /* max value is 100 */
 	atomic_set(&vib->pwm, vib->pdata->vibe_n_value);
 	atomic_set(&vib->vib_status, 0);
 	pr_info("android_vibrator: default amplitude %d \n",
