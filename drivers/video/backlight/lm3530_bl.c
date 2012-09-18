@@ -33,7 +33,7 @@
 
 #define MAX_LEVEL               0x71
 #define MIN_LEVEL               0x01
-#define DEFAULT_LEVEL           0x2A
+#define DEFAULT_LEVEL           0x14
 
 #define DEFAULT_FTM_BRIGHTNESS  0x03
 
