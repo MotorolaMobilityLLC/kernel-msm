@@ -763,6 +763,12 @@ static struct platform_device msm_camera_server = {
 
 void __init msm8960_init_cam(void)
 {
+	/* If OEM has defined custom camera initialization, use it */
+	if (msm8960_oem_funcs.msm_cam_init) {
+		msm8960_oem_funcs.msm_cam_init();
+		return;
+	}
+
 	msm_gpiomux_install(msm8960_cam_common_configs,
 			ARRAY_SIZE(msm8960_cam_common_configs));
 

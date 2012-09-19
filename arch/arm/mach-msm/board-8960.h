@@ -104,6 +104,7 @@ void msm8960_cdp_init(void);
 
 struct msm8960_oem_init_ptrs {
 	void (*msm_gpio_init)(void);
+	void (*msm_cam_init)(void);
 };
 extern struct msm8960_oem_init_ptrs msm8960_oem_funcs;
 
