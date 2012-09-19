@@ -787,7 +787,7 @@ static void __init place_movable_zone(void)
 #endif
 }
 
-static void __init msm8960_early_memory(void)
+void __init msm8960_early_memory(void)
 {
 	reserve_info = &msm8960_reserve_info;
 	locate_unstable_memory();
@@ -812,7 +812,7 @@ static int __init ext_display_setup(char *param)
 }
 early_param("ext_display", ext_display_setup);
 
-static void __init msm8960_reserve(void)
+void __init msm8960_reserve(void)
 {
 	msm8960_set_display_params(prim_panel_name, ext_panel_name);
 	msm_reserve();
@@ -837,7 +837,7 @@ static int msm8960_change_memory_power(u64 start, u64 size,
 	return soc_change_memory_power(start, size, change_type);
 }
 
-static void __init msm8960_allocate_memory_regions(void)
+void __init msm8960_allocate_memory_regions(void)
 {
 	msm8960_allocate_fb_region();
 }
@@ -1396,7 +1396,7 @@ static struct platform_device msm_device_tspp = {
 
 #define MSM_SHARED_RAM_PHYS 0x80000000
 
-static void __init msm8960_map_io(void)
+void __init msm8960_map_io(void)
 {
 	msm_shared_ram_phys = MSM_SHARED_RAM_PHYS;
 	msm_map_msm8960_io();
@@ -1405,7 +1405,7 @@ static void __init msm8960_map_io(void)
 		pr_err("socinfo_init() failed!\n");
 }
 
-static void __init msm8960_init_irq(void)
+void __init msm8960_init_irq(void)
 {
 	struct msm_mpm_device_data *data = NULL;
 
@@ -3107,7 +3107,7 @@ static void __init msm8960_tsens_init(void)
 	msm_tsens_early_init(&msm_tsens_pdata);
 }
 
-static void __init msm8960_cdp_init(void)
+void __init msm8960_cdp_init(void)
 {
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
 		pr_err("meminfo_init() failed!\n");
