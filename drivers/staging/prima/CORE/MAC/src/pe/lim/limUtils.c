@@ -5623,12 +5623,6 @@ void limUpdateStaRunTimeHTCapability( tpAniSirGlobal   pMac,
 void limUpdateStaRunTimeHTInfo( tpAniSirGlobal  pMac,
                                 tDot11fIEHTInfo *pHTInfo , tpPESession psessionEntry)
 {
-    if ( psessionEntry->htSecondaryChannelOffset != ( tANI_U8)pHTInfo->secondaryChannelOffset)
-    {
-        psessionEntry->htSecondaryChannelOffset = ( ePhyChanBondState )pHTInfo->secondaryChannelOffset;
-        // Send change notification to HAL
-    }
-
     if ( psessionEntry->htRecommendedTxWidthSet != ( tANI_U8 )pHTInfo->recommendedTxWidthSet )
     {
         psessionEntry->htRecommendedTxWidthSet = ( tANI_U8 )pHTInfo->recommendedTxWidthSet;

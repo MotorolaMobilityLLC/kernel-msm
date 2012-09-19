@@ -1034,6 +1034,8 @@ typedef struct sSirSmeScanReq
     tANI_BOOLEAN         p2pSearch;
     tANI_BOOLEAN         skipDfsChnlInP2pSearch;
 #endif
+    tANI_U8              separateProbeBeacon; //If set to 1, PE scan cache to have separate entry for probe rsp & beacon for same BSSID
+
     tANI_U16             uIEFieldLen;
     tANI_U16             uIEFieldOffset;
 

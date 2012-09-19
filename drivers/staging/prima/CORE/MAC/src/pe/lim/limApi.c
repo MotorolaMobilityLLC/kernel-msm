@@ -87,6 +87,7 @@ static void __limInitScanVars(tpAniSirGlobal pMac)
     pMac->lim.gLim24Band11dScanDone = 0;
     pMac->lim.gLim50Band11dScanDone = 0;
     pMac->lim.gLimReturnUniqueResults = 0;
+    pMac->lim.gSeparateProbeBeacon = false;
 
     // Background Scan related globals on STA
     pMac->lim.gLimNumOfBackgroundScanSuccess = 0;
@@ -640,6 +641,7 @@ tSirRetStatus limStart(tpAniSirGlobal pMac)
       // By default return unique scan results
       pMac->lim.gLimReturnUniqueResults = true;
       pMac->lim.gLimSmeScanResultLength = 0;
+      pMac->lim.gSeparateProbeBeacon = false;
    }
    else
    {

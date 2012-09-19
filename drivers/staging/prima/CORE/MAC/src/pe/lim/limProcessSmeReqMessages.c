@@ -377,6 +377,7 @@ __limProcessSmeStartReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
         /// By default return unique scan results
         pMac->lim.gLimReturnUniqueResults = true;
+        pMac->lim.gSeparateProbeBeacon = false;
         pMac->lim.gLimSmeScanResultLength = 0;
 
 #if defined(ANI_PRODUCT_TYPE_CLIENT) || defined(ANI_AP_CLIENT_SDK)
@@ -1179,6 +1180,9 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
         pMac->lim.gLimReturnUniqueResults   =
               ((pScanReq->returnUniqueResults) > 0 ? true : false);
+
+        pMac->lim.gSeparateProbeBeacon = ((pScanReq->separateProbeBeacon) > 0 ? true : false);
+
         /* De-activate Heartbeat timers for connected sessions while
          * scan is in progress if the system is in Active mode */
         if((ePMM_STATE_BMPS_WAKEUP == pMac->pmm.gPmmState) ||
