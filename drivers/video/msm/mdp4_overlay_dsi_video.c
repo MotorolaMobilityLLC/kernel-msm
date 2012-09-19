@@ -267,13 +267,13 @@ void mdp4_dsi_video_vsync_ctrl(int cndx, int enable)
 
 	vctrl = &vsync_ctrl_db[cndx];
 
-	if (vctrl->fake_vsync) {
+	if (vctrl->vsync_irq_enabled == enable)
+		return;
+
+	if (enable && vctrl->fake_vsync) {
 		vctrl->fake_vsync = 0;
 		schedule_work(&vctrl->vsync_work);
 	}
-
-	if (vctrl->vsync_irq_enabled == enable)
-		return;
 
 	pr_debug("%s: vsync enable=%d\n", __func__, enable);
 
