@@ -2619,6 +2619,8 @@ static void __init bt_power_init(void)
 #define bt_power_init(x) do {} while (0)
 #endif
 
+struct msm8960_oem_init_ptrs msm8960_oem_funcs;
+
 static struct platform_device *common_devices[] __initdata = {
 	&msm8960_device_dmov,
 	&msm_device_smd,
@@ -3148,6 +3150,9 @@ void __init msm8960_cdp_init(void)
 					machine_is_msm8960_liquid())
 		msm_device_hsic_host.dev.parent = &smsc_hub_device.dev;
 	msm8960_init_gpiomux();
+	if (msm8960_oem_funcs.msm_gpio_init)
+		msm8960_oem_funcs.msm_gpio_init();
+
 	msm8960_device_qup_spi_gsbi1.dev.platform_data =
 				&msm8960_qup_spi_gsbi1_pdata;
 	spi_register_board_info(spi_board_info, ARRAY_SIZE(spi_board_info));
