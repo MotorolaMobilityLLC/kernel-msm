@@ -4171,42 +4171,11 @@ static int __init hdd_module_init ( void)
 {
    return hdd_driver_init();
 }
-
-static int fwpath_changed_handler(const char *kmessage,
-                                 struct kernel_param *kp)
-{
-   /* nothing to do when driver is DLKM */
-   return 0;
-}
 #else /* #ifdef MODULE */
 static int __init hdd_module_init ( void)
 {
    /* Driver initialization is delayed to fwpath_changed_handler */
    return 0;
-}
-
-/**---------------------------------------------------------------------------
-
-  \brief fwpath_changed_handler() - Handler Function
-
-   This is the driver entry point 
-   - delayed driver initialization when driver is statically linked
-   - invoked when module parameter is modified from userpspace to signal 
-    initializing the WLAN driver
-
-  \return - 0 for success, non zero for failure
-
-  --------------------------------------------------------------------------*/
-static int fwpath_changed_handler(const char *kmessage,
-                                 struct kernel_param *kp)
-{
-   if (wlan_hdd_inited) {
-      return 0;
-   }
-
-   wlan_hdd_inited = 1;
-
-   return hdd_driver_init();
 }
 #endif /* #ifdef MODULE */
 
@@ -4297,7 +4266,47 @@ static void __exit hdd_module_exit(void)
    hdd_driver_exit();
 }
 
-#if defined(WLAN_SOFTAP_FEATURE) || defined(ANI_MANF_DIAG)
+#ifdef MODULE
+static int fwpath_changed_handler(const char *kmessage,
+                                 struct kernel_param *kp)
+{
+   /* nothing to do when driver is DLKM */
+   return 0;
+}
+
+static int con_mode_handler(const char *kmessage,
+                                 struct kernel_param *kp)
+{
+   return 0;
+}
+#else /* #ifdef MODULE */
+/**---------------------------------------------------------------------------
+
+  \brief fwpath_changed_handler() - Handler Function
+
+   This is the driver entry point 
+   - delayed driver initialization when driver is statically linked
+   - invoked when module parameter fwpath is modified from userpspace to signal 
+    initializing the WLAN driver
+
+  \return - 0 for success, non zero for failure
+
+  --------------------------------------------------------------------------*/
+static int fwpath_changed_handler(const char *kmessage,
+                                 struct kernel_param *kp)
+{
+   if (!wlan_hdd_inited) {
+      wlan_hdd_inited = 1;
+      return hdd_driver_init();
+   }
+
+   hdd_driver_exit();
+   
+   msleep(200);
+   
+   return hdd_driver_init();
+}
+
 /**---------------------------------------------------------------------------
 
   \brief con_mode_handler() -
@@ -4311,13 +4320,6 @@ static void __exit hdd_module_exit(void)
   \return - 
 
   --------------------------------------------------------------------------*/
-#ifdef MODULE
-static int con_mode_handler(const char *kmessage,
-                                 struct kernel_param *kp)
-{
-   return 0;
-}
-#else /* #ifdef MODULE */
 static int con_mode_handler(const char *kmessage,
                                  struct kernel_param *kp)
 {
@@ -4326,16 +4328,7 @@ static int con_mode_handler(const char *kmessage,
    if (ret)
        return ret;
 
-   if (!wlan_hdd_inited) {
-      wlan_hdd_inited = 1;
-      return hdd_driver_init();
-   }
-
-   hdd_driver_exit();
-   
-   msleep(200);
-   
-   return hdd_driver_init();
+   return fwpath_changed_handler(kmessage, kp);
 }
 #endif /* #ifdef MODULE */
 
@@ -4458,7 +4451,6 @@ void hdd_softap_tkip_mic_fail_counter_measure(hdd_adapter_t *pAdapter,v_BOOL_t e
     WLANSAP_SetCounterMeasure(pVosContext, (v_BOOL_t)enable);
 }
 
-#endif /* WLAN_SOFTAP_FEATURE */
 /**---------------------------------------------------------------------------
  *
  *   \brief hdd_get__concurrency_mode() -
