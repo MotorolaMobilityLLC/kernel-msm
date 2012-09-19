@@ -141,7 +141,9 @@ int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
 /* the Android framework expects this param even though we don't use it */
 #define BUF_LEN 20
 static char fwpath[BUF_LEN];
+#ifndef MODULE
 static int wlan_hdd_inited = 0;
+#endif
 
 /*
  * The rate at which the driver sends RESTART event to supplicant
