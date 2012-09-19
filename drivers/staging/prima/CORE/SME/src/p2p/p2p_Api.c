@@ -1256,7 +1256,7 @@ static eHalStatus p2pSendActionFrame(tpAniSirGlobal pMac, tANI_U8 HDDSessionID, 
       filter.bWPSAssociation = TRUE;
       filter.BSSType = eCSR_BSS_TYPE_ANY;
 
-      status = csrScanGetResult(pMac, &filter, &hScanResult);
+      status = csrScanGetResult(pMac, pP2pContext->SMEsessionId, &filter, &hScanResult);
 
       if (hScanResult)
       {
@@ -1298,7 +1298,7 @@ static eHalStatus p2pSendActionFrame(tpAniSirGlobal pMac, tANI_U8 HDDSessionID, 
             filter.SSIDs.SSIDList->SSID.length = ssIdLen;
             vos_mem_copy(&filter.SSIDs.SSIDList[0].SSID.ssId, &ssId, ssIdLen);
             filter.SSIDs.numOfSSIDs = 1;
-            status = csrScanGetResult(pMac, &filter, &hScanResult);
+            status = csrScanGetResult(pMac, pP2pContext->SMEsessionId, &filter, &hScanResult);
             if (hScanResult)
             {
                pScanResult = csrScanResultGetFirst(pMac, hScanResult );
@@ -1852,7 +1852,7 @@ eHalStatus P2P_DiscoverRequest(tHalHandle hHal,
             }
          }//if(NULL != pDeviceFilters)
 
-         status = csrScanGetResult(pMac, &filter, &hScanResult);
+         status = csrScanGetResult(pMac, SessionID, &filter, &hScanResult);
          if (hScanResult)
          {
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
@@ -2162,12 +2162,13 @@ eHalStatus sme_p2pFlushDeviceList(tHalHandle hHal, tANI_U8 HDDSessionId)
 {
    eHalStatus status = eHAL_STATUS_FAILURE;
    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+   tp2pContext *pP2pContext = &pMac->p2pContext[HDDSessionId];
 
    smsLog(pMac, LOG2, FL("enter"));
    status = sme_AcquireGlobalLock( &pMac->sme );
    if ( HAL_STATUS_SUCCESS( status ) )
    {
-      status = p2pPurgeDeviceList(pMac, &pMac->scan.scanResultList);
+      status = p2pPurgeDeviceList(pMac, &pMac->scan.scanResultList[pP2pContext->SMEsessionId]);
       sme_ReleaseGlobalLock( &pMac->sme );
    }
 

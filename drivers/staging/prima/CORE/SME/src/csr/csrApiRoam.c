@@ -481,7 +481,12 @@ eHalStatus csrStop(tpAniSirGlobal pMac)
 #if   defined WLAN_FEATURE_NEIGHBOR_ROAMING
     csrNeighborRoamClose(pMac);
 #endif
-    csrScanFlushResult(pMac); //Do we want to do this?
+
+    // flush scan results for all the sessions
+    for (sessionId = 0; sessionId < CSR_ROAM_SESSION_MAX; sessionId++) {
+        csrScanFlushResult(pMac, sessionId);
+    }
+
     // deregister from PMC since we register during csrStart()
     // (ignore status since there is nothing we can do if it fails)
     (void) pmcDeregisterPowerSaveCheck(pMac, csrCheckPSReady);
@@ -3126,7 +3131,7 @@ eHalStatus csrRoamSetBssConfigCfg(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrR
         {
             //Make sure the 11d info from this BSSDesc can be applied
             pMac->scan.fAmbiguous11dInfoFound = eANI_BOOLEAN_FALSE;
-            csrApplyCountryInformation( pMac, TRUE );
+            csrApplyCountryInformation( pMac, sessionId, TRUE );
         }
     }
         
@@ -4700,7 +4705,7 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                 if (!CSR_IS_INFRA_AP(pProfile))
 #endif
                 {
-                    pScanResult = csrScanAppendBssDescription( pMac, pSirBssDesc, pIes );
+                    pScanResult = csrScanAppendBssDescription( pMac, sessionId, pSirBssDesc, pIes );
                 }
                 csrRoamSaveConnectedBssDesc(pMac, sessionId, pSirBssDesc);
                 csrRoamFreeConnectProfile(pMac, &pSession->connectedProfile);
@@ -5467,7 +5472,7 @@ eHalStatus csrRoamConnectWithBSSList(tpAniSirGlobal pMac, tANI_U32 sessionId, tC
     eHalStatus status = eHAL_STATUS_FAILURE;
     tScanResultHandle hBSSList;
     tANI_U32 roamId = 0;
-    status = csrScanCopyResultList(pMac, hBssListIn, &hBSSList);
+    status = csrScanCopyResultList(pMac, sessionId, hBssListIn, &hBSSList);
     if(HAL_STATUS_SUCCESS(status))
     {
         roamId = GET_NEXT_ROAM_ID(&pMac->roam);
@@ -5595,7 +5600,7 @@ eHalStatus csrRoamConnect(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfi
                         }
                         break;
                     }
-                    status = csrScanGetResult(pMac, pScanFilter, &hBSSList);
+                    status = csrScanGetResult(pMac, sessionId, pScanFilter, &hBSSList);
                     smsLog(pMac, LOGE, "************ csrScanGetResult Status ********* %d\n", status);
                     if(HAL_STATUS_SUCCESS(status))
                     {
@@ -5761,7 +5766,7 @@ eHalStatus csrRoamJoinLastProfile(tpAniSirGlobal pMac, tANI_U32 sessionId)
                 break;
             }
             roamId = GET_NEXT_ROAM_ID(&pMac->roam);
-            status = csrScanGetResult(pMac, pScanFilter, &hBSSList);
+            status = csrScanGetResult(pMac, sessionId, pScanFilter, &hBSSList);
             if(HAL_STATUS_SUCCESS(status))
             {
                 //we want to put the last connected BSS to the very beginning, if possible
@@ -6878,7 +6883,7 @@ void csrRoamRoamingStateDisassocRspProcessor( tpAniSirGlobal pMac, tSirSmeDisass
                 smsLog(pMac, LOGE, FL(" csrRoamPrepareFilterFromProfile fail to create scan filter\n"));
             }
         
-            status = csrScanGetResult(pMac, pScanFilter, &hBSSList);
+            status = csrScanGetResult(pMac, sessionId, pScanFilter, &hBSSList);
             if(HAL_STATUS_SUCCESS(status))
             {
                 //copy over the connected profile to apply the same for this connection as well
@@ -9033,7 +9038,7 @@ eHalStatus csrRoamLostLink( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32 ty
     if(fToRoam)
     {
         //Only remove the connected BSS in infrastructure mode
-        csrRoamRemoveConnectedBssFromScanCache(pMac, &pSession->connectedProfile);
+        csrRoamRemoveConnectedBssFromScanCache(pMac, sessionId, &pSession->connectedProfile);
         //Not to do anying for lostlink with WDS
         if( pMac->roam.configParam.nRoamingTime )
         {
@@ -9113,7 +9118,7 @@ eHalStatus csrRoamLostLinkAfterhandoffFailure( tpAniSirGlobal pMac,tANI_U32 sess
     
     pSession->fCancelRoaming =  eANI_BOOLEAN_FALSE;
     //Only remove the connected BSS in infrastructure mode
-    csrRoamRemoveConnectedBssFromScanCache(pMac, &pSession->connectedProfile);
+    csrRoamRemoveConnectedBssFromScanCache(pMac, sessionId, &pSession->connectedProfile);
     if(pMac->roam.configParam.nRoamingTime)
     {
        if(HAL_STATUS_SUCCESS(status = csrRoamStartRoaming(pMac,sessionId, pSession->roamingReason)))
@@ -10534,7 +10539,7 @@ eRoamCmdStatus csrGetRoamCompleteStatus(tpAniSirGlobal pMac, tANI_U32 sessionId)
 }
 
 //This function remove the connected BSS from te cached scan result
-eHalStatus csrRoamRemoveConnectedBssFromScanCache(tpAniSirGlobal pMac,
+eHalStatus csrRoamRemoveConnectedBssFromScanCache(tpAniSirGlobal pMac, tANI_U32 sessionId,
                                                   tCsrRoamConnectedProfile *pConnProfile)
 {
     eHalStatus status = eHAL_STATUS_FAILURE;
@@ -10576,8 +10581,8 @@ eHalStatus csrRoamRemoveConnectedBssFromScanCache(tpAniSirGlobal pMac,
             pScanFilter->bWPSAssociation = eANI_BOOLEAN_FALSE;
             pScanFilter->countryCode[0] = 0;
             pScanFilter->phyMode = eCSR_DOT11_MODE_TAURUS;
-            csrLLLock(&pMac->scan.scanResultList);
-            pEntry = csrLLPeekHead( &pMac->scan.scanResultList, LL_ACCESS_NOLOCK );
+            csrLLLock(&pMac->scan.scanResultList[sessionId]);
+            pEntry = csrLLPeekHead( &pMac->scan.scanResultList[sessionId], LL_ACCESS_NOLOCK );
             while( pEntry ) 
             {
                 pResult = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
@@ -10593,16 +10598,16 @@ eHalStatus csrRoamRemoveConnectedBssFromScanCache(tpAniSirGlobal pMac,
                 if(fMatch)
                 {
                     //We found the one
-                    if( csrLLRemoveEntry(&pMac->scan.scanResultList, pEntry, LL_ACCESS_NOLOCK) )
+                    if( csrLLRemoveEntry(&pMac->scan.scanResultList[sessionId], pEntry, LL_ACCESS_NOLOCK) )
                     {
                         //Free the memory
                         csrFreeScanResultEntry( pMac, pResult );
                     }
                     break;
                 }
-                pEntry = csrLLNext(&pMac->scan.scanResultList, pEntry, LL_ACCESS_NOLOCK);
+                pEntry = csrLLNext(&pMac->scan.scanResultList[sessionId], pEntry, LL_ACCESS_NOLOCK);
             }//while
-            csrLLUnlock(&pMac->scan.scanResultList);
+            csrLLUnlock(&pMac->scan.scanResultList[sessionId]);
         }while(0);
         if(pScanFilter)
         {
