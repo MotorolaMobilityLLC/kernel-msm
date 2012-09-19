@@ -2149,6 +2149,7 @@ tSirRetStatus sirConvertProbeFrame2Struct(tpAniSirGlobal       pMac,
         palCopyMemory( pMac, &pProbeResp->VHTExtBssLoad, &pr->VHTExtBssLoad, sizeof( tDot11fIEVHTExtBssLoad) );
     }
 #endif
+    palFreeMemory(pMac->hHdd, pr);
     return eSIR_SUCCESS;
 
 } // End sirConvertProbeFrame2Struct.
