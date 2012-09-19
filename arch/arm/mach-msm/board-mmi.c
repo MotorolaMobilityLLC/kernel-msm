@@ -75,6 +75,11 @@ static void __init mmi_gpiomux_init(void)
 	of_node_put(node);
 }
 
+static void __init mmi_cam_init(void)
+{
+	pr_info("%s: camera support disabled\n", __func__);
+}
+
 static void __init mmi_msm8960_init_early(void)
 {
 	msm8960_allocate_memory_regions();
@@ -91,6 +96,7 @@ static void __init mmi_msm8960_init_early(void)
 
 	/* Initialize OEM initialization overrides */
 	msm8960_oem_funcs.msm_gpio_init = mmi_gpiomux_init;
+	msm8960_oem_funcs.msm_cam_init = mmi_cam_init;
 }
 
 static int __init parse_tag_flat_dev_tree_address(const struct tag *tag)
