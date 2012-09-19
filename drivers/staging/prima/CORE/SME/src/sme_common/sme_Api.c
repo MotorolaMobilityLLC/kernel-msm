@@ -1932,7 +1932,7 @@ eHalStatus sme_ScanGetResult(tHalHandle hHal, tANI_U8 sessionId, tCsrScanResultF
    status = sme_AcquireGlobalLock( &pMac->sme );
    if ( HAL_STATUS_SUCCESS( status ) )
    {
-       status = csrScanGetResult( pMac, sessionId, pFilter, phResult );
+       status = csrScanGetResult( hHal, pFilter, phResult );
        sme_ReleaseGlobalLock( &pMac->sme );
    }
    smsLog(pMac, LOG2, FL("exit status %d"), status);
@@ -1955,7 +1955,7 @@ eHalStatus sme_ScanFlushResult(tHalHandle hHal, tANI_U8 sessionId)
    status = sme_AcquireGlobalLock( &pMac->sme );
    if ( HAL_STATUS_SUCCESS( status ) )
    {
-       status = csrScanFlushResult( hHal, sessionId );
+       status = csrScanFlushResult( hHal );
        sme_ReleaseGlobalLock( &pMac->sme );
    }
 
@@ -5972,8 +5972,7 @@ eHalStatus sme_HandleChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
     if i don't do this than I still get old ap's (of different country code) as available (even if they are powered off). 
     Looks like a bug in current scan sequence. 
    */
-   //Is it ok to assume infra session here - TBD
-   csrScanFlushResult(pMac, 0);
+   csrScanFlushResult(pMac);
 
    /* overwrite the defualt country code */
    palCopyMemory(pMac->hHdd, pMac->scan.countryCodeDefault, pMac->scan.countryCodeCurrent, WNI_CFG_COUNTRY_CODE_LEN);

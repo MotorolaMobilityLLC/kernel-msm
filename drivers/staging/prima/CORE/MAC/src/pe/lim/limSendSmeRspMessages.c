@@ -773,8 +773,6 @@ limSendSmeScanRsp(tpAniSirGlobal pMac, tANI_U16 length,
         PELOG2(limLog(pMac, LOG2, FL("statusCode : eSIR_SME_SUCCESS\n"));)
     }
 
-    //reset the flag, to be set again by new scan request from SME
-    pMac->lim.gSeparateProbeBeacon = false;
     return;
 
 } /*** end limSendSmeScanRsp() ***/
