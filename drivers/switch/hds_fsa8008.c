@@ -49,10 +49,10 @@
 #define FSA8008_DEBOUNCE_TIME		500 /* in ms */
 #define FSA8008_WAKELOCK_TIMEOUT	(2*HZ)
 
-#undef  HSD_DEBUG_PRINT
+#define HSD_DEBUG_PRINT
 
-#if defined(HSD_DEBUG_PRINT)
-#define HSD_DBG(fmt, args...) printk(KERN_INFO "HSD.fsa8008[%-18s:%5d]" fmt, __func__, __LINE__, ## args)
+#ifdef HSD_DEBUG_PRINT
+#define HSD_DBG(fmt, args...) printk(KERN_DEBUG "%s: " fmt, __func__, ##args)
 #else
 #define HSD_DBG(fmt, args...) do {} while (0)
 #endif
@@ -273,13 +273,10 @@ static void detect_work(struct work_struct *work)
 			work, struct delayed_work, work);
 	struct hsd_info *hi = container_of(dwork, struct hsd_info, work);
 
-	HSD_DBG("detect_work");
-
 	state = gpio_get_value_cansleep(hi->gpio_detect);
 
 	if (state == HEADSET_REMOVE) {
 		if (switch_get_state(&hi->sdev) != NO_DEVICE) {
-			HSD_DBG("headset removing\n");
 			remove_headset(hi);
 		} else {
 			if (hi->set_uart_console)
@@ -289,7 +286,6 @@ static void detect_work(struct work_struct *work)
 	} else {
 
 		if (switch_get_state(&hi->sdev) == NO_DEVICE) {
-			HSD_DBG("headset inserting\n");
 			insert_headset(hi);
 		} else {
 			HSD_DBG("err_invalid_state state = %d\n", state);
