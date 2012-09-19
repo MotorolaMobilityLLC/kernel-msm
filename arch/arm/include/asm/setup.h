@@ -143,6 +143,13 @@ struct tag_memclk {
 	__u32 fmemclk;
 };
 
+/* Flat device tree address */
+#define ATAG_FLAT_DEV_TREE_ADDRESS 0xf100040A
+struct tag_flat_dev_tree_address {
+	u32 address;
+	u32 size;
+};
+
 struct tag {
 	struct tag_header hdr;
 	union {
@@ -165,6 +172,11 @@ struct tag {
 		 * DC21285 specific
 		 */
 		struct tag_memclk	memclk;
+
+		/*
+		 * Motorola specific
+		 */
+		struct tag_flat_dev_tree_address        fdt_addr;
 	} u;
 };
 
