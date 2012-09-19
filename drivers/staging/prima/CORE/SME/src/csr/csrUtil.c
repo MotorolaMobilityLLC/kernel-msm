@@ -1490,26 +1490,6 @@ tANI_BOOLEAN csrIsAllSessionDisconnected( tpAniSirGlobal pMac )
     return ( fRc );
 }
 
-tANI_BOOLEAN csrIsAnySessionConnected( tpAniSirGlobal pMac )
-{
-    tANI_U32 i, count;
-    tANI_BOOLEAN fRc = eANI_BOOLEAN_FALSE;
-
-    count = 0;
-    for( i = 0; i < CSR_ROAM_SESSION_MAX; i++ )
-    {
-        if( CSR_IS_SESSION_VALID( pMac, i ) && !csrIsConnStateDisconnected( pMac, i ) )
-        {
-            count++;
-        }
-    }
-
-    if( count > 0 )
-    {
-        fRc = eANI_BOOLEAN_TRUE;
-    }
-    return ( fRc );
-}
 
 tANI_BOOLEAN csrIsInfraConnected( tpAniSirGlobal pMac )
 {

@@ -1245,9 +1245,7 @@ static eHalStatus csrNeighborRoamScanRequestCallback(tHalHandle halHandle, void 
             smsLog(pMac, LOGE, FL("Scan Filter preparation failed for Assoc type %d.. Bailing out.."), tempVal);
             return eHAL_STATUS_FAILURE;
         }
-
-        //is it safe to assume the scan was done for infra session? - TBD
-        hstatus = csrScanGetResult(pMac, 0, &scanFilter, &scanResult);
+        hstatus = csrScanGetResult(pMac, &scanFilter, &scanResult);
         NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Get Scan Result status code %d"), hstatus);
         /* Process the scan results and update roamable AP list */
         csrNeighborRoamProcessScanResults(pMac, &scanResult);

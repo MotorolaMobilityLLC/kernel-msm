@@ -622,9 +622,8 @@ eHalStatus
 limLookupNaddHashEntry(tpAniSirGlobal pMac,
                        tLimScanResultNode *pBssDescr, tANI_U8 action)
 {
-    tANI_U8 index, ssidLen = 0;
-    tANI_U8 found = false;
-    tANI_U8 continueSearch = false;
+    tANI_U8                  index, ssidLen = 0;
+    tANI_U8                found = false;
     tLimScanResultNode *ptemp, *pprev;
     tSirMacCapabilityInfo *pSirCap, *pSirCapTemp;
     int idx, len;
@@ -699,35 +698,18 @@ limLookupNaddHashEntry(tpAniSirGlobal pMac,
                 }
 
                 // Delete this entry
-                // Delete this entry, if we don't want to keep separate entries for
-                // beacon & probe rsp
-                if(pMac->lim.gSeparateProbeBeacon && 
-                   (pBssDescr->bssDescription.fProbeRsp != ptemp->bssDescription.fProbeRsp))
-                {
-                    continueSearch = true;
-                }
+                if (ptemp == pMac->lim.gLimCachedScanHashTable[index])
+                    pprev = pMac->lim.gLimCachedScanHashTable[index] = ptemp->next;
                 else
-                {
-                    if (ptemp == pMac->lim.gLimCachedScanHashTable[index]) {
-                        pprev = pMac->lim.gLimCachedScanHashTable[index] = ptemp->next;
-                    } else {
-                        pprev->next = ptemp->next;
-                    }
+                    pprev->next = ptemp->next;
 
-                    pMac->lim.gLimMlmScanResultLength -=
-                        ptemp->bssDescription.length + sizeof(tANI_U16);
+                pMac->lim.gLimMlmScanResultLength -=
+                    ptemp->bssDescription.length + sizeof(tANI_U16);
 
-                    palFreeMemory( pMac->hHdd, (tANI_U8 *) ptemp);
-                    continueSearch = false;
-                }
+                palFreeMemory( pMac->hHdd, (tANI_U8 *) ptemp);
             }
-
-            // lets see if there are other entries in the list which can match
-            if(false == continueSearch)
-            {
-                found = true;
-                break;
-            }
+            found = true;
+            break;
         }
     }
 
