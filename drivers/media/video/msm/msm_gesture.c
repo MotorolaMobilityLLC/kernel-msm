@@ -482,7 +482,9 @@ static int msm_gesture_node_register(void)
 	sd_info.sdev_type = GESTURE_DEV;
 	sd_info.sd_index = 0;
 	sd_info.irq_num = 0;
-	msm_cam_register_subdev_node(gesture_subdev, &sd_info);
+
+	if (msm_cam_register_subdev_node(gesture_subdev, &sd_info))
+		return -EINVAL;
 
 	gesture_subdev->entity.revision = gesture_subdev->devnode->num;
 
