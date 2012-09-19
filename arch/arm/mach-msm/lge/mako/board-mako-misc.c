@@ -58,7 +58,7 @@
 #define GP_CLK_D_MAX                     GP_CLK_N_DEFAULT
 #define GP_CLK_D_HALF                    (GP_CLK_N_DEFAULT >> 1)
 
-#define MOTOR_AMP                        120
+#define MOTOR_AMP                        88
 
 static struct gpiomux_setting vibrator_suspend_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -152,25 +152,41 @@ static int vibrator_power_set(int enable)
 	return rc;
 }
 
+static inline int vibrator_adjust_amp(int amp)
+{
+	int level = 0;
+	bool minus = false;
+
+	if (amp < 0) {
+		minus = true;
+		amp = -amp;
+	}
+
+	level = (2 * amp * (GP_CLK_D_HALF-2) + 100) / (2 * 100);
+	if (!level && amp)
+		level = 1;
+
+	if (minus && level)
+		level = -level;
+
+	return level;
+}
+
 static int vibrator_pwm_set(int enable, int amp, int n_value)
 {
-	/* TODO: set clk for amp */
 	uint M_VAL = GP_CLK_M_DEFAULT;
-	uint D_VAL = GP_CLK_D_MAX;
-	uint D_INV = 0;                 /* QCT support invert bit for msm8960 */
+	uint D_VAL = 0;
+	uint D_INV = 0;
 	uint clk_id = gp_clk_id;
 
 	pr_debug("%s: amp=%d, n_value=%d\n", __func__, amp, n_value);
 
 	if (enable) {
 		vibrator_clock_on();
-		D_VAL = ((GP_CLK_D_MAX * amp) >> 7);
+		if (amp)
+			D_VAL = vibrator_adjust_amp(amp) + GP_CLK_D_HALF;
 		if (D_VAL > GP_CLK_D_HALF) {
-			if (D_VAL == GP_CLK_D_MAX) {      /* Max duty is 99% */
-				D_VAL = 2;
-			} else {
-				D_VAL = GP_CLK_D_MAX - D_VAL;
-			}
+			D_VAL = GP_CLK_D_MAX - D_VAL;
 			D_INV = 1;
 		}
 
