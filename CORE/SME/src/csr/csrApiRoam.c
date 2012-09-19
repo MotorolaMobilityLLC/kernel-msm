@@ -357,6 +357,13 @@ eHalStatus csrSetRegInfo(tHalHandle hHal,  tANI_U8 *apCntryCode)
      * 2 character Country code should be used
      * 3rd charater is optional for indoor/outdoor setting */
     cntryCodeLength = strlen(apCntryCode);
+
+    if (cntryCodeLength > WNI_CFG_COUNTRY_CODE_LEN)
+    {
+       smsLog( pMac, LOGW, FL(" Invalid Country Code Length\n") );
+       return eHAL_STATUS_FAILURE;
+    }
+
     status = csrGetRegulatoryDomainForCountry(pMac, apCntryCode, &regId);
     if (status != eHAL_STATUS_SUCCESS)
     {
