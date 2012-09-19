@@ -78,13 +78,12 @@ void sp_tx_hardware_poweron(void)
 	struct anx7808_platform_data *pdata = anx7808_client->dev.platform_data;
 
 	gpio_set_value(pdata->gpio_reset, 0);
-	msleep(20);
+	msleep(1);
 	gpio_set_value(pdata->gpio_p_dwn, 0);
-	msleep(10);
+	msleep(2);
 	pdata->dvdd_power(1);
-	msleep(100);
-	gpio_set_value(pdata->gpio_reset, 1);
 	msleep(20);
+	gpio_set_value(pdata->gpio_reset, 1);
 
 	pr_info("%s: anx7808 power on\n", __func__);
 }
@@ -94,11 +93,11 @@ void sp_tx_hardware_powerdown(void)
 	struct anx7808_platform_data *pdata = anx7808_client->dev.platform_data;
 
 	gpio_set_value(pdata->gpio_reset, 0);
-	msleep(10);
+	msleep(1);
 	pdata->dvdd_power(0);
-	msleep(10);
+	msleep(5);
 	gpio_set_value(pdata->gpio_p_dwn, 1);
-	msleep(20);
+	msleep(1);
 
 	pr_info("%s: anx7808 power down\n", __func__);
 }
@@ -123,7 +122,7 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 	struct anx7808_platform_data *pdata = anx7808->pdata;
 
 	if (gpio_get_value_cansleep(pdata->gpio_cbl_det)) {
-		mdelay(50);
+		msleep(50);
 		if (gpio_get_value_cansleep(pdata->gpio_cbl_det)) {
 			if (sp_tx_pd_mode) {
 				sp_tx_pd_mode = 0;

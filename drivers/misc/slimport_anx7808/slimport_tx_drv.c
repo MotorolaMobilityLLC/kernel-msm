@@ -114,6 +114,7 @@ void sp_tx_variable_init(void)
 	sp_tx_test_bw = 0;
 	sp_tx_test_lt = 0;
 	sp_tx_bw = BW_54G;
+	slimport_link_bw = 0;
 
 }
 
@@ -161,12 +162,6 @@ static void sp_tx_link_phy_initialization(void)
 void sp_tx_initialization(void)
 {
 	unchar c;
-
-	sp_read_reg(TX_P2, SP_TX_RST_CTRL_REG, &c);
-	c |= SW_RST;
-	sp_write_reg(TX_P2, SP_TX_RST_CTRL_REG, c);
-	c &= ~SW_RST;
-	sp_write_reg(TX_P2, SP_TX_RST_CTRL_REG, c);
 
 	sp_read_reg(TX_P0, SP_TX_EXTRA_ADDR_REG, &c);
 	c |= I2C_EXTRA_ADDR | I2C_STRETCH_DISABLE;
@@ -285,7 +280,7 @@ void sp_tx_rst_aux(void)
 	sp_read_reg(TX_P2, SP_TX_RST_CTRL2_REG, &c1);
 	c1 |= AUX_RST;
 	sp_write_reg(TX_P2, SP_TX_RST_CTRL2_REG, c1);
-	mdelay(1);
+	msleep(1);
 	c1 &= ~AUX_RST;
 	sp_write_reg(TX_P2, SP_TX_RST_CTRL2_REG, c1);
 
@@ -340,7 +335,7 @@ static unchar sp_tx_aux_dpcdread_bytes(unchar addrh, unchar addrm,
 	c |= AUX_OP_EN;
 	sp_write_reg(TX_P0, SP_TX_AUX_CTRL_REG2, c);
 
-	mdelay(2);
+	msleep(2);
 
 	bOK = sp_tx_wait_aux_finished();
 
@@ -936,10 +931,10 @@ static void sp_tx_aux_wr(unchar offset)
 	sp_write_reg(TX_P0, SP_TX_BUF_DATA_0_REG, offset);
 	sp_write_reg(TX_P0, SP_TX_AUX_CTRL_REG, 0x04);
 	sp_write_reg(TX_P0, SP_TX_AUX_CTRL_REG2, 0x01);
-	mdelay(10);
+	msleep(10);
 	sp_read_reg(TX_P0, SP_TX_AUX_CTRL_REG2, &c);
 	while (c & AUX_OP_EN) {
-		mdelay(10);
+		msleep(10);
 		cnt++;
 
 		if (cnt == 10) {
@@ -961,11 +956,11 @@ static void sp_tx_aux_rd(unchar len_cmd)
 
 	sp_write_reg(TX_P0, SP_TX_AUX_CTRL_REG, len_cmd);
 	sp_write_reg(TX_P0, SP_TX_AUX_CTRL_REG2, 0x01);
-	mdelay(10);
+	msleep(10);
 	sp_read_reg(TX_P0, SP_TX_AUX_CTRL_REG2, &c);
 
 	while (c & AUX_OP_EN) {
-		mdelay(10);
+		msleep(10);
 		cnt++;
 
 		if (cnt == 10) {
@@ -1008,11 +1003,6 @@ void sp_tx_vbus_poweron(void)
 	int i;
 
 	for (i = 0; i < 5; i++) {
-		/* power down macro */
-		sp_read_reg(TX_P0, SP_TX_ANALOG_PD_REG, &c);
-		c |= MACRO_PD;
-		sp_write_reg(TX_P0, SP_TX_ANALOG_PD_REG, c);
-
 		sp_read_reg(TX_P2, SP_TX_PLL_FILTER_CTRL6, &c);
 		c &= ~P5V_PROTECT_PD;
 		c &= ~SHORT_PROTECT_PD;
@@ -1025,13 +1015,6 @@ void sp_tx_vbus_poweron(void)
 		c |= V33_SWITCH_ON;
 		sp_write_reg(TX_P2, SP_TX_PLL_FILTER_CTRL11, c);
 
-		msleep(100);
-
-		/* power on macro */
-		sp_read_reg(TX_P0, SP_TX_ANALOG_PD_REG, &c);
-		c &= ~MACRO_PD;
-		sp_write_reg(TX_P0, SP_TX_ANALOG_PD_REG, c);
-
 		sp_read_reg(TX_P2, SP_TX_PLL_FILTER_CTRL6, &c);
 		if (!(c & 0xc0)) {
 			pr_err("3.3V output enabled\n");
@@ -1039,7 +1022,6 @@ void sp_tx_vbus_poweron(void)
 		} else {
 			pr_err("VBUS power can not be supplied\n");
 		}
-		msleep(100);
 	}
 }
 
@@ -1096,8 +1078,6 @@ static void sp_tx_config_ssc(enum SP_LINK_BW linkbw)
 	sp_tx_aux_dpcdread_bytes(0x00, 0x00, DPCD_MAX_DOWNSPREAD, 1, &c);
 
 #ifndef SSC_1
-	/*	pr_info("*** Config SSC 0.4% ***");*/
-
 	if (linkbw == BW_54G) {
 		sp_write_reg(TX_P0, SP_TX_DOWN_SPREADING_CTRL1, 0xc0);
 		sp_write_reg(TX_P0, SP_TX_DOWN_SPREADING_CTRL2, 0x00);
@@ -1112,7 +1092,6 @@ static void sp_tx_config_ssc(enum SP_LINK_BW linkbw)
 		sp_write_reg(TX_P0, SP_TX_DOWN_SPREADING_CTRL3, 0x6d);
 	}
 #else
-	/*	pr_info("*** Config SSC 1% ***");*/
 	if (linkbw == BW_54G) {
 		sp_write_reg(TX_P0, SP_TX_DOWN_SPREADING_CTRL1, 0xdd);
 		sp_write_reg(TX_P0, SP_TX_DOWN_SPREADING_CTRL2, 0x01);
@@ -1322,7 +1301,7 @@ static unchar sp_tx_aux_edidread_byte(unchar offset)
 			sp_write_reg(TX_P0, SP_TX_AUX_CTRL_REG2, c);
 			sp_read_reg(TX_P0, SP_TX_AUX_CTRL_REG2, &c);
 			while (c & 0x01) {
-				mdelay(2);
+				msleep(1);
 				cnt++;
 
 				if (cnt == 10) {
@@ -1343,7 +1322,7 @@ static unchar sp_tx_aux_edidread_byte(unchar offset)
 		data_cnt = data_cnt + c;
 		if (data_cnt < 16) {
 			sp_tx_rst_aux();
-			mdelay(10);
+			msleep(10);
 			c = 0x05 | ((0x0f - data_cnt) << 4);
 			sp_tx_aux_rd(c);
 		}
@@ -1415,7 +1394,7 @@ static void sp_tx_parse_segments_edid(unchar segment, unchar offset)
 	cnt = 0;
 	sp_read_reg(TX_P0, SP_TX_AUX_CTRL_REG2, &c);
 	while (c & AUX_OP_EN) {
-		mdelay(10);
+		msleep(1);
 		cnt++;
 		if (cnt == 10) {
 			pr_err("write break");
@@ -1440,7 +1419,6 @@ static void sp_tx_parse_segments_edid(unchar segment, unchar offset)
 	for (i = 0; i < 16; i++) {
 		sp_read_reg(TX_P0, SP_TX_BUF_DATA_COUNT_REG, &c);
 		while ((c & 0x1f) == 0) {
-			mdelay(2);
 			cnt++;
 			sp_read_reg(TX_P0,
 				       SP_TX_BUF_DATA_COUNT_REG, &c);
@@ -1800,7 +1778,7 @@ uint sp_tx_link_err_check(void)
 	uint errl = 0, errh = 0;
 
 	sp_tx_aux_dpcdread_bytes(0x00, 0x02, 0x10, 2, bytebuf);
-	mdelay(5);
+	msleep(5);
 	sp_tx_aux_dpcdread_bytes(0x00, 0x02, 0x10, 2, bytebuf);
 	errh = bytebuf[1];
 
@@ -1897,14 +1875,14 @@ unchar sp_tx_lt_pre_config(void)
 		sp_read_reg(TX_P0, SP_TX_ANALOG_PD_REG, &c);
 		c |= CH0_PD;
 		sp_write_reg(TX_P0, SP_TX_ANALOG_PD_REG, c);
-		mdelay(2);
+		msleep(1);
 		c &= ~CH0_PD;
 		sp_write_reg(TX_P0, SP_TX_ANALOG_PD_REG, c);
 
 		sp_read_reg(TX_P0, SP_TX_PLL_CTRL_REG, &c);
 		c |= PLL_RST;
 		sp_write_reg(TX_P0, SP_TX_PLL_CTRL_REG, c);
-	       mdelay(2);
+		msleep(1);
 		c &=~PLL_RST;
 		sp_write_reg(TX_P0, SP_TX_PLL_CTRL_REG, c);
 
@@ -1966,7 +1944,7 @@ unchar sp_tx_get_cable_type(void)
 			DPCD_DSPORT_PRESENT, 1, &ds_port_preset)) {
 			pr_err(" AUX access error");
 			/*Add time delay for VGA dongle bootup*/
-			msleep(250);
+			msleep(200);
 			continue;
 		}
 
@@ -2018,7 +1996,6 @@ unchar sp_tx_get_cable_type(void)
 			ds_port_recoginze = 1;
 			break;
 		default:
-			msleep(1000);
 			pr_err("Downstream can not recognized.");
 			sp_tx_rx_anx7730 = 0;
 			sp_tx_rx_mydp = 0;
@@ -2101,7 +2078,7 @@ void sp_tx_edid_read(void)
 		for (i = 0; i < edid_block; i++) {
 			if (!bedid_break)
 				sp_tx_aux_edidread_byte(i * 16);
-			mdelay(10);
+			msleep(10);
 		}
 		sp_tx_addronly_set(0);
 	} else {
@@ -2238,9 +2215,8 @@ static void sp_tx_lt_done_int_handler(void)
 		sp_tx_hw_lt_enable = 0;
 		sp_tx_hw_lt_done = 0;
 		sp_tx_set_sys_state(STATE_LINK_TRAINING);
-
+		msleep(10);
 	} else {
-
 		sp_tx_hw_lt_done = 1;
 		sp_read_reg(TX_P0, SP_TX_LT_SET_REG, &c);
 		sp_read_reg(TX_P0, SP_TX_LINK_BW_SET_REG, &c1);
@@ -2299,7 +2275,7 @@ static void sp_tx_polling_err_int_handler(void)
 		if (c == 0x11)
 			return;
 
-		mdelay(10);
+		msleep(2);
 	}
 
 	if (sp_tx_pd_mode == 0) {
@@ -2621,7 +2597,7 @@ void sp_tx_hdcp_process(void)
 
 	if (!sp_tx_hw_hdcp_en) {
 		sp_tx_power_on(SP_TX_PWR_HDCP);
-		mdelay(50);
+		msleep(50);
 		sp_tx_hw_hdcp_enable();
 		sp_tx_hw_hdcp_en = 1;
 	}
@@ -2738,14 +2714,12 @@ void hdmi_rx_set_hpd(unchar enable)
 		sp_read_reg(TX_P2, SP_TX_VID_CTRL3_REG, &c);
 		c |= HPD_OUT;
 		sp_write_reg(TX_P2, SP_TX_VID_CTRL3_REG, c);
-		msleep(100);
 		pr_notice("HPD high is issued\n");
 	} else {
 		/* set HPD low */
 		sp_read_reg(TX_P2, SP_TX_VID_CTRL3_REG, &c);
 		c &= ~HPD_OUT;
 		sp_write_reg(TX_P2, SP_TX_VID_CTRL3_REG, c);
-		msleep(100);
 		pr_notice("HPD low is issued\n");
 	}
 }
@@ -2759,14 +2733,12 @@ void hdmi_rx_set_termination(unchar enable)
 		sp_read_reg(RX_P0, HDMI_RX_TMDS_CTRL_REG6, &c);
 		c &= ~TERM_PD;
 		sp_write_reg(RX_P0, HDMI_RX_TMDS_CTRL_REG6, c);
-		mdelay(10);
 		pr_notice("Termination high is issued\n");
 	} else {
 		/* set termination low */
 		sp_read_reg(RX_P0, HDMI_RX_TMDS_CTRL_REG6, &c);
 		c |= TERM_PD;
 		sp_write_reg(RX_P0, HDMI_RX_TMDS_CTRL_REG6, c);
-		mdelay(10);
 		pr_notice("Termination low is issued\n");
 	}
 }
@@ -3016,7 +2988,7 @@ static void hdmi_rx_show_video_info(void)
 	if (c & DECRYPT_EN)
 			break;
 		else
-			mdelay(10);
+			msleep(10);
 	}
 
 	if (cl < 20)
@@ -3122,7 +3094,7 @@ void hdmi_rx_initialization(void)
 	sp_read_reg(RX_P0, HDMI_RX_SRST_REG, &c);
 	c |= HDCP_MAN_RST;
 	sp_write_reg(RX_P0, HDMI_RX_SRST_REG, c);
-	mdelay(10);
+	msleep(1);
 	sp_read_reg(RX_P0, HDMI_RX_SRST_REG, &c);
 	c &= ~HDCP_MAN_RST;
 	sp_write_reg(RX_P0, HDMI_RX_SRST_REG, c);
@@ -3130,7 +3102,7 @@ void hdmi_rx_initialization(void)
 	sp_read_reg(RX_P0, HDMI_RX_SRST_REG, &c);
 	c |= SW_MAN_RST;
 	sp_write_reg(RX_P0, HDMI_RX_SRST_REG, c);
-	mdelay(10);
+	msleep(1);
 	c  &= ~SW_MAN_RST;
 	sp_write_reg(RX_P0, HDMI_RX_SRST_REG, c);
 
@@ -3164,13 +3136,6 @@ void hdmi_rx_initialization(void)
 	sp_write_reg(RX_P0, HDMI_RX_INT_MASK5_REG, 0xff);
 	sp_write_reg(RX_P0, HDMI_RX_INT_MASK6_REG, 0xff);
 	sp_write_reg(RX_P0, HDMI_RX_INT_MASK7_REG, 0x07);
-
-	/* software reset  for  HDMI key load issue */
-	sp_read_reg(TX_P2, SP_TX_RST_CTRL_REG, &c);
-	c |= SW_RST;
-	sp_write_reg(TX_P2, SP_TX_RST_CTRL_REG, c);
-	c &= ~SW_RST;
-	sp_write_reg(TX_P2, SP_TX_RST_CTRL_REG, c);
 
 	/* Range limitation for RGB input */
 	sp_read_reg(RX_P0, HDMI_RX_VID_DATA_RNG_CTRL_REG, &c);
@@ -3368,7 +3333,7 @@ static void hdmi_rx_hdcp_error_int(void)
 
 		/* issue hotplug */
 		hdmi_rx_set_hpd(0);
-		msleep(100);
+		msleep(10);
 		hdmi_rx_set_hpd(1);
 
 	} else if ((hdmi_system_state == HDMI_CLOCK_DET)
@@ -3482,7 +3447,7 @@ void sp_tx_config_hdmi_input(void)
 				sp_read_reg(RX_P0, HDMI_RX_TMDS_CTRL_REG18, &c);
 				c |= PLL_RESET;
 				sp_write_reg(RX_P0, HDMI_RX_TMDS_CTRL_REG18, c);
-				mdelay(10);
+				msleep(2);
 				sp_read_reg(RX_P0, HDMI_RX_TMDS_CTRL_REG18, &c);
 				c &= ~PLL_RESET;
 				sp_write_reg(RX_P0, HDMI_RX_TMDS_CTRL_REG18, c);
