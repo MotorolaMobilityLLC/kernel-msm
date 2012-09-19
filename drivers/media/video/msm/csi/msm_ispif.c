@@ -684,7 +684,7 @@ static int msm_ispif_init(struct ispif_device *ispif,
 static void msm_ispif_release(struct ispif_device *ispif)
 {
 	CDBG("%s, free_irq\n", __func__);
-	free_irq(ispif->irq->start, 0);
+	free_irq(ispif->irq->start, ispif);
 	tasklet_kill(&ispif_tasklet);
 
 	if (ispif->csid_version == CSID_VERSION_V2)
