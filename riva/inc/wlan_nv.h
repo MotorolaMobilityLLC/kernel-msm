@@ -159,7 +159,7 @@ typedef enum
     RF_SUBBAND_5_LOW_GHZ    = 1,    //Low & Mid U-NII
     RF_SUBBAND_5_MID_GHZ    = 2,    //ETSI
     RF_SUBBAND_5_HIGH_GHZ   = 3,    //High U-NII
-    RF_SUBBAND_4_9_GHZ      = 4,    //Japanese
+    RF_SUBBAND_RESERVED     = 4,    //Reserved
 
 
     NUM_RF_SUBBANDS,
@@ -192,14 +192,16 @@ typedef enum
     RF_CHAN_13                = 12,
     RF_CHAN_14                = 13,
 
-    //4.9GHz Band
-    RF_CHAN_240               = 14,
-    RF_CHAN_244               = 15,
-    RF_CHAN_248               = 16,
-    RF_CHAN_252               = 17,
-    RF_CHAN_208               = 18,
-    RF_CHAN_212               = 19,
-    RF_CHAN_216               = 20,
+    //Unused
+    RF_CHAN_RESERVED1         = 14,
+    RF_CHAN_RESERVED2         = 15,
+    RF_CHAN_RESERVED3         = 16,
+    RF_CHAN_RESERVED4         = 17,
+    RF_CHAN_RESERVED5         = 18,
+    RF_CHAN_RESERVED6         = 19,
+
+    //5GHz additions
+    RF_CHAN_144               = 20,
 
     //5GHz Low & Mid U-NII Band
     RF_CHAN_36                = 21,
@@ -241,11 +243,11 @@ typedef enum
     RF_CHAN_BOND_9            = 51,
     RF_CHAN_BOND_10           = 52,
     RF_CHAN_BOND_11           = 53,
-    RF_CHAN_BOND_242          = 54,    //4.9GHz Band
-    RF_CHAN_BOND_246          = 55,
-    RF_CHAN_BOND_250          = 56,
-    RF_CHAN_BOND_210          = 57,
-    RF_CHAN_BOND_214          = 58,
+    RF_CHAN_RESERVED7         = 54,
+    RF_CHAN_RESERVED8         = 55,
+    RF_CHAN_RESERVED9         = 56,
+    RF_CHAN_BOND_142          = 57,    //5GHz Mid Band
+    RF_CHAN_PSAT_TABLE        = 58,    //Special purpose
     RF_CHAN_BOND_38           = 59,    //5GHz Low & Mid U-NII Band
     RF_CHAN_BOND_42           = 60,
     RF_CHAN_BOND_46           = 61,
@@ -274,11 +276,11 @@ typedef enum
     MAX_2_4GHZ_CHANNEL = RF_CHAN_14,
     NUM_2_4GHZ_CHANNELS = (MAX_2_4GHZ_CHANNEL - MIN_2_4GHZ_CHANNEL + 1),
 
-    MIN_5GHZ_CHANNEL = RF_CHAN_240,
+    MIN_5GHZ_CHANNEL = RF_CHAN_144,
     MAX_5GHZ_CHANNEL = RF_CHAN_165,
     NUM_5GHZ_CHANNELS = (MAX_5GHZ_CHANNEL - MIN_5GHZ_CHANNEL + 1),
 
-    MIN_20MHZ_RF_CHANNEL = RF_CHAN_1,
+    MIN_20MHZ_RF_CHANNEL = RF_CHAN_144,
     MAX_20MHZ_RF_CHANNEL = RF_CHAN_165,
     NUM_20MHZ_RF_CHANNELS = (MAX_20MHZ_RF_CHANNEL - MIN_20MHZ_RF_CHANNEL + 1),
 
@@ -289,7 +291,7 @@ typedef enum
     MIN_CB_2_4GHZ_CHANNEL = RF_CHAN_BOND_3,
     MAX_CB_2_4GHZ_CHANNEL = RF_CHAN_BOND_11,
 
-    MIN_CB_5GHZ_CHANNEL = RF_CHAN_BOND_242,
+    MIN_CB_5GHZ_CHANNEL = RF_CHAN_BOND_142,
     MAX_CB_5GHZ_CHANNEL = RF_CHAN_BOND_163,
 
     NUM_TPC_2_4GHZ_CHANNELS = 14,
