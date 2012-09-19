@@ -1046,7 +1046,10 @@ void mipi_dsi_mdp_busy_wait(struct msm_fb_data_type *mfd)
 		/* wait until DMA finishes the current job */
 		pr_debug("%s: pending pid=%d\n",
 				__func__, current->pid);
-		wait_for_completion(&dsi_mdp_comp);
+		if (!wait_for_completion_timeout(&dsi_mdp_comp,
+					msecs_to_jiffies(200))) {
+			pr_err("%s: dma timeout error\n", __func__);
+		}
 	}
 	pr_debug("%s: done pid=%d\n",
 				__func__, current->pid);
@@ -1374,7 +1377,6 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 
 int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 {
-
 	unsigned long flags;
 
 #ifdef DSI_HOST_DEBUG
@@ -1407,7 +1409,10 @@ int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 	wmb();
 	spin_unlock_irqrestore(&dsi_mdp_lock, flags);
 
-	wait_for_completion(&dsi_dma_comp);
+	if (!wait_for_completion_timeout(&dsi_dma_comp,
+					msecs_to_jiffies(200))) {
+		pr_err("%s: dma timeout error\n", __func__);
+	}
 
 	dma_unmap_single(&dsi_dev, tp->dmap, tp->len, DMA_TO_DEVICE);
 	tp->dmap = 0;
