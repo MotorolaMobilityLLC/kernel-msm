@@ -3804,6 +3804,7 @@ int hdd_wlan_startup(struct device *dev )
 #endif
    {
       wlan_hdd_cfg80211_post_voss_start(pP2pAdapter);
+      wlan_hdd_cfg80211_post_voss_start(pAdapter);
    }
 #endif
 

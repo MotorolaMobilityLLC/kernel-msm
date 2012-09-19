@@ -4726,9 +4726,16 @@ __limProcessSmeRegisterMgmtFrameReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                     if (palEqualMemory(pMac, pLimMgmtRegistration->matchData, 
                                 pSmeReq->matchData, pLimMgmtRegistration->matchLen))
                     {
-                        /* found match! */   
-                        match = VOS_TRUE;
-                        break;
+                        if(pSmeReq->selfMacAddr)
+                        {
+                            if(palEqualMemory(pMac, pLimMgmtRegistration->selfMacAddr,
+                                           pSmeReq->selfMacAddr, VOS_MAC_ADDR_SIZE))
+                            {
+                                /* found match! */   
+                                match = VOS_TRUE;
+                                break;
+                            }
+                        }    
                     }
                 }
             }
@@ -4772,7 +4779,11 @@ __limProcessSmeRegisterMgmtFrameReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                 palCopyMemory(pMac,pLimMgmtRegistration->matchData, 
                               pSmeReq->matchData, pSmeReq->matchLen);
             }
-     
+            if(pSmeReq->selfMacAddr)
+            {
+                palCopyMemory( pMac, pLimMgmtRegistration->selfMacAddr, 
+                       pSmeReq->selfMacAddr, VOS_MAC_ADDR_SIZE);
+            } 
             vos_list_insert_front(&pMac->lim.gLimMgmtFrameRegistratinQueue,
                               &pLimMgmtRegistration->node);
         }

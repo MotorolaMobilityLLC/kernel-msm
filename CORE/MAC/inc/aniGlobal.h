@@ -917,6 +917,7 @@ typedef struct sLimMgmtFrameRegistration
     tANI_U16        frameType;
     tANI_U16        matchLen;
     tANI_U16        sessionId;
+    tANI_U8         selfMacAddr[6];
     tANI_U8         matchData[1];
 } tLimMgmtFrameRegistration, *tpLimMgmtFrameRegistration;
 #endif

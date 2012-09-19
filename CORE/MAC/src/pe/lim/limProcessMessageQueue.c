@@ -628,9 +628,13 @@ limCheckMgmtRegisteredFrames(tpAniSirGlobal pMac, tANI_U8 *pBd,
                     if (palEqualMemory(pMac, pLimMgmtRegistration->matchData,
                                        pBody, pLimMgmtRegistration->matchLen))
                     {
-                       /* found match! */   
-                       match = VOS_TRUE;
-                       break;
+                        if(palEqualMemory(pMac, pLimMgmtRegistration->selfMacAddr,
+                                          pHdr->da, VOS_MAC_ADDR_SIZE))
+                        {
+                            /* found match! */   
+                            match = VOS_TRUE;
+                            break;
+                        }
                     }
                 } 
             }
