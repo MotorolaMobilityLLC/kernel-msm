@@ -2054,6 +2054,11 @@ int msm_cam_register_subdev_node(struct v4l2_subdev *sd,
 	int err = 0, cam_hw_idx;
 	uint8_t sdev_type, index;
 
+	if (!g_server_dev.server_pdev) {
+		pr_err("%s: msm cam driver not initialized\n", __func__);
+		return -EINVAL;
+	}
+
 	sdev_type = sd_info->sdev_type;
 	index     = sd_info->sd_index;
 
