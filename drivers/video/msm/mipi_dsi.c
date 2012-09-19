@@ -77,16 +77,6 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	else
 		down(&mfd->dma->mutex);
 
-	ret = panel_next_off(pdev);
-	if (ret < 0) {
-		pr_err("%s: failed to turn off the panel\n", __func__);
-		if (mdp_rev >= MDP_REV_41)
-			mutex_unlock(&mfd->dma->ov_mutex);
-		else
-			up(&mfd->dma->mutex);
-		return ret;
-	}
-
 	mdp4_overlay_dsi_state_set(ST_DSI_SUSPEND);
 
 	/*
@@ -104,6 +94,8 @@ static int mipi_dsi_off(struct platform_device *pdev)
 			mipi_dsi_set_tear_off(mfd);
 		}
 	}
+
+	ret = panel_next_off(pdev);
 
 #ifdef CONFIG_MSM_BUS_SCALING
 	mdp_bus_scale_update_request(0);
