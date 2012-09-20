@@ -305,6 +305,7 @@ obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-rfkill.o msm_vibrator.o
 obj-$(CONFIG_MACH_LGE) += lge/
 
 obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi.o
+obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi-gsbi.o
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
 CFLAGS_board-9615.o += -Idrivers/usb/gadget
