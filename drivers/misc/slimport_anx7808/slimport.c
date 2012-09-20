@@ -44,6 +44,8 @@ static bool hdcp_enable = 1;
 static bool hdcp_enable = 0;
 #endif
 
+static unchar slimport_link_bw = 0;
+
 int sp_read_reg(uint8_t slave_addr, uint8_t offset, uint8_t *buf)
 {
 	int ret = 0;
@@ -493,6 +495,18 @@ bool slimport_is_connected(void)
 	return result;
 }
 EXPORT_SYMBOL(slimport_is_connected);
+
+unchar sp_get_link_bw(void)
+{
+	return slimport_link_bw;
+}
+EXPORT_SYMBOL(sp_get_link_bw);
+
+void sp_set_link_bw(unchar link_bw)
+{
+	slimport_link_bw = link_bw;
+}
+EXPORT_SYMBOL(sp_set_link_bw);
 
 static int anx7808_i2c_remove(struct i2c_client *client)
 {
