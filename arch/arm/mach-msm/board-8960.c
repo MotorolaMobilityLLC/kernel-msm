@@ -3211,12 +3211,18 @@ void __init msm8960_cdp_init(void)
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	msm8960_add_vidc_device();
 
-	msm8960_pm8921_gpio_mpp_init();
+	/* PM8921 GPIO and MPP MUX Configurations */
+	if (msm8960_oem_funcs.msm_gpio_mpp_init)
+		msm8960_oem_funcs.msm_gpio_mpp_init(&msm8960_oem_funcs);
+	else
+		msm8960_pm8921_gpio_mpp_init();
+
 	/* Don't add modem devices on APQ targets */
 	if (socinfo_get_id() != 124) {
 		platform_device_register(&msm_8960_q6_mss_fw);
 		platform_device_register(&msm_8960_q6_mss_sw);
 	}
+
 	platform_add_devices(cdp_devices, ARRAY_SIZE(cdp_devices));
 	msm8960_init_smsc_hub();
 	msm8960_init_hsic();
