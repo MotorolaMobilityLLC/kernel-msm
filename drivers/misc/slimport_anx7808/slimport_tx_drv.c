@@ -41,7 +41,6 @@ static bool sp_tx_test_lt;
 static unchar sp_tx_test_bw;
 static bool sp_tx_test_edid;
 static unchar sp_tx_ds_vid_stb_cntr;
-unchar slimport_link_bw;
 
 /* for HDCP */
 static unchar sp_tx_hdcp_auth_pass;
@@ -94,7 +93,6 @@ static enum HDMI_RX_System_State hdmi_system_state;
 
 void sp_tx_variable_init(void)
 {
-
 	sp_tx_hdcp_auth_fail_counter = 0;
 	sp_tx_hdcp_auth_pass = 0;
 	sp_tx_hw_hdcp_en = 0;
@@ -114,8 +112,6 @@ void sp_tx_variable_init(void)
 	sp_tx_test_bw = 0;
 	sp_tx_test_lt = 0;
 	sp_tx_bw = BW_54G;
-	slimport_link_bw = 0;
-
 }
 
 static void sp_tx_api_m_gen_clk_select(unchar bspreading)
@@ -1722,6 +1718,8 @@ unchar sp_tx_hw_link_training(void)
 			pr_err("PLL not lock!");
 			return 1;
 		}
+		sp_write_reg(TX_P0, SP_TX_LINK_BW_SET_REG, sp_tx_bw);
+		pr_info("initial BW = %.2x\n",(uint)sp_tx_bw);
 		sp_tx_enhancemode_set();
 
 		sp_tx_aux_dpcdread_bytes(0x00, 0x06, 0x00, 0x01, &c);
@@ -1868,10 +1866,6 @@ unchar sp_tx_lt_pre_config(void)
 #else
 		sp_tx_spread_enable(0);
 #endif
-
-		sp_write_reg(TX_P0, SP_TX_LINK_BW_SET_REG, sp_tx_bw);
-		pr_info("initial BW = %.2x\n",(uint)sp_tx_bw);
-
 		sp_read_reg(TX_P0, SP_TX_ANALOG_PD_REG, &c);
 		c |= CH0_PD;
 		sp_write_reg(TX_P0, SP_TX_ANALOG_PD_REG, c);
@@ -2014,10 +2008,9 @@ bool sp_tx_get_hdmi_connection(void)
 	msleep(200);
 
 	sp_tx_aux_dpcdread_bytes(0x00, 0x05, 0x18, 1, &c);
-	if ((c & 0x41) == 0x41) {
-		sp_tx_aux_dpcdwrite_byte(0x00, 0x05, 0xf3, 0x70);
+	if ((c & 0x41) == 0x41)
 		return TRUE;
-	} else
+	else
 		return FALSE;
 }
 
@@ -2062,7 +2055,7 @@ void sp_tx_edid_read(void)
 	/*Add bandwidth check to support low
 	resolution for VGA and myDP monitor*/
 	sp_tx_get_rx_bw(1, &c);
-	slimport_link_bw = c;
+	sp_set_link_bw(c);
 
 	sp_tx_edid_read_initial();
 	bedid_break = 0;
@@ -2132,6 +2125,14 @@ void sp_tx_edid_read(void)
 	sp_write_reg(TX_P0, SP_TX_LINK_BW_SET_REG, c);
 	sp_tx_enhancemode_set();
 	sp_write_reg(TX_P0, SP_TX_LT_CTRL_REG, SP_TX_LT_EN);
+	/*Release the HPD after the EEPROM loaddown*/
+	for(i=0; i < 10; i++) {
+		sp_read_reg(TX_P0, SP_TX_HDCP_KEY_STATUS, &c);
+		if((c&0x07) == 0x05)
+			return;
+		else
+			msleep(10);
+	}
 }
 
 static void sp_tx_pll_changed_int_handler(void)
@@ -2206,7 +2207,7 @@ static void sp_tx_lt_done_int_handler(void)
 		return;
 
 	sp_read_reg(TX_P0, SP_TX_LT_CTRL_REG, &c);
-	if (c & 0x80) {
+	if (c & 0x70) {
 		c = (c & 0x70) >> 4;
 		pr_err("HW LT failed in interrupt,");
 		pr_err("ERR code = %.2x\n", (uint) c);
@@ -2555,6 +2556,7 @@ static void sp_tx_sink_irq_int_handler(void)
 void sp_tx_hdcp_process(void)
 {
 	unchar c;
+	int i;
 
 	if (!sp_tx_hdcp_capable_chk) {
 		sp_tx_hdcp_capable_chk = 1;
@@ -2596,6 +2598,14 @@ void sp_tx_hdcp_process(void)
        }
 
 	if (!sp_tx_hw_hdcp_en) {
+		/*Issue HDCP after the HDMI Rx key loaddown*/
+		for(i=0; i < 10; i++) {
+			sp_read_reg(RX_P1, HDMI_RX_HDCP_STATUS_REG, &c);
+			if(c&LOAD_KEY_DONE)
+				break;
+			else
+				msleep(10);
+		}
 		sp_tx_power_on(SP_TX_PWR_HDCP);
 		msleep(50);
 		sp_tx_hw_hdcp_enable();
@@ -3351,6 +3361,26 @@ static void hdmi_rx_new_avi_int(void)
 	sp_tx_config_packets(AVI_PACKETS);
 }
 
+static void hdmi_rx_new_gcp_int(void)
+{
+	unchar c;
+	sp_read_reg(RX_P1, HDMI_RX_GENERAL_CTRL, &c);
+	if (c&SET_AVMUTE) {
+		if (!g_video_muted)
+			hdmi_rx_mute_video();
+		if (!g_audio_muted)
+			hdmi_rx_mute_audio();
+
+	} else if (c&CLEAR_AVMUTE) {
+		if ((g_video_muted) &&
+			(hdmi_system_state >HDMI_VIDEO_CONFIG))
+			hdmi_rx_unmute_video();
+		if ((g_audio_muted) &&
+			(hdmi_system_state >HDMI_AUDIO_CONFIG))
+			hdmi_rx_unmute_audio();
+	}
+}
+
 static void hdmi_rx_new_vsi_int(void)
 {
 	if (anx7808_ver_ba) {
@@ -3491,16 +3521,10 @@ void sp_tx_config_hdmi_input(void)
 
 			if (g_hdmi_dvi_status) {
 				pr_notice("HDMI mode: Video is stable.");
-				sp_read_reg(RX_P1, 0x3E, &c);
-				c &= ~0x80;
-				sp_write_reg(RX_P1, 0x3E, c);
 				sp_tx_send_message(MSG_INPUT_HDMI);
 				hdmi_rx_set_sys_state(HDMI_AUDIO_CONFIG);
 			} else {
 				pr_notice("DVI mode: Video is stable.");
-				sp_read_reg(RX_P1, 0x3E, &c);
-				c |= 0x80;
-				sp_write_reg(RX_P1, 0x3E, c);
 				sp_tx_send_message(MSG_INPUT_DVI);
 				hdmi_rx_unmute_audio();
 				hdmi_rx_set_sys_state(HDMI_PLAYBACK);
@@ -3573,6 +3597,8 @@ void hdmi_rx_int_irq_handler(void)
 	if (c2 & HDCP_ERR)
 		hdmi_rx_hdcp_error_int();
 
+	if (c6 & NEW_CP)
+		hdmi_rx_new_gcp_int();
 }
 
 MODULE_DESCRIPTION("Slimport transmitter ANX7808 driver");
