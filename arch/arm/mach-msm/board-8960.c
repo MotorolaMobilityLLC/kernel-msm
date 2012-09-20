@@ -2630,13 +2630,6 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm8960_device_ext_5v_vreg,
 	&msm8960_device_ssbi_pmic,
 	&msm8960_device_ext_otg_sw_vreg,
-	&msm8960_device_qup_spi_gsbi1,
-	&msm8960_device_qup_i2c_gsbi3,
-	&msm8960_device_qup_i2c_gsbi4,
-	&msm8960_device_qup_i2c_gsbi10,
-#ifndef CONFIG_MSM_DSPS
-	&msm8960_device_qup_i2c_gsbi12,
-#endif
 	&msm_slim_ctrl,
 	&msm_device_wcnss_wlan,
 #if defined(CONFIG_BT) && defined(CONFIG_BT_HCIUART_ATH3K)
@@ -3100,6 +3093,44 @@ static void __init register_i2c_devices(void)
 #endif
 }
 
+static void __init msm8960_gsbi_dev_init(void)
+{
+	msm8960_device_qup_spi_gsbi1.dev.platform_data =
+				&msm8960_qup_spi_gsbi1_pdata;
+	spi_register_board_info(spi_board_info, ARRAY_SIZE(spi_board_info));
+	if (socinfo_get_platform_subtype() != PLATFORM_SUBTYPE_SGLTE)
+		spi_register_board_info(spi_eth_info, ARRAY_SIZE(spi_eth_info));
+
+	msm8960_i2c_init();
+
+	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)
+		platform_device_register(&msm8960_device_uart_gsbi8);
+	else
+		platform_device_register(&msm8960_device_uart_gsbi5);
+
+	/* For 8960 Fusion 2.2 Primary IPC */
+	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
+		msm_uart_dm9_pdata.wakeup_irq = gpio_to_irq(94); /* GSBI9(2) */
+		msm_device_uart_dm9.dev.platform_data = &msm_uart_dm9_pdata;
+		platform_device_register(&msm_device_uart_dm9);
+	}
+
+	/* For 8960 Standalone External Bluetooth Interface */
+	if (socinfo_get_platform_subtype() != PLATFORM_SUBTYPE_SGLTE) {
+		msm_device_uart_dm8.dev.platform_data = &msm_uart_dm8_pdata;
+		platform_device_register(&msm_device_uart_dm8);
+	}
+
+	/* Common Devices */
+	platform_device_register(&msm8960_device_qup_spi_gsbi1);
+	platform_device_register(&msm8960_device_qup_i2c_gsbi3);
+	platform_device_register(&msm8960_device_qup_i2c_gsbi4);
+	platform_device_register(&msm8960_device_qup_i2c_gsbi10);
+#ifndef CONFIG_MSM_DSPS
+	platform_device_register(&msm8960_device_qup_i2c_gsbi12);
+#endif
+}
+
 static void __init msm8960_tsens_init(void)
 {
 	if (cpu_is_msm8960())
@@ -3153,17 +3184,10 @@ void __init msm8960_cdp_init(void)
 	if (msm8960_oem_funcs.msm_gpio_init)
 		msm8960_oem_funcs.msm_gpio_init();
 
-	msm8960_device_qup_spi_gsbi1.dev.platform_data =
-				&msm8960_qup_spi_gsbi1_pdata;
-	spi_register_board_info(spi_board_info, ARRAY_SIZE(spi_board_info));
-	if (socinfo_get_platform_subtype() != PLATFORM_SUBTYPE_SGLTE)
-		spi_register_board_info(spi_eth_info, ARRAY_SIZE(spi_eth_info));
-
 	msm8960_init_pmic();
 	if (machine_is_msm8960_liquid() || (machine_is_msm8960_mtp() &&
 		(socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)))
 		msm_isa1200_board_info[0].platform_data = &isa1200_1_pdata;
-	msm8960_i2c_init();
 	msm8960_gfx_init();
 	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
 	msm_spm_l2_init(msm_spm_l2_data);
@@ -3174,23 +3198,9 @@ void __init msm8960_cdp_init(void)
 	if (machine_is_msm8960_cdp())
 		platform_device_register(&msm8960_device_ext_l2_vreg);
 
-	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)
-		platform_device_register(&msm8960_device_uart_gsbi8);
-	else
-		platform_device_register(&msm8960_device_uart_gsbi5);
+	/* Centralized init function for all GSBI devices */
+	msm8960_gsbi_dev_init();
 
-	/* For 8960 Fusion 2.2 Primary IPC */
-	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
-		msm_uart_dm9_pdata.wakeup_irq = gpio_to_irq(94); /* GSBI9(2) */
-		msm_device_uart_dm9.dev.platform_data = &msm_uart_dm9_pdata;
-		platform_device_register(&msm_device_uart_dm9);
-	}
-
-	/* For 8960 Standalone External Bluetooth Interface */
-	if (socinfo_get_platform_subtype() != PLATFORM_SUBTYPE_SGLTE) {
-		msm_device_uart_dm8.dev.platform_data = &msm_uart_dm8_pdata;
-		platform_device_register(&msm_device_uart_dm8);
-	}
 	if (cpu_is_msm8960ab())
 		platform_device_register(&msm8960ab_device_acpuclk);
 	else
