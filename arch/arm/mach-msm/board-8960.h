@@ -70,7 +70,6 @@ enum {
 	SX150X_LIQUID,
 };
 
-#endif
 
 extern struct sx150x_platform_data msm8960_sx150x_data[];
 extern struct msm_camera_board_info msm8960_camera_board_info;
@@ -110,3 +109,4 @@ struct msm8960_oem_init_ptrs {
 };
 extern struct msm8960_oem_init_ptrs msm8960_oem_funcs;
 
+#endif
