@@ -3199,7 +3199,10 @@ void __init msm8960_cdp_init(void)
 		platform_device_register(&msm8960_device_ext_l2_vreg);
 
 	/* Centralized init function for all GSBI devices */
-	msm8960_gsbi_dev_init();
+	if (msm8960_oem_funcs.msm_gsbi_init)
+		msm8960_oem_funcs.msm_gsbi_init(&msm8960_oem_funcs);
+	else
+		msm8960_gsbi_dev_init();
 
 	if (cpu_is_msm8960ab())
 		platform_device_register(&msm8960ab_device_acpuclk);
