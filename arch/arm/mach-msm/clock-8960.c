@@ -1299,18 +1299,18 @@ static struct clk_freq_tbl clk_tbl_gsbi_uart[] = {
 	F_END
 };
 
-static CLK_GSBI_UART(gsbi1_uart,   1, CLK_HALT_CFPB_STATEA_REG, 10);
-static CLK_GSBI_UART(gsbi2_uart,   2, CLK_HALT_CFPB_STATEA_REG,  6);
-static CLK_GSBI_UART(gsbi3_uart,   3, CLK_HALT_CFPB_STATEA_REG,  2);
-static CLK_GSBI_UART(gsbi4_uart,   4, CLK_HALT_CFPB_STATEB_REG, 26);
-static CLK_GSBI_UART(gsbi5_uart,   5, CLK_HALT_CFPB_STATEB_REG, 22);
-static CLK_GSBI_UART(gsbi6_uart,   6, CLK_HALT_CFPB_STATEB_REG, 18);
-static CLK_GSBI_UART(gsbi7_uart,   7, CLK_HALT_CFPB_STATEB_REG, 14);
-static CLK_GSBI_UART(gsbi8_uart,   8, CLK_HALT_CFPB_STATEB_REG, 10);
-static CLK_GSBI_UART(gsbi9_uart,   9, CLK_HALT_CFPB_STATEB_REG,  6);
-static CLK_GSBI_UART(gsbi10_uart, 10, CLK_HALT_CFPB_STATEB_REG,  2);
-static CLK_GSBI_UART(gsbi11_uart, 11, CLK_HALT_CFPB_STATEC_REG, 17);
-static CLK_GSBI_UART(gsbi12_uart, 12, CLK_HALT_CFPB_STATEC_REG, 13);
+CLK_GSBI_UART(gsbi1_uart,   1, CLK_HALT_CFPB_STATEA_REG, 10);
+CLK_GSBI_UART(gsbi2_uart,   2, CLK_HALT_CFPB_STATEA_REG,  6);
+CLK_GSBI_UART(gsbi3_uart,   3, CLK_HALT_CFPB_STATEA_REG,  2);
+CLK_GSBI_UART(gsbi4_uart,   4, CLK_HALT_CFPB_STATEB_REG, 26);
+CLK_GSBI_UART(gsbi5_uart,   5, CLK_HALT_CFPB_STATEB_REG, 22);
+CLK_GSBI_UART(gsbi6_uart,   6, CLK_HALT_CFPB_STATEB_REG, 18);
+CLK_GSBI_UART(gsbi7_uart,   7, CLK_HALT_CFPB_STATEB_REG, 14);
+CLK_GSBI_UART(gsbi8_uart,   8, CLK_HALT_CFPB_STATEB_REG, 10);
+CLK_GSBI_UART(gsbi9_uart,   9, CLK_HALT_CFPB_STATEB_REG,  6);
+CLK_GSBI_UART(gsbi10_uart, 10, CLK_HALT_CFPB_STATEB_REG,  2);
+CLK_GSBI_UART(gsbi11_uart, 11, CLK_HALT_CFPB_STATEC_REG, 17);
+CLK_GSBI_UART(gsbi12_uart, 12, CLK_HALT_CFPB_STATEC_REG, 13);
 
 #define CLK_GSBI_QUP(i, n, h_r, h_b) \
 	struct rcg_clk i##_clk = { \
@@ -1358,18 +1358,18 @@ static struct clk_freq_tbl clk_tbl_gsbi_qup[] = {
 	F_END
 };
 
-static CLK_GSBI_QUP(gsbi1_qup,   1, CLK_HALT_CFPB_STATEA_REG,  9);
-static CLK_GSBI_QUP(gsbi2_qup,   2, CLK_HALT_CFPB_STATEA_REG,  4);
-static CLK_GSBI_QUP(gsbi3_qup,   3, CLK_HALT_CFPB_STATEA_REG,  0);
-static CLK_GSBI_QUP(gsbi4_qup,   4, CLK_HALT_CFPB_STATEB_REG, 24);
-static CLK_GSBI_QUP(gsbi5_qup,   5, CLK_HALT_CFPB_STATEB_REG, 20);
-static CLK_GSBI_QUP(gsbi6_qup,   6, CLK_HALT_CFPB_STATEB_REG, 16);
-static CLK_GSBI_QUP(gsbi7_qup,   7, CLK_HALT_CFPB_STATEB_REG, 12);
-static CLK_GSBI_QUP(gsbi8_qup,   8, CLK_HALT_CFPB_STATEB_REG,  8);
-static CLK_GSBI_QUP(gsbi9_qup,   9, CLK_HALT_CFPB_STATEB_REG,  4);
-static CLK_GSBI_QUP(gsbi10_qup, 10, CLK_HALT_CFPB_STATEB_REG,  0);
-static CLK_GSBI_QUP(gsbi11_qup, 11, CLK_HALT_CFPB_STATEC_REG, 15);
-static CLK_GSBI_QUP(gsbi12_qup, 12, CLK_HALT_CFPB_STATEC_REG, 11);
+CLK_GSBI_QUP(gsbi1_qup,   1, CLK_HALT_CFPB_STATEA_REG,  9);
+CLK_GSBI_QUP(gsbi2_qup,   2, CLK_HALT_CFPB_STATEA_REG,  4);
+CLK_GSBI_QUP(gsbi3_qup,   3, CLK_HALT_CFPB_STATEA_REG,  0);
+CLK_GSBI_QUP(gsbi4_qup,   4, CLK_HALT_CFPB_STATEB_REG, 24);
+CLK_GSBI_QUP(gsbi5_qup,   5, CLK_HALT_CFPB_STATEB_REG, 20);
+CLK_GSBI_QUP(gsbi6_qup,   6, CLK_HALT_CFPB_STATEB_REG, 16);
+CLK_GSBI_QUP(gsbi7_qup,   7, CLK_HALT_CFPB_STATEB_REG, 12);
+CLK_GSBI_QUP(gsbi8_qup,   8, CLK_HALT_CFPB_STATEB_REG,  8);
+CLK_GSBI_QUP(gsbi9_qup,   9, CLK_HALT_CFPB_STATEB_REG,  4);
+CLK_GSBI_QUP(gsbi10_qup, 10, CLK_HALT_CFPB_STATEB_REG,  0);
+CLK_GSBI_QUP(gsbi11_qup, 11, CLK_HALT_CFPB_STATEC_REG, 15);
+CLK_GSBI_QUP(gsbi12_qup, 12, CLK_HALT_CFPB_STATEC_REG, 11);
 
 #define F_PDM(f, s, d) \
 	{ \
@@ -2126,7 +2126,7 @@ static struct branch_clk dma_bam_p_clk = {
 	},
 };
 
-static struct branch_clk gsbi1_p_clk = {
+struct branch_clk gsbi1_p_clk = {
 	.b = {
 		.ctl_reg = GSBIn_HCLK_CTL_REG(1),
 		.en_mask = BIT(4),
@@ -2142,7 +2142,7 @@ static struct branch_clk gsbi1_p_clk = {
 	},
 };
 
-static struct branch_clk gsbi2_p_clk = {
+struct branch_clk gsbi2_p_clk = {
 	.b = {
 		.ctl_reg = GSBIn_HCLK_CTL_REG(2),
 		.en_mask = BIT(4),
@@ -2158,7 +2158,7 @@ static struct branch_clk gsbi2_p_clk = {
 	},
 };
 
-static struct branch_clk gsbi3_p_clk = {
+struct branch_clk gsbi3_p_clk = {
 	.b = {
 		.ctl_reg = GSBIn_HCLK_CTL_REG(3),
 		.en_mask = BIT(4),
@@ -2174,7 +2174,7 @@ static struct branch_clk gsbi3_p_clk = {
 	},
 };
 
-static struct branch_clk gsbi4_p_clk = {
+struct branch_clk gsbi4_p_clk = {
 	.b = {
 		.ctl_reg = GSBIn_HCLK_CTL_REG(4),
 		.en_mask = BIT(4),
@@ -2190,7 +2190,7 @@ static struct branch_clk gsbi4_p_clk = {
 	},
 };
 
-static struct branch_clk gsbi5_p_clk = {
+struct branch_clk gsbi5_p_clk = {
 	.b = {
 		.ctl_reg = GSBIn_HCLK_CTL_REG(5),
 		.en_mask = BIT(4),
@@ -2206,7 +2206,7 @@ static struct branch_clk gsbi5_p_clk = {
 	},
 };
 
-static struct branch_clk gsbi6_p_clk = {
+struct branch_clk gsbi6_p_clk = {
 	.b = {
 		.ctl_reg = GSBIn_HCLK_CTL_REG(6),
 		.en_mask = BIT(4),
@@ -2222,7 +2222,7 @@ static struct branch_clk gsbi6_p_clk = {
 	},
 };
 
-static struct branch_clk gsbi7_p_clk = {
+struct branch_clk gsbi7_p_clk = {
 	.b = {
 		.ctl_reg = GSBIn_HCLK_CTL_REG(7),
 		.en_mask = BIT(4),
@@ -2238,7 +2238,7 @@ static struct branch_clk gsbi7_p_clk = {
 	},
 };
 
-static struct branch_clk gsbi8_p_clk = {
+struct branch_clk gsbi8_p_clk = {
 	.b = {
 		.ctl_reg = GSBIn_HCLK_CTL_REG(8),
 		.en_mask = BIT(4),
@@ -2254,7 +2254,7 @@ static struct branch_clk gsbi8_p_clk = {
 	},
 };
 
-static struct branch_clk gsbi9_p_clk = {
+struct branch_clk gsbi9_p_clk = {
 	.b = {
 		.ctl_reg = GSBIn_HCLK_CTL_REG(9),
 		.en_mask = BIT(4),
@@ -2270,7 +2270,7 @@ static struct branch_clk gsbi9_p_clk = {
 	},
 };
 
-static struct branch_clk gsbi10_p_clk = {
+struct branch_clk gsbi10_p_clk = {
 	.b = {
 		.ctl_reg = GSBIn_HCLK_CTL_REG(10),
 		.en_mask = BIT(4),
@@ -2286,7 +2286,7 @@ static struct branch_clk gsbi10_p_clk = {
 	},
 };
 
-static struct branch_clk gsbi11_p_clk = {
+struct branch_clk gsbi11_p_clk = {
 	.b = {
 		.ctl_reg = GSBIn_HCLK_CTL_REG(11),
 		.en_mask = BIT(4),
@@ -2302,7 +2302,7 @@ static struct branch_clk gsbi11_p_clk = {
 	},
 };
 
-static struct branch_clk gsbi12_p_clk = {
+struct branch_clk gsbi12_p_clk = {
 	.b = {
 		.ctl_reg = GSBIn_HCLK_CTL_REG(12),
 		.en_mask = BIT(4),
