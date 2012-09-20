@@ -103,8 +103,9 @@ void msm8960_init_irq(void);
 void msm8960_cdp_init(void);
 
 struct msm8960_oem_init_ptrs {
-	void (*msm_gpio_init)(void);
-	void (*msm_cam_init)(void);
+	void (*msm_gpio_init)(struct msm8960_oem_init_ptrs *);
+	void (*msm_cam_init)(struct msm8960_oem_init_ptrs *);
+	void *oem_data;
 };
 extern struct msm8960_oem_init_ptrs msm8960_oem_funcs;
 

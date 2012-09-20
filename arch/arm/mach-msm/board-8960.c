@@ -3182,7 +3182,7 @@ void __init msm8960_cdp_init(void)
 		msm_device_hsic_host.dev.parent = &smsc_hub_device.dev;
 	msm8960_init_gpiomux();
 	if (msm8960_oem_funcs.msm_gpio_init)
-		msm8960_oem_funcs.msm_gpio_init();
+		msm8960_oem_funcs.msm_gpio_init(&msm8960_oem_funcs);
 
 	msm8960_init_pmic();
 	if (machine_is_msm8960_liquid() || (machine_is_msm8960_mtp() &&
