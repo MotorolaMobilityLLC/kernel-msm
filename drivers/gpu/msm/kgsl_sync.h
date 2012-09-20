@@ -30,8 +30,6 @@ struct kgsl_sync_pt {
 struct sync_pt *kgsl_sync_pt_create(struct sync_timeline *timeline,
 	unsigned int timestamp);
 void kgsl_sync_pt_destroy(struct sync_pt *pt);
-struct sync_pt *kgsl_sync_pt_dup(struct sync_pt *pt);
-int kgsl_sync_pt_has_signaled(struct sync_pt *pt);
 int kgsl_add_fence_event(struct kgsl_device *device,
 	u32 context_id, u32 timestamp, void __user *data, int len,
 	struct kgsl_device_private *owner);
@@ -48,16 +46,6 @@ static inline struct sync_pt
 
 static inline void kgsl_sync_pt_destroy(struct sync_pt *pt)
 {
-}
-
-static inline struct sync_pt *kgsl_sync_pt_dup(struct sync_pt *pt)
-{
-	return NULL;
-}
-
-static inline int kgsl_sync_pt_has_signaled(struct sync_pt *pt)
-{
-	return 0;
 }
 
 static inline int kgsl_add_fence_event(struct kgsl_device *device,

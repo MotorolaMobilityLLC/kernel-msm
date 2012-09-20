@@ -38,13 +38,13 @@ void kgsl_sync_pt_destroy(struct sync_pt *pt)
 	sync_pt_free(pt);
 }
 
-struct sync_pt *kgsl_sync_pt_dup(struct sync_pt *pt)
+static struct sync_pt *kgsl_sync_pt_dup(struct sync_pt *pt)
 {
 	struct kgsl_sync_pt *kpt = (struct kgsl_sync_pt *) pt;
 	return kgsl_sync_pt_create(pt->parent, kpt->timestamp);
 }
 
-int kgsl_sync_pt_has_signaled(struct sync_pt *pt)
+static int kgsl_sync_pt_has_signaled(struct sync_pt *pt)
 {
 	struct kgsl_sync_pt *kpt = (struct kgsl_sync_pt *) pt;
 	struct kgsl_sync_timeline *ktimeline =
