@@ -41,7 +41,7 @@ struct dt_gpiomux {
 #define DT_PATH_MUX		"/System@0/IOMUX@0"
 #define DT_PROP_MUX_SETTINGS	"settings"
 
-static void __init mmi_gpiomux_init(void)
+static void __init mmi_gpiomux_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	struct device_node *node;
 	const struct dt_gpiomux *prop;
@@ -75,7 +75,7 @@ static void __init mmi_gpiomux_init(void)
 	of_node_put(node);
 }
 
-static void __init mmi_cam_init(void)
+static void __init mmi_cam_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	pr_info("%s: camera support disabled\n", __func__);
 }
