@@ -1962,8 +1962,10 @@ static int is_recharging(struct pm8921_bms_chip *chip, int soc)
 {
 	if (soc == -EINVAL)
 		return 0;
-	if (pm8921_get_batt_state() ==  POWER_SUPPLY_STATUS_FULL
-			&& soc < 100)
+	if ((pm8921_get_batt_state() == POWER_SUPPLY_STATUS_FULL)
+			&& (soc < 100)
+			&& (pm8921_get_batt_health()
+				!= POWER_SUPPLY_HEALTH_OVERHEAT))
 		return 1;
 	return 0;
 }

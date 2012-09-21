@@ -2098,6 +2098,22 @@ int pm8921_get_batt_state(void)
 }
 EXPORT_SYMBOL(pm8921_get_batt_state);
 
+int pm8921_get_batt_health(void)
+{
+	int batt_health;
+
+	if (!the_chip) {
+		pr_err("called before init\n");
+		return -EINVAL;
+	}
+
+	batt_health = get_prop_batt_health(the_chip);
+
+	pr_debug("batt health = %d\n", batt_health);
+	return batt_health;
+}
+EXPORT_SYMBOL(pm8921_get_batt_health);
+
 int pm8921_batt_temperature(void)
 {
 	if (!the_chip) {
