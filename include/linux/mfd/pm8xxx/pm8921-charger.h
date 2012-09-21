@@ -292,6 +292,7 @@ int set_wireless_power_supply_control(int value);
 int pm8921_set_ext_battery_health(int health, int i_limit);
 int pm8921_get_batt_state(void);
 int pm8921_force_start_charging(void);
+int pm8921_get_batt_health(void);
 
 /**
  * pm8921_is_batfet_closed - battery fet status
