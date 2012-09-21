@@ -106,6 +106,7 @@ struct msm8960_oem_init_ptrs {
 	void (*msm_cam_init)(struct msm8960_oem_init_ptrs *);
 	void (*msm_gsbi_init)(struct msm8960_oem_init_ptrs *);
 	void (*msm_gpio_mpp_init)(struct msm8960_oem_init_ptrs *);
+	void (*msm_i2c_init)(struct msm8960_oem_init_ptrs *);
 	void *oem_data;
 };
 extern struct msm8960_oem_init_ptrs msm8960_oem_funcs;
