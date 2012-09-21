@@ -119,6 +119,7 @@ struct pm8xxx_mpp_init {
 
 /* Initial PM8921 GPIO configurations */
 static struct pm8xxx_gpio_init pm8921_gpios[] __initdata = {
+	PM8921_GPIO_INPUT(13, PM_GPIO_PULL_DN), /* EARJACK_DEBUGGER */
 	PM8921_GPIO_INPUT(14, PM_GPIO_PULL_DN), /* SLIMPORT_CBL_DET */
 	PM8921_GPIO_OUTPUT(15, 0, HIGH), /* ANX_P_DWN_CTL */
 	PM8921_GPIO_OUTPUT(16, 0, HIGH), /* ANX_AVDD33_EN */
