@@ -3232,7 +3232,12 @@ void __init msm8960_cdp_init(void)
 	msm8960_init_mmc();
 	if (machine_is_msm8960_liquid())
 		mxt_init_hw_liquid();
-	register_i2c_devices();
+
+	/* I2C Device Registration */
+	if (msm8960_oem_funcs.msm_i2c_init)
+		msm8960_oem_funcs.msm_i2c_init(&msm8960_oem_funcs);
+	else
+		register_i2c_devices();
 	msm8960_init_fb();
 	slim_register_board_info(msm_slim_devices,
 		ARRAY_SIZE(msm_slim_devices));
