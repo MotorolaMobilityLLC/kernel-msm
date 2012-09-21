@@ -262,8 +262,6 @@ static void remove_headset(struct hsd_info *hi)
 	if (has_mic == HEADSET_WITH_MIC)
 		input_report_switch(hi->input, SW_MICROPHONE_INSERT, 0);
 	input_sync(hi->input);
-	if (hi->set_uart_console)
-		hi->set_uart_console(1);
 }
 
 static void detect_work(struct work_struct *work)
@@ -279,8 +277,6 @@ static void detect_work(struct work_struct *work)
 		if (switch_get_state(&hi->sdev) != NO_DEVICE) {
 			remove_headset(hi);
 		} else {
-			if (hi->set_uart_console)
-				hi->set_uart_console(1);
 			HSD_DBG("err_invalid_state state = %d\n", state);
 		}
 	} else {
