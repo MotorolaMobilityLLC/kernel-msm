@@ -17,6 +17,9 @@
 /* from board-mmi-gsbi.c */
 extern void mmi_init_gsbi_devices_from_dt(void);
 
+/* from board-mmi-i2c.c */
+extern void mmi_register_i2c_devices_from_dt(void);
+
 /* from board-mmi-pmic.c */
 extern void mmi_init_pm8921_gpio_mpp(void);
 

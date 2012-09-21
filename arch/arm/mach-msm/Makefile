@@ -307,6 +307,7 @@ obj-$(CONFIG_MACH_LGE) += lge/
 obj-$(CONFIG_MACH_MSM8960_MMI) += devtree_util.o
 obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi.o
 obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi-gsbi.o
+obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi-i2c.o
 obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi-pmic.o
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
