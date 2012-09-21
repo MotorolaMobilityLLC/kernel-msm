@@ -2944,10 +2944,11 @@ static void unplug_usbcheck_work(struct work_struct *work)
 	usb_vin = vchg.physical;
 	pr_info("usb_vin : %d, max_voltage_mv=%d\n", usb_vin, chip->max_voltage_mv);
 
-	if (usb_vin/1000 <= chip->max_voltage_mv) {
-		unplug_ovp_fet_open(chip);
+	if ((usb_vin/1000 <= chip->max_voltage_mv) &&
+		(usb_vin/1000 > PM8921_CHG_VDDMAX_MIN)){
+			pr_info(" Turn off USB ovp \n");
+			unplug_ovp_fet_open(chip);
 	}
-	pr_debug(" Notify USB update here \n");
 	power_supply_changed(&chip->batt_psy);
 	power_supply_changed(&chip->usb_psy);
 	power_supply_changed(&chip->dc_psy);
