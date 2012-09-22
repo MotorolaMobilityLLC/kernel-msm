@@ -792,7 +792,7 @@ static char cabc_set4[6] = {0xC8, 0x22, 0x22, 0x22, 0x33, 0x80};//A-CABC applied
 static char exit_sleep_power_control_1[2] =  {0xC2,0x02};
 static char exit_sleep_power_control_2[2] =  {0xC2,0x06};
 static char exit_sleep_power_control_3[2] =  {0xC2,0x0E};
-static char otp_protection[3] =  {0xF1,0x11,0x01};
+static char otp_protection[3] =  {0xF1,0x10,0x00};
 static char sleep_out_for_cabc[2] = {0x11,0x00};
 static char gate_output_enabled_by_manual[2] = {0xC1,0x08};
 
