@@ -837,7 +837,7 @@ VOS_STATUS hdd_tx_complete_cbk( v_VOID_t *vosContext,
    pAdapter = hdd_get_adapter(pHddCtx,WLAN_HDD_INFRA_STATION);
    if(pAdapter == NULL)
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: HDD adapter context is Null", __FUNCTION__);
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"%s: HDD adapter context is Null", __FUNCTION__);
    }
    else
    {

@@ -359,17 +359,22 @@ void dxeChannelAllDescDump
 {
    wpt_uint32               channelLoop;
    WLANDXE_DescCtrlBlkType *targetCtrlBlk;
+   wpt_uint32               previousCtrlValue = 0;
 
    targetCtrlBlk = channelEntry->headCtrlBlk;
 
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
             "%s %d descriptor chains",
-                    channelType[channelEntry->channelType], (int)channelEntry->numDesc);
+            channelType[channelEntry->channelType], channelEntry->numDesc);
    for(channelLoop = 0; channelLoop < channelEntry->numDesc; channelLoop++)
    {
-      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
-               "%5d : 0x%x", (int)targetCtrlBlk->ctrlBlkOrder,
-                                    (unsigned int)targetCtrlBlk->linkedDesc->descCtrl.ctrl);
+      if(previousCtrlValue != targetCtrlBlk->linkedDesc->descCtrl.ctrl)
+      {
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                  "%5d : 0x%x", targetCtrlBlk->ctrlBlkOrder,
+                  targetCtrlBlk->linkedDesc->descCtrl.ctrl);
+      }
+      previousCtrlValue = targetCtrlBlk->linkedDesc->descCtrl.ctrl;
       targetCtrlBlk = (WLANDXE_DescCtrlBlkType *)targetCtrlBlk->nextCtrlBlk;
    }
 
@@ -1638,6 +1643,7 @@ static wpt_int32 dxeRXFrameRouteUpperLayer
       /* Reap Rx frames */ 
       rx_reaped_buf[frameCount] = currentCtrlBlk->xfrFrame;
       frameCount++;
+      currentCtrlBlk->xfrFrame = NULL;
 
       /* Now try to refill the ring with empty Rx buffers to keep DXE busy */
       dxeRXFrameRefillRing(dxeCtxt,channelEntry);
@@ -1780,7 +1786,7 @@ static wpt_status dxeRXFrameReady
             frameCount = dxeRXFrameRouteUpperLayer(dxeCtxt, channelEntry);
             HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                      "re-sync routed %d frames to upper layer", (int)frameCount);
-            frameCount = 0;
+            channelEntry->numFragmentCurrentChain = frameCount;
          }
          /* Successive Empty interrupt
           * But this case, first descriptor also invalidated, then it means head descriptor 
@@ -1803,7 +1809,6 @@ static wpt_status dxeRXFrameReady
          }
       }
    }
-
    channelEntry->numFragmentCurrentChain = frameCount;
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
             "%s Exit", __FUNCTION__);

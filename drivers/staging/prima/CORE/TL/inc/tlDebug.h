@@ -67,8 +67,8 @@
 #else /* WLAN DEBUG */
 
 #define TLLOGP(x)  x
-#define TLLOGE(x)  {}
-#define TLLOGW(x)  {}
+#define TLLOGE(x)  x
+#define TLLOGW(x)  x
 #define TLLOG1(x)  {}
 #define TLLOG2(x)  {}
 #define TLLOG3(x)  {}

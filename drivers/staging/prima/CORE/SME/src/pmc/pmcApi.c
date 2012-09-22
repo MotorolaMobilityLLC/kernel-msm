@@ -1254,7 +1254,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
     {
         pCommand = GET_BASE_ADDR(pEntry, tSmeCmd, Link);
 
-        smsLog(pMac, LOG1, FL("process message = %d\n"), pMsg->messageType);
+        smsLog(pMac, LOG2, FL("process message = %d\n"), pMsg->messageType);
 
     /* Process each different type of message. */
     switch (pMsg->messageType)
@@ -1262,7 +1262,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
 
     /* We got a response to our IMPS request.  */
     case eWNI_PMC_ENTER_IMPS_RSP:
-        smsLog(pMac, LOGW, FL("Rcvd eWNI_PMC_ENTER_IMPS_RSP with status = %d\n"), pMsg->statusCode);
+        smsLog(pMac, LOG2, FL("Rcvd eWNI_PMC_ENTER_IMPS_RSP with status = %d\n"), pMsg->statusCode);
             if( (eSmeCommandEnterImps != pCommand->command) && (eSmeCommandEnterStandby != pCommand->command) )
             {
                 smsLog(pMac, LOGW, FL("Rcvd eWNI_PMC_ENTER_IMPS_RSP without request\n"));
@@ -1312,7 +1312,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
 
     /* We got a response to our wake from IMPS request. */
     case eWNI_PMC_EXIT_IMPS_RSP:
-            smsLog(pMac, LOGW, FL("Rcvd eWNI_PMC_EXIT_IMPS_RSP with status = %d\n"), pMsg->statusCode);
+            smsLog(pMac, LOG2, FL("Rcvd eWNI_PMC_EXIT_IMPS_RSP with status = %d\n"), pMsg->statusCode);
             if( eSmeCommandExitImps != pCommand->command )
             {
                 smsLog(pMac, LOGW, FL("Rcvd eWNI_PMC_EXIT_IMPS_RSP without request\n"));
@@ -1337,7 +1337,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
 
     /* We got a response to our BMPS request.  */
     case eWNI_PMC_ENTER_BMPS_RSP:
-            smsLog(pMac, LOGW, FL("Rcvd eWNI_PMC_ENTER_BMPS_RSP with status = %d\n"), pMsg->statusCode);
+            smsLog(pMac, LOG2, FL("Rcvd eWNI_PMC_ENTER_BMPS_RSP with status = %d\n"), pMsg->statusCode);
             if( eSmeCommandEnterBmps != pCommand->command )
             {
                 smsLog(pMac, LOGW, FL("Rcvd eWNI_PMC_ENTER_BMPS_RSP without request\n"));
@@ -1374,7 +1374,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
 
     /* We got a response to our wake from BMPS request. */
     case eWNI_PMC_EXIT_BMPS_RSP:
-            smsLog(pMac, LOGW, FL("Rcvd eWNI_PMC_EXIT_BMPS_RSP with status = %d\n"), pMsg->statusCode);
+            smsLog(pMac, LOG2, FL("Rcvd eWNI_PMC_EXIT_BMPS_RSP with status = %d\n"), pMsg->statusCode);
             if( eSmeCommandExitBmps != pCommand->command )
             {
                 smsLog(pMac, LOGW, FL("Rcvd eWNI_PMC_EXIT_BMPS_RSP without request\n"));
@@ -1399,7 +1399,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
 
         /* We got a response to our Start UAPSD request.  */
         case eWNI_PMC_ENTER_UAPSD_RSP:
-            smsLog(pMac, LOGW, FL("Rcvd eWNI_PMC_ENTER_UAPSD_RSP with status = %d\n"), pMsg->statusCode);
+            smsLog(pMac, LOG2, FL("Rcvd eWNI_PMC_ENTER_UAPSD_RSP with status = %d\n"), pMsg->statusCode);
             if( eSmeCommandEnterUapsd != pCommand->command )
         {
                 smsLog(pMac, LOGW, FL("Rcvd eWNI_PMC_ENTER_UAPSD_RSP without request\n"));
@@ -1434,7 +1434,7 @@ static void pmcProcessResponse( tpAniSirGlobal pMac, tSirSmeRsp *pMsg )
 
       /* We got a response to our Stop UAPSD request.  */
       case eWNI_PMC_EXIT_UAPSD_RSP:
-         smsLog(pMac, LOGW, FL("Rcvd eWNI_PMC_EXIT_UAPSD_RSP with status = %d\n"), pMsg->statusCode);
+         smsLog(pMac, LOG2, FL("Rcvd eWNI_PMC_EXIT_UAPSD_RSP with status = %d\n"), pMsg->statusCode);
             if( eSmeCommandExitUapsd != pCommand->command )
             {
                 smsLog(pMac, LOGW, FL("Rcvd eWNI_PMC_EXIT_UAPSD_RSP without request\n"));

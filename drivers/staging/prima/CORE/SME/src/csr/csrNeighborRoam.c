@@ -204,7 +204,7 @@ void csrNeighborRoamFreeRoamableBSSList(tpAniSirGlobal pMac, tDblLinkList *pList
 {
     tpCsrNeighborRoamBSSInfo pResult = NULL;
 
-    NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Emptying the BSS list. Current count = %d\n"), csrLLCount(pList));
+    NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Emptying the BSS list. Current count = %d\n"), csrLLCount(pList));
 
     /* Pick up the head, remove and free the node till the list becomes empty */
     while ((pResult = csrNeighborRoamGetRoamableAPListNextEntry(pMac, pList, NULL)) != NULL)
@@ -403,27 +403,11 @@ void csrNeighborRoamResetConnectedStateControlInfo(tpAniSirGlobal pMac)
 
 }
 
-/* ---------------------------------------------------------------------------
-
-    \fn csrNeighborRoamResetInitStateControlInfo
-
-    \brief  This function will reset the neighbor roam control info data structures. 
-            This function should be invoked whenever we move to CONNECTED state from 
-            INIT state
-
-    \param  pMac - The handle returned by macOpen.
-
-    \return VOID
-
----------------------------------------------------------------------------*/
-void csrNeighborRoamResetInitStateControlInfo(tpAniSirGlobal pMac)
+void csrNeighborRoamResetReportScanStateControlInfo(tpAniSirGlobal pMac)
 {
     tpCsrNeighborRoamControlInfo pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     VOS_STATUS                    vosStatus = VOS_STATUS_SUCCESS;
 
-    csrNeighborRoamResetConnectedStateControlInfo(pMac);
-
-    /* In addition to the above resets, we should clear off the curAPBssId/Session ID in the timers */
     pNeighborRoamInfo->csrSessionId            =   CSR_SESSION_ID_INVALID;
     vos_mem_set(pNeighborRoamInfo->currAPbssid, sizeof(tCsrBssid), 0);
     pNeighborRoamInfo->neighborScanTimerInfo.pMac = pMac;
@@ -485,6 +469,29 @@ void csrNeighborRoamResetInitStateControlInfo(tpAniSirGlobal pMac)
 
     return;
 }
+
+/* ---------------------------------------------------------------------------
+
+    \fn csrNeighborRoamResetInitStateControlInfo
+
+    \brief  This function will reset the neighbor roam control info data structures. 
+            This function should be invoked whenever we move to CONNECTED state from 
+            INIT state
+
+    \param  pMac - The handle returned by macOpen.
+
+    \return VOID
+
+---------------------------------------------------------------------------*/
+void csrNeighborRoamResetInitStateControlInfo(tpAniSirGlobal pMac)
+{
+    csrNeighborRoamResetConnectedStateControlInfo(pMac);
+
+    /* In addition to the above resets, we should clear off the curAPBssId/Session ID in the timers */
+    csrNeighborRoamResetReportScanStateControlInfo(pMac);
+}
+
+
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
 /* ---------------------------------------------------------------------------
@@ -721,6 +728,7 @@ void csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosStatus)
     {
         NEIGHBOR_ROAM_DEBUG(pMac, LOGW, FL("Preauth response received in state %\n"), 
             pNeighborRoamInfo->neighborRoamState);
+        return;
     }
 
     if (VOS_STATUS_E_TIMEOUT != vosStatus)
@@ -2300,10 +2308,17 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
             csrNeighborRoamResetInitStateControlInfo(pMac);
             break; 
 
+        case eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN:
+        case eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING:
+            CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_INIT)
+            csrNeighborRoamResetReportScanStateControlInfo(pMac);
+            break;
+
         default:
             NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Received disconnect event in state %d"), pNeighborRoamInfo->neighborRoamState);
             NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Transitioning to INIT state"));
             CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_INIT)
+            break;
     }
     return eHAL_STATUS_SUCCESS;
 }

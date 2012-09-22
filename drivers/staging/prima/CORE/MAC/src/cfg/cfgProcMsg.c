@@ -707,7 +707,7 @@ ProcSetReqInternal(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam, tANI_
             }
             else
             {
-                PELOGW(cfgLog( pMac, LOGW, "  CFGID %d no rsp\n", cfgId);)
+                PELOGW(cfgLog( pMac, LOG2, "  CFGID %d no rsp\n", cfgId);)
             }
 
             if (valueLenRoundedUp4 > length)

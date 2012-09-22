@@ -1291,6 +1291,16 @@ typedef enum
 #define CFG_ENABLE_MCC_ENABLED_DEFAULT          ( 0 ) 
 
 /*
+ * Allow GO in MCC mode to accept different beacon interval than STA's.
+ * Added for Wi-Fi Cert. 5.1.12
+ * Default: Disable
+ */
+#define CFG_ALLOW_MCC_GO_DIFF_BI_NAME           "gAllowMCCGODiffBI"
+#define CFG_ALLOW_MCC_GO_DIFF_BI_MIN            ( 0 )
+#define CFG_ALLOW_MCC_GO_DIFF_BI_MAX            ( 1 )
+#define CFG_ALLOW_MCC_GO_DIFF_BI_DEFAULT        ( 0 ) 
+
+/*
  * Enable/Disable Thermal Mitigation feature
  * Default: Disable
  */
@@ -1592,6 +1602,7 @@ typedef struct
    v_S31_t                     linkSpeedRssiHigh;
    v_S31_t                     linkSpeedRssiLow;
    v_U8_t                      enableMCC;
+   v_U8_t                      allowMCCGODiffBI;
 #ifdef WLAN_FEATURE_P2P
    v_BOOL_t                    isP2pDeviceAddrAdministrated;
 #endif
