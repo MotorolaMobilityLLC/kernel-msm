@@ -1636,7 +1636,9 @@ WDI_Shutdown
             "%s: Failed to delete mutex %d",  __FUNCTION__, wptStatus);
       WDI_ASSERT(0);
    }
-
+   /* Free the global variables */
+   wpalMemoryFree(gpHostWlanFeatCaps);
+   wpalMemoryFree(gpFwWlanFeatCaps);
    /*Clear control block.  note that this will clear the "magic"
      which will inhibit all asynchronous callbacks*/
    WDI_CleanCB(&gWDICb);

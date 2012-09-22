@@ -1468,10 +1468,10 @@ HAL
 WNI_CFG_LOG_LEVEL    I    4    12
 V   RW    NP
 NONE
-0   7   3
+0   7   4
 V   RW    NP
 NONE
-0   7   3
+0   7   4
 
 *
 * OLBC detection timeout

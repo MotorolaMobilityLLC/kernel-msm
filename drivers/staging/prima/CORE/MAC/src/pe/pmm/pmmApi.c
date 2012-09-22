@@ -230,7 +230,7 @@ void pmmInitBmpsResponseHandler(tpAniSirGlobal pMac, eHalStatus rspStatus)
     //If response is failure, then send the response back to PMC and reset its state.
     if(rspStatus == eHAL_STATUS_SUCCESS)
     {
-        PELOGW(pmmLog(pMac, LOGW,
+        PELOG2(pmmLog(pMac, LOG2,
             FL("pmmBmps: Received successful response from HAL to enter BMPS_POWER_SAVE \n"));)
 
         pMac->pmm.gPmmState = ePMM_STATE_BMPS_SLEEP;
@@ -680,7 +680,7 @@ tSirRetStatus  pmmSendInitPowerSaveMsg(tpAniSirGlobal pMac,tpPESession psessionE
     msgQ.bodyptr = pBmpsParams;
     msgQ.bodyval = 0;
 
-    PELOGW(pmmLog( pMac, LOGW,
+    PELOG2(pmmLog( pMac, LOG2,
         FL( "pmmBmps: Sending WDA_ENTER_BMPS_REQ" ));)
 
     /* we need to defer any incoming messages until we get a
@@ -911,7 +911,7 @@ void pmmExitBmpsResponseHandler(tpAniSirGlobal pMac,  tpSirMsgQ limMsg)
     pMac->sys.gSysEnableScanMode = true;
 
     // send response to PMC
-   if(IS_SLM_SESSIONIZED )
+   if(IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW )
    {
        limSendSmeRsp(pMac, eWNI_PMC_EXIT_BMPS_RSP, retStatus, 
                   psessionEntry->smeSessionId, psessionEntry->transactionId);
@@ -1596,7 +1596,7 @@ void pmmEnterImpsResponseHandler (tpAniSirGlobal pMac, eHalStatus rspStatus)
         //if success, change the state to IMPS sleep mode
         pMac->pmm.gPmmState = ePMM_STATE_IMPS_SLEEP;
 
-        PELOGW(pmmLog(pMac, LOGW,
+        PELOG2(pmmLog(pMac, LOG2,
             FL("pmmImps: Received successful WDA_ENTER_IMPS_RSP from HAL\n"));)
 
         //update power save statistics
@@ -1742,7 +1742,7 @@ void pmmExitImpsResponseHandler(tpAniSirGlobal pMac, eHalStatus rspStatus)
     case eHAL_STATUS_SUCCESS:
         {
             resultCode = eSIR_SME_SUCCESS;
-            PELOGW(pmmLog(pMac, LOGW, 
+            PELOG2(pmmLog(pMac, LOG2, 
                           FL("pmmImps: Received WDA_EXIT_IMPS_RSP with Successful response from HAL\n"));)
         }
         break;
@@ -1894,7 +1894,7 @@ void pmmEnterUapsdResponseHandler(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
         retStatus = eSIR_SME_UAPSD_REQ_FAILED;
     }
 
-    if(IS_SLM_SESSIONIZED )
+    if(IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW)
     {
         limSendSmeRsp(pMac, eWNI_PMC_ENTER_UAPSD_RSP, retStatus, 
                         psessionEntry->smeSessionId, psessionEntry->transactionId);
@@ -2025,7 +2025,7 @@ void pmmExitUapsdResponseHandler(tpAniSirGlobal pMac, eHalStatus rspStatus)
 
     pMac->pmm.gPmmState = ePMM_STATE_BMPS_SLEEP;
 
-    if(IS_SLM_SESSIONIZED)
+    if(IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW)
     {
         limSendSmeRsp(pMac, eWNI_PMC_EXIT_UAPSD_RSP, resultCode, psessionEntry->smeSessionId,
                       psessionEntry->transactionId);
@@ -2463,12 +2463,12 @@ tSirRetStatus pmmImpsSendChangePwrSaveMsg(tpAniSirGlobal pMac, tANI_U8 mode)
     if (SIR_PM_SLEEP_MODE == mode)
     {
         msgQ.type = WDA_ENTER_IMPS_REQ;
-        PELOGW(pmmLog (pMac, LOGW, FL("Sending WDA_ENTER_IMPS_REQ to HAL\n"));)
+        PELOG2(pmmLog (pMac, LOG2, FL("Sending WDA_ENTER_IMPS_REQ to HAL\n"));)
     }
     else
     {
         msgQ.type = WDA_EXIT_IMPS_REQ;
-        PELOGW(pmmLog (pMac, LOGW, FL("Sending WDA_EXIT_IMPS_REQ to HAL\n"));)
+        PELOG2(pmmLog (pMac, LOG2, FL("Sending WDA_EXIT_IMPS_REQ to HAL\n"));)
     }
 
     msgQ.reserved = 0;

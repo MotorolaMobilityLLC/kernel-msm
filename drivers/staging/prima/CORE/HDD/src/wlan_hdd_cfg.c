@@ -1534,6 +1534,13 @@ REG_VARIABLE( CFG_ENABLE_MCC_ENABLED_NAME, WLAN_PARAM_Integer,
              CFG_ENABLE_MCC_ENABLED_MIN, 
              CFG_ENABLE_MCC_ENABLED_MAX ),
 
+REG_VARIABLE( CFG_ALLOW_MCC_GO_DIFF_BI_NAME, WLAN_PARAM_Integer, 
+             hdd_config_t, allowMCCGODiffBI,
+             VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
+             CFG_ALLOW_MCC_GO_DIFF_BI_DEFAULT, 
+             CFG_ALLOW_MCC_GO_DIFF_BI_MIN, 
+             CFG_ALLOW_MCC_GO_DIFF_BI_MAX ),             
+
  REG_VARIABLE( CFG_THERMAL_MIGRATION_ENABLE_NAME, WLAN_PARAM_Integer,
               hdd_config_t, thermalMitigationEnable, 
               VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
@@ -3119,6 +3126,7 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 
    //Enable/Disable MCC 
    smeConfig.csrConfig.fEnableMCCMode = pConfig->enableMCC;
+   smeConfig.csrConfig.fAllowMCCGODiffBI = pConfig->allowMCCGODiffBI;
 
    halStatus = sme_UpdateConfig( pHddCtx->hHal, &smeConfig);    
    if ( !HAL_STATUS_SUCCESS( halStatus ) )

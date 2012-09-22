@@ -1596,7 +1596,6 @@ tANI_BOOLEAN csrIsConcurrentSessionRunning( tpAniSirGlobal pMac )
     return ( fRc );
 }
 
-#ifndef BMPS_WORKAROUND_NOT_NEEDED
 tANI_BOOLEAN csrIsInfraApStarted( tpAniSirGlobal pMac )
 {
     tANI_U32 sessionId;
@@ -1614,7 +1613,6 @@ tANI_BOOLEAN csrIsInfraApStarted( tpAniSirGlobal pMac )
     return ( fRc );
 
 }
-#endif
 
 tANI_BOOLEAN csrIsBTAMP( tpAniSirGlobal pMac, tANI_U32 sessionId )
 {
@@ -2809,6 +2807,10 @@ eHalStatus csrValidateBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
                     else if(pMac->roam.roamSession[sessionId].bssParams.bssPersona
                                       == VOS_P2P_GO_MODE) //Check for P2P go scenario
                     {
+                        /* if GO in MCC support different beacon interval, return success */
+                        if ( pMac->roam.configParam.fAllowMCCGODiffBI == TRUE)
+                            return eHAL_STATUS_SUCCESS;
+                        
                         if ((pMac->roam.roamSession[sessionId].bssParams.operationChn 
                                 != channelId ) &&
                             (pMac->roam.roamSession[sessionId].bssParams.beaconInterval 
@@ -6209,7 +6211,7 @@ tANI_BOOLEAN csrIsSetKeyAllowed(tpAniSirGlobal pMac, tANI_U32 sessionId)
     * The current work-around is to process setcontext_rsp and removekey_rsp no matter what the 
     * state is.
     */
-    smsLog( pMac, LOGE, FL(" is not what it intends to. Must be revisit or removed\n") );
+    smsLog( pMac, LOG2, FL(" is not what it intends to. Must be revisit or removed\n") );
     if( (NULL == pSession) || 
         ( csrIsConnStateDisconnected( pMac, sessionId ) && 
         (pSession->pCurRoamProfile != NULL) &&
@@ -6241,7 +6243,6 @@ tANI_U16 sme_ChnToFreq(tANI_U8 chanNum)
    return (0);
 }
 
-#ifndef BMPS_WORKAROUND_NOT_NEEDED
 /* Disconnect all active sessions by sending disassoc. This is mainly used to disconnect the remaining session when we 
  * transition from concurrent sessions to a single session. The use case is Infra STA and wifi direct multiple sessions are up and 
  * P2P session is removed. The Infra STA session remains and should resume BMPS if BMPS is enabled by default. However, there
@@ -6261,4 +6262,4 @@ void csrDisconnectAllActiveSessions(tpAniSirGlobal pMac)
         }
     }
 }
-#endif
+

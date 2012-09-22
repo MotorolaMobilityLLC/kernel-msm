@@ -1553,6 +1553,7 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
     hdd_adapter_t *pAdapter = (hdd_adapter_t *)pContext;
     hdd_wext_state_t *pWextState= WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    VOS_STATUS status = VOS_STATUS_SUCCESS;
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
             "CSR Callback: status= %d result= %d roamID=%ld", 
@@ -1604,10 +1605,30 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
             // Where in we will not mark the link down
             // Also we want to stop tx at this point when we will be
             // doing disassoc at this time. This saves 30-60 msec
-            // after reassoc. We see old traffic from old connection on new channel
+            // after reassoc.
             {
                 struct net_device *dev = pAdapter->dev;
                 netif_tx_disable(dev);
+                /*
+        		 * Deregister for this STA with TL with the objective to flush
+        		 * all the packets for this STA from wmm_tx_queue. If not done here,
+        		 * we would run into a race condition (CR390567) wherein TX
+        		 * thread would schedule packets from wmm_tx_queue AFTER peer STA has
+        		 * been deleted. And, these packets get assigned with a STA idx of
+        		 * self-sta (since the peer STA has been deleted) and get transmitted
+        		 * on the new channel before the reassoc request. Since there will be
+        		 * no ACK on the new channel, each packet gets retransmitted which
+        		 * takes several seconds before the transmission of reassoc request.
+        		 * This leads to reassoc-timeout and roam failure.
+    		     */
+                status = hdd_roamDeregisterSTA( pAdapter, pHddStaCtx->conn_info.staId [0] );
+                if ( !VOS_IS_STATUS_SUCCESS(status ) )
+                {
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
+                            FL("hdd_roamDeregisterSTA() failed to for staID %d.  Status= %d [0x%x]"),
+                            pHddStaCtx->conn_info.staId[0], status, status );
+                    halStatus = eHAL_STATUS_FAILURE;
+                }		
             }
             pHddStaCtx->ft_carrier_on = TRUE;
             break;
@@ -1616,7 +1637,6 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
         case eCSR_ROAM_SHOULD_ROAM:
            // Dont need to do anything
             {
-                VOS_STATUS  status = VOS_STATUS_SUCCESS;
                 struct net_device *dev = pAdapter->dev;
                 hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
                 // notify apps that we can't pass traffic anymore
@@ -1630,6 +1650,7 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
                 }
 #endif
 
+#if  !(defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR))
                 //We should clear all sta register with TL, for now, only one.
                 status = hdd_roamDeregisterSTA( pAdapter, pHddStaCtx->conn_info.staId [0] );
                 if ( !VOS_IS_STATUS_SUCCESS(status ) )
@@ -1637,9 +1658,9 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
                     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                         FL("hdd_roamDeregisterSTA() failed to for staID %d.  Status= %d [0x%x]"),
                                         pHddStaCtx->conn_info.staId[0], status, status );
-                    status = eHAL_STATUS_FAILURE;
+                    halStatus = eHAL_STATUS_FAILURE;
                 }
-
+#endif
                 // Clear saved connection information in HDD
                 hdd_connRemoveConnectInfo( WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) );
             }

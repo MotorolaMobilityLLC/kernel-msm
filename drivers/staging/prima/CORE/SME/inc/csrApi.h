@@ -922,7 +922,8 @@ typedef struct tagCsrConfigParam
     tANI_U32 nRoamingTime;  //In seconds, CSR will try this long before gives up. 0 means no roaming
     tANI_U8 bCatRssiOffset;     //to set the RSSI difference for each category
     tANI_U8 fEnableMCCMode; //to set MCC Enable/Disable mode
-
+    tANI_U8 fAllowMCCGODiffBI; //to allow MCC GO different B.I than STA's. NOTE: make sure if RIVA firmware can handle this combination before enabling this
+                               //at the moment, this flag is provided only to pass Wi-Fi Cert. 5.1.12
     tCsr11dinfo  Csr11dinfo;
     //Whether to limit the channels to the ones set in Csr11dInfo. If true, the opertaional
     //channels are limited to the default channel list. It is an "AND" operation between the 

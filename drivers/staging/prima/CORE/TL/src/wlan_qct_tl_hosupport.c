@@ -1441,7 +1441,7 @@ VOS_STATUS WLANTL_HSDeregRSSIIndicationCB
 
    if(0 == tlCtxt->hoSupport.currentHOState.numThreshold)
    {
-      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Empty list, can not remove"));
+      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"Empty list, can not remove"));
       return VOS_STATUS_E_EMPTY;
    }
 

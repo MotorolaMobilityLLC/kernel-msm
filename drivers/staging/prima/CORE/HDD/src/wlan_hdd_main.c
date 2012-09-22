@@ -141,6 +141,9 @@ int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
 /* the Android framework expects this param even though we don't use it */
 #define BUF_LEN 20
 static char fwpath[BUF_LEN];
+#ifndef MODULE
+static int wlan_hdd_inited = 0;
+#endif
 
 /*
  * The rate at which the driver sends RESTART event to supplicant
@@ -288,9 +291,17 @@ extern void unregister_wlan_suspend(void);
 void hdd_unregister_mcast_bcast_filter(hdd_context_t *pHddCtx);
 void hdd_register_mcast_bcast_filter(hdd_context_t *pHddCtx);
 #endif
-#ifdef WLAN_SOFTAP_FEATURE
 //variable to hold the insmod parameters
 static int con_mode = 0;
+#ifndef MODULE
+/* current con_mode - used only for statically linked driver
+ * con_mode is changed by userspace to indicate a mode change which will
+ * result in calling the module exit and init functions. The module
+ * exit function will clean up based on the value of con_mode prior to it
+ * being changed by userspace. So curr_con_mode records the current con_mode 
+ * for exit when con_mode becomes the next mode for init
+ */
+static int curr_con_mode = 0;
 #endif
 
 #ifdef FEATURE_WLAN_INTEGRATED_SOC
@@ -4077,12 +4088,11 @@ static int hdd_driver_init( void)
    }
 #endif // ANI_BUS_TYPE_SDIO
 
-#if defined(FEATURE_WLAN_INTEGRATED_SOC) && defined(ANI_MANF_DIAG)
-      if(5 == con_mode)
-      {
-         hdd_set_conparam(VOS_FTM_MODE);
-      }
-#endif /* FEATURE_WLAN_INTEGRATED_SOC && ANI_MANF_DIAG */
+#ifndef MODULE
+      /* For statically linked driver, call hdd_set_conparam to update curr_con_mode
+       */
+      hdd_set_conparam((v_UINT_t)con_mode);
+#endif
 
       // Call our main init function
       if(hdd_wlan_startup(dev)) {
@@ -4160,60 +4170,28 @@ static int __init hdd_module_init ( void)
 {
    return hdd_driver_init();
 }
-
-static int fwpath_changed_handler(const char *kmessage,
-                                 struct kernel_param *kp)
-{
-   /* nothing to do when driver is DLKM */
-   return 0;
-}
 #else /* #ifdef MODULE */
 static int __init hdd_module_init ( void)
 {
    /* Driver initialization is delayed to fwpath_changed_handler */
    return 0;
 }
-
-/**---------------------------------------------------------------------------
-
-  \brief fwpath_changed_handler() - Handler Function
-
-   This is the driver entry point 
-   - delayed driver initialization when driver is statically linked
-   - invoked when module parameter is modified from userpspace to signal 
-    initializing the WLAN driver
-
-  \return - 0 for success, non zero for failure
-
-  --------------------------------------------------------------------------*/
-static int fwpath_changed_handler(const char *kmessage,
-                                 struct kernel_param *kp)
-{
-   static int drv_inited = 0;
-
-   if (drv_inited) {
-      return 0;
-   }
-
-   drv_inited = 1;
-
-   return hdd_driver_init();
-}
 #endif /* #ifdef MODULE */
 
 
 /**---------------------------------------------------------------------------
 
-  \brief hdd_module_exit() - Exit function
+  \brief hdd_driver_exit() - Exit function
 
-  This is the driver exit point (invoked when module is unloaded using rmmod)
+  This is the driver exit point (invoked when module is unloaded using rmmod
+  or con_mode was changed by userspace)
 
   \param  - None
 
   \return - None
 
   --------------------------------------------------------------------------*/
-static void __exit hdd_module_exit(void)
+static void hdd_driver_exit(void)
 {
    hdd_context_t *pHddCtx = NULL;
    v_CONTEXT_t pVosContext = NULL;
@@ -4271,7 +4249,88 @@ done:
    pr_info("%s: driver unloaded\n", WLAN_MODULE_NAME);
 }
 
-#if defined(WLAN_SOFTAP_FEATURE) || defined(ANI_MANF_DIAG)
+/**---------------------------------------------------------------------------
+
+  \brief hdd_module_exit() - Exit function
+
+  This is the driver exit point (invoked when module is unloaded using rmmod)
+
+  \param  - None
+
+  \return - None
+
+  --------------------------------------------------------------------------*/
+static void __exit hdd_module_exit(void)
+{
+   hdd_driver_exit();
+}
+
+#ifdef MODULE
+static int fwpath_changed_handler(const char *kmessage,
+                                 struct kernel_param *kp)
+{
+   /* nothing to do when driver is DLKM */
+   return 0;
+}
+
+static int con_mode_handler(const char *kmessage,
+                                 struct kernel_param *kp)
+{
+   return 0;
+}
+#else /* #ifdef MODULE */
+/**---------------------------------------------------------------------------
+
+  \brief fwpath_changed_handler() - Handler Function
+
+   This is the driver entry point 
+   - delayed driver initialization when driver is statically linked
+   - invoked when module parameter fwpath is modified from userpspace to signal 
+    initializing the WLAN driver
+
+  \return - 0 for success, non zero for failure
+
+  --------------------------------------------------------------------------*/
+static int fwpath_changed_handler(const char *kmessage,
+                                 struct kernel_param *kp)
+{
+   if (!wlan_hdd_inited) {
+      wlan_hdd_inited = 1;
+      return hdd_driver_init();
+   }
+
+   hdd_driver_exit();
+   
+   msleep(200);
+   
+   return hdd_driver_init();
+}
+
+/**---------------------------------------------------------------------------
+
+  \brief con_mode_handler() -
+
+  Handler function for module param con_mode when it is changed by userspace
+  Dynamically linked - do nothing
+  Statically linked - exit and init driver, as in rmmod and insmod
+
+  \param  - 
+
+  \return - 
+
+  --------------------------------------------------------------------------*/
+static int con_mode_handler(const char *kmessage,
+                                 struct kernel_param *kp)
+{
+   int ret = param_set_int(kmessage, kp);
+
+   if (ret)
+       return ret;
+
+   return fwpath_changed_handler(kmessage, kp);
+}
+#endif /* #ifdef MODULE */
+
 /**---------------------------------------------------------------------------
 
   \brief hdd_get_conparam() -
@@ -4285,12 +4344,18 @@ done:
   --------------------------------------------------------------------------*/
 tVOS_CON_MODE hdd_get_conparam ( void )
 {
+#ifdef MODULE
     return (tVOS_CON_MODE)con_mode;
-
+#else
+    return (tVOS_CON_MODE)curr_con_mode;
+#endif
 }
 void hdd_set_conparam ( v_UINT_t newParam )
 {
   con_mode = newParam;
+#ifndef MODULE
+  curr_con_mode = con_mode;
+#endif
 }
 /**---------------------------------------------------------------------------
 
@@ -4385,7 +4450,6 @@ void hdd_softap_tkip_mic_fail_counter_measure(hdd_adapter_t *pAdapter,v_BOOL_t e
     WLANSAP_SetCounterMeasure(pVosContext, (v_BOOL_t)enable);
 }
 
-#endif /* WLAN_SOFTAP_FEATURE */
 /**---------------------------------------------------------------------------
  *
  *   \brief hdd_get__concurrency_mode() -
@@ -4686,9 +4750,8 @@ MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Qualcomm Atheros, Inc.");
 MODULE_DESCRIPTION("WLAN HOST DEVICE DRIVER");
 
-#if defined(WLAN_SOFTAP_FEATURE) || defined(ANI_MANF_DIAG)
-module_param(con_mode, int, 0);
-#endif
+module_param_call(con_mode, con_mode_handler, param_get_int, &con_mode,
+                    S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 module_param_call(fwpath, fwpath_changed_handler, param_get_string, fwpath,
                     S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
