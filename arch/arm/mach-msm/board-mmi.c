@@ -96,6 +96,13 @@ static void __init mmi_i2c_init(struct msm8960_oem_init_ptrs *oem_ptr)
 	mmi_register_i2c_devices_from_dt();
 }
 
+static void __init mmi_pmic_init(struct msm8960_oem_init_ptrs *oem_ptr,
+				 void *pdata)
+{
+	mmi_pm8921_init(pdata);
+	mmi_pm8921_keypad_init(pdata);
+}
+
 static void __init mmi_msm8960_init_early(void)
 {
 	msm8960_allocate_memory_regions();
@@ -116,6 +123,7 @@ static void __init mmi_msm8960_init_early(void)
 	msm8960_oem_funcs.msm_gsbi_init = mmi_gsbi_init;
 	msm8960_oem_funcs.msm_gpio_mpp_init = mmi_gpio_mpp_init;
 	msm8960_oem_funcs.msm_i2c_init = mmi_i2c_init;
+	msm8960_oem_funcs.msm_pmic_init = mmi_pmic_init;
 }
 
 static int __init parse_tag_flat_dev_tree_address(const struct tag *tag)
