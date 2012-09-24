@@ -162,7 +162,7 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
             {
                 palGetPacketDataPtr( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, pSchMsg->bodyptr, (void **) &(pBD) );
             }
-#else 
+#else
             pBD = (tANI_U32 *) pSchMsg->bodyptr;
 #endif
 
@@ -285,7 +285,7 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
                            pSchMsg->bodyval);
             }
             break;
-            
+
         default:
             schLog(pMac, LOGE, FL("Unknown message in schMsgQ type %d\n"),
                    pSchMsg->type);
@@ -458,6 +458,44 @@ schGetParams(
     return eSIR_SUCCESS;
 }
 
+static void broadcastWMMOfConcurrentSTASession(tpAniSirGlobal pMac, tpPESession psessionEntry)
+{
+    tANI_U8         i,j;
+    tpPESession     pConcurrentStaSessionEntry;
+
+    for (i =0;i < pMac->lim.maxBssId;i++)
+    {
+        /* Find another INFRA STA AP session on same operating channel. The session entry passed to this API is for GO/SoftAP session that is getting added currently */
+        if ( (pMac->lim.gpSession[i].valid == TRUE ) &&
+             (pMac->lim.gpSession[i].peSessionId != psessionEntry->peSessionId) &&
+             (pMac->lim.gpSession[i].currentOperChannel == psessionEntry->currentOperChannel) &&
+             (pMac->lim.gpSession[i].limSystemRole == eLIM_STA_ROLE)
+           )
+        {
+            pConcurrentStaSessionEntry = &(pMac->lim.gpSession[i]);
+            for (j=0; j<MAX_NUM_AC; j++)
+            {
+                psessionEntry->gLimEdcaParamsBC[j].aci.acm = pConcurrentStaSessionEntry->gLimEdcaParams[j].aci.acm;
+                psessionEntry->gLimEdcaParamsBC[j].aci.aifsn = pConcurrentStaSessionEntry->gLimEdcaParams[j].aci.aifsn;
+                psessionEntry->gLimEdcaParamsBC[j].cw.min =  pConcurrentStaSessionEntry->gLimEdcaParams[j].cw.min;
+                psessionEntry->gLimEdcaParamsBC[j].cw.max =  pConcurrentStaSessionEntry->gLimEdcaParams[j].cw.max;
+                psessionEntry->gLimEdcaParamsBC[j].txoplimit=  pConcurrentStaSessionEntry->gLimEdcaParams[j].txoplimit;
+
+               PELOG1(schLog(pMac, LOG1, "QoSUpdateBCast changed again due to concurrent INFRA STA session: AC :%d: AIFSN: %d, ACM %d, CWmin %d, CWmax %d, TxOp %d\n",
+                        j,
+                        psessionEntry->gLimEdcaParamsBC[j].aci.aifsn,
+                        psessionEntry->gLimEdcaParamsBC[j].aci.acm,
+                        psessionEntry->gLimEdcaParamsBC[j].cw.min,
+                        psessionEntry->gLimEdcaParamsBC[j].cw.max,
+                        psessionEntry->gLimEdcaParamsBC[j].txoplimit);)
+
+            }
+            /* Once atleast one concurrent session on same channel is found and WMM broadcast params for current SoftAP/GO session updated, return*/
+            break;
+        }
+    }
+}
+
 void
 schQosUpdateBroadcast(tpAniSirGlobal pMac, tpPESession psessionEntry)
 {
@@ -511,6 +549,9 @@ schQosUpdateBroadcast(tpAniSirGlobal pMac, tpPESession psessionEntry)
                 psessionEntry->gLimEdcaParamsBC[i].txoplimit);)
 
     }
+
+    /* If there exists a concurrent STA-AP session, use its WMM params to broadcast in beacons. WFA Wifi Direct test plan 6.1.14 requirement */
+    broadcastWMMOfConcurrentSTASession(pMac, psessionEntry);
 
     if (schSetFixedBeaconFields(pMac,psessionEntry) != eSIR_SUCCESS)
         PELOGE(schLog(pMac, LOGE, "Unable to set beacon fields!\n");)
