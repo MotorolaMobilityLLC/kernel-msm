@@ -1100,7 +1100,12 @@ sendIndToSme:
         }
         else if (pAssocReq->VHTCaps.present)
         {
-            pStaDs->vhtSupportedChannelWidthSet = (tANI_U8)pAssocReq->VHTCaps.supportedChannelWidthSet; 
+            // Check if STA has enabled it's channel bonding mode. 
+            // If channel bonding mode is enabled, we decide based on SAP's current configuration.
+            // else, we set it to VHT20.
+            pStaDs->vhtSupportedChannelWidthSet = (tANI_U8)((pStaDs->htSupportedChannelWidthSet == eHT_CHANNEL_WIDTH_20MHZ) ? 
+                                                             WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ : 
+                                                             psessionEntry->vhtTxChannelWidthSet );
         }
 #endif
         pStaDs->baPolicyFlag = 0xFF;
