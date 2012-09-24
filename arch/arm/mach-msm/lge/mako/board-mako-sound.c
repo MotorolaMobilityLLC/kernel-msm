@@ -26,6 +26,7 @@
 #endif
 
 #include "board-mako.h"
+#include "board-mako-earjack-debugger.h"
 
 
 #define TPA2028D_ADDRESS (0xB0>>1)
@@ -170,9 +171,11 @@ int mako_console_stopped(void)
 	return !console_enabled;
 }
 
-static void fsa8008_set_uart_console(int enable)
+static void set_uart_console(int enable)
 {
 	static struct console *uart_con = NULL;
+
+	console_enabled = enable;
 
 	if (!uart_con) {
 		struct console *con;
@@ -189,7 +192,6 @@ static void fsa8008_set_uart_console(int enable)
 		return;
 	}
 
-	console_enabled = enable;
 	if (enable)
 		console_start(uart_con);
 	else
@@ -210,7 +212,7 @@ static struct fsa8008_platform_data lge_hs_pdata = {
 
 	.latency_for_detection = 75,
 	.set_headset_mic_bias = enable_external_mic_bias,
-	.set_uart_console = fsa8008_set_uart_console,
+	.set_uart_console = set_uart_console,
 };
 
 static struct platform_device lge_hsd_device = {
@@ -221,14 +223,27 @@ static struct platform_device lge_hsd_device = {
 	},
 };
 
-static int __init lge_hsd_fsa8008_init(void)
-{
-	printk(KERN_INFO "lge_hsd_fsa8008_init\n");
-	return platform_device_register(&lge_hsd_device);
-}
+#define GPIO_EARJACK_DEBUGGER_TRIGGER       PM8921_GPIO_PM_TO_SYS(13)
+static struct earjack_debugger_platform_data earjack_debugger_pdata = {
+	.gpio_trigger = GPIO_EARJACK_DEBUGGER_TRIGGER,
+	.set_uart_console = set_uart_console,
+};
+
+static struct platform_device earjack_debugger_device = {
+	.name = "earjack-debugger-trigger",
+	.id = -1,
+	.dev = {
+		.platform_data = &earjack_debugger_pdata,
+	},
+};
+
+static struct platform_device *sound_devices[] __initdata = {
+	&lge_hsd_device,
+	&earjack_debugger_device,
+};
 
 void __init lge_add_sound_devices(void)
 {
 	lge_add_i2c_tpa2028d_devices();
-	lge_hsd_fsa8008_init();
+	platform_add_devices(sound_devices, ARRAY_SIZE(sound_devices));
 }
