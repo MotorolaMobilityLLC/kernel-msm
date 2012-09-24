@@ -159,7 +159,7 @@ typedef enum
     RF_SUBBAND_5_LOW_GHZ    = 1,    //Low & Mid U-NII
     RF_SUBBAND_5_MID_GHZ    = 2,    //ETSI
     RF_SUBBAND_5_HIGH_GHZ   = 3,    //High U-NII
-    RF_SUBBAND_4_9_GHZ      = 4,    //Do not use
+    RF_SUBBAND_RESERVED     = 4,    //Reserved
 
 
     NUM_RF_SUBBANDS,
