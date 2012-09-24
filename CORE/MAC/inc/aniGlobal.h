@@ -282,6 +282,7 @@ typedef struct sAniSirLim
     tANI_U8               gLim24Band11dScanDone;
     tANI_U8               gLim50Band11dScanDone;
     tANI_U8               gLimReturnUniqueResults;
+    tANI_U8               gSeparateProbeBeacon;
 
     // Background Scan related globals on STA
     tANI_U32               gLimNumOfBackgroundScanSuccess;
