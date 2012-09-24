@@ -626,7 +626,7 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
         /*Store Persona */
         psessionEntry->pePersona = pSmeStartBssReq->bssPersona;
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,FL("PE PERSONA=%d\n"),
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,FL("PE PERSONA=%d"),
             psessionEntry->pePersona);
 
         /*Update the phymode*/
@@ -640,8 +640,8 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         psessionEntry->htCapability = IS_DOT11_MODE_HT(psessionEntry->dot11mode);
 #ifdef WLAN_FEATURE_11AC
         psessionEntry->vhtCapability = IS_DOT11_MODE_VHT(psessionEntry->dot11mode);
-        VOS_TRACE(VOS_MODULE_ID_PE,VOS_TRACE_LEVEL_FATAL,
-            FL("*****psessionEntry->vhtCapability = %d\n"),psessionEntry->vhtCapability);
+        VOS_TRACE(VOS_MODULE_ID_PE,VOS_TRACE_LEVEL_INFO,
+            FL("*****psessionEntry->vhtCapability = %d"),psessionEntry->vhtCapability);
 #endif
         palCopyMemory(pMac->hHdd, (void*)&psessionEntry->rateSet,
             (void*)&pSmeStartBssReq->operationalRateSet,
@@ -730,7 +730,7 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
             psessionEntry->htSupportedChannelWidthSet = (pSmeStartBssReq->cbMode)?1:0; // This is already merged value of peer and self - done by csr in csrGetCBModeFromIes
             psessionEntry->htRecommendedTxWidthSet = psessionEntry->htSupportedChannelWidthSet;
             psessionEntry->htSecondaryChannelOffset = pSmeStartBssReq->cbMode;
-            VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+            VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
                       FL("cbMode %u"), pSmeStartBssReq->cbMode);
 #ifdef WLAN_FEATURE_11AC
             if(psessionEntry->vhtCapability)

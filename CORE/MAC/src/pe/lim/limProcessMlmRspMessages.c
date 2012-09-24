@@ -463,9 +463,8 @@ limProcessMlmJoinCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     /// Process Join confirm from MLM
     if (resultCode ==  eSIR_SME_SUCCESS)
     {
-            PELOG1(limLog(pMac, LOG1, FL("*** Joined ESS ***\n"));)
+            PELOG1(limLog(pMac, LOG1, FL("*** Joined ESS ***"));)
             //Setup hardware upfront
-           PELOGE(limLog(pMac, LOGE, FL("*** Starting to add BSS***\n"));)  //remove me
            //Done: 7-27-2009. JIM_FIX_ME   sessionize the following function
             if(limStaSendAddBssPreAssoc( pMac, false, psessionEntry) == eSIR_SUCCESS)
                 return;

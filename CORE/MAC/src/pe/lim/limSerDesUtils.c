@@ -219,7 +219,7 @@ limGetBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pBssDescription,
     pBssDescription->mdie[2] = *pBuf++;
     len --;
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-    PELOGE(limLog(pMac, LOGE, FL("mdie=%02x %02x %02x\n"), 
+    PELOGE(limLog(pMac, LOG1, FL("mdie=%02x %02x %02x\n"), 
         pBssDescription->mdie[0],
         pBssDescription->mdie[1],
         pBssDescription->mdie[2]);)
@@ -2022,7 +2022,7 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     pJoinReq->powerCap.minTxPower = *pBuf++;
     pJoinReq->powerCap.maxTxPower = *pBuf++;
     len -=2;
-    limLog(pMac, LOGE, FL("Power Caps: Min power = %d, Max power = %d\n"), pJoinReq->powerCap.minTxPower, pJoinReq->powerCap.maxTxPower);
+    limLog(pMac, LOG1, FL("Power Caps: Min power = %d, Max power = %d\n"), pJoinReq->powerCap.minTxPower, pJoinReq->powerCap.maxTxPower);
 
     pJoinReq->supportedChannels.numChnl = *pBuf++;
     len--;

@@ -24594,7 +24594,7 @@ wpt_uint8 WDI_getHostWlanFeatCaps(wpt_uint8 feat_enum_value)
    else
    {
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
-        "Caps exchange feature NOT supported. Return NOT SUPPORTED for %u feature\n", feat_enum_value);
+        "Caps exchange feature NOT supported. Return NOT SUPPORTED for %u feature", feat_enum_value);
    }
    return featSupported;
 }
@@ -24627,7 +24627,7 @@ wpt_uint8 WDI_getFwWlanFeatCaps(wpt_uint8 feat_enum_value)
     else
     {
        WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
-         "Caps exchange feature NOT supported. Return NOT SUPPORTED for %u feature\n", feat_enum_value);
+         "Caps exchange feature NOT supported. Return NOT SUPPORTED for %u feature", feat_enum_value);
     }
     return featSupported;
 }

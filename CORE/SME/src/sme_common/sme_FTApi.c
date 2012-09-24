@@ -325,7 +325,7 @@ eHalStatus sme_FTSendUpdateKeyInd(tHalHandle hHal, tCsrRoamSetKey * pFTKeyInfo)
         palCopyMemory( pMac->hHdd, p, pFTKeyInfo->Key, pFTKeyInfo->keyLength ); 
         if(pFTKeyInfo->keyLength == 16)
         {
-            smsLog(pMac, LOGE, "  SME Set keyIdx (%d) encType(%d) key = %02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X\n",
+            smsLog(pMac, LOG1, "  SME Set keyIdx (%d) encType(%d) key = %02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X\n",
             pFTKeyInfo->keyId, edType, pFTKeyInfo->Key[0], pFTKeyInfo->Key[1], pFTKeyInfo->Key[2], pFTKeyInfo->Key[3], pFTKeyInfo->Key[4],
             pFTKeyInfo->Key[5], pFTKeyInfo->Key[6], pFTKeyInfo->Key[7], pFTKeyInfo->Key[8],
             pFTKeyInfo->Key[9], pFTKeyInfo->Key[10], pFTKeyInfo->Key[11], pFTKeyInfo->Key[12], pFTKeyInfo->Key[13], pFTKeyInfo->Key[14], pFTKeyInfo->Key[15]);
@@ -356,7 +356,7 @@ eHalStatus sme_FTUpdateKey( tHalHandle hHal, tCsrRoamSetKey * pFTKeyInfo )
     }
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    smsLog( pMac, LOGE, "sme_FTUpdateKey is received in state %d\n", 
+    smsLog( pMac, LOG1, "sme_FTUpdateKey is received in state %d", 
         pMac->ft.ftSmeContext.FTState);
 #endif
 

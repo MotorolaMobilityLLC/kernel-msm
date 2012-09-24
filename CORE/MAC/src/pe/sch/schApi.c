@@ -512,7 +512,7 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
         }
         else
         {
-            schLog( pMac,LOGE, FL("limSendProbeRspTemplateToHal: Probe response template msg posted to HAL of bytes %d \n"),nBytes );
+            schLog( pMac,LOG1, FL("limSendProbeRspTemplateToHal: Probe response template msg posted to HAL of bytes %d"),nBytes );
         }
     }
 

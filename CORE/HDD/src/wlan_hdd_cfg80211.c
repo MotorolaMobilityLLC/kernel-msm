@@ -774,7 +774,7 @@ v_U8_t* wlan_hdd_cfg80211_get_ie_ptr(v_U8_t *pIes, int length, v_U8_t eid)
         if(elem_len > left)
         {
             hddLog(VOS_TRACE_LEVEL_FATAL,
-                    "****Invalid IEs eid = %d elem_len=%d left=%d*****\n",
+                    FL("****Invalid IEs eid = %d elem_len=%d left=%d*****"),
                                                     eid,elem_len,left);
             return NULL;
         }
@@ -1296,7 +1296,7 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
         }
         else if(memcmp(&pIe[2], WPS_OUI_TYPE, WPS_OUI_TYPE_SIZE) == 0)
         {
-             hddLog( VOS_TRACE_LEVEL_ERROR, "** WPS IE(len %d) ***\n", (pIe[1]+2));
+             hddLog( VOS_TRACE_LEVEL_INFO, "** WPS IE(len %d) ***", (pIe[1]+2));
              /* Check 15 bit of WPS IE as it contain information for wps state
               * WPS state
               */
@@ -1531,7 +1531,7 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
         return -EINVAL;
     }
 
-    hddLog(LOGE, 
+    hddLog(LOG1, 
            FL("Waiting for Scan to complete(auto mode) and BSS to start"));
 
     status = vos_wait_single_event(&pHostapdState->vosEvent, 10000);
