@@ -598,6 +598,12 @@ void __init msm8960_init_pmic(void)
 				&msm8960_ssbi_pm8921_pdata;
 	pm8921_platform_data.num_regulators = msm_pm8921_regulator_pdata_len;
 
+	if (msm8960_oem_funcs.msm_pmic_init) {
+		msm8960_oem_funcs.msm_pmic_init(&msm8960_oem_funcs,
+						&pm8921_platform_data);
+		return;
+	}
+
 	if (machine_is_msm8960_liquid()) {
 		pm8921_platform_data.keypad_pdata = &keypad_data_liquid;
 		pm8921_platform_data.leds_pdata = &pm8xxx_leds_pdata_liquid;
