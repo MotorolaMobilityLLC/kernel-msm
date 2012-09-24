@@ -22,6 +22,7 @@
 #include <mach/msm_memtypes.h>
 #include <mach/msm_rtb.h>
 #include <mach/msm_cache_dump.h>
+#include "clock.h"
 
 /* Macros assume PMIC GPIOs and MPPs start at 1 */
 #define PM8921_GPIO_BASE		NR_GPIO_IRQS
@@ -108,6 +109,8 @@ struct msm8960_oem_init_ptrs {
 	void (*msm_gpio_mpp_init)(struct msm8960_oem_init_ptrs *);
 	void (*msm_i2c_init)(struct msm8960_oem_init_ptrs *);
 	void (*msm_pmic_init)(struct msm8960_oem_init_ptrs *, void *);
+	void (*msm_clock_init)(struct msm8960_oem_init_ptrs *,
+			       struct clock_init_data *);
 	void *oem_data;
 };
 extern struct msm8960_oem_init_ptrs msm8960_oem_funcs;
