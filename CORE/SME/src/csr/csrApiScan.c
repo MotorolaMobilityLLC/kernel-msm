@@ -336,7 +336,8 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
     tSmeCmd *pQueueScanCmd=NULL;
     tSmeCmd *pSendScanCmd=NULL;
 
-    if (vos_get_concurrency_mode() == VOS_STA_SAP) //TODO:- Also make sure AP BSS has started
+    /* split scan if any session is connected */
+    if (eANI_BOOLEAN_TRUE == csrIsAnySessionConnected(pMac))
     {
 
         tCsrScanRequest scanReq;
@@ -5326,11 +5327,6 @@ static void csrStaApConcTimerHandler(void *pv)
 
     }
 
-    if (!csrLLIsListEmpty( &pMac->scan.scanCmdPendingList, LL_ACCESS_NOLOCK ))
-    {
-         palTimerStart(pMac->hHdd, pMac->scan.hTimerStaApConcTimer, 
-                 CSR_SCAN_STAAP_CONC_INTERVAL, eANI_BOOLEAN_FALSE);
-    }
     csrLLUnlock(&pMac->scan.scanCmdPendingList);
     
 }
