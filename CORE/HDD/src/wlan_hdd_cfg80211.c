@@ -5237,7 +5237,7 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
     wlan_hdd_get_rssi(pAdapter, &sinfo->signal);
     sinfo->filled |= STATION_INFO_SIGNAL;
 
-    wlan_hdd_get_classAstats(pAdapter);
+    wlan_hdd_get_station_stats(pAdapter);
     rate_flags = pAdapter->hdd_stats.ClassA_stat.tx_rate_flags;
 
     //convert to the UI units of 100kbps
@@ -5433,8 +5433,31 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
     }
     sinfo->filled |= STATION_INFO_TX_BITRATE;
 
-    EXIT();
-    return 0;
+    sinfo->tx_packets =
+       pAdapter->hdd_stats.summary_stat.tx_frm_cnt[0] +
+       pAdapter->hdd_stats.summary_stat.tx_frm_cnt[1] +
+       pAdapter->hdd_stats.summary_stat.tx_frm_cnt[2] +
+       pAdapter->hdd_stats.summary_stat.tx_frm_cnt[3];
+
+    sinfo->tx_retries =
+       pAdapter->hdd_stats.summary_stat.retry_cnt[0] +
+       pAdapter->hdd_stats.summary_stat.retry_cnt[1] +
+       pAdapter->hdd_stats.summary_stat.retry_cnt[2] +
+       pAdapter->hdd_stats.summary_stat.retry_cnt[3];
+
+    sinfo->tx_failed =
+       pAdapter->hdd_stats.summary_stat.fail_cnt[0] +
+       pAdapter->hdd_stats.summary_stat.fail_cnt[1] +
+       pAdapter->hdd_stats.summary_stat.fail_cnt[2] +
+       pAdapter->hdd_stats.summary_stat.fail_cnt[3];
+
+    sinfo->filled |=
+       STATION_INFO_TX_PACKETS |
+       STATION_INFO_TX_RETRIES |
+       STATION_INFO_TX_FAILED;
+
+       EXIT();
+       return 0;
 }
 
 static int wlan_hdd_cfg80211_set_power_mgmt(struct wiphy *wiphy,
