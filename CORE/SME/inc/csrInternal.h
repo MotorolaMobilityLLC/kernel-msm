@@ -607,7 +607,7 @@ typedef struct tagCsrScanStruct
 {
     tScanProfile scanProfile;
     tANI_U32 nextScanID;
-    tDblLinkList scanResultList[CSR_ROAM_SESSION_MAX];
+    tDblLinkList scanResultList;
     tDblLinkList tempScanResults;
     tANI_BOOLEAN fScanEnable;
     tANI_BOOLEAN fFullScanIssued;
@@ -1033,7 +1033,6 @@ tANI_BOOLEAN csrIsConnStateConnectedWds( tpAniSirGlobal pMac, tANI_U32 sessionId
 tANI_BOOLEAN csrIsConnStateDisconnectedWds( tpAniSirGlobal pMac, tANI_U32 sessionId );
 tANI_BOOLEAN csrIsAnySessionInConnectState( tpAniSirGlobal pMac );
 tANI_BOOLEAN csrIsAllSessionDisconnected( tpAniSirGlobal pMac );
-tANI_BOOLEAN csrIsAnySessionConnected( tpAniSirGlobal pMac );
 tANI_BOOLEAN csrIsInfraConnected( tpAniSirGlobal pMac );
 tANI_BOOLEAN csrIsConcurrentInfraConnected( tpAniSirGlobal pMac );
 tANI_BOOLEAN csrIsConcurrentSessionRunning( tpAniSirGlobal pMac );

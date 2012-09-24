@@ -138,7 +138,6 @@ typedef struct tagScanReqParam
     tANI_U8 fUniqueResult;
     tANI_U8 freshScan;
     tANI_U8 hiddenSsid;
-    tANI_U8 separateProbeBeacon; //If set to 1, PE scan cache to have separate entry for probe rsp & beacon for same BSSID
     tANI_U8 reserved;
 }tScanReqParam;
 
@@ -220,13 +219,13 @@ eHalStatus csrScanRequestLostLink3( tpAniSirGlobal pMac, tANI_U32 sessionId );
 eHalStatus csrScanHandleFailedLostlink1(tpAniSirGlobal pMac, tANI_U32 sessionId);
 eHalStatus csrScanHandleFailedLostlink2(tpAniSirGlobal pMac, tANI_U32 sessionId);
 eHalStatus csrScanHandleFailedLostlink3(tpAniSirGlobal pMac, tANI_U32 sessionId);
-tCsrScanResult *csrScanAppendBssDescription( tpAniSirGlobal pMac, tANI_U32 sessionId, 
+tCsrScanResult *csrScanAppendBssDescription( tpAniSirGlobal pMac, 
                                              tSirBssDescription *pSirBssDescription,
                                              tDot11fBeaconIEs *pIes);
 void csrScanCallCallback(tpAniSirGlobal pMac, tSmeCmd *pCommand, eCsrScanStatus scanStatus);
 eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCsrScanRequest *pSrcReq);
 eHalStatus csrScanFreeRequest(tpAniSirGlobal pMac, tCsrScanRequest *pReq);
-eHalStatus csrScanCopyResultList(tpAniSirGlobal pMac, tANI_U32 sessionId, tScanResultHandle hIn, tScanResultHandle *phResult);
+eHalStatus csrScanCopyResultList(tpAniSirGlobal pMac, tScanResultHandle hIn, tScanResultHandle *phResult);
 void csrInitBGScanChannelList(tpAniSirGlobal pMac);
 eHalStatus csrScanForSSID(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfile *pProfile, tANI_U32 roamId);
 eHalStatus csrScanForCapabilityChange(tpAniSirGlobal pMac, tSirSmeApNewCaps *pNewCaps);
@@ -258,13 +257,13 @@ eHalStatus csrScanGetScanChannelInfo(tpAniSirGlobal pMac);
 //The logic is that whenever CSR add a BSS to scan result, it set the age count to
 //a value. This function deduct the age count if channelId matches the BSS' channelId
 //The BSS is remove if the count reaches 0.
-eHalStatus csrScanAgeResults(tpAniSirGlobal pMac, tANI_U32 sessionId, tSmeGetScanChnRsp *pScanChnInfo);
+eHalStatus csrScanAgeResults(tpAniSirGlobal pMac, tSmeGetScanChnRsp *pScanChnInfo);
 
 //If fForce is TRUE we will save the new String that is learn't.
 //Typically it will be true in case of Join or user initiated ioctl
 tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription *pSirBssDesc,
                                          tDot11fBeaconIEs *pIes, tANI_BOOLEAN fForce );
-void csrApplyCountryInformation( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_BOOLEAN fForce );
+void csrApplyCountryInformation( tpAniSirGlobal pMac, tANI_BOOLEAN fForce );
 void csrSetCfgScanControlList( tpAniSirGlobal pMac, tANI_U8 *countryCode, tCsrChannel *pChannelList  );
 void csrReinitScanCmd(tpAniSirGlobal pMac, tSmeCmd *pCommand);
 void csrFreeScanResultEntry( tpAniSirGlobal pMac, tCsrScanResult *pResult );
@@ -359,7 +358,7 @@ void csrApplyPower2Current( tpAniSirGlobal pMac );
 void csrAssignRssiForCategory(tpAniSirGlobal pMac, tANI_U8 catOffset);
 tANI_BOOLEAN csrIsMacAddressZero( tpAniSirGlobal pMac, tCsrBssid *pMacAddr );
 tANI_BOOLEAN csrIsMacAddressBroadcast( tpAniSirGlobal pMac, tCsrBssid *pMacAddr );
-eHalStatus csrRoamRemoveConnectedBssFromScanCache(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamConnectedProfile *pConnProfile);
+eHalStatus csrRoamRemoveConnectedBssFromScanCache(tpAniSirGlobal pMac, tCsrRoamConnectedProfile *pConnProfile);
 eHalStatus csrRoamStartRoaming(tpAniSirGlobal pMac, tANI_U32 sessionId, eCsrRoamingReason roamingReason);
 //return a boolean to indicate whether roaming completed or continue.
 tANI_BOOLEAN csrRoamCompleteRoaming(tpAniSirGlobal pMac, tANI_U32 sessionId,
@@ -440,14 +439,14 @@ eHalStatus csrScanBGScanAbort(tpAniSirGlobal);
     \param phResult - an object for the result.
     \return eHalStatus     
   -------------------------------------------------------------------------------*/
-eHalStatus csrScanGetResult(tpAniSirGlobal, tANI_U32 sessionId, tCsrScanResultFilter *pFilter, tScanResultHandle *phResult);
+eHalStatus csrScanGetResult(tpAniSirGlobal, tCsrScanResultFilter *pFilter, tScanResultHandle *phResult);
 
 /* ---------------------------------------------------------------------------
     \fn csrScanFlushResult
     \brief Clear scan results.
     \return eHalStatus     
   -------------------------------------------------------------------------------*/
-eHalStatus csrScanFlushResult(tpAniSirGlobal, tANI_U32 sessionId);
+eHalStatus csrScanFlushResult(tpAniSirGlobal);
 
 /* ---------------------------------------------------------------------------
     \fn csrScanBGScanGetParam
