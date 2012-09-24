@@ -278,3 +278,6 @@ void __init mmi_init_pm8921_gpio_mpp(void)
 	}
 }
 
+void __init mmi_pm8921_init(void *pdata)
+{
+}
