@@ -4539,7 +4539,7 @@ static int iw_set_dynamic_mcbc_filter(struct net_device *dev,
     tpMcBcFilterCfg pRequest = (tpMcBcFilterCfg)wrqu->data.pointer;
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     tpSirWlanSetRxpFilters wlanRxpFilterParam;
-    eHalStatus halStatus = eHAL_STATUS_FAILURE;
+    VOS_STATUS vstatus = VOS_STATUS_E_FAILURE;
 
     hddLog(VOS_TRACE_LEVEL_INFO_HIGH, 
            "%s: Set MC BC Filter Config request: %d suspend %d",
@@ -4568,12 +4568,12 @@ static int iw_set_dynamic_mcbc_filter(struct net_device *dev,
          (eConnectionState_Associated == 
          (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState))
       {
-        halStatus = hdd_conf_hostarpoffload(pHddCtx, TRUE);
-        if (!VOS_IS_STATUS_SUCCESS(halStatus))
+        vstatus = hdd_conf_hostarpoffload(pHddCtx, TRUE);
+        if (!VOS_IS_STATUS_SUCCESS(vstatus))
         {
           hddLog(VOS_TRACE_LEVEL_INFO, 
                  "%s:Failed to enable ARPOFFLOAD Feature %d\n",
-                 __func__, halStatus);
+                 __func__, vstatus);
         }
         else
         {

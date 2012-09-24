@@ -782,7 +782,7 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
                                  hdd_adapter_t *pAdapter)
 {
     eHalStatus halStatus = eHAL_STATUS_FAILURE;
-    VOS_STATUS vstatus;
+    VOS_STATUS vstatus = VOS_STATUS_E_FAILURE;
     tpSirWlanSuspendParam wlanSuspendParam =
       vos_mem_malloc(sizeof(tSirWlanSuspendParam));
 
