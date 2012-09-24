@@ -418,7 +418,11 @@ int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand)
             wiphy->bands[IEEE80211_BAND_5GHZ] = NULL;
             break;
         case eCSR_BAND_5G:
+#ifdef WLAN_FEATURE_P2P
+            wiphy->bands[IEEE80211_BAND_2GHZ] = &wlan_hdd_band_p2p_2_4_GHZ;
+#else
             wiphy->bands[IEEE80211_BAND_2GHZ] = NULL;
+#endif
             wiphy->bands[IEEE80211_BAND_5GHZ] = &wlan_hdd_band_5_GHZ;
             break;
         case eCSR_BAND_ALL:

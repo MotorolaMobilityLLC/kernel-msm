@@ -5108,7 +5108,8 @@ eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCs
                         pMac->roam.numValidChannels = len;
                         for ( index = 0; index < pSrcReq->ChannelInfo.numOfChannels ; index++ )
                         {
-                            if(csrRoamIsValidChannel(pMac, pSrcReq->ChannelInfo.ChannelList[index]))
+                            if((csrRoamIsValidChannel(pMac, pSrcReq->ChannelInfo.ChannelList[index])) || 
+                                (eCSR_SCAN_P2P_DISCOVERY == pSrcReq->requestType))
                             {
                                 pDstReq->ChannelInfo.ChannelList[new_index] =
                                     pSrcReq->ChannelInfo.ChannelList[index];
