@@ -487,15 +487,35 @@ void __init msm_clock_init(struct clock_init_data *data)
 {
 	unsigned n;
 	struct clk_lookup *clock_tbl;
+	struct clk_lookup *ptr;
 	size_t num_clocks;
 	struct clk *clk;
 
 	clk_init_data = data;
+
 	if (clk_init_data->pre_init)
 		clk_init_data->pre_init();
 
-	clock_tbl = data->table;
-	num_clocks = data->size;
+	num_clocks = data->size + data->oem_clk_size;
+	clock_tbl = kmalloc(sizeof(struct clk_lookup)*num_clocks, GFP_KERNEL);
+	if (!clock_tbl) {
+		pr_err("%s: could not allocate clk_lookup table\n", __func__);
+		return;
+	}
+	ptr = clock_tbl;
+
+	/* Prepend OEM Clock table if it exists to override QC board specific
+	 * clock lookups.
+	 */
+	if (data->oem_clk_tbl) {
+		memcpy(ptr, data->oem_clk_tbl,
+			sizeof(struct clk_lookup)*data->oem_clk_size);
+		ptr += data->oem_clk_size;
+	}
+	memcpy(ptr, data->table, sizeof(struct clk_lookup)*data->size);
+
+	clk_init_data->table = clock_tbl;
+	clk_init_data->size = num_clocks;
 
 	for (n = 0; n < num_clocks; n++) {
 		struct clk *parent;

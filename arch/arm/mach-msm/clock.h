@@ -155,6 +155,8 @@ struct clock_init_data {
 	void (*pre_init)(void);
 	void (*post_init)(void);
 	int (*late_init)(void);
+	struct clk_lookup *oem_clk_tbl;
+	size_t oem_clk_size;
 };
 
 extern struct clock_init_data msm9615_clock_init_data;
