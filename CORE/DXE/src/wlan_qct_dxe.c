@@ -1638,6 +1638,7 @@ static wpt_int32 dxeRXFrameRouteUpperLayer
       /* Reap Rx frames */ 
       rx_reaped_buf[frameCount] = currentCtrlBlk->xfrFrame;
       frameCount++;
+      currentCtrlBlk->xfrFrame = NULL;
 
       /* Now try to refill the ring with empty Rx buffers to keep DXE busy */
       dxeRXFrameRefillRing(dxeCtxt,channelEntry);
@@ -1780,6 +1781,7 @@ static wpt_status dxeRXFrameReady
             frameCount = dxeRXFrameRouteUpperLayer(dxeCtxt, channelEntry);
             HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                      "re-sync routed %d frames to upper layer", (int)frameCount);
+            channelEntry->numFragmentCurrentChain = frameCount;
             frameCount = 0;
          }
          /* Successive Empty interrupt
