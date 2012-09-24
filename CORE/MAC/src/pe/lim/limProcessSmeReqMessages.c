@@ -2168,7 +2168,7 @@ __limProcessSmeDisassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     }
 
 
-    PELOGE(limLog(pMac, LOGE,   FL("received DISASSOC_REQ message. Reason: %d global SmeState: %d\n"), 
+    PELOG1(limLog(pMac, LOG1,   FL("received DISASSOC_REQ message. Reason: %d global SmeState: %d"), 
                                                         smeDisassocReq.reasonCode, pMac->lim.gLimSmeState);)
 
 
