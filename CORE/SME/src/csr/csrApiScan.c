@@ -2655,21 +2655,21 @@ eHalStatus csrSaveToChannelPower2G_5G( tpAniSirGlobal pMac, tANI_U32 tableSize, 
 
             // Now set the inter-channel offset based on the frequency band the channel set lies in
             if( (CSR_IS_CHANNEL_24GHZ(pChannelSet->firstChannel)) &&
-                    ((pChannelSet->firstChannel + pChannelSet->numChannels) <= CSR_MAX_24GHz_CHANNEL_NUMBER) )
+                    ((pChannelSet->firstChannel + (pChannelSet->numChannels - 1)) <= CSR_MAX_24GHz_CHANNEL_NUMBER) )
 
             {
                 pChannelSet->interChannelOffset = 1;
                 f2GHzInfoFound = TRUE;
             }
             else if ( (CSR_IS_CHANNEL_5GHZ(pChannelSet->firstChannel)) &&
-                ((pChannelSet->firstChannel + (pChannelSet->numChannels * 4)) <= CSR_MAX_5GHz_CHANNEL_NUMBER) )
+                ((pChannelSet->firstChannel + ((pChannelSet->numChannels - 1) * 4)) <= CSR_MAX_5GHz_CHANNEL_NUMBER) )
             {
                 pChannelSet->interChannelOffset = 4;
                 f2GHzInfoFound = FALSE;
             }
             else
             {
-                smsLog( pMac, LOGW, FL("Invalid Channel Present in Country IE"),
+                smsLog( pMac, LOGW, FL("Invalid Channel %d Present in Country IE"),
                         pChannelSet->firstChannel);
                 palFreeMemory(pMac->hHdd, pChannelSet);
                 return eHAL_STATUS_FAILURE;
