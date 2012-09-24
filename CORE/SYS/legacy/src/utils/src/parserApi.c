@@ -717,62 +717,62 @@ void limLogVHTCap(tpAniSirGlobal pMac,
                               tDot11fIEVHTCaps *pDot11f)
 {
 
-    limLog(pMac, LOGW, FL("maxMPDULen (2): %d\n"), pDot11f->maxMPDULen);
-    limLog(pMac, LOGW, FL("supportedChannelWidthSet (2): %d\n"), pDot11f->supportedChannelWidthSet);
-    limLog(pMac, LOGW, FL("ldpcCodingCap (1): %d\n"), pDot11f->ldpcCodingCap);
-    limLog(pMac, LOGW, FL("shortGI80MHz (1): %d\n"), pDot11f->shortGI80MHz);
-    limLog(pMac, LOGW, FL("shortGI160and80plus80MHz (1): %d\n"), pDot11f->shortGI160and80plus80MHz);
-    limLog(pMac, LOGW, FL("txSTBC (1): %d\n"), pDot11f->txSTBC);
-    limLog(pMac, LOGW, FL("rxSTBC (3): %d\n"), pDot11f->rxSTBC);
-    limLog(pMac, LOGW, FL("suBeamFormerCap (1): %d\n"), pDot11f->suBeamFormerCap);
-    limLog(pMac, LOGW, FL("suBeamformeeCap (1): %d\n"), pDot11f->suBeamformeeCap);
-    limLog(pMac, LOGW, FL("csnofBeamformerAntSup (3): %d\n"), pDot11f->csnofBeamformerAntSup);
-    limLog(pMac, LOGW, FL("numSoundingDim (3): %d\n"), pDot11f->numSoundingDim);
-    limLog(pMac, LOGW, FL("muBeamformerCap (1): %d\n"), pDot11f->muBeamformerCap);
-    limLog(pMac, LOGW, FL("muBeamformeeCap (1): %d\n"), pDot11f->muBeamformeeCap);
-    limLog(pMac, LOGW, FL("vhtTXOPPS (1): %d\n"), pDot11f->vhtTXOPPS);
-    limLog(pMac, LOGW, FL("htcVHTCap (1): %d\n"), pDot11f->htcVHTCap);
-    limLog(pMac, LOGW, FL("maxAMPDULenExp (3): %d\n"), pDot11f->maxAMPDULenExp);
-    limLog(pMac, LOGW, FL("vhtLinkAdaptCap (2): %d\n"), pDot11f->vhtLinkAdaptCap);
-    limLog(pMac, LOGW, FL("rxAntPattern (1): %d\n"), pDot11f->vhtLinkAdaptCap);
-    limLog(pMac, LOGW, FL("txAntPattern (1): %d\n"), pDot11f->vhtLinkAdaptCap);
-    limLog(pMac, LOGW, FL("reserved1 (2): %d\n"), pDot11f->reserved1);
-    limLog(pMac, LOGW, FL("rxMCSMap (16): %d\n"), pDot11f->rxMCSMap);
-    limLog(pMac, LOGW, FL("rxHighSupDataRate (13): %d\n"), pDot11f->rxHighSupDataRate);
-    limLog(pMac, LOGW, FL("reserve (3): %d\n"), pDot11f->reserved2);
-    limLog(pMac, LOGW, FL("txMCSMap (16): %d\n"), pDot11f->txMCSMap);
-    limLog(pMac, LOGW, FL("txSupDataRate (13): %d\n"), pDot11f->txSupDataRate);
-    limLog(pMac, LOGW, FL("reserv (3): %d\n"), pDot11f->reserved3);
+    limLog(pMac, LOG1, FL("maxMPDULen (2): %d\n"), pDot11f->maxMPDULen);
+    limLog(pMac, LOG1, FL("supportedChannelWidthSet (2): %d\n"), pDot11f->supportedChannelWidthSet);
+    limLog(pMac, LOG1, FL("ldpcCodingCap (1): %d\n"), pDot11f->ldpcCodingCap);
+    limLog(pMac, LOG1, FL("shortGI80MHz (1): %d\n"), pDot11f->shortGI80MHz);
+    limLog(pMac, LOG1, FL("shortGI160and80plus80MHz (1): %d\n"), pDot11f->shortGI160and80plus80MHz);
+    limLog(pMac, LOG1, FL("txSTBC (1): %d\n"), pDot11f->txSTBC);
+    limLog(pMac, LOG1, FL("rxSTBC (3): %d\n"), pDot11f->rxSTBC);
+    limLog(pMac, LOG1, FL("suBeamFormerCap (1): %d\n"), pDot11f->suBeamFormerCap);
+    limLog(pMac, LOG1, FL("suBeamformeeCap (1): %d\n"), pDot11f->suBeamformeeCap);
+    limLog(pMac, LOG1, FL("csnofBeamformerAntSup (3): %d\n"), pDot11f->csnofBeamformerAntSup);
+    limLog(pMac, LOG1, FL("numSoundingDim (3): %d\n"), pDot11f->numSoundingDim);
+    limLog(pMac, LOG1, FL("muBeamformerCap (1): %d\n"), pDot11f->muBeamformerCap);
+    limLog(pMac, LOG1, FL("muBeamformeeCap (1): %d\n"), pDot11f->muBeamformeeCap);
+    limLog(pMac, LOG1, FL("vhtTXOPPS (1): %d\n"), pDot11f->vhtTXOPPS);
+    limLog(pMac, LOG1, FL("htcVHTCap (1): %d\n"), pDot11f->htcVHTCap);
+    limLog(pMac, LOG1, FL("maxAMPDULenExp (3): %d\n"), pDot11f->maxAMPDULenExp);
+    limLog(pMac, LOG1, FL("vhtLinkAdaptCap (2): %d\n"), pDot11f->vhtLinkAdaptCap);
+    limLog(pMac, LOG1, FL("rxAntPattern (1): %d\n"), pDot11f->vhtLinkAdaptCap);
+    limLog(pMac, LOG1, FL("txAntPattern (1): %d\n"), pDot11f->vhtLinkAdaptCap);
+    limLog(pMac, LOG1, FL("reserved1 (2): %d\n"), pDot11f->reserved1);
+    limLog(pMac, LOG1, FL("rxMCSMap (16): %d\n"), pDot11f->rxMCSMap);
+    limLog(pMac, LOG1, FL("rxHighSupDataRate (13): %d\n"), pDot11f->rxHighSupDataRate);
+    limLog(pMac, LOG1, FL("reserve (3): %d\n"), pDot11f->reserved2);
+    limLog(pMac, LOG1, FL("txMCSMap (16): %d\n"), pDot11f->txMCSMap);
+    limLog(pMac, LOG1, FL("txSupDataRate (13): %d\n"), pDot11f->txSupDataRate);
+    limLog(pMac, LOG1, FL("reserv (3): %d\n"), pDot11f->reserved3);
 }
 
 void limLogVHTOperation(tpAniSirGlobal pMac,
                               tDot11fIEVHTOperation *pDot11f)
 {
 
-    limLog(pMac, LOGW, FL("chanWidth : %d\n"), pDot11f->chanWidth);
-    limLog(pMac, LOGW, FL("chanCenterFreqSeg1: %d\n"), pDot11f->chanCenterFreqSeg1);
-    limLog(pMac, LOGW, FL("chanCenterFreqSeg2: %d\n"), pDot11f->chanCenterFreqSeg2);
-    limLog(pMac, LOGW, FL("basicMCSSet: %d\n"), pDot11f->basicMCSSet);
+    limLog(pMac, LOG1, FL("chanWidth : %d\n"), pDot11f->chanWidth);
+    limLog(pMac, LOG1, FL("chanCenterFreqSeg1: %d\n"), pDot11f->chanCenterFreqSeg1);
+    limLog(pMac, LOG1, FL("chanCenterFreqSeg2: %d\n"), pDot11f->chanCenterFreqSeg2);
+    limLog(pMac, LOG1, FL("basicMCSSet: %d\n"), pDot11f->basicMCSSet);
 }
 
 void limLogVHTExtBssLoad(tpAniSirGlobal pMac,
                               tDot11fIEVHTExtBssLoad *pDot11f)
 {
-    limLog(pMac, LOGW, FL("muMIMOCapStaCount : %d\n"), pDot11f->muMIMOCapStaCount);
-    limLog(pMac, LOGW, FL("ssUnderUtil: %d\n"), pDot11f->ssUnderUtil);
-    limLog(pMac, LOGW, FL("FortyMHzUtil: %d\n"), pDot11f->FortyMHzUtil);
-    limLog(pMac, LOGW, FL("EightyMHzUtil: %d\n"), pDot11f->EightyMHzUtil);
-    limLog(pMac, LOGW, FL("OneSixtyMHzUtil: %d\n"), pDot11f->OneSixtyMHzUtil);
+    limLog(pMac, LOG1, FL("muMIMOCapStaCount : %d\n"), pDot11f->muMIMOCapStaCount);
+    limLog(pMac, LOG1, FL("ssUnderUtil: %d\n"), pDot11f->ssUnderUtil);
+    limLog(pMac, LOG1, FL("FortyMHzUtil: %d\n"), pDot11f->FortyMHzUtil);
+    limLog(pMac, LOG1, FL("EightyMHzUtil: %d\n"), pDot11f->EightyMHzUtil);
+    limLog(pMac, LOG1, FL("OneSixtyMHzUtil: %d\n"), pDot11f->OneSixtyMHzUtil);
 }
 
 
 void limLogOperatingMode( tpAniSirGlobal pMac, 
                                tDot11fIEOperatingMode *pDot11f)
 {
-    limLog(pMac, LOGW, FL("ChanWidth : %d\n"), pDot11f->chanWidth);
-    limLog(pMac, LOGW, FL("reserved: %d\n"), pDot11f->reserved);
-    limLog(pMac, LOGW, FL("rxNSS: %d\n"), pDot11f->rxNSS);
-    limLog(pMac, LOGW, FL("rxNSS Type: %d\n"), pDot11f->rxNSSType);
+    limLog(pMac, LOG1, FL("ChanWidth : %d\n"), pDot11f->chanWidth);
+    limLog(pMac, LOG1, FL("reserved: %d\n"), pDot11f->reserved);
+    limLog(pMac, LOG1, FL("rxNSS: %d\n"), pDot11f->rxNSS);
+    limLog(pMac, LOG1, FL("rxNSS Type: %d\n"), pDot11f->rxNSSType);
 }
 
 
