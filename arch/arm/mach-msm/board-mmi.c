@@ -42,6 +42,21 @@ struct dt_gpiomux {
 #define DT_PATH_MUX		"/System@0/IOMUX@0"
 #define DT_PROP_MUX_SETTINGS	"settings"
 
+#define BOOT_MODE_MAX_LEN 64
+static char boot_mode[BOOT_MODE_MAX_LEN + 1];
+int __init board_boot_mode_init(char *s)
+{
+	strlcpy(boot_mode, s, BOOT_MODE_MAX_LEN);
+	boot_mode[BOOT_MODE_MAX_LEN] = '\0';
+	return 1;
+}
+__setup("androidboot.mode=", board_boot_mode_init);
+
+static int mmi_boot_mode_is_factory(void)
+{
+	return !strncmp(boot_mode, "factory", BOOT_MODE_MAX_LEN);
+}
+
 static void __init mmi_gpiomux_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	struct device_node *node;
@@ -103,6 +118,8 @@ static void __init mmi_pmic_init(struct msm8960_oem_init_ptrs *oem_ptr,
 	mmi_pm8921_keypad_init(pdata);
 }
 
+static struct mmi_oem_data mmi_data;
+
 static void __init mmi_msm8960_init_early(void)
 {
 	msm8960_allocate_memory_regions();
@@ -124,6 +141,10 @@ static void __init mmi_msm8960_init_early(void)
 	msm8960_oem_funcs.msm_gpio_mpp_init = mmi_gpio_mpp_init;
 	msm8960_oem_funcs.msm_i2c_init = mmi_i2c_init;
 	msm8960_oem_funcs.msm_pmic_init = mmi_pmic_init;
+
+	/* Custom OEM Platform Data */
+	mmi_data.is_factory = mmi_boot_mode_is_factory;
+	msm8960_oem_funcs.oem_data = &mmi_data;
 }
 
 static int __init parse_tag_flat_dev_tree_address(const struct tag *tag)
