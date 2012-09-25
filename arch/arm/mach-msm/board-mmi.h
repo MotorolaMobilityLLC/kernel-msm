@@ -27,6 +27,9 @@ extern void mmi_pm8921_init(void *);
 /* from board-mmi-keypad.c */
 extern void mmi_pm8921_keypad_init(void *);
 
+/* from board-mmi-clocks.c */
+extern struct clk_lookup *mmi_init_clocks_from_dt(int *size);
+
 /* MMI OEM Data Structure */
 struct mmi_oem_data {
 	int (*is_factory)(void);
