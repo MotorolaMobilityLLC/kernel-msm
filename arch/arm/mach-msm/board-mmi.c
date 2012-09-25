@@ -118,6 +118,19 @@ static void __init mmi_pmic_init(struct msm8960_oem_init_ptrs *oem_ptr,
 	mmi_pm8921_keypad_init(pdata);
 }
 
+static void __init mmi_clk_init(struct msm8960_oem_init_ptrs *oem_ptr,
+				struct clock_init_data *data)
+{
+	struct clk_lookup *mmi_clks;
+	int size;
+
+	mmi_clks = mmi_init_clocks_from_dt(&size);
+	if (mmi_clks) {
+		data->oem_clk_tbl = mmi_clks;
+		data->oem_clk_size = size;
+	}
+}
+
 static struct mmi_oem_data mmi_data;
 
 static void __init mmi_msm8960_init_early(void)
@@ -141,6 +154,7 @@ static void __init mmi_msm8960_init_early(void)
 	msm8960_oem_funcs.msm_gpio_mpp_init = mmi_gpio_mpp_init;
 	msm8960_oem_funcs.msm_i2c_init = mmi_i2c_init;
 	msm8960_oem_funcs.msm_pmic_init = mmi_pmic_init;
+	msm8960_oem_funcs.msm_clock_init = mmi_clk_init;
 
 	/* Custom OEM Platform Data */
 	mmi_data.is_factory = mmi_boot_mode_is_factory;
