@@ -253,6 +253,7 @@ struct kgsl_process_private {
 	struct kgsl_pagetable *pagetable;
 	struct list_head list;
 	struct kobject kobj;
+	struct dentry *debug_root;
 
 	struct {
 		unsigned int cur;
