@@ -173,7 +173,9 @@ out:
 int sysmon_send_shutdown(enum subsys_id dest_ss)
 {
 	struct sysmon_subsys *ss = &subsys[dest_ss];
-	const char tx_buf[] = "ssr:poweroff";
+	const char tx_buf[] = "system:shutdown";
+	const char expect[] = "system:ack";
+	size_t prefix_len = ARRAY_SIZE(expect) - 1;
 	int ret;
 
 	if (dest_ss < 0 || dest_ss >= SYSMON_NUM_SS)
@@ -181,6 +183,12 @@ int sysmon_send_shutdown(enum subsys_id dest_ss)
 
 	mutex_lock(&ss->lock);
 	ret = sysmon_send_msg(ss, tx_buf, ARRAY_SIZE(tx_buf));
+	if (ret)
+		goto out;
+
+	if (strncmp(ss->rx_buf, expect, prefix_len))
+		ret = -ENOSYS;
+out:
 	mutex_unlock(&ss->lock);
 	return ret;
 }
