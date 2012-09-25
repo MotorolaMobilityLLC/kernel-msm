@@ -27,5 +27,10 @@ extern void mmi_pm8921_init(void *);
 /* from board-mmi-keypad.c */
 extern void mmi_pm8921_keypad_init(void *);
 
+/* MMI OEM Data Structure */
+struct mmi_oem_data {
+	int (*is_factory)(void);
+};
+
 #endif
 
