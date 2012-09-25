@@ -2387,8 +2387,6 @@ static int mdp_probe(struct platform_device *pdev)
 		if (rc)
 			return rc;
 
-		mdp_clk_ctrl(1);
-
 		mdp_hw_version();
 
 		/* initializing mdp hw */
@@ -2402,8 +2400,6 @@ static int mdp_probe(struct platform_device *pdev)
 #ifdef CONFIG_FB_MSM_OVERLAY
 		mdp_hw_cursor_init();
 #endif
-		mdp_clk_ctrl(0);
-
 		mdp_resource_initialized = 1;
 		return 0;
 	}
@@ -2438,6 +2434,7 @@ static int mdp_probe(struct platform_device *pdev)
 				    mfd->panel.type == LCDC_PANEL)
 					mdp_pipe_ctrl(MDP_CMD_BLOCK,
 						MDP_BLOCK_POWER_ON, FALSE);
+				mdp_clk_ctrl(1);
 				contSplash_update_done = 1;
 			}
 		} else
