@@ -2296,12 +2296,12 @@ int q6asm_media_format_block_multi_ch_pcm(struct audio_client *ac,
 		channel_mapping[0] = PCM_CHANNEL_FL;
 		channel_mapping[1] = PCM_CHANNEL_FR;
 	} else if (channels == 6) {
-		channel_mapping[0] = PCM_CHANNEL_FC;
-		channel_mapping[1] = PCM_CHANNEL_FL;
-		channel_mapping[2] = PCM_CHANNEL_FR;
-		channel_mapping[3] = PCM_CHANNEL_LB;
-		channel_mapping[4] = PCM_CHANNEL_RB;
-		channel_mapping[5] = PCM_CHANNEL_LFE;
+		channel_mapping[0] = PCM_CHANNEL_FL;
+		channel_mapping[1] = PCM_CHANNEL_FR;
+		channel_mapping[2] = PCM_CHANNEL_FC;
+		channel_mapping[3] = PCM_CHANNEL_LFE;
+		channel_mapping[4] = PCM_CHANNEL_LB;
+		channel_mapping[5] = PCM_CHANNEL_RB;
 	} else {
 		pr_err("%s: ERROR.unsupported num_ch = %u\n", __func__,
 				channels);
