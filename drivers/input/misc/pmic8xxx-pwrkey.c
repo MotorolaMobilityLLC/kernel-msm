@@ -178,7 +178,6 @@ static int __devinit pmic8xxx_pwrkey_probe(struct platform_device *pdev)
 	pwrkey->key_press_irq = key_press_irq;
 	pwrkey->key_release_irq = key_release_irq;
 	pwrkey->pwr = pwr;
-	pwrkey->press = false;
 
 	platform_set_drvdata(pdev, pwrkey);
 
