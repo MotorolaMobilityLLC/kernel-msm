@@ -29,12 +29,12 @@
 
 /* must match type identifiers defined in DT schema */
 #define GSBI_IDLE	0
-#define GSBI_UART	1
-#define GSBI_SPI	2
-#define GSBI_SIM	3
-#define GSBI_I2C_UART	4
-#define GSBI_I2C_SIM	5
-#define GSBI_GPIO	6
+#define GSBI_I2C_SIM	1
+#define GSBI_I2C	2
+#define GSBI_SPI	3
+#define GSBI_UART	4
+#define GSBI_SIM	5
+#define GSBI_I2C_UART	6
 
 #define GSBI_MIN	1
 #define GSBI_MAX	12
@@ -261,8 +261,13 @@ void __init mmi_init_gsbi_devices_from_dt(void)
 					mmi_init_i2c_dev_from_dt(gsbi_id,
 								 child, dev);
 				break;
-			case GSBI_GPIO:
-				mmi_init_gsbi_protocol(gsbi_id, GSBI_GPIO);
+			case GSBI_I2C:
+				mmi_init_gsbi_protocol(gsbi_id, GSBI_I2C);
+
+				dev = i2c_dt_lookup_table[gsbi_id];
+				if (dev)
+					mmi_init_i2c_dev_from_dt(gsbi_id,
+								 child, dev);
 				break;
 			case GSBI_SPI:
 				mmi_init_gsbi_protocol(gsbi_id, GSBI_SPI);
