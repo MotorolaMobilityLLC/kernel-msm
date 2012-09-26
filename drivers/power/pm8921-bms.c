@@ -2169,6 +2169,7 @@ static int report_state_of_charge(struct pm8921_bms_chip *chip)
 	struct pm8xxx_adc_chan_result result;
 	int batt_temp;
 	int rc;
+	int usb_chg = 0;
 
 	rc = pm8xxx_adc_read(the_chip->batt_temp_channel, &result);
 	if (rc) {
@@ -2222,8 +2223,10 @@ static int report_state_of_charge(struct pm8921_bms_chip *chip)
 			the_chip->catch_up_time_us = 0;
 	}
 
+	usb_chg = usb_chg_plugged_in();
+	usb_chg |= wireless_chg_plugged_in();
 	/* last_soc < soc  ... scale and catch up */
-	if (last_soc != -EINVAL && last_soc < soc && soc != 100)
+	if (last_soc != -EINVAL && usb_chg != 0 && soc != 100)
 		soc = scale_soc_while_chg(chip, delta_time_us, soc, last_soc);
 
 	if (chip->eoc_check_soc && is_eoc_adjust(chip, soc)) {
