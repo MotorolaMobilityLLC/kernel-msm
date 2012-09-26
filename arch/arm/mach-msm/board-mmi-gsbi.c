@@ -21,6 +21,7 @@
 #include <linux/platform_device.h>
 #include <linux/spi/spi.h>
 #include <mach/board.h>
+#include <mach/msm_iomap-8960-mmi.h>
 #include <mach/msm_spi.h>
 #include "clock-gsbi-8960.h"
 #include "devices.h"
@@ -36,20 +37,6 @@
 
 #define GSBI_MIN	1
 #define GSBI_MAX	12
-
-/* Address of GSBI blocks */
-#define MSM_GSBI1_PHYS  0x16000000
-#define MSM_GSBI2_PHYS  0x16100000
-#define MSM_GSBI3_PHYS  0x16200000
-#define MSM_GSBI4_PHYS  0x16300000
-#define MSM_GSBI5_PHYS  0x16400000
-#define MSM_GSBI6_PHYS  0x16500000
-#define MSM_GSBI7_PHYS  0x16600000
-#define MSM_GSBI8_PHYS  0x1A000000
-#define MSM_GSBI9_PHYS  0x1A100000
-#define MSM_GSBI10_PHYS 0x1A200000
-#define MSM_GSBI11_PHYS 0x12440000
-#define MSM_GSBI12_PHYS 0x12480000
 
 /* MMI - Device Tree Lookup Tables */
 struct platform_device *i2c_dt_lookup_table[] __initdata = {
