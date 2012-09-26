@@ -22,6 +22,7 @@
 #include <linux/spi/spi.h>
 #include <mach/board.h>
 #include <mach/msm_iomap-8960-mmi.h>
+#include <mach/msm_serial_hs_lite.h>
 #include <mach/msm_spi.h>
 #include "clock-gsbi-8960.h"
 #include "devices.h"
@@ -197,6 +198,25 @@ error:
 static void __init mmi_init_uart_dev_from_dt(struct device_node *node,
 						struct platform_device *dev)
 {
+	struct msm_serial_hslite_platform_data *pdata;
+	int len = 0;
+	const void *prop;
+
+	prop = of_get_property(node, "uart_line", &len);
+	if (!prop || len != sizeof(u8))
+		goto devreg;
+
+	pdata = kzalloc(sizeof(struct msm_serial_hslite_platform_data),
+			GFP_KERNEL);
+	if (!pdata) {
+		pr_err("%s: Couldn't allocate platform data...\n", __func__);
+		goto devreg;
+	}
+
+	pdata->line = *(u8 *)prop;
+	dev->dev.platform_data = pdata;
+
+devreg:
 	if (platform_device_register(dev))
 		pr_err("%s: Failed to register platform device!\n", __func__);
 }
