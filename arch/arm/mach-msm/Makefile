@@ -304,6 +304,7 @@ obj-$(CONFIG_MACH_SAPPHIRE) += board-sapphire-rfkill.o msm_vibrator.o
 
 obj-$(CONFIG_MACH_LGE) += lge/
 
+obj-$(CONFIG_MACH_MSM8960_MMI) += devices-mmi.o
 obj-$(CONFIG_MACH_MSM8960_MMI) += devtree_util.o
 obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi.o
 obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi-gsbi.o
