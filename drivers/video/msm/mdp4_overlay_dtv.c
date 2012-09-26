@@ -563,8 +563,10 @@ int mdp4_dtv_off(struct platform_device *pdev)
 	struct msm_fb_data_type *mfd;
 	int ret = 0;
 	int cndx = 0;
+	int undx;
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
+	struct vsync_update *vp;
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 
@@ -574,6 +576,10 @@ int mdp4_dtv_off(struct platform_device *pdev)
 
 	while (vctrl->wait_vsync_cnt)
 		msleep(20);	/* >= 17 ms */
+
+	undx =  vctrl->update_ndx;
+	vp = &vctrl->vlist[undx];
+	vp->update_cnt = 0;     /* empty queue */
 
 	pipe = vctrl->base_pipe;
 	if (pipe != NULL) {
