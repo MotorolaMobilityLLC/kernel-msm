@@ -386,6 +386,8 @@ VOS_STATUS wlan_hdd_enter_lowpower(hdd_context_t *pHddCtx);
 
 VOS_STATUS wlan_hdd_get_classAstats(hdd_adapter_t *pAdapter);
 
+VOS_STATUS wlan_hdd_get_station_stats(hdd_adapter_t *pAdapter);
+
 VOS_STATUS wlan_hdd_get_rssi(hdd_adapter_t *pAdapter, v_S7_t *rssi_value);
 
 #endif // __WEXT_IW_H__

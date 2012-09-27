@@ -7700,7 +7700,7 @@ v_U8_t* limGetIEPtr(tpAniSirGlobal pMac, v_U8_t *pIes, int length, v_U8_t eid,eS
         if(elem_len > left)
         {
             limLog(pMac, LOGE,
-                    "****Invalid IEs eid = %d elem_len=%d left=%d*****\n",
+                    FL("****Invalid IEs eid = %d elem_len=%d left=%d*****"),
                                                     eid,elem_len,left);
             return NULL;
         }

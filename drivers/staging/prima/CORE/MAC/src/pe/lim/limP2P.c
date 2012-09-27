@@ -631,7 +631,7 @@ void limSetHtCaps(tpAniSirGlobal pMac, tpPESession psessionEntry, tANI_U8 *pIeSt
     PopulateDot11fHTCaps(pMac, psessionEntry, &dot11HtCap);
     pIe = limGetIEPtr(pMac,pIeStartPtr, nBytes,
                                        DOT11F_EID_HTCAPS,ONE_BYTE);
-   limLog( pMac, LOGE, FL("pIe 0x%x dot11HtCap.supportedMCSSet[0]=0x%x"),
+   limLog( pMac, LOG2, FL("pIe 0x%x dot11HtCap.supportedMCSSet[0]=0x%x"),
         (tANI_U32)pIe,dot11HtCap.supportedMCSSet[0]);
     if(pIe)
     {
@@ -968,7 +968,7 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
         else
         {
              pMac->lim.actionFrameSessionId = pMbMsg->sessionId;
-             limLog( pMac, LOGE, FL("lim.actionFrameSessionId = %lu\n" ), 
+             limLog( pMac, LOG2, FL("lim.actionFrameSessionId = %lu\n" ), 
                      pMac->lim.actionFrameSessionId);
 
         }

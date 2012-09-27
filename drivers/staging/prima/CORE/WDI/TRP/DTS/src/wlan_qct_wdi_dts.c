@@ -50,6 +50,7 @@ static WDTS_TransportDriverTrype gTransportDriver = {
   WLANDXE_TxFrame,
   WLANDXE_CompleteTX,
   WLANDXE_SetPowerState,
+  WLANDXE_ChannelDebug,
   WLANDXE_Stop,
   WLANDXE_Close,
   WLANDXE_GetFreeTxDataResNumber
@@ -558,6 +559,24 @@ wpt_status WDTS_SetPowerState(void *pContext, WDTS_PowerStateType  powerState,
    }
 
    return status;
+}
+
+/* DTS Transport Channel Debug
+ * Display DXE Channel debugging information
+ * User may request to display DXE channel snapshot
+ * Or if host driver detects any abnormal stcuk may display
+ * Parameters:
+ *  displaySnapshot : Dispaly DXE snapshot option
+ *  enableStallDetect : Enable stall detect feature
+                        This feature will take effect to data performance
+                        Not integrate till fully verification
+ * Return Value: NONE
+ *
+ */
+void WDTS_ChannelDebug(wpt_boolean dispalySnapshot, wpt_boolean toggleStallDetect)
+{
+   gTransportDriver.channelDebug(dispalySnapshot, toggleStallDetect);
+   return;
 }
 
 /* DTS Stop function. 

@@ -3780,7 +3780,7 @@ WLANTL_GetFrames
           ( uFlowMask & ( 1 << WDA_TXFLOW_AC_VI ) ) || 
           ( uFlowMask & ( 1 << WDA_TXFLOW_AC_VO ) )))
       {
-         TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+         TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,
              "WLAN TL:Returning from GetFrame: resources = %d",
                  pTLCb->uResCount));
          ucResult = WDA_TLI_MIN_RES_DATA;
@@ -5564,7 +5564,7 @@ WLANTL_STATxConn
 
   if (( VOS_STATUS_SUCCESS != vosStatus ) || ( NULL == vosDataBuff ))
   {
-    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+    TLLOG1(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,
                "WLAN TL:No more data at HDD status %d", vosStatus));
     *pvosDataBuff = NULL;
 

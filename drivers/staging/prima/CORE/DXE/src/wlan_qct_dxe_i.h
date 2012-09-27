@@ -74,6 +74,9 @@ when           who        what, where, why
  * This is temporary definition location to make compile and unit test
  * If official msmreg.h integrated, this part will be eliminated */
 /* Start with base address */
+
+#define WLANDXE_BMU_AVAILABLE_BD_PDU     0x03080084
+
 #ifdef WCN_PRONTO
 #define WLANDXE_CCU_DXE_INT_SELECT       0xfb2050dc
 #define WLANDXE_CCU_DXE_INT_SELECT_STAT  0xfb2050e0

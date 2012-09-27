@@ -2070,7 +2070,7 @@ tSirRetStatus sirConvertProbeFrame2Struct(tpAniSirGlobal       pMac,
         palCopyMemory( pMac->hHdd, (tANI_U8 *)&(pProbeResp->mdie[0]), (tANI_U8 *)&(pr->MobilityDomain.MDID), sizeof(tANI_U16) );
         pProbeResp->mdie[2] = ((pr->MobilityDomain.overDSCap << 0) | (pr->MobilityDomain.resourceReqCap << 1));
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-        limLog(pMac, LOGE, FL("mdie=%02x%02x%02x\n"), (unsigned int)pProbeResp->mdie[0],
+        limLog(pMac, LOG2, FL("mdie=%02x%02x%02x\n"), (unsigned int)pProbeResp->mdie[0],
                (unsigned int)pProbeResp->mdie[1], (unsigned int)pProbeResp->mdie[2]);
 #endif
     }
@@ -2365,7 +2365,7 @@ sirConvertAssocRespFrame2Struct(tpAniSirGlobal pMac,
     {
         pAssocRsp->wmeEdcaPresent = 1;
         ConvertWMMParams( pMac, &pAssocRsp->edca, &ar.WMMParams);
-        limLog(pMac, LOGE, FL("WMM Parameter Element present in Association Response Frame!\n"));
+        limLog(pMac, LOG1, FL("WMM Parameter Element present in Association Response Frame!"));
         __printWMMParams(pMac, &ar.WMMParams);
     }
 
@@ -2387,7 +2387,7 @@ sirConvertAssocRespFrame2Struct(tpAniSirGlobal pMac,
         palCopyMemory( pMac->hHdd, (tANI_U8 *)&(pAssocRsp->mdie[0]), (tANI_U8 *)&(ar.MobilityDomain.MDID), sizeof(tANI_U16) );
         pAssocRsp->mdie[2] = ((ar.MobilityDomain.overDSCap << 0) | (ar.MobilityDomain.resourceReqCap << 1));
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-        limLog(pMac, LOGE, FL("new mdie=%02x%02x%02x\n"), (unsigned int)pAssocRsp->mdie[0],
+        limLog(pMac, LOG1, FL("new mdie=%02x%02x%02x"), (unsigned int)pAssocRsp->mdie[0],
                (unsigned int)pAssocRsp->mdie[1], (unsigned int)pAssocRsp->mdie[2]);
 #endif
     }
@@ -2395,7 +2395,7 @@ sirConvertAssocRespFrame2Struct(tpAniSirGlobal pMac,
     if ( ar.FTInfo.present )
     {
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-        limLog(pMac, LOGE, FL("FT Info present %d %d %d\n"), ar.FTInfo.R0KH_ID.num_PMK_R0_ID,
+        limLog(pMac, LOG1, FL("FT Info present %d %d %d"), ar.FTInfo.R0KH_ID.num_PMK_R0_ID,
                 ar.FTInfo.R0KH_ID.present,
                 ar.FTInfo.R1KH_ID.present);
 #endif
@@ -2437,13 +2437,13 @@ sirConvertAssocRespFrame2Struct(tpAniSirGlobal pMac,
     if ( ar.VHTCaps.present )
     {
         palCopyMemory( pMac, &pAssocRsp->VHTCaps, &ar.VHTCaps, sizeof( tDot11fIEVHTCaps ) );
-        limLog( pMac, LOGW, FL("Received Assoc Response with VHT Cap\n"));
+        limLog( pMac, LOG1, FL("Received Assoc Response with VHT Cap"));
         limLogVHTCap(pMac, &pAssocRsp->VHTCaps);
     }
     if ( ar.VHTOperation.present )
     {
         palCopyMemory( pMac, &pAssocRsp->VHTOperation, &ar.VHTOperation, sizeof( tDot11fIEVHTOperation) );
-        limLog( pMac, LOGW, FL("Received Assoc Response with VHT Operation\n"));
+        limLog( pMac, LOG1, FL("Received Assoc Response with VHT Operation"));
         limLogVHTOperation(pMac, &pAssocRsp->VHTOperation);
     }
 #endif

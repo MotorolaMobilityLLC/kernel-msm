@@ -196,6 +196,8 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_STOP_AP           3
 #define WE_ENABLE_AMP        4
 #define WE_DISABLE_AMP       5
+#define WE_ENABLE_DXE_STALL_DETECT 6
+#define WE_DISPLAY_DXE_SNAP_SHOT   7
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_VAR_INT_GET_NONE   (SIOCIWFIRSTPRIV + 7)
@@ -820,7 +822,7 @@ v_U8_t* wlan_hdd_get_vendor_oui_ie_ptr(v_U8_t *oui, v_U8_t oui_size, v_U8_t *ie,
         if(elem_len > left)
         {
             hddLog(VOS_TRACE_LEVEL_FATAL,
-                   "****Invalid IEs eid = %d elem_len=%d left=%d*****\n",
+                   FL("****Invalid IEs eid = %d elem_len=%d left=%d*****"),
                     eid,elem_len,left);
             return NULL;
         }
@@ -1985,6 +1987,123 @@ VOS_STATUS  wlan_hdd_get_classAstats(hdd_adapter_t *pAdapter)
    }
    return VOS_STATUS_SUCCESS;
 }
+
+static void hdd_get_station_statisticsCB(void *pStats, void *pContext)
+{
+   struct statsContext *pStatsContext;
+   tCsrSummaryStatsInfo      *pSummaryStats;
+   tCsrGlobalClassAStatsInfo *pClassAStats;
+   hdd_adapter_t *pAdapter;
+
+   if (ioctl_debug)
+   {
+      pr_info("%s: pStats [%p] pContext [%p]\n",
+              __FUNCTION__, pStats, pContext);
+   }
+
+   if ((NULL == pStats) || (NULL == pContext))
+   {
+      hddLog(VOS_TRACE_LEVEL_ERROR,
+             "%s: Bad param, pStats [%p] pContext [%p]",
+             __FUNCTION__, pStats, pContext);
+      return;
+   }
+
+   /* there is a race condition that exists between this callback function
+      and the caller since the caller could time out either before or
+      while this code is executing.  we'll assume the timeout hasn't
+      occurred, but we'll verify that right before we save our work */
+
+   pSummaryStats = (tCsrSummaryStatsInfo *)pStats;
+   pClassAStats  = (tCsrGlobalClassAStatsInfo *)( pSummaryStats + 1 );
+   pStatsContext = pContext;
+   pAdapter      = pStatsContext->pAdapter;
+   if ((NULL == pAdapter) || (STATS_CONTEXT_MAGIC != pStatsContext->magic))
+   {
+      /* the caller presumably timed out so there is nothing we can do */
+      hddLog(VOS_TRACE_LEVEL_WARN,
+             "%s: Invalid context, pAdapter [%p] magic [%08x]",
+             __FUNCTION__, pAdapter, pStatsContext->magic);
+      if (ioctl_debug)
+      {
+         pr_info("%s: Invalid context, pAdapter [%p] magic [%08x]\n",
+                 __FUNCTION__, pAdapter, pStatsContext->magic);
+      }
+      return;
+   }
+
+   /* the race is on.  caller could have timed out immediately after
+      we verified the magic, but if so, caller will wait a short time
+      for us to copy over the stats. do so as a struct copy */
+   pAdapter->hdd_stats.summary_stat = *pSummaryStats;
+   pAdapter->hdd_stats.ClassA_stat = *pClassAStats;
+
+   /* and notify the caller */
+   complete(&pStatsContext->completion);
+}
+
+VOS_STATUS  wlan_hdd_get_station_stats(hdd_adapter_t *pAdapter)
+{
+   hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+   eHalStatus hstatus;
+   long lrc;
+   struct statsContext context;
+
+   if (NULL == pAdapter)
+   {
+       hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Padapter is NULL", __func__);
+       return VOS_STATUS_SUCCESS;
+   }
+
+   /* we are connected
+   prepare our callback context */
+   init_completion(&context.completion);
+   context.pAdapter = pAdapter;
+   context.magic = STATS_CONTEXT_MAGIC;
+
+   /* query only for Summary & Class A statistics */
+   hstatus = sme_GetStatistics(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                               eCSR_HDD,
+                               SME_SUMMARY_STATS |
+                               SME_GLOBAL_CLASSA_STATS,
+                               hdd_get_station_statisticsCB,
+                               0, // not periodic
+                               FALSE, //non-cached results
+                               pHddStaCtx->conn_info.staId[0],
+                               &context);
+   if (eHAL_STATUS_SUCCESS != hstatus)
+   {
+      hddLog(VOS_TRACE_LEVEL_ERROR,
+             "%s: Unable to retrieve statistics",
+             __FUNCTION__);
+      /* we'll return with cached values */
+   }
+   else
+   {
+      /* request was sent -- wait for the response */
+      lrc = wait_for_completion_interruptible_timeout(&context.completion,
+                                    msecs_to_jiffies(WLAN_WAIT_TIME_STATS));
+      /* either we have a response or we timed out
+         either way, first invalidate our magic */
+      context.magic = 0;
+      if (lrc <= 0)
+      {
+         hddLog(VOS_TRACE_LEVEL_ERROR,
+                "%s: SME %s while retrieving statistics",
+                __FUNCTION__, (0 == lrc) ? "timeout" : "interrupt");
+         /* there is a race condition such that the callback
+            function could be executing at the same time we are. of
+            primary concern is if the callback function had already
+            verified the "magic" but hasn't yet set the completion
+            variable.  Since the completion variable is on our
+            stack, we'll delay just a bit to make sure the data is
+            still valid if that is the case */
+         msleep(50);
+      }
+   }
+   return VOS_STATUS_SUCCESS;
+}
+
 
 /*
  * Support for the LINKSPEED private command
@@ -3976,6 +4095,17 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
             break;
         }
 #endif
+
+        case WE_ENABLE_DXE_STALL_DETECT:
+        {
+            sme_transportDebug(VOS_FALSE, VOS_TRUE);
+            break;
+        }
+        case WE_DISPLAY_DXE_SNAP_SHOT:
+        {
+            sme_transportDebug(VOS_TRUE, VOS_FALSE);
+            break;
+        }
 
         default:
         {
@@ -6002,6 +6132,14 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         0,
         "disableAMP" },
+    {   WE_ENABLE_DXE_STALL_DETECT,
+        0,
+        0,
+        "dxeStallDetect" },
+    {   WE_DISPLAY_DXE_SNAP_SHOT,
+        0,
+        0,
+        "dxeSnapshot" },
 
     /* handlers for main ioctl */
     {   WLAN_PRIV_SET_VAR_INT_GET_NONE,
