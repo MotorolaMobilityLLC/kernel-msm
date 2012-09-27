@@ -92,6 +92,110 @@ static int __init melfas_init_i2c_device(struct i2c_board_info *info,
 	return 0;
 }
 
+#define DT_GENERIC_TOUCH_TDAT          0x0000001E
+#define DT_GENERIC_TOUCH_TGPIO         0x0000001F
+
+static int __init mmi_touch_tdat_init(
+		struct touch_platform_data *tpdata,
+		struct device_node *node)
+{
+	int err = 0;
+	const void *prop;
+	int size = 0;
+
+	prop = of_get_property(node, "tdat_filename", &size);
+	if (prop == NULL || size <= 0) {
+		pr_err("%s: tdat file name is missing.\n", __func__);
+		err = -ENOENT;
+		goto touch_tdat_init_fail;
+	} else {
+		tpdata->filename = kstrndup((char *)prop, size, GFP_KERNEL);
+		if (!tpdata->filename) {
+			pr_err("%s: unable to allocate memory for "
+					"tdat file name\n", __func__);
+			err = -ENOMEM;
+			goto touch_tdat_init_fail;
+		}
+	}
+
+touch_tdat_init_fail:
+	return err;
+}
+
+static int __init dt_get_gpio(struct device_node *node,
+		const char *name, int *gpio) {
+	int rv = 0;
+	int size;
+	const void *prop = of_get_property(node, name, &size);
+	if (prop == NULL || size != sizeof(u8)) {
+		pr_err("%s: tgpio %s is missing.\n", __func__, name);
+		rv = -ENOENT;
+	} else {
+		*gpio = *(u8 *)prop;
+	}
+
+	return rv;
+}
+
+static int __init mmi_touch_tgpio_init(
+		struct touch_platform_data *tpdata,
+		struct device_node *node)
+{
+	int rv = -EINVAL;
+
+	if (dt_get_gpio(node, "irq_gpio", &tpdata->gpio_interrupt))
+		goto touch_gpio_init_fail;
+	if (dt_get_gpio(node, "rst_gpio", &tpdata->gpio_reset))
+		goto touch_gpio_init_fail;
+	if (dt_get_gpio(node, "en_gpio", &tpdata->gpio_enable))
+		goto touch_gpio_init_fail;
+
+	rv = 0;
+touch_gpio_init_fail:
+	return rv;
+}
+
+static int __init atmxt_init_i2c_device(struct i2c_board_info *info,
+		struct device_node *node)
+{
+	int rv = 0;
+	struct device_node *child;
+	struct touch_platform_data *tpdata;
+
+	pr_info("%s ATMXT TS: platform init for %s\n", __func__, info->type);
+
+	tpdata = kzalloc(sizeof(struct touch_platform_data), GFP_KERNEL);
+	if (!tpdata) {
+		pr_err("%s: Unable to create platform data.\n", __func__);
+		rv = -ENOMEM;
+		goto out;
+	}
+
+	info->platform_data = tpdata;
+
+	for_each_child_of_node(node, child) {
+		int len = 0;
+		const void *prop;
+
+		prop = of_get_property(child, "type", &len);
+		if (prop && (len == sizeof(u32))) {
+			switch (*(u32 *)prop) {
+			case DT_GENERIC_TOUCH_TDAT:
+				rv = mmi_touch_tdat_init(tpdata, child);
+				break;
+			case DT_GENERIC_TOUCH_TGPIO:
+				rv = mmi_touch_tgpio_init(tpdata, child);
+				break;
+			}
+		}
+		if (rv)
+			goto out;
+
+	}
+out:
+	return rv;
+}
+
 static int __init stub_init_i2c_device(struct i2c_board_info *info,
 				       struct device_node *node)
 {
@@ -109,6 +213,7 @@ struct mmi_apq_i2c_lookup {
 
 struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00270000, melfas_init_i2c_device},  /* Melfas_MMS100 */
+	{0x00260001, atmxt_init_i2c_device},   /* Atmel_MXT */
 	{0x00290000, stub_init_i2c_device},
 };
 
