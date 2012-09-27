@@ -234,6 +234,10 @@ config ENABLE_DEFAULT_TRACERS
 	  allowing the user to pick and choose which trace point they
 	  want to trace. It also includes the sched_switch tracer plugin.
 
+config ENABLE_MEMKILL_TRACER
+	bool "Trace OOM and LMK kills"
+	select TRACING
+
 config FTRACE_SYSCALLS
 	bool "Trace syscalls"
 	depends on HAVE_SYSCALL_TRACEPOINTS
