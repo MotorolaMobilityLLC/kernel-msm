@@ -15,6 +15,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
+#define REALLY_WANT_TRACEPOINTS
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/types.h>
@@ -699,17 +700,23 @@ static int tracepoint_module_going(struct module *mod)
 int tracepoint_module_notify(struct notifier_block *self,
 			     unsigned long val, void *data)
 {
+#ifdef CONFIG_TRACEPOINTS
 	struct module *mod = data;
+#endif
 	int ret = 0;
 
 	switch (val) {
 	case MODULE_STATE_COMING:
+#ifdef CONFIG_TRACEPOINTS
 		ret = tracepoint_module_coming(mod);
+#endif
 		break;
 	case MODULE_STATE_LIVE:
 		break;
 	case MODULE_STATE_GOING:
+#ifdef CONFIG_TRACEPOINTS
 		ret = tracepoint_module_going(mod);
+#endif
 		break;
 	}
 	return ret;

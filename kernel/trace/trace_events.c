@@ -9,6 +9,7 @@
  */
 
 #define REALLY_WANT_DEBUGFS
+#define REALLY_WANT_TRACEPOINTS
 #include <linux/workqueue.h>
 #include <linux/spinlock.h>
 #include <linux/kthread.h>
