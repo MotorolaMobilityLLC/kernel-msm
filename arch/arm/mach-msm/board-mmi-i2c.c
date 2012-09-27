@@ -47,6 +47,17 @@ struct touch_platform_data melfas_touch_pdata = {
 
 	.invert_x       = 1,
 	.invert_y       = 1,
+
+	.int_latency    = MMI_TOUCH_CALCULATE_LATENCY_FUNC,
+	.int_time       = MMI_TOUCH_SET_INT_TIME_FUNC,
+	.get_avg_lat    = MMI_TOUCH_GET_AVG_LATENCY_FUNC,
+	.get_high_lat   = MMI_TOUCH_GET_HIGH_LATENCY_FUNC,
+	.get_slow_cnt   = MMI_TOUCH_GET_SLOW_INT_COUNT_FUNC,
+	.get_int_cnt    = MMI_TOUCH_GET_INT_COUNT_FUNC,
+	.set_dbg_lvl    = MMI_TOUCH_SET_LATENCY_DEBUG_LEVEL_FUNC,
+	.get_dbg_lvl    = MMI_TOUCH_GET_LATENCY_DEBUG_LEVEL_FUNC,
+	.get_time_ptr   = MMI_TOUCH_GET_TIMESTAMP_PTR_FUNC,
+	.get_lat_ptr    = MMI_TOUCH_GET_LATENCY_PTR_FUNC,
 };
 
 static int __init melfas_init_i2c_device(struct i2c_board_info *info,
