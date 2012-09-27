@@ -270,12 +270,12 @@ void WLANTL_HSDebugDisplay
    {
       if(VOS_TRUE == tlCtxt->isBMPS)
       {
-         TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR," ----> CRegion %d, hRSSI:NA, BMPS, Alpha %d",
+         TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO," ----> CRegion %d, hRSSI:NA, BMPS, Alpha %d",
                       currentHO->regionNumber, currentHO->alpha));
       }
       else
       {
-         TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR," ----> CRegion %d, hRSSI %d, Alpha %d",
+         TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO," ----> CRegion %d, hRSSI %d, Alpha %d",
                       currentHO->regionNumber,
                       currentHO->historyRSSI,
                       currentHO->alpha));

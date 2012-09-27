@@ -8816,6 +8816,26 @@ void WDI_GetWcnssCompiledApiVersion
 
 
 
+
+/**
+ @brief WDI_TransportChannelDebug -
+    Display DXE Channel debugging information
+    User may request to display DXE channel snapshot
+    Or if host driver detects any abnormal stcuk may display
+        
+ @param  displaySnapshot : Dispaly DXE snapshot option
+ @param  enableStallDetect : Enable stall detect feature
+                        This feature will take effect to data performance
+                        Not integrate till fully verification
+ @see
+ @return none
+*/
+void WDI_TransportChannelDebug
+(
+   wpt_boolean  displaySnapshot,
+   wpt_boolean  toggleStallDetect
+);
+
 #ifdef __cplusplus
  }
 #endif 

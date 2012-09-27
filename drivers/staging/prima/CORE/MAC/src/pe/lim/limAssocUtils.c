@@ -603,7 +603,7 @@ limCleanupRxPath(tpAniSirGlobal pMac, tpDphHashNode pStaDs,tpPESession psessionE
     tSirRetStatus       retCode = eSIR_SUCCESS;
 
 
-    PELOGE(limLog( pMac, LOGE, FL("**Initiate cleanup\n"));)
+    PELOG2(limLog( pMac, LOG2, FL("**Initiate cleanup"));)
 
     limAbortBackgroundScan( pMac );
 
@@ -2218,7 +2218,7 @@ limAddSta(
         pAddStaParams->uAPSD |= pAddStaParams->uAPSD << 4;
 
         pAddStaParams->maxSPLen = pStaDs->qos.capability.qosInfo.maxSpLen;
-        limLog( pMac, LOGE, FL( "uAPSD = 0x%x, maxSpLen = %d" ),
+        limLog( pMac, LOG1, FL( "uAPSD = 0x%x, maxSpLen = %d" ),
             pAddStaParams->uAPSD, pAddStaParams->maxSPLen);
     }
 #endif
@@ -2232,7 +2232,7 @@ limAddSta(
     msgQ.bodyptr = pAddStaParams;
     msgQ.bodyval = 0;
 
-    limLog( pMac, LOGE, FL( "Sending SIR_HAL_ADD_STA_REQ for assocId %d\n" ),
+    limLog( pMac, LOG1, FL( "Sending SIR_HAL_ADD_STA_REQ for assocId %d\n" ),
             pStaDs->assocId);
     MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
 
@@ -2352,7 +2352,7 @@ limDelSta(
     msgQ.bodyptr = pDelStaParams;
     msgQ.bodyval = 0;
 
-    limLog( pMac, LOGE, FL( "Sending SIR_HAL_DELETE_STA_REQ for STAID: %X and AssocID: %d\n" ),
+    limLog( pMac, LOG1, FL( "Sending SIR_HAL_DELETE_STA_REQ for STAID: %X and AssocID: %d" ),
     pDelStaParams->staIdx, pDelStaParams->assocId);
     MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
     retCode = wdaPostCtrlMsg( pMac, &msgQ );

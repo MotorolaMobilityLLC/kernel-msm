@@ -778,7 +778,7 @@ v_U8_t* wlan_hdd_cfg80211_get_ie_ptr(v_U8_t *pIes, int length, v_U8_t eid)
         if(elem_len > left)
         {
             hddLog(VOS_TRACE_LEVEL_FATAL,
-                    "****Invalid IEs eid = %d elem_len=%d left=%d*****\n",
+                    FL("****Invalid IEs eid = %d elem_len=%d left=%d*****"),
                                                     eid,elem_len,left);
             return NULL;
         }
@@ -1300,7 +1300,7 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
         }
         else if(memcmp(&pIe[2], WPS_OUI_TYPE, WPS_OUI_TYPE_SIZE) == 0)
         {
-             hddLog( VOS_TRACE_LEVEL_ERROR, "** WPS IE(len %d) ***\n", (pIe[1]+2));
+             hddLog( VOS_TRACE_LEVEL_INFO, "** WPS IE(len %d) ***", (pIe[1]+2));
              /* Check 15 bit of WPS IE as it contain information for wps state
               * WPS state
               */
@@ -1535,7 +1535,7 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
         return -EINVAL;
     }
 
-    hddLog(LOGE, 
+    hddLog(LOG1, 
            FL("Waiting for Scan to complete(auto mode) and BSS to start"));
 
     status = vos_wait_single_event(&pHostapdState->vosEvent, 10000);
@@ -5210,7 +5210,7 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
     wlan_hdd_get_rssi(pAdapter, &sinfo->signal);
     sinfo->filled |= STATION_INFO_SIGNAL;
 
-    wlan_hdd_get_classAstats(pAdapter);
+    wlan_hdd_get_station_stats(pAdapter);
     rate_flags = pAdapter->hdd_stats.ClassA_stat.tx_rate_flags;
 
     //convert to the UI units of 100kbps
@@ -5406,8 +5406,31 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
     }
     sinfo->filled |= STATION_INFO_TX_BITRATE;
 
-    EXIT();
-    return 0;
+    sinfo->tx_packets =
+       pAdapter->hdd_stats.summary_stat.tx_frm_cnt[0] +
+       pAdapter->hdd_stats.summary_stat.tx_frm_cnt[1] +
+       pAdapter->hdd_stats.summary_stat.tx_frm_cnt[2] +
+       pAdapter->hdd_stats.summary_stat.tx_frm_cnt[3];
+
+    sinfo->tx_retries =
+       pAdapter->hdd_stats.summary_stat.retry_cnt[0] +
+       pAdapter->hdd_stats.summary_stat.retry_cnt[1] +
+       pAdapter->hdd_stats.summary_stat.retry_cnt[2] +
+       pAdapter->hdd_stats.summary_stat.retry_cnt[3];
+
+    sinfo->tx_failed =
+       pAdapter->hdd_stats.summary_stat.fail_cnt[0] +
+       pAdapter->hdd_stats.summary_stat.fail_cnt[1] +
+       pAdapter->hdd_stats.summary_stat.fail_cnt[2] +
+       pAdapter->hdd_stats.summary_stat.fail_cnt[3];
+
+    sinfo->filled |=
+       STATION_INFO_TX_PACKETS |
+       STATION_INFO_TX_RETRIES |
+       STATION_INFO_TX_FAILED;
+
+       EXIT();
+       return 0;
 }
 
 static int wlan_hdd_cfg80211_set_power_mgmt(struct wiphy *wiphy,

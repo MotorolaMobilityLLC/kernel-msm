@@ -235,4 +235,18 @@ WCTS_SendMessage
   wpt_uint32           uLen
 );
 
+/**
+ @brief    This helper function is used to clean up the pending 
+           messages in the transport queue
+
+ @param wctsHandlehandle:  transport handle
+
+ @see
+ @return   0 for success
+*/
+wpt_uint32
+WCTS_ClearPendingQueue
+(
+   WCTS_HandleType      wctsHandle
+);
 #endif /* #ifndef WLAN_QCT_WDI_CTS_H */

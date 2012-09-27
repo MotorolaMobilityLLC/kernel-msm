@@ -392,6 +392,31 @@ wpt_uint32 WLANDXE_GetFreeTxDataResNumber
    void *pDXEContext
 );
 
+/*==========================================================================
+  @  Function Name 
+    WLANDXE_ChannelDebug
+
+  @  Description 
+    Display DXE Channel debugging information
+    User may request to display DXE channel snapshot
+    Or if host driver detects any abnormal stcuk may display
+
+  @  Parameters
+    displaySnapshot : Dispaly DXE snapshot option
+    enableStallDetect : Enable stall detect feature
+                        This feature will take effect to data performance
+                        Not integrate till fully verification
+
+  @  Return
+    NONE
+
+===========================================================================*/
+void WLANDXE_ChannelDebug
+(
+   wpt_boolean    displaySnapshot,
+   wpt_boolean    enableStallDetect   
+);
+
 #ifdef WLANDXE_TEST_CHANNEL_ENABLE
 /*==========================================================================
   @  Function Name 

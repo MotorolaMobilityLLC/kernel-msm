@@ -581,7 +581,7 @@ ProcSetReqInternal(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam, tANI_
     if (!pMac->cfg.gCfgStatus)
     {
         cfgId = (tANI_U16)sirReadU32N((tANI_U8*)pParam);
-        PELOGE(cfgLog(pMac, LOGE, FL("CFG not ready, param %d\n"), cfgId);)
+        PELOGE(cfgLog(pMac, LOGE, FL("CFG not ready, param %d"), cfgId);)
 #if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
         sirStoreU32N((tANI_U8 *) &(pMac->cfg.gParamList[WNI_CFG_SET_CNF_RES]),
                      WNI_CFG_NOT_READY);

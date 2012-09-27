@@ -2039,4 +2039,27 @@ tANI_U8 WDA_getHostWlanFeatCaps(tANI_U8 featEnumValue);
 ============================================================================*/
 tANI_U8 WDA_getFwWlanFeatCaps(tANI_U8 featEnumValue);
 
+/*==========================================================================
+  FUNCTION   WDA_TransportChannelDebug
+
+  DESCRIPTION 
+    Display Transport Channel debugging information
+    User may request to display DXE channel snapshot
+    Or if host driver detects any abnormal stcuk may display
+
+  PARAMETERS
+    displaySnapshot : Dispaly DXE snapshot option
+    enableStallDetect : Enable stall detect feature
+                        This feature will take effect to data performance
+                        Not integrate till fully verification
+
+  RETURN VALUE
+    NONE
+
+===========================================================================*/
+void WDA_TransportChannelDebug
+(
+   v_BOOL_t   displaySnapshot,
+   v_BOOL_t   toggleStallDetect
+);
 #endif

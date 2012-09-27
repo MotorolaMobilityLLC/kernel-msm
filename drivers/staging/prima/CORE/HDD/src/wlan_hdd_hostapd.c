@@ -574,7 +574,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             vos_status = hdd_softap_GetStaId(pHostapdAdapter, &pSapEvent->sapevt.sapStationDisassocCompleteEvent.staMac, &staId);
             if (!VOS_IS_STATUS_SUCCESS(vos_status))
             {
-                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, ("ERROR: HDD Failed to find sta id!!\n"));
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, FL("ERROR: HDD Failed to find sta id!!"));
                 return VOS_STATUS_E_FAILURE;
             }
             hdd_softap_DeregisterSTA(pHostapdAdapter, staId);
@@ -2387,7 +2387,7 @@ int iw_get_softap_linkspeed(struct net_device *dev,
 
    if (!VOS_IS_STATUS_SUCCESS(status ))
    {
-      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, ("ERROR: HDD Failed to find sta id!!\n"));
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, FL("ERROR: HDD Failed to find sta id!!"));
       link_speed = 0;
    }
    else

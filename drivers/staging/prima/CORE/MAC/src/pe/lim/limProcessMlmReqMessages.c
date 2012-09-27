@@ -1432,7 +1432,7 @@ mlm_add_sta(
 #endif
     limFillSupportedRatesInfo(pMac, NULL, &pSta->supportedRates,psessionEntry);
     
-    limLog( pMac, LOGE, FL( "GF: %d, ChnlWidth: %d, MimoPS: %d, lsigTXOP: %d, dsssCCK: %d, SGI20: %d, SGI40%d\n") ,
+    limLog( pMac, LOG1, FL( "GF: %d, ChnlWidth: %d, MimoPS: %d, lsigTXOP: %d, dsssCCK: %d, SGI20: %d, SGI40%d") ,
                                           pSta->greenFieldCapable, pSta->txChannelWidthSet, pSta->mimoPS, pSta->lsigTxopProtection, 
                                           pSta->fDsssCckMode40Mhz,pSta->fShortGI20Mhz, pSta->fShortGI40Mhz);
 
@@ -1540,7 +1540,7 @@ limMlmAddBss (
     pAddBssParams->ssId.length = pMlmStartReq->ssId.length;
 #ifdef WLAN_SOFTAP_FEATURE
     pAddBssParams->bHiddenSSIDEn = pMlmStartReq->ssidHidden;
-    limLog( pMac, LOGE, FL( "TRYING TO HIDE SSID %d\n" ),pAddBssParams->bHiddenSSIDEn);
+    limLog( pMac, LOG1, FL( "TRYING TO HIDE SSID %d" ),pAddBssParams->bHiddenSSIDEn);
     // CR309183. Disable Proxy Probe Rsp.  Host handles Probe Requests.  Until FW fixed. 
     pAddBssParams->bProxyProbeRespEn = 0;
     pAddBssParams->obssProtEnabled = pMlmStartReq->obssProtEnabled;

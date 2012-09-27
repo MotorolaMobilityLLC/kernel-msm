@@ -12095,7 +12095,7 @@ eHalStatus csrSendMBSetContextReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId ,
             palCopyMemory( pMac->hHdd, p, pKey, keyLength ); 
             if(keyLength == 16)
             {
-                smsLog(pMac, LOGE, "  SME Set keyIdx (%d) encType(%d) key = %02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X\n",
+                smsLog(pMac, LOG1, "  SME Set keyIdx (%d) encType(%d) key = %02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X-%02X\n",
                 keyId, edType, pKey[0], pKey[1], pKey[2], pKey[3], pKey[4],
                 pKey[5], pKey[6], pKey[7], pKey[8],
                 pKey[9], pKey[10], pKey[11], pKey[12], pKey[13], pKey[14], pKey[15]);
@@ -12459,7 +12459,7 @@ eHalStatus csrSendMBAddSelfStaReqMsg( tpAniSirGlobal pMac, tSirMacAddr macAddr )
       pMsg->mesgLen = pal_cpu_to_be16(msgLen);
       // self station address
       palCopyMemory( pMac->hHdd, (tANI_U8 *)pMsg->selfMacAddr, (tANI_U8 *)macAddr, sizeof(tSirMacAddr) );
-        smsLog( pMac, LOGE, FL("selfMac=%02x, %02x, %02x, %02x, %02x, %02x\n"),       
+        smsLog( pMac, LOG1, FL("selfMac=%02x, %02x, %02x, %02x, %02x, %02x"),       
             pMsg->selfMacAddr[0],
             pMsg->selfMacAddr[1],
             pMsg->selfMacAddr[2],

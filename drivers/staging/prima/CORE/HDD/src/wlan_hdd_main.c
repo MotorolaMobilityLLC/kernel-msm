@@ -415,7 +415,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
    
            /* First 8 bytes will have "SETBAND " and 
             * 9 byte will have band setting value */
-           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                     "%s: SetBandCommand Info  comm %s UL %d, TL %d", __FUNCTION__, priv_data.buf, priv_data.used_len, priv_data.total_len);
         
            /* Change band request received */
@@ -805,7 +805,7 @@ void hdd_full_pwr_cbk(void *callbackContext, eHalStatus status)
 {
    hdd_context_t *pHddCtx = (hdd_context_t*)callbackContext;
 
-   hddLog(VOS_TRACE_LEVEL_ERROR,"HDD full Power callback status = %d", status);
+   hddLog(VOS_TRACE_LEVEL_INFO_HIGH,"HDD full Power callback status = %d", status);
    if(&pHddCtx->full_pwr_comp_var)
    {
       complete(&pHddCtx->full_pwr_comp_var);

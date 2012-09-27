@@ -104,6 +104,8 @@ typedef struct {
   wpt_status (*txComplete) (void *pContext, wpt_uint32 ucTxResReq);
   wpt_status (*setPowerState) (void *pContext, WDTS_PowerStateType   powerState, 
                                WDTS_SetPSCbType cBack);
+  void (*channelDebug)(wpt_boolean displaySnapshot,
+                       wpt_boolean enableStallDetect);
   wpt_status (*stop) (void *pContext);
   wpt_status (*close) (void *pContext);
   wpt_uint32 (*getFreeTxDataResNumber) (void *pContext);
@@ -177,6 +179,20 @@ wpt_status WDTS_CompleteTx(void *pContext, wpt_uint32 ucTxResReq);
  */
 wpt_status WDTS_SetPowerState(void *pContext, WDTS_PowerStateType powerState,
                               WDTS_SetPowerStateCbType cback);
+
+/* DTS Transport Channel Debug
+ * Display DXE Channel debugging information
+ * User may request to display DXE channel snapshot
+ * Or if host driver detects any abnormal stcuk may display
+ * Parameters:
+ *  displaySnapshot : Dispaly DXE snapshot option
+ *  enableStallDetect : Enable stall detect feature
+                        This feature will take effect to data performance
+                        Not integrate till fully verification
+ * Return Value: NONE
+ *
+ */
+void WDTS_ChannelDebug(wpt_boolean dispalySnapshot, wpt_boolean toggleStallDetect);
 
 /* DTS Stop function. 
  * Stop Transport driver, ie DXE, SDIO
