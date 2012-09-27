@@ -87,4 +87,40 @@ struct touch_platform_data {
 
 } __attribute__ ((packed));
 
+#ifdef CONFIG_TOUCHSCREEN_MELFAS100_TS
+/* defined in drivers/input/melfas_instr.c */
+extern void touch_calculate_latency(void);
+extern void touch_set_int_time(void);
+extern u32  touch_get_avg_latency(void);
+extern u32  touch_get_high_latency(void);
+extern u32  touch_get_slow_int_count(void);
+extern u32  touch_get_int_count(void);
+extern void touch_set_latency_debug_level(u8 debug_level);
+extern u8   touch_get_latency_debug_level(void);
+extern u32  touch_get_timestamp_ptr(u64 **timestamp);
+extern u32  touch_get_latency_ptr(u32 **latency);
+
+# define MMI_TOUCH_CALCULATE_LATENCY_FUNC       touch_calculate_latency
+# define MMI_TOUCH_SET_INT_TIME_FUNC            touch_set_int_time
+# define MMI_TOUCH_GET_AVG_LATENCY_FUNC         touch_get_avg_latency
+# define MMI_TOUCH_GET_HIGH_LATENCY_FUNC        touch_get_high_latency
+# define MMI_TOUCH_GET_SLOW_INT_COUNT_FUNC      touch_get_slow_int_count
+# define MMI_TOUCH_GET_INT_COUNT_FUNC           touch_get_int_count
+# define MMI_TOUCH_SET_LATENCY_DEBUG_LEVEL_FUNC touch_set_latency_debug_level
+# define MMI_TOUCH_GET_LATENCY_DEBUG_LEVEL_FUNC touch_get_latency_debug_level
+# define MMI_TOUCH_GET_TIMESTAMP_PTR_FUNC       touch_get_timestamp_ptr
+# define MMI_TOUCH_GET_LATENCY_PTR_FUNC         touch_get_latency_ptr
+#else /* CONFIG_TOUCHSCREEN_MELFAS100_TS */
+# define MMI_TOUCH_CALCULATE_LATENCY_FUNC       NULL
+# define MMI_TOUCH_SET_INT_TIME_FUNC            NULL
+# define MMI_TOUCH_GET_AVG_LATENCY_FUNC         NULL
+# define MMI_TOUCH_GET_HIGH_LATENCY_FUNC        NULL
+# define MMI_TOUCH_GET_SLOW_INT_COUNT_FUNC      NULL
+# define MMI_TOUCH_GET_INT_COUNT_FUNC           NULL
+# define MMI_TOUCH_SET_LATENCY_DEBUG_LEVEL_FUNC NULL
+# define MMI_TOUCH_GET_LATENCY_DEBUG_LEVEL_FUNC NULL
+# define MMI_TOUCH_GET_TIMESTAMP_PTR_FUNC       NULL
+# define MMI_TOUCH_GET_LATENCY_PTR_FUNC         NULL
+#endif /* CONFIG_TOUCHSCREEN_MELFAS100_TS */
+
 #endif /* _LINUX_TOUCH_PLATFORM_H */
