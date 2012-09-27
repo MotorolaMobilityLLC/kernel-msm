@@ -146,6 +146,8 @@ static void __init mmi_init_i2c_dev_from_dt(int gsbi_id,
 	const void *prop;
 
 	pdata = kzalloc(sizeof(struct msm_i2c_platform_data), GFP_KERNEL);
+	if (!pdata)
+		goto error;
 
 	prop = of_get_property(node, "clk_freq", &len);
 	if (!prop)
@@ -155,19 +157,24 @@ static void __init mmi_init_i2c_dev_from_dt(int gsbi_id,
 	if (!prop)
 		goto error;
 	pdata->src_clk_rate = *(u32 *)prop;
+
 	prop = of_get_property(node, "shared_mode", &len);
-	if (!prop)
-		goto error;
-	pdata->use_gsbi_shared_mode = *(u8 *)prop;
+	if (prop)
+		pdata->use_gsbi_shared_mode = *(u8 *)prop;
 
 	dev->dev.platform_data = pdata;
 
-	if (platform_device_register(dev))
-		pr_err("%s: Failed to register platform device!\n", __func__);
+	if (platform_device_register(dev)) {
+		kfree(pdata);
+		pr_err("%s: Failed to register platform device - GSBI%d!\n",
+			__func__, gsbi_id);
+	}
 
 	return;
 error:
-	pr_err("%s: Missing device tree properties! Aborting!\n", __func__);
+	kfree(pdata);
+	pr_err("%s: Missing device tree properties! Aborting GSBI%d!\n",
+		__func__, gsbi_id);
 }
 
 static void __init mmi_init_spi_dev_from_dt(int gsbi_id,
@@ -179,6 +186,8 @@ static void __init mmi_init_spi_dev_from_dt(int gsbi_id,
 	const void *prop;
 
 	pdata = kzalloc(sizeof(struct msm_spi_platform_data), GFP_KERNEL);
+	if (!pdata)
+		goto error;
 
 	prop = of_get_property(node, "max_clock_speed", &len);
 	if (!prop)
@@ -187,18 +196,23 @@ static void __init mmi_init_spi_dev_from_dt(int gsbi_id,
 
 	dev->dev.platform_data = pdata;
 
-	if (platform_device_register(dev))
-		pr_err("%s: Failed to register platform device!\n", __func__);
+	if (platform_device_register(dev)) {
+		kfree(pdata);
+		pr_err("%s: Failed to register platform device - GSBI%d!\n",
+			__func__, gsbi_id);
+	}
 
 	return;
 error:
-	pr_err("%s: Missing device tree properties! Aborting!\n", __func__);
+	kfree(pdata);
+	pr_err("%s: Missing device tree properties! Aborting GSBI%d!\n",
+		__func__, gsbi_id);
 }
 
 static void __init mmi_init_uart_dev_from_dt(struct device_node *node,
 						struct platform_device *dev)
 {
-	struct msm_serial_hslite_platform_data *pdata;
+	struct msm_serial_hslite_platform_data *pdata = NULL;
 	int len = 0;
 	const void *prop;
 
@@ -217,8 +231,10 @@ static void __init mmi_init_uart_dev_from_dt(struct device_node *node,
 	dev->dev.platform_data = pdata;
 
 devreg:
-	if (platform_device_register(dev))
+	if (platform_device_register(dev)) {
+		kfree(pdata);
 		pr_err("%s: Failed to register platform device!\n", __func__);
+	}
 }
 
 void __init mmi_init_gsbi_devices_from_dt(void)
@@ -273,15 +289,22 @@ void __init mmi_init_gsbi_devices_from_dt(void)
 				mmi_init_gsbi_protocol(gsbi_id, GSBI_SPI);
 				dev = spi_dt_lookup_table[gsbi_id];
 				if (!dev)
-					BUG();
-				mmi_init_spi_dev_from_dt(gsbi_id, child, dev);
+					pr_warn("%s: GSBI%d configured as " \
+						"SPI but no device found\n",
+						__func__, gsbi_id);
+				else
+					mmi_init_spi_dev_from_dt(gsbi_id,
+								 child, dev);
 				break;
 			case GSBI_UART:
 				mmi_init_gsbi_protocol(gsbi_id, GSBI_UART);
 				dev = uart_dt_lookup_table[gsbi_id];
 				if (!dev)
-					BUG();
-				mmi_init_uart_dev_from_dt(child, dev);
+					pr_warn("%s: GSBI%d configured as " \
+						"UART but no device found\n",
+						__func__, gsbi_id);
+				else
+					mmi_init_uart_dev_from_dt(child, dev);
 				break;
 			case GSBI_SIM:
 				mmi_init_gsbi_protocol(gsbi_id, GSBI_SIM);
