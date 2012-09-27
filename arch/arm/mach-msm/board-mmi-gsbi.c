@@ -25,7 +25,7 @@
 #include <mach/msm_serial_hs_lite.h>
 #include <mach/msm_spi.h>
 #include "clock-gsbi-8960.h"
-#include "devices.h"
+#include "devices-mmi.h"
 
 /* must match type identifiers defined in DT schema */
 #define GSBI_IDLE	0
@@ -75,13 +75,13 @@ struct platform_device *spi_dt_lookup_table[] __initdata = {
 struct platform_device *uart_dt_lookup_table[] __initdata = {
 	NULL,
 	NULL,
-	&msm8960_device_uart_gsbi2,
+	&mmi_msm8960_device_uart_gsbi2,
 	NULL,
 	NULL,
-	&msm8960_device_uart_gsbi5,
+	&mmi_msm8960_device_uart_gsbi5,
 	NULL,
 	NULL,
-	&msm8960_device_uart_gsbi8,
+	&mmi_msm8960_device_uart_gsbi8,
 	NULL,
 	NULL,
 	NULL,
