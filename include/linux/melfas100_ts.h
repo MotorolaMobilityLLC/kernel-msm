@@ -17,6 +17,8 @@
 #ifndef _LINUX_MELFAS100_TS_H
 #define _LINUX_MELFAS100_TS_H
 
+#include <linux/earlysuspend.h>
+
 #define MELFAS_TS_NAME "melfas-ts"
 
 #define TS_FLIP_X           (1 << 0)
@@ -27,11 +29,6 @@
 #define MELFAS_CHECKSUM_FAILED       2
 #define MELFAS_IGNORE_CHECKSUM       3
 
-#define MELFAS_TOUCH_SCL_GPIO	17
-#define MELFAS_TOUCH_SDA_GPIO	16
-#define MELFAS_TOUCH_INT_GPIO       46
-#define MELFAS_TOUCH_RESET_GPIO     50
-
 struct melfas_ts_version_info {
 	uint8_t panel_ver;
 	uint8_t hw_ver;
@@ -40,7 +37,6 @@ struct melfas_ts_version_info {
 	uint8_t priv_fw_ver;
 	uint8_t pub_fw_ver;
 };
-
 
 struct melfas_ts_data {
 	struct i2c_client *client;
