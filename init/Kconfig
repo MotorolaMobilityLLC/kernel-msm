@@ -1331,8 +1331,12 @@ config PROFILING
 # Place an empty function call at each tracepoint site. Can be
 # dynamically changed for a probe function.
 #
+config TRACEPOINTS_CORE
+	bool
+
 config TRACEPOINTS
 	bool
+	select TRACEPOINTS_CORE
 
 source "arch/Kconfig"
 
