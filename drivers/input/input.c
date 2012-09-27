@@ -1602,7 +1602,10 @@ static int input_dev_resume(struct device *dev)
 {
 	struct input_dev *input_dev = to_input_dev(dev);
 
-	input_reset_device(input_dev);
+	/* If device is configured to wake device do not reset keys. */
+	if (!device_can_wakeup(dev)) {
+		input_reset_device(input_dev);
+	}
 
 	return 0;
 }

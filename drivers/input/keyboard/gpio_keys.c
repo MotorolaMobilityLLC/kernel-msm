@@ -732,6 +732,13 @@ static int __devinit gpio_keys_probe(struct platform_device *pdev)
 		goto fail2;
 	}
 
+	/* If any single key button can wake the device, we need to inform
+	   the input subsystem not to mess with our key state during a suspend
+	   and resume cycle. */
+	if (wakeup) {
+		device_set_wakeup_capable(&input->dev, true);
+	}
+
 	error = input_register_device(input);
 	if (error) {
 		dev_err(dev, "Unable to register input device, error: %d\n",
