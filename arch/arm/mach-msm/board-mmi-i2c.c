@@ -17,12 +17,13 @@
 #include <linux/init.h>
 #include <linux/of.h>
 #include "board-8960.h"
+#include "board-mmi.h"
 
 static int __init stub_init_i2c_device(struct i2c_board_info *info,
 				       struct device_node *node)
 {
 	pr_info("%s called for %s\n", __func__, info->type);
-	return 0;
+	return -1;
 }
 
 typedef int (*I2C_INIT_FUNC)(struct i2c_board_info *info,
@@ -34,14 +35,6 @@ struct mmi_apq_i2c_lookup {
 };
 
 struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
-	{0x000b0006, stub_init_i2c_device},
-	{0x00190001, stub_init_i2c_device},
-	{0x00030014, stub_init_i2c_device},
-	{0x000B0004, stub_init_i2c_device},    /* National_LM3532 */
-	{0x00250001, stub_init_i2c_device},    /* TAOS_CT406 */
-	{0x00260001, stub_init_i2c_device},    /* Atmel_MXT */
-	{0x00270000, stub_init_i2c_device},    /* Melfas_MMS100 */
-	{0x00280000, stub_init_i2c_device},
 	{0x00290000, stub_init_i2c_device},
 };
 
