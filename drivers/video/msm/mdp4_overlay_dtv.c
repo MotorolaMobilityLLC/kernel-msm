@@ -164,7 +164,7 @@ void mdp4_dtv_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe)
 static void mdp4_dtv_blt_ov_update(struct mdp4_overlay_pipe *pipe);
 static void mdp4_dtv_wait4dmae(int cndx);
 
-int mdp4_dtv_pipe_commit(void)
+int mdp4_dtv_pipe_commit(int cndx, int wait)
 {
 
 	int  i, undx;
@@ -176,7 +176,7 @@ int mdp4_dtv_pipe_commit(void)
 	unsigned long flags;
 	int cnt = 0;
 
-	vctrl = &vsync_ctrl_db[0];
+	vctrl = &vsync_ctrl_db[cndx];
 	mutex_lock(&vctrl->update_lock);
 	undx =  vctrl->update_ndx;
 	vp = &vctrl->vlist[undx];
@@ -234,6 +234,9 @@ int mdp4_dtv_pipe_commit(void)
 	}
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 	mdp4_stat.overlay_commit[pipe->mixer_num]++;
+
+	if (wait)
+		mdp4_dtv_wait4dmae(0);
 
 	return cnt;
 }
@@ -563,10 +566,8 @@ int mdp4_dtv_off(struct platform_device *pdev)
 	struct msm_fb_data_type *mfd;
 	int ret = 0;
 	int cndx = 0;
-	int undx;
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
-	struct vsync_update *vp;
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 
@@ -576,10 +577,6 @@ int mdp4_dtv_off(struct platform_device *pdev)
 
 	while (vctrl->wait_vsync_cnt)
 		msleep(20);	/* >= 17 ms */
-
-	undx =  vctrl->update_ndx;
-	vp = &vctrl->vlist[undx];
-	vp->update_cnt = 0;     /* empty queue */
 
 	pipe = vctrl->base_pipe;
 	if (pipe != NULL) {
@@ -1017,6 +1014,6 @@ void mdp4_dtv_overlay(struct msm_fb_data_type *mfd)
 	}
 
 	mutex_lock(&mfd->dma->ov_mutex);
-	mdp4_dtv_pipe_commit();
+	mdp4_dtv_pipe_commit(0, 0);
 	mutex_unlock(&mfd->dma->ov_mutex);
 }
