@@ -3124,7 +3124,8 @@ static int ci13xxx_start(struct usb_gadget_driver *driver,
 
 			mEp->ep.name      = mEp->name;
 			mEp->ep.ops       = &usb_ep_ops;
-			mEp->ep.maxpacket = CTRL_PAYLOAD_MAX;
+			mEp->ep.maxpacket =
+				k ? (unsigned short)~0 : CTRL_PAYLOAD_MAX;
 
 			INIT_LIST_HEAD(&mEp->qh.queue);
 			spin_unlock_irqrestore(udc->lock, flags);
