@@ -105,7 +105,7 @@ config TRACING
 	select DEBUG_FS_CORE
 	select RING_BUFFER
 	select STACKTRACE if STACKTRACE_SUPPORT
-	select TRACEPOINTS
+	select TRACEPOINTS_CORE
 	select NOP_TRACER
 	select BINARY_PRINTF
 	select EVENT_TRACING
@@ -113,6 +113,7 @@ config TRACING
 config GENERIC_TRACER
 	bool
 	select TRACING
+	select TRACEPOINTS
 
 #
 # Minimum requirements an architecture has to meet for us to
@@ -227,6 +228,7 @@ config ENABLE_DEFAULT_TRACERS
 	bool "Trace process context switches and events"
 	depends on !GENERIC_TRACER
 	select TRACING
+	select TRACEPOINTS
 	help
 	  This tracer hooks to various trace points in the kernel,
 	  allowing the user to pick and choose which trace point they
@@ -373,6 +375,7 @@ config KPROBE_EVENT
 	depends on HAVE_REGS_AND_STACK_ACCESS_API
 	bool "Enable kprobes-based dynamic events"
 	select TRACING
+	select TRACEPOINTS
 	default y
 	help
 	  This allows the user to add tracing events (similar to tracepoints)
