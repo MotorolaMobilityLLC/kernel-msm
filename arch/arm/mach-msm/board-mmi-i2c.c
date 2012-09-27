@@ -19,6 +19,68 @@
 #include "board-8960.h"
 #include "board-mmi.h"
 
+#include <linux/input/touch_platform.h>
+#include <linux/melfas100_ts.h>
+
+#define MELFAS_TOUCH_SCL_GPIO       17
+#define MELFAS_TOUCH_SDA_GPIO       16
+#define MELFAS_TOUCH_INT_GPIO       46
+#define MELFAS_TOUCH_RESET_GPIO     50
+
+static struct  touch_firmware  melfas_ts_firmware;
+
+static uint8_t melfas_fw_version[]   = { 0x45 };
+static uint8_t melfas_priv_v[]       = { 0x07 };
+static uint8_t melfas_pub_v[]        = { 0x15 };
+static uint8_t melfas_fw_file_name[] = "melfas_45_7_15.fw";
+
+struct touch_platform_data melfas_touch_pdata = {
+	.flags          = TS_FLIP_X | TS_FLIP_Y,
+
+	.gpio_interrupt = MELFAS_TOUCH_INT_GPIO,
+	.gpio_reset     = MELFAS_TOUCH_RESET_GPIO,
+	.gpio_scl       = MELFAS_TOUCH_SCL_GPIO,
+	.gpio_sda       = MELFAS_TOUCH_SDA_GPIO,
+
+	.max_x          = 719,
+	.max_y          = 1279,
+
+	.invert_x       = 1,
+	.invert_y       = 1,
+};
+
+static int __init melfas_init_i2c_device(struct i2c_board_info *info,
+				       struct device_node *node)
+{
+	pr_info("%s MELFAS TS: platform init for %s\n", __func__, info->type);
+
+	info->platform_data = &melfas_touch_pdata;
+
+	/* melfas reset gpio */
+	gpio_request(MELFAS_TOUCH_RESET_GPIO, "touch_reset");
+	gpio_direction_output(MELFAS_TOUCH_RESET_GPIO, 1);
+
+	/* melfas interrupt gpio */
+	gpio_request(MELFAS_TOUCH_INT_GPIO, "touch_irq");
+	gpio_direction_input(MELFAS_TOUCH_INT_GPIO);
+
+	gpio_request(MELFAS_TOUCH_SCL_GPIO, "touch_scl");
+	gpio_request(MELFAS_TOUCH_SDA_GPIO, "touch_sda");
+
+	/* Setup platform structure with the firmware information */
+	melfas_ts_firmware.ver = &(melfas_fw_version[0]);
+	melfas_ts_firmware.vsize = sizeof(melfas_fw_version);
+	melfas_ts_firmware.private_fw_v = &(melfas_priv_v[0]);
+	melfas_ts_firmware.private_fw_v_size = sizeof(melfas_priv_v);
+	melfas_ts_firmware.public_fw_v = &(melfas_pub_v[0]);
+	melfas_ts_firmware.public_fw_v_size = sizeof(melfas_pub_v);
+
+	melfas_touch_pdata.fw = &melfas_ts_firmware;
+	strcpy(melfas_touch_pdata.fw_name, melfas_fw_file_name);
+
+	return 0;
+}
+
 static int __init stub_init_i2c_device(struct i2c_board_info *info,
 				       struct device_node *node)
 {
@@ -35,6 +97,7 @@ struct mmi_apq_i2c_lookup {
 };
 
 struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
+	{0x00270000, melfas_init_i2c_device},  /* Melfas_MMS100 */
 	{0x00290000, stub_init_i2c_device},
 };
 
