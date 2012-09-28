@@ -1511,6 +1511,13 @@ eHalStatus csrScanHandleSearchForSSIDFailure(tpAniSirGlobal pMac, tSmeCmd *pComm
                                     eCSR_ROAM_ASSOCIATION_COMPLETION,
                                     eCSR_ROAM_RESULT_FAILURE);
             }
+            else
+            {
+                csrRoamCallCallback(pMac, sessionId, NULL,
+                                    pCommand->u.scanCmd.roamId,
+                                    eCSR_ROAM_ASSOCIATION_FAILURE,
+                                    eCSR_ROAM_RESULT_FAILURE);
+            }
 #ifdef FEATURE_WLAN_BTAMP_UT_RF
             //In case of WDS station, let it retry.
             if( CSR_IS_WDS_STA(pProfile) )
