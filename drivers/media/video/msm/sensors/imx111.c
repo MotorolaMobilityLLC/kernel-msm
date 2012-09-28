@@ -641,6 +641,11 @@ int32_t imx111_sensor_write_exp_gain1(struct msm_sensor_ctrl_t *s_ctrl,
 #define BLUE_START 	0xA1
 #define CRC_ADDR	0x7E
 #define R_REF_ADDR  0x80
+
+#ifdef CONFIG_SEKONIX_LENS_ACT
+#define AF_CAL_START 0x06
+uint8_t imx111_afcalib_data[4];
+#endif
 int32_t imx_i2c_read_eeprom_burst(unsigned char saddr,
 		unsigned char *rxdata, int length)
 {
@@ -683,16 +688,16 @@ static int imx111_read_eeprom_data(struct msm_sensor_ctrl_t *s_ctrl, struct sens
 		pr_err("%s: Error Reading EEPROM : page_no:0 \n", __func__);
 		return rc;
 	}
-	#if 0
-	// for AWB data
-	cfg->cfg.calib_info.r_over_g = (eepromdata[1]<<8) |eepromdata[0];
-	CDBG("[QCTK_EEPROM] r_over_g = 0x%4x\n", cfg->cfg.calib_info.r_over_g);
-	cfg->cfg.calib_info.b_over_g = (eepromdata[3]<<8) |eepromdata[2];
-	CDBG("[QCTK_EEPROM] b_over_g = 0x%4x\n", cfg->cfg.calib_info.b_over_g);
-	cfg->cfg.calib_info.gr_over_gb = (eepromdata[5]<<8) |eepromdata[4];
-	CDBG("[QCTK_EEPROM] gr_over_gb = 0x%4x\n", cfg->cfg.calib_info.gr_over_gb);
-	#endif
 
+#ifdef CONFIG_SEKONIX_LENS_ACT
+	// for AF Cal Data
+	imx111_afcalib_data[0] = eepromdata[7];
+	imx111_afcalib_data[1] = eepromdata[6];
+	imx111_afcalib_data[2] = eepromdata[9];
+	imx111_afcalib_data[3] = eepromdata[8];
+	CDBG("[QCTK_EEPROM][AF] act_start = %d\n",(eepromdata[6]<<8) |eepromdata[7]);
+	CDBG("[QCTK_EEPROM][AF] act_macro = %d\n",(eepromdata[8]<<8) |eepromdata[9]);
+#endif
 	for (i = 0; i < ROLLOFF_CALDATA_SIZE; i++) {
 		cfg->cfg.calib_info.rolloff.r_gain[i] = eepromdata[RED_START + i];
 		crc_5100 += eepromdata[RED_START + i];
@@ -745,11 +750,13 @@ static int imx111_read_eeprom_data(struct msm_sensor_ctrl_t *s_ctrl, struct sens
 	}
 
 	memset(eepromdata, 0, sizeof(eepromdata));
+
 	if(imx_i2c_read_eeprom_burst(IMX111_EEPROM_SADDR | 0x3 /* page_no:3 */,
 		eepromdata, IMX111_EEPROM_PAGE_SIZE) < 0) {
 			pr_err("%s: Error Reading EEPROM : page_no:3 \n", __func__);
 			return rc;
 	}
+
 	for (i = 0; i < ROLLOFF_CALDATA_SIZE + BLUE_START - IMX111_EEPROM_PAGE_SIZE; i++) {
 		cfg->cfg.calib_info.rolloff.b_gain[IMX111_EEPROM_PAGE_SIZE - BLUE_START + i] = eepromdata[i];
 		crc_5100 += eepromdata[i];
