@@ -3163,6 +3163,15 @@ void hdd_allow_suspend(void)
 #endif
 }
 
+void hdd_allow_suspend_timeout(v_U32_t timeout)
+{
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
+    wake_lock_timeout(&wlan_wake_lock, timeout);
+#else
+    /* Do nothing as there is no API in wcnss for timeout*/
+#endif
+}
+
 /**---------------------------------------------------------------------------
 
   \brief hdd_wlan_startup() - HDD init function

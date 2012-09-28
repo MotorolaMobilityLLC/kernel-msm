@@ -3573,6 +3573,12 @@ allow_suspend:
     /* release the wake lock at the end of the scan*/
     hdd_allow_suspend();
 
+    /* Acquire wakelock to handle the case where APP's tries to suspend
+     * immediatly after the driver gets connect request(i.e after scan)
+     * from supplicant, this result in app's is suspending and not able
+     * to process the connect request to AP */
+    hdd_allow_suspend_timeout(100);
+
     EXIT();
     return 0;
 }
