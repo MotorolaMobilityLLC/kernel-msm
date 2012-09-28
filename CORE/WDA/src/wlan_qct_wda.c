@@ -9990,8 +9990,6 @@ void WDA_TriggerBaReqCallback(WDI_TriggerBARspParamsType *wdiTriggerBaRsp,
       for(i = 0 ; i < baCandidateCount ; i++)
       {
          tANI_U8 tid = 0 ;
-         wdiBaCandidate = (wdiBaCandidate + i) ;
-         baCandidate = (baCandidate + i) ;
          vos_mem_copy(baCandidate->staAddr, wdiBaCandidate->macSTA, 
                                                    sizeof(tSirMacAddr)) ;
          for(tid = 0 ; tid < STACFG_MAX_TC; tid++)
@@ -10001,6 +9999,8 @@ void WDA_TriggerBaReqCallback(WDI_TriggerBARspParamsType *wdiTriggerBaRsp,
              baCandidate->baInfo[tid].startingSeqNum = 
                               wdiBaCandidate->wdiBAInfo[tid].startingSeqNum ;
          }
+         wdiBaCandidate++ ;
+         baCandidate++ ;
       }
       WDA_SendMsg(pWDA, SIR_LIM_ADD_BA_IND, (void *)baActivityInd , 0) ;
    }
