@@ -196,6 +196,8 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_STOP_AP           3
 #define WE_ENABLE_AMP        4
 #define WE_DISABLE_AMP       5
+#define WE_ENABLE_DXE_STALL_DETECT 6
+#define WE_DISPLAY_DXE_SNAP_SHOT   7
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_VAR_INT_GET_NONE   (SIOCIWFIRSTPRIV + 7)
@@ -4094,6 +4096,17 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
         }
 #endif
 
+        case WE_ENABLE_DXE_STALL_DETECT:
+        {
+            sme_transportDebug(VOS_FALSE, VOS_TRUE);
+            break;
+        }
+        case WE_DISPLAY_DXE_SNAP_SHOT:
+        {
+            sme_transportDebug(VOS_TRUE, VOS_FALSE);
+            break;
+        }
+
         default:
         {
             hddLog(LOGE, "%s: unknown ioctl %d", __FUNCTION__, sub_cmd);
@@ -6119,6 +6132,14 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         0,
         "disableAMP" },
+    {   WE_ENABLE_DXE_STALL_DETECT,
+        0,
+        0,
+        "dxeStallDetect" },
+    {   WE_DISPLAY_DXE_SNAP_SHOT,
+        0,
+        0,
+        "dxeSnapshot" },
 
     /* handlers for main ioctl */
     {   WLAN_PRIV_SET_VAR_INT_GET_NONE,
