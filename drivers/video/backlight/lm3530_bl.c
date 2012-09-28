@@ -136,6 +136,7 @@ static void lm3530_set_main_current_level(struct i2c_client *client, int level)
 	mdelay(1);
 }
 
+static bool first_boot = true;
 static void lm3530_backlight_on(struct i2c_client *client, int level)
 {
 	struct lm3530_device *dev = i2c_get_clientdata(client);
@@ -147,6 +148,11 @@ static void lm3530_backlight_on(struct i2c_client *client, int level)
 
 		lm3530_write_reg(dev->client, 0xA0, 0x00);
 		lm3530_write_reg(dev->client, 0x10, dev->max_current);
+	}
+
+	if (first_boot) {
+		lm3530_write_reg(dev->client, 0x10, dev->max_current);
+		first_boot = false;
 	}
 
 	lm3530_set_main_current_level(dev->client, level);
