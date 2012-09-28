@@ -716,7 +716,7 @@ PopulateDot11fHTCaps(tpAniSirGlobal           pMac,
 void limLogVHTCap(tpAniSirGlobal pMac,
                               tDot11fIEVHTCaps *pDot11f)
 {
-
+#ifdef DUMP_MGMT_CNTNTS
     limLog(pMac, LOG1, FL("maxMPDULen (2): %d\n"), pDot11f->maxMPDULen);
     limLog(pMac, LOG1, FL("supportedChannelWidthSet (2): %d\n"), pDot11f->supportedChannelWidthSet);
     limLog(pMac, LOG1, FL("ldpcCodingCap (1): %d\n"), pDot11f->ldpcCodingCap);
@@ -743,36 +743,42 @@ void limLogVHTCap(tpAniSirGlobal pMac,
     limLog(pMac, LOG1, FL("txMCSMap (16): %d\n"), pDot11f->txMCSMap);
     limLog(pMac, LOG1, FL("txSupDataRate (13): %d\n"), pDot11f->txSupDataRate);
     limLog(pMac, LOG1, FL("reserv (3): %d\n"), pDot11f->reserved3);
+#endif /* DUMP_MGMT_CNTNTS */
 }
 
 void limLogVHTOperation(tpAniSirGlobal pMac,
                               tDot11fIEVHTOperation *pDot11f)
 {
-
+#ifdef DUMP_MGMT_CNTNTS
     limLog(pMac, LOG1, FL("chanWidth : %d\n"), pDot11f->chanWidth);
     limLog(pMac, LOG1, FL("chanCenterFreqSeg1: %d\n"), pDot11f->chanCenterFreqSeg1);
     limLog(pMac, LOG1, FL("chanCenterFreqSeg2: %d\n"), pDot11f->chanCenterFreqSeg2);
     limLog(pMac, LOG1, FL("basicMCSSet: %d\n"), pDot11f->basicMCSSet);
+#endif /* DUMP_MGMT_CNTNTS */
 }
 
 void limLogVHTExtBssLoad(tpAniSirGlobal pMac,
                               tDot11fIEVHTExtBssLoad *pDot11f)
 {
+#ifdef DUMP_MGMT_CNTNTS
     limLog(pMac, LOG1, FL("muMIMOCapStaCount : %d\n"), pDot11f->muMIMOCapStaCount);
     limLog(pMac, LOG1, FL("ssUnderUtil: %d\n"), pDot11f->ssUnderUtil);
     limLog(pMac, LOG1, FL("FortyMHzUtil: %d\n"), pDot11f->FortyMHzUtil);
     limLog(pMac, LOG1, FL("EightyMHzUtil: %d\n"), pDot11f->EightyMHzUtil);
     limLog(pMac, LOG1, FL("OneSixtyMHzUtil: %d\n"), pDot11f->OneSixtyMHzUtil);
+#endif /* DUMP_MGMT_CNTNTS */
 }
 
 
 void limLogOperatingMode( tpAniSirGlobal pMac, 
                                tDot11fIEOperatingMode *pDot11f)
 {
+#ifdef DUMP_MGMT_CNTNTS
     limLog(pMac, LOG1, FL("ChanWidth : %d\n"), pDot11f->chanWidth);
     limLog(pMac, LOG1, FL("reserved: %d\n"), pDot11f->reserved);
     limLog(pMac, LOG1, FL("rxNSS: %d\n"), pDot11f->rxNSS);
     limLog(pMac, LOG1, FL("rxNSS Type: %d\n"), pDot11f->rxNSSType);
+#endif /* DUMP_MGMT_CNTNTS */
 }
 
 
