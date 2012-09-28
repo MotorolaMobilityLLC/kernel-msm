@@ -31,6 +31,10 @@
 #define MODULE_NAME			"wcnss_8960"
 #define MAX_BUF_SIZE			0x51
 
+static void __iomem *msm_riva_base;
+#define MSM_RIVA_PHYS			0x03204000
+#define RIVA_SSR_OUT			(msm_riva_base + 0x0b4)
+#define RIVA_SSR_BIT			BIT(23)
 
 
 static struct delayed_work cancel_vote_work;
@@ -143,7 +147,20 @@ static int riva_powerup(const struct subsys_desc *subsys)
 	struct platform_device *pdev = wcnss_get_platform_device();
 	struct wcnss_wlan_config *pwlanconfig = wcnss_get_wlan_config();
 	int    ret = -1;
+	u32 reg = 0;
 
+	msm_riva_base = ioremap(MSM_RIVA_PHYS, SZ_256);
+	if (!msm_riva_base) {
+		pr_err("ioremap MSM_RIVA_PHYS failed\n");
+		goto poweron;
+	}
+
+	reg = readl_relaxed(RIVA_SSR_OUT);
+	reg |= RIVA_SSR_BIT;
+	writel_relaxed(reg, RIVA_SSR_OUT);
+	iounmap(msm_riva_base);
+
+poweron:
 	if (pdev && pwlanconfig)
 		ret = wcnss_wlan_power(&pdev->dev, pwlanconfig,
 					WCNSS_WLAN_SWITCH_ON);
