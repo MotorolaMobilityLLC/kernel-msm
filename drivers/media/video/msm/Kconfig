@@ -126,7 +126,7 @@ config MT9P012_KM
 config IMX111
 	bool "Sensor IMX111 (Sony 8MP)"
 	depends on MSM_CAMERA
-	select IMX111_ACT
+	select SEKONIX_LENS_ACT
 	default n
 	---help---
 	  Sony 8M Bayer Sensor modules with Autofocus
@@ -138,6 +138,14 @@ config IMX111_ACT
 	default n
 	---help---
 	  Actuator for SONY 8 MP Bayer Sensor
+
+config SEKONIX_LENS_ACT
+	bool "Actuator SEKONIX LENS"
+	depends on MSM_CAMERA
+	select MSM_ACTUATOR
+	default n
+	---help---
+	  Actuator for Sekonix Lens
 
 config IMX091
 	bool "Sensor IMX091 (Sony 13MP)"
