@@ -373,6 +373,11 @@ typedef enum
 #define CFG_INTF3_MAC_ADDR_MAX                   "ffffffffffff"
 #define CFG_INTF3_MAC_ADDR_DEFAULT               "000AF5898983"
 
+#define CFG_CRDA_DEFAULT_COUNTRY_CODE            "gCrdaDefaultCountryCode"
+#define CFG_CRDA_DEFAULT_COUNTRY_CODE_MIN        "00"
+#define CFG_CRDA_DEFAULT_COUNTRY_CODE_MAX        "ZZ"
+#define CFG_CRDA_DEFAULT_COUNTRY_CODE_DEFAULT    "ZZ"
+
 #ifdef WLAN_SOFTAP_FEATURE
 #define CFG_AP_QOS_UAPSD_MODE_NAME             "gEnableApUapsd" // ACs to setup U-APSD for at assoc
 #define CFG_AP_QOS_UAPSD_MODE_MIN              ( 0 )
@@ -1412,6 +1417,7 @@ typedef struct
    
    v_U8_t        intfAddrMask;
    v_MACADDR_t   intfMacAddr[VOS_MAX_CONCURRENCY_PERSONA];
+   v_U8_t        crdaDefaultCountryCode [3];
 
 #ifdef WLAN_SOFTAP_FEATURE
    v_BOOL_t      apUapsdEnabled;

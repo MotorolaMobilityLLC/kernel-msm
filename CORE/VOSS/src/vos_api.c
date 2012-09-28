@@ -72,7 +72,7 @@
 #include "wlan_qct_wda.h"
 #include "wlan_hdd_main.h"
 #include <linux/vmalloc.h>
-
+#include "wlan_hdd_cfg80211.h"
 
 #ifdef WLAN_SOFTAP_FEATURE
 #include "sapApi.h"
@@ -457,6 +457,12 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
      VOS_ASSERT(0);
      goto err_nv_close;
    }
+#ifdef CONFIG_CFG80211
+/* call crda before sme_Open which will read NV and store the default country code */
+   wlan_hdd_get_crda_regd_entry(
+      ((hdd_context_t*)(gpVosContext->pHDDContext))->wiphy,
+      ((hdd_context_t*)(gpVosContext->pHDDContext))->cfg_ini);
+#endif
 
    /* Now proceed to open the SME */
    vStatus = sme_Open(gpVosContext->pMACContext);

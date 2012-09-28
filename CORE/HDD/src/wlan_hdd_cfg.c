@@ -444,6 +444,11 @@ REG_TABLE_ENTRY g_registry_table[] =
                         VAR_FLAGS_OPTIONAL,
                         (void *)CFG_INTF3_MAC_ADDR_DEFAULT ),
 
+   REG_VARIABLE_STRING( CFG_CRDA_DEFAULT_COUNTRY_CODE, WLAN_PARAM_String,
+                        hdd_config_t, crdaDefaultCountryCode,
+                        VAR_FLAGS_OPTIONAL,
+                        (void *)CFG_CRDA_DEFAULT_COUNTRY_CODE_DEFAULT ),
+
 #ifdef WLAN_SOFTAP_FEATURE
    REG_VARIABLE( CFG_AP_QOS_UAPSD_MODE_NAME , WLAN_PARAM_Integer,
                  hdd_config_t, apUapsdEnabled, 
@@ -3013,6 +3018,8 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
               pConfig->WmmMode, pConfig->b80211eIsEnabled, pConfig->dot11Mode);
 
    // Config params obtained from the registry
+   if (is_crda_regulatory_entry_valid() == VOS_TRUE)
+       sme_setRegInfo(pHddCtx->hHal, pConfig->crdaDefaultCountryCode);
    smeConfig.csrConfig.RTSThreshold             = pConfig->RTSThreshold;
    smeConfig.csrConfig.FragmentationThreshold   = pConfig->FragmentationThreshold;
    smeConfig.csrConfig.shortSlotTime            = pConfig->ShortSlotTimeEnabled;

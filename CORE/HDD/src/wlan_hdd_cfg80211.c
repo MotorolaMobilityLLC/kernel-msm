@@ -166,6 +166,13 @@ static struct ieee80211_channel hdd_social_channels_2_4_GHZ[] =
 
 static struct ieee80211_channel hdd_channels_5_GHZ[] =
 {
+    HDD5GHZCHAN(4920, 240, 0) ,
+    HDD5GHZCHAN(4940, 244, 0) ,
+    HDD5GHZCHAN(4960, 248, 0) ,
+    HDD5GHZCHAN(4980, 252, 0) ,
+    HDD5GHZCHAN(5040, 208, 0) ,
+    HDD5GHZCHAN(5060, 212, 0) ,
+    HDD5GHZCHAN(5080, 216, 0) ,
     HDD5GHZCHAN(5180, 36, 0) ,
     HDD5GHZCHAN(5200, 40, 0) ,
     HDD5GHZCHAN(5220, 44, 0) ,
@@ -458,6 +465,12 @@ int wlan_hdd_cfg80211_register(struct device *dev,
     wiphy->flags |=   WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL 
                     | WIPHY_FLAG_OFFCHAN_TX;
 #endif
+    /* even with WIPHY_FLAG_CUSTOM_REGULATORY,
+       driver can still register regulatory callback and
+       it will get CRDA setting in wiphy->band[], but
+       driver need to determine what to do with both
+       regulatory settings */
+    wiphy->reg_notifier = wlan_hdd_crda_reg_notifier;
 
     wiphy->max_scan_ssids = MAX_SCAN_SSID; 
     
@@ -532,6 +545,26 @@ int wlan_hdd_cfg80211_register(struct device *dev,
     EXIT();
     return 0;
 }     
+
+/* In this function we will try to get default country code from crda.
+   If the gCrdaDefaultCountryCode is configured in ini file,
+   we will try to call user space crda to get the regulatory settings for
+   that country. We will timeout if we can't get it from crda.
+   It's called by hdd_wlan_startup() after wlan_hdd_cfg80211_register.
+*/
+int wlan_hdd_get_crda_regd_entry(struct wiphy *wiphy, hdd_config_t *pCfg)
+{
+   hdd_context_t *pHddCtx = wiphy_priv(wiphy);
+   if (memcmp(pCfg->crdaDefaultCountryCode,
+              CFG_CRDA_DEFAULT_COUNTRY_CODE_DEFAULT , 2) != 0)
+   {
+      init_completion(&pHddCtx->driver_crda_req);
+      regulatory_hint(wiphy, pCfg->crdaDefaultCountryCode);
+      wait_for_completion_interruptible_timeout(&pHddCtx->driver_crda_req,
+        CRDA_WAIT_TIME);
+   }
+   return 0;
+}
 
 /* In this function we will do all post VOS start initialization.
    In this function we will register for all frame in which supplicant

@@ -100,6 +100,9 @@
 #define WLAN_WAIT_TIME_SESSIONOPENCLOSE  15000
 #define WLAN_WAIT_TIME_ABORTSCAN  2000
 
+/* Maximum time to get crda entry settings */
+#define CRDA_WAIT_TIME 300
+
 /* Scan Req Timeout */
 #define WLAN_WAIT_TIME_SCAN_REQ 100
 
@@ -822,6 +825,8 @@ struct hdd_context_s
    /* Completion  variable to indicate Mc Thread Suspended */
    struct completion mc_sus_event_var;
 
+   /* Completion  variable to wlan_hdd_get_crda_regd_entry  */
+   struct completion driver_crda_req;
 
    v_BOOL_t isWlanSuspended;
 
@@ -959,6 +964,7 @@ void hdd_abort_mac_scan(hdd_context_t *pHddCtx);
 #ifdef CONFIG_CFG80211
 void wlan_hdd_set_monitor_tx_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
 void hdd_cleanup_actionframe( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
+v_BOOL_t is_crda_regulatory_entry_valid(void);
 #endif
 void wlan_hdd_set_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode);
 void wlan_hdd_clear_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode);
