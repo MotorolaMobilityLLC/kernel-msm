@@ -150,6 +150,12 @@ struct tag_flat_dev_tree_address {
 	u32 size;
 };
 
+/* Motorola Display Panel Type */
+#define ATAG_DISPLAY	0x41000813
+struct tag_display {
+	char display[1];
+};
+
 #ifdef CONFIG_BOOTINFO
 
 /* Powerup Reason */
@@ -213,6 +219,7 @@ struct tag {
 		 * Motorola specific
 		 */
 		struct tag_flat_dev_tree_address        fdt_addr;
+		struct tag_display	display;
 #ifdef CONFIG_BOOTINFO
 		struct tag_powerup_reason	       powerup_reason;
 		struct tag_mbm_version                 mbm_version;
