@@ -529,7 +529,7 @@ int32_t imx111_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 			msleep(30);
 		}
 	}
-	printk("%s: X", __func__);
+	CDBG("%s: X", __func__);
 	return rc;
 }
 
@@ -674,7 +674,7 @@ static int imx111_read_eeprom_data(struct msm_sensor_ctrl_t *s_ctrl, struct sens
 	uint32_t crc_5100= 0 /*, crc_2850 = 0*/;
 	int i;
 
-	printk("%s: E\n", __func__);
+	CDBG("%s: E\n", __func__);
 
 	memset(eepromdata, 0, sizeof(eepromdata));
 	// for LSC data
@@ -686,23 +686,23 @@ static int imx111_read_eeprom_data(struct msm_sensor_ctrl_t *s_ctrl, struct sens
 	#if 0
 	// for AWB data
 	cfg->cfg.calib_info.r_over_g = (eepromdata[1]<<8) |eepromdata[0];
-	printk("[QCTK_EEPROM] r_over_g = 0x%4x\n", cfg->cfg.calib_info.r_over_g);
+	CDBG("[QCTK_EEPROM] r_over_g = 0x%4x\n", cfg->cfg.calib_info.r_over_g);
 	cfg->cfg.calib_info.b_over_g = (eepromdata[3]<<8) |eepromdata[2];
-	printk("[QCTK_EEPROM] b_over_g = 0x%4x\n", cfg->cfg.calib_info.b_over_g);
+	CDBG("[QCTK_EEPROM] b_over_g = 0x%4x\n", cfg->cfg.calib_info.b_over_g);
 	cfg->cfg.calib_info.gr_over_gb = (eepromdata[5]<<8) |eepromdata[4];
-	printk("[QCTK_EEPROM] gr_over_gb = 0x%4x\n", cfg->cfg.calib_info.gr_over_gb);
+	CDBG("[QCTK_EEPROM] gr_over_gb = 0x%4x\n", cfg->cfg.calib_info.gr_over_gb);
 	#endif
 
 	for (i = 0; i < ROLLOFF_CALDATA_SIZE; i++) {
 		cfg->cfg.calib_info.rolloff.r_gain[i] = eepromdata[RED_START + i];
 		crc_5100 += eepromdata[RED_START + i];
-		//printk("[QCTK_EEPROM] R (0x%x, %d)\n", RED_START + i, eepromdata[RED_START + i]);
+		//CDBG("[QCTK_EEPROM] R (0x%x, %d)\n", RED_START + i, eepromdata[RED_START + i]);
 	}
 
 	for (i = 0; i < IMX111_EEPROM_PAGE_SIZE - GR_START; i++) {
 		cfg->cfg.calib_info.rolloff.gr_gain[i] = eepromdata[GR_START + i];
 		crc_5100 += eepromdata[GR_START + i];
-		//printk("[QCTK_EEPROM] GR (0x%x, %d)\n", GR_START + i, eepromdata[GR_START + i]);
+		//CDBG("[QCTK_EEPROM] GR (0x%x, %d)\n", GR_START + i, eepromdata[GR_START + i]);
 	}
 
 	memset(eepromdata, 0, sizeof(eepromdata));
@@ -717,13 +717,13 @@ static int imx111_read_eeprom_data(struct msm_sensor_ctrl_t *s_ctrl, struct sens
 	for (i = 0; i < ROLLOFF_CALDATA_SIZE + GR_START - IMX111_EEPROM_PAGE_SIZE; i++) {
 		cfg->cfg.calib_info.rolloff.gr_gain[IMX111_EEPROM_PAGE_SIZE - GR_START + i] = eepromdata[i];
 		crc_5100 += eepromdata[i];
-		//printk("[QCTK_EEPROM] GR (0x%x, %d)\n", i, eepromdata[i]);
+		//CDBG("[QCTK_EEPROM] GR (0x%x, %d)\n", i, eepromdata[i]);
 	}
 
 	for (i = 0; i < IMX111_EEPROM_PAGE_SIZE - GB_START; i++) {
 		cfg->cfg.calib_info.rolloff.gb_gain[i] = eepromdata[GB_START + i];
 		crc_5100 += eepromdata[GB_START + i];
-		//printk("[QCTK_EEPROM] GB (0x%x, %d)\n", GB_START + i, eepromdata[GB_START + i]);
+		//CDBG("[QCTK_EEPROM] GB (0x%x, %d)\n", GB_START + i, eepromdata[GB_START + i]);
 	}
 
 	memset(eepromdata, 0, sizeof(eepromdata));
@@ -735,50 +735,59 @@ static int imx111_read_eeprom_data(struct msm_sensor_ctrl_t *s_ctrl, struct sens
 	for (i = 0; i < ROLLOFF_CALDATA_SIZE + GB_START - IMX111_EEPROM_PAGE_SIZE; i++) {
 		cfg->cfg.calib_info.rolloff.gb_gain[IMX111_EEPROM_PAGE_SIZE - GB_START + i] = eepromdata[i];
 		crc_5100 += eepromdata[i];
-		//printk("[QCTK_EEPROM] GB (0x%x, %d)\n", i, eepromdata[i]);
+		//CDBG("[QCTK_EEPROM] GB (0x%x, %d)\n", i, eepromdata[i]);
 	}
 
 	for (i = 0; i < IMX111_EEPROM_PAGE_SIZE - BLUE_START; i++) {
 		cfg->cfg.calib_info.rolloff.b_gain[i] = eepromdata[BLUE_START + i];
 		crc_5100 += eepromdata[BLUE_START + i];
-		//printk("[QCTK_EEPROM] B (0x%x, %d)\n", BLUE_START + i, eepromdata[BLUE_START + i]);
+		//CDBG("[QCTK_EEPROM] B (0x%x, %d)\n", BLUE_START + i, eepromdata[BLUE_START + i]);
 	}
 
 	memset(eepromdata, 0, sizeof(eepromdata));
 	if(imx_i2c_read_eeprom_burst(IMX111_EEPROM_SADDR | 0x3 /* page_no:3 */,
-		eepromdata, ROLLOFF_CALDATA_SIZE + BLUE_START - IMX111_EEPROM_PAGE_SIZE + 4 /*checksum*/ + 17 /*red_ref*/) < 0) {
+		eepromdata, IMX111_EEPROM_PAGE_SIZE) < 0) {
 			pr_err("%s: Error Reading EEPROM : page_no:3 \n", __func__);
 			return rc;
 	}
 	for (i = 0; i < ROLLOFF_CALDATA_SIZE + BLUE_START - IMX111_EEPROM_PAGE_SIZE; i++) {
 		cfg->cfg.calib_info.rolloff.b_gain[IMX111_EEPROM_PAGE_SIZE - BLUE_START + i] = eepromdata[i];
 		crc_5100 += eepromdata[i];
-		//printk("[QCTK_EEPROM] B(0x%x, %d)\n", i, eepromdata[i]);
+		//CDBG("[QCTK_EEPROM] B(0x%x, %d)\n", i, eepromdata[i]);
 	}
 
-	for (i = 0; i < 17; i++) {
-		cfg->cfg.calib_info.rolloff.red_ref[i] = eepromdata[R_REF_ADDR + i];
-		//printk("[QCTK_EEPROM] R_ref(0x%x)\n", cfg->cfg.calib_info.rolloff.red_ref[i]);
+	if (eepromdata[0xCA] != 1) {
+		for (i = 0; i < 17; i++) {
+			cfg->cfg.calib_info.rolloff.red_ref[i] =
+				eepromdata[R_REF_ADDR + i];
+			CDBG("[QCTK_EEPROM] R_ref(0x%x)\n",
+				cfg->cfg.calib_info.rolloff.red_ref[i]);
 		}
-
-	printk("%s: crc_from_eeprom(0x%x), cal_crc(0x%x)\n", __func__,
+	} else {
+		cfg->cfg.calib_info.rolloff.red_ref[0] = 0xFE;
+		cfg->cfg.calib_info.rolloff.red_ref[1] = eepromdata[0xC6];
+		cfg->cfg.calib_info.rolloff.red_ref[2] = eepromdata[0xC7];
+		cfg->cfg.calib_info.rolloff.red_ref[3] = eepromdata[0xC8];
+		cfg->cfg.calib_info.rolloff.red_ref[4] = eepromdata[0xC9];
+	}
+	CDBG("%s: crc_from_eeprom(0x%x), cal_crc(0x%x)\n", __func__,
 		(eepromdata[CRC_ADDR] << 8) | eepromdata[CRC_ADDR+1], crc_5100& 0xFFFF);
 
 	// for AWB data - from Rolloff data
 	cfg->cfg.calib_info.r_over_g = (uint16_t)(((((uint32_t)cfg->cfg.calib_info.rolloff.r_gain[ROLLOFF_CALDATA_SIZE / 2])<<10)
 						+ ((uint32_t)(cfg->cfg.calib_info.rolloff.gr_gain[ROLLOFF_CALDATA_SIZE / 2]) >> 1))
 						/ (uint32_t)cfg->cfg.calib_info.rolloff.gr_gain[ROLLOFF_CALDATA_SIZE / 2]);
-	printk("[QCTK_EEPROM] r_over_g = 0x%4x\n", cfg->cfg.calib_info.r_over_g);
+	CDBG("[QCTK_EEPROM] r_over_g = 0x%4x\n", cfg->cfg.calib_info.r_over_g);
 	cfg->cfg.calib_info.b_over_g = (uint16_t)(((((uint32_t)cfg->cfg.calib_info.rolloff.b_gain[ROLLOFF_CALDATA_SIZE / 2])<<10)
 						+ ((uint32_t)(cfg->cfg.calib_info.rolloff.gb_gain[ROLLOFF_CALDATA_SIZE / 2]) >> 1))
 						/ (uint32_t)cfg->cfg.calib_info.rolloff.gb_gain[ROLLOFF_CALDATA_SIZE / 2]);
-	printk("[QCTK_EEPROM] b_over_g = 0x%4x\n", cfg->cfg.calib_info.b_over_g);
+	CDBG("[QCTK_EEPROM] b_over_g = 0x%4x\n", cfg->cfg.calib_info.b_over_g);
 	cfg->cfg.calib_info.gr_over_gb = (uint16_t)(((((uint32_t)cfg->cfg.calib_info.rolloff.gr_gain[ROLLOFF_CALDATA_SIZE / 2])<<10)
 						+ ((uint32_t)(cfg->cfg.calib_info.rolloff.gb_gain[ROLLOFF_CALDATA_SIZE / 2]) >> 1))
 						/ (uint32_t)cfg->cfg.calib_info.rolloff.gb_gain[ROLLOFF_CALDATA_SIZE / 2]);
-	printk("[QCTK_EEPROM] gr_over_gb = 0x%4x\n", cfg->cfg.calib_info.gr_over_gb);
+	CDBG("[QCTK_EEPROM] gr_over_gb = 0x%4x\n", cfg->cfg.calib_info.gr_over_gb);
 
-	printk("%s: X\n", __func__);
+	CDBG("%s: X\n", __func__);
 	return 0;
 }
 
