@@ -340,7 +340,11 @@ wpt_status dxeChannelRegisterDump
 
    wpalReadRegister(channelEntry->channelRegister.chDXELstDesclRegAddr, &regValue);
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
-            "Descriptor Address Register 0x%x", regValue);
+            "Last Descriptor Address Register 0x%x", regValue);
+
+   wpalReadRegister(channelEntry->channelRegister.chDXEDesclRegAddr, &regValue);
+   HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
+            "Next Descriptor Address Register 0x%x", regValue);
 
    return status;
 }
@@ -442,7 +446,7 @@ void dxeTxThreadChannelDebugHandler
       dxeChannelMonitor("******** Get Descriptor Snapshot ",
                         &tempDxeCtrlBlk->dxeChannel[channelLoop]);
       dxeDescriptorDump(&tempDxeCtrlBlk->dxeChannel[channelLoop],
-                        tempDxeCtrlBlk->dxeChannel[channelLoop].headCtrlBlk->linkedDesc,
+                        tempDxeCtrlBlk->dxeChannel[channelLoop].tailCtrlBlk->linkedDesc,
                         0);
       dxeChannelRegisterDump(&tempDxeCtrlBlk->dxeChannel[channelLoop],
                              "Abnormal successive empty interrupt");
@@ -3344,6 +3348,91 @@ void dxeTXCompleteProcessing
             "%s Exit", __FUNCTION__);
    return;
 }
+
+/*==========================================================================
+  @  Function Name
+      dxeTXReSyncDesc
+
+  @  Description
+      When STA comeout from IMPS, check DXE TX next transfer candidate descriptor
+      And HW programmed descriptor.
+      If any async happen between HW/SW TX stall will happen
+
+  @  Parameters
+      void    *msgPtr
+               Message pointer to sync with TX thread
+
+  @  Return
+      NONE
+===========================================================================*/
+void dxeTXReSyncDesc
+(
+   wpt_msg                  *msgPtr
+)
+{
+   wpt_msg                  *msgContent = (wpt_msg *)msgPtr;
+   WLANDXE_CtrlBlkType      *pDxeCtrlBlk;
+   wpt_uint32                nextDescReg;
+   WLANDXE_ChannelCBType    *channelEntry;
+   WLANDXE_DescCtrlBlkType  *validCtrlBlk;
+   wpt_uint32                descLoop;
+
+   if(NULL == msgContent)
+   {
+      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "dxeTXReSyncDesc Invalid Control Block");
+      return;
+   }
+
+   HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
+            "dxeTXReSyncDesc Try to re-sync TX channel if any problem");
+   pDxeCtrlBlk = (WLANDXE_CtrlBlkType *)(msgContent->pContext);
+
+   channelEntry = &pDxeCtrlBlk->dxeChannel[WDTS_CHANNEL_TX_HIGH_PRI];
+   wpalReadRegister(channelEntry->channelRegister.chDXEDesclRegAddr,
+                    &nextDescReg);
+   validCtrlBlk = channelEntry->tailCtrlBlk;
+   for(descLoop = 0; descLoop < channelEntry->numDesc; descLoop++)
+   {
+      if(validCtrlBlk->linkedDesc->descCtrl.ctrl & WLANDXE_DESC_CTRL_VALID)
+      {
+         if(nextDescReg != validCtrlBlk->linkedDescPhyAddr)
+         {
+            dxeChannelMonitor("!!! TX High Async !!!", channelEntry);
+            dxeChannelRegisterDump(channelEntry, "!!! TX High Async !!!");
+            wpalWriteRegister(channelEntry->channelRegister.chDXEDesclRegAddr,
+                              validCtrlBlk->linkedDescPhyAddr);
+         }
+         break;
+      }
+      validCtrlBlk = (WLANDXE_DescCtrlBlkType *)validCtrlBlk->nextCtrlBlk;
+   }
+
+
+   channelEntry = &pDxeCtrlBlk->dxeChannel[WDTS_CHANNEL_TX_LOW_PRI];
+   wpalReadRegister(channelEntry->channelRegister.chDXEDesclRegAddr,
+                    &nextDescReg);
+   validCtrlBlk = channelEntry->tailCtrlBlk;
+   for(descLoop = 0; descLoop < channelEntry->numDesc; descLoop++)
+   {
+      if(validCtrlBlk->linkedDesc->descCtrl.ctrl & WLANDXE_DESC_CTRL_VALID)
+      {
+         if(nextDescReg != validCtrlBlk->linkedDescPhyAddr)
+         {
+            dxeChannelMonitor("!!! TX Low Async !!!", channelEntry);
+            dxeChannelRegisterDump(channelEntry, "!!! TX Low Async !!!");
+            wpalWriteRegister(channelEntry->channelRegister.chDXEDesclRegAddr,
+                              validCtrlBlk->linkedDescPhyAddr);
+         }
+         break;
+      }
+      validCtrlBlk = (WLANDXE_DescCtrlBlkType *)validCtrlBlk->nextCtrlBlk;
+   }
+
+   wpalMemoryFree(msgPtr);
+   return;
+}
+
 /*==========================================================================
   @  Function Name 
       dxeTXISR
@@ -4257,7 +4346,6 @@ void dxeTxThreadSetPowerStateEventHandler
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
             "%s Enter", __FUNCTION__);
 
-
    dxeCtxt = (WLANDXE_CtrlBlkType *)(msgContent->pContext);
    reqPowerState = (WLANDXE_PowerStateType)msgContent->val;
    dxeCtxt->setPowerStateCb = (WLANDXE_SetPowerStateCbType)msgContent->ptr;
@@ -4383,7 +4471,8 @@ wpt_status WLANDXE_SetPowerState
    wpt_status               status = eWLAN_PAL_STATUS_SUCCESS;
    WLANDXE_CtrlBlkType     *pDxeCtrlBlk;
    WLANDXE_PowerStateType   hostPowerState;
-   wpt_msg                  *rxCompMsg;
+   wpt_msg                 *rxCompMsg;
+   wpt_msg                 *txDescReSyncMsg;
 
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
             "%s Enter", __FUNCTION__);
@@ -4398,6 +4487,27 @@ wpt_status WLANDXE_SetPowerState
    switch(powerState)
    {
       case WDTS_POWER_STATE_FULL:
+         if(WLANDXE_POWER_STATE_IMPS == pDxeCtrlBlk->hostPowerState)
+         {
+            txDescReSyncMsg = (wpt_msg *)wpalMemoryAllocate(sizeof(wpt_msg));
+            if(NULL == txDescReSyncMsg)
+            {
+               HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                        "WLANDXE_SetPowerState, TX Resync MSG MEM alloc Fail");
+            }
+            else
+            {
+               txDescReSyncMsg->callback = dxeTXReSyncDesc;
+               txDescReSyncMsg->pContext = pDxeCtrlBlk;
+               status = wpalPostTxMsg(WDI_GET_PAL_CTX(),
+                                      txDescReSyncMsg);
+               if(eWLAN_PAL_STATUS_SUCCESS != status)
+               {
+                  HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                           "WLANDXE_SetPowerState, Post TX re-sync MSG fail");
+               }
+            }
+         }
          hostPowerState = WLANDXE_POWER_STATE_FULL;
          break;
       case WDTS_POWER_STATE_BMPS:
