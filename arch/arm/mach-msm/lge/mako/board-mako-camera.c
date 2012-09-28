@@ -424,9 +424,9 @@ static struct msm_camera_i2c_conf apq8064_back_cam_i2c_conf = {
 	.i2c_mux_mode = MODE_L,
 };
 #endif
-#ifdef CONFIG_IMX111_ACT
+#ifdef CONFIG_SEKONIX_LENS_ACT
 static struct i2c_board_info msm_act_main_cam_i2c_info = {
-	I2C_BOARD_INFO("msm_actuator", I2C_SLAVE_ADDR_IMX111_ACT),
+	I2C_BOARD_INFO("msm_actuator", I2C_SLAVE_ADDR_SEKONIX_LENS_ACT),
 };
 
 static struct msm_actuator_info msm_act_main_cam_0_info = {
@@ -465,8 +465,8 @@ static struct msm_camera_sensor_info msm_camera_sensor_imx111_data = {
 	.csi_if	= 1,
 	.camera_type = BACK_CAMERA_2D,
 	.sensor_type = BAYER_SENSOR,
-#ifdef CONFIG_IMX111_ACT
-		.actuator_info = &msm_act_main_cam_0_info,
+#ifdef CONFIG_SEKONIX_LENS_ACT
+	.actuator_info = &msm_act_main_cam_0_info,
 
 #endif
 };
