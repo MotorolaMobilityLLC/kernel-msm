@@ -1622,7 +1622,12 @@ WDI_Shutdown
       /* Close control transport, called from module unload */
       WCTS_CloseTransport(gWDICb.wctsHandle);
    }
-
+   else
+   {
+      /* Riva is crashed then SMD is already closed so cleaning all
+         the pending messages in the transport queue  */
+      WCTS_ClearPendingQueue(gWDICb.wctsHandle);
+   }
    /*destroy the BSS sessions pending Queue */
    for ( i = 0; i < WDI_MAX_BSS_SESSIONS; i++ )
    {
