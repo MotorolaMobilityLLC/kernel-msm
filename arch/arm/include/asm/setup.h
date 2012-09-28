@@ -150,6 +150,12 @@ struct tag_flat_dev_tree_address {
 	u32 size;
 };
 
+/* Motorola Display Panel Type */
+#define ATAG_DISPLAY	0x41000813
+struct tag_display {
+	char display[1];
+};
+
 struct tag {
 	struct tag_header hdr;
 	union {
@@ -177,6 +183,7 @@ struct tag {
 		 * Motorola specific
 		 */
 		struct tag_flat_dev_tree_address        fdt_addr;
+		struct tag_display	display;
 	} u;
 };
 
