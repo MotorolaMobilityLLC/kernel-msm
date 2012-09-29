@@ -38,6 +38,7 @@
 
 #define GPIO_EAR_MIC_BIAS_EN        PM8921_GPIO_PM_TO_SYS(20)
 #define GPIO_EAR_SENSE_N            82
+#define GPIO_EAR_SENSE_N_REV11      81
 #define GPIO_EAR_MIC_EN             PM8921_GPIO_PM_TO_SYS(31)
 #define GPIO_EARPOL_DETECT          PM8921_GPIO_PM_TO_SYS(32)
 #define GPIO_EAR_KEY_INT            83
@@ -215,6 +216,13 @@ static struct fsa8008_platform_data lge_hs_pdata = {
 	.set_uart_console = set_uart_console,
 };
 
+static __init void mako_fixed_audio(void)
+{
+	if (lge_get_board_revno() > HW_REV_1_0) {
+		lge_hs_pdata.gpio_detect = GPIO_EAR_SENSE_N_REV11;
+	}
+}
+
 static struct platform_device lge_hsd_device = {
 	.name = "fsa8008",
 	.id   = -1,
@@ -244,6 +252,7 @@ static struct platform_device *sound_devices[] __initdata = {
 
 void __init lge_add_sound_devices(void)
 {
+	mako_fixed_audio();
 	lge_add_i2c_tpa2028d_devices();
 	platform_add_devices(sound_devices, ARRAY_SIZE(sound_devices));
 }
