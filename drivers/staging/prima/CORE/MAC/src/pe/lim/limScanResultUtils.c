@@ -341,6 +341,7 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
     tANI_U32              frameLen, ieLen = 0;
     tANI_U8               rxChannelInBeacon = 0;
     eHalStatus            status;
+    tANI_U8               dontUpdateAll = 0;
 
 #ifdef WLAN_FEATURE_P2P
     tSirMacAddr bssid = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
@@ -416,10 +417,23 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
           /* This means that we are in 2.4GHz mode */
           if(WDA_GET_RX_CH(pRxPacketInfo) != rxChannelInBeacon)
           {
-             limLog(pMac, LOG3, FL("Beacon/Probe Rsp dropped. Channel in BD %d. "
-                                   "Channel in beacon" " %d\n"), 
-                    WDA_GET_RX_CH(pRxPacketInfo),limGetChannelFromBeacon(pMac, pBPR));
-             return;
+             /* BCAST Frame, if CH do not match, Drop */
+             if(WDA_IS_RX_BCAST(pRxPacketInfo))
+             {
+                limLog(pMac, LOG3, FL("Beacon/Probe Rsp dropped. Channel in BD %d. "
+                                      "Channel in beacon" " %d\n"), 
+                       WDA_GET_RX_CH(pRxPacketInfo),limGetChannelFromBeacon(pMac, pBPR));
+                return;
+             }
+             /* Unit cast frame, Probe RSP, do not drop */
+             else
+             {
+                dontUpdateAll = 1;
+                limLog(pMac, LOG3, FL("SSID %s, CH in ProbeRsp %d, CH in BD %d, miss-match, Do Not Drop"), 
+                                       pBPR->ssId.ssId,
+                                       rxChannelInBeacon,
+                                       limGetChannelFromBeacon(pMac, pBPR));
+             }
           }
        }
     }
@@ -463,11 +477,11 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
     //If it is not scanning, only save unique results
     if (pMac->lim.gLimReturnUniqueResults || (!fScanning))
     {
-        status = limLookupNaddHashEntry(pMac, pBssDescr, LIM_HASH_UPDATE);
+        status = limLookupNaddHashEntry(pMac, pBssDescr, LIM_HASH_UPDATE, dontUpdateAll);
     }
     else
     {
-        status = limLookupNaddHashEntry(pMac, pBssDescr, LIM_HASH_ADD);
+        status = limLookupNaddHashEntry(pMac, pBssDescr, LIM_HASH_ADD, dontUpdateAll);
     }
 
     if(fScanning)
@@ -620,7 +634,8 @@ limInitHashTable(tpAniSirGlobal pMac)
 
 eHalStatus
 limLookupNaddHashEntry(tpAniSirGlobal pMac,
-                       tLimScanResultNode *pBssDescr, tANI_U8 action)
+                       tLimScanResultNode *pBssDescr, tANI_U8 action,
+                       tANI_U8 dontUpdateAll)
 {
     tANI_U8                  index, ssidLen = 0;
     tANI_U8                found = false;
@@ -628,6 +643,7 @@ limLookupNaddHashEntry(tpAniSirGlobal pMac,
     tSirMacCapabilityInfo *pSirCap, *pSirCapTemp;
     int idx, len;
     tANI_U8 *pbIe;
+    tANI_S8  rssi = 0;
 
     index = limScanHashFunction(pBssDescr->bssDescription.bssId);
     ptemp = pMac->lim.gLimCachedScanHashTable[index];
@@ -660,6 +676,11 @@ limLookupNaddHashEntry(tpAniSirGlobal pMac,
             // Found the same BSS description
             if (action == LIM_HASH_UPDATE)
             {
+                if(dontUpdateAll)
+                {
+                   rssi = ptemp->bssDescription.rssi;
+                }
+
                 if(pBssDescr->bssDescription.fProbeRsp != ptemp->bssDescription.fProbeRsp)
                 {
                     //We get a different, save the old frame WSC IE if it is there
@@ -711,6 +732,12 @@ limLookupNaddHashEntry(tpAniSirGlobal pMac,
             found = true;
             break;
         }
+    }
+
+    //for now, only rssi, we can add more if needed
+    if ((action == LIM_HASH_UPDATE) && dontUpdateAll)
+    {
+        pBssDescr->bssDescription.rssi = rssi;
     }
 
     // Add this BSS description at same index

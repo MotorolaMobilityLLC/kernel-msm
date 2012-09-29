@@ -4492,7 +4492,10 @@ eHalStatus csrScanAgeResults(tpAniSirGlobal pMac, tSmeGetScanChnRsp *pScanChnInf
                     smsLog(pMac, LOGW, " age out due to ref count");
                     csrScanAgeOutBss(pMac, pResult);
                 }
-                pResult->AgingCount--;
+                else
+                {
+                    pResult->AgingCount--;
+                }
             }
             pEntry = tmpEntry;
         }
