@@ -2525,6 +2525,13 @@ limProcessApMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ)
         // Create timers used by LIM
         if (!pMac->lim.gLimTimersCreated)
             limCreateTimers(pMac);
+
+        // Start OLBC timer
+        if (tx_timer_activate(&pMac->lim.limTimers.gLimUpdateOlbcCacheTimer) != TX_SUCCESS)
+        {
+            limLog(pMac, LOGE, FL("tx_timer_activate failed\n"));
+        }
+
         /* Update the lim global gLimTriggerBackgroundScanDuringQuietBss */
         if( eSIR_SUCCESS != wlan_cfgGetInt( pMac, WNI_CFG_TRIG_STA_BK_SCAN, &val ))
             limLog( pMac, LOGP, FL("Failed to get WNI_CFG_TRIG_STA_BK_SCAN!\n"));

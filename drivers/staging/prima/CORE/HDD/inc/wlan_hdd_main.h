@@ -973,4 +973,5 @@ VOS_STATUS hdd_disable_bmps_imps(hdd_context_t *pHddCtx, tANI_U8 session_type);
 
 eHalStatus hdd_smeCloseSessionCallback(void *pContext);
 VOS_STATUS wlan_hdd_restart_driver(hdd_context_t *pHddCtx);
+void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx);
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )

@@ -137,7 +137,7 @@ int limProcessRemainOnChnlReq(tpAniSirGlobal pMac, tANI_U32 *pMsg)
                 /* get the duration from the request */
                 val = SYS_MS_TO_TICKS(MsgBuff->duration);
 
-                limLog( pMac, LOGE, "Start listen duration = %d", val);
+                limLog( pMac, LOG2, "Start listen duration = %d", val);
                 if (tx_timer_change(
                         &pMac->lim.limTimers.gLimRemainOnChannelTimer, val, 0)
                                           != TX_SUCCESS)
@@ -325,7 +325,7 @@ void limRemainOnChnlSetLinkStat(tpAniSirGlobal pMac, eHalStatus status,
       /* get the duration from the request */
     val = SYS_MS_TO_TICKS(MsgRemainonChannel->duration);
 
-    limLog( pMac, LOGE, "Start listen duration = %d", val);
+    limLog( pMac, LOG2, "Start listen duration = %d", val);
     if (tx_timer_change(&pMac->lim.limTimers.gLimRemainOnChannelTimer,
                                                 val, 0) != TX_SUCCESS)
     {

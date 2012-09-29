@@ -3165,6 +3165,131 @@ void hdd_allow_suspend(void)
 
 /**---------------------------------------------------------------------------
 
+  \brief hdd_exchange_version_and_caps() - HDD function to exchange version and capability
+                                                                 information between Host and Riva
+
+  This function gets reported version of FW
+  It also finds the version of Riva headers used to compile the host
+  It compares the above two and prints a warning if they are different
+  It gets the SW and HW version string
+  Finally, it exchanges capabilities between host and Riva i.e. host and riva exchange a msg
+  indicating the features they support through a bitmap
+
+  \param  - pHddCtx - Pointer to HDD context
+
+  \return -  void
+
+  --------------------------------------------------------------------------*/
+
+void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx)
+{
+
+   tSirVersionType versionCompiled;
+   tSirVersionType versionReported;
+   tSirVersionString versionString;
+   tANI_U8 fwFeatCapsMsgSupported = 0;
+   VOS_STATUS vstatus;
+
+   /* retrieve and display WCNSS version information */
+   do {
+
+      vstatus = sme_GetWcnssWlanCompiledVersion(pHddCtx->hHal,
+                                                &versionCompiled);
+      if (!VOS_IS_STATUS_SUCCESS(vstatus))
+      {
+         hddLog(VOS_TRACE_LEVEL_FATAL,
+                "%s: unable to retrieve WCNSS WLAN compiled version",
+                __FUNCTION__);
+         break;
+      }
+
+      vstatus = sme_GetWcnssWlanReportedVersion(pHddCtx->hHal,
+                                                &versionReported);
+      if (!VOS_IS_STATUS_SUCCESS(vstatus))
+      {
+         hddLog(VOS_TRACE_LEVEL_FATAL,
+                "%s: unable to retrieve WCNSS WLAN reported version",
+                __FUNCTION__);
+         break;
+      }
+
+      if ((versionCompiled.major != versionReported.major) ||
+          (versionCompiled.minor != versionReported.minor) ||
+          (versionCompiled.version != versionReported.version) ||
+          (versionCompiled.revision != versionReported.revision))
+      {
+         pr_err("%s: WCNSS WLAN Version %u.%u.%u.%u, "
+                "Host expected %u.%u.%u.%u\n",
+                WLAN_MODULE_NAME,
+                (int)versionReported.major,
+                (int)versionReported.minor,
+                (int)versionReported.version,
+                (int)versionReported.revision,
+                (int)versionCompiled.major,
+                (int)versionCompiled.minor,
+                (int)versionCompiled.version,
+                (int)versionCompiled.revision);
+      }
+      else
+      {
+         pr_info("%s: WCNSS WLAN version %u.%u.%u.%u\n",
+                 WLAN_MODULE_NAME,
+                 (int)versionReported.major,
+                 (int)versionReported.minor,
+                 (int)versionReported.version,
+                 (int)versionReported.revision);
+      }
+
+      vstatus = sme_GetWcnssSoftwareVersion(pHddCtx->hHal,
+                                            versionString,
+                                            sizeof(versionString));
+      if (!VOS_IS_STATUS_SUCCESS(vstatus))
+      {
+         hddLog(VOS_TRACE_LEVEL_FATAL,
+                "%s: unable to retrieve WCNSS software version string",
+                __FUNCTION__);
+         break;
+      }
+
+      pr_info("%s: WCNSS software version %s\n",
+              WLAN_MODULE_NAME, versionString);
+
+      vstatus = sme_GetWcnssHardwareVersion(pHddCtx->hHal,
+                                            versionString,
+                                            sizeof(versionString));
+      if (!VOS_IS_STATUS_SUCCESS(vstatus))
+      {
+         hddLog(VOS_TRACE_LEVEL_FATAL,
+                "%s: unable to retrieve WCNSS hardware version string",
+                __FUNCTION__);
+         break;
+      }
+
+      pr_info("%s: WCNSS hardware version %s\n",
+              WLAN_MODULE_NAME, versionString);
+
+      /* 1.Check if FW version is greater than 0.1.1.0. Only then send host-FW capability exchange message 
+         2.Host-FW capability exchange message  is only present on riva 1.1 so 
+            send the message only if it the riva is 1.1
+            minor numbers for different riva branches:
+                0 -> (1.0)Mainline Build
+                1 -> (1.1)Mainline Build
+                2->(1.04) Stability Build
+       */
+      if (((versionReported.major>0) || (versionReported.minor>1) || 
+         ((versionReported.minor>=1) && (versionReported.version>=1)))
+         && ((versionReported.major == 1) && (versionReported.minor >= 1)))
+         fwFeatCapsMsgSupported = 1;
+ 
+      if (fwFeatCapsMsgSupported)
+         sme_featureCapsExchange(pHddCtx->hHal);
+
+   } while (0);
+
+}
+
+/**---------------------------------------------------------------------------
+
   \brief hdd_wlan_startup() - HDD init function
 
   This is the driver startup code executed once a WLAN device has been detected
@@ -3518,107 +3643,8 @@ int hdd_wlan_startup(struct device *dev )
       goto err_vosclose;
    }
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
-   /* retrieve and display WCNSS version information */
-   do {
-      tSirVersionType versionCompiled;
-      tSirVersionType versionReported;
-      tSirVersionString versionString;
-      tANI_U8 fwFeatCapsMsgSupported = 0;
-      VOS_STATUS vstatus;
-
-      vstatus = sme_GetWcnssWlanCompiledVersion(pHddCtx->hHal,
-                                                &versionCompiled);
-      if (!VOS_IS_STATUS_SUCCESS(vstatus))
-      {
-         hddLog(VOS_TRACE_LEVEL_FATAL,
-                "%s: unable to retrieve WCNSS WLAN compiled version",
-                __FUNCTION__);
-         break;
-      }
-
-      vstatus = sme_GetWcnssWlanReportedVersion(pHddCtx->hHal,
-                                                &versionReported);
-      if (!VOS_IS_STATUS_SUCCESS(vstatus))
-      {
-         hddLog(VOS_TRACE_LEVEL_FATAL,
-                "%s: unable to retrieve WCNSS WLAN reported version",
-                __FUNCTION__);
-         break;
-      }
-
-      if ((versionCompiled.major != versionReported.major) ||
-          (versionCompiled.minor != versionReported.minor) ||
-          (versionCompiled.version != versionReported.version) ||
-          (versionCompiled.revision != versionReported.revision))
-      {
-         pr_err("%s: WCNSS WLAN Version %u.%u.%u.%u, "
-                "Host expected %u.%u.%u.%u\n",
-                WLAN_MODULE_NAME,
-                (int)versionReported.major,
-                (int)versionReported.minor,
-                (int)versionReported.version,
-                (int)versionReported.revision,
-                (int)versionCompiled.major,
-                (int)versionCompiled.minor,
-                (int)versionCompiled.version,
-                (int)versionCompiled.revision);
-      }
-      else
-      {
-         pr_info("%s: WCNSS WLAN version %u.%u.%u.%u\n",
-                 WLAN_MODULE_NAME,
-                 (int)versionReported.major,
-                 (int)versionReported.minor,
-                 (int)versionReported.version,
-                 (int)versionReported.revision);
-      }
-
-      vstatus = sme_GetWcnssSoftwareVersion(pHddCtx->hHal,
-                                            versionString,
-                                            sizeof(versionString));
-      if (!VOS_IS_STATUS_SUCCESS(vstatus))
-      {
-         hddLog(VOS_TRACE_LEVEL_FATAL,
-                "%s: unable to retrieve WCNSS software version string",
-                __FUNCTION__);
-         break;
-      }
-
-      pr_info("%s: WCNSS software version %s\n",
-              WLAN_MODULE_NAME, versionString);
-
-      vstatus = sme_GetWcnssHardwareVersion(pHddCtx->hHal,
-                                            versionString,
-                                            sizeof(versionString));
-      if (!VOS_IS_STATUS_SUCCESS(vstatus))
-      {
-         hddLog(VOS_TRACE_LEVEL_FATAL,
-                "%s: unable to retrieve WCNSS hardware version string",
-                __FUNCTION__);
-         break;
-      }
-
-      pr_info("%s: WCNSS hardware version %s\n",
-              WLAN_MODULE_NAME, versionString);
-
-      /* 1.Check if FW version is greater than 0.1.1.0. Only then send host-FW capability exchange message 
-              2.Host-FW capability exchange message  is only present on riva 1.1 so 
-                send the message only if it the riva is 1.1
-                minor numbers for different riva branches:
-                0 -> (1.0)Mainline Build
-                1 -> (1.1)Mainline Build
-                2->(1.04) Stability Build
-         */
-      if (((versionReported.major>0) || (versionReported.minor>1) || 
-         ((versionReported.minor>=1) && (versionReported.version>=1)))
-         && ((versionReported.major == 1) && (versionReported.minor >= 1)))
-         fwFeatCapsMsgSupported = 1;
-      if (fwFeatCapsMsgSupported)
-         sme_featureCapsExchange(pHddCtx->hHal);
-   } while (0);
-
-#endif // FEATURE_WLAN_INTEGRATED_SOC
+   /* Exchange capability info between Host and FW and also get versioning info from FW */
+   hdd_exchange_version_and_caps(pHddCtx);
 
    status = hdd_post_voss_start_config( pHddCtx );
    if ( !VOS_IS_STATUS_SUCCESS( status ) )

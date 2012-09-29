@@ -4553,9 +4553,18 @@ WDA_processSetLinkStateStatus WDA_IsHandleSetLinkStateReq(
       default:
          if(pWDA->wdaState != WDA_READY_STATE)
          {
-             VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                     "Set link state called when WDA is not in READY STATE " );
-             status = WDA_IGNORE_SET_LINK_STATE;
+            /*If WDA_SET_LINK_STATE is recieved with any other link state apart 
+             *from eSIR_LINK_PREASSOC_STATE and eSIR_LINK_BTAMP_PREASSOC_STATE when 
+             *pWDA->wdaState is in WDA_PRE_ASSOC_STATE(This can happen only in 
+             *error cases) so reset the WDA state to WDA_READY_STATE to avoid 
+             *the ASSERT in WDA_Stop during module unload.*/
+            if (pWDA->wdaState == WDA_PRE_ASSOC_STATE)
+            {
+               pWDA->wdaState = WDA_READY_STATE;
+            }
+            VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                        "Set link state called when WDA is not in READY STATE " );
+            status = WDA_IGNORE_SET_LINK_STATE;
          }
          break;
    }
@@ -4626,7 +4635,7 @@ VOS_STATUS WDA_ProcessSetLinkState(tWDA_CbContext *pWDA,
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                            "%s:pMac is NULL", __FUNCTION__);
       VOS_ASSERT(0);
-	  vos_mem_free(wdiSetLinkStateParam);
+      vos_mem_free(wdiSetLinkStateParam);
       return VOS_STATUS_E_FAILURE;
    }
 

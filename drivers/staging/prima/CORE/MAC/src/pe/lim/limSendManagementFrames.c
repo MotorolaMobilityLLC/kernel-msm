@@ -301,13 +301,11 @@ limSendProbeReqMgmtFrame(tpAniSirGlobal pMac,
        //Include HT Capability IE
        if (psessionEntry->vhtCapability)
        {
-          limLog( pMac, LOGW, FL("Populate VHT IEs in Probe Request\n"));
           PopulateDot11fVHTCaps( pMac, &pr.VHTCaps );
        }
     }  else {
        if (IS_DOT11_MODE_VHT(dot11mode))
        {
-          limLog( pMac, LOGW, FL("Populate VHT IEs in Probe Request\n"));
           PopulateDot11fVHTCaps( pMac, &pr.VHTCaps );
        }
     }

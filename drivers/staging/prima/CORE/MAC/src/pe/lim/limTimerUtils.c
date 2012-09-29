@@ -604,7 +604,7 @@ limCreateTimers(tpAniSirGlobal pMac)
                 SIR_LIM_UPDATE_OLBC_CACHEL_TIMEOUT,
                 cfgValue,
                 cfgValue,
-                TX_AUTO_ACTIVATE) != TX_SUCCESS)
+                TX_NO_ACTIVATE) != TX_SUCCESS)
         {
             // Cannot create update OLBC cache timer
             // Log error

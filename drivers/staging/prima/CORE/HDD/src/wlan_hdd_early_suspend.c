@@ -2164,6 +2164,9 @@ VOS_STATUS hdd_wlan_re_init(void)
       goto err_vosclose;
    }
 
+   /* Exchange capability info between Host and FW and also get versioning info from FW */
+   hdd_exchange_version_and_caps(pHddCtx);
+
    vosStatus = hdd_post_voss_start_config( pHddCtx );
    if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
    {
