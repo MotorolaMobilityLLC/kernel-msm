@@ -1726,7 +1726,6 @@ static int qseecom_release(struct inode *inode, struct file *file)
 		mutex_unlock(&pil_access_lock);
 	}
 	kfree(data);
-	qsee_disable_clock_vote(CLK_DFAB);
 
 	return ret;
 }
