@@ -524,7 +524,7 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 		break;
 	case WM5110:
 		ret = mfd_add_devices(arizona->dev, -1, wm5110_devs,
-				      ARRAY_SIZE(wm5102_devs), NULL, 0);
+				      ARRAY_SIZE(wm5110_devs), NULL, 0);
 		break;
 	}
 
