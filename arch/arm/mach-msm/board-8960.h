@@ -111,6 +111,7 @@ struct msm8960_oem_init_ptrs {
 	void (*msm_pmic_init)(struct msm8960_oem_init_ptrs *, void *);
 	void (*msm_clock_init)(struct msm8960_oem_init_ptrs *,
 			       struct clock_init_data *);
+	void (*msm_device_init)(struct msm8960_oem_init_ptrs *);
 	void *oem_data;
 };
 extern struct msm8960_oem_init_ptrs msm8960_oem_funcs;
