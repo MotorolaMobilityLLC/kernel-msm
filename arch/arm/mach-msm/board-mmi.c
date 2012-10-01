@@ -25,6 +25,7 @@
 
 #include "board-8960.h"
 #include "board-mmi.h"
+#include "devices-mmi.h"
 #include "timer.h"
 
 static u32 fdt_start_address; /* flattened device tree address */
@@ -131,8 +132,13 @@ static void __init mmi_clk_init(struct msm8960_oem_init_ptrs *oem_ptr,
 	}
 }
 
+static struct platform_device *mmi_devices[] __initdata = {
+	&mmi_w1_gpio_device,
+};
+
 static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
+	platform_add_devices(mmi_devices, ARRAY_SIZE(mmi_devices));
 }
 
 static struct mmi_oem_data mmi_data;
