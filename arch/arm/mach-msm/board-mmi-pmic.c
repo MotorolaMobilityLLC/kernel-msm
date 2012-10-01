@@ -13,9 +13,13 @@
 
 #include <asm/mach-types.h>
 #include <asm/mach/map.h>
+#include <linux/platform_device.h>
+#include <linux/regulator/consumer.h>
 #include <linux/slab.h>
+#include <linux/w1-gpio.h>
 #include <mach/devtree_util.h>
 #include "board-8960.h"
+#include "devices-mmi.h"
 
 struct pm8xxx_gpio_init {
 	unsigned			gpio;
@@ -278,6 +282,69 @@ void __init mmi_init_pm8921_gpio_mpp(void)
 	}
 }
 
+void w1_gpio_enable_regulators(int enable)
+{
+	static struct regulator *vdd1;
+	int rc;
+
+	if (!vdd1) {
+		vdd1 = regulator_get(&mmi_w1_gpio_device.dev, "8921_l17");
+		if (IS_ERR_OR_NULL(vdd1)) {
+			pr_err("w1_gpio failed to get 8921_l17\n");
+			return;
+		}
+	}
+
+	if (enable) {
+		if (!IS_ERR_OR_NULL(vdd1)) {
+			rc = regulator_set_voltage(vdd1,
+						2850000, 2850000);
+			if (!rc) {
+				rc = regulator_enable(vdd1);
+			}
+			if (rc)
+				pr_err("w1_gpio failed to set voltage "\
+								"8921_l17\n");
+		}
+	} else {
+		if (!IS_ERR_OR_NULL(vdd1)) {
+			rc = regulator_disable(vdd1);
+			if (rc)
+				pr_err("w1_gpio unable to disable 8921_l17\n");
+		}
+	}
+}
+
+static __init void load_pm8921_batt_eprom_pdata_from_dt(void)
+{
+	struct device_node *chosen;
+	int len = 0;
+	const void *prop;
+	struct w1_gpio_platform_data *pdata =
+		((struct w1_gpio_platform_data *)
+		 (mmi_w1_gpio_device.dev.platform_data));
+
+	chosen = of_find_node_by_path("/Chosen@0");
+	if (!chosen)
+		goto out;
+
+	prop = of_get_property(chosen, "batt_eprom_gpio", &len);
+	if (prop && (len == sizeof(u8))) {
+		pdata->pin =  *(u8 *)prop;
+		pdata->enable_external_pullup = w1_gpio_enable_regulators;
+	}
+
+	of_node_put(chosen);
+
+out:
+	if (pdata->pin < 0) {
+		pr_err("w1_gpio unable to get GPIO from devtree!\n");
+	}
+	pr_info("w1_gpio = %d\n",pdata->pin);
+	return;
+}
+
 void __init mmi_pm8921_init(void *pdata)
 {
+	load_pm8921_batt_eprom_pdata_from_dt();
 }

@@ -13,6 +13,7 @@
 
 #include <asm/mach-types.h>
 #include <linux/platform_device.h>
+#include <linux/w1-gpio.h>
 #include <mach/board.h>
 #include <mach/irqs-8960.h>
 #include <mach/msm_iomap-8960-mmi.h>
@@ -98,3 +99,14 @@ struct platform_device mmi_msm8960_device_uart_gsbi8 = {
 	.resource	= resources_uart_gsbi8,
 };
 
+static struct w1_gpio_platform_data mmi_w1_gpio_device_pdata = {
+	.pin = -1,
+	.is_open_drain = 0,
+};
+
+struct platform_device mmi_w1_gpio_device = {
+	.name	= "w1-gpio",
+	.dev	= {
+		.platform_data = &mmi_w1_gpio_device_pdata,
+	},
+};
