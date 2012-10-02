@@ -77,3 +77,4 @@ obj-$(CONFIG_DROPBOX) += dropbox.o
 obj-$(CONFIG_HOB_SHARED_RAM) += hob_ram_mmap.o
 obj-$(CONFIG_SENSORS_STML0XX) += stml0xx/
 obj-$(CONFIG_SENSORS_AK09912) += akm09912.o
+obj-$(CONFIG_HAPTIC_DRV2605)	+= drv2605.o
