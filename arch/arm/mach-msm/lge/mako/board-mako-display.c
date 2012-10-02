@@ -967,6 +967,7 @@ static struct backlight_platform_data lm3530_data = {
 #endif
 	.min_brightness = 0x01,
 	.max_brightness = 0x71,
+	.default_brightness = 0x14,
 	.blmap = backlight_map,
 	.blmap_size = ARRAY_SIZE(backlight_map),
 };
