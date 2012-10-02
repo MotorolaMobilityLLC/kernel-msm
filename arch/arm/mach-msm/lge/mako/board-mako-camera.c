@@ -581,10 +581,27 @@ static struct platform_device msm_camera_server = {
 	.id = 0,
 };
 
+#define GPIO_CAM_VCM_EN		PM8921_GPIO_PM_TO_SYS(17)
+
+static __init void mako_fixup_cam(void)
+{
+	int ret;
+
+	ret = gpio_request_one(GPIO_CAM_VCM_EN, GPIOF_INIT_HIGH, "vcm_en");
+	if (ret < 0) {
+		pr_err("%s: failed gpio request vcm_en\n", __func__);
+		return;
+	}
+
+	gpio_free(GPIO_CAM_VCM_EN);
+}
+
 void __init apq8064_init_cam(void)
 {
 	msm_gpiomux_install(apq8064_cam_common_configs,
 			ARRAY_SIZE(apq8064_cam_common_configs));
+
+	mako_fixup_cam();
 
 	platform_device_register(&msm_camera_server);
 	platform_device_register(&msm8960_device_i2c_mux_gsbi4);
