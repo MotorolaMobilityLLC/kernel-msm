@@ -17,6 +17,7 @@
 
 extern struct platform_device mmi_msm8960_device_uart_gsbi2;
 extern struct platform_device mmi_msm8960_device_uart_gsbi5;
+extern struct platform_device mmi_msm8960_device_uart_dm5;
 extern struct platform_device mmi_msm8960_device_uart_gsbi8;
 
 extern struct platform_device mmi_w1_gpio_device;
