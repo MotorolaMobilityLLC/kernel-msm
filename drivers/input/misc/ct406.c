@@ -128,7 +128,6 @@ enum ct406_prox_mode {
 	CT406_PROX_MODE_SATURATED,
 	CT406_PROX_MODE_UNCOVERED,
 	CT406_PROX_MODE_COVERED,
-	CT406_PROX_MODE_STARTUP,
 };
 
 enum ct406_als_mode {
@@ -164,6 +163,8 @@ struct ct406_data {
 	unsigned int als_apers;
 	unsigned int als_first_report;
 	enum ct406_als_mode als_mode;
+	unsigned int ip_requested;
+	unsigned int ip_enabled;
 	unsigned int wait_enabled;
 	/* numeric values */
 	unsigned int prox_noise_floor;
@@ -712,7 +713,10 @@ static int ct406_enable_als(struct ct406_data *ct)
 	int error;
 	u8 reg_data[5] = {0};
 
-	if (ct->suspended && !ct->prox_enabled)
+	if (ct->ip_enabled)
+		return 0;
+
+	if (ct->suspended)
 		return 0;
 
 	if (ct->als_mode != CT406_ALS_MODE_SUNLIGHT) {
@@ -814,14 +818,8 @@ static void ct406_measure_noise_floor(struct ct406_data *ct)
 		pr_err("%s: error writing CONFIG: %d\n",
 			__func__, error);
 
-	/* write wait time = ALS off value */
-	reg_data[0] = CT406_WTIME;
-	reg_data[1] = CT406_WTIME_ALS_OFF;
-	error = ct406_i2c_write(ct, reg_data, 1);
-	if (error < 0)
-		pr_err("%s: Error writing WTIME: %d\n",
-				__func__, error);
-	error = ct406_set_wait_enable(ct, 1);
+	/* disable wait */
+	error = ct406_set_wait_enable(ct, 0);
 	if (error) {
 		pr_err("%s: Unable to set wait enable: %d\n",
 			__func__, error);
@@ -867,11 +865,17 @@ static void ct406_measure_noise_floor(struct ct406_data *ct)
 		pr_info("%s: Noise floor is 0x%x\n", __func__,
 			ct->prox_noise_floor);
 
-	ct->prox_mode = CT406_PROX_MODE_STARTUP;
-	ct->prox_low_threshold = 0;
-	ct->prox_high_threshold = 0;
-	ct406_write_prox_thresholds(ct);
-	pr_info("%s: Prox mode startup\n", __func__);
+	if (ct->prox_noise_floor < ct->prox_saturation_threshold) {
+		input_event(ct->dev, EV_MSC, MSC_RAW,
+			CT406_PROXIMITY_FAR);
+		input_sync(ct->dev);
+		ct406_prox_mode_uncovered(ct);
+	} else {
+		input_event(ct->dev, EV_MSC, MSC_RAW,
+			CT406_PROXIMITY_NEAR);
+		input_sync(ct->dev);
+		ct406_prox_mode_covered(ct);
+	}
 
 	error = ct406_set_prox_enable(ct, 1);
 	if (error)
@@ -935,6 +939,9 @@ static int ct406_enable_prox(struct ct406_data *ct)
 {
 	int error;
 
+	if (ct->ip_enabled)
+		return 0;
+
 	if (ct->suspended) {
 		if (ct406_debug & CT406_DBG_ENABLE_DISABLE)
 			pr_info("%s: Powering on\n", __func__);
@@ -970,7 +977,7 @@ static int ct406_disable_prox(struct ct406_data *ct)
 		}
 	}
 
-	if (ct->suspended && ct->regs_initialized) {
+	if (ct->suspended && ct->regs_initialized && !ct->ip_enabled) {
 		if (ct406_debug & CT406_DBG_ENABLE_DISABLE)
 			pr_info("%s: Powering off\n", __func__);
 		ct406_device_power_off(ct);
@@ -979,6 +986,93 @@ static int ct406_disable_prox(struct ct406_data *ct)
 	return 0;
 }
 
+static void ct406_start_ip(struct ct406_data *ct)
+{
+	int error;
+	u8 reg_data[2] = {0x00, 0x00};
+
+	if (ct->suspended) {
+		if (ct406_debug & CT406_DBG_ENABLE_DISABLE)
+			pr_info("%s: Powering on\n", __func__);
+		error = ct406_device_power_on(ct);
+		if (error)
+			return;
+		error = ct406_device_init(ct);
+		if (error)
+			return;
+	}
+
+	ct406_als_mode_low_lux(ct);
+
+	reg_data[0] = CT406_PERS;
+	reg_data[1] = CT406_PERS_PPERS;
+	error = ct406_i2c_write(ct, reg_data, 1);
+	if (error < 0) {
+		pr_err("%s: Error  %d\n", __func__, error);
+		return;
+	}
+
+	if (ct406_debug & CT406_DBG_INPUT)
+		pr_info("%s: Enable sensors\n", __func__);
+	reg_data[0] = CT406_ENABLE;
+	reg_data[1] = CT406_ENABLE_PON;
+	if (!ct->oscillator_enabled) {
+		error = ct406_i2c_write(ct, reg_data, 1);
+		if (error < 0) {
+			pr_err("%s: Error  %d\n", __func__, error);
+			return;
+		}
+		msleep(3);
+		ct->oscillator_enabled = 1;
+	}
+	reg_data[1] |= CT406_ENABLE_PEN | CT406_ENABLE_AEN | CT406_ENABLE_AIEN;
+	error = ct406_i2c_write(ct, reg_data, 1);
+	if (error < 0)
+		pr_err("%s: Error  %d\n", __func__, error);
+}
+
+
+static void ct406_stop_ip(struct ct406_data *ct)
+{
+	u8 reg_data[4] = {0x00, 0x00, 0x00, 0x00};
+	reg_data[0] = CT406_ENABLE;
+	reg_data[1] = CT406_ENABLE_PON;
+	ct406_i2c_write(ct, reg_data, 1);
+}
+
+static int ct406_enable_ip(struct ct406_data *ct)
+{
+	if (ct->prox_enabled)
+		ct406_disable_prox(ct);
+
+	if (ct->als_enabled)
+		ct406_disable_als(ct);
+
+	if (ct406_debug & CT406_DBG_ENABLE_DISABLE)
+		pr_info("%s: Enable In Pocket\n", __func__);
+
+	ct->ip_enabled = 1;
+	ct406_start_ip(ct);
+
+	return 0;
+}
+
+static int ct406_disable_ip(struct ct406_data *ct)
+{
+	if (ct406_debug & CT406_DBG_ENABLE_DISABLE)
+		pr_info("%s: Disable In Pocket\n", __func__);
+
+	ct406_stop_ip(ct);
+	ct->ip_enabled = 0;
+
+	if (ct->prox_requested)
+		ct406_enable_prox(ct);
+
+	if (ct->als_requested)
+		ct406_enable_als(ct);
+
+	return 0;
+}
 
 static void ct406_report_prox(struct ct406_data *ct)
 {
@@ -1015,19 +1109,6 @@ static void ct406_report_prox(struct ct406_data *ct)
 				CT406_PROXIMITY_FAR);
 			input_sync(ct->dev);
 			ct406_prox_mode_uncovered(ct);
-		}
-		break;
-	case CT406_PROX_MODE_STARTUP:
-		if (pdata < (ct->prox_noise_floor + ct->prox_covered_offset)) {
-			input_event(ct->dev, EV_MSC, MSC_RAW,
-				CT406_PROXIMITY_FAR);
-			input_sync(ct->dev);
-			ct406_prox_mode_uncovered(ct);
-		} else {
-			input_event(ct->dev, EV_MSC, MSC_RAW,
-				CT406_PROXIMITY_NEAR);
-			input_sync(ct->dev);
-			ct406_prox_mode_covered(ct);
 		}
 		break;
 	default:
@@ -1120,6 +1201,70 @@ static void ct406_report_als(struct ct406_data *ct)
 
 	if (ct->als_mode == CT406_ALS_MODE_SUNLIGHT)
 		ct406_enable_prox(ct); /* re-check saturation */
+}
+
+static void ct406_report_ip(struct ct406_data *ct)
+{
+	int error;
+	u8 reg_data[4] = {0x00, 0x00, 0x00, 0x00};
+	unsigned int pdata;
+	unsigned int c0data;
+	unsigned int c1data;
+	unsigned int ratio;
+	unsigned int lux = 0;
+
+	reg_data[0] = (CT406_PDATA | CT406_COMMAND_AUTO_INCREMENT);
+	error = ct406_i2c_read(ct, reg_data, 2);
+	if (error) {
+		pr_err("%s: Error reading prox data: %d\n",
+			__func__, error);
+		return;
+	}
+
+	pdata = (reg_data[1] << 8) | reg_data[0];
+
+	reg_data[0] = (CT406_C0DATA | CT406_COMMAND_AUTO_INCREMENT);
+	error = ct406_i2c_read(ct, reg_data, 4);
+	if (error < 0) {
+		pr_err("%s: Error reading als data: %d\n",
+			__func__, error);
+		return;
+	}
+
+	c0data = (reg_data[1] << 8) | reg_data[0];
+	c1data = (reg_data[3] << 8) | reg_data[2];
+	if (ct406_debug & CT406_DBG_INPUT)
+		pr_info("%s: C0DATA = %d, C1DATA = %d\n",
+			__func__, c0data, c1data);
+
+	if (c0data == 0)
+		c0data = 1;
+	ratio = ((100 * c1data) + c0data - 1) / c0data;
+	if (c0data == 0x4800 || c1data == 0x4800)
+		lux = CT406_ALS_LOW_TO_HIGH_THRESHOLD;
+	else if (ratio <= 51)
+		lux = (121*c0data - 227*c1data) / 100;
+	else if (ratio <= 58)
+		lux = (40*c0data - 68*c1data) / 100;
+	else
+		lux = 0;
+
+	if (ct406_debug & CT406_DBG_INPUT) {
+		pr_info("%s: PDATA = %d\n", __func__, pdata);
+		pr_info("%s: Lux = %d\n", __func__, lux);
+	}
+
+	if ((pdata > ct->pdata->ip_prox_limit)
+		&& (lux < ct->pdata->ip_als_limit)) {
+		input_event(ct->dev, EV_MSC, MSC_PULSELED, 1);
+		input_sync(ct->dev);
+	} else {
+		input_event(ct->dev, EV_MSC, MSC_PULSELED, 0);
+		input_sync(ct->dev);
+	}
+
+	ct406_clear_prox_flag(ct);
+	ct406_clear_als_flag(ct);
 }
 
 static int ct406_misc_open(struct inode *inode, struct file *file)
@@ -1250,6 +1395,64 @@ static int ct406_get_prox_enable_param(char *buffer, struct kernel_param *kp)
 module_param_call(prox_enable, ct406_set_prox_enable_param,
 	ct406_get_prox_enable_param, &ct406_prox_enable_param, 0644);
 MODULE_PARM_DESC(prox_enable, "Enable/disable the Prox.");
+
+static int ct406_ip_enable_param;
+
+static int ct406_set_ip_enable_param(const char *char_value,
+	struct kernel_param *kp)
+{
+	unsigned long int_value;
+	int  ret;
+
+	if (!char_value)
+		return -EINVAL;
+
+	if (!ct406_misc_data)
+		return -EINVAL;
+
+	ret = strict_strtoul(char_value, (unsigned int)0, &int_value);
+	if (ret)
+		return ret;
+
+	*((int *)kp->arg) = int_value;
+
+	mutex_lock(&ct406_misc_data->mutex);
+
+	ct406_misc_data->ip_requested = (int_value != 0);
+	if (ct406_debug & CT406_DBG_INPUT)
+		pr_info("%s: ip enable = %d\n", __func__,
+			ct406_misc_data->ip_requested);
+	if (ct406_misc_data->ip_requested)
+		ret = ct406_enable_ip(ct406_misc_data);
+	else
+		ret = ct406_disable_ip(ct406_misc_data);
+
+	mutex_unlock(&ct406_misc_data->mutex);
+
+	return ret;
+}
+
+static int ct406_get_ip_enable_param(char *buffer, struct kernel_param *kp)
+{
+	int num_chars;
+
+	if (!buffer)
+		return -EINVAL;
+
+	if (!ct406_misc_data) {
+		scnprintf(buffer, PAGE_SIZE, "0\n");
+		return 1;
+	}
+
+	num_chars = scnprintf(buffer, 2, "%d\n",
+		ct406_misc_data->ip_requested);
+
+	return num_chars;
+}
+
+module_param_call(ip_enable, ct406_set_ip_enable_param,
+	ct406_get_ip_enable_param, &ct406_ip_enable_param, 0644);
+MODULE_PARM_DESC(ip_enable, "Enable/disable In Pocket");
 
 static int ct406_als_delay_param;
 
@@ -1421,6 +1624,11 @@ static void ct406_work_func_locked(struct ct406_data *ct)
 		return;
 	}
 
+	if (ct->ip_enabled) {
+		ct406_report_ip(ct);
+		return;
+	}
+
 	if (ct->als_enabled && (reg_data[0] & CT406_STATUS_AINT))
 		ct406_report_als(ct);
 
@@ -1531,6 +1739,7 @@ static int ct406_probe(struct i2c_client *client,
 	ct->dev->name = "light-prox";
 	input_set_capability(ct->dev, EV_LED, LED_MISC);
 	input_set_capability(ct->dev, EV_MSC, MSC_RAW);
+	input_set_capability(ct->dev, EV_MSC, MSC_PULSELED);
 
 	ct406_misc_data = ct;
 	ct->miscdevice.minor = MISC_DYNAMIC_MINOR;
@@ -1554,6 +1763,8 @@ static int ct406_probe(struct i2c_client *client,
 	ct->als_apers = 0x4;
 	ct->als_first_report = 0;
 	ct->als_mode = CT406_ALS_MODE_LOW_LUX;
+	ct->ip_requested = 0;
+	ct->ip_enabled = 0;
 
 	ct->workqueue = create_singlethread_workqueue("als_wq");
 	if (!ct->workqueue) {
