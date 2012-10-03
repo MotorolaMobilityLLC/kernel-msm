@@ -226,7 +226,8 @@ struct legacy_diag_ch *tty_diag_channel_open(const char *name, void *priv,
 
 		return &legacy_ch;
 	} else if ((!strncmp(name, DIAG_MDM, 9) && cpu_is_apq8064()) ||
-			(!strcmp(name, DIAG_LEGACY) && cpu_is_msm8960())) {
+			(!strcmp(name, DIAG_LEGACY) && (cpu_is_msm8960() ||
+			cpu_is_msm8960ab()))) {
 		mdm_ch.priv = priv;
 		mdm_ch.notify = notify;
 
