@@ -13,39 +13,51 @@
 
 #include <asm/mach-types.h>
 #include <asm/mach/map.h>
-#include <linux/slab.h>
-#include <mach/devtree_util.h>
+#include <linux/gpio_keys.h>
 #include "board-8960.h"
 
-static const unsigned int mmi_keymap[] = {
-	KEY(0, 0, 0),
-	KEY(0, 1, 0),
-	KEY(0, 2, KEY_VOLUMEDOWN),
-	KEY(0, 3, 0),
-	KEY(0, 4, KEY_VOLUMEUP),
+static struct gpio_keys_button mmi_gpio_keys_table[] = {
+	{
+		.code			= KEY_VOLUMEDOWN,
+		.gpioi			= PM8921_GPIO_PM_TO_SYS(3),
+		.active_low		= 1,
+		.desc			= "VOLUME_DOWN",
+		.type			= EV_KEY,
+		.wakeup			= 1,
+		.debounce_interval	= 20,
+	},
+	{
+		.code			= KEY_VOLUMEUP,
+		.gpio			= PM8921_GPIO_PM_TO_SYS(5),
+		.active_low		= 1,
+		.desc			= "VOLUME_UP",
+		.type			= EV_KEY,
+		.wakeup			= 1,
+		.debounce_interval	= 20,
+	},
 };
 
-static struct matrix_keymap_data mmi_keymap_data = {
-	.keymap_size    = ARRAY_SIZE(mmi_keymap),
-	.keymap         = mmi_keymap,
+static struct gpio_keys_platform_data mmi_gpio_keys_data = {
+	.buttons        = mmi_gpio_keys_table,
+	.nbuttons       = ARRAY_SIZE(mmi_gpio_keys_table),
+	.rep		= false,
 };
 
-static struct pm8xxx_keypad_platform_data mmi_keypad_data = {
-	.input_name             = "keypad_8960",
-	.input_phys_device      = "keypad_8960/input0",
-	.rows_gpio_start        = -1, /* keypad unused */
-	.cols_gpio_start        = -1, /* keypad unused */
-	.debounce_ms            = 15,
-	.scan_delay_ms          = 32,
-	.row_hold_ns            = 91500,
-	.wakeup                 = 1,
-	.keymap_data            = &mmi_keymap_data,
+static struct platform_device mmi_gpiokeys_device = {
+	.name           = "gpio-keys",
+	.id		= -1,
+	.dev = {
+		.platform_data = &mmi_gpio_keys_data,
+	},
 };
+
 
 void __init mmi_pm8921_keypad_init(void *ptr)
 {
 	struct pm8921_platform_data *pdata;
 
 	pdata = (struct pm8921_platform_data *)ptr;
-	pdata->keypad_pdata = &mmi_keypad_data;
+	pdata->keypad_pdata = NULL;
+
+	platform_device_register(&mmi_gpiokeys_device);
 }
