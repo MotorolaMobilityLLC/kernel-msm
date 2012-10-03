@@ -46,6 +46,9 @@ struct ct406_platform_data {
 	u8	ct406_prox_pulse_count;
 	u8	ct406_prox_offset;
 
+	u16	ip_prox_limit;
+	u16	ip_als_limit;
+
 	u8	als_lens_transmissivity;
 } __packed;
 
