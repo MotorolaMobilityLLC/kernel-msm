@@ -19,7 +19,7 @@
 static struct gpio_keys_button mmi_gpio_keys_table[] = {
 	{
 		.code			= KEY_VOLUMEDOWN,
-		.gpioi			= PM8921_GPIO_PM_TO_SYS(3),
+		.gpio			= PM8921_GPIO_PM_TO_SYS(3),
 		.active_low		= 1,
 		.desc			= "VOLUME_DOWN",
 		.type			= EV_KEY,
