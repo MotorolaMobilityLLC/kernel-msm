@@ -1128,6 +1128,7 @@ static int audio_release(struct inode *inode, struct file *file)
 	audio->wflush = 0;
 	audlpa_unmap_ion_region(audio);
 	audio_disable(audio);
+	audlpa_unmap_ion_region(audio);
 	msm_clear_session_id(audio->ac->session);
 	auddev_unregister_evt_listner(AUDDEV_CLNT_DEC, audio->ac->session);
 	q6asm_audio_client_free(audio->ac);
