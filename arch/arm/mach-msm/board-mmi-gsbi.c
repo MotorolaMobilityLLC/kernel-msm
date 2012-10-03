@@ -35,6 +35,7 @@
 #define GSBI_UART	4
 #define GSBI_SIM	5
 #define GSBI_I2C_UART	6
+#define GSBI_UARTDM	7
 
 #define GSBI_MIN	1
 #define GSBI_MAX	12
@@ -82,6 +83,22 @@ struct platform_device *uart_dt_lookup_table[] __initdata = {
 	NULL,
 	NULL,
 	&mmi_msm8960_device_uart_gsbi8,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+};
+
+struct platform_device *uart_dm_dt_lookup_table[] __initdata = {
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	&mmi_msm8960_device_uart_dm5,
+	NULL,
+	NULL,
+	NULL,
 	NULL,
 	NULL,
 	NULL,
@@ -302,6 +319,16 @@ void __init mmi_init_gsbi_devices_from_dt(void)
 				if (!dev)
 					pr_warn("%s: GSBI%d configured as " \
 						"UART but no device found\n",
+						__func__, gsbi_id);
+				else
+					mmi_init_uart_dev_from_dt(child, dev);
+				break;
+			case GSBI_UARTDM:
+				mmi_init_gsbi_protocol(gsbi_id, GSBI_UART);
+				dev = uart_dm_dt_lookup_table[gsbi_id];
+				if (!dev)
+					pr_warn("%s: GSBI%d configured as " \
+						"UART DM but no device found\n",
 						__func__, gsbi_id);
 				else
 					mmi_init_uart_dev_from_dt(child, dev);
