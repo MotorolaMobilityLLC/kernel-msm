@@ -2624,7 +2624,6 @@ struct msm8960_oem_init_ptrs msm8960_oem_funcs;
 static struct platform_device *common_devices[] __initdata = {
 	&msm8960_device_dmov,
 	&msm_device_smd,
-	&msm_device_uart_dm6,
 	&msm_device_saw_core0,
 	&msm_device_saw_core1,
 	&msm8960_device_ext_5v_vreg,
@@ -3129,6 +3128,7 @@ static void __init msm8960_gsbi_dev_init(void)
 #ifndef CONFIG_MSM_DSPS
 	platform_device_register(&msm8960_device_qup_i2c_gsbi12);
 #endif
+	platform_device_register(&msm_device_uart_dm6);
 }
 
 static void __init msm8960_tsens_init(void)
