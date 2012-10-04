@@ -1667,6 +1667,12 @@ static struct platform_device *msm8960_snd_tabla1x_device;
 
 static int msm8960_configure_headset_mic_gpios(void)
 {
+#ifdef CONFIG_MACH_MSM8960_MMI
+	/* FIXME: Headset GPIOs must be passed to as parameters to ensure */
+	/* no conflicts!!! MMI HW design re-uses these GPIOS in EMU       */
+	pr_err("%s: US_EURO, AV_SWITCH gpios not configured!!!\n", __func__);
+	return -EINVAL;
+#else
 	int ret;
 	struct pm_gpio param = {
 		.direction      = PM_GPIO_DIR_OUT,
@@ -1707,6 +1713,7 @@ static int msm8960_configure_headset_mic_gpios(void)
 		gpio_direction_output(us_euro_sel_gpio, 0);
 
 	return 0;
+#endif
 }
 static void msm8960_free_headset_mic_gpios(void)
 {
