@@ -454,4 +454,10 @@ config BATTERY_TEMP_CONTROL
 	  Say Y to enable battery temperature control for safty.
 	  It controls charging current depending on battery temperature.
 
+config BATTERY_MMI
+	tristate "Motorola Mobility Inc. Battery driver"
+	select W1
+	select W1_SLAVE_DS2502
+	help
+	  Say Y here to enable support for MMI Batteries
 endif # POWER_SUPPLY
