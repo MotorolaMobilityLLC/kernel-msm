@@ -1707,6 +1707,35 @@ static tANI_BOOLEAN csrIsBetterBss(tCsrScanResult *pBss1, tCsrScanResult *pBss2)
 }
 
 
+#ifdef FEATURE_WLAN_LFR 
+//Add the channel to the occupiedChannels array
+static void csrScanAddToOccupiedChannels(
+        tpAniSirGlobal pMac, 
+        tCsrScanResult *pResult, 
+        tCsrChannel *pOccupiedChannels, 
+        tDot11fBeaconIEs *pIes)
+{
+    eHalStatus status;
+    tANI_U8   channel;
+    tANI_U8 numOccupiedChannels = pOccupiedChannels->numChannels;
+    tANI_U8 *pOccupiedChannelList = pOccupiedChannels->channelList;
+
+    channel = pResult->Result.BssDescriptor.channelId;
+
+    if (!csrIsChannelPresentInList(pOccupiedChannelList, numOccupiedChannels, channel)
+        && csrNeighborRoamIsSsidCandidateMatch(pMac, pIes)) 
+    {
+        status = csrAddToChannelListFront(pOccupiedChannelList, numOccupiedChannels, channel); 
+        if(HAL_STATUS_SUCCESS(status))
+        { 
+            pOccupiedChannels->numChannels++;
+            if (pOccupiedChannels->numChannels > CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN) 
+                pOccupiedChannels->numChannels = CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN; 
+        } 
+    }
+}
+#endif
+
 //Put the BSS into the scan result list
 //pIes can not be NULL
 static void csrScanAddResult(tpAniSirGlobal pMac, tCsrScanResult *pResult, tDot11fBeaconIEs *pIes)
@@ -1714,6 +1743,9 @@ static void csrScanAddResult(tpAniSirGlobal pMac, tCsrScanResult *pResult, tDot1
     pResult->preferValue = csrGetBssPreferValue(pMac, (int)pResult->Result.BssDescriptor.rssi);
     pResult->capValue = csrGetBssCapValue(pMac, &pResult->Result.BssDescriptor, pIes);
     csrLLInsertTail( &pMac->scan.scanResultList, &pResult->Link, LL_ACCESS_LOCK );
+#ifdef FEATURE_WLAN_LFR 
+    csrScanAddToOccupiedChannels(pMac, pResult, &pMac->scan.occupiedChannels, pIes);
+#endif
 }
 
 

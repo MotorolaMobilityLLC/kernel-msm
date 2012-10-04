@@ -423,6 +423,9 @@ void csrNeighborRoamResetReportScanStateControlInfo(tpAniSirGlobal pMac)
     pNeighborRoamInfo->isVOAdmitted = eANI_BOOLEAN_FALSE;
     pNeighborRoamInfo->MinQBssLoadRequired = 0;
 #endif
+
+    /* Stop scan refresh timer */
+    palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer);
     
     NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Deregistering DOWN event reassoc callback with TL. RSSI = %d"), pNeighborRoamInfo->cfgParams.neighborReassocThreshold * (-1));
     /* Deregister reassoc callback. Ignore return status */
@@ -1689,6 +1692,70 @@ VOS_STATUS csrNeighborRoamIssueNeighborRptRequest(tpAniSirGlobal pMac)
 
 /* ---------------------------------------------------------------------------
 
+    \fn csrNeighborRoamMergeChannelLists 
+
+    \brief  This function is used to merge two channel list.
+            NB: If called with outputNumOfChannels == 0, this routines
+                simply copies the input channel list to the output channel list.
+
+    \param  pMac - The handle returned by macOpen.
+    \param  pInputChannelList - The addtional channels to merge in to the "merged" channels list.
+    \param  inputNumOfChannels - The number of additional channels.
+    \param  pOutputChannelList - The place to put the "merged" channel list.
+    \param  outputNumOfChannels - The original number of channels in the "merged" channels list.
+    \param  pMergedOutputNumOfChannels - The final number of channels in the "merged" channel list.
+
+    \return VOS_STATUS_SUCCESS on success, corresponding error code otherwise
+
+---------------------------------------------------------------------------*/
+VOS_STATUS csrNeighborRoamMergeChannelLists( 
+        tpAniSirGlobal pMac, 
+        tANI_U8   *pInputChannelList, 
+        int inputNumOfChannels,
+        tANI_U8   *pOutputChannelList,
+        int outputNumOfChannels,
+        int *pMergedOutputNumOfChannels 
+        )
+{
+    int i = 0;
+    int j = 0;
+    int numChannels = outputNumOfChannels;
+
+    // Check for NULL pointer
+    if (!pInputChannelList) return eHAL_STATUS_E_NULL_VALUE;
+
+    // Check for NULL pointer
+    if (!pOutputChannelList) return eHAL_STATUS_E_NULL_VALUE;
+
+    // Add the "new" channels in the input list to the end of the output list.
+    for (i = 0; i < inputNumOfChannels; i++)
+    {
+        for (j = 0; j < outputNumOfChannels; j++)
+        {
+            if (pInputChannelList[i] == pOutputChannelList[j])
+                break;
+        }
+        if (j == outputNumOfChannels)
+        {
+            if (pInputChannelList[i])
+            {
+                VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
+                        "%s: [INFOLOG] Adding extra %d to Neighbor channel list\n", __func__, 
+                        pInputChannelList[i]); 
+                pOutputChannelList[numChannels] = pInputChannelList[i]; 
+                numChannels++; 
+            }
+        }
+    }
+
+    // Return final number of channels
+    *pMergedOutputNumOfChannels = numChannels; 
+
+    return eHAL_STATUS_SUCCESS;
+}
+
+/* ---------------------------------------------------------------------------
+
     \fn csrNeighborRoamCreateChanListFromNeighborReport
 
     \brief  This function is invoked when neighbor report is received for the 
@@ -1705,8 +1772,11 @@ VOS_STATUS csrNeighborRoamCreateChanListFromNeighborReport(tpAniSirGlobal pMac)
 {
     tpRrmNeighborReportDesc pNeighborBssDesc;
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
-    tANI_U8         numChannels = 0, i = 0, j=0;
+    tANI_U8         numChannels = 0, i = 0;
     tANI_U8         channelList[MAX_BSS_IN_NEIGHBOR_RPT];
+#if 0
+    eHalStatus  status = eHAL_STATUS_SUCCESS;
+#endif
 
     /* This should always start from 0 whenever we create a channel list out of neighbor AP list */
     pNeighborRoamInfo->FTRoamInfo.numBssFromNeighborReport = 0;
@@ -1753,28 +1823,18 @@ VOS_STATUS csrNeighborRoamCreateChanListFromNeighborReport(tpAniSirGlobal pMac)
 
     if (pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList)
     {
+#if 0
         // Before we free the existing channel list for a safety net make sure
-        // we have a union of the IAPP and the already existing list. 
-        for (i = 0; i < pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.numOfChannels; i++)
-        {
-            for (j = 0; j < numChannels; j++)
-            {
-                if (pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList[i] == channelList[j])
-                    break;
-            }
-            if (j == numChannels)
-            {
-                if (pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList[i])
-                {
-                            VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-                                    "%s: [INFOLOG] Adding extra %d to Neighbor channel list\n", __func__,
-                            pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList[i]);
-                            channelList[numChannels] = 
-                            pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList[i];
-                            numChannels++;
-                }
-            }
-        }
+        // we have a union of the IAPP and the already existing list.
+        status = csrNeighborRoamMergeChannelLists( 
+                pMac, 
+                pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList, 
+                pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.numOfChannels, 
+                channelList, 
+                numChannels, 
+                &numChannels );
+#endif
+
         vos_mem_free(pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList);
     }
 
@@ -1903,6 +1963,109 @@ void csrNeighborRoamRRMNeighborReportResult(void *context, VOS_STATUS vosStatus)
 #endif /* WLAN_FEATURE_VOWIFI_11R */
 
 
+#ifdef FEATURE_WLAN_LFR 
+tANI_BOOLEAN csrNeighborRoamIsSsidCandidateMatch( 
+        tpAniSirGlobal pMac, 
+        tDot11fBeaconIEs *pIes)
+{
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    tANI_U8 sessionId   = (tANI_U8)pNeighborRoamInfo->csrSessionId;
+    tCsrRoamConnectedProfile *pCurProfile;
+    tANI_BOOLEAN fMatch = FALSE;
+
+    if( !(pMac->roam.roamSession
+            && CSR_IS_SESSION_VALID(pMac, sessionId)))
+        return TRUE;  // Treat missing information as a match for everything. 
+
+    pCurProfile = &pMac->roam.roamSession[sessionId].connectedProfile;
+
+    if( !pCurProfile)
+        return TRUE;  // Treat missing information as a match for everything. 
+
+    if( pIes )
+    {
+        if(pIes->SSID.present)
+        {
+            fMatch = csrIsSsidMatch( pMac, (void *)pCurProfile->SSID.ssId, pCurProfile->SSID.length, 
+                    pIes->SSID.ssid, pIes->SSID.num_ssid, 
+                    eANI_BOOLEAN_TRUE ); // Treat a missing SSID as a non-match.
+            // Return the result of the match operation
+            return fMatch;  
+        } else
+            return FALSE;  // Treat a missing SSID as a non-match.
+    } else
+        return FALSE;  // Again, treat missing SSID information as a non-match. 
+}
+
+/* ---------------------------------------------------------------------------
+
+    \fn csrNeighborRoamReorderChannelList
+
+    \brief  This function is used to reorder the channel list used for the background
+            scan. It uses the information learned from previous scans to re-order the
+            scan channel list to "favor" the "occupied channels".  The actual algorithm
+            is to scan the current set of "occupied channels" first, for every BG scan,
+            followed by a "chunk" of the remaining list of "valid channels". 
+
+    \param  pMac - The handle returned by macOpen.
+    \param  pInputChannelList - The default channels list.
+    \param  numOfChannels - The number of channels in the default channels list.
+    \param  pOutputChannelList - The place to put the "re-ordered" channel list.
+    \param  pOutputNumOfChannels - The number of channels in the "re-ordered" channel list.
+
+    \return VOS_STATUS_SUCCESS on success, corresponding error code otherwise
+
+---------------------------------------------------------------------------*/
+VOS_STATUS csrNeighborRoamReorderChannelList( 
+        tpAniSirGlobal pMac, 
+        tANI_U8   *pInputChannelList, 
+        int numOfChannels,
+        tANI_U8   *pOutputChannelList,
+        int *pOutputNumOfChannels 
+        )
+{
+    int i = 0;
+    int j = 0;
+    static int index = 0;
+    int outputNumOfChannels  = 0; // Clear the output number of channels
+    tANI_U8 numOccupiedChannels = pMac->scan.occupiedChannels.numChannels;
+    tANI_U8 *pOccupiedChannelList = pMac->scan.occupiedChannels.channelList;
+
+
+    // Copy over the "occupied channels" at the FRONT of pOutputChannelList.
+    for (i = 0; i < numOccupiedChannels; i++)
+    {
+        if (pOccupiedChannelList[i] != 0) 
+        {
+            pOutputChannelList[i] = pOccupiedChannelList[i]; 
+            outputNumOfChannels++;
+        }
+    }
+
+    // Copy over one "chunk" of channels from the "rest of the channels"...append them to the END of pOutputChannelList.
+    for (j = 0; j < CSR_BG_SCAN_VALID_CHANNEL_LIST_CHUNK_SIZE; j++)
+    {
+        if (!csrIsChannelPresentInList(pOccupiedChannelList, numOccupiedChannels, pInputChannelList[j+index % numOfChannels])) 
+        {
+            pOutputChannelList[i] = pInputChannelList[j+index % numOfChannels]; 
+            i++;
+            outputNumOfChannels++;
+        }
+    }
+
+    //Let's update the index...at which we start retrieving the next chunk
+    index = (index + CSR_BG_SCAN_VALID_CHANNEL_LIST_CHUNK_SIZE) % numOfChannels; 
+
+    //VOS_ASSERT(numOfChannels == i);
+    smsLog(pMac, LOGE, FL("numOfChannels in the default channels list=%d. Number in the final list=%d."), numOfChannels, i);
+
+    // Return the number of channels
+    *pOutputNumOfChannels = outputNumOfChannels; 
+
+    return eHAL_STATUS_SUCCESS;
+}
+#endif /* FEATURE_WLAN_LFR */
+
 /* ---------------------------------------------------------------------------
 
     \fn csrNeighborRoamTransitToCFGChanScan
@@ -1923,7 +2086,7 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
     eHalStatus  status  = eHAL_STATUS_SUCCESS;
     int i = 0;
     int numOfChannels = 0;
-    tANI_U8   channelList[MAX_BSS_IN_NEIGHBOR_RPT];
+    tANI_U8   channelList[WNI_CFG_VALID_CHANNEL_LIST_LEN];
 
     if ( 
 #ifdef FEATURE_WLAN_CCX
@@ -1945,37 +2108,88 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
             vos_mem_free(pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList);
             pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList = NULL;
         }
-        // Find the right subset of the cfg list based on the current band we are on.
-        for (i = 0; i < pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels; i++)
+        VOS_ASSERT( pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList == NULL);
+
+        // Now obtain the contents for "channelList" (the "default valid channel list") from EITHER
+        // the gNeighborScanChannelList in "cfg.ini", OR the actual "valid channel list" information formed by CSR.
+        if (0 != pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels)
         {
-            if (pNeighborRoamInfo->cfgParams.channelInfo.ChannelList[i])
+            // Copy the "default valid channel list" (channelList) from the gNeighborScanChannelList in "cfg.ini".
+            NEIGHBOR_ROAM_DEBUG(pMac, LOGE, "Using the channel list from cfg.ini");
+            status = csrNeighborRoamMergeChannelLists( 
+                    pMac, 
+                    pNeighborRoamInfo->cfgParams.channelInfo.ChannelList, 
+                    pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels, 
+                    channelList, 
+                    0, //NB: If 0, simply copy the input channel list to the output list.
+                    &numOfChannels );
+        } 
+        else
+        {
+            /* Get current list of valid channels. */
+            NEIGHBOR_ROAM_DEBUG(pMac, LOGE, "Switching to master list of valid channels");
+            numOfChannels = sizeof(pMac->roam.validChannelList);
+            if(HAL_STATUS_SUCCESS(csrGetCfgValidChannels(pMac, (tANI_U8 *)pMac->roam.validChannelList, (tANI_U32 *) &numOfChannels)))
             {
-                        VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-                                "%s: [INFOLOG] Adding %d to Neighbor channel list\n", __func__,
-                                pNeighborRoamInfo->cfgParams.channelInfo.ChannelList[i]);
-                        channelList[numOfChannels] = pNeighborRoamInfo->cfgParams.channelInfo.ChannelList[i];
-                        numOfChannels++;
+                // Copy the "default valid channel list" (channelList) from the actual "valid channel list" information formed by CSR
+                status = csrNeighborRoamMergeChannelLists( 
+                        pMac, 
+                        (tANI_U8 *)pMac->roam.validChannelList, 
+                        numOfChannels,   // The number of channels in the validChannelList 
+                        channelList, 
+                        0, //NB: If 0, simply copy the input channel list to the output list.
+                        &numOfChannels );  // The final number of channels in the output list. Will be numOfChannels
+            }
+            else
+            { 
+                smsLog(pMac, LOGE, FL("Could not get valid channel list, TL event ignored")); 
+                return VOS_STATUS_E_FAILURE;
             }
         }
 
+        /* At this point, channelList contains our best inputs on the "valid channel list" */
+
+        /* Allocate for the maximum number that might be used */
+        smsLog(pMac, LOGE, FL("%d channels in the default list. Add %d occupied channels. %d is the MAX scan channel list."), 
+                numOfChannels, 
+                CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN, 
+                numOfChannels+CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN );
         pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.numOfChannels = numOfChannels;
-        pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList = NULL; 
-        if (numOfChannels)
-            pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList = vos_mem_malloc(numOfChannels);
-    
+        VOS_ASSERT( pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList == NULL);
+        if (numOfChannels) 
+        {
+            pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList = 
+                vos_mem_malloc(numOfChannels+CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN );
+        }
+   
         if (NULL == pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList)
         {
             smsLog(pMac, LOGE, FL("Memory allocation for Channel list failed.. TL event ignored"));
             return VOS_STATUS_E_RESOURCES;
         }
     
+#ifdef FEATURE_WLAN_LFR
         /* Since this is a legacy case, copy the channel list from CFG here */
-        vos_mem_copy(pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList, 
-                                channelList, numOfChannels * sizeof(tANI_U8));
+    
+        status = csrNeighborRoamReorderChannelList( pMac, 
+                channelList, 
+                numOfChannels, 
+                pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList, 
+                &numOfChannels );
+        if (eHAL_STATUS_SUCCESS != status)
+#endif
+        {
+            /* Re-ordering failed. */
+            smsLog(pMac, LOGE, FL("Cannot re-order scan channel list. (status = %d) Going to use default scan channel list."), status);
+            vos_mem_copy(pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList, 
+                    channelList, numOfChannels * sizeof(tANI_U8));
+        } 
 
+        /* Adjust for the actual number that are used */
+        pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.numOfChannels = numOfChannels;
         for (i = 0; i < pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.numOfChannels; i++)
         {
-            NEIGHBOR_ROAM_DEBUG(pMac, LOGE, "Channel List from CFG = %d\n", 
+            NEIGHBOR_ROAM_DEBUG(pMac, LOGE, "Channel List from CFG (or scan caching) = %d\n", 
                 pNeighborRoamInfo->roamChannelInfo.currentChannelListInfo.ChannelList[i]);
         }
     }
@@ -2001,6 +2215,8 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
     
     pNeighborRoamInfo->roamChannelInfo.currentChanIndex = 0;
     pNeighborRoamInfo->roamChannelInfo.chanListScanInProgress = eANI_BOOLEAN_TRUE;
+    /* We are about to start a fresh scan cycle, purge results from the past */
+    csrScanFlushResult(pMac);
     
     /* Transition to CFG_CHAN_LIST_SCAN_STATE */
     CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_CFG_CHAN_LIST_SCAN)

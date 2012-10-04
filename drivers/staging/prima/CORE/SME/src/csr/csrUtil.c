@@ -6263,3 +6263,49 @@ void csrDisconnectAllActiveSessions(tpAniSirGlobal pMac)
     }
 }
 
+#ifdef FEATURE_WLAN_LFR
+tANI_BOOLEAN csrIsChannelPresentInList( 
+        tANI_U8 *pChannelList,
+        int  numChannels,
+        tANI_U8   channel 
+        )
+{
+    int i = 0;
+
+    // Check for NULL pointer
+    if (!pChannelList) return FALSE;
+
+    // Look for the channel in the list
+    for (i = 0; i < numChannels; i++)
+    {
+        if (pChannelList[i] == channel) 
+            return TRUE;
+    }
+
+    return FALSE;
+}
+
+VOS_STATUS csrAddToChannelListFront( 
+        tANI_U8 *pChannelList,
+        int  numChannels,
+        tANI_U8   channel 
+        )
+{
+    int i = 0;
+
+    // Check for NULL pointer
+    if (!pChannelList) return eHAL_STATUS_E_NULL_VALUE;
+
+    // Make room for the addition.  (Start moving from the back.)
+    for (i = numChannels; i > 0; i--)
+    {
+        pChannelList[i] = pChannelList[i-1]; 
+    }
+
+    // Now add the NEW channel...at the front
+    pChannelList[0] = channel; 
+
+    return eHAL_STATUS_SUCCESS;
+}
+#endif
+

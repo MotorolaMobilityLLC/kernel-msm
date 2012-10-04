@@ -680,13 +680,7 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
             /* To avoid wpa_supplicant sending "HANGED" CMD to ICS UI */
             if( eCSR_ROAM_LOSTLINK == roamStatus )
             {
-                /* TODO: Need to pass proper reason code
-                   currently we are passing only one reason code.
-                   Currently we are passing WLAN_REASON_DISASSOC_STA_HAS_LEFT
-                   rather than WLAN_REASON_DISASSOC_DUE_TO_INACTIVITY
-                   to avoid the supplicant fast reconnect */
-
-                cfg80211_disconnected(dev, WLAN_REASON_DISASSOC_STA_HAS_LEFT, NULL, 0, GFP_KERNEL);
+                cfg80211_disconnected(dev, pRoamInfo->reasonCode, NULL, 0, GFP_KERNEL);
             }
             else
             {

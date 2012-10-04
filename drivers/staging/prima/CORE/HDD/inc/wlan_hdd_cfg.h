@@ -1002,7 +1002,7 @@ typedef enum
 #define CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_DEFAULT   (120)
 
 #define CFG_NEIGHBOR_SCAN_CHAN_LIST_NAME                      "gNeighborScanChannelList"
-#define CFG_NEIGHBOR_SCAN_CHAN_LIST_DEFAULT                   "1,6"
+#define CFG_NEIGHBOR_SCAN_CHAN_LIST_DEFAULT                   ""
 
 #define CFG_NEIGHBOR_SCAN_MIN_CHAN_TIME_NAME                  "gNeighborScanChannelMinTime"
 #define CFG_NEIGHBOR_SCAN_MIN_CHAN_TIME_MIN                   (10)   
