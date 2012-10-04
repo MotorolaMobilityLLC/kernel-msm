@@ -5553,6 +5553,9 @@ void limUpdateStaRunTimeHTSwitchChnlParams( tpAniSirGlobal   pMac,
                                  "nel Offset: %d, Channel Width: %d\n" ),
                 pHTInfo->primaryChannel, secondaryChnlOffset,
                 psessionEntry->htRecommendedTxWidthSet );
+        psessionEntry->channelChangeReasonCode=LIM_SWITCH_CHANNEL_OPERATION;
+        pMac->lim.gpchangeChannelCallback = NULL;
+        pMac->lim.gpchangeChannelData = NULL;
 
 #if defined WLAN_FEATURE_VOWIFI  
         limSendSwitchChnlParams( pMac, ( tANI_U8 ) pHTInfo->primaryChannel,
