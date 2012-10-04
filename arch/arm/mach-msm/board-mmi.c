@@ -141,6 +141,13 @@ static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 	platform_add_devices(mmi_devices, ARRAY_SIZE(mmi_devices));
 }
 
+static void __init mmi_disp_init(struct msm8960_oem_init_ptrs *oem_ptr,
+				struct msm_fb_platform_data *msm_fb_pdata,
+				struct mipi_dsi_platform_data *mipi_dsi_pdata)
+{
+	mmi_display_init(msm_fb_pdata, mipi_dsi_pdata);
+}
+
 static struct mmi_oem_data mmi_data;
 
 static void __init mmi_msm8960_init_early(void)
@@ -166,6 +173,7 @@ static void __init mmi_msm8960_init_early(void)
 	msm8960_oem_funcs.msm_pmic_init = mmi_pmic_init;
 	msm8960_oem_funcs.msm_clock_init = mmi_clk_init;
 	msm8960_oem_funcs.msm_device_init = mmi_device_init;
+	msm8960_oem_funcs.msm_display_init = mmi_disp_init;
 
 	/* Custom OEM Platform Data */
 	mmi_data.is_factory = mmi_boot_mode_is_factory;
