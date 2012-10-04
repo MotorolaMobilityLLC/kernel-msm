@@ -989,6 +989,11 @@ void __init msm8960_init_fb(void)
 	if (cpu_is_msm8960ab())
 		mdp_pdata.mdp_rev = MDP_REV_44;
 
+	if (msm8960_oem_funcs.msm_display_init)
+		msm8960_oem_funcs.msm_display_init(&msm8960_oem_funcs,
+			&msm_fb_pdata,
+			&mipi_dsi_pdata);
+
 	platform_device_register(&msm_fb_device);
 
 #ifdef CONFIG_FB_MSM_WRITEBACK_MSM_PANEL

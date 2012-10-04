@@ -17,6 +17,7 @@
 #include <linux/mfd/pm8xxx/pm8921.h>
 #include <linux/i2c.h>
 #include <linux/i2c/sx150x.h>
+#include <mach/board.h>
 #include <mach/irqs.h>
 #include <mach/rpm-regulator.h>
 #include <mach/msm_memtypes.h>
@@ -112,6 +113,9 @@ struct msm8960_oem_init_ptrs {
 	void (*msm_clock_init)(struct msm8960_oem_init_ptrs *,
 			       struct clock_init_data *);
 	void (*msm_device_init)(struct msm8960_oem_init_ptrs *);
+	void (*msm_display_init)(struct msm8960_oem_init_ptrs *,
+				struct msm_fb_platform_data *msm_fb_pdata,
+				struct mipi_dsi_platform_data *mipi_dsi_pdata);
 	void *oem_data;
 };
 extern struct msm8960_oem_init_ptrs msm8960_oem_funcs;
