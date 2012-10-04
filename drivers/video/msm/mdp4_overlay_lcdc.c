@@ -673,8 +673,9 @@ int mdp4_lcdc_off(struct platform_device *pdev)
 	struct msm_fb_data_type *mfd;
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
+	struct vsync_update *vp;
 	unsigned long flags;
-	int need_wait = 0;
+	int undx, need_wait = 0;
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 	vctrl = &vsync_ctrl_db[cndx];
@@ -701,6 +702,16 @@ int mdp4_lcdc_off(struct platform_device *pdev)
 	lcdc_enabled = 0;
 
 	mdp_histogram_ctrl_all(FALSE);
+
+	undx =  vctrl->update_ndx;
+	vp = &vctrl->vlist[undx];
+	if (vp->update_cnt) {
+		/*
+		 * pipe's iommu will be freed at next overlay play
+		 * and iommu_drop statistic will be increased by one
+		 */
+		vp->update_cnt = 0;     /* empty queue */
+	}
 
 	if (pipe) {
 		/* sanity check, free pipes besides base layer */
