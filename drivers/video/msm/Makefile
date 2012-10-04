@@ -151,6 +151,7 @@ obj-$(CONFIG_FB_MSM_MIPI_SIMULATOR_VIDEO) += mipi_simulator_video.o
 obj-$(CONFIG_FB_MSM_MIPI_CHIMEI_WXGA) += mipi_chimei_wxga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_CHIMEI_WUXGA) += mipi_chimei_wuxga.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_MOT) += mipi_mot_common.o
+obj-$(CONFIG_FB_MSM_MIPI_DSI_MOT) += mipi_mot_cmd_smd_qhd_429.o
 endif
 
 obj-$(CONFIG_FB_MSM_LCDC_PANEL) += lcdc_panel.o
