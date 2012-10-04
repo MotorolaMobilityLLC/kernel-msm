@@ -168,6 +168,12 @@ static int mipi_dsi_on(struct platform_device *pdev)
 	clk_rate = mfd->fbi->var.pixclock;
 	clk_rate = min(clk_rate, mfd->panel_info.clk_max);
 
+	mipi  = &mfd->panel_info.mipi;
+	/* Clean up the force clk lane to enter HS from previous boot */
+	if ((mfd->panel_info.type == MIPI_VIDEO_PANEL) &&
+							mipi->force_clk_lane_hs)
+		MIPI_OUTP(MIPI_DSI_BASE + 0x00a8, 0);
+
 	mipi_dsi_phy_ctrl(1);
 
 	if (mdp_rev == MDP_REV_42 && mipi_dsi_pdata)
@@ -247,7 +253,13 @@ static int mipi_dsi_on(struct platform_device *pdev)
 
 	mipi_dsi_host_init(mipi);
 
-	if (mipi->force_clk_lane_hs) {
+	if (mdp_rev >= MDP_REV_41)
+		mutex_lock(&mfd->dma->ov_mutex);
+	else
+		down(&mfd->dma->mutex);
+
+	if ((mfd->panel_info.type == MIPI_VIDEO_PANEL) &&
+						mipi->force_clk_lane_hs) {
 		u32 tmp;
 
 		tmp = MIPI_INP(MIPI_DSI_BASE + 0xA8);
@@ -256,13 +268,7 @@ static int mipi_dsi_on(struct platform_device *pdev)
 		wmb();
 	}
 
-	if (mdp_rev >= MDP_REV_41)
-		mutex_lock(&mfd->dma->ov_mutex);
-	else
-		down(&mfd->dma->mutex);
-
-	if (mfd->op_enable)
-		ret = panel_next_on(pdev);
+	ret = panel_next_on(pdev);
 
 	mipi_dsi_op_mode_config(mipi->mode);
 
@@ -587,7 +593,7 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 
 	pdev_list[pdev_list_cnt++] = pdev;
 
-return 0;
+	return 0;
 
 mipi_dsi_probe_err:
 	platform_device_put(mdp_dev);
