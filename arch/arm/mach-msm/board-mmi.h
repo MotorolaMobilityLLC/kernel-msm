@@ -13,6 +13,7 @@
 
 #ifndef __ARCH_ARM_MACH_MSM_BOARD_MMI_8960_H
 #define __ARCH_ARM_MACH_MSM_BOARD_MMI_8960_H
+#include <mach/board.h>
 
 /* from board-mmi-gsbi.c */
 extern void mmi_init_gsbi_devices_from_dt(void);
@@ -29,6 +30,10 @@ extern void mmi_pm8921_keypad_init(void *);
 
 /* from board-mmi-clocks.c */
 extern struct clk_lookup *mmi_init_clocks_from_dt(int *size);
+
+/* from board-mmi-display.c */
+extern void mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
+			struct mipi_dsi_platform_data *mipi_dsi_pdata);
 
 /* MMI OEM Data Structure */
 struct mmi_oem_data {
