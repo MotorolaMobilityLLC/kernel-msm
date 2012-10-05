@@ -6120,6 +6120,7 @@ VOS_STATUS WDA_ProcessEnterImpsReq(tWDA_CbContext *pWDA)
               "Failure in Enter IMPS REQ WDI API, free all the memory " );
       pWDA->wdaWdiApiMsgParam = NULL;
       pWDA->wdaMsgParam = NULL;
+      WDA_SendMsg(pWDA, WDA_ENTER_IMPS_RSP, NULL , CONVERT_WDI2SIR_STATUS(status)) ;
    }
    return CONVERT_WDI2VOS_STATUS(status) ;
 }
@@ -6151,6 +6152,7 @@ VOS_STATUS WDA_ProcessExitImpsReq(tWDA_CbContext *pWDA)
               "Failure in Exit IMPS REQ WDI API, free all the memory " );
       pWDA->wdaWdiApiMsgParam = NULL;
       pWDA->wdaMsgParam = NULL;
+      WDA_SendMsg(pWDA, WDA_EXIT_IMPS_RSP, NULL , CONVERT_WDI2SIR_STATUS(status)) ;
    }
    return CONVERT_WDI2VOS_STATUS(status) ;
 }
@@ -6202,6 +6204,8 @@ VOS_STATUS WDA_ProcessEnterBmpsReq(tWDA_CbContext *pWDA,
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                            "%s: VOS MEM Alloc Failure", __FUNCTION__);
       VOS_ASSERT(0);
+      WDA_SendMsg(pWDA, WDA_ENTER_BMPS_RSP, NULL ,
+         CONVERT_WDI2SIR_STATUS(WDI_STATUS_MEM_FAILURE)) ;
       return VOS_STATUS_E_NOMEM;
    }
    pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams));
@@ -6211,6 +6215,8 @@ VOS_STATUS WDA_ProcessEnterBmpsReq(tWDA_CbContext *pWDA,
                            "%s: VOS MEM Alloc Failure", __FUNCTION__);
       VOS_ASSERT(0);
       vos_mem_free(wdiEnterBmpsReqParams);
+      WDA_SendMsg(pWDA, WDA_ENTER_BMPS_RSP, NULL ,
+         CONVERT_WDI2SIR_STATUS(WDI_STATUS_MEM_FAILURE)) ;
       return VOS_STATUS_E_NOMEM;
    }
    wdiEnterBmpsReqParams->wdiEnterBmpsInfo.ucBssIdx = pEnterBmpsReqParams->bssIdx;
@@ -6237,9 +6243,22 @@ VOS_STATUS WDA_ProcessEnterBmpsReq(tWDA_CbContext *pWDA,
               "Failure in Enter BMPS REQ WDI API, free all the memory" );
       vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
       vos_mem_free(pWdaParams);
+      WDA_SendMsg(pWDA, WDA_ENTER_BMPS_RSP, NULL , CONVERT_WDI2SIR_STATUS(status)) ;
    }
    return CONVERT_WDI2VOS_STATUS(status);
 }
+
+
+static void WDA_SendExitBmpsRsp(tWDA_CbContext *pWDA,
+                         WDI_Status wdiStatus,
+                         tExitBmpsParams *pExitBmpsReqParams)
+{
+   pExitBmpsReqParams->status = CONVERT_WDI2SIR_STATUS(wdiStatus) ;
+
+   WDA_SendMsg(pWDA, WDA_EXIT_BMPS_RSP, (void *)pExitBmpsReqParams , 0) ;
+}
+
+
 /*
  * FUNCTION: WDA_ExitBmpsReqCallback
  * send Exit BMPS RSP back to PE
@@ -6287,6 +6306,7 @@ VOS_STATUS WDA_ProcessExitBmpsReq(tWDA_CbContext *pWDA,
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                            "%s: VOS MEM Alloc Failure", __FUNCTION__); 
       VOS_ASSERT(0);
+      WDA_SendExitBmpsRsp(pWDA, WDI_STATUS_MEM_FAILURE, pExitBmpsReqParams);
       return VOS_STATUS_E_NOMEM;
    }
    pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams)) ;
@@ -6318,6 +6338,7 @@ VOS_STATUS WDA_ProcessExitBmpsReq(tWDA_CbContext *pWDA,
       vos_mem_free(pWdaParams->wdaMsgParam) ;
       vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
       vos_mem_free(pWdaParams) ;
+      WDA_SendExitBmpsRsp(pWDA, status, pExitBmpsReqParams);
    }
    return CONVERT_WDI2VOS_STATUS(status) ;
 }
@@ -11504,7 +11525,7 @@ VOS_STATUS WDA_ProcessUpdateOpMode(tWDA_CbContext *pWDA,
 /*==========================================================================
   FUNCTION   WDA_TransportChannelDebug
 
-  DESCRIPTION
+  DESCRIPTION 
     Display Transport Channel debugging information
     User may request to display DXE channel snapshot
     Or if host driver detects any abnormal stcuk may display
