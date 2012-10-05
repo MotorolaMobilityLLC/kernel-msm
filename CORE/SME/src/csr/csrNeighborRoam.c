@@ -2045,9 +2045,9 @@ VOS_STATUS csrNeighborRoamReorderChannelList(
     // Copy over one "chunk" of channels from the "rest of the channels"...append them to the END of pOutputChannelList.
     for (j = 0; j < CSR_BG_SCAN_VALID_CHANNEL_LIST_CHUNK_SIZE; j++)
     {
-        if (!csrIsChannelPresentInList(pOccupiedChannelList, numOccupiedChannels, pInputChannelList[j+index % numOfChannels])) 
+        if (!csrIsChannelPresentInList(pOccupiedChannelList, numOccupiedChannels, pInputChannelList[(j+index)%numOfChannels]))
         {
-            pOutputChannelList[i] = pInputChannelList[j+index % numOfChannels]; 
+            pOutputChannelList[i] = pInputChannelList[(j+index)%numOfChannels]; 
             i++;
             outputNumOfChannels++;
         }
