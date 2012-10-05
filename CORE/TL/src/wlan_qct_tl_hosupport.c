@@ -1094,6 +1094,7 @@ VOS_STATUS WLANTL_HSHandleRXFrame
    if(VOS_TRUE == tlCtxt->isBMPS)
    {
       WLANTL_HSGetRSSI(pAdapter, pBDHeader, STAid, &currentAvgRSSI);
+      currentHO->historyRSSI = currentAvgRSSI;
       return status;
    }
 
