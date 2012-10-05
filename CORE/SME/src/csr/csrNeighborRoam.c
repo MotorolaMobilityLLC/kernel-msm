@@ -2893,7 +2893,7 @@ void csrNeighborRoamClose(tpAniSirGlobal pMac)
 
     if (eCSR_NEIGHBOR_ROAM_STATE_CLOSED == pNeighborRoamInfo->neighborRoamState)
     {
-        smsLog(pMac, LOGE, FL("Neighbor Roam Algorithm Already Closed\n"));
+        smsLog(pMac, LOGW, FL("Neighbor Roam Algorithm Already Closed"));
         return;
     }
 

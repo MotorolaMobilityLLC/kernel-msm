@@ -4159,9 +4159,9 @@ static int hdd_driver_init( void)
        * This is done here for safety purposes in case we re-initialize without turning
        * it OFF in any error scenario.
        */
-      hddLog(VOS_TRACE_LEVEL_ERROR, "In module init: Ensure Force XO Core is OFF"
+      hddLog(VOS_TRACE_LEVEL_INFO, "In module init: Ensure Force XO Core is OFF"
                                        " when  WLAN is turned ON so Core toggles"
-                                       " unless we enter PS\n");
+                                       " unless we enter PSD");
       if (vos_chipVoteXOCore(NULL, NULL, NULL, VOS_FALSE) != VOS_STATUS_SUCCESS)
       {
           hddLog(VOS_TRACE_LEVEL_ERROR, "Could not cancel XO Core ON vote. Not returning failure."
@@ -4656,10 +4656,10 @@ static void wlan_hdd_restart_deinit(hdd_context_t* pHddCtx)
    /* Cleanup */
    vos_status = vos_timer_stop( &pHddCtx->hdd_restart_timer );
    if (!VOS_IS_STATUS_SUCCESS(vos_status))
-          hddLog(LOGE, FL("Failed to stop HDD restart timer\n"));
+          hddLog(LOGW, FL("Failed to stop HDD restart timer"));
    vos_status = vos_timer_destroy(&pHddCtx->hdd_restart_timer);
    if (!VOS_IS_STATUS_SUCCESS(vos_status))
-          hddLog(LOGE, FL("Failed to destroy HDD restart timer\n"));
+          hddLog(LOGW, FL("Failed to destroy HDD restart timer"));
 
 }
 

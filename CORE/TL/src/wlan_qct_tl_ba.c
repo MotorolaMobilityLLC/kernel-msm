@@ -613,7 +613,7 @@ WLANTL_BaSessionDel
   if (( 0 == pTLCb->atlSTAClients[ucSTAId].ucExists ) &&
       ( 0 == pTLCb->atlSTAClients[ucSTAId].atlBAReorderInfo[ucTid].ucExists ))
   {
-    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
           "WLAN TL:Station was not yet registered on WLANTL_BaSessionDel");
     return VOS_STATUS_E_EXISTS;
   }
@@ -639,7 +639,7 @@ WLANTL_BaSessionDel
    ------------------------------------------------------------------------*/
   if ( 0 == pTLCb->atlSTAClients[ucSTAId].atlBAReorderInfo[ucTid].ucExists )
   {
-    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
                "WLAN TL:BA session does not exists on WLANTL_BaSessionDel");
     return VOS_STATUS_E_EXISTS;
   }

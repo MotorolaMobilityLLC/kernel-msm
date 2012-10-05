@@ -669,7 +669,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     }
 
     // Log success
-    PELOGE(limLog(pMac, LOGE, FL("Successfully Associated with BSS "MAC_ADDRESS_STR),
+    PELOG1(limLog(pMac, LOG1, FL("Successfully Associated with BSS "MAC_ADDRESS_STR),
            MAC_ADDR_ARRAY(pHdr->sa));)
 #ifdef FEATURE_WLAN_CCX
     if(psessionEntry->ccxContext.tsm.tsmInfo.state)

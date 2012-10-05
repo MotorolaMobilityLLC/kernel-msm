@@ -1003,7 +1003,7 @@ limProcessAbortScanInd(tpAniSirGlobal pMac)
      * SME should send WNI_CFG_BACKGROUND_SCAN_PERIOD indication 
      * to start the background scan again
      */
-    PELOGE(limLog(pMac, LOGE, FL("Processing AbortScan Ind\n"));)
+    PELOG2(limLog(pMac, LOG2, FL("Processing AbortScan Ind"));)
 
     limAbortBackgroundScan(pMac);
 
