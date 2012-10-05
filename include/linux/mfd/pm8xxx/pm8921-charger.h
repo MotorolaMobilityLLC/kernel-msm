@@ -157,6 +157,7 @@ struct pm8921_charger_platform_data {
 	int				rconn_mohm;
 	enum pm8921_chg_led_src_config	led_src_config;
 	int				eoc_check_soc;
+	int				factory_mode;
 };
 
 enum pm8921_charger_source {
