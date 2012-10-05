@@ -423,6 +423,9 @@ void csrNeighborRoamResetReportScanStateControlInfo(tpAniSirGlobal pMac)
     pNeighborRoamInfo->isVOAdmitted = eANI_BOOLEAN_FALSE;
     pNeighborRoamInfo->MinQBssLoadRequired = 0;
 #endif
+
+    /* Stop scan refresh timer */
+    palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer);
     
     NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Deregistering DOWN event reassoc callback with TL. RSSI = %d"), pNeighborRoamInfo->cfgParams.neighborReassocThreshold * (-1));
     /* Deregister reassoc callback. Ignore return status */
@@ -2212,6 +2215,8 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
     
     pNeighborRoamInfo->roamChannelInfo.currentChanIndex = 0;
     pNeighborRoamInfo->roamChannelInfo.chanListScanInProgress = eANI_BOOLEAN_TRUE;
+    /* We are about to start a fresh scan cycle, purge results from the past */
+    csrScanFlushResult(pMac);
     
     /* Transition to CFG_CHAN_LIST_SCAN_STATE */
     CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_CFG_CHAN_LIST_SCAN)
