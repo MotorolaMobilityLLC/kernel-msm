@@ -390,6 +390,14 @@ config SENSORS_AK8975
 	  If you say yes here you get support for Asahi Kasei's
 	  orientation sensor AK8975.
 
+config SENSORS_MSP430
+	tristate "MSP430 Sensor Processor"
+	default n
+	depends on I2C
+	help
+	  Say yes here if you wish to include the TI
+	  MSP430 Sensor processor driver.
+
 config EP93XX_PWM
 	tristate "EP93xx PWM support"
 	depends on ARCH_EP93XX
