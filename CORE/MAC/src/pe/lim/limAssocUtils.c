@@ -2171,10 +2171,6 @@ limAddSta(
     if(pAddStaParams->vhtCapable)
     {
         pAddStaParams->vhtTxChannelWidthSet = pStaDs->vhtSupportedChannelWidthSet;
-
-        /* TODO. Need to discuss this. Overwriting here.
-         * Stick to SAP's configuration for HT supported Channel width */
-        pAddStaParams->txChannelWidthSet = limGetHTCapability( pMac, eHT_SUPPORTED_CHANNEL_WIDTH_SET, psessionEntry);
     }
 #endif
 

@@ -1107,6 +1107,12 @@ sendIndToSme:
                                                              WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ : 
                                                              psessionEntry->vhtTxChannelWidthSet );
         }
+
+        // Lesser among the AP and STA bandwidth of operation.
+        pStaDs->htSupportedChannelWidthSet = 
+                (pStaDs->htSupportedChannelWidthSet < psessionEntry->htSupportedChannelWidthSet) ?
+                pStaDs->htSupportedChannelWidthSet : psessionEntry->htSupportedChannelWidthSet ;
+
 #endif
         pStaDs->baPolicyFlag = 0xFF;
     }
