@@ -543,7 +543,14 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 #endif // HDD_WMM_DEBUG
 
    spin_lock(&pAdapter->wmm_tx_queue[ac].lock);
-
+   /*For every increment of 10 pkts in the queue, we inform TL about pending pkts.
+    * We check for +1 in the logic,to take care of Zero count which 
+    * occurs very frequently in low traffic cases */
+   if((pAdapter->wmm_tx_queue[ac].count + 1) % 10 == 0)
+   {
+           VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s:Queue is Filling up.Inform TL again about pending packets", __FUNCTION__);
+           WLANTL_STAPktPending( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext, pHddStaCtx->conn_info.staId[0], ac );
+   }
    //If we have already reached the max queue size, disable the TX queue
    if ( pAdapter->wmm_tx_queue[ac].count == pAdapter->wmm_tx_queue[ac].max_size)
    {
