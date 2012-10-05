@@ -182,6 +182,9 @@ int msm_dmov_exec_cmd(unsigned id, unsigned int cmdptr);
 #define DMOV_TSIF_CHAN         2
 #define DMOV_TSIF_CRCI         11
 
+#define DMOV_HSUART_GSBI5_TX_CRCI	10
+#define DMOV_HSUART_GSBI5_RX_CRCI	9
+
 #define DMOV_HSUART_GSBI6_TX_CHAN	7
 #define DMOV_HSUART_GSBI6_TX_CRCI	6
 
