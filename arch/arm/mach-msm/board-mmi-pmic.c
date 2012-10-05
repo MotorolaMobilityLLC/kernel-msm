@@ -19,6 +19,7 @@
 #include <linux/w1-gpio.h>
 #include <mach/devtree_util.h>
 #include "board-8960.h"
+#include "board-mmi.h"
 #include "devices-mmi.h"
 
 struct pm8xxx_gpio_init {
@@ -344,7 +345,13 @@ out:
 	return;
 }
 
-void __init mmi_pm8921_init(void *pdata)
+void __init mmi_pm8921_init(struct mmi_oem_data *mmi_data, void *pdata)
 {
+	struct pm8921_platform_data *pm8921_pdata;
+
+	pm8921_pdata = (struct pm8921_platform_data *) pdata;
+
+	pm8921_pdata->charger_pdata->factory_mode = mmi_data->is_factory();
+
 	load_pm8921_batt_eprom_pdata_from_dt();
 }
