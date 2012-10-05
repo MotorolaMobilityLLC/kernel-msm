@@ -115,7 +115,7 @@ static void __init mmi_i2c_init(struct msm8960_oem_init_ptrs *oem_ptr)
 static void __init mmi_pmic_init(struct msm8960_oem_init_ptrs *oem_ptr,
 				 void *pdata)
 {
-	mmi_pm8921_init(pdata);
+	mmi_pm8921_init(oem_ptr->oem_data, pdata);
 	mmi_pm8921_keypad_init(pdata);
 }
 

@@ -15,6 +15,11 @@
 #define __ARCH_ARM_MACH_MSM_BOARD_MMI_8960_H
 #include <mach/board.h>
 
+/* MMI OEM Data Structure */
+struct mmi_oem_data {
+	int (*is_factory)(void);
+};
+
 /* from board-mmi-gsbi.c */
 extern void mmi_init_gsbi_devices_from_dt(void);
 
@@ -23,7 +28,7 @@ extern void mmi_register_i2c_devices_from_dt(void);
 
 /* from board-mmi-pmic.c */
 extern void mmi_init_pm8921_gpio_mpp(void);
-extern void mmi_pm8921_init(void *);
+extern void mmi_pm8921_init(struct mmi_oem_data *, void *);
 
 /* from board-mmi-keypad.c */
 extern void mmi_pm8921_keypad_init(void *);
@@ -34,11 +39,6 @@ extern struct clk_lookup *mmi_init_clocks_from_dt(int *size);
 /* from board-mmi-display.c */
 extern void mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 			struct mipi_dsi_platform_data *mipi_dsi_pdata);
-
-/* MMI OEM Data Structure */
-struct mmi_oem_data {
-	int (*is_factory)(void);
-};
 
 #endif
 
