@@ -146,7 +146,7 @@ typedef struct sSapContext {
 
     // Include the current channel of AP
     v_U32_t             channel;
-
+ 
     // Include the SME(CSR) sessionId here
     v_U8_t              sessionId;
 
@@ -207,6 +207,7 @@ typedef struct sSapContext {
     v_U32_t           nStaAddIeLength;
     v_U8_t            pStaAddIE[MAX_ASSOC_IND_IE_LEN]; 
     v_U8_t            *channelList;
+	tSapChannelListInfo SapChnlList;
 } *ptSapContext;
 
 
@@ -411,6 +412,7 @@ WLANSAP_pmcFullPwrReqCB
 
     IN
        halHandle : Pointer to HAL handle
+	   pSapCtx : Pointer to SAP context
        pResult : Pointer to tScanResultHandle
    
   RETURN VALUE
@@ -419,7 +421,8 @@ WLANSAP_pmcFullPwrReqCB
   SIDE EFFECTS 
 
 ============================================================================*/
-v_U8_t sapSelectChannel(tHalHandle halHandle, tScanResultHandle pScanResult);
+
+v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx, tScanResultHandle pScanResult);
 
 /*==========================================================================
 

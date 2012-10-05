@@ -434,6 +434,19 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                        "%s: SME Change Country code fail ret=%d\n",__func__, ret);
 
            }
+       }  
+	   /* 
+	      command should be a string having format 
+	   	  SET_SAP_CHANNEL_LIST <num of channels> <the channels seperated by spaces>
+	   */
+       else if(strncmp(priv_data.buf, "SET_SAP_CHANNEL_LIST", 20) == 0)
+       { 
+       		tANI_U8 *ptr = (tANI_U8*)priv_data.buf;
+			
+			VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+				" Received Command to Set Preferred Channels for SAP in %s", __FUNCTION__);
+				
+			ret = sapSetPreferredChannel(dev,ptr);
        }
    }
 exit:
@@ -3277,19 +3290,19 @@ void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx)
       pr_info("%s: WCNSS hardware version %s\n",
               WLAN_MODULE_NAME, versionString);
 
-      /* 1.Check if FW version is greater than 0.1.1.0. Only then send host-FW capability exchange message
-         2.Host-FW capability exchange message  is only present on riva 1.1 so
+      /* 1.Check if FW version is greater than 0.1.1.0. Only then send host-FW capability exchange message 
+         2.Host-FW capability exchange message  is only present on riva 1.1 so 
             send the message only if it the riva is 1.1
             minor numbers for different riva branches:
                 0 -> (1.0)Mainline Build
                 1 -> (1.1)Mainline Build
                 2->(1.04) Stability Build
        */
-      if (((versionReported.major>0) || (versionReported.minor>1) ||
+      if (((versionReported.major>0) || (versionReported.minor>1) || 
          ((versionReported.minor>=1) && (versionReported.version>=1)))
          && ((versionReported.major == 1) && (versionReported.minor >= 1)))
          fwFeatCapsMsgSupported = 1;
-
+ 
       if (fwFeatCapsMsgSupported)
          sme_featureCapsExchange(pHddCtx->hHal);
 
@@ -4770,7 +4783,7 @@ VOS_STATUS wlan_hdd_restart_driver(hdd_context_t *pHddCtx)
 
       return VOS_STATUS_E_ALREADY;
    }
-   /* when WLAN driver is statically linked, then invoke SSR by sending
+   /* when WLAN driver is statically linked, then invoke SSR by sending 
     * the reset interrupt. If it is DLKM, then use restart API
     */
 #ifdef MODULE
@@ -4778,7 +4791,7 @@ VOS_STATUS wlan_hdd_restart_driver(hdd_context_t *pHddCtx)
 #else
    wcnss_reset_intr();
 #endif
-
+ 
    return status;
 }
 

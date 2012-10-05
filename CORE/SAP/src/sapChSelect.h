@@ -86,6 +86,14 @@
 * Structure holding information of each channel in the spectrum, 
 * it contains the channel number, the computed weight
 */
+
+#define SPACE_ASCII_VALUE  32
+
+typedef struct sSapChannelListInfo{
+	v_U8_t numChannel;
+	v_U8_t *channelList;
+} tSapChannelListInfo;
+
 typedef struct {
     v_U16_t chNum;      // Channel Number
     v_U16_t bssCount;   // bss found in scanresult for this channel
@@ -98,6 +106,7 @@ typedef struct {
 * Structure holding all the information required to make a 
 * decision for the best operating channel based on dfs formula
 */
+
 typedef struct {
     tSapSpectChInfo *pSpectCh;//tDfsSpectChInfo *pSpectCh;  // Ptr to the channels in the entire spectrum band
     v_U8_t numSpectChans;      // Total num of channels in the spectrum
