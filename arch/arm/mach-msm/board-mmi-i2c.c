@@ -21,6 +21,7 @@
 
 #include <linux/input/touch_platform.h>
 #include <linux/melfas100_ts.h>
+#include <linux/msp430.h>
 
 #define MELFAS_TOUCH_SCL_GPIO       17
 #define MELFAS_TOUCH_SDA_GPIO       16
@@ -196,6 +197,84 @@ out:
 	return rv;
 }
 
+struct msp430_platform_data mp_msp430_data = {
+	.gpio_reset = -1,
+	.gpio_bslen = -1,
+	.gpio_int = -1,
+	.bslen_pin_active_value = 1,
+};
+
+struct platform_device msp430_platform_device = {
+	.name = "msp430",
+	.id = -1,
+	.dev = {
+		.platform_data = &mp_msp430_data,
+	},
+};
+
+int __init msp430_init_i2c_device(struct i2c_board_info *info,
+		struct device_node *child)
+{
+	int err = 0;
+	int len = 0;
+	const void *prop;
+	unsigned int irq_gpio = -1, reset_gpio = -1, bsl_gpio  = -1;
+
+	info->platform_data = &mp_msp430_data;
+
+	/* irq */
+	prop = of_get_property(child, "irq,gpio", &len);
+	if (!prop || (len != sizeof(u8)))
+		return -EINVAL;
+	irq_gpio = *(u8 *)prop;
+	mp_msp430_data.gpio_int = irq_gpio;
+
+	err = gpio_request(irq_gpio, "msp430 int");
+	if (err) {
+		pr_err("msp430 gpio_request failed: %d\n", err);
+		goto fail;
+	}
+	gpio_direction_input(irq_gpio);
+	err = gpio_export(irq_gpio, 0);
+	if (err)
+		pr_err("msp430 gpio_export failed: %d\n", err);
+
+	/* reset */
+	prop = of_get_property(child, "msp430_gpio_reset", &len);
+	if (prop && (len == sizeof(u8)))
+		reset_gpio = *(u8 *)prop;
+	mp_msp430_data.gpio_reset = reset_gpio;
+
+	err = gpio_request(reset_gpio, "msp430 reset");
+	if (err) {
+		pr_err("msp430 reset gpio_request failed: %d\n", err);
+		goto fail;
+	}
+	gpio_direction_output(reset_gpio, 1);
+	gpio_set_value(reset_gpio, 1);
+	err = gpio_export(reset_gpio, 0);
+	if (err)
+		pr_err("msp430 reset gpio_export failed: %d\n", err);
+
+	/* bslen */
+	prop = of_get_property(child, "msp430_gpio_bslen", &len);
+	if (prop && (len == sizeof(u8)))
+		bsl_gpio = *(u8 *)prop;
+	mp_msp430_data.gpio_bslen = bsl_gpio;
+
+	err = gpio_request(bsl_gpio, "msp430 bslen");
+	if (err) {
+		pr_err("msp430 bslen gpio_request failed: %d\n", err);
+		goto fail;
+	}
+	gpio_direction_output(bsl_gpio, 0);
+	gpio_set_value(bsl_gpio, 0);
+	err = gpio_export(bsl_gpio, 0);
+
+ fail:
+	return err;
+}
+
 static int __init stub_init_i2c_device(struct i2c_board_info *info,
 				       struct device_node *node)
 {
@@ -215,6 +294,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00270000, melfas_init_i2c_device},  /* Melfas_MMS100 */
 	{0x00260001, atmxt_init_i2c_device},   /* Atmel_MXT */
 	{0x00290000, stub_init_i2c_device},
+	{0x00030015, msp430_init_i2c_device}, /* TI MSP430 */
 };
 
 static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device) {
