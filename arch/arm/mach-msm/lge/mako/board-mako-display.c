@@ -246,7 +246,7 @@ static struct msm_bus_scale_pdata mdp_bus_scale_pdata = {
 
 static struct msm_panel_common_pdata mdp_pdata = {
 	.gpio = MDP_VSYNC_GPIO,
-	.mdp_max_clk = 200000000,
+	.mdp_max_clk = 266670000,
 	.mdp_bus_scale_table = &mdp_bus_scale_pdata,
 	.mdp_rev = MDP_REV_44,
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
@@ -427,7 +427,7 @@ static int mipi_dsi_panel_power(int on)
 				PTR_ERR(reg_l8));
 			return -ENODEV;
 		}
-	
+
 		reg_lvs6 = regulator_get(&msm_mipi_dsi1_device.dev, "dsi_iovcc");
 		if (IS_ERR(reg_lvs6)) {
 			pr_err("could not get 8921_lvs6, rc = %ld\n",
@@ -471,7 +471,7 @@ static int mipi_dsi_panel_power(int on)
 			pr_err("set_optimum_mode l8 failed, rc=%d\n", rc);
 			return -EINVAL;
 		}
-      
+
 		rc = regulator_set_optimum_mode(reg_l2, 100000);
 		if (rc < 0) {
 			pr_err("set_optimum_mode l2 failed, rc=%d\n", rc);
@@ -564,7 +564,7 @@ static int mipi_dsi_panel_power(int on)
 			}
 		}
 	}
-	
+
 	return 0;
 }
 
