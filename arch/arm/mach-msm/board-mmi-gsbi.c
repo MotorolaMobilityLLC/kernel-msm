@@ -226,6 +226,50 @@ error:
 		__func__, gsbi_id);
 }
 
+static void __init mmi_init_uartdm_dev_from_dt(struct device_node *node,
+						struct platform_device *dev)
+{
+	struct resource *r = NULL;
+	int len = 0;
+	int num;
+	const void *prop;
+
+	prop = of_get_property(node, "deviceid", &len);
+	if (!prop || len != sizeof(u8))
+		goto error;
+	dev->id = *(u8 *)prop;
+
+	num = dev->num_resources;
+	r = kzalloc((num + 1) * sizeof(struct resource), GFP_KERNEL);
+	if (r == NULL)
+		goto error;
+
+	r->name = "uartdm_channels";
+	r->flags = IORESOURCE_DMA;
+
+	prop = of_get_property(node, "txchan", &len);
+	if (!prop || len != sizeof(u8))
+		goto error;
+	r->start = *(u8 *)prop;
+
+	prop = of_get_property(node, "rxchan", &len);
+	if (!prop || len != sizeof(u8))
+		goto error;
+	r->end = *(u8 *)prop;
+
+	memcpy(r + 1, dev->resource, num * sizeof(struct resource));
+	dev->resource = r;
+	dev->num_resources++;
+
+	if (platform_device_register(dev))
+		goto error;
+
+	return;
+error:
+	kfree(r);
+	pr_err("%s: Failed to config UARTDM: %pF!\n", __func__, dev);
+}
+
 static void __init mmi_init_uart_dev_from_dt(struct device_node *node,
 						struct platform_device *dev)
 {
@@ -331,7 +375,8 @@ void __init mmi_init_gsbi_devices_from_dt(void)
 						"UART DM but no device found\n",
 						__func__, gsbi_id);
 				else
-					mmi_init_uart_dev_from_dt(child, dev);
+					mmi_init_uartdm_dev_from_dt(child,
+								    dev);
 				break;
 			case GSBI_SIM:
 				mmi_init_gsbi_protocol(gsbi_id, GSBI_SIM);
