@@ -3535,6 +3535,9 @@ static int msmfb_handle_buf_sync_ioctl(struct msm_fb_data_type *mfd,
 		(mfd->timeline == NULL))
 		return -EINVAL;
 
+	if ((!mfd->op_enable) || (!mfd->panel_power_on))
+		return -EPERM;
+
 	if (buf_sync->acq_fen_fd_cnt)
 		ret = copy_from_user(acq_fen_fd, buf_sync->acq_fen_fd,
 				buf_sync->acq_fen_fd_cnt * sizeof(int));
