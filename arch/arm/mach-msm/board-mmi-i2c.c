@@ -279,7 +279,7 @@ static int __init stub_init_i2c_device(struct i2c_board_info *info,
 				       struct device_node *node)
 {
 	pr_info("%s called for %s\n", __func__, info->type);
-	return -1;
+	return -ENODEV;
 }
 
 typedef int (*I2C_INIT_FUNC)(struct i2c_board_info *info,
@@ -297,7 +297,8 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00030015, msp430_init_i2c_device}, /* TI MSP430 */
 };
 
-static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device) {
+static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device)
+{
 	int index;
 
 	for (index = 0; index < ARRAY_SIZE(mmi_apq_i2c_lookup_table); index++)
@@ -336,7 +337,7 @@ __init void mmi_register_i2c_devices_from_dt(void)
 
 			prop = of_get_property(dev_node, "i2c,type", &len);
 			if (prop)
-				strncpy(info.type, (const char *)prop,
+				strlcpy(info.type, (const char *)prop,
 					len > I2C_NAME_SIZE ? I2C_NAME_SIZE :
 					len);
 
@@ -350,16 +351,17 @@ __init void mmi_register_i2c_devices_from_dt(void)
 
 			prop = of_get_property(dev_node, "type", &len);
 			if (prop && (len == sizeof(u32))) {
-			       I2C_INIT_FUNC init_func =
-				       get_init_i2c_func(*(u32 *)prop);
-			       if (init_func)
-				       err = init_func(&info, dev_node);
-			       else {
-				       pr_err("%s: Unable to find init function for "
-					      "i2c device! Skipping!(0x%08x: %s)\n",
-					      __func__, *(u32*)prop, info.type);
-				       err = -EINVAL;
-			       }
+				I2C_INIT_FUNC init_func =
+					get_init_i2c_func(*(u32 *)prop);
+				if (init_func)
+					err = init_func(&info, dev_node);
+				else {
+					pr_err("%s: No init function for " \
+						"i2c device! Skipping!(0x" \
+						"%08x: %s)\n", __func__,
+						*(u32 *)prop, info.type);
+					err = -EINVAL;
+				}
 			}
 			if (err >= 0)
 				i2c_register_board_info(bus_no, &info, 1);
