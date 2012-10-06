@@ -79,7 +79,7 @@ void pmmHandleTimBasedDisassociation(tpAniSirGlobal pMac, tpPESession psessionEn
 //go into sleep state
 void pmmInitBmpsPwrSave(tpAniSirGlobal pMac);
 tSirRetStatus  pmmSendInitPowerSaveMsg(tpAniSirGlobal pMac,tpPESession);
-void pmmInitBmpsResponseHandler(tpAniSirGlobal pMac, eHalStatus rspStatus);
+void pmmInitBmpsResponseHandler(tpAniSirGlobal pMac, tpSirMsgQ limMsg);
 tSirRetStatus  pmmSendChangePowerSaveMsg(tpAniSirGlobal pMac);
 tSirRetStatus pmmSendSleepIndicationToHal(tpAniSirGlobal pMac);
 
@@ -92,7 +92,7 @@ void pmmMissedBeaconHandler(tpAniSirGlobal pMac);
 void pmmEnterUapsdRequestHandler (tpAniSirGlobal pMac);
 void pmmEnterUapsdResponseHandler(tpAniSirGlobal pMac, tpSirMsgQ limMsg);
 void pmmExitUapsdRequestHandler (tpAniSirGlobal pMac);
-void pmmExitUapsdResponseHandler(tpAniSirGlobal pMac, eHalStatus rspStatus);
+void pmmExitUapsdResponseHandler(tpAniSirGlobal pMac, tpSirMsgQ limMsg);
 tSirRetStatus pmmUapsdSendChangePwrSaveMsg (tpAniSirGlobal pMac, tANI_U8 mode);
 
 // handling of all idle mode power save messages
@@ -107,9 +107,9 @@ void pmmSendWowlDelBcastPtrn(tpAniSirGlobal pMac, tpSirMsgQ pMsg);
 void pmmEnterWowlRequestHandler(tpAniSirGlobal pMac, tpSirMsgQ pMsg);
 tSirRetStatus pmmSendWowlEnterRequest(tpAniSirGlobal pMac, tpSirHalWowlEnterParams pHalWowlParams);
 void pmmEnterWowlanResponseHandler(tpAniSirGlobal pMac, tpSirMsgQ limMsg);
-tSirRetStatus  pmmSendExitWowlReq(tpAniSirGlobal pMac);
+tSirRetStatus  pmmSendExitWowlReq(tpAniSirGlobal pMac, tpSirHalWowlExitParams pHalWowlParams);
 void pmmExitWowlanRequestHandler(tpAniSirGlobal pMac);
-void pmmExitWowlanResponseHandler(tpAniSirGlobal pMac, eHalStatus rspStatus);
+void pmmExitWowlanResponseHandler(tpAniSirGlobal pMac, tpSirMsgQ limMsg);
 
 // update idle mode statistics
 void pmmImpsUpdatePwrSaveStats(tpAniSirGlobal pMac);

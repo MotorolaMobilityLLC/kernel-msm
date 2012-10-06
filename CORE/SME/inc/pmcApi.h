@@ -390,17 +390,15 @@ void pmcDumpInit(tHalHandle hHal);
 
 
 extern eHalStatus pmcWowlAddBcastPattern (
-
    tHalHandle hHal, 
-
-   tpSirWowlAddBcastPtrn pattern);
+   tpSirWowlAddBcastPtrn pattern, 
+   tANI_U8  sessionId);
 
 
 extern eHalStatus pmcWowlDelBcastPattern (
-
    tHalHandle hHal, 
-
-   tpSirWowlDelBcastPtrn pattern);
+   tpSirWowlDelBcastPtrn pattern,
+   tANI_U8 sessionId);
 
 
 extern eHalStatus pmcEnterWowl ( 
@@ -415,13 +413,13 @@ extern eHalStatus pmcEnterWowl (
 
     void *wakeReasonIndCBContext,
 #endif // WLAN_WAKEUP_EVENTS
-    tpSirSmeWowlEnterParams wowlEnterParams);
+    tpSirSmeWowlEnterParams wowlEnterParams, tANI_U8 sessionId);
 
 extern eHalStatus pmcExitWowl (tHalHandle hHal);
 
 
 extern eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest,
-                                          tANI_U8 *bssId);
+                                          tANI_U8 sessionId);
 
 /* ---------------------------------------------------------------------------
     \fn pmcSetKeepAlive
@@ -432,7 +430,7 @@ extern eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pReque
             eHAL_STATUS_FAILURE  Cannot set the keepalive.
             eHAL_STATUS_SUCCESS  Request accepted. 
   ---------------------------------------------------------------------------*/
-extern eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest, tANI_U8 *bssId);
+extern eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest, tANI_U8 sessionId);
 
 extern tANI_BOOLEAN pmcValidateConnectState( tHalHandle hHal );
 
@@ -451,7 +449,8 @@ extern eHalStatus pmcSetRssiFilter(tHalHandle hHal, v_U8_t rssiThreshold);
 // Packet Coalescing Filter Match Count Callback declaration
 typedef void(*FilterMatchCountCallback)(void *callbackContext,
                                         tpSirRcvFltPktMatchRsp pRcvFltPktMatchRsp);
-extern eHalStatus pmcGetFilterMatchCount(tHalHandle hHal, FilterMatchCountCallback callbackRoutine, void *callbackContext);
+extern eHalStatus pmcGetFilterMatchCount(tHalHandle hHal, FilterMatchCountCallback callbackRoutine, 
+                                                void *callbackContext, tANI_U8 sessionId);
 #endif // WLAN_FEATURE_PACKET_FILTERING
 
 #ifdef WLAN_FEATURE_GTK_OFFLOAD
@@ -467,7 +466,7 @@ typedef void(*GTKOffloadGetInfoCallback)(void *callbackContext, tpSirGtkOffloadG
             eHAL_STATUS_FAILURE  Cannot set the offload.
             eHAL_STATUS_SUCCESS  Request accepted. 
   ---------------------------------------------------------------------------*/
-extern eHalStatus pmcSetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pGtkOffload);
+extern eHalStatus pmcSetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pGtkOffload, tANI_U8 sessionId);
 
 /* ---------------------------------------------------------------------------
     \fn pmcGetGTKOffload

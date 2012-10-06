@@ -3409,14 +3409,15 @@ eHalStatus sme_DeregisterDeviceStateUpdateInd (
   ---------------------------------------------------------------------------*/
 eHalStatus sme_WowlAddBcastPattern (
    tHalHandle hHal,
-   tpSirWowlAddBcastPtrn pattern)
+   tpSirWowlAddBcastPtrn pattern,
+   tANI_U8    sessionId)
 {
     eHalStatus status = eHAL_STATUS_FAILURE;
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     status = sme_AcquireGlobalLock( &pMac->sme );
     if ( HAL_STATUS_SUCCESS( status ) )
     {
-       status = pmcWowlAddBcastPattern (hHal, pattern);
+       status = pmcWowlAddBcastPattern (hHal, pattern, sessionId);
        sme_ReleaseGlobalLock( &pMac->sme );
     }
 
@@ -3434,14 +3435,15 @@ eHalStatus sme_WowlAddBcastPattern (
   ---------------------------------------------------------------------------*/
 eHalStatus sme_WowlDelBcastPattern (
    tHalHandle hHal,
-   tpSirWowlDelBcastPtrn pattern)
+   tpSirWowlDelBcastPtrn pattern,
+   tANI_U8  sessionId)
 {
     eHalStatus status = eHAL_STATUS_FAILURE;
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     status = sme_AcquireGlobalLock( &pMac->sme );
     if ( HAL_STATUS_SUCCESS( status ) )
     {
-       status = pmcWowlDelBcastPattern (hHal, pattern);
+       status = pmcWowlDelBcastPattern (hHal, pattern, sessionId);
        sme_ReleaseGlobalLock( &pMac->sme );
     }
 
@@ -3486,7 +3488,7 @@ eHalStatus sme_EnterWowl (
     void (*wakeIndicationCB) (void *callbackContext, tpSirWakeReasonInd pWakeReasonInd),
     void *wakeIndicationCBContext,
 #endif // WLAN_WAKEUP_EVENTS
-    tpSirSmeWowlEnterParams wowlEnterParams)
+    tpSirSmeWowlEnterParams wowlEnterParams, tANI_U8 sessionId)
 {
     eHalStatus status = eHAL_STATUS_FAILURE;
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
@@ -3497,10 +3499,9 @@ eHalStatus sme_EnterWowl (
 #ifdef WLAN_WAKEUP_EVENTS
                               wakeIndicationCB, wakeIndicationCBContext, 
 #endif // WLAN_WAKEUP_EVENTS
-                              wowlEnterParams);
+                              wowlEnterParams, sessionId);
        sme_ReleaseGlobalLock( &pMac->sme );
     }
-
     return (status);
 }
 /* ---------------------------------------------------------------------------
@@ -5046,26 +5047,18 @@ eHalStatus sme_SetHostOffload (tHalHandle hHal, tANI_U8 sessionId,
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     eHalStatus status = eHAL_STATUS_FAILURE;
-    tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
-
-    if(pSession == NULL )
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: "
-           "Unable to find the csrSession", __FUNCTION__);
-        return status;
-    }
 
     if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme ) ) )
     {
 #ifdef WLAN_NS_OFFLOAD
         if(SIR_IPV6_NS_OFFLOAD == pRequest->offloadType)
         {
-            status = pmcSetNSOffload( hHal, pRequest ,pSession->connectedProfile.bssid);
+            status = pmcSetNSOffload( hHal, pRequest, sessionId);
         }
         else
 #endif //WLAN_NS_OFFLOAD
         {
-            status = pmcSetHostOffload (hHal, pRequest, pSession->connectedProfile.bssid);
+            status = pmcSetHostOffload (hHal, pRequest, sessionId);
         }
         sme_ReleaseGlobalLock( &pMac->sme );
     }
@@ -5081,14 +5074,15 @@ eHalStatus sme_SetHostOffload (tHalHandle hHal, tANI_U8 sessionId,
     \param  pRequest -  Pointer to the GTK offload request.
     \return eHalStatus
   ---------------------------------------------------------------------------*/
-eHalStatus sme_SetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pRequest)
+eHalStatus sme_SetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pRequest, 
+                                    tANI_U8 sessionId)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     eHalStatus status;
 
     if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme ) ) )
     {
-        status = pmcSetGTKOffload( hHal, pRequest );
+        status = pmcSetGTKOffload( hHal, pRequest, sessionId );
         sme_ReleaseGlobalLock( &pMac->sme );
     }
 
@@ -5102,14 +5096,15 @@ eHalStatus sme_SetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pRequest)
     \param  pRequest -  Pointer to the GTK offload response.
     \return eHalStatus
   ---------------------------------------------------------------------------*/
-eHalStatus sme_GetGTKOffload (tHalHandle hHal, GTKOffloadGetInfoCallback callbackRoutine, void *callbackContext )
+eHalStatus sme_GetGTKOffload (tHalHandle hHal, GTKOffloadGetInfoCallback callbackRoutine, 
+                                    void *callbackContext, tANI_U8 sessionId )
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     eHalStatus status;
 
     if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme ) ) )
     {
-        pmcGetGTKOffload(hHal, callbackRoutine, callbackContext);
+        pmcGetGTKOffload(hHal, callbackRoutine, callbackContext, sessionId);
         sme_ReleaseGlobalLock( &pMac->sme );
     }
 
@@ -5129,21 +5124,9 @@ eHalStatus sme_SetKeepAlive (tHalHandle hHal, tANI_U8 sessionId,
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     eHalStatus status;
-    tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
-
-    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: "
-           "setting Keep alive in SME TP %d", __FUNCTION__,pRequest->timePeriod);
-
-    if(pSession == NULL )
-    {
-		VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: "
-           " Session not Found", __FUNCTION__);
-        return eHAL_STATUS_FAILURE;
-    }
-
     if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme ) ) )
     {
-        status = pmcSetKeepAlive (hHal, pRequest, pSession->connectedProfile.bssid);
+        status = pmcSetKeepAlive (hHal, pRequest, sessionId);
         sme_ReleaseGlobalLock( &pMac->sme );
     }
 
@@ -6059,6 +6042,14 @@ eHalStatus sme_8023MulticastList (tHalHandle hHal, tpSirRcvFltMcAddrList pMultic
             "allocate memory for 8023 Multicast List request", __FUNCTION__);
         return eHAL_STATUS_FAILED_ALLOC;
     }
+    
+    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Ignoring the "
+                       "indication as we are not connected", __FUNCTION__);
+        vos_mem_free(pRequestBuf);
+        return eHAL_STATUS_FAILURE;
+    }
     vos_mem_copy(pRequestBuf, pMulticastAddrs, sizeof(tSirRcvFltMcAddrList));
 
     vos_mem_copy(pRequestBuf->selfMacAddr, pSession->selfMacAddr, sizeof(tSirMacAddr));
@@ -6097,17 +6088,34 @@ eHalStatus sme_ReceiveFilterSetFilter(tHalHandle hHal, tpSirRcvPktFilterCfgType 
                       ((pRcvPktFilterCfg->numFieldParams - 1) * 
                       sizeof(tSirRcvPktFilterFieldParams));
     pRequestBuf = vos_mem_malloc(allocSize);
-    if ((NULL == pRequestBuf) || (NULL == pSession))
+
+    if (NULL == pRequestBuf)
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to "
             "allocate memory for Receive Filter Set Filter request", __FUNCTION__);
         return eHAL_STATUS_FAILED_ALLOC;
     }
-    vos_mem_copy(pRequestBuf, pRcvPktFilterCfg, allocSize);
 
-    vos_mem_copy( pRequestBuf->selfMacAddr, pSession->selfMacAddr, sizeof(tSirMacAddr));
-    vos_mem_copy( pRequestBuf->bssId, pSession->connectedProfile.bssid, 
+    if( NULL == pSession )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Session Not found ", __FUNCTION__);
+        vos_mem_free(pRequestBuf);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Ignoring the "
+                       "indication as we are not connected", __FUNCTION__);
+        vos_mem_free(pRequestBuf);
+        return eHAL_STATUS_FAILURE;
+    }
+    
+    vos_mem_copy( pRcvPktFilterCfg->selfMacAddr, pSession->selfMacAddr, sizeof(tSirMacAddr));
+    vos_mem_copy( pRcvPktFilterCfg->bssId, pSession->connectedProfile.bssid, 
                           sizeof(tSirMacAddr));
+
+    vos_mem_copy(pRequestBuf, pRcvPktFilterCfg, allocSize);
 
     msg.type = WDA_RECEIVE_FILTER_SET_FILTER_REQ;
     msg.reserved = 0;
@@ -6167,7 +6175,8 @@ eHalStatus sme_ReceiveFilterSetFilter(tHalHandle hHal, tpSirRcvPktFilterCfgType 
 
 eHalStatus sme_GetFilterMatchCount(tHalHandle hHal, 
                                    FilterMatchCountCallback callbackRoutine,
-                                   void *callbackContext )
+                                   void *callbackContext, 
+                                   tANI_U8 sessionId)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     eHalStatus status;
@@ -6176,7 +6185,7 @@ eHalStatus sme_GetFilterMatchCount(tHalHandle hHal,
 
     if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme)))
     {
-        pmcGetFilterMatchCount(hHal, callbackRoutine, callbackContext);
+        pmcGetFilterMatchCount(hHal, callbackRoutine, callbackContext, sessionId);
         sme_ReleaseGlobalLock( &pMac->sme );
     }
 
@@ -6197,18 +6206,34 @@ eHalStatus sme_ReceiveFilterClearFilter(tHalHandle hHal, tpSirRcvFltPktClearPara
                pRcvFltPktClearParam->filterId);
   
     pRequestBuf = vos_mem_malloc(sizeof(tSirRcvFltPktClearParam));
-    if ((NULL == pRequestBuf) || (NULL == pSession))
+    if (NULL == pRequestBuf)
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
             "%s: Not able to allocate memory for Receive Filter "
             "Clear Filter request", __FUNCTION__);
         return eHAL_STATUS_FAILED_ALLOC;
     }
-    vos_mem_copy(pRequestBuf, pRcvFltPktClearParam, sizeof(tSirRcvFltPktClearParam));
+    if( NULL == pSession )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+            "%s: Session Not find ", __FUNCTION__);
+        vos_mem_free(pRequestBuf);
+        return eHAL_STATUS_FAILURE;
+    }
 
-    vos_mem_copy( pRequestBuf->selfMacAddr, pSession->selfMacAddr, sizeof(tSirMacAddr));
-    vos_mem_copy( pRequestBuf->bssId, pSession->connectedProfile.bssid, 
+    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Ignoring the "
+                       "indication as we are not connected", __FUNCTION__);
+        vos_mem_free(pRequestBuf);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    vos_mem_copy( pRcvFltPktClearParam->selfMacAddr, pSession->selfMacAddr, sizeof(tSirMacAddr));
+    vos_mem_copy( pRcvFltPktClearParam->bssId, pSession->connectedProfile.bssid, 
                           sizeof(tSirMacAddr));
+
+    vos_mem_copy(pRequestBuf, pRcvFltPktClearParam, sizeof(tSirRcvFltPktClearParam));
 
     msg.type = WDA_RECEIVE_FILTER_CLEAR_FILTER_REQ;
     msg.reserved = 0;

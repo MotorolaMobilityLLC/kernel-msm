@@ -128,7 +128,8 @@ typedef enum
  * Check the version number and find if MCC feature is supported or not
  */
 #define IS_MCC_SUPPORTED (WDA_IsWcnssWlanReportedVersionGreaterThanOrEqual( 0, 1, 1, 0))
-#define IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW (WDA_getFwWlanFeatCaps(SLM_SESSIONIZATION))
+#define IS_FEATURE_SUPPORTED_BY_FW(featEnumValue) (WDA_getFwWlanFeatCaps(featEnumValue))
+
 
 
 /*--------------------------------------------------------------------------

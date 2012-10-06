@@ -6269,6 +6269,9 @@ tANI_U16 sme_ChnToFreq(tANI_U8 chanNum)
  * are some issues seen with BMPS resume during this transition and this is a workaround which will allow the Infra STA session to
  * disconnect and auto connect back and enter BMPS this giving the same effect as resuming BMPS
  */
+ 
+//Remove this code once SLM_Sessionization is supported 
+//BMPS_WORKAROUND_NOT_NEEDED
 void csrDisconnectAllActiveSessions(tpAniSirGlobal pMac)
 {
     tANI_U8 i;

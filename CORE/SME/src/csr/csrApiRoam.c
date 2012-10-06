@@ -934,6 +934,8 @@ static void initConfigParam(tpAniSirGlobal pMac)
     pMac->roam.configParam.addTSWhenACMIsOff = 0;
     pMac->roam.configParam.fScanTwice = eANI_BOOLEAN_FALSE;
 
+    //Remove this code once SLM_Sessionization is supported 
+    //BMPS_WORKAROUND_NOT_NEEDED
     pMac->roam.configParam.doBMPSWorkaround = 0;
 
 }
@@ -1275,6 +1277,8 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
          * will automatically connect back and resume BMPS since resume BMPS is not working when moving from concurrent to
          * single session
          */
+        //Remove this code once SLM_Sessionization is supported 
+        //BMPS_WORKAROUND_NOT_NEEDED
         pMac->roam.configParam.doBMPSWorkaround = 0;
 
 #ifdef WLAN_FEATURE_11AC
@@ -4609,7 +4613,9 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                 if( pSession->bRefAssocStartCnt > 0 )
                 {
                     pSession->bRefAssocStartCnt--;
-                    if(!IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW && ( csrIsConcurrentSessionRunning( pMac )))
+                    //Remove this code once SLM_Sessionization is supported 
+                    //BMPS_WORKAROUND_NOT_NEEDED
+                    if(!IS_FEATURE_SUPPORTED_BY_FW(SLM_SESSIONIZATION) && ( csrIsConcurrentSessionRunning( pMac )))
                     {
                        pMac->roam.configParam.doBMPSWorkaround = 1;
                     }
@@ -4819,7 +4825,9 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
 #ifdef WLAN_SOFTAP_FEATURE
                 roamInfo.staId = (tANI_U8)pSmeStartBssRsp->staId;
 #endif
-                if(!IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW &&
+                 //Remove this code once SLM_Sessionization is supported 
+                 //BMPS_WORKAROUND_NOT_NEEDED
+                if(!IS_FEATURE_SUPPORTED_BY_FW(SLM_SESSIONIZATION) &&
                    ( csrIsConcurrentSessionRunning( pMac )))
                 {
                    pMac->roam.configParam.doBMPSWorkaround = 1;
@@ -12926,8 +12934,10 @@ static void csrRoamLinkDown(tpAniSirGlobal pMac, tANI_U32 sessionId)
    /* Indicate the neighbor roal algorithm about the disconnect indication */
    csrNeighborRoamIndicateDisconnect(pMac, sessionId);
 #endif
-   
-    if(!IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW && 
+
+    //Remove this code once SLM_Sessionization is supported 
+    //BMPS_WORKAROUND_NOT_NEEDED
+    if(!IS_FEATURE_SUPPORTED_BY_FW(SLM_SESSIONIZATION) && 
         csrIsInfraApStarted( pMac ) &&  
         pMac->roam.configParam.doBMPSWorkaround)
    {

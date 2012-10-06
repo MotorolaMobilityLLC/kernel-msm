@@ -1190,6 +1190,16 @@ typedef struct sUapsdParams
 
 //
 // Mesg header is used from tSirMsgQ
+// Mesg Type = SIR_HAL_EXIT_UAPSD_REQ
+//
+typedef struct sExitUapsdParams
+{
+    eHalStatus  status;
+    tANI_U8     bssIdx;
+}tExitUapsdParams, *tpExitUapsdParams;
+
+//
+// Mesg header is used from tSirMsgQ
 // Mesg Type = SIR_LIM_DEL_BA_IND
 //
 typedef struct sBADeleteParams
@@ -1283,7 +1293,13 @@ typedef struct sEnterBmpsParams
     tANI_U8 respReqd;
 }tEnterBmpsParams, *tpEnterBmpsParams;
 
-
+//BMPS response
+typedef struct sEnterBmpsRspParams
+{
+    /* success or failure */
+    tANI_U32   status;
+    tANI_U8    bssIdx;
+}tEnterBmpsRspParams, *tpEnterBmpsRspParams;
 //
 // Mesg header is used from tSirMsgQ
 // Mesg Type = SIR_HAL_SET_MAX_TX_POWER_REQ

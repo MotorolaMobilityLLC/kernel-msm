@@ -2505,7 +2505,9 @@ eHalStatus pmcEnterBmpsCheck( tpAniSirGlobal pMac )
       return eHAL_STATUS_PMC_NOT_NOW;
    }
 
-    if(!IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW)
+    //Remove this code once SLM_Sessionization is supported 
+    //BMPS_WORKAROUND_NOT_NEEDED
+    if(!IS_FEATURE_SUPPORTED_BY_FW(SLM_SESSIONIZATION))
     {
         smsLog(pMac, LOG1, FL("doBMPSWorkaround %u\n"), pMac->roam.configParam.doBMPSWorkaround);
         if (pMac->roam.configParam.doBMPSWorkaround)

@@ -53,6 +53,7 @@ typedef struct
         v_U8_t hostIpv4Addr [4];
         v_U8_t hostIpv6Addr [16];
     } params;
+    v_MACADDR_t bssId;
 } tHostOffloadRequest, *tpHostOffloadRequest;
 
 #endif // __WLAN_HDD_HOST_OFFLOAD_H__

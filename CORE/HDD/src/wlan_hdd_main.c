@@ -1757,8 +1757,13 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          WLANTL_ConfigureSwFrameTXXlationForAll(pHddCtx->pvosContext, TRUE);
       }
 #endif
+      //Initialize the WoWL service
+      if(!hdd_init_wowl(pAdapter))
+      {
+          hddLog(VOS_TRACE_LEVEL_FATAL,"%s: hdd_init_wowl failed",__func__);
+          goto err_free_netdev;
+      }
    }
-
    return pAdapter;
 
 err_free_netdev:
@@ -3846,13 +3851,6 @@ int hdd_wlan_startup(struct device *dev )
       goto err_nl_srv;
    }
 #endif
-
-   //Initialize the WoWL service
-   if(!hdd_init_wowl(pHddCtx))
-   {
-      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: hdd_init_wowl failed",__func__);
-      goto err_nl_srv;
-   }
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
    hdd_register_mcast_bcast_filter(pHddCtx);

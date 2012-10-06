@@ -3305,7 +3305,7 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
            switch (set_value)
            {
               case 0x00:
-                 hdd_exit_wowl();
+                 hdd_exit_wowl(pAdapter);
                  break;
               case 0x01:
               case 0x02:
@@ -3603,11 +3603,11 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
     {
        case WE_WOWL_ADD_PTRN:
           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "ADD_PTRN\n");
-          hdd_add_wowl_ptrn((char*)wrqu->data.pointer);
+          hdd_add_wowl_ptrn(pAdapter, (char*)wrqu->data.pointer);
           break;
        case WE_WOWL_DEL_PTRN:
           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "DEL_PTRN\n");
-          hdd_del_wowl_ptrn((char*)wrqu->data.pointer);
+          hdd_del_wowl_ptrn(pAdapter, (char*)wrqu->data.pointer);
           break;
 #if defined WLAN_FEATURE_VOWIFI
        case WE_NEIGHBOR_REPORT_REQUEST:
@@ -4891,8 +4891,8 @@ static int iw_set_keepalive_params(struct net_device *dev, struct iw_request_inf
 int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest, 
                             tANI_U8 sessionId)
 {
-    tSirRcvPktFilterCfgType    packetFilterSetReq;
-    tSirRcvFltPktClearParam    packetFilterClrReq;
+    tSirRcvPktFilterCfgType    packetFilterSetReq = {0};
+    tSirRcvFltPktClearParam    packetFilterClrReq = {0};
     int i=0;
 
     if (pHddCtx->cfg_ini->disablePacketFilter)

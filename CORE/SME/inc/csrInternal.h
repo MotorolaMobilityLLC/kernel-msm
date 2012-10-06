@@ -574,6 +574,8 @@ typedef struct tagCsrConfig
     tANI_BOOLEAN addTSWhenACMIsOff;
 
     tANI_BOOLEAN fValidateList;
+    //Remove this code once SLM_Sessionization is supported 
+    //BMPS_WORKAROUND_NOT_NEEDED
     tANI_BOOLEAN doBMPSWorkaround;
 
     //To enable/disable scanning 2.4Ghz channels twice on a single scan request from HDD
@@ -1220,6 +1222,8 @@ tANI_BOOLEAN csrRoamIs11rAssoc(tpAniSirGlobal pMac);
 tANI_BOOLEAN csrRoamIsCCXAssoc(tpAniSirGlobal pMac);
 #endif
 
+//Remove this code once SLM_Sessionization is supported 
+//BMPS_WORKAROUND_NOT_NEEDED
 void csrDisconnectAllActiveSessions(tpAniSirGlobal pMac);
 
 #ifdef FEATURE_WLAN_LFR
