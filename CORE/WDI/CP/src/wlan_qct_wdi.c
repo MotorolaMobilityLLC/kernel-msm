@@ -14672,6 +14672,8 @@ WDI_ProcessDelSTARsp
     pSTATable[wdiDelSTARsp.ucSTAIdx].bcastDpuSignature = WDI_DPU_SELF_STA_DEFAULT_SIG;
     pSTATable[wdiDelSTARsp.ucSTAIdx].bcastMgmtDpuSignature = WDI_DPU_SELF_STA_DEFAULT_SIG;
     pSTATable[wdiDelSTARsp.ucSTAIdx].dpuSig = WDI_DPU_SELF_STA_DEFAULT_SIG;
+
+    pSTATable[wdiDelSTARsp.ucSTAIdx].bssIdx = WDI_BSS_INVALID_IDX;
   }
   else
   {
