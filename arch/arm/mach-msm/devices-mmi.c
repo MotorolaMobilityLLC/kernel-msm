@@ -124,12 +124,6 @@ static struct resource msm_uart_dm5_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.start	= DMOV_HSUART_GSBI6_TX_CHAN, /* chan 8 is unused */
-		.end	= DMOV_HSUART_GSBI6_RX_CHAN, /* chan 7 is unused */
-		.name	= "uartdm_channels",
-		.flags	= IORESOURCE_DMA,
-	},
-	{
 		.start	= DMOV_HSUART_GSBI5_TX_CRCI,
 		.end	= DMOV_HSUART_GSBI5_RX_CRCI,
 		.name	= "uartdm_crci",
