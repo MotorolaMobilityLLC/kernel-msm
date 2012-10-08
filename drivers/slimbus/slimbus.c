@@ -2516,18 +2516,6 @@ int slim_reconfigure_now(struct slim_device *sb)
 	u32 segdist;
 	struct slim_pending_ch *pch;
 
-	/*
-	 * If there are no pending changes from this client, avoid sending
-	 * the reconfiguration sequence
-	 */
-	if (sb->pending_msgsl == sb->cur_msgsl &&
-		list_empty(&sb->mark_define) &&
-		list_empty(&sb->mark_removal) &&
-		list_empty(&sb->mark_suspend)) {
-		pr_debug("SLIM_CL: skip reconfig sequence");
-		return 0;
-	}
-
 	mutex_lock(&ctrl->sched.m_reconf);
 	mutex_lock(&ctrl->m_ctrl);
 	/*
