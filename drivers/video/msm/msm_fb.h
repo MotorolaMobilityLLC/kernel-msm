@@ -202,6 +202,7 @@ struct msm_fb_data_type {
 	u32 is_committing;
 	struct work_struct commit_work;
 	void *msm_fb_backup;
+	boolean panel_driver_on;
 };
 struct msm_fb_backup_type {
 	struct fb_info info;
