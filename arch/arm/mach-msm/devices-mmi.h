@@ -22,4 +22,6 @@ extern struct platform_device mmi_msm8960_device_uart_gsbi8;
 
 extern struct platform_device mmi_w1_gpio_device;
 
+extern struct platform_device mmi_ram_console_device;
+extern struct persistent_ram mmi_ram_console_pram;
 #endif
