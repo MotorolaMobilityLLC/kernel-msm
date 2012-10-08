@@ -460,4 +460,11 @@ config BATTERY_MMI
 	select W1_SLAVE_DS2502
 	help
 	  Say Y here to enable support for MMI Batteries
+
+config PM8921_EXTENDED_INFO
+	bool "Enable PM8921 Extended Info in the BMS and Charger driver"
+	depends on PM8921_BMS
+	depends on PM8921_CHARGER
+	help
+	  Say Y here to enable support for Pm8921 Extended Info
 endif # POWER_SUPPLY

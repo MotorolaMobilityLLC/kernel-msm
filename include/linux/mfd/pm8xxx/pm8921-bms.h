@@ -14,6 +14,7 @@
 #define __PM8XXX_BMS_H
 
 #include <linux/errno.h>
+#include <linux/types.h>
 
 #define PM8921_BMS_DEV_NAME	"pm8921-bms"
 
@@ -121,6 +122,8 @@ enum battery_type {
  *			is considered empty(mV)
  * @enable_fcc_learning:	if set the driver will learn full charge
  *				capacity of the battery upon end of charge
+ * @get_batt_info:	a board specific function to return battery data If NULL
+ *			default palladium data will be used to meter the battery
  */
 struct pm8921_bms_platform_data {
 	struct pm8xxx_bms_core_data	bms_cdata;
@@ -141,6 +144,10 @@ struct pm8921_bms_platform_data {
 	int				wlc_max_voltage_uv;
 	int				(*wlc_is_plugged)(void);
 	int				first_fixed_iavg_ma;
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	int64_t (*get_batt_info) (int64_t battery_id,
+				  struct pm8921_bms_battery_data *data);
+#endif
 };
 
 #if defined(CONFIG_PM8921_BMS) || defined(CONFIG_PM8921_BMS_MODULE)
