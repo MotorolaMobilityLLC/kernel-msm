@@ -13,8 +13,11 @@
 
 #include <asm/mach-types.h>
 #include <linux/dma-mapping.h>
+#include <linux/persistent_ram.h>
 #include <linux/platform_device.h>
 #include <linux/w1-gpio.h>
+#include <linux/platform_data/ram_console.h>
+
 #include <mach/board.h>
 #include <mach/dma.h>
 #include <mach/irqs-8960.h>
@@ -157,3 +160,29 @@ struct platform_device mmi_w1_gpio_device = {
 		.platform_data = &mmi_w1_gpio_device_pdata,
 	},
 };
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+
+#define MSM_RAM_CONSOLE_SIZE    128 * SZ_1K
+#define MSM_RAM_CONSOLE_START   0x88C00000
+
+struct platform_device mmi_ram_console_device = {
+	.name = "ram_console",
+	.id = -1,
+};
+
+static struct persistent_ram_descriptor ram_console_pram_desc[] = {
+	{
+		.name = "ram_console",
+		.size = MSM_RAM_CONSOLE_SIZE,
+	}
+};
+
+struct persistent_ram mmi_ram_console_pram = {
+	.start = MSM_RAM_CONSOLE_START,
+	.size = MSM_RAM_CONSOLE_SIZE,
+	.num_descs = ARRAY_SIZE(ram_console_pram_desc),
+	.descs = ram_console_pram_desc,
+};
+
+#endif
