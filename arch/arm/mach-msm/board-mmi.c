@@ -19,6 +19,7 @@
 #include <linux/bootmem.h>
 #include <linux/of_fdt.h>
 #include <linux/of.h>
+#include <linux/persistent_ram.h>
 
 #include <mach/gpiomux.h>
 #include <mach/restart.h>
@@ -27,6 +28,15 @@
 #include "board-mmi.h"
 #include "devices-mmi.h"
 #include "timer.h"
+
+static void __init mmi_msm8960_reserve(void)
+{
+	msm8960_reserve();
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	persistent_ram_early_init(&mmi_ram_console_pram);
+#endif
+}
 
 static u32 fdt_start_address; /* flattened device tree address */
 static u32 fdt_size;
@@ -134,6 +144,9 @@ static void __init mmi_clk_init(struct msm8960_oem_init_ptrs *oem_ptr,
 
 static struct platform_device *mmi_devices[] __initdata = {
 	&mmi_w1_gpio_device,
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	&mmi_ram_console_device,
+#endif
 };
 
 static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
@@ -199,7 +212,7 @@ __tagtable(ATAG_FLAT_DEV_TREE_ADDRESS, parse_tag_flat_dev_tree_address);
 
 MACHINE_START(VANQUISH, "Vanquish")
 	.map_io = msm8960_map_io,
-	.reserve = msm8960_reserve,
+	.reserve = mmi_msm8960_reserve,
 	.init_irq = msm8960_init_irq,
 	.handle_irq = gic_handle_irq,
 	.timer = &msm_timer,
@@ -211,7 +224,7 @@ MACHINE_END
 
 MACHINE_START(MSM8960DT, "msm8960dt")
 	.map_io = msm8960_map_io,
-	.reserve = msm8960_reserve,
+	.reserve = mmi_msm8960_reserve,
 	.init_irq = msm8960_init_irq,
 	.handle_irq = gic_handle_irq,
 	.timer = &msm_timer,
