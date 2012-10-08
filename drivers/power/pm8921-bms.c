@@ -2927,6 +2927,11 @@ static int64_t read_battery_id(struct pm8921_bms_chip *chip)
 static int set_battery_data(struct pm8921_bms_chip *chip)
 {
 	int64_t battery_id;
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	int64_t batt_valid;
+	struct pm8921_bms_battery_data batt_data;
+	struct pm8921_bms_platform_data *pdata = chip->dev->platform_data;
+#endif
 
 	if (chip->batt_type == BATT_DESAY)
 		goto desay;
@@ -2936,6 +2941,17 @@ static int set_battery_data(struct pm8921_bms_chip *chip)
 		goto lge;
 
 	battery_id = read_battery_id(chip);
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	if (pdata->get_batt_info) {
+		batt_valid = pdata->get_batt_info(battery_id, &batt_data);
+		chip->fcc = batt_data.fcc;
+		chip->fcc_temp_lut = batt_data.fcc_temp_lut;
+		chip->fcc_sf_lut = batt_data.fcc_sf_lut;
+		chip->pc_temp_ocv_lut = batt_data.pc_temp_ocv_lut;
+		chip->pc_sf_lut = batt_data.pc_sf_lut;
+		return 0;
+	}
+#endif
 	if (battery_id < 0) {
 		pr_err("cannot read battery id err = %lld\n", battery_id);
 		return battery_id;

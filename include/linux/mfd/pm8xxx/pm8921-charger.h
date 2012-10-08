@@ -18,6 +18,53 @@
 
 #define PM8921_CHARGER_DEV_NAME	"pm8921-charger"
 
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+/**
+ * struct pm8921_charger_battery_data -
+ * @max_voltage:	the max voltage (mV) the battery should be charged up to
+ * @min_voltage:	the voltage (mV) where charging method switches from
+ *			trickle to fast. This is also the minimum voltage the
+ *			system operates at
+ * @resume_voltage_delta:	the (mV) drop to wait for before resume charging
+ *				after the battery has been fully charged
+ * @term_current:	the charger current (mA) at which EOC happens
+ * @cool_temp:		the temperature (degC) at which the battery is
+ *			considered cool charging current and voltage is reduced
+ * @warm_temp:		the temperature (degC) at which the battery is
+ *			considered warm charging current and voltage is reduced
+ * @temp_check_period:	The polling interval in seconds to check battery
+ *			temeperature if it has gone to cool or warm temperature
+ *			area
+ * @max_bat_chg_current:	Max charge current of the battery in mA
+ *				Usually 70% of full charge capacity
+ * @cool_bat_chg_current:	chg current (mA) when the battery is cool
+ * @warm_bat_chg_current:	chg current (mA)  when the battery is warm
+ * @cool_bat_voltage:		chg voltage (mV) when the battery is cool
+ * @warm_bat_voltage:		chg voltage (mV) when the battery is warm
+ * @step_charge_current:	Batteries with Peak Voltages above 4.2 V
+ *				sometimes require a reduced Charge Rate
+ *				above a voltage threshold; this is that rate
+ * @step_charge_voltage:	Batteries with Peak Voltages above 4.2 V
+ *				sometimes require a reduced Charge Rate
+ *				above a voltage threshold; this is that voltage
+ */
+struct pm8921_charger_battery_data {
+	unsigned int			max_voltage;
+	unsigned int			min_voltage;
+	unsigned int			resume_voltage_delta;
+	unsigned int			term_current;
+	unsigned int			cool_temp;
+	unsigned int			warm_temp;
+	unsigned int			max_bat_chg_current;
+	unsigned int			cool_bat_chg_current;
+	unsigned int			warm_bat_chg_current;
+	unsigned int			cool_bat_voltage;
+	unsigned int			warm_bat_voltage;
+	unsigned int			step_charge_current;
+	unsigned int			step_charge_voltage;
+};
+#endif
+
 struct pm8xxx_charger_core_data {
 	unsigned int	vbat_channel;
 	unsigned int	batt_temp_channel;
@@ -119,6 +166,14 @@ enum pm8921_chg_led_src_config {
  *			resistance of the pads, connectors, battery terminals
  *			and rsense.
  * @led_src_config:	Power source for anode of charger indicator LED.
+ * @get_batt_info:	a board specific function to return battery data If NULL
+ *			pdata will be used to charge the battery
+ * @step_charge_current:	Batteries with Peak Voltages above 4.2 V
+ *				sometimes require a reduced Charge Rate
+ *				above a voltage threshold; this is that rate
+ * @step_charge_voltage:	Batteries with Peak Voltages above 4.2 V
+ *				sometimes require a reduced Charge Rate
+ *				above a voltage threshold; this is that voltage
  */
 struct pm8921_charger_platform_data {
 	struct pm8xxx_charger_core_data	charger_cdata;
@@ -158,6 +213,12 @@ struct pm8921_charger_platform_data {
 	enum pm8921_chg_led_src_config	led_src_config;
 	int				eoc_check_soc;
 	int				factory_mode;
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	int64_t (*get_batt_info) (int64_t battery_id,
+				  struct pm8921_charger_battery_data *data);
+	unsigned int			step_charge_current;
+	unsigned int			step_charge_voltage;
+#endif
 };
 
 enum pm8921_charger_source {
