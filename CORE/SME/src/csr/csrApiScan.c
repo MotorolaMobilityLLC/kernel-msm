@@ -417,6 +417,10 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
                 pQueueScanCmd->u.scanCmd.reason = pScanCmd->u.scanCmd.reason;
                 pQueueScanCmd->u.scanCmd.scanID = pMac->scan.nextScanID++; //let it wrap around
 
+                /* First copy all the parameters to local variable of scan request */
+                csrScanCopyRequest(pMac, &scanReq, &pScanCmd->u.scanCmd.u.scanRequest);
+
+                /* Now modify the elements of local var scan request required to be modified for split scan */
                 pChnInfo->numOfChannels = pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels - 1;
 
                 VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN, 
@@ -5327,12 +5331,16 @@ static void csrStaApConcTimerHandler(void *pv)
              pSendScanCmd->u.scanCmd.reason = pScanCmd->u.scanCmd.reason;
              pSendScanCmd->u.scanCmd.scanID = pMac->scan.nextScanID++; //let it wrap around
 
+             /* First copy all the parameters to local variable of scan request */
+             csrScanCopyRequest(pMac, &scanReq, &pScanCmd->u.scanCmd.u.scanRequest);
+             
+             /* Now modify the elements of local var scan request required to be modified for split scan */
              pChnInfo->numOfChannels = 1;
              palCopyMemory(pMac->hHdd, &channelToScan[0], &pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[0], 
                           1 * sizeof(tANI_U8)); //just send one channel
              pChnInfo->ChannelList = &channelToScan[0];
 
-             for (i = 0; i < (numChn-2); i++)
+             for (i = 0; i <= (numChn-2); i++)
              {
                  pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[i] = 
                  pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[i+1]; //Move all the channels one step
