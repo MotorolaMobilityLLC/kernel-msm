@@ -33,6 +33,7 @@ struct bq51051b_wlc_chip {
 	struct work_struct wireless_interrupt_work;
 	struct wake_lock wireless_chip_wake_lock;
 	unsigned int active_n_gpio;
+	int (*wlc_is_plugged)(void);
 };
 
 static const struct platform_device_id bq51051b_id[] = {
@@ -81,21 +82,6 @@ static int pm_power_get_property_wireless(struct power_supply *psy,
 	return 0;
 }
 
-static int wireless_is_plugged(struct bq51051b_wlc_chip *chip)
-{
-	return !(gpio_get_value(chip->active_n_gpio));
-}
-
-int bq51051b_wireless_plugged_in(void)
-{
-	if (!the_chip) {
-		pr_err("wlc: called before init\n");
-		return -EINVAL;
-	}
-	return wireless_is_plugged(the_chip);
-}
-EXPORT_SYMBOL(bq51051b_wireless_plugged_in);
-
 static void wireless_set(struct bq51051b_wlc_chip *chip)
 {
 	WLC_DBG_INFO("wireless_set\n");
@@ -132,7 +118,7 @@ static void wireless_interrupt_worker(struct work_struct *work)
 	    container_of(work, struct bq51051b_wlc_chip,
 			 wireless_interrupt_work);
 
-	if (wireless_is_plugged(chip))
+	if (chip->wlc_is_plugged())
 		wireless_set(chip);
 	else
 		wireless_reset(chip);
@@ -143,7 +129,7 @@ static irqreturn_t wireless_interrupt_handler(int irq, void *data)
 	int chg_state;
 	struct bq51051b_wlc_chip *chip = data;
 
-	chg_state = wireless_is_plugged(chip);
+	chg_state = chip->wlc_is_plugged();
 	WLC_DBG_INFO("\nwireless is plugged state = %d\n\n", chg_state);
 	schedule_work(&chip->wireless_interrupt_work);
 	return IRQ_HANDLED;
@@ -154,13 +140,6 @@ static int __devinit bq51051b_wlc_hw_init(struct bq51051b_wlc_chip *chip)
 	int ret;
 	WLC_DBG_INFO("hw_init");
 
-	/* active_n pin is the bq51051b status, High = no charging, Low = charging */
-	ret =  gpio_request_one(chip->active_n_gpio, GPIOF_DIR_IN, "active_n_gpio");
-	if (ret < 0) {
-		pr_err("wlc: active_n gpio request failed\n");
-		goto active_n_error;
-	}
-
 	/* active_n pin must be monitoring the bq51051b status */
 	ret = request_irq(gpio_to_irq(chip->active_n_gpio),
 			wireless_interrupt_handler,
@@ -168,16 +147,11 @@ static int __devinit bq51051b_wlc_hw_init(struct bq51051b_wlc_chip *chip)
 			"wireless_charger", chip);
 	if (ret < 0) {
 		pr_err("wlc: wireless_charger request irq failed\n");
-		goto active_n_irq_error;
+		return ret;
 	}
 	enable_irq_wake(gpio_to_irq(chip->active_n_gpio));
 
 	return 0;
-
-active_n_irq_error:
-	gpio_free(chip->active_n_gpio);
-active_n_error:
-	return ret;
 }
 
 static int bq51051b_wlc_resume(struct device *dev)
@@ -213,6 +187,7 @@ static int __devinit bq51051b_wlc_probe(struct platform_device *pdev)
 	chip->dev = &pdev->dev;
 
 	chip->active_n_gpio = pdata->active_n_gpio;
+	chip->wlc_is_plugged = pdata->wlc_is_plugged;
 
 	rc = bq51051b_wlc_hw_init(chip);
 	if (rc) {
@@ -243,7 +218,7 @@ static int __devinit bq51051b_wlc_probe(struct platform_device *pdev)
 		       "bq51051b_wireless_chip");
 
 	/* For Booting Wireless_charging and For Power Charging Logo In Wireless Charging */
-	if (wireless_is_plugged(chip))
+	if (chip->wlc_is_plugged())
 		wireless_set(chip);
 
 	return 0;

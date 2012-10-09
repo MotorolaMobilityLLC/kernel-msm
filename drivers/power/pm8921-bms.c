@@ -151,6 +151,11 @@ struct pm8921_bms_chip {
 	int			last_reported_soc;
 	int			eoc_check_soc;
 	int			soc_adjusted;
+	int			bms_support_wlc;
+	int			wlc_term_ua;
+	int			wlc_max_voltage_uv;
+	int			(*wlc_is_plugged)(void);
+	int			vbat_at_cv;
 };
 
 /*
@@ -363,16 +368,8 @@ static int usb_chg_plugged_in(struct pm8921_bms_chip *chip)
 			val = 0;
 	}
 
-	return val;
-}
-
-static int wireless_chg_plugged_in(void)
-{
-	int val = bq51051b_wireless_plugged_in();
-
-	/* treat as if usb is not present in case of error */
-	if (val == -EINVAL)
-		val = 0;
+	if (chip->bms_support_wlc)
+		val |= chip->wlc_is_plugged();
 
 	return val;
 }
@@ -965,7 +962,6 @@ int override_mode_simultaneous_battery_voltage_and_current(int *ibat_ua,
 	mutex_unlock(&the_chip->bms_output_lock);
 
 	usb_chg = usb_chg_plugged_in(the_chip);
-	usb_chg |= wireless_chg_plugged_in();
 
 	convert_vbatt_raw_to_uv(the_chip, usb_chg, vbat_raw, vbat_uv);
 	convert_vsense_to_uv(the_chip, vsense_raw, &vsense_uv);
@@ -991,6 +987,27 @@ static void adjust_pon_ocv_raw(struct pm8921_bms_chip *chip,
 		raw->last_good_ocv_raw -= MBG_TRANSIENT_ERROR_RAW;
 }
 
+#define SEL_ALT_OREG_BIT  BIT(2)
+static int ocv_ir_compensation(struct pm8921_bms_chip *chip, int ocv)
+{
+	int compensated_ocv;
+	int ibatt_ua;
+	int rbatt_mohm = chip->default_rbatt_mohm + chip->rconn_mohm;
+
+	pm_bms_masked_write(chip, BMS_TEST1,
+			SEL_ALT_OREG_BIT, SEL_ALT_OREG_BIT);
+
+	/* since the SEL_ALT_OREG_BIT is set this will give us VSENSE_OCV */
+	pm8921_bms_get_battery_current(&ibatt_ua);
+	compensated_ocv = ocv + div_s64((s64)ibatt_ua * rbatt_mohm, 1000);
+	pr_info("comp ocv = %d, ocv = %d, ibatt_ua = %d, rbatt_mohm = %d\n",
+			compensated_ocv, ocv, ibatt_ua, rbatt_mohm);
+
+	pm_bms_masked_write(chip, BMS_TEST1, SEL_ALT_OREG_BIT, 0);
+	return compensated_ocv;
+}
+
+
 static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 				struct pm8921_soc_params *raw)
 {
@@ -1007,13 +1024,14 @@ static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 	mutex_unlock(&chip->bms_output_lock);
 
 	usb_chg =  usb_chg_plugged_in(chip);
-	usb_chg |= wireless_chg_plugged_in();
 
 	if (chip->prev_last_good_ocv_raw == 0) {
 		chip->prev_last_good_ocv_raw = raw->last_good_ocv_raw;
 		adjust_pon_ocv_raw(chip, raw);
 		convert_vbatt_raw_to_uv(chip, usb_chg,
 			raw->last_good_ocv_raw, &raw->last_good_ocv_uv);
+		raw->last_good_ocv_uv = ocv_ir_compensation(chip,
+						raw->last_good_ocv_uv);
 		chip->last_ocv_uv = raw->last_good_ocv_uv;
 		pr_debug("PON_OCV_UV = %d\n", chip->last_ocv_uv);
 	} else if (chip->prev_last_good_ocv_raw != raw->last_good_ocv_raw) {
@@ -1610,18 +1628,38 @@ static int charging_adjustments(struct pm8921_bms_chip *chip,
 				int fcc_uah, int cc_uah, int uuc_uah)
 {
 	int chg_soc;
+	int max_vol;
+	int eoc_current;
+
+	max_vol = chip->max_voltage_uv;
+	eoc_current = -chip->chg_term_ua;
+
+	if (chip->bms_support_wlc && chip->wlc_is_plugged()) {
+		max_vol = chip->wlc_max_voltage_uv;
+		eoc_current = -chip->wlc_term_ua;
+	}
 
 	if (chip->soc_at_cv == -EINVAL) {
 		/* In constant current charging return the calc soc */
-		if (vbat_uv <= chip->max_voltage_uv)
+		if (vbat_uv <= max_vol)
 			pr_debug("CC CHG SOC %d\n", soc);
 
 		/* Note the CC to CV point */
-		if (vbat_uv >= chip->max_voltage_uv) {
+		if (vbat_uv >= max_vol) {
 			chip->soc_at_cv = soc;
 			chip->prev_chg_soc = soc;
 			chip->ibat_at_cv_ua = ibat_ua;
+			chip->vbat_at_cv = vbat_uv;
 			pr_debug("CC_TO_CV ibat_ua = %d CHG SOC %d\n",
+					ibat_ua, soc);
+		}
+		else if(soc >= 95)
+		{
+			chip->soc_at_cv = soc;
+			chip->prev_chg_soc = soc;
+			chip->ibat_at_cv_ua = ibat_ua;
+			chip->vbat_at_cv = vbat_uv;
+			pr_debug("Force CC_TO_CV ibat_ua = %d CHG SOC %d\n",
 					ibat_ua, soc);
 		}
 		return soc;
@@ -1636,15 +1674,25 @@ static int charging_adjustments(struct pm8921_bms_chip *chip,
 	 * if voltage lessened (possibly because of a system load)
 	 * keep reporting the prev chg soc
 	 */
-	if (vbat_uv <= chip->max_voltage_uv) {
+	if (vbat_uv <= chip->vbat_at_cv) {
 		pr_debug("vbat %d < max = %d CC CHG SOC %d\n",
-			vbat_uv, chip->max_voltage_uv, chip->prev_chg_soc);
+			vbat_uv, chip->vbat_at_cv, chip->prev_chg_soc);
+		return chip->prev_chg_soc;
+	}
+
+	if (chip->bms_support_wlc
+			&& chip->wlc_is_plugged()
+			&& chip->prev_chg_soc < 99
+			&& ibat_ua > eoc_current) {
+		pr_info("ibat < eco_current ! soc = %d \n", chip->prev_chg_soc);
 		return chip->prev_chg_soc;
 	}
 
 	chg_soc = linear_interpolate(chip->soc_at_cv, chip->ibat_at_cv_ua,
-					100, -100000,
+					100, eoc_current,
 					ibat_ua);
+	if (chg_soc > 100)
+		chg_soc = 100;
 
 	/* always report a higher soc */
 	if (chg_soc > chip->prev_chg_soc) {
@@ -2325,7 +2373,7 @@ static void calib_hkadc(struct pm8921_bms_chip *chip)
 	voltage = xoadc_reading_to_microvolt(result.adc_code);
 
 	usb_chg = usb_chg_plugged_in(chip);
-	usb_chg |= wireless_chg_plugged_in();
+
 	pr_debug("result 0.625V = 0x%x, voltage = %duV adc_meas = %lld "
 				"usb_chg = %d\n",
 				result.adc_code, voltage, result.measurement,
@@ -2813,7 +2861,7 @@ static void check_initial_ocv(struct pm8921_bms_chip *chip)
 	ocv_uv = 0;
 	pm_bms_read_output_data(chip, LAST_GOOD_OCV_VALUE, &ocv_raw);
 	usb_chg = usb_chg_plugged_in(chip);
-	usb_chg |= wireless_chg_plugged_in();
+
 	rc = convert_vbatt_raw_to_uv(chip, usb_chg, ocv_raw, &ocv_uv);
 	if (rc || ocv_uv == 0) {
 		rc = adc_based_ocv(chip, &ocv_uv);
@@ -3288,6 +3336,13 @@ static int __devinit pm8921_bms_probe(struct platform_device *pdev)
 	chip->last_reported_soc = -EINVAL;
 	chip->eoc_check_soc = pdata->eoc_check_soc;
 	chip->soc_adjusted = 0;
+	chip->bms_support_wlc = pdata->bms_support_wlc;
+	if (chip->bms_support_wlc) {
+		chip->wlc_term_ua = pdata->wlc_term_ua;
+		chip->wlc_max_voltage_uv = pdata->wlc_max_voltage_uv;
+		chip->wlc_is_plugged = pdata->wlc_is_plugged;
+	}
+	chip->vbat_at_cv = -EINVAL;
 
 	mutex_init(&chip->calib_mutex);
 	INIT_WORK(&chip->calib_hkadc_work, calibrate_hkadc_work);
