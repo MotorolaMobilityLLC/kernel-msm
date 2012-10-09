@@ -18,6 +18,7 @@
 /* MMI OEM Data Structure */
 struct mmi_oem_data {
 	int (*is_factory)(void);
+	int (*is_meter_locked)(void);
 };
 
 /* from board-mmi-gsbi.c */

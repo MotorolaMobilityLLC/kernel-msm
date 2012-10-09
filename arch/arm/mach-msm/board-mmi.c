@@ -68,6 +68,21 @@ static int mmi_boot_mode_is_factory(void)
 	return !strncmp(boot_mode, "factory", BOOT_MODE_MAX_LEN);
 }
 
+#define BATTERY_DATA_MAX_LEN 32
+static char battery_data[BATTERY_DATA_MAX_LEN+1];
+int __init board_battery_data_init(char *s)
+{
+	strlcpy(battery_data, s, BATTERY_DATA_MAX_LEN);
+	battery_data[BATTERY_DATA_MAX_LEN] = '\0';
+	return 1;
+}
+__setup("battery=", board_battery_data_init);
+
+static int mmi_battery_data_is_meter_locked(void)
+{
+	return !strncmp(battery_data, "meter_lock", BATTERY_DATA_MAX_LEN);
+}
+
 static void __init mmi_gpiomux_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	struct device_node *node;
@@ -191,6 +206,7 @@ static void __init mmi_msm8960_init_early(void)
 
 	/* Custom OEM Platform Data */
 	mmi_data.is_factory = mmi_boot_mode_is_factory;
+	mmi_data.is_meter_locked = mmi_battery_data_is_meter_locked;
 	msm8960_oem_funcs.oem_data = &mmi_data;
 }
 
