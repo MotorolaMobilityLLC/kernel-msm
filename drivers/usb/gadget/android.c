@@ -2329,15 +2329,12 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 	gadget->ep0->driver_data = cdev;
 
 	list_for_each_entry(conf, &dev->configs, list_item)
-		if (&conf->usb_config == cdev->config)
-			list_for_each_entry(f,
-					    &conf->enabled_functions,
-					    enabled_list)
-				if (f->ctrlrequest) {
-					value = f->ctrlrequest(f, cdev, c);
-					if (value >= 0)
-						break;
-				}
+		list_for_each_entry(f, &conf->enabled_functions, enabled_list)
+			if (f->ctrlrequest) {
+				value = f->ctrlrequest(f, cdev, c);
+				if (value >= 0)
+					break;
+			}
 
 	/* Special case the accessory function.
 	 * It needs to handle control requests before it is enabled.
