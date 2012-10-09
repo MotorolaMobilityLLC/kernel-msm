@@ -32,9 +32,9 @@ static int arizona_map_irq(struct arizona *arizona, int irq)
 	case ARIZONA_IRQ_GP5_RISE:
 	case ARIZONA_IRQ_JD_FALL:
 	case ARIZONA_IRQ_JD_RISE:
-		return arizona->virq[0] + irq;
+		return arizona->pdata.irq_base + 2 + irq;
 	default:
-		return arizona->virq[1] + irq;
+		return arizona->pdata.irq_base + 2 + ARIZONA_NUM_IRQ + irq;
 	}
 }
 
@@ -125,6 +125,16 @@ static irqreturn_t arizona_irq_thread(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static void arizona_irq_dummy(struct irq_data *data)
+{
+}
+
+static struct irq_chip arizona_irq_chip = {
+	.name			= "arizona",
+	.irq_disable		= arizona_irq_dummy,
+	.irq_enable		= arizona_irq_dummy,
+};
+
 int arizona_irq_init(struct arizona *arizona)
 {
 	int flags = IRQF_ONESHOT;
@@ -182,8 +192,31 @@ int arizona_irq_init(struct arizona *arizona)
 		flags |= IRQF_TRIGGER_LOW;
 	}
 
+        /* set virtual IRQs */
+	if (arizona->pdata.irq_base > 0) {
+	        arizona->virq[0] = arizona->pdata.irq_base;
+	        arizona->virq[1] = arizona->pdata.irq_base + 1;
+		irq_base = arizona->pdata.irq_base + 2;
+	} else {
+		dev_err(arizona->dev, "No irq_base specified\n");
+		return -EINVAL;
+	}
 
-	irq_base = arizona->virq[0];
+	for (i = 0; i < ARRAY_SIZE(arizona->virq); i++) {
+		irq_set_chip_and_handler(arizona->virq[i], &arizona_irq_chip,
+					 handle_edge_irq);
+		irq_set_nested_thread(arizona->virq[i], 1);
+
+                /* ARM needs us to explicitly flag the IRQ as valid
+                 * and will set them noprobe when we do so. */
+#ifdef CONFIG_ARM
+                set_irq_flags(arizona->virq[i], IRQF_VALID);
+#else
+                irq_set_noprobe(arizona->virq[i]);
+#endif
+
+	}
+
 	ret = regmap_add_irq_chip(arizona->regmap,
 				  arizona->virq[0],
 				  IRQF_ONESHOT, irq_base, aod,
@@ -193,10 +226,9 @@ int arizona_irq_init(struct arizona *arizona)
 		goto err_domain;
 	}
 
-	irq_base = arizona->virq[1];
 	ret = regmap_add_irq_chip(arizona->regmap,
 				  arizona->virq[1],
-				  IRQF_ONESHOT, irq_base, irq,
+				  IRQF_ONESHOT, irq_base + ARIZONA_NUM_IRQ, irq,
 				  &arizona->irq_chip);
 	if (ret != 0) {
 		dev_err(arizona->dev, "Failed to add IRQs: %d\n", ret);
