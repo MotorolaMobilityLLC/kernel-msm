@@ -489,7 +489,12 @@ void __init mmi_pm8921_init(struct mmi_oem_data *mmi_data, void *pdata)
 
 	pm8921_pdata->charger_pdata = &pm8921_chg_pdata;
 	pm8921_pdata->bms_pdata = &pm8921_bms_pdata;
-	pm8921_pdata->charger_pdata->factory_mode = mmi_data->is_factory();
+	if (mmi_data->is_factory)
+		pm8921_pdata->charger_pdata->factory_mode =
+			mmi_data->is_factory();
+	if (mmi_data->is_meter_locked)
+		pm8921_pdata->charger_pdata->meter_lock =
+			mmi_data->is_meter_locked();
 
 	load_pm8921_batt_eprom_pdata_from_dt();
 }
