@@ -289,6 +289,7 @@ struct pm8921_chg_chip {
 	unsigned int			ext_warm_i_limit;
 	int				eoc_check_soc;
 	int 				factory_mode;
+	int				meter_lock;
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	unsigned int			step_charge_current;
 	unsigned int			step_charge_voltage;
@@ -1547,6 +1548,9 @@ static int get_prop_batt_capacity(struct pm8921_chg_chip *chip)
 {
 	int percent_soc;
 
+	if (chip->meter_lock)
+		return 50;
+
 	if (!get_prop_batt_present(chip))
 		percent_soc = voltage_based_capacity(chip);
 	else
@@ -1637,6 +1641,9 @@ static int get_prop_batt_status(struct pm8921_chg_chip *chip)
 	int batt_state = POWER_SUPPLY_STATUS_DISCHARGING;
 	int fsm_state = pm_chg_get_fsm_state(chip);
 	int i;
+
+	if (chip->meter_lock)
+		return POWER_SUPPLY_STATUS_UNKNOWN;
 
 	if (chip->ext_psy) {
 		if (chip->ext_charge_done)
@@ -4649,6 +4656,7 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	chip->thermal_mitigation = pdata->thermal_mitigation;
 	chip->thermal_levels = pdata->thermal_levels;
 	chip->factory_mode = pdata->factory_mode;
+	chip->meter_lock = pdata->meter_lock;
 
 	chip->cold_thr = pdata->cold_thr;
 	chip->hot_thr = pdata->hot_thr;
