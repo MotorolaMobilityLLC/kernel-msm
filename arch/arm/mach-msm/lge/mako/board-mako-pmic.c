@@ -23,6 +23,7 @@
 #include <linux/mfd/pm8xxx/pm8921-bms.h>
 #include <linux/power/bq51051b_charger.h>
 #include <linux/platform_data/battery_temp_ctrl.h>
+#include <linux/gpio.h>
 #include <asm/mach-types.h>
 #include <asm/mach/mmc.h>
 #include <mach/msm_bus_board.h>
@@ -352,6 +353,45 @@ static int batt_temp_ctrl_level[] = {
 	-100,
 };
 
+#ifdef CONFIG_WIRELESS_CHARGER
+#define GPIO_WLC_ACTIVE_N PM8921_GPIO_PM_TO_SYS(25)
+static int wireless_charger_is_plugged(void)
+{
+	static bool init_done = 0;
+	int ret = 0;
+
+	if (!init_done) {
+		ret =  gpio_request_one(GPIO_WLC_ACTIVE_N, GPIOF_DIR_IN, "active_n_gpio");
+		if (ret < 0) {
+			pr_err("wlc: active_n gpio request failed\n");
+			return 0;
+		}
+		init_done =1;
+	}
+
+	return !(gpio_get_value(GPIO_WLC_ACTIVE_N));
+}
+
+static struct bq51051b_wlc_platform_data bq51051b_wlc_pmic_pdata = {
+	.chg_state_gpio		= PM8921_GPIO_PM_TO_SYS(26),
+	.active_n_gpio		= GPIO_WLC_ACTIVE_N,
+	.wlc_is_plugged		= wireless_charger_is_plugged
+};
+
+struct platform_device wireless_charger = {
+	.name		= "bq51051b_wlc",
+	.id		= -1,
+	.dev = {
+		.platform_data = &bq51051b_wlc_pmic_pdata,
+	},
+};
+#else
+static int wireless_charger_is_plugged(void)
+{
+	return 0;
+}
+#endif
+
 /*
  * Battery characteristic
  * Typ.2100mAh capacity, Li-Ion Polymer 3.8V
@@ -408,6 +448,10 @@ apq8064_pm8921_bms_pdata __devinitdata = {
 	.adjust_soc_low_threshold  = 25,
 	.chg_term_ua  = CHG_TERM_MA * 1000,
 	.eoc_check_soc  = EOC_CHECK_SOC,
+	.bms_support_wlc  = 1,
+	.wlc_term_ua = 110000,
+	.wlc_max_voltage_uv = 4290000,
+	.wlc_is_plugged  = wireless_charger_is_plugged,
 };
 
 /* battery data */
@@ -604,21 +648,6 @@ static struct msm_ssbi_platform_data apq8064_ssbi_pm8821_pdata __devinitdata = {
 		.platform_data = &apq8064_pm8821_platform_data,
 	},
 };
-
-#ifdef CONFIG_WIRELESS_CHARGER
-static struct bq51051b_wlc_platform_data bq51051b_wlc_pmic_pdata = {
-	.chg_state_gpio		= PM8921_GPIO_PM_TO_SYS(26),
-	.active_n_gpio		= PM8921_GPIO_PM_TO_SYS(25),
-};
-
-struct platform_device wireless_charger = {
-	.name		= "bq51051b_wlc",
-	.id		= -1,
-	.dev = {
-		.platform_data = &bq51051b_wlc_pmic_pdata,
-	},
-};
-#endif
 
 static int batt_temp_charger_enable(void)
 {
