@@ -4320,16 +4320,21 @@ static int con_mode_handler(const char *kmessage,
 static int fwpath_changed_handler(const char *kmessage,
                                  struct kernel_param *kp)
 {
+   int ret_status;
+
    if (!wlan_hdd_inited) {
-      wlan_hdd_inited = 1;
-      return hdd_driver_init();
+      ret_status = hdd_driver_init();
+      wlan_hdd_inited = ret_status ? 0 : 1;
+      return ret_status;
    }
 
    hdd_driver_exit();
    
    msleep(200);
    
-   return hdd_driver_init();
+   ret_status = hdd_driver_init();
+   wlan_hdd_inited = ret_status ? 0 : 1;
+   return ret_status;
 }
 
 /**---------------------------------------------------------------------------
