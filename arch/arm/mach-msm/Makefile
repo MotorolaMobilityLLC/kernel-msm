@@ -314,6 +314,7 @@ obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi-i2c.o
 obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi-keypad.o
 obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi-pmic.o
 obj-$(CONFIG_MACH_MSM8960_MMI) += board-mmi-dsp.o
+obj-$(CONFIG_MACH_MSM8960_MMI) += mmi-bms-batterydata.o
 
 CFLAGS_msm_vibrator.o += -Idrivers/staging/android
 CFLAGS_board-9615.o += -Idrivers/usb/gadget
