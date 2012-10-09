@@ -29,20 +29,6 @@ struct bq51051b_wlc_platform_data {
 	unsigned int chg_state_gpio;
 	unsigned int active_n_gpio;
 	unsigned int wireless_charging;
+	int (*wlc_is_plugged)(void);
 };
-
-/**
- * bq51051b_wireless_is_plugged - is wireless charger in
- *
- * If wireless charger is disconnect or charging complete,
- * this will return false
- */
-#ifdef CONFIG_WIRELESS_CHARGER
-int bq51051b_wireless_plugged_in(void);
-#else
-static inline int bq51051b_wireless_plugged_in(void)
-{
-	return 0;
-}
-#endif
 #endif
