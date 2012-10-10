@@ -14,10 +14,12 @@
 #include <asm/mach-types.h>
 #include <asm/mach/map.h>
 #include <linux/platform_device.h>
+#include <linux/power/mmi-battery.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/w1-gpio.h>
 #include <mach/devtree_util.h>
+#include <mach/mmi-battery-data.h>
 #include "board-8960.h"
 #include "board-mmi.h"
 #include "devices-mmi.h"
@@ -345,12 +347,148 @@ out:
 	return;
 }
 
+static int pm8921_therm_mitigation[] = {
+	1100,
+	700,
+	600,
+	325,
+};
+
+static int battery_timeout;
+
+static int find_mmi_battery(struct mmi_battery_cell *cell_info)
+{
+	int i;
+
+	if (cell_info->cell_id != OLD_EPROM_CELL_ID) {
+		/* Search Based off Cell ID */
+		for (i = (MMI_BATTERY_DEFAULT + 1); i < MMI_BATTERY_NUM; i++) {
+			if (cell_info->cell_id ==
+			    mmi_batts.cell_list[i]->cell_id) {
+				pr_info("Battery Cell ID Found: %d\n", i);
+				return i;
+			}
+		}
+	}
+
+	/* Search based off Typical Values */
+	for (i = (MMI_BATTERY_DEFAULT + 1); i < MMI_BATTERY_NUM; i++) {
+		if (cell_info->capacity == mmi_batts.cell_list[i]->capacity) {
+			if (cell_info->peak_voltage ==
+			    mmi_batts.cell_list[i]->peak_voltage) {
+				if (cell_info->dc_impedance ==
+				   mmi_batts.cell_list[i]->dc_impedance) {
+					pr_info("Battery Match Found: %d\n", i);
+					return i;
+				}
+			}
+		}
+	}
+
+	pr_err("Battery Match Not Found!\n");
+	return MMI_BATTERY_DEFAULT;
+}
+
+static int64_t read_mmi_battery_chrg(int64_t battery_id,
+			      struct pm8921_charger_battery_data *data)
+{
+	struct mmi_battery_cell *cell_info;
+	int i = 0;
+	int ret;
+	size_t len = sizeof(struct pm8921_charger_battery_data);
+
+	for (i = 0; i < 50; i++) {
+		if (battery_timeout)
+			break;
+		cell_info = mmi_battery_get_info();
+		if (cell_info) {
+			if (cell_info->batt_valid != MMI_BATTERY_UNKNOWN) {
+				ret = find_mmi_battery(cell_info);
+				memcpy(data, mmi_batts.chrg_list[ret], len);
+				return (int64_t) cell_info->batt_valid;
+			}
+		}
+		msleep(500);
+	}
+
+	battery_timeout = 1;
+	memcpy(data, mmi_batts.chrg_list[MMI_BATTERY_DEFAULT], len);
+	return 0;
+}
+
+static int64_t read_mmi_battery_bms(int64_t battery_id,
+			     struct pm8921_bms_battery_data *data)
+{
+	struct mmi_battery_cell *cell_info;
+	int i = 0;
+	int ret;
+	size_t len = sizeof(struct pm8921_bms_battery_data);
+
+	for (i = 0; i < 50; i++) {
+		if (battery_timeout)
+			break;
+		cell_info = mmi_battery_get_info();
+		if (cell_info) {
+			if (cell_info->batt_valid != MMI_BATTERY_UNKNOWN) {
+				ret = find_mmi_battery(cell_info);
+				memcpy(data, mmi_batts.bms_list[ret], len);
+				return (int64_t) cell_info->batt_valid;
+			}
+		}
+		msleep(500);
+	}
+
+	battery_timeout = 1;
+	memcpy(data, mmi_batts.bms_list[MMI_BATTERY_DEFAULT], len);
+	return 0;
+}
+
+#define MAX_VOLTAGE_MV		4350
+static struct pm8921_charger_platform_data pm8921_chg_pdata __devinitdata = {
+	.safety_time		= 512,
+	.update_time		= 60000,
+	.ttrkl_time		= 64,
+	.max_voltage		= MAX_VOLTAGE_MV,
+	.min_voltage		= 3200,
+	.resume_voltage_delta	= 100,
+	.term_current		= 100,
+	.cool_temp		= 0,
+	.warm_temp		= 45,
+	.temp_check_period	= 1,
+	.max_bat_chg_current	= 2000,
+	.cool_bat_chg_current	= 1500,
+	.warm_bat_chg_current	= 1500,
+	.cool_bat_voltage	= 3800,
+	.warm_bat_voltage	= 3800,
+	.batt_id_min		= 0,
+	.batt_id_max		= 1,
+	.thermal_mitigation	= pm8921_therm_mitigation,
+	.thermal_levels		= ARRAY_SIZE(pm8921_therm_mitigation),
+	.cold_thr		= PM_SMBC_BATT_TEMP_COLD_THR__HIGH,
+	.hot_thr		= PM_SMBC_BATT_TEMP_HOT_THR__LOW,
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	.get_batt_info=		read_mmi_battery_chrg,
+#endif
+};
+
+static struct pm8921_bms_platform_data pm8921_bms_pdata __devinitdata = {
+	.r_sense		= 10,
+	.i_test			= 0,
+	.v_cutoff		= 3200,
+	.max_voltage_uv		= MAX_VOLTAGE_MV * 1000,
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	.get_batt_info=		read_mmi_battery_bms,
+#endif
+};
+
 void __init mmi_pm8921_init(struct mmi_oem_data *mmi_data, void *pdata)
 {
 	struct pm8921_platform_data *pm8921_pdata;
 
 	pm8921_pdata = (struct pm8921_platform_data *) pdata;
 
+	pm8921_pdata->charger_pdata = &pm8921_chg_pdata;
+	pm8921_pdata->bms_pdata = &pm8921_bms_pdata;
 	pm8921_pdata->charger_pdata->factory_mode = mmi_data->is_factory();
 
 	load_pm8921_batt_eprom_pdata_from_dt();
