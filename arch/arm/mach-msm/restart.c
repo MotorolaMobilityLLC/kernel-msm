@@ -273,6 +273,8 @@ void msm_restart(char mode, const char *cmd)
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
+	} else {
+		__raw_writel(0x77665501, restart_reason);
 	}
 #ifdef CONFIG_LGE_CRASH_HANDLER
 	if (in_panic == 1)
