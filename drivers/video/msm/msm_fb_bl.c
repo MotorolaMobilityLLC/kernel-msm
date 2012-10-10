@@ -57,9 +57,10 @@ void msm_fb_config_backlight(struct msm_fb_data_type *mfd)
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
 
 	if ((pdata) && (pdata->set_backlight)) {
-		snprintf(name, sizeof(name), "msmfb_bl%d", mfd->index);
+		snprintf(name, sizeof(name), "lcd-backlight");
 		props.max_brightness = FB_BACKLIGHT_LEVELS - 1;
 		props.brightness = FB_BACKLIGHT_LEVELS - 1;
+		props.type = BACKLIGHT_RAW;
 		pbd =
 		    backlight_device_register(name, fbi->dev, mfd,
 					      &msm_fb_bl_ops, &props);
