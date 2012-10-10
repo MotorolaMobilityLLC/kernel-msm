@@ -199,7 +199,7 @@ int __init lge_boot_reason(char *s)
 	if (*s == '=')
 		s++;
 	n = snprintf(bootreason, sizeof(bootreason),
-		 "Boot into:\n"
+		 "Boot info:\n"
 		 "Last boot reason: %s\n", s);
 	bootreason[n] = '\0';
 	return 1;
