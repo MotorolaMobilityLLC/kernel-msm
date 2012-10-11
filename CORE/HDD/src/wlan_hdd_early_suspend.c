@@ -97,6 +97,7 @@
 #include "wlan_hdd_power.h"
 #include "wlan_hdd_packet_filtering.h"
 
+#define HDD_SSR_BRING_UP_TIME 10000
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static struct early_suspend wlan_early_suspend;
 #endif
@@ -120,6 +121,8 @@ extern tVOS_CON_MODE hdd_get_conparam ( void );
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 extern void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set, v_U8_t sessionId);
 #endif
+static struct timer_list ssr_timer;
+static bool ssr_timer_started;
 
 //Callback invoked by PMC to report status of standby request
 void hdd_suspend_standby_cbk (void *callbackContext, eHalStatus status)
@@ -1921,6 +1924,32 @@ void unregister_wlan_suspend(void)
 }
 #endif
 
+static void hdd_ssr_timer_init(void)
+{
+    init_timer(&ssr_timer);
+}
+static void hdd_ssr_timer_del(void)
+{
+    del_timer(&ssr_timer);
+    ssr_timer_started = false;
+}
+static void hdd_ssr_timer_cb(unsigned long data)
+{
+    hddLog(VOS_TRACE_LEVEL_FATAL, "%s: HDD SSR timer expired", __func__);
+    VOS_BUG(0);
+}
+static void hdd_ssr_timer_start(int msec)
+{
+    if(ssr_timer_started)
+    {
+        hddLog(VOS_TRACE_LEVEL_FATAL, "%s: trying to start SSR timer when it's running"
+                ,__func__);
+    }
+    ssr_timer.expires = jiffies + msecs_to_jiffies(msec);
+    ssr_timer.function = hdd_ssr_timer_cb;
+    add_timer(&ssr_timer);
+    ssr_timer_started = true;
+}
 /* the HDD interface to WLAN driver shutdown,
  * the primary shutdown function in SSR
  */
@@ -1932,6 +1961,10 @@ VOS_STATUS hdd_wlan_shutdown(void)
    pVosSchedContext vosSchedContext = NULL;
 
    hddLog(VOS_TRACE_LEVEL_FATAL, "%s: WLAN driver shutting down! ",__func__);
+
+   /* if re-init never happens, then do SSR1 */
+   hdd_ssr_timer_init();
+   hdd_ssr_timer_start(HDD_SSR_BRING_UP_TIME);
 
    /* Get the global VOSS context. */
    pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
@@ -2085,6 +2118,7 @@ VOS_STATUS hdd_wlan_re_init(void)
    WLANBAP_ConfigType btAmpConfig;
 #endif
 
+   hdd_ssr_timer_del();
    hdd_prevent_suspend();
    /* Re-open VOSS, it is a re-open b'se control transport was never closed. */
    vosStatus = vos_open(&pVosContext, 0);
