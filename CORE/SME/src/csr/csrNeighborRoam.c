@@ -1322,21 +1322,11 @@ static eHalStatus csrNeighborRoamScanRequestCallback(tHalHandle halHandle, void 
                 }
                 else
                 {
-                    /* Restart the timer even in the event that we didn't obtain any candidates. */
-                    /* (We used to reset the lookup threshold, in this event.  No longer.) */
-                    hstatus = palTimerStart(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer, 
-                                pNeighborRoamInfo->cfgParams.neighborScanPeriod * PAL_TIMER_TO_MS_UNIT, 
-                                eANI_BOOLEAN_FALSE);
-    
-                    if (eHAL_STATUS_SUCCESS != hstatus)
-                    {
-                        /* Timer start failed.. Should we ASSERT here??? */
-                        smsLog(pMac, LOGE, FL("Neighbor scan PAL Timer start failed, status = %d, Ignoring state transition"), status);
-                        return eHAL_STATUS_FAILURE;
-                    }
+                    NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("No candidate found after scanning in state %d.. "), pNeighborRoamInfo->neighborRoamState);
+                    /* Handle it appropriately */
+                    csrNeighborRoamHandleEmptyScanResult(pMac);
                 }
                 break;
-
 #ifdef WLAN_FEATURE_VOWIFI_11R                
             case eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN:
                 if (!tempVal)
