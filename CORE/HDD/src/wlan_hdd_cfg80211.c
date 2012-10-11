@@ -1704,18 +1704,6 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
     hdd_adapter_t  *staAdapter = NULL;
     VOS_STATUS status = 0;
 
-    staAdapter = hdd_get_adapter(pAdapter->pHddCtx, WLAN_HDD_INFRA_STATION);
-
-    if (!staAdapter)
-    {
-        staAdapter = hdd_get_adapter(pAdapter->pHddCtx, WLAN_HDD_P2P_CLIENT);
-    }
-
-    if (staAdapter != NULL)
-    {
-        pScanInfo =  &staAdapter->scan_info;
-    }
-
     ENTER();
 
     if (NULL == pAdapter)
@@ -1724,6 +1712,29 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
                    "%s: HDD adapter context is Null", __FUNCTION__);
         return -ENODEV;
     }
+
+    pHddCtx  =  (hdd_context_t*)pAdapter->pHddCtx;
+    if (NULL == pHddCtx)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                "%s: HDD context is Null", __FUNCTION__);
+        return -ENODEV;
+    }
+
+    staAdapter = hdd_get_adapter(pAdapter->pHddCtx, WLAN_HDD_INFRA_STATION);
+    if (NULL == staAdapter)
+    {
+        staAdapter = hdd_get_adapter(pAdapter->pHddCtx, WLAN_HDD_P2P_CLIENT);
+        if (NULL == staAdapter)
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                    "%s: HDD adapter context is Null", __FUNCTION__);
+            return -ENODEV;
+        }
+    }
+
+    pScanInfo =  &pHddCtx->scan_info;
+
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
@@ -3463,7 +3474,8 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
     struct net_device *dev = (struct net_device *) pContext;
     //struct wireless_dev *wdev = dev->ieee80211_ptr;    
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
-    hdd_scaninfo_t *pScanInfo = &pAdapter->scan_info;
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    hdd_scaninfo_t *pScanInfo = &pHddCtx->scan_info;
     struct cfg80211_scan_request *req = NULL;
     int ret = 0;
 
@@ -3508,16 +3520,16 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
 
     /* If any client wait scan result through WEXT
      * send scan done event to client */
-    if (pAdapter->scan_info.waitScanResult)
+    if (pHddCtx->scan_info.waitScanResult)
     {
         /* The other scan request waiting for current scan finish
          * Send event to notify current scan finished */
-        if(WEXT_SCAN_PENDING_DELAY == pAdapter->scan_info.scan_pending_option)
+        if(WEXT_SCAN_PENDING_DELAY == pHddCtx->scan_info.scan_pending_option)
         {
-            vos_event_set(&pAdapter->scan_info.scan_finished_event);
+            vos_event_set(&pHddCtx->scan_info.scan_finished_event);
         }
         /* Send notify to WEXT client */
-        else if(WEXT_SCAN_PENDING_PIGGYBACK == pAdapter->scan_info.scan_pending_option)
+        else if(WEXT_SCAN_PENDING_PIGGYBACK == pHddCtx->scan_info.scan_pending_option)
         {
             struct net_device *dev = pAdapter->dev;
             union iwreq_data wrqu;
@@ -3530,7 +3542,7 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
             wireless_send_event(dev, we_event, &wrqu, msg);
         }
     }
-    pAdapter->scan_info.waitScanResult = FALSE;
+    pHddCtx->scan_info.waitScanResult = FALSE;
 
     /* Get the Scan Req */
     req = pAdapter->request;
@@ -3599,7 +3611,7 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
     tANI_U8 *channelList = NULL, i;
     v_U32_t scanId = 0;
     int status = 0;
-    hdd_scaninfo_t *pScanInfo = &pAdapter->scan_info;
+    hdd_scaninfo_t *pScanInfo = &pHddCtx->scan_info;
 #ifdef WLAN_FEATURE_P2P
     v_U8_t* pP2pIe = NULL;
 #endif

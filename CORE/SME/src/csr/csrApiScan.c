@@ -779,7 +779,7 @@ eHalStatus csrScanRequestResult(tpAniSirGlobal pMac)
             pScanCmd->u.scanCmd.pContext = NULL;
             pScanCmd->u.scanCmd.reason = eCsrScanGetResult;
             //Need to make the following atomic
-            pScanCmd->u.scanCmd.scanID = pMac->scan.nextScanID++; //let it wrap around
+            pScanCmd->u.scanCmd.scanID = pMac->scan.nextScanID; //let it wrap around
             status = csrQueueSmeCommand(pMac, pScanCmd, eANI_BOOLEAN_FALSE);
             if( !HAL_STATUS_SUCCESS( status ) )
             {

@@ -180,7 +180,8 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
                                          void *ndev)
 {
    struct net_device *dev = ndev;
-   hdd_adapter_t *pAdapter = NULL;
+   hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+   hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
 #ifdef WLAN_BTAMP_FEATURE
    VOS_STATUS status;
    hdd_context_t *pHddCtx;
@@ -197,7 +198,6 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
        return NOTIFY_DONE;
 #endif
 
-   pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
 
    if(NULL == pAdapter)
    {
@@ -227,7 +227,7 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
         break;
 
    case NETDEV_GOING_DOWN:
-        if( pAdapter->scan_info.mScanPending != FALSE )
+        if( pHddCtx->scan_info.mScanPending != FALSE )
         { 
            int result;
            INIT_COMPLETION(pAdapter->abortscan_event_var);
@@ -249,7 +249,6 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
         }
 #ifdef WLAN_BTAMP_FEATURE
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"%s: disabling AMP", __FUNCTION__);
-        pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
         status = WLANBAP_StopAmp();
         if(VOS_STATUS_SUCCESS != status )
         {
@@ -1132,8 +1131,6 @@ hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMacAddr ma
 #endif
       init_completion(&pHddCtx->mc_sus_event_var);
       init_completion(&pHddCtx->tx_sus_event_var);
-
-      init_completion(&pAdapter->scan_info.scan_req_completion_event);
 
       pAdapter->isLinkUpSvcNeeded = FALSE; 
       pAdapter->higherDtimTransition = eANI_BOOLEAN_TRUE;
@@ -2084,8 +2081,8 @@ VOS_STATUS hdd_start_all_adapters( hdd_context_t *pHddCtx )
             hdd_init_station_mode(pAdapter);
             /* Open the gates for HDD to receive Wext commands */
             pAdapter->isLinkUpSvcNeeded = FALSE; 
-            pAdapter->scan_info.mScanPending = FALSE;
-            pAdapter->scan_info.waitScanResult = FALSE;
+            pHddCtx->scan_info.mScanPending = FALSE;
+            pHddCtx->scan_info.waitScanResult = FALSE;
 
             //Trigger the initial scan
             hdd_wlan_initial_scan(pAdapter);
@@ -3403,7 +3400,7 @@ int hdd_wlan_startup(struct device *dev )
    init_completion(&pHddCtx->full_pwr_comp_var);
    init_completion(&pHddCtx->standby_comp_var);
    init_completion(&pHddCtx->req_bmps_comp_var);
-
+   init_completion(&pHddCtx->scan_info.scan_req_completion_event);
 
    hdd_list_init( &pHddCtx->hddAdapters, MAX_NUMBER_OF_ADAPTERS );
 
@@ -3876,8 +3873,8 @@ int hdd_wlan_startup(struct device *dev )
            "qcom_rx_wakelock");
 #endif
 
-   vos_event_init(&pAdapter->scan_info.scan_finished_event);
-   pAdapter->scan_info.scan_pending_option = WEXT_SCAN_PENDING_GIVEUP;
+   vos_event_init(&pHddCtx->scan_info.scan_finished_event);
+   pHddCtx->scan_info.scan_pending_option = WEXT_SCAN_PENDING_GIVEUP;
 
    vos_set_load_unload_in_progress(VOS_MODULE_ID_VOSS, FALSE);
    hdd_allow_suspend();
