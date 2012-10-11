@@ -50,7 +50,7 @@ static struct clk *mdp_pclk;
 static struct clk *mdp_lut_clk;
 int mdp_rev;
 int mdp_iommu_split_domain;
-u32 mdp_max_clk = 266670000;
+u32 mdp_max_clk = 266667000;
 
 static struct platform_device *mdp_init_pdev;
 static struct regulator *footswitch;
