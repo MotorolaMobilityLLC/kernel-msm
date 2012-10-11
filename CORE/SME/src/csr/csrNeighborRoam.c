@@ -729,8 +729,12 @@ void csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosStatus)
     csrRoamDequeuePreauth(pMac);
 
     // We can receive it in these 2 states.
-    VOS_ASSERT((pNeighborRoamInfo->neighborRoamState == eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING) ||
-        (pNeighborRoamInfo->neighborRoamState == eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN));
+    if (!((pNeighborRoamInfo->neighborRoamState == eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING) ||
+        (pNeighborRoamInfo->neighborRoamState == eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN)))
+    {
+        smsLog(pMac, LOGE, FL("Preauth response received in wrong state = %d\n"), 
+                pNeighborRoamInfo->neighborRoamState);
+    }
 
     if ((pNeighborRoamInfo->neighborRoamState != eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING) &&
         (pNeighborRoamInfo->neighborRoamState != eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN))
