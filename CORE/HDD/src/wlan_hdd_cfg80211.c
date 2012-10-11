@@ -3561,16 +3561,16 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
     req->n_channels = 0;
     req->ie = 0;
 
-    /*
-     * cfg80211_scan_done informing NL80211 about completion
-     * of scanning
-     */
-    cfg80211_scan_done(req, false);
     complete(&pAdapter->abortscan_event_var);
     pAdapter->request = NULL;
     /* Scan is no longer pending */
     pScanInfo->mScanPending = VOS_FALSE;
 
+    /*
+     * cfg80211_scan_done informing NL80211 about completion
+     * of scanning
+     */
+    cfg80211_scan_done(req, false);
 #ifdef WLAN_FEATURE_P2P
     /* Flush out scan result after p2p_serach is done */
     if(pScanInfo->flushP2pScanResults)
