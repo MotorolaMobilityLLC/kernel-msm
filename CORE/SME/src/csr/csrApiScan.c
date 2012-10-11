@@ -4713,6 +4713,11 @@ eHalStatus csrSendMBScanReq( tpAniSirGlobal pMac, tANI_U16 sessionId,
             pMsg->skipDfsChnlInP2pSearch = pScanReq->skipDfsChnlInP2pSearch;
 #endif
 
+            if (pScanReq->requestType == eCSR_SCAN_HO_BG_SCAN) 
+            {
+                pMsg->backgroundScanMode = eSIR_ROAMING_SCAN;
+            } 
+
         }while(0);
         if(HAL_STATUS_SUCCESS(status))
         {
