@@ -152,6 +152,7 @@ static struct platform_device *mmi_devices[] __initdata = {
 static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	platform_add_devices(mmi_devices, ARRAY_SIZE(mmi_devices));
+	mmi_audio_dsp_init();
 }
 
 static void __init mmi_disp_init(struct msm8960_oem_init_ptrs *oem_ptr,
