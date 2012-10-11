@@ -261,6 +261,7 @@ void csrRoamJoinRetryTimerHandler(void *pv);
 extern void SysProcessMmhMsg(tpAniSirGlobal pMac, tSirMsgQ* pMsg);
 extern void btampEstablishLogLinkHdlr(void* pMsg);
 static void csrSerDesUnpackDiassocRsp(tANI_U8 *pBuf, tSirSmeDisassocRsp *pRsp);
+void csrReinitPreauthCmd(tpAniSirGlobal pMac, tSmeCmd *pCommand);
 
 //Initialize global variables
 static void csrRoamInitGlobals(tpAniSirGlobal pMac)
@@ -740,6 +741,12 @@ static eHalStatus csrRoamFreeConnectedInfo( tpAniSirGlobal pMac, tCsrRoamConnect
 
     
                 
+                
+void csrReleaseCommandPreauth(tpAniSirGlobal pMac, tSmeCmd *pCommand)
+{
+    csrReinitPreauthCmd(pMac, pCommand);
+    csrReleaseCommand( pMac, pCommand );
+}
                 
 void csrReleaseCommandRoam(tpAniSirGlobal pMac, tSmeCmd *pCommand)
 {
@@ -3944,6 +3951,14 @@ eHalStatus csrRoamProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
        status = csrSendMBDeauthReqMsg( pMac, sessionId, pCommand->u.roamCmd.peerMac, 
                      pCommand->u.roamCmd.reason);
        break;
+#if 1
+       /*Varun*/
+    case eCsrPerformPreauth:
+        smsLog(pMac, LOGE, FL("Attempting FT PreAuth Req \n"));
+        status = csrRoamIssueFTPreauthReq(pMac, sessionId, 
+                pCommand->u.roamCmd.pLastRoamBss);
+       break;
+#endif
 
     default:
         csrRoamStateChange( pMac, eCSR_ROAMING_STATE_JOINING, sessionId );
@@ -3967,6 +3982,14 @@ eHalStatus csrRoamProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
         break;
     }
     return (status);
+}
+
+void csrReinitPreauthCmd(tpAniSirGlobal pMac, tSmeCmd *pCommand) 
+{
+    pCommand->u.roamCmd.pLastRoamBss = NULL;
+    pCommand->u.roamCmd.pRoamBssEntry = NULL;
+    //Because u.roamCmd is union and share with scanCmd and StatusChange
+    palZeroMemory(pMac->hHdd, &pCommand->u.roamCmd, sizeof(tRoamCmd));
 }
 
 void csrReinitRoamCmd(tpAniSirGlobal pMac, tSmeCmd *pCommand) 
@@ -5472,6 +5495,74 @@ eHalStatus csrRoamIssueReassoc(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoam
     }
     }
     return (status);
+}
+
+eHalStatus csrRoamEnqueuePreauth(tpAniSirGlobal pMac, tANI_U32 sessionId, tpSirBssDescription pBssDescription,
+                                eCsrRoamReason reason, tANI_BOOLEAN fImmediate)
+//                               , eCsrRoamReason reason, tANI_U32 roamId, tANI_BOOLEAN fImediate)
+{
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tSmeCmd *pCommand;
+    
+    pCommand = csrGetCommandBuffer(pMac);
+    if(NULL == pCommand)
+    {
+        smsLog( pMac, LOGE, FL(" fail to get command buffer\n") );
+        status = eHAL_STATUS_RESOURCES;
+    }
+    else
+    {
+        if(pBssDescription)
+        {
+            //copy over the parameters we need later
+            pCommand->command = eSmeCommandRoam;
+            pCommand->sessionId = (tANI_U8)sessionId;
+            pCommand->u.roamCmd.roamReason = reason;
+            //this is the important parameter
+            //in this case we are using this field for the "next" BSS 
+            pCommand->u.roamCmd.pLastRoamBss = pBssDescription;
+            status = csrQueueSmeCommand(pMac, pCommand, fImmediate);
+            if( !HAL_STATUS_SUCCESS( status ) )
+            {
+                smsLog( pMac, LOGE, FL(" fail to enqueue preauth command, status = %d\n"), status );
+                csrReleaseCommandPreauth( pMac, pCommand );
+            }
+        }
+        else
+        {
+           //Return failure
+           status = eHAL_STATUS_RESOURCES;
+        }
+    }
+    return (status);
+}
+
+eHalStatus csrRoamDequeuePreauth(tpAniSirGlobal pMac)
+{
+    tListElem *pEntry;
+    tSmeCmd *pCommand;
+    pEntry = csrLLPeekHead( &pMac->sme.smeCmdActiveList, LL_ACCESS_LOCK );
+    if ( pEntry )
+    {
+        pCommand = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
+        if ( (eSmeCommandRoam == pCommand->command) && 
+                (eCsrPerformPreauth == pCommand->u.roamCmd.roamReason))
+        {             
+            smsLog( pMac, LOGE, FL("DQ-Command = %d, Reason = %d \n"), 
+                    pCommand->command, pCommand->u.roamCmd.roamReason);
+            if (csrLLRemoveEntry( &pMac->sme.smeCmdActiveList, pEntry, LL_ACCESS_LOCK )) {
+                csrReleaseCommandPreauth( pMac, pCommand );
+            }
+        } else  {
+            smsLog( pMac, LOGE, FL("Command = %d, Reason = %d \n"), 
+                    pCommand->command, pCommand->u.roamCmd.roamReason);
+        }
+    }
+    else {
+        smsLog( pMac, LOGE, FL("pEntry NULL for eWNI_SME_FT_PRE_AUTH_RSP\n"));
+    }
+    smeProcessPendingQueue( pMac );
+    return eHAL_STATUS_SUCCESS;
 }
 
 eHalStatus csrRoamConnectWithBSSList(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfile *pProfile, 

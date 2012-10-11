@@ -259,6 +259,7 @@ VOS_STATUS csrNeighborRoamReassocIndCallback(v_PVOID_t pAdapter,
     
     NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Deregistering UP event neighbor lookup callback with TL. RSSI = %d"), pNeighborRoamInfo->cfgParams.neighborLookupThreshold * (-1));
     /* Deregister reassoc callback. Ignore return status */
+    /*Varun TODO*/
     vosStatus = WLANTL_DeregRSSIIndicationCB(pMac->roam.gVosContext, (v_S7_t)pNeighborRoamInfo->cfgParams.neighborLookupThreshold * (-1),
                                                         WLANTL_HO_THRESHOLD_DOWN, 
                                                         csrNeighborRoamNeighborLookupUPCallback,
@@ -669,7 +670,8 @@ static eHalStatus csrNeighborRoamIssuePreauthReq(tpAniSirGlobal pMac)
     }
     else
     {
-        status = csrRoamIssueFTPreauthReq(pMac, pNeighborRoamInfo->csrSessionId, pNeighborBssNode->pBssDescription); 
+        status = csrRoamEnqueuePreauth(pMac, pNeighborRoamInfo->csrSessionId, pNeighborBssNode->pBssDescription,
+                eCsrPerformPreauth, eANI_BOOLEAN_TRUE);
         if (eHAL_STATUS_SUCCESS != status)
         {
             smsLog(pMac, LOGE, FL("Send Preauth request to PE failed with status %d\n"), status);
@@ -684,7 +686,7 @@ static eHalStatus csrNeighborRoamIssuePreauthReq(tpAniSirGlobal pMac)
     
     /* Transition the state to preauthenticating */
     CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING)
-    
+#if 0    
     /* Start the preauth rsp timer */
     status = palTimerStart(pMac->hHdd, pNeighborRoamInfo->FTRoamInfo.preAuthRspWaitTimer, 
                    CSR_NEIGHBOR_ROAM_PREAUTH_RSP_WAIT_MULTIPLIER * pNeighborRoamInfo->cfgParams.neighborScanPeriod * PAL_TIMER_TO_MS_UNIT,
@@ -694,7 +696,7 @@ static eHalStatus csrNeighborRoamIssuePreauthReq(tpAniSirGlobal pMac)
         smsLog(pMac, LOGE, FL("Preauth response wait timer start failed with status %d\n"), status);
         return status;
     }
-
+#endif
     
     return status;
 }
@@ -721,6 +723,8 @@ void csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosStatus)
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     eHalStatus  status = eHAL_STATUS_SUCCESS;
     tpCsrNeighborRoamBSSInfo pPreauthRspNode = NULL;
+    
+    csrRoamDequeuePreauth(pMac);
 
     // We can receive it in these 2 states.
     VOS_ASSERT((pNeighborRoamInfo->neighborRoamState == eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING) ||
@@ -736,8 +740,10 @@ void csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosStatus)
 
     if (VOS_STATUS_E_TIMEOUT != vosStatus)
     {
+#if 0
         /* This means we got the response from PE. Hence stop the timer */
         status = palTimerStop(pMac->hHdd, pNeighborRoamInfo->FTRoamInfo.preAuthRspWaitTimer);
+#endif
         pNeighborRoamInfo->FTRoamInfo.preauthRspPending = eANI_BOOLEAN_FALSE;
     }
 
