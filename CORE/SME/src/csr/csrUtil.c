@@ -2422,7 +2422,7 @@ tANI_BOOLEAN csrGetPhyModeInUse( eCsrPhyMode phyModeIn, eCsrPhyMode bssPhyMode, 
     if ( fMatch && pCfgDot11ModeToUse )
     {
 #ifdef WLAN_FEATURE_11AC
-        if(cfgDot11Mode == eCSR_CFG_DOT11_MODE_11AC && !WDA_getFwWlanFeatCaps(DOT11AC))
+        if(cfgDot11Mode == eCSR_CFG_DOT11_MODE_11AC && (!IS_FEATURE_SUPPORTED_BY_FW(DOT11AC)))
         {
             *pCfgDot11ModeToUse = eCSR_CFG_DOT11_MODE_11N;
         }
@@ -2557,15 +2557,15 @@ eCsrCfgDot11Mode csrFindBestPhyMode( tpAniSirGlobal pMac, tANI_U32 phyMode )
 
 
 #ifdef WLAN_FEATURE_11AC
-    if ( (0 == phyMode) || (eCSR_DOT11_MODE_AUTO & phyMode) || (eCSR_DOT11_MODE_TAURUS & phyMode)
-       ||(eCSR_DOT11_MODE_11ac & phyMode))
+    if ((0 == phyMode) || ((eCSR_DOT11_MODE_AUTO & phyMode) && (IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))) 
+           || ((eCSR_DOT11_MODE_11ac & phyMode) && (IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))))
     {
         cfgDot11ModeToUse = eCSR_CFG_DOT11_MODE_11AC;
     }
     else
 #endif
 
-    if ( (0 == phyMode) || (eCSR_DOT11_MODE_AUTO & phyMode) || (eCSR_DOT11_MODE_TAURUS & phyMode))
+    if ((0 == phyMode) || (eCSR_DOT11_MODE_AUTO & phyMode))
     {
         cfgDot11ModeToUse = eCSR_CFG_DOT11_MODE_11N;
     }
@@ -5803,13 +5803,13 @@ eCsrCfgDot11Mode csrGetCfgDot11ModeFromCsrPhyMode(eCsrPhyMode phyMode, tANI_BOOL
 
 #ifdef WLAN_FEATURE_11AC
     case eCSR_DOT11_MODE_11ac:
-	if (!WDA_getFwWlanFeatCaps(DOT11AC))
+	if (IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))
 	{
-		cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
+		cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC;
 	}
 	else
 	{
-		cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC;
+		cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
 	}
         break;
     case eCSR_DOT11_MODE_11ac_ONLY:
