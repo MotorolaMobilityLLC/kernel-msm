@@ -399,7 +399,9 @@ void csrNeighborRoamResetConnectedStateControlInfo(tpAniSirGlobal pMac)
     pNeighborRoamInfo->FTRoamInfo.numBssFromNeighborReport = 0;
     pNeighborRoamInfo->FTRoamInfo.preauthRspPending = 0;
     vos_mem_zero(pNeighborRoamInfo->FTRoamInfo.neighboReportBssInfo, sizeof(tCsrNeighborReportBssInfo) * MAX_BSS_IN_NEIGHBOR_RPT);
+#if 0    
     palTimerStop(pMac->hHdd, pNeighborRoamInfo->FTRoamInfo.preAuthRspWaitTimer);
+#endif    
 #endif
 
 }
@@ -733,7 +735,7 @@ void csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosStatus)
     if ((pNeighborRoamInfo->neighborRoamState != eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING) &&
         (pNeighborRoamInfo->neighborRoamState != eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN))
     {
-        NEIGHBOR_ROAM_DEBUG(pMac, LOGW, FL("Preauth response received in state %\n"), 
+        NEIGHBOR_ROAM_DEBUG(pMac, LOGW, FL("Preauth response received in state %d\n"), 
             pNeighborRoamInfo->neighborRoamState);
         return;
     }
