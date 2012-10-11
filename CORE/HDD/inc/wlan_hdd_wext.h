@@ -205,6 +205,8 @@ typedef enum
 #define P2P_OUI_TYPE_SIZE  4
 #endif
 
+#define HS20_OUI_TYPE   "\x50\x6f\x9a\x10"
+#define HS20_OUI_TYPE_SIZE  4
 
 #ifdef WLAN_FEATURE_WFD
 #define WFD_OUI_TYPE   "\x50\x6f\x9a\x0a"

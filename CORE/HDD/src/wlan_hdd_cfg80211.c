@@ -4281,7 +4281,7 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
         switch ( elementId ) 
         {
             case DOT11F_EID_WPA: 
-                if ((2+4) > eLen) /* should have at least OUI */
+                if (4 > eLen) /* should have at least OUI which is 4 bytes so extra 2 bytes not needed */
                 {
                     hddLog(VOS_TRACE_LEVEL_ERROR, 
                               "%s: Invalid WPA IE", __func__);
@@ -4367,6 +4367,28 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
                     pWextState->roamProfile.nAddIEAssocLength = pWextState->assocAddIE.length;
                 }
 #endif
+                /* Appending HS 2.0 Indication Element in Assiciation Request */
+                else if ( (0 == memcmp(&genie[0], HS20_OUI_TYPE, 
+						                                  HS20_OUI_TYPE_SIZE)) )
+	     	    {
+			        v_U16_t curAddIELen = pWextState->assocAddIE.length;
+			        hddLog (VOS_TRACE_LEVEL_INFO, "%s Set HS20 IE(len %d)", 
+					        __func__, eLen + 2);
+
+			        if( SIR_MAC_MAX_IE_LENGTH < (pWextState->assocAddIE.length + eLen) )
+			        {
+				       hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accomadate assocAddIE "
+						                               "Need bigger buffer space\n");
+				       VOS_ASSERT(0);
+				       return -ENOMEM;
+			        }
+			        memcpy( pWextState->assocAddIE.addIEdata + curAddIELen, genie - 2, eLen + 2);
+			        pWextState->assocAddIE.length += eLen + 2;
+
+			        pWextState->roamProfile.pAddIEAssoc = pWextState->assocAddIE.addIEdata;
+			        pWextState->roamProfile.nAddIEAssocLength = pWextState->assocAddIE.length;
+		        }
+
                 break;
             case DOT11F_EID_RSN:
                 hddLog (VOS_TRACE_LEVEL_INFO, "%s Set RSN IE(len %d)",__func__, eLen + 2);
@@ -4375,6 +4397,27 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
                 pWextState->roamProfile.pRSNReqIE = pWextState->WPARSNIE;
                 pWextState->roamProfile.nRSNReqIELength = eLen + 2; //ie_len;
                 break;
+                /* Appending Extended Capabilities with Interworking bit set in Assoc Req */
+            case DOT11F_EID_EXTCAP:
+                {        
+                    v_U16_t curAddIELen = pWextState->assocAddIE.length;
+                    hddLog (VOS_TRACE_LEVEL_INFO, "%s Set Extended CAPS IE(len %d)", 
+                            __func__, eLen + 2);
+                    
+                    if( SIR_MAC_MAX_IE_LENGTH < (pWextState->assocAddIE.length + eLen) )
+                    {
+                       hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accomadate assocAddIE "
+                                                      "Need bigger buffer space\n");
+                       VOS_ASSERT(0);
+                       return -ENOMEM;
+                    }
+                    memcpy( pWextState->assocAddIE.addIEdata + curAddIELen, genie - 2, eLen + 2);
+                    pWextState->assocAddIE.length += eLen + 2;
+                    
+                    pWextState->roamProfile.pAddIEAssoc = pWextState->assocAddIE.addIEdata;
+                    pWextState->roamProfile.nAddIEAssocLength = pWextState->assocAddIE.length;
+                    break;
+                }
 #ifdef FEATURE_WLAN_WAPI
             case WLAN_EID_WAPI:
                 pAdapter->wapi_info.nWapiMode = 1;   //Setting WAPI Mode to ON=1
@@ -4413,7 +4456,10 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
             default:
                 hddLog (VOS_TRACE_LEVEL_ERROR, 
                         "%s Set UNKNOWN IE %X", __func__, elementId);
-                return 0;
+                /* when Unknown IE is received we should break and continue
+                 * to the next IE in the buffer instead we were returning
+                 * so changing this to break */
+                break;
         }
         genie += eLen;
         remLen -= eLen;
