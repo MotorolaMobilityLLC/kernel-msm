@@ -1590,6 +1590,15 @@ config MSM_SMD_TTY
 
 	  If in doubt, say yes.
 
+config MSM_SMD_TTY_DS_LEGACY
+	bool "SMD TTY DS Legacy Driver"
+	depends on MSM_SMD_TTY
+	default n
+	help
+	  Provides DS TTY legacy interfaces to interact with the modem.
+
+	  if in doubt, say no.
+
 config MSM_SMD_QMI
 	bool "SMD QMI Driver"
 	depends on MSM_SMD
