@@ -864,6 +864,16 @@ VOS_STATUS vos_start( v_CONTEXT_t vosContext )
                "%s: Failed to start SYS module", __func__);
      goto err_tl_stop;
   }
+  
+  {
+      tpAniSirGlobal pMac = PMAC_STRUCT( pVosContext->pMACContext );
+
+      if(pMac->lim.gLimTimersCreated == 0)
+      {
+          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,"%s: Failed to create lim timers",__func__);
+          goto err_tl_stop;
+      }
+  }
 
 
    /**

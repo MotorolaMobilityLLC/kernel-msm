@@ -78,7 +78,7 @@ enum
 };
 
 // Timer Handler functions
-void limCreateTimers(tpAniSirGlobal);
+v_UINT_t limCreateTimers(tpAniSirGlobal);
 void limTimerHandler(void *, tANI_U32);
 void limAuthResponseTimerHandler(void *, tANI_U32);
 void limAssocFailureTimerHandler(void *, tANI_U32);

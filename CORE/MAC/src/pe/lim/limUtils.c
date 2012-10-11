@@ -885,6 +885,10 @@ limPrintMsgInfo(tpAniSirGlobal pMac, tANI_U16 logLevel, tSirMsgQ *msg)
 void
 limInitMlm(tpAniSirGlobal pMac)
 {
+    tANI_U32 retVal;
+
+    pMac->lim.gLimTimersCreated = 0;
+	
     MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, NO_SESSION, pMac->lim.gLimMlmState));
 
     /// Initialize scan result hash table
@@ -903,9 +907,15 @@ limInitMlm(tpAniSirGlobal pMac)
         return;
 
     // Create timers used by LIM
-    limCreateTimers(pMac);
-
-    pMac->lim.gLimTimersCreated = 1;
+    retVal = limCreateTimers(pMac);
+    if(retVal == TX_SUCCESS)
+    {
+        pMac->lim.gLimTimersCreated = 1;
+    }
+    else
+    {
+        limLog(pMac, LOGP, FL(" limCreateTimers Failed to create lim timers \n"));
+    }
 } /*** end limInitMlm() ***/
 
 
