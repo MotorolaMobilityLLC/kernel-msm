@@ -1817,6 +1817,12 @@ limProcessMlmScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         PELOGE(limLog(pMac, LOGE,
                FL("Sending START_SCAN from LIM while one req is pending\n"));)
         palFreeMemory( pMac->hHdd, (tANI_U8 *) pMsgBuf);
+        /*Send back a failure*/        
+        mlmScanCnf.resultCode = eSIR_SME_SCAN_FAILED;
+        mlmScanCnf.scanResultLength = 0;
+        limPostSmeMessage(pMac,
+                         LIM_MLM_SCAN_CNF,
+                    (tANI_U32 *) &mlmScanCnf);
         return;
     }
 
