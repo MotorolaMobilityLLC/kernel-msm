@@ -414,7 +414,8 @@ wpt_uint32 WLANDXE_GetFreeTxDataResNumber
 void WLANDXE_ChannelDebug
 (
    wpt_boolean    displaySnapshot,
-   wpt_boolean    enableStallDetect
+   wpt_boolean    enableStallDetect,
+   wpt_boolean    fullChannelsDump 
 );
 
 #ifdef WLANDXE_TEST_CHANNEL_ENABLE

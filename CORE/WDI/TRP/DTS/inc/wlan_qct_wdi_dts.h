@@ -105,7 +105,8 @@ typedef struct {
   wpt_status (*setPowerState) (void *pContext, WDTS_PowerStateType   powerState, 
                                WDTS_SetPSCbType cBack);
   void (*channelDebug)(wpt_boolean displaySnapshot,
-                       wpt_boolean enableStallDetect);
+                       wpt_boolean enableStallDetect,
+                       wpt_boolean fullChannelsDump);
   wpt_status (*stop) (void *pContext);
   wpt_status (*close) (void *pContext);
   wpt_uint32 (*getFreeTxDataResNumber) (void *pContext);
@@ -192,7 +193,9 @@ wpt_status WDTS_SetPowerState(void *pContext, WDTS_PowerStateType powerState,
  * Return Value: NONE
  *
  */
-void WDTS_ChannelDebug(wpt_boolean dispalySnapshot, wpt_boolean toggleStallDetect);
+void WDTS_ChannelDebug(wpt_boolean dispalySnapshot,
+                              wpt_boolean toggleStallDetect,
+                              wpt_boolean fullChannelsDump);
 
 /* DTS Stop function. 
  * Stop Transport driver, ie DXE, SDIO

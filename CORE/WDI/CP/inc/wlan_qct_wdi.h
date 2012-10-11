@@ -9047,7 +9047,8 @@ WDI_UpdateVHTOpModeReq
 void WDI_TransportChannelDebug
 (
    wpt_boolean  displaySnapshot,
-   wpt_boolean  toggleStallDetect
+   wpt_boolean  toggleStallDetect,
+   wpt_boolean  fullChannelsDump
 );
 
 #ifdef __cplusplus

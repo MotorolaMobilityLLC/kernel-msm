@@ -573,9 +573,11 @@ wpt_status WDTS_SetPowerState(void *pContext, WDTS_PowerStateType  powerState,
  * Return Value: NONE
  *
  */
-void WDTS_ChannelDebug(wpt_boolean dispalySnapshot, wpt_boolean toggleStallDetect)
+void WDTS_ChannelDebug(wpt_boolean dispalySnapshot,
+                              wpt_boolean toggleStallDetect, 
+                              wpt_boolean fullChannelsDump)
 {
-   gTransportDriver.channelDebug(dispalySnapshot, toggleStallDetect);
+   gTransportDriver.channelDebug(dispalySnapshot, toggleStallDetect, fullChannelsDump);
    return;
 }
 

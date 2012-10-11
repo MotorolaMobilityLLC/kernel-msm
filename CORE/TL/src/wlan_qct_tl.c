@@ -1613,6 +1613,8 @@ WLANTL_STAPktPending
     VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
       "WLAN TL:Packet pending indication for STA: %d AC: %d State: %d", 
                ucSTAId, ucAc, pTLCb->atlSTAClients[ucSTAId].tlState);
+
+    WDA_TransportChannelDebug(pvosGCtx, 1, 0, VOS_FALSE);
   }
 
   /*-----------------------------------------------------------------------
@@ -1634,8 +1636,7 @@ WLANTL_STAPktPending
         Check if there are enough resources for transmission and tx is not
         suspended.
         ------------------------------------------------------------------------*/
-       if (( pTLCb->uResCount >=  WDA_TLI_MIN_RES_DATA ) &&
-          ( 0 == pTLCb->ucTxSuspended ))
+       if ( 0 == pTLCb->ucTxSuspended )
       {
         TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
               "Issuing Xmit start request to BAL"));
@@ -1647,9 +1648,9 @@ WLANTL_STAPktPending
           No error code is sent because TL will resume tx autonomously if
           resources become available or tx gets resumed
           ---------------------------------------------------------------------*/
-        TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+        VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
               "WLAN TL:Request to send but condition not met. Res: %d,Suspend: %d",
-              pTLCb->uResCount, pTLCb->ucTxSuspended ));
+              pTLCb->uResCount, pTLCb->ucTxSuspended );
       }
 #ifdef WLAN_SOFTAP_FEATURE
     }

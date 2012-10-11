@@ -9108,6 +9108,7 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR, 
                  "%s: Status %d when waiting for TX Frame Event",
                  __FUNCTION__, status);
+      WDA_TransportChannelDebug(pWDA->pVosContext, 1, 0, VOS_TRUE);
       pWDA->pTxCbFunc = NULL;   /*To stop the limTxComplete being called again  , 
                                 after the packet gets completed(packet freed once)*/
 
@@ -11708,10 +11709,27 @@ VOS_STATUS WDA_ProcessUpdateOpMode(tWDA_CbContext *pWDA,
 ===========================================================================*/
 void WDA_TransportChannelDebug
 (
+   v_PVOID_t  pvosGCtx,
    v_BOOL_t   displaySnapshot,
-   v_BOOL_t   toggleStallDetect
+   v_BOOL_t   toggleStallDetect,
+   v_BOOL_t   fullChannelsDump
 )
 {
-   WDI_TransportChannelDebug(displaySnapshot, toggleStallDetect);
+   tWDA_CbContext *wdaContext = NULL;
+   v_U32_t     uDataAvailRes;
+
+   if ( NULL != pvosGCtx )
+   {
+      wdaContext = (tWDA_CbContext *)vos_get_context(VOS_MODULE_ID_WDA, pvosGCtx);
+
+      uDataAvailRes = WDI_GetAvailableResCount(wdaContext->pWdiContext, 
+                                           WDI_DATA_POOL_ID);
+
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "WDA_TransportChannelDebug :Flow Mask  %d Res Available :%d", 
+                 wdaContext->uTxFlowMask, uDataAvailRes );
+   }
+
+   WDI_TransportChannelDebug(displaySnapshot, toggleStallDetect, fullChannelsDump);
    return;
 }

@@ -2064,7 +2064,9 @@ tANI_U8 WDA_getFwWlanFeatCaps(tANI_U8 featEnumValue);
 ===========================================================================*/
 void WDA_TransportChannelDebug
 (
+   v_PVOID_t  pvosGCtx,
    v_BOOL_t   displaySnapshot,
-   v_BOOL_t   toggleStallDetect
+   v_BOOL_t   toggleStallDetect,
+   v_BOOL_t   fullChannelsDump
 );
 #endif
