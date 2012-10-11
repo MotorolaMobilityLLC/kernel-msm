@@ -1474,12 +1474,34 @@ int iw_softap_get_channel_list(struct net_device *dev,
     v_U8_t bandEndChannel = RF_CHAN_165;
     v_U32_t temp_num_channels = 0;
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pHostapdAdapter);
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
     v_REGDOMAIN_t domainIdCurrentSoftap;
-
     tpChannelListInfo channel_list = (tpChannelListInfo) extra;
+    eCsrBand curBand = eCSR_BAND_ALL;
+
+    if (eHAL_STATUS_SUCCESS != sme_GetFreqBand(hHal, &curBand))
+    {
+        hddLog(LOGE,FL("not able get the current frequency band\n"));
+        return -EIO;
+    }
     wrqu->data.length = sizeof(tChannelListInfo);
     ENTER();
+
+    if (eCSR_BAND_24 == curBand)
+    {
+        bandStartChannel = RF_CHAN_1;
+        bandEndChannel = RF_CHAN_14;
+    }
+    else if (eCSR_BAND_5G == curBand)
+    {
+        bandStartChannel = RF_CHAN_36;
+        bandEndChannel = RF_CHAN_165;
+    }
+
+    hddLog(LOG1, FL("\n nBandCapability = %d, bandStartChannel = %hu, "
+                "bandEndChannel = %hu \n"), pHddCtx->cfg_ini->nBandCapability, 
+                bandStartChannel, bandEndChannel );
 
     for( i = bandStartChannel; i <= bandEndChannel; i++ )
     {
