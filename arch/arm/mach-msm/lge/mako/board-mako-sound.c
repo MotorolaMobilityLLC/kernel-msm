@@ -162,7 +162,8 @@ static void enable_external_mic_bias(int status)
 		}
 	}
 
-	gpio_set_value_cansleep(GPIO_EAR_MIC_BIAS_EN, status);
+	if (lge_get_board_revno() < HW_REV_1_0)
+		gpio_set_value_cansleep(GPIO_EAR_MIC_BIAS_EN, status);
 	prev_on = status;
 }
 
@@ -218,6 +219,8 @@ static struct fsa8008_platform_data lge_hs_pdata = {
 
 static __init void mako_fixed_audio(void)
 {
+	if (lge_get_board_revno() >= HW_REV_1_0)
+		lge_hs_pdata.gpio_mic_bias_en = -1;
 	if (lge_get_board_revno() > HW_REV_1_0) {
 		lge_hs_pdata.gpio_detect = GPIO_EAR_SENSE_N_REV11;
 		lge_hs_pdata.gpio_detect_can_wakeup = 1;
