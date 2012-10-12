@@ -14,6 +14,7 @@
 #ifndef __ARCH_ARM_MACH_MSM_BOARD_MMI_8960_H
 #define __ARCH_ARM_MACH_MSM_BOARD_MMI_8960_H
 #include <mach/board.h>
+#include "board-8960.h"
 
 /* MMI OEM Data Structure */
 struct mmi_oem_data {
@@ -45,6 +46,9 @@ extern void mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 
 /* from board-mmi-dsp.c */
 extern void mmi_audio_dsp_init(void);
+
+/* from board-mmi-regulator.c */
+extern void mmi_regulator_init(struct msm8960_oem_init_ptrs *);
 
 #endif
 
