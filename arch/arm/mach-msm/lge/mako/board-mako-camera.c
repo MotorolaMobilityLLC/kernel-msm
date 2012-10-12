@@ -19,6 +19,7 @@
 #include <mach/board.h>
 #include <mach/msm_bus_board.h>
 #include <mach/gpiomux.h>
+#include <mach/board_lge.h>
 
 #include "devices.h"
 #include "board-mako.h"
@@ -582,18 +583,25 @@ static struct platform_device msm_camera_server = {
 };
 
 #define GPIO_CAM_VCM_EN		PM8921_GPIO_PM_TO_SYS(17)
+#define GPIO_CAM_VCM_EN_11	PM8921_GPIO_PM_TO_SYS(20)
 
 static __init void mako_fixup_cam(void)
 {
 	int ret;
+	int gpio_vcm_en;
 
-	ret = gpio_request_one(GPIO_CAM_VCM_EN, GPIOF_INIT_HIGH, "vcm_en");
+	if (lge_get_board_revno() > HW_REV_1_0)
+		gpio_vcm_en = GPIO_CAM_VCM_EN_11;
+	else
+		gpio_vcm_en = GPIO_CAM_VCM_EN;
+
+	ret = gpio_request_one(gpio_vcm_en, GPIOF_INIT_HIGH, "vcm_en");
 	if (ret < 0) {
 		pr_err("%s: failed gpio request vcm_en\n", __func__);
 		return;
 	}
 
-	gpio_free(GPIO_CAM_VCM_EN);
+	gpio_free(gpio_vcm_en);
 }
 
 void __init apq8064_init_cam(void)
