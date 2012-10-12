@@ -1145,16 +1145,11 @@ static int iw_get_freq(struct net_device *dev, struct iw_request_info *info,
     }
     else
     {
-       channel = pHddStaCtx->conn_info.operationChannel;
-       status = hdd_wlan_get_freq(channel, &freq);
-       if( TRUE == status )
-       {
-          /* Set Exponent parameter as 6 (MHZ) in struct iw_freq
-           * iwlist & iwconfig command shows frequency into proper
-           * format (2.412 GHz instead of 246.2 MHz)*/
-           fwrq->m = freq;
-           fwrq->e = MHZ;
-       }
+       /* Set Exponent parameter as 6 (MHZ) in struct iw_freq
+        * iwlist & iwconfig command shows frequency into proper
+        * format (2.412 GHz instead of 246.2 MHz)*/
+       fwrq->m = 0;
+       fwrq->e = MHZ;
     }
    return 0;
 }
