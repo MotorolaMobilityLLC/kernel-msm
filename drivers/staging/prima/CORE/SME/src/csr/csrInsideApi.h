@@ -922,5 +922,10 @@ void csrCcxSendAdjacentApRepMsg(tpAniSirGlobal pMac, tCsrRoamSession *pSession);
 eHalStatus csrGetDefaultCountryCodeFrmNv(tpAniSirGlobal pMac, tANI_U8 *pCountry);
 eHalStatus csrGetCurrentCountryCode(tpAniSirGlobal pMac, tANI_U8 *pCountry);
 
+
+eHalStatus csrRoamEnqueuePreauth(tpAniSirGlobal pMac, tANI_U32 sessionId, tpSirBssDescription pBssDescription,
+                                eCsrRoamReason reason, tANI_BOOLEAN fImmediate);
+eHalStatus csrRoamDequeuePreauth(tpAniSirGlobal pMac);
+
 #endif
 

@@ -1183,6 +1183,9 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
         }
 #endif 
 
+        /*Clear the roam profile*/
+        hdd_clearRoamProfileIe( pAdapter );
+
         netif_tx_disable(dev);
         netif_carrier_off(dev);
         

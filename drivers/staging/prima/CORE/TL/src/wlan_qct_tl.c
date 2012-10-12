@@ -5592,7 +5592,7 @@ WLANTL_STATxConn
 
 #endif
 
-  VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+  VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,
             "WLAN TL: WLANTL_STATxConn fetching packet from HDD for AC: %d AC Mask: %d Pkt Pending: %d", 
              ucAC, ucACMask, pTLCb->atlSTAClients[ucSTAId].ucPktPending);
 
@@ -5672,7 +5672,7 @@ WLANTL_STATxConn
    ------------------------------------------------------------------------*/
    if ( 0 == tlMetaInfo.ucIsEapol && 0 == tlMetaInfo.ucIsWai )
    {
-     TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+     TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,
                 "WLAN TL:Only EAPOL or WAI packets allowed before authentication"));
 
      /* Fail tx for packet */
@@ -8794,7 +8794,6 @@ WLAN_TLAPGetNextTxIds
   pTLCb->ucCurrentSTA = WLAN_MAX_STA_COUNT; 
 
   *pucSTAId = pTLCb->ucCurrentSTA;
-  pTLCb->atlSTAClients[*pucSTAId].ucCurrentAC = pTLCb->uCurServedAC;
   return VOS_STATUS_E_FAULT;
 }
 

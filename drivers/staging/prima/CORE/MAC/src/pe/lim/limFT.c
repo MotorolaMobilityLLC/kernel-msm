@@ -266,7 +266,7 @@ int limProcessFTPreAuthReq(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
     if (psessionEntry->currentOperChannel != pMac->ft.ftPEContext.pFTPreAuthReq->preAuthchannelNum) 
     {
         // Need to suspend link only if the channels are different
-        limSuspendLink(pMac, eSIR_CHECK_LINK_TRAFFIC_BEFORE_SCAN, FTPreAuthSuspendLinkHandler, 
+        limSuspendLink(pMac, eSIR_CHECK_ROAMING_SCAN, FTPreAuthSuspendLinkHandler, 
                        (tANI_U32 *)psessionEntry); 
     }
     else 
