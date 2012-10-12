@@ -16,7 +16,6 @@
 
 #ifdef CONFIG_SEKONIX_LENS_ACT
 #define CHECK_ACT_WRITE_COUNT
-#define DELAY_PROPORTION_TO_DISTANC_INTINITE
 #define ACT_STOP_POS            10
 #define ACT_MIN_MOVE_RANGE      200
 #define ACT_POSTURE_MARGIN      100
@@ -627,43 +626,13 @@ static int32_t msm_actuator_set_default_focus(
 	struct msm_actuator_move_params_t *move_params)
 {
 	int32_t rc = 0;
-#ifdef DELAY_PROPORTION_TO_DISTANC_INTINITE
-	uint32_t hw_damping;
-	unsigned int delay;
-	int init_pos, cur_dac, mid_dac, cur_pos;
 	CDBG("%s called\n", __func__);
 
-	cur_pos = a_ctrl->curr_step_pos;
-	CDBG("%s: E\n", __func__);
-	if (a_ctrl->curr_step_pos != 0) {
-		hw_damping = 0xA;
-		delay = 0;
-		init_pos = a_ctrl->initial_code;
-		cur_dac = a_ctrl->step_position_table[cur_pos];
-		mid_dac = a_ctrl->step_position_table[ACT_STOP_POS];
-		CDBG("%s : init_pos : %d, cur_dac : %d, mid_dac : %d\n", __func__, init_pos, cur_dac, mid_dac);
-
-		if(cur_pos > ACT_STOP_POS) {
-			delay = (cur_dac - mid_dac) * 2 / 3;
-			if(delay > 300) delay = 300;
-
-			a_ctrl->func_tbl->actuator_parse_i2c_params(a_ctrl, mid_dac,hw_damping, delay);
-		} else
-			mid_dac = cur_dac;
-
-		hw_damping = 0x7;
-		delay = mid_dac / 2;
-		if(delay > 300) delay = 300;
-
-		a_ctrl->func_tbl->actuator_parse_i2c_params(a_ctrl, init_pos + 10,hw_damping, delay);
-		a_ctrl->curr_step_pos = 0;
-	}
-#else
-	CDBG("%s called\n", __func__);
-
-	if (a_ctrl->curr_step_pos != 0)
+	if (a_ctrl->curr_step_pos > ACT_STOP_POS) {
+		move_params->dest_step_pos = ACT_STOP_POS;
 		rc = a_ctrl->func_tbl->actuator_move_focus(a_ctrl, move_params);
-#endif
+		msleep(300);
+	}
 
 	return rc;
 }
