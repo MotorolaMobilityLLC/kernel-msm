@@ -297,6 +297,13 @@ config ARM_USER_ACCESSIBLE_TIMER_BASE
 	 timer counter page should be mapped by the kernel.  User-space apps
 	 will read directly from the page at this address.
 
+config GENERIC_TIME_VSYSCALL
+	bool "Enable gettimeofday updates"
+	depends on CPU_V7
+	help
+	  Enables updating the kernel user helper area with the xtime struct
+	  data for gettimeofday via kernel user helpers.
+
 source "init/Kconfig"
 
 source "kernel/Kconfig.freezer"
