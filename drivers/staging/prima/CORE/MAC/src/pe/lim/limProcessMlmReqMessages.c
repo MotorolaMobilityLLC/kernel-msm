@@ -89,7 +89,7 @@ static void limProcessMlmRemoveKeyReq(tpAniSirGlobal pMac, tANI_U32 * pMsgBuf);
 void 
 limSetChannel(tpAniSirGlobal pMac, tANI_U8 channel, tANI_U8 secChannelOffset, tPowerdBm maxTxPower, tANI_U8 peSessionId);
 #define IS_MLM_SCAN_REQ_BACKGROUND_SCAN_AGGRESSIVE(pMac)    (pMac->lim.gpLimMlmScanReq->backgroundScanMode == eSIR_AGGRESSIVE_BACKGROUND_SCAN)
-
+#define IS_MLM_SCAN_REQ_BACKGROUND_SCAN_NORMAL(pMac)        (pMac->lim.gpLimMlmScanReq->backgroundScanMode == eSIR_NORMAL_BACKGROUND_SCAN)
 
 /**
  * limProcessMlmReqMessages()
@@ -188,16 +188,28 @@ limSetScanMode(tpAniSirGlobal pMac)
 
 #ifdef ANI_PRODUCT_TYPE_CLIENT         
        if ( IS_MLM_SCAN_REQ_BACKGROUND_SCAN_AGGRESSIVE(pMac) )
+       {
            checkTraffic = eSIR_DONT_CHECK_LINK_TRAFFIC_BEFORE_SCAN;
-       else 
+       }
+       else if (IS_MLM_SCAN_REQ_BACKGROUND_SCAN_NORMAL(pMac))
+       {
            checkTraffic = eSIR_CHECK_LINK_TRAFFIC_BEFORE_SCAN;
+       }
+       else 
+           checkTraffic = eSIR_CHECK_ROAMING_SCAN;
 #else
             /* Currently checking the traffic before scan for Linux station. This is because MLM
              * scan request is not filled as scan is received via Measurement req in Linux. This
              * should be made as common code for Windows/Linux station once the scan requests are
              * enabled in Linux
              * TODO */
+       if ( IS_MLM_SCAN_REQ_BACKGROUND_SCAN_AGGRESSIVE(pMac) ||
+            IS_MLM_SCAN_REQ_BACKGROUND_SCAN_NORMAL(pMac))
+       {
             checkTraffic = eSIR_CHECK_LINK_TRAFFIC_BEFORE_SCAN;
+       }
+       else
+            checkTraffic = eSIR_CHECK_ROAMING_SCAN;
 #endif
 
     PELOG1(limLog(pMac, LOG1, FL("Calling limSendHalInitScanReq\n"));)
@@ -704,7 +716,14 @@ limSendHalInitScanReq(tpAniSirGlobal pMac, tLimLimHalScanState nextState, tSirLi
     {
         pInitScanParam->notifyBss = TRUE;
         pInitScanParam->notifyHost = FALSE;
-        pInitScanParam->scanMode = eHAL_SYS_MODE_LEARN;
+        if (eSIR_CHECK_ROAMING_SCAN == trafficCheck)
+        {
+           pInitScanParam->scanMode = eHAL_SYS_MODE_ROAM_SCAN;
+        }
+        else
+        {
+           pInitScanParam->scanMode = eHAL_SYS_MODE_LEARN;
+        }
 
         pInitScanParam->frameType = SIR_MAC_CTRL_CTS;
         __limCreateInitScanRawFrame(pMac, pInitScanParam);
@@ -714,7 +733,15 @@ limSendHalInitScanReq(tpAniSirGlobal pMac, tLimLimHalScanState nextState, tSirLi
     {
         if(nextState == eLIM_HAL_SUSPEND_LINK_WAIT_STATE)
         {
-            pInitScanParam->scanMode = eHAL_SYS_MODE_SUSPEND_LINK;
+           if (eSIR_CHECK_ROAMING_SCAN == trafficCheck)
+           {
+              pInitScanParam->scanMode = eHAL_SYS_MODE_ROAM_SUSPEND_LINK;
+           }
+           else
+           {
+              pInitScanParam->scanMode = eHAL_SYS_MODE_SUSPEND_LINK;
+           }
+           
         }
         else
         {
@@ -1817,6 +1844,12 @@ limProcessMlmScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         PELOGE(limLog(pMac, LOGE,
                FL("Sending START_SCAN from LIM while one req is pending\n"));)
         palFreeMemory( pMac->hHdd, (tANI_U8 *) pMsgBuf);
+        /*Send back a failure*/        
+        mlmScanCnf.resultCode = eSIR_SME_SCAN_FAILED;
+        mlmScanCnf.scanResultLength = 0;
+        limPostSmeMessage(pMac,
+                         LIM_MLM_SCAN_CNF,
+                    (tANI_U32 *) &mlmScanCnf);
         return;
     }
 

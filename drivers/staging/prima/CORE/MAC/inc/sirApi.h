@@ -937,14 +937,16 @@ typedef struct sSirRadarInfo
 typedef enum eSirBackgroundScanMode
 {
     eSIR_AGGRESSIVE_BACKGROUND_SCAN = 0,
-    eSIR_NORMAL_BACKGROUND_SCAN = 1
+    eSIR_NORMAL_BACKGROUND_SCAN = 1,
+    eSIR_ROAMING_SCAN = 2,
 } tSirBackgroundScanMode;
 
 /// Two types of traffic check
 typedef enum eSirLinkTrafficCheck
 {
     eSIR_DONT_CHECK_LINK_TRAFFIC_BEFORE_SCAN = 0,
-    eSIR_CHECK_LINK_TRAFFIC_BEFORE_SCAN = 1
+    eSIR_CHECK_LINK_TRAFFIC_BEFORE_SCAN = 1,
+    eSIR_CHECK_ROAMING_SCAN = 2,
 } tSirLinkTrafficCheck;
 
 #define SIR_BG_SCAN_RETURN_CACHED_RESULTS              0x0

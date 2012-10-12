@@ -762,7 +762,10 @@ typedef enum
   WDI_SCAN_MODE_LEARN,
   WDI_SCAN_MODE_SCAN,
   WDI_SCAN_MODE_PROMISC,
-  WDI_SCAN_MODE_SUSPEND_LINK
+  WDI_SCAN_MODE_SUSPEND_LINK,
+  WDI_SCAN_MODE_ROAM_SCAN,
+  WDI_SCAN_MODE_ROAM_SUSPEND_LINK,
+
 } WDI_ScanMode;
 
 /*---------------------------------------------------------------------------
