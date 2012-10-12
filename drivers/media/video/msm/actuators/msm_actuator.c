@@ -447,9 +447,8 @@ int32_t msm_actuator_init_step_table_use_eeprom(struct msm_actuator_ctrl_t *a_ct
 	// set act_start, act_macro
 	act_start = (uint16_t)(imx111_afcalib_data[1] << 8) |
 			imx111_afcalib_data[0];
-	act_macro = (uint16_t)(imx111_afcalib_data[3] << 8) |
-			imx111_afcalib_data[2];
-
+	act_macro = ((uint16_t)(imx111_afcalib_data[3] << 8) |
+			imx111_afcalib_data[2])+20;
 	/* Fill step position table */
 	a_ctrl->step_position_table =
 		kmalloc(sizeof(uint16_t) *
