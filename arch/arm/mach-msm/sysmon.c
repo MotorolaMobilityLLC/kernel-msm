@@ -38,6 +38,7 @@ enum transports {
 
 struct sysmon_subsys {
 	struct mutex		lock;
+	bool			probed;
 	struct smd_channel	*chan;
 	bool			chan_open;
 	struct completion	resp_ready;
@@ -221,6 +222,9 @@ int sysmon_get_reason(enum subsys_id dest_ss, char *buf, size_t len)
 	if ((!ss->chan_open) && (dest_ss != SYSMON_SS_EXT_MODEM))
 		return -ENODEV;
 
+	if (!ss->probed)
+		return -ENODEV;
+
 	mutex_lock(&ss->lock);
 	ret = sysmon_send_msg(ss, tx_buf, ARRAY_SIZE(tx_buf));
 	if (ret)
@@ -268,6 +272,7 @@ static int sysmon_probe(struct platform_device *pdev)
 
 	ss = &subsys[pdev->id];
 	mutex_init(&ss->lock);
+	ss->probed = true;
 
 	switch (ss->transport) {
 	case TRANSPORT_SMD:
