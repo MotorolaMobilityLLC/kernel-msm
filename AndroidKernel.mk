@@ -73,7 +73,7 @@ TARGET_PREBUILT_KERNEL := $(TARGET_PREBUILT_INT_KERNEL)
 $(info TARGET_PREBUILT_KERNEL is $(TARGET_PREBUILT_KERNEL))
 
 define mv-modules
-mdpath=`find $(KERNEL_MODULES_OUT) -type f -name modules.dep`;\
+mdpath=`find $(KERNEL_MODULES_OUT) -type f -name modules.order`;\
 if [ "$$mdpath" != "" ];then\
 mpath=`dirname $$mdpath`;\
 ko=`find $$mpath/kernel -type f -name *.ko`;\
@@ -82,7 +82,7 @@ fi
 endef
 
 define clean-module-folder
-mdpath=`find $(KERNEL_MODULES_OUT) -type f -name modules.dep`;\
+mdpath=`find $(KERNEL_MODULES_OUT) -type f -name modules.order`;\
 if [ "$$mdpath" != "" ];then\
 mpath=`dirname $$mdpath`; rm -rf $$mpath;\
 fi
