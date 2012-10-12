@@ -4320,7 +4320,7 @@ static int fwpath_changed_handler(const char *kmessage,
 static int con_mode_handler(const char *kmessage,
                                  struct kernel_param *kp)
 {
-   return 0;
+   return param_set_int(kmessage, kp);
 }
 #else /* #ifdef MODULE */
 /**---------------------------------------------------------------------------
