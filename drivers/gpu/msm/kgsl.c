@@ -3986,13 +3986,13 @@ int kgsl_postmortem_dump(struct kgsl_device *device, int manual)
 	}
 
 	if (device->pm_dump_enable) {
-
-		KGSL_LOG_DUMP(device,
-				"POWER: FLAGS = %08lX | ACTIVE POWERLEVEL = %08X",
-				pwr->power_flags, pwr->active_pwrlevel);
-
 		KGSL_LOG_DUMP(device, "POWER: INTERVAL TIMEOUT = %08X ",
 				pwr->interval_timeout);
+		KGSL_LOG_DUMP(device, "POWER: NAP ALLOWED = %d | START_STOP_SLEEP_WAKE = %d\n",
+				pwr->nap_allowed, pwr->strtstp_sleepwake);
+
+		KGSL_LOG_DUMP(device, "GRP_CLK = %lu ",
+				  kgsl_get_clkrate(pwr->grp_clks[0]));
 
 	}
 
