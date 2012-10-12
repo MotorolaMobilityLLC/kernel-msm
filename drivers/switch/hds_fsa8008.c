@@ -384,12 +384,15 @@ static int hsd_gpio_init(struct hsd_info *hi)
 	}
 
 	/* initialize gpio_mic_bias_en */
-	ret = gpio_request_one(hi->gpio_mic_bias_en, GPIOF_OUT_INIT_LOW,
-			"gpio_mic_bias_en");
-	if (ret < 0) {
-		pr_err("%s: Failed to gpio_request gpio%d (gpio_mic_bias_en)\n",
-				__func__, hi->gpio_mic_en);
-		goto error_05;
+	if (gpio_is_valid(hi->gpio_mic_bias_en)) {
+		ret = gpio_request_one(hi->gpio_mic_bias_en,
+				GPIOF_OUT_INIT_LOW, "gpio_mic_bias_en");
+		if (ret < 0) {
+			pr_err("%s: Failed to gpio_request gpio%d "
+			       "(gpio_mic_bias_en)\n",
+					__func__, hi->gpio_mic_en);
+			goto error_05;
+		}
 	}
 
 	return 0;
@@ -408,8 +411,9 @@ error_01:
 
 static void hsd_gpio_free(struct hsd_info *hi)
 {
+	if (gpio_is_valid(hi->gpio_mic_bias_en))
+		gpio_free(hi->gpio_mic_bias_en);
 	gpio_free(hi->gpio_mic_en);
-	gpio_free(hi->gpio_mic_bias_en);
 	gpio_free(hi->gpio_key);
 	gpio_free(hi->gpio_jpole);
 	gpio_free(hi->gpio_detect);
