@@ -134,6 +134,9 @@ static int earjack_debugger_probe(struct platform_device *pdev)
 	adev->irq = gpio_to_irq(pdata->gpio_trigger);
 	adev->set_uart_console = pdata->set_uart_console;
 
+	if (adev->set_uart_console)
+		adev->set_uart_console(0);
+
 	platform_set_drvdata(pdev, adev);
 
 	ret = gpio_request_one(adev->gpio, GPIOF_IN,
