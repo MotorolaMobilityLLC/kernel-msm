@@ -339,7 +339,7 @@ static int apq8064_pm8921_therm_mitigation[] = {
 	1100,
 	700,
 	600,
-	325,
+	400,
 };
 
 static int batt_temp_ctrl_level[] = {
