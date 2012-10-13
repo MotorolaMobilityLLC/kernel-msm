@@ -1647,9 +1647,9 @@ WLANTL_STAPktPending
           No error code is sent because TL will resume tx autonomously if
           resources become available or tx gets resumed
           ---------------------------------------------------------------------*/
-        TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+        VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
               "WLAN TL:Request to send but condition not met. Res: %d,Suspend: %d",
-              pTLCb->uResCount, pTLCb->ucTxSuspended ));
+              pTLCb->uResCount, pTLCb->ucTxSuspended );
       }
 #ifdef WLAN_SOFTAP_FEATURE
     }
@@ -6193,7 +6193,7 @@ WLANTL_STATxAuth
 
   /* This code is to send traffic with lower priority AC when we does not 
      get admitted to send it. Today HAL does not downgrade AC so this code 
-     does not get executed.(In other words, HAL doesn’t change tid. The if 
+     does not get executed.(In other words, HAL doesnt change tid. The if 
      statement is always false.)
      NOTE: In the case of LA downgrade occurs in HDD (that was the change 
      Phani made during WMM-AC plugfest). If WM & BMP also took this approach, 

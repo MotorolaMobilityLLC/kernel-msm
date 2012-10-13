@@ -384,6 +384,11 @@ typedef enum
 #define CFG_AP_COUNTRY_CODE_MAX                "USI"
 #define CFG_AP_COUNTRY_CODE_DEFAULT            "FFF"
 
+#define CFG_AP_ENABLE_RANDOM_BSSID_NAME            "gEnableApRandomBssid"
+#define CFG_AP_ENABLE_RANDOM_BSSID_MIN             ( 0 )
+#define CFG_AP_ENABLE_RANDOM_BSSID_MAX             ( 1 )
+#define CFG_AP_ENABLE_RANDOM_BSSID_DEFAULT         ( 0 )
+
 #define CFG_AP_ENABLE_PROTECTION_MODE_NAME            "gEnableApProt"
 #define CFG_AP_ENABLE_PROTECTION_MODE_MIN             ( 0 )
 #define CFG_AP_ENABLE_PROTECTION_MODE_MAX             ( 1 )
@@ -1415,6 +1420,7 @@ typedef struct
 
 #ifdef WLAN_SOFTAP_FEATURE
    v_BOOL_t      apUapsdEnabled;
+   v_BOOL_t      apRandomBssidEnabled;
    v_BOOL_t      apProtEnabled;
    v_U16_t       apProtection;
    v_BOOL_t      apOBSSProtEnabled;

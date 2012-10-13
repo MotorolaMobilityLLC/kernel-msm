@@ -2037,6 +2037,28 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                     }
                 }
 
+                if ((WLAN_HDD_SOFTAP == pAdapter->device_mode) &&
+                    (pConfig->apRandomBssidEnabled))
+                {
+                    /* To meet Android requirements create a randomized
+                       MAC address of the form 02:1A:11:Fx:xx:xx */
+                    get_random_bytes(&ndev->dev_addr[3], 3);
+                    ndev->dev_addr[0] = 0x02;
+                    ndev->dev_addr[1] = 0x1A;
+                    ndev->dev_addr[2] = 0x11;
+                    ndev->dev_addr[3] |= 0xF0;
+                    memcpy(pAdapter->macAddressCurrent.bytes, ndev->dev_addr,
+                           VOS_MAC_ADDR_SIZE);
+                    pr_info("wlan: Generated HotSpot BSSID "
+                            "%02x:%02x:%02x:%02x:%02x:%02x\n",
+                            ndev->dev_addr[0],
+                            ndev->dev_addr[1],
+                            ndev->dev_addr[2],
+                            ndev->dev_addr[3],
+                            ndev->dev_addr[4],
+                            ndev->dev_addr[5]);
+                }
+
                 hdd_set_ap_ops( pAdapter->dev );
 
                 status = hdd_init_ap_mode(pAdapter);

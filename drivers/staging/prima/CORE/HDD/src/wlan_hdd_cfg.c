@@ -457,6 +457,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                         VAR_FLAGS_OPTIONAL,
                         (void *)CFG_AP_COUNTRY_CODE_DEFAULT ),
 
+   REG_VARIABLE( CFG_AP_ENABLE_RANDOM_BSSID_NAME, WLAN_PARAM_Integer,
+                        hdd_config_t, apRandomBssidEnabled,
+                        VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                        CFG_AP_ENABLE_RANDOM_BSSID_DEFAULT,
+                        CFG_AP_ENABLE_RANDOM_BSSID_MIN,
+                        CFG_AP_ENABLE_RANDOM_BSSID_MAX ),
+
    REG_VARIABLE( CFG_AP_ENABLE_PROTECTION_MODE_NAME, WLAN_PARAM_Integer,
                         hdd_config_t, apProtEnabled, 
                         VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
