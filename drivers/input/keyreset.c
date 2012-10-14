@@ -21,6 +21,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/syscalls.h>
+#include <linux/workqueue.h>
 
 
 struct keyreset_state {
@@ -33,18 +34,28 @@ struct keyreset_state {
 	int key_down;
 	int key_up;
 	int restart_disabled;
+	int restart_requested;
 	int (*reset_fn)(void);
+	int down_time_ms;
+	struct delayed_work restart_work;
 };
 
-int restart_requested;
-static void deferred_restart(struct work_struct *dummy)
+static void deferred_restart(struct work_struct *work)
 {
-	restart_requested = 2;
-	sys_sync();
-	restart_requested = 3;
-	kernel_restart(NULL);
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct keyreset_state *state =
+		container_of(dwork, struct keyreset_state, restart_work);
+
+	pr_info("keyreset: restarting system\n");
+	if (state->reset_fn) {
+		state->restart_requested = state->reset_fn();
+	} else {
+		state->restart_requested = 2;
+		sys_sync();
+		state->restart_requested = 3;
+		kernel_restart(NULL);
+	}
 }
-static DECLARE_WORK(restart_work, deferred_restart);
 
 static void keyreset_event(struct input_handle *handle, unsigned int type,
 			   unsigned int code, int value)
@@ -77,8 +88,16 @@ static void keyreset_event(struct input_handle *handle, unsigned int type,
 		else
 			state->key_down--;
 	}
-	if (state->key_down == 0 && state->key_up == 0)
+	if (state->key_down == 0 && state->key_up == 0) {
 		state->restart_disabled = 0;
+		if (state->down_time_ms) {
+			__cancel_delayed_work(&state->restart_work);
+			if (state->restart_requested) {
+				pr_info("keyboard reset canceled\n");
+				state->restart_requested = 0;
+			}
+		}
+	}
 
 	pr_debug("reset key changed %d %d new state %d-%d-%d\n", code, value,
 		 state->key_down, state->key_up, state->restart_disabled);
@@ -86,14 +105,17 @@ static void keyreset_event(struct input_handle *handle, unsigned int type,
 	if (value && !state->restart_disabled &&
 	    state->key_down == state->key_down_target) {
 		state->restart_disabled = 1;
-		if (restart_requested)
-			panic("keyboard reset failed, %d", restart_requested);
-		if (state->reset_fn) {
-			restart_requested = state->reset_fn();
+		if (state->restart_requested)
+			panic("keyboard reset failed, %d",
+			      state->restart_requested);
+		if (state->reset_fn && state->down_time_ms == 0) {
+			state->restart_requested = state->reset_fn();
 		} else {
-			pr_info("keyboard reset\n");
-			schedule_work(&restart_work);
-			restart_requested = 1;
+			pr_info("keyboard reset (delayed %dms)\n",
+				state->down_time_ms);
+			schedule_delayed_work(&state->restart_work,
+				msecs_to_jiffies(state->down_time_ms));
+			state->restart_requested = 1;
 		}
 	}
 done:
@@ -203,6 +225,11 @@ static int keyreset_probe(struct platform_device *pdev)
 	if (pdata->reset_fn)
 		state->reset_fn = pdata->reset_fn;
 
+	if (pdata->down_time_ms)
+		state->down_time_ms = pdata->down_time_ms;
+
+	INIT_DELAYED_WORK(&state->restart_work, deferred_restart);
+
 	state->input_handler.event = keyreset_event;
 	state->input_handler.connect = keyreset_connect;
 	state->input_handler.disconnect = keyreset_disconnect;
@@ -221,6 +248,7 @@ int keyreset_remove(struct platform_device *pdev)
 {
 	struct keyreset_state *state = platform_get_drvdata(pdev);
 	input_unregister_handler(&state->input_handler);
+	cancel_delayed_work_sync(&state->restart_work);
 	kfree(state);
 	return 0;
 }
