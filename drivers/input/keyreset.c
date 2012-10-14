@@ -136,6 +136,13 @@ static int keyreset_connect(struct input_handler *handler,
 
 	pr_info("using input dev %s for key reset\n", dev->name);
 
+	/* process already pressed keys */
+	for_each_set_bit(i, state->keybit, KEY_CNT) {
+		if (!test_bit(i, dev->keybit) || !test_bit(i, dev->key))
+			continue;
+		keyreset_event(handle, EV_KEY, i, 1);
+	}
+
 	return 0;
 
 err_input_open_device:
