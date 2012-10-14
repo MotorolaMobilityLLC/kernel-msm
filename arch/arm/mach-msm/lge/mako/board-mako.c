@@ -79,6 +79,10 @@
 
 #include <mach/board_lge.h>
 
+#include <linux/keyreset.h>
+#include <asm/system_info.h>
+#include <asm/system_misc.h>
+
 #include "msm_watchdog.h"
 #include "board-mako.h"
 #include "spm.h"
@@ -126,6 +130,16 @@
 #define PCIE_PWR_EN_PMIC_GPIO 13
 #define PCIE_RST_N_PMIC_MPP 1
 
+static bool mako_charger_mode;
+
+static int __init mako_androidboot_mode_arg(char *options)
+{
+	if (!strcmp(options, "charger"))
+		mako_charger_mode = true;
+	return 0;
+}
+early_param("androidboot.mode", mako_androidboot_mode_arg);
+
 #ifdef CONFIG_KERNEL_MSM_CONTIG_MEM_REGION
 static unsigned msm_contig_mem_size = MSM_CONTIG_MEM_SIZE;
 static int __init msm_contig_mem_size_setup(char *p)
@@ -163,6 +177,28 @@ static int __init pmem_audio_size_setup(char *p)
 }
 early_param("pmem_audio_size", pmem_audio_size_setup);
 #endif
+
+static int mako_keyreset_fn(void)
+{
+	arm_pm_restart('h', NULL);
+	return 1;
+}
+
+static struct keyreset_platform_data mako_reset_keys_pdata = {
+	.keys_down	= {
+		KEY_POWER,
+		0,
+	},
+	.down_time_ms	= 1500,
+	.reset_fn = mako_keyreset_fn,
+};
+
+struct platform_device mako_keyreset_device = {
+	.name	= KEYRESET_NAME,
+	.dev	= {
+		.platform_data	= &mako_reset_keys_pdata,
+	},
+};
 
 #ifdef CONFIG_ANDROID_PMEM
 #ifndef CONFIG_MSM_MULTIMEDIA_USE_ION
@@ -2058,6 +2094,9 @@ static void __init apq8064_mako_init(void)
 	platform_add_devices(cdp_devices, ARRAY_SIZE(cdp_devices));
 	spi_register_board_info(spi_board_info,
 					ARRAY_SIZE(spi_board_info));
+
+	if (mako_charger_mode)
+		platform_device_register(&mako_keyreset_device);
 
 	if (lge_get_uart_mode()) {
 #ifdef CONFIG_EARJACK_DEBUGGER
