@@ -3547,6 +3547,48 @@ void dxeTXReSyncDesc
       }
    }
 
+   /* HW/SW descriptor resync is done.
+    * Next if there are any valid descriptor in chain, Push to HW again */
+   for(channelLoop = WDTS_CHANNEL_TX_LOW_PRI; channelLoop < WDTS_CHANNEL_RX_LOW_PRI; channelLoop++)
+   {
+      channelEntry = &pDxeCtrlBlk->dxeChannel[channelLoop];
+      if(channelEntry->tailCtrlBlk == channelEntry->headCtrlBlk)
+      {
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
+                  "%11s : No TX Pending frame",
+                  channelType[channelEntry->channelType]);
+         /* No Pending frame, Do nothing */
+      }
+      else
+      {
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                  "%11s : TX Pending frame, process it",
+                  channelType[channelEntry->channelType]);
+         validCtrlBlk = channelEntry->tailCtrlBlk;
+         for(descLoop = 0; descLoop < channelEntry->numDesc; descLoop++)
+         {
+            if(validCtrlBlk->linkedDesc->descCtrl.ctrl & WLANDXE_DESC_CTRL_VALID)
+            {
+               HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                        "%11s : when exit IMPS found valid descriptor",
+                        channelType[channelEntry->channelType]);
+
+               /* Found valid descriptor, kick DXE */
+               wpalWriteRegister(channelEntry->channelRegister.chDXECtrlRegAddr,
+                                 channelEntry->extraConfig.chan_mask);
+               break;
+            }
+            validCtrlBlk = (WLANDXE_DescCtrlBlkType *)validCtrlBlk->nextCtrlBlk;
+            if(validCtrlBlk == channelEntry->headCtrlBlk->nextCtrlBlk)
+            {
+               /* Finished to test till head control blcok, but could not find valid descriptor
+                * from head to tail all descriptors are invalidated */
+               break;
+            }
+         }
+      }
+   }
+
    wpalMemoryFree(msgPtr);
    return;
 }
