@@ -82,6 +82,6 @@ void limSetActiveEdcaParams(tpAniSirGlobal pMac, tSirMacEdcaParamRecord *plocalE
 #define HT_BYTE5_FILTER_MASK    0xFD
 #define DS_PARAM_CHANNEL_MASK   0x0
 
-tSirRetStatus limSendBeaconFilterInfo(tpAniSirGlobal pMac);
+tSirRetStatus limSendBeaconFilterInfo(tpAniSirGlobal pMac, tpPESession psessionEntry);
 
 #endif

@@ -3281,6 +3281,8 @@ typedef struct
    wpt_uint16    usCapabilityMask;
    wpt_uint16    usBeaconInterval;
    wpt_uint16    usIeNum;
+   wpt_uint8     bssIdx;
+   wpt_uint8     reserved;
 }WDI_BeaconFilterInfoType;
 
 /*---------------------------------------------------------------------------

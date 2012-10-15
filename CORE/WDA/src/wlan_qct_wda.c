@@ -7151,6 +7151,10 @@ VOS_STATUS WDA_SetBeaconFilterReq(tWDA_CbContext *pWDA,
    wdiBeaconFilterInfo->wdiBeaconFilterInfo.usCapabilityMask = 
       pBeaconFilterInfo->capabilityMask;
    wdiBeaconFilterInfo->wdiBeaconFilterInfo.usIeNum = pBeaconFilterInfo->ieNum;
+
+   //Fill the BssIdx
+   wdiBeaconFilterInfo->wdiBeaconFilterInfo.bssIdx = pBeaconFilterInfo->bssIdx;
+
    //Fill structure with info contained in the beaconFilterTable
    dstPtr = (tANI_U8 *)wdiBeaconFilterInfo + sizeof(WDI_BeaconFilterInfoType);
    srcPtr = (tANI_U8 *)pBeaconFilterInfo + sizeof(tBeaconFilterMsg);

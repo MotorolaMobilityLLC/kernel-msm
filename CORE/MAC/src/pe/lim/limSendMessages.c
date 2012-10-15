@@ -604,7 +604,7 @@ tSirRetStatus limSendGetTxPowerReq(tpAniSirGlobal pMac,  tpSirGetTxPowerReq pTxP
 \param   tpAniSirGlobal  pMac
 \return  None
   -----------------------------------------------------------*/
-tSirRetStatus limSendBeaconFilterInfo(tpAniSirGlobal pMac)
+tSirRetStatus limSendBeaconFilterInfo(tpAniSirGlobal pMac,tpPESession psessionEntry)
 {
     tpBeaconFilterMsg  pBeaconFilterMsg = NULL;
     tSirRetStatus      retCode = eSIR_SUCCESS;
@@ -613,8 +613,13 @@ tSirRetStatus limSendBeaconFilterInfo(tpAniSirGlobal pMac)
     tANI_U32           i;
     tANI_U32           msgSize;
     tpBeaconFilterIe   pIe;
-    tpPESession psessionEntry = &pMac->lim.gpSession[0];  //TBD-RAJESH get the sessionEntry from the caller
 
+    if( psessionEntry == NULL )
+    {
+        limLog( pMac, LOGE, FL("Fail to find the right session \n"));
+        retCode = eSIR_FAILURE;
+        return retCode;
+    }
     msgSize = sizeof(tBeaconFilterMsg) + sizeof(beaconFilterTable);
     if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
           (void **) &pBeaconFilterMsg, msgSize) )
@@ -632,6 +637,9 @@ tSirRetStatus limSendBeaconFilterInfo(tpAniSirGlobal pMac)
     pBeaconFilterMsg->beaconInterval = (tANI_U16) psessionEntry->beaconParams.beaconInterval;
     // Fill in number of IEs in beaconFilterTable
     pBeaconFilterMsg->ieNum = (tANI_U16) (sizeof(beaconFilterTable) / sizeof(tBeaconFilterIe));
+    //Fill the BSSIDX
+    pBeaconFilterMsg->bssIdx = psessionEntry->bssIdx;
+
     //Fill message with info contained in the beaconFilterTable
     ptr = (tANI_U8 *)pBeaconFilterMsg + sizeof(tBeaconFilterMsg);
     for(i=0; i < (pBeaconFilterMsg->ieNum); i++)

@@ -430,6 +430,13 @@ void pmmInitBmpsPwrSave(tpAniSirGlobal pMac)
         respStatus = eSIR_SME_BMPS_REQ_REJECT;
         goto failure;
     }
+
+    // sending beacon filtering information down to HAL
+    if (limSendBeaconFilterInfo(pMac, psessionEntry) != eSIR_SUCCESS)
+    {
+        pmmLog(pMac, LOGE, FL("Fail to send Beacon Filter Info \n"));
+    }
+
 #ifdef FEATURE_WLAN_DIAG_SUPPORT 
     limDiagEventReport(pMac, WLAN_PE_DIAG_ENTER_BMPS_REQ_EVENT, psessionEntry, 0, 0);
 #endif //FEATURE_WLAN_DIAG_SUPPORT
@@ -1224,10 +1231,6 @@ void pmmProcessMessage(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             }
             (void) palCopyMemory(pMac->hHdd, pPSCfg, pMbMsg->data, sizeof(tSirPowerSaveCfg));
             (void) pmmSendPowerSaveCfg(pMac, pPSCfg);
-
-            // sending beacon filtering information down to HAL
-            if (limSendBeaconFilterInfo(pMac) != eSIR_SUCCESS)
-                pmmLog(pMac, LOGE, FL("Fail to send Beacon Filter Info \n"));
         }
             break;
 

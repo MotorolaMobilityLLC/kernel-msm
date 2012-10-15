@@ -1358,6 +1358,8 @@ typedef __ani_attr_pre_packed struct sBeaconFilterMsg
     tANI_U16    capabilityMask;
     tANI_U16    beaconInterval;
     tANI_U16    ieNum;
+    tANI_U8     bssIdx;
+    tANI_U8     reserved;
 } __ani_attr_packed tBeaconFilterMsg, *tpBeaconFilterMsg;
 
 typedef __ani_attr_pre_packed struct sEidByteInfo
