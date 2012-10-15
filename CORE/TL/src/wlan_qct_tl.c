@@ -1648,7 +1648,7 @@ WLANTL_STAPktPending
           No error code is sent because TL will resume tx autonomously if
           resources become available or tx gets resumed
           ---------------------------------------------------------------------*/
-        VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+        VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
               "WLAN TL:Request to send but condition not met. Res: %d,Suspend: %d",
               pTLCb->uResCount, pTLCb->ucTxSuspended );
       }
