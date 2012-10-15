@@ -3471,6 +3471,7 @@ void dxeTXReSyncDesc
    WLANDXE_ChannelCBType    *channelEntry;
    WLANDXE_DescCtrlBlkType  *validCtrlBlk;
    wpt_uint32                descLoop;
+   wpt_uint32                channelLoop;
 
    if(NULL == msgContent)
    {
@@ -3483,45 +3484,67 @@ void dxeTXReSyncDesc
             "dxeTXReSyncDesc Try to re-sync TX channel if any problem");
    pDxeCtrlBlk = (WLANDXE_CtrlBlkType *)(msgContent->pContext);
 
-   channelEntry = &pDxeCtrlBlk->dxeChannel[WDTS_CHANNEL_TX_HIGH_PRI];
-   wpalReadRegister(channelEntry->channelRegister.chDXEDesclRegAddr,
-                    &nextDescReg);
-   validCtrlBlk = channelEntry->tailCtrlBlk;
-   for(descLoop = 0; descLoop < channelEntry->numDesc; descLoop++)
+   for(channelLoop = WDTS_CHANNEL_TX_LOW_PRI; channelLoop < WDTS_CHANNEL_RX_LOW_PRI; channelLoop++)
    {
-      if(validCtrlBlk->linkedDesc->descCtrl.ctrl & WLANDXE_DESC_CTRL_VALID)
+      channelEntry = &pDxeCtrlBlk->dxeChannel[channelLoop];
+      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
+               "%11s : Try to detect TX descriptor async", channelType[channelEntry->channelType]);
+      wpalReadRegister(channelEntry->channelRegister.chDXEDesclRegAddr,
+                       &nextDescReg);
+      /* Async detect without TX pending frame */
+      if(channelEntry->tailCtrlBlk == channelEntry->headCtrlBlk)
       {
-         if(nextDescReg != validCtrlBlk->linkedDescPhyAddr)
+         if(nextDescReg != channelEntry->tailCtrlBlk->linkedDescPhyAddr)
          {
-            dxeChannelMonitor("!!! TX High Async !!!", channelEntry);
-            dxeChannelRegisterDump(channelEntry, "!!! TX High Async !!!");
+            HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                     "TX Async no Pending frame");
+            dxeChannelMonitor("!!! TX Async no Pending frame !!!", channelEntry);
+            dxeChannelRegisterDump(channelEntry, "!!! TX Async no Pending frame !!!");
             wpalWriteRegister(channelEntry->channelRegister.chDXEDesclRegAddr,
-                              validCtrlBlk->linkedDescPhyAddr);
+                              channelEntry->tailCtrlBlk->linkedDescPhyAddr);
          }
-         break;
       }
-      validCtrlBlk = (WLANDXE_DescCtrlBlkType *)validCtrlBlk->nextCtrlBlk;
-   }
-
-
-   channelEntry = &pDxeCtrlBlk->dxeChannel[WDTS_CHANNEL_TX_LOW_PRI];
-   wpalReadRegister(channelEntry->channelRegister.chDXEDesclRegAddr,
-                    &nextDescReg);
-   validCtrlBlk = channelEntry->tailCtrlBlk;
-   for(descLoop = 0; descLoop < channelEntry->numDesc; descLoop++)
-   {
-      if(validCtrlBlk->linkedDesc->descCtrl.ctrl & WLANDXE_DESC_CTRL_VALID)
+      /* Async detect with some TX pending frames
+       * next descriptor register should sync with first valid descriptor */
+      else
       {
-         if(nextDescReg != validCtrlBlk->linkedDescPhyAddr)
+         validCtrlBlk = channelEntry->tailCtrlBlk;
+         for(descLoop = 0; descLoop < channelEntry->numDesc; descLoop++)
          {
-            dxeChannelMonitor("!!! TX Low Async !!!", channelEntry);
-            dxeChannelRegisterDump(channelEntry, "!!! TX Low Async !!!");
-            wpalWriteRegister(channelEntry->channelRegister.chDXEDesclRegAddr,
-                              validCtrlBlk->linkedDescPhyAddr);
+            if(validCtrlBlk->linkedDesc->descCtrl.ctrl & WLANDXE_DESC_CTRL_VALID)
+            {
+               if(nextDescReg != validCtrlBlk->linkedDescPhyAddr)
+               {
+                  HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                           "TX Async");
+                  dxeChannelMonitor("!!! TX Async !!!", channelEntry);
+                  dxeChannelRegisterDump(channelEntry, "!!! TX Async !!!");
+                  wpalWriteRegister(channelEntry->channelRegister.chDXEDesclRegAddr,
+                                    validCtrlBlk->linkedDescPhyAddr);
+               }
+               break;
+            }
+            validCtrlBlk = (WLANDXE_DescCtrlBlkType *)validCtrlBlk->nextCtrlBlk;
+            if(validCtrlBlk == channelEntry->headCtrlBlk->nextCtrlBlk)
+            {
+               /* Finished to test till head control blcok, but could not find valid descriptor
+                * from head to tail all descriptors are invalidated
+                * host point of view head descriptor is next TX candidate
+                * So, next descriptor control have to be programmed with head descriptor
+                * check */
+               if(nextDescReg != channelEntry->headCtrlBlk->linkedDescPhyAddr)
+               {
+                  HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                           "TX Async with not completed transfered frames, next descriptior must be head");
+                  dxeChannelMonitor("!!! TX Async !!!", channelEntry);
+                  dxeChannelRegisterDump(channelEntry, "!!! TX Async !!!");
+                  wpalWriteRegister(channelEntry->channelRegister.chDXEDesclRegAddr,
+                                    validCtrlBlk->linkedDescPhyAddr);
+               }
+               break;
+            }
          }
-         break;
       }
-      validCtrlBlk = (WLANDXE_DescCtrlBlkType *)validCtrlBlk->nextCtrlBlk;
    }
 
    wpalMemoryFree(msgPtr);
