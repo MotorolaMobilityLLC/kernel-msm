@@ -1143,7 +1143,8 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 {
 	struct dsi_cmd_desc *cm;
 	uint32 dsi_ctrl, ctrl;
-	int i, video_mode;
+	int i;
+	uint32 panel_mode;
 
 	/* turn on cmd mode
 	* for video mode, do not send cmds more than
@@ -1151,8 +1152,8 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 	* during BLLP.
 	*/
 	dsi_ctrl = MIPI_INP(MIPI_DSI_BASE + 0x0000);
-	video_mode = dsi_ctrl & 0x02; /* VIDEO_MODE_EN */
-	if (video_mode) {
+	panel_mode = mdp4_overlay_panel_list();
+	if (panel_mode & MDP4_PANEL_DSI_VIDEO) {
 		ctrl = dsi_ctrl | 0x04; /* CMD_MODE_EN */
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, ctrl);
 	}
@@ -1169,7 +1170,7 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 		cm++;
 	}
 
-	if (video_mode)
+	if (panel_mode & MDP4_PANEL_DSI_VIDEO)
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl); /* restore */
 
 	return cnt;
@@ -1346,8 +1347,6 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 	}
 
 	if (!(req->flags & CMD_REQ_NO_MAX_PKT_SIZE)) {
-
-
 		/* packet size need to be set at every read */
 		pkt_size = len;
 		max_pktsize[0] = pkt_size;
@@ -1363,7 +1362,6 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 
 	/* transmit read comamnd to client */
 	mipi_dsi_cmd_dma_tx(tp);
-
 	mipi_dsi_disable_irq(DSI_CMD_TERM);
 	/*
 	 * once cmd_dma_done interrupt received,
@@ -1550,7 +1548,7 @@ struct dcs_cmd_req *mipi_dsi_cmdlist_get(void)
 	}
 	return req;
 }
-void mipi_dsi_cmdlist_tx(struct dcs_cmd_req *req)
+int mipi_dsi_cmdlist_tx(struct dcs_cmd_req *req)
 {
 	struct dsi_buf *tp;
 	int ret;
@@ -1562,9 +1560,10 @@ void mipi_dsi_cmdlist_tx(struct dcs_cmd_req *req)
 	if (req->cb)
 		req->cb(ret);
 
+	return ret;
 }
 
-void mipi_dsi_cmdlist_rx(struct dcs_cmd_req *req)
+int mipi_dsi_cmdlist_rx(struct dcs_cmd_req *req)
 {
 	int len;
 	u32 *dp;
@@ -1580,35 +1579,30 @@ void mipi_dsi_cmdlist_rx(struct dcs_cmd_req *req)
 	len = mipi_dsi_cmds_rx_new(tp, rp, req, req->rlen);
 	dp = (u32 *)rp->data;
 
-	if (req->cb)
+	if (req->cb) {
+		dp = (u32 *)rp->data;
 		req->cb(*dp);
+	} else if (len > 0)
+		req->rdata = rp->data;
+
+	return len;
 }
 
-void mipi_dsi_cmdlist_commit(int from_mdp)
+int __mipi_dsi_cmdlist_commit(int from_mdp, struct dcs_cmd_req *cmdreq)
 {
-	struct dcs_cmd_req *req;
-	int video;
-	u32 dsi_ctrl;
+	int ret;
+	uint32 panel_mode;
 
-	mutex_lock(&cmd_mutex);
-	req = mipi_dsi_cmdlist_get();
+	pr_debug("%s: from_mdp=%d, cmd=0x%x, REQ_TX=%d REQ_COMMIT=%d\n",
+			__func__, from_mdp, cmdreq->cmds->payload[0],
+			(cmdreq->flags & CMD_REQ_RX),
+			(cmdreq->flags & CMD_REQ_COMMIT));
 
-	/* make sure dsi_cmd_mdp is idle */
-	mipi_dsi_cmd_mdp_busy();
-
-	if (req == NULL)
-		goto need_lock;
-
-	video = MIPI_INP(MIPI_DSI_BASE + 0x0000);
-	video &= 0x02; /* VIDEO_MODE */
-
-	if (!video)
+	panel_mode = mdp4_overlay_panel_list();
+	if (panel_mode & MDP4_PANEL_DSI_CMD)
 		mipi_dsi_clk_cfg(1);
 
-	pr_debug("%s:  from_mdp=%d pid=%d\n", __func__, from_mdp, current->pid);
-
-	dsi_ctrl = MIPI_INP(MIPI_DSI_BASE + 0x0000);
-	if (dsi_ctrl & 0x02) {
+	if (panel_mode & MDP4_PANEL_DSI_VIDEO) {
 		/* video mode, make sure dsi_cmd_mdp is busy
 		 * so dcs command will be txed at start of BLLP
 		 */
@@ -1621,26 +1615,70 @@ void mipi_dsi_cmdlist_commit(int from_mdp)
 		}
 	}
 
-	if (req->flags & CMD_REQ_RX)
-		mipi_dsi_cmdlist_rx(req);
+	if (cmdreq->flags & CMD_REQ_RX)
+		ret = mipi_dsi_cmdlist_rx(cmdreq);
 	else
-		mipi_dsi_cmdlist_tx(req);
+		ret = mipi_dsi_cmdlist_tx(cmdreq);
 
-	if (!video)
+	if (panel_mode & MDP4_PANEL_DSI_CMD)
 		mipi_dsi_clk_cfg(0);
-
-need_lock:
 
 	if (from_mdp) /* from pipe_commit */
 		mipi_dsi_cmd_mdp_start();
 
-	mutex_unlock(&cmd_mutex);
+	return ret;
 }
 
+static int mipi_dsi_cmdlist_commit_now(int from_mdp, struct dcs_cmd_req *cmdreq)
+{
+	int ret;
+
+	mutex_lock(&cmd_mutex);
+	ret = __mipi_dsi_cmdlist_commit(0, cmdreq);
+	mutex_unlock(&cmd_mutex);
+
+	return ret;
+}
+
+int mipi_dsi_cmdlist_commit(int from_mdp)
+{
+	int ret;
+	struct dcs_cmd_req *req;
+
+	mutex_lock(&cmd_mutex);
+	req = mipi_dsi_cmdlist_get();
+	if (req == NULL)
+		ret = -EPERM;
+	else
+		ret = __mipi_dsi_cmdlist_commit(from_mdp, req);
+
+	mutex_unlock(&cmd_mutex);
+
+	pr_debug("%s: from_mdp=%d pid=%d\n", __func__, from_mdp, current->pid);
+
+	return ret;
+}
+
+/*
+ * Put the DSI CMD to put in the queue
+ * if (cmdreq->flags & CMD_REQ_COMMIT) then commit righaway & not put in queue
+ */
 int mipi_dsi_cmdlist_put(struct dcs_cmd_req *cmdreq)
 {
 	struct dcs_cmd_req *req;
 	int ret = 0;
+
+	pr_debug("%s: cmd=0x%x CMD_REQ_COMMIT=%d\n", __func__,
+		cmdreq->cmds->payload[0], (cmdreq->flags & CMD_REQ_COMMIT));
+
+	/*
+	 * if the request to commit right now, and caller passes data addr
+	 * then we will not put in queue
+	 */
+	if (cmdreq->flags & CMD_REQ_COMMIT) {
+		ret = mipi_dsi_cmdlist_commit_now(0, cmdreq);
+		goto end;
+	}
 
 	mutex_lock(&cmd_mutex);
 	req = &cmdlist.list[cmdlist.put];
@@ -1662,9 +1700,7 @@ int mipi_dsi_cmdlist_put(struct dcs_cmd_req *cmdreq)
 	pr_debug("%s: tot=%d put=%d get=%d\n", __func__,
 		cmdlist.tot, cmdlist.put, cmdlist.get);
 
-	if (req->flags & CMD_REQ_COMMIT)
-		mipi_dsi_cmdlist_commit(0);
-
+end:
 	return ret;
 }
 
