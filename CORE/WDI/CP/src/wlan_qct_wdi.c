@@ -7437,6 +7437,12 @@ WDI_ProcessConfigBSSReq
   }
 
   /*Copy the BSS request */
+#ifdef WLAN_FEATURE_11AC
+  if (WDI_getFwWlanFeatCaps(DOT11AC))
+    WDI_CopyWDIConfigBSSToHALConfigBSS( (tConfigBssParams*)&halConfigBssReqMsg.uBssParams.configBssParams_V1,
+                                        &pwdiConfigBSSParams->wdiReqInfo);
+  else
+#endif
   WDI_CopyWDIConfigBSSToHALConfigBSS( &halConfigBssReqMsg.uBssParams.configBssParams,
                                       &pwdiConfigBSSParams->wdiReqInfo);
 
@@ -22231,7 +22237,10 @@ WDI_PackPreferredNetworkList
      /*Indicate the channel on which the Network can be found
        0 - if all channels */
      pPrefNetwListParams.aNetworks[i].ucChannelCount =
-       pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].ucChannelCount;
+       (pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].ucChannelCount <
+        WLAN_HAL_PNO_MAX_NETW_CHANNELS)?
+       pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].ucChannelCount :
+        WLAN_HAL_PNO_MAX_NETW_CHANNELS;
 
      wpalMemoryCopy(pPrefNetwListParams.aNetworks[i].aChannels,
                     pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].aChannels,
