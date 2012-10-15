@@ -264,8 +264,9 @@ struct dsi_kickoff_action {
 
 typedef void (*fxn)(u32 data);
 
-#define CMD_REQ_RX	0x0001
-#define CMD_REQ_COMMIT 0x0002
+#define CMD_REQ_TX              0x0000
+#define CMD_REQ_RX              0x0001
+#define CMD_REQ_COMMIT          0x0002
 #define CMD_REQ_NO_MAX_PKT_SIZE 0x0008
 
 struct dcs_cmd_req {
@@ -274,6 +275,7 @@ struct dcs_cmd_req {
 	u32 flags;
 	int rlen;	/* rx length */
 	fxn cb;
+	char *rdata;	/* buffer */
 };
 
 struct dcs_cmd_list {
@@ -344,7 +346,7 @@ void mipi_dsi_clk_cfg(int on);
 
 int mipi_dsi_cmdlist_put(struct dcs_cmd_req *cmdreq);
 struct dcs_cmd_req *mipi_dsi_cmdlist_get(void);
-void mipi_dsi_cmdlist_commit(int from_mdp);
+int mipi_dsi_cmdlist_commit(int from_mdp);
 void mipi_dsi_cmd_mdp_busy(void);
 
 #ifdef CONFIG_FB_MSM_MDP303
