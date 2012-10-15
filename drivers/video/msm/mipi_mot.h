@@ -133,6 +133,6 @@ int mipi_mot_panel_on(struct msm_fb_data_type *mfd);
 int mipi_mot_panel_off(struct msm_fb_data_type *mfd);
 u8 mipi_mode_get_pwr_mode(struct msm_fb_data_type *mfd);
 void mipi_mot_esd_work(void);
-void mipi_mot_mipi_busy_wait(struct msm_fb_data_type *mfd);
-
+void mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt);
+int mipi_mot_rx_cmd(struct dsi_cmd_desc *cmd, u8 *data, int rlen);
 #endif /* MIPI_MOT_PANEL_H */

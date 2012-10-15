@@ -60,7 +60,7 @@ static int get_manufacture_id(struct msm_fb_data_type *mfd)
 			pr_err("%s: failed to retrieve manufacture_id\n",
 								__func__);
 		else {
-			pr_info(" MIPI panel Manufacture_id = 0x%x\n",
+			pr_info(" MIPI panel manufacture_id = 0x%x\n",
 							manufacture_id);
 			display_hw_rev_txt_manufacturer = manufacture_id;
 		}
@@ -279,6 +279,8 @@ static int panel_enable(struct platform_device *pdev)
 	if (ret != 0)
 		goto err;
 
+	/* To clear out any error msg that panel can detect during first boot */
+	mipi_dsi_cmd_bta_sw_trigger();
 	if (mot_panel.panel_enable)
 		mot_panel.panel_enable(mfd);
 	else {
@@ -428,7 +430,6 @@ static int mot_panel_off_reboot(struct notifier_block *nb,
 		mutex_lock(&mfd->dma->ov_mutex);
 
 		atomic_set(&mot_panel->state, MOT_PANEL_OFF);
-		mipi_mot_mipi_busy_wait(mfd);
 		if (mot_panel->panel_disable)
 			mot_panel->panel_disable(mfd);
 
