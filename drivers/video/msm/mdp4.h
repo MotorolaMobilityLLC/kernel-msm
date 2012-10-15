@@ -368,6 +368,7 @@ struct mdp4_overlay_pipe {
 	uint32 blt_ov_done;
 	uint32 blt_dmap_koff;
 	uint32 blt_dmap_done;
+	uint32 blt_forced;
 	uint32 req_clk;
 	uint32 req_bw;
 	uint32 luma_align_size;
