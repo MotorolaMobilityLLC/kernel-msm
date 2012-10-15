@@ -129,8 +129,16 @@ static int vibrator_power_set(int enable)
 		rc = regulator_enable(vreg_l16);
 		if (rc < 0)
 			pr_err("%s: regulator_enable failed\n", __func__);
+		else {
+			rc = gpio_request(GPIO_MOTOR_PWM, "motor_pwm");
+			if (rc < 0)
+				pr_warn("%s: gpio_request failed\n", __func__);
+			vibrator_clock_on();
+		}
 	} else {
 		if (regulator_is_enabled(vreg_l16) > 0 ) {
+			vibrator_clock_off();
+			gpio_free(GPIO_MOTOR_PWM);
 			rc = regulator_disable(vreg_l16);
 			if (rc < 0)
 				pr_err("%s: regulator_disable failed\n", __func__);
@@ -172,7 +180,6 @@ static int vibrator_pwm_set(int enable, int amp, int n_value)
 	pr_debug("%s: amp=%d, n_value=%d\n", __func__, amp, n_value);
 
 	if (enable) {
-		vibrator_clock_on();
 		if (amp)
 			D_VAL = vibrator_adjust_amp(amp) + GP_CLK_D_HALF;
 		if (D_VAL > GP_CLK_D_HALF) {
@@ -200,7 +207,6 @@ static int vibrator_pwm_set(int enable, int amp, int n_value)
 				__func__,
 				M_VAL, n_value, D_VAL);
 	} else {
-		vibrator_clock_off();
 		REG_WRITEL(
 			((((~(n_value-M_VAL)) & 0xffU) << 16U) + /* N_VAL[23:16] */
 			(0U << 11U) +  /* CLK_ROOT_ENA[11]  : Disable(0) */
