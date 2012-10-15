@@ -4363,8 +4363,7 @@ tANI_BOOLEAN csrRoamIsCCXAssoc(tpAniSirGlobal pMac)
 //Returns whether "Legacy Fast Roaming" is currently enabled...or not
 tANI_BOOLEAN csrRoamIsFastRoamEnabled(tpAniSirGlobal pMac)
 {
-    return (pMac->roam.configParam.isFastRoamIniFeatureEnabled &&
-            (!vos_concurrent_sessions_running()));
+    return pMac->roam.configParam.isFastRoamIniFeatureEnabled;
 }
 #endif
 
