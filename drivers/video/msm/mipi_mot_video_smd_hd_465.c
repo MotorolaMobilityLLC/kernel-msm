@@ -746,10 +746,9 @@ static char a1_gamma_settings_83_8b_nit[NUMBER_BRIGHTNESS_LEVELS][26] = {
 };
 
 static __u8 id_regs[3] = {0, 0, 0};
-static int mipi_mot_read_byte(struct msm_fb_data_type *mfd,
-	__u8 address, __u8 *value)
+static int mipi_mot_read_byte(__u8 address, __u8 *value)
 {
-	int rc = 0;
+	int ret;
 	__u8 cmd_buf[2] = {address, 0};
 	struct dsi_cmd_desc reg_read_cmd = {
 		.dtype = DTYPE_DCS_READ,
@@ -761,20 +760,16 @@ static int mipi_mot_read_byte(struct msm_fb_data_type *mfd,
 		.payload = cmd_buf
 	};
 
-	if (mipi_dsi_cmds_rx(mfd, mot_panel->mot_tx_buf, mot_panel->mot_rx_buf,
-		&reg_read_cmd, 1) == 1) {
-		memcpy(value, mot_panel->mot_rx_buf->data, 1);
-		pr_debug("%s: %08x=%08x\n", __func__,
-			(unsigned int)address, (unsigned int)(*value));
-		rc = 0;
-	} else {
-		pr_err("%s: error reading %08x\n", __func__,
-			(unsigned int)address);
-		*value = 0xff;
-		rc = -1;
+	ret = mipi_mot_rx_cmd(&reg_read_cmd, &address, 1);
+	if (ret < 0) {
+		pr_err("%s: failed to read cmd=0x%x\n", __func__, address);
+		*value = 0;
 	}
 
-	return rc;
+	pr_debug("%s: %08x=%08x\n", __func__,
+		 (unsigned int)address, (unsigned int)(*value));
+
+	return 0;
 }
 
 static char smart_dynamic_elvss[3] = {0xb1, 0x08, 0x81};
@@ -930,15 +925,12 @@ static struct dsi_cmd_desc mot_display_off_cmds[] = {
 
 static void enable_acl(struct msm_fb_data_type *mfd)
 {
-	struct dsi_buf *dsi_tx_buf;
 	/* Write the value only if the display is enable and powerd on */
 	if ((mfd->op_enable != 0) && (mfd->panel_power_on != 0)) {
-		dsi_tx_buf = mot_panel->mot_tx_buf;
 		mutex_lock(&mfd->dma->ov_mutex);
-		mipi_mot_mipi_busy_wait(mfd);
 		mipi_set_tx_power_mode(0);
 		ACL_enable_disable_settings[1] = mot_panel->acl_enabled;
-		mipi_dsi_cmds_tx(dsi_tx_buf, mot_acl_enable_disable,
+		mipi_mot_tx_cmds(&mot_acl_enable_disable[0],
 					ARRAY_SIZE(mot_acl_enable_disable));
 		mutex_unlock(&mfd->dma->ov_mutex);
 	}
@@ -947,7 +939,6 @@ static void enable_acl(struct msm_fb_data_type *mfd)
 #define RETRY_MAX_CNT 15
 static int panel_enable(struct msm_fb_data_type *mfd)
 {
-	struct dsi_buf *dsi_tx_buf;
 	static int bootloader_nit = 1;
 	int idx, retry_cnt, ret;
 
@@ -966,16 +957,8 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 	if (idx > NUMBER_BRIGHTNESS_LEVELS - 1)
 		idx = NUMBER_BRIGHTNESS_LEVELS - 1;
 
-	if (mot_panel == NULL) {
-		pr_err("%s: Invalid mot_panel\n", __func__);
-		return -EAGAIN;
-	}
-
-	dsi_tx_buf = mot_panel->mot_tx_buf;
-
-	mipi_dsi_cmds_tx(dsi_tx_buf, mot_video_on_cmds1,
+	mipi_mot_tx_cmds(&mot_video_on_cmds1[0],
 					ARRAY_SIZE(mot_video_on_cmds1));
-
 	mdelay(20);
 
 	/*
@@ -990,7 +973,7 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 	 * after 1-5 failure readings, the panel returns correct reading message
 	 */
 	for (retry_cnt = 0; retry_cnt < RETRY_MAX_CNT; retry_cnt++) {
-		ret = mipi_mot_read_byte(mfd, 0xda, &id_regs[0]);
+		ret = mipi_mot_read_byte(0xda, &id_regs[0]);
 		if (ret == -1) {
 			mdelay(1);
 			continue;
@@ -1005,37 +988,35 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 		pr_err("%s: retry to read %d but still fails\n",
 			__func__, RETRY_MAX_CNT);
 
-	mipi_mot_read_byte(mfd, 0xdb, &id_regs[1]);
-	mipi_mot_read_byte(mfd, 0xdc, &id_regs[2]);
+
+	mipi_mot_read_byte(0xdb, &id_regs[1]);
+	mipi_mot_read_byte(0xdc, &id_regs[2]);
 
 	ACL_enable_disable_settings[1] = mot_panel->acl_enabled;
-	mipi_dsi_cmds_tx(dsi_tx_buf, mot_video_on_cmds2_1,
-					ARRAY_SIZE(mot_video_on_cmds2_1));
-
+	mipi_mot_tx_cmds(&mot_video_on_cmds2_1[0],
+				ARRAY_SIZE(mot_video_on_cmds2_1));
 	/* Set backlight */
 
 	mot_video_on_cmds2_2[0].payload = getGamma(idx);
-	mipi_dsi_cmds_tx(dsi_tx_buf, mot_video_on_cmds2_2,
-					ARRAY_SIZE(mot_video_on_cmds2_2));
+	mipi_mot_tx_cmds(&mot_video_on_cmds2_2[0],
+				ARRAY_SIZE(mot_video_on_cmds2_2));
 
-	mipi_dsi_cmds_tx(dsi_tx_buf, mot_video_on_cmds2_3,
-					ARRAY_SIZE(mot_video_on_cmds2_3));
+	mipi_mot_tx_cmds(&mot_video_on_cmds2_3[0],
+				ARRAY_SIZE(mot_video_on_cmds2_3));
 
 	mot_video_on_cmds2_pwr_ctrl[0].payload = getPwrCtrl();
-	mipi_dsi_cmds_tx(dsi_tx_buf, mot_video_on_cmds2_pwr_ctrl,
+	mipi_mot_tx_cmds(&mot_video_on_cmds2_pwr_ctrl[0],
 				ARRAY_SIZE(mot_video_on_cmds2_pwr_ctrl));
 
 	mot_video_on_cmds2_elvss[0].payload = getElvssForGamma(idx);
-	mipi_dsi_cmds_tx(dsi_tx_buf, mot_video_on_cmds2_elvss,
-					ARRAY_SIZE(mot_video_on_cmds2_elvss));
+	mipi_mot_tx_cmds(&mot_video_on_cmds2_elvss[0],
+				ARRAY_SIZE(mot_video_on_cmds2_elvss));
 
-	mipi_dsi_cmds_tx(dsi_tx_buf, mot_video_on_cmds2_acl,
-					ARRAY_SIZE(mot_video_on_cmds2_acl));
+	mipi_mot_tx_cmds(&mot_video_on_cmds2_acl[0],
+				ARRAY_SIZE(mot_video_on_cmds2_acl));
 	mdelay(120);
-
-	mipi_dsi_cmds_tx(dsi_tx_buf, mot_video_on_cmds3,
-					ARRAY_SIZE(mot_video_on_cmds3));
-
+	mipi_mot_tx_cmds(&mot_video_on_cmds3[0],
+				ARRAY_SIZE(mot_video_on_cmds3));
 	mdelay(5);
 
 	return 0;
@@ -1043,33 +1024,18 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 
 static int panel_disable(struct msm_fb_data_type *mfd)
 {
-	struct dsi_buf *dsi_tx_buf;
-
-	if (mot_panel == NULL) {
-		pr_err("%s: Invalid mot_panel\n", __func__);
-		return -EAGAIN;
-	}
-
-	dsi_tx_buf =  mot_panel->mot_tx_buf;
-
-	mipi_dsi_cmds_tx(dsi_tx_buf, mot_display_off_cmds,
-					ARRAY_SIZE(mot_display_off_cmds));
-
+	mipi_mot_tx_cmds(&mot_display_off_cmds[0],
+				ARRAY_SIZE(mot_display_off_cmds));
 	return 0;
 }
 
 static void panel_set_backlight(struct msm_fb_data_type *mfd)
 {
 
-	struct mipi_panel_info *mipi;
 	static int bl_level_old = -1;
 	int idx = 0;
-	struct dsi_buf *dsi_tx_buf;
 
 	pr_debug("%s(%d)\n", __func__, (s32)mfd->bl_level);
-
-	mipi  = &mfd->panel_info.mipi;
-	dsi_tx_buf =  mot_panel->mot_tx_buf;
 
 	if (!mfd->panel_power_on)
 		return;
@@ -1091,10 +1057,9 @@ static void panel_set_backlight(struct msm_fb_data_type *mfd)
 			(unsigned int)(*(mot_set_brightness_cmds[2].payload)));
 
 	mutex_lock(&mfd->dma->ov_mutex);
-	mipi_mot_mipi_busy_wait(mfd);
 	mipi_set_tx_power_mode(0);
-	mipi_dsi_cmds_tx(dsi_tx_buf, mot_set_brightness_cmds,
-					ARRAY_SIZE(mot_set_brightness_cmds));
+	mipi_mot_tx_cmds(&mot_set_brightness_cmds[0],
+				ARRAY_SIZE(mot_set_brightness_cmds));
 
 	bl_level_old = mfd->bl_level;
 	mutex_unlock(&mfd->dma->ov_mutex);
@@ -1193,6 +1158,8 @@ static int __init mipi_video_mot_hd_pt_init(void)
 	pinfo->mipi.dma_trigger = DSI_CMD_TRIGGER_SW;
 	pinfo->mipi.frame_rate = 60;
 	pinfo->mipi.dsi_phy_db = &dsi_video_mode_phy_db;
+	pinfo->mipi.esc_byte_ratio = 4;
+
 	mot_panel->acl_support_present = TRUE;
 	mot_panel->acl_enabled = FALSE; /* By default the ACL is disabled. */
 

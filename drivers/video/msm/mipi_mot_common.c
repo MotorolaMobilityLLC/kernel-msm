@@ -21,10 +21,6 @@
 /* #define MIPI_MOT_PANEL_ESD_TEST	1 */
 #define MIPI_MOT_PANEL_ESD_CNT_MAX	3
 
-#define mdp4_dsi_cmd_dma_busy_wait(x) { }
-#define mdp4_dsi_blt_dmap_busy_wait(x) { }
-#define mdp4_overlay_dsi_video_wait4event(x, y) { }
-
 static struct mipi_mot_panel *mot_panel;
 
 static char manufacture_id[2] = {DCS_CMD_READ_DA, 0x00}; /* DTYPE_DCS_READ */
@@ -56,51 +52,65 @@ static struct dsi_cmd_desc mot_get_pwr_mode_cmd = {
 
 int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
 {
-	struct dsi_buf *tp = mot_panel->mot_tx_buf;
+	struct dcs_cmd_req cmdreq;
 
-	mdp4_dsi_cmd_dma_busy_wait(mfd);
-	mipi_dsi_mdp_busy_wait();
+	cmdreq.cmds = &mot_display_on_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_TX | CMD_REQ_COMMIT;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
 
-	mipi_dsi_buf_init(tp);
-	mipi_dsi_cmds_tx(tp, &mot_display_on_cmd, 1);
+	mipi_dsi_cmdlist_put(&cmdreq);
 
 	return 0;
 }
 
 int mipi_mot_panel_off(struct msm_fb_data_type *mfd)
 {
-	struct dsi_buf *tp = mot_panel->mot_tx_buf;
+	struct dcs_cmd_req cmdreq;
 
-	mdp4_dsi_cmd_dma_busy_wait(mfd);
-	mipi_dsi_mdp_busy_wait();
+	cmdreq.cmds = &mot_display_off_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_TX | CMD_REQ_COMMIT;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
 
-	mipi_dsi_buf_init(tp);
-	mipi_dsi_cmds_tx(tp, &mot_display_off_cmd, 1);
+	mipi_dsi_cmdlist_put(&cmdreq);
 
 	return 0;
 }
 
-static int32 get_panel_info(struct msm_fb_data_type *mfd,
-				struct  mipi_mot_panel *mot_panel,
-				struct dsi_cmd_desc *cmd)
+/* TODO: need to check for ERR return when read is failed */
+/*
+ * This API is used to send the DSI MIPI command right away
+ * (flags = CMD_REQ_COMMIT) when DSI link is free.
+*/
+int mipi_mot_rx_cmd(struct dsi_cmd_desc *cmd, u8 *data, int rlen)
 {
-	struct dsi_buf *rp, *tp;
-	uint32 *lp;
 	int ret;
+	struct dcs_cmd_req cmdreq;
 
-	tp = mot_panel->mot_tx_buf;
-	rp = mot_panel->mot_rx_buf;
-	mipi_dsi_buf_init(rp);
-	mipi_dsi_buf_init(tp);
+	pr_debug("%s is called\n", __func__);
+	cmdreq.cmds = cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	cmdreq.rlen = rlen;
+	cmdreq.cb = NULL;
 
-	ret = mipi_dsi_cmds_rx(mfd, tp, rp, cmd, 1);
-	if (!ret)
-		ret = -1;
-	else {
-		lp = (uint32 *)rp->data;
-		ret = (int)*lp;
-	}
-
+	ret = mipi_dsi_cmdlist_put(&cmdreq);
+	if (ret < 0) {
+		pr_err("%s: failed to read cmd=0x%x\n", __func__,
+							cmd->payload[0]);
+		goto end;
+	} else if (ret != rlen)
+		pr_warning("%s: read cmd=0x%x returns data(%d) != rlen(%d)\n",
+					__func__, cmd->payload[0], rlen, ret);
+	else if (cmdreq.rdata) {
+		memcpy(data, cmdreq.rdata, rlen);
+		ret = rlen;
+	} else
+		ret = 0;
+end:
 	return ret;
 }
 
@@ -109,13 +119,37 @@ void mipi_mot_set_mot_panel(struct mipi_mot_panel *mot_panel_ptr)
 	mot_panel = mot_panel_ptr;
 }
 
+/* TODO: need to check for ERR return*/
+/*
+ * This API is used to send the DSI MIPI command right away
+ * (flags = CMD_REQ_COMMIT) when DSI link is free
+*/
+void mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt)
+{
+	struct dcs_cmd_req cmdreq;
+
+	cmdreq.cmds = cmds;
+	cmdreq.cmds_cnt = cnt;
+	cmdreq.flags = CMD_REQ_TX | CMD_REQ_COMMIT;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	mipi_dsi_cmdlist_put(&cmdreq);
+
+	pr_debug("%s: is called for list cmd ; size= %d\n",
+						__func__, cmdreq.cmds_cnt);
+}
+
 u8 mipi_mode_get_pwr_mode(struct msm_fb_data_type *mfd)
 {
-	struct dsi_cmd_desc *cmd;
+	int ret;
 	u8 power_mode;
 
-	cmd = &mot_get_pwr_mode_cmd;
-	power_mode = get_panel_info(mfd, mot_panel, cmd);
+	ret = mipi_mot_rx_cmd(&mot_get_pwr_mode_cmd, &power_mode, 1);
+	if (ret < 0) {
+		pr_err("%s: failed to read pwr_mode\n", __func__);
+		power_mode = 0;
+	}
 
 	pr_debug("%s: panel power mode = 0x%x\n", __func__, power_mode);
 	return power_mode;
@@ -123,17 +157,18 @@ u8 mipi_mode_get_pwr_mode(struct msm_fb_data_type *mfd)
 
 u16 mipi_mot_get_manufacture_id(struct msm_fb_data_type *mfd)
 {
-	struct dsi_cmd_desc *cmd;
 	static int manufacture_id = INVALID_VALUE;
+	u8 rdata;
+	int ret;
 
 	if (manufacture_id == INVALID_VALUE) {
-		if (mot_panel == NULL) {
-			pr_err("%s: invalid mot_panel\n", __func__);
-			return -EAGAIN;
-		}
-
-		cmd = &mot_manufacture_id_cmd;
-		manufacture_id = get_panel_info(mfd, mot_panel, cmd);
+		ret =  mipi_mot_rx_cmd(&mot_manufacture_id_cmd,
+							&rdata, 1);
+		if (ret < 0) {
+			pr_err("%s: failed to read manufacture_id\n", __func__);
+			manufacture_id = ret;
+		} else
+			manufacture_id = (int)rdata;
 	}
 
 	return manufacture_id;
@@ -142,17 +177,17 @@ u16 mipi_mot_get_manufacture_id(struct msm_fb_data_type *mfd)
 
 u16 mipi_mot_get_controller_ver(struct msm_fb_data_type *mfd)
 {
-	struct dsi_cmd_desc *cmd;
 	static int controller_ver = INVALID_VALUE;
+	u8 rdata;
+	int ret;
 
 	if (controller_ver == INVALID_VALUE) {
-		if (mot_panel == NULL) {
-			pr_err("%s: invalid mot_panel\n", __func__);
-			return -EAGAIN;
-		}
-
-		cmd = &mot_controller_ver_cmd;
-		controller_ver =  get_panel_info(mfd, mot_panel, cmd);
+		ret  = mipi_mot_rx_cmd(&mot_controller_ver_cmd, &rdata, 1);
+		if (ret < 0) {
+			pr_err("%s: failed to read controller_ver\n", __func__);
+			controller_ver = ret;
+		} else
+			controller_ver = (int)rdata;
 	}
 
 	return controller_ver;
@@ -161,17 +196,18 @@ u16 mipi_mot_get_controller_ver(struct msm_fb_data_type *mfd)
 
 u16 mipi_mot_get_controller_drv_ver(struct msm_fb_data_type *mfd)
 {
-	struct dsi_cmd_desc *cmd;
 	static int controller_drv_ver = INVALID_VALUE;
+	u8 rdata;
+	int ret;
 
 	if (controller_drv_ver == INVALID_VALUE) {
-		if (mot_panel == NULL) {
-			pr_err("%s: invalid mot_panel\n", __func__);
-			return -EAGAIN;
-		}
-
-		cmd = &mot_controller_drv_ver_cmd;
-		controller_drv_ver = get_panel_info(mfd, mot_panel, cmd);
+		ret = mipi_mot_rx_cmd(&mot_controller_drv_ver_cmd, &rdata, 1);
+		if (ret < 0) {
+			pr_err("%s: failed to read controller_drv_ver\n",
+								__func__);
+			controller_drv_ver = ret;
+		} else
+			controller_drv_ver = (int)rdata;
 	}
 
 	return controller_drv_ver;
@@ -200,109 +236,13 @@ end:
 	return 0;
 }
 
-void mipi_mot_mipi_busy_wait(struct msm_fb_data_type *mfd)
-{
-	/* Todo: consider to remove mdp4_dsi_cmd_dma_busy_wait
-	 * mipi_dsi_cmds_tx/rx wait for dma completion already.
-	 */
-	if (mfd->panel_info.type == MIPI_CMD_PANEL) {
-		mdp4_dsi_cmd_dma_busy_wait(mfd);
-		mipi_dsi_mdp_busy_wait();
-		mdp4_dsi_blt_dmap_busy_wait(mfd);
-	} else if (mfd->panel_info.type == MIPI_VIDEO_PANEL) {
-		mdp4_overlay_dsi_video_wait4event(mfd, INTR_PRIMARY_VSYNC);
-		mdp4_dsi_cmd_dma_busy_wait(mfd);
-		mdp4_dsi_blt_dmap_busy_wait(mfd);
-	}
-
-}
-
-static int mipi_read_cmd_locked(struct msm_fb_data_type *mfd,
-					struct dsi_cmd_desc *cmd, u8 *rd_data)
-{
-	int ret;
-
-	mutex_lock(&mfd->dma->ov_mutex);
-	if (atomic_read(&mot_panel->state) == MOT_PANEL_OFF) {
-		ret = MOT_ESD_PANEL_OFF;
-		goto panel_off_ret;
-	} else {
-		mipi_set_tx_power_mode(0);
-		mipi_mot_mipi_busy_wait(mfd);
-		/* For video mode panel, after INTR_PRIMARY_VSYNC happened,
-		 * only have 5H(VSA+VBP) left for blanking period, might not
-		 * have enough time to complete read command. Want to
-		 * wait for 100us more (about 5H * 13us per line = 65us)
-		 * before calling mdp to send out read command.
-		 * with this delay, guarant mdp will send out read command
-		 * at the beginning of next blanking period.
-		 */
-		if (mfd->panel_info.type == MIPI_VIDEO_PANEL)
-			udelay(100);
-		*rd_data = (u8)get_panel_info(mfd, mot_panel, cmd);
-	}
-
-	ret = MOT_ESD_OK;
-
-panel_off_ret:
-	mutex_unlock(&mfd->dma->ov_mutex);
-	return ret;
-}
-
 static int mipi_mot_esd_detection(struct msm_fb_data_type *mfd)
 {
-	u8 expected_mode, pwr_mode = 0;
-	u8 rd_manufacture_id;
-	int ret;
-
-	ret = mipi_read_cmd_locked(mfd, &mot_get_pwr_mode_cmd,
-							&pwr_mode);
-	if (ret == MOT_ESD_PANEL_OFF)
-		return ret;
 	/*
-	 * There is a issue of the mipi_dsi_cmds_rx(), and case# 00743147
-	 * is opened for this API, but the patch from QCOm doesn't fix the
-	 * problem. In this commit will include the change from QCOM also.
-	 *
-	 * During the ESD test, if there is any issue of the MDP/DSI or
-	 * panel, this mipi_dsi_cmds_rx() will return the data of the previous
-	 * read.
-	 * To workaround this problem, we will provide 2 reads, and if ESD
-	 * happens, then 1 of data will be wrong, then the ESD will be kicked
-	 * in.
-	 * For Video mode, the blanking time will not big enough for 2 read
-	 * commands, therefore we will free the DSI bus for 100msec after
-	 * the first read.
+	 * TODO.. This will need to redo in the different way in other
+	 * ESD patch
 	 */
-	msleep(42);	/* wait for 2.5 frames */
-
-	ret = mipi_read_cmd_locked(mfd, &mot_manufacture_id_cmd,
-						&rd_manufacture_id);
-	if (ret == MOT_ESD_PANEL_OFF)
-		return ret;
-
-	expected_mode = 0x9c;
-
-	if (pwr_mode != expected_mode) {
-		pr_err("%s: Power mode in incorrect state. " \
-				"Cur_mode=0x%x Expected_mode=0x%x ",
-					__func__, pwr_mode, expected_mode);
-		ret = MOT_ESD_ESD_DETECT;
-		goto esd_detect;
-	}
-
-	if (mot_panel->is_valid_manufacture_id(mfd, rd_manufacture_id))
-		ret = MOT_ESD_OK;
-	else {
-		pr_err("%s: wrong manufacture_id: 0x%x\n",
-			__func__, rd_manufacture_id);
-		ret = MOT_ESD_ESD_DETECT;
-	}
-
-esd_detect:
-	pr_debug("%s: Cur_mode=0x%x Expected_mode=0x%x manufacture_id=0x%x\n",
-			__func__, pwr_mode, expected_mode, rd_manufacture_id);
-	return ret;
+	return MOT_ESD_OK;
 }
 
 void mipi_mot_esd_work(void)
@@ -315,12 +255,12 @@ void mipi_mot_esd_work(void)
 	static int esd_trigger_cnt;
 #endif
 
-	mfd = mot_panel->mfd;
-
 	if (mot_panel == NULL) {
 		pr_err("%s: invalid mot_panel\n", __func__);
 		return;
 	}
+
+	mfd = mot_panel->mfd;
 
 	/*
 	 * Try to run ESD detection on the panel MOT_PANEL_ESD_NUM_TRY_MAX

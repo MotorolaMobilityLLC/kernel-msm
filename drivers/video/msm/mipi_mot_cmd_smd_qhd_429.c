@@ -607,20 +607,11 @@ static u8 backlight_curve_mapping[FB_BACKLIGHT_LEVELS] = {
 
 static void enable_acl(struct msm_fb_data_type *mfd)
 {
-	struct dsi_buf *dsi_tx_buf;
 	/* Write the value only if the display is enable and powerd on */
 	if ((mfd->op_enable != 0) && (mfd->panel_power_on != 0)) {
-		dsi_tx_buf = mot_panel->mot_tx_buf;
-		mutex_lock(&mfd->dma->ov_mutex);
-		/*
-		 * Todo: add 50us delay between frame and cmd or between frames
-		 */
-		mipi_mot_mipi_busy_wait(mfd);
 		mipi_set_tx_power_mode(0);
-		ACL_enable_disable_settings[1] = mot_panel->acl_enabled;
-		mipi_dsi_cmds_tx(dsi_tx_buf, acl_enable_disable,
+		mipi_mot_tx_cmds(&acl_enable_disable[0],
 					ARRAY_SIZE(acl_enable_disable));
-		mutex_unlock(&mfd->dma->ov_mutex);
 	}
 }
 
@@ -649,51 +640,30 @@ static char *getGamma(int gammaIdx)
 
 static void mipi_mot_get_mtpset4(struct msm_fb_data_type *mfd)
 {
-	struct dsi_cmd_desc *cmd;
-	struct dsi_buf *rp, *tp;
-	uint32 *lp;
+	static u8 d4_value = INVALID_VALUE;
 	int ret;
-	static int d4_value = INVALID_VALUE;
 
 	if (d4_value == INVALID_VALUE) {
-		if (mot_panel == NULL) {
-			pr_err("%s: invalid mot_panel\n", __func__);
-			return;
-		}
-		tp = mot_panel->mot_tx_buf;
-		rp = mot_panel->mot_rx_buf;
-		mipi_dsi_buf_init(rp);
-		mipi_dsi_buf_init(tp);
-
-		cmd =  &get_d4_cmd;
-		ret = mipi_dsi_cmds_rx(mfd, tp, rp, cmd, 2);
-		if (!ret)
-			pr_err("%s: failed to read D4h\n", __func__);
+		ret = mipi_mot_rx_cmd(&get_d4_cmd, &d4_value, 1);
+		if (ret != 1)
+			pr_err("%s: failed to read d4_value. ret =%d\n",
+						__func__, ret);
 		else {
-			lp = (uint32 *)rp->data;
-			d4_value  = (int)*lp;
-
 			elvss_value = d4_value & 0x3F;
 			if (mipi_mot_get_controller_ver(mfd) >= 1)
 				white_pt_adj = (d4_value & 0xF000) >> 12;
 
 			pr_info("%s: elvss = 0x%2x, white_pt_adj = 0x%02x\n",
-				 __func__, elvss_value, white_pt_adj);
+					__func__, elvss_value, white_pt_adj);
 		}
 	}
 }
 
 static int panel_enable(struct msm_fb_data_type *mfd)
 {
-	struct dsi_buf *dsi_tx_buf;
 	int i;
 	int idx;
 	static bool first_boot = true;
-
-	if (mot_panel == NULL) {
-		pr_err("%s: Invalid mot_panel\n", __func__);
-		return -EINVAL;
-	}
 
 	if (first_boot) {
 		/*
@@ -710,58 +680,46 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 	if (idx > NUMBER_BRIGHTNESS_LEVELS - 1)
 		idx = NUMBER_BRIGHTNESS_LEVELS - 1;
 
-	dsi_tx_buf = mot_panel->mot_tx_buf;
-	mipi_dsi_cmds_tx(dsi_tx_buf, smd_qhd_429_cmds_1,
-			ARRAY_SIZE(smd_qhd_429_cmds_1));
+	mipi_mot_tx_cmds(&smd_qhd_429_cmds_1[0],
+					ARRAY_SIZE(smd_qhd_429_cmds_1));
 
 	/* Read D4h for elvss and apply gamma */
 	mipi_mot_get_mtpset4(mfd);
 
 	/* gamma */
 	smd_qhd_429_cmds_2[0].payload = getGamma(idx);
-	mipi_dsi_cmds_tx(dsi_tx_buf, smd_qhd_429_cmds_2,
-			ARRAY_SIZE(smd_qhd_429_cmds_2));
 
-	mipi_dsi_cmds_tx(dsi_tx_buf, smd_qhd_429_cmds_3,
-			ARRAY_SIZE(smd_qhd_429_cmds_3));
-	mipi_dsi_cmds_tx(dsi_tx_buf, smd_qhd_429_cmds_4,
-			ARRAY_SIZE(smd_qhd_429_cmds_4));
-
+	mipi_mot_tx_cmds(&smd_qhd_429_cmds_2[0],
+					ARRAY_SIZE(smd_qhd_429_cmds_2));
+	mipi_mot_tx_cmds(&smd_qhd_429_cmds_3[0],
+					ARRAY_SIZE(smd_qhd_429_cmds_3));
+	mipi_mot_tx_cmds(&smd_qhd_429_cmds_4[0],
+					ARRAY_SIZE(smd_qhd_429_cmds_4));
 	/* elvss */
 	for (i = 1; i < 5; i++)
 		elvss_output_set[i] = elvss_value;
+
 	if (mot_panel->elvss_tth_support_present &&
 		mot_panel->elvss_tth_status)
 		for (i = 1; i < 5; i++)
 			elvss_output_set[i] = elvss_value + 0xF;
 
-	mipi_dsi_cmds_tx(dsi_tx_buf, elvss_set_cmd,
-		ARRAY_SIZE(elvss_set_cmd));
-
-	mipi_dsi_cmds_tx(dsi_tx_buf, smd_qhd_429_cmds_5,
-			ARRAY_SIZE(smd_qhd_429_cmds_5));
-	mipi_dsi_cmds_tx(dsi_tx_buf, smd_qhd_429_cmds_6,
-			ARRAY_SIZE(smd_qhd_429_cmds_6));
+	mipi_mot_tx_cmds(&elvss_set_cmd[0], ARRAY_SIZE(elvss_set_cmd));
+	mipi_mot_tx_cmds(&smd_qhd_429_cmds_5[0],
+					ARRAY_SIZE(smd_qhd_429_cmds_5));
+	mipi_mot_tx_cmds(&smd_qhd_429_cmds_6[0],
+					ARRAY_SIZE(smd_qhd_429_cmds_6));
 	/* acl */
 	ACL_enable_disable_settings[1] = mot_panel->acl_enabled;
-	mipi_dsi_cmds_tx(dsi_tx_buf, smd_qhd_429_cmds_7,
-			ARRAY_SIZE(smd_qhd_429_cmds_7));
+	mipi_mot_tx_cmds(&smd_qhd_429_cmds_7[0],
+					ARRAY_SIZE(smd_qhd_429_cmds_7));
 
 	return 0;
 }
 
 static int panel_disable(struct msm_fb_data_type *mfd)
 {
-	struct dsi_buf *dsi_tx_buf;
-
-	if (mot_panel == NULL) {
-		pr_err("%s: Invalid mot_panel\n", __func__);
-		return -EINVAL;
-	}
-
-	dsi_tx_buf =  mot_panel->mot_tx_buf;
-	mipi_dsi_cmds_tx(dsi_tx_buf, display_off_cmds,
-			ARRAY_SIZE(display_off_cmds));
+	mipi_mot_tx_cmds(&display_off_cmds[0], ARRAY_SIZE(display_off_cmds));
 
 	return 0;
 }
@@ -781,16 +739,10 @@ static int is_valid_power_mode(struct msm_fb_data_type *mfd)
 
 static void panel_set_backlight(struct msm_fb_data_type *mfd)
 {
-
-	struct mipi_panel_info *mipi;
 	static int bl_level_old;
 	int idx = 0;
-	struct dsi_buf *dsi_tx_buf;
 
 	pr_debug("%s(bl_level=%d)\n", __func__, (s32)mfd->bl_level);
-
-	mipi  = &mfd->panel_info.mipi;
-	dsi_tx_buf =  mot_panel->mot_tx_buf;
 
 	if (!mfd->panel_power_on)
 		return;
@@ -809,13 +761,10 @@ static void panel_set_backlight(struct msm_fb_data_type *mfd)
 	pr_debug("%s(idx=%d)\n", __func__, (s32)idx);
 	set_brightness_cmds[0].payload = getGamma(idx);
 
-	/* Todo: add 50us delay between frame and cmd or between frames */
-	mipi_mot_mipi_busy_wait(mfd);
-
 	mutex_lock(&mfd->dma->ov_mutex);
 	mipi_set_tx_power_mode(0);
-	mipi_dsi_cmds_tx(dsi_tx_buf, set_brightness_cmds,
-			ARRAY_SIZE(set_brightness_cmds));
+	mipi_mot_tx_cmds(&set_brightness_cmds[0],
+				ARRAY_SIZE(set_brightness_cmds));
 
 	bl_level_old = mfd->bl_level;
 	mutex_unlock(&mfd->dma->ov_mutex);
@@ -906,6 +855,7 @@ static int __init mipi_cmd_mot_smd_qhd_429_init(void)
 	pinfo->mipi.wr_mem_continue = 0x3c;
 	pinfo->mipi.wr_mem_start = 0x2c;
 	pinfo->mipi.dsi_phy_db = &dsi_cmd_mode_phy_db;
+	pinfo->mipi.esc_byte_ratio = 4;
 	pinfo->mipi.tx_eot_append = 0x01;
 	pinfo->mipi.rx_eot_ignore = 0;
 
