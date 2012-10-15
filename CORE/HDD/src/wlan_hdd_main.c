@@ -2979,7 +2979,7 @@ free_hdd_ctx:
    if (hdd_is_ssr_required())
    {
        /* WDI timeout had happened during unload, so SSR is needed here */
-       subsystem_restart("riva");
+       subsystem_restart("wcnss");
        msleep(5000);
    }
    hdd_set_ssr_required (VOS_FALSE);

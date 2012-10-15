@@ -370,7 +370,7 @@ wpt_status wpalRivaSubystemRestart(void)
                  " SSR will be done at the end of unload", __FUNCTION__);
          return eWLAN_PAL_STATUS_E_FAILURE;
     }
-    if (0 == subsystem_restart("riva")) 
+    if (0 == subsystem_restart("wcnss")) 
     {
         return eWLAN_PAL_STATUS_SUCCESS;
     }
