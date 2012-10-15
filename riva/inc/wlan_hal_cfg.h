@@ -148,11 +148,12 @@
 #define QWLAN_HAL_CFG_BTC_MAX_SCO_BLOCK_PERC             94
 #define QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_A2DP              95
 #define QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_SCO               96
-#define QWLAN_HAL_CFG_MAX_PARAMS                         97
+#define QWLAN_HAL_CFG_ENABLE_UNICAST_FILTER              97
+#define QWLAN_HAL_CFG_MAX_PARAMS                         98
 
 
 /* Total number of Integer CFGs. This is used while allocating the memory for TLV */
-#define QWLAN_HAL_CFG_INTEGER_PARAM                      93
+#define QWLAN_HAL_CFG_INTEGER_PARAM                      94
 
 
 /*-------------------------------------------------------------------------
@@ -711,6 +712,12 @@
 #define QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_SCO_MAX 1
 #define QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_SCO_DEF 0
 
+/* QWLAN_HAL_CFG_ENABLE_UNICAST_FILTER */
+#define QWLAN_HAL_CFG_ENABLE_UNICAST_FILTER_MIN  0
+#define QWLAN_HAL_CFG_ENABLE_UNICAST_FILTER_MAX  1
+#define QWLAN_HAL_CFG_ENABLE_UNICAST_FILTER_DEF  0
+
+
 typedef struct 
 {
    uint8    cfgStaId[QCOM_WLAN_CFG_STA_ID_LEN]; //QWLAN_HAL_CFG_STA_ID
@@ -811,6 +818,7 @@ typedef struct
    uint32   cfgBtcMaxScoBlockPerc;            //QWLAN_HAL_CFG_BTC_MAX_SCO_BLOCK_PERC
    uint32   cfgBtcDhcpProtOnA2dp;             //QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_A2DP
    uint32   cfgBtcDhcpProtOnSco;              //QWLAN_HAL_CFG_BTC_DHCP_PROT_ON_SCO
+   uint32   cfgEnableUCFilter;                //QWLAN_HAL_CFG_ENABLE_UNICAST_FILTER     
 }tAniHalCfg, *tpAniHalCfg;
 
 #endif //__WLAN_HAL_CFG_H__
