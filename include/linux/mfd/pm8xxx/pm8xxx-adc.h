@@ -315,6 +315,16 @@ struct pm8xxx_adc_chan_result {
 	int64_t		physical;
 };
 
+/**
+ * struct pm8xxx_adc_sacle_tb - Struct to hold the Table pointer and Size
+ * @scale_lu_tbl: Pointer to Scale Table
+ * @scale_lu_tbl_size: Size of Scale Table
+ */
+struct pm8xxx_adc_scale_tbl {
+	const struct pm8xxx_adc_map_pt		*scale_lu_tbl;
+	uint32_t				scale_lu_tbl_size;
+};
+
 #if defined(CONFIG_SENSORS_PM8XXX_ADC)					\
 			|| defined(CONFIG_SENSORS_PM8XXX_ADC_MODULE)
 /**
@@ -327,11 +337,13 @@ struct pm8xxx_adc_chan_result {
  * @chan_prop:	individual channel properties to compensate the i/p scaling,
  *		slope and offset.
  * @chan_rslt:	Physical result to be stored.
+ * @scale_tbl:	Scaling Table passed from board file.
  */
 int32_t pm8xxx_adc_scale_default(int32_t adc_code,
 			const struct pm8xxx_adc_properties *adc_prop,
 			const struct pm8xxx_adc_chan_properties *chan_prop,
-			struct pm8xxx_adc_chan_result *chan_rslt);
+			struct pm8xxx_adc_chan_result *chan_rslt,
+			struct pm8xxx_adc_scale_tbl *scale_tbl);
 /**
  * pm8xxx_adc_scale_tdkntcg_therm() - Scales the pre-calibrated digital output
  *		of an ADC to the ADC reference and compensates for the
@@ -343,11 +355,13 @@ int32_t pm8xxx_adc_scale_default(int32_t adc_code,
  * @chan_prop:	individual channel properties to compensate the i/p scaling,
  *		slope and offset.
  * @chan_rslt:	physical result to be stored.
+ * @scale_tbl:	Scaling Table passed from board file.
  */
 int32_t pm8xxx_adc_tdkntcg_therm(int32_t adc_code,
 			const struct pm8xxx_adc_properties *adc_prop,
 			const struct pm8xxx_adc_chan_properties *chan_prop,
-			struct pm8xxx_adc_chan_result *chan_rslt);
+			struct pm8xxx_adc_chan_result *chan_rslt,
+			struct pm8xxx_adc_scale_tbl *scale_tbl);
 /**
  * pm8xxx_adc_scale_batt_therm() - Scales the pre-calibrated digital output
  *		of an ADC to the ADC reference and compensates for the
@@ -358,11 +372,13 @@ int32_t pm8xxx_adc_tdkntcg_therm(int32_t adc_code,
  * @chan_prop:	individual channel properties to compensate the i/p scaling,
  *		slope and offset.
  * @chan_rslt:	physical result to be stored.
+ * @scale_tbl:	Scaling Table passed from board file.
  */
 int32_t pm8xxx_adc_scale_batt_therm(int32_t adc_code,
 			const struct pm8xxx_adc_properties *adc_prop,
 			const struct pm8xxx_adc_chan_properties *chan_prop,
-			struct pm8xxx_adc_chan_result *chan_rslt);
+			struct pm8xxx_adc_chan_result *chan_rslt,
+			struct pm8xxx_adc_scale_tbl *scale_tbl);
 /**
  * pm8xxx_adc_scale_pa_therm() - Scales the pre-calibrated digital output
  *		of an ADC to the ADC reference and compensates for the
@@ -373,11 +389,13 @@ int32_t pm8xxx_adc_scale_batt_therm(int32_t adc_code,
  * @chan_prop:	individual channel properties to compensate the i/p scaling,
  *		slope and offset.
  * @chan_rslt:	physical result to be stored.
+ * @scale_tbl:	Scaling Table passed from board file.
  */
 int32_t pm8xxx_adc_scale_pa_therm(int32_t adc_code,
 			const struct pm8xxx_adc_properties *adc_prop,
 			const struct pm8xxx_adc_chan_properties *chan_prop,
-			struct pm8xxx_adc_chan_result *chan_rslt);
+			struct pm8xxx_adc_chan_result *chan_rslt,
+			struct pm8xxx_adc_scale_tbl *scale_tbl);
 /**
  * pm8xxx_adc_scale_pmic_therm() - Scales the pre-calibrated digital output
  *		of an ADC to the ADC reference and compensates for the
@@ -389,11 +407,13 @@ int32_t pm8xxx_adc_scale_pa_therm(int32_t adc_code,
  * @chan_prop:	individual channel properties to compensate the i/p scaling,
  *		slope and offset.
  * @chan_rslt:	physical result to be stored.
+ * @scale_tbl:	Scaling Table passed from board file.
  */
 int32_t pm8xxx_adc_scale_pmic_therm(int32_t adc_code,
 			const struct pm8xxx_adc_properties *adc_prop,
 			const struct pm8xxx_adc_chan_properties *chan_prop,
-			struct pm8xxx_adc_chan_result *chan_rslt);
+			struct pm8xxx_adc_chan_result *chan_rslt,
+			struct pm8xxx_adc_scale_tbl *scale_tbl);
 /**
  * pm8xxx_adc_scale_batt_id() - Scales the pre-calibrated digital output
  *		of an ADC to the ADC reference and compensates for the
@@ -413,27 +433,32 @@ int32_t pm8xxx_adc_scale_batt_id(int32_t adc_code,
 static inline int32_t pm8xxx_adc_scale_default(int32_t adc_code,
 			const struct pm8xxx_adc_properties *adc_prop,
 			const struct pm8xxx_adc_chan_properties *chan_prop,
-			struct pm8xxx_adc_chan_result *chan_rslt)
+			struct pm8xxx_adc_chan_result *chan_rslt,
+			struct pm8xxx_adc_scale_tbl *scale_tbl)
 { return -ENXIO; }
 static inline int32_t pm8xxx_adc_tdkntcg_therm(int32_t adc_code,
 			const struct pm8xxx_adc_properties *adc_prop,
 			const struct pm8xxx_adc_chan_properties *chan_prop,
-			struct pm8xxx_adc_chan_result *chan_rslt)
+			struct pm8xxx_adc_chan_result *chan_rslt,
+			struct pm8xxx_adc_scale_tbl *scale_tbl)
 { return -ENXIO; }
 static inline int32_t pm8xxx_adc_scale_batt_therm(int32_t adc_code,
 			const struct pm8xxx_adc_properties *adc_prop,
 			const struct pm8xxx_adc_chan_properties *chan_prop,
-			struct pm8xxx_adc_chan_result *chan_rslt)
+			struct pm8xxx_adc_chan_result *chan_rslt,
+			struct pm8xxx_adc_scale_tbl *scale_tbl);
 { return -ENXIO; }
 static inline int32_t pm8xxx_adc_scale_pa_therm(int32_t adc_code,
 			const struct pm8xxx_adc_properties *adc_prop,
 			const struct pm8xxx_adc_chan_properties *chan_prop,
-			struct pm8xxx_adc_chan_result *chan_rslt)
+			struct pm8xxx_adc_chan_result *chan_rslt,
+			struct pm8xxx_adc_scale_tbl *scale_tbl)
 { return -ENXIO; }
 static inline int32_t pm8xxx_adc_scale_pmic_therm(int32_t adc_code,
 			const struct pm8xxx_adc_properties *adc_prop,
 			const struct pm8xxx_adc_chan_properties *chan_prop,
-			struct pm8xxx_adc_chan_result *chan_rslt)
+			struct pm8xxx_adc_chan_result *chan_rslt,
+			struct pm8xxx_adc_scale_tbl *scale_tbl)
 { return -ENXIO; }
 static inline int32_t pm8xxx_adc_scale_batt_id(int32_t adc_code,
 			const struct pm8xxx_adc_properties *adc_prop,
@@ -452,7 +477,8 @@ struct pm8xxx_adc_scale_fn {
 	int32_t (*chan) (int32_t,
 		const struct pm8xxx_adc_properties *,
 		const struct pm8xxx_adc_chan_properties *,
-		struct pm8xxx_adc_chan_result *);
+		struct pm8xxx_adc_chan_result *,
+		struct pm8xxx_adc_scale_tbl *);
 };
 
 /**
@@ -503,7 +529,8 @@ struct pm8xxx_adc_arb_btm_param {
 
 int32_t pm8xxx_adc_batt_scaler(struct pm8xxx_adc_arb_btm_param *,
 			const struct pm8xxx_adc_properties *adc_prop,
-			const struct pm8xxx_adc_chan_properties *chan_prop);
+			const struct pm8xxx_adc_chan_properties *chan_prop,
+			struct pm8xxx_adc_scale_tbl *scale_tbl);
 /**
  * struct pm8xxx_adc_platform_data - PM8XXX ADC platform data
  * @adc_prop: ADC specific parameters, voltage and channel setup
@@ -512,12 +539,14 @@ int32_t pm8xxx_adc_batt_scaler(struct pm8xxx_adc_arb_btm_param *,
  * @adc_mpp_base: PM8XXX MPP0 base passed from board file. This is used
  *		  to offset the PM8XXX MPP passed to configure the
  *		  the MPP to AMUX mapping.
+ * @scale_tbls: Scaling Tables passed from board file.
  */
 struct pm8xxx_adc_platform_data {
 	struct pm8xxx_adc_properties	*adc_prop;
 	struct pm8xxx_adc_amux		*adc_channel;
 	uint32_t			adc_num_board_channel;
 	uint32_t			adc_mpp_base;
+	struct pm8xxx_adc_scale_tbl	*scale_tbls;
 };
 
 /* Public API */
