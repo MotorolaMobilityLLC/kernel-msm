@@ -275,6 +275,10 @@ static int32_t msm_ispif_validate_intf_status(struct ispif_device *ispif,
 		data = msm_camera_io_r(ispif->base +
 				ISPIF_RDI_2_STATUS_ADDR + (0x200 * vfe_intf));
 		break;
+	default:
+		data = 0;
+		rc = -EINVAL;
+		break;
 	}
 	if ((data & 0xf) != 0xf)
 		rc = -EBUSY;
