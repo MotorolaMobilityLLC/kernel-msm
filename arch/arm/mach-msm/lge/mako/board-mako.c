@@ -1749,7 +1749,6 @@ static struct platform_device *common_not_mpq_devices[] __initdata = {
 static struct platform_device *common_devices[] __initdata = {
 	&apq8064_device_acpuclk,
 	&apq8064_device_dmov,
-	&apq8064_device_ssbi_pmic1,
 	&apq8064_device_ssbi_pmic2,
 	&apq8064_device_ext_dsv_load_vreg,
 #ifdef CONFIG_WIRELESS_CHARGER
@@ -2016,6 +2015,11 @@ static void __init apq8064_common_init(void)
 	apq8064_device_otg.dev.platform_data = &msm_otg_pdata;
 	apq8064_ehci_host_init();
 	apq8064_init_buses();
+
+	platform_device_register(&apq8064_device_ssbi_pmic1);
+	if (mako_charger_mode)
+		platform_device_register(&mako_keyreset_device);
+
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	platform_add_devices(common_not_mpq_devices,
 			ARRAY_SIZE(common_not_mpq_devices));
@@ -2082,11 +2086,11 @@ static void __init apq8064_mako_init(void)
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
 		pr_err("meminfo_init() failed!\n");
 	apq8064_common_init();
+	lge_add_ramconsole_devices();
+	lge_add_panic_handler_devices();
 	lge_add_backlight_devices();
 	lge_add_sound_devices();
 	lge_add_bcm2079x_device();
-	lge_add_ramconsole_devices();
-	lge_add_panic_handler_devices();
 #ifdef CONFIG_LGE_QFPROM_INTERFACE
 	lge_add_qfprom_devices();
 #endif
@@ -2094,9 +2098,6 @@ static void __init apq8064_mako_init(void)
 	platform_add_devices(cdp_devices, ARRAY_SIZE(cdp_devices));
 	spi_register_board_info(spi_board_info,
 					ARRAY_SIZE(spi_board_info));
-
-	if (mako_charger_mode)
-		platform_device_register(&mako_keyreset_device);
 
 	if (lge_get_uart_mode()) {
 #ifdef CONFIG_EARJACK_DEBUGGER
