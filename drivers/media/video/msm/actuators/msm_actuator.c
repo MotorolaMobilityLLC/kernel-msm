@@ -638,12 +638,13 @@ static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl)
 {
 	int32_t rc = 0;
 	int cur_pos = a_ctrl->curr_step_pos;
-	struct msm_actuator_move_params_t *move_params = NULL;
+	struct msm_actuator_move_params_t move_params;
 
 	if(cur_pos > ACT_STOP_POS) {
-		move_params->sign_dir = MOVE_FAR;
-		move_params->dest_step_pos = ACT_STOP_POS;
-		rc = a_ctrl->func_tbl->actuator_move_focus(a_ctrl, move_params);
+		move_params.sign_dir = MOVE_FAR;
+		move_params.dest_step_pos = ACT_STOP_POS;
+		rc = a_ctrl->func_tbl->actuator_move_focus(
+				a_ctrl, &move_params);
 		msleep(300);
 	}
 
