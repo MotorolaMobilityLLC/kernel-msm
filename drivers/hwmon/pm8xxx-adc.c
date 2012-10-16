@@ -143,6 +143,7 @@ struct pm8xxx_adc {
 	struct device				*hwmon;
 	int					msm_suspend_check;
 	struct pm8xxx_adc_amux_properties	*conv;
+	struct pm8xxx_adc_scale_tbl		*scale_tbls;
 	struct pm8xxx_adc_arb_btm_param		batt;
 	struct sensor_device_attribute		sens_attr[0];
 };
@@ -673,6 +674,7 @@ uint32_t pm8xxx_adc_read(enum pm8xxx_adc_channels channel,
 	struct pm8xxx_adc *adc_pmic = pmic_adc;
 	int i = 0, rc = 0, rc_fail, amux_prescaling, scale_type;
 	enum pm8xxx_adc_premux_mpp_scale_type mpp_scale;
+	struct pm8xxx_adc_scale_tbl *scale_tbl;
 
 	if (!pm8xxx_adc_initialized)
 		return -ENODEV;
@@ -761,8 +763,14 @@ uint32_t pm8xxx_adc_read(enum pm8xxx_adc_channels channel,
 		goto fail;
 	}
 
+	if (adc_pmic->scale_tbls)
+		scale_tbl = &adc_pmic->scale_tbls[scale_type];
+	else
+		scale_tbl = NULL;
+
 	adc_scale_fn[scale_type].chan(result->adc_code,
-			adc_pmic->adc_prop, adc_pmic->conv->chan_prop, result);
+			adc_pmic->adc_prop, adc_pmic->conv->chan_prop, result,
+			scale_tbl);
 
 	rc = pm8xxx_adc_channel_power_enable(channel, false);
 	if (rc) {
@@ -842,6 +850,7 @@ uint32_t pm8xxx_adc_btm_configure(struct pm8xxx_adc_arb_btm_param *btm_param)
 	u8 arb_btm_cntrl1;
 	unsigned long flags = 0;
 	int rc;
+	struct pm8xxx_adc_scale_tbl *scale_tbl;
 
 	if (adc_pmic == NULL) {
 		pr_err("PMIC ADC not valid\n");
@@ -854,8 +863,14 @@ uint32_t pm8xxx_adc_btm_configure(struct pm8xxx_adc_arb_btm_param *btm_param)
 		return -EINVAL;
 	}
 
+	if (adc_pmic->scale_tbls)
+		scale_tbl = &adc_pmic->scale_tbls[ADC_SCALE_BATT_THERM];
+	else
+		scale_tbl = NULL;
+
 	rc = pm8xxx_adc_batt_scaler(btm_param, adc_pmic->adc_prop,
-					adc_pmic->conv->chan_prop);
+					adc_pmic->conv->chan_prop,
+					scale_tbl);
 	if (rc < 0) {
 		pr_err("Failed to lookup the BTM thresholds\n");
 		return rc;
@@ -1197,6 +1212,7 @@ static int __devinit pm8xxx_adc_probe(struct platform_device *pdev)
 	adc_pmic->adc_channel = pdata->adc_channel;
 	adc_pmic->adc_num_board_channel = pdata->adc_num_board_channel;
 	adc_pmic->mpp_base = pdata->adc_mpp_base;
+	adc_pmic->scale_tbls = pdata->scale_tbls;
 
 	mutex_init(&adc_pmic->adc_lock);
 	mutex_init(&adc_pmic->mpp_adc_lock);
