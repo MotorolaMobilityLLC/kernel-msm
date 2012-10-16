@@ -168,14 +168,14 @@ void lm3559_enable_flash_mode(enum led_status state)
 	lm3559_write_reg(lm3559_i2c_client, LM3559_REG_FLASH_DURATION, data);
 
 	if (state == LM3559_LED_LOW) {
-		/* 0001 0001 : 112.5 mA */
+		/* 0001 0001 : 112.5 mA => 0100 0100: 281.25 mA*/
 		CDBG("[LM3559_LED_LOW]LM3559_REG_FLASH_BRIGHTNESS \n");
-		lm3559_write_reg(lm3559_i2c_client, LM3559_REG_FLASH_BRIGHTNESS, 0x11);
+		lm3559_write_reg(lm3559_i2c_client, LM3559_REG_FLASH_BRIGHTNESS, 0x44);
 	}
 	else {
-		/*0011 0011 : 225 mA => 0110 0110 : 393.75 mA */
+		/*0011 0011 : 225 mA => 0110 0110 : 393.75 mA => 1010 1010: 618.75 mA*/
 		CDBG("[LM3559_LED_HIGH]LM3559_REG_FLASH_BRIGHTNESS \n");
-		lm3559_write_reg(lm3559_i2c_client, LM3559_REG_FLASH_BRIGHTNESS, 0x66);
+		lm3559_write_reg(lm3559_i2c_client, LM3559_REG_FLASH_BRIGHTNESS, 0xAA);
 	}
 	lm3559_write_reg(lm3559_i2c_client, LM3559_REG_ENABLE, 0x1B);
 }
