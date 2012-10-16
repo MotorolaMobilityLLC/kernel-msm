@@ -220,6 +220,7 @@ static __init void mako_fixed_audio(void)
 {
 	if (lge_get_board_revno() > HW_REV_1_0) {
 		lge_hs_pdata.gpio_detect = GPIO_EAR_SENSE_N_REV11;
+		lge_hs_pdata.gpio_detect_can_wakeup = 1;
 	}
 }
 
