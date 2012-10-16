@@ -1083,7 +1083,7 @@ VOS_STATUS vos_close( v_CONTEXT_t vosContext )
      vosStatus = WDA_shutdown( vosContext, VOS_TRUE );
      if (VOS_IS_STATUS_SUCCESS( vosStatus ) )
      {
-        hdd_set_ssr_required( VOS_TRUE );
+        hdd_set_ssr_required( HDD_SSR_REQUIRED );
      }
      else
      {

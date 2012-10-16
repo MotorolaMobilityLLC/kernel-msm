@@ -156,7 +156,7 @@ static int wlan_hdd_inited = 0;
 static struct wake_lock wlan_wake_lock;
 #endif
 /* set when SSR is needed after unload */
-static v_U8_t      isSsrRequired;
+static e_hdd_ssr_required isSsrRequired = HDD_SSR_NOT_REQUIRED;
 
 //internal function declaration
 static VOS_STATUS wlan_hdd_framework_restart(hdd_context_t *pHddCtx);
@@ -2181,13 +2181,17 @@ VOS_STATUS hdd_reconnect_all_adapters( hdd_context_t *pHddCtx )
    return VOS_STATUS_SUCCESS;
 }
 
-v_U8_t hdd_is_ssr_required( void)
+bool hdd_is_ssr_required( void)
 {
-    return isSsrRequired;
+    return (isSsrRequired == HDD_SSR_REQUIRED);
 }
 
-void hdd_set_ssr_required( v_U8_t value)
+/* Once SSR is disabled then it cannot be set. */
+void hdd_set_ssr_required( e_hdd_ssr_required value)
 {
+    if (HDD_SSR_DISABLED == isSsrRequired)
+        return;
+
     isSsrRequired = value;
 }
 
