@@ -2973,15 +2973,6 @@ desay:
 		chip->delta_rbatt_mohm = desay_5200_data.delta_rbatt_mohm;
 		return 0;
 lge:
-		chip->fcc = lge_2100_mako_data.fcc;
-		chip->fcc_temp_lut = lge_2100_mako_data.fcc_temp_lut;
-		chip->fcc_sf_lut = lge_2100_mako_data.fcc_sf_lut;
-		chip->pc_temp_ocv_lut = lge_2100_mako_data.pc_temp_ocv_lut;
-		chip->pc_sf_lut = lge_2100_mako_data.pc_sf_lut;
-		chip->rbatt_sf_lut = lge_2100_mako_data.rbatt_sf_lut;
-		chip->default_rbatt_mohm
-				= lge_2100_mako_data.default_rbatt_mohm;
-		chip->delta_rbatt_mohm = lge_2100_mako_data.delta_rbatt_mohm;
 		return 0;
 }
 

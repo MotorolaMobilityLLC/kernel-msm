@@ -120,6 +120,7 @@ static inline int qlen(struct usb_gadget *gadget)
 #undef DBG
 #undef VDBG
 #undef ERROR
+#undef DEBUG
 #undef INFO
 
 #define xprintk(d, level, fmt, args...) \
