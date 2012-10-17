@@ -262,6 +262,14 @@ config OV8825
 	  two mipi lanes, required for msm8625 platform.
 	  Say Y here if this is msm8625 variant platform.
 
+config S5K5B3G
+	bool "Sensor S5K5B3G (BAYER 2MP 1080P)"
+	depends on MSM_CAMERA && (ARCH_MSM8X60 || ARCH_MSM8960)
+	default n
+	---help---
+	  Samsung 2MP bayer 1080P Sensor. It is a fixed focus
+          camera that supports one mipi lane.
+
 config VB6801
 	bool "Sensor vb6801"
 	depends on MSM_CAMERA && !ARCH_MSM8X60 && !MSM_CAMERA_V4L2
