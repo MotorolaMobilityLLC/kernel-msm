@@ -1976,7 +1976,7 @@ static void msm_ta_detect_work(struct work_struct *w)
 	struct msm_otg *motg = container_of(w, struct msm_otg, check_ta_work.work);
 	struct usb_otg *otg = motg->phy.otg;
 
-	pr_info("msm_ta_detect_work: ta detection work\n");
+	pr_debug("msm_ta_detect_work: ta detection work\n");
 
 	/* Presence of FRame Index or FRINDEX rollover implies USB communication */
 	if( (readl(USB_FRINDEX) != 0) || ( readl(USB_USBSTS) & (1<<3) ) ) {
