@@ -503,8 +503,128 @@ static struct pm8xxx_adc_scale_tbl adc_scale_tbls[ADC_SCALE_NONE] = {
 };
 
 static int battery_timeout;
+static enum pm8921_btm_state btm_state;
+static struct regulator *therm_reg;
+static int therm_reg_enable;
 
-static int find_mmi_battery(struct mmi_battery_cell *cell_info)
+void pm8921_chg_force_therm_bias(struct device *dev, int enable)
+{
+	int rc = 0;
+
+	if (!therm_reg) {
+		therm_reg = regulator_get(dev, "8921_l14");
+		therm_reg_enable = 0;
+	}
+
+	if (enable && !therm_reg_enable) {
+		if (!IS_ERR_OR_NULL(therm_reg)) {
+			rc = regulator_set_voltage(therm_reg, 1800000, 1800000);
+			if (!rc)
+				rc = regulator_enable(therm_reg);
+			if (rc)
+				pr_err("L14 failed to set voltage 8921_l14\n");
+			else
+				therm_reg_enable = 1;
+		}
+	} else if (!enable && therm_reg_enable) {
+		if (!IS_ERR_OR_NULL(therm_reg)) {
+			rc = regulator_disable(therm_reg);
+			if (rc)
+				pr_err("L14 unable to disable 8921_l14\n");
+			else
+				therm_reg_enable = 0;
+		}
+	}
+}
+
+static int get_hot_temp_dt(void)
+{
+	struct device_node *parent;
+	int len = 0;
+	const void *prop;
+	u8 hot_temp = 0;
+
+	parent = of_find_node_by_path("/System@0/PowerIC@0");
+	if (!parent) {
+		pr_info("Parent Not Found\n");
+		return 0;
+	}
+	prop = of_get_property(parent, "chg-hot-temp", &len);
+	if (prop && (len == sizeof(u8)))
+		hot_temp = *(u8 *)prop;
+
+	of_node_put(parent);
+	pr_info("DT Hot Temp = %d\n", hot_temp);
+	return hot_temp;
+}
+
+static int get_hot_offset_dt(void)
+{
+	struct device_node *parent;
+	int len = 0;
+	const void *prop;
+	u8 hot_temp_off = 0;
+
+	parent = of_find_node_by_path("/System@0/PowerIC@0");
+	if (!parent) {
+		pr_info("Parent Not Found\n");
+		return 0;
+	}
+
+	prop = of_get_property(parent, "chg-hot-temp-offset", &len);
+	if (prop && (len == sizeof(u8)))
+		hot_temp_off = *(u8 *)prop;
+
+	of_node_put(parent);
+	pr_info("DT Hot Temp Offset = %d\n", hot_temp_off);
+	return hot_temp_off;
+}
+
+static int get_hot_temp_pcb_dt(void)
+{
+	struct device_node *parent;
+	int len = 0;
+	const void *prop;
+	u8 hot_temp_pcb = 0;
+
+	parent = of_find_node_by_path("/System@0/PowerIC@0");
+	if (!parent) {
+		pr_info("Parent Not Found\n");
+		return 0;
+	}
+	prop = of_get_property(parent, "chg-hot-temp-pcb", &len);
+	if (prop && (len == sizeof(u8)))
+		hot_temp_pcb = *(u8 *)prop;
+
+	of_node_put(parent);
+	pr_info("DT Hot Temp PCB = %d\n", hot_temp_pcb);
+	return hot_temp_pcb;
+}
+
+static signed char get_hot_pcb_offset_dt(void)
+{
+	struct device_node *parent;
+	int len = 0;
+	const void *prop;
+	signed char hot_temp_pcb_off = 0;
+
+	parent = of_find_node_by_path("/System@0/PowerIC@0");
+	if (!parent) {
+		pr_info("Parent Not Found\n");
+		return 0;
+	}
+
+	prop = of_get_property(parent, "chg-hot-temp-pcb-offset", &len);
+	if (prop && (len == sizeof(u8)))
+		hot_temp_pcb_off = *(signed char *)prop;
+
+	of_node_put(parent);
+
+	pr_info("DT Hot Temp Offset PCB = %d\n", (int)hot_temp_pcb_off);
+	return hot_temp_pcb_off;
+}
+
+int find_mmi_battery(struct mmi_battery_cell *cell_info)
 {
 	int i;
 
@@ -591,6 +711,182 @@ static int64_t read_mmi_battery_bms(int64_t battery_id,
 	return 0;
 }
 
+#define TEMP_HYSTERISIS_DEGC 2
+#define TEMP_OVERSHOOT 10
+#define TEMP_HOT 60
+#define TEMP_COLD -20
+static int64_t temp_range_check(int batt_temp, int batt_mvolt,
+				struct pm8921_charger_battery_data *data,
+				int64_t *enable, enum pm8921_btm_state *state)
+{
+	int64_t chrg_enable = 0;
+	int64_t btm_change = 0;
+
+	if (!enable || !data)
+		return btm_change;
+
+	/* Check for a State Change */
+	if (btm_state == BTM_NORM) {
+		if (batt_temp >= (signed int)(data->warm_temp)) {
+			data->cool_temp =
+				data->warm_temp - TEMP_HYSTERISIS_DEGC;
+			data->warm_temp = TEMP_HOT - data->hot_temp_offset;
+			if (batt_mvolt >= data->warm_bat_voltage) {
+				btm_state = BTM_WARM_HV;
+				chrg_enable = 0;
+			} else {
+				btm_state = BTM_WARM_LV;
+				data->max_voltage = data->warm_bat_voltage;
+				chrg_enable = 1;
+			}
+			btm_change = 1;
+		} else if (batt_temp <= (signed int)(data->cool_temp)) {
+			data->warm_temp =
+				data->cool_temp + TEMP_HYSTERISIS_DEGC;
+			data->cool_temp = TEMP_COLD;
+			if (batt_mvolt >= data->cool_bat_voltage) {
+				btm_state = BTM_COOL_HV;
+				chrg_enable = 0;
+			} else {
+				btm_state = BTM_COOL_LV;
+				data->max_voltage = data->cool_bat_voltage;
+				chrg_enable = 1;
+			}
+			btm_change = 1;
+		}
+	} else if (btm_state == BTM_COLD) {
+		if (batt_temp >= TEMP_COLD + TEMP_HYSTERISIS_DEGC) {
+			data->warm_temp =
+				data->cool_temp + TEMP_HYSTERISIS_DEGC;
+			data->cool_temp = TEMP_COLD;
+			if (batt_mvolt >= data->cool_bat_voltage) {
+				btm_state = BTM_COOL_HV;
+				chrg_enable = 0;
+			} else {
+				btm_state = BTM_COOL_LV;
+				data->max_voltage = data->cool_bat_voltage;
+				chrg_enable = 1;
+			}
+			btm_change = 1;
+		}
+	} else if (btm_state == BTM_COOL_LV) {
+		if (batt_temp <= TEMP_COLD) {
+			btm_state = BTM_COLD;
+			data->cool_temp = TEMP_COLD - TEMP_OVERSHOOT;
+			data->warm_temp = TEMP_COLD + TEMP_HYSTERISIS_DEGC;
+			chrg_enable = 0;
+			btm_change = 1;
+		} else if (batt_temp >=
+			   ((signed int)(data->cool_temp) +
+			    TEMP_HYSTERISIS_DEGC)) {
+			btm_state = BTM_NORM;
+			chrg_enable = 1;
+			btm_change = 1;
+		} else if (batt_mvolt >= data->cool_bat_voltage) {
+			btm_state = BTM_COOL_HV;
+			data->warm_temp =
+				data->cool_temp + TEMP_HYSTERISIS_DEGC;
+			data->cool_temp = TEMP_COLD;
+			data->max_voltage = data->cool_bat_voltage;
+			chrg_enable = 0;
+			btm_change = 1;
+		}
+	} else if (btm_state == BTM_COOL_HV) {
+		if (batt_temp <= TEMP_COLD) {
+			btm_state = BTM_COLD;
+			data->cool_temp = TEMP_COLD - TEMP_OVERSHOOT;
+			data->warm_temp = TEMP_COLD + TEMP_HYSTERISIS_DEGC;
+			chrg_enable = 0;
+			btm_change = 1;
+		} else if (batt_temp >=
+			   ((signed int)(data->cool_temp) +
+			    TEMP_HYSTERISIS_DEGC)) {
+			btm_state = BTM_NORM;
+			chrg_enable = 1;
+			btm_change = 1;
+		} else if (batt_mvolt < data->cool_bat_voltage) {
+			btm_state = BTM_COOL_LV;
+			data->warm_temp =
+				data->cool_temp + TEMP_HYSTERISIS_DEGC;
+			data->cool_temp = TEMP_COLD;
+			data->max_voltage = data->cool_bat_voltage;
+			chrg_enable = 1;
+			btm_change = 1;
+		}
+	} else if (btm_state == BTM_WARM_LV) {
+		if (batt_temp >= TEMP_HOT) {
+			btm_state = BTM_HOT;
+			data->cool_temp = TEMP_HOT - TEMP_HYSTERISIS_DEGC
+				- data->hot_temp_offset;
+			data->warm_temp = TEMP_HOT + TEMP_OVERSHOOT
+				- data->hot_temp_offset;
+			chrg_enable = 0;
+			btm_change = 1;
+		} else if (batt_temp <=
+			   ((signed int)(data->warm_temp) -
+			    TEMP_HYSTERISIS_DEGC)) {
+			btm_state = BTM_NORM;
+			chrg_enable = 1;
+			btm_change = 1;
+		} else if (batt_mvolt >= data->warm_bat_voltage) {
+			btm_state = BTM_WARM_HV;
+			data->cool_temp =
+				data->warm_temp - TEMP_HYSTERISIS_DEGC;
+			data->warm_temp = TEMP_HOT
+				- data->hot_temp_offset;
+			data->max_voltage = data->warm_bat_voltage;
+			chrg_enable = 0;
+			btm_change = 1;
+		}
+	} else if (btm_state == BTM_WARM_HV) {
+		if (batt_temp >= TEMP_HOT) {
+			btm_state = BTM_HOT;
+			data->cool_temp = TEMP_HOT - TEMP_HYSTERISIS_DEGC
+				- data->hot_temp_offset;
+			data->warm_temp = TEMP_HOT + TEMP_OVERSHOOT
+				- data->hot_temp_offset;
+			chrg_enable = 0;
+			btm_change = 1;
+		} else if (batt_temp <=
+			   ((signed int)(data->warm_temp) -
+			    TEMP_HYSTERISIS_DEGC)) {
+			btm_state = BTM_NORM;
+			chrg_enable = 1;
+			btm_change = 1;
+		} else if (batt_mvolt < data->warm_bat_voltage) {
+			btm_state = BTM_WARM_LV;
+			data->cool_temp =
+				data->warm_temp - TEMP_HYSTERISIS_DEGC;
+			data->warm_temp = TEMP_HOT
+				- data->hot_temp_offset;
+			data->max_voltage = data->warm_bat_voltage;
+			chrg_enable = 1;
+			btm_change = 1;
+		}
+	} else if (btm_state == BTM_HOT) {
+		if (batt_temp <= TEMP_HOT - TEMP_HYSTERISIS_DEGC) {
+			data->cool_temp =
+				data->warm_temp - TEMP_HYSTERISIS_DEGC;
+			data->warm_temp = TEMP_HOT
+				- data->hot_temp_offset;
+			if (batt_mvolt >= data->warm_bat_voltage) {
+				btm_state = BTM_WARM_HV;
+				chrg_enable = 0;
+			} else {
+				btm_state = BTM_WARM_LV;
+				data->max_voltage = data->warm_bat_voltage;
+				chrg_enable = 1;
+			}
+			btm_change = 1;
+		}
+	}
+
+	*enable = chrg_enable;
+	*state = btm_state;
+
+	return btm_change;
+}
+
 #define MAX_VOLTAGE_MV		4350
 static struct pm8921_charger_platform_data pm8921_chg_pdata __devinitdata = {
 	.safety_time		= 512,
@@ -614,12 +910,20 @@ static struct pm8921_charger_platform_data pm8921_chg_pdata __devinitdata = {
 	.thermal_levels		= ARRAY_SIZE(pm8921_therm_mitigation),
 	.cold_thr		= PM_SMBC_BATT_TEMP_COLD_THR__HIGH,
 	.hot_thr		= PM_SMBC_BATT_TEMP_HOT_THR__LOW,
+	.rconn_mohm		= 18,
+	.factory_mode		= 0,
+	.meter_lock		= 0,
 #ifdef CONFIG_PM8921_EXTENDED_INFO
-	.get_batt_info=		read_mmi_battery_chrg,
+	.get_batt_info		= read_mmi_battery_chrg,
+	.temp_range_cb		= temp_range_check,
+	.batt_alarm_delta	= 100,
+	.lower_battery_threshold = 3400,
+	.force_therm_bias	= pm8921_chg_force_therm_bias,
 #endif
 };
 
 static struct pm8921_bms_platform_data pm8921_bms_pdata __devinitdata = {
+	.battery_type		= BATT_MMI,
 	.r_sense		= 10,
 	.i_test			= 0,
 	.v_cutoff		= 3200,
@@ -644,6 +948,14 @@ void __init mmi_pm8921_init(struct mmi_oem_data *mmi_data, void *pdata)
 	if (mmi_data->is_meter_locked)
 		pm8921_pdata->charger_pdata->meter_lock =
 			mmi_data->is_meter_locked();
+
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	pm8921_pdata->charger_pdata->hot_temp = get_hot_temp_dt();
+	pm8921_pdata->charger_pdata->hot_temp_offset = get_hot_offset_dt();
+	pm8921_pdata->charger_pdata->hot_temp_pcb = get_hot_temp_pcb_dt();
+	pm8921_pdata->charger_pdata->hot_temp_pcb_offset =
+		get_hot_pcb_offset_dt();
+#endif
 
 	load_pm8921_batt_eprom_pdata_from_dt();
 }
