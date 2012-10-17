@@ -347,11 +347,16 @@ static int __pm8018_reset_pwr_off(struct pm8xxx_misc_chip *chip, int reset)
 	 * Select action to perform (reset or shutdown) when PS_HOLD goes low.
 	 * Also ensure that KPD, CBL0, and CBL1 pull ups are enabled and that
 	 * USB charging is enabled.
+	 *
+	 * Do not set PON_CTRL_1_USB_PWR_EN if we want to shutdown.
+	 * This does not really work if BPLUS is on, but we may want this
+	 * for the case where bare board is powered entirely from VBUS
+	 * using a "factory cable".
 	 */
 	rc = pm8xxx_misc_masked_write(chip, REG_PM8XXX_PON_CTRL_1,
 		PON_CTRL_1_PULL_UP_MASK | PON_CTRL_1_USB_PWR_EN
 		| PON_CTRL_1_WD_EN_MASK,
-		PON_CTRL_1_PULL_UP_MASK | PON_CTRL_1_USB_PWR_EN
+		PON_CTRL_1_PULL_UP_MASK | (reset ? PON_CTRL_1_USB_PWR_EN : 0)
 		| (reset ? PON_CTRL_1_WD_EN_RESET : PON_CTRL_1_WD_EN_PWR_OFF));
 	if (rc)
 		pr_err("pm8xxx_misc_masked_write failed, rc=%d\n", rc);
