@@ -29,6 +29,8 @@
 
 #define MAX_SINGLE_LUT_COLS	20
 
+#define START_METER_OFFSET_SOC 5
+
 struct single_row_lut {
 	int x[MAX_SINGLE_LUT_COLS];
 	int y[MAX_SINGLE_LUT_COLS];
@@ -110,6 +112,7 @@ enum battery_type {
 	BATT_PALLADIUM,
 	BATT_DESAY,
 	BATT_LGE,
+	BATT_MMI,
 };
 
 /**
@@ -195,6 +198,28 @@ int pm8921_bms_get_percent_charge(void);
 int pm8921_bms_get_fcc(void);
 
 /**
+ * pm8921_bms_get_cc_uah - returns cc_uah in microampere_hour of
+			    the battery
+ *
+ * @result:	The pointer where the cc_uah will be updated.
+ *
+ * RETURNS:	Error code if there was a problem reading, Zero otherwise
+ *              The result won't be updated in case of an error.
+ */
+int pm8921_bms_get_cc_uah(int *result);
+
+/**
+ * pm8921_bms_get_aged_capacity - returns percentage of full battery capacity taking
+ *					  aging into acccount
+ *
+ * @result:	The pointer where the percentage will be updated.
+ *
+ * RETURNS:	Error code if there was a problem reading, Zero otherwise
+ *              The result won't be updated in case of an error.
+ */
+int pm8921_bms_get_aged_capacity(int *result);
+
+/**
  * pm8921_bms_charging_began - function to notify the bms driver that charging
  *				has started. Used by the bms driver to keep
  *				track of chargecycles
@@ -227,6 +252,34 @@ int pm8921_bms_get_rbatt(void);
  *					soc stored in a coincell backed register
  */
 void pm8921_bms_invalidate_shutdown_soc(void);
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+/**
+ * pm8921_bms_charging_full - function to notify the bms driver that charging
+ *				is Full.
+ */
+void pm8921_bms_charging_full(void);
+/**
+ * pm8921_bms_no_external_accy - function to notify the bms driver that No Accy
+ *				is attached.
+ */
+void pm8921_bms_no_external_accy(void);
+#else
+static inline void pm8921_bms_charging_full(void)
+{
+}
+#endif
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+/**
+ * pm8921_bms_voltage_based_capacity - function toadjust meter offset
+ */
+void pm8921_bms_voltage_based_capacity(int batt_mvolt,
+					int batt_mcurr,
+					int batt_temp);
+#endif
+#ifdef CONFIG_PM8921_TEST_OVERRIDE
+int pm8921_override_get_charge_status(int *status);
+#endif
+
 #else
 static inline int pm8921_bms_get_vsense_avg(int *result)
 {
@@ -241,6 +294,14 @@ static inline int pm8921_bms_get_percent_charge(void)
 	return -ENXIO;
 }
 static inline int pm8921_bms_get_fcc(void)
+{
+	return -ENXIO;
+}
+static inline int pm8921_bms_get_aged_capacity(int *result)
+{
+	return -ENXIO;
+}
+static inline int pm8921_bms_get_cc_mas(int64_t *result)
 {
 	return -ENXIO;
 }
@@ -263,6 +324,9 @@ static inline int pm8921_bms_get_rbatt(void)
 	return -EINVAL;
 }
 static inline void pm8921_bms_invalidate_shutdown_soc(void)
+{
+}
+static inline void pm8921_bms_no_external_accy(void)
 {
 }
 #endif
