@@ -161,6 +161,13 @@ struct pm8921_bms_chip {
 	int			vbat_at_cv;
 	int			(*is_warm_reset)(void);
 	int			first_fixed_iavg_ma;
+#ifdef CONFIG_PM8921_TEST_OVERRIDE
+	int			user_override;
+	int			user_override_is_chg;
+#endif
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	unsigned int		meter_offset;
+#endif
 };
 
 /*
@@ -218,6 +225,9 @@ static int bms_start_cc_uah;
 static int bms_end_percent;
 static int bms_end_ocv_uv;
 static int bms_end_cc_uah;
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+static int bms_meter_offset;
+#endif
 
 static int bms_ro_ops_set(const char *val, const struct kernel_param *kp)
 {
@@ -235,6 +245,17 @@ module_param_cb(bms_start_cc_uah, &bms_ro_param_ops, &bms_start_cc_uah, 0644);
 module_param_cb(bms_end_percent, &bms_ro_param_ops, &bms_end_percent, 0644);
 module_param_cb(bms_end_ocv_uv, &bms_ro_param_ops, &bms_end_ocv_uv, 0644);
 module_param_cb(bms_end_cc_uah, &bms_ro_param_ops, &bms_end_cc_uah, 0644);
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+module_param_cb(bms_meter_offset, &bms_ro_param_ops, &bms_meter_offset, 0644);
+#endif
+
+static int bms_aged_capacity;
+module_param(bms_aged_capacity, int, 0644);
+
+static int timestamp;
+module_param(timestamp, int, 0644);
+MODULE_PARM_DESC(timestamp, "Epoch format timestamp value which indicates last"
+		 "time when cycle_count var was updated");
 
 static int interpolate_fcc(struct pm8921_bms_chip *chip, int batt_temp);
 static void readjust_fcc_table(void)
@@ -246,6 +267,11 @@ static void readjust_fcc_table(void)
 		pr_err("The static fcc lut table is NULL\n");
 		return;
 	}
+
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+	if (!the_chip->adjusted_fcc_temp_lut)
+		return;
+#endif
 
 	temp = kzalloc(sizeof(struct single_row_lut), GFP_KERNEL);
 	if (!temp) {
@@ -1029,7 +1055,13 @@ static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 {
 	int usb_chg;
 
+#ifdef CONFIG_PM8921_TEST_OVERRIDE
+	if (chip->user_override)
+		return 0;
+#endif
+
 	mutex_lock(&chip->bms_output_lock);
+
 	pm_bms_lock_output_data(chip);
 
 	pm_bms_read_output_data(chip,
@@ -1063,6 +1095,9 @@ static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 		chip->last_ocv_uv = raw->last_good_ocv_uv;
 		/* forget the old cc value upon ocv */
 		chip->last_cc_uah = 0;
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+		chip->meter_offset = 0;
+#endif
 	} else {
 		raw->last_good_ocv_uv = chip->last_ocv_uv;
 	}
@@ -1124,12 +1159,23 @@ static int calculate_fcc_uah(struct pm8921_bms_chip *chip, int batt_temp,
 							int chargecycles)
 {
 	int initfcc, result, scalefactor = 0;
-
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+	chip->adjusted_fcc_temp_lut = NULL;
+#endif
 	if (chip->adjusted_fcc_temp_lut == NULL) {
 		initfcc = interpolate_fcc(chip, batt_temp);
 
 		scalefactor = interpolate_scalingfactor_fcc(chip, chargecycles);
-
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+		if (bms_aged_capacity <= 50) {
+			if (bms_aged_capacity != 0)
+				scalefactor = 50;
+		} else if (bms_aged_capacity >= 100) {
+			scalefactor = 100;
+		} else {
+			scalefactor = bms_aged_capacity;
+		}
+#endif
 		/* Multiply the initial FCC value by the scale factor. */
 		result = (initfcc * scalefactor * 1000) / 100;
 		pr_debug("fcc = %d uAh\n", result);
@@ -2049,6 +2095,35 @@ static int is_recharging(struct pm8921_bms_chip *chip, int soc)
 	return 0;
 }
 
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+void pm8921_bms_voltage_based_capacity(int batt_mvolt,
+					int batt_mcurr,
+					int batt_temp)
+{
+	int charging_src;
+	int volt_ocv_now = (batt_mvolt * 1000) +
+		(batt_mcurr * the_chip->default_rbatt_mohm) /
+		100;
+	int soc_adjusted = calculate_pc(the_chip, volt_ocv_now, batt_temp,
+					last_chargecycles);
+
+	pr_debug("volt_ocv_now = %d, soc_adjusted = %d, rbatt = %d\n",
+		 volt_ocv_now, soc_adjusted, the_chip->default_rbatt_mohm);
+
+	if (!pm8921_is_battery_charging(&charging_src)) {
+		if (soc_adjusted <= START_METER_OFFSET_SOC)
+			the_chip->meter_offset += 2;
+	} else {
+		if (the_chip->meter_offset >= 2)
+			the_chip->meter_offset -= 2;
+		else
+			the_chip->meter_offset = 0;
+	}
+
+	pr_debug("meter_offset = %d\n", the_chip->meter_offset);
+}
+#endif
+
 /*
  * Remaining Usable Charge = remaining_charge (charge at ocv instance)
  *				- coloumb counter charge
@@ -2071,6 +2146,11 @@ static int calculate_state_of_charge(struct pm8921_bms_chip *chip,
 	int new_rbatt;
 	int shutdown_soc;
 	static int firsttime = 1;
+
+#ifdef CONFIG_PM8921_TEST_OVERRIDE
+	if (chip->user_override)
+		return last_soc;
+#endif
 
 	calculate_soc_params(chip, raw, batt_temp, chargecycles,
 						&fcc_uah,
@@ -2127,8 +2207,19 @@ static int calculate_state_of_charge(struct pm8921_bms_chip *chip,
 				soc, chip->last_ocv_uv);
 	}
 
-	if (soc > 100)
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	soc = soc - chip->meter_offset;
+#endif
+
+	/* Round up soc to account for remainder */
+	if ((soc > 0) && (soc <= 99))
+		soc += 1;
+
+	if (soc > 100) {
 		soc = 100;
+		if (chip->start_percent == -EINVAL)
+			pm8921_bms_charging_full();
+	}
 
 	if (bms_fake_battery != -EINVAL) {
 		pr_debug("Returning Fake SOC = %d%%\n", bms_fake_battery);
@@ -2556,6 +2647,26 @@ int pm8921_bms_get_rbatt(void)
 }
 EXPORT_SYMBOL_GPL(pm8921_bms_get_rbatt);
 
+int pm8921_bms_get_cc_uah(int *result)
+{
+	struct pm8921_soc_params raw;
+
+	if (!the_chip) {
+		pr_err("called before initialization\n");
+		return -EINVAL;
+	}
+	if (the_chip->r_sense == 0) {
+		pr_err("r_sense is zero\n");
+		return -EINVAL;
+	}
+
+	read_soc_params_raw(the_chip, &raw);
+	calculate_cc_uah(the_chip, raw.cc, result);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(pm8921_bms_get_cc_uah);
+
 int pm8921_bms_get_fcc(void)
 {
 	int batt_temp, rc;
@@ -2579,6 +2690,13 @@ int pm8921_bms_get_fcc(void)
 }
 EXPORT_SYMBOL_GPL(pm8921_bms_get_fcc);
 
+int pm8921_bms_get_aged_capacity(int *result)
+{
+	*result = bms_aged_capacity;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(pm8921_bms_get_aged_capacity);
+
 #define IBAT_TOL_MASK		0x0F
 #define OCV_TOL_MASK			0xF0
 #define IBAT_TOL_DEFAULT	0x03
@@ -2596,6 +2714,9 @@ void pm8921_bms_charging_began(void)
 	the_chip->start_percent = report_state_of_charge(the_chip);
 
 	bms_start_percent = the_chip->start_percent;
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	bms_meter_offset = (int) the_chip->meter_offset;
+#endif
 	bms_start_ocv_uv = raw.last_good_ocv_uv;
 	calculate_cc_uah(the_chip, raw.cc, &bms_start_cc_uah);
 	pm_bms_masked_write(the_chip, BMS_TOLERANCES,
@@ -2619,6 +2740,11 @@ void pm8921_bms_charging_end(int is_battery_full)
 
 	if (the_chip == NULL)
 		return;
+
+#ifdef CONFIG_PM8921_TEST_OVERRIDE
+	if (the_chip->user_override)
+		goto calculate_percent;
+#endif
 
 	rc = pm8xxx_adc_read(the_chip->batt_temp_channel, &result);
 	if (rc) {
@@ -2693,6 +2819,9 @@ void pm8921_bms_charging_end(int is_battery_full)
 
 	bms_end_percent = the_chip->end_percent;
 
+#ifdef CONFIG_PM8921_TEST_OVERRIDE
+calculate_percent:
+#endif
 	if (the_chip->end_percent > the_chip->start_percent) {
 		last_charge_increase +=
 			the_chip->end_percent - the_chip->start_percent;
@@ -2732,6 +2861,44 @@ int pm8921_bms_start_ocv_updates(struct pm8921_bms_chip *chip)
 			OCV_TOL_MASK, OCV_TOL_DEFAULT);
 }
 EXPORT_SYMBOL_GPL(pm8921_bms_start_ocv_updates);
+
+void pm8921_bms_no_external_accy(void)
+{
+	pm_bms_masked_write(the_chip, BMS_TOLERANCES,
+			    IBAT_TOL_MASK, IBAT_TOL_NOCHG);
+}
+EXPORT_SYMBOL_GPL(pm8921_bms_no_external_accy);
+
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+void pm8921_bms_charging_full(void)
+{
+	struct pm8921_soc_params raw;
+
+	if (the_chip == NULL)
+		return;
+
+#ifdef CONFIG_PM8921_TEST_OVERRIDE
+	if (the_chip->user_override)
+		return;
+#endif
+
+	read_soc_params_raw(the_chip, &raw);
+
+	the_chip->ocv_reading_at_100 = raw.last_good_ocv_raw;
+	the_chip->cc_reading_at_100 = raw.cc;
+
+	the_chip->last_ocv_uv = the_chip->max_voltage_uv;
+	raw.last_good_ocv_uv = the_chip->max_voltage_uv;
+	/*
+	 * since we are treating this as an ocv event
+	 * forget the old cc value
+	 */
+	the_chip->last_cc_uah = 0;
+	pr_debug("EOC ocv_reading = 0x%x cc = 0x%x\n",
+		 the_chip->ocv_reading_at_100,
+		 the_chip->cc_reading_at_100);
+}
+#endif
 
 static irqreturn_t pm8921_bms_sbi_write_ok_handler(int irq, void *data)
 {
@@ -2949,6 +3116,7 @@ static int set_battery_data(struct pm8921_bms_chip *chip)
 		chip->fcc_sf_lut = batt_data.fcc_sf_lut;
 		chip->pc_temp_ocv_lut = batt_data.pc_temp_ocv_lut;
 		chip->pc_sf_lut = batt_data.pc_sf_lut;
+		chip->default_rbatt_mohm = batt_data.default_rbatt_mohm;
 		return 0;
 	}
 #endif
@@ -3308,6 +3476,90 @@ restore_sbi_config:
 	return 0;
 }
 
+#ifdef CONFIG_PM8921_TEST_OVERRIDE
+struct pm8921_override_user_data {
+	int is_charging;
+	int soc;
+	int cc_uah;
+	int real_fcc_batt_temp;
+	int real_fcc;
+	int ocv;
+	int rbatt;
+};
+
+int pm8921_override_get_charge_status(int *status)
+{
+	if (!the_chip->user_override)
+		return 0;
+
+	*status = (the_chip->user_override_is_chg == 0) ?
+		POWER_SUPPLY_STATUS_DISCHARGING : POWER_SUPPLY_STATUS_CHARGING;
+	return 1;
+}
+EXPORT_SYMBOL(pm8921_override_get_charge_status);
+
+static ssize_t pm8921_override_write(struct file *filp,
+				struct kobject *kobj,
+				struct bin_attribute *bin_attr,
+				char *buf, loff_t off, size_t count)
+{
+	struct platform_device *pdev =
+		to_platform_device(container_of(kobj, struct device, kobj));
+	struct pm8921_bms_chip *chip = platform_get_drvdata(pdev);
+	struct pm8921_override_user_data usr_data;
+
+	if (off != 0)
+		return -EIO;
+
+	if (count != sizeof(usr_data))
+		return -EIO;
+
+	memcpy(&usr_data, buf, sizeof(usr_data));
+
+	if (usr_data.soc != -EINVAL)
+		last_soc = usr_data.soc;
+
+	if (usr_data.real_fcc_batt_temp != -EINVAL)
+		last_real_fcc_batt_temp = usr_data.real_fcc_batt_temp;
+
+	if (usr_data.real_fcc != -EINVAL)
+		last_real_fcc_mah = usr_data.real_fcc;
+
+	if (usr_data.ocv != -EINVAL)
+		the_chip->last_ocv_uv = usr_data.ocv;
+
+	if (!chip->user_override_is_chg && usr_data.is_charging) {
+		chip->user_override_is_chg = 1;
+		the_chip->start_percent = usr_data.soc;
+		bms_start_percent = usr_data.soc;
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+		bms_meter_offset = 0;
+#endif
+		bms_start_ocv_uv = the_chip->last_ocv_uv;
+		bms_start_cc_uah = usr_data.cc_uah;
+	} else if (chip->user_override_is_chg && !usr_data.is_charging) {
+		chip->user_override_is_chg = 0;
+		the_chip->end_percent = usr_data.soc;
+		bms_end_percent = usr_data.soc;
+		bms_end_ocv_uv = the_chip->last_ocv_uv;
+		bms_end_cc_uah = usr_data.cc_uah;
+		pm8921_bms_charging_end(0);
+	}
+
+	pm8921_override_force_battery_update();
+	return count;
+}
+
+static struct bin_attribute pm8921_override_attr = {
+	.attr = {
+		.name = "override.bin",
+		.mode = 0666,
+	},
+	.size = sizeof(struct pm8921_override_user_data),
+	.write = pm8921_override_write
+};
+#endif
+
 static int __devinit pm8921_bms_probe(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -3402,6 +3654,20 @@ static int __devinit pm8921_bms_probe(struct platform_device *pdev)
 		goto free_irqs;
 	}
 
+#ifdef CONFIG_PM8921_TEST_OVERRIDE
+	chip->user_override = 1;
+	rc = sysfs_create_bin_file(&chip->dev->kobj,
+				&pm8921_override_attr);
+	if (rc) {
+		pr_err("couldn't create override attribute rc = %d\n",
+			rc);
+		goto free_irqs;
+	}
+#endif
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	chip->meter_offset = 0;
+#endif
+
 	read_shutdown_soc_and_iavg(chip);
 
 	platform_set_drvdata(pdev, chip);
@@ -3442,6 +3708,9 @@ static int __devexit pm8921_bms_remove(struct platform_device *pdev)
 {
 	struct pm8921_bms_chip *chip = platform_get_drvdata(pdev);
 
+#ifdef CONFIG_PM8921_TEST_OVERRIDE
+	sysfs_remove_bin_file(&chip->dev->kobj, &pm8921_override_attr);
+#endif
 	free_irqs(chip);
 	kfree(chip->adjusted_fcc_temp_lut);
 	platform_set_drvdata(pdev, NULL);
