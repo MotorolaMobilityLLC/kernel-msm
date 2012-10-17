@@ -127,15 +127,24 @@ static struct pm8xxx_gpio_init pm8921_gpios[] __initdata = {
 	PM8921_GPIO_OUTPUT(17, 0, HIGH), /* CAM_VCM_EN */
 	PM8921_GPIO_OUTPUT(19, 0, HIGH), /* AMP_EN_AMP */
 	PM8921_GPIO_OUTPUT(20, 0, HIGH), /* PMIC - FSA8008 EAR_MIC_BIAS_EN */
-#ifdef CONFIG_WIRELESS_CHARGER
-	PM8921_GPIO_INPUT(25,PM_GPIO_PULL_UP_1P5_30), /* WLC ACTIVE_N */
-	PM8921_GPIO_OUTPUT(26, 0, HIGH), /* WLC CHG_STAT */
-#endif
 	PM8921_GPIO_OUTPUT(31, 0, HIGH), /* PMIC - FSA8008_EAR_MIC_EN */
 	PM8921_GPIO_INPUT(32, PM_GPIO_PULL_UP_1P5), /* PMIC - FSA8008_EARPOL_DETECT */
 	PM8921_GPIO_OUTPUT(33, 0, HIGH), /* HAPTIC_EN */
 	PM8921_GPIO_OUTPUT(34, 0, HIGH), /* WCD_RESET_N */
 };
+
+#ifdef CONFIG_WIRELESS_CHARGER
+#define PM8921_GPIO_WLC_ACTIVE      25
+#define PM8921_GPIO_WLC_ACTIVE_11   17
+static struct pm8xxx_gpio_init pm8921_gpios_wlc[] __initdata = {
+	PM8921_GPIO_INPUT(PM8921_GPIO_WLC_ACTIVE,PM_GPIO_PULL_UP_1P5_30),
+	PM8921_GPIO_OUTPUT(26, 0, HIGH), /* WLC CHG_STAT */
+};
+static struct pm8xxx_gpio_init pm8921_gpios_wlc_rev11[] __initdata = {
+	PM8921_GPIO_INPUT(PM8921_GPIO_WLC_ACTIVE_11,PM_GPIO_PULL_UP_1P5_30),
+	PM8921_GPIO_OUTPUT(26, 0, HIGH), /* WLC CHG_STAT */
+};
+#endif
 
 void __init apq8064_pm8xxx_gpio_mpp_init(void)
 {
@@ -149,6 +158,29 @@ void __init apq8064_pm8xxx_gpio_mpp_init(void)
 			break;
 		}
 	}
+#ifdef CONFIG_WIRELESS_CHARGER
+	if (lge_get_board_revno() >= HW_REV_1_1) {
+		for (i = 0; i < ARRAY_SIZE(pm8921_gpios_wlc_rev11); i++) {
+			rc = pm8xxx_gpio_config(pm8921_gpios_wlc_rev11[i].gpio,
+					&pm8921_gpios_wlc_rev11[i].config);
+			if (rc < 0) {
+				pr_err("%s: pm8xxx_gpio_config: rc=%d\n",
+						__func__, rc);
+				break;
+			}
+		}
+	} else {
+		for (i = 0; i < ARRAY_SIZE(pm8921_gpios_wlc); i++) {
+			rc = pm8xxx_gpio_config(pm8921_gpios_wlc[i].gpio,
+						&pm8921_gpios_wlc[i].config);
+			if (rc < 0) {
+				pr_err("%s: pm8xxx_gpio_config: rc=%d\n",
+						__func__, rc);
+				break;
+			}
+		}
+	}
+#endif
 }
 
 static struct pm8xxx_pwrkey_platform_data apq8064_pm8921_pwrkey_pdata = {
@@ -354,28 +386,16 @@ static int batt_temp_ctrl_level[] = {
 };
 
 #ifdef CONFIG_WIRELESS_CHARGER
-#define GPIO_WLC_ACTIVE_N PM8921_GPIO_PM_TO_SYS(25)
-static int wireless_charger_is_plugged(void)
-{
-	static bool init_done = 0;
-	int ret = 0;
+#define GPIO_WLC_ACTIVE        PM8921_GPIO_PM_TO_SYS(PM8921_GPIO_WLC_ACTIVE)
+#define GPIO_WLC_ACTIVE_11     PM8921_GPIO_PM_TO_SYS(PM8921_GPIO_WLC_ACTIVE_11)
+#define GPIO_WLC_STATE         PM8921_GPIO_PM_TO_SYS(26)
 
-	if (!init_done) {
-		ret =  gpio_request_one(GPIO_WLC_ACTIVE_N, GPIOF_DIR_IN, "active_n_gpio");
-		if (ret < 0) {
-			pr_err("wlc: active_n gpio request failed\n");
-			return 0;
-		}
-		init_done =1;
-	}
-
-	return !(gpio_get_value(GPIO_WLC_ACTIVE_N));
-}
+static int wireless_charger_is_plugged(void);
 
 static struct bq51051b_wlc_platform_data bq51051b_wlc_pmic_pdata = {
-	.chg_state_gpio		= PM8921_GPIO_PM_TO_SYS(26),
-	.active_n_gpio		= GPIO_WLC_ACTIVE_N,
-	.wlc_is_plugged		= wireless_charger_is_plugged
+	.chg_state_gpio  = GPIO_WLC_STATE,
+	.active_n_gpio   = GPIO_WLC_ACTIVE,
+	.wlc_is_plugged  = wireless_charger_is_plugged,
 };
 
 struct platform_device wireless_charger = {
@@ -385,11 +405,40 @@ struct platform_device wireless_charger = {
 		.platform_data = &bq51051b_wlc_pmic_pdata,
 	},
 };
-#else
+
 static int wireless_charger_is_plugged(void)
 {
-	return 0;
+	static bool initialized = false;
+	unsigned int wlc_active_n = 0;
+	int ret = 0;
+
+	wlc_active_n = bq51051b_wlc_pmic_pdata.active_n_gpio;
+	if (!wlc_active_n) {
+		pr_warn("wlc : active_n gpio is not defined yet");
+		return 0;
+	}
+
+	if (!initialized) {
+		ret =  gpio_request_one(wlc_active_n, GPIOF_DIR_IN,
+				"active_n_gpio");
+		if (ret < 0) {
+			pr_err("wlc: active_n gpio request failed\n");
+			return 0;
+		}
+		initialized = true;
+	}
+
+	return !(gpio_get_value(wlc_active_n));
 }
+
+static __init void mako_fixup_wlc_gpio(void) {
+	if (lge_get_board_revno() >= HW_REV_1_1)
+		bq51051b_wlc_pmic_pdata.active_n_gpio = GPIO_WLC_ACTIVE_11;
+}
+
+#else
+static int wireless_charger_is_plugged(void) { return 0; }
+static __init void mako_set_wlc_gpio(void) { }
 #endif
 
 /*
@@ -772,6 +821,7 @@ void __init apq8064_init_pmic(void)
 	mako_fixed_keymap();
 	mako_set_adcmap();
 	mako_fixed_leds();
+	mako_fixup_wlc_gpio();
 
 	apq8064_device_ssbi_pmic1.dev.platform_data =
 		&apq8064_ssbi_pm8921_pdata;
