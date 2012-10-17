@@ -31,7 +31,9 @@
 #include <linux/usb/android.h>
 
 #include "gadget_chips.h"
-
+#ifndef DEBUG
+#define DEBUG 1
+#endif
 /*
  * Kbuild is not very cooperative with respect to linking separately
  * compiled library objects into one module.  So for now we won't use
