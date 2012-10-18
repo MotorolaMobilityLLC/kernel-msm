@@ -3885,7 +3885,14 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
         hddLog(VOS_TRACE_LEVEL_ERROR,
                 "%s: sme_ScanRequest returned error %d", __func__, status);
         complete(&pScanInfo->scan_req_completion_event);
-        status = -EIO;
+        if(eHAL_STATUS_RESOURCES == status)
+        {
+                hddLog(VOS_TRACE_LEVEL_INFO, "%s: HO is in progress.So defer 
+                       the scan by informing busy",__func__);
+                status = -EBUSY;
+        } else {
+                status = -EIO;
+        }
         hdd_allow_suspend();
         goto free_mem;
     }
