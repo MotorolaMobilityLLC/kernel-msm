@@ -1048,6 +1048,7 @@ void mipi_dsi_cmd_mdp_start(void)
 	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
 }
 
+void mipi_dsi_error(void);
 void mipi_dsi_cmd_bta_sw_trigger(void)
 {
 	uint32 data;
@@ -1063,9 +1064,12 @@ void mipi_dsi_cmd_bta_sw_trigger(void)
 		cnt++;
 	}
 
-	mipi_dsi_ack_err_status();
-
-	pr_debug("%s: BTA done, cnt=%d\n", __func__, cnt);
+	if (cnt >= 10000) {
+		pr_err("%s: still BTA_BUSY after waited for cnt=%d loop\n",
+			 __func__, cnt);
+		mipi_dsi_error();
+	} else
+		mipi_dsi_ack_err_status();
 }
 
 static char set_tear_on[2] = {0x35, 0x00};
@@ -1281,7 +1285,7 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 	cmd = rp->data[0];
 	switch (cmd) {
 	case DTYPE_ACK_ERR_RESP:
-		pr_debug("%s: rx ACK_ERR_PACLAGE\n", __func__);
+		pr_err("%s: rx ACK_ERR_PACKET\n", __func__);
 		break;
 	case DTYPE_GEN_READ1_RESP:
 	case DTYPE_DCS_READ1_RESP:
@@ -1391,7 +1395,7 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 	cmd = rp->data[0];
 	switch (cmd) {
 	case DTYPE_ACK_ERR_RESP:
-		pr_debug("%s: rx ACK_ERR_PACLAGE\n", __func__);
+		pr_err("%s: rx ACK_ERR_PACKET\n", __func__);
 		break;
 	case DTYPE_GEN_READ1_RESP:
 	case DTYPE_DCS_READ1_RESP:
@@ -1678,12 +1682,13 @@ void mipi_dsi_irq_set(uint32 mask, uint32 irq)
 void mipi_dsi_ack_err_status(void)
 {
 	uint32 status;
+	const uint32 dsi_err_mask = 0x1FFFFFF;
 
 	status = MIPI_INP(MIPI_DSI_BASE + 0x0064);/* DSI_ACK_ERR_STATUS */
 
-	if (status) {
+	if (status & dsi_err_mask) {
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0064, status);
-		pr_debug("%s: status=%x\n", __func__, status);
+		pr_warning("%s: status=%x\n", __func__, status & dsi_err_mask);
 	}
 }
 
@@ -1694,7 +1699,7 @@ void mipi_dsi_timeout_status(void)
 	status = MIPI_INP(MIPI_DSI_BASE + 0x00bc);/* DSI_TIMEOUT_STATUS */
 	if (status & 0x0111) {
 		MIPI_OUTP(MIPI_DSI_BASE + 0x00bc, status);
-		pr_debug("%s: status=%x\n", __func__, status);
+		pr_warning("%s: status=%x\n", __func__, status);
 	}
 }
 
@@ -1706,7 +1711,7 @@ void mipi_dsi_dln0_phy_err(void)
 
 	if (status & 0x011111) {
 		MIPI_OUTP(MIPI_DSI_BASE + 0x00b0, status);
-		pr_debug("%s: status=%x\n", __func__, status);
+		pr_warning("%s: status=%x\n", __func__, status);
 	}
 }
 
@@ -1718,7 +1723,7 @@ void mipi_dsi_fifo_status(void)
 
 	if (status & 0x44444489) {
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0008, status);
-		pr_debug("%s: status=%x\n", __func__, status);
+		pr_warning("%s: status=%x\n", __func__, status);
 	}
 }
 
@@ -1730,7 +1735,7 @@ void mipi_dsi_status(void)
 
 	if (status & 0x80000000) {
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0004, status);
-		pr_debug("%s: status=%x\n", __func__, status);
+		pr_warning("%s: status=%x\n", __func__, status);
 	}
 }
 
