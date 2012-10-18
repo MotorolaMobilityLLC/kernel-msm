@@ -447,7 +447,7 @@ eHalStatus csrScanGetResult(tpAniSirGlobal, tCsrScanResultFilter *pFilter, tScan
     \return eHalStatus     
   -------------------------------------------------------------------------------*/
 eHalStatus csrScanFlushResult(tpAniSirGlobal);
-
+eHalStatus csrScanFlushP2PResult(tpAniSirGlobal);
 /* ---------------------------------------------------------------------------
     \fn csrScanBGScanGetParam
     \brief Returns the current background scan settings.
