@@ -22,6 +22,7 @@
 #include <linux/input/touch_platform.h>
 #include <linux/melfas100_ts.h>
 #include <linux/msp430.h>
+#include <linux/nfc/pn544-mot.h>
 
 #define MELFAS_TOUCH_SCL_GPIO       17
 #define MELFAS_TOUCH_SDA_GPIO       16
@@ -275,6 +276,148 @@ int __init msp430_init_i2c_device(struct i2c_board_info *info,
 	return err;
 }
 
+/* NXP PN544 Init */
+struct pn544_i2c_platform_data pn544_platform_data = {
+	.irq_gpio = 0,
+	.ven_gpio = 0,
+	.firmware_gpio = 0,
+	.ven_polarity = 0,
+	.discharge_delay = 0,
+};
+
+struct platform_device pn544_platform_device = {
+	.name = "pn544",
+	.id = -1,
+	.dev = {
+		.platform_data = &pn544_platform_data,
+	},
+};
+
+int __init pn544_init_i2c_device(struct i2c_board_info *info,
+		struct device_node *child)
+{
+	int err;
+	int len = 0;
+	const void *prop;
+	unsigned int irq_gpio = 0;
+	unsigned int ven_gpio = 0;
+	unsigned int firmware_gpio = 0;
+	unsigned int ven_polarity = 0;
+	unsigned int discharge_delay = 0;
+
+	prop = of_get_property(child, "platform_data", &len);
+	if (prop && len) {
+		info->platform_data = kmemdup(prop, len, GFP_KERNEL);
+		pr_info("pn544 got platform_data from dt\n");
+		return 0;
+	} else {
+		pr_info("pn544 platform_data not found in dt\n");
+	}
+
+	info->platform_data = &pn544_platform_data;
+
+	/* irq */
+	prop = of_get_property(child, "pn544_gpio_irq", &len);
+	if (!prop || (len != sizeof(u32)))
+		return -EINVAL;
+	irq_gpio = *(u32 *)prop;
+	pn544_platform_data.irq_gpio = irq_gpio;
+
+	err = gpio_request(irq_gpio, "pn544 irq");
+	if (err) {
+		pr_err("pn544 irq gpio_request failed: %d\n", err);
+		goto fail;
+	}
+	gpio_direction_input(irq_gpio);
+	err = gpio_export(irq_gpio, 0);
+	if (err)
+		pr_err("pn544 irq gpio_export failed: %d\n", err);
+
+	/* ven */
+	prop = of_get_property(child, "pn544_gpio_ven", &len);
+	if (prop && (len == sizeof(u32))) {
+		ven_gpio = *(u32 *)prop;
+		ven_gpio = PM8921_GPIO_PM_TO_SYS(ven_gpio);
+	} else {
+		gpio_free(irq_gpio);
+		return -EINVAL;
+	}
+	pn544_platform_data.ven_gpio = ven_gpio;
+
+	err = gpio_request(ven_gpio, "pn544 reset");
+	if (err) {
+		gpio_free(irq_gpio);
+		pr_err("pn544 ven gpio_request failed: %d\n", err);
+		goto fail;
+	}
+	gpio_direction_output(ven_gpio, 0);
+	gpio_set_value(ven_gpio, 0);
+	err = gpio_export(ven_gpio, 0);
+	if (err)
+		pr_err("pna544 ven gpio_export failed: %d\n", err);
+
+	/* firmware download */
+	prop = of_get_property(child, "pn544_gpio_fwdownload", &len);
+	if (prop && (len == sizeof(u32))) {
+		firmware_gpio = *(u32 *)prop;
+		firmware_gpio = PM8921_GPIO_PM_TO_SYS(firmware_gpio);
+	} else {
+		gpio_free(irq_gpio);
+		gpio_free(ven_gpio);
+		return -EINVAL;
+	}
+	pn544_platform_data.firmware_gpio = firmware_gpio;
+
+	err = gpio_request(firmware_gpio, "pn544 firmware download");
+	if (err) {
+		gpio_free(irq_gpio);
+		gpio_free(ven_gpio);
+		pr_err("pn544 firmware gpio_request failed: %d\n",
+			err);
+		goto fail;
+	}
+	gpio_direction_output(firmware_gpio, 0);
+	gpio_set_value(firmware_gpio, 0);
+	err = gpio_export(firmware_gpio, 0);
+
+	/* ven polarity */
+	prop = of_get_property(child, "pn544_ven_polarity", &len);
+	if (prop && (len == sizeof(u32))) {
+		ven_polarity = *(u32 *)prop;
+	} else {
+		gpio_free(irq_gpio);
+		gpio_free(ven_gpio);
+		gpio_free(firmware_gpio);
+		return -EINVAL;
+	}
+	pn544_platform_data.ven_polarity = ven_polarity;
+
+	/* dischage delay */
+	prop = of_get_property(child, "pn544_discharge_delay", &len);
+	if (prop && (len == sizeof(u32))) {
+		discharge_delay = *(u32 *)prop;
+	} else {
+		gpio_free(irq_gpio);
+		gpio_free(ven_gpio);
+		gpio_free(firmware_gpio);
+		return -EINVAL;
+	}
+	pn544_platform_data.discharge_delay = discharge_delay;
+
+	pr_info("pn544 initialized i2c device. irq = %d, ven = %d, \
+		fwdownload = %d, polarity = %d, delay = %d\n",
+		pn544_platform_data.irq_gpio,
+		pn544_platform_data.ven_gpio,
+		pn544_platform_data.firmware_gpio,
+		pn544_platform_data.ven_polarity,
+		pn544_platform_data.discharge_delay);
+
+ fail:
+	pr_err("pn544 init returned: %d\n", err);
+	return err;
+}
+/* End of NXP PN544 Init */
+
 static int __init stub_init_i2c_device(struct i2c_board_info *info,
 				       struct device_node *node)
 {
@@ -295,6 +438,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00260001, atmxt_init_i2c_device},   /* Atmel_MXT */
 	{0x00290000, stub_init_i2c_device},
 	{0x00030015, msp430_init_i2c_device}, /* TI MSP430 */
+	{0x00190001, pn544_init_i2c_device}, /* NXP PN544 */
 };
 
 static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device)
