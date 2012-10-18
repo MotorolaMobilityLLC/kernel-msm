@@ -3767,7 +3767,7 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
                     if( request->n_channels == WLAN_HDD_P2P_SOCIAL_CHANNELS )
                     {
                          pScanInfo->flushP2pScanResults = 1;
-                         sme_ScanFlushResult( WLAN_HDD_GET_HAL_CTX(pAdapter),
+                         sme_ScanFlushP2PResult( WLAN_HDD_GET_HAL_CTX(pAdapter),
                                           sessionId );
                     }
 
@@ -3813,7 +3813,13 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
         hddLog(VOS_TRACE_LEVEL_ERROR,
                 "%s: sme_ScanRequest returned error %d", __func__, status);
         complete(&pScanInfo->scan_req_completion_event);
-        status = -EIO;
+        if(eHAL_STATUS_RESOURCES == status)
+        {
+                hddLog(VOS_TRACE_LEVEL_INFO, "%s: HO is in progress.So defer the scan by informing busy",__func__);
+                status = -EBUSY;
+        } else {
+                status = -EIO;
+        }
         hdd_allow_suspend();
         goto free_mem;
     }
@@ -5651,6 +5657,9 @@ static int wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *d
             break;
         }
     }
+
+    /* Check we compared all entries,if then take the first slot now */
+    if(j == MAX_PMKSAIDS_IN_CACHE) i=0;
 
     if (!BSSIDMatched)
     { 

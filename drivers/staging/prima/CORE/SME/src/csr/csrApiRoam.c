@@ -4353,7 +4353,7 @@ tANI_BOOLEAN csrRoamIsCCXAssoc(tpAniSirGlobal pMac)
 tANI_BOOLEAN csrRoamIsFastRoamEnabled(tpAniSirGlobal pMac)
 {
     return (pMac->roam.configParam.isFastRoamIniFeatureEnabled &&
-            (!csrIsConcurrentInfraConnected(pMac)));
+            (!csrIsConcurrentSessionRunning(pMac)));
 }
 #endif
 
@@ -6817,6 +6817,18 @@ static void csrRoamRoamingStateReassocRspProcessor( tpAniSirGlobal pMac, tpSirSm
                         vos_mem_zero(&roamInfo, sizeof(tCsrRoamInfo));
                         csrRoamCallCallback(pMac, pNeighborRoamInfo->csrSessionId,
                                         &roamInfo, roamId, eCSR_ROAM_FT_REASSOC_FAILED, eSIR_SME_SUCCESS);
+                        /*
+                         * Since the above callback sends a disconnect
+                         * to HDD, we should clean-up our state 
+                         * machine as well to be in sync with the upper
+                         * layers. There is no need to send a disassoc 
+                         * since: 1) we will never reassoc to the current 
+                         * AP in LFR, and 2) there is no need to issue a 
+                         * disassoc to the AP with which we were trying 
+                         * to reassoc.
+                         */
+                        csrRoamComplete( pMac, eCsrJoinFailure, NULL );
+                        return;
                 }
         }
 #endif

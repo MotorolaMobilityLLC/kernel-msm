@@ -1931,10 +1931,38 @@ eHalStatus csrScanGetResult(tpAniSirGlobal pMac, tCsrScanResultFilter *pFilter, 
     return (status);
 }
 
-
 eHalStatus csrScanFlushResult(tpAniSirGlobal pMac)
 {
     return ( csrLLScanPurgeResult(pMac, &pMac->scan.scanResultList) );
+}
+
+eHalStatus csrScanFlushP2PResult(tpAniSirGlobal pMac)
+{
+        eHalStatus status = eHAL_STATUS_SUCCESS;
+        tListElem *pEntry,*pFreeElem;
+        tCsrScanResult *pBssDesc;
+        tDblLinkList *pList = &pMac->scan.scanResultList;
+
+        csrLLLock(pList);
+
+        pEntry = csrLLPeekHead( pList, LL_ACCESS_NOLOCK );
+        while( pEntry != NULL)
+        {
+                pBssDesc = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
+                if( vos_mem_compare( pBssDesc->Result.ssId.ssId, "DIRECT-", 7) )
+                {
+                        pFreeElem = pEntry;
+                        pEntry = csrLLNext(pList, pEntry, LL_ACCESS_NOLOCK);
+                        csrLLRemoveEntry(pList, pFreeElem, LL_ACCESS_NOLOCK);
+                        csrFreeScanResultEntry( pMac, pBssDesc );
+                        continue;
+                }
+                pEntry = csrLLNext(pList, pEntry, LL_ACCESS_NOLOCK);
+        }
+
+        csrLLUnlock(pList);
+
+        return (status);
 }
 
 /**

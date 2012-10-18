@@ -1096,7 +1096,7 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 #endif //FEATURE_WLAN_DIAG_SUPPORT
     
     pScanReq = (tpSirSmeScanReq) pMsgBuf;   
-    PELOG1(limLog(pMac, LOG1, FL("SME SCAN REQ numChan %d min %d max %d IELen %d first %d fresh %d unique %d type %d rsp %d\n"),
+    PELOG1(limLog(pMac, LOG1, FL("SME SCAN REQ numChan %d min %d max %d IELen %d first %d fresh %d unique %d type %d mode %d rsp %d\n"),
            pScanReq->channelList.numChannels,
            pScanReq->minChannelTime,
            pScanReq->maxChannelTime,
@@ -1104,7 +1104,9 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
            pScanReq->returnAfterFirstMatch,
            pScanReq->returnFreshResults,
            pScanReq->returnUniqueResults,
-           pScanReq->scanType, pMac->lim.gLimRspReqd ? 1 : 0);)
+           pScanReq->scanType,
+           pScanReq->backgroundScanMode,
+           pMac->lim.gLimRspReqd ? 1 : 0);)
         
     /*copy the Self MAC address from SmeReq to the globalplace , used for sending probe req.discussed on code review sep18*/
     sirCopyMacAddr(pMac->lim.gSelfMacAddr,  pScanReq->selfMacAddr);
@@ -1176,13 +1178,17 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         pMac->lim.gLim50Band11dScanDone     = 0;
         pMac->lim.gLimReturnAfterFirstMatch =
                                     pScanReq->returnAfterFirstMatch;
+        pMac->lim.gLimBackgroundScanMode =
+                                    pScanReq->backgroundScanMode;
 
         pMac->lim.gLimReturnUniqueResults   =
               ((pScanReq->returnUniqueResults) > 0 ? true : false);
         /* De-activate Heartbeat timers for connected sessions while
-         * scan is in progress if the system is in Active mode */
-        if((ePMM_STATE_BMPS_WAKEUP == pMac->pmm.gPmmState) ||
+         * scan is in progress if the system is in Active mode *
+         * AND it is not a ROAMING ("background") scan */
+        if(((ePMM_STATE_BMPS_WAKEUP == pMac->pmm.gPmmState) ||
            (ePMM_STATE_READY == pMac->pmm.gPmmState))
+            && (pScanReq->backgroundScanMode != eSIR_ROAMING_SCAN ))
         {
           for(i=0;i<pMac->lim.maxBssId;i++)
           {

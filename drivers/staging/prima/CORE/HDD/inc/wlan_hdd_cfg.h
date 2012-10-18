@@ -329,7 +329,7 @@ typedef enum
 #define CFG_SCAN_RESULT_AGE_TIME_CPS_DEFAULT   ( 600 )
 
 #define CFG_RSSI_CATEGORY_GAP_NAME             "gRssiCatGap"
-#define CFG_RSSI_CATEGORY_GAP_MIN              ( 10 )  
+#define CFG_RSSI_CATEGORY_GAP_MIN              ( 5 )  
 #define CFG_RSSI_CATEGORY_GAP_MAX              ( 100 )  
 #define CFG_RSSI_CATEGORY_GAP_DEFAULT          ( 30 )
 
