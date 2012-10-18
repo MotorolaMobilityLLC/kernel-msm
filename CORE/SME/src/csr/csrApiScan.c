@@ -1936,28 +1936,38 @@ eHalStatus csrScanGetResult(tpAniSirGlobal pMac, tCsrScanResultFilter *pFilter, 
     return (status);
 }
 
-tANI_U8 csrScanFlushDenied(tpAniSirGlobal pMac)
-{
-    switch(pMac->roam.neighborRoamInfo.neighborRoamState) {
-        case eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN:
-        case eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING:
-        case eCSR_NEIGHBOR_ROAM_STATE_PREAUTH_DONE:
-        case eCSR_NEIGHBOR_ROAM_STATE_REASSOCIATING:
-            return (pMac->roam.neighborRoamInfo.neighborRoamState);
-        default:
-            return 0;
-    }
-}
-
 eHalStatus csrScanFlushResult(tpAniSirGlobal pMac)
 {
-    tANI_U8 isFlushDenied = csrScanFlushDenied(pMac);
-    if (isFlushDenied) {
-        smsLog(pMac, LOGW, "%s: scan flush denied in roam state %d",
-                __func__, isFlushDenied);
-        return eHAL_STATUS_FAILURE;
-    }
     return ( csrLLScanPurgeResult(pMac, &pMac->scan.scanResultList) );
+}
+
+eHalStatus csrScanFlushP2PResult(tpAniSirGlobal pMac)
+{
+        eHalStatus status = eHAL_STATUS_SUCCESS;
+        tListElem *pEntry,*pFreeElem;
+        tCsrScanResult *pBssDesc;
+        tDblLinkList *pList = &pMac->scan.scanResultList;
+
+        csrLLLock(pList);
+
+        pEntry = csrLLPeekHead( pList, LL_ACCESS_NOLOCK );
+        while( pEntry != NULL)
+        {
+                pBssDesc = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
+                if( vos_mem_compare( pBssDesc->Result.ssId.ssId, "DIRECT-", 7) )
+                {
+                        pFreeElem = pEntry;
+                        pEntry = csrLLNext(pList, pEntry, LL_ACCESS_NOLOCK);
+                        csrLLRemoveEntry(pList, pFreeElem, LL_ACCESS_NOLOCK);
+                        csrFreeScanResultEntry( pMac, pBssDesc );
+                        continue;
+                }
+                pEntry = csrLLNext(pList, pEntry, LL_ACCESS_NOLOCK);
+        }
+
+        csrLLUnlock(pList);
+
+        return (status);
 }
 
 /**

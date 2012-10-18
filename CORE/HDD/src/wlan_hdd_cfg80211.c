@@ -3839,7 +3839,7 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
                     if( request->n_channels == WLAN_HDD_P2P_SOCIAL_CHANNELS )
                     {
                          pScanInfo->flushP2pScanResults = 1;
-                         sme_ScanFlushResult( WLAN_HDD_GET_HAL_CTX(pAdapter),
+                         sme_ScanFlushP2PResult( WLAN_HDD_GET_HAL_CTX(pAdapter),
                                           sessionId );
                     }
 
@@ -3887,8 +3887,7 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
         complete(&pScanInfo->scan_req_completion_event);
         if(eHAL_STATUS_RESOURCES == status)
         {
-                hddLog(VOS_TRACE_LEVEL_INFO, "%s: HO is in progress.So defer 
-                       the scan by informing busy",__func__);
+                hddLog(VOS_TRACE_LEVEL_INFO, "%s: HO is in progress.So defer the scan by informing busy",__func__);
                 status = -EBUSY;
         } else {
                 status = -EIO;

@@ -1918,7 +1918,7 @@ eHalStatus sme_ScanRequest(tHalHandle hHal, tANI_U8 sessionId, tCsrScanRequest *
             {
                 {
 #ifdef FEATURE_WLAN_LFR
-                    if(csrIsScanAllowed) {
+                    if(csrIsScanAllowed(pMac)) {
 #endif
                             status = csrScanRequest( hHal, sessionId, pscanReq,
                                                      pScanRequestID, callback, pContext );
@@ -1988,6 +1988,20 @@ eHalStatus sme_ScanFlushResult(tHalHandle hHal, tANI_U8 sessionId)
    return (status);
 }
 
+eHalStatus sme_ScanFlushP2PResult(tHalHandle hHal, tANI_U8 sessionId)
+{
+        eHalStatus status = eHAL_STATUS_FAILURE;
+        tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+        status = sme_AcquireGlobalLock( &pMac->sme );
+        if ( HAL_STATUS_SUCCESS( status ) )
+        {
+                status = csrScanFlushP2PResult( hHal );
+                sme_ReleaseGlobalLock( &pMac->sme );
+        }
+
+        return (status);
+}
 
 /* ---------------------------------------------------------------------------
     \fn sme_ScanResultGetFirst
