@@ -1205,9 +1205,11 @@ limRestorePreScanState(tpAniSirGlobal pMac)
     limDeactivateAndChangeTimer(pMac, eLIM_MAX_CHANNEL_TIMER);
 
     /* Re-activate Heartbeat timers for connected sessions as scan 
-     * is done if the DUT is in active mode*/
-    if((ePMM_STATE_BMPS_WAKEUP == pMac->pmm.gPmmState) ||
+     * is done if the DUT is in active mode
+     * AND it is not a ROAMING ("background") scan */
+    if(((ePMM_STATE_BMPS_WAKEUP == pMac->pmm.gPmmState) ||
        (ePMM_STATE_READY == pMac->pmm.gPmmState))
+        && (pMac->lim.gLimBackgroundScanMode != eSIR_ROAMING_SCAN ))
     {
       for(i=0;i<pMac->lim.maxBssId;i++)
       {

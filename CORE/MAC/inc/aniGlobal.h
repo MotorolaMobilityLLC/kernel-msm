@@ -908,6 +908,7 @@ tLimMlmOemDataRsp       *gpLimMlmOemDataRsp;
     vos_list_t  gLimMgmtFrameRegistratinQueue;
     tANI_U32    actionFrameSessionId;
 #endif
+    tSirBackgroundScanMode gLimBackgroundScanMode;
 } tAniSirLim, *tpAniSirLim;
 
 #ifdef WLAN_FEATURE_P2P
