@@ -2037,7 +2037,6 @@ int pm8921_set_usb_power_supply_type(enum power_supply_type type)
 	if (type < POWER_SUPPLY_TYPE_USB)
 		return -EINVAL;
 
-	the_chip->usb_psy.type = type;
 	power_supply_changed(&the_chip->usb_psy);
 	power_supply_changed(&the_chip->dc_psy);
 	return 0;
