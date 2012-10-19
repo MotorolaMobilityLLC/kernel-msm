@@ -50,7 +50,7 @@
 
 #ifdef CSR_VALIDATE_LIST
 tDblLinkList *g_pchannelPowerInfoList24 = NULL, * g_pchannelPowerInfoList5 = NULL;
-tpAniSirGlobal g_pMac = NULL;
+tpAniSirGlobal g_pMac;
 #endif
 
 /* Purpose of HIDDEN_TIMER 

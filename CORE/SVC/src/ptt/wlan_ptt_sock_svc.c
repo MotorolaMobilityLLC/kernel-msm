@@ -44,7 +44,7 @@
 #define PTT_TRACE(level, args...)
 #endif
 // Global variables
-static struct hdd_context_s *pAdapterHandle = NULL;
+static struct hdd_context_s *pAdapterHandle;
 //Utility function to perform endianess swap
 static void ptt_sock_swap_32(void *pBuffer, unsigned int len)
 {
@@ -86,7 +86,7 @@ int ptt_sock_send_msg_to_app(tAniHdr *wmsg, int radio, int src_mod, int pid)
    struct sk_buff *skb;
    struct nlmsghdr *nlh;
    int wmsg_length = be16_to_cpu(wmsg->length);
-   static int nlmsg_seq = 0;
+   static int nlmsg_seq;
    if (radio < 0 || radio > ANI_MAX_RADIOS) {
       PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: invalid radio id [%d]\n",
          __FUNCTION__, radio);

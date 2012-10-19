@@ -39,7 +39,7 @@
 
 //Global variables
 static DEFINE_MUTEX(nl_srv_sem);
-static struct sock *nl_srv_sock = NULL;
+static struct sock *nl_srv_sock;
 static nl_srv_msg_callback nl_srv_msg_handler[NLINK_MAX_CALLBACKS];
 
 //Forward declaration

@@ -832,7 +832,7 @@ WLANTL_AMSDUProcess
   VOS_STATUS      vStatus = VOS_STATUS_SUCCESS;
   v_U16_t         MPDUDataOffset;
   v_U16_t         packetLength; 
-  static v_U32_t  numAMSDUFrames = 0;
+  static v_U32_t  numAMSDUFrames;
   vos_pkt_t*      vosDataBuff;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
   /*------------------------------------------------------------------------

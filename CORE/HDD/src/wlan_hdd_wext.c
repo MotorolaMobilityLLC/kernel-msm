@@ -109,7 +109,7 @@ extern void hdd_resume_wlan(struct early_suspend *wlan_suspend);
 extern int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand);
 int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr);
 
-static int ioctl_debug = 0;
+static int ioctl_debug;
 module_param(ioctl_debug, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 struct statsContext

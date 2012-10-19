@@ -356,9 +356,9 @@ typedef struct nvEFSTable_s
    v_U32_t    nvValidityBitmap;
    sHalNv     halnv;
 } nvEFSTable_t;
-nvEFSTable_t *gnvEFSTable=NULL;
+nvEFSTable_t *gnvEFSTable;
 /* EFS Table  to send the NV structure to HAL*/ 
-static nvEFSTable_t *pnvEFSTable =NULL;
+static nvEFSTable_t *pnvEFSTable;
 
 const tRfChannelProps rfChannels[NUM_RF_CHANNELS] =
 {

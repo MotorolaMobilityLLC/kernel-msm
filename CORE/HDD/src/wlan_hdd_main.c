@@ -142,7 +142,7 @@ int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
 #define BUF_LEN 20
 static char fwpath[BUF_LEN];
 #ifndef MODULE
-static int wlan_hdd_inited = 0;
+static int wlan_hdd_inited;
 #endif
 
 /*
@@ -291,7 +291,7 @@ void hdd_unregister_mcast_bcast_filter(hdd_context_t *pHddCtx);
 void hdd_register_mcast_bcast_filter(hdd_context_t *pHddCtx);
 #endif
 //variable to hold the insmod parameters
-static int con_mode = 0;
+static int con_mode;
 #ifndef MODULE
 /* current con_mode - used only for statically linked driver
  * con_mode is changed by userspace to indicate a mode change which will
@@ -300,7 +300,7 @@ static int con_mode = 0;
  * being changed by userspace. So curr_con_mode records the current con_mode 
  * for exit when con_mode becomes the next mode for init
  */
-static int curr_con_mode = 0;
+static int curr_con_mode;
 #endif
 
 #ifdef FEATURE_WLAN_INTEGRATED_SOC

@@ -55,7 +55,7 @@
 
 static tSuppRsnFsmConsts suppConsts = { 2000, 3 };    //timeout, retry limit
 
-int gReadToSetKey = 0;
+int gReadToSetKey;
 
 /**************************************
  * Static functions in this module

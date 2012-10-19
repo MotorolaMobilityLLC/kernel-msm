@@ -664,7 +664,7 @@ static VOS_STATUS WLANBAP_TxCompCB
     void* pOsPkt = NULL;
     BslPhyLinkCtxType* pctx;
     BslClientCtxType* ppctx;
-    static int num_packets = 0;
+    static int num_packets;
 
     VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO, "WLANBAP_TxCompCB. vosDataBuff(vos_pkt_t *)=%p\n", vosDataBuff );
 
@@ -3527,7 +3527,7 @@ static BOOL BslProcessACLDataTx
     struct sk_buff *skb;
 #endif
 #if 0
-    static int num_packets = 0;
+    static int num_packets;
 #endif
 
     VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_LOW, "BslProcessACLDataTx\n" );

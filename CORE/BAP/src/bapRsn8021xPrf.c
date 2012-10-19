@@ -223,7 +223,7 @@ aagPrf(v_U32_t cryptHandle,
        v_U8_t *b, v_U8_t bLen,
        v_U32_t prfLen)
 {
-    static v_U8_t y = 0;
+    static v_U8_t y;
 
     v_U8_t *hmacText = NULL;
     v_U8_t *resultOffset = result;

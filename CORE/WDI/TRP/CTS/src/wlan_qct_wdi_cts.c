@@ -165,7 +165,7 @@ typedef struct
 static WCTS_ControlBlockType  *ctsCB;
 
 /* If port open once, not try to actual open next time */
-static int                     port_open = 0;
+static int                     port_open;
 #endif /* FEATURE_R33D */
 /*----------------------------------------------------------------------------
  * Static Function Declarations and Definitions

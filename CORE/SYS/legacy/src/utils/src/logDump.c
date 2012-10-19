@@ -145,7 +145,7 @@ logDump.c
 #define HAL_LOG_DUMP_CMD_START 0
 #define HAL_LOG_DUMP_CMD_END 299
 
-static int debug = 0;
+static int debug;
 
     void
 logPrintf(tpAniSirGlobal pMac, tANI_U32 cmd, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4)

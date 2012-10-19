@@ -31,10 +31,10 @@
 #include <wlan_hdd_includes.h>
 #include <vos_trace.h>
 // Global variables
-static struct hdd_context_s *pHddCtx = NULL;
+static struct hdd_context_s *pHddCtx;
 
-static int gWiFiChannel = 0;  /* WiFi associated channel 1-13, or 0 (none) */
-static int gAmpChannel = 0;   /* AMP associated channel 1-13, or 0 (none) */
+static int gWiFiChannel;  /* WiFi associated channel 1-13, or 0 (none) */
+static int gAmpChannel;   /* AMP associated channel 1-13, or 0 (none) */
 static int gBtcDriverMode = WLAN_HDD_INFRA_STATION;  /* Driver mode in BTC */
 
 

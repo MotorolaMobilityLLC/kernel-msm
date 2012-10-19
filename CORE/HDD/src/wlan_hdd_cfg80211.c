@@ -5724,7 +5724,7 @@ static int wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *d
 {
 #define MAX_PMKSAIDS_IN_CACHE 8
     static tPmkidCacheInfo PMKIDCache[MAX_PMKSAIDS_IN_CACHE]; // HDD Local cache
-    static tANI_U32 i = 0; // HDD Local Cache index 
+    static tANI_U32 i; // HDD Local Cache index 
     tANI_U32 j=0;  
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tHalHandle halHandle;

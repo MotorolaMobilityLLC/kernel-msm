@@ -73,7 +73,7 @@ static const tANI_U8 abChannel[]= {36,40,44,48,52,56,60,64,100,104,108,112,116,
 tpDialogueToken
 limAssignDialogueToken(tpAniSirGlobal pMac)
 {
-    static tANI_U8 token = 0;
+    static tANI_U8 token;
     tpDialogueToken pCurrNode;
     if(eHAL_STATUS_SUCCESS !=
           palAllocateMemory(pMac->hHdd, (void **) &pCurrNode, sizeof(tDialogueToken)))

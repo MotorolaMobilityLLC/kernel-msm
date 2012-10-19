@@ -59,7 +59,7 @@
 /*----------------------------------------------------------------------------
  * Static Variable Definitions
  * -------------------------------------------------------------------------*/
-static unsigned int        persistentTimerCount = 0;
+static unsigned int        persistentTimerCount;
 static vos_lock_t          persistentTimerCountLock;
 // static sleep_okts_handle   sleepClientHandle;
 

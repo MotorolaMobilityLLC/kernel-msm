@@ -352,7 +352,7 @@ WLANTL_GetEtherType
  * Adding a global variable to be used when doing frame translation in TxAuth
  * state so as to not set the protected bit to 1 in the case of WAI frames
  *---------------------------------------------------------------------------*/
-v_U8_t gUcIsWai = 0;
+v_U8_t gUcIsWai;
 #endif
 
 /*----------------------------------------------------------------------------
@@ -4883,7 +4883,7 @@ WLANTL_RxFrames
   v_U8_t              ucTid      = 0;
   v_BOOL_t            broadcast  = VOS_FALSE;
   v_BOOL_t            selfBcastLoopback = VOS_FALSE;
-  static v_U8_t       first_data_pkt_arrived = 0;
+  static v_U8_t       first_data_pkt_arrived;
   v_U32_t             uDPUSig; 
 #ifdef WLAN_SOFTAP_FEATURE
   v_U16_t             usPktLen;
@@ -5273,7 +5273,7 @@ WLANTL_RxCachedFrames
   v_BOOL_t            broadcast  = VOS_FALSE;
   v_BOOL_t            bSigMatch  = VOS_FALSE; 
   v_BOOL_t            selfBcastLoopback = VOS_FALSE;
-  static v_U8_t       first_data_pkt_arrived = 0;
+  static v_U8_t       first_data_pkt_arrived;
   v_U32_t             uDPUSig; 
   v_U8_t              ucUcastSig; 
   v_U8_t              ucBcastSig; 
@@ -6788,7 +6788,7 @@ WLANTL_STARxAuth
    v_PVOID_t                aucBDHeader;
    VOS_STATUS               vosStatus;
    WLANTL_RxMetaInfoType    wRxMetaInfo;
-   static v_U8_t            ucPMPDUHLen = 0;
+   static v_U8_t            ucPMPDUHLen;
 #ifdef WLAN_SOFTAP_FEATURE
    v_U8_t*                  STAMetaInfoPtr;
 #endif

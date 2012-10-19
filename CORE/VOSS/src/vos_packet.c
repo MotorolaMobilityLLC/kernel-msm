@@ -57,7 +57,7 @@
 /*---------------------------------------------------------------------------
   Data definitions
   ------------------------------------------------------------------------*/
-static vos_pkt_context_t *gpVosPacketContext = NULL;
+static vos_pkt_context_t *gpVosPacketContext;
 
 /*-------------------------------------------------------------------------
   Function declarations and documentation

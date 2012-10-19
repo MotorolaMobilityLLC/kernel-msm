@@ -84,11 +84,12 @@ when           who        what, where, why
  * This must be removed */
 #define WDI_GET_PAL_CTX()                  NULL
 
+
 /*-------------------------------------------------------------------------
   *  Local Varables
   *-------------------------------------------------------------------------*/
 /* This is temp, someone have to allocate for me, and must be part of global context */
-static WLANDXE_CtrlBlkType    *tempDxeCtrlBlk                = NULL;
+static WLANDXE_CtrlBlkType    *tempDxeCtrlBlk;
 static char                   *channelType[WDTS_CHANNEL_MAX] =
    {
       "TX_LOW_PRI",
@@ -3140,7 +3141,7 @@ void dxeTXEventHandler
    WLANDXE_ChannelCBType    *channelCb  = NULL;
 
    wpt_uint8                 bEnableISR = 0;
-   static wpt_uint8          successiveIntWithIMPS = 0;
+   static wpt_uint8          successiveIntWithIMPS;
 
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
             "%s Enter", __FUNCTION__);

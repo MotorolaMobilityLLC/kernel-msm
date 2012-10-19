@@ -62,7 +62,7 @@ typedef struct
 }wpt_iterator_info;
 
 /* Storage for DXE CB function pointer */
-static wpalPacketLowPacketCB wpalPacketAvailableCB = NULL;
+static wpalPacketLowPacketCB wpalPacketAvailableCB;
 
 /*
    wpalPacketInit is no-op for VOSS-support wpt_packet

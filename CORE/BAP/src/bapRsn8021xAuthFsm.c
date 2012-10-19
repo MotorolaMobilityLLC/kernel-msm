@@ -699,7 +699,7 @@ gotoStatePtkInitNegoTx(tAuthRsnFsm *fsm)
     v_BOOL_t retransmit = eANI_BOOLEAN_FALSE;
     v_U8_t *rsnWpaIe = NULL;
     int rsnWpaIeLen;
-    static tAniPacket *keyData = NULL;
+    static tAniPacket *keyData;
     // The longest length...the extra 8 bytes account for RSN key data
     // encapsulation
     v_U8_t paddedGroupKeyEncaps[1024];

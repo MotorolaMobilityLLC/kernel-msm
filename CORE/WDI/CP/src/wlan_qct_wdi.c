@@ -100,9 +100,9 @@
 #endif
 
 /* host capability bitmap global */
-static tWlanFeatCaps *gpHostWlanFeatCaps = NULL;
+static tWlanFeatCaps *gpHostWlanFeatCaps;
 /* FW capability bitmap global */
-static tWlanFeatCaps *gpFwWlanFeatCaps = NULL;
+static tWlanFeatCaps *gpFwWlanFeatCaps;
 /* array of features supported. Need to add a new feature
  * and other two places - wlan_hal_msg.h and halMsg.c (FW file)
  */
