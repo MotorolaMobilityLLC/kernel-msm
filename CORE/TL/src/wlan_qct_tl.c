@@ -6706,7 +6706,7 @@ WLANTL_FwdPktToHDD
             TLLOG4(VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO_LOW,
                      "%s: packet to AP itself, id %d\n", __FUNCTION__, WLAN_RX_SAP_SELF_STA_ID));
          }
-         else if ( WLAN_MAX_STA_COUNT <= ucDesSTAId )
+         else if (( WLAN_MAX_STA_COUNT <= ucDesSTAId ) || (pTLCb->atlSTAClients[ucDesSTAId].ucExists == 0))
          {
             // destination station is something else
             TLLOG4(VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO_LOW,
