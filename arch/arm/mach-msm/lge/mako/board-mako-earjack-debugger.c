@@ -27,6 +27,7 @@
 #include <linux/gpio.h>
 #include <linux/delay.h>
 #include <linux/pm.h>
+#include <linux/workqueue.h>
 
 #include <mach/gpiomux.h>
 
@@ -54,6 +55,7 @@ struct earjack_debugger_device {
 	int gpio;
 	int irq;
 	int saved_detect;
+	struct delayed_work work;
 	void (*set_uart_console)(int enable);
 };
 
@@ -112,6 +114,18 @@ static irqreturn_t earjack_debugger_irq_handler(int irq, void *_dev)
 	return IRQ_HANDLED;
 }
 
+static void set_console_work(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct earjack_debugger_device *adev = container_of(
+			dwork, struct earjack_debugger_device, work);
+	int detect = 0;
+
+	detect = earjack_debugger_detected(adev);
+	if (detect != adev->saved_detect)
+		earjack_debugger_set_console(adev);
+}
+
 static int earjack_debugger_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -146,6 +160,8 @@ static int earjack_debugger_probe(struct platform_device *pdev)
 				adev->gpio);
 		goto err_gpio_request;
 	}
+
+	INIT_DELAYED_WORK(&adev->work, set_console_work);
 
 	ret = request_threaded_irq(adev->irq, NULL, earjack_debugger_irq_handler,
 			IRQF_TRIGGER_RISING|IRQF_TRIGGER_FALLING,
@@ -210,11 +226,8 @@ static int earjack_debugger_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct earjack_debugger_device *adev = platform_get_drvdata(pdev);
-	int detect = 0;
 
-	detect = earjack_debugger_detected(adev);
-	if (detect != adev->saved_detect)
-		earjack_debugger_set_console(adev);
+	schedule_delayed_work(&adev->work, msecs_to_jiffies(10));
 	enable_irq(adev->irq);
 
 	return 0;
