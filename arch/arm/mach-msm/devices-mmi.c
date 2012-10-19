@@ -10,12 +10,12 @@
  * GNU General Public License for more details.
  *
  */
-
 #include <asm/mach-types.h>
 #include <linux/dma-mapping.h>
 #include <linux/persistent_ram.h>
 #include <linux/platform_device.h>
 #include <linux/w1-gpio.h>
+#include <linux/platform_data/mmi-factory.h>
 #include <linux/platform_data/ram_console.h>
 
 #include <mach/board.h>
@@ -180,3 +180,26 @@ struct persistent_ram mmi_ram_console_pram = {
 };
 
 #endif
+
+static struct mmi_factory_gpio_entry mmi_factory_gpio_entries[] = {
+	{
+		.number = 75,
+		.direction = GPIOF_DIR_OUT,
+		.value = 1,
+		.name = "factory_kill",
+	},
+};
+
+static struct mmi_factory_platform_data mmi_factory_pdata = {
+	.num_gpios = ARRAY_SIZE(mmi_factory_gpio_entries),
+	.gpios = mmi_factory_gpio_entries,
+
+};
+
+struct platform_device mmi_factory_device = {
+	.name           = "mmi_factory",
+	.id             = -1,
+	.dev = {
+		.platform_data = &mmi_factory_pdata,
+	},
+};
