@@ -1421,9 +1421,7 @@ limRestorePreReassocState(tpAniSirGlobal pMac,
                           tSirResultCodes resultCode,
                           tANI_U16 protStatusCode,tpPESession psessionEntry)
 {
-#if 0
     tANI_U8             chanNum, secChanOffset;
-#endif
     tLimMlmReassocCnf   mlmReassocCnf;
 
     psessionEntry->limMlmState = eLIM_MLM_LINK_ESTABLISHED_STATE;
@@ -1442,6 +1440,7 @@ limRestorePreReassocState(tpAniSirGlobal pMac,
         limLog(pMac, LOGP, FL("could not update BSSID at CFG\n"));
         return;
     }
+    #endif
 
    // chanNum = pMac->lim.gLimCurrentChannelId;
 
@@ -1450,7 +1449,6 @@ limRestorePreReassocState(tpAniSirGlobal pMac,
    secChanOffset = psessionEntry->htSecondaryChannelOffset;
 
     limSetChannel(pMac, chanNum, secChanOffset, psessionEntry->maxTxPower, psessionEntry->peSessionId);
-    #endif
 
     /** @ToDo : Need to Integrate the STOP the DataTransfer to the AP from 11H code */
 

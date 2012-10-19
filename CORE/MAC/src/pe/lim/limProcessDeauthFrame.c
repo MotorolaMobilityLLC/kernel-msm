@@ -436,9 +436,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
         }
 
         PELOGE(limLog(pMac, LOGE, FL("Rcv Deauth from ReAssoc AP. Issue REASSOC_CNF. \n"));)
-        limRestorePreReassocState(pMac, eSIR_SME_FT_REASSOC_TIMEOUT_FAILURE, 
-                eSIR_MAC_UNSPEC_FAILURE_STATUS, psessionEntry);
-
+        limRestorePreReassocState(pMac, eSIR_SME_REASSOC_REFUSED, reasonCode,psessionEntry);
         return;
     }
 
