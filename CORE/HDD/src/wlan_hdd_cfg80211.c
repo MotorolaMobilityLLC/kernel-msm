@@ -3420,20 +3420,19 @@ void
 hddPrintMacAddr(tCsrBssid macAddr, tANI_U8 logLevel)
 {
     VOS_TRACE(VOS_MODULE_ID_HDD, logLevel, 
-           "%X:%X:%X:%X:%X:%X\n",
-           macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4],
-           macAddr[5]);
+              "%02X:%02X:%02X:%02X:%02X:%02X\n",
+              macAddr[0], macAddr[1], macAddr[2], macAddr[3], macAddr[4],
+              macAddr[5]);
 } /****** end hddPrintMacAddr() ******/
 
 void
-hddPrintPmkId(tCsrBssid pmkId, tANI_U8 logLevel)
+hddPrintPmkId(tANI_U8 *pmkId, tANI_U8 logLevel)
 {
     VOS_TRACE(VOS_MODULE_ID_HDD, logLevel, 
-           "%X:%X:%X:%X:%X:%X:%X:%X:%X:%X:%X:%X:%X:%X:%X:%X\n",
-           pmkId[0], pmkId[1], pmkId[2], pmkId[3], pmkId[4],
-           pmkId[5], pmkId[6], pmkId[7], pmkId[8], pmkId[9],
-           pmkId[10], pmkId[11], pmkId[12], pmkId[13], pmkId[14],
-           pmkId[15]);
+              "%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X\n",
+              pmkId[0], pmkId[1], pmkId[2], pmkId[3], pmkId[4],
+              pmkId[5], pmkId[6], pmkId[7], pmkId[8], pmkId[9], pmkId[10],
+              pmkId[11], pmkId[12], pmkId[13], pmkId[14], pmkId[15]);
 } /****** end hddPrintPmkId() ******/
 
 //hddPrintMacAddr(tCsrBssid macAddr, tANI_U8 logLevel);
@@ -3720,7 +3719,7 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
             request->n_ssids = 0;
         }
 
-        if (0 < request->n_ssids)
+        if ((request->ssids) && (0 < request->n_ssids))
         {
             tCsrSSIDInfo *SsidInfo;
             int j;
@@ -5334,6 +5333,7 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
     tANI_U8  maxMCSIdx = 0;
     tANI_U8  rateFlag = 1;
     tANI_U8  i, j, rssidx;
+    tANI_U16 temp;
 
     ENTER();
 
@@ -5460,7 +5460,8 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
 
             for (i = 0; i < MCSLeng; i++)
             {
-                for (j = 0; j < (sizeof(supported_mcs_rate) / sizeof(supported_mcs_rate[0])); j++)
+                temp = sizeof(supported_mcs_rate) / sizeof(supported_mcs_rate[0]);
+                for (j = 0; j < temp; j++)
                 {
                     if (supported_mcs_rate[j].beacon_rate_index == MCSRates[i])
                     {
@@ -5468,7 +5469,7 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
                         break;
                     }
                 }
-                if (currentRate > maxRate)
+                if ((j < temp) && (currentRate > maxRate))
                 {
                     maxRate     = currentRate;
                     maxSpeedMCS = 1;

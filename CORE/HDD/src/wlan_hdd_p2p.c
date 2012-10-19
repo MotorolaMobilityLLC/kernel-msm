@@ -1143,6 +1143,12 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
         return;
     }
 
+    if (NULL == pbFrames) {
+        hddLog( LOGE, FL("pbFrames is NULL"));
+        return;
+    }
+
+
     if( ( WLAN_HDD_SOFTAP == pAdapter->device_mode ) 
             || ( WLAN_HDD_P2P_GO == pAdapter->device_mode )
       )

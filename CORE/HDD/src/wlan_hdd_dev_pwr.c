@@ -406,6 +406,15 @@ void hddDevTmTxBlockTimeoutHandler(void *usrData)
    }
 
    staAdapater = hdd_get_adapter(pHddCtx, WLAN_HDD_INFRA_STATION);
+
+   if(NULL == staAdapater)
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_ERROR,
+                "%s: NULL Adapter", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
+
    if(mutex_lock_interruptible(&pHddCtx->tmInfo.tmOperationLock))
    {
       VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_ERROR,
@@ -415,7 +424,9 @@ void hddDevTmTxBlockTimeoutHandler(void *usrData)
    pHddCtx->tmInfo.txFrameCount = 0;
 
    /* Resume TX flow */
+    
    netif_tx_start_all_queues(staAdapater->dev);
+
    mutex_unlock(&pHddCtx->tmInfo.tmOperationLock);
 
    return;
