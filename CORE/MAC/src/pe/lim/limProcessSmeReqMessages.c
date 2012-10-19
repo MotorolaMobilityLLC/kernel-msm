@@ -768,7 +768,8 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                     centerChan = limGetCenterChannel(pMac,channelNumber,pSmeStartBssReq->cbMode,WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ);
                     if(centerChan != eSIR_CFG_INVALID_ID)
                     {
-                        limLog(pMac, LOGW, FL("***Center Channel for 80MHZ channel width = %ld\n"),centerChan);
+                        limLog(pMac, LOGW, FL("***Center Channel for 80MHZ channel width = %ld\n"),centerChan);          
+                        psessionEntry->apCenterChan = centerChan;
                         if (cfgSetInt(pMac, WNI_CFG_VHT_CHANNEL_CENTER_FREQ_SEGMENT1, centerChan)
                                                                      != eSIR_SUCCESS)
                         {
@@ -788,8 +789,13 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                     limLog(pMac, LOGP,
                       FL("Unable to retrieve Channel Width from CFG\n"));
                 }
-
+                /*For Sta+p2p-Go concurrency  
+                  vhtTxChannelWidthSet is used for storing p2p-GO channel width
+                  apChanWidth is used for storing the AP channel width that the Sta is going to associate.
+                  Initialize the apChanWidth same as p2p-GO channel width this gets over written once the station joins the AP
+                */
                 psessionEntry->vhtTxChannelWidthSet = chanWidth;
+                psessionEntry->apChanWidth = chanWidth;         
             }
             psessionEntry->htSecondaryChannelOffset = limGetHTCBState(pSmeStartBssReq->cbMode);
 #endif
