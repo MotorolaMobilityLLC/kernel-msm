@@ -5777,6 +5777,9 @@ static int wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *d
         }
     }
 
+    /* Check we compared all entries,if then take the first slot now */
+    if(j == MAX_PMKSAIDS_IN_CACHE) i=0;
+
     if (!BSSIDMatched)
     { 
         // Now, we DON'T have a BSSID match, so take a new entry in the cache.  
