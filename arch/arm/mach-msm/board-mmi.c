@@ -20,6 +20,7 @@
 #include <linux/of_fdt.h>
 #include <linux/of.h>
 #include <linux/persistent_ram.h>
+#include <linux/platform_data/mmi-factory.h>
 
 #include <mach/gpiomux.h>
 #include <mach/restart.h>
@@ -164,10 +165,60 @@ static struct platform_device *mmi_devices[] __initdata = {
 #endif
 };
 
+static void __init mmi_factory_register(void)
+{
+	struct device_node *chosen;
+	int len;
+	bool fk_enable;
+	int fk_gpio_ndx = -1;
+	struct mmi_factory_gpio_entry *gpios;
+	int num_gpios;
+	const void *prop;
+	int i;
+
+	gpios = ((struct mmi_factory_platform_data *)
+		mmi_factory_device.dev.platform_data)->gpios;
+	num_gpios = ((struct mmi_factory_platform_data *)
+		mmi_factory_device.dev.platform_data)->num_gpios;
+
+	chosen = of_find_node_by_path("/Chosen@0");
+	if (!chosen)
+		goto register_device;
+
+	for (i = 0; i < num_gpios; i++) {
+		if (!strcmp("factory_kill", gpios[i].name))
+			fk_gpio_ndx = i;
+	}
+
+	if (fk_gpio_ndx >= 0) {
+		prop = of_get_property(chosen,
+				"factory_kill_disable", &len);
+		if (prop && (len == sizeof(u8))) {
+			fk_enable = (*(u8 *)prop) ? 0 : 1;
+			pr_debug("%s: factory_kill_disable = %d\n",
+					__func__, fk_enable);
+			gpios[fk_gpio_ndx].value = fk_enable;
+		}
+
+		prop = of_get_property(chosen,
+				"factory_kill_gpio", &len);
+		if (prop && (len == sizeof(u32))) {
+			gpios[fk_gpio_ndx].number = (*(u32 *)prop);
+		}
+	}
+
+	of_node_put(chosen);
+
+register_device:
+	platform_device_register(&mmi_factory_device);
+}
+
 static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	platform_add_devices(mmi_devices, ARRAY_SIZE(mmi_devices));
 	mmi_audio_dsp_init();
+	if (mmi_boot_mode_is_factory())
+		mmi_factory_register();
 }
 
 static void __init mmi_disp_init(struct msm8960_oem_init_ptrs *oem_ptr,
