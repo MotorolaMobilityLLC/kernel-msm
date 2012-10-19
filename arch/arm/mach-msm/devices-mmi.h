@@ -24,4 +24,5 @@ extern struct platform_device mmi_w1_gpio_device;
 
 extern struct platform_device mmi_ram_console_device;
 extern struct persistent_ram mmi_ram_console_pram;
+extern struct platform_device mmi_factory_device;
 #endif
