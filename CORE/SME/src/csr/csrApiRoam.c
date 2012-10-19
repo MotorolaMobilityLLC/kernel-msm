@@ -1845,6 +1845,20 @@ eHalStatus csrRoamCallCallback(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoam
     {
         smsLog(pMac, LOGW, " Assoc complete result = %d statusCode = %d reasonCode = %d\n", u2, pRoamInfo->statusCode, pRoamInfo->reasonCode);
     }
+    if ((u1 == eCSR_ROAM_FT_REASSOC_FAILED) && (pSession->bRefAssocStartCnt)) {
+        /*
+         * Decrement bRefAssocStartCnt for FT reassoc failure.
+         * Reason: For FT reassoc failures, we first call 
+         * csrRoamCallCallback before notifying a failed roam 
+         * completion through csrRoamComplete. The latter in 
+         * turn calls csrRoamProcessResults which tries to 
+         * once again call csrRoamCallCallback if bRefAssocStartCnt
+         * is non-zero. Since this is redundant for FT reassoc 
+         * failure, decrement bRefAssocStartCnt.
+         */
+        pSession->bRefAssocStartCnt--;
+    }
+
     if ( (pSession == NULL) ||
         (eANI_BOOLEAN_FALSE == pSession->sessionActive) )
     {
@@ -4993,6 +5007,8 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
         default:
         {
             smsLog(pMac, LOGW, FL("receives no association indication\n"));
+            smsLog(pMac, LOG1, FL("Assoc ref count %d\n"), 
+                   pSession->bRefAssocStartCnt);
             if( CSR_IS_INFRASTRUCTURE( &pSession->connectedProfile ) || 
                 CSR_IS_ROAM_SUBSTATE_STOP_BSS_REQ( pMac, sessionId ) )
             {

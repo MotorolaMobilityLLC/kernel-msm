@@ -190,6 +190,8 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
     if (limIsReassocInProgress(pMac,psessionEntry)) {
         if (!IS_REASSOC_BSSID(pMac,pHdr->sa,psessionEntry)) {
             PELOGE(limLog(pMac, LOGE, FL("Rcv Deauth from unknown/different AP while ReAssoc. Ignore \n"));)
+            limPrintMacAddr(pMac, pHdr->sa, LOGE);
+            limPrintMacAddr(pMac, psessionEntry->limReAssocbssId, LOGE);
             return;
         }
 
@@ -197,7 +199,9 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
          *  Drop ReAssoc and Restore the Previous context( current connected AP).
          */
         if (!IS_CURRENT_BSSID(pMac, pHdr->sa,psessionEntry)) {
-            PELOGE(limLog(pMac, LOGW, FL("received DeAuth from the New AP to which ReAssoc is sent \n"));)
+            PELOGE(limLog(pMac, LOGE, FL("received DeAuth from the New AP to which ReAssoc is sent \n"));)
+            limPrintMacAddr(pMac, pHdr->sa, LOGE);
+            limPrintMacAddr(pMac, psessionEntry->bssId, LOGE);
             limRestorePreReassocState(pMac,
                                   eSIR_SME_REASSOC_REFUSED, reasonCode,psessionEntry);
             return;
@@ -320,9 +324,10 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
                         break;
 
                     case eLIM_MLM_WT_FT_REASSOC_RSP_STATE:
-                        PELOG1(limLog(pMac, LOG1,
+                        PELOGE(limLog(pMac, LOGE,
                            FL("received Deauth frame in FT state %X with reasonCode=%d from "),
                            psessionEntry->limMlmState, reasonCode);)
+                        limPrintMacAddr(pMac, pHdr->sa, LOGE);
                         break;
 
                     default:
@@ -416,10 +421,11 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
     mlmDeauthInd.deauthTrigger = eLIM_PEER_ENTITY_DEAUTH;
 
 
-    /* If we're in the middle of ReAssoc and received deauth from 
+    /* 
+     * If we're in the middle of ReAssoc and received deauth from 
      * the ReAssoc AP, then notify SME by sending REASSOC_RSP with 
-     * failure result code. By design, SME will then issue "Disassoc"  
-     * and cleanup will happen at that time. 
+     * failure result code. SME will post the disconnect to the
+     * supplicant and the latter would start a fresh assoc.
      */
     if (limIsReassocInProgress(pMac,psessionEntry)) {
         /**
@@ -436,7 +442,14 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
         }
 
         PELOGE(limLog(pMac, LOGE, FL("Rcv Deauth from ReAssoc AP. Issue REASSOC_CNF. \n"));)
-        limRestorePreReassocState(pMac, eSIR_SME_REASSOC_REFUSED, reasonCode,psessionEntry);
+       /*
+        * TODO: Instead of overloading eSIR_SME_FT_REASSOC_TIMEOUT_FAILURE
+        * it would have been good to define/use a different failure type.
+        * Using eSIR_SME_FT_REASSOC_FAILURE does not seem to clean-up
+        * properly and we end up seeing "transmit queue timeout".
+        */
+       limPostReassocFailure(pMac, eSIR_SME_FT_REASSOC_TIMEOUT_FAILURE,
+               eSIR_MAC_UNSPEC_FAILURE_STATUS, psessionEntry);
         return;
     }
 
