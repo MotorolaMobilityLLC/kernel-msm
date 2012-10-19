@@ -2236,7 +2236,7 @@ eHalStatus sme_RoamConnect(tHalHandle hHal, tANI_U8 sessionId, tCsrRoamProfile *
   -------------------------------------------------------------------------------*/
 eHalStatus sme_RoamReassoc(tHalHandle hHal, tANI_U8 sessionId, tCsrRoamProfile *pProfile,
                           tCsrRoamModifyProfileFields modProfileFields,
-                          tANI_U32 *pRoamId)
+                          tANI_U32 *pRoamId, v_BOOL_t fForce)
 {
     eHalStatus status = eHAL_STATUS_FAILURE;
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
@@ -2247,7 +2247,14 @@ eHalStatus sme_RoamReassoc(tHalHandle hHal, tANI_U8 sessionId, tCsrRoamProfile *
     {
         if( CSR_IS_SESSION_VALID( pMac, sessionId ) )
         {
-            status = csrRoamReassoc( pMac, sessionId, pProfile, modProfileFields, pRoamId );
+            if(NULL == pProfile)
+            {        
+                status = csrReassoc( pMac, sessionId, &modProfileFields, pRoamId , fForce);
+            }
+            else
+            {
+                status = csrRoamReassoc( pMac, sessionId, pProfile, modProfileFields, pRoamId );
+            }        
         }
         else
         {

@@ -854,6 +854,9 @@ typedef struct tagCsrRoamConnectedProfile
     // (Bit0:VO; Bit1:VI; Bit2:BK; Bit3:BE all other bits are ignored)
     tANI_U8  acm_mask;
     tCsrRoamModifyProfileFields modifyProfileFields;
+    tANI_U32 nAddIEAssocLength;   //The byte count in the pAddIE for assoc
+    tANI_U8 *pAddIEAssoc;       //If not null, it has the IE byte stream for additional IE, which can be WSC IE and/or P2P IE
+    
     tSirBssDescription *pBssDesc;   
     tANI_BOOLEAN   qap; //AP supports QoS
     tANI_BOOLEAN   qosConnection; //A connection is QoS enabled

@@ -713,6 +713,10 @@ eHalStatus csrRoamFreeConnectProfile(tpAniSirGlobal pMac, tCsrRoamConnectedProfi
     {
         palFreeMemory(pMac->hHdd, pProfile->pBssDesc);
     }
+    if(pProfile->pAddIEAssoc)
+    {
+        palFreeMemory(pMac->hHdd, pProfile->pAddIEAssoc);
+    }
     palZeroMemory(pMac->hHdd, pProfile, sizeof(tCsrRoamConnectedProfile));
     pProfile->AuthType = eCSR_AUTH_TYPE_UNKNOWN;
     return (status);
@@ -5358,6 +5362,18 @@ eHalStatus csrRoamCopyConnectedProfile(tpAniSirGlobal pMac, tANI_U32 sessionId, 
             pDstProfile->SSIDs.SSIDList[0].ssidHidden = pSrcProfile->ssidHidden;
             palCopyMemory(pMac->hHdd, &pDstProfile->SSIDs.SSIDList[0].SSID, &pSrcProfile->SSID, sizeof(tSirMacSSid));
         }
+        if(pSrcProfile->nAddIEAssocLength)
+        {
+            status = palAllocateMemory(pMac->hHdd, (void **)&pDstProfile->pAddIEAssoc, pSrcProfile->nAddIEAssocLength);
+            if(!HAL_STATUS_SUCCESS(status))
+            {
+                smsLog( pMac, LOGE, FL(" failed to allocate memory for additional IEs \n") );
+                break;
+            }
+            pDstProfile->nAddIEAssocLength = pSrcProfile->nAddIEAssocLength;
+            palCopyMemory(pMac->hHdd, pDstProfile->pAddIEAssoc, pSrcProfile->pAddIEAssoc,
+                pSrcProfile->nAddIEAssocLength);
+        }
         status = palAllocateMemory(pMac->hHdd, (void **)&pDstProfile->ChannelInfo.ChannelList, 1);
         if(!HAL_STATUS_SUCCESS(status))
         {
@@ -6207,6 +6223,21 @@ eHalStatus csrRoamSaveConnectedInfomation(tpAniSirGlobal pMac, tANI_U32 sessionI
     pConnectProfile->beaconInterval = pSirBssDesc->beaconInterval;
 
     palCopyMemory(pMac->hHdd, &pConnectProfile->Keys, &pProfile->Keys, sizeof(tCsrKeys));
+    /* saving the addional IE`s like Hot spot indication element and extended capabilities */
+    if(pProfile->nAddIEAssocLength)
+    {
+        status = palAllocateMemory(pMac->hHdd,
+                 (void **)&pConnectProfile->pAddIEAssoc, pProfile->nAddIEAssocLength);
+        if(!HAL_STATUS_SUCCESS(status))
+        {
+            smsLog(pMac, LOGE, FL("Failed to allocate memory for additional IEs")) ;
+            return eHAL_STATUS_FAILURE;
+        }
+        pConnectProfile->nAddIEAssocLength = pProfile->nAddIEAssocLength;
+        palCopyMemory(pMac->hHdd, pConnectProfile->pAddIEAssoc, pProfile->pAddIEAssoc,
+                pProfile->nAddIEAssocLength);
+    }
+    
     //Save bssid
     csrGetBssIdBssDesc(pMac, pSirBssDesc, &pConnectProfile->bssid);
 #ifdef WLAN_FEATURE_VOWIFI_11R

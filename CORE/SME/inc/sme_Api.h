@@ -525,7 +525,7 @@ eHalStatus sme_RoamConnect(tHalHandle hHal, tANI_U8 sessionId, tCsrRoamProfile *
   -------------------------------------------------------------------------------*/
 eHalStatus sme_RoamReassoc(tHalHandle hHal, tANI_U8 sessionId, tCsrRoamProfile *pProfile,
                           tCsrRoamModifyProfileFields modProfileFields,
-                          tANI_U32 *pRoamId);
+                          tANI_U32 *pRoamId, v_BOOL_t fForce);
 
 /* ---------------------------------------------------------------------------
     \fn sme_RoamConnectToLastProfile
