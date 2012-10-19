@@ -1712,6 +1712,12 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
                    "%s: HDD adapter context is Null", __FUNCTION__);
         return -ENODEV;
     }
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EAGAIN;
+    }
 
     pHddCtx  =  (hdd_context_t*)pAdapter->pHddCtx;
     if (NULL == pHddCtx)
@@ -1846,6 +1852,11 @@ static int wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
 
     hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "device mode=%d\n", pAdapter->device_mode);
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
+        return -EAGAIN;
+    }
     if ((pAdapter->device_mode == WLAN_HDD_SOFTAP) 
 #ifdef WLAN_FEATURE_P2P
       || (pAdapter->device_mode == WLAN_HDD_P2P_GO)
@@ -1888,6 +1899,11 @@ static int wlan_hdd_cfg80211_change_beacon(struct wiphy *wiphy,
 
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d\n",
                                 __func__, pAdapter->device_mode);
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
+        return -EAGAIN;
+    }
 
     if ((pAdapter->device_mode == WLAN_HDD_SOFTAP) 
 #ifdef WLAN_FEATURE_P2P
@@ -3033,6 +3049,11 @@ int wlan_hdd_cfg80211_set_channel( struct wiphy *wiphy, struct net_device *dev,
     hddLog(VOS_TRACE_LEVEL_INFO, 
                 "%s: device_mode = %d  freq = %d \n",__func__, 
                             pAdapter->device_mode, chan->center_freq);
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
+        return -EAGAIN;
+    }
 
     /* 
      * Do freq to chan conversion
