@@ -6798,6 +6798,8 @@ WLANTL_STARxAuth
    v_U64_t                  ullpreviousReplayCounter=0; /*previous replay counter*/
    v_U16_t                  ucUnicastBroadcastType=0; /*It denotes whether received frame is UC or BC*/
 #endif
+   struct _BARFrmStruct     *pBarFrame = NULL;
+
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
   /*------------------------------------------------------------------------
@@ -6831,6 +6833,16 @@ WLANTL_STARxAuth
   usMPDULen     = (v_U16_t)WDA_GET_RX_MPDU_LEN(aucBDHeader);
   ucMPDUHLen    = (v_U8_t)WDA_GET_RX_MPDU_HEADER_LEN(aucBDHeader);
   ucTid         = (v_U8_t)WDA_GET_RX_TID(aucBDHeader);
+
+  /* Fix for a hardware bug. 
+   * H/W does not update the tid field in BD header for BAR frames.
+   * Fix is to read the tid field from MAC header of BAR frame */
+  if( (WDA_GET_RX_TYPE(aucBDHeader) == SIR_MAC_CTRL_FRAME) &&
+      (WDA_GET_RX_SUBTYPE(aucBDHeader) == SIR_MAC_CTRL_BAR))
+  {
+      pBarFrame = (struct _BARFrmStruct *)(WDA_GET_RX_MAC_HEADER(aucBDHeader));
+      ucTid = pBarFrame->barControl.numTID;
+  }
 
 #ifdef ANI_CHIPSET_VOLANS
   /*Host based replay check is needed for unicast data frames*/
