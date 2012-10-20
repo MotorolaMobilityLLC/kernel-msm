@@ -1834,6 +1834,20 @@ eHalStatus csrRoamCallCallback(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoam
     {
         smsLog(pMac, LOGW, " Assoc complete result = %d statusCode = %d reasonCode = %d\n", u2, pRoamInfo->statusCode, pRoamInfo->reasonCode);
     }
+    if ((u1 == eCSR_ROAM_FT_REASSOC_FAILED) && (pSession->bRefAssocStartCnt)) {
+        /*
+         * Decrement bRefAssocStartCnt for FT reassoc failure.
+         * Reason: For FT reassoc failures, we first call 
+         * csrRoamCallCallback before notifying a failed roam 
+         * completion through csrRoamComplete. The latter in 
+         * turn calls csrRoamProcessResults which tries to 
+         * once again call csrRoamCallCallback if bRefAssocStartCnt
+         * is non-zero. Since this is redundant for FT reassoc 
+         * failure, decrement bRefAssocStartCnt.
+         */
+        pSession->bRefAssocStartCnt--;
+    }
+
     if ( (pSession == NULL) ||
         (eANI_BOOLEAN_FALSE == pSession->sessionActive) )
     {
@@ -4978,6 +4992,8 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
         default:
         {
             smsLog(pMac, LOGW, FL("receives no association indication\n"));
+            smsLog(pMac, LOG1, FL("Assoc ref count %d\n"), 
+                   pSession->bRefAssocStartCnt);
             if( CSR_IS_INFRASTRUCTURE( &pSession->connectedProfile ) || 
                 CSR_IS_ROAM_SUBSTATE_STOP_BSS_REQ( pMac, sessionId ) )
             {
@@ -14683,8 +14699,15 @@ void csrRoamFTPreAuthRspProcessor( tHalHandle hHal, tpSirFTPreAuthRsp pFTPreAuth
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
     smsLog( pMac, LOGE, FL("Preauth response status code %d"), pFTPreAuthRsp->status); 
 #endif
-#ifdef WLAN_FEATURE_NEIGHBOR_ROAMING    
-    csrNeighborRoamPreauthRspHandler(pMac, (VOS_STATUS)pFTPreAuthRsp->status);
+#ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
+    status = csrNeighborRoamPreauthRspHandler(pMac, (VOS_STATUS)pFTPreAuthRsp->status);
+    if (status != eHAL_STATUS_SUCCESS) {
+        /*
+         * Bail out if pre-auth was not even processed.
+         */
+        smsLog(pMac, LOGW, FL("Preauth was not processed: %d"), status);
+        return;
+    }
 #endif
     /* The below function calls/timers should be invoked only if the pre-auth is successful */
     if (VOS_STATUS_SUCCESS != (VOS_STATUS)pFTPreAuthRsp->status)

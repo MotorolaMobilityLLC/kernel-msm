@@ -87,6 +87,7 @@
    ((IS_WDI_STATUS_FAILURE(x)) ? VOS_STATUS_E_FAILURE  : VOS_STATUS_SUCCESS)
 
 /* macro's for acessing TL API/data structures */
+#define WDA_TL_GET_STA_STATE(a, b, c) WLANTL_GetSTAState(a, b, c)
 #define WDA_TL_GET_TX_PKTCOUNT(a, b, c, d) WLANTL_GetTxPktCount(a, b, c, d)
 #define WDA_GET_BA_TXFLAG(a, b, c)  \
    (((a)->wdaStaInfo[(b)].ucUseBaBitmap) & (1 << (c)))  
@@ -10042,9 +10043,12 @@ void WDA_BaCheckActivity(tWDA_CbContext *pWDA)
    {
       for(tid = 0 ; tid < STACFG_MAX_TC ; tid++)
       {
+         WLANTL_STAStateType tlSTAState ;
          tANI_U32 txPktCount = 0 ;
          tANI_U8 validStaIndex = pWDA->wdaStaInfo[curSta].ucValidStaIndex ;
          if((WDA_VALID_STA_INDEX == validStaIndex) &&
+            (VOS_STATUS_SUCCESS == WDA_TL_GET_STA_STATE( pWDA->pVosContext,
+                                                    curSta, &tlSTAState)) &&
             (VOS_STATUS_SUCCESS == WDA_TL_GET_TX_PKTCOUNT( pWDA->pVosContext,
                                                     curSta, tid, &txPktCount)))
          {
@@ -10054,6 +10058,7 @@ void WDA_BaCheckActivity(tWDA_CbContext *pWDA)
                                     pWDA->wdaStaInfo[curSta].framesTxed[tid]);
 #endif
             if(!WDA_GET_BA_TXFLAG(pWDA, curSta, tid) 
+                   && (WLANTL_STA_AUTHENTICATED == tlSTAState)
                    && (txPktCount >= WDA_LAST_POLLED_THRESHOLD(pWDA, 
                                                                curSta, tid)))
             {
