@@ -1394,6 +1394,28 @@ limDecideShortSlot(tpAniSirGlobal pMac, tpDphHashNode pStaDs,
    }
 }
 
+void
+limPostReassocFailure(tpAniSirGlobal pMac,
+                      tSirResultCodes resultCode,
+                      tANI_U16 protStatusCode,tpPESession psessionEntry)
+{
+    tLimMlmReassocCnf   mlmReassocCnf;
+
+    psessionEntry->limMlmState = eLIM_MLM_LINK_ESTABLISHED_STATE;
+    MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, eLIM_MLM_LINK_ESTABLISHED_STATE));
+
+    // 'Change' timer for future activations
+    limDeactivateAndChangeTimer(pMac, eLIM_REASSOC_FAIL_TIMER);
+
+    mlmReassocCnf.resultCode = resultCode;
+    mlmReassocCnf.protStatusCode = protStatusCode;
+    /* Update PE session Id */
+    mlmReassocCnf.sessionId = psessionEntry->peSessionId;
+    limPostSmeMessage(pMac,
+                      LIM_MLM_REASSOC_CNF,
+                      (tANI_U32 *) &mlmReassocCnf);
+} /*** end limPostReassocFailure() ***/
+
 /**
  * limRestorePreReassocState()
  *

@@ -766,13 +766,15 @@ static eHalStatus csrNeighborRoamIssuePreauthReq(tpAniSirGlobal pMac)
     \param  pMac - The handle returned by macOpen.
             vosStatus - VOS_STATUS_SUCCESS/FAILURE/TIMEOUT status from PE
 
-    \return VOID
+    \return eHAL_STATUS_SUCCESS on success (i.e. pre-auth processed),
+            eHAL_STATUS_FAILURE otherwise
 
 ---------------------------------------------------------------------------*/
-void csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosStatus)
+eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosStatus)
 {
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     eHalStatus  status = eHAL_STATUS_SUCCESS;
+    eHalStatus  preauthProcessed = eHAL_STATUS_SUCCESS;
     tpCsrNeighborRoamBSSInfo pPreauthRspNode = NULL;
     
     if (eANI_BOOLEAN_FALSE == pNeighborRoamInfo->FTRoamInfo.preauthRspPending)
@@ -786,6 +788,7 @@ void csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosStatus)
             NEIGHBOR_ROAM_DEBUG(pMac, LOGW, 
                                 FL("Unexpected pre-auth response in state %d\n"), 
                                 pNeighborRoamInfo->neighborRoamState);
+            preauthProcessed = eHAL_STATUS_FAILURE;
             goto DEQ_PREAUTH;
     }    
 
@@ -793,8 +796,9 @@ void csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosStatus)
     if ((pNeighborRoamInfo->neighborRoamState != eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING) &&
         (pNeighborRoamInfo->neighborRoamState != eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN))
     {
-        NEIGHBOR_ROAM_DEBUG(pMac, LOGW, FL("Preauth response received in state %\n"), 
-            pNeighborRoamInfo->neighborRoamState);
+        NEIGHBOR_ROAM_DEBUG(pMac, LOGW, FL("Preauth response received in state %d\n"), 
+                            pNeighborRoamInfo->neighborRoamState);
+        preauthProcessed = eHAL_STATUS_FAILURE;
         goto DEQ_PREAUTH;
     }
 
@@ -869,7 +873,7 @@ void csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosStatus)
 
 DEQ_PREAUTH:
     csrRoamDequeuePreauth(pMac);
-    return;
+    return preauthProcessed;
 }
 #endif  /* WLAN_FEATURE_NEIGHBOR_ROAMING */
 
@@ -2514,7 +2518,9 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
 {
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
 
-    smsLog(pMac, LOGE, FL("Disconnect indication received with session id %d in state %d"), sessionId, pNeighborRoamInfo->neighborRoamState);
+    smsLog(pMac, LOGE, FL("Disconnect indication on session %d in state %d (sub-state %d)"), 
+           sessionId, pNeighborRoamInfo->neighborRoamState,
+           pMac->roam.curSubState[sessionId]);
  
 #ifdef FEATURE_WLAN_CCX
     {
@@ -2542,6 +2548,18 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
             // state.
             palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer);
             palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer);
+            if (!CSR_IS_ROAM_SUBSTATE_DISASSOC_HO( pMac, sessionId )) {
+                /*
+                 * Disconnect indication during Disassoc Handoff sub-state
+                 * is received when we are trying to disconnect with the old
+                 * AP during roam. BUT, if receive a disconnect indication 
+                 * outside of Disassoc Handoff sub-state, then it means that 
+                 * this is a genuine disconnect and we need to clean up.
+                 * Otherwise, we will be stuck in reassoc state which will
+                 * in-turn block scans (see csrIsScanAllowed).
+                 */
+                CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_INIT);
+            }
             break;
 
         case eCSR_NEIGHBOR_ROAM_STATE_INIT:
