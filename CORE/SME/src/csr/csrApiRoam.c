@@ -14747,8 +14747,15 @@ void csrRoamFTPreAuthRspProcessor( tHalHandle hHal, tpSirFTPreAuthRsp pFTPreAuth
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
     smsLog( pMac, LOGE, FL("Preauth response status code %d"), pFTPreAuthRsp->status); 
 #endif
-#ifdef WLAN_FEATURE_NEIGHBOR_ROAMING    
-    csrNeighborRoamPreauthRspHandler(pMac, (VOS_STATUS)pFTPreAuthRsp->status);
+#ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
+    status = csrNeighborRoamPreauthRspHandler(pMac, (VOS_STATUS)pFTPreAuthRsp->status);
+    if (status != eHAL_STATUS_SUCCESS) {
+        /*
+         * Bail out if pre-auth was not even processed.
+         */
+        smsLog(pMac, LOGW, FL("Preauth was not processed: %d"), status);
+        return;
+    }
 #endif
     /* The below function calls/timers should be invoked only if the pre-auth is successful */
     if (VOS_STATUS_SUCCESS != (VOS_STATUS)pFTPreAuthRsp->status)
