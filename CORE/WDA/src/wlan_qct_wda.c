@@ -1459,6 +1459,12 @@ VOS_STATUS WDA_stop(v_PVOID_t pVosContext, tANI_U8 reason)
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAILURE;
    }
+   if (pWDA->wdiFailed == true)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_FATAL,
+                 "%s: WDI in failed state", __FUNCTION__ );
+      return VOS_STATUS_E_ALREADY;
+   }
    /* FTM mode stay START_STATE */
    if( (WDA_READY_STATE != pWDA->wdaState) &&
        (WDA_INIT_STATE != pWDA->wdaState) &&
@@ -9856,6 +9862,7 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
       }
       case WDI_FATAL_ERROR_IND:
       {
+         pWDA->wdiFailed = true;
          /* TODO: Decode Ind and send Ind to PE */
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                   "Received WDI_FATAL_ERROR_IND from WDI ");

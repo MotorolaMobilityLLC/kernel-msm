@@ -423,6 +423,7 @@ typedef struct
    v_BOOL_t             wdaAmpSessionOn;
    v_U32_t              VosPacketToFree;
    v_BOOL_t             needShutdown;
+   v_BOOL_t             wdiFailed;
 } tWDA_CbContext ; 
 
 typedef struct

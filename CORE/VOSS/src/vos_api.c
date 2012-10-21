@@ -962,7 +962,10 @@ VOS_STATUS vos_stop( v_CONTEXT_t vosContext )
      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
          "%s: Failed to stop WDA", __func__);
      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
+     WDA_stopFailed(vosContext);
   }
+  else
+  {
 
   vosStatus = vos_wait_single_event( &(gpVosContext->wdaCompleteEvent),
                                      VOS_WDA_STOP_TIMEOUT );
@@ -980,6 +983,7 @@ VOS_STATUS vos_stop( v_CONTEXT_t vosContext )
          "%s: WDA_stop reporting other error", __func__ );
      }
      WDA_stopFailed(vosContext);
+     }
   }
 #endif
 

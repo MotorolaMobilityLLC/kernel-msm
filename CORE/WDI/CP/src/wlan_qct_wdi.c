@@ -141,7 +141,7 @@ WPT_STATIC const WDI_MainFsmEntryType wdiMainFSM[WDI_MAX_ST] =
     NULL,                       /*WDI_REQUEST_EVENT*/
     WDI_MainRsp,                /*WDI_RESPONSE_EVENT*/
     WDI_MainClose,              /*WDI_CLOSE_EVENT*/
-    NULL                        /*WDI_SHUTDOWN_EVENT*/
+    WDI_MainShutdown            /*WDI_SHUTDOWN_EVENT*/
   }},
 
   /*WDI_BUSY_ST*/
@@ -19407,8 +19407,16 @@ WDI_ResponseTimerCB
             pWDICtx->wdiExpectedResponse);
   /* WDI timeout means Riva is not responding or SMD communication to Riva
    * is not happening. The only possible way to recover from this error
-   * is to initiate SSR from APPS */
+   * is to initiate SSR from APPS 
+   * There is also an option to re-enable wifi, which will eventually
+   * trigger SSR
+   */
+#ifndef WDI_RE_ENABLE_WIFI_ON_WDI_TIMEOUT
   wpalRivaSubystemRestart();
+#else
+  WDI_DetectedDeviceError( pWDICtx, WDI_ERR_BASIC_OP_FAILURE);
+  wpalWlanReload();
+#endif
   }
   else
   {

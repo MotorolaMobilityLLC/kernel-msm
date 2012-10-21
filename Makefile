@@ -3,6 +3,9 @@ MODNAME := wlan
 #Do we panic on bug?  default is to warn
 PANIC_ON_BUG := 0
 
+#Re-enable wifi on WDI timeout
+RE_ENABLE_WIFI_ON_WDI_TIMEOUT := 0
+
 ifeq ($(CONFIG_CFG80211),y)
 HAVE_CFG80211 := 1
 else
@@ -519,6 +522,10 @@ endif
 
 ifeq ($(PANIC_ON_BUG),1)
 CDEFINES += -DPANIC_ON_BUG
+endif
+
+ifeq ($(RE_ENABLE_WIFI_ON_WDI_TIMEOUT),1)
+CDEFINES += -DWDI_RE_ENABLE_WIFI_ON_WDI_TIMEOUT
 endif
 
 ifeq ($(CONFIG_PRIMA_WLAN_BTAMP),y)
