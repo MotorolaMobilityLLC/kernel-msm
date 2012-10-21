@@ -2518,7 +2518,9 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
 {
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
 
-    smsLog(pMac, LOG1, FL("Disconnect indication received with session id %d in state %d"), sessionId, pNeighborRoamInfo->neighborRoamState);
+    smsLog(pMac, LOGE, FL("Disconnect indication on session %d in state %d (sub-state %d)"), 
+           sessionId, pNeighborRoamInfo->neighborRoamState,
+           pMac->roam.curSubState[sessionId]);
  
 #ifdef FEATURE_WLAN_CCX
     {
@@ -2546,6 +2548,18 @@ eHalStatus csrNeighborRoamIndicateDisconnect(tpAniSirGlobal pMac, tANI_U8 sessio
             // state.
             palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborScanTimer);
             palTimerStop(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer);
+            if (!CSR_IS_ROAM_SUBSTATE_DISASSOC_HO( pMac, sessionId )) {
+                /*
+                 * Disconnect indication during Disassoc Handoff sub-state
+                 * is received when we are trying to disconnect with the old
+                 * AP during roam. BUT, if receive a disconnect indication 
+                 * outside of Disassoc Handoff sub-state, then it means that 
+                 * this is a genuine disconnect and we need to clean up.
+                 * Otherwise, we will be stuck in reassoc state which will
+                 * in-turn block scans (see csrIsScanAllowed).
+                 */
+                CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_INIT);
+            }
             break;
 
         case eCSR_NEIGHBOR_ROAM_STATE_INIT:
