@@ -198,6 +198,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_DISABLE_AMP       5
 #define WE_ENABLE_DXE_STALL_DETECT 6
 #define WE_DISPLAY_DXE_SNAP_SHOT   7
+#define WE_SET_REASSOC_TRIGGER     8
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_VAR_INT_GET_NONE   (SIOCIWFIRSTPRIV + 7)
@@ -260,7 +261,6 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WLAN_PRIV_SET_MCBC_FILTER    (SIOCIWFIRSTPRIV + 26)
 #define WLAN_PRIV_CLEAR_MCBC_FILTER  (SIOCIWFIRSTPRIV + 27)
 /* Private ioctl to trigger reassociation */
-#define WLAN_SET_REASSOC_TRIGGER     (SIOCIWFIRSTPRIV + 28)
 
 #define WLAN_SET_POWER_PARAMS        (SIOCIWFIRSTPRIV + 29)
 #define WLAN_GET_LINK_SPEED          (SIOCIWFIRSTPRIV + 31)
@@ -2146,28 +2146,6 @@ static int iw_get_linkspeed(struct net_device *dev,
 
   /* a value is being successfully returned */
    return 0;
-}
-
-/*
- * Support for the reassoc trigger private command
- */
-static int iw_set_reassoc_trigger(struct net_device *dev,
-                            struct iw_request_info *info,
-                            union iwreq_data *wrqu, char *extra)
-{
-   hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-   tpAniSirGlobal pMac = WLAN_HDD_GET_HAL_CTX(pAdapter);
-   v_U32_t roamId = 0;
-   tCsrRoamModifyProfileFields modProfileFields;
-   tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, pAdapter->sessionId );
-   /* to force the AP initiate fresh 802.1x authentication need to clear 
-    * the PMKID cache for that set the following boolean. this is needed 
-    * by the HS 2.0 passpoint certification 5.2.a and b testcases */ 
-   pSession->fIgnorePMKIDCache = TRUE;
-   sme_GetModifyProfileFields(pMac, pAdapter->sessionId, &modProfileFields);
-   sme_RoamReassoc(pMac, pAdapter->sessionId, NULL, modProfileFields, &roamId, 1);
-   return 0;
-   
 }
 
 
@@ -4126,6 +4104,17 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
             sme_transportDebug(VOS_TRUE, VOS_FALSE);
             break;
         }
+        case  WE_SET_REASSOC_TRIGGER:
+        {
+            hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+            tpAniSirGlobal pMac = WLAN_HDD_GET_HAL_CTX(pAdapter);
+            v_U32_t roamId = 0;
+            tCsrRoamModifyProfileFields modProfileFields;
+            sme_GetModifyProfileFields(pMac, pAdapter->sessionId, &modProfileFields);
+            sme_RoamReassoc(pMac, pAdapter->sessionId, NULL, modProfileFields, &roamId, 1);
+            return 0;
+        }
+        
 
         default:
         {
@@ -5919,7 +5908,6 @@ static const iw_handler we_private[] = {
    [WLAN_PRIV_CLEAR_MCBC_FILTER         - SIOCIWFIRSTPRIV]   = iw_clear_dynamic_mcbc_filter,
    [WLAN_SET_POWER_PARAMS               - SIOCIWFIRSTPRIV]   = iw_set_power_params_priv,
    [WLAN_GET_LINK_SPEED                 - SIOCIWFIRSTPRIV]   = iw_get_linkspeed,
-   [WLAN_SET_REASSOC_TRIGGER            - SIOCIWFIRSTPRIV]   = iw_set_reassoc_trigger
 };
 
 /*Maximum command length can be only 15 */
@@ -6161,6 +6149,11 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         0,
         "dxeSnapshot" },
+    {
+        WE_SET_REASSOC_TRIGGER,
+        0,
+        0,
+        "reassoc" },
 
     /* handlers for main ioctl */
     {   WLAN_PRIV_SET_VAR_INT_GET_NONE,
@@ -6303,11 +6296,7 @@ static const struct iw_priv_args we_private_args[] = {
         WLAN_GET_LINK_SPEED,
         IW_PRIV_TYPE_CHAR | 18,
         IW_PRIV_TYPE_CHAR | 3, "getLinkSpeed" },
-    {
-        WLAN_SET_REASSOC_TRIGGER,
-        0,
-        0,
-        "reassoc" },
+   
 };
 
 

@@ -2247,8 +2247,13 @@ eHalStatus sme_RoamReassoc(tHalHandle hHal, tANI_U8 sessionId, tCsrRoamProfile *
     {
         if( CSR_IS_SESSION_VALID( pMac, sessionId ) )
         {
-            if(NULL == pProfile)
-            {        
+            if((NULL == pProfile) && (fForce == 1)) 
+            { 
+                tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
+                /* to force the AP initiate fresh 802.1x authentication need to clear
+                 * the PMKID cache for that set the following boolean. this is needed
+                 * by the HS 2.0 passpoint certification 5.2.a and b testcases */
+                pSession->fIgnorePMKIDCache = TRUE;
                 status = csrReassoc( pMac, sessionId, &modProfileFields, pRoamId , fForce);
             }
             else
