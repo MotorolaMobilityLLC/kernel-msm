@@ -1302,6 +1302,15 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
                     return -EINVAL;
                 }
             }
+			/* 
+			  *Validate the given channel range for 
+			  * for given country code
+			*/
+			else
+			{
+				hdd_config_t *hdd_pConfig= (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini;
+				WLANSAP_SetChannelRange(hHal,hdd_pConfig->apStartChannelNum,hdd_pConfig->apEndChannelNum,hdd_pConfig->apOperatingBand);
+			}
         }
         else
         {

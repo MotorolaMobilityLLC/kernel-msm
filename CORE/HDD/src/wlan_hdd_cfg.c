@@ -2763,8 +2763,6 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
         hddLog(LOGE, "Could not pass on WNI_CFG_ENABLE_PHY_AGC_LISTEN_MODE to CCM\n");
      }
 
-     WLANSAP_SetChannelRange(pHddCtx->hHal, pConfig->apStartChannelNum, pConfig->apEndChannelNum, pConfig->apOperatingBand);
-
      if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_AP_KEEP_ALIVE_TIMEOUT, pConfig->apKeepAlivePeriod, 
         NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
      {

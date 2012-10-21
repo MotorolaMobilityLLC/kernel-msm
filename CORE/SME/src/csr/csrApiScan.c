@@ -4346,6 +4346,11 @@ eHalStatus csrScanSmeScanResponse( tpAniSirGlobal pMac, void *pMsgBuf )
                 break;
             case eCsrScanGetScanChnInfo:
                 pScanChnInfo = (tSmeGetScanChnRsp *)pMsgBuf;
+				/*
+				* status code not available in tSmeGetScanChnRsp, so 
+				* by default considereing it to be success
+				*/
+				scanStatus = eSIR_SME_SUCCESS;
                 csrScanAgeResults(pMac, pScanChnInfo);
                 break;
             case eCsrScanForCapsChange:
