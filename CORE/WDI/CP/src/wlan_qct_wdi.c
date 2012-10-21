@@ -10516,7 +10516,7 @@ WDI_ProcessSetLinkStateReq
 
   if ( NULL == pBSSSes )
   {
-     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR, 
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO, 
      "%s: Set link request received outside association session. macBSSID " MAC_ADDRESS_STR, 
      __func__, MAC_ADDR_ARRAY(pwdiSetLinkParams->wdiLinkInfo.macBSSID));
   }
