@@ -122,6 +122,56 @@ void csrReleaseCmdSingle(tpAniSirGlobal pMac, tSmeCmd *pCommand);
 tANI_BOOLEAN csrRoamIsValidChannel( tpAniSirGlobal pMac, tANI_U8 channel );
 void csrPruneChannelListForMode( tpAniSirGlobal pMac, tCsrChannel *pChannelList );
 
+#define CSR_IS_SOCIAL_CHANNEL(channel) (((channel) == 1) || ((channel) == 6) || ((channel) == 11) )
+
+#ifdef FEATURE_WLAN_GEN6_ROAMING
+extern VOS_STATUS csrRoamNtRssiIndCallback(tHalHandle hHal, 
+                                           v_U8_t  rssiNotification, 
+                                           void * context);
+//HO
+tCsrChannelInfo csrScanGetNextBgScanChannelList(tpAniSirGlobal pMac);
+void csrScanGetCandChanList(tpAniSirGlobal pMac);
+void csrScanUpdateOtherChanList(tpAniSirGlobal pMac);
+void csrScanHoScanSuccess(tpAniSirGlobal pMac);
+void csrScanHoScanFailure(tpAniSirGlobal pMac);
+void csrScanUpdateHoLists(tpAniSirGlobal pMac);
+void csrScanTrimHoListForChannel(tpAniSirGlobal pMac, tDblLinkList *pStaList, tANI_U8 channel);
+tANI_BOOLEAN csrScanUpdateHoCandidateList(tpAniSirGlobal pMac,
+                                          tCsrHandoffStaInfo *pStaEntry, 
+                                          tCsrHandoffStaInfo **ppPoppedEntry);
+void csrScanUpdateHoNeighborList( tpAniSirGlobal pMac,
+                                  tCsrHandoffStaInfo *pStaEntry);
+void csrScanInsertEntryIntoList( tpAniSirGlobal pMac,
+                                 tDblLinkList *pStaList,
+                                 tCsrHandoffStaInfo *pStaEntry);
+void csrScanListRemoveTail( tpAniSirGlobal pMac,
+                            tDblLinkList *pStaList, 
+                            tCsrHandoffStaInfo **ppStaEntry );
+void csrScanListUpdateBssEntry( tpAniSirGlobal pMac,
+                            tDblLinkList *pStaList, 
+                            tCsrHandoffStaInfo *pStaEntry );
+tANI_BOOLEAN csrScanPmkCacheExistsForBssid(tpAniSirGlobal pMac, tCsrBssid bssid ); 
+#ifdef FEATURE_WLAN_WAPI
+tANI_BOOLEAN csrScanBkCacheExistsForBssid(tpAniSirGlobal pMac, tCsrBssid bssid ); 
+#endif /* FEATURE_WLAN_WAPI */
+tANI_S8 csrScanUpdateRssi(tpAniSirGlobal pMac, tANI_S8  scanRssi,
+                          tANI_S8  oldRssi);
+
+void csrScanBgScanTimerHandler(void *pv);
+
+eHalStatus csrScanSendNoTrafficBgScanReq(tpAniSirGlobal pMac, tCsrBGScanRequest * pBgScanParams);
+eHalStatus csrScanSendInTrafficBgScanReq(tpAniSirGlobal pMac, tCsrBGScanRequest *pBgScanParams);
+eHalStatus csrScanCreateOtherChanList(tpAniSirGlobal pMac);
+eHalStatus csrScanGetScanHoCandidate(tpAniSirGlobal pMac);
+tANI_U32 csrScanGetQosScore(tpAniSirGlobal pMac, tSirBssDescription *pBssDesc, tDot11fBeaconIEs *pIes);
+tANI_U32 csrScanGetSecurityScore(tpAniSirGlobal pMac, tSirBssDescription *pBssDesc, tDot11fBeaconIEs *pIes);
+void csrScanUpdateNList(tpAniSirGlobal pMac);
+void csrScanDisplayList(tpAniSirGlobal pMac,
+                        tDblLinkList *pStaList);
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
+void csrScanDiagHoLog(tpAniSirGlobal pMac);
+#endif
+#endif //FEATURE_WLAN_GEN6_ROAMING
 //pResult is invalid calling this function.
 void csrFreeScanResultEntry( tpAniSirGlobal pMac, tCsrScanResult *pResult )
 {
@@ -5193,8 +5243,15 @@ eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCs
                         pMac->roam.numValidChannels = len;
                         for ( index = 0; index < pSrcReq->ChannelInfo.numOfChannels ; index++ )
                         {
+                            /* Allow scan on valid channels only.
+                             * If it is p2p scan and valid channel list doesnt contain 
+                             * social channels, enforce scan on social channels because
+                             * that is the only way to find p2p peers.
+                             * This can happen only if band is set to 5Ghz mode.
+                             */
                             if((csrRoamIsValidChannel(pMac, pSrcReq->ChannelInfo.ChannelList[index])) || 
-                                (eCSR_SCAN_P2P_DISCOVERY == pSrcReq->requestType))
+                               ((eCSR_SCAN_P2P_DISCOVERY == pSrcReq->requestType) && 
+                                CSR_IS_SOCIAL_CHANNEL(pSrcReq->ChannelInfo.ChannelList[index])))
                             {
                                 pDstReq->ChannelInfo.ChannelList[new_index] =
                                     pSrcReq->ChannelInfo.ChannelList[index];
@@ -6792,8 +6849,5 @@ tANI_BOOLEAN csrRoamIsValidChannel( tpAniSirGlobal pMac, tANI_U8 channel )
         
     return fValid;
 }
-
-
-
 
 
