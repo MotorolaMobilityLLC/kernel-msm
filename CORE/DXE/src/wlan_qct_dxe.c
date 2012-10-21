@@ -1410,6 +1410,12 @@ static wpt_status dxeChannelClose
 
          currentCtrlBlk    = nextCtrlBlk;
          currentDescriptor = nextDescriptor;
+         if(NULL == currentCtrlBlk)
+         {
+            /* Already reach last of the control block
+             * Not need to process anymore, break */
+            break;
+         }
       }
    }
 
