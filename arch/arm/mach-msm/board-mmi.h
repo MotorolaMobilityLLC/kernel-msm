@@ -19,6 +19,7 @@
 struct mmi_oem_data {
 	int (*is_factory)(void);
 	int (*is_meter_locked)(void);
+	bool mmi_camera;
 };
 
 /* from board-mmi-gsbi.c */
