@@ -118,11 +118,6 @@ static void __init mmi_gpiomux_init(struct msm8960_oem_init_ptrs *oem_ptr)
 	of_node_put(node);
 }
 
-static void __init mmi_cam_init(struct msm8960_oem_init_ptrs *oem_ptr)
-{
-	pr_info("%s: camera support disabled\n", __func__);
-}
-
 static void __init mmi_gsbi_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	mmi_init_gsbi_devices_from_dt();
@@ -246,7 +241,6 @@ static void __init mmi_msm8960_init_early(void)
 
 	/* Initialize OEM initialization overrides */
 	msm8960_oem_funcs.msm_gpio_init = mmi_gpiomux_init;
-	msm8960_oem_funcs.msm_cam_init = mmi_cam_init;
 	msm8960_oem_funcs.msm_gsbi_init = mmi_gsbi_init;
 	msm8960_oem_funcs.msm_gpio_mpp_init = mmi_gpio_mpp_init;
 	msm8960_oem_funcs.msm_i2c_init = mmi_i2c_init;

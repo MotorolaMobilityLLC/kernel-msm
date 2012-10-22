@@ -19,6 +19,8 @@
 #include "devices.h"
 #include "board-8960.h"
 
+#include "board-mmi.h"
+
 #ifdef CONFIG_MSM_CAMERA
 
 #ifdef CONFIG_MSM_CAMERA_FLASH
@@ -763,14 +765,11 @@ static struct platform_device msm_camera_server = {
 
 void __init msm8960_init_cam(void)
 {
-	/* If OEM has defined custom camera initialization, use it */
-	if (msm8960_oem_funcs.msm_cam_init) {
-		msm8960_oem_funcs.msm_cam_init(&msm8960_oem_funcs);
-		return;
-	}
+	struct mmi_oem_data *mmi_data = msm8960_oem_funcs.oem_data;
 
-	msm_gpiomux_install(msm8960_cam_common_configs,
-			ARRAY_SIZE(msm8960_cam_common_configs));
+	if(!mmi_data || !mmi_data->mmi_camera)
+		msm_gpiomux_install(msm8960_cam_common_configs,
+				ARRAY_SIZE(msm8960_cam_common_configs));
 
 	if (machine_is_msm8960_cdp()) {
 		msm_gpiomux_install(msm8960_cdp_flash_configs,
