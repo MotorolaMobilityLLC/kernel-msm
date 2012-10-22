@@ -961,6 +961,9 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 				mfd->timeline_value+= 2;
 			}
 
+			/* These flags are using for MDP hang debug purpose */
+			mdp4_clear_dump_flags();
+
 			mfd->op_enable = TRUE;
 		}
 		break;
