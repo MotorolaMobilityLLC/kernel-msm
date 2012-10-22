@@ -1630,6 +1630,8 @@ void mdp4_mixer_stage_commit(int mixer)
 		outpdw(MDP_BASE + 0x18000, ctrl->flush[mixer]);
 		ctrl->flush[mixer] = 0;
 	}
+
+	mdp4_store_commit_info();
 	local_irq_restore(flags);
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	mdp_clk_ctrl(0);

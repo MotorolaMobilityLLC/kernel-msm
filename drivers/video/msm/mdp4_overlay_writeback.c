@@ -211,7 +211,10 @@ void mdp4_writeback_dma_busy_wait(struct msm_fb_data_type *mfd)
 		/* wait until DMA finishes the current job */
 		pr_debug("%s: pending pid=%d\n",
 				__func__, current->pid);
-		wait_for_completion(&mfd->dma->comp);
+		if (!wait_for_completion_timeout(&mfd->dma->comp, HZ)) {
+			pr_err("%s failed to wait for dma_busy\n", __func__);
+			mdp4_hang_panic();
+		}
 	}
 }
 
