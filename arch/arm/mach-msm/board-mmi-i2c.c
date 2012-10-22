@@ -200,6 +200,14 @@ out:
 	return rv;
 }
 
+struct msm_camera_sensor_info msm_camera_sensor_s5k5b3g_data;
+static int __init s5k5b3g_init_i2c_device(struct i2c_board_info *info,
+                                          struct device_node *node)
+{
+	info->platform_data = &msm_camera_sensor_s5k5b3g_data;
+	return 0;
+}
+
 struct msp430_platform_data mp_msp430_data = {
 	.gpio_reset = -1,
 	.gpio_bslen = -1,
@@ -522,6 +530,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00030017, drv2605_init_i2c_device}, /* TI DRV2605 Haptic driver */
 	{0x00030018, aic3253_init_i2c_device}, /* TI aic3253 audio codec Driver */
 	{0x0003001A, tpa6165a2_init_i2c_device}, /* TI headset Det/amp Driver */
+	{0x00090007, s5k5b3g_init_i2c_device}, /* Samsung 2MP Bayer */
 };
 
 static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device)

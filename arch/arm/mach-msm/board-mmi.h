@@ -15,6 +15,7 @@
 #define __ARCH_ARM_MACH_MSM_BOARD_MMI_8960_H
 #include <mach/board.h>
 #include "board-8960.h"
+#include "clock-local.h"
 
 /* MMI OEM Data Structure */
 struct mmi_oem_data {
@@ -76,6 +77,8 @@ struct mmi_unit_info_v1 {
 	char carrier[CARRIER_MAX_LEN+1];
 	char baseband[BASEBAND_MAX_LEN+1];
 };
+
+extern struct msm_camera_sensor_info msm_camera_sensor_s5k5b3g_data;
 
 #endif
 
