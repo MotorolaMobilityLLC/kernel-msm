@@ -258,6 +258,7 @@ static void __init mmi_msm8960_init_early(void)
 	/* Custom OEM Platform Data */
 	mmi_data.is_factory = mmi_boot_mode_is_factory;
 	mmi_data.is_meter_locked = mmi_battery_data_is_meter_locked;
+	mmi_data.mmi_camera = true;
 	msm8960_oem_funcs.oem_data = &mmi_data;
 }
 
