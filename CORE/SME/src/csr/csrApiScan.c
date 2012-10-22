@@ -4578,13 +4578,13 @@ tANI_BOOLEAN csrScanAgeOutBss(tpAniSirGlobal pMac, tCsrScanResult *pResult)
                 if( csrLLRemoveEntry(&pMac->scan.scanResultList, &pResult->Link, LL_ACCESS_NOLOCK) )
                 {
                     csrFreeScanResultEntry(pMac, pResult);
+                    fRet = eANI_BOOLEAN_TRUE;
                 }
-                fRet = eANI_BOOLEAN_TRUE;
                 break;
             }
         } //valid session
     } //for
-    if( CSR_ROAM_SESSION_MAX == i )
+    if( CSR_ROAM_SESSION_MAX == i && fRet != eANI_BOOLEAN_TRUE )
     {
         //reset the counter so this won't hapeen too soon
         pResult->AgingCount = (tANI_S32)pMac->roam.configParam.agingCount;
