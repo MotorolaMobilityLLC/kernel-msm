@@ -6693,5 +6693,5 @@ void sme_transportDebug
    v_BOOL_t  toggleStallDetect
 )
 {
-   WDA_TransportChannelDebug(NULL, displaySnapshot, toggleStallDetect, VOS_TRUE);
+   WDA_TransportChannelDebug(displaySnapshot, toggleStallDetect);
 }

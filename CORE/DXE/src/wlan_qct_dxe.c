@@ -377,10 +377,10 @@ void dxeChannelAllDescDump
    targetCtrlBlk = channelEntry->headCtrlBlk;
 
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
-            "%11s, head desc ctrl 0x%x, head order %d",
+            "%s %d descriptor chains, head desc ctrl 0x%x",
             channelType[channelEntry->channelType],
-            targetCtrlBlk->linkedDesc->descCtrl.ctrl,
-            targetCtrlBlk->ctrlBlkOrder);
+            channelEntry->numDesc,
+            targetCtrlBlk->linkedDesc->descCtrl.ctrl);
    previousCtrlValue = targetCtrlBlk->linkedDesc->descCtrl.ctrl;
 
    if((WDTS_CHANNEL_RX_LOW_PRI == channel) ||
@@ -410,102 +410,6 @@ void dxeChannelAllDescDump
          }
          targetCtrlBlk = (WLANDXE_DescCtrlBlkType *)targetCtrlBlk->nextCtrlBlk;
       }
-   }
-   return;
-}
-
-/*==========================================================================
-  @  Function Name 
-      dxeTxChannelsStatus
-
-  @  Description 
-      Dump TX Channels status partailly, not all
-
-  @  Parameters
-      msgPtr Serailize MSG
-
-  @  Return
-      NONE
-
-===========================================================================*/
-void dxeTxChannelsStatus
-(
-    wpt_msg               *msgPtr
-)
-{
-   WLANDXE_ChannelCBType    *channelEntry;
-   wpt_uint32                ctrlRegValue    = 0;
-   wpt_uint32                statRegValue    = 0;
-   wpt_uint8                 channelLoop;
-
-   dxeNotifySmsm(eWLAN_PAL_FALSE, eWLAN_PAL_TRUE);
-
-   for(channelLoop = WDTS_CHANNEL_TX_LOW_PRI; channelLoop < WDTS_CHANNEL_RX_LOW_PRI; channelLoop++)
-   {
-      channelEntry = &tempDxeCtrlBlk->dxeChannel[channelLoop];
-      wpalReadRegister(channelEntry->channelRegister.chDXECtrlRegAddr, &ctrlRegValue);
-      wpalReadRegister(channelEntry->channelRegister.chDXEStatusRegAddr, &statRegValue);
-      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
-               "%11s, ctrl reg 0x%x, stat reg 0x%x, head order %d, tail order %d, numFree %d, numRsv %d",
-               channelType[channelEntry->channelType],
-               ctrlRegValue, statRegValue,
-               channelEntry->headCtrlBlk->ctrlBlkOrder,
-               channelEntry->tailCtrlBlk->ctrlBlkOrder,
-               channelEntry->numFreeDesc,
-               channelEntry->numRsvdDesc);
-      dxeChannelAllDescDump(channelEntry, channelLoop);
-   }
-
-   return;
-}
-
-/*==========================================================================
-  @  Function Name 
-      dxeRxChannelsStatus
-
-  @  Description 
-      Dump RX Channels status partailly, not all
-
-  @  Parameters
-      msgPtr Serailize MSG
-
-  @  Return
-      NONE
-
-===========================================================================*/
-void dxeRxChannelsStatus
-(
-    wpt_msg               *msgPtr
-)
-{
-   WLANDXE_ChannelCBType    *channelEntry;
-   wpt_uint32                ctrlRegValue    = 0;
-   wpt_uint32                statRegValue    = 0;
-   wpt_status                status          = eWLAN_PAL_STATUS_SUCCESS;
-   wpt_uint8                 channelLoop;
-
-   dxeNotifySmsm(eWLAN_PAL_FALSE, eWLAN_PAL_TRUE);
-
-   for(channelLoop = WDTS_CHANNEL_RX_LOW_PRI; channelLoop < WDTS_CHANNEL_MAX; channelLoop++)
-   {
-      channelEntry = &tempDxeCtrlBlk->dxeChannel[channelLoop];
-      wpalReadRegister(channelEntry->channelRegister.chDXECtrlRegAddr, &ctrlRegValue);
-      wpalReadRegister(channelEntry->channelRegister.chDXEStatusRegAddr, &statRegValue);
-      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
-               "%11s, ctrl reg 0x%x, stat reg 0x%x",
-               channelType[channelEntry->channelType],
-               ctrlRegValue, statRegValue);
-      dxeChannelAllDescDump(channelEntry, channelLoop);
-   }
-
-   msgPtr->callback = dxeTxChannelsStatus;
-   status = wpalPostTxMsg(WDI_GET_PAL_CTX(),
-                          msgPtr);
-   if (eWLAN_PAL_STATUS_SUCCESS != status)
-   {
-      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
-               "Tx thread partial state dump req serialize fail status=%d",
-               status, 0, 0);
    }
    return;
 }
@@ -550,6 +454,7 @@ void dxeTxThreadChannelDebugHandler
       dxeChannelAllDescDump(&tempDxeCtrlBlk->dxeChannel[channelLoop], channelLoop);
    }
 
+   wpalMemoryFree(msgPtr);
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
             "%s Exit", __FUNCTION__);
    return;
@@ -3855,20 +3760,6 @@ void *WLANDXE_Open
       return NULL;
    }
    wpalMemoryZero(tempDxeCtrlBlk->rxPktAvailMsg, sizeof(wpt_msg));
-
-   /* Allocate and Init CH Debug MSG Serialize Buffer */
-   tempDxeCtrlBlk->chDebugMsg = (wpt_msg *)wpalMemoryAllocate(sizeof(wpt_msg));
-   if(NULL == tempDxeCtrlBlk->chDebugMsg)
-   {
-      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
-               "WLANDXE_Open Alloc TX ISR Fail");
-      WLANDXE_Close(tempDxeCtrlBlk);
-      return NULL;
-   }
-   wpalMemoryZero(tempDxeCtrlBlk->chDebugMsg, sizeof(wpt_msg));
-   tempDxeCtrlBlk->chDebugMsg->callback = dxeRxThreadChannelDebugHandler;
-   tempDxeCtrlBlk->chDebugMsg->pContext = (void *)tempDxeCtrlBlk;
-
    tempDxeCtrlBlk->rxPktAvailMsg->callback = dxeRXPacketAvailableEventHandler;
    tempDxeCtrlBlk->rxPktAvailMsg->pContext = (void *)tempDxeCtrlBlk;
    
@@ -4455,10 +4346,6 @@ wpt_status WLANDXE_Close
    {
       wpalMemoryFree(dxeCtxt->rxPktAvailMsg);
    }
-   if(NULL != dxeCtxt->chDebugMsg)
-   {
-      wpalMemoryFree(dxeCtxt->chDebugMsg);
-   }
 
    wpalMemoryFree(pDXEContext);
 
@@ -4854,10 +4741,10 @@ wpt_uint32 WLANDXE_GetFreeTxDataResNumber
 void WLANDXE_ChannelDebug
 (
    wpt_boolean    displaySnapshot,
-   wpt_boolean    enableStallDetect,
-   wpt_boolean    fullChannelsDump
+   wpt_boolean    enableStallDetect   
 )
 {
+   wpt_msg                  *channelDebugMsg;
    wpt_uint32                regValue;
    wpt_status                status = eWLAN_PAL_STATUS_SUCCESS;
 
@@ -4867,17 +4754,7 @@ void WLANDXE_ChannelDebug
       /* Whatever RIVA power condition try to wakeup RIVA through SMSM
        * This will not simply wakeup RIVA
        * Just incase TX not wanted stuck, Trigger TX again */
-      if(fullChannelsDump)
-      {
-         /* Full DXE Channel dump, kick DXE TX */
-         dxeNotifySmsm(eWLAN_PAL_TRUE, eWLAN_PAL_FALSE);
-      }
-      else
-      {
-         /* Partial DXE Channel dump,
-            do not kick DXE TX, must be handled by TX Thread */
-         dxeNotifySmsm(eWLAN_PAL_FALSE, eWLAN_PAL_FALSE);
-      }
+      dxeNotifySmsm(eWLAN_PAL_TRUE, eWLAN_PAL_TRUE);
       HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
                "Host power state %d, RIVA power state %d",
                 tempDxeCtrlBlk->hostPowerState, tempDxeCtrlBlk->rivaPowerState);
@@ -4886,27 +4763,22 @@ void WLANDXE_ChannelDebug
       HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
                "TX Pending frames count %d, Current available BD %d",
                 tempDxeCtrlBlk->txCompletedFrames, (int)regValue);
-      if(fullChannelsDump)
+
+      channelDebugMsg = (wpt_msg *)wpalMemoryAllocate(sizeof(wpt_msg));
+      if(NULL == channelDebugMsg)
       {
-         tempDxeCtrlBlk->chDebugMsg->callback = dxeRxThreadChannelDebugHandler;
-         status = wpalPostRxMsg(WDI_GET_PAL_CTX(), tempDxeCtrlBlk->chDebugMsg);
-         if (eWLAN_PAL_STATUS_SUCCESS != status)
-         {
-            HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
-                     "Rx thread state dump req serialize fail status=%d",
-                     status, 0, 0);
-         }
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                  "WLANDXE_ChannelDebug, MSG MEM alloc Fail");
+         return ;
       }
-      else
+
+      channelDebugMsg->callback = dxeRxThreadChannelDebugHandler;
+      status = wpalPostRxMsg(WDI_GET_PAL_CTX(), channelDebugMsg);
+      if ( eWLAN_PAL_STATUS_SUCCESS != status )
       {
-         tempDxeCtrlBlk->chDebugMsg->callback = dxeRxChannelsStatus;
-         status = wpalPostRxMsg(WDI_GET_PAL_CTX(), tempDxeCtrlBlk->chDebugMsg);
-         if (eWLAN_PAL_STATUS_SUCCESS != status)
-         {
-            HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
-                     "Rx thread partial state dump req serialize fail status=%d",
-                     status, 0, 0);
-         }
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                  "Tx thread Set power state req serialize fail status=%d",
+                  status, 0, 0);
       }
    }
 

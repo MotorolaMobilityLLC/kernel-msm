@@ -25254,10 +25254,9 @@ WDI_UpdateVHTOpModeReq
 void WDI_TransportChannelDebug
 (
    wpt_boolean  displaySnapshot,
-   wpt_boolean  toggleStallDetect,
-   wpt_boolean  fullChannelsDump
+   wpt_boolean  toggleStallDetect
 )
 {
-   WDTS_ChannelDebug(displaySnapshot, toggleStallDetect, fullChannelsDump);
+   WDTS_ChannelDebug(displaySnapshot, toggleStallDetect);
    return;
 }

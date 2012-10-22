@@ -1704,8 +1704,6 @@ WLANTL_STAPktPending
     VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
       "WLAN TL:Packet pending indication for STA: %d AC: %d State: %d", 
                ucSTAId, ucAc, pTLCb->atlSTAClients[ucSTAId].tlState);
-
-    WDA_TransportChannelDebug(pvosGCtx, 1, 0, VOS_FALSE);
   }
 
   /*-----------------------------------------------------------------------
@@ -1727,7 +1725,8 @@ WLANTL_STAPktPending
         Check if there are enough resources for transmission and tx is not
         suspended.
         ------------------------------------------------------------------------*/
-       if ( 0 == pTLCb->ucTxSuspended )
+       if (( pTLCb->uResCount >=  WDA_TLI_MIN_RES_DATA ) &&
+          ( 0 == pTLCb->ucTxSuspended ))
       {
         TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
               "Issuing Xmit start request to BAL"));
