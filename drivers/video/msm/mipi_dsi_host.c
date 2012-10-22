@@ -41,6 +41,20 @@
 #include "mdp.h"
 #include "mdp4.h"
 
+/*
+ * For vanquish video mode panel, after INTR_PRIMARY_VSYNC happened, only
+ * have 5H(VSA+VBP) left for blanking period, might not have enough time to
+ * complete read command. Waiting for 100us more (about 5H * 13us/line = 65us)
+ * to push it out of current blanking peroid, will transmit the commands
+ * when the controller is busy transmitting the data as the controller will
+ * internally wait for the data to finish before transmitting the commands.
+ * By doing this, make sure mdp will send out read command at the beginning
+ * of next blanking period.
+ *
+ * The delay need to be configured for video mode panel based on VFP and VBP.
+ */
+#define MOT_VIDEO_WAIT4VSYNC_DELAY 100 /*in usec*/
+
 static struct completion dsi_dma_comp;
 static struct completion dsi_mdp_comp;
 static struct dsi_buf dsi_tx_buf;
@@ -1145,6 +1159,7 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 	uint32 dsi_ctrl, ctrl;
 	int i;
 	uint32 panel_mode;
+	long long vtime;
 
 	/* turn on cmd mode
 	* for video mode, do not send cmds more than
@@ -1156,6 +1171,10 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 	if (panel_mode & MDP4_PANEL_DSI_VIDEO) {
 		ctrl = dsi_ctrl | 0x04; /* CMD_MODE_EN */
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, ctrl);
+
+		/* VIDEO_MODE */
+		mdp4_dsi_video_wait4vsync(0, &vtime);
+		udelay(MOT_VIDEO_WAIT4VSYNC_DELAY);
 	}
 
 	cm = cmds;
@@ -1202,6 +1221,10 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 {
 	int cnt, len, diff, pkt_size;
 	char cmd;
+	unsigned long flag;
+	u32 dsi_ctrl, ctrl;
+	uint32 panel_mode;
+	long long vtime;
 
 	if (mfd->panel_info.mipi.no_max_pkt_size) {
 		/* Only support rlen = 4*n */
@@ -1231,11 +1254,21 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 		cnt = len + 6; /* 4 bytes header + 2 bytes crc */
 	}
 
-	if (mfd->panel_info.type == MIPI_CMD_PANEL) {
-		/* make sure mdp dma is not txing pixel data */
-#ifdef CONFIG_FB_MSM_MDP303
-			mdp3_dsi_cmd_dma_busy_wait(mfd);
-#endif
+	/*
+	* turn on cmd mode
+	* for video mode, do not send cmds more than
+	* one pixel line, since it only transmit it
+	* during BLLP.
+	*/
+	dsi_ctrl = MIPI_INP(MIPI_DSI_BASE + 0x0000);
+	panel_mode = mdp4_overlay_panel_list();
+	if (panel_mode & MDP4_PANEL_DSI_VIDEO) {
+		ctrl = dsi_ctrl | 0x04; /* CMD_MODE_EN */
+		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, ctrl);
+
+		/* VIDEO_MODE */
+		mdp4_dsi_video_wait4vsync(0, &vtime);
+		udelay(MOT_VIDEO_WAIT4VSYNC_DELAY);
 	}
 
 	if (!mfd->panel_info.mipi.no_max_pkt_size) {
@@ -1271,6 +1304,14 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 	}
 
 	mipi_dsi_cmd_dma_rx(rp, cnt);
+
+	if (panel_mode & MDP4_PANEL_DSI_VIDEO)
+		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl); /* restore */
+
+	spin_lock_irqsave(&dsi_mdp_lock, flag);
+	dsi_mdp_busy = FALSE;
+	complete(&dsi_mdp_comp);
+	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
 
 	if (mfd->panel_info.mipi.no_max_pkt_size) {
 		/*
@@ -1315,6 +1356,10 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 	struct dsi_cmd_desc *cmds;
 	int cnt, len, diff, pkt_size;
 	char cmd;
+	unsigned long flag;
+	u32 ctrl, dsi_ctrl;
+	uint32 panel_mode;
+	long long vtime;
 
 	if (req->flags & CMD_REQ_NO_MAX_PKT_SIZE) {
 		/* Only support rlen = 4*n */
@@ -1344,6 +1389,27 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 		 */
 		len += 2;
 		cnt = len + 6; /* 4 bytes header + 2 bytes crc */
+	}
+
+	spin_lock_irqsave(&dsi_mdp_lock, flag);
+	dsi_mdp_busy = TRUE;
+	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
+
+	/*
+	 * turn on cmd mode
+	 * for video mode, do not send cmds more than
+	 * one pixel line, since it only transmit it
+	 * during BLLP.
+	 */
+	dsi_ctrl = MIPI_INP(MIPI_DSI_BASE + 0x0000);
+	panel_mode = mdp4_overlay_panel_list();
+	if (panel_mode & MDP4_PANEL_DSI_VIDEO) {
+		ctrl = dsi_ctrl | 0x04; /* CMD_MODE_EN */
+		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, ctrl);
+
+		/* VIDEO_MODE */
+		mdp4_dsi_video_wait4vsync(0, &vtime);
+		udelay(MOT_VIDEO_WAIT4VSYNC_DELAY);
 	}
 
 	if (!(req->flags & CMD_REQ_NO_MAX_PKT_SIZE)) {
@@ -1378,6 +1444,14 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 	}
 
 	mipi_dsi_cmd_dma_rx(rp, cnt);
+
+	if (panel_mode & MDP4_PANEL_DSI_VIDEO)
+		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl); /* restore */
+
+	spin_lock_irqsave(&dsi_mdp_lock, flag);
+	dsi_mdp_busy = FALSE;
+	complete(&dsi_mdp_comp);
+	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
 
 	if (req->flags & CMD_REQ_NO_MAX_PKT_SIZE) {
 		/*
