@@ -5280,7 +5280,7 @@ eHalStatus sme_GetOperationChannel(tHalHandle hHal, tANI_U32 *pChannel, tANI_U8 
 
        if(( pSession->connectedProfile.BSSType == eCSR_BSS_TYPE_INFRASTRUCTURE ) || 
           ( pSession->connectedProfile.BSSType == eCSR_BSS_TYPE_IBSS ) ||
-#ifdef WLAN_SOFTAP_FEATURE	  
+#ifdef WLAN_SOFTAP_FEATURE
           ( pSession->connectedProfile.BSSType == eCSR_BSS_TYPE_INFRA_AP ) ||
 #endif
           ( pSession->connectedProfile.BSSType == eCSR_BSS_TYPE_START_IBSS ))

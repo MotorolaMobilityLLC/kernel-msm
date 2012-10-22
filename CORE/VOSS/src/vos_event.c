@@ -435,8 +435,8 @@ VOS_STATUS vos_wait_single_event ( vos_event_t* event, v_U32_t timeout)
       ret = wait_for_completion_interruptible(&event->complete);
       if ( 0 != ret )
       {
-       	// negative means interrupted
-        return VOS_STATUS_E_TIMEOUT;
+         // negative means interrupted
+         return VOS_STATUS_E_TIMEOUT;
       }
    }
 

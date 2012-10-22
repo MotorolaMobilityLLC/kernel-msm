@@ -93,16 +93,16 @@
 ============================================================================*/
 
 void sapCleanupChannelList(void)
-{	
+{
     v_PVOID_t pvosGCtx = vos_get_global_context(VOS_MODULE_ID_SAP, NULL);
-   	ptSapContext pSapCtx = VOS_GET_SAP_CB(pvosGCtx);
+    ptSapContext pSapCtx = VOS_GET_SAP_CB(pvosGCtx);
 
-	VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO, 
-					"Cleaning up the channel list structure");
-	
-	pSapCtx->SapChnlList.numChannel =0;
-	vos_mem_free(pSapCtx->SapChnlList.channelList);
-	pSapCtx->SapChnlList.channelList = NULL;
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO, 
+               "Cleaning up the channel list structure");
+
+    pSapCtx->SapChnlList.numChannel =0;
+    vos_mem_free(pSapCtx->SapChnlList.channelList);
+    pSapCtx->SapChnlList.channelList = NULL;
 }
 
 /*==========================================================================
@@ -127,107 +127,107 @@ void sapCleanupChannelList(void)
 
 int sapSetPreferredChannel(struct net_device *dev, tANI_U8* ptr)
 {
-	
-	v_PVOID_t pvosGCtx = vos_get_global_context(VOS_MODULE_ID_SAP, NULL);
-   	ptSapContext pSapCtx = VOS_GET_SAP_CB(pvosGCtx); 
-	tANI_U8* param;
-	int tempInt;
-	int j;
-	
-	VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
-					"Enter: %s", __FUNCTION__);
 
-	if(NULL  != pSapCtx->SapChnlList.channelList)
-	{
-		sapCleanupChannelList();
-	}
+    v_PVOID_t pvosGCtx = vos_get_global_context(VOS_MODULE_ID_SAP, NULL);
+    ptSapContext pSapCtx = VOS_GET_SAP_CB(pvosGCtx); 
+    tANI_U8* param;
+    int tempInt;
+    int j;
 
-	param = strchr(ptr, ' '); 
-	/*no argument after the command*/
-	if (NULL == param)  
-	{
-		return -EINVAL;   
-	}
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
+               "Enter: %s", __FUNCTION__);
 
-	/*no space after the command*/
-	else if (SPACE_ASCII_VALUE != *param)  
-	{
-		return -EINVAL;   
-	}
-	
-	param++;
+    if (NULL != pSapCtx->SapChnlList.channelList)
+    {
+        sapCleanupChannelList();
+    }
 
-	/*removing empty spaces*/
-	while((SPACE_ASCII_VALUE  == *param)&& ('\0' !=  *param) ) param++;
+    param = strchr(ptr, ' '); 
+    /*no argument after the command*/
+    if (NULL == param)  
+    {
+        return -EINVAL;   
+    }
 
-	/*no argument followed by spaces*/
-	if('\0' == *param)
-	{
-		return -EINVAL;
-	}
+    /*no space after the command*/
+    else if (SPACE_ASCII_VALUE != *param)  
+    {
+        return -EINVAL;   
+    }
 
-	/*getting the first argument ie the number of channels*/
-	sscanf(param, "%d ", &tempInt);	
-	pSapCtx->SapChnlList.numChannel = tempInt;
-	
-	VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
-					"Number of channel added are: %d", 
-					 pSapCtx->SapChnlList.numChannel);
+    param++;
 
-	/*allocating space for the desired number of channels*/
-	pSapCtx->SapChnlList.channelList = 
-			(v_U8_t *)vos_mem_malloc(pSapCtx->SapChnlList.numChannel);
-	
-	for(j=0;j<pSapCtx->SapChnlList.numChannel;j++)
-	{
+    /*removing empty spaces*/
+    while((SPACE_ASCII_VALUE  == *param)&& ('\0' !=  *param) ) param++;
 
-		/*param pointing to the beginning of first space after number of channels*/
-		param = strpbrk( param, " " ); 
-		/*no channel list after the number of channels argument*/
-		if (NULL == param)
-		{
-			sapCleanupChannelList();
-			return -EINVAL;
-		}
-		
-		param++;
+    /*no argument followed by spaces*/
+    if('\0' == *param)
+    {
+        return -EINVAL;
+    }
 
-		/*removing empty space*/
- 		while((SPACE_ASCII_VALUE == *param) && ('\0' != *param) ) param++;
+    /*getting the first argument ie the number of channels*/
+    sscanf(param, "%d ", &tempInt);
+    pSapCtx->SapChnlList.numChannel = tempInt;
 
-		/*no channel list after the number of channels argument and spaces*/
-		if( '\0' == *param )
-		{
-			sapCleanupChannelList();
-			return -EINVAL;	
-		}
-		
-		sscanf(param, "%d ", &tempInt);
-		pSapCtx->SapChnlList.channelList[j] = tempInt;
-		
-		VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
-					"Channel %d added to preferred channel list",
-					 pSapCtx->SapChnlList.channelList[j] );
-		
-	}
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
+               "Number of channel added are: %d", 
+               pSapCtx->SapChnlList.numChannel);
 
-	/*extra arguments check*/
-	param = strpbrk( param, " " );
-	if (NULL != param)
-	{
-		while((SPACE_ASCII_VALUE == *param) && ('\0' != *param) ) param++;
-		
-		if('\0' !=  *param)
-		{
-			sapCleanupChannelList();
-			return -EINVAL;		
-		}
-	}
+    /*allocating space for the desired number of channels*/
+    pSapCtx->SapChnlList.channelList = 
+        (v_U8_t *)vos_mem_malloc(pSapCtx->SapChnlList.numChannel);
 
-	VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
-					"Exit: %s", __FUNCTION__);
-	
-	return 0;
+    for(j=0;j<pSapCtx->SapChnlList.numChannel;j++)
+    {
+
+        /*param pointing to the beginning of first space after number of channels*/
+        param = strpbrk( param, " " ); 
+        /*no channel list after the number of channels argument*/
+        if (NULL == param)
+        {
+            sapCleanupChannelList();
+            return -EINVAL;
+        }
+
+        param++;
+
+        /*removing empty space*/
+        while((SPACE_ASCII_VALUE == *param) && ('\0' != *param) ) param++;
+
+        /*no channel list after the number of channels argument and spaces*/
+        if( '\0' == *param )
+        {
+            sapCleanupChannelList();
+            return -EINVAL;
+        }
+
+        sscanf(param, "%d ", &tempInt);
+        pSapCtx->SapChnlList.channelList[j] = tempInt;
+
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
+                   "Channel %d added to preferred channel list",
+                   pSapCtx->SapChnlList.channelList[j] );
+
+    }
+
+    /*extra arguments check*/
+    param = strpbrk( param, " " );
+    if (NULL != param)
+    {
+        while((SPACE_ASCII_VALUE == *param) && ('\0' != *param) ) param++;
+
+        if('\0' !=  *param)
+        {
+            sapCleanupChannelList();
+            return -EINVAL;
+        }
+    }
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
+               "Exit: %s", __FUNCTION__);
+
+    return 0;
 }
 
 /*==========================================================================
@@ -252,40 +252,40 @@ int sapSetPreferredChannel(struct net_device *dev, tANI_U8* ptr)
     v_U8_t:  best channel
 ============================================================================*/
 v_U8_t sapSelectPreferredChannelFromChannelList(v_U8_t bestChNum, 
-	                                  ptSapContext pSapCtx, 
-	                                  tSapChSelSpectInfo *pSpectInfoParams)
-{	
-	v_U8_t j = 0;
-	v_U8_t count = 0;
+                                                ptSapContext pSapCtx, 
+                                                tSapChSelSpectInfo *pSpectInfoParams)
+{
+    v_U8_t j = 0;
+    v_U8_t count = 0;
 
     //If Channel List is not Configured don't do anything
     //Else return the Best Channel from the Channel List
-	if((NULL == pSapCtx->SapChnlList.channelList) || 
-	   (NULL == pSpectInfoParams) || 
-	   (0 == pSapCtx->SapChnlList.numChannel))
-	{
-	   return bestChNum;
-	}
-	
-	if (bestChNum > 0 && bestChNum <= 252)
+    if((NULL == pSapCtx->SapChnlList.channelList) || 
+       (NULL == pSpectInfoParams) || 
+       (0 == pSapCtx->SapChnlList.numChannel))
     {
-    	for(count=0; count < pSpectInfoParams->numSpectChans ; count++)
+        return bestChNum;
+    }
+
+    if (bestChNum > 0 && bestChNum <= 252)
+    {
+        for(count=0; count < pSpectInfoParams->numSpectChans ; count++)
         {
             bestChNum = (v_U8_t)pSpectInfoParams->pSpectCh[count].chNum;
             // Select the best channel from allowed list
             for(j=0;j< pSapCtx->SapChnlList.numChannel;j++)
-			{					
+            {
                 if( (pSapCtx->SapChnlList.channelList[j]) == bestChNum)
                 {
-                	VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
-							"Best channel computed from Channel List is: %d", 
-							 bestChNum);
-					return bestChNum;
+                    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
+                               "Best channel computed from Channel List is: %d", 
+                               bestChNum);
+                    return bestChNum;
                 }
             }
-         }
-		
-		return SAP_CHANNEL_NOT_SELECTED;
+        }
+
+        return SAP_CHANNEL_NOT_SELECTED;
     }
     else
         return SAP_CHANNEL_NOT_SELECTED;
@@ -677,7 +677,7 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
 #endif
    
     //Select Best Channel from Channel List if Configured
-	bestChNum = sapSelectPreferredChannelFromChannelList(bestChNum, pSapCtx, pSpectInfoParams);
+    bestChNum = sapSelectPreferredChannelFromChannelList(bestChNum, pSapCtx, pSpectInfoParams);
 
     // Free all the allocated memory
     sapChanSelExit(pSpectInfoParams);

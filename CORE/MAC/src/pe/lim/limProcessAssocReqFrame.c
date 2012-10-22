@@ -211,7 +211,7 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
         // Received Re/Assoc Req frame from a BC/MC address
         // Log error and ignore it
         if (subType == LIM_ASSOC)
-			limLog(pMac, LOGW, FL("received Assoc frame from a BC/MC address "MAC_ADDRESS_STR),
+            limLog(pMac, LOGW, FL("received Assoc frame from a BC/MC address "MAC_ADDRESS_STR),
                    MAC_ADDR_ARRAY(pHdr->sa));
         else
             limLog(pMac, LOGW, FL("received ReAssoc frame from a BC/MC address "MAC_ADDRESS_STR),

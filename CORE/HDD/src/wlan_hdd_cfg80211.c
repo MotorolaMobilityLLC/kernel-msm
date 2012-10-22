@@ -1302,15 +1302,14 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
                     return -EINVAL;
                 }
             }
-			/* 
-			  *Validate the given channel range for 
-			  * for given country code
-			*/
-			else
-			{
-				hdd_config_t *hdd_pConfig= (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini;
-				WLANSAP_SetChannelRange(hHal,hdd_pConfig->apStartChannelNum,hdd_pConfig->apEndChannelNum,hdd_pConfig->apOperatingBand);
-			}
+            /* 
+             * Validate the given channel range for the given country code
+             */
+            else
+            {
+                hdd_config_t *hdd_pConfig= (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini;
+                WLANSAP_SetChannelRange(hHal,hdd_pConfig->apStartChannelNum,hdd_pConfig->apEndChannelNum,hdd_pConfig->apOperatingBand);
+            }
         }
         else
         {
@@ -4438,25 +4437,25 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
 #endif
                 /* Appending HS 2.0 Indication Element in Assiciation Request */
                 else if ( (0 == memcmp(&genie[0], HS20_OUI_TYPE, 
-						                                  HS20_OUI_TYPE_SIZE)) )
-	     	    {
-			        v_U16_t curAddIELen = pWextState->assocAddIE.length;
-			        hddLog (VOS_TRACE_LEVEL_INFO, "%s Set HS20 IE(len %d)", 
-					        __func__, eLen + 2);
+                                       HS20_OUI_TYPE_SIZE)) )
+                {
+                    v_U16_t curAddIELen = pWextState->assocAddIE.length;
+                    hddLog (VOS_TRACE_LEVEL_INFO, "%s Set HS20 IE(len %d)", 
+                            __func__, eLen + 2);
 
-			        if( SIR_MAC_MAX_IE_LENGTH < (pWextState->assocAddIE.length + eLen) )
-			        {
-				       hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accomadate assocAddIE "
-						                               "Need bigger buffer space\n");
-				       VOS_ASSERT(0);
-				       return -ENOMEM;
-			        }
-			        memcpy( pWextState->assocAddIE.addIEdata + curAddIELen, genie - 2, eLen + 2);
-			        pWextState->assocAddIE.length += eLen + 2;
+                    if( SIR_MAC_MAX_IE_LENGTH < (pWextState->assocAddIE.length + eLen) )
+                    {
+                        hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accomadate assocAddIE "
+                               "Need bigger buffer space\n");
+                        VOS_ASSERT(0);
+                        return -ENOMEM;
+                    }
+                    memcpy( pWextState->assocAddIE.addIEdata + curAddIELen, genie - 2, eLen + 2);
+                    pWextState->assocAddIE.length += eLen + 2;
 
-			        pWextState->roamProfile.pAddIEAssoc = pWextState->assocAddIE.addIEdata;
-			        pWextState->roamProfile.nAddIEAssocLength = pWextState->assocAddIE.length;
-		        }
+                    pWextState->roamProfile.pAddIEAssoc = pWextState->assocAddIE.addIEdata;
+                    pWextState->roamProfile.nAddIEAssocLength = pWextState->assocAddIE.length;
+                }
 
                 break;
             case DOT11F_EID_RSN:

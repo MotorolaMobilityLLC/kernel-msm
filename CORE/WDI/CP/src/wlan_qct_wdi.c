@@ -7417,10 +7417,10 @@ WDI_ProcessConfigBSSReq
   /* Allocation of BssReqMsg Memory Based on Firmware Capabilities */
 #ifdef WLAN_FEATURE_11AC
   if (WDI_getFwWlanFeatCaps(DOT11AC))
-	  uMsgSize = sizeof(halConfigBssReqMsg.uBssParams.configBssParams_V1); // Version - 1 For 11AC
+     uMsgSize = sizeof(halConfigBssReqMsg.uBssParams.configBssParams_V1); // Version - 1 For 11AC
   else
 #endif
-	  uMsgSize = sizeof(halConfigBssReqMsg.uBssParams.configBssParams); // default Version - 0 Structure
+     uMsgSize = sizeof(halConfigBssReqMsg.uBssParams.configBssParams); // default Version - 0 Structure
 
   /*-----------------------------------------------------------------------
     Get message buffer
@@ -10392,10 +10392,10 @@ WDI_ProcessConfigStaReq
   /* Allocation of StaReqMsg Memory Based on Firmware Capabilities */
 #ifdef WLAN_FEATURE_11AC
   if (WDI_getFwWlanFeatCaps(DOT11AC))
-	  uMsgSize = sizeof(halConfigStaReqMsg.uStaParams.configStaParams_V1); // Version-1 For 11AC
+     uMsgSize = sizeof(halConfigStaReqMsg.uStaParams.configStaParams_V1); // Version-1 For 11AC
   else
 #endif
-	  uMsgSize = sizeof(halConfigStaReqMsg.uStaParams.configStaParams); // Version-0 Default
+     uMsgSize = sizeof(halConfigStaReqMsg.uStaParams.configStaParams); // Version-0 Default
 
   /*-----------------------------------------------------------------------
     Get message buffer
@@ -16747,11 +16747,12 @@ WDI_ProcessEnterImpsRsp
    */
   if (wdiStatus != WDI_STATUS_SUCCESS) {
 
-	  WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
-		 "WDI PRocess Enter IMPS RSP failed With HAL Status Code: %d",halStatus);
-	  /* Call Back is not required as we are putting the DXE in FULL
-	   * and riva is already in full (IMPS RSP Failed)*/
-	  WDTS_SetPowerState(pWDICtx, WDTS_POWER_STATE_FULL, NULL);
+     WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                "WDI Process Enter IMPS RSP failed With HAL Status Code: %d",
+                halStatus);
+     /* Call Back is not required as we are putting the DXE in FULL
+      * and riva is already in full (IMPS RSP Failed)*/
+     WDTS_SetPowerState(pWDICtx, WDTS_POWER_STATE_FULL, NULL);
   }
   /*Notify UMAC*/
   wdiEnterImpsRspCb( wdiStatus, pWDICtx->pRspCBUserData);
@@ -16876,7 +16877,8 @@ WDI_ProcessEnterBmpsRsp
    {  
 
        WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
-       	   "WDI PRocess Enter BMPS RSP failed With HAL Status Code: %d",halStatus); 
+                  "WDI Process Enter BMPS RSP failed With HAL Status Code: %d",
+                  halStatus); 
        /* Call Back is not required as we are putting the DXE in FULL
         * and riva is already in FULL (BMPS RSP Failed)*/
        WDTS_SetPowerState(pWDICtx, WDTS_POWER_STATE_FULL, NULL);
@@ -19154,10 +19156,10 @@ WDI_GetMessageBuffer
   /* Fill msgVersion */
 #ifdef WLAN_FEATURE_11AC
   if (WDI_getFwWlanFeatCaps(DOT11AC))
-	  halMsgHeader.msgVersion = WLAN_HAL_MSG_VERSION1; 
+     halMsgHeader.msgVersion = WLAN_HAL_MSG_VERSION1; 
   else
 #endif
-	  halMsgHeader.msgVersion = WLAN_HAL_MSG_VERSION0;
+     halMsgHeader.msgVersion = WLAN_HAL_MSG_VERSION0;
 
   halMsgHeader.msgLen  = sizeof(halMsgHeader) + usBufferLen;
   *pusDataOffset       = sizeof(halMsgHeader);
@@ -21415,7 +21417,7 @@ WDI_CopyWDIStaCtxToHALStaCtx
    tConfigStaParams_V1* phalConfigSta_V1 = NULL;
    if (WDI_getFwWlanFeatCaps(DOT11AC))
    {
-	   phalConfigSta_V1 = (tConfigStaParams_V1*)phalConfigSta;
+      phalConfigSta_V1 = (tConfigStaParams_V1*)phalConfigSta;
    }
 #endif
    /*Lightweight function - no sanity checks and no unecessary code to increase
@@ -21483,10 +21485,10 @@ WDI_CopyWDIStaCtxToHALStaCtx
 #ifdef WLAN_FEATURE_11AC
   if(phalConfigSta_V1 != NULL)
   {
-	  phalConfigSta_V1->supportedRates.vhtRxMCSMap = pwdiConfigSta->wdiSupportedRates.vhtRxMCSMap;
-	  phalConfigSta_V1->supportedRates.vhtRxHighestDataRate = pwdiConfigSta->wdiSupportedRates.vhtRxHighestDataRate;
-	  phalConfigSta_V1->supportedRates.vhtTxMCSMap = pwdiConfigSta->wdiSupportedRates.vhtTxMCSMap;
-	  phalConfigSta_V1->supportedRates.vhtTxHighestDataRate = pwdiConfigSta->wdiSupportedRates.vhtTxHighestDataRate;
+     phalConfigSta_V1->supportedRates.vhtRxMCSMap = pwdiConfigSta->wdiSupportedRates.vhtRxMCSMap;
+     phalConfigSta_V1->supportedRates.vhtRxHighestDataRate = pwdiConfigSta->wdiSupportedRates.vhtRxHighestDataRate;
+     phalConfigSta_V1->supportedRates.vhtTxMCSMap = pwdiConfigSta->wdiSupportedRates.vhtTxMCSMap;
+     phalConfigSta_V1->supportedRates.vhtTxHighestDataRate = pwdiConfigSta->wdiSupportedRates.vhtTxHighestDataRate;
   }
 #endif
 
@@ -21497,8 +21499,8 @@ WDI_CopyWDIStaCtxToHALStaCtx
 #ifdef WLAN_FEATURE_11AC
   if(phalConfigSta_V1 != NULL)
   {
-	  phalConfigSta_V1->vhtCapable = pwdiConfigSta->ucVhtCapableSta;
-	  phalConfigSta_V1->vhtTxChannelWidthSet = pwdiConfigSta->ucVhtTxChannelWidthSet;
+     phalConfigSta_V1->vhtCapable = pwdiConfigSta->ucVhtCapableSta;
+     phalConfigSta_V1->vhtTxChannelWidthSet = pwdiConfigSta->ucVhtTxChannelWidthSet;
   }
 #endif
 }/*WDI_CopyWDIStaCtxToHALStaCtx*/;
@@ -21598,7 +21600,7 @@ WDI_CopyWDIConfigBSSToHALConfigBSS
   /* Get the Version 1 Handler */
   tConfigBssParams_V1* phalConfigBSS_V1 = NULL;
   if (WDI_getFwWlanFeatCaps(DOT11AC))
-	  phalConfigBSS_V1 = (tConfigBssParams_V1*)phalConfigBSS;
+     phalConfigBSS_V1 = (tConfigBssParams_V1*)phalConfigBSS;
 #endif
 
   wpalMemoryCopy( phalConfigBSS->bssId,

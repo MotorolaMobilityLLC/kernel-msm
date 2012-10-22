@@ -1431,7 +1431,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                      */
                     authFrame.authAlgoNumber = eSIR_SHARED_KEY;
                     authFrame.authTransactionSeqNumber =
-                    SIR_MAC_AUTH_FRAME_4;
+                        SIR_MAC_AUTH_FRAME_4;
                     authFrame.authStatusCode = eSIR_MAC_SUCCESS_STATUS;
 
                     limSendAuthMgmtFrame(pMac, &authFrame,
@@ -1463,20 +1463,20 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                      */
 
                     authFrame.authAlgoNumber =
-                    pRxAuthFrameBody->authAlgoNumber;
+                        pRxAuthFrameBody->authAlgoNumber;
                     authFrame.authTransactionSeqNumber =
-                    SIR_MAC_AUTH_FRAME_4;
+                        SIR_MAC_AUTH_FRAME_4;
                     authFrame.authStatusCode =
-                    eSIR_MAC_CHALLENGE_FAILURE_STATUS;
+                        eSIR_MAC_CHALLENGE_FAILURE_STATUS;
 
                     limSendAuthMgmtFrame(pMac, &authFrame,
                                          pHdr->sa,
                                          LIM_NO_WEP_IN_FC,psessionEntry);
 
                     // Log error
-                   PELOGE( limLog(pMac, LOGW,
-                           FL("Challenge failure for peer "MAC_ADDRESS_STR), 
-						   MAC_ADDR_ARRAY(pHdr->sa));)
+                    PELOGE( limLog(pMac, LOGW,
+                                   FL("Challenge failure for peer "MAC_ADDRESS_STR), 
+                                   MAC_ADDR_ARRAY(pHdr->sa));)
                     return;
                 }
             } // if (pMac->lim.gLimSystemRole == eLIM_AP_ROLE || ...

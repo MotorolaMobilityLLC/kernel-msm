@@ -293,7 +293,7 @@ PopulateDot11fExtChanSwitchAnn(tpAniSirGlobal pMac,
 void
 PopulateDot11fWiderBWChanSwitchAnn(tpAniSirGlobal pMac,
                                    tDot11fIEWiderBWChanSwitchAnn *pDot11f,
-				   tpPESession psessionEntry)
+                                   tpPESession psessionEntry)
 {
     pDot11f->present = 1;
     pDot11f->newChanWidth = psessionEntry->gLimWiderBWChannelSwitch.newChanWidth;

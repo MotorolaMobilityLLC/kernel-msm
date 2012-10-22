@@ -3140,7 +3140,7 @@ ePhyChanBondState csrGetHTCBStateFromVHTCBState(ePhyChanBondState aniCBMode)
         case PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_HIGH:
             return PHY_DOUBLE_CHANNEL_LOW_PRIMARY;
         case PHY_QUADRUPLE_CHANNEL_20MHZ_CENTERED_40MHZ_CENTERED:
-	    default :
+        default :
             return PHY_SINGLE_CHANNEL_CENTERED;
     }
 }
@@ -3220,13 +3220,13 @@ eHalStatus csrRoamSetBssConfigCfg(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrR
 #ifdef WLAN_FEATURE_11AC
     if(cfgCb > 2 )
     {
-	if(!WDA_getFwWlanFeatCaps(DOT11AC)) {
+        if(!WDA_getFwWlanFeatCaps(DOT11AC)) {
             cfgCb = csrGetHTCBStateFromVHTCBState(cfgCb);
-	}
-	else 
-	{
+        }
+        else 
+        {
             ccmCfgSetInt(pMac, WNI_CFG_VHT_CHANNEL_WIDTH,  pMac->roam.configParam.nVhtChannelWidth, NULL, eANI_BOOLEAN_FALSE);
-	}
+        }
     }
     else
 #endif

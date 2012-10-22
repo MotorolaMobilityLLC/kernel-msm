@@ -69,8 +69,8 @@ typedef enum
 #define SIR_MAX(a,b)   (((a) > (b)) ? (a) : (b))
 
 typedef enum {
-   MCC	   = 0,
-   P2P	   = 1,
+   MCC     = 0,
+   P2P     = 1,
    DOT11AC = 2,
    SLM_SESSIONIZATION = 3,
    DOT11AC_OPMODE = 4,

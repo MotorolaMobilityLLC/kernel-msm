@@ -278,7 +278,7 @@ __limProcessChannelSwitchActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
         limLog( pMac, LOGE,
             FL( "Failed to unpack and parse an 11h-CHANSW Request (0x%08x, %d bytes):\n"),
             nStatus,
-            frameLen);	
+            frameLen);
         palFreeMemory(pMac->hHdd, pChannelSwitchFrame);
         return;
     }
@@ -314,7 +314,7 @@ __limProcessChannelSwitchActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
                                                          psessionEntry->gLimChannelSwitch.switchCount;
         psessionEntry->gLimChannelSwitch.switchMode = pChannelSwitchFrame->ChanSwitchAnn.switchMode;
 #ifdef WLAN_FEATURE_11AC
-	if ( pChannelSwitchFrame->WiderBWChanSwitchAnn.present && psessionEntry->vhtCapability)
+        if ( pChannelSwitchFrame->WiderBWChanSwitchAnn.present && psessionEntry->vhtCapability)
         {
             psessionEntry->gLimWiderBWChannelSwitch.newChanWidth = pChannelSwitchFrame->WiderBWChanSwitchAnn.newChanWidth;
             psessionEntry->gLimWiderBWChannelSwitch.newCenterChanFreq0 = pChannelSwitchFrame->WiderBWChanSwitchAnn.newCenterChanFreq0;
@@ -338,19 +338,20 @@ __limProcessChannelSwitchActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
                 psessionEntry->gLimChannelSwitch.secondarySubBand = pChannelSwitchFrame->ExtChanSwitchAnn.secondaryChannelOffset;
             }
 #ifdef WLAN_FEATURE_11AC
-	    if(psessionEntry->vhtCapability && pChannelSwitchFrame->WiderBWChanSwitchAnn.present)
-	    {
+            if(psessionEntry->vhtCapability && pChannelSwitchFrame->WiderBWChanSwitchAnn.present)
+            {
                 if (pChannelSwitchFrame->WiderBWChanSwitchAnn.newChanWidth == WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ)
                 {
                     if (pChannelSwitchFrame->ExtChanSwitchAnn.present && ((pChannelSwitchFrame->ExtChanSwitchAnn.secondaryChannelOffset == PHY_DOUBLE_CHANNEL_LOW_PRIMARY) ||
                         (pChannelSwitchFrame->ExtChanSwitchAnn.secondaryChannelOffset == PHY_DOUBLE_CHANNEL_HIGH_PRIMARY)))
                     {
                         psessionEntry->gLimChannelSwitch.state = eLIM_CHANNEL_SWITCH_PRIMARY_AND_SECONDARY;
-                        psessionEntry->gLimChannelSwitch.secondarySubBand = limGet11ACPhyCBState(pMac, 
-                                                                                                 psessionEntry->gLimChannelSwitch.primaryChannel,
-												 pChannelSwitchFrame->ExtChanSwitchAnn.secondaryChannelOffset,
-												 pChannelSwitchFrame->WiderBWChanSwitchAnn.newCenterChanFreq0,
-												 psessionEntry);
+                        psessionEntry->gLimChannelSwitch.secondarySubBand =
+                           limGet11ACPhyCBState(pMac,
+                                                psessionEntry->gLimChannelSwitch.primaryChannel,
+                                                pChannelSwitchFrame->ExtChanSwitchAnn.secondaryChannelOffset,
+                                                pChannelSwitchFrame->WiderBWChanSwitchAnn.newCenterChanFreq0,
+                                                psessionEntry);
                     }
                 }
             }
@@ -438,7 +439,7 @@ __limProcessOperatingModeActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
             pHdr->sa[3],
             pHdr->sa[4],
             pHdr->sa[5]);
-	
+
         if(pOperatingModeframe->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_80MHZ)
         {
             pSta->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
@@ -2172,7 +2173,7 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                 break;
             }
         }
-    }		
+    }
 #endif
     default:
        PELOGE(limLog(pMac, LOGE, FL("Action category %d not handled\n"), pActionHdr->category);)

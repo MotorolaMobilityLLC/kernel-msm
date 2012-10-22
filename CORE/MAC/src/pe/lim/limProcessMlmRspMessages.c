@@ -2101,7 +2101,7 @@ void limProcessStaMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESessi
         if( NULL != pDelBssParams )
         {
             palFreeMemory( pMac->hHdd, (void *) pDelBssParams );
-    	}
+        }
         return;
     }
    end:

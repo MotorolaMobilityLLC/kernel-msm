@@ -5812,14 +5812,14 @@ eCsrCfgDot11Mode csrGetCfgDot11ModeFromCsrPhyMode(eCsrPhyMode phyMode, tANI_BOOL
 
 #ifdef WLAN_FEATURE_11AC
     case eCSR_DOT11_MODE_11ac:
-	if (IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))
-	{
-		cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC;
-	}
-	else
-	{
-		cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
-	}
+        if (IS_FEATURE_SUPPORTED_BY_FW(DOT11AC))
+        {
+            cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC;
+        }
+        else
+        {
+            cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
+        }
         break;
     case eCSR_DOT11_MODE_11ac_ONLY:
         cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC_ONLY;

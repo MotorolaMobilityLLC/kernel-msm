@@ -399,7 +399,7 @@ tANI_U8 limGetCurrentOperatingChannel(tpAniSirGlobal pMac);
 
 #ifdef WLAN_FEATURE_11AC
 tANI_BOOLEAN limCheckVHTOpModeChange( tpAniSirGlobal pMac, 
-		                      tpPESession psessionEntry, tANI_U8 chanWidth, tANI_U8 staId);
+                                      tpPESession psessionEntry, tANI_U8 chanWidth, tANI_U8 staId);
 #endif
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT

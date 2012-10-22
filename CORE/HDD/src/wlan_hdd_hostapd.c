@@ -245,17 +245,17 @@ int hdd_hostapd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
             hdd_setP2pOpps(dev, command);
         }
 #endif
-		
-        /* 
-	      command should be a string having format 
-	   	  SET_SAP_CHANNEL_LIST <num of channels> <the channels seperated by spaces>
-	    */
+
+        /*
+           command should be a string having format
+           SET_SAP_CHANNEL_LIST <num of channels> <the channels seperated by spaces>
+        */
         if(strncmp(command, "SET_SAP_CHANNEL_LIST", 20) == 0)
-        { 
-			VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-				" Received Command to Set Preferred Channels for SAP in %s", __FUNCTION__);
-		   
-			ret = sapSetPreferredChannel(dev,command);
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                       " Received Command to Set Preferred Channels for SAP in %s", __FUNCTION__);
+
+            ret = sapSetPreferredChannel(dev,command);
         }
     }
 exit:
@@ -458,7 +458,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                              "eSAP_STATUS_FAILURE" : "eSAP_STATUS_SUCCESS");
 
             //Free up Channel List incase if it is set
-			sapCleanupChannelList();
+            sapCleanupChannelList();
 
             pHddApCtx->operatingChannel = 0; //Invalidate the channel info.
             vos_event_set(&pHostapdState->vosEvent);

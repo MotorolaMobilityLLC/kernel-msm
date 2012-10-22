@@ -207,7 +207,7 @@ typedef struct sSapContext {
     v_U32_t           nStaAddIeLength;
     v_U8_t            pStaAddIE[MAX_ASSOC_IND_IE_LEN]; 
     v_U8_t            *channelList;
-	tSapChannelListInfo SapChnlList;
+    tSapChannelListInfo SapChnlList;
 } *ptSapContext;
 
 
@@ -412,7 +412,7 @@ WLANSAP_pmcFullPwrReqCB
 
     IN
        halHandle : Pointer to HAL handle
-	   pSapCtx : Pointer to SAP context
+       pSapCtx : Pointer to SAP context
        pResult : Pointer to tScanResultHandle
    
   RETURN VALUE

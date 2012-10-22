@@ -249,7 +249,7 @@ isLimSessionOffChannel(tpAniSirGlobal pMac, tANI_U8 sessionId)
 /*--------------------------------------------------------------------------
   \brief peGetActiveSessionChannel() - Gets the operating channel of first  
                                     valid session. Returns 0 if there is no
-									valid session.
+                                    valid session.
 
   \param pMac                   - pointer to global adapter context
   

@@ -390,7 +390,7 @@ typedef struct sSirSupportedRates {
     tANI_U16 vhtRxMCSMap;
    /*Indicate the highest VHT data rate that the STA is able to receive*/
     tANI_U16 vhtRxHighestDataRate;
-   /*Indicates the Maximum MCS that can be transmitted	for each number
+   /*Indicates the Maximum MCS that can be transmitted for each number
         of spacial streams */
     tANI_U16 vhtTxMCSMap;
    /*Indicate the highest VHT data rate that the STA is able to transmit*/

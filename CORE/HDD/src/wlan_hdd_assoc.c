@@ -1607,17 +1607,17 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
                 struct net_device *dev = pAdapter->dev;
                 netif_tx_disable(dev);
                 /*
-        		 * Deregister for this STA with TL with the objective to flush
-        		 * all the packets for this STA from wmm_tx_queue. If not done here,
-        		 * we would run into a race condition (CR390567) wherein TX
-        		 * thread would schedule packets from wmm_tx_queue AFTER peer STA has
-        		 * been deleted. And, these packets get assigned with a STA idx of
-        		 * self-sta (since the peer STA has been deleted) and get transmitted
-        		 * on the new channel before the reassoc request. Since there will be
-        		 * no ACK on the new channel, each packet gets retransmitted which
-        		 * takes several seconds before the transmission of reassoc request.
-        		 * This leads to reassoc-timeout and roam failure.
-    		     */
+                 * Deregister for this STA with TL with the objective to flush
+                 * all the packets for this STA from wmm_tx_queue. If not done here,
+                 * we would run into a race condition (CR390567) wherein TX
+                 * thread would schedule packets from wmm_tx_queue AFTER peer STA has
+                 * been deleted. And, these packets get assigned with a STA idx of
+                 * self-sta (since the peer STA has been deleted) and get transmitted
+                 * on the new channel before the reassoc request. Since there will be
+                 * no ACK on the new channel, each packet gets retransmitted which
+                 * takes several seconds before the transmission of reassoc request.
+                 * This leads to reassoc-timeout and roam failure.
+                 */
                 status = hdd_roamDeregisterSTA( pAdapter, pHddStaCtx->conn_info.staId [0] );
                 if ( !VOS_IS_STATUS_SUCCESS(status ) )
                 {
@@ -1625,7 +1625,7 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
                             FL("hdd_roamDeregisterSTA() failed to for staID %d.  Status= %d [0x%x]"),
                             pHddStaCtx->conn_info.staId[0], status, status );
                     halStatus = eHAL_STATUS_FAILURE;
-                }		
+                }
             }
             pHddStaCtx->ft_carrier_on = TRUE;
             break;

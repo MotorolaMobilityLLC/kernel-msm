@@ -60,18 +60,18 @@
   ------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------
   
-          \brief peGetVhtCapable() - Returns the Vht capable from a valid session.
+  \brief peGetVhtCapable() - Returns the Vht capable from a valid session.
  
-          This function itrates the session Table and returns the VHT capable from first valid session
-          if no sessions are valid/present  it returns FALSE
+  This function iterates the session Table and returns the VHT capable from first valid session
+  if no sessions are valid/present  it returns FALSE
 
-         \param pMac	                - pointer to global adapter context
-          \return                        - channel to scan from valid session else zero.
-          
-          \sa
-           
+  \param pMac - pointer to global adapter context
+  \return     - channel to scan from valid session else zero.
+
+  \sa
+
  --------------------------------------------------------------------------*/
-   tANI_U8 peGetVhtCapable(tpAniSirGlobal pMac);
+tANI_U8 peGetVhtCapable(tpAniSirGlobal pMac);
 
 
 /*--------------------------------------------------------------------------
@@ -79,10 +79,10 @@
 
   This function is called to validate the Join Request for a BT-AMP station. If start BSS session is present
   this function returns TRUE else returns FALSE.
-    
-  \param pMac                   - pointer to global adapter context
-  \return                           - return TRUE if start BSS session is present else return FALSE.
-  
+
+  \param pMac  - pointer to global adapter context
+  \return      - return TRUE if start BSS session is present else return FALSE.
+
   \sa
   --------------------------------------------------------------------------*/
 tANI_U8 peValidateBtJoinRequest(tpAniSirGlobal pMac);

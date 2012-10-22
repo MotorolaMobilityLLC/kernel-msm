@@ -433,19 +433,19 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                        "%s: SME Change Country code fail ret=%d\n",__func__, ret);
 
            }
-       }  
-	   /* 
-	      command should be a string having format 
-	   	  SET_SAP_CHANNEL_LIST <num of channels> <the channels seperated by spaces>
-	   */
+       }
+       /*
+          command should be a string having format
+          SET_SAP_CHANNEL_LIST <num of channels> <the channels seperated by spaces>
+       */
        else if(strncmp(priv_data.buf, "SET_SAP_CHANNEL_LIST", 20) == 0)
-       { 
-       		tANI_U8 *ptr = (tANI_U8*)priv_data.buf;
-			
-			VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-				" Received Command to Set Preferred Channels for SAP in %s", __FUNCTION__);
-				
-			ret = sapSetPreferredChannel(dev,ptr);
+       {
+           tANI_U8 *ptr = (tANI_U8*)priv_data.buf;
+
+           VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                      " Received Command to Set Preferred Channels for SAP in %s", __FUNCTION__);
+
+           ret = sapSetPreferredChannel(dev, ptr);
        }
    }
 exit:

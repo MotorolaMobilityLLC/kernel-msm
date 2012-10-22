@@ -592,7 +592,7 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
 {
     eHalStatus status = eHAL_STATUS_FAILURE;
     tSmeCmd *pScanCmd = NULL;
-	eCsrConnectState ConnectState;
+    eCsrConnectState ConnectState;
     
     do
     {
@@ -4396,11 +4396,11 @@ eHalStatus csrScanSmeScanResponse( tpAniSirGlobal pMac, void *pMsgBuf )
                 break;
             case eCsrScanGetScanChnInfo:
                 pScanChnInfo = (tSmeGetScanChnRsp *)pMsgBuf;
-				/*
-				* status code not available in tSmeGetScanChnRsp, so 
-				* by default considereing it to be success
-				*/
-				scanStatus = eSIR_SME_SUCCESS;
+                /*
+                 * status code not available in tSmeGetScanChnRsp, so 
+                 * by default considereing it to be success
+                 */
+                scanStatus = eSIR_SME_SUCCESS;
                 csrScanAgeResults(pMac, pScanChnInfo);
                 break;
             case eCsrScanForCapsChange:

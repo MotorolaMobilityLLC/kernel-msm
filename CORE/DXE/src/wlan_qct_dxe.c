@@ -3174,7 +3174,7 @@ void dxeTXEventHandler
          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                   "dxeTXEventHandler IMPS HC COMP interrupt fail");
       }
-	  
+
       status = dxeTXCompFrame(dxeCtxt, &dxeCtxt->dxeChannel[WDTS_CHANNEL_TX_LOW_PRI]);
       if(eWLAN_PAL_STATUS_SUCCESS != status)
       {
