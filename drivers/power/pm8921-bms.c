@@ -55,6 +55,8 @@
 #define TEMP_IAVG_STORAGE	0x105
 #define TEMP_IAVG_STORAGE_USE_MASK	0x0F
 
+#define CC_RAW_5MAH	0x00110000
+
 enum pmic_bms_interrupts {
 	PM8921_BMS_SBI_WRITE_OK,
 	PM8921_BMS_CC_THR,
@@ -1005,7 +1007,6 @@ static int ocv_ir_compensation(struct pm8921_bms_chip *chip, int ocv)
 	return compensated_ocv;
 }
 
-
 static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 				struct pm8921_soc_params *raw)
 {
@@ -1031,6 +1032,13 @@ static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 		raw->last_good_ocv_uv = ocv_ir_compensation(chip,
 						raw->last_good_ocv_uv);
 		chip->last_ocv_uv = raw->last_good_ocv_uv;
+
+		if (raw->cc > CC_RAW_5MAH) {
+			shutdown_soc_invalid = 1;
+			pr_info("cc_raw = 0x%x greater than 5mAh 0x%x\n",
+				       raw->cc, CC_RAW_5MAH);
+		}
+
 		pr_debug("PON_OCV_UV = %d\n", chip->last_ocv_uv);
 	} else if (chip->prev_last_good_ocv_raw != raw->last_good_ocv_raw) {
 		chip->prev_last_good_ocv_raw = raw->last_good_ocv_raw;
@@ -2155,8 +2163,8 @@ static int calculate_state_of_charge(struct pm8921_bms_chip *chip,
 					- cc_uah
 					- unusable_charge_uah;
 
-		soc = DIV_ROUND_CLOSEST((remaining_usable_charge_uah * 100),
-					(fcc_uah - unusable_charge_uah));
+		soc = (remaining_usable_charge_uah * 100)/
+					(fcc_uah - unusable_charge_uah);
 
 		pr_debug("DONE for shutdown_soc = %d soc is %d, adjusted ocv to %duV\n",
 				shutdown_soc, soc, chip->last_ocv_uv);
