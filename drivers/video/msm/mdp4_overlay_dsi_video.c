@@ -37,6 +37,7 @@
 
 #include <mach/iommu_domains.h>
 
+#define WAIT_TOUT	250	/* 250msec */
 #define DSI_VIDEO_BASE	0xE0000
 
 static int first_pixel_start_x;
@@ -355,9 +356,9 @@ void mdp4_dsi_video_wait4vsync(int cndx, long long *vtime)
 
 	vsync_irq_enable(INTR_PRIMARY_VSYNC, MDP_PRIM_VSYNC_TERM);
 	if (wait_for_completion_timeout(&vctrl->vsync_comp,
-		msecs_to_jiffies(100)) == 0) {
-		pr_err("%s: timeout waiting for vsync ompletion\n",
-			__func__);
+					msecs_to_jiffies(WAIT_TOUT)) == 0) {
+		pr_err("%s: timeout waiting for vsync ompletion\n", __func__);
+		mdp4_hang_panic();
 	}
 
 	mdp4_stat.wait4vsync0++;
@@ -379,7 +380,12 @@ static void mdp4_dsi_video_wait4dmap(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	wait_for_completion(&vctrl->dmap_comp);
+	if (wait_for_completion_timeout(&vctrl->dmap_comp,
+					msecs_to_jiffies(WAIT_TOUT)) == 0) {
+		pr_err("%s: timeout waiting for DMA_P DONE completion\n",
+								__func__);
+		mdp4_hang_panic();
+	}
 }
 
 
@@ -416,7 +422,11 @@ static void mdp4_dsi_video_wait4ov(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	wait_for_completion(&vctrl->ov_comp);
+	if (wait_for_completion_timeout(&vctrl->ov_comp,
+					msecs_to_jiffies(WAIT_TOUT)) == 0) {
+		pr_err("%s: timeout waiting for overlay ompletion\n", __func__);
+		mdp4_hang_panic();
+	}
 }
 
 static ssize_t vsync_show_event(struct device *dev,
