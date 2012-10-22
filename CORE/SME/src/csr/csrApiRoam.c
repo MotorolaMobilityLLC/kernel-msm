@@ -9519,23 +9519,23 @@ static eCsrCfgDot11Mode csrRoamGetPhyModeBandForBss( tpAniSirGlobal pMac, eCsrPh
      cfgDot11Mode = eCSR_CFG_DOT11_MODE_11B;
    }
 
-   if( (!CSR_IS_11n_ALLOWED(pProfile->EncryptionType.encryptionType[0] )) &&
-       ((eCSR_CFG_DOT11_MODE_11N == cfgDot11Mode) ||
+    if( (!CSR_IS_11n_ALLOWED(pProfile->EncryptionType.encryptionType[0] )) &&
+        ((eCSR_CFG_DOT11_MODE_11N == cfgDot11Mode) ||
 #ifdef WLAN_FEATURE_11AC
-	(eCSR_CFG_DOT11_MODE_11AC == cfgDot11Mode) ||
+        (eCSR_CFG_DOT11_MODE_11AC == cfgDot11Mode) ||
 #endif
-	(eCSR_CFG_DOT11_MODE_TAURUS == cfgDot11Mode)) )
-   {
-         //We cannot do 11n here
-         if ( CSR_IS_CHANNEL_24GHZ(operationChn) )
-         {
-             cfgDot11Mode = eCSR_CFG_DOT11_MODE_11G;
-         } 
-         else 
-         {
-             cfgDot11Mode = eCSR_CFG_DOT11_MODE_11A;
-         }
-   }
+        (eCSR_CFG_DOT11_MODE_TAURUS == cfgDot11Mode)) )
+    {
+        //We cannot do 11n here
+        if ( CSR_IS_CHANNEL_24GHZ(operationChn) )
+        {
+            cfgDot11Mode = eCSR_CFG_DOT11_MODE_11G;
+        }
+        else
+        {
+            cfgDot11Mode = eCSR_CFG_DOT11_MODE_11A;
+        }
+    }
     return( cfgDot11Mode );
 }
 
