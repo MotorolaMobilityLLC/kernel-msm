@@ -7102,6 +7102,8 @@ WDI_ProcessBSSSessionJoinReq
   tHalJoinReqMsg          halJoinReqMsg;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+  wpalMutexAcquire(&pWDICtx->wptMutex);
+
   /*------------------------------------------------------------------------
     Check to see if we have any session with this BSSID already stored, we
     should not
@@ -7113,12 +7115,16 @@ WDI_ProcessBSSSessionJoinReq
   if ( NULL != pBSSSes )
   {
     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
-              "Association for this BSSID is already in place");
+          "Association for this BSSID: " MAC_ADDRESS_STR " is already in place",
+          MAC_ADDR_ARRAY(pwdiJoinParams->wdiReqInfo.macBSSID));
 
-    return WDI_STATUS_E_NOT_ALLOWED;
+    /*reset the bAssociationInProgress otherwise the next 
+     *join request will be queued*/
+    pWDICtx->bAssociationInProgress = eWLAN_PAL_FALSE;
+    wpalMutexRelease(&pWDICtx->wptMutex);
+    return WDI_STATUS_E_NOT_ALLOWED; 
   }
 
-  wpalMutexAcquire(&pWDICtx->wptMutex);
   /*------------------------------------------------------------------------
     Fetch an empty session block
   ------------------------------------------------------------------------*/
@@ -7129,6 +7135,9 @@ WDI_ProcessBSSSessionJoinReq
     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
               "DAL has no free sessions - cannot run another join");
 
+    /*reset the bAssociationInProgress otherwise the next 
+     *join request will be queued*/
+    pWDICtx->bAssociationInProgress = eWLAN_PAL_FALSE;
     wpalMutexRelease(&pWDICtx->wptMutex);
     return WDI_STATUS_RES_FAILURE;
   }
@@ -20123,8 +20132,10 @@ WDI_FindAssocSession
     ------------------------------------------------------------------------*/
   for ( i = 0; i < WDI_MAX_BSS_SESSIONS; i++ )
   {
-     if ( eWLAN_PAL_TRUE ==
-          wpalMemoryCompare(pWDICtx->aBSSSessions[i].macBSSID, macBSSID, WDI_MAC_ADDR_LEN) )
+     if ( (pWDICtx->aBSSSessions[i].bInUse == eWLAN_PAL_TRUE) && 
+          (eWLAN_PAL_TRUE == 
+                wpalMemoryCompare(pWDICtx->aBSSSessions[i].macBSSID, macBSSID,
+                WDI_MAC_ADDR_LEN)) )
      {
        /*Found the session*/
        *ppSession = &pWDICtx->aBSSSessions[i];
