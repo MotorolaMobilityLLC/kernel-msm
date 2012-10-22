@@ -3861,7 +3861,9 @@ int hdd_wlan_startup(struct device *dev )
    if (VOS_STA_SAP_MODE != hdd_get_conparam())
 #endif
    {
-      wlan_hdd_cfg80211_post_voss_start(pP2pAdapter);
+      /* Action frame registered in one adapter which will
+       * applicable to all interfaces 
+       */
       wlan_hdd_cfg80211_post_voss_start(pAdapter);
    }
 #endif

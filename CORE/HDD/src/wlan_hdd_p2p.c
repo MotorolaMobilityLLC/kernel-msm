@@ -1140,7 +1140,7 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
 {
     tANI_U16 freq;
     tANI_U8 type = 0;
-    tANI_U8 subType = 0; 
+    tANI_U8 subType = 0;
     tActionFrmType actionFrmType;
     hdd_cfg80211_state_t *cfgState = NULL;
 
@@ -1151,6 +1151,26 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
     {
         hddLog( LOGE, FL("pAdapter is NULL"));
         return;
+    }
+
+    type = WLAN_HDD_GET_TYPE_FRM_FC(pbFrames[0]);
+    subType = WLAN_HDD_GET_SUBTYPE_FRM_FC(pbFrames[0]);
+
+    /* Get pAdapter from Destination mac address of the frame */
+    if ((type == SIR_MAC_MGMT_FRAME) &&
+            (subType != SIR_MAC_MGMT_PROBE_REQ))
+    {
+         pAdapter = hdd_get_adapter_by_macaddr( WLAN_HDD_GET_CTX(pAdapter),
+                            &pbFrames[WLAN_HDD_80211_FRM_DA_OFFSET]);
+         if (NULL == pAdapter)
+         {
+             /* Under assumtion that we don't receive any action frame
+              * with BCST as destination we dropping action frame
+              */
+             VOS_ASSERT(0);
+             hddLog( LOGP, FL("pAdapter for action frame is NULL"));
+             return;
+         }
     }
 
     if (NULL == pAdapter->dev)
@@ -1206,8 +1226,6 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
                 IEEE80211_BAND_5GHZ);
     }
 
-    type = WLAN_HDD_GET_TYPE_FRM_FC(pbFrames[0]);
-    subType = WLAN_HDD_GET_SUBTYPE_FRM_FC(pbFrames[0]);
     cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
     
     if ((type == SIR_MAC_MGMT_FRAME) && 

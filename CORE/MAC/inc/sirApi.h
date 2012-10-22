@@ -438,7 +438,6 @@ typedef struct sSirRegisterMgmtFrame
     tANI_U16 messageType;
     tANI_U16 length;
     tANI_U8 sessionId;
-    tANI_U8 selfMacAddr[6];
     tANI_BOOLEAN registerFrame;
     tANI_U16 frameType;
     tANI_U16 matchLen;

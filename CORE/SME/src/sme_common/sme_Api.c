@@ -5339,8 +5339,6 @@ eHalStatus sme_RegisterMgmtFrame(tHalHandle hHal, tANI_U8 sessionId,
             pMsg->messageType     = eWNI_SME_REGISTER_MGMT_FRAME_REQ;
             pMsg->length          = len;
             pMsg->sessionId       = sessionId;
-            palCopyMemory( pMac, pMsg->selfMacAddr, pSession->selfMacAddr, 
-                             VOS_MAC_ADDR_SIZE); 
             pMsg->registerFrame   = VOS_TRUE;
             pMsg->frameType       = frameType;
             pMsg->matchLen        = matchLen;
@@ -5400,8 +5398,6 @@ eHalStatus sme_DeregisterMgmtFrame(tHalHandle hHal, tANI_U8 sessionId,
             pMsg->registerFrame   = VOS_FALSE;
             pMsg->frameType       = frameType;
             pMsg->matchLen        = matchLen;
-            palCopyMemory( pMac, pMsg->selfMacAddr, pSession->selfMacAddr, 
-                             VOS_MAC_ADDR_SIZE); 
             palCopyMemory( pMac, pMsg->matchData, matchData, matchLen); 
             status = palSendMBMessage(pMac->hHdd, pMsg);
         }

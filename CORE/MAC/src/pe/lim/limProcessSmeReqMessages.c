@@ -4738,22 +4738,15 @@ __limProcessSmeRegisterMgmtFrameReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                     if (palEqualMemory(pMac, pLimMgmtRegistration->matchData, 
                                 pSmeReq->matchData, pLimMgmtRegistration->matchLen))
                     {
-                        if(pSmeReq->selfMacAddr)
-                        {
-                            if(palEqualMemory(pMac, pLimMgmtRegistration->selfMacAddr,
-                                           pSmeReq->selfMacAddr, VOS_MAC_ADDR_SIZE))
-                            {
-                                /* found match! */   
-                                match = VOS_TRUE;
-                                break;
-                            }
-                        }    
+                        /* found match! */
+                        match = VOS_TRUE;
+                        break;
                     }
                 }
             }
             else
             {
-                /* found match! */   
+                /* found match! */
                 match = VOS_TRUE;
                 break;
             }
@@ -4781,21 +4774,16 @@ __limProcessSmeRegisterMgmtFrameReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                         sizeof(tLimMgmtFrameRegistration) + pSmeReq->matchLen);
         if(pLimMgmtRegistration != NULL)
         {
-            palZeroMemory(pMac, (void*)pLimMgmtRegistration, 
+            palZeroMemory(pMac, (void*)pLimMgmtRegistration,
               sizeof(tLimMgmtFrameRegistration) + pSmeReq->matchLen );
             pLimMgmtRegistration->frameType = pSmeReq->frameType;
             pLimMgmtRegistration->matchLen  = pSmeReq->matchLen;
             pLimMgmtRegistration->sessionId = pSmeReq->sessionId;
             if(pSmeReq->matchLen)
             {
-                palCopyMemory(pMac,pLimMgmtRegistration->matchData, 
+                palCopyMemory(pMac,pLimMgmtRegistration->matchData,
                               pSmeReq->matchData, pSmeReq->matchLen);
             }
-            if(pSmeReq->selfMacAddr)
-            {
-                palCopyMemory( pMac, pLimMgmtRegistration->selfMacAddr, 
-                       pSmeReq->selfMacAddr, VOS_MAC_ADDR_SIZE);
-            } 
             vos_list_insert_front(&pMac->lim.gLimMgmtFrameRegistratinQueue,
                               &pLimMgmtRegistration->node);
         }
