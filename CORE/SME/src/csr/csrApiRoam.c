@@ -9407,7 +9407,7 @@ static eCsrCfgDot11Mode csrRoamGetPhyModeBandForBss( tpAniSirGlobal pMac, eCsrPh
                                             pMac->roam.configParam.ProprietaryRatesEnabled);
 #endif
     eCsrBand eBand;
-    
+ 
     //If the global setting for dot11Mode is set to auto/abg, we overwrite the setting in the profile.
 #ifdef WLAN_SOFTAP_FEATURE
     if( ((!CSR_IS_INFRA_AP(pProfile )&& !CSR_IS_WDS(pProfile )) && 
@@ -9517,6 +9517,24 @@ static eCsrCfgDot11Mode csrRoamGetPhyModeBandForBss( tpAniSirGlobal pMac, eCsrPh
    if (operationChn == 14){ 
      smsLog(pMac, LOGE, FL("  Switching to Dot11B mode \n"));
      cfgDot11Mode = eCSR_CFG_DOT11_MODE_11B;
+   }
+
+   if( (!CSR_IS_11n_ALLOWED(pProfile->EncryptionType.encryptionType[0] )) &&
+       ((eCSR_CFG_DOT11_MODE_11N == cfgDot11Mode) ||
+#ifdef WLAN_FEATURE_11AC
+	(eCSR_CFG_DOT11_MODE_11AC == cfgDot11Mode) ||
+#endif
+	(eCSR_CFG_DOT11_MODE_TAURUS == cfgDot11Mode)) )
+   {
+         //We cannot do 11n here
+         if ( CSR_IS_CHANNEL_24GHZ(operationChn) )
+         {
+             cfgDot11Mode = eCSR_CFG_DOT11_MODE_11G;
+         } 
+         else 
+         {
+             cfgDot11Mode = eCSR_CFG_DOT11_MODE_11A;
+         }
    }
     return( cfgDot11Mode );
 }
