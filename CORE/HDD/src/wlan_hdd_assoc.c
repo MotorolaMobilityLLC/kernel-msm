@@ -1748,7 +1748,7 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
             hdd_SendFTEvent(pAdapter);
             break;
 #endif
-#ifdef FEATURE_WLAN_LFR
+#if defined(FEATURE_WLAN_LFR) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
         case eCSR_ROAM_PMK_NOTIFY:
            if (eCSR_AUTH_TYPE_RSN == pHddStaCtx->conn_info.authType) 
            {

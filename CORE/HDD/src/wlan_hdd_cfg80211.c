@@ -457,12 +457,12 @@ int wlan_hdd_cfg80211_register(struct device *dev,
 
     wiphy->mgmt_stypes = wlan_hdd_txrx_stypes;
 
-    wiphy->flags |=   WIPHY_FLAG_HAVE_AP_SME 
-                    | WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD
-                    | WIPHY_FLAG_CUSTOM_REGULATORY;
+    wiphy->flags |=   WIPHY_FLAG_CUSTOM_REGULATORY;
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
-    wiphy->flags |=   WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL 
+    wiphy->flags |= WIPHY_FLAG_HAVE_AP_SME
+                 |  WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD
+                 |  WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL
                     | WIPHY_FLAG_OFFCHAN_TX;
 #endif
     /* even with WIPHY_FLAG_CUSTOM_REGULATORY,
@@ -3484,7 +3484,7 @@ hddPrintPmkId(tANI_U8 *pmkId, tANI_U8 logLevel)
         hddLog(VOS_TRACE_LEVEL_INFO, "\n"); \
     }
 
-#ifdef FEATURE_WLAN_LFR
+#if defined(FEATURE_WLAN_LFR) && (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
 /*
  * FUNCTION: wlan_hdd_cfg80211_pmksa_candidate_notify
  * This function is used to notify the supplicant of a new PMKSA candidate.
