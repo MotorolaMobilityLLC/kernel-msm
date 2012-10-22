@@ -128,11 +128,12 @@ static struct usb_endpoint_descriptor usbnet_fs_bulk_out_desc = {
 	.bmAttributes = USB_ENDPOINT_XFER_BULK,
 };
 
-static struct usb_endpoint_descriptor fs_intr_out_desc = {
+static struct usb_endpoint_descriptor intr_out_desc = {
 	.bLength = USB_DT_ENDPOINT_SIZE,
 	.bDescriptorType = USB_DT_ENDPOINT,
 	.bEndpointAddress = USB_DIR_OUT,
 	.bmAttributes = USB_ENDPOINT_XFER_INT,
+	.wMaxPacketSize = __constant_cpu_to_le16(64),
 	.bInterval = 1,
 };
 
@@ -140,7 +141,7 @@ static struct usb_descriptor_header *fs_function[] = {
 	(struct usb_descriptor_header *) &usbnet_intf_desc,
 	(struct usb_descriptor_header *) &usbnet_fs_bulk_in_desc,
 	(struct usb_descriptor_header *) &usbnet_fs_bulk_out_desc,
-	(struct usb_descriptor_header *) &fs_intr_out_desc,
+	(struct usb_descriptor_header *) &intr_out_desc,
 	NULL,
 };
 
@@ -162,20 +163,11 @@ static struct usb_endpoint_descriptor usbnet_hs_bulk_out_desc = {
 	.bInterval = 0,
 };
 
-static struct usb_endpoint_descriptor hs_intr_out_desc = {
-	.bLength = USB_DT_ENDPOINT_SIZE,
-	.bDescriptorType = USB_DT_ENDPOINT,
-	.bEndpointAddress = USB_DIR_OUT,
-	.bmAttributes = USB_ENDPOINT_XFER_INT,
-	.wMaxPacketSize = __constant_cpu_to_le16(64),
-	.bInterval = 1,
-};
-
 static struct usb_descriptor_header *hs_function[] = {
 	(struct usb_descriptor_header *) &usbnet_intf_desc,
 	(struct usb_descriptor_header *) &usbnet_hs_bulk_in_desc,
 	(struct usb_descriptor_header *) &usbnet_hs_bulk_out_desc,
-	(struct usb_descriptor_header *) &hs_intr_out_desc,
+	(struct usb_descriptor_header *) &intr_out_desc,
 	NULL,
 };
 
@@ -548,9 +540,9 @@ static int usbnet_bind(struct usb_configuration *c,
 	context->bulk_out = ep;
 
 
-	ep = usb_ep_autoconfig(cdev->gadget, &fs_intr_out_desc);
+	ep = usb_ep_autoconfig(cdev->gadget, &intr_out_desc);
 	if (!ep) {
-		USBNETDBG(context, "%s auto-configure hs_intr_out_desc error\n",
+		USBNETDBG(context, "%s auto-configure intr_out_desc error\n",
 		      __func__);
 		goto autoconf_fail;
 	}
@@ -564,8 +556,6 @@ static int usbnet_bind(struct usb_configuration *c,
 		    usbnet_fs_bulk_in_desc.bEndpointAddress;
 		usbnet_hs_bulk_out_desc.bEndpointAddress =
 		    usbnet_fs_bulk_out_desc.bEndpointAddress;
-		hs_intr_out_desc.bEndpointAddress =
-		    fs_intr_out_desc.bEndpointAddress;
 	}
 
 
@@ -616,7 +606,6 @@ static void do_set_config(struct usb_function *f, u16 new_config)
 	struct usb_composite_dev *cdev = f->config->cdev;
 	int result = 0;
 	struct usb_request *req;
-	int high_speed_flag = 0;
 
 	if (context->config == new_config) /* Config did not change */
 		return;
@@ -661,19 +650,7 @@ static void do_set_config(struct usb_function *f, u16 new_config)
 
 		context->bulk_out->driver_data = context;
 
-		result = config_ep_by_speed(cdev->gadget, f, context->intr_out);
-		if (result) {
-			context->intr_out->desc = NULL;
-			USBNETDBG(context, "config_ep_by_speed failes for ep %s, result %d\n",
-				context->intr_out->name, result);
-			usb_ep_disable(context->bulk_in);
-			usb_ep_disable(context->bulk_out);
-			return;
-		}
-
-		if (high_speed_flag)
-			result = usb_ep_enable(context->intr_out);
-		else
+		context->intr_out->desc = &intr_out_desc;
 		result = usb_ep_enable(context->intr_out);
 
 		if (result != 0) {
