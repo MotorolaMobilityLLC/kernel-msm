@@ -910,8 +910,8 @@ int slim_xfer_msg(struct slim_controller *ctrl, struct slim_device *sbdev,
 			ret = wait_for_completion_timeout(&complete, HZ);
 			if (!ret) {
 				struct slim_msg_txn *txn;
-				dev_err(&ctrl->dev, "slimbus Read timed out");
 				mutex_lock(&ctrl->m_ctrl);
+				dev_err(&ctrl->dev, "slimbus Read timed out");
 				txn = ctrl->txnt[tid];
 				/* Invalidate the transaction */
 				ctrl->txnt[tid] = NULL;
@@ -920,6 +920,15 @@ int slim_xfer_msg(struct slim_controller *ctrl, struct slim_device *sbdev,
 				ret = -ETIMEDOUT;
 			} else
 				ret = 0;
+		} else if (ret < 0 && !msg->comp) {
+			struct slim_msg_txn *txn;
+			mutex_lock(&ctrl->m_ctrl);
+			dev_err(&ctrl->dev, "slimbus Read error");
+			txn = ctrl->txnt[tid];
+			/* Invalidate the transaction */
+			ctrl->txnt[tid] = NULL;
+			mutex_unlock(&ctrl->m_ctrl);
+			kfree(txn);
 		}
 
 	} else
