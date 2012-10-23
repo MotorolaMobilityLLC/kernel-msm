@@ -218,7 +218,7 @@ static struct msm_bus_vectors cam_video_vectors[] = {
 		.src = MSM_BUS_MASTER_VFE,
 		.dst = MSM_BUS_SLAVE_EBI_CH0,
 		.ab  = 274406400,
-		.ib  = 561807360,
+		.ib  = 1812430080,
 	},
 	{
 		.src = MSM_BUS_MASTER_VPE,
