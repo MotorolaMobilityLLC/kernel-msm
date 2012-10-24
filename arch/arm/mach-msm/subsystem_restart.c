@@ -73,7 +73,7 @@ struct subsys_device {
 	void *restart_order;
 };
 
-static int enable_ramdumps = 1;
+static int enable_ramdumps;
 module_param(enable_ramdumps, int, S_IRUGO | S_IWUSR);
 
 struct workqueue_struct *ssr_wq;
