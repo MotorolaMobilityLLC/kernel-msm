@@ -750,6 +750,7 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 			mdp4_mixer_stage_down(pipe, 1);
 			mdp4_overlay_pipe_free(pipe);
 			vctrl->base_pipe = NULL;
+			msleep(20);
 		} else {
 			/* system suspending */
 			mdp4_mixer_stage_down(vctrl->base_pipe, 1);
