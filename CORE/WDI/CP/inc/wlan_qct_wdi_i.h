@@ -1035,6 +1035,9 @@ typedef struct
 
   /*version of the PNO implementation in RIVA*/
   wpt_uint8                   wdiPNOVersion;
+
+  /*SSR timer*/
+  wpt_timer                   ssrTimer;
 }WDI_ControlBlockType; 
 
 

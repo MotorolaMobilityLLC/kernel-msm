@@ -45,6 +45,7 @@
 
 #include "dma-mapping.h"
 #include <mach/subsystem_restart.h>
+#include <linux/wcnss_wlan.h>
 
 typedef struct sPalStruct
 {
@@ -388,5 +389,19 @@ wpt_status wpalRivaSubystemRestart(void)
 void wpalWlanReload(void)
 {
    vos_wlanRestart();
+   return;
+}
+
+/*---------------------------------------------------------------------------
+    wpalWcnssResetIntr -  Trigger the reset FIQ to Riva
+
+    Param:
+       None
+    Return:
+       NONE
+---------------------------------------------------------------------------*/
+void wpalWcnssResetIntr(void)
+{
+   wcnss_reset_intr();
    return;
 }

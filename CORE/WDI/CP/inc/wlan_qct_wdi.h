@@ -136,6 +136,10 @@ of NV fragment is nt possbile.The next multiple of 1Kb is 3K */
       in before we get to a timeout (ms units)*/
 #define WDI_RESPONSE_TIMEOUT   10000
 
+/* SSR timeout - If Riva initiated SSR doesn't happen during this time, then the
+ * Apps initiated SSR will be performed */
+#define WDI_SSR_TIMEOUT       5000
+
 #define WDI_SET_POWER_STATE_TIMEOUT  10000 /* in msec a very high upper limit */
 
 /*============================================================================
@@ -9053,6 +9057,22 @@ void WDI_TransportChannelDebug
 (
    wpt_boolean  displaySnapshot,
    wpt_boolean  toggleStallDetect
+);
+
+/**
+ @brief WDI_SsrTimerCB
+    Callback function for SSR timer, if this is called then the graceful
+    shutdown for Riva did not happen.
+
+ @param  pUserData : user data to timer
+
+ @see
+ @return none
+*/
+void
+WDI_SsrTimerCB
+(
+  void *pUserData
 );
 
 #ifdef __cplusplus

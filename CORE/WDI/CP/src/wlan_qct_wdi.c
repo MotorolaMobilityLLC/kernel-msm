@@ -1080,6 +1080,16 @@ WDI_Init
     goto fail_timer;
   }
 
+  wptStatus = wpalTimerInit( &gWDICb.ssrTimer,
+                             WDI_SsrTimerCB,
+                             &gWDICb);
+  if ( eWLAN_PAL_STATUS_SUCCESS != wptStatus )
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+              "%s: Failed to init SSR timer, status %d",
+               __FUNCTION__, wptStatus);
+    goto fail_timer2;
+  }
   /* Initialize the  WDI Pending Request Queue*/
   wptStatus = wpal_list_init(&(gWDICb.wptPendingQueue));
   if ( eWLAN_PAL_STATUS_SUCCESS != wptStatus )
@@ -1255,6 +1265,8 @@ WDI_Init
  fail_assoc_queue:
   wpal_list_destroy(&(gWDICb.wptPendingQueue));
  fail_pend_queue:
+  wpalTimerDelete(&gWDICb.ssrTimer);
+ fail_timer2:
   wpalTimerDelete(&gWDICb.wptResponseTimer);
  fail_timer:
   wpalMutexDelete(&gWDICb.wptMutex);
@@ -1527,6 +1539,9 @@ WDI_Close
   /*destroy the response timer */
   wptStatus = wpalTimerDelete( &gWDICb.wptResponseTimer);
 
+  /*destroy the SSR timer */
+  wptStatus = wpalTimerDelete( &gWDICb.ssrTimer);
+
   /*invalidate the main synchro mutex */
   wptStatus = wpalMutexDelete(&gWDICb.wptMutex);
   if ( eWLAN_PAL_STATUS_SUCCESS !=  wptStatus )
@@ -1640,6 +1655,8 @@ WDI_Shutdown
    wpal_list_destroy(&(gWDICb.wptPendingQueue));
    /*destroy the response timer */
    wptStatus = wpalTimerDelete( &gWDICb.wptResponseTimer);
+   /*destroy the SSR timer */
+   wptStatus = wpalTimerDelete( &gWDICb.ssrTimer);
 
    /*invalidate the main synchro mutex */
    wptStatus = wpalMutexDelete(&gWDICb.wptMutex);
@@ -19423,7 +19440,9 @@ WDI_ResponseTimerCB
    * trigger SSR
    */
 #ifndef WDI_RE_ENABLE_WIFI_ON_WDI_TIMEOUT
-  wpalRivaSubystemRestart();
+  wpalWcnssResetIntr();
+  /* if this timer fires, it means Riva did not receive the FIQ */
+  wpalTimerStart(&pWDICtx->ssrTimer, WDI_SSR_TIMEOUT);
 #else
   WDI_DetectedDeviceError( pWDICtx, WDI_ERR_BASIC_OP_FAILURE);
   wpalWlanReload();
@@ -25260,3 +25279,34 @@ void WDI_TransportChannelDebug
    WDTS_ChannelDebug(displaySnapshot, toggleStallDetect);
    return;
 }
+/**
+ @brief WDI_SsrTimerCB
+    Callback function for SSR timer, if this is called then the graceful
+    shutdown for Riva did not happen.
+
+ @param  pUserData : user data to timer
+
+ @see
+ @return none
+*/
+void
+WDI_SsrTimerCB
+(
+  void *pUserData
+)
+{
+  WDI_ControlBlockType*  pWDICtx = (WDI_ControlBlockType*)pUserData;
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  if (NULL == pWDICtx )
+  {
+    WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                "%s: Invalid parameters", __FUNCTION__);
+    WDI_ASSERT(0);
+    return;
+  }
+  wpalRivaSubystemRestart();
+
+  return;
+
+}/*WDI_SsrTimerCB*/

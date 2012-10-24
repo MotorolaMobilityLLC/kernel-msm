@@ -304,4 +304,15 @@ wpt_status wpalRivaSubystemRestart(void);
        NONE
 ---------------------------------------------------------------------------*/
 void wpalWlanReload(void);
+
+/*---------------------------------------------------------------------------
+    wpalWcnssResetIntr -  Trigger the reset FIQ to Riva
+
+    Param:
+       None
+    Return:
+       NONE
+---------------------------------------------------------------------------*/
+void wpalWcnssResetIntr(void);
+
 #endif // __WLAN_QCT_PAL_API_H
