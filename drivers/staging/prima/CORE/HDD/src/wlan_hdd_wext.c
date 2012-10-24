@@ -5247,7 +5247,11 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
                       union iwreq_data *wrqu, char *extra, int nOffset)
 {
   hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-  tSirPNOScanReq pnoRequest;
+  /* pnoRequest is a large struct, so we make it static to avoid stack
+     overflow.  This API is only invoked via ioctl, so it is
+     serialized by the kernel rtnl_lock and hence does not need to be
+     reentrant */
+  static tSirPNOScanReq pnoRequest;
   char *ptr;
   v_U8_t i,j, ucParams, ucMode;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */

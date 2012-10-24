@@ -1727,7 +1727,8 @@ VOS_STATUS hdd_parse_config_ini(hdd_context_t* pHddCtx)
    char *buffer, *line,*pTemp;
    size_t size;
    char *name, *value;
-   tCfgIniEntry cfgIniTable[MAX_CFG_INI_ITEMS];
+   /* cfgIniTable is static to avoid excess stack usage */
+   static tCfgIniEntry cfgIniTable[MAX_CFG_INI_ITEMS];
    VOS_STATUS vos_status = VOS_STATUS_SUCCESS;
 
    memset(cfgIniTable, 0, sizeof(cfgIniTable));

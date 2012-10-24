@@ -1725,7 +1725,7 @@ static void
 __limProcessNeighborReport( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo ,tpPESession psessionEntry )
 {
      tpSirMacMgmtHdr               pHdr;
-     tDot11fNeighborReportResponse frm;
+     tDot11fNeighborReportResponse *pFrm;
      tANI_U32                      frameLen, nStatus;
      tANI_U8                       *pBody;
 
@@ -1733,19 +1733,28 @@ __limProcessNeighborReport( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo ,tpPESes
      pBody = WDA_GET_RX_MPDU_DATA( pRxPacketInfo );
      frameLen = WDA_GET_RX_PAYLOAD_LEN( pRxPacketInfo );
 
+     if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
+                                                 (void **)&pFrm, sizeof(tDot11fNeighborReportResponse)))
+     {
+         limLog(pMac, LOGE, FL("Unable to PAL allocate memory in __limProcessNeighborReport\n") );
+         return;
+     }
+
      if( psessionEntry == NULL )
      {
+          palFreeMemory(pMac->hHdd, pFrm);
           return;
      }
 
      /**Unpack the received frame */
-     nStatus = dot11fUnpackNeighborReportResponse( pMac, pBody, frameLen, &frm );
+     nStatus = dot11fUnpackNeighborReportResponse( pMac, pBody, frameLen,pFrm );
 
      if( DOT11F_FAILED( nStatus )) {
           limLog( pMac, LOGE, FL( "Failed to unpack and parse a Neighbor report response (0x%08x, %d bytes):\n"),
                     nStatus, frameLen );
           PELOG2(sirDumpBuf( pMac, SIR_DBG_MODULE_ID, LOG2, pBody, frameLen );)
-               return;
+          palFreeMemory(pMac->hHdd, pFrm);
+          return;
      }else if ( DOT11F_WARNED( nStatus ) ) {
           limLog(pMac, LOGW, FL( "There were warnings while unpacking a Neighbor report response (0x%08x, %d bytes):\n"),
                     nStatus, frameLen );
@@ -1753,8 +1762,9 @@ __limProcessNeighborReport( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo ,tpPESes
      }
 
      //Call rrm function to handle the request.
-     rrmProcessNeighborReportResponse( pMac, &frm, psessionEntry ); 
-
+     rrmProcessNeighborReportResponse( pMac, pFrm, psessionEntry ); 
+     
+     palFreeMemory(pMac->hHdd, pFrm);
 }
 
 #endif

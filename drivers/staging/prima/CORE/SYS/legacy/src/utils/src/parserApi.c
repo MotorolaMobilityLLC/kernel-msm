@@ -2117,20 +2117,27 @@ sirConvertAssocReqFrame2Struct(tpAniSirGlobal pMac,
                                tANI_U32            nFrame,
                                tpSirAssocReq  pAssocReq)
 {
-    tDot11fAssocRequest ar;
+    tDot11fAssocRequest *ar;
     tANI_U32                 status;
 
-    // Zero-init our [out] parameter,
+    status = palAllocateMemory(pMac->hHdd, (void **)&ar, sizeof(tDot11fAssocRequest));
+    if(!HAL_STATUS_SUCCESS(status))
+    {
+        limLog(pMac, LOGE, FL("Failed to allocate memory\n") );
+        return eSIR_FAILURE;
+    }
+        // Zero-init our [out] parameter,
     palZeroMemory( pMac->hHdd, ( tANI_U8* )pAssocReq, sizeof(tSirAssocReq) );
-    palZeroMemory( pMac->hHdd, ( tANI_U8* )&ar, sizeof( tDot11fAssocRequest ) );
+    palZeroMemory( pMac->hHdd, ( tANI_U8* )ar, sizeof( tDot11fAssocRequest ) );
 
     // delegate to the framesc-generated code,
-    status = dot11fUnpackAssocRequest( pMac, pFrame, nFrame, &ar );
+    status = dot11fUnpackAssocRequest( pMac, pFrame, nFrame, ar );
     if ( DOT11F_FAILED( status ) )
     {
         limLog(pMac, LOGE, FL("Failed to parse an Association Request (0x%08x, %d bytes):\n"),
                   status, nFrame);
         PELOG2(sirDumpBuf(pMac, SIR_DBG_MODULE_ID, LOG2, pFrame, nFrame);)
+        palFreeMemory(pMac->hHdd, ar);
         return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( status ) )
@@ -2146,144 +2153,145 @@ sirConvertAssocReqFrame2Struct(tpAniSirGlobal pMac,
     pAssocReq->reassocRequest = 0;
 
     // Capabilities
-    pAssocReq->capabilityInfo.ess            = ar.Capabilities.ess;
-    pAssocReq->capabilityInfo.ibss           = ar.Capabilities.ibss;
-    pAssocReq->capabilityInfo.cfPollable     = ar.Capabilities.cfPollable;
-    pAssocReq->capabilityInfo.cfPollReq      = ar.Capabilities.cfPollReq;
-    pAssocReq->capabilityInfo.privacy        = ar.Capabilities.privacy;
-    pAssocReq->capabilityInfo.shortPreamble  = ar.Capabilities.shortPreamble;
-    pAssocReq->capabilityInfo.pbcc           = ar.Capabilities.pbcc;
-    pAssocReq->capabilityInfo.channelAgility = ar.Capabilities.channelAgility;
-    pAssocReq->capabilityInfo.spectrumMgt    = ar.Capabilities.spectrumMgt;
-    pAssocReq->capabilityInfo.qos            = ar.Capabilities.qos;
-    pAssocReq->capabilityInfo.shortSlotTime  = ar.Capabilities.shortSlotTime;
-    pAssocReq->capabilityInfo.apsd           = ar.Capabilities.apsd;
-    pAssocReq->capabilityInfo.rrm            = ar.Capabilities.rrm;
-    pAssocReq->capabilityInfo.dsssOfdm       = ar.Capabilities.dsssOfdm;
-    pAssocReq->capabilityInfo.delayedBA       = ar.Capabilities.delayedBA;
-    pAssocReq->capabilityInfo.immediateBA    = ar.Capabilities.immediateBA;
+    pAssocReq->capabilityInfo.ess            = ar->Capabilities.ess;
+    pAssocReq->capabilityInfo.ibss           = ar->Capabilities.ibss;
+    pAssocReq->capabilityInfo.cfPollable     = ar->Capabilities.cfPollable;
+    pAssocReq->capabilityInfo.cfPollReq      = ar->Capabilities.cfPollReq;
+    pAssocReq->capabilityInfo.privacy        = ar->Capabilities.privacy;
+    pAssocReq->capabilityInfo.shortPreamble  = ar->Capabilities.shortPreamble;
+    pAssocReq->capabilityInfo.pbcc           = ar->Capabilities.pbcc;
+    pAssocReq->capabilityInfo.channelAgility = ar->Capabilities.channelAgility;
+    pAssocReq->capabilityInfo.spectrumMgt    = ar->Capabilities.spectrumMgt;
+    pAssocReq->capabilityInfo.qos            = ar->Capabilities.qos;
+    pAssocReq->capabilityInfo.shortSlotTime  = ar->Capabilities.shortSlotTime;
+    pAssocReq->capabilityInfo.apsd           = ar->Capabilities.apsd;
+    pAssocReq->capabilityInfo.rrm            = ar->Capabilities.rrm;
+    pAssocReq->capabilityInfo.dsssOfdm       = ar->Capabilities.dsssOfdm;
+    pAssocReq->capabilityInfo.delayedBA       = ar->Capabilities.delayedBA;
+    pAssocReq->capabilityInfo.immediateBA    = ar->Capabilities.immediateBA;
 
     // Listen Interval
-    pAssocReq->listenInterval = ar.ListenInterval.interval;
+    pAssocReq->listenInterval = ar->ListenInterval.interval;
 
     // SSID
-    if ( ar.SSID.present )
+    if ( ar->SSID.present )
     {
         pAssocReq->ssidPresent = 1;
-        ConvertSSID( pMac, &pAssocReq->ssId, &ar.SSID );
+        ConvertSSID( pMac, &pAssocReq->ssId, &ar->SSID );
     }
 
     // Supported Rates
-    if ( ar.SuppRates.present )
+    if ( ar->SuppRates.present )
     {
         pAssocReq->suppRatesPresent = 1;
-        ConvertSuppRates( pMac, &pAssocReq->supportedRates, &ar.SuppRates );
+        ConvertSuppRates( pMac, &pAssocReq->supportedRates, &ar->SuppRates );
     }
 
     // Extended Supported Rates
-    if ( ar.ExtSuppRates.present )
+    if ( ar->ExtSuppRates.present )
     {
         pAssocReq->extendedRatesPresent = 1;
-        ConvertExtSuppRates( pMac, &pAssocReq->extendedRates, &ar.ExtSuppRates );
+        ConvertExtSuppRates( pMac, &pAssocReq->extendedRates, &ar->ExtSuppRates );
     }
 
     // QOS Capabilities:
-    if ( ar.QOSCapsStation.present )
+    if ( ar->QOSCapsStation.present )
     {
         pAssocReq->qosCapabilityPresent = 1;
-        ConvertQOSCapsStation( pMac, &pAssocReq->qosCapability, &ar.QOSCapsStation );
+        ConvertQOSCapsStation( pMac, &pAssocReq->qosCapability, &ar->QOSCapsStation );
     }
 
     // WPA
-    if ( ar.WPAOpaque.present )
+    if ( ar->WPAOpaque.present )
     {
         pAssocReq->wpaPresent = 1;
-        ConvertWPAOpaque( pMac, &pAssocReq->wpa, &ar.WPAOpaque );
+        ConvertWPAOpaque( pMac, &pAssocReq->wpa, &ar->WPAOpaque );
     }
 
     // RSN
-    if ( ar.RSNOpaque.present )
+    if ( ar->RSNOpaque.present )
     {
         pAssocReq->rsnPresent = 1;
-        ConvertRSNOpaque( pMac, &pAssocReq->rsn, &ar.RSNOpaque );
+        ConvertRSNOpaque( pMac, &pAssocReq->rsn, &ar->RSNOpaque );
     }
 
     // WSC IE
-    if (ar.WscIEOpaque.present)
+    if (ar->WscIEOpaque.present) 
     {
         pAssocReq->addIEPresent = 1;
-        ConvertWscOpaque(pMac, &pAssocReq->addIE, &ar.WscIEOpaque);
+        ConvertWscOpaque(pMac, &pAssocReq->addIE, &ar->WscIEOpaque);
     }
 
 
 #ifdef WLAN_FEATURE_P2P
-    if(ar.P2PIEOpaque.present)
+    if(ar->P2PIEOpaque.present)
     {
         pAssocReq->addIEPresent = 1;
-        ConvertP2POpaque( pMac, &pAssocReq->addIE, &ar.P2PIEOpaque);
+        ConvertP2POpaque( pMac, &pAssocReq->addIE, &ar->P2PIEOpaque);
     }
 #endif
-
 #ifdef WLAN_FEATURE_WFD
-    if(ar.WFDIEOpaque.present)
+    if(ar->WFDIEOpaque.present)
     {
         pAssocReq->addIEPresent = 1;
-        ConvertWFDOpaque( pMac, &pAssocReq->addIE, &ar.WFDIEOpaque);
+        ConvertWFDOpaque( pMac, &pAssocReq->addIE, &ar->WFDIEOpaque);
     }
 #endif
 
     // Power Capabilities
-    if ( ar.PowerCaps.present )
+    if ( ar->PowerCaps.present )
     {
         pAssocReq->powerCapabilityPresent     = 1;
-        ConvertPowerCaps( pMac, &pAssocReq->powerCapability, &ar.PowerCaps );
+        ConvertPowerCaps( pMac, &pAssocReq->powerCapability, &ar->PowerCaps );
     }
 
     // Supported Channels
-    if ( ar.SuppChannels.present )
+    if ( ar->SuppChannels.present )
     {
         pAssocReq->supportedChannelsPresent = 1;
-        ConvertSuppChannels( pMac, &pAssocReq->supportedChannels, &ar.SuppChannels );
+        ConvertSuppChannels( pMac, &pAssocReq->supportedChannels, &ar->SuppChannels );
     }
 
-    if ( ar.HTCaps.present )
+    if ( ar->HTCaps.present )
     {
-        palCopyMemory( pMac, &pAssocReq->HTCaps, &ar.HTCaps, sizeof( tDot11fIEHTCaps ) );
+        palCopyMemory( pMac, &pAssocReq->HTCaps, &ar->HTCaps, sizeof( tDot11fIEHTCaps ) );
     }
 
-    if ( ar.WMMInfoStation.present )
+    if ( ar->WMMInfoStation.present )
     {
         pAssocReq->wmeInfoPresent = 1;
 #ifdef WLAN_SOFTAP_FEATURE
-        palCopyMemory( pMac, &pAssocReq->WMMInfoStation, &ar.WMMInfoStation, sizeof( tDot11fIEWMMInfoStation ) );
+        palCopyMemory( pMac, &pAssocReq->WMMInfoStation, &ar->WMMInfoStation, sizeof( tDot11fIEWMMInfoStation ) );
 #endif
 
     }
 
 
-    if ( ar.WMMCaps.present ) pAssocReq->wsmCapablePresent = 1;
+    if ( ar->WMMCaps.present ) pAssocReq->wsmCapablePresent = 1;
 
     if ( ! pAssocReq->ssidPresent )
     {
         PELOG2(limLog(pMac, LOG2, FL("Received Assoc without SSID IE.\n"));)
+        palFreeMemory(pMac->hHdd, ar);
         return eSIR_FAILURE;
     }
 
     if ( !pAssocReq->suppRatesPresent && !pAssocReq->extendedRatesPresent )
     {
         PELOG2(limLog(pMac, LOG2, FL("Received Assoc without supp rate IE.\n"));)
+        palFreeMemory(pMac->hHdd, ar);
         return eSIR_FAILURE;
     }
 
 #ifdef WLAN_FEATURE_11AC
-    if ( ar.VHTCaps.present )
+    if ( ar->VHTCaps.present )
     {
-        palCopyMemory( pMac, &pAssocReq->VHTCaps, &ar.VHTCaps, sizeof( tDot11fIEVHTCaps ) );
+        palCopyMemory( pMac, &pAssocReq->VHTCaps, &ar->VHTCaps, sizeof( tDot11fIEVHTCaps ) );
         limLog( pMac, LOGW, FL("Received Assoc Req with VHT Cap\n"));
         limLogVHTCap( pMac, &pAssocReq->VHTCaps);
     }
 #endif
-
+    palFreeMemory(pMac->hHdd, ar);
     return eSIR_SUCCESS;
 
 } // End sirConvertAssocReqFrame2Struct.

@@ -298,8 +298,8 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     tpSirAssocRsp         pAssocRsp;
     tLimMlmAssocCnf       mlmAssocCnf;
     
-    #ifdef ANI_PRODUCT_TYPE_CLIENT
-    tSchBeaconStruct beaconStruct;
+#ifdef ANI_PRODUCT_TYPE_CLIENT
+    tSchBeaconStruct *pBeaconStruct;
 #endif
 
     //Initialize status code to success.
@@ -310,6 +310,13 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     /* Update PE session Id*/
     mlmAssocCnf.sessionId = psessionEntry->peSessionId;
 
+    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
+                                                (void **)&pBeaconStruct, sizeof(tSchBeaconStruct)))
+    {
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessAssocRspFrame\n") );
+        return;
+    }
+
    
     if (psessionEntry->limSystemRole == eLIM_AP_ROLE || psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE )
     {
@@ -319,6 +326,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
                FL("received Re/Assoc response frame on role %d \n"),
                psessionEntry->limSystemRole);
 
+        palFreeMemory(pMac->hHdd, pBeaconStruct);
         return;
     }
 
@@ -348,7 +356,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
                FL("received Re/Assoc rsp frame in unexpected state\n"));
             limPrintMlmState(pMac, LOGE, psessionEntry->limMlmState);
         }
-
+        palFreeMemory(pMac->hHdd, pBeaconStruct);
         return;
     }
 #if 0
@@ -357,6 +365,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     {
         /// Could not get BSSID from CFG. Log error.
         limLog(pMac, LOGP, FL("could not retrieve BSSID\n"));
+        palFreeMemory(pMac->hHdd, pBeaconStruct);
         return;
     }
 #endif //TO SUPPORT BT-AMP
@@ -376,7 +385,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
             PELOGW(limLog(pMac, LOGW,
                    FL("received AssocRsp frame from unexpected peer "MAC_ADDRESS_STR),
                    MAC_ADDR_ARRAY(pHdr->sa));)
-
+            palFreeMemory(pMac->hHdd, pBeaconStruct);
             return;
         }
     }
@@ -394,6 +403,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
             PELOGW(limLog(pMac, LOGW,
                    FL("received ReassocRsp frame from unexpected peer "MAC_ADDRESS_STR),
                    MAC_ADDR_ARRAY(pHdr->sa));)
+            palFreeMemory(pMac->hHdd, pBeaconStruct);
 
             return;
         }
@@ -401,6 +411,8 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
 
    if ( palAllocateMemory(pMac->hHdd, (void **)&pAssocRsp, sizeof(*pAssocRsp)) != eHAL_STATUS_SUCCESS) {
         limLog(pMac, LOGP, FL("Pal Allocate Memory failed in AssocRsp\n"));
+        palFreeMemory(pMac->hHdd, pBeaconStruct);
+
         return;
     }
    
@@ -414,9 +426,10 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         if (palFreeMemory(pMac->hHdd, pAssocRsp) != eHAL_STATUS_SUCCESS) 
         {
             limLog(pMac, LOGP, FL("PalFree Memory failed \n"));
-            return;
         }
         PELOGE(limLog(pMac, LOGE, FL("Parse error Assoc resp subtype %d, length=%d\n"), frameLen,subType);)
+        palFreeMemory(pMac->hHdd, pBeaconStruct);
+
         return;
     }
 
@@ -512,6 +525,8 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         limLog(pMac, LOGE,
                FL("received Re/AssocRsp frame with IBSS capability\n"));
         palFreeMemory(pMac->hHdd, pAssocRsp);
+        palFreeMemory(pMac->hHdd, pBeaconStruct);
+
         return;
     }
 
@@ -522,6 +537,8 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
          * from CFG. Log error.
          */         
         palFreeMemory(pMac->hHdd, pAssocRsp);
+        palFreeMemory(pMac->hHdd, pBeaconStruct);
+
         limLog(pMac, LOGP, FL("could not retrieve Capabilities value\n"));
         return;
     }
@@ -643,6 +660,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
             psessionEntry->limAID = pAssocRsp->aid & 0x3FFF;
 
             limAddFTStaSelf(pMac, (pAssocRsp->aid & 0x3FFF), psessionEntry);
+            palFreeMemory(pMac->hHdd, pBeaconStruct);
 
             return;
         }
@@ -665,6 +683,8 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
             if (limCleanupRxPath(pMac, pStaDs,psessionEntry) != eSIR_SUCCESS)
                 goto assocReject;
         }
+        palFreeMemory(pMac->hHdd, pBeaconStruct);
+
         return;
     }
 
@@ -700,6 +720,8 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         limPostSmeMessage(pMac, LIM_MLM_ASSOC_CNF,
                               (tANI_U32 *) &mlmAssocCnf);
         palFreeMemory(pMac->hHdd, pAssocRsp); 
+        palFreeMemory(pMac->hHdd, pBeaconStruct);
+
         return;
     }
    
@@ -714,13 +736,13 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     limExtractApCapabilities( pMac,
                             (tANI_U8 *) psessionEntry->pLimJoinReq->bssDescription.ieFields,
                             limGetIElenFromBssDescription( &psessionEntry->pLimJoinReq->bssDescription ),
-                            &beaconStruct );
+                            pBeaconStruct );
 
     if(pMac->lim.gLimProtectionControl != WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE)
-        limDecideStaProtectionOnAssoc(pMac, &beaconStruct, psessionEntry);
+        limDecideStaProtectionOnAssoc(pMac, pBeaconStruct, psessionEntry);
     
-    if(beaconStruct.erpPresent) {
-        if (beaconStruct.erpIEInfo.barkerPreambleMode)
+    if(pBeaconStruct->erpPresent) {
+        if (pBeaconStruct->erpIEInfo.barkerPreambleMode)
             psessionEntry->beaconParams.fShortPreamble = false;
         else
             psessionEntry->beaconParams.fShortPreamble = true;
@@ -728,10 +750,11 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
 
 
      //Update the BSS Entry, this entry was added during preassoc.
-    if( eSIR_SUCCESS == limStaSendAddBss( pMac, pAssocRsp,  &beaconStruct,
+    if( eSIR_SUCCESS == limStaSendAddBss( pMac, pAssocRsp,  pBeaconStruct,
                    &psessionEntry->pLimJoinReq->bssDescription, true, psessionEntry))  
     {
         palFreeMemory(pMac->hHdd, pAssocRsp);   
+        palFreeMemory(pMac->hHdd, pBeaconStruct);
         return;
     }
     else
@@ -794,7 +817,7 @@ assocReject:
     /* notify TL that association is failed so that TL can flush the cached frame  */
     WLANTL_AssocFailed (psessionEntry->staId);
 
-
+    palFreeMemory(pMac->hHdd, pBeaconStruct);
     palFreeMemory(pMac->hHdd, pAssocRsp);      
     return;
 } /*** end limProcessAssocRspFrame() ***/
