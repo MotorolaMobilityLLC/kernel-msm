@@ -127,6 +127,15 @@ typedef struct sCsr11rAssocNeighborInfo
  * NEIGHBOR_LOOKUP_THRESHOLD_INCREMENT_CONSTANT) */
 #define NEIGHBOR_LOOKUP_THRESHOLD_INCREMENT_CONSTANT    5
 #define LOOKUP_THRESHOLD_INCREMENT_MULTIPLIER_MAX       4
+/* 
+ * For every scan that results in no candidates, double the scan periodicity 
+ * (initialized to NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN) until we hit 
+ * NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX (60s). Subsequently, scan every 
+ * 60s if we continue to find no candidates. Once a candidate is found, 
+ * the periodicity is reset back to NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN.
+ */
+#define NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN (1000)
+#define NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX (60000)
 
 /* Complete control information for neighbor roam algorithm */
 typedef struct sCsrNeighborRoamControlInfo
@@ -141,7 +150,6 @@ typedef struct sCsrNeighborRoamControlInfo
     tCsrTimerInfo               neighborScanTimerInfo;
     tCsrNeighborRoamChannelInfo roamChannelInfo;
     tANI_U8                     currentNeighborLookupThreshold;
-    tANI_U8                     currentLookupIncrementMultiplier;
     tANI_BOOLEAN                scanRspPending;
     tANI_TIMESTAMP              scanRequestTimeStamp;
     tDblLinkList                roamableAPList;    // List of current FT candidates
@@ -156,6 +164,7 @@ typedef struct sCsrNeighborRoamControlInfo
     tANI_BOOLEAN                isVOAdmitted;
     tANI_U32                    MinQBssLoadRequired;
 #endif
+    tANI_U16                    currentScanResultsRefreshPeriod;
 } tCsrNeighborRoamControlInfo, *tpCsrNeighborRoamControlInfo;
 
 

@@ -1357,7 +1357,7 @@ WDA_DS_TxFrames
     {
       VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
                    "WDA : Pushing a packet to WDI failed.");
-      VOS_ASSERT( 0 );
+      VOS_ASSERT( wdiStatus != WDI_STATUS_E_NOT_ALLOWED );
       //We need to free the packet here
       vos_pkt_get_user_data_ptr(pTxPacket, VOS_PKT_USER_DATA_ID_TL, (void **)&pfnTxComp);
       if(pfnTxComp)
@@ -1412,11 +1412,7 @@ WDA_DS_TxFrames
     {
       VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
                    "WDA : Pushing a packet to WDI failed.");
-      /* TODO Wd should return this packet to VOSS. Otherwise
-         UMAC is going in low resource condition.
-         Who needs to do it? DXE, WDI? 
-         */
-      VOS_ASSERT( 0 );
+      VOS_ASSERT( wdiStatus != WDI_STATUS_E_NOT_ALLOWED );
       //We need to free the packet here
       vos_pkt_get_user_data_ptr(pTxPacket, VOS_PKT_USER_DATA_ID_TL, (void **)&pfnTxComp);
       if(pfnTxComp)

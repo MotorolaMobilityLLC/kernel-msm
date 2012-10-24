@@ -10508,8 +10508,8 @@ WDI_ProcessSetLinkStateReq
 
   if ( NULL == pBSSSes )
   {
-     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
-     "%s: Set link request received outside association session. macBSSID " MAC_ADDRESS_STR,
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO, 
+     "%s: Set link request received outside association session. macBSSID " MAC_ADDRESS_STR, 
      __func__, MAC_ADDR_ARRAY(pwdiSetLinkParams->wdiLinkInfo.macBSSID));
   }
   else
@@ -14672,6 +14672,8 @@ WDI_ProcessDelSTARsp
     pSTATable[wdiDelSTARsp.ucSTAIdx].bcastDpuSignature = WDI_DPU_SELF_STA_DEFAULT_SIG;
     pSTATable[wdiDelSTARsp.ucSTAIdx].bcastMgmtDpuSignature = WDI_DPU_SELF_STA_DEFAULT_SIG;
     pSTATable[wdiDelSTARsp.ucSTAIdx].dpuSig = WDI_DPU_SELF_STA_DEFAULT_SIG;
+
+    pSTATable[wdiDelSTARsp.ucSTAIdx].bssIdx = WDI_BSS_INVALID_IDX;
   }
   else
   {
@@ -21960,17 +21962,15 @@ WDI_PackPreferredNetworkList
    wpt_uint8*                 pSendBuffer           = NULL;
    wpt_uint16                 usDataOffset          = 0;
    wpt_uint16                 usSendSize            = 0;
-   tPrefNetwListParams        pPrefNetwListParams = {0};
+   tpPrefNetwListParams       pPrefNetwListParams   = NULL;
    wpt_uint8 i;
-   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
-
    /*-----------------------------------------------------------------------
      Get message buffer
    -----------------------------------------------------------------------*/
    if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx, WDI_SET_PREF_NETWORK_REQ,
-                         sizeof(pPrefNetwListParams),
+                         sizeof(tPrefNetwListParams),
                          &pSendBuffer, &usDataOffset, &usSendSize))||
-       ( usSendSize < (usDataOffset + sizeof(pPrefNetwListParams) )))
+       ( usSendSize < (usDataOffset + sizeof(tPrefNetwListParams) )))
    {
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
                   "Unable to get send buffer in Set PNO req %x ",
@@ -21979,15 +21979,17 @@ WDI_PackPreferredNetworkList
       return WDI_STATUS_E_FAILURE;
    }
 
+   pPrefNetwListParams = (tpPrefNetwListParams)(pSendBuffer + usDataOffset);
+
    /*-------------------------------------------------------------------------
      Fill prefNetwListParams from pwdiPNOScanReqParams->wdiPNOScanInfo
    -------------------------------------------------------------------------*/
-   pPrefNetwListParams.enable  =
+   pPrefNetwListParams->enable  = 
      pwdiPNOScanReqParams->wdiPNOScanInfo.bEnable;
-   pPrefNetwListParams.modePNO =
+   pPrefNetwListParams->modePNO = 
      pwdiPNOScanReqParams->wdiPNOScanInfo.wdiModePNO;
 
-   pPrefNetwListParams.ucNetworksCount =
+   pPrefNetwListParams->ucNetworksCount = 
      (pwdiPNOScanReqParams->wdiPNOScanInfo.ucNetworksCount <
       WLAN_HAL_PNO_MAX_SUPP_NETWORKS)?
      pwdiPNOScanReqParams->wdiPNOScanInfo.ucNetworksCount :
@@ -21999,47 +22001,47 @@ WDI_PackPreferredNetworkList
                pwdiPNOScanReqParams->wdiPNOScanInfo.wdiModePNO,
                pwdiPNOScanReqParams->wdiPNOScanInfo.ucNetworksCount);
 
-   for ( i = 0; i < pPrefNetwListParams.ucNetworksCount; i++ )
+   for ( i = 0; i < pPrefNetwListParams->ucNetworksCount; i++ )
    {
      /*SSID of the BSS*/
-     pPrefNetwListParams.aNetworks[i].ssId.length
+     pPrefNetwListParams->aNetworks[i].ssId.length
         = pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].ssId.ucLength;
 
-     wpalMemoryCopy( pPrefNetwListParams.aNetworks[i].ssId.ssId,
+     wpalMemoryCopy( pPrefNetwListParams->aNetworks[i].ssId.ssId,
           pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].ssId.sSSID,
-          pPrefNetwListParams.aNetworks[i].ssId.length);
+          pPrefNetwListParams->aNetworks[i].ssId.length);
 
      /*Authentication type for the network*/
-     pPrefNetwListParams.aNetworks[i].authentication =
+     pPrefNetwListParams->aNetworks[i].authentication = 
        (tAuthType)pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].wdiAuth;
 
      /*Encryption type for the network*/
-     pPrefNetwListParams.aNetworks[i].encryption =
+     pPrefNetwListParams->aNetworks[i].encryption = 
        (tEdType)pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].wdiEncryption;
 
      /*Indicate the channel on which the Network can be found
        0 - if all channels */
-     pPrefNetwListParams.aNetworks[i].ucChannelCount =
+     pPrefNetwListParams->aNetworks[i].ucChannelCount =
        (pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].ucChannelCount <
         WLAN_HAL_PNO_MAX_NETW_CHANNELS)?
        pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].ucChannelCount :
         WLAN_HAL_PNO_MAX_NETW_CHANNELS;
 
-     wpalMemoryCopy(pPrefNetwListParams.aNetworks[i].aChannels,
+     wpalMemoryCopy(pPrefNetwListParams->aNetworks[i].aChannels,
                     pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].aChannels,
-                    pPrefNetwListParams.aNetworks[i].ucChannelCount);
+                    pPrefNetwListParams->aNetworks[i].ucChannelCount);
 
      /*Indicates the RSSI threshold for the network to be considered*/
-     pPrefNetwListParams.aNetworks[i].rssiThreshold =
+     pPrefNetwListParams->aNetworks[i].rssiThreshold =
        pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].rssiThreshold;
 
      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                "WDI SET PNO: SSID %d %s",
-               pPrefNetwListParams.aNetworks[i].ssId.length,
-               pPrefNetwListParams.aNetworks[i].ssId.ssId);
+               pPrefNetwListParams->aNetworks[i].ssId.length,
+               pPrefNetwListParams->aNetworks[i].ssId.ssId);
    }
 
-   pPrefNetwListParams.scanTimers.ucScanTimersCount =
+   pPrefNetwListParams->scanTimers.ucScanTimersCount = 
      (pwdiPNOScanReqParams->wdiPNOScanInfo.scanTimers.ucScanTimersCount <
       WLAN_HAL_PNO_MAX_SCAN_TIMERS)?
      pwdiPNOScanReqParams->wdiPNOScanInfo.scanTimers.ucScanTimersCount :
@@ -22047,42 +22049,38 @@ WDI_PackPreferredNetworkList
 
    WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                "WDI SET PNO: Scan timers count %d 24G P %d 5G Probe %d",
-               pPrefNetwListParams.scanTimers.ucScanTimersCount,
+               pPrefNetwListParams->scanTimers.ucScanTimersCount,
                pwdiPNOScanReqParams->wdiPNOScanInfo.us24GProbeSize,
                pwdiPNOScanReqParams->wdiPNOScanInfo.us5GProbeSize);
 
-   for ( i = 0; i < pPrefNetwListParams.scanTimers.ucScanTimersCount; i++   )
+   for ( i = 0; i < pPrefNetwListParams->scanTimers.ucScanTimersCount; i++   )
    {
-     pPrefNetwListParams.scanTimers.aTimerValues[i].uTimerValue  =
+     pPrefNetwListParams->scanTimers.aTimerValues[i].uTimerValue  = 
        pwdiPNOScanReqParams->wdiPNOScanInfo.scanTimers.aTimerValues[i].uTimerValue;
-     pPrefNetwListParams.scanTimers.aTimerValues[i].uTimerRepeat =
+     pPrefNetwListParams->scanTimers.aTimerValues[i].uTimerRepeat = 
        pwdiPNOScanReqParams->wdiPNOScanInfo.scanTimers.aTimerValues[i].uTimerRepeat;
    }
 
    /*Copy the probe template*/
-   pPrefNetwListParams.us24GProbeSize =
+   pPrefNetwListParams->us24GProbeSize = 
      (pwdiPNOScanReqParams->wdiPNOScanInfo.us24GProbeSize<
      WLAN_HAL_PNO_MAX_PROBE_SIZE)?
      pwdiPNOScanReqParams->wdiPNOScanInfo.us24GProbeSize:
      WLAN_HAL_PNO_MAX_PROBE_SIZE;
 
-   wpalMemoryCopy(pPrefNetwListParams.a24GProbeTemplate,
+   wpalMemoryCopy(pPrefNetwListParams->a24GProbeTemplate, 
                   pwdiPNOScanReqParams->wdiPNOScanInfo.a24GProbeTemplate,
-                  pPrefNetwListParams.us24GProbeSize);
+                  pPrefNetwListParams->us24GProbeSize); 
 
-   pPrefNetwListParams.us5GProbeSize =
+   pPrefNetwListParams->us5GProbeSize = 
      (pwdiPNOScanReqParams->wdiPNOScanInfo.us5GProbeSize <
      WLAN_HAL_PNO_MAX_PROBE_SIZE)?
      pwdiPNOScanReqParams->wdiPNOScanInfo.us5GProbeSize:
      WLAN_HAL_PNO_MAX_PROBE_SIZE;
 
-   wpalMemoryCopy(pPrefNetwListParams.a5GProbeTemplate,
+   wpalMemoryCopy(pPrefNetwListParams->a5GProbeTemplate, 
                   pwdiPNOScanReqParams->wdiPNOScanInfo.a5GProbeTemplate,
-                  pPrefNetwListParams.us5GProbeSize);
-
-   /*Pack the buffer*/
-   wpalMemoryCopy( pSendBuffer+usDataOffset, &pPrefNetwListParams,
-                   sizeof(pPrefNetwListParams));
+                  pPrefNetwListParams->us5GProbeSize); 
 
    /*Set the output values*/
    *ppSendBuffer = pSendBuffer;
@@ -22116,17 +22114,16 @@ WDI_PackPreferredNetworkListNew
    wpt_uint8*                 pSendBuffer           = NULL;
    wpt_uint16                 usDataOffset          = 0;
    wpt_uint16                 usSendSize            = 0;
-   tPrefNetwListParamsNew     pPrefNetwListParams;
+   tpPrefNetwListParamsNew    pPrefNetwListParams;
    wpt_uint8 i;
-   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
    /*-----------------------------------------------------------------------
      Get message buffer
    -----------------------------------------------------------------------*/
    if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx, WDI_SET_PREF_NETWORK_REQ,
-                         sizeof(pPrefNetwListParams),
+                         sizeof(tPrefNetwListParamsNew),
                          &pSendBuffer, &usDataOffset, &usSendSize))||
-       ( usSendSize < (usDataOffset + sizeof(pPrefNetwListParams) )))
+       ( usSendSize < (usDataOffset + sizeof(tPrefNetwListParamsNew) )))
    {
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
                   "Unable to get send buffer in Set PNO req %x  ",
@@ -22135,15 +22132,17 @@ WDI_PackPreferredNetworkListNew
       return WDI_STATUS_E_FAILURE;
    }
 
+   pPrefNetwListParams = (tpPrefNetwListParamsNew)(pSendBuffer + usDataOffset);
+
    /*-------------------------------------------------------------------------
      Fill prefNetwListParams from pwdiPNOScanReqParams->wdiPNOScanInfo
    -------------------------------------------------------------------------*/
-   pPrefNetwListParams.enable  =
+   pPrefNetwListParams->enable  = 
      pwdiPNOScanReqParams->wdiPNOScanInfo.bEnable;
-   pPrefNetwListParams.modePNO =
+   pPrefNetwListParams->modePNO = 
      pwdiPNOScanReqParams->wdiPNOScanInfo.wdiModePNO;
 
-   pPrefNetwListParams.ucNetworksCount =
+   pPrefNetwListParams->ucNetworksCount = 
      (pwdiPNOScanReqParams->wdiPNOScanInfo.ucNetworksCount <
       WLAN_HAL_PNO_MAX_SUPP_NETWORKS)?
      pwdiPNOScanReqParams->wdiPNOScanInfo.ucNetworksCount :
@@ -22155,48 +22154,48 @@ WDI_PackPreferredNetworkListNew
                pwdiPNOScanReqParams->wdiPNOScanInfo.wdiModePNO,
                pwdiPNOScanReqParams->wdiPNOScanInfo.ucNetworksCount);
 
-   for ( i = 0; i < pPrefNetwListParams.ucNetworksCount; i++ )
+   for ( i = 0; i < pPrefNetwListParams->ucNetworksCount; i++ )
    {
      /*SSID of the BSS*/
-     pPrefNetwListParams.aNetworks[i].ssId.length
+     pPrefNetwListParams->aNetworks[i].ssId.length
         = pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].ssId.ucLength;
 
-     wpalMemoryCopy( pPrefNetwListParams.aNetworks[i].ssId.ssId,
+     wpalMemoryCopy( pPrefNetwListParams->aNetworks[i].ssId.ssId,
           pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].ssId.sSSID,
-          pPrefNetwListParams.aNetworks[i].ssId.length);
+          pPrefNetwListParams->aNetworks[i].ssId.length);
 
      /*Authentication type for the network*/
-     pPrefNetwListParams.aNetworks[i].authentication =
+     pPrefNetwListParams->aNetworks[i].authentication = 
        (tAuthType)pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].wdiAuth;
 
      /*Encryption type for the network*/
-     pPrefNetwListParams.aNetworks[i].encryption =
+     pPrefNetwListParams->aNetworks[i].encryption = 
        (tEdType)pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].wdiEncryption;
 
      /*SSID bcast type for the network*/
-     pPrefNetwListParams.aNetworks[i].bcastNetworkType =
+     pPrefNetwListParams->aNetworks[i].bcastNetworkType = 
        (tSSIDBcastType)pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].wdiBcastNetworkType;
 
      /*Indicate the channel on which the Network can be found
        0 - if all channels */
-     pPrefNetwListParams.aNetworks[i].ucChannelCount =
+     pPrefNetwListParams->aNetworks[i].ucChannelCount = 
        pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].ucChannelCount;
 
-     wpalMemoryCopy(pPrefNetwListParams.aNetworks[i].aChannels,
+     wpalMemoryCopy(pPrefNetwListParams->aNetworks[i].aChannels,
                     pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].aChannels,
-                    pPrefNetwListParams.aNetworks[i].ucChannelCount);
+                    pPrefNetwListParams->aNetworks[i].ucChannelCount);
 
      /*Indicates the RSSI threshold for the network to be considered*/
-     pPrefNetwListParams.aNetworks[i].rssiThreshold =
+     pPrefNetwListParams->aNetworks[i].rssiThreshold =
        pwdiPNOScanReqParams->wdiPNOScanInfo.aNetworks[i].rssiThreshold;
 
      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
                "WDI SET PNO: SSID %d %s",
-               pPrefNetwListParams.aNetworks[i].ssId.length,
-               pPrefNetwListParams.aNetworks[i].ssId.ssId);
+               pPrefNetwListParams->aNetworks[i].ssId.length,
+               pPrefNetwListParams->aNetworks[i].ssId.ssId);
    }
 
-   pPrefNetwListParams.scanTimers.ucScanTimersCount =
+   pPrefNetwListParams->scanTimers.ucScanTimersCount = 
      (pwdiPNOScanReqParams->wdiPNOScanInfo.scanTimers.ucScanTimersCount <
       WLAN_HAL_PNO_MAX_SCAN_TIMERS)?
      pwdiPNOScanReqParams->wdiPNOScanInfo.scanTimers.ucScanTimersCount :
@@ -22204,42 +22203,39 @@ WDI_PackPreferredNetworkListNew
 
    WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
                "WDI SET PNO: Scan timers count %d 24G P %d 5G Probe %d",
-               pPrefNetwListParams.scanTimers.ucScanTimersCount,
+               pPrefNetwListParams->scanTimers.ucScanTimersCount,
                pwdiPNOScanReqParams->wdiPNOScanInfo.us24GProbeSize,
                pwdiPNOScanReqParams->wdiPNOScanInfo.us5GProbeSize);
 
-   for ( i = 0; i < pPrefNetwListParams.scanTimers.ucScanTimersCount; i++   )
+   for ( i = 0; i < pPrefNetwListParams->scanTimers.ucScanTimersCount; i++   )
    {
-     pPrefNetwListParams.scanTimers.aTimerValues[i].uTimerValue  =
+     pPrefNetwListParams->scanTimers.aTimerValues[i].uTimerValue  = 
        pwdiPNOScanReqParams->wdiPNOScanInfo.scanTimers.aTimerValues[i].uTimerValue;
-     pPrefNetwListParams.scanTimers.aTimerValues[i].uTimerRepeat =
+     pPrefNetwListParams->scanTimers.aTimerValues[i].uTimerRepeat = 
        pwdiPNOScanReqParams->wdiPNOScanInfo.scanTimers.aTimerValues[i].uTimerRepeat;
    }
 
    /*Copy the probe template*/
-   pPrefNetwListParams.us24GProbeSize =
+   pPrefNetwListParams->us24GProbeSize = 
      (pwdiPNOScanReqParams->wdiPNOScanInfo.us24GProbeSize<
      WLAN_HAL_PNO_MAX_PROBE_SIZE)?
      pwdiPNOScanReqParams->wdiPNOScanInfo.us24GProbeSize:
      WLAN_HAL_PNO_MAX_PROBE_SIZE;
 
-   wpalMemoryCopy(pPrefNetwListParams.a24GProbeTemplate,
+   wpalMemoryCopy(pPrefNetwListParams->a24GProbeTemplate, 
                   pwdiPNOScanReqParams->wdiPNOScanInfo.a24GProbeTemplate,
-                  pPrefNetwListParams.us24GProbeSize);
+                  pPrefNetwListParams->us24GProbeSize); 
 
-   pPrefNetwListParams.us5GProbeSize =
+   pPrefNetwListParams->us5GProbeSize = 
      (pwdiPNOScanReqParams->wdiPNOScanInfo.us5GProbeSize <
      WLAN_HAL_PNO_MAX_PROBE_SIZE)?
      pwdiPNOScanReqParams->wdiPNOScanInfo.us5GProbeSize:
      WLAN_HAL_PNO_MAX_PROBE_SIZE;
 
-   wpalMemoryCopy(pPrefNetwListParams.a5GProbeTemplate,
+   wpalMemoryCopy(pPrefNetwListParams->a5GProbeTemplate, 
                   pwdiPNOScanReqParams->wdiPNOScanInfo.a5GProbeTemplate,
-                  pPrefNetwListParams.us5GProbeSize);
+                  pPrefNetwListParams->us5GProbeSize); 
 
-   /*Pack the buffer*/
-   wpalMemoryCopy( pSendBuffer+usDataOffset, &pPrefNetwListParams,
-                   sizeof(pPrefNetwListParams));
 
    /*Set the output values*/
    *ppSendBuffer = pSendBuffer;
@@ -22891,13 +22887,21 @@ WDI_Process8023MulticastListReq
    wpt_uint8*                 pSendBuffer           = NULL;
    wpt_uint16                 usDataOffset          = 0;
    wpt_uint16                 usSendSize            = 0;
-   tHalRcvFltMcAddrListType   rcvFltMcAddrListType;
+   tpHalRcvFltMcAddrListType  pRcvFltMcAddrListType;
    wpt_uint8                  i;
    wpt_uint8                  ucCurrentBSSSesIdx = 0;
    WDI_BSSSessionType*        pBSSSes = NULL;
 
    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
              "%s",__FUNCTION__);
+
+   pRcvFltMcAddrListType = wpalMemoryAllocate(sizeof(tHalRcvFltMcAddrListType)) ;
+   if( NULL == pRcvFltMcAddrListType )
+   {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+                 "Failed to alloc in WDI_Process8023MulticastListReq");
+     return WDI_STATUS_E_FAILURE; 
+   }
 
    /*-------------------------------------------------------------------------
      Sanity check
@@ -22910,6 +22914,7 @@ WDI_Process8023MulticastListReq
    {
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                   "%s: Invalid parameters", __FUNCTION__);
+      wpalMemoryFree(pRcvFltMcAddrListType);
       WDI_ASSERT(0);
       return WDI_STATUS_E_FAILURE;
    }
@@ -22921,7 +22926,8 @@ WDI_Process8023MulticastListReq
    {
        WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                  " %s : Association for this BSSID does not exist",__FUNCTION__);
-       return WDI_STATUS_E_FAILURE;
+       wpalMemoryFree(pRcvFltMcAddrListType);   
+       return WDI_STATUS_E_FAILURE; 
    }
 
    /*-----------------------------------------------------------------------
@@ -22942,24 +22948,25 @@ WDI_Process8023MulticastListReq
       return WDI_STATUS_E_FAILURE;
    }
 
-   rcvFltMcAddrListType.cMulticastAddr =
+   pRcvFltMcAddrListType->cMulticastAddr = 
        pwdiFltPktSetMcListReqParamsType->mcAddrList.ulMulticastAddrCnt;
-   for( i = 0; i < rcvFltMcAddrListType.cMulticastAddr; i++ )
+   for( i = 0; i < pRcvFltMcAddrListType->cMulticastAddr; i++ )
    {
-      wpalMemoryCopy(rcvFltMcAddrListType.multicastAddr[i],
+      wpalMemoryCopy(pRcvFltMcAddrListType->multicastAddr[i],
                  pwdiFltPktSetMcListReqParamsType->mcAddrList.multicastAddr[i],
                  sizeof(tSirMacAddr));
    }
 
-   rcvFltMcAddrListType.bssIdx = pBSSSes->ucBSSIdx;
-   wpalMemoryCopy( pSendBuffer+usDataOffset,
-                   &rcvFltMcAddrListType,
-                   sizeof(rcvFltMcAddrListType));
+   pRcvFltMcAddrListType->bssIdx = pBSSSes->ucBSSIdx;
+   wpalMemoryCopy( pSendBuffer+usDataOffset, 
+                   pRcvFltMcAddrListType, 
+                   sizeof(tHalRcvFltMcAddrListType)); 
 
    pWDICtx->wdiReqStatusCB     = pwdiFltPktSetMcListReqParamsType->wdiReqStatusCB;
    pWDICtx->pReqStatusUserData = pwdiFltPktSetMcListReqParamsType->pUserData;
 
 
+   wpalMemoryFree(pRcvFltMcAddrListType);
    /*-------------------------------------------------------------------------
      Send Get STA Request to HAL
    -------------------------------------------------------------------------*/

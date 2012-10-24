@@ -189,12 +189,12 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     tpSirMacMgmtHdr mac;
     tANI_U16        offset;
     tANI_U8        *ptr;
-    tDot11fBeacon1  bcn1;
-    tDot11fBeacon2  bcn2;
+    tDot11fBeacon1 *pBcn1;
+    tDot11fBeacon2 *pBcn2;
     tANI_U32        i, nStatus, nBytes;
     tANI_U32        wpsApEnable=0, tmp;
 #ifdef WLAN_SOFTAP_FEATURE
-    tDot11fIEWscProbeRes      WscProbeRes;
+    tDot11fIEWscProbeRes      *pWscProbeRes;
 #ifdef WLAN_FEATURE_P2P
     tANI_U8  *pExtraIe = NULL;
     tANI_U32 extraIeLen =0;
@@ -202,6 +202,32 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     tANI_U16 p2pIeOffset = 0;
     tSirRetStatus status = eSIR_SUCCESS;
 #endif
+#endif
+
+    status = palAllocateMemory(pMac->hHdd, (void **)&pBcn1, sizeof(tDot11fBeacon1));
+    if(status != eSIR_SUCCESS)
+    {
+        schLog(pMac, LOGE, FL("Failed to allocate memory\n") );
+        return eSIR_FAILURE;
+    }
+
+    status = palAllocateMemory(pMac->hHdd, (void **)&pBcn2, sizeof(tDot11fBeacon2));
+    if(status != eSIR_SUCCESS)
+    {
+        schLog(pMac, LOGE, FL("Failed to allocate memory\n") );
+        palFreeMemory(pMac->hHdd, pBcn1);
+        return eSIR_FAILURE;
+    }
+
+#ifdef WLAN_SOFTAP_FEATURE
+    status = palAllocateMemory(pMac->hHdd, (void **)&pWscProbeRes, sizeof(tDot11fIEWscProbeRes));
+    if(status != eSIR_SUCCESS)
+    {
+        schLog(pMac, LOGE, FL("Failed to allocate memory\n") );
+        palFreeMemory(pMac->hHdd, pBcn1);
+        palFreeMemory(pMac->hHdd, pBcn2);
+        return eSIR_FAILURE;
+    }
 #endif
 
     PELOG1(schLog(pMac, LOG1, FL("Setting fixed beacon fields\n"));)
@@ -235,24 +261,25 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
      * Now set the beacon body
      */
 
-    palZeroMemory( pMac->hHdd, ( tANI_U8*) &bcn1, sizeof( bcn1 ) );
+    palZeroMemory( pMac->hHdd, ( tANI_U8*) pBcn1, sizeof( tDot11fBeacon1 ) );
 
     // Skip over the timestamp (it'll be updated later).
 
-    bcn1.BeaconInterval.interval = pMac->sch.schObject.gSchBeaconInterval;
-    PopulateDot11fCapabilities( pMac, &bcn1.Capabilities, psessionEntry );
+    pBcn1->BeaconInterval.interval = pMac->sch.schObject.gSchBeaconInterval;
+    PopulateDot11fCapabilities( pMac, &pBcn1->Capabilities, psessionEntry );
     if (psessionEntry->ssidHidden)
     {
-       bcn1.SSID.present = 1; //rest of the fileds are 0 for hidden ssid
+       pBcn1->SSID.present = 1; //rest of the fileds are 0 for hidden ssid
     }
     else
     {
-       PopulateDot11fSSID( pMac, &psessionEntry->ssId, &bcn1.SSID );
+       PopulateDot11fSSID( pMac, &psessionEntry->ssId, &pBcn1->SSID );
     }
 
-    PopulateDot11fSuppRates( pMac, POPULATE_DOT11F_RATES_OPERATIONAL, &bcn1.SuppRates,psessionEntry);
-    PopulateDot11fDSParams( pMac, &bcn1.DSParams, psessionEntry->currentOperChannel, psessionEntry);
-    PopulateDot11fIBSSParams( pMac, &bcn1.IBSSParams,psessionEntry);
+
+    PopulateDot11fSuppRates( pMac, POPULATE_DOT11F_RATES_OPERATIONAL, &pBcn1->SuppRates,psessionEntry);
+    PopulateDot11fDSParams( pMac, &pBcn1->DSParams, psessionEntry->currentOperChannel, psessionEntry);
+    PopulateDot11fIBSSParams( pMac, &pBcn1->IBSSParams,psessionEntry);
 
     offset = sizeof( tAniBeaconStruct );
     ptr    = pMac->sch.schObject.gSchBeaconFrameBegin + offset;
@@ -268,18 +295,23 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
         palZeroMemory( pMac->hHdd, ( tANI_U8* )&(psessionEntry->probeRespFrame), sizeof(psessionEntry->probeRespFrame));
 
         /* Can be efficiently updated whenever new IE added  in Probe response in future */
-        limUpdateProbeRspTemplateIeBitmapBeacon1(pMac,&bcn1,&psessionEntry->DefProbeRspIeBitmap[0],
+        limUpdateProbeRspTemplateIeBitmapBeacon1(pMac,pBcn1,&psessionEntry->DefProbeRspIeBitmap[0],
                                                 &psessionEntry->probeRespFrame);
     }
 #endif
 
-    nStatus = dot11fPackBeacon1( pMac, &bcn1, ptr,
+    nStatus = dot11fPackBeacon1( pMac, pBcn1, ptr,
                                  SCH_MAX_BEACON_SIZE - offset,
                                  &nBytes );
     if ( DOT11F_FAILED( nStatus ) )
     {
       schLog( pMac, LOGE, FL("Failed to packed a tDot11fBeacon1 (0x%0"
                              "8x.).\n"), nStatus );
+      palFreeMemory(pMac->hHdd, pBcn1);
+      palFreeMemory(pMac->hHdd, pBcn2);
+#ifdef WLAN_SOFTAP_FEATURE
+      palFreeMemory(pMac->hHdd, pWscProbeRes);
+#endif
       return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( nStatus ) )
@@ -288,7 +320,7 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
                              "t11fBeacon1 (0x%08x.).\n"), nStatus );
     }
     /*changed  to correct beacon corruption */
-    palZeroMemory( pMac->hHdd, ( tANI_U8*) &bcn2, sizeof( bcn2 ) );
+    palZeroMemory( pMac->hHdd, ( tANI_U8*) pBcn2, sizeof( tDot11fBeacon2 ) );
     pMac->sch.schObject.gSchBeaconOffsetBegin = offset + ( tANI_U16 )nBytes;
     schLog( pMac, LOG1, FL("Initialized beacon begin, offset %d\n"), offset );
 
@@ -297,22 +329,22 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
      */
 
     
-    PopulateDot11fCountry( pMac, &bcn2.Country, psessionEntry);
-    if(bcn1.Capabilities.qos)
+    PopulateDot11fCountry( pMac, &pBcn2->Country, psessionEntry);
+    if(pBcn1->Capabilities.qos)
     {
-        PopulateDot11fEDCAParamSet( pMac, &bcn2.EDCAParamSet, psessionEntry);
+        PopulateDot11fEDCAParamSet( pMac, &pBcn2->EDCAParamSet, psessionEntry);
     }
 
     if(psessionEntry->lim11hEnable)
     {
-      PopulateDot11fPowerConstraints( pMac, &bcn2.PowerConstraints );
-      PopulateDot11fTPCReport( pMac, &bcn2.TPCReport, psessionEntry);
+      PopulateDot11fPowerConstraints( pMac, &pBcn2->PowerConstraints );
+      PopulateDot11fTPCReport( pMac, &pBcn2->TPCReport, psessionEntry);
     }
 
 #ifdef ANI_PRODUCT_TYPE_AP
     if( psessionEntry->lim11hEnable && (eLIM_QUIET_RUNNING == psessionEntry->gLimSpecMgmt.quietState))
     {
-      PopulateDot11fQuiet( pMac, &bcn2.Quiet );
+      PopulateDot11fQuiet( pMac, &pBcn2->Quiet );
     }
 
     /* If 11h is enabled, and AP is in the state of changing either the
@@ -326,55 +358,55 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
          (psessionEntry->gLimSpecMgmt.dot11hChanSwState == eLIM_11H_CHANSW_RUNNING))
 
     {
-      PopulateDot11fChanSwitchAnn( pMac, &bcn2.ChanSwitchAnn, psessionEntry );
-      PopulateDot11fExtChanSwitchAnn(pMac, &bcn2.ExtChanSwitchAnn, psessionEntry );
+      PopulateDot11fChanSwitchAnn( pMac, &pBcn2->ChanSwitchAnn,psessionEntry );
+      PopulateDot11fExtChanSwitchAnn(pMac, &pBcn2->ExtChanSwitchAnn,psessionEntry);
     }
 #endif
 
     if (psessionEntry->dot11mode != WNI_CFG_DOT11_MODE_11B)
-        PopulateDot11fERPInfo( pMac, &bcn2.ERPInfo, psessionEntry );
+        PopulateDot11fERPInfo( pMac, &pBcn2->ERPInfo, psessionEntry );
 
     if(psessionEntry->htCapability)
     {
-        PopulateDot11fHTCaps( pMac, psessionEntry, &bcn2.HTCaps );
+        PopulateDot11fHTCaps( pMac,psessionEntry, &pBcn2->HTCaps );
 #ifdef WLAN_SOFTAP_FEATURE
-        PopulateDot11fHTInfo( pMac, &bcn2.HTInfo, psessionEntry );
+        PopulateDot11fHTInfo( pMac, &pBcn2->HTInfo, psessionEntry );
 #else
-        PopulateDot11fHTInfo( pMac, &bcn2.HTInfo );
+        PopulateDot11fHTInfo( pMac, &pBcn2->HTInfo );
 #endif
     }
 #ifdef WLAN_FEATURE_11AC
     if(psessionEntry->vhtCapability)
     {        
         limLog( pMac, LOGW, FL("Populate VHT IEs in Beacon\n"));
-        PopulateDot11fVHTCaps( pMac, &bcn2.VHTCaps );
-        PopulateDot11fVHTOperation( pMac, &bcn2.VHTOperation);
+        PopulateDot11fVHTCaps( pMac, &pBcn2->VHTCaps );
+        PopulateDot11fVHTOperation( pMac, &pBcn2->VHTOperation);
         // we do not support multi users yet
         //PopulateDot11fVHTExtBssLoad( pMac, &bcn2.VHTExtBssLoad);
     }
 #endif
 
     PopulateDot11fExtSuppRates( pMac, POPULATE_DOT11F_RATES_OPERATIONAL,
-                                &bcn2.ExtSuppRates, psessionEntry );
+                                &pBcn2->ExtSuppRates, psessionEntry );
  
     if( psessionEntry->pLimStartBssReq != NULL )
     {
           PopulateDot11fWPA( pMac, &psessionEntry->pLimStartBssReq->rsnIE,
-                       &bcn2.WPA );
+                       &pBcn2->WPA );
           PopulateDot11fRSN( pMac, &psessionEntry->pLimStartBssReq->rsnIE,
-                       &bcn2.RSN );
+                       &pBcn2->RSN );
     }
 
     if(psessionEntry->limWmeEnabled)
     {
-        PopulateDot11fWMM( pMac, &bcn2.WMMInfoAp, &bcn2.WMMParams, &bcn2.WMMCaps, psessionEntry);
+        PopulateDot11fWMM( pMac, &pBcn2->WMMInfoAp, &pBcn2->WMMParams, &pBcn2->WMMCaps, psessionEntry);
     }
 #ifdef WLAN_SOFTAP_FEATURE
     if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
     {
         if(psessionEntry->wps_state != SAP_WPS_DISABLED)
         {
-            PopulateDot11fBeaconWPSIEs( pMac, &bcn2.WscBeacon, psessionEntry);            
+            PopulateDot11fBeaconWPSIEs( pMac, &pBcn2->WscBeacon, psessionEntry);            
         }
     }
     else
@@ -387,18 +419,18 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     
     if (wpsApEnable)
     {
-        PopulateDot11fWsc(pMac, &bcn2.WscBeacon);
+        PopulateDot11fWsc(pMac, &pBcn2->WscBeacon);
     }
 
     if (pMac->lim.wscIeInfo.wscEnrollmentState == eLIM_WSC_ENROLL_BEGIN)
     {
-        PopulateDot11fWscRegistrarInfo(pMac, &bcn2.WscBeacon);
+        PopulateDot11fWscRegistrarInfo(pMac, &pBcn2->WscBeacon);
         pMac->lim.wscIeInfo.wscEnrollmentState = eLIM_WSC_ENROLL_IN_PROGRESS;
     }
 
     if (pMac->lim.wscIeInfo.wscEnrollmentState == eLIM_WSC_ENROLL_END)
     {
-        DePopulateDot11fWscRegistrarInfo(pMac, &bcn2.WscBeacon);
+        DePopulateDot11fWscRegistrarInfo(pMac, &pBcn2->WscBeacon);
         pMac->lim.wscIeInfo.wscEnrollmentState = eLIM_WSC_ENROLL_NOOP;
     }
 #ifdef WLAN_SOFTAP_FEATURE    
@@ -410,7 +442,7 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
         && (psessionEntry->proxyProbeRspEn))
     {
         /* Can be efficiently updated whenever new IE added  in Probe response in future */
-        limUpdateProbeRspTemplateIeBitmapBeacon2(pMac,&bcn2,&psessionEntry->DefProbeRspIeBitmap[0],
+        limUpdateProbeRspTemplateIeBitmapBeacon2(pMac,pBcn2,&psessionEntry->DefProbeRspIeBitmap[0],
                                                 &psessionEntry->probeRespFrame);
 
         /* update probe response WPS IE instead of beacon WPS IE
@@ -419,32 +451,37 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
         {
             if(psessionEntry->APWPSIEs.SirWPSProbeRspIE.FieldPresent)
             {
-                PopulateDot11fProbeResWPSIEs(pMac, &WscProbeRes, psessionEntry);
+                PopulateDot11fProbeResWPSIEs(pMac, pWscProbeRes, psessionEntry);
             }
             else
             {
-                WscProbeRes.present = 0;
+                pWscProbeRes->present = 0;
             }
-            if(WscProbeRes.present)
+            if(pWscProbeRes->present)
             {
                 SetProbeRspIeBitmap(&psessionEntry->DefProbeRspIeBitmap[0],SIR_MAC_WPA_EID);
                 palCopyMemory(pMac->hHdd,
                             (void *)&psessionEntry->probeRespFrame.WscProbeRes,
-                            (void *)&WscProbeRes,
-                            sizeof(WscProbeRes));
+                            (void *)pWscProbeRes,
+                            sizeof(tDot11fIEWscProbeRes));
             }
         }
 
     }
 #endif
 
-    nStatus = dot11fPackBeacon2( pMac, &bcn2,
+    nStatus = dot11fPackBeacon2( pMac, pBcn2,
                                  pMac->sch.schObject.gSchBeaconFrameEnd,
                                  SCH_MAX_BEACON_SIZE, &nBytes );
     if ( DOT11F_FAILED( nStatus ) )
     {
       schLog( pMac, LOGE, FL("Failed to packed a tDot11fBeacon2 (0x%0"
                              "8x.).\n"), nStatus );
+      palFreeMemory(pMac->hHdd, pBcn1);
+      palFreeMemory(pMac->hHdd, pBcn2);
+#ifdef WLAN_SOFTAP_FEATURE
+      palFreeMemory(pMac->hHdd, pWscProbeRes);
+#endif
       return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( nStatus ) )
@@ -488,7 +525,11 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
             pMac->sch.schObject.gSchBeaconOffsetEnd );
 
     pMac->sch.schObject.fBeaconChanged = 1;
-
+    palFreeMemory(pMac->hHdd, pBcn1);
+    palFreeMemory(pMac->hHdd, pBcn2);
+#ifdef WLAN_SOFTAP_FEATURE
+    palFreeMemory(pMac->hHdd, pWscProbeRes);
+#endif
     return eSIR_SUCCESS;
 }
 
