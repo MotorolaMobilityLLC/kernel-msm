@@ -55,7 +55,8 @@
 #define TEMP_IAVG_STORAGE	0x105
 #define TEMP_IAVG_STORAGE_USE_MASK	0x0F
 
-#define CC_RAW_5MAH	0x00110000
+#define PON_CNTRL_6		0x018
+#define WD_BIT		BIT(7)
 
 enum pmic_bms_interrupts {
 	PM8921_BMS_SBI_WRITE_OK,
@@ -158,6 +159,7 @@ struct pm8921_bms_chip {
 	int			wlc_max_voltage_uv;
 	int			(*wlc_is_plugged)(void);
 	int			vbat_at_cv;
+	int			(*is_warm_reset)(void);
 };
 
 /*
@@ -1007,6 +1009,20 @@ static int ocv_ir_compensation(struct pm8921_bms_chip *chip, int ocv)
 	return compensated_ocv;
 }
 
+static bool is_warm_restart(struct pm8921_bms_chip *chip)
+{
+	u8 reg;
+	int rc;
+
+	rc = pm8xxx_readb(chip->dev->parent, PON_CNTRL_6, &reg);
+	if (rc) {
+		pr_err("err reading pon 6 rc = %d\n", rc);
+		return false;
+	}
+
+	return reg & WD_BIT;
+}
+
 static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 				struct pm8921_soc_params *raw)
 {
@@ -1033,10 +1049,9 @@ static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 						raw->last_good_ocv_uv);
 		chip->last_ocv_uv = raw->last_good_ocv_uv;
 
-		if (raw->cc > CC_RAW_5MAH) {
+		if (is_warm_restart(chip)) {
 			shutdown_soc_invalid = 1;
-			pr_info("cc_raw = 0x%x greater than 5mAh 0x%x\n",
-				       raw->cc, CC_RAW_5MAH);
+			pr_info("discard shutdown soc! cc_raw = 0x%x\n", raw->cc);
 		}
 
 		pr_debug("PON_OCV_UV = %d\n", chip->last_ocv_uv);
