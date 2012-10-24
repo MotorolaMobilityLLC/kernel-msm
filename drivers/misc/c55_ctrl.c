@@ -55,6 +55,9 @@ static void c55_ctrl_int_setup(struct c55_ctrl_data *cdata, int gpio)
 
 	pr_debug("%s: Requesting IRQ %d\n", __func__, irq);
 
+	/* Interrupt is shared with user space */
+	flags |= IRQF_SHARED;
+
 	ret = request_threaded_irq(irq, NULL, c55_ctrl_isr,
 				   flags, "c55_ctrl", cdata);
 	if (ret) {
