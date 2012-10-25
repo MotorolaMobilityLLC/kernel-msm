@@ -140,6 +140,7 @@ struct pm8921_bms_platform_data {
 	int				wlc_term_ua;
 	int				wlc_max_voltage_uv;
 	int				(*wlc_is_plugged)(void);
+	int				first_fixed_iavg_ma;
 };
 
 #if defined(CONFIG_PM8921_BMS) || defined(CONFIG_PM8921_BMS_MODULE)
