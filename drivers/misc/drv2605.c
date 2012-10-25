@@ -384,6 +384,12 @@ static void play_effect(struct work_struct *work)
 	drv260x_change_mode(MODE_DEFAULT);
 }
 
+static struct timed_output_dev to_dev = {
+	.name = "vibrator",
+	.get_time = vibrator_get_time,
+	.enable = vibrator_enable,
+};
+
 static int drv260x_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
@@ -482,6 +488,11 @@ static int drv260x_probe(struct i2c_client *client,
 	/* Put hardware in standby */
 	drv260x_change_mode(MODE_DEFAULT);
 
+	if (timed_output_dev_register(&to_dev) < 0) {
+		printk(KERN_ALERT "drv260x: fail to create timed output dev\n");
+		return -ENODEV;
+	}
+
 	printk(KERN_ALERT "drv260x probe succeeded");
 	printk(KERN_ALERT "drv260x driver version: " DRIVER_VERSION);
 	return 0;
@@ -507,12 +518,6 @@ static struct i2c_driver drv260x_driver = {
 	.id_table = drv260x_id_table,
 	.probe = drv260x_probe,
 	.remove = drv260x_remove
-};
-
-static struct timed_output_dev to_dev = {
-	.name = "vibrator",
-	.get_time = vibrator_get_time,
-	.enable = vibrator_enable,
 };
 
 static char read_val;
@@ -680,11 +685,6 @@ static int drv260x_init(void)
 		goto fail6;
 	}
 
-	if (timed_output_dev_register(&to_dev) < 0) {
-		printk(KERN_ALERT "drv260x: fail to create timed output dev\n");
-		goto fail7;
-	}
-
 	hrtimer_init(&vibdata.timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	vibdata.timer.function = vibrator_timer_func;
 	INIT_WORK(&vibdata.work, vibrator_work);
@@ -696,8 +696,6 @@ static int drv260x_init(void)
 	printk(KERN_ALERT "drv260x: initialized\n");
 	return 0;
 
- fail7:
-	unregister_chrdev_region(drv260x->version, 1);
  fail6:
 	device_destroy(drv260x->class, drv260x->version);
  fail5:
