@@ -1117,7 +1117,7 @@ void hdd_sendMgmtFrameOverMonitorIface( hdd_adapter_t *pMonAdapter,
      skb_reset_mac_header( skb );
      skb->dev = pMonAdapter->dev;
      skb->protocol = eth_type_trans( skb, skb->dev );
-     skb->ip_summed = CHECKSUM_UNNECESSARY;
+     skb->ip_summed = CHECKSUM_NONE;
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
      wake_lock_timeout(&pHddCtx->rx_wake_lock, HDD_WAKE_LOCK_DURATION);
 #endif
@@ -1363,7 +1363,7 @@ static void hdd_wlan_tx_complete( hdd_adapter_t* pAdapter,
     pos++;
 
     skb_set_mac_header( skb, 0 );
-    skb->ip_summed = CHECKSUM_UNNECESSARY;
+    skb->ip_summed = CHECKSUM_NONE;
     skb->pkt_type  = PACKET_OTHERHOST;
     skb->protocol  = htons(ETH_P_802_2);
     memset( skb->cb, 0, sizeof( skb->cb ) );
