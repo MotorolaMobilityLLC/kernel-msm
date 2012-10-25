@@ -25,6 +25,7 @@
 #include <linux/nfc/pn544-mot.h>
 #include <linux/drv2605.h>
 #include <linux/tpa6165a2.h>
+#include <linux/leds-lm3556.h>
 
 #define MELFAS_TOUCH_SCL_GPIO       17
 #define MELFAS_TOUCH_SDA_GPIO       16
@@ -205,6 +206,26 @@ static int __init s5k5b3g_init_i2c_device(struct i2c_board_info *info,
                                           struct device_node *node)
 {
 	info->platform_data = &msm_camera_sensor_s5k5b3g_data;
+	return 0;
+}
+
+struct lm3556_platform_data cam_flash_3556;
+static int __init lm3556_init_i2c_device(struct i2c_board_info *info,
+                                          struct device_node *node)
+{
+	int len = 0;
+	const void *prop;
+
+	prop = of_get_property(node, "enable_gpio", &len);
+	if (prop && (len == sizeof(u32)))
+		cam_flash_3556.hw_enable = *(u32 *)prop;
+
+	prop = of_get_property(node, "current_cntrl_reg_val", &len);
+	if (prop && (len == sizeof(u8)))
+		cam_flash_3556.current_cntrl_reg_def = *(u8 *)prop;
+
+	info->platform_data = &cam_flash_3556;
+
 	return 0;
 }
 
@@ -531,6 +552,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00030018, aic3253_init_i2c_device}, /* TI aic3253 audio codec Driver */
 	{0x0003001A, tpa6165a2_init_i2c_device}, /* TI headset Det/amp Driver */
 	{0x00090007, s5k5b3g_init_i2c_device}, /* Samsung 2MP Bayer */
+	{0x000B0006, lm3556_init_i2c_device}, /* National LM3556 LED Flash */
 };
 
 static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device)
