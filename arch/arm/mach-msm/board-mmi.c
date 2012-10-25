@@ -158,6 +158,7 @@ static struct platform_device *mmi_devices[] __initdata = {
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
 	&mmi_ram_console_device,
 #endif
+	&mmi_pm8xxx_rgb_leds_device,
 };
 
 static void __init mmi_factory_register(void)
