@@ -14,6 +14,10 @@
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/leds-pmic8058.h>
+#ifdef CONFIG_LEDS_LM3556
+#include <linux/leds-lm3556.h>
+#endif
+
 #include <linux/pwm.h>
 #include <linux/pmic8058-pwm.h>
 #include <linux/hrtimer.h>
@@ -159,6 +163,40 @@ static int config_flash_gpio_table(enum msm_cam_flash_stat stat,
 	}
 	return rc;
 }
+
+#ifdef CONFIG_LEDS_LM3556
+static int msm_camera_flash_led_lm3556(
+	unsigned int led_state)
+{
+	int rc = 0;
+
+	switch (led_state) {
+
+	case MSM_CAMERA_LED_INIT:
+		rc = 0;
+		break;
+
+	case MSM_CAMERA_LED_HIGH:
+		rc = lm3556_enable_strobe_mode();
+		break;
+
+	case MSM_CAMERA_LED_LOW:
+		rc = lm3556_enable_torch_mode();
+		break;
+
+	case MSM_CAMERA_LED_RELEASE:
+	case MSM_CAMERA_LED_OFF:
+		rc = lm3556_disable_mode();
+		break;
+
+	default:
+		rc = 0;
+		break;
+	}
+
+	return rc;
+}
+#endif
 
 int msm_camera_flash_current_driver(
 	struct msm_camera_sensor_flash_current_driver *current_driver,
@@ -566,6 +604,12 @@ int32_t msm_camera_flash_set_led_state(
 		return -ENODEV;
 
 	switch (fdata->flash_src->flash_sr_type) {
+#ifdef CONFIG_LEDS_LM3556
+	case MSM_CAMERA_FLASH_SRC_LED:
+		msm_camera_flash_led_lm3556(led_state);
+		rc = 0;
+		break;
+#endif
 	case MSM_CAMERA_FLASH_SRC_PMIC:
 		rc = msm_camera_flash_pmic(&fdata->flash_src->_fsrc.pmic_src,
 			led_state);
@@ -581,13 +625,13 @@ int32_t msm_camera_flash_set_led_state(
 			&fdata->flash_src->_fsrc.current_driver_src,
 			led_state);
 		break;
-
+#ifdef CONFIG_MSM_CAMERA_FLASH_SC628A
 	case MSM_CAMERA_FLASH_SRC_EXT:
 		rc = msm_camera_flash_external(
 			&fdata->flash_src->_fsrc.ext_driver_src,
 			led_state);
 		break;
-
+#endif
 	case MSM_CAMERA_FLASH_SRC_LED1:
 		rc = msm_camera_flash_led(
 				&fdata->flash_src->_fsrc.ext_driver_src,
