@@ -15,6 +15,8 @@
 #define __ARCH_ARM_MACH_MSM_DEVICES_MMI_H
 #include "devices.h"
 
+extern struct platform_device mmi_msm8960_device_qup_i2c_gsbi4;
+
 extern struct platform_device mmi_msm8960_device_uart_gsbi2;
 extern struct platform_device mmi_msm8960_device_uart_gsbi5;
 extern struct platform_device mmi_msm8960_device_uart_dm5;
