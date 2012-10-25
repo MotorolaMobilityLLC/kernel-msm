@@ -129,9 +129,7 @@
 #define DEVICE_ORIEN_ROLL		0x53
 #define CAL_STATUS			0x55
 
-#define CURRENT_PRESSURE		0x56
-
-#define CURRENT_ALTITUDE		0x58
+#define CURRENT_PRESSURE		0x66
 
 #define ALS_LUX				0x6A
 
@@ -179,13 +177,7 @@ struct msp430_data {
 	struct wake_lock wakelock;
 
 	int hw_initialized;
-	int acc_poll_interval;
-	int motion_poll_interval;
-	int env_poll_interval;
-	int mag_poll_interval;
-	int gyro_poll_interval;
-	int monitor_poll_interval;
-	int orin_poll_interval;
+
 	atomic_t enabled;
 	int irq;
 	unsigned int current_addr;
@@ -463,6 +455,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 	int err;
 	unsigned char irq_status, irq2_status;
 	signed short xyz[7];
+	int pressure;
 	struct msp430_data *ps_msp430 = container_of(work,
 			struct msp430_data, irq_work);
 
@@ -513,7 +506,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		msp_cmdbuff[0] = MAG_HX;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 13);
 		if (err < 0) {
-			pr_err("MSP430 Reading Ecompass from msp failed\n");
+			pr_err("MSP430 Reading Ecompass failed\n");
 			goto EXIT;
 		}
 		xyz[0] =  (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
@@ -540,7 +533,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		msp_cmdbuff[0] = GYRO_X;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 6);
 		if (err < 0) {
-			pr_err("MSP430 Reading Gyroscope from msp failed\n");
+			pr_err("MSP430 Reading Gyroscope failed\n");
 			goto EXIT;
 		}
 		xyz[0] = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
@@ -583,7 +576,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		msp_cmdbuff[0] = TEMPERATURE_DATA;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
 		if (err < 0) {
-			pr_err("MSP430 Reading Temperature from msp failed\n");
+			pr_err("MSP430 Reading Temperature failed\n");
 			goto EXIT;
 		}
 		xyz[0] = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
@@ -591,6 +584,21 @@ static void msp430_irq_work_func(struct work_struct *work)
 		input_report_abs(ps_msp430->input_dev, ABS_THROTTLE, xyz[0]);
 		input_sync(ps_msp430->input_dev);
 		KDEBUG("MSP430 Sending temp(x)value: %d\n", xyz[0]);
+	}
+	if (irq_status & M_PRESSURE) {
+		/*Read pressure value */
+		msp_cmdbuff[0] = CURRENT_PRESSURE;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 4);
+		if (err < 0) {
+			pr_err("MSP430 Reading Pressure failed\n");
+			goto EXIT;
+		}
+		pressure = (msp_cmdbuff[0] << 24) | (msp_cmdbuff[1] << 16) |
+				(msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
+
+		input_report_abs(ps_msp430->input_dev, ABS_PRESSURE, pressure);
+		input_sync(ps_msp430->input_dev);
+		KDEBUG("MSP430 Sending pressure value: %d\n", pressure);
 	}
 	if (irq2_status & M_MMOVEME) {
 		/* Client recieving action will be upper 2 MSB of status */
@@ -610,7 +618,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		msp_cmdbuff[0] = RADIAL_NORTHING;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 4);
 		if (err < 0) {
-			pr_err("MSP430 Reading from msp failed\n");
+			pr_err("MSP430 Reading Radial movement failed\n");
 			goto EXIT;
 		}
 		xyz[0] = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
@@ -891,47 +899,6 @@ static int msp430_test_write_read(struct msp430_data *ps_msp430,
 	return err;
 }
 
-
-static int msp430_set_sea_level_pressure(struct msp430_data *ps_msp430,
-				void __user *argp)
-{
-	int err = 0;
-	short seaLevelPressure = 0;
-	KDEBUG("MSP430 Setting sea level pressure: ");
-	if (copy_from_user(&seaLevelPressure, argp, sizeof(seaLevelPressure))) {
-		pr_err("copy from user returned error\n");
-		return -EFAULT;
-	}
-	KDEBUG("MSP430 %d\n", seaLevelPressure);
-	msp_cmdbuff[0] = PRESSURE_SEA_LEVEL;
-	msp_cmdbuff[1] = (unsigned char)((seaLevelPressure >> 8) & 0xff);
-	msp_cmdbuff[2] = (unsigned char)((seaLevelPressure) & 0xff);
-	err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
-	if (err < -1)
-		pr_err("MSP430 Failed to write sea level pressure\n");
-	return err;
-}
-
-static int msp430_set_ref_altitude(struct msp430_data *ps_msp430,
-				void __user *argp)
-{
-	int err = 0;
-	short ref_altitude;
-	KDEBUG("MSP430 Setting reference altitude: ");
-	if (copy_from_user(&ref_altitude, argp, sizeof(ref_altitude))) {
-		pr_err("copy from user returned error\n");
-		return -EFAULT;
-	}
-	KDEBUG("MSP430 %d\n", ref_altitude);
-	msp_cmdbuff[0] = CURRENT_ALTITUDE;
-	msp_cmdbuff[1] = (unsigned char)((ref_altitude >> 8) & 0xff);
-	msp_cmdbuff[2] = (unsigned char)((ref_altitude) & 0xff);
-	err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
-	if (err < -1)
-		pr_err("MSP430 Failed to write reference altitude\n");
-	return err;
-}
-
 static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		unsigned long arg)
 {
@@ -963,7 +930,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case MSP430_IOCTL_SETSTARTADDR:
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			pr_err("copy from user returned error\n");
+			pr_err("copy start address returned error\n");
 			return -EFAULT;
 		}
 		/* store the start addr */
@@ -977,7 +944,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case MSP430_IOCTL_TEST_WRITE:
 		if (copy_from_user(&byte, argp, sizeof(unsigned char))) {
-			pr_err("copy from user returned error\n");
+			pr_err("copy test write returned error\n");
 			return -EFAULT;
 		}
 		err = msp430_i2c_write(ps_msp430, &byte, 1);
@@ -989,53 +956,71 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 	case MSP430_IOCTL_SET_ACC_DELAY:
 		delay = 0;
 		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			KDEBUG("copy from user returned error\n");
+			KDEBUG("copy acc delay returned error\n");
 			return -EFAULT;
 		}
-		ps_msp430->acc_poll_interval = (int)delay;
 		msp_cmdbuff[0] = ACCEL_UPDATE_RATE;
-		msp_cmdbuff[1] = ps_msp430->acc_poll_interval;
+		msp_cmdbuff[1] = delay;
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 
 	case MSP430_IOCTL_SET_MAG_DELAY:
 		delay = 0;
 		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			KDEBUG("copy from user returned error\n");
+			KDEBUG("copy mag delay returned error\n");
 			return -EFAULT;
 		}
-		ps_msp430->mag_poll_interval = (int)delay;
 		msp_cmdbuff[0] = MAG_UPDATE_RATE;
-		msp_cmdbuff[1] = ps_msp430->mag_poll_interval;
+		msp_cmdbuff[1] = delay;
+		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
+		break;
+	case MSP430_IOCTL_SET_GYRO_DELAY:
+		delay = 0;
+		if (copy_from_user(&delay, argp, sizeof(delay))) {
+			KDEBUG("copy gyro delay returned error\n");
+			return -EFAULT;
+		}
+		msp_cmdbuff[0] = GYRO_UPDATE_RATE;
+		msp_cmdbuff[1] = delay;
+		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
+		break;
+	case MSP430_IOCTL_SET_PRES_DELAY:
+		delay = 0;
+		if (copy_from_user(&delay, argp, sizeof(delay))) {
+			KDEBUG("copy pres delay returned error\n");
+			return -EFAULT;
+		}
+		msp_cmdbuff[0] = PRESSURE_UPDATE_RATE;
+		msp_cmdbuff[1] = delay;
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 	case MSP430_IOCTL_SET_SENSORS:
-		delay = 0;
-		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			KDEBUG("copy from user returned error\n");
+		byte = 0;
+		if (copy_from_user(&byte, argp, sizeof(byte))) {
+			KDEBUG("copy set sensors returned error\n");
 			return -EFAULT;
 		}
 		msp_cmdbuff[0] = MODULE_CONFIG;
-		msp_cmdbuff[1] = delay;
+		msp_cmdbuff[1] = byte;
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		/* save sensor state any time this changes */
-		g_sensor_state =  delay;
+		g_sensor_state =  byte;
 		break;
 	case MSP430_IOCTL_GET_SENSORS:
 		msp_cmdbuff[0] = MODULE_CONFIG;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
 		if (err < 0) {
-			pr_err("MSP430 Reading from msp failed\n");
+			pr_err("MSP430 Reading get sensors failed\n");
 			break;
 		}
-		delay = msp_cmdbuff[0];
-		if (copy_to_user(argp, &delay, sizeof(delay)))
+		byte = msp_cmdbuff[0];
+		if (copy_to_user(argp, &byte, sizeof(byte)))
 			return -EFAULT;
 		break;
 	case MSP430_IOCTL_SET_ALGOS:
 		byte = 0;
 		if (copy_from_user(&byte, argp, sizeof(byte))) {
-			KDEBUG("copy from user returned error\n");
+			KDEBUG("copy set algos returned error\n");
 			return -EFAULT;
 		}
 		msp_cmdbuff[0] = ALGO_CONFIG;
@@ -1046,7 +1031,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		msp_cmdbuff[0] = ALGO_CONFIG;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
 		if (err < 0) {
-			pr_err("MSP430 Reading from msp failed\n");
+			pr_err("MSP430 Reading get algos failed\n");
 			break;
 		}
 		byte = msp_cmdbuff[0];
@@ -1056,7 +1041,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 	case MSP430_IOCTL_SET_RADIAL_THR:
 		byte = 0;
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			KDEBUG("copy from user returned error\n");
+			KDEBUG("copy set radial thr returned error\n");
 			return -EFAULT;
 		}
 		msp_cmdbuff[0] = RADIAL_THR;
@@ -1067,7 +1052,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 	case MSP430_IOCTL_SET_RADIAL_DUR:
 		byte = 0;
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			KDEBUG("copy from user returned error\n");
+			KDEBUG("copy set radial dur returned error\n");
 			return -EFAULT;
 		}
 		msp_cmdbuff[0] = RADIAL_DUR;
@@ -1077,14 +1062,14 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case MSP430_IOCTL_SET_MOTION_THR:
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			KDEBUG("copy from user returned error\n");
+			KDEBUG("copy set motion thr returned error\n");
 			return -EFAULT;
 		}
 		byte = addr >> 8;
 		if (byte < sizeof(msp_motion_thr_a))
 			msp_cmdbuff[0] = msp_motion_thr_a[byte];
 		else {
-			KDEBUG("invalid arg passed in\n");
+			KDEBUG("invalid motion thr arg passed in\n");
 			return -EFAULT;
 		}
 		msp_cmdbuff[1] = addr & 0xFF;
@@ -1092,14 +1077,14 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case MSP430_IOCTL_SET_MOTION_DUR:
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			KDEBUG("copy from user returned error\n");
+			KDEBUG("copy set motion dur returned error\n");
 			return -EFAULT;
 		}
 		byte = addr >> 8;
 		if (byte < sizeof(msp_motion_dur_a))
 			msp_cmdbuff[0] = msp_motion_dur_a[byte];
 		else {
-			KDEBUG("invalid arg passed in\n");
+			KDEBUG("invalid set motion dur arg passed in\n");
 			return -EFAULT;
 		}
 		msp_cmdbuff[1] = addr & 0xFF;
@@ -1107,14 +1092,14 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case MSP430_IOCTL_SET_ZRMOTION_THR:
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			KDEBUG("copy from user returned error\n");
+			KDEBUG("copy zmotion thr returned error\n");
 			return -EFAULT;
 		}
 		byte = addr >> 8;
 		if (byte < sizeof(msp_zrmotion_thr_a))
 			msp_cmdbuff[0] = msp_zrmotion_thr_a[byte];
 		else {
-			KDEBUG("invalid arg passed in\n");
+			KDEBUG("invalid zmotion thr arg passed in\n");
 			return -EFAULT;
 		}
 		msp_cmdbuff[1] = addr & 0xFF;
@@ -1122,14 +1107,14 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case MSP430_IOCTL_SET_ZRMOTION_DUR:
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			KDEBUG("copy from user returned error\n");
+			KDEBUG("copy zmotion dur returned error\n");
 			return -EFAULT;
 		}
 		byte = addr >> 8;
 		if (byte < sizeof(msp_zrmotion_dur_a))
 			msp_cmdbuff[0] = msp_zrmotion_dur_a[byte];
 		else {
-			KDEBUG("invalid arg passed in\n");
+			KDEBUG("invalid zmotion dur arg passed in\n");
 			return -EFAULT;
 		}
 		msp_cmdbuff[1] = addr & 0xFF;
@@ -1147,17 +1132,9 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 	case MSP430_IOCTL_SET_DEBUG:
 		/* enable or disble msp driver debug messages */
 		if (copy_from_user(&g_debug, argp, sizeof(g_debug))) {
-			KDEBUG("copy from user returned error\n");
+			KDEBUG("copy set debug state returned error\n");
 			return -EFAULT;
 		}
-		break;
-
-	case MSP430_IOCTL_SET_SEA_LEVEL_PRESSURE:
-		err = msp430_set_sea_level_pressure(ps_msp430, argp);
-		break;
-
-	case MSP430_IOCTL_SET_REF_ALTITUDE:
-		err = msp430_set_ref_altitude(ps_msp430, argp);
 		break;
 
 	case MSP430_IOCTL_SET_DOCK_STATUS:
@@ -1360,13 +1337,6 @@ static int msp430_probe(struct i2c_client *client,
 
 	ps_msp430->client = client;
 	ps_msp430->mode = UNINITIALIZED;
-	ps_msp430->acc_poll_interval = 0;
-	ps_msp430->mag_poll_interval = 0;
-	ps_msp430->gyro_poll_interval = 0;
-	ps_msp430->orin_poll_interval = 0;
-	ps_msp430->env_poll_interval = 0;
-	ps_msp430->motion_poll_interval = 0;
-	ps_msp430->monitor_poll_interval = 0;
 
 
 	/* Set to passive mode by default */
