@@ -17,11 +17,14 @@
 #include <linux/w1-gpio.h>
 #include <linux/platform_data/mmi-factory.h>
 #include <linux/platform_data/ram_console.h>
+#include <linux/leds-pwm-gpio.h>
 
 #include <mach/board.h>
 #include <mach/dma.h>
 #include <mach/irqs-8960.h>
 #include <mach/msm_iomap-8960-mmi.h>
+
+#include "board-8960.h"
 
 static struct resource resources_uart_gsbi2[] = {
 	{
@@ -152,6 +155,50 @@ struct platform_device mmi_w1_gpio_device = {
 	.name	= "w1-gpio",
 	.dev	= {
 		.platform_data = &mmi_w1_gpio_device_pdata,
+	},
+};
+
+static struct led_pwm_gpio pm8xxx_pwm_gpio_leds[] = {
+	[0] = {
+		.name			= "red",
+		.default_trigger	= "none",
+		.pwm_id = 0,
+		.gpio = PM8921_GPIO_PM_TO_SYS(24),
+		.active_low = 0,
+		.retain_state_suspended = 1,
+		.default_state = 0,
+	},
+	[1] = {
+		.name			= "green",
+		.default_trigger	= "none",
+		.pwm_id = 1,
+		.gpio = PM8921_GPIO_PM_TO_SYS(25),
+		.active_low = 0,
+		.retain_state_suspended = 1,
+		.default_state = 0,
+	},
+	[2] = {
+		.name			= "blue",
+		.default_trigger	= "none",
+		.pwm_id = 2,
+		.gpio = PM8921_GPIO_PM_TO_SYS(26),
+		.active_low = 0,
+		.retain_state_suspended = 1,
+		.default_state = 0,
+	},
+};
+
+static struct led_pwm_gpio_platform_data pm8xxx_rgb_leds_pdata = {
+	.num_leds = ARRAY_SIZE(pm8xxx_pwm_gpio_leds),
+	.leds = pm8xxx_pwm_gpio_leds,
+	.max_brightness = LED_FULL,
+};
+
+struct platform_device mmi_pm8xxx_rgb_leds_device = {
+	.name	= "pm8xxx_rgb_leds",
+	.id	= -1,
+	.dev	= {
+		.platform_data = &pm8xxx_rgb_leds_pdata,
 	},
 };
 
