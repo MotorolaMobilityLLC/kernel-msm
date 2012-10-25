@@ -809,9 +809,10 @@ static void panel_set_backlight(struct msm_fb_data_type *mfd)
 	pr_debug("%s(idx=%d)\n", __func__, (s32)idx);
 	set_brightness_cmds[0].payload = getGamma(idx);
 
-	mutex_lock(&mfd->dma->ov_mutex);
 	/* Todo: add 50us delay between frame and cmd or between frames */
 	mipi_mot_mipi_busy_wait(mfd);
+
+	mutex_lock(&mfd->dma->ov_mutex);
 	mipi_set_tx_power_mode(0);
 	mipi_dsi_cmds_tx(dsi_tx_buf, set_brightness_cmds,
 			ARRAY_SIZE(set_brightness_cmds));
