@@ -138,7 +138,7 @@ struct pm8921_bms_chip {
 	unsigned long		tm_sec;
 	int			enable_fcc_learning;
 	int			shutdown_soc;
-	int			shutdown_iavg_ua;
+	int			shutdown_iavg_ma;
 	struct delayed_work	calculate_soc_delayed_work;
 	struct timespec		t_soc_queried;
 	int			shutdown_soc_valid_limit;
@@ -160,6 +160,7 @@ struct pm8921_bms_chip {
 	int			(*wlc_is_plugged)(void);
 	int			vbat_at_cv;
 	int			(*is_warm_reset)(void);
+	int			first_fixed_iavg_ma;
 };
 
 /*
@@ -1396,13 +1397,13 @@ static int calculate_unusable_charge_uah(struct pm8921_bms_chip *chip,
 
 	/*
 	 * if we are called first time fill all the
-	 * samples with the the shutdown_iavg_ua
+	 * samples with the the shutdown_iavg_ma
 	 */
-	if (firsttime && chip->shutdown_iavg_ua != 0) {
-		pr_emerg("Using shutdown_iavg_ua = %d in all samples\n",
-				chip->shutdown_iavg_ua);
+	if (firsttime && chip->shutdown_iavg_ma != 0) {
+		pr_emerg("Using shutdown_iavg_ma = %d in all samples\n",
+				chip->shutdown_iavg_ma);
 		for (i = 0; i < IAVG_SAMPLES; i++)
-			iavg_samples[i] = chip->shutdown_iavg_ua;
+			iavg_samples[i] = chip->shutdown_iavg_ma;
 
 		iavg_index = 0;
 		iavg_num_samples = IAVG_SAMPLES;
@@ -1901,14 +1902,14 @@ static void read_shutdown_soc_and_iavg(struct pm8921_bms_chip *chip)
 	if (rc) {
 		pr_err("failed to read addr = %d %d assuming %d\n",
 				TEMP_IAVG_STORAGE, rc, IAVG_START);
-		chip->shutdown_iavg_ua = IAVG_START;
+		chip->shutdown_iavg_ma = IAVG_START;
 	} else {
 		temp &= TEMP_IAVG_STORAGE_USE_MASK;
 
 		if (temp == 0) {
-			chip->shutdown_iavg_ua = IAVG_START;
+			chip->shutdown_iavg_ma = IAVG_START;
 		} else {
-			chip->shutdown_iavg_ua = IAVG_START
+			chip->shutdown_iavg_ma = IAVG_START
 					+ IAVG_STEP_SIZE_MA * (temp + 1);
 		}
 	}
@@ -1922,7 +1923,7 @@ static void read_shutdown_soc_and_iavg(struct pm8921_bms_chip *chip)
 		if (chip->shutdown_soc == 0) {
 			pr_debug("No shutdown soc available\n");
 			shutdown_soc_invalid = 1;
-			chip->shutdown_iavg_ua = 0;
+			chip->shutdown_iavg_ma = 0;
 		} else if (chip->shutdown_soc == SOC_ZERO) {
 			chip->shutdown_soc = 0;
 		}
@@ -1931,12 +1932,16 @@ static void read_shutdown_soc_and_iavg(struct pm8921_bms_chip *chip)
 	if (chip->ignore_shutdown_soc) {
 		shutdown_soc_invalid = 1;
 		chip->shutdown_soc = 0;
-		chip->shutdown_iavg_ua = 0;
+		chip->shutdown_iavg_ma = 0;
+	}
+
+	if (chip->first_fixed_iavg_ma && !chip->ignore_shutdown_soc) {
+		chip->shutdown_iavg_ma = chip->first_fixed_iavg_ma;
 	}
 
 	pr_debug("shutdown_soc = %d shutdown_iavg = %d shutdown_soc_invalid = %d\n",
 			chip->shutdown_soc,
-			chip->shutdown_iavg_ua,
+			chip->shutdown_iavg_ma,
 			shutdown_soc_invalid);
 }
 
@@ -2170,9 +2175,13 @@ static int calculate_state_of_charge(struct pm8921_bms_chip *chip,
 
 		chip->pon_ocv_uv = chip->last_ocv_uv;
 		chip->last_ocv_uv = new_ocv;
-		remaining_charge_uah = new_rc_uah;
 		unusable_charge_uah = new_ucc_uah;
 		rbatt = new_rbatt;
+
+		if ((new_rc_uah - remaining_charge_uah) > fcc_uah*5/100)
+			remaining_charge_uah = new_rc_uah - fcc_uah*1/100;
+		else
+			remaining_charge_uah = new_rc_uah;
 
 		remaining_usable_charge_uah = remaining_charge_uah
 					- cc_uah
@@ -3364,6 +3373,7 @@ static int __devinit pm8921_bms_probe(struct platform_device *pdev)
 		chip->wlc_is_plugged = pdata->wlc_is_plugged;
 	}
 	chip->vbat_at_cv = -EINVAL;
+	chip->first_fixed_iavg_ma = pdata->first_fixed_iavg_ma;
 
 	mutex_init(&chip->calib_mutex);
 	INIT_WORK(&chip->calib_hkadc_work, calibrate_hkadc_work);
