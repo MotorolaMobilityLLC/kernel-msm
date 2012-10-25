@@ -58,4 +58,7 @@
 #define MSM_GSBI12_QUP_PHYS     (MSM_GSBI12_PHYS + 0x20000)
 #define MSM_QUP_SIZE            SZ_4K
 
+#define MSM_GSBI4_I2C_SDA	20
+#define MSM_GSBI4_I2C_CLK	21
+
 #endif
