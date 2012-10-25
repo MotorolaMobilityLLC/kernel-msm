@@ -432,7 +432,8 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
                 limLog(pMac, LOG3, FL("SSID %s, CH in ProbeRsp %d, CH in BD %d, miss-match, Do Not Drop"),
                                        pBPR->ssId.ssId,
                                        rxChannelInBeacon,
-                                       limGetChannelFromBeacon(pMac, pBPR));
+                                       WDA_GET_RX_CH(pRxPacketInfo));
+                WDA_GET_RX_CH(pRxPacketInfo) = rxChannelInBeacon;
              }
           }
        }
