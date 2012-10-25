@@ -501,6 +501,7 @@ apq8064_pm8921_bms_pdata __devinitdata = {
 	.wlc_term_ua = 110000,
 	.wlc_max_voltage_uv = 4290000,
 	.wlc_is_plugged  = wireless_charger_is_plugged,
+	.first_fixed_iavg_ma  = 500,
 };
 
 /* battery data */
