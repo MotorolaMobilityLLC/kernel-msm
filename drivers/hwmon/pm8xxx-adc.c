@@ -549,21 +549,14 @@ static void pm8xxx_adc_btm_cool_scheduler_fn(struct work_struct *work)
 	spin_unlock_irqrestore(&adc_pmic->btm_lock, flags);
 }
 
-void trigger_completion(struct work_struct *work)
-{
-	struct pm8xxx_adc *adc_8xxx = pmic_adc;
-
-	complete(&adc_8xxx->adc_rslt_completion);
-}
-DECLARE_WORK(trigger_completion_work, trigger_completion);
-
 static irqreturn_t pm8xxx_adc_isr(int irq, void *dev_id)
 {
+	struct pm8xxx_adc *adc_8xxx = pmic_adc;
 
 	if (pm8xxx_adc_calib_first_adc)
 		return IRQ_HANDLED;
 
-	schedule_work(&trigger_completion_work);
+	complete_all(&adc_8xxx->adc_rslt_completion);
 
 	return IRQ_HANDLED;
 }
