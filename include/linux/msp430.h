@@ -36,23 +36,23 @@
 #define MSP430_IOCTL_TEST_WRITE_READ	\
 		_IOWR(MSP430_IOCTL_BASE, 6, unsigned short)
 #define MSP430_IOCTL_SET_MAG_DELAY	\
-		_IOW(MSP430_IOCTL_BASE, 7, unsigned char)
+		_IOW(MSP430_IOCTL_BASE, 7, unsigned short)
 #define MSP430_IOCTL_TEST_BOOTMODE	\
 		_IOW(MSP430_IOCTL_BASE, 8, unsigned char)
 #define MSP430_IOCTL_SET_ACC_DELAY	\
-		_IOW(MSP430_IOCTL_BASE, 9, unsigned char)
+		_IOW(MSP430_IOCTL_BASE, 9,  unsigned short)
 #define MSP430_IOCTL_SET_MOTION_DELAY	\
 		_IOW(MSP430_IOCTL_BASE, 10, unsigned char)
-#define MSP430_IOCTL_SET_ENV_DELAY	\
-		_IOW(MSP430_IOCTL_BASE, 11, unsigned char)
+#define MSP430_IOCTL_SET_GYRO_DELAY	\
+		_IOW(MSP430_IOCTL_BASE, 11, unsigned short)
 #define MSP430_IOCTL_SET_DEBUG	\
 		_IOW(MSP430_IOCTL_BASE, 12, unsigned char)
 #define MSP430_IOCTL_SET_USER_PROFILE	\
 		_IOW(MSP430_IOCTL_BASE, 13, int)
 #define MSP430_IOCTL_SET_GPS_DATA	\
 		_IOW(MSP430_IOCTL_BASE, 14, int)
-#define MSP430_IOCTL_SET_SEA_LEVEL_PRESSURE	\
-		_IOW(MSP430_IOCTL_BASE, 15, int)
+#define MSP430_IOCTL_SET_PRES_DELAY	\
+		_IOW(MSP430_IOCTL_BASE, 15, unsigned short)
 #define MSP430_IOCTL_SET_REF_ALTITUDE	\
 		_IOW(MSP430_IOCTL_BASE, 16, int)
 #define MSP430_IOCTL_SET_ACTIVE_MODE	\
@@ -93,7 +93,7 @@
 		_IOW(MSP430_IOCTL_BASE, 34, unsigned int)
 #define MSP430_IOCTL_SET_ZRMOTION_DUR	\
 		_IOW(MSP430_IOCTL_BASE, 35, unsigned int)
-#define MSP430_MAX_PACKET_LENGTH           10
+#define MSP430_MAX_PACKET_LENGTH           250
 
 #ifdef __KERNEL__
 struct msp430_platform_data {
