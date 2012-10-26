@@ -75,6 +75,7 @@
 #define SPS_MIN_XFER_SIZE		MCI_FIFOSIZE
 
 #define MSM_MMC_BUS_VOTING_DELAY	200 /* msecs */
+#define INVALID_TUNING_PHASE		-1
 
 #if defined(CONFIG_DEBUG_FS)
 static void msmsdcc_dbg_createhost(struct msmsdcc_host *);
@@ -1367,6 +1368,9 @@ msmsdcc_data_err(struct msmsdcc_host *host, struct mmc_data *data,
 			|| data->mrq->cmd->opcode == MMC_BUS_TEST_R
 			|| data->mrq->cmd->opcode ==
 				MMC_SEND_TUNING_BLOCK_HS200)) {
+			/* Execute full tuning in case of CRC/timeout errors */
+			host->saved_tuning_phase = INVALID_TUNING_PHASE;
+
 			pr_err("%s: Data CRC error\n",
 			       mmc_hostname(host->mmc));
 			pr_err("%s: opcode 0x%.8x\n", __func__,
@@ -1383,6 +1387,9 @@ msmsdcc_data_err(struct msmsdcc_host *host, struct mmc_data *data,
 		 */
 		if (!(data->mrq->cmd->opcode == MMC_BUS_TEST_W
 			|| data->mrq->cmd->opcode == MMC_BUS_TEST_R)) {
+			/* Execute full tuning in case of CRC/timeout errors */
+			host->saved_tuning_phase = INVALID_TUNING_PHASE;
+
 			pr_err("%s: CMD%d: Data timeout\n",
 				 mmc_hostname(host->mmc),
 				 data->mrq->cmd->opcode);
@@ -1739,6 +1746,8 @@ static void msmsdcc_do_cmdirq(struct msmsdcc_host *host, uint32_t status)
 		pr_err("%s: CMD%d: Command CRC error\n",
 			mmc_hostname(host->mmc), cmd->opcode);
 		msmsdcc_dump_sdcc_state(host);
+		/* Execute full tuning in case of CRC errors */
+		host->saved_tuning_phase = INVALID_TUNING_PHASE;
 		cmd->error = -EILSEQ;
 	}
 
@@ -4040,6 +4049,7 @@ static int msmsdcc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	u8 phase, *data_buf, tuned_phases[16], tuned_phase_cnt = 0;
 	const u32 *tuning_block_pattern = tuning_block_64;
 	int size = sizeof(tuning_block_64); /* Tuning pattern size in bytes */
+	bool is_tuning_all_phases;
 
 	pr_debug("%s: Enter %s\n", mmc_hostname(mmc), __func__);
 
@@ -4073,7 +4083,13 @@ static int msmsdcc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		goto out;
 	}
 
-	phase = 0;
+	is_tuning_all_phases = !(host->mmc->card &&
+		(host->saved_tuning_phase != INVALID_TUNING_PHASE));
+retry:
+	if (is_tuning_all_phases)
+		phase = 0; /* start from phase 0 during init */
+	else
+		phase = (u8)host->saved_tuning_phase;
 	do {
 		struct mmc_command cmd = {0};
 		struct mmc_data data = {0};
@@ -4105,9 +4121,16 @@ static int msmsdcc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		if (!cmd.error && !data.error &&
 			!memcmp(data_buf, tuning_block_pattern, size)) {
 			/* tuning is successful at this tuning point */
+			if (!is_tuning_all_phases)
+				goto kfree;
 			tuned_phases[tuned_phase_cnt++] = phase;
 			pr_debug("%s: %s: found good phase = %d\n",
 				mmc_hostname(mmc), __func__, phase);
+		} else if (!is_tuning_all_phases) {
+			pr_debug("%s: tuning failed at saved phase (%d), retrying\n",
+					mmc_hostname(mmc), (u32)phase);
+			is_tuning_all_phases = true;
+			goto retry;
 		}
 	} while (++phase < 16);
 
@@ -4126,6 +4149,8 @@ static int msmsdcc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		rc = msmsdcc_config_cm_sdc4_dll_phase(host, phase);
 		if (rc)
 			goto kfree;
+		else
+			host->saved_tuning_phase = phase;
 		pr_debug("%s: %s: finally setting the tuning phase to %d\n",
 				mmc_hostname(mmc), __func__, phase);
 	} else {
@@ -5740,6 +5765,7 @@ msmsdcc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to read MCLK\n");
 
 	set_default_hw_caps(host);
+	host->saved_tuning_phase = INVALID_TUNING_PHASE;
 
 	/*
 	 * Set the register write delay according to min. clock frequency
