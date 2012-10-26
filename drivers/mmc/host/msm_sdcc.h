@@ -415,6 +415,7 @@ struct msmsdcc_host {
 	struct device_attribute	max_bus_bw;
 	struct device_attribute	polling;
 	struct device_attribute idle_timeout;
+	int saved_tuning_phase;
 };
 
 #define MSMSDCC_VERSION_STEP_MASK	0x0000FFFF
