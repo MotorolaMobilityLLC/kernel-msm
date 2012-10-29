@@ -48,16 +48,6 @@ extern unsigned int system_rev;
 #define MIPI_CMD_CMI_HD_PANEL_NAME  "mipi_mot_cmd_cmi_hd_430"
 #define HDMI_PANEL_NAME	"hdmi_msm"
 
-/*
- * This is a flag that only be used when bringup a new platform.
- * There is a minimun changes from the MOT display FW and board files are
- * needed turn on the display.
- * The MIPI_MOT_PANEL_PLATF_BRINGUP flag needs to uncomment in
- * arch/arm/mach-msm/board-mmi-display.c & driver/video/msm/mipi_mot_common.c
- * to do this task
- */
-#define MIPI_MOT_PANEL_PLATF_BRINGUP 1
-
 static int  mmi_feature_hdmi = 1;
 static char panel_name[PANEL_NAME_MAX_LEN + 1] = MIPI_VIDEO_SMD_HD_PANEL_NAME;
 
@@ -89,7 +79,6 @@ static int is_auo_hd_450(void)
 				PANEL_NAME_MAX_LEN);
 }
 
-static int mmi_mipi_panel_power_en(int on);
 
 /*
  * - This is a work around for the panel SOL mooth transition feature
@@ -111,7 +100,8 @@ static bool mipi_mot_panel_is_cmd_mode(void)
 
 static bool use_mdp_vsync = MDP_VSYNC_ENABLED;
 
-static int mipi_panel_power(int on);
+static int panel_power_en(int on);
+static int panel_power_ctrl(int on);
 static int mipi_dsi_power(int on)
 {
 	static struct regulator *reg_l23, *reg_l2;
@@ -133,7 +123,7 @@ static int mipi_dsi_power(int on)
 		 *   to trun on the power
 		 */
 		if (mipi_mot_panel_is_cmd_mode())
-			mmi_mipi_panel_power_en(0);
+			panel_power_en(0);
 
 		reg_l23 = regulator_get(&msm_mipi_dsi1_device.dev, "dsi_vddio");
 		if (IS_ERR(reg_l23)) {
@@ -227,14 +217,14 @@ static int mipi_dsi_power(int on)
 	}
 
 #ifdef MIPI_MOT_PANEL_PLATF_BRINGUP
-	mipi_panel_power(on);
+	panel_power_ctrl(on);
 #endif
 	rc = 0;
 end:
 	return rc;
 }
 
-static int mmi_mipi_panel_power_en(int on)
+static int panel_power_en(int on)
 {
 	int rc;
 	static int disp_5v_en, lcd_reset;
@@ -394,7 +384,7 @@ end:
 }
 
 
-static int mipi_panel_power(int on)
+static int panel_power_ctrl(int on)
 {
 	static bool panel_power_on;
 	static struct regulator *reg_vddio, *reg_vci;
@@ -500,10 +490,10 @@ static int mipi_panel_power(int on)
 		}
 	}
 
-	mmi_mipi_panel_power_en(1);
+	panel_power_en(1);
 
 	} else {
-		mmi_mipi_panel_power_en(0);
+		panel_power_en(0);
 
 		if (NULL != reg_vddio) {
 			rc = regulator_disable(reg_vddio);
@@ -606,6 +596,7 @@ void __init mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 	msm_fb_pdata->detect_client = msm_fb_detect_panel;
 	mipi_dsi_pdata->vsync_gpio = MDP_VSYNC_GPIO;
 	mipi_dsi_pdata->dsi_power_save = mipi_dsi_power;
-	mipi_dsi_pdata->panel_power_save = mipi_panel_power;
+	mipi_dsi_pdata->panel_power_save = panel_power_ctrl;
+	mipi_dsi_pdata->panel_power_en = panel_power_en;
 	platform_device_register(&mipi_dsi_mot_panel_device);
 }
