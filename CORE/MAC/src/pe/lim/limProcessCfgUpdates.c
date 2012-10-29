@@ -684,36 +684,7 @@ limApplyConfiguration(tpAniSirGlobal pMac,tpPESession psessionEntry)
 
     limUpdateConfig(pMac,psessionEntry);
 
-    if (phyMode == WNI_CFG_PHY_MODE_11A)
-    {
-        // 11a mode always uses short slot
-        // Check this since some APs in 11a mode broadcast long slot in their beacons. As per standard, always use what PHY mandates.
-        psessionEntry->shortSlotTimeSupported = true;
-    }
-    else if (phyMode == WNI_CFG_PHY_MODE_11G)
-    {
-        if ((psessionEntry->pePersona == VOS_STA_SAP_MODE) ||
-           (psessionEntry->pePersona == VOS_P2P_GO_MODE))
-        {
-            val = 1;
-        }
-
-        // Program Polaris based on AP capability
-
-        if (psessionEntry->limMlmState == eLIM_MLM_WT_JOIN_BEACON_STATE)
-            // Joining BSS.
-            val = SIR_MAC_GET_SHORT_SLOT_TIME( psessionEntry->limCurrentBssCaps);
-        else if (psessionEntry->limMlmState == eLIM_MLM_WT_REASSOC_RSP_STATE)
-            // Reassociating with AP.
-            val = SIR_MAC_GET_SHORT_SLOT_TIME( psessionEntry->limReassocBssCaps);
-        psessionEntry->shortSlotTimeSupported = val;
-    }
-    else // if (phyMode == WNI_CFG_PHY_MODE_11B) - use this if another phymode is added later ON
-    {
-        // Will reach here in 11b case
-        psessionEntry->shortSlotTimeSupported = false;
-    }
-    //apply protection related config.
+    psessionEntry->shortSlotTimeSupported = limGetShortSlotFromPhyMode(pMac, psessionEntry, phyMode);
 
 #ifdef WLAN_SOFTAP_FEATURE
     limSetCfgProtection(pMac, psessionEntry);    
