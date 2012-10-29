@@ -523,6 +523,9 @@ typedef struct
   /*Packet pending flag - set if tx is pending for the station*/
   v_U8_t                        ucPktPending;
   
+  /*EAPOL Packet pending flag - set if EAPOL packet is pending for the station*/
+  v_U8_t                        ucEapolPktPending;
+
   /*used on tx packet to signal when there is no more data to tx for the 
    moment=> packets can be passed to BAL */
   v_U8_t                    ucNoMoreData;

@@ -1222,7 +1222,8 @@ WLANTL_RegisterSTAClient
   pTLCb->atlSTAClients[pwSTADescType->ucSTAId].ucCurrentAC     = WLANTL_AC_VO;
   pTLCb->atlSTAClients[pwSTADescType->ucSTAId].ucCurrentWeight = 0;
   pTLCb->atlSTAClients[pwSTADescType->ucSTAId].ucServicedAC    = WLANTL_AC_BK;
-  
+  pTLCb->atlSTAClients[pwSTADescType->ucSTAId].ucEapolPktPending = 0;
+
   vos_mem_zero( pTLCb->atlSTAClients[pwSTADescType->ucSTAId].aucACMask,
                 sizeof(pTLCb->atlSTAClients[pwSTADescType->ucSTAId].aucACMask)); 
 
@@ -1699,9 +1700,15 @@ WLANTL_STAPktPending
     --------------------------------------------------------------------*/
   pTLCb->ucRegisteredStaId = ucSTAId;
 
-  if( WLANTL_STA_AUTHENTICATED != pTLCb->atlSTAClients[ucSTAId].tlState )
-  {
-    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+  if( WLANTL_STA_CONNECTED == pTLCb->atlSTAClients[ucSTAId].tlState )
+  { /* EAPOL_HI_PRIORITY : need to find out whether EAPOL is pending before
+       WLANTL_FetchPacket()/WLANTL_TxConn() is called.
+       change STA_AUTHENTICATED != tlState to CONNECTED == tlState
+       to make sure TL is indeed waiting for EAPOL.
+       Just in the case when STA got disconnected shortly after connectection */
+    pTLCb->atlSTAClients[ucSTAId].ucEapolPktPending = 1;
+
+    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
       "WLAN TL:Packet pending indication for STA: %d AC: %d State: %d", 
                ucSTAId, ucAc, pTLCb->atlSTAClients[ucSTAId].tlState);
   }
@@ -1713,7 +1720,8 @@ WLANTL_STAPktPending
     through WLANTL_TX_STAID_AC_IND message.
   -----------------------------------------------------------------------*/
 #ifdef WLAN_SOFTAP_FEATURE
-    if (WLAN_STA_SOFTAP != pTLCb->atlSTAClients[ucSTAId].wSTADesc.wSTAType)
+    if ((WLAN_STA_SOFTAP != pTLCb->atlSTAClients[ucSTAId].wSTADesc.wSTAType) &&
+        !(vos_concurrent_sessions_running()))
     {
 #endif
 
@@ -2089,7 +2097,7 @@ WLANTL_TxBAPFrm
                     ucWDSEnabled, extraHeadSpace, pMetaInfo->ucType,
                             &pTLCb->atlSTAClients[ucStaId].wSTADesc.vSelfMACAddress,
                     pMetaInfo->ucTID, 0 /* No ACK */, pMetaInfo->usTimeStamp,
-                    pMetaInfo->ucIsEapol, pMetaInfo->ucUP );
+                    pMetaInfo->ucIsEapol || pMetaInfo->ucIsWai, pMetaInfo->ucUP );
 
   if ( VOS_STATUS_SUCCESS != vosStatus )
   {
@@ -3702,6 +3710,112 @@ WLANTL_GetFrames
         break; /* Out of resources or reached max len */
       }
     }
+#if defined( FEATURE_WLAN_INTEGRATED_SOC )
+    /* note: this feature implemented only after WLAN_INGETRATED_SOC */
+    /* search 'EAPOL_HI_PRIORITY' will show EAPOL HI_PRIORITY change in TL and WDI
+       by default, EAPOL will be treated as higher priority, which means
+       use mgmt_pool and DXE_TX_HI prority channel.
+       this is introduced to address EAPOL failure under high background traffic
+       with multi-channel concurrent mode. But this change works in SCC or standalone, too.
+       see CR#387009 and WCNSOS-8
+     */
+    else if (( WDA_TLI_MIN_RES_MF <= pTLCb->uResCount )&&
+             ( 0 == pTLCb->ucTxSuspended ) &&
+             ( uFlowMask & ( 1 << WDA_TXFLOW_MGMT ) )
+            )
+    {
+        vosTempBuf = NULL;
+        /*---------------------------------------------------------------------
+         Check to see if there was any EAPOL packet is pending
+         *--------------------------------------------------------------------*/
+        for ( i = 0; i < WLAN_MAX_STA_COUNT; i++)
+        {
+           if ((pTLCb->atlSTAClients[i].ucExists) &&
+               (0 == pTLCb->atlSTAClients[i].ucTxSuspended) &&
+               (pTLCb->atlSTAClients[i].ucEapolPktPending)
+               )
+               break;
+        }
+
+        if (i >= WLAN_MAX_STA_COUNT)
+        {
+           /* No More to Serve Exit Get Frames */
+           break;
+        }
+        /* Serve EAPOL frame with HI_FLOW_MASK */
+        ucSTAId = i;
+
+        wSTAEvent = WLANTL_TX_EVENT;
+
+        pfnSTAFsm = tlSTAFsm[pTLCb->atlSTAClients[ucSTAId].tlState].
+                        pfnSTATbl[wSTAEvent];
+
+        if ( NULL != pfnSTAFsm )
+        {
+          pTLCb->atlSTAClients[ucSTAId].ucNoMoreData = 0;
+          vosStatus  = pfnSTAFsm( pvosGCtx, ucSTAId, &vosTempBuf);
+
+          if (( VOS_STATUS_SUCCESS != vosStatus ) &&
+              ( NULL != vosTempBuf ))
+          {
+               pTLCb->atlSTAClients[ucSTAId].pfnSTATxComp( pvosGCtx,
+                                                           vosTempBuf,
+                                                           vosStatus );
+               vosTempBuf = NULL;
+               break;
+          }/* status success*/
+        }
+
+        if (NULL != vosTempBuf)
+        {
+            WDA_TLI_PROCESS_FRAME_LEN( vosTempBuf, usPktLen, uResLen, uTotalPktLen);
+
+            VOS_ASSERT( usPktLen <= WLANTL_MAX_ALLOWED_LEN);
+
+            TLLOG4(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_LOW,
+                      "WLAN TL:Resources needed by frame: %d", uResLen));
+
+            if ( ( pTLCb->uResCount >= (uResLen + WDA_TLI_MIN_RES_MF ) ) &&
+               ( uRemaining > uTotalPktLen )
+               )
+            {
+              TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+                        "WLAN TL:Chaining data frame on GetFrame"));
+
+              vos_pkt_chain_packet( vosDataBuff, vosTempBuf, 1 /*true*/ );
+
+              pTLCb->atlSTAClients[i].ucEapolPktPending = 0;
+
+              VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+                "WLAN TL:GetFrames STA: %d EAPOLPktPending %d",
+                         ucSTAId, pTLCb->atlSTAClients[ucSTAId].ucEapolPktPending);
+
+              /*EAPOL frame cannot be delayed*/
+              pTLCb->bUrgent      = TRUE;
+
+              vosTempBuf =  NULL;
+
+              /*Update remaining len from SSC */
+              uRemaining  -= (usPktLen + WDA_DXE_HEADER_SIZE);
+
+               /*Update resource count */
+              pTLCb->uResCount  -= uResLen;
+
+#ifdef WLAN_SOFTAP_FEATURE
+              //fow control update
+              pTLCb->atlSTAClients[ucSTAId].uIngress_length += uResLen;
+              pTLCb->atlSTAClients[ucSTAId].uBuffThresholdMax = (pTLCb->atlSTAClients[ucSTAId].uBuffThresholdMax >= uResLen) ?
+                (pTLCb->atlSTAClients[ucSTAId].uBuffThresholdMax - uResLen) : 0;
+#endif
+            }
+         }
+         else
+         {  // no EAPOL frames exit Get frames
+            break;
+         }
+    }
+#endif /* FEATURE_WLAN_INTEGRATED_SOC */
+
     else if (( WDA_TLI_MIN_RES_DATA <= pTLCb->uResCount )&&
              ( 0 == pTLCb->ucTxSuspended )
 #if defined( FEATURE_WLAN_INTEGRATED_SOC )
@@ -5852,7 +5966,7 @@ WLANTL_STATxConn
                           extraHeadSpace,
                           ucTypeSubtype, &pTLCb->atlSTAClients[ucSTAId].wSTADesc.vSelfMACAddress,
                           ucTid, HAL_TX_NO_ENCRYPTION_MASK,
-                          tlMetaInfo.usTimeStamp, tlMetaInfo.ucIsEapol, tlMetaInfo.ucUP );
+                          tlMetaInfo.usTimeStamp, tlMetaInfo.ucIsEapol || tlMetaInfo.ucIsWai, tlMetaInfo.ucUP );
 
   if ( VOS_STATUS_SUCCESS != vosStatus )
   {
