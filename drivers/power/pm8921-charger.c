@@ -1864,8 +1864,13 @@ static int get_prop_batt_status(struct pm8921_chg_chip *chip)
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	if (alarm_state == PM_BATT_ALARM_SHUTDOWN)
 		return POWER_SUPPLY_STATUS_NOT_CHARGING;
-	if ((alarm_state == PM_BATT_ALARM_OV) || !(chip->batt_valid))
+	if ((alarm_state == PM_BATT_ALARM_OV) || !(chip->batt_valid)) {
+		/* Set meter_lock to 1 to prevent this message in test cases
+		   where a valid battery is not used. */
+		pr_err("alarm_state=%d,batt_valid=%d\n",
+		       alarm_state, (int)chip->batt_valid);
 		return POWER_SUPPLY_STATUS_UNKNOWN;
+	}
 #endif
 #ifdef CONFIG_PM8921_FLOAT_CHARGE
 	if (chip->bms_notify.is_battery_full)
@@ -1882,7 +1887,12 @@ static int get_prop_batt_status(struct pm8921_chg_chip *chip)
 	for (i = 0; i < ARRAY_SIZE(map); i++)
 		if (map[i].fsm_state == fsm_state)
 			batt_state = map[i].batt_state;
-
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	if (batt_state == POWER_SUPPLY_STATUS_UNKNOWN) {
+		pr_err("fsm_state=%d\n", fsm_state);
+		return POWER_SUPPLY_STATUS_DISCHARGING;
+	}
+#endif
 	if (fsm_state == FSM_STATE_ON_CHG_HIGHI_1) {
 		if (!pm_chg_get_rt_status(chip, BATT_INSERTED_IRQ)
 			|| !pm_chg_get_rt_status(chip, BAT_TEMP_OK_IRQ)
