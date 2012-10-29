@@ -1,6 +1,6 @@
 /* drivers/tty/smux_test.c
  *
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -144,7 +144,7 @@ struct tiocm_test_vector {
 /**
  * Allocates a new buffer for SMUX for every call.
  */
-int get_rx_buffer(void *priv, void **pkt_priv, void **buffer, int size)
+static int get_rx_buffer(void *priv, void **pkt_priv, void **buffer, int size)
 {
 	void *rx_buf;
 
@@ -222,7 +222,7 @@ static int get_rx_buffer_mock(void *priv, void **pkt_priv,
  *
  * @cb  Mock callback data
  */
-void mock_cb_data_init(struct smux_mock_callback *cb)
+static void mock_cb_data_init(struct smux_mock_callback *cb)
 {
 	init_completion(&cb->cb_completion);
 	spin_lock_init(&cb->lock);
@@ -238,7 +238,7 @@ void mock_cb_data_init(struct smux_mock_callback *cb)
  *
  * All packets are freed and counters reset to zero.
  */
-void mock_cb_data_reset(struct smux_mock_callback *cb)
+static void mock_cb_data_reset(struct smux_mock_callback *cb)
 {
 	cb->cb_count = 0;
 	INIT_COMPLETION(cb->cb_completion);
@@ -347,7 +347,7 @@ static int mock_cb_data_print(const struct smux_mock_callback *cb,
  * Mock object event callback.  Used to logs events for analysis in the unit
  * tests.
  */
-void smux_mock_cb(void *priv, int event, const void *metadata)
+static void smux_mock_cb(void *priv, int event, const void *metadata)
 {
 	struct smux_mock_callback *cb_data_ptr;
 	struct mock_write_event *write_event_meta;
@@ -940,7 +940,7 @@ static int smux_ut_ssr_remote_rx_buff_retry(char *buf, int max)
  *
  * @returns pointer to buffer (buf + RED_ZONE_SIZE if redzone enabled)
  */
-uint8_t *test_pattern_fill(char *buf, int len, int redzone)
+static uint8_t *test_pattern_fill(char *buf, int len, int redzone)
 {
 	char *buf_ptr;
 	uint8_t ch;
@@ -968,7 +968,7 @@ uint8_t *test_pattern_fill(char *buf, int len, int redzone)
  *
  * @returns    0 for success; length of error message otherwise
  */
-unsigned test_pattern_verify(char **buf_ptr, int len, int redzone,
+static unsigned test_pattern_verify(char **buf_ptr, int len, int redzone,
 					char *errmsg, int errmsg_max)
 {
 	int n;
