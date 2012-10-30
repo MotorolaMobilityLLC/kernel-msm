@@ -152,6 +152,7 @@ config SND_SOC_MSM8960
 	select SND_SOC_DUAL_AMIC if MACH_APQ8064_MAKO
 	select SND_SOC_TPA2028D if MACH_APQ8064_MAKO
 	select SND_SOC_TLV320AIC3253
+	select SND_SOC_TAS2552
 	default n
 	help
 	 To add support for SoC audio on MSM8960 and APQ8064 boards
