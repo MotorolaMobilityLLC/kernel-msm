@@ -18,7 +18,7 @@
 #include <linux/of.h>
 #include "board-8960.h"
 #include "board-mmi.h"
-
+#include <sound/tlv320aic3253.h>
 #include <linux/input/touch_platform.h>
 #include <linux/melfas100_ts.h>
 #include <linux/msp430.h>
@@ -475,6 +475,36 @@ static int __init tpa6165a2_init_i2c_device(struct i2c_board_info *info,
 	return err;
 }
 
+static struct aic3253_pdata aic_platform_data;
+
+static int __init aic3253_init_i2c_device(struct i2c_board_info *info,
+		struct device_node *node)
+{
+	int rst_gpio;
+	int err;
+	int len;
+	const void *prop;
+
+	info->platform_data = &aic_platform_data;
+	/* irq */
+	prop = of_get_property(node, "reset_gpio", &len);
+	if (!prop || (len != sizeof(u32)))
+		return -EINVAL;
+	rst_gpio = *(u32 *)prop;
+	aic_platform_data.reset_gpio = rst_gpio;
+
+	err = gpio_request(rst_gpio, "aic reset gpio");
+	if (err) {
+		pr_err("aic3253 reset gpio_request failed: %d\n", err);
+		goto err;
+	}
+	/* GPIO will be pulled high by the driver to bring the
+		device out of reset */
+	gpio_direction_output(rst_gpio, 0);
+err:
+	return err;
+}
+
 typedef int (*I2C_INIT_FUNC)(struct i2c_board_info *info,
 			     struct device_node *node);
 
@@ -490,6 +520,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00030015, msp430_init_i2c_device}, /* TI MSP430 */
 	{0x00190001, pn544_init_i2c_device}, /* NXP PN544 */
 	{0x00030017, drv2605_init_i2c_device}, /* TI DRV2605 Haptic driver */
+	{0x00030018, aic3253_init_i2c_device}, /* TI aic3253 audio codec Driver */
 	{0x0003001A, tpa6165a2_init_i2c_device}, /* TI headset Det/amp Driver */
 };
 
