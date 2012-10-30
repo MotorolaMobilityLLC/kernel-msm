@@ -394,7 +394,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        hdd_context_t *pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
 
        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                   "***Received %s cmd from Wi-Fi GUI***", command);
+                  "%s: Received %s cmd from Wi-Fi GUI***", __func__, command);
 
        if (strncmp(command, "P2P_DEV_ADDR", 12) == 0 )
        {
@@ -435,6 +435,11 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 
            }
        }
+       else {
+           hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
+                   __func__, command);
+       }
+
    }
 exit:
    if (command)

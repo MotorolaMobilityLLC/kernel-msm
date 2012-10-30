@@ -103,7 +103,7 @@ static tSirRetStatus
 limGetBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pBssDescription,
                      tANI_S16 rLen, tANI_S16 *lenUsed, tANI_U8 *pBuf)
 {
-    tANI_U16 len = 0;
+    tANI_S16 len = 0;
 
     pBssDescription->length = limGetU16(pBuf);
     pBuf += sizeof(tANI_U16);
@@ -258,12 +258,19 @@ limGetBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pBssDescription,
              sizeof(pBssDescription->fProbeRsp) + 
              sizeof(tANI_U32));
 
-    if (len)
+    if (len > 0)
     {
         palCopyMemory( pMac->hHdd, (tANI_U8 *) pBssDescription->ieFields,
                        pBuf,
                        len);
     }
+    else if (len < 0)
+    {
+        limLog(pMac, LOGE, 
+                     FL("remaining length is negative. len = %d, actual length = %d\n"), 
+                     len, pBssDescription->length);
+        return eSIR_FAILURE;
+    }    
 
     return eSIR_SUCCESS;
 } /*** end limGetBssDescription() ***/
