@@ -1083,7 +1083,7 @@ static int atmxt_register_inputs(struct atmxt_driver_data *dd,
 		dd->rdat->axis[i] = ATMXT_ABS_RESERVED;
 
 	input_set_events_per_packet(dd->in_dev,
-		ATMXT_MAX_TOUCHES * (ARRAY_SIZE(dd->rdat->axis) + 1));
+		(ATMXT_MAX_TOUCHES * (ARRAY_SIZE(dd->rdat->axis) + 1))*2);
 
 	err = input_register_device(dd->in_dev);
 	if (err < 0) {
