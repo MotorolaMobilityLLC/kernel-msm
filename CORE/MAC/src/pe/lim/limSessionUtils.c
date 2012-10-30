@@ -261,6 +261,7 @@ void
 peGetActiveSessionChannel (tpAniSirGlobal pMac, tANI_U8* resumeChannel, ePhyChanBondState* resumePhyCbState)
 {
     tANI_U8 i;
+    ePhyChanBondState prevPhyCbState = PHY_SINGLE_CHANNEL_CENTERED;
 
     // Initialize the pointers passed to INVALID values in case we don't find a valid session
     *resumeChannel = 0;
@@ -283,6 +284,8 @@ peGetActiveSessionChannel (tpAniSirGlobal pMac, tANI_U8* resumeChannel, ePhyChan
                                     &pMac->lim.gpSession[i]);
             }
 #endif
+            *resumePhyCbState = (*resumePhyCbState > prevPhyCbState )? *resumePhyCbState : prevPhyCbState;
+            prevPhyCbState = *resumePhyCbState;
         }
     }
     return;
