@@ -107,6 +107,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_WM9712 if SND_SOC_AC97_BUS
 	select SND_SOC_WM9713 if SND_SOC_AC97_BUS
 	select SND_SOC_TAS2552 if I2C
+	select SND_SOC_TPA6165A2 if I2C
 	select SND_SOC_TIMPANI if MARIMBA_CORE
         help
           Normally ASoC codec drivers are only built if a machine driver which
@@ -468,4 +469,7 @@ config SND_SOC_MSM_HDMI_CODEC_RX
         supports hdmi panel.
 
 config SND_SOC_TAS2552
+	tristate
+
+config SND_SOC_TPA6165A2
 	tristate
