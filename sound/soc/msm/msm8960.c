@@ -26,6 +26,7 @@
 #include <mach/socinfo.h>
 #include <linux/mfd/wcd9xxx/core.h>
 #include "msm-pcm-routing.h"
+#include <sound/msm-dai-q6.h>
 #include "../codecs/wcd9310.h"
 #ifdef CONFIG_SND_SOC_TPA6165A2
 #include "../codecs/tpa6165a2-core.h"
@@ -81,6 +82,12 @@ static int msm8960_btsco_rate = SAMPLE_RATE_8KHZ;
 static int msm8960_btsco_ch = 1;
 
 static int msm8960_auxpcm_rate = SAMPLE_RATE_8KHZ;
+
+#ifdef CONFIG_SND_SOC_TLV320AIC3253
+static struct clk *mi2s_rx_osr_clk;
+static struct clk *mi2s_rx_bit_clk;
+static atomic_t mi2s_rsc_ref;
+#endif
 
 static struct clk *codec_clk;
 static int clk_users;
@@ -1081,6 +1088,144 @@ fail_dout:
 	return ret;
 }
 
+/* Begin MI2S SOC ops Implementation */
+#ifdef CONFIG_SND_SOC_TLV320AIC3253
+static int msm_mi2s_rx_free_gpios(struct gpio *gpios, int num_gpios)
+{
+	gpio_free_array(gpios, num_gpios);
+	return 0;
+}
+
+static int msm_mi2s_rx_hw_params(struct snd_pcm_substream *substream,
+			struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+
+	int ret;
+	int rate = params_rate(params);
+	int bit_clk_set;
+	bit_clk_set = 12288000/(rate * 2 * 16);
+	clk_set_rate(mi2s_rx_bit_clk, bit_clk_set);
+
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, TABLA_EXT_CLK_RATE,
+					SND_SOC_CLOCK_IN);
+	if (ret < 0) {
+		pr_err("can't set rx codec clk configuration\n");
+		return ret;
+	}
+	return 1;
+}
+
+static void msm_mi2s_rx_shutdown(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct msm_mi2s_pdata *pdata = (cpu_dai->dev)->platform_data;
+	if (atomic_dec_return(&mi2s_rsc_ref) == 0) {
+		if (mi2s_rx_bit_clk) {
+			clk_disable_unprepare(mi2s_rx_bit_clk);
+			clk_put(mi2s_rx_bit_clk);
+			mi2s_rx_bit_clk = NULL;
+		}
+		if (mi2s_rx_osr_clk) {
+			clk_disable_unprepare(mi2s_rx_osr_clk);
+			clk_put(mi2s_rx_osr_clk);
+			mi2s_rx_osr_clk = NULL;
+		}
+		msm_mi2s_rx_free_gpios(pdata->gpios, pdata->num_gpios);
+	}
+}
+
+static int configure_mi2s_rx_gpio(struct gpio *gpios, int num_gpios)
+{
+	int ret;
+	ret = gpio_request_array(gpios, num_gpios);
+	if (ret < 0)
+		pr_err("%s:failed to request MI2S Gpios %d",
+						__func__, ret);
+
+	return ret;
+}
+
+static int msm_mi2s_rx_startup(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	struct msm_mi2s_pdata *pdata = (cpu_dai->dev)->platform_data;
+	if (atomic_inc_return(&mi2s_rsc_ref) == 1) {
+		ret = configure_mi2s_rx_gpio(pdata->gpios, pdata->num_gpios);
+		if (ret < 0)
+			goto mi2s_gpio_fail;
+
+		mi2s_rx_osr_clk = clk_get(cpu_dai->dev, "osr_clk");
+		if (IS_ERR(mi2s_rx_osr_clk)) {
+			pr_err("Failed to get mi2s_rx_osr_clk\n");
+			ret = PTR_ERR(mi2s_rx_osr_clk);
+			goto osr_clk_fail;
+		}
+		clk_set_rate(mi2s_rx_osr_clk, TABLA_EXT_CLK_RATE);
+		ret = clk_prepare_enable(mi2s_rx_osr_clk);
+		if (ret != 0) {
+			pr_err("Unable to enable mi2s_rx_osr_clk\n");
+			clk_put(mi2s_rx_osr_clk);
+			mi2s_rx_osr_clk = NULL;
+			goto osr_clk_fail;
+		}
+
+		mi2s_rx_bit_clk = clk_get(cpu_dai->dev, "bit_clk");
+		if (IS_ERR(mi2s_rx_bit_clk)) {
+			pr_err("Failed to get mi2s_osr_clk\n");
+			ret = PTR_ERR(mi2s_rx_bit_clk);
+			goto bit_clk_fail;
+		}
+		/* Actual bit clk rate is set up in hw_param
+		value 8 is arrived from assuming rate to be 48k here */
+		clk_set_rate(mi2s_rx_bit_clk, 8);
+		ret = clk_prepare_enable(mi2s_rx_bit_clk);
+		if (ret != 0) {
+			pr_err("Unable to enable mi2s_rx_bit_clk\n");
+			clk_put(mi2s_rx_bit_clk);
+			mi2s_rx_bit_clk = NULL;
+			goto bit_clk_fail;
+		}
+
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+		if (ret < 0) {
+			pr_err("set format for msm dai failed\n");
+			goto msm_dai_fail;
+		}
+
+		ret = snd_soc_dai_set_fmt(codec_dai,
+			SND_SOC_DAIFMT_CBS_CFS|SND_SOC_DAIFMT_I2S);
+		if (ret < 0) {
+			pr_err("set format for codec dai failed\n");
+			goto codec_dai_fail;
+		}
+	}
+	pr_debug("%s: ret = %d\n", __func__, ret);
+	return ret;
+
+codec_dai_fail:
+msm_dai_fail:
+	clk_disable_unprepare(mi2s_rx_bit_clk);
+	clk_put(mi2s_rx_bit_clk);
+	mi2s_rx_bit_clk = NULL;
+bit_clk_fail:
+	clk_disable_unprepare(mi2s_rx_osr_clk);
+	clk_put(mi2s_rx_osr_clk);
+	mi2s_rx_osr_clk = NULL;
+osr_clk_fail:
+	msm_mi2s_rx_free_gpios(pdata->gpios, pdata->num_gpios);
+mi2s_gpio_fail:
+	atomic_dec(&mi2s_rsc_ref);
+
+	return ret;
+}
+#endif /* End MI2S soc ops functions */
+
 static int msm8960_aux_pcm_free_gpios(void)
 {
 	gpio_free(GPIO_AUX_PCM_DIN);
@@ -1149,6 +1294,14 @@ static struct snd_soc_ops msm8960_slimbus_2_be_ops = {
 	.hw_params = msm8960_slimbus_2_hw_params,
 	.shutdown = msm8960_shutdown,
 };
+
+#ifdef CONFIG_SND_SOC_TLV320AIC3253
+static struct snd_soc_ops msm_mi2s_rx_be_ops = {
+	.startup = msm_mi2s_rx_startup,
+	.shutdown = msm_mi2s_rx_shutdown,
+	.hw_params = msm_mi2s_rx_hw_params,
+};
+#endif
 
 /* Digital audio interface glue - connects codec <---> CPU */
 static struct snd_soc_dai_link msm8960_dai_common[] = {
@@ -1409,6 +1562,21 @@ static struct snd_soc_dai_link msm8960_dai_common[] = {
 		.be_hw_params_fixup = msm8960_hdmi_be_hw_params_fixup,
 		.ignore_pmdown_time = 1, /* this dainlink has playback support */
 	},
+#ifdef CONFIG_SND_SOC_TLV320AIC3253
+	/* MI2S I2S RX BACK END DAI Link */
+	{
+		.name = LPASS_BE_MI2S_RX,
+		.stream_name = "MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "tlv320aic3253.10-0018",
+		.codec_dai_name = "tlv320aic3253_codec",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_MI2S_RX,
+		.be_hw_params_fixup = msm8960_be_hw_params_fixup,
+		.ops = &msm_mi2s_rx_be_ops,
+	},
+#endif
 	/* Backend AFE DAI Links */
 	{
 		.name = LPASS_BE_AFE_PCM_RX,
@@ -1763,6 +1931,9 @@ static int __init msm8960_audio_init(void)
 
 	mutex_init(&cdc_mclk_mutex);
 	atomic_set(&auxpcm_rsc_ref, 0);
+#ifdef CONFIG_SND_SOC_TLV320AIC32
+	atomic_set(&mi2s_rsc_ref, 0);
+#endif
 	return ret;
 
 }
