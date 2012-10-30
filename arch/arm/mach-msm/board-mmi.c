@@ -213,6 +213,7 @@ static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	platform_add_devices(mmi_devices, ARRAY_SIZE(mmi_devices));
 	mmi_audio_dsp_init();
+	mmi_i2s_dai_init();
 	if (mmi_boot_mode_is_factory())
 		mmi_factory_register();
 }

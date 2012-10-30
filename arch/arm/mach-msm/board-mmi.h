@@ -50,5 +50,8 @@ extern void mmi_audio_dsp_init(void);
 /* from board-mmi-regulator.c */
 extern void mmi_regulator_init(struct msm8960_oem_init_ptrs *);
 
+/* from board-mmi-i2s.c */
+extern void mmi_i2s_dai_init(void);
+
 #endif
 
