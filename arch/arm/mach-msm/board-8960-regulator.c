@@ -106,6 +106,7 @@ VREG_CONSUMERS(L17) = {
 	REGULATOR_SUPPLY("8921_l17",		NULL),
 	REGULATOR_SUPPLY("disp_vddio",		"mipi_dsi.1"),
 	REGULATOR_SUPPLY("EMU_POWER",		"emu_det"),
+	REGULATOR_SUPPLY("hs_det_micvdd",		"10-0040"),
 };
 VREG_CONSUMERS(L18) = {
 	REGULATOR_SUPPLY("8921_l18",		NULL),
@@ -183,6 +184,7 @@ VREG_CONSUMERS(S4) = {
 	REGULATOR_SUPPLY("EXT_HUB_VDDIO",	"msm_smsc_hub"),
 	REGULATOR_SUPPLY("vcc_i2c",		"10-0048"),
 	REGULATOR_SUPPLY("dsi_s4",	        "mipi_dsi.1"),
+	REGULATOR_SUPPLY("hs_det_vdd",		"10-0040"),
 };
 VREG_CONSUMERS(S5) = {
 	REGULATOR_SUPPLY("8921_s5",		NULL),

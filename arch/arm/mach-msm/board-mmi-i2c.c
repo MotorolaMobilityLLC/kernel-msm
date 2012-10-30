@@ -24,6 +24,7 @@
 #include <linux/msp430.h>
 #include <linux/nfc/pn544-mot.h>
 #include <linux/drv2605.h>
+#include <linux/tpa6165a2.h>
 
 #define MELFAS_TOUCH_SCL_GPIO       17
 #define MELFAS_TOUCH_SDA_GPIO       16
@@ -449,6 +450,31 @@ static int __init drv2605_init_i2c_device(struct i2c_board_info *info,
 
 	return 0;
 }
+
+static struct tpa6165a2_platform_data tpa6165_pdata;
+
+static int __init tpa6165a2_init_i2c_device(struct i2c_board_info *info,
+		struct device_node *node)
+{
+	int err;
+	int len;
+	const void *prop;
+
+	info->platform_data = &tpa6165_pdata;
+	/* get irq */
+	prop = of_get_property(node, "hs_irq_gpio", &len);
+	if (!prop || (len != sizeof(u32)))
+		return -EINVAL;
+
+	tpa6165_pdata.irq_gpio = *(u32 *)prop;
+
+	err = gpio_request(tpa6165_pdata.irq_gpio, "hs irq");
+	if (err)
+		pr_err("tpa6165 hs irq gpio_request failed: %d\n", err);
+
+	return err;
+}
+
 typedef int (*I2C_INIT_FUNC)(struct i2c_board_info *info,
 			     struct device_node *node);
 
@@ -464,6 +490,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00030015, msp430_init_i2c_device}, /* TI MSP430 */
 	{0x00190001, pn544_init_i2c_device}, /* NXP PN544 */
 	{0x00030017, drv2605_init_i2c_device}, /* TI DRV2605 Haptic driver */
+	{0x00030020, tpa6165a2_init_i2c_device}, /* TI headset Det/amp Driver */
 };
 
 static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device)
