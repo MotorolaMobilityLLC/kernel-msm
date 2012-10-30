@@ -32,6 +32,8 @@ struct msm_dai_auxpcm_config {
 };
 
 struct msm_mi2s_pdata {
+	struct gpio *gpios; /* MI2S Gpio's for data and clk */
+	int num_gpios;
 	u16 rx_sd_lines;
 	u16 tx_sd_lines;
 };
