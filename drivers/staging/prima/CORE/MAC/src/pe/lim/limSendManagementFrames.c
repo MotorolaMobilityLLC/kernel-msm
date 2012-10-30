@@ -5372,7 +5372,6 @@ limSendRadioMeasureReportActionFrame(tpAniSirGlobal        pMac,
                        )
 {
    tSirRetStatus statusCode = eSIR_SUCCESS;
-   tDot11fRadioMeasurementReport frm;
    tANI_U8                      *pFrame;
    tpSirMacMgmtHdr          pMacHdr;
    tANI_U32                      nBytes, nPayload, nStatus;
@@ -5381,39 +5380,47 @@ limSendRadioMeasureReportActionFrame(tpAniSirGlobal        pMac,
    tANI_U8             i;
    tANI_U8             txFlag = 0;
 
+   tDot11fRadioMeasurementReport *frm =
+         vos_mem_malloc(sizeof(tDot11fRadioMeasurementReport));
+   if (!frm) {
+      limLog( pMac, LOGE, FL("Not enough memory to allocate tDot11fRadioMeasurementReport\n") );
+      return eSIR_FAILURE;
+   }
+
    if ( psessionEntry == NULL )
    {
       limLog( pMac, LOGE, FL("(psession == NULL) in Request to send Beacon Report action frame\n") );
+      vos_mem_free(frm);
       return eSIR_FAILURE;
    }
-   palZeroMemory( pMac->hHdd, ( tANI_U8* )&frm, sizeof( frm ) );
+   palZeroMemory( pMac->hHdd, ( tANI_U8* )frm, sizeof( *frm ) );
 
-   frm.Category.category = SIR_MAC_ACTION_RRM;
-   frm.Action.action     = SIR_MAC_RRM_RADIO_MEASURE_RPT;
-   frm.DialogToken.token = dialog_token;
+   frm->Category.category = SIR_MAC_ACTION_RRM;
+   frm->Action.action     = SIR_MAC_RRM_RADIO_MEASURE_RPT;
+   frm->DialogToken.token = dialog_token;
 
-   frm.num_MeasurementReport = (num_report > RADIO_REPORTS_MAX_IN_A_FRAME ) ? RADIO_REPORTS_MAX_IN_A_FRAME  : num_report;
+   frm->num_MeasurementReport = (num_report > RADIO_REPORTS_MAX_IN_A_FRAME ) ? RADIO_REPORTS_MAX_IN_A_FRAME  : num_report;
 
-   for( i = 0 ; i < frm.num_MeasurementReport ; i++ )
+   for( i = 0 ; i < frm->num_MeasurementReport ; i++ )
    {
-      frm.MeasurementReport[i].type = pRRMReport[i].type;
-      frm.MeasurementReport[i].token = pRRMReport[i].token;
-      frm.MeasurementReport[i].late = 0; //IEEE 802.11k section 7.3.22. (always zero in rrm)
+      frm->MeasurementReport[i].type = pRRMReport[i].type;
+      frm->MeasurementReport[i].token = pRRMReport[i].token;
+      frm->MeasurementReport[i].late = 0; //IEEE 802.11k section 7.3.22. (always zero in rrm)
       switch( pRRMReport[i].type )
       {
          case SIR_MAC_RRM_BEACON_TYPE:
-            PopulateDot11fBeaconReport( pMac, &frm.MeasurementReport[i], &pRRMReport[i].report.beaconReport );
-            frm.MeasurementReport[i].incapable = pRRMReport[i].incapable;
-            frm.MeasurementReport[i].refused = pRRMReport[i].refused;
-            frm.MeasurementReport[i].present = 1;
+            PopulateDot11fBeaconReport( pMac, &frm->MeasurementReport[i], &pRRMReport[i].report.beaconReport );
+            frm->MeasurementReport[i].incapable = pRRMReport[i].incapable;
+            frm->MeasurementReport[i].refused = pRRMReport[i].refused;
+            frm->MeasurementReport[i].present = 1;
             break;
          default:
-            frm.MeasurementReport[i].present = 1;
+            frm->MeasurementReport[i].present = 1;
             break;
       }
    }
 
-   nStatus = dot11fGetPackedRadioMeasurementReportSize( pMac, &frm, &nPayload );
+   nStatus = dot11fGetPackedRadioMeasurementReportSize( pMac, frm, &nPayload );
    if ( DOT11F_FAILED( nStatus ) )
    {
       limLog( pMac, LOGP, FL("Failed to calculate the packed size f"
@@ -5421,6 +5428,7 @@ limSendRadioMeasureReportActionFrame(tpAniSirGlobal        pMac,
             nStatus );
       // We'll fall back on the worst case scenario:
       nPayload = sizeof( tDot11fLinkMeasurementReport );
+      vos_mem_free(frm);
       return eSIR_FAILURE;
    }
    else if ( DOT11F_WARNED( nStatus ) )
@@ -5437,6 +5445,7 @@ limSendRadioMeasureReportActionFrame(tpAniSirGlobal        pMac,
    {
       limLog( pMac, LOGP, FL("Failed to allocate %d bytes for a Radio Measure "
                "Report.\n"), nBytes );
+      vos_mem_free(frm);
       return eSIR_FAILURE;
    }
 
@@ -5459,7 +5468,7 @@ limSendRadioMeasureReportActionFrame(tpAniSirGlobal        pMac,
 
    // Now, we're ready to "pack" the frames
    nStatus = dot11fPackRadioMeasurementReport( pMac,
-         &frm,
+         frm,
          pFrame + sizeof( tSirMacMgmtHdr ),
          nPayload,
          &nPayload );
@@ -5507,14 +5516,16 @@ limSendRadioMeasureReportActionFrame(tpAniSirGlobal        pMac,
       PELOGE(limLog( pMac, LOGE, FL( "halTxFrame FAILED! Status [%d]\n" ), halstatus );)
          statusCode = eSIR_FAILURE;
       //Pkt will be freed up by the callback
+      vos_mem_free(frm);
       return statusCode;
    }
    else
+      vos_mem_free(frm);
       return eSIR_SUCCESS;
 
 returnAfterError:
+   vos_mem_free(frm);
    palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, ( void* ) pFrame, ( void* ) pPacket );
-
    return statusCode;
 } // End limSendBeaconReportActionFrame.
 

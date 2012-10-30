@@ -2430,7 +2430,8 @@ static int iw_set_priv(struct net_device *dev,
        pr_info("%s: req [%s] len [%d]\n", __FUNCTION__, cmd, cmd_len);
     }
 
-    hddLog(VOS_TRACE_LEVEL_INFO_MED, "***Received %s cmd from Wi-Fi GUI***", cmd);
+    hddLog(VOS_TRACE_LEVEL_INFO_MED,
+           "%s: ***Received %s cmd from Wi-Fi GUI***", __func__, cmd);
 
     if (pHddCtx->isLogpInProgress) {
        if (ioctl_debug)
@@ -2658,7 +2659,8 @@ static int iw_set_priv(struct net_device *dev,
         }
     }
     else {
-        hddLog( VOS_TRACE_LEVEL_WARN, "Unsupported GUI command %s", cmd);
+        hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
+                __func__, cmd);
     }
 done:
     /* many of the commands write information back into the command

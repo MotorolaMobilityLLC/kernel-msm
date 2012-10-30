@@ -918,20 +918,32 @@ static void hdd_SendReAssocEvent(struct net_device *dev, hdd_adapter_t *pAdapter
 {
     unsigned int len = 0;
     u8 *pFTAssocRsp = NULL;
-    v_U8_t rspRsnIe[IW_GENERIC_IE_MAX];
+    v_U8_t *rspRsnIe = kmalloc(IW_GENERIC_IE_MAX, GFP_KERNEL);
     tANI_U32 rspRsnLength = 0;
     struct ieee80211_channel *chan;
 
+    if (!rspRsnIe)
+    {
+        hddLog(LOGE, "%s: Unable to allocate RSN IE", __func__);
+        goto done;
+    }
+
     if (pCsrRoamInfo == NULL)
-        return;
+    {
+        hddLog(LOGE, "%s: Invalid CSR roam info", __func__);
+        goto done;
+    }
 
     if (pCsrRoamInfo->nAssocRspLength == 0)
-        return;
+    {
+        hddLog(LOGE, "%s: Invalid assoc response length", __func__);
+        goto done;
+    }
 
     pFTAssocRsp = (u8 *)(pCsrRoamInfo->pbFrames + pCsrRoamInfo->nBeaconLength +
                     pCsrRoamInfo->nAssocReqLength);
     if (pFTAssocRsp == NULL)
-        return;
+        goto done;
 
     //pFTAssocRsp needs to point to the IEs
     pFTAssocRsp += FT_ASSOC_RSP_IES_OFFSET;
@@ -942,13 +954,16 @@ static void hdd_SendReAssocEvent(struct net_device *dev, hdd_adapter_t *pAdapter
     // Send the Assoc Resp, the supplicant needs this for initial Auth.
     len = pCsrRoamInfo->nAssocRspLength - FT_ASSOC_RSP_IES_OFFSET;
     rspRsnLength = len;
-    memset(rspRsnIe, 0, IW_GENERIC_IE_MAX);
     memcpy(rspRsnIe, pFTAssocRsp, len);
+    memset(rspRsnIe + len, 0, IW_GENERIC_IE_MAX - len);
 
     chan = ieee80211_get_channel(pAdapter->wdev.wiphy, (int) pCsrRoamInfo->pBssDesc->channelId);
     cfg80211_roamed(dev,chan,pCsrRoamInfo->bssid,
                     reqRsnIe, reqRsnLength,
                     rspRsnIe, rspRsnLength,GFP_KERNEL);
+
+done:
+    kfree(rspRsnIe);
 }
 #endif /* FEATURE_WLAN_CCX */
 

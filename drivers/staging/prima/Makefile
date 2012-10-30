@@ -425,12 +425,6 @@ OBJS :=		$(BAP_OBJS)  \
 
 EXTRA_CFLAGS += $(INCS)
 
-# By default the compiler will complain about frames larger than 1K.
-# Some of the WLAN structures are larger, so we increase the size.
-# Note that Linux kernel threads have an 8K stack, so take care not
-# to exceed that value in a "normal" call tree
-EXTRA_CFLAGS += -Wframe-larger-than=4096
-
 CDEFINES  := -DANI_PRODUCT_TYPE_CLIENT=1 \
 		-DANI_BUS_TYPE_PLATFORM=1 \
 		-DANI_LITTLE_BYTE_ENDIAN \
