@@ -243,10 +243,10 @@ err_main_irq:
 err_ctrlif:
 	free_irq(arizona_map_irq(arizona, ARIZONA_IRQ_BOOT_DONE), arizona);
 err_boot_done:
-	regmap_del_irq_chip(arizona->virq[0],
+	regmap_del_irq_chip(arizona->virq[1],
 			    arizona->irq_chip);
 err_aod:
-	regmap_del_irq_chip(arizona->virq[1],
+	regmap_del_irq_chip(arizona->virq[0],
 			    arizona->aod_irq_chip);
 err_domain:
 err:
