@@ -2952,8 +2952,9 @@ void csrApplyChannelPowerCountryInfo( tpAniSirGlobal pMac, tCsrChannel *pChannel
         // extend scan capability
         csrSetCfgScanControlList(pMac, countryCode, &ChannelList);     //  build a scan list based on the channel list : channel# + active/passive scan
 #ifdef FEATURE_WLAN_SCAN_PNO
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, FL("  Sending 11d PNO info to Riva\n"));
         // Send HAL UpdateScanParams message
-        //pmcUpdateScanParams(pMac, &(pMac->roam.configParam), pChannelList, TRUE);
+        pmcUpdateScanParams(pMac, &(pMac->roam.configParam), &ChannelList, TRUE);
 #endif // FEATURE_WLAN_SCAN_PNO
     }
     else
