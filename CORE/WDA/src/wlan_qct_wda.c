@@ -5812,28 +5812,33 @@ void WDA_UpdateProbeRspParamsCallback(WDI_Status status, void* pUserData)
 VOS_STATUS WDA_ProcessUpdateProbeRspTemplate(tWDA_CbContext *pWDA, 
                                  tSendProbeRespParams *pSendProbeRspParams)
 {
-   WDI_Status status = WDI_STATUS_SUCCESS ;
-   WDI_UpdateProbeRspTemplateParamsType wdiSendProbeRspParam; 
+   WDI_Status status = WDI_STATUS_SUCCESS;
+   WDI_UpdateProbeRspTemplateParamsType *wdiSendProbeRspParam =
+         vos_mem_malloc(sizeof(WDI_UpdateProbeRspTemplateParamsType));
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "------> %s " ,__FUNCTION__);
+
+   if (!wdiSendProbeRspParam)
+      return CONVERT_WDI2VOS_STATUS(WDI_STATUS_MEM_FAILURE);
+
    /*Copy update probe response parameters*/
-   vos_mem_copy(wdiSendProbeRspParam.wdiProbeRspTemplateInfo.macBSSID, 
+   vos_mem_copy(wdiSendProbeRspParam->wdiProbeRspTemplateInfo.macBSSID,
                               pSendProbeRspParams->bssId, sizeof(tSirMacAddr));
-   wdiSendProbeRspParam.wdiProbeRspTemplateInfo.uProbeRespTemplateLen = 
+   wdiSendProbeRspParam->wdiProbeRspTemplateInfo.uProbeRespTemplateLen =
                               pSendProbeRspParams->probeRespTemplateLen;
    /* Copy the Probe Response template to local buffer */
    vos_mem_copy(
-           wdiSendProbeRspParam.wdiProbeRspTemplateInfo.pProbeRespTemplate,
+           wdiSendProbeRspParam->wdiProbeRspTemplateInfo.pProbeRespTemplate,
            pSendProbeRspParams->pProbeRespTemplate, 
            pSendProbeRspParams->probeRespTemplateLen);
    vos_mem_copy(
-     wdiSendProbeRspParam.wdiProbeRspTemplateInfo.uaProxyProbeReqValidIEBmap,
+     wdiSendProbeRspParam->wdiProbeRspTemplateInfo.uaProxyProbeReqValidIEBmap,
      pSendProbeRspParams->ucProxyProbeReqValidIEBmap,
      WDI_PROBE_REQ_BITMAP_IE_LEN);
    
-   wdiSendProbeRspParam.wdiReqStatusCB = NULL ;
+   wdiSendProbeRspParam->wdiReqStatusCB = NULL ;
    
-   status = WDI_UpdateProbeRspTemplateReq(&wdiSendProbeRspParam, 
+   status = WDI_UpdateProbeRspTemplateReq(wdiSendProbeRspParam,
      (WDI_UpdateProbeRspTemplateRspCb)WDA_UpdateProbeRspParamsCallback, pWDA);
    if(IS_WDI_STATUS_FAILURE(status))
    {
@@ -5841,6 +5846,7 @@ VOS_STATUS WDA_ProcessUpdateProbeRspTemplate(tWDA_CbContext *pWDA,
           "Failure in SEND Probe RSP Params WDI API" );
    }
    vos_mem_free(pSendProbeRspParams);
+   vos_mem_free(wdiSendProbeRspParam);
    return CONVERT_WDI2VOS_STATUS(status);
 }
 #if defined(WLAN_FEATURE_VOWIFI) || defined(FEATURE_WLAN_CCX)
