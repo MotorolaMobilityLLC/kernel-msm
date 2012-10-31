@@ -65,8 +65,8 @@ static int __init mipi_video_lgit_wxga_pt_init(void)
 	pinfo.lcdc.border_clr = 0;        /* blk */
 	pinfo.lcdc.underflow_clr = 0x0;  /* black */
 	pinfo.lcdc.hsync_skew = 0;
-	pinfo.bl_max = 0x71;
-	pinfo.bl_min = 0;
+	pinfo.bl_max = 0x72;
+	pinfo.bl_min = 0x02;
 	pinfo.fb_num = 2;
 	pinfo.lcd.blt_ctrl = 1;
 
