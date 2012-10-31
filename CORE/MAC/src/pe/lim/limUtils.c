@@ -1612,8 +1612,8 @@ void limHandleUpdateOlbcCache(tpAniSirGlobal pMac)
         return;
     }
 	
-	palZeroMemory( pMac->hHdd, ( tANI_U8* )&beaconParams, sizeof( tUpdateBeaconParams) );
-	beaconParams.bssIdx = psessionEntry->bssIdx;
+    palZeroMemory( pMac->hHdd, ( tANI_U8* )&beaconParams, sizeof( tUpdateBeaconParams) );
+    beaconParams.bssIdx = psessionEntry->bssIdx;
     
     beaconParams.paramChangeBitmap = 0;
     /*
