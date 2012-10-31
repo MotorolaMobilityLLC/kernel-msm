@@ -240,23 +240,36 @@ limGetBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pBssDescription,
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 #endif
+    pBssDescription->fProbeRsp = *pBuf++;
+    len  -= sizeof(tANI_U8);
+    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
+        return eSIR_FAILURE;
+
+    pBssDescription->WscIeLen = limGetU32( pBuf );
+    pBuf += sizeof(tANI_U32);
+    len  -= sizeof(tANI_U32);
+    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
+        return eSIR_FAILURE;
     
     if (pBssDescription->WscIeLen)
     {
-        palCopyMemory( pMac->hHdd, (tANI_U8 *) pBssDescription->WscIeProbeRsp,
+        if(pBssDescription->WscIeLen <= WSCIE_PROBE_RSP_LEN )
+        {
+            palCopyMemory( pMac->hHdd, (tANI_U8 *) pBssDescription->WscIeProbeRsp,
                        pBuf,
                        pBssDescription->WscIeLen);
+        }
+        else
+        {
+            limLog(pMac, LOGE, 
+                         FL("WscIeLen is greater than WSCIE_PROBE_RSP_LEN= %d\n"), 
+                          pBssDescription->WscIeLen);
+            return eSIR_FAILURE;
+        }
     }
     
-    pBuf += (sizeof(pBssDescription->WscIeProbeRsp) + 
-             sizeof(pBssDescription->WscIeLen) + 
-             sizeof(pBssDescription->fProbeRsp) + 
-             sizeof(tANI_U32));
-    
-    len -= (sizeof(pBssDescription->WscIeProbeRsp) + 
-             sizeof(pBssDescription->WscIeLen) + 
-             sizeof(pBssDescription->fProbeRsp) + 
-             sizeof(tANI_U32));
+    pBuf += WSCIE_PROBE_RSP_LEN;
+    len -= WSCIE_PROBE_RSP_LEN;
 
     if (len > 0)
     {

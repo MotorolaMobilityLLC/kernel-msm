@@ -1849,12 +1849,13 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     tANI_U16           transactionId; 
     tPowerdBm            localPowerConstraint = 0, regMax = 0;
     tANI_U32           teleBcnEn = 0;
+    tANI_U16            nSize;
 
 
     PELOG3(limLog(pMac, LOG3, FL("Received REASSOC_REQ\n"));)
     
-
-    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pReassocReq, __limGetSmeJoinReqSizeForAlloc((tANI_U8 *) pMsgBuf)))
+    nSize = __limGetSmeJoinReqSizeForAlloc((tANI_U8 *) pMsgBuf);
+    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pReassocReq, nSize ))
     {
         // Log error
         limLog(pMac, LOGP,
@@ -1863,8 +1864,7 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         retCode = eSIR_SME_RESOURCES_UNAVAILABLE;
         goto end;
     }
-    
-
+    (void) palZeroMemory(pMac->hHdd, (void *) pReassocReq, nSize);
     if ((limJoinReqSerDes(pMac, (tpSirSmeJoinReq) pReassocReq,
                           (tANI_U8 *) pMsgBuf) == eSIR_FAILURE) ||
         (!limIsSmeJoinReqValid(pMac,
