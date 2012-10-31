@@ -57,6 +57,21 @@ enum hdd_rx_flags {
 #define P2P_POWER_SAVE_TYPE_PERIODIC_NOA         1 << 1;
 #define P2P_POWER_SAVE_TYPE_SINGLE_NOA           1 << 2;
 
+#ifdef WLAN_FEATURE_P2P_DEBUG
+typedef enum  { P2P_NOT_ACTIVE,
+                P2P_GO_NEG_PROCESS,
+                P2P_GO_NEG_COMPLETED,
+                P2P_CLIENT_CONNECTING_STATE_1,
+                P2P_GO_COMPLETED_STATE,
+                P2P_CLIENT_CONNECTED_STATE_1,
+                P2P_CLIENT_DISCONNECTED_STATE,
+                P2P_CLIENT_CONNECTING_STATE_2,
+                P2P_CLIENT_COMPLETED_STATE
+               }tP2PConnectionStatus;
+
+extern tP2PConnectionStatus globalP2PConnectionStatus;
+#endif
+
 typedef struct p2p_app_setP2pPs{
    tANI_U8     opp_ps;
    tANI_U32     ctWindow;

@@ -533,6 +533,24 @@ static void hdd_SendAssociationEvent(struct net_device *dev,tCsrRoamInfo *pCsrRo
         memcpy(wrqu.ap_addr.sa_data, pCsrRoamInfo->pBssDesc->bssId, sizeof(pCsrRoamInfo->pBssDesc->bssId));
         type = WLAN_STA_ASSOC_DONE_IND;
 
+#ifdef WLAN_FEATURE_P2P_DEBUG
+        if(pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)
+        {
+             if(globalP2PConnectionStatus == P2P_CLIENT_CONNECTING_STATE_1)
+             {
+                 globalP2PConnectionStatus = P2P_CLIENT_CONNECTED_STATE_1;
+                 hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P State] Changing state from "
+                                "Connecting state to Connected State for 8-way "
+                                "Handshake");
+             }
+             else if(globalP2PConnectionStatus == P2P_CLIENT_CONNECTING_STATE_2)
+             {
+                 globalP2PConnectionStatus = P2P_CLIENT_COMPLETED_STATE;
+                 hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P State] Changing state from "
+                           "Connecting state to P2P Client Connection Completed");
+             }
+        }
+#endif
         pr_info("wlan: connected to %02x:%02x:%02x:%02x:%02x:%02x\n",
                       wrqu.ap_addr.sa_data[0],
                       wrqu.ap_addr.sa_data[1],
@@ -677,6 +695,24 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
             hddLog(VOS_TRACE_LEVEL_INFO_HIGH, 
                     "%s: sent disconnected event to nl80211", 
                     __func__);
+#ifdef WLAN_FEATURE_P2P_DEBUG
+            if(pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)
+            {
+                if(globalP2PConnectionStatus == P2P_CLIENT_CONNECTED_STATE_1)
+                {
+                    globalP2PConnectionStatus = P2P_CLIENT_DISCONNECTED_STATE;
+                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P State] 8 way Handshake completed "
+                          "and moved to disconnected state");
+                }
+                else if(globalP2PConnectionStatus == P2P_CLIENT_COMPLETED_STATE)
+                {
+                    globalP2PConnectionStatus = P2P_NOT_ACTIVE;
+                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P State] P2P Client is removed "
+                          "and moved to inactive state");
+                }
+            }
+#endif
+
             /* To avoid wpa_supplicant sending "HANGED" CMD to ICS UI */
             if( eCSR_ROAM_LOSTLINK == roamStatus )
             {

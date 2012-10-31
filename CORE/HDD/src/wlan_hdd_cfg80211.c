@@ -1591,6 +1591,24 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     //Succesfully started Bss update the state bit.
     set_bit(SOFTAP_BSS_STARTED, &pHostapdAdapter->event_flags);
 
+#ifdef WLAN_FEATURE_P2P_DEBUG
+    if (pHostapdAdapter->device_mode == WLAN_HDD_P2P_GO)
+    {
+         if(globalP2PConnectionStatus == P2P_GO_NEG_COMPLETED)
+         {
+             globalP2PConnectionStatus = P2P_GO_COMPLETED_STATE;
+             hddLog(LOGE,"[P2P State] From Go nego completed to "
+                         "Non-autonomus Group started");
+         }
+         else if(globalP2PConnectionStatus == P2P_NOT_ACTIVE)
+         {
+             globalP2PConnectionStatus = P2P_GO_COMPLETED_STATE;
+             hddLog(LOGE,"[P2P State] From Inactive to "
+                         "Autonomus Group started");
+         }
+    }
+#endif
+
     pHostapdState->bCommit = TRUE;
     EXIT();
 
@@ -1842,6 +1860,15 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
 
         pAdapter->sessionCtx.ap.beacon = NULL;
         kfree(old);
+#ifdef WLAN_FEATURE_P2P_DEBUG
+        if((pAdapter->device_mode == WLAN_HDD_P2P_GO) &&
+           (globalP2PConnectionStatus == P2P_GO_COMPLETED_STATE))
+        {
+            hddLog(LOGE,"[P2P State] From GO completed to Inactive state "
+                        "GO got removed");
+            globalP2PConnectionStatus = P2P_NOT_ACTIVE;
+        }
+#endif
     }
     EXIT();
     return status;
@@ -3854,6 +3881,28 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
                                                        request->ie_len);
             if (pP2pIe != NULL)
             {
+#ifdef WLAN_FEATURE_P2P_DEBUG
+                if (((globalP2PConnectionStatus == P2P_GO_NEG_COMPLETED) ||
+                    (globalP2PConnectionStatus == P2P_GO_NEG_PROCESS)) &&
+                    (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
+                {
+                    globalP2PConnectionStatus = P2P_CLIENT_CONNECTING_STATE_1;
+                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P State] Changing state from "
+                                    "Go nego completed to Connection is started");
+                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P]P2P Scanning is started "
+                                   "for 8way Handshake");
+                }
+                else if((globalP2PConnectionStatus == P2P_CLIENT_DISCONNECTED_STATE) &&
+                        (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
+                {
+                    globalP2PConnectionStatus = P2P_CLIENT_CONNECTING_STATE_2;
+                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P State] Changing state from "
+                                    "Disconnected state to Connection is started");
+                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P]P2P Scanning is started "
+                                                        "for 4way Handshake");
+                }
+#endif
+
                 /* no_cck will be set during p2p find to disable 11b rates */
                 if(TRUE == request->no_cck)
                 {
