@@ -7139,6 +7139,8 @@ WDI_ProcessBSSSessionJoinReq
      *join request will be queued*/
     pWDICtx->bAssociationInProgress = eWLAN_PAL_FALSE;
     wpalMutexRelease(&pWDICtx->wptMutex);
+    /* Reload the driver if we hit this error condition */
+    wpalWlanReload();
     return WDI_STATUS_E_NOT_ALLOWED; 
   }
 
@@ -7556,29 +7558,31 @@ WDI_ProcessDelBSSReq
     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
         "%s: BSS does not yet exist. ucBssIdx %d",
         __func__, pwdiDelBSSParams->ucBssIdx);
-
-    wpalMutexRelease(&pWDICtx->wptMutex);
-
-    return WDI_STATUS_E_NOT_ALLOWED;
+    /* Allow the DEL_BSS to be processed by the HAL ,
+     * This can come if some error condition happens 
+     * during the join process 
+     * Hit this condition if WDI cleans up BSS table 
+     * as part of the set link state with WDI_LINK_IDLE_STATE*/
   }
-
-  /*------------------------------------------------------------------------
-    Check if this BSS is being currently processed or queued,
-    if queued - queue the new request as well
-  ------------------------------------------------------------------------*/
-  if ( eWLAN_PAL_TRUE == pBSSSes->bAssocReqQueued )
+  else
   {
-    WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
-              "%s: Association sequence for this BSS exists but currently queued. ucBssIdx %d", 
-              __func__, pwdiDelBSSParams->ucBssIdx);
-
-    wdiStatus = WDI_QueueAssocRequest( pWDICtx, pBSSSes, pEventData);
-
-    wpalMutexRelease(&pWDICtx->wptMutex);
-
-    return wdiStatus;
+    /*------------------------------------------------------------------------
+      Check if this BSS is being currently processed or queued,
+      if queued - queue the new request as well
+    ------------------------------------------------------------------------*/
+    if ( eWLAN_PAL_TRUE == pBSSSes->bAssocReqQueued )
+    {
+      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                "%s: Association sequence for this BSS exists but currently queued. ucBssIdx %d", 
+                __func__, pwdiDelBSSParams->ucBssIdx);
+  
+      wdiStatus = WDI_QueueAssocRequest( pWDICtx, pBSSSes, pEventData);
+  
+      wpalMutexRelease(&pWDICtx->wptMutex);
+  
+      return wdiStatus;
+    }
   }
-
   /*-----------------------------------------------------------------------
     If we receive a Del BSS request for an association that is already in
     progress, it indicates that the assoc has failed => we no longer have
@@ -7616,7 +7620,7 @@ WDI_ProcessDelBSSReq
   /*Fill in the message request structure*/
 
   /*BSS Index is saved on config BSS response and Post Assoc Response */
-  halBssReqMsg.deleteBssParams.bssIdx = pBSSSes->ucBSSIdx;
+  halBssReqMsg.deleteBssParams.bssIdx = pwdiDelBSSParams->ucBssIdx; 
 
   wpalMemoryCopy( pSendBuffer+usDataOffset,
                   &halBssReqMsg.deleteBssParams,
@@ -14499,6 +14503,8 @@ WDI_ProcessDelBSSRsp
   wdiDelBSSParams.wdiStatus   =   WDI_HAL_2_WDI_STATUS(
                                  halDelBssRspMsg.deleteBssRspParams.status);
 
+  wdiDelBSSParams.ucBssIdx = halDelBssRspMsg.deleteBssRspParams.bssIdx;
+
   wpalMutexAcquire(&pWDICtx->wptMutex);
 
   /*------------------------------------------------------------------------
@@ -14516,35 +14522,29 @@ WDI_ProcessDelBSSRsp
   {
     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
               "Association sequence for this BSS does not yet exist or "
-              "association no longer in progress - mysterious HAL response");
-
-    WDI_DetectedDeviceError( pWDICtx, WDI_ERR_BASIC_OP_FAILURE);
-
-    wpalMutexRelease(&pWDICtx->wptMutex);
-    return WDI_STATUS_E_NOT_ALLOWED;
+              "association no longer in progress ");
   }
-
-  /*Extract BSSID for the response to UMAC*/
-  wpalMemoryCopy(wdiDelBSSParams.macBSSID,
-                 pBSSSes->macBSSID, WDI_MAC_ADDR_LEN);
-
-  wdiDelBSSParams.ucBssIdx = halDelBssRspMsg.deleteBssRspParams.bssIdx;
-
-  /*-----------------------------------------------------------------------
-    The current session will be deleted
-  -----------------------------------------------------------------------*/
-  WDI_DeleteSession(pWDICtx, pBSSSes);
-
-
-  /* Delete the BCAST STA entry from the STA table if SAP/GO session is deleted */
-  if(WDI_INFRA_AP_MODE == pBSSSes->wdiBssType)
+  else
   {
-    (void)WDI_STATableDelSta( pWDICtx, pBSSSes->bcastStaIdx );
-  }
+    /*Extract BSSID for the response to UMAC*/
+    wpalMemoryCopy(wdiDelBSSParams.macBSSID,
+                   pBSSSes->macBSSID, WDI_MAC_ADDR_LEN);
   
-   /* Delete the STA's in this BSS */
-  WDI_STATableBSSDelSta(pWDICtx, halDelBssRspMsg.deleteBssRspParams.bssIdx);
-
+    /*-----------------------------------------------------------------------
+      The current session will be deleted
+    -----------------------------------------------------------------------*/
+    WDI_DeleteSession(pWDICtx, pBSSSes);
+  
+  
+    /* Delete the BCAST STA entry from the STA table if SAP/GO session is deleted */
+    if(WDI_INFRA_AP_MODE == pBSSSes->wdiBssType)
+    {
+      (void)WDI_STATableDelSta( pWDICtx, pBSSSes->bcastStaIdx );
+    }
+    
+     /* Delete the STA's in this BSS */
+    WDI_STATableBSSDelSta(pWDICtx, halDelBssRspMsg.deleteBssRspParams.bssIdx);
+  }
   wpalMutexRelease(&pWDICtx->wptMutex);
 
   /*Notify UMAC*/
