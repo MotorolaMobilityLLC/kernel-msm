@@ -363,8 +363,6 @@ typedef struct
    v_PVOID_t            pVosContext;             /* global VOSS context*/
    v_PVOID_t            pWdiContext;             /* WDI context */
    WDA_state            wdaState ;               /* WDA state tracking */ 
-   v_PVOID_t            wdaMsgParam ;            /* PE parameter tracking */
-   v_PVOID_t            wdaWdiApiMsgParam ;      /* WDI API paramter tracking */
    v_PVOID_t            wdaWdiCfgApiMsgParam ;   /* WDI API paramter tracking */
    vos_event_t          wdaWdiEvent;             /* WDI API sync event */
 
