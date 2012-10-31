@@ -193,12 +193,19 @@ void mdp4_overlay_iommu_pipe_free(int ndx, int all)
 	if (pipe->flags & MDP_MEMORY_ID_TYPE_FB) {
 		pipe->flags &= ~MDP_MEMORY_ID_TYPE_FB;
 
-		fput_light(pipe->srcp0_file, pipe->put0_need);
-		pipe->put0_need = 0;
-		fput_light(pipe->srcp1_file, pipe->put1_need);
-		pipe->put1_need = 0;
-		fput_light(pipe->srcp2_file, pipe->put2_need);
-		pipe->put2_need = 0;
+		if (pipe->put0_need) {
+			fput_light(pipe->srcp0_file, pipe->put0_need);
+			pipe->put0_need = 0;
+		}
+		if (pipe->put1_need) {
+			fput_light(pipe->srcp1_file, pipe->put1_need);
+			pipe->put1_need = 0;
+		}
+		if (pipe->put2_need) {
+			fput_light(pipe->srcp2_file, pipe->put2_need);
+			pipe->put2_need = 0;
+		}
+
 		pr_debug("%s: ndx=%d flags=%x put=%d\n", __func__,
 			pipe->pipe_ndx, pipe->flags, pipe->put0_need);
 		return;
