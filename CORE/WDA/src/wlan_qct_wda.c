@@ -9114,6 +9114,7 @@ VOS_STATUS WDA_TxComplete( v_PVOID_t pVosContext, vos_pkt_t *pData,
    
    tWDA_CbContext *wdaContext= (tWDA_CbContext *)VOS_GET_WDA_CTXT(pVosContext);
    tpAniSirGlobal pMac = (tpAniSirGlobal)VOS_GET_MAC_CTXT((void *)pVosContext) ;
+   tANI_U32 uUserData; 
 
    if(NULL == wdaContext)
    {
@@ -9123,6 +9124,18 @@ VOS_STATUS WDA_TxComplete( v_PVOID_t pVosContext, vos_pkt_t *pData,
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAILURE;
    }
+
+    /*Check if frame was timed out or not*/
+    vos_pkt_get_user_data_ptr(  pData, VOS_PKT_USER_DATA_ID_WDA,
+                               (v_PVOID_t)&uUserData);
+
+    if ( WDA_TL_TX_MGMT_TIMED_OUT == uUserData )
+    {
+       /*Discard frame - no further processing is needed*/
+       vos_pkt_return_packet(pData); 
+       return VOS_STATUS_SUCCESS; 
+    }
+
    /*check whether the callback is null or not,made null during WDA_TL_TX_FRAME_TIMEOUT timeout*/
    if( NULL!=wdaContext->pTxCbFunc) 
    {
@@ -9334,13 +9347,19 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
       pWDA->pTxCbFunc = NULL;   /*To stop the limTxComplete being called again  , 
                                 after the packet gets completed(packet freed once)*/
 
+      /*Tag Frame as timed out for later deletion*/
+      vos_pkt_set_user_data_ptr( (vos_pkt_t *)pFrmBuf, VOS_PKT_USER_DATA_ID_WDA, 
+                       (v_PVOID_t)WDA_TL_TX_MGMT_TIMED_OUT);
+
       /* check whether the packet was freed already,so need not free again when 
       * TL calls the WDA_Txcomplete routine
       */
-      if(vos_atomic_set_U32(&pWDA->VosPacketToFree, (v_U32_t)WDA_TX_PACKET_FREED) == (v_U32_t)pFrmBuf) 
+      vos_atomic_set_U32(&pWDA->VosPacketToFree, (v_U32_t)WDA_TX_PACKET_FREED);
+      /*if(vos_atomic_set_U32(&pWDA->VosPacketToFree, (v_U32_t)WDA_TX_PACKET_FREED) == (v_U32_t)pFrmBuf) 
       {
          pCompFunc(VOS_GET_MAC_CTXT(pWDA->pVosContext), (vos_pkt_t *)pFrmBuf);
-      }
+      } */
+
       if( pAckTxComp )
       {
          pWDA->pAckTxCbFunc = NULL;
