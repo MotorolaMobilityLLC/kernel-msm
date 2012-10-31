@@ -31,6 +31,7 @@ extern void mmi_register_i2c_devices_from_dt(void);
 /* from board-mmi-pmic.c */
 extern void mmi_init_pm8921_gpio_mpp(void);
 extern void mmi_pm8921_init(struct mmi_oem_data *, void *);
+extern void mmi_load_rgb_leds_from_dt(void);
 
 /* from board-mmi-keypad.c */
 extern void mmi_pm8921_keypad_init(void *);
