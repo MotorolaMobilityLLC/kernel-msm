@@ -1750,7 +1750,7 @@ v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb)
 #ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
    if (eHAL_STATUS_SUCCESS != halTable_FindStaidByAddr(pMac, (tANI_U8 *)pDestMacAddress, &STAId))
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
+      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
             "%s: Failed to find right station", __FUNCTION__);
       *pSTAId = HDD_WLAN_INVALID_STA_ID;
       goto done;
@@ -1758,7 +1758,7 @@ v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb)
 #else
    if (VOS_STATUS_SUCCESS != hdd_softap_GetStaId(pAdapter, pDestMacAddress, &STAId))
    {
-      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
+      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
             "%s: Failed to find right station", __FUNCTION__);
       *pSTAId = HDD_WLAN_INVALID_STA_ID;
       goto done;
