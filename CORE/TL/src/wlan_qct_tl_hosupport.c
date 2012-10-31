@@ -1394,7 +1394,7 @@ VOS_STATUS WLANTL_HSRegRSSIIndicationCB
 
    if(VOS_TRUE == tlCtxt->isBMPS)
    {
-      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Register into FW, now BMPS"));
+      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"Register into FW, now BMPS"));
       /* this function holds the lock across a downstream WDA function call, this is violates some lock
          ordering checks done on some HLOS see CR323221*/
       THSRELEASELOCK("WLANTL_HSRegRSSIIndicationCB", &tlCtxt->hoSupport.hosLock);
@@ -1492,7 +1492,7 @@ VOS_STATUS WLANTL_HSDeregRSSIIndicationCB
    }
    if(idx == currentHO->numThreshold)
    {
-      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Could not find entry, maybe invalid arg"));
+      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"Could not find entry, maybe invalid arg"));
       THSRELEASELOCK("WLANTL_HSDeregRSSIIndicationCB", &tlCtxt->hoSupport.hosLock);
       return VOS_STATUS_E_INVAL;
    }
