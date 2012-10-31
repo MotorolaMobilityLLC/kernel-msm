@@ -137,6 +137,10 @@ struct msm_fb_data_type {
 	int (*stop_histogram) (struct fb_info *info, uint32_t block);
 	void (*vsync_ctrl) (int enable);
 	void (*vsync_init) (int cndx, struct msm_fb_data_type *mfd);
+	int (*reg_read)(struct msm_fb_data_type *mfd, __u16 address,
+				__u16 size, __u8 *buf, __u8 use_hs_mode);
+	int (*reg_write)(struct msm_fb_data_type *mfd, __u16 size,
+				__u8 *buf, __u8 use_hs_mode);
 	void *cursor_buf;
 	void *cursor_buf_phys;
 
