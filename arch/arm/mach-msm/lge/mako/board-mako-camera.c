@@ -168,9 +168,6 @@ static struct msm_gpiomux_config apq8064_cam_common_configs[] = {
 };
 
 #if defined(CONFIG_IMX111) || defined(CONFIG_IMX091)
-static struct msm_gpiomux_config apq8064_cam_2d_configs[] = {
-};
-
 static struct msm_bus_vectors cam_init_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_VFE,
@@ -362,12 +359,12 @@ static struct camera_vreg_t apq_8064_front_cam_vreg[] = {
 };
 #endif
 
-#if defined(CONFIG_IMX111) || defined(CONFIG_IMX091)
 static struct gpio apq8064_common_cam_gpio[] = {
 	{12, GPIOF_DIR_IN, "CAMIF_I2C_DATA"},
 	{13, GPIOF_DIR_IN, "CAMIF_I2C_CLK"},
 };
 
+#if defined(CONFIG_IMX111) || defined(CONFIG_IMX091)
 static struct gpio apq8064_back_cam_gpio[] = {
 	{GPIO_CAM_MCLK0, GPIOF_DIR_IN, "CAMIF_MCLK"},
 	{GPIO_CAM1_RST_N, GPIOF_DIR_OUT, "CAM_RESET"},
@@ -379,10 +376,7 @@ static struct msm_gpio_set_tbl apq8064_back_cam_gpio_set_tbl[] = {
 };
 
 static struct msm_camera_gpio_conf apq8064_back_cam_gpio_conf = {
-	.cam_gpiomux_conf_tbl = apq8064_cam_2d_configs,
-	.cam_gpiomux_conf_tbl_size = ARRAY_SIZE(apq8064_cam_2d_configs),
-	.cam_gpio_common_tbl = apq8064_common_cam_gpio,
-	.cam_gpio_common_tbl_size = ARRAY_SIZE(apq8064_common_cam_gpio),
+	.gpio_no_mux = 1,
 	.cam_gpio_req_tbl = apq8064_back_cam_gpio,
 	.cam_gpio_req_tbl_size = ARRAY_SIZE(apq8064_back_cam_gpio),
 	.cam_gpio_set_tbl = apq8064_back_cam_gpio_set_tbl,
@@ -407,10 +401,7 @@ static struct msm_gpio_set_tbl apq8064_front_cam_gpio_set_tbl[] = {
 };
 
 static struct msm_camera_gpio_conf apq8064_front_cam_gpio_conf = {
-	.cam_gpiomux_conf_tbl = apq8064_cam_2d_configs,
-	.cam_gpiomux_conf_tbl_size = ARRAY_SIZE(apq8064_cam_2d_configs),
-	.cam_gpio_common_tbl = apq8064_common_cam_gpio,
-	.cam_gpio_common_tbl_size = ARRAY_SIZE(apq8064_common_cam_gpio),
+	.gpio_no_mux = 1,
 	.cam_gpio_req_tbl = apq8064_front_cam_gpio,
 	.cam_gpio_req_tbl_size = ARRAY_SIZE(apq8064_front_cam_gpio),
 	.cam_gpio_set_tbl = apq8064_front_cam_gpio_set_tbl,
@@ -602,6 +593,11 @@ static __init void mako_fixup_cam(void)
 	}
 
 	gpio_free(gpio_vcm_en);
+
+	ret = gpio_request_array(apq8064_common_cam_gpio,
+			ARRAY_SIZE(apq8064_common_cam_gpio));
+	if (ret < 0)
+		pr_err("%s: failed gpio request common_cam_gpio\n", __func__);
 }
 
 void __init apq8064_init_cam(void)
