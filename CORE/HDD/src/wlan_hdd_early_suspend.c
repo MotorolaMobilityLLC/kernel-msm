@@ -1037,9 +1037,10 @@ void hdd_suspend_wlan(struct early_suspend *wlan_suspend)
    {
        pAdapter = pAdapterNode->pAdapter;
        if ( (WLAN_HDD_INFRA_STATION != pAdapter->device_mode)
+         && (WLAN_HDD_SOFTAP != pAdapter->device_mode)
          && (WLAN_HDD_P2P_CLIENT != pAdapter->device_mode) )
 
-       {  //just do for station interface
+       {  // we skip this registration for modes other than STA, SAP and P2P client modes.
            status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
            pAdapterNode = pNext;
            continue;
@@ -1300,8 +1301,9 @@ void hdd_resume_wlan(struct early_suspend *wlan_suspend)
    {
        pAdapter = pAdapterNode->pAdapter;
        if ( (WLAN_HDD_INFRA_STATION != pAdapter->device_mode)
+         && (WLAN_HDD_SOFTAP != pAdapter->device_mode)
          && (WLAN_HDD_P2P_CLIENT != pAdapter->device_mode) )
-       {  //just do for station interface
+       {  // we skip this registration for modes other than STA, SAP and P2P client modes.
             status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
             pAdapterNode = pNext;
             continue;
