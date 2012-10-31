@@ -377,11 +377,11 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
      * a SSID (if it is also set). Ignore the other BSS in that case.
      */
 
-    if (((fScanning) && ( pMac->lim.gLimReturnAfterFirstMatch & 0x01 ) 
+    if ((pMac->lim.gpLimMlmScanReq) && (((fScanning) && ( pMac->lim.gLimReturnAfterFirstMatch & 0x01 ) 
         && (pMac->lim.gpLimMlmScanReq->numSsid) &&
                    !limIsScanRequestedSSID(pMac, &pBPR->ssId))
                    ||  (!fFound && (pMac->lim.gpLimMlmScanReq && pMac->lim.gpLimMlmScanReq->bssId) &&
-                   !palEqualMemory(pMac->hHdd, bssid, &pMac->lim.gpLimMlmScanReq->bssId, 6))
+                   !palEqualMemory(pMac->hHdd, bssid, &pMac->lim.gpLimMlmScanReq->bssId, 6)))
                    )
     {
         /**

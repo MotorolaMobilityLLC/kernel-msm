@@ -3596,7 +3596,15 @@ eHalStatus sme_QosProcessFTReassocRspEv(tpAniSirGlobal pMac, v_U8_t sessionId, v
     eHalStatus            status = eHAL_STATUS_SUCCESS;
     tCsrRoamSession *pCsrSession = CSR_GET_SESSION( pMac, sessionId );
     tCsrRoamConnectedInfo *pCsrConnectedInfo = &pCsrSession->connectedInfo;
-    tANI_U32    ricRspLen = pCsrConnectedInfo->nRICRspLength;
+    tANI_U32    ricRspLen;
+    /* To silence the KW tool NULL check is added */ 
+    if(pCsrConnectedInfo == NULL)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
+                FL("The connnected info pointer in NULL\n"));
+        return eHAL_STATUS_FAILURE;
+    }
+    ricRspLen = pCsrConnectedInfo->nRICRspLength;
 
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s: %d: invoked on session %d",

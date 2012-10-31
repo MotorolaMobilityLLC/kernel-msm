@@ -1052,7 +1052,7 @@ PopulateDot11fHTInfo(tpAniSirGlobal   pMac,
     }
 
 #ifdef WLAN_SOFTAP_FEATURE
-    if(psessionEntry->limSystemRole == eLIM_AP_ROLE ){
+    if((psessionEntry) && (psessionEntry->limSystemRole == eLIM_AP_ROLE)){
     CFG_GET_INT( nSirStatus, pMac, WNI_CFG_HT_INFO_FIELD2, nCfgValue );
 
     uHTInfoField2.nCfgValue16 = nCfgValue & 0xFFFF; // this is added for fixing CRs on MDM9K platform - 257951, 259577

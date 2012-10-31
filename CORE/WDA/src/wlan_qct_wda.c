@@ -7553,6 +7553,7 @@ VOS_STATUS WDA_ProcessHostOffloadReq(tWDA_CbContext *pWDA,
                            "%s:wdaWdiApiMsgParam is not NULL", __FUNCTION__); 
       VOS_ASSERT(0);
       vos_mem_free(wdiHostOffloadInfo);
+      vos_mem_free(pWdaParams) ;
       return VOS_STATUS_E_FAILURE;
    }
    /* Store param pointer as passed in by caller */
@@ -11666,6 +11667,12 @@ VOS_STATUS WDA_shutdown(v_PVOID_t pVosContext, wpt_boolean closeTransport)
 void WDA_stopFailed(v_PVOID_t pVosContext)
 {
    tWDA_CbContext *pWDA = (tWDA_CbContext *)VOS_GET_WDA_CTXT(pVosContext);
+   if(pWDA == NULL)
+   {
+       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                         "Could not get the WDA Context pointer" );
+       return;
+   }
    pWDA->needShutdown  = TRUE;
 }
 /*
@@ -11676,7 +11683,13 @@ void WDA_stopFailed(v_PVOID_t pVosContext)
 v_BOOL_t WDA_needShutdown(v_PVOID_t pVosContext)
 {
    tWDA_CbContext *pWDA = (tWDA_CbContext *)VOS_GET_WDA_CTXT(pVosContext);
-   return pWDA->needShutdown;   
+   if(pWDA == NULL)
+   {
+       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                         "Could not get the WDA Context pointer" );
+       return 0;
+   }
+   return pWDA->needShutdown;
 }
 
 #ifdef WLAN_FEATURE_11AC

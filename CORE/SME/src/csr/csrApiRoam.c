@@ -8288,7 +8288,8 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
             break;
             
         case eWNI_SME_DISASSOC_RSP:
-            smsLog( pMac, LOGW, FL("eWNI_SME_DISASSOC_RSP from SME subState = %d\n"), pMac->roam.curSubState[sessionId]);
+            /* session id is invalid here so cant use it to access the array curSubstate as index */
+            smsLog( pMac, LOGW, FL("eWNI_SME_DISASSOC_RSP from SME \n"));
 #ifdef WLAN_SOFTAP_FEATURE
             {
                 tSirSmeDisassocRsp *pDisassocRsp = (tSirSmeDisassocRsp *)pSirMsg;
@@ -8901,6 +8902,11 @@ tANI_BOOLEAN csrRoamCompleteRoaming(tpAniSirGlobal pMac, tANI_U32 sessionId,
     tANI_TIMESTAMP roamTime = (tANI_TIMESTAMP)(pMac->roam.configParam.nRoamingTime * PAL_TICKS_PER_SECOND);
     tANI_TIMESTAMP curTime = (tANI_TIMESTAMP)palGetTickCount(pMac->hHdd);
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
+    if(!pSession)
+    {
+        smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
+        return eANI_BOOLEAN_FALSE;
+    }
     //Check whether time is up
     if(pSession->fCancelRoaming || fForce || 
        ((curTime - pSession->roamingStartTime) > roamTime) ||
@@ -9101,6 +9107,13 @@ void csrRoamCompletion(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamInfo *pR
 {
     eRoamCmdStatus roamStatus = csrGetRoamCompleteStatus(pMac, sessionId);
     tANI_U32 roamId = 0;
+    tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
+    /* To silence the KW tool Null chaeck is added */
+    if(!pSession)
+    {
+        smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
+        return;
+    }
     
     if(pCommand)
     {
@@ -9116,7 +9129,7 @@ void csrRoamCompletion(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamInfo *pR
     }
     else
     {
-        VOS_ASSERT((CSR_GET_SESSION( pMac, sessionId ))->bRefAssocStartCnt == 0);
+        VOS_ASSERT(pSession->bRefAssocStartCnt == 0);
         smsLog(pMac, LOGW, FL("  indicates association completion. roamResult = %d\n"), roamResult);
         csrRoamCallCallback(pMac, sessionId, pRoamInfo, roamId, roamStatus, roamResult);
     }
@@ -9130,9 +9143,16 @@ eHalStatus csrRoamLostLink( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32 ty
     eCsrRoamResult result = eCSR_ROAM_RESULT_LOSTLINK;
     tCsrRoamInfo *pRoamInfo = NULL;
     tCsrRoamInfo roamInfo;
+    tANI_BOOLEAN fToRoam;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
+    /* To silence the KW tool Null chaeck is added */
+    if(!pSession)
+    {
+        smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
+        return eHAL_STATUS_FAILURE;
+    }
     //Only need to roam for infra station. In this case P2P client will roam as well
-    tANI_BOOLEAN fToRoam = CSR_IS_INFRASTRUCTURE(&pSession->connectedProfile);
+    fToRoam = CSR_IS_INFRASTRUCTURE(&pSession->connectedProfile);
     pSession->fCancelRoaming = eANI_BOOLEAN_FALSE;
     if ( eWNI_SME_DISASSOC_IND == type )
     {

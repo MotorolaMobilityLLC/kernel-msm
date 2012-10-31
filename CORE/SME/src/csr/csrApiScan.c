@@ -567,6 +567,12 @@ static void csrScan2GOnyRequest(tpAniSirGlobal pMac,tSmeCmd *pScanCmd,
     static tANI_U8 validchannelList[CSR_MAX_2_4_GHZ_SUPPORTED_CHANNELS] = {0};
 
     VOS_ASSERT(pScanCmd && pScanRequest);
+    /* To silence the KW tool null check is added */
+    if((pScanCmd == NULL) || (pScanRequest == NULL))
+    { 
+        smsLog( pMac, LOGE, FL(" pScanCmd or pScanRequest is NULL \n"));
+        return;
+    }    
 
     if (pScanCmd->u.scanCmd.scanID ||
        (eCSR_SCAN_REQUEST_FULL_SCAN != pScanRequest->requestType))
