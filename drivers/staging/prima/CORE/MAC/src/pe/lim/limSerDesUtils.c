@@ -240,23 +240,43 @@ limGetBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pBssDescription,
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 #endif
+    pBssDescription->fProbeRsp = *pBuf++;
+    len  -= sizeof(tANI_U8);
+    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
+        return eSIR_FAILURE;
+
+    /* 3 reserved bytes for padding */
+    pBuf += (3 * sizeof(tANI_U8));
+    len  -= 3;
+
+    pBssDescription->WscIeLen = limGetU32( pBuf );
+    pBuf += sizeof(tANI_U32);
+    len  -= sizeof(tANI_U32);
+    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
+        return eSIR_FAILURE;
     
-    if (pBssDescription->WscIeLen)
+    if (WSCIE_PROBE_RSP_LEN < len)
     {
+        /* Do not copy with WscIeLen
+         * if WscIeLen is not set properly, memory overwrite happen
+         * Ended up with memory corruption and crash
+         * Copy with Fixed size */
         palCopyMemory( pMac->hHdd, (tANI_U8 *) pBssDescription->WscIeProbeRsp,
                        pBuf,
-                       pBssDescription->WscIeLen);
+                       WSCIE_PROBE_RSP_LEN);
+
     }
-    
-    pBuf += (sizeof(pBssDescription->WscIeProbeRsp) + 
-             sizeof(pBssDescription->WscIeLen) + 
-             sizeof(pBssDescription->fProbeRsp) + 
-             sizeof(tANI_U32));
-    
-    len -= (sizeof(pBssDescription->WscIeProbeRsp) + 
-             sizeof(pBssDescription->WscIeLen) + 
-             sizeof(pBssDescription->fProbeRsp) + 
-             sizeof(tANI_U32));
+    else
+    {
+        limLog(pMac, LOGE,
+                     FL("remaining bytes len %d is less than WSCIE_PROBE_RSP_LEN\n"),
+                     pBssDescription->WscIeLen);
+        return eSIR_FAILURE;
+    }
+
+    /* 1 reserved byte padding */
+    pBuf += (WSCIE_PROBE_RSP_LEN + 1);
+    len -= (WSCIE_PROBE_RSP_LEN + 1);
 
     if (len > 0)
     {

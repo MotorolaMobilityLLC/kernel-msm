@@ -14678,9 +14678,9 @@ eHalStatus csrRoamIssueFTPreauthReq(tHalHandle hHal, tANI_U32 sessionId, tpSirBs
     {
         pftPreAuthReq->ft_ies_length = 0; 
     }
-    vos_mem_copy(pftPreAuthReq->pbssDescription, pBssDescription, pBssDescription->length);
-    pftPreAuthReq->length = pal_cpu_to_be16(sizeof(tSirFTPreAuthReq) + sizeof(pBssDescription->length) +
-                                                    pBssDescription->length); 
+    vos_mem_copy(pftPreAuthReq->pbssDescription, pBssDescription,
+                 sizeof(pBssDescription->length) + pBssDescription->length);
+    pftPreAuthReq->length = pal_cpu_to_be16(auth_req_len); 
     return palSendMBMessage(pMac->hHdd, pftPreAuthReq);
 }
 /*--------------------------------------------------------------------------
