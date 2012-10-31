@@ -18,6 +18,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/w1-gpio.h>
+#include <linux/leds-pwm-gpio.h>
 #include <mach/devtree_util.h>
 #include <mach/mmi-battery-data.h>
 #include "board-8960.h"
@@ -345,6 +346,22 @@ out:
 	}
 	pr_info("w1_gpio = %d\n",pdata->pin);
 	return;
+}
+
+__init void mmi_load_rgb_leds_from_dt(void)
+{
+	int max_brightness;
+	struct device_node *parent;
+	struct led_pwm_gpio_platform_data *pdata =
+		mmi_pm8xxx_rgb_leds_device.dev.platform_data;
+
+	parent = of_find_node_by_path("/System@0/PowerIC@0/RGBLED@0");
+	if (parent) {
+		max_brightness = dt_get_u32_or_die(parent, "max_brightness");
+		if (max_brightness)
+			pdata->max_brightness = max_brightness;
+	}
+	of_node_put(parent);
 }
 
 static int pm8921_therm_mitigation[] = {
