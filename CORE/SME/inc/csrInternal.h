@@ -536,6 +536,13 @@ typedef struct tagCsrConfig
     tANI_U32  nPassiveMaxChnTime;    //in units of milliseconds
     tANI_U32  nActiveMinChnTime;     //in units of milliseconds
     tANI_U32  nActiveMaxChnTime;     //in units of milliseconds
+#ifdef WLAN_AP_STA_CONCURRENCY
+    tANI_U32  nPassiveMinChnTimeConc;    //in units of milliseconds
+    tANI_U32  nPassiveMaxChnTimeConc;    //in units of milliseconds
+    tANI_U32  nActiveMinChnTimeConc;     //in units of milliseconds
+    tANI_U32  nActiveMaxChnTimeConc;     //in units of milliseconds
+    tANI_U32  nRestTimeConc;             //in units of milliseconds
+#endif
 
     tANI_BOOLEAN IsIdleScanEnabled;
     //in dBm, the maximum TX power

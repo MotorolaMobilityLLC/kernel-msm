@@ -101,6 +101,7 @@ extern tSirRetStatus wlan_cfgGetStr(tpAniSirGlobal, tANI_U16, tANI_U8*, tANI_U32
 void csrScanGetResultTimerHandler(void *);
 void csrScanResultAgingTimerHandler(void *pv);
 void csrScanIdleScanTimerHandler(void *);
+static void csrSetDefaultScanTiming( tpAniSirGlobal pMac, tSirScanType scanType, tCsrScanRequest *pScanRequest);
 #ifdef WLAN_AP_STA_CONCURRENCY
 static void csrStaApConcTimerHandler(void *);
 #endif
@@ -376,6 +377,52 @@ eHalStatus csrScanDisable( tpAniSirGlobal pMac )
 }
 
 
+//Set scan timing parameters according to state of other driver sessions 
+//No validation of the parameters is performed. 
+static void csrSetDefaultScanTiming( tpAniSirGlobal pMac, tSirScanType scanType, tCsrScanRequest *pScanRequest)
+{
+#ifdef WLAN_AP_STA_CONCURRENCY
+    if(csrIsAnySessionConnected(pMac))
+    {
+        //If multi-session, use the appropriate default scan times 
+        if(scanType == eSIR_ACTIVE_SCAN)
+        {
+            pScanRequest->maxChnTime = pMac->roam.configParam.nActiveMaxChnTimeConc;
+            pScanRequest->minChnTime = pMac->roam.configParam.nActiveMinChnTimeConc;
+        }
+        else
+        {
+            pScanRequest->maxChnTime = pMac->roam.configParam.nPassiveMaxChnTimeConc;
+            pScanRequest->minChnTime = pMac->roam.configParam.nPassiveMinChnTimeConc;
+        }
+
+        pScanRequest->restTime = pMac->roam.configParam.nRestTimeConc;
+        
+        //Return so that fields set above will not be overwritten.
+        return;
+    }
+#endif
+
+    //This portion of the code executed if multi-session not supported
+    //(WLAN_AP_STA_CONCURRENCY not defined) or no multi-session.
+    //Use the "regular" (non-concurrency) default scan timing.
+    if(pScanRequest->scanType == eSIR_ACTIVE_SCAN)
+    {
+        pScanRequest->maxChnTime = pMac->roam.configParam.nActiveMaxChnTime;
+        pScanRequest->minChnTime = pMac->roam.configParam.nActiveMinChnTime;
+    }
+    else
+    {
+        pScanRequest->maxChnTime = pMac->roam.configParam.nPassiveMaxChnTime;
+        pScanRequest->minChnTime = pMac->roam.configParam.nPassiveMinChnTime;
+    }
+
+#ifdef WLAN_AP_STA_CONCURRENCY
+    //No rest time if no sessions are connected.
+    pScanRequest->restTime = 0;
+#endif
+}
+
 #ifdef WLAN_AP_STA_CONCURRENCY
 //Return SUCCESS is the command is queued, else returns eHAL_STATUS_FAILURE 
 eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
@@ -432,11 +479,9 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
             {
                 pSendScanCmd = pScanCmd;
                 pSendScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels = 1;
-                pSendScanCmd->u.scanCmd.u.scanRequest.scanType = eSIR_ACTIVE_SCAN;
-                pSendScanCmd->u.scanCmd.u.scanRequest.maxChnTime = 
-                    CSR_MIN(pSendScanCmd->u.scanCmd.u.scanRequest.maxChnTime,CSR_ACTIVE_MAX_CHANNEL_TIME_CONC);
-                pSendScanCmd->u.scanCmd.u.scanRequest.minChnTime = 
-                    CSR_MIN(pSendScanCmd->u.scanCmd.u.scanRequest.minChnTime, CSR_ACTIVE_MIN_CHANNEL_TIME_CONC);
+                //Use concurrency values for min/maxChnTime. 
+                //We know csrIsAnySessionConnected(pMac) returns TRUE here
+                csrSetDefaultScanTiming(pMac, pSendScanCmd->u.scanCmd.u.scanRequest.scanType, &pSendScanCmd->u.scanCmd.u.scanRequest);
                 if (i != 0)
                 { //Callback should be NULL for all except last channel So hdd_callback will be called only after last command
                   //i!=0 then we came here in second iteration 
@@ -483,14 +528,15 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
 
                 pChnInfo->ChannelList = &channelToScan[0];
               
-
                 scanReq.BSSType = eCSR_BSS_TYPE_ANY;
                 //Modify callers parameters in case of concurrency
                 scanReq.scanType = eSIR_ACTIVE_SCAN;
-                scanReq.maxChnTime = CSR_ACTIVE_MAX_CHANNEL_TIME_CONC;
-                scanReq.minChnTime = CSR_ACTIVE_MIN_CHANNEL_TIME_CONC;
+                //Use concurrency values for min/maxChnTime. 
+                //We know csrIsAnySessionConnected(pMac) returns TRUE here
+                csrSetDefaultScanTiming(pMac, scanReq.scanType, &scanReq);
 
                 status = csrScanCopyRequest(pMac, &pQueueScanCmd->u.scanCmd.u.scanRequest, &scanReq);
+
                 if(!HAL_STATUS_SUCCESS(status))
                 {
                     if (bMemAlloc)
@@ -598,8 +644,10 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
 {
     eHalStatus status = eHAL_STATUS_FAILURE;
     tSmeCmd *pScanCmd = NULL;
-    eCsrConnectState ConnectState;
+	eCsrConnectState ConnectState;
     
+    VOS_ASSERT(pScanRequest != NULL);
+
     do
     {
         if(pMac->scan.fScanEnable)
@@ -646,17 +694,18 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
                 if(pScanRequest->minChnTime == 0 && pScanRequest->maxChnTime == 0)
                 {
                     //The caller doesn't set the time correctly. Set it here
-                    if(pScanRequest->scanType == eSIR_ACTIVE_SCAN)
+                    csrSetDefaultScanTiming(pMac, pScanRequest->scanType, pScanRequest);
+                }
+#ifdef WLAN_AP_STA_CONCURRENCY
+                if(pScanRequest->restTime == 0)
                     {
-                        pScanRequest->maxChnTime = pMac->roam.configParam.nActiveMaxChnTime;
-                        pScanRequest->minChnTime = pMac->roam.configParam.nActiveMinChnTime;
-                    }
-                    else
+                    //Need to set restTime only if at least one session is connected
+                    if(csrIsAnySessionConnected(pMac))
                     {
-                        pScanRequest->maxChnTime = pMac->roam.configParam.nPassiveMaxChnTime;
-                        pScanRequest->minChnTime = pMac->roam.configParam.nPassiveMinChnTime;
+                        pScanRequest->restTime = pMac->roam.configParam.nRestTimeConc;
                     }
                 }
+#endif
                  /*For Standalone wlan : channel time will remain the same.
                                   For BTC with A2DP up: Channel time = Channel time * 2 , if station is not already associated.
                                   This has been done to provide a larger scan window for faster connection during btc.Else Scan is seen
@@ -4353,8 +4402,9 @@ static tANI_BOOLEAN csrScanProcessScanResults( tpAniSirGlobal pMac, tSmeCmd *pCo
 #ifdef WLAN_AP_STA_CONCURRENCY
     if (!csrLLIsListEmpty( &pMac->scan.scanCmdPendingList, LL_ACCESS_LOCK ))
     {
+         VOS_ASSERT(pCommand->u.scanCmd.u.scanRequest.restTime != 0);
          palTimerStart(pMac->hHdd, pMac->scan.hTimerStaApConcTimer, 
-                 CSR_SCAN_STAAP_CONC_INTERVAL, eANI_BOOLEAN_FALSE);
+                 pCommand->u.scanCmd.u.scanRequest.restTime * PAL_TIMER_TO_MS_UNIT, eANI_BOOLEAN_FALSE);
     }
 #endif
     return (fRet);
@@ -5411,7 +5461,6 @@ static void csrStaApConcTimerHandler(void *pv)
         tANI_U8    channelToScan[WNI_CFG_VALID_CHANNEL_LIST_LEN];
         eHalStatus status;
        
-
         pScanCmd = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
         numChn = pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels;
         if (numChn > 1)
@@ -5452,8 +5501,9 @@ static void csrStaApConcTimerHandler(void *pv)
              scanReq.BSSType = eCSR_BSS_TYPE_ANY;
              //Modify callers parameters in case of concurrency
              scanReq.scanType = eSIR_ACTIVE_SCAN;
-             scanReq.maxChnTime = CSR_MIN(pScanCmd->u.scanCmd.u.scanRequest.maxChnTime,CSR_ACTIVE_MAX_CHANNEL_TIME_CONC);
-             scanReq.minChnTime =  CSR_MIN(pScanCmd->u.scanCmd.u.scanRequest.minChnTime,CSR_ACTIVE_MIN_CHANNEL_TIME_CONC);
+             //Use concurrency values for min/maxChnTime. 
+             //We know csrIsAnySessionConnected(pMac) returns TRUE here
+             csrSetDefaultScanTiming(pMac, scanReq.scanType, &scanReq);
 
              status = csrScanCopyRequest(pMac, &pSendScanCmd->u.scanCmd.u.scanRequest, &scanReq);
              if(!HAL_STATUS_SUCCESS(status))

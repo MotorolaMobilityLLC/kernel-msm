@@ -527,6 +527,35 @@ typedef enum
 #define CFG_ACTIVE_MIN_CHANNEL_TIME_MAX        ( 10000 )
 #define CFG_ACTIVE_MIN_CHANNEL_TIME_DEFAULT    ( 20 )
 
+#ifdef WLAN_AP_STA_CONCURRENCY
+
+#define CFG_PASSIVE_MAX_CHANNEL_TIME_CONC_NAME      "gPassiveMaxChannelTimeConc"
+#define CFG_PASSIVE_MAX_CHANNEL_TIME_CONC_MIN       ( 0 )
+#define CFG_PASSIVE_MAX_CHANNEL_TIME_CONC_MAX       ( 10000 )
+#define CFG_PASSIVE_MAX_CHANNEL_TIME_CONC_DEFAULT   ( 110 )
+
+#define CFG_PASSIVE_MIN_CHANNEL_TIME_CONC_NAME      "gPassiveMinChannelTimeConc"
+#define CFG_PASSIVE_MIN_CHANNEL_TIME_CONC_MIN       ( 0 )
+#define CFG_PASSIVE_MIN_CHANNEL_TIME_CONC_MAX       ( 10000 )
+#define CFG_PASSIVE_MIN_CHANNEL_TIME_CONC_DEFAULT   ( 60 )
+
+#define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_NAME       "gActiveMaxChannelTimeConc"
+#define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_MIN        ( 0 )
+#define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_MAX        ( 10000 )
+#define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_DEFAULT    ( 27 )
+
+#define CFG_ACTIVE_MIN_CHANNEL_TIME_CONC_NAME       "gActiveMinChannelTimeConc"
+#define CFG_ACTIVE_MIN_CHANNEL_TIME_CONC_MIN        ( 0 )
+#define CFG_ACTIVE_MIN_CHANNEL_TIME_CONC_MAX        ( 10000 )
+#define CFG_ACTIVE_MIN_CHANNEL_TIME_CONC_DEFAULT    ( 20 )
+
+#define CFG_REST_TIME_CONC_NAME                     "gRestTimeConc"
+#define CFG_REST_TIME_CONC_MIN                      ( 0 )
+#define CFG_REST_TIME_CONC_MAX                      ( 10000 )
+#define CFG_REST_TIME_CONC_DEFAULT                  ( 20 )
+
+#endif
+
 #define CFG_MAX_PS_POLL_NAME                   "gMaxPsPoll"
 #define CFG_MAX_PS_POLL_MIN                    WNI_CFG_MAX_PS_POLL_STAMIN
 #define CFG_MAX_PS_POLL_MAX                    WNI_CFG_MAX_PS_POLL_STAMAX
@@ -1484,6 +1513,14 @@ typedef struct
    v_U32_t        nPassiveMaxChnTime;    //in units of milliseconds
    v_U32_t        nActiveMinChnTime;     //in units of milliseconds
    v_U32_t        nActiveMaxChnTime;     //in units of milliseconds
+
+#ifdef WLAN_AP_STA_CONCURRENCY
+   v_U32_t        nPassiveMinChnTimeConc;    //in units of milliseconds
+   v_U32_t        nPassiveMaxChnTimeConc;    //in units of milliseconds
+   v_U32_t        nActiveMinChnTimeConc;     //in units of milliseconds
+   v_U32_t        nActiveMaxChnTimeConc;     //in units of milliseconds
+   v_U32_t        nRestTimeConc;             //in units of milliseconds
+#endif
 
    v_U8_t         nMaxPsPoll;
 

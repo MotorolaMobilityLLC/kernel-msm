@@ -631,6 +631,43 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_ACTIVE_MIN_CHANNEL_TIME_DEFAULT, 
                  CFG_ACTIVE_MIN_CHANNEL_TIME_MIN, 
                  CFG_ACTIVE_MIN_CHANNEL_TIME_MAX ),
+
+#ifdef WLAN_AP_STA_CONCURRENCY
+   REG_VARIABLE( CFG_PASSIVE_MAX_CHANNEL_TIME_CONC_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, nPassiveMaxChnTimeConc, 
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
+                 CFG_PASSIVE_MAX_CHANNEL_TIME_CONC_DEFAULT, 
+                 CFG_PASSIVE_MAX_CHANNEL_TIME_CONC_MIN, 
+                 CFG_PASSIVE_MAX_CHANNEL_TIME_CONC_MAX ),
+
+   REG_VARIABLE( CFG_PASSIVE_MIN_CHANNEL_TIME_CONC_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, nPassiveMinChnTimeConc, 
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
+                 CFG_PASSIVE_MIN_CHANNEL_TIME_CONC_DEFAULT, 
+                 CFG_PASSIVE_MIN_CHANNEL_TIME_CONC_MIN, 
+                 CFG_PASSIVE_MIN_CHANNEL_TIME_CONC_MAX ),
+
+   REG_VARIABLE( CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, nActiveMaxChnTimeConc, 
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
+                 CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_DEFAULT, 
+                 CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_MIN, 
+                 CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_MAX ),
+
+   REG_VARIABLE( CFG_ACTIVE_MIN_CHANNEL_TIME_CONC_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, nActiveMinChnTimeConc, 
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
+                 CFG_ACTIVE_MIN_CHANNEL_TIME_CONC_DEFAULT, 
+                 CFG_ACTIVE_MIN_CHANNEL_TIME_CONC_MIN, 
+                 CFG_ACTIVE_MIN_CHANNEL_TIME_CONC_MAX ),
+
+   REG_VARIABLE( CFG_REST_TIME_CONC_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, nRestTimeConc, 
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
+                 CFG_REST_TIME_CONC_DEFAULT, 
+                 CFG_REST_TIME_CONC_MIN, 
+                 CFG_REST_TIME_CONC_MAX ),
+#endif
    
    REG_VARIABLE( CFG_MAX_PS_POLL_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, nMaxPsPoll, 
@@ -3056,6 +3093,13 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig.csrConfig.nActiveMinChnTime        = pConfig->nActiveMinChnTime;
    smeConfig.csrConfig.nPassiveMaxChnTime       = pConfig->nPassiveMaxChnTime;
    smeConfig.csrConfig.nPassiveMinChnTime       = pConfig->nPassiveMinChnTime;
+#ifdef WLAN_AP_STA_CONCURRENCY
+   smeConfig.csrConfig.nActiveMaxChnTimeConc    = pConfig->nActiveMaxChnTimeConc;
+   smeConfig.csrConfig.nActiveMinChnTimeConc    = pConfig->nActiveMinChnTimeConc;
+   smeConfig.csrConfig.nPassiveMaxChnTimeConc   = pConfig->nPassiveMaxChnTimeConc;
+   smeConfig.csrConfig.nPassiveMinChnTimeConc   = pConfig->nPassiveMinChnTimeConc;
+   smeConfig.csrConfig.nRestTimeConc            = pConfig->nRestTimeConc;
+#endif
    smeConfig.csrConfig.Is11eSupportEnabled      = pConfig->b80211eIsEnabled;
    smeConfig.csrConfig.WMMSupportMode           = pConfig->WmmMode;
 

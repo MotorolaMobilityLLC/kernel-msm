@@ -918,6 +918,13 @@ static void initConfigParam(tpAniSirGlobal pMac)
     pMac->roam.configParam.nActiveMinChnTime = CSR_ACTIVE_MIN_CHANNEL_TIME;
     pMac->roam.configParam.nPassiveMaxChnTime = CSR_PASSIVE_MAX_CHANNEL_TIME;
     pMac->roam.configParam.nPassiveMinChnTime = CSR_PASSIVE_MIN_CHANNEL_TIME;
+#ifdef WLAN_AP_STA_CONCURRENCY
+    pMac->roam.configParam.nActiveMaxChnTimeConc = CSR_ACTIVE_MAX_CHANNEL_TIME_CONC;
+    pMac->roam.configParam.nActiveMinChnTimeConc = CSR_ACTIVE_MIN_CHANNEL_TIME_CONC;
+    pMac->roam.configParam.nPassiveMaxChnTimeConc = CSR_PASSIVE_MAX_CHANNEL_TIME_CONC;
+    pMac->roam.configParam.nPassiveMinChnTimeConc = CSR_PASSIVE_MIN_CHANNEL_TIME_CONC;
+    pMac->roam.configParam.nRestTimeConc = CSR_REST_TIME_CONC;
+#endif
     pMac->roam.configParam.IsIdleScanEnabled = TRUE; //enable the idle scan by default
     pMac->roam.configParam.nTxPowerCap = CSR_MAX_TX_POWER;
     pMac->roam.configParam.statsReqPeriodicity = CSR_MIN_GLOBAL_STAT_QUERY_PERIOD;
@@ -1163,6 +1170,28 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         {
             pMac->roam.configParam.nPassiveMinChnTime = pParam->nPassiveMinChnTime;
         }
+#ifdef WLAN_AP_STA_CONCURRENCY
+        if(pParam->nActiveMaxChnTimeConc)
+        {
+            pMac->roam.configParam.nActiveMaxChnTimeConc = pParam->nActiveMaxChnTimeConc;
+        }
+        if(pParam->nActiveMinChnTimeConc)
+        {
+            pMac->roam.configParam.nActiveMinChnTimeConc = pParam->nActiveMinChnTimeConc;
+        }
+        if(pParam->nPassiveMaxChnTimeConc)
+        {
+            pMac->roam.configParam.nPassiveMaxChnTimeConc = pParam->nPassiveMaxChnTimeConc;
+        }
+        if(pParam->nPassiveMinChnTimeConc)
+        {
+            pMac->roam.configParam.nPassiveMinChnTimeConc = pParam->nPassiveMinChnTimeConc;
+        }
+        if(pParam->nRestTimeConc)
+        {
+            pMac->roam.configParam.nRestTimeConc = pParam->nRestTimeConc;
+        }
+#endif
         //if upper layer wants to disable idle scan altogether set it to 0
         if(pParam->impsSleepTime)
         {
@@ -1329,6 +1358,13 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->nActiveMinChnTime = pMac->roam.configParam.nActiveMinChnTime;
         pParam->nPassiveMaxChnTime = pMac->roam.configParam.nPassiveMaxChnTime;
         pParam->nPassiveMinChnTime = pMac->roam.configParam.nPassiveMinChnTime;
+#ifdef WLAN_AP_STA_CONCURRENCY
+        pParam->nActiveMaxChnTimeConc = pMac->roam.configParam.nActiveMaxChnTimeConc;
+        pParam->nActiveMinChnTimeConc = pMac->roam.configParam.nActiveMinChnTimeConc;
+        pParam->nPassiveMaxChnTimeConc = pMac->roam.configParam.nPassiveMaxChnTimeConc;
+        pParam->nPassiveMinChnTimeConc = pMac->roam.configParam.nPassiveMinChnTimeConc;
+        pParam->nRestTimeConc = pMac->roam.configParam.nRestTimeConc;
+#endif
         //Change the unit from microsecond to second
         pParam->impsSleepTime = pMac->roam.configParam.impsSleepTime / PAL_TIMER_TO_SEC_UNIT;
         pParam->eBand = pMac->roam.configParam.eBand;
@@ -3140,7 +3176,7 @@ ePhyChanBondState csrGetHTCBStateFromVHTCBState(ePhyChanBondState aniCBMode)
         case PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_HIGH:
             return PHY_DOUBLE_CHANNEL_LOW_PRIMARY;
         case PHY_QUADRUPLE_CHANNEL_20MHZ_CENTERED_40MHZ_CENTERED:
-        default :
+	    default :
             return PHY_SINGLE_CHANNEL_CENTERED;
     }
 }
@@ -3220,13 +3256,13 @@ eHalStatus csrRoamSetBssConfigCfg(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrR
 #ifdef WLAN_FEATURE_11AC
     if(cfgCb > 2 )
     {
-        if(!WDA_getFwWlanFeatCaps(DOT11AC)) {
+	if(!WDA_getFwWlanFeatCaps(DOT11AC)) {
             cfgCb = csrGetHTCBStateFromVHTCBState(cfgCb);
-        }
-        else 
-        {
+	}
+	else 
+	{
             ccmCfgSetInt(pMac, WNI_CFG_VHT_CHANNEL_WIDTH,  pMac->roam.configParam.nVhtChannelWidth, NULL, eANI_BOOLEAN_FALSE);
-        }
+	}
     }
     else
 #endif
@@ -9427,7 +9463,7 @@ static eCsrCfgDot11Mode csrRoamGetPhyModeBandForBss( tpAniSirGlobal pMac, eCsrPh
                                             pMac->roam.configParam.ProprietaryRatesEnabled);
 #endif
     eCsrBand eBand;
- 
+    
     //If the global setting for dot11Mode is set to auto/abg, we overwrite the setting in the profile.
 #ifdef WLAN_SOFTAP_FEATURE
     if( ((!CSR_IS_INFRA_AP(pProfile )&& !CSR_IS_WDS(pProfile )) && 
