@@ -695,8 +695,12 @@ typedef struct sSirBssDescription
     // Please keep the structure 4 bytes aligned above the ieFields
 
     tANI_U8              fProbeRsp; //whether it is from a probe rsp
+    tANI_U8              reservedPadding1;
+    tANI_U8              reservedPadding2;
+    tANI_U8              reservedPadding3;
     tANI_U32             WscIeLen;
     tANI_U8              WscIeProbeRsp[WSCIE_PROBE_RSP_LEN];
+    tANI_U8              reservedPadding4;
 
     tANI_U32             ieFields[1];
 } tSirBssDescription, *tpSirBssDescription;

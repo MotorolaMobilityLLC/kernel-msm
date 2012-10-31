@@ -54,6 +54,8 @@ typedef struct sSirFTPreAuthReq
 {
    tANI_U16    messageType;      // eWNI_SME_FT_PRE_AUTH_REQ
    tANI_U16    length;
+   tANI_BOOLEAN bPreAuthRspProcessed; /* Track if response is processed for this request
+                                         We expect only one response per request. */
    tANI_U8     preAuthchannelNum;
    tSirMacAddr currbssId;        // BSSID currently associated to suspend the link
    tSirMacAddr preAuthbssId;     // BSSID to preauth to

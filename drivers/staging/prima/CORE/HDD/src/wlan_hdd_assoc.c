@@ -369,12 +369,12 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
 
     // We need to send the IEs to the supplicant.
     buff = kmalloc(IW_CUSTOM_MAX, GFP_ATOMIC);
-    vos_mem_zero(buff, IW_CUSTOM_MAX); 
     if (buff == NULL) 
     {
         hddLog(LOGE, "%s: kmalloc unable to allocate memory", __func__); 
         return;
     }
+    vos_mem_zero(buff, IW_CUSTOM_MAX); 
 
     // Sme needs to send the RIC IEs first 
     str_len = strlcpy(buff, "RIC=", IW_CUSTOM_MAX);
@@ -925,7 +925,7 @@ static void hdd_SendReAssocEvent(struct net_device *dev, hdd_adapter_t *pAdapter
     if (!rspRsnIe)
     {
         hddLog(LOGE, "%s: Unable to allocate RSN IE", __func__);
-        goto done;
+        return;
     }
 
     if (pCsrRoamInfo == NULL)

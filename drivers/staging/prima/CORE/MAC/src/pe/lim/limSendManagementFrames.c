@@ -5519,9 +5519,10 @@ limSendRadioMeasureReportActionFrame(tpAniSirGlobal        pMac,
       vos_mem_free(frm);
       return statusCode;
    }
-   else
+   else {
       vos_mem_free(frm);
       return eSIR_SUCCESS;
+   }
 
 returnAfterError:
    vos_mem_free(frm);

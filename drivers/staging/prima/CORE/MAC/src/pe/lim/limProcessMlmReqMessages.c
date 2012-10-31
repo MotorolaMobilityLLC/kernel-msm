@@ -2781,7 +2781,8 @@ limProcessMlmDisassocReqPostSuspend(tpAniSirGlobal pMac, eHalStatus suspendStatu
           (psessionEntry->is11Rconnection )) &&
           (pMlmDisassocReq->reasonCode != eSIR_MAC_DISASSOC_DUE_TO_FTHANDOFF_REASON))
     {
-          PELOGE(limLog(pMac, LOGE, FL("FT Preauth Session Cleanup \n"));)
+          PELOGE(limLog(pMac, LOGE, FL("FT Preauth Session (%p,%d) Cleanup\n"),
+                 psessionEntry, psessionEntry->peSessionId);)
           limFTCleanup(pMac);
     }
     else 
