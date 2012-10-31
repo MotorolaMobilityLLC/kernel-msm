@@ -644,7 +644,7 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
 {
     eHalStatus status = eHAL_STATUS_FAILURE;
     tSmeCmd *pScanCmd = NULL;
-	eCsrConnectState ConnectState;
+    eCsrConnectState ConnectState;
     
     VOS_ASSERT(pScanRequest != NULL);
 
