@@ -973,6 +973,13 @@ void mipi_set_tx_power_mode(int mode)
 	MIPI_OUTP(MIPI_DSI_BASE + 0x38, data);
 }
 
+int mipi_get_tx_power_mode(void)
+{
+	uint32 data = MIPI_INP(MIPI_DSI_BASE + 0x38);
+	return !!(data & BIT(26));
+}
+
+
 void mipi_dsi_sw_reset(void)
 {
 	MIPI_OUTP(MIPI_DSI_BASE + 0x114, 0x01);
@@ -1934,6 +1941,128 @@ irqreturn_t mipi_dsi_isr(int irq, void *ptr)
 
 
 	return IRQ_HANDLED;
+}
+
+int mipi_reg_write(struct msm_fb_data_type *mfd, __u16 size, __u8 *buf,
+						__u8 use_hs_mode)
+{
+	struct dcs_cmd_req cmdreq;
+	int old_tx_mode, new_tx_mode;
+
+	struct dsi_cmd_desc reg_write_cmd = {
+		.dtype = DTYPE_DCS_LWRITE,
+		.last = 1,
+		.vc = 0,
+		.ack = 0,
+		.wait = 0,
+		.dlen = size,
+		.payload = buf
+	};
+
+	cmdreq.cmds = &reg_write_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_TX | CMD_REQ_COMMIT;
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	if (!mfd->panel_power_on) {
+		pr_err("%s panel is off. Fail to write.\n", __func__);
+		return -EPERM;
+	}
+
+	pr_debug("%s addr %02x size %d hs %d\n", __func__, (__u32)buf[0],
+			(__s32)size, (__s32)use_hs_mode);
+
+	mutex_lock(&mfd->dma->ov_mutex);
+
+	old_tx_mode = mipi_get_tx_power_mode();
+	new_tx_mode = !use_hs_mode;
+
+	if (old_tx_mode != new_tx_mode) {
+		pr_debug("%s setting new tx mode %d\n", __func__,
+							(__s32)new_tx_mode);
+		mipi_set_tx_power_mode(new_tx_mode);
+	}
+
+	mipi_dsi_cmdlist_put(&cmdreq);
+
+	if (old_tx_mode != new_tx_mode) {
+		pr_debug("%s restoring old tx mode %d\n", __func__,
+							(__s32)old_tx_mode);
+		mipi_set_tx_power_mode(old_tx_mode);
+	}
+
+	mutex_unlock(&mfd->dma->ov_mutex);
+
+	pr_debug("%s done!\n", __func__);
+
+	return 0;
+}
+
+int mipi_reg_read(struct msm_fb_data_type *mfd, __u16 address,
+				__u16 size, __u8 *buf, __u8 use_hs_mode)
+{
+	int old_tx_mode, new_tx_mode;
+	struct dcs_cmd_req cmdreq;
+	__u8 cmd_buf[2] = {(__u8)address, 0};
+	int ret;
+
+	struct dsi_cmd_desc reg_read_cmd = {
+		.dtype = DTYPE_DCS_READ,
+		.last = 1,
+		.vc = 0,
+		.ack = 1,
+		.wait = 1,
+		.dlen = 2,
+		.payload = cmd_buf
+	};
+
+	cmdreq.cmds = &reg_read_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	cmdreq.rlen = size;
+	cmdreq.cb = NULL;
+
+	if (!mfd->panel_power_on) {
+		pr_err("%s panel is off. Fail to read.\n", __func__);
+		return -EPERM;
+	}
+
+	pr_debug("%s addr %02x size %d hs %d\n", __func__, (__u32)address,
+					(__s32)size, (__s32)use_hs_mode);
+
+	mutex_lock(&mfd->dma->ov_mutex);
+
+	old_tx_mode = mipi_get_tx_power_mode();
+	new_tx_mode = !use_hs_mode;
+	if (old_tx_mode != new_tx_mode) {
+		pr_debug("%s setting new tx mode %d\n", __func__,
+						(__s32)new_tx_mode);
+		mipi_set_tx_power_mode(new_tx_mode);
+	}
+
+	ret = mipi_dsi_cmdlist_put(&cmdreq);
+	if (ret < 0) {
+		pr_err("%s: failed to read cmd=0x%x\n", __func__,
+				reg_read_cmd.payload[0]);
+		goto end;
+	} else if (ret != size)
+		pr_warning("%s: read cmd=0x%x returns data(%d) != rlen(%d)\n",
+			__func__, reg_read_cmd.payload[0], size, ret);
+
+	memcpy(buf, cmdreq.rdata, size);
+end:
+	if (old_tx_mode != new_tx_mode) {
+		pr_debug("%s restoring old tx mode %d\n", __func__,
+							(__s32)old_tx_mode);
+		mipi_set_tx_power_mode(old_tx_mode);
+	}
+
+	mutex_unlock(&mfd->dma->ov_mutex);
+
+	pr_debug("%s done!\n", __func__);
+
+	return 0;
 }
 
 static void dsi_reg_range_dump(int offset, int range)
