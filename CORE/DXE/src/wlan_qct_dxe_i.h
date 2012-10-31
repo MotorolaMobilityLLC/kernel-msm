@@ -63,6 +63,7 @@ when           who        what, where, why
  * -------------------------------------------------------------------------*/
 #include "wlan_qct_dxe.h"
 #include "wlan_qct_pal_trace.h"
+#include "wlan_qct_pal_timer.h"
 #include "vos_trace.h"
 /*----------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
@@ -580,6 +581,8 @@ typedef struct
    WLANDXE_ChannelExConfigType     extraConfig;
    WLANDXE_DMAChannelType          assignedDMAChannel;
    wpt_uint64                      rxDoneHistogram;
+   wpt_timer                       healthMonitorTimer;
+   wpt_msg                        *healthMonitorMsg;
 } WLANDXE_ChannelCBType;
 
 typedef struct
