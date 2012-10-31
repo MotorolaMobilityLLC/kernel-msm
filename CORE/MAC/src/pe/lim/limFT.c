@@ -266,13 +266,15 @@ int limProcessFTPreAuthReq(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
     if (psessionEntry->currentOperChannel != pMac->ft.ftPEContext.pFTPreAuthReq->preAuthchannelNum) 
     {
         // Need to suspend link only if the channels are different
+        PELOG2(limLog(pMac,LOG2,"%s: Performing pre-auth on different"
+               " channel (session %p)\n", __FUNCTION__, psessionEntry);)
         limSuspendLink(pMac, eSIR_CHECK_ROAMING_SCAN, FTPreAuthSuspendLinkHandler, 
                        (tANI_U32 *)psessionEntry); 
     }
     else 
     {
-        PELOGE(limLog( pMac, LOGE, "%s: Performing pre-auth on same channel\n", 
-            __FUNCTION__);)
+        PELOG2(limLog(pMac,LOG2,"%s: Performing pre-auth on same"
+               " channel (session %p)\n", __FUNCTION__, psessionEntry);)
         // We are in the same channel. Perform pre-auth
         limPerformFTPreAuth(pMac, eHAL_STATUS_SUCCESS, NULL, psessionEntry);
     }
@@ -306,7 +308,9 @@ void limPerformFTPreAuth(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data,
     pMac->ft.ftPEContext.psavedsessionEntry = psessionEntry;
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    PELOGE(limLog( pMac, LOGE, "Entered wait auth2 state for FT\n");)
+    PELOG2(limLog(pMac,LOG2,"Entered wait auth2 state for FT"
+           " (old session %p)\n", 
+           pMac->ft.ftPEContext.psavedsessionEntry);)
 #endif
 
 
@@ -701,8 +705,8 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
     pftSessionEntry->encryptType = psessionEntry->encryptType;
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    PELOGE(limLog( pMac, LOGE, "%s: Created session with the id = %d\n", 
-       __FUNCTION__, pftSessionEntry->peSessionId);)
+    PELOGE(limLog(pMac,LOGE,"%s:created session (%p) with id = %d\n", 
+       __FUNCTION__, pftSessionEntry, pftSessionEntry->peSessionId);)
 #endif
 
     palFreeMemory(pMac->hHdd, pBeaconStruct);
