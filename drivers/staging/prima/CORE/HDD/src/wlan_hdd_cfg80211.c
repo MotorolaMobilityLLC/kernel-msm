@@ -3532,7 +3532,7 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
     if(pScanInfo->flushP2pScanResults)
     {
         tANI_U8 sessionId = pAdapter->sessionId;
-        sme_ScanFlushResult(WLAN_HDD_GET_HAL_CTX(pAdapter), sessionId);
+        sme_ScanFlushP2PResult(WLAN_HDD_GET_HAL_CTX(pAdapter), sessionId);
         pScanInfo->flushP2pScanResults = 0;
     }
 #endif

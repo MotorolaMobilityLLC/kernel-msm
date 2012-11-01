@@ -1934,8 +1934,39 @@ eHalStatus csrScanGetResult(tpAniSirGlobal pMac, tCsrScanResultFilter *pFilter, 
     return (status);
 }
 
+/*
+ * NOTE: This routine is being added to make
+ * sure that scan results are not being flushed
+ * while roaming. If the scan results are flushed,
+ * we are unable to recover from
+ * csrRoamRoamingStateDisassocRspProcessor.
+ * If it is needed to remove this routine,
+ * first ensure that we recover gracefully from 
+ * csrRoamRoamingStateDisassocRspProcessor if 
+ * csrScanGetResult returns with a failure because 
+ * of not being able to find the roaming BSS.
+ */
+tANI_U8 csrScanFlushDenied(tpAniSirGlobal pMac)
+{
+    switch(pMac->roam.neighborRoamInfo.neighborRoamState) {
+        case eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN:
+        case eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING:
+        case eCSR_NEIGHBOR_ROAM_STATE_PREAUTH_DONE:
+        case eCSR_NEIGHBOR_ROAM_STATE_REASSOCIATING:
+            return (pMac->roam.neighborRoamInfo.neighborRoamState);
+        default:
+            return 0;
+    }
+}
+
 eHalStatus csrScanFlushResult(tpAniSirGlobal pMac)
 {
+    tANI_U8 isFlushDenied = csrScanFlushDenied(pMac);
+    if (isFlushDenied) {
+        smsLog(pMac, LOGW, "%s: scan flush denied in roam state %d",
+                __func__, isFlushDenied);
+        return eHAL_STATUS_FAILURE;
+    }
     return ( csrLLScanPurgeResult(pMac, &pMac->scan.scanResultList) );
 }
 
