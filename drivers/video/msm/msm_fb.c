@@ -506,6 +506,18 @@ static int msm_fb_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void lock_panel_mutex(struct msm_fb_data_type *mfd)
+{
+	if (mfd->panel_info.mipi.dsi_phy_db != NULL)
+		mutex_lock(&mfd->panel_info.mipi.panel_mutex);
+}
+
+static void unlock_panel_mutex(struct msm_fb_data_type *mfd)
+{
+	if (mfd->panel_info.mipi.dsi_phy_db != NULL)
+		mutex_unlock(&mfd->panel_info.mipi.panel_mutex);
+}
+
 #if defined(CONFIG_PM) && !defined(CONFIG_HAS_EARLYSUSPEND)
 static int msm_fb_suspend(struct platform_device *pdev, pm_message_t state)
 {
@@ -546,6 +558,7 @@ static int msm_fb_suspend_sub(struct msm_fb_data_type *mfd)
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
 
+	lock_panel_mutex(mfd);
 	if (mfd->msmfb_no_update_notify_timer.function)
 		del_timer(&mfd->msmfb_no_update_notify_timer);
 	complete(&mfd->msmfb_no_update_notify);
@@ -564,7 +577,7 @@ static int msm_fb_suspend_sub(struct msm_fb_data_type *mfd)
 		if (ret) {
 			MSM_FB_INFO
 			    ("msm_fb_suspend: can't turn off display!\n");
-			return ret;
+			goto end;
 		}
 		mfd->op_enable = FALSE;
 	}
@@ -591,7 +604,9 @@ static int msm_fb_suspend_sub(struct msm_fb_data_type *mfd)
 		}
 	}
 
-	return 0;
+end:
+	unlock_panel_mutex(mfd);
+	return ret;
 }
 
 #ifdef CONFIG_PM
@@ -603,6 +618,7 @@ static int msm_fb_resume_sub(struct msm_fb_data_type *mfd)
 	if ((!mfd) || (mfd->key != MFD_KEY))
 		return 0;
 
+	lock_panel_mutex(mfd);
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
 
 	/* attach display channel irq if there's any */
@@ -624,6 +640,7 @@ static int msm_fb_resume_sub(struct msm_fb_data_type *mfd)
 			MSM_FB_INFO("msm_fb_resume: can't turn on display!\n");
 	}
 
+	unlock_panel_mutex(mfd);
 	return ret;
 }
 #endif
@@ -1994,8 +2011,11 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 			     (var->activate == FB_ACTIVATE_VBL));
 	/* async call */
 
+	lock_panel_mutex(mfd);
 	mdp_dma_pan_update(info);
+	unlock_panel_mutex(mfd);
 	msm_fb_signal_timeline(mfd);
+
 	up(&msm_fb_pan_sem);
 
 	if (unset_bl_level && !bl_updated) {
@@ -3213,7 +3233,9 @@ static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 		}
 	}
 
+	lock_panel_mutex(mfd);
 	ret = mdp4_overlay_play(info, &req);
+	unlock_panel_mutex(mfd);
 
 	if (unset_bl_level && !bl_updated) {
 		pdata = (struct msm_fb_panel_data *)mfd->pdev->
