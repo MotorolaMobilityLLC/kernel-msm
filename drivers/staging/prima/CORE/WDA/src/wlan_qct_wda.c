@@ -2473,7 +2473,10 @@ VOS_STATUS WDA_ProcessJoinReq(tWDA_CbContext *pWDA,
                 pWDA->macSTASelf, sizeof(tSirMacAddr)) ;
    wdiJoinReqParam->wdiReqInfo.wdiChannelInfo.ucChannel = 
                                                  joinReqParam->channelNumber ;
-#ifndef WLAN_FEATURE_VOWIFI
+#ifdef WLAN_FEATURE_VOWIFI
+   wdiJoinReqParam->wdiReqInfo.wdiChannelInfo.cMaxTxPower =
+                                          joinReqParam->maxTxPower ;
+#else
    wdiJoinReqParam->wdiReqInfo.wdiChannelInfo.ucLocalPowerConstraint = 
                                           joinReqParam->localPowerConstraint ;
 #endif
