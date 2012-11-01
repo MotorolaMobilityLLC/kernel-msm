@@ -1190,7 +1190,7 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 {
 	struct dsi_cmd_desc *cm;
 	uint32 dsi_ctrl, ctrl;
-	int i;
+	int i, ret, cnt_xfer;
 	uint32 panel_mode;
 	long long vtime;
 
@@ -1212,11 +1212,25 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 
 	cm = cmds;
 	mipi_dsi_buf_init(tp);
+	cnt_xfer = 0;
 	for (i = 0; i < cnt; i++) {
 		mipi_dsi_enable_irq(DSI_CMD_TERM);
 		mipi_dsi_buf_init(tp);
-		mipi_dsi_cmd_dma_add(tp, cm);
-		mipi_dsi_cmd_dma_tx(tp);
+		ret = mipi_dsi_cmd_dma_add(tp, cm);
+		if (!ret) {
+			pr_err("%s: failed to call dma_add for cmd=0x%x\n",
+						__func__, cm->payload[0]);
+			goto next_one;
+		}
+
+		ret = mipi_dsi_cmd_dma_tx(tp);
+		if (ret < 0)
+			pr_err("%s: failed to send cmd = 0x%x\n", __func__,
+							cm->payload[0]);
+		else
+			cnt_xfer++;
+
+next_one:
 		if (cm->wait)
 			msleep(cm->wait);
 		cm++;
@@ -1225,7 +1239,7 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 	if (panel_mode & MDP4_PANEL_DSI_VIDEO)
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl); /* restore */
 
-	return cnt;
+	return cnt_xfer;
 }
 
 /* MIPI_DSI_MRPS, Maximum Return Packet Size */
@@ -1252,12 +1266,19 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 			struct dsi_buf *tp, struct dsi_buf *rp,
 			struct dsi_cmd_desc *cmds, int rlen)
 {
-	int cnt, len, diff, pkt_size;
+	int cnt, len, diff, pkt_size, ret = 0;
 	char cmd;
 	unsigned long flag;
 	u32 dsi_ctrl, ctrl;
+	static int cur_pkt_size;
+	bool send_max_pkt_size = false;
 	uint32 panel_mode;
 	long long vtime;
+
+	if (rlen != cur_pkt_size) {
+		cur_pkt_size = rlen;
+		send_max_pkt_size = true;
+	}
 
 	if (mfd->panel_info.mipi.no_max_pkt_size) {
 		/* Only support rlen = 4*n */
@@ -1304,24 +1325,48 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 		udelay(MOT_VIDEO_WAIT4VSYNC_DELAY);
 	}
 
-	if (!mfd->panel_info.mipi.no_max_pkt_size) {
+	if (!mfd->panel_info.mipi.no_max_pkt_size && send_max_pkt_size) {
 		/* packet size need to be set at every read */
 		pkt_size = len;
 		max_pktsize[0] = pkt_size;
-		mipi_dsi_enable_irq(DSI_CMD_TERM);
 		mipi_dsi_buf_init(tp);
-		mipi_dsi_cmd_dma_add(tp, pkt_size_cmd);
-		mipi_dsi_cmd_dma_tx(tp);
+		ret = mipi_dsi_cmd_dma_add(tp, pkt_size_cmd);
+		if (!ret) {
+			rp->len = 0;
+			pr_err("%s: failed to call cmd_dma_add for " \
+						"max_pktsize\n", __func__);
+			goto err;
+		}
+
+		mipi_dsi_enable_irq(DSI_CMD_TERM);
+		ret = mipi_dsi_cmd_dma_tx(tp);
+		if (ret < 0) {
+			rp->len = 0;
+			pr_err("%s: failed to call cmd_dma_tx for " \
+						"max_pktsize\n", __func__);
+			mipi_dsi_disable_irq_nosync(DSI_CMD_TERM);
+			goto err;
+		}
+	}
+
+	mipi_dsi_buf_init(tp);
+	ret = mipi_dsi_cmd_dma_add(tp, cmds);
+	if (!ret) {
+		rp->len = 0;
+		pr_err("%s: failed to call cmd_dma_add\n", __func__);
+		goto err;
 	}
 
 	mipi_dsi_enable_irq(DSI_CMD_TERM);
-	mipi_dsi_buf_init(tp);
-	mipi_dsi_cmd_dma_add(tp, cmds);
-
 	/* transmit read comamnd to client */
-	mipi_dsi_cmd_dma_tx(tp);
+	ret = mipi_dsi_cmd_dma_tx(tp);
+	if (ret < 0) {
+		rp->len = 0;
+		pr_err("%s: failed to call cmd_dma_tx\n", __func__);
+		mipi_dsi_disable_irq_nosync(DSI_CMD_TERM);
+		goto err;
+	}
 
-	mipi_dsi_disable_irq(DSI_CMD_TERM);
 	/*
 	 * once cmd_dma_done interrupt received,
 	 * return data from client is ready and stored
@@ -1336,7 +1381,12 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 		rp->data += 2;
 	}
 
-	mipi_dsi_cmd_dma_rx(rp, cnt);
+	ret = mipi_dsi_cmd_dma_rx(rp, cnt);
+	if (!ret) {
+		rp->len = 0;
+		pr_err("%s: failed to call cmd_dma_rx\n", __func__);
+		goto err;
+	}
 
 	if (panel_mode & MDP4_PANEL_DSI_VIDEO)
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl); /* restore */
@@ -1361,6 +1411,7 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 	switch (cmd) {
 	case DTYPE_ACK_ERR_RESP:
 		pr_err("%s: rx ACK_ERR_PACKET\n", __func__);
+		rp->len = 0;
 		break;
 	case DTYPE_GEN_READ1_RESP:
 	case DTYPE_DCS_READ1_RESP:
@@ -1377,9 +1428,17 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 		rp->len -= diff; /* align bytes */
 		break;
 	default:
+		pr_warning("%s: Received Invalid cmd 0x%x 0x%x 0x%x 0x%x\n",
+					__func__, rp->data[0], rp->data[1],
+					rp->data[2], rp->data[3]);
+		rp->len = 0;
 		break;
 	}
 
+	return rp->len;
+err:
+	if (panel_mode & MDP4_PANEL_DSI_VIDEO)
+		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl); /* restore */
 	return rp->len;
 }
 
@@ -1387,12 +1446,19 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 			struct dcs_cmd_req *req, int rlen)
 {
 	struct dsi_cmd_desc *cmds;
-	int cnt, len, diff, pkt_size;
+	int cnt, len, diff, pkt_size, ret;
 	char cmd;
 	unsigned long flag;
 	u32 ctrl, dsi_ctrl;
+	static int cur_pkt_size;
+	bool send_max_pkt_size = false;
 	uint32 panel_mode;
 	long long vtime;
+
+	if (rlen != cur_pkt_size) {
+		cur_pkt_size = rlen;
+		send_max_pkt_size = true;
+	}
 
 	if (req->flags & CMD_REQ_NO_MAX_PKT_SIZE) {
 		/* Only support rlen = 4*n */
@@ -1445,23 +1511,48 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 		udelay(MOT_VIDEO_WAIT4VSYNC_DELAY);
 	}
 
-	if (!(req->flags & CMD_REQ_NO_MAX_PKT_SIZE)) {
+	if (!(req->flags & CMD_REQ_NO_MAX_PKT_SIZE) && send_max_pkt_size) {
 		/* packet size need to be set at every read */
 		pkt_size = len;
 		max_pktsize[0] = pkt_size;
-		mipi_dsi_enable_irq(DSI_CMD_TERM);
 		mipi_dsi_buf_init(tp);
-		mipi_dsi_cmd_dma_add(tp, pkt_size_cmd);
-		mipi_dsi_cmd_dma_tx(tp);
+		ret = mipi_dsi_cmd_dma_add(tp, pkt_size_cmd);
+		if (!ret) {
+			rp->len = 0;
+			pr_err("%s: failed to call cmd_dma_add for " \
+						"max_pktsize\n", __func__);
+			goto err;
+		}
+
+		mipi_dsi_enable_irq(DSI_CMD_TERM);
+		ret = mipi_dsi_cmd_dma_tx(tp);
+		if (ret < 0) {
+			rp->len = 0;
+			pr_err("%s: failed to call cmd_dma_tx for " \
+						"max_pktsize\n", __func__);
+			mipi_dsi_disable_irq_nosync(DSI_CMD_TERM);
+			goto err;
+		}
+	}
+
+	mipi_dsi_buf_init(tp);
+	ret = mipi_dsi_cmd_dma_add(tp, cmds);
+	if (!ret) {
+		rp->len = 0;
+		pr_err("%s: failed to call cmd_dma_add\n", __func__);
+		goto err;
 	}
 
 	mipi_dsi_enable_irq(DSI_CMD_TERM);
-	mipi_dsi_buf_init(tp);
-	mipi_dsi_cmd_dma_add(tp, cmds);
-
 	/* transmit read comamnd to client */
-	mipi_dsi_cmd_dma_tx(tp);
-	mipi_dsi_disable_irq(DSI_CMD_TERM);
+	ret = mipi_dsi_cmd_dma_tx(tp);
+	if (ret < 0) {
+		rp->len = 0;
+		pr_err("%s: failed to call cmd_dma_tx\n", __func__);
+		mipi_dsi_disable_irq_nosync(DSI_CMD_TERM);
+		goto err;
+	}
+
 	/*
 	 * once cmd_dma_done interrupt received,
 	 * return data from client is ready and stored
@@ -1476,7 +1567,12 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 		rp->data += 2;
 	}
 
-	mipi_dsi_cmd_dma_rx(rp, cnt);
+	ret = mipi_dsi_cmd_dma_rx(rp, cnt);
+	if (!ret) {
+		rp->len = 0;
+		pr_err("%s: failed to call cmd_dma_rx\n", __func__);
+		goto err;
+	}
 
 	if (panel_mode & MDP4_PANEL_DSI_VIDEO)
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl); /* restore */
@@ -1501,6 +1597,7 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 	switch (cmd) {
 	case DTYPE_ACK_ERR_RESP:
 		pr_err("%s: rx ACK_ERR_PACKET\n", __func__);
+		rp->len = 0;
 		break;
 	case DTYPE_GEN_READ1_RESP:
 	case DTYPE_DCS_READ1_RESP:
@@ -1517,8 +1614,16 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 		rp->len -= diff; /* align bytes */
 		break;
 	default:
+		pr_warning("%s: Received Invalid cmd 0x%x 0x%x 0x%x 0x%x\n",
+					__func__, rp->data[0], rp->data[1],
+					rp->data[2], rp->data[3]);
+		rp->len = 0;
 		break;
 	}
+	return rp->len;
+err:
+	if (panel_mode & MDP4_PANEL_DSI_VIDEO)
+		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl); /* restore */
 
 	return rp->len;
 }
@@ -1527,6 +1632,7 @@ int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 {
 	unsigned long flags;
 	int dsi_status1 = 0, dsi_status2 = 0;
+	int ret;
 
 #ifdef DSI_HOST_DEBUG
 	int i;
@@ -1551,8 +1657,11 @@ int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 	tp->len &= ~0x03;	/* multipled by 4 */
 
 	tp->dmap = dma_map_single(&dsi_dev, tp->data, tp->len, DMA_TO_DEVICE);
-	if (dma_mapping_error(&dsi_dev, tp->dmap))
+	if (dma_mapping_error(&dsi_dev, tp->dmap)) {
 		pr_err("%s: dmap mapp failed\n", __func__);
+		ret = -1;
+		goto end;
+	}
 
 	INIT_COMPLETION(dsi_dma_comp);
 
@@ -1567,14 +1676,21 @@ int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 	if (wait_for_completion_timeout(&dsi_dma_comp,
 					msecs_to_jiffies(WAIT_TOUT)) == 0) {
 		dsi_status2 = MIPI_INP(MIPI_DSI_BASE + 0x04);
-		pr_err("%s: timeout waiting for dsi dma completion " \
-					" dsi_status2=0x%x dsi_status2=0x%x\n",
-					__func__, dsi_status1, dsi_status2);
+		pr_err("%s: failed when transmit cmd =0x%1x. " \
+				" dsi_status1=0x%x dsi_status2=0x%x\n",
+				__func__, (unsigned)*(tp->data),
+				dsi_status1, dsi_status2);
+		ret = -1;
+	} else {
+		ret = tp->len;
+		pr_debug("%s: transmit cmd=0x%1x\n",
+					__func__, (unsigned)*(tp->data));
 	}
 
 	dma_unmap_single(&dsi_dev, tp->dmap, tp->len, DMA_TO_DEVICE);
 	tp->dmap = 0;
-	return tp->len;
+end:
+	return ret;
 }
 
 int mipi_dsi_cmd_dma_rx(struct dsi_buf *rp, int rlen)
