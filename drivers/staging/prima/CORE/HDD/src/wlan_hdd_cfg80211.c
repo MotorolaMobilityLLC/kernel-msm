@@ -3176,6 +3176,9 @@ wlan_hdd_cfg80211_inform_bss_frame( hdd_adapter_t *pAdapter,
 
     ENTER();
 
+    if (!mgmt)
+        return NULL;
+
     memcpy(mgmt->bssid, bss_desc->bssId, ETH_ALEN);
 
 #ifdef WLAN_OPEN_SOURCE
