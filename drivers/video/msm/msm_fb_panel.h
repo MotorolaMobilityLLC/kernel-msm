@@ -137,6 +137,7 @@ struct mipi_panel_info {
 	char no_max_pkt_size;
 	/* Clock required during LP commands */
 	char force_clk_lane_hs;
+	struct mutex panel_mutex;
 };
 
 enum lvds_mode {

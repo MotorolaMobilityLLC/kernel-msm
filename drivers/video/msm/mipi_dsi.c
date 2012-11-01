@@ -496,6 +496,8 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 	else
 		mfd->dest = DISPLAY_LCD;
 
+	mutex_init(&mfd->panel_info.mipi.panel_mutex);
+
 	if (mdp_rev == MDP_REV_303 &&
 		mipi_dsi_pdata->get_lane_config) {
 		if (mipi_dsi_pdata->get_lane_config() != 2) {
