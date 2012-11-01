@@ -120,6 +120,7 @@ struct msm8960_oem_init_ptrs {
 	void (*msm_display_init)(struct msm8960_oem_init_ptrs *,
 				struct msm_fb_platform_data *msm_fb_pdata,
 				struct mipi_dsi_platform_data *mipi_dsi_pdata);
+	void (*msm_regulator_init)(struct msm8960_oem_init_ptrs *);
 	void *oem_data;
 };
 extern struct msm8960_oem_init_ptrs msm8960_oem_funcs;
