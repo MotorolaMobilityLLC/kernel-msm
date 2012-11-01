@@ -648,4 +648,7 @@ void __init configure_msm8960_power_grid(void)
 			}
 		}
 	}
+
+	if (msm8960_oem_funcs.msm_regulator_init)
+		msm8960_oem_funcs.msm_regulator_init(&msm8960_oem_funcs);
 }
