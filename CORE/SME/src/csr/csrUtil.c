@@ -3566,7 +3566,7 @@ tANI_U8 csrConstructRSNIe( tHalHandle hHal, tANI_U32 sessionId, tCsrRoamProfile 
     tANI_U8 PMKId[CSR_RSN_PMKID_SIZE];
     tDot11fBeaconIEs *pIesLocal = pIes;
 
-    smsLog(pMac, LOGW, "%s called...", __FUNCTION__);
+    smsLog(pMac, LOGW, "%s called...", __func__);
 
     do
     {

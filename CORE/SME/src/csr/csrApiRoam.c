@@ -800,10 +800,10 @@ void csrAbortCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand, tANI_BOOLEAN fStop
         case eSmeCommandScan:
             // We need to inform the requester before droping the scan command
             smsLog( pMac, LOGW, "%s: Drop scan reason %d callback 0x%X\n", 
-                __FUNCTION__, pCommand->u.scanCmd.reason, (unsigned int)pCommand->u.scanCmd.callback);
+                __func__, pCommand->u.scanCmd.reason, (unsigned int)pCommand->u.scanCmd.callback);
             if (NULL != pCommand->u.scanCmd.callback)
             {
-                smsLog( pMac, LOGW, "%s callback scan requester\n", __FUNCTION__);
+                smsLog( pMac, LOGW, "%s callback scan requester\n", __func__);
                 csrScanCallCallback(pMac, pCommand, eCSR_SCAN_ABORT);
             }
             csrReleaseCommandScan( pMac, pCommand );
@@ -3593,7 +3593,7 @@ static eCsrJoinState csrRoamJoinNextBss( tpAniSirGlobal pMac, tSmeCmd *pCommand,
                         concurrentChannel = 
                             csrGetConcurrentOperationChannel(pMac);
                         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH, "%s: "
-                                " csr Concurrent Channel = %d", __FUNCTION__, concurrentChannel);
+                                " csr Concurrent Channel = %d", __func__, concurrentChannel);
                         if ((concurrentChannel) && 
                                 (concurrentChannel == 
                                  pScanResult->Result.BssDescriptor.channelId))
@@ -4639,7 +4639,7 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                             else
                             {
                                 smsLog(pMac, LOGE, "%s: Copying of memory failed for %d bytes !!!\n", 
-                                        __FUNCTION__, len);
+                                        __func__, len);
                                 palFreeMemory( pMac->hHdd, pSession->connectedInfo.pbFrames );
                                 pSession->connectedInfo.pbFrames = NULL;
                             }
@@ -9285,7 +9285,7 @@ eHalStatus csrRoamLostLink( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32 ty
             }
             else
             {
-                smsLog(pMac, LOGW, " %s Fail to start roaming, status = %d", __FUNCTION__, status);
+                smsLog(pMac, LOGW, " %s Fail to start roaming, status = %d", __func__, status);
                 fToRoam = eANI_BOOLEAN_FALSE;
             }
         }
@@ -12649,7 +12649,7 @@ eHalStatus csrProcessAddStaSessionRsp( tpAniSirGlobal pMac, tANI_U8 *pMsg)
    {
       if(pMsg == NULL)
       {
-         smsLog(pMac, LOGE, "in %s msg ptr is NULL\n", __FUNCTION__);
+         smsLog(pMac, LOGE, "in %s msg ptr is NULL\n", __func__);
          status = eHAL_STATUS_FAILURE;
          break;
       }
@@ -12674,7 +12674,7 @@ eHalStatus csrProcessAddStaSessionRsp( tpAniSirGlobal pMac, tANI_U8 *pMsg)
          else
          {
             smsLog(pMac, LOGE, "in %s eWNI_SME_ADD_STA_SELF_RSP Received but NO Add sta session command are ACTIVE ...\n",
-                  __FUNCTION__);
+                  __func__);
             status = eHAL_STATUS_FAILURE;
             break;
          }
@@ -12682,7 +12682,7 @@ eHalStatus csrProcessAddStaSessionRsp( tpAniSirGlobal pMac, tANI_U8 *pMsg)
       else
       {
          smsLog(pMac, LOGE, "in %s eWNI_SME_ADD_STA_SELF_RSP Received but NO commands are ACTIVE ...\n",
-               __FUNCTION__);
+               __func__);
          status = eHAL_STATUS_FAILURE;
          break;
       }
@@ -12808,7 +12808,7 @@ eHalStatus csrProcessDelStaSessionRsp( tpAniSirGlobal pMac, tANI_U8 *pMsg)
    {
       if(pMsg == NULL)
       {
-         smsLog(pMac, LOGE, "in %s msg ptr is NULL\n", __FUNCTION__);
+         smsLog(pMac, LOGE, "in %s msg ptr is NULL\n", __func__);
          status = eHAL_STATUS_FAILURE;
          break;
       }
@@ -12834,12 +12834,12 @@ eHalStatus csrProcessDelStaSessionRsp( tpAniSirGlobal pMac, tANI_U8 *pMsg)
                     status = sme_AcquireGlobalLock( &pMac->sme );
                     if (! HAL_STATUS_SUCCESS( status ) )
                     {
-                        smsLog(pMac, LOGP, "%s: Failed to Acquire Lock\n", __FUNCTION__);
+                        smsLog(pMac, LOGP, "%s: Failed to Acquire Lock\n", __func__);
                         return status;
                     }
                 }
                 else {
-                    smsLog(pMac, LOGE, "%s: Failed to Release Lock\n", __FUNCTION__);
+                    smsLog(pMac, LOGE, "%s: Failed to Release Lock\n", __func__);
                 }
             } 
    
@@ -12854,7 +12854,7 @@ eHalStatus csrProcessDelStaSessionRsp( tpAniSirGlobal pMac, tANI_U8 *pMsg)
          else
          {
             smsLog(pMac, LOGE, "in %s eWNI_SME_DEL_STA_SELF_RSP Received but NO Del sta session command are ACTIVE ...\n",
-                  __FUNCTION__);
+                  __func__);
             status = eHAL_STATUS_FAILURE;
             break;
          }
@@ -12862,7 +12862,7 @@ eHalStatus csrProcessDelStaSessionRsp( tpAniSirGlobal pMac, tANI_U8 *pMsg)
       else
       {
          smsLog(pMac, LOGE, "in %s eWNI_SME_DEL_STA_SELF_RSP Received but NO commands are ACTIVE ...\n",
-               __FUNCTION__);
+               __func__);
          status = eHAL_STATUS_FAILURE;
          break;
       }

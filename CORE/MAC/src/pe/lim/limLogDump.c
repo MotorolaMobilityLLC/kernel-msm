@@ -1268,7 +1268,7 @@ dump_lim_send_SM_Power_Mode( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, 
     tpSirMbMsg  pMBMsg;
         tSirMacHTMIMOPowerSaveState state;
 
-        p += log_sprintf( pMac,p, "%s: Verifying the Arguments\n", __FUNCTION__);
+        p += log_sprintf( pMac,p, "%s: Verifying the Arguments\n", __func__);
     if ((arg1 > 3) || (arg1 == 2))
     {
                 p += log_sprintf( pMac,p, "Invalid Argument , enter one of the valid states\n");
@@ -1323,7 +1323,7 @@ tpDphHashNode pSta;
   {
     p += log_sprintf( pMac, p,
         "\n%s: Could not find entry in DPH table for assocId = %d\n",
-        __FUNCTION__,
+        __func__,
         arg1 );
   }
   else
@@ -1331,7 +1331,7 @@ tpDphHashNode pSta;
     status = limPostMlmAddBAReq( pMac, pSta, (tANI_U8) arg2, (tANI_U16) arg3,psessionEntry);
     p += log_sprintf( pMac, p,
         "\n%s: Attempted to send an ADDBA Req to STA Index %d, for TID %d. Send Status = %s\n",
-        __FUNCTION__,
+        __func__,
         pSta->staIndex,
         arg2,
         limResultCodeStr( status ));
@@ -1353,7 +1353,7 @@ tpDphHashNode pSta;
   {
     p += log_sprintf( pMac, p,
         "\n%s: Could not find entry in DPH table for assocId = %d\n",
-        __FUNCTION__,
+        __func__,
         arg1 );
   }
   else
@@ -1363,7 +1363,7 @@ tpDphHashNode pSta;
         "\n%s: Attempted to send a DELBA Ind to STA Index %d, "
         "as the BA \"%s\" for TID %d, with Reason code %d. "
         "Send Status = %s\n",
-        __FUNCTION__,
+        __func__,
         pSta->staIndex,
         (arg2 == 1)? "Initiator": "Recipient",
         arg3, // TID
@@ -1387,7 +1387,7 @@ dump_lim_ba_timeout( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32
 
   p += log_sprintf( pMac, p,
       "\n%s: Attempted to trigger a BA Timeout Ind to STA Index %d, for TID %d, Direction %d\n",
-      __FUNCTION__,
+      __func__,
       arg1, // STA index
       arg2, // TID
       arg3 ); // BA Direction
@@ -1413,7 +1413,7 @@ tpPESession psessionEntry = &pMac->lim.gpSession[0];  //TBD-RAJESH
   {
     p += log_sprintf( pMac, p,
         "\n%s: Could not find entry in DPH table for assocId = %d\n",
-        __FUNCTION__,
+        __func__,
         arg1 );
   }
   else
@@ -1448,14 +1448,14 @@ dump_lim_AddBA_DeclineStat( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, t
     tANI_U8 val;
 
     if (arg1 > 1) {
-        log_sprintf( pMac,p, "%s:Invalid Value is entered for Enable/Disable \n", __FUNCTION__ );
+        log_sprintf( pMac,p, "%s:Invalid Value is entered for Enable/Disable \n", __func__ );
         arg1 &= 1;
     }       
     
     val = pMac->lim.gAddBA_Declined;
     
     if (arg2 > 7) {
-        log_sprintf( pMac,p, "%s:Invalid Value is entered for Tid \n", __FUNCTION__ );
+        log_sprintf( pMac,p, "%s:Invalid Value is entered for Tid \n", __func__ );
         Tid = arg2 & 0x7;
     } else
         Tid = arg2;
@@ -1467,9 +1467,9 @@ dump_lim_AddBA_DeclineStat( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, t
         val &=  ~(0x1 << Tid);
 
     if (cfgSetInt(pMac, (tANI_U16)WNI_CFG_ADDBA_REQ_DECLINE, (tANI_U32) val) != eSIR_SUCCESS)
-             log_sprintf( pMac,p, "%s:Config Set for ADDBA REQ Decline has failed \n", __FUNCTION__ );
+             log_sprintf( pMac,p, "%s:Config Set for ADDBA REQ Decline has failed \n", __func__ );
 
-     log_sprintf( pMac,p, "%s:Decline value %d is being set for TID %d ,\n \tAddBA_Decline Cfg value is %d \n", __FUNCTION__ , arg1, Tid, (int) val);
+     log_sprintf( pMac,p, "%s:Decline value %d is being set for TID %d ,\n \tAddBA_Decline Cfg value is %d \n", __func__ , arg1, Tid, (int) val);
 
      return p;
 }
@@ -2297,18 +2297,18 @@ dump_lim_ft_event( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 a
                    vos_mem_copy(Profile.pBssDesc->bssId, macAddr, 6);
 
                    p += log_sprintf( pMac,p, "\n ----- LIM Debug Information ----- \n");
-                   p += log_sprintf( pMac, p, "%s: length = %d\n", __FUNCTION__, 
+                   p += log_sprintf( pMac, p, "%s: length = %d\n", __func__, 
                             (int)pMac->ft.ftSmeContext.auth_ft_ies_length);
-                   p += log_sprintf( pMac, p, "%s: length = %02x\n", __FUNCTION__, 
+                   p += log_sprintf( pMac, p, "%s: length = %02x\n", __func__, 
                             (int)pMac->ft.ftSmeContext.auth_ft_ies[0]);
                    p += log_sprintf( pMac, p, "%s: Auth Req %02x %02x %02x\n", 
-                            __FUNCTION__, pftPreAuthReq->ft_ies[0],
+                            __func__, pftPreAuthReq->ft_ies[0],
                             pftPreAuthReq->ft_ies[1], pftPreAuthReq->ft_ies[2]);
 
-                   p += log_sprintf( pMac, p, "%s: Session %02x %02x %02x\n", __FUNCTION__, 
+                   p += log_sprintf( pMac, p, "%s: Session %02x %02x %02x\n", __func__, 
                             psessionEntry->bssId[0],
                             psessionEntry->bssId[1], psessionEntry->bssId[2]);
-                   p += log_sprintf( pMac, p, "%s: Session %02x %02x %02x %p\n", __FUNCTION__, 
+                   p += log_sprintf( pMac, p, "%s: Session %02x %02x %02x %p\n", __func__, 
                             pftPreAuthReq->currbssId[0],
                             pftPreAuthReq->currbssId[1], 
                             pftPreAuthReq->currbssId[2], pftPreAuthReq);

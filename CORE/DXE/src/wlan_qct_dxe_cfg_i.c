@@ -411,7 +411,7 @@ wpt_status dxeChannelDefaultConfig
    if((NULL == mappedChannel) || (WDTS_CHANNEL_MAX == idx))
    {
       HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
-              "%s Failed to map channel", __FUNCTION__);
+              "%s Failed to map channel", __func__);
       return eWLAN_PAL_STATUS_E_INVAL;
    }
 

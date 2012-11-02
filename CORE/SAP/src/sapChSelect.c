@@ -135,7 +135,7 @@ int sapSetPreferredChannel(struct net_device *dev, tANI_U8* ptr)
     int j;
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
-               "Enter: %s", __FUNCTION__);
+               "Enter: %s", __func__);
 
     if (NULL != pSapCtx->SapChnlList.channelList)
     {
@@ -225,7 +225,7 @@ int sapSetPreferredChannel(struct net_device *dev, tANI_U8* ptr)
     }
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
-               "Exit: %s", __FUNCTION__);
+               "Exit: %s", __func__);
 
     return 0;
 }
@@ -319,7 +319,7 @@ v_BOOL_t sapChanSelInit(tHalHandle halHandle, tSapChSelSpectInfo *pSpectInfoPara
     v_U16_t channelnum = 0;
     tpAniSirGlobal pMac = PMAC_STRUCT(halHandle);
 
-    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s", __FUNCTION__);
+    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s", __func__);
 
     // Channels for that 2.4GHz band
     //Considered only for 2.4GHz need to change in future to support 5GHz support
@@ -329,7 +329,7 @@ v_BOOL_t sapChanSelInit(tHalHandle halHandle, tSapChSelSpectInfo *pSpectInfoPara
     pSpectCh = (tSapSpectChInfo *)vos_mem_malloc((pSpectInfoParams->numSpectChans) * sizeof(*pSpectCh));
 
     if(pSpectCh == NULL) {
-        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, VOS_MALLOC_ERR", __FUNCTION__);
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, VOS_MALLOC_ERR", __func__);
         return eSAP_FALSE;
     }
 
@@ -402,7 +402,7 @@ v_U32_t sapweightRssiCount(v_S7_t rssi, v_U16_t count)
     rssicountWeight =  rssiWeight + countWeight;      
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, rssiWeight=%d, countWeight=%d, rssicountWeight=%d",
-              __FUNCTION__, rssiWeight, countWeight, rssicountWeight);
+              __func__, rssiWeight, countWeight, rssicountWeight);
     
     return(rssicountWeight);
 }
@@ -440,7 +440,7 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
     tCsrScanResultInfo *pScanResult;
     tSapSpectChInfo *pSpectCh   = pSpectInfoParams->pSpectCh;
 
-    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Computing spectral weight", __FUNCTION__);
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Computing spectral weight", __func__);
 
     /**
     * Soft AP specific channel weight calculation using DFS formula
@@ -470,7 +470,7 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
 
                 VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
                    "In %s, bssdes.ch_self=%d, bssdes.ch_ID=%d, bssdes.rssi=%d, SpectCh.bssCount=%d, pScanResult=0x%x",
-                  __FUNCTION__, pScanResult->BssDescriptor.channelIdSelf, pScanResult->BssDescriptor.channelId, 
+                  __func__, pScanResult->BssDescriptor.channelIdSelf, pScanResult->BssDescriptor.channelId, 
                   pScanResult->BssDescriptor.rssi, pSpectCh->bssCount, pScanResult);
                          
                  pSpectCh++;
@@ -486,7 +486,7 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
     // Calculate the weights for all channels in the spectrum pSpectCh
     pSpectCh = pSpectInfoParams->pSpectCh;
 
-    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Spectrum Channels Weight", __FUNCTION__);
+    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Spectrum Channels Weight", __func__);
 
     for (chn_num = 0; chn_num < (pSpectInfoParams->numSpectChans); chn_num++) {
     
@@ -500,7 +500,7 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
         pSpectCh->weight = SAPDFS_NORMALISE_1000 * sapweightRssiCount(rssi, pSpectCh->bssCount);
 
         //------ Debug Info ------ 
-        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Chan=%d Weight= %d rssiAgr=%d bssCount=%d", __FUNCTION__, pSpectCh->chNum,
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Chan=%d Weight= %d rssiAgr=%d bssCount=%d", __func__, pSpectCh->chNum,
             pSpectCh->weight, pSpectCh->rssiAgr, pSpectCh->bssCount);
         //------ Debug Info ------ 
         pSpectCh++;
@@ -593,11 +593,11 @@ void sapSortChlWeight(tSapChSelSpectInfo *pSpectInfoParams)
 #endif
 
     /* For testing */
-    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Sorted Spectrum Channels Weight", __FUNCTION__);
+    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Sorted Spectrum Channels Weight", __func__);
     pSpectCh = pSpectInfoParams->pSpectCh;
     for (j = 0; j < (pSpectInfoParams->numSpectChans); j++) {
         VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Channel=%d Weight= %d rssi=%d bssCount=%d",
-                    __FUNCTION__, pSpectCh->chNum, pSpectCh->weight, pSpectCh->rssiAgr, pSpectCh->bssCount);
+                    __func__, pSpectCh->chNum, pSpectCh->weight, pSpectCh->rssiAgr, pSpectCh->bssCount);
         pSpectCh++;
     }
 
@@ -637,14 +637,14 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
     v_U32_t operatingBand;
     v_U8_t  count = 0;
 #endif    
-    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Running SAP Ch Select", __FUNCTION__);
+    VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Running SAP Ch Select", __func__);
 
     // Set to zero tSapChSelParams
     //vos_mem_zero(&sapChSelParams, sizeof(sapChSelParams));
 
     // Initialize the structure pointed by pSpectInfoParams
     if(sapChanSelInit( halHandle, pSpectInfoParams) != eSAP_TRUE ) {
-        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, Ch Select initialization failed", __FUNCTION__);
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, Ch Select initialization failed", __func__);
         return SAP_CHANNEL_NOT_SELECTED;
     }
 
@@ -683,7 +683,7 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
     sapChanSelExit(pSpectInfoParams);
 
     VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Running SAP Ch select Completed, Ch=%d",
-                __FUNCTION__, bestChNum);
+                __func__, bestChNum);
 
     if (bestChNum > 0 && bestChNum <= 252)
         return bestChNum;

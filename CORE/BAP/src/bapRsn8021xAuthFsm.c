@@ -1397,7 +1397,7 @@ static void msg2TimerCallback( void *pv )
     if (NULL == fsm) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "fsm is NULL in %s", __FUNCTION__);
+                     "fsm is NULL in %s", __func__);
 
         return;
     }
@@ -1417,7 +1417,7 @@ static void msg4TimerCallback( void *pv )
     if (NULL == fsm) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "fsm is NULL in %s", __FUNCTION__);
+                     "fsm is NULL in %s", __func__);
 
         return;
     }
@@ -1445,7 +1445,7 @@ static int authRsnRxFrameHandler( v_PVOID_t pvosGCtx, vos_pkt_t *pPacket )
     if ((pvosGCtx == NULL) || (NULL == pPacket))
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "param is NULL in %s", __FUNCTION__);
+                     "param is NULL in %s", __func__);
 
         return retVal;
     }
@@ -1454,7 +1454,7 @@ static int authRsnRxFrameHandler( v_PVOID_t pvosGCtx, vos_pkt_t *pPacket )
     if (NULL == ctx) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "ctx is NULL in %s", __FUNCTION__);
+                     "ctx is NULL in %s", __func__);
 
         return retVal;
     }
@@ -1463,7 +1463,7 @@ static int authRsnRxFrameHandler( v_PVOID_t pvosGCtx, vos_pkt_t *pPacket )
     if (NULL == fsm) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "fsm is NULL in %s", __FUNCTION__);
+                     "fsm is NULL in %s", __func__);
 
         return retVal;
     }
@@ -1501,7 +1501,7 @@ static int authRsnTxCompleteHandler( v_PVOID_t pvosGCtx, vos_pkt_t *pPacket, VOS
     if (NULL == ctx) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "ctx is NULL in %s", __FUNCTION__);
+                     "ctx is NULL in %s", __func__);
 
         return ANI_ERROR;
     }
@@ -1510,7 +1510,7 @@ static int authRsnTxCompleteHandler( v_PVOID_t pvosGCtx, vos_pkt_t *pPacket, VOS
     if (NULL == fsm) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "fsm is NULL in %s", __FUNCTION__);
+                     "fsm is NULL in %s", __func__);
 
         return ANI_ERROR;
     }

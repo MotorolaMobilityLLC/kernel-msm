@@ -317,7 +317,7 @@ tBssSystemRole wdaGetGlobalSystemRole(tpAniSirGlobal pMac)
    if(NULL == wdaContext)
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                           "%s:WDA context is NULL", __FUNCTION__); 
+                           "%s:WDA context is NULL", __func__); 
       VOS_ASSERT(0);
       return eSYSTEM_UNKNOWN_ROLE;
    }

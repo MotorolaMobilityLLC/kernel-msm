@@ -627,7 +627,7 @@ VOS_STATUS hdd_conf_hostarpoffload(hdd_context_t* pHddCtx, v_BOOL_t fenable)
       if (pAdapter != NULL)
       {
          VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-               "%s: Can't set multicast addr filtering in P2P-GO HDD", __FUNCTION__);
+               "%s: Can't set multicast addr filtering in P2P-GO HDD", __func__);
          return VOS_STATUS_E_FAILURE;
       }
 
@@ -637,7 +637,7 @@ VOS_STATUS hdd_conf_hostarpoffload(hdd_context_t* pHddCtx, v_BOOL_t fenable)
 
       if(pAdapter == NULL)
       {
-         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: HDD adapter context is Null", __FUNCTION__);
+         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: HDD adapter context is Null", __func__);
          return VOS_STATUS_E_FAILURE;
       }
    }
@@ -650,7 +650,7 @@ VOS_STATUS hdd_conf_hostarpoffload(hdd_context_t* pHddCtx, v_BOOL_t fenable)
          pAdapter = hdd_get_adapter(pHddCtx,WLAN_HDD_P2P_CLIENT);
          if(pAdapter == NULL)
          {
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: HDD adapter context is Null", __FUNCTION__);
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: HDD adapter context is Null", __func__);
             return VOS_STATUS_E_FAILURE;
          }
       }
@@ -1189,13 +1189,13 @@ void hdd_register_mcast_bcast_filter(hdd_context_t *pHddCtx)
    pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
    if (NULL == pVosContext)
    {
-      hddLog(LOGE, "%s: Invalid pContext", __FUNCTION__);
+      hddLog(LOGE, "%s: Invalid pContext", __func__);
       return;
    }
    smeContext = vos_get_context(VOS_MODULE_ID_SME, pVosContext);
    if (NULL == smeContext)
    {
-      hddLog(LOGE, "%s: Invalid smeContext", __FUNCTION__);
+      hddLog(LOGE, "%s: Invalid smeContext", __func__);
       return;
    }
 
@@ -1216,13 +1216,13 @@ void hdd_unregister_mcast_bcast_filter(hdd_context_t *pHddCtx)
    pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
    if (NULL == pVosContext)
    {
-      hddLog(LOGE, "%s: Invalid pContext", __FUNCTION__);
+      hddLog(LOGE, "%s: Invalid pContext", __func__);
       return;
    }
    smeContext = vos_get_context(VOS_MODULE_ID_SME, pVosContext);
    if (NULL == smeContext)
    {
-      hddLog(LOGE, "%s: Invalid smeContext", __FUNCTION__);
+      hddLog(LOGE, "%s: Invalid smeContext", __func__);
       return;
    }
 
@@ -1721,7 +1721,7 @@ VOS_STATUS hdd_wlan_reset(void)
    vosStatus = hdd_wmm_init(pHddCtx);
    if ( !VOS_IS_STATUS_SUCCESS( vosStatus ))
    {
-      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: hdd_wmm_init failed", __FUNCTION__);
+      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: hdd_wmm_init failed", __func__);
       goto err_vosclose;
    }
 
@@ -2158,7 +2158,7 @@ VOS_STATUS hdd_wlan_re_init(void)
    vosStatus = hdd_wmm_init(pHddCtx);
    if ( !VOS_IS_STATUS_SUCCESS( vosStatus ))
    {
-      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: hdd_wmm_init failed", __FUNCTION__);
+      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: hdd_wmm_init failed", __func__);
       goto err_vosclose;
    }
 

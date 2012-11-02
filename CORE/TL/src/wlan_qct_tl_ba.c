@@ -334,7 +334,7 @@ void WLANTL_InitBAReorderBuffer
    if (NULL == pTLCb)
    {
       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid TL Control Block", __FUNCTION__));
+                       "%s: Invalid TL Control Block", __func__));
       return;
    }
 
@@ -658,7 +658,7 @@ WLANTL_BaSessionDel
   if(!VOS_IS_STATUS_SUCCESS(lockStatus))
   {
     TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-          "Unable to acquire reorder vos lock in %s\n", __FUNCTION__));
+          "Unable to acquire reorder vos lock in %s\n", __func__));
     return lockStatus;
   }
   pTLCb->atlSTAClients[ucSTAId].atlBAReorderInfo[ucTid].ucExists = 0;

@@ -124,7 +124,7 @@
 #endif /* WLAN_MDM_CODE_REDUCTION_OPT */
 
 #define FL(x)    "%s: %d: "\
-                 x, __FUNCTION__, __LINE__
+                 x, __func__, __LINE__
 
 #define MAC_ADDR_ARRAY(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MAC_ADDRESS_STR "%02x:%02x:%02x:%02x:%02x:%02x"

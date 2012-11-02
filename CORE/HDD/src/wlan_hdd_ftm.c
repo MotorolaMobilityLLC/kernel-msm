@@ -961,7 +961,7 @@ static ftm_vos_sys_probe_thread_cback
     if (vos_event_set(&pVosContext->ProbeEvent)!= VOS_STATUS_SUCCESS)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-         "%s: vos_event_set failed", __FUNCTION__);
+         "%s: vos_event_set failed", __func__);
         return;
     }
 } /* vos_sys_probe_thread_cback() */
@@ -1363,7 +1363,7 @@ static int wlan_hdd_ftm_start(hdd_context_t *pHddCtx)
     if (pVosContext == NULL)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-           "%s: mismatch in context",__FUNCTION__);
+           "%s: mismatch in context",__func__);
         goto err_status_failure;
     }
 
@@ -1371,7 +1371,7 @@ static int wlan_hdd_ftm_start(hdd_context_t *pHddCtx)
     if (pVosContext->pBALContext == NULL)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-               "%s: BAL NULL context",__FUNCTION__);
+               "%s: BAL NULL context",__func__);
         goto err_status_failure;
     }
 #endif
@@ -1379,7 +1379,7 @@ static int wlan_hdd_ftm_start(hdd_context_t *pHddCtx)
     if (pVosContext->pMACContext == NULL)
     {    
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-               "%s: MAC NULL context",__FUNCTION__);
+               "%s: MAC NULL context",__func__);
         goto err_status_failure;
     }
 
@@ -4046,8 +4046,8 @@ static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info
     VOS_STATUS status;
     hdd_adapter_t *pAdapter = (netdev_priv(dev));
 
-    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Received length %d", __FUNCTION__, wrqu->data.length);
-    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Received data %s", __FUNCTION__, (char*)wrqu->data.pointer);
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Received length %d", __func__, wrqu->data.length);
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Received data %s", __func__, (char*)wrqu->data.pointer);
 
     switch(sub_cmd)
     {
@@ -4080,7 +4080,7 @@ static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info
         }
        default:
        {
-           hddLog(LOGE, "%s: Invalid sub command %d\n",__FUNCTION__, sub_cmd);
+           hddLog(LOGE, "%s: Invalid sub command %d\n",__func__, sub_cmd);
            ret = -EINVAL;
            break;
        }
@@ -4106,7 +4106,7 @@ static int iw_ftm_setint_getnone(struct net_device *dev, struct iw_request_info 
 
             if(status != VOS_STATUS_SUCCESS)
             {
-               hddLog(VOS_TRACE_LEVEL_FATAL,"%s Failed =%d\n",__FUNCTION__, status);
+               hddLog(VOS_TRACE_LEVEL_FATAL,"%s Failed =%d\n",__func__, status);
                ret = -EINVAL;
             }
 
@@ -4447,7 +4447,7 @@ static int iw_ftm_setnone_getnone(struct net_device *dev, struct iw_request_info
 
         default:
         {
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: unknown ioctl %d", __FUNCTION__, sub_cmd);
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: unknown ioctl %d", __func__, sub_cmd);
             hddLog(LOGE, "Invalid IOCTL action command %d ", sub_cmd);
             break;
         }

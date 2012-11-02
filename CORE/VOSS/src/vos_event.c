@@ -111,7 +111,7 @@ VOS_STATUS vos_event_init ( vos_event_t* event )
    if ( NULL == event )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "NULL event passed into %s", __FUNCTION__);
+                "NULL event passed into %s", __func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -120,7 +120,7 @@ VOS_STATUS vos_event_init ( vos_event_t* event )
    if ( LINUX_EVENT_COOKIE == event->cookie )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "Initialized event passed into %s", __FUNCTION__);
+                "Initialized event passed into %s", __func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_BUSY;
    }
@@ -166,7 +166,7 @@ VOS_STATUS vos_event_set ( vos_event_t* event )
    if ( NULL == event )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "NULL event passed into %s", __FUNCTION__);
+                "NULL event passed into %s", __func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -175,7 +175,7 @@ VOS_STATUS vos_event_set ( vos_event_t* event )
    if ( LINUX_EVENT_COOKIE != event->cookie )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "Uninitialized event passed into %s", __FUNCTION__);
+                "Uninitialized event passed into %s", __func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_INVAL;
    }
@@ -221,7 +221,7 @@ VOS_STATUS vos_event_reset ( vos_event_t* event )
    if ( NULL == event )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "NULL event passed into %s", __FUNCTION__);
+                "NULL event passed into %s", __func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -230,7 +230,7 @@ VOS_STATUS vos_event_reset ( vos_event_t* event )
    if ( LINUX_EVENT_COOKIE != event->cookie )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "Uninitialized event passed into %s", __FUNCTION__);
+                "Uninitialized event passed into %s", __func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_INVAL;
    }
@@ -340,7 +340,7 @@ VOS_STATUS vos_event_destroy ( vos_event_t* event )
    if ( NULL == event )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "NULL event passed into %s", __FUNCTION__);
+                "NULL event passed into %s", __func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -349,7 +349,7 @@ VOS_STATUS vos_event_destroy ( vos_event_t* event )
    if ( LINUX_EVENT_COOKIE != event->cookie )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "Uninitialized event passed into %s", __FUNCTION__);
+                "Uninitialized event passed into %s", __func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_INVAL;
    }
@@ -395,7 +395,7 @@ VOS_STATUS vos_wait_single_event ( vos_event_t* event, v_U32_t timeout)
    if (in_interrupt())
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "%s cannot be called from interrupt context!!!", __FUNCTION__);
+                "%s cannot be called from interrupt context!!!", __func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -404,7 +404,7 @@ VOS_STATUS vos_wait_single_event ( vos_event_t* event, v_U32_t timeout)
    if ( NULL == event )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "NULL event passed into %s", __FUNCTION__);
+                "NULL event passed into %s", __func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -413,7 +413,7 @@ VOS_STATUS vos_wait_single_event ( vos_event_t* event, v_U32_t timeout)
    if ( LINUX_EVENT_COOKIE != event->cookie )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "Uninitialized event passed into %s", __FUNCTION__);
+                "Uninitialized event passed into %s", __func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_INVAL;
    }

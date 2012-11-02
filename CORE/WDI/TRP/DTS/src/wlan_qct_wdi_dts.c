@@ -427,7 +427,7 @@ wpt_status WDTS_openTransport( void *pContext)
   pDTDriverContext = gTransportDriver.open(); 
   if( NULL == pDTDriverContext )
   {
-     DTI_TRACE( DTI_TRACE_LEVEL_ERROR, " %s fail from transport open", __FUNCTION__);
+     DTI_TRACE( DTI_TRACE_LEVEL_ERROR, " %s fail from transport open", __func__);
      return eWLAN_PAL_STATUS_E_FAILURE;
   }
   WDT_AssignTransportDriverContext(pContext, pDTDriverContext);

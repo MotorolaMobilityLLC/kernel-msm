@@ -111,7 +111,7 @@ static VOS_STATUS bapRsnTxCompleteCallback( v_PVOID_t pvosGCtx, vos_pkt_t *pPack
     if (NULL == pvosGCtx) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "pvosGCtx is NULL in %s", __FUNCTION__);
+                     "pvosGCtx is NULL in %s", __func__);
 
         return VOS_STATUS_E_FAULT;
     }
@@ -120,7 +120,7 @@ static VOS_STATUS bapRsnTxCompleteCallback( v_PVOID_t pvosGCtx, vos_pkt_t *pPack
     if (NULL == btampContext) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "btampContext is NULL in %s", __FUNCTION__);
+                     "btampContext is NULL in %s", __func__);
 
         return VOS_STATUS_E_FAULT;
     }
@@ -129,7 +129,7 @@ static VOS_STATUS bapRsnTxCompleteCallback( v_PVOID_t pvosGCtx, vos_pkt_t *pPack
     if (NULL == fsm) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "fsm is NULL in %s", __FUNCTION__);
+                     "fsm is NULL in %s", __func__);
 
         return VOS_STATUS_E_FAULT;
     }

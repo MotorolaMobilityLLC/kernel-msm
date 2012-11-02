@@ -714,7 +714,7 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
             if (NULL == hHal)
             {
                VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                          "%s: Invalid hHal", __FUNCTION__ );
+                          "%s: Invalid hHal", __func__ );
             }
             else
             {

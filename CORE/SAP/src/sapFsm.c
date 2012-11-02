@@ -175,7 +175,7 @@ sapGotoChannelSel
     {
         /* we have a serious problem */
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL,
-                   "In %s, invalid hHal", __FUNCTION__);
+                   "In %s, invalid hHal", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -229,7 +229,7 @@ sapGotoChannelSel
 #endif
         /* Set requestType to Full scan */
 
-        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, calling sme_ScanRequest", __FUNCTION__);
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, calling sme_ScanRequest", __func__);
 
         halStatus = sme_ScanRequest(hHal,
                             0,//Not used in csrScanRequest
@@ -239,7 +239,7 @@ sapGotoChannelSel
                             sapContext);//void * pContext scanRequestID filled up
         if (eHAL_STATUS_SUCCESS != halStatus)
         {
-            VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "%s:sme_ScanRequest  fail %d!!!", __FUNCTION__, halStatus);
+            VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "%s:sme_ScanRequest  fail %d!!!", __func__, halStatus);
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "SoftAP Configuring for default channel, Ch= %d", sapContext->channel);
             /* In case of error, switch to default channel */
             sapContext->channel = SAP_DEFAULT_CHANNEL;
@@ -260,13 +260,13 @@ sapGotoChannelSel
         else
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, return from sme_ScanRequest, scanRequestID=%d, Ch= %d",
-                   __FUNCTION__, scanRequestID, sapContext->channel);
+                   __func__, scanRequestID, sapContext->channel);
         }
 
     }
     else
     {
-        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, for configured channel, Ch= %d", __FUNCTION__, sapContext->channel);
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, for configured channel, Ch= %d", __func__, sapContext->channel);
         /* Fill in the event structure */
         // Eventhough scan was not done, means a user set channel was chosen
         sapEventInit(sapEvent);
@@ -276,7 +276,7 @@ sapGotoChannelSel
 
     /* If scan failed, get default channel and advance state machine as success with default channel */
     /* Have to wait for the call back to be called to get the channel cannot advance state machine here as said above */
-    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, before exiting sapGotoChannelSel channel=%d", __FUNCTION__, sapContext->channel);
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, before exiting sapGotoChannelSel channel=%d", __func__, sapContext->channel);
 
     return VOS_STATUS_SUCCESS;
 }// sapGotoChannelSel
@@ -323,12 +323,12 @@ sapGotoStarting
     sapContext->key_length = 32;
     vos_mem_copy(sapContext->key_material, key_material, sizeof(key_material));  /* Need a key size define */
 
-    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s", __FUNCTION__);
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s", __func__);
     if (NULL == hHal)
     {
         /* we have a serious problem */
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL,
-                   "In %s, invalid hHal", __FUNCTION__);
+                   "In %s, invalid hHal", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -347,7 +347,7 @@ sapGotoStarting
 
     if(eHAL_STATUS_SUCCESS != halStatus )
     {
-        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "Error: In %s calling sme_RoamConnect status = %d", __FUNCTION__, halStatus);
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "Error: In %s calling sme_RoamConnect status = %d", __func__, halStatus);
         return VOS_STATUS_E_FAILURE;
     }
 
@@ -390,7 +390,7 @@ sapGotoDisconnecting
     {
         /* we have a serious problem */
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "In %s, invalid hHal", __FUNCTION__);
+                   "In %s, invalid hHal", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -398,7 +398,7 @@ sapGotoDisconnecting
     halStatus = sme_RoamStopBss(hHal, sapContext->sessionId);
     if(eHAL_STATUS_SUCCESS != halStatus )
     {
-        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "Error: In %s calling sme_RoamStopBss status = %d", __FUNCTION__, halStatus);
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "Error: In %s calling sme_RoamStopBss status = %d", __func__, halStatus);
         return VOS_STATUS_E_FAILURE;
     }
 
@@ -520,7 +520,7 @@ sapSignalHDDevent
             break;
        case eSAP_START_BSS_EVENT:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, SAP event callback event = %s",
-                __FUNCTION__, "eSAP_START_BSS_EVENT");
+                __func__, "eSAP_START_BSS_EVENT");
             sapApAppEvent.sapHddEventCode = eSAP_START_BSS_EVENT;
             sapApAppEvent.sapevt.sapStartBssCompleteEvent.status = (eSapStatus )context;
             if(pCsrRoamInfo != NULL ){
@@ -533,7 +533,7 @@ sapSignalHDDevent
 
         case eSAP_STOP_BSS_EVENT:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, SAP event callback event = %s",
-                       __FUNCTION__, "eSAP_STOP_BSS_EVENT");
+                       __func__, "eSAP_STOP_BSS_EVENT");
             sapApAppEvent.sapHddEventCode = eSAP_STOP_BSS_EVENT;
             sapApAppEvent.sapevt.sapStopBssCompleteEvent.status = (eSapStatus )context;
             break;
@@ -541,7 +541,7 @@ sapSignalHDDevent
         case eSAP_STA_ASSOC_EVENT:
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, SAP event callback event = %s",
-                __FUNCTION__, "eSAP_STA_ASSOC_EVENT");
+                __func__, "eSAP_STA_ASSOC_EVENT");
             if (pCsrRoamInfo->fReassocReq)
                 sapApAppEvent.sapHddEventCode = eSAP_STA_REASSOC_EVENT;
             else
@@ -574,7 +574,7 @@ sapSignalHDDevent
 
         case eSAP_STA_DISASSOC_EVENT:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, SAP event callback event = %s",
-                       __FUNCTION__, "eSAP_STA_DISASSOC_EVENT");
+                       __func__, "eSAP_STA_DISASSOC_EVENT");
             sapApAppEvent.sapHddEventCode = eSAP_STA_DISASSOC_EVENT;
 
             vos_mem_copy( &sapApAppEvent.sapevt.sapStationDisassocCompleteEvent.staMac,
@@ -591,7 +591,7 @@ sapSignalHDDevent
 
         case eSAP_STA_SET_KEY_EVENT:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, SAP event callback event = %s",
-                       __FUNCTION__, "eSAP_STA_SET_KEY_EVENT");
+                       __func__, "eSAP_STA_SET_KEY_EVENT");
             sapApAppEvent.sapHddEventCode = eSAP_STA_SET_KEY_EVENT;
             sapApAppEvent.sapevt.sapStationSetKeyCompleteEvent.status = (eSapStatus )context;
             vos_mem_copy(&sapApAppEvent.sapevt.sapStationSetKeyCompleteEvent.peerMacAddr,
@@ -600,7 +600,7 @@ sapSignalHDDevent
 
         case eSAP_STA_DEL_KEY_EVENT :
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, SAP event callback event = %s",
-                       __FUNCTION__, "eSAP_STA_DEL_KEY_EVENT");
+                       __func__, "eSAP_STA_DEL_KEY_EVENT");
             sapApAppEvent.sapHddEventCode = eSAP_STA_DEL_KEY_EVENT;
             sapApAppEvent.sapevt.sapStationDeleteKeyCompleteEvent.status = (eSapStatus )context;
             //TODO: Should we need to send the key information
@@ -609,7 +609,7 @@ sapSignalHDDevent
 
         case eSAP_STA_MIC_FAILURE_EVENT :
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, SAP event callback event = %s",
-                        __FUNCTION__, "eSAP_STA_MIC_FAILURE_EVENT");
+                        __func__, "eSAP_STA_MIC_FAILURE_EVENT");
             sapApAppEvent.sapHddEventCode = eSAP_STA_MIC_FAILURE_EVENT;
             vos_mem_copy( &sapApAppEvent.sapevt.sapStationMICFailureEvent.srcMacAddr,
                           pCsrRoamInfo->u.pMICFailureInfo->srcMacAddr,
@@ -630,7 +630,7 @@ sapSignalHDDevent
 
         case eSAP_ASSOC_STA_CALLBACK_EVENT:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, SAP event callback event = %s",
-                       __FUNCTION__, "eSAP_ASSOC_STA_CALLBACK_EVENT");
+                       __func__, "eSAP_ASSOC_STA_CALLBACK_EVENT");
             break;
 
         case eSAP_WPS_PBC_PROBE_REQ_EVENT:
@@ -645,7 +645,7 @@ sapSignalHDDevent
        case eSAP_INDICATE_MGMT_FRAME:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
                                  "In %s, SAP event callback event = %s",
-                                __FUNCTION__, "eSAP_INDICATE_MGMT_FRAME");
+                                __func__, "eSAP_INDICATE_MGMT_FRAME");
             sapApAppEvent.sapHddEventCode = eSAP_INDICATE_MGMT_FRAME;
             sapApAppEvent.sapevt.sapManagementFrameInfo.nFrameLength
                                            = pCsrRoamInfo->nFrameLength;
@@ -660,13 +660,13 @@ sapSignalHDDevent
        case eSAP_REMAIN_CHAN_READY:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
                                  "In %s, SAP event callback event = %s",
-                                __FUNCTION__, "eSAP_REMAIN_CHAN_READY");
+                                __func__, "eSAP_REMAIN_CHAN_READY");
            sapApAppEvent.sapHddEventCode = eSAP_REMAIN_CHAN_READY;
             break;
        case eSAP_SEND_ACTION_CNF:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
                                  "In %s, SAP event callback event = %s",
-                                __FUNCTION__, "eSAP_SEND_ACTION_CNF");
+                                __func__, "eSAP_SEND_ACTION_CNF");
             sapApAppEvent.sapHddEventCode = eSAP_SEND_ACTION_CNF;
             sapApAppEvent.sapevt.sapActionCnf.actionSendSuccess = (eSapStatus)context;
             break;
@@ -675,7 +675,7 @@ sapSignalHDDevent
         case eSAP_UNKNOWN_STA_JOIN:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
                        "In %s, SAP event callback event = %s",
-                       __FUNCTION__, "eSAP_UNKNOWN_STA_JOIN");
+                       __func__, "eSAP_UNKNOWN_STA_JOIN");
             sapApAppEvent.sapHddEventCode = eSAP_UNKNOWN_STA_JOIN;
             vos_mem_copy((v_PVOID_t)sapApAppEvent.sapevt.sapUnknownSTAJoin.macaddr.bytes,
                          (v_PVOID_t)context, sizeof(v_MACADDR_t));
@@ -684,7 +684,7 @@ sapSignalHDDevent
         case eSAP_MAX_ASSOC_EXCEEDED:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
                     "In %s, SAP event callback event = %s",
-                    __FUNCTION__, "eSAP_MAX_ASSOC_EXCEEDED");
+                    __func__, "eSAP_MAX_ASSOC_EXCEEDED");
             sapApAppEvent.sapHddEventCode = eSAP_MAX_ASSOC_EXCEEDED;
             vos_mem_copy((v_PVOID_t)sapApAppEvent.sapevt.sapMaxAssocExceeded.macaddr.bytes,
                     (v_PVOID_t)pCsrRoamInfo->peerMac, sizeof(v_MACADDR_t));
@@ -692,7 +692,7 @@ sapSignalHDDevent
 
         default:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, SAP Unknown callback event = %d",
-                       __FUNCTION__,sapHddevent);
+                       __func__,sapHddevent);
             break;
     }
     vosStatus = (*sapContext->pfnSapEventCallback)
@@ -750,13 +750,13 @@ sapFsm
             {
                 /* Transition from eSAP_DISCONNECTED to eSAP_CH_SELECT (both without substates) */
                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, new from state %s => %s",
-                            __FUNCTION__, "eSAP_DISCONNECTED", "eSAP_CH_SELECT");
+                            __func__, "eSAP_DISCONNECTED", "eSAP_CH_SELECT");
 
                 /* There can be one SAP Session for softap */
                 if (sapContext->isSapSessionOpen == eSAP_TRUE)
                 {
                    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL,
-                        "%s:SME Session is already opened\n",__FUNCTION__);
+                        "%s:SME Session is already opened\n",__func__);
                    return VOS_STATUS_E_EXISTS;
                 }
 
@@ -770,12 +770,12 @@ sapFsm
 
                 /* Transition from eSAP_DISCONNECTED to eSAP_CH_SELECT (both without substates) */
                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, from state %s => %s",
-                           __FUNCTION__, "eSAP_DISCONNECTED", "eSAP_CH_SELECT");
+                           __func__, "eSAP_DISCONNECTED", "eSAP_CH_SELECT");
             }
             else
             {
                  VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, in state %s, event msg %d",
-                             __FUNCTION__, "eSAP_DISCONNECTED", msg);
+                             __func__, "eSAP_DISCONNECTED", msg);
             }
             break;
 
@@ -784,7 +784,7 @@ sapFsm
             {
                  /* Transition from eSAP_CH_SELECT to eSAP_STARTING (both without substates) */
                  VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, from state %s => %s",
-                            __FUNCTION__, "eSAP_CH_SELECT", "eSAP_STARTING");
+                            __func__, "eSAP_CH_SELECT", "eSAP_STARTING");
                  // Channel selected. Now can sapGotoStarting
                  sapContext->sapsMachine = eSAP_STARTING;
                  // Specify the channel
@@ -794,12 +794,12 @@ sapFsm
                  vosStatus = sapGotoStarting( sapContext, sapEvent, eCSR_BSS_TYPE_INFRA_AP);
                  /* Transition from eSAP_CH_SELECT to eSAP_STARTING (both without substates) */
                  VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, from state %s => %s",
-                             __FUNCTION__, "eSAP_CH_SELECT", "eSAP_STARTING");
+                             __func__, "eSAP_CH_SELECT", "eSAP_STARTING");
             }
             else
             {
                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, in state %s, invalid event msg %d",
-                            __FUNCTION__, "eSAP_CH_SELECT", msg);
+                            __func__, "eSAP_CH_SELECT", msg);
             }
             break;
 
@@ -808,7 +808,7 @@ sapFsm
             {
                 /* Transition from eSAP_STARTING to eSAP_STARTED (both without substates) */
                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, from state channel = %d %s => %s",
-                            __FUNCTION__,sapContext->channel, "eSAP_STARTING", "eSAP_STARTED");
+                            __func__,sapContext->channel, "eSAP_STARTING", "eSAP_STARTED");
 
                  sapContext->sapsMachine = eSAP_STARTED;
                  /*Action code for transition */
@@ -816,13 +816,13 @@ sapFsm
 
                  /* Transition from eSAP_STARTING to eSAP_STARTED (both without substates) */
                  VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, from state %s => %s",
-                            __FUNCTION__, "eSAP_STARTING", "eSAP_STARTED");
+                            __func__, "eSAP_STARTING", "eSAP_STARTED");
              }
              else if (msg == eSAP_MAC_START_FAILS)
              {
                  /*Transition from STARTING to DISCONNECTED (both without substates)*/
                  VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, from state %s => %s",
-                            __FUNCTION__, "eSAP_STARTING", "eSAP_DISCONNECTED");
+                            __func__, "eSAP_STARTING", "eSAP_DISCONNECTED");
 
                  /*Action code for transition */
                  vosStatus = sapSignalHDDevent( sapContext, NULL, eSAP_START_BSS_EVENT,(v_PVOID_t) eSAP_STATUS_FAILURE);
@@ -835,7 +835,7 @@ sapFsm
              {
                  /*Transition from eSAP_STARTING to eSAP_DISCONNECTING (both without substates)*/
                  VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, from state %s => %s",
-                             __FUNCTION__, "eSAP_STARTING", "eSAP_DISCONNECTING");
+                             __func__, "eSAP_STARTING", "eSAP_DISCONNECTING");
 
                  /*Advance outer statevar */
                  sapContext->sapsMachine = eSAP_DISCONNECTED;
@@ -850,7 +850,7 @@ sapFsm
                     {
                        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                                   "In %s, NULL hHal in state %s, msg %d",
-                                  __FUNCTION__, "eSAP_STARTING", msg);
+                                  __func__, "eSAP_STARTING", msg);
                     }
                     else if (eHAL_STATUS_SUCCESS ==
                          sme_CloseSession(hHal,
@@ -864,7 +864,7 @@ sapFsm
              {
                  VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                              "In %s, in state %s, invalid event msg %d",
-                             __FUNCTION__, "eSAP_STARTING", msg);
+                             __func__, "eSAP_STARTING", msg);
                  /* Intentionally left blank */
              }
              break;
@@ -874,14 +874,14 @@ sapFsm
             {
                 /* Transition from eSAP_STARTED to eSAP_DISCONNECTING (both without substates) */
                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, from state %s => %s",
-                           __FUNCTION__, "eSAP_STARTED", "eSAP_DISCONNECTING");
+                           __func__, "eSAP_STARTED", "eSAP_DISCONNECTING");
                 sapContext->sapsMachine = eSAP_DISCONNECTING;
                 vosStatus = sapGotoDisconnecting(sapContext);
             }
             else
             {
                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, "In %s, in state %s, invalid event msg %d",
-                           __FUNCTION__, "eSAP_STARTED", msg);
+                           __func__, "eSAP_STARTED", msg);
             }
             break;
 
@@ -890,7 +890,7 @@ sapFsm
             {
                 /* Transition from eSAP_DISCONNECTING to eSAP_DISCONNECTED (both without substates) */
                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, from state %s => %s",
-                          __FUNCTION__, "eSAP_DISCONNECTING", "eSAP_DISCONNECTED");
+                          __func__, "eSAP_DISCONNECTING", "eSAP_DISCONNECTED");
 
                 sapContext->sapsMachine = eSAP_DISCONNECTED;
                 /* Close the SME session*/
@@ -902,7 +902,7 @@ sapFsm
                     {
                         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                                    "In %s, NULL hHal in state %s, msg %d",
-                                   __FUNCTION__, "eSAP_DISCONNECTING", msg);
+                                   __func__, "eSAP_DISCONNECTING", msg);
                     }
                     else
                     {
@@ -923,7 +923,7 @@ sapFsm
             {
                 VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                            "In %s, in state %s, invalid event msg %d",
-                          __FUNCTION__, "eSAP_DISCONNECTING", msg);
+                          __func__, "eSAP_DISCONNECTING", msg);
             }
             break;
       }
@@ -1007,7 +1007,7 @@ sapconvertToCsrProfile(tsap_Config_t *pconfig_params, eCsrRoamBssType bssType, t
         profile->pRSNReqIE = vos_mem_malloc(pconfig_params->RSNWPAReqIELength);
         if( NULL == profile->pRSNReqIE )
         {
-           VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, " %s Fail to alloc memory", __FUNCTION__);
+           VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR, " %s Fail to alloc memory", __func__);
            return eSAP_STATUS_FAILURE;
         }
         vos_mem_copy(profile->pRSNReqIE, pconfig_params->pRSNWPAReqIE, pconfig_params->RSNWPAReqIELength);
@@ -1191,7 +1191,7 @@ sapIsPeerMacAllowed(ptSapContext sapContext, v_U8_t *peerMac)
     if (sapSearchMacList(sapContext->denyMacList, sapContext->nDenyMac, peerMac, NULL))
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Peer %02x:%02x:%02x:%02x:%02x:%02x in deny list",
-                __FUNCTION__, *peerMac, *(peerMac + 1), *(peerMac + 2), *(peerMac + 3), *(peerMac + 4), *(peerMac + 5));
+                __func__, *peerMac, *(peerMac + 1), *(peerMac + 2), *(peerMac + 3), *(peerMac + 4), *(peerMac + 5));
         return VOS_STATUS_E_FAILURE;
     }
 
@@ -1203,7 +1203,7 @@ sapIsPeerMacAllowed(ptSapContext sapContext, v_U8_t *peerMac)
     if (eSAP_DENY_UNLESS_ACCEPTED == sapContext->eSapMacAddrAclMode)
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Peer %02x:%02x:%02x:%02x:%02x:%02x denied, Mac filter mode is eSAP_DENY_UNLESS_ACCEPTED",
-                __FUNCTION__,  *peerMac, *(peerMac + 1), *(peerMac + 2), *(peerMac + 3), *(peerMac + 4), *(peerMac + 5));
+                __func__,  *peerMac, *(peerMac + 1), *(peerMac + 2), *(peerMac + 3), *(peerMac + 4), *(peerMac + 5));
         return VOS_STATUS_E_FAILURE;
     }
 
@@ -1214,7 +1214,7 @@ sapIsPeerMacAllowed(ptSapContext sapContext, v_U8_t *peerMac)
     {
         sapSignalHDDevent(sapContext, NULL, eSAP_UNKNOWN_STA_JOIN, (v_PVOID_t)peerMac);
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Peer %02x:%02x:%02x:%02x:%02x:%02x denied, Mac filter mode is eSAP_SUPPORT_ACCEPT_AND_DENY",
-                __FUNCTION__,  *peerMac, *(peerMac + 1), *(peerMac + 2), *(peerMac + 3), *(peerMac + 4), *(peerMac + 5));
+                __func__,  *peerMac, *(peerMac + 1), *(peerMac + 2), *(peerMac + 3), *(peerMac + 4), *(peerMac + 5));
         return VOS_STATUS_E_FAILURE;
     }
     return VOS_STATUS_SUCCESS;
@@ -1251,7 +1251,7 @@ static VOS_STATUS sapGetChannelList(ptSapContext sapContext,
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
              "%s:sapGetChannelList: startChannel %d,EndChannel %d,Operatingband:%d",
-             __FUNCTION__,startChannelNum,endChannelNum,operatingBand);
+             __func__,startChannelNum,endChannelNum,operatingBand);
 
     switch(operatingBand)
     {
@@ -1295,7 +1295,7 @@ static VOS_STATUS sapGetChannelList(ptSapContext sapContext,
     if (NULL == list)
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Unable to allocate channel list", __FUNCTION__);
+                   "%s: Unable to allocate channel list", __func__);
         *numberOfChannels = 0;
         *channelList = NULL;
         return VOS_STATUS_E_RESOURCES;

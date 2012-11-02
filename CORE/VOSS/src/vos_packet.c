@@ -328,7 +328,7 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
    struct vos_pkt_t *pPkt;
    struct list_head *pFreeList;
 
-   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "Enter:%s",__FUNCTION__);
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "Enter:%s",__func__);
 
    do
    {
@@ -504,7 +504,7 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
 VOS_STATUS vos_packet_close( v_PVOID_t pVosContext )
 {
 
-   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "Enter:%s",__FUNCTION__);
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO, "Enter:%s",__func__);
 
    if (unlikely(NULL == pVosContext))
    {

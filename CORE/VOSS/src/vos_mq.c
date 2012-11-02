@@ -77,7 +77,7 @@ __inline VOS_STATUS vos_mq_init(pVosMqType pMq)
   /* Some quick sanity check*/
   if (pMq == NULL) {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-         "%s: NULL pointer passed",__FUNCTION__);
+         "%s: NULL pointer passed",__func__);
      return VOS_STATUS_E_FAILURE;
   }
 
@@ -115,7 +115,7 @@ __inline void vos_mq_deinit(pVosMqType pMq)
   */
   if (pMq == NULL) {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-         "%s: NULL pointer passed",__FUNCTION__);
+         "%s: NULL pointer passed",__func__);
      return ;
   }
 
@@ -148,7 +148,7 @@ __inline void vos_mq_put(pVosMqType pMq, pVosMsgWrapper pMsgWrapper)
   */
   if ((pMq == NULL) || (pMsgWrapper == NULL)) {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-         "%s: NULL pointer passed",__FUNCTION__);
+         "%s: NULL pointer passed",__func__);
      return ;
   }
 
@@ -187,7 +187,7 @@ __inline pVosMsgWrapper vos_mq_get(pVosMqType pMq)
   
   if (pMq == NULL) {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-         "%s: NULL pointer passed",__FUNCTION__);
+         "%s: NULL pointer passed",__func__);
      return NULL;
   }
  
@@ -196,7 +196,7 @@ __inline pVosMsgWrapper vos_mq_get(pVosMqType pMq)
   if( list_empty(&pMq->mqList) )
   {
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN,
-             "%s: VOS Message Queue is empty",__FUNCTION__);
+             "%s: VOS Message Queue is empty",__func__);
   }
   else
   {
@@ -236,7 +236,7 @@ __inline v_BOOL_t vos_is_mq_empty(pVosMqType pMq)
   if (pMq == NULL)
   {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-         "%s: NULL pointer passed",__FUNCTION__);
+         "%s: NULL pointer passed",__func__);
      return VOS_STATUS_E_FAILURE;
   }
 

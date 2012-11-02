@@ -267,13 +267,13 @@ limSuspendLink(tpAniSirGlobal pMac, tSirLinkTrafficCheck trafficCheck,  SUSPEND_
 {
    if( NULL == callback )
    {
-      limLog( pMac, LOGE, "%s:%d: Invalid parameters\n", __FUNCTION__, __LINE__ );
+      limLog( pMac, LOGE, "%s:%d: Invalid parameters\n", __func__, __LINE__ );
       return;
    }
 
    if( pMac->lim.gpLimSuspendCallback )
    {
-      limLog( pMac, LOGE, "%s:%d: gLimSuspendLink callback is not NULL...something is wrong\n", __FUNCTION__, __LINE__ );
+      limLog( pMac, LOGE, "%s:%d: gLimSuspendLink callback is not NULL...something is wrong\n", __func__, __LINE__ );
       callback( pMac, eHAL_STATUS_FAILURE, data ); 
       return;
    }
@@ -308,13 +308,13 @@ limResumeLink(tpAniSirGlobal pMac, SUSPEND_RESUME_LINK_CALLBACK callback, tANI_U
 {
    if( NULL == callback )
    {
-      limLog( pMac, LOGE, "%s:%d: Invalid parameters\n", __FUNCTION__, __LINE__ );
+      limLog( pMac, LOGE, "%s:%d: Invalid parameters\n", __func__, __LINE__ );
       return;
    }
 
    if( pMac->lim.gpLimResumeCallback )
    {
-      limLog( pMac, LOGE, "%s:%d: gLimResumeLink callback is not NULL...something is wrong\n", __FUNCTION__, __LINE__ );
+      limLog( pMac, LOGE, "%s:%d: gLimResumeLink callback is not NULL...something is wrong\n", __func__, __LINE__ );
       callback( pMac, eHAL_STATUS_FAILURE, data ); 
       return;
    }

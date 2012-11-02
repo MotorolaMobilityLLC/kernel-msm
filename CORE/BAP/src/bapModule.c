@@ -571,7 +571,7 @@ WLANBAP_ReleaseHndl
   if(NULL == halHandle)
   {
      VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                  "halHandle is NULL in %s", __FUNCTION__);
+                  "halHandle is NULL in %s", __func__);
      return VOS_STATUS_E_FAULT;
   }
 
@@ -659,14 +659,14 @@ WLANBAP_CleanCB
           &bapPhysLinkMachineInitial,   /* BTAMPFSM_INSTANCEDATA_INIT; */
           sizeof( pBtampCtx->bapPhysLinkMachine));
 
-  VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: Initializing State: %d", __FUNCTION__, bapPhysLinkMachineInitial.stateVar);   
-  VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: Initialized State: %d", __FUNCTION__,  pBtampCtx->bapPhysLinkMachine.stateVar); 
+  VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: Initializing State: %d", __func__, bapPhysLinkMachineInitial.stateVar);   
+  VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: Initialized State: %d", __func__,  pBtampCtx->bapPhysLinkMachine.stateVar); 
 
-  //VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: btampContext value: %x", __FUNCTION__,  pBtampCtx); 
+  //VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: btampContext value: %x", __func__,  pBtampCtx); 
 #ifdef BAP_DEBUG
   /* Trace the tBtampCtx being passed in. */
   VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH,
-            "WLAN BAP Context Monitor: pBtampCtx value = %x in %s:%d", pBtampCtx, __FUNCTION__, __LINE__ );
+            "WLAN BAP Context Monitor: pBtampCtx value = %x in %s:%d", pBtampCtx, __func__, __LINE__ );
 #endif //BAP_DEBUG
 
 
@@ -852,7 +852,7 @@ WLANBAP_GetStaIdFromLinkCtx
     if ( NULL == pBtampCtx) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "Invalid BAP handle value in %s", __FUNCTION__);
+                     "Invalid BAP handle value in %s", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -1010,7 +1010,7 @@ WLANBAP_UpdatePhyLinkCtxStaId
     if ( NULL == pBtampContext) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "Invalid BAP handle value in %s", __FUNCTION__);
+                     "Invalid BAP handle value in %s", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -1086,7 +1086,7 @@ WLANBAP_CreateNewLogLinkCtx
 
   *pLog_link_handle = (i << 8) + ( v_U16_t ) phy_link_handle ; /*  Return the logical link index here */
   VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO,
-                    " %s:*pLog_link_handle=%x", __FUNCTION__,*pLog_link_handle);
+                    " %s:*pLog_link_handle=%x", __func__,*pLog_link_handle);
 
   /*------------------------------------------------------------------------
     Evaluate the Tx and Rx Flow specification for this logical link.
@@ -1096,7 +1096,7 @@ WLANBAP_CreateNewLogLinkCtx
 #ifdef BAP_DEBUG
   /* Trace the tBtampCtx being passed in. */
   VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH,
-            "WLAN BAP Context Monitor: pBtampContext value = %x in %s:%d", pBtampContext, __FUNCTION__, __LINE__ );
+            "WLAN BAP Context Monitor: pBtampContext value = %x in %s:%d", pBtampContext, __func__, __LINE__ );
 #endif //BAP_DEBUG
 
   /*------------------------------------------------------------------------
@@ -1206,7 +1206,7 @@ WLANBAP_ReadMacConfig
   if (NULL == pBtampCtx) 
   {
       VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                   "pBtampCtx is NULL in %s", __FUNCTION__);
+                   "pBtampCtx is NULL in %s", __func__);
 
       return;
   }
@@ -1215,7 +1215,7 @@ WLANBAP_ReadMacConfig
   if (NULL == pMac) 
   {
       VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                   "pMac is NULL in %s", __FUNCTION__);
+                   "pMac is NULL in %s", __func__);
 
       return;
   }
@@ -1291,7 +1291,7 @@ WLANBAP_NeedBTCoexPriority
   // Is re-entrancy protection needed for this?
   if (needCoexPriority != gBapCoexPriority) {
     VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, 
-            "Calling %s with needCoexPriority=%d.", __FUNCTION__, needCoexPriority);
+            "Calling %s with needCoexPriority=%d.", __func__, needCoexPriority);
  
     gBapCoexPriority = needCoexPriority;
     switch ( needCoexPriority)
@@ -1319,7 +1319,7 @@ WLANBAP_NeedBTCoexPriority
       default:
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
                    "%s: Invalid Coexistence priority request: %d",
-                   __FUNCTION__, needCoexPriority);
+                   __func__, needCoexPriority);
     }
 
   }
@@ -1373,7 +1373,7 @@ VOS_STATUS WLANBAP_RxCallback
           /* Link supervision frame, process this frame */
           VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH,
                      "%s: link Supervision packet received over TL: %d, => BAP",
-                     __FUNCTION__, frameType);
+                     __func__, frameType);
           WLANBAP_RxProcLsPkt((ptBtampHandle)pBtampCtx,
                                pBtampCtx->phy_link_handle,
                                frameType,
@@ -1392,7 +1392,7 @@ VOS_STATUS WLANBAP_RxCallback
       default:
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
                    "%s: Invalid frametype from TL: %d, => BAP",
-                   __FUNCTION__, frameType);
+                   __func__, frameType);
     }
 
     return ( VOS_STATUS_SUCCESS );

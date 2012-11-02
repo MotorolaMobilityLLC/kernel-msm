@@ -350,7 +350,7 @@ eHalStatus sme_FTUpdateKey( tHalHandle hHal, tCsrRoamSetKey * pFTKeyInfo )
 
     if (pFTKeyInfo == NULL) 
     {
-        smsLog( pMac, LOGE, "%s: pFTKeyInfo is NULL\n", __FUNCTION__);
+        smsLog( pMac, LOGE, "%s: pFTKeyInfo is NULL\n", __func__);
         sme_ReleaseGlobalLock( &pMac->sme );
         return eHAL_STATUS_FAILURE; 
     }
@@ -369,7 +369,7 @@ eHalStatus sme_FTUpdateKey( tHalHandle hHal, tCsrRoamSetKey * pFTKeyInfo )
        break;
           
     default:
-       smsLog( pMac, LOGE, "%s: Unhandled state=%d\n", __FUNCTION__,
+       smsLog( pMac, LOGE, "%s: Unhandled state=%d\n", __func__,
                pMac->ft.ftSmeContext.FTState);
        status = eHAL_STATUS_FAILURE;
        break;

@@ -645,7 +645,7 @@ static VOS_STATUS hdd_roamDeregisterSTA( hdd_adapter_t *pAdapter, tANI_U8 staId 
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                    "%s: WLANTL_ClearSTAClient() failed to for staID %d.  "
                    "Status= %d [0x%08lX]",
-                   __FUNCTION__, staId, vosStatus, vosStatus );
+                   __func__, staId, vosStatus, vosStatus );
     }
     return( vosStatus );
 }
@@ -864,7 +864,7 @@ static VOS_STATUS hdd_roamRegisterSTA( hdd_adapter_t *pAdapter,
 #endif
 
 #ifdef FEATURE_WLAN_WAPI
-   hddLog(LOG1, "%s: WAPI STA Registered: %d", __FUNCTION__, pAdapter->wapi_info.fIsWapiSta);
+   hddLog(LOG1, "%s: WAPI STA Registered: %d", __func__, pAdapter->wapi_info.fIsWapiSta);
    if (pAdapter->wapi_info.fIsWapiSta)
    {
       staDesc.ucIsWapiSta = 1;
@@ -2025,9 +2025,9 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
                             &dot11RSNIE);
         // Copy out the encryption and authentication types 
         hddLog(LOG1, FL("%s: pairwise cipher suite count: %d"), 
-                __FUNCTION__, dot11RSNIE.pwise_cipher_suite_count );
+                __func__, dot11RSNIE.pwise_cipher_suite_count );
         hddLog(LOG1, FL("%s: authentication suite count: %d"), 
-                __FUNCTION__, dot11RSNIE.akm_suite_count);
+                __func__, dot11RSNIE.akm_suite_count);
         /*Here we have followed the apple base code, 
           but probably I suspect we can do something different*/
         //dot11RSNIE.akm_suite_count
@@ -2057,7 +2057,7 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
         }
         // Calling csrRoamSetPMKIDCache to configure the PMKIDs into the cache
         hddLog(LOG1, FL("%s: Calling csrRoamSetPMKIDCache with cache entry %ld."), 
-                                                                            __FUNCTION__, i );
+                                                                            __func__, i );
         // Finally set the PMKSA ID Cache in CSR
         result = sme_RoamSetPMKIDCache(halHandle,pAdapter->sessionId,
                                         PMKIDCache, 
@@ -2081,9 +2081,9 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
                             &dot11WPAIE);
         // Copy out the encryption and authentication types
         hddLog(LOG1, FL("%s: WPA unicast cipher suite count: %d"),
-               __FUNCTION__, dot11WPAIE.unicast_cipher_count );
+               __func__, dot11WPAIE.unicast_cipher_count );
         hddLog(LOG1, FL("%s: WPA authentication suite count: %d"),
-               __FUNCTION__, dot11WPAIE.auth_suite_count);
+               __func__, dot11WPAIE.auth_suite_count);
         //dot11WPAIE.auth_suite_count
         // Just translate the FIRST one
         *pAuthType =  hdd_TranslateWPAToCsrAuthType(dot11WPAIE.auth_suites[0]);
@@ -2136,7 +2136,7 @@ int hdd_SetGENIEToCsr( hdd_adapter_t *pAdapter, eCsrAuthType *RSNAuthType)
         
         pWextState->roamProfile.EncryptionType.encryptionType[0] = RSNEncryptType; // Use the cipher type in the RSN IE
         pWextState->roamProfile.mcEncryptionType.encryptionType[0] = mcRSNEncryptType;
-        hddLog( LOG1, "%s: CSR AuthType = %d, EncryptionType = %d mcEncryptionType = %d", __FUNCTION__, *RSNAuthType, RSNEncryptType, mcRSNEncryptType);
+        hddLog( LOG1, "%s: CSR AuthType = %d, EncryptionType = %d mcEncryptionType = %d", __func__, *RSNAuthType, RSNEncryptType, mcRSNEncryptType);
     }
     return 0;
 }
@@ -2148,7 +2148,7 @@ int hdd_set_csr_auth_type ( hdd_adapter_t  *pAdapter, eCsrAuthType RSNAuthType)
     ENTER();
     
     pRoamProfile->AuthType.numEntries = 1;
-    hddLog( LOG1, "%s: pHddStaCtx->conn_info.authType = %d\n", __FUNCTION__, pHddStaCtx->conn_info.authType);
+    hddLog( LOG1, "%s: pHddStaCtx->conn_info.authType = %d\n", __func__, pHddStaCtx->conn_info.authType);
       
     switch( pHddStaCtx->conn_info.authType)
     {
@@ -2167,11 +2167,11 @@ int hdd_set_csr_auth_type ( hdd_adapter_t  *pAdapter, eCsrAuthType RSNAuthType)
             if ((RSNAuthType == eCSR_AUTH_TYPE_CCKM_WPA) && 
                 ((pWextState->authKeyMgmt & IW_AUTH_KEY_MGMT_802_1X) 
                  == IW_AUTH_KEY_MGMT_802_1X)) { 
-                hddLog( LOG1, "%s: set authType to CCKM WPA. AKM also 802.1X.\n", __FUNCTION__);
+                hddLog( LOG1, "%s: set authType to CCKM WPA. AKM also 802.1X.\n", __func__);
                 pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_CCKM_WPA;   
             } else 
             if ((RSNAuthType == eCSR_AUTH_TYPE_CCKM_WPA)) { 
-                hddLog( LOG1, "%s: Last chance to set authType to CCKM WPA.\n", __FUNCTION__);
+                hddLog( LOG1, "%s: Last chance to set authType to CCKM WPA.\n", __func__);
                 pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_CCKM_WPA;   
             } else
 #endif
@@ -2191,11 +2191,11 @@ int hdd_set_csr_auth_type ( hdd_adapter_t  *pAdapter, eCsrAuthType RSNAuthType)
             if ((RSNAuthType == eCSR_AUTH_TYPE_CCKM_RSN) && 
                 ((pWextState->authKeyMgmt & IW_AUTH_KEY_MGMT_802_1X) 
                  == IW_AUTH_KEY_MGMT_802_1X)) { 
-                hddLog( LOG1, "%s: set authType to CCKM RSN. AKM also 802.1X.\n", __FUNCTION__);
+                hddLog( LOG1, "%s: set authType to CCKM RSN. AKM also 802.1X.\n", __func__);
                 pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_CCKM_RSN;   
             } else
             if ((RSNAuthType == eCSR_AUTH_TYPE_CCKM_RSN)) { 
-                hddLog( LOG1, "%s: Last chance to set authType to CCKM RSN.\n", __FUNCTION__);
+                hddLog( LOG1, "%s: Last chance to set authType to CCKM RSN.\n", __func__);
                 pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_CCKM_RSN;   
             } else
 #endif
@@ -2233,14 +2233,14 @@ int hdd_set_csr_auth_type ( hdd_adapter_t  *pAdapter, eCsrAuthType RSNAuthType)
         default:
          
 #ifdef FEATURE_WLAN_CCX
-           hddLog( LOG1, "%s: In default, unknown auth type.\n", __FUNCTION__); 
+           hddLog( LOG1, "%s: In default, unknown auth type.\n", __func__); 
 #endif /* FEATURE_WLAN_CCX */
            pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_UNKNOWN;
            break;
     }
    
     hddLog( LOG1, "%s Set roam Authtype to %d",
-            __FUNCTION__, pWextState->roamProfile.AuthType.authType[0]);
+            __func__, pWextState->roamProfile.AuthType.authType[0]);
    
    EXIT();
     return 0;
@@ -2345,21 +2345,21 @@ int iw_set_essid(struct net_device *dev,
         hdd_set_csr_auth_type(pAdapter, RSNAuthType);
     }
 #ifdef FEATURE_WLAN_WAPI
-    hddLog(LOG1, "%s: Setting WAPI AUTH Type and Encryption Mode values", __FUNCTION__);
+    hddLog(LOG1, "%s: Setting WAPI AUTH Type and Encryption Mode values", __func__);
     if (pAdapter->wapi_info.nWapiMode)
     {
         switch (pAdapter->wapi_info.wapiAuthMode)
         {
             case WAPI_AUTH_MODE_PSK:
             {
-                hddLog(LOG1, "%s: WAPI AUTH TYPE: PSK: %d", __FUNCTION__, pAdapter->wapi_info.wapiAuthMode);
+                hddLog(LOG1, "%s: WAPI AUTH TYPE: PSK: %d", __func__, pAdapter->wapi_info.wapiAuthMode);
                 pRoamProfile->AuthType.numEntries = 1;
                 pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_WAPI_WAI_PSK;
                 break;
             }
             case WAPI_AUTH_MODE_CERT:
             {
-                hddLog(LOG1, "%s: WAPI AUTH TYPE: CERT: %d", __FUNCTION__, pAdapter->wapi_info.wapiAuthMode);
+                hddLog(LOG1, "%s: WAPI AUTH TYPE: CERT: %d", __func__, pAdapter->wapi_info.wapiAuthMode);
                 pRoamProfile->AuthType.numEntries = 1;
                 pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_WAPI_WAI_CERTIFICATE;
                 break;
@@ -2368,7 +2368,7 @@ int iw_set_essid(struct net_device *dev,
         if ( pAdapter->wapi_info.wapiAuthMode == WAPI_AUTH_MODE_PSK ||
              pAdapter->wapi_info.wapiAuthMode == WAPI_AUTH_MODE_CERT)
         {
-            hddLog(LOG1, "%s: WAPI PAIRWISE/GROUP ENCRYPTION: WPI", __FUNCTION__);
+            hddLog(LOG1, "%s: WAPI PAIRWISE/GROUP ENCRYPTION: WPI", __func__);
             pRoamProfile->EncryptionType.numEntries = 1;
             pRoamProfile->EncryptionType.encryptionType[0] = eCSR_ENCRYPT_TYPE_WPI;
             pRoamProfile->mcEncryptionType.numEntries = 1;
@@ -2517,7 +2517,7 @@ int iw_set_auth(struct net_device *dev,struct iw_request_info *info,
          else {
            
                hddLog(LOGW, "%s value %d UNKNOWN IW_AUTH_CIPHER",
-                      __FUNCTION__, wrqu->param.value); 
+                      __func__, wrqu->param.value); 
                return -EINVAL;
          }
        
@@ -2568,7 +2568,7 @@ int iw_set_auth(struct net_device *dev,struct iw_request_info *info,
       else {
            
           hddLog(LOGW, "%s value %d UNKNOWN IW_AUTH_CIPHER",
-                 __FUNCTION__, wrqu->param.value); 
+                 __func__, wrqu->param.value); 
           return -EINVAL;
        }
               
@@ -2600,8 +2600,8 @@ int iw_set_auth(struct net_device *dev,struct iw_request_info *info,
 #define IW_AUTH_KEY_MGMT_CCKM       8  /* Should be in linux/wireless.h */
          /*Check for CCKM AKM type */
          if ( wrqu->param.value & IW_AUTH_KEY_MGMT_CCKM) {
-            //hddLog(VOS_TRACE_LEVEL_INFO_HIGH,"%s: CCKM AKM Set %d\n", __FUNCTION__, wrqu->param.value);
-            hddLog(VOS_TRACE_LEVEL_INFO,"%s: CCKM AKM Set %d\n", __FUNCTION__, wrqu->param.value);
+            //hddLog(VOS_TRACE_LEVEL_INFO_HIGH,"%s: CCKM AKM Set %d\n", __func__, wrqu->param.value);
+            hddLog(VOS_TRACE_LEVEL_INFO,"%s: CCKM AKM Set %d\n", __func__, wrqu->param.value);
             /* Set the CCKM bit in authKeyMgmt */ 
             /* Right now, this breaks all ref to authKeyMgmt because our 
              * code doesn't realize it is a "bitfield" 
@@ -2658,7 +2658,7 @@ int iw_set_auth(struct net_device *dev,struct iw_request_info *info,
          
       default:
          
-         hddLog(LOGW, "%s called with unsupported auth type %d", __FUNCTION__,
+         hddLog(LOGW, "%s called with unsupported auth type %d", __func__,
                wrqu->param.flags & IW_AUTH_INDEX);
       break;
    }
@@ -2709,25 +2709,25 @@ int iw_get_auth(struct net_device *dev,struct iw_request_info *info,
              wrqu->param.value =  IW_AUTH_ALG_SHARED_KEY;
              break;
          case eCSR_AUTH_TYPE_UNKNOWN:
-             hddLog(LOG1,"%s called with unknown auth type", __FUNCTION__);
+             hddLog(LOG1,"%s called with unknown auth type", __func__);
              wrqu->param.value =  IW_AUTH_ALG_OPEN_SYSTEM;
              break;
          case eCSR_AUTH_TYPE_AUTOSWITCH:
              wrqu->param.value =  IW_AUTH_ALG_OPEN_SYSTEM;
              break;
          case eCSR_AUTH_TYPE_WPA_PSK:
-             hddLog(LOG1,"%s called with unknown auth type", __FUNCTION__);
+             hddLog(LOG1,"%s called with unknown auth type", __func__);
              wrqu->param.value = IW_AUTH_ALG_OPEN_SYSTEM;
              return -EIO;
 #ifdef WLAN_FEATURE_VOWIFI_11R
          case eCSR_AUTH_TYPE_FT_RSN_PSK:
 #endif
          case eCSR_AUTH_TYPE_RSN_PSK:
-             hddLog(LOG1,"%s called with unknown auth type", __FUNCTION__);
+             hddLog(LOG1,"%s called with unknown auth type", __func__);
              wrqu->param.value = IW_AUTH_ALG_OPEN_SYSTEM;
              return -EIO;
          default:
-             hddLog(LOG1,"%s called with unknown auth type", __FUNCTION__);
+             hddLog(LOG1,"%s called with unknown auth type", __func__);
              wrqu->param.value = IW_AUTH_ALG_OPEN_SYSTEM;
              return -EIO;
     }
@@ -2753,7 +2753,7 @@ int iw_get_auth(struct net_device *dev,struct iw_request_info *info,
                 wrqu->param.value = IW_AUTH_CIPHER_CCMP;
                 break;
             default:
-                hddLog(LOG1, "%s called with unknown auth type", __FUNCTION__);
+                hddLog(LOG1, "%s called with unknown auth type", __func__);
                 return -EIO;
         }
    }
@@ -2780,13 +2780,13 @@ int iw_get_auth(struct net_device *dev,struct iw_request_info *info,
              wrqu->param.value = IW_AUTH_CIPHER_CCMP;
              break;
          default:
-             hddLog(LOG1, "%s called with unknown auth type", __FUNCTION__);
+             hddLog(LOG1, "%s called with unknown auth type", __func__);
             return -EIO;
        }
    }
 
     hddLog(LOG1, "%s called with auth type %d",
-           __FUNCTION__, pRoamProfile->AuthType.authType[0]);
+           __func__, pRoamProfile->AuthType.authType[0]);
     EXIT();
     return 0;
 }

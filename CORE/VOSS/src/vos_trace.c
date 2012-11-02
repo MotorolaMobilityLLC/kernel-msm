@@ -127,7 +127,7 @@ void vos_trace_setLevel( VOS_MODULE_ID module, VOS_TRACE_LEVEL level )
    // Make sure the caller is passing in a valid LEVEL.
    if ( level >= VOS_TRACE_LEVEL_MAX )
    {
-      pr_err("%s: Invalid trace level %d passed in!\n", __FUNCTION__, level);
+      pr_err("%s: Invalid trace level %d passed in!\n", __func__, level);
       return;
    }
 
@@ -150,14 +150,14 @@ void vos_trace_setValue( VOS_MODULE_ID module, VOS_TRACE_LEVEL level, v_U8_t on)
    // Make sure the caller is passing in a valid LEVEL.
    if ( level < 0  || level >= VOS_TRACE_LEVEL_MAX )
    {
-      pr_err("%s: Invalid trace level %d passed in!\n", __FUNCTION__, level);
+      pr_err("%s: Invalid trace level %d passed in!\n", __func__, level);
       return;
    }
 
    // Make sure the caller is passing in a valid module.
    if ( module < 0 || module >= VOS_MODULE_ID_MAX )
    {
-      pr_err("%s: Invalid module id %d passed in!\n", __FUNCTION__, module);
+      pr_err("%s: Invalid module id %d passed in!\n", __func__, module);
       return;
    }
 

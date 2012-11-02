@@ -155,7 +155,7 @@ WLANSAP_Open
     if (NULL == pSapCtx)
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                   "%s: Invalid SAP pointer from pvosGCtx", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -228,7 +228,7 @@ WLANSAP_Start
     if ( NULL == pSapCtx )
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                   "%s: Invalid SAP pointer from pvosGCtx", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -314,7 +314,7 @@ WLANSAP_Stop
     if (NULL == pSapCtx)
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                   "%s: Invalid SAP pointer from pvosGCtx", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -379,7 +379,7 @@ WLANSAP_Close
     if (NULL == pSapCtx)
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                   "%s: Invalid SAP pointer from pvosGCtx", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -441,7 +441,7 @@ WLANSAP_CleanCB
     if (NULL == pSapCtx)
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Invalid SAP pointer", __FUNCTION__);
+                   "%s: Invalid SAP pointer", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -457,7 +457,7 @@ WLANSAP_CleanCB
     pSapCtx->sapsMachine= eSAP_DISCONNECTED;
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: Initializing State: %d, sapContext value = %x",
-            __FUNCTION__, pSapCtx->sapsMachine, pSapCtx);
+            __func__, pSapCtx->sapsMachine, pSapCtx);
     pSapCtx->sessionId = 0;
     pSapCtx->channel = 0;
 
@@ -532,7 +532,7 @@ v_U8_t WLANSAP_getState
     if ( NULL == pSapCtx )
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
-                   "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                   "%s: Invalid SAP pointer from pvosGCtx", __func__);
         return VOS_STATUS_E_FAULT;
     }
     return pSapCtx->sapsMachine;
@@ -594,7 +594,7 @@ WLANSAP_StartBss
         if ( NULL == pSapCtx )
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
-                       "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
         pSapCtx->sapsMachine = eSAP_DISCONNECTED;
@@ -621,7 +621,7 @@ WLANSAP_StartBss
         if (NULL == hHal)
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
-                       "%s: Invalid MAC context from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid MAC context from pvosGCtx", __func__);
         }
         else
         {
@@ -710,7 +710,7 @@ WLANSAP_StopBss
     if ( NULL == pvosGCtx )
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Invalid Global VOSS handle", __FUNCTION__);
+                   "%s: Invalid Global VOSS handle", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -719,7 +719,7 @@ WLANSAP_StopBss
     if (NULL == pSapCtx )
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                   "%s: Invalid SAP pointer from pvosGCtx", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -777,7 +777,7 @@ WLANSAP_GetAssocStations
     if (NULL == pSapCtx)
     {
       VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                 "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                 "%s: Invalid SAP pointer from pvosGCtx", __func__);
       return VOS_STATUS_E_FAULT;
     }
 
@@ -831,7 +831,7 @@ WLANSAP_RemoveWpsSessionOverlap
   if (NULL == pSapCtx)
   {
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-               "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+               "%s: Invalid SAP pointer from pvosGCtx", __func__);
     return VOS_STATUS_E_FAULT;
   }
 
@@ -881,7 +881,7 @@ WLANSAP_getWpsSessionOverlap
     if (NULL == pSapCtx)
     {
       VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                 "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                 "%s: Invalid SAP pointer from pvosGCtx", __func__);
       return VOS_STATUS_E_FAULT;
     }
 
@@ -903,7 +903,7 @@ WLANSAP_SetMode ( v_PVOID_t  pvosGCtx, v_U32_t mode)
     if (NULL == pSapCtx)
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                   "%s: Invalid SAP pointer from pvosGCtx", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -965,7 +965,7 @@ WLANSAP_ModifyACL
     if (NULL == pSapCtx)
     {
        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                  "%s: Invalid SAP Context", __FUNCTION__);
+                  "%s: Invalid SAP Context", __func__);
        return VOS_STATUS_E_FAULT;
     }
 
@@ -1174,7 +1174,7 @@ WLANSAP_DisassocSta
     if (NULL == pSapCtx)
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                   "%s: Invalid SAP pointer from pvosGCtx", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -1223,7 +1223,7 @@ WLANSAP_DeauthSta
     if (NULL == pSapCtx)
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                   "%s: Invalid SAP pointer from pvosGCtx", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -1346,7 +1346,7 @@ WLANSAP_SetChannelRange(tHalHandle hHal,v_U8_t startChannel, v_U8_t endChannel,
     {
        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                   "%s: Invalid startChannel-%d or EndChannel-%d for band -%d",
-                   __FUNCTION__,startChannel,endChannel,operatingBand);
+                   __func__,startChannel,endChannel,operatingBand);
        /* Supplied channels are nt in the operating band so set the default
             channels for the given operating band */
        startChannel = rfChannels[bandStartChannel].channelNum;
@@ -1370,7 +1370,7 @@ WLANSAP_SetChannelRange(tHalHandle hHal,v_U8_t startChannel, v_U8_t endChannel,
     {
        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
          "%s-No active channels present in the given range for the current region",
-         __FUNCTION__);
+         __func__);
        /* There is no active channel in the supplied range.Updating the config
        with the default channels in the given band so that we can select the best channel in the sub-band*/
        startChannel = rfChannels[bandStartChannel].channelNum;
@@ -1451,7 +1451,7 @@ WLANSAP_SetCounterMeasure
     if (NULL == pSapCtx)
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                   "%s: Invalid SAP pointer from pvosGCtx", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -1501,14 +1501,14 @@ WLANSAP_SetKeySta
         if (NULL == pSapCtx)
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
         hHal = VOS_GET_HAL_CB(pSapCtx->pvosGCtx);
         if (NULL == hHal)
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid HAL pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid HAL pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
         halStatus = sme_RoamSetKey(hHal, pSapCtx->sessionId, pSetKeyInfo, &roamId);
@@ -1569,7 +1569,7 @@ WLANSAP_DelKeySta
         if (NULL == pSapCtx)
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
 
@@ -1577,7 +1577,7 @@ WLANSAP_DelKeySta
         if (NULL == hHal)
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid HAL pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid HAL pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
 
@@ -1617,7 +1617,7 @@ WLANSap_getstationIE_information(v_PVOID_t pvosGCtx,
         if (NULL == pSapCtx)
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
         if (pLen)
@@ -1625,7 +1625,7 @@ WLANSap_getstationIE_information(v_PVOID_t pvosGCtx,
             len = *pLen;
             *pLen = pSapCtx->nStaWPARSnReqIeLength;
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
-                       "%s: WPAIE len : %x", __FUNCTION__, *pLen);
+                       "%s: WPAIE len : %x", __func__, *pLen);
             if(pBuf)
             {
                 if(len >= pSapCtx->nStaWPARSnReqIeLength)
@@ -1633,7 +1633,7 @@ WLANSap_getstationIE_information(v_PVOID_t pvosGCtx,
                     vos_mem_copy( pBuf, pSapCtx->pStaWpaRsnReqIE, pSapCtx->nStaWPARSnReqIeLength);
                     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
                                "%s: WPAIE: %02x:%02x:%02x:%02x:%02x:%02x",
-                               __FUNCTION__,
+                               __func__,
                                pBuf[0], pBuf[1], pBuf[2],
                                pBuf[3], pBuf[4], pBuf[5]);
                     vosStatus = VOS_STATUS_SUCCESS;
@@ -1646,7 +1646,7 @@ WLANSap_getstationIE_information(v_PVOID_t pvosGCtx,
     {
         VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                   "%s: Error unable to populate the RSNWPAIE",
-                  __FUNCTION__);
+                  __func__);
     }
 
     return vosStatus;
@@ -1685,21 +1685,21 @@ WLANSAP_Set_WpsIe
     v_PVOID_t hHal = NULL;
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
-            "%s, %d", __FUNCTION__, __LINE__);
+            "%s, %d", __func__, __LINE__);
 
     if(VOS_STA_SAP_MODE == vos_get_conparam ( )) {
         pSapCtx = VOS_GET_SAP_CB(pvosGCtx);
         if ( NULL == pSapCtx )
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
 
         hHal = VOS_GET_HAL_CB(pSapCtx->pvosGCtx);
         if ( NULL == hHal ){
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid HAL pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid HAL pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
 
@@ -1761,21 +1761,21 @@ WLANSAP_Update_WpsIe
     v_PVOID_t hHal = NULL;
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-            "%s, %d", __FUNCTION__, __LINE__);
+            "%s, %d", __func__, __LINE__);
 
     if(VOS_STA_SAP_MODE == vos_get_conparam ( )){
         pSapCtx = VOS_GET_SAP_CB(pvosGCtx);
         if ( NULL == pSapCtx )
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
 
         hHal = VOS_GET_HAL_CB(pSapCtx->pvosGCtx);
         if ( NULL == hHal ){
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid HAL pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid HAL pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
 
@@ -1827,7 +1827,7 @@ WLANSAP_Get_WPS_State
     v_PVOID_t hHal = NULL;
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO,
-        "%s, %d", __FUNCTION__, __LINE__);
+        "%s, %d", __func__, __LINE__);
 
     if(VOS_STA_SAP_MODE == vos_get_conparam ( )){
 
@@ -1835,14 +1835,14 @@ WLANSAP_Get_WPS_State
         if ( NULL == pSapCtx )
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
              return VOS_STATUS_E_FAULT;
         }
 
         hHal = VOS_GET_HAL_CB(pSapCtx->pvosGCtx);
         if ( NULL == hHal ){
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid HAL pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid HAL pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
 
@@ -1932,14 +1932,14 @@ VOS_STATUS WLANSAP_Set_WPARSNIes(v_PVOID_t pvosGCtx, v_U8_t *pWPARSNIEs, v_U32_t
         if ( NULL == pSapCtx )
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
 
         hHal = VOS_GET_HAL_CB(pSapCtx->pvosGCtx);
         if ( NULL == hHal ){
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid HAL pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid HAL pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
 
@@ -2007,7 +2007,7 @@ VOS_STATUS WLANSAP_SendAction( v_PVOID_t pvosGCtx, const tANI_U8 *pBuf,
         if (NULL == pSapCtx)
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
         hHal = VOS_GET_HAL_CB(pSapCtx->pvosGCtx);
@@ -2015,7 +2015,7 @@ VOS_STATUS WLANSAP_SendAction( v_PVOID_t pvosGCtx, const tANI_U8 *pBuf,
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                        "%s: HAL pointer (%p) NULL OR SME session is not open (%d)",
-                       __FUNCTION__, hHal, pSapCtx->isSapSessionOpen );
+                       __func__, hHal, pSapCtx->isSapSessionOpen );
             return VOS_STATUS_E_FAULT;
         }
 
@@ -2075,7 +2075,7 @@ VOS_STATUS WLANSAP_RemainOnChannel( v_PVOID_t pvosGCtx,
         if (NULL == pSapCtx)
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
         hHal = VOS_GET_HAL_CB(pSapCtx->pvosGCtx);
@@ -2083,7 +2083,7 @@ VOS_STATUS WLANSAP_RemainOnChannel( v_PVOID_t pvosGCtx,
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                        "%s: HAL pointer (%p) NULL OR SME session is not open (%d)",
-                       __FUNCTION__, hHal, pSapCtx->isSapSessionOpen );
+                       __func__, hHal, pSapCtx->isSapSessionOpen );
             return VOS_STATUS_E_FAULT;
         }
 
@@ -2136,7 +2136,7 @@ VOS_STATUS WLANSAP_CancelRemainOnChannel( v_PVOID_t pvosGCtx )
         if (NULL == pSapCtx)
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
         hHal = VOS_GET_HAL_CB(pSapCtx->pvosGCtx);
@@ -2144,7 +2144,7 @@ VOS_STATUS WLANSAP_CancelRemainOnChannel( v_PVOID_t pvosGCtx )
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                        "%s: HAL pointer (%p) NULL OR SME session is not open (%d)",
-                       __FUNCTION__, hHal, pSapCtx->isSapSessionOpen );
+                       __func__, hHal, pSapCtx->isSapSessionOpen );
             return VOS_STATUS_E_FAULT;
         }
 
@@ -2201,7 +2201,7 @@ VOS_STATUS WLANSAP_RegisterMgmtFrame( v_PVOID_t pvosGCtx, tANI_U16 frameType,
         if (NULL == pSapCtx)
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
         hHal = VOS_GET_HAL_CB(pSapCtx->pvosGCtx);
@@ -2209,7 +2209,7 @@ VOS_STATUS WLANSAP_RegisterMgmtFrame( v_PVOID_t pvosGCtx, tANI_U16 frameType,
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                        "%s: HAL pointer (%p) NULL OR SME session is not open (%d)",
-                       __FUNCTION__, hHal, pSapCtx->isSapSessionOpen );
+                       __func__, hHal, pSapCtx->isSapSessionOpen );
             return VOS_STATUS_E_FAULT;
         }
 
@@ -2266,7 +2266,7 @@ VOS_STATUS WLANSAP_DeRegisterMgmtFrame( v_PVOID_t pvosGCtx, tANI_U16 frameType,
         if (NULL == pSapCtx)
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
-                       "%s: Invalid SAP pointer from pvosGCtx", __FUNCTION__);
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
             return VOS_STATUS_E_FAULT;
         }
         hHal = VOS_GET_HAL_CB(pSapCtx->pvosGCtx);
@@ -2274,7 +2274,7 @@ VOS_STATUS WLANSAP_DeRegisterMgmtFrame( v_PVOID_t pvosGCtx, tANI_U16 frameType,
         {
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                        "%s: HAL pointer (%p) NULL OR SME session is not open (%d)",
-                       __FUNCTION__, hHal, pSapCtx->isSapSessionOpen );
+                       __func__, hHal, pSapCtx->isSapSessionOpen );
             return VOS_STATUS_E_FAULT;
         }
 

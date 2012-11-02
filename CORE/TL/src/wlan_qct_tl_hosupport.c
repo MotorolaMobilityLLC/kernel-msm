@@ -218,7 +218,7 @@ void WLANTL_HSDebugDisplay
    {
       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
                        "%s: Invalid TL Context",
-                       __FUNCTION__));
+                       __func__));
       return;
    }
 
@@ -1839,7 +1839,7 @@ VOS_STATUS WLANTL_HSSerializeTlIndication
    pMsg = vos_mem_malloc(sizeof(WLANTL_TlIndicationReq));
    if ( NULL == pMsg ) 
    {
-      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR, "In %s, failed to allocate mem for req", __FUNCTION__);
+      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR, "In %s, failed to allocate mem for req", __func__);
       return VOS_STATUS_E_NOMEM;
    }
 
@@ -1858,7 +1858,7 @@ VOS_STATUS WLANTL_HSSerializeTlIndication
 
    if(VOS_STATUS_SUCCESS != vos_mq_post_message(VOS_MQ_ID_SME, &msg))
    {
-       VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR, "In %s, failed to post msg to self", __FUNCTION__);
+       VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR, "In %s, failed to post msg to self", __func__);
        vos_mem_free(pMsg);
        status = VOS_STATUS_E_FAILURE;
    }

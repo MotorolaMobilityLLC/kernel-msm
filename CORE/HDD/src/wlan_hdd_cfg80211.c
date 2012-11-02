@@ -1735,7 +1735,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
     if (NULL == pAdapter)
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                   "%s: HDD adapter context is Null", __FUNCTION__);
+                   "%s: HDD adapter context is Null", __func__);
         return -ENODEV;
     }
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
@@ -1749,7 +1749,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
     if (NULL == pHddCtx)
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                "%s: HDD context is Null", __FUNCTION__);
+                "%s: HDD context is Null", __func__);
         return -ENODEV;
     }
 
@@ -1760,7 +1760,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
         if (NULL == staAdapter)
         {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                    "%s: HDD adapter context is Null", __FUNCTION__);
+                    "%s: HDD adapter context is Null", __func__);
             return -ENODEV;
         }
     }
@@ -1789,7 +1789,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
         {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
                          "%s: Timeout occured while waiting for abortscan" ,
-                         __FUNCTION__);
+                         __func__);
             VOS_ASSERT(pScanInfo->mScanPending);
             return 0;
         }
@@ -2339,7 +2339,7 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
                                                   WLANTL_STA_AUTHENTICATED);
 
             VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
-                "%s: Station MAC address does not matching", __FUNCTION__);
+                "%s: Station MAC address does not matching", __func__);
             return -EINVAL;
         }
     }
@@ -4120,19 +4120,19 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
 #ifdef FEATURE_WLAN_WAPI
         if (pAdapter->wapi_info.nWapiMode)
         {
-            hddLog(LOG1, "%s: Setting WAPI AUTH Type and Encryption Mode values", __FUNCTION__);
+            hddLog(LOG1, "%s: Setting WAPI AUTH Type and Encryption Mode values", __func__);
             switch (pAdapter->wapi_info.wapiAuthMode)
             {
                 case WAPI_AUTH_MODE_PSK:
                 {
-                    hddLog(LOG1, "%s: WAPI AUTH TYPE: PSK: %d", __FUNCTION__,
+                    hddLog(LOG1, "%s: WAPI AUTH TYPE: PSK: %d", __func__,
                                                    pAdapter->wapi_info.wapiAuthMode);
                     pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_WAPI_WAI_PSK;
                     break;
                 }
                 case WAPI_AUTH_MODE_CERT:
                 {
-                    hddLog(LOG1, "%s: WAPI AUTH TYPE: CERT: %d", __FUNCTION__,
+                    hddLog(LOG1, "%s: WAPI AUTH TYPE: CERT: %d", __func__,
                                                     pAdapter->wapi_info.wapiAuthMode);
                     pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_WAPI_WAI_CERTIFICATE;
                     break;
@@ -4141,7 +4141,7 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
             if ( pAdapter->wapi_info.wapiAuthMode == WAPI_AUTH_MODE_PSK ||
                 pAdapter->wapi_info.wapiAuthMode == WAPI_AUTH_MODE_CERT)
             {
-                hddLog(LOG1, "%s: WAPI PAIRWISE/GROUP ENCRYPTION: WPI", __FUNCTION__);
+                hddLog(LOG1, "%s: WAPI PAIRWISE/GROUP ENCRYPTION: WPI", __func__);
                 pRoamProfile->AuthType.numEntries = 1;
                 pRoamProfile->EncryptionType.numEntries = 1;
                 pRoamProfile->EncryptionType.encryptionType[0] = eCSR_ENCRYPT_TYPE_WPI;
@@ -4562,13 +4562,13 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
                 if (WAPI_PSK_AKM_SUITE == akmsuite[0])
                 {
                     hddLog(VOS_TRACE_LEVEL_INFO, "%s: WAPI AUTH MODE SET TO PSK",
-                                                            __FUNCTION__);
+                                                            __func__);
                     pAdapter->wapi_info.wapiAuthMode = WAPI_AUTH_MODE_PSK;
                 }    
                 if (WAPI_CERT_AKM_SUITE == akmsuite[0])
                 {     
                     hddLog(VOS_TRACE_LEVEL_INFO, "%s: WAPI AUTH MODE SET TO CERTIFICATE",
-                                                             __FUNCTION__);
+                                                             __func__);
                     pAdapter->wapi_info.wapiAuthMode = WAPI_AUTH_MODE_CERT;
                 }
                 break;
@@ -5859,7 +5859,7 @@ static int wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *d
                     pmksa->pmkid,   
                     CSR_RSN_PMKID_SIZE);
             hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Reusing cache entry %d.", 
-                    __FUNCTION__, j );
+                    __func__, j );
             dump_bssid(pmksa->bssid);
             dump_pmkid(halHandle, pmksa->pmkid);
             break;
@@ -5878,7 +5878,7 @@ static int wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *d
                 pmksa->pmkid,   
                 CSR_RSN_PMKID_SIZE);
         hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Adding a new cache entry %d.", 
-                __FUNCTION__, i );
+                __func__, i );
         dump_bssid(pmksa->bssid);
         dump_pmkid(halHandle, pmksa->pmkid);
         // Increment the HDD Local Cache index 
@@ -5889,9 +5889,9 @@ static int wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device *d
 
     // Calling csrRoamSetPMKIDCache to configure the PMKIDs into the cache
     //hddLog(LOG1, FL("%s: Calling csrRoamSetPMKIDCache with %d cache entries."), 
-    //        __FUNCTION__, i );
+    //        __func__, i );
     hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Calling csrRoamSetPMKIDCache with %d cache entries.", 
-            __FUNCTION__, i );
+            __func__, i );
     // Finally set the PMKSA ID Cache in CSR
     result = sme_RoamSetPMKIDCache(halHandle,pAdapter->sessionId, 
                                     PMKIDCache, 

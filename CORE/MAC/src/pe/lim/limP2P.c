@@ -341,7 +341,7 @@ void limRemainOnChnlSetLinkStat(tpAniSirGlobal pMac, eHalStatus status,
        tx_timer_activate(&pMac->lim.limTimers.gLimRemainOnChannelTimer))
     {
         limLog( pMac, LOGE,
-                  "%s: remain on channel Timer Start Failed\n", __FUNCTION__);
+                  "%s: remain on channel Timer Start Failed\n", __func__);
         goto error;
     }
 
@@ -463,7 +463,7 @@ void limRemainOnChnRsp(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data)
     if ( NULL == MsgRemainonChannel )
     {
         PELOGE(limLog( pMac, LOGP,
-             "%s: No Pointer for Remain on Channel Req\n", __FUNCTION__);)
+             "%s: No Pointer for Remain on Channel Req\n", __func__);)
         return;
     }
 

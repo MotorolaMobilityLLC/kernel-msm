@@ -285,7 +285,7 @@ void sysBbtProcessMessage( tHalHandle hHal, void *pBD )
     if(pBD->swBdType != SMAC_SWBD_TYPE_CTLMSG)
         sysLog( pMac, LOG3,
             FL( "%s: RX Mesg Type %d, subType %d, MPDU Len %d, RXP Flags 0x%x\n" ),
-            __FUNCTION__,
+            __func__,
             mHdr->fc.type,
             mHdr->fc.subType,
             pBD->mpduLength,

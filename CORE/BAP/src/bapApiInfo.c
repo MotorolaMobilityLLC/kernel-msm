@@ -150,7 +150,7 @@ WLAN_BAPReadLocalVersionInfo
     }
 
 
-    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: btampHandle value: %x", __FUNCTION__,  btampHandle); 
+    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: btampHandle value: %x", __func__,  btampHandle); 
 
 
     /* Format the command complete event to return... */ 
@@ -226,7 +226,7 @@ WLAN_BAPReadLocalSupportedCmds
     }
 
 
-    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: btampHandle value: %x", __FUNCTION__,  btampHandle); 
+    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: btampHandle value: %x", __func__,  btampHandle); 
 
 
     /* Format the command complete event to return... */ 
@@ -292,7 +292,7 @@ WLAN_BAPReadBufferSize
     }
 
 
-    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: btampHandle value: %x", __FUNCTION__,  btampHandle); 
+    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: btampHandle value: %x", __func__,  btampHandle); 
 
 
     /* Format the command complete event to return... */ 
@@ -362,7 +362,7 @@ WLAN_BAPReadDataBlockSize
    }
 
 
-   VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: btampHandle value: %x", __FUNCTION__,  btampHandle); 
+   VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: btampHandle value: %x", __func__,  btampHandle); 
 
 
    /* Format the command complete event to return... */ 
@@ -523,13 +523,13 @@ WLAN_BAPDisconnect
     VOS_STATUS  vosStatus;
     /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
-    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_FATAL, "%s: btampHandle value: %x", __FUNCTION__,  btampHandle); 
+    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_FATAL, "%s: btampHandle value: %x", __func__,  btampHandle); 
 
     /* Validate params */ 
     if (btampHandle == NULL) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_FATAL,
-                     "btampHandle is NULL in %s", __FUNCTION__);
+                     "btampHandle is NULL in %s", __func__);
 
       return VOS_STATUS_E_FAULT;
     }
@@ -589,13 +589,13 @@ v_BOOL_t WLAN_BAPSessionOn
    ptBtampContext btampContext = (ptBtampContext) btampHandle;
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
-   VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: btampHandle value: %x", __FUNCTION__,  btampHandle); 
+   VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%s: btampHandle value: %x", __func__,  btampHandle); 
 
    /* Validate params */ 
    if (btampHandle == NULL) 
    {
        VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                    "btampHandle is NULL in %s", __FUNCTION__);
+                    "btampHandle is NULL in %s", __func__);
 
        //?? shall we say true or false
        return VOS_FALSE;

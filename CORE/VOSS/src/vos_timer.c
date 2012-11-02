@@ -127,7 +127,7 @@ static void vos_linux_timer_callback ( v_U32_t data )
 
    if (timer == NULL)
    {
-     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s Null pointer passed in!",__FUNCTION__);
+     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s Null pointer passed in!",__func__);
      return;
    }
 
@@ -308,7 +308,7 @@ static void vos_timer_clean()
        timer_node_t *ptimerNode;
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                  "%s: List is not Empty. listSize %d ",
-                 __FUNCTION__, (int)listSize);
+                 __func__, (int)listSize);
 
        do
        {
@@ -404,7 +404,7 @@ VOS_STATUS vos_timer_init_debug( vos_timer_t *timer, VOS_TIMER_TYPE timerType,
    if ((timer == NULL) || (callback == NULL)) 
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Null params being passed",__FUNCTION__);
+                "%s: Null params being passed",__func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -414,7 +414,7 @@ VOS_STATUS vos_timer_init_debug( vos_timer_t *timer, VOS_TIMER_TYPE timerType,
    if(timer->ptimerNode == NULL)
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Not able to allocate memory for timeNode",__FUNCTION__);
+                "%s: Not able to allocate memory for timeNode",__func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -431,7 +431,7 @@ VOS_STATUS vos_timer_init_debug( vos_timer_t *timer, VOS_TIMER_TYPE timerType,
     if(VOS_STATUS_SUCCESS != vosStatus)
     {
          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-             "%s: Unable to insert node into List vosStatus %d\n", __FUNCTION__, vosStatus);
+             "%s: Unable to insert node into List vosStatus %d\n", __func__, vosStatus);
     }
    
    // set the various members of the timer structure 
@@ -457,7 +457,7 @@ VOS_STATUS vos_timer_init( vos_timer_t *timer, VOS_TIMER_TYPE timerType,
    if ((timer == NULL) || (callback == NULL)) 
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Null params being passed",__FUNCTION__);
+                "%s: Null params being passed",__func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -522,7 +522,7 @@ VOS_STATUS vos_timer_destroy ( vos_timer_t *timer )
    if ( NULL == timer )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Null timer pointer being passed",__FUNCTION__);
+                "%s: Null timer pointer being passed",__func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -531,7 +531,7 @@ VOS_STATUS vos_timer_destroy ( vos_timer_t *timer )
    if ( LINUX_TIMER_COOKIE != timer->platformInfo.cookie )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Cannot destroy uninitialized timer",__FUNCTION__);
+                "%s: Cannot destroy uninitialized timer",__func__);
       return VOS_STATUS_E_INVAL;
    }
    
@@ -597,7 +597,7 @@ VOS_STATUS vos_timer_destroy ( vos_timer_t *timer )
    if ( NULL == timer )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Null timer pointer being passed",__FUNCTION__);
+                "%s: Null timer pointer being passed",__func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAULT;
    }
@@ -606,7 +606,7 @@ VOS_STATUS vos_timer_destroy ( vos_timer_t *timer )
    if ( LINUX_TIMER_COOKIE != timer->platformInfo.cookie )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Cannot destroy uninitialized timer",__FUNCTION__);
+                "%s: Cannot destroy uninitialized timer",__func__);
       return VOS_STATUS_E_INVAL;
    }
    spin_lock_irqsave( &timer->platformInfo.spinlock,flags );
@@ -698,7 +698,7 @@ VOS_STATUS vos_timer_start( vos_timer_t *timer, v_U32_t expirationTime )
    if ( LINUX_TIMER_COOKIE != timer->platformInfo.cookie )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Cannot start uninitialized timer",__FUNCTION__);
+                "%s: Cannot start uninitialized timer",__func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_INVAL;
    }
@@ -794,7 +794,7 @@ VOS_STATUS vos_timer_stop ( vos_timer_t *timer )
    if ( LINUX_TIMER_COOKIE != timer->platformInfo.cookie )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-                "%s: Cannot stop uninitialized timer",__FUNCTION__);
+                "%s: Cannot stop uninitialized timer",__func__);
       VOS_ASSERT(0);
       return VOS_STATUS_E_INVAL;
    }

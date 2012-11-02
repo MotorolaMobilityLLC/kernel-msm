@@ -76,7 +76,7 @@ static inline int find_ptrn_len(const char* ptrn)
 static void hdd_wowl_callback( void *pContext, eHalStatus halStatus )
 {
   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
-    "%s: Return code = (%ld)\n", __FUNCTION__, halStatus );
+    "%s: Return code = (%ld)\n", __func__, halStatus );
 }
 
 static void dump_hdd_wowl_ptrn(tSirWowlAddBcastPtrn *ptrn)
@@ -139,7 +139,7 @@ v_BOOL_t hdd_add_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn)
     if(first_empty_slot == -1)
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Cannot add anymore patterns. No free slot!", __FUNCTION__);
+          "%s: Cannot add anymore patterns. No free slot!", __func__);
       return VOS_FALSE;
     }
 
@@ -163,7 +163,7 @@ v_BOOL_t hdd_add_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn)
        ptrn[5] != WOWL_INTRA_PTRN_TOKENIZER)
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Malformed pattern string. Skip!\n", __FUNCTION__);
+          "%s: Malformed pattern string. Skip!\n", __func__);
       ptrn += len; 
       goto next_ptrn;
     }
@@ -180,7 +180,7 @@ v_BOOL_t hdd_add_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn)
        localPattern.ucPatternMaskSize > WOWL_PTRN_MASK_MAX_SIZE)
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Invalid length specified. Skip!\n", __FUNCTION__);
+          "%s: Invalid length specified. Skip!\n", __func__);
       ptrn += len; 
       goto next_ptrn;
     }
@@ -190,7 +190,7 @@ v_BOOL_t hdd_add_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn)
     if(offset >= len || ptrn[offset] != WOWL_INTRA_PTRN_TOKENIZER) 
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Malformed pattern string..skip!\n", __FUNCTION__);
+          "%s: Malformed pattern string..skip!\n", __func__);
       ptrn += len; 
       goto next_ptrn;
     }
@@ -200,7 +200,7 @@ v_BOOL_t hdd_add_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn)
     if(offset+1 != len) //offset begins with 0
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Malformed pattern string...skip!\n", __FUNCTION__);
+          "%s: Malformed pattern string...skip!\n", __func__);
       ptrn += len; 
       goto next_ptrn;
     }
@@ -233,7 +233,7 @@ v_BOOL_t hdd_add_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn)
     if(g_hdd_wowl_ptrns[first_empty_slot] == NULL) 
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: kmalloc failure", __FUNCTION__);
+          "%s: kmalloc failure", __func__);
       return VOS_FALSE;
     }
 

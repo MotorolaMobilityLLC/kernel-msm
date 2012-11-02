@@ -293,7 +293,7 @@ eHalStatus palSendMBMessage(tHddHandle hHdd, void *pBuf)
    if (NULL == vosContext)
    {
       VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                "%s: invalid vosContext", __FUNCTION__);
+                "%s: invalid vosContext", __func__);
    }
    else
    {
@@ -301,7 +301,7 @@ eHalStatus palSendMBMessage(tHddHandle hHdd, void *pBuf)
       if (NULL == hHal)
       {
          VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                   "%s: invalid hHal", __FUNCTION__);
+                   "%s: invalid hHal", __func__);
       }
       else
       {

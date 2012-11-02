@@ -82,7 +82,7 @@ void wpalDump( wpt_moduleid module, wpt_tracelevel level,
 #define WPAL_ASSERT( _condition )                          \
 if ( ! ( _condition ) )                                   \
 {                                                         \
-   printk(KERN_CRIT "VOS ASSERT in %s Line %d\n", __FUNCTION__, __LINE__); \
+   printk(KERN_CRIT "VOS ASSERT in %s Line %d\n", __func__, __LINE__); \
    WARN_ON(1); \
 }
 

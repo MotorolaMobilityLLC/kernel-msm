@@ -2024,7 +2024,7 @@ eHalStatus pmcPrepareCommand( tpAniSirGlobal pMac, eSmeCommandType cmdType, void
                 if(!HAL_STATUS_SUCCESS(status))
                 {
                     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL, "%s fail to allocate memory for command (0x%X)",
-                        __FUNCTION__, cmdType);
+                        __func__, cmdType);
                     pCommand = NULL;
                     break;
                 }
