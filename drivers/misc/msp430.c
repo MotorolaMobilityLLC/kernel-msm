@@ -16,6 +16,7 @@
  * 02111-1307, USA
  */
 
+#include <linux/cdev.h>
 #include <linux/delay.h>
 #include <linux/earlysuspend.h>
 #include <linux/err.h>
@@ -31,8 +32,10 @@
 #include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <linux/msp430.h>
+#include <linux/poll.h>
 #include <linux/uaccess.h>
 #include <linux/slab.h>
+#include <linux/time.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
 
@@ -150,6 +153,11 @@
 
 #define RESET				0x7F
 
+#define MSP430_AS_DATA_QUEUE_SIZE	0x20
+#define MSP430_AS_DATA_QUEUE_MASK	0x1F
+#define MSP430_ES_DATA_QUEUE_SIZE	0x08
+#define MSP430_ES_DATA_QUEUE_MASK	0x07
+
 #define KDEBUG(format, s...)	if (g_debug) pr_info(format, ##s)
 static char g_debug;
 /* to hold sensor state so that it can be restored on resume */
@@ -170,8 +178,6 @@ struct msp430_data {
 	struct msp430_platform_data *pdata;
 	/* to avoid two i2c communications at the same time */
 	struct mutex lock;
-	struct input_dev *input_dev;
-	struct input_dev *input_dev_b;
 	struct work_struct irq_work;
 	struct workqueue_struct *irq_work_queue;
 	struct wake_lock wakelock;
@@ -184,6 +190,23 @@ struct msp430_data {
 	enum msp_mode mode;
 	unsigned char intp_mask;
 	struct early_suspend early_suspend;
+
+	dev_t msp430_dev_num;
+	struct class *msp430_class;
+	struct cdev as_cdev;
+	struct cdev ms_cdev;
+
+	struct msp430_android_sensor_data
+		msp430_as_data_buffer[MSP430_AS_DATA_QUEUE_SIZE];
+	int msp430_as_data_buffer_head;
+	int msp430_as_data_buffer_tail;
+	wait_queue_head_t msp430_as_data_wq;
+
+	struct msp430_moto_sensor_data
+		msp430_ms_data_buffer[MSP430_ES_DATA_QUEUE_SIZE];
+	int msp430_ms_data_buffer_head;
+	int msp430_ms_data_buffer_tail;
+	wait_queue_head_t msp430_ms_data_wq;
 };
 
 enum msp_commands {
@@ -443,6 +466,103 @@ static int msp430_device_power_on(struct msp430_data *ps_msp430)
 	return err;
 }
 
+static int msp430_as_data_buffer_write(struct msp430_data *ps_msp430,
+	unsigned char type, signed short data1, signed short data2,
+	signed short data3, unsigned char status)
+{
+	int new_head;
+	struct timespec ts;
+
+	new_head = (ps_msp430->msp430_as_data_buffer_head + 1)
+		& MSP430_AS_DATA_QUEUE_MASK;
+	if (new_head == ps_msp430->msp430_as_data_buffer_tail) {
+		pr_err("MSP430 %s: data buffer full\n", __func__);
+		wake_up(&ps_msp430->msp430_as_data_wq);
+		return 0;
+	}
+
+	ps_msp430->msp430_as_data_buffer[new_head].type = type;
+	ps_msp430->msp430_as_data_buffer[new_head].data1 = data1;
+	ps_msp430->msp430_as_data_buffer[new_head].data2 = data2;
+	ps_msp430->msp430_as_data_buffer[new_head].data3 = data3;
+	ps_msp430->msp430_as_data_buffer[new_head].status = status;
+
+	ktime_get_ts(&ts);
+	ps_msp430->msp430_as_data_buffer[new_head].timestamp
+		= ts.tv_sec*1000000000LL + ts.tv_nsec;
+
+	ps_msp430->msp430_as_data_buffer_head = new_head;
+	wake_up(&ps_msp430->msp430_as_data_wq);
+
+	return 1;
+}
+
+static int msp430_as_data_buffer_read(struct msp430_data *ps_msp430,
+	struct msp430_android_sensor_data *buff)
+{
+	int new_tail;
+
+	if (ps_msp430->msp430_as_data_buffer_tail
+		== ps_msp430->msp430_as_data_buffer_head)
+		return 0;
+
+	new_tail = (ps_msp430->msp430_as_data_buffer_tail + 1)
+		& MSP430_AS_DATA_QUEUE_MASK;
+
+	*buff = ps_msp430->msp430_as_data_buffer[new_tail];
+
+	ps_msp430->msp430_as_data_buffer_tail = new_tail;
+
+	return 1;
+}
+
+static int msp430_ms_data_buffer_write(struct msp430_data *ps_msp430,
+	unsigned char type, signed short data1, signed short data2)
+{
+	int new_head;
+	struct timespec ts;
+
+	new_head = (ps_msp430->msp430_ms_data_buffer_head + 1)
+		& MSP430_ES_DATA_QUEUE_MASK;
+	if (new_head == ps_msp430->msp430_ms_data_buffer_tail) {
+		pr_err("MSP430 %s: data buffer full\n", __func__);
+		wake_up(&ps_msp430->msp430_ms_data_wq);
+		return 0;
+	}
+
+	ps_msp430->msp430_ms_data_buffer[new_head].type = type;
+	ps_msp430->msp430_ms_data_buffer[new_head].data1 = data1;
+	ps_msp430->msp430_ms_data_buffer[new_head].data2 = data2;
+
+	ktime_get_ts(&ts);
+	ps_msp430->msp430_ms_data_buffer[new_head].timestamp
+		= ts.tv_sec*1000000000LL + ts.tv_nsec;
+
+	ps_msp430->msp430_ms_data_buffer_head = new_head;
+	wake_up(&ps_msp430->msp430_ms_data_wq);
+
+	return 1;
+}
+
+static int msp430_ms_data_buffer_read(struct msp430_data *ps_msp430,
+	struct msp430_moto_sensor_data *buff)
+{
+	int new_tail;
+
+	if (ps_msp430->msp430_ms_data_buffer_tail
+		== ps_msp430->msp430_ms_data_buffer_head)
+		return 0;
+
+	new_tail = (ps_msp430->msp430_ms_data_buffer_tail + 1)
+		& MSP430_ES_DATA_QUEUE_MASK;
+
+	*buff = ps_msp430->msp430_ms_data_buffer[new_tail];
+
+	ps_msp430->msp430_ms_data_buffer_tail = new_tail;
+
+	return 1;
+}
+
 static irqreturn_t msp430_isr(int irq, void *dev)
 {
 	struct msp430_data *ps_msp430 = dev;
@@ -454,8 +574,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 {
 	int err;
 	unsigned char irq_status, irq2_status;
-	signed short xyz[7];
-	int pressure;
+	signed short x, y, z;
 	struct msp430_data *ps_msp430 = container_of(work,
 			struct msp430_data, irq_work);
 
@@ -491,15 +610,14 @@ static void msp430_irq_work_func(struct work_struct *work)
 			pr_err("MSP430 Reading Accel from msp failed\n");
 			goto EXIT;
 		}
-		xyz[0] =  (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
-		xyz[1] =  (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
-		xyz[2] =  (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
-		input_report_abs(ps_msp430->input_dev, ABS_X, xyz[0]);
-		input_report_abs(ps_msp430->input_dev, ABS_Y, xyz[1]);
-		input_report_abs(ps_msp430->input_dev, ABS_Z, xyz[2]);
-		input_sync(ps_msp430->input_dev);
-		KDEBUG("Sending acc values:x=%d,y=%d,z=%d\n",
-			xyz[0], xyz[1], xyz[2]);
+
+		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
+		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
+		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
+		msp430_as_data_buffer_write(ps_msp430, DT_ACCEL, x, y, z, 0);
+
+		KDEBUG("MSP430 Sending acc(x,y,z)values:x=%d,y=%d,z=%d\n",
+			x, y, z);
 	}
 	if (irq_status & M_ECOMPASS) {
 		/*Read orientation values */
@@ -509,25 +627,23 @@ static void msp430_irq_work_func(struct work_struct *work)
 			pr_err("MSP430 Reading Ecompass failed\n");
 			goto EXIT;
 		}
-		xyz[0] =  (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
-		xyz[1] =  (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
-		xyz[2] =  (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
-		xyz[3] =  (msp_cmdbuff[6] << 8) | msp_cmdbuff[7];
-		xyz[4] =  (msp_cmdbuff[8] << 8) | msp_cmdbuff[9];
-		xyz[5] =  (msp_cmdbuff[10] << 8) | msp_cmdbuff[11];
-		xyz[6] =  msp_cmdbuff[12];
-		input_report_abs(ps_msp430->input_dev, ABS_HAT0X, xyz[0]);
-		input_report_abs(ps_msp430->input_dev, ABS_HAT0Y, xyz[1]);
-		input_report_abs(ps_msp430->input_dev, ABS_BRAKE, xyz[2]);
-		input_report_abs(ps_msp430->input_dev, ABS_RX, xyz[3]);
-		input_report_abs(ps_msp430->input_dev, ABS_RY, xyz[4]);
-		input_report_abs(ps_msp430->input_dev, ABS_RZ, xyz[5]);
-		input_report_abs(ps_msp430->input_dev, ABS_RUDDER, xyz[6]);
-		input_sync(ps_msp430->input_dev);
-		KDEBUG("Sending mag values:x=%d,y=%d,z=%d\n",
-			xyz[0], xyz[1], xyz[2]);
-		KDEBUG("Sending orient values:x=%d,y=%d,z=%d,stat=%d\n",
-		       xyz[3], xyz[4], xyz[5], xyz[6]);
+
+		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
+		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
+		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
+		msp430_as_data_buffer_write(ps_msp430, DT_MAG, x, y, z, 0);
+
+		KDEBUG("MSP430 Sending mag(x,y,z)values:x=%d,y=%d,z=%d\n",
+			x, y, z);
+
+		x = (msp_cmdbuff[6] << 8) | msp_cmdbuff[7];
+		y = (msp_cmdbuff[8] << 8) | msp_cmdbuff[9];
+		z = (msp_cmdbuff[10] << 8) | msp_cmdbuff[11];
+		msp430_as_data_buffer_write(ps_msp430, DT_ORIENT, x, y, z,
+			msp_cmdbuff[12]);
+
+		KDEBUG("MSP430 Sending orient(x,y,z)values:x=%d,y=%d,z=%d\n",
+		       x, y, z);
 	}
 	if (irq_status & M_GYRO) {
 		msp_cmdbuff[0] = GYRO_X;
@@ -536,16 +652,13 @@ static void msp430_irq_work_func(struct work_struct *work)
 			pr_err("MSP430 Reading Gyroscope failed\n");
 			goto EXIT;
 		}
-		xyz[0] = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
-		xyz[1] = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
-		xyz[2] = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
+		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
+		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
+		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
+		msp430_as_data_buffer_write(ps_msp430, DT_GYRO, x, y, z, 0);
 
-		input_report_rel(ps_msp430->input_dev, REL_RX, xyz[0]);
-		input_report_rel(ps_msp430->input_dev, REL_RY, xyz[1]);
-		input_report_rel(ps_msp430->input_dev, REL_RZ, xyz[2]);
-		input_sync(ps_msp430->input_dev);
-		KDEBUG("Sending gyro values:x = %d,y =%d,z=%d\n",
-			xyz[0], xyz[1], xyz[2]);
+		KDEBUG("MSP430 Sending gyro(x,y,z)values:x=%d,y=%d,z=%d\n",
+			x, y, z);
 	}
 	if (irq_status & M_ALS) {
 		msp_cmdbuff[0] = ALS_LUX;
@@ -554,10 +667,10 @@ static void msp430_irq_work_func(struct work_struct *work)
 			pr_err("MSP430 Reading ALS from msp failed\n");
 			goto EXIT;
 		}
-		xyz[0] = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
-		input_event(ps_msp430->input_dev, EV_LED, LED_MISC, xyz[0]);
-		input_sync(ps_msp430->input_dev);
-		KDEBUG("Sending ALS  %d\n", xyz[0]);
+		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
+		msp430_as_data_buffer_write(ps_msp430, DT_ALS, x, 0, 0, 0);
+
+		KDEBUG("Sending ALS %d\n", x);
 	}
 	if (irq_status & M_PROXIMITY) {
 		msp_cmdbuff[0] = PROXIMITY;
@@ -566,10 +679,10 @@ static void msp430_irq_work_func(struct work_struct *work)
 			pr_err("MSP430 Reading prox from msp failed\n");
 			goto EXIT;
 		}
-		xyz[0] = msp_cmdbuff[0];
-		input_event(ps_msp430->input_dev, EV_MSC, MSC_RAW, xyz[0]);
-		input_sync(ps_msp430->input_dev);
-		KDEBUG("Sending Proximity distance  %d\n", xyz[0]);
+		x = msp_cmdbuff[0];
+		msp430_as_data_buffer_write(ps_msp430, DT_PROX, x, 0, 0, 0);
+
+		KDEBUG("Sending Proximity distance %d\n", x);
 	}
 	if (irq_status & M_TEMPERATURE) {
 		/*Read temperature value */
@@ -579,11 +692,10 @@ static void msp430_irq_work_func(struct work_struct *work)
 			pr_err("MSP430 Reading Temperature failed\n");
 			goto EXIT;
 		}
-		xyz[0] = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
+		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
+		msp430_as_data_buffer_write(ps_msp430, DT_TEMP, x, 0, 0, 0);
 
-		input_report_abs(ps_msp430->input_dev, ABS_THROTTLE, xyz[0]);
-		input_sync(ps_msp430->input_dev);
-		KDEBUG("MSP430 Sending temp(x)value: %d\n", xyz[0]);
+		KDEBUG("MSP430 Sending temp(x)value: %d\n", x);
 	}
 	if (irq_status & M_PRESSURE) {
 		/*Read pressure value */
@@ -593,25 +705,24 @@ static void msp430_irq_work_func(struct work_struct *work)
 			pr_err("MSP430 Reading Pressure failed\n");
 			goto EXIT;
 		}
-		pressure = (msp_cmdbuff[0] << 24) | (msp_cmdbuff[1] << 16) |
-				(msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
+		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
+		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
+		msp430_as_data_buffer_write(ps_msp430, DT_PRESSURE, x, y, 0, 0);
 
-		input_report_abs(ps_msp430->input_dev, ABS_PRESSURE, pressure);
-		input_sync(ps_msp430->input_dev);
-		KDEBUG("MSP430 Sending pressure value: %d\n", pressure);
+		KDEBUG("MSP430 Sending pressure %d\n", x << 16 | y);
 	}
 	if (irq2_status & M_MMOVEME) {
 		/* Client recieving action will be upper 2 MSB of status */
-		xyz[0] = (irq2_status & MSP430_CLIENT_MASK) | M_MMOVEME;
-		input_report_rel(ps_msp430->input_dev_b, REL_RZ, xyz[0]);
-		input_sync(ps_msp430->input_dev_b);
+		x = (irq2_status & MSP430_CLIENT_MASK) | M_MMOVEME;
+		msp430_ms_data_buffer_write(ps_msp430, DT_MMMOVE, x, 0);
+
 		KDEBUG("MSP430 Sending meaningful movement event\n");
 	}
 	if (irq2_status & M_NOMMOVE) {
 		/* Client recieving action will be upper 2 MSB of status */
-		xyz[0] = (irq2_status & MSP430_CLIENT_MASK) | M_NOMMOVE;
-		input_report_rel(ps_msp430->input_dev_b, REL_RZ, xyz[0]);
-		input_sync(ps_msp430->input_dev_b);
+		x = (irq2_status & MSP430_CLIENT_MASK) | M_NOMMOVE;
+		msp430_ms_data_buffer_write(ps_msp430, DT_NOMOVE, x, 0);
+
 		KDEBUG("MSP430 Sending no meaningful movement event\n");
 	}
 	if (irq2_status & M_RADIAL) {
@@ -621,13 +732,11 @@ static void msp430_irq_work_func(struct work_struct *work)
 			pr_err("MSP430 Reading Radial movement failed\n");
 			goto EXIT;
 		}
-		xyz[0] = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
-		xyz[1] = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
+		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
+		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
+		msp430_ms_data_buffer_write(ps_msp430, DT_RADIAL, x, y);
 
-		input_report_rel(ps_msp430->input_dev_b, REL_RX, xyz[0]);
-		input_report_rel(ps_msp430->input_dev_b, REL_RY, xyz[1]);
-		input_sync(ps_msp430->input_dev_b);
-		KDEBUG("MSP430 Radial north:%d,east:%d", xyz[0], xyz[1]);
+		KDEBUG("MSP430 Radial north:%d,east:%d", x, y);
 	}
 
 EXIT:
@@ -1154,6 +1263,114 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 	return err;
 }
 
+static int msp430_as_open(struct inode *inode, struct file *file)
+{
+	int err = 0;
+
+	KDEBUG("MSP430 msp430_as_open\n");
+
+	err = nonseekable_open(inode, file);
+	if (err < 0)
+		return err;
+	file->private_data = msp430_misc_data;
+
+	return err;
+}
+
+static ssize_t msp430_as_read(struct file *file, char __user *buffer,
+	size_t size, loff_t *ppos)
+{
+	int ret;
+	struct msp430_android_sensor_data tmp_buff;
+	struct msp430_data *ps_msp430 = file->private_data;
+
+	ret = msp430_as_data_buffer_read(ps_msp430, &tmp_buff);
+	if (ret == 0)
+		return 0;
+	ret = copy_to_user(buffer, &tmp_buff,
+		sizeof(struct msp430_android_sensor_data));
+	if (ret != 0) {
+		pr_err("%s: copy error\n", __func__);
+		return 0;
+	}
+
+	return sizeof(struct msp430_android_sensor_data);
+}
+
+static unsigned int msp430_as_poll(struct file *file,
+	struct poll_table_struct *wait)
+{
+	unsigned int mask = 0;
+	struct msp430_data *ps_msp430 = file->private_data;
+
+	poll_wait(file, &ps_msp430->msp430_as_data_wq, wait);
+	if (ps_msp430->msp430_as_data_buffer_head
+		!= ps_msp430->msp430_as_data_buffer_tail)
+		mask = POLLIN | POLLRDNORM;
+
+	return mask;
+}
+
+static const struct file_operations msp430_as_fops = {
+	.owner = THIS_MODULE,
+	.open = msp430_as_open,
+	.read = msp430_as_read,
+	.poll = msp430_as_poll,
+};
+
+static int msp430_ms_open(struct inode *inode, struct file *file)
+{
+	int err = 0;
+
+	KDEBUG("MSP430 msp430_ms_open\n");
+
+	err = nonseekable_open(inode, file);
+	if (err < 0)
+		return err;
+	file->private_data = msp430_misc_data;
+
+	return err;
+}
+
+static ssize_t msp430_ms_read(struct file *file, char __user *buffer,
+	size_t size, loff_t *ppos)
+{
+	int ret;
+	struct msp430_moto_sensor_data tmp_buff;
+	struct msp430_data *ps_msp430 = file->private_data;
+
+	ret = msp430_ms_data_buffer_read(ps_msp430, &tmp_buff);
+	if (copy_to_user(buffer, &tmp_buff,
+		sizeof(struct msp430_moto_sensor_data))
+		!= 0) {
+		pr_err("%s: copy error\n", __func__);
+		ret = 0;
+	}
+
+	return ret;
+}
+
+static unsigned int msp430_ms_poll(struct file *file,
+	struct poll_table_struct *wait)
+{
+	unsigned int mask = 0;
+	struct msp430_data *ps_msp430 = file->private_data;
+
+	poll_wait(file, &ps_msp430->msp430_ms_data_wq, wait);
+	if (ps_msp430->msp430_ms_data_buffer_head
+		!= ps_msp430->msp430_ms_data_buffer_tail)
+		mask = POLLIN | POLLRDNORM;
+
+	return mask;
+}
+
+static const struct file_operations msp430_ms_fops = {
+	.owner = THIS_MODULE,
+	.open = msp430_ms_open,
+	.read = msp430_ms_read,
+	.poll = msp430_ms_poll,
+};
+
 static const struct file_operations msp430_misc_fops = {
 	.owner = THIS_MODULE,
 	.open = msp430_misc_open,
@@ -1167,146 +1384,6 @@ static struct miscdevice msp430_misc_device = {
 	.fops = &msp430_misc_fops,
 };
 
-
-static int msp430_input_init(struct msp430_data *ps_msp430)
-{
-	int err;
-	pr_info("MSP430 msp430_input_init\n");
-	ps_msp430->input_dev = input_allocate_device();
-	if (!ps_msp430->input_dev) {
-		err = -ENOMEM;
-		dev_err(&ps_msp430->client->dev,
-			"input device allocate failed: %d\n", err);
-		goto err0;
-	}
-	ps_msp430->input_dev_b = input_allocate_device();
-	if (!ps_msp430->input_dev_b) {
-		err = -ENOMEM;
-		dev_err(&ps_msp430->client->dev,
-			"input device allocate failed: %d\n", err);
-		goto err1;
-	}
-
-	input_set_drvdata(ps_msp430->input_dev, ps_msp430);
-	input_set_drvdata(ps_msp430->input_dev_b, ps_msp430);
-
-	input_set_capability(ps_msp430->input_dev, EV_LED, LED_MISC);
-	input_set_capability(ps_msp430->input_dev, EV_MSC, MSC_RAW);
-
-	set_bit(EV_ABS, ps_msp430->input_dev->evbit);
-	set_bit(EV_REL, ps_msp430->input_dev->evbit);
-
-	set_bit(ABS_THROTTLE, ps_msp430->input_dev->absbit);
-
-	set_bit(ABS_PRESSURE, ps_msp430->input_dev->absbit);
-	set_bit(ABS_X, ps_msp430->input_dev->absbit);
-	set_bit(ABS_Y, ps_msp430->input_dev->absbit);
-	set_bit(ABS_Z, ps_msp430->input_dev->absbit);
-	set_bit(ABS_HAT0X, ps_msp430->input_dev->absbit);
-	set_bit(ABS_HAT0Y, ps_msp430->input_dev->absbit);
-	set_bit(ABS_BRAKE, ps_msp430->input_dev->absbit);
-	set_bit(ABS_RX, ps_msp430->input_dev->absbit);
-	set_bit(ABS_RY, ps_msp430->input_dev->absbit);
-	set_bit(ABS_RZ, ps_msp430->input_dev->absbit);
-	set_bit(ABS_RUDDER, ps_msp430->input_dev->absbit);
-
-	set_bit(REL_RX, ps_msp430->input_dev->relbit);
-	set_bit(REL_RY, ps_msp430->input_dev->relbit);
-	set_bit(REL_RZ, ps_msp430->input_dev->relbit);
-	/* temp sensor can measure btw -40 degree C to +125 degree C */
-	input_set_abs_params(ps_msp430->input_dev,
-			ABS_THROTTLE, -12000, 395000, 0, 0);
-	input_set_abs_params(ps_msp430->input_dev,
-			ABS_PRESSURE, 0, 1000000, 0, 0);
-
-
-	/* fuzz and flat */
-	input_set_abs_params(ps_msp430->input_dev, ABS_X, -G_MAX, G_MAX, 0, 0);
-	input_set_abs_params(ps_msp430->input_dev, ABS_Y, -G_MAX, G_MAX, 0, 0);
-	input_set_abs_params(ps_msp430->input_dev, ABS_Z, -G_MAX, G_MAX, 0, 0);
-	input_set_abs_params(ps_msp430->input_dev, ABS_HAT0X,
-			-4096 , 4096, 0, 0);
-	input_set_abs_params(ps_msp430->input_dev, ABS_HAT0Y,
-			-4096, 4096, 0, 0);
-	input_set_abs_params(ps_msp430->input_dev, ABS_BRAKE,
-			-4096, 4096, 0, 0);
-	/* Max range = 360 * 64 */
-	input_set_abs_params(ps_msp430->input_dev, ABS_RX, 0, 23040, 0, 0);
-	input_set_abs_params(ps_msp430->input_dev, ABS_RY, 0, 23040, 0, 0);
-	input_set_abs_params(ps_msp430->input_dev, ABS_RZ, 0, 23040, 0, 0);
-	input_set_abs_params(ps_msp430->input_dev, ABS_RUDDER, 0, 4, 0, 0);
-
-	/* for dev B */
-	set_bit(EV_ABS, ps_msp430->input_dev_b->evbit);
-	set_bit(EV_REL, ps_msp430->input_dev_b->evbit);
-	set_bit(REL_RZ, ps_msp430->input_dev_b->relbit);
-	set_bit(REL_RX, ps_msp430->input_dev_b->relbit);
-	set_bit(REL_RY, ps_msp430->input_dev_b->relbit);
-	set_bit(ABS_VOLUME, ps_msp430->input_dev_b->absbit);
-	set_bit(REL_HWHEEL, ps_msp430->input_dev_b->relbit);
-	set_bit(REL_DIAL, ps_msp430->input_dev_b->relbit);
-	set_bit(REL_WHEEL, ps_msp430->input_dev_b->relbit);
-	set_bit(REL_MISC, ps_msp430->input_dev_b->relbit);
-	set_bit(ABS_HAT3X, ps_msp430->input_dev_b->absbit);
-	set_bit(ABS_HAT3Y, ps_msp430->input_dev_b->absbit);
-	set_bit(ABS_HAT2X, ps_msp430->input_dev_b->absbit);
-	set_bit(ABS_HAT2Y, ps_msp430->input_dev_b->absbit);
-
-	input_set_abs_params(ps_msp430->input_dev_b,
-			ABS_HAT3X, 0, 1000000, 0, 0);
-	input_set_abs_params(ps_msp430->input_dev_b,
-			ABS_HAT3Y, 0, 1000000, 0, 0);
-	input_set_abs_params(ps_msp430->input_dev_b,
-			ABS_HAT2X, 0, 1000000, 0, 0);
-	input_set_abs_params(ps_msp430->input_dev_b,
-			ABS_HAT2Y, 0, 1000000, 0, 0);
-	input_set_abs_params(ps_msp430->input_dev_b,
-			ABS_VOLUME, 0, 1000000, 0, 0);
-
-
-	ps_msp430->input_dev->name = "msp430sensorprocessor";
-	ps_msp430->input_dev_b->name = "msp430smartfusion";
-	err = input_register_device(ps_msp430->input_dev);
-	if (err) {
-		dev_err(&ps_msp430->client->dev,
-			"unable to register input polled device %s: %d\n",
-			ps_msp430->input_dev->name, err);
-		goto err2;
-	}
-	err = input_register_device(ps_msp430->input_dev_b);
-	if (err) {
-		dev_err(&ps_msp430->client->dev,
-			"unable to register input polled device %s: %d\n",
-			ps_msp430->input_dev_b->name, err);
-		goto err3;
-	}
-
-	return 0;
-err3:
-
-	input_unregister_device(ps_msp430->input_dev);
-	ps_msp430->input_dev = NULL;
-
-err2:
-
-	input_free_device(ps_msp430->input_dev_b);
-
-err1:
-
-	input_free_device(ps_msp430->input_dev);
-
-err0:
-
-	return err;
-
-}
-
-static void msp430_input_cleanup(struct msp430_data *ps_msp430)
-{
-	pr_err("MSP430 msp430_input_cleanup\n");
-	input_unregister_device(ps_msp430->input_dev);
-	input_unregister_device(ps_msp430->input_dev_b);
-}
 
 static int msp430_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
@@ -1386,16 +1463,37 @@ static int msp430_probe(struct i2c_client *client,
 	enable_irq_wake(ps_msp430->irq);
 	atomic_set(&ps_msp430->enabled, 1);
 
-	err = msp430_input_init(ps_msp430);
-	if (err < 0)
-		goto err5;
-
 	msp430_misc_data = ps_msp430;
 	err = misc_register(&msp430_misc_device);
 	if (err < 0) {
 		dev_err(&client->dev, "misc register failed: %d\n", err);
 		goto err6;
 	}
+
+	if (alloc_chrdev_region(&ps_msp430->msp430_dev_num, 0, 2, "msp430")
+		< 0)
+		pr_err("%s: alloc_chrdev_region failed\n", __func__);
+	ps_msp430->msp430_class = class_create(THIS_MODULE, "msp430");
+
+	cdev_init(&ps_msp430->as_cdev, &msp430_as_fops);
+	ps_msp430->as_cdev.owner = THIS_MODULE;
+	err = cdev_add(&ps_msp430->as_cdev, ps_msp430->msp430_dev_num, 1);
+	if (err)
+		pr_err("%s: cdev_add as failed: %d\n", __func__, err);
+
+	device_create(ps_msp430->msp430_class, NULL,
+		MKDEV(MAJOR(ps_msp430->msp430_dev_num), 0),
+		ps_msp430, "msp430_as");
+
+	cdev_init(&ps_msp430->ms_cdev, &msp430_ms_fops);
+	ps_msp430->ms_cdev.owner = THIS_MODULE;
+	err = cdev_add(&ps_msp430->ms_cdev, ps_msp430->msp430_dev_num + 1, 1);
+	if (err)
+		pr_err("%s: cdev_add ms failed: %d\n", __func__, err);
+
+	device_create(ps_msp430->msp430_class, NULL,
+		MKDEV(MAJOR(ps_msp430->msp430_dev_num), 1),
+		ps_msp430, "msp430_ms");
 
 	msp430_device_power_off(ps_msp430);
 
@@ -1416,6 +1514,9 @@ static int msp430_probe(struct i2c_client *client,
 	register_early_suspend(&ps_msp430->early_suspend);
 #endif
 
+	init_waitqueue_head(&ps_msp430->msp430_as_data_wq);
+	init_waitqueue_head(&ps_msp430->msp430_ms_data_wq);
+
 	mutex_unlock(&ps_msp430->lock);
 
 	dev_info(&client->dev, "msp430 probed\n");
@@ -1425,8 +1526,6 @@ static int msp430_probe(struct i2c_client *client,
 err7:
 	misc_deregister(&msp430_misc_device);
 err6:
-	msp430_input_cleanup(ps_msp430);
-err5:
 	msp430_device_power_off(ps_msp430);
 err4:
 	if (ps_msp430->pdata->exit)
@@ -1450,7 +1549,6 @@ static int msp430_remove(struct i2c_client *client)
 	pr_err("MSP430 msp430_remove\n");
 	free_irq(ps_msp430->irq, ps_msp430);
 	misc_deregister(&msp430_misc_device);
-	msp430_input_cleanup(ps_msp430);
 	msp430_device_power_off(ps_msp430);
 	if (ps_msp430->pdata->exit)
 		ps_msp430->pdata->exit();
