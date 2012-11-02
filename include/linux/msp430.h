@@ -93,7 +93,6 @@
 		_IOW(MSP430_IOCTL_BASE, 34, unsigned int)
 #define MSP430_IOCTL_SET_ZRMOTION_DUR	\
 		_IOW(MSP430_IOCTL_BASE, 35, unsigned int)
-#define MSP430_MAX_PACKET_LENGTH           250
 
 #ifdef __KERNEL__
 struct msp430_platform_data {
@@ -120,6 +119,36 @@ struct msp430_platform_data {
 #define M_MMOVEME			0x01
 #define M_NOMMOVE			0x02
 #define M_RADIAL			0x04
+
+struct msp430_android_sensor_data {
+	int64_t timestamp;
+	signed short data1;
+	signed short data2;
+	signed short data3;
+	unsigned char type;
+	unsigned char status;
+};
+
+struct msp430_moto_sensor_data {
+	int64_t timestamp;
+	signed short data1;
+	signed short data2;
+	unsigned char type;
+};
+
+enum MSP430_data_types {
+	DT_ACCEL,
+	DT_MAG,
+	DT_ORIENT,
+	DT_GYRO,
+	DT_ALS,
+	DT_PROX,
+	DT_TEMP,
+	DT_PRESSURE,
+	DT_MMMOVE,
+	DT_NOMOVE,
+	DT_RADIAL,
+};
 
 #endif  /* __MSP430_H__ */
 
