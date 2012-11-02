@@ -70,7 +70,7 @@ static int arizona_ldo_reg_set_voltage_sel(struct regulator_dev *rdev,
 					   unsigned sel)
 {
 	struct arizona_ldo1 *ldo1 = rdev_get_drvdata(rdev);
-	sel <<= ARIZONA_LDO2_VSEL_SHIFT;
+	sel <<= ARIZONA_LDO1_VSEL_SHIFT;
 
 	return regmap_update_bits(ldo1->arizona->regmap,
 				  ARIZONA_LDO1_CONTROL_1,
