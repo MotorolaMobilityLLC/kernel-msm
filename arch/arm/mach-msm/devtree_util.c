@@ -48,3 +48,14 @@ __init u32 dt_get_u32_or_die(struct device_node *node, const char *name)
 	return *(u32 *)prop;
 }
 
+__init unsigned int dt_children_count(struct device_node *node)
+{
+	struct device_node *child;
+	unsigned int count = 0;
+
+	for_each_child_of_node(node, child)
+		count++;
+
+	return count;
+}
+
