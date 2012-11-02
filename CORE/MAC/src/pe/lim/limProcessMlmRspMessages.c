@@ -2817,7 +2817,19 @@ limProcessStaMlmAddBssRspFT(tpAniSirGlobal pMac, tpSirMsgQ limMsgQ, tpPESession 
         mlmReassocCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
         goto end;
     }
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    pMac->lim.pSessionEntry = psessionEntry;
+    if(NULL == pMac->lim.pSessionEntry->pLimMlmReassocRetryReq)
+    {
+        /* Take a copy of reassoc request for retrying */
+        if ( !HAL_STATUS_SUCCESS(palAllocateMemory(pMac->hHdd, (void **)&pMac->lim.pSessionEntry->pLimMlmReassocRetryReq, sizeof(tLimMlmReassocReq))) ) goto end;
+        palZeroMemory(pMac->hHdd, pMac->lim.pSessionEntry->pLimMlmReassocRetryReq, sizeof(tLimMlmReassocReq));
+        palCopyMemory( pMac->hHdd,pMac->lim.pSessionEntry->pLimMlmReassocRetryReq, psessionEntry->pLimMlmReassocReq, sizeof(tLimMlmReassocReq));
+    }
+    pMac->lim.reAssocRetryAttempt = 0;
+#endif
     limSendReassocReqWithFTIEsMgmtFrame(pMac, psessionEntry->pLimMlmReassocReq, psessionEntry);
+
     psessionEntry->limPrevMlmState = psessionEntry->limMlmState;
     psessionEntry->limMlmState = eLIM_MLM_WT_FT_REASSOC_RSP_STATE;
     PELOGE(limLog(pMac, LOGE,  FL("Set the mlm state to %d session=%d\n"),

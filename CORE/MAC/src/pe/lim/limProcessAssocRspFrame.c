@@ -547,7 +547,17 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     if (subType == LIM_ASSOC)        // Stop Association failure timer
         limDeactivateAndChangeTimer(pMac, eLIM_ASSOC_FAIL_TIMER);
     else        // Stop Reassociation failure timer
+    {
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+        pMac->lim.reAssocRetryAttempt = 0;
+        if (NULL != pMac->lim.pSessionEntry->pLimMlmReassocRetryReq)
+        {
+            palFreeMemory( pMac->hHdd, pMac->lim.pSessionEntry->pLimMlmReassocRetryReq);
+            pMac->lim.pSessionEntry->pLimMlmReassocRetryReq = NULL;
+        }
+#endif
         limDeactivateAndChangeTimer(pMac, eLIM_REASSOC_FAIL_TIMER);
+    }
 
     if (pAssocRsp->statusCode != eSIR_MAC_SUCCESS_STATUS)
     {

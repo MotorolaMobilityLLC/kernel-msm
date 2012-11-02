@@ -94,6 +94,9 @@ typedef struct sPESession           // Added to Support BT-AMP
     tpSirSmeJoinReq         pLimJoinReq;            // handle to sme join req
     tpSirSmeReassocReq      pLimReAssocReq;         //handle to sme reassoc req
     tpLimMlmJoinReq         pLimMlmJoinReq;         //handle to MLM join Req
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    void                    *pLimMlmReassocRetryReq; //keep reasoc req for retry
+#endif
     void                    *pLimMlmReassocReq;      //handle to MLM reassoc Req
     tANI_U16                channelChangeReasonCode;
     tANI_U8                 dot11mode;

@@ -2028,6 +2028,9 @@ limProcessMlmPostJoinSuspendLink(tpAniSirGlobal pMac, eHalStatus status, tANI_U3
     secChanOffset = psessionEntry->htSecondaryChannelOffset;
     //store the channel switch sessionEntry in the lim global var
     psessionEntry->channelChangeReasonCode = LIM_SWITCH_CHANNEL_JOIN;
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    psessionEntry->pLimMlmReassocRetryReq = NULL;
+#endif
 
     limSetChannel(pMac, chanNum, secChanOffset, psessionEntry->maxTxPower, psessionEntry->peSessionId); 
 

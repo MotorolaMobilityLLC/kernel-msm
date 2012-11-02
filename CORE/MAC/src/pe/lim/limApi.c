@@ -389,6 +389,11 @@ static void __limInitAssocVars(tpAniSirGlobal pMac)
     palZeroMemory(pMac->hHdd, pMac->lim.protStaOverlapCache, sizeof(tCacheParams) * LIM_PROT_STA_OVERLAP_CACHE_SIZE);
     palZeroMemory(pMac->hHdd, pMac->lim.protStaCache, sizeof(tCacheParams) * LIM_PROT_STA_CACHE_SIZE);
 
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    pMac->lim.pSessionEntry = NULL;
+    pMac->lim.reAssocRetryAttempt = 0;
+#endif
+
 }
 
 

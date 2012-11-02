@@ -909,6 +909,11 @@ tLimMlmOemDataRsp       *gpLimMlmOemDataRsp;
     tANI_U32    actionFrameSessionId;
 #endif
     tSirBackgroundScanMode gLimBackgroundScanMode;
+
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    tpPESession  pSessionEntry;
+    tANI_U8 reAssocRetryAttempt;
+#endif
 } tAniSirLim, *tpAniSirLim;
 
 #ifdef WLAN_FEATURE_P2P

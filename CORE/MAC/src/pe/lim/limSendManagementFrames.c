@@ -3043,6 +3043,62 @@ end:
     psessionEntry->pLimMlmReassocReq = NULL;
 
 }
+
+void limSendRetryReassocReqFrame(tpAniSirGlobal     pMac,
+                                 tLimMlmReassocReq *pMlmReassocReq,
+                                 tpPESession psessionEntry)
+{
+    tLimMlmReassocCnf       mlmReassocCnf; // keep sme
+    tLimMlmReassocReq       *pTmpMlmReassocReq = NULL;
+    if(NULL == pTmpMlmReassocReq)
+    {
+        if ( !HAL_STATUS_SUCCESS(palAllocateMemory(pMac->hHdd, (void **)&pTmpMlmReassocReq, sizeof(tLimMlmReassocReq))) ) goto end;
+        palZeroMemory(pMac->hHdd, pTmpMlmReassocReq, sizeof(tLimMlmReassocReq));
+        palCopyMemory( pMac->hHdd, pTmpMlmReassocReq, pMlmReassocReq, sizeof(tLimMlmReassocReq));
+    }
+
+    // Prepare and send Reassociation request frame
+    // start reassoc timer.
+    pMac->lim.limTimers.gLimReassocFailureTimer.sessionId = psessionEntry->peSessionId;
+    // Start reassociation failure timer
+    MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, 0, eLIM_REASSOC_FAIL_TIMER));
+    if (tx_timer_activate(&pMac->lim.limTimers.gLimReassocFailureTimer)
+                                               != TX_SUCCESS)
+    {
+        // Could not start reassoc failure timer.
+        // Log error
+        limLog(pMac, LOGP,
+           FL("could not start Reassociation failure timer\n"));
+        // Return Reassoc confirm with
+        // Resources Unavailable
+        mlmReassocCnf.resultCode = eSIR_SME_RESOURCES_UNAVAILABLE;
+        mlmReassocCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
+        goto end;
+    }
+
+    limSendReassocReqWithFTIEsMgmtFrame(pMac, pTmpMlmReassocReq, psessionEntry);
+    return;
+
+end:
+    // Free up buffer allocated for reassocReq
+    if (pMlmReassocReq != NULL)
+    {
+        palFreeMemory( pMac->hHdd, (tANI_U8 *) pMlmReassocReq);
+        pMlmReassocReq = NULL;
+    }
+    if (pTmpMlmReassocReq != NULL)
+    {
+        palFreeMemory( pMac->hHdd, (tANI_U8 *) pTmpMlmReassocReq);
+        pTmpMlmReassocReq = NULL;
+    }
+    mlmReassocCnf.resultCode = eSIR_SME_FT_REASSOC_FAILURE;
+    mlmReassocCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
+    /* Update PE sessio Id*/
+    mlmReassocCnf.sessionId = psessionEntry->peSessionId;
+
+    limPostSmeMessage(pMac, LIM_MLM_REASSOC_CNF, (tANI_U32 *) &mlmReassocCnf);
+}
+
 #endif /* WLAN_FEATURE_VOWIFI_11R */
 
 

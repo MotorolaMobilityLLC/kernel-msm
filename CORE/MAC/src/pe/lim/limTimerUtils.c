@@ -859,6 +859,29 @@ limAssocFailureTimerHandler(void *pMacGlobal, tANI_U32 param)
     tSirMsgQ    msg;
     tpAniSirGlobal pMac = (tpAniSirGlobal)pMacGlobal;
 
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    if((LIM_REASSOC == param) &&
+       (NULL != pMac->lim.pSessionEntry))
+    {
+        limLog(pMac, LOGE, FL("Reassoc timeout happened\n"));
+        if(pMac->lim.reAssocRetryAttempt < LIM_MAX_REASSOC_RETRY_LIMIT)
+        {
+            limSendRetryReassocReqFrame(pMac, pMac->lim.pSessionEntry->pLimMlmReassocRetryReq, pMac->lim.pSessionEntry);
+            pMac->lim.reAssocRetryAttempt++;
+            limLog(pMac, LOGW, FL("Reassoc request retry is sent %d times\n"), pMac->lim.reAssocRetryAttempt);
+            return;
+        }
+        else
+        {
+            limLog(pMac, LOGW, FL("Reassoc request retry MAX(%d) reached\n"), LIM_MAX_REASSOC_RETRY_LIMIT);
+            if(NULL != pMac->lim.pSessionEntry->pLimMlmReassocRetryReq)
+            {
+                palFreeMemory( pMac->hHdd, pMac->lim.pSessionEntry->pLimMlmReassocRetryReq);
+                pMac->lim.pSessionEntry->pLimMlmReassocRetryReq = NULL;
+            }
+        }
+    }
+#endif
     // Prepare and post message to LIM Message Queue
 
     msg.type = SIR_LIM_ASSOC_FAIL_TIMEOUT;

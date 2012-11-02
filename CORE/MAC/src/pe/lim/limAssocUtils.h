@@ -166,6 +166,9 @@ void limHandleAddBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode pStaDs, 
 
 /* API to fill in RX Highest Supported data Rate */
 void limFillRxHighestSupportedRate(tpAniSirGlobal pMac, tANI_U16 *rxHighestRate, tANI_U8* pSupportedMCSSet);
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+void limSendRetryReassocReqFrame(tpAniSirGlobal pMac, tLimMlmReassocReq *pMlmReassocReq, tpPESession psessionEntry);
+#endif
 
 
 #endif /* __LIM_ASSOC_UTILS_H */
