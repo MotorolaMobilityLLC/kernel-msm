@@ -26,5 +26,7 @@ __init u8  dt_get_u8_or_die(struct device_node *node, const char *name);
 __init u16 dt_get_u16_or_die(struct device_node *node, const char *name);
 __init u32 dt_get_u32_or_die(struct device_node *node, const char *name);
 
+/* return the number of children for this node */
+__init unsigned int dt_children_count(struct device_node *node);
 #endif
 
