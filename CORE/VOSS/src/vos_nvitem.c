@@ -95,7 +95,7 @@ static CountryInfoTable_t countryInfoTable =
 {
     254,
     {
-        { REGDOMAIN_FCC, {'U', 'S'}},	/* need to be the first */
+        { REGDOMAIN_FCC, {'U', 'S'}},    /* need to be the first */
         { REGDOMAIN_APAC, {'A', 'U'}},
         { REGDOMAIN_APAC, {'B', 'B'}},
         { REGDOMAIN_APAC, {'B', 'H'}},
