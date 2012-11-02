@@ -279,7 +279,7 @@ static int msm_ctrl_cmd_done(void *arg)
 
 ctrl_cmd_done_error:
 	mutex_unlock(&g_server_dev.server_queue_lock);
-	free_qcmd(qcmd);
+	kfree(qcmd);
 qcmd_alloc_fail:
 	kfree(command);
 command_alloc_fail:

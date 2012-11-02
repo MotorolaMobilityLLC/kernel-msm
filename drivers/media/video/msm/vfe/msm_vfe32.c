@@ -1634,6 +1634,10 @@ static int vfe32_proc_general(
 			goto proc_general_done;
 		}
 		cmdp = kmalloc(V32_OPERATION_CFG_LEN, GFP_ATOMIC);
+		if (!cmdp) {
+			rc = -ENOMEM;
+			goto proc_general_done;
+		}
 		if (copy_from_user(cmdp,
 			(void __user *)(cmd->value),
 			V32_OPERATION_CFG_LEN)) {
