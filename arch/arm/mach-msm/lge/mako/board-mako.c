@@ -2023,13 +2023,17 @@ static void __init apq8064_common_init(void)
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	platform_add_devices(common_not_mpq_devices,
 			ARRAY_SIZE(common_not_mpq_devices));
-	apq8064_device_hsic_host.dev.platform_data = &msm_hsic_pdata;
-	device_initialize(&apq8064_device_hsic_host.dev);
+	if (!mako_charger_mode) {
+		apq8064_device_hsic_host.dev.platform_data = &msm_hsic_pdata;
+		device_initialize(&apq8064_device_hsic_host.dev);
+	}
 	apq8064_pm8xxx_gpio_mpp_init();
 	apq8064_init_mmc();
 
-	mdm_8064_device.dev.platform_data = &mdm_platform_data;
-	platform_device_register(&mdm_8064_device);
+	if (!mako_charger_mode) {
+		mdm_8064_device.dev.platform_data = &mdm_platform_data;
+		platform_device_register(&mdm_8064_device);
+	}
 
 	platform_device_register(&apq8064_slim_ctrl);
 	slim_register_board_info(apq8064_slim_devices,
