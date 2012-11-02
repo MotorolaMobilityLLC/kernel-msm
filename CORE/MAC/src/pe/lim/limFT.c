@@ -849,6 +849,12 @@ tSirRetStatus limFTFillRICBlockAckInfo(tpAniSirGlobal pMac, tANI_U8 *ric_ies, tA
             status = limCreateRICBlockAckIE(pMac, tid, &pSta->tcCfg[tid], ric_ies + offset, &ieLength);
             if (eSIR_SUCCESS == status)
             {
+                // TODO RIC
+                if ( ieLength > MAX_FTIE_SIZE )
+                {
+                    ieLength = 0;
+                    return status;
+                }
                 offset += ieLength;
                 *ric_ies_length += ieLength;
                 numBA++;
@@ -876,7 +882,8 @@ void limPostFTPreAuthRsp(tpAniSirGlobal pMac, eHalStatus status,
     tpSirFTPreAuthRsp pFTPreAuthRsp;
     tSirMsgQ          mmhMsg;
     tANI_U16 rspLen = sizeof(tSirFTPreAuthRsp);   
-    tSirRetStatus   sirStatus = eSIR_SUCCESS;
+    // TODO: RIC Support
+    //tSirRetStatus   sirStatus = eSIR_SUCCESS;
 
     pFTPreAuthRsp = (tpSirFTPreAuthRsp)vos_mem_malloc(rspLen);
     if(NULL == pFTPreAuthRsp)
@@ -914,13 +921,15 @@ void limPostFTPreAuthRsp(tpAniSirGlobal pMac, eHalStatus status,
 #ifdef WLAN_FEATURE_VOWIFI_11R
     if ((psessionEntry) && (psessionEntry->is11Rconnection))
     {
-        /* Fill in the Block Ack RIC IEs in the preAuthRsp */
+        /* TODO: RIC SUPPORT Fill in the Block Ack RIC IEs in the preAuthRsp */
+        /*
         sirStatus = limFTFillRICBlockAckInfo(pMac, pFTPreAuthRsp->ric_ies, 
                                          (tANI_U32 *)&pFTPreAuthRsp->ric_ies_length);
         if (eSIR_SUCCESS != sirStatus)
         {
             PELOGE(limLog(pMac, LOGE, FL("Fill RIC BA Info failed with status %d"), sirStatus);)
         }
+        */
     }
 #endif
     

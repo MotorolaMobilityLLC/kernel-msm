@@ -2400,6 +2400,7 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;  
     hdd_hostapd_state_t *pHostapdState;
     VOS_STATUS vos_status;
+    eHalStatus halStatus;
 
     ENTER();
 
@@ -2709,6 +2710,16 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
 
         }
 
+#ifdef WLAN_FEATURE_VOWIFI_11R
+   /* The supplicant may attempt to set the PTK once pre-authentication is done.
+        Save the key in the UMAC and include it in the ADD BSS request */
+        /*TODO 11r - is this used?? */
+        halStatus = sme_FTUpdateKey( WLAN_HDD_GET_HAL_CTX(pAdapter), &setKey);
+        if( halStatus == eHAL_STATUS_SUCCESS )
+        {
+           return halStatus;
+        }
+#endif /* WLAN_FEATURE_VOWIFI_11R */
 
         /* issue set key request to SME*/
         status = sme_RoamSetKey( WLAN_HDD_GET_HAL_CTX(pAdapter),
@@ -4191,6 +4202,9 @@ static int wlan_hdd_cfg80211_set_auth_type(hdd_adapter_t *pAdapter,
     {
         case NL80211_AUTHTYPE_OPEN_SYSTEM:
         case NL80211_AUTHTYPE_AUTOMATIC:
+#ifdef WLAN_FEATURE_VOWIFI_11R
+        case NL80211_AUTHTYPE_FT:
+#endif /* WLAN_FEATURE_VOWIFI_11R */
             hddLog(VOS_TRACE_LEVEL_INFO, 
                     "%s: set authentication type to OPEN", __func__);
             pHddStaCtx->conn_info.authType = eCSR_AUTH_TYPE_OPEN_SYSTEM;
@@ -5916,6 +5930,40 @@ static int wlan_hdd_cfg80211_flush_pmksa(struct wiphy *wiphy, struct net_device 
 }
 #endif
 
+#if defined(WLAN_FEATURE_VOWIFI_11R) && defined(KERNEL_SUPPORT_11R_CFG80211)
+static int wlan_hdd_cfg80211_update_ft_ies(struct wiphy *wiphy, 
+          struct net_device *dev, struct cfg80211_update_ft_ies_params *ftie)
+{
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    hdd_station_ctx_t *pHddStaCtx;
+
+    if (NULL == pAdapter)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Adapter is NULL\n", __func__);
+        return -ENODEV;
+    }
+
+    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+
+    // Added for debug on reception of Re-assoc Req.
+    if (eConnectionState_Associated != pHddStaCtx->conn_info.connState)
+    {
+        hddLog(LOGE, FL("Called with Ie of length = %d when not associated\n"),         
+               ftie->ie_len);
+        hddLog(LOGE, FL("Should be Re-assoc Req IEs\n"));
+    }
+
+#ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
+    hddLog(LOGE, FL("%s called with Ie of length = %d\n"), __func__, 
+           ftie->ie_len);
+#endif
+
+    // Pass the received FT IEs to SME
+    sme_SetFTIEs( WLAN_HDD_GET_HAL_CTX(pAdapter), pAdapter->sessionId, ftie->ie, 
+                  ftie->ie_len);
+    return 0;
+}
+#endif
 
 /* cfg80211_ops */
 static struct cfg80211_ops wlan_hdd_cfg80211_ops = 
@@ -5965,6 +6013,9 @@ static struct cfg80211_ops wlan_hdd_cfg80211_ops =
      .set_pmksa = wlan_hdd_cfg80211_set_pmksa,
      .del_pmksa = wlan_hdd_cfg80211_del_pmksa,
      .flush_pmksa = wlan_hdd_cfg80211_flush_pmksa,
+#endif
+#if defined(WLAN_FEATURE_VOWIFI_11R) && defined(KERNEL_SUPPORT_11R_CFG80211)
+     .update_ft_ies = wlan_hdd_cfg80211_update_ft_ies,
 #endif
 };
 

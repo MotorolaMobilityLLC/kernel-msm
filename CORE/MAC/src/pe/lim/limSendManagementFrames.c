@@ -3003,6 +3003,26 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
         txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
     }
  
+    if( NULL != psessionEntry->assocReq )
+    {
+        palFreeMemory(pMac->hHdd, psessionEntry->assocReq);
+        psessionEntry->assocReq = NULL;
+    }
+
+    if( (palAllocateMemory(pMac->hHdd, (void**)&psessionEntry->assocReq, 
+                           (ft_ies_length))) != eHAL_STATUS_SUCCESS )
+    {
+        PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store assoc request"));)
+    }
+    else
+    {
+       //Store the Assoc request. This is sent to csr/hdd in join cnf response. 
+       palCopyMemory(pMac->hHdd, psessionEntry->assocReq, pMac->ft.ftSmeContext.reassoc_ft_ies, 
+                     (ft_ies_length));
+       psessionEntry->assocReqLen = (ft_ies_length);
+    }
+
+
     halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) (nBytes + ft_ies_length),
             HAL_TXRX_FRM_802_11_MGMT,
             ANI_TXDIR_TODS,
