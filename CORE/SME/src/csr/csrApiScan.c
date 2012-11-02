@@ -4086,7 +4086,7 @@ tCsrScanResult *csrScanSaveBssDescriptionToInterimList( tpAniSirGlobal pMac,
         if( pIes->SSID.present && !csrIsNULLSSID(pIes->SSID.ssid, pIes->SSID.num_ssid) )
         {
             //SSID not hidden
-            tANI_U32 len = pIes->SSID.num_ssid;;
+            tANI_U32 len = pIes->SSID.num_ssid;
             if (len > SIR_MAC_MAX_SSID_LENGTH)
             {
                // truncate to fit in our struct

@@ -2878,7 +2878,7 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
                     "quest(0x%08x).\n"), nStatus );
     }
 
-    nBytes = nPayload + sizeof( tSirMacMgmtHdr ) + nAddIELen; ;
+    nBytes = nPayload + sizeof( tSirMacMgmtHdr ) + nAddIELen;
 
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
     limLog( pMac, LOGE, FL("FT IE Reassoc Req (%d).\n"), 

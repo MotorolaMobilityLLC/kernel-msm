@@ -1350,7 +1350,7 @@ WLANSAP_SetChannelRange(tHalHandle hHal,v_U8_t startChannel, v_U8_t endChannel,
        /* Supplied channels are nt in the operating band so set the default
             channels for the given operating band */
        startChannel = rfChannels[bandStartChannel].channelNum;
-       endChannel = rfChannels[bandEndChannel].channelNum;;
+       endChannel = rfChannels[bandEndChannel].channelNum;
     }
 
     /*Search for the Active channels in the given range */
@@ -1374,7 +1374,7 @@ WLANSAP_SetChannelRange(tHalHandle hHal,v_U8_t startChannel, v_U8_t endChannel,
        /* There is no active channel in the supplied range.Updating the config
        with the default channels in the given band so that we can select the best channel in the sub-band*/
        startChannel = rfChannels[bandStartChannel].channelNum;
-       endChannel = rfChannels[bandEndChannel].channelNum;;
+       endChannel = rfChannels[bandEndChannel].channelNum;
     }
 
     if (ccmCfgSetInt(hHal, WNI_CFG_SAP_CHANNEL_SELECT_OPERATING_BAND,

@@ -64,7 +64,7 @@ typedef struct
   
    /*Time Stamp hi*/
     v_U32_t ts_hi;
-}__attribute__((packed)) log_hdr_type;
+}__packed log_hdr_type;
 
 
 #ifdef __cplusplus

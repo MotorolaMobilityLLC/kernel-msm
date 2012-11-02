@@ -212,7 +212,7 @@ bapSetKey( v_PVOID_t pvosGCtx, tCsrRoamSetKey *pSetKeyInfo )
     }
                          
     /* Set the Group Key */ 
-    vos_mem_copy( pSetKeyInfo->peerMac, groupMac, sizeof( tAniMacAddr ) );;
+    vos_mem_copy( pSetKeyInfo->peerMac, groupMac, sizeof( tAniMacAddr ) );
     halStatus = sme_RoamSetKey( 
             hHal, 
             btampContext->sessionId, 

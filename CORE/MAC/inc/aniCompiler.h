@@ -105,7 +105,7 @@
 #define __ani_attr_aligned_32
 #elif defined(__GNUC__)
 #define __ani_attr_pre_packed 
-#define __ani_attr_packed                       __attribute__((packed))
+#define __ani_attr_packed                       __packed
 #define __ani_attr_aligned_2                    __attribute__((aligned(2)))
 #define __ani_attr_aligned_4                    __attribute__((aligned(4)))
 #define __ani_attr_aligned_8                    __attribute__((aligned(8)))

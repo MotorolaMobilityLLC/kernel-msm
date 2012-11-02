@@ -57,7 +57,7 @@ struct wlan_snap_hdr {
    unsigned char ssap;
    unsigned char ctrl;
    unsigned char oui[WLAN_SNAP_OUI_LEN];
-} __attribute__((packed));
+} __packed;
 
 struct wlan_8023 {
    unsigned char        h_dest[ETH_ALEN];
@@ -65,7 +65,7 @@ struct wlan_8023 {
    __be16               h_len;
    struct wlan_snap_hdr h_snap;
    __be16               h_proto;
-} __attribute__((packed));
+} __packed;
 
 struct wlan_8023_vlan {
    unsigned char        h_dest[ETH_ALEN];
@@ -75,7 +75,7 @@ struct wlan_8023_vlan {
    __be16               h_len;
    struct wlan_snap_hdr h_snap;
    __be16               h_proto;
-} __attribute__((packed));
+} __packed;
 
 union generic_ethhdr {
    struct ethhdr eth_II;

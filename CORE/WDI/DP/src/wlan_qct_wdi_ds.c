@@ -173,7 +173,7 @@ WDI_Status WDI_DS_TxPacket(void *pContext,
        ucBdPoolType = WDI_MGMT_POOL_ID;
     break;
     default:
-      return WDI_STATUS_E_FAILURE;;
+      return WDI_STATUS_E_FAILURE;
   }
 
   // Allocate BD header from pool

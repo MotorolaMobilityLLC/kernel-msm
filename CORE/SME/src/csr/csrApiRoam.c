@@ -2826,7 +2826,7 @@ static eHalStatus csrGetRateSet( tpAniSirGlobal pMac,  tCsrRoamProfile *pProfile
                 if ( csrRatesIsDot11RateSupported( pMac, pIes->SuppRates.rates[ i ] ) ) 
                 {
                     *pDstRate++ = pIes->SuppRates.rates[ i ];
-                    pOpRateSet->numRates++;;
+                    pOpRateSet->numRates++;
                 }
             }
         }
@@ -7771,7 +7771,7 @@ eHalStatus csrRoamProcessRemoveKeyCommand( tpAniSirGlobal pMac, tSmeCmd *pComman
         smsLog( pMac, LOGE, FL(" error status \n"), status );
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_CSR
         removeKeyEvent.eventId = WLAN_SECURITY_EVENT_REMOVE_KEY_RSP;
-        removeKeyEvent.status = WLAN_SECURITY_STATUS_FAILURE;;
+        removeKeyEvent.status = WLAN_SECURITY_STATUS_FAILURE;
         WLAN_VOS_DIAG_EVENT_REPORT(&removeKeyEvent, EVENT_WLAN_SECURITY);
 #endif //FEATURE_WLAN_DIAG_SUPPORT_CSR
         csrRoamCallCallback( pMac, sessionId, NULL, pCommand->u.removeKeyCmd.roamId, eCSR_ROAM_REMOVE_KEY_COMPLETE, eCSR_ROAM_RESULT_FAILURE);

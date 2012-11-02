@@ -3475,7 +3475,7 @@ WDI_UpdateUapsdParamsReq
   ------------------------------------------------------------------------*/
   wdiEventData.wdiRequest      = WDI_UPDATE_UAPSD_PARAM_REQ;
   wdiEventData.pEventData      = pwdiUpdateUapsdReqParams;
-  wdiEventData.uEventDataSize  = sizeof(*pwdiUpdateUapsdReqParams);;
+  wdiEventData.uEventDataSize  = sizeof(*pwdiUpdateUapsdReqParams);
   wdiEventData.pCBfnc          = wdiUpdateUapsdParamsCb;
   wdiEventData.pUserData       = pUserData;
 
@@ -3653,7 +3653,7 @@ WDI_SetBeaconFilterReq
    ------------------------------------------------------------------------*/
    wdiEventData.wdiRequest      = WDI_SET_BEACON_FILTER_REQ;
    wdiEventData.pEventData      = pwdiBeaconFilterReqParams;
-   wdiEventData.uEventDataSize  = sizeof(*pwdiBeaconFilterReqParams);;
+   wdiEventData.uEventDataSize  = sizeof(*pwdiBeaconFilterReqParams);
    wdiEventData.pCBfnc          = wdiBeaconFilterCb;
    wdiEventData.pUserData       = pUserData;
 
@@ -3711,7 +3711,7 @@ WDI_RemBeaconFilterReq
    ------------------------------------------------------------------------*/
    wdiEventData.wdiRequest      = WDI_REM_BEACON_FILTER_REQ;
    wdiEventData.pEventData      = pwdiBeaconFilterReqParams;
-   wdiEventData.uEventDataSize  = sizeof(*pwdiBeaconFilterReqParams);;
+   wdiEventData.uEventDataSize  = sizeof(*pwdiBeaconFilterReqParams);
    wdiEventData.pCBfnc          = wdiBeaconFilterCb;
    wdiEventData.pUserData       = pUserData;
 
@@ -3771,7 +3771,7 @@ WDI_SetRSSIThresholdsReq
    ------------------------------------------------------------------------*/
    wdiEventData.wdiRequest      = WDI_SET_RSSI_THRESHOLDS_REQ;
    wdiEventData.pEventData      = pwdiRSSIThresholdsParams;
-   wdiEventData.uEventDataSize  = sizeof(*pwdiRSSIThresholdsParams);;
+   wdiEventData.uEventDataSize  = sizeof(*pwdiRSSIThresholdsParams);
    wdiEventData.pCBfnc          = wdiSetRSSIThresholdsCb;
    wdiEventData.pUserData       = pUserData;
 
@@ -3831,7 +3831,7 @@ WDI_HostOffloadReq
    ------------------------------------------------------------------------*/
    wdiEventData.wdiRequest      = WDI_HOST_OFFLOAD_REQ;
    wdiEventData.pEventData      = pwdiHostOffloadParams;
-   wdiEventData.uEventDataSize  = sizeof(*pwdiHostOffloadParams);;
+   wdiEventData.uEventDataSize  = sizeof(*pwdiHostOffloadParams);
    wdiEventData.pCBfnc          = wdiHostOffloadCb;
    wdiEventData.pUserData       = pUserData;
 
@@ -3952,7 +3952,7 @@ WDI_WowlAddBcPtrnReq
    ------------------------------------------------------------------------*/
    wdiEventData.wdiRequest      = WDI_WOWL_ADD_BC_PTRN_REQ;
    wdiEventData.pEventData      = pwdiWowlAddBcPtrnParams;
-   wdiEventData.uEventDataSize  = sizeof(*pwdiWowlAddBcPtrnParams);;
+   wdiEventData.uEventDataSize  = sizeof(*pwdiWowlAddBcPtrnParams);
    wdiEventData.pCBfnc          = wdiWowlAddBcPtrnCb;
    wdiEventData.pUserData       = pUserData;
 
@@ -4011,7 +4011,7 @@ WDI_WowlDelBcPtrnReq
    ------------------------------------------------------------------------*/
    wdiEventData.wdiRequest      = WDI_WOWL_DEL_BC_PTRN_REQ;
    wdiEventData.pEventData      = pwdiWowlDelBcPtrnParams;
-   wdiEventData.uEventDataSize  = sizeof(*pwdiWowlDelBcPtrnParams);;
+   wdiEventData.uEventDataSize  = sizeof(*pwdiWowlDelBcPtrnParams);
    wdiEventData.pCBfnc          = wdiWowlDelBcPtrnCb;
    wdiEventData.pUserData       = pUserData;
 
@@ -4071,7 +4071,7 @@ WDI_WowlEnterReq
    ------------------------------------------------------------------------*/
    wdiEventData.wdiRequest      = WDI_WOWL_ENTER_REQ;
    wdiEventData.pEventData      = pwdiWowlEnterParams;
-   wdiEventData.uEventDataSize  = sizeof(*pwdiWowlEnterParams);;
+   wdiEventData.uEventDataSize  = sizeof(*pwdiWowlEnterParams);
    wdiEventData.pCBfnc          = wdiWowlEnterCb;
    wdiEventData.pUserData       = pUserData;
 
@@ -13723,7 +13723,7 @@ WDI_ProcessStartRsp
   //all DPU indices are the same for self STA
   wdiAddSTAParam.bcastDpuIndex = wdiRspParams.usSelfStaDpuId;
   wdiAddSTAParam.bcastMgmtDpuIndex = wdiRspParams.usSelfStaDpuId;
-  wdiAddSTAParam.dpuIndex = wdiRspParams.usSelfStaDpuId;;
+  wdiAddSTAParam.dpuIndex = wdiRspParams.usSelfStaDpuId;
   wpalMemoryCopy(wdiAddSTAParam.staMacAddr, wdiRspParams.macSelfSta,
                  WDI_MAC_ADDR_LEN);
   wdiAddSTAParam.ucStaType = WDI_STA_ENTRY_SELF; /* 0 - self */
@@ -24241,7 +24241,7 @@ WDI_GTKOffloadReq
    ------------------------------------------------------------------------*/
    wdiEventData.wdiRequest      = WDI_GTK_OFFLOAD_REQ;
    wdiEventData.pEventData      = pwdiGtkOffloadReqMsg; 
-   wdiEventData.uEventDataSize  = sizeof(*pwdiGtkOffloadReqMsg);; 
+   wdiEventData.uEventDataSize  = sizeof(*pwdiGtkOffloadReqMsg);
    wdiEventData.pCBfnc          = wdiGtkOffloadCb; 
    wdiEventData.pUserData       = pUserData;
 

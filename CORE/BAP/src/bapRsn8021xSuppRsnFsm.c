@@ -632,7 +632,7 @@ gotoStateGroupKeySet(tSuppRsnFsm *fsm,
         {
             retVal = ANI_ERROR;
             VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR, "Supp could not send eapol. Disconnect\n" );
-            break;;    
+            break;
         }
 
         //FIX_RSN there is no need to set GTK retVal = setGtk(fsm->suppCtx, rxDesc->keyRecvSeqCounter);

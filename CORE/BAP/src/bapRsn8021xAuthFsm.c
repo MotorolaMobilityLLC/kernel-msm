@@ -356,7 +356,7 @@ authRsnFsmProcessEvent(tAuthRsnFsm *fsm, tRsnFsmEvent eventId, void *arg)
 
     checkTransition(fsm, arg);
 
-    return ANI_OK;;
+    return ANI_OK;
 }
 
 
