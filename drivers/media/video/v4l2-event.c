@@ -242,6 +242,11 @@ int v4l2_event_subscribe(struct v4l2_fh *fh,
 		sev->merge = ctrls_merge;
 	}
 
+	if (!fh->vdev) {
+		pr_err("%s: fh->vdev is NULL\n", __func__);
+		return -EIO;
+	}
+
 	spin_lock_irqsave(&fh->vdev->fh_lock, flags);
 	found_ev = v4l2_event_subscribed(fh, sub->type, sub->id);
 	if (!found_ev)
