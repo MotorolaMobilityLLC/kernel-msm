@@ -1671,6 +1671,12 @@ REG_VARIABLE( CFG_IGNORE_DYNAMIC_DTIM_IN_P2P_MODE_NAME, WLAN_PARAM_Integer,
               CFG_IGNORE_DYNAMIC_DTIM_IN_P2P_MODE_MIN, 
               CFG_IGNORE_DYNAMIC_DTIM_IN_P2P_MODE_MAX ),
 
+REG_VARIABLE( CFG_NUM_BUFF_ADVERT_NAME, WLAN_PARAM_Integer,
+              hdd_config_t,numBuffAdvert , 
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK, 
+              CFG_NUM_BUFF_ADVERT_DEFAULT, 
+              CFG_NUM_BUFF_ADVERT_MIN, 
+              CFG_NUM_BUFF_ADVERT_MAX ),
 };
 
 /*
@@ -3037,6 +3043,13 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
        }
    }
 #endif
+
+     if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_NUM_BUFF_ADVERT,pConfig->numBuffAdvert, 
+        NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+     {
+        fStatus = FALSE;
+        hddLog(LOGE, "Could not pass on WNI_CFG_NUM_BUFF_ADVERT to CCM\n");
+     }
 
    return fStatus;
 }

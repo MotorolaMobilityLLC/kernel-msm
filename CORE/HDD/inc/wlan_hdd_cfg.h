@@ -1371,6 +1371,12 @@ typedef enum
 #define CFG_MC_ADDR_LIST_ENABLE_MAX           ( 1 )
 #define CFG_MC_ADDR_LIST_ENABLE_DEFAULT       ( 0 )
 
+/* Set number of buffers to be advertised during ADDBA negotiation*/
+#define CFG_NUM_BUFF_ADVERT_NAME              "gNumBuffAdvert"
+#define CFG_NUM_BUFF_ADVERT_MIN               ( 0 )
+#define CFG_NUM_BUFF_ADVERT_MAX               ( 128 )
+#define CFG_NUM_BUFF_ADVERT_DEFAULT           ( 40 )
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -1675,6 +1681,7 @@ typedef struct
    v_BOOL_t                    enableFirstScan2GOnly;
    v_BOOL_t                    skipDfsChnlInP2pSearch;
    v_BOOL_t                    ignoreDynamicDtimInP2pMode;
+   v_U32_t                     numBuffAdvert;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

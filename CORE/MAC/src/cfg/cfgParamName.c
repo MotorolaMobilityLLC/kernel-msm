@@ -236,6 +236,7 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"VHT_160MHZ_UTILIZATION",
     (unsigned char *)"MAX_AMSDU_LENGTH",
     (unsigned char *)"MPDU_DENSITY",
+    (unsigned char *)"NUM_BUFF_ADVERT",
     (unsigned char *)"MAX_RX_AMPDU_FACTOR",
     (unsigned char *)"SHORT_GI_20MHZ",
     (unsigned char *)"SHORT_GI_40MHZ",

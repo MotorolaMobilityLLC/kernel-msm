@@ -1324,7 +1324,7 @@ __limProcessAddBAReq( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
     tpDphHashNode pSta;
     tSirMacStatusCodes status = eSIR_MAC_SUCCESS_STATUS;
     tANI_U16 aid;
-    tANI_U32 frameLen, nStatus;
+    tANI_U32 frameLen, nStatus,val;
     tANI_U8 *pBody;
     tANI_U8 delBAFlag =0;
 
@@ -1420,6 +1420,17 @@ __limProcessAddBAReq( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
   // Change the Block Ack state of this STA to wait for
   // ADDBA Rsp from HAL
   LIM_SET_STA_BA_STATE(pSta, frmAddBAReq.AddBAParameterSet.tid, eLIM_BA_STATE_WT_ADD_RSP);
+    
+  if (wlan_cfgGetInt(pMac, WNI_CFG_NUM_BUFF_ADVERT , &val) != eSIR_SUCCESS)
+    {
+        limLog(pMac, LOGP, FL("Unable to get WNI_CFG_NUM_BUFF_ADVERT  \n"));
+        return ;
+    }
+        
+        frmAddBAReq.AddBAParameterSet.bufferSize=
+            VOS_MIN(val,frmAddBAReq.AddBAParameterSet.bufferSize);
+        limLog( pMac, LOGE, FL( "ADDBAREQ NUMBUFF %d  \n" ),
+                        frmAddBAReq.AddBAParameterSet.bufferSize);
 
   if( eSIR_SUCCESS != limPostMsgAddBAReq( pMac,
         pSta,

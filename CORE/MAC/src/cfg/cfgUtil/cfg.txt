@@ -3125,6 +3125,17 @@ V    RW    NP    RESTART
 LIM
 0    7    0
 
+*
+* NUM BUFFERS ADVERTISED
+* Defines number of buffers advertised in ADDBA
+*
+WNI_CFG_NUM_BUFF_ADVERT  I    4    7
+V    RW    NP    
+LIM
+0    128    45
+V    RW    NP    
+LIM
+0    128    45
 
 *
 * Maximum Rx AMPDU Factor
