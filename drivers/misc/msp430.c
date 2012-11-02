@@ -839,9 +839,11 @@ void switch_msp430_mode(enum msp_mode mode)
 static int msp430_get_version(struct msp430_data *ps_msp430)
 {
 	int err = 0;
+	if (ps_msp430->mode == BOOTMODE) {
 		KDEBUG("MSP430 Switch to normal to get version\n");
 		switch_msp430_mode(NORMALMODE);
 		msleep_interruptible(I2C_RETRY_DELAY);
+	}
 	KDEBUG("MSP430 MSP software version: ");
 	msp_cmdbuff[0] = REV_ID;
 	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
