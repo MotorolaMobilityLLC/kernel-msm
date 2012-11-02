@@ -1559,6 +1559,14 @@ REG_TABLE_ENTRY g_registry_table[] =
                        CFG_LINK_SPEED_RSSI_HIGH_MAX,
                        NULL, 0 ),
 
+ REG_DYNAMIC_VARIABLE( CFG_LINK_SPEED_RSSI_MID, WLAN_PARAM_SignedInteger,
+                       hdd_config_t, linkSpeedRssiMid,
+                       VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                       CFG_LINK_SPEED_RSSI_MID_DEFAULT,
+                       CFG_LINK_SPEED_RSSI_MID_MIN,
+                       CFG_LINK_SPEED_RSSI_MID_MAX,
+                       NULL, 0 ),
+
  REG_DYNAMIC_VARIABLE( CFG_LINK_SPEED_RSSI_LOW, WLAN_PARAM_SignedInteger,
                        hdd_config_t, linkSpeedRssiLow,
                        VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,

@@ -1195,10 +1195,15 @@ typedef enum
 #define CFG_LINK_SPEED_RSSI_HIGH_MAX               (  0 )
 #define CFG_LINK_SPEED_RSSI_HIGH_DEFAULT           ( -55 )
 
+#define CFG_LINK_SPEED_RSSI_MID                    "gLinkSpeedRssiMed"
+#define CFG_LINK_SPEED_RSSI_MID_MIN                ( -127 )
+#define CFG_LINK_SPEED_RSSI_MID_MAX                (  0 )
+#define CFG_LINK_SPEED_RSSI_MID_DEFAULT            ( -65 )
+
 #define CFG_LINK_SPEED_RSSI_LOW                    "gLinkSpeedRssiLow"
 #define CFG_LINK_SPEED_RSSI_LOW_MIN                ( -127 )
 #define CFG_LINK_SPEED_RSSI_LOW_MAX                (  0 )
-#define CFG_LINK_SPEED_RSSI_LOW_DEFAULT            ( -65 )
+#define CFG_LINK_SPEED_RSSI_LOW_DEFAULT            ( -80 )
 
 #ifdef WLAN_FEATURE_P2P
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_NAME                "isP2pDeviceAddrAdministrated"
@@ -1649,6 +1654,7 @@ typedef struct
    v_U8_t                      ShortGI40MhzEnable;
    eHddLinkSpeedReportType     reportMaxLinkSpeed;
    v_S31_t                     linkSpeedRssiHigh;
+   v_S31_t                     linkSpeedRssiMid;
    v_S31_t                     linkSpeedRssiLow;
    v_U8_t                      enableMCC;
    v_U8_t                      allowMCCGODiffBI;
