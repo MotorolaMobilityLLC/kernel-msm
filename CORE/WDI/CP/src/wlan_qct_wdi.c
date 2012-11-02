@@ -7199,7 +7199,10 @@ WDI_ProcessBSSSessionJoinReq
 
   halJoinReqMsg.joinReqParams.linkState = pwdiJoinParams->wdiReqInfo.linkState;
 
-#ifndef WLAN_FEATURE_VOWIFI
+#ifdef WLAN_FEATURE_VOWIFI
+  halJoinReqMsg.joinReqParams.maxTxPower =
+    pwdiJoinParams->wdiReqInfo.wdiChannelInfo.cMaxTxPower;
+#else
   halJoinReqMsg.joinReqParams.ucLocalPowerConstraint =
     pwdiJoinParams->wdiReqInfo.wdiChannelInfo.ucLocalPowerConstraint;
 #endif
