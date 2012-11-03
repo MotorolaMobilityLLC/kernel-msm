@@ -851,7 +851,6 @@ config MACH_MSM8960_MMI
 	depends on ARCH_MSM8960
 	bool "MSM8960 MMI"
 	select USE_OF
-	select OF_FLATTREE_HOST_BYTEORDER
 	help
 	  Support for Motorola Mobility MSM8960 devices.
 
