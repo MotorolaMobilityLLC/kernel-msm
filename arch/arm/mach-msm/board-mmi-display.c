@@ -584,9 +584,25 @@ static struct platform_device mipi_dsi_mot_panel_device = {
 	}
 };
 
+void __init mmi_load_panel_from_dt(void)
+{
+	struct device_node *chosen;
+	const char *name;
+
+	chosen = of_find_node_by_path("/chosen");
+	if (!chosen)
+		return;
+
+	if (!of_property_read_string(chosen, "mmi,panel_name", &name)) {
+		strlcpy(panel_name, name, PANEL_NAME_MAX_LEN);
+		pr_info("%s: panel: %s\n", __func__, panel_name);
+	}
+}
+
 void __init mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 	struct mipi_dsi_platform_data *mipi_dsi_pdata)
 {
+	mmi_load_panel_from_dt();
 	msm_fb_pdata->detect_client = msm_fb_detect_panel;
 	mipi_dsi_pdata->vsync_gpio = MDP_VSYNC_GPIO;
 	mipi_dsi_pdata->dsi_power_save = mipi_dsi_power;
