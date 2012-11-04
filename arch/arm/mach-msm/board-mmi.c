@@ -276,6 +276,11 @@ static int __init parse_tag_flat_dev_tree_address(const struct tag *tag)
 }
 __tagtable(ATAG_FLAT_DEV_TREE_ADDRESS, parse_tag_flat_dev_tree_address);
 
+static const char *mmi_dt_match[] __initdata = {
+	"mmi,msm8960",
+	NULL
+};
+
 MACHINE_START(VANQUISH, "Vanquish")
 	.map_io = msm8960_map_io,
 	.reserve = mmi_msm8960_reserve,
@@ -298,5 +303,6 @@ MACHINE_START(MSM8960DT, "msm8960dt")
 	.init_early = mmi_msm8960_init_early,
 	.init_very_early = msm8960_early_memory,
 	.restart = msm_restart,
+	.dt_compat = mmi_dt_match,
 MACHINE_END
 
