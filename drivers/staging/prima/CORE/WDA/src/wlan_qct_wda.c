@@ -8976,6 +8976,9 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
       pWDA->pTxCbFunc = NULL;   /*To stop the limTxComplete being called again  , 
                                 after the packet gets completed(packet freed once)*/
 
+      /* TX MGMT fail with COMP timeout, try to detect DXE stall */
+      WDA_TransportChannelDebug(0, 1);
+
       /*Tag Frame as timed out for later deletion*/
       vos_pkt_set_user_data_ptr( (vos_pkt_t *)pFrmBuf, VOS_PKT_USER_DATA_ID_WDA, 
                        (v_PVOID_t)WDA_TL_TX_MGMT_TIMED_OUT);

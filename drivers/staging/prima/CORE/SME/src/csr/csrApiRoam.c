@@ -327,7 +327,7 @@ eHalStatus csrOpen(tpAniSirGlobal pMac)
             pMac->scan.countryCodeDefault[1] = 'S';
             pMac->scan.countryCodeDefault[2] = 'I';
             //status = eHAL_STATUS_SUCCESS;
-        }
+        }        
         smsLog( pMac, LOGE, FL(" country Code from nvRam %s\n"), pMac->scan.countryCodeDefault );
         csrGetRegulatoryDomainForCountry(pMac, pMac->scan.countryCodeDefault, &regId);
         WDA_SetRegDomain(pMac, regId);
@@ -1280,6 +1280,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
 #ifdef WLAN_FEATURE_11AC
         pMac->roam.configParam.nVhtChannelWidth = pParam->nVhtChannelWidth;
 #endif
+        pMac->scan.fIgnore_chan165 = pParam->fIgnore_chan165;
     }
     
     return status;
@@ -1338,6 +1339,7 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->fValidateList = pMac->roam.configParam.fValidateList;
         pParam->fEnableBypass11d = pMac->scan.fEnableBypass11d;
         pParam->fEnableDFSChnlScan = pMac->scan.fEnableDFSChnlScan;
+        pParam->fIgnore_chan165= pMac->scan.fIgnore_chan165;
         pParam->fScanTwice = pMac->roam.configParam.fScanTwice;
         pParam->fFirstScanOnly2GChnl = pMac->scan.fFirstScanOnly2GChnl;
 

@@ -2849,29 +2849,35 @@ void csrApplyChannelPowerCountryInfo( tpAniSirGlobal pMac, tCsrChannel *pChannel
         tempNumChannels = CSR_MIN(pChannelList->numChannels, WNI_CFG_VALID_CHANNEL_LIST_LEN);
         /* If user doesn't want to scan the DFS channels lets trim them from 
         the valid channel list*/
-        if(FALSE == pMac->scan.fEnableDFSChnlScan)
+        for(i = 0; i< tempNumChannels; i++)
         {
-            for(i = 0; i< tempNumChannels; i++)
-            {
+             if(FALSE == pMac->scan.fEnableDFSChnlScan)
+             {
                  channelEnabledType = 
                      vos_nv_getChannelEnabledState(pChannelList->channelList[i]);
-                 if( NV_CHANNEL_ENABLE ==  channelEnabledType)
+             }
+             else
+             {
+                channelEnabledType = NV_CHANNEL_ENABLE;
+             }
+             if( NV_CHANNEL_ENABLE ==  channelEnabledType)
+             {
+                // Ignore the channel 165 for the country INDONESIA 
+                if ( vos_mem_compare(countryCode, "ID", VOS_COUNTRY_CODE_LEN ) 
+                      && ( pChannelList->channelList[i] == 165 )
+                      && ( pMac->scan.fIgnore_chan165 == VOS_TRUE ))
                  {
-                     ChannelList.channelList[numChannels] =
-                         pChannelList->channelList[i];
+                     continue;
+                 }
+                 else
+                 {
+                     ChannelList.channelList[numChannels] = pChannelList->channelList[i];
                      numChannels++;
                  }
-            }
-            ChannelList.numChannels = numChannels;
+             }
         }
-        else
-        {
-            ChannelList.numChannels = tempNumChannels;
-             vos_mem_copy(ChannelList.channelList,
-                          pChannelList->channelList,
-                          ChannelList.numChannels);
-        }
-
+        ChannelList.numChannels = numChannels;   
+   
         csrSetCfgValidChannelList(pMac, ChannelList.channelList, ChannelList.numChannels);
         // extend scan capability
         csrSetCfgScanControlList(pMac, countryCode, &ChannelList);     //  build a scan list based on the channel list : channel# + active/passive scan
