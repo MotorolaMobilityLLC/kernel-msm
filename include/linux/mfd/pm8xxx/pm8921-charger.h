@@ -70,6 +70,7 @@ struct pm8921_charger_battery_data {
 	unsigned int			warm_bat_voltage;
 	unsigned int			step_charge_current;
 	unsigned int			step_charge_voltage;
+	unsigned int			step_charge_vinmin;
 	int				hot_temp;
 	int				hot_temp_offset;
 	int				hot_temp_pcb;
@@ -270,6 +271,7 @@ struct pm8921_charger_platform_data {
 				  struct pm8921_charger_battery_data *data);
 	unsigned int			step_charge_current;
 	unsigned int			step_charge_voltage;
+	unsigned int                    step_charge_vinmin;
 	int64_t (*temp_range_cb) (int batt_temp, int batt_mvolt,
 				  struct pm8921_charger_battery_data *data,
 				  int64_t *enable,
