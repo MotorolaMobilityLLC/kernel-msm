@@ -29,11 +29,7 @@
 
 #define  MIN_UV 	900000
 #define  UV_STEP 	50000
-
-#define HI_PWR_UV	18000000
-#define N_VOLTAGES	8
-#define HI_PWR_STEP	N_VOLTAGES-1
-
+#define  HI_PWR_UV	18000000
 
 struct arizona_ldo1 {
 	struct regulator_dev *regulator;
@@ -52,11 +48,10 @@ static int arizona_ldo_reg_list_voltage_linear(struct regulator_dev *rdev,
 	if (selector >= rdev->desc->n_voltages)
 		return -EINVAL;
 
-	if (selector == HI_PWR_STEP) {
+	if (selector == rdev->desc->n_voltages - 1)
 		return HI_PWR_UV;
-	}
-
-	return MIN_UV + (UV_STEP * selector);
+	else
+		return MIN_UV + (UV_STEP * selector);
 }
 
 static int arizona_ldo_reg_get_voltage_sel(struct regulator_dev *rdev)
@@ -71,9 +66,8 @@ static int arizona_ldo_reg_get_voltage_sel(struct regulator_dev *rdev)
 	if (ret != 0)
 		return ret;
 
-	if (val&ARIZONA_LDO1_HI_PWR) {
-		return HI_PWR_STEP;
-	}
+	if (val&ARIZONA_LDO1_HI_PWR)
+		return rdev->desc->n_voltages - 1;
 
 	ret = regmap_read(ldo1->arizona->regmap,
 			  ARIZONA_LDO1_CONTROL_1,
@@ -94,7 +88,7 @@ static int arizona_ldo_reg_set_voltage_sel(struct regulator_dev *rdev,
 	unsigned int val;
 	int ret;
 
-	if (sel == HI_PWR_STEP)
+	if (sel == rdev->desc->n_voltages - 1)
 		val = ARIZONA_LDO1_HI_PWR;
 	else
 		val = 0;
@@ -176,7 +170,7 @@ static struct regulator_desc arizona_ldo1 = {
 	.type = REGULATOR_VOLTAGE,
 	.ops = &arizona_ldo1_ops,
 
-	.n_voltages = N_VOLTAGES,
+	.n_voltages = 8,
 
 	.owner = THIS_MODULE,
 };
