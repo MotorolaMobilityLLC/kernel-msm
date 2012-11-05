@@ -58,3 +58,5 @@ endif
    zreladdr-$(CONFIG_ARCH_FSM9XXX)	:= 0x10008000
 params_phys-$(CONFIG_ARCH_FSM9XXX)	:= 0x10000100
 initrd_phys-$(CONFIG_ARCH_FSM9XXX)	:= 0x12000000
+
+dtb-$(CONFIG_MACH_MSM8960_MMI) += mmi-8960pro.dtb
