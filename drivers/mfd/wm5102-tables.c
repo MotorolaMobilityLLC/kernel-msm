@@ -273,6 +273,7 @@ static const struct reg_default wm5102_reg_default[] = {
 	{ 0x00000154, 0x0000 },   /* R340   - Rate Estimator 3 */ 
 	{ 0x00000155, 0x0000 },   /* R341   - Rate Estimator 4 */ 
 	{ 0x00000156, 0x0000 },   /* R342   - Rate Estimator 5 */ 
+	{ 0x00000161, 0x0000 },   /* R353   - Dynamic Frequency Scaling 1 */ 
 	{ 0x00000171, 0x0000 },   /* R369   - FLL1 Control 1 */ 
 	{ 0x00000172, 0x0008 },   /* R370   - FLL1 Control 2 */ 
 	{ 0x00000173, 0x0018 },   /* R371   - FLL1 Control 3 */ 
@@ -305,6 +306,7 @@ static const struct reg_default wm5102_reg_default[] = {
 	{ 0x000001AA, 0x0004 },   /* R426   - FLL2 GPIO Clock */ 
 	{ 0x00000200, 0x0006 },   /* R512   - Mic Charge Pump 1 */ 
 	{ 0x00000210, 0x00D4 },   /* R528   - LDO1 Control 1 */ 
+	{ 0x00000212, 0x0000 },   /* R530   - LDO1 Control 2 */ 
 	{ 0x00000213, 0x0344 },   /* R531   - LDO2 Control 1 */ 
 	{ 0x00000218, 0x01A6 },   /* R536   - Mic Bias Ctrl 1 */ 
 	{ 0x00000219, 0x01A6 },   /* R537   - Mic Bias Ctrl 2 */ 
@@ -1062,6 +1064,7 @@ static bool wm5102_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_RATE_ESTIMATOR_3:
 	case ARIZONA_RATE_ESTIMATOR_4:
 	case ARIZONA_RATE_ESTIMATOR_5:
+	case ARIZONA_DYNAMIC_FREQUENCY_SCALING_1:
 	case ARIZONA_FLL1_CONTROL_1:
 	case ARIZONA_FLL1_CONTROL_2:
 	case ARIZONA_FLL1_CONTROL_3:
@@ -1096,6 +1099,7 @@ static bool wm5102_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_FLL2_GPIO_CLOCK:
 	case ARIZONA_MIC_CHARGE_PUMP_1:
 	case ARIZONA_LDO1_CONTROL_1:
+	case ARIZONA_LDO1_CONTROL_2:
 	case ARIZONA_LDO2_CONTROL_1:
 	case ARIZONA_MIC_BIAS_CTRL_1:
 	case ARIZONA_MIC_BIAS_CTRL_2:
