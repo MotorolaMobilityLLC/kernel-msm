@@ -551,13 +551,6 @@ __init void mmi_register_i2c_devices_from_dt(void)
 					get_init_i2c_func(*(u32 *)prop);
 				if (init_func)
 					err = init_func(&info, dev_node);
-				else {
-					pr_err("%s: No init function for " \
-						"i2c device! Skipping!(0x" \
-						"%08x: %s)\n", __func__,
-						*(u32 *)prop, info.type);
-					err = -EINVAL;
-				}
 			}
 			if (err >= 0)
 				i2c_register_board_info(bus_no, &info, 1);
