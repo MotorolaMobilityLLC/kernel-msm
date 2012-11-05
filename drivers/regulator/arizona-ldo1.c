@@ -30,6 +30,10 @@
 #define  MIN_UV 	900000
 #define  UV_STEP 	50000
 
+#define HI_PWR_UV	18000000
+#define N_VOLTAGES	8
+#define HI_PWR_STEP	N_VOLTAGES-1
+
 
 struct arizona_ldo1 {
 	struct regulator_dev *regulator;
@@ -48,6 +52,10 @@ static int arizona_ldo_reg_list_voltage_linear(struct regulator_dev *rdev,
 	if (selector >= rdev->desc->n_voltages)
 		return -EINVAL;
 
+	if (selector == HI_PWR_STEP) {
+		return HI_PWR_UV;
+	}
+
 	return MIN_UV + (UV_STEP * selector);
 }
 
@@ -56,6 +64,16 @@ static int arizona_ldo_reg_get_voltage_sel(struct regulator_dev *rdev)
 	unsigned int val;
 	int ret;
 	struct arizona_ldo1 *ldo1 = rdev_get_drvdata(rdev);
+
+	ret = regmap_read(ldo1->arizona->regmap,
+			  ARIZONA_LDO1_CONTROL_2,
+			  &val);
+	if (ret != 0)
+		return ret;
+
+	if (val&ARIZONA_LDO1_HI_PWR) {
+		return HI_PWR_STEP;
+	}
 
 	ret = regmap_read(ldo1->arizona->regmap,
 			  ARIZONA_LDO1_CONTROL_1,
@@ -73,6 +91,28 @@ static int arizona_ldo_reg_set_voltage_sel(struct regulator_dev *rdev,
 					   unsigned sel)
 {
 	struct arizona_ldo1 *ldo1 = rdev_get_drvdata(rdev);
+	unsigned int val;
+	int ret;
+
+	if (sel == HI_PWR_STEP)
+		val = ARIZONA_LDO1_HI_PWR;
+	else
+		val = 0;
+
+	ret = regmap_update_bits(ldo1->arizona->regmap, ARIZONA_LDO1_CONTROL_2,
+			         ARIZONA_LDO1_HI_PWR, val);
+	if (ret < 0)
+		return ret;
+
+	ret = regmap_update_bits(ldo1->arizona->regmap,
+				  ARIZONA_DYNAMIC_FREQUENCY_SCALING_1,
+				  ARIZONA_SUBSYS_MAX_FREQ, val);
+	if (ret < 0)
+		return ret;
+
+	if (val)
+		return 0;
+
 	sel <<= ARIZONA_LDO1_VSEL_SHIFT;
 
 	return regmap_update_bits(ldo1->arizona->regmap,
@@ -136,7 +176,7 @@ static struct regulator_desc arizona_ldo1 = {
 	.type = REGULATOR_VOLTAGE,
 	.ops = &arizona_ldo1_ops,
 
-	.n_voltages = 7,
+	.n_voltages = N_VOLTAGES,
 
 	.owner = THIS_MODULE,
 };
