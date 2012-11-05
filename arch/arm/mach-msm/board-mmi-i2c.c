@@ -490,7 +490,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00030015, msp430_init_i2c_device}, /* TI MSP430 */
 	{0x00190001, pn544_init_i2c_device}, /* NXP PN544 */
 	{0x00030017, drv2605_init_i2c_device}, /* TI DRV2605 Haptic driver */
-	{0x00030020, tpa6165a2_init_i2c_device}, /* TI headset Det/amp Driver */
+	{0x0003001A, tpa6165a2_init_i2c_device}, /* TI headset Det/amp Driver */
 };
 
 static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device)
