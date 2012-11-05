@@ -293,6 +293,7 @@ struct pm8921_chg_chip {
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	unsigned int			step_charge_current;
 	unsigned int			step_charge_voltage;
+	unsigned int			step_charge_vinmin;
 	unsigned int			batt_alarm_delta;
 	unsigned int			lower_battery_threshold;
 	int64_t				batt_valid;
@@ -1250,6 +1251,10 @@ static int is_battery_valid(struct pm8921_chg_chip *chip)
 				batt_data.step_charge_voltage;
 			pr_debug("step_charge_voltage = %d\n",
 				chip->step_charge_voltage);
+			chip->step_charge_vinmin =
+				batt_data.step_charge_vinmin;
+			pr_debug("step_charge_vinmin = %d\n",
+				chip->step_charge_vinmin);
 			pm8921_chg_hw_config(chip);
 		}
 		chip->batt_valid = batt_vld;
@@ -3402,6 +3407,7 @@ static void pm_batt_external_power_changed(struct power_supply *psy)
 					 __pm_batt_external_power_changed_work);
 }
 
+#define PM8921_CHG_STEP_HYST 100
 /**
  * update_heartbeat - internal function to update userspace
  *		per update_time minutes
@@ -3505,11 +3511,14 @@ static void update_heartbeat(struct work_struct *work)
 		    chip->step_charge_voltage) {
 			pr_debug("Step Rate used Batt V = %d\n",
 				batt_mvolt);
+			pm_chg_vinmin_set(chip, chip->step_charge_vinmin);
 			pm_chg_ibatmax_set(chip, chip->step_charge_current);
-		} else {
+		} else if (batt_mvolt <= (chip->step_charge_voltage -
+					PM8921_CHG_STEP_HYST)) {
 			pr_debug("Step Rate NOT used Batt V = %d\n",
 				batt_mvolt);
 			pm_chg_ibatmax_set(chip, chip->max_bat_chg_current);
+			pm_chg_vinmin_set(chip, chip->vin_min);
 		}
 	}
 #endif
