@@ -1,0 +1,8 @@
+/dts-v1/;
+
+/include/ "skeleton.dtsi"
+
+/ {
+	model = "Motorola MSM8960 Pro";
+	compatible = "mmi,msm8960";
+};
