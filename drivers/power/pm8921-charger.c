@@ -5184,7 +5184,7 @@ end:
 	return snprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
 }
 
-static DEVICE_ATTR(force_chg_usb_suspend, 0644,
+static DEVICE_ATTR(force_chg_usb_suspend, 0664,
 		force_chg_usb_suspend_show,
 		force_chg_usb_suspend_store);
 
