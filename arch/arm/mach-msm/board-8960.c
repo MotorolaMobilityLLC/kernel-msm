@@ -2621,14 +2621,17 @@ static void __init bt_power_init(void)
 
 struct msm8960_oem_init_ptrs msm8960_oem_funcs;
 
+static struct platform_device *regulator_devices[] __initdata = {
+	&msm8960_device_ext_5v_vreg,
+	&msm8960_device_ext_otg_sw_vreg,
+};
+
 static struct platform_device *common_devices[] __initdata = {
 	&msm8960_device_dmov,
 	&msm_device_smd,
 	&msm_device_saw_core0,
 	&msm_device_saw_core1,
-	&msm8960_device_ext_5v_vreg,
 	&msm8960_device_ssbi_pmic,
-	&msm8960_device_ext_otg_sw_vreg,
 	&msm_slim_ctrl,
 	&msm_device_wcnss_wlan,
 #if defined(CONFIG_BT) && defined(CONFIG_BT_HCIUART_ATH3K)
@@ -3140,6 +3143,15 @@ static void __init msm8960_tsens_init(void)
 	msm_tsens_early_init(&msm_tsens_pdata);
 }
 
+static void __init msm8960_regulator_init(void)
+{
+	if (machine_is_msm8960_liquid())
+		platform_device_register(&msm8960_device_ext_3p3v_vreg);
+	if (machine_is_msm8960_cdp())
+		platform_device_register(&msm8960_device_ext_l2_vreg);
+	platform_add_devices(regulator_devices, ARRAY_SIZE(regulator_devices));
+}
+
 void __init msm8960_cdp_init(void)
 {
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
@@ -3198,10 +3210,14 @@ void __init msm8960_cdp_init(void)
 	msm_spm_l2_init(msm_spm_l2_data);
 	msm8960_init_buses();
 	platform_add_devices(msm8960_footswitch, msm8960_num_footswitch);
-	if (machine_is_msm8960_liquid())
-		platform_device_register(&msm8960_device_ext_3p3v_vreg);
-	if (machine_is_msm8960_cdp())
-		platform_device_register(&msm8960_device_ext_l2_vreg);
+
+	/*
+	 * Only register gpio regulator here for upstream boards.
+	 * OEM gpio regulators will have already registered in the
+	 * call to configure_msm8960_power_grid(), if needed.
+	 */
+	if (!msm8960_oem_funcs.msm_regulator_init)
+		msm8960_regulator_init();
 
 	/* Centralized init function for all GSBI devices */
 	if (msm8960_oem_funcs.msm_gsbi_init)
