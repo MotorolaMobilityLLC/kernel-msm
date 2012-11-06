@@ -4653,8 +4653,6 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 	void *data;
 
 	long rc = 0;
-	struct vfe_cmd_stats_buf *scfg = NULL;
-	struct vfe_cmd_stats_ack *sack = NULL;
 
 	if (!vfe32_ctrl->share_ctrl->vfebase) {
 		pr_err("%s: base address unmapped\n", __func__);
@@ -4717,14 +4715,6 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 						__func__, cmd->cmd_type);
 					return -EFAULT;
 				}
-				sack = kmalloc(sizeof(struct vfe_cmd_stats_ack),
-							GFP_ATOMIC);
-				if (!sack) {
-					pr_err("%s: no mem for cmd->cmd_type = %d",
-					 __func__, cmd->cmd_type);
-					return -ENOMEM;
-				}
-				sack->nextStatsBuf = *(uint32_t *)data;
 			}
 		}
 	}
@@ -4754,7 +4744,6 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 			(cmd->cmd_type == CMD_STATS_RS_ENABLE)    ||
 			(cmd->cmd_type == CMD_STATS_CS_ENABLE)    ||
 			(cmd->cmd_type == CMD_STATS_AEC_ENABLE)) {
-				scfg = NULL;
 				/* individual */
 				goto vfe32_config_done;
 		}
@@ -4824,8 +4813,6 @@ static long msm_vfe_subdev_ioctl(struct v4l2_subdev *sd,
 	break;
 	}
 vfe32_config_done:
-	kfree(scfg);
-	kfree(sack);
 	CDBG("%s done: rc = %d\n", __func__, (int) rc);
 	return rc;
 }

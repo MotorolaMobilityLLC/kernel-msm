@@ -75,9 +75,12 @@ void msm_drain_eventq(struct msm_device_queue *queue)
 		isp_event =
 			(struct msm_isp_event_ctrl *)
 			qcmd->command;
-		if (isp_event->isp_data.ctrl.value != NULL)
+		if (isp_event->isp_data.ctrl.value != NULL) {
 			kfree(isp_event->isp_data.ctrl.value);
+			isp_event->isp_data.ctrl.value = NULL;
+		}
 		kfree(qcmd->command);
+		qcmd->command = NULL;
 		free_qcmd(qcmd);
 	}
 	spin_unlock_irqrestore(&queue->lock, flags);
@@ -387,6 +390,7 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 	out->value = value;
 
 	kfree(ctrlcmd);
+	rcmd->command = NULL;
 	free_qcmd(rcmd);
 	D("%s: rc %d\n", __func__, rc);
 	/* rc is the time elapsed. */
@@ -1215,7 +1219,6 @@ static long msm_ioctl_server(struct file *file, void *fh,
 		}
 		k_isp_event = (struct msm_isp_event_ctrl *)
 				event_cmd->command;
-		free_qcmd(event_cmd);
 
 		/* Save the pointer of the user allocated command buffer*/
 		u_ctrl_value = u_isp_event.isp_data.ctrl.value;
@@ -1237,23 +1240,31 @@ static long msm_ioctl_server(struct file *file, void *fh,
 				pr_err("%s Copy to user failed for cmd %d",
 					__func__, cmd);
 				kfree(k_isp_event->isp_data.ctrl.value);
+				k_isp_event->isp_data.ctrl.value = NULL;
 				kfree(k_isp_event);
+				event_cmd->command = NULL;
+				free_qcmd(event_cmd);
 				rc = -EINVAL;
 				mutex_unlock(&g_server_dev.server_queue_lock);
 				break;
 			}
 			kfree(k_isp_event->isp_data.ctrl.value);
+			k_isp_event->isp_data.ctrl.value = NULL;
 		}
 		if (copy_to_user((void __user *)ioctl_ptr->ioctl_ptr,
 			&u_isp_event, sizeof(struct msm_isp_event_ctrl))) {
 			pr_err("%s Copy to user failed for cmd %d",
 				__func__, cmd);
 			kfree(k_isp_event);
+			event_cmd->command = NULL;
+			free_qcmd(event_cmd);
 			mutex_unlock(&g_server_dev.server_queue_lock);
 			rc = -EINVAL;
 			return rc;
 		}
 		kfree(k_isp_event);
+		event_cmd->command = NULL;
+		free_qcmd(event_cmd);
 		mutex_unlock(&g_server_dev.server_queue_lock);
 		rc = 0;
 		break;
@@ -2474,6 +2485,7 @@ int msm_server_send_ctrl(struct msm_ctrl_cmd *out,
 	out->value = value;
 
 	kfree(ctrlcmd);
+	rcmd->command = NULL;
 	free_qcmd(rcmd);
 	D("%s: rc %d\n", __func__, rc);
 	/* rc is the time elapsed. */
@@ -2810,10 +2822,11 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 							k_msg_value,
 					 k_isp_event->isp_data.isp_msg.len)) {
 						rc = -EINVAL;
-						break;
+						ERR_COPY_TO_USER();
 					}
 					kfree(k_msg_value);
-					k_msg_value = NULL;
+					k_isp_event->isp_data.isp_msg.len = 0;
+					k_isp_event->isp_data.isp_msg.data = NULL;
 				}
 			}
 		}
@@ -2823,15 +2836,19 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 				(void *)&u_isp_event, sizeof(
 				struct msm_isp_event_ctrl))) {
 			rc = -EINVAL;
-			break;
+			ERR_COPY_TO_USER();
 		}
 		kfree(k_isp_event);
-		k_isp_event = NULL;
+		*((uint32_t *)ev.u.data) = 0;
+
+		if (rc < 0)
+			break;
 
 		/* Copy the v4l2_event structure back to the user*/
 		if (copy_to_user((void __user *)arg, &ev,
 				sizeof(struct v4l2_event))) {
 			rc = -EINVAL;
+			ERR_COPY_TO_USER();
 			break;
 		}
 		}
@@ -2912,9 +2929,13 @@ static int msm_close_config(struct inode *node, struct file *f)
 			(*((uint32_t *)ev.u.data));
 		if (isp_event) {
 			if (isp_event->isp_data.isp_msg.len != 0 &&
-				isp_event->isp_data.isp_msg.data != NULL)
+				isp_event->isp_data.isp_msg.data != NULL) {
 				kfree(isp_event->isp_data.isp_msg.data);
+				isp_event->isp_data.isp_msg.len = 0;
+				isp_event->isp_data.isp_msg.data = NULL;
+			}
 			kfree(isp_event);
+			*((uint32_t *)ev.u.data) = 0;
 		}
 	}
 	return 0;
