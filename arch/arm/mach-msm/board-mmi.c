@@ -216,6 +216,7 @@ static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 	mmi_i2s_dai_init();
 	if (mmi_boot_mode_is_factory())
 		mmi_factory_register();
+	mmi_vibrator_init();
 }
 
 static void __init mmi_disp_init(struct msm8960_oem_init_ptrs *oem_ptr,
