@@ -1023,7 +1023,7 @@ limSendSmeAuthRsp(tpAniSirGlobal pMac,
 } /*** end limSendSmeAuthRsp() ***/
 
 
-void limSendSmeDisassocDeauthNtfPostResume( tpAniSirGlobal pMac,
+void limSendSmeDisassocDeauthNtf( tpAniSirGlobal pMac,
                                 eHalStatus status, tANI_U32 *pCtx )
 {
     tSirMsgQ                mmhMsg;
@@ -1216,22 +1216,8 @@ limSendSmeDisassocNtf(tpAniSirGlobal pMac,
         peDeleteSession(pMac,psessionEntry);
     }
         
-    if( IS_MCC_SUPPORTED && limIsLinkSuspended( pMac ) )
-    {
-        //Resume on the first active session channel.
-        tANI_U8 resumeChannel;
-        ePhyChanBondState resumePhyCbState;
-        peGetActiveSessionChannel( pMac, &resumeChannel, &resumePhyCbState );
-        peSetResumeChannel( pMac, resumeChannel, resumePhyCbState );
-
-        limResumeLink( pMac, limSendSmeDisassocDeauthNtfPostResume, 
+    limSendSmeDisassocDeauthNtf( pMac, eHAL_STATUS_SUCCESS,
                                               (tANI_U32*) pMsg );
-    }
-    else
-    {
-        limSendSmeDisassocDeauthNtfPostResume( pMac, eHAL_STATUS_SUCCESS,
-                                              (tANI_U32*) pMsg );
-    }
 } /*** end limSendSmeDisassocNtf() ***/
 
 
@@ -1565,22 +1551,9 @@ limSendSmeDeauthNtf(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tSirResultCode
         peDeleteSession(pMac,psessionEntry);
     }   
 
-    if( IS_MCC_SUPPORTED && limIsLinkSuspended( pMac ) )
-    {
-        //Resume on the first active session channel.
-        tANI_U8 resumeChannel;
-        ePhyChanBondState resumePhyCbState;
-        peGetActiveSessionChannel( pMac, &resumeChannel, &resumePhyCbState );
-        peSetResumeChannel( pMac, resumeChannel, resumePhyCbState );
+    limSendSmeDisassocDeauthNtf( pMac, eHAL_STATUS_SUCCESS,
+                                              (tANI_U32*) pMsg );
 
-        limResumeLink( pMac, limSendSmeDisassocDeauthNtfPostResume, 
-                                              (tANI_U32*) pMsg );
-    }
-    else
-    {
-        limSendSmeDisassocDeauthNtfPostResume( pMac, eHAL_STATUS_SUCCESS,
-                                              (tANI_U32*) pMsg );
-    }
 } /*** end limSendSmeDeauthNtf() ***/
 
 
