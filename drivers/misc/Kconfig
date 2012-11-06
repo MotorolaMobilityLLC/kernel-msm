@@ -334,6 +334,11 @@ config ISL29020
 	  This driver can also be built as a module.  If so, the module
 	  will be called isl29020.
 
+config VIB_TIMED
+	bool "Timed Output based Vibrator"
+	depends on ANDROID_TIMED_OUTPUT
+	default n
+
 config MOT_UTAG
 	tristate  "Motorola Configuration read/write support "
 	default n
