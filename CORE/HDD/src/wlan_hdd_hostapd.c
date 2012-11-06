@@ -2592,6 +2592,20 @@ static const struct iw_priv_args hostapd_private_args[] = {
        0, 
        "SetP2pPs" },
 #endif
+     /* handlers for sub ioctl */
+    {
+        WE_MCC_CONFIG_CREDENTIAL,
+        IW_PRIV_TYPE_INT | MAX_VAR_ARGS,
+        0,
+        "setMccCrdnl" },
+
+     /* handlers for sub ioctl */
+    {
+        WE_MCC_CONFIG_PARAMS,
+        IW_PRIV_TYPE_INT | MAX_VAR_ARGS,
+        0,
+        "setMccConfig" },
+
     /* handlers for main ioctl */
     {   QCSAP_IOCTL_MODIFY_ACL,
         IW_PRIV_TYPE_BYTE | IW_PRIV_SIZE_FIXED | 8,

@@ -207,6 +207,9 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #ifdef WLAN_FEATURE_P2P
 #define WE_P2P_NOA_CMD       2
 #endif
+//IOCTL to configure MCC params
+#define WE_MCC_CONFIG_CREDENTIAL 3
+#define WE_MCC_CONFIG_PARAMS  4
 
 #define MAX_VAR_ARGS         7
 
@@ -316,6 +319,22 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WLAN_HDD_UI_BAND_5_GHZ                    1
 #define WLAN_HDD_UI_BAND_2_4_GHZ                  2
 #define WLAN_HDD_UI_SET_BAND_VALUE_OFFSET         8
+
+/*MCC Configuration parameters */
+enum {
+    MCC_SCHEDULE_TIME_SLICE_CFG_PARAM = 1,
+    MCC_MAX_NULL_SEND_TIME_CFG_PARAM,
+    MCC_TX_EARLY_STOP_TIME_CFG_PARAM,
+    MCC_RX_DRAIN_TIME_CFG_PARAM,
+    MCC_CHANNEL_SWITCH_TIME_CFG_PARAM,
+    MCC_MIN_CHANNEL_TIME_CFG_PARAM,
+    MCC_PARK_BEFORE_TBTT_CFG_PARAM,
+    MCC_MIN_AFTER_DTIM_CFG_PARAM,
+    MCC_TOO_CLOSE_MARGIN_CFG_PARAM,
+};
+
+int hdd_validate_mcc_config(hdd_adapter_t *pAdapter, v_UINT_t staId,
+                                v_UINT_t arg1, v_UINT_t arg2, v_UINT_t arg3);
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest, 
@@ -4145,6 +4164,10 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
     int *value = (int*)wrqu->data.pointer;
     int apps_args[MAX_VAR_ARGS] = {0};
     int num_args = wrqu->data.length;
+    hdd_station_ctx_t *pStaCtx = NULL ;
+    hdd_ap_ctx_t  *pAPCtx = NULL;
+    int cmd = 0;
+    int staId = 0;
 
     hddLog(LOG1, "%s: Received length %d", __func__, wrqu->data.length);
     if (num_args > MAX_VAR_ARGS)
@@ -4152,6 +4175,28 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
        num_args = MAX_VAR_ARGS;
     }
     vos_mem_copy(apps_args, value, (sizeof(int)) * num_args);
+
+    if(( sub_cmd == WE_MCC_CONFIG_CREDENTIAL ) ||
+        (sub_cmd == WE_MCC_CONFIG_PARAMS ))
+    {
+        if(( pAdapter->device_mode == WLAN_HDD_INFRA_STATION )||
+           ( pAdapter->device_mode == WLAN_HDD_P2P_CLIENT ))
+        {
+            pStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+            staId = pStaCtx->conn_info.staId[0];
+        }
+        else if (( pAdapter->device_mode == WLAN_HDD_P2P_GO ) ||
+                 ( pAdapter->device_mode == WLAN_HDD_SOFTAP ))
+        {
+            pAPCtx = WLAN_HDD_GET_AP_CTX_PTR(pAdapter);
+            staId = pAPCtx->uBCStaId;
+        }
+        else
+        {
+            hddLog(LOGE, "%s: Device mode %d not recognised", __FUNCTION__, pAdapter->device_mode);
+            return 0;
+        }
+    }
 
     switch (sub_cmd)
     {
@@ -4190,6 +4235,30 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
             }
             break;
 #endif
+
+        case WE_MCC_CONFIG_CREDENTIAL :
+            {
+                cmd = 287; //Command should be updated if there is any change
+                           // in the Riva dump command
+                if((apps_args[0] >= 50 ) && (apps_args[0] <= 150 ))
+                {
+                    logPrintf(hHal, cmd, staId, apps_args[0], apps_args[1], apps_args[2]);
+                }
+                else
+                {
+                     hddLog(LOGE, "%s : Enter valid MccCredential value between MIN :50 and MAX:150\n");
+                     return 0;
+                }
+            }
+            break;
+
+        case WE_MCC_CONFIG_PARAMS :
+            {
+                cmd = 288; //command Should be updated if there is any change
+                           // in the Riva dump command
+                 hdd_validate_mcc_config(pAdapter, staId, apps_args[0], apps_args[1],apps_args[2]);
+            }
+        break;
 
         default:
             {
@@ -6181,6 +6250,20 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         "dump" },
 
+    /* handlers for sub ioctl */
+   {
+       WE_MCC_CONFIG_CREDENTIAL,
+       IW_PRIV_TYPE_INT | MAX_VAR_ARGS,
+       0,
+       "setMccCrdnl" },
+
+    /* handlers for sub ioctl */
+   {
+       WE_MCC_CONFIG_PARAMS,
+       IW_PRIV_TYPE_INT | MAX_VAR_ARGS,
+       0,
+       "setMccConfig" },
+
     /* handlers for main ioctl */
     {   WLAN_PRIV_ADD_TSPEC,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | HDD_WLAN_WMM_PARAM_COUNT,
@@ -6325,6 +6408,181 @@ const struct iw_handler_def we_handler_def = {
    .private_args     = we_private_args,
    .get_wireless_stats = get_wireless_stats,
 };
+
+int hdd_validate_mcc_config(hdd_adapter_t *pAdapter, v_UINT_t staId, v_UINT_t arg1, v_UINT_t arg2, v_UINT_t arg3)
+{
+    v_U32_t  cmd = 288; //Command to RIVA
+    hdd_context_t *pHddCtx = NULL;
+    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    /*
+     *configMccParam : specify the bit which needs to be modified
+     *allowed to update based on wlan_qcom_cfg.ini
+     * configuration
+     * Bit 0 : SCHEDULE_TIME_SLICE   MIN : 5 MAX : 20
+     * Bit 1 : MAX_NULL_SEND_TIME    MIN : 1 MAX : 10
+     * Bit 2 : TX_EARLY_STOP_TIME    MIN : 1 MAX : 10
+     * Bit 3 : RX_DRAIN_TIME         MIN : 1 MAX : 10
+     * Bit 4 : CHANNEL_SWITCH_TIME   MIN : 1 MAX : 20
+     * Bit 5 : MIN_CHANNEL_TIME      MIN : 5 MAX : 20
+     * Bit 6 : PARK_BEFORE_TBTT      MIN : 1 MAX :  5
+     * Bit 7 : MIN_AFTER_DTIM        MIN : 5 MAX : 15
+     * Bit 8 : TOO_CLOSE_MARGIN      MIN : 1 MAX :  3
+     * Bit 9 : Reserved
+     */
+    switch (arg1)
+    {
+        //Update MCC SCHEDULE_TIME_SLICE parameter
+        case MCC_SCHEDULE_TIME_SLICE_CFG_PARAM :
+            if( pHddCtx->cfg_ini->configMccParam & 0x0001)
+            {
+                if((arg2 >= 5) && (arg2 <= 20))
+                {
+                    logPrintf(hHal, cmd, staId, arg1, arg2, arg3);
+                }
+                else
+                {
+                    hddLog(LOGE, "%s : Enter a valid MCC configuration value\n",__FUNCTION__);
+                    return 0;
+                }
+            }
+            break;
+
+        //Update MCC MAX_NULL_SEND_TIME parameter
+        case MCC_MAX_NULL_SEND_TIME_CFG_PARAM :
+            if( pHddCtx->cfg_ini->configMccParam & 0x0002)
+            {
+                if((arg2 >= 1) && (arg2 <= 10))
+                {
+                    logPrintf(hHal, cmd, staId, arg1, arg2, arg3);
+                }
+                else
+                {
+                    hddLog(LOGE, "%s : Enter a valid MCC configuration value\n",__FUNCTION__);
+                    return 0;
+                }
+            }
+            break;
+
+        //Update MCC TX_EARLY_STOP_TIME parameter
+        case MCC_TX_EARLY_STOP_TIME_CFG_PARAM :
+            if( pHddCtx->cfg_ini->configMccParam & 0x0004)
+            {
+                if((arg2 >= 1) && (arg2 <= 10))
+                {
+                    logPrintf(hHal, cmd, staId, arg1, arg2, arg3);
+                }
+                else
+                {
+                    hddLog(LOGE, "%s : Enter a valid MCC configuration value\n",__FUNCTION__);
+                    return 0;
+                }
+            }
+            break;
+
+        //Update MCC RX_DRAIN_TIME parameter
+        case MCC_RX_DRAIN_TIME_CFG_PARAM :
+            if( pHddCtx->cfg_ini->configMccParam & 0x0008)
+            {
+                if((arg2 >= 1) && (arg2 <= 10))
+                {
+                    logPrintf(hHal, cmd, staId, arg1, arg2, arg3);
+                }
+                else
+                {
+                    hddLog(LOGE, "%s : Enter a valid MCC configuration value\n",__FUNCTION__);
+                    return 0;
+                }
+            }
+        break;
+
+        //Update MCC CHANNEL_SWITCH_TIME parameter
+        case MCC_CHANNEL_SWITCH_TIME_CFG_PARAM :
+            if( pHddCtx->cfg_ini->configMccParam & 0x0010)
+            {
+                if((arg2 >= 1) && (arg2 <= 20))
+                {
+                    logPrintf(hHal, cmd, staId, arg1, arg2, arg3);
+                }
+                else
+                {
+                    hddLog(LOGE, "%s : Enter a valid MCC configuration value\n",__FUNCTION__);
+                    return 0;
+                }
+            }
+            break;
+
+        //Update MCC MIN_CHANNEL_TIME parameter
+        case MCC_MIN_CHANNEL_TIME_CFG_PARAM :
+            if( pHddCtx->cfg_ini->configMccParam & 0x0020)
+            {
+                if((arg2 >= 5) && (arg2 <= 20))
+                {
+                    logPrintf(hHal, cmd, staId, arg1, arg2, arg3);
+                }
+                else
+                {
+                    hddLog(LOGE, "%s : Enter a valid MCC configuration value\n",__FUNCTION__);
+                    return 0;
+                }
+            }
+            break;
+
+        //Update MCC PARK_BEFORE_TBTT parameter
+        case MCC_PARK_BEFORE_TBTT_CFG_PARAM :
+            if( pHddCtx->cfg_ini->configMccParam & 0x0040)
+            {
+                if((arg2 >= 1) && (arg2 <= 5))
+                {
+                    logPrintf(hHal, cmd, staId, arg1, arg2, arg3);
+                }
+                else
+                {
+                    hddLog(LOGE, "%s : Enter a valid MCC configuration value\n",__FUNCTION__);
+                    return 0;
+                }
+            }
+            break;
+
+        //Update MCC MIN_AFTER_DTIM parameter
+        case MCC_MIN_AFTER_DTIM_CFG_PARAM :
+            if( pHddCtx->cfg_ini->configMccParam & 0x0080)
+            {
+                if((arg2 >= 5) && (arg2 <= 15))
+                {
+                    logPrintf(hHal, cmd, staId, arg1, arg2, arg3);
+                }
+                else
+                {
+                    hddLog(LOGE, "%s : Enter a valid MCC configuration value\n",__FUNCTION__);
+                    return 0;
+                }
+            }
+            break;
+
+        //Update MCC TOO_CLOSE_MARGIN parameter
+        case MCC_TOO_CLOSE_MARGIN_CFG_PARAM :
+            if( pHddCtx->cfg_ini->configMccParam & 0x0100)
+            {
+                if((arg2 >= 1) && (arg2 <= 3))
+                {
+                    logPrintf(hHal, cmd, staId, arg1, arg2, arg3);
+                }
+                else
+                {
+                    hddLog(LOGE, "%s : Enter a valid MCC configuration value\n",__FUNCTION__);
+                    return 0;
+                }
+            }
+            break;
+
+        default :
+            hddLog(LOGE, "%s : Uknown / Not allowed to configure parameter :  %d\n",
+                        __FUNCTION__,arg1);
+            break;
+    }
+    return 0;
+}
 
 int hdd_set_wext(hdd_adapter_t *pAdapter)
 {

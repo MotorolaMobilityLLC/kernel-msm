@@ -1382,6 +1382,14 @@ typedef enum
 #define CFG_NUM_BUFF_ADVERT_MAX               ( 128 )
 #define CFG_NUM_BUFF_ADVERT_DEFAULT           ( 40 )
 
+/*
+ * Allow MCC to modify config
+ */
+#define CFG_MCC_CONFIG_PARAM_NAME          "gMccAllowCfgModify"
+#define CFG_MCC_CONFIG_PARAM_MIN           ( 0x0000 )
+#define CFG_MCC_CONFIG_PARAM_MAX           ( 0x01ff )
+#define CFG_MCC_CONFIG_PARAM_DEFAULT       ( 0x000C )
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -1686,6 +1694,7 @@ typedef struct
    v_BOOL_t                    enableFirstScan2GOnly;
    v_BOOL_t                    skipDfsChnlInP2pSearch;
    v_BOOL_t                    ignoreDynamicDtimInP2pMode;
+   v_U16_t                     configMccParam;
    v_U32_t                     numBuffAdvert;
    v_U8_t                      ignore_chan165;
 } hdd_config_t;

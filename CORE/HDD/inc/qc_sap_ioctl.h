@@ -228,6 +228,9 @@ typedef struct
 #ifdef WLAN_FEATURE_P2P
 #define WE_P2P_NOA_CMD  2
 #endif
+//IOCTL to configure MCC params
+#define WE_MCC_CONFIG_CREDENTIAL 3
+#define WE_MCC_CONFIG_PARAMS  4
 
 #define QCSAP_IOCTL_MODIFY_ACL          (SIOCIWFIRSTPRIV+18)
 #define QCSAP_IOCTL_GET_CHANNEL_LIST    (SIOCIWFIRSTPRIV+19)
