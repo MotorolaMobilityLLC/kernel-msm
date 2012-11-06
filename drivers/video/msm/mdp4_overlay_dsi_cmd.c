@@ -1015,13 +1015,18 @@ int mdp4_dsi_cmd_on(struct platform_device *pdev)
 	pr_debug("%s+: pid=%d\n", __func__, current->pid);
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
-	mfd->cont_splash_done = 1;
 
 	vctrl = &vsync_ctrl_db[cndx];
 	vctrl->mfd = mfd;
 	vctrl->dev = mfd->fbi->dev;
 
 	mdp_clk_ctrl(1);
+	if (!(mfd->cont_splash_done)) {
+		mfd->cont_splash_done = 1;
+		/* Paired with the extra clk on in probe */
+		cont_splash_clk_ctrl(0);
+		mdp_clk_ctrl(0);
+	}
 	mdp4_overlay_update_dsi_cmd(mfd);
 	mdp_clk_ctrl(0);
 
