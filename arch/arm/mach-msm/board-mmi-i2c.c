@@ -543,7 +543,7 @@ __init void mmi_register_i2c_devices_from_dt(void)
 
 			prop = of_get_property(dev_node, "irq,gpio", &len);
 			if (prop && (len == sizeof(u8)))
-				info.irq = MSM_GPIO_TO_INT(*(u8 *)prop);
+				info.irq = gpio_to_irq(*(u8 *)prop);
 
 			prop = of_get_property(dev_node, "type", &len);
 			if (prop && (len == sizeof(u32))) {
