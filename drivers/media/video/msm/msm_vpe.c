@@ -471,6 +471,11 @@ static void vpe_send_outmsg(void)
 		return;
 	}
 	event_qcmd = kzalloc(sizeof(struct msm_queue_cmd), GFP_ATOMIC);
+	if (!event_qcmd) {
+		pr_err("%s: out of memory\n", __func__);
+		spin_unlock_irqrestore(&vpe_ctrl->lock, flags);
+		return;
+	}
 	atomic_set(&event_qcmd->on_heap, 1);
 	event_qcmd->command = (void *)vpe_ctrl->pp_frame_info;
 	vpe_ctrl->pp_frame_info = NULL;
@@ -889,7 +894,8 @@ static long msm_vpe_subdev_ioctl(struct v4l2_subdev *sd,
 			pr_err("%s EVENTPAYLOAD Copy to user failed ",
 				__func__);
 		kfree(pp_frame_info);
-		kfree(event_qcmd);
+		event_qcmd->command = NULL;
+		free_qcmd(event_qcmd);
 		break;
 		}
 
