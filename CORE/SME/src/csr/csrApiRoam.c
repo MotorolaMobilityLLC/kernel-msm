@@ -1324,6 +1324,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
 #ifdef WLAN_FEATURE_11AC
         pMac->roam.configParam.nVhtChannelWidth = pParam->nVhtChannelWidth;
 #endif
+        pMac->scan.fIgnore_chan165 = pParam->fIgnore_chan165;
     }
     
     return status;
@@ -1389,6 +1390,7 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->fValidateList = pMac->roam.configParam.fValidateList;
         pParam->fEnableBypass11d = pMac->scan.fEnableBypass11d;
         pParam->fEnableDFSChnlScan = pMac->scan.fEnableDFSChnlScan;
+        pParam->fIgnore_chan165= pMac->scan.fIgnore_chan165;
         pParam->fScanTwice = pMac->roam.configParam.fScanTwice;
         pParam->fFirstScanOnly2GChnl = pMac->scan.fFirstScanOnly2GChnl;
 
