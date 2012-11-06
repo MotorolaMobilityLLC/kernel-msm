@@ -975,4 +975,5 @@ void __init mmi_pm8921_init(struct mmi_oem_data *mmi_data, void *pdata)
 #endif
 
 	load_pm8921_batt_eprom_pdata_from_dt();
+	mmi_load_rgb_leds_from_dt();
 }
