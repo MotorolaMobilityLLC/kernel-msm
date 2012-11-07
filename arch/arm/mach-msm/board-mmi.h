@@ -79,6 +79,9 @@ struct mmi_unit_info_v1 {
 };
 
 extern struct msm_camera_sensor_info msm_camera_sensor_s5k5b3g_data;
+extern struct msm_camera_sensor_info msm_camera_sensor_ov8835_data;
+
+extern struct msm_camera_device_platform_data msm_camera_csi_device_data[];
 
 extern struct lm3556_platform_data cam_flash_3556;
 
