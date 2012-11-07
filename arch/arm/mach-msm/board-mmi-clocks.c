@@ -14,6 +14,7 @@
 #include <asm/mach-types.h>
 #include <linux/clk.h>
 #include <linux/of.h>
+#include "clock-8960.h"
 #include "clock-gsbi-8960.h"
 
 /* Value of QUALCOMM_CLOCKTREE_CLOCK */
@@ -56,6 +57,9 @@ static struct clk *clk_dt_lookup_table[] __initdata = {
 	[0x0021] = &(gsbi12_uart_clk.c),
 	[0x0022] = &(gsbi12_qup_clk.c),
 	[0x0023] = &(gsbi12_p_clk.c),
+	[0x0024] = &(cam1_clk.c),
+	[0x0025] = &(cam0_clk.c),
+	[0x0026] = &(cam2_clk.c),
 };
 
 #define CLK_DT_VALID_RANGE(c)	(c < ARRAY_SIZE(clk_dt_lookup_table))
