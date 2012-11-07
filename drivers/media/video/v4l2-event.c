@@ -227,6 +227,11 @@ int v4l2_event_subscribe(struct v4l2_fh *fh,
 			return -EINVAL;
 	}
 
+	if (!fh->vdev) {
+		pr_err("%s: fh->vdev is NULL\n", __func__);
+		return -EIO;
+	}
+
 	sev = kzalloc(sizeof(*sev) + sizeof(struct v4l2_kevent) * elems, GFP_KERNEL);
 	if (!sev)
 		return -ENOMEM;
@@ -240,11 +245,6 @@ int v4l2_event_subscribe(struct v4l2_fh *fh,
 	if (ctrl) {
 		sev->replace = ctrls_replace;
 		sev->merge = ctrls_merge;
-	}
-
-	if (!fh->vdev) {
-		pr_err("%s: fh->vdev is NULL\n", __func__);
-		return -EIO;
 	}
 
 	spin_lock_irqsave(&fh->vdev->fh_lock, flags);
