@@ -2810,7 +2810,7 @@ VOS_STATUS hdd_register_hostapd( hdd_adapter_t *pAdapter, tANI_U8 rtnl_lock_held
    
    if( rtnl_lock_held )
    {
-      if (strchr(dev->name, '%')) {
+     if (strnchr(dev->name, strlen(dev->name), '%')) {
          if( dev_alloc_name(dev, dev->name) < 0 )
          {
             hddLog(VOS_TRACE_LEVEL_FATAL, "%s:Failed:dev_alloc_name", __func__);

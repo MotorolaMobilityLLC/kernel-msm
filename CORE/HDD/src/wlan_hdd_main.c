@@ -1171,7 +1171,7 @@ VOS_STATUS hdd_register_interface( hdd_adapter_t *pAdapter, tANI_U8 rtnl_lock_he
 
    if( rtnl_lock_held )
    {
-      if (strchr(pWlanDev->name, '%')) {
+     if (strnchr(pWlanDev->name, strlen(pWlanDev->name), '%')) {
          if( dev_alloc_name(pWlanDev, pWlanDev->name) < 0 )
          {
             hddLog(VOS_TRACE_LEVEL_ERROR,"%s:Failed:dev_alloc_name",__func__);

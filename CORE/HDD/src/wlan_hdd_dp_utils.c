@@ -197,6 +197,7 @@ VOS_STATUS hdd_string_to_hex( char *pSrcMac, int length, char *pDescMac )
    int i;
    int k;
    char temp[3] = {0};
+   int rv;
 
    //18 is MAC Address length plus the colons
    if ( !pSrcMac && (length > 18 || length < 18) )
@@ -207,7 +208,9 @@ VOS_STATUS hdd_string_to_hex( char *pSrcMac, int length, char *pDescMac )
    while ( i < length )
    {
        memcpy(temp, pSrcMac+i, 2);
-       pDescMac[k++] = (char)simple_strtoul (temp, NULL, 16);
+       rv = kstrtou8(temp, 16, &pDescMac[k++]);
+       if (rv < 0)
+           return VOS_STATUS_E_FAILURE;
        i += 3;
    }
 

@@ -2212,6 +2212,7 @@ static VOS_STATUS hdd_apply_cfg_ini( hdd_context_t *pHddCtx, tCfgIniEntry* iniTa
    unsigned long cRegTableEntries  = sizeof(g_registry_table) / sizeof( g_registry_table[ 0 ]);
    v_U32_t cbOutString;
    int i;
+   int rv;
 
    // sanity test
    if (MAX_CFG_INI_ITEMS < cRegTableEntries)
@@ -2242,10 +2243,20 @@ static VOS_STATUS hdd_apply_cfg_ini( hdd_context_t *pHddCtx, tCfgIniEntry* iniTa
          // If successfully read from the registry, use the value read.
          // If not, use the default value.
          if ( match_status == VOS_STATUS_SUCCESS && (WLAN_PARAM_Integer == pRegEntry->RegType)) {
-            value = simple_strtoul(value_str, NULL, 10);
+            rv = kstrtoul(value_str, 10, &value);
+            if (rv < 0) {
+                hddLog(LOGE, "%s: Reg Parameter %s invalid. Enforcing default",
+                       __func__, pRegEntry->RegName);
+                value = pRegEntry->VarDefault;
+            }
          }
          else if ( match_status == VOS_STATUS_SUCCESS && (WLAN_PARAM_HexInteger == pRegEntry->RegType)) {
-            value = simple_strtoul(value_str, NULL, 16);
+            rv = kstrtoul(value_str, 16, &value);
+            if (rv < 0) {
+                hddLog(LOGE, "%s: Reg paramter %s invalid. Enforcing default",
+                       __func__, pRegEntry->RegName);
+                value = pRegEntry->VarDefault;
+            }
          }
          else {
             value = pRegEntry->VarDefault;
@@ -2295,7 +2306,12 @@ static VOS_STATUS hdd_apply_cfg_ini( hdd_context_t *pHddCtx, tCfgIniEntry* iniTa
          // If not, use the default value.
          if (VOS_STATUS_SUCCESS == match_status)
          {
-            svalue = simple_strtol(value_str, NULL, 10);
+            rv = kstrtol(value_str, 10, &svalue);
+            if (rv < 0) {
+                hddLog(VOS_TRACE_LEVEL_WARN, "%s: Reg Parameter %s invalid. Enforcing Default",
+                       __func__, pRegEntry->RegName);
+                svalue = (v_S31_t)pRegEntry->VarDefault;
+            }
          }
          else
          {
@@ -2575,8 +2591,11 @@ static VOS_STATUS hdd_string_to_u8_array( char *str, tANI_U8 *intArray, tANI_U8 
    while( (*s != '\0')  && (*len < intArrayMaxLen) )
    {
       unsigned long val;
+      int rv;
 
-      val = simple_strtoul( s, &s, 10 );
+      rv = kstrtoul( s, 10, &val );
+      if (rv < 0)
+          return VOS_STATUS_E_INVAL;
       if( val )
       {
          intArray[*len] = (tANI_U8) val;
@@ -3262,6 +3281,7 @@ VOS_STATUS hdd_execute_config_command(hdd_context_t *pHddCtx, char *command)
    unsigned int idx;
    unsigned int i;
    VOS_STATUS vstatus;
+   int rv;
 
    // assume failure until proven otherwise
    vstatus = VOS_STATUS_E_FAILURE;
@@ -3354,7 +3374,9 @@ VOS_STATUS hdd_execute_config_command(hdd_context_t *pHddCtx, char *command)
    switch (pRegEntry->RegType)
    {
    case WLAN_PARAM_Integer:
-      value = simple_strtoul(value_str, NULL, 10);
+      rv = kstrtoul(value_str, 10, &value);
+      if (rv < 0)
+          goto done;
       if (value < pRegEntry->VarMin)
       {
          // out of range
@@ -3373,7 +3395,9 @@ VOS_STATUS hdd_execute_config_command(hdd_context_t *pHddCtx, char *command)
       break;
 
    case WLAN_PARAM_HexInteger:
-      value = simple_strtoul(value_str, NULL, 16);
+      rv = kstrtoul(value_str, 16, &value);
+      if (rv < 0)
+         goto done;
       if (value < pRegEntry->VarMin)
       {
          // out of range
@@ -3392,7 +3416,9 @@ VOS_STATUS hdd_execute_config_command(hdd_context_t *pHddCtx, char *command)
       break;
 
    case WLAN_PARAM_SignedInteger:
-      svalue = simple_strtol(value_str, NULL, 10);
+      rv = kstrtol(value_str, 10, &svalue);
+      if (rv < 0)
+         goto done;
       if (svalue < (v_S31_t)pRegEntry->VarMin)
       {
          // out of range

@@ -142,7 +142,7 @@ int sapSetPreferredChannel(struct net_device *dev, tANI_U8* ptr)
         sapCleanupChannelList();
     }
 
-    param = strchr(ptr, ' '); 
+    param = strnchr(ptr, strlen(ptr), ' ');
     /*no argument after the command*/
     if (NULL == param)  
     {

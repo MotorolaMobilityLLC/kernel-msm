@@ -815,7 +815,7 @@ int hdd_setP2pNoa( struct net_device *dev, tANI_U8 *command )
     int count, duration, start_time;
     char *param;
 
-    param = strchr(command, ' ');
+    param = strnchr(command, strlen(command), ' ');
     if (param == NULL)
         return -1;
     param++;
@@ -888,7 +888,7 @@ int hdd_setP2pOpps( struct net_device *dev, tANI_U8 *command )
     char *param;
     int legacy_ps, opp_ps, ctwindow;
 
-    param = strchr(command, ' ');
+    param = strnchr(command, strlen(command), ' ');
     if (param == NULL)
         return -1;
     param++;
