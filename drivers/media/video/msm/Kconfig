@@ -270,6 +270,13 @@ config S5K5B3G
 	  Samsung 2MP bayer 1080P Sensor. It is a fixed focus
           camera that supports one mipi lane.
 
+config OV8835
+	bool "Sensor OV8835 (BAYER 8MP)"
+	depends on MSM_CAMERA && (ARCH_MSM8X60 || ARCH_MSM8960)
+	default n
+	---help---
+	  Omnivision bayer 8MP Sensor with auto focus.
+
 config VB6801
 	bool "Sensor vb6801"
 	depends on MSM_CAMERA && !ARCH_MSM8X60 && !MSM_CAMERA_V4L2
