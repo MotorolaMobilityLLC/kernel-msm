@@ -1393,7 +1393,7 @@ static iw_softap_commit(struct net_device *dev,
     pHostapdState->bCommit = TRUE;
     if(pHostapdState->vosStatus)
     {
-        return -1;
+      return -EIO;
     }
     else
     {
@@ -1519,7 +1519,7 @@ int iw_softap_get_channel_list(struct net_device *dev,
     if(eHAL_STATUS_SUCCESS != sme_getSoftApDomain(hHal,(v_REGDOMAIN_t *) &domainIdCurrentSoftap))
     {
         hddLog(LOG1,FL("Failed to get Domain ID, %d \n"),domainIdCurrentSoftap);
-        return -1;
+        return -EIO;
     }
 
     if(REGDOMAIN_FCC == domainIdCurrentSoftap)

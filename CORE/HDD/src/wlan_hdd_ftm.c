@@ -1656,7 +1656,7 @@ int wlan_hdd_ftm_get_nv_table
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                 "Not valid driver context");
-      return -1;
+      return -EINVAL;
    }
 
    /* Test first chunk of NV table */
@@ -1668,7 +1668,7 @@ int wlan_hdd_ftm_get_nv_table
       {
          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                     "Fail to get cached NV value Status %d", nvStatus);
-         return -1;
+         return -EIO;
       }
 
       switch (nvTable->nvTable)
@@ -1726,7 +1726,7 @@ int wlan_hdd_ftm_get_nv_table
          default:
             VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                        "Not Valid NV Table %d", nvTable->nvTable);
-            return -1;
+            return -EIO;
             break;
       }
 
@@ -1739,7 +1739,7 @@ int wlan_hdd_ftm_get_nv_table
          pHddCtx->ftm.targetNVTableSize    = 0;
          pHddCtx->ftm.processedNVTableSize = 0;
          vos_mem_zero(pHddCtx->ftm.tempNVTableBuffer, MAX_NV_TABLE_SIZE);
-         return -1;
+         return -EINVAL;
       }
 
       /* Set Current Processing NV table type */
@@ -1762,7 +1762,7 @@ int wlan_hdd_ftm_get_nv_table
       pHddCtx->ftm.processedNVTableSize = 0;
       vos_mem_zero(pHddCtx->ftm.tempNVTableBuffer, MAX_NV_TABLE_SIZE);
  
-      return -1;
+      return -EINVAL;
    }
 
    /* Copy next chunk of NV table value into response buffer */
@@ -1811,7 +1811,7 @@ int wlan_hdd_ftm_set_nv_table
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                 "Not valid driver context");
-      return -1;
+      return -EINVAL;
    }
 
    /* Test first chunk of NV table */
@@ -1823,7 +1823,7 @@ int wlan_hdd_ftm_set_nv_table
       {
          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                     "Fail to get cached NV value Status %d", nvStatus);
-         return -1;
+         return -EINVAL;
       }
 
       switch (nvTable->nvTable)
@@ -1881,7 +1881,7 @@ int wlan_hdd_ftm_set_nv_table
          default:
             VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                        "Not Valid NV Table %d", nvTable->nvTable);
-            return -1;
+            return -EIO;
             break;
       }
 
@@ -1895,7 +1895,7 @@ int wlan_hdd_ftm_set_nv_table
          pHddCtx->ftm.targetNVTableSize    = 0;
          pHddCtx->ftm.processedNVTableSize = 0;
          vos_mem_zero(pHddCtx->ftm.tempNVTableBuffer, MAX_NV_TABLE_SIZE);
-         return -1;
+         return -EINVAL;
       }
    }
 
@@ -1908,7 +1908,7 @@ int wlan_hdd_ftm_set_nv_table
       pHddCtx->ftm.targetNVTableSize    = 0;
       pHddCtx->ftm.processedNVTableSize = 0;
       vos_mem_zero(pHddCtx->ftm.tempNVTableBuffer, MAX_NV_TABLE_SIZE);
-      return -1;
+      return -EINVAL;
    }
    vos_mem_copy(pHddCtx->ftm.tempNVTableBuffer + pHddCtx->ftm.processedNVTableSize,
                 &nvTable->tableData, 
@@ -1956,7 +1956,7 @@ int wlan_hdd_ftm_blank_nv_table
    {
       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                  "Fail to get cached NV value Status %d", nvStatus);
-      return -1;
+      return -EIO;
    }
 
    itemSize = sizeof(nvContents->tables.pwrOptimum);
@@ -2040,7 +2040,7 @@ int wlan_hdd_ftm_delete_nv_table
    {
       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                  "Fail to get cached NV value Status %d", nvStatus);
-      return -1;
+      return -EIO;
    }
 
    switch (nvTable->nvTable)
@@ -2118,7 +2118,7 @@ int wlan_hdd_ftm_delete_nv_table
       default:
          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                     "Not Valid NV Table %d", nvTable->nvTable);
-         return -1;
+         return -EIO;
          break;
    }
 
@@ -2153,7 +2153,7 @@ int wlan_hdd_ftm_get_nv_field
    {
       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                  "Fail to get cached NV value Status %d", nvStatus);
-      return -1;
+      return -EIO;
    }
    memcpy(&nvFieldDataBuffer, &nvContents->fields, sizeof(sNvFields));
 
@@ -2204,7 +2204,7 @@ int wlan_hdd_ftm_get_nv_field
       default:
          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                     "Not Valid NV field %d", nvField->nvField);
-         return -1;
+         return -EIO;
          break;
    }
 
@@ -2241,7 +2241,7 @@ int wlan_hdd_ftm_set_nv_field
    {
       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                  "Fail to get cached NV value Status %d", nvStatus);
-      return -1;
+      return -EIO;
    }
 
    switch (nvField->nvField)
@@ -2279,7 +2279,7 @@ int wlan_hdd_ftm_set_nv_field
             VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                        "Last Byte of the seed MAC is too large 0x%x",
                         nvField->fieldData.macAddr[VOS_MAC_ADDRESS_LEN - 1]);
-            return -1;
+            return -EILSEQ;
          }
 
          pNVMac = (v_U8_t *)nvContents->fields.macAddr;
@@ -2309,7 +2309,7 @@ int wlan_hdd_ftm_set_nv_field
       default:
          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                     "Not Valid NV field %d", nvField->nvField);
-         return -1;
+         return -EIO;
          break;
    }
 
@@ -2344,7 +2344,7 @@ int wlan_hdd_ftm_store_nv_table
    nvStatus = vos_nv_getNVBuffer((void **)&nvContents, &nvSize);
    if((VOS_STATUS_SUCCESS != nvStatus) || (NULL == nvContents))
    {
-      return -1;
+      return -EIO;
    }
 
    /* Set Platform type as PRIMA */
@@ -2421,7 +2421,7 @@ int wlan_hdd_ftm_store_nv_table
       default:
          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                     "Not Supported Table Type %d", nvTable->nvTable);
-         return -1;
+         return -EIO;
          break;
          
    }
@@ -2431,7 +2431,7 @@ int wlan_hdd_ftm_store_nv_table
                            tableSize);
    if(VOS_STATUS_SUCCESS != nvStatus)
    {
-      return -1;
+      return -EIO;
    }
 
    return 1;
@@ -2475,7 +2475,7 @@ int wlan_hdd_ftm_temp_get_rel_num
   \param  - ftmCmd - Pointer FTM Commad Buffer
 
   \return - int
-            -1, Process Host command fail, vail out
+            < 0, Process Host command fail, bail out
              0, Process Host command success, not need to send CMD to HAL
              1, Process Host command success, need to send CMD to HAL
 
@@ -2565,11 +2565,11 @@ int wlan_hdd_process_ftm_host_cmd
          break;
    }
 
-   if(-1 == hostState)
+   if( 0 > hostState)
    {
       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                  "Host Command Handle Fail, Bailout");
-      return -1;
+      return hostState;
    }
 
    return needToRouteHal;
@@ -2726,7 +2726,7 @@ void wlan_hdd_process_ftm_cmd
            vos_mem_free(tempRspBuffer);
            return;
         }
-        else if (-1 == hostState)
+        else if (0 > hostState)
         {
            hddLog(VOS_TRACE_LEVEL_ERROR, "*** Host Command Handle Fail ***");
            pHddCtx->ftm.pResponseBuf->ftm_err_code = WLAN_FTM_FAILURE;

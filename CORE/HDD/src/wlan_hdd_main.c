@@ -541,7 +541,7 @@ int hdd_mon_open (struct net_device *dev)
    if(pAdapter == NULL) {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
          "%s: HDD adapter context is Null", __func__);
-      return -1;
+      return -EINVAL;
    }
 
    netif_start_queue(dev);
@@ -3334,7 +3334,7 @@ void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx)
 
   \param  - dev - Pointer to the underlying device
 
-  \return -  0 for success -1 for failure
+  \return -  0 for success, < 0 for failure
 
   --------------------------------------------------------------------------*/
 
@@ -3368,7 +3368,7 @@ int hdd_wlan_startup(struct device *dev )
    if(wiphy == NULL)
    {
       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: cfg80211 init failed", __func__);
-      return -1;
+      return -EIO;
    }
 
    pHddCtx = wiphy_priv(wiphy);
@@ -3379,7 +3379,7 @@ int hdd_wlan_startup(struct device *dev )
    if(pHddCtx == NULL)
    {
       hddLog(VOS_TRACE_LEVEL_ERROR,"%s: cfg80211 init failed", __func__);
-      return -1;
+      return -ENOMEM;
    }
 
 #endif   
@@ -3987,7 +3987,7 @@ err_free_hdd_context:
    }
    hdd_set_ssr_required (VOS_FALSE);
 
-   return -1;
+   return -EIO;
 
 success:
    EXIT();
@@ -4032,7 +4032,7 @@ static int hdd_driver_init( void)
    {
       hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Libra WLAN not Powered Up. "
           "exiting", __func__);
-      return -1;
+      return -EIO;
    }
 
 #ifdef ANI_BUS_TYPE_SDIO
@@ -4075,7 +4075,7 @@ static int hdd_driver_init( void)
       {
          hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Retry Libra WLAN not Powered Up. "
              "exiting", __func__);
-         return -1;
+         return -EIO;
       }
 
       do {

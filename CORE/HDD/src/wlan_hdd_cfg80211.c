@@ -4781,7 +4781,7 @@ static int wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
     {
         hddLog(VOS_TRACE_LEVEL_ERROR, 
                 "%s: No connection when AMP is on", __func__);
-        return -1;
+        return -ECONNREFUSED;
     }
 #endif
     /*initialise security parameters*/

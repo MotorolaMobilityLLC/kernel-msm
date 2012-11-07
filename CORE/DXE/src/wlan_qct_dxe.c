@@ -2025,7 +2025,7 @@ static wpt_status dxeRXFrameRefillRing
       WLANDXE_ChannelCBType   *channelEntry
                                Channel specific control block
   @  Return
-      -1 Any error happen
+      < 0 Any error happen
       0  No frame pulled from RX RING
       int number of RX frames pulled from RX ring
 
@@ -2040,6 +2040,7 @@ static wpt_int32 dxeRXFrameRouteUpperLayer
    WLANDXE_DescCtrlBlkType  *currentCtrlBlk = NULL;
    WLANDXE_DescType         *currentDesc    = NULL;
    wpt_uint32                descCtrl, frameCount = 0, i;
+   wpt_int32                 ret_val = -1;
 
    currentCtrlBlk = channelEntry->headCtrlBlk;
    currentDesc    = currentCtrlBlk->linkedDesc;
@@ -2067,14 +2068,14 @@ static wpt_int32 dxeRXFrameRouteUpperLayer
       {
          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                   "dxeRXFrameReady Prepare RX Frame fail");
-         return -1;
+         return ret_val;
       }
       status = wpalFreeRxFrame(currentCtrlBlk->shadowBufferVa);
       if(eWLAN_PAL_STATUS_SUCCESS != status)
       {
          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                   "dxeRXFrameReady Free Shadow RX Frame fail");
-         return -1;
+         return ret_val;
       }
 
 #else /* FEATURE_R33D */
@@ -2083,7 +2084,7 @@ static wpt_int32 dxeRXFrameRouteUpperLayer
       {
          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                   "dxeRXFrameReady unable to unlock packet");
-         return -1;
+         return ret_val;
       }
 #endif /* FEATURE_R33D */
       /* This Descriptor is valid, so linked Control block is also valid

@@ -90,14 +90,14 @@ int ptt_sock_send_msg_to_app(tAniHdr *wmsg, int radio, int src_mod, int pid)
    if (radio < 0 || radio > ANI_MAX_RADIOS) {
       PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: invalid radio id [%d]\n",
          __func__, radio);
-      return -1;
+      return -EINVAL;
    }
    payload_len = wmsg_length + 4;  // 4 extra bytes for the radio idx
    tot_msg_len = NLMSG_SPACE(payload_len);
    if ((skb = dev_alloc_skb(tot_msg_len)) == NULL) {
       PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: dev_alloc_skb() failed for msg size[%d]\n",
          __func__, tot_msg_len);
-      return -1;
+      return -ENOMEM;
    }
    nlh = NLMSG_PUT(skb, pid, nlmsg_seq++, src_mod, payload_len);
    nlh->nlmsg_flags = NLM_F_REQUEST;

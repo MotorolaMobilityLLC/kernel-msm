@@ -193,6 +193,7 @@ void WDI_DS_MemPoolDestroy(WDI_DS_BdMemPoolType *memPool)
 WPT_STATIC WPT_INLINE int find_leading_zero_and_setbit(wpt_uint32 *bitmap, wpt_uint32 maxNumPool)
 {
   wpt_uint32 i,j, word;
+  int ret_val = -1;
 
   for(i=0; i < (maxNumPool/32 + 1); i++){
     j = 0;
@@ -205,7 +206,7 @@ WPT_STATIC WPT_INLINE int find_leading_zero_and_setbit(wpt_uint32 *bitmap, wpt_u
       word >>= 1;
     }
   }
-  return -1;
+  return ret_val;
 }
 
 void *WDI_DS_MemPoolAlloc(WDI_DS_BdMemPoolType *memPool, void **pPhysAddress,
@@ -232,7 +233,7 @@ void *WDI_DS_MemPoolAlloc(WDI_DS_BdMemPoolType *memPool, void **pPhysAddress,
   }
   //Find the leading 0 in the allocation bitmap
 
-  if((index = find_leading_zero_and_setbit(memPool->AllocationBitmap, maxNumPool)) == -1)
+  if((index = find_leading_zero_and_setbit(memPool->AllocationBitmap, maxNumPool)) == -EPERM)
   {
      //DbgBreakPoint();
      DTI_TRACE(  DTI_TRACE_LEVEL_INFO, "WDI_DS_MemPoolAlloc: index:%d(NULL), numChunks:%d",

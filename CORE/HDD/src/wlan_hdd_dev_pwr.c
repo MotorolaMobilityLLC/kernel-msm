@@ -112,7 +112,7 @@ static int wlan_suspend(hdd_context_t* pHddCtx)
    {
        /* Fail this suspend */
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "%s: Fail wlan suspend: not in IMPS/BMPS", __func__);
-       return -1;
+       return -EPERM;
    }
 
    /*
@@ -135,7 +135,7 @@ static int wlan_suspend(hdd_context_t* pHddCtx)
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s: Not able to suspend TX thread timeout happened", __func__);
       clear_bit(TX_SUSPEND_EVENT_MASK, &vosSchedContext->txEventFlag);
 
-      return -1;
+      return -ETIME;
    }
    /* Set the Tx Thread as Suspended */
    pHddCtx->isTxThreadSuspended = TRUE;
@@ -162,7 +162,7 @@ static int wlan_suspend(hdd_context_t* pHddCtx)
        /* Set the Tx Thread as Resumed */
        pHddCtx->isTxThreadSuspended = FALSE;
 
-       return -1;
+       return -ETIME;
    }
 
    /* Set the Rx Thread as Suspended */
@@ -196,7 +196,7 @@ static int wlan_suspend(hdd_context_t* pHddCtx)
        /* Set the Tx Thread as Resumed */
        pHddCtx->isTxThreadSuspended = FALSE;
 
-       return -1;
+       return -ETIME;
    }
 
    /* Set the Mc Thread as Suspended */

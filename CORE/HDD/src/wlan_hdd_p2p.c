@@ -817,7 +817,7 @@ int hdd_setP2pNoa( struct net_device *dev, tANI_U8 *command )
 
     param = strnchr(command, strlen(command), ' ');
     if (param == NULL)
-        return -1;
+      return -EINVAL;
     param++;
     sscanf(param, "%d %d %d", &count, &start_time, &duration);
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
@@ -890,7 +890,7 @@ int hdd_setP2pOpps( struct net_device *dev, tANI_U8 *command )
 
     param = strnchr(command, strlen(command), ' ');
     if (param == NULL)
-        return -1;
+        return -EINVAL;
     param++;
     sscanf(param, "%d %d %d", &legacy_ps, &opp_ps, &ctwindow);
     VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,

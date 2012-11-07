@@ -1824,7 +1824,7 @@ err_pwr_fail:
    vos_mem_exit();
 #endif
 
-   return -1;
+   return -EPERM;
 
 success:
    //Trigger replay of BTC events
@@ -2326,7 +2326,7 @@ err_vosclose:
 err_re_init:
    /* Allow the phone to go to sleep */
    hdd_allow_suspend();
-   return -1;
+   return -EPERM;
 
 success:
    /* Trigger replay of BTC events */
