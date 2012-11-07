@@ -500,6 +500,9 @@ struct gpio_regulator_platform_data msm_gpio_regulator_pdata[] __devinitdata = {
 		PM8921_GPIO_PM_TO_SYS(42), "8921_usb_otg"),
 };
 
+int msm_gpio_regulator_pdata_len __devinitdata =
+		ARRAY_SIZE(msm_gpio_regulator_pdata);
+
 /* SAW regulator constraints */
 struct regulator_init_data msm_saw_regulator_pdata_s5 =
 	/*	      ID  vreg_name	       min_uV   max_uV */
@@ -528,7 +531,10 @@ msm_pm8921_regulator_pdata[] __devinitdata = {
 	PM8XXX_VS300(HDMI_MVS, "8921_hdmi_mvs", 0, 1, 0,   "ext_5v", 6),
 };
 
-static struct rpm_regulator_init_data
+int msm_pm8921_regulator_pdata_len __devinitdata =
+	ARRAY_SIZE(msm_pm8921_regulator_pdata);
+
+struct rpm_regulator_init_data
 msm_rpm_regulator_init_data[] __devinitdata = {
 	/*	ID a_on pd ss min_uV   max_uV  supply sys_uA  freq  fm  ss_fm */
 	RPM_SMPS(S1, 1, 1, 0, 1225000, 1225000, NULL, 100000, 3p20, NONE, NONE),
@@ -575,8 +581,8 @@ msm_rpm_regulator_init_data[] __devinitdata = {
 	RPM_NCP(NCP,	 0,    0, 1800000, 1800000, "8921_l6",    1p60),
 };
 
-int msm_pm8921_regulator_pdata_len __devinitdata =
-	ARRAY_SIZE(msm_pm8921_regulator_pdata);
+int msm_rpm_regulator_init_data_len __devinitdata =
+	ARRAY_SIZE(msm_rpm_regulator_init_data);
 
 #define RPM_REG_MAP(_id, _sleep_also, _voter, _supply, _dev_name) \
 	{ \
