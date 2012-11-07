@@ -72,10 +72,6 @@
 /* sleep state mask */
 #define TPA6165_SLEEP_ENABLE  0x40
 
-#define TPA6165_JACK_MASK (SND_JACK_HEADSET | \
-					SND_JACK_UNSUPPORTED | \
-					SND_JACK_BTN_0)
-
 /* Accesory Types Masks */
 
 /* Nothing Inserted */
