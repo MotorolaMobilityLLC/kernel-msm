@@ -1494,6 +1494,13 @@ static wpt_status dxeChannelStop
       return eWLAN_PAL_STATUS_E_INVAL; 
    }
 
+   if ( (channelEntry->extraConfig.chEnabled != eWLAN_PAL_TRUE) ||
+        (channelEntry->extraConfig.chConfigured != eWLAN_PAL_TRUE))
+   {
+      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "dxeChannelStop channels are not enabled ");
+      return status;
+   }
    /* Maskout interrupt */
    status = wpalReadRegister(WLANDXE_INT_MASK_REG_ADDRESS,
                                   &intMaskVal);

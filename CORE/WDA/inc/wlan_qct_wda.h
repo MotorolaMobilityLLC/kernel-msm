@@ -422,6 +422,7 @@ typedef struct
    v_U32_t              VosPacketToFree;
    v_BOOL_t             needShutdown;
    v_BOOL_t             wdiFailed;
+   v_BOOL_t             wdaTimersCreated;
 } tWDA_CbContext ; 
 
 typedef struct

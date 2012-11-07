@@ -3979,6 +3979,14 @@ err_free_hdd_context:
 #endif
    VOS_BUG(1);
 
+   if (hdd_is_ssr_required())
+   {
+       /* WDI timeout had happened during load, so SSR is needed here */
+       subsystem_restart("wcnss");
+       msleep(5000);
+   }
+   hdd_set_ssr_required (VOS_FALSE);
+
    return -1;
 
 success:

@@ -920,23 +920,34 @@ err_mac_stop:
 #ifdef FEATURE_WLAN_INTEGRATED_SOC
 err_wda_stop:   
   vos_event_reset( &(gpVosContext->wdaCompleteEvent) );
-  WDA_stop( pVosContext, HAL_STOP_TYPE_RF_KILL);
-  vStatus = vos_wait_single_event( &(gpVosContext->wdaCompleteEvent),
-                                   VOS_WDA_TIMEOUT );
-  if( vStatus != VOS_STATUS_SUCCESS )
+  vStatus = WDA_stop( pVosContext, HAL_STOP_TYPE_RF_KILL);
+  if (!VOS_IS_STATUS_SUCCESS(vStatus))
   {
-     if( vStatus == VOS_STATUS_E_TIMEOUT )
-     {
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-         "%s: Timeout occurred before WDA_stop complete", __func__);
+     VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+         "%s: Failed to stop WDA", __func__);
+     VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vStatus ) );
+     WDA_stopFailed(vosContext);
+  }
+  else
+  {
+    vStatus = vos_wait_single_event( &(gpVosContext->wdaCompleteEvent),
+                                     VOS_WDA_TIMEOUT );
+    if( vStatus != VOS_STATUS_SUCCESS )
+    {
+       if( vStatus == VOS_STATUS_E_TIMEOUT )
+       {
+          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+           "%s: Timeout occurred before WDA_stop complete", __func__);
 
-     }
-     else
-     {
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-         "%s: WDA_stop reporting other error", __func__);
-     }
-     VOS_ASSERT( 0 );
+       }
+       else
+       {
+          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
+           "%s: WDA_stop reporting other error", __func__);
+       }
+       VOS_ASSERT( 0 );
+       WDA_stopFailed(vosContext);
+    }
   }
 #endif
 
@@ -966,24 +977,23 @@ VOS_STATUS vos_stop( v_CONTEXT_t vosContext )
   }
   else
   {
+    vosStatus = vos_wait_single_event( &(gpVosContext->wdaCompleteEvent),
+                                       VOS_WDA_STOP_TIMEOUT );
 
-  vosStatus = vos_wait_single_event( &(gpVosContext->wdaCompleteEvent),
-                                     VOS_WDA_STOP_TIMEOUT );
-   
-  if ( vosStatus != VOS_STATUS_SUCCESS )
-  {
-     if ( vosStatus == VOS_STATUS_E_TIMEOUT )
-     {
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: Timeout occurred before WDA complete", __func__);
-     }
-     else
-     {
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: WDA_stop reporting other error", __func__ );
-     }
-     WDA_stopFailed(vosContext);
-     }
+    if ( vosStatus != VOS_STATUS_SUCCESS )
+    {
+       if ( vosStatus == VOS_STATUS_E_TIMEOUT )
+       {
+          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+           "%s: Timeout occurred before WDA complete", __func__);
+       }
+       else
+       {
+          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+           "%s: WDA_stop reporting other error", __func__ );
+       }
+       WDA_stopFailed(vosContext);
+    }
   }
 #endif
 
