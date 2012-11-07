@@ -2970,9 +2970,9 @@ void csrApplyChannelPowerCountryInfo( tpAniSirGlobal pMac, tCsrChannel *pChannel
              if( NV_CHANNEL_ENABLE ==  channelEnabledType)
              {
                 // Ignore the channel 165 for the country INDONESIA
-                if ( vos_mem_compare(countryCode, "ID", VOS_COUNTRY_CODE_LEN )
-                      && ( pChannelList->channelList[i] == 165 )
-                      && ( pMac->scan.fIgnore_chan165 == VOS_TRUE ))
+                if (( pChannelList->channelList[i] == 165 )
+                      && ( pMac->scan.fIgnore_chan165 == VOS_TRUE )
+                      && vos_mem_compare(countryCode, "ID", VOS_COUNTRY_CODE_LEN ))
                  {
                      continue;
                  }
