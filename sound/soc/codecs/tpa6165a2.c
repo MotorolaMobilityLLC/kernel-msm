@@ -417,19 +417,19 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 		tpa6165->hs_acc_type = tpa6165_get_hs_acc_type(tpa6165);
 		tpa6165->inserted = 1;
 		snd_soc_jack_report_no_dapm(tpa6165->hs_jack,
-				tpa6165->hs_acc_type, TPA6165_JACK_MASK);
+				tpa6165->hs_acc_type, tpa6165->hs_jack->jack->type);
 	} else if (!(tpa6165->dev_status_reg1 & TPA6165_JACK_DETECT_MASK) &&
 			tpa6165->inserted) {
 		/* removal detected */
 		tpa6165->inserted = 0;
 		snd_soc_jack_report_no_dapm(tpa6165->hs_jack, 0,
-					TPA6165_JACK_MASK);
+					tpa6165->hs_jack->jack->type);
 		/* check if button pressed when jack removed */
 		if (tpa6165->button_pressed) {
 			/* report button released */
 			tpa6165->button_pressed = 0;
 			snd_soc_jack_report_no_dapm(tpa6165->button_jack,
-						0, TPA6165_JACK_MASK);
+						0, tpa6165->button_jack->jack->type);
 		}
 		/* put the device to shutdown state */
 		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG1,
@@ -445,13 +445,13 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 				pr_debug("%s:report button press", __func__);
 				snd_soc_jack_report_no_dapm(tpa6165->button_jack,
 					SND_JACK_BTN_0,
-					TPA6165_JACK_MASK);
+					tpa6165->button_jack->jack->type);
 			} else {
 				/* report button release */
 				tpa6165->button_pressed = 0;
 				pr_debug("%s:report button release", __func__);
 				snd_soc_jack_report_no_dapm(tpa6165->button_jack,
-						0, TPA6165_JACK_MASK);
+						0, tpa6165->button_jack->jack->type);
 			}
 		} /* else nothing to report here */
 	} else if (!(tpa6165->dev_status_reg1 & TPA6165_JACK_DETECT_MASK) &&
@@ -463,7 +463,7 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 				tpa6165->hs_acc_type = SND_JACK_UNSUPPORTED;
 				snd_soc_jack_report_no_dapm(tpa6165->hs_jack,
 						tpa6165->hs_acc_type,
-						TPA6165_JACK_MASK);
+						tpa6165->hs_jack->jack->type);
 			}
 	}
 	mutex_unlock(&tpa6165->lock);
