@@ -44,6 +44,9 @@
 #include <linux/etherdevice.h>
 #include <net/ieee80211_radiotap.h>
 
+//Ms to Micro Sec
+#define MS_TO_MUS(x)   ((x)*1000);
+
 #ifdef WLAN_FEATURE_P2P_DEBUG
 #define MAX_P2P_ACTION_FRAME_TYPE 9
 const char *p2p_action_frame_type[]={"GO Negotiation Request",
@@ -809,18 +812,18 @@ int hdd_setP2pNoa( struct net_device *dev, tANI_U8 *command )
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
     VOS_STATUS status = VOS_STATUS_SUCCESS;
     tP2pPsConfig NoA;
-    int count, duration, interval;
+    int count, duration, start_time;
     char *param;
 
     param = strchr(command, ' ');
     if (param == NULL)
         return -1;
     param++;
-    sscanf(param, "%d %d %d", &count, &duration, &interval);
+    sscanf(param, "%d %d %d", &count, &start_time, &duration);
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                "%s: P2P_SET GO NoA: count=%d duration=%d interval=%d \n",
-                __func__, count, duration, interval);
-
+                __func__, count, start_time, duration);
+    duration = MS_TO_MUS(duration);
     /* PS Selection
      * Periodic NoA (2)
      * Single NOA   (4)
@@ -839,7 +842,7 @@ int hdd_setP2pNoa( struct net_device *dev, tANI_U8 *command )
         NoA.single_noa_duration = 0;
         NoA.psSelection = P2P_POWER_SAVE_TYPE_PERIODIC_NOA;
     }
-    NoA.interval = interval;
+    NoA.interval = MS_TO_MUS(100);
     NoA.count = count;
     NoA.sessionid = pAdapter->sessionId;
 
