@@ -381,15 +381,15 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
 
     /* RIC TODO */
     /*sme_GetRICIEs( pHddCtx->hHal, (u8 *)ricIe, 
-                   DOT11F_IE_FTINFO_MAX_LEN, &ric_ies_length ); 
+                  DOT11F_IE_FTINFO_MAX_LEN, &ric_ies_length );
     if (ric_ies_length == 0) 
     {
         hddLog(LOGW, "%s: RIC IEs is of length 0 not sending RIC Information for now", __func__); 
     }
     else
     {
-       ftEvent.ric_ies = ricIe;
-       ftEvent.ric_ies_len = ric_ies_length;
+        ftEvent.ric_ies = ricIe;
+        ftEvent.ric_ies_len = ric_ies_length;
     }*/
 
     ftEvent.ric_ies = ricIe;
@@ -397,7 +397,7 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
     hddLog(LOG1, "%s: RIC IEs is of length %d", __func__, (int)ric_ies_length); 
 
     sme_GetFTPreAuthResponse(pHddCtx->hHal, (u8 *)ftIe, 
-                             DOT11F_IE_FTINFO_MAX_LEN, &auth_resp_len);
+                DOT11F_IE_FTINFO_MAX_LEN, &auth_resp_len);
 
     if (auth_resp_len == 0) 
     {
@@ -413,9 +413,9 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
     hddLog(LOG1, "%s ftEvent.ies_len %d",__FUNCTION__, ftEvent.ies_len);
     hddLog(LOG1, "%s ftEvent.ric_ies_len  %d",__FUNCTION__, ftEvent.ric_ies_len );
     hddLog(LOG1, "%s ftEvent.target_ap %2x-%2x-%2x-%2x-%2x-%2x ", 
-           __FUNCTION__, ftEvent.target_ap[0], ftEvent.target_ap[1], 
-           ftEvent.target_ap[2], ftEvent.target_ap[3], ftEvent.target_ap[4], 
-           ftEvent.target_ap[5]);
+            __FUNCTION__, ftEvent.target_ap[0], ftEvent.target_ap[1],
+            ftEvent.target_ap[2], ftEvent.target_ap[3], ftEvent.target_ap[4],
+            ftEvent.target_ap[5]);
 
     (void)cfg80211_ft_event(dev, ftEvent);
 
@@ -432,7 +432,7 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
     // Sme needs to send the RIC IEs first 
     str_len = strlcpy(buff, "RIC=", IW_CUSTOM_MAX);
     sme_GetRICIEs( pHddCtx->hHal, (u8 *)&(buff[str_len]), 
-                   (IW_CUSTOM_MAX - str_len), &ric_ies_length ); 
+            (IW_CUSTOM_MAX - str_len), &ric_ies_length );
     if (ric_ies_length == 0) 
     {
         hddLog(LOGW, "%s: RIC IEs is of length 0 not sending RIC Information for now", __func__); 
@@ -447,7 +447,7 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
     vos_mem_zero(buff, IW_CUSTOM_MAX); 
     str_len = strlcpy(buff, "AUTH=", IW_CUSTOM_MAX);
     sme_GetFTPreAuthResponse(pHddCtx->hHal, (u8 *)&buff[str_len], 
-                             (IW_CUSTOM_MAX - str_len),  &auth_resp_len);
+                    (IW_CUSTOM_MAX - str_len),  &auth_resp_len);
 
     if (auth_resp_len == 0) 
     {
@@ -1043,7 +1043,7 @@ static void hdd_SendReAssocEvent(struct net_device *dev, hdd_adapter_t *pAdapter
 
     // Send the Assoc Resp, the supplicant needs this for initial Auth.
     if((len = (pCsrRoamInfo->nAssocRspLength - FT_ASSOC_RSP_IES_OFFSET)) > 0)
-	return;
+        return;
     rspRsnLength = len;
     memcpy(rspRsnIe, pFTAssocRsp, len);
     memset(rspRsnIe + len, 0, IW_GENERIC_IE_MAX - len);
@@ -1162,75 +1162,75 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
             }
 #ifdef WLAN_FEATURE_VOWIFI_11R
             if(pRoamInfo->u.pConnectedProfile->AuthType == eCSR_AUTH_TYPE_FT_RSN ||
-               pRoamInfo->u.pConnectedProfile->AuthType == eCSR_AUTH_TYPE_FT_RSN_PSK )
+                pRoamInfo->u.pConnectedProfile->AuthType == eCSR_AUTH_TYPE_FT_RSN_PSK )
             {
 
                 //Association Response
                 pFTAssocRsp = (u8 *)(pRoamInfo->pbFrames + pRoamInfo->nBeaconLength + 
-                                     pRoamInfo->nAssocReqLength);
+                                    pRoamInfo->nAssocReqLength);
                 if (pFTAssocRsp != NULL) 
                 {
-                   // pFTAssocRsp needs to point to the IEs
-                   pFTAssocRsp += FT_ASSOC_RSP_IES_OFFSET;
-                   hddLog(LOG1, "%s: AssocRsp is now at %02x%02x", __func__,
-                          (unsigned int)pFTAssocRsp[0],
-                          (unsigned int)pFTAssocRsp[1]);
-                   assocRsplen = pRoamInfo->nAssocRspLength - FT_ASSOC_RSP_IES_OFFSET;            
+                    // pFTAssocRsp needs to point to the IEs
+                    pFTAssocRsp += FT_ASSOC_RSP_IES_OFFSET;
+                    hddLog(LOG1, "%s: AssocRsp is now at %02x%02x", __func__,
+                                        (unsigned int)pFTAssocRsp[0],
+                                        (unsigned int)pFTAssocRsp[1]);
+                    assocRsplen = pRoamInfo->nAssocRspLength - FT_ASSOC_RSP_IES_OFFSET;
                 }
                 else
                 {
-                   hddLog(LOGE, "%s:AssocRsp is NULL", __func__); 
-                   assocRsplen = 0;
+                    hddLog(LOGE, "%s:AssocRsp is NULL", __func__);
+                    assocRsplen = 0;
                 }
-    
+
                 //Association Request
                 pFTAssocReq = (u8 *)(pRoamInfo->pbFrames + 
                                      pRoamInfo->nBeaconLength);
                 if (pFTAssocReq != NULL) 
                 {
-                   if(!ft_carrier_on)
-                   {
-                      // pFTAssocReq needs to point to the IEs
-                      pFTAssocReq += FT_ASSOC_REQ_IES_OFFSET;
-                      hddLog(LOG1, "%s: pFTAssocReq is now at %02x%02x", __func__,
-                             (unsigned int)pFTAssocReq[0],
-                             (unsigned int)pFTAssocReq[1]);
-                      assocReqlen = pRoamInfo->nAssocReqLength - FT_ASSOC_REQ_IES_OFFSET;
-                   }
-                   else
-                   {
-                      /* This should contain only the FTIEs */
-                      assocReqlen = pRoamInfo->nAssocReqLength;
-                   }
+                    if(!ft_carrier_on)
+                    {
+                         // pFTAssocReq needs to point to the IEs
+                        pFTAssocReq += FT_ASSOC_REQ_IES_OFFSET;
+                        hddLog(LOG1, "%s: pFTAssocReq is now at %02x%02x", __func__,
+                                              (unsigned int)pFTAssocReq[0],
+                                              (unsigned int)pFTAssocReq[1]);
+                        assocReqlen = pRoamInfo->nAssocReqLength - FT_ASSOC_REQ_IES_OFFSET;
+                    }
+                    else
+                    {
+                        /* This should contain only the FTIEs */
+                        assocReqlen = pRoamInfo->nAssocReqLength;
+                    }
                 }
                 else
                 {
-                   hddLog(LOGE, "%s:AssocReq is NULL", __func__); 
-                   assocReqlen = 0;
+                    hddLog(LOGE, "%s:AssocReq is NULL", __func__);
+                    assocReqlen = 0;
                 }
-    
+
                 if(ft_carrier_on)
                 {
-                   hddLog(LOG1, "%s ft_carrier_on is %d, sending roamed "
-                          "indication\n", __FUNCTION__, ft_carrier_on);
-                   chan = ieee80211_get_channel(pAdapter->wdev.wiphy, 
-                                                (int)pRoamInfo->pBssDesc->channelId);
-                   hddLog(LOG1, "assocReqlen %d assocRsplen %d\n", assocReqlen,
-                          assocRsplen);
-                   cfg80211_roamed(dev,chan, pRoamInfo->bssid,
-                                   pFTAssocReq, assocReqlen, pFTAssocRsp, assocRsplen, 
-                                   GFP_KERNEL); 
+                    hddLog(LOG1, "%s ft_carrier_on is %d, sending roamed "
+                                 "indication\n", __FUNCTION__, ft_carrier_on);
+                    chan = ieee80211_get_channel(pAdapter->wdev.wiphy,
+                                         (int)pRoamInfo->pBssDesc->channelId);
+                    hddLog(LOG1, "assocReqlen %d assocRsplen %d\n", assocReqlen,
+                                         assocRsplen);
+                    cfg80211_roamed(dev,chan, pRoamInfo->bssid,
+                                    pFTAssocReq, assocReqlen, pFTAssocRsp, assocRsplen,
+                                    GFP_KERNEL);
                 }
                 else
                 {
-                   hddLog(LOG1, "%s ft_carrier_on is %d, sending connect "
-                          "indication\n", __FUNCTION__, ft_carrier_on);
-                   cfg80211_connect_result(dev, pRoamInfo->bssid, 
-                                           pFTAssocReq, assocReqlen, 
-                                           pFTAssocRsp, assocRsplen,
-                                           WLAN_STATUS_SUCCESS, 
-                                           GFP_KERNEL);
-                   cfg80211_put_bss(bss);
+                    hddLog(LOG1, "%s ft_carrier_on is %d, sending connect "
+                                 "indication\n", __FUNCTION__, ft_carrier_on);
+                    cfg80211_connect_result(dev, pRoamInfo->bssid,
+                                            pFTAssocReq, assocReqlen,
+                                            pFTAssocRsp, assocRsplen,
+                                            WLAN_STATUS_SUCCESS,
+                                            GFP_KERNEL);
+                    cfg80211_put_bss(bss);
                 }
             }
             else
@@ -1241,26 +1241,26 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                         pAdapter->sessionId,
                         &reqRsnLength,
                         reqRsnIe);
-    
+
                 csrRoamGetWpaRsnRspIE(WLAN_HDD_GET_HAL_CTX(pAdapter),
                         pAdapter->sessionId,
                         &rspRsnLength,
                         rspRsnIe);
 #if  defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
                 if(ft_carrier_on)
-                        hdd_SendReAssocEvent(dev, pAdapter, pRoamInfo, reqRsnIe, reqRsnLength);
+                    hdd_SendReAssocEvent(dev, pAdapter, pRoamInfo, reqRsnIe, reqRsnLength);
                 else
 #endif /* FEATURE_WLAN_CCX */
-    
+
                 {
-                /* inform connect result to nl80211 */
-                cfg80211_connect_result(dev, pRoamInfo->bssid, 
-                        reqRsnIe, reqRsnLength, 
-                        rspRsnIe, rspRsnLength,
-                        WLAN_STATUS_SUCCESS, 
-                        GFP_KERNEL); 
-    
-                cfg80211_put_bss(bss);
+                    /* inform connect result to nl80211 */
+                    cfg80211_connect_result(dev, pRoamInfo->bssid,
+                            reqRsnIe, reqRsnLength,
+                            rspRsnIe, rspRsnLength,
+                            WLAN_STATUS_SUCCESS,
+                            GFP_KERNEL);
+
+                    cfg80211_put_bss(bss);
                 }
             }
 #endif
