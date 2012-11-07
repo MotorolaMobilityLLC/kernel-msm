@@ -63,10 +63,8 @@
 #define TABLA_MBHC_DEF_BUTTONS 8
 #define TABLA_MBHC_DEF_RLOADS 5
 
-#ifndef CONFIG_SND_SOC_TPA6165A2
 #define JACK_DETECT_GPIO 38
 #define JACK_DETECT_INT PM8921_GPIO_IRQ(PM8921_IRQ_BASE, JACK_DETECT_GPIO)
-#endif
 
 #define JACK_US_EURO_SEL_GPIO 35
 
@@ -849,6 +847,13 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct pm_gpio jack_gpio_cfg = {
+		.direction = PM_GPIO_DIR_IN,
+		.pull = PM_GPIO_PULL_UP_1P5,
+		.function = PM_GPIO_FUNC_NORMAL,
+		.vin_sel = 2,
+		.inv_int_pol = 0,
+	};
 
 	pr_debug("%s(), dev_name%s\n", __func__, dev_name(cpu_dai->dev));
 
@@ -875,30 +880,6 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	if (machine_is_msm8960_cdp())
 		mbhc_cfg.swap_gnd_mic = msm8960_swap_gnd_mic;
 
-#ifdef CONFIG_SND_SOC_TPA6165A2
-	err = snd_soc_jack_new(codec, "Headset Jack",TPA6165_JACK_MASK,	&hs_jack);
-	if (err) {
-		pr_err("failed to create new jack\n");
-		return err;
-	}
-
-	err = snd_soc_jack_new(codec, "Button Jack",TPA6165_JACK_MASK, &button_jack);
-	if (err) {
-		pr_err("failed to create new jack\n");
-		return err;
-	}
-
-	err = tpa6165_hs_detect(&hs_jack, &button_jack);
-
-#else
-	struct pm_gpio jack_gpio_cfg = {
-		.direction = PM_GPIO_DIR_IN,
-		.pull = PM_GPIO_PULL_UP_1P5,
-		.function = PM_GPIO_FUNC_NORMAL,
-		.vin_sel = 2,
-		.inv_int_pol = 0,
-	};
-
 	err = snd_soc_jack_new(codec, "Headset Jack",
 			       (SND_JACK_HEADSET | SND_JACK_LINEOUT |
 				SND_JACK_OC_HPHL | SND_JACK_OC_HPHR |
@@ -916,6 +897,14 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		return err;
 	}
 
+#ifdef CONFIG_SND_SOC_TPA6165A2
+	err = tpa6165_hs_detect(&hs_jack, &button_jack);
+	if(!err) {
+		pr_info("%s:tpa6165 hs det mechanism is used", __func__);
+		return err;
+	}
+#endif
+
 	if (hs_detect_use_gpio) {
 		mbhc_cfg.gpio = PM8921_GPIO_PM_TO_SYS(JACK_DETECT_GPIO);
 		mbhc_cfg.gpio_irq = JACK_DETECT_INT;
@@ -927,7 +916,7 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		err = pm8xxx_gpio_config(mbhc_cfg.gpio, &jack_gpio_cfg);
 		if (err) {
 			pr_err("%s: pm8xxx_gpio_config JACK_DETECT failed %d\n",
-			       __func__, err);
+				__func__, err);
 			return err;
 		}
 	}
@@ -935,7 +924,7 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	mbhc_cfg.read_fw_bin = hs_detect_use_firmware;
 
 	err = tabla_hs_detect(codec, &mbhc_cfg);
-#endif
+
 	return err;
 }
 
