@@ -304,7 +304,7 @@ static int ct406_write_enable(struct ct406_data *ct)
 			error = ct406_i2c_write(ct, reg_data, 1);
 			if (error < 0)
 				return error;
-			msleep(3);
+			usleep_range(3000, 3100);
 			ct->oscillator_enabled = 1;
 		}
 		if (ct->als_enabled)
@@ -833,7 +833,7 @@ static void ct406_measure_noise_floor(struct ct406_data *ct)
 				__func__, error);
 			break;
 		}
-		msleep(5);
+		usleep_range(7000, 7100);
 
 		reg_data[0] = (CT406_PDATA | CT406_COMMAND_AUTO_INCREMENT);
 		error = ct406_i2c_read(ct, reg_data, 2);
@@ -923,7 +923,7 @@ static int ct406_check_saturation(struct ct406_data *ct)
 		return error;
 	}
 
-	msleep(5);
+	usleep_range(7000, 7100);
 
 	/* read C0DATA */
 	reg_data[0] = (CT406_C0DATA | CT406_COMMAND_AUTO_INCREMENT);
@@ -1022,7 +1022,7 @@ static void ct406_start_ip(struct ct406_data *ct)
 			pr_err("%s: Error  %d\n", __func__, error);
 			return;
 		}
-		msleep(3);
+		usleep_range(3000, 3100);
 		ct->oscillator_enabled = 1;
 	}
 	reg_data[1] |= CT406_ENABLE_PEN | CT406_ENABLE_AEN | CT406_ENABLE_AIEN;
