@@ -615,7 +615,7 @@ DEFINE_SIMPLE_ATTRIBUTE(dbg_addr_fops, addr_get, addr_set, "0x%03llX\n");
 static int __devinit marimba_dbg_init(int adie_type)
 {
 	struct adie_dbg_device *dbgdev;
-	struct dentry *dent;
+	struct dentry *dent = NULL;
 	struct dentry *temp;
 
 	dbgdev = kzalloc(sizeof *dbgdev, GFP_KERNEL);
