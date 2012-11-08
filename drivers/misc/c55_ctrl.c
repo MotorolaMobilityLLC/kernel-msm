@@ -96,7 +96,7 @@ static int c55_ctrl_gpio_setup(struct c55_ctrl_data *cdata, struct device *dev)
 	return 0;
 }
 
-static int c55_ctrl_probe(struct platform_device *pdev)
+static int __devinit c55_ctrl_probe(struct platform_device *pdev)
 {
 	struct c55_ctrl_data *cdata;
 	struct c55_ctrl_platform_data *pdata;
@@ -133,7 +133,7 @@ err:
 	return ret;
 }
 
-static int c55_ctrl_remove(struct platform_device *pdev)
+static int __devexit c55_ctrl_remove(struct platform_device *pdev)
 {
 	struct c55_ctrl_data *cdata = platform_get_drvdata(pdev);
 
@@ -150,22 +150,22 @@ static int c55_ctrl_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver c55_ctrl_pdrv = {
+static struct platform_driver c55_ctrl_driver = {
 	.driver = {
 		.name = "c55_ctrl",
 	},
 	.probe = c55_ctrl_probe,
-	.remove = c55_ctrl_remove,
+	.remove = __devexit_p(c55_ctrl_remove),
 };
 
 static int __init c55_ctrl_init(void)
 {
-	return platform_driver_register(&c55_ctrl_pdrv);
+	return platform_driver_register(&c55_ctrl_driver);
 }
 
 static void __exit c55_ctrl_exit(void)
 {
-	platform_driver_unregister(&c55_ctrl_pdrv);
+	platform_driver_unregister(&c55_ctrl_driver);
 }
 
 module_init(c55_ctrl_init);
