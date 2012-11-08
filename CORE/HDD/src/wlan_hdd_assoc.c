@@ -1002,7 +1002,6 @@ static VOS_STATUS hdd_roamRegisterSTA( hdd_adapter_t *pAdapter,
    return( vosStatus );
 }
 
-#if  defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
 static void hdd_SendReAssocEvent(struct net_device *dev, hdd_adapter_t *pAdapter,
     tCsrRoamInfo *pCsrRoamInfo, v_U8_t *reqRsnIe, tANI_U32 reqRsnLength)
 {
@@ -1056,7 +1055,6 @@ static void hdd_SendReAssocEvent(struct net_device *dev, hdd_adapter_t *pAdapter
 done:
     kfree(rspRsnIe);
 }
-#endif /* FEATURE_WLAN_CCX */
 
 static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *pRoamInfo, 
                                                     tANI_U32 roamId, eRoamCmdStatus roamStatus,                                                
@@ -1066,6 +1064,10 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
     VOS_STATUS vosStatus;
+#ifdef CONFIG_CFG80211
+    v_U8_t reqRsnIe[DOT11F_IE_RSN_MAX_LEN];
+    tANI_U32 reqRsnLength = DOT11F_IE_RSN_MAX_LEN;
+#endif
 #if  defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR) || defined (WLAN_FEATURE_VOWIFI_11R)
     int ft_carrier_on = FALSE;
 #endif
@@ -1148,9 +1150,7 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
             unsigned int assocReqlen = 0;
             struct ieee80211_channel *chan;
 #endif
-            v_U8_t reqRsnIe[DOT11F_IE_RSN_MAX_LEN];
             v_U8_t rspRsnIe[DOT11F_IE_RSN_MAX_LEN];
-            tANI_U32 reqRsnLength = DOT11F_IE_RSN_MAX_LEN;
             tANI_U32 rspRsnLength = DOT11F_IE_RSN_MAX_LEN;
 
             /* add bss_id to cfg80211 data base */
@@ -1273,6 +1273,14 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
         }
         else
         {
+            /* wpa supplicant expecting WPA/RSN IE in connect result */
+            /*  in case of reassociation also need to indicate it to supplicant */
+            csrRoamGetWpaRsnReqIE(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                    pAdapter->sessionId,
+                    &reqRsnLength,
+                    reqRsnIe);
+
+            hdd_SendReAssocEvent(dev, pAdapter, pRoamInfo, reqRsnIe, reqRsnLength);
             //Reassoc successfully
             if( pRoamInfo->fAuthRequired )
             {
