@@ -5851,7 +5851,7 @@ WLANTL_STATxConn
     pTLCb->atlSTAClients[ucSTAId].ucCurrentAC     = WLANTL_AC_VO;
     pTLCb->atlSTAClients[ucSTAId].ucCurrentWeight = 0;
 
-    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,
               "WLAN TL: WLANTL_STATxConn no more packets in HDD for AC: %d AC Mask: %d", 
                ucAC, ucACMask);
 
@@ -6643,7 +6643,7 @@ WLANTL_STARxConn
     else /* Frame is an EAPOL frame or a WAI frame*/  
     {
 
-      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,
                  "WLAN TL:RX Frame  EAPOL EtherType %d - processing", usEtherType);
 
       if (( 0 == WDA_GET_RX_FT_DONE(aucBDHeader) ) &&
