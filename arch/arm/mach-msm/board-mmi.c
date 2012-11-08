@@ -17,12 +17,16 @@
 #include <asm/setup.h>
 
 #include <linux/bootmem.h>
-#include <linux/of_fdt.h>
 #include <linux/of.h>
+#include <linux/of_fdt.h>
+#include <linux/of_irq.h>
+#include <linux/of_platform.h>
 #include <linux/persistent_ram.h>
 #include <linux/platform_data/mmi-factory.h>
 
+#include <mach/gpio.h>
 #include <mach/gpiomux.h>
+#include <mach/mpm.h>
 #include <mach/restart.h>
 
 #include "board-8960.h"
@@ -282,6 +286,31 @@ static const char *mmi_dt_match[] __initdata = {
 	NULL
 };
 
+static const struct of_device_id mmi_msm8960_dt_gic_match[] __initconst = {
+	{ .compatible = "qcom,msm-qgic2", .data = gic_of_init },
+	{ .compatible = "qcom,msm-gpio", .data = msm_gpio_of_init_legacy, },
+	{ }
+};
+
+static void __init mmi_msm8960_init_irq(void)
+{
+	struct device_node *node;
+
+	node = of_find_matching_node(NULL, mmi_msm8960_dt_gic_match);
+	if (node) {
+		msm_mpm_irq_extn_init(&msm8960_mpm_dev_data);
+		of_irq_init(mmi_msm8960_dt_gic_match);
+		of_node_put(node);
+	} else
+		msm8960_init_irq();
+}
+
+static void __init mmi_msm8960_dt_init(void)
+{
+	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
+	msm8960_cdp_init();
+}
+
 MACHINE_START(VANQUISH, "Vanquish")
 	.map_io = msm8960_map_io,
 	.reserve = mmi_msm8960_reserve,
@@ -297,10 +326,10 @@ MACHINE_END
 MACHINE_START(MSM8960DT, "msm8960dt")
 	.map_io = msm8960_map_io,
 	.reserve = mmi_msm8960_reserve,
-	.init_irq = msm8960_init_irq,
+	.init_irq = mmi_msm8960_init_irq,
 	.handle_irq = gic_handle_irq,
 	.timer = &msm_timer,
-	.init_machine = msm8960_cdp_init,
+	.init_machine = mmi_msm8960_dt_init,
 	.init_early = mmi_msm8960_init_early,
 	.init_very_early = msm8960_early_memory,
 	.restart = msm_restart,
