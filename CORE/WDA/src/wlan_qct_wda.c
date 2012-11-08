@@ -5705,13 +5705,6 @@ VOS_STATUS WDA_ProcessTsmStatsReq(tWDA_CbContext *pWDA,
    tWDA_ReqParams *pWdaParams = NULL;
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "------> Entering: %s " ,__func__);
-   if((NULL != pWDA->wdaMsgParam) || (NULL != pWDA->wdaWdiApiMsgParam))
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-             "%s: wdaMsgParam or  wdaWdiApiMsgParam is not NULL", __func__);
-      VOS_ASSERT(0);
-      return VOS_STATUS_E_FAILURE;
-   }
    wdiTSMReqParam = (WDI_TSMStatsReqParamsType *)vos_mem_malloc(
                                  sizeof(WDI_TSMStatsReqParamsType));
    if(NULL == wdiTSMReqParam) 
@@ -5749,6 +5742,7 @@ VOS_STATUS WDA_ProcessTsmStatsReq(tWDA_CbContext *pWDA,
              "Failure in TSM STATS REQ Params WDI API, free all the memory " );
       vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
       vos_mem_free(pWdaParams) ;
+      WDA_SendMsg(pWDA, WDA_TSM_STATS_RSP, (void *)pTsmStats , 0) ;
    }
   return CONVERT_WDI2VOS_STATUS(status) ;
 } 
