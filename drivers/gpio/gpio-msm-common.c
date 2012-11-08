@@ -656,6 +656,32 @@ int __init msm_gpio_of_init(struct device_node *node,
 
 	return 0;
 }
+
+int __init msm_gpio_of_init_legacy(struct device_node *node,
+				   struct device_node *parent)
+{
+	msm_gpio.domain = irq_domain_add_legacy(node, NR_MSM_GPIOS,
+			(unsigned int)(MSM_GPIO_TO_INT(0)), 0,
+			&msm_gpio_irq_domain_ops, &msm_gpio);
+	if (!msm_gpio.domain) {
+		WARN(1, "Cannot allocate irq_domain\n");
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+#else
+int __init msm_gpio_of_init(struct device_node *node,
+			    struct device_node *parent)
+{
+	return 0;
+}
+
+int __init msm_gpio_of_init_legacy(struct device_node *node,
+				   struct device_node *parent)
+{
+	return 0;
+}
 #endif
 
 MODULE_AUTHOR("Gregory Bean <gbean@codeaurora.org>");
