@@ -250,3 +250,11 @@ struct platform_device mmi_factory_device = {
 		.platform_data = &mmi_factory_pdata,
 	},
 };
+
+struct platform_device mmi_device_ext_5v_vreg __devinitdata = {
+	.name	= GPIO_REGULATOR_DEV_NAME,
+	.id	= PM8921_MPP_PM_TO_SYS(7),
+	.dev	= {
+		.platform_data = &msm_gpio_regulator_pdata[GPIO_VREG_ID_EXT_5V],
+	},
+};
