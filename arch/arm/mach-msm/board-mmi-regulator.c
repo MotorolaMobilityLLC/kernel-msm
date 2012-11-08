@@ -21,6 +21,7 @@
 #include <mach/devtree_util.h>
 #include "board-8960.h"
 #include "board-mmi.h"
+#include "devices-mmi.h"
 
 #define QUALCOMM_GPIO_REGULATOR    0x001e0017
 #define QUALCOMM_SAW_REGULATOR     0x001e0018
@@ -199,6 +200,8 @@ void __init mmi_regulator_init(struct msm8960_oem_init_ptrs *self)
 	struct device_node *reg_parent_node;
 	struct device_node *reg_chip_node;
 	u32 device_id;
+
+	platform_device_register(&mmi_device_ext_5v_vreg);
 
 	reg_parent_node = of_find_node_by_path("/System@0/Regulators@0");
 	if (!reg_parent_node)
