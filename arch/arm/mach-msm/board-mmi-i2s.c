@@ -26,15 +26,19 @@
 static struct gpio mmi_mi2s_gpios[] = {
 	{
 		.label = "gpio_ws",
+		.gpio = -1,
 	},
 	{
 		.label = "gpio_sck",
+		.gpio = -1,
 	},
 	{
 		.label = "gpio_din",
+		.gpio = -1,
 	},
 	{
 		.label = "gpio_dout",
+		.gpio = -1,
 	},
 };
 
@@ -62,7 +66,7 @@ void __init mmi_i2s_dai_init(void)
 
 	node = of_find_node_by_path(DT_PATH_I2S);
 	if (!node)
-		return;
+		goto exit;
 
 	prop = of_get_property(node, DT_PROP_I2S_TYPE, &len);
 	if (prop && (len == sizeof(int)))
@@ -85,8 +89,9 @@ void __init mmi_i2s_dai_init(void)
 		}
 	}
 
-	platform_device_register(&mmi_msmcpudai_mi2s_rx);
-
 exit:
 	of_node_put(node);
+	/* Always register the device and let driver do the
+		platform data validation */
+	platform_device_register(&mmi_msmcpudai_mi2s_rx);
 }
