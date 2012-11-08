@@ -4822,7 +4822,9 @@ VOS_STATUS wlan_hdd_restart_driver(hdd_context_t *pHddCtx)
 #ifdef MODULE
    status = wlan_hdd_framework_restart(pHddCtx);
 #else
+#ifdef HAVE_WCNSS_RESET_INTR
    wcnss_reset_intr();
+#endif
 #endif
  
    return status;
