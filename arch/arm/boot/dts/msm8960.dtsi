@@ -1,0 +1,36 @@
+/* Copyright (c) 2012, Motorola Mobility LLC. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/ {
+	model = "Qualcomm MSM 8960";
+	compatible = "qcom,msm8960";
+	interrupt-parent = <&intc>;
+
+	intc: interrupt-controller@2000000 {
+		compatible = "qcom,msm-qgic2";
+		interrupt-controller;
+		#interrupt-cells = <3>;
+		reg = <0x02000000 0x1000>,
+		      <0x02002000 0x1000>;
+	};
+
+	msmgpio: gpio@801000 {
+		compatible = "qcom,msm-gpio";
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+		reg = <0x801000 0x4000>;
+	};
+
+};
