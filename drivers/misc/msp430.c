@@ -709,7 +709,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
 		msp430_as_data_buffer_write(ps_msp430, DT_PRESSURE, x, y, 0, 0);
 
-		KDEBUG("MSP430 Sending pressure %d\n", x << 16 | y);
+		KDEBUG("MSP430 Sending pressure %d\n", (x << 16) | (y & 0xFFFF));
 	}
 	if (irq2_status & M_MMOVEME) {
 		/* Client recieving action will be upper 2 MSB of status */
