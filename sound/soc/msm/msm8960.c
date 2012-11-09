@@ -68,6 +68,11 @@
 
 #define JACK_US_EURO_SEL_GPIO 35
 
+/* DAI Device tree node */
+#define DT_DAI_NODE_NAME		"DAIDevice"
+#define DT_DAI_PROP_NAME		"dai_name"
+#define DT_TYPE_DAI			0x00000022
+
 static u32 top_spk_pamp_gpio  = PM8921_GPIO_PM_TO_SYS(18);
 static u32 bottom_spk_pamp_gpio = PM8921_GPIO_PM_TO_SYS(19);
 static int msm8960_spk_control;
@@ -899,7 +904,7 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 #ifdef CONFIG_SND_SOC_TPA6165A2
 	err = tpa6165_hs_detect(&hs_jack, &button_jack);
-	if(!err) {
+	if (!err) {
 		pr_info("%s:tpa6165 hs det mechanism is used", __func__);
 		return err;
 	}
@@ -1551,21 +1556,6 @@ static struct snd_soc_dai_link msm8960_dai_common[] = {
 		.be_hw_params_fixup = msm8960_hdmi_be_hw_params_fixup,
 		.ignore_pmdown_time = 1, /* this dainlink has playback support */
 	},
-#ifdef CONFIG_SND_SOC_TLV320AIC3253
-	/* MI2S I2S RX BACK END DAI Link */
-	{
-		.name = LPASS_BE_MI2S_RX,
-		.stream_name = "MI2S Playback",
-		.cpu_dai_name = "msm-dai-q6-mi2s",
-		.platform_name = "msm-pcm-routing",
-		.codec_name     = "tlv320aic3253.10-0018",
-		.codec_dai_name = "tlv320aic3253_codec",
-		.no_pcm = 1,
-		.be_id = MSM_BACKEND_DAI_MI2S_RX,
-		.be_hw_params_fixup = msm8960_be_hw_params_fixup,
-		.ops = &msm_mi2s_rx_be_ops,
-	},
-#endif
 	/* Backend AFE DAI Links */
 	{
 		.name = LPASS_BE_AFE_PCM_RX,
@@ -1764,6 +1754,25 @@ static struct snd_soc_dai_link msm8960_dai_delta_tabla2x[] = {
 	},
 };
 
+/* Add new MMI DAI links to this structure */
+static struct snd_soc_dai_link mmi_dai_links[] = {
+#ifdef CONFIG_SND_SOC_TLV320AIC3253
+	/* MI2S I2S RX BACK END DAI Link */
+	{
+		.name = LPASS_BE_MI2S_RX,
+		.stream_name = "MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "tlv320aic3253.10-0018",
+		.codec_dai_name = "tlv320aic3253_codec",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_MI2S_RX,
+		.be_hw_params_fixup = msm8960_be_hw_params_fixup,
+		.ops = &msm_mi2s_rx_be_ops,
+	},
+#endif
+};
+
 static struct snd_soc_dai_link msm8960_tabla1x_dai[
 					 ARRAY_SIZE(msm8960_dai_common) +
 					 ARRAY_SIZE(msm8960_dai_delta_tabla1x)];
@@ -1771,7 +1780,8 @@ static struct snd_soc_dai_link msm8960_tabla1x_dai[
 
 static struct snd_soc_dai_link msm8960_dai[
 					 ARRAY_SIZE(msm8960_dai_common) +
-					 ARRAY_SIZE(msm8960_dai_delta_tabla2x)];
+					ARRAY_SIZE(msm8960_dai_delta_tabla2x) +
+					ARRAY_SIZE(mmi_dai_links)];
 
 static struct snd_soc_card snd_soc_tabla1x_card_msm8960 = {
 		.name		= "msm8960-tabla1x-snd-card",
@@ -1850,6 +1860,42 @@ static void msm8960_free_headset_mic_gpios(void)
 	}
 }
 
+static int add_mmi_dai_links(struct snd_soc_dai_link *platform_dai_link)
+{
+	struct device_node *node;
+	const void *prop;
+	int len;
+	int type = 0;
+	int i;
+	int cnt = 0;
+
+	/* Read DAI name from device tree */
+	for_each_node_by_name(node, DT_DAI_NODE_NAME) {
+		prop = of_get_property(node, "type", &len);
+		if (prop && (len == sizeof(int)))
+			type = *((int *)prop);
+
+		if (type != DT_TYPE_DAI)
+			continue;
+		prop = of_get_property(node, DT_DAI_PROP_NAME, &len);
+		/* verify if the DAI is present in MMI DAI Link Array */
+		for (i = 0; i < ARRAY_SIZE(mmi_dai_links); i++) {
+			if (!strcmp(mmi_dai_links[i].codec_dai_name,
+					(const char *)prop)) {
+				pr_debug("Add MMI DAI link to snd card %s",
+					mmi_dai_links[i].codec_dai_name);
+				/* Add DAI link */
+				memcpy(platform_dai_link + cnt,
+					&mmi_dai_links[i],
+					sizeof(struct snd_soc_dai_link));
+				cnt++;
+			}
+		}
+	}
+
+	return cnt;
+}
+
 static int __init msm8960_audio_init(void)
 {
 	int ret;
@@ -1872,9 +1918,18 @@ static int __init msm8960_audio_init(void)
 		return -ENOMEM;
 	}
 
+	snd_soc_card_msm8960.num_links = 0;
+
 	memcpy(msm8960_dai, msm8960_dai_common, sizeof(msm8960_dai_common));
+	snd_soc_card_msm8960.num_links += ARRAY_SIZE(msm8960_dai_common);
+
 	memcpy(msm8960_dai + ARRAY_SIZE(msm8960_dai_common),
 		msm8960_dai_delta_tabla2x, sizeof(msm8960_dai_delta_tabla2x));
+	snd_soc_card_msm8960.num_links += ARRAY_SIZE(msm8960_dai_delta_tabla2x);
+
+	/* Add MMI DAI Links */
+	snd_soc_card_msm8960.num_links += add_mmi_dai_links(msm8960_dai +
+						snd_soc_card_msm8960.num_links);
 
 	platform_set_drvdata(msm8960_snd_device, &snd_soc_card_msm8960);
 	ret = platform_device_add(msm8960_snd_device);
@@ -1920,7 +1975,7 @@ static int __init msm8960_audio_init(void)
 
 	mutex_init(&cdc_mclk_mutex);
 	atomic_set(&auxpcm_rsc_ref, 0);
-#ifdef CONFIG_SND_SOC_TLV320AIC32
+#ifdef CONFIG_SND_SOC_TLV320AIC3253
 	atomic_set(&mi2s_rsc_ref, 0);
 #endif
 	return ret;
