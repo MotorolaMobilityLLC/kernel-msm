@@ -3731,11 +3731,21 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
 
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d\n",
                                    __func__,pAdapter->device_mode);
+
+    if( (WLAN_HDD_INFRA_STATION == pAdapter->device_mode) &&
+        (eConnectionState_Connecting ==
+           (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState) )
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+                "%s: Connection in progress: Scan request denied (EBUSY)", __func__);
+        return -EBUSY;
+    }
+
 #ifdef WLAN_BTAMP_FEATURE
     //Scan not supported when AMP traffic is on.
-    if( VOS_TRUE == WLANBAP_AmpSessionOn() ) 
+    if( VOS_TRUE == WLANBAP_AmpSessionOn() )
     {
-        hddLog(VOS_TRACE_LEVEL_ERROR, 
+        hddLog(VOS_TRACE_LEVEL_ERROR,
                 "%s: No scanning when AMP is on", __func__);
         return -EOPNOTSUPP;
     }
@@ -4200,7 +4210,14 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
         hddLog(VOS_TRACE_LEVEL_ERROR, "%s: No valid Roam profile", __func__);
         return -EINVAL;
     }
-    EXIT(); 
+
+    if( WLAN_HDD_INFRA_STATION == pAdapter->device_mode )
+    {
+        (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState =
+                                 eConnectionState_Connecting;
+    }
+
+    EXIT();
     return status;
 }
 

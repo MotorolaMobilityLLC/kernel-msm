@@ -31,6 +31,10 @@ typedef enum
 {
    /** Not associated in Infra or participating in an IBSS / Ad-hoc network.*/
    eConnectionState_NotConnected,
+
+   /** While connection in progress */
+   eConnectionState_Connecting,
+
    /** Associated in an Infrastructure network.*/
    eConnectionState_Associated,
 
