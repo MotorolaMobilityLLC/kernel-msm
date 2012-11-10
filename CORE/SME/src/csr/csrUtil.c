@@ -6309,7 +6309,10 @@ tANI_BOOLEAN csrIsChannelPresentInList(
     int i = 0;
 
     // Check for NULL pointer
-    if (!pChannelList) return FALSE;
+    if (!pChannelList || (numChannels == 0))
+    {
+       return FALSE;
+    }
 
     // Look for the channel in the list
     for (i = 0; i < numChannels; i++)

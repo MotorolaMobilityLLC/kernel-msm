@@ -928,6 +928,12 @@ eHalStatus csrGetCurrentCountryCode(tpAniSirGlobal pMac, tANI_U8 *pCountry);
 eHalStatus csrRoamEnqueuePreauth(tpAniSirGlobal pMac, tANI_U32 sessionId, tpSirBssDescription pBssDescription,
                                 eCsrRoamReason reason, tANI_BOOLEAN fImmediate);
 eHalStatus csrRoamDequeuePreauth(tpAniSirGlobal pMac);
+#ifdef FEATURE_WLAN_LFR
+void csrInitOccupiedChannelsList(tpAniSirGlobal pMac);
+tANI_BOOLEAN csrNeighborRoamIsNewConnectedProfile(tpAniSirGlobal pMac);
+tANI_BOOLEAN csrNeighborRoamConnectedProfileMatch(tpAniSirGlobal pMac, tCsrScanResult *pResult,
+                                                  tDot11fBeaconIEs *pIes);
+#endif
 
 #endif
 

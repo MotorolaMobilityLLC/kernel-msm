@@ -78,10 +78,6 @@
 
 //Support for "Fast roaming" (i.e., CCX, LFR, or 802.11r.)
 #define CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN 15
-#define CSR_BG_SCAN_VALID_CHANNEL_LIST_CHUNK_SIZE 3
-#define CSR_BG_SCAN_CHANNEL_LIST_LEN (CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN + CSR_BG_SCAN_VALID_CHANNEL_LIST_CHUNK_SIZE)
-
-
 
 typedef enum
 {
@@ -1245,6 +1241,5 @@ void csrDisconnectAllActiveSessions(tpAniSirGlobal pMac);
 tANI_BOOLEAN csrRoamIsFastRoamEnabled(tpAniSirGlobal pMac);
 tANI_BOOLEAN csrIsChannelPresentInList( tANI_U8 *pChannelList, int  numChannels, tANI_U8   channel );
 VOS_STATUS csrAddToChannelListFront( tANI_U8 *pChannelList, int  numChannels, tANI_U8   channel );
-tANI_BOOLEAN csrNeighborRoamIsSsidCandidateMatch( tpAniSirGlobal pMac, tDot11fBeaconIEs *pIes);
 #endif
 
