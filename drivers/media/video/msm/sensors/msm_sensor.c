@@ -1398,12 +1398,14 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	int32_t rc = 0;
 	struct msm_camera_sensor_info *data = s_ctrl->sensordata;
 	CDBG("%s: %d\n", __func__, __LINE__);
-	s_ctrl->reg_ptr = kzalloc(sizeof(struct regulator *)
-			* data->sensor_platform_info->num_vreg, GFP_KERNEL);
 	if (!s_ctrl->reg_ptr) {
-		pr_err("%s: could not allocate mem for regulators\n",
-			__func__);
-		return -ENOMEM;
+		s_ctrl->reg_ptr = kzalloc(sizeof(struct regulator *)
+				* data->sensor_platform_info->num_vreg, GFP_KERNEL);
+		if (!s_ctrl->reg_ptr) {
+			pr_err("%s: could not allocate mem for regulators\n",
+				__func__);
+			return -ENOMEM;
+		}
 	}
 
 	rc = msm_camera_request_gpio_table(data, 1);
@@ -1518,6 +1520,7 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 		s_ctrl->reg_ptr, 0);
 	msm_camera_request_gpio_table(data, 0);
 	kfree(s_ctrl->reg_ptr);
+	s_ctrl->reg_ptr = NULL;
 	return 0;
 }
 

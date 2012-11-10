@@ -2430,7 +2430,8 @@ static int iw_set_priv(struct net_device *dev,
        pr_info("%s: req [%s] len [%d]\n", __FUNCTION__, cmd, cmd_len);
     }
 
-    hddLog(VOS_TRACE_LEVEL_INFO_MED, "***Received %s cmd from Wi-Fi GUI***", cmd);
+    hddLog(VOS_TRACE_LEVEL_INFO_MED,
+           "%s: ***Received %s cmd from Wi-Fi GUI***", __func__, cmd);
 
     if (pHddCtx->isLogpInProgress) {
        if (ioctl_debug)
@@ -2598,6 +2599,14 @@ static int iw_set_priv(struct net_device *dev,
         /*TODO: rxfilter-remove*/
     }
 #ifdef FEATURE_WLAN_SCAN_PNO
+    else if( strncasecmp(cmd, "pnosetup", 8) == 0 ) {
+        hddLog( VOS_TRACE_LEVEL_INFO, "pnosetup");
+        /*TODO: support pnosetup*/
+    }
+    else if( strncasecmp(cmd, "pnoforce", 8) == 0 ) {
+        hddLog( VOS_TRACE_LEVEL_INFO, "pnoforce");
+        /*TODO: support pnoforce*/
+    }
     else if( strncasecmp(cmd, "pno",3) == 0 ) {
 
         hddLog( VOS_TRACE_LEVEL_INFO, "pno\n");
@@ -2650,7 +2659,8 @@ static int iw_set_priv(struct net_device *dev,
         }
     }
     else {
-        hddLog( VOS_TRACE_LEVEL_WARN, "Unsupported GUI command %s", cmd);
+        hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
+                __func__, cmd);
     }
 done:
     /* many of the commands write information back into the command
@@ -5247,7 +5257,11 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
                       union iwreq_data *wrqu, char *extra, int nOffset)
 {
   hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-  tSirPNOScanReq pnoRequest;
+  /* pnoRequest is a large struct, so we make it static to avoid stack
+     overflow.  This API is only invoked via ioctl, so it is
+     serialized by the kernel rtnl_lock and hence does not need to be
+     reentrant */
+  static tSirPNOScanReq pnoRequest;
   char *ptr;
   v_U8_t i,j, ucParams, ucMode;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */

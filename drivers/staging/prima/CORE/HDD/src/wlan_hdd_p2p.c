@@ -232,6 +232,12 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
         return -EBUSY;
     }
 
+    if (((hdd_context_t*)pAdapter->pHddCtx)->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EAGAIN;
+    }
     pRemainChanCtx = vos_mem_malloc( sizeof(hdd_remain_on_chan_ctx_t) );
     if( NULL == pRemainChanCtx )
     {
@@ -359,6 +365,12 @@ int wlan_hdd_cfg80211_cancel_remain_on_channel( struct wiphy *wiphy,
 
     hddLog( LOG1, "Cancel remain on channel req");
 
+    if (((hdd_context_t*)pAdapter->pHddCtx)->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EAGAIN;
+    }
     /* FIXME cancel currently running remain on chan.
      * Need to check cookie and cancel accordingly
      */
@@ -978,6 +990,16 @@ int wlan_hdd_add_virtual_intf( struct wiphy *wiphy, char *name,
        return NULL;
     }
 
+    if (pHddCtx->isLogpInProgress)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s:LOGP in Progress. Ignore!!!", __func__);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
+       return NULL;
+#else
+       return -EAGAIN;
+#endif
+    }
     if ( pHddCtx->cfg_ini->isP2pDeviceAddrAdministrated )
     {
         if( (NL80211_IFTYPE_P2P_GO == type) || 
@@ -1025,6 +1047,12 @@ int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct net_device *dev )
 
      hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d",
             __func__,pVirtAdapter->device_mode);
+     if (pHddCtx->isLogpInProgress)
+     {
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s:LOGP in Progress. Ignore!!!", __func__);
+         return -EAGAIN;
+     }
 
      wlan_hdd_release_intf_addr( pHddCtx,
                                  pVirtAdapter->macAddressCurrent.bytes );

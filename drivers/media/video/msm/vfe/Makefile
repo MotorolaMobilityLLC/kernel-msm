@@ -2,7 +2,7 @@ GCC_VERSION      := $(shell $(CONFIG_SHELL) $(PWD)/scripts/gcc-version.sh $(CROS
 ccflags-y += -Idrivers/media/video/msm
 ccflags-y += -Idrivers/media/video/msm/server
 ifeq ($(GCC_VERSION),0404)
-CFLAGS_REMOVE_msm_vfe8x.o = -Wframe-larger-than=1024
+CFLAGS_REMOVE_msm_vfe8x.o = -Wframe-larger-than=${CONFIG_FRAME_WARN}
 endif
 ifeq ($(CONFIG_MSM_CAMERA_V4L2),y)
   obj-$(CONFIG_ARCH_MSM7X27A) += msm_vfe7x27a_v4l2.o

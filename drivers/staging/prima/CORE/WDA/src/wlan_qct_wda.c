@@ -87,6 +87,7 @@
    ((IS_WDI_STATUS_FAILURE(x)) ? VOS_STATUS_E_FAILURE  : VOS_STATUS_SUCCESS)
 
 /* macro's for acessing TL API/data structures */
+#define WDA_TL_GET_STA_STATE(a, b, c) WLANTL_GetSTAState(a, b, c)
 #define WDA_TL_GET_TX_PKTCOUNT(a, b, c, d) WLANTL_GetTxPktCount(a, b, c, d)
 #define WDA_GET_BA_TXFLAG(a, b, c)  \
    (((a)->wdaStaInfo[(b)].ucUseBaBitmap) & (1 << (c)))  
@@ -2472,7 +2473,10 @@ VOS_STATUS WDA_ProcessJoinReq(tWDA_CbContext *pWDA,
                 pWDA->macSTASelf, sizeof(tSirMacAddr)) ;
    wdiJoinReqParam->wdiReqInfo.wdiChannelInfo.ucChannel = 
                                                  joinReqParam->channelNumber ;
-#ifndef WLAN_FEATURE_VOWIFI
+#ifdef WLAN_FEATURE_VOWIFI
+   wdiJoinReqParam->wdiReqInfo.wdiChannelInfo.cMaxTxPower =
+                                          joinReqParam->maxTxPower ;
+#else
    wdiJoinReqParam->wdiReqInfo.wdiChannelInfo.ucLocalPowerConstraint = 
                                           joinReqParam->localPowerConstraint ;
 #endif
@@ -5725,28 +5729,33 @@ void WDA_UpdateProbeRspParamsCallback(WDI_Status status, void* pUserData)
 VOS_STATUS WDA_ProcessUpdateProbeRspTemplate(tWDA_CbContext *pWDA, 
                                  tSendProbeRespParams *pSendProbeRspParams)
 {
-   WDI_Status status = WDI_STATUS_SUCCESS ;
-   WDI_UpdateProbeRspTemplateParamsType wdiSendProbeRspParam; 
+   WDI_Status status = WDI_STATUS_SUCCESS;
+   WDI_UpdateProbeRspTemplateParamsType *wdiSendProbeRspParam =
+         vos_mem_malloc(sizeof(WDI_UpdateProbeRspTemplateParamsType));
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "------> %s " ,__FUNCTION__);
+
+   if (!wdiSendProbeRspParam)
+      return CONVERT_WDI2VOS_STATUS(WDI_STATUS_MEM_FAILURE);
+
    /*Copy update probe response parameters*/
-   vos_mem_copy(wdiSendProbeRspParam.wdiProbeRspTemplateInfo.macBSSID, 
+   vos_mem_copy(wdiSendProbeRspParam->wdiProbeRspTemplateInfo.macBSSID,
                               pSendProbeRspParams->bssId, sizeof(tSirMacAddr));
-   wdiSendProbeRspParam.wdiProbeRspTemplateInfo.uProbeRespTemplateLen = 
+   wdiSendProbeRspParam->wdiProbeRspTemplateInfo.uProbeRespTemplateLen =
                               pSendProbeRspParams->probeRespTemplateLen;
    /* Copy the Probe Response template to local buffer */
    vos_mem_copy(
-           wdiSendProbeRspParam.wdiProbeRspTemplateInfo.pProbeRespTemplate,
+           wdiSendProbeRspParam->wdiProbeRspTemplateInfo.pProbeRespTemplate,
            pSendProbeRspParams->pProbeRespTemplate, 
            pSendProbeRspParams->probeRespTemplateLen);
    vos_mem_copy(
-     wdiSendProbeRspParam.wdiProbeRspTemplateInfo.uaProxyProbeReqValidIEBmap,
+     wdiSendProbeRspParam->wdiProbeRspTemplateInfo.uaProxyProbeReqValidIEBmap,
      pSendProbeRspParams->ucProxyProbeReqValidIEBmap,
      WDI_PROBE_REQ_BITMAP_IE_LEN);
    
-   wdiSendProbeRspParam.wdiReqStatusCB = NULL ;
+   wdiSendProbeRspParam->wdiReqStatusCB = NULL ;
    
-   status = WDI_UpdateProbeRspTemplateReq(&wdiSendProbeRspParam, 
+   status = WDI_UpdateProbeRspTemplateReq(wdiSendProbeRspParam,
      (WDI_UpdateProbeRspTemplateRspCb)WDA_UpdateProbeRspParamsCallback, pWDA);
    if(IS_WDI_STATUS_FAILURE(status))
    {
@@ -5754,6 +5763,7 @@ VOS_STATUS WDA_ProcessUpdateProbeRspTemplate(tWDA_CbContext *pWDA,
           "Failure in SEND Probe RSP Params WDI API" );
    }
    vos_mem_free(pSendProbeRspParams);
+   vos_mem_free(wdiSendProbeRspParam);
    return CONVERT_WDI2VOS_STATUS(status);
 }
 #if defined(WLAN_FEATURE_VOWIFI) || defined(FEATURE_WLAN_CCX)
@@ -8734,6 +8744,7 @@ VOS_STATUS WDA_TxComplete( v_PVOID_t pVosContext, vos_pkt_t *pData,
    
    tWDA_CbContext *wdaContext= (tWDA_CbContext *)VOS_GET_WDA_CTXT(pVosContext);
    tpAniSirGlobal pMac = (tpAniSirGlobal)VOS_GET_MAC_CTXT((void *)pVosContext) ;
+   tANI_U32 uUserData; 
 
    if(NULL == wdaContext)
    {
@@ -8743,6 +8754,18 @@ VOS_STATUS WDA_TxComplete( v_PVOID_t pVosContext, vos_pkt_t *pData,
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAILURE;
    }
+
+    /*Check if frame was timed out or not*/
+    vos_pkt_get_user_data_ptr(  pData, VOS_PKT_USER_DATA_ID_WDA,
+                               (v_PVOID_t)&uUserData);
+
+    if ( WDA_TL_TX_MGMT_TIMED_OUT == uUserData )
+    {
+       /*Discard frame - no further processing is needed*/
+       vos_pkt_return_packet(pData); 
+       return VOS_STATUS_SUCCESS; 
+    }
+
    /*check whether the callback is null or not,made null during WDA_TL_TX_FRAME_TIMEOUT timeout*/
    if( NULL!=wdaContext->pTxCbFunc) 
    {
@@ -8953,13 +8976,22 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
       pWDA->pTxCbFunc = NULL;   /*To stop the limTxComplete being called again  , 
                                 after the packet gets completed(packet freed once)*/
 
+      /* TX MGMT fail with COMP timeout, try to detect DXE stall */
+      WDA_TransportChannelDebug(0, 1);
+
+      /*Tag Frame as timed out for later deletion*/
+      vos_pkt_set_user_data_ptr( (vos_pkt_t *)pFrmBuf, VOS_PKT_USER_DATA_ID_WDA, 
+                       (v_PVOID_t)WDA_TL_TX_MGMT_TIMED_OUT);
+
       /* check whether the packet was freed already,so need not free again when 
       * TL calls the WDA_Txcomplete routine
       */
-      if(vos_atomic_set_U32(&pWDA->VosPacketToFree, (v_U32_t)WDA_TX_PACKET_FREED) == (v_U32_t)pFrmBuf) 
+      vos_atomic_set_U32(&pWDA->VosPacketToFree, (v_U32_t)WDA_TX_PACKET_FREED);
+      /*if(vos_atomic_set_U32(&pWDA->VosPacketToFree, (v_U32_t)WDA_TX_PACKET_FREED) == (v_U32_t)pFrmBuf) 
       {
          pCompFunc(VOS_GET_MAC_CTXT(pWDA->pVosContext), (vos_pkt_t *)pFrmBuf);
-      }
+      } */
+
       if( pAckTxComp )
       {
          pWDA->pAckTxCbFunc = NULL;
@@ -10042,9 +10074,12 @@ void WDA_BaCheckActivity(tWDA_CbContext *pWDA)
    {
       for(tid = 0 ; tid < STACFG_MAX_TC ; tid++)
       {
+         WLANTL_STAStateType tlSTAState ;
          tANI_U32 txPktCount = 0 ;
          tANI_U8 validStaIndex = pWDA->wdaStaInfo[curSta].ucValidStaIndex ;
          if((WDA_VALID_STA_INDEX == validStaIndex) &&
+            (VOS_STATUS_SUCCESS == WDA_TL_GET_STA_STATE( pWDA->pVosContext,
+                                                    curSta, &tlSTAState)) &&
             (VOS_STATUS_SUCCESS == WDA_TL_GET_TX_PKTCOUNT( pWDA->pVosContext,
                                                     curSta, tid, &txPktCount)))
          {
@@ -10054,6 +10089,7 @@ void WDA_BaCheckActivity(tWDA_CbContext *pWDA)
                                     pWDA->wdaStaInfo[curSta].framesTxed[tid]);
 #endif
             if(!WDA_GET_BA_TXFLAG(pWDA, curSta, tid) 
+                   && (WLANTL_STA_AUTHENTICATED == tlSTAState)
                    && (txPktCount >= WDA_LAST_POLLED_THRESHOLD(pWDA, 
                                                                curSta, tid)))
             {

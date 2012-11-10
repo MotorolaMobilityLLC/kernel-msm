@@ -229,13 +229,12 @@ static void sync_pt_activate(struct sync_pt *pt)
 	spin_lock_irqsave(&obj->active_list_lock, flags);
 
 	err = _sync_pt_has_signaled(pt);
-	if (err != 0) {
-		spin_unlock_irqrestore(&obj->active_list_lock, flags);
-		sync_fence_signal_pt(pt);
-		return;
-	}
+	if (err != 0)
+		goto out;
 
 	list_add_tail(&pt->active_list, &obj->active_list_head);
+
+out:
 	spin_unlock_irqrestore(&obj->active_list_lock, flags);
 }
 
@@ -695,8 +694,13 @@ static long sync_fence_ioctl_merge(struct sync_fence *fence, unsigned long arg)
 	struct sync_fence *fence2, *fence3;
 	struct sync_merge_data data;
 
-	if (copy_from_user(&data, (void __user *)arg, sizeof(data)))
-		return -EFAULT;
+	if (fd < 0)
+		return fd;
+
+	if (copy_from_user(&data, (void __user *)arg, sizeof(data))) {
+		err = -EFAULT;
+		goto err_put_fd;
+	}
 
 	fence2 = sync_fence_fdget(data.fd2);
 	if (fence2 == NULL) {

@@ -656,6 +656,9 @@ void hdd_tx_timeout(struct net_device *dev)
    //disabled either because of disassociation or low resource scenarios. In
    //case of disassociation it is ok to ignore this. But if associated, we have
    //do possible recovery here
+
+   //testing underlying data path stall
+   sme_transportDebug(0, 1);
 } 
 
 

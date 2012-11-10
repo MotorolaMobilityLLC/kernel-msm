@@ -1670,6 +1670,10 @@ int limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, void *body)
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
     limPrintMacAddr(pMac, pHdr->bssId, LOGE);
     limPrintMacAddr(pMac, pMac->ft.ftPEContext.pFTPreAuthReq->preAuthbssId, LOGE);
+    limLog(pMac,LOG2,FL("seqControl 0x%X\n"), 
+            ((pHdr->seqControl.seqNumHi << 8) | 
+            (pHdr->seqControl.seqNumLo << 4) |
+            (pHdr->seqControl.fragNum)));
 #endif
 
     // Check that its the same bssId we have for preAuth
@@ -1679,6 +1683,40 @@ int limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, void *body)
         // In this case SME if indeed has triggered a 
         // pre auth it will time out.
         return eSIR_FAILURE;
+    }
+
+    if (eANI_BOOLEAN_TRUE ==
+        pMac->ft.ftPEContext.pFTPreAuthReq->bPreAuthRspProcessed)
+    {
+        /*
+         * This is likely a duplicate for the same pre-auth request.
+         * PE/LIM already posted a response to SME. Hence, drop it.
+         * TBD: 
+         * 1) How did we even receive multiple auth responses?
+         * 2) Do we need to delete pre-auth session? Suppose we
+         * previously received an auth resp with failure which
+         * would not have created the session and forwarded to SME.
+         * And, we subsequently received an auth resp with success
+         * which would have created the session. This will now be
+         * dropped without being forwarded to SME! However, it is
+         * very unlikely to receive auth responses from the same
+         * AP with different reason codes.
+         * NOTE: return eSIR_SUCCESS so that the packet is dropped
+         * as this was indeed a response from the BSSID we tried to 
+         * pre-auth.
+         */
+        PELOGE(limLog(pMac,LOGE,"Auth rsp already posted to SME"
+               " (session %p, FT session %p)\n", psessionEntry,
+               pMac->ft.ftPEContext.pftSessionEntry););
+        return eSIR_SUCCESS;
+    }
+    else
+    {
+        PELOGE(limLog(pMac,LOGE,"Auth rsp not yet posted to SME"
+               " (session %p, FT session %p)\n", psessionEntry,
+               pMac->ft.ftPEContext.pftSessionEntry););
+        pMac->ft.ftPEContext.pFTPreAuthReq->bPreAuthRspProcessed =
+            eANI_BOOLEAN_TRUE;
     }
 
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG

@@ -29,13 +29,6 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/mutex.h>
-#include <mach/board.h>
-
-#define MAX_LEVEL               0x71
-#define MIN_LEVEL               0x01
-#define DEFAULT_LEVEL           0x14
-
-#define DEFAULT_FTM_BRIGHTNESS  0x03
 
 #define I2C_BL_NAME             "lm3530"
 
@@ -53,7 +46,7 @@ struct lm3530_device {
 	int max_current;
 	int min_brightness;
 	int max_brightness;
-	int factory_brightness;
+	int default_brightness;
 	char *blmap;
 	int blmap_size;
 };
@@ -109,14 +102,11 @@ static void lm3530_set_main_current_level(struct i2c_client *client, int level)
 	dev->bl_dev->props.brightness = cur_main_lcd_level = level;
 
 	if (level != 0) {
-		if (level > 0 && level <= MIN_LEVEL)
+		if (level > 0 && level <= min_brightness)
 			cal_value = min_brightness;
-		else if (level > MIN_LEVEL && level <= MAX_LEVEL)
-			cal_value = (max_brightness - min_brightness)*level
-				/(MAX_LEVEL - MIN_LEVEL)-
-				((max_brightness - min_brightness)*MIN_LEVEL
-				/(MAX_LEVEL - MIN_LEVEL) - min_brightness);
-		else if (level > MAX_LEVEL)
+		else if (level > min_brightness && level <= max_brightness)
+			cal_value = level;
+		else if (level > max_brightness)
 			cal_value = max_brightness;
 
 		if (dev->blmap) {
@@ -187,14 +177,15 @@ static void lm3530_backlight_off(struct i2c_client *client)
 void lm3530_lcd_backlight_set_level(int level)
 {
 	struct i2c_client *client = lm3530_i2c_client;
+	struct lm3530_device *dev = i2c_get_clientdata(client);
 
 	if (!client) {
 		pr_warn("%s: not yet enabled\n", __func__);
 		return;
 	}
 
-	if (level > MAX_LEVEL)
-		level = MAX_LEVEL;
+	if (level > dev->max_brightness)
+		level = dev->max_brightness;
 
 	pr_debug("%s: level %d\n", __func__, level);
 	if (level)
@@ -224,13 +215,15 @@ EXPORT_SYMBOL(lm3530_lcd_backlight_on_status);
 
 static int bl_set_intensity(struct backlight_device *bd)
 {
+	struct i2c_client *client = lm3530_i2c_client;
+	struct lm3530_device *dev = i2c_get_clientdata(client);
 	int brightness = bd->props.brightness;
 
 	if ((bd->props.state & BL_CORE_FBBLANK) ||
 			(bd->props.state & BL_CORE_SUSPENDED))
 		brightness = 0;
 	else if (brightness == 0)
-		brightness = DEFAULT_LEVEL;
+		brightness = dev->default_brightness;
 
 	lm3530_lcd_backlight_set_level(brightness);
 	return 0;
@@ -340,7 +333,7 @@ static int __devinit lm3530_probe(struct i2c_client *i2c_dev,
 
 	memset(&props, 0, sizeof(struct backlight_properties));
 	props.type = BACKLIGHT_RAW;
-	props.max_brightness = MAX_LEVEL;
+	props.max_brightness = pdata->max_brightness;
 
 	bl_dev = backlight_device_register(I2C_BL_NAME, &i2c_dev->dev, NULL,
 			&lm3530_bl_ops, &props);
@@ -349,8 +342,8 @@ static int __devinit lm3530_probe(struct i2c_client *i2c_dev,
 		err = PTR_ERR(bl_dev);
 		goto err_backlight_device_register;
 	}
-	bl_dev->props.max_brightness = MAX_LEVEL;
-	bl_dev->props.brightness = DEFAULT_LEVEL;
+	bl_dev->props.max_brightness = pdata->max_brightness;
+	bl_dev->props.brightness = pdata->default_brightness;
 	bl_dev->props.power = FB_BLANK_UNBLANK;
 
 	dev->bl_dev = bl_dev;
@@ -359,11 +352,10 @@ static int __devinit lm3530_probe(struct i2c_client *i2c_dev,
 	dev->max_current = pdata->max_current;
 	dev->min_brightness = pdata->min_brightness;
 	dev->max_brightness = pdata->max_brightness;
+	dev->default_brightness = pdata->default_brightness;
 	dev->blmap = pdata->blmap;
 	dev->blmap_size = pdata->blmap_size;
 	i2c_set_clientdata(i2c_dev, dev);
-
-	dev->factory_brightness = DEFAULT_FTM_BRIGHTNESS;
 
 	if (gpio_is_valid(dev->gpio)) {
 		err = gpio_request(dev->gpio, "lm3530 reset");

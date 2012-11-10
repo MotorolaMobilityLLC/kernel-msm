@@ -689,6 +689,8 @@ typedef struct tagCsrScanStruct
     tDblLinkList scanCmdPendingList;
 #endif    
     tCsrChannel occupiedChannels;   //This includes all channels on which candidate APs are found
+    
+    tANI_BOOLEAN fIgnore_chan165;
 }tCsrScanStruct;
 
 

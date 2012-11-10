@@ -568,9 +568,17 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
         } 
         else 
         {
+            tANI_U16 sessionId;
             pMac->sys.gSysEnableLinkMonitorMode = 1;
-            //limReactivateTimer( pMac, eLIM_HEART_BEAT_TIMER );
-            //limReactivateHeartBeatTimer(pMac, psessionEntry);
+            for(sessionId = 0; sessionId < pMac->lim.maxBssId; sessionId++)
+            {
+                if( (pMac->lim.gpSession[sessionId].valid )&& 
+                    (eLIM_MLM_LINK_ESTABLISHED_STATE == pMac->lim.gpSession[sessionId].limMlmState) &&
+                    ( pMac->pmm.gPmmState != ePMM_STATE_BMPS_SLEEP))
+                {
+                    limReactivateHeartBeatTimer(pMac, &pMac->lim.gpSession[sessionId]);
+                }
+            }
             PELOGE(limLog(pMac, LOGE, "Reactivating heartbeat link monitoring\n");)
         }        
     case WNI_CFG_MAX_PS_POLL:

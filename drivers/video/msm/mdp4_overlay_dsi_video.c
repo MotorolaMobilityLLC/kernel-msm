@@ -750,6 +750,7 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 			mdp4_mixer_stage_down(pipe, 1);
 			mdp4_overlay_pipe_free(pipe);
 			vctrl->base_pipe = NULL;
+			msleep(20);
 		} else {
 			/* system suspending */
 			mdp4_mixer_stage_down(vctrl->base_pipe, 1);
@@ -1062,34 +1063,27 @@ static void mdp4_dsi_video_do_blt(struct msm_fb_data_type *mfd, int enable)
 
 	if (vctrl->blt_ctrl == OVERLAY_BLT_SWITCH_TG_OFF) {
 		int tg_enabled;
+		long long  vtime;
 
 		pr_info("%s: blt enabled by switching TG off\n", __func__);
-
 		vctrl->blt_change = 0;
 		tg_enabled = inpdw(MDP_BASE + DSI_VIDEO_BASE) & 0x01;
 		if (tg_enabled) {
-			mdp4_dsi_video_wait4dmap_done(0);
+			mdp4_dsi_video_wait4vsync(0, &vtime);
 			MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
-			msleep(20);
-			mipi_dsi_controller_cfg(0);
+			mdp4_dsi_video_wait4dmap_done(0);
 		}
 		mdp4_overlayproc_cfg(pipe);
 		mdp4_overlay_dmap_xy(pipe);
 		if (tg_enabled) {
-			if (pipe->ov_blt_addr) {
-				/* preefill on frame */
-				spin_lock_irqsave(&vctrl->spin_lock, flag);
-				pipe->ov_cnt++;
-				vctrl->ov_koff++;
-				mdp4_stat.kickoff_ov0++;
-				INIT_COMPLETION(vctrl->ov_comp);
-				vsync_irq_enable(INTR_OVERLAY0_DONE, MDP_OVERLAY0_TERM);
-				outpdw(MDP_BASE + 0x0004, 0);
-				spin_unlock_irqrestore(&vctrl->spin_lock, flag);
-				mdp4_dsi_video_wait4ov(cndx);
-			}
+			/*
+			 * need wait for more than 1 ms to
+			 * make sure lanes' fifo is empty and
+			 * lanes in stop state befroe reset
+			 * controller
+			 */
+			usleep(2000);
 			mipi_dsi_sw_reset();
-			mipi_dsi_controller_cfg(1);
 			MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 1);
 		}
 	}

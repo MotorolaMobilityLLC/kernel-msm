@@ -1880,6 +1880,7 @@ eHalStatus sme_Close(tHalHandle hHal)
 #ifdef FEATURE_WLAN_LFR
 tANI_BOOLEAN csrIsScanAllowed(tpAniSirGlobal pMac)
 {
+#if 0
         switch(pMac->roam.neighborRoamInfo.neighborRoamState) {
                 case eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN:
                 case eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING:
@@ -1889,6 +1890,14 @@ tANI_BOOLEAN csrIsScanAllowed(tpAniSirGlobal pMac)
                 default:
                         return eANI_BOOLEAN_TRUE;
         }
+#else
+        /*
+         * TODO: always return TRUE for now until
+         * we figure out why we could be stuck in
+         * one of the roaming states forever.
+         */
+        return eANI_BOOLEAN_TRUE;
+#endif
 }
 #endif
 /* ---------------------------------------------------------------------------

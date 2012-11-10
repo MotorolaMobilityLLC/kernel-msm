@@ -109,44 +109,51 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
                        tPowerdBm *localConstraint
                        )
 {
-    tSirProbeRespBeacon beaconStruct;
+    tSirProbeRespBeacon *pBeaconStruct;
 #if !defined WLAN_FEATURE_VOWIFI
     tANI_U32            localPowerConstraints = 0;
 #endif
-    palZeroMemory( pMac->hHdd, (tANI_U8 *) &beaconStruct, sizeof(beaconStruct));
+    if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
+                                                (void **)&pBeaconStruct, sizeof(tSirProbeRespBeacon)))
+    {
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limExtractApCapability\n") );
+        return;
+    }
+
+    palZeroMemory( pMac->hHdd, (tANI_U8 *) pBeaconStruct, sizeof(tSirProbeRespBeacon));
     *qosCap = 0;
     *propCap = 0;
     *uapsd = 0;
     PELOG3(limLog( pMac, LOG3,
         FL("In limExtractApCapability: The IE's being received are:\n"));
     sirDumpBuf( pMac, SIR_LIM_MODULE_ID, LOG3, pIE, ieLen );)
-    if (sirParseBeaconIE(pMac, &beaconStruct, pIE, (tANI_U32)ieLen) == eSIR_SUCCESS)
+    if (sirParseBeaconIE(pMac, pBeaconStruct, pIE, (tANI_U32)ieLen) == eSIR_SUCCESS)
     {
 #if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-        if (beaconStruct.propIEinfo.hcfEnabled)
+        if (pBeaconStruct->propIEinfo.hcfEnabled)
             LIM_BSS_CAPS_SET(HCF, *qosCap);
 #endif
-        if (beaconStruct.wmeInfoPresent || beaconStruct.wmeEdcaPresent)
+        if (pBeaconStruct->wmeInfoPresent || pBeaconStruct->wmeEdcaPresent)
             LIM_BSS_CAPS_SET(WME, *qosCap);
-        if (LIM_BSS_CAPS_GET(WME, *qosCap) && beaconStruct.wsmCapablePresent)
+        if (LIM_BSS_CAPS_GET(WME, *qosCap) && pBeaconStruct->wsmCapablePresent)
             LIM_BSS_CAPS_SET(WSM, *qosCap);
-        if (beaconStruct.propIEinfo.aniIndicator &&
-            beaconStruct.propIEinfo.capabilityPresent)
-            *propCap = beaconStruct.propIEinfo.capability;
-        if (beaconStruct.HTCaps.present)
+        if (pBeaconStruct->propIEinfo.aniIndicator &&
+            pBeaconStruct->propIEinfo.capabilityPresent)
+            *propCap = pBeaconStruct->propIEinfo.capability;
+        if (pBeaconStruct->HTCaps.present)
             pMac->lim.htCapabilityPresentInBeacon = 1;
         else
             pMac->lim.htCapabilityPresentInBeacon = 0;
 
 #ifdef WLAN_FEATURE_11AC
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO_MED,
-            "***beacon.VHTCaps.present*****=%d\n",beaconStruct.VHTCaps.present);
+            "***beacon.VHTCaps.present*****=%d\n",pBeaconStruct->VHTCaps.present);
 
-        if ( beaconStruct.VHTCaps.present && beaconStruct.VHTOperation.present)
+        if ( pBeaconStruct->VHTCaps.present && pBeaconStruct->VHTOperation.present)
         {
             pMac->lim.vhtCapabilityPresentInBeacon = 1;
-            pMac->lim.apCenterChan = beaconStruct.VHTOperation.chanCenterFreqSeg1;
-            pMac->lim.apChanWidth = beaconStruct.VHTOperation.chanWidth;
+            pMac->lim.apCenterChan = pBeaconStruct->VHTOperation.chanCenterFreqSeg1;
+            pMac->lim.apChanWidth = pBeaconStruct->VHTOperation.chanWidth;
         }
         else
         {
@@ -154,19 +161,19 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
         }
 #endif
         // Extract the UAPSD flag from WMM Parameter element
-        if (beaconStruct.wmeEdcaPresent)
-            *uapsd = beaconStruct.edcaParams.qosInfo.uapsd;
+        if (pBeaconStruct->wmeEdcaPresent)
+            *uapsd = pBeaconStruct->edcaParams.qosInfo.uapsd;
 #if defined FEATURE_WLAN_CCX
         /* If there is Power Constraint Element specifically,
          * adapt to it. Hence there is else condition check
          * for this if statement.
          */
-        if ( beaconStruct.ccxTxPwr.present)
+        if ( pBeaconStruct->ccxTxPwr.present)
         {
-            *localConstraint = beaconStruct.ccxTxPwr.power_limit;
+            *localConstraint = pBeaconStruct->ccxTxPwr.power_limit;
         }
 #endif
-        if (beaconStruct.powerConstraintPresent)
+        if (pBeaconStruct->powerConstraintPresent)
 #if 0
         //Remove this check. This function is expected to return localPowerConsraints
         //and it should just do that. Check for 11h enabled or not can be done at the caller
@@ -177,9 +184,9 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
 #endif
         {
 #if defined WLAN_FEATURE_VOWIFI 
-           *localConstraint -= beaconStruct.localPowerConstraint.localPowerConstraints;
+           *localConstraint -= pBeaconStruct->localPowerConstraint.localPowerConstraints;
 #else
-           localPowerConstraints = (tANI_U32)beaconStruct.localPowerConstraint.localPowerConstraints;
+           localPowerConstraints = (tANI_U32)pBeaconStruct->localPowerConstraint.localPowerConstraints;
 #endif
         }
 #if !defined WLAN_FEATURE_VOWIFI
@@ -189,6 +196,7 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
         }
 #endif
     }
+    palFreeMemory(pMac->hHdd, pBeaconStruct);
     return;
 } /****** end limExtractApCapability() ******/
 

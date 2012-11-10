@@ -75,6 +75,11 @@ void v4l2_fh_del(struct v4l2_fh *fh)
 {
 	unsigned long flags;
 
+	if (!fh->vdev) {
+		pr_err("%s: fd->vdev is NULL\n", __func__);
+		return;
+	}
+
 	spin_lock_irqsave(&fh->vdev->fh_lock, flags);
 	list_del_init(&fh->list);
 	spin_unlock_irqrestore(&fh->vdev->fh_lock, flags);

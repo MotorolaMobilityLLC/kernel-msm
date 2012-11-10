@@ -1677,6 +1677,12 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
     {
         staAdapter = hdd_get_adapter(pAdapter->pHddCtx, WLAN_HDD_P2P_CLIENT);
     }
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EAGAIN;
+    }
 
     if (staAdapter != NULL)
     {
@@ -1802,6 +1808,11 @@ static int wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
 
     hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "device mode=%d\n", pAdapter->device_mode);
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
+        return -EAGAIN;
+    }
     if ((pAdapter->device_mode == WLAN_HDD_SOFTAP) 
 #ifdef WLAN_FEATURE_P2P
       || (pAdapter->device_mode == WLAN_HDD_P2P_GO)
@@ -1844,6 +1855,11 @@ static int wlan_hdd_cfg80211_change_beacon(struct wiphy *wiphy,
 
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d\n",
                                 __func__, pAdapter->device_mode);
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
+        return -EAGAIN;
+    }
 
     if ((pAdapter->device_mode == WLAN_HDD_SOFTAP) 
 #ifdef WLAN_FEATURE_P2P
@@ -2968,6 +2984,11 @@ int wlan_hdd_cfg80211_set_channel( struct wiphy *wiphy, struct net_device *dev,
     hddLog(VOS_TRACE_LEVEL_INFO, 
                 "%s: device_mode = %d  freq = %d \n",__func__, 
                             pAdapter->device_mode, chan->center_freq);
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
+        return -EAGAIN;
+    }
 
     /* 
      * Do freq to chan conversion
@@ -3175,6 +3196,9 @@ wlan_hdd_cfg80211_inform_bss_frame( hdd_adapter_t *pAdapter,
 #endif
 
     ENTER();
+
+    if (!mgmt)
+        return NULL;
 
     memcpy(mgmt->bssid, bss_desc->bssId, ETH_ALEN);
 
@@ -3517,22 +3541,22 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
     req->n_channels = 0;
     req->ie = 0;
 
-    /*
-     * cfg80211_scan_done informing NL80211 about completion
-     * of scanning
-     */
-    cfg80211_scan_done(req, false);
     complete(&pAdapter->abortscan_event_var);
     pAdapter->request = NULL;
     /* Scan is no longer pending */
     pScanInfo->mScanPending = VOS_FALSE;
 
+    /*
+     * cfg80211_scan_done informing NL80211 about completion
+     * of scanning
+     */
+    cfg80211_scan_done(req, false);
 #ifdef WLAN_FEATURE_P2P
     /* Flush out scan result after p2p_serach is done */
     if(pScanInfo->flushP2pScanResults)
     {
         tANI_U8 sessionId = pAdapter->sessionId;
-        sme_ScanFlushResult(WLAN_HDD_GET_HAL_CTX(pAdapter), sessionId);
+        sme_ScanFlushP2PResult(WLAN_HDD_GET_HAL_CTX(pAdapter), sessionId);
         pScanInfo->flushP2pScanResults = 0;
     }
 #endif
@@ -3769,6 +3793,8 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
                          pScanInfo->flushP2pScanResults = 1;
                          sme_ScanFlushP2PResult( WLAN_HDD_GET_HAL_CTX(pAdapter),
                                           sessionId );
+                         /* set requestType to P2P Discovery */
+                         scanRequest.requestType = eCSR_SCAN_P2P_DISCOVERY;
                     }
 
                     /*
@@ -3784,8 +3810,6 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
                        scanRequest.skipDfsChnlInP2pSearch = 0;
                     }
 
-                    /* set requestType to P2P Discovery */
-                    scanRequest.requestType = eCSR_SCAN_P2P_DISCOVERY;
                 }
             }
 #endif

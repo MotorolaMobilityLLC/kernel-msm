@@ -92,29 +92,29 @@ typedef struct
 // the 3 character 'name' of the module for marking the trace logs.
 moduleTraceInfo gVosTraceInfo[ VOS_MODULE_ID_MAX ] =
 {
-   [VOS_MODULE_ID_BAP]        = { (1<<VOS_TRACE_LEVEL_FATAL), "BAP" },
-   [VOS_MODULE_ID_TL]         = { (1<<VOS_TRACE_LEVEL_FATAL), "TL " },
+   [VOS_MODULE_ID_BAP]        = { VOS_DEFAULT_TRACE_LEVEL, "BAP" },
+   [VOS_MODULE_ID_TL]         = { VOS_DEFAULT_TRACE_LEVEL, "TL " },
 #ifndef FEATURE_WLAN_INTEGRATED_SOC
-   [VOS_MODULE_ID_BAL]        = { (1<<VOS_TRACE_LEVEL_FATAL), "BAL" },
-   [VOS_MODULE_ID_SAL]        = { (1<<VOS_TRACE_LEVEL_FATAL), "SAL" },
-   [VOS_MODULE_ID_SSC]        = { (1<<VOS_TRACE_LEVEL_FATAL), "SSC" },
+   [VOS_MODULE_ID_BAL]        = { VOS_DEFAULT_TRACE_LEVEL, "BAL" },
+   [VOS_MODULE_ID_SAL]        = { VOS_DEFAULT_TRACE_LEVEL, "SAL" },
+   [VOS_MODULE_ID_SSC]        = { VOS_DEFAULT_TRACE_LEVEL, "SSC" },
 #endif
 #ifdef FEATURE_WLAN_INTEGRATED_SOC
-   [VOS_MODULE_ID_WDI]        = { (1<<VOS_TRACE_LEVEL_FATAL), "WDI"},
+   [VOS_MODULE_ID_WDI]        = { VOS_DEFAULT_TRACE_LEVEL, "WDI"},
 #endif
-   [VOS_MODULE_ID_HDD]        = { (1<<VOS_TRACE_LEVEL_FATAL), "HDD" },
-   [VOS_MODULE_ID_SME]        = { (1<<VOS_TRACE_LEVEL_FATAL), "SME" },
-   [VOS_MODULE_ID_PE]         = { (1<<VOS_TRACE_LEVEL_FATAL), "PE " },
+   [VOS_MODULE_ID_HDD]        = { VOS_DEFAULT_TRACE_LEVEL, "HDD" },
+   [VOS_MODULE_ID_SME]        = { VOS_DEFAULT_TRACE_LEVEL, "SME" },
+   [VOS_MODULE_ID_PE]         = { VOS_DEFAULT_TRACE_LEVEL, "PE " },
 #ifndef FEATURE_WLAN_INTEGRATED_SOC
-   [VOS_MODULE_ID_HAL]        = { (1<<VOS_TRACE_LEVEL_FATAL), "HAL" },
+   [VOS_MODULE_ID_HAL]        = { VOS_DEFAULT_TRACE_LEVEL, "HAL" },
 #else
-   [VOS_MODULE_ID_WDA]        = { (1<<VOS_TRACE_LEVEL_FATAL), "WDA" },
+   [VOS_MODULE_ID_WDA]        = { VOS_DEFAULT_TRACE_LEVEL, "WDA" },
 #endif
-   [VOS_MODULE_ID_SYS]        = { (1<<VOS_TRACE_LEVEL_FATAL), "SYS" },
+   [VOS_MODULE_ID_SYS]        = { VOS_DEFAULT_TRACE_LEVEL, "SYS" },
    [VOS_MODULE_ID_VOSS]       = { VOS_DEFAULT_TRACE_LEVEL, "VOS" },
 #ifdef WLAN_SOFTAP_FEATURE
-   [VOS_MODULE_ID_SAP]        = { (1<<VOS_TRACE_LEVEL_FATAL), "SAP" },
-   [VOS_MODULE_ID_HDD_SOFTAP] = { (1<<VOS_TRACE_LEVEL_FATAL), "HSP" },
+   [VOS_MODULE_ID_SAP]        = { VOS_DEFAULT_TRACE_LEVEL, "SAP" },
+   [VOS_MODULE_ID_HDD_SOFTAP] = { VOS_DEFAULT_TRACE_LEVEL, "HSP" },
 #endif
 };
 

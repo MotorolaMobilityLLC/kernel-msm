@@ -691,25 +691,72 @@ WDI_FillTxBd
            if( ucUnicastDst ) 
            {
              wdiStatus = WDI_STATableFindStaidByAddr( pWDICtx, 
-                                        *(wpt_macAddr*)pDestMacAddr, &ucStaId ); 
-               // Only case this look would fail would be in STA mode, in AP & IBSS mode 
-               // this look should pass. In STA mode the unicast data frame could be 
-               // transmitted to a DestAddr for which there might not be an entry in 
-               // HAL STA table and the lookup would fail. In such cases use the Addr2 
-               // (self MAC address) to get the selfStaIdx.
+                 *(wpt_macAddr*)pDestMacAddr, &ucStaId ); 
+             // In STA mode the unicast data frame could be 
+             // transmitted to a DestAddr for which there might not be an entry in 
+             // HAL STA table and the lookup would fail. In such cases use the Addr2 
+             // (self MAC address) to get the selfStaIdx.
+             // From SelfStaIdx, get BSSIdx and use BSS MacAddr to get the staIdx 
+             // corresponding to peerSta(AP).
+             // Drop frames only it is a data frame. Management frames can still
+             // go out using selfStaIdx.
 
 
-              if (WDI_STATUS_SUCCESS != wdiStatus) 
-              {
-                // Get the station index for ADDR2, which should be the self MAC addr
-                wdiStatus = WDI_STATableFindStaidByAddr( pWDICtx, 
-                                       *(wpt_macAddr*)pAddr2, &ucStaId ); 
-                if (WDI_STATUS_SUCCESS != wdiStatus)
-                {
-                  return WDI_STATUS_E_FAILURE;
-                }
-              }
-            } 
+             if (WDI_STATUS_SUCCESS != wdiStatus) 
+             {
+               if(ucType == WDI_MAC_MGMT_FRAME)
+               {
+                 //For management frames, use self staIdx if peer sta 
+                 //entry is not found.
+                 wdiStatus = WDI_STATableFindStaidByAddr( pWDICtx, 
+                     *(wpt_macAddr*)pAddr2, &ucStaId ); 
+               }
+               else
+               {
+                 if( !ucDisableFrmXtl )
+                 {
+                   // FrameTranslation in HW is enanled. This means, 
+                   // pDestMacaddress may be unknown. Get the station index 
+                   // for ADDR2, which should be the self MAC addr
+                   wdiStatus = WDI_STATableFindStaidByAddr( pWDICtx, 
+                       *(wpt_macAddr*)pAddr2, &ucStaId ); 
+                   if (WDI_STATUS_SUCCESS == wdiStatus)
+                   {
+                     //Found self Sta index.
+                     WDI_StaStruct* pSTATable = (WDI_StaStruct*) pWDICtx->staTable;
+                     wpt_uint8                 bssIdx  = 0;
+
+                     pBSSSes = NULL;
+                     //Initialize WDI status to error.
+                     wdiStatus = WDI_STATUS_E_NOT_ALLOWED;
+
+                     //Check if its BSSIdx is valid.
+                     if (pSTATable[ucStaId].bssIdx != WDI_BSS_INVALID_IDX) 
+                     {
+                       //Use BSSIdx to get the association sequence and use
+                       //macBssId to get the peerMac Address(MacBSSID).
+                       bssIdx = WDI_FindAssocSessionByBSSIdx( pWDICtx,
+                           pSTATable[ucStaId].bssIdx,
+                           &pBSSSes);
+
+                       if ( NULL != pBSSSes )
+                       {
+                         //Get staId from the peerMac. 
+                         wdiStatus = WDI_STATableFindStaidByAddr( pWDICtx, 
+                             pBSSSes->macBSSID, &ucStaId ); 
+                       }
+                     }
+                   }
+                 }
+               }
+               //wdiStatus will be success if it found valid peerStaIdx
+               //Otherwise return failure.
+               if(WDI_STATUS_SUCCESS != wdiStatus )
+               {
+                 return WDI_STATUS_E_NOT_ALLOWED;
+               }
+             }
+           } 
             else
             {
               // For bcast frames use the bcast station index

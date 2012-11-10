@@ -910,8 +910,8 @@ int slim_xfer_msg(struct slim_controller *ctrl, struct slim_device *sbdev,
 			ret = wait_for_completion_timeout(&complete, HZ);
 			if (!ret) {
 				struct slim_msg_txn *txn;
-				dev_err(&ctrl->dev, "slimbus Read timed out");
 				mutex_lock(&ctrl->m_ctrl);
+				dev_err(&ctrl->dev, "slimbus Read timed out");
 				txn = ctrl->txnt[tid];
 				/* Invalidate the transaction */
 				ctrl->txnt[tid] = NULL;
@@ -920,6 +920,15 @@ int slim_xfer_msg(struct slim_controller *ctrl, struct slim_device *sbdev,
 				ret = -ETIMEDOUT;
 			} else
 				ret = 0;
+		} else if (ret < 0 && !msg->comp) {
+			struct slim_msg_txn *txn;
+			mutex_lock(&ctrl->m_ctrl);
+			dev_err(&ctrl->dev, "slimbus Read error");
+			txn = ctrl->txnt[tid];
+			/* Invalidate the transaction */
+			ctrl->txnt[tid] = NULL;
+			mutex_unlock(&ctrl->m_ctrl);
+			kfree(txn);
 		}
 
 	} else
@@ -2779,6 +2788,9 @@ int slim_control_ch(struct slim_device *sb, u16 chanh,
 	mutex_lock(&sb->sldev_reconf);
 	mutex_lock(&ctrl->m_ctrl);
 	do {
+		struct slim_pending_ch *pch;
+		u8 add_mark_removal  = true;
+
 		slc = &ctrl->chans[chan];
 		dev_dbg(&ctrl->dev, "chan:%d,ctrl:%d,def:%d", chan, chctrl,
 					slc->def);
@@ -2803,9 +2815,30 @@ int slim_control_ch(struct slim_device *sb, u16 chanh,
 				ret = -ENOTCONN;
 				break;
 			}
-			ret = add_pending_ch(&sb->mark_removal, chan);
-			if (ret)
-				break;
+			/* If channel removal request comes when pending
+			 * in the mark_define, remove it from the define
+			 * list instead of adding it to removal list
+			 */
+			if (!list_empty(&sb->mark_define)) {
+				struct list_head *pos, *next;
+				list_for_each_safe(pos, next,
+						  &sb->mark_define) {
+					pch = list_entry(pos,
+						struct slim_pending_ch,
+						pending);
+					if (pch->chan == slc->chan) {
+						list_del(&pch->pending);
+						kfree(pch);
+						add_mark_removal = false;
+						break;
+					}
+				}
+			}
+			if (add_mark_removal == true) {
+				ret = add_pending_ch(&sb->mark_removal, chan);
+				if (ret)
+					break;
+			}
 		}
 
 		if (!(slc->nextgrp & SLIM_END_GRP))

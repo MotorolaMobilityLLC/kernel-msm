@@ -327,7 +327,7 @@ eHalStatus csrOpen(tpAniSirGlobal pMac)
             pMac->scan.countryCodeDefault[1] = 'S';
             pMac->scan.countryCodeDefault[2] = 'I';
             //status = eHAL_STATUS_SUCCESS;
-        }
+        }        
         smsLog( pMac, LOGE, FL(" country Code from nvRam %s\n"), pMac->scan.countryCodeDefault );
         csrGetRegulatoryDomainForCountry(pMac, pMac->scan.countryCodeDefault, &regId);
         WDA_SetRegDomain(pMac, regId);
@@ -1280,6 +1280,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
 #ifdef WLAN_FEATURE_11AC
         pMac->roam.configParam.nVhtChannelWidth = pParam->nVhtChannelWidth;
 #endif
+        pMac->scan.fIgnore_chan165 = pParam->fIgnore_chan165;
     }
     
     return status;
@@ -1338,6 +1339,7 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
         pParam->fValidateList = pMac->roam.configParam.fValidateList;
         pParam->fEnableBypass11d = pMac->scan.fEnableBypass11d;
         pParam->fEnableDFSChnlScan = pMac->scan.fEnableDFSChnlScan;
+        pParam->fIgnore_chan165= pMac->scan.fIgnore_chan165;
         pParam->fScanTwice = pMac->roam.configParam.fScanTwice;
         pParam->fFirstScanOnly2GChnl = pMac->scan.fFirstScanOnly2GChnl;
 
@@ -1834,6 +1836,20 @@ eHalStatus csrRoamCallCallback(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoam
     {
         smsLog(pMac, LOGW, " Assoc complete result = %d statusCode = %d reasonCode = %d\n", u2, pRoamInfo->statusCode, pRoamInfo->reasonCode);
     }
+    if ((u1 == eCSR_ROAM_FT_REASSOC_FAILED) && (pSession->bRefAssocStartCnt)) {
+        /*
+         * Decrement bRefAssocStartCnt for FT reassoc failure.
+         * Reason: For FT reassoc failures, we first call 
+         * csrRoamCallCallback before notifying a failed roam 
+         * completion through csrRoamComplete. The latter in 
+         * turn calls csrRoamProcessResults which tries to 
+         * once again call csrRoamCallCallback if bRefAssocStartCnt
+         * is non-zero. Since this is redundant for FT reassoc 
+         * failure, decrement bRefAssocStartCnt.
+         */
+        pSession->bRefAssocStartCnt--;
+    }
+
     if ( (pSession == NULL) ||
         (eANI_BOOLEAN_FALSE == pSession->sessionActive) )
     {
@@ -4978,6 +4994,8 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
         default:
         {
             smsLog(pMac, LOGW, FL("receives no association indication\n"));
+            smsLog(pMac, LOG1, FL("Assoc ref count %d\n"), 
+                   pSession->bRefAssocStartCnt);
             if( CSR_IS_INFRASTRUCTURE( &pSession->connectedProfile ) || 
                 CSR_IS_ROAM_SUBSTATE_STOP_BSS_REQ( pMac, sessionId ) )
             {
@@ -9134,9 +9152,10 @@ eHalStatus csrRoamLostLink( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32 ty
         }
 #endif
     smsLog(pMac, LOGW, FL("roamInfo.staId (%d)\n"), roamInfo.staId);
-    csrRoamCallCallback(pMac, sessionId, &roamInfo, 0, eCSR_ROAM_LOSTLINK, result);
     if(fToRoam)
     {
+        //Tell HDD about the lost link
+        csrRoamCallCallback(pMac, sessionId, &roamInfo, 0, eCSR_ROAM_LOSTLINK, result);
         //Only remove the connected BSS in infrastructure mode
         csrRoamRemoveConnectedBssFromScanCache(pMac, &pSession->connectedProfile);
         //Not to do anying for lostlink with WDS
@@ -9190,6 +9209,7 @@ eHalStatus csrRoamLostLink( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32 ty
             palCopyMemory(pMac->hHdd, roamInfo.peerMac, pDeauthIndMsg->peerMacAddr, sizeof(tSirMacAddr));
             roamInfo.staId = (tANI_U8)pDeauthIndMsg->staId;
         }
+        //Tell HDD about the lost link
         csrRoamCallCallback(pMac, sessionId, &roamInfo, 0, eCSR_ROAM_LOSTLINK, result);
        
         /*No need to start idle scan in case of IBSS/SAP 
@@ -14660,9 +14680,9 @@ eHalStatus csrRoamIssueFTPreauthReq(tHalHandle hHal, tANI_U32 sessionId, tpSirBs
     {
         pftPreAuthReq->ft_ies_length = 0; 
     }
-    vos_mem_copy(pftPreAuthReq->pbssDescription, pBssDescription, pBssDescription->length);
-    pftPreAuthReq->length = pal_cpu_to_be16(sizeof(tSirFTPreAuthReq) + sizeof(pBssDescription->length) +
-                                                    pBssDescription->length); 
+    vos_mem_copy(pftPreAuthReq->pbssDescription, pBssDescription,
+                 sizeof(pBssDescription->length) + pBssDescription->length);
+    pftPreAuthReq->length = pal_cpu_to_be16(auth_req_len); 
     return palSendMBMessage(pMac->hHdd, pftPreAuthReq);
 }
 /*--------------------------------------------------------------------------
@@ -14683,8 +14703,15 @@ void csrRoamFTPreAuthRspProcessor( tHalHandle hHal, tpSirFTPreAuthRsp pFTPreAuth
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
     smsLog( pMac, LOGE, FL("Preauth response status code %d"), pFTPreAuthRsp->status); 
 #endif
-#ifdef WLAN_FEATURE_NEIGHBOR_ROAMING    
-    csrNeighborRoamPreauthRspHandler(pMac, (VOS_STATUS)pFTPreAuthRsp->status);
+#ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
+    status = csrNeighborRoamPreauthRspHandler(pMac, (VOS_STATUS)pFTPreAuthRsp->status);
+    if (status != eHAL_STATUS_SUCCESS) {
+        /*
+         * Bail out if pre-auth was not even processed.
+         */
+        smsLog(pMac, LOGW, FL("Preauth was not processed: %d"), status);
+        return;
+    }
 #endif
     /* The below function calls/timers should be invoked only if the pre-auth is successful */
     if (VOS_STATUS_SUCCESS != (VOS_STATUS)pFTPreAuthRsp->status)
