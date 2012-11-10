@@ -4440,9 +4440,17 @@ static tANI_BOOLEAN csrScanProcessScanResults( tpAniSirGlobal pMac, tSmeCmd *pCo
 #ifdef WLAN_AP_STA_CONCURRENCY
     if (!csrLLIsListEmpty( &pMac->scan.scanCmdPendingList, LL_ACCESS_LOCK ))
     {
-         VOS_ASSERT(pCommand->u.scanCmd.u.scanRequest.restTime != 0);
-         palTimerStart(pMac->hHdd, pMac->scan.hTimerStaApConcTimer, 
-                 pCommand->u.scanCmd.u.scanRequest.restTime * PAL_TIMER_TO_MS_UNIT, eANI_BOOLEAN_FALSE);
+        if (eANI_BOOLEAN_TRUE == csrIsAnySessionConnected(pMac)) {
+            /* if active connected sessions present then continue to split scan
+             * with specified interval between consecutive scans */
+            csrSetDefaultScanTiming(pMac, pCommand->u.scanCmd.u.scanRequest.scanType, &(pCommand->u.scanCmd.u.scanRequest));
+            palTimerStart(pMac->hHdd, pMac->scan.hTimerStaApConcTimer,
+                pCommand->u.scanCmd.u.scanRequest.restTime * PAL_TIMER_TO_MS_UNIT, eANI_BOOLEAN_FALSE);
+        } else {
+            /* if no connected sessions present then initiate next scan command immediately */
+            /* minimum timer granularity is 10ms */
+            palTimerStart(pMac->hHdd, pMac->scan.hTimerStaApConcTimer, 10 * 1000, eANI_BOOLEAN_FALSE);
+        }
     }
 #endif
     return (fRet);
@@ -5501,7 +5509,12 @@ static void csrStaApConcTimerHandler(void *pv)
        
         pScanCmd = GET_BASE_ADDR( pEntry, tSmeCmd, Link );
         numChn = pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels;
-        if (numChn > 1)
+
+        /* if any session is connected and the number of channels to scan is
+         * greater than 1 then split the scan into multiple scan operations
+         * on each individual channel else continue to perform scan on all
+         * specified channels */
+        if ( (eANI_BOOLEAN_TRUE == csrIsAnySessionConnected(pMac)) && (numChn > 1) )
         {
              palZeroMemory(pMac->hHdd, &scanReq, sizeof(tCsrScanRequest));
 
@@ -5552,8 +5565,9 @@ static void csrStaApConcTimerHandler(void *pv)
              }       
         }
         else
-        {    //numChn ==1 This is the last channel to be scanned
-             //last channel remaining to scan
+        {
+             /* no active connected session present or numChn == 1
+              * scan all remaining channels */
              pSendScanCmd = pScanCmd;
              //remove this command from pending list 
              if (csrLLRemoveHead( &pMac->scan.scanCmdPendingList, LL_ACCESS_NOLOCK) == NULL)
