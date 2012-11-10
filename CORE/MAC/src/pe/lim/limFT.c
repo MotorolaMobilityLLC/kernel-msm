@@ -690,11 +690,15 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
         pftSessionEntry->limCurrentBssPropCap;
 
 
+#ifdef FEATURE_WLAN_CCX
+    pftSessionEntry->maxTxPower = limGetMaxTxPower(regMax, localPowerConstraint, pMac->roam.configParam.nTxPowerCap);
+#else
     pftSessionEntry->maxTxPower = VOS_MIN( regMax , (localPowerConstraint) );
+#endif
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    limLog( pMac, LOGE, "%s: Regulatory max = %d, local power constraint = %d, max tx = %d", 
-        __func__, regMax, localPowerConstraint, pftSessionEntry->maxTxPower );
+    limLog( pMac, LOGE, "%s: Regulatory max = %d, local power constraint = %d, ini tx power = %d, max tx = %d",
+        __func__, regMax, localPowerConstraint, pMac->roam.configParam.nTxPowerCap, pftSessionEntry->maxTxPower );
 #endif
 
     pftSessionEntry->limRFBand = limGetRFBand(pftSessionEntry->currentOperChannel);
