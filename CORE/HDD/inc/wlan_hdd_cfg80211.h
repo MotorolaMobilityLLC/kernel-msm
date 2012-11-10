@@ -70,6 +70,26 @@
 #define BASIC_RATE_MASK   0x80
 #define RATE_MASK         0x7f
 
+#ifdef WLAN_ENABLE_AGEIE_ON_SCAN_RESULTS
+/* GPS application requirement */
+#define QCOM_VENDOR_IE_ID 221
+#define QCOM_OUI1         0x00
+#define QCOM_OUI2         0xA0
+#define QCOM_OUI3         0xC6
+#define QCOM_VENDOR_IE_AGE_TYPE  0x100
+#define QCOM_VENDOR_IE_AGE_LEN   4
+
+typedef struct {
+   u8 element_id;
+   u8 len;
+   u8 oui_1;
+   u8 oui_2;
+   u8 oui_3;
+   u32 type;
+   u32 age;
+}__attribute__((packed)) qcom_ie_age ;
+#endif
+
 struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_db( hdd_adapter_t *pAdapter,
                                       tCsrRoamInfo *pRoamInfo
                                       );

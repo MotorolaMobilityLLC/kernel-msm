@@ -3292,7 +3292,12 @@ wlan_hdd_cfg80211_inform_bss_frame( hdd_adapter_t *pAdapter,
     struct wireless_dev *wdev = dev->ieee80211_ptr;
     struct wiphy *wiphy = wdev->wiphy;
     int chan_no = bss_desc->channelId;
+#ifdef WLAN_ENABLE_AGEIE_ON_SCAN_RESULTS
+    qcom_ie_age *qie_age = NULL;
+    int ie_length = GET_IE_LEN_IN_BSS_DESC( bss_desc->length ) + sizeof(qcom_ie_age);
+#else
     int ie_length = GET_IE_LEN_IN_BSS_DESC( bss_desc->length );
+#endif
     const char *ie =
         ((ie_length != 0) ? (const char *)&bss_desc->ieFields: NULL);
     unsigned int freq;
@@ -3328,6 +3333,21 @@ wlan_hdd_cfg80211_inform_bss_frame( hdd_adapter_t *pAdapter,
 
     mgmt->u.probe_resp.beacon_int = bss_desc->beaconInterval;
     mgmt->u.probe_resp.capab_info = bss_desc->capabilityInfo;
+
+#ifdef WLAN_ENABLE_AGEIE_ON_SCAN_RESULTS
+    /* GPS Requirement: need age ie per entry. Using vendor specific. */
+    /* Assuming this is the last IE, copy at the end */
+    ie_length           -=sizeof(qcom_ie_age);
+    qie_age =  (qcom_ie_age *)(mgmt->u.probe_resp.variable + ie_length);
+    qie_age->element_id = QCOM_VENDOR_IE_ID;
+    qie_age->len        = QCOM_VENDOR_IE_AGE_LEN;
+    qie_age->oui_1      = QCOM_OUI1;
+    qie_age->oui_2      = QCOM_OUI2;
+    qie_age->oui_3      = QCOM_OUI3;
+    qie_age->type       = QCOM_VENDOR_IE_AGE_TYPE;
+    qie_age->age        = vos_timer_get_system_ticks() - bss_desc->nReceivedTime;
+#endif
+
     memcpy(mgmt->u.probe_resp.variable, ie, ie_length);
 
     mgmt->frame_control |=
