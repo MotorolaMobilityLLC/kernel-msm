@@ -552,7 +552,7 @@ typedef enum
 #define CFG_REST_TIME_CONC_NAME                     "gRestTimeConc"
 #define CFG_REST_TIME_CONC_MIN                      ( 0 )
 #define CFG_REST_TIME_CONC_MAX                      ( 10000 )
-#define CFG_REST_TIME_CONC_DEFAULT                  ( 20 )
+#define CFG_REST_TIME_CONC_DEFAULT                  ( 100 )
 
 #endif
 

@@ -51,7 +51,7 @@
 #define CSR_ACTIVE_MAX_CHANNEL_TIME_CONC    27
 #define CSR_ACTIVE_MIN_CHANNEL_TIME_CONC    20
 
-#define CSR_REST_TIME_CONC                  20
+#define CSR_REST_TIME_CONC                  100
 #endif
 
 #define CSR_MAX_NUM_SUPPORTED_CHANNELS 55
