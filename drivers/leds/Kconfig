@@ -362,6 +362,13 @@ config LEDS_PM8XXX_RGB
 	help
 	 This option enables support for PMIC breathing RGB LED
 
+config LEDS_PM8XXX_EXT_CTRL
+	tristate "Extended control for PM8XXX charging LED"
+	depends on LEDS_CLASS
+	depends on LEDS_PM8XXX
+	help
+	 This option enables extended control for charging LED
+
 config LEDS_REGULATOR
 	tristate "REGULATOR driven LED support"
 	depends on LEDS_CLASS

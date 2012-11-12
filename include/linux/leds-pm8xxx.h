@@ -119,6 +119,9 @@ struct pm8xxx_led_config {
 	bool	default_state;
 	struct pm8xxx_pwm_duty_cycles *pwm_duty_cycles;
 	struct wled_config_data	*wled_cfg;
+#ifdef CONFIG_LEDS_PM8XXX_EXT_CTRL
+	void (*led_ctrl)(struct device *dev, unsigned on);
+#endif
 };
 
 /**
