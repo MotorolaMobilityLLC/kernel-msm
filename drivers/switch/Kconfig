@@ -14,7 +14,7 @@ config SWITCH_GPIO
 
 config SWITCH_ARIZONA
 	tristate "Arizona Switch support"
-	depends on SWITCH
+	depends on MFD_ARIZONA
 	help
 	  Say Y here to enable Arizona switch support.
 
