@@ -192,7 +192,30 @@ struct pm8xxx_led_data {
 	u16			pwm_grpfreq;
 	u16			pwm_pause_hi;
 	u16			pwm_pause_lo;
+#ifdef CONFIG_LEDS_PM8XXX_EXT_CTRL
+	void (*led_ctrl)(struct device *dev, unsigned on);
+	unsigned do_blink;
+#endif
 };
+
+#ifdef CONFIG_LEDS_PM8XXX_EXT_CTRL
+static int pm8xxx_default_pwm_duty_pcts[56] = {
+		1, 4, 8, 12, 16, 20, 24, 28, 32, 36,
+		40, 44, 46, 52, 56, 60, 64, 68, 72, 76,
+		80, 84, 88, 92, 96, 100, 100, 100, 98, 95,
+		92, 88, 84, 82, 78, 74, 70, 66, 62, 58,
+		58, 54, 50, 48, 42, 38, 34, 30, 26, 22,
+		14, 10, 6, 4, 1
+};
+
+#define PM8XXX_LED_PWM_DUTY_MS		20
+static struct pm8xxx_pwm_duty_cycles pm8xxx_default_pwm_duty_cycles = {
+	.duty_pcts = (int *)&pm8xxx_default_pwm_duty_pcts,
+	.num_duty_pcts = ARRAY_SIZE(pm8xxx_default_pwm_duty_pcts),
+	.duty_ms = PM8XXX_LED_PWM_DUTY_MS,
+	.start_idx = 0,
+};
+#endif
 
 static void led_kp_set(struct pm8xxx_led_data *led, enum led_brightness value)
 {
@@ -501,6 +524,56 @@ static int pm8xxx_led_pwm_pattern_update(struct pm8xxx_led_data * led)
 	return rc;
 }
 
+#ifdef CONFIG_LEDS_PM8XXX_EXT_CTRL
+/* This function is used to set the LED solid or blinking depending
+   do_blink field set by pm8xxx_led_set_blink function */
+static int pm8xxx_led_pwm_work(struct pm8xxx_led_data *led)
+{
+	int duty_us;
+	int rc = 0;
+
+	mutex_lock(&led->lock);
+	pr_debug("blink = %d, brightness = %d\n",
+		led->do_blink, led->cdev.brightness);
+	if (led->do_blink)
+		led->cdev.brightness = LED_FULL;
+
+	if (led->led_ctrl)
+		led->led_ctrl(led->dev->parent, led->cdev.brightness ? 1 : 0);
+
+	/* We need to disable it first even if brightness is not zero */
+	pwm_disable(led->pwm_dev);
+	pm8xxx_pwm_lut_enable(led->pwm_dev, 0);
+	if (led->cdev.brightness == 0) {
+		mutex_unlock(&led->lock);
+		return rc;
+	}
+
+	if (led->do_blink == 0) {
+		duty_us = (led->pwm_period_us * led->cdev.brightness)/LED_FULL;
+		rc = pwm_config(led->pwm_dev, duty_us, led->pwm_period_us);
+		rc = pwm_enable(led->pwm_dev);
+	} else {
+		rc = pm8xxx_pwm_lut_config(led->pwm_dev, led->pwm_period_us,
+				led->pwm_duty_cycles->duty_pcts,
+				led->pwm_duty_cycles->duty_ms,
+				led->pwm_duty_cycles->start_idx,
+				led->pwm_duty_cycles->num_duty_pcts,
+				0, 0, PM8XXX_LED_PWM_FLAGS);
+		rc = pm8xxx_pwm_lut_enable(led->pwm_dev, led->cdev.brightness);
+	}
+
+	mutex_unlock(&led->lock);
+	return rc;
+}
+
+static inline void __pm8xxx_ctrl(struct pm8xxx_led_data *led,
+					enum led_brightness level)
+{
+	if (led->led_ctrl)
+		led->led_ctrl(led->dev->parent, level ? 1 : 0);
+}
+#else
 static int pm8xxx_led_pwm_work(struct pm8xxx_led_data *led)
 {
 	int duty_us;
@@ -535,6 +608,10 @@ static int pm8xxx_led_pwm_work(struct pm8xxx_led_data *led)
 	return rc;
 }
 
+static inline void __pm8xxx_ctrl(struct pm8xxx_led_data *led,
+					enum led_brightness level) {}
+#endif
+
 static void __pm8xxx_led_work(struct pm8xxx_led_data *led,
 					enum led_brightness value)
 {
@@ -542,6 +619,7 @@ static void __pm8xxx_led_work(struct pm8xxx_led_data *led,
 	int level = 0;
 
 	mutex_lock(&led->lock);
+	__pm8xxx_ctrl(led, level);
 
 	level = pm8xxx_adjust_brightness(&led->cdev, value);
 
@@ -597,6 +675,42 @@ static void pm8xxx_led_work(struct work_struct *work)
 	}
 }
 
+#ifdef CONFIG_LEDS_PM8XXX_EXT_CTRL
+static int pm8xxx_led_blink_set(struct led_classdev *led_cdev,
+	unsigned long *delay_on, unsigned long *delay_off)
+{
+	struct	pm8xxx_led_data *led;
+
+	led = container_of(led_cdev, struct pm8xxx_led_data, cdev);
+
+	pr_debug("\"%s\"", led->cdev.name);
+	led->do_blink = 1;
+	schedule_work(&led->work);
+	return 0;
+}
+
+static inline void pm8xxx_led_ext_ctrl_init(struct pm8xxx_led_data *led_dat,
+	struct pm8xxx_led_config *led_cfg)
+{
+	led_dat->do_blink = 0;
+	if (led_cfg) {
+		led_dat->led_ctrl = led_cfg->led_ctrl;
+		if (led_dat->pwm_duty_cycles == NULL)
+			led_dat->pwm_duty_cycles =
+				&pm8xxx_default_pwm_duty_cycles;
+	}
+}
+#else
+static int pm8xxx_led_blink_set(struct led_classdev *led_cdev,
+	unsigned long *delay_on, unsigned long *delay_off)
+{
+	return 0;
+}
+
+static inline void pm8xxx_led_ext_ctrl_init(struct pm8xxx_led_data *led_dat,
+	struct pm8xxx_led_config *led_cfg) {}
+#endif
+
 static void pm8xxx_led_set(struct led_classdev *led_cdev,
 	enum led_brightness value)
 {
@@ -605,9 +719,13 @@ static void pm8xxx_led_set(struct led_classdev *led_cdev,
 	led = container_of(led_cdev, struct pm8xxx_led_data, cdev);
 
 	if (value < LED_OFF || value > led->cdev.max_brightness) {
-		dev_err(led->cdev.dev, "Invalid brightness value exceeds");
+		pr_err("invalid brightness value %d, max = %d",
+			value, led->cdev.max_brightness);
 		return;
 	}
+
+	led->cdev.brightness = value;
+	pm8xxx_led_ext_ctrl_init(led, NULL);
 
 	if (!led->lock_update) {
 		schedule_work(&led->work);
@@ -1154,6 +1272,7 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 		led_dat->max_current = led_cfg->max_current;
 		led_dat->lock_update = 0;
 		led_dat->blink = 0;
+		pm8xxx_led_ext_ctrl_init(led_dat, led_cfg);
 
 		if (!((led_dat->id >= PM8XXX_ID_LED_KB_LIGHT) &&
 				(led_dat->id < PM8XXX_ID_MAX))) {
@@ -1186,6 +1305,7 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 		led_dat->cdev.brightness_set    = pm8xxx_led_set;
 		led_dat->cdev.brightness_get    = pm8xxx_led_get;
 		led_dat->cdev.max_brightness    = LED_FULL;
+		led_dat->cdev.blink_set         = pm8xxx_led_blink_set;
 		led_dat->cdev.brightness	= LED_OFF;
 		led_dat->cdev.flags		= curr_led->flags;
 		led_dat->dev			= &pdev->dev;
