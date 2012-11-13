@@ -201,7 +201,6 @@ out:
 	return rv;
 }
 
-struct msm_camera_sensor_info msm_camera_sensor_s5k5b3g_data;
 static int __init s5k5b3g_init_i2c_device(struct i2c_board_info *info,
                                           struct device_node *node)
 {
