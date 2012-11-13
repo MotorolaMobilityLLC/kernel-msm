@@ -1780,10 +1780,10 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
 
     if ((pScanInfo != NULL) && pScanInfo->mScanPending)
     {
-        INIT_COMPLETION(staAdapter->abortscan_event_var);
+        INIT_COMPLETION(pScanInfo->abortscan_event_var);
         hdd_abort_mac_scan(staAdapter->pHddCtx);
         status = wait_for_completion_interruptible_timeout(
-                           &staAdapter->abortscan_event_var,
+                           &pScanInfo->abortscan_event_var,
                            msecs_to_jiffies(WLAN_WAIT_TIME_ABORTSCAN));
         if (!status)
         {
@@ -3681,7 +3681,7 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
      * of scanning
      */
     cfg80211_scan_done(req, false);
-    complete(&pAdapter->abortscan_event_var);
+    complete(&pScanInfo->abortscan_event_var);
 #ifdef WLAN_FEATURE_P2P
     /* Flush out scan result after p2p_serach is done */
     if(pScanInfo->flushP2pScanResults)

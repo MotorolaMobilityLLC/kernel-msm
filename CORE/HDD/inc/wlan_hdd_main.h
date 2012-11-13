@@ -597,6 +597,9 @@ typedef struct hdd_scaninfo_s
    /* Scan Completion Event */
    struct completion scan_req_completion_event;
 
+   /* completion variable for abortscan */
+   struct completion abortscan_event_var;
+
    vos_event_t scan_finished_event;
 
    hdd_scan_pending_option_e scan_pending_option;
@@ -660,9 +663,6 @@ struct hdd_adapter_s
    /* completion variable for Linkup Event */
    struct completion linkup_event_var;
 
-
-   /* completion variable for abortscan */
-   struct completion abortscan_event_var;
 #ifdef CONFIG_CFG80211
    /* completion variable for cancel remain on channel Event */
    struct completion cancel_rem_on_chan_var;

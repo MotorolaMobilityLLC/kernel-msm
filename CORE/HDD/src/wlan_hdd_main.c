@@ -230,10 +230,10 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
         if( pHddCtx->scan_info.mScanPending != FALSE )
         { 
            int result;
-           INIT_COMPLETION(pAdapter->abortscan_event_var);
+           INIT_COMPLETION(pHddCtx->scan_info.abortscan_event_var);
            hdd_abort_mac_scan(pAdapter->pHddCtx);
            result = wait_for_completion_interruptible_timeout(
-                               &pAdapter->abortscan_event_var,
+                               &pHddCtx->scan_info.abortscan_event_var,
                                msecs_to_jiffies(WLAN_WAIT_TIME_ABORTSCAN));
            if(!result)
            {
@@ -1127,7 +1127,6 @@ hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMacAddr ma
       init_completion(&pAdapter->linkup_event_var);
       init_completion(&pAdapter->cancel_rem_on_chan_var);
       init_completion(&pAdapter->rem_on_chan_ready_event);
-      init_completion(&pAdapter->abortscan_event_var);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
       init_completion(&pAdapter->offchannel_tx_event);
 #endif
@@ -3415,6 +3414,7 @@ int hdd_wlan_startup(struct device *dev )
    init_completion(&pHddCtx->standby_comp_var);
    init_completion(&pHddCtx->req_bmps_comp_var);
    init_completion(&pHddCtx->scan_info.scan_req_completion_event);
+   init_completion(&pHddCtx->scan_info.abortscan_event_var);
 
    hdd_list_init( &pHddCtx->hddAdapters, MAX_NUMBER_OF_ADAPTERS );
 
