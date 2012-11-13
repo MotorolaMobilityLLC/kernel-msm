@@ -83,7 +83,6 @@ static void arizona_start_mic(struct arizona_switch_info *info)
 {
 	struct arizona *arizona = info->arizona;
 	bool change;
-	int ret;
 
 	info->detecting = true;
 	info->mic = false;
