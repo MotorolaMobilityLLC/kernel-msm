@@ -3256,7 +3256,10 @@ eHalStatus csrRoamSetBssConfigCfg(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrR
         }
     }
 #ifdef WLAN_FEATURE_11AC
-    if(cfgCb > 2 )
+    // cbMode = 1 in cfg.ini is mapped to PHY_DOUBLE_CHANNEL_HIGH_PRIMARY = 3
+    // in function csrConvertCBIniValueToPhyCBState()
+    // So, max value for cbMode in 40MHz mode is 3 (MAC\src\include\sirParams.h)
+    if(cfgCb > PHY_DOUBLE_CHANNEL_HIGH_PRIMARY)
     {
         if(!WDA_getFwWlanFeatCaps(DOT11AC)) {
             cfgCb = csrGetHTCBStateFromVHTCBState(cfgCb);
