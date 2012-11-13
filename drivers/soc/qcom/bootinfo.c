@@ -1,17 +1,6 @@
 /*
- * bootinfo.c: This file contains the bootinfo code.  This code
- *	  provides boot information via /proc/bootinfo.  The
- *	  information currently includes:
- *            the powerup reason
- *        This file also provides EZX compatible interfaces for
- *	  retrieving the powerup reason.  All new user-space consumers
- *	  of the powerup reason should use the /proc/bootinfo
- *	  interface and all kernel-space consumers of the powerup
- *	  reason should use the bi_powerup_reason interface.  The EZX
- *	  compatibility code is deprecated.
- *
- *
  * Copyright (C) 2009 Motorola, Inc.
+ * Copyright (C) 2012 Motorola Mobility. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,17 +16,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Revision History:
- *
- * Date         Author    Comment
- * ----------   --------  -----------
- * 30/06/2009   Motorola  Initialize version
  */
 
-
-#ifdef CONFIG_BOOTINFO
-
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/proc_fs.h>
@@ -90,10 +72,26 @@
  * bi_powerup_reason()             -- returns the powerup reason
  * bi_set_powerup_reason()         -- sets the powerup reason
  */
+
+#ifdef CONFIG_OF
+static void of_powerup(u32 *pwr)
+{
+	struct device_node *n = of_find_node_by_path("/chosen");
+
+	of_property_read_u32(n, "mmi,powerup_reason", pwr);
+	of_node_put(n);
+}
+#else
+static inline void of_powerup(u32 *pwr) { }
+#endif
+
 static u32 powerup_reason;
 u32 bi_powerup_reason(void)
 {
-	return powerup_reason;
+	u32 reason = powerup_reason;
+
+	of_powerup(&reason);
+	return reason;
 }
 EXPORT_SYMBOL(bi_powerup_reason);
 
@@ -119,10 +117,25 @@ EXPORT_SYMBOL(bi_set_powerup_reason);
  * bi_mbm_loader_version()         -- returns the MBM loader version
  * bi_set_mbm_loader_version()     -- sets the MBM loader version
  */
+#ifdef CONFIG_OF
+static void of_mbmver(u32 *ver)
+{
+	struct device_node *n = of_find_node_by_path("/chosen");
+
+	of_property_read_u32(n, "mmi,mbmversion", ver);
+	of_node_put(n);
+}
+#else
+static inline void of_mbmver(u32 *ver) { }
+#endif
+
 static u32 mbm_version;
 u32 bi_mbm_version(void)
 {
-	return mbm_version;
+	u32 ver = mbm_version;
+
+	of_mbmver(&ver);
+	return ver;
 }
 EXPORT_SYMBOL(bi_mbm_version);
 
@@ -290,7 +303,28 @@ void bi_add_bl_build_sig(char *bld_sig)
 }
 EXPORT_SYMBOL(bi_add_bl_build_sig);
 
+#ifdef CONFIG_OF
+static void of_blsig(void)
+{
+	struct property *p;
+	struct device_node *n = of_find_node_by_path("/chosen/mmi,bl_sigs");
+
+	if (n == NULL)
+		return;
+
+	bl_build_sig_count = 0;
+	for_each_property_of_node(n, p)
+		if (strcmp(p->name, "name"))
+			bi_add_bl_build_sig(p->value);
+
+	of_node_put(n);
+}
+#else
+static inline void of_blsig(void) { }
+#endif
+
 #define EMIT_BL_BUILD_SIG() \
+		of_blsig(); \
 		do { \
 			int i; \
 			for (i = 0; i < bl_build_sig_count; i++) { \
@@ -392,4 +426,3 @@ module_init(bootinfo_init_module);
 module_exit(bootinfo_cleanup_module);
 
 MODULE_AUTHOR("MOTOROLA");
-#endif /* CONFIG_BOOTINFO */
