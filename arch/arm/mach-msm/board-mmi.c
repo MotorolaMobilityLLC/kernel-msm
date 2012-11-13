@@ -15,6 +15,7 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/setup.h>
+#include <asm/system_info.h>
 
 #include <linux/bootmem.h>
 #include <linux/of.h>
@@ -305,8 +306,28 @@ static void __init mmi_msm8960_init_irq(void)
 		msm8960_init_irq();
 }
 
+static struct of_device_id mmi_of_setup[] __initdata = {
+	{ .compatible = "linux,seriallow", .data = &system_serial_low },
+	{ .compatible = "linux,serialhigh", .data = &system_serial_high },
+	{ .compatible = "linux,hwrev", .data = &system_rev },
+	{ }
+};
+
+static void __init mmi_of_populate_setup(void)
+{
+	struct device_node *n = of_find_node_by_path("/chosen");
+	struct of_device_id *tbl = mmi_of_setup;
+
+	while (tbl->data) {
+		of_property_read_u32(n, tbl->compatible, tbl->data);
+		tbl++;
+	}
+	of_node_put(n);
+}
+
 static void __init mmi_msm8960_dt_init(void)
 {
+	mmi_of_populate_setup();
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
 	msm8960_cdp_init();
 }
