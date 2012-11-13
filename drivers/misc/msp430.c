@@ -159,6 +159,10 @@
 #define MSP430_ES_DATA_QUEUE_MASK	0x07
 
 #define KDEBUG(format, s...)	if (g_debug) pr_info(format, ##s)
+
+static unsigned int msp430_irq_disable;
+module_param_named(irq_disable, msp430_irq_disable, uint, 0644);
+
 static char g_debug;
 /* to hold sensor state so that it can be restored on resume */
 static unsigned char g_sensor_state;
@@ -566,6 +570,12 @@ static int msp430_ms_data_buffer_read(struct msp430_data *ps_msp430,
 static irqreturn_t msp430_isr(int irq, void *dev)
 {
 	struct msp430_data *ps_msp430 = dev;
+
+	if (msp430_irq_disable) {
+		disable_irq_wake(ps_msp430->irq);
+		return IRQ_HANDLED;
+	}
+
 	queue_work(ps_msp430->irq_work_queue, &ps_msp430->irq_work);
 	return IRQ_HANDLED;
 }
