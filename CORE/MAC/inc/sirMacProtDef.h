@@ -596,7 +596,7 @@
 
 // bitname must be one of the above, eg ESS, CF_POLLABLE, etc.
 #define SIR_MAC_CLEAR_CAPABILITY(u16value, bitname) \
-    (u16value) &= (~(SIR_MAC_SET_##bitname(0)))
+  ((u16value) &= (~(SIR_MAC_SET_##bitname(0))))
 
 /// Status Code (present in Management response frames) enum
 

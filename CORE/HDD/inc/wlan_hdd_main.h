@@ -83,12 +83,12 @@
 /** Hdd Default MTU */
 #define HDD_DEFAULT_MTU         (1500)
 /**event flags registered net device*/
-#define NET_DEVICE_REGISTERED  1<<0
-#define SME_SESSION_OPENED     1<<1
-#define INIT_TX_RX_SUCCESS     1<<2
-#define WMM_INIT_DONE          1<<3
-#define SOFTAP_BSS_STARTED     1<<4
-#define DEVICE_IFACE_OPENED    1<<5
+#define NET_DEVICE_REGISTERED  (1<<0)
+#define SME_SESSION_OPENED     (1<<1)
+#define INIT_TX_RX_SUCCESS     (1<<2)
+#define WMM_INIT_DONE          (1<<3)
+#define SOFTAP_BSS_STARTED     (1<<4)
+#define DEVICE_IFACE_OPENED    (1<<5)
 
 /** Maximum time(ms)to wait for disconnect to complete **/
 #define WLAN_WAIT_TIME_DISCONNECT  500
@@ -743,13 +743,13 @@ typedef struct hdd_dynamic_mcbcfilter_s
     v_U8_t       mcBcFilterSuspend;
 }hdd_dynamic_mcbcfilter_t;
 
-#define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) &(pAdapter)->sessionCtx.station
-#define WLAN_HDD_GET_AP_CTX_PTR(pAdapter) &(pAdapter)->sessionCtx.ap
-#define WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter)  &(pAdapter)->sessionCtx.station.WextState
-#define WLAN_HDD_GET_CTX(pAdapter) (hdd_context_t*)pAdapter->pHddCtx
-#define WLAN_HDD_GET_HAL_CTX(pAdapter)  ((hdd_context_t*)(pAdapter->pHddCtx))->hHal
-#define WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter) &(pAdapter)->sessionCtx.ap.HostapdState
-#define WLAN_HDD_GET_CFG_STATE_PTR(pAdapter)  &(pAdapter)->cfg80211State
+#define WLAN_HDD_GET_STATION_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.station)
+#define WLAN_HDD_GET_AP_CTX_PTR(pAdapter) (&(pAdapter)->sessionCtx.ap)
+#define WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter)  (&(pAdapter)->sessionCtx.station.WextState)
+#define WLAN_HDD_GET_CTX(pAdapter) ((hdd_context_t*)pAdapter->pHddCtx)
+#define WLAN_HDD_GET_HAL_CTX(pAdapter)  (((hdd_context_t*)(pAdapter->pHddCtx))->hHal)
+#define WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter) (&(pAdapter)->sessionCtx.ap.HostapdState)
+#define WLAN_HDD_GET_CFG_STATE_PTR(pAdapter)  (&(pAdapter)->cfg80211State)
 #define WLAN_HDD_MAX_MC_ADDR_LIST 10
 
 typedef struct hdd_adapter_list_node

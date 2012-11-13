@@ -2511,9 +2511,9 @@ static const iw_handler      hostapd_handler[] =
    (iw_handler) NULL,           /* SIOCSIWPMKSA */
 };
 
-#define    IW_PRIV_TYPE_OPTIE    IW_PRIV_TYPE_BYTE | QCSAP_MAX_OPT_IE
+#define    IW_PRIV_TYPE_OPTIE    (IW_PRIV_TYPE_BYTE | QCSAP_MAX_OPT_IE)
 #define    IW_PRIV_TYPE_MLME \
-    IW_PRIV_TYPE_BYTE | sizeof(struct ieee80211req_mlme)
+  (IW_PRIV_TYPE_BYTE | sizeof(struct ieee80211req_mlme))
 
 static const struct iw_priv_args hostapd_private_args[] = {
   { QCSAP_IOCTL_SETPARAM,

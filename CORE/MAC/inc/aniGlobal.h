@@ -129,8 +129,8 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 
 // cap should be one of HCF/WME/WSM
 #define LIM_BSS_CAPS_GET(cap, val) (((val) & (LIM_BSS_CAPS_ ## cap)) >> LIM_BSS_CAPS_OFFSET_ ## cap)
-#define LIM_BSS_CAPS_SET(cap, val) (val) |= (LIM_BSS_CAPS_ ## cap )
-#define LIM_BSS_CAPS_CLR(cap, val) (val) &= (~ (LIM_BSS_CAPS_ ## cap))
+#define LIM_BSS_CAPS_SET(cap, val) ((val) |= (LIM_BSS_CAPS_ ## cap ))
+#define LIM_BSS_CAPS_CLR(cap, val) ((val) &= (~ (LIM_BSS_CAPS_ ## cap)))
 
 // 40 beacons per heart beat interval is the default + 1 to count the rest
 #define MAX_NO_BEACONS_PER_HEART_BEAT_INTERVAL 41

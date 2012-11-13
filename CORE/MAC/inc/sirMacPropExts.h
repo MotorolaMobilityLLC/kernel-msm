@@ -99,10 +99,10 @@
 
 // macro to set/get a capability bit, bitname is one of HCF/11EQOS/etc...
 #define PROP_CAPABILITY_SET(bitname, value) \
-        (value) = (value) | ((tANI_U16)(1 << SIR_MAC_PROP_CAPABILITY_ ## bitname))
+  ((value) = (value) | ((tANI_U16)(1 << SIR_MAC_PROP_CAPABILITY_ ## bitname)))
 
 #define PROP_CAPABILITY_RESET(bitname, value) \
-        (value) = (value) & ~((tANI_U16)(1 << SIR_MAC_PROP_CAPABILITY_ ## bitname))
+  ((value) = (value) & ~((tANI_U16)(1 << SIR_MAC_PROP_CAPABILITY_ ## bitname)))
         
 #define PROP_CAPABILITY_GET(bitname, value) \
         (((value) >> SIR_MAC_PROP_CAPABILITY_ ## bitname) & 1)

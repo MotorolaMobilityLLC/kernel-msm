@@ -34,9 +34,9 @@
 #define __LIM_SECURITY_UTILS_H
 #include "sirMacProtDef.h" //for tSirMacAuthFrameBody
 
-#define LIM_ENCR_AUTH_BODY_LEN  sizeof(tSirMacAuthFrameBody) + \
+#define LIM_ENCR_AUTH_BODY_LEN  (sizeof(tSirMacAuthFrameBody) + \
                                 SIR_MAC_WEP_IV_LENGTH + \
-                                SIR_MAC_WEP_ICV_LENGTH
+                                SIR_MAC_WEP_ICV_LENGTH)
 struct tLimPreAuthNode;
 
 #ifdef WLAN_SOFTAP_FEATURE

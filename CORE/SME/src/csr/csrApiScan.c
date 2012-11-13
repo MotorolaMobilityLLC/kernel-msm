@@ -86,9 +86,9 @@ RSSI *cannot* be more than 0xFF or less than 0 for meaningful WLAN operation
 #define CSR_SCAN_HANDOFF_DELTA 10
 #define MAX_ACTIVE_SCAN_FOR_ONE_CHANNEL 140
 #define MIN_ACTIVE_SCAN_FOR_ONE_CHANNEL 120
-#define CSR_SCAN_OVERALL_SCORE( rssi ) \
-  ( rssi < CSR_SCAN_MAX_SCORE_VAL )\
-   ? (CSR_SCAN_MAX_SCORE_VAL-rssi) : CSR_SCAN_MIN_SCORE_VAL
+#define CSR_SCAN_OVERALL_SCORE( rssi )                          \
+    (( rssi < CSR_SCAN_MAX_SCORE_VAL )                          \
+     ? (CSR_SCAN_MAX_SCORE_VAL-rssi) : CSR_SCAN_MIN_SCORE_VAL)
                                                                      
 
 #define CSR_SCAN_IS_OVER_BSS_LIMIT(pMac)  \

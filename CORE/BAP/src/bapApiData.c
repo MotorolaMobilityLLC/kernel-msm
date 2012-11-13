@@ -95,7 +95,7 @@
 #define WLANBAP_LLC_OUI_SIZE                   3
 
 /*Offset of the protocol type field inside the LLC/SNAP header*/
-#define WLANBAP_LLC_PROTO_TYPE_OFFSET  WLANBAP_LLC_OUI_OFFSET +  WLANBAP_LLC_OUI_SIZE
+#define WLANBAP_LLC_PROTO_TYPE_OFFSET  (WLANBAP_LLC_OUI_OFFSET +  WLANBAP_LLC_OUI_SIZE)
 
 /*Size of the protocol type field inside the LLC/SNAP header*/
 #define WLANBAP_LLC_PROTO_TYPE_SIZE            2
@@ -132,15 +132,13 @@ static v_U8_t WLANBAP_LLC_HEADER[] =  {0xAA, 0xAA, 0x03, 0x00, 0x00, 0x00 };
 //#define DBGLOG printf
 #define DUMPLOG_ON
 #ifdef DUMPLOG_ON
-#define DUMPLOG(n, name1, name2, aStr, size) \
-    if (1) \
-{\
-    int i;\
-    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,"%d. %s: %s = \n", n, name1, name2); \
-    for (i = 0; i < size; i++) \
-       VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,"%2.2x%s", ((unsigned char *)aStr)[i], i % 16 == 15 ? "\n" : " "); \
-    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,"\n"); \
-}
+#define DUMPLOG(n, name1, name2, aStr, size) do {                       \
+        int i;                                                          \
+        VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,"%d. %s: %s = \n", n, name1, name2); \
+        for (i = 0; i < size; i++)                                      \
+            VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,"%2.2x%s", ((unsigned char *)aStr)[i], i % 16 == 15 ? "\n" : " "); \
+        VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,"\n");      \
+    } while (0)
 #else
 #define DUMPLOG(n, name1, name2, aStr, size)
 #endif
@@ -150,15 +148,13 @@ static v_U8_t WLANBAP_LLC_HEADER[] =  {0xAA, 0xAA, 0x03, 0x00, 0x00, 0x00 };
 #define DBGLOG printf
 #define DUMPLOG
 #if defined DUMPLOG
-#define DUMPLOG(n, name1, name2, aStr, size) \
-    if (1) \
-{\
-    int i;\
-    DBGLOG("%d. %s: %s = \n", n, name1, name2); \
-    for (i = 0; i < size; i++) \
-        DBGLOG("%2.2x%s", ((unsigned char *)aStr)[i], i % 16 == 15 ? "\n" : " "); \
-    DBGLOG("\n"); \
-}
+#define DUMPLOG(n, name1, name2, aStr, size) do {                       \
+        int i;                                                          \
+        DBGLOG("%d. %s: %s = \n", n, name1, name2);                     \
+        for (i = 0; i < size; i++)                                      \
+            DBGLOG("%2.2x%s", ((unsigned char *)aStr)[i], i % 16 == 15 ? "\n" : " "); \
+        DBGLOG("\n");                                                   \
+    } while (0)
 #else
 #define DUMPLOG(n, name1, name2, aStr, size)
 #endif

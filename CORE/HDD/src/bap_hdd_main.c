@@ -181,15 +181,13 @@ if I exceed that.  ( Think 8-bit CPUs.  And the limitations of an 8-bit length
 #define DBGLOG printf
 //#define DUMPLOG
 #if defined DUMPLOG
-#define DUMPLOG(n, name1, name2, aStr, size) \
-    if (1) \
-{\
-    int i;\
-    DBGLOG("%d. %s: %s = \n", n, name1, name2); \
-    for (i = 0; i < size; i++) \
-        DBGLOG("%2.2x%s", ((unsigned char *)aStr)[i], i % 16 == 15 ? "\n" : " "); \
-    DBGLOG("\n"); \
-}
+#define DUMPLOG(n, name1, name2, aStr, size) do {                       \
+        int i;                                                          \
+        DBGLOG("%d. %s: %s = \n", n, name1, name2);                     \
+        for (i = 0; i < size; i++)                                      \
+            DBGLOG("%2.2x%s", ((unsigned char *)aStr)[i], i % 16 == 15 ? "\n" : " "); \
+        DBGLOG("\n");                                                   \
+    } while (0)
 #else
 #define DUMPLOG(n, name1, name2, aStr, size)
 #endif

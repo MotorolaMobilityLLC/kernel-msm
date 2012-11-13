@@ -52,7 +52,7 @@
 extern void rt_sched_lock();
 extern void rt_sched_unlock();
 
-#define SIR_DECLARE_FLAGS   tANI_U32 flags
+#define SIR_DECLARE_FLAGS   (tANI_U32 flags)
 #define SIR_SCHED_LOCK()    rt_sched_lock()
 #define SIR_SCHED_UNLOCK()  rt_sched_unlock()
 

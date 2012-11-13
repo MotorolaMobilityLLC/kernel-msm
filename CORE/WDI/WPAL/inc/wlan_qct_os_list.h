@@ -201,7 +201,7 @@ typedef vos_list_node_t wpt_list_node;
   --------------------------------------------------------------------------*/
 //wpt_status wpal_list_remove_front( wpt_list *pList, wpt_list_node **ppNode );
 #define wpal_list_remove_front(pList, ppNode) \
-    (wpt_status)vos_list_remove_front( (vos_list_t *)(pList), (vos_list_node_t **)(ppNode) )
+  ((wpt_status)vos_list_remove_front( (vos_list_t *)(pList), (vos_list_node_t **)(ppNode) ))
 
 
 /**---------------------------------------------------------------------------
@@ -415,8 +415,8 @@ typedef vos_list_node_t wpt_list_node;
 //                                   wpt_list_node *pNodeToInsert, 
 //                                   wpt_list_node *pNode );         
 #define wpal_list_insert_after(pList, pNodeToInsert, pNode) \
-    WPAL_LIST_STATUS_BASIC_CHECK( vos_list_insert_after((vos_list_t *)(pList), \
-         (vos_list_node_t *)(pNodeToInsert), (vos_list_node_t *)(pNode) )
+    (WPAL_LIST_STATUS_BASIC_CHECK( vos_list_insert_after((vos_list_t *)(pList), \
+                                                         (vos_list_node_t *)(pNodeToInsert), (vos_list_node_t *)(pNode) ))
 
 
 /**---------------------------------------------------------------------------

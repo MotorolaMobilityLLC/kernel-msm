@@ -65,7 +65,7 @@ when        who          what, where, why
 #include "wlan_bal_misc.h"
 #endif
 
-#define WDA_DS_DXE_RES_COUNT   WDA_TLI_MIN_RES_DATA + 20
+#define WDA_DS_DXE_RES_COUNT   (WDA_TLI_MIN_RES_DATA + 20)
 
 #define VOS_TO_WPAL_PKT(_vos_pkt) ((wpt_packet*)_vos_pkt)
 

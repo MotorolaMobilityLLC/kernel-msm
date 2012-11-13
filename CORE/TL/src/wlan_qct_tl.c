@@ -185,7 +185,7 @@ int bdPduInterruptGetThreshold = WLANTL_BD_PDU_INTERRUPT_GET_THRESHOLD;
                      ( WLANTL_CTRL_FRAME_TYPE == ( (_type_sub) & 0x30 ))
 
 /*MAX Allowed len processed by TL - MAx MTU + 802.3 header + BD+DXE+XTL*/
-#define WLANTL_MAX_ALLOWED_LEN    1514 + 100
+#define WLANTL_MAX_ALLOWED_LEN    (1514 + 100)
 
 #define WLANTL_MASK_AC  0x03
 

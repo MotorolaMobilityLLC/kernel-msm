@@ -79,13 +79,13 @@ void wpalDump( wpt_moduleid module, wpt_tracelevel level,
 #define WPAL_TRACE wpalTrace
 #define WPAL_DUMP wpalDump
 
-#define WPAL_ASSERT( _condition )                          \
-if ( ! ( _condition ) )                                   \
-{                                                         \
-   printk(KERN_CRIT "VOS ASSERT in %s Line %d\n", __func__, __LINE__); \
-   WARN_ON(1); \
-}
-
+#define WPAL_ASSERT( _condition )   do {                                \
+        if ( ! ( _condition ) )                                         \
+        {                                                               \
+            printk(KERN_CRIT "VOS ASSERT in %s Line %d\n", __func__, __LINE__); \
+            WARN_ON(1);                                                 \
+        }                                                               \
+    } while (0)
 #else //WLAN_DEBUG
 
 #define WPAL_TRACE

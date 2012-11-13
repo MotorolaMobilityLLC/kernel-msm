@@ -115,7 +115,7 @@ of NV fragment is nt possbile.The next multiple of 1Kb is 3K */
 #define FRAGMENT_SIZE 3072
 
 /* Macro to find the total number fragments of the NV Image*/
-#define TOTALFRAGMENTS(x) ((x%FRAGMENT_SIZE)== 0) ? (x/FRAGMENT_SIZE):((x/FRAGMENT_SIZE)+1)
+#define TOTALFRAGMENTS(x) (((x % FRAGMENT_SIZE) == 0) ? (x / FRAGMENT_SIZE):((x / FRAGMENT_SIZE) + 1))
 
 /* Beacon Filter Length*/
 #define WDI_BEACON_FILTER_LEN 70

@@ -199,9 +199,9 @@ typedef enum
 
 /*DXE + SD*/
 #if defined( FEATURE_WLAN_INTEGRATED_SOC )
-#define WDA_WLAN_LIBRA_HEADER_LEN              20+8
+#define WDA_WLAN_LIBRA_HEADER_LEN              (20 + 8)
 #else /* FEATURE_WLAN_INTEGRATED_SOC */
-#define WLAN_LIBRA_HEADER_LEN              20+8
+#define WLAN_LIBRA_HEADER_LEN              (20 + 8)
 #endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 #if defined( FEATURE_WLAN_INTEGRATED_SOC )
@@ -217,8 +217,8 @@ typedef enum
 #  define WDA_TLI_MIN_RES_DATA 3
 #else
 #  define WDA_TLI_MIN_RES_MF   13 /*Keeping for MF*/
-#  define WDA_TLI_MIN_RES_BAP  WDA_TLI_MIN_RES_MF  + 13 /*Another for BAP*/
-#  define WDA_TLI_MIN_RES_DATA WDA_TLI_MIN_RES_BAP + 13 /*Min 12 for data*/
+#  define WDA_TLI_MIN_RES_BAP  (WDA_TLI_MIN_RES_MF  + 13) /*Another for BAP*/
+#  define WDA_TLI_MIN_RES_DATA (WDA_TLI_MIN_RES_BAP + 13) /*Min 12 for data*/
 #  define WLANTL_TH_RES_DATA                        254
 #endif
 
@@ -273,7 +273,7 @@ typedef enum
 /*Minimum resources needed - arbitrary*/
 
 /*DXE + SD*/
-#define WLAN_LIBRA_HEADER_LEN              20+8
+#define WLAN_LIBRA_HEADER_LEN              (20 + 8)
 
 #define WLANTL_MAX_MSDU                    1538
 
@@ -1218,7 +1218,7 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_SET_P2P_GO_NOA_REQ         SIR_HAL_SET_P2P_GO_NOA_REQ
 #endif
 
-#define WDA_TX_COMPLETE_TIMEOUT_IND  WDA_MSG_TYPES_END - 1
+#define WDA_TX_COMPLETE_TIMEOUT_IND  (WDA_MSG_TYPES_END - 1)
 #define WDA_WLAN_SUSPEND_IND           SIR_HAL_WLAN_SUSPEND_IND
 #define WDA_WLAN_RESUME_REQ           SIR_HAL_WLAN_RESUME_REQ
 #define WDA_MSG_TYPES_END    SIR_HAL_MSG_TYPES_END
@@ -1360,7 +1360,7 @@ v_BOOL_t WDA_IsHwFrameTxTranslationCapable(v_PVOID_t pVosGCtx,
 
 #if defined( FEATURE_WLAN_INTEGRATED_SOC )
 #define WDA_UpdateRssiBmps(pvosGCtx,  staId, rssi) \
-        WLANTL_UpdateRssiBmps (pvosGCtx, staId, rssi)
+        WLANTL_UpdateRssiBmps(pvosGCtx, staId, rssi)
 #endif
 
 #ifdef WLAN_PERF 

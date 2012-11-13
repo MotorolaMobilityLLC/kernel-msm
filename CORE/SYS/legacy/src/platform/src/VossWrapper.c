@@ -67,7 +67,7 @@
 #include "VossWrapper.h"
 
 #ifdef WLAN_DEBUG
-#define TIMER_NAME timer_ptr->timerName 
+#define TIMER_NAME (timer_ptr->timerName)
 #else
 #define TIMER_NAME "N/A"
 #endif

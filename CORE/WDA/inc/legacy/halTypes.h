@@ -367,7 +367,7 @@ typedef enum
  *   10 Soft AP Stations (4 hard/6 virtual)
  */
 
-#define HAL_INVALID_BSSIDX          HAL_NUM_BSSID+1
+#define HAL_INVALID_BSSIDX          (HAL_NUM_BSSID + 1)
 #define HAL_NUM_UMA_DESC_ENTRIES    8
 #define MAX_NUM_OF_BACKOFFS         8
 
@@ -379,10 +379,10 @@ typedef enum
 #define HAL_NUM_STA                 14
 #define HAL_NUM_HW_STA              8
 #define HAL_NUM_GPSTA               2
-#define HAL_NUM_VSTA                HAL_NUM_STA - HAL_NUM_HW_STA
+#define HAL_NUM_VSTA                (HAL_NUM_STA - HAL_NUM_HW_STA)
 
 #define QWLANFW_MAX_NUM_VSTA        HAL_NUM_VSTA
-#define QWLANFW_VSTA_INVALID_IDX    HAL_NUM_STA+1
+#define QWLANFW_VSTA_INVALID_IDX    (HAL_NUM_STA + 1)
 #define QWLAN_VSTA_MIN_IDX          HAL_NUM_HW_STA
 #define QWLANFW_NUM_GPSTA           HAL_NUM_GPSTA
 

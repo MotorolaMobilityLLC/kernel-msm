@@ -91,8 +91,8 @@
 
 #elif defined _MSC_VER
 
-  #define VOS_PACK_START  __pragma (pack(push,1))
-  #define VOS_PACK_END  __pragma (pack(pop))
+#define VOS_PACK_START  __pragma(pack(push,1))
+#define VOS_PACK_END  __pragma(pack(pop))
 
   #define VOS_PACK_PRE 
   #define VOS_PACK_POST

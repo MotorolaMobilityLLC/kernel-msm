@@ -236,15 +236,13 @@ bapSetKey( v_PVOID_t pvosGCtx, tCsrRoamSetKey *pSetKeyInfo )
  */
 #define DUMPLOG_ON
 #if defined DUMPLOG_ON
-#define DUMPLOG(n, name1, name2, aStr, size) \
-    if (1) \
-{\
-    int i;\
-    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%d. %s: %s = \n", n, name1, name2); \
-    for (i = 0; i < size; i++) \
-        VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%2.2x%s", ((unsigned char *)aStr)[i], i % 16 == 15 ? "\n" : " "); \
-    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "\n"); \
-}
+#define DUMPLOG(n, name1, name2, aStr, size) do {                       \
+        int i;                                                          \
+        VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%d. %s: %s = \n", n, name1, name2); \
+        for (i = 0; i < size; i++)                                      \
+            VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "%2.2x%s", ((unsigned char *)aStr)[i], i % 16 == 15 ? "\n" : " "); \
+        VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "\n"); \
+    } while (0)
 #else
 #define DUMPLOG(n, name1, name2, aStr, size)
 #endif

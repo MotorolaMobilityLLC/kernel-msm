@@ -91,8 +91,8 @@
 
 #elif defined _MSC_VER
 
-   #define WPT_PACK_START  __pragma (pack(push,1))
-   #define WPT_PACK_END  __pragma (pack(pop))
+#define WPT_PACK_START  __pragma(pack(push,1))
+#define WPT_PACK_END  __pragma(pack(pop))
 
    #define WPT_PACK_PRE 
    #define WPT_PACK_POST
