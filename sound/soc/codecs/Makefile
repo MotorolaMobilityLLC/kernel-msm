@@ -59,6 +59,7 @@ snd-soc-wcd9306-objs := wcd9306.o wcd9306-tables.o wcd9xxx-common.o
 snd-soc-msm8x10-wcd-objs := msm8x10-wcd.o msm8x10-wcd-tables.o wcd9xxx-common.o
 snd-soc-wl1273-objs := wl1273.o
 snd-soc-wm-adsp := wm_adsp.o
+snd-soc-wm-adsp-objs := wm_adsp.o
 snd-soc-wm1250-ev1-objs := wm1250-ev1.o
 snd-soc-wm2000-objs := wm2000.o
 snd-soc-wm5100-objs := wm5100.o wm5100-tables.o
