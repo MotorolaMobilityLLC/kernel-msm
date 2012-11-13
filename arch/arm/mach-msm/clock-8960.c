@@ -2661,9 +2661,9 @@ static struct clk_freq_tbl clk_tbl_cam[] = {
 	F_END
 };
 
-static CLK_CAM(cam0_clk, 0, 15);
-static CLK_CAM(cam1_clk, 1, 16);
-static CLK_CAM(cam2_clk, 2, 31);
+CLK_CAM(cam0_clk, 0, 15);
+CLK_CAM(cam1_clk, 1, 16);
+CLK_CAM(cam2_clk, 2, 31);
 
 #define F_CSI(f, s, d, m, n) \
 	{ \
