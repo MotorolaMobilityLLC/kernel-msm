@@ -229,7 +229,6 @@ static int __init ov8835_init_i2c_device(struct i2c_board_info *info,
 	return 0;
 }
 
-struct lm3556_platform_data cam_flash_3556;
 static int __init lm3556_init_i2c_device(struct i2c_board_info *info,
                                           struct device_node *node)
 {
@@ -243,6 +242,9 @@ static int __init lm3556_init_i2c_device(struct i2c_board_info *info,
 	prop = of_get_property(node, "current_cntrl_reg_val", &len);
 	if (prop && (len == sizeof(u8)))
 		cam_flash_3556.current_cntrl_reg_def = *(u8 *)prop;
+
+	/* Set back cameras to use available camera flash */
+	msm_camera_sensor_ov8835_data.flash_data = &camera_flash_lm3556;
 
 	info->platform_data = &cam_flash_3556;
 
