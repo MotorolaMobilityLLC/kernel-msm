@@ -438,7 +438,7 @@ static struct msm_bus_scale_pdata cam_bus_client_pdata = {
 		.name = "msm_camera",
 };
 
-static struct msm_camera_device_platform_data msm_camera_csi_device_data[] = {
+struct msm_camera_device_platform_data msm_camera_csi_device_data[] = {
 	{
 		.csid_core = 0,
 		.is_vpe    = 1,
