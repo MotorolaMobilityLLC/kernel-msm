@@ -48,30 +48,6 @@ static int arizona_micsupp_reg_list_voltage(struct regulator_dev *rdev,
 		return (selector * 50000) + 1700000;
 }
 
-static int arizona_micsupp_reg_map_voltage(struct regulator_dev *rdev,
-					   int min_uV, int max_uV)
-{
-	unsigned int voltage;
-	int selector;
-
-	if (min_uV < 1700000)
-		min_uV = 1700000;
-
-	if (min_uV >= 3300000)
-		selector = ARIZONA_MICSUPP_MAX_SELECTOR;
-	else
-		selector = DIV_ROUND_UP(min_uV - 1700000, 50000);
-
-	if (selector < 0)
-		return -EINVAL;
-
-	voltage = arizona_micsupp_reg_list_voltage(rdev, selector);
-	if (voltage < min_uV || voltage > max_uV)
-		return -EINVAL;
-
-	return selector;
-}
-
 static int arizona_micsupp_reg_is_enabled(struct regulator_dev *rdev)
 {
 	unsigned int val;
