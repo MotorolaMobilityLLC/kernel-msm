@@ -1041,8 +1041,7 @@ static void hdd_SendReAssocEvent(struct net_device *dev, hdd_adapter_t *pAdapter
                     (unsigned int)pFTAssocRsp[1]);
 
     // Send the Assoc Resp, the supplicant needs this for initial Auth.
-    if((len = (pCsrRoamInfo->nAssocRspLength - FT_ASSOC_RSP_IES_OFFSET)) > 0)
-        return;
+    len = pCsrRoamInfo->nAssocRspLength - FT_ASSOC_RSP_IES_OFFSET;
     rspRsnLength = len;
     memcpy(rspRsnIe, pFTAssocRsp, len);
     memset(rspRsnIe + len, 0, IW_GENERIC_IE_MAX - len);
