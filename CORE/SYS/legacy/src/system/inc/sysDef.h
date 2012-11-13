@@ -85,7 +85,7 @@
 #define SYS_MNT_INTERVAL     60
 
 /// MS to Time Units
-#define SYS_MS_TO_TU(x)      (x * 1000) >> 10;
+#define SYS_MS_TO_TU(x)      ((x * 1000) >> 10)
 
 /// TU to MS
 #define SYS_TU_TO_MS(x)      ((x << 10) / 1000)

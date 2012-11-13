@@ -987,7 +987,7 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_RADIO_ON_OFF_IND SIR_HAL_RADIO_ON_OFF_IND
 #define WDA_RESET_CNF SIR_HAL_RESET_CNF
 #define WDA_SetRegDomain \
-        eHalStatus halPhySetRegDomain(tHalHandle hHal, eRegDomainId regDomain);
+    (eHalStatus halPhySetRegDomain(tHalHandle hHal, eRegDomainId regDomain))
 #endif
 
 #define WDA_APP_SETUP_NTF  SIR_HAL_APP_SETUP_NTF 

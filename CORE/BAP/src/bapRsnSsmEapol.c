@@ -42,10 +42,6 @@
 
 //#include "aniSsmUtils.h"
 
-#define CHECK_RETVAL(retVal) \
-              assert(retVal == ANI_OK); \
-              if (retVal != ANI_OK) return ANI_E_FAILED;
-
 
 //TODO: Put these in an array after EAPOL_TYPE is made an enum
 #define ANI_EAPOL_TYPE_PACKET_STR    "EAP"

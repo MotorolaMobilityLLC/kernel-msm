@@ -379,31 +379,24 @@ static void framesDump(void * pCtx, int nSev, v_U8_t *pBuf, int nBuf)
 #   define FRAMES_DBG_BREAK()
 #endif
 
-#if ! defined(BTAMP_PARAMETER_CHECK)
+#if ! defined(BTAMP_PARAMETER_CHECK2)
 #   if defined (BTAMP_HAVE_WIN32_API)
 
-#       define BTAMP_PARAMETER_CHECK(pBuf, nBuf, pFrm, nFrm) \
-        if (!pBuf || IsBadReadPtr(pBuf, nBuf)) return BTAMP_BAD_INPUT_BUFFER; \
-        if (!pFrm || IsBadWritePtr(pFrm, nFrm)) return BTAMP_BAD_OUTPUT_BUFFER \
-
-#       define BTAMP_PARAMETER_CHECK2(pSrc, pBuf, nBuf, pnConsumed) \
+#       define BTAMP_PARAMETER_CHECK2(pSrc, pBuf, nBuf, pnConsumed) do { \
         if (!pSrc || IsBadReadPtr(pSrc, 4)) return BTAMP_BAD_INPUT_BUFFER; \
         if (!pBuf || IsBadWritePtr(pBuf, nBuf)) return BTAMP_BAD_OUTPUT_BUFFER; \
-        if (!nBuf) return BTAMP_BAD_OUTPUT_BUFFER; \
-        if (IsBadWritePtr(pnConsumed, 4)) return BTAMP_BAD_OUTPUT_BUFFER \
+        if (!nBuf) return BTAMP_BAD_OUTPUT_BUFFER;                      \
+        if (IsBadWritePtr(pnConsumed, 4)) return BTAMP_BAD_OUTPUT_BUFFER; \
+    } while (0)
 
 #   else
 
-#       define BTAMP_PARAMETER_CHECK(pBuf, nBuf, pFrm, nFrm) \
-        if (!pBuf) return BTAMP_BAD_INPUT_BUFFER; \
-        if (!pFrm) return BTAMP_BAD_OUTPUT_BUFFER \
-
-#       define BTAMP_PARAMETER_CHECK2(pSrc, pBuf, nBuf, pnConsumed) \
-        if (!pSrc) return BTAMP_BAD_INPUT_BUFFER; \
-        if (!pBuf) return BTAMP_BAD_OUTPUT_BUFFER; \
-        if (!nBuf) return BTAMP_BAD_OUTPUT_BUFFER; \
-        if (!pnConsumed) return BTAMP_BAD_OUTPUT_BUFFER \
-
+#       define BTAMP_PARAMETER_CHECK2(pSrc, pBuf, nBuf, pnConsumed) do { \
+        if (!pSrc) return BTAMP_BAD_INPUT_BUFFER;                       \
+        if (!pBuf) return BTAMP_BAD_OUTPUT_BUFFER;                      \
+        if (!nBuf) return BTAMP_BAD_OUTPUT_BUFFER;                      \
+        if (!pnConsumed) return BTAMP_BAD_OUTPUT_BUFFER;                \
+    } while (0)
 #   endif
 #endif
 

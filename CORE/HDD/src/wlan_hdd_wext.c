@@ -293,21 +293,20 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WLAN_STATS_TX_MC_BYTE_CNT     20
 #define WLAN_STATS_TX_BC_BYTE_CNT     21
 
-#define FILL_TLV(__p, __type, __size, __val, __tlen) \
-{\
-    if ((__tlen + __size + 2) < WE_MAX_STR_LEN) \
-    {\
-        *__p++ = __type;\
-        *__p++ = __size;\
-        memcpy(__p, __val, __size);\
-        __p += __size;\
-        __tlen += __size + 2;\
-    }\
-    else \
-    {                                                         \
-        hddLog(VOS_TRACE_LEVEL_ERROR, "FILL_TLV Failed!!!\n");\
-    }                                                         \
-}while(0);
+#define FILL_TLV(__p, __type, __size, __val, __tlen) do {           \
+        if ((__tlen + __size + 2) < WE_MAX_STR_LEN)                 \
+        {                                                           \
+            *__p++ = __type;                                        \
+            *__p++ = __size;                                        \
+            memcpy(__p, __val, __size);                             \
+            __p += __size;                                          \
+            __tlen += __size + 2;                                   \
+        }                                                           \
+        else                                                        \
+        {                                                           \
+            hddLog(VOS_TRACE_LEVEL_ERROR, "FILL_TLV Failed!!!\n");  \
+        }                                                           \
+    } while(0);
 
 #define VERSION_VALUE_MAX_LEN 32
 

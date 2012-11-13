@@ -269,48 +269,52 @@ sirGetCfgPropCaps(struct sAniSirGlobal *, tANI_U16 *);
 
 void dot11fLog(tpAniSirGlobal pMac, int nSev, const char *lpszFormat, ...);
 
-#define CFG_GET_INT(nStatus, pMac, nItem, cfg )                 \
-    (nStatus) = wlan_cfgGetInt( (pMac), (nItem), & (cfg) );          \
-    if ( eSIR_SUCCESS != (nStatus) )                            \
-    {                                                           \
-        dot11fLog( (pMac), LOGP, FL("Failed to retrieve "       \
-                                 #nItem " from CFG (%d).\n"),   \
-                (nStatus) );                                    \
-        return nStatus;                                         \
-    }
+#define CFG_GET_INT(nStatus, pMac, nItem, cfg )  do {                \
+        (nStatus) = wlan_cfgGetInt( (pMac), (nItem), & (cfg) );      \
+        if ( eSIR_SUCCESS != (nStatus) )                             \
+        {                                                            \
+            dot11fLog( (pMac), LOGP, FL("Failed to retrieve "        \
+                                        #nItem " from CFG (%d).\n"), \
+                       (nStatus) );                                  \
+            return nStatus;                                          \
+        }                                                            \
+    } while (0)
 
-#define CFG_GET_INT_NO_STATUS(nStatus, pMac, nItem, cfg )       \
-    (nStatus) = wlan_cfgGetInt( (pMac), (nItem), & (cfg) );          \
-    if ( eSIR_SUCCESS != (nStatus) )                            \
-    {                                                           \
-        dot11fLog( (pMac), LOGP, FL("Failed to retrieve "       \
-                                 #nItem " from CFG (%d).\n"),   \
-                (nStatus) );                                    \
-        return;                                                 \
-    }
+#define CFG_GET_INT_NO_STATUS(nStatus, pMac, nItem, cfg ) do {       \
+        (nStatus) = wlan_cfgGetInt( (pMac), (nItem), & (cfg) );      \
+        if ( eSIR_SUCCESS != (nStatus) )                             \
+        {                                                            \
+            dot11fLog( (pMac), LOGP, FL("Failed to retrieve "        \
+                                        #nItem " from CFG (%d).\n"), \
+                       (nStatus) );                                  \
+            return;                                                  \
+        }                                                            \
+    } while (0)
 
-#define CFG_GET_STR(nStatus, pMac, nItem, cfg, nCfg, nMaxCfg)   \
-    (nCfg) = (nMaxCfg);                                         \
-    (nStatus) = wlan_cfgGetStr( (pMac), (nItem), (cfg), & (nCfg) );  \
-    if ( eSIR_SUCCESS != (nStatus) )                            \
-    {                                                           \
-        dot11fLog( (pMac), LOGP, FL("Failed to retrieve "       \
-                                 #nItem " from CFG (%d).\n"),   \
-                (nStatus) );                                    \
-        return nStatus;                                         \
-    }
+#define CFG_GET_STR(nStatus, pMac, nItem, cfg, nCfg, nMaxCfg) do {      \
+        (nCfg) = (nMaxCfg);                                             \
+        (nStatus) = wlan_cfgGetStr( (pMac), (nItem), (cfg), & (nCfg) ); \
+        if ( eSIR_SUCCESS != (nStatus) )                                \
+        {                                                               \
+            dot11fLog( (pMac), LOGP, FL("Failed to retrieve "           \
+                                        #nItem " from CFG (%d).\n"),    \
+                       (nStatus) );                                     \
+            return nStatus;                                             \
+        }                                                               \
+    } while (0)
 
-#define CFG_GET_STR_NO_STATUS(nStatus, pMac, nItem, cfg, nCfg,  \
-                              nMaxCfg)                          \
-    (nCfg) = (nMaxCfg);                                         \
-    (nStatus) = wlan_cfgGetStr( (pMac), (nItem), (cfg), & (nCfg) );  \
-    if ( eSIR_SUCCESS != (nStatus) )                            \
-    {                                                           \
-        dot11fLog( (pMac), LOGP, FL("Failed to retrieve "       \
-                                 #nItem " from CFG (%d).\n"),   \
-                (nStatus) );                                    \
-        return;                                                 \
-    }
+#define CFG_GET_STR_NO_STATUS(nStatus, pMac, nItem, cfg, nCfg,          \
+                              nMaxCfg) do {                             \
+        (nCfg) = (nMaxCfg);                                             \
+        (nStatus) = wlan_cfgGetStr( (pMac), (nItem), (cfg), & (nCfg) ); \
+        if ( eSIR_SUCCESS != (nStatus) )                                \
+        {                                                               \
+            dot11fLog( (pMac), LOGP, FL("Failed to retrieve "           \
+                                        #nItem " from CFG (%d).\n"),    \
+                       (nStatus) );                                     \
+            return;                                                     \
+        }                                                               \
+    } while (0)
 
 void swapBitField16(tANI_U16 in, tANI_U16 *out);
 

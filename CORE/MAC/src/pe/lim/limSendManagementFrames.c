@@ -59,31 +59,6 @@
 
 ////////////////////////////////////////////////////////////////////////
 
-/// Get an integral configuration item & check return status; if it
-/// fails, return.
-#define CFG_LIM_GET_INT_NO_STATUS(nStatus, pMac, nItem, cfg )      \
-    (nStatus) = wlan_cfgGetInt( (pMac), (nItem), & (cfg) );             \
-    if ( eSIR_SUCCESS != (nStatus) )                               \
-    {                                                              \
-        limLog( (pMac), LOGP, FL("Failed to retrieve "             \
-                                 #nItem " from CFG (%d).\n"),      \
-                (nStatus) );                                       \
-        return;                                                    \
-    }
-
-/// Get an text configuration item & check return status; if it fails,
-/// return.
-#define CFG_LIM_GET_STR_NO_STATUS(nStatus, pMac, nItem, cfg, nCfg, \
-                              nMaxCfg)                             \
-    (nCfg) = (nMaxCfg);                                            \
-    (nStatus) = wlan_cfgGetStr( (pMac), (nItem), (cfg), & (nCfg) );     \
-    if ( eSIR_SUCCESS != (nStatus) )                               \
-    {                                                              \
-        limLog( (pMac), LOGP, FL("Failed to retrieve "             \
-                                 #nItem " from CFG (%d).\n"),      \
-                (nStatus) );                                       \
-        return;                                                    \
-    }
 
 /**
  *
@@ -538,8 +513,13 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     else
     {
 #endif
-    CFG_LIM_GET_INT_NO_STATUS( nSirStatus, pMac,
-                               WNI_CFG_BEACON_INTERVAL, cfg );
+    nSirStatus = wlan_cfgGetInt( pMac, WNI_CFG_BEACON_INTERVAL, &cfg);
+    if (eSIR_SUCCESS != nSirStatus)
+    {
+        limLog( pMac, LOGP, FL("Failed to retrieve WNI_CFG_BEACON_INTERVAL from CFG (%d).\n"),
+                nSirStatus );
+        return;
+    }
     pFrm->BeaconInterval.interval = ( tANI_U16 ) cfg;
 #ifdef WLAN_SOFTAP_FEATURE
     }
