@@ -270,6 +270,10 @@ struct msm_eeprom_info {
 	int bus_id;
 };
 
+struct oem_camera_sensor_data {
+	int sensor_dig_en;
+};
+
 struct msm_camera_sensor_info {
 	const char *sensor_name;
 	int sensor_reset_enable;
@@ -293,6 +297,7 @@ struct msm_camera_sensor_info {
 	struct msm_actuator_info *actuator_info;
 	int pmic_gpio_enable;
 	struct msm_eeprom_info *eeprom_info;
+	struct oem_camera_sensor_data *oem_data;
 };
 
 struct msm_camera_board_info {
