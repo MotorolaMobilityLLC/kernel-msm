@@ -31,7 +31,6 @@
 #include "mipi_dsi.h"
 #include "mdp4.h"
 
-#define WAIT_TOUT	250	/* 250smec */
 #define TOUT_PERIOD	HZ	/* 1 second */
 #define MS_100		(HZ/10)	/* 100 ms */
 
@@ -464,9 +463,8 @@ void mdp4_dsi_cmd_wait4vsync(int cndx, long long *vtime)
 	vctrl->wait_vsync_cnt++;
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	if (wait_for_completion_timeout(&vctrl->vsync_comp,
-					msecs_to_jiffies(WAIT_TOUT)) == 0) {
-		pr_err("%s: failed to wait for vsync complete\n", __func__);
+	if (!wait_for_completion_timeout(&vctrl->vsync_comp, WAIT_TOUT)) {
+		pr_err("%s %d  TIMEOUT_\n", __func__, __LINE__);
 		mdp4_hang_panic();
 	}
 	mdp4_stat.wait4vsync0++;
@@ -488,10 +486,8 @@ static void mdp4_dsi_cmd_wait4dmap(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	if (wait_for_completion_timeout(&vctrl->dmap_comp,
-					msecs_to_jiffies(WAIT_TOUT)) == 0) {
-		pr_err("%s: failed to wait for DMA_P_DONE complete\n",
-								__func__);
+	if (!wait_for_completion_timeout(&vctrl->dmap_comp, WAIT_TOUT)) {
+		pr_err("%s %d  TIMEOUT_\n", __func__, __LINE__);
 		mdp4_hang_panic();
 	}
 
@@ -511,9 +507,8 @@ static void mdp4_dsi_cmd_wait4ov(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	if (wait_for_completion_timeout(&vctrl->ov_comp,
-					msecs_to_jiffies(WAIT_TOUT)) == 0) {
-		pr_err("%s: failed to wait for overlay complete\n", __func__);
+	if (!wait_for_completion_timeout(&vctrl->ov_comp, WAIT_TOUT)) {
+		pr_err("%s %d  TIMEOUT_\n", __func__, __LINE__);
 		mdp4_hang_panic();
 	}
 }
@@ -685,9 +680,8 @@ static ssize_t vsync_show_event(struct device *dev,
 	vctrl->wait_vsync_cnt++;
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	ret = wait_for_completion_interruptible(&vctrl->vsync_comp);
-	if (ret < 0)
-		return ret;
+	if (wait_for_completion_timeout(&vctrl->vsync_comp, WAIT_TOUT) == 0)
+		pr_err("%s: timeout waiting for vsync\n", __func__);
 
 	ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu",
 			ktime_to_ns(vctrl->vsync_time));

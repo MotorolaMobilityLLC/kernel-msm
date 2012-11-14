@@ -32,7 +32,6 @@
 #include "hdmi_msm.h"
 #include "mdp4.h"
 
-#define WAIT_TOUT	250	/* 250msec*/
 #define DTV_BASE	0xD0000
 
 static int dtv_enabled;
@@ -293,8 +292,7 @@ void mdp4_dtv_wait4vsync(int cndx, long long *vtime)
 	vctrl->wait_vsync_cnt++;
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	if (wait_for_completion_timeout(&vctrl->vsync_comp,
-					msecs_to_jiffies(WAIT_TOUT)) == 0) {
+	if (wait_for_completion_timeout(&vctrl->vsync_comp, WAIT_TOUT) == 0) {
 		pr_err("%s: timeout waiting for vsync ompletion\n", __func__);
 		mdp4_hang_panic();
 	}
@@ -317,8 +315,7 @@ static void mdp4_dtv_wait4dmae(int cndx)
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
 
-	if (wait_for_completion_timeout(&vctrl->dmae_comp,
-					msecs_to_jiffies(WAIT_TOUT)) == 0) {
+	if (wait_for_completion_timeout(&vctrl->dmae_comp, WAIT_TOUT) == 0) {
 		pr_err("%s: timeout waiting for DMA_E Done ompletion\n",
 								__func__);
 		mdp4_hang_panic();
@@ -346,7 +343,9 @@ static ssize_t vsync_show_event(struct device *dev,
 		INIT_COMPLETION(vctrl->vsync_comp);
 	vctrl->wait_vsync_cnt++;
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
-	wait_for_completion(&vctrl->vsync_comp);
+
+	if (wait_for_completion_timeout(&vctrl->vsync_comp, WAIT_TOUT))
+		pr_err("%s: timeout waiting for vsync\n", __func__);
 
 	ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu",
 			ktime_to_ns(vctrl->vsync_time));
