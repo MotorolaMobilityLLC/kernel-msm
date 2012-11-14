@@ -497,7 +497,7 @@ static const int arizona_48k_bclk_rates[] = {
 	24576000,
 };
 
-static const unsigned int arizona_48k_rates[] = {
+static unsigned int arizona_48k_rates[] = {
 	12000,
 	24000,
 	48000,
@@ -542,7 +542,7 @@ static const int arizona_44k1_bclk_rates[] = {
 	22579200,
 };
 
-static const unsigned int arizona_44k1_rates[] = {
+static unsigned int arizona_44k1_rates[] = {
 	11025,
 	22050,
 	44100,
