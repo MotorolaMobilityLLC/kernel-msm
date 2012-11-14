@@ -54,7 +54,6 @@
  * The delay need to be configured for video mode panel based on VFP and VBP.
  */
 #define MOT_VIDEO_WAIT4VSYNC_DELAY 100 /*in usec*/
-#define WAIT_TOUT	250	/* 250msec */
 
 static struct completion dsi_dma_comp;
 static struct completion dsi_mdp_comp;
@@ -1673,8 +1672,7 @@ int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 	spin_unlock_irqrestore(&dsi_mdp_lock, flags);
 
 	dsi_status1 = MIPI_INP(MIPI_DSI_BASE + 0x04);
-	if (wait_for_completion_timeout(&dsi_dma_comp,
-					msecs_to_jiffies(WAIT_TOUT)) == 0) {
+	if (wait_for_completion_timeout(&dsi_dma_comp, WAIT_TOUT) == 0) {
 		dsi_status2 = MIPI_INP(MIPI_DSI_BASE + 0x04);
 		pr_err("%s: failed when transmit cmd =0x%1x. " \
 				" dsi_status1=0x%x dsi_status2=0x%x\n",
@@ -1751,7 +1749,7 @@ void mipi_dsi_cmd_mdp_busy(void)
 
 	if (need_wait)
 		if (wait_for_completion_timeout(&dsi_mdp_comp,
-				msecs_to_jiffies(WAIT_TOUT)) == 0) {
+			WAIT_TOUT) == 0) {
 			pr_err("%s: timeout waiting for DSI MDP ompletion\n",
 				__func__);
 			mdp4_hang_panic();
