@@ -29,6 +29,7 @@
 #include <mach/gpiomux.h>
 #include <mach/mpm.h>
 #include <mach/restart.h>
+#include <mach/msm_smsm.h>
 
 #include "board-8960.h"
 #include "board-mmi.h"
@@ -214,6 +215,82 @@ register_device:
 	platform_device_register(&mmi_factory_device);
 }
 
+#define SERIALNO_MAX_LEN 64
+static char serialno[SERIALNO_MAX_LEN + 1];
+int __init board_serialno_init(char *s)
+{
+	strncpy(serialno, s, SERIALNO_MAX_LEN);
+	serialno[SERIALNO_MAX_LEN] = '\0';
+	return 1;
+}
+__setup("androidboot.serialno=", board_serialno_init);
+
+static char carrier[CARRIER_MAX_LEN + 1];
+int __init board_carrier_init(char *s)
+{
+	strncpy(carrier, s, CARRIER_MAX_LEN);
+	carrier[CARRIER_MAX_LEN] = '\0';
+	return 1;
+}
+__setup("androidboot.carrier=", board_carrier_init);
+
+static char baseband[BASEBAND_MAX_LEN + 1];
+int __init board_baseband_init(char *s)
+{
+	strncpy(baseband, s, BASEBAND_MAX_LEN);
+	baseband[BASEBAND_MAX_LEN] = '\0';
+	return 1;
+}
+__setup("androidboot.baseband=", board_baseband_init);
+
+static char extended_baseband[BASEBAND_MAX_LEN+1] = "\0";
+static int __init mot_parse_atag_baseband(const struct tag *tag)
+{
+	const struct tag_baseband *baseband_tag = &tag->u.baseband;
+	strncpy(extended_baseband, baseband_tag->baseband, BASEBAND_MAX_LEN);
+	extended_baseband[BASEBAND_MAX_LEN] = '\0';
+	pr_info("%s: %s\n", __func__, extended_baseband);
+	return 0;
+}
+__tagtable(ATAG_BASEBAND, mot_parse_atag_baseband);
+
+static void __init mmi_unit_info_init(void){
+	struct mmi_unit_info_v1 *mui;
+
+	#define SMEM_KERNEL_RESERVE_SIZE 1024
+	mui = (struct mmi_unit_info_v1 *) smem_alloc(SMEM_KERNEL_RESERVE,
+		SMEM_KERNEL_RESERVE_SIZE);
+
+	if (!mui) {
+		pr_err("%s: failed to allocate mmi_unit_info in SMEM\n",
+			__func__);
+		return;
+	}
+
+	mui->version = MMI_UNIT_INFO_VER;
+	mui->system_rev = system_rev;
+	mui->system_serial_low = system_serial_low;
+	mui->system_serial_high = system_serial_high;
+	strncpy(mui->machine, machine_desc->name, MACHINE_MAX_LEN);
+	strncpy(mui->barcode, serialno, BARCODE_MAX_LEN);
+	strncpy(mui->baseband, extended_baseband, BASEBAND_MAX_LEN);
+	strncpy(mui->carrier, carrier, CARRIER_MAX_LEN);
+
+	if (mui->version != MMI_UNIT_INFO_VER) {
+		pr_err("%s: unexpected unit_info version %d in SMEM\n",
+			__func__, mui->version);
+	}
+
+	pr_err("mmi_unit_info (SMEM) for modem: version = 0x%02x,"
+		" system_rev = 0x%08x, system_serial = 0x%08x%08x,"
+		" machine = '%s', barcode = '%s', baseband = '%s',"
+		" carrier = '%s'\n",
+		mui->version, mui->system_rev, mui->system_serial_high,
+		mui->system_serial_low, mui->machine, mui->barcode,
+		mui->baseband, mui->carrier);
+}
+
+
 static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	platform_add_devices(mmi_devices, ARRAY_SIZE(mmi_devices));
@@ -221,7 +298,9 @@ static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 	mmi_i2s_dai_init();
 	if (mmi_boot_mode_is_factory())
 		mmi_factory_register();
+
 	mmi_vibrator_init();
+	mmi_unit_info_init();
 }
 
 static void __init mmi_disp_init(struct msm8960_oem_init_ptrs *oem_ptr,
