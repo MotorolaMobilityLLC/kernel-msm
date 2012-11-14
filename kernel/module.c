@@ -2860,6 +2860,54 @@ static int post_relocation(struct module *mod, const struct load_info *info)
 	return module_finalize(info->hdr, info->sechdrs, mod);
 }
 
+#ifdef CONFIG_MODULE_EXTRA_COPY
+/* Make an extra copy of the module. */
+static int make_extra_copy(Elf_Ehdr *elf_hdr, unsigned long elf_len,
+			void **extra_copy)
+{
+	void *dest = *extra_copy = vmalloc(elf_len);
+	if (dest == NULL)
+		return -ENOMEM;
+	memcpy(dest, elf_hdr, elf_len);
+	return 0;
+}
+
+/* Keep the linked copy as well as the raw copy, in case the
+ * module wants to inspect both. */
+static int keep_extra_copy_info(struct module *mod, void *extra_copy,
+			Elf_Ehdr *elf_hdr, unsigned long elf_len)
+{
+	mod->raw_binary_ptr = extra_copy;
+	mod->raw_binary_size = elf_len;
+	mod->linked_binary_ptr = elf_hdr;
+	mod->linked_binary_size = elf_len;
+	return 1;
+}
+
+/* Release module extra copy information. */
+static void cleanup_extra_copy_info(struct module *mod)
+{
+	vfree(mod->raw_binary_ptr);
+	vfree(mod->linked_binary_ptr);
+	mod->raw_binary_ptr = mod->linked_binary_ptr = NULL;
+	mod->raw_binary_size = mod->linked_binary_size = 0;
+}
+#else	/* !CONFIG_MODULE_EXTRA_COPY */
+static inline int make_extra_copy(Elf_Ehdr *elf_hdr, unsigned long elf_len,
+					void **extra_copy)
+{
+	*extra_copy = NULL;
+	return 0;
+}
+static inline int keep_extra_copy_info(struct module *mod, void *extra_copy,
+					Elf_Ehdr *elf_hdr,
+					unsigned long elf_len)
+{
+	return 0;
+}
+static inline void cleanup_extra_copy_info(struct module *mod) { }
+#endif	/* CONFIG_MODULE_EXTRA_COPY */
+
 /* Allocate and load the module: note that size of section 0 is always
    zero, and we rely on this for optional sections. */
 static struct module *load_module(void __user *umod,
@@ -2869,6 +2917,7 @@ static struct module *load_module(void __user *umod,
 	struct load_info info = { NULL, };
 	struct module *mod;
 	long err;
+	void *extra_copy = NULL;
 
 	pr_debug("load_module: umod=%p, len=%lu, uargs=%p\n",
 	       umod, len, uargs);
@@ -2878,11 +2927,16 @@ static struct module *load_module(void __user *umod,
 	if (err)
 		return ERR_PTR(err);
 
+	/* Make extra copy of the module, if needed. */
+	err = make_extra_copy(info.hdr, info.len, &extra_copy);
+	if (err)
+		goto free_copy;
+
 	/* Figure out module layout, and allocate all the memory. */
 	mod = layout_and_allocate(&info);
 	if (IS_ERR(mod)) {
 		err = PTR_ERR(mod);
-		goto free_copy;
+		goto free_extra_copy;
 	}
 
 	/* Now module is in final location, initialize linked lists, etc. */
@@ -2962,8 +3016,11 @@ static struct module *load_module(void __user *umod,
 	if (err < 0)
 		goto unlink;
 
-	/* Get rid of temporary copy. */
-	free_copy(&info);
+	/* Keep extra copy information, if needed. */
+	if (!keep_extra_copy_info(mod, extra_copy, info.hdr, info.len)) {
+		/* Get rid of temporary copy. */
+		free_copy(&info);
+	}
 
 	/* Done! */
 	trace_module_load(mod);
@@ -2989,6 +3046,8 @@ static struct module *load_module(void __user *umod,
 	module_unload_free(mod);
  free_module:
 	module_deallocate(mod, &info);
+ free_extra_copy:
+	vfree(extra_copy);
  free_copy:
 	free_copy(&info);
 	return ERR_PTR(err);
@@ -3040,6 +3099,7 @@ SYSCALL_DEFINE3(init_module, void __user *, umod,
 	/* Start the module */
 	if (mod->init != NULL)
 		ret = do_one_initcall(mod->init);
+	cleanup_extra_copy_info(mod);
 	if (ret < 0) {
 		/* Init routine failed: abort.  Try to protect us from
                    buggy refcounters. */
