@@ -29,6 +29,8 @@ extern char *mmss_cc_base;	/* mutimedia sub system clock control */
 extern spinlock_t dsi_clk_lock;
 extern u32 mdp_max_clk;
 
+#define WAIT_TOUT       (HZ/2) /* 500smec */
+
 #define MDP4_OVERLAYPROC0_BASE	0x10000
 #define MDP4_OVERLAYPROC1_BASE	0x18000
 #define MDP4_OVERLAYPROC2_BASE	0x88000
