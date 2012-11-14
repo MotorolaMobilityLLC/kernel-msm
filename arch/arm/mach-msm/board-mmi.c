@@ -25,6 +25,7 @@
 #include <linux/persistent_ram.h>
 #include <linux/platform_data/mmi-factory.h>
 
+#include <mach/devtree_util.h>
 #include <mach/gpio.h>
 #include <mach/gpiomux.h>
 #include <mach/mpm.h>
@@ -169,49 +170,94 @@ static struct platform_device *mmi_devices[] __initdata = {
 
 static void __init mmi_factory_register(void)
 {
-	struct device_node *chosen;
-	int len;
-	bool fk_enable;
-	int fk_gpio_ndx = -1;
+	struct device_node *factory_node;
+	struct device_node *gpio_node;
 	struct mmi_factory_gpio_entry *gpios;
 	int num_gpios;
 	const void *prop;
-	int i;
+	int len;
 
-	gpios = ((struct mmi_factory_platform_data *)
-		mmi_factory_device.dev.platform_data)->gpios;
-	num_gpios = ((struct mmi_factory_platform_data *)
-		mmi_factory_device.dev.platform_data)->num_gpios;
-
-	chosen = of_find_node_by_path("/Chosen@0");
-	if (!chosen)
+	factory_node = of_find_node_by_path("/System@0/FactoryDevice@0");
+	if (!factory_node)
 		goto register_device;
 
-	for (i = 0; i < num_gpios; i++) {
-		if (!strcmp("factory_kill", gpios[i].name))
-			fk_gpio_ndx = i;
+	num_gpios = dt_children_count(factory_node);
+	if (!num_gpios) {
+		pr_warn("%s read empty node\n", factory_node->full_name);
+		goto register_device;
 	}
 
-	if (fk_gpio_ndx >= 0) {
-		prop = of_get_property(chosen,
-				"factory_kill_disable", &len);
-		if (prop && (len == sizeof(u8))) {
-			fk_enable = (*(u8 *)prop) ? 0 : 1;
-			pr_debug("%s: factory_kill_disable = %d\n",
-					__func__, fk_enable);
-			gpios[fk_gpio_ndx].value = fk_enable;
-		}
-
-		prop = of_get_property(chosen,
-				"factory_kill_gpio", &len);
-		if (prop && (len == sizeof(u32))) {
-			gpios[fk_gpio_ndx].number = (*(u32 *)prop);
-		}
+	gpios = kzalloc(num_gpios * sizeof(struct mmi_factory_gpio_entry),
+		GFP_KERNEL);
+	if (!gpios) {
+		pr_err("%s allocation failure for factory device "\
+			"failed to allocate %d gpios.",
+			__func__, num_gpios);
+		goto register_device;
 	}
 
-	of_node_put(chosen);
+	num_gpios = 0;
+	for_each_child_of_node(factory_node, gpio_node) {
+		const char *gpio_name;
+		u32 gpio_number;
+		u8 gpio_direction;  /* 0 == IN, 1 == OUT */
+		u32 gpio_value = 0; /* value is only used for output */
+
+		if (of_property_read_string(gpio_node,
+				"gpio_name", &gpio_name)) {
+			pr_warn("%s missing required property - gpio_name\n",
+				gpio_node->full_name);
+			continue;
+		}
+
+		prop = of_get_property(gpio_node, "gpio_number", &len);
+		if (!prop || (len != sizeof(u32))) {
+			pr_warn("%s missing required property - gpio_number\n",
+				gpio_node->full_name);
+			continue;
+		}
+		gpio_number = *(u32 *)prop;
+		if (gpio_number >= NR_GPIO_IRQS) {
+			pr_warn("%s gpio_number (%d) is out of range\n",
+				gpio_node->full_name, gpio_number);
+			continue;
+		}
+
+		prop = of_get_property(gpio_node, "gpio_direction", &len);
+		if (!prop || (len != sizeof(u8))) {
+			pr_warn("%s missing required property - gpio_number\n",
+				gpio_node->full_name);
+			continue;
+		}
+		gpio_direction = (!!*(u8 *)prop) ? GPIOF_DIR_OUT : GPIOF_DIR_IN;
+
+		if (gpio_direction == GPIOF_DIR_OUT) {
+			prop = of_get_property(gpio_node, "gpio_value", &len);
+			if (!prop || (len != sizeof(u32))) {
+				pr_warn("%s missing required property "\
+				"- gpio_direction\n", gpio_node->full_name);
+				continue;
+			}
+			gpio_value = *(u32 *)prop;
+		}
+
+		gpios[num_gpios].name = gpio_name;
+		gpios[num_gpios].number = gpio_number;
+		gpios[num_gpios].direction = gpio_direction;
+		gpios[num_gpios].value = gpio_value;
+		num_gpios++;
+	}
+
+	if (num_gpios) {
+		((struct mmi_factory_platform_data *)
+			mmi_factory_device.dev.platform_data)->gpios = gpios;
+		((struct mmi_factory_platform_data *)
+			mmi_factory_device.dev.platform_data)->num_gpios =
+			num_gpios;
+	}
 
 register_device:
+	of_node_put(factory_node);
 	platform_device_register(&mmi_factory_device);
 }
 
