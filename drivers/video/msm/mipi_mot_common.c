@@ -30,6 +30,10 @@ static char display_on[2] = {DCS_CMD_SET_DISPLAY_ON, 0x00};
 static char normal_mode_on[2] = {DCS_CMD_SET_NORMAL_MODE_ON, 0x00};
 static char display_off[2] = {DCS_CMD_SET_DISPLAY_OFF, 0x00};
 static char get_power_mode[2] = {DCS_CMD_GET_POWER_MODE, 0x00};
+static char get_raw_mtp[2] = {DCS_CMD_READ_RAW_MTP, 0x00};
+static char  set_reg_offset_0[2] = {DCS_CMD_SET_OFFSET, 0x0};
+static char  set_reg_offset_8[2] = {DCS_CMD_SET_OFFSET, 0x8};
+static char  set_reg_offset_16[2] = {DCS_CMD_SET_OFFSET, 0x10};
 
 static struct dsi_cmd_desc mot_manufacture_id_cmd = {
 	DTYPE_DCS_READ, 1, 0, 1, 0, sizeof(manufacture_id), manufacture_id};
@@ -58,6 +62,20 @@ static struct dsi_cmd_desc mot_get_pwr_mode_cmd = {
 
 static struct dsi_cmd_desc mot_hide_img_cmd = {
 	DTYPE_DCS_WRITE, 1, 0, 0, 10, sizeof(display_off), display_off};
+static struct dsi_cmd_desc mot_get_raw_mtp_cmd = {
+	DTYPE_DCS_READ,  1, 0, 1, 0, sizeof(get_raw_mtp), get_raw_mtp};
+
+static struct dsi_cmd_desc set_offset_cmd[] = {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(set_reg_offset_0),
+							set_reg_offset_0},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(set_reg_offset_8),
+							set_reg_offset_8},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(set_reg_offset_16),
+							set_reg_offset_16},
+};
+
+static u8 panel_raw_mtp[RAW_MTP_SIZE];
+static u8 gamma_settings[NUM_NIT_LVLS][RAW_GAMMA_SIZE];
 
 int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
 {
@@ -229,6 +247,71 @@ u16 mipi_mot_get_controller_drv_ver(struct msm_fb_data_type *mfd)
 	return controller_drv_ver;
 }
 
+int mipi_mot_get_raw_mtp(struct msm_fb_data_type *mfd)
+{
+	struct dsi_cmd_desc *cmd;
+	int ret, i;
+	unsigned char mtp[8];
+
+	cmd = &mot_get_raw_mtp_cmd;
+
+	/*
+	 * display driver doesn't support read 24 bytes. It needs to be read
+	 * in three times. 0xb0 is offset cmd.
+	*/
+	for (i = 0; i < 3; i++) {
+		mipi_mot_tx_cmds(&set_offset_cmd[i], 1);
+		ret = mipi_mot_rx_cmd(cmd, mtp, 8);
+		if (ret > 0)
+			memcpy(panel_raw_mtp + i * 8, mtp, 8);
+		else {
+			memset(panel_raw_mtp, 0, sizeof(panel_raw_mtp));
+			pr_err("%s: %d.failed to read D3h\n", __func__, i);
+			return -EIO;
+		}
+	}
+
+	return 0;
+}
+
+void mipi_mot_dynamic_gamma_calc(uint32_t v0_val, uint8_t preamble_1,
+			uint8_t preamble_2,
+			uint16_t in_gamma[NUM_VOLT_PTS][NUM_COLORS])
+{
+	smd_dynamic_gamma_calc(v0_val, preamble_1, preamble_2, panel_raw_mtp,
+			in_gamma, gamma_settings);
+}
+
+u8 *mipi_mot_get_gamma_setting(struct msm_fb_data_type *mfd, int level)
+{
+	if (level < 0)
+		level = 0;
+	else if (level > NUM_NIT_LVLS - 1)
+		level = NUM_NIT_LVLS - 1;
+
+	return gamma_settings[level];
+}
+
+#ifdef CONFIG_DEBUG_FS
+static int panel_gamma_debug_show(struct seq_file *m, void *v)
+{
+	smd_dynamic_gamma_dbg_dump(panel_raw_mtp, gamma_settings, m, v, 0);
+	return 0;
+}
+
+static int panel_gamma_debug_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, panel_gamma_debug_show, NULL);
+}
+
+static const struct file_operations panel_gamma_debug_fops = {
+	.open           = panel_gamma_debug_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+#endif /* CONFIG_DEBUG_FS */
+
 static int esd_recovery_start(struct msm_fb_data_type *mfd)
 {
 	struct msm_fb_panel_data *pdata;
@@ -311,6 +394,7 @@ void mipi_mot_esd_work(void)
 	queue_delayed_work(mot_panel->esd_wq, &mot_panel->esd_work,
 						MOT_PANEL_ESD_CHECK_PERIOD);
 }
+
 int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide)
 {
 	pr_debug("%s(%d)\n", __func__, hide);
@@ -319,5 +403,19 @@ int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide)
 		mipi_set_tx_power_mode(0);
 		mipi_mot_tx_cmds(&mot_hide_img_cmd, 1);
 	}
+	return 0;
+}
+
+int __init moto_panel_debug_init(void)
+{
+	struct dentry *panel_root;
+
+	panel_root = debugfs_create_dir("panel", NULL);
+	if (!IS_ERR(panel_root))
+		debugfs_create_file("gamma", S_IFREG | S_IRUGO, panel_root,
+				NULL, &panel_gamma_debug_fops);
+	else
+		pr_err("Moto panel debugfs couldn't be created.\n");
+
 	return 0;
 }

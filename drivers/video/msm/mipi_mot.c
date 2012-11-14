@@ -645,6 +645,7 @@ static int __init mipi_mot_lcd_init(void)
 	mot_panel.panel_off = NULL;
 
 	mot_panel.hide_img = mipi_mot_hide_img;
+	moto_panel_debug_init();
 
 /*
 	factory_run = mot_panel_is_factory_mode();
