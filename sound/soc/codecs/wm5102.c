@@ -43,11 +43,6 @@ static struct regulator *micvdd_reg;
 static int micbias_ev(struct snd_soc_dapm_widget *w,
 		      struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = w->codec;
-	struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
-	struct arizona *arizona = priv->arizona;
-	struct device *dev = arizona->dev;
-
 	if (!IS_ERR(micvdd_reg)) {
 		switch (event) {
 		case SND_SOC_DAPM_PRE_PMU:
