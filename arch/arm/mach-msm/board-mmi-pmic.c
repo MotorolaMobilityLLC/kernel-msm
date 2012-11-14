@@ -319,6 +319,102 @@ void w1_gpio_enable_regulators(int enable)
 	}
 }
 
+#define PM8921_LC_LED_MAX_CURRENT	4	/* I = 4mA */
+#define PM8XXX_LED_PWM_PERIOD		1000
+#define PM8XXX_LED_PWM_DUTY_MS		20
+/**
+ * PM8XXX_PWM_CHANNEL_NONE shall be used when LED shall not be
+ * driven using PWM feature.
+ */
+#define PM8XXX_PWM_CHANNEL_NONE		-1
+
+static struct led_info pm8921_led_info[] = {
+	[0] = {
+		.name			= "charging",
+	},
+	[1] = {
+		.name			= "reserved",
+	},
+};
+
+static struct led_platform_data pm8921_led_core_pdata = {
+	.num_leds = ARRAY_SIZE(pm8921_led_info),
+	.leds = pm8921_led_info,
+};
+
+static int pm8921_led0_pwm_duty_pcts[56] = {
+		1, 4, 8, 12, 16, 20, 24, 28, 32, 36,
+		40, 44, 46, 52, 56, 60, 64, 68, 72, 76,
+		80, 84, 88, 92, 96, 100, 100, 100, 98, 95,
+		92, 88, 84, 82, 78, 74, 70, 66, 62, 58,
+		58, 54, 50, 48, 42, 38, 34, 30, 26, 22,
+		14, 10, 6, 4, 1
+};
+
+static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_duty_cycles = {
+	.duty_pcts = (int *)&pm8921_led0_pwm_duty_pcts,
+	.num_duty_pcts = ARRAY_SIZE(pm8921_led0_pwm_duty_pcts),
+	.duty_ms = PM8XXX_LED_PWM_DUTY_MS,
+	.start_idx = 0,
+};
+
+#define ATC_LED_SRC 0x216
+#define ATC_LED_SRC_MASK 0x30
+#ifdef CONFIG_LEDS_PM8XXX_EXT_CTRL
+static void pm8xxx_atc_led_ctrl(struct device *dev, unsigned on)
+{
+	u8 val;
+
+	pm8xxx_readb(dev, ATC_LED_SRC, &val);
+	if (on)
+		val |= ATC_LED_SRC_MASK;
+	else
+		val &= ~ATC_LED_SRC_MASK;
+	pm8xxx_writeb(dev, ATC_LED_SRC, val);
+}
+#endif
+
+static struct pm8xxx_led_config pm8921_led_configs[] = {
+	[0] = {
+		.id = PM8XXX_ID_LED_0,
+		.mode = PM8XXX_LED_MODE_PWM2,
+		.max_current = PM8921_LC_LED_MAX_CURRENT,
+		.pwm_channel = 5,
+		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
+		.pwm_duty_cycles = &pm8921_led0_pwm_duty_cycles,
+#ifdef CONFIG_LEDS_PM8XXX_EXT_CTRL
+		.led_ctrl = pm8xxx_atc_led_ctrl,
+#endif
+	},
+	[1] = {
+		.id = PM8XXX_ID_LED_1,
+		.mode = PM8XXX_LED_MODE_PWM1,
+		.max_current = 8,
+		.pwm_channel = 4,
+		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
+	},
+};
+
+static struct pm8xxx_led_platform_data pm8xxx_leds_pdata = {
+	.led_core = &pm8921_led_core_pdata,
+	.configs = pm8921_led_configs,
+	.num_configs = ARRAY_SIZE(pm8921_led_configs),
+};
+
+static int pm8xxx_set_led_info(unsigned index, struct led_info *linfo)
+{
+	if (index >= ARRAY_SIZE(pm8921_led_info)) {
+		pr_err("%s: index %d out of bounds\n", __func__, index);
+		return -EINVAL;
+	}
+	if (!linfo) {
+		pr_err("%s: invalid led_info pointer\n", __func__);
+		return -EINVAL;
+	}
+	memcpy(&pm8921_led_info[index], linfo, sizeof(struct led_info));
+	return 0;
+}
+
 static __init void load_pm8921_batt_eprom_pdata_from_dt(void)
 {
 	struct device_node *chosen;
@@ -363,6 +459,59 @@ __init void mmi_load_rgb_leds_from_dt(void)
 	}
 	of_node_put(parent);
 }
+
+static  __init void mmi_load_pm8921_leds_from_dt(void)
+{
+	struct device_node *parent, *child;
+
+	parent = of_find_node_by_path("/System@0/PowerIC@0");
+	if (!parent)
+		goto out;
+
+	for_each_child_of_node(parent, child) {
+		int len = 0;
+		const void *prop;
+
+		prop = of_get_property(child, "type", &len);
+		if (prop && (len == sizeof(u32))) {
+			/* Qualcomm_PM8921_LED as defined in DT schema */
+			if (0x001E000E == *(u32 *)prop) {
+				unsigned index;
+				struct led_info *led_info;
+
+				index = dt_get_u32_or_die(child, "index");
+
+				led_info = kzalloc(sizeof(struct led_info),
+						GFP_KERNEL);
+				BUG_ON(!led_info);
+
+				prop = of_get_property(child, "name", &len);
+				BUG_ON(!prop);
+
+				led_info->name = kstrndup((const char *)prop,
+						len, GFP_KERNEL);
+				BUG_ON(!led_info->name);
+
+				prop = of_get_property(child,
+						"default_trigger", &len);
+				BUG_ON(!prop);
+
+				led_info->default_trigger = kstrndup(
+						(const char *)prop,
+						len, GFP_KERNEL);
+				BUG_ON(!led_info->default_trigger);
+
+				pm8xxx_set_led_info(index, led_info);
+			}
+		}
+	}
+
+	of_node_put(parent);
+
+out:
+	return;
+}
+
 
 static int pm8921_therm_mitigation[] = {
 	1100,
@@ -979,4 +1128,6 @@ void __init mmi_pm8921_init(struct mmi_oem_data *mmi_data, void *pdata)
 
 	load_pm8921_batt_eprom_pdata_from_dt();
 	mmi_load_rgb_leds_from_dt();
+	mmi_load_pm8921_leds_from_dt();
+	pm8921_pdata->leds_pdata = &pm8xxx_leds_pdata;
 }
