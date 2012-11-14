@@ -181,9 +181,24 @@ out:
 	return rv;
 }
 
+static struct oem_camera_sensor_data s5k5b3g_oem_data;
+
 static int __init s5k5b3g_init_i2c_device(struct i2c_board_info *info,
                                           struct device_node *node)
 {
+	/* get reset gpio */
+	of_property_read_u32(node, "gpio_reset",
+		&msm_camera_sensor_s5k5b3g_data.sensor_reset);
+
+	/* get avdd_en gpio */
+	of_property_read_u32(node, "gpio_avdd_en",
+		&s5k5b3g_oem_data.sensor_avdd_en);
+
+	/* get dig_en gpio */
+	of_property_read_u32(node, "gpio_dig_en",
+		&s5k5b3g_oem_data.sensor_dig_en);
+
+	msm_camera_sensor_s5k5b3g_data.oem_data = &s5k5b3g_oem_data;
 	info->platform_data = &msm_camera_sensor_s5k5b3g_data;
 	return 0;
 }
