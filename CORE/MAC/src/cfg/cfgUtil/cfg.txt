@@ -2813,10 +2813,10 @@ LIM
 WNI_CFG_VHT_SU_BEAMFORMEE_CAP  I    4    19
 V    RW    NP    
 LIM
-0    1    1
+0    1    0
 V    RW    NP    
 LIM
-0    1    1
+0    1    0
 
 *
 * Compressed Steering Number of Beamformer Antennas Supported
@@ -2838,10 +2838,10 @@ LIM
 WNI_CFG_VHT_NUM_SOUNDING_DIMENSIONS  I    4    19
 V    RW    NP    
 LIM
-0    1    1
+0    1    0
 V    RW    NP    
 LIM
-0    1    1
+0    1    0
 
 *
 * MU Beamformer Capable
@@ -3029,10 +3029,10 @@ LIM
 WNI_CFG_VHT_BASIC_MCS_SET  I    4    19
 V    RW    NP    
 LIM
-0    3     0 
+0    0xFFFF    0xFFFE
 V    RW    NP    
 LIM
-0    3     0
+0    0xFFFF    0xFFFE
 
 *
 * MU-MIMO Capable STA Count
