@@ -27,7 +27,14 @@ enum {
 	DEBUG_SUSPEND = 1U << 2,
 	DEBUG_VERBOSE = 1U << 3,
 };
+
+#ifdef CONFIG_PM_DEBUG
+/* debug callbacks registered with early_suspend and late_resume rotuines */
+static int debug_mask = DEBUG_USER_STATE | DEBUG_SUSPEND;
+#else
 static int debug_mask = DEBUG_USER_STATE;
+#endif
+
 module_param_named(debug_mask, debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP);
 
 static DEFINE_MUTEX(early_suspend_lock);
