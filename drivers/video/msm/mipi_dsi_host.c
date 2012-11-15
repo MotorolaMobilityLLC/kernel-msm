@@ -64,6 +64,7 @@ static spinlock_t dsi_mdp_lock;
 spinlock_t dsi_clk_lock;
 static int dsi_ctrl_lock;
 static int dsi_mdp_busy;
+static int dsi_clk_cnt;
 static struct mutex cmd_mutex;
 static struct mutex clk_mutex;
 
@@ -180,10 +181,17 @@ void mipi_dsi_disable_irq_nosync(u32 term)
 	spin_unlock(&dsi_irq_lock);
 }
 
+/*
+ * Used to balance dsi_clk_cnt when mipi dsi clk is not operated
+ * via mipi_dsi_clk_cfg() call
+ */
+void mipi_dsi_clk_cnt(int count)
+{
+	dsi_clk_cnt += count;
+}
+
 void mipi_dsi_clk_cfg(int on)
 {
-	static int dsi_clk_cnt;
-
 	mutex_lock(&clk_mutex);
 	if (on) {
 		if (dsi_clk_cnt == 0) {
@@ -191,10 +199,10 @@ void mipi_dsi_clk_cfg(int on)
 			mipi_dsi_ahb_ctrl(1);
 			mipi_dsi_clk_enable();
 		}
-		dsi_clk_cnt++;
+		mipi_dsi_clk_cnt(1);
 	} else {
 		if (dsi_clk_cnt) {
-			dsi_clk_cnt--;
+			mipi_dsi_clk_cnt(-1);
 			if (dsi_clk_cnt == 0) {
 				mipi_dsi_clk_disable();
 				mipi_dsi_ahb_ctrl(0);
