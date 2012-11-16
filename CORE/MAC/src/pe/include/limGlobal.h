@@ -363,7 +363,6 @@ typedef struct sLimMlmScanReq
 
 #ifdef WLAN_FEATURE_P2P
     tANI_BOOLEAN   p2pSearch;
-    tANI_BOOLEAN   skipDfsChnlInP2pSearch;
 #endif
     tANI_U16           uIEFieldLen;
     tANI_U16           uIEFieldOffset;

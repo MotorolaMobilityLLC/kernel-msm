@@ -4005,29 +4005,7 @@ void limProcessEndScanRsp(tpAniSirGlobal pMac,  void *body)
             }
             else
             {
-               //Skip Dfs Channel in case of P2P Search
-               //If skipDfsChnlInP2pSearch is set in ini
-               if( ( pMac->lim.gpLimMlmScanReq != NULL ) &&
-                   pMac->lim.gpLimMlmScanReq->p2pSearch &&
-                   pMac->lim.gpLimMlmScanReq->skipDfsChnlInP2pSearch )
-               {
-                  int flag = 0;
-                  while(!flag)
-                  {
-                     pMac->lim.gLimCurrentScanChannelId++;
-                     if( (pMac->lim.gLimCurrentScanChannelId >
-                   (tANI_U32) (pMac->lim.gpLimMlmScanReq->channelList.numChannels - 1))||
-                        (limActiveScanAllowed(pMac, limGetCurrentScanChannel(pMac))))
-                     {
-                       flag=1; //Bail out from here
-                     }
-                  }
-               }
-               else
-               {
-                  pMac->lim.gLimCurrentScanChannelId++;
-               }
-
+               pMac->lim.gLimCurrentScanChannelId++;
                limContinueChannelScan(pMac);
             }
             break;
