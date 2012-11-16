@@ -457,6 +457,12 @@ static int __devinit mipi_mot_lcd_probe(struct platform_device *pdev)
 	}
 
 	mutex_init(&mot_panel.lock);
+	if (!mot_panel.mfd->fbi->dev) {
+		pr_err("%s: fbi->dev is NULL\n", __func__);
+		ret = -ENODEV;
+		goto err;
+	}
+
 	if (mot_panel.acl_support_present == TRUE) {
 		ret = sysfs_create_group(&mot_panel.mfd->fbi->dev->kobj,
 							&acl_attr_group);
