@@ -3667,7 +3667,7 @@ int hdd_wlan_startup(struct device *dev )
       {
          hddLog(VOS_TRACE_LEVEL_ERROR,"%s: Failed to set MAC Address. "
                 "HALStatus is %08d [x%08x]",__func__, halStatus, halStatus );
-         return VOS_STATUS_E_FAILURE;
+         goto err_vosclose;
       }
    }
 #endif // FEATURE_WLAN_INTEGRATED_SOC
