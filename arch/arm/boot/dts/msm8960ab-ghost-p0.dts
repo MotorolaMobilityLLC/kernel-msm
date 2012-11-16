@@ -1,0 +1,12 @@
+/dts-v1/;
+
+/include/ "skeleton.dtsi"
+/include/ "msm8960.dtsi"
+
+/ {
+	model = "Motorola MSM8960 Pro Ghost";
+	compatible = "mmi,msm8960";
+
+	mmi,product = "mmi,msm8960ab-ghost";
+	mmi,revision = "p0";
+};
