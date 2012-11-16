@@ -91,6 +91,8 @@ static struct clk *mi2s_rx_osr_clk;
 static struct clk *mi2s_rx_bit_clk;
 static atomic_t mi2s_rsc_ref;
 #endif
+static struct clk *pri_i2s_tx_bit_clk;
+static struct clk *pri_i2s_tx_osr_clk;
 
 static struct clk *codec_clk;
 static int clk_users;
@@ -996,6 +998,18 @@ static int msm8960_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+static int msm8960_be_hw_pri_i2s_params_fixup(struct snd_soc_pcm_runtime *rtd,
+			struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+	SNDRV_PCM_HW_PARAM_RATE);
+
+	pr_debug("%s()\n", __func__);
+	rate->min = rate->max = 16000;
+
+	return 0;
+}
+
 static int msm8960_hdmi_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					struct snd_pcm_hw_params *params)
 {
@@ -1249,6 +1263,127 @@ static int msm8960_aux_pcm_free_gpios(void)
 
 	return 0;
 }
+
+static int msm_primary_i2s_tx_free_gpios(struct gpio *gpios, int num_gpios)
+{
+	gpio_free_array(gpios, num_gpios);
+	return 0;
+}
+
+static int msm_primary_i2s_tx_hw_params(struct snd_pcm_substream *substream,
+			struct snd_pcm_hw_params *params)
+{
+	int rate = params_rate(params);
+	int bit_clk_set = 0;
+	pr_debug("%s rate: %d\n", __func__, rate);
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		bit_clk_set = TABLA_EXT_CLK_RATE/(rate * 2 * 16);
+		clk_set_rate(pri_i2s_tx_bit_clk, bit_clk_set);
+		return 1;
+	}
+	return -EINVAL;
+}
+
+static void msm_primary_i2s_tx_shutdown(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct msm_mi2s_pdata *pdata = (cpu_dai->dev)->platform_data;
+
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+
+		if (pri_i2s_tx_osr_clk) {
+			clk_disable_unprepare(pri_i2s_tx_osr_clk);
+			clk_put(pri_i2s_tx_osr_clk);
+			pri_i2s_tx_osr_clk = NULL;
+		}
+		if (pri_i2s_tx_bit_clk) {
+			clk_disable_unprepare(pri_i2s_tx_bit_clk);
+			clk_put(pri_i2s_tx_bit_clk);
+			pri_i2s_tx_bit_clk = NULL;
+		}
+		msm_primary_i2s_tx_free_gpios(pdata->gpios,
+							pdata->num_gpios);
+	}
+}
+
+static int configure_primary_i2s_tx_gpio(struct gpio *gpios, int num_gpios)
+{
+	int ret;
+	ret = gpio_request_array(gpios, num_gpios);
+	if (ret < 0)
+		pr_err("%s:failed to request Pri I2S Gpios %d",
+						__func__, ret);
+
+	return ret;
+}
+
+static int msm_primary_i2s_tx_startup(struct snd_pcm_substream *substream)
+{
+	int ret = -EINVAL;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct msm_primary_i2s_pdata *pdata = (cpu_dai->dev)->platform_data;
+
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		ret = configure_primary_i2s_tx_gpio(pdata->gpios,
+							pdata->num_gpios);
+		if (ret < 0)
+			goto gpio_fail;
+
+		pri_i2s_tx_osr_clk = clk_get(cpu_dai->dev, "osr_clk");
+		if (IS_ERR(pri_i2s_tx_osr_clk)) {
+			pr_err("Failed to get pri_i2s_tx_osr_clk\n");
+			ret = PTR_ERR(pri_i2s_tx_osr_clk);
+			goto osr_clk_fail;
+		}
+		clk_set_rate(pri_i2s_tx_osr_clk, TABLA_EXT_CLK_RATE);
+		ret = clk_prepare_enable(pri_i2s_tx_osr_clk);
+		if (ret != 0) {
+			pr_err("Unable to enable pri_i2s_tx_osr_clk\n");
+			goto osr_clk_fail;
+		}
+		pri_i2s_tx_bit_clk = clk_get(cpu_dai->dev, "bit_clk");
+		if (IS_ERR(pri_i2s_tx_bit_clk)) {
+			pr_err("Failed to get pri_i2s_tx_bit_clk\n");
+			ret = PTR_ERR(pri_i2s_tx_bit_clk);
+			goto bit_clk_fail;
+		}
+		/* Actual bit clk rate is set up in hw_param
+		value 24 is arrived from assuming rate to be 16k here */
+		clk_set_rate(pri_i2s_tx_bit_clk, 24);
+		ret = clk_prepare_enable(pri_i2s_tx_bit_clk);
+		if (ret != 0) {
+			pr_err("Unable to enable pri_i2s_tx_bit_clk\n");
+			clk_put(pri_i2s_tx_bit_clk);
+			pri_i2s_tx_bit_clk = NULL;
+			goto bit_clk_fail;
+		}
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
+
+		if (ret < 0) {
+			pr_err("set format for cpu dai failed\n");
+			goto set_fmt_fail;
+		}
+	}
+	pr_debug("%s: ret = %d\n", __func__, ret);
+	return ret;
+
+set_fmt_fail:
+	clk_disable_unprepare(pri_i2s_tx_bit_clk);
+	clk_put(pri_i2s_tx_bit_clk);
+	pri_i2s_tx_bit_clk = NULL;
+bit_clk_fail:
+	clk_disable_unprepare(pri_i2s_tx_osr_clk);
+osr_clk_fail:
+	clk_put(pri_i2s_tx_osr_clk);
+	pri_i2s_tx_osr_clk = NULL;
+gpio_fail:
+	msm_primary_i2s_tx_free_gpios(pdata->gpios, pdata->num_gpios);
+
+	return ret;
+}
+
 static int msm8960_startup(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -1316,6 +1451,13 @@ static struct snd_soc_ops msm_mi2s_rx_be_ops = {
 	.hw_params = msm_mi2s_rx_hw_params,
 };
 #endif
+
+static struct snd_soc_ops msm_primary_i2s_tx_be_ops = {
+	.startup = msm_primary_i2s_tx_startup,
+	.shutdown = msm_primary_i2s_tx_shutdown,
+	.hw_params = msm_primary_i2s_tx_hw_params,
+};
+
 
 /* Digital audio interface glue - connects codec <---> CPU */
 static struct snd_soc_dai_link msm8960_dai_common[] = {
@@ -1791,6 +1933,19 @@ static struct snd_soc_dai_link mmi_dai_links[] = {
 		.ops = &msm_mi2s_rx_be_ops,
 	},
 #endif
+	/* Primary I2S TX BACK END DAI Link */
+	{
+		.name = LPASS_BE_PRI_I2S_TX,
+		.stream_name = "Primary I2S Capture",
+		.cpu_dai_name = "msm-dai-q6.1",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-tx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_PRI_I2S_TX,
+		.be_hw_params_fixup = msm8960_be_hw_pri_i2s_params_fixup,
+		.ops = &msm_primary_i2s_tx_be_ops,
+	},
 };
 
 static struct snd_soc_dai_link msm8960_tabla1x_dai[
