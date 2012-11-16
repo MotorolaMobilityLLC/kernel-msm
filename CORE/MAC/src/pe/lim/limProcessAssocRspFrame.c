@@ -550,7 +550,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     {
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
         pMac->lim.reAssocRetryAttempt = 0;
-        if (NULL != pMac->lim.pSessionEntry->pLimMlmReassocRetryReq)
+        if ((NULL != pMac->lim.pSessionEntry) && (NULL != pMac->lim.pSessionEntry->pLimMlmReassocRetryReq))
         {
             palFreeMemory( pMac->hHdd, pMac->lim.pSessionEntry->pLimMlmReassocRetryReq);
             pMac->lim.pSessionEntry->pLimMlmReassocRetryReq = NULL;
