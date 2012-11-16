@@ -112,3 +112,4 @@ obj-$(CONFIG_MSM_HAB) += hab/
 obj-$(CONFIG_QCOM_QDSS_BRIDGE) += qdss_bridge.o
 obj-$(CONFIG_MSM_REMOTEQDSS) += remoteqdss.o
 obj-$(CONFIG_MMI_SOC_INFO) += mmi_soc_info.o
+obj-$(CONFIG_MMI_RAM_INFO) += mmi-ram-info.o
