@@ -1278,6 +1278,13 @@ static int device_prepare(struct device *dev, pm_message_t state)
 
 	device_unlock(dev);
 
+	/*
+	 * If failed prepare, should allow runtime suspend again because
+	 * the complete phase of this device is never invoked
+	 */
+	if (error)
+		pm_runtime_put_sync(dev);
+
 	return error;
 }
 
