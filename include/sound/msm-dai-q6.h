@@ -44,4 +44,8 @@ struct msm_dai_auxpcm_pdata {
 	struct msm_dai_auxpcm_config mode_16k;
 };
 
+struct msm_primary_i2s_pdata {
+	struct gpio *gpios; /*Primary I2S Gpio's for data and clk */
+	int num_gpios;
+};
 #endif
