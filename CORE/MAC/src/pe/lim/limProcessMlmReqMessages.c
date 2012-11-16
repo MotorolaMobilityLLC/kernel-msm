@@ -4013,10 +4013,6 @@ limProcessAssocFailureTimeout(tpAniSirGlobal pMac, tANI_U32 MsgType)
 
             psessionEntry->limMlmState = eLIM_MLM_IDLE_STATE;
             MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
-            //Set the RXP mode to IDLE, so it starts filtering the frames.
-            if(limSetLinkState(pMac, eSIR_LINK_IDLE_STATE,psessionEntry->bssId, 
-                psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS)
-                PELOGE(limLog(pMac, LOGE,  FL("Failed to set the LinkState\n"));)
 
             // 'Change' timer for future activations
             limDeactivateAndChangeTimer(pMac, eLIM_ASSOC_FAIL_TIMER);
