@@ -70,3 +70,4 @@ obj-y				+= qcom/
 obj-$(CONFIG_USB_EXT_TYPE_C_PERICOM)	+= type-c-pericom.o
 obj-$(CONFIG_USB_EXT_TYPE_C_TI)		+= type-c-ti.o
 obj-$(CONFIG_UID_CPUTIME) 	+= uid_cputime.o
+obj-$(CONFIG_MOT_UTAG) += utag/
