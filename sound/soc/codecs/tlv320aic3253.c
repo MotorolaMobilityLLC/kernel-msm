@@ -73,14 +73,22 @@ static DECLARE_TLV_DB_SCALE(tlv_step_1, 0, 100, 0);
 static DECLARE_TLV_DB_SCALE(tlv_step_0_5, 0, 50, 0);
 
 static const struct snd_kcontrol_new aic3253_snd_controls[] = {
-	SOC_DOUBLE_R_TLV("AIC PCM Playback Volume", AIC3253_LDACVOL,
-			AIC3253_RDACVOL, 0, 0x30, 0, tlv_step_0_5),
-	SOC_DOUBLE_R_TLV("AIC Driver Gain Volume", AIC3253_HPLGAIN,
-			AIC3253_HPRGAIN, 0, 0x1D, 0, tlv_step_1),
-	SOC_DOUBLE_R("AIC DAC Playback Switch", AIC3253_HPLGAIN,
-			AIC3253_HPRGAIN, 6, 0x01, 0),
-	SOC_DOUBLE_R("AIC Playback Powertune CTL", AIC3253_LPLYCFG1,
-			AIC3253_RPLYCFG2, 2, 0x02, 0),
+	SOC_SINGLE_TLV("AIC PCM Playback VolumeL", AIC3253_LDACVOL,
+			0, 0x30, 0, tlv_step_0_5),
+	SOC_SINGLE_TLV("AIC PCM Playback VolumeR", AIC3253_RDACVOL,
+			0, 0x30, 0, tlv_step_0_5),
+	SOC_SINGLE_TLV("AIC Driver Gain VolumeL", AIC3253_HPLGAIN,
+			0, 0x1D, 0, tlv_step_1),
+	SOC_SINGLE_TLV("AIC Driver Gain VolumeR", AIC3253_HPRGAIN,
+			0, 0x1D, 0, tlv_step_1),
+	SOC_SINGLE("AIC DAC Playback SwitchL", AIC3253_HPLGAIN,
+			6, 0x01, 0),
+	SOC_SINGLE("AIC DAC Playback SwitchR", AIC3253_HPRGAIN,
+			6, 0x01, 0),
+	SOC_SINGLE("AIC Playback Powertune CTLL", AIC3253_LPLYCFG1,
+			2, 0x02, 0),
+	SOC_SINGLE("AIC Playback Powertune CTLR", AIC3253_RPLYCFG2,
+			2, 0x02, 0),
 	SOC_SINGLE("AIC Auto-mute Switch", AIC3253_DACMUTE, 4, 7, 0),
 };
 
