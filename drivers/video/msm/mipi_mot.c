@@ -279,8 +279,6 @@ static int panel_enable(struct platform_device *pdev)
 	if (ret != 0)
 		goto err;
 
-	/* To clear out any error msg that panel can detect during first boot */
-	mipi_dsi_cmd_bta_sw_trigger();
 	if (mot_panel.panel_enable)
 		mot_panel.panel_enable(mfd);
 	else {
