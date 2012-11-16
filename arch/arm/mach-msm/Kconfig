@@ -2596,4 +2596,11 @@ config HOB_SHARED_RAM_MMI
 	help
 	Provide mechanism to access hob storage shared memory on apps processor.
 	HOB or the HandOver Block is the staging area for Phasing Data.
+
+config MMI_RAM_INFO
+	depends on ARCH_MSM
+	default n
+	bool "Motorola Mobility RAM Info"
+	help
+	Provide mechanism to access RAM size and MR registers values via sysfs.
 endif
