@@ -243,11 +243,6 @@ VOS_STATUS csrNeighborRoamReassocIndCallback(v_PVOID_t pAdapter,
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;   
  
-    smsLog(pMac, LOG1, FL("Reassoc indication callback called"));
-
-
-    //smsLog(pMac, LOGE, FL("Reassoc indication callback called at state %d"), pNeighborRoamInfo->neighborRoamState);
-
     NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Deregistering DOWN event reassoc callback with TL. RSSI = %d"), pNeighborRoamInfo->cfgParams.neighborReassocThreshold * (-1));
 
 
@@ -262,18 +257,18 @@ VOS_STATUS csrNeighborRoamReassocIndCallback(v_PVOID_t pAdapter,
         smsLog(pMac, LOGW, FL(" Couldn't deregister csrNeighborRoamReassocIndCallback with TL: Status = %d\n"), vosStatus);
     }
     
-    NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Deregistering UP event neighbor lookup callback with TL. RSSI = %d"), pNeighborRoamInfo->cfgParams.neighborLookupThreshold * (-1));
-    /* Deregister reassoc callback. Ignore return status */
-    /*Varun TODO*/
-    vosStatus = WLANTL_DeregRSSIIndicationCB(pMac->roam.gVosContext, (v_S7_t)pNeighborRoamInfo->cfgParams.neighborLookupThreshold * (-1),
-                                                        WLANTL_HO_THRESHOLD_DOWN, 
-                                                        csrNeighborRoamNeighborLookupUPCallback,
-                                                        VOS_MODULE_ID_SME);
+    NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Rcvd reassoc notification-deregister UP indication. RSSI = %d"),
+            NEIGHBOR_ROAM_LOOKUP_UP_THRESHOLD * (-1));
+    vosStatus = WLANTL_DeregRSSIIndicationCB(pMac->roam.gVosContext,
+                        (v_S7_t)NEIGHBOR_ROAM_LOOKUP_UP_THRESHOLD * (-1),
+                        WLANTL_HO_THRESHOLD_UP,
+                        csrNeighborRoamNeighborLookupUPCallback,
+                        VOS_MODULE_ID_SME);
                         
     if(!VOS_IS_STATUS_SUCCESS(vosStatus))
     {
         //err msg
-        smsLog(pMac, LOGW, FL(" Couldn't deregister csrNeighborRoamReassocIndCallback with TL: Status = %d\n"), vosStatus);
+        smsLog(pMac, LOGE, FL(" Couldn't deregister csrNeighborRoamNeighborLookupUPCallback with TL: Status = %d\n"), vosStatus);
     }
 
     /* We dont need to run this timer any more. */
@@ -864,7 +859,22 @@ eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosS
         if (eHAL_STATUS_SUCCESS == csrNeighborRoamIssuePreauthReq(pMac))
         goto DEQ_PREAUTH; 
 
-        CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN)
+        CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN);
+
+        /* Register Neighbor Lookup threshold callback with TL for UP event now */
+        NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("No more pre-auth candidates-"
+                "register UP indication with TL. RSSI = %d,"), NEIGHBOR_ROAM_LOOKUP_UP_THRESHOLD * (-1));
+
+        vosStatus = WLANTL_RegRSSIIndicationCB(pMac->roam.gVosContext,
+                            (v_S7_t)NEIGHBOR_ROAM_LOOKUP_UP_THRESHOLD * (-1),
+                            WLANTL_HO_THRESHOLD_UP,
+                            csrNeighborRoamNeighborLookupUPCallback,
+                            VOS_MODULE_ID_SME, pMac);
+        if(!VOS_IS_STATUS_SUCCESS(vosStatus))
+        {
+            //err msg
+            smsLog(pMac, LOGE, FL(" Couldn't register csrNeighborRoamNeighborLookupCallback UP event with TL: Status = %d\n"), status);
+        }
 
         /* Start the neighbor results refresh timer and transition to REPORT_SCAN state to perform scan again */
         status = palTimerStart(pMac->hHdd, pNeighborRoamInfo->neighborResultsRefreshTimer, 
@@ -1046,6 +1056,8 @@ static void csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac, tScanResultHa
                        pNeighborRoamInfo->currAPbssid, sizeof(tSirMacAddr)))
         {
             /* currently associated AP. Do not have this in the roamable AP list */
+            VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                    "SKIP-currently associated AP\n");
             continue;
         }
 
@@ -1081,6 +1093,11 @@ static void csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac, tScanResultHa
                         * margin that is provided by user from the ini file (RoamRssiDiff)*/
                        if (abs(abs(CurrAPRssi) - abs(pScanResult->BssDescriptor.rssi)) < RoamRssiDiff)
                        {
+                           VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                                 "%s: [INFOLOG]Current AP rssi=%d new ap rssi=%d not good enough, roamRssiDiff=%d\n", __func__,
+                                 CurrAPRssi,
+                                 (int)pScanResult->BssDescriptor.rssi * (-1),
+                                 RoamRssiDiff);
                           continue;
                        }
                        else {
@@ -2657,6 +2674,8 @@ VOS_STATUS  csrNeighborRoamNeighborLookupDownEvent(tpAniSirGlobal pMac)
                 vosStatus = csrNeighborRoamTransitToCFGChanScan(pMac);
                 if (VOS_STATUS_SUCCESS != vosStatus)
                 {
+                    NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("csrNeighborRoamTransitToCFGChanScan failed"
+                        " with status=%d"), vosStatus);
                     return vosStatus;
                 }
             }
@@ -2670,7 +2689,7 @@ VOS_STATUS  csrNeighborRoamNeighborLookupDownEvent(tpAniSirGlobal pMac)
             if(!VOS_IS_STATUS_SUCCESS(vosStatus))
             {
                //err msg
-               smsLog(pMac, LOGW, FL(" Couldn't register csrNeighborRoamNeighborLookupCallback UP event with TL: Status = %d\n"), status);
+               smsLog(pMac, LOGE, FL(" Couldn't register csrNeighborRoamNeighborLookupCallback UP event with TL: Status = %d\n"), status);
             }
             break;
         default:
