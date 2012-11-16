@@ -1435,4 +1435,11 @@ config MMI_SOC_INFO
 	bool "Motorola Mobility SOC Info"
 	help
 	  Provide mechanism to export MSM SOC info.
+
+config MMI_RAM_INFO
+	depends on ARCH_MSM
+	default n
+	bool "Motorola Mobility RAM Info"
+	help
+	Provide mechanism to access RAM size and MR registers values via sysfs.
 endif
