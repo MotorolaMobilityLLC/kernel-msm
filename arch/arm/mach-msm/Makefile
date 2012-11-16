@@ -407,3 +407,4 @@ obj-$(CONFIG_DEBUG_FS) += msm_cpr-debug.o
 endif
 
 obj-$(CONFIG_HOB_SHARED_RAM_MMI) += mmi_hob_ram_mmap.o
+obj-$(CONFIG_MMI_RAM_INFO) += mmi-ram-info.o
