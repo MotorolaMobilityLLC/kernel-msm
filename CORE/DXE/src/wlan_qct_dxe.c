@@ -4137,8 +4137,8 @@ void *WLANDXE_Open
       {
          dxeChannelClose(tempDxeCtrlBlk, &tempDxeCtrlBlk->dxeChannel[idx]);
       }
-      wpalMemoryFree((void *)&tempDxeCtrlBlk->rxIsrMsg);
-      wpalMemoryFree((void *)&tempDxeCtrlBlk->txIsrMsg);
+      wpalMemoryFree(tempDxeCtrlBlk->rxIsrMsg);
+      wpalMemoryFree(tempDxeCtrlBlk->txIsrMsg);
       wpalMemoryFree(tempDxeCtrlBlk);
       return NULL;
    }
