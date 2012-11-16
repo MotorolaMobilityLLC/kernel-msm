@@ -128,5 +128,26 @@ struct msm_camera_sensor_info msm_camera_sensor_ar0834_data = {
 	.sensor_type = BAYER_SENSOR,
 };
 
+static struct msm_camera_csi_lane_params ov8820_csi_lane_params = {
+	.csi_lane_assign = 0xE4,
+	.csi_lane_mask = 0xF,
+};
+
+static struct msm_camera_sensor_platform_info sensor_board_info_ov8820 = {
+	.mount_angle = 90,
+	.csi_lane_params = &ov8820_csi_lane_params,
+};
+
+struct msm_camera_sensor_info msm_camera_sensor_ov8820_data = {
+	.sensor_name = "ov8820",
+	.pdata = &msm_camera_csi_device_data[0],
+	.flash_data = &camera_flash_none,
+	.sensor_platform_info = &sensor_board_info_ov8820,
+	.csi_if = 1,
+	.camera_type = BACK_CAMERA_2D,
+	.sensor_type = BAYER_SENSOR,
+	/*.actuator_info = &msm_act_main_cam_0_info,*/
+	/*.actuator_info = &dw9714_actuator_info,*/
+};
 
 #endif

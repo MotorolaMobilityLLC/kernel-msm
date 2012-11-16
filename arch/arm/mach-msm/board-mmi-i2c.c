@@ -235,6 +235,33 @@ static int __init ar0834_init_i2c_device(struct i2c_board_info *info,
 	return 0;
 }
 
+static struct oem_camera_sensor_data ov8820_oem_data;
+
+static int __init ov8820_init_i2c_device(struct i2c_board_info *info,
+						struct device_node *node)
+{
+	/* get reset gpio */
+	of_property_read_u32(node, "gpio_reset",
+		&msm_camera_sensor_ov8820_data.sensor_reset);
+
+	/* get pwd gpio */
+	of_property_read_u32(node, "gpio_pwd",
+		&msm_camera_sensor_ov8820_data.sensor_pwd);
+
+	/* get dig_en gpio */
+	of_property_read_u32(node, "gpio_dig_en",
+		&ov8820_oem_data.sensor_dig_en);
+
+	/* get avdd_en gpio */
+	of_property_read_u32(node, "gpio_avdd_en",
+		&ov8820_oem_data.sensor_avdd_en);
+
+	msm_camera_sensor_ov8820_data.oem_data = &ov8820_oem_data;
+	info->platform_data = &msm_camera_sensor_ov8820_data;
+
+	return 0;
+}
+
 static int __init lm3556_init_i2c_device(struct i2c_board_info *info,
                                           struct device_node *node)
 {
@@ -247,6 +274,7 @@ static int __init lm3556_init_i2c_device(struct i2c_board_info *info,
 
 	/* Set back cameras to use available camera flash */
 	msm_camera_sensor_ov8835_data.flash_data = &camera_flash_lm3556;
+	msm_camera_sensor_ov8820_data.flash_data = &camera_flash_lm3556;
 
 	info->platform_data = &cam_flash_3556;
 
@@ -462,13 +490,6 @@ int __init pn544_init_i2c_device(struct i2c_board_info *info,
 }
 /* End of NXP PN544 Init */
 
-static int __init stub_init_i2c_device(struct i2c_board_info *info,
-				       struct device_node *node)
-{
-	pr_info("%s called for %s\n", __func__, info->type);
-	return -ENODEV;
-}
-
 static struct drv260x_platform_data drv2605_data;
 
 static int __init drv2605_init_i2c_device(struct i2c_board_info *info,
@@ -547,7 +568,7 @@ struct mmi_apq_i2c_lookup {
 struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00270000, melfas_init_i2c_device},  /* Melfas_MMS100 */
 	{0x00260001, atmxt_init_i2c_device},   /* Atmel_MXT */
-	{0x00290000, stub_init_i2c_device},
+	{0x00290000, ov8820_init_i2c_device},  /* OV8820 8MP Bayer Sensor */
 	{0x00030015, msp430_init_i2c_device}, /* TI MSP430 */
 	{0x00190001, pn544_init_i2c_device}, /* NXP PN544 */
 	{0x00290002, ov8835_init_i2c_device},  /* Omnivision 8MP Bayer */
