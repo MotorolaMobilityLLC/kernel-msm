@@ -243,13 +243,18 @@ typedef struct sLimTimers
 #ifdef WLAN_FEATURE_P2P
     TX_TIMER           gLimRemainOnChannelTimer;
 #endif
-
+    TX_TIMER           gLimDisassocAckTimer;
+    TX_TIMER           gLimDeauthAckTimer;
 //********************TIMER SECTION ENDS**************************************************
 // ALL THE FIELDS BELOW THIS CAN BE ZEROED OUT in limInitialize
 //****************************************************************************************
 
 }tLimTimers;
 
+typedef struct {
+    void *pMlmDisassocReq;
+    void *pMlmDeauthReq;
+}tLimDisassocDeauthCnfReq;
 
 typedef struct sAniSirLim
 {
@@ -914,6 +919,7 @@ tLimMlmOemDataRsp       *gpLimMlmOemDataRsp;
     tpPESession  pSessionEntry;
     tANI_U8 reAssocRetryAttempt;
 #endif
+    tLimDisassocDeauthCnfReq limDisassocDeauthCnfReq;
 } tAniSirLim, *tpAniSirLim;
 
 #ifdef WLAN_FEATURE_P2P

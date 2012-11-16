@@ -645,6 +645,9 @@ typedef struct sSirMbMsgP2p
 #define SIR_LIM_CCX_TSM_TIMEOUT        (SIR_LIM_TIMEOUT_MSG_START + 0x25)
 #endif
 
+#define SIR_LIM_DISASSOC_ACK_TIMEOUT       (SIR_LIM_TIMEOUT_MSG_START + 0x26)
+#define SIR_LIM_DEAUTH_ACK_TIMEOUT       (SIR_LIM_TIMEOUT_MSG_START + 0x27)
+
 #define SIR_LIM_MSG_TYPES_END            (SIR_LIM_MSG_TYPES_BEGIN+0xFF)
 
 // SCH message types

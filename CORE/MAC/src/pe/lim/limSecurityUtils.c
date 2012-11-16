@@ -557,10 +557,10 @@ limPreAuthClnupHandler(tpAniSirGlobal pMac)
                  * Send advisory Deauthentication frame
                  * to STA being deleted
                  */
-                limSendDeauthMgmtFrame(
-                               pMac,
-                               eSIR_MAC_PREV_AUTH_NOT_VALID_REASON, //=2
-                               pCurrNode->peerMacAddr,sessionEntry);
+                limSendDeauthMgmtFrame(pMac,
+                                       eSIR_MAC_PREV_AUTH_NOT_VALID_REASON, //=2
+                                       pCurrNode->peerMacAddr, sessionEntry,
+                                       FALSE);
             }
 
             limLog(pMac,

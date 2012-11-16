@@ -3246,7 +3246,7 @@ __limCounterMeasures(tpAniSirGlobal pMac, tpPESession psessionEntry)
     if ( (psessionEntry->limSystemRole == eLIM_AP_ROLE) || (psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE)
         || (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE) )
          
-        limSendDisassocMgmtFrame(pMac, eSIR_MAC_MIC_FAILURE_REASON, mac, psessionEntry);
+        limSendDisassocMgmtFrame(pMac, eSIR_MAC_MIC_FAILURE_REASON, mac, psessionEntry, FALSE);
 
     tx_thread_sleep(10);
 };
@@ -3362,7 +3362,7 @@ __limHandleSmeStopBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
             // Send disassoc all stations associated thru TKIP
             __limCounterMeasures(pMac,psessionEntry);
         else
-            limSendDisassocMgmtFrame(pMac, eSIR_MAC_DISASSOC_LEAVING_BSS_REASON, bcAddr,psessionEntry);
+            limSendDisassocMgmtFrame(pMac, eSIR_MAC_DISASSOC_LEAVING_BSS_REASON, bcAddr, psessionEntry, FALSE);
     }
 
     //limDelBss is also called as part of coalescing, when we send DEL BSS followed by Add Bss msg.

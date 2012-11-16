@@ -75,7 +75,11 @@ enum
 #ifdef FEATURE_WLAN_CCX
     eLIM_TSM_TIMER,
 #endif
+    eLIM_DISASSOC_ACK_TIMER,
+    eLIM_DEAUTH_ACK_TIMER,
 };
+
+#define LIM_DISASSOC_DEAUTH_ACK_TIMEOUT         500
 
 // Timer Handler functions
 v_UINT_t limCreateTimers(tpAniSirGlobal);

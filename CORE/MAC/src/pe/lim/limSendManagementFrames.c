@@ -44,6 +44,9 @@
 #include "limStaHashApi.h"
 #include "schApi.h"
 #include "limSendMessages.h"
+#include "limAssocUtils.h"
+#include "limFT.h"
+
 #if defined WLAN_FEATURE_VOWIFI
 #include "rrmApi.h"
 #endif
@@ -3666,6 +3669,155 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
     return;
 } /*** end limSendAuthMgmtFrame() ***/
 
+eHalStatus limSendDeauthCnf(tpAniSirGlobal pMac)
+{
+    tANI_U16                aid;
+    tpDphHashNode           pStaDs;
+    tLimMlmDeauthReq        *pMlmDeauthReq;
+    tLimMlmDeauthCnf        mlmDeauthCnf;
+    tpPESession             psessionEntry;
+
+    pMlmDeauthReq = pMac->lim.limDisassocDeauthCnfReq.pMlmDeauthReq;
+    if (pMlmDeauthReq)
+    {
+        if (tx_timer_running(&pMac->lim.limTimers.gLimDeauthAckTimer))
+        {
+            limDeactivateAndChangeTimer(pMac, eLIM_DEAUTH_ACK_TIMER);
+        }
+
+        if((psessionEntry = peFindSessionBySessionId(pMac, pMlmDeauthReq->sessionId))== NULL)
+        {
+
+            PELOGE(limLog(pMac, LOGE,
+                        FL("session does not exist for given sessionId\n"));)
+                mlmDeauthCnf.resultCode = eSIR_SME_INVALID_PARAMETERS;
+            goto end;
+        }
+
+        pStaDs = dphLookupHashEntry(pMac, pMlmDeauthReq->peerMacAddr, &aid, &psessionEntry->dph.dphHashTable);
+        if (pStaDs == NULL)
+        {
+            mlmDeauthCnf.resultCode = eSIR_SME_INVALID_PARAMETERS;
+            goto end;
+        }
+
+
+        /// Receive path cleanup with dummy packet
+        limCleanupRxPath(pMac, pStaDs,psessionEntry);
+        /// Free up buffer allocated for mlmDeauthReq
+        palFreeMemory( pMac->hHdd, (tANI_U8 *) pMlmDeauthReq);
+        pMac->lim.limDisassocDeauthCnfReq.pMlmDeauthReq = NULL;
+    }
+    return eHAL_STATUS_SUCCESS;
+end:
+    palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDeauthCnf.peerMacAddr,
+            (tANI_U8 *) pMlmDeauthReq->peerMacAddr,
+            sizeof(tSirMacAddr));
+    mlmDeauthCnf.deauthTrigger = pMlmDeauthReq->deauthTrigger;
+    mlmDeauthCnf.aid           = pMlmDeauthReq->aid;
+    mlmDeauthCnf.sessionId = pMlmDeauthReq->sessionId;
+
+    // Free up buffer allocated
+    // for mlmDeauthReq
+    palFreeMemory( pMac->hHdd, (tANI_U8 *) pMlmDeauthReq);
+
+    limPostSmeMessage(pMac,
+            LIM_MLM_DEAUTH_CNF,
+            (tANI_U32 *) &mlmDeauthCnf);
+    return eHAL_STATUS_SUCCESS;
+}
+
+eHalStatus limSendDisassocCnf(tpAniSirGlobal pMac)
+{
+    tANI_U16                 aid;
+    tpDphHashNode            pStaDs;
+    tLimMlmDisassocCnf       mlmDisassocCnf;
+    tpPESession              psessionEntry;
+    tLimMlmDisassocReq       *pMlmDisassocReq;
+
+    pMlmDisassocReq = pMac->lim.limDisassocDeauthCnfReq.pMlmDisassocReq;
+    if (pMlmDisassocReq)
+    {
+        if (tx_timer_running(&pMac->lim.limTimers.gLimDisassocAckTimer))
+        {
+            limDeactivateAndChangeTimer(pMac, eLIM_DISASSOC_ACK_TIMER);
+        }
+
+        if((psessionEntry = peFindSessionBySessionId(pMac, pMlmDisassocReq->sessionId))== NULL)
+        {
+
+            PELOGE(limLog(pMac, LOGE,
+                        FL("session does not exist for given sessionId\n"));)
+                mlmDisassocCnf.resultCode = eSIR_SME_INVALID_PARAMETERS;
+            goto end;
+        }
+
+        pStaDs = dphLookupHashEntry(pMac, pMlmDisassocReq->peerMacAddr, &aid, &psessionEntry->dph.dphHashTable);
+        if (pStaDs == NULL)
+        {
+            mlmDisassocCnf.resultCode = eSIR_SME_INVALID_PARAMETERS;
+            goto end;
+        }
+
+        /// Receive path cleanup with dummy packet
+        if(eSIR_SUCCESS != limCleanupRxPath(pMac, pStaDs, psessionEntry))
+        {
+            mlmDisassocCnf.resultCode = eSIR_SME_RESOURCES_UNAVAILABLE;
+            goto end;
+        }
+
+#ifdef WLAN_FEATURE_VOWIFI_11R
+        if  ( (psessionEntry->limSystemRole == eLIM_STA_ROLE ) &&
+                (
+#ifdef FEATURE_WLAN_CCX
+                 (psessionEntry->isCCXconnection ) ||
+#endif
+                 (psessionEntry->is11Rconnection )) &&
+                (pMlmDisassocReq->reasonCode != eSIR_MAC_DISASSOC_DUE_TO_FTHANDOFF_REASON))
+        {
+            PELOGE(limLog(pMac, LOGE, FL("FT Preauth Session Cleanup \n"));)
+                limFTCleanup(pMac);
+        }
+#endif
+
+        /// Free up buffer allocated for mlmDisassocReq
+        palFreeMemory( pMac->hHdd, (tANI_U8 *) pMlmDisassocReq);
+        pMac->lim.limDisassocDeauthCnfReq.pMlmDisassocReq = NULL;
+        return eHAL_STATUS_SUCCESS;
+    }
+    else
+    {
+        return eHAL_STATUS_SUCCESS;
+    }
+end:
+    palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDisassocCnf.peerMacAddr,
+            (tANI_U8 *) pMlmDisassocReq->peerMacAddr,
+            sizeof(tSirMacAddr));
+    mlmDisassocCnf.aid = pMlmDisassocReq->aid;
+    mlmDisassocCnf.disassocTrigger = pMlmDisassocReq->disassocTrigger;
+
+    /* Update PE session ID*/
+    mlmDisassocCnf.sessionId = pMlmDisassocReq->sessionId;
+
+    /// Free up buffer allocated for mlmDisassocReq
+    palFreeMemory( pMac->hHdd, (tANI_U8 *) pMlmDisassocReq);
+
+    limPostSmeMessage(pMac,
+            LIM_MLM_DISASSOC_CNF,
+            (tANI_U32 *) &mlmDisassocCnf);
+    return eHAL_STATUS_SUCCESS;
+}
+
+eHalStatus limDisassocTxCompleteCnf(tpAniSirGlobal pMac, tANI_U32 txCompleteSuccess)
+{
+    return limSendDisassocCnf(pMac);
+}
+
+eHalStatus limDeauthTxCompleteCnf(tpAniSirGlobal pMac, tANI_U32 txCompleteSuccess)
+{
+    return limSendDeauthCnf(pMac);
+}
+
 /**
  * \brief This function is called to send Disassociate frame.
  *
@@ -3684,7 +3836,9 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
 void
 limSendDisassocMgmtFrame(tpAniSirGlobal pMac,
                          tANI_U16       nReason,
-                         tSirMacAddr    peer,tpPESession psessionEntry)
+                         tSirMacAddr    peer,
+                         tpPESession psessionEntry,
+                         tANI_BOOLEAN waitForAck)
 {
     tDot11fDisassociation frm;
     tANI_U8              *pFrame;
@@ -3694,7 +3848,7 @@ limSendDisassocMgmtFrame(tpAniSirGlobal pMac,
     void                 *pPacket;
     eHalStatus            halstatus;
     tANI_U8               txFlag = 0;
-
+    tANI_U32              val = 0;
     if(NULL == psessionEntry)
     {
         return;
@@ -3784,21 +3938,52 @@ limSendDisassocMgmtFrame(tpAniSirGlobal pMac,
         txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
     }
 
-    // Queue Disassociation frame in high priority WQ
-    halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
-                            HAL_TXRX_FRM_802_11_MGMT,
-                            ANI_TXDIR_TODS,
-                            7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
-                            limTxComplete, pFrame, txFlag );
-    if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
+    if (waitForAck)
     {
-        limLog( pMac, LOGE, FL("Failed to send Disassociation "
-                               "(%X)!\n"),
-                nSirStatus );
-        //Pkt will be freed up by the callback
-        return;
-    }
+        // Queue Disassociation frame in high priority WQ
+        /* get the duration from the request */
+        halstatus = halTxFrameWithTxComplete( pMac, pPacket, ( tANI_U16 ) nBytes,
+                HAL_TXRX_FRM_802_11_MGMT,
+                ANI_TXDIR_TODS,
+                7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
+                limTxComplete, pFrame, limDisassocTxCompleteCnf,
+                txFlag );
+        val = SYS_MS_TO_TICKS(LIM_DISASSOC_DEAUTH_ACK_TIMEOUT);
 
+        if (tx_timer_change(
+                    &pMac->lim.limTimers.gLimDisassocAckTimer, val, 0)
+                != TX_SUCCESS)
+        {
+            limLog(pMac, LOGP,
+                    FL("Unable to change Disassoc ack Timer val\n"));
+            return;
+        }
+        else if(TX_SUCCESS != tx_timer_activate(
+                    &pMac->lim.limTimers.gLimDisassocAckTimer))
+        {
+            limLog(pMac, LOGP,
+                    FL("Unable to activate Disassoc ack Timer\n"));
+            limDeactivateAndChangeTimer(pMac, eLIM_DISASSOC_ACK_TIMER);
+            return;
+        }
+    }
+    else
+    {
+        // Queue Disassociation frame in high priority WQ
+        halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
+                HAL_TXRX_FRM_802_11_MGMT,
+                ANI_TXDIR_TODS,
+                7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
+                limTxComplete, pFrame, txFlag );
+        if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
+        {
+            limLog( pMac, LOGE, FL("Failed to send Disassociation "
+                        "(%X)!\n"),
+                    nSirStatus );
+            //Pkt will be freed up by the callback
+            return;
+        }
+    }
 } // End limSendDisassocMgmtFrame.
 
 /**
@@ -3818,7 +4003,9 @@ limSendDisassocMgmtFrame(tpAniSirGlobal pMac,
 void
 limSendDeauthMgmtFrame(tpAniSirGlobal pMac,
                        tANI_U16       nReason,
-                       tSirMacAddr    peer,tpPESession psessionEntry)
+                       tSirMacAddr    peer,
+                       tpPESession psessionEntry,
+                       tANI_BOOLEAN waitForAck)
 {
     tDot11fDeAuth    frm;
     tANI_U8         *pFrame;
@@ -3828,7 +4015,7 @@ limSendDeauthMgmtFrame(tpAniSirGlobal pMac,
     void            *pPacket;
     eHalStatus       halstatus;
     tANI_U8          txFlag = 0;
-
+    tANI_U32         val = 0;
     if(NULL == psessionEntry)
     {
         return;
@@ -3918,19 +4105,58 @@ limSendDeauthMgmtFrame(tpAniSirGlobal pMac,
         txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
     }
 
-    // Queue Disassociation frame in high priority WQ
-    halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
-                            HAL_TXRX_FRM_802_11_MGMT,
-                            ANI_TXDIR_TODS,
-                            7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
-                            limTxComplete, pFrame, txFlag );
-    if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
+    if (waitForAck)
     {
-        limLog( pMac, LOGE, FL("Failed to send De-Authentication "
-                               "(%X)!\n"),
-                nSirStatus );
-        //Pkt will be freed up by the callback
-        return;
+        // Queue Disassociation frame in high priority WQ
+        halstatus = halTxFrameWithTxComplete( pMac, pPacket, ( tANI_U16 ) nBytes,
+                HAL_TXRX_FRM_802_11_MGMT,
+                ANI_TXDIR_TODS,
+                7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
+                limTxComplete, pFrame, limDeauthTxCompleteCnf, txFlag );
+        if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
+        {
+            limLog( pMac, LOGE, FL("Failed to send De-Authentication "
+                        "(%X)!\n"),
+                    nSirStatus );
+            //Pkt will be freed up by the callback
+            return;
+        }
+
+        val = SYS_MS_TO_TICKS(LIM_DISASSOC_DEAUTH_ACK_TIMEOUT);
+
+        if (tx_timer_change(
+                    &pMac->lim.limTimers.gLimDeauthAckTimer, val, 0)
+                != TX_SUCCESS)
+        {
+            limLog(pMac, LOGP,
+                    FL("Unable to change Deauth ack Timer val\n"));
+            return;
+        }
+        else if(TX_SUCCESS != tx_timer_activate(
+                    &pMac->lim.limTimers.gLimDeauthAckTimer))
+        {
+            limLog(pMac, LOGP,
+                    FL("Unable to activate Deauth ack Timer\n"));
+            limDeactivateAndChangeTimer(pMac, eLIM_DEAUTH_ACK_TIMER);
+            return;
+        }
+    }
+    else
+    {
+        // Queue Disassociation frame in high priority WQ
+        halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
+                HAL_TXRX_FRM_802_11_MGMT,
+                ANI_TXDIR_TODS,
+                7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
+                limTxComplete, pFrame, txFlag );
+        if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
+        {
+            limLog( pMac, LOGE, FL("Failed to send De-Authentication "
+                        "(%X)!\n"),
+                    nSirStatus );
+            //Pkt will be freed up by the callback
+            return;
+        }
     }
 
 } // End limSendDeauthMgmtFrame.

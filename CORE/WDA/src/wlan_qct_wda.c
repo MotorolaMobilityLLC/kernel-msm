@@ -9288,9 +9288,7 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
       disassoc frame reaches the HW, HAL has already deleted the peer station */
    if ((pFc->type == SIR_MAC_MGMT_FRAME))
    {
-       if ((pFc->subType == SIR_MAC_MGMT_DISASSOC) ||
-               (pFc->subType == SIR_MAC_MGMT_DEAUTH) ||
-               (pFc->subType == SIR_MAC_MGMT_REASSOC_RSP) ||
+       if ((pFc->subType == SIR_MAC_MGMT_REASSOC_RSP) ||
                (pFc->subType == SIR_MAC_MGMT_PROBE_REQ))
        {
              /*Send Probe request frames on self sta idx*/

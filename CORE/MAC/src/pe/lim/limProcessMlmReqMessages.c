@@ -150,6 +150,8 @@ limProcessMlmReqMessages(tpAniSirGlobal pMac, tpSirMsgQ Msg)
 #ifdef WLAN_FEATURE_P2P
         case SIR_LIM_REMAIN_CHN_TIMEOUT:    limProcessRemainOnChnTimeout(pMac); break;
 #endif
+        case SIR_LIM_DISASSOC_ACK_TIMEOUT:  limProcessDisassocAckTimeout(pMac); break;
+        case SIR_LIM_DEAUTH_ACK_TIMEOUT:    limProcessDeauthAckTimeout(pMac); break;
         case LIM_MLM_ADDBA_REQ:             limProcessMlmAddBAReq( pMac, Msg->bodyptr ); break;
         case LIM_MLM_ADDBA_RSP:             limProcessMlmAddBARsp( pMac, Msg->bodyptr ); break;
         case LIM_MLM_DELBA_REQ:             limProcessMlmDelBAReq( pMac, Msg->bodyptr ); break;
@@ -2756,62 +2758,16 @@ limProcessMlmDisassocReqNtf(tpAniSirGlobal pMac, eHalStatus suspendStatus, tANI_
     /// Send Disassociate frame to peer entity
     if (sendDisassocFrame && (pMlmDisassocReq->reasonCode != eSIR_MAC_DISASSOC_DUE_TO_FTHANDOFF_REASON))
     {
+        pMac->lim.limDisassocDeauthCnfReq.pMlmDisassocReq = pMlmDisassocReq;
     limSendDisassocMgmtFrame(pMac,
                              pMlmDisassocReq->reasonCode,
-                             pMlmDisassocReq->peerMacAddr,psessionEntry);
+                                 pMlmDisassocReq->peerMacAddr,
+                                 psessionEntry, TRUE);
     }
     else
     {
        sendDisassocFrame = 1;    
     }
-
-    /// Receive path cleanup with dummy packet
-    if(eSIR_SUCCESS != limCleanupRxPath(pMac, pStaDs,psessionEntry))
-        {
-            mlmDisassocCnf.resultCode = eSIR_SME_RESOURCES_UNAVAILABLE;
-            goto end;
-        }
-
-#ifdef WLAN_FEATURE_VOWIFI_11R
-    if  ( (psessionEntry->limSystemRole == eLIM_STA_ROLE ) && 
-          ( 
-#ifdef FEATURE_WLAN_CCX
-          (psessionEntry->isCCXconnection ) || 
-#endif
-#ifdef FEATURE_WLAN_LFR
-          (psessionEntry->isFastRoamIniFeatureEnabled ) ||
-#endif
-          (psessionEntry->is11Rconnection )) &&
-          (pMlmDisassocReq->reasonCode != eSIR_MAC_DISASSOC_DUE_TO_FTHANDOFF_REASON))
-    {
-          PELOGE(limLog(pMac, LOGE, FL("FT Preauth Session (%p,%d) Cleanup\n"),
-                 psessionEntry, psessionEntry->peSessionId);)
-          limFTCleanup(pMac);
-    }
-    else
-    {
-          PELOGE(limLog(pMac, LOGE, FL("No FT Preauth Session Cleanup in role %d"
-#ifdef FEATURE_WLAN_CCX
-                 " isCCX %d"
-#endif
-#ifdef FEATURE_WLAN_LFR
-                 " isLFR %d"
-#endif
-                 " is11r %d reason %d\n"),
-                 psessionEntry->limSystemRole,
-#ifdef FEATURE_WLAN_CCX
-                 psessionEntry->isCCXconnection,
-#endif
-#ifdef FEATURE_WLAN_LFR
-                 psessionEntry->isFastRoamIniFeatureEnabled,
-#endif
-                 psessionEntry->is11Rconnection,
-                 pMlmDisassocReq->reasonCode);)
-    }
-#endif
-
-    /// Free up buffer allocated for mlmDisassocReq
-    palFreeMemory( pMac->hHdd, (tANI_U8 *) pMlmDisassocReq);
 
     return;
 
@@ -2831,6 +2787,11 @@ end:
     limPostSmeMessage(pMac,
                       LIM_MLM_DISASSOC_CNF,
                       (tANI_U32 *) &mlmDisassocCnf);
+}
+
+void limProcessDisassocAckTimeout(tpAniSirGlobal pMac)
+{
+    limSendDisassocCnf(pMac);
 }
 
 /**
@@ -2968,7 +2929,8 @@ limProcessMlmDeauthReqNtf(tpAniSirGlobal pMac, eHalStatus suspendStatus, tANI_U3
                         limSendDeauthMgmtFrame(
                                    pMac,
                                    pMlmDeauthReq->reasonCode,
-                                   pMlmDeauthReq->peerMacAddr,psessionEntry);
+                                   pMlmDeauthReq->peerMacAddr,
+                                   psessionEntry, FALSE);
 
                         /// Prepare and Send LIM_MLM_DEAUTH_CNF
                         mlmDeauthCnf.resultCode = eSIR_SME_SUCCESS;
@@ -3048,7 +3010,8 @@ limProcessMlmDeauthReqNtf(tpAniSirGlobal pMac, eHalStatus suspendStatus, tANI_U3
             /// Send Deauthentication frame to peer entity
             limSendDeauthMgmtFrame(pMac,
                                    pMlmDeauthReq->reasonCode,
-                                   pMlmDeauthReq->peerMacAddr,psessionEntry);
+                                   pMlmDeauthReq->peerMacAddr,
+                                   psessionEntry, FALSE);
         }
 
         goto end;
@@ -3078,15 +3041,11 @@ limProcessMlmDeauthReqNtf(tpAniSirGlobal pMac, eHalStatus suspendStatus, tANI_U3
                                            pMlmDeauthReq->reasonCode;
     pStaDs->mlmStaContext.cleanupTrigger = pMlmDeauthReq->deauthTrigger;
 
+    pMac->lim.limDisassocDeauthCnfReq.pMlmDeauthReq = pMlmDeauthReq;
     /// Send Deauthentication frame to peer entity
     limSendDeauthMgmtFrame(pMac, pMlmDeauthReq->reasonCode,
-                           pMlmDeauthReq->peerMacAddr,psessionEntry);
-
-    /// Receive path cleanup with dummy packet
-    limCleanupRxPath(pMac, pStaDs,psessionEntry);
-
-    /// Free up buffer allocated for mlmDeauthReq
-    palFreeMemory( pMac->hHdd, (tANI_U8 *) pMlmDeauthReq);
+                           pMlmDeauthReq->peerMacAddr,
+                           psessionEntry, TRUE);
 
     return;
 
@@ -3106,6 +3065,12 @@ end:
                       LIM_MLM_DEAUTH_CNF,
                       (tANI_U32 *) &mlmDeauthCnf);
 
+}
+
+
+void limProcessDeauthAckTimeout(tpAniSirGlobal pMac)
+{
+    limSendDeauthCnf(pMac);
 }
 
 /**

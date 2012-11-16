@@ -1084,6 +1084,12 @@ limCleanupMlm(tpAniSirGlobal pMac)
         tx_timer_delete(&pMac->lim.limTimers.gLimCcxTsmTimer);
 #endif
 
+        tx_timer_deactivate(&pMac->lim.limTimers.gLimDisassocAckTimer);
+        tx_timer_delete(&pMac->lim.limTimers.gLimDisassocAckTimer);
+
+        tx_timer_deactivate(&pMac->lim.limTimers.gLimDeauthAckTimer);
+        tx_timer_delete(&pMac->lim.limTimers.gLimDeauthAckTimer);
+
         pMac->lim.gLimTimersCreated = 0;
     }
 

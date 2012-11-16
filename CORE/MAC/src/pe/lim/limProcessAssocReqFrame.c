@@ -837,7 +837,7 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
             limSendDeauthMgmtFrame(
                      pMac,
                      eSIR_MAC_STA_NOT_PRE_AUTHENTICATED_REASON, //=9
-                     pHdr->sa,psessionEntry);
+                     pHdr->sa, psessionEntry, FALSE);
 
             // Log error
             if (subType == LIM_ASSOC)

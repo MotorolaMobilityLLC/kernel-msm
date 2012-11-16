@@ -495,7 +495,7 @@ static void limHandleUnknownA2IndexFrames(tpAniSirGlobal pMac, void *pRxPacketIn
                         PELOG1(limLog(pMac, LOG1, FL("Send Disassoc Frame due to Invalid Addr2 packet"));
                         limPrintMacAddr(pMac, pMacHdr->addr2, LOG1);)
                         limSendDisassocMgmtFrame(pMac,
-                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2,psessionEntry);
+                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2, psessionEntry, FALSE);
                         break;
 
                     default:
@@ -514,7 +514,7 @@ static void limHandleUnknownA2IndexFrames(tpAniSirGlobal pMac, void *pRxPacketIn
                         PELOG1(limLog(pMac, LOG1, FL("Send Disassoc Frame due to Invalid Addr2 packet"));
                         limPrintMacAddr(pMac, pMacHdr->addr2, LOG1);)
                         limSendDisassocMgmtFrame(pMac,
-                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2,psessionEntry);
+                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2, psessionEntry, FALSE);
                         break;
 
                     default:
@@ -532,7 +532,7 @@ static void limHandleUnknownA2IndexFrames(tpAniSirGlobal pMac, void *pRxPacketIn
                         PELOG1(limLog(pMac, LOG1, FL("Send Disassoc Frame due to Invalid Addr2 packet"));
                         limPrintMacAddr(pMac, pMacHdr->addr2, LOG1);)
                         limSendDisassocMgmtFrame(pMac,
-                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2,psessionEntry);
+                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2, psessionEntry, FALSE);
                         break;
 
                     default:
@@ -1655,6 +1655,8 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 #ifdef WLAN_FEATURE_P2P
         case SIR_LIM_REMAIN_CHN_TIMEOUT:
 #endif
+        case SIR_LIM_DISASSOC_ACK_TIMEOUT:
+        case SIR_LIM_DEAUTH_ACK_TIMEOUT:
             // These timeout messages are handled by MLM sub module
 
             limProcessMlmReqMessages(pMac,

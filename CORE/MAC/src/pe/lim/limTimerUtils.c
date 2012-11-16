@@ -672,9 +672,37 @@ limCreateTimers(tpAniSirGlobal pMac)
     }
 
 #endif
+
+    cfgValue = 1000;
+    cfgValue = SYS_MS_TO_TICKS(cfgValue);
+    if (tx_timer_create(&pMac->lim.limTimers.gLimDisassocAckTimer,
+                                    "DISASSOC ACK TIMEOUT",
+                                    limTimerHandler, SIR_LIM_DISASSOC_ACK_TIMEOUT,
+                                    cfgValue, 0,
+                                    TX_NO_ACTIVATE) != TX_SUCCESS)
+    {
+        limLog(pMac, LOGP, FL("could not DISASSOC ACK TIMEOUT timer\n"));
+        goto err_timer;
+    }
+
+    cfgValue = 1000;
+    cfgValue = SYS_MS_TO_TICKS(cfgValue);
+    if (tx_timer_create(&pMac->lim.limTimers.gLimDeauthAckTimer,
+                                    "DISASSOC ACK TIMEOUT",
+                                    limTimerHandler, SIR_LIM_DISASSOC_ACK_TIMEOUT,
+                                    cfgValue, 0,
+                                    TX_NO_ACTIVATE) != TX_SUCCESS)
+    {
+        limLog(pMac, LOGP, FL("could not create DEAUTH ACK TIMEOUT timer\n"));
+        goto err_timer;
+    }
     return TX_SUCCESS;
 
     err_timer:
+        tx_timer_delete(&pMac->lim.limTimers.gLimDisassocAckTimer);
+#ifdef WLAN_FEATURE_P2P
+        tx_timer_delete(&pMac->lim.limTimers.gLimRemainOnChannelTimer);
+#endif
     #ifdef FEATURE_WLAN_CCX
         tx_timer_delete(&pMac->lim.limTimers.gLimCcxTsmTimer);
     #endif
@@ -1685,7 +1713,49 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             }
             break;
 #endif
+    case eLIM_DISASSOC_ACK_TIMER:
+            if (tx_timer_deactivate(&pMac->lim.limTimers.gLimDisassocAckTimer) != TX_SUCCESS)
+            {
+                /**
+                ** Could not deactivate Join Failure
+                ** timer. Log error.
+                **/
+                limLog(pMac, LOGP, FL("Unable to deactivate Disassoc ack timer\n"));
+            }
+            val = 1000;
+            val = SYS_MS_TO_TICKS(val);
+            if (tx_timer_change(&pMac->lim.limTimers.gLimDisassocAckTimer,
+                                                val, 0) != TX_SUCCESS)
+            {
+                /**
+                * Could not change Join Failure
+                * timer. Log error.
+                */
+                limLog(pMac, LOGP, FL("Unable to change timer\n"));
+            }
+            break;
 
+    case eLIM_DEAUTH_ACK_TIMER:
+            if (tx_timer_deactivate(&pMac->lim.limTimers.gLimDeauthAckTimer) != TX_SUCCESS)
+            {
+                /**
+                ** Could not deactivate Join Failure
+                ** timer. Log error.
+                **/
+                limLog(pMac, LOGP, FL("Unable to deactivate Deauth ack timer\n"));
+            }
+            val = 1000;
+            val = SYS_MS_TO_TICKS(val);
+            if (tx_timer_change(&pMac->lim.limTimers.gLimDeauthAckTimer,
+                                                val, 0) != TX_SUCCESS)
+            {
+                /**
+                * Could not change Join Failure
+                * timer. Log error.
+                */
+                limLog(pMac, LOGP, FL("Unable to change timer\n"));
+            }
+            break;
         default:
             // Invalid timerId. Log error
             break;

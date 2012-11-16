@@ -724,8 +724,8 @@ void limSendAssocRspMgmtFrame(tpAniSirGlobal, tANI_U16, tANI_U16, tSirMacAddr, t
 void limSendAssocRspMgmtFrame(tpAniSirGlobal, tANI_U16, tANI_U16, tSirMacAddr, tANI_U8, tpDphHashNode pSta,tpPESession);
 
 void limSendNullDataFrame(tpAniSirGlobal, tpDphHashNode);
-void limSendDisassocMgmtFrame(tpAniSirGlobal, tANI_U16, tSirMacAddr,tpPESession);
-void limSendDeauthMgmtFrame(tpAniSirGlobal, tANI_U16, tSirMacAddr,tpPESession);
+void limSendDisassocMgmtFrame(tpAniSirGlobal, tANI_U16, tSirMacAddr, tpPESession, tANI_BOOLEAN waitForAck);
+void limSendDeauthMgmtFrame(tpAniSirGlobal, tANI_U16, tSirMacAddr, tpPESession, tANI_BOOLEAN waitForAck);
 
 void limContinueChannelScan(tpAniSirGlobal);
 tSirResultCodes limMlmAddBss(tpAniSirGlobal, tLimMlmStartReq *,tpPESession psessionEntry);
@@ -1083,5 +1083,9 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg);
 void limAbortRemainOnChan(tpAniSirGlobal pMac);
 tSirRetStatus __limProcessSmeNoAUpdate(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf);
 #endif
+void limProcessDisassocAckTimeout(tpAniSirGlobal pMac);
+void limProcessDeauthAckTimeout(tpAniSirGlobal pMac);
+eHalStatus limSendDisassocCnf(tpAniSirGlobal pMac);
+eHalStatus limSendDeauthCnf(tpAniSirGlobal pMac);
 #endif /* __LIM_TYPES_H */
 
