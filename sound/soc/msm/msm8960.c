@@ -500,10 +500,9 @@ static const struct snd_soc_dapm_route common_audio_map[] = {
 	 * on FLUID.
 	 */
 	{"AMIC3", NULL, "MIC BIAS3 Internal1"},
-	{"MIC BIAS3 Internal1", NULL, "MIC BIAS2 External"},
 	{"MIC BIAS2 External", NULL, "ANCRight Headset Mic"},
+
 	{"AMIC4", NULL, "MIC BIAS1 Internal2"},
-	{"MIC BIAS1 Internal2", NULL, "MIC BIAS2 External"},
 	{"MIC BIAS2 External", NULL, "ANCLeft Headset Mic"},
 
 	{"HEADPHONE", NULL, "LDO_H"},
