@@ -223,6 +223,13 @@ config OV8835
 	---help---
 	  Omnivision bayer 8MP Sensor with auto focus.
 
+config OV8820
+	bool "Sensor OV8820 (BAYER 8MP)"
+	depends on MSM_CAMERA && (ARCH_MSM8X60 || ARCH_MSM8960)
+	default n
+	---help---
+	  Omnivision bayer 8MP Sensor with auto focus.
+
 config AR0834
 	bool "Sensor AR0834 (8MP)"
 	depends on MSM_CAMERA && (ARCH_MSM8X60 || ARCH_MSM8960)
