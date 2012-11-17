@@ -48,6 +48,7 @@ static void __init mmi_msm8960_reserve(void)
 
 static u32 fdt_start_address; /* flattened device tree address */
 static u32 fdt_size;
+static u32 prod_id;
 
 struct dt_gpiomux {
 	u16 gpio;
@@ -314,6 +315,7 @@ static void __init mmi_unit_info_init(void){
 	}
 
 	mui->version = MMI_UNIT_INFO_VER;
+	mui->prod_id = prod_id;
 	mui->system_rev = system_rev;
 	mui->system_serial_low = system_serial_low;
 	mui->system_serial_high = system_serial_high;
@@ -328,11 +330,14 @@ static void __init mmi_unit_info_init(void){
 	}
 
 	pr_err("mmi_unit_info (SMEM) for modem: version = 0x%02x,"
-		" system_rev = 0x%08x, system_serial = 0x%08x%08x,"
-		" machine = '%s', barcode = '%s', baseband = '%s',"
-		" carrier = '%s'\n",
-		mui->version, mui->system_rev, mui->system_serial_high,
-		mui->system_serial_low, mui->machine, mui->barcode,
+		" prod_id = 0x%08x, system_rev = 0x%08x,"
+		" system_serial = 0x%08x%08x,"
+		" machine = '%s', barcode = '%s',"
+		" baseband = '%s', carrier = '%s'\n",
+		mui->version,
+		mui->prod_id, mui->system_rev,
+		mui->system_serial_high, mui->system_serial_low,
+		mui->machine, mui->barcode,
 		mui->baseband, mui->carrier);
 }
 
@@ -435,6 +440,7 @@ static struct of_device_id mmi_of_setup[] __initdata = {
 	{ .compatible = "linux,seriallow", .data = &system_serial_low },
 	{ .compatible = "linux,serialhigh", .data = &system_serial_high },
 	{ .compatible = "linux,hwrev", .data = &system_rev },
+	{ .compatible = "mmi,prod_id", .data = &prod_id },
 	{ }
 };
 
