@@ -448,11 +448,16 @@ static void __init mmi_of_populate_setup(void)
 {
 	struct device_node *n = of_find_node_by_path("/chosen");
 	struct of_device_id *tbl = mmi_of_setup;
+	const char *baseband;
 
 	while (tbl->data) {
 		of_property_read_u32(n, tbl->compatible, tbl->data);
 		tbl++;
 	}
+
+	if (0 == of_property_read_string(n, "mmi,baseband", &baseband))
+		strlcpy(extended_baseband, baseband, sizeof(extended_baseband));
+
 	of_node_put(n);
 }
 
