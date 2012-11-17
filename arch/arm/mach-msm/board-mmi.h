@@ -69,6 +69,7 @@ static inline void mmi_vibrator_init(void) { }
 #define BASEBAND_MAX_LEN 96
 struct mmi_unit_info_v1 {
 	uint32_t version;
+	uint32_t prod_id;
 	uint32_t system_rev;
 	uint32_t system_serial_low;
 	uint32_t system_serial_high;
