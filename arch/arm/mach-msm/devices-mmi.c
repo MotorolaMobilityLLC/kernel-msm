@@ -12,11 +12,13 @@
  */
 #include <asm/mach-types.h>
 #include <linux/dma-mapping.h>
+#include <linux/mfd/pm8xxx/pm8921-charger.h>
 #include <linux/persistent_ram.h>
 #include <linux/platform_device.h>
 #include <linux/w1-gpio.h>
 #include <linux/platform_data/mmi-factory.h>
 #include <linux/platform_data/ram_console.h>
+#include <linux/power/bq5101xb_charger.h>
 #include <linux/leds-pwm-gpio.h>
 
 #include <mach/board.h>
@@ -235,6 +237,34 @@ struct platform_device mmi_w1_gpio_device = {
 	.name	= "w1-gpio",
 	.dev	= {
 		.platform_data = &mmi_w1_gpio_device_pdata,
+	},
+};
+
+static char *bq5101xb_supplied_to[] = {
+	"battery",
+};
+
+static struct bq5101xb_charger_platform_data bq5101xb_pdata = {
+	.chrg_b_pin = -1,
+	.ts_ctrl_term_b_pin = -1,
+	.ts_ctrl_fault_pin = -1,
+	.en1_pin = -1,
+	.en2_pin = -1,
+	.hot_temp = 60,
+	.cold_temp = -20,
+	.resume_soc = 99,
+	.resume_vbatt = 0,
+	.supply_list = bq5101xb_supplied_to,
+	.num_supplies = ARRAY_SIZE(bq5101xb_supplied_to),
+	.priority = BQ5101XB_WIRED,
+	.check_powered = pm8921_is_dc_chg_plugged_in,
+	.check_wired = pm8921_is_usb_chg_plugged_in,
+};
+
+struct platform_device mmi_bq5101xb_device = {
+	.name	= BQ5101XB_DRV_NAME,
+	.dev	= {
+		.platform_data = &bq5101xb_pdata,
 	},
 };
 
