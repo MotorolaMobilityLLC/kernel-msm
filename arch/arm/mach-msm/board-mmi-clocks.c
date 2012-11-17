@@ -168,19 +168,11 @@ __init struct clk_lookup *mmi_init_clocks_from_dt(int *size)
 			index++;
 		}
 	}
-	WARN_ON(count != index);
+
 	if (count != index) {
-		int i;
-
-		for (i = 0; i < index; i++) {
-			kfree(msm_clocks_mmi[i].con_id);
-			kfree(msm_clocks_mmi[i].dev_id);
-		}
-		kfree(msm_clocks_mmi);
-		count = 0;
-		msm_clocks_mmi = NULL;
+		pr_warn("%s: some clocks failed to install\n", __func__);
+		count = index;
 	}
-
 out:
 	of_node_put(parent);
 	*size = count;
