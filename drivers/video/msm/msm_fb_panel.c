@@ -32,6 +32,29 @@
 
 #include "msm_fb_panel.h"
 
+int panel_next_panel_on(struct platform_device *pdev)
+{
+	int ret = 0;
+	struct msm_fb_panel_data *pdata;
+	struct msm_fb_panel_data *next_pdata;
+	struct platform_device *next_pdev;
+
+	pdata = (struct msm_fb_panel_data *)pdev->dev.platform_data;
+
+	if (pdata) {
+		next_pdev = pdata->next;
+		if (next_pdev) {
+			next_pdata =
+				(struct msm_fb_panel_data *)next_pdev->dev.
+					platform_data;
+			if ((next_pdata) && (next_pdata->panel_on))
+				ret = next_pdata->panel_on(next_pdev);
+		}
+	}
+
+	return ret;
+}
+
 int panel_next_on(struct platform_device *pdev)
 {
 	int ret = 0;

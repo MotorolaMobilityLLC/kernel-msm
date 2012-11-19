@@ -1,4 +1,3 @@
-
 /* Copyright (c) 2008-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -1059,34 +1058,9 @@ void mipi_dsi_op_mode_config(int mode)
 
 void mipi_dsi_mdp_busy_wait(void)
 {
-	unsigned long flag;
-	int need_wait = 0;
-	int dsi_status1 = 0, dsi_status2 = 0;
-
-	pr_debug("%s: start pid=%d\n",
-				__func__, current->pid);
-	spin_lock_irqsave(&dsi_mdp_lock, flag);
-	if (dsi_mdp_busy == TRUE) {
-		INIT_COMPLETION(dsi_mdp_comp);
-		need_wait++;
-	}
-	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
-
-	dsi_status1 = MIPI_INP(MIPI_DSI_BASE + 0x04);
-	if (need_wait) {
-		/* wait until DMA finishes the current job */
-		pr_debug("%s: pending pid=%d\n",
-				__func__, current->pid);
-		if (wait_for_completion_timeout(&dsi_dma_comp,
-					msecs_to_jiffies(WAIT_TOUT)) == 0) {
-			dsi_status2 = MIPI_INP(MIPI_DSI_BASE + 0x04);
-			pr_err("%s: timeout waiting for dsi dma completion " \
-				"dsi_status2=0x%x dsi_status2=0x%x\n",
-					__func__, dsi_status1, dsi_status2);
-		}
-	}
-	pr_debug("%s: done pid=%d\n",
-				__func__, current->pid);
+	mutex_lock(&cmd_mutex);
+	mipi_dsi_cmd_mdp_busy();
+	mutex_unlock(&cmd_mutex);
 }
 
 void mipi_dsi_cmd_mdp_start(void)
@@ -1275,7 +1249,6 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 {
 	int cnt, len, diff, pkt_size, ret = 0;
 	char cmd;
-	unsigned long flag;
 	u32 dsi_ctrl, ctrl;
 	static int cur_pkt_size;
 	bool send_max_pkt_size = false;
@@ -1398,11 +1371,6 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 	if (panel_mode & MDP4_PANEL_DSI_VIDEO)
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl); /* restore */
 
-	spin_lock_irqsave(&dsi_mdp_lock, flag);
-	dsi_mdp_busy = FALSE;
-	complete(&dsi_mdp_comp);
-	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
-
 	if (mfd->panel_info.mipi.no_max_pkt_size) {
 		/*
 		 * remove extra 2 bytes from previous
@@ -1455,7 +1423,6 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 	struct dsi_cmd_desc *cmds;
 	int cnt, len, diff, pkt_size, ret;
 	char cmd;
-	unsigned long flag;
 	u32 ctrl, dsi_ctrl;
 	static int cur_pkt_size;
 	bool send_max_pkt_size = false;
@@ -1496,10 +1463,6 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 		len += 2;
 		cnt = len + 6; /* 4 bytes header + 2 bytes crc */
 	}
-
-	spin_lock_irqsave(&dsi_mdp_lock, flag);
-	dsi_mdp_busy = TRUE;
-	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
 
 	/*
 	 * turn on cmd mode
@@ -1583,11 +1546,6 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 
 	if (panel_mode & MDP4_PANEL_DSI_VIDEO)
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, dsi_ctrl); /* restore */
-
-	spin_lock_irqsave(&dsi_mdp_lock, flag);
-	dsi_mdp_busy = FALSE;
-	complete(&dsi_mdp_comp);
-	spin_unlock_irqrestore(&dsi_mdp_lock, flag);
 
 	if (req->flags & CMD_REQ_NO_MAX_PKT_SIZE) {
 		/*
@@ -1856,9 +1814,6 @@ int __mipi_dsi_cmdlist_commit(int from_mdp, struct dcs_cmd_req *cmdreq)
 	if (panel_mode & MDP4_PANEL_DSI_CMD)
 		mipi_dsi_clk_cfg(0);
 
-	if (from_mdp) /* from pipe_commit */
-		mipi_dsi_cmd_mdp_start();
-
 	return ret;
 }
 
@@ -1875,20 +1830,22 @@ static int mipi_dsi_cmdlist_commit_now(int from_mdp, struct dcs_cmd_req *cmdreq)
 
 int mipi_dsi_cmdlist_commit(int from_mdp)
 {
-	int ret;
+	int ret = 0;
 	struct dcs_cmd_req *req;
 
 	mutex_lock(&cmd_mutex);
 	req = mipi_dsi_cmdlist_get();
 	if (req == NULL)
-		ret = -EPERM;
+		goto need_lock;
 	else
 		ret = __mipi_dsi_cmdlist_commit(from_mdp, req);
-
-	mutex_unlock(&cmd_mutex);
+need_lock:
+	if (from_mdp) /* from pipe_commit */
+		mipi_dsi_cmd_mdp_start();
 
 	pr_debug("%s: from_mdp=%d pid=%d\n", __func__, from_mdp, current->pid);
 
+	mutex_unlock(&cmd_mutex);
 	return ret;
 }
 

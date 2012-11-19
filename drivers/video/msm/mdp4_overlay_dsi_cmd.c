@@ -43,6 +43,7 @@ static int vsync_start_y_adjust = 4;
  * VSYNC_EXPIRE_TICK == 4 is recommended
  */
 #define VSYNC_EXPIRE_TICK 4
+static bool dsi_panel_on;
 
 static struct vsycn_ctrl {
 	struct device *dev;
@@ -1070,6 +1071,9 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 		return ret;
 	}
 
+	/* switch dsi_panel_on flag for cmd panel */
+	mdp4_dsi_panel_off(mfd);
+
 	need_wait = 0;
 	mutex_lock(&vctrl->update_lock);
 	atomic_set(&vctrl->suspend, 1);
@@ -1212,10 +1216,37 @@ void mdp4_dsi_cmd_overlay(struct msm_fb_data_type *mfd)
 	mdp4_overlay_mdp_perf_upd(mfd, 1);
 
 	mdp4_dsi_cmd_pipe_commit(cndx, 0);
-
+	mdp4_dsi_panel_on(mfd);
 	mdp4_overlay_mdp_perf_upd(mfd, 0);
 	mutex_unlock(&mfd->dma->ov_mutex);
 }
+
+void mdp4_dsi_panel_on(struct msm_fb_data_type *mfd)
+{
+	struct msm_fb_panel_data *pdata =
+		(struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
+
+	if (dsi_panel_on == false) {
+		if (pdata->panel_on)
+			pdata->panel_on(mfd->pdev);
+
+		dsi_panel_on = true;
+	}
+}
+
+void mdp4_dsi_panel_off(struct msm_fb_data_type *mfd)
+{
+	struct msm_fb_panel_data *pdata =
+		(struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
+
+	if (dsi_panel_on == true) {
+		if (pdata->panel_off)
+			pdata->panel_off(mfd->pdev);
+
+		dsi_panel_on = false;
+	}
+}
+
 void mdp4_dump_vsync_ctrl(void)
 {
 	int cndx = 0;

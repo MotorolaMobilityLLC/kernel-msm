@@ -45,6 +45,7 @@ static int mipi_dsi_remove(struct platform_device *pdev);
 
 static int mipi_dsi_off(struct platform_device *pdev);
 static int mipi_dsi_on(struct platform_device *pdev);
+static int mipi_dsi_panel_on(struct platform_device *pdev);
 
 static struct platform_device *pdev_list[MSM_FB_MAX_DEV_LIST];
 static int pdev_list_cnt;
@@ -62,6 +63,21 @@ static struct platform_driver mipi_dsi_driver = {
 };
 
 struct device dsi_dev;
+
+static int mipi_dsi_panel_power_en(int on)
+{
+	int ret = 0;
+
+	if (mipi_dsi_pdata && mipi_dsi_pdata->panel_power_en)
+		ret = mipi_dsi_pdata->panel_power_en(on);
+
+	return ret;
+}
+
+static int mipi_dsi_panel_on(struct platform_device *pdev)
+{
+	return panel_next_panel_on(pdev);
+}
 
 static int mipi_dsi_off(struct platform_device *pdev)
 {
@@ -264,6 +280,15 @@ static int mipi_dsi_on(struct platform_device *pdev)
 	}
 
 	mipi_dsi_host_init(mipi);
+
+	/*
+	 * The MIPI host is done with INIT now, the lines are at LP-11,
+	 * and it is safe to turn on the power to the panel and get it out
+	 * of reset
+	 */
+
+	if (mipi_dsi_pdata && mipi_dsi_pdata->panel_power_save)
+		mipi_dsi_pdata->panel_power_save(1);
 
 	if (mdp_rev >= MDP_REV_41)
 		mutex_lock(&mfd->dma->ov_mutex);
@@ -498,6 +523,9 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 	pdata = mdp_dev->dev.platform_data;
 	pdata->on = mipi_dsi_on;
 	pdata->off = mipi_dsi_off;
+	pdata->panel_on = mipi_dsi_panel_on;
+	pdata->panel_power_en = mipi_dsi_panel_power_en;
+
 	pdata->next = pdev;
 
 	/*

@@ -1633,8 +1633,8 @@ void mdp4_mixer_stage_commit(int mixer)
 
 	mdp4_store_commit_info();
 	local_irq_restore(flags);
-	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 	mdp_clk_ctrl(0);
+	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 }
 
 
