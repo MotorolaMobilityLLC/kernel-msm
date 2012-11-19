@@ -493,7 +493,6 @@ static void axi_enable_wm_irq(struct vfe_share_ctrl_t *share_ctrl)
 		irq_mask |= VFE_IRQ_STATUS0_IMAGE_COMPOSIT_DONE2_MASK;
 	}
 
-
 	msm_camera_io_w(irq_mask, share_ctrl->vfebase +
 			VFE_IRQ_MASK_0);
 	if (vfe_output_mode || vfe_output_mode1)
@@ -569,7 +568,7 @@ static void axi_disable_wm_irq(struct vfe_share_ctrl_t *share_ctrl,
 		irq_comp_mask &= ~(
 		0x1 << (share_ctrl->outpath.out2.ch0 + 16) |
 		0x1 << (share_ctrl->outpath.out3.ch0 + 16));
-		irq_mask |= ~VFE_IRQ_STATUS0_IMAGE_COMPOSIT_DONE2_MASK;
+		irq_mask &= ~VFE_IRQ_STATUS0_IMAGE_COMPOSIT_DONE2_MASK;
 	}
 	msm_camera_io_w(irq_mask, share_ctrl->vfebase + VFE_IRQ_MASK_0);
 	if (vfe_output_mode || vfe_output_mode1)
@@ -627,6 +626,25 @@ static void axi_enable_irq(struct vfe_share_ctrl_t *share_ctrl)
 		atomic_set(&share_ctrl->vstate, 1);
 	}
 	atomic_set(&share_ctrl->handle_common_irq, 1);
+}
+
+static void axi_clear_all_interrupts(struct vfe_share_ctrl_t *share_ctrl)
+{
+	atomic_set(&share_ctrl->handle_common_irq, 0);
+	msm_camera_io_w(VFE_DISABLE_ALL_IRQS,
+		share_ctrl->vfebase + VFE_IRQ_MASK_0);
+	msm_camera_io_w(VFE_DISABLE_ALL_IRQS,
+		share_ctrl->vfebase + VFE_IRQ_MASK_1);
+
+	/* clear all pending interrupts*/
+	msm_camera_io_w(VFE_CLEAR_ALL_IRQS,
+		share_ctrl->vfebase + VFE_IRQ_CLEAR_0);
+	msm_camera_io_w(VFE_CLEAR_ALL_IRQS,
+		share_ctrl->vfebase + VFE_IRQ_CLEAR_1);
+	/* Ensure the write order while writing
+	*to the command register using the barrier */
+	msm_camera_io_w_mb(1,
+		share_ctrl->vfebase + VFE_IRQ_CMD);
 }
 
 static void axi_disable_irq(struct vfe_share_ctrl_t *share_ctrl,
@@ -5864,6 +5882,9 @@ void msm_axi_subdev_release(struct v4l2_subdev *sd)
 	axi_ctrl->share_ctrl->axi_ref_cnt--;
 	if (axi_ctrl->share_ctrl->axi_ref_cnt > 0)
 		return;
+
+	axi_clear_all_interrupts(axi_ctrl->share_ctrl);
+
 	axi_ctrl->share_ctrl->dual_enabled = 0;
 	disable_irq(axi_ctrl->vfeirq->start);
 	tasklet_kill(&axi_ctrl->vfe32_tasklet);
@@ -6491,9 +6512,9 @@ static int msm_axi_config(struct v4l2_subdev *sd, void __user *arg)
 		uint32_t *axio = NULL;
 		axio = kmalloc(vfe32_cmd[VFE_CMD_AXI_OUT_CFG].length,
 				GFP_ATOMIC);
-		if (!axio) {
+		if (!axio)
 			return -ENOMEM;
-		}
+
 		if (copy_from_user(axio, (void __user *)(vfecmd.value),
 				vfe32_cmd[VFE_CMD_AXI_OUT_CFG].length)) {
 			kfree(axio);
@@ -6788,7 +6809,7 @@ static void msm_axi_process_irq(struct v4l2_subdev *sd, void *arg)
 	}
 	if (irqstatus &
 		VFE_IRQ_STATUS0_IMAGE_COMPOSIT_DONE2_MASK) {
-		CDBG("\nImage composite done 2 irq occured.\n");
+		CDBG("Image composite done 2 irq occured.\n");
 		vfe32_process_output_path_irq_rdi0_and_rdi1(axi_ctrl);
 	}
 
