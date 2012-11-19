@@ -27,7 +27,7 @@
  * arch/arm/mach-msm/board-mmi-display.c & driver/video/msm/mipi_mot_common.c
  * to do this task
  */
-#define MIPI_MOT_PANEL_PLATF_BRINGUP 1
+/* #define MIPI_MOT_PANEL_PLATF_BRINGUP 1 */
 
 static struct mipi_dsi_panel_platform_data *mipi_mot_pdata;
 
@@ -295,6 +295,9 @@ static int panel_enable(struct platform_device *pdev)
 	pr_info("%s completed. Power_mode =0x%x\n",
 				__func__, mipi_mode_get_pwr_mode(mfd));
 
+	if (!mot_panel.panel_on)
+		atomic_set(&mot_panel.state, MOT_PANEL_ON);
+
 #ifdef MIPI_MOT_PANEL_PLATF_BRINGUP
 	mipi_mot_panel_on(mfd);
 	pr_info("%s: bringup flag is enable and ESD set to %d\n",
@@ -319,19 +322,28 @@ static int panel_disable(struct platform_device *pdev)
 	if (ret != 0)
 		goto err;
 
-	atomic_set(&mot_panel.state, MOT_PANEL_OFF);
 	if (!factory_run && mot_panel.esd_enabled &&
 				(mot_panel.esd_detection_run == true)) {
 		cancel_delayed_work(&mot_panel.esd_work);
 		mot_panel.esd_detection_run = false;
 	}
 
-	if (mot_panel.panel_disable)
-		mot_panel.panel_disable(mfd);
-	else {
-		pr_err("%s: no panel support\n", __func__);
-		ret = -ENODEV;
-		goto err1;
+	/*
+	 * The panel_state might be off because with the video_mode
+	 * panel, before phone suspends, it needs to call the panel_off
+	 * to turn off panel, before it turn off the timing generator
+	 * to avoid the image on the dipslay fading away
+	 */
+	if (atomic_read(&mot_panel.state) == MOT_PANEL_ON) {
+		atomic_set(&mot_panel.state, MOT_PANEL_OFF);
+
+		if (mot_panel.panel_disable)
+			mot_panel.panel_disable(mfd);
+		else {
+			pr_err("%s: no panel support\n", __func__);
+			ret = -ENODEV;
+			goto err1;
+		}
 	}
 
 	pr_info("%s completed\n", __func__);
@@ -399,7 +411,9 @@ static int panel_off(struct platform_device *pdev)
 
 	if (mot_panel.panel_off) {
 		atomic_set(&mot_panel.state, MOT_PANEL_OFF);
+		mutex_lock(&mfd->dma->ov_mutex);
 		mot_panel.panel_off(mfd);
+		mutex_unlock(&mfd->dma->ov_mutex);
 		pr_debug("MIPI MOT Panel OFF\n");
 	}
 	return 0;
