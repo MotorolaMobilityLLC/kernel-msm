@@ -71,6 +71,29 @@ static struct vsycn_ctrl {
 	ktime_t vsync_time;
 } vsync_ctrl_db[MAX_CONTROLLER];
 
+static int mipi_dsi_panel_power_en(struct platform_device *pdev, int on)
+{
+	int ret = 0;
+	struct msm_fb_panel_data *pdata;
+	struct msm_fb_panel_data *next_pdata;
+	struct platform_device *next_pdev;
+
+	pdata = (struct msm_fb_panel_data *)pdev->dev.platform_data;
+
+	if (pdata) {
+		next_pdev = pdata->next;
+		if (next_pdev) {
+			next_pdata =
+				(struct msm_fb_panel_data *)next_pdev->dev.
+								platform_data;
+			if ((next_pdata) && (next_pdata->panel_power_en))
+				ret = next_pdata->panel_power_en(on);
+		}
+	}
+
+	return ret;
+}
+
 static void vsync_irq_enable_nosync(int intr, int term)
 {
 	outp32(MDP_INTR_CLEAR, intr);
@@ -619,6 +642,9 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 	if (!(mfd->cont_splash_done)) {
 		mfd->cont_splash_done = 1;
 		mdp4_dsi_video_wait4dmap_done(0);
+		/* Turn off panel to avoid fading */
+		mipi_dsi_panel_power_en(pdev, 0);
+		/* disable timing generator */
 		MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
 		mipi_dsi_controller_cfg(0);
 		/* Clks are enabled in probe.
@@ -753,6 +779,13 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 	int undx, need_wait = 0;
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
+	/*
+	 * Image fade away on video mode panel when suspend,
+	 * work it around by turning off panel to hide it
+	 */
+	mdp4_dsi_panel_off(mfd);
+	mipi_dsi_panel_power_en(pdev, 0);
+
 	vctrl = &vsync_ctrl_db[cndx];
 	pipe = vctrl->base_pipe;
 
@@ -1197,6 +1230,7 @@ void mdp4_dsi_video_overlay(struct msm_fb_data_type *mfd)
 	else
 		mdp4_dsi_video_wait4dmap(0);
 
+	mdp4_dsi_panel_on(mfd);
 	mdp4_overlay_mdp_perf_upd(mfd, 0);
 	mutex_unlock(&mfd->dma->ov_mutex);
 }
