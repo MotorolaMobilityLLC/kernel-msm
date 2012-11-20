@@ -361,6 +361,55 @@ static void __init mmi_disp_init(struct msm8960_oem_init_ptrs *oem_ptr,
 	mmi_display_init(msm_fb_pdata, mipi_dsi_pdata);
 }
 
+/* Motorola ULPI default register settings
+ * TXPREEMPAMPTUNE[5:4] = 11 (3x preemphasis current)
+ * TXVREFTUNE[3:0] = 1111 increasing the DC level
+ */
+static int mmi_phy_settings[] = {0x34, 0x82, 0x3f, 0x81, -1};
+
+static void __init mmi_otg_init(struct msm8960_oem_init_ptrs *oem_ptr,
+			void *pdata)
+{
+	struct device_node *chosen;
+	int len;
+	const void *prop;
+	struct msm_otg_platform_data *otg_pdata =
+				(struct msm_otg_platform_data *) pdata;
+
+	chosen = of_find_node_by_path("/Chosen@0");
+
+	/*
+	 * the phy init sequence read from the device tree should be a
+	 * sequence of value/register pairs
+	 */
+	prop = of_get_property(chosen, "ulpi_phy_init_seq", &len);
+	if (prop && !(len % 2)) {
+		int i;
+		u8 *prop_val;
+
+		otg_pdata->phy_init_seq = kzalloc(sizeof(int)*(len+1),
+							GFP_KERNEL);
+
+		if (!otg_pdata->phy_init_seq) {
+			otg_pdata->phy_init_seq = mmi_phy_settings;
+			goto put_node;
+		}
+
+		otg_pdata->phy_init_seq[len] = -1;
+		prop_val = (u8 *)prop;
+
+		for (i = 0; i < len; i += 2) {
+			otg_pdata->phy_init_seq[i] = prop_val[i];
+			otg_pdata->phy_init_seq[i+1] = prop_val[i+1];
+		}
+	} else
+		otg_pdata->phy_init_seq = mmi_phy_settings;
+
+put_node:
+	of_node_put(chosen);
+	return;
+}
+
 static struct mmi_oem_data mmi_data;
 
 static void __init mmi_msm8960_init_early(void)
@@ -387,6 +436,7 @@ static void __init mmi_msm8960_init_early(void)
 	msm8960_oem_funcs.msm_device_init = mmi_device_init;
 	msm8960_oem_funcs.msm_display_init = mmi_disp_init;
 	msm8960_oem_funcs.msm_regulator_init = mmi_regulator_init;
+	msm8960_oem_funcs.msm_otg_init = mmi_otg_init;
 
 	/* Custom OEM Platform Data */
 	mmi_data.is_factory = mmi_boot_mode_is_factory;
