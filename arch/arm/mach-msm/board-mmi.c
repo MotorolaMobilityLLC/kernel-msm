@@ -405,6 +405,30 @@ static void __init mmi_otg_init(struct msm8960_oem_init_ptrs *oem_ptr,
 	} else
 		otg_pdata->phy_init_seq = mmi_phy_settings;
 
+	/* Skip EMU id logic detection for factory mode */
+	if (mmi_boot_mode_is_factory())
+		goto put_node;
+	/*
+	 * If the EMU circuitry provides id, then read the id irq and
+	 * active logic from the device tree.
+	 */
+	prop = of_get_property(chosen,
+			"emu_id_mpp_gpio", &len);
+	if (prop && (len == sizeof(u8))) {
+		otg_pdata->pmic_id_irq =
+				gpio_to_irq((*(u8 *)prop));
+		pr_debug("%s: PMIC id irq = %d\n",
+				__func__, otg_pdata->pmic_id_irq);
+	}
+
+	prop = of_get_property(chosen,
+			"emu_id_activehigh", &len);
+	if (prop && (len == sizeof(u8))) {
+		pr_debug("%s: PMIC id irq is active %s\n",
+				__func__, (*(u8 *)prop) ? "high" : "low");
+		otg_pdata->pmic_id_irq_active_high = (*(u8 *)prop);
+	}
+
 put_node:
 	of_node_put(chosen);
 	return;
