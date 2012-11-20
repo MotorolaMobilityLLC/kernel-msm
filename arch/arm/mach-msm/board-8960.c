@@ -3238,6 +3238,10 @@ void __init msm8960_cdp_init(void)
 	else
 		msm8960_pm8921_gpio_mpp_init();
 
+	if (msm8960_oem_funcs.msm_otg_init)
+		msm8960_oem_funcs.msm_otg_init(&msm8960_oem_funcs,
+						&msm_otg_pdata);
+
 	/* Don't add modem devices on APQ targets */
 	if (socinfo_get_id() != 124) {
 		platform_device_register(&msm_8960_q6_mss_fw);

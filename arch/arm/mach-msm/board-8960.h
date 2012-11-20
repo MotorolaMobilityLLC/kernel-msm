@@ -24,6 +24,11 @@
 #include <mach/msm_rtb.h>
 #include <mach/msm_cache_dump.h>
 #include "clock.h"
+#ifdef CONFIG_USB_MSM_OTG_72K
+#include <mach/msm_hsusb.h>
+#else
+#include <linux/usb/msm_hsusb.h>
+#endif
 
 /* Macros assume PMIC GPIOs and MPPs start at 1 */
 #define PM8921_GPIO_BASE		NR_GPIO_IRQS
@@ -121,6 +126,7 @@ struct msm8960_oem_init_ptrs {
 				struct msm_fb_platform_data *msm_fb_pdata,
 				struct mipi_dsi_platform_data *mipi_dsi_pdata);
 	void (*msm_regulator_init)(struct msm8960_oem_init_ptrs *);
+	void (*msm_otg_init)(struct msm8960_oem_init_ptrs *, void *);
 	void *oem_data;
 };
 extern struct msm8960_oem_init_ptrs msm8960_oem_funcs;
