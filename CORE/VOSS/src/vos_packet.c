@@ -1252,6 +1252,7 @@ VOS_STATUS vos_pkt_return_packet( vos_pkt_t *pPacket )
    vos_pkt_get_packet_callback callback;
    v_SIZE_t *pCount;
    VOS_PKT_TYPE packetType = VOS_PKT_TYPE_TX_802_3_DATA;
+   v_BOOL_t lowResource = VOS_FALSE;
 
    // Validate the input parameter pointer
    if (unlikely(NULL == pPacket))
@@ -1333,30 +1334,45 @@ VOS_STATUS vos_pkt_return_packet( vos_pkt_t *pPacket )
       // is there a low resource condition pending for this packet type?
       if (pLowResourceInfo && pLowResourceInfo->callback)
       {
-         // [DEBUG]
-         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,"VPKT [%d]: recycle %p",  __LINE__, pPacket);
-
-         // yes, so rather than placing the packet back in the free pool
-         // we will invoke the low resource callback
-         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                   "VPKT [%d]: [%p] Packet recycled, type %d[%s]",
-                   __LINE__, pPacket, pPacket->packetType,
-                   vos_pkti_packet_type_str(pPacket->packetType));
-
-         // clear out the User Data pointers in the voss packet..
-         memset(&pPacket->pvUserData, 0, sizeof(pPacket->pvUserData));
-
-         // initialize the 'chain' pointer to NULL.
-         pPacket->pNext = NULL;
-
-         // timestamp the vos packet.
-         pPacket->timestamp = vos_timer_get_system_ticks();
-
+         // pLowResourceInfo->callback is modified from threads (different CPU's). 
+         // So a mutex is enough to protect is against a race condition.
+         // mutex is SMP safe
+         mutex_lock(&gpVosPacketContext->mlock);
          callback = pLowResourceInfo->callback;
          pLowResourceInfo->callback = NULL;
-         callback(pPacket, pLowResourceInfo->userData);
+         mutex_unlock(&gpVosPacketContext->mlock);
+
+         // only one context can get a valid callback
+         if(callback)
+         {
+             // [DEBUG]
+             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,"VPKT [%d]: recycle %p",  __LINE__, pPacket);
+
+             // yes, so rather than placing the packet back in the free pool
+             // we will invoke the low resource callback
+             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                       "VPKT [%d]: [%p] Packet recycled, type %d[%s]",
+                       __LINE__, pPacket, pPacket->packetType,
+                       vos_pkti_packet_type_str(pPacket->packetType));
+
+             // clear out the User Data pointers in the voss packet..
+             memset(&pPacket->pvUserData, 0, sizeof(pPacket->pvUserData));
+
+             // initialize the 'chain' pointer to NULL.
+             pPacket->pNext = NULL;
+
+             // timestamp the vos packet.
+             pPacket->timestamp = vos_timer_get_system_ticks();
+
+             callback(pPacket, pLowResourceInfo->userData);
+
+             // We did process low resource condition
+             lowResource = VOS_TRUE;
+         }
       }
-      else
+      
+
+      if(!lowResource)
       {
          // this packet does not satisfy a low resource condition
          // so put it back in the appropriate free pool
