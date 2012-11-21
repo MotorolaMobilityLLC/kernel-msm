@@ -56,6 +56,18 @@ static const struct reg_default wm5102_reva_patch[] = {
 	{ 0x80, 0x0000 },
 };
 
+static const struct reg_default wm5102_revb_patch[] = {
+	{ 0x80, 0x0003 },
+	{ 0x081, 0xE022 },
+	{ 0x410, 0x6080 },
+	{ 0x418, 0x6080 },
+	{ 0x420, 0x6080 },
+	{ 0x428, 0xC000 },
+	{ 0x441, 0x8014 },
+	{ 0x458, 0x000b },
+	{ 0x80, 0x0000 },
+};
+
 /* We use a function so we can use ARRAY_SIZE() */
 int wm5102_patch(struct arizona *arizona)
 {
@@ -64,6 +76,10 @@ int wm5102_patch(struct arizona *arizona)
 		return regmap_register_patch(arizona->regmap,
 					     wm5102_reva_patch,
 					     ARRAY_SIZE(wm5102_reva_patch));
+	case 1:
+		return regmap_register_patch(arizona->regmap,
+					     wm5102_revb_patch,
+					     ARRAY_SIZE(wm5102_revb_patch));
 	default:
 		return 0;
 	}
