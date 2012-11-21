@@ -937,6 +937,9 @@ int arizona_set_fll(struct arizona_fll *fll, int source,
 	bool ena;
 	int ret;
 
+	if (fll->fref == Fref && fll->fout == Fout)
+		return 0;
+
 	ret = regmap_read(arizona->regmap, fll->base + 1, &reg);
 	if (ret != 0) {
 		arizona_fll_err(fll, "Failed to read current state: %d\n",
@@ -982,6 +985,9 @@ int arizona_set_fll(struct arizona_fll *fll, int source,
 		if (ena)
 			pm_runtime_put_autosuspend(arizona->dev);
 
+		fll->fref = Fref;
+		fll->fout = Fout;
+
 		return 0;
 	}
 
@@ -1013,6 +1019,9 @@ int arizona_set_fll(struct arizona_fll *fll, int source,
 					  msecs_to_jiffies(25));
 	if (ret == 0)
 		arizona_fll_warn(fll, "Timed out waiting for lock\n");
+
+	fll->fref = Fref;
+	fll->fout = Fout;
 
 	return 0;
 }
