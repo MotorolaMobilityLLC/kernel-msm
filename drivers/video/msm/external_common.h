@@ -220,7 +220,6 @@ struct external_common_state_type {
 	uint32 video_resolution;
 	struct device *dev;
 	struct switch_dev sdev;
-	struct switch_dev saudiodev;
 #ifdef CONFIG_FB_MSM_HDMI_3D
 	boolean format_3d;
 	void (*switch_3d)(boolean on);
