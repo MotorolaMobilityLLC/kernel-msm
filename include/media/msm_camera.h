@@ -1793,6 +1793,7 @@ enum af_camera_name {
 	ACTUATOR_WEB_CAM_0,
 	ACTUATOR_WEB_CAM_1,
 	ACTUATOR_WEB_CAM_2,
+	ACTUATOR_MAIN_DW9714,
 };
 
 struct msm_actuator_cfg_data {
