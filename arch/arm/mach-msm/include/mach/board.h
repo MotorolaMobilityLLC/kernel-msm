@@ -236,6 +236,7 @@ enum msm_camera_actuator_name {
 	MSM_ACTUATOR_WEB_CAM_0,
 	MSM_ACTUATOR_WEB_CAM_1,
 	MSM_ACTUATOR_WEB_CAM_2,
+	MSM_ACTUATOR_MAIN_DW9714,
 };
 
 struct msm_actuator_info {
