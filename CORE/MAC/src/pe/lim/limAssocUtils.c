@@ -3211,8 +3211,9 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
                 pAddBssParams->staContext.rifsMode = pAssocRsp->HTInfo.rifsMode;
         }
 
-        if ((psessionEntry->limWmeEnabled && pAssocRsp->wmeEdcaPresent) ||
-                (psessionEntry->limQosEnabled && pAssocRsp->edcaPresent))
+        //If WMM IE or 802.11E IE is not present and AP is HT AP then enable WMM
+        if ((psessionEntry->limWmeEnabled && (pAssocRsp->wmeEdcaPresent || pAddBssParams->htCapable)) ||
+                (psessionEntry->limQosEnabled && (pAssocRsp->edcaPresent || pAddBssParams->htCapable)))
             pAddBssParams->staContext.wmmEnabled = 1;
         else 
             pAddBssParams->staContext.wmmEnabled = 0;
@@ -3487,8 +3488,9 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
                 pAddBssParams->staContext.rifsMode = pBeaconStruct->HTInfo.rifsMode;
         }
 
-        if ((psessionEntry->limWmeEnabled && pBeaconStruct->wmeEdcaPresent) ||
-                (psessionEntry->limQosEnabled && pBeaconStruct->edcaPresent))
+       //If WMM IE or 802.11E IE is not present and AP is HT AP then enable WMM
+       if ((psessionEntry->limWmeEnabled && (pBeaconStruct->wmeEdcaPresent || pAddBssParams->staContext.htCapable)) ||
+                (psessionEntry->limQosEnabled && (pBeaconStruct->edcaPresent || pAddBssParams->staContext.htCapable)))
             pAddBssParams->staContext.wmmEnabled = 1;
         else 
             pAddBssParams->staContext.wmmEnabled = 0;

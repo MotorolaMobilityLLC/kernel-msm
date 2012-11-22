@@ -2356,7 +2356,19 @@ eHalStatus csrRoamPrepareBssConfig(tpAniSirGlobal pMac, tCsrRoamProfile *pProfil
             //Disable QoS and WMM
             pBssConfig->qosType = eCSR_MEDIUM_ACCESS_DCF;
         }
-       
+
+        if (((pBssConfig->uCfgDot11Mode == eCSR_CFG_DOT11_MODE_11N)  || 
+			(pBssConfig->uCfgDot11Mode == eCSR_CFG_DOT11_MODE_11AC)) &&
+                         ((pBssConfig->qosType != eCSR_MEDIUM_ACCESS_WMM_eDCF_DSCP) ||
+                          (pBssConfig->qosType != eCSR_MEDIUM_ACCESS_11e_HCF) ||
+                          (pBssConfig->qosType != eCSR_MEDIUM_ACCESS_11e_eDCF) ))
+        {
+            //Joining BSS is 11n capable and WMM is disabled on AP.
+            //Assume all HT AP's are QOS AP's and enable WMM
+            pBssConfig->qosType = eCSR_MEDIUM_ACCESS_WMM_eDCF_DSCP;
+        }
+
+	   
         //auth type
         switch( pProfile->negotiatedAuthType ) 
         {
@@ -6318,8 +6330,10 @@ eHalStatus csrRoamSaveConnectedInfomation(tpAniSirGlobal pMac, tANI_U32 sessionI
         
         //Save the bss desc
         status = csrRoamSaveConnectedBssDesc(pMac, sessionId, pSirBssDesc);
-           if( CSR_IS_QOS_BSS(pIesTemp) )
+           
+           if( CSR_IS_QOS_BSS(pIesTemp) || pIesTemp->HTCaps.present)
            {
+              //Some HT AP's dont send WMM IE so in that case we assume all HT Ap's are Qos Enabled AP's
               pConnectProfile->qap = TRUE;
            }
            else

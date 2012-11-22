@@ -212,6 +212,13 @@ void limUpdateAssocStaDatas(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpSirAsso
            schSetDefaultEdcaParams(pMac, psessionEntry);
        }
 
+       if(qosMode && (!pStaDs->qosMode) && pStaDs->mlmStaContext.htCapability)
+       {
+           // Enable QOS for all HT AP's even though WMM or 802.11E IE is not present
+           pStaDs->qosMode    = 1;
+           pStaDs->wmeEnabled = 1;
+       }
+
 
 }
 
