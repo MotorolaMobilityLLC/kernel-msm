@@ -1963,12 +1963,40 @@ err:
 	return -ETIMEDOUT;
 }
 
+/**
+ * is_adreno_rbbm_status_idle - Check if GPU core is idle by probing
+ * rbbm_status register
+ * @device - Pointer to the GPU device whose idle status is to be
+ * checked
+ * @returns - Returns whether the core is idle (based on rbbm_status)
+ * false if the core is active, true if the core is idle
+ */
+static bool is_adreno_rbbm_status_idle(struct kgsl_device *device)
+{
+	unsigned int reg_rbbm_status;
+	bool status = false;
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+
+	/* Is the core idle? */
+	adreno_regread(device,
+		adreno_dev->gpudev->reg_rbbm_status,
+		&reg_rbbm_status);
+
+	if (adreno_is_a2xx(adreno_dev)) {
+		if (reg_rbbm_status == 0x110)
+			status = true;
+	} else {
+		if (!(reg_rbbm_status & 0x80000000))
+			status = true;
+	}
+	return status;
+}
+
 static unsigned int adreno_isidle(struct kgsl_device *device)
 {
 	int status = false;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
-	unsigned int rbbm_status;
 
 	WARN_ON(device->state == KGSL_STATE_INIT);
 	/* If the device isn't active, don't force it on. */
@@ -1977,17 +2005,7 @@ static unsigned int adreno_isidle(struct kgsl_device *device)
 		GSL_RB_GET_READPTR(rb, &rb->rptr);
 		if (!device->active_cnt && (rb->rptr == rb->wptr)) {
 			/* Is the core idle? */
-			adreno_regread(device,
-				adreno_dev->gpudev->reg_rbbm_status,
-				&rbbm_status);
-
-			if (adreno_is_a2xx(adreno_dev)) {
-				if (rbbm_status == 0x110)
-					status = true;
-			} else {
-				if (!(rbbm_status & 0x80000000))
-					status = true;
-			}
+			status = is_adreno_rbbm_status_idle(device);
 		}
 	} else {
 		status = true;
@@ -2228,6 +2246,9 @@ unsigned int adreno_hang_detect(struct kgsl_device *device,
 	unsigned int i;
 
 	if (!adreno_dev->fast_hang_detect)
+		return 0;
+
+	if (is_adreno_rbbm_status_idle(device))
 		return 0;
 
 	for (i = 0; i < hang_detect_regs_count; i++) {
