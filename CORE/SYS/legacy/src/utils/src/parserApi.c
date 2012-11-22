@@ -1030,7 +1030,14 @@ PopulateDot11fHTInfo(tpAniSirGlobal   pMac,
     #if 0
     CFG_GET_INT( nSirStatus, pMac, WNI_CFG_CURRENT_CHANNEL, nCfgValue );
     #endif // TO SUPPORT BT-AMP
-    
+
+    if (NULL == psessionEntry)
+    {
+        PELOGE(limLog(pMac, LOG1,
+                FL("Invalid session entry in PopulateDot11fHTInfo()\n"));)
+        return eSIR_FAILURE;
+    }
+
     pDot11f->primaryChannel = psessionEntry->currentOperChannel;
 
     CFG_GET_INT( nSirStatus, pMac, WNI_CFG_HT_INFO_FIELD1, nCfgValue );
