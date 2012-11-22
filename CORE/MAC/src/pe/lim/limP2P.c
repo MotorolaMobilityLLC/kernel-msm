@@ -111,8 +111,17 @@ void limSetLinkStateP2PCallback(tpAniSirGlobal pMac, void *callbackArg)
 
 int limProcessRemainOnChnlReq(tpAniSirGlobal pMac, tANI_U32 *pMsg)
 {
+
+    /* CONC_OPER_AND_LISTEN_CHNL_SAME_OPTIMIZE - Currently removed the special optimization when a concurrent session
+     * exists with operating channel same as P2P listen channel since it was causing issues in P2P search. The reason was
+     * STA-AP link entering BMPS when returning to home channel causing P2P search to miss Probe Reqs and hence not
+     * respond with Probe Rsp causing peer device to NOT find us.
+     * If we need this optimization, we need to find a way to keep the STA-AP link awake (no BMPS) on home channel when in listen state
+     */
+#ifdef CONC_OPER_AND_LISTEN_CHNL_SAME_OPTIMIZE
     tANI_U8 i;
     tpPESession psessionEntry;
+#endif
 #ifdef WLAN_FEATURE_P2P_INTERNAL
     tpPESession pP2pSession;
 #endif
@@ -120,6 +129,7 @@ int limProcessRemainOnChnlReq(tpAniSirGlobal pMac, tANI_U32 *pMsg)
     tSirRemainOnChnReq *MsgBuff = (tSirRemainOnChnReq *)pMsg;
     pMac->lim.gpLimRemainOnChanReq = MsgBuff;
 
+#ifdef CONC_OPER_AND_LISTEN_CHNL_SAME_OPTIMIZE
     for (i =0; i < pMac->lim.maxBssId;i++)
     {
         psessionEntry = peFindSessionBySessionId(pMac,i);
@@ -175,7 +185,7 @@ int limProcessRemainOnChnlReq(tpAniSirGlobal pMac, tANI_U32 *pMsg)
             }
         }
     }
-
+#endif
     pMac->lim.gLimPrevMlmState = pMac->lim.gLimMlmState;
     pMac->lim.gLimMlmState     = eLIM_MLM_P2P_LISTEN_STATE;
 
@@ -186,10 +196,12 @@ int limProcessRemainOnChnlReq(tpAniSirGlobal pMac, tANI_U32 *pMsg)
                    limRemainOnChnlSuspendLinkHdlr, NULL);
     return FALSE;
 
+#ifdef CONC_OPER_AND_LISTEN_CHNL_SAME_OPTIMIZE
 error:
     limRemainOnChnRsp(pMac,eHAL_STATUS_FAILURE, NULL);
     /* pMsg is freed by the caller */
     return FALSE;
+#endif
 }
 
 
