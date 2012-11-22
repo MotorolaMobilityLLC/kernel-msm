@@ -505,7 +505,6 @@ static void move_data_page(struct inode *inode, struct page *page, int gc_type)
 			wait_on_page_writeback(page);
 		}
 
-		mutex_lock_op(sbi, DATA_WRITE);
 		if (clear_page_dirty_for_io(page) &&
 			S_ISDIR(inode->i_mode)) {
 			dec_page_count(sbi, F2FS_DIRTY_DENTS);
@@ -513,7 +512,6 @@ static void move_data_page(struct inode *inode, struct page *page, int gc_type)
 		}
 		set_cold_data(page);
 		do_write_data_page(page);
-		mutex_unlock_op(sbi, DATA_WRITE);
 		clear_cold_data(page);
 	}
 out:
