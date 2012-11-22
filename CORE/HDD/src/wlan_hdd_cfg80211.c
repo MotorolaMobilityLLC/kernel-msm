@@ -1878,41 +1878,82 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(3,3,0))
 
-static int wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy, 
-                                      struct net_device *dev, 
+static int wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
+                                      struct net_device *dev,
                                       struct cfg80211_ap_settings *params)
 {
-    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-    int            status = VOS_STATUS_SUCCESS; 
+    hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
+    int            status = 0;
 
     ENTER();
 
-    hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "device mode=%d\n", pAdapter->device_mode);
-
-    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    if (NULL == dev)
     {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s: Device is Null", __func__);
+        return -ENODEV;
+    }
+
+    pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s: HDD adapter is Null", __func__);
+        return -ENODEV;
+    }
+
+    if (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s: HDD adapter magic is invalid", __func__);
+        return -ENODEV;
+    }
+
+    pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    if (NULL == pHddCtx)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                "%s: HDD context is Null", __func__);
+        return -ENODEV;
+    }
+
+    if (pHddCtx->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "%s: LOGP in Progress. Ignore!!!", __func__);
         return -EAGAIN;
     }
-    if ((pAdapter->device_mode == WLAN_HDD_SOFTAP) 
+
+    if (pHddCtx->isLoadUnloadInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "%s: Unloading/Loading in Progress. Ignore!!!", __func__);
+        return -EAGAIN;
+    }
+
+    hddLog(VOS_TRACE_LEVEL_INFO_HIGH, "%s: device mode = %d",
+           __func__, pAdapter->device_mode);
+
+    if ((pAdapter->device_mode == WLAN_HDD_SOFTAP)
 #ifdef WLAN_FEATURE_P2P
       || (pAdapter->device_mode == WLAN_HDD_P2P_GO)
 #endif
        )
     {
-        beacon_data_t  *old,*new;
+        beacon_data_t  *old, *new;
 
         old = pAdapter->sessionCtx.ap.beacon;
-   
+
         if (old)
             return -EALREADY;
 
         status = wlan_hdd_cfg80211_alloc_new_beacon(pAdapter, &new, &params->beacon, params->dtim_period);
 
-        if(status != VOS_STATUS_SUCCESS) 
+        if (status != 0)
         {
              hddLog(VOS_TRACE_LEVEL_FATAL,
-                   "%s:Error!!! Allocating the new beacon\n",__func__);
+                   "%s:Error!!! Allocating the new beacon", __func__);
              return -EINVAL;
         }
         pAdapter->sessionCtx.ap.beacon = new;
