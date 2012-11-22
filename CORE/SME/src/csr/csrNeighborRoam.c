@@ -1061,7 +1061,6 @@ static void csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac, tScanResultHa
             continue;
         }
 
-#ifndef FEATURE_WLAN_CCX
        /*
         * If RSSI is lower than the lookup threshold, then continue.
         */
@@ -1074,7 +1073,6 @@ static void csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac, tScanResultHa
                (int)pNeighborRoamInfo->currentNeighborLookupThreshold * (-1));
            continue;
        }
-#endif
 
        /* This condition is to ensure to roam to an AP with better RSSI. if the value of RoamRssiDiff is Zero, this feature
         * is disabled and we continue to roam without any check*/
