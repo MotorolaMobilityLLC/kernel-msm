@@ -1337,7 +1337,7 @@ typedef enum
 #define CFG_ENABLE_MCC_ENABLED_NAME             "gEnableMCCMode"      
 #define CFG_ENABLE_MCC_ENABLED_MIN              ( 0 )
 #define CFG_ENABLE_MCC_ENABLED_MAX              ( 1 )
-#define CFG_ENABLE_MCC_ENABLED_DEFAULT          ( 0 ) 
+#define CFG_ENABLE_MCC_ENABLED_DEFAULT          ( 1 ) 
 
 /*
  * Allow GO in MCC mode to accept different beacon interval than STA's.
