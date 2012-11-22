@@ -1390,6 +1390,12 @@ typedef enum
 #define CFG_MCC_CONFIG_PARAM_MAX           ( 0x01ff )
 #define CFG_MCC_CONFIG_PARAM_DEFAULT       ( 0x000C )
 
+#define CFG_ENABLE_RX_STBC                       "gEnableRXSTBC"
+#define CFG_ENABLE_RX_STBC_MIN                   ( 0 )
+#define CFG_ENABLE_RX_STBC_MAX                   ( 1 )
+#define CFG_ENABLE_RX_STBC_DEFAULT               ( 1 )
+
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -1697,6 +1703,7 @@ typedef struct
    v_U16_t                     configMccParam;
    v_U32_t                     numBuffAdvert;
    v_U8_t                      ignore_chan165;
+   v_BOOL_t                    enableRxSTBC;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

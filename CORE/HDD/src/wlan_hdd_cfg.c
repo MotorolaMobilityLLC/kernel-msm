@@ -1691,6 +1691,12 @@ REG_VARIABLE( CFG_MCC_CONFIG_PARAM_NAME, WLAN_PARAM_Integer,
              CFG_MCC_CONFIG_PARAM_DEFAULT,
              CFG_MCC_CONFIG_PARAM_MIN,
              CFG_MCC_CONFIG_PARAM_MAX ),
+REG_VARIABLE( CFG_ENABLE_RX_STBC, WLAN_PARAM_Integer,
+              hdd_config_t, enableRxSTBC, 
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
+              CFG_ENABLE_RX_STBC_DEFAULT, 
+              CFG_ENABLE_RX_STBC_MIN, 
+              CFG_ENABLE_RX_STBC_MAX ),
 };
 
 /*
@@ -2061,6 +2067,7 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [skipDfsChnlInP2pSearch] Value = [%u] ",pHddCtx->cfg_ini->skipDfsChnlInP2pSearch);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [ignoreDynamicDtimInP2pMode] Value = [%u] ",pHddCtx->cfg_ini->ignoreDynamicDtimInP2pMode);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gIgnore_Chan165] Value = [%u] ",pHddCtx->cfg_ini->ignore_chan165);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [enableRxSTBC] Value = [%u] ",pHddCtx->cfg_ini->enableRxSTBC);
 }
 
 
@@ -2617,6 +2624,8 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
    v_BOOL_t  fStatus = TRUE;
 
    hdd_config_t *pConfig = pHddCtx->cfg_ini;
+   tSirMacHTCapabilityInfo htCapInfo;
+
 
    if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_SHORT_GI_20MHZ, 
       pConfig->ShortGI20MhzEnable, NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
@@ -3083,6 +3092,33 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
      {
         fStatus = FALSE;
         hddLog(LOGE, "Could not pass on WNI_CFG_NUM_BUFF_ADVERT to CCM\n");
+     }
+
+     if(ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_HT_RX_STBC, 
+                     pConfig->enableRxSTBC, NULL, eANI_BOOLEAN_FALSE)
+         ==eHAL_STATUS_FAILURE)
+     {
+         fStatus = FALSE;
+         hddLog(LOGE, "Could not pass on WNI_CFG_HT_RX_STBC to CCM\n");
+     }
+
+     ccmCfgGetInt(pHddCtx->hHal, WNI_CFG_HT_CAP_INFO, (tANI_U32 *)&htCapInfo);
+     htCapInfo.rxSTBC = pConfig->enableRxSTBC;
+
+     if(ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_HT_CAP_INFO, 
+                     *(tANI_U32 *)&htCapInfo, NULL, eANI_BOOLEAN_FALSE)
+         ==eHAL_STATUS_FAILURE)
+     {
+         fStatus = FALSE;
+         hddLog(LOGE, "Could not pass on WNI_CFG_HT_CAP_INFO to CCM\n");
+     }
+
+     if(ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_VHT_RXSTBC, 
+                     pConfig->enableRxSTBC, NULL, eANI_BOOLEAN_FALSE)
+         ==eHAL_STATUS_FAILURE)
+     {
+         fStatus = FALSE;
+         hddLog(LOGE, "Could not pass on WNI_CFG_VHT_RXSTBC to CCM\n");
      }
 
    return fStatus;
