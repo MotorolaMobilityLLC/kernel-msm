@@ -1617,7 +1617,7 @@ void limHandleUpdateOlbcCache(tpAniSirGlobal pMac)
         PELOGE(limLog(pMac, LOGE, FL(" Session not found\n"));)
         return;
     }
-	
+
     palZeroMemory( pMac->hHdd, ( tANI_U8* )&beaconParams, sizeof( tUpdateBeaconParams) );
     beaconParams.bssIdx = psessionEntry->bssIdx;
     
