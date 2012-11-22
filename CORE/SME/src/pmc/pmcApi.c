@@ -3008,11 +3008,14 @@ eHalStatus pmcUpdateScanParams(tHalHandle hHal, tCsrConfig *pRequest, tCsrChanne
     pRequestBuf->b11dEnabled    = pRequest->Is11eSupportEnabled;
     pRequestBuf->b11dResolved   = b11dResolved;
     pRequestBuf->ucChannelCount = 
-        ( pChannelList->numChannels < SIR_PNO_MAX_NETW_CHANNELS )?
-        pChannelList->numChannels:SIR_PNO_MAX_NETW_CHANNELS;
+        ( pChannelList->numChannels < SIR_PNO_MAX_NETW_CHANNELS_EX )?
+        pChannelList->numChannels:SIR_PNO_MAX_NETW_CHANNELS_EX;
 
-    for (i=0; i < pChannelList->numChannels; i++)
+    for (i=0; i < pRequestBuf->ucChannelCount; i++)
     {    
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
+                  "%s: Channel List %d: %d", __FUNCTION__, i, pChannelList->channelList[i] );
+
         pRequestBuf->aChannels[i] = pChannelList->channelList[i];
     }
     pRequestBuf->usPassiveMinChTime = pRequest->nPassiveMinChnTime;

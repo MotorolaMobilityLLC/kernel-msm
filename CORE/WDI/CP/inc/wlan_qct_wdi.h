@@ -4068,6 +4068,9 @@ typedef struct
 /*Max number of channels for a given network supported by PNO*/
 #define WDI_PNO_MAX_NETW_CHANNELS  26
 
+/*Max number of channels for a given network supported by PNO*/
+#define WDI_PNO_MAX_NETW_CHANNELS_EX  60
+
 /*The max number of programable networks for PNO*/
 #define WDI_PNO_MAX_SUPP_NETWORKS  16
 
@@ -4275,7 +4278,7 @@ typedef struct
   wpt_uint8    ucChannelCount; 
 
   /*The actual channels allowed in the regulatory domain*/
-  wpt_uint8    aChannels[WDI_PNO_MAX_NETW_CHANNELS]; 
+  wpt_uint8    aChannels[WDI_PNO_MAX_NETW_CHANNELS_EX]; 
 
   /*Passive min channel time*/
   wpt_uint16   usPassiveMinChTime; 

@@ -56,7 +56,7 @@
 #define WLAN_HAL_VER_MAJOR 1
 #define WLAN_HAL_VER_MINOR 3
 #define WLAN_HAL_VER_VERSION 1
-#define WLAN_HAL_VER_REVISION 0
+#define WLAN_HAL_VER_REVISION 1
 
 /*---------------------------------------------------------------------------
   Commom Type definitons
@@ -4786,6 +4786,9 @@ typedef PACKED_PRE struct PACKED_POST
 /*Max number of channels that a network can be found on*/
 #define WLAN_HAL_PNO_MAX_NETW_CHANNELS  26
 
+/*Max number of channels that a network can be found on*/
+#define WLAN_HAL_PNO_MAX_NETW_CHANNELS_EX  60
+
 /*Maximum numbers of networks supported by PNO*/
 #define WLAN_HAL_PNO_MAX_SUPP_NETWORKS  16
 
@@ -5101,6 +5104,39 @@ typedef PACKED_PRE struct PACKED_POST
 } tUpdateScanParams, * tpUpdateScanParams;
 
 /*
+  Update scan params 
+*/
+typedef PACKED_PRE struct PACKED_POST  
+{
+
+  /*Host setting for 11d*/
+  tANI_U8   b11dEnabled; 
+
+  /*Lets PNO know that host has determined the regulatory domain*/
+  tANI_U8   b11dResolved;
+
+  /*Channels on which PNO is allowed to scan*/
+  tANI_U8   ucChannelCount; 
+  tANI_U8   aChannels[WLAN_HAL_PNO_MAX_NETW_CHANNELS_EX]; 
+
+  /*Minimum channel time*/
+  tANI_U16  usActiveMinChTime; 
+
+  /*Maximum channel time*/
+  tANI_U16  usActiveMaxChTime; 
+
+  /*Minimum channel time*/
+  tANI_U16  usPassiveMinChTime; 
+
+  /*Maximum channel time*/
+  tANI_U16  usPassiveMaxChTime; 
+
+  /*Cb State*/
+  ePhyChanBondState cbState;
+
+} tUpdateScanParamsEx, * tpUpdateScanParamsEx;
+
+/*
   Update scan params - sent from host to PNO
   to be used during PNO scanning 
 */
@@ -5109,6 +5145,16 @@ typedef PACKED_PRE struct PACKED_POST{
    tHalMsgHeader header;
    tUpdateScanParams   scanParams;
 }  tUpdateScanParamsReq, *tpUpdateScanParamsReq;
+
+/*
+  Update scan params - sent from host to PNO
+  to be used during PNO scanning 
+*/
+typedef PACKED_PRE struct PACKED_POST{
+
+   tHalMsgHeader header;
+   tUpdateScanParamsEx   scanParams;
+}  tUpdateScanParamsReqEx, *tpUpdateScanParamsReqEx;
 
 /*
   Update scan params - sent from host to PNO

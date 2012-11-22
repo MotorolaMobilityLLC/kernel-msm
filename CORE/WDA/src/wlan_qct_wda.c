@@ -11016,8 +11016,8 @@ VOS_STATUS WDA_ProcessUpdateScanParams(tWDA_CbContext *pWDA,
      pUpdateScanParams->usPassiveMinChTime;
 
    wdiUpdateScanParamsInfoType->wdiUpdateScanParamsInfo.ucChannelCount = 
-      (pUpdateScanParams->ucChannelCount < WDI_PNO_MAX_NETW_CHANNELS)?
-      pUpdateScanParams->ucChannelCount:WDI_PNO_MAX_NETW_CHANNELS;
+      (pUpdateScanParams->ucChannelCount < WDI_PNO_MAX_NETW_CHANNELS_EX)?
+      pUpdateScanParams->ucChannelCount:WDI_PNO_MAX_NETW_CHANNELS_EX;
 
    for ( i = 0; i < 
          wdiUpdateScanParamsInfoType->wdiUpdateScanParamsInfo.ucChannelCount ; 

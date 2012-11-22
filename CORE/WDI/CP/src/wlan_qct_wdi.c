@@ -13649,6 +13649,9 @@ WDI_ProcessStartRsp
           sizeof(wdiRspParams.wcnssHardwareVersion));
   wdiRspParams.wdiStatus     = WDI_HAL_2_WDI_STATUS(startRspParams->status);
 
+  /*Save the HAL Version*/
+  pWDICtx->wlanVersion = wdiRspParams.wlanReportedVersion; 
+
   wpalMutexAcquire(&pWDICtx->wptMutex);
   if ( WDI_STATUS_SUCCESS == wdiRspParams.wdiStatus  )
   {
@@ -22655,6 +22658,170 @@ WDI_ProcessSetRssiFilterReq
  @return Result of the function call
 */
 WDI_Status
+WDI_PackUpdateScanParamsReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_UpdateScanParamsInfoType* pwdiUpdateScanParams,
+  wpt_uint8**                   ppSendBuffer,
+  wpt_uint16*                   pSize
+)
+{
+   wpt_uint8*                    pSendBuffer           = NULL;
+   wpt_uint16                    usDataOffset          = 0;
+   wpt_uint16                    usSendSize            = 0;
+   tUpdateScanParams             updateScanParams = {0};
+
+
+   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_FATAL,
+               "Begin WDI Update Scan Parameters Old Style Params");
+   /*-----------------------------------------------------------------------
+     Get message buffer
+   -----------------------------------------------------------------------*/
+   if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx, WDI_UPDATE_SCAN_PARAMS_REQ,
+                         sizeof(updateScanParams),
+                         &pSendBuffer, &usDataOffset, &usSendSize))||
+       ( usSendSize < (usDataOffset + sizeof(updateScanParams) )))
+   {
+      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                  "Unable to get send buffer in Update Scan Params req %x",
+                   pwdiUpdateScanParams);
+      WDI_ASSERT(0);
+      return WDI_STATUS_E_FAILURE;
+   }
+
+   //
+   // Fill updateScanParams from pwdiUpdateScanParams->wdiUpdateScanParamsInfo
+   //
+
+   updateScanParams.b11dEnabled    = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.b11dEnabled;
+   updateScanParams.b11dResolved   = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.b11dResolved;
+
+   updateScanParams.ucChannelCount =
+     (pwdiUpdateScanParams->wdiUpdateScanParamsInfo.ucChannelCount <
+     WLAN_HAL_PNO_MAX_NETW_CHANNELS)?
+     pwdiUpdateScanParams->wdiUpdateScanParamsInfo.ucChannelCount :
+     WLAN_HAL_PNO_MAX_NETW_CHANNELS;
+
+   wpalMemoryCopy( updateScanParams.aChannels,
+                   pwdiUpdateScanParams->wdiUpdateScanParamsInfo.aChannels,
+                   updateScanParams.ucChannelCount);
+
+
+   updateScanParams.usActiveMinChTime  = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.usActiveMinChTime;
+   updateScanParams.usActiveMaxChTime  = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.usActiveMaxChTime;
+   updateScanParams.usPassiveMinChTime = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.usPassiveMinChTime;
+   updateScanParams.usPassiveMaxChTime = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.usPassiveMaxChTime;
+   updateScanParams.cbState            = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.cbState;
+
+   wpalMemoryCopy( pSendBuffer+usDataOffset,
+                   &updateScanParams,
+                   sizeof(updateScanParams));
+
+   pWDICtx->wdiReqStatusCB     = pwdiUpdateScanParams->wdiReqStatusCB;
+   pWDICtx->pReqStatusUserData = pwdiUpdateScanParams->pUserData;
+
+   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "End Update Scan Parameters Old Style");
+
+   /*Set the output values*/
+   *ppSendBuffer = pSendBuffer;
+   *pSize        = usSendSize;
+
+   return WDI_STATUS_SUCCESS;
+}
+
+/**
+ @brief Process Update Scan Params function
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_PackUpdateScanParamsReqEx
+(
+  WDI_ControlBlockType*         pWDICtx,
+  WDI_UpdateScanParamsInfoType* pwdiUpdateScanParams,
+  wpt_uint8**                   ppSendBuffer,
+  wpt_uint16*                   pSize
+)
+{
+   wpt_uint8*                    pSendBuffer           = NULL;
+   wpt_uint16                    usDataOffset          = 0;
+   wpt_uint16                    usSendSize            = 0;
+   tUpdateScanParamsEx           updateScanParams = {0};
+
+
+   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_FATAL,
+               "Begin WDI Update Scan Parameters New Style Params");
+   /*-----------------------------------------------------------------------
+     Get message buffer
+   -----------------------------------------------------------------------*/
+   if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx, WDI_UPDATE_SCAN_PARAMS_REQ,
+                         sizeof(updateScanParams),
+                         &pSendBuffer, &usDataOffset, &usSendSize))||
+       ( usSendSize < (usDataOffset + sizeof(updateScanParams) )))
+   {
+      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+                  "Unable to get send buffer in Update Scan Params Ex req %x",
+                  pwdiUpdateScanParams);
+      WDI_ASSERT(0);
+      return WDI_STATUS_E_FAILURE;
+   }
+
+   //
+   // Fill updateScanParams from pwdiUpdateScanParams->wdiUpdateScanParamsInfo
+   //
+
+   updateScanParams.b11dEnabled    = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.b11dEnabled;
+   updateScanParams.b11dResolved   = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.b11dResolved;
+
+   updateScanParams.ucChannelCount =
+     (pwdiUpdateScanParams->wdiUpdateScanParamsInfo.ucChannelCount <
+     WLAN_HAL_PNO_MAX_NETW_CHANNELS_EX)?
+     pwdiUpdateScanParams->wdiUpdateScanParamsInfo.ucChannelCount :
+     WLAN_HAL_PNO_MAX_NETW_CHANNELS_EX;
+
+   wpalMemoryCopy( updateScanParams.aChannels,
+                   pwdiUpdateScanParams->wdiUpdateScanParamsInfo.aChannels,
+                   updateScanParams.ucChannelCount);
+
+
+   updateScanParams.usActiveMinChTime  = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.usActiveMinChTime;
+   updateScanParams.usActiveMaxChTime  = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.usActiveMaxChTime;
+   updateScanParams.usPassiveMinChTime = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.usPassiveMinChTime;
+   updateScanParams.usPassiveMaxChTime = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.usPassiveMaxChTime;
+   updateScanParams.cbState            = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.cbState;
+
+   wpalMemoryCopy( pSendBuffer+usDataOffset,
+                   &updateScanParams,
+                   sizeof(updateScanParams));
+
+   pWDICtx->wdiReqStatusCB     = pwdiUpdateScanParams->wdiReqStatusCB;
+   pWDICtx->pReqStatusUserData = pwdiUpdateScanParams->pUserData;
+
+   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "End Update Scan Parameters New Style");
+
+   /*Set the output values*/
+   *ppSendBuffer = pSendBuffer;
+   *pSize        = usSendSize;
+
+   return WDI_STATUS_SUCCESS;
+}
+
+/**
+ @brief Process Update Scan Params function
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
 WDI_ProcessUpdateScanParamsReq
 (
   WDI_ControlBlockType*  pWDICtx,
@@ -22702,39 +22869,23 @@ WDI_ProcessUpdateScanParamsReq
    //
    // Fill updateScanParams from pwdiUpdateScanParams->wdiUpdateScanParamsInfo
    //
+   if ( pWDICtx->wlanVersion.revision < 1 ) 
+   {
+     WDI_PackUpdateScanParamsReq( pWDICtx, pwdiUpdateScanParams,
+                                  &pSendBuffer, &usSendSize);
+   }
+   else
+   {
+     WDI_PackUpdateScanParamsReqEx( pWDICtx, pwdiUpdateScanParams,
+                                    &pSendBuffer, &usSendSize);
+   }
 
-   updateScanParams.b11dEnabled    = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.b11dEnabled;
-   updateScanParams.b11dResolved   = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.b11dResolved;
-   updateScanParams.ucChannelCount =
-     (pwdiUpdateScanParams->wdiUpdateScanParamsInfo.ucChannelCount <
-     WLAN_HAL_PNO_MAX_NETW_CHANNELS)?
-     pwdiUpdateScanParams->wdiUpdateScanParamsInfo.ucChannelCount :
-     WLAN_HAL_PNO_MAX_NETW_CHANNELS;
-
-   wpalMemoryCopy( updateScanParams.aChannels,
-                   pwdiUpdateScanParams->wdiUpdateScanParamsInfo.aChannels,
-                   updateScanParams.ucChannelCount);
-
-   updateScanParams.usActiveMinChTime  = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.usActiveMinChTime;
-   updateScanParams.usActiveMaxChTime  = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.usActiveMaxChTime;
-   updateScanParams.usPassiveMinChTime = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.usPassiveMinChTime;
-   updateScanParams.usPassiveMaxChTime = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.usPassiveMaxChTime;
-   updateScanParams.cbState            = pwdiUpdateScanParams->wdiUpdateScanParamsInfo.cbState;
-
-   wpalMemoryCopy( pSendBuffer+usDataOffset,
-                   &updateScanParams,
-                   sizeof(updateScanParams));
-
-   pWDICtx->wdiReqStatusCB     = pwdiUpdateScanParams->wdiReqStatusCB;
-   pWDICtx->pReqStatusUserData = pwdiUpdateScanParams->pUserData;
-
-   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_INFO,
-               "End Update Scan Parameters");
    /*-------------------------------------------------------------------------
      Send Get STA Request to HAL
    -------------------------------------------------------------------------*/
    return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
-                        wdiUpdateScanParamsCb, pEventData->pUserData, WDI_UPDATE_SCAN_PARAMS_RESP);
+                        wdiUpdateScanParamsCb, pEventData->pUserData, 
+                        WDI_UPDATE_SCAN_PARAMS_RESP);
 }
 
 /**

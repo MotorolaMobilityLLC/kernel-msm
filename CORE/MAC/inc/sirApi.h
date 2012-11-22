@@ -3894,6 +3894,7 @@ typedef struct sSirWlanSetRxpFilters
 
 // Set PNO 
 #define SIR_PNO_MAX_NETW_CHANNELS  26
+#define SIR_PNO_MAX_NETW_CHANNELS_EX  60
 #define SIR_PNO_MAX_SUPP_NETWORKS  16
 #define SIR_PNO_MAX_SCAN_TIMERS    10
 
@@ -3960,7 +3961,7 @@ typedef struct {
   tANI_U8   b11dEnabled; 
   tANI_U8   b11dResolved;
   tANI_U8   ucChannelCount; 
-  tANI_U8   aChannels[SIR_PNO_MAX_NETW_CHANNELS]; 
+  tANI_U8   aChannels[SIR_PNO_MAX_NETW_CHANNELS_EX]; 
   tANI_U16  usPassiveMinChTime; 
   tANI_U16  usPassiveMaxChTime; 
   tANI_U16  usActiveMinChTime; 

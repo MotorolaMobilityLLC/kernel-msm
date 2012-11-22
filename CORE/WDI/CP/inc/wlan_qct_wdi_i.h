@@ -1038,6 +1038,10 @@ typedef struct
 
   /*SSR timer*/
   wpt_timer                   ssrTimer;
+
+  /*Version of the WLAN HAL API received on start resp*/
+  WDI_WlanVersionType wlanVersion;
+
 }WDI_ControlBlockType; 
 
 
