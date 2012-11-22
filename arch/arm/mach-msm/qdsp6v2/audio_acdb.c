@@ -630,12 +630,19 @@ static int acdb_open(struct inode *inode, struct file *f)
 
 static int deregister_memory(void)
 {
+	int i;
+
 	if (atomic64_read(&acdb_data.mem_len)) {
 		mutex_lock(&acdb_data.acdb_mutex);
 		atomic64_set(&acdb_data.mem_len, 0);
 		atomic_set(&acdb_data.vocstrm_total_cal_size, 0);
 		atomic_set(&acdb_data.vocproc_total_cal_size, 0);
 		atomic_set(&acdb_data.vocvol_total_cal_size, 0);
+
+		for (i = 0; i < MAX_VOCPROC_TYPES; i++) {
+			kfree(acdb_data.col_data[i]);
+			acdb_data.col_data[i] = NULL;
+		}
 		ion_unmap_kernel(acdb_data.ion_client, acdb_data.ion_handle);
 		ion_free(acdb_data.ion_client, acdb_data.ion_handle);
 		ion_client_destroy(acdb_data.ion_client);
@@ -647,12 +654,18 @@ static int deregister_memory(void)
 static int register_memory(void)
 {
 	int			result;
+	int			i;
 	unsigned long		paddr;
 	void                    *kvptr;
 	unsigned long		kvaddr;
 	unsigned long		mem_len;
 
 	mutex_lock(&acdb_data.acdb_mutex);
+	for (i = 0; i < MAX_VOCPROC_TYPES; i++) {
+		acdb_data.col_data[i] = kmalloc(MAX_COL_SIZE, GFP_KERNEL);
+		atomic_set(&acdb_data.vocproc_col_cal[i].cal_kvaddr,
+			(uint32_t)acdb_data.col_data[i]);
+	}
 
 	acdb_data.ion_client =
 		msm_ion_client_create(UINT_MAX, "audio_acdb_client");
