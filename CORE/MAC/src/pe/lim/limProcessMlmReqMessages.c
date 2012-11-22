@@ -3890,7 +3890,13 @@ limProcessAuthRspTimeout(tpAniSirGlobal pMac, tANI_U32 authIndex)
 
     pAuthNode = limGetPreAuthNodeFromIndex(pMac, &pMac->lim.gLimPreAuthTimerTable, authIndex);
 
-    if((psessionEntry = peFindSessionByBssid(pMac, pAuthNode->peerMacAddr, &sessionId)) == NULL)
+    if (NULL == pAuthNode)
+    {
+        limLog(pMac, LOGW, FL("Invalid auth node\n"));
+        return;
+    } 
+
+    if ((psessionEntry = peFindSessionByBssid(pMac, pAuthNode->peerMacAddr, &sessionId)) == NULL)
     {
         limLog(pMac, LOGW, FL("session does not exist for given BSSID \n"));
         return;
@@ -3899,47 +3905,32 @@ limProcessAuthRspTimeout(tpAniSirGlobal pMac, tANI_U32 authIndex)
     if (psessionEntry->limSystemRole == eLIM_AP_ROLE ||
         psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE)
     {
-        // Check if there exists a context for the STA
-
-        if (pAuthNode == NULL)
+        if (pAuthNode->mlmState != eLIM_MLM_WT_AUTH_FRAME3_STATE)
         {
             /**
-             * Authentication response timer timedout for an STA
-             * that does not have context at AP/STA in IBSS mode.
+             * Authentication response timer timedout
+             * in unexpected state. Log error
              */
-
-            // Log error
-            PELOGE(limLog(pMac, LOGE, FL("received unexpected message\n"));)
+            PELOGE(limLog(pMac, LOGE,
+                        FL("received unexpected AUTH rsp timeout for MAC address "));
+            limPrintMacAddr(pMac, pAuthNode->peerMacAddr, LOGE);)
         }
         else
         {
-            if (pAuthNode->mlmState != eLIM_MLM_WT_AUTH_FRAME3_STATE)
-            {
-                /**
-                 * Authentication response timer timedout
-                 * in unexpected state. Log error
-                 */
-                PELOGE(limLog(pMac, LOGE,
-                   FL("received unexpected AUTH rsp timeout for MAC address "));
-                limPrintMacAddr(pMac, pAuthNode->peerMacAddr, LOGE);)
-            }
-            else
-            {
-                // Authentication response timer
-                // timedout for an STA.
-                pAuthNode->mlmState = eLIM_MLM_AUTH_RSP_TIMEOUT_STATE;
-                pAuthNode->fTimerStarted = 0;
-               PELOG1( limLog(pMac, LOG1,
-                       FL("AUTH rsp timedout for MAC address "));
-                limPrintMacAddr(pMac, pAuthNode->peerMacAddr, LOG1);)
+            // Authentication response timer
+            // timedout for an STA.
+            pAuthNode->mlmState = eLIM_MLM_AUTH_RSP_TIMEOUT_STATE;
+            pAuthNode->fTimerStarted = 0;
+            PELOG1( limLog(pMac, LOG1,
+                        FL("AUTH rsp timedout for MAC address "));
+            limPrintMacAddr(pMac, pAuthNode->peerMacAddr, LOG1);)
 
-                // Change timer to reactivate it in future
-                limDeactivateAndChangePerStaIdTimer(pMac,
-                                                    eLIM_AUTH_RSP_TIMER,
-                                                    pAuthNode->authNodeIdx);
+            // Change timer to reactivate it in future
+            limDeactivateAndChangePerStaIdTimer(pMac,
+                        eLIM_AUTH_RSP_TIMER,
+                        pAuthNode->authNodeIdx);
 
-                limDeletePreAuthNode(pMac, pAuthNode->peerMacAddr);
-            }
+            limDeletePreAuthNode(pMac, pAuthNode->peerMacAddr);
         }
     }
 } /*** limProcessAuthRspTimeout() ***/
