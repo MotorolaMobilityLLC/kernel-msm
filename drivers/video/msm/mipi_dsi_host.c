@@ -1684,23 +1684,6 @@ int mipi_dsi_cmd_dma_rx(struct dsi_buf *rp, int rlen)
 	return rlen;
 }
 
-static void mipi_dsi_wait_for_video_eng_busy(void)
-{
-	u32 status;
-	int sleep_us = 4000;
-
-	/*
-	 * if video mode engine was not busy (in BLLP)
-	 * wait to pass BLLP
-	 */
-
-	/* check for VIDEO_MODE_ENGINE_BUSY */
-	readl_poll((MIPI_DSI_BASE + 0x0004), /* DSI_STATUS */
-				status,
-				(status & 0x08),
-				sleep_us);
-}
-
 void mipi_dsi_cmd_mdp_busy(void)
 {
 	unsigned long flags;
@@ -1793,17 +1776,14 @@ int __mipi_dsi_cmdlist_commit(int from_mdp, struct dcs_cmd_req *cmdreq)
 	if (panel_mode & MDP4_PANEL_DSI_CMD)
 		mipi_dsi_clk_cfg(1);
 
-	if (panel_mode & MDP4_PANEL_DSI_VIDEO) {
-		/* video mode, make sure dsi_cmd_mdp is busy
-		 * so dcs command will be txed at start of BLLP
-		 */
-		mipi_dsi_wait_for_video_eng_busy();
-	} else {
-		/* command mode */
-		if (!from_mdp) { /* cmdlist_put */
-			/* make sure dsi_cmd_mdp is idle */
-			mipi_dsi_cmd_mdp_busy();
-		}
+	/*
+	 * QC's mipi_dsi_wait_for_video_eng_busy is deleted for video mode.
+	 * With this API, Vanquish(video panel) always locks up here. This API
+	 * is deleted for video panel bring up. Currently we use original API.
+	 */
+	if (!from_mdp) { /* cmdlist_put */
+		/* make sure dsi_cmd_mdp is idle */
+		mipi_dsi_cmd_mdp_busy();
 	}
 
 	if (cmdreq->flags & CMD_REQ_RX)
