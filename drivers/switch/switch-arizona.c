@@ -18,6 +18,7 @@
 #include <linux/module.h>
 #include <linux/i2c.h>
 #include <linux/slab.h>
+#include <linux/input.h>
 #include <linux/interrupt.h>
 #include <linux/err.h>
 #include <linux/gpio.h>
@@ -30,10 +31,13 @@
 #include <linux/mfd/arizona/pdata.h>
 #include <linux/mfd/arizona/registers.h>
 
+#define ARIZONA_NUM_BUTTONS 6
+
 struct arizona_switch_info {
 	struct device *dev;
 	struct arizona *arizona;
 	struct mutex lock;
+	struct input_dev *input;
 
 	int micd_mode;
 	const struct arizona_micd_config *micd_modes;
@@ -47,6 +51,18 @@ struct arizona_switch_info {
 
 	struct switch_dev sdev;
 
+};
+
+static struct {
+	u16 status;
+	int report;
+} arizona_lvl_to_key[ARIZONA_NUM_BUTTONS] = {
+	{  0x1, BTN_0 },
+	{  0x2, BTN_1 },
+	{  0x4, BTN_2 },
+	{  0x8, BTN_3 },
+	{ 0x10, BTN_4 },
+	{ 0x20, BTN_5 },
 };
 
 /* These values are copied from Android WiredAccessoryObserver */
@@ -129,8 +145,8 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 {
 	struct arizona_switch_info *info = data;
 	struct arizona *arizona = info->arizona;
-	unsigned int val;
-	int ret;
+	unsigned int val, lvl;
+	int ret, i;
 
 	mutex_lock(&info->lock);
 
@@ -194,12 +210,22 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 
 	/*
 	 * If we're still detecting and we detect a short then we've
-	 * got a headphone.  Otherwise it's a button press, the
-	 * button reporting is stubbed out for now.
+	 * got a headphone.  Otherwise it's a button press.
 	 */
 	if (val & 0x3fc) {
 		if (info->mic) {
 			dev_dbg(arizona->dev, "Mic button detected\n");
+
+			lvl = val & ARIZONA_MICD_LVL_MASK;
+			lvl >>= ARIZONA_MICD_LVL_SHIFT;
+
+			for (i = 0; i < ARIZONA_NUM_BUTTONS; i++)
+				if (lvl & arizona_lvl_to_key[i].status)
+					input_report_key(info->input,
+							 arizona_lvl_to_key[i].report,
+							 1);
+
+			input_sync(info->input);
 
 		} else if (info->detecting) {
 			dev_dbg(arizona->dev, "Headphone detected\n");
@@ -214,6 +240,13 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 		}
 	} else {
 		dev_dbg(arizona->dev, "Mic button released\n");
+
+		for (i = 0; i < ARIZONA_NUM_BUTTONS; i++)
+			input_report_key(info->input,
+					 arizona_lvl_to_key[i].report, 0);
+
+		input_sync(info->input);
+
 	}
 
 handled:
@@ -228,7 +261,7 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 	struct arizona_switch_info *info = data;
 	struct arizona *arizona = info->arizona;
 	unsigned int val;
-	int ret;
+	int ret, i;
 
 	pm_runtime_get_sync(info->dev);
 
@@ -252,6 +285,12 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 		arizona_stop_mic(info);
 
 		switch_set_state(&info->sdev, BIT_NO_HEADSET);
+
+		for (i = 0; i < ARRAY_SIZE(arizona_lvl_to_key); i++)
+			input_report_key(info->input,
+					 arizona_lvl_to_key[i].report, 0);
+
+		input_sync(info->input);
 	}
 
 	mutex_unlock(&info->lock);
@@ -267,7 +306,7 @@ static int __devinit arizona_switch_probe(struct platform_device *pdev)
 	struct arizona *arizona = dev_get_drvdata(pdev->dev.parent);
 	struct arizona_pdata *pdata;
 	struct arizona_switch_info *info;
-	int ret, mode;
+	int ret, mode, i;
 
 	pdata = dev_get_platdata(arizona->dev);
 
@@ -333,6 +372,20 @@ static int __devinit arizona_switch_probe(struct platform_device *pdev)
 
 	arizona_switch_set_mode(info, 0);
 
+	info->input = input_allocate_device();
+	if (!info->input) {
+		dev_err(arizona->dev, "Can't allocate input dev\n");
+		ret = -ENOMEM;
+		goto err_register;
+	}
+
+	for (i = 0; i < ARIZONA_NUM_BUTTONS; i++)
+		input_set_capability(info->input, EV_KEY,
+				     arizona_lvl_to_key[i].report);
+	info->input->name = "Headset";
+	info->input->phys = "arizona/extcon";
+	info->input->dev.parent = &pdev->dev;
+
 	pm_runtime_enable(&pdev->dev);
 	pm_runtime_idle(&pdev->dev);
 	pm_runtime_get_sync(&pdev->dev);
@@ -387,6 +440,12 @@ static int __devinit arizona_switch_probe(struct platform_device *pdev)
 
 	pm_runtime_put(&pdev->dev);
 
+	ret = input_register_device(info->input);
+	if (ret) {
+		dev_err(&pdev->dev, "Can't register input device: %d\n", ret);
+		goto err_micdet;
+	}
+
 	return 0;
 
 err_micdet:
@@ -421,6 +480,7 @@ static int __devexit arizona_switch_remove(struct platform_device *pdev)
 	regmap_update_bits(arizona->regmap, ARIZONA_JACK_DETECT_ANALOGUE,
 			   ARIZONA_JD1_ENA, 0);
 	arizona_clk32k_disable(arizona);
+	input_unregister_device(info->input);
 
 	switch_dev_unregister(&info->sdev);
 
