@@ -468,7 +468,7 @@ static ssize_t vsync_show_event(struct device *dev,
 	vctrl->wait_vsync_cnt++;
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	if (wait_for_completion_timeout(&vctrl->vsync_comp, WAIT_TOUT))
+	if (wait_for_completion_timeout(&vctrl->vsync_comp, WAIT_TOUT) == 0)
 		pr_err("%s: timeout waiting for vsync\n", __func__);
 
 	ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu",
