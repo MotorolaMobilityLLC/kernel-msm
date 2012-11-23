@@ -251,7 +251,7 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 
 		arizona_stop_mic(info);
 
-	switch_set_state(&info->sdev, BIT_NO_HEADSET);
+		switch_set_state(&info->sdev, BIT_NO_HEADSET);
 	}
 
 	mutex_unlock(&info->lock);
