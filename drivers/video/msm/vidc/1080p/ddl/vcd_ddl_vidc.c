@@ -595,7 +595,8 @@ void ddl_vidc_encode_init_codec(struct ddl_client_context *ddl)
 		r_cframe_skip, false, 0,
 		h263_cpfc_enable, encoder->sps_pps.sps_pps_for_idr_enable_flag,
 		encoder->closed_gop, encoder->avc_delimiter_enable,
-		encoder->vui_timinginfo_enable);
+		encoder->vui_timinginfo_enable,
+		encoder->bitstream_restrict_enable);
 	if (encoder->vui_timinginfo_enable) {
 		vidc_sm_set_h264_encoder_timing_info(
 			&ddl->shared_mem[ddl->command_channel],
