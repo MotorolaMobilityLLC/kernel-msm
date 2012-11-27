@@ -1499,7 +1499,7 @@ static wpt_status dxeChannelStop
    {
       HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                "dxeChannelStop channels are not enabled ");
-      return status;
+      return status; 
    }
    /* Maskout interrupt */
    status = wpalReadRegister(WLANDXE_INT_MASK_REG_ADDRESS,
@@ -3245,14 +3245,26 @@ static wpt_status dxeTXCompFrame
       return eWLAN_PAL_STATUS_SUCCESS;
    }
 
-   wpalMutexAcquire(&channelEntry->dxeChannelLock);
-
+   status = wpalMutexAcquire(&channelEntry->dxeChannelLock);
+   if(eWLAN_PAL_STATUS_SUCCESS != status)
+   {
+      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "dxeTXCompFrame Mutex Acquire fail");
+      return status;
+   }
+   
    currentCtrlBlk = channelEntry->tailCtrlBlk;
    currentDesc    = currentCtrlBlk->linkedDesc;
 
    if( currentCtrlBlk == channelEntry->headCtrlBlk )
    {
-      wpalMutexRelease(&channelEntry->dxeChannelLock);
+      status = wpalMutexRelease(&channelEntry->dxeChannelLock);
+      if(eWLAN_PAL_STATUS_SUCCESS != status)
+      {
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                  "dxeTXCompFrame Mutex Release fail");
+         return status;
+      }
       return eWLAN_PAL_STATUS_SUCCESS;
    }
 
@@ -3285,7 +3297,12 @@ static wpt_status dxeTXCompFrame
          {
             HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                      "dxeRXFrameReady unable to unlock packet");
-            wpalMutexRelease(&channelEntry->dxeChannelLock);
+            status = wpalMutexRelease(&channelEntry->dxeChannelLock);
+            if(eWLAN_PAL_STATUS_SUCCESS != status)
+            {
+               HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                        "dxeTXCompFrame Mutex Release fail");
+            }
             return status;
          }
 #endif /* FEATURE_R33D */
@@ -3337,7 +3354,12 @@ static wpt_status dxeTXCompFrame
       wpalTimerStop(&channelEntry->healthMonitorTimer);
    }
 
-   wpalMutexRelease(&channelEntry->dxeChannelLock);
+   status = wpalMutexRelease(&channelEntry->dxeChannelLock);
+   if(eWLAN_PAL_STATUS_SUCCESS != status)
+   {
+      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "dxeTXCompFrame Mutex Release fail");
+   }
 
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
             "%s Exit", __func__);
@@ -4412,7 +4434,13 @@ wpt_status WLANDXE_TxFrame
    currentChannel = &dxeCtxt->dxeChannel[channel];
    
 
-   wpalMutexAcquire(&currentChannel->dxeChannelLock);
+   status = wpalMutexAcquire(&currentChannel->dxeChannelLock);
+   if(eWLAN_PAL_STATUS_SUCCESS != status)
+   {
+      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "WLANDXE_TxFrame Mutex Acquire fail");
+      return status;
+   }
 
    lowThreshold = currentChannel->channelType == WDTS_CHANNEL_TX_LOW_PRI?
       &(dxeCtxt->txCompInt.txLowResourceThreshold_LoPriCh):
@@ -4455,7 +4483,12 @@ wpt_status WLANDXE_TxFrame
    {
       HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                "WLANDXE_TxFrame TX Push Frame fail");
-      wpalMutexRelease(&currentChannel->dxeChannelLock);
+      status = wpalMutexRelease(&currentChannel->dxeChannelLock);
+      if(eWLAN_PAL_STATUS_SUCCESS != status)
+      {
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                  "WLANDXE_TxFrame Mutex Release fail");
+      }
       return status;
    }
 
@@ -4476,7 +4509,12 @@ wpt_status WLANDXE_TxFrame
       wpalTimerStart(&currentChannel->healthMonitorTimer,
                      T_WLANDXE_PERIODIC_HEALTH_M_TIME);
    }
-   wpalMutexRelease(&currentChannel->dxeChannelLock);
+   status = wpalMutexRelease(&currentChannel->dxeChannelLock);
+   if(eWLAN_PAL_STATUS_SUCCESS != status)
+   {
+      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+               "WLANDXE_TxFrame Mutex Release fail");
+   }
 
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO_LOW,
             "%s Exit", __func__);
