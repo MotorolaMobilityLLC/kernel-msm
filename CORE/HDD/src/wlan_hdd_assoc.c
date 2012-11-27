@@ -105,9 +105,10 @@ extern void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set, v_U8_t
 
 void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter);
 
-static inline v_VOID_t hdd_connSetConnectionState( hdd_station_ctx_t *pHddStaCtx, eConnectionState connState )
-{         
-   // save the new connection state 
+v_VOID_t hdd_connSetConnectionState( hdd_station_ctx_t *pHddStaCtx,
+                                        eConnectionState connState )
+{
+   // save the new connection state
    pHddStaCtx->conn_info.connState = connState;
 }
 

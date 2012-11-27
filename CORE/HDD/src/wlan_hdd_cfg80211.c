@@ -76,6 +76,7 @@
 #include "sapInternal.h"
 #include "wlan_hdd_softap_tx_rx.h"
 #include "wlan_hdd_main.h"
+#include "wlan_hdd_assoc.h"
 #ifdef WLAN_BTAMP_FEATURE
 #include "bap_hdd_misc.h"
 #endif
@@ -4247,19 +4248,26 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
 
         pRoamProfile->ChannelInfo.ChannelList = NULL;
         pRoamProfile->ChannelInfo.numOfChannels = 0;
+
+        if( (eHAL_STATUS_SUCCESS == status) &&
+            (WLAN_HDD_INFRA_STATION == pAdapter->device_mode) )
+
+        {
+            hdd_connSetConnectionState(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter),
+                                                 eConnectionState_Connecting);
+        }
+
+        if( status != eHAL_STATUS_SUCCESS )
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR, "%s: sme_RoamConnect failed with "
+                                      "status %d", __func__, status);
+        }
     }
     else
     {
         hddLog(VOS_TRACE_LEVEL_ERROR, "%s: No valid Roam profile", __func__);
         return -EINVAL;
     }
-
-    if( WLAN_HDD_INFRA_STATION == pAdapter->device_mode )
-    {
-        (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState =
-                                 eConnectionState_Connecting;
-    }
-
     EXIT();
     return status;
 }

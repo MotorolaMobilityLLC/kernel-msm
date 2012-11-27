@@ -117,6 +117,8 @@ void wlan_hdd_cfg80211_pre_voss_stop(hdd_adapter_t* pAdapter);
 
 int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request);
 int wlan_hdd_get_crda_regd_entry(struct wiphy *wiphy, hdd_config_t *pCfg);
+extern v_VOID_t hdd_connSetConnectionState( hdd_station_ctx_t *pHddStaCtx,
+                                        eConnectionState connState );
 
 #endif // CONFIG_CFG80211
 
