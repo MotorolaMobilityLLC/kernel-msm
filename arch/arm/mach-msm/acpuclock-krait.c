@@ -44,6 +44,9 @@
 #define SEC_SRC_SEL_L2PLL	1
 #define SEC_SRC_SEL_AUX		2
 
+/* PTE EFUSE register offset. */
+#define PTE_EFUSE		0xC0
+
 static DEFINE_MUTEX(driver_lock);
 static DEFINE_SPINLOCK(l2_lock);
 
@@ -928,20 +931,20 @@ static void krait_apply_vmin(struct acpu_level *tbl)
 			tbl->vdd_core = 1150000;
 }
 
-static int __init select_freq_plan(u32 pte_efuse_phys)
+static int __init select_freq_plan(u32 qfprom_phys)
 {
-	void __iomem *pte_efuse;
-	u32 pte_efuse_val, pvs, tbl_idx;
+	void __iomem *qfprom_base;
+	u32 pte_efuse, pvs, tbl_idx;
 	char *pvs_names[] = { "Slow", "Nominal", "Fast", "Faster", "Unknown" };
 
-	pte_efuse = ioremap(pte_efuse_phys, 4);
+	qfprom_base = ioremap(qfprom_phys, SZ_256);
 	/* Select frequency tables. */
-	if (pte_efuse) {
-		pte_efuse_val = readl_relaxed(pte_efuse);
-		pvs = (pte_efuse_val >> 10) & 0x7;
-		iounmap(pte_efuse);
+	if (qfprom_base) {
+		pte_efuse = readl_relaxed(qfprom_base + PTE_EFUSE);
+		pvs = (pte_efuse >> 10) & 0x7;
+		iounmap(qfprom_base);
 		if (pvs == 0x7)
-			pvs = (pte_efuse_val >> 13) & 0x7;
+			pvs = (pte_efuse >> 13) & 0x7;
 
 		switch (pvs) {
 		case 0x0:
@@ -1002,7 +1005,7 @@ static void __init drv_data_init(struct device *dev,
 		GFP_KERNEL);
 	BUG_ON(!drv.bus_scale->usecase);
 
-	tbl_idx = select_freq_plan(params->pte_efuse_phys);
+	tbl_idx = select_freq_plan(params->qfprom_phys_base);
 	drv.acpu_freq_tbl = kmemdup(params->pvs_tables[tbl_idx].table,
 				    params->pvs_tables[tbl_idx].size,
 				    GFP_KERNEL);
