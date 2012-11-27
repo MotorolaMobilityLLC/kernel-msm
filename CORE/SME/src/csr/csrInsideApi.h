@@ -903,7 +903,16 @@ eHalStatus csrRoamGetWpsSessionOverlap( tpAniSirGlobal pMac, tANI_U32 sessionId,
                                         
 eHalStatus csrSendMBGetWPSPBCSessions( tpAniSirGlobal pMac, tANI_U32 sessionId,
                             tSirMacAddr bssId, void *pUsrContext, void *pfnSapEventCallback,v_MACADDR_t pRemoveMac);
-                            
+
+/* ---------------------------------------------------------------------------
+    \fn csrSendChngMCCBeaconInterval
+    \brief csr function that HDD calls to send Update beacon interval
+    \param sessionId - session Id for Soft AP
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus
+csrSendChngMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U32 sessionId);
+
 #endif
 #ifdef FEATURE_WLAN_BTAMP_UT_RF
 eHalStatus csrRoamStartJoinRetryTimer(tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32 interval);

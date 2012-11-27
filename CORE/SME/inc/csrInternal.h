@@ -345,6 +345,8 @@ typedef struct tagCsrRoamStartBssParams
     tVOS_CON_MODE       bssPersona;
     tANI_U16            nRSNIELength;  //The byte count in the pRSNIE, if 0, pRSNIE is ignored.
     tANI_U8             *pRSNIE;     //If not null, it has the IE byte stream for RSN
+    tANI_BOOLEAN        updatebeaconInterval; //Flag used to indicate update 
+                                             // beaconInterval 
 }tCsrRoamStartBssParams;
 
 
@@ -495,8 +497,8 @@ typedef struct tagCsrConfig
     tANI_BOOLEAN shortSlotTime;
     tANI_BOOLEAN ProprietaryRatesEnabled;
     tANI_BOOLEAN  fenableMCCMode;
-    tANI_BOOLEAN  fAllowMCCGODiffBI;
     tANI_U16 TxRate;
+    tANI_U8  fAllowMCCGODiffBI;
     tANI_U8 AdHocChannel24;
     tANI_U8 AdHocChannel5G;
     tANI_U32 impsSleepTime;     //in units of microseconds

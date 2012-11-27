@@ -418,6 +418,10 @@ typedef enum
 #ifdef FEATURE_WLAN_LFR
     eCSR_ROAM_PMK_NOTIFY,
 #endif
+    eCSR_ROAM_DISCONNECT_ALL_P2P_CLIENTS, //Disaconnect all the clients
+    eCSR_ROAM_SEND_P2P_STOP_BSS, //Stopbss triggered from SME due to different 
+                                 // beacon interval
+
 }eRoamCmdStatus;
 
 

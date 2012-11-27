@@ -670,6 +670,23 @@ sapSignalHDDevent
             sapApAppEvent.sapHddEventCode = eSAP_SEND_ACTION_CNF;
             sapApAppEvent.sapevt.sapActionCnf.actionSendSuccess = (eSapStatus)context;
             break;
+
+       case eSAP_DISCONNECT_ALL_P2P_CLIENT:
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+                             "In %s, SAP event callback event = %s",
+                            __func__, "eSAP_DISCONNECT_ALL_P2P_CLIENT");
+            sapApAppEvent.sapHddEventCode = eSAP_DISCONNECT_ALL_P2P_CLIENT;
+            sapApAppEvent.sapevt.sapActionCnf.actionSendSuccess = (eSapStatus)context;
+            break;
+
+       case eSAP_MAC_TRIG_STOP_BSS_EVENT :
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+                             "In %s, SAP event callback event = %s",
+                            __func__, "eSAP_MAC_TRIG_STOP_BSS_EVENT");
+            sapApAppEvent.sapHddEventCode = eSAP_MAC_TRIG_STOP_BSS_EVENT;
+            sapApAppEvent.sapevt.sapActionCnf.actionSendSuccess = (eSapStatus)context;
+            break;
+
 #endif
 
         case eSAP_UNKNOWN_STA_JOIN:

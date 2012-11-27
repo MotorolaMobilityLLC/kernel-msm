@@ -5049,7 +5049,35 @@ eHalStatus sme_RoamUpdateAPWPARSNIEs(tHalHandle hHal, tANI_U8 sessionId, tSirRSN
    return (status);
 }
 #endif
+/* ---------------------------------------------------------------------------
 
+    \fn sme_ChangeMCCBeaconInterval
+
+    \brief To update P2P-GO beaconInterval. This function should be called after 
+    disassociating all the station is done 
+    This is an asynchronous API.
+
+    \param 
+
+    \return eHalStatus – SUCCESS 
+                       – FAILURE or RESOURCES 
+                       – The API finished and failed.
+
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_ChangeMCCBeaconInterval(tHalHandle hHal, tANI_U8 sessionId)
+{
+   eHalStatus status = eHAL_STATUS_FAILURE;
+   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+   smsLog(pMac, LOG1, FL("Update Beacon PARAMS \n"));
+   status = sme_AcquireGlobalLock( &pMac->sme );
+   if ( HAL_STATUS_SUCCESS( status ) )
+   {
+      status = csrSendChngMCCBeaconInterval( pMac, sessionId);
+      sme_ReleaseGlobalLock( &pMac->sme );
+   }
+   return (status);
+}
 
 /*-------------------------------------------------------------------------------*
 

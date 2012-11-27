@@ -803,8 +803,11 @@ eHalStatus
 csrIsconcurrentsessionValid(tpAniSirGlobal pMac,tANI_U32 cursessionId,
                                  tVOS_CON_MODE currBssPersona);
 
-//BeaconInterval valiadation for MCC support
-eHalStatus csrValidateBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId, 
+//Update beaconInterval for P2P-GO case if it is different 
+eHalStatus csrUpdatep2pBeaconInterval(tpAniSirGlobal pMac);
+
+//BeaconInterval validation for MCC support
+eHalStatus csrValidateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId, 
                                      tANI_U16 *beaconInterval, tANI_U32 cursessionId,
                                      tVOS_CON_MODE currBssPersona);
 

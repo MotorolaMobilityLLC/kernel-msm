@@ -341,6 +341,76 @@ void hdd_hostapd_inactivity_timer_cb(v_PVOID_t usrDataForCallback)
     EXIT();
 }
 
+VOS_STATUS hdd_change_mcc_go_beacon_interval(hdd_adapter_t *pHostapdAdapter)
+{
+    v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext;
+    ptSapContext  pSapCtx = NULL;
+    eHalStatus halStatus = eHAL_STATUS_FAILURE;
+    v_PVOID_t hHal = NULL;
+
+    VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+               "%s: UPDATE Beacon Params", __func__);
+
+    if(VOS_STA_SAP_MODE == vos_get_conparam ( )){
+        pSapCtx = VOS_GET_SAP_CB(pVosContext);
+        if ( NULL == pSapCtx )
+        {
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                       "%s: Invalid SAP pointer from pvosGCtx", __func__);
+            return VOS_STATUS_E_FAULT;
+        }
+
+        hHal = VOS_GET_HAL_CB(pSapCtx->pvosGCtx);
+        if ( NULL == hHal ){
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                       "%s: Invalid HAL pointer from pvosGCtx", __func__);
+            return VOS_STATUS_E_FAULT;
+        }
+        halStatus = sme_ChangeMCCBeaconInterval(hHal, pSapCtx->sessionId);
+        if(halStatus == eHAL_STATUS_FAILURE ){
+            VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                       "%s: Failed to update Beacon Params", __func__);
+            return VOS_STATUS_E_FAILURE;
+        }
+    }
+    return VOS_STATUS_SUCCESS;
+}
+
+void hdd_clear_all_sta(hdd_adapter_t *pHostapdAdapter, v_PVOID_t usrDataForCallback)
+{
+    v_U8_t staId = 0;
+    struct net_device *dev;
+    dev = (struct net_device *)usrDataForCallback;
+
+    hddLog(LOGE, FL("Clearing all the STA entry....\n"));
+    for (staId = 0; staId < WLAN_MAX_STA_COUNT; staId++)
+    {
+        if ( pHostapdAdapter->aStaInfo[staId].isUsed && 
+           ( staId != (WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter))->uBCStaId))
+        {
+            //Disconnect all the stations
+            hdd_softap_sta_disassoc(pHostapdAdapter, &pHostapdAdapter->aStaInfo[staId].macAddrSTA.bytes[0]);
+        }
+    }
+}
+
+static int hdd_stop_p2p_link(hdd_adapter_t *pHostapdAdapter,v_PVOID_t usrDataForCallback)
+{
+    struct net_device *dev;
+    VOS_STATUS status = VOS_STATUS_SUCCESS;
+    dev = (struct net_device *)usrDataForCallback;
+    ENTER();
+    if(test_bit(SOFTAP_BSS_STARTED, &pHostapdAdapter->event_flags)) 
+    {
+        if ( VOS_STATUS_SUCCESS == (status = WLANSAP_StopBss((WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext) ) )
+        {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, FL("Deleting P2P link!!!!!!"));
+        }
+        clear_bit(SOFTAP_BSS_STARTED, &pHostapdAdapter->event_flags);
+    }
+    EXIT();
+    return (status == VOS_STATUS_SUCCESS) ? 0 : -EBUSY;
+}
 
 VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCallback)
 {
@@ -627,6 +697,8 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                             GFP_KERNEL);
 #endif
 #endif
+            //Update the beacon Interval if it is P2P GO
+            hdd_change_mcc_go_beacon_interval(pHostapdAdapter);
             break;
         case eSAP_WPS_PBC_PROBE_REQ_EVENT:
         {
@@ -714,6 +786,16 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             break;
         case eSAP_STA_ASSOC_IND:
             return VOS_STATUS_SUCCESS;
+
+        case eSAP_DISCONNECT_ALL_P2P_CLIENT:
+            hddLog(LOG1, FL(" Disconnecting all the P2P Clients....\n"));
+            hdd_clear_all_sta(pHostapdAdapter, usrDataForCallback);
+            return VOS_STATUS_SUCCESS;
+
+        case eSAP_MAC_TRIG_STOP_BSS_EVENT :
+            hdd_stop_p2p_link(pHostapdAdapter, usrDataForCallback);
+            return VOS_STATUS_SUCCESS;
+
         default:
             hddLog(LOG1,"SAP message is not handled\n");
             goto stopbss;

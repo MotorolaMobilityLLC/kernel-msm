@@ -1712,7 +1712,7 @@ tANI_BOOLEAN csrIsValidMcConcurrentSession(tpAniSirGlobal pMac, tANI_U32 session
                                        pSession->pCurRoamProfile->csrPersona) 
                                        == eHAL_STATUS_SUCCESS )
             {
-                if(csrValidateBeaconInterval( pMac, pBssDesc->channelId, 
+                if(csrValidateMCCBeaconInterval( pMac, pBssDesc->channelId, 
                                &pBssDesc->beaconInterval, sessionId, 
                                pSession->pCurRoamProfile->csrPersona) 
                                != eHAL_STATUS_SUCCESS)
@@ -2783,14 +2783,86 @@ csrIsconcurrentsessionValid(tpAniSirGlobal pMac,tANI_U32 cursessionId,
 
 }
 
-eHalStatus csrValidateBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId, 
-                                     tANI_U16 *beaconInterval, tANI_U32 cursessionId,
-                                     tVOS_CON_MODE currBssPersona)
+eHalStatus csrUpdateMCCp2pBeaconInterval(tpAniSirGlobal pMac)
 {
     tANI_U32 sessionId = 0;
 
     //If MCC is not supported just break and return SUCCESS
-    if ( !IS_MCC_SUPPORTED && !pMac->roam.configParam.fenableMCCMode){
+    if ( !pMac->roam.configParam.fenableMCCMode){
+        return eHAL_STATUS_FAILURE;
+    }
+
+    for (sessionId = 0; sessionId < CSR_ROAM_SESSION_MAX; sessionId++ )
+    {
+        /* If GO in MCC support different beacon interval, 
+         * change the BI of the P2P-GO */
+        if((pMac->roam.roamSession[sessionId].bssParams.bssPersona
+                              == VOS_P2P_GO_MODE) &&
+           (pMac->roam.roamSession[sessionId].bssParams.updatebeaconInterval ))
+        {
+            return csrRoamCallCallback(pMac, sessionId, NULL, 0, eCSR_ROAM_DISCONNECT_ALL_P2P_CLIENTS, eCSR_ROAM_RESULT_NONE);
+        }
+    }
+    return eHAL_STATUS_FAILURE;
+}
+
+tANI_U16 csrCalculateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U16 sta_bi, tANI_U16 go_gbi)
+{
+    tANI_U8 num_beacons = 0;
+    tANI_U8 is_multiple = 0;
+    tANI_U16 go_cbi = 0;
+    tANI_U16 go_fbi = 0;
+    tANI_U16 sta_cbi = 0;
+
+    //If GO's given beacon Interval is less than 100 
+    if(go_gbi < 100)
+       go_cbi = 100;
+    //if GO's given beacon Interval is greater than or equal to 100
+    else
+       go_cbi = 100 + (go_gbi % 100);
+
+    // check, if either one is multiple of another
+    if (sta_bi > go_cbi)
+    {
+        is_multiple = !(sta_bi % go_cbi);
+    }
+    else
+    {
+        is_multiple = !(go_cbi % sta_bi);
+    }
+    // if it is multiple, then accept GO’s beacon interval range [100,199] as it  is
+    if(is_multiple)
+    {
+        return go_cbi;
+    }
+    //else , if it is not multiple, then then check for number of beacons to be 
+    //inserted based on sta BI
+    num_beacons = sta_bi / 100;
+    if(num_beacons)
+    { 
+        // GO’s final beacon interval will be aligned to sta beacon interval, but 
+        //in the range of [100, 199].
+        sta_cbi = sta_bi / num_beacons;
+        go_fbi = sta_cbi;
+    }
+    else
+    {
+        // if STA beacon interval is less than 100, use GO’s change bacon interval 
+        //instead of updating to STA’s beacon interval.
+        go_fbi = go_cbi;
+    }
+    return go_fbi;
+}
+
+eHalStatus csrValidateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId, 
+                                     tANI_U16 *beaconInterval, tANI_U32 cursessionId,
+                                     tVOS_CON_MODE currBssPersona)
+{
+    tANI_U32 sessionId = 0;
+    tANI_U16 new_beaconInterval = 0;
+  
+    //If MCC is not supported just break
+    if (!pMac->roam.configParam.fenableMCCMode){
         return eHAL_STATUS_FAILURE;
     }
 
@@ -2827,17 +2899,47 @@ eHalStatus csrValidateBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
                     else if(pMac->roam.roamSession[sessionId].bssParams.bssPersona
                                       == VOS_P2P_GO_MODE) //Check for P2P go scenario
                     {
-                        /* if GO in MCC support different beacon interval, return success */
-                        if ( pMac->roam.configParam.fAllowMCCGODiffBI == TRUE)
-                            return eHAL_STATUS_SUCCESS;
-                        
-                        if ((pMac->roam.roamSession[sessionId].bssParams.operationChn 
+                        /* if GO in MCC support different beacon interval, 
+                         * change the BI of the P2P-GO */
+                       if ((pMac->roam.roamSession[sessionId].bssParams.operationChn 
                                 != channelId ) &&
-                            (pMac->roam.roamSession[sessionId].bssParams.beaconInterval 
+                           (pMac->roam.roamSession[sessionId].bssParams.beaconInterval 
                                 != *beaconInterval))
-                        {
-                            smsLog(pMac, LOGE, FL("BeaconInteval is different cannot connect to prefered AP...\n"));
-                            return eHAL_STATUS_FAILURE;
+                       {
+                           /* if GO in MCC support different beacon interval, return success */
+                           if ( pMac->roam.configParam.fAllowMCCGODiffBI == 0x01)
+                           {
+                               return eHAL_STATUS_SUCCESS;
+                           }
+                           // Send only Broadcast disassoc and update beaconInterval
+                           else if(pMac->roam.configParam.fAllowMCCGODiffBI == 0x02)
+                           {
+                               //Check to pass the right beacon Interval
+                               new_beaconInterval = csrCalculateMCCBeaconInterval(pMac, *beaconInterval, 
+                                                         pMac->roam.roamSession[sessionId].bssParams.beaconInterval);
+                               smsLog(pMac, LOG1, FL(" Peer AP BI : %d, new Beacon Interval: %d\n"),*beaconInterval,new_beaconInterval );
+                               //Update the becon Interval
+                               if(*beaconInterval != new_beaconInterval )
+                               {
+                                   //Update the beaconInterval now
+                                   smsLog(pMac, LOG1, FL(" Beacon Interval got changed\n"));
+                                   pMac->roam.roamSession[sessionId].bssParams.beaconInterval = new_beaconInterval;
+                                   pMac->roam.roamSession[sessionId].bssParams.updatebeaconInterval = eANI_BOOLEAN_TRUE;
+                                   csrUpdateMCCp2pBeaconInterval(pMac);
+                               }
+                               return eHAL_STATUS_SUCCESS;
+                           }
+                           //Disconnect the P2P session
+                           else if(pMac->roam.configParam.fAllowMCCGODiffBI == 0x03)
+                           {
+                               pMac->roam.roamSession[sessionId].bssParams.updatebeaconInterval =  eANI_BOOLEAN_FALSE;
+                               return csrRoamCallCallback(pMac, sessionId, NULL, 0, eCSR_ROAM_SEND_P2P_STOP_BSS, eCSR_ROAM_RESULT_NONE);
+                           }
+                           else
+                           {
+                               smsLog(pMac, LOGE, FL("BeaconInteval is different cannot connect to prefered AP...\n"));
+                               return eHAL_STATUS_FAILURE;
+                           }
                         }
                     }
                     break;
@@ -2876,10 +2978,11 @@ eHalStatus csrValidateBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
                     break;
 
                 case VOS_P2P_GO_MODE :
+                {
                     if(pMac->roam.roamSession[sessionId].pCurRoamProfile  && 
                       ((pMac->roam.roamSession[sessionId].pCurRoamProfile->csrPersona 
-                            == VOS_P2P_CLIENT_MODE)
-                     || (pMac->roam.roamSession[sessionId].pCurRoamProfile->csrPersona 
+                            == VOS_P2P_CLIENT_MODE) ||
+                      (pMac->roam.roamSession[sessionId].pCurRoamProfile->csrPersona 
                             == VOS_STA_MODE))) //check for P2P_client scenario
                     {
                         if ((pMac->roam.roamSession[sessionId].connectedProfile.operationChannel 
@@ -2901,12 +3004,17 @@ eHalStatus csrValidateBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
                              * Updated beaconInterval should be used only when we are starting a new BSS 
                              * not incase of client or STA case
                              */
-                            *beaconInterval = 
-                                pMac->roam.roamSession[sessionId].connectedProfile.beaconInterval;
+                            //Calculate beacon Interval for P2P-GO incase of MCC
+                            new_beaconInterval = csrCalculateMCCBeaconInterval(pMac, 
+                                                pMac->roam.roamSession[sessionId].bssParams.beaconInterval,
+                                                *beaconInterval );
+                            if(*beaconInterval != new_beaconInterval)
+                                *beaconInterval = new_beaconInterval;
                             return eHAL_STATUS_SUCCESS;
                          }
                     }
-                    break;
+                }
+                break;
 
                 default :
                     smsLog(pMac, LOG1, FL(" Persona not supported : %d\n"),currBssPersona);

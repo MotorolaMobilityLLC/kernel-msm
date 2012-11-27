@@ -3684,6 +3684,16 @@ typedef struct sSirUpdateParams
     tANI_U8        ssidHidden;     // Hide SSID
 } tSirUpdateParams, *tpSirUpdateParams;
 
+//Beacon Interval
+typedef struct sSirChangeBIParams
+{
+    tANI_U16       messageType;     
+    tANI_U16       length;
+    tANI_U16       beaconInterval; // Beacon Interval
+    tSirMacAddr    bssId;
+    tANI_U8        sessionId;      // Session ID
+} tSirChangeBIParams, *tpSirChangeBIParams;
+
 #define SIR_WPS_UUID_LEN 16
 #define SIR_WPS_PBC_WALK_TIME   120  // 120 Second
 

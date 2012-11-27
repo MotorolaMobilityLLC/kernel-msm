@@ -190,6 +190,8 @@ typedef enum {
     eSAP_INDICATE_MGMT_FRAME,
     eSAP_REMAIN_CHAN_READY,
     eSAP_SEND_ACTION_CNF,
+    eSAP_DISCONNECT_ALL_P2P_CLIENT,
+    eSAP_MAC_TRIG_STOP_BSS_EVENT,
 #endif
     eSAP_UNKNOWN_STA_JOIN, /* Event send when a STA in neither white list or black list tries to associate in softap mode */
     eSAP_MAX_ASSOC_EXCEEDED, /* Event send when a new STA is rejected association since softAP max assoc limit has reached */

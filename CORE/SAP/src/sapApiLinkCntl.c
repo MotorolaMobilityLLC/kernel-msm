@@ -382,6 +382,19 @@ WLANSAP_RoamCallback
                             (v_PVOID_t)(( roamResult == eCSR_ROAM_RESULT_NONE) ?
                             eSAP_STATUS_SUCCESS : eSAP_STATUS_FAILURE));
             break;
+
+       case eCSR_ROAM_DISCONNECT_ALL_P2P_CLIENTS:
+            sapSignalHDDevent(sapContext, pCsrRoamInfo, 
+                            eSAP_DISCONNECT_ALL_P2P_CLIENT, 
+                            (v_PVOID_t) eSAP_STATUS_SUCCESS );
+            break;
+            
+       case eCSR_ROAM_SEND_P2P_STOP_BSS:
+           VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Received stopbss", __func__);
+           sapSignalHDDevent(sapContext, pCsrRoamInfo, 
+                            eSAP_MAC_TRIG_STOP_BSS_EVENT, 
+                            (v_PVOID_t) eSAP_STATUS_SUCCESS );
+        break;
 #endif
 
         default:

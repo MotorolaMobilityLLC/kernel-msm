@@ -1595,9 +1595,9 @@ eHalStatus sme_getOemDataRsp(tHalHandle hHal,
 
     \param pAPWPSIES - pointer to a caller allocated object of tCsrRoamAPWPSIES
 
-    \return eHalStatus Â– SUCCESS Â– Roam callback will be called indicate actually results
+    \return eHalStatus – SUCCESS – Roam callback will be called indicate actually results
 
-                         FAILURE or RESOURCES Â– The API finished and failed.
+                         FAILURE or RESOURCES – The API finished and failed.
 
   -------------------------------------------------------------------------------*/
 
@@ -1611,12 +1611,25 @@ eHalStatus sme_RoamUpdateAPWPSIE(tHalHandle, tANI_U8 sessionId, tSirAPWPSIEs *pA
 
     \param pAPSirRSNie - pointer to a caller allocated object of tSirRSNie with WPS/RSN IEs
 
-    \return eHalStatus Â– SUCCESS Â– 
+    \return eHalStatus – SUCCESS – 
 
-                         FAILURE or RESOURCES Â– The API finished and failed.
+                         FAILURE or RESOURCES – The API finished and failed.
 
   -------------------------------------------------------------------------------*/
 eHalStatus sme_RoamUpdateAPWPARSNIEs(tHalHandle hHal, tANI_U8 sessionId, tSirRSNie * pAPSirRSNie);
+
+/* ---------------------------------------------------------------------------
+
+    sme_ChangeMCCBeaconInterval
+
+    \brief To update P2P-GO's beacon Interval. 
+
+    \return eHalStatus – SUCCESS 
+                       – FAILURE or RESOURCES 
+                       – The API finished and failed.
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_ChangeMCCBeaconInterval(tHalHandle hHal, tANI_U8 sessionId);
+
 
 #endif
 
@@ -1625,9 +1638,8 @@ eHalStatus sme_RoamUpdateAPWPARSNIEs(tHalHandle hHal, tANI_U8 sessionId, tSirRSN
   \brief API to send the btAMPstate to FW
   \param  hHal - The handle returned by macOpen.
   \param  btAmpEvent -- btAMP event
-  \return eHalStatus Â– SUCCESS Â–
-
-                         FAILURE or RESOURCES Â– The API finished and failed.
+  \return eHalStatus – SUCCESS –
+                         FAILURE or RESOURCES – The API finished and failed.
 
 --------------------------------------------------------------------------- */
 

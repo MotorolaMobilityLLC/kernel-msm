@@ -12073,6 +12073,49 @@ csrSendMBGetWPSPBCSessions( tpAniSirGlobal pMac, tANI_U32 sessionId,
     } while( 0 );
     return( status );
 }
+
+eHalStatus
+csrSendChngMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U32 sessionId)
+{
+    tpSirChangeBIParams pMsg;
+    tANI_U16 len = 0;
+    eHalStatus status   = eHAL_STATUS_SUCCESS;
+    tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
+
+    if(!pSession)
+    {
+        smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
+        return eHAL_STATUS_FAILURE;
+    }
+
+    //NO need to update the Beacon Params if update beacon parameter flag is not set
+    if(!pMac->roam.roamSession[sessionId].bssParams.updatebeaconInterval )
+        return eHAL_STATUS_SUCCESS;
+
+    pMac->roam.roamSession[sessionId].bssParams.updatebeaconInterval =  eANI_BOOLEAN_FALSE;
+
+     /* Create the message and send to lim */
+     len = sizeof(tSirChangeBIParams); 
+     status = palAllocateMemory( pMac->hHdd, (void **)&pMsg, len );
+     if(HAL_STATUS_SUCCESS(status))
+     {
+         palZeroMemory(pMac->hHdd, pMsg, sizeof(tSirChangeBIParams) );
+         pMsg->messageType     = eWNI_SME_CHNG_MCC_BEACON_INTERVAL;
+         pMsg->length          = len;
+
+        // bssId
+        palCopyMemory( pMac->hHdd, (tSirMacAddr *)pMsg->bssId, &pSession->selfMacAddr, sizeof(tSirMacAddr) );
+        smsLog( pMac, LOG1, FL("CSR Attempting to change BI for Bssid= %02x-%02x-%02x-%02x-%02x-%02x "), 
+                  pMsg->bssId[ 0 ], pMsg->bssId[ 1 ], pMsg->bssId[ 2 ],
+                  pMsg->bssId[ 3 ], pMsg->bssId[ 4 ], pMsg->bssId[ 5 ] );
+        pMsg->sessionId       = sessionId;
+        smsLog(pMac, LOG1, FL("  session %d BeaconInterval %d\n"), sessionId, pMac->roam.roamSession[sessionId].bssParams.beaconInterval);
+        pMsg->beaconInterval = pMac->roam.roamSession[sessionId].bssParams.beaconInterval; 
+        status = palSendMBMessage(pMac->hHdd, pMsg);
+    }
+     return status;
+}
+
 #endif
 eHalStatus csrSendMBDeauthReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirMacAddr bssId, tANI_U16 reasonCode )
 {
@@ -12465,7 +12508,7 @@ eHalStatus csrSendMBStartBssReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, eCs
                                    pParam->bssPersona) 
                                    == eHAL_STATUS_SUCCESS )
         {    
-           csrValidateBeaconInterval(pMac, pParam->operationChn, &wTmp, sessionId,
+           csrValidateMCCBeaconInterval(pMac, pParam->operationChn, &wTmp, sessionId,
                                       pParam->bssPersona);
            //Update the beacon Interval 
            pParam->beaconInterval = wTmp;

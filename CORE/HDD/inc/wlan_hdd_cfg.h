@@ -1343,10 +1343,17 @@ typedef enum
  * Allow GO in MCC mode to accept different beacon interval than STA's.
  * Added for Wi-Fi Cert. 5.1.12
  * Default: Disable
+ * If gAllowMCCGODiffBI = 1  // Set to 1 for WFA certification. GO Beacon interval is not changed. MCC GO 
+*                                             doesn't work well in optimized way. In worst scenario, it may invite STA 
+*                                            disconnection.
+ * gAllowMCCGODiffBI = 2     //If set to 2 workaround 1 disassoc all the clients 
+ *                             and update beacon Interval
+ * gAllowMCCGODiffBI = 3     //If set to 3 tear down the P2P link in auto/ 
+ *                             Non-autonomous -GO case
  */
 #define CFG_ALLOW_MCC_GO_DIFF_BI_NAME           "gAllowMCCGODiffBI"
 #define CFG_ALLOW_MCC_GO_DIFF_BI_MIN            ( 0 )
-#define CFG_ALLOW_MCC_GO_DIFF_BI_MAX            ( 1 )
+#define CFG_ALLOW_MCC_GO_DIFF_BI_MAX            ( 3 )
 #define CFG_ALLOW_MCC_GO_DIFF_BI_DEFAULT        ( 0 ) 
 
 /*

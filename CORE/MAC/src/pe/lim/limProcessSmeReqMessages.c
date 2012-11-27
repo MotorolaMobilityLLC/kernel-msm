@@ -4436,6 +4436,62 @@ end:
     return;
 } /*** end __limProcessSmeSetWPARSNIEs(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf) ***/
 
+/*
+Update the beacon Interval dynamically if beaconInterval is different in MCC 
+*/
+static void
+__limProcessSmeChangeBI(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
+{
+    tpSirChangeBIParams     pChangeBIParams;
+    tpPESession             psessionEntry;
+    tANI_U8  sessionId = 0;
+    tUpdateBeaconParams beaconParams;
+
+    PELOG1(limLog(pMac, LOG1,
+           FL("received Update Beacon Interval message\n")););
+    
+    if(pMsgBuf == NULL)
+    {
+        limLog(pMac, LOGE,FL("Buffer is Pointing to NULL\n"));
+        return;
+    }
+
+    pChangeBIParams = (tpSirChangeBIParams)pMsgBuf;
+
+    if((psessionEntry = peFindSessionByBssid(pMac, pChangeBIParams->bssId, &sessionId)) == NULL)
+    {
+        limLog(pMac, LOGE, FL("Session does not exist for given BSSID\n"));
+        return;
+    }
+
+    /*Update sessionEntry Beacon Interval*/
+    if(psessionEntry->beaconParams.beaconInterval != 
+                                        pChangeBIParams->beaconInterval )
+    {
+       psessionEntry->beaconParams.beaconInterval = pChangeBIParams->beaconInterval;
+    }
+
+    /*Update sch beaconInterval*/
+    if(pMac->sch.schObject.gSchBeaconInterval != 
+                                        pChangeBIParams->beaconInterval )
+    {
+        pMac->sch.schObject.gSchBeaconInterval = pChangeBIParams->beaconInterval;
+
+        PELOG1(limLog(pMac, LOG1,
+               FL("LIM send update BeaconInterval Indication : %d"),pChangeBIParams->beaconInterval););
+
+        /* Update beacon */
+        schSetFixedBeaconFields(pMac, psessionEntry);
+
+        //Set change in beacon Interval
+        beaconParams.beaconInterval = pChangeBIParams->beaconInterval;
+        beaconParams.paramChangeBitmap |= PARAM_BCN_INTERVAL_CHANGED;
+        limSendBeaconParams(pMac, &beaconParams, psessionEntry);
+    }
+
+    return;
+} /*** end __limProcessSmeChangeBI(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf) ***/
+
 #endif
 
 
@@ -4989,6 +5045,11 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
         case eWNI_SME_SET_APWPARSNIEs_REQ:
               __limProcessSmeSetWPARSNIEs(pMac, pMsgBuf);        
               break;
+
+        case eWNI_SME_CHNG_MCC_BEACON_INTERVAL:
+             //Update the beaconInterval
+             __limProcessSmeChangeBI(pMac, pMsgBuf );
+             break;
 #endif            
             
 #if defined WLAN_FEATURE_VOWIFI 
