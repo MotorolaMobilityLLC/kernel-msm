@@ -151,16 +151,14 @@ struct kgsl_mmu_ops {
 	unsigned int (*mmu_get_pt_base_addr)
 			(struct kgsl_mmu *mmu,
 			struct kgsl_pagetable *pt);
-	unsigned int (*mmu_sync_lock)
-			(struct kgsl_mmu *mmu,
-			unsigned int *cmds);
-	unsigned int (*mmu_sync_unlock)
-			(struct kgsl_mmu *mmu,
-			unsigned int *cmds);
 	int (*mmu_setup_pt) (struct kgsl_mmu *mmu,
 			struct kgsl_pagetable *pt);
 	void (*mmu_cleanup_pt) (struct kgsl_mmu *mmu,
 			struct kgsl_pagetable *pt);
+	unsigned int (*mmu_sync_lock)
+			(struct kgsl_mmu *mmu, unsigned int *cmds);
+	unsigned int (*mmu_sync_unlock)
+			(struct kgsl_mmu *mmu, unsigned int *cmds);
 };
 
 struct kgsl_mmu_pt_ops {
@@ -350,26 +348,6 @@ static inline int kgsl_mmu_get_num_iommu_units(struct kgsl_mmu *mmu)
 		return 0;
 }
 
-static inline int kgsl_mmu_sync_lock(struct kgsl_mmu *mmu,
-				unsigned int *cmds)
-{
-	if ((mmu->flags & KGSL_MMU_FLAGS_IOMMU_SYNC) &&
-		mmu->mmu_ops && mmu->mmu_ops->mmu_sync_lock)
-		return mmu->mmu_ops->mmu_sync_lock(mmu, cmds);
-	else
-		return 0;
-}
-
-static inline int kgsl_mmu_sync_unlock(struct kgsl_mmu *mmu,
-				unsigned int *cmds)
-{
-	if ((mmu->flags & KGSL_MMU_FLAGS_IOMMU_SYNC) &&
-		mmu->mmu_ops && mmu->mmu_ops->mmu_sync_unlock)
-		return mmu->mmu_ops->mmu_sync_unlock(mmu, cmds);
-	else
-		return 0;
-}
-
 /*
  * kgsl_mmu_is_perprocess() - Runtime check for per-process
  * pagetables.
@@ -442,6 +420,26 @@ static inline unsigned int kgsl_mmu_get_ptsize(void)
 			return SZ_2G;
 	}
 	return 0;
+}
+
+static inline int kgsl_mmu_sync_lock(struct kgsl_mmu *mmu,
+				unsigned int *cmds)
+{
+	if ((mmu->flags & KGSL_MMU_FLAGS_IOMMU_SYNC) &&
+		mmu->mmu_ops && mmu->mmu_ops->mmu_sync_lock)
+		return mmu->mmu_ops->mmu_sync_lock(mmu, cmds);
+	else
+		return 0;
+}
+
+static inline int kgsl_mmu_sync_unlock(struct kgsl_mmu *mmu,
+				unsigned int *cmds)
+{
+	if ((mmu->flags & KGSL_MMU_FLAGS_IOMMU_SYNC) &&
+		mmu->mmu_ops && mmu->mmu_ops->mmu_sync_unlock)
+		return mmu->mmu_ops->mmu_sync_unlock(mmu, cmds);
+	else
+		return 0;
 }
 
 #endif /* __KGSL_MMU_H */

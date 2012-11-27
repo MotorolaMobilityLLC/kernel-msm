@@ -155,6 +155,8 @@ struct kgsl_iommu_unit {
  * IOMMU registers
  * @sync_lock_desc: GPU Memory descriptor for the memory containing the
  * spinlocks
+ * @sync_lock_offset - The page offset within a page at which the sync
+ * variables are located
  * @sync_lock_initialized: True if the sync_lock feature is enabled
  */
 struct kgsl_iommu {
@@ -167,6 +169,7 @@ struct kgsl_iommu {
 	struct kgsl_iommu_register_list *iommu_reg_list;
 	struct remote_iommu_petersons_spinlock *sync_lock_vars;
 	struct kgsl_memdesc sync_lock_desc;
+	unsigned int sync_lock_offset;
 	bool sync_lock_initialized;
 };
 
