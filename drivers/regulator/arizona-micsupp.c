@@ -108,10 +108,17 @@ static int arizona_micsupp_reg_set_voltage_sel(struct regulator_dev *rdev,
 				  ARIZONA_LDO2_VSEL_MASK, sel);
 }
 
+static int arizona_micsupp_enable_time(struct regulator_dev *dev)
+{
+	return 3000;
+}
+
 static struct regulator_ops arizona_micsupp_ops = {
 	.enable = arizona_micsupp_reg_enable,
 	.disable = arizona_micsupp_reg_disable,
 	.is_enabled = arizona_micsupp_reg_is_enabled,
+
+	.enable_time = arizona_micsupp_enable_time,
 
 	.list_voltage = arizona_micsupp_reg_list_voltage,
 
@@ -124,7 +131,6 @@ static struct regulator_desc arizona_micsupp = {
 	.type = REGULATOR_VOLTAGE,
 	.n_voltages = ARIZONA_MICSUPP_MAX_SELECTOR + 1,
 	.ops = &arizona_micsupp_ops,
-
 	.owner = THIS_MODULE,
 };
 
