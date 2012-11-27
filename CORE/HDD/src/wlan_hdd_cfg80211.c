@@ -3822,15 +3822,6 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
      */
     cfg80211_scan_done(req, false);
     complete(&pScanInfo->abortscan_event_var);
-#ifdef WLAN_FEATURE_P2P
-    /* Flush out scan result after p2p_serach is done */
-    if(pScanInfo->flushP2pScanResults)
-    {
-        tANI_U8 sessionId = pAdapter->sessionId;
-        sme_ScanFlushP2PResult(WLAN_HDD_GET_HAL_CTX(pAdapter), sessionId);
-        pScanInfo->flushP2pScanResults = 0;
-    }
-#endif
 
 allow_suspend:
     /* release the wake lock at the end of the scan*/
@@ -4040,6 +4031,24 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
 
         /* set requestType to full scan */
         scanRequest.requestType = eCSR_SCAN_REQUEST_FULL_SCAN;
+ 
+        /* Flush the scan results(only p2p beacons) for STA scan and P2P 
+         * search (Flush on both full  scan and social scan but not on single
+         * channel scan).P2P  search happens on 3 social channels (1, 6, 11) 
+         */
+
+        /* Supplicant does single channel scan after 8-way handshake
+         * and in that case driver shoudnt flush scan results. If 
+         * driver flushes the scan results here and unfortunately if 
+         * the AP doesnt respond to our probe req then association 
+         * fails which is not desired
+         */
+
+        if( request->n_channels != WLAN_HDD_P2P_SINGLE_CHANNEL_SCAN )
+        {
+            sme_ScanFlushP2PResult( WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                                pAdapter->sessionId );
+        }
 
         if( request->ie_len )
         {
@@ -4090,18 +4099,12 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
                 /* no_cck will be set during p2p find to disable 11b rates */
                 if(TRUE == request->no_cck)
                 {
-                    tANI_U8 sessionId = pAdapter->sessionId;
                     hddLog(VOS_TRACE_LEVEL_INFO,
                            "%s: This is a P2P Search", __func__);
                     scanRequest.p2pSearch = 1;
 
-                    /* Flush the scan results only for P2P search.
-                       P2P search happens on 3 social channels (1, 6, 11) */
                     if( request->n_channels == WLAN_HDD_P2P_SOCIAL_CHANNELS )
                     {
-                         pScanInfo->flushP2pScanResults = 1;
-                         sme_ScanFlushP2PResult( WLAN_HDD_GET_HAL_CTX(pAdapter),
-                                          sessionId );
                          /* set requestType to P2P Discovery */
                          scanRequest.requestType = eCSR_SCAN_P2P_DISCOVERY;
                     }

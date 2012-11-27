@@ -139,6 +139,7 @@
 #define WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET 24
 #define WLAN_HDD_PUBLIC_ACTION_FRAME_TYPE_OFFSET 30
 #define WLAN_HDD_P2P_SOCIAL_CHANNELS 3
+#define WLAN_HDD_P2P_SINGLE_CHANNEL_SCAN 1
 
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
 #define HDD_WAKE_LOCK_DURATION 50
@@ -583,10 +584,6 @@ typedef struct hdd_scaninfo_s
 
    /* Client Wait Scan Result */
    v_U32_t waitScanResult;
-
-#ifdef WLAN_FEATURE_P2P
-  v_BOOL_t flushP2pScanResults;
-#endif
 
    /* Additional IE for scan */
    tSirAddie scanAddIE; 
