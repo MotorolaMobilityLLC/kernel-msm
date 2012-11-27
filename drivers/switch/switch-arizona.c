@@ -50,7 +50,6 @@ struct arizona_switch_info {
 	int jack_flips;
 
 	struct switch_dev sdev;
-
 };
 
 static struct {
@@ -174,7 +173,6 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 
 	/* If we got a high impedence we should have a headset, report it. */
 	if (info->detecting && (val & 0x400)) {
-
 		switch_set_state(&info->sdev, BIT_HEADSET);
 
 		info->mic = true;
@@ -196,7 +194,6 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 			info->detecting = false;
 
 			switch_set_state(&info->sdev, BIT_HEADSET_NO_MIC);
-
 		} else {
 			info->micd_mode++;
 			if (info->micd_mode == info->micd_num_modes)
@@ -227,14 +224,12 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 							 1);
 
 			input_sync(info->input);
-
 		} else if (info->detecting) {
 			dev_dbg(arizona->dev, "Headphone detected\n");
 			info->detecting = false;
 			arizona_stop_mic(info);
 
 			switch_set_state(&info->sdev, BIT_HEADSET_NO_MIC);
-
 		} else {
 			dev_warn(arizona->dev, "Button with no mic: %x\n",
 				 val);
@@ -247,7 +242,6 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 					 arizona_lvl_to_key[i].report, 0);
 
 		input_sync(info->input);
-
 	}
 
 handled:
