@@ -8560,9 +8560,24 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
                     status = csrRoamGetSessionIdFromBSSID( pMac, (tCsrBssid *)pApNewCaps->bssId, &sessionId );
                     if( HAL_STATUS_SUCCESS( status ) )
                     {
-                    csrScanForCapabilityChange( pMac, pApNewCaps );
-                    result = eCSR_ROAM_RESULT_CAP_CHANGED;
-                    roamStatus = eCSR_ROAM_GEN_INFO;
+                        if ((eCSR_ROAMING_STATE_JOINED == pMac->roam.curState[sessionId]) &&
+                                ((eCSR_ROAM_SUBSTATE_JOINED_REALTIME_TRAFFIC == pMac->roam.curSubState[sessionId]) ||
+                                 (eCSR_ROAM_SUBSTATE_JOINED_NON_REALTIME_TRAFFIC == pMac->roam.curSubState[sessionId]) ||
+                                 (eCSR_ROAM_SUBSTATE_JOINED_NO_TRAFFIC == pMac->roam.curSubState[sessionId]))
+                           )
+                        {
+                            csrScanForCapabilityChange( pMac, pApNewCaps );
+                            result = eCSR_ROAM_RESULT_CAP_CHANGED;
+                            roamStatus = eCSR_ROAM_GEN_INFO;
+                        }
+                        else
+                        {
+                            smsLog(pMac, LOGW,
+                                    "Skipping csrScanForCapabilityChange as "
+                                    "CSR is in state %d and sub-state %d\n",
+                                    pMac->roam.curState[sessionId],
+                                    pMac->roam.curSubState[sessionId]);
+                        }
                     }
                     break;
             
