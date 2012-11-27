@@ -219,7 +219,7 @@ static struct acpuclk_krait_params acpuclk_8064_params __initdata = {
 	.l2_freq_tbl = l2_freq_tbl,
 	.l2_freq_tbl_size = sizeof(l2_freq_tbl),
 	.bus_scale = &bus_scale_data,
-	.pte_efuse_phys = 0x007000C0,
+	.qfprom_phys_base = 0x00700000,
 	.stby_khz = 384000,
 };
 
