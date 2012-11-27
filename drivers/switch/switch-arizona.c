@@ -37,6 +37,7 @@ struct arizona_switch_info {
 	struct device *dev;
 	struct arizona *arizona;
 	struct mutex lock;
+	struct regulator *micvdd;
 	struct input_dev *input;
 
 	int micd_mode;
@@ -99,6 +100,7 @@ static void arizona_start_mic(struct arizona_switch_info *info)
 {
 	struct arizona *arizona = info->arizona;
 	bool change;
+	int ret;
 
 	info->detecting = true;
 	info->mic = false;
@@ -106,6 +108,12 @@ static void arizona_start_mic(struct arizona_switch_info *info)
 
 	/* Microphone detection can't use idle mode */
 	pm_runtime_get(info->dev);
+
+	ret = regulator_enable(info->micvdd);
+	if (ret != 0) {
+		dev_err(arizona->dev, "Failed to enable MICVDD: %d\n",
+			ret);
+	}
 
 	if (info->micd_reva) {
 		regmap_write(arizona->regmap, 0x80, 0x3);
@@ -117,6 +125,7 @@ static void arizona_start_mic(struct arizona_switch_info *info)
 				 ARIZONA_MICD_ENA, ARIZONA_MICD_ENA,
 				 &change);
 	if (!change) {
+		regulator_disable(info->micvdd);
 		pm_runtime_put_autosuspend(info->dev);
 	}
 }
@@ -137,6 +146,7 @@ static void arizona_stop_mic(struct arizona_switch_info *info)
 	}
 
 	if (change) {
+		regulator_disable(info->micvdd);
 		pm_runtime_put_autosuspend(info->dev);
 	}
 }
@@ -309,6 +319,13 @@ static int __devinit arizona_switch_probe(struct platform_device *pdev)
 	if (!info) {
 		dev_err(&pdev->dev, "failed to allocate memory\n");
 		ret = -ENOMEM;
+		goto err;
+	}
+
+	info->micvdd = devm_regulator_get(arizona->dev, "MICVDD");
+	if (IS_ERR(info->micvdd)) {
+		ret = PTR_ERR(info->micvdd);
+		dev_err(arizona->dev, "Failed to get MICVDD: %d\n", ret);
 		goto err;
 	}
 
