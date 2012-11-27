@@ -77,10 +77,16 @@ static int arizona_ldo_reg_set_voltage_sel(struct regulator_dev *rdev,
 				  ARIZONA_LDO1_VSEL_MASK, sel);
 }
 
+static int arizona_ldo_enable_time(struct regulator_dev *rdev)
+{
+	return 500;
+}
+
 static struct regulator_ops arizona_ldo1_ops = {
 	.list_voltage = arizona_ldo_reg_list_voltage_linear,
 	.get_voltage_sel = arizona_ldo_reg_get_voltage_sel,
 	.set_voltage_sel = arizona_ldo_reg_set_voltage_sel,
+	.enable_time = arizona_ldo_enable_time,
 };
 
 static struct regulator_desc arizona_ldo1 = {
