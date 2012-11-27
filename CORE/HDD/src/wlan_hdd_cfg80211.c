@@ -1332,7 +1332,6 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
                                        enum nl80211_hidden_ssid hidden_ssid)
 #endif
 {
-    hdd_config_t  *pConfigIni = ((hdd_context_t *)(pHostapdAdapter->pHddCtx))->cfg_ini;
     tsap_Config_t *pConfig;
     beacon_data_t *pBeacon = NULL;
     struct ieee80211_mgmt *pMgmt_frame;
@@ -1374,8 +1373,7 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
                                       pConfig->dtim_period);
 
 
-    /* Hdd cfg settings takes preference */
-    if (pConfigIni->Is11dSupportEnabled && (pHostapdAdapter->device_mode == WLAN_HDD_SOFTAP))
+    if (pHostapdAdapter->device_mode == WLAN_HDD_SOFTAP)
     {
         pIe = wlan_hdd_cfg80211_get_ie_ptr(pBeacon->tail, pBeacon->tail_len,
                                        WLAN_EID_COUNTRY);
