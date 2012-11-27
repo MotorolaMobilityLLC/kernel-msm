@@ -2557,8 +2557,9 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
     
     pNeighborRoamInfo->roamChannelInfo.currentChanIndex = 0;
     pNeighborRoamInfo->roamChannelInfo.chanListScanInProgress = eANI_BOOLEAN_TRUE;
-    /* We are about to start a fresh scan cycle, purge results from the past */
-    csrScanFlushResult(pMac);
+    /* We are about to start a fresh scan cycle, 
+     * purge non-P2P results from the past */
+    csrScanFlushSelectiveResult(pMac, VOS_FALSE);
     
     /* Transition to CFG_CHAN_LIST_SCAN_STATE */
     CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_CFG_CHAN_LIST_SCAN)

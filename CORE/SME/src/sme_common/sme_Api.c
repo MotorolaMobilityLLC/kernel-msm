@@ -2008,7 +2008,7 @@ eHalStatus sme_ScanFlushP2PResult(tHalHandle hHal, tANI_U8 sessionId)
         status = sme_AcquireGlobalLock( &pMac->sme );
         if ( HAL_STATUS_SUCCESS( status ) )
         {
-                status = csrScanFlushP2PResult( hHal );
+                status = csrScanFlushSelectiveResult( hHal, VOS_TRUE );
                 sme_ReleaseGlobalLock( &pMac->sme );
         }
 
