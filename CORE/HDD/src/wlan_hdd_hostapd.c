@@ -2622,7 +2622,7 @@ static const struct iw_priv_args hostapd_private_args[] = {
     {   QCSAP_IOCTL_SET_TX_POWER,
         IW_PRIV_TYPE_INT| IW_PRIV_SIZE_FIXED | 1,
         0,
-        "" },
+        "setTxPower" },
 };
 
 static const iw_handler hostapd_private[] = {
