@@ -1238,7 +1238,7 @@ void csrDisconnectAllActiveSessions(tpAniSirGlobal pMac);
 
 #ifdef FEATURE_WLAN_LFR
 //Returns whether "Legacy Fast Roaming" is enabled...or not
-tANI_BOOLEAN csrRoamIsFastRoamEnabled(tpAniSirGlobal pMac);
+tANI_BOOLEAN csrRoamIsFastRoamEnabled(tpAniSirGlobal pMac, tANI_U32 sessionId);
 tANI_BOOLEAN csrIsChannelPresentInList( tANI_U8 *pChannelList, int  numChannels, tANI_U8   channel );
 VOS_STATUS csrAddToChannelListFront( tANI_U8 *pChannelList, int  numChannels, tANI_U8   channel );
 #endif

@@ -306,7 +306,7 @@ VOS_STATUS csrNeighborRoamReassocIndCallback(v_PVOID_t pAdapter,
     else
 #endif
 #ifdef FEATURE_WLAN_LFR
-    if (csrRoamIsFastRoamEnabled(pMac))
+    if (csrRoamIsFastRoamEnabled(pMac, CSR_SESSION_ID_INVALID))
     {
         if (eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN == pNeighborRoamInfo->neighborRoamState)
         {
@@ -1188,7 +1188,7 @@ static void csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac, tScanResultHa
 #ifdef FEATURE_WLAN_LFR
         // If we are supporting legacy roaming, and 
         // if the candidate is on the "pre-auth failed" list, ignore it. 
-        if (csrRoamIsFastRoamEnabled(pMac))
+        if (csrRoamIsFastRoamEnabled(pMac, CSR_SESSION_ID_INVALID))
         {
             if (!csrNeighborRoamIsPreauthCandidate(pMac, pScanResult->BssDescriptor.bssId))
             {
@@ -1543,7 +1543,7 @@ static eHalStatus csrNeighborRoamScanRequestCallback(tHalHandle halHandle, void 
 #ifdef FEATURE_WLAN_LFR
                     /* If LFR is enabled, then we can register the reassoc callback here as we have some 
                                         APs in the roamable AP list */
-                    if (csrRoamIsFastRoamEnabled(pMac))
+                    if (csrRoamIsFastRoamEnabled(pMac, CSR_SESSION_ID_INVALID))
                     {
                         /* Valid APs are found after scan. Now we can initiate pre-authentication */
                         CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN)
@@ -2988,7 +2988,7 @@ eHalStatus csrNeighborRoamIndicateConnect(tpAniSirGlobal pMac, tANI_U8 sessionId
 
 #ifdef FEATURE_WLAN_LFR
             // If "Legacy Fast Roaming" is enabled 
-            if (csrRoamIsFastRoamEnabled(pMac))
+            if (csrRoamIsFastRoamEnabled(pMac, sessionId))
             {
                 init_ft_flag = TRUE;
             }
@@ -3466,7 +3466,7 @@ void csrNeighborRoamGetHandoffAPInfo(tpAniSirGlobal pMac, tpCsrNeighborRoamBSSIn
     else
 #endif
 #ifdef FEATURE_WLAN_LFR
-    if (csrRoamIsFastRoamEnabled(pMac))
+    if (csrRoamIsFastRoamEnabled(pMac, CSR_SESSION_ID_INVALID))
     {
         /* Always the BSS info in the head is the handoff candidate */
         pBssNode = csrNeighborRoamGetRoamableAPListNextEntry(pMac, &pNeighborRoamInfo->FTRoamInfo.preAuthDoneList, NULL);

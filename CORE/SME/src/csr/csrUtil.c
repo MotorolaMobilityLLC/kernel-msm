@@ -4259,7 +4259,7 @@ tANI_U8 csrRetrieveRsnIe( tHalHandle hHal, tANI_U32 sessionId, tCsrRoamProfile *
     {
         if ( !csrIsProfileRSN( pProfile ) ) break;
 #ifdef FEATURE_WLAN_LFR
-        if (csrRoamIsFastRoamEnabled(pMac))
+        if (csrRoamIsFastRoamEnabled(pMac, sessionId))
         {
             // If "Legacy Fast Roaming" is enabled ALWAYS rebuild the RSN IE from 
             // scratch. So it contains the current PMK-IDs
