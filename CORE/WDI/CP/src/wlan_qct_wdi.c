@@ -19434,7 +19434,7 @@ WDI_ResponseTimerCB
   if ( WDI_MAX_RESP != pWDICtx->wdiExpectedResponse )
   {
 
-  WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+  WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
             "Timeout occurred while waiting for %s (%d) message from device "
             " - catastrophic failure",
             WDI_getRespMsgString(pWDICtx->wdiExpectedResponse),
