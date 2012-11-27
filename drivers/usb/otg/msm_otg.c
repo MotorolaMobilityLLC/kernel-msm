@@ -1538,7 +1538,11 @@ static bool msm_chg_mhl_detect(struct msm_otg *motg)
 	id = irq_read_line(motg->pdata->pmic_id_irq);
 	local_irq_restore(flags);
 
-	if (id)
+	/* The following check is to escape from doing MHL detection
+	 * if ID is no more grounded. It depends on ID interrupt's
+	 * current state as well as active logic.
+	 */
+	if (id ^ motg->pdata->pmic_id_irq_active_high)
 		return false;
 
 	mhl_det_in_progress = true;
@@ -2183,7 +2187,8 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 			if (pdata->pmic_id_irq) {
 				unsigned long flags;
 				local_irq_save(flags);
-				if (irq_read_line(pdata->pmic_id_irq))
+				if (irq_read_line(pdata->pmic_id_irq) ^
+					pdata->pmic_id_irq_active_high)
 					set_bit(ID, &motg->inputs);
 				else
 					clear_bit(ID, &motg->inputs);
@@ -2992,7 +2997,8 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 	unsigned long flags;
 
 	local_irq_save(flags);
-	if (irq_read_line(motg->pdata->pmic_id_irq)) {
+	if (irq_read_line(motg->pdata->pmic_id_irq) ^
+		motg->pdata->pmic_id_irq_active_high) {
 		if (!test_and_set_bit(ID, &motg->inputs)) {
 			pr_debug("PMIC: ID set\n");
 			work = 1;
