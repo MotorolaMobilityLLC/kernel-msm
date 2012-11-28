@@ -102,9 +102,7 @@
 /*-------------------------------------------------------------------------- 
   Static Type declarations
   ------------------------------------------------------------------------*/
-static tChannelListWithPower csrRoamPowerTableFromEeprom[WNI_CFG_VALID_CHANNEL_LIST_LEN];
-static tChannelListWithPower csrRoamPowerTableFromEeprom40MHz[WNI_CFG_VALID_CHANNEL_LIST_LEN];
-static tCsrRoamSession       csrRoamRoamSession[CSR_ROAM_SESSION_MAX];
+static tCsrRoamSession csrRoamRoamSession[CSR_ROAM_SESSION_MAX];
 /*-------------------------------------------------------------------------- 
   Type declarations
   ------------------------------------------------------------------------*/
@@ -268,9 +266,8 @@ static void csrRoamInitGlobals(tpAniSirGlobal pMac)
 {
     if(pMac)
     {
-        pMac->roam.powerTableFromEeprom      = csrRoamPowerTableFromEeprom;
-        pMac->roam.powerTableFromEeprom40MHz = csrRoamPowerTableFromEeprom40MHz;
-        pMac->roam.roamSession               = csrRoamRoamSession;
+        vos_mem_zero(&csrRoamRoamSession, sizeof(csrRoamRoamSession));
+        pMac->roam.roamSession = csrRoamRoamSession;
     }
     return;
 }
@@ -279,9 +276,7 @@ static void csrRoamDeInitGlobals(tpAniSirGlobal pMac)
 {
     if(pMac)
     {
-        pMac->roam.powerTableFromEeprom      = NULL;
-        pMac->roam.powerTableFromEeprom40MHz = NULL;
-        pMac->roam.roamSession               = NULL;
+        pMac->roam.roamSession = NULL;
     }
     return;
 }

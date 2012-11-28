@@ -867,8 +867,6 @@ typedef struct tagCsrRoamStruct
     tANI_U32 numValidChannels; //total number of channels in CFG
     
     tANI_S32 sPendingCommands;
-    tChannelListWithPower   *powerTableFromEeprom;
-    tChannelListWithPower   *powerTableFromEeprom40MHz;
     tPalTimerHandle hTimerWaitForKey;  //To support timeout for WaitForKey state
     tCsrSummaryStatsInfo       summaryStatsInfo;
     tCsrGlobalClassAStatsInfo  classAStatsInfo;
