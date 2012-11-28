@@ -1885,8 +1885,10 @@ limProcessMlmScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         pMac->lim.gLimSystemInScanLearnMode = 1;
 
 #ifdef WLAN_FEATURE_P2P
+        /* Use min + max channel time to calculate the total duration of scan.
+         * Adding an overhead of 5ms to account for the scan messaging delays */
         pMac->lim.gTotalScanDuration = 
-                    pMac->lim.gpLimMlmScanReq->maxChannelTime*
+                    (pMac->lim.gpLimMlmScanReq->minChannelTime + pMac->lim.gpLimMlmScanReq->maxChannelTime + 5)*
                     pMac->lim.gpLimMlmScanReq->channelList.numChannels;
 #endif
         limSetScanMode(pMac);
