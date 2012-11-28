@@ -754,7 +754,9 @@ VOS_STATUS vos_start( v_CONTEXT_t vosContext )
          "%s: WDA_NVDownload_start reporting other error", __func__);
      }
      VOS_ASSERT(0);
-     goto err_wda_stop;   
+     vos_event_reset( &(gpVosContext->wdaCompleteEvent) );
+	 WDA_setNeedShutdown(vosContext);
+	 return VOS_STATUS_E_FAILURE;
   }
 
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
@@ -926,7 +928,7 @@ err_wda_stop:
      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
          "%s: Failed to stop WDA", __func__);
      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vStatus ) );
-     WDA_stopFailed(vosContext);
+     WDA_setNeedShutdown(vosContext);
   }
   else
   {
@@ -946,7 +948,7 @@ err_wda_stop:
            "%s: WDA_stop reporting other error", __func__);
        }
        VOS_ASSERT( 0 );
-       WDA_stopFailed(vosContext);
+       WDA_setNeedShutdown(vosContext);
     }
   }
 #endif
@@ -973,7 +975,7 @@ VOS_STATUS vos_stop( v_CONTEXT_t vosContext )
      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
          "%s: Failed to stop WDA", __func__);
      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
-     WDA_stopFailed(vosContext);
+     WDA_setNeedShutdown(vosContext);
   }
   else
   {
@@ -992,7 +994,7 @@ VOS_STATUS vos_stop( v_CONTEXT_t vosContext )
           VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
            "%s: WDA_stop reporting other error", __func__ );
        }
-       WDA_stopFailed(vosContext);
+       WDA_setNeedShutdown(vosContext);
     }
   }
 #endif

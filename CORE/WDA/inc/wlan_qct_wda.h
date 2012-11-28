@@ -471,10 +471,10 @@ VOS_STATUS WDA_close(v_PVOID_t pVosContext);
 VOS_STATUS WDA_shutdown(v_PVOID_t pVosContext, wpt_boolean closeTransport);
 
 /*
- * FUNCTION: WDA_stopFailed
- * WDA stop is failed
+ * FUNCTION: WDA_setNeedShutdown
+ * WDA stop failed or WDA NV Download failed
  */
-void WDA_stopFailed(v_PVOID_t pVosContext);
+void WDA_setNeedShutdown(v_PVOID_t pVosContext);
 /*
  * FUNCTION: WDA_needShutdown
  * WDA requires a shutdown rather than a close

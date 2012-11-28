@@ -11800,12 +11800,13 @@ VOS_STATUS WDA_shutdown(v_PVOID_t pVosContext, wpt_boolean closeTransport)
    }
    return status;
 }
+
 /*
- * FUNCTION: WDA_stopFailed
- * WDA stop failed
+ * FUNCTION: WDA_setNeedShutdown
+ * WDA stop failed or WDA NVDownload failed
  */
 
-void WDA_stopFailed(v_PVOID_t pVosContext)
+void WDA_setNeedShutdown(v_PVOID_t pVosContext)
 {
    tWDA_CbContext *pWDA = (tWDA_CbContext *)VOS_GET_WDA_CTXT(pVosContext);
    if(pWDA == NULL)
