@@ -479,6 +479,12 @@ VOS_STATUS vos_nv_open(void)
     
     /*Get the global context */
     pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+    
+    if(pVosContext == NULL)
+    {
+        return (eHAL_STATUS_FAILURE);
+    }
+
     bufSize = sizeof(nvEFSTable_t);
     status = hdd_request_firmware(WLAN_NV_FILE,
                                   ((VosContextType*)(pVosContext))->pHDDContext,
@@ -512,7 +518,7 @@ VOS_STATUS vos_nv_open(void)
             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                       "!!!WARNING: INVALID NV FILE, DRIVER IS USING DEFAULT CAL VALUES %d %d!!!",
                       nvReadBufSize, bufSize);
-            return (eHAL_STATUS_SUCCESS);
+            goto error;
         }
 
        pnvEFSTable->nvValidityBitmap = gnvEFSTable->nvValidityBitmap;
@@ -524,7 +530,7 @@ VOS_STATUS vos_nv_open(void)
 
                 if(vos_nv_read( VNV_FIELD_IMAGE, (v_VOID_t *)&pnvEFSTable->halnv.fields,
                    NULL, sizeof(sNvFields) ) != VOS_STATUS_SUCCESS)
-                   return (eHAL_STATUS_FAILURE);
+                   goto error;
             }
         }
 
@@ -536,7 +542,7 @@ VOS_STATUS vos_nv_open(void)
                 if(vos_nv_read( VNV_RATE_TO_POWER_TABLE, 
                   (v_VOID_t *)&pnvEFSTable->halnv.tables.pwrOptimum[0],
                   NULL, sizeof(tRateGroupPwr) * NUM_RF_SUBBANDS ) != VOS_STATUS_SUCCESS)
-               return (eHAL_STATUS_FAILURE);
+                    goto error;
             }
         }
 
@@ -549,7 +555,7 @@ VOS_STATUS vos_nv_open(void)
                 if(vos_nv_read( VNV_REGULARTORY_DOMAIN_TABLE,
                 (v_VOID_t *)&pnvEFSTable->halnv.tables.regDomains[0],
                  NULL, sizeof(sRegulatoryDomains) * NUM_REG_DOMAINS ) != VOS_STATUS_SUCCESS)
-                    return (eHAL_STATUS_FAILURE);
+                    goto error;
             }
         }
 
@@ -561,7 +567,7 @@ VOS_STATUS vos_nv_open(void)
                 if(vos_nv_read( VNV_DEFAULT_LOCATION,
                 (v_VOID_t *)&pnvEFSTable->halnv.tables.defaultCountryTable,
                 NULL, sizeof(sDefaultCountry) ) !=  VOS_STATUS_SUCCESS)
-                     return (eHAL_STATUS_FAILURE);
+                    goto error;
             }
         }
     
@@ -573,7 +579,7 @@ VOS_STATUS vos_nv_open(void)
                 if(vos_nv_read( VNV_TPC_POWER_TABLE, 
                   (v_VOID_t *)&pnvEFSTable->halnv.tables.plutCharacterized[0],
                   NULL, sizeof(tTpcPowerTable) * NUM_RF_CHANNELS ) != VOS_STATUS_SUCCESS)
-                     return (eHAL_STATUS_FAILURE);
+                    goto error;
             }
         }
     
@@ -585,7 +591,7 @@ VOS_STATUS vos_nv_open(void)
                 if(vos_nv_read( VNV_TPC_PDADC_OFFSETS,
                   (v_VOID_t *)&pnvEFSTable->halnv.tables.plutPdadcOffset[0],
                   NULL, sizeof(tANI_U16) * NUM_RF_CHANNELS ) != VOS_STATUS_SUCCESS)
-                     return (eHAL_STATUS_FAILURE);
+                    goto error;
             }
         }
         if (vos_nv_getValidity(VNV_RSSI_CHANNEL_OFFSETS, &itemIsValid) == 
@@ -596,7 +602,7 @@ VOS_STATUS vos_nv_open(void)
                 if(vos_nv_read( VNV_RSSI_CHANNEL_OFFSETS,
                   (v_VOID_t *)&pnvEFSTable->halnv.tables.rssiChanOffsets[0],
                   NULL, sizeof(sRssiChannelOffsets) * 2 ) != VOS_STATUS_SUCCESS)
-                     return (eHAL_STATUS_FAILURE);
+                    goto error;
             }
         }
     
@@ -607,7 +613,7 @@ VOS_STATUS vos_nv_open(void)
             {
                 if(vos_nv_read( VNV_RF_CAL_VALUES, (v_VOID_t *)&pnvEFSTable->halnv
     .tables.rFCalValues, NULL, sizeof(sRFCalValues) ) != VOS_STATUS_SUCCESS)
-                     return (eHAL_STATUS_FAILURE);
+                    goto error;
             }
         }
 
@@ -619,7 +625,7 @@ VOS_STATUS vos_nv_open(void)
                 if(vos_nv_read( VNV_ANTENNA_PATH_LOSS,
                   (v_VOID_t *)&pnvEFSTable->halnv.tables.antennaPathLoss[0], NULL, 
                 sizeof(tANI_S16)*NUM_RF_CHANNELS ) != VOS_STATUS_SUCCESS)
-                     return (eHAL_STATUS_FAILURE);
+                    goto error;
             }
         }
         if (vos_nv_getValidity(VNV_PACKET_TYPE_POWER_LIMITS, &itemIsValid) == 
@@ -630,7 +636,7 @@ VOS_STATUS vos_nv_open(void)
                 if(vos_nv_read( VNV_PACKET_TYPE_POWER_LIMITS, 
                   (v_VOID_t *)&pnvEFSTable->halnv.tables.pktTypePwrLimits[0], NULL, 
                 sizeof(tANI_S16)*NUM_802_11_MODES*NUM_RF_CHANNELS ) != VOS_STATUS_SUCCESS)
-                     return (eHAL_STATUS_FAILURE);
+                    goto error;
             }
         }
 
@@ -642,7 +648,7 @@ VOS_STATUS vos_nv_open(void)
                 if(vos_nv_read( VNV_OFDM_CMD_PWR_OFFSET, 
                   (v_VOID_t *)&pnvEFSTable->halnv.tables.ofdmCmdPwrOffset, NULL, 
                                 sizeof(sOfdmCmdPwrOffset)) != VOS_STATUS_SUCCESS)
-                     return (eHAL_STATUS_FAILURE);
+                    goto error;
             }
         }
 
@@ -654,7 +660,7 @@ VOS_STATUS vos_nv_open(void)
                if(vos_nv_read(VNV_TX_BB_FILTER_MODE, 
                   (v_VOID_t *)&pnvEFSTable->halnv.tables.txbbFilterMode, NULL, 
                 sizeof(sTxBbFilterMode)) != VOS_STATUS_SUCCESS)
-                     return (eHAL_STATUS_FAILURE);
+                   goto error;
             }
         }
         if (vos_nv_getValidity(VNV_TABLE_VIRTUAL_RATE, &itemIsValid) == 
@@ -665,12 +671,15 @@ VOS_STATUS vos_nv_open(void)
                if(vos_nv_read(VNV_TABLE_VIRTUAL_RATE, 
                   (v_VOID_t *)&pnvEFSTable->halnv.tables.pwrOptimum_virtualRate, NULL, 
                 sizeof(gnvEFSTable->halnv.tables.pwrOptimum_virtualRate)) != VOS_STATUS_SUCCESS)
-                     return (eHAL_STATUS_FAILURE);
+                   goto error;
             }
         }
     }
 
     return VOS_STATUS_SUCCESS;
+error:
+    vos_mem_free(pnvEFSTable);
+    return eHAL_STATUS_FAILURE ;
 }
 
 VOS_STATUS vos_nv_close(void)

@@ -227,7 +227,7 @@ VOS_STATUS WDA_open(v_PVOID_t pVosContext, v_PVOID_t pOSContext,
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                 "WDI Sync Event init failed - status = %d\n", status);
-      status = VOS_STATUS_E_FAILURE;
+      goto error;
    }
    /* Init Frame transfer event */
    status = vos_event_init(&wdaContext->txFrameEvent);
@@ -235,21 +235,21 @@ VOS_STATUS WDA_open(v_PVOID_t pVosContext, v_PVOID_t pOSContext,
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                 "VOS Mgmt Frame Event init failed - status = %d\n", status);
-      status = VOS_STATUS_E_FAILURE;
+      goto error;
    }
    status = vos_event_init(&wdaContext->suspendDataTxEvent);
    if(!VOS_IS_STATUS_SUCCESS(status)) 
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
             "VOS suspend data tx Event init failed - status = %d\n", status);
-      status = VOS_STATUS_E_FAILURE;
+      goto error;
    }
    status = vos_event_init(&wdaContext->waitOnWdiIndicationCallBack);
    if(!VOS_IS_STATUS_SUCCESS(status)) 
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
             "VOS wait On Wdi Ind Event init failed - status = %d\n", status);
-      status = VOS_STATUS_E_FAILURE;
+      goto error;
    }
    vos_trace_setLevel(VOS_MODULE_ID_WDA,VOS_TRACE_LEVEL_ERROR);
    wdaContext->driverMode = pMacParams->driverType;
@@ -258,7 +258,7 @@ VOS_STATUS WDA_open(v_PVOID_t pVosContext, v_PVOID_t pOSContext,
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                                   "WDI Init failed" );
-      status = VOS_STATUS_E_FAILURE;
+      goto error;
    }
    else 
    {
@@ -273,6 +273,10 @@ VOS_STATUS WDA_open(v_PVOID_t pVosContext, v_PVOID_t pOSContext,
       wdaContext->frameTransRequired = wdiDevCapability.bFrameXtlSupported;
    }
    return status;
+
+error:
+      vos_free_context(pVosContext, VOS_MODULE_ID_WDA, wdaContext);
+      return VOS_STATUS_E_FAILURE;
 }
 
 /*

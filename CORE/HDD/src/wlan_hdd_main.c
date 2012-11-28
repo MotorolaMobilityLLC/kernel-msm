@@ -3396,6 +3396,12 @@ int hdd_wlan_startup(struct device *dev )
    /*Get vos context here bcoz vos_open requires it*/
    pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
 
+   if(pVosContext == NULL)
+   {
+      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: Failed vos_get_global_context",__func__);
+      goto err_free_hdd_context;
+   }
+
    //Save the Global VOSS context in adapter context for future.
    pHddCtx->pvosContext = pVosContext;
 
