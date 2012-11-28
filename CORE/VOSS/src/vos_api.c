@@ -754,7 +754,7 @@ VOS_STATUS vos_start( v_CONTEXT_t vosContext )
          "%s: WDA_NVDownload_start reporting other error", __func__);
      }
      VOS_ASSERT(0);
-     vos_event_reset( &(gpVosContext->wdaCompleteEvent) );
+	 vos_event_reset( &(gpVosContext->wdaCompleteEvent) );
 	 WDA_setNeedShutdown(vosContext);
 	 return VOS_STATUS_E_FAILURE;
   }
