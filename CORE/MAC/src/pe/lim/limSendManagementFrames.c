@@ -2586,6 +2586,13 @@ limSendAssocReqMgmtFrame(tpAniSirGlobal   pMac,
         txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
     }
 
+#ifdef WLAN_FEATURE_P2P
+	if(psessionEntry->pePersona == VOS_P2P_CLIENT_MODE)
+	{
+		txFlag |= HAL_USE_PEER_STA_REQUESTED_MASK;
+	}
+#endif
+
     halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) (sizeof(tSirMacMgmtHdr) + nPayload),
             HAL_TXRX_FRM_802_11_MGMT,
             ANI_TXDIR_TODS,
@@ -3363,6 +3370,13 @@ limSendReassocReqMgmtFrame(tpAniSirGlobal     pMac,
         txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
     }
 
+#ifdef WLAN_FEATURE_P2P
+	if(psessionEntry->pePersona == VOS_P2P_CLIENT_MODE)
+	{
+		txFlag |= HAL_USE_PEER_STA_REQUESTED_MASK;
+	}
+#endif
+
     halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) (sizeof(tSirMacMgmtHdr) + nPayload),
                             HAL_TXRX_FRM_802_11_MGMT,
                             ANI_TXDIR_TODS,
@@ -3650,6 +3664,13 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
     {
         txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
     }
+
+#ifdef WLAN_FEATURE_P2P
+	if(psessionEntry->pePersona == VOS_P2P_CLIENT_MODE)
+	{
+		txFlag |= HAL_USE_PEER_STA_REQUESTED_MASK;
+	}
+#endif
 
     /// Queue Authentication frame in high priority WQ
     halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) frameLen,
@@ -3964,7 +3985,15 @@ limSendDisassocMgmtFrame(tpAniSirGlobal pMac,
     {
         txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
     }
-    
+
+#ifdef WLAN_FEATURE_P2P
+	if((psessionEntry->pePersona == VOS_P2P_CLIENT_MODE) ||
+	   (psessionEntry->pePersona == VOS_P2P_GO_MODE))
+	{
+		txFlag |= HAL_USE_PEER_STA_REQUESTED_MASK;
+	}
+#endif
+
     if (waitForAck)
     {
         // Queue Disassociation frame in high priority WQ
@@ -4131,7 +4160,15 @@ limSendDeauthMgmtFrame(tpAniSirGlobal pMac,
     {
         txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
     }
-    
+
+#ifdef WLAN_FEATURE_P2P
+	if((psessionEntry->pePersona == VOS_P2P_CLIENT_MODE) ||
+	   (psessionEntry->pePersona == VOS_P2P_GO_MODE))
+	{
+		txFlag |= HAL_USE_PEER_STA_REQUESTED_MASK;
+	}
+#endif
+
     if (waitForAck)
     {
         // Queue Disassociation frame in high priority WQ

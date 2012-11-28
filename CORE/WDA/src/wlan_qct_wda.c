@@ -9276,17 +9276,27 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
       }
       return VOS_STATUS_E_FAILURE;
    }
-   /* Get system role, use the self station if in unknown role or STA role */
-   systemRole = wdaGetGlobalSystemRole(pMac);
-   if (( eSYSTEM_UNKNOWN_ROLE == systemRole ) || 
-       (( eSYSTEM_STA_ROLE == systemRole )
-#ifdef FEATURE_WLAN_CCX
-      && frmType == HAL_TXRX_FRM_802_11_MGMT
-#endif
-            ))
+
+   /* If Peer Sta mask is set don't overwrite to self sta */
+   if(txFlag & HAL_USE_PEER_STA_REQUESTED_MASK)
    {
-       txFlag |= HAL_USE_SELF_STA_REQUESTED_MASK;
+      txFlag &= ~HAL_USE_PEER_STA_REQUESTED_MASK;
    }
+   else
+   {
+      /* Get system role, use the self station if in unknown role or STA role */
+      systemRole = wdaGetGlobalSystemRole(pMac);
+      if (( eSYSTEM_UNKNOWN_ROLE == systemRole ) || 
+          (( eSYSTEM_STA_ROLE == systemRole )
+#ifdef FEATURE_WLAN_CCX
+          && frmType == HAL_TXRX_FRM_802_11_MGMT
+#endif
+          ))
+      { 	  
+          txFlag |= HAL_USE_SELF_STA_REQUESTED_MASK;
+      }
+   }
+
 
    /* Divert Disassoc/Deauth frames thru self station, as by the time unicast
       disassoc frame reaches the HW, HAL has already deleted the peer station */
