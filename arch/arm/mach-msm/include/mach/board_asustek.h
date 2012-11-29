@@ -48,4 +48,12 @@ static inline void __init asustek_add_ramconsole_devices(void)
 }
 #endif
 
+#ifdef CONFIG_ASUSTEK_KEYPAD
+void __init asustek_add_keypad(void);
+#else
+static inline void __init asustek_add_keypad(void)
+{
+	/* empty */
+}
+#endif
 #endif // __ASM_ARCH_MSM_BOARD_ASUSTEK_H

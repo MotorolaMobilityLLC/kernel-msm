@@ -4,3 +4,13 @@ config MACH_ASUSTEK
 menu "ASUSTek Board Selection"
 source "arch/arm/mach-msm/asustek/Kconfig.board"
 endmenu
+
+
+menu "ASUSTek Specific Feature"
+config ASUSTEK_KEYPAD
+	bool "Support ASUSTek GPIO keypad"
+	depends on MACH_ASUSTEK
+	default y
+	help
+		Select if the GPIO keyboard is attached
+endmenu
