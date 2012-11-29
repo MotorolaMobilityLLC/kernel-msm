@@ -9670,7 +9670,8 @@ static eCsrCfgDot11Mode csrRoamGetPhyModeBandForBss( tpAniSirGlobal pMac, eCsrPh
      cfgDot11Mode = eCSR_CFG_DOT11_MODE_11B;
    }
 
-    if( (!CSR_IS_11n_ALLOWED(pProfile->EncryptionType.encryptionType[0] )) &&
+    /* Incase of WEP Security encryption type is coming as part of add key. So while STart BSS dont have information */
+    if( (!CSR_IS_11n_ALLOWED(pProfile->EncryptionType.encryptionType[0] ) || ((pProfile->privacy == 1) && (pProfile->EncryptionType.encryptionType[0] == eCSR_ENCRYPT_TYPE_NONE))  ) &&
         ((eCSR_CFG_DOT11_MODE_11N == cfgDot11Mode) ||
 #ifdef WLAN_FEATURE_11AC
         (eCSR_CFG_DOT11_MODE_11AC == cfgDot11Mode) ||
