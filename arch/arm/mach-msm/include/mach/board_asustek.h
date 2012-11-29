@@ -28,6 +28,35 @@
 #define ASUSTEK_RAM_CONSOLE_SIZE	(124 * SZ_1K * 2)
 #endif
 
+typedef enum {
+	TP_TYPE_INVALID = -1,
+	TP_TYPE_A = 0,
+	TP_TYPE_B = 1,
+	TP_TYPE_C = 2,
+	TP_TYPE_D = 3,
+	TP_TYPE_MAX
+} tp_type;
+
+typedef enum {
+	LCD_TYPE_INVALID = -1,
+	LCD_TYPE_A = 0,
+	LCD_TYPE_B = 1,
+	LCD_TYPE_MAX
+} lcd_type;
+
+typedef enum {
+	HW_REV_INVALID = -1,
+	HW_REV_SR1 = 0,
+	HW_REV_ER = 1,
+	HW_REV_PR = 2,
+	HW_REV_MP = 3,
+	HW_REV_MAX
+} hw_rev;
+
+struct asustek_pcbid_platform_data {
+	const char *UUID;
+};
+
 void __init asustek_reserve(void);
 
 #ifdef CONFIG_ANDROID_PERSISTENT_RAM
@@ -56,4 +85,16 @@ static inline void __init asustek_add_keypad(void)
 	/* empty */
 }
 #endif
+
+#ifdef CONFIG_ASUSTEK_PCBID
+void __init asustek_add_pcbid_devices(void);
+
+tp_type asustek_get_tp_type(void);
+
+lcd_type asustek_get_lcd_type(void);
+
+hw_rev asustek_get_hw_rev(void);
+
+#endif
+
 #endif // __ASM_ARCH_MSM_BOARD_ASUSTEK_H

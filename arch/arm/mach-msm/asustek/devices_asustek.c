@@ -92,3 +92,96 @@ void __init asustek_add_ramconsole_devices(void)
 	platform_device_register(&ram_console_device);
 }
 #endif /* CONFIG_ANDROID_RAM_CONSOLE */
+
+#ifdef CONFIG_ASUSTEK_PCBID
+static char serialno[32] = {0,};
+int __init asustek_androidboot_serialno(char *s)
+{
+	int n;
+
+	if (*s == '=')
+		s++;
+	n = snprintf(serialno, sizeof(serialno), "%s", s);
+	serialno[n] = '\0';
+
+	return 1;
+}
+__setup("androidboot.serialno", asustek_androidboot_serialno);
+
+struct asustek_pcbid_platform_data asustek_pcbid_pdata = {
+	.UUID = serialno,
+};
+
+static struct resource resources_asustek_pcbid[] = {
+	{
+		.start	= 57,
+		.end	= 57,
+		.name	= "PCB_ID0",
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.start	= 59,
+		.end	= 59,
+		.name	= "PCB_ID1",
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.start	= 12,
+		.end	= 12,
+		.name	= "PCB_ID2",
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.start	= 1,
+		.end	= 1,
+		.name	= "PCB_ID3",
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.start	= 14,
+		.end	= 14,
+		.name	= "PCB_ID4",
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.start	= 15,
+		.end	= 15,
+		.name	= "PCB_ID5",
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.start	= 51,
+		.end	= 51,
+		.name	= "PCB_ID6",
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.start	= 28,
+		.end	= 28,
+		.name	= "PCB_ID7",
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.start	= 86,
+		.end	= 86,
+		.name	= "PCB_ID8",
+		.flags	= IORESOURCE_IO,
+	},
+};
+
+static struct platform_device asustek_pcbid_device = {
+	.name		= "asustek_pcbid",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(resources_asustek_pcbid),
+	.resource = resources_asustek_pcbid,
+	.dev = {
+		.platform_data = &asustek_pcbid_pdata,
+	}
+};
+
+void __init asustek_add_pcbid_devices(void)
+{
+	platform_device_register(&asustek_pcbid_device);
+}
+
+#endif

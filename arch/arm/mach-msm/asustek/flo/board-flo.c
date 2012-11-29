@@ -3002,6 +3002,9 @@ static void __init apq8064_common_init(void)
 		pr_err("Failed to initialize XO votes\n");
 	msm_clock_init(&apq8064_clock_init_data);
 	apq8064_init_gpiomux();
+#ifdef CONFIG_MACH_ASUSTEK
+	asustek_add_pcbid_devices();
+#endif
 	apq8064_i2c_init();
 	register_i2c_devices();
 
