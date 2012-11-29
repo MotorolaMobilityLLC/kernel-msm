@@ -50,9 +50,7 @@
 #include <wlan_hdd_wmm.h>
 #include <wlan_hdd_cfg.h>
 #include <linux/spinlock.h>
-#ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
 #include <linux/wakelock.h>
-#endif
 #ifdef ANI_MANF_DIAG
 #include <wlan_hdd_ftm.h>
 #endif
@@ -144,6 +142,8 @@
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
 #define HDD_WAKE_LOCK_DURATION 50
 #endif
+
+#define HDD_SAP_WAKE_LOCK_DURATION 10000 //10 sec
 
 typedef struct hdd_tx_rx_stats_s
 {
@@ -911,6 +911,8 @@ struct hdd_context_s
    u_int8_t hdd_restart_retries;
    
    hdd_scaninfo_t scan_info;
+
+   struct wake_lock sap_wake_lock;
 };
 
 

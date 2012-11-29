@@ -433,6 +433,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
     char maxAssocExceededEvent[IW_CUSTOM_MAX+1];
     v_BYTE_t we_custom_start_event[64];
     char *startBssEvent; 
+    hdd_context_t *pHddCtx;
 
     dev = (struct net_device *)usrDataForCallback;
     pHostapdAdapter = netdev_priv(dev);
@@ -440,6 +441,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
     pHddApCtx = WLAN_HDD_GET_AP_CTX_PTR(pHostapdAdapter);
     sapEvent = pSapEvent->sapHddEventCode;
     memset(&wrqu, '\0', sizeof(wrqu));
+    pHddCtx = (hdd_context_t*)(pHostapdAdapter->pHddCtx);
 
     switch(sapEvent)
     {
@@ -619,6 +621,11 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                 if (!VOS_IS_STATUS_SUCCESS(vos_status))
                    hddLog(LOGE, FL("Failed to start AP inactivity timer\n"));
             }
+            if (wake_lock_active(&pHddCtx->sap_wake_lock))
+            {
+               wake_unlock(&pHddCtx->sap_wake_lock);
+            }
+            wake_lock_timeout(&pHddCtx->sap_wake_lock, HDD_SAP_WAKE_LOCK_DURATION);
 #ifdef CONFIG_CFG80211
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
             {

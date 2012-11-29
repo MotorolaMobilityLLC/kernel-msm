@@ -2933,6 +2933,8 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    /* Destroy the wake lock */
    wake_lock_destroy(&pHddCtx->rx_wake_lock);
 #endif
+   /* Destroy the wake lock */
+   wake_lock_destroy(&pHddCtx->sap_wake_lock);
 
    //Close VOSS
    //This frees pMac(HAL) context. There should not be any call that requires pMac access after this.
@@ -3889,6 +3891,10 @@ int hdd_wlan_startup(struct device *dev )
            WAKE_LOCK_SUSPEND,
            "qcom_rx_wakelock");
 #endif
+   /* Initialize the wake lcok */
+   wake_lock_init(&pHddCtx->sap_wake_lock,
+           WAKE_LOCK_SUSPEND,
+           "qcom_sap_wakelock");
 
    vos_event_init(&pHddCtx->scan_info.scan_finished_event);
    pHddCtx->scan_info.scan_pending_option = WEXT_SCAN_PENDING_GIVEUP;
