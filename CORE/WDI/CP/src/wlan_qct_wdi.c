@@ -7482,6 +7482,13 @@ WDI_ProcessConfigBSSReq
   /* Need to fill in the BSS index */
   halConfigBssReqMsg.uBssParams.configBssParams.staContext.bssIdx = pBSSSes->ucBSSIdx;
 
+#ifdef WLAN_FEATURE_11AC
+  if (WDI_getFwWlanFeatCaps(DOT11AC)){
+    wpalMemoryCopy( pSendBuffer+usDataOffset,
+                  &halConfigBssReqMsg.uBssParams.configBssParams_V1,
+                  uMsgSize);
+  }else
+#endif
   wpalMemoryCopy( pSendBuffer+usDataOffset,
                   &halConfigBssReqMsg.uBssParams.configBssParams,
                   uMsgSize);
@@ -7781,6 +7788,7 @@ WDI_ProcessPostAssocReq
     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
              "This station does not exist in the WDI Station Table %d");
     wpalMutexRelease(&pWDICtx->wptMutex);
+    wpalMemoryFree(pSendBuffer);
     return WDI_STATUS_E_FAILURE;
   }
 
@@ -10456,6 +10464,7 @@ WDI_ProcessConfigStaReq
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
                "This station does not exist in the WDI Station Table %d");
       wpalMutexRelease(&pWDICtx->wptMutex);
+      wpalMemoryFree(pSendBuffer);
       return WDI_STATUS_E_FAILURE;
     }
   }

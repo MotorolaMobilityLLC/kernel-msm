@@ -403,7 +403,7 @@ tSirRetStatus ConvertTCLAS(tpAniSirGlobal  pMac,
                                  tSirTclasInfo  *pOld,
                                  tDot11fIETCLAS *pNew)
 {
-    tANI_U32 length;
+    tANI_U32 length = 0;
 
     if ( DOT11F_FAILED( dot11fGetPackedIETCLAS( pMac, pNew, &length ) ) )
     {
@@ -493,7 +493,7 @@ tSirRetStatus ConvertWMMTCLAS(tpAniSirGlobal    pMac,
                                     tSirTclasInfo     *pOld,
                                     tDot11fIEWMMTCLAS *pNew)
 {
-    tANI_U32 length;
+    tANI_U32 length = 0;
 
     if ( DOT11F_FAILED( dot11fGetPackedIEWMMTCLAS( pMac, pNew, &length ) ) )
     {
