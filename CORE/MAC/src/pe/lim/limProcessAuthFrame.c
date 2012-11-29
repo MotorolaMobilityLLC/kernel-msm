@@ -554,6 +554,45 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
     {
         case SIR_MAC_AUTH_FRAME_1:
             // AuthFrame 1
+            
+            pStaDs = dphLookupHashEntry(pMac, pHdr->sa,
+                    &assocId, &psessionEntry->dph.dphHashTable);
+            if (pStaDs)
+            {
+                tLimMlmDisassocReq       *pMlmDisassocReq = NULL;
+                tLimMlmDeauthReq        *pMlmDeauthReq = NULL;
+                pMlmDisassocReq = pMac->lim.limDisassocDeauthCnfReq.pMlmDisassocReq;
+                if (pMlmDisassocReq &&
+                        (palEqualMemory( pMac->hHdd,(tANI_U8 *) pHdr->sa,
+                                         (tANI_U8 *) &pMlmDisassocReq->peerMacAddr,
+                                         sizeof(tSirMacAddr))))
+                {
+                    PELOGE(limLog(pMac, LOGP, FL("\nTODO:Ack for disassoc frame is pending"
+                                    "Issue delsta for %02x:%02x:%02x:%02x:%02x:%02x"),
+                                pMlmDisassocReq->peerMacAddr[0],
+                                pMlmDisassocReq->peerMacAddr[1],
+                                pMlmDisassocReq->peerMacAddr[2],
+                                pMlmDisassocReq->peerMacAddr[3],
+                                pMlmDisassocReq->peerMacAddr[4],
+                                pMlmDisassocReq->peerMacAddr[5]);)
+                }
+                pMlmDeauthReq = pMac->lim.limDisassocDeauthCnfReq.pMlmDeauthReq;
+                if (pMlmDeauthReq &&
+                        (palEqualMemory( pMac->hHdd,(tANI_U8 *) pHdr->sa,
+                                         (tANI_U8 *) &pMlmDeauthReq->peerMacAddr,
+                                         sizeof(tSirMacAddr))))
+                {
+                    PELOGE(limLog(pMac, LOGP, FL("\nTODO:Ack for disassoc frame is pending"
+                                    "Issue delsta for %02x:%02x:%02x:%02x:%02x:%02x"),
+                                pMlmDeauthReq->peerMacAddr[0],
+                                pMlmDeauthReq->peerMacAddr[1],
+                                pMlmDeauthReq->peerMacAddr[2],
+                                pMlmDeauthReq->peerMacAddr[3],
+                                pMlmDeauthReq->peerMacAddr[4],
+                                pMlmDeauthReq->peerMacAddr[5]
+                                );)
+                }
+            }
 
             /// Check if there exists pre-auth context for this STA
             pAuthNode = limSearchPreAuthList(pMac, pHdr->sa);

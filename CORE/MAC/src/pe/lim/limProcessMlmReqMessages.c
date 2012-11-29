@@ -2816,6 +2816,55 @@ end:
                       (tANI_U32 *) &mlmDisassocCnf);
 }
 
+void limCleanUpDisassocDeauthReq(tpAniSirGlobal pMac,
+        tANI_U8 *staMac,
+        tANI_BOOLEAN cleanRxPath)
+{
+    tLimMlmDisassocReq       *pMlmDisassocReq;
+    tLimMlmDeauthReq        *pMlmDeauthReq;
+    pMlmDisassocReq = pMac->lim.limDisassocDeauthCnfReq.pMlmDisassocReq;
+    if (pMlmDisassocReq &&
+            (palEqualMemory( pMac->hHdd,(tANI_U8 *) staMac,
+                             (tANI_U8 *) &pMlmDisassocReq->peerMacAddr,
+                             sizeof(tSirMacAddr))))
+    {
+        if (cleanRxPath)
+        {
+            limProcessDisassocAckTimeout(pMac);
+        }
+        else
+        {
+            if (tx_timer_running(&pMac->lim.limTimers.gLimDisassocAckTimer))
+            {
+                limDeactivateAndChangeTimer(pMac, eLIM_DISASSOC_ACK_TIMER);
+            }
+            palFreeMemory(pMac->hHdd, (tANI_U8 *) pMlmDisassocReq);
+            pMac->lim.limDisassocDeauthCnfReq.pMlmDisassocReq = NULL;
+        }
+    }
+
+    pMlmDeauthReq = pMac->lim.limDisassocDeauthCnfReq.pMlmDeauthReq;
+    if (pMlmDeauthReq &&
+            (palEqualMemory( pMac->hHdd,(tANI_U8 *) staMac,
+                             (tANI_U8 *) &pMlmDeauthReq->peerMacAddr,
+                             sizeof(tSirMacAddr))))
+    {
+        if (cleanRxPath)
+        {
+            limProcessDeauthAckTimeout(pMac);
+        }
+        else
+        {
+            if (tx_timer_running(&pMac->lim.limTimers.gLimDeauthAckTimer))
+            {
+                limDeactivateAndChangeTimer(pMac, eLIM_DEAUTH_ACK_TIMER);
+            }
+            palFreeMemory( pMac->hHdd, (tANI_U8 *) pMlmDeauthReq);
+            pMac->lim.limDisassocDeauthCnfReq.pMlmDeauthReq = NULL;
+        }
+    }
+}
+
 void limProcessDisassocAckTimeout(tpAniSirGlobal pMac)
 {
     limSendDisassocCnf(pMac);
