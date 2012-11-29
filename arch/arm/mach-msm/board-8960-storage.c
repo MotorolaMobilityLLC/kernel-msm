@@ -371,18 +371,30 @@ void __init msm8960_init_mmc(void)
 	if (!machine_is_msm8960_cdp())
 		msm8960_sdc1_data.uhs_caps |= (MMC_CAP_1_8V_DDR |
 					       MMC_CAP_UHS_DDR50);
+	if (msm8960_oem_funcs.msm_mmc_init)
+		msm8960_oem_funcs.msm_mmc_init(&msm8960_oem_funcs,
+					       1, &msm8960_sdc1_data);
 	/* SDC1 : eMMC card connected */
 	msm_add_sdcc(1, &msm8960_sdc1_data);
 #endif
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
+	if (msm8960_oem_funcs.msm_mmc_init)
+		msm8960_oem_funcs.msm_mmc_init(&msm8960_oem_funcs,
+					       2, &msm8960_sdc2_data);
 	/* SDC2: SDIO slot for WLAN*/
 	msm_add_sdcc(2, &msm8960_sdc2_data);
 #endif
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
+	if (msm8960_oem_funcs.msm_mmc_init)
+		msm8960_oem_funcs.msm_mmc_init(&msm8960_oem_funcs,
+					       3, &msm8960_sdc3_data);
 	/* SDC3: External card slot */
 	msm_add_sdcc(3, &msm8960_sdc3_data);
 #endif
 #ifdef CONFIG_MMC_MSM_SDC4_SUPPORT
+	if (msm8960_oem_funcs.msm_mmc_init)
+		msm8960_oem_funcs.msm_mmc_init(&msm8960_oem_funcs,
+					       4, &msm8960_sdc4_data);
 	/* SDC4: SDIO slot for WLAN */
 	msm_add_sdcc(4, &msm8960_sdc4_data);
 #endif
