@@ -2650,16 +2650,6 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
         return;
     }
 
-#if defined WLAN_FEATURE_VOWIFI_11R
-    if (psessionEntry->is11Rconnection)
-    {
-        if (pMac->ft.ftSmeContext.reassoc_ft_ies_length == 0)
-        {
-            return;
-        }
-    }
-#endif
-
     /* check this early to avoid unncessary operation */
     if(NULL == psessionEntry->pLimReAssocReq)
     {
@@ -2852,6 +2842,13 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
         PopulateDot11fHTCaps( pMac, psessionEntry, &frm.HTCaps );
     }
 
+#if defined WLAN_FEATURE_VOWIFI_11R
+    if ( psessionEntry->pLimReAssocReq->bssDescription.mdiePresent && (0 == pMac->ft.ftSmeContext.reassoc_ft_ies_length) )
+    {
+        PopulateMDIE( pMac, &frm.MobilityDomain, psessionEntry->pLimReAssocReq->bssDescription.mdie);
+    }
+#endif
+
     nStatus = dot11fGetPackedReAssocRequestSize( pMac, &frm, &nPayload );
     if ( DOT11F_FAILED( nStatus ) )
     {
@@ -2976,8 +2973,8 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
     }
 
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-    PELOGE(limLog(pMac, LOGE, FL("Re-assoc Req Frame is: "));
-            sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOGE,
+    PELOGE(limLog(pMac, LOG1, FL("Re-assoc Req Frame is: "));
+            sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1,
                 (tANI_U8 *)pFrame,
                 (nBytes + ft_ies_length));)
 #endif
@@ -3003,6 +3000,7 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
                            (ft_ies_length))) != eHAL_STATUS_SUCCESS )
     {
         PELOGE(limLog(pMac, LOGE, FL("Unable to allocate memory to store assoc request"));)
+        psessionEntry->assocReqLen = 0;
     }
     else
     {
@@ -3475,14 +3473,17 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
 #if defined WLAN_FEATURE_VOWIFI_11R
                 if (pAuthFrameBody->authAlgoNumber == eSIR_FT_AUTH)
                 {
-                    if (pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies) 
+                    if (0 != pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length) 
                     {
                         frameLen += pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length;
                         limLog(pMac, LOG3, FL("Auth frame, FTIES length added=%d\n"), 
                         pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length);
                     }
-                    else 
+                    else
+                    {
                         limLog(pMac, LOG3, FL("Auth frame, Does not contain FTIES!!!\n"));
+                    	frameLen += (2+SIR_MDIE_SIZE);
+                    }
                 }
 #endif
                 break;
@@ -3623,19 +3624,32 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
 
             {
                 int i = 0;
-#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
                 if (pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length) 
                 {
+#if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
                     PELOGE(limLog(pMac, LOGE, FL("Auth1 Frame FTIE is: "));
                         sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOGE,
                             (tANI_U8 *)pBody,
                             (pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length));)
-                }
 #endif
-                for (i=0; i<pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length; i++)
-                {
-                    *pBody = pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies[i];
+                    for (i=0; i<pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length; i++)
+                    {
+                       *pBody = pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies[i];
+                       pBody++;
+                    }
+                }
+                else
+                { 
+                    /* MDID attr is 54*/
+                    *pBody = 54;
                     pBody++;
+                    *pBody = SIR_MDIE_SIZE;
+                    pBody++;
+                    for(i=0;i<SIR_MDIE_SIZE;i++)
+                    {
+                      *pBody = pMac->ft.ftPEContext.pFTPreAuthReq->pbssDescription->mdie[i];
+                       pBody++;
+                    }
                 }
             }
         }

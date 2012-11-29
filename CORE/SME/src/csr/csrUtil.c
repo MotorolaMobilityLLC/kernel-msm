@@ -3028,10 +3028,14 @@ eHalStatus csrValidateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
 /* Function to return TRUE if the authtype is 11r */
-tANI_BOOLEAN csrIsAuthType11r( eCsrAuthType AuthType )
+tANI_BOOLEAN csrIsAuthType11r( eCsrAuthType AuthType, tANI_U8 mdiePresent)
 {
     switch ( AuthType )
     {
+        case eCSR_AUTH_TYPE_OPEN_SYSTEM:
+            if(mdiePresent)
+                return TRUE;
+            break; 
         case eCSR_AUTH_TYPE_FT_RSN_PSK:
         case eCSR_AUTH_TYPE_FT_RSN:
             return TRUE;
@@ -3045,7 +3049,7 @@ tANI_BOOLEAN csrIsAuthType11r( eCsrAuthType AuthType )
 /* Function to return TRUE if the profile is 11r */
 tANI_BOOLEAN csrIsProfile11r( tCsrRoamProfile *pProfile )
 {
-    return csrIsAuthType11r( pProfile->negotiatedAuthType );
+    return csrIsAuthType11r( pProfile->negotiatedAuthType, pProfile->MDID.mdiePresent );
 }
 
 #endif

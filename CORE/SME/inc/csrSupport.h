@@ -813,7 +813,7 @@ eHalStatus csrValidateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
 tANI_BOOLEAN csrIsProfile11r( tCsrRoamProfile *pProfile );
-tANI_BOOLEAN csrIsAuthType11r( eCsrAuthType AuthType );
+tANI_BOOLEAN csrIsAuthType11r( eCsrAuthType AuthType, tANI_U8 mdiePresent);
 #endif
 
 #ifdef FEATURE_WLAN_CCX
