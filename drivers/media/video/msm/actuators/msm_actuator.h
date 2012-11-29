@@ -91,14 +91,7 @@ struct msm_actuator_ctrl_t {
 	uint16_t i2c_tbl_index;
 };
 
-#ifdef CONFIG_MSM_ACTUATOR
 struct msm_actuator_ctrl_t *get_actrl(struct v4l2_subdev *sd);
-#else
-static inline struct msm_actuator_ctrl_t *get_actrl(struct v4l2_subdev *sd)
-{
-	return NULL;
-}
-#endif
 
 #define VIDIOC_MSM_ACTUATOR_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 11, void __user *)
