@@ -40,6 +40,8 @@
 #include <mach/msm_iomap.h>
 #include <mach/subsystem_restart.h>
 
+#include <asm/system_info.h>
+
 #ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
 #include "wcnss_prealloc.h"
 #endif
@@ -2189,6 +2191,9 @@ wcnss_wlan_probe(struct platform_device *pdev)
 	mutex_init(&penv->dev_lock);
 	mutex_init(&penv->vbat_monitor_mutex);
 	init_waitqueue_head(&penv->read_wait);
+
+	/* populate serial_number during init */
+	penv->serial_number = system_serial_low;
 
 	/* Since we were built into the kernel we'll be called as part
 	 * of kernel initialization.  We don't know if userspace
