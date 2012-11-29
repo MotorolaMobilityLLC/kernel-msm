@@ -3471,20 +3471,20 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
                 bodyLen  = SIR_MAC_AUTH_CHALLENGE_OFFSET;
 
 #if defined WLAN_FEATURE_VOWIFI_11R
-                if (pAuthFrameBody->authAlgoNumber == eSIR_FT_AUTH)
+            if (pAuthFrameBody->authAlgoNumber == eSIR_FT_AUTH)
+            {
+                if (0 != pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length) 
                 {
-                    if (0 != pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length) 
-                    {
-                        frameLen += pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length;
-                        limLog(pMac, LOG3, FL("Auth frame, FTIES length added=%d\n"), 
-                        pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length);
-                    }
-                    else
-                    {
-                        limLog(pMac, LOG3, FL("Auth frame, Does not contain FTIES!!!\n"));
-                    	frameLen += (2+SIR_MDIE_SIZE);
-                    }
+                    frameLen += pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length;
+                    limLog(pMac, LOG3, FL("Auth frame, FTIES length added=%d\n"), 
+                    pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length);
                 }
+                else
+                {
+                    limLog(pMac, LOG3, FL("Auth frame, Does not contain FTIES!!!\n"));
+                    frameLen += (2+SIR_MDIE_SIZE);
+                }
+            }
 #endif
                 break;
 
@@ -3634,8 +3634,8 @@ limSendAuthMgmtFrame(tpAniSirGlobal pMac,
 #endif
                     for (i=0; i<pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies_length; i++)
                     {
-                       *pBody = pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies[i];
-                       pBody++;
+                        *pBody = pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies[i];
+                        pBody++;
                     }
                 }
                 else
