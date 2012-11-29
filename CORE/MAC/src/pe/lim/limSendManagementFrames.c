@@ -3861,8 +3861,12 @@ end:
     /* Update PE session ID*/
     mlmDisassocCnf.sessionId = pMlmDisassocReq->sessionId;
 
-    /// Free up buffer allocated for mlmDisassocReq
-    palFreeMemory( pMac->hHdd, (tANI_U8 *) pMlmDisassocReq);
+    if(pMlmDisassocReq != NULL)
+    {
+        /// Free up buffer allocated for mlmDisassocReq
+        palFreeMemory( pMac->hHdd, (tANI_U8 *) pMlmDisassocReq);
+        pMac->lim.limDisassocDeauthCnfReq.pMlmDisassocReq = NULL;
+    }
 
     limPostSmeMessage(pMac,
             LIM_MLM_DISASSOC_CNF,
