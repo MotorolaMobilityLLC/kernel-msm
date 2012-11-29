@@ -17,7 +17,7 @@
 
 #include <media/videobuf2-core.h>
 #include <mach/iommu_domains.h>
-#include <linux/ion.h>
+#include <linux/msm_ion.h>
 
 struct videobuf2_mapping {
 	unsigned int count;
@@ -74,7 +74,7 @@ int videobuf2_pmem_contig_user_get(struct videobuf2_contig_pmem *mem,
 					uint32_t addr_offset, int path,
 					struct ion_client *client);
 void videobuf2_pmem_contig_user_put(struct videobuf2_contig_pmem *mem,
-					struct ion_client *client);
+				struct ion_client *client);
 unsigned long videobuf2_to_pmem_contig(struct vb2_buffer *buf,
 					unsigned int plane_no);
 
