@@ -3909,8 +3909,14 @@ limProcessAuthFailureTimeout(tpAniSirGlobal pMac)
              * before Auth Failure timeout.
              * Issue MLM auth confirm with timeout reason code
              */
-
-             
+#ifdef WLAN_FEATURE_P2P
+             //Restore default failure timeout
+             if (VOS_P2P_CLIENT_MODE == psessionEntry->pePersona && psessionEntry->defaultAuthFailureTimeout)
+             {
+                 ccmCfgSetInt(pMac,WNI_CFG_AUTHENTICATE_FAILURE_TIMEOUT ,
+                                       psessionEntry->defaultAuthFailureTimeout, NULL, eANI_BOOLEAN_FALSE);
+             }
+#endif
             limRestoreFromAuthState(pMac,eSIR_SME_AUTH_TIMEOUT_RESULT_CODE,eSIR_MAC_UNSPEC_FAILURE_REASON,psessionEntry);
             break;
 

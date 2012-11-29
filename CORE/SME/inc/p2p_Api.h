@@ -59,6 +59,9 @@ typedef struct sRemainOnChn{
   void *pCBContext;
 }tRemainOnChn, tpRemainOnChn;
 
+#define SIZE_OF_NOA_DESCRIPTOR 13
+#define MAX_NOA_PERIOD_IN_MICROSECS 3000000
+
 #ifdef WLAN_FEATURE_P2P_INTERNAL
 
 #define MAX_SOCIAL_CHANNELS 3

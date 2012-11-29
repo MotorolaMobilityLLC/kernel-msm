@@ -280,6 +280,7 @@ typedef struct sPESession           // Added to Support BT-AMP
 #ifdef WLAN_FEATURE_P2P
     tSirNoAParam p2pNoA;
     tSirP2PNoaAttr p2pGoPsUpdate;
+    tANI_U32 defaultAuthFailureTimeout;
 #endif
 
     /* EDCA QoS parameters

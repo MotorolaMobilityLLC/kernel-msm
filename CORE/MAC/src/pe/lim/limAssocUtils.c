@@ -2800,6 +2800,13 @@ limCheckAndAnnounceJoinSuccess(tpAniSirGlobal pMac,
 {
     tSirMacSSid          currentSSID;
     tLimMlmJoinCnf       mlmJoinCnf;
+#ifdef WLAN_FEATURE_P2P
+    tANI_U32             val = 0;
+    tANI_U32             *noa1DurationFromBcn = NULL;
+    tANI_U32             *noa2DurationFromBcn = NULL;
+    tANI_U32             noa;
+    tANI_U32             TotalNum_NoADesc = 0;
+#endif
 
     palCopyMemory( pMac->hHdd, currentSSID.ssId,
                        psessionEntry->ssId.ssId,
@@ -2836,6 +2843,42 @@ limCheckAndAnnounceJoinSuccess(tpAniSirGlobal pMac,
         limDeactivateAndChangeTimer(pMac, eLIM_JOIN_FAIL_TIMER);
         // Deactivate Periodic Join timer
         limDeactivateAndChangeTimer(pMac, eLIM_PERIODIC_JOIN_PROBE_REQ_TIMER);
+
+#ifdef WLAN_FEATURE_P2P
+    if (VOS_P2P_CLIENT_MODE == psessionEntry->pePersona &&
+                                   pBPR->P2PProbeRes.NoticeOfAbsence.present)
+    {
+
+        noa1DurationFromBcn = (tANI_U32*)(pBPR->P2PProbeRes.NoticeOfAbsence.NoADesc + 1);
+
+        if(pBPR->P2PProbeRes.NoticeOfAbsence.num_NoADesc)
+            TotalNum_NoADesc = pBPR->P2PProbeRes.NoticeOfAbsence.num_NoADesc/SIZE_OF_NOA_DESCRIPTOR;
+
+        noa = *noa1DurationFromBcn;
+
+        if(TotalNum_NoADesc > 1)
+        {
+            noa2DurationFromBcn = (tANI_U32*)(pBPR->P2PProbeRes.NoticeOfAbsence.NoADesc + SIZE_OF_NOA_DESCRIPTOR + 1);
+            noa += *noa2DurationFromBcn;
+        }
+
+        /*If MAX Noa exceeds 3 secs we will consider only 3 secs to 
+        * avoid arbitary values in noa duration field
+        */
+        noa = noa >  MAX_NOA_PERIOD_IN_MICROSECS ? MAX_NOA_PERIOD_IN_MICROSECS : noa;
+        noa = noa/1000; //Convert to ms
+
+        if( wlan_cfgGetInt(pMac, WNI_CFG_AUTHENTICATE_FAILURE_TIMEOUT,&val) == eSIR_SUCCESS )
+        {
+            psessionEntry->defaultAuthFailureTimeout = val;
+            ccmCfgSetInt(pMac,WNI_CFG_AUTHENTICATE_FAILURE_TIMEOUT ,val + noa, NULL, eANI_BOOLEAN_FALSE);
+        }
+    }
+    else
+    {
+        psessionEntry->defaultAuthFailureTimeout = 0;
+    }
+#endif
 
         // Update Beacon Interval at CFG database
 
