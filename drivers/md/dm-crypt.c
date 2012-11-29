@@ -1262,6 +1262,9 @@ static void crypt_free_tfms(struct crypt_config *cc)
 			crypto_free_ablkcipher(cc->tfms[i]);
 			cc->tfms[i] = NULL;
 		}
+
+	kfree(cc->tfms);
+	cc->tfms = NULL;
 }
 
 static int crypt_alloc_tfms(struct crypt_config *cc, char *ciphermode)
