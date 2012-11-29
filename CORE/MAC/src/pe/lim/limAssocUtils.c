@@ -2834,6 +2834,8 @@ limCheckAndAnnounceJoinSuccess(tpAniSirGlobal pMac,
 
         // Deactivate Join Failure timer
         limDeactivateAndChangeTimer(pMac, eLIM_JOIN_FAIL_TIMER);
+        // Deactivate Periodic Join timer
+        limDeactivateAndChangeTimer(pMac, eLIM_PERIODIC_JOIN_PROBE_REQ_TIMER);
 
         // Update Beacon Interval at CFG database
 

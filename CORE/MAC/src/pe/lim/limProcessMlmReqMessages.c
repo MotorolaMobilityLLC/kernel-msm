@@ -84,6 +84,7 @@ static void limProcessJoinFailureTimeout(tpAniSirGlobal);
 static void limProcessAuthFailureTimeout(tpAniSirGlobal);
 static void limProcessAuthRspTimeout(tpAniSirGlobal, tANI_U32);
 static void limProcessAssocFailureTimeout(tpAniSirGlobal, tANI_U32);
+static void limProcessPeriodicJoinProbeReqTimer(tpAniSirGlobal);
 
 static void limProcessMlmRemoveKeyReq(tpAniSirGlobal pMac, tANI_U32 * pMsgBuf);
 void 
@@ -141,6 +142,8 @@ limProcessMlmReqMessages(tpAniSirGlobal pMac, tpSirMsgQ Msg)
         case SIR_LIM_PERIODIC_PROBE_REQ_TIMEOUT:
                                limProcessPeriodicProbeReqTimer(pMac);  break;
         case SIR_LIM_JOIN_FAIL_TIMEOUT:     limProcessJoinFailureTimeout(pMac);  break;
+        case SIR_LIM_PERIODIC_JOIN_PROBE_REQ_TIMEOUT:
+                                            limProcessPeriodicJoinProbeReqTimer(pMac); break;
         case SIR_LIM_AUTH_FAIL_TIMEOUT:     limProcessAuthFailureTimeout(pMac);  break;
         case SIR_LIM_AUTH_RSP_TIMEOUT:      limProcessAuthRspTimeout(pMac, Msg->bodyval);  break;
         case SIR_LIM_ASSOC_FAIL_TIMEOUT:    limProcessAssocFailureTimeout(pMac, Msg->bodyval);  break;
@@ -3768,7 +3771,8 @@ limProcessJoinFailureTimeout(tpAniSirGlobal pMac)
 
         // 'Change' timer for future activations
         limDeactivateAndChangeTimer(pMac, eLIM_JOIN_FAIL_TIMER);
-
+        // Change Periodic probe req timer for future activation
+        limDeactivateAndChangeTimer(pMac, eLIM_PERIODIC_JOIN_PROBE_REQ_TIMER);
         /**
          * Issue MLM join confirm with timeout reason code
          */
@@ -3812,6 +3816,59 @@ limProcessJoinFailureTimeout(tpAniSirGlobal pMac)
     }
 } /*** limProcessJoinFailureTimeout() ***/
 
+
+/**
+ * limProcessPeriodicJoinProbeReqTimer()
+ *
+ *FUNCTION:
+ * This function is called to process periodic probe request
+ *  send during joining process.
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ *
+ *NOTE:
+ *
+ * @param  pMac      Pointer to Global MAC structure
+ * @return None
+ */
+
+static void limProcessPeriodicJoinProbeReqTimer(tpAniSirGlobal pMac)
+{
+    tpPESession  psessionEntry;
+    tSirMacSSid  ssId;
+
+    if((psessionEntry = peFindSessionBySessionId(pMac, pMac->lim.limTimers.gLimPeriodicJoinProbeReqTimer.sessionId))== NULL)
+    {
+        limLog(pMac, LOGE,FL("session does not exist for given SessionId\n"));
+        return;
+    }
+
+    if((VOS_TRUE == tx_timer_running(&pMac->lim.limTimers.gLimJoinFailureTimer)) && 
+                          (psessionEntry->limMlmState == eLIM_MLM_WT_JOIN_BEACON_STATE))
+    {
+        palCopyMemory( pMac->hHdd, ssId.ssId,
+            psessionEntry->ssId.ssId,
+            psessionEntry->ssId.length);
+        ssId.length = psessionEntry->ssId.length;
+
+        limSendProbeReqMgmtFrame( pMac, &ssId,
+           psessionEntry->pLimMlmJoinReq->bssDescription.bssId, psessionEntry->currentOperChannel/*chanNum*/,
+           psessionEntry->selfMacAddr, psessionEntry->dot11mode,
+           psessionEntry->pLimJoinReq->addIEScan.length, psessionEntry->pLimJoinReq->addIEScan.addIEdata);
+
+        limDeactivateAndChangeTimer(pMac, eLIM_PERIODIC_JOIN_PROBE_REQ_TIMER);
+
+        // Activate Join Periodic Probe Req timer
+        if (tx_timer_activate(&pMac->lim.limTimers.gLimPeriodicJoinProbeReqTimer) != TX_SUCCESS)
+        {
+            limLog(pMac, LOGP, FL("could not activate Periodic Join req failure timer\n"));
+            return;
+        }
+    }
+    return;
+} /*** limProcessPeriodicJoinProbeReqTimer() ***/
 
 
 /**

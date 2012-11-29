@@ -47,6 +47,8 @@
 #define LIM_QUIET_BSS_TIMER_TICK                 100
 // Lim KeepAlive timer default (3000)ms
 #define LIM_KEEPALIVE_TIMER_MS                   3000
+// Lim JoinProbeRequest Retry  timer default (200)ms
+#define LIM_JOIN_PROBE_REQ_TIMER_MS              200
 
 //default beacon interval value used in HB timer interval calculation
 #define LIM_HB_TIMER_BEACON_INTERVAL             100
@@ -237,6 +239,19 @@ limCreateTimers(tpAniSirGlobal pMac)
             // Log error
             limLog(pMac, LOGP, FL("could not create Join failure timer\n"));
 
+            goto err_timer;
+        }
+
+        //Send unicast probe req frame every 200 ms 
+        if ((tx_timer_create(&pMac->lim.limTimers.gLimPeriodicJoinProbeReqTimer,
+                        "Periodic Join Probe Request Timer",
+                        limTimerHandler, SIR_LIM_PERIODIC_JOIN_PROBE_REQ_TIMEOUT,
+                        SYS_MS_TO_TICKS(LIM_JOIN_PROBE_REQ_TIMER_MS), 0,
+                        TX_NO_ACTIVATE)) != TX_SUCCESS)
+        {
+            /// Could not create Periodic Join Probe Request timer.
+            // Log error
+            limLog(pMac, LOGP, FL("could not create Periodic Join Probe Request timer\n"));
             goto err_timer;
         }
 #if defined(ANI_OS_TYPE_RTAI_LINUX)
@@ -722,6 +737,7 @@ limCreateTimers(tpAniSirGlobal pMac)
         tx_timer_delete(&pMac->lim.limTimers.gLimReassocFailureTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimAssocFailureTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimJoinFailureTimer); 
+        tx_timer_delete(&pMac->lim.limTimers.gLimPeriodicJoinProbeReqTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimQuietBssTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimQuietTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimChannelSwitchTimer);
@@ -1177,6 +1193,26 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                        FL("Unable to change Join Failure timer\n"));
             }
 
+            break;
+
+        case eLIM_PERIODIC_JOIN_PROBE_REQ_TIMER:
+            if (tx_timer_deactivate(&pMac->lim.limTimers.gLimPeriodicJoinProbeReqTimer)
+                                         != TX_SUCCESS)
+            {
+                // Could not deactivate periodic join req Times.
+                limLog(pMac, LOGP,
+                       FL("Unable to deactivate periodic join request timer\n"));
+            }
+
+            val = SYS_MS_TO_TICKS(LIM_JOIN_PROBE_REQ_TIMER_MS);
+            if (tx_timer_change(&pMac->lim.limTimers.gLimPeriodicJoinProbeReqTimer,
+                                val, 0) != TX_SUCCESS)
+            {
+                // Could not change periodic join req times.
+                // Log error
+                limLog(pMac, LOGP, FL("Unable to change periodic join request timer\n"));
+            }
+ 
             break;
 
         case eLIM_AUTH_FAIL_TIMER:
