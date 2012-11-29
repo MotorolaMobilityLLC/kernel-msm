@@ -353,9 +353,7 @@ static int msm_gesture_init_ctrl(struct v4l2_subdev *sd,
 	v4l2_ctrl_new_custom(&p_gesture_ctrl->ctrl_handler,
 		&msm_gesture_ctrl_filter, p_gesture_ctrl);
 	if (p_gesture_ctrl->ctrl_handler.error) {
-#ifdef CONFIG_MSM_CAMERA_DEBUG
 		int err = p_gesture_ctrl->ctrl_handler.error;
-#endif
 		D("%s: error adding control %d", __func__, err);
 		p_gesture_ctrl->ctrl_handler.error = 0;
 	}

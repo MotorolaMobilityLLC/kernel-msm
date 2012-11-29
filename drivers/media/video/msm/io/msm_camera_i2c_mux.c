@@ -160,7 +160,7 @@ static int __devinit i2c_mux_probe(struct platform_device *pdev)
 i2c_mux_no_resource:
 	mutex_destroy(&mux_device->mutex);
 	kfree(mux_device);
-	return 0;
+	return rc;
 }
 
 static struct platform_driver i2c_mux_driver = {

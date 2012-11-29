@@ -73,7 +73,7 @@ static int msm_isp_notify_VFE_SOF_COUNT_EVT(struct v4l2_subdev *sd, void *arg)
 	struct msm_camvfe_params vfe_params;
 	int rc;
 
-	cfgcmd.cmd_type = CMD_VFE_SOF_COUNT_UPDATE;
+	cfgcmd.cmd_type = CMD_VFE_PIX_SOF_COUNT_UPDATE;
 	cfgcmd.value = NULL;
 	vfe_params.vfe_cfg = &cfgcmd;
 	vfe_params.data = arg;
@@ -86,7 +86,8 @@ int msm_isp_vfe_msg_to_img_mode(struct msm_cam_media_controller *pmctl,
 {
 	int image_mode;
 	uint32_t vfe_output_mode = pmctl->vfe_output_mode;
-	vfe_output_mode &= ~(VFE_OUTPUTS_RDI0|VFE_OUTPUTS_RDI1);
+	vfe_output_mode &= ~(VFE_OUTPUTS_RDI0|
+		VFE_OUTPUTS_RDI1|VFE_OUTPUTS_RDI2);
 	if (vfe_msg == VFE_MSG_OUTPUT_PRIMARY) {
 		switch (vfe_output_mode) {
 		case VFE_OUTPUTS_MAIN_AND_PREVIEW:
@@ -148,6 +149,11 @@ int msm_isp_vfe_msg_to_img_mode(struct msm_cam_media_controller *pmctl,
 			image_mode = MSM_V4L2_EXT_CAPTURE_MODE_RDI1;
 		else
 			image_mode = -1;
+	} else if (vfe_msg == VFE_MSG_OUTPUT_TERTIARY3) {
+		if (pmctl->vfe_output_mode & VFE_OUTPUTS_RDI2)
+			image_mode = MSM_V4L2_EXT_CAPTURE_MODE_RDI2;
+		else
+			image_mode = -1;
 	} else
 		image_mode = -1;
 
@@ -156,15 +162,14 @@ int msm_isp_vfe_msg_to_img_mode(struct msm_cam_media_controller *pmctl,
 	return image_mode;
 }
 
-static int msm_isp_notify_VFE_BUF_EVT(struct v4l2_subdev *sd, void *arg)
+static int msm_isp_notify_VFE_BUF_EVT(struct msm_cam_media_controller *pmctl,
+					struct v4l2_subdev *sd, void *arg)
 {
 	int rc = -EINVAL;
 	struct msm_vfe_resp *vdata = (struct msm_vfe_resp *)arg;
 	struct msm_free_buf free_buf, temp_free_buf;
 	struct msm_camvfe_params vfe_params;
 	struct msm_vfe_cfg_cmd cfgcmd;
-	struct msm_cam_media_controller *pmctl =
-		(struct msm_cam_media_controller *)v4l2_get_subdev_hostdata(sd);
 	struct msm_cam_v4l2_device *pcam = pmctl->pcam_ptr;
 	struct msm_frame_info *frame_info =
 		(struct msm_frame_info *)vdata->evt_msg.data;
@@ -172,7 +177,7 @@ static int msm_isp_notify_VFE_BUF_EVT(struct v4l2_subdev *sd, void *arg)
 	struct msm_cam_buf_handle buf_handle;
 
 	if (!pcam) {
-		pr_debug("%s pcam is null. return\n", __func__);
+		pr_err("%s pcam is null. return\n", __func__);
 		msm_isp_sync_free(vdata);
 		return rc;
 	}
@@ -275,14 +280,12 @@ static int msm_isp_notify_VFE_BUF_EVT(struct v4l2_subdev *sd, void *arg)
 /*
  * This function executes in interrupt context.
  */
-static int msm_isp_notify_vfe(struct v4l2_subdev *sd,
-	unsigned int notification,  void *arg)
+static int msm_isp_notify_vfe(struct msm_cam_media_controller *pmctl,
+	struct v4l2_subdev *sd,	unsigned int notification,  void *arg)
 {
 	int rc = 0;
 	struct v4l2_event v4l2_evt;
 	struct msm_isp_event_ctrl *isp_event;
-	struct msm_cam_media_controller *pmctl =
-		(struct msm_cam_media_controller *)v4l2_get_subdev_hostdata(sd);
 	struct msm_free_buf buf;
 
 	if (!pmctl) {
@@ -292,9 +295,9 @@ static int msm_isp_notify_vfe(struct v4l2_subdev *sd,
 	}
 
 	if (notification == NOTIFY_VFE_BUF_EVT)
-		return msm_isp_notify_VFE_BUF_EVT(sd, arg);
+		return msm_isp_notify_VFE_BUF_EVT(pmctl, sd, arg);
 
-	if (notification == NOTIFY_VFE_SOF_COUNT)
+	if (notification == NOTIFY_VFE_PIX_SOF_COUNT)
 		return msm_isp_notify_VFE_SOF_COUNT_EVT(sd, arg);
 
 	isp_event = kzalloc(sizeof(struct msm_isp_event_ctrl), GFP_ATOMIC);
@@ -353,7 +356,9 @@ static int msm_isp_notify_vfe(struct v4l2_subdev *sd,
 			case MSG_ID_OUTPUT_TERTIARY2:
 				msgid = VFE_MSG_OUTPUT_TERTIARY2;
 				break;
-
+			case MSG_ID_OUTPUT_TERTIARY3:
+				msgid = VFE_MSG_OUTPUT_TERTIARY3;
+				break;
 			default:
 				pr_err("%s: Invalid VFE output id: %d\n",
 					   __func__, isp_output->output_id);
@@ -493,11 +498,12 @@ static int msm_isp_notify_vfe(struct v4l2_subdev *sd,
 	return rc;
 }
 
-static int msm_isp_notify(struct v4l2_subdev *sd,
-	unsigned int notification, void *arg)
+int msm_isp_notify(struct msm_cam_media_controller *pmctl,
+	struct v4l2_subdev *sd,	unsigned int notification, void *arg)
 {
-	return msm_isp_notify_vfe(sd, notification, arg);
+	return msm_isp_notify_vfe(pmctl, sd, notification, arg);
 }
+EXPORT_SYMBOL(msm_isp_notify);
 
 static int msm_config_vfe(struct v4l2_subdev *sd,
 	struct msm_cam_media_controller *mctl, void __user *arg)
@@ -559,6 +565,7 @@ static int msm_axi_config(struct v4l2_subdev *sd,
 	case CMD_AXI_STOP:
 	case CMD_AXI_CFG_TERT1:
 	case CMD_AXI_CFG_TERT2:
+	case CMD_AXI_CFG_TERT3:
 		/* Dont need to pass buffer information.
 		 * subdev will get the buffer from media
 		 * controller free queue.
@@ -642,6 +649,7 @@ static int msm_vfe_stats_buf_ioctl(struct v4l2_subdev *sd,
 {
 	struct msm_vfe_cfg_cmd cfgcmd;
 	int rc = 0;
+	v4l2_set_subdev_hostdata(sd, mctl);
 	switch (cmd) {
 	case MSM_CAM_IOCTL_STATS_REQBUF: {
 		struct msm_stats_reqbuf reqbuf;
@@ -703,14 +711,18 @@ static int msm_vfe_stats_buf_ioctl(struct v4l2_subdev *sd,
 	return rc;
 }
 /* config function simliar to origanl msm_ioctl_config*/
-static int msm_isp_config(struct msm_cam_media_controller *pmctl,
+int msm_isp_config(struct msm_cam_media_controller *pmctl,
 			 unsigned int cmd, unsigned long arg)
 {
 
 	int rc = -EINVAL;
 	void __user *argp = (void __user *)arg;
-	struct v4l2_subdev *sd = pmctl->isp_sdev->sd;
-
+	struct v4l2_subdev *sd;
+	if (!pmctl->vfe_sdev) {
+		pr_err("%s vfe subdev is NULL\n", __func__);
+		return -ENXIO;
+	}
+	sd = pmctl->vfe_sdev;
 	D("%s: cmd %d\n", __func__, _IOC_NR(cmd));
 	switch (cmd) {
 	case MSM_CAM_IOCTL_CONFIG_VFE:
@@ -742,47 +754,7 @@ static int msm_isp_config(struct msm_cam_media_controller *pmctl,
 
 	return rc;
 }
-
-static struct msm_isp_ops isp_subdev[MSM_MAX_CAMERA_CONFIGS];
-
-/**/
-int msm_isp_init_module(int g_num_config_nodes)
-{
-	int i = 0;
-
-	for (i = 0; i < g_num_config_nodes; i++) {
-		isp_subdev[i].isp_config = msm_isp_config;
-		isp_subdev[i].isp_notify = msm_isp_notify;
-	}
-	return 0;
-}
-EXPORT_SYMBOL(msm_isp_init_module);
-
-/*
-*/
-int msm_isp_register(struct msm_cam_server_dev *psvr)
-{
-	int i = 0;
-
-	D("%s\n", __func__);
-
-	BUG_ON(!psvr);
-
-	/* Initialize notify function for v4l2_dev */
-	for (i = 0; i < psvr->config_info.num_config_nodes; i++)
-		psvr->isp_subdev[i] = &(isp_subdev[i]);
-
-	return 0;
-}
-EXPORT_SYMBOL(msm_isp_register);
-
-/**/
-void msm_isp_unregister(struct msm_cam_server_dev *psvr)
-{
-	int i = 0;
-	for (i = 0; i < psvr->config_info.num_config_nodes; i++)
-		psvr->isp_subdev[i] = NULL;
-}
+EXPORT_SYMBOL(msm_isp_config);
 
 int msm_isp_subdev_ioctl(struct v4l2_subdev *isp_subdev,
 	struct msm_vfe_cfg_cmd *cfgcmd, void *data)
