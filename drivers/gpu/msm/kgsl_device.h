@@ -278,7 +278,6 @@ struct kgsl_device {
 	int pm_dump_enable;
 	struct kgsl_pwrscale pwrscale;
 	struct kobject pwrscale_kobj;
-	struct pm_qos_request pm_qos_req_dma;
 	struct work_struct ts_expired_ws;
 	struct list_head events;
 	struct list_head events_pending_list;
