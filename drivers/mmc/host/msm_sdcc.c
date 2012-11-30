@@ -5967,9 +5967,9 @@ msmsdcc_probe(struct platform_device *pdev)
 	wake_lock_destroy(&host->sdio_suspend_wlock);
 	if (plat->sdiowakeup_irq)
 		free_irq(plat->sdiowakeup_irq, host);
- pio_irq_free:
-	if (plat->sdiowakeup_irq)
+	if (host->plat->mpm_sdiowakeup_int)
 		wake_lock_destroy(&host->sdio_wlock);
+ pio_irq_free:
 	free_irq(core_irqres->start, host);
  irq_free:
 	free_irq(core_irqres->start, host);
