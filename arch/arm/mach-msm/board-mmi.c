@@ -14,6 +14,7 @@
 #include <asm/hardware/gic.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
+#include <asm/mach/mmc.h>
 #include <asm/setup.h>
 #include <asm/system_info.h>
 
@@ -434,6 +435,46 @@ put_node:
 	return;
 }
 
+static void __init mmi_mmc_init(struct msm8960_oem_init_ptrs *oem_ptr,
+				int host, void *pdata)
+{
+	struct mmc_platform_data *sdcc = (struct mmc_platform_data *)pdata;
+	switch (host) {
+	case 1:		/* SDCC1 */
+		sdcc->pin_data->pad_data->drv->on[0].val = GPIO_CFG_6MA;
+		sdcc->pin_data->pad_data->drv->on[1].val = GPIO_CFG_6MA;
+		sdcc->pin_data->pad_data->drv->on[2].val = GPIO_CFG_6MA;
+		/* Enable UHS rates up to DDR50 */
+		/*
+		 * FIXME: investigate SDR100 modes on pro HW (no card support
+		 * right now).
+		 */
+		sdcc->uhs_caps = (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
+				  MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 |
+				  MMC_CAP_1_8V_DDR);
+		/*
+		 * FIXME: Might need devtree here if it turns out that 8960
+		 * layout can't support HS200.  No cards currently support
+		 * this, but they are coming soon.
+		 */
+		sdcc->uhs_caps2 = 0;
+		break;
+	case 3:		/* SDCC3 */
+		sdcc->pin_data->pad_data->drv->on[0].val = GPIO_CFG_8MA;
+		sdcc->pin_data->pad_data->drv->on[1].val = GPIO_CFG_8MA;
+		sdcc->pin_data->pad_data->drv->on[2].val = GPIO_CFG_8MA;
+		sdcc->status_gpio = PM8921_GPIO_PM_TO_SYS(20);
+		sdcc->status_irq = gpio_to_irq(sdcc->status_gpio);
+		sdcc->is_status_gpio_active_low = true;
+		/* FIXME: need to validate SDR100 on the SD slot. */
+		sdcc->uhs_caps = (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
+				  MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 |
+				  MMC_CAP_MAX_CURRENT_600);
+		sdcc->uhs_caps2 = 0;
+		break;
+	}
+}
+
 static struct mmi_oem_data mmi_data;
 
 static void __init mmi_msm8960_init_early(void)
@@ -461,6 +502,7 @@ static void __init mmi_msm8960_init_early(void)
 	msm8960_oem_funcs.msm_display_init = mmi_disp_init;
 	msm8960_oem_funcs.msm_regulator_init = mmi_regulator_init;
 	msm8960_oem_funcs.msm_otg_init = mmi_otg_init;
+	msm8960_oem_funcs.msm_mmc_init = mmi_mmc_init;
 
 	/* Custom OEM Platform Data */
 	mmi_data.is_factory = mmi_boot_mode_is_factory;
