@@ -5034,6 +5034,9 @@ WLANTL_RxFrames
 
   while ( NULL != vosTempBuff )
   {
+    broadcast = VOS_FALSE;
+    selfBcastLoopback = VOS_FALSE; 
+
     vos_pkt_walk_packet_chain( vosDataBuff, &vosDataBuff, 1/*true*/ );
 
     /*---------------------------------------------------------------------
@@ -5412,6 +5415,9 @@ WLANTL_RxCachedFrames
 
   while ( NULL != vosTempBuff )
   {
+    broadcast = VOS_FALSE;
+    selfBcastLoopback = VOS_FALSE; 
+
     vos_pkt_walk_packet_chain( vosDataBuff, &vosDataBuff, 1/*true*/ );
 
           TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
@@ -8542,6 +8548,119 @@ WLANTL_Translate80211To8023Header
 
   return VOS_STATUS_SUCCESS;
 }/*WLANTL_Translate80211To8023Header*/
+
+/*==========================================================================
+  FUNCTION    WLANTL_FindFrameTypeBcMcUc
+
+  DESCRIPTION
+    Utility function to find whether received frame is broadcast, multicast
+    or unicast.
+
+  DEPENDENCIES
+    The STA must be registered with TL before this function can be called.
+
+  PARAMETERS
+
+   IN
+   pTLCb:          pointer to the TL's control block
+   ucSTAId:        identifier of the station being processed
+   vosDataBuff:    pointer to the vos buffer
+
+   IN/OUT
+    pucBcMcUc:       pointer to buffer, will contain frame type on return
+
+  RETURN VALUE
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_INVAL:   invalid input parameters
+    VOS_STATUS_E_BADMSG:  failed to extract info from data buffer
+    VOS_STATUS_SUCCESS:   success
+
+  SIDE EFFECTS
+    None.
+============================================================================*/
+VOS_STATUS
+WLANTL_FindFrameTypeBcMcUc
+(
+  WLANTL_CbType *pTLCb,
+  v_U8_t        ucSTAId,
+  vos_pkt_t     *vosDataBuff,
+  v_U8_t        *pucBcMcUc
+)
+{
+   VOS_STATUS    vosStatus = VOS_STATUS_SUCCESS;
+   v_PVOID_t     aucBDHeader;
+   v_PVOID_t     pvPeekData;
+   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+   /*------------------------------------------------------------------------
+     Sanity check
+    ------------------------------------------------------------------------*/
+   if ((NULL == pTLCb) || 
+       (NULL == vosDataBuff) || 
+       (NULL == pucBcMcUc))
+   {
+      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+             "WLAN TL:Invalid parameter in WLANTL_FindFrameTypeBcMcUc"));
+      return VOS_STATUS_E_INVAL;
+   }
+
+   /*------------------------------------------------------------------------
+     Extract BD header and check if valid
+    ------------------------------------------------------------------------*/
+   vosStatus = WDA_DS_PeekRxPacketInfo(vosDataBuff, (v_PVOID_t)&aucBDHeader, 0/*Swap BD*/ );
+
+   if (NULL == aucBDHeader)
+   {
+      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+             "WLAN TL:WLANTL_FindFrameTypeBcMcUc - Cannot extract BD header"));
+      VOS_ASSERT(0);
+      return VOS_STATUS_E_BADMSG;
+   }
+
+   if ((0 == WDA_GET_RX_FT_DONE(aucBDHeader)) &&
+       (0 != pTLCb->atlSTAClients[ucSTAId].wSTADesc.ucSwFrameRXXlation))
+   {
+      /* Its an 802.11 frame, extract MAC address 1 */
+      TLLOG2(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+             "WLAN TL:WLANTL_FindFrameTypeBcMcUc - 802.11 frame, peeking Addr1"));
+      vosStatus = vos_pkt_peek_data(vosDataBuff, WLANTL_MAC_ADDR_ALIGN(1), 
+                                    (v_PVOID_t)&pvPeekData, VOS_MAC_ADDR_SIZE);
+   }
+   else
+   {
+      /* Its an 802.3 frame, extract Destination MAC address */
+      TLLOG2(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+             "WLAN TL:WLANTL_FindFrameTypeBcMcUc - 802.3 frame, peeking DA"));
+      vosStatus = vos_pkt_peek_data(vosDataBuff, WLANTL_MAC_ADDR_ALIGN(0),
+                                    (v_PVOID_t)&pvPeekData, VOS_MAC_ADDR_SIZE);
+   }
+
+   if (VOS_STATUS_SUCCESS != vosStatus) 
+   {
+      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+             "WLAN TL:WLANTL_FindFrameTypeBcMcUc - Failed to peek MAC address"));
+      return vosStatus;
+   }
+
+   if (((tANI_U8 *)pvPeekData)[0] == 0xff)
+   {
+      *pucBcMcUc = WLANTL_FRAME_TYPE_BCAST;
+   }
+   else
+   {
+      if ((((tANI_U8 *)pvPeekData)[0] & 0x01) == 0x01)
+         *pucBcMcUc = WLANTL_FRAME_TYPE_MCAST;
+      else
+         *pucBcMcUc = WLANTL_FRAME_TYPE_UCAST;
+   }
+
+   TLLOG2(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+          "WLAN TL:WLANTL_FindFrameTypeBcMcUc - Addr1Byte1 is: %x", 
+          ((tANI_U8 *)pvPeekData)[0]));
+
+  return VOS_STATUS_SUCCESS;
+}
 
 #if 0
 #ifdef WLAN_PERF 
