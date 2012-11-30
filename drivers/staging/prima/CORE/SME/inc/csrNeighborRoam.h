@@ -127,15 +127,23 @@ typedef struct sCsr11rAssocNeighborInfo
  * NEIGHBOR_LOOKUP_THRESHOLD_INCREMENT_CONSTANT) */
 #define NEIGHBOR_LOOKUP_THRESHOLD_INCREMENT_CONSTANT    5
 #define LOOKUP_THRESHOLD_INCREMENT_MULTIPLIER_MAX       4
-/* 
- * For every scan that results in no candidates, double the scan periodicity 
- * (initialized to NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN) until we hit 
- * NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX (60s). Subsequently, scan every 
- * 60s if we continue to find no candidates. Once a candidate is found, 
- * the periodicity is reset back to NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN.
+/*
+ * Set lookup UP threshold 5 dB higher than the configured
+ * lookup DOWN threshold to minimize thrashing between
+ * DOWN and UP events.
  */
-#define NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN (1000)
-#define NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX (60000)
+#define NEIGHBOR_ROAM_LOOKUP_UP_THRESHOLD \
+    (pNeighborRoamInfo->cfgParams.neighborLookupThreshold-5)
+#ifdef FEATURE_WLAN_LFR
+typedef enum
+{
+    eFirstEmptyScan=1,
+    eSecondEmptyScan,
+    eThirdEmptyScan,
+    eFourthEmptyScan,
+    eFifthEmptyScan,
+} eNeighborRoamEmptyScanCount;
+#endif
 
 /* Complete control information for neighbor roam algorithm */
 typedef struct sCsrNeighborRoamControlInfo
@@ -164,7 +172,13 @@ typedef struct sCsrNeighborRoamControlInfo
     tANI_BOOLEAN                isVOAdmitted;
     tANI_U32                    MinQBssLoadRequired;
 #endif
-    tANI_U16                    currentScanResultsRefreshPeriod;
+#ifdef FEATURE_WLAN_LFR
+    tANI_U8                     uEmptyScanCount; /* Consecutive number of times scan 
+                                                    yielded no results. */
+    tCsrRoamConnectedProfile    prevConnProfile; /* Previous connected profile. If the
+                                                    new profile does not match previous
+                                                    we re-initialize occupied channel list */
+#endif
 } tCsrNeighborRoamControlInfo, *tpCsrNeighborRoamControlInfo;
 
 

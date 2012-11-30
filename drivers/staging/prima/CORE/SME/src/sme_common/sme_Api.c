@@ -1933,8 +1933,11 @@ eHalStatus sme_ScanRequest(tHalHandle hHal, tANI_U8 sessionId, tCsrScanRequest *
                                                      pScanRequestID, callback, pContext );
 #ifdef FEATURE_WLAN_LFR
                     } else {
-                            /*HandOff is in progress. So schedule this scan later*/
-                            status = eHAL_STATUS_RESOURCES;
+                        smsLog(pMac, LOGE, FL("Scan denied in state %d (sub-state %d)"), 
+                                pMac->roam.neighborRoamInfo.neighborRoamState,
+                                pMac->roam.curSubState[sessionId]);
+                        /*HandOff is in progress. So schedule this scan later*/
+                        status = eHAL_STATUS_RESOURCES;
                     }
 #endif
                 }
@@ -2005,7 +2008,7 @@ eHalStatus sme_ScanFlushP2PResult(tHalHandle hHal, tANI_U8 sessionId)
         status = sme_AcquireGlobalLock( &pMac->sme );
         if ( HAL_STATUS_SUCCESS( status ) )
         {
-                status = csrScanFlushP2PResult( hHal );
+                status = csrScanFlushSelectiveResult( hHal, VOS_TRUE );
                 sme_ReleaseGlobalLock( &pMac->sme );
         }
 

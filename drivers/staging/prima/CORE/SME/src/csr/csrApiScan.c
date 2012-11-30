@@ -1733,12 +1733,14 @@ static void csrScanAddToOccupiedChannels(
     channel = pResult->Result.BssDescriptor.channelId;
 
     if (!csrIsChannelPresentInList(pOccupiedChannelList, numOccupiedChannels, channel)
-        && csrNeighborRoamIsSsidCandidateMatch(pMac, pIes)) 
+        && csrNeighborRoamConnectedProfileMatch(pMac, pResult, pIes))
     {
         status = csrAddToChannelListFront(pOccupiedChannelList, numOccupiedChannels, channel); 
         if(HAL_STATUS_SUCCESS(status))
         { 
             pOccupiedChannels->numChannels++;
+            smsLog(pMac, LOG2, FL("%s: added channel %d to the list (count=%d)\n"),
+              __func__, channel, pOccupiedChannels->numChannels);
             if (pOccupiedChannels->numChannels > CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN) 
                 pOccupiedChannels->numChannels = CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN; 
         } 
@@ -1970,33 +1972,34 @@ eHalStatus csrScanFlushResult(tpAniSirGlobal pMac)
     return ( csrLLScanPurgeResult(pMac, &pMac->scan.scanResultList) );
 }
 
-eHalStatus csrScanFlushP2PResult(tpAniSirGlobal pMac)
+eHalStatus csrScanFlushSelectiveResult(tpAniSirGlobal pMac, v_BOOL_t flushP2P)
 {
-        eHalStatus status = eHAL_STATUS_SUCCESS;
-        tListElem *pEntry,*pFreeElem;
-        tCsrScanResult *pBssDesc;
-        tDblLinkList *pList = &pMac->scan.scanResultList;
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tListElem *pEntry,*pFreeElem;
+    tCsrScanResult *pBssDesc;
+    tDblLinkList *pList = &pMac->scan.scanResultList;
 
-        csrLLLock(pList);
+    csrLLLock(pList);
 
-        pEntry = csrLLPeekHead( pList, LL_ACCESS_NOLOCK );
-        while( pEntry != NULL)
+    pEntry = csrLLPeekHead( pList, LL_ACCESS_NOLOCK );
+    while( pEntry != NULL)
+    {
+        pBssDesc = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
+        if( flushP2P == vos_mem_compare( pBssDesc->Result.ssId.ssId, 
+                                         "DIRECT-", 7) )
         {
-                pBssDesc = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
-                if( vos_mem_compare( pBssDesc->Result.ssId.ssId, "DIRECT-", 7) )
-                {
-                        pFreeElem = pEntry;
-                        pEntry = csrLLNext(pList, pEntry, LL_ACCESS_NOLOCK);
-                        csrLLRemoveEntry(pList, pFreeElem, LL_ACCESS_NOLOCK);
-                        csrFreeScanResultEntry( pMac, pBssDesc );
-                        continue;
-                }
-                pEntry = csrLLNext(pList, pEntry, LL_ACCESS_NOLOCK);
+            pFreeElem = pEntry;
+            pEntry = csrLLNext(pList, pEntry, LL_ACCESS_NOLOCK);
+            csrLLRemoveEntry(pList, pFreeElem, LL_ACCESS_NOLOCK);
+            csrFreeScanResultEntry( pMac, pBssDesc );
+            continue;
         }
+        pEntry = csrLLNext(pList, pEntry, LL_ACCESS_NOLOCK);
+    }
 
-        csrLLUnlock(pList);
+    csrLLUnlock(pList);
 
-        return (status);
+    return (status);
 }
 
 /**
@@ -4308,7 +4311,8 @@ static tANI_BOOLEAN csrScanProcessScanResults( tpAniSirGlobal pMac, tSmeCmd *pCo
         }
         else
         {
-            smsLog( pMac, LOGW, " Scanrsp fail (0x%08X), length = %d\n", pScanRsp->statusCode, pScanRsp->length );
+            smsLog( pMac, LOGW, " Scanrsp fail (0x%08X), length = %d (expected %d)\n", 
+                    pScanRsp->statusCode, pScanRsp->length, cbScanResult);
             //HO bg scan/probe failed no need to try autonomously
             if(eCsrScanBgScan == pCommand->u.scanCmd.reason ||
                eCsrScanProbeBss == pCommand->u.scanCmd.reason ||
@@ -6831,4 +6835,51 @@ tANI_BOOLEAN csrRoamIsValidChannel( tpAniSirGlobal pMac, tANI_U8 channel )
     return fValid;
 }
 
+#ifdef FEATURE_WLAN_LFR
+void csrInitOccupiedChannelsList(tpAniSirGlobal pMac)
+{
+  tListElem *pEntry = NULL;
+  tCsrScanResult *pBssDesc = NULL;
+  tDot11fBeaconIEs *pIes = NULL;
 
+  if (!csrNeighborRoamIsNewConnectedProfile(pMac))
+  {
+      smsLog(pMac, LOG2, FL("%s: donot flush occupied list since current roam profile"
+             " matches previous (numChannels = %d)\n"),
+              __func__, pMac->scan.occupiedChannels.numChannels);
+      return;
+  }
+
+  /* Empty occupied channels here */
+  pMac->scan.occupiedChannels.numChannels = 0;
+
+  csrLLLock(&pMac->scan.scanResultList);
+  pEntry = csrLLPeekHead( &pMac->scan.scanResultList, LL_ACCESS_NOLOCK );
+  while( pEntry )
+  {
+      pBssDesc = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
+      pIes = (tDot11fBeaconIEs *)( pBssDesc->Result.pvIes );
+
+      //At this time, pBssDescription->Result.pvIes may be NULL
+      if( !pIes && (!HAL_STATUS_SUCCESS(csrGetParsedBssDescriptionIEs(pMac, 
+                    &pBssDesc->Result.BssDescriptor, &pIes))) )
+      {
+          continue;
+      }
+
+      csrScanAddToOccupiedChannels(pMac, pBssDesc, &pMac->scan.occupiedChannels, pIes);
+
+      /*
+       * Free the memory allocated for pIes in csrGetParsedBssDescriptionIEs
+       */
+      if( (pBssDesc->Result.pvIes == NULL) && pIes )
+      {
+          palFreeMemory(pMac->hHdd, pIes);
+      }
+
+      pEntry = csrLLNext( &pMac->scan.scanResultList, pEntry, LL_ACCESS_NOLOCK );
+  }//while
+  csrLLUnlock(&pMac->scan.scanResultList);
+    
+}
+#endif

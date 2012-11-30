@@ -659,6 +659,18 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
             // Store assigned AID for TIM processing
             psessionEntry->limAID = pAssocRsp->aid & 0x3FFF;
 
+            // Downgrade the EDCA parameters if needed
+            limSetActiveEdcaParams(pMac, psessionEntry->gLimEdcaParams, psessionEntry);
+
+            // Send the active EDCA parameters to HAL
+            if (pStaDs->aniPeer == eANI_BOOLEAN_TRUE)
+            {
+                limSendEdcaParams(pMac, psessionEntry->gLimEdcaParamsActive, pStaDs->bssId, eANI_BOOLEAN_TRUE);
+            }
+            else
+            {
+                limSendEdcaParams(pMac, psessionEntry->gLimEdcaParamsActive, pStaDs->bssId, eANI_BOOLEAN_FALSE);
+            }
             limAddFTStaSelf(pMac, (pAssocRsp->aid & 0x3FFF), psessionEntry);
             palFreeMemory(pMac->hHdd, pBeaconStruct);
 

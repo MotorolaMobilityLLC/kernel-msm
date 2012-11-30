@@ -4552,6 +4552,20 @@ v_BOOL_t hdd_is_apps_power_collapse_allowed(hdd_context_t* pHddCtx)
     return TRUE;
 }
 
+/* Decides whether to send suspend notification to Riva
+ * if any adapter is in BMPS; then it is required */
+v_BOOL_t hdd_is_suspend_notify_allowed(hdd_context_t* pHddCtx)
+{
+    tPmcState pmcState = pmcGetPmcState(pHddCtx->hHal);
+    hdd_config_t *pConfig = pHddCtx->cfg_ini;
+
+    if (pConfig->fIsBmpsEnabled && (pmcState == BMPS))
+    {
+        return TRUE;
+    }
+    return FALSE;
+}
+
 void wlan_hdd_set_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode)
 {
    switch(mode)
@@ -4770,10 +4784,17 @@ VOS_STATUS wlan_hdd_restart_driver(hdd_context_t *pHddCtx)
 
       return VOS_STATUS_E_ALREADY;
    }
-
-   /* Restart API */
+   /* when WLAN driver is statically linked, then invoke SSR by sending 
+    * the reset interrupt. If it is DLKM, then use restart API
+    */
+#ifdef MODULE
    status = wlan_hdd_framework_restart(pHddCtx);
-   
+#else
+#ifdef HAVE_WCNSS_RESET_INTR
+   wcnss_reset_intr();
+#endif
+#endif
+ 
    return status;
 }
 
