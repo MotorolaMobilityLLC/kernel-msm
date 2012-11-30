@@ -171,6 +171,11 @@ when        who    what, where, why
 #define WLANTL_80211_DATA_QOS_SUBTYPE  0x08
 #define WLANTL_80211_NULL_QOS_SUBTYPE  0x0C
 
+/*Defines for internal utility functions */
+#define WLANTL_FRAME_TYPE_BCAST 0xff
+#define WLANTL_FRAME_TYPE_MCAST 0x01
+#define WLANTL_FRAME_TYPE_UCAST 0x00
+
 
 /*-------------------------------------------------------------------------
   BT-AMP related definition - !!! should probably be moved to BT-AMP header
@@ -1297,6 +1302,45 @@ WLANTL_Translate80211To8023Header
   v_U8_t          ucHeaderLen,
   WLANTL_CbType*  pTLCb,
   v_U8_t          ucSTAId
+);
+
+/*==========================================================================
+  FUNCTION    WLANTL_FindFrameTypeBcMcUc
+
+  DESCRIPTION
+    Utility function to find whether received frame is broadcast, multicast
+    or unicast.
+
+  DEPENDENCIES
+    The STA must be registered with TL before this function can be called.
+
+  PARAMETERS
+
+   IN
+   pTLCb:          pointer to the TL's control block
+   ucSTAId:        identifier of the station being processed
+   vosDataBuff:    pointer to the vos buffer
+
+   IN/OUT
+    pucBcMcUc:       pointer to buffer, will contain frame type on return
+
+  RETURN VALUE
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_INVAL:   invalid input parameters
+    VOS_STATUS_E_BADMSG:  failed to extract info from data buffer
+    VOS_STATUS_SUCCESS:   success
+
+  SIDE EFFECTS
+    None.
+============================================================================*/
+VOS_STATUS
+WLANTL_FindFrameTypeBcMcUc
+(
+  WLANTL_CbType *pTLCb,
+  v_U8_t        ucSTAId,
+  vos_pkt_t     *vosDataBuff,
+  v_U8_t        *pucBcMcUc
 );
 
 /*==========================================================================
