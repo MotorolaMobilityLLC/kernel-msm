@@ -115,7 +115,6 @@ eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
                               pRemainChanCtx->chan_type, GFP_KERNEL );
     }
 
-    vos_mem_free( pRemainChanCtx );
 
     if ( ( WLAN_HDD_INFRA_STATION == pAdapter->device_mode ) ||
          ( WLAN_HDD_P2P_CLIENT == pAdapter->device_mode ) ||
@@ -123,10 +122,13 @@ eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
        )
     {
         tANI_U8 sessionId = pAdapter->sessionId;
-        sme_DeregisterMgmtFrame(
-                   hHal, sessionId,
-                   (SIR_MAC_MGMT_FRAME << 2) | ( SIR_MAC_MGMT_PROBE_REQ << 4),
-                    NULL, 0 );
+        if( REMAIN_ON_CHANNEL_REQUEST == pRemainChanCtx->rem_on_chan_request )
+        {
+            sme_DeregisterMgmtFrame(
+                       hHal, sessionId,
+                      (SIR_MAC_MGMT_FRAME << 2) | ( SIR_MAC_MGMT_PROBE_REQ << 4),
+                       NULL, 0 );
+        }
     }
     else if ( ( WLAN_HDD_SOFTAP== pAdapter->device_mode ) ||
               ( WLAN_HDD_P2P_GO == pAdapter->device_mode )
@@ -138,6 +140,7 @@ eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
                 NULL, 0 );
     }
 
+    vos_mem_free( pRemainChanCtx );
     complete(&pAdapter->cancel_rem_on_chan_var);
     return eHAL_STATUS_SUCCESS;
 }
@@ -298,9 +301,12 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
                        chan->hw_value, duration,
                        wlan_hdd_remain_on_channel_callback, pAdapter );
 
-        sme_RegisterMgmtFrame(WLAN_HDD_GET_HAL_CTX(pAdapter),
-                              sessionId, (SIR_MAC_MGMT_FRAME << 2) |
-                              (SIR_MAC_MGMT_PROBE_REQ << 4), NULL, 0 );
+        if( REMAIN_ON_CHANNEL_REQUEST == request_type)
+        {
+            sme_RegisterMgmtFrame(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                   sessionId, (SIR_MAC_MGMT_FRAME << 2) |
+                                  (SIR_MAC_MGMT_PROBE_REQ << 4), NULL, 0 );
+        }
 
     }
     else if ( ( WLAN_HDD_SOFTAP== pAdapter->device_mode ) ||
