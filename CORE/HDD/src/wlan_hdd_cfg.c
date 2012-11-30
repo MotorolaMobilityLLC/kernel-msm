@@ -54,6 +54,10 @@
 #include <pmcApi.h>
 #include <wlan_hdd_misc.h>
 
+static void cbNotifySetRoamPrefer5GHz(hdd_context_t *pHddCtx, unsigned long NotifyId)
+{
+    sme_UpdateRoamPrefer5GHz((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->nRoamPrefer5GHz);
+}
 
 REG_TABLE_ENTRY g_registry_table[] =
 {
@@ -1574,6 +1578,16 @@ REG_TABLE_ENTRY g_registry_table[] =
                        CFG_LINK_SPEED_RSSI_LOW_MIN,
                        CFG_LINK_SPEED_RSSI_LOW_MAX,
                        NULL, 0 ),
+
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+ REG_DYNAMIC_VARIABLE( CFG_ROAM_PREFER_5GHZ, WLAN_PARAM_Integer,
+                       hdd_config_t, nRoamPrefer5GHz,
+                       VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                       CFG_ROAM_PREFER_5GHZ_DEFAULT,
+                       CFG_ROAM_PREFER_5GHZ_MIN,
+                       CFG_ROAM_PREFER_5GHZ_MAX,
+                       cbNotifySetRoamPrefer5GHz, 0 ),
+#endif
 
 #ifdef WLAN_FEATURE_P2P
  REG_VARIABLE( CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_NAME, WLAN_PARAM_Integer,
@@ -3215,6 +3229,9 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig.csrConfig.fEnableBypass11d          = pConfig->enableBypass11d;
    smeConfig.csrConfig.fEnableDFSChnlScan        = pConfig->enableDFSChnlScan;
    smeConfig.csrConfig.fIgnore_chan165           = pConfig->ignore_chan165;
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+   smeConfig.csrConfig.nRoamPrefer5GHz           = pConfig->nRoamPrefer5GHz;
+#endif
    smeConfig.csrConfig.fFirstScanOnly2GChnl      = pConfig->enableFirstScan2GOnly;
 
    //FIXME 11d config is hardcoded
