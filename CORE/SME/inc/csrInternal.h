@@ -76,6 +76,13 @@
      NULL \
 )
 
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#define CSR_IS_ROAM_PREFER_5GHZ( pMac ) \
+( \
+   (((pMac)->roam.configParam.nRoamPrefer5GHz)?eANI_BOOLEAN_TRUE:eANI_BOOLEAN_FALSE) \
+)
+#endif
+
 //Support for "Fast roaming" (i.e., CCX, LFR, or 802.11r.)
 #define CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN 15
 
@@ -569,6 +576,7 @@ typedef struct tagCsrConfig
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
     tANI_U8   isFastTransitionEnabled;
     tANI_U8   RoamRssiDiff;
+    tANI_BOOLEAN nRoamPrefer5GHz;
 #endif
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING

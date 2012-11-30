@@ -2184,4 +2184,19 @@ void sme_transportDebug
    v_BOOL_t  displaySnapshot,
    v_BOOL_t  toggleStallDetect
 );
+
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+/* ---------------------------------------------------------------------------
+    \fn sme_UpdateRoamPrefer5GHz
+    \brief  enable/disable Roam prefer 5G runtime option
+            This function is called through dynamic setConfig callback function
+            to configure the Roam prefer 5G runtime option 
+    \param  hHal - HAL handle for device
+    \param  nRoamPrefer5GHz Enable/Disable Roam prefer 5G runtime option
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+
+eHalStatus sme_UpdateRoamPrefer5GHz(tHalHandle hHal, v_BOOL_t nRoamPrefer5GHz);
+#endif
+
 #endif //#if !defined( __SME_API_H )

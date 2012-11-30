@@ -333,6 +333,13 @@ typedef enum
 #define CFG_RSSI_CATEGORY_GAP_MAX              ( 100 )  
 #define CFG_RSSI_CATEGORY_GAP_DEFAULT          ( 30 )
 
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#define CFG_ROAM_PREFER_5GHZ                   "gRoamPrefer5GHz"
+#define CFG_ROAM_PREFER_5GHZ_MIN              ( 0 )  
+#define CFG_ROAM_PREFER_5GHZ_MAX              ( 1 )  
+#define CFG_ROAM_PREFER_5GHZ_DEFAULT          ( 1 )
+#endif
+
 #define CFG_STAT_TIMER_INTERVAL_NAME           "gStatTimerInterval"
 #define CFG_STAT_TIMER_INTERVAL_MIN            ( 50 )     //ms
 #define CFG_STAT_TIMER_INTERVAL_MAX            ( 10000 )  
@@ -1686,6 +1693,9 @@ typedef struct
    v_U8_t                      ShortGI40MhzEnable;
    eHddLinkSpeedReportType     reportMaxLinkSpeed;
    v_S31_t                     linkSpeedRssiHigh;
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+   v_BOOL_t                    nRoamPrefer5GHz;
+#endif
    v_S31_t                     linkSpeedRssiMid;
    v_S31_t                     linkSpeedRssiLow;
    v_U8_t                      enableMCC;
