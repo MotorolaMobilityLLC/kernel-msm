@@ -475,6 +475,10 @@ int tpa6165_hs_detect(struct snd_soc_jack *hs_jack,
 {
 	if (tpa6165_client) {
 		struct tpa6165_data *tpa6165 = i2c_get_clientdata(tpa6165_client);
+
+		if (tpa6165 == NULL)
+			return -EINVAL;
+
 		pr_debug("%s: hs and button jack", __func__);
 		tpa6165->hs_jack = hs_jack;
 		tpa6165->button_jack = button_jack;
