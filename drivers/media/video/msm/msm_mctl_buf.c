@@ -665,13 +665,9 @@ int msm_mctl_reserve_free_buf(
 	 * camera instance, he would send the preferred camera instance.
 	 * If the preferred camera instance is NULL, get the
 	 * camera instance using the image mode passed */
-	if (!pcam_inst) {
+	if (!pcam_inst)
 		pcam_inst = msm_mctl_get_pcam_inst(pmctl, buf_handle);
-		if(!pcam_inst) {
-			pr_err("%s: pcam_inst is NULL\n", __func__);
-			return rc;
-		}
-	}
+
 	if (!pcam_inst || !pcam_inst->streamon) {
 		pr_err("%s: stream is turned off\n", __func__);
 		return rc;
