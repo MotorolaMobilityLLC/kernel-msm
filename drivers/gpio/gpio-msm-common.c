@@ -170,8 +170,8 @@ static int msm_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 {
 	struct msm_gpio_dev *g_dev = to_msm_gpio_dev(chip);
 	struct irq_domain *domain = g_dev->domain;
-	if (chip->dev->of_node)
-		return irq_linear_revmap(domain, offset);
+	if (domain)
+		return irq_create_mapping(domain, offset);
 	else
 		return MSM_GPIO_TO_INT(offset - chip->base);
 }
@@ -179,7 +179,8 @@ static int msm_gpio_to_irq(struct gpio_chip *chip, unsigned offset)
 static inline int msm_irq_to_gpio(struct gpio_chip *chip, unsigned irq)
 {
 	struct irq_data *irq_data = irq_get_irq_data(irq);
-	if (chip->dev->of_node)
+	struct msm_gpio_dev *g_dev = to_msm_gpio_dev(chip);
+	if (g_dev->domain)
 		return irq_data->hwirq;
 	else
 		return irq - MSM_GPIO_TO_INT(chip->base);
