@@ -33,10 +33,19 @@ struct csic_device {
 	struct clk *csic_clk[5];
 };
 
-#define VIDIOC_MSM_CSIC_CFG \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 4, struct csic_cfg_data*)
+struct csic_cfg_params {
+	struct v4l2_subdev *subdev;
+	void *parms;
+};
 
-#define VIDIOC_MSM_CSIC_RELEASE \
+#define VIDIOC_MSM_CSIC_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 4, struct csic_cfg_params)
+
+#define VIDIOC_MSM_CSIC_INIT \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 5, struct v4l2_subdev*)
 
+#define VIDIOC_MSM_CSIC_RELEASE \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 6, struct v4l2_subdev*)
+
 #endif
+
