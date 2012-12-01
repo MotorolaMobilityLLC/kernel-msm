@@ -51,6 +51,9 @@ static u32 fdt_start_address; /* flattened device tree address */
 static u32 fdt_size;
 static u32 prod_id;
 
+#define EXPECTED_MBM_PROTOCOL_VER 1
+static u32 mbmprotocol;
+
 struct dt_gpiomux {
 	u16 gpio;
 	u8 setting;
@@ -342,7 +345,6 @@ static void __init mmi_unit_info_init(void){
 		mui->baseband, mui->carrier);
 }
 
-
 static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	platform_add_devices(mmi_devices, ARRAY_SIZE(mmi_devices));
@@ -353,6 +355,15 @@ static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 
 	mmi_vibrator_init();
 	mmi_unit_info_init();
+
+	if (mbmprotocol == 0) {
+		/* do not reboot - version was not reported */
+		/* not expecting bootloader to recognize reboot flag*/
+		pr_err("ERROR: mbm protocol version missing\n");
+	} else if (EXPECTED_MBM_PROTOCOL_VER != mbmprotocol) {
+		pr_err("ERROR: mbm protocol version mismatch\n");
+		msm_restart(0, "mbmprotocol_ver_mismatch");
+	}
 }
 
 static void __init mmi_disp_init(struct msm8960_oem_init_ptrs *oem_ptr,
@@ -557,6 +568,7 @@ static struct of_device_id mmi_of_setup[] __initdata = {
 	{ .compatible = "linux,serialhigh", .data = &system_serial_high },
 	{ .compatible = "linux,hwrev", .data = &system_rev },
 	{ .compatible = "mmi,prod_id", .data = &prod_id },
+	{ .compatible = "mmi,mbmprotocol", .data = &mbmprotocol },
 	{ }
 };
 

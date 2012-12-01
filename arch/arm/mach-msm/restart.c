@@ -272,6 +272,8 @@ void msm_restart(char mode, const char *cmd)
 			__raw_writel(0x6f656d00 | code, restart_reason);
 		} else if (!strncmp(cmd, "outofcharge", 11)) {
 			__raw_writel(0x77665504, restart_reason);
+		} else if (!strncmp(cmd, "mbmprotocol_ver_mismatch", 24)) {
+			__raw_writel(0x77665503, restart_reason);
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
