@@ -1019,7 +1019,6 @@ static void vfe32_set_default_reg_values(
 	CDBG("%s: Use bayer stats = %d\n", __func__,
 		 vfe32_use_bayer_stats(vfe32_ctrl));
 	if (!vfe32_use_bayer_stats(vfe32_ctrl)) {
-#if 0
 		msm_camera_io_w(0x3980007,
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_AEC_BG_UB_CFG);
@@ -1038,23 +1037,6 @@ static void vfe32_set_default_reg_values(
 		msm_camera_io_w(0x3E0001F,
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_HIST_UB_CFG);
-#else //PIP roll-off changes
-	msm_camera_io_w(0x3C00007,
-		vfe32_ctrl->share_ctrl->vfebase +
-			VFE_BUS_STATS_AEC_BG_UB_CFG);
-
-	msm_camera_io_w(0x3C8000F,
-		vfe32_ctrl->share_ctrl->vfebase +
-			VFE_BUS_STATS_AWB_UB_CFG);
-
-	msm_camera_io_w(0x3D80007,
-		vfe32_ctrl->share_ctrl->vfebase +
-			VFE_BUS_STATS_RS_UB_CFG);
-
-	msm_camera_io_w(0x3E0001F,
-		vfe32_ctrl->share_ctrl->vfebase +
-			VFE_BUS_STATS_HIST_UB_CFG);
-#endif
 	} else {
 		msm_camera_io_w(0x350001F,
 			vfe32_ctrl->share_ctrl->vfebase +
@@ -5695,9 +5677,8 @@ static int msm_axi_subdev_s_crystal_freq(struct v4l2_subdev *sd,
 	int rc = 0;
 	int round_rate;
 	struct axi_ctrl_t *axi_ctrl = v4l2_get_subdevdata(sd);
-	if (axi_ctrl->share_ctrl->dual_enabled) {
-		CDBG("%s Dual camera Enabled hence returning "\
-			"without clock change\n", __func__);
+	if(axi_ctrl->share_ctrl->dual_enabled){
+		CDBG("%s Dual camera Enabled hence returning without clock change\n", __func__);
 		return rc;
 	}
 	round_rate = clk_round_rate(axi_ctrl->vfe_clk[0], freq);
@@ -5786,11 +5767,11 @@ int msm_axi_subdev_init(struct v4l2_subdev *sd,
 	CDBG("%s: axi_ctrl->share_ctrl->dual_enabled ? = %d\n", __func__,
 			axi_ctrl->share_ctrl->dual_enabled);
 	if (axi_ctrl->share_ctrl->dual_enabled){
-		pr_info("%s: Scaling bus config for dual bus vectors\n",
-			__func__);
+		pr_info("%s: Scaling bus config for dual bus vectors\n", __func__);
 		msm_camio_bus_scale_cfg(
 			mctl->sdata->pdata->cam_bus_scale_table, S_DUAL);
-	} else
+	}
+	else
 		msm_camio_bus_scale_cfg(
 			mctl->sdata->pdata->cam_bus_scale_table, S_PREVIEW);
 
@@ -6794,23 +6775,25 @@ static void msm_axi_process_irq(struct v4l2_subdev *sd, void *arg)
 
 	if (axi_ctrl->share_ctrl->comp_output_mode &
 		VFE32_OUTPUT_MODE_TERTIARY1) {
+		CDBG("VFE32_OUTPUT_MODE_TERTIARY1\n");
+#if 0
 		if (irqstatus & (0x1 << (axi_ctrl->share_ctrl->outpath.out2.ch0
-			+ VFE_WM_OFFSET))) {
-			CDBG("VFE32_OUTPUT_MODE_TERTIARY1\n");
-			/*vfe32_process_output_path_irq_rdi0(axi_ctrl);*/
-		}
+			+ VFE_WM_OFFSET)))
+			vfe32_process_output_path_irq_rdi0(axi_ctrl);
+#endif
 	}
 	if (axi_ctrl->share_ctrl->comp_output_mode &
 		VFE32_OUTPUT_MODE_TERTIARY2){
+		CDBG("VFE32_OUTPUT_MODE_TERTIARY2\n");
+#if 0
 		if (irqstatus & (0x1 << (axi_ctrl->share_ctrl->outpath.out3.ch0
-			+ VFE_WM_OFFSET))) {
-			CDBG("VFE32_OUTPUT_MODE_TERTIARY2\n");
-			/*vfe32_process_output_path_irq_rdi1(axi_ctrl);*/
-		}
+			+ VFE_WM_OFFSET)))
+			vfe32_process_output_path_irq_rdi1(axi_ctrl);
+#endif
 	}
 	if (axi_ctrl->share_ctrl->comp_output_mode &
-		VFE32_OUTPUT_MODE_TERTIARY3) {
-		CDBG("Before process output path" \
+		VFE32_OUTPUT_MODE_TERTIARY3){
+		pr_err("Before process output path" \
 			"of RDI2 irqstatus %x\n", irqstatus);
 		if (irqstatus & (0x1 << (axi_ctrl->share_ctrl->outpath.out4.ch0
 			+ VFE_WM_OFFSET)))
