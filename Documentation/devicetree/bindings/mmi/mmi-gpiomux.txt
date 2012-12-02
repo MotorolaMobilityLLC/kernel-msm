@@ -1,0 +1,88 @@
+mmi-pinmux
+
+NOTE: this is included in the mmi (motorola) directory
+rather than a gpio, or more correctly pinctl subdirectory
+because it only represents an interim solution that does
+not accurately fit in the upstream categories.
+
+This is a mechanism to use the standard device tree
+to define msm pinmuxing in a non-standard way.  This
+definition ties into the existing msm board files.
+
+The mmi-pinmux is a platform driver that installs the
+defined tlmm settings through the existing gpiomux_install
+interface.
+
+Required properties:
+- compatible: "qcom,msm8x26-pinmux"
+
+- reg: should contain the address of the gpio first gpio
+       configuration register.  (fd510000 + 0x10 * gpio_num).
+       Their are 16 registers for each gpio so the size will
+       always be 0x10.
+
+- #address-cells: should always be <1>
+
+- #size-cells: should always be <1>
+
+All other properties are optional, but useful if you want to actually
+do something.  The msm gpiomux_install allows a suspended and an
+active setting for each pin.  If only one setting is needed then
+defining the suspended setting is sufficient.  Within a setting
+the following properties are available:
+
+qcom,func:    Each pin can have multiple functions.  The first <0>
+              function is a gpio but, each pin will
+              have a varied number of possible functions.
+              This will default to <0>, or GPIO.
+
+qcom,pull:    This can be on of:
+                    <0> - no pull
+                    <1> - pull down
+                    <2> - pull keeper
+                    <3> - pull up
+
+              Default = <0>  no pull
+
+qcom,drv:     Defines the drive string of the pin:
+                    <0> -  2 mA
+                    <1> -  4 mA
+                    <2> -  6 mA
+                    <3> -  8 mA
+                    <4> - 10 mA
+                    <5> - 12 mA
+                    <6> - 14 mA
+                    <7> - 16 mA
+
+              Default = <0>  2 mA
+
+qcom,dir:     Only applicable for qcom,func = <0>.  Defines
+              the direction of the gpio and for a output
+              gpio defines the initial state.
+                    <0> - input
+                    <1> - output high
+                    <2> - output low
+
+Example:
+
+qcom,pinmux@fd510000 {
+	compatible = "qcom,msm8x26-pinmux";
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	pin@fd510000 {
+		reg = <0xfd510000 0x10>;
+		qcom,pin-num = <0>;
+		qcom,active@0 {
+			qcom,func = <1>;  /* gsm_tx_lb_clk          */
+			qcom,pull = <3>;  /* up                     */
+			qcom,drv = <3>;   /*                        */
+		};
+		qcom,suspended@1 {
+			qcom,func = <0>;
+			qcom,pull = <3>; /* up                      */
+			qcom,drv = <3>;
+			qcom,dir = <0>;
+		};
+	};
+};
