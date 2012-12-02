@@ -62,6 +62,13 @@ static DECLARE_TLV_DB_SCALE(eq_tlv, -1200, 100, 0);
 static DECLARE_TLV_DB_SCALE(digital_tlv, -6400, 50, 0);
 static DECLARE_TLV_DB_SCALE(noise_tlv, 0, 600, 0);
 
+static const struct wm_adsp_region wm5102_dsp1_regions[] = {
+	{ .type = WMFW_ADSP2_PM, .base = 0x100000 },
+	{ .type = WMFW_ADSP2_ZM, .base = 0x180000 },
+	{ .type = WMFW_ADSP2_XM, .base = 0x190000 },
+	{ .type = WMFW_ADSP2_YM, .base = 0x1a8000 },
+};
+
 static const struct reg_default wm5102_sysclk_reva_patch[] = {
 	{ 0x3000, 0x2225 },
 	{ 0x3001, 0x3a03 },
@@ -579,13 +586,6 @@ static const struct reg_default wm5102_sysclk_reva_patch[] = {
 	{ 0x0252, 0xff50 },
 	{ 0x0259, 0x0112 },
 	{ 0x025e, 0x0112 },
-};
-
-static const struct wm_adsp_region wm5102_dsp1_regions[] = {
-	{ .type = WMFW_ADSP2_PM, .base = 0x100000 },
-	{ .type = WMFW_ADSP2_ZM, .base = 0x180000 },
-	{ .type = WMFW_ADSP2_XM, .base = 0x190000 },
-	{ .type = WMFW_ADSP2_YM, .base = 0x1a0000 },
 };
 
 static int wm5102_sysclk_ev(struct snd_soc_dapm_widget *w,
