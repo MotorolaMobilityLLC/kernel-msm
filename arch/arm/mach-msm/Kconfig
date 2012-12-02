@@ -3128,4 +3128,12 @@ config MMI_8X26_DEVICE_DTBS
 	  Only include Motorola device specific DTBs to limit the number that
 	  get built during kernel compilation.
 
+config MMI_MSM_PINMUX
+	depends on ARCH_MSM
+	default n
+	bool "Motorola Mobility MSM OF DTS Pinmux Driver"
+	help
+	  Provides capability for reading an OF DT node to provide initial
+	  configuration of GPIO MUX settings on MSM chip families.
+
 endif
