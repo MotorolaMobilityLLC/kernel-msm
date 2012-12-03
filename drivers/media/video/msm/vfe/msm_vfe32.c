@@ -6434,6 +6434,16 @@ void axi_stop(struct msm_cam_media_controller *pmctl,
 		axi_disable_irq(axi_ctrl->share_ctrl,
 			axi_ctrl->share_ctrl->current_mode);
 		axi_stop_process(axi_ctrl->share_ctrl);
+
+		if (axi_ctrl->share_ctrl->stream_error == 1) {
+			pr_err(" Indicate stream error");
+			vfe32_send_isp_msg(
+				&(axi_ctrl->share_ctrl->vfe32_ctrl->subdev),
+				axi_ctrl->share_ctrl->vfe32_ctrl->
+				share_ctrl->vfeFrameId,
+				MSG_ID_PREV_STOP_ACK);
+		}
+
 		return;
 	}
 
@@ -6757,6 +6767,8 @@ static int msm_axi_config(struct v4l2_subdev *sd, void __user *arg)
 			vfe_params.operation_mode;
 		axi_ctrl->share_ctrl->stop_immediately =
 			vfe_params.stop_immediately;
+		axi_ctrl->share_ctrl->stream_error =
+			vfe_params.stream_error;
 		axi_stop(pmctl, axi_ctrl, vfe_params);
 		}
 		break;
