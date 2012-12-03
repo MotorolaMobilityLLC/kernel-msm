@@ -402,10 +402,21 @@ struct _mmc_csd {
 
 #define EXT_CSD_PACKED_EVENT_EN	(1 << 3)
 
-#define EXT_CSD_PACKED_FAILURE	(1 << 3)
-
 #define EXT_CSD_PACKED_GENERIC_ERROR	(1 << 0)
 #define EXT_CSD_PACKED_INDEXED_ERROR	(1 << 1)
+
+/*
+ * EXCEPTION_EVENT_STATUS field
+ */
+#define EXT_CSD_URGENT_BKOPS		BIT(0)
+#define EXT_CSD_DYNCAP_NEEDED		BIT(1)
+#define EXT_CSD_SYSPOOL_EXHAUSTED	BIT(2)
+#define EXT_CSD_PACKED_FAILURE		BIT(3)
+
+/*
+ * BKOPS status level
+ */
+#define EXT_CSD_BKOPS_LEVEL_2		0x2
 
 /*
  * MMC_SWITCH access modes
@@ -422,17 +433,5 @@ struct _mmc_csd {
 #define MMC_PW_OFF_NOTIFY_NONE		0
 #define MMC_PW_OFF_NOTIFY_SHORT		1
 #define MMC_PW_OFF_NOTIFY_LONG		2
-
-/*
- * BKOPS status level
- */
-#define EXT_CSD_BKOPS_LEVEL_2		0x2
-
-/*
- * EXCEPTION_EVENT_STATUS field (eMMC4.5)
- */
-#define EXT_CSD_URGENT_BKOPS		BIT(0)
-#define EXT_CSD_DYNCAP_NEEDED		BIT(1)
-#define EXT_CSD_SYSPOOL_EXHAUSTED	BIT(2)
 
 #endif /* LINUX_MMC_MMC_H */
