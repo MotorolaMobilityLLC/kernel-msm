@@ -23,6 +23,7 @@ struct mmc_cid {
 	unsigned char		hwrev;
 	unsigned char		fwrev;
 	unsigned char		month;
+	unsigned int		prv;
 };
 
 struct mmc_csd {
