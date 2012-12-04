@@ -1037,7 +1037,7 @@ static void vfe32_set_default_reg_values(
 	CDBG("%s: Use bayer stats = %d\n", __func__,
 		 vfe32_use_bayer_stats(vfe32_ctrl));
 	if (!vfe32_use_bayer_stats(vfe32_ctrl)) {
-#if 0
+#if 1
 		msm_camera_io_w(0x3980007,
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_AEC_BG_UB_CFG);
