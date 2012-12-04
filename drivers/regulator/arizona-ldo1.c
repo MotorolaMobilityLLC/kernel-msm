@@ -37,6 +37,9 @@ struct arizona_ldo1 {
 
 	struct regulator_consumer_supply supply;
 	struct regulator_init_data init_data;
+
+	int ena;
+	int ena_state;
 };
 
 static int arizona_ldo_reg_list_voltage_linear(struct regulator_dev *rdev,
@@ -82,7 +85,46 @@ static int arizona_ldo_enable_time(struct regulator_dev *rdev)
 	return 500;
 }
 
+static int arizona_ldo_enable(struct regulator_dev *rdev)
+{
+	struct arizona_ldo1 *ldo1 = rdev_get_drvdata(rdev);
+
+	if (!ldo1->ena)
+		return -EINVAL;
+
+	gpio_set_value_cansleep(ldo1->ena, 1);
+	ldo1->ena_state = 1;
+
+	return 0;
+}
+
+static int arizona_ldo_disable(struct regulator_dev *rdev)
+{
+	struct arizona_ldo1 *ldo1 = rdev_get_drvdata(rdev);
+
+	if (!ldo1->ena)
+		return -EINVAL;
+
+	gpio_set_value_cansleep(ldo1->ena, 0);
+	ldo1->ena_state = 0;
+
+	return 0;
+}
+
+static int arizona_ldo_is_enabled(struct regulator_dev *rdev)
+{
+	struct arizona_ldo1 *ldo1 = rdev_get_drvdata(rdev);
+
+	if (!ldo1->ena)
+		return -EINVAL;
+
+	return ldo1->ena_state;
+}
+
 static struct regulator_ops arizona_ldo1_ops = {
+	.enable = arizona_ldo_enable,
+	.disable = arizona_ldo_disable,
+	.is_enabled = arizona_ldo_is_enabled,
 	.list_voltage = arizona_ldo_reg_list_voltage_linear,
 	.get_voltage_sel = arizona_ldo_reg_get_voltage_sel,
 	.set_voltage_sel = arizona_ldo_reg_set_voltage_sel,
@@ -114,6 +156,17 @@ static __devinit int arizona_ldo1_probe(struct platform_device *pdev)
 	if (ldo1 == NULL) {
 		dev_err(&pdev->dev, "Unable to allocate private data\n");
 		return -ENOMEM;
+	}
+
+	if (arizona->pdata.ldoena) {
+		ldo1->ena = arizona->pdata.ldoena;
+		ret = gpio_request_one(ldo1->ena, GPIOF_OUT_INIT_LOW,
+					"Arizona LDOENA");
+		if (ret != 0) {
+			dev_err(arizona->dev, "Failed to request LDOENA: %d\n",
+				ret);
+			return ret;
+		}
 	}
 
 	ldo1->arizona = arizona;
