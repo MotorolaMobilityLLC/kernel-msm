@@ -65,6 +65,20 @@ typedef enum eSmeCommandType
     eSmeCommandRemoveKey,
     eSmeCommandAddStaSession,
     eSmeCommandDelStaSession,
+#ifdef FEATURE_WLAN_TDLS
+    //eSmeTdlsCommandMask = 0x80000,  //To identify TDLS commands <TODO>
+    //These can be considered as csr commands. 
+    eSmeCommandTdlsSendMgmt, 
+    eSmeCommandTdlsAddPeer, 
+    eSmeCommandTdlsDelPeer, 
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+    eSmeCommandTdlsDiscovery,
+    eSmeCommandTdlsLinkSetup,
+    eSmeCommandTdlsLinkTear,
+    eSmeCommandTdlsEnterUapsd,
+    eSmeCommandTdlsExitUapsd,
+#endif
+#endif
     //PMC
     eSmePmcCommandMask = 0x20000, //To identify PMC commands
     eSmeCommandEnterImps,

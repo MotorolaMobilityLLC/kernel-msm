@@ -418,6 +418,9 @@ typedef enum
 #ifdef FEATURE_WLAN_LFR
     eCSR_ROAM_PMK_NOTIFY,
 #endif
+#ifdef FEATURE_WLAN_TDLS
+    eCSR_ROAM_TDLS_STATUS_UPDATE,
+#endif
     eCSR_ROAM_DISCONNECT_ALL_P2P_CLIENTS, //Disaconnect all the clients
     eCSR_ROAM_SEND_P2P_STOP_BSS, //Stopbss triggered from SME due to different 
                                  // beacon interval
@@ -506,6 +509,11 @@ typedef enum
     eCSR_ROAM_RESULT_MAX_ASSOC_EXCEEDED,
     //Assoc rejected due to concurrent session running on a different channel
     eCSR_ROAM_RESULT_ASSOC_FAIL_CON_CHANNEL,
+#ifdef FEATURE_WLAN_TDLS
+    eCSR_ROAM_RESULT_ADD_TDLS_PEER,
+    eCSR_ROAM_RESULT_DELETE_TDLS_PEER,
+#endif
+
 }eCsrRoamResult;
 
 
@@ -1094,6 +1102,10 @@ typedef struct tagCsrRoamInfo
     tANI_U32 rxChan;
 #endif
 
+#ifdef FEATURE_WLAN_TDLS
+    tANI_U8 staType;
+#endif
+
     // Required for indicating the frames to upper layer
     tANI_U32 beaconLength;
     tANI_U8* beaconPtr;
@@ -1250,6 +1262,38 @@ typedef struct tagCsrRoamRemoveKey
     tANI_U8 keyId;  //key index
 } tCsrRoamRemoveKey;
 
+#ifdef FEATURE_WLAN_TDLS
+typedef struct tagCsrTdlsSendMgmt
+{
+        tSirMacAddr peerMac;
+        tANI_U8 frameType;
+        tANI_U8 dialog;
+        tANI_U16 statusCode;
+        tANI_U8 *buf;
+        tANI_U8 len;
+
+}tCsrTdlsSendMgmt;
+
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+typedef struct tagCsrTdlsDisRequest
+{
+        tSirMacAddr peerMac;
+            tANI_U8 disType;
+}tCsrTdlsDisRequest;
+
+typedef struct tagCsrTdlsSetupRequest
+{
+        tSirMacAddr peerMac;
+            tANI_U8 linkIndex;
+}tCsrTdlsSetupRequest;
+
+typedef struct tagCsrTdlsTeardownRequest
+{
+        tSirMacAddr peerMac;
+            tANI_U8 linkIndex;
+}tCsrTdlsTeardownRequest ;
+#endif
+#endif
 
 typedef void * tScanResultHandle;
 

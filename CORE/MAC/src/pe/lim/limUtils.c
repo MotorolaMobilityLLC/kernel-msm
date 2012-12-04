@@ -7472,7 +7472,13 @@ void limProcessAddStaRsp(tpAniSirGlobal pMac,tpSirMsgQ limMsgQ)
     }
     if (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE)
         (void) limIbssAddStaRsp(pMac, limMsgQ->bodyptr,psessionEntry);
-    
+#ifdef FEATURE_WLAN_TDLS
+    else if(pMac->lim.gLimAddStaTdls)
+    {
+        limProcessTdlsAddStaRsp(pMac, limMsgQ->bodyptr, psessionEntry) ;
+        pMac->lim.gLimAddStaTdls = FALSE ;
+    }    
+#endif
     else
         limProcessMlmAddStaRsp(pMac, limMsgQ,psessionEntry);
                 

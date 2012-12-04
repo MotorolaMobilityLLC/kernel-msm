@@ -243,6 +243,12 @@ typedef struct sLimTimers
 #ifdef WLAN_FEATURE_P2P
     TX_TIMER           gLimRemainOnChannelTimer;
 #endif
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+    TX_TIMER           gLimTdlsDisRspWaitTimer;
+    TX_TIMER           gLimTdlsLinkSetupRspTimeouTimer;
+    TX_TIMER           gLimTdlsLinkSetupCnfTimeoutTimer;
+#endif
+
     TX_TIMER           gLimPeriodicJoinProbeReqTimer;
     TX_TIMER           gLimDisassocAckTimer;
     TX_TIMER           gLimDeauthAckTimer;
@@ -893,6 +899,27 @@ typedef struct sAniSirLim
 
     ////////////////////////////////  HT RELATED           //////////////////////////////////////////
 
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+    ////////////////////////////////  TDLS RELATED         //////////////////////////////////////////
+    
+    tSirTdlsDisReq gLimTdlsDisReq ; 
+    //tLimDisResultList *gTdlsDisResultList ;
+    tLimDisResultList *gLimTdlsDisResultList ;
+    tANI_U8 gLimTdlsDisStaCount ;
+    tANI_U8 gAddStaDisRspWait ;
+
+    tLimTdlsLinkSetupInfo  gLimTdlsLinkSetupInfo;
+    
+    /* to track if direct link is b/g/n, this can be independent of AP link */
+#ifdef FEATURE_WLAN_TDLS_NEGATIVE
+    tANI_U32 gLimTdlsNegativeBehavior;  
+#endif
+#endif
+#ifdef FEATURE_WLAN_TDLS
+    tANI_U8 gLimAddStaTdls ;
+    tANI_U8 gLimTdlsLinkMode ;
+    ////////////////////////////////  TDLS RELATED         //////////////////////////////////////////
+#endif
 
     // wsc info required to form the wsc IE
     tLimWscIeInfo wscIeInfo;
@@ -1055,7 +1082,9 @@ typedef struct sAniSirGlobal
 #ifdef FEATURE_OEM_DATA_SUPPORT
     tOemDataStruct oemData;
 #endif
-
+#ifdef FEATURE_WLAN_TDLS
+    tCsrTdlsCtxStruct tdlsCtx ;
+#endif
 #ifdef ANI_PRODUCT_TYPE_CLIENT
     tPmcInfo     pmc;
     tSmeBtcInfo  btc;
@@ -1088,7 +1117,16 @@ typedef struct sAniSirGlobal
     
 } tAniSirGlobal;
 
+#ifdef FEATURE_WLAN_TDLS
 
+#define RFC1042_HDR_LENGTH      (6)
+#define GET_BE16(x)             ((tANI_U16) (((x)[0] << 8) | (x)[1]))
+#define ETH_TYPE_89_0d          (0x890d)
+#define ETH_TYPE_LEN            (2)
+#define PAYLOAD_TYPE_TDLS_SIZE  (1)
+#define PAYLOAD_TYPE_TDLS       (2)
+
+#endif
 
 #endif /* _ANIGLOBAL_H */
 

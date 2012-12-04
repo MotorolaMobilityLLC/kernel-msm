@@ -3096,6 +3096,12 @@ limProcessStaMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession ps
                 PELOGE(limLog(pMac, LOGE, FL("could not Add Self Entry for the station\n"));)
                 mlmAssocCnf.resultCode = (tSirResultCodes) eSIR_SME_REFUSED;
             }
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+            else {
+               /* initialize TDLS peer related data */
+               limInitTdlsData(pMac,psessionEntry);
+            }
+#endif            
         }
     }
     else

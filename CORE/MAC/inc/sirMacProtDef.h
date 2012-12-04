@@ -155,14 +155,15 @@
 #define SIR_MAC_ACTION_QOS_MGMT        1
 #define SIR_MAC_ACTION_DLP             2
 #define SIR_MAC_ACTION_BLKACK          3
+#define SIR_MAC_ACTION_PUBLIC_USAGE    4
 #if defined WLAN_FEATURE_VOWIFI
 #define SIR_MAC_ACTION_RRM             5
 #endif
 #define SIR_MAC_ACTION_HT              7
-#define SIR_MAC_ACTION_WME            17
-#if defined WLAN_FEATURE_P2P
-#define SIR_MAC_ACTION_PUBLIC_USAGE 4
+#ifdef FEATURE_WLAN_TDLS
+#define SIR_MAC_ACTION_TDLS           12
 #endif
+#define SIR_MAC_ACTION_WME            17
 #ifdef WLAN_FEATURE_11AC
 #define SIR_MAC_ACTION_VHT            21
 #endif
@@ -244,6 +245,19 @@
 #ifdef WLAN_FEATURE_11W
 //11w SA query request/response action frame category code
 #define SIR_MAC_ACTION_SA_QUERY               8 
+#endif
+
+#ifdef FEATURE_WLAN_TDLS
+#define SIR_MAC_TDLS_SETUP_REQ           0
+#define SIR_MAC_TDLS_SETUP_RSP           1
+#define SIR_MAC_TDLS_SETUP_CNF           2
+#define SIR_MAC_TDLS_TEARDOWN            3
+#define SIR_MAC_TDLS_PEER_TRAFFIC_IND    4
+#define SIR_MAC_TDLS_CH_SWITCH_REQ       5
+#define SIR_MAC_TDLS_CH_SWITCH_RSP       6
+#define SIR_MAC_TDLS_PEER_TRAFFIC_RSP    9
+#define SIR_MAC_TDLS_DIS_REQ             10
+#define SIR_MAC_TDLS_DIS_RSP             14
 #endif
 
 #define SIR_MAC_MAX_RANDOM_LENGTH   2306
@@ -716,7 +730,11 @@ typedef enum eSirMacReasonCodes
     eSIR_MAC_INVALID_RSN_CAPABILITIES_REASON         = 22, //Invalid RSN information element capabilities
     eSIR_MAC_1X_AUTH_FAILURE_REASON                  = 23, //IEEE 802.1X authentication failed
     eSIR_MAC_CIPHER_SUITE_REJECTED_REASON            = 24, //Cipher suite rejected because of the security policy
-    // reserved                                        25 - 31
+#ifdef FEATURE_WLAN_TDLS
+    eSIR_MAC_TDLS_TEARDOWN_PEER_UNREACHABLE          = 25, //TDLS direct link teardown due to TDLS peer STA unreachable via the TDLS direct link
+    eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON             = 26, //TDLS direct link teardown for unspecified reason
+#endif
+    // reserved                                        27 - 31
     eSIR_MAC_QOS_UNSPECIFIED_REASON                  = 32, //Disassociated for unspecified, QoS-related reason
     eSIR_MAC_QAP_NO_BANDWIDTH_REASON                 = 33, //Disassociated because QoS AP lacks sufficient bandwidth for this QoS STA
     eSIR_MAC_XS_UNACKED_FRAMES_REASON                = 34, //Disassociated because excessive number of frames need to be acknowledged, but are not

@@ -168,7 +168,19 @@ typedef enum
 #ifdef WLAN_SOFTAP_FEATURE
   /* SoftAP station */
   WLAN_STA_SOFTAP,
+
+#ifdef FEATURE_WLAN_TDLS
+  /* TDLS direct link */
+  WLAN_STA_TDLS,    /* 4 */
 #endif
+
+#else   /* !defined WLAN_SOFTAP_FEATURE */
+#ifdef FEATURE_WLAN_TDLS
+  /* TDLS direct link */
+  WLAN_STA_TDLS,    /* 3 */
+#endif
+
+#endif/* WLAN_SOFTAP_FEATURE */
 
   /* Invalid link*/
   WLAN_STA_MAX
