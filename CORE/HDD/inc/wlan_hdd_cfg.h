@@ -740,6 +740,21 @@ typedef enum
 #define CFG_ROAM_RSSI_DIFF_MIN                              (0)
 #define CFG_ROAM_RSSI_DIFF_MAX                              (125)
 #define CFG_ROAM_RSSI_DIFF_DEFAULT                          (0)
+
+/*
+ * Following a scan and if potential roam candidate(s) are found,
+ * then determine whether to register for reassoc threshold or roam 
+ * immediately based on this configuration parameter. If the RSSI 
+ * of any available candidate is better than the currently associated 
+ * AP by at least gImmediateRoamRssiDiff, then being to roam 
+ * immediately. 
+ * NOTE: Value of 0 means that we register for reassoc threshold and 
+ * wait for notification before triggering roam.
+ */
+#define CFG_IMMEDIATE_ROAM_RSSI_DIFF_NAME                   "gImmediateRoamRssiDiff"
+#define CFG_IMMEDIATE_ROAM_RSSI_DIFF_MIN                    (0)
+#define CFG_IMMEDIATE_ROAM_RSSI_DIFF_MAX                    (125)
+#define CFG_IMMEDIATE_ROAM_RSSI_DIFF_DEFAULT                (0)
 #endif /* (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR) */
 
 #define CFG_QOS_WMM_PKT_CLASSIFY_BASIS_NAME                "PktClassificationBasis" // DSCP or 802.1Q
@@ -1608,6 +1623,7 @@ typedef struct
    v_U8_t                       FTRssiFilterPeriod;
    v_BOOL_t                     isFastTransitionEnabled;
    v_U8_t                       RoamRssiDiff;
+   v_U8_t                       nImmediateRoamRssiDiff;
 #endif
 
    hdd_wmm_classification_t     PktClassificationBasis; // DSCP or 802.1Q

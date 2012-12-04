@@ -54,10 +54,18 @@
 #include <pmcApi.h>
 #include <wlan_hdd_misc.h>
 
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
 static void cbNotifySetRoamPrefer5GHz(hdd_context_t *pHddCtx, unsigned long NotifyId)
 {
     sme_UpdateRoamPrefer5GHz((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->nRoamPrefer5GHz);
 }
+
+static void cbNotifySetImmediateRoamRssiDiff(hdd_context_t *pHddCtx, unsigned long NotifyId)
+{
+    sme_UpdateImmediateRoamRssiDiff((tHalHandle)(pHddCtx->hHal), 
+                                    pHddCtx->cfg_ini->nImmediateRoamRssiDiff);
+}
+#endif
 
 REG_TABLE_ENTRY g_registry_table[] =
 {
@@ -884,6 +892,14 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_ROAM_RSSI_DIFF_DEFAULT, 
                  CFG_ROAM_RSSI_DIFF_MIN, 
                  CFG_ROAM_RSSI_DIFF_MAX),
+
+   REG_DYNAMIC_VARIABLE( CFG_IMMEDIATE_ROAM_RSSI_DIFF_NAME, WLAN_PARAM_Integer,
+                         hdd_config_t, nImmediateRoamRssiDiff, 
+                         VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
+                         CFG_IMMEDIATE_ROAM_RSSI_DIFF_DEFAULT, 
+                         CFG_IMMEDIATE_ROAM_RSSI_DIFF_MIN, 
+                         CFG_IMMEDIATE_ROAM_RSSI_DIFF_MAX,
+                         cbNotifySetImmediateRoamRssiDiff, 0),
 #endif
 
    REG_VARIABLE( CFG_QOS_WMM_PKT_CLASSIFY_BASIS_NAME , WLAN_PARAM_Integer,
@@ -2009,6 +2025,7 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
 #endif 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [RoamRssiDiff] Value = [%lu] ",pHddCtx->cfg_ini->RoamRssiDiff);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [ImmediateRoamRssiDiff] Value = [%lu] ",pHddCtx->cfg_ini->nImmediateRoamRssiDiff);
 #endif
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [InfraDirAcVo] Value = [%u] ",pHddCtx->cfg_ini->InfraDirAcVo);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [InfraNomMsduSizeAcVo] Value = [0x%x] ",pHddCtx->cfg_ini->InfraNomMsduSizeAcVo);
@@ -3279,6 +3296,7 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
    smeConfig.csrConfig.isFastTransitionEnabled = pConfig->isFastTransitionEnabled;
    smeConfig.csrConfig.RoamRssiDiff = pConfig->RoamRssiDiff;
+   smeConfig.csrConfig.nImmediateRoamRssiDiff = pConfig->nImmediateRoamRssiDiff;
 #endif
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING

@@ -1273,6 +1273,9 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
         pMac->roam.configParam.isFastTransitionEnabled = pParam->isFastTransitionEnabled;
         pMac->roam.configParam.RoamRssiDiff = pParam->RoamRssiDiff;
+        pMac->roam.configParam.nImmediateRoamRssiDiff = pParam->nImmediateRoamRssiDiff;
+        smsLog( pMac, LOG1, "nImmediateRoamRssiDiff = %d\n", 
+                pMac->roam.configParam.nImmediateRoamRssiDiff );
         pMac->roam.configParam.nRoamPrefer5GHz = pParam->nRoamPrefer5GHz;
 #endif
 #ifdef FEATURE_WLAN_LFR 
