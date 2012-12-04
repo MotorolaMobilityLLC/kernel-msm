@@ -964,6 +964,7 @@ out:
 	return err ? 0 : 1;
 }
 
+#ifdef CONFIG_MMC_SECDISCARD
 static int mmc_blk_issue_secdiscard_rq(struct mmc_queue *mq,
 				       struct request *req)
 {
@@ -1029,7 +1030,7 @@ out:
 
 	return err ? 0 : 1;
 }
-
+#endif
 static int mmc_blk_issue_sanitize_rq(struct mmc_queue *mq,
 				      struct request *req)
 {
@@ -2073,9 +2074,11 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 		/* complete ongoing async transfer before issuing discard */
 		if (card->host->areq)
 			mmc_blk_issue_rw_rq(mq, NULL);
+#ifdef CONFIG_MMC_SECDISCARD
 		if (req->cmd_flags & REQ_SECURE)
 			ret = mmc_blk_issue_secdiscard_rq(mq, req);
 		else
+#endif
 			ret = mmc_blk_issue_discard_rq(mq, req);
 	} else if (req && req->cmd_flags & REQ_FLUSH) {
 		/* complete ongoing async transfer before issuing flush */
