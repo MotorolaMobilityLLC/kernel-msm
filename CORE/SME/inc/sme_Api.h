@@ -1595,9 +1595,9 @@ eHalStatus sme_getOemDataRsp(tHalHandle hHal,
 
     \param pAPWPSIES - pointer to a caller allocated object of tCsrRoamAPWPSIES
 
-    \return eHalStatus – SUCCESS – Roam callback will be called indicate actually results
+    \return eHalStatus  SUCCESS  Roam callback will be called indicate actually results
 
-                         FAILURE or RESOURCES – The API finished and failed.
+                         FAILURE or RESOURCES  The API finished and failed.
 
   -------------------------------------------------------------------------------*/
 
@@ -1611,9 +1611,9 @@ eHalStatus sme_RoamUpdateAPWPSIE(tHalHandle, tANI_U8 sessionId, tSirAPWPSIEs *pA
 
     \param pAPSirRSNie - pointer to a caller allocated object of tSirRSNie with WPS/RSN IEs
 
-    \return eHalStatus – SUCCESS – 
+    \return eHalStatus  SUCCESS  
 
-                         FAILURE or RESOURCES – The API finished and failed.
+                         FAILURE or RESOURCES  The API finished and failed.
 
   -------------------------------------------------------------------------------*/
 eHalStatus sme_RoamUpdateAPWPARSNIEs(tHalHandle hHal, tANI_U8 sessionId, tSirRSNie * pAPSirRSNie);
@@ -1624,9 +1624,9 @@ eHalStatus sme_RoamUpdateAPWPARSNIEs(tHalHandle hHal, tANI_U8 sessionId, tSirRSN
 
     \brief To update P2P-GO's beacon Interval. 
 
-    \return eHalStatus – SUCCESS 
-                       – FAILURE or RESOURCES 
-                       – The API finished and failed.
+    \return eHalStatus  SUCCESS 
+                        FAILURE or RESOURCES 
+                        The API finished and failed.
   -------------------------------------------------------------------------------*/
 eHalStatus sme_ChangeMCCBeaconInterval(tHalHandle hHal, tANI_U8 sessionId);
 
@@ -1638,8 +1638,8 @@ eHalStatus sme_ChangeMCCBeaconInterval(tHalHandle hHal, tANI_U8 sessionId);
   \brief API to send the btAMPstate to FW
   \param  hHal - The handle returned by macOpen.
   \param  btAmpEvent -- btAMP event
-  \return eHalStatus – SUCCESS –
-                         FAILURE or RESOURCES – The API finished and failed.
+  \return eHalStatus  SUCCESS 
+                         FAILURE or RESOURCES  The API finished and failed.
 
 --------------------------------------------------------------------------- */
 
@@ -2198,5 +2198,62 @@ void sme_transportDebug
 
 eHalStatus sme_UpdateRoamPrefer5GHz(tHalHandle hHal, v_BOOL_t nRoamPrefer5GHz);
 #endif
+
+/* ---------------------------------------------------------------------------
+    \fn sme_IsFeatureSupportedByFW
+    \brief  Check if an feature is enabled by FW
+            
+    \param  feattEnumValue - Enumeration value of the feature to be checked.
+                A value from enum placeHolderInCapBitmap
+                              
+    \- return 1/0 (TRUE/FALSE) 
+    -------------------------------------------------------------------------*/
+tANI_U8 sme_IsFeatureSupportedByFW(tANI_U8 featEnumValue);
+#ifdef FEATURE_WLAN_TDLS
+/* ---------------------------------------------------------------------------
+    \fn sme_SendTdlsMgmtFrame
+    \brief  API to send TDLS management frames.
+            
+    \param  peerMac - peer's Mac Adress.
+    \param frame_type - Type of TDLS mgmt frame to be sent.
+    \param dialog - dialog token used in the frame.
+    \param status - status to be incuded in the frame.
+    \param buf - additional IEs to be included
+    \param len - lenght of additional Ies
+    \- return VOS_STATUS_SUCCES
+    -------------------------------------------------------------------------*/
+VOS_STATUS sme_SendTdlsMgmtFrame(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac,
+      tANI_U8 frame_type, tANI_U8 dialog, tANI_U16 status, tANI_U8 *buf, tANI_U8 len);
+/* ---------------------------------------------------------------------------
+    \fn sme_AddTdlsPeerSta
+    \brief  API to Add TDLS peer sta entry.
+            
+    \param  peerMac - peer's Mac Adress.
+    \- return VOS_STATUS_SUCCES
+    -------------------------------------------------------------------------*/
+VOS_STATUS sme_AddTdlsPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
+/* ---------------------------------------------------------------------------
+    \fn sme_DeleteTdlsPeerSta
+    \brief  API to Delete TDLS peer sta entry.
+            
+    \param  peerMac - peer's Mac Adress.
+    \- return VOS_STATUS_SUCCES
+    -------------------------------------------------------------------------*/
+VOS_STATUS sme_DeleteTdlsPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
+#endif
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+typedef struct smeTdlsDisResult
+{
+      tSirMacAddr tdlsPeerMac;
+          v_S7_t tdlsPeerRssi;
+} tSmeTdlsDisResult;
+
+VOS_STATUS sme_StartTdlsDiscoveryReq(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
+v_U8_t sme_GetTdlsDiscoveryResult(tHalHandle hHal,
+                                 tSmeTdlsDisResult *disResult, v_U8_t listType);
+VOS_STATUS sme_StartTdlsLinkSetupReq(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
+VOS_STATUS sme_StartTdlsLinkTeardownReq(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
+
+#endif /* FEATURE_WLAN_TDLS */
 
 #endif //#if !defined( __SME_API_H )

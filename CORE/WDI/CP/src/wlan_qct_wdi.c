@@ -107,7 +107,11 @@ static tWlanFeatCaps *gpFwWlanFeatCaps;
  * and other two places - wlan_hal_msg.h and halMsg.c (FW file)
  */
 static placeHolderInCapBitmap supportEnabledFeatures[] =
-   {MCC, P2P, DOT11AC, SLM_SESSIONIZATION, DOT11AC_OPMODE};
+   {MCC, P2P, DOT11AC, SLM_SESSIONIZATION, DOT11AC_OPMODE
+#ifdef FEATURE_WLAN_TDLS
+     ,TDLS
+#endif
+   };
 
 /*-------------------------------------------------------------------------- 
    WLAN DAL  State Machine

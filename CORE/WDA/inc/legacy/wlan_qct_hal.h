@@ -364,6 +364,9 @@ tANI_U8 WLANHAL_RxBD_GetFrameTypeSubType(v_PVOID_t _pvBDHeader, tANI_U16 usFrmCt
 #define HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME 0x40 // Bit 6 will be used to control BD rate for Management frames
 #define HAL_USE_PEER_STA_REQUESTED_MASK   0x80 //bit 7 will be used to control frames for p2p interface
 
+#ifdef FEATURE_WLAN_TDLS
+#define HAL_TDLS_PEER_STA_MASK              0x80 //bit 7 set for TDLS peer station 
+#endif
 /*==========================================================================
 
   FUNCTION    WLANHAL_FillTxBd

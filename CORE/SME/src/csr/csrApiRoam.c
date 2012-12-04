@@ -14682,6 +14682,14 @@ eHalStatus csrIsFullPowerNeeded( tpAniSirGlobal pMac, tSmeCmd *pCommand,
             fNeedFullPower = eANI_BOOLEAN_TRUE;
             reason = eSME_LINK_DISCONNECTED_BY_OTHER;
         }
+#ifdef FEATURE_WLAN_TDLS
+        else if( eSmeCommandTdlsAddPeer == pCommand->command )
+        {
+            //TDLS link is getting established. need full power 
+            fNeedFullPower = eANI_BOOLEAN_TRUE;
+            reason = eSME_FULL_PWR_NEEDED_BY_TDLS_PEER_SETUP;
+        }
+#endif
         break;
     case REQUEST_STOP_UAPSD:
     case REQUEST_EXIT_WOWL:

@@ -330,6 +330,33 @@ enum eWniMsgTypes
 #endif // WLAN_WAKEUP_EVENTS
     eWNI_SME_EXCLUDE_UNENCRYPTED,
     eWNI_SME_RSSI_IND, //RSSI indication from TL to be serialized on MC thread
+#ifdef FEATURE_WLAN_TDLS
+    eWNI_SME_TDLS_SEND_MGMT_REQ,    
+    eWNI_SME_TDLS_SEND_MGMT_RSP,    
+    eWNI_SME_TDLS_ADD_STA_REQ,    
+    eWNI_SME_TDLS_ADD_STA_RSP,    
+    eWNI_SME_TDLS_DEL_STA_REQ,    
+    eWNI_SME_TDLS_DEL_STA_RSP,    
+#endif
+    //NOTE: If you are planning to add more mesages, please make sure that 
+    //SIR_LIM_ITC_MSG_TYPES_BEGIN is moved appropriately. It is set as
+    //SIR_LIM_MSG_TYPES_BEGIN+0xB0 = 12B0 (which means max of 176 messages and
+    //eWNI_SME_TDLS_DEL_STA_RSP = 175.
+    //Should fix above issue to enable TDLS_INTERNAL
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+#error ERROR_TDLS_INTERNAL
+    eWNI_SME_TDLS_DISCOVERY_START_REQ,    
+    eWNI_SME_TDLS_DISCOVERY_START_RSP,    
+    eWNI_SME_TDLS_DISCOVERY_START_IND,    
+    eWNI_SME_TDLS_LINK_START_REQ,    
+    eWNI_SME_TDLS_LINK_START_RSP,    
+    eWNI_SME_TDLS_LINK_START_IND,    
+    eWNI_SME_TDLS_TEARDOWN_REQ,    
+    eWNI_SME_TDLS_TEARDOWN_RSP,    
+    eWNI_SME_TDLS_TEARDOWN_IND,    
+    eWNI_SME_ADD_TDLS_PEER_IND,    
+    eWNI_SME_DELETE_TDLS_PEER_IND,    
+#endif
     eWNI_SME_MSG_TYPES_END
 };
 

@@ -198,9 +198,56 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
             }
             pMac->sys.gSysBbtPostedToLim++;
     }
-#ifdef FEATURE_WLAN_CCX
     else if (type == SIR_MAC_DATA_FRAME)
     {
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+       /*
+        * if we reached here, probably this frame can be TDLS frame.
+        */
+       v_U16_t ethType = 0 ;
+       v_U8_t *mpduHdr =  NULL ;
+       v_U8_t *ethTypeOffset = NULL ; 
+       
+       /*
+        * Peek into payload and extract ethtype.
+        * In TDLS we can recieve TDLS frames with MAC HEADER (802.11) and also
+        * without MAC Header (Particularly TDLS action frames on direct link.
+        */
+       mpduHdr = (v_U8_t *)WDA_GET_RX_MAC_HEADER(pBd) ;
+       
+#define SIR_MAC_ETH_HDR_LEN                       (14)
+       if(0 != WDA_GET_RX_FT_DONE(pBd))
+       {
+           ethTypeOffset = mpduHdr + SIR_MAC_ETH_HDR_LEN - sizeof(ethType) ;
+       }
+       else
+       {
+           ethTypeOffset = mpduHdr + WDA_GET_RX_MPDU_HEADER_LEN(pBd) 
+                                                     + RFC1042_HDR_LENGTH ; 
+       }
+       
+       ethType = GET_BE16(ethTypeOffset) ;
+       if(ETH_TYPE_89_0d == ethType)
+       {
+       
+           VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR, 
+                                                   ("TDLS Data Frame \n")) ;
+           /* Post the message to PE Queue */
+           PELOGE(sysLog(pMac, LOGE, FL("posting to TDLS frame to lim\n"));)
+
+           ret = (tSirRetStatus) limPostMsgApi(pMac, pMsg);
+           if (ret != eSIR_SUCCESS)
+           {
+               PELOGE(sysLog(pMac, LOGE, FL("posting to LIM2 failed, \
+                                                        ret %d\n"), ret);)
+               goto fail;
+           }
+           else 
+               return eSIR_SUCCESS;
+       }
+       /* fall through if ethType != TDLS, which is error case */
+#endif            
+#ifdef FEATURE_WLAN_CCX
         PELOGW(sysLog(pMac, LOGW, FL("IAPP Frame...\n")););
         //Post the message to PE Queue
         ret = (tSirRetStatus) limPostMsgApi(pMac, pMsg);
@@ -210,8 +257,8 @@ sysBbtProcessMessageCore(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tANI_U32 type,
             goto fail;
         }
         pMac->sys.gSysBbtPostedToLim++;
-    }
 #endif
+    }
     else
     {
         PELOG3(sysLog(pMac, LOG3, "BBT received Invalid type %d subType %d "

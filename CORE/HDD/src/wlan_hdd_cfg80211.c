@@ -81,6 +81,9 @@
 #include "bap_hdd_misc.h"
 #endif
 #include <qc_sap_ioctl.h>
+#ifdef FEATURE_WLAN_TDLS
+#include "wlan_hdd_tdls.h"
+#endif
 
 #define g_mode_rates_size (12)
 #define a_mode_rates_size (8)
@@ -466,6 +469,11 @@ int wlan_hdd_cfg80211_register(struct device *dev,
                  |  WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL
                     | WIPHY_FLAG_OFFCHAN_TX;
 #endif
+#ifdef FEATURE_WLAN_TDLS
+    wiphy->flags |= WIPHY_FLAG_SUPPORTS_TDLS
+                 |  WIPHY_FLAG_TDLS_EXTERNAL_SETUP;
+#endif
+
     /* even with WIPHY_FLAG_CUSTOM_REGULATORY,
        driver can still register regulatory callback and
        it will get CRDA setting in wiphy->band[], but
@@ -6000,8 +6008,54 @@ static int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
 static int wlan_hdd_cfg80211_add_station(struct wiphy *wiphy,
           struct net_device *dev, u8 *mac, struct station_parameters *params)
 {
-    // TODO: Implement this later.
+#ifdef FEATURE_WLAN_TDLS
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    hdd_context_t *pHddCtx = wiphy_priv(wiphy);
+    u32 mask, set;
+    VOS_STATUS status;
     ENTER();
+
+    if( NULL == pHddCtx || NULL == pHddCtx->cfg_ini )
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
+                "Invalid arguments");
+        return -EINVAL;
+    }
+
+    if( FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport ||
+        FALSE == sme_IsFeatureSupportedByFW(TDLS)) 
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
+                "TDLS Disabled in INI OR not enabled in FW.\
+                Cannot process TDLS commands \n");
+        return -ENOTSUPP;
+    }
+
+    mask = params->sta_flags_mask;
+
+    set = params->sta_flags_set;
+
+
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
+            "Add Station Request Mask = 0x%x set = 0x%x\n", mask, set);
+
+    if (mask & BIT(NL80211_STA_FLAG_TDLS_PEER)) {
+        if (set & BIT(NL80211_STA_FLAG_TDLS_PEER)) {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
+                    "Add TDLS peer");
+
+
+            status = sme_AddTdlsPeerSta(WLAN_HDD_GET_HAL_CTX(pAdapter), 
+                    pAdapter->sessionId, mac);
+
+            if (VOS_STATUS_SUCCESS != status) {
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                        "%s: sme_AddTdlsPeerSta failed!", __func__);
+            }
+        }
+    }
+#endif
+
     return 0;
 }
 
@@ -6150,6 +6204,139 @@ static int wlan_hdd_cfg80211_update_ft_ies(struct wiphy *wiphy,
 }
 #endif
 
+#ifdef FEATURE_WLAN_TDLS
+static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *dev,
+                     u8 *peer, u8 action_code,  u8 dialog_token,
+                                                 u16 status_code, const u8 *buf, size_t len)
+{
+
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    hdd_context_t *pHddCtx = wiphy_priv(wiphy);
+    u8 *buf_1;
+    size_t len_1 = len;
+    u8 peerMac[6];
+    VOS_STATUS status;
+
+    if( NULL == pHddCtx || NULL == pHddCtx->cfg_ini )
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
+                "Invalid arguments");
+        return -EINVAL;
+    }
+
+    if( FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport ||
+        FALSE == sme_IsFeatureSupportedByFW(TDLS)) 
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
+                "TDLS Disabled in INI OR not enabled in FW.\
+                Cannot process TDLS commands \n");
+        return -ENOTSUPP;
+    }
+    vos_mem_copy( peerMac, peer, 6);
+
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
+                     "Request to send TDLS management: action = %d, status = %d, \
+		      len = %d", action_code, status_code, len);
+
+    buf_1 = vos_mem_malloc(len);
+    if(buf_1 == NULL) {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: malloc failed!", __func__);
+        return -ENOMEM;
+    }
+    vos_mem_copy(buf_1, buf, len);
+
+    status = sme_SendTdlsMgmtFrame(WLAN_HDD_GET_HAL_CTX(pAdapter), pAdapter->sessionId,
+            peerMac, action_code, dialog_token, status_code, buf_1, len_1);
+
+    if (VOS_STATUS_SUCCESS != status) {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: sme_SendTdlsMgmtFrame failed!", __func__);
+    }
+
+    vos_mem_free(buf_1);
+
+    return 0;
+}
+
+static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *dev,
+                 u8 *peer, enum nl80211_tdls_operation oper)
+{
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    hdd_context_t *pHddCtx = wiphy_priv(wiphy);
+
+    if( NULL == pHddCtx || NULL == pHddCtx->cfg_ini )
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
+                "Invalid arguments");
+        return -EINVAL;
+    }
+       
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
+            "Request for TDLS oper: %d", (int)oper);
+
+    if( FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport ||
+        FALSE == sme_IsFeatureSupportedByFW(TDLS)) 
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
+                "TDLS Disabled in INI OR not enabled in FW.\
+                Cannot process TDLS commands \n");
+        return -ENOTSUPP;
+    }
+
+    switch (oper) {
+        case NL80211_TDLS_ENABLE_LINK:
+            {
+                v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;  
+                v_U8_t my_peer[6];
+                v_U8_t ucSTAId;
+                VOS_STATUS status;
+
+                if (peer) {
+                    vos_mem_copy(my_peer, peer, 6);
+                    ucSTAId = wlan_hdd_findTdlsPeer(my_peer);
+
+                    hddLog(VOS_TRACE_LEVEL_INFO_HIGH, 
+                            "%s: set key for peer %2x:%2x:%2x:%2x:%2x:%2x",
+                            __func__, peer[0], peer[1], 
+                            peer[2], peer[3], 
+                            peer[4], peer[5] );
+
+                    if (-1 == ucSTAId ) {
+                        hddLog(VOS_TRACE_LEVEL_ERROR, "wlan_hdd_findTdlsPeer failed" );
+                        return 0;
+                    }
+
+                    status = WLANTL_ChangeSTAState( pVosContext, ucSTAId, 
+                            WLANTL_STA_AUTHENTICATED );
+
+                    if (0 != status) {
+                        hddLog(VOS_TRACE_LEVEL_ERROR, 
+                                "%s: WLANTL_ChangeSTAState failed, returned %d", 
+                                __func__, status);
+                        return status;
+                    }
+                } else {
+                    hddLog(VOS_TRACE_LEVEL_WARN, "wlan_hdd_cfg80211_add_key: peer NULL" );
+                }
+            }
+            break;
+        case NL80211_TDLS_DISABLE_LINK:
+            sme_DeleteTdlsPeerSta( WLAN_HDD_GET_HAL_CTX(pAdapter), 
+                    pAdapter->sessionId, peer );
+            return 0;
+        case NL80211_TDLS_TEARDOWN:
+        case NL80211_TDLS_SETUP:
+        case NL80211_TDLS_DISCOVERY_REQ:
+            /* We don't support in-driver setup/teardown/discovery */
+            return -ENOTSUPP;
+        default:
+            return -ENOTSUPP;
+    }
+    return 0;
+}
+#endif
+
 /* cfg80211_ops */
 static struct cfg80211_ops wlan_hdd_cfg80211_ops = 
 {
@@ -6201,6 +6388,10 @@ static struct cfg80211_ops wlan_hdd_cfg80211_ops =
 #endif
 #if defined(WLAN_FEATURE_VOWIFI_11R) && defined(KERNEL_SUPPORT_11R_CFG80211)
      .update_ft_ies = wlan_hdd_cfg80211_update_ft_ies,
+#endif
+#ifdef FEATURE_WLAN_TDLS
+     .tdls_mgmt = wlan_hdd_cfg80211_tdls_mgmt,
+     .tdls_oper = wlan_hdd_cfg80211_tdls_oper,
 #endif
 };
 

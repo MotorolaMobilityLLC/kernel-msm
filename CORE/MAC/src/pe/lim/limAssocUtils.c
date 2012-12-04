@@ -2026,8 +2026,12 @@ limPopulateMatchingRateSet(tpAniSirGlobal pMac,
 
 
     //compute the matching MCS rate set, if peer is 11n capable and self mode is 11n
+#ifdef FEATURE_WLAN_TDLS
+    if(pStaDs->mlmStaContext.htCapability)
+#else
     if(IS_DOT11_MODE_HT(psessionEntry->dot11mode) &&
       (pStaDs->mlmStaContext.htCapability))
+#endif
     {
         val = SIZE_OF_SUPPORTED_MCS_SET;
         if (wlan_cfgGetStr(pMac, WNI_CFG_SUPPORTED_MCS_SET,
@@ -2126,6 +2130,13 @@ limAddSta(
         (limGetSystemRole(psessionEntry) == eLIM_STA_IN_IBSS_ROLE) ||
         (limGetSystemRole(psessionEntry) == eLIM_BT_AMP_AP_ROLE) )
         pStaAddr = &pStaDs->staAddr;
+#ifdef FEATURE_WLAN_TDLS
+    /* SystemRole shouldn't be matter if staType is TDLS peer */
+    else if(STA_ENTRY_TDLS_PEER == pStaDs->staType)
+    {
+        pStaAddr = &pStaDs->staAddr ;
+    }
+#endif
     else
         pStaAddr = &staMac;
 
@@ -2170,6 +2181,11 @@ limAddSta(
         pAddStaParams->vhtCapable = pStaDs->mlmStaContext.vhtCapability;
 #endif
     }
+#ifdef FEATURE_WLAN_TDLS
+    /* SystemRole shouldn't be matter if staType is TDLS peer */
+    else if(STA_ENTRY_TDLS_PEER == pStaDs->staType)
+        pAddStaParams->htCapable = pStaDs->mlmStaContext.htCapability;
+#endif
     else
     {
         pAddStaParams->htCapable = psessionEntry->htCapability;
@@ -2220,7 +2236,12 @@ limAddSta(
     }
 
 #ifdef WLAN_SOFTAP_FEATURE
+#ifdef FEATURE_WLAN_TDLS
+    if(pStaDs->wmeEnabled && \
+       ((eLIM_AP_ROLE == psessionEntry->limSystemRole) || (STA_ENTRY_TDLS_PEER == pStaDs->staType)) )
+#else
     if(pStaDs->wmeEnabled && (eLIM_AP_ROLE == psessionEntry->limSystemRole))
+#endif      
     {
         pAddStaParams->uAPSD = 0;
         /* update UAPSD and send it to LIM to add STA */
@@ -2330,7 +2351,11 @@ limDelSta(
     }
 #endif
 
+#ifdef FEATURE_WLAN_TDLS
+    if( ((eLIM_STA_ROLE == GET_LIM_SYSTEM_ROLE(psessionEntry)) && (pStaDs->staType !=  STA_ENTRY_TDLS_PEER)) ||(eLIM_BT_AMP_STA_ROLE == GET_LIM_SYSTEM_ROLE(psessionEntry)) )
+#else
     if( (eLIM_STA_ROLE == GET_LIM_SYSTEM_ROLE(psessionEntry)) ||(eLIM_BT_AMP_STA_ROLE == GET_LIM_SYSTEM_ROLE(psessionEntry)) )
+#endif
       pDelStaParams->staIdx= psessionEntry->staId;
     
     else

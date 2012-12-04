@@ -3100,6 +3100,9 @@ typedef enum eRequestFullPowerReason
    eSME_FULL_PWR_NEEDED_BY_CSR,    /* CSR requests full power */
    eSME_FULL_PWR_NEEDED_BY_QOS,    /* QOS requests full power */
    eSME_FULL_PWR_NEEDED_BY_CHANNEL_SWITCH, /* channel switch request full power*/
+#ifdef FEATURE_WLAN_TDLS
+   eSME_FULL_PWR_NEEDED_BY_TDLS_PEER_SETUP, /* TDLS peer setup*/
+#endif
    eSME_REASON_OTHER               /* No specific reason. General reason code */ 
 } tRequestFullPowerReason, tExitBmpsReason;
 
@@ -4225,5 +4228,226 @@ typedef struct sAniSetTmLevelReq
     tANI_U16                tmMode;
     tANI_U16                newTmLevel;
 } tAniSetTmLevelReq, *tpAniSetTmLevelReq;
+
+#ifdef FEATURE_WLAN_TDLS
+/* TDLS Request struct SME-->PE */
+typedef struct sSirTdlsSendMgmtReq
+{
+    tANI_U16            messageType;   // eWNI_SME_TDLS_DISCOVERY_START_REQ
+    tANI_U16            length;
+    tANI_U8             sessionId;     // Session ID
+    tANI_U16            transactionId; // Transaction ID for cmd
+    tANI_U8             reqType;
+    tANI_U8             dialog;
+    tANI_U16            statusCode;
+    tSirMacAddr         bssid;         // For multi-session, for PE to locate peSession ID
+    tSirMacAddr         peerMac;
+    tANI_U8             addIe[1];      //Variable lenght. Dont add any field after this.
+} tSirTdlsSendMgmtReq, *tpSirSmeTdlsSendMgmtReq ;
+/* TDLS Request struct SME-->PE */
+typedef struct sSirTdlsAddStaReq
+{
+    tANI_U16            messageType;   // eWNI_SME_TDLS_DISCOVERY_START_REQ
+    tANI_U16            length;
+    tANI_U8             sessionId;     // Session ID
+    tANI_U16            transactionId; // Transaction ID for cmd
+    tSirMacAddr         bssid;         // For multi-session, for PE to locate peSession ID
+    tSirMacAddr         peerMac;
+} tSirTdlsAddStaReq, *tpSirSmeTdlsAddStaReq ;
+/* TDLS Response struct PE-->SME */
+typedef struct sSirTdlsAddStaRsp
+{
+    tANI_U16               messageType;
+    tANI_U16               length;
+    tSirResultCodes        statusCode;
+    tSirMacAddr            peerMac;
+    tANI_U8                sessionId;     // Session ID
+    tANI_U16               staId ;
+    tANI_U16               staType ;
+    tANI_U8                ucastSig;
+    tANI_U8                bcastSig;
+} tSirTdlsAddStaRsp ;
+/* TDLS Request struct SME-->PE */
+typedef struct sSirTdlsDelStaReq
+{
+    tANI_U16            messageType;   // eWNI_SME_TDLS_DISCOVERY_START_REQ
+    tANI_U16            length;
+    tANI_U8             sessionId;     // Session ID
+    tANI_U16            transactionId; // Transaction ID for cmd
+    tSirMacAddr         bssid;         // For multi-session, for PE to locate peSession ID
+    tSirMacAddr         peerMac;
+} tSirTdlsDelStaReq, *tpSirSmeTdlsDelStaReq ;
+/* TDLS Response struct PE-->SME */
+typedef struct sSirTdlsDelStaRsp
+{
+   tANI_U16               messageType;
+   tANI_U16               length;
+   tANI_U8                sessionId;     // Session ID
+   tSirResultCodes        statusCode;
+   tSirMacAddr            peerMac;
+   tANI_U16               staId;
+} tSirTdlsDelStaRsp, *tpSirTdlsDelStaRsp;
+#endif /* FEATURE_WLAN_TDLS */
+
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+typedef enum tdlsListType
+{
+    TDLS_DIS_LIST,
+    TDLS_SETUP_LIST
+}eTdlsListType ;
+
+typedef enum tdlsStates
+{
+    TDLS_LINK_IDLE_STATE,
+    TDLS_LINK_DIS_INIT_STATE,
+    TDLS_LINK_DIS_RSP_WAIT_STATE,
+    TDLS_DIS_REQ_PROCESS_STATE,
+    TDLS_DIS_RSP_SENT_WAIT_STATE,
+    TDLS_DIS_RSP_SENT_DONE_STATE,
+    TDLS_LINK_DIS_DONE_STATE,
+    TDLS_LINK_SETUP_START_STATE,
+    TDLS_LINK_SETUP_WAIT_STATE,
+    TDLS_LINK_SETUP_RSP_WAIT_STATE,
+    TDLS_LINK_SETUP_DONE_STATE,
+    TDLS_LINK_TEARDOWN_START_STATE,
+    TDLS_LINK_TEARDOWN_DONE_STATE,
+    TDLS_LINK_SETUP_STATE
+}eSirTdlsStates ;
+
+typedef struct sSirTdlsPeerInfo
+{
+    tSirMacAddr peerMac;
+    tANI_U8     sessionId;
+    tANI_U8     dialog ;
+    tSirMacCapabilityInfo capabilityInfo ;
+    tSirMacRateSet  tdlsPeerSuppRates ;
+    tSirMacRateSet  tdlsPeerExtRates ;
+    //tDot11fIEHTCaps tdlsPeerHtCaps ;
+    tSirMacHTCapabilityInfo tdlsPeerHtCaps ;
+    tSirMacHTParametersInfo tdlsPeerHtParams ;
+    tSirMacExtendedHTCapabilityInfo tdlsPeerHtExtCaps ;
+    tANI_U8  supportedMCSSet[SIZE_OF_SUPPORTED_MCS_SET];
+
+    //tDot11fIEExtCapability tdlsPeerExtenCaps ;
+    tSirMacRsnInfo tdlsPeerRsn ;
+    tANI_U16 tdlsPeerFtIe ;
+    tANI_U16 tdlsPeerTimeoutIntvl ;
+    tANI_U16 tdlsPeerSuppChan ;
+    tANI_U16 tdlsPeerSuppReguClass ;
+    tANI_S8  tdlsPeerRssi ;
+    tANI_U16 tdlsPeerState ;
+    /* flags to indicate optional IE's are in */
+    tANI_U8  ExtRatesPresent ;
+    tANI_U8  rsnIePresent ;
+    tANI_U8  htCapPresent ;
+    tANI_U8  delStaNeeded ;
+
+} tSirTdlsPeerInfo, *tpSirSmeTdlsPeerInfo ;
+
+/* TDLS Request struct SME-->PE */
+typedef struct sSirTdlsDiscoveryReq
+{
+    tANI_U16            messageType;   // eWNI_SME_TDLS_DISCOVERY_START_REQ
+    tANI_U16            length;
+    tANI_U8             sessionId;     // Session ID
+    tANI_U16            transactionId; // Transaction ID for cmd
+    tANI_U8             reqType;
+    tANI_U8             dialog;
+    tSirMacAddr         bssid;         // For multi-session, for PE to locate peSession ID
+    tSirMacAddr         peerMac;
+} tSirTdlsDisReq, *tpSirSmeTdlsDisReq ;
+
+typedef struct sSirTdlsLinkSetupReq
+{
+    tANI_U16            messageType;   // eWNI_SME_TDLS_LINK_START_REQ
+    tANI_U16            length;
+    tANI_U8             sessionId;     // Session ID
+    tANI_U16            transactionId; // Transaction ID for cmd
+    tANI_U8             dialog;
+    tSirMacAddr         bssid;         // For multi-session, for PE to locate peSession ID
+    tSirMacAddr         peerMac;
+} tSirTdlsSetupReq, *tpSirSmeTdlsSetupReq ;
+
+typedef struct sSirTdlsTeardownReq
+{
+    tANI_U16            messageType;   // eWNI_SME_TDLS_TEARDOWN_REQ
+    tANI_U16            length;
+    tANI_U8             sessionId;     // Session ID
+    tANI_U16            transactionId; // Transaction ID for cmd
+    tSirMacAddr         bssid;         // For multi-session, for PE to locate peSession ID
+    tSirMacAddr         peerMac;
+} tSirTdlsTeardownReq, *tpSirSmeTdlsTeardownReq ;
+
+
+/* TDLS response struct  PE-->SME */
+typedef struct sSirTdlsDiscoveryRsp
+{
+    tANI_U16               messageType;
+    tANI_U16               length;
+    tSirResultCodes        statusCode;
+    tANI_U16               numDisSta ;
+    tSirTdlsPeerInfo       tdlsDisPeerInfo[0];
+} tSirTdlsDisRsp, *tpSirSmeTdlsDiscoveryRsp;
+
+typedef struct sSirTdlsLinkSetupRsp
+{
+    tANI_U16               messageType;
+    tANI_U16               length;
+    tSirResultCodes        statusCode;
+    tSirMacAddr            peerMac;
+} tSirTdlsLinksetupRsp ;
+
+typedef struct sSirTdlsLinkSetupInd
+{
+    tANI_U16               messageType;
+    tANI_U16               length;
+    tSirResultCodes        statusCode;
+    tSirMacAddr            peerMac;
+} tSirTdlsLinkSetupInd ;
+
+
+typedef struct sSirTdlsTeardownRsp
+{
+    tANI_U16               messageType;
+    tANI_U16               length;
+    tSirResultCodes        statusCode;
+    tSirMacAddr            peerMac;
+} tSirTdlsTeardownRsp ;
+
+typedef struct sSirTdlsPeerInd
+{
+    tANI_U16               messageType;
+    tANI_U16               length;
+    tSirMacAddr            peerMac;
+    tANI_U8                sessionId;     // Session ID
+    tANI_U16               staId ;
+    tANI_U16               staType ;
+    tANI_U8                ucastSig;
+    tANI_U8                bcastSig;
+} tSirTdlsPeerInd ;
+
+typedef struct sSirTdlsLinkEstablishInd
+{
+    tANI_U16               messageType;
+    tANI_U16               length;
+    tANI_U8                bIsResponder;  /* if this is 1, self is initiator and peer is reponder */
+    tANI_U8                linkIdenOffset;  /* offset of LinkIdentifierIE.bssid[0] from ptiTemplateBuf */
+    tANI_U8                ptiBufStatusOffset; /* offset of BufferStatus from ptiTemplateBuf */
+    tANI_U8                ptiTemplateLen;
+    tANI_U8                ptiTemplateBuf[64];
+    tANI_U8                extCapability[8];
+/*  This will be part of PTI template when sent by PE  
+    tANI_U8                linkIdentifier[20];
+*/    
+} tSirTdlsLinkEstablishInd, *tpSirTdlsLinkEstablishInd;
+
+typedef struct sSirTdlsLinkTeardownInd
+{
+   tANI_U16               messageType;
+   tANI_U16               length;
+   tANI_U16               staId;
+} tSirTdlsLinkTeardownInd, *tpSirTdlsLinkTeardownInd;
+
+#endif  /* FEATURE_WLAN_TDLS_INTERNAL */
 
 #endif /* __SIR_API_H */

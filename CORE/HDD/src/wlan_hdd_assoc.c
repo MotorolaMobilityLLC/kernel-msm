@@ -61,6 +61,9 @@
 #if defined CONFIG_CFG80211
 #include "wlan_hdd_p2p.h"
 #endif
+#ifdef FEATURE_WLAN_TDLS
+#include "wlan_hdd_tdls.h"
+#endif
 #include "sme_Api.h"
 
 v_BOOL_t mibIsDot11DesiredBssTypeInfrastructure( hdd_adapter_t *pAdapter );
@@ -1737,6 +1740,186 @@ static eHalStatus roamRoamConnectStatusUpdateHandler( hdd_adapter_t *pAdapter, t
    return( eHAL_STATUS_SUCCESS );
 }
 
+#ifdef FEATURE_WLAN_TDLS
+/**============================================================================
+ *
+  @brief hdd_roamRegisterTDLSSTA() - Construct the staDesc and register with
+  TL the new STA. This is called as part of ADD_STA in the TDLS setup
+  Return: VOS_STATUS
+  
+  ===========================================================================*/
+static VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
+                                             tCsrRoamInfo *pRoamInfo,
+                                                v_U8_t tdlsEncryptionEnabled )
+{
+    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;  
+    VOS_STATUS vosStatus = VOS_STATUS_E_FAILURE;
+    WLAN_STADescType staDesc = {0};
+
+    if (-1 == wlan_hdd_saveTdlsPeer(pRoamInfo)) {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
+                     "wlan_hdd_saveTdlsPeer() failed");
+    }
+    /*
+     * TDLS sta in BSS should be set as STA type TDLS and STA MAC should
+     * be peer MAC, here we are wokrking on direct Link
+     */
+    staDesc.ucSTAId = pRoamInfo->staId ;
+
+    staDesc.wSTAType = WLAN_STA_TDLS ;
+      
+    vos_mem_copy( staDesc.vSTAMACAddress.bytes, pRoamInfo->peerMac,
+                                         sizeof(tSirMacAddr) );
+
+    vos_mem_copy(staDesc.vBSSIDforIBSS.bytes, pHddStaCtx->conn_info.bssId,6 );
+    vos_copy_macaddr( &staDesc.vSelfMACAddress, &pAdapter->macAddressCurrent );
+
+    /* set the QoS field appropriately ..*/
+    (hdd_wmm_is_active(pAdapter)) ? (staDesc.ucQosEnabled = 1)
+                                          : (staDesc.ucQosEnabled = 0) ;
+
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "HDD register \
+                                TL QoS_enabled=%d\n", staDesc.ucQosEnabled );
+
+    staDesc.ucProtectedFrame = tdlsEncryptionEnabled;
+
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
+               "HDD register TL Sec_enabled= %d.\n", staDesc.ucProtectedFrame );
+
+    /* 
+     * UMA is ready we inform TL  to do frame translation.
+     */
+    staDesc.ucSwFrameTXXlation = 1;
+    staDesc.ucSwFrameRXXlation = 1;
+    staDesc.ucAddRmvLLC = 1;
+
+    /* Initialize signatures and state */
+    staDesc.ucUcastSig  = pRoamInfo->ucastSig ;
+
+    /* tdls Direct Link do not need bcastSig */
+    staDesc.ucBcastSig  = 0 ;
+    
+#ifdef VOLANS_ENABLE_SW_REPLAY_CHECK
+    if(staDesc.ucProtectedFrame)
+        staDesc.ucIsReplayCheckValid = VOS_TRUE;
+    else
+        staDesc.ucIsReplayCheckValid = VOS_FALSE;
+#endif
+
+    staDesc.ucInitState = WLANTL_STA_CONNECTED ;
+
+   (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = pAdapter;
+   /* Register the Station with TL...  */    
+    vosStatus = WLANTL_RegisterSTAClient( pVosContext, 
+                                          hdd_rx_packet_cbk, 
+                                          hdd_tx_complete_cbk, 
+                                          hdd_tx_fetch_packet_cbk, &staDesc, 0 );
+   
+    if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
+                     "WLANTL_RegisterSTAClient() failed to register.  \
+                            Status= %d [0x%08lX]", vosStatus, vosStatus );
+         return vosStatus;      
+    }                                            
+    
+    return( vosStatus );
+}
+
+/*
+ * HDD interface between SME and TL to ensure TDLS client registration with
+ * TL in case of new TDLS client is added and deregistration at the time
+ * TDLS client is deleted.
+ */
+
+eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter, 
+                                             tCsrRoamInfo *pRoamInfo, 
+                                              tANI_U32 roamId,
+                                                eRoamCmdStatus roamStatus, 
+                                                  eCsrRoamResult roamResult)
+{
+    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    eHalStatus status = eHAL_STATUS_FAILURE ;
+ 
+    switch( roamResult )
+    {
+        case eCSR_ROAM_RESULT_ADD_TDLS_PEER:
+        {
+            tANI_U8 staIdx = 0 ;
+            /*
+             * check if there is available index for this new TDLS STA
+             * since TDLS is setup in BSS, we need to start from +1
+             */
+            for ( staIdx = 0 ; 
+                             staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
+            {
+                if (0 == pHddStaCtx->conn_info.staId[staIdx] )
+                {
+                    pHddStaCtx->conn_info.staId[staIdx] = pRoamInfo->staId;
+
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                     ("TDLS: STA IDX at %d \
+                       and mac = %d: %02x,%02x, %02x, %02x, %02x, %02x\n"),
+                              staIdx, pHddStaCtx->conn_info.staId[staIdx], 
+                                                pRoamInfo->peerMac[0],
+                                                pRoamInfo->peerMac[1],   
+                                                pRoamInfo->peerMac[2],   
+                                                pRoamInfo->peerMac[3],   
+                                                pRoamInfo->peerMac[4],   
+                                                pRoamInfo->peerMac[5]) ;
+  
+                    vos_copy_macaddr(
+                              &pHddStaCtx->conn_info.peerMacAddress[staIdx],
+                                     (v_MACADDR_t *)pRoamInfo->peerMac) ;
+                    status = eHAL_STATUS_SUCCESS ;
+                    break ;
+                }
+            }
+            if(eHAL_STATUS_SUCCESS == status)
+            {
+                /* start TDLS client registration with TL */
+                status = hdd_roamRegisterTDLSSTA( pAdapter, pRoamInfo, 1) ;
+            }
+            break ;
+        }
+        case eCSR_ROAM_RESULT_DELETE_TDLS_PEER:
+        {         
+            tANI_U8 staIdx = 0 ;
+            status = eHAL_STATUS_FAILURE ;
+
+            for ( staIdx = 0 ; 
+                             staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
+            {
+                if (pRoamInfo->staId == pHddStaCtx->conn_info.staId[staIdx] )
+                {
+                    pHddStaCtx->conn_info.staId[staIdx] = 0 ;
+                    vos_mem_zero(&pHddStaCtx->conn_info.peerMacAddress[staIdx],
+                                               sizeof(v_MACADDR_t)) ;
+                    status = eHAL_STATUS_SUCCESS ;
+
+                    break ;
+                }
+            }
+            if(eHAL_STATUS_SUCCESS == status)
+            {
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                               ("HDD: del STA IDX = %x\n"), pRoamInfo->staId) ;
+                hdd_roamDeregisterSTA( pAdapter, pRoamInfo->staId );
+                (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = NULL;
+            }
+            break ; 
+        }
+        default:
+        {
+            break ;
+        }
+    }
+
+    return status ;
+}
+#endif
+
 eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U32 roamId, 
                                 eRoamCmdStatus roamStatus, eCsrRoamResult roamResult )
 {
@@ -1977,6 +2160,12 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
             hdd_sendActionCnf( pAdapter,
                (roamResult == eCSR_ROAM_RESULT_NONE) ? TRUE : FALSE );
             break;
+#endif
+#ifdef FEATURE_WLAN_TDLS
+	case eCSR_ROAM_TDLS_STATUS_UPDATE:
+          halStatus = hdd_RoamTdlsStatusUpdateHandler( pAdapter, pRoamInfo, 
+                                            roamId, roamStatus, roamResult );
+          break ;
 #endif
         default:
             break;

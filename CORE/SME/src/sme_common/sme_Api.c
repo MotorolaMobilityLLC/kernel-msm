@@ -750,6 +750,26 @@ tANI_BOOLEAN smeProcessCommand( tpAniSirGlobal pMac )
                             }
 #endif
                             break;
+#ifdef FEATURE_WLAN_TDLS
+                        case eSmeCommandTdlsSendMgmt:     
+                        case eSmeCommandTdlsAddPeer:
+                        case eSmeCommandTdlsDelPeer:
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+                        case eSmeCommandTdlsDiscovery:
+                        case eSmeCommandTdlsLinkSetup:
+                        case eSmeCommandTdlsLinkTear:
+                        case eSmeCommandTdlsEnterUapsd:
+                        case eSmeCommandTdlsExitUapsd:
+#endif
+                            {
+                                VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                                        "sending TDLS Command 0x%x to PE\n", pCommand->command);
+
+                                csrLLUnlock( &pMac->sme.smeCmdActiveList );
+                                status = csrTdlsProcessCmd( pMac, pCommand );
+                            }
+                            break ;
+#endif
 
                         default:
                             //something is wrong
@@ -930,6 +950,16 @@ eHalStatus sme_Open(tHalHandle hHal)
 #if defined WLAN_FEATURE_P2P
       sme_p2pOpen(pMac);
 #endif
+#ifdef FEATURE_WLAN_TDLS
+      status = csrTdlsOpen(pMac) ;
+      if ( ! HAL_STATUS_SUCCESS( status ) )
+      {
+          smsLog( pMac, LOGE, "Tdlspen open failed during initialization with \
+                  status=%d\n", status );
+          break;
+      }
+#endif
+
 
    }while (0);
 
@@ -1638,6 +1668,39 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
                 }
                 break;
 #endif // WLAN_WAKEUP_EVENTS
+
+#ifdef FEATURE_WLAN_TDLS
+          /*
+           * command rescived from PE, SME tdls msg processor shall be called
+           * to process commands recieved from PE
+           */
+          case eWNI_SME_TDLS_SEND_MGMT_RSP:    
+          case eWNI_SME_TDLS_ADD_STA_RSP:    
+          case eWNI_SME_TDLS_DEL_STA_RSP:    
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+          case eWNI_SME_TDLS_DISCOVERY_START_RSP:
+          case eWNI_SME_TDLS_DISCOVERY_START_IND:
+          case eWNI_SME_TDLS_LINK_START_RSP:
+          case eWNI_SME_TDLS_LINK_START_IND:
+          case eWNI_SME_TDLS_TEARDOWN_RSP:
+          case eWNI_SME_TDLS_TEARDOWN_IND:
+          case eWNI_SME_ADD_TDLS_PEER_IND:
+          case eWNI_SME_DELETE_TDLS_PEER_IND:
+#endif
+                {
+                    if (pMsg->bodyptr)
+                    {
+                        status = tdlsMsgProcessor(pMac, pMsg->type, pMsg->bodyptr);
+                        vos_mem_free( pMsg->bodyptr );
+                    }
+                    else
+                    {
+                        smsLog( pMac, LOGE, "Empty rsp message for TDLS, \
+                                nothing to process\n");
+                    }
+                    break;
+                }
+#endif
 
           default:
 
@@ -5059,9 +5122,9 @@ eHalStatus sme_RoamUpdateAPWPARSNIEs(tHalHandle hHal, tANI_U8 sessionId, tSirRSN
 
     \param 
 
-    \return eHalStatus – SUCCESS 
-                       – FAILURE or RESOURCES 
-                       – The API finished and failed.
+    \return eHalStatus  SUCCESS 
+                        FAILURE or RESOURCES 
+                        The API finished and failed.
 
   -------------------------------------------------------------------------------*/
 eHalStatus sme_ChangeMCCBeaconInterval(tHalHandle hHal, tANI_U8 sessionId)
@@ -6755,4 +6818,202 @@ eHalStatus sme_UpdateRoamPrefer5GHz(tHalHandle hHal, v_BOOL_t nRoamPrefer5GHz)
 }
 #endif
 
+
+/* ---------------------------------------------------------------------------
+    \fn sme_IsFeatureSupportedByFW
+    \brief  Check if an feature is enabled by FW
+            
+    \param  feattEnumValue - Enumeration value from placeHolderInCapBitmap
+    \- return 1/0 (TRUE/FALSE) 
+    -------------------------------------------------------------------------*/
+tANI_U8 sme_IsFeatureSupportedByFW(tANI_U8 featEnumValue)
+{
+   return IS_FEATURE_SUPPORTED_BY_FW(featEnumValue);
+}
+#ifdef FEATURE_WLAN_TDLS
+/* ---------------------------------------------------------------------------
+    \fn sme_SendTdlsMgmtFrame
+    \brief  API to send TDLS management frames.
+            
+    \param  peerMac - peer's Mac Adress.
+    \param frame_type - Type of TDLS mgmt frame to be sent.
+    \param dialog - dialog token used in the frame.
+    \param status - status to be incuded in the frame.
+    \param buf - additional IEs to be included
+    \param len - lenght of additional Ies
+    \- return VOS_STATUS_SUCCES
+    -------------------------------------------------------------------------*/
+VOS_STATUS sme_SendTdlsMgmtFrame(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac,
+      tANI_U8 frame_type, tANI_U8 dialog, tANI_U16 statusCode, tANI_U8 *buf, tANI_U8 len)
+{
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+    tCsrTdlsSendMgmt sendTdlsReq = {{0}} ;
+    tpAniSirGlobal      pMac      = PMAC_STRUCT(hHal);
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        vos_mem_copy(sendTdlsReq.peerMac, peerMac, sizeof(tSirMacAddr)) ;
+        sendTdlsReq.frameType = frame_type;
+        sendTdlsReq.buf = buf;
+        sendTdlsReq.len = len;
+        sendTdlsReq.dialog = dialog;
+        sendTdlsReq.statusCode = statusCode;
+
+        status = csrTdlsSendMgmtReq(hHal, sessionId, &sendTdlsReq) ;
+
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+
+}
+/* ---------------------------------------------------------------------------
+    \fn sme_AddTdlsPeerSta
+    \brief  API to Add TDLS peer sta entry.
+            
+    \param  peerMac - peer's Mac Adress.
+    \- return VOS_STATUS_SUCCES
+    -------------------------------------------------------------------------*/
+VOS_STATUS sme_AddTdlsPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac)
+{
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+    tpAniSirGlobal      pMac      = PMAC_STRUCT(hHal);
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        status = csrTdlsAddPeerSta(hHal, sessionId, peerMac);
+
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+
+}
+/* ---------------------------------------------------------------------------
+    \fn sme_DeleteTdlsPeerSta
+    \brief  API to Delete TDLS peer sta entry.
+            
+    \param  peerMac - peer's Mac Adress.
+    \- return VOS_STATUS_SUCCES
+    -------------------------------------------------------------------------*/
+VOS_STATUS sme_DeleteTdlsPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac)
+{
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+    tpAniSirGlobal      pMac      = PMAC_STRUCT(hHal);
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        status = csrTdlsDelPeerSta(hHal, sessionId, peerMac) ;
+
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+
+}
+#endif
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+/*
+ * SME API to start TDLS discovery Procedure
+ */
+VOS_STATUS sme_StartTdlsDiscoveryReq(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac)
+{
+    VOS_STATUS status = VOS_STATUS_SUCCESS;
+    tCsrTdlsDisRequest disReq = {{0}} ;
+    vos_mem_copy(disReq.peerMac, peerMac, sizeof(tSirMacAddr)) ;
+    status = csrTdlsDiscoveryReq(hHal, sessionId, &disReq) ;
+
+    return status ;
+
+}
+
+/*
+ * Process TDLS discovery results
+ */
+v_U8_t sme_GetTdlsDiscoveryResult(tHalHandle hHal,
+                                 tSmeTdlsDisResult *disResult, v_U8_t listType)
+{
+    tCsrTdlsPeerLinkinfo *peerLinkInfo = NULL ;
+    tSirTdlsPeerInfo *peerInfo = NULL ;
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    tCsrTdlsCtxStruct *disInfo = &pMac->tdlsCtx ;
+    tDblLinkList *peerList =  &disInfo->tdlsPotentialPeerList ;
+    tListElem *pEntry = NULL ;
+    v_U8_t peerCnt = 0 ;
+
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+            ("TDLS peer count = %d\n"),disInfo->tdlsPeerCount ) ;
+    pEntry = csrLLPeekHead( peerList, LL_ACCESS_LOCK );
+    while(pEntry)
+    {
+        peerLinkInfo = GET_BASE_ADDR( pEntry, tCsrTdlsPeerLinkinfo,
+                tdlsPeerStaLink) ;
+        peerInfo = &peerLinkInfo->tdlsDisPeerInfo ;
+
+        switch(listType)
+        {
+            case TDLS_SETUP_LIST:
+                {
+                    if(TDLS_LINK_SETUP_STATE == peerInfo->tdlsPeerState)
+                    {
+                        palCopyMemory(pMac->hHdd, disResult[peerCnt].tdlsPeerMac,
+                                peerInfo->peerMac, sizeof(tSirMacAddr)) ;
+                        disResult[peerCnt].tdlsPeerRssi = peerInfo->tdlsPeerRssi ;
+                        peerCnt++ ;
+                    }
+                    break ;
+                }
+            case TDLS_DIS_LIST:
+                {
+                    palCopyMemory(pMac->hHdd, disResult[peerCnt].tdlsPeerMac,
+                            peerInfo->peerMac, sizeof(tSirMacAddr)) ;
+                    disResult[peerCnt].tdlsPeerRssi = peerInfo->tdlsPeerRssi ;
+                    peerCnt++ ;
+                    break ;
+                }
+            default:
+                {
+                    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                            ("unknown list type \n")) ;
+                    break ;
+                }
+        }
+
+        pEntry = csrLLNext( peerList, pEntry, LL_ACCESS_LOCK) ;
+    }
+
+    return peerCnt ;
+
+}
+
+/*
+ * SME API to start TDLS link setup Procedure.
+ */
+VOS_STATUS sme_StartTdlsLinkSetupReq(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac)
+{
+    VOS_STATUS status = VOS_STATUS_SUCCESS;
+    tCsrTdlsSetupRequest setupReq = {{0}} ;
+    vos_mem_copy(setupReq.peerMac, peerMac, sizeof(tSirMacAddr)) ;
+    status = csrTdlsSetupReq(hHal, sessionId, &setupReq) ;
+    return status ;
+
+}
+
+/*
+ * SME API to start TDLS link Teardown Procedure.
+ */
+VOS_STATUS sme_StartTdlsLinkTeardownReq(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac)
+{
+    VOS_STATUS status = VOS_STATUS_SUCCESS;
+    tCsrTdlsTeardownRequest teardownReq = {{0}} ;
+    vos_mem_copy(teardownReq.peerMac, peerMac, sizeof(tSirMacAddr)) ;
+    status = csrTdlsTeardownReq(hHal, sessionId, &teardownReq) ;
+    return status ;
+
+}
+
+#endif /* FEATURE_WLAN_TDLS */
 

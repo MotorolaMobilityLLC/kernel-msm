@@ -45,6 +45,9 @@
 #include "csrApi.h"
 #include "sapApi.h"
 #endif
+#ifdef FEATURE_WLAN_TDLS
+#include "dot11f.h"
+#endif
 
 /// Maximum number of scan hash table entries
 #define LIM_MAX_NUM_OF_SCAN_RESULTS 256
@@ -754,4 +757,58 @@ typedef struct sLimSpecMgmtInfo
     tANI_BOOLEAN       fRadarDetCurOperChan; /* Radar detected in cur oper chan on AP */
     tANI_BOOLEAN       fRadarIntrConfigured; /* Whether radar interrupt has been configured */
 }tLimSpecMgmtInfo, *tpLimSpecMgmtInfo;
+
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+typedef struct sLimDisResultList
+{
+    struct sLimDisResultList *next ;
+    tSirTdlsPeerInfo tdlsDisPeerInfo ;
+}tLimDisResultList ;
+#endif
+
+#ifdef FEATURE_WLAN_TDLS
+/*
+ * Peer info needed for TDLS setup..
+ */
+typedef struct tLimTDLSPeerSta
+{
+    struct tLimTDLSPeerSta   *next;
+    tANI_U8                  dialog ;
+    tSirMacAddr              peerMac;
+    tSirMacCapabilityInfo    capabilityInfo;
+    tSirMacRateSet           supportedRates;
+    tSirMacRateSet           extendedRates;
+    tSirMacQosCapabilityStaIE qosCaps;
+    tSirMacEdcaParamSetIE    edcaParams;
+    tANI_U8                  mcsSet[SIZE_OF_SUPPORTED_MCS_SET];    
+    tANI_U8                  tdls_bIsResponder ;
+    /* HT Capabilties */
+    tDot11fIEHTCaps tdlsPeerHTCaps ;
+    tDot11fIEExtCap tdlsPeerExtCaps;
+    tANI_U8 tdls_flags ;
+    tANI_U8 tdls_link_state ;
+    tANI_U8 tdls_prev_link_state ;
+    tANI_U8 tdls_sessionId;
+    tANI_U8 ExtRatesPresent ;
+    TX_TIMER gLimTdlsLinkSetupRspTimeoutTimer ;
+    TX_TIMER gLimTdlsLinkSetupCnfTimeoutTimer ;
+}tLimTdlsLinkSetupPeer, *tpLimTdlsLinkSetupPeer ;
+
+typedef struct tLimTdlsLinkSetupInfo
+{
+    tLimTdlsLinkSetupPeer *tdlsLinkSetupList ;
+    tANI_U8 num_tdls_peers ;
+    tANI_U8 tdls_flags ;
+    tANI_U8 tdls_state ;
+    tANI_U8 tdls_prev_state ; 
+}tLimTdlsLinkSetupInfo, *tpLimTdlsLinkSetupInfo ;
+
+typedef enum tdlsLinkMode
+{
+    TDLS_LINK_MODE_BG,
+    TDLS_LINK_MODE_N,
+    TDLS_LINK_MODE_NONE
+} eLimTdlsLinkMode ;
+#endif  /* FEATURE_WLAN_TDLS */
+
 #endif

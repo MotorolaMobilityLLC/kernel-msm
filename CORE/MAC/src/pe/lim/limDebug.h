@@ -39,4 +39,13 @@
 
 void limLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString,...) ;
 
+/* define this to show more message in the LIM during TDLS development */
+#define LIM_DEBUG_TDLS
+
+#ifdef LIM_DEBUG_TDLS
+#define LIM_LOG_TDLS(x0) x0
+#else
+#define LIM_LOG_TDLS(x0) 
+#endif
+
 #endif

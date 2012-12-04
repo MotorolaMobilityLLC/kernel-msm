@@ -705,3 +705,107 @@ tSirRetStatus limSendModeUpdate(tpAniSirGlobal pMac,
     return retCode;
 }
 #endif 
+
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+/** ---------------------------------------------------------
+\fn      limSendTdlsLinkEstablish
+\brief   LIM sends a message to HAL to set tdls direct link
+\param   tpAniSirGlobal  pMac
+\param   
+\return  None
+  -----------------------------------------------------------*/
+tSirRetStatus limSendTdlsLinkEstablish(tpAniSirGlobal pMac, tANI_U8 bIsPeerResponder, tANI_U8 linkIdenOffset, 
+                tANI_U8 ptiBufStatusOffset, tANI_U8 ptiFrameLen, tANI_U8 *ptiFrame, tANI_U8 *extCapability)
+{
+    tSirMsgQ msgQ;
+    tSirRetStatus retCode;
+    tpSirTdlsLinkEstablishInd pTdlsLinkEstablish = NULL;
+
+    // Allocate memory.
+    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
+          (void **) &pTdlsLinkEstablish,
+          sizeof(tSirTdlsLinkEstablishInd)))
+    {
+        limLog( pMac, LOGP,
+        FL( "Unable to PAL allocate memory while sending Tdls Link Establish \n" ));
+
+        retCode = eSIR_SME_RESOURCES_UNAVAILABLE;
+        return retCode;
+    }
+
+    palZeroMemory( pMac->hHdd, (tANI_U8 *) pTdlsLinkEstablish, sizeof(tSirTdlsLinkEstablishInd));
+
+    pTdlsLinkEstablish->bIsResponder = !!bIsPeerResponder; 
+    pTdlsLinkEstablish->linkIdenOffset = linkIdenOffset;
+    pTdlsLinkEstablish->ptiBufStatusOffset = ptiBufStatusOffset;
+    pTdlsLinkEstablish->ptiTemplateLen = ptiFrameLen;
+    /* Copy ptiFrame template */
+    palCopyMemory( pMac->hHdd, pTdlsLinkEstablish->ptiTemplateBuf, ptiFrame, ptiFrameLen);
+    /* Copy extended capabilities */
+    palCopyMemory( pMac->hHdd, (tANI_U8 *) pTdlsLinkEstablish->extCapability,  extCapability, sizeof(pTdlsLinkEstablish->extCapability));
+
+    msgQ.type = SIR_HAL_TDLS_LINK_ESTABLISH;
+    msgQ.reserved = 0;
+    msgQ.bodyptr = pTdlsLinkEstablish;
+    msgQ.bodyval = 0;
+    
+    MTRACE(macTraceMsgTx(pMac, 0, msgQ.type));
+
+    retCode = (tANI_U32)wdaPostCtrlMsg(pMac, &msgQ);
+    if (retCode != eSIR_SUCCESS)
+    {
+        palFreeMemory(pMac, (void*)pTdlsLinkEstablish);
+        limLog(pMac, LOGP, FL("Posting tdls link establish %d failed, reason = %x \n"), retCode);
+    }
+
+    return retCode;
+}
+
+/** ---------------------------------------------------------
+\fn      limSendTdlsLinkTeardown
+\brief   LIM sends a message to HAL to indicate tdls direct link is teardowned
+\param   tpAniSirGlobal  pMac
+\param   
+\return  None
+  -----------------------------------------------------------*/
+tSirRetStatus limSendTdlsLinkTeardown(tpAniSirGlobal pMac, tANI_U16 staId)
+{
+    tSirMsgQ msgQ;
+    tSirRetStatus retCode;
+    tpSirTdlsLinkTeardownInd pTdlsLinkTeardown = NULL;
+
+    // Allocate memory.
+    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
+          (void **) &pTdlsLinkTeardown,
+          sizeof(tSirTdlsLinkTeardownInd)))
+    {
+        limLog( pMac, LOGP,
+        FL( "Unable to PAL allocate memory while sending Tdls Link Teardown \n" ));
+
+        retCode = eSIR_SME_RESOURCES_UNAVAILABLE;
+        return retCode;
+    }
+
+    palZeroMemory( pMac->hHdd, (tANI_U8 *) pTdlsLinkTeardown, sizeof(tSirTdlsLinkTeardownInd));
+
+    pTdlsLinkTeardown->staId = staId;
+
+    msgQ.type = SIR_HAL_TDLS_LINK_TEARDOWN;
+    msgQ.reserved = 0;
+    msgQ.bodyptr = pTdlsLinkTeardown;
+    msgQ.bodyval = 0;
+    
+    MTRACE(macTraceMsgTx(pMac, 0, msgQ.type));
+
+    retCode = (tANI_U32)wdaPostCtrlMsg(pMac, &msgQ);
+    if (retCode != eSIR_SUCCESS)
+    {
+        palFreeMemory(pMac, (void*)pTdlsLinkTeardown);
+        limLog(pMac, LOGP, FL("Posting tdls link teardown %d failed, reason = %x \n"), retCode);
+    }
+
+    return retCode;
+}
+
+#endif
+

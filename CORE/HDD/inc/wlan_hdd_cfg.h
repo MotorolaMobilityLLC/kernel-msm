@@ -1410,6 +1410,12 @@ typedef enum
 #define CFG_ENABLE_RX_STBC_DEFAULT               ( 1 )
 
 
+#ifdef FEATURE_WLAN_TDLS
+#define CFG_TDLS_SUPPORT_ENABLE               "gEnableTDLSSupport"
+#define CFG_TDLS_SUPPORT_ENABLE_MIN           ( 0 )
+#define CFG_TDLS_SUPPORT_ENABLE_MAX           ( 1 )
+#define CFG_TDLS_SUPPORT_ENABLE_DEFAULT       ( 0 )
+#endif
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -1721,6 +1727,9 @@ typedef struct
    v_U32_t                     numBuffAdvert;
    v_U8_t                      ignore_chan165;
    v_BOOL_t                    enableRxSTBC;
+#ifdef FEATURE_WLAN_TDLS       
+   v_BOOL_t                    fEnableTDLSSupport;
+#endif
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

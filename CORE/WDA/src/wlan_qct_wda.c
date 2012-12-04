@@ -3002,7 +3002,12 @@ void WDA_AddStaReqCallback(WDI_ConfigSTARspParamsType *wdiConfigStaRsp,
       addStaReqParam->ucUcastSig = wdiConfigStaRsp->ucUcastSig;
       addStaReqParam->ucBcastSig = wdiConfigStaRsp->ucBcastSig;
       /* update staIndex as valid index for BA if STA is HT capable*/
+#ifdef FEATURE_WLAN_TDLS 
+      if( (addStaReqParam->staType == STA_ENTRY_PEER ||
+         addStaReqParam->staType == STA_ENTRY_TDLS_PEER) && addStaReqParam->htCapable)
+#else
       if(addStaReqParam->staType == STA_ENTRY_PEER && addStaReqParam->htCapable)
+#endif
       {
          pWDA->wdaStaInfo[addStaReqParam->staIdx].bssIdx = 
                                                     wdiConfigStaRsp->ucBssIdx;
@@ -9288,7 +9293,7 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
       systemRole = wdaGetGlobalSystemRole(pMac);
       if (( eSYSTEM_UNKNOWN_ROLE == systemRole ) || 
           (( eSYSTEM_STA_ROLE == systemRole )
-#ifdef FEATURE_WLAN_CCX
+#if defined FEATURE_WLAN_CCX || defined FEATURE_WLAN_TDLS
           && frmType == HAL_TXRX_FRM_802_11_MGMT
 #endif
           ))

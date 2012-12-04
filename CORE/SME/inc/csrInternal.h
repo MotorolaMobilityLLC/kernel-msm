@@ -708,6 +708,30 @@ typedef struct tagCsrScanStruct
     tANI_BOOLEAN fIgnore_chan165;
 }tCsrScanStruct;
 
+#ifdef FEATURE_WLAN_TDLS
+/*
+ * struct to carry TDLS discovery info..
+ */
+typedef struct sCsrTdlsContext
+{
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+    tDblLinkList tdlsPotentialPeerList ;
+    tANI_U16 tdlsCommonFlag ;
+    tANI_U16 tdlsCommonState ;
+#endif
+    tANI_U16 tdlsPeerCount ;
+}tCsrTdlsCtxStruct;
+
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+typedef struct sCsrTdlsPeerLinkInfo
+{
+    tListElem tdlsPeerStaLink ;
+    tSirTdlsPeerInfo tdlsDisPeerInfo ;
+}tCsrTdlsPeerLinkinfo ;
+#endif
+#endif
+
+
 
 //Save the connected information. This structure + connectedProfile
 //should contain all information about the connection
