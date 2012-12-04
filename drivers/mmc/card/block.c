@@ -121,21 +121,11 @@ struct mmc_blk_data {
 	struct device_attribute force_ro;
 	struct device_attribute power_ro_lock;
 	struct device_attribute num_wr_reqs_to_start_packing;
+	struct device_attribute min_sectors_to_check_bkops_status;
 	int	area_type;
 };
 
 static DEFINE_MUTEX(open_lock);
-
-enum mmc_blk_status {
-	MMC_BLK_SUCCESS = 0,
-	MMC_BLK_PARTIAL,
-	MMC_BLK_CMD_ERR,
-	MMC_BLK_RETRY,
-	MMC_BLK_ABORT,
-	MMC_BLK_DATA_ERR,
-	MMC_BLK_ECC_ERR,
-	MMC_BLK_NOMEDIUM,
-};
 
 enum {
 	MMC_PACKED_N_IDX = -1,
@@ -312,6 +302,48 @@ num_wr_reqs_to_start_packing_store(struct device *dev,
 	sscanf(buf, "%d", &value);
 	if (value >= 0)
 		md->queue.num_wr_reqs_to_start_packing = value;
+
+	mmc_blk_put(md);
+	return count;
+}
+
+static ssize_t
+min_sectors_to_check_bkops_status_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	struct mmc_blk_data *md = mmc_blk_get(dev_to_disk(dev));
+	unsigned int min_sectors_to_check_bkops_status;
+	struct mmc_card *card = md->queue.card;
+	int ret;
+
+	if (!card)
+		return -EINVAL;
+
+	min_sectors_to_check_bkops_status =
+		card->bkops_info.min_sectors_to_queue_delayed_work;
+
+	ret = snprintf(buf, PAGE_SIZE, "%d\n",
+		       min_sectors_to_check_bkops_status);
+
+	mmc_blk_put(md);
+	return ret;
+}
+
+static ssize_t
+min_sectors_to_check_bkops_status_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	int value;
+	struct mmc_blk_data *md = mmc_blk_get(dev_to_disk(dev));
+	struct mmc_card *card = md->queue.card;
+
+	if (!card)
+		return -EINVAL;
+
+	sscanf(buf, "%d", &value);
+	if (value >= 0)
+		card->bkops_info.min_sectors_to_queue_delayed_work = value;
 
 	mmc_blk_put(md);
 	return count;
@@ -1437,6 +1469,64 @@ void mmc_blk_init_packed_statistics(struct mmc_card *card)
 }
 EXPORT_SYMBOL(mmc_blk_init_packed_statistics);
 
+void print_mmc_packing_stats(struct mmc_card *card)
+{
+	int i;
+	int max_num_of_packed_reqs = 0;
+
+	if ((!card) || (!card->wr_pack_stats.packing_events))
+		return;
+
+	max_num_of_packed_reqs = card->ext_csd.max_packed_writes;
+
+	spin_lock(&card->wr_pack_stats.lock);
+
+	pr_info("%s: write packing statistics:\n",
+		mmc_hostname(card->host));
+
+	for (i = 1 ; i <= max_num_of_packed_reqs ; ++i) {
+		if (card->wr_pack_stats.packing_events[i] != 0)
+			pr_info("%s: Packed %d reqs - %d times\n",
+				mmc_hostname(card->host), i,
+				card->wr_pack_stats.packing_events[i]);
+	}
+
+	pr_info("%s: stopped packing due to the following reasons:\n",
+		mmc_hostname(card->host));
+
+	if (card->wr_pack_stats.pack_stop_reason[EXCEEDS_SEGMENTS])
+		pr_info("%s: %d times: exceedmax num of segments\n",
+			mmc_hostname(card->host),
+			card->wr_pack_stats.pack_stop_reason[EXCEEDS_SEGMENTS]);
+	if (card->wr_pack_stats.pack_stop_reason[EXCEEDS_SECTORS])
+		pr_info("%s: %d times: exceeding the max num of sectors\n",
+			mmc_hostname(card->host),
+			card->wr_pack_stats.pack_stop_reason[EXCEEDS_SECTORS]);
+	if (card->wr_pack_stats.pack_stop_reason[WRONG_DATA_DIR])
+		pr_info("%s: %d times: wrong data direction\n",
+			mmc_hostname(card->host),
+			card->wr_pack_stats.pack_stop_reason[WRONG_DATA_DIR]);
+	if (card->wr_pack_stats.pack_stop_reason[FLUSH_OR_DISCARD])
+		pr_info("%s: %d times: flush or discard\n",
+			mmc_hostname(card->host),
+			card->wr_pack_stats.pack_stop_reason[FLUSH_OR_DISCARD]);
+	if (card->wr_pack_stats.pack_stop_reason[EMPTY_QUEUE])
+		pr_info("%s: %d times: empty queue\n",
+			mmc_hostname(card->host),
+			card->wr_pack_stats.pack_stop_reason[EMPTY_QUEUE]);
+	if (card->wr_pack_stats.pack_stop_reason[REL_WRITE])
+		pr_info("%s: %d times: rel write\n",
+			mmc_hostname(card->host),
+			card->wr_pack_stats.pack_stop_reason[REL_WRITE]);
+	if (card->wr_pack_stats.pack_stop_reason[THRESHOLD])
+		pr_info("%s: %d times: Threshold\n",
+			mmc_hostname(card->host),
+			card->wr_pack_stats.pack_stop_reason[THRESHOLD]);
+
+	spin_unlock(&card->wr_pack_stats.lock);
+}
+EXPORT_SYMBOL(print_mmc_packing_stats);
+
 static u8 mmc_blk_prep_packed_list(struct mmc_queue *mq, struct request *req)
 {
 	struct request_queue *q = mq->queue;
@@ -1644,6 +1734,7 @@ static void mmc_blk_packed_hdr_wrq_prep(struct mmc_queue_req *mqrq,
 	brq->data.blksz = 512;
 	brq->data.blocks = mqrq->packed_blocks + 1;
 	brq->data.flags |= MMC_DATA_WRITE;
+	brq->data.fault_injected = false;
 
 	brq->stop.opcode = MMC_STOP_TRANSMISSION;
 	brq->stop.arg = 0;
@@ -1655,7 +1746,18 @@ static void mmc_blk_packed_hdr_wrq_prep(struct mmc_queue_req *mqrq,
 	brq->data.sg_len = mmc_queue_map_sg(mq, mqrq);
 
 	mqrq->mmc_active.mrq = &brq->mrq;
-	mqrq->mmc_active.err_check = mmc_blk_packed_err_check;
+
+	/*
+	 * This is intended for packed commands tests usage - in case these
+	 * functions are not in use the respective pointers are NULL
+	 */
+	if (mq->err_check_fn)
+		mqrq->mmc_active.err_check = mq->err_check_fn;
+	else
+		mqrq->mmc_active.err_check = mmc_blk_packed_err_check;
+
+	if (mq->packed_test_fn)
+		mq->packed_test_fn(mq->queue, mqrq);
 
 	mmc_queue_bounce_pre(mqrq);
 }
@@ -2255,6 +2357,19 @@ static int mmc_add_disk(struct mmc_blk_data *md)
 	md->num_wr_reqs_to_start_packing.attr.mode = S_IRUGO | S_IWUSR;
 	ret = device_create_file(disk_to_dev(md->disk),
 				 &md->num_wr_reqs_to_start_packing);
+	if (ret)
+		goto power_ro_lock_fail;
+
+	md->min_sectors_to_check_bkops_status.show =
+		min_sectors_to_check_bkops_status_show;
+	md->min_sectors_to_check_bkops_status.store =
+		min_sectors_to_check_bkops_status_store;
+	sysfs_attr_init(&md->min_sectors_to_check_bkops_status.attr);
+	md->min_sectors_to_check_bkops_status.attr.name =
+		"min_sectors_to_check_bkops_status";
+	md->min_sectors_to_check_bkops_status.attr.mode = S_IRUGO | S_IWUSR;
+	ret = device_create_file(disk_to_dev(md->disk),
+				 &md->min_sectors_to_check_bkops_status);
 	if (ret)
 		goto power_ro_lock_fail;
 

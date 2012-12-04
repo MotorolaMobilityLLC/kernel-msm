@@ -291,7 +291,7 @@ void mmc_start_delayed_bkops(struct mmc_card *card)
 		return;
 
 	if (card->bkops_info.sectors_changed <
-	    BKOPS_MIN_SECTORS_TO_QUEUE_DELAYED_WORK)
+	    card->bkops_info.min_sectors_to_queue_delayed_work)
 		return;
 
 	pr_debug("%s: %s: queueing delayed_bkops_work\n",
@@ -2609,7 +2609,9 @@ int mmc_cache_ctrl(struct mmc_host *host, u8 enable)
 			mmc_card_is_removable(host))
 		return err;
 
-	mmc_claim_host(host);
+	if (!mmc_try_claim_host(host))
+		return -EBUSY;
+
 	if (card && mmc_card_mmc(card) &&
 			(card->ext_csd.cache_size > 0)) {
 		enable = !!enable;
