@@ -6816,6 +6816,25 @@ eHalStatus sme_UpdateRoamPrefer5GHz(tHalHandle hHal, v_BOOL_t nRoamPrefer5GHz)
     pMac->roam.configParam.nRoamPrefer5GHz = nRoamPrefer5GHz;
     return(eHAL_STATUS_SUCCESS);
 }
+
+/* ---------------------------------------------------------------------------
+    \fn sme_UpdateImmediateRoamRssiDiff
+    \brief  Update nImmediateRoamRssiDiff
+            This function is called through dynamic setConfig callback function
+            to configure nImmediateRoamRssiDiff
+            Usage: adb shell iwpriv wlan0 setConfig gImmediateRoamRssiDiff=[0 .. 125]
+    \param  hHal - HAL handle for device
+    \param  nImmediateRoamRssiDiff - minimum rssi difference between potential 
+            candidate and current AP.
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+
+eHalStatus sme_UpdateImmediateRoamRssiDiff(tHalHandle hHal, v_U8_t nImmediateRoamRssiDiff)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    pMac->roam.configParam.nImmediateRoamRssiDiff = nImmediateRoamRssiDiff;
+    return(eHAL_STATUS_SUCCESS);
+}
 #endif
 
 
