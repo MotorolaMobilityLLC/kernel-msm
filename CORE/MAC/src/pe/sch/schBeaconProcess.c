@@ -486,17 +486,6 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
     if ( (psessionEntry->limSystemRole == eLIM_STA_ROLE) ||(psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE) ||
           (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE) )
     {
-        if(pBeacon->quietIEPresent)
-        {
-            limUpdateQuietIEFromBeacon(pMac, &(pBeacon->quietIE), psessionEntry);
-        }
-        else if ((psessionEntry->gLimSpecMgmt.quietState == eLIM_QUIET_BEGIN) ||
-             (psessionEntry->gLimSpecMgmt.quietState == eLIM_QUIET_RUNNING))
-        {
-            PELOG1(limLog(pMac, LOG1, FL("Received a beacon without Quiet IE\n"));)
-            limCancelDot11hQuiet(pMac, psessionEntry);
-        }
-
         /* Channel Switch information element updated */
         if(pBeacon->channelSwitchPresent || 
             pBeacon->propIEinfo.propChannelSwitchPresent)
