@@ -736,7 +736,7 @@ limLookupNaddHashEntry(tpAniSirGlobal pMac,
     }
 
     //for now, only rssi, we can add more if needed
-    if ((action == LIM_HASH_UPDATE) && dontUpdateAll)
+    if ((action == LIM_HASH_UPDATE) && dontUpdateAll && rssi)
     {
         pBssDescr->bssDescription.rssi = rssi;
     }
