@@ -1490,6 +1490,76 @@ tANI_BOOLEAN csrIsAllSessionDisconnected( tpAniSirGlobal pMac )
     return ( fRc );
 }
 
+tANI_BOOLEAN csrIsStaSessionConnected( tpAniSirGlobal pMac )
+{
+    tANI_U32 i;
+    tANI_BOOLEAN fRc = eANI_BOOLEAN_FALSE;
+    tCsrRoamSession *pSession = NULL;
+    tANI_U32 countSta = 0;
+
+    for( i = 0; i < CSR_ROAM_SESSION_MAX; i++ )
+    {
+        if( CSR_IS_SESSION_VALID( pMac, i ) && !csrIsConnStateDisconnected( pMac, i ) )
+        {
+            pSession = CSR_GET_SESSION( pMac, i );
+
+            if (NULL != pSession->pCurRoamProfile)
+            {
+                if (pSession->pCurRoamProfile->csrPersona == VOS_STA_MODE) {
+                    countSta++;
+                }
+            }
+        }
+    }
+
+    /* return TRUE if one of the following conditions is TRUE:
+     * - more than one STA session connected
+     */
+    if ( countSta > 0) {
+        fRc = eANI_BOOLEAN_TRUE;
+    }
+
+    return( fRc );
+}
+
+tANI_BOOLEAN csrIsP2pSessionConnected( tpAniSirGlobal pMac )
+{
+    tANI_U32 i;
+    tANI_BOOLEAN fRc = eANI_BOOLEAN_FALSE;
+    tCsrRoamSession *pSession = NULL;
+    tANI_U32 countP2pCli = 0;
+    tANI_U32 countP2pGo = 0;
+
+    for( i = 0; i < CSR_ROAM_SESSION_MAX; i++ )
+    {
+        if( CSR_IS_SESSION_VALID( pMac, i ) && !csrIsConnStateDisconnected( pMac, i ) )
+        {
+            pSession = CSR_GET_SESSION( pMac, i );
+
+            if (NULL != pSession->pCurRoamProfile)
+            {
+                if (pSession->pCurRoamProfile->csrPersona == VOS_P2P_CLIENT_MODE) {
+                    countP2pCli++;
+                }
+
+                if (pSession->pCurRoamProfile->csrPersona == VOS_P2P_GO_MODE) {
+                    countP2pGo++;
+                }
+            }
+        }
+    }
+
+    /* return TRUE if one of the following conditions is TRUE:
+     * - at least one P2P CLI session is connected
+     * - at least one P2P GO session is connected
+     */
+    if ( (countP2pCli > 0) || (countP2pGo > 0 ) ) {
+        fRc = eANI_BOOLEAN_TRUE;
+    }
+
+    return( fRc );
+}
+
 tANI_BOOLEAN csrIsAnySessionConnected( tpAniSirGlobal pMac )
 {
     tANI_U32 i, count;
@@ -2830,7 +2900,7 @@ tANI_U16 csrCalculateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U16 sta_bi, tAN
     {
         is_multiple = !(go_cbi % sta_bi);
     }
-    // if it is multiple, then accept GO’s beacon interval range [100,199] as it  is
+    // if it is multiple, then accept GO's beacon interval range [100,199] as it  is
     if(is_multiple)
     {
         return go_cbi;
@@ -2840,15 +2910,15 @@ tANI_U16 csrCalculateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U16 sta_bi, tAN
     num_beacons = sta_bi / 100;
     if(num_beacons)
     { 
-        // GO’s final beacon interval will be aligned to sta beacon interval, but 
+        // GO's final beacon interval will be aligned to sta beacon interval, but 
         //in the range of [100, 199].
         sta_cbi = sta_bi / num_beacons;
         go_fbi = sta_cbi;
     }
     else
     {
-        // if STA beacon interval is less than 100, use GO’s change bacon interval 
-        //instead of updating to STA’s beacon interval.
+        // if STA beacon interval is less than 100, use GO's change bacon interval 
+        //instead of updating to STA's beacon interval.
         go_fbi = go_cbi;
     }
     return go_fbi;

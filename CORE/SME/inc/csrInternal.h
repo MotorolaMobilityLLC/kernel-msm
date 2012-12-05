@@ -1084,6 +1084,8 @@ tANI_BOOLEAN csrIsConnStateConnectedWds( tpAniSirGlobal pMac, tANI_U32 sessionId
 tANI_BOOLEAN csrIsConnStateDisconnectedWds( tpAniSirGlobal pMac, tANI_U32 sessionId );
 tANI_BOOLEAN csrIsAnySessionInConnectState( tpAniSirGlobal pMac );
 tANI_BOOLEAN csrIsAllSessionDisconnected( tpAniSirGlobal pMac );
+tANI_BOOLEAN csrIsStaSessionConnected( tpAniSirGlobal pMac );
+tANI_BOOLEAN csrIsP2pSessionConnected( tpAniSirGlobal pMac );
 tANI_BOOLEAN csrIsAnySessionConnected( tpAniSirGlobal pMac );
 tANI_BOOLEAN csrIsInfraConnected( tpAniSirGlobal pMac );
 tANI_BOOLEAN csrIsConcurrentInfraConnected( tpAniSirGlobal pMac );
