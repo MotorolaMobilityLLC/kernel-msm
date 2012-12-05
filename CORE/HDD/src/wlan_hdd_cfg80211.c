@@ -4361,15 +4361,14 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
          * has a direct path to call hdd_smeRoamCallback(), which will change the conn_state
          * If direct path, conn_state will be accordingly changed to NotConnected or Associated 
          * by either hdd_AssociationCompletionHandler() or hdd_DisConnectHandler() in sme_RoamCallback()
-           */
-        hdd_connSetConnectionState(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter),
-                                             eConnectionState_Connecting);
+         * if sme_RomConnect is to be queued, Connecting state will remain until it is completed.
+         */
+        if (WLAN_HDD_INFRA_STATION == pAdapter->device_mode)
+            hdd_connSetConnectionState(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter),
+                                                 eConnectionState_Connecting);
         
         status = sme_RoamConnect( WLAN_HDD_GET_HAL_CTX(pAdapter), 
                             pAdapter->sessionId, pRoamProfile, &roamId);
-
-        pRoamProfile->ChannelInfo.ChannelList = NULL;
-        pRoamProfile->ChannelInfo.numOfChannels = 0;
 
         if( (eHAL_STATUS_SUCCESS != status) &&
             (WLAN_HDD_INFRA_STATION == pAdapter->device_mode) )
@@ -4381,6 +4380,10 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
             hdd_connSetConnectionState(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter),
                                              eConnectionState_NotConnected);
         }
+
+        pRoamProfile->ChannelInfo.ChannelList = NULL;
+        pRoamProfile->ChannelInfo.numOfChannels = 0;
+
     }
     else
     {
