@@ -1239,20 +1239,19 @@ static VOS_STATUS wlan_hdd_validate_operation_channel(hdd_adapter_t *pAdapter,in
  * called by wlan_hdd_cfg80211_start_bss() and
  * This function  selects the cbmode based on primary channel
  */ 
-static VOS_STATUS wlan_hdd_select_cbmode(hdd_adapter_t *pAdapter,tsap_Config_t *pSapConfig )
+VOS_STATUS wlan_sap_select_cbmode(void *pAdapter,eSapPhyMode SapHw_mode, v_U8_t channel)
 {
     tSmeConfigParams smeConfig;
-    hdd_context_t  *pHddCtx  = ( hdd_context_t *) pAdapter->pHddCtx;
-    hdd_config_t  *pConfigIni = ((hdd_context_t *)(pAdapter->pHddCtx))->cfg_ini;
-    v_U8_t         channel;
-
+    hdd_context_t  *pHddCtx  = ( hdd_context_t *) pAdapter;
+    hdd_config_t  *pConfigIni = ((hdd_context_t *)(pAdapter))->cfg_ini;
+    
     if(
 #ifdef WLAN_FEATURE_11AC
-      pSapConfig->SapHw_mode != eSAP_DOT11_MODE_11ac &&
-      pSapConfig->SapHw_mode != eSAP_DOT11_MODE_11ac_ONLY &&
+      SapHw_mode != eSAP_DOT11_MODE_11ac &&
+      SapHw_mode != eSAP_DOT11_MODE_11ac_ONLY &&
 #endif
-      pSapConfig->SapHw_mode != eSAP_DOT11_MODE_11n &&
-      pSapConfig->SapHw_mode != eSAP_DOT11_MODE_11n_ONLY 
+      SapHw_mode != eSAP_DOT11_MODE_11n &&
+      SapHw_mode != eSAP_DOT11_MODE_11n_ONLY 
       )
     {
         return VOS_STATUS_SUCCESS;
@@ -1262,15 +1261,15 @@ static VOS_STATUS wlan_hdd_select_cbmode(hdd_adapter_t *pAdapter,tsap_Config_t *
         return VOS_STATUS_SUCCESS;
     }
 
-    channel = pSapConfig->channel;
+    //channel = pSapConfig->channel;
     vos_mem_zero(&smeConfig, sizeof (tSmeConfigParams));
 
     sme_GetConfigParam(pHddCtx->hHal, &smeConfig);
 
 #ifdef WLAN_FEATURE_11AC
 
-    if ( pSapConfig->SapHw_mode == eSAP_DOT11_MODE_11ac || 
-         pSapConfig->SapHw_mode == eSAP_DOT11_MODE_11ac_ONLY )
+    if ( SapHw_mode == eSAP_DOT11_MODE_11ac || 
+         SapHw_mode == eSAP_DOT11_MODE_11ac_ONLY )
     {
         if ( channel== 36 || channel == 52 || channel == 100 ||
              channel == 116 || channel == 149 )
@@ -1302,8 +1301,8 @@ static VOS_STATUS wlan_hdd_select_cbmode(hdd_adapter_t *pAdapter,tsap_Config_t *
         }
     }
 #endif
-    if ( pSapConfig->SapHw_mode == eSAP_DOT11_MODE_11n ||
-          pSapConfig->SapHw_mode == eSAP_DOT11_MODE_11n_ONLY )
+    if ( SapHw_mode == eSAP_DOT11_MODE_11n ||
+          SapHw_mode == eSAP_DOT11_MODE_11n_ONLY )
     {
         if ( channel== 40 || channel == 48 || channel == 56 ||
              channel == 64 || channel == 104 || channel == 112 ||
@@ -1631,7 +1630,8 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     }
 #endif
      
-    wlan_hdd_select_cbmode(pHostapdAdapter,pConfig);
+    if( AUTO_CHANNEL_SELECT != pConfig->channel)
+        wlan_sap_select_cbmode((WLAN_HDD_GET_CTX(pHostapdAdapter)),pConfig->SapHw_mode,pConfig->channel);
     // ht_capab is not what the name conveys,this is used for protection bitmap
     pConfig->ht_capab =
                  (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini->apProtection;

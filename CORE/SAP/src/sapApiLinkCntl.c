@@ -198,6 +198,7 @@ WLANSAP_ScanCallback
       psapContext->channel = operChannel;
     }
     
+    wlan_sap_select_cbmode(vos_get_context( VOS_MODULE_ID_HDD, psapContext->pvosGCtx),psapContext->csrRoamProfile.phyMode, psapContext->channel);
 #ifdef SOFTAP_CHANNEL_RANGE
     if(psapContext->channelList != NULL)
     {

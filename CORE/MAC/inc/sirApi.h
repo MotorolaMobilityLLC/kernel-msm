@@ -702,6 +702,13 @@ typedef struct sSirBssDescription
     tANI_U8              WscIeProbeRsp[WSCIE_PROBE_RSP_LEN];
     tANI_U8              reservedPadding4;
 
+    /* ChannelWidth, secondaryChanneloffset, VHT capability and center freqency in case of VHT Information what peer sent in beacon/probersp */
+
+    tANI_U16             channelWidth;
+    tANI_U16             secondaryChannelOffset;
+    tANI_U16             vhtSupport;
+    tANI_U16             centerFreq; 
+
     tANI_U32             ieFields[1];
 } tSirBssDescription, *tpSirBssDescription;
 

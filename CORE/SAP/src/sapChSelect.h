@@ -82,6 +82,11 @@
 #define SAP_DEFAULT_CHANNEL     (6)
 #define SAP_DEFAULT_5GHZ_CHANNEL      (40)
 #define SAP_CHANNEL_NOT_SELECTED (0)
+
+#define SOFTAP_HT20_CHANNELWIDTH 0
+#define SAP_EXT_CHAN_RSSI      (-20)
+#define SAP_EXT_SUBBAND2_RSSI      (-30)
+#define SAP_EXT_SUBBAND3_RSSI      (-40)
 /**
 * Structure holding information of each channel in the spectrum, 
 * it contains the channel number, the computed weight
@@ -96,6 +101,7 @@ typedef struct sSapChannelListInfo{
 
 typedef struct {
     v_U16_t chNum;      // Channel Number
+    v_U16_t channelWidth;      // Channel Width
     v_U16_t bssCount;   // bss found in scanresult for this channel
     v_S31_t rssiAgr;    // Max value of rssi among all BSS(es) from scanresult for this channel
     v_U32_t weight;     // Weightage of this channel
