@@ -101,7 +101,7 @@ extern void hdd_resume_wlan(struct early_suspend *wlan_suspend);
 #endif
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
-#define MAX_OEM_DATA_RSP_LEN 1024
+#define MAX_OEM_DATA_RSP_LEN 2047
 #endif
 
 #define HDD_FINISH_ULA_TIME_OUT    800
