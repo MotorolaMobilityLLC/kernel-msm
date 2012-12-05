@@ -38,11 +38,11 @@
 #define __WLAN_HDD_OEM_DATA_H__
 
 #ifndef OEM_DATA_REQ_SIZE
-#define OEM_DATA_REQ_SIZE 70
+#define OEM_DATA_REQ_SIZE 134
 #endif
 
 #ifndef OEM_DATA_RSP_SIZE
-#define OEM_DATA_RSP_SIZE 968
+#define OEM_DATA_RSP_SIZE 1968
 #endif
 
 struct iw_oem_data_req
