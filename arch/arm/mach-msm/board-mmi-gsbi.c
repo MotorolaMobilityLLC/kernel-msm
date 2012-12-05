@@ -50,7 +50,7 @@ struct platform_device *i2c_dt_lookup_table[] __initdata = {
 	NULL,
 	NULL,
 	NULL,
-	NULL,
+	&mmi_msm8960_device_qup_i2c_gsbi8,
 	&msm8960_device_qup_i2c_gsbi9,
 	&msm8960_device_qup_i2c_gsbi10,
 	NULL,
