@@ -133,6 +133,14 @@ limProcessDisassocFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession
         return;
     }
 
+    if (limCheckDisassocDeauthAckPending(pMac, (tANI_U8*)pHdr->sa))
+    {
+        PELOGW(limLog(pMac, LOGE, 
+                    FL("Ignore the DisAssoc received, while waiting for ack of disassoc/deauth\n"));)
+        limCleanUpDisassocDeauthReq(pMac,(tANI_U8*)pHdr->sa, 1);
+        return;
+    }
+
     /** If we are in the Wait for ReAssoc Rsp state */
     if (limIsReassocInProgress(pMac,psessionEntry)) {
         /** If we had received the DisAssoc from,
