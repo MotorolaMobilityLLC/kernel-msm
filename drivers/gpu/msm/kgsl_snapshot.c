@@ -175,7 +175,8 @@ static int snapshot_os(struct kgsl_device *device,
 	/* Get the current PT base */
 	header->ptbase = kgsl_mmu_get_current_ptbase(&device->mmu);
 	/* And the PID for the task leader */
-	pid = header->pid = kgsl_mmu_get_ptname_from_ptbase(header->ptbase);
+	pid = header->pid = kgsl_mmu_get_ptname_from_ptbase(&device->mmu,
+								header->ptbase);
 
 	task = find_task_by_vpid(pid);
 
@@ -307,7 +308,7 @@ int kgsl_snapshot_get_object(struct kgsl_device *device, unsigned int ptbase,
 	struct kgsl_snapshot_object *obj;
 	int offset;
 
-	entry = kgsl_get_mem_entry(ptbase, gpuaddr, size);
+	entry = kgsl_get_mem_entry(device, ptbase, gpuaddr, size);
 
 	if (entry == NULL) {
 		KGSL_DRV_ERR(device, "Unable to find GPU buffer %8.8X\n",
@@ -413,18 +414,24 @@ EXPORT_SYMBOL(kgsl_snapshot_get_object);
 int kgsl_snapshot_dump_regs(struct kgsl_device *device, void *snapshot,
 	int remain, void *priv)
 {
+	struct kgsl_snapshot_registers_list *list = priv;
+
 	struct kgsl_snapshot_regs *header = snapshot;
-	struct kgsl_snapshot_registers *regs = priv;
+	struct kgsl_snapshot_registers *regs;
 	unsigned int *data = snapshot + sizeof(*header);
-	int count = 0, i, j;
+	int count = 0, i, j, k;
 
 	/* Figure out how many registers we are going to dump */
 
-	for (i = 0; i < regs->count; i++) {
-		int start = regs->regs[i * 2];
-		int end = regs->regs[i * 2 + 1];
+	for (i = 0; i < list->count; i++) {
+		regs = &(list->registers[i]);
 
-		count += (end - start + 1);
+		for (j = 0; j < regs->count; j++) {
+			int start = regs->regs[j * 2];
+			int end = regs->regs[j * 2 + 1];
+
+			count += (end - start + 1);
+		}
 	}
 
 	if (remain < (count * 8) + sizeof(*header)) {
@@ -432,16 +439,20 @@ int kgsl_snapshot_dump_regs(struct kgsl_device *device, void *snapshot,
 		return 0;
 	}
 
-	for (i = 0; i < regs->count; i++) {
-		unsigned int start = regs->regs[i * 2];
-		unsigned int end = regs->regs[i * 2 + 1];
 
-		for (j = start; j <= end; j++) {
-			unsigned int val;
+	for (i = 0; i < list->count; i++) {
+		regs = &(list->registers[i]);
+		for (j = 0; j < regs->count; j++) {
+			unsigned int start = regs->regs[j * 2];
+			unsigned int end = regs->regs[j * 2 + 1];
 
-			kgsl_regread(device, j, &val);
-			*data++ = j;
-			*data++ = val;
+			for (k = start; k <= end; k++) {
+				unsigned int val;
+
+				kgsl_regread(device, k, &val);
+				*data++ = k;
+				*data++ = val;
+			}
 		}
 	}
 

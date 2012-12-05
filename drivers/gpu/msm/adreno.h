@@ -98,6 +98,7 @@ struct adreno_device {
 	unsigned int ib_check_level;
 	unsigned int fast_hang_detect;
 	struct ocmem_buf *ocmem_hdl;
+	unsigned int ocmem_base;
 };
 
 struct adreno_gpudev {
@@ -163,6 +164,9 @@ extern const unsigned int a225_registers_count;
 /* A3XX register set defined in adreno_a3xx.c */
 extern const unsigned int a3xx_registers[];
 extern const unsigned int a3xx_registers_count;
+
+extern const unsigned int a330_registers[];
+extern const unsigned int a330_registers_count;
 
 extern unsigned int hang_detect_regs[];
 extern const unsigned int hang_detect_regs_count;
@@ -249,6 +253,11 @@ static inline int adreno_is_a305(struct adreno_device *adreno_dev)
 static inline int adreno_is_a320(struct adreno_device *adreno_dev)
 {
 	return (adreno_dev->gpurev == ADRENO_REV_A320);
+}
+
+static inline int adreno_is_a330(struct adreno_device *adreno_dev)
+{
+	return (adreno_dev->gpurev == ADRENO_REV_A330);
 }
 
 static inline int adreno_rb_ctxtswitch(unsigned int *cmd)

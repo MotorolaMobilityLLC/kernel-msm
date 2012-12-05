@@ -69,6 +69,14 @@ const unsigned int a3xx_registers[] = {
 
 const unsigned int a3xx_registers_count = ARRAY_SIZE(a3xx_registers) / 2;
 
+/* The set of additional registers to be dumped for A330 */
+
+const unsigned int a330_registers[] = {
+	0x1d0, 0x1d0, 0x1d4, 0x1d4, 0x453, 0x453,
+};
+
+const unsigned int a330_registers_count = ARRAY_SIZE(a330_registers) / 2;
+
 /* Simple macro to facilitate bit setting in the gmem2sys and sys2gmem
  * functions.
  */
@@ -2347,7 +2355,7 @@ static void a3xx_drawctxt_save(struct adreno_device *adreno_dev,
 {
 	struct kgsl_device *device = &adreno_dev->dev;
 
-	if (context == NULL)
+	if (context == NULL || (context->flags & CTXT_FLAGS_BEING_DESTOYED))
 		return;
 
 	if (context->flags & CTXT_FLAGS_GPU_HANG)
@@ -2698,14 +2706,14 @@ static void a3xx_start(struct adreno_device *adreno_dev)
 	struct kgsl_device *device = &adreno_dev->dev;
 
 	/* Set up 16 deep read/write request queues */
-	if (adreno_dev->gpurev == ADRENO_REV_A330) {
-		adreno_regwrite(device, A3XX_VBIF_IN_RD_LIM_CONF0, 0x01010101);
-		adreno_regwrite(device, A3XX_VBIF_IN_RD_LIM_CONF1, 0x01010101);
-		adreno_regwrite(device, A3XX_VBIF_OUT_RD_LIM_CONF0, 0x01010101);
-		adreno_regwrite(device, A3XX_VBIF_OUT_WR_LIM_CONF0, 0x01010101);
+	if (adreno_is_a330(adreno_dev)) {
+		adreno_regwrite(device, A3XX_VBIF_IN_RD_LIM_CONF0, 0x18181818);
+		adreno_regwrite(device, A3XX_VBIF_IN_RD_LIM_CONF1, 0x18181818);
+		adreno_regwrite(device, A3XX_VBIF_OUT_RD_LIM_CONF0, 0x18181818);
+		adreno_regwrite(device, A3XX_VBIF_OUT_WR_LIM_CONF0, 0x18181818);
 		adreno_regwrite(device, A3XX_VBIF_DDR_OUT_MAX_BURST, 0x0000303);
-		adreno_regwrite(device, A3XX_VBIF_IN_WR_LIM_CONF0, 0x01010101);
-		adreno_regwrite(device, A3XX_VBIF_IN_WR_LIM_CONF1, 0x01010101);
+		adreno_regwrite(device, A3XX_VBIF_IN_WR_LIM_CONF0, 0x18181818);
+		adreno_regwrite(device, A3XX_VBIF_IN_WR_LIM_CONF1, 0x18181818);
 		/* Enable WR-REQ */
 		adreno_regwrite(device, A3XX_VBIF_GATE_OFF_WRREQ_EN, 0x00003F);
 
@@ -2721,6 +2729,11 @@ static void a3xx_start(struct adreno_device *adreno_dev)
 		/* Enable 1K sort */
 		adreno_regwrite(device, A3XX_VBIF_ABIT_SORT, 0x1FFFF);
 		adreno_regwrite(device, A3XX_VBIF_ABIT_SORT_CONF, 0x000000A4);
+
+		/* Diable VBIF clock gating. This is to enable AXI running
+		 * higher frequency than GPU.
+		 */
+		adreno_regwrite(device, A3XX_VBIF_CLKON, 1);
 	} else {
 		adreno_regwrite(device, A3XX_VBIF_IN_RD_LIM_CONF0, 0x10101010);
 		adreno_regwrite(device, A3XX_VBIF_IN_RD_LIM_CONF1, 0x10101010);
@@ -2768,10 +2781,18 @@ static void a3xx_start(struct adreno_device *adreno_dev)
 	adreno_regwrite(device, A3XX_RBBM_INTERFACE_HANG_INT_CTL,
 			(1 << 16) | 0xFFF);
 
+	/* Enable 64-byte cacheline size. HW Default is 32-byte (0x000000E0). */
+	adreno_regwrite(device, A3XX_UCHE_CACHE_MODE_CONTROL_REG, 0x00000001);
+
 	/* Enable Clock gating */
 	adreno_regwrite(device, A3XX_RBBM_CLOCK_CTL,
 			A3XX_RBBM_CLOCK_CTL_DEFAULT);
 
+	/* Set the OCMEM base address for A330 */
+	if (adreno_is_a330(adreno_dev)) {
+		adreno_regwrite(device, A3XX_RB_GMEM_BASE_ADDR,
+			(unsigned int)(adreno_dev->ocmem_base >> 14));
+	}
 }
 
 /* Defined in adreno_a3xx_snapshot.c */
