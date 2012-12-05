@@ -454,7 +454,7 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
     while (pScanResult) {
         pSpectCh = pSpectInfoParams->pSpectCh;
         
-	// Processing for each tCsrScanResultInfo in the tCsrScanResult DLink list
+        // Processing for each tCsrScanResultInfo in the tCsrScanResult DLink list
         for (chn_num = 0; chn_num < pSpectInfoParams->numSpectChans; chn_num++) {
 
             /*
@@ -478,11 +478,10 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
                     if (pSpectCh->channelWidth != pScanResult->BssDescriptor.channelWidth) 
                         pSpectCh->channelWidth = pScanResult->BssDescriptor.channelWidth;
 		    
-                    /* If received ChannelWidth is other than HT20, we need to update the extension channel Params as well
-                     * channelWidth == 0, HT20
-                     * channelWidth == 1, HT40
-                     * channelWidth == 2, VHT80
-                     */
+                    /* If received ChannelWidth is other than HT20, we need to update the extension channel Params as well */
+                    /* channelWidth == 0, HT20 */
+                    /* channelWidth == 1, HT40 */
+                    /* channelWidth == 2, VHT80*/
                     switch(pSpectCh->channelWidth)
                     {
                         case eHT_CHANNEL_WIDTH_40MHZ: //HT40
