@@ -195,7 +195,6 @@ void limProcessWPSOverlapTimeout(tpAniSirGlobal pMac);
 #endif
 
 void limStartQuietTimer(tpAniSirGlobal pMac, tANI_U8 sessionId);
-void limUpdateQuietIEFromBeacon(tpAniSirGlobal, tDot11fIEQuiet *, tpPESession);
 void limSwitchPrimaryChannel(tpAniSirGlobal, tANI_U8,tpPESession);
 void limSwitchPrimarySecondaryChannel(tpAniSirGlobal, tpPESession, tANI_U8, ePhyChanBondState);
 tAniBool limTriggerBackgroundScanDuringQuietBss(tpAniSirGlobal);
