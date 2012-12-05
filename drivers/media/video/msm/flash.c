@@ -355,8 +355,10 @@ int msm_camera_flash_external(
 			break;
 		}
 
-		gpio_set_value_cansleep(external->led_en, 0);
-		gpio_free(external->led_en);
+		if (sc628a_client || tps61310_client) {
+			gpio_set_value_cansleep(external->led_en, 0);
+			gpio_free(external->led_en);
+		}
 error:
 		pr_err("%s gpio request failed\n", __func__);
 		if (sc628a_client) {
@@ -393,55 +395,61 @@ error:
 		break;
 
 	case MSM_CAMERA_LED_OFF:
-		if (sc628a_client) {
-			i2c_client.client = sc628a_client;
-			i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
-			rc = msm_camera_i2c_write(&i2c_client, 0x02, 0x00,
-				MSM_CAMERA_I2C_BYTE_DATA);
+		if (sc628a_client || tps61310_client) {
+			if (sc628a_client) {
+				i2c_client.client = sc628a_client;
+				i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
+				rc = msm_camera_i2c_write(&i2c_client, 0x02,
+					0x00, MSM_CAMERA_I2C_BYTE_DATA);
+			}
+			if (tps61310_client) {
+				i2c_client.client = tps61310_client;
+				i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
+				rc = msm_camera_i2c_write(&i2c_client, 0x01,
+					0x00, MSM_CAMERA_I2C_BYTE_DATA);
+			}
+			gpio_set_value_cansleep(external->led_en, 0);
+			gpio_set_value_cansleep(external->led_flash_en, 0);
 		}
-		if (tps61310_client) {
-			i2c_client.client = tps61310_client;
-			i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
-			rc = msm_camera_i2c_write(&i2c_client, 0x01, 0x00,
-				MSM_CAMERA_I2C_BYTE_DATA);
-		}
-		gpio_set_value_cansleep(external->led_en, 0);
-		gpio_set_value_cansleep(external->led_flash_en, 0);
 		break;
 
 	case MSM_CAMERA_LED_LOW:
-		gpio_set_value_cansleep(external->led_en, 1);
-		gpio_set_value_cansleep(external->led_flash_en, 1);
-		usleep_range(2000, 3000);
-		if (sc628a_client) {
-			i2c_client.client = sc628a_client;
-			i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
-			rc = msm_camera_i2c_write(&i2c_client, 0x02, 0x06,
-				MSM_CAMERA_I2C_BYTE_DATA);
-		}
-		if (tps61310_client) {
-			i2c_client.client = tps61310_client;
-			i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
-			rc = msm_camera_i2c_write(&i2c_client, 0x01, 0x86,
-				MSM_CAMERA_I2C_BYTE_DATA);
+		if (sc628a_client || tps61310_client) {
+			gpio_set_value_cansleep(external->led_en, 1);
+			gpio_set_value_cansleep(external->led_flash_en, 1);
+			usleep_range(2000, 3000);
+			if (sc628a_client) {
+				i2c_client.client = sc628a_client;
+				i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
+				rc = msm_camera_i2c_write(&i2c_client, 0x02,
+					0x06, MSM_CAMERA_I2C_BYTE_DATA);
+			}
+			if (tps61310_client) {
+				i2c_client.client = tps61310_client;
+				i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
+				rc = msm_camera_i2c_write(&i2c_client, 0x01,
+					0x86, MSM_CAMERA_I2C_BYTE_DATA);
+			}
 		}
 		break;
 
 	case MSM_CAMERA_LED_HIGH:
-		gpio_set_value_cansleep(external->led_en, 1);
-		gpio_set_value_cansleep(external->led_flash_en, 1);
-		usleep_range(2000, 3000);
-		if (sc628a_client) {
-			i2c_client.client = sc628a_client;
-			i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
-			rc = msm_camera_i2c_write(&i2c_client, 0x02, 0x49,
-				MSM_CAMERA_I2C_BYTE_DATA);
-		}
-		if (tps61310_client) {
-			i2c_client.client = tps61310_client;
-			i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
-			rc = msm_camera_i2c_write(&i2c_client, 0x01, 0x8B,
-				MSM_CAMERA_I2C_BYTE_DATA);
+		if (sc628a_client || tps61310_client) {
+			gpio_set_value_cansleep(external->led_en, 1);
+			gpio_set_value_cansleep(external->led_flash_en, 1);
+			usleep_range(2000, 3000);
+			if (sc628a_client) {
+				i2c_client.client = sc628a_client;
+				i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
+				rc = msm_camera_i2c_write(&i2c_client, 0x02,
+					0x49, MSM_CAMERA_I2C_BYTE_DATA);
+			}
+			if (tps61310_client) {
+				i2c_client.client = tps61310_client;
+				i2c_client.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
+				rc = msm_camera_i2c_write(&i2c_client, 0x01,
+					0x8B, MSM_CAMERA_I2C_BYTE_DATA);
+			}
 		}
 		break;
 
