@@ -734,6 +734,9 @@ sap_AcquireGlobalLock( ptSapContext  pSapCtx );
 VOS_STATUS
 sap_ReleaseGlobalLock( ptSapContext  pSapCtx );
 
+VOS_STATUS
+wlan_sap_select_cbmode(void *pAdapter,eSapPhyMode SapHw_mode, v_U8_t channel);
+
 #ifdef __cplusplus
 }
 #endif 
