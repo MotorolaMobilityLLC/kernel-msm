@@ -1891,8 +1891,8 @@ limProcessMlmScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         /* Use min + max channel time to calculate the total duration of scan.
          * Adding an overhead of 5ms to account for the scan messaging delays */
         pMac->lim.gTotalScanDuration = 
-                    (pMac->lim.gpLimMlmScanReq->minChannelTime + pMac->lim.gpLimMlmScanReq->maxChannelTime + 5)*
-                    pMac->lim.gpLimMlmScanReq->channelList.numChannels;
+                    ((pMac->lim.gpLimMlmScanReq->minChannelTime + pMac->lim.gpLimMlmScanReq->maxChannelTime)*
+                    pMac->lim.gpLimMlmScanReq->channelList.numChannels) + 5;
 #endif
         limSetScanMode(pMac);
     }
