@@ -1884,24 +1884,24 @@ static int msm_fb_pan_display_ex(struct fb_info *info,
 		if (!mfd->panel_power_on) /* suspended */
 			return -EPERM;
 	} else {
-	/*
+		/*
 		 * If framebuffer is 2, io pan display is not allowed.
-	 */
-	if (bf_supported && info->node == 2) {
-		pr_err("%s: no pan display for fb%d!",
-		       __func__, info->node);
-		return -EPERM;
-	}
-
-	if (info->node != 0 || mfd->cont_splash_done)	/* primary */
-		if ((!mfd->op_enable) || (!mfd->panel_power_on))
+		 */
+		if (bf_supported && info->node == 2) {
+			pr_err("%s: no pan display for fb%d!",
+				   __func__, info->node);
 			return -EPERM;
+		}
 
-	if (var->xoffset > (info->var.xres_virtual - info->var.xres))
-		return -EINVAL;
+		if (info->node != 0 || mfd->cont_splash_done)	/* primary */
+			if ((!mfd->op_enable) || (!mfd->panel_power_on))
+				return -EPERM;
 
-	if (var->yoffset > (info->var.yres_virtual - info->var.yres))
-		return -EINVAL;
+		if (var->xoffset > (info->var.xres_virtual - info->var.xres))
+			return -EINVAL;
+
+		if (var->yoffset > (info->var.yres_virtual - info->var.yres))
+			return -EINVAL;
 	}
 	msm_fb_pan_idle(mfd);
 
@@ -1909,13 +1909,13 @@ static int msm_fb_pan_display_ex(struct fb_info *info,
 
 	if (!(disp_commit->flags &
 		MDP_DISPLAY_COMMIT_OVERLAY)) {
-	if (info->fix.xpanstep)
-		info->var.xoffset =
+		if (info->fix.xpanstep)
+			info->var.xoffset =
 				(var->xoffset / info->fix.xpanstep) *
 					info->fix.xpanstep;
 
-	if (info->fix.ypanstep)
-		info->var.yoffset =
+		if (info->fix.ypanstep)
+			info->var.yoffset =
 				(var->yoffset / info->fix.ypanstep) *
 					info->fix.ypanstep;
 	}
@@ -2076,7 +2076,7 @@ static void msm_fb_commit_wq_handler(struct work_struct *work)
 			mdp4_overlay_commit(info);
 	} else {
 		var = &fb_backup->disp_commit.var;
-	msm_fb_pan_display_sub(var, info);
+		msm_fb_pan_display_sub(var, info);
 	}
 	mutex_lock(&mfd->sync_mutex);
 	mfd->is_committing = 0;
@@ -3772,24 +3772,19 @@ static int msmfb_display_commit(struct fb_info *info,
 		pr_err("%s:copy_from_user failed", __func__);
 		return ret;
 	}
+	buf_fence = &disp_commit.buf_fence;
+	if (buf_fence->acq_fen_fd_cnt > 0)
+		ret = buf_fence_process(mfd, buf_fence);
+	if ((!ret) && (buf_fence->rel_fen_fd[0] > 0))
+		copy_back = TRUE;
 
-	if (disp_commit.flags & MDP_DISPLAY_COMMIT_OVERLAY) {
-		ret = mdp4_overlay_commit(info);
-	} else {
-		buf_fence = &disp_commit.buf_fence;
-		if (buf_fence->acq_fen_fd_cnt > 0)
-			ret = buf_fence_process(mfd, buf_fence);
-		if ((!ret) && (buf_fence->rel_fen_fd[0] > 0))
-			copy_back = TRUE;
+	ret = msm_fb_pan_display_ex(info, &disp_commit);
 
-		ret = msm_fb_pan_display_ex(info, &disp_commit);
-
-		if (copy_back) {
-			ret = copy_to_user(argp,
-				&disp_commit, sizeof(disp_commit));
-			if (ret)
-				pr_err("%s:copy_to_user failed", __func__);
-		}
+	if (copy_back) {
+		ret = copy_to_user(argp,
+			&disp_commit, sizeof(disp_commit));
+		if (ret)
+			pr_err("%s:copy_to_user failed", __func__);
 	}
 	return ret;
 }
