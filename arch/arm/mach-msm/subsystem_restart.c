@@ -461,10 +461,6 @@ static void __subsystem_restart_dev(struct subsys_device *dev)
 int subsystem_restart_dev(struct subsys_device *dev)
 {
 	const char *name = dev->desc->name;
-#if defined(CONFIG_LGE_CRASH_HANDLER)
-	u32 ssr_magic_number;
-#endif
-
 	pr_info("Restart sequence requested for %s, restart_level = %d.\n",
 		name, restart_level);
 
@@ -475,22 +471,10 @@ int subsystem_restart_dev(struct subsys_device *dev)
 		__subsystem_restart_dev(dev);
 		break;
 	case RESET_SOC:
-#if defined(CONFIG_LGE_CRASH_HANDLER)
-		set_ssr_magic_number(name);
-		ssr_magic_number = get_ssr_magic_number();
-
-		msm_set_restart_mode(ssr_magic_number | SUB_RESET_SOC);
-#endif
-		WARN(1, "subsys-restart: Resetting the SoC - %s crashed.", name);
+		panic("subsys-restart: Resetting the SoC - %s crashed.", name);
 		break;
 	default:
-#if defined(CONFIG_LGE_CRASH_HANDLER)
-		set_ssr_magic_number(name);
-		ssr_magic_number = get_ssr_magic_number();
-
-		msm_set_restart_mode(ssr_magic_number | SUB_UNKNOWN);
-#endif
-		pr_err("subsys-restart: Unknown restart level!\n");
+		panic("subsys-restart: Unknown restart level!\n");
 		break;
 	}
 
