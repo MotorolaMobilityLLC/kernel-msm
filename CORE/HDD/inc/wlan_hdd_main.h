@@ -911,6 +911,10 @@ struct hdd_context_s
    u_int8_t hdd_restart_retries;
    
    hdd_scaninfo_t scan_info;
+   
+   /*is_dyanmic_channel_range_set is set to 1 when Softap_set_channel_range
+		is invoked*/
+   v_BOOL_t is_dynamic_channel_range_set;
 
    struct wake_lock sap_wake_lock;
 };
