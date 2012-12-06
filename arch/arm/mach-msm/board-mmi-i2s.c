@@ -42,6 +42,10 @@ static struct gpio mmi_mi2s_gpios[] = {
 		.label = "gpio_dout",
 		.gpio = -1,
 	},
+	{
+		.label = "gpio_mclk",
+		.gpio = -1,
+	},
 };
 
 static struct msm_mi2s_pdata mmi_msm_mi2s_rx_data = {
