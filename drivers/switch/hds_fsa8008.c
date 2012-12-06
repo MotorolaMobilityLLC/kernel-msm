@@ -425,7 +425,7 @@ static int hsd_probe(struct platform_device *pdev)
 	struct fsa8008_platform_data *pdata = pdev->dev.platform_data;
 	struct hsd_info *hi;
 
-	HSD_DBG("hsd_probe");
+	pr_info("fsa8008 probe\n");
 
 	if (!pdata) {
 		pr_err("%s: no pdata\n", __func__);
@@ -587,8 +587,6 @@ static int hsd_remove(struct platform_device *pdev)
 {
 	struct hsd_info *hi = (struct hsd_info *)platform_get_drvdata(pdev);
 
-	HSD_DBG("hsd_remove");
-
 	if (switch_get_state(&hi->sdev))
 		remove_headset(hi);
 
@@ -611,8 +609,6 @@ static int hsd_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct hsd_info *hi = platform_get_drvdata(pdev);
 
-	HSD_DBG("hsd_suspend");
-
 	if (!hi->gpio_detect_can_wakeup) {
 		disable_irq(hi->irq_detect);
 		hi->saved_detect = gpio_get_value(hi->gpio_detect);
@@ -627,8 +623,6 @@ static int hsd_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct hsd_info *hi = platform_get_drvdata(pdev);
 	int detect = 0;
-
-	HSD_DBG("hsd_resume");
 
 	detect = gpio_get_value(hi->gpio_detect);
 	if (HEADSET_INSERT == detect)
@@ -662,7 +656,7 @@ static int __init hsd_init(void)
 {
 	int ret;
 
-	HSD_DBG("hsd_init");
+	pr_info("fsa8008 init\n");
 
 #ifdef FSA8008_USE_WORK_QUEUE
 	local_fsa8008_workqueue = create_workqueue("fsa8008");
@@ -693,8 +687,6 @@ err:
 
 static void __exit hsd_exit(void)
 {
-	HSD_DBG("hsd_exit");
-
 #ifdef FSA8008_USE_WORK_QUEUE
 	if (local_fsa8008_workqueue)
 		destroy_workqueue(local_fsa8008_workqueue);
