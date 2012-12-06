@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Motorola Mobility, Inc.
+ * Copyright (C) 2012 Motorola Mobility, LLC.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -53,6 +53,7 @@ struct aic3253_priv {
 	u32 power_cfg;
 	int rst_gpio;
 	struct regulator *s4;
+	int mclk_gpio;
 };
 
 /* Clock Dividers Structure */
@@ -714,6 +715,7 @@ static __devinit int aic3253_i2c_probe(struct i2c_client *i2c,
 	aic3253->control_data = i2c;
 	i2c_set_clientdata(i2c, aic3253);
 	aic3253->rst_gpio = pdata->reset_gpio;
+	aic3253->mclk_gpio = pdata->mclk_sel_gpio;
 	aic3253->power_cfg = AIC3253_PWR_AVDD_DVDD_WEAK_DISABLE |
 					AIC3253_PWR_AIC3253_LDO_ENABLE;
 	aic3253->page_no = 0;
@@ -737,6 +739,10 @@ static __devinit int aic3253_i2c_probe(struct i2c_client *i2c,
 
 	/* perform hw reset */
 	aic3253_hw_reset(aic3253->rst_gpio);
+
+	/* select MI2S MCLK as sys clk input */
+	if (gpio_is_valid(aic3253->mclk_gpio))
+		gpio_set_value_cansleep(aic3253->mclk_gpio, 1);
 
 	/* register codec */
 	ret = snd_soc_register_codec(&i2c->dev,
