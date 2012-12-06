@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Motorola Mobility, Inc.
+ * Copyright (C) 2012 Motorola Mobility, LLC.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -21,6 +21,7 @@
 
 struct aic3253_pdata {
 	int reset_gpio;
+	int mclk_sel_gpio;
 };
 
 #endif
