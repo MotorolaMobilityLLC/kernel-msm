@@ -720,7 +720,15 @@ wpt_status wpalUnlockPacket( wpt_packet *pPacket)
       {
          /*RX Packets need to be DMA-ed from the device, perform DMA mapping 
            accordingly */
-         itReturnOSPktAddrFromDevice(pPacket, pInfo->pPhyAddr, pInfo->uLen);   
+         if(NULL == pInfo->pPhyAddr)
+         {
+            WPAL_TRACE(eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_ERROR, 
+                       " WLAN_PAL: %s: RX frame was not locked properly",  __func__); 
+         }
+         else
+         {
+            itReturnOSPktAddrFromDevice(pPacket, pInfo->pPhyAddr, pInfo->uLen);   
+         }
       }
       break;
 
