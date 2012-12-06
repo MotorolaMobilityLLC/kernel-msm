@@ -251,12 +251,27 @@ static eHalStatus freeSmeCmdList(tpAniSirGlobal pMac)
     csrLLClose(&pMac->sme.smeCmdActiveList);
     csrLLClose(&pMac->sme.smeCmdFreeList);
 
+    status = vos_lock_acquire(&pMac->sme.lkSmeGlobalLock);
+    if(status != eHAL_STATUS_SUCCESS)
+    {
+        smsLog(pMac, LOGE, 
+            FL("Failed to acquire the lock status = %d\n"), status);
+        goto done;
+    }
+
     if(NULL != pMac->sme.pSmeCmdBufAddr)
     {
         status = palFreeMemory(pMac->hHdd, pMac->sme.pSmeCmdBufAddr);
         pMac->sme.pSmeCmdBufAddr = NULL;
     }
 
+    status = vos_lock_release(&pMac->sme.lkSmeGlobalLock);
+    if(status != eHAL_STATUS_SUCCESS)
+    {
+        smsLog(pMac, LOGE, 
+            FL("Failed to release the lock status = %d\n"), status);
+    }
+done:
     return (status);
 }
 
