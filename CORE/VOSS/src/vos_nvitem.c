@@ -747,7 +747,7 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
       Intercept here and redirect to the Reg domain table's CRDA
       entry if country code is crda's country.
       last one NUM_REG_DOMAINS-1 is reserved for crda */
-   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
           "vos_nv_getRegDomainFromCountryCode %c%c\n",
           countryCode[0], countryCode[1]);
 
@@ -756,7 +756,7 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
        if (crda_alpha2[0]==countryCode[0] && crda_alpha2[1]==countryCode[1])
        {
           *pRegDomain = NUM_REG_DOMAINS-1;
-              VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+              VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
               "vos_nv_getRegDomainFromCountryCode return crda init entry\n");
           return VOS_STATUS_SUCCESS;
        }
@@ -765,7 +765,7 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
            crda_regulatory_run_time_entry_valid == VOS_TRUE)
        {
           *pRegDomain = NUM_REG_DOMAINS-2;
-              VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+              VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
               "vos_nv_getRegDomainFromCountryCode return crda none-default country entry\n");
            return VOS_STATUS_SUCCESS;
        }
@@ -784,7 +784,7 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
                CRDA_WAIT_TIME);
            if (crda_regulatory_run_time_entry_valid == VOS_TRUE)
            {
-              VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+              VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
                  "vos_nv_getRegDomainFromCountryCode return crda new none-default country entry\n");
                return VOS_STATUS_SUCCESS;
            }
