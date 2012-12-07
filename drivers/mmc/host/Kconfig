@@ -325,6 +325,16 @@ config MMC_MSM
 	  MSM and QSD SOCs from Qualcomm. The controller also has
 	  support for SDIO devices.
 
+config MMC_MSM_RAW
+	bool "Qualcomm SDCC Controller Support (raw mode)"
+	depends on ARCH_MSM && APANIC_MMC
+	help
+	  This provides support for dumping the kernel log buffer to a raw
+	  MMC partition in the event of a kernel panic using the SD/MMC cell
+	  found in the MSM and QSD SOCs from Qualcomm.
+
+	  If unsure, say N.
+
 config MMC_MXC
 	tristate "Freescale i.MX21/27/31 Multimedia Card Interface support"
 	depends on ARCH_MXC
