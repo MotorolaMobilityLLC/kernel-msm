@@ -658,30 +658,34 @@ static int __init hsd_init(void)
 
 	pr_info("fsa8008 init\n");
 
+	wake_lock_init(&ear_hook_wake_lock, WAKE_LOCK_SUSPEND, "ear_hook");
+
 #ifdef FSA8008_USE_WORK_QUEUE
 	local_fsa8008_workqueue = create_workqueue("fsa8008");
 	if (!local_fsa8008_workqueue) {
 		pr_err("%s: out of memory\n", __func__);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_workqueue;
 	}
 #endif
 
 	ret = platform_driver_register(&hsd_driver);
-	if (ret< 0) {
+	if (ret < 0) {
 		pr_err("%s: Fail to register platform driver\n", __func__);
-		goto err;
+		goto err_platform_driver_register;
 	}
 
-	wake_lock_init(&ear_hook_wake_lock, WAKE_LOCK_SUSPEND, "ear_hook");
+	return 0;
 
-	return ret;
-
-err:
+err_platform_driver_register:
 #ifdef FSA8008_USE_WORK_QUEUE
 	if (local_fsa8008_workqueue)
 		destroy_workqueue(local_fsa8008_workqueue);
 	local_fsa8008_workqueue = NULL;
 #endif
+err_workqueue:
+	wake_lock_destroy(&ear_hook_wake_lock);
+
 	return ret;
 }
 
