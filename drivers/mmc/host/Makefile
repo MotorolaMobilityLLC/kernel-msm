@@ -37,6 +37,7 @@ tmio_mmc_core-$(subst m,y,$(CONFIG_MMC_SDHI))	+= tmio_mmc_dma.o
 obj-$(CONFIG_MMC_SDHI)		+= sh_mobile_sdhi.o
 obj-$(CONFIG_MMC_CB710)		+= cb710-mmc.o
 obj-$(CONFIG_MMC_MSM)		+= msm_sdcc.o
+obj-$(CONFIG_MMC_MSM_RAW)	+= msm_sdcc_raw.o
 obj-$(CONFIG_MMC_MSM_SPS_SUPPORT) += msm_sdcc_dml.o
 obj-$(CONFIG_MMC_CB710)	+= cb710-mmc.o
 obj-$(CONFIG_MMC_VIA_SDMMC)	+= via-sdmmc.o
