@@ -1389,6 +1389,21 @@ VOS_STATUS WDA_prepareConfigTLV(v_PVOID_t pVosContext,
    tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
                             + sizeof(tHalCfg) + tlvStruct->length) ; 
 
+   /* QWLAN_HAL_CFG_ENABLE_LPWR_IMG_TRANSITION   */
+   tlvStruct->type = QWLAN_HAL_CFG_ENABLE_LPWR_IMG_TRANSITION  ;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   if(wlan_cfgGetInt(pMac, WNI_CFG_ENABLE_LPWR_IMG_TRANSITION, configDataValue) 
+                                                     != eSIR_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                    "Failed to get value for WNI_CFG_ENABLE_LPWR_IMG_TRANSITION");
+      goto handle_failure;
+   }
+      
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ; 
+
    wdiStartParams->usConfigBufferLen = (tANI_U8 *)tlvStruct - tlvStructStart ;
 #ifdef WLAN_DEBUG
    {
@@ -3852,6 +3867,8 @@ static inline v_U8_t WDA_ConvertWniCfgIdToHALCfgId(v_U32_t wniCfgId)
 #endif
       case WNI_CFG_ENABLE_CLOSE_LOOP:
          return QWLAN_HAL_CFG_ENABLE_CLOSE_LOOP;
+      case WNI_CFG_ENABLE_LPWR_IMG_TRANSITION:
+         return QWLAN_HAL_CFG_ENABLE_LPWR_IMG_TRANSITION;
       default:
       {
          VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
@@ -9289,17 +9306,17 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
    }
    else
    {
-      /* Get system role, use the self station if in unknown role or STA role */
-      systemRole = wdaGetGlobalSystemRole(pMac);
-      if (( eSYSTEM_UNKNOWN_ROLE == systemRole ) || 
-          (( eSYSTEM_STA_ROLE == systemRole )
+   /* Get system role, use the self station if in unknown role or STA role */
+   systemRole = wdaGetGlobalSystemRole(pMac);
+   if (( eSYSTEM_UNKNOWN_ROLE == systemRole ) || 
+       (( eSYSTEM_STA_ROLE == systemRole )
 #if defined FEATURE_WLAN_CCX || defined FEATURE_WLAN_TDLS
-          && frmType == HAL_TXRX_FRM_802_11_MGMT
+      && frmType == HAL_TXRX_FRM_802_11_MGMT
 #endif
-          ))
-      { 	  
-          txFlag |= HAL_USE_SELF_STA_REQUESTED_MASK;
-      }
+            ))
+   {
+       txFlag |= HAL_USE_SELF_STA_REQUESTED_MASK;
+   }
    }
 
 
