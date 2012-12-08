@@ -18,6 +18,7 @@
 #include <linux/slab.h>
 #include <linux/sched.h>
 #include <linux/iommu.h>
+#include <mach/iommu.h>
 #include <mach/socinfo.h>
 
 #include "kgsl.h"
@@ -319,20 +320,22 @@ unsigned int kgsl_mmu_get_ptsize(void)
 	if (KGSL_MMU_TYPE_GPU == kgsl_mmu_type)
 		return CONFIG_MSM_KGSL_PAGE_TABLE_SIZE;
 	else if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_type)
-		return SZ_2G;
+		return SZ_2G - KGSL_PAGETABLE_BASE;
 	else
 		return 0;
 }
 
 int
-kgsl_mmu_get_ptname_from_ptbase(unsigned int pt_base)
+kgsl_mmu_get_ptname_from_ptbase(struct kgsl_mmu *mmu, unsigned int pt_base)
 {
 	struct kgsl_pagetable *pt;
 	int ptid = -1;
 
+	if (!mmu->mmu_ops || !mmu->mmu_ops->mmu_pt_equal)
+		return KGSL_MMU_GLOBAL_PT;
 	spin_lock(&kgsl_driver.ptlock);
 	list_for_each_entry(pt, &kgsl_driver.pagetable_list, list) {
-		if (pt->pt_ops->mmu_pt_equal(pt, pt_base)) {
+		if (mmu->mmu_ops->mmu_pt_equal(mmu, pt, pt_base)) {
 			ptid = (int) pt->name;
 			break;
 		}
@@ -528,6 +531,10 @@ struct kgsl_pagetable *kgsl_mmu_getpagetable(unsigned long name)
 #ifndef CONFIG_KGSL_PER_PROCESS_PAGE_TABLE
 	name = KGSL_MMU_GLOBAL_PT;
 #endif
+	/* We presently do not support per-process for IOMMU-v2 */
+	if (!msm_soc_version_supports_iommu_v1())
+		name = KGSL_MMU_GLOBAL_PT;
+
 	pt = kgsl_get_pagetable(name);
 
 	if (pt == NULL)
@@ -599,6 +606,7 @@ kgsl_mmu_map(struct kgsl_pagetable *pagetable,
 	int ret;
 	struct gen_pool *pool;
 	int size;
+	int page_align = ilog2(PAGE_SIZE);
 
 	if (kgsl_mmu_type == KGSL_MMU_TYPE_NONE) {
 		if (memdesc->sglen == 1) {
@@ -623,7 +631,17 @@ kgsl_mmu_map(struct kgsl_pagetable *pagetable,
 	/* Allocate from kgsl pool if it exists for global mappings */
 	pool = _get_pool(pagetable, memdesc->priv);
 
-	memdesc->gpuaddr = gen_pool_alloc(pool, size);
+	/* Allocate aligned virtual addresses for iommu. This allows
+	 * more efficient pagetable entries if the physical memory
+	 * is also aligned. Don't do this for GPUMMU, because
+	 * the address space is so small.
+	 */
+	if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_get_mmutype() &&
+	    (memdesc->priv & KGSL_MEMALIGN_MASK)) {
+		page_align = (memdesc->priv & KGSL_MEMALIGN_MASK)
+				>> KGSL_MEMALIGN_SHIFT;
+	}
+	memdesc->gpuaddr = gen_pool_alloc_aligned(pool, size, page_align);
 	if (memdesc->gpuaddr == 0) {
 		KGSL_CORE_ERR("gen_pool_alloc(%d) failed from pool: %s\n",
 			size,
@@ -722,7 +740,8 @@ int kgsl_mmu_map_global(struct kgsl_pagetable *pagetable,
 		return 0;
 
 	gpuaddr = memdesc->gpuaddr;
-	memdesc->priv |= KGSL_MEMFLAGS_GLOBAL;
+	memdesc->priv |= KGSL_MEMFLAGS_GLOBAL
+			| (KGSL_MEMTYPE_KERNEL << KGSL_MEMTYPE_SHIFT);
 
 	result = kgsl_mmu_map(pagetable, memdesc, protflags);
 	if (result)

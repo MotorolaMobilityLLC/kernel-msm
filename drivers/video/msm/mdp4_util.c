@@ -315,8 +315,6 @@ void mdp4_hw_init(void)
 	clk_rate = mdp_get_core_clk();
 	mdp4_fetch_cfg(clk_rate);
 
-	mdp4_overlay_cfg_init();
-
 	/* Mark hardware as initialized. Only revisions > v2.1 have a register
 	 * for tracking core reset status. */
 	if (mdp_hw_revision > MDP4_REVISION_V2_1)
@@ -502,14 +500,8 @@ irqreturn_t mdp4_isr(int irq, void *ptr)
 	if (isr & INTR_OVERLAY2_DONE) {
 		mdp4_stat.intr_overlay2++;
 		/* disable DTV interrupt */
-		dma = &dma_wb_data;
-		spin_lock(&mdp_spin_lock);
-		mdp_intr_mask &= ~INTR_OVERLAY2_DONE;
-		outp32(MDP_INTR_ENABLE, mdp_intr_mask);
-		dma->waiting = FALSE;
-		spin_unlock(&mdp_spin_lock);
 		if (panel & MDP4_PANEL_WRITEBACK)
-			mdp4_overlay1_done_writeback(dma);
+			mdp4_overlay2_done_wfd(&dma_wb_data);
 	}
 #endif
 #endif	/* OVERLAY */

@@ -28,6 +28,7 @@
 #include <linux/random.h>
 #include <linux/wakelock.h>
 #include <linux/pm.h>
+#include <linux/slab.h>
 
 #include <linux/mmc/card.h>
 #include <linux/mmc/host.h>
@@ -44,10 +45,10 @@
 #include "sdio_ops.h"
 
 /*
- * The Background operations can take a long time, depends on the house keeping
- * operations the card has to perform
+ * Background operations can take a long time, depending on the housekeeping
+ * operations the card has to perform.
  */
-#define MMC_BKOPS_MAX_TIMEOUT    (4 * 60 * 1000) /* max time to wait in ms */
+#define MMC_BKOPS_MAX_TIMEOUT	(4 * 60 * 1000) /* max time to wait in ms */
 
 static struct workqueue_struct *workqueue;
 
@@ -279,72 +280,218 @@ mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 }
 
 /**
- *	mmc_start_bkops - start BKOPS for supported cards
- *	@card: MMC card to start BKOPS
+ * mmc_start_delayed_bkops() - Start a delayed work to check for
+ *      the need of non urgent BKOPS
  *
- *	Start background operations whenever requested.
- *	when the urgent BKOPS bit is set in a R1 command response
- *	then background operations should be started immediately.
-*/
-void mmc_start_bkops(struct mmc_card *card)
+ * @card: MMC card to start BKOPS on
+ */
+void mmc_start_delayed_bkops(struct mmc_card *card)
 {
-	int err;
-	unsigned long flags;
-	int timeout;
-
-	BUG_ON(!card);
-	if (!card->ext_csd.bkops_en || !(card->host->caps2 & MMC_CAP2_BKOPS))
+	if (!card || !card->ext_csd.bkops_en || mmc_card_doing_bkops(card))
 		return;
 
-	if (mmc_card_check_bkops(card)) {
-		spin_lock_irqsave(&card->host->lock, flags);
-		mmc_card_clr_check_bkops(card);
-		spin_unlock_irqrestore(&card->host->lock, flags);
-		if (mmc_is_exception_event(card, EXT_CSD_URGENT_BKOPS))
-			if (card->ext_csd.raw_bkops_status)
-				mmc_card_set_need_bkops(card);
-	}
+	if (card->bkops_info.sectors_changed <
+	    card->bkops_info.min_sectors_to_queue_delayed_work)
+		return;
+
+	pr_debug("%s: %s: queueing delayed_bkops_work\n",
+		 mmc_hostname(card->host), __func__);
+
+	card->bkops_info.sectors_changed = 0;
 
 	/*
-	 * If card is already doing bkops or need for
-	 * bkops flag is not set, then do nothing just
-	 * return
+	 * cancel_delayed_bkops_work will prevent a race condition between
+	 * fetching a request by the mmcqd and the delayed work, in case
+	 * it was removed from the queue work but not started yet
 	 */
-	if (mmc_card_doing_bkops(card) || !mmc_card_need_bkops(card))
+	card->bkops_info.cancel_delayed_work = false;
+	card->bkops_info.started_delayed_bkops = true;
+	queue_delayed_work(system_nrt_wq, &card->bkops_info.dw,
+			   msecs_to_jiffies(
+				   card->bkops_info.delay_ms));
+}
+EXPORT_SYMBOL(mmc_start_delayed_bkops);
+
+/**
+ *	mmc_start_bkops - start BKOPS for supported cards
+ *	@card: MMC card to start BKOPS
+ *	@from_exception: A flag to indicate if this function was
+ *			 called due to an exception raised by the card
+ *
+ *	Start background operations whenever requested.
+ *	When the urgent BKOPS bit is set in a R1 command response
+ *	then background operations should be started immediately.
+*/
+void mmc_start_bkops(struct mmc_card *card, bool from_exception)
+{
+	int err;
+	int timeout;
+	bool use_busy_signal;
+
+	BUG_ON(!card);
+	if (!card->ext_csd.bkops_en)
 		return;
 
 	mmc_claim_host(card->host);
 
-	timeout = (card->ext_csd.raw_bkops_status >= EXT_CSD_BKOPS_LEVEL_2) ?
-		MMC_BKOPS_MAX_TIMEOUT : 0;
-
-	err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
-			EXT_CSD_BKOPS_START, 1, timeout);
-	if (err) {
-		pr_warning("%s: error %d starting bkops\n",
-			   mmc_hostname(card->host), err);
-		mmc_card_clr_need_bkops(card);
+	if ((card->bkops_info.cancel_delayed_work) && !from_exception) {
+		pr_debug("%s: %s: cancel_delayed_work was set, exit\n",
+			 mmc_hostname(card->host), __func__);
+		card->bkops_info.cancel_delayed_work = false;
 		goto out;
 	}
 
-	spin_lock_irqsave(&card->host->lock, flags);
-	mmc_card_clr_need_bkops(card);
+	if (mmc_card_doing_bkops(card)) {
+		pr_debug("%s: %s: already doing bkops, exit\n",
+			 mmc_hostname(card->host), __func__);
+		goto out;
+	}
+
+	err = mmc_read_bkops_status(card);
+	if (err) {
+		pr_err("%s: Failed to read bkops status: %d\n",
+		       mmc_hostname(card->host), err);
+		goto out;
+	}
+
+	if (!card->ext_csd.raw_bkops_status)
+		goto out;
+
+	pr_info("%s: %s: card->ext_csd.raw_bkops_status = 0x%x\n",
+		mmc_hostname(card->host), __func__,
+		card->ext_csd.raw_bkops_status);
+
+	/*
+	 * If the function was called due to exception but there is no need
+	 * for urgent BKOPS, BKOPs will be performed by the delayed BKOPs
+	 * work, before going to suspend
+	 */
+	if (card->ext_csd.raw_bkops_status < EXT_CSD_BKOPS_LEVEL_2 &&
+	    from_exception)
+		goto out;
+
+	if (card->ext_csd.raw_bkops_status >= EXT_CSD_BKOPS_LEVEL_2) {
+		timeout = MMC_BKOPS_MAX_TIMEOUT;
+		use_busy_signal = true;
+	} else {
+		timeout = 0;
+		use_busy_signal = false;
+	}
+
+	err = __mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+			EXT_CSD_BKOPS_START, 1, timeout, use_busy_signal);
+	if (err) {
+		pr_warn("%s: Error %d starting bkops\n",
+			mmc_hostname(card->host), err);
+		goto out;
+	}
 
 	/*
 	 * For urgent bkops status (LEVEL_2 and more)
 	 * bkops executed synchronously, otherwise
 	 * the operation is in progress
 	 */
-	if (card->ext_csd.raw_bkops_status >= EXT_CSD_BKOPS_LEVEL_2)
-		mmc_card_set_check_bkops(card);
-	else
+	if (!use_busy_signal) {
 		mmc_card_set_doing_bkops(card);
+		pr_debug("%s: %s: starting the polling thread\n",
+			 mmc_hostname(card->host), __func__);
+		queue_work(system_nrt_wq,
+			   &card->bkops_info.poll_for_completion);
+	}
 
-	spin_unlock_irqrestore(&card->host->lock, flags);
 out:
 	mmc_release_host(card->host);
 }
 EXPORT_SYMBOL(mmc_start_bkops);
+
+/**
+ * mmc_bkops_completion_polling() - Poll on the card status to
+ * wait for the non-blocking BKOPS completion
+ * @work:	The completion polling work
+ *
+ * The on-going reading of the card status will prevent the card
+ * from getting into suspend while it is in the middle of
+ * performing BKOPS.
+ * Since the non blocking BKOPS can be interrupted by a fetched
+ * request we also check IF mmc_card_doing_bkops in each
+ * iteration.
+ */
+void mmc_bkops_completion_polling(struct work_struct *work)
+{
+	struct mmc_card *card = container_of(work, struct mmc_card,
+			bkops_info.poll_for_completion);
+	unsigned long timeout_jiffies = jiffies +
+		msecs_to_jiffies(BKOPS_COMPLETION_POLLING_TIMEOUT_MS);
+	u32 status;
+	int err;
+
+	/*
+	 * Wait for the BKOPs to complete. Keep reading the status to prevent
+	 * the host from getting into suspend
+	 */
+	do {
+		mmc_claim_host(card->host);
+
+		if (!mmc_card_doing_bkops(card))
+			goto out;
+
+		err = mmc_send_status(card, &status);
+		if (err) {
+			pr_err("%s: error %d requesting status\n",
+			       mmc_hostname(card->host), err);
+			goto out;
+		}
+
+		/*
+		 * Some cards mishandle the status bits, so make sure to check
+		 * both the busy indication and the card state.
+		 */
+		if ((status & R1_READY_FOR_DATA) &&
+		    (R1_CURRENT_STATE(status) != R1_STATE_PRG)) {
+			pr_debug("%s: %s: completed BKOPs, exit polling\n",
+				 mmc_hostname(card->host), __func__);
+			mmc_card_clr_doing_bkops(card);
+			card->bkops_info.started_delayed_bkops = false;
+			goto out;
+		}
+
+		mmc_release_host(card->host);
+
+		/*
+		 * Sleep before checking the card status again to allow the
+		 * card to complete the BKOPs operation
+		 */
+		msleep(BKOPS_COMPLETION_POLLING_INTERVAL_MS);
+	} while (time_before(jiffies, timeout_jiffies));
+
+	pr_err("%s: %s: exit polling due to timeout\n",
+	       mmc_hostname(card->host), __func__);
+
+	return;
+out:
+	mmc_release_host(card->host);
+}
+
+/**
+ * mmc_start_idle_time_bkops() - check if a non urgent BKOPS is
+ * needed
+ * @work:	The idle time BKOPS work
+ */
+void mmc_start_idle_time_bkops(struct work_struct *work)
+{
+	struct mmc_card *card = container_of(work, struct mmc_card,
+			bkops_info.dw.work);
+
+	/*
+	 * Prevent a race condition between mmc_stop_bkops and the delayed
+	 * BKOPS work in case the delayed work is executed on another CPU
+	 */
+	if (card->bkops_info.cancel_delayed_work)
+		return;
+
+	mmc_start_bkops(card, false);
+}
+EXPORT_SYMBOL(mmc_start_idle_time_bkops);
 
 static void mmc_wait_done(struct mmc_request *mrq)
 {
@@ -455,6 +602,14 @@ struct mmc_async_req *mmc_start_req(struct mmc_host *host,
 	if (host->areq) {
 		mmc_wait_for_req_done(host, host->areq->mrq);
 		err = host->areq->err_check(host->card, host->areq);
+		/*
+		 * Check BKOPS urgency for each R1 response
+		 */
+		if (host->card && mmc_card_mmc(host->card) &&
+		    ((mmc_resp_type(host->areq->mrq->cmd) == MMC_RSP_R1) ||
+		     (mmc_resp_type(host->areq->mrq->cmd) == MMC_RSP_R1B)) &&
+		    (host->areq->mrq->cmd->resp[0] & R1_EXCEPTION_EVENT))
+			mmc_start_bkops(host->card, true);
 	}
 
 	if (!err && areq)
@@ -499,7 +654,7 @@ EXPORT_SYMBOL(mmc_wait_for_req);
  *	@card: the MMC card associated with the HPI transfer
  *
  *	Issued High Priority Interrupt, and check for card status
- *	util out-of prg-state.
+ *	until out-of prg-state.
  */
 int mmc_interrupt_hpi(struct mmc_card *card)
 {
@@ -581,67 +736,77 @@ int mmc_wait_for_cmd(struct mmc_host *host, struct mmc_command *cmd, int retries
 EXPORT_SYMBOL(mmc_wait_for_cmd);
 
 /**
- *	mmc_interrupt_bkops - interrupt ongoing BKOPS
+ *	mmc_stop_bkops - stop ongoing BKOPS
  *	@card: MMC card to check BKOPS
  *
- *	Send HPI command to interrupt ongoing background operations,
- *	to allow rapid servicing of foreground operations,e.g. read/
+ *	Send HPI command to stop ongoing background operations to
+ *	allow rapid servicing of foreground operations, e.g. read/
  *	writes. Wait until the card comes out of the programming state
  *	to avoid errors in servicing read/write requests.
  */
-int mmc_interrupt_bkops(struct mmc_card *card)
+int mmc_stop_bkops(struct mmc_card *card)
 {
 	int err = 0;
-	unsigned long flags;
 
 	BUG_ON(!card);
 
+	mmc_claim_host(card->host);
+
+	/*
+	 * Notify the delayed work to be cancelled, in case it was already
+	 * removed from the queue, but was not started yet
+	 */
+	card->bkops_info.cancel_delayed_work = true;
+	if (delayed_work_pending(&card->bkops_info.dw))
+		cancel_delayed_work_sync(&card->bkops_info.dw);
+	if (!mmc_card_doing_bkops(card))
+		goto out;
+
 	err = mmc_interrupt_hpi(card);
 
-	spin_lock_irqsave(&card->host->lock, flags);
-	mmc_card_clr_doing_bkops(card);
-	spin_unlock_irqrestore(&card->host->lock, flags);
+	/*
+	 * If err is EINVAL, we can't issue an HPI.
+	 * It should complete the BKOPS.
+	 */
+	if (!err || (err == -EINVAL)) {
+		mmc_card_clr_doing_bkops(card);
+		err = 0;
+	}
 
+out:
+	mmc_release_host(card->host);
 	return err;
 }
-EXPORT_SYMBOL(mmc_interrupt_bkops);
+EXPORT_SYMBOL(mmc_stop_bkops);
 
 int mmc_read_bkops_status(struct mmc_card *card)
 {
 	int err;
-	u8 ext_csd[512];
+	u8 *ext_csd;
+
+	/*
+	 * In future work, we should consider storing the entire ext_csd.
+	 */
+	ext_csd = kmalloc(512, GFP_KERNEL);
+	if (!ext_csd) {
+		pr_err("%s: could not allocate buffer to receive the ext_csd.\n",
+		       mmc_hostname(card->host));
+		return -ENOMEM;
+	}
 
 	mmc_claim_host(card->host);
 	err = mmc_send_ext_csd(card, ext_csd);
 	mmc_release_host(card->host);
 	if (err)
-		return err;
+		goto out;
 
 	card->ext_csd.raw_bkops_status = ext_csd[EXT_CSD_BKOPS_STATUS];
 	card->ext_csd.raw_exception_status = ext_csd[EXT_CSD_EXP_EVENTS_STATUS];
-
-	return 0;
+out:
+	kfree(ext_csd);
+	return err;
 }
 EXPORT_SYMBOL(mmc_read_bkops_status);
-
-int mmc_is_exception_event(struct mmc_card *card, unsigned int value)
-{
-	int err;
-
-	err = mmc_read_bkops_status(card);
-	if (err) {
-		pr_err("%s: Didn't read bkops status : %d\n",
-		       mmc_hostname(card->host), err);
-		return 0;
-	}
-
-	/* In eMMC 4.41, R1_EXCEPTION_EVENT is URGENT_BKOPS */
-	if (card->ext_csd.rev == 5)
-		return 1;
-
-	return (card->ext_csd.raw_exception_status & value) ? 1 : 0;
-}
-EXPORT_SYMBOL(mmc_is_exception_event);
 
 /**
  *	mmc_set_data_timeout - set the timeout for a data command
@@ -1273,6 +1438,7 @@ void mmc_set_driver_type(struct mmc_host *host, unsigned int drv_type)
 	mmc_set_ios(host);
 	mmc_host_clk_release(host);
 }
+
 /*
  * Apply power to the MMC stack.  This is a two-stage process.
  * First, we enable power to the card without the clock running.
@@ -1297,7 +1463,7 @@ void mmc_power_up(struct mmc_host *host)
 		bit = fls(host->ocr_avail) - 1;
 
 	host->ios.vdd = bit;
-	if (mmc_host_is_spi(host)) 
+	if (mmc_host_is_spi(host))
 		host->ios.chip_select = MMC_CS_HIGH;
 	else {
 		host->ios.chip_select = MMC_CS_DONTCARE;
@@ -1334,7 +1500,6 @@ void mmc_power_off(struct mmc_host *host)
 
 	host->ios.clock = 0;
 	host->ios.vdd = 0;
-	
 
 	/*
 	 * Reset ocr mask to be the highest possible voltage supported for
@@ -1865,15 +2030,6 @@ int mmc_can_secure_erase_trim(struct mmc_card *card)
 }
 EXPORT_SYMBOL(mmc_can_secure_erase_trim);
 
-int mmc_can_poweroff_notify(const struct mmc_card *card)
-{
-	return card &&
-		mmc_card_mmc(card) &&
-		card->host->bus_ops->poweroff_notify &&
-		(card->poweroff_notify_state == MMC_POWERED_ON);
-}
-EXPORT_SYMBOL(mmc_can_poweroff_notify);
-
 int mmc_erase_group_aligned(struct mmc_card *card, unsigned int from,
 			    unsigned int nr)
 {
@@ -2266,15 +2422,6 @@ void mmc_stop_host(struct mmc_host *host)
 
 	mmc_bus_get(host);
 	if (host->bus_ops && !host->bus_dead) {
-		mmc_claim_host(host);
-		if (mmc_can_poweroff_notify(host->card)) {
-			int err = host->bus_ops->poweroff_notify(host,
-						MMC_PW_OFF_NOTIFY_LONG);
-			if (err)
-				pr_info("%s: error [%d] in poweroff notify\n",
-					mmc_hostname(host), err);
-		}
-		mmc_release_host(host);
 		/* Calling bus_ops->remove() with a claimed host can deadlock */
 		if (host->bus_ops->remove)
 			host->bus_ops->remove(host);
@@ -2310,15 +2457,6 @@ int mmc_power_save_host(struct mmc_host *host)
 
 	if (host->bus_ops->power_save)
 		ret = host->bus_ops->power_save(host);
-	mmc_claim_host(host);
-	if (mmc_can_poweroff_notify(host->card)) {
-		int err = host->bus_ops->poweroff_notify(host,
-					MMC_PW_OFF_NOTIFY_SHORT);
-		if (err)
-			pr_info("%s: error [%d] in poweroff notify\n",
-				mmc_hostname(host), err);
-	}
-	mmc_release_host(host);
 
 	mmc_bus_put(host);
 
@@ -2361,11 +2499,8 @@ int mmc_card_awake(struct mmc_host *host)
 
 	mmc_bus_get(host);
 
-	if (host->bus_ops && !host->bus_dead && host->bus_ops->awake) {
+	if (host->bus_ops && !host->bus_dead && host->bus_ops->awake)
 		err = host->bus_ops->awake(host);
-		if (!err)
-			mmc_card_clr_sleep(host->card);
-	}
 
 	mmc_bus_put(host);
 
@@ -2382,11 +2517,8 @@ int mmc_card_sleep(struct mmc_host *host)
 
 	mmc_bus_get(host);
 
-	if (host->bus_ops && !host->bus_dead && host->bus_ops->sleep) {
+	if (host->bus_ops && !host->bus_dead && host->bus_ops->sleep)
 		err = host->bus_ops->sleep(host);
-		if (!err)
-			mmc_card_set_sleep(host->card);
-	}
 
 	mmc_bus_put(host);
 
@@ -2444,7 +2576,9 @@ int mmc_cache_ctrl(struct mmc_host *host, u8 enable)
 			mmc_card_is_removable(host))
 		return err;
 
-	mmc_claim_host(host);
+	if (!mmc_try_claim_host(host))
+		return -EBUSY;
+
 	if (card && mmc_card_mmc(card) &&
 			(card->ext_csd.cache_size > 0)) {
 		enable = !!enable;
@@ -2508,9 +2642,11 @@ int mmc_suspend_host(struct mmc_host *host)
 
 		if (!err) {
 			if (host->bus_ops->suspend) {
-				if (mmc_card_doing_bkops(host->card))
-					mmc_interrupt_bkops(host->card);
-
+				if (mmc_card_doing_bkops(host->card)) {
+					err = mmc_stop_bkops(host->card);
+					if (err)
+						goto stop_bkops_err;
+				}
 				err = host->bus_ops->suspend(host);
 			}
 			if (!(host->card && mmc_card_sdio(host->card)))
@@ -2541,6 +2677,10 @@ int mmc_suspend_host(struct mmc_host *host)
 		mmc_power_off(host);
 
 out:
+	return err;
+stop_bkops_err:
+	if (!(host->card && mmc_card_sdio(host->card)))
+		mmc_release_host(host);
 	return err;
 }
 
@@ -2604,11 +2744,19 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 	struct mmc_host *host = container_of(
 		notify_block, struct mmc_host, pm_notify);
 	unsigned long flags;
-
+	int err = 0;
 
 	switch (mode) {
 	case PM_HIBERNATION_PREPARE:
 	case PM_SUSPEND_PREPARE:
+		if (host->card && mmc_card_mmc(host->card)) {
+			err = mmc_stop_bkops(host->card);
+			if (err) {
+				pr_err("%s: didn't stop bkops\n",
+					mmc_hostname(host));
+				return err;
+			}
+		}
 
 		spin_lock_irqsave(&host->lock, flags);
 		if (mmc_bus_needs_resume(host)) {
@@ -2622,15 +2770,6 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 
 		if (!host->bus_ops || host->bus_ops->suspend)
 			break;
-		mmc_claim_host(host);
-		if (mmc_can_poweroff_notify(host->card)) {
-			int err = host->bus_ops->poweroff_notify(host,
-						MMC_PW_OFF_NOTIFY_SHORT);
-			if (err)
-				pr_info("%s: error [%d] in poweroff notify\n",
-					mmc_hostname(host), err);
-		}
-		mmc_release_host(host);
 
 		/* Calling bus_ops->remove() with a claimed host can deadlock */
 		if (host->bus_ops->remove)

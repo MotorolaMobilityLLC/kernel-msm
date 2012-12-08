@@ -221,10 +221,17 @@ void adreno_drawctxt_destroy(struct kgsl_device *device,
 				     CTXT_FLAGS_GMEM_SHADOW |
 				     CTXT_FLAGS_STATE_SHADOW);
 
+		drawctxt->flags |= CTXT_FLAGS_BEING_DESTOYED;
+
 		adreno_drawctxt_switch(adreno_dev, NULL, 0);
 	}
 
-	adreno_idle(device);
+	if (device->state != KGSL_STATE_HUNG)
+		adreno_idle(device);
+
+	if (adreno_is_a20x(adreno_dev) && adreno_dev->drawctxt_active)
+		kgsl_setstate(&device->mmu, adreno_dev->drawctxt_active->id,
+			KGSL_MMUFLAGS_PTUPDATE);
 
 	kgsl_sharedmem_free(&drawctxt->gpustate);
 	kgsl_sharedmem_free(&drawctxt->context_gmem_shadow.gmemshadow);

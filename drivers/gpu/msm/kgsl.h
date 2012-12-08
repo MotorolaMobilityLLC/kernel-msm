@@ -135,7 +135,8 @@ struct kgsl_memdesc {
 	unsigned int size;
 	unsigned int priv;
 	struct scatterlist *sg;
-	unsigned int sglen;
+	unsigned int sglen; /* Active entries in the sglist */
+	unsigned int sglen_alloc;  /* Allocated entries in the sglist */
 	struct kgsl_memdesc_ops *ops;
 	int flags;
 };
@@ -175,12 +176,14 @@ struct kgsl_mem_entry {
 void kgsl_mem_entry_destroy(struct kref *kref);
 int kgsl_postmortem_dump(struct kgsl_device *device, int manual);
 
-struct kgsl_mem_entry *kgsl_get_mem_entry(unsigned int ptbase,
-		unsigned int gpuaddr, unsigned int size);
+struct kgsl_mem_entry *kgsl_get_mem_entry(struct kgsl_device *device,
+		unsigned int ptbase, unsigned int gpuaddr, unsigned int size);
 
 struct kgsl_mem_entry *kgsl_sharedmem_find_region(
 	struct kgsl_process_private *private, unsigned int gpuaddr,
 	size_t size);
+
+void kgsl_get_memory_usage(char *str, size_t len, unsigned int memflags);
 
 int kgsl_add_event(struct kgsl_device *device, u32 id, u32 ts,
 	void (*cb)(struct kgsl_device *, void *, u32, u32), void *priv,
