@@ -393,6 +393,7 @@ static int set_vdd_dig_8960(struct clk_vdd_class *vdd_class, int level)
 
 static DEFINE_VDD_CLASS(vdd_dig, set_vdd_dig_8960);
 
+static int rpm_vreg_dig_8930 = RPM_VREG_ID_PM8038_VDD_DIG_CORNER;
 static int set_vdd_dig_8930(struct clk_vdd_class *vdd_class, int level)
 {
 	static const int vdd_corner[] = {
@@ -401,7 +402,7 @@ static int set_vdd_dig_8930(struct clk_vdd_class *vdd_class, int level)
 		[VDD_DIG_NOMINAL] = RPM_VREG_CORNER_NOMINAL,
 		[VDD_DIG_HIGH]    = RPM_VREG_CORNER_HIGH,
 	};
-	return rpm_vreg_set_voltage(RPM_VREG_ID_PM8038_VDD_DIG_CORNER,
+	return rpm_vreg_set_voltage(rpm_vreg_dig_8930,
 					RPM_VREG_VOTER3,
 					vdd_corner[level],
 					RPM_VREG_CORNER_HIGH, 1);
@@ -465,6 +466,36 @@ static int set_vdd_sr2_hdmi_pll_8064(struct clk_vdd_class *vdd_class, int level)
 {
 	return rpm_vreg_set_voltage(RPM_VREG_ID_PM8921_LVS7, RPM_VREG_VOTER3,
 				    sr2_lreg_uv[level], sr2_lreg_uv[level], 1);
+}
+
+static int set_vdd_sr2_hdmi_pll_8930_pm8917(struct clk_vdd_class *vdd_class,
+	int level)
+{
+	int rc = 0;
+
+	if (level == VDD_SR2_HDMI_PLL_OFF) {
+		rc = rpm_vreg_set_voltage(RPM_VREG_ID_PM8917_L23,
+				RPM_VREG_VOTER3, 0, 0, 1);
+		if (rc)
+			return rc;
+		rc = rpm_vreg_set_voltage(RPM_VREG_ID_PM8917_S8,
+				RPM_VREG_VOTER3, 0, 0, 1);
+		if (rc)
+			rpm_vreg_set_voltage(RPM_VREG_ID_PM8917_L23,
+				RPM_VREG_VOTER3, 1800000, 1800000, 1);
+	} else {
+		rc = rpm_vreg_set_voltage(RPM_VREG_ID_PM8917_S8,
+				RPM_VREG_VOTER3, 2050000, 2100000, 1);
+		if (rc)
+			return rc;
+		rc = rpm_vreg_set_voltage(RPM_VREG_ID_PM8917_L23,
+				RPM_VREG_VOTER3, 1800000, 1800000, 1);
+		if (rc)
+			rpm_vreg_set_voltage(RPM_VREG_ID_PM8917_S8,
+					RPM_VREG_VOTER3, 0, 0, 1);
+	}
+
+	return rc;
 }
 
 static int set_vdd_sr2_hdmi_pll_8930(struct clk_vdd_class *vdd_class, int level)
@@ -4490,6 +4521,7 @@ static struct clk_freq_tbl clk_tbl_aif_osr_492[] = {
 	F_AIF_OSR( 8192000, pll4, 4, 1,  15),
 	F_AIF_OSR(12288000, pll4, 4, 1,  10),
 	F_AIF_OSR(24576000, pll4, 4, 1,   5),
+	F_AIF_OSR(27000000, pxo,  1, 0,   0),
 	F_END
 };
 
@@ -4506,6 +4538,7 @@ static struct clk_freq_tbl clk_tbl_aif_osr_393[] = {
 	F_AIF_OSR( 8192000, pll4, 4, 1,  12),
 	F_AIF_OSR(12288000, pll4, 4, 1,   8),
 	F_AIF_OSR(24576000, pll4, 4, 1,   4),
+	F_AIF_OSR(27000000, pxo,  1, 0,   0),
 	F_END
 };
 
@@ -4531,7 +4564,7 @@ static struct clk_freq_tbl clk_tbl_aif_osr_393[] = {
 		.c = { \
 			.dbg_name = #i "_clk", \
 			.ops = &clk_ops_rcg, \
-			VDD_DIG_FMAX_MAP1(LOW, 24576000), \
+			VDD_DIG_FMAX_MAP1(LOW, 27000000), \
 			CLK_INIT(i##_clk.c), \
 		}, \
 	}
@@ -4557,7 +4590,7 @@ static struct clk_freq_tbl clk_tbl_aif_osr_393[] = {
 		.c = { \
 			.dbg_name = #i "_clk", \
 			.ops = &clk_ops_rcg, \
-			VDD_DIG_FMAX_MAP1(LOW, 24576000), \
+			VDD_DIG_FMAX_MAP1(LOW, 27000000), \
 			CLK_INIT(i##_clk.c), \
 		}, \
 	}
@@ -4647,6 +4680,7 @@ static struct clk_freq_tbl clk_tbl_pcm_492[] = {
 	F_PCM( 8192000, pll4, 4, 1,  15),
 	F_PCM(12288000, pll4, 4, 1,  10),
 	F_PCM(24576000, pll4, 4, 1,   5),
+	F_PCM(27000000, pxo,  1, 0,   0),
 	F_END
 };
 
@@ -4664,6 +4698,7 @@ static struct clk_freq_tbl clk_tbl_pcm_393[] = {
 	F_PCM( 8192000, pll4, 4, 1,  12),
 	F_PCM(12288000, pll4, 4, 1,   8),
 	F_PCM(24576000, pll4, 4, 1,   4),
+	F_PCM(27000000, pxo,  1, 0,   0),
 	F_END
 };
 
@@ -4688,7 +4723,7 @@ static struct rcg_clk pcm_clk = {
 	.c = {
 		.dbg_name = "pcm_clk",
 		.ops = &clk_ops_rcg,
-		VDD_DIG_FMAX_MAP1(LOW, 24576000),
+		VDD_DIG_FMAX_MAP1(LOW, 27000000),
 		CLK_INIT(pcm_clk.c),
 		.rate = ULONG_MAX,
 	},
@@ -4715,7 +4750,7 @@ static struct rcg_clk audio_slimbus_clk = {
 	.c = {
 		.dbg_name = "audio_slimbus_clk",
 		.ops = &clk_ops_rcg,
-		VDD_DIG_FMAX_MAP1(LOW, 24576000),
+		VDD_DIG_FMAX_MAP1(LOW, 27000000),
 		CLK_INIT(audio_slimbus_clk.c),
 	},
 };
@@ -5363,16 +5398,11 @@ static struct clk_lookup msm_clocks_8064[] = {
 	CLK_LOOKUP("iface_clk",		pmic_arb1_p_clk.c,	""),
 	CLK_LOOKUP("core_clk",		pmic_ssbi2_clk.c,	""),
 	CLK_LOOKUP("mem_clk",		rpm_msg_ram_p_clk.c,	""),
-#if defined(CONFIG_MACH_LGE)
-	CLK_LOOKUP("cam_clk",		cam0_clk.c,		"4-000d"),
-	CLK_LOOKUP("cam_clk",		cam2_clk.c,		"4-006e"),
-#else /* QCT Original */
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-001a"),
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-0034"),
 	CLK_LOOKUP("cam_clk",		cam0_clk.c,	"4-0020"),
 	CLK_LOOKUP("cam_clk",		cam1_clk.c,	"4-0048"),
 	CLK_LOOKUP("cam_clk",		cam1_clk.c,	"4-006c"),
-#endif
 	CLK_LOOKUP("csi_src_clk",	csi0_src_clk.c,		"msm_csid.0"),
 	CLK_LOOKUP("csi_src_clk",	csi1_src_clk.c,		"msm_csid.1"),
 	CLK_LOOKUP("csi_src_clk",	csi2_src_clk.c,		"msm_csid.2"),
@@ -6527,10 +6557,6 @@ static void __init msm8960_clock_pre_init(void)
 
 	if (cpu_is_apq8064() || cpu_is_apq8064ab())
 		vdd_sr2_hdmi_pll.set_vdd = set_vdd_sr2_hdmi_pll_8064;
-	else if (cpu_is_msm8930() || cpu_is_msm8930aa() || cpu_is_msm8627()) {
-		vdd_dig.set_vdd = set_vdd_dig_8930;
-		vdd_sr2_hdmi_pll.set_vdd = set_vdd_sr2_hdmi_pll_8930;
-	}
 
 	/* Detect PLL4 programmed for alternate 491.52MHz clock plan. */
 	if (readl_relaxed(LCC_PLL0_L_VAL_REG) == 0x12) {
@@ -6633,6 +6659,25 @@ static void __init msm8960_clock_pre_init(void)
 	clk_ops_local_pll.enable = sr_pll_clk_enable;
 }
 
+static void __init msm8930_pm8917_clock_pre_init(void)
+{
+	/* detect pmic8917 from board file, and call this init function */
+
+	vdd_dig.set_vdd = set_vdd_dig_8930;
+	rpm_vreg_dig_8930 = RPM_VREG_ID_PM8917_VDD_DIG_CORNER;
+	vdd_sr2_hdmi_pll.set_vdd = set_vdd_sr2_hdmi_pll_8930_pm8917;
+
+	msm8960_clock_pre_init();
+}
+
+static void __init msm8930_clock_pre_init(void)
+{
+	vdd_dig.set_vdd = set_vdd_dig_8930;
+	vdd_sr2_hdmi_pll.set_vdd = set_vdd_sr2_hdmi_pll_8930;
+
+	msm8960_clock_pre_init();
+}
+
 static void __init msm8960_clock_post_init(void)
 {
 	/* Keep PXO on whenever APPS cpu is active */
@@ -6699,22 +6744,22 @@ static int __init msm8960_clock_late_init(void)
 	struct clk *mmfpb_a_clk = clk_get_sys("clock-8960", "mmfpb_a_clk");
 	struct clk *cfpb_a_clk = clk_get_sys("clock-8960", "cfpb_a_clk");
 
-	/* Vote for MMFPB to be at least 76.8MHz when an Apps CPU is active. */
+	/* Vote for MMFPB to be on when Apps is active. */
 	if (WARN(IS_ERR(mmfpb_a_clk), "mmfpb_a_clk not found (%ld)\n",
 			PTR_ERR(mmfpb_a_clk)))
 		return PTR_ERR(mmfpb_a_clk);
-	rc = clk_set_rate(mmfpb_a_clk, 76800000);
+	rc = clk_set_rate(mmfpb_a_clk, 38400000);
 	if (WARN(rc, "mmfpb_a_clk rate was not set (%d)\n", rc))
 		return rc;
 	rc = clk_prepare_enable(mmfpb_a_clk);
 	if (WARN(rc, "mmfpb_a_clk not enabled (%d)\n", rc))
 		return rc;
 
-	/* Vote for CFPB to be at least 64MHz when an Apps CPU is active. */
+	/* Vote for CFPB to be on when Apps is active. */
 	if (WARN(IS_ERR(cfpb_a_clk), "cfpb_a_clk not found (%ld)\n",
 			PTR_ERR(cfpb_a_clk)))
 		return PTR_ERR(cfpb_a_clk);
-	rc = clk_set_rate(cfpb_a_clk, 64000000);
+	rc = clk_set_rate(cfpb_a_clk, 32000000);
 	if (WARN(rc, "cfpb_a_clk rate was not set (%d)\n", rc))
 		return rc;
 	rc = clk_prepare_enable(cfpb_a_clk);
@@ -6743,7 +6788,15 @@ struct clock_init_data apq8064_clock_init_data __initdata = {
 struct clock_init_data msm8930_clock_init_data __initdata = {
 	.table = msm_clocks_8930,
 	.size = ARRAY_SIZE(msm_clocks_8930),
-	.pre_init = msm8960_clock_pre_init,
+	.pre_init = msm8930_clock_pre_init,
+	.post_init = msm8960_clock_post_init,
+	.late_init = msm8960_clock_late_init,
+};
+
+struct clock_init_data msm8930_pm8917_clock_init_data __initdata = {
+	.table = msm_clocks_8930,
+	.size = ARRAY_SIZE(msm_clocks_8930),
+	.pre_init = msm8930_pm8917_clock_pre_init,
 	.post_init = msm8960_clock_post_init,
 	.late_init = msm8960_clock_late_init,
 };

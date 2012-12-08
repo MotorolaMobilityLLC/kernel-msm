@@ -253,6 +253,19 @@ static struct mfd_cell taiko_devs[] = {
 	},
 };
 
+static struct wcd9xx_codec_type {
+	u8 byte[4];
+	struct mfd_cell *dev;
+	int size;
+} wcd9xxx_codecs[] = {
+	{{0x2, 0x0, 0x0, 0x1}, tabla_devs, ARRAY_SIZE(tabla_devs)},
+	{{0x1, 0x0, 0x0, 0x1}, tabla1x_devs, ARRAY_SIZE(tabla1x_devs)},
+	{{0x0, 0x0, 0x2, 0x1}, taiko_devs, ARRAY_SIZE(taiko_devs)},
+	{{0x0, 0x0, 0x0, 0x1}, sitar_devs, ARRAY_SIZE(sitar_devs)},
+	{{0x1, 0x0, 0x1, 0x1}, sitar_devs, ARRAY_SIZE(sitar_devs)},
+	{{0x2, 0x0, 0x1, 0x1}, sitar_devs, ARRAY_SIZE(sitar_devs)},
+};
+
 static void wcd9xxx_bring_up(struct wcd9xxx *wcd9xxx)
 {
 	wcd9xxx_reg_write(wcd9xxx, WCD9XXX_A_LEAKAGE_CTL, 0x4);
@@ -298,6 +311,53 @@ static void wcd9xxx_free_reset(struct wcd9xxx *wcd9xxx)
 		wcd9xxx->reset_gpio = 0;
 	}
 }
+static int wcd9xxx_check_codec_type(struct wcd9xxx *wcd9xxx,
+					struct mfd_cell **wcd9xxx_dev,
+					int *wcd9xxx_dev_size)
+{
+	int i;
+	int ret;
+	i = WCD9XXX_A_CHIP_ID_BYTE_0;
+	while (i <= WCD9XXX_A_CHIP_ID_BYTE_3) {
+		ret = wcd9xxx_reg_read(wcd9xxx, i);
+		if (ret < 0)
+			goto exit;
+		wcd9xxx->idbyte[i-WCD9XXX_A_CHIP_ID_BYTE_0] = (u8)ret;
+		pr_debug("%s: wcd9xx read = %x, byte = %x\n", __func__, ret,
+			i);
+		i++;
+	}
+
+	/* Read codec version */
+	ret = wcd9xxx_reg_read(wcd9xxx, WCD9XXX_A_CHIP_VERSION);
+	if (ret < 0)
+		goto exit;
+	wcd9xxx->version = (u8)ret & 0x1F;
+	i = 0;
+	while (i < ARRAY_SIZE(wcd9xxx_codecs)) {
+		if ((wcd9xxx_codecs[i].byte[0] == wcd9xxx->idbyte[0]) &&
+		    (wcd9xxx_codecs[i].byte[1] == wcd9xxx->idbyte[1]) &&
+		    (wcd9xxx_codecs[i].byte[2] == wcd9xxx->idbyte[2]) &&
+		    (wcd9xxx_codecs[i].byte[3] == wcd9xxx->idbyte[3])) {
+			pr_info("%s: codec is %s", __func__,
+				wcd9xxx_codecs[i].dev->name);
+			*wcd9xxx_dev = wcd9xxx_codecs[i].dev;
+			*wcd9xxx_dev_size = wcd9xxx_codecs[i].size;
+			break;
+		}
+		i++;
+	}
+	if (*wcd9xxx_dev == NULL || *wcd9xxx_dev_size == 0)
+		ret = -ENODEV;
+	pr_info("%s: Read codec idbytes & version\n"
+		"byte_0[%08x] byte_1[%08x] byte_2[%08x]\n"
+		" byte_3[%08x] version = %x\n", __func__,
+		wcd9xxx->idbyte[0], wcd9xxx->idbyte[1],
+		wcd9xxx->idbyte[2], wcd9xxx->idbyte[3],
+		wcd9xxx->version);
+exit:
+	return ret;
+}
 
 static int wcd9xxx_device_init(struct wcd9xxx *wcd9xxx, int irq)
 {
@@ -326,39 +386,11 @@ static int wcd9xxx_device_init(struct wcd9xxx *wcd9xxx, int irq)
 			goto err;
 		}
 	}
+	ret = wcd9xxx_check_codec_type(wcd9xxx, &wcd9xxx_dev,
+					&wcd9xxx_dev_size);
 
-	wcd9xxx->idbyte_0 = wcd9xxx_reg_read(wcd9xxx, WCD9XXX_A_CHIP_ID_BYTE_0);
-	wcd9xxx->idbyte_1 = wcd9xxx_reg_read(wcd9xxx, WCD9XXX_A_CHIP_ID_BYTE_1);
-	wcd9xxx->idbyte_2 = wcd9xxx_reg_read(wcd9xxx, WCD9XXX_A_CHIP_ID_BYTE_2);
-	wcd9xxx->idbyte_3 = wcd9xxx_reg_read(wcd9xxx, WCD9XXX_A_CHIP_ID_BYTE_3);
-
-	wcd9xxx->version = wcd9xxx_reg_read(wcd9xxx,
-			WCD9XXX_A_CHIP_VERSION) & 0x1F;
-	pr_info("%s : Codec version %u initialized\n",
-		__func__, wcd9xxx->version);
-	pr_info("idbyte_0[%08x] idbyte_1[%08x] idbyte_2[%08x] idbyte_3[%08x]\n",
-		wcd9xxx->idbyte_0, wcd9xxx->idbyte_1,
-		wcd9xxx->idbyte_2, wcd9xxx->idbyte_3);
-
-	if (wcd9xxx->idbyte_0 == 0x2 && wcd9xxx->idbyte_1 == 0x0 &&
-		   wcd9xxx->idbyte_2 == 0x0 && wcd9xxx->idbyte_3 == 0x1) {
-		wcd9xxx_dev = tabla_devs;
-		wcd9xxx_dev_size = ARRAY_SIZE(tabla_devs);
-	} else if (wcd9xxx->idbyte_0 == 0x1 && wcd9xxx->idbyte_1 == 0x0 &&
-		   wcd9xxx->idbyte_2 == 0x0 && wcd9xxx->idbyte_3 == 0x1) {
-		wcd9xxx_dev = tabla1x_devs;
-		wcd9xxx_dev_size = ARRAY_SIZE(tabla1x_devs);
-	} else if (wcd9xxx->idbyte_0 == 0x0 && wcd9xxx->idbyte_1 == 0x0 &&
-		   wcd9xxx->idbyte_2 == 0x2 && wcd9xxx->idbyte_3 == 0x1) {
-		wcd9xxx_dev = taiko_devs;
-		wcd9xxx_dev_size = ARRAY_SIZE(taiko_devs);
-	} else if ((wcd9xxx->idbyte_0 == 0x0 && wcd9xxx->idbyte_1 == 0x0 &&
-		   wcd9xxx->idbyte_2 == 0x0 && wcd9xxx->idbyte_3 == 0x1) ||
-		   (wcd9xxx->idbyte_0 == 0x1 && wcd9xxx->idbyte_1 == 0x0 &&
-		   wcd9xxx->idbyte_2 == 0x1 && wcd9xxx->idbyte_3 == 0x1)) {
-		wcd9xxx_dev = sitar_devs;
-		wcd9xxx_dev_size = ARRAY_SIZE(sitar_devs);
-	}
+	if (ret < 0)
+		goto err_irq;
 	ret = mfd_add_devices(wcd9xxx->dev, -1, wcd9xxx_dev, wcd9xxx_dev_size,
 			      NULL, 0);
 	if (ret != 0) {
@@ -772,9 +804,9 @@ static int __devinit wcd9xxx_i2c_probe(struct i2c_client *client,
 		goto err_device_init;
 	}
 
-	if ((wcd9xxx->idbyte_0 == 0x2) || (wcd9xxx->idbyte_0 == 0x1))
+	if ((wcd9xxx->idbyte[0] == 0x2) || (wcd9xxx->idbyte[0] == 0x1))
 		i2c_mode = TABLA_I2C_MODE;
-	else if (wcd9xxx->idbyte_0 == 0x0)
+	else if (wcd9xxx->idbyte[0] == 0x0)
 		i2c_mode = SITAR_I2C_MODE;
 
 	ret = wcd9xxx_read(wcd9xxx, WCD9XXX_A_CHIP_STATUS, 1, &val, 0);
@@ -1135,11 +1167,8 @@ static int wcd9xxx_slim_probe(struct slim_device *slim)
 	wcd9xxx->irq_base = pdata->irq_base;
 	wcd9xxx_pgd_la = wcd9xxx->slim->laddr;
 
-	if (pdata->num_irqs < TABLA_NUM_IRQS) {
-		pr_err("%s: Error, not enough interrupt lines allocated\n",
-			__func__);
-		goto err_reset;
-	}
+	if (pdata->num_irqs < TABLA_NUM_IRQS)
+		pr_warn("%s: Not enough interrupt lines allocated\n", __func__);
 
 	wcd9xxx->slim_slave = &pdata->slimbus_slave_device;
 

@@ -96,6 +96,15 @@
 		qcom,hsusb-otg-mode = <1>;
 		qcom,hsusb-otg-otg-control = <1>;
 		qcom,hsusb-otg-disable-reset;
+		qcom,hsusb-otg-pnoc-errata-fix;
+
+		qcom,msm-bus,name = "usb2";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,active-only = <0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<87 512 0 0>,
+				<87 512 60000 960000>;
 	};
 
 	qcom,sdcc@f9824000 {
@@ -476,6 +485,14 @@
 		HSUSB_1p8-supply = <&pm8941_l6>;
 		HSUSB_3p3-supply = <&pm8941_l24>;
 		qcom,dwc-usb3-msm-dbm-eps = <4>;
+
+		qcom,msm-bus,name = "usb3";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,active-only = <0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<61 512 0 0>,
+				<61 512 240000 960000>;
 	};
 
 	gdsc_oxili_gx: qcom,gdsc@fd8c4024 {
@@ -559,10 +576,13 @@
 
 	qcom,msm-ocmem-audio {
 		compatible = "qcom,msm-ocmem-audio";
-		qcom,msm-ocmem-audio-src-id = <11>;
-		qcom,msm-ocmem-audio-dst-id = <604>;
-		qcom,msm-ocmem-audio-ab = <32505856>;
-		qcom,msm-ocmem-audio-ib = <32505856>;
+		qcom,msm-bus,name = "audio-ocmem";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,active-only = <0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+			<11 604 0 0>,
+			<11 604 32506 32506>;
 	};
 
 	qcom,mss@fc880000 {
@@ -656,6 +676,15 @@
 
 	qcom,qseecom@fe806000 {
 		compatible = "qcom,qseecom";
+		qcom,msm-bus,name = "qseecom-noc";
+		qcom,msm-bus,num-cases = <4>;
+		qcom,msm-bus,active-only = <0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<55 512 0 0>,
+				<55 512 3936000 393600>,
+				<55 512 3936000 393600>,
+				<55 512 3936000 393600>;
 	};
 
 	qcom,wdt@f9017000 {

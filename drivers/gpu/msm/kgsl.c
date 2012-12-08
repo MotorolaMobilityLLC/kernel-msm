@@ -194,13 +194,14 @@ void kgsl_cancel_events(struct kgsl_device *device,
 EXPORT_SYMBOL(kgsl_cancel_events);
 
 /* kgsl_get_mem_entry - get the mem_entry structure for the specified object
+ * @device - Pointer to the device structure
  * @ptbase - the pagetable base of the object
  * @gpuaddr - the GPU address of the object
  * @size - Size of the region to search
  */
 
-struct kgsl_mem_entry *kgsl_get_mem_entry(unsigned int ptbase,
-	unsigned int gpuaddr, unsigned int size)
+struct kgsl_mem_entry *kgsl_get_mem_entry(struct kgsl_device *device,
+	unsigned int ptbase, unsigned int gpuaddr, unsigned int size)
 {
 	struct kgsl_process_private *priv;
 	struct kgsl_mem_entry *entry;
@@ -208,7 +209,7 @@ struct kgsl_mem_entry *kgsl_get_mem_entry(unsigned int ptbase,
 	mutex_lock(&kgsl_driver.process_mutex);
 
 	list_for_each_entry(priv, &kgsl_driver.process_list, list) {
-		if (!kgsl_mmu_pt_equal(priv->pagetable, ptbase))
+		if (!kgsl_mmu_pt_equal(&device->mmu, priv->pagetable, ptbase))
 			continue;
 		spin_lock(&priv->mem_lock);
 		entry = kgsl_sharedmem_find_region(priv, gpuaddr, size);
@@ -739,6 +740,7 @@ kgsl_get_process_private(struct kgsl_device_private *cur_dev_priv)
 	list_add(&private->list, &kgsl_driver.process_list);
 
 	kgsl_process_init_sysfs(private);
+	kgsl_process_init_debugfs(private);
 
 out:
 	mutex_unlock(&kgsl_driver.process_mutex);
@@ -761,6 +763,7 @@ kgsl_put_process_private(struct kgsl_device *device,
 		goto unlock;
 
 	kgsl_process_uninit_sysfs(private);
+	debugfs_remove_recursive(private->debug_root);
 
 	list_del(&private->list);
 
@@ -1612,6 +1615,8 @@ static int memdesc_sg_virt(struct kgsl_memdesc *memdesc,
 		return -ENOMEM;
 
 	memdesc->sglen = sglen;
+	memdesc->sglen_alloc = sglen;
+
 	sg_init_table(memdesc->sg, sglen);
 
 	spin_lock(&current->mm->page_table_lock);
@@ -1786,8 +1791,10 @@ static int kgsl_setup_ion(struct kgsl_mem_entry *entry,
 		return -ENODEV;
 
 	handle = ion_import_dma_buf(kgsl_ion_client, fd);
-	if (IS_ERR_OR_NULL(handle))
+	if (IS_ERR(handle))
 		return PTR_ERR(handle);
+	else if (!handle)
+		return -EINVAL;
 
 	entry->memtype = KGSL_MEM_ENTRY_ION;
 	entry->priv_data = handle;
@@ -1893,6 +1900,13 @@ static long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
 
 	if (result)
 		goto error;
+
+	entry->memdesc.priv |= param->flags & KGSL_MEMTYPE_MASK;
+
+	if (entry->memdesc.size >= SZ_1M)
+		entry->memdesc.priv |= ilog2(SZ_1M) << KGSL_MEMALIGN_SHIFT;
+	else if (entry->memdesc.size >= SZ_64K)
+		entry->memdesc.priv |= ilog2(SZ_64K) << KGSL_MEMALIGN_SHIFT;
 
 	result = kgsl_mmu_map(private->pagetable,
 			      &entry->memdesc,

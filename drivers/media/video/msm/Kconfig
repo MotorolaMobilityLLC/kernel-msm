@@ -123,66 +123,12 @@ config MT9P012_KM
 	---help---
 	  MICRON 5M Bayer Sensor KM modules with Autofocus
 
-config IMX111
-	bool "Sensor IMX111 (Sony 8MP)"
-	depends on MSM_CAMERA
-	select SEKONIX_LENS_ACT
-	default n
-	---help---
-	  Sony 8M Bayer Sensor modules with Autofocus
-
-config IMX111_ACT
-	bool "Actuator imx111 (BAYER 8M)"
-	depends on MSM_CAMERA
-	select MSM_ACTUATOR
-	default n
-	---help---
-	  Actuator for SONY 8 MP Bayer Sensor
-
-config SEKONIX_LENS_ACT
-	bool "Actuator SEKONIX LENS"
-	depends on MSM_CAMERA
-	select MSM_ACTUATOR
-	default n
-	---help---
-	  Actuator for Sekonix Lens
-
-config IMX091
-	bool "Sensor IMX091 (Sony 13MP)"
-	depends on MSM_CAMERA
-	select IMX091_ACT
-	default n
-	---help---
-	  Sony 13M Bayer Sensor modules with Autofocus
-
-config IMX091_ACT
-	bool "Actuator imx091 (BAYER 13M)"
-	depends on MSM_CAMERA
-	select MSM_ACTUATOR
-	default n
-	---help---
-	  Actuator for SONY 13MP Bayer Sensor
-
-config IMX119
-	bool "Sensor IMX119 1.3MP MIPI (Bayer 1.3M)"
-	depends on MSM_CAMERA
-	default n
-	---help---
-	  SONY 1.3M BAYER MIPI Sensor without Autofocus
-
 config MT9E013
 	bool "Sensor mt9e013 module (BAYER 8M)"
 	depends on MSM_CAMERA && (ARCH_MSM7X30 || ARCH_MSM8X60 || ARCH_MSM7X27A)
 	default n
 	---help---
 	  Aptina 8M Bayer Sensor modules with Autofocus
-
-config MSM_CAMERA_FLASH_LM3559
-	bool "Qualcomm MSM camera lm3559 flash support"
-	depends on MSM_CAMERA
-	default n
-	---help---
-	  Enable support for LED flash for msm camera.
 
 config IMX074_ACT
 	bool "Actuator IMX074 (BAYER 13.5M)"
@@ -322,6 +268,15 @@ config MSM_MERCURY
         depends on MSM_CAMERA && ARCH_MSM8960
         ---help---
           Enable support for Mercury Jpeg Engine
+
+config MSM_JPEG
+	tristate "Qualcomm MSM Jpeg Encoder Engine support"
+	depends on MSM_CAMERA && ARCH_MSM8974
+	---help---
+          Enable support for Jpeg Encoder/Decoder
+	  Engine for 8974.
+	  This module serves as the common driver
+	  for the JPEG 1.0 encoder and decoder.
 
 config MSM_VPE
 	tristate "Qualcomm MSM Video Pre-processing Engine support"

@@ -11,6 +11,11 @@
  * GNU General Public License for more details.
  */
 
+/*
+ * This file contains regulator configuration and mappings for targets
+ * consisting of MSM8930 and PM8038.
+ */
+
 #include <linux/regulator/pm8xxx-regulator.h>
 
 #include "board-8930.h"
@@ -449,17 +454,17 @@ VREG_CONSUMERS(VDD_DIG_CORNER) = {
 
 /* GPIO regulator constraints */
 struct gpio_regulator_platform_data
-msm8930_gpio_regulator_pdata[] __devinitdata = {
+msm8930_pm8038_gpio_regulator_pdata[] __devinitdata = {
 	/*        ID          vreg_name     gpio_label     gpio  supply */
 	GPIO_VREG(EXT_5V,     "ext_5v",     "ext_5v_en",     63, NULL),
 	GPIO_VREG(EXT_OTG_SW, "ext_otg_sw", "ext_otg_sw_en", 97, "ext_5v"),
 };
 
 /* SAW regulator constraints */
-struct regulator_init_data msm8930_saw_regulator_core0_pdata =
+struct regulator_init_data msm8930_pm8038_saw_regulator_core0_pdata =
 	/*	      ID  vreg_name	       min_uV   max_uV */
 	SAW_VREG_INIT(S5, "8038_s5",	       850000, 1300000);
-struct regulator_init_data msm8930_saw_regulator_core1_pdata =
+struct regulator_init_data msm8930_pm8038_saw_regulator_core1_pdata =
 	SAW_VREG_INIT(S6, "8038_s6",	       850000, 1300000);
 
 /* PM8038 regulator constraints */
@@ -558,7 +563,8 @@ static struct rpm_regulator_consumer_mapping
 	RPM_REG_MAP(VDD_DIG_CORNER, 0, 2, "krait1_dig",   "acpuclk-8930aa"),
 };
 
-struct rpm_regulator_platform_data msm8930_rpm_regulator_pdata __devinitdata = {
+struct rpm_regulator_platform_data
+msm8930_pm8038_rpm_regulator_pdata __devinitdata = {
 	.init_data		= msm8930_rpm_regulator_init_data,
 	.num_regulators		= ARRAY_SIZE(msm8930_rpm_regulator_init_data),
 	.version		= RPM_VREG_VERSION_8930,
