@@ -623,7 +623,7 @@ static int32_t ov8835_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	/*Enable MCLK*/
 	cam_mot_8960_clk_info->clk_rate = s_ctrl->clk_rate;
 	rc = msm_cam_clk_enable(dev, cam_mot_8960_clk_info,
-			&s_ctrl->cam_clk, ARRAY_SIZE(cam_mot_8960_clk_info), 1);
+			s_ctrl->cam_clk, ARRAY_SIZE(cam_mot_8960_clk_info), 1);
 	if (rc < 0) {
 		pr_err("ov8835: msm_cam_clk_enable failed (%d)\n", rc);
 		goto power_up_done;
@@ -656,7 +656,7 @@ static int32_t ov8835_power_down(
 	usleep(10000);
 
 	/*Disable MCLK*/
-	rc = msm_cam_clk_enable(dev, cam_mot_8960_clk_info, &s_ctrl->cam_clk,
+	rc = msm_cam_clk_enable(dev, cam_mot_8960_clk_info, s_ctrl->cam_clk,
 			ARRAY_SIZE(cam_mot_8960_clk_info), 0);
 	if (rc < 0)
 		pr_err("ov8835: msm_cam_clk_enable failed (%d)\n", rc);
