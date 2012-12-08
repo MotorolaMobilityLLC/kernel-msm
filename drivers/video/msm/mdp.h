@@ -830,12 +830,12 @@ int mdp_set_core_clk(u32 rate);
 int mdp_clk_round_rate(u32 rate);
 
 unsigned long mdp_get_core_clk(void);
-unsigned long mdp_perf_level2clk_rate(uint32 perf_level);
 
 #ifdef CONFIG_MSM_BUS_SCALING
-int mdp_bus_scale_update_request(uint32_t index);
+int mdp_bus_scale_update_request(u64 ab, u64 ib);
 #else
-static inline int mdp_bus_scale_update_request(uint32_t index)
+static inline int mdp_bus_scale_update_request(u64 ab,
+					       u64 ib)
 {
 	return 0;
 }
@@ -911,6 +911,8 @@ int mdp_ppp_v4l2_overlay_clear(void);
 int mdp_ppp_v4l2_overlay_play(struct fb_info *info,
 	unsigned long srcp0_addr, unsigned long srcp0_size,
 	unsigned long srcp1_addr, unsigned long srcp1_size);
+
+u32 mdp_get_panel_framerate(struct msm_fb_data_type *mfd);
 
 #ifdef CONFIG_FB_MSM_DTV
 void mdp_vid_quant_set(void);
