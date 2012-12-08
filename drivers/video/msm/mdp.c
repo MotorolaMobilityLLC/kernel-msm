@@ -2401,8 +2401,6 @@ static int mdp_probe(struct platform_device *pdev)
 #ifdef CONFIG_FB_MSM_MDP40
 		if (!(mdp_pdata->cont_splash_enabled))
 			mdp4_hw_init();
-		else
-			mdp4_overlay_cfg_init();
 #else
 		mdp_hw_init();
 #endif
