@@ -78,3 +78,4 @@ obj-$(CONFIG_MOT_UTAG) += utag/
 obj-$(CONFIG_MMI_FACTORY) += mmi-factory.o
 obj-$(CONFIG_SEC_DRIVER) += sec/
 obj-$(CONFIG_C55_CTRL) += c55_ctrl.o
+obj-$(CONFIG_ALSA_TO_H2W) += alsa-to-h2w-headset.o
