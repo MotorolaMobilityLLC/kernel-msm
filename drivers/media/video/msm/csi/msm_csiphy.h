@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -16,8 +16,14 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <media/v4l2-subdev.h>
+#include <media/msm_camera.h>
 
 #define MAX_CSIPHY 3
+
+enum msm_csiphy_state_t {
+	CSIPHY_POWER_UP,
+	CSIPHY_POWER_DOWN,
+};
 
 struct csiphy_device {
 	struct platform_device *pdev;
@@ -28,24 +34,16 @@ struct csiphy_device {
 	void __iomem *base;
 	struct mutex mutex;
 	uint32_t hw_version;
+	enum msm_csiphy_state_t csiphy_state;
 
-	struct clk *csiphy_clk[2];
+	struct clk *csiphy_clk[3];
 	uint8_t ref_count;
 	uint16_t lane_mask[MAX_CSIPHY];
 };
 
-struct csiphy_cfg_params {
-	struct v4l2_subdev *subdev;
-	void *parms;
-};
-
 #define VIDIOC_MSM_CSIPHY_CFG \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 7, void *)
-
-#define VIDIOC_MSM_CSIPHY_INIT \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 8, struct v4l2_subdev*)
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 7, struct csiphy_cfg_data*)
 
 #define VIDIOC_MSM_CSIPHY_RELEASE \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 9, void *)
-
 #endif

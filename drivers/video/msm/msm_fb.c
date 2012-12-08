@@ -126,10 +126,10 @@ static ssize_t msm_fb_read(struct fb_info *info, char __user *buf,
 #define MSM_FB_MAX_DBGFS 1024
 #define MAX_BACKLIGHT_BRIGHTNESS 255
 
-/* 100 ms for fence time out */
-#define WAIT_FENCE_TIMEOUT 100
-/* 200 ms for display operation time out */
-#define WAIT_DISP_OP_TIMEOUT 200
+/* 800 ms for fence time out */
+#define WAIT_FENCE_TIMEOUT 800
+/* 900 ms for display operation time out */
+#define WAIT_DISP_OP_TIMEOUT 900
 
 int msm_fb_debugfs_file_index;
 struct dentry *msm_fb_debugfs_root;
@@ -569,6 +569,7 @@ static int msm_fb_suspend_sub(struct msm_fb_data_type *mfd)
 	mfd->suspend.sw_refreshing_enable = mfd->sw_refreshing_enable;
 	mfd->suspend.op_enable = mfd->op_enable;
 	mfd->suspend.panel_power_on = mfd->panel_power_on;
+	mfd->suspend.op_suspend = true;
 
 	if (mfd->op_enable) {
 		ret =
@@ -640,6 +641,7 @@ static int msm_fb_resume_sub(struct msm_fb_data_type *mfd)
 			MSM_FB_INFO("msm_fb_resume: can't turn on display!\n");
 	}
 
+	mfd->suspend.op_suspend = false;
 	unlock_panel_mutex(mfd);
 	return ret;
 }
@@ -3185,20 +3187,6 @@ static int msmfb_overlay_play_wait(struct fb_info *info, unsigned long *argp)
 	return ret;
 }
 
-static int msmfb_overlay_commit(struct fb_info *info, unsigned long *argp)
-{
-	int ret, ndx;
-
-	ret = copy_from_user(&ndx, argp, sizeof(ndx));
-	if (ret) {
-		printk(KERN_ERR "%s:msmfb_overlay_unset ioctl failed \n",
-			__func__);
-		return ret;
-	}
-
-	return mdp4_overlay_commit(info, ndx);
-}
-
 static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 {
 	int	ret;
@@ -3631,18 +3619,24 @@ static int msmfb_handle_buf_sync_ioctl(struct msm_fb_data_type *mfd,
 	}
 	/* create fd */
 	mfd->cur_rel_fen_fd = get_unused_fd_flags(0);
+	if (mfd->cur_rel_fen_fd < 0) {
+		pr_err("%s: get_unused_fd_flags failed", __func__);
+		ret  = -EIO;
+		goto buf_sync_err_2;
+	}
 	sync_fence_install(mfd->cur_rel_fence, mfd->cur_rel_fen_fd);
 	ret = copy_to_user(buf_sync->rel_fen_fd,
 		&mfd->cur_rel_fen_fd, sizeof(int));
 	if (ret) {
 		pr_err("%s:copy_to_user failed", __func__);
-		goto buf_sync_err_2;
+		goto buf_sync_err_3;
 	}
 	mutex_unlock(&mfd->sync_mutex);
 	return ret;
+buf_sync_err_3:
+	put_unused_fd(mfd->cur_rel_fen_fd);
 buf_sync_err_2:
 	sync_fence_put(mfd->cur_rel_fence);
-	put_unused_fd(mfd->cur_rel_fen_fd);
 	mfd->cur_rel_fence = NULL;
 	mfd->cur_rel_fen_fd = 0;
 buf_sync_err_1:
@@ -3697,6 +3691,11 @@ static int buf_fence_process(struct msm_fb_data_type *mfd,
 	}
 	/* create fd */
 	mfd->cur_rel_fen_fd = get_unused_fd_flags(0);
+	if (mfd->cur_rel_fen_fd < 0) {
+		pr_err("%s: get_unused_fd_flags failed", __func__);
+		ret = -EIO;
+		goto buf_fence_err_2;
+	}
 	sync_fence_install(mfd->cur_rel_fence, mfd->cur_rel_fen_fd);
 	buf_fence->rel_fen_fd[0] = mfd->cur_rel_fen_fd;
 	/* Only one released fd for now, -1 indicates an end */
@@ -3704,6 +3703,10 @@ static int buf_fence_process(struct msm_fb_data_type *mfd,
 	mfd->acq_fen_cnt = buf_fence->acq_fen_fd_cnt;
 	mutex_unlock(&mfd->sync_mutex);
 	return ret;
+buf_fence_err_2:
+	sync_fence_put(mfd->cur_rel_fence);
+	mfd->cur_rel_fence = NULL;
+	mfd->cur_rel_fen_fd = 0;
 buf_fence_err_1:
 	for (i = 0; i < fence_cnt; i++)
 		sync_fence_put(mfd->acq_fen[i]);
@@ -3725,20 +3728,25 @@ static int msmfb_display_commit(struct fb_info *info,
 		pr_err("%s:copy_from_user failed", __func__);
 		return ret;
 	}
-	buf_fence = &disp_commit.buf_fence;
-	if (buf_fence->acq_fen_fd_cnt > 0)
-		ret = buf_fence_process(mfd, buf_fence);
-	if ((!ret) && (buf_fence->rel_fen_fd[0] > 0))
-		copy_back = TRUE;
 
-	ret = msm_fb_pan_display_ex(&disp_commit.var,
+	if (disp_commit.flags & MDP_DISPLAY_COMMIT_OVERLAY) {
+		ret = mdp4_overlay_commit(info);
+	} else {
+		buf_fence = &disp_commit.buf_fence;
+		if (buf_fence->acq_fen_fd_cnt > 0)
+			ret = buf_fence_process(mfd, buf_fence);
+		if ((!ret) && (buf_fence->rel_fen_fd[0] > 0))
+			copy_back = TRUE;
+
+		ret = msm_fb_pan_display_ex(&disp_commit.var,
 			      info, disp_commit.wait_for_finish);
 
-	if (copy_back) {
-		ret = copy_to_user(argp,
-			&disp_commit, sizeof(disp_commit));
-		if (ret)
-			pr_err("%s:copy_to_user failed", __func__);
+		if (copy_back) {
+			ret = copy_to_user(argp,
+				&disp_commit, sizeof(disp_commit));
+			if (ret)
+				pr_err("%s:copy_to_user failed", __func__);
+		}
 	}
 	return ret;
 }
@@ -3775,11 +3783,6 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		break;
 	case MSMFB_OVERLAY_UNSET:
 		ret = msmfb_overlay_unset(info, argp);
-		break;
-	case MSMFB_OVERLAY_COMMIT:
-		down(&msm_fb_ioctl_ppp_sem);
-		ret = msmfb_overlay_commit(info, argp);
-		up(&msm_fb_ioctl_ppp_sem);
 		break;
 	case MSMFB_OVERLAY_PLAY:
 		ret = msmfb_overlay_play(info, argp);
