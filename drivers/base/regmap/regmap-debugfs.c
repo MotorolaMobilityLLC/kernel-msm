@@ -56,16 +56,47 @@ static const struct file_operations regmap_name_fops = {
 	.llseek = default_llseek,
 };
 
+/*
+ * Work out where the start offset maps into register numbers, bearing
+ * in mind that we suppress hidden registers.
+ */
+static unsigned int regmap_debugfs_get_dump_start(struct regmap *map,
+						  unsigned int base,
+						  loff_t from,
+						  loff_t *pos)
+{
+	loff_t p = *pos;
+	unsigned int i;
+
+	for (i = base; i <= map->max_register; i++) {
+		if (!regmap_readable(map, i))
+			continue;
+
+		if (regmap_precious(map, i))
+			continue;
+
+		if (i >= from) {
+			*pos = p;
+			return i;
+		}
+
+		p += map->debugfs_tot_len;
+	}
+
+	*pos = from;
+	return base;
+}
+
 static ssize_t regmap_map_read_file(struct file *file, char __user *user_buf,
 				    size_t count, loff_t *ppos)
 {
 	size_t buf_pos = 0;
-	loff_t p = 0;
+	loff_t p = *ppos;
 	ssize_t ret;
 	int i;
 	struct regmap *map = file->private_data;
 	char *buf;
-	unsigned int val;
+	unsigned int val, start_reg;
 
 	if (*ppos < 0 || !count)
 		return -EINVAL;
@@ -83,7 +114,10 @@ static ssize_t regmap_map_read_file(struct file *file, char __user *user_buf,
 			map->debugfs_val_len + 3;      /* : \n */
 	}
 
-	for (i = 0; i <= map->max_register; i++) {
+	/* Work out which register we're starting at */
+	start_reg = regmap_debugfs_get_dump_start(map, 0, *ppos, &p);
+
+	for (i = start_reg; i <= map->max_register; i++) {
 		if (!regmap_readable(map, i))
 			continue;
 
