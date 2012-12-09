@@ -346,7 +346,11 @@ uint32 mdp4_overlay_panel_list(void)
 
 int mdp4_overlay_borderfill_supported(void)
 {
-	return (mdp_rev >= MDP_REV_42);
+    // la23-merge-hack: borderfill pipe is sometimes null, which
+    // causes the display to not wake up on power-button press.
+    // Disable borderfill until we can resolve the issue.
+//	return (mdp_rev >= MDP_REV_42);
+    return 0;
 }
 
 void mdp4_overlay_dmae_cfg(struct msm_fb_data_type *mfd, int atv)
