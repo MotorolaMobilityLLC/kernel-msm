@@ -534,6 +534,8 @@ extern int
 __ftrace_vprintk(unsigned long ip, const char *fmt, va_list ap);
 
 extern void ftrace_dump(enum ftrace_dump_mode oops_dump_mode);
+
+extern unsigned long tracing_get_trace_buf_size(void);
 #else
 static inline __printf(1, 2)
 int trace_printk(const char *fmt, ...);
@@ -558,6 +560,10 @@ ftrace_vprintk(const char *fmt, va_list ap)
 	return 0;
 }
 static inline void ftrace_dump(enum ftrace_dump_mode oops_dump_mode) { }
+static inline  unsigned long tracing_get_trace_buf_size(void)
+{
+	return 0;
+}
 #endif /* CONFIG_TRACING */
 
 /*
