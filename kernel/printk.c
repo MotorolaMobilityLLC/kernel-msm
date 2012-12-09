@@ -42,7 +42,7 @@
 #include <linux/notifier.h>
 #include <linux/rculist.h>
 #include <linux/coresight-stm.h>
-
+#include <linux/apanic_mmc.h>
 #include <asm/uaccess.h>
 
 #include <mach/msm_rtb.h>
@@ -717,6 +717,16 @@ static void call_console_drivers(unsigned start, unsigned end)
 
 static void emit_log_char(char c)
 {
+	static int is_begin;
+	int start_apanic_threads;
+
+	start_apanic_threads = is_apanic_threads_dump();
+	if (unlikely(start_apanic_threads) && !is_begin) {
+		is_begin = 1;
+		log_end = 0;
+		logged_chars = 0;
+	}
+
 	LOG_BUF(log_end) = c;
 	log_end++;
 	if (log_end - log_start > log_buf_len)
@@ -725,6 +735,12 @@ static void emit_log_char(char c)
 		con_start = log_end - log_buf_len;
 	if (logged_chars < log_buf_len)
 		logged_chars++;
+
+	if (unlikely(start_apanic_threads &&
+		((log_end & (LOG_BUF_MASK + 1)) == __LOG_BUF_LEN))) {
+		emergency_dump();
+		is_begin = 0;
+	}
 }
 
 /*
@@ -803,6 +819,8 @@ asmlinkage int printk(const char *fmt, ...)
 	uncached_logk_pc(LOGK_LOGBUF, caller, (void *)log_end);
 #endif
 
+	if (is_emergency_dump())
+		return 0;
 #ifdef CONFIG_KGDB_KDB
 	if (unlikely(kdb_trap_printk)) {
 		va_start(args, fmt);
