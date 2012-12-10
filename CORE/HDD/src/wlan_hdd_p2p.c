@@ -508,7 +508,7 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
             {
                  globalP2PConnectionStatus = P2P_GO_NEG_PROCESS;
                  hddLog(LOGE,"[P2P State]Inactive state to "
-                            "GO negotation progress state");
+                            "GO negotiation progress state");
             }
             else if( (actionFrmType == WLAN_HDD_GO_NEG_CNF) &&
                 (globalP2PConnectionStatus == P2P_GO_NEG_PROCESS) )
@@ -1299,7 +1299,7 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
             (pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_PUBLIC_ACTION_FRAME))
     {
         actionFrmType = pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_TYPE_OFFSET];
-        hddLog(LOG1, "Rx Action Frame %u \n", actionFrmType);
+        hddLog(LOG1, "Rx Action Frame %u", actionFrmType);
 #ifdef WLAN_FEATURE_P2P_DEBUG
         if(actionFrmType > MAX_P2P_ACTION_FRAME_TYPE)
         {
@@ -1315,21 +1315,21 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
             {
                  globalP2PConnectionStatus = P2P_GO_NEG_PROCESS;
                  hddLog(LOGE,"[P2P State]Inactive state to "
-                           "GO negotation progress state");
+                           "GO negotiation progress state");
             }
             else if( (actionFrmType == WLAN_HDD_GO_NEG_CNF) &&
                 (globalP2PConnectionStatus == P2P_GO_NEG_PROCESS) )
             {
                  globalP2PConnectionStatus = P2P_GO_NEG_COMPLETED;
-                 hddLog(LOGE,"[P2P State]GO nego progress to GO nego"
-                             " completed state");
+                 hddLog(LOGE,"[P2P State]GO negotiation progress to "
+                             "GO negotiation completed state");
             }
             else if( (actionFrmType == WLAN_HDD_INVITATION_REQ) &&
                 (globalP2PConnectionStatus == P2P_NOT_ACTIVE) )
             {
                  globalP2PConnectionStatus = P2P_GO_NEG_COMPLETED;
-                 hddLog(LOGE,"[P2P State]Inactive state to GO nego"
-                             " completed state Autonomus GO fromation");
+                 hddLog(LOGE,"[P2P State]Inactive state to GO negotiation"
+                             " completed state Autonomous GO formation");
             }
         }
 #endif

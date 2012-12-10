@@ -427,7 +427,7 @@ __limProcessOperatingModeActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
     if( operMode != pOperatingModeframe->OperatingMode.chanWidth)
     {
         limLog(pMac, LOGE, 
-            FL(" recevied Chanwidth %d, staIdx = %d\n"),
+            FL(" received Chanwidth %d, staIdx = %d\n"),
             (pOperatingModeframe->OperatingMode.chanWidth ),
             pSta->staIndex);
 

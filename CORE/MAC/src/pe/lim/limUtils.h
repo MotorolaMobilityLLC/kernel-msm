@@ -81,7 +81,7 @@ typedef struct sAddBaCandidate
 }tAddBaCandidate, *tpAddBaCandidate;
 #endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
-// LIM utilility functions
+// LIM utility functions
 void limGetBssidFromPkt(tpAniSirGlobal, tANI_U8 *, tANI_U8 *, tANI_U32 *);
 char * limMlmStateStr(tLimMlmStates state);
 char * limSmeStateStr(tLimSmeStates state);
