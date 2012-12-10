@@ -43,7 +43,7 @@
 #define LIM_CHANNEL_SWITCH_TIMER_TICKS           1
 // Lim Quite timer in ticks
 #define LIM_QUIET_TIMER_TICKS                    100
-// Lim Quite BSS timer inteval in ticks
+// Lim Quite BSS timer interval in ticks
 #define LIM_QUIET_BSS_TIMER_TICK                 100
 // Lim KeepAlive timer default (3000)ms
 #define LIM_KEEPALIVE_TIMER_MS                   3000

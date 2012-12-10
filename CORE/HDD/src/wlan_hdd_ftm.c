@@ -4042,7 +4042,7 @@ static int iw_ftm_setchar_getnone(struct net_device *dev, struct iw_request_info
                        union iwreq_data *wrqu, char *extra)
 {
     int sub_cmd = wrqu->data.flags;
-    int ret = 0; /* sucess */
+    int ret = 0; /* success */
     VOS_STATUS status;
     hdd_adapter_t *pAdapter = (netdev_priv(dev));
 
@@ -4226,7 +4226,7 @@ static int iw_ftm_setnone_getint(struct net_device *dev, struct iw_request_info 
 {
     hdd_adapter_t *pAdapter = (netdev_priv(dev));
     int *value = (int *)extra;
-    int ret = 0; /* sucess */
+    int ret = 0; /* success */
     VOS_STATUS status;
 
     switch (value[0])
@@ -4420,7 +4420,7 @@ static int iw_ftm_setnone_getnone(struct net_device *dev, struct iw_request_info
                        union iwreq_data *wrqu, char *extra)
 {
     int sub_cmd = wrqu->data.flags;
-    int ret = 0; /* sucess */
+    int ret = 0; /* success */
 
     switch (sub_cmd)
     {

@@ -3601,7 +3601,7 @@ eHalStatus sme_QosProcessFTReassocRspEv(tpAniSirGlobal pMac, v_U8_t sessionId, v
     if(pCsrConnectedInfo == NULL)
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-                FL("The connnected info pointer in NULL\n"));
+                FL("The connected info pointer is NULL"));
         return eHAL_STATUS_FAILURE;
     }
     ricRspLen = pCsrConnectedInfo->nRICRspLength;

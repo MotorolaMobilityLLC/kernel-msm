@@ -4041,7 +4041,7 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     int sub_cmd = wrqu->data.flags;
-    int ret = 0; /* sucess */
+    int ret = 0; /* success */
 
     switch (sub_cmd)
     {

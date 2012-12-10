@@ -5103,7 +5103,7 @@ eHalStatus limProcessSmeLinkStartReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
     /*
     * we allocate the TDLS setup Peer Memory here, we will free'd this
-    * memory after teardown, if the link is sucessfully setup or
+    * memory after teardown, if the link is successfully setup or
     * free this memory if any timeout is happen in link setup procedure
     */
     if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,

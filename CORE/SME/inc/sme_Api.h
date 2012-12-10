@@ -2163,7 +2163,7 @@ void sme_disableFeatureCapablity(tANI_U8 feature_index);
   \param  hHal - HAL handle for device
   \param  pCountry - pointer to country code
 
-  \return Sucess or failure
+  \return Success or failure
 
   ---------------------------------------------------------------------------*/
 eHalStatus sme_GetDefaultCountryCodeFrmNv(tHalHandle hHal, tANI_U8 *pCountry);
