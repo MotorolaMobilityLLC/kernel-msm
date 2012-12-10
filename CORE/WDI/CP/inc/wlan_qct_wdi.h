@@ -9067,7 +9067,7 @@ WDI_UpdateVHTOpModeReq
     User may request to display DXE channel snapshot
     Or if host driver detects any abnormal stcuk may display
 
- @param  displaySnapshot : Dispaly DXE snapshot option
+ @param  displaySnapshot : Display DXE snapshot option
  @param  enableStallDetect : Enable stall detect feature
                         This feature will take effect to data performance
                         Not integrate till fully verification
