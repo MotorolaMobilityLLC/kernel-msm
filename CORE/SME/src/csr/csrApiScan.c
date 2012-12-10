@@ -589,7 +589,7 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
 /* ---------------------------------------------------------------------------
     \fn csrScan2GOnyRequest
     \brief This function will update the scan request with only 
-           2.4GHz valid cahnnel list.
+           2.4GHz valid channel list.
     \param pMac
     \param pScanCmd
     \param pScanRequest

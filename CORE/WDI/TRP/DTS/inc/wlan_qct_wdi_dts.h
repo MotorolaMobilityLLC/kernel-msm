@@ -185,14 +185,14 @@ wpt_status WDTS_SetPowerState(void *pContext, WDTS_PowerStateType powerState,
  * User may request to display DXE channel snapshot
  * Or if host driver detects any abnormal stcuk may display
  * Parameters:
- *  displaySnapshot : Dispaly DXE snapshot option
+ *  displaySnapshot : Display DXE snapshot option
  *  enableStallDetect : Enable stall detect feature
                         This feature will take effect to data performance
                         Not integrate till fully verification
  * Return Value: NONE
  *
  */
-void WDTS_ChannelDebug(wpt_boolean dispalySnapshot, wpt_boolean toggleStallDetect);
+void WDTS_ChannelDebug(wpt_boolean displaySnapshot, wpt_boolean toggleStallDetect);
 
 /* DTS Stop function. 
  * Stop Transport driver, ie DXE, SDIO

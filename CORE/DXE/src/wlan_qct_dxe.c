@@ -5139,7 +5139,7 @@ wpt_uint32 WLANDXE_GetFreeTxDataResNumber
     Or if host driver detects any abnormal stcuk may display
 
   @  Parameters
-    displaySnapshot : Dispaly DXE snapshot option
+    displaySnapshot : Display DXE snapshot option
     enableStallDetect : Enable stall detect feature
                         This feature will take effect to data performance
                         Not integrate till fully verification
