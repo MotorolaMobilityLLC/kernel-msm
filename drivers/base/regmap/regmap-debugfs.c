@@ -65,26 +65,54 @@ static unsigned int regmap_debugfs_get_dump_start(struct regmap *map,
 						  loff_t from,
 						  loff_t *pos)
 {
-	loff_t p = *pos;
-	unsigned int i;
+	struct regmap_debugfs_off_cache *c = NULL;
+	loff_t p = 0;
+	unsigned int i, ret;
 
-	for (i = base; i <= map->max_register; i++) {
-		if (!regmap_readable(map, i))
-			continue;
+	/*
+	 * If we don't have a cache build one so we don't have to do a
+	 * linear scan each time.
+	 */
+	if (list_empty(&map->debugfs_off_cache)) {
+		for (i = base; i <= map->max_register; i++) {
+			/* Skip unprinted registers, closing off cache entry */
+			if (!regmap_readable(map, i) ||
+			    regmap_precious(map, i)) {
+				if (c) {
+					c->max = p - 1;
+					list_add_tail(&c->list,
+						      &map->debugfs_off_cache);
+					c = NULL;
+				}
 
-		if (regmap_precious(map, i))
-			continue;
+				continue;
+			}
 
-		if (i >= from) {
-			*pos = p;
-			return i;
+			/* No cache entry?  Start a new one */
+			if (!c) {
+				c = kzalloc(sizeof(*c), GFP_KERNEL);
+				if (!c)
+					break;
+				c->min = p;
+				c->base_reg = i;
+			}
+
+			p += map->debugfs_tot_len;
 		}
-
-		p += map->debugfs_tot_len;
 	}
 
-	*pos = from;
-	return base;
+	/* Find the relevant block */
+	list_for_each_entry(c, &map->debugfs_off_cache, list) {
+		if (from >= c->min && from <= c->max) {
+			*pos = c->min;
+			return c->base_reg;
+		}
+
+		*pos = c->min;
+		ret = c->base_reg;
+	}
+
+	return ret;
 }
 
 static ssize_t regmap_map_read_file(struct file *file, char __user *user_buf,
@@ -289,6 +317,8 @@ void regmap_debugfs_init(struct regmap *map)
 		return;
 	}
 
+	INIT_LIST_HEAD(&map->debugfs_off_cache);
+
 	debugfs_create_file("name", 0400, map->debugfs,
 			    map, &regmap_name_fops);
 
@@ -311,7 +341,16 @@ void regmap_debugfs_init(struct regmap *map)
 
 void regmap_debugfs_exit(struct regmap *map)
 {
+	struct regmap_debugfs_off_cache *c;
+
 	debugfs_remove_recursive(map->debugfs);
+	while (!list_empty(&map->debugfs_off_cache)) {
+		c = list_first_entry(&map->debugfs_off_cache,
+				     struct regmap_debugfs_off_cache,
+				     list);
+		list_del(&c->list);
+		kfree(c);
+	}
 }
 
 void regmap_debugfs_initcall(void)
