@@ -56,7 +56,7 @@
 #define WLAN_HAL_VER_MAJOR 1
 #define WLAN_HAL_VER_MINOR 3
 #define WLAN_HAL_VER_VERSION 1
-#define WLAN_HAL_VER_REVISION 1
+#define WLAN_HAL_VER_REVISION 2
 
 /*---------------------------------------------------------------------------
   Commom Type definitons
@@ -349,9 +349,11 @@ typedef enum
    WLAN_HAL_SET_THERMAL_MITIGATION_REQ      = 178,
    WLAN_HAL_SET_THERMAL_MITIGATION_RSP      = 179,
 
-  WLAN_HAL_UPDATE_VHT_OP_MODE_REQ          = 182,
-  WLAN_HAL_UPDATE_VHT_OP_MODE_RSP          = 183,
- 
+  WLAN_HAL_UPDATE_VHT_OP_MODE_REQ           = 182,
+  WLAN_HAL_UPDATE_VHT_OP_MODE_RSP           = 183,
+
+  WLAN_HAL_P2P_NOA_START_IND                = 184,
+
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
 
@@ -4748,6 +4750,22 @@ typedef PACKED_PRE struct PACKED_POST
    tHalMsgHeader      header;
    tNoaAttrIndParams  noaAttrIndParams; 
 }tNoaAttrIndMsg, *tpNoaAttrIndMsg;
+
+/*---------------------------------------------------------------------------
+ *WLAN_HAL_NOA_START_IND
+ *-------------------------------------------------------------------------*/
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tANI_U32             status;
+    tANI_U32             bssIdx;
+}tNoaStartIndParams, *tpNoaStartIndParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader      header;
+   tNoaStartIndParams noaStartIndParams;
+}tNoaStartIndMsg, tpNoaStartIndMsg;
 #endif
 
 /*---------------------------------------------------------------------------
@@ -5435,14 +5453,17 @@ typedef enum {
     P2P        = 1,
     DOT11AC    = 2,
     SLM_SESSIONIZATION = 3,
-    DOT11AC_OPMODE    = 4,
+    DOT11AC_OPMODE  = 4,
+    SAP32STA = 5,
+    TDLS       = 6,
+    P2P_GO_NOA_DECOUPLE_INIT_SCAN = 7,
     MAX_FEATURE_SUPPORTED = 128,
 } placeHolderInCapBitmap;
 
 
 #define IS_MCC_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(MCC)))
 #define IS_SLM_SESSIONIZATION_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(SLM_SESSIONIZATION)))
-
+#define IS_FEATURE_SUPPORTED_BY_HOST(featEnumValue) (!!halMsg_GetHostWlanFeatCaps(featEnumValue))
 
 tANI_U8 halMsg_GetHostWlanFeatCaps(tANI_U8 feat_enum_value);
 
