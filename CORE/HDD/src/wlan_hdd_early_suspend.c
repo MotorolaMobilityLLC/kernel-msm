@@ -610,53 +610,17 @@ err_deep_sleep:
 
 }
 
-VOS_STATUS hdd_conf_hostarpoffload(hdd_context_t* pHddCtx, v_BOOL_t fenable)
+VOS_STATUS hdd_conf_hostarpoffload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
 {
    struct in_ifaddr **ifap = NULL;
    struct in_ifaddr *ifa = NULL;
    struct in_device *in_dev;
    int i = 0;
-   hdd_adapter_t *pAdapter = NULL;   
    tSirHostOffloadReq  offLoadRequest;
+   hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
    hddLog(VOS_TRACE_LEVEL_ERROR, "%s: \n", __func__);
-#ifdef WLAN_FEATURE_PACKET_FILTERING
-   if (pHddCtx->cfg_ini->isMcAddrListFilter)
-   {
-      pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_P2P_GO);
-      if (pAdapter != NULL)
-      {
-         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-               "%s: Can't set multicast addr filtering in P2P-GO HDD", __func__);
-         return VOS_STATUS_E_FAILURE;
-      }
 
-      pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_P2P_CLIENT);
-      if (pAdapter == NULL)    
-         pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_INFRA_STATION);
-
-      if(pAdapter == NULL)
-      {
-         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: HDD adapter context is Null", __func__);
-         return VOS_STATUS_E_FAILURE;
-      }
-   }
-   else
-   {
-#endif
-      pAdapter = hdd_get_adapter(pHddCtx,WLAN_HDD_INFRA_STATION);
-      if(pAdapter == NULL)
-      {
-         pAdapter = hdd_get_adapter(pHddCtx,WLAN_HDD_P2P_CLIENT);
-         if(pAdapter == NULL)
-         {
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: HDD adapter context is Null", __func__);
-            return VOS_STATUS_E_FAILURE;
-         }
-      }
-#ifdef WLAN_FEATURE_PACKET_FILTERING
-   }
-#endif
    if(fenable)
    {
        if ((in_dev = __in_dev_get_rtnl(pAdapter->dev)) != NULL)
@@ -805,7 +769,7 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
            (eConnectionState_Associated == 
             (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState)) 
         {
-            vstatus = hdd_conf_hostarpoffload(pHddCtx, TRUE);
+            vstatus = hdd_conf_hostarpoffload(pAdapter, TRUE);
             if (!VOS_IS_STATUS_SUCCESS(vstatus))
             {
                 if(pHddCtx->dynamic_mcbc_filter.enableCfg)
@@ -915,9 +879,10 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
     }
 }
 
-static void hdd_conf_resume_ind(hdd_context_t* pHddCtx, v_U8_t sessionId)
+static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter, v_U8_t sessionId)
 {
     VOS_STATUS vstatus;
+    hdd_context_t* pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     tpSirWlanResumeParam wlanResumeParam =
       vos_mem_malloc(sizeof(tSirWlanResumeParam));
 
@@ -933,7 +898,7 @@ static void hdd_conf_resume_ind(hdd_context_t* pHddCtx, v_U8_t sessionId)
 
     if(pHddCtx->cfg_ini->fhostArpOffload)
     {
-        vstatus = hdd_conf_hostarpoffload(pHddCtx, FALSE);
+        vstatus = hdd_conf_hostarpoffload(pAdapter, FALSE);
         if (!VOS_IS_STATUS_SUCCESS(vstatus))
         {
             hddLog(VOS_TRACE_LEVEL_INFO, "%s:Failed to disable ARPOFFLOAD "
@@ -1349,7 +1314,7 @@ void hdd_resume_wlan(struct early_suspend *wlan_suspend)
 
          if(pHddCtx->hdd_mcastbcast_filter_set == TRUE) {
 #ifdef FEATURE_WLAN_INTEGRATED_SOC
-           hdd_conf_resume_ind(pHddCtx, pAdapter->sessionId);
+           hdd_conf_resume_ind(pAdapter, pAdapter->sessionId);
 #else
                   hdd_conf_mcastbcast_filter(pHddCtx, FALSE);
                               pHddCtx->hdd_mcastbcast_filter_set = FALSE;

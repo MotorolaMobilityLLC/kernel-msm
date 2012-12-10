@@ -119,6 +119,7 @@ int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
 #include "wlan_qct_pal_trace.h"
 #endif /* FEATURE_WLAN_INTEGRATED_SOC */
 #include "qwlan_version.h"
+#include "wlan_qct_wda.h"
 
 #ifdef MODULE
 #define WLAN_MODULE_NAME  module_name(THIS_MODULE)
@@ -3321,7 +3322,13 @@ void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx)
          fwFeatCapsMsgSupported = 1;
  
       if (fwFeatCapsMsgSupported)
+      {
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+         if(!pHddCtx->cfg_ini->fEnableActiveModeOffload)
+            sme_disableFeatureCapablity(WLANACTIVE_OFFLOAD);
+#endif
          sme_featureCapsExchange(pHddCtx->hHal);
+      }
 
    } while (0);
 
@@ -4569,9 +4576,19 @@ v_BOOL_t hdd_is_apps_power_collapse_allowed(hdd_context_t* pHddCtx)
     hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL; 
     hdd_adapter_t *pAdapter = NULL; 
     VOS_STATUS status;
+    tVOS_CONCURRENCY_MODE concurrent_state = 0;
 
 #ifdef WLAN_SOFTAP_FEATURE
     if (VOS_STA_SAP_MODE == hdd_get_conparam())
+        return TRUE;
+#endif
+
+    concurrent_state = hdd_get_concurrency_mode();
+
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+    if(((concurrent_state == (VOS_STA | VOS_P2P_CLIENT)) || 
+        (concurrent_state == (VOS_STA | VOS_P2P_GO))) && 
+        (IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
         return TRUE;
 #endif
 

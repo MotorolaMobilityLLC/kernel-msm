@@ -651,6 +651,8 @@ char *limMsgStr(tANI_U32 msgType)
             return "eWNI_PMC_EXIT_BMPS_RSP\n";
         case eWNI_PMC_EXIT_BMPS_IND:
             return "eWNI_PMC_EXIT_BMPS_IND\n";
+        case eWNI_SME_SET_BCN_FILTER_REQ:
+            return "eWNI_SME_SET_BCN_FILTER_REQ\n";
         default:
             return "INVALID SME message\n";
     }
@@ -6972,7 +6974,7 @@ limRestorePreChannelSwitchState(tpAniSirGlobal pMac, tpPESession psessionEntry)
     if (TX_TIMER_VALID(pMac->lim.limTimers.gLimHeartBeatTimer))
     {
         MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
-        if(limActivateHearBeatTimer(pMac) != TX_SUCCESS)
+        if((limActivateHearBeatTimer(pMac) != TX_SUCCESS) && (!IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
         {
             limLog(pMac, LOGP, FL("Could not restart heartbeat timer, doing LOGP"));
             return (eSIR_FAILURE);

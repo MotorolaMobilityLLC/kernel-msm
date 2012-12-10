@@ -86,5 +86,5 @@
  VOS_STATUS hdd_wlan_re_init(void);
 
 void hdd_conf_mcastbcast_filter(hdd_context_t* pHddCtx, v_BOOL_t setfilter);
-VOS_STATUS hdd_conf_hostarpoffload(hdd_context_t* pHddCtx, v_BOOL_t fenable);
+VOS_STATUS hdd_conf_hostarpoffload(hdd_adapter_t* pAdapter, v_BOOL_t fenable);
 #endif // if !defined __WLAN_QCT_DRIVER_H

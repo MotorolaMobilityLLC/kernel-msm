@@ -430,12 +430,13 @@ void pmmInitBmpsPwrSave(tpAniSirGlobal pMac)
         respStatus = eSIR_SME_BMPS_REQ_REJECT;
         goto failure;
     }
-
+#ifndef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
     // sending beacon filtering information down to HAL
     if (limSendBeaconFilterInfo(pMac, psessionEntry) != eSIR_SUCCESS)
     {
         pmmLog(pMac, LOGE, FL("Fail to send Beacon Filter Info \n"));
     }
+#endif
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT 
     limDiagEventReport(pMac, WLAN_PE_DIAG_ENTER_BMPS_REQ_EVENT, psessionEntry, 0, 0);
@@ -626,7 +627,7 @@ tSirRetStatus  pmmSendInitPowerSaveMsg(tpAniSirGlobal pMac,tpPESession psessionE
     tANI_U32    numBeaconPerRssiAverage = 5;
     tANI_U32    bRssiFilterEnable = FALSE;
 
-    if(psessionEntry->currentBssBeaconCnt == 0)
+    if((psessionEntry->currentBssBeaconCnt == 0 && (!IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)))
     {
         PELOGE(pmmLog( pMac, LOGE,  FL("Beacon count is zero, can not retrieve the TSF, failing the Enter Bmps Request\n"));)
         return eSIR_FAILURE;

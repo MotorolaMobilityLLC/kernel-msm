@@ -1439,6 +1439,12 @@ typedef enum
 #define CFG_ENABLE_LPWR_IMG_TRANSITION_DEFAULT     ( 0 )
 
 
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+#define CFG_ACTIVEMODE_OFFLOAD_ENABLE         "gEnableActiveModeOffload"
+#define CFG_ACTIVEMODE_OFFLOAD_ENABLE_MIN     ( 0 )
+#define CFG_ACTIVEMODE_OFFLOAD_ENABLE_MAX     ( 1 )
+#define CFG_ACTIVEMODE_OFFLOAD_ENABLE_DEFAULT ( 0 )
+#endif
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -1755,6 +1761,9 @@ typedef struct
    v_BOOL_t                    fEnableTDLSSupport;
 #endif
    v_U32_t                     enableLpwrImgTransition;
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+   v_BOOL_t                    fEnableActiveModeOffload;
+#endif
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

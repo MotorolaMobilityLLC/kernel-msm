@@ -2503,6 +2503,17 @@ void limHandleMissedBeaconInd(tpAniSirGlobal pMac)
         PELOG1(limLog(pMac, LOG1, FL("Sending EXIT_BMPS_IND to SME \n"));)
         limSendExitBmpsInd(pMac, eSME_MISSED_BEACON_IND_RCVD);
     }
+/* ACTIVE_MODE_HB_OFFLOAD */
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+    else if(((pMac->pmm.gPmmState == ePMM_STATE_READY) ||
+                     (pMac->pmm.gPmmState == ePMM_STATE_BMPS_WAKEUP)) &&
+                     (IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
+    {
+        pMac->pmm.inMissedBeaconScenario = TRUE;
+        PELOGE(limLog(pMac, LOGE, FL("Received Heart Beat Failure\n"));)
+        limMissedBeaconInActiveMode(pMac);
+    }
+#endif
     else
     {
         limLog(pMac, LOGE,

@@ -8837,7 +8837,18 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
                                 if( palEqualMemory( pMac->hHdd, &Broadcastaddr, pRsp->peerMacAddr, 
                                            sizeof(tSirMacAddr) ) )
                                 {
-                                    result = eCSR_ROAM_RESULT_AUTHENTICATED;
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+                                    if(IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)
+                                    {
+                                       tpSirSetActiveModeSetBncFilterReq pMsg;
+                                       palAllocateMemory(pMac->hHdd, (void **)&pMsg, sizeof(tSirSetActiveModeSetBncFilterReq));
+                                       pMsg->messageType = pal_cpu_to_be16((tANI_U16)eWNI_SME_SET_BCN_FILTER_REQ);
+                                       pMsg->length = pal_cpu_to_be16(sizeof( tANI_U8));
+                                       pMsg->seesionId = sessionId;
+                                       status = palSendMBMessage(pMac->hHdd, pMsg ); 
+                                    }
+#endif
+                                       result = eCSR_ROAM_RESULT_AUTHENTICATED;
                                 }
                                 else
                                 {

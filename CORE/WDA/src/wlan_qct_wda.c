@@ -11742,6 +11742,16 @@ void WDA_featureCapsExchange(v_PVOID_t pVosContext)
    WDI_featureCapsExchangeReq( NULL, pVosContext);
 }
 
+/*  FUNCTION    WDA_disableCapablityFeature
+  *  WDA API to diable Active mode offload in host.
+  */
+void WDA_disableCapablityFeature(tANI_U8 feature_index)
+{
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+      "%s:enter", __func__ );
+   WDI_disableCapablityFeature(feature_index);
+}
+
  /*  FUNCTION    WDA_getHostWlanFeatCaps
   *  Wrapper for WDI API, that will return if the feature (enum value).passed
   *  to this API is supported or not in Host

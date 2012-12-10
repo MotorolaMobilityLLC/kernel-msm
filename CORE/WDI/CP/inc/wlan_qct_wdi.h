@@ -8998,6 +8998,17 @@ WDI_featureCapsExchangeReq
 );
 
 /**
+ @brief Disable Active mode offload in Host
+ 
+ @param  void
+ @see
+ @return void
+*/
+void
+WDI_disableCapablityFeature(wpt_uint8 feature_index);
+
+
+/**
  @brief WDI_getHostWlanFeatCaps
         WDI API that returns whether the feature passed to it as enum value in
         "placeHolderInCapBitmap" is supported by Host or not. It uses WDI global

@@ -2249,9 +2249,7 @@ static int iw_softap_set_channel_range( struct net_device *dev,
     {
         ret = -EINVAL;
     }
-	
-	pHddCtx->is_dynamic_channel_range_set = 1;
-	
+    pHddCtx->is_dynamic_channel_range_set = 1;
     return ret;
 }
 
@@ -4790,7 +4788,7 @@ static int iw_set_dynamic_mcbc_filter(struct net_device *dev,
          (eConnectionState_Associated == 
          (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState))
       {
-        vstatus = hdd_conf_hostarpoffload(pHddCtx, TRUE);
+        vstatus = hdd_conf_hostarpoffload(pAdapter, TRUE);
         if (!VOS_IS_STATUS_SUCCESS(vstatus))
         {
           hddLog(VOS_TRACE_LEVEL_INFO, 
