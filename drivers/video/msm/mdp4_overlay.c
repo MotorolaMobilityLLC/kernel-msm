@@ -3702,3 +3702,11 @@ done:
 	mutex_unlock(&mfd->dma->ov_mutex);
 	return err;
 }
+int mdp4_overlay_reset()
+{
+	memset(&perf_request, 0, sizeof(perf_request));
+	memset(&perf_current, 0, sizeof(perf_current));
+	perf_request.mdp_bw = OVERLAY_PERF_LEVEL4;
+	perf_current.mdp_bw = OVERLAY_PERF_LEVEL4;
+	return 0;
+}
