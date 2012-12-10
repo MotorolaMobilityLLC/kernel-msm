@@ -1785,7 +1785,7 @@ eHalStatus csrNeighborRoamPerformBgScan(tpAniSirGlobal pMac)
     else 
     {
         NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Channel List Empty"));
-        // Go back and restart. Mostly timer start failure has occured.
+        // Go back and restart. Mostly timer start failure has occurred.
         // When timer start is declared a failure, then we delete the list.
         // Should not happen now as we stop and then only start the scan timer. 
         // still handle the unlikely case.

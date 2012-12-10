@@ -1900,7 +1900,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
         if (!status)
         {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                         "%s: Timeout occured while waiting for abortscan" ,
+                         "%s: Timeout occurred while waiting for abortscan" ,
                          __func__);
             VOS_ASSERT(pScanInfo->mScanPending);
             return 0;
@@ -4646,8 +4646,8 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
                     
                     if( SIR_MAC_MAX_IE_LENGTH < (pWextState->assocAddIE.length + eLen) )
                     {
-                       hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accomadate assocAddIE. "
-                                                      "Need bigger buffer space\n");
+                       hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accommodate assocAddIE. "
+                                                      "Need bigger buffer space");
                        VOS_ASSERT(0);
                        return -ENOMEM;
                     }
@@ -4679,8 +4679,8 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
                     
                     if( SIR_MAC_MAX_IE_LENGTH < (pWextState->assocAddIE.length + eLen) )
                     {
-                       hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accomadate assocAddIE "
-                                                      "Need bigger buffer space\n");
+                       hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accommodate assocAddIE "
+                                                      "Need bigger buffer space");
                        VOS_ASSERT(0);
                        return -ENOMEM;
                     }
@@ -4704,8 +4704,8 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
                     
                     if( SIR_MAC_MAX_IE_LENGTH < (pWextState->assocAddIE.length + eLen) )
                     {
-                       hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accomadate assocAddIE "
-                                                      "Need bigger buffer space\n");
+                       hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accommodate assocAddIE "
+                                                      "Need bigger buffer space");
                        VOS_ASSERT(0);
                        return -ENOMEM;
                     }
@@ -4728,8 +4728,8 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
 
                     if( SIR_MAC_MAX_IE_LENGTH < (pWextState->assocAddIE.length + eLen) )
                     {
-                        hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accomadate assocAddIE "
-                               "Need bigger buffer space\n");
+                        hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accommodate assocAddIE "
+                               "Need bigger buffer space");
                         VOS_ASSERT(0);
                         return -ENOMEM;
                     }
@@ -4757,8 +4757,8 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
                     
                     if( SIR_MAC_MAX_IE_LENGTH < (pWextState->assocAddIE.length + eLen) )
                     {
-                       hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accomadate assocAddIE "
-                                                      "Need bigger buffer space\n");
+                       hddLog(VOS_TRACE_LEVEL_FATAL, "Cannot accommodate assocAddIE "
+                                                      "Need bigger buffer space");
                        VOS_ASSERT(0);
                        return -ENOMEM;
                     }
