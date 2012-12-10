@@ -281,6 +281,7 @@ typedef struct sPESession           // Added to Support BT-AMP
     tSirNoAParam p2pNoA;
     tSirP2PNoaAttr p2pGoPsUpdate;
     tANI_U32 defaultAuthFailureTimeout;
+    tSirP2PNoaStart p2pGoPsNoaStartInd;
 #endif
 
     /* EDCA QoS parameters

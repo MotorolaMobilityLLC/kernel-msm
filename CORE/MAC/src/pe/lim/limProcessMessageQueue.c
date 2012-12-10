@@ -81,6 +81,11 @@
 #include "vos_memory.h"
 #endif
 
+#ifdef WLAN_FEATURE_P2P
+/* In P2P GO case, we want to call scan on NOA start indication from limProcessMessages */
+extern void __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf);
+#endif
+
 void limLogSessionStates(tpAniSirGlobal pMac);
 
 /** -------------------------------------------------------------
@@ -1527,16 +1532,51 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
             limMsg->bodyptr = NULL;
             break;
 
+        case SIR_HAL_P2P_NOA_START_IND:
+        {
+            tpPESession psessionEntry = &pMac->lim.gpSession[0];
+            tANI_U8  i;
+            
+            limLog(pMac, LOG1, "LIM received NOA start %x\n", limMsg->type);
+            for(i=0; i < pMac->lim.maxBssId; i++)
+            {
+                psessionEntry = &pMac->lim.gpSession[i];
+                if   ( (psessionEntry != NULL) && (psessionEntry->valid) &&
+                    (psessionEntry->pePersona == VOS_P2P_GO_MODE))
+                { //Save P2P NOA start attributes for P2P Go persona
+                    palCopyMemory(pMac->hHdd, &psessionEntry->p2pGoPsNoaStartInd, limMsg->bodyptr, sizeof(tSirP2PNoaStart));
+                    
+                    if ((pMac->lim.gpLimSmeScanReq != NULL) && (psessionEntry->p2pGoPsNoaStartInd.status == eHAL_STATUS_SUCCESS))
+                    {
+                        /* We received the NOA start indication. Now we can send down the scan request */
+                        __limProcessSmeScanReq(pMac, (tANI_U32 *)pMac->lim.gpLimSmeScanReq);
+                        /* Since insert NOA is done and NOA start msg received, we should deactivate the Insert NOA timer */
+                        limDeactivateAndChangeTimer(pMac, eLIM_INSERT_SINGLESHOT_NOA_TIMER);
+                        /* __limProcessSmeScanReq consumed the buffer. We can free it. */
+                        palFreeMemory( pMac->hHdd, (tANI_U8 *) pMac->lim.gpLimSmeScanReq);
+                        pMac->lim.gpLimSmeScanReq = NULL;
+                    }
+                    else
+                        limLog(pMac, LOGE, FL("GO NOA start failure reported by FW - don't do scan\n"));
+                    break;
+                }
+            }
+        }
+            palFreeMemory(pMac->hHdd, (tANI_U8 *)limMsg->bodyptr);
+            limMsg->bodyptr = NULL;
+            break;
+            
+
         case SIR_HAL_P2P_NOA_ATTR_IND:
             {
                 tpPESession psessionEntry = &pMac->lim.gpSession[0];  
                 tANI_U8  i;
                 
-                
                 limLog(pMac, LOGW, FL("Received message Noa_ATTR %x\n"), limMsg->type);
                 for(i=0; i < pMac->lim.maxBssId; i++)
                 {
-                    if   ( (psessionEntry != NULL) && (pMac->lim.gpSession[i].valid) && 
+                    psessionEntry = &pMac->lim.gpSession[i];
+                    if   ( (psessionEntry != NULL) && (psessionEntry->valid) && 
                         (psessionEntry->pePersona == VOS_P2P_GO_MODE))
                     { //Save P2P attributes for P2P Go persona
                     
@@ -1756,6 +1796,7 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 #endif
 #ifdef WLAN_FEATURE_P2P
         case SIR_LIM_REMAIN_CHN_TIMEOUT:
+        case SIR_LIM_INSERT_SINGLESHOT_NOA_TIMEOUT:
 #endif
         case SIR_LIM_DISASSOC_ACK_TIMEOUT:
         case SIR_LIM_DEAUTH_ACK_TIMEOUT:

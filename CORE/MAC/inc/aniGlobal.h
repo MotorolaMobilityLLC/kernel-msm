@@ -252,6 +252,10 @@ typedef struct sLimTimers
     TX_TIMER           gLimPeriodicJoinProbeReqTimer;
     TX_TIMER           gLimDisassocAckTimer;
     TX_TIMER           gLimDeauthAckTimer;
+#ifdef WLAN_FEATURE_P2P
+    // This timer is started when single shot NOA insert msg is sent to FW for scan in P2P GO mode
+    TX_TIMER           gLimP2pSingleShotNoaInsertTimer;
+#endif
 //********************TIMER SECTION ENDS**************************************************
 // ALL THE FIELDS BELOW THIS CAN BE ZEROED OUT in limInitialize
 //****************************************************************************************
@@ -309,6 +313,9 @@ typedef struct sAniSirLim
     tANI_U32   gLimCurrentScanChannelId;
 
     // Hold onto SCAN criteria
+#ifdef WLAN_FEATURE_P2P
+    tSirSmeScanReq *gpLimSmeScanReq; // this one is used in P2P GO case when scan needs to be actually done a few BIs later after publishing NOA
+#endif
     tLimMlmScanReq *gpLimMlmScanReq;
 
     /// This indicates total length of 'matched' scan results

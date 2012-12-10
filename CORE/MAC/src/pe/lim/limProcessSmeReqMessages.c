@@ -78,12 +78,17 @@
 
 #endif
 
+/* This overhead is time for sending NOA start to host in case of GO/sending NULL data & receiving ACK 
+ * in case of P2P Client and starting actual scanning with init scan req/rsp plus in case of concurrency,
+ * taking care of sending null data and receiving ACK to/from AP.
+ */
+#define SCAN_MESSAGING_OVERHEAD 5 // in msecs
 
 // SME REQ processing function templates
 static void __limProcessSmeStartReq(tpAniSirGlobal, tANI_U32 *);
 static tANI_BOOLEAN __limProcessSmeSysReadyInd(tpAniSirGlobal, tANI_U32 *);
 static tANI_BOOLEAN __limProcessSmeStartBssReq(tpAniSirGlobal, tpSirMsgQ pMsg);
-static void __limProcessSmeScanReq(tpAniSirGlobal, tANI_U32 *);
+void __limProcessSmeScanReq(tpAniSirGlobal, tANI_U32 *);
 static void __limProcessSmeJoinReq(tpAniSirGlobal, tANI_U32 *);
 static void __limProcessSmeReassocReq(tpAniSirGlobal, tANI_U32 *);
 static void __limProcessSmeDisassocReq(tpAniSirGlobal, tANI_U32 *);
@@ -1090,7 +1095,7 @@ void limGetRandomBssid(tpAniSirGlobal pMac, tANI_U8 *data)
  * @return None
  */
 
-static void
+void
 __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 {
     tANI_U32            len;
@@ -1114,7 +1119,19 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
            pScanReq->scanType,
            pScanReq->backgroundScanMode,
            pMac->lim.gLimRspReqd ? 1 : 0);)
-        
+
+    /* Since scan req always requires a response, we will overwrite response required here.
+     * This is added esp to take care of the condition where in p2p go case, we hold the scan req and
+     * insert single NOA. We send the held scan request to FW later on getting start NOA ind from FW so
+     * we lose state of the gLimRspReqd flag for the scan req if any other request comes by then.
+     * e.g. While unit testing, we found when insert single NOA is done, we see a get stats request which turns the flag
+     * gLimRspReqd to FALSE; now when we actually start the saved scan req for init scan after getting
+     * NOA started, the gLimRspReqd being a global flag is showing FALSE instead of TRUE value for 
+     * this saved scan req. Since all scan reqs coming to lim require a response, there is no harm in setting
+     * the global flag gLimRspReqd to TRUE here.
+     */
+     pMac->lim.gLimRspReqd = TRUE;
+
     /*copy the Self MAC address from SmeReq to the globalplace , used for sending probe req.discussed on code review sep18*/
     sirCopyMacAddr(pMac->lim.gSelfMacAddr,  pScanReq->selfMacAddr);
 
@@ -4851,6 +4868,71 @@ __limProcessSmeRegisterMgmtFrameReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
     return;
 } /*** end __limProcessSmeRegisterMgmtFrameReq() ***/
+
+static tANI_BOOLEAN
+__limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
+{
+    tpP2pPsParams pMsgNoA;
+    tSirMsgQ msg;
+    tpSirSmeScanReq     pScanReq;
+    pScanReq = (tpSirSmeScanReq) pMsgBuf;
+    if( eHAL_STATUS_SUCCESS != palAllocateMemory(
+                  pMac->hHdd, (void **) &pMsgNoA, sizeof( tP2pPsConfig )))
+    {
+        limLog( pMac, LOGP,
+                     FL( "Unable to allocate memory during NoA Update\n" ));
+        return TRUE;
+    }
+
+    palZeroMemory( pMac->hHdd, (tANI_U8 *)pMsgNoA, sizeof(tP2pPsConfig));
+    /* Below params used for opp PS/periodic NOA and are don't care in this case - so initialized to 0 */
+    pMsgNoA->opp_ps = 0;
+    pMsgNoA->ctWindow = 0;
+    pMsgNoA->duration = 0;
+    pMsgNoA->interval = 0;
+    pMsgNoA->count = 0;
+    /* Below params used for Single Shot NOA - so assign proper values */
+    /* Use min + max channel time to calculate the total duration of scan.
+    * Adding an overhead of 5ms to account for the scan messaging delays
+    */
+    pMsgNoA->single_noa_duration = ((pScanReq->minChannelTime + pScanReq->maxChannelTime)*
+                                    pScanReq->channelList.numChannels) + SCAN_MESSAGING_OVERHEAD;
+    pMsgNoA->psSelection = P2P_SINGLE_NOA;
+    pMac->lim.gpLimSmeScanReq = pScanReq;
+
+    /* Start Insert NOA timer
+     * If insert NOA req fails or NOA rsp fails or start NOA indication doesn't come from FW due to GO session deletion
+     * or any other failure or reason, we still need to send probe response to SME with failure status. The insert NOA
+     * timer of 500 ms will ensure a response back to SME/HDD for the scan req
+     */
+    if (tx_timer_activate(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer)
+                                      == TX_TIMER_ERROR)
+    {
+        /// Could not activate Insert NOA timer.
+        // Log error
+        limLog(pMac, LOGP, FL("could not activate Insert Single Shot NOA during scan timer\n"));
+
+        // send the scan response back with status failure and do not even call insert NOA
+        limSendSmeScanRsp(pMac, sizeof(tSirSmeScanRsp), eSIR_SME_SCAN_FAILED, pMac->lim.gSmeSessionId, pMac->lim.gTransactionId);
+        return TRUE;
+    }
+
+    msg.type = WDA_SET_P2P_GO_NOA_REQ;
+    msg.reserved = 0;
+    msg.bodyptr = pMsgNoA;
+    msg.bodyval = 0;
+
+    if(eSIR_SUCCESS != wdaPostCtrlMsg(pMac, &msg))
+    {
+        /* In this failure case, timer is already started, so its expiration will take care of sending scan response */
+        limLog(pMac, LOGP, FL("wdaPost Msg failed\n"));
+        return TRUE;
+    }
+
+    return FALSE;
+
+}
+
 #endif
 
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
@@ -5206,8 +5288,19 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             break;
 
         case eWNI_SME_SCAN_REQ:
-            __limProcessSmeScanReq(pMac, pMsgBuf);
-
+#ifdef WLAN_FEATURE_P2P
+            /* If we are in P2P GO mode we need to insert NOA before actually starting a scan */
+            if ((limIsNOAInsertReqd(pMac) == TRUE) && IS_FEATURE_SUPPORTED_BY_FW(P2P_GO_NOA_DECOUPLE_INIT_SCAN))
+            {
+                bufConsumed = __limInsertSingleShotNOAForScan(pMac, pMsgBuf);
+            }
+            else
+            {
+#endif
+                __limProcessSmeScanReq(pMac, pMsgBuf);
+#ifdef WLAN_FEATURE_P2P
+            }
+#endif
             break;
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
