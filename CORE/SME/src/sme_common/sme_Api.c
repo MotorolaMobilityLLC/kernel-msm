@@ -5166,7 +5166,7 @@ eHalStatus sme_ChangeMCCBeaconInterval(tHalHandle hHal, tANI_U8 sessionId)
 
   \param btAmpEvent - btAmpEvent
 
-  \return eHalStatus: SUCESS : BTAmp event successfully sent to HAL
+  \return eHalStatus: SUCCESS : BTAmp event successfully sent to HAL
 
                       FAILURE: API failed
 

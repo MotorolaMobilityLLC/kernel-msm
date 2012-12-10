@@ -3007,7 +3007,7 @@ eHalStatus csrValidateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
                            }
                            else
                            {
-                               smsLog(pMac, LOGE, FL("BeaconInteval is different cannot connect to prefered AP...\n"));
+                               smsLog(pMac, LOGE, FL("BeaconInterval is different cannot connect to preferred AP...\n"));
                                return eHAL_STATUS_FAILURE;
                            }
                         }
@@ -3041,7 +3041,7 @@ eHalStatus csrValidateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
                             (pMac->roam.roamSession[sessionId].bssParams.beaconInterval 
                                 != *beaconInterval))
                         {
-                            smsLog(pMac, LOGE, FL("BeaconInteval is different cannot connect to P2P_GO network ...\n"));
+                            smsLog(pMac, LOGE, FL("BeaconInterval is different cannot connect to P2P_GO network ...\n"));
                             return eHAL_STATUS_FAILURE;
                         }
                     }

@@ -2904,7 +2904,7 @@ void limCancelDot11hChannelSwitch(tpAniSirGlobal pMac, tpPESession psessionEntry
     /* We need to restore pre-channelSwitch state on the STA */
     if (limRestorePreChannelSwitchState(pMac, psessionEntry) != eSIR_SUCCESS)
     {
-        PELOGE(limLog(pMac, LOGE, FL("LIM: Could not restore pre-channelSwitch (11h) state, reseting the system\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("LIM: Could not restore pre-channelSwitch (11h) state, resetting the system\n"));)
                 
     }
 #endif
