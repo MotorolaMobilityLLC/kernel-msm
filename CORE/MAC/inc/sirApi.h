@@ -2804,6 +2804,13 @@ typedef struct sSirRSSINotification
 }tSirRSSINotification, *tpSirRSSINotification;
 
 #ifdef WLAN_FEATURE_P2P
+
+typedef struct sSirP2PNoaStart
+{
+   tANI_U32      status;
+   tANI_U32      bssIdx;
+} tSirP2PNoaStart, *tpSirP2PNoaStart;
+
 typedef struct sSirP2PNoaAttr
 {
 #ifdef ANI_BIG_BYTE_ENDIAN

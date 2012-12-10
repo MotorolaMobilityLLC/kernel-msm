@@ -10237,6 +10237,27 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
          break;
       }
 #ifdef WLAN_FEATURE_P2P
+      case WDI_P2P_NOA_START_IND :
+      {
+          tSirP2PNoaStart   *pP2pNoaStart = 
+             (tSirP2PNoaStart *)vos_mem_malloc(sizeof(tSirP2PNoaStart));
+
+          if (NULL == pP2pNoaStart)
+          {
+             VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                        "Memory allocation failure, "
+                        "WDI_P2P_NOA_START_IND not forwarded");
+             break;
+          }
+          pP2pNoaStart->status            = 
+                     wdiLowLevelInd->wdiIndicationData.wdiP2pNoaStartInfo.status;
+          pP2pNoaStart->bssIdx        = 
+                     wdiLowLevelInd->wdiIndicationData.wdiP2pNoaStartInfo.bssIdx;
+          WDA_SendMsg(pWDA, SIR_HAL_P2P_NOA_START_IND, 
+                                        (void *)pP2pNoaStart , 0) ;
+          break;
+      }
+
       case WDI_P2P_NOA_ATTR_IND :
       {
          tSirP2PNoaAttr   *pP2pNoaAttr = 

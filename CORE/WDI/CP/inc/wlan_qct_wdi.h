@@ -366,7 +366,12 @@ typedef enum
 
   /* Tx PER Tracking Indication */
   WDI_TX_PER_HIT_IND,
-  
+
+#ifdef WLAN_FEATURE_P2P
+  /* P2P_NOA_Start_Indication */
+  WDI_P2P_NOA_START_IND,
+#endif
+
   WDI_MAX_IND
 }WDI_LowLevelIndEnumType;
 
@@ -496,7 +501,6 @@ typedef struct
 /*---------------------------------------------------------------------------
  *WDI_P2pNoaAttrIndType
  *-------------------------------------------------------------------------*/
-
 typedef struct
 {
   wpt_uint8       ucIndex ;
@@ -517,6 +521,16 @@ typedef struct
 
   wpt_uint32      status;
 }WDI_P2pNoaAttrIndType;
+
+/*---------------------------------------------------------------------------
+ *WDI_P2pNoaStartIndType
+ *-------------------------------------------------------------------------*/
+typedef struct
+{
+  wpt_uint32      status;
+  wpt_uint32      bssIdx;
+}WDI_P2pNoaStartIndType;
+
 #endif
 
 #ifdef WLAN_WAKEUP_EVENTS
@@ -573,6 +587,7 @@ typedef struct
 #ifdef WLAN_FEATURE_P2P
     /* P2P NOA ATTR Indication */
     WDI_P2pNoaAttrIndType        wdiP2pNoaAttrInfo;
+    WDI_P2pNoaStartIndType       wdiP2pNoaStartInfo;
 #endif
 
 

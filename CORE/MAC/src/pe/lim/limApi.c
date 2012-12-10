@@ -99,6 +99,9 @@ static void __limInitScanVars(tpAniSirGlobal pMac)
 
     pMac->lim.gLimCurrentScanChannelId = 0;
     pMac->lim.gpLimMlmScanReq = NULL;
+#ifdef WLAN_FEATURE_P2P
+    pMac->lim.gpLimSmeScanReq = NULL;
+#endif
     pMac->lim.gLimMlmScanResultLength = 0;
     pMac->lim.gLimSmeScanResultLength = 0;
 
@@ -894,6 +897,14 @@ limCleanup(tpAniSirGlobal pMac)
         palFreeMemory(pMac->hHdd, pMac->lim.gpLimMlmRemoveKeyReq);
         pMac->lim.gpLimMlmRemoveKeyReq = NULL;
     }
+
+#ifdef WLAN_FEATURE_P2P
+    if (pMac->lim.gpLimSmeScanReq != NULL)
+    {
+        palFreeMemory(pMac->hHdd, pMac->lim.gpLimSmeScanReq);
+        pMac->lim.gpLimSmeScanReq = NULL;
+    }
+#endif
 
     if (pMac->lim.gpLimMlmScanReq != NULL)
     {

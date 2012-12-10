@@ -375,6 +375,24 @@ error1:
 
 /*------------------------------------------------------------------
  *
+ * lim Insert NOA timer timeout callback - when timer fires, deactivate it and send
+ * scan rsp to csr/hdd
+ *
+ *------------------------------------------------------------------*/
+void limProcessInsertSingleShotNOATimeout(tpAniSirGlobal pMac)
+{
+    /* timeout means start NOA did not arrive; we need to restart the timer and
+     * send the scan response from here
+     */
+    limDeactivateAndChangeTimer(pMac, eLIM_INSERT_SINGLESHOT_NOA_TIMER);
+    
+    // send the scan response back and do not even call insert NOA
+    limSendSmeScanRsp(pMac, sizeof(tSirSmeScanRsp), eSIR_SME_SCAN_FAILED, pMac->lim.gSmeSessionId, pMac->lim.gTransactionId);
+    return;
+}
+
+/*------------------------------------------------------------------
+ *
  * limchannelchange callback, on success channel change, set the
  * link_state to LISTEN
  *
@@ -1028,7 +1046,7 @@ tSirRetStatus __limProcessSmeNoAUpdate(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     pMsgNoA->single_noa_duration = pNoA->single_noa_duration;
     pMsgNoA->psSelection = pNoA->psSelection;
 
-    msg.type = SIR_HAL_SET_P2P_GO_NOA_REQ;
+    msg.type = WDA_SET_P2P_GO_NOA_REQ;
     msg.reserved = 0;
     msg.bodyptr = pMsgNoA;
     msg.bodyval = 0;

@@ -737,16 +737,32 @@ limCreateTimers(tpAniSirGlobal pMac)
     cfgValue = SYS_MS_TO_TICKS(cfgValue);
     if (tx_timer_create(&pMac->lim.limTimers.gLimDeauthAckTimer,
                                     "DISASSOC ACK TIMEOUT",
-                                    limTimerHandler, SIR_LIM_DISASSOC_ACK_TIMEOUT,
+                                    limTimerHandler, SIR_LIM_DEAUTH_ACK_TIMEOUT,
                                     cfgValue, 0,
                                     TX_NO_ACTIVATE) != TX_SUCCESS)
     {
         limLog(pMac, LOGP, FL("could not create DEAUTH ACK TIMEOUT timer\n"));
         goto err_timer;
     }
+
+#ifdef WLAN_FEATURE_P2P
+    cfgValue = LIM_INSERT_SINGLESHOTNOA_TIMEOUT_VALUE; // (> no of BI* no of TUs per BI * 1TU in msec + p2p start time offset*1 TU in msec = 2*100*1.024 + 5*1.024 = 204.8 + 5.12 = 209.20)
+    cfgValue = SYS_MS_TO_TICKS(cfgValue);
+    if (tx_timer_create(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer,
+                                    "Single Shot NOA Insert timeout",
+                                    limTimerHandler, SIR_LIM_INSERT_SINGLESHOT_NOA_TIMEOUT,
+                                    cfgValue, 0,
+                                    TX_NO_ACTIVATE) != TX_SUCCESS)
+    {
+        limLog(pMac, LOGP, FL("could not create Single Shot NOA Insert Timeout timer\n"));
+        goto err_timer;
+    }
+#endif
+
     return TX_SUCCESS;
 
     err_timer:
+        tx_timer_delete(&pMac->lim.limTimers.gLimDeauthAckTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimDisassocAckTimer);
 #ifdef WLAN_FEATURE_P2P
         tx_timer_delete(&pMac->lim.limTimers.gLimRemainOnChannelTimer);
@@ -1736,6 +1752,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 ** timer. Log error.
                 **/
                 limLog(pMac, LOGP, FL("Unable to deactivate Preauth response Failure timer\n"));
+                return;
             }
             val = 1000;
             val = SYS_MS_TO_TICKS(val);
@@ -1747,6 +1764,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 * timer. Log error.
                 */
                 limLog(pMac, LOGP, FL("Unable to change Join Failure timer\n"));
+                return;
             }
             break;
 #endif
@@ -1768,6 +1786,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 ** timer. Log error.
                 **/
                 limLog(pMac, LOGP, FL("Unable to deactivate Remain on Chn timer\n"));
+                return;
             }
             val = 1000;
             val = SYS_MS_TO_TICKS(val);
@@ -1779,6 +1798,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 * timer. Log error.
                 */
                 limLog(pMac, LOGP, FL("Unable to change timer\n"));
+                return;
             }
             break;
 #endif
@@ -1790,6 +1810,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 ** timer. Log error.
                 **/
                 limLog(pMac, LOGP, FL("Unable to deactivate Disassoc ack timer\n"));
+                return;
             }
             val = 1000;
             val = SYS_MS_TO_TICKS(val);
@@ -1801,6 +1822,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 * timer. Log error.
                 */
                 limLog(pMac, LOGP, FL("Unable to change timer\n"));
+                return;
             }
             break;
 
@@ -1812,6 +1834,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 ** timer. Log error.
                 **/
                 limLog(pMac, LOGP, FL("Unable to deactivate Deauth ack timer\n"));
+                return;
             }
             val = 1000;
             val = SYS_MS_TO_TICKS(val);
@@ -1823,8 +1846,36 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 * timer. Log error.
                 */
                 limLog(pMac, LOGP, FL("Unable to change timer\n"));
+                return;
             }
             break;
+
+#ifdef WLAN_FEATURE_P2P
+    case eLIM_INSERT_SINGLESHOT_NOA_TIMER:
+        if (tx_timer_deactivate(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer) != TX_SUCCESS)
+        {
+            /**
+       ** Could not deactivate SingleShot NOA Insert
+       ** timer. Log error.
+       **/
+            limLog(pMac, LOGP, FL("Unable to deactivate SingleShot NOA Insert timer\n"));
+            return;
+        }
+        val = LIM_INSERT_SINGLESHOTNOA_TIMEOUT_VALUE;
+        val = SYS_MS_TO_TICKS(val);
+        if (tx_timer_change(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer,
+                                            val, 0) != TX_SUCCESS)
+        {
+            /**
+       * Could not change Single Shot NOA Insert
+       * timer. Log error.
+       */
+            limLog(pMac, LOGP, FL("Unable to change timer\n"));
+            return;
+        }
+        break;
+#endif
+            
         default:
             // Invalid timerId. Log error
             break;

@@ -128,9 +128,7 @@ typedef enum
  * Check the version number and find if MCC feature is supported or not
  */
 #define IS_MCC_SUPPORTED (WDA_IsWcnssWlanReportedVersionGreaterThanOrEqual( 0, 1, 1, 0))
-#define IS_FEATURE_SUPPORTED_BY_FW(featEnumValue) (WDA_getFwWlanFeatCaps(featEnumValue))
-
-
+#define IS_FEATURE_SUPPORTED_BY_FW(featEnumValue) (!!WDA_getFwWlanFeatCaps(featEnumValue))
 
 /*--------------------------------------------------------------------------
   Definitions for Data path APIs
@@ -1081,6 +1079,7 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 
 #define WDA_SWITCH_CHANNEL_RSP         SIR_HAL_SWITCH_CHANNEL_RSP
 #define WDA_P2P_NOA_ATTR_IND           SIR_HAL_P2P_NOA_ATTR_IND
+#define WDA_P2P_NOA_START_IND          SIR_HAL_P2P_NOA_START_IND
 #define WDA_PWR_SAVE_CFG               SIR_HAL_PWR_SAVE_CFG
 
 #define WDA_REGISTER_PE_CALLBACK       SIR_HAL_REGISTER_PE_CALLBACK

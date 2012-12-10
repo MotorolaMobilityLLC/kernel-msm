@@ -75,6 +75,7 @@ typedef enum {
    SLM_SESSIONIZATION = 3,
    DOT11AC_OPMODE = 4,
    TDLS = 6,
+   P2P_GO_NOA_DECOUPLE_INIT_SCAN = 7,
    MAX_FEATURE_SUPPORTED = 128,
 } placeHolderInCapBitmap;
 
@@ -484,6 +485,7 @@ typedef struct sSirMbMsgP2p
 /* P2P <-> HAL P2P msg */
 #define SIR_HAL_SET_P2P_GO_NOA_REQ         (SIR_HAL_ITC_MSG_TYPES_BEGIN + 161)
 #define SIR_HAL_P2P_NOA_ATTR_IND           (SIR_HAL_ITC_MSG_TYPES_BEGIN + 162)
+#define SIR_HAL_P2P_NOA_START_IND          (SIR_HAL_ITC_MSG_TYPES_BEGIN + 163)
 #endif
 
 #define SIR_HAL_SET_LINK_STATE_RSP             (SIR_HAL_ITC_MSG_TYPES_BEGIN + 165)
@@ -640,6 +642,7 @@ typedef struct sSirMbMsgP2p
 #endif
 #ifdef WLAN_FEATURE_P2P
 #define SIR_LIM_REMAIN_CHN_TIMEOUT       (SIR_LIM_TIMEOUT_MSG_START + 0x1F)
+#define SIR_LIM_INSERT_SINGLESHOT_NOA_TIMEOUT   (SIR_LIM_TIMEOUT_MSG_START + 0x20)
 #endif
 
 #ifdef WMM_APSD

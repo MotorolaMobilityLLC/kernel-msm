@@ -111,6 +111,7 @@ static placeHolderInCapBitmap supportEnabledFeatures[] =
 #ifdef FEATURE_WLAN_TDLS
      ,TDLS
 #endif
+    ,P2P_GO_NOA_DECOUPLE_INIT_SCAN
    };
 
 /*-------------------------------------------------------------------------- 
@@ -523,6 +524,12 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
 #endif // WLAN_WAKEUP_EVENTS
 
   WDI_ProcessTxPerHitInd,               /* WDI_HAL_TX_PER_HIT_IND  */
+
+#ifdef WLAN_FEATURE_P2P
+  WDI_ProcessP2pNoaStartInd,             /* WDI_NOA_START_IND */
+#else
+  NULL,
+#endif
 };
 
 
@@ -6644,7 +6651,7 @@ WDI_ProcessInitScanReq
   wpalMutexRelease(&pWDICtx->wptMutex);
 #endif
 
-  if (pwdiInitScanParams->wdiReqInfo.bUseNOA)
+  if ((pwdiInitScanParams->wdiReqInfo.bUseNOA) && (!WDI_getFwWlanFeatCaps(P2P_GO_NOA_DECOUPLE_INIT_SCAN)))
   {
     /*This is temporary fix.
      * It shold be removed once host and riva changes are in sync*/
@@ -18527,6 +18534,62 @@ WDI_ProcessTxCompleteInd
 
 #ifdef WLAN_FEATURE_P2P
 /**
+*@brief Process Noa Start Indication function (called when
+        an indication of this kind is being received over the
+        bus from HAL)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessP2pNoaStartInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_LowLevelIndType  wdiInd;
+  tNoaStartIndMsg       halNoaStartIndMsg;
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  /*-------------------------------------------------------------------------
+  Sanity check
+ -------------------------------------------------------------------------*/
+  if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+      ( NULL == pEventData->pEventData ))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT( 0 );
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  /*-------------------------------------------------------------------------
+  Extract indication and send it to UMAC
+ -------------------------------------------------------------------------*/
+  wpalMemoryCopy( &halNoaStartIndMsg.noaStartIndParams,
+                  pEventData->pEventData,
+                  sizeof(halNoaStartIndMsg.noaStartIndParams) );
+
+  /*Fill in the indication parameters*/
+  wdiInd.wdiIndicationType = WDI_P2P_NOA_START_IND;
+
+  wdiInd.wdiIndicationData.wdiP2pNoaStartInfo.status
+                          = halNoaStartIndMsg.noaStartIndParams.status;
+
+  wdiInd.wdiIndicationData.wdiP2pNoaStartInfo.bssIdx
+                          = halNoaStartIndMsg.noaStartIndParams.bssIdx;
+
+  /*Notify UMAC*/
+  pWDICtx->wdiLowLevelIndCB( &wdiInd, pWDICtx->pIndUserData );
+
+  return WDI_STATUS_SUCCESS;
+}/*WDI_ProcessNoaAttrInd*/
+
+/**
 *@brief Process Noa Attr Indication function (called when
         an indication of this kind is being received over the
         bus from HAL)
@@ -20946,6 +21009,8 @@ HAL_2_WDI_RSP_TYPE
 #ifdef WLAN_FEATURE_P2P
   case WLAN_HAL_P2P_NOA_ATTR_IND:
     return WDI_HAL_P2P_NOA_ATTR_IND;
+  case WLAN_HAL_P2P_NOA_START_IND:
+    return WDI_HAL_P2P_NOA_START_IND;
 #endif
   case WLAN_HAL_TX_PER_HIT_IND:
     return WDI_HAL_TX_PER_HIT_IND;
