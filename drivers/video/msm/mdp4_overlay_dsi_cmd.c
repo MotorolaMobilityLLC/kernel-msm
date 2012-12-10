@@ -513,9 +513,9 @@ static void primary_rdptr_isr(int cndx)
 	pr_debug("%s: ISR, tick=%d pan=%d cpu=%d\n", __func__,
 		vctrl->expire_tick, vctrl->pan_display, smp_processor_id());
 	vctrl->rdptr_intr_tot++;
-	vctrl->vsync_time = ktime_get();
 
 	spin_lock(&vctrl->spin_lock);
+	vctrl->vsync_time = ktime_get();
 
 	complete_all(&vctrl->vsync_comp);
 	vctrl->wait_vsync_cnt = 0;
@@ -655,6 +655,7 @@ static ssize_t vsync_show_event(struct device *dev,
 	struct vsycn_ctrl *vctrl;
 	ssize_t ret = 0;
 	unsigned long flags;
+	u64 vsync_tick;
 
 	cndx = 0;
 	vctrl = &vsync_ctrl_db[0];
@@ -672,8 +673,11 @@ static ssize_t vsync_show_event(struct device *dev,
 	if (ret < 0)
 		return ret;
 
-	ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu",
-			ktime_to_ns(vctrl->vsync_time));
+	spin_lock_irqsave(&vctrl->spin_lock, flags);
+	vsync_tick = ktime_to_ns(vctrl->vsync_time);
+	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
+
+	ret = snprintf(buf, PAGE_SIZE, "VSYNC=%llu", vsync_tick);
 	buf[strlen(buf) + 1] = '\0';
 	return ret;
 }
