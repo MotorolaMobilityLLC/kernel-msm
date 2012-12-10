@@ -1710,13 +1710,13 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
          {
              globalP2PConnectionStatus = P2P_GO_COMPLETED_STATE;
              hddLog(LOGE,"[P2P State] From Go nego completed to "
-                         "Non-autonomus Group started");
+                         "Non-autonomous Group started");
          }
          else if(globalP2PConnectionStatus == P2P_NOT_ACTIVE)
          {
              globalP2PConnectionStatus = P2P_GO_COMPLETED_STATE;
              hddLog(LOGE,"[P2P State] From Inactive to "
-                         "Autonomus Group started");
+                         "Autonomous Group started");
          }
     }
 #endif
@@ -2677,7 +2677,7 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
         {
             /* set group key*/
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                    "%s- %d: setting Broacast key",
+                    "%s- %d: setting Broadcast key",
                     __func__, __LINE__);
             setKey.keyDirection = eSIR_RX_ONLY;
             vos_mem_copy(setKey.peerMac,groupmacaddr,WNI_CFG_BSSID_LEN);
@@ -3944,7 +3944,7 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
     if (mutex_lock_interruptible(&pHddCtx->tmInfo.tmOperationLock))
     {
         VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_ERROR,
-                  "%s: Aquire lock fail", __func__);
+                  "%s: Acquire lock fail", __func__);
         return -EAGAIN;
     }    
     if (TRUE == pHddCtx->tmInfo.tmAction.enterImps)

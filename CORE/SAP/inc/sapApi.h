@@ -346,7 +346,7 @@ typedef struct sap_WPSPBCProbeReqEvent_s {
 typedef struct sap_ManagementFrameInfo_s {
     tANI_U32 nFrameLength;
     tANI_U8  frameType;
-    tANI_U32 rxChan;            //Channel of where packet is recevied 
+    tANI_U32 rxChan;            //Channel of where packet is received 
     tANI_U8 *pbFrames;         //Point to a buffer contain the beacon, assoc req, assoc rsp frame, in that order
                              //user needs to use nBeaconLength, nAssocReqLength, nAssocRspLength to desice where
                             //each frame starts and ends.

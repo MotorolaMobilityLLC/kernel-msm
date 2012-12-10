@@ -435,7 +435,7 @@ void hddDevTmTxBlockTimeoutHandler(void *usrData)
    if(mutex_lock_interruptible(&pHddCtx->tmInfo.tmOperationLock))
    {
       VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_ERROR,
-                "%s: Aquire lock fail", __func__);
+                "%s: Acquire lock fail", __func__);
       return;
    }
    pHddCtx->tmInfo.txFrameCount = 0;
@@ -485,7 +485,7 @@ void hddDevTmLevelChangedHandler(struct device *dev, int changedTmLevel)
    if(mutex_lock_interruptible(&pHddCtx->tmInfo.tmOperationLock))
    {
       VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_ERROR,
-                "%s: Aquire lock fail", __func__);
+                "%s: Acquire lock fail", __func__);
       return;
    }
 

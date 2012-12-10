@@ -483,7 +483,7 @@ rrmProcessBeaconReportReq( tpAniSirGlobal pMac,
       //Beacon reporting should not be included in request if number of repetitons is zero.
       // IEEE Std 802.11k-2008 Table 7-29g and section 11.10.8.1
 
-      PELOGE(limLog( pMac, LOGE, "Droping the request: Reporting condition included in beacon report request and it is not zero\n");)
+      PELOGE(limLog( pMac, LOGE, "Dropping the request: Reporting condition included in beacon report request and it is not zero\n");)
       return eRRM_INCAPABLE;
    }
 
@@ -515,7 +515,7 @@ rrmProcessBeaconReportReq( tpAniSirGlobal pMac,
    {
       if( pBeaconReq->durationMandatory )
       {
-         limLog( pMac, LOGE, "Droping the request: duration mandatory and maxduration > measduration\n");
+         limLog( pMac, LOGE, "Dropping the request: duration mandatory and maxduration > measduration\n");
          return eRRM_REFUSED;
       }
       else

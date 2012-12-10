@@ -1562,7 +1562,7 @@ tSirRetStatus limPopulateVhtMcsSet(tpAniSirGlobal pMac,
             pRates->vhtTxHighestDataRate = SIR_MIN(pRates->vhtTxHighestDataRate, pPeerVHTCaps->txSupDataRate);
             pRates->vhtRxHighestDataRate = SIR_MIN(pRates->vhtRxHighestDataRate, pPeerVHTCaps->rxHighSupDataRate);
 
-            // Aquire PEER MCS map if we exceed.
+            // Acquire PEER MCS map if we exceed.
             // We compare/update only the last 2 bits of the map as we support only single BSS.
             // Firmware takes care of this comparison
             pRates->vhtRxMCSMap &= ~(0x3); // Clearing the last 2 bits in the bitmap

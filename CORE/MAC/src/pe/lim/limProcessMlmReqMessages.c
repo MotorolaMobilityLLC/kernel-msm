@@ -2285,7 +2285,7 @@ limProcessMlmAuthReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         /**
          * This is a request for pre-authentication.
          * Check if there exists context already for
-         * the requsted peer OR
+         * the requested peer OR
          * if this request is for the AP we're currently
          * associated with.
          * If yes, return auth confirm immediately when

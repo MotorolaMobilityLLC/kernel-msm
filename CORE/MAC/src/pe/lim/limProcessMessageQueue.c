@@ -854,7 +854,7 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
 #ifdef ANI_PRODUCT_TYPE_AP
     if ((psessionEntry->limSystemRole == eLIM_AP_ROLE) && (LIM_IS_RADAR_DETECTED(pMac)))
     {
-        PELOGW(limLog(pMac, LOGW, FL("Droping the received packets as radar is detected\n"));)
+        PELOGW(limLog(pMac, LOGW, FL("Dropping the received packets as radar is detected\n"));)
         limPktFree(pMac, HAL_TXRX_FRM_802_11_MGMT, pRxPacketInfo, (void *) limMsg->bodyptr);
         return;
     }
