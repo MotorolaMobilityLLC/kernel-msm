@@ -1899,6 +1899,10 @@ limHeartBeatDeactivateAndChangeTimer(tpAniSirGlobal pMac, tpPESession psessionEn
     tANI_U32    val, val1;
 
     MTRACE(macTrace(pMac, TRACE_CODE_TIMER_DEACTIVATE, psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+    if(IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)
+       return;
+#endif
 
     if (tx_timer_deactivate(&pMac->lim.limTimers.gLimHeartBeatTimer) != TX_SUCCESS)
         limLog(pMac, LOGP, FL("Fail to deactivate HeartBeatTimer \n"));
@@ -1940,6 +1944,11 @@ void
 limReactivateHeartBeatTimer(tpAniSirGlobal pMac, tpPESession psessionEntry)
 {
     PELOG3(limLog(pMac, LOG3, FL("Rxed Heartbeat. Count=%d\n"), psessionEntry->LimRxedBeaconCntDuringHB);)
+
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+    if(IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)
+       return;
+#endif
 
     limHeartBeatDeactivateAndChangeTimer(pMac, psessionEntry);
     MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, psessionEntry->peSessionId, eLIM_HEART_BEAT_TIMER));
@@ -2063,6 +2072,11 @@ limReactivateTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
 v_UINT_t limActivateHearBeatTimer(tpAniSirGlobal pMac)
 {
     v_UINT_t status = TX_TIMER_ERROR;
+
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+    if(IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)
+       return (status);
+#endif
 
     if(TX_AIRGO_TMR_SIGNATURE == pMac->lim.limTimers.gLimHeartBeatTimer.tmrSignature)
     {
@@ -2466,4 +2480,48 @@ limWPSOverlapTimerHandler(void *pMacGlobal, tANI_U32 param)
     limPostMsgApi(pMac, &msg);
 }
 #endif
+#endif
+
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+/* ACTIVE_MODE_HB_OFFLOAD */
+/**
+ * limMissedBeaconInActiveMode()
+ *
+ *FUNCTION:
+ * This function handle beacon miss indication from FW
+ * in Active mode.
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ * NA
+ *
+ *NOTE:
+ * NA
+ *
+ * @param  param - Msg Type
+ *
+ * @return None
+ */
+void
+limMissedBeaconInActiveMode(void *pMacGlobal)
+{
+    tANI_U32         statusCode;
+    tSirMsgQ    msg;
+    tpAniSirGlobal pMac = (tpAniSirGlobal)pMacGlobal;
+
+    // Prepare and post message to LIM Message Queue
+    if(IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)
+    { 
+       msg.type = (tANI_U16) SIR_LIM_HEART_BEAT_TIMEOUT;
+       msg.bodyptr = NULL;
+       msg.bodyval = 0;
+       limLog(pMac, LOGE,
+                 FL("Heartbeat failure from Riva\n"));
+       if ((statusCode = limPostMsgApi(pMac, &msg)) != eSIR_SUCCESS)
+          limLog(pMac, LOGE,
+                 FL("posting message %X to LIM failed, reason=%d\n"),
+                 msg.type, statusCode);
+    }
+}
 #endif

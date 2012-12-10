@@ -59,6 +59,7 @@
 #include "limIbssPeerMgmt.h"
 #include "schApi.h"
 #include "limSession.h"
+#include "limSendMessages.h"
 
 #if defined WLAN_FEATURE_VOWIFI
 #include "rrmApi.h"
@@ -1829,8 +1830,22 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 
             break;
             #endif //TO SUPPORT BT-AMP
-
-            limHandleHeartBeatTimeout(pMac);
+            if (limIsSystemInScanState(pMac))
+            {
+                // System is in DFS (Learn) mode
+                // Defer processsing this message
+                if (limDeferMsg(pMac, limMsg) != TX_SUCCESS)
+                {
+                    PELOGE(limLog(pMac, LOGE, FL("Unable to Defer message(0x%X) limSmeState %d (prev sme state %d) sysRole %d mlm state %d (prev mlm state %d)\n"),
+                        limMsg->type, pMac->lim.gLimSmeState,  pMac->lim.gLimPrevSmeState,
+                        pMac->lim.gLimSystemRole,  pMac->lim.gLimMlmState,  pMac->lim.gLimPrevMlmState);)
+                    limLogSessionStates(pMac);
+                }
+            }
+            else
+            {
+                 limHandleHeartBeatTimeout(pMac);
+            }            
             break;
            
         case SIR_LIM_PROBE_HB_FAILURE_TIMEOUT:
@@ -2151,7 +2166,23 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         pmmProcessMessage(pMac, limMsg);
         break;
 #endif // WLAN_FEATURE_GTK_OFFLOAD
-
+    case eWNI_SME_SET_BCN_FILTER_REQ:
+        {
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+            tpPESession     psessionEntry;
+            tANI_U8 sessionId = (tANI_U8)limMsg->bodyval ;
+            psessionEntry = &pMac->lim.gpSession[sessionId];
+            if(psessionEntry != NULL && IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)
+            {
+               // sending beacon filtering information down to HAL
+               if (limSendBeaconFilterInfo(pMac, psessionEntry) != eSIR_SUCCESS)
+               {
+                  limLog(pMac, LOGE, FL("Fail to send Beacon Filter Info \n"));
+               }
+            }
+#endif
+        }
+        break;
     default:
         vos_mem_free((v_VOID_t*)limMsg->bodyptr);
         limMsg->bodyptr = NULL;

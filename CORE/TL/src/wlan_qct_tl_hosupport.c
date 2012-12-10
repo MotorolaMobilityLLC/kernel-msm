@@ -1140,20 +1140,24 @@ VOS_STATUS WLANTL_HSHandleRXFrame
       TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"Get RSSI Fail"));
       return status;
    }
-
-   /* If any threshold is not registerd, DO NOTHING! */
-   if(0 == tlCtxt->hoSupport.currentHOState.numThreshold)
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+   if(!IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)
+#endif
    {
-      TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"There is no thresholds pass"));
-   }
-   else
-   {
-      /* Handle current RSSI value, region, notification, etc */
-      status = WLANTL_HSHandleRSSIChange(pAdapter, currentAvgRSSI);
-      if(!VOS_IS_STATUS_SUCCESS(status))
+      /* If any threshold is not registerd, DO NOTHING! */
+      if(0 == tlCtxt->hoSupport.currentHOState.numThreshold)
       {
-         TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Handle new RSSI fail"));
-         return status;
+         TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"There is no thresholds pass"));
+      }
+      else
+      {
+         /* Handle current RSSI value, region, notification, etc */
+         status = WLANTL_HSHandleRSSIChange(pAdapter, currentAvgRSSI);
+         if(!VOS_IS_STATUS_SUCCESS(status))
+         {
+            TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Handle new RSSI fail"));
+            return status;
+         }
       }
    }
 
@@ -1420,7 +1424,7 @@ VOS_STATUS WLANTL_HSRegRSSIIndicationCB
       WLANTL_HSSerializeTlIndication(pAdapter, WLANTL_HO_THRESHOLD_UP, usrCtxt, crossCBFunction);
    }
 
-   if(VOS_TRUE == tlCtxt->isBMPS)
+   if((VOS_TRUE == tlCtxt->isBMPS) || (IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
    {
       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"Register into FW, now BMPS"));
       /* this function holds the lock across a downstream WDA function call, this is violates some lock
@@ -1578,7 +1582,7 @@ VOS_STATUS WLANTL_HSDeregRSSIIndicationCB
    /*Reset the FW notification*/
    tlCtxt->hoSupport.currentHOState.fwNotification=0;
 
-   if(VOS_TRUE == tlCtxt->isBMPS)
+   if((VOS_TRUE == tlCtxt->isBMPS) || (IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
    {
       TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"Register into FW, now BMPS"));
        /* this function holds the lock across a downstream WDA function call, this is violates some lock

@@ -574,7 +574,8 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
             {
                 if( (pMac->lim.gpSession[sessionId].valid )&&
                     (eLIM_MLM_LINK_ESTABLISHED_STATE == pMac->lim.gpSession[sessionId].limMlmState) &&
-                    ( pMac->pmm.gPmmState != ePMM_STATE_BMPS_SLEEP))
+                    ( pMac->pmm.gPmmState != ePMM_STATE_BMPS_SLEEP) &&
+                    (!IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
                 {
                     limReactivateHeartBeatTimer(pMac, &pMac->lim.gpSession[sessionId]);
                 }
