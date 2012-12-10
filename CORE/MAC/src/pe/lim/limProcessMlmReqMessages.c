@@ -1852,6 +1852,8 @@ static void
 limProcessMlmScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 {
     tLimMlmScanCnf       mlmScanCnf;
+    tANI_U8 i = 0;
+    tANI_U32 val = 0;
 
     if (pMac->lim.gLimSystemInScanLearnMode)
     {
@@ -1888,11 +1890,39 @@ limProcessMlmScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         pMac->lim.gLimSystemInScanLearnMode = 1;
 
 #ifdef WLAN_FEATURE_P2P
-        /* Use min + max channel time to calculate the total duration of scan.
-         * Adding an overhead of 5ms to account for the scan messaging delays */
-        pMac->lim.gTotalScanDuration = 
-                    ((pMac->lim.gpLimMlmScanReq->minChannelTime + pMac->lim.gpLimMlmScanReq->maxChannelTime)*
-                    pMac->lim.gpLimMlmScanReq->channelList.numChannels) + 5;
+        /* temporary fix to handle case where NOA duration calculation is incorrect
+         * for scanning on DFS channels */
+
+        pMac->lim.gTotalScanDuration = 0;
+
+        if (wlan_cfgGetInt(pMac, WNI_CFG_PASSIVE_MAXIMUM_CHANNEL_TIME, &val) != eSIR_SUCCESS)
+        {
+            /*
+             * Could not get max channel value
+             * from CFG. Log error.
+             */
+            limLog(pMac, LOGP, FL("could not retrieve passive max channel value\n"));
+
+            /* use a default value of 110ms */
+            val = 110;
+        }
+
+        for (i = 0; i < pMac->lim.gpLimMlmScanReq->channelList.numChannels; i++) {
+            tANI_U8 channelNum = pMac->lim.gpLimMlmScanReq->channelList.channelNumber[i];
+
+            if (limActiveScanAllowed(pMac, channelNum)) {
+                /* Use min + max channel time to calculate the total duration of scan */
+                pMac->lim.gTotalScanDuration += pMac->lim.gpLimMlmScanReq->minChannelTime + pMac->lim.gpLimMlmScanReq->maxChannelTime;
+            } else {
+                /* using the value from WNI_CFG_PASSIVE_MINIMUM_CHANNEL_TIME as is done in
+                 * void limContinuePostChannelScan(tpAniSirGlobal pMac)
+                 */
+                pMac->lim.gTotalScanDuration += val;
+            }
+        }
+
+        /* Adding an overhead of 5ms to account for the scan messaging delays */
+        pMac->lim.gTotalScanDuration += 5;
 #endif
         limSetScanMode(pMac);
     }
