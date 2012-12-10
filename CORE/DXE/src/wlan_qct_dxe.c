@@ -3794,7 +3794,7 @@ void dxeTXReSyncDesc
                if(nextDescReg != channelEntry->headCtrlBlk->linkedDescPhyAddr)
                {
                   HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
-                           "TX Async with not completed transfered frames, next descriptior must be head");
+                           "TX Async with not completed transferred frames, next descriptor must be head");
                   dxeChannelMonitor("!!! TX Async !!!", channelEntry);
                   dxeChannelRegisterDump(channelEntry, "!!! TX Async !!!");
                   wpalWriteRegister(channelEntry->channelRegister.chDXEDesclRegAddr,
@@ -4461,7 +4461,7 @@ wpt_status WLANDXE_TxFrame
          }
          break;
 
-      /* TX complete interrupt will be activated n number of frames transfered */
+      /* TX complete interrupt will be activated n number of frames transferred */
       case WLANDXE_TX_COMP_INT_PER_K_FRAMES:
          if(channel == WDTS_CHANNEL_TX_LOW_PRI)
          {

@@ -2638,7 +2638,7 @@ tMgmtFrmDropReason limIsPktCandidateForDrop(tpAniSirGlobal pMac, tANI_U8 *pRxPac
     {
         if(pMac->pmm.inMissedBeaconScenario)
         {
-           PELOGE(limLog(pMac, LOGE, FL("Do not drop beacon and probe response - Missed beacon sceanrio"));)
+           PELOGE(limLog(pMac, LOGE, FL("Do not drop beacon and probe response - Missed beacon scenario"));)
            return eMGMT_DROP_NO_DROP;
         }
         if (limIsSystemInScanState(pMac))
