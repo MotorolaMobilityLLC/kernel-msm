@@ -95,6 +95,45 @@ static int mmi_rpm_regmap[RPM_VREG_ID_PM8921_MAX] __initdata = {
 	 [0 ... RPM_VREG_ID_PM8921_MAX - 1] = -1
 };
 
+static struct regulator_init_data * __init
+mmi_pm8921_regmap_lookup(u32 regulator_id)
+{
+	int i;
+	const char *regulator_name = NULL;
+	/* maps mmi devtree schema's ids to regulator names */
+	static const struct {
+		int reg_id;
+		const char *reg_name;
+	} mmi_pm8921_reg_mapping[] = {
+		[0] = {0x00000017, "8921_l26"},
+		[1] = {0x00000018, "8921_l27"},
+		[2] = {0x00000019, "8921_l28"},
+		[3] = {0x0000001A, "8921_l29"},
+		[4] = {0x0000002A, "8921_usb_otg"},
+		[5] = {0x0000002B, "8921_hdmi_mvs"},
+	};
+
+	for (i = 0; i < sizeof(mmi_pm8921_reg_mapping)/
+			sizeof(mmi_pm8921_reg_mapping[0]); i++)
+		if (mmi_pm8921_reg_mapping[i].reg_id == regulator_id) {
+			regulator_name = mmi_pm8921_reg_mapping[i].reg_name;
+			break;
+		}
+
+	if (!regulator_name)
+		return NULL;
+
+	for (i = 0; i < msm_pm8921_regulator_pdata_len; i++) {
+		struct regulator_init_data *init_data;
+		init_data = &msm_pm8921_regulator_pdata[i].init_data;
+		if (!strcmp(init_data->constraints.name,
+			regulator_name))
+			return init_data;
+	}
+
+	return NULL;
+}
+
 static void __init mmi_reg_map_initialize(
 	struct rpm_regulator_init_data reg_init_data[],
 	size_t reg_init_size)
@@ -128,7 +167,7 @@ mmi_rpm_regmap_lookup(u32 regulator_id)
 		else
 			rpm_data = &msm_rpm_regulator_init_data[regulator_ndx];
 	}
-	return &rpm_data->init_data;
+	return rpm_data ? &rpm_data->init_data : NULL;
 }
 
 static void __init dt_regulator_init(struct device_node *reg_parent_node,
@@ -151,8 +190,8 @@ static void __init dt_regulator_init(struct device_node *reg_parent_node,
 
 		init_data = (*lookup)(reg_id);
 		if (!init_data) {
-			pr_err("%s: invalid regulator for id = %d\n",
-			       __func__, reg_id);
+			pr_err("%s: invalid regulator for id = %x\n",
+			       __func__, regulator_id);
 			continue;
 		}
 
@@ -203,8 +242,6 @@ void __init mmi_regulator_init(struct msm8960_oem_init_ptrs *self)
 	struct device_node *reg_chip_node;
 	u32 device_id;
 
-	platform_device_register(&mmi_device_ext_5v_vreg);
-
 	reg_parent_node = of_find_node_by_path("/System@0/Regulators@0");
 	if (!reg_parent_node)
 		return;
@@ -224,8 +261,11 @@ void __init mmi_regulator_init(struct msm8960_oem_init_ptrs *self)
 			dt_regulator_init(reg_chip_node,
 				mmi_gpio_regmap_lookup);
 			break;
-		case QUALCOMM_SAW_REGULATOR:
 		case QUALCOMM_PM8921_REGULATOR:
+			dt_regulator_init(reg_chip_node,
+				mmi_pm8921_regmap_lookup);
+			break;
+		case QUALCOMM_SAW_REGULATOR:
 		default:
 			pr_err("%s ignoring unsupported regulator " \
 				"chip\n", __func__);
@@ -234,4 +274,7 @@ void __init mmi_regulator_init(struct msm8960_oem_init_ptrs *self)
 	}
 
 	of_node_put(reg_parent_node);
+
+	/* register device after device tree is handled */
+	platform_device_register(&mmi_device_ext_5v_vreg);
 }
