@@ -11,6 +11,18 @@
  */
 
 / {
+	qcom,msm-pm8921-gpios {
+		compatible = "qcom,msm-pm8xxx-gpios";
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+
+	qcom,msm-pm8921-mpps {
+		compatible = "qcom,msm-pm8xxx-mpps";
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+
 	qcom,msm-pm8921-regulators {
 		compatible = "qcom,msm-pm8921-regulators";
 
