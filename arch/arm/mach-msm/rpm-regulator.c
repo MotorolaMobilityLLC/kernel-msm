@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,6 +19,7 @@
 #include <linux/err.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/of.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/string.h>
@@ -1642,8 +1644,40 @@ static struct vreg *rpm_vreg_get_vreg(int id)
 	return vreg;
 }
 
+#ifdef CONFIG_OF
+static struct device_node __devinit *
+rpm_vreg_of_init(struct rpm_regulator_init_data *pdata, struct vreg *vreg)
+{
+	struct device_node *np;
+	struct device_node *reg = NULL;
+	const char *name;
+
+	if (config->is_real_id(pdata->id))
+		name = vreg->rdesc.name;
+	else
+		name = vreg->rdesc_pc.name;
+
+	np = of_find_compatible_node(NULL, NULL, "qcom,msm-rpm-regulators");
+
+	for_each_child_of_node(np, reg)
+		if (of_node_cmp(reg->name, name) == 0)
+			break;
+
+	of_node_put(np);
+
+	return reg;
+}
+#else
+static inline struct device_node *
+rpm_vreg_of_init(struct rpm_regulator_init_data *pdata, struct vreg *vreg)
+{
+	return NULL;
+}
+#endif
+
+
 static int __devinit
-rpm_vreg_init_regulator(const struct rpm_regulator_init_data *pdata,
+rpm_vreg_init_regulator(struct rpm_regulator_init_data *pdata,
 			struct device *dev)
 {
 	struct regulator_desc *rdesc = NULL;
@@ -1652,6 +1686,7 @@ rpm_vreg_init_regulator(const struct rpm_regulator_init_data *pdata,
 	unsigned pin_ctrl;
 	int pin_fn;
 	int rc = 0;
+	struct device_node *np;
 
 	if (!pdata) {
 		pr_err("platform data missing\n");
@@ -1663,6 +1698,8 @@ rpm_vreg_init_regulator(const struct rpm_regulator_init_data *pdata,
 		pr_err("invalid regulator id: %d\n", pdata->id);
 		return -ENODEV;
 	}
+
+	np = rpm_vreg_of_init(pdata, vreg);
 
 	if (config->is_real_id(pdata->id))
 		rdesc = &vreg->rdesc;
@@ -1748,7 +1785,7 @@ rpm_vreg_init_regulator(const struct rpm_regulator_init_data *pdata,
 	if (rc)
 		goto bail;
 
-	rdev = regulator_register(rdesc, dev, &(pdata->init_data), vreg, NULL);
+	rdev = regulator_register(rdesc, dev, &(pdata->init_data), vreg, np);
 	if (IS_ERR(rdev)) {
 		rc = PTR_ERR(rdev);
 		pr_err("regulator_register failed: %s, rc=%d\n",
