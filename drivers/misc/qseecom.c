@@ -595,6 +595,31 @@ static int __qseecom_check_app_exists(struct qseecom_check_app_ireq req)
 	}
 }
 
+static void print_hab_fail_codes(void)
+{
+	struct {
+		int mot_cmd;
+		int parm1;
+		int parm2;
+		int parm3;
+	} my_cmd;
+
+	u32 *shared_mem;
+
+	shared_mem = kmalloc(16, GFP_KERNEL);
+	if (shared_mem == NULL)
+		return;
+	my_cmd.mot_cmd = 9;
+	my_cmd.parm1 = 16;
+	my_cmd.parm2 = virt_to_phys(shared_mem);
+
+	scm_call(254, 1, &my_cmd, sizeof(my_cmd), NULL, 0);
+
+	pr_err("HAB fail codes: 0x%x 0x%x 0x%x 0x%x\n",
+		shared_mem[0], shared_mem[1], shared_mem[2], shared_mem[3]);
+	kfree(shared_mem);
+}
+
 static int qseecom_load_app(struct qseecom_dev_handle *data, void __user *argp)
 {
 	struct qseecom_registered_app_list *entry = NULL;
@@ -702,6 +727,7 @@ static int qseecom_load_app(struct qseecom_dev_handle *data, void __user *argp)
 		}
 
 		if (resp.result != QSEOS_RESULT_SUCCESS) {
+			print_hab_fail_codes();
 			pr_err("scm_call failed resp.result unknown, %d\n",
 				resp.result);
 			if (!IS_ERR_OR_NULL(ihandle))
