@@ -382,6 +382,12 @@ static int __devinit arizona_switch_probe(struct platform_device *pdev)
 		}
 	}
 
+	if (arizona->pdata.micd_bias_start_time)
+		regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_1,
+				   ARIZONA_MICD_BIAS_STARTTIME_MASK,
+				   arizona->pdata.micd_bias_start_time
+				   << ARIZONA_MICD_BIAS_STARTTIME_SHIFT);
+
 	arizona_switch_set_mode(info, 0);
 
 	info->input = input_allocate_device();
@@ -439,9 +445,7 @@ static int __devinit arizona_switch_probe(struct platform_device *pdev)
 	}
 
 	regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_1,
-			   ARIZONA_MICD_BIAS_STARTTIME_MASK |
 			   ARIZONA_MICD_RATE_MASK,
-			   7 << ARIZONA_MICD_BIAS_STARTTIME_SHIFT |
 			   8 << ARIZONA_MICD_RATE_SHIFT);
 
 	arizona_clk32k_enable(arizona);
