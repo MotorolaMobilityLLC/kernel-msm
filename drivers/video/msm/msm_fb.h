@@ -211,8 +211,7 @@ struct msm_fb_data_type {
 };
 struct msm_fb_backup_type {
 	struct fb_info info;
-	struct fb_var_screeninfo var;
-	struct msm_fb_data_type mfd;
+	struct mdp_display_commit disp_commit;
 };
 
 struct dentry *msm_fb_get_debugfs_root(void);
