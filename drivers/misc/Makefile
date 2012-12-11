@@ -57,6 +57,7 @@ obj-$(CONFIG_SENSORS_AK8975)	+= akm8975.o
 obj-$(CONFIG_SENSORS_MSP430)	+= msp430.o
 obj-$(CONFIG_WL127X_RFKILL)	+= wl127x-rfkill.o
 obj-$(CONFIG_APANIC)		+= apanic.o
+obj-$(CONFIG_APANIC_MMC)	+= apanic_mmc.o
 obj-$(CONFIG_SENSORS_AK8975)	+= akm8975.o
 obj-$(CONFIG_TSIF) += msm_tsif.o
 obj-$(CONFIG_VIB_TIMED)		+= vib-timed.o
