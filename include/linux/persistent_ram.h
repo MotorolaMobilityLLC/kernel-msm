@@ -79,5 +79,13 @@ void *persistent_ram_old(struct persistent_ram_zone *prz);
 void persistent_ram_free_old(struct persistent_ram_zone *prz);
 ssize_t persistent_ram_ecc_string(struct persistent_ram_zone *prz,
 	char *str, size_t len);
+#ifdef CONFIG_ANDROID_PERSISTENT_RAM_EXT_BUF
+int __init persistent_ram_ext_oldbuf_print(const char *fmt, ...);
+void __init persistent_ram_ext_oldbuf_merge(struct persistent_ram_zone *prz);
+#else
+static inline void persistent_ram_ext_oldbuf_print(const char *fmt, ...) { };
+static inline void persistent_ram_ext_oldbuf_merge(
+			struct persistent_ram_zone *prz) { };
+#endif
 
 #endif
