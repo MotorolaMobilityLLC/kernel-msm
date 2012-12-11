@@ -338,3 +338,7 @@ struct platform_device mmi_device_ext_5v_vreg __devinitdata = {
 		.platform_data = &msm_gpio_regulator_pdata[GPIO_VREG_ID_EXT_5V],
 	},
 };
+
+struct platform_device mmi_alsa_to_h2w_hs_device = {
+	.name	= "alsa-to-h2w",
+};

@@ -171,6 +171,7 @@ static struct platform_device *mmi_devices[] __initdata = {
 	&mmi_ram_console_device,
 #endif
 	&mmi_pm8xxx_rgb_leds_device,
+	&mmi_alsa_to_h2w_hs_device,
 };
 
 static void __init mmi_factory_register(void)
