@@ -46,6 +46,16 @@ config ANDROID_RAM_CONSOLE
 	select ANDROID_PERSISTENT_RAM
 	default n
 
+config ANDROID_PERSISTENT_RAM_EXT_BUF
+	bool "Allow printing to old persistent ram"
+	default n
+	depends on ANDROID_RAM_CONSOLE && ANDROID_PERSISTENT_RAM
+	help
+	  Adding function which can print to old persistent ram. It accepts
+	  similar parameters as printk.
+	  Content printed will be visible in last_kmsg.
+	  If unsure, say N.
+
 config PERSISTENT_TRACER
 	bool "Persistent function tracer"
 	depends on HAVE_FUNCTION_TRACER
