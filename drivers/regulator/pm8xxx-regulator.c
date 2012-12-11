@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012, Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,6 +23,7 @@
 #include <linux/bitops.h>
 #include <linux/mfd/pm8xxx/core.h>
 #include <linux/mfd/pm8xxx/regulator.h>
+#include <linux/of.h>
 
 /* Debug Flag Definitions */
 enum {
@@ -3125,6 +3127,39 @@ static int pm8xxx_init_boost(struct pm8xxx_vreg *vreg)
 	return rc;
 }
 
+#ifdef CONFIG_OF
+static struct device_node __devinit *
+pm8xxx_vreg_of_init(struct pm8xxx_regulator_core_platform_data *core,
+		    struct pm8xxx_vreg *vreg)
+{
+	struct device_node *np;
+	struct device_node *reg = NULL;
+	const char *name;
+
+	if (core->is_pin_controlled)
+		name = vreg->rdesc_pc.name;
+	else
+		name = vreg->rdesc.name;
+
+	np = of_find_compatible_node(NULL, NULL, "qcom,msm-pm8921-regulators");
+
+	for_each_child_of_node(np, reg)
+		if (of_node_cmp(reg->name, name) == 0)
+			break;
+
+	of_node_put(np);
+
+	return reg;
+}
+#else
+static inline struct device_node *
+pm8xxx_vreg_of_init(struct pm8xxx_regulator_core_platform_data *core,
+		    struct pm8xxx_vreg *vreg)
+{
+	return NULL;
+}
+#endif
+
 static int __devinit pm8xxx_vreg_probe(struct platform_device *pdev)
 {
 	struct pm8xxx_regulator_core_platform_data *core_data;
@@ -3134,6 +3169,7 @@ static int __devinit pm8xxx_vreg_probe(struct platform_device *pdev)
 	struct pm8xxx_vreg *vreg;
 	unsigned pin_ctrl;
 	int rc = 0;
+	struct device_node *np;
 
 	if (pdev == NULL) {
 		pr_err("no platform device specified\n");
@@ -3174,6 +3210,8 @@ static int __devinit pm8xxx_vreg_probe(struct platform_device *pdev)
 			vreg->rdesc.name);
 		return -EINVAL;
 	}
+
+	np = pm8xxx_vreg_of_init(core_data, vreg);
 
 	if (core_data->is_pin_controlled)
 		rdesc = &vreg->rdesc_pc;
@@ -3270,7 +3308,7 @@ static int __devinit pm8xxx_vreg_probe(struct platform_device *pdev)
 
 	if (!core_data->is_pin_controlled) {
 		vreg->rdev = regulator_register(rdesc, &pdev->dev,
-				&(pdata->init_data), vreg, NULL);
+				&(pdata->init_data), vreg, np);
 		if (IS_ERR(vreg->rdev)) {
 			rc = PTR_ERR(vreg->rdev);
 			vreg->rdev = NULL;
@@ -3279,7 +3317,7 @@ static int __devinit pm8xxx_vreg_probe(struct platform_device *pdev)
 		}
 	} else {
 		vreg->rdev_pc = regulator_register(rdesc, &pdev->dev,
-				&(pdata->init_data), vreg, NULL);
+				&(pdata->init_data), vreg, np);
 		if (IS_ERR(vreg->rdev_pc)) {
 			rc = PTR_ERR(vreg->rdev_pc);
 			vreg->rdev_pc = NULL;
