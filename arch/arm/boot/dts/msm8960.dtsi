@@ -12,6 +12,7 @@
 
 /include/ "msm8960-pinmux.dtsi"
 /include/ "msm8960-rpm-regulators.dtsi"
+/include/ "msm-pm8921.dtsi"
 
 / {
 	model = "Qualcomm MSM 8960";
