@@ -30,4 +30,5 @@ extern struct platform_device mmi_pm8xxx_rgb_leds_device;
 extern struct persistent_ram mmi_ram_console_pram;
 extern struct platform_device mmi_factory_device;
 extern struct platform_device mmi_device_ext_5v_vreg;
+extern struct platform_device mmi_alsa_to_h2w_hs_device;
 #endif
