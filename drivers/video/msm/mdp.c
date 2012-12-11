@@ -2417,7 +2417,6 @@ static int mdp_probe(struct platform_device *pdev)
 	struct mipi_panel_info *mipi;
 #endif
 	static int contSplash_update_done;
-	unsigned int mdp_r = 0;
 
 	if ((pdev->id == 0) && (pdev->num_resources > 0)) {
 		mdp_init_pdev = pdev;
@@ -2439,14 +2438,6 @@ static int mdp_probe(struct platform_device *pdev)
 		}
 
 		mdp_rev = mdp_pdata->mdp_rev;
-		if (mdp_rev == MDP_REV_42) {
-			mdp_r = inpdw(MDP_BASE + 0x0);
-			mdp_r = ((mdp_r & 0x30000) >> 16);
-			if (mdp_r == 3) {
-				mdp_rev = MDP_REV_43;
-				mdp_pdata->mdp_rev = MDP_REV_43;
-			}
-		}
 
 		mdp_iommu_split_domain = mdp_pdata->mdp_iommu_split_domain;
 
