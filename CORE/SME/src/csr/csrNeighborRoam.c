@@ -81,9 +81,11 @@ static void csrNeighborRoamResetPreauthControlInfo(tpAniSirGlobal pMac);
 static void csrNeighborRoamDeregAllRssiIndication(tpAniSirGlobal pMac);
 
 VOS_STATUS csrNeighborRoamNeighborLookupUPCallback (v_PVOID_t pAdapter, v_U8_t rssiNotification,
-                                                                               v_PVOID_t pUserCtxt);
+                                                                               v_PVOID_t pUserCtxt,
+                                                                               v_S7_t avgRssi);
 VOS_STATUS csrNeighborRoamNeighborLookupDOWNCallback (v_PVOID_t pAdapter, v_U8_t rssiNotification,
-                                                                               v_PVOID_t pUserCtxt);
+                                                                               v_PVOID_t pUserCtxt,
+                                                                               v_S7_t avgRssi);
 void csrNeighborRoamRRMNeighborReportResult(void *context, VOS_STATUS vosStatus);
 eHalStatus csrRoamCopyConnectedProfile(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamProfile *pDstProfile );
 
@@ -299,14 +301,16 @@ static void csrNeighborRoamTriggerHandoff(tpAniSirGlobal pMac,
 ---------------------------------------------------------------------------*/
 VOS_STATUS csrNeighborRoamReassocIndCallback(v_PVOID_t pAdapter, 
                                v_U8_t trafficStatus, 
-                               v_PVOID_t pUserCtxt)
+                               v_PVOID_t pUserCtxt,
+                               v_S7_t   avgRssi)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( pUserCtxt );
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;   
  
-    NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Deregistering DOWN event reassoc callback with TL. RSSI = %d"), pNeighborRoamInfo->cfgParams.neighborReassocThreshold * (-1));
-
+    NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Deregistering DOWN event reassoc callback with TL. Threshold RSSI = %d Reported RSSI = %d"), 
+                         pNeighborRoamInfo->cfgParams.neighborReassocThreshold * (-1),
+                         avgRssi);
 
     vosStatus = WLANTL_DeregRSSIIndicationCB(pMac->roam.gVosContext, (v_S7_t)pNeighborRoamInfo->cfgParams.neighborReassocThreshold * (-1),
                                                         WLANTL_HO_THRESHOLD_DOWN, 
@@ -319,8 +323,8 @@ VOS_STATUS csrNeighborRoamReassocIndCallback(v_PVOID_t pAdapter,
         smsLog(pMac, LOGW, FL(" Couldn't deregister csrNeighborRoamReassocIndCallback with TL: Status = %d\n"), vosStatus);
     }
     
-    NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Rcvd reassoc notification-deregister UP indication. RSSI = %d"),
-            NEIGHBOR_ROAM_LOOKUP_UP_THRESHOLD * (-1));
+    NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Rcvd reassoc notification-deregister UP indication. Threshold RSSI = %d Reported RSSI = %d"),
+            NEIGHBOR_ROAM_LOOKUP_UP_THRESHOLD * (-1), avgRssi);
     vosStatus = WLANTL_DeregRSSIIndicationCB(pMac->roam.gVosContext,
                         (v_S7_t)NEIGHBOR_ROAM_LOOKUP_UP_THRESHOLD * (-1),
                         WLANTL_HO_THRESHOLD_UP,
@@ -2784,13 +2788,16 @@ VOS_STATUS  csrNeighborRoamNeighborLookupDownEvent(tpAniSirGlobal pMac)
 
 ---------------------------------------------------------------------------*/
 VOS_STATUS csrNeighborRoamNeighborLookupUPCallback (v_PVOID_t pAdapter, v_U8_t rssiNotification,
-                                                                               v_PVOID_t pUserCtxt)
+                                                                               v_PVOID_t pUserCtxt,
+                                                                               v_S7_t avgRssi)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( pUserCtxt );
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     VOS_STATUS  vosStatus = eHAL_STATUS_SUCCESS;
 
-    NEIGHBOR_ROAM_DEBUG(pMac, LOGW, FL("Neighbor Lookup UP indication callback called with notification %d"), rssiNotification);
+    NEIGHBOR_ROAM_DEBUG(pMac, LOGW, FL("Neighbor Lookup UP indication callback called with notification %d Reported RSSI = %d"),
+                                       rssiNotification,
+                                       avgRssi);
 
     if(!csrIsConnStateConnectedInfra(pMac, pNeighborRoamInfo->csrSessionId))
     {
@@ -2818,13 +2825,16 @@ VOS_STATUS csrNeighborRoamNeighborLookupUPCallback (v_PVOID_t pAdapter, v_U8_t r
 
 ---------------------------------------------------------------------------*/
 VOS_STATUS csrNeighborRoamNeighborLookupDOWNCallback (v_PVOID_t pAdapter, v_U8_t rssiNotification,
-                                                                               v_PVOID_t pUserCtxt)
+                                                                               v_PVOID_t pUserCtxt,
+                                                                               v_S7_t avgRssi)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( pUserCtxt );
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     VOS_STATUS  vosStatus = eHAL_STATUS_SUCCESS;
 
-    NEIGHBOR_ROAM_DEBUG(pMac, LOGW, FL("Neighbor Lookup DOWN indication callback called with notification %d"), rssiNotification);
+    NEIGHBOR_ROAM_DEBUG(pMac, LOGW, FL("Neighbor Lookup DOWN indication callback called with notification %d Reported RSSI = %d"),
+                               rssiNotification,
+                               avgRssi);
 
     if(!csrIsConnStateConnectedInfra(pMac, pNeighborRoamInfo->csrSessionId))
     {

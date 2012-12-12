@@ -784,7 +784,8 @@ typedef VOS_STATUS (*WLANTL_RSSICrossThresholdCBType)
 (
    v_PVOID_t                       pAdapter,
    v_U8_t                          rssiNotification,
-   v_PVOID_t                       pUserCtxt
+   v_PVOID_t                       pUserCtxt,
+   v_S7_t                          avgRssi
 );
 
 typedef struct
@@ -794,6 +795,7 @@ typedef struct
     v_U16_t                         msgLen;  // length of the entire request
     v_U8_t                          sessionId; //sme Session Id
     v_U8_t                          rssiNotification;    
+    v_U8_t                          avgRssi;
     v_PVOID_t                       tlCallback;
     v_PVOID_t                       pAdapter;
     v_PVOID_t                       pUserCtxt;
