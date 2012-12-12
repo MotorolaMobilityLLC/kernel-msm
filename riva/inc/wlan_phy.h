@@ -211,6 +211,8 @@ typedef tANI_U32 eGainSteps;
 //[RY] new for PRIMA
 #define DPD_RESPONSE_SIZE 128
 typedef PACKED_PRE struct PACKED_POST {
+    tANI_U8  dpdCalFailCnt;                     //Count for number of times DPD cal failed.
+    tANI_U8  dpdCalSuccessCnt;                  //Count for number of times DPD cal passed.
     tANI_S16 dpd_threshold[DPD_RESPONSE_SIZE];
     tANI_S16 dpd_aoffset[DPD_RESPONSE_SIZE];
     tANI_S16 dpd_again[DPD_RESPONSE_SIZE];
