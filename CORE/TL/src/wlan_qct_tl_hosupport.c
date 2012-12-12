@@ -797,6 +797,7 @@ VOS_STATUS WLANTL_HSBMPSRSSIRegionChangedNotification
    v_U32_t                         isSet;
    v_U8_t                          idx, sIdx;
 
+
    if(NULL == tlCtxt)
    {
       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Invalid TL handle"));
@@ -894,10 +895,11 @@ VOS_STATUS WLANTL_HSBMPSRSSIRegionChangedNotification
                {
                   cbFunction = hoSupport->registeredInd[idx].crossCBFunction[sIdx];
                   usrCtxt = hoSupport->registeredInd[idx].usrCtxt[sIdx];
+
                   evtType = WLANTL_HO_THRESHOLD_DOWN;
                   TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"Trigger Event %d, region index %d", hoSupport->registeredInd[idx].triggerEvent[sIdx], idx));
                   currentHO->regionNumber = newRegionNumber;
-                  status = cbFunction(pAdapter, evtType, usrCtxt);
+                  status = cbFunction(pAdapter, evtType, usrCtxt, pRSSINotification->avgRssi);
                }
             }
          }
@@ -918,10 +920,11 @@ VOS_STATUS WLANTL_HSBMPSRSSIRegionChangedNotification
                {
                   cbFunction = hoSupport->registeredInd[idx].crossCBFunction[sIdx];
                   usrCtxt = hoSupport->registeredInd[idx].usrCtxt[sIdx];
+
                   evtType = WLANTL_HO_THRESHOLD_UP;
                   TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"Trigger Event %d, region index %d", hoSupport->registeredInd[idx].triggerEvent[sIdx], idx));
                   currentHO->regionNumber = newRegionNumber;
-                  status = cbFunction(pAdapter, evtType, usrCtxt);
+                  status = cbFunction(pAdapter, evtType, usrCtxt, pRSSINotification->avgRssi);
                }
             }
          }
@@ -1017,9 +1020,10 @@ VOS_STATUS WLANTL_HSHandleRSSIChange
                {
                   cbFunction = hoSupport->registeredInd[idx].crossCBFunction[sIdx];
                   usrCtxt = hoSupport->registeredInd[idx].usrCtxt[sIdx];
+
                   evtType = WLANTL_HO_THRESHOLD_DOWN;
                   TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Trigger Event %d, region index %d", hoSupport->registeredInd[idx].triggerEvent[sIdx], idx));
-                  status = WLANTL_HSSerializeTlIndication(pAdapter, evtType, usrCtxt, cbFunction);
+                  status = WLANTL_HSSerializeTlIndication(pAdapter, evtType, usrCtxt, cbFunction, currentRSSI);
                }
             }
          }
@@ -1039,9 +1043,10 @@ VOS_STATUS WLANTL_HSHandleRSSIChange
                {
                   cbFunction = hoSupport->registeredInd[idx - 1].crossCBFunction[sIdx];
                   usrCtxt = hoSupport->registeredInd[idx - 1].usrCtxt[sIdx];
+
                   evtType = WLANTL_HO_THRESHOLD_UP;
                   TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Trigger Event %d, region index %d", hoSupport->registeredInd[idx - 1].triggerEvent[sIdx], idx - 1));
-                  status = WLANTL_HSSerializeTlIndication(pAdapter, evtType, usrCtxt, cbFunction);
+                  status = WLANTL_HSSerializeTlIndication(pAdapter, evtType, usrCtxt, cbFunction, currentRSSI);
                }
             }
          }
@@ -1385,7 +1390,8 @@ VOS_STATUS WLANTL_HSRegRSSIIndicationCB
             if((WLANTL_HO_THRESHOLD_DOWN == triggerEvent) || (WLANTL_HO_THRESHOLD_CROSS == triggerEvent))
             {
                TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"Registered RSSI value larger than Current RSSI, and DOWN event, Send Notification"));
-               WLANTL_HSSerializeTlIndication(pAdapter, WLANTL_HO_THRESHOLD_DOWN, usrCtxt, crossCBFunction);
+               WLANTL_HSSerializeTlIndication(pAdapter, WLANTL_HO_THRESHOLD_DOWN, usrCtxt, crossCBFunction,
+                                              hoSupport->registeredInd[currentHO->regionNumber].rssiValue);
             }
          }
          else if((currentHO->regionNumber < (currentHO->numThreshold - 1)) &&
@@ -1414,14 +1420,14 @@ VOS_STATUS WLANTL_HSRegRSSIIndicationCB
       ((WLANTL_HO_THRESHOLD_DOWN == triggerEvent) || (WLANTL_HO_THRESHOLD_CROSS == triggerEvent)))
    {
       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"Registered RSSI value larger than Current RSSI, and DOWN event, Send Notification"));
-      WLANTL_HSSerializeTlIndication(pAdapter, WLANTL_HO_THRESHOLD_DOWN, usrCtxt, crossCBFunction);
+      WLANTL_HSSerializeTlIndication(pAdapter, WLANTL_HO_THRESHOLD_DOWN, usrCtxt, crossCBFunction, currentHO->historyRSSI);
    }
    else if((VOS_FALSE == tlCtxt->isBMPS) &&
            (rssiValue < currentHO->historyRSSI) && (0 != currentHO->historyRSSI) &&
            ((WLANTL_HO_THRESHOLD_UP == triggerEvent) || (WLANTL_HO_THRESHOLD_CROSS == triggerEvent)))
    {
       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"Registered RSSI value smaller than Current RSSI, and UP event, Send Notification"));
-      WLANTL_HSSerializeTlIndication(pAdapter, WLANTL_HO_THRESHOLD_UP, usrCtxt, crossCBFunction);
+      WLANTL_HSSerializeTlIndication(pAdapter, WLANTL_HO_THRESHOLD_UP, usrCtxt, crossCBFunction, currentHO->historyRSSI);
    }
 
    if((VOS_TRUE == tlCtxt->isBMPS) || (IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
@@ -1861,7 +1867,8 @@ VOS_STATUS WLANTL_HSSerializeTlIndication
    v_PVOID_t   pAdapter,
    v_U8_t      rssiNotification,
    v_PVOID_t   pUserCtxt,
-   WLANTL_RSSICrossThresholdCBType cbFunction
+   WLANTL_RSSICrossThresholdCBType cbFunction,
+   v_U8_t      avgRssi
 )
 {
    VOS_STATUS       status = VOS_STATUS_SUCCESS;
@@ -1881,6 +1888,7 @@ VOS_STATUS WLANTL_HSSerializeTlIndication
    pMsg->pAdapter = pAdapter;
    pMsg->pUserCtxt = pUserCtxt;
    pMsg->rssiNotification = rssiNotification;
+   pMsg->avgRssi = avgRssi;
    pMsg->tlCallback = cbFunction;
 
 

@@ -6670,7 +6670,6 @@ WDI_ProcessInitScanReq
 
   wpalMutexRelease(&pWDICtx->wptMutex);
 #endif
-
   if ((pwdiInitScanParams->wdiReqInfo.bUseNOA) && (!WDI_getFwWlanFeatCaps(P2P_GO_NOA_DECOUPLE_INIT_SCAN)))
   {
     /*This is temporary fix.
@@ -18184,6 +18183,8 @@ WDI_ProcessLowRSSIInd
      halRSSINotificationIndMsg.rssiNotificationParams.bRssiThres3PosCross;
   wdiInd.wdiIndicationData.wdiLowRSSIInfo.bRssiThres3NegCross =
      halRSSINotificationIndMsg.rssiNotificationParams.bRssiThres3NegCross;
+  wdiInd.wdiIndicationData.wdiLowRSSIInfo.avgRssi =
+     halRSSINotificationIndMsg.rssiNotificationParams.avgRssi;
 
   /*Notify UMAC*/
   pWDICtx->wdiLowLevelIndCB( &wdiInd, pWDICtx->pIndUserData );
