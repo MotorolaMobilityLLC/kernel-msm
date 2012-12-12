@@ -2635,7 +2635,6 @@ static VOS_STATUS hdd_string_to_u8_array( char *str, tANI_U8 *intArray, tANI_U8 
    }
    *len = 0;
 
-#ifdef VERSION_USING_STRPBRK
    while ( (s != NULL) && (*len < intArrayMaxLen) )
    {
       int val;
@@ -2650,24 +2649,6 @@ static VOS_STATUS hdd_string_to_u8_array( char *str, tANI_U8 *intArray, tANI_U8 
       if( s )
          s++;
    }
-#else
-   while( (*s != '\0')  && (*len < intArrayMaxLen) )
-   {
-      unsigned long val;
-      int rv;
-
-      rv = kstrtoul( s, 10, &val );
-      if (rv < 0)
-          return VOS_STATUS_E_INVAL;
-      if( val )
-      {
-         intArray[*len] = (tANI_U8) val;
-         *len += 1;
-      }
-      if( *s )
-         s++;
-   }
-#endif
 
    return VOS_STATUS_SUCCESS;
    

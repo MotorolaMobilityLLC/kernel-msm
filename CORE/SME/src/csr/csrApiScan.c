@@ -1857,11 +1857,20 @@ static void csrScanAddToOccupiedChannels(
 //pIes can not be NULL
 static void csrScanAddResult(tpAniSirGlobal pMac, tCsrScanResult *pResult, tDot11fBeaconIEs *pIes)
 {
+#ifdef FEATURE_WLAN_LFR 
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+#endif
+
     pResult->preferValue = csrGetBssPreferValue(pMac, (int)pResult->Result.BssDescriptor.rssi);
     pResult->capValue = csrGetBssCapValue(pMac, &pResult->Result.BssDescriptor, pIes);
     csrLLInsertTail( &pMac->scan.scanResultList, &pResult->Link, LL_ACCESS_LOCK );
 #ifdef FEATURE_WLAN_LFR
-    csrScanAddToOccupiedChannels(pMac, pResult, &pMac->scan.occupiedChannels, pIes);
+    if(0 == pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels)
+    {
+        /* Build the occupied channel list, only if "gNeighborScanChannelList" is 
+           NOT set in the cfg.ini file */
+        csrScanAddToOccupiedChannels(pMac, pResult, &pMac->scan.occupiedChannels, pIes);
+    }
 #endif
 }
 
@@ -6996,6 +7005,15 @@ void csrInitOccupiedChannelsList(tpAniSirGlobal pMac)
   tListElem *pEntry = NULL;
   tCsrScanResult *pBssDesc = NULL;
   tDot11fBeaconIEs *pIes = NULL;
+  tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+
+  if (0 != pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels)
+  {
+       smsLog(pMac, LOG1, FL("%s: Ini file contains neighbor scan channel list,"
+             " hence NO need to build occupied channel list (numChannels = %d)\n"),
+              __func__, pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels);
+      return;
+  }
 
   if (!csrNeighborRoamIsNewConnectedProfile(pMac))
   {
