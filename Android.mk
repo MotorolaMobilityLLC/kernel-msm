@@ -1,6 +1,7 @@
 # Android makefile for the WLAN WCNSS/Prima Module
 
 # Build/Package only in case of 8960 target
+ifeq ($(call is-board-platform,msm8960),true)
 
 LOCAL_PATH := $(call my-dir)
 
@@ -88,3 +89,5 @@ $(shell mkdir -p $(TARGET_OUT_ETC)/firmware/wlan/prima; \
         $(TARGET_OUT_ETC)/firmware/wlan/prima/WCNSS_qcom_cfg.ini)
 endif
 endif
+
+endif # 8960 target check
