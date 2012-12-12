@@ -66,7 +66,7 @@ sirBusyWaitIntern(void *pMacGlobal, tANI_U32 duration)
         NdisStallExecution((duration+999)/1000); // This routine takes the duration in uSecs.
 } // sirBusyWaitIntern()
 
-#endif // (WNI_POLARIS_FW_OS == SIR_WINDOWS)
+#endif // (ANI_OS_TYPE_WINDOWS)
 
 
 
