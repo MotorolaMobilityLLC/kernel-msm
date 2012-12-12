@@ -18,6 +18,7 @@
 #include <linux/linkage.h>
 #include <linux/threads.h>
 #include <asm/assembler.h>
+#include <asm/unwind.h>
 
 #include "idle.h"
 #include "idle-macros.S"
@@ -28,6 +29,7 @@
 #endif
 
 ENTRY(msm_arch_idle)
+ UNWIND(.fnstart	)
 #ifdef CONFIG_ARCH_MSM_KRAIT
 	mrc 	p15, 0, r0, c0, c0, 0
 	bic	r1, r0, #0xff
@@ -65,8 +67,11 @@ wfi_done:
 #endif
 	bx	lr
 #endif
+ UNWIND(.fnend		)
+ENDPROC(msm_arch_idle)
 
 ENTRY(msm_pm_collapse)
+ UNWIND(.fnstart	)
 #if defined(CONFIG_MSM_FIQ_SUPPORT)
 	cpsid   f
 #endif
@@ -170,8 +175,11 @@ skip:
 	ldmfd   r0, {r4-r14}		 /* restore registers */
 	mov     r0, #0                   /* return power collapse failed */
 	bx      lr
+ UNWIND(.fnend		)
+ENDPROC(msm_pm_collapse)
 
 ENTRY(msm_pm_collapse_exit)
+ UNWIND(.fnstart	)
 #if 0 /* serial debug */
 	mov     r0, #0x80000016
 	mcr     p15, 0, r0, c15, c2, 4
@@ -271,6 +279,8 @@ msm_pm_pa_to_va:
 	nop
 	nop
 1:	b       1b
+ UNWIND(.fnend		)
+ENDPROC(msm_pm_collapse_exit)
 
 ENTRY(msm_pm_boot_entry)
 	mrc     p15, 0, r0, c0, c0, 5    /* MPIDR                          */
@@ -284,11 +294,15 @@ ENTRY(msm_pm_boot_entry)
 
 	add     r1, r1, r0, LSL #2       /* locate boot vector for our cpu */
 	ldr     pc, [r1]                 /* jump                           */
+ENDPROC(msm_pm_boot_entry)
 
 ENTRY(msm_pm_set_l2_flush_flag)
+ UNWIND(.fnstart	)
 	ldr r1, =msm_pm_flush_l2_flag
 	str r0, [r1]
 	bx lr
+ UNWIND(.fnend		)
+ENDPROC(msm_pm_set_l2_flush_flag)
 
 	.data
 
