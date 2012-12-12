@@ -126,6 +126,23 @@
 #endif
 #elif defined(ANI_COMPILER_TYPE_RVCT)
 /* Nothing defined so far */
+
+/* 
+ * RIVA 1.2 and Pronto uses ARMCT5.1 compiler and it throws lot of warning when __align() is used in structure definitions. 
+ * __attribute__((aligned())) is GNU compiler attribute that is accepted by ARM compiler and resolves the warnings. 
+ */
+#if (__ARMCC_VERSION > 400000) 
+#define __ani_attr_packed
+#define __ani_attr_pre_packed                   __packed
+#define __ani_attr_aligned_2                    __attribute__((aligned(2)))
+#define __ani_attr_aligned_4                    __attribute__((aligned(4)))
+#define __ani_attr_aligned_8                    __attribute__((aligned(8)))
+#define __ani_attr_aligned_16                   __attribute__((aligned(16)))
+#define __ani_attr_aligned_32                   __attribute__((aligned(32)))
+#define PACKED                                  __packed
+#define PACKED_POST
+#define ALIGN(__value)                          __align(__value)
+#else
 #define __ani_attr_packed
 #define __ani_attr_pre_packed                   __packed
 #define __ani_attr_aligned_2                    __align(2)
@@ -136,6 +153,8 @@
 #define PACKED                                  __packed
 #define PACKED_POST
 #define ALIGN(__value)                          __align(__value)
+#endif
+
 #else
 #error "Unknown compiler"
 #endif
