@@ -3,10 +3,35 @@
 /include/ "skeleton.dtsi"
 /include/ "msm8960.dtsi"
 
+/include/ "msm8960-motref-pinmux.dtsi"
+
 / {
 	model = "Motorola MSM8960 Pro Sasquatch";
 	compatible = "mmi,msm8960";
 
 	mmi,product = "mmi,msm8960ab-sasquatch";
 	mmi,revision = "p1";
+
+	qcom,msm8960-pinmux@0x801000 {
+		compatible = "qcom,msm8960-pinmux";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		pin@801350 {  /* AP_TO_SP_FLASH_EN                          */
+			reg = <0x801350 0x10>;
+			qcom,pin-num = <53>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(53)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <2>;   /* out_low                */
+			};
+			qcom,suspended@1 {
+				qcom,func = <0>;  /* gpio_in_out(53)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <2>;   /* out_low                */
+			};
+		};
+	};
 };
