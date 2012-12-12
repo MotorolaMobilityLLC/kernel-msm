@@ -79,4 +79,10 @@ void pet_watchdog(void);
 static inline void pet_watchdog(void) { }
 #endif
 
+#ifdef CONFIG_MSM_WATCHDOG_CTX_PRINT
+void __init reserve_memory_for_watchdog(void);
+#else
+static inline void reserve_memory_for_watchdog(void) { };
+#endif /* CONFIG_MSM_WATCHDOG_CTX_PRINT */
+
 #endif
