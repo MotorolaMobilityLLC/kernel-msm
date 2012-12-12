@@ -2,6 +2,7 @@
  * Qualcomm PM8XXX Multi-Purpose Pin (MPP) driver
  *
  * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,6 +19,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/gpio.h>
+#include <linux/of.h>
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
@@ -216,11 +218,50 @@ static int __devinit pm8xxx_mpp_reg_init(struct pm8xxx_mpp_chip *mpp_chip)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct device_node __devinit *
+pm8xxx_mpp_of_find(struct platform_device *pdev)
+{
+	return of_find_compatible_node(NULL, NULL, "qcom,msm-pm8xxx-mpps");
+}
+
+static int pm8xxx_mpp_of_xlate(struct gpio_chip *gpio_chip,
+				const struct of_phandle_args *gpiospec,
+				u32 *flags)
+{
+	unsigned int gpio = gpiospec->args[0];
+
+	if (WARN_ON(gpio_chip->of_gpio_n_cells < 2)) {
+		pr_err("of_gpio_n_cells < 2\n");
+		return -EINVAL;
+	}
+
+	/* PM8xxx MPP name convention starts at 1 */
+	if (!gpio || gpio > gpio_chip->ngpio) {
+		pr_err("gpio %d out of range 1->%d\n", gpio, gpio_chip->ngpio);
+		return -EINVAL;
+	}
+
+	/* Decrement as GPIO naming convention is 1-based */
+	return --gpio;
+}
+#else
+static inline struct device_node *
+pm8xxx_mpp_of_find(struct platform_device *pdev)
+{
+	return NULL;
+}
+#define pm8xxx_mpp_of_xlate NULL
+#endif
+
 static int __devinit pm8xxx_mpp_probe(struct platform_device *pdev)
 {
 	int rc;
 	const struct pm8xxx_mpp_platform_data *pdata = pdev->dev.platform_data;
 	struct pm8xxx_mpp_chip *mpp_chip;
+
+	if (!pdev->dev.of_node)
+		pdev->dev.of_node = pm8xxx_mpp_of_find(pdev);
 
 	if (!pdata) {
 		pr_err("missing platform data\n");
@@ -239,6 +280,11 @@ static int __devinit pm8xxx_mpp_probe(struct platform_device *pdev)
 		pr_err("Cannot allocate %d bytes\n", pdata->core_data.nmpps);
 		rc = -ENOMEM;
 		goto free_mpp_chip;
+	}
+
+	if (pdev->dev.of_node) {
+		mpp_chip->gpio_chip.of_xlate = pm8xxx_mpp_of_xlate;
+		mpp_chip->gpio_chip.of_gpio_n_cells = 2;
 	}
 
 	spin_lock_init(&mpp_chip->pm_lock);
