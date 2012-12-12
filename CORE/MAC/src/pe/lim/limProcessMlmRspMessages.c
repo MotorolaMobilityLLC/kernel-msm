@@ -2786,27 +2786,48 @@ joinFailure:
 #ifdef WLAN_FEATURE_VOWIFI_11R
 /*------------------------------------------------------------------------------------------
  *
- * Function to handle WDA_ADD_BSS_RSP, in FT reassoc state.
+ * Function to handle callback after setting link state to post assoc.
  *
  *
  *------------------------------------------------------------------------------------------
  */
-static inline void
-limProcessStaMlmAddBssRspFT(tpAniSirGlobal pMac, tpSirMsgQ limMsgQ, tpPESession psessionEntry)
+void limSetLinkStateForPostAssocCallback(tpAniSirGlobal pMac, void *msgParam )
 {
-    tpDphHashNode pStaDs    = NULL;
-    tpAddBssParams pAddBssParams = (tpAddBssParams) limMsgQ->bodyptr;
-    tpAddStaParams pAddStaParams = NULL;
-    tANI_U32 listenInterval = WNI_CFG_LISTEN_INTERVAL_STADEF;
-    tLimMlmReassocReq       *pMlmReassocReq;
     tLimMlmReassocCnf       mlmReassocCnf; // keep sme 
+    tSetLinkCbackParams * pCbackParams = (tSetLinkCbackParams *)msgParam;
+    tpPESession psessionEntry = NULL;
+    tpAddBssParams pAddBssParams = NULL;
+    tpDphHashNode pStaDs    = NULL;
+    tpAddStaParams pAddStaParams = NULL;
+    tLimMlmReassocReq * pMlmReassocReq = NULL;
+    tANI_U32 listenInterval = WNI_CFG_LISTEN_INTERVAL_STADEF;
+
+    /* Sanity Checks */
+    if (pCbackParams == NULL)
+    {
+        PELOGE(limLog(pMac, LOGE, FL("Invalid parameters\n"));)
+        goto end;
+    }
+
+    pAddBssParams = (tpAddBssParams)(pCbackParams->cbackDataPtr);
+
+    if (pAddBssParams == NULL)
+    {
+        PELOGE(limLog(pMac, LOGE, FL("Invalid parameters\n"));)
+        goto end;
+    }
+
+    if((psessionEntry = peFindSessionBySessionId(pMac,pAddBssParams->sessionId))== NULL)
+    {
+        limLog( pMac, LOGE, FL( "Session Does not exist for given sessionId\n" ));
+            if( NULL != pAddBssParams )
+                palFreeMemory( pMac->hHdd, (void *) pAddBssParams );
+        goto end;
+    }
 
     pMlmReassocReq = (tLimMlmReassocReq *)(psessionEntry->pLimMlmReassocReq);
 
-    if ( eLIM_MLM_WT_ADD_BSS_RSP_FT_REASSOC_STATE != psessionEntry->limMlmState )
-    {
-        goto end;
-    }
+    limPrintMacAddr(pMac, pAddBssParams->bssId, LOGE);
 
     if ((pStaDs = dphAddHashEntry(pMac, pAddBssParams->bssId, DPH_STA_HASH_INDEX_PEER,
         &psessionEntry->dph.dphHashTable)) == NULL)
@@ -2816,16 +2837,6 @@ limProcessStaMlmAddBssRspFT(tpAniSirGlobal pMac, tpSirMsgQ limMsgQ, tpPESession 
         limPrintMacAddr(pMac, pAddBssParams->staContext.staMac, LOGE);
         goto end;
     }
-
-    // Set the filter state to post assoc
-    if (limSetLinkState(pMac, eSIR_LINK_POSTASSOC_STATE,
-            pAddBssParams->bssId, psessionEntry->selfMacAddr,
-            NULL, NULL) != eSIR_SUCCESS)
-    {
-        PELOGE(limLog(pMac, LOGE,  FL("Failed to set the LinkState\n"));)
-        goto end;
-    }
-
     // Prepare and send Reassociation request frame
     // start reassoc timer.
     pMac->lim.limTimers.gLimReassocFailureTimer.sessionId = psessionEntry->peSessionId;
@@ -2966,6 +2977,15 @@ limProcessStaMlmAddBssRspFT(tpAniSirGlobal pMac, tpSirMsgQ limMsgQ, tpPESession 
 
     // Lets save this for when we receive the Reassoc Rsp
     pMac->ft.ftPEContext.pAddStaReq = pAddStaParams;
+
+    if (pCbackParams != NULL)
+    {
+        if (pCbackParams->cbackDataPtr != NULL)
+        {
+            palFreeMemory( pMac->hHdd, (tANI_U8 *) pCbackParams->cbackDataPtr);        
+        }
+        palFreeMemory( pMac->hHdd, (tANI_U8 *) pCbackParams);        
+    }
     return;
 
 end:
@@ -2974,6 +2994,82 @@ end:
     {
         palFreeMemory( pMac->hHdd, (tANI_U8 *) pMlmReassocReq);
     }
+
+    if (pCbackParams != NULL)
+    {
+        if (pCbackParams->cbackDataPtr != NULL)
+        {
+            palFreeMemory( pMac->hHdd, (tANI_U8 *) pCbackParams->cbackDataPtr);        
+        }
+        palFreeMemory( pMac->hHdd, (tANI_U8 *) pCbackParams);        
+    }
+
+    mlmReassocCnf.resultCode = eSIR_SME_FT_REASSOC_FAILURE;
+    mlmReassocCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
+    /* Update PE sessio Id*/
+    mlmReassocCnf.sessionId = psessionEntry->peSessionId;
+
+    limPostSmeMessage(pMac, LIM_MLM_REASSOC_CNF, (tANI_U32 *) &mlmReassocCnf);
+}
+/*------------------------------------------------------------------------------------------
+ *
+ * Function to handle WDA_ADD_BSS_RSP, in FT reassoc state.
+ *
+ *
+ *------------------------------------------------------------------------------------------
+ */
+static inline void
+limProcessStaMlmAddBssRspFT(tpAniSirGlobal pMac, tpSirMsgQ limMsgQ, tpPESession psessionEntry)
+{
+    tSetLinkCbackParams * pCbackParam = NULL;
+    tAddBssParams * pAddBssCbackInfo = NULL;
+    tLimMlmReassocCnf       mlmReassocCnf;
+    tpAddBssParams pAddBssParams = (tpAddBssParams) limMsgQ->bodyptr;
+
+    if ( eLIM_MLM_WT_ADD_BSS_RSP_FT_REASSOC_STATE != psessionEntry->limMlmState )
+    {
+        goto end;
+    }
+
+    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **) &pCbackParam, sizeof( tSetLinkCbackParams )))
+    {
+        PELOGE(limLog(pMac, LOGE,  FL("Could not allocate memory for LinkState callback params\n"));)
+        goto end;
+    }
+
+    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **) &pAddBssCbackInfo, sizeof( tAddBssParams )))
+    {
+        PELOGE(limLog(pMac, LOGE,  FL("Could not allocate memory for Add BSS info callback param\n"));)
+        goto end;
+    }
+
+    vos_mem_copy(pAddBssCbackInfo, pAddBssParams, sizeof(tAddBssParams));
+
+    pCbackParam->cbackDataPtr = (void*)pAddBssCbackInfo;
+
+    // Set the filter state to post assoc and send out re-assoc request OTA only after response is received
+    if (limSetLinkState(pMac, eSIR_LINK_POSTASSOC_STATE,
+            pAddBssParams->bssId, psessionEntry->selfMacAddr,
+            (tpSetLinkStateCallback)limSetLinkStateForPostAssocCallback, 
+                        (void *)pCbackParam) != eSIR_SUCCESS)
+    {
+        PELOGE(limLog(pMac, LOGE,  FL("Failed to set the LinkState\n"));)
+        goto end;
+    }
+
+    return;
+
+end:
+
+    if (pCbackParam != NULL)
+    {
+        if (pCbackParam->cbackDataPtr != NULL)
+        {
+            palFreeMemory( pMac->hHdd, (tANI_U8 *) pCbackParam->cbackDataPtr);        
+        }
+        palFreeMemory( pMac->hHdd, (tANI_U8 *) pCbackParam);        
+    }
+
     mlmReassocCnf.resultCode = eSIR_SME_FT_REASSOC_FAILURE;
     mlmReassocCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
     /* Update PE sessio Id*/
