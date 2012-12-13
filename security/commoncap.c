@@ -31,7 +31,8 @@
 #include <linux/binfmts.h>
 #include <linux/personality.h>
 
-#ifdef CONFIG_ANDROID_PARANOID_NETWORK
+#if defined(CONFIG_ANDROID_PARANOID_NETWORK) || \
+		defined(CONFIG_ANDROID_CAP_SYSLOG_GROUP)
 #include <linux/android_aid.h>
 #endif
 
@@ -84,6 +85,10 @@ int cap_capable(const struct cred *cred, struct user_namespace *targ_ns,
 	if (cap == CAP_NET_RAW && in_egroup_p(AID_NET_RAW))
 		return 0;
 	if (cap == CAP_NET_ADMIN && in_egroup_p(AID_NET_ADMIN))
+		return 0;
+#endif
+#ifdef CONFIG_ANDROID_CAP_SYSLOG_GROUP
+	if (cap == CAP_SYSLOG && in_egroup_p(AID_LOG))
 		return 0;
 #endif
 
