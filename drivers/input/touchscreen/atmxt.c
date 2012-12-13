@@ -215,11 +215,11 @@ static int atmxt_probe(struct i2c_client *client,
 
 	err = atmxt_request_irq(dd);
 	if (err < 0)
-		goto atmxt_probe_fail;
+		goto atmxt_unreg_suspend;
 
 	err = atmxt_request_tdat(dd);
 	if (err < 0)
-		goto atmxt_probe_fail;
+		goto atmxt_unreg_suspend;
 
 	err = atmxt_create_sysfs_files(dd);
 	if (err < 0) {
@@ -231,6 +231,8 @@ static int atmxt_probe(struct i2c_client *client,
 
 	goto atmxt_probe_pass;
 
+atmxt_unreg_suspend:
+	unregister_early_suspend(&dd->es);
 atmxt_probe_fail:
 	atmxt_free(dd);
 	printk(KERN_ERR "%s: Probe failed with error code %d.\n",
@@ -257,6 +259,7 @@ static int atmxt_remove(struct i2c_client *client)
 		atmxt_remove_sysfs_files(dd);
 		gpio_free(dd->pdata->gpio_reset);
 		gpio_free(dd->pdata->gpio_interrupt);
+		unregister_early_suspend(&dd->es);
 		atmxt_free(dd);
 	}
 
@@ -490,9 +493,6 @@ static void atmxt_free(struct atmxt_driver_data *dd)
 	if (dd != NULL) {
 		dd->pdata = NULL;
 		dd->client = NULL;
-#ifdef CONFIG_HAS_EARLYSUSPEND
-		unregister_early_suspend(&dd->es);
-#endif
 
 		if (dd->mutex != NULL) {
 			kfree(dd->mutex);
