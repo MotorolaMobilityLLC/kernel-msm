@@ -307,10 +307,10 @@ static int __init mot_parse_atag_baseband(const struct tag *tag)
 __tagtable(ATAG_BASEBAND, mot_parse_atag_baseband);
 
 static void __init mmi_unit_info_init(void){
-	struct mmi_unit_info_v1 *mui;
+	struct mmi_unit_info *mui;
 
 	#define SMEM_KERNEL_RESERVE_SIZE 1024
-	mui = (struct mmi_unit_info_v1 *) smem_alloc(SMEM_KERNEL_RESERVE,
+	mui = (struct mmi_unit_info *) smem_alloc(SMEM_KERNEL_RESERVE,
 		SMEM_KERNEL_RESERVE_SIZE);
 
 	if (!mui) {
