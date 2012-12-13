@@ -1226,6 +1226,8 @@ static int mxt_check_retrigen(struct mxt_data *data)
 	return 0;
 }
 
+static int mxt_init_t7_power_cfg(struct mxt_data *data);
+
 /*
  * mxt_check_reg_init - download configuration to chip
  *
@@ -1484,6 +1486,9 @@ static int mxt_check_reg_init(struct mxt_data *data)
 		goto release_mem;
 
 	dev_info(dev, "Config written\n");
+
+	/* T7 config may have changed */
+	mxt_init_t7_power_cfg(data);
 
 release_mem:
 	kfree(config_mem);
@@ -1883,17 +1888,17 @@ retry_bootloader:
 	if (error)
 		goto err_free_object_table;
 
+	error = mxt_init_t7_power_cfg(data);
+	if (error) {
+		dev_err(&client->dev, "Failed to initialize power cfg\n");
+		goto err_free_object_table;
+	}
+
 	/* Check register init values */
 	error = mxt_check_reg_init(data);
 	if (error) {
 		dev_err(&client->dev, "Error %d initialising configuration\n",
 			error);
-		goto err_free_object_table;
-	}
-
-	error = mxt_init_t7_power_cfg(data);
-	if (error) {
-		dev_err(&client->dev, "Failed to initialize power cfg\n");
 		goto err_free_object_table;
 	}
 
