@@ -1,0 +1,8 @@
+diff a/prima/CORE/MAC/inc/wniCfgAp.h b/prima/CORE/MAC/inc/wniCfgAp.h	(rejected hunks)
+@@ -1,4 +1,6 @@
+ /*
++ * Copyright (C) 2011-2012 Qualcomm Atheros, Inc. All Rights Reserved.
++ * Qualcomm Atheros Confidential and Proprietary.
+  * Copyright (C) 2007-2009 QUALCOMM Incorporated. All rights reserved. Proprietary and Confidential.
+  */
+ 
