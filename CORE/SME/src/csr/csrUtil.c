@@ -6114,8 +6114,12 @@ tANI_BOOLEAN csrMatchCountryCode( tpAniSirGlobal pMac, tANI_U8 *pCountry, tDot11
                 status = csrGetRegulatoryDomainForCountry( pMac, pIes->Country.country, &domainId );
                 if( !HAL_STATUS_SUCCESS( status ) )
                 {
-                    fRet = eANI_BOOLEAN_FALSE;
-                    break;
+                     status = csrGetRegulatoryDomainForCountry( pMac, pMac->scan.countryCode11d,(v_REGDOMAIN_t *) &domainId );
+                     if( !HAL_STATUS_SUCCESS( status ) )
+                     {
+                           fRet = eANI_BOOLEAN_FALSE;
+                           break;
+                     }
                 }
             }
             //check whether it is needed to enforce to the default regulatory domain first
