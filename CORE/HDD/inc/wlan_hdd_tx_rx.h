@@ -223,7 +223,7 @@ extern v_BOOL_t hdd_IsEAPOLPacket( vos_pkt_t *pVosPacket );
   @brief hdd_mon_tx_mgmt_pkt() - Transmit MGMT packet received on monitor 
                                  interface.
 
-  @param pAdapter: [in] SAP/P2P GO adaptor. 
+  @param pAdapter: [in] SAP/P2P GO adapter.
   ===========================================================================*/
 void hdd_mon_tx_mgmt_pkt(hdd_adapter_t* pAdapter);
 

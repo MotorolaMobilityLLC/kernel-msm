@@ -4085,7 +4085,7 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
            }
            else
            {
-              printk(KERN_ERR"SAP adaptor not found to stop it!\n");
+              printk(KERN_ERR"SAP adapter not found to stop it!\n");
            }
 
            break;
@@ -5823,7 +5823,7 @@ VOS_STATUS iw_set_power_params(struct net_device *dev, struct iw_request_info *i
     if (!uTotalSize)
     {
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "Invalid input parametery type : %d with no value at offset %d",
+                "Invalid input parameter type : %d with no value at offset %d",
                 ucType, nOffset);
       return VOS_STATUS_E_FAILURE;
     }
@@ -5854,7 +5854,7 @@ VOS_STATUS iw_set_power_params(struct net_device *dev, struct iw_request_info *i
       break;
       default:
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "Invalid input parametery type : %d with value: %d at offset %d",
+                "Invalid input parameter type : %d with value: %d at offset %d",
                 ucType, uValue,  nOffset);
       return VOS_STATUS_E_FAILURE;
     }

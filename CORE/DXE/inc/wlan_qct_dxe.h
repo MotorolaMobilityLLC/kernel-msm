@@ -123,7 +123,7 @@ typedef enum
        RX Frame Ready indication CB
 
   @  Parameters
-         pVoid         pAdaptor : Driver global control block pointer
+         pVoid         pAdapter : Driver global control block pointer
          palPacket     pRXFramePtr : Received Frame Pointer
          pVoid         userCtxt : DTS user contect pointer
 
@@ -140,7 +140,7 @@ typedef WDTS_RxFrameReadyCbType WLANDXE_RxFrameReadyCbType;
       TX complete indication CB
 
   @  Parameters
-         pVoid      pAdaptor : Driver global control block pointer
+         pVoid      pAdapter : Driver global control block pointer
          void       pTXFramePtr : Completed TX Frame Pointer
          pVoid      userCtxt : DTS user contect pointer
 
@@ -157,7 +157,7 @@ typedef WDTS_TxCompleteCbType WLANDXE_TxCompleteCbType;
        DXE Low resource indication CB
 
   @  Parameters
-      pVoid      pAdaptor : Driver global control block pointer
+      pVoid      pAdapter : Driver global control block pointer
       BOOL      lowResourceCondition : DXE low resource or not
       pVoid      userCtxt : DTS user contect pointer
 
@@ -196,7 +196,7 @@ typedef WDTS_SetPSCbType  WLANDXE_SetPowerStateCbType;
       Allocate, DXE local control block, DXE descriptor pool, DXE descriptor control block pool
 
   @  Parameters
-      pVoid      pAdaptor : Driver global control block pointer
+      pVoid      pAdapter : Driver global control block pointer
 
   @  Return
       pVoid DXE local module control block pointer
