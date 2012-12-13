@@ -55,7 +55,11 @@
 #define SCH_DIAG_RR_TIMEOUT_DELETE    0x1
 #define SCH_DIAG_RR_LOWER_RATE        0x2
 
-#define TIM_IE_SIZE 0x6
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+#define TIM_IE_SIZE 0xA
+#else
+#define TIM_IE_SIZE 0x7
+#endif
 
 // ----------------------- Beacon processing ------------------------
 
