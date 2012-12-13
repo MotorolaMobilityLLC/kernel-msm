@@ -25,6 +25,8 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/mod_devicetable.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/errno.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
@@ -124,10 +126,19 @@ static const struct i2c_device_id atmxt_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, atmxt_id);
 
+#ifdef CONFIG_OF
+static struct of_device_id atmxt_match_tbl[] = {
+	{ .compatible = "atmel,atmxt-ts" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, atmxt_match_tbl);
+#endif
+
 static struct i2c_driver atmxt_driver = {
 	.driver = {
 		.name = ATMXT_I2C_NAME,
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(atmxt_match_tbl),
 	},
 	.probe = atmxt_probe,
 	.remove = __devexit_p(atmxt_remove),
@@ -137,6 +148,37 @@ static struct i2c_driver atmxt_driver = {
 	.resume = atmxt_resume,
 #endif
 };
+
+#ifdef CONFIG_OF
+static struct touch_platform_data *
+atmxt_of_init(struct i2c_client *client)
+{
+	struct touch_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	const char *fp = NULL;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "pdata allocation failure\n");
+		return NULL;
+	}
+
+	of_property_read_string(np, "atmel,atmxt-tdat-filename", &fp);
+
+	pdata->filename = (char *)fp;
+	pdata->gpio_interrupt = of_get_gpio(np, 0);
+	pdata->gpio_reset = of_get_gpio(np, 1);
+	pdata->gpio_enable = of_get_gpio(np, 2);
+
+	return pdata;
+}
+#else
+static inline struct touch_platform_data *
+atmxt_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
 
 static int atmxt_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
@@ -166,7 +208,12 @@ static int atmxt_probe(struct i2c_client *client,
 	dd->ic_stat = ATMXT_IC_UNKNOWN;
 	dd->status = 0x0000;
 	dd->client = client;
-	dd->pdata = client->dev.platform_data;
+
+	if (client->dev.of_node)
+		dd->pdata = atmxt_of_init(client);
+	else
+		dd->pdata = client->dev.platform_data;
+
 	i2c_set_clientdata(client, dd);
 	dd->in_dev = NULL;
 
