@@ -429,7 +429,7 @@ limProcessProbeReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
         if((psessionEntry->pePersona == VOS_P2P_GO_MODE) && ((pMac->lim.gpLimRemainOnChanReq )
                                   || (pMac->lim.gLimHalScanState != eLIM_HAL_IDLE_SCAN_STATE)))
         {
-           limLog(pMac, LOGP,
+           limLog(pMac, LOG3,
               FL("While GO is scanning, don't send probe response on diff channel\n"));
            break;
         }
