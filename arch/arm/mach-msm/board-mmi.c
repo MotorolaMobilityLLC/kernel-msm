@@ -590,10 +590,21 @@ static void __init mmi_of_populate_setup(void)
 	of_node_put(n);
 }
 
+static struct of_dev_auxdata mmi_auxdata[] __initdata = {
+	OF_DEV_AUXDATA("qcom,i2c-qup", 0x16200000, "qup_i2c.3", NULL),
+	OF_DEV_AUXDATA("qcom,i2c-qup", 0x16300000, "qup_i2c.4", NULL),
+	OF_DEV_AUXDATA("qcom,i2c-qup", 0x1a000000, "qup_i2c.8", NULL),
+	OF_DEV_AUXDATA("qcom,i2c-qup", 0x1a200000, "qup_i2c.10", NULL),
+	OF_DEV_AUXDATA("qcom,i2c-qup", 0x12480000, "qup_i2c.12", NULL),
+	{}
+};
+
 static void __init mmi_msm8960_dt_init(void)
 {
+	struct of_dev_auxdata *adata = mmi_auxdata;
+
 	mmi_of_populate_setup();
-	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
+	of_platform_populate(NULL, of_default_bus_match_table, adata, NULL);
 	msm8960_cdp_init();
 }
 
