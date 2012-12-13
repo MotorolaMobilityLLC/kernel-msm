@@ -3352,6 +3352,7 @@ void csrNeighborRoamClose(tpAniSirGlobal pMac)
 
     /* Free the profile.. */ 
     csrReleaseProfile(pMac, &pNeighborRoamInfo->csrNeighborRoamProfile);
+    csrRoamFreeConnectProfile(pMac, &pNeighborRoamInfo->prevConnProfile);
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
     pMac->roam.neighborRoamInfo.FTRoamInfo.currentNeighborRptRetryNum = 0;
