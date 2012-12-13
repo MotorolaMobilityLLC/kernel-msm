@@ -3823,7 +3823,7 @@ static int __init voice_init(void)
 		goto cont;
 	}
 	common.cvp_cal.handle = ion_alloc(common.client, CVP_CAL_SIZE, SZ_4K,
-					  ION_HEAP(ION_AUDIO_HEAP_ID));
+					  ION_HEAP(ION_AUDIO_HEAP_ID), 0);
 	if (IS_ERR_OR_NULL((void *) common.cvp_cal.handle)) {
 		pr_err("%s: ION memory allocation for CVP failed\n",
 			__func__);
@@ -3853,7 +3853,7 @@ static int __init voice_init(void)
 	memset((void *)common.cvp_cal.buf, 0, CVP_CAL_SIZE);
 
 	common.cvs_cal.handle = ion_alloc(common.client, CVS_CAL_SIZE, SZ_4K,
-					 ION_HEAP(ION_AUDIO_HEAP_ID));
+					 ION_HEAP(ION_AUDIO_HEAP_ID), 0);
 	if (IS_ERR_OR_NULL((void *) common.cvs_cal.handle)) {
 		pr_err("%s: ION memory allocation for CVS failed\n",
 			__func__);
