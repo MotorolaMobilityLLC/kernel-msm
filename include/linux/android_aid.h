@@ -17,6 +17,7 @@
 #define _LINUX_ANDROID_AID_H
 
 /* AIDs that the kernel treats differently */
+#define AID_LOG          1007
 #define AID_NET_BT_ADMIN 3001
 #define AID_NET_BT       3002
 #define AID_INET         3003
