@@ -1,0 +1,33 @@
+Atmel touch controller
+
+Required properties:
+
+ - compatible	: should be "atmel,atmxt-ts"
+ - reg			: i2c slave address of the device
+ - interrupt-parent	: parent of interrupt
+ - interrupts		: touch sample interrupt to indicate presense or release
+				of fingers on the panel.
+ - gpios	: interrupt, reset, and enable GPIOS
+
+ - atmel,atmxt-tdat-filename: firmware filename to flash
+
+Example:
+	i2c@16200000 {
+		status = "okay";
+
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <24000000>;
+
+		atmxt@4a {
+			compatible = "atmel,atmxt-ts";
+			reg = <0x4a>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <46 0>;
+			gpios = <&msmgpio 46 0>, /* IRQ */
+				<&msmgpio 63 0>, /* RESET */
+				<&msmgpio 52 0>; /* ENABLE */
+
+			atmel,atmxt-tdat-filename = "atmxt-r2.tdat";
+		};
+	};
+
