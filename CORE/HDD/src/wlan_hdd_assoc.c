@@ -3206,7 +3206,7 @@ int iw_get_ap_address(struct net_device *dev,
 
   \brief hdd_ResetCountryCodeAfterDisAssoc -
   This function reset the country code to default
-  \param  - pAdapter - Pointer to HDD adaptor
+  \param  - pAdapter - Pointer to HDD adapter
   \return - nothing
 
   --------------------------------------------------------------------------*/

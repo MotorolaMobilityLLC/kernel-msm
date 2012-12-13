@@ -408,7 +408,7 @@ tANI_U8 WLANHAL_RxBD_GetFrameTypeSubType(v_PVOID_t _pvBDHeader, tANI_U16 usFrmCt
   SIDE EFFECTS 
   
 ============================================================================*/
-VOS_STATUS WLANHAL_FillTxBd(void *pAdaptor, tANI_U8 typeSubtype, void *pDestMacAddr, void *pAddr2,
+VOS_STATUS WLANHAL_FillTxBd(void *pAdapter, tANI_U8 typeSubtype, void *pDestMacAddr, void *pAddr2,
         tANI_U8* ptid, tANI_U8 disableFrmXtl, void *pTxBd, tANI_U8 txFlag, tANI_U32 timeStamp);
 
 #ifdef WLAN_SOFTAP_FEATURE
@@ -425,7 +425,7 @@ void WLANHAL_SwapRxBd(tANI_U8 *pBd);
 void WLANHAL_RxAmsduBdFix(void *pVosGCtx,v_PVOID_t _pvBDHeader);
 
 #ifdef WLAN_PERF
-tANI_U32 WLANHAL_TxBdFastFwd(void *pAdaptor, tANI_U8 *pDestMac, tANI_U8 tid, tANI_U8 unicastDst,  void *pTxBd, tANI_U16);
+tANI_U32 WLANHAL_TxBdFastFwd(void *pAdapter, tANI_U8 *pDestMac, tANI_U8 tid, tANI_U8 unicastDst,  void *pTxBd, tANI_U16);
 #endif
 
 #ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
