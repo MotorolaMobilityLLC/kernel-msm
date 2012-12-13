@@ -356,6 +356,26 @@ static struct msm_bus_vectors cam_dual_vectors[] = {
 	},
 };
 
+static struct msm_bus_vectors cam_low_power_vectors[] = {
+	{
+		.src = MSM_BUS_MASTER_VFE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 1451520,
+		.ib  = 3870720,
+	},
+	{
+		.src = MSM_BUS_MASTER_VPE,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+};
 
 static struct msm_bus_paths cam_bus_client_config[] = {
 	{
@@ -385,6 +405,10 @@ static struct msm_bus_paths cam_bus_client_config[] = {
 	{
 		ARRAY_SIZE(cam_dual_vectors),
 		cam_dual_vectors,
+	},
+	{
+		ARRAY_SIZE(cam_low_power_vectors),
+		cam_low_power_vectors,
 	},
 };
 
