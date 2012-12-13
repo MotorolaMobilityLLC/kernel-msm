@@ -1539,7 +1539,8 @@ blsp_core_init:
 	 * then we reset the core before registering for interrupts.
 	 */
 	writel_relaxed(1, dev->base + QUP_SW_RESET);
-	if (qup_i2c_poll_state(dev, 0, true) != 0)
+	ret = qup_i2c_poll_state(dev, 0, true);
+	if (ret)
 		goto err_reset_failed;
 	clk_disable_unprepare(dev->clk);
 	clk_disable_unprepare(dev->pclk);
