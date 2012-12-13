@@ -84,6 +84,20 @@ config SECURITY_DMESG_RESTRICT
 
 	  If you are unsure how to answer this question, answer N.
 
+config ANDROID_CAP_SYSLOG_GROUP
+	bool "Give log group CAP_SYSLOG implicitly"
+	default n
+	help
+	  This causes processes which belong to the Android log group
+	  (AID_LOG) to be treated by the kernel as though they possess
+	  the CAP_SYSLOG capability.
+
+	  If this option is not selected, processes which belong to the
+	  log group will only have CAP_SYSLOG if they acquire it via
+	  the normal capabilities model.
+
+	  If you are unsure how to answer this question, answer N.
+
 config SECURITY
 	bool "Enable different security models"
 	depends on SYSFS
