@@ -1884,25 +1884,22 @@ static void msm8960_free_headset_mic_gpios(void)
 static int add_mmi_dai_links(struct snd_soc_dai_link *platform_dai_link)
 {
 	struct device_node *node;
-	const void *prop;
-	int len;
+	const char *name;
 	int type = 0;
 	int i;
 	int cnt = 0;
 
 	/* Read DAI name from device tree */
 	for_each_node_by_name(node, DT_DAI_NODE_NAME) {
-		prop = of_get_property(node, "type", &len);
-		if (prop && (len == sizeof(int)))
-			type = *((int *)prop);
-
+		if (of_property_read_u32(node, "type", &type))
+			continue;
 		if (type != DT_TYPE_DAI)
 			continue;
-		prop = of_get_property(node, DT_DAI_PROP_NAME, &len);
+		if (of_property_read_string(node, DT_DAI_PROP_NAME, &name))
+			continue;
 		/* verify if the DAI is present in MMI DAI Link Array */
 		for (i = 0; i < ARRAY_SIZE(mmi_dai_links); i++) {
-			if (!strcmp(mmi_dai_links[i].codec_dai_name,
-					(const char *)prop)) {
+			if (!strcmp(mmi_dai_links[i].codec_dai_name, name)) {
 				pr_debug("Add MMI DAI link to snd card %s",
 					mmi_dai_links[i].codec_dai_name);
 				/* Add DAI link */
