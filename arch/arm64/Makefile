@@ -56,6 +56,10 @@ else
 KBUILD_IMAGE	:= Image.gz
 endif
 
+ifeq ($(CONFIG_OF_RESOLVE),y)
+DTC_FLAGS += -@
+endif
+
 KBUILD_DTBS	:= dtbs
 
 all:	$(KBUILD_IMAGE) $(KBUILD_DTBS)
@@ -73,7 +77,7 @@ zinstall install: vmlinux
 
 dtbs: scripts
 	$(Q)$(MAKE) $(build)=$(boot)/dts dtbs
-	$(Q)$(MAKE) $(build)=$(boot)/dts/qcom dtbs
+	$(Q)$(MAKE) $(build)=$(boot)/dts/qcom dtbs DTC_FLAGS=$(DTC_FLAGS)
 
 PHONY += vdso_install
 vdso_install:
