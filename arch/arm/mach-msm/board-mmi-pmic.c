@@ -128,6 +128,7 @@ static __init int load_pm8921_gpios_from_dt(struct pm8xxx_gpio_init **ptr,
 			unsigned int *entries)
 {
 	struct device_node *parent, *child;
+	u32 type;
 	int count = 0, index = 0;
 	struct pm8xxx_gpio_init *pm8921_gpios;
 	int ret = -EINVAL;
@@ -138,13 +139,12 @@ static __init int load_pm8921_gpios_from_dt(struct pm8xxx_gpio_init **ptr,
 
 	/* count the child GPIO nodes */
 	for_each_child_of_node(parent, child) {
-		int len = 0;
-		const void *prop;
-
-		prop = of_get_property(child, "type", &len);
-		if (prop && (len == sizeof(u32))) {
+		if (of_property_read_u32(child, "type", &type)) {
+			pr_err("%s: type property not found\n", __func__);
+			continue;
+		} else {
 			/* must match type identifiers defined in DT schema */
-			switch (*(u32 *)prop) {
+			switch (type) {
 			case 0x001E0006: /* Disable */
 			case 0x001E0007: /* Output */
 			case 0x001E0008: /* Input */
@@ -170,22 +170,17 @@ static __init int load_pm8921_gpios_from_dt(struct pm8xxx_gpio_init **ptr,
 
 	/* fill out the array */
 	for_each_child_of_node(parent, child) {
-		int len = 0;
-		const void *type_prop;
+		if (!of_property_read_u32(child, "type", &type)) {
+			u32 gpio, param1, param2;
 
-		type_prop = of_get_property(child, "type", &len);
-		if (type_prop && (len == sizeof(u32))) {
-			const void *gpio_prop;
-			u16 gpio;
-
-			gpio_prop = of_get_property(child, "gpio", &len);
-			if (!gpio_prop || (len != sizeof(u16)))
+			if (of_property_read_u32(child, "gpio", &gpio)) {
+				pr_err("%s: gpio property not found\n",
+								__func__);
 				continue;
-
-			gpio = *(u16 *)gpio_prop;
+			}
 
 			/* must match type identifiers defined in DT schema */
-			switch (*(u32 *)type_prop) {
+			switch (type) {
 			case 0x001E0006: /* Disable */
 				pm8921_gpios[index++] =
 					(struct pm8xxx_gpio_init)
@@ -193,55 +188,79 @@ static __init int load_pm8921_gpios_from_dt(struct pm8xxx_gpio_init **ptr,
 				break;
 
 			case 0x001E0007: /* Output */
+				if (of_property_read_u32(
+					child, "value", &param1))
+					break;
+
 				pm8921_gpios[index++] =
 					(struct pm8xxx_gpio_init)
 					PM8XXX_GPIO_OUTPUT(gpio,
-						dt_get_u16_or_die(child,
-							"value"));
+						(unsigned short)param1);
 				break;
 
 			case 0x001E0008: /* Input */
+				if (of_property_read_u32(
+					child, "pull", &param1))
+					break;
+
 				pm8921_gpios[index++] =
 					(struct pm8xxx_gpio_init)
 					PM8XXX_GPIO_INPUT(gpio,
-						dt_get_u8_or_die(child,
-							"pull"));
+						(unsigned char)param1);
 				break;
 
 			case 0x001E0009: /* Output, Func */
+				if (of_property_read_u32(
+					child, "value", &param1))
+					break;
+
+				if (of_property_read_u32(
+					child, "func", &param2))
+					break;
+
 				pm8921_gpios[index++] =
 					(struct pm8xxx_gpio_init)
-					PM8XXX_GPIO_OUTPUT_FUNC(
-						gpio, dt_get_u16_or_die(child,
-							"value"),
-						dt_get_u8_or_die(child,
-							"func"));
+					PM8XXX_GPIO_OUTPUT_FUNC(gpio,
+						(unsigned short)param1,
+						(unsigned char)param2);
 				break;
 
 			case 0x001E000A: /* Output, Vin */
+				if (of_property_read_u32(
+					child, "value", &param1))
+					break;
+
+				if (of_property_read_u32(
+					child, "vin", &param2))
+					break;
+
 				pm8921_gpios[index++] =
 					(struct pm8xxx_gpio_init)
-					PM8XXX_GPIO_OUTPUT_VIN(
-						gpio, dt_get_u16_or_die(child,
-							"value"),
-						dt_get_u8_or_die(child,
-							"vin"));
+					PM8XXX_GPIO_OUTPUT_VIN(gpio,
+						(unsigned short)param1,
+						(unsigned char)param2);
 				break;
 
 			case 0x001E000B: /* Paired Input, Vin */
+				if (of_property_read_u32(
+					child, "vin", &param1))
+					break;
+
 				pm8921_gpios[index++] =
 					(struct pm8xxx_gpio_init)
-					PM8XXX_GPIO_PAIRED_IN_VIN(
-						gpio, dt_get_u8_or_die(child,
-							"vin"));
+					PM8XXX_GPIO_PAIRED_IN_VIN(gpio,
+						(unsigned char)param1);
 				break;
 
 			case 0x001E000C: /* Paired Output, Vin */
+				if (of_property_read_u32(
+					child, "vin", &param1))
+					break;
+
 				pm8921_gpios[index++] =
 					(struct pm8xxx_gpio_init)
-					PM8XXX_GPIO_PAIRED_OUT_VIN(
-						gpio, dt_get_u8_or_die(child,
-							"vin"));
+					PM8XXX_GPIO_PAIRED_OUT_VIN(gpio,
+						(unsigned char)param1);
 				break;
 			}
 		}
@@ -419,8 +438,7 @@ static int pm8xxx_set_led_info(unsigned index, struct led_info *linfo)
 static __init void load_pm8921_batt_eprom_pdata_from_dt(void)
 {
 	struct device_node *chosen;
-	int len = 0;
-	const void *prop;
+	u32 gpio = 0;
 	struct w1_gpio_platform_data *pdata =
 		((struct w1_gpio_platform_data *)
 		 (mmi_w1_gpio_device.dev.platform_data));
@@ -429,9 +447,10 @@ static __init void load_pm8921_batt_eprom_pdata_from_dt(void)
 	if (!chosen)
 		goto out;
 
-	prop = of_get_property(chosen, "batt_eprom_gpio", &len);
-	if (prop && (len == sizeof(u8))) {
-		pdata->pin =  *(u8 *)prop;
+	if (of_property_read_u32(chosen, "batt_eprom_gpio", &gpio)) {
+		pr_err("%s: batt_eprom_gpio property not found\n", __func__);
+	} else {
+		pdata->pin = gpio;
 		pdata->enable_external_pullup = w1_gpio_enable_regulators;
 	}
 
@@ -447,16 +466,16 @@ out:
 
 __init void mmi_load_rgb_leds_from_dt(void)
 {
-	int max_brightness;
+	u32 max_brightness;
 	struct device_node *parent;
 	struct led_pwm_gpio_platform_data *pdata =
 		mmi_pm8xxx_rgb_leds_device.dev.platform_data;
 
 	parent = of_find_node_by_path("/System@0/PowerIC@0/RGBLED@0");
 	if (parent) {
-		max_brightness = dt_get_u32_or_die(parent, "max_brightness");
-		if (max_brightness)
-			pdata->max_brightness = max_brightness;
+		if (!of_property_read_u32(parent, "max_brightness",
+			&max_brightness))
+			pdata->max_brightness = (int)max_brightness;
 	}
 	of_node_put(parent);
 }
@@ -470,36 +489,40 @@ static  __init void mmi_load_pm8921_leds_from_dt(void)
 		goto out;
 
 	for_each_child_of_node(parent, child) {
-		int len = 0;
-		const void *prop;
+		u32 type = 0;
 
-		prop = of_get_property(child, "type", &len);
-		if (prop && (len == sizeof(u32))) {
+		if (of_property_read_u32(child, "type", &type)) {
+			pr_err("%s: type property not found\n", __func__);
+			continue;
+		} else {
 			/* Qualcomm_PM8921_LED as defined in DT schema */
-			if (0x001E000E == *(u32 *)prop) {
-				unsigned index;
+			if (0x001E000E == type) {
+				const char *name = NULL;
+				const char *trigger = NULL;
+				u32 index;
 				struct led_info *led_info;
 
-				index = dt_get_u32_or_die(child, "index");
-
+				if (of_property_read_u32(child,
+							"index", &index))
+					pr_err("%s: index property not found\n",
+								__func__);
 				led_info = kzalloc(sizeof(struct led_info),
 						GFP_KERNEL);
 				BUG_ON(!led_info);
 
-				prop = of_get_property(child, "name", &len);
-				BUG_ON(!prop);
+				of_property_read_string(child, "name", &name);
+				BUG_ON(!name);
 
-				led_info->name = kstrndup((const char *)prop,
-						len, GFP_KERNEL);
+				led_info->name = kstrndup(name,
+						strlen(name), GFP_KERNEL);
 				BUG_ON(!led_info->name);
 
-				prop = of_get_property(child,
-						"default_trigger", &len);
-				BUG_ON(!prop);
+				of_property_read_string(child,
+						"default_trigger", &trigger);
+				BUG_ON(!trigger);
 
-				led_info->default_trigger = kstrndup(
-						(const char *)prop,
-						len, GFP_KERNEL);
+				led_info->default_trigger = kstrndup(trigger,
+						strlen(trigger), GFP_KERNEL);
 				BUG_ON(!led_info->default_trigger);
 
 				pm8xxx_set_led_info(index, led_info);
@@ -707,18 +730,17 @@ void pm8921_chg_force_therm_bias(struct device *dev, int enable)
 static int get_hot_temp_dt(void)
 {
 	struct device_node *parent;
-	int len = 0;
-	const void *prop;
-	u8 hot_temp = 0;
+	u32 temp;
+	int hot_temp = 0;
 
 	parent = of_find_node_by_path("/System@0/PowerIC@0");
 	if (!parent) {
 		pr_info("Parent Not Found\n");
 		return 0;
 	}
-	prop = of_get_property(parent, "chg-hot-temp", &len);
-	if (prop && (len == sizeof(u8)))
-		hot_temp = *(u8 *)prop;
+
+	if (!of_property_read_u32(parent, "chg-hot-temp", &temp))
+		hot_temp = (int)temp;
 
 	of_node_put(parent);
 	pr_info("DT Hot Temp = %d\n", hot_temp);
@@ -728,9 +750,8 @@ static int get_hot_temp_dt(void)
 static int get_hot_offset_dt(void)
 {
 	struct device_node *parent;
-	int len = 0;
-	const void *prop;
-	u8 hot_temp_off = 0;
+	u32 temp_off;
+	int hot_temp_off = 0;
 
 	parent = of_find_node_by_path("/System@0/PowerIC@0");
 	if (!parent) {
@@ -738,9 +759,8 @@ static int get_hot_offset_dt(void)
 		return 0;
 	}
 
-	prop = of_get_property(parent, "chg-hot-temp-offset", &len);
-	if (prop && (len == sizeof(u8)))
-		hot_temp_off = *(u8 *)prop;
+	if (!of_property_read_u32(parent, "chg-hot-temp-offset", &temp_off))
+		hot_temp_off = (int)temp_off;
 
 	of_node_put(parent);
 	pr_info("DT Hot Temp Offset = %d\n", hot_temp_off);
@@ -750,18 +770,17 @@ static int get_hot_offset_dt(void)
 static int get_hot_temp_pcb_dt(void)
 {
 	struct device_node *parent;
-	int len = 0;
-	const void *prop;
-	u8 hot_temp_pcb = 0;
+	u32 temp;
+	int hot_temp_pcb = 0;
 
 	parent = of_find_node_by_path("/System@0/PowerIC@0");
 	if (!parent) {
 		pr_info("Parent Not Found\n");
 		return 0;
 	}
-	prop = of_get_property(parent, "chg-hot-temp-pcb", &len);
-	if (prop && (len == sizeof(u8)))
-		hot_temp_pcb = *(u8 *)prop;
+
+	if (!of_property_read_u32(parent, "chg-hot-temp-pcb", &temp))
+		hot_temp_pcb = (int)temp;
 
 	of_node_put(parent);
 	pr_info("DT Hot Temp PCB = %d\n", hot_temp_pcb);
@@ -771,8 +790,7 @@ static int get_hot_temp_pcb_dt(void)
 static signed char get_hot_pcb_offset_dt(void)
 {
 	struct device_node *parent;
-	int len = 0;
-	const void *prop;
+	u32 temp_off;
 	signed char hot_temp_pcb_off = 0;
 
 	parent = of_find_node_by_path("/System@0/PowerIC@0");
@@ -781,9 +799,8 @@ static signed char get_hot_pcb_offset_dt(void)
 		return 0;
 	}
 
-	prop = of_get_property(parent, "chg-hot-temp-pcb-offset", &len);
-	if (prop && (len == sizeof(u8)))
-		hot_temp_pcb_off = *(signed char *)prop;
+	if (!of_property_read_u32(parent, "chg-hot-temp-pcb-offset", &temp_off))
+		hot_temp_pcb_off = (signed char)temp_off;
 
 	of_node_put(parent);
 

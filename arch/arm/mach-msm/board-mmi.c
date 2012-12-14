@@ -117,6 +117,7 @@ static void __init mmi_gpiomux_init(struct msm8960_oem_init_ptrs *oem_ptr)
 	int i;
 	int size = 0;
 	struct gpiomux_setting setting;
+	u16 gpio;
 
 	/* Override the default setting by devtree.  Do not manually
 	 * install via msm_gpiomux_install hardcoded values.
@@ -133,10 +134,11 @@ static void __init mmi_gpiomux_init(struct msm8960_oem_init_ptrs *oem_ptr)
 			setting.drv = prop->drv;
 			setting.pull = prop->pull;
 			setting.dir = prop->dir;
-			if (msm_gpiomux_write(prop->gpio, prop->setting,
+			gpio = be16_to_cpup((__be16 *)&prop->gpio);
+			if (msm_gpiomux_write(gpio, prop->setting,
 						&setting, NULL))
 				pr_err("%s: gpio%d mux setting %d failed\n",
-					__func__, prop->gpio, prop->setting);
+					__func__, gpio, prop->setting);
 			prop++;
 		}
 	}
@@ -194,8 +196,7 @@ static void __init mmi_factory_register(void)
 	struct device_node *gpio_node;
 	struct mmi_factory_gpio_entry *gpios;
 	int num_gpios;
-	const void *prop;
-	int len;
+	int ret;
 
 	factory_node = of_find_node_by_path("/System@0/FactoryDevice@0");
 	if (!factory_node)
@@ -222,6 +223,7 @@ static void __init mmi_factory_register(void)
 		u32 gpio_number;
 		u8 gpio_direction;  /* 0 == IN, 1 == OUT */
 		u32 gpio_value = 0; /* value is only used for output */
+		u32 val;
 
 		if (of_property_read_string(gpio_node,
 				"gpio_name", &gpio_name)) {
@@ -230,35 +232,37 @@ static void __init mmi_factory_register(void)
 			continue;
 		}
 
-		prop = of_get_property(gpio_node, "gpio_number", &len);
-		if (!prop || (len != sizeof(u32))) {
+		ret = of_property_read_u32(gpio_node, "gpio_number",
+					   &gpio_number);
+		if (ret) {
 			pr_warn("%s missing required property - gpio_number\n",
 				gpio_node->full_name);
 			continue;
 		}
-		gpio_number = *(u32 *)prop;
+
 		if (gpio_number >= NR_GPIO_IRQS) {
 			pr_warn("%s gpio_number (%d) is out of range\n",
 				gpio_node->full_name, gpio_number);
 			continue;
 		}
 
-		prop = of_get_property(gpio_node, "gpio_direction", &len);
-		if (!prop || (len != sizeof(u8))) {
+		ret  = of_property_read_u32(gpio_node, "gpio_direction",
+					    &val);
+		if (ret) {
 			pr_warn("%s missing required property - gpio_number\n",
 				gpio_node->full_name);
 			continue;
 		}
-		gpio_direction = (!!*(u8 *)prop) ? GPIOF_DIR_OUT : GPIOF_DIR_IN;
+		gpio_direction = val ? GPIOF_DIR_OUT : GPIOF_DIR_IN;
 
 		if (gpio_direction == GPIOF_DIR_OUT) {
-			prop = of_get_property(gpio_node, "gpio_value", &len);
-			if (!prop || (len != sizeof(u32))) {
+			ret = of_property_read_u32(gpio_node, "gpio_value",
+						   &gpio_value);
+			if (ret) {
 				pr_warn("%s missing required property "\
 				"- gpio_direction\n", gpio_node->full_name);
 				continue;
 			}
-			gpio_value = *(u32 *)prop;
 		}
 
 		gpios[num_gpios].name = gpio_name;
@@ -434,6 +438,8 @@ static void __init mmi_otg_init(struct msm8960_oem_init_ptrs *oem_ptr,
 	struct device_node *chosen;
 	int len;
 	const void *prop;
+	int ret;
+	unsigned int val;
 	struct msm_otg_platform_data *otg_pdata =
 				(struct msm_otg_platform_data *) pdata;
 
@@ -473,21 +479,18 @@ static void __init mmi_otg_init(struct msm8960_oem_init_ptrs *oem_ptr,
 	 * If the EMU circuitry provides id, then read the id irq and
 	 * active logic from the device tree.
 	 */
-	prop = of_get_property(chosen,
-			"emu_id_mpp_gpio", &len);
-	if (prop && (len == sizeof(u8))) {
-		otg_pdata->pmic_id_irq =
-				gpio_to_irq((*(u8 *)prop));
-		pr_debug("%s: PMIC id irq = %d\n",
-				__func__, otg_pdata->pmic_id_irq);
+	ret = of_property_read_u32(chosen, "emu_id_mpp_gpio", &val);
+	if (!ret) {
+		otg_pdata->pmic_id_irq = gpio_to_irq(val);
+		pr_debug("%s: PMIC id irq = %d\n", __func__,
+				otg_pdata->pmic_id_irq);
 	}
 
-	prop = of_get_property(chosen,
-			"emu_id_activehigh", &len);
-	if (prop && (len == sizeof(u8))) {
+	ret = of_property_read_u32(chosen, "emu_id_activehigh", &val);
+	if (!ret) {
 		pr_debug("%s: PMIC id irq is active %s\n",
-				__func__, (*(u8 *)prop) ? "high" : "low");
-		otg_pdata->pmic_id_irq_active_high = (*(u8 *)prop);
+				__func__, val ? "high" : "low");
+		otg_pdata->pmic_id_irq_active_high = val;
 	}
 
 put_node:

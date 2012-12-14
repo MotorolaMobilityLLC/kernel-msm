@@ -159,25 +159,26 @@ static void __init mmi_init_i2c_dev_from_dt(int gsbi_id,
 						struct platform_device *dev)
 {
 	struct msm_i2c_platform_data *pdata;
-	int len = 0;
-	const void *prop;
+	u32 param;
 
 	pdata = kzalloc(sizeof(struct msm_i2c_platform_data), GFP_KERNEL);
 	if (!pdata)
 		goto error;
 
-	prop = of_get_property(node, "clk_freq", &len);
-	if (!prop)
+	if (of_property_read_u32(node, "clk_freq", &param)) {
+		pr_err("%s: clk_freq property not found\n", __func__);
 		goto error;
-	pdata->clk_freq = *(u32 *)prop;
-	prop = of_get_property(node, "src_clk_rate", &len);
-	if (!prop)
-		goto error;
-	pdata->src_clk_rate = *(u32 *)prop;
+	}
+	pdata->clk_freq = param;
 
-	prop = of_get_property(node, "shared_mode", &len);
-	if (prop)
-		pdata->use_gsbi_shared_mode = *(u8 *)prop;
+	if (of_property_read_u32(node, "src_clk_rate", &param)) {
+		pr_err("%s: src_clk_rate property not found\n", __func__);
+		goto error;
+	}
+	pdata->src_clk_rate = param;
+
+	if (!of_property_read_u32(node, "shared_mode", &param))
+		pdata->use_gsbi_shared_mode = param;
 
 	dev->dev.platform_data = pdata;
 
@@ -199,17 +200,17 @@ static void __init mmi_init_spi_dev_from_dt(int gsbi_id,
 						struct platform_device *dev)
 {
 	struct msm_spi_platform_data *pdata;
-	int len = 0;
-	const void *prop;
+	u32 clk_speed;
 
 	pdata = kzalloc(sizeof(struct msm_spi_platform_data), GFP_KERNEL);
 	if (!pdata)
 		goto error;
 
-	prop = of_get_property(node, "max_clock_speed", &len);
-	if (!prop)
+	if (of_property_read_u32(node, "max_clock_speed", &clk_speed)) {
+		pr_err("%s: max_clock_speed property not found\n", __func__);
 		goto error;
-	pdata->max_clock_speed = *(u32 *)prop;
+	}
+	pdata->max_clock_speed = clk_speed;
 
 	dev->dev.platform_data = pdata;
 
@@ -230,14 +231,14 @@ static void __init mmi_init_uartdm_dev_from_dt(struct device_node *node,
 						struct platform_device *dev)
 {
 	struct resource *r = NULL;
-	int len = 0;
+	u32 param;
 	int num;
-	const void *prop;
 
-	prop = of_get_property(node, "deviceid", &len);
-	if (!prop || len != sizeof(u8))
+	if (of_property_read_u32(node, "deviceid", &param)) {
+		pr_err("%s: deviceid property not found\n", __func__);
 		goto error;
-	dev->id = *(u8 *)prop;
+	}
+	dev->id = param;
 
 	num = dev->num_resources;
 	r = kzalloc((num + 1) * sizeof(struct resource), GFP_KERNEL);
@@ -247,15 +248,17 @@ static void __init mmi_init_uartdm_dev_from_dt(struct device_node *node,
 	r->name = "uartdm_channels";
 	r->flags = IORESOURCE_DMA;
 
-	prop = of_get_property(node, "txchan", &len);
-	if (!prop || len != sizeof(u8))
+	if (of_property_read_u32(node, "txchan", &param)) {
+		pr_err("%s: txchan property not found\n", __func__);
 		goto error;
-	r->start = *(u8 *)prop;
+	}
+	r->start = param;
 
-	prop = of_get_property(node, "rxchan", &len);
-	if (!prop || len != sizeof(u8))
+	if (of_property_read_u32(node, "rxchan", &param)) {
+		pr_err("%s: rxchan property not found\n", __func__);
 		goto error;
-	r->end = *(u8 *)prop;
+	}
+	r->end = param;
 
 	memcpy(r + 1, dev->resource, num * sizeof(struct resource));
 	dev->resource = r;
@@ -274,12 +277,12 @@ static void __init mmi_init_uart_dev_from_dt(struct device_node *node,
 						struct platform_device *dev)
 {
 	struct msm_serial_hslite_platform_data *pdata = NULL;
-	int len = 0;
-	const void *prop;
+	u32 line = 0;
 
-	prop = of_get_property(node, "uart_line", &len);
-	if (!prop || len != sizeof(u8))
+	if (of_property_read_u32(node, "uart_line", &line)) {
+		pr_err("%s: uart_line property not found\n", __func__);
 		goto devreg;
+	}
 
 	pdata = kzalloc(sizeof(struct msm_serial_hslite_platform_data),
 			GFP_KERNEL);
@@ -288,7 +291,7 @@ static void __init mmi_init_uart_dev_from_dt(struct device_node *node,
 		goto devreg;
 	}
 
-	pdata->line = *(u8 *)prop;
+	pdata->line = (int)line;
 	dev->dev.platform_data = pdata;
 
 devreg:
@@ -308,11 +311,12 @@ void __init mmi_init_gsbi_devices_from_dt(void)
 
 	/* fill out the array */
 	for_each_child_of_node(parent, child) {
-		int len = 0;
-		const void *type_prop;
+		u32 type = 0;
 
-		type_prop = of_get_property(child, "gsbi_type", &len);
-		if (type_prop && (len == sizeof(u8))) {
+		if (of_property_read_u32(child, "gsbi_type", &type)) {
+			pr_err("%s: gsbi_type property not found\n", __func__);
+			continue;
+		} else {
 			int gsbi_id;
 			struct platform_device *dev = NULL;
 
@@ -326,7 +330,7 @@ void __init mmi_init_gsbi_devices_from_dt(void)
 			}
 
 			/* must match type identifiers defined in DT schema */
-			switch (*(u8 *)type_prop) {
+			switch ((unsigned char)type) {
 			case GSBI_IDLE:
 				mmi_init_gsbi_protocol(gsbi_id, GSBI_IDLE);
 				break;

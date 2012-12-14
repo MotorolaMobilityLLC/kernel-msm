@@ -105,16 +105,14 @@ static int __init mmi_touch_tdat_init(
 		struct device_node *node)
 {
 	int err = 0;
-	const void *prop;
-	int size = 0;
+	const char *name;
 
-	prop = of_get_property(node, "tdat_filename", &size);
-	if (prop == NULL || size <= 0) {
+	if (of_property_read_string(node, "tdat_filename", &name)) {
 		pr_err("%s: tdat file name is missing.\n", __func__);
 		err = -ENOENT;
 		goto touch_tdat_init_fail;
 	} else {
-		tpdata->filename = kstrndup((char *)prop, size, GFP_KERNEL);
+		tpdata->filename = (char *)name;
 		if (!tpdata->filename) {
 			pr_err("%s: unable to allocate memory for "
 					"tdat file name\n", __func__);
@@ -127,32 +125,17 @@ touch_tdat_init_fail:
 	return err;
 }
 
-static int __init dt_get_gpio(struct device_node *node,
-		const char *name, int *gpio) {
-	int rv = 0;
-	int size;
-	const void *prop = of_get_property(node, name, &size);
-	if (prop == NULL || size != sizeof(u8)) {
-		pr_err("%s: tgpio %s is missing.\n", __func__, name);
-		rv = -ENOENT;
-	} else {
-		*gpio = *(u8 *)prop;
-	}
-
-	return rv;
-}
-
 static int __init mmi_touch_tgpio_init(
 		struct touch_platform_data *tpdata,
 		struct device_node *node)
 {
 	int rv = -EINVAL;
 
-	if (dt_get_gpio(node, "irq_gpio", &tpdata->gpio_interrupt))
+	if (of_property_read_u32(node, "irq_gpio", &tpdata->gpio_interrupt))
 		goto touch_gpio_init_fail;
-	if (dt_get_gpio(node, "rst_gpio", &tpdata->gpio_reset))
+	if (of_property_read_u32(node, "rst_gpio", &tpdata->gpio_reset))
 		goto touch_gpio_init_fail;
-	if (dt_get_gpio(node, "en_gpio", &tpdata->gpio_enable))
+	if (of_property_read_u32(node, "en_gpio", &tpdata->gpio_enable))
 		goto touch_gpio_init_fail;
 
 	rv = 0;
@@ -179,12 +162,9 @@ static int __init atmxt_init_i2c_device(struct i2c_board_info *info,
 	info->platform_data = tpdata;
 
 	for_each_child_of_node(node, child) {
-		int len = 0;
-		const void *prop;
-
-		prop = of_get_property(child, "type", &len);
-		if (prop && (len == sizeof(u32))) {
-			switch (*(u32 *)prop) {
+		int type;
+		if (!of_property_read_u32(child, "type", &type)) {
+			switch (type) {
 			case DT_GENERIC_TOUCH_TDAT:
 				rv = mmi_touch_tdat_init(tpdata, child);
 				break;
@@ -211,18 +191,13 @@ static int __init s5k5b3g_init_i2c_device(struct i2c_board_info *info,
 static int __init ov8835_init_i2c_device(struct i2c_board_info *info,
 						struct device_node *node)
 {
-	int len = 0;
-	const void *prop;
-
 	/* get reset gpio */
-	prop = of_get_property(node, "gpio_reset", &len);
-	if (prop && (len == sizeof(u8)))
-		msm_camera_sensor_ov8835_data.sensor_reset = *(u8 *)prop;
+	of_property_read_u32(node, "gpio_reset",
+			&msm_camera_sensor_ov8835_data.sensor_reset);
 
 	/* get pwd gpio */
-	prop = of_get_property(node, "gpio_pwd", &len);
-	if (prop && (len == sizeof(u8)))
-		msm_camera_sensor_ov8835_data.sensor_pwd = *(u8 *)prop;
+	of_property_read_u32(node, "gpio_pwd",
+			&msm_camera_sensor_ov8835_data.sensor_pwd);
 
 	info->platform_data = &msm_camera_sensor_ov8835_data;
 
@@ -232,16 +207,12 @@ static int __init ov8835_init_i2c_device(struct i2c_board_info *info,
 static int __init lm3556_init_i2c_device(struct i2c_board_info *info,
                                           struct device_node *node)
 {
-	int len = 0;
-	const void *prop;
+	int value = 0;
 
-	prop = of_get_property(node, "enable_gpio", &len);
-	if (prop && (len == sizeof(u32)))
-		cam_flash_3556.hw_enable = *(u32 *)prop;
+	of_property_read_u32(node, "enable_gpio", &cam_flash_3556.hw_enable);
 
-	prop = of_get_property(node, "current_cntrl_reg_val", &len);
-	if (prop && (len == sizeof(u8)))
-		cam_flash_3556.current_cntrl_reg_def = *(u8 *)prop;
+	of_property_read_u32(node, "current_cntrl_reg_val", &value);
+	cam_flash_3556.current_cntrl_reg_def = (u8)value;
 
 	/* Set back cameras to use available camera flash */
 	msm_camera_sensor_ov8835_data.flash_data = &camera_flash_lm3556;
@@ -270,17 +241,15 @@ int __init msp430_init_i2c_device(struct i2c_board_info *info,
 		struct device_node *child)
 {
 	int err = 0;
-	int len = 0;
-	const void *prop;
 	unsigned int irq_gpio = -1, reset_gpio = -1, bsl_gpio  = -1;
 
 	info->platform_data = &mp_msp430_data;
 
 	/* irq */
-	prop = of_get_property(child, "irq,gpio", &len);
-	if (!prop || (len != sizeof(u8)))
+
+	if (of_property_read_u32(child, "irq,gpio", &irq_gpio))
 		return -EINVAL;
-	irq_gpio = *(u8 *)prop;
+
 	mp_msp430_data.gpio_int = irq_gpio;
 
 	err = gpio_request(irq_gpio, "msp430 int");
@@ -294,9 +263,11 @@ int __init msp430_init_i2c_device(struct i2c_board_info *info,
 		pr_err("msp430 gpio_export failed: %d\n", err);
 
 	/* reset */
-	prop = of_get_property(child, "msp430_gpio_reset", &len);
-	if (prop && (len == sizeof(u8)))
-		reset_gpio = *(u8 *)prop;
+	if (of_property_read_u32(child, "msp430_gpio_reset", &reset_gpio)) {
+		err = -ENODEV;
+		goto fail;
+	}
+
 	mp_msp430_data.gpio_reset = reset_gpio;
 
 	err = gpio_request(reset_gpio, "msp430 reset");
@@ -311,9 +282,11 @@ int __init msp430_init_i2c_device(struct i2c_board_info *info,
 		pr_err("msp430 reset gpio_export failed: %d\n", err);
 
 	/* bslen */
-	prop = of_get_property(child, "msp430_gpio_bslen", &len);
-	if (prop && (len == sizeof(u8)))
-		bsl_gpio = *(u8 *)prop;
+	if (of_property_read_u32(child, "msp430_gpio_bslen", &bsl_gpio)) {
+		err = -ENODEV;
+		goto fail;
+	}
+
 	mp_msp430_data.gpio_bslen = bsl_gpio;
 
 	err = gpio_request(bsl_gpio, "msp430 bslen");
@@ -350,17 +323,15 @@ int __init pn544_init_i2c_device(struct i2c_board_info *info,
 		struct device_node *child)
 {
 	int err;
-	int len = 0;
-	const void *prop;
 	unsigned int irq_gpio = 0;
 	unsigned int ven_gpio = 0;
 	unsigned int firmware_gpio = 0;
 	unsigned int ven_polarity = 0;
 	unsigned int discharge_delay = 0;
 
-	prop = of_get_property(child, "platform_data", &len);
-	if (prop && len) {
-		info->platform_data = kmemdup(prop, len, GFP_KERNEL);
+	if (!of_property_read_u32_array(child, "platform_data",
+					(u32 *)(&pn544_platform_data), 4)) {
+		info->platform_data = &pn544_platform_data;
 		pr_info("pn544 got platform_data from dt\n");
 		return 0;
 	} else {
@@ -370,10 +341,8 @@ int __init pn544_init_i2c_device(struct i2c_board_info *info,
 	info->platform_data = &pn544_platform_data;
 
 	/* irq */
-	prop = of_get_property(child, "pn544_gpio_irq", &len);
-	if (!prop || (len != sizeof(u32)))
+	if (of_property_read_u32(child, "pn544_gpio_irq", &irq_gpio))
 		return -EINVAL;
-	irq_gpio = *(u32 *)prop;
 	pn544_platform_data.irq_gpio = irq_gpio;
 
 	err = gpio_request(irq_gpio, "pn544 irq");
@@ -387,14 +356,11 @@ int __init pn544_init_i2c_device(struct i2c_board_info *info,
 		pr_err("pn544 irq gpio_export failed: %d\n", err);
 
 	/* ven */
-	prop = of_get_property(child, "pn544_gpio_ven", &len);
-	if (prop && (len == sizeof(u32))) {
-		ven_gpio = *(u32 *)prop;
-		ven_gpio = PM8921_GPIO_PM_TO_SYS(ven_gpio);
-	} else {
+	if (of_property_read_u32(child, "pn544_gpio_ven", &ven_gpio)) {
 		gpio_free(irq_gpio);
 		return -EINVAL;
 	}
+	ven_gpio = PM8921_GPIO_PM_TO_SYS(ven_gpio);
 	pn544_platform_data.ven_gpio = ven_gpio;
 
 	err = gpio_request(ven_gpio, "pn544 reset");
@@ -410,15 +376,13 @@ int __init pn544_init_i2c_device(struct i2c_board_info *info,
 		pr_err("pna544 ven gpio_export failed: %d\n", err);
 
 	/* firmware download */
-	prop = of_get_property(child, "pn544_gpio_fwdownload", &len);
-	if (prop && (len == sizeof(u32))) {
-		firmware_gpio = *(u32 *)prop;
-		firmware_gpio = PM8921_GPIO_PM_TO_SYS(firmware_gpio);
-	} else {
+	if (of_property_read_u32(child, "pn544_gpio_fwdownload",
+						&firmware_gpio)) {
 		gpio_free(irq_gpio);
 		gpio_free(ven_gpio);
 		return -EINVAL;
 	}
+	firmware_gpio = PM8921_GPIO_PM_TO_SYS(firmware_gpio);
 	pn544_platform_data.firmware_gpio = firmware_gpio;
 
 	err = gpio_request(firmware_gpio, "pn544 firmware download");
@@ -434,22 +398,18 @@ int __init pn544_init_i2c_device(struct i2c_board_info *info,
 	err = gpio_export(firmware_gpio, 0);
 
 	/* ven polarity */
-	prop = of_get_property(child, "pn544_ven_polarity", &len);
-	if (prop && (len == sizeof(u32))) {
-		ven_polarity = *(u32 *)prop;
-	} else {
+	if (of_property_read_u32(child, "pn544_ven_polarity", &ven_polarity)) {
 		gpio_free(irq_gpio);
 		gpio_free(ven_gpio);
 		gpio_free(firmware_gpio);
 		return -EINVAL;
 	}
+
 	pn544_platform_data.ven_polarity = ven_polarity;
 
 	/* dischage delay */
-	prop = of_get_property(child, "pn544_discharge_delay", &len);
-	if (prop && (len == sizeof(u32))) {
-		discharge_delay = *(u32 *)prop;
-	} else {
+	if (of_property_read_u32(child, "pn544_discharge_delay",
+						&discharge_delay)) {
 		gpio_free(irq_gpio);
 		gpio_free(ven_gpio);
 		gpio_free(firmware_gpio);
@@ -483,21 +443,18 @@ static struct drv260x_platform_data drv2605_data;
 static int __init drv2605_init_i2c_device(struct i2c_board_info *info,
 				       struct device_node *child)
 {
-	int len = 0;
-	const void *prop;
+	int value;
 
 	info->platform_data = &drv2605_data;
 	/* enable gpio */
-	prop = of_get_property(child, "en_gpio", &len);
-	if (!prop || (len != sizeof(u8)))
+	if (of_property_read_u32(child, "en_gpio", &value))
 		return -EINVAL;
-	drv2605_data.en_gpio = *(u8 *)prop;
+	drv2605_data.en_gpio = (u8)value;
 
 	/* trigger gpio */
-	prop = of_get_property(child, "trigger_gpio", &len);
-	if (!prop || (len != sizeof(u8)))
+	if (of_property_read_u32(child, "trigger_gpio", &value))
 		return 0;
-	drv2605_data.trigger_gpio = *(u8 *)prop;
+	drv2605_data.trigger_gpio = (u8)value;
 
 	return 0;
 }
@@ -508,16 +465,11 @@ static int __init tpa6165a2_init_i2c_device(struct i2c_board_info *info,
 		struct device_node *node)
 {
 	int err;
-	int len;
-	const void *prop;
 
 	info->platform_data = &tpa6165_pdata;
 	/* get irq */
-	prop = of_get_property(node, "hs_irq_gpio", &len);
-	if (!prop || (len != sizeof(u32)))
+	if (of_property_read_u32(node, "hs_irq_gpio", &tpa6165_pdata.irq_gpio))
 		return -EINVAL;
-
-	tpa6165_pdata.irq_gpio = *(u32 *)prop;
 
 	err = gpio_request(tpa6165_pdata.irq_gpio, "hs irq");
 	if (err)
@@ -533,15 +485,12 @@ static int __init aic3253_init_i2c_device(struct i2c_board_info *info,
 {
 	int rst_gpio;
 	int err;
-	int len;
-	const void *prop;
 
 	info->platform_data = &aic_platform_data;
 	/* irq */
-	prop = of_get_property(node, "reset_gpio", &len);
-	if (!prop || (len != sizeof(u32)))
+	if (of_property_read_u32(node, "reset_gpio", &rst_gpio))
 		return -EINVAL;
-	rst_gpio = *(u32 *)prop;
+
 	aic_platform_data.reset_gpio = rst_gpio;
 
 	err = gpio_request(rst_gpio, "aic reset gpio");
@@ -609,31 +558,28 @@ __init void mmi_register_i2c_devices_from_dt(void)
 		pr_info("%s: register devices for %s@%d\n", __func__,
 				bus_node->name, bus_no);
 		for_each_child_of_node(bus_node, dev_node) {
-			const void *prop;
 			struct i2c_board_info info;
-			int len;
-			int err = 0;
+			const char *name;
+			int err = 0, value = 0;
 
 			memset(&info, 0, sizeof(struct i2c_board_info));
 
-			prop = of_get_property(dev_node, "i2c,type", &len);
-			if (prop)
-				strlcpy(info.type, (const char *)prop,
-					len > I2C_NAME_SIZE ? I2C_NAME_SIZE :
-					len);
+			if (!of_property_read_string(dev_node,
+							"i2c,type", &name))
+				strlcpy(info.type, name, I2C_NAME_SIZE);
 
-			prop = of_get_property(dev_node, "i2c,address", &len);
-			if (prop && (len == sizeof(u32)))
-				info.addr = *(u32 *)prop;
+			if (!of_property_read_u32(dev_node,
+							"i2c,address", &value))
+				info.addr = value;
 
-			prop = of_get_property(dev_node, "irq,gpio", &len);
-			if (prop && (len == sizeof(u8)))
-				info.irq = gpio_to_irq(*(u8 *)prop);
+			if (!of_property_read_u32(dev_node,
+							"irq,gpio", &value))
+				info.irq = gpio_to_irq(value);
 
-			prop = of_get_property(dev_node, "type", &len);
-			if (prop && (len == sizeof(u32))) {
+			if (!of_property_read_u32(dev_node,
+							"type", &value)) {
 				I2C_INIT_FUNC init_func =
-					get_init_i2c_func(*(u32 *)prop);
+					get_init_i2c_func(value);
 				if (init_func)
 					err = init_func(&info, dev_node);
 			}
