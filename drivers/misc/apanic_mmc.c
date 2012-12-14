@@ -27,6 +27,7 @@
 #include <linux/module.h>
 
 #include <asm/setup.h>
+#include <mach/mmi_watchdog.h>
 
 /* from kernel/printk.c */
 int log_buf_copy(char *dest, int idx, int len);
@@ -598,16 +599,6 @@ void emergency_dump(void)
 	emergency_dump_flag = 0;
 }
 
-#ifdef CONFIG_MSM_WATCHDOG
-extern void pet_watchdog(void);
-#else
-static inline void pet_watchdog(void) { }
-#endif
-
-static void touch_hw_watchdog(void)
-{
-	pet_watchdog();
-}
 static void apanic_mmc_logbuf_dump(void)
 {
 	struct apanic_data *ctx = &drv_ctx;
