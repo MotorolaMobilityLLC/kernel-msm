@@ -59,8 +59,6 @@ struct platform_device mmi_msmcpudai_mi2s_rx = {
 void __init mmi_i2s_dai_init(void)
 {
 	struct device_node *node;
-	const void *prop;
-	int len = 0;
 	int type;
 	int i;
 
@@ -68,11 +66,10 @@ void __init mmi_i2s_dai_init(void)
 	if (!node)
 		goto exit;
 
-	prop = of_get_property(node, DT_PROP_I2S_TYPE, &len);
-	if (prop && (len == sizeof(int)))
-		type = *((int *)prop);
-	else
+	if (of_property_read_u32(node, DT_PROP_I2S_TYPE, &type)) {
+		pr_err("DT I2S type read error\n");
 		goto exit;
+	}
 
 	if (type != DT_TYPE_MI2S) {
 		pr_err("%s: DT node wrong type: 0x%08X.\n", __func__, type);
@@ -80,10 +77,8 @@ void __init mmi_i2s_dai_init(void)
 	}
 
 	for (i = 0; i < ARRAY_SIZE(mmi_mi2s_gpios); ++i) {
-		prop = of_get_property(node, mmi_mi2s_gpios[i].label, &len);
-		if (prop && (len == sizeof(u32)))
-			mmi_mi2s_gpios[i].gpio = *((u32 *)prop);
-		else {
+		if (of_property_read_u32(node, mmi_mi2s_gpios[i].label,
+					&mmi_mi2s_gpios[i].gpio)) {
 			pr_err("%s: Missing %s\n", __func__, mmi_mi2s_gpios[i].label);
 			goto exit;
 		}
