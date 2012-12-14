@@ -137,20 +137,22 @@ static void __init dt_regulator_init(struct device_node *reg_parent_node,
 	struct device_node *reg_child_node;
 	struct device_node *consumer_supply_node;
 	struct regulator_init_data *init_data;
-	u32 regulator_id;
+	u32 reg_id;
 	int num_cs; /* number of consumer_supplies */
 	int num_added; /* number of consumer_supplies added in devtree */
 	struct regulator_consumer_supply *cs; /* our new table */
 
 	for_each_child_of_node(reg_parent_node, reg_child_node) {
-		regulator_id = dt_get_u32_or_die(reg_child_node, "id");
-		pr_debug("%s %s regulator_id = %d\n", __func__,
-			reg_child_node->full_name, regulator_id);
+		if (of_property_read_u32(reg_child_node, "id",  &reg_id))
+			continue;
 
-		init_data = (*lookup)(regulator_id);
+		pr_debug("%s %s regulator_id = %d\n", __func__,
+			reg_child_node->full_name, reg_id);
+
+		init_data = (*lookup)(reg_id);
 		if (!init_data) {
 			pr_err("%s: invalid regulator for id = %d\n",
-			       __func__, regulator_id);
+			       __func__, reg_id);
 			continue;
 		}
 
@@ -211,7 +213,8 @@ void __init mmi_regulator_init(struct msm8960_oem_init_ptrs *self)
 		msm_rpm_regulator_init_data_len);
 
 	for_each_child_of_node(reg_parent_node, reg_chip_node) {
-		device_id = dt_get_u32_or_die(reg_chip_node, "type");
+		if (of_property_read_u32(reg_chip_node, "type", &device_id))
+			continue;
 		switch (device_id) {
 		case QUALCOMM_RPM_REGULATOR:
 			dt_regulator_init(reg_chip_node,

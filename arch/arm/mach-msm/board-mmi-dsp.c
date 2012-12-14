@@ -73,8 +73,7 @@ static struct platform_device mmi_c55_ctrl_device = {
 void __init mmi_audio_dsp_init(void)
 {
 	struct device_node *node;
-	const void *prop;
-	int len = 0;
+	int value = 0;
 	int type;
 	int i;
 
@@ -82,10 +81,7 @@ void __init mmi_audio_dsp_init(void)
 	if (!node)
 		return;
 
-	prop = of_get_property(node, DT_PROP_C55_TYPE, &len);
-	if (prop && (len == sizeof(int)))
-		type = *((int *)prop);
-	else
+	if (of_property_read_u32(node, DT_PROP_C55_TYPE, &type))
 		goto exit;
 
 	if (type != DT_TYPE_AUDIO_C55) {
@@ -94,13 +90,13 @@ void __init mmi_audio_dsp_init(void)
 	}
 
 	for (i = 0; i < ARRAY_SIZE(mmi_c55_gpios); ++i) {
-		prop = of_get_property(node, mmi_c55_gpios[i].label, &len);
-		if (prop && (len == sizeof(char)))
-			mmi_c55_gpios[i].gpio = *((char *)prop);
-		else {
-			pr_err("%s: Missing %s\n", __func__, mmi_c55_gpios[i].label);
+		if (of_property_read_u32(node, mmi_c55_gpios[i].label,
+								&value)) {
+			pr_err("%s: Missing %s\n", __func__,
+						mmi_c55_gpios[i].label);
 			goto exit;
 		}
+		mmi_c55_gpios[i].gpio = (u8)value;
 	}
 
 	platform_device_register(&mmi_c55_ctrl_device);

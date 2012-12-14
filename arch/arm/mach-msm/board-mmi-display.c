@@ -80,8 +80,8 @@ struct mmi_disp_gpio_config {
 };
 
 struct mmi_disp_reg {
-	char reg_id[PANEL_NAME_MAX_LEN];
-	char reg_name[PANEL_NAME_MAX_LEN];
+	const char *reg_id;
+	const char *reg_name;
 	struct regulator *handle;
 	bool enabled;
 	int min_uV;
@@ -179,33 +179,13 @@ end:
 
 static int __init load_disp_value(struct device_node *node, char *name)
 {
-	const void *prop;
+	unsigned int val = -EINVAL;
 
-	prop = of_get_property(node, name, NULL);
-	if (!prop)
-		return -EINVAL;
-
-	pr_debug("%s: read from devtree %s = %d\n",
-						__func__, name, *(u32 *)prop);
-	return *(u32 *)prop;
+	of_property_read_u32(node, name, &val);
+	pr_debug("%s: read from devtree %s = %d\n", __func__, name, val);
+	return val;
 }
 
-
-static int __init load_disp_string(struct device_node *node, char *name,
-								char *disp_str)
-{
-	const void *prop;
-	int len;
-
-	prop = of_get_property(node, name, &len);
-	if (!prop)
-		return -EINVAL;
-
-	strlcpy(disp_str, (const char *)prop, len);
-
-	pr_debug("%s: read from devtree %s=%s\n", __func__, name, disp_str);
-	return 0;
-}
 
 static void __init print_mmi_gpio_info(struct mmi_disp_gpio_config *gpio_info)
 {
@@ -325,6 +305,7 @@ static void __init load_disp_regs_info_from_dt(struct device_node *node)
 	struct mmi_disp_reg_lst *reg_lst;
 	char prop_name[PANEL_NAME_MAX_LEN];
 	int len = PANEL_NAME_MAX_LEN;
+	const char *temp;
 
 	reg_lst = &mmi_disp_info.reg_lst;
 	reg_lst->num_disp_regs = load_disp_value(node, "num_disp_reg");
@@ -341,10 +322,10 @@ static void __init load_disp_regs_info_from_dt(struct device_node *node)
 		reg_info = &reg_lst->disp_reg[i-1];
 
 		snprintf(prop_name, len, "reg_id_%d", i);
-		load_disp_string(node, prop_name, reg_info->reg_id);
+		of_property_read_string(node, prop_name, &reg_info->reg_id);
 
 		snprintf(prop_name, len, "reg_name_%d", i);
-		load_disp_string(node, prop_name, reg_info->reg_name);
+		of_property_read_string(node, prop_name, &reg_info->reg_name);
 
 		snprintf(prop_name, len, "reg_min_mv_%d", i);
 		reg_info->min_uV =
@@ -368,7 +349,8 @@ static void __init load_disp_regs_info_from_dt(struct device_node *node)
 				ZERO_IF_NEG(load_disp_value(node, prop_name));
 
 		snprintf(prop_name, len, "reg_gpio_name_%d", i);
-		load_disp_string(node, prop_name, en_gpio->gpio_name);
+		of_property_read_string(node, prop_name, &temp);
+		strlcpy(en_gpio->gpio_name, temp, sizeof(en_gpio->gpio_name));
 
 		snprintf(prop_name, len, "reg_gpio_en_type_%d", i);
 		en_gpio->type = load_disp_value(node, prop_name);
@@ -399,7 +381,6 @@ static void __init mmi_load_panel_from_dt(void)
 {
 	struct device_node *node;
 	const char *name;
-	const void *prop;
 
 	node = of_find_node_by_path("/System@0/Display@0");
 
@@ -412,12 +393,8 @@ static void __init mmi_load_panel_from_dt(void)
 	} else
 		pr_info("%s: No panel_name in devtree\n", __func__);
 
-	prop = of_get_property(node, "disp_intf", NULL);
-	if (!prop) {
+	if (of_property_read_u32(node, "disp_intf", &mmi_disp_info.disp_intf))
 		pr_err("%s: no panel interface setting\n", __func__);
-		mmi_disp_info.disp_intf = 0;
-	} else
-		mmi_disp_info.disp_intf =  *(u32 *)prop;
 
 	load_disp_reset_info_from_dt(node);
 	load_disp_regs_info_from_dt(node);

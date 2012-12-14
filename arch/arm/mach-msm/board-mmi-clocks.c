@@ -69,6 +69,7 @@ __init struct clk_lookup *mmi_init_clocks_from_dt(int *size)
 	struct clk_lookup *msm_clocks_mmi = NULL;
 	struct device_node *parent;
 	struct device_node *child;
+	u32 clk_type;
 	int count = 0;
 	int index = 0;
 
@@ -81,13 +82,10 @@ __init struct clk_lookup *mmi_init_clocks_from_dt(int *size)
 
 	/* count number of clock nodes */
 	for_each_child_of_node(parent, child) {
-		int len;
-		const void *prop;
-
-		prop = of_get_property(child, "type", &len);
-		if (prop && (len == sizeof(u32)))
-			if (*(u32 *)prop == DT_QC_CLOCKTREE_CLOCK)
-				count++;
+		clk_type = 0;
+		of_property_read_u32(child, "type", &clk_type);
+		if (clk_type == DT_QC_CLOCKTREE_CLOCK)
+			count++;
 	}
 
 	if (!count) {
@@ -104,45 +102,41 @@ __init struct clk_lookup *mmi_init_clocks_from_dt(int *size)
 	}
 
 	for_each_child_of_node(parent, child) {
-		int len;
-		const void *prop_type;
-
-		prop_type = of_get_property(child, "type", &len);
-		if (prop_type && (len == sizeof(u32))) {
-			const void *name;
-			const void *dev;
-			const void *id;
-			int clk_len;
-			int dev_len;
+		clk_type = 0;
+		if (of_property_read_u32(child, "type", &clk_type)) {
+			pr_warn("%s: reading clock type failed!\n",
+				__func__);
+			continue;
+		} else {
+			const char *nm;
+			const char *dev;
+			u32 id;
 			uint16_t clkid;
 			struct clk *clk;
 			struct clk_lookup *p;
 
-			if (*(u32 *)prop_type != DT_QC_CLOCKTREE_CLOCK)
+			if (clk_type != DT_QC_CLOCKTREE_CLOCK)
 				continue;
 
-			name = of_get_property(child, "clockname", &clk_len);
-			if (!name || !clk_len) {
+			if (of_property_read_string(child, "clockname", &nm)) {
 				pr_warn("%s: clockname property not found!\n",
 					__func__);
 				continue;
 			}
 
-			dev = of_get_property(child, "deviceid", &dev_len);
-			if (!dev || !dev_len) {
+			if (of_property_read_string(child, "deviceid", &dev)) {
 				pr_warn("%s: deviceid property not found!\n",
 					__func__);
 				continue;
 			}
 
-			id = of_get_property(child, "clock", &len);
-			if (!id || len != sizeof(uint16_t)) {
+			if (of_property_read_u32(child, "clock", &id)) {
 				pr_warn("%s: clock property not found!\n",
 					__func__);
 				continue;
 			}
 
-			clkid = *(uint16_t *)id;
+			clkid = id;
 			if (!CLK_DT_VALID_RANGE(clkid)) {
 				pr_warn("%s: clock index (%d) out of range\n",
 					__func__, clkid);
@@ -153,16 +147,14 @@ __init struct clk_lookup *mmi_init_clocks_from_dt(int *size)
 			/* basic sanity passed, load to table */
 			p = &msm_clocks_mmi[index];
 			p->clk = clk;
-			p->con_id = kstrndup((const char *)name, clk_len,
-					GFP_KERNEL);
+			p->con_id = kstrndup(nm, strlen(nm), GFP_KERNEL);
 			if (!p->con_id) {
 				pr_warn("%s: clockname string dup failed\n",
 					__func__);
 				continue;
 			}
 
-			p->dev_id = kstrndup((const char *)dev, dev_len,
-					GFP_KERNEL);
+			p->dev_id = kstrndup(dev, strlen(dev), GFP_KERNEL);
 			if (!p->dev_id) {
 				pr_warn("%s: deviceid string dup failed\n",
 					__func__);
