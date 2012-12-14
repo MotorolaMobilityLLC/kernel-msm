@@ -415,4 +415,19 @@ static inline int cpu_is_msm8226(void)
 #endif
 }
 
+static inline int soc_class_is_msm8960(void)
+{
+	return cpu_is_msm8960() || cpu_is_msm8960ab();
+}
+
+static inline int soc_class_is_apq8064(void)
+{
+	return cpu_is_apq8064() || cpu_is_apq8064ab();
+}
+
+static inline int soc_class_is_msm8930(void)
+{
+	return cpu_is_msm8930() || cpu_is_msm8930aa() || cpu_is_msm8627();
+}
+
 #endif
