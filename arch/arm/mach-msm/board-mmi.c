@@ -39,9 +39,21 @@
 #include "board-mmi.h"
 #include "devices-mmi.h"
 #include "timer.h"
+#include "msm_watchdog.h"
+
+static void (*msm8960_common_cal_rsv_sizes)(void) __initdata;
+
+static void __init msm8960_mmi_cal_rsv_sizes(void)
+{
+	if (msm8960_common_cal_rsv_sizes)
+		msm8960_common_cal_rsv_sizes();
+	reserve_memory_for_watchdog();
+}
 
 static void __init mmi_msm8960_reserve(void)
 {
+	msm8960_common_cal_rsv_sizes = reserve_info->calculate_reserve_sizes;
+	reserve_info->calculate_reserve_sizes = msm8960_mmi_cal_rsv_sizes;
 	msm8960_reserve();
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
