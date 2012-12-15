@@ -1658,6 +1658,8 @@ rpm_vreg_of_init(struct rpm_regulator_init_data *pdata, struct vreg *vreg)
 		name = vreg->rdesc_pc.name;
 
 	np = of_find_compatible_node(NULL, NULL, "qcom,msm-rpm-regulators");
+	if (!np)
+		return NULL;
 
 	for_each_child_of_node(np, reg)
 		if (of_node_cmp(reg->name, name) == 0)
