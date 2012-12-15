@@ -145,23 +145,31 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 					sp_tx_link_config_done = 0;
 					sp_tx_hw_lt_enable = 0;
 					sp_tx_hw_lt_done = 0;
-					sp_tx_rx_anx7730 = 0;
-					sp_tx_rx_mydp = 0;
+					sp_tx_rx_type = RX_NULL;
+					sp_tx_rx_type_backup = RX_NULL;
 					sp_tx_set_sys_state(STATE_CABLE_PLUG);
 					return;
 				}
+				sp_tx_rx_type_backup = sp_tx_rx_type;
 			}
-			if (sp_tx_rx_anx7730) {
-				if (sp_tx_get_hdmi_connection())
+			switch(sp_tx_rx_type) {
+			case RX_HDMI:
+				if(sp_tx_get_hdmi_connection())
 					sp_tx_set_sys_state(STATE_PARSE_EDID);
-			} else if (sp_tx_rx_mydp) {
-				if (sp_tx_get_dp_connection())
+				break;
+			case RX_DP:
+				if(sp_tx_get_dp_connection())
 					sp_tx_set_sys_state(STATE_PARSE_EDID);
-			} else {
-				if (sp_tx_get_vga_connection()) {
+				break;
+			case RX_VGA:
+				if(sp_tx_get_vga_connection()){
 					sp_tx_send_message(MSG_CLEAR_IRQ);
 					sp_tx_set_sys_state(STATE_PARSE_EDID);
 				}
+				break;
+			case RX_NULL:
+			default:
+				break;
 			}
 		}
 	} else if (sp_tx_pd_mode == 0) {
@@ -173,8 +181,8 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 		sp_tx_link_config_done = 0;
 		sp_tx_hw_lt_enable = 0;
 		sp_tx_hw_lt_done = 0;
-		sp_tx_rx_anx7730 = 0;
-		sp_tx_rx_mydp = 0;
+		sp_tx_rx_type = RX_NULL;
+		sp_tx_rx_type_backup = RX_NULL;
 		sp_tx_set_sys_state(STATE_CABLE_PLUG);
 	}
 }
@@ -233,8 +241,9 @@ static void slimport_main_proc(struct anx7808_data *anx7808)
 		slimport_config_output();
 
 	if (sp_tx_system_state == STATE_HDCP_AUTH) {
-		if (hdcp_enable && (sp_tx_rx_anx7730
-			|| sp_tx_rx_mydp)) {
+		if (hdcp_enable &&
+			((sp_tx_rx_type == RX_HDMI) ||
+			( sp_tx_rx_type == RX_DP))) {
 			sp_tx_hdcp_process();
 		} else {
 			sp_tx_power_down(SP_TX_PWR_HDCP);
@@ -342,7 +351,6 @@ static int  anx7808_system_init(void)
 static irqreturn_t anx7808_cbl_det_isr(int irq, void *data)
 {
 	struct anx7808_data *anx7808 = data;
-
 
 	if (gpio_get_value(anx7808->pdata->gpio_cbl_det)) {
 		wake_lock(&anx7808->slimport_lock);

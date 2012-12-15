@@ -116,6 +116,13 @@ enum SP_LINK_BW {
 	BW_NULL = 0x00
 };
 
+enum RX_CBL_TYPE {
+	RX_HDMI = 0x01,
+	RX_DP = 0x02,
+	RX_VGA = 0x03,
+	RX_NULL = 0x00
+};
+
 void sp_tx_variable_init(void);
 void sp_tx_initialization(void);
 void sp_tx_show_infomation(void);
