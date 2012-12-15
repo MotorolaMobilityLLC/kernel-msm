@@ -3142,6 +3142,8 @@ pm8xxx_vreg_of_init(struct pm8xxx_regulator_core_platform_data *core,
 		name = vreg->rdesc.name;
 
 	np = of_find_compatible_node(NULL, NULL, "qcom,msm-pm8921-regulators");
+	if (!np)
+		return NULL;
 
 	for_each_child_of_node(np, reg)
 		if (of_node_cmp(reg->name, name) == 0)
