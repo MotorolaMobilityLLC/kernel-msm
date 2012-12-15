@@ -191,8 +191,9 @@ static int msm_ipc_router_create(struct net *net,
 	void *pil;
 
 	if (!check_permissions()) {
-		pr_err("%s: Do not have permissions\n", __func__);
-		return -EPERM;
+		pr_err("%s: %s(%d) Fix your permissions\n", __func__,
+			current->comm,
+			current->pid);
 	}
 
 	if (unlikely(protocol != 0)) {
