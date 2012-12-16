@@ -297,6 +297,7 @@ void msm_gemini_hw_we_buffer_update(struct msm_gemini_hw_buf *p_input,
 
 	struct msm_gemini_hw_cmd *hw_cmd_p;
 
+	GMN_DBG("%s:%d] pingpong index %d", __func__, __LINE__, pingpong_index);
 	if (pingpong_index == 0) {
 		hw_cmd_p = &hw_cmd_we_ping_update[0];
 
@@ -523,3 +524,31 @@ void msm_gemini_hw_region_dump(int size)
 	}
 }
 
+void msm_gemini_io_dump(int size)
+{
+	char line_str[128], *p_str;
+	void __iomem *addr = gemini_region_base;
+	int i;
+	u32 *p = (u32 *) addr;
+	u32 data;
+	pr_err("%s: %p %d reg_size %d\n", __func__, addr, size,
+							gemini_region_size);
+	line_str[0] = '\0';
+	p_str = line_str;
+	for (i = 0; i < size/4; i++) {
+		if (i % 4 == 0) {
+			snprintf(p_str, 12, "%08x: ", (u32) p);
+			p_str += 10;
+		}
+		data = readl_relaxed(p++);
+		snprintf(p_str, 12, "%08x ", data);
+		p_str += 9;
+		if ((i + 1) % 4 == 0) {
+			pr_err("%s\n", line_str);
+			line_str[0] = '\0';
+			p_str = line_str;
+		}
+	}
+	if (line_str[0] != '\0')
+		pr_err("%s\n", line_str);
+}
