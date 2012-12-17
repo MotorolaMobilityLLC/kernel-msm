@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -965,5 +965,13 @@ void mdp4_wfd_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe);
 void mdp4_wfd_init(int cndx);
 int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd, int cndx, int wait);
 #endif
-
+#ifdef CONFIG_FB_MSM_OVERLAY
+int mdp4_unmap_sec_resource(void);
+#else
+static inline void mdp4_unmap_sec_resource(void);
+{
+	/* empty */
+	return 0;
+}
+#endif
 #endif /* MDP_H */
