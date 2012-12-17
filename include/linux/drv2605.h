@@ -1,6 +1,32 @@
 /*
-  Drv2605
+** =============================================================================
+** Copyright (c)2012  Immersion Corporation.
+**
+** This program is free software; you can redistribute it and/or
+** modify it under the terms of the GNU General Public License
+** as published by the Free Software Foundation; either version 2
+** of the License, or (at your option) any later version.
+**
+** This program is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+** GNU General Public License for more details.
+**
+** You should have received a copy of the GNU General Public License
+** along with this program; if not, write to the Free Software
+** Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+**
+** File:
+**     drv2605.h
+**
+** Description:
+**     Header file for drv2605.c
+**
+** =============================================================================
+*/
 
+/*
+  Drv2605
   This file created by Immersion Corporation as an interim solution until
   Texas Instruments provides an official header for the DRV2605 part.
   Based on "DRV2605 Preliminary Datasheet 3-7-12 - Immersion.pdf"
@@ -11,7 +37,7 @@
 */
 
 #define DEVICE_NAME "drv2605"
-#define DRIVER_VERSION "130"
+#define DRIVER_VERSION "182"
 
 /* Commands */
 #define HAPTIC_CMDID_PLAY_SINGLE_EFFECT     0x01
@@ -19,6 +45,9 @@
 #define HAPTIC_CMDID_PLAY_TIMED_EFFECT      0x03
 #define HAPTIC_CMDID_GET_DEV_ID             0x04
 #define HAPTIC_CMDID_RUN_DIAG               0x05
+#define HAPTIC_CMDID_AUDIOHAPTIC_ENABLE     0x06
+#define HAPTIC_CMDID_AUDIOHAPTIC_DISABLE    0x07
+#define HAPTIC_CMDID_AUDIOHAPTIC_GETSTATUS  0x08
 #define HAPTIC_CMDID_STOP                   0xFF
 
 /* Command size */
@@ -54,14 +83,14 @@
 ** Mode
 */
 #define MODE_REG            0x01
-#define MODE_DEFAULT        0x40
+#define MODE_STANDBY        0x40
 
 #define DRV260X_MODE_MASK           0x07
 #define MODE_INTERNAL_TRIGGER       0
 #define MODE_EXTERNAL_TRIGGER_EDGE  1
 #define MODE_EXTERNAL_TRIGGER_LEVEL 2
 #define MODE_PWM_OR_ANALOG_INPUT    3
-#define MODE_RESERVED               4
+#define MODE_AUDIOHAPTIC            4
 #define MODE_REAL_TIME_PLAYBACK     5
 #define MODE_DIAGNOSTICS            6
 #define AUTO_CALIBRATION            7
@@ -230,6 +259,11 @@
 
 #define STARTUP_BOOST_ENABLED   (1 << 7)
 #define STARTUP_BOOST_DISABLED  (0 << 7)	// default
+#define AC_COUPLE_ENABLED       (1 << 5)
+#define AC_COUPLE_DISABLED      (0 << 5)	// default
+
+#define DEFAULT_DRIVE_TIME      0x17
+#define AUDIOHAPTIC_DRIVE_TIME  0x13
 
 /*
 ** Control2
@@ -265,10 +299,13 @@
 */
 #define Control3_REG 0x1D
 
-#define ERM_OpenLoop_Enabled (1 << 5)
-#define NG_Thresh_1 (1 << 6)
-#define NG_Thresh_2 (2 << 6)
-#define NG_Thresh_3 (3 << 6)
+#define INPUT_PWM               (0 << 1)	// default
+#define INPUT_ANALOG            (1 << 1)
+#define ERM_OpenLoop_Enabled    (1 << 5)
+#define NG_Thresh_DISABLED      (0 << 6)
+#define NG_Thresh_1             (1 << 6)
+#define NG_Thresh_2             (2 << 6)
+#define NG_Thresh_3             (3 << 6)
 
 /*
 ** Auto Calibration Memory Interface
@@ -293,8 +330,6 @@
 
 #define DEFAULT_LRA_AUTOCAL_COMPENSATION    0x06
 #define DEFAULT_LRA_AUTOCAL_BACKEMF         0xDE
-
-#define DEFAULT_DRIVE_TIME      0x17
 
 #ifdef __KERNEL__
 struct drv260x_platform_data {
