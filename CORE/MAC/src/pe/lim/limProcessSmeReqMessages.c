@@ -4896,6 +4896,9 @@ __limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     tpP2pPsParams pMsgNoA;
     tSirMsgQ msg;
     tpSirSmeScanReq     pScanReq;
+    tANI_U32 val = 0;
+    tANI_U8 i = 0;
+
     pScanReq = (tpSirSmeScanReq) pMsgBuf;
     if( eHAL_STATUS_SUCCESS != palAllocateMemory(
                   pMac->hHdd, (void **) &pMsgNoA, sizeof( tP2pPsConfig )))
@@ -4912,14 +4915,44 @@ __limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     pMsgNoA->duration = 0;
     pMsgNoA->interval = 0;
     pMsgNoA->count = 0;
-    /* Below params used for Single Shot NOA - so assign proper values */
-    /* Use min + max channel time to calculate the total duration of scan.
-    * Adding an overhead of 5ms to account for the scan messaging delays
-    */
-    pMsgNoA->single_noa_duration = ((pScanReq->minChannelTime + pScanReq->maxChannelTime)*
-                                    pScanReq->channelList.numChannels) + SCAN_MESSAGING_OVERHEAD;
-    pMsgNoA->psSelection = P2P_SINGLE_NOA;
+
     pMac->lim.gpLimSmeScanReq = pScanReq;
+
+    /* Below params used for Single Shot NOA - so assign proper values */
+    pMsgNoA->psSelection = P2P_SINGLE_NOA;
+
+    /* Calculate the total duration of scan for all the channels
+     * listed in the channel list */
+    pMsgNoA->single_noa_duration = 0;
+
+    if (wlan_cfgGetInt(pMac, WNI_CFG_PASSIVE_MAXIMUM_CHANNEL_TIME, &val) != eSIR_SUCCESS)
+    {
+        /*
+         * Could not get max channel value
+         * from CFG. Log error.
+         */
+        limLog(pMac, LOGP, FL("could not retrieve passive max channel value\n"));
+
+        /* use a default value of 110ms */
+        val = 110;
+    }
+
+    for (i = 0; i < pMac->lim.gpLimSmeScanReq->channelList.numChannels; i++) {
+        tANI_U8 channelNum = pMac->lim.gpLimSmeScanReq->channelList.channelNumber[i];
+
+        if (limActiveScanAllowed(pMac, channelNum)) {
+            /* Use min + max channel time to calculate the total duration of scan */
+            pMsgNoA->single_noa_duration += pMac->lim.gpLimSmeScanReq->minChannelTime + pMac->lim.gpLimSmeScanReq->maxChannelTime;
+        } else {
+            /* using the value from WNI_CFG_PASSIVE_MINIMUM_CHANNEL_TIME as is done in
+             * void limContinuePostChannelScan(tpAniSirGlobal pMac)
+             */
+            pMsgNoA->single_noa_duration += val;
+        }
+    }
+
+    /* Adding an overhead of 5ms to account for the scan messaging delays */
+    pMsgNoA->single_noa_duration += SCAN_MESSAGING_OVERHEAD;
 
     /* Start Insert NOA timer
      * If insert NOA req fails or NOA rsp fails or start NOA indication doesn't come from FW due to GO session deletion
