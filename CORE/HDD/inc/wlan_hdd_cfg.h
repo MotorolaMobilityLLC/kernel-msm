@@ -581,6 +581,11 @@ typedef enum
 #define CFG_REST_TIME_CONC_MAX                      ( 10000 )
 #define CFG_REST_TIME_CONC_DEFAULT                  ( 100 )
 
+#define CFG_NUM_CHAN_COMBINED_CONC_NAME             "gNumChanCombinedConc"
+#define CFG_NUM_CHAN_COMBINED_CONC_MIN              ( 1 )
+#define CFG_NUM_CHAN_COMBINED_CONC_MAX              ( 255 )
+#define CFG_NUM_CHAN_COMBINED_CONC_DEFAULT          ( 1 )
+
 #endif
 
 #define CFG_MAX_PS_POLL_NAME                   "gMaxPsPoll"
@@ -1619,6 +1624,8 @@ typedef struct
    v_U32_t        nActiveMinChnTimeConc;     //in units of milliseconds
    v_U32_t        nActiveMaxChnTimeConc;     //in units of milliseconds
    v_U32_t        nRestTimeConc;             //in units of milliseconds
+   v_U8_t         nNumChanCombinedConc;      //number of channels combined
+                                             //in each split scan operation
 #endif
 
    v_U8_t         nMaxPsPoll;
