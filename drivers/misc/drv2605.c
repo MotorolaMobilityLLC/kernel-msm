@@ -1,3 +1,30 @@
+/*
+** =============================================================================
+** Copyright (c) 2012  Immersion Corporation.
+**
+** This program is free software; you can redistribute it and/or
+** modify it under the terms of the GNU General Public License
+** as published by the Free Software Foundation; either version 2
+** of the License, or (at your option) any later version.
+**
+** This program is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+** GNU General Public License for more details.
+**
+** You should have received a copy of the GNU General Public License
+** along with this program; if not, write to the Free Software
+** Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+**
+** File:
+**     drv2605.c
+**
+** Description:
+**     DRV2605 chip driver
+**
+** =============================================================================
+*/
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -91,11 +118,26 @@
 #define ERM_OVERDRIVE_CLAMP_VOLTAGE     0x90
 #endif
 
-#define LRA_RATED_VOLTAGE               0x60
-#define LRA_OVERDRIVE_CLAMP_VOLTAGE     0x9E
+#define LRA_SEMCO1036                   0
+#define LRA_SEMCO0934                   1
+#define LRA_SELECTION                   LRA_SEMCO1036
+
+#if (LRA_SELECTION == LRA_SEMCO1036)
+#define LRA_RATED_VOLTAGE               0x56
+#define LRA_OVERDRIVE_CLAMP_VOLTAGE     0x90
+/* 100% of rated voltage (closed loop) */
+#define LRA_RTP_STRENGTH                0x7F
+
+#elif (LRA_SELECTION == LRA_SEMCO0934)
+#define LRA_RATED_VOLTAGE               0x51
+#define LRA_OVERDRIVE_CLAMP_VOLTAGE     0x72
+/* 100% of rated voltage (closed loop) */
+#define LRA_RTP_STRENGTH                0x7F
+#endif
 
 #define SKIP_LRA_AUTOCAL        1
 #define GO_BIT_POLL_INTERVAL    15
+#define STANDBY_WAKE_DELAY      1
 
 #if EFFECT_LIBRARY == LIBRARY_A
 /* ~44% of overdrive voltage (open loop) */
@@ -152,7 +194,7 @@ static const unsigned char ERM_autocal_sequence[] = {
 	SUSTAIN_TIME_OFFSET_NEG_REG, 0x00,
 	BRAKE_TIME_OFFSET_REG, 0x00,
 	AUDIO_HAPTICS_CONTROL_REG,
-	    AUDIO_HAPTICS_RECT_20MS | AUDIO_HAPTICS_FILTER_125HZ,
+	AUDIO_HAPTICS_RECT_20MS | AUDIO_HAPTICS_FILTER_125HZ,
 	AUDIO_HAPTICS_MIN_INPUT_REG, AUDIO_HAPTICS_MIN_INPUT_VOLTAGE,
 	AUDIO_HAPTICS_MAX_INPUT_REG, AUDIO_HAPTICS_MAX_INPUT_VOLTAGE,
 	AUDIO_HAPTICS_MIN_OUTPUT_REG, AUDIO_HAPTICS_MIN_OUTPUT_VOLTAGE,
@@ -162,11 +204,11 @@ static const unsigned char ERM_autocal_sequence[] = {
 	AUTO_CALI_RESULT_REG, DEFAULT_ERM_AUTOCAL_COMPENSATION,
 	AUTO_CALI_BACK_EMF_RESULT_REG, DEFAULT_ERM_AUTOCAL_BACKEMF,
 	FEEDBACK_CONTROL_REG,
-	    FB_BRAKE_FACTOR_3X | LOOP_RESPONSE_MEDIUM |
+	FB_BRAKE_FACTOR_3X | LOOP_RESPONSE_MEDIUM |
 	    FEEDBACK_CONTROL_BEMF_ERM_GAIN2,
 	Control1_REG, STARTUP_BOOST_ENABLED | DEFAULT_DRIVE_TIME,
 	Control2_REG,
-	    BIDIRECT_INPUT | AUTO_RES_GAIN_MEDIUM | BLANKING_TIME_SHORT |
+	BIDIRECT_INPUT | AUTO_RES_GAIN_MEDIUM | BLANKING_TIME_SHORT |
 	    IDISS_TIME_SHORT,
 	Control3_REG, ERM_OpenLoop_Enabled | NG_Thresh_2,
 	AUTOCAL_MEM_INTERFACE_REG, AUTOCAL_TIME_500MS,
@@ -178,7 +220,7 @@ static const unsigned char LRA_autocal_sequence[] = {
 	RATED_VOLTAGE_REG, LRA_RATED_VOLTAGE,
 	OVERDRIVE_CLAMP_VOLTAGE_REG, LRA_OVERDRIVE_CLAMP_VOLTAGE,
 	FEEDBACK_CONTROL_REG,
-	    FEEDBACK_CONTROL_MODE_LRA | FB_BRAKE_FACTOR_4X | LOOP_RESPONSE_FAST,
+	FEEDBACK_CONTROL_MODE_LRA | FB_BRAKE_FACTOR_4X | LOOP_RESPONSE_FAST,
 	Control3_REG, NG_Thresh_2,
 	GO_REG, GO,
 };
@@ -202,23 +244,24 @@ static const unsigned char LRA_init_sequence[] = {
 	SUSTAIN_TIME_OFFSET_NEG_REG, 0x00,
 	BRAKE_TIME_OFFSET_REG, 0x00,
 	AUDIO_HAPTICS_CONTROL_REG,
-	    AUDIO_HAPTICS_RECT_20MS | AUDIO_HAPTICS_FILTER_125HZ,
+	AUDIO_HAPTICS_RECT_20MS | AUDIO_HAPTICS_FILTER_125HZ,
 	AUDIO_HAPTICS_MIN_INPUT_REG, AUDIO_HAPTICS_MIN_INPUT_VOLTAGE,
 	AUDIO_HAPTICS_MAX_INPUT_REG, AUDIO_HAPTICS_MAX_INPUT_VOLTAGE,
 	AUDIO_HAPTICS_MIN_OUTPUT_REG, AUDIO_HAPTICS_MIN_OUTPUT_VOLTAGE,
-	AUDIO_HAPTICS_MAX_OUTPUT_REG, AUDIO_HAPTICS_MIN_OUTPUT_VOLTAGE,
+	AUDIO_HAPTICS_MAX_OUTPUT_REG, AUDIO_HAPTICS_MAX_OUTPUT_VOLTAGE,
 	RATED_VOLTAGE_REG, LRA_RATED_VOLTAGE,
 	OVERDRIVE_CLAMP_VOLTAGE_REG, LRA_OVERDRIVE_CLAMP_VOLTAGE,
 	AUTO_CALI_RESULT_REG, DEFAULT_LRA_AUTOCAL_COMPENSATION,
 	AUTO_CALI_BACK_EMF_RESULT_REG, DEFAULT_LRA_AUTOCAL_BACKEMF,
 	FEEDBACK_CONTROL_REG,
-	    FEEDBACK_CONTROL_MODE_LRA | FB_BRAKE_FACTOR_2X |
+	FEEDBACK_CONTROL_MODE_LRA | FB_BRAKE_FACTOR_2X |
 	    LOOP_RESPONSE_MEDIUM | FEEDBACK_CONTROL_BEMF_LRA_GAIN3,
-	Control1_REG, STARTUP_BOOST_ENABLED | DEFAULT_DRIVE_TIME,
+	Control1_REG,
+	STARTUP_BOOST_ENABLED | AC_COUPLE_ENABLED | AUDIOHAPTIC_DRIVE_TIME,
 	Control2_REG,
-	    BIDIRECT_INPUT | AUTO_RES_GAIN_MEDIUM | BLANKING_TIME_SHORT |
-	    IDISS_TIME_SHORT,
-	Control3_REG, NG_Thresh_2,
+	BIDIRECT_INPUT | AUTO_RES_GAIN_MEDIUM | BLANKING_TIME_MEDIUM |
+	    IDISS_TIME_MEDIUM,
+	Control3_REG, NG_Thresh_2 | INPUT_ANALOG,
 	AUTOCAL_MEM_INTERFACE_REG, AUTOCAL_TIME_500MS,
 };
 #endif
@@ -300,6 +343,8 @@ static void drv260x_change_mode(char mode)
 #define YES 1
 #define NO  0
 
+static void setAudioHapticsEnabled(int enable);
+static int audio_haptics_enabled = NO;
 static int vibrator_is_playing = NO;
 
 static int vibrator_get_time(struct timed_output_dev *dev)
@@ -316,7 +361,13 @@ static void vibrator_off(void)
 {
 	if (vibrator_is_playing) {
 		vibrator_is_playing = NO;
-		drv260x_change_mode(MODE_DEFAULT);
+		if (audio_haptics_enabled) {
+			if ((drv260x_read_reg(MODE_REG) & DRV260X_MODE_MASK) !=
+			    MODE_AUDIOHAPTIC)
+				setAudioHapticsEnabled(YES);
+		} else {
+			drv260x_change_mode(MODE_STANDBY);
+		}
 	}
 
 	wake_unlock(&vibdata.wklock);
@@ -324,6 +375,7 @@ static void vibrator_off(void)
 
 static void vibrator_enable(struct timed_output_dev *dev, int value)
 {
+	char mode;
 	if (drv260x->client == NULL)
 		return;
 	mutex_lock(&vibdata.lock);
@@ -333,13 +385,14 @@ static void vibrator_enable(struct timed_output_dev *dev, int value)
 	if (value) {
 		wake_lock(&vibdata.wklock);
 
+		mode = drv260x_read_reg(MODE_REG) & DRV260X_MODE_MASK;
 		/* Only change the mode if not already in RTP mode;
-			RTP input already set at init */
-		if ((drv260x_read_reg(MODE_REG) & DRV260X_MODE_MASK) !=
-		    MODE_REAL_TIME_PLAYBACK) {
+		   RTP input already set at init */
+		if (mode != MODE_REAL_TIME_PLAYBACK) {
+			if (audio_haptics_enabled && mode == MODE_AUDIOHAPTIC)
+				setAudioHapticsEnabled(NO);
 			drv260x_set_rtp_val(REAL_TIME_PLAYBACK_STRENGTH);
 			drv260x_change_mode(MODE_REAL_TIME_PLAYBACK);
-			drv260x_set_go_bit(GO);
 			vibrator_is_playing = YES;
 		}
 
@@ -371,6 +424,11 @@ static void vibrator_work(struct work_struct *work)
 
 static void play_effect(struct work_struct *work)
 {
+	if (audio_haptics_enabled &&
+	    ((drv260x_read_reg(MODE_REG) & DRV260X_MODE_MASK) ==
+	     MODE_AUDIOHAPTIC))
+		setAudioHapticsEnabled(NO);
+
 	drv260x_change_mode(MODE_INTERNAL_TRIGGER);
 	drv2605_set_waveform_sequence(vibdata.sequence,
 				      sizeof(vibdata.sequence));
@@ -381,7 +439,50 @@ static void play_effect(struct work_struct *work)
 					       (GO_BIT_POLL_INTERVAL));
 
 	wake_unlock(&vibdata.wklock);
-	drv260x_change_mode(MODE_DEFAULT);
+	if (audio_haptics_enabled)
+		setAudioHapticsEnabled(YES);
+	else
+		drv260x_change_mode(MODE_STANDBY);
+}
+
+static void setAudioHapticsEnabled(int enable)
+{
+	if (enable) {
+		if (g_effect_bank != LIBRARY_F) {
+			char audiohaptic_settings[] = {
+				Control1_REG, STARTUP_BOOST_ENABLED |
+				    AC_COUPLE_ENABLED | AUDIOHAPTIC_DRIVE_TIME,
+				Control3_REG, NG_Thresh_2 | INPUT_ANALOG
+			};
+			/* Chip needs to be brought out of
+			   standby to change the registers */
+			drv260x_change_mode(MODE_INTERNAL_TRIGGER);
+			schedule_timeout_interruptible(msecs_to_jiffies
+						       (STANDBY_WAKE_DELAY));
+			drv260x_write_reg_val(audiohaptic_settings,
+					      sizeof(audiohaptic_settings));
+		}
+		drv260x_change_mode(MODE_AUDIOHAPTIC);
+	} else {
+		/* Disable audio-to-haptics */
+		drv260x_change_mode(MODE_STANDBY);
+		schedule_timeout_interruptible(msecs_to_jiffies
+					       (STANDBY_WAKE_DELAY));
+		/* Chip needs to be brought out of
+		   standby to change the registers */
+		drv260x_change_mode(MODE_INTERNAL_TRIGGER);
+		if (g_effect_bank != LIBRARY_F) {
+			char default_settings[] = {
+				Control1_REG,
+				    STARTUP_BOOST_ENABLED | DEFAULT_DRIVE_TIME,
+				Control3_REG, NG_Thresh_2 | ERM_OpenLoop_Enabled
+			};
+			schedule_timeout_interruptible(msecs_to_jiffies
+						       (STANDBY_WAKE_DELAY));
+			drv260x_write_reg_val(default_settings,
+					      sizeof(default_settings));
+		}
+	}
 }
 
 static struct timed_output_dev to_dev = {
@@ -486,7 +587,7 @@ static int drv260x_probe(struct i2c_client *client,
 	drv2605_select_library(g_effect_bank);
 
 	/* Put hardware in standby */
-	drv260x_change_mode(MODE_DEFAULT);
+	drv260x_change_mode(MODE_STANDBY);
 
 	if (timed_output_dev_register(&to_dev) < 0) {
 		printk(KERN_ALERT "drv260x: fail to create timed output dev\n");
@@ -541,7 +642,7 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len,
 
 	if (vibrator_is_playing) {
 		vibrator_is_playing = NO;
-		drv260x_change_mode(MODE_DEFAULT);
+		drv260x_change_mode(MODE_STANDBY);
 	}
 
 	switch (buff[0]) {
@@ -560,6 +661,7 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len,
 	case HAPTIC_CMDID_PLAY_TIMED_EFFECT:
 		{
 			unsigned int value = 0;
+			char mode;
 
 			value = buff[2];
 			value <<= 8;
@@ -568,14 +670,17 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len,
 			if (value) {
 				wake_lock(&vibdata.wklock);
 
-				if ((drv260x_read_reg(MODE_REG) &
-				     DRV260X_MODE_MASK) !=
-				    MODE_REAL_TIME_PLAYBACK) {
+				mode =
+				    drv260x_read_reg(MODE_REG) &
+				    DRV260X_MODE_MASK;
+				if (mode != MODE_REAL_TIME_PLAYBACK) {
+					if (audio_haptics_enabled
+					    && mode == MODE_AUDIOHAPTIC)
+						setAudioHapticsEnabled(NO);
 					drv260x_set_rtp_val
 					    (REAL_TIME_PLAYBACK_STRENGTH);
 					drv260x_change_mode
 					    (MODE_REAL_TIME_PLAYBACK);
-					drv260x_set_go_bit(GO);
 					vibrator_is_playing = YES;
 				}
 
@@ -594,7 +699,10 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len,
 		{
 			if (vibrator_is_playing) {
 				vibrator_is_playing = NO;
-				drv260x_change_mode(MODE_DEFAULT);
+				if (audio_haptics_enabled)
+					setAudioHapticsEnabled(YES);
+				else
+					drv260x_change_mode(MODE_STANDBY);
 			}
 			vibdata.should_stop = YES;
 			break;
@@ -615,11 +723,44 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len,
 				MODE_REG, MODE_DIAGNOSTICS,
 				GO_REG, GO
 			};
+			if (audio_haptics_enabled &&
+			    ((drv260x_read_reg(MODE_REG) & DRV260X_MODE_MASK) ==
+			     MODE_AUDIOHAPTIC))
+				setAudioHapticsEnabled(NO);
 			drv260x_write_reg_val(diag_seq, sizeof(diag_seq));
 			drv2605_poll_go_bit();
 			read_val =
 			    (drv260x_read_reg(STATUS_REG) & DIAG_RESULT_MASK) >>
 			    3;
+			break;
+		}
+	case HAPTIC_CMDID_AUDIOHAPTIC_ENABLE:
+		{
+			if ((drv260x_read_reg(MODE_REG) & DRV260X_MODE_MASK) !=
+			    MODE_AUDIOHAPTIC) {
+				setAudioHapticsEnabled(YES);
+				audio_haptics_enabled = YES;
+			}
+			break;
+		}
+	case HAPTIC_CMDID_AUDIOHAPTIC_DISABLE:
+		{
+			if (audio_haptics_enabled) {
+				if ((drv260x_read_reg(MODE_REG) &
+				     DRV260X_MODE_MASK) == MODE_AUDIOHAPTIC)
+					setAudioHapticsEnabled(NO);
+				audio_haptics_enabled = NO;
+				drv260x_change_mode(MODE_STANDBY);
+			}
+			break;
+		}
+	case HAPTIC_CMDID_AUDIOHAPTIC_GETSTATUS:
+		{
+			if ((drv260x_read_reg(MODE_REG) & DRV260X_MODE_MASK) ==
+			    MODE_AUDIOHAPTIC)
+				read_val = 1;
+			else
+				read_val = 0;
 			break;
 		}
 	default:
@@ -726,7 +867,7 @@ static void drv260x_exit(void)
 module_init(drv260x_init);
 module_exit(drv260x_exit);
 
-/*  Current code version: 130 */
+/*  Current code version: 182 */
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Immersion Corp.");
 MODULE_DESCRIPTION("Driver for " DEVICE_NAME);
