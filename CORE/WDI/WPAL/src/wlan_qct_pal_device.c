@@ -105,7 +105,7 @@
  * Static Variable Definitions
  * -------------------------------------------------------------------------*/
 
-static struct wcnss_env {
+typedef struct {
    struct resource *wcnss_memory;
    void __iomem    *mmio;
    int              tx_irq;
@@ -116,7 +116,10 @@ static struct wcnss_env {
    void            *rx_context;
    int              rx_registered;
    int              tx_registered;
-} *gpEnv = NULL;
+} wcnss_env;
+
+static wcnss_env  gEnv;
+static wcnss_env *gpEnv = NULL;
 
 /*----------------------------------------------------------------------------
  * Static Function Declarations and Definitions
@@ -671,7 +674,7 @@ wpt_status wpalDeviceInit
       return eWLAN_PAL_STATUS_E_FAILURE;
    }
 
-   gpEnv = wpalMemoryAllocate(sizeof(*gpEnv));
+   gpEnv = &gEnv;
    if (NULL == gpEnv) {
       WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                  "%s: memory allocation failure",
@@ -705,7 +708,6 @@ wpt_status wpalDeviceInit
    return eWLAN_PAL_STATUS_SUCCESS;
 
  err_ioremap:
-   wpalMemoryFree(gpEnv);
    gpEnv = NULL;
 
    return eWLAN_PAL_STATUS_E_FAILURE;
@@ -744,7 +746,6 @@ wpt_status wpalDeviceClose
       free_irq(gpEnv->tx_irq, gpEnv);
    }
    iounmap(gpEnv->mmio);
-   wpalMemoryFree(gpEnv);
    gpEnv = NULL;
 
    return eWLAN_PAL_STATUS_SUCCESS;
