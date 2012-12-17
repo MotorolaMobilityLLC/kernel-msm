@@ -72,9 +72,9 @@ struct pm8xxx_mpp_init {
 			PM_GPIO_STRENGTH_HIGH, \
 			PM_GPIO_FUNC_NORMAL, 0, 0)
 
-#define PM8XXX_GPIO_INPUT(_gpio, _pull) \
+#define PM8XXX_GPIO_INPUT(_gpio, _vin,  _pull) \
 	PM8XXX_GPIO_INIT(_gpio, PM_GPIO_DIR_IN, PM_GPIO_OUT_BUF_CMOS, 0, \
-			_pull, PM_GPIO_VIN_S4, \
+			_pull, _vin, \
 			PM_GPIO_STRENGTH_NO, \
 			PM_GPIO_FUNC_NORMAL, 0, 0)
 
@@ -200,13 +200,18 @@ static __init int load_pm8921_gpios_from_dt(struct pm8xxx_gpio_init **ptr,
 
 			case 0x001E0008: /* Input */
 				if (of_property_read_u32(
-					child, "pull", &param1))
+					child, "vin", &param1))
+					param1 = PM_GPIO_VIN_S4;
+
+				if (of_property_read_u32(
+					child, "pull", &param2))
 					break;
 
 				pm8921_gpios[index++] =
 					(struct pm8xxx_gpio_init)
 					PM8XXX_GPIO_INPUT(gpio,
-						(unsigned char)param1);
+						(unsigned char)param1,
+						(unsigned char)param2);
 				break;
 
 			case 0x001E0009: /* Output, Func */
