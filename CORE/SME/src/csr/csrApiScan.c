@@ -120,6 +120,7 @@ extern tSirRetStatus wlan_cfgGetStr(tpAniSirGlobal, tANI_U16, tANI_U8*, tANI_U32
                                                                      
 void csrScanGetResultTimerHandler(void *);
 void csrScanResultAgingTimerHandler(void *pv);
+static void csrScanResultCfgAgingTimerHandler(void *pv);
 void csrScanIdleScanTimerHandler(void *);
 static void csrSetDefaultScanTiming( tpAniSirGlobal pMac, tSirScanType scanType, tCsrScanRequest *pScanRequest);
 #ifdef WLAN_AP_STA_CONCURRENCY
@@ -311,6 +312,13 @@ eHalStatus csrScanOpen( tpAniSirGlobal pMac )
             smsLog(pMac, LOGE, FL("cannot allocate memory for ResultAging timer\n"));
             break;
         }
+        status = palTimerAlloc(pMac->hHdd, &pMac->scan.hTimerResultCfgAging, 
+        csrScanResultCfgAgingTimerHandler, pMac);
+        if(!HAL_STATUS_SUCCESS(status))
+        {
+            smsLog(pMac, LOGE, FL("cannot allocate memory for CFG ResultAging timer\n"));
+            break;
+        }
     }while(0);
     
     return (status);
@@ -340,6 +348,7 @@ eHalStatus csrScanClose( tpAniSirGlobal pMac )
     csrLLClose(&pMac->scan.channelPowerInfoList5G);
     csrScanDisable(pMac);
     palTimerFree(pMac->hHdd, pMac->scan.hTimerResultAging);
+    palTimerFree(pMac->hHdd, pMac->scan.hTimerResultCfgAging);
     palTimerFree(pMac->hHdd, pMac->scan.hTimerGetResult);
 #ifdef WLAN_AP_STA_CONCURRENCY
     palTimerFree(pMac->hHdd, pMac->scan.hTimerStaApConcTimer);
@@ -5488,6 +5497,11 @@ void csrScanStopTimers(tpAniSirGlobal pMac)
     csrScanStopResultAgingTimer(pMac);
     csrScanStopIdleScanTimer(pMac);
     csrScanStopGetResultTimer(pMac);
+    if(0 != pMac->scan.scanResultCfgAgingTime )
+    {
+        csrScanStopResultCfgAgingTimer(pMac);
+    }
+
 }
 
 
@@ -5638,26 +5652,36 @@ static void csrStaApConcTimerHandler(void *pv)
 
 eHalStatus csrScanStartResultAgingTimer(tpAniSirGlobal pMac)
 {
-    eHalStatus status;
+    eHalStatus status = eHAL_STATUS_FAILURE;
     
     if(pMac->scan.fScanEnable)
     {
         status = palTimerStart(pMac->hHdd, pMac->scan.hTimerResultAging, CSR_SCAN_RESULT_AGING_INTERVAL, eANI_BOOLEAN_TRUE);
     }
-    else
-    {
-        status = eHAL_STATUS_FAILURE;
-    }
-    
     return (status);
 }
 
+eHalStatus csrScanStartResultCfgAgingTimer(tpAniSirGlobal pMac)
+{
+    eHalStatus status = eHAL_STATUS_FAILURE;
+
+    if(pMac->scan.fScanEnable)
+    {
+        status = palTimerStart(pMac->hHdd, pMac->scan.hTimerResultCfgAging, 
+        CSR_SCAN_RESULT_CFG_AGING_INTERVAL, eANI_BOOLEAN_TRUE);
+    }
+    return (status);
+}
 
 eHalStatus csrScanStopResultAgingTimer(tpAniSirGlobal pMac)
 {
     return (palTimerStop(pMac->hHdd, pMac->scan.hTimerResultAging));
 }
 
+eHalStatus csrScanStopResultCfgAgingTimer(tpAniSirGlobal pMac)
+{
+    return (palTimerStop(pMac->hHdd, pMac->scan.hTimerResultCfgAging));
+}
 
 //This function returns the maximum time a BSS is allowed in the scan result.
 //The time varies base on connection and power saving factors.
@@ -5756,6 +5780,29 @@ void csrScanResultAgingTimerHandler(void *pv)
     }
 }
 
+static void csrScanResultCfgAgingTimerHandler(void *pv)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( pv );
+    tListElem *pEntry, *tmpEntry;
+    tCsrScanResult *pResult;
+    tANI_TIMESTAMP ageOutTime =  pMac->scan.scanResultCfgAgingTime * PAL_TICKS_PER_SECOND;
+    tANI_TIMESTAMP curTime = (tANI_TIMESTAMP)palGetTickCount(pMac->hHdd);
+  
+    csrLLLock(&pMac->scan.scanResultList);
+    pEntry = csrLLPeekHead( &pMac->scan.scanResultList, LL_ACCESS_NOLOCK );
+    while( pEntry ) 
+    {
+        tmpEntry = csrLLNext(&pMac->scan.scanResultList, pEntry, LL_ACCESS_NOLOCK);
+        pResult = GET_BASE_ADDR( pEntry, tCsrScanResult, Link );
+        if((curTime - pResult->Result.BssDescriptor.nReceivedTime) > ageOutTime)
+        {
+            smsLog(pMac, LOGW, " age out due to time out");
+            csrScanAgeOutBss(pMac, pResult);
+        }
+        pEntry = tmpEntry;
+    }
+    csrLLUnlock(&pMac->scan.scanResultList);
+}
 
 eHalStatus csrScanStartIdleScanTimer(tpAniSirGlobal pMac, tANI_U32 interval)
 {

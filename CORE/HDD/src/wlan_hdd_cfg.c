@@ -1778,6 +1778,13 @@ REG_VARIABLE( CFG_ACTIVEMODE_OFFLOAD_ENABLE, WLAN_PARAM_Integer,
               CFG_ACTIVEMODE_OFFLOAD_ENABLE_MIN,
               CFG_ACTIVEMODE_OFFLOAD_ENABLE_MAX ),
 #endif
+
+REG_VARIABLE( CFG_SCAN_AGING_PARAM_NAME, WLAN_PARAM_Integer,
+             hdd_config_t, scanAgingTimeout,
+             VAR_FLAGS_OPTIONAL,
+             CFG_SCAN_AGING_PARAM_DEFAULT,
+             CFG_SCAN_AGING_PARAM_MIN,
+             CFG_SCAN_AGING_PARAM_MAX ),
 };
 
 /*
@@ -3352,6 +3359,9 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    //Enable/Disable MCC 
    smeConfig.csrConfig.fEnableMCCMode = pConfig->enableMCC;
    smeConfig.csrConfig.fAllowMCCGODiffBI = pConfig->allowMCCGODiffBI;
+
+   //Scan Results Aging Time out value
+   smeConfig.csrConfig.scanCfgAgingTime = pConfig->scanAgingTimeout;
 
    halStatus = sme_UpdateConfig( pHddCtx->hHal, &smeConfig);    
    if ( !HAL_STATUS_SUCCESS( halStatus ) )
