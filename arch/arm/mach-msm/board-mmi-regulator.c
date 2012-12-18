@@ -191,7 +191,7 @@ static void __init dt_regulator_init(struct device_node *reg_parent_node,
 		init_data = (*lookup)(reg_id);
 		if (!init_data) {
 			pr_err("%s: invalid regulator for id = %x\n",
-			       __func__, regulator_id);
+			       __func__, reg_id);
 			continue;
 		}
 
