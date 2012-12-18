@@ -18,26 +18,20 @@
 #define SENSOR_NAME "ov8820"
 #define PLATFORM_DRIVER_NAME "msm_camera_ov8820"
 
-#if 0
-#define OV8820_OTP_DATA      0x3D00
-#define OV8820_OTP_LOAD      0x3D81
-#define OV8820_OTP_BANK      0x3D84
-#define OV8820_OTP_BANK_SIZE 0x20
-
-#define SWAP_2_BYTES(x) (((x << 8) & 0xff00) | \
-		(x >> 8))
-#define SWAP_4_BYTES(x) (((x) << 24) | \
-		(((x) << 8) & 0x00ff0000) | \
-		(((x) >> 8) & 0x0000ff00) | \
-		((x) >> 24))
+#define OV8820_OTP_DATA       0x3D00
+#define OV8820_OTP_LOAD       0x3D81
+#define OV8820_OTP_BANK       0x3D84
+#define OV8820_OTP_BANK_SIZE  0x20
+#define OV8820_OTP_BANK_COUNT 8
+#define OV8820_OTP_SIZE       (OV8820_OTP_BANK_COUNT * OV8820_OTP_BANK_SIZE)
+#if OV8820_OTP_SIZE > MAX_OTP_SIZE
+#error OV8820_OTP_SIZE must not be greater than MAX_OTP_SIZE
 #endif
 
 DEFINE_MUTEX(ov8820_mut);
 static struct msm_sensor_ctrl_t ov8820_s_ctrl;
-#if 0
+
 static struct otp_info_t otp_info;
-struct af_info_t af_info;
-#endif
 
 static struct msm_cam_clk_info cam_mot_8960_clk_info[] = {
 	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
@@ -565,12 +559,10 @@ static struct msm_sensor_exp_gain_info_t ov8820_exp_gain_info = {
 	.vert_offset = 6,
 };
 
-#if 0
 static int32_t ov8820_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
 	int16_t i, j;
-	uint8_t otp[256];
 	uint16_t readData;
 
 	/* Start Stream to read OTP Data */
@@ -583,9 +575,9 @@ static int32_t ov8820_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 	}
 
 	/* Read all 8 banks */
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < OV8820_OTP_BANK_COUNT; i++) {
 		/* Reset OTP Buffer Registers */
-		for (j = 0; j < 32; j++) {
+		for (j = 0; j < OV8820_OTP_BANK_SIZE; j++) {
 			rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 					(uint16_t)(OV8820_OTP_DATA+j), 0xFF,
 					MSM_CAMERA_I2C_BYTE_DATA);
@@ -612,13 +604,14 @@ static int32_t ov8820_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 		msleep(25);
 
 		/* Read OTP Buffer Registers */
-		for (j = 0; j < 32; j++) {
+		for (j = 0; j < OV8820_OTP_BANK_SIZE; j++) {
 			rc = msm_camera_i2c_read(s_ctrl->sensor_i2c_client,
 					OV8820_OTP_DATA+j,
 					&readData,
 					MSM_CAMERA_I2C_BYTE_DATA);
 
-			otp[(i*32)+j] = (uint8_t)readData;
+			otp_info.otp_info[(i*OV8820_OTP_BANK_SIZE)+j] =
+				(uint8_t)readData;
 
 			if (rc < 0)
 				return rc;
@@ -641,21 +634,8 @@ static int32_t ov8820_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 		return rc;
 	}
 
-	memcpy((void *)&otp_info, otp, sizeof(struct otp_info_t));
-	memcpy(&af_info.af_man_type1, &(otp_info.otp_info[16]),
-			sizeof(uint32_t));
-	memcpy(&af_info.af_man_type2, &(otp_info.otp_info[20]),
-			sizeof(uint32_t));
-	memcpy(&af_info.af_act_type, &(otp_info.otp_info[25]),
-			sizeof(uint16_t));
-
-	af_info.af_act_type = SWAP_2_BYTES(af_info.af_act_type);
-	af_info.af_man_type1 = SWAP_4_BYTES(af_info.af_man_type1);
-	af_info.af_man_type2 = SWAP_4_BYTES(af_info.af_man_type2);
-
 	return rc;
 }
-#endif
 
 static int32_t ov8820_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 		uint16_t gain, uint32_t line)
@@ -821,7 +801,6 @@ static struct msm_camera_i2c_client ov8820_sensor_i2c_client = {
 	.addr_type = MSM_CAMERA_I2C_WORD_ADDR,
 };
 
-#if 0
 static int32_t ov8820_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
@@ -850,15 +829,13 @@ static int32_t ov8820_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	pr_info("ov8820: match_id success\n");
 	return 0;
 }
-#endif
-#if 0
+
 static int32_t ov8820_get_module_info(struct msm_sensor_ctrl_t *s_ctrl,
 		struct otp_info_t *module_info)
 {
 	*(module_info) = otp_info;
 	return 0;
 }
-#endif
 
 #if 0
 int32_t ov8820_adjust_frame_lines(struct msm_sensor_ctrl_t *s_ctrl,
@@ -933,9 +910,9 @@ static struct msm_sensor_fn_t ov8820_func_tbl = {
 	.sensor_power_up                = ov8820_power_up,
 	.sensor_power_down              = ov8820_power_down,
 	.sensor_get_csi_params          = msm_sensor_get_csi_params,
+	.sensor_get_module_info         = ov8820_get_module_info,
+	.sensor_match_id                = ov8820_match_id,
 	/* Added by Motorola TODO need to clean up*/
-	/*.sensor_get_module_info         = ov8820_get_module_info,*/
-	/*.sensor_match_id                = ov8820_match_id, */
 	/*.sensor_adjust_frame_lines      = ov8820_adjust_frame_lines,*/
 };
 
