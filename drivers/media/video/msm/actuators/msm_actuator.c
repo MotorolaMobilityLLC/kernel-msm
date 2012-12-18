@@ -13,6 +13,8 @@
 #include <linux/module.h>
 #include "msm_actuator.h"
 
+static uint8_t lens_mode;
+
 static struct msm_actuator_ctrl_t msm_actuator_t;
 static struct msm_actuator msm_vcm_actuator_table;
 static struct msm_actuator msm_piezo_actuator_table;
@@ -252,6 +254,11 @@ static int32_t msm_actuator_move_focus(
 		dir,
 		num_steps);
 
+	if (lens_mode) {
+		pr_info("%s - Test Mode X", __func__);
+		return rc;
+	}
+
 	if (dest_step_pos == a_ctrl->curr_step_pos)
 		return rc;
 
@@ -324,6 +331,17 @@ static int32_t msm_actuator_move_focus(
 	return rc;
 }
 
+int32_t msm_actuator_set_lens_mode(
+	struct msm_actuator_ctrl_t *a_ctrl,
+	uint8_t mode)
+{
+	int32_t rc = 0;
+
+	lens_mode = mode;
+
+	return rc;
+}
+
 static int32_t msm_actuator_init_step_table(struct msm_actuator_ctrl_t *a_ctrl,
 	struct msm_actuator_set_info_t *set_info)
 {
@@ -390,6 +408,11 @@ static int32_t msm_actuator_set_default_focus(
 	int32_t rc = 0;
 	CDBG("%s called\n", __func__);
 
+	if (lens_mode) {
+		pr_info("%s - Test Mode X", __func__);
+		return rc;
+	}
+
 	if (a_ctrl->curr_step_pos != 0)
 		rc = a_ctrl->func_tbl->actuator_move_focus(a_ctrl, move_params);
 	return rc;
@@ -418,6 +441,8 @@ static int32_t msm_actuator_init(struct msm_actuator_ctrl_t *a_ctrl,
 	int32_t rc = -EFAULT;
 	uint16_t i = 0;
 	CDBG("%s: IN\n", __func__);
+
+	lens_mode = 0;
 
 	for (i = 0; i < ARRAY_SIZE(actuators); i++) {
 		if (set_info->actuator_params.act_type ==
@@ -548,6 +573,21 @@ static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 			&cdata.cfg.move);
 		if (rc < 0)
 			pr_err("%s move focus failed %d\n", __func__, rc);
+		break;
+
+	case CFG_SET_LENS_MODE:
+		rc = a_ctrl->func_tbl->actuator_set_lens_mode(a_ctrl,
+			cdata.cfg.lens_mode);
+		if (rc < 0)
+			pr_err("%s set lens mode failed %d\n", __func__, rc);
+		break;
+
+	case CFG_GET_CUR_LENS_POS:
+		cdata.cfg.cur_lens_pos = a_ctrl->curr_step_pos;
+		if (copy_to_user((void *)argp,
+				 &cdata,
+				 sizeof(struct msm_actuator_cfg_data)))
+			rc = -EFAULT;
 		break;
 
 	default:
@@ -692,6 +732,7 @@ static struct msm_actuator msm_vcm_actuator_table = {
 		.actuator_set_default_focus = msm_actuator_set_default_focus,
 		.actuator_init_focus = msm_actuator_init_focus,
 		.actuator_parse_i2c_params = msm_actuator_parse_i2c_params,
+		.actuator_set_lens_mode =  msm_actuator_set_lens_mode,
 	},
 };
 
@@ -705,6 +746,7 @@ static struct msm_actuator msm_piezo_actuator_table = {
 			msm_actuator_piezo_set_default_focus,
 		.actuator_init_focus = msm_actuator_init_focus,
 		.actuator_parse_i2c_params = msm_actuator_parse_i2c_params,
+		.actuator_set_lens_mode =  msm_actuator_set_lens_mode,
 	},
 };
 

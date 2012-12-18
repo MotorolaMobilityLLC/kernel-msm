@@ -58,6 +58,8 @@ struct msm_actuator_func_tbl {
 			struct damping_params_t *,
 			int8_t,
 			int16_t);
+	int32_t (*actuator_set_lens_mode)(struct msm_actuator_ctrl_t *,
+			uint8_t);
 };
 
 struct msm_actuator {
