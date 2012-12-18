@@ -1015,7 +1015,9 @@ struct msm_snapshot_pp_status {
 #define CFG_CONFIG_CLK_ARRAY          53
 #define CFG_GPIO_OP                   54
 #define CFG_GET_MODULE_INFO           55
-#define CFG_MAX                       56
+#define CFG_SET_LENS_MODE             56
+#define CFG_GET_CUR_LENS_POS          57
+#define CFG_MAX                       58
 
 
 #define MOVE_NEAR	0
@@ -1816,6 +1818,8 @@ struct msm_actuator_cfg_data {
 		struct msm_actuator_set_info_t set_info;
 		struct msm_actuator_get_info_t get_info;
 		enum af_camera_name cam_name;
+		uint8_t lens_mode;
+		int16_t cur_lens_pos;
 	} cfg;
 };
 
