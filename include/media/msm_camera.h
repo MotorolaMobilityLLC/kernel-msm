@@ -1014,7 +1014,8 @@ struct msm_snapshot_pp_status {
 #define CFG_CONFIG_VREG_ARRAY         52
 #define CFG_CONFIG_CLK_ARRAY          53
 #define CFG_GPIO_OP                   54
-#define CFG_MAX                       55
+#define CFG_GET_MODULE_INFO           55
+#define CFG_MAX                       56
 
 
 #define MOVE_NEAR	0
@@ -1556,6 +1557,11 @@ struct ispif_cfg_data {
 	} cfg;
 };
 
+#define MAX_OTP_SIZE 512
+struct otp_info_t {
+	uint8_t otp_info[MAX_OTP_SIZE];
+};
+
 enum msm_camera_i2c_reg_addr_type {
 	MSM_CAMERA_I2C_BYTE_ADDR = 1,
 	MSM_CAMERA_I2C_WORD_ADDR,
@@ -1672,6 +1678,7 @@ struct sensor_cfg_data {
 		int is_autoflash;
 		struct mirror_flip mirror_flip;
 		void *setting;
+		struct otp_info_t module_info;
 	} cfg;
 };
 
