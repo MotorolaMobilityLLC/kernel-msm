@@ -23,6 +23,12 @@
 #ifdef CONFIG_ANDROID_BINDER_IPC_32BIT
 #define BINDER_IPC_32BIT 1
 #endif
+struct binder_get_peer {
+	pid_t	self;
+	pid_t	remote;
+};
+
+#define BINDER_GET_PEER_PID		_IOWR('b', 10, struct binder_get_peer)
 
 #include "uapi/binder.h"
 
