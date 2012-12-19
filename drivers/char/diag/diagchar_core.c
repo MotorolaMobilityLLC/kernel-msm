@@ -371,7 +371,6 @@ void diag_switch_logging_mode(unsigned long logging_mode)
 {
 	int temp;
 	int status;
-	int i;
 
 	mutex_lock(&driver->diagchar_mutex);
 	temp = driver->logging_mode;
