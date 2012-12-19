@@ -893,7 +893,11 @@ static int32_t q6asm_callback(struct apr_client_data *data, void *priv)
 		case ASM_STREAM_CMD_SET_ENCDEC_PARAM:
 		case ASM_STREAM_CMD_OPEN_WRITE_COMPRESSED:
 		case ASM_STREAM_CMD_OPEN_READ_COMPRESSED:
-			if (atomic_read(&ac->cmd_state) && wakeup_flag) {
+			if (payload[0] == ASM_STREAM_CMD_CLOSE) {
+				atomic_set(&ac->cmd_close_state, 0);
+				wake_up(&ac->cmd_wait);
+			} else if (atomic_read(&ac->cmd_state) &&
+					wakeup_flag) {
 				atomic_set(&ac->cmd_state, 0);
 				if (payload[1] == ADSP_EUNSUPPORTED) {
 					pr_debug("paload[1]:%d unsupported",
@@ -3756,7 +3760,8 @@ int q6asm_cmd(struct audio_client *ac, int cmd)
 	case CMD_CLOSE:
 		pr_debug("%s:CMD_CLOSE\n", __func__);
 		hdr.opcode = ASM_STREAM_CMD_CLOSE;
-		state = &ac->cmd_state;
+		atomic_set(&ac->cmd_close_state, 1);
+		state = &ac->cmd_close_state;
 		break;
 	default:
 		pr_err("Invalid format[%d]\n", cmd);
