@@ -36,10 +36,35 @@ enum msm_core_control_event {
 	MSM_DCVS_DISABLE_HIGH_LATENCY_MODES,
 };
 
+struct msm_dcvs_sync_rule {
+	unsigned long cpu_khz;
+	unsigned long gpu_floor_khz;
+};
+
+struct msm_dcvs_platform_data {
+	struct msm_dcvs_sync_rule *sync_rules;
+	unsigned num_sync_rules;
+	unsigned long gpu_max_nom_khz;
+};
+
 struct msm_gov_platform_data {
 	struct msm_dcvs_core_info *info;
 	int latency;
 };
+
+/**
+ * msm_dcvs_register_cpu_freq
+ * @freq: the frequency value to register
+ * @voltage: the operating voltage (in mV) associated with the above frequency
+ *
+ * Register a cpu frequency and its operating voltage with dcvs.
+ */
+#ifdef CONFIG_MSM_DCVS
+void msm_dcvs_register_cpu_freq(uint32_t freq, uint32_t voltage);
+#else
+static inline void msm_dcvs_register_cpu_freq(uint32_t freq, uint32_t voltage)
+{}
+#endif
 
 /**
  * msm_dcvs_idle
@@ -98,6 +123,7 @@ extern int msm_dcvs_register_core(
 	unsigned int (*get_frequency)(int type_core_num),
 	int (*idle_enable)(int type_core_num,
 				enum msm_core_control_event event),
+	int (*set_floor_frequency)(int type_core_num, unsigned int freq),
 	int sensor);
 
 /**
@@ -129,4 +155,23 @@ extern int msm_dcvs_freq_sink_stop(int dcvs_core_id);
  * Update the frequency known to dcvs when the limits are changed.
  */
 extern void msm_dcvs_update_limits(int dcvs_core_id);
+
+/**
+ * msm_dcvs_apply_gpu_floor
+ * @cpu_freq: CPU frequency to compare to GPU sync rules
+ *
+ * Apply a GPU floor frequency if the corresponding CPU frequency,
+ * or the number of CPUs online, requires it.
+ */
+extern void msm_dcvs_apply_gpu_floor(unsigned long cpu_freq);
+
+/**
+ * msm_dcvs_update_algo_params
+ * @return:
+ *      0 on success, < 0 on error
+ *
+ * Updates the DCVS algorithm with parameters depending on the
+ * number of CPUs online.
+ */
+extern int msm_dcvs_update_algo_params(void);
 #endif

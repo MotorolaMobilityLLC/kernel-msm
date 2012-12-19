@@ -20,7 +20,6 @@
 #include <linux/clk.h>
 #include <linux/iopoll.h>
 
-#include <mach/clk.h>
 #include <mach/rpm-regulator-smd.h>
 #include <mach/socinfo.h>
 #include <mach/rpm-smd.h>
@@ -29,6 +28,8 @@
 #include "clock-pll.h"
 #include "clock-rpm.h"
 #include "clock-voter.h"
+#include "clock-mdss-8974.h"
+#include "clock.h"
 
 enum {
 	GCC_BASE,
@@ -518,8 +519,9 @@ static void __iomem *virt_bases[N_BASES];
 #define edppll_270_mm_source_val 4
 #define edppll_350_mm_source_val 4
 #define dsipll_750_mm_source_val 1
-#define dsipll_250_mm_source_val 2
-#define hdmipll_297_mm_source_val 3
+#define dsipll0_byte_mm_source_val 1
+#define dsipll0_pixel_mm_source_val 1
+#define hdmipll_mm_source_val 3
 
 #define F(f, s, div, m, n) \
 	{ \
@@ -536,6 +538,17 @@ static void __iomem *virt_bases[N_BASES];
 	{ \
 		.freq_hz = (f), \
 		.src_clk = &s##_clk_src.c, \
+		.m_val = (m), \
+		.n_val = ~((n)-(m)) * !!(n), \
+		.d_val = ~(n),\
+		.div_src_val = BVAL(4, 0, (int)(2*(div) - 1)) \
+			| BVAL(10, 8, s##_mm_source_val), \
+	}
+
+#define F_HDMI(f, s, div, m, n) \
+	{ \
+		.freq_hz = (f), \
+		.src_clk = &s##_clk_src, \
 		.m_val = (m), \
 		.n_val = ~((n)-(m)) * !!(n), \
 		.d_val = ~(n),\
@@ -576,23 +589,33 @@ static void __iomem *virt_bases[N_BASES];
 	}
 
 #define VDD_DIG_FMAX_MAP1(l1, f1) \
-	.vdd_class = &vdd_dig, \
-	.fmax[VDD_DIG_##l1] = (f1)
+	.vdd_class = &vdd_dig,			\
+	.fmax = (unsigned long[VDD_DIG_NUM]) {	\
+		[VDD_DIG_##l1] = (f1),		\
+	},					\
+	.num_fmax = VDD_DIG_NUM
 #define VDD_DIG_FMAX_MAP2(l1, f1, l2, f2) \
-	.vdd_class = &vdd_dig, \
-	.fmax[VDD_DIG_##l1] = (f1), \
-	.fmax[VDD_DIG_##l2] = (f2)
+	.vdd_class = &vdd_dig,			\
+	.fmax = (unsigned long[VDD_DIG_NUM]) {	\
+		[VDD_DIG_##l1] = (f1),		\
+		[VDD_DIG_##l2] = (f2),		\
+	},					\
+	.num_fmax = VDD_DIG_NUM
 #define VDD_DIG_FMAX_MAP3(l1, f1, l2, f2, l3, f3) \
-	.vdd_class = &vdd_dig, \
-	.fmax[VDD_DIG_##l1] = (f1), \
-	.fmax[VDD_DIG_##l2] = (f2), \
-	.fmax[VDD_DIG_##l3] = (f3)
+	.vdd_class = &vdd_dig,			\
+	.fmax = (unsigned long[VDD_DIG_NUM]) {	\
+		[VDD_DIG_##l1] = (f1),		\
+		[VDD_DIG_##l2] = (f2),		\
+		[VDD_DIG_##l3] = (f3),		\
+	},					\
+	.num_fmax = VDD_DIG_NUM
 
 enum vdd_dig_levels {
 	VDD_DIG_NONE,
 	VDD_DIG_LOW,
 	VDD_DIG_NOMINAL,
-	VDD_DIG_HIGH
+	VDD_DIG_HIGH,
+	VDD_DIG_NUM
 };
 
 static const int vdd_corner[] = {
@@ -610,7 +633,7 @@ static int set_vdd_dig(struct clk_vdd_class *vdd_class, int level)
 					RPM_REGULATOR_CORNER_SUPER_TURBO);
 }
 
-static DEFINE_VDD_CLASS(vdd_dig, set_vdd_dig);
+static DEFINE_VDD_CLASS(vdd_dig, set_vdd_dig, VDD_DIG_NUM);
 
 #define RPM_MISC_CLK_TYPE	0x306b6c63
 #define RPM_BUS_CLK_TYPE	0x316b6c63
@@ -674,7 +697,6 @@ static struct pll_vote_clk gpll0_clk_src = {
 		.rate = 600000000,
 		.dbg_name = "gpll0_clk_src",
 		.ops = &clk_ops_pll_vote,
-		.warned = true,
 		CLK_INIT(gpll0_clk_src.c),
 	},
 };
@@ -690,7 +712,6 @@ static struct pll_vote_clk gpll1_clk_src = {
 		.rate = 480000000,
 		.dbg_name = "gpll1_clk_src",
 		.ops = &clk_ops_pll_vote,
-		.warned = true,
 		CLK_INIT(gpll1_clk_src.c),
 	},
 };
@@ -706,7 +727,6 @@ static struct pll_vote_clk lpapll0_clk_src = {
 		.rate = 491520000,
 		.dbg_name = "lpapll0_clk_src",
 		.ops = &clk_ops_pll_vote,
-		.warned = true,
 		CLK_INIT(lpapll0_clk_src.c),
 	},
 };
@@ -722,7 +742,6 @@ static struct pll_vote_clk mmpll0_clk_src = {
 		.dbg_name = "mmpll0_clk_src",
 		.rate = 800000000,
 		.ops = &clk_ops_pll_vote,
-		.warned = true,
 		CLK_INIT(mmpll0_clk_src.c),
 	},
 };
@@ -738,7 +757,6 @@ static struct pll_vote_clk mmpll1_clk_src = {
 		.dbg_name = "mmpll1_clk_src",
 		.rate = 846000000,
 		.ops = &clk_ops_pll_vote,
-		.warned = true,
 		CLK_INIT(mmpll1_clk_src.c),
 	},
 };
@@ -752,7 +770,6 @@ static struct pll_clk mmpll3_clk_src = {
 		.dbg_name = "mmpll3_clk_src",
 		.rate = 1000000000,
 		.ops = &clk_ops_local_pll,
-		.warned = true,
 		CLK_INIT(mmpll3_clk_src.c),
 	},
 };
@@ -2734,21 +2751,101 @@ static struct rcg_clk cpp_clk_src = {
 	},
 };
 
-static struct clk_freq_tbl ftbl_mdss_byte0_1_clk[] = {
-	F_MDSS( 93750000, dsipll_750,   8,   0,   0),
-	F_MDSS(187500000, dsipll_750,   4,   0,   0),
-	F_END
+static struct clk *dsi_pll_clk_get_parent(struct clk *c)
+{
+	return &cxo_clk_src.c;
+}
+
+static struct clk dsipll0_byte_clk_src = {
+	.dbg_name = "dsipll0_byte_clk_src",
+	.ops = &clk_ops_dsi_byte_pll,
+	CLK_INIT(dsipll0_byte_clk_src),
 };
+
+static struct clk dsipll0_pixel_clk_src = {
+	.dbg_name = "dsipll0_pixel_clk_src",
+	.ops = &clk_ops_dsi_pixel_pll,
+	CLK_INIT(dsipll0_pixel_clk_src),
+};
+
+static struct clk_freq_tbl byte_freq = {
+	.src_clk = &dsipll0_byte_clk_src,
+	.div_src_val = BVAL(10, 8, dsipll0_byte_mm_source_val),
+};
+static struct clk_freq_tbl pixel_freq = {
+	.src_clk = &dsipll0_byte_clk_src,
+	.div_src_val = BVAL(10, 8, dsipll0_byte_mm_source_val),
+};
+static struct clk_ops clk_ops_byte;
+static struct clk_ops clk_ops_pixel;
+
+#define CFG_RCGR_DIV_MASK		BM(4, 0)
+
+static int set_rate_byte(struct clk *clk, unsigned long rate)
+{
+	struct rcg_clk *rcg = to_rcg_clk(clk);
+	struct clk *pll = &dsipll0_byte_clk_src;
+	unsigned long source_rate, div;
+	int rc;
+
+	if (rate == 0)
+		return -EINVAL;
+
+	rc = clk_set_rate(pll, rate);
+	if (rc)
+		return rc;
+
+	source_rate = clk_round_rate(pll, rate);
+	if ((2 * source_rate) % rate)
+		return -EINVAL;
+
+	div = ((2 * source_rate)/rate) - 1;
+	if (div > CFG_RCGR_DIV_MASK)
+		return -EINVAL;
+
+	byte_freq.div_src_val &= ~CFG_RCGR_DIV_MASK;
+	byte_freq.div_src_val |= BVAL(4, 0, div);
+	set_rate_mnd(rcg, &byte_freq);
+
+	return 0;
+}
+
+static int set_rate_pixel(struct clk *clk, unsigned long rate)
+{
+	struct rcg_clk *rcg = to_rcg_clk(clk);
+	struct clk *pll = &dsipll0_pixel_clk_src;
+	unsigned long source_rate, div;
+	int rc;
+
+	if (rate == 0)
+		return -EINVAL;
+
+	rc = clk_set_rate(pll, rate);
+	if (rc)
+		return rc;
+
+	source_rate = clk_round_rate(pll, rate);
+	if ((2 * source_rate) % rate)
+		return -EINVAL;
+
+	div = ((2 * source_rate)/rate) - 1;
+	if (div > CFG_RCGR_DIV_MASK)
+		return -EINVAL;
+
+	pixel_freq.div_src_val &= ~CFG_RCGR_DIV_MASK;
+	pixel_freq.div_src_val |= BVAL(4, 0, div);
+	set_rate_hid(rcg, &pixel_freq);
+
+	return 0;
+}
 
 static struct rcg_clk byte0_clk_src = {
 	.cmd_rcgr_reg = BYTE0_CMD_RCGR,
-	.set_rate = set_rate_hid,
-	.freq_tbl = ftbl_mdss_byte0_1_clk,
-	.current_freq = &rcg_dummy_freq,
+	.current_freq = &byte_freq,
 	.base = &virt_bases[MMSS_BASE],
 	.c = {
 		.dbg_name = "byte0_clk_src",
-		.ops = &clk_ops_rcg,
+		.ops = &clk_ops_byte,
 		VDD_DIG_FMAX_MAP3(LOW, 93800000, NOMINAL, 187500000,
 				  HIGH, 188000000),
 		CLK_INIT(byte0_clk_src.c),
@@ -2757,13 +2854,11 @@ static struct rcg_clk byte0_clk_src = {
 
 static struct rcg_clk byte1_clk_src = {
 	.cmd_rcgr_reg = BYTE1_CMD_RCGR,
-	.set_rate = set_rate_hid,
-	.freq_tbl = ftbl_mdss_byte0_1_clk,
-	.current_freq = &rcg_dummy_freq,
+	.current_freq = &byte_freq,
 	.base = &virt_bases[MMSS_BASE],
 	.c = {
 		.dbg_name = "byte1_clk_src",
-		.ops = &clk_ops_rcg,
+		.ops = &clk_ops_byte,
 		VDD_DIG_FMAX_MAP3(LOW, 93800000, NOMINAL, 187500000,
 				  HIGH, 188000000),
 		CLK_INIT(byte1_clk_src.c),
@@ -2862,14 +2957,84 @@ static struct rcg_clk esc1_clk_src = {
 	},
 };
 
+static int hdmi_pll_clk_enable(struct clk *c)
+{
+	int ret;
+	unsigned long flags;
+
+	spin_lock_irqsave(&local_clock_reg_lock, flags);
+	ret = hdmi_pll_enable();
+	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
+	return ret;
+}
+
+static void hdmi_pll_clk_disable(struct clk *c)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&local_clock_reg_lock, flags);
+	hdmi_pll_disable();
+	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
+}
+
+static int hdmi_pll_clk_set_rate(struct clk *c, unsigned long rate)
+{
+	unsigned long flags;
+	int rc;
+
+	spin_lock_irqsave(&local_clock_reg_lock, flags);
+	rc = hdmi_pll_set_rate(rate);
+	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
+
+	return rc;
+}
+
+static struct clk *hdmi_pll_clk_get_parent(struct clk *c)
+{
+	return &cxo_clk_src.c;
+}
+
+static struct clk_ops clk_ops_hdmi_pll = {
+	.enable = hdmi_pll_clk_enable,
+	.disable = hdmi_pll_clk_disable,
+	.set_rate = hdmi_pll_clk_set_rate,
+	.get_parent = hdmi_pll_clk_get_parent,
+};
+
+static struct clk hdmipll_clk_src = {
+	.dbg_name = "hdmipll_clk_src",
+	.ops = &clk_ops_hdmi_pll,
+	CLK_INIT(hdmipll_clk_src),
+};
+
 static struct clk_freq_tbl ftbl_mdss_extpclk_clk[] = {
-	F_MDSS(148500000, hdmipll_297,   2,   0,   0),
+	/*
+	 * The zero rate is required since suspend/resume wipes out the HDMI PHY
+	 * registers. This entry allows the HDMI driver to switch the cached
+	 * rate to zero before suspend and back to the real rate after resume.
+	 */
+	F_HDMI(        0, hdmipll, 1, 0, 0),
+	F_HDMI( 25200000, hdmipll, 1, 0, 0),
+	F_HDMI( 27030000, hdmipll, 1, 0, 0),
+	F_HDMI( 74250000, hdmipll, 1, 0, 0),
+	F_HDMI(148500000, hdmipll, 1, 0, 0),
+	F_HDMI(297000000, hdmipll, 1, 0, 0),
 	F_END
 };
 
+/*
+ * Unlike other clocks, the HDMI rate is adjusted through PLL
+ * re-programming. It is also routed through an HID divider.
+ */
+static void set_rate_hdmi(struct rcg_clk *rcg, struct clk_freq_tbl *nf)
+{
+	clk_set_rate(nf->src_clk, nf->freq_hz);
+	set_rate_hid(rcg, nf);
+}
+
 static struct rcg_clk extpclk_clk_src = {
 	.cmd_rcgr_reg = EXTPCLK_CMD_RCGR,
-	.set_rate = set_rate_hid,
+	.set_rate = set_rate_hdmi,
 	.freq_tbl = ftbl_mdss_extpclk_clk,
 	.current_freq = &rcg_dummy_freq,
 	.base = &virt_bases[MMSS_BASE],
@@ -2900,21 +3065,14 @@ static struct rcg_clk hdmi_clk_src = {
 	},
 };
 
-static struct clk_freq_tbl ftbl_mdss_pclk0_1_clk[] = {
-	F_MDSS(125000000, dsipll_250,   2,   0,   0),
-	F_MDSS(250000000, dsipll_250,   1,   0,   0),
-	F_END
-};
 
 static struct rcg_clk pclk0_clk_src = {
 	.cmd_rcgr_reg = PCLK0_CMD_RCGR,
-	.set_rate = set_rate_mnd,
-	.freq_tbl = ftbl_mdss_pclk0_1_clk,
-	.current_freq = &rcg_dummy_freq,
+	.current_freq = &pixel_freq,
 	.base = &virt_bases[MMSS_BASE],
 	.c = {
 		.dbg_name = "pclk0_clk_src",
-		.ops = &clk_ops_rcg_mnd,
+		.ops = &clk_ops_pixel,
 		VDD_DIG_FMAX_MAP2(LOW, 125000000, NOMINAL, 250000000),
 		CLK_INIT(pclk0_clk_src.c),
 	},
@@ -2922,13 +3080,11 @@ static struct rcg_clk pclk0_clk_src = {
 
 static struct rcg_clk pclk1_clk_src = {
 	.cmd_rcgr_reg = PCLK1_CMD_RCGR,
-	.set_rate = set_rate_mnd,
-	.freq_tbl = ftbl_mdss_pclk0_1_clk,
-	.current_freq = &rcg_dummy_freq,
+	.current_freq = &pixel_freq,
 	.base = &virt_bases[MMSS_BASE],
 	.c = {
 		.dbg_name = "pclk1_clk_src",
-		.ops = &clk_ops_rcg_mnd,
+		.ops = &clk_ops_pixel,
 		VDD_DIG_FMAX_MAP2(LOW, 125000000, NOMINAL, 250000000),
 		CLK_INIT(pclk1_clk_src.c),
 	},
@@ -5375,6 +5531,19 @@ static void __init reg_init(void)
 	WARN(ret, "LPASS Audio Core GDSC did not power on.\n");
 }
 
+static void __init mdss_clock_setup(void)
+{
+	clk_ops_byte = clk_ops_rcg_mnd;
+	clk_ops_byte.set_rate = set_rate_byte;
+	clk_ops_dsi_byte_pll.get_parent = dsi_pll_clk_get_parent;
+
+	clk_ops_pixel = clk_ops_rcg;
+	clk_ops_pixel.set_rate = set_rate_pixel;
+	clk_ops_dsi_pixel_pll.get_parent = dsi_pll_clk_get_parent;
+
+	mdss_clk_ctrl_init();
+}
+
 static void __init msm8974_clock_post_init(void)
 {
 	clk_set_rate(&axi_clk_src.c, 282000000);
@@ -5404,6 +5573,8 @@ static void __init msm8974_clock_post_init(void)
 	 */
 	clk_prepare_enable(&gcc_mmss_noc_cfg_ahb_clk.c);
 	clk_prepare_enable(&gcc_ocmem_noc_cfg_ahb_clk.c);
+
+	mdss_clock_setup();
 
 	/* Set rates for single-rate clocks. */
 	clk_set_rate(&usb30_master_clk_src.c,

@@ -16,6 +16,7 @@
 
 #include <mach/rpm.h>
 #include <mach/rpm-smd.h>
+#include <mach/clk-provider.h>
 
 #define RPM_SMD_KEY_RATE	0x007A484B
 #define RPM_SMD_KEY_ENABLE	0x62616E45
@@ -110,7 +111,6 @@ extern struct clk_rpmrs_data clk_rpmrs_data_smd;
 			.dbg_name = #name, \
 			.rate = (r), \
 			CLK_INIT(name.c), \
-			.warned = true, \
 		}, \
 	}; \
 	static struct rpm_clk active = { \
@@ -129,7 +129,6 @@ extern struct clk_rpmrs_data clk_rpmrs_data_smd;
 			.dbg_name = #active, \
 			.rate = (r), \
 			CLK_INIT(active.c), \
-			.warned = true, \
 		}, \
 	};
 
@@ -148,7 +147,6 @@ extern struct clk_rpmrs_data clk_rpmrs_data_smd;
 			.ops = &clk_ops_rpm, \
 			.dbg_name = #name, \
 			CLK_INIT(name.c), \
-			.warned = true, \
 		}, \
 	}; \
 	static struct rpm_clk active = { \
@@ -164,7 +162,6 @@ extern struct clk_rpmrs_data clk_rpmrs_data_smd;
 			.ops = &clk_ops_rpm, \
 			.dbg_name = #active, \
 			CLK_INIT(active.c), \
-			.warned = true, \
 		}, \
 	};
 

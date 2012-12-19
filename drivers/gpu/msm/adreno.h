@@ -85,9 +85,11 @@ struct adreno_device {
 	const char *pfp_fwfile;
 	unsigned int *pfp_fw;
 	size_t pfp_fw_size;
+	unsigned int pfp_fw_version;
 	const char *pm4_fwfile;
 	unsigned int *pm4_fw;
 	size_t pm4_fw_size;
+	unsigned int pm4_fw_version;
 	struct adreno_ringbuffer ringbuffer;
 	unsigned int mharb;
 	struct adreno_gpudev *gpudev;
@@ -97,6 +99,7 @@ struct adreno_device {
 	unsigned int instruction_size;
 	unsigned int ib_check_level;
 	unsigned int fast_hang_detect;
+	unsigned int gpulist_index;
 	struct ocmem_buf *ocmem_hdl;
 	unsigned int ocmem_base;
 };
@@ -166,6 +169,9 @@ extern const unsigned int a225_registers_count;
 /* A3XX register set defined in adreno_a3xx.c */
 extern const unsigned int a3xx_registers[];
 extern const unsigned int a3xx_registers_count;
+
+extern const unsigned int a3xx_hlsq_registers[];
+extern const unsigned int a3xx_hlsq_registers_count;
 
 extern const unsigned int a330_registers[];
 extern const unsigned int a330_registers_count;
@@ -353,6 +359,28 @@ static inline int adreno_add_read_cmds(struct kgsl_device *device,
 	*cmds++ = 0xFFFFFFFF;
 	*cmds++ = 0xFFFFFFFF;
 	cmds += __adreno_add_idle_indirect_cmds(cmds, nop_gpuaddr);
+	return cmds - start;
+}
+
+/*
+ * adreno_idle_cmds - Add pm4 packets for GPU idle
+ * @adreno_dev - Pointer to device structure
+ * @cmds - Pointer to memory where idle commands need to be added
+ */
+static inline int adreno_add_idle_cmds(struct adreno_device *adreno_dev,
+							unsigned int *cmds)
+{
+	unsigned int *start = cmds;
+
+	*cmds++ = cp_type3_packet(CP_WAIT_FOR_IDLE, 1);
+	*cmds++ = 0x00000000;
+
+	if ((adreno_dev->gpurev == ADRENO_REV_A305) ||
+		(adreno_dev->gpurev == ADRENO_REV_A320)) {
+		*cmds++ = cp_type3_packet(CP_WAIT_FOR_ME, 1);
+		*cmds++ = 0x00000000;
+	}
+
 	return cmds - start;
 }
 
