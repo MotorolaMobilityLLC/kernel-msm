@@ -535,7 +535,7 @@ int __init msm_clock_init(struct clock_init_data *data)
 	clock_tbl = kmalloc(sizeof(struct clk_lookup)*num_clocks, GFP_KERNEL);
 	if (!clock_tbl) {
 		pr_err("%s: could not allocate clk_lookup table\n", __func__);
-		return;
+		return -ENOMEM;
 	}
 	ptr = clock_tbl;
 
