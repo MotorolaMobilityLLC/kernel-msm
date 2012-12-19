@@ -978,6 +978,7 @@ struct vfe_share_ctrl_t {
 	uint16_t cmd_type;
 	uint8_t vfe_reset_flag;
 	uint8_t dual_enabled;
+	uint8_t lp_mode;
 
 	uint8_t axi_ref_cnt;
 	uint16_t comp_output_mode;
@@ -997,6 +998,8 @@ struct vfe_share_ctrl_t {
 	atomic_t rdi0_update_ack_pending;
 	atomic_t rdi1_update_ack_pending;
 	atomic_t rdi2_update_ack_pending;
+
+	uint8_t stream_error;
 
 };
 

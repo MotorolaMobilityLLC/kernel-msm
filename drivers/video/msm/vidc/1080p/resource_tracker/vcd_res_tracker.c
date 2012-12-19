@@ -69,7 +69,7 @@ static void *res_trk_pmem_map
 	if (res_trk_get_enable_ion() && addr->alloc_handle) {
 		kernel_vaddr = (unsigned long *) ion_map_kernel(
 					ddl_context->video_ion_client,
-					addr->alloc_handle, UNCACHED);
+					addr->alloc_handle);
 		if (IS_ERR_OR_NULL(kernel_vaddr)) {
 			DDL_MSG_ERROR("%s():DDL ION client map failed\n",
 						 __func__);
@@ -84,7 +84,7 @@ static void *res_trk_pmem_map
 				0,
 				&iova,
 				&buffer_size,
-				UNCACHED, 0);
+				0, 0);
 		if (ret || !iova) {
 			DDL_MSG_ERROR(
 			"%s():DDL ION client iommu map failed, ret = %d iova = 0x%lx\n",
@@ -209,7 +209,8 @@ static int res_trk_pmem_alloc
 			addr->alloc_handle = ion_alloc(
 					ddl_context->video_ion_client,
 					 alloc_size, SZ_4K,
-					res_trk_get_mem_type());
+					res_trk_get_mem_type(),
+					res_trk_get_ion_flags());
 			if (IS_ERR_OR_NULL(addr->alloc_handle)) {
 				DDL_MSG_ERROR("%s() :DDL ION alloc failed\n",
 						__func__);
@@ -843,15 +844,29 @@ int res_trk_get_mem_type(void)
 	if (resource_context.vidc_platform_data->enable_ion) {
 		if (res_trk_check_for_sec_session()) {
 			mem_type = ION_HEAP(mem_type);
-	if (resource_context.res_mem_type != DDL_FW_MEM)
-		mem_type |= ION_SECURE;
-	else if (res_trk_is_cp_enabled())
-		mem_type |= ION_SECURE;
 	} else
 		mem_type = (ION_HEAP(mem_type) |
 			ION_HEAP(ION_IOMMU_HEAP_ID));
 	}
+
 	return mem_type;
+}
+
+unsigned int res_trk_get_ion_flags(void)
+{
+	unsigned int flags = 0;
+	if (resource_context.res_mem_type == DDL_FW_MEM)
+		return flags;
+
+	if (resource_context.vidc_platform_data->enable_ion) {
+		if (res_trk_check_for_sec_session()) {
+			if (resource_context.res_mem_type != DDL_FW_MEM)
+				flags |= ION_SECURE;
+			else if (res_trk_is_cp_enabled())
+				flags |= ION_SECURE;
+		}
+	}
+	return flags;
 }
 
 u32 res_trk_is_cp_enabled(void)
