@@ -2010,7 +2010,7 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 	}
 
 	mdp_set_dma_pan_info(info, dirtyPtr,
-			     (var->activate == FB_ACTIVATE_VBL));
+		     ((var->activate & FB_ACTIVATE_VBL) == FB_ACTIVATE_VBL));
 	/* async call */
 
 	lock_panel_mutex(mfd);
