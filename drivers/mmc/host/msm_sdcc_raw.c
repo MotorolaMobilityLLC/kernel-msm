@@ -22,6 +22,7 @@
 #include <linux/init.h>
 
 #include "../../../arch/arm/mach-msm/devices.h"
+#include <mach/clk-provider.h>
 
 static void __iomem *raw_mmc_mci_base;
 
