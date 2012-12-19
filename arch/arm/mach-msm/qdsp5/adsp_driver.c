@@ -139,7 +139,7 @@ static int get_ion_region_info(int fd, struct adsp_ion_region *region)
 		pr_err("%s: could not get flags for the handle\n", __func__);
 		goto flag_error;
 	}
-	temp_ptr = ion_map_kernel(region->client, region->handle, ionflag);
+	temp_ptr = ion_map_kernel(region->client, region->handle);
 	if (IS_ERR_OR_NULL(temp_ptr)) {
 		pr_err("%s: could not get virtual address\n", __func__);
 		goto map_error;
@@ -267,7 +267,7 @@ int adsp_ion_do_cache_op(struct msm_adsp_module *module,
 			module->name, vaddr, len);
 		return ret;
 	}
-	if ((region->ion_flag == CACHED) && region->handle) {
+	if ((region->ion_flag == ION_FLAG_CACHED) && region->handle) {
 		len = ((((len) + 31) & (~31)) + 32);
 		ret = msm_ion_do_cache_op(region->client, region->handle,
 				(void *)paddr, len, cmd);

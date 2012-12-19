@@ -243,8 +243,11 @@
 #define MSM_CAM_IOCTL_V4L2_EVT_NATIVE_FRONT_CMD \
 	_IOWR(MSM_CAM_IOCTL_MAGIC, 69, struct msm_camera_v4l2_ioctl_t)
 
+#define MSM_CAM_IOCTL_AXI_LOW_POWER_MODE \
+	_IOWR(MSM_CAM_IOCTL_MAGIC, 70, uint8_t *)
+
 #define MSM_CAM_IOCTL_INTF_MCTL_MAPPING_CFG \
-	_IOR(MSM_CAM_IOCTL_MAGIC, 70, struct intf_mctl_mapping_cfg *)
+	_IOR(MSM_CAM_IOCTL_MAGIC, 71, struct intf_mctl_mapping_cfg *)
 
 struct ioctl_native_cmd {
 	unsigned short mode;
@@ -2063,6 +2066,10 @@ struct msm_mctl_set_sdev_data {
 #define VIDIOC_MSM_VFE_RELEASE \
 	_IO('V', BASE_VIDIOC_PRIVATE + 25)
 
+#define VIDIOC_MSM_AXI_LOW_POWER_MODE \
+	_IO('V', BASE_VIDIOC_PRIVATE + 26)
+
+
 struct msm_camera_v4l2_ioctl_t {
 	uint32_t id;
 	uint32_t len;
@@ -2078,6 +2085,7 @@ struct msm_camera_vfe_params_t {
 	uint16_t port_info;
 	uint32_t inst_handle;
 	uint16_t cmd_type;
+	uint8_t stream_error;
 };
 
 enum msm_camss_irq_idx {
