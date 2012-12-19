@@ -32,7 +32,7 @@ struct arizona_micsupp {
 	struct regulator_dev *regulator;
 	struct arizona *arizona;
 
-	struct regulator_consumer_supply supply;
+	struct regulator_consumer_supply supply[3];
 	struct regulator_init_data init_data;
 };
 
@@ -150,7 +150,7 @@ static __devinit int arizona_micsupp_probe(struct platform_device *pdev)
 	struct arizona *arizona = dev_get_drvdata(pdev->dev.parent);
 	struct arizona_micsupp *micsupp;
 	struct regulator_init_data *init_data;
-	int ret;
+	int ret, i;
 
 	micsupp = devm_kzalloc(&pdev->dev, sizeof(*micsupp), GFP_KERNEL);
 	if (micsupp == NULL) {
@@ -167,8 +167,13 @@ static __devinit int arizona_micsupp_probe(struct platform_device *pdev)
 	 */
 	micsupp->init_data = arizona_micsupp_default;
 	micsupp->init_data.consumer_supplies = &micsupp->supply;
-	micsupp->supply.supply = "MICVDD";
-	micsupp->supply.dev_name = dev_name(arizona->dev);
+	micsupp->init_data.num_consumer_supplies = ARRAY_SIZE(micsupp->supply);
+	for (i = 0; i < ARRAY_SIZE(micsupp->supply); i++) {
+		micsupp->supply[i].supply = "MICVDD";
+	}
+	micsupp->supply[0].dev_name = dev_name(arizona->dev);
+	micsupp->supply[1].dev_name = "wm5102-codec";
+	micsupp->supply[2].dev_name = "wm5110-codec";
 
 	if (arizona->pdata.micvdd)
 		init_data = arizona->pdata.micvdd;
