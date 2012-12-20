@@ -361,6 +361,14 @@ config BACKLIGHT_PANDORA
 	  If you have a Pandora console, say Y to enable the
 	  backlight driver.
 
+config BACKLIGHT_LP8556
+	tristate "LP8556 driver"
+	depends on LEDS_CLASS && I2C
+	help
+	  This option enables support for the LM8556 LED controller for
+	  backlight control. This Driver provides direct control via LED
+	  class and interface for programming the controller.
+
 endif # BACKLIGHT_CLASS_DEVICE
 
 endif # BACKLIGHT_LCD_SUPPORT
