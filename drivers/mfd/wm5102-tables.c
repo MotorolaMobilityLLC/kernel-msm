@@ -1857,6 +1857,7 @@ static bool wm5102_volatile_register(struct device *dev, unsigned int reg)
 	case ARIZONA_DSP1_STATUS_2:
 	case ARIZONA_DSP1_STATUS_3:
 	case ARIZONA_HEADPHONE_DETECT_2:
+	case ARIZONA_HP_DACVAL:
 	case ARIZONA_MIC_DETECT_3:
 		return true;
 	default:
