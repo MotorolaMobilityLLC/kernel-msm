@@ -396,6 +396,14 @@ int32_t msm_camera_i2c_write_tbl(struct msm_camera_i2c_client *client,
 					reg_conf_tbl->reg_addr,
 					reg_conf_tbl->reg_data,
 					reg_conf_tbl->dt);
+			} else if (reg_conf_tbl->cmd_type ==
+					MSM_CAMERA_I2C_CMD_DELAYMS) {
+				uint16_t delayms = reg_conf_tbl->reg_addr;
+				if (delayms > 20)
+					msleep(delayms);
+				else
+					usleep_range(delayms*1000,
+							(delayms+1)*1000);
 			} else {
 				if (reg_conf_tbl->dt == 0)
 					dt = data_type;
