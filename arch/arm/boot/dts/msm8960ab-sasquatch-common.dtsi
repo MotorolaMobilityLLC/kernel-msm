@@ -1,0 +1,11 @@
+/include/ "skeleton.dtsi"
+/include/ "msm8960.dtsi"
+
+/include/ "msm8960-motref-pinmux.dtsi"
+
+/ {
+	model = "Motorola MSM8960 Pro Sasquatch";
+	compatible = "mmi,msm8960";
+
+	mmi,product = "mmi,msm8960ab-sasquatch";
+};
