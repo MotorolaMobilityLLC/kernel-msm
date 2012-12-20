@@ -737,6 +737,9 @@ static int mmc_select_powerclass(struct mmc_card *card,
 		pwrclass_val = (pwrclass_val & EXT_CSD_PWR_CL_4BIT_MASK) >>
 				EXT_CSD_PWR_CL_4BIT_SHIFT;
 
+	if (host->max_pwrclass > 0 && pwrclass_val > host->max_pwrclass)
+		pwrclass_val = host->max_pwrclass;
+
 	/* If the power class is different from the default value */
 	if (pwrclass_val > 0) {
 		err = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
