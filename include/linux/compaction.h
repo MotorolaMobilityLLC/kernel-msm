@@ -27,7 +27,7 @@ extern int compact_pgdat(pg_data_t *pgdat, int order);
 extern unsigned long compaction_suitable(struct zone *zone, int order);
 
 /* Do not skip compaction more than 64 times */
-#define COMPACT_MAX_DEFER_SHIFT 6
+#define COMPACT_MAX_DEFER_SHIFT 0 /* don't need to defer */
 
 /*
  * Compaction is deferred when compaction fails to result in a page
