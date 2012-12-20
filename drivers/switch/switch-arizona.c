@@ -416,7 +416,8 @@ static int __devinit arizona_switch_probe(struct platform_device *pdev)
 		goto err_register;
 	}
 
-	ret = regmap_update_bits(arizona->regmap,ARIZONA_WAKE_CONTROL, ARIZONA_WKUP_JD1_RISE, ARIZONA_WKUP_JD1_RISE);
+	ret = regmap_update_bits(arizona->regmap, ARIZONA_WAKE_CONTROL,
+				 ARIZONA_WKUP_JD1_RISE, ARIZONA_WKUP_JD1_RISE);
 	if (ret != 0) {
 		dev_err(&pdev->dev, "Failed to set JD rise IRQ wake: %d\n",
 			ret);
@@ -430,7 +431,8 @@ static int __devinit arizona_switch_probe(struct platform_device *pdev)
 		goto err_rise_wake;
 	}
 
-	ret = regmap_update_bits(arizona->regmap, ARIZONA_WAKE_CONTROL, ARIZONA_WKUP_JD1_FALL, ARIZONA_WKUP_JD1_FALL);
+	ret = regmap_update_bits(arizona->regmap, ARIZONA_WAKE_CONTROL,
+				 ARIZONA_WKUP_JD1_FALL, ARIZONA_WKUP_JD1_FALL);
 	if (ret != 0) {
 		dev_err(&pdev->dev, "Failed to set JD fall IRQ wake: %d\n",
 			ret);
@@ -466,11 +468,13 @@ static int __devinit arizona_switch_probe(struct platform_device *pdev)
 
 err_micdet:
 	arizona_free_irq(arizona, ARIZONA_IRQ_MICDET, info);
-	regmap_update_bits(arizona->regmap, ARIZONA_WAKE_CONTROL, ARIZONA_WKUP_JD1_FALL,0);
+	regmap_update_bits(arizona->regmap, ARIZONA_WAKE_CONTROL,
+			   ARIZONA_WKUP_JD1_FALL,0);
 err_fall:
 	arizona_free_irq(arizona, ARIZONA_IRQ_JD_FALL, info);
 err_rise_wake:
-	regmap_update_bits(arizona->regmap, ARIZONA_WAKE_CONTROL, ARIZONA_WKUP_JD1_RISE, 0);
+	regmap_update_bits(arizona->regmap, ARIZONA_WAKE_CONTROL,
+			   ARIZONA_WKUP_JD1_RISE, 0);
 err_rise:
 	arizona_free_irq(arizona, ARIZONA_IRQ_JD_RISE, info);
 err_register:
@@ -487,8 +491,10 @@ static int __devexit arizona_switch_remove(struct platform_device *pdev)
 
 	pm_runtime_disable(&pdev->dev);
 
-	regmap_update_bits(arizona->regmap, ARIZONA_WAKE_CONTROL, ARIZONA_WKUP_JD1_RISE, 0);
-	regmap_update_bits(arizona->regmap, ARIZONA_WAKE_CONTROL, ARIZONA_WKUP_JD2_FALL, 0);
+	regmap_update_bits(arizona->regmap, ARIZONA_WAKE_CONTROL,
+			   ARIZONA_WKUP_JD1_RISE, 0);
+	regmap_update_bits(arizona->regmap, ARIZONA_WAKE_CONTROL,
+			   ARIZONA_WKUP_JD2_FALL, 0);
 
 	arizona_free_irq(arizona, ARIZONA_IRQ_MICDET, info);
 	arizona_free_irq(arizona, ARIZONA_IRQ_JD_RISE, info);
