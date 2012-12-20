@@ -244,7 +244,7 @@ void __init mmi_regulator_init(struct msm8960_oem_init_ptrs *self)
 
 	reg_parent_node = of_find_node_by_path("/System@0/Regulators@0");
 	if (!reg_parent_node)
-		return;
+		goto register_device;
 
 	mmi_reg_map_initialize(msm_rpm_regulator_init_data,
 		msm_rpm_regulator_init_data_len);
@@ -275,6 +275,7 @@ void __init mmi_regulator_init(struct msm8960_oem_init_ptrs *self)
 
 	of_node_put(reg_parent_node);
 
+register_device:
 	/* register device after device tree is handled */
 	platform_device_register(&mmi_device_ext_5v_vreg);
 }
