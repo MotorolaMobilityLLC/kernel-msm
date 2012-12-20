@@ -14,6 +14,7 @@
 #include <linux/backing-dev.h>
 #include <linux/sysctl.h>
 #include <linux/sysfs.h>
+#include <linux/earlysuspend.h>
 #include "internal.h"
 
 #if defined CONFIG_COMPACTION || defined CONFIG_CMA
@@ -777,6 +778,62 @@ unsigned long try_to_compact_pages(struct zonelist *zonelist,
 	return rc;
 }
 
+/*
+ * Compact a specific zone within a node
+ * The input parameter nid and zoneid should be
+ * verified by caller.
+ */
+
+static int compact_node_zone(int nid, int zoneid)
+{
+	pg_data_t *pgdat;
+	struct zone *zone;
+	struct compact_control cc = {
+		.nr_freepages = 0,
+		.nr_migratepages = 0,
+		.sync = false,
+		.order = -1,
+	};
+
+	pgdat = NODE_DATA(nid);
+
+	zone = &pgdat->node_zones[zoneid];
+	if (!populated_zone(zone))
+		return 0;
+
+	cc.zone = zone;
+	INIT_LIST_HEAD(&cc.freepages);
+	INIT_LIST_HEAD(&cc.migratepages);
+
+	compact_zone(zone, &cc);
+
+	VM_BUG_ON(!list_empty(&cc.freepages));
+	VM_BUG_ON(!list_empty(&cc.migratepages));
+
+	return 0;
+}
+
+/* Compact all nodes' normal zone only */
+static void try_to_compact_normal_zone(void)
+{
+	int nid;
+
+	for_each_online_node(nid)
+		compact_node_zone(nid, ZONE_NORMAL);
+
+	printk(KERN_INFO "Normal Zone Compacted.\n");
+}
+
+static void early_suspend_compact_normal_zone(struct early_suspend *s)
+{
+	try_to_compact_normal_zone();
+}
+
+static struct early_suspend early_suspend_compaction_desc = {
+	.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
+	.suspend = early_suspend_compact_normal_zone,
+	.resume = NULL,
+};
 
 /* Compact all zones within a node */
 static int __compact_pgdat(pg_data_t *pgdat, struct compact_control *cc)
@@ -900,4 +957,10 @@ void compaction_unregister_node(struct node *node)
 }
 #endif /* CONFIG_SYSFS && CONFIG_NUMA */
 
+static int  __init mem_compaction_init(void)
+{
+	register_early_suspend(&early_suspend_compaction_desc);
+	return 0;
+}
+late_initcall(mem_compaction_init);
 #endif /* CONFIG_COMPACTION */
