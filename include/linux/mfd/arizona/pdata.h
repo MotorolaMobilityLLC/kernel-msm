@@ -98,6 +98,15 @@ struct arizona_pdata {
 	/** Pin state for GPIO pins */
 	int gpio_defaults[ARIZONA_MAX_GPIO];
 
+	/** GPIO5 is used for jack detection */
+	bool jd_gpio5;
+
+	/** Use the headphone detect circuit to identify the accessory */
+	bool hpdet_acc_id;
+
+	/** GPIO used for mic isolation with HPDET */
+	int hpdet_id_gpio;
+
 	/** GPIO for mic detection polarity */
 	int micd_pol_gpio;
 
@@ -125,7 +134,7 @@ struct arizona_pdata {
 
 	/** PDM speaker format */
 	unsigned int spk_fmt[ARIZONA_MAX_PDM_SPK];
-	
+
 	/** IRQ base */
 	int irq_base;
 
