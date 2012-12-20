@@ -27,6 +27,7 @@
 #include <linux/tpa6165a2.h>
 #include <linux/leds-lm3556.h>
 #include <linux/tps65132.h>
+#include <linux/lp8556.h>
 
 #define MELFAS_TOUCH_SCL_GPIO       17
 #define MELFAS_TOUCH_SDA_GPIO       16
@@ -653,6 +654,67 @@ err:
 	return err;
 }
 
+/* backlight init */
+static struct lp8556_eeprom_data lp8556_eeprom_pdata[] = {
+	{0, 0x98, 0x00},
+	{1, 0x9E, 0x02},
+	{0, 0xA0, 0xFF},
+	{0, 0xA1, 0x4F},
+	{0, 0xA2, 0xA0},
+	{0, 0xA3, 0x03},
+	{0, 0xA4, 0x12},
+	{1, 0xA5, 0x3C},
+	{1, 0xA6, 0x40},
+	{1, 0xA7, 0xFC},
+	{0, 0xA8, 0x00},
+	{0, 0xA9, 0x80},
+	{0, 0xAA, 0x0F},
+	{0, 0xAB, 0x00},
+	{0, 0xAC, 0x00},
+	{0, 0xAD, 0x00},
+	{0, 0xAE, 0x13},
+	{0, 0xAF, 0x00},
+};
+
+static struct lp8556_platform_data lp8556_backlight_pdata = {
+	.power_up_brightness = 0x80,
+	.dev_ctrl_config = 0x84, /* no PWM */
+	.dev_id = 0xfc,
+	.eeprom_table = lp8556_eeprom_pdata,
+	.eeprom_tbl_sz = ARRAY_SIZE(lp8556_eeprom_pdata),
+};
+
+static int __init lp8556_init_i2c_device(struct i2c_board_info *info,
+                                          struct device_node *node)
+{
+	int err = 0;
+
+	/* lp8556 gpios */
+	if (of_property_read_u32(node, "enable_gpio",
+				 &lp8556_backlight_pdata.enable_gpio))
+		return -EINVAL;
+
+	err = gpio_request(lp8556_backlight_pdata.enable_gpio, "lp8556 enable");
+	if (err) {
+		pr_err("lp8556 enable gpio request failed: %d\n", err);
+		goto err1;
+	}
+	gpio_direction_output(lp8556_backlight_pdata.enable_gpio, 1);
+	err = gpio_export(lp8556_backlight_pdata.enable_gpio, 0);
+	if (err) {
+		pr_err("lp8556 enable gpio export failed: %d\n", err);
+		goto err2;
+	}
+
+	info->platform_data = &lp8556_backlight_pdata;
+	return 0;
+ err2:
+	gpio_free(lp8556_backlight_pdata.enable_gpio);
+ err1:
+	return -EINVAL;
+}
+/* end backlight init */
+
 typedef int (*I2C_INIT_FUNC)(struct i2c_board_info *info,
 			     struct device_node *node);
 
@@ -675,6 +737,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00090007, s5k5b3g_init_i2c_device}, /* Samsung 2MP Bayer */
 	{0x000B0006, lm3556_init_i2c_device}, /* National LM3556 LED Flash */
 	{0x0003001C, tps65132_init_i2c_device}, /* TI lcd bias Driver */
+	{0x000B0007, lp8556_init_i2c_device}, /* National LP8556 Backlight */
 };
 
 static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device)
