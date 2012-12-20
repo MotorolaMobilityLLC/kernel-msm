@@ -28,11 +28,6 @@ $(warning Forcing kernel header generation only for '$(TARGET_KERNEL_HEADER_ARCH
 KERNEL_HEADER_ARCH := $(TARGET_KERNEL_HEADER_ARCH)
 endif
 
-KERNEL_HEADER_DEFCONFIG := $(strip $(KERNEL_HEADER_DEFCONFIG))
-ifeq ($(KERNEL_HEADER_DEFCONFIG),)
-KERNEL_HEADER_DEFCONFIG := $(KERNEL_DEFCONFIG)
-endif
-
 # Force 32-bit binder IPC for 64bit kernel with 32bit userspace
 ifeq ($(KERNEL_ARCH),arm64)
 ifeq ($(TARGET_ARCH),arm)
@@ -124,11 +119,31 @@ $(KERNEL_USR): $(KERNEL_HEADERS_INSTALL)
 $(TARGET_PREBUILT_INT_KERNEL): $(KERNEL_USR)
 endif
 
+include $(TARGET_KERNEL_SOURCE)/defconfig.mk
+
+KERNEL_HEADER_DEFCONFIG := $(strip $(KERNEL_HEADER_DEFCONFIG))
+ifeq ($(KERNEL_HEADER_DEFCONFIG),)
+KERNEL_HEADER_DEFCONFIG := $(TARGET_DEFCONFIG)
+endif
+
+# Make the kernel config
+#   $1 output dir
+#   $2 kernel config filepath
+#   $3 defconfig
+#   $4 kernel source
+#   $5 kernel make env
+#   $6 kernel architecture
+#   $7 cross compile sub-command
+#   $8 make command
+define do-kernel-config
+	( cp $(3) $(2) && $(8) -C $(4) O=$(1) $(5) ARCH=$(6) CROSS_COMPILE=$(7) defoldconfig ) || ( rm -f $(2) && false )
+endef
+
 $(KERNEL_OUT):
 	mkdir -p $(KERNEL_OUT)
 
-$(KERNEL_CONFIG): $(KERNEL_OUT)
-	$(MAKE) -C $(TARGET_KERNEL_SOURCE) O=$(BUILD_ROOT_LOC)$(KERNEL_OUT) $(KERNEL_MAKE_ENV) ARCH=$(KERNEL_ARCH) CROSS_COMPILE=$(KERNEL_CROSS_COMPILE) $(KERNEL_DEFCONFIG)
+$(KERNEL_CONFIG): $(KERNEL_OUT) $(TARGET_DEFCONFIG)
+	$(call do-kernel-config,$(BUILD_ROOT_LOC)$(KERNEL_OUT),$@,$(TARGET_DEFCONFIG),$(TARGET_KERNEL_SOURCE),$(KERNEL_MAKE_ENV),$(KERNEL_ARCH),$(KERNEL_CROSS_COMPILE),$(MAKE))
 	$(hide) if [ ! -z "$(KERNEL_CONFIG_OVERRIDE)" ]; then \
 			echo "Overriding kernel config with '$(KERNEL_CONFIG_OVERRIDE)'"; \
 			echo $(KERNEL_CONFIG_OVERRIDE) >> $(KERNEL_OUT)/.config; \
@@ -143,10 +158,10 @@ $(TARGET_PREBUILT_INT_KERNEL): $(KERNEL_OUT) $(KERNEL_CONFIG) $(KERNEL_HEADERS_I
 	$(mv-modules)
 	$(clean-module-folder)
 
-$(KERNEL_HEADERS_INSTALL): $(KERNEL_OUT)
+$(KERNEL_HEADERS_INSTALL): $(KERNEL_OUT) $(KERNEL_CONFIG)
 	$(hide) if [ ! -z "$(KERNEL_HEADER_DEFCONFIG)" ]; then \
 			rm -f $(BUILD_ROOT_LOC)$(KERNEL_CONFIG); \
-			$(MAKE) -C $(TARGET_KERNEL_SOURCE) O=$(BUILD_ROOT_LOC)$(KERNEL_OUT) $(KERNEL_MAKE_ENV) ARCH=$(KERNEL_HEADER_ARCH) CROSS_COMPILE=$(KERNEL_CROSS_COMPILE) $(KERNEL_HEADER_DEFCONFIG); \
+			$(call do-kernel-config,$(BUILD_ROOT_LOC)$(KERNEL_OUT),$(KERNEL_CONFIG),$(KERNEL_HEADER_DEFCONFIG),$(TARGET_KERNEL_SOURCE),$(KERNEL_MAKE_ENV),$(KERNEL_ARCH),$(KERNEL_CROSS_COMPILE),$(MAKE));\
 			$(MAKE) -C $(TARGET_KERNEL_SOURCE) O=$(BUILD_ROOT_LOC)$(KERNEL_OUT) $(KERNEL_MAKE_ENV) ARCH=$(KERNEL_HEADER_ARCH) CROSS_COMPILE=$(KERNEL_CROSS_COMPILE) headers_install;\
 			if [ -d "$(KERNEL_HEADERS_INSTALL)/include/bringup_headers" ]; then \
 				cp -Rf  $(KERNEL_HEADERS_INSTALL)/include/bringup_headers/* $(KERNEL_HEADERS_INSTALL)/include/ ;\
@@ -155,7 +170,7 @@ $(KERNEL_HEADERS_INSTALL): $(KERNEL_OUT)
 	$(hide) if [ "$(KERNEL_HEADER_DEFCONFIG)" != "$(KERNEL_DEFCONFIG)" ]; then \
 			echo "Used a different defconfig for header generation"; \
 			rm -f $(BUILD_ROOT_LOC)$(KERNEL_CONFIG); \
-			$(MAKE) -C $(TARGET_KERNEL_SOURCE) O=$(BUILD_ROOT_LOC)$(KERNEL_OUT) $(KERNEL_MAKE_ENV) ARCH=$(KERNEL_ARCH) CROSS_COMPILE=$(KERNEL_CROSS_COMPILE) $(KERNEL_DEFCONFIG); fi
+			$(call do-kernel-config,$(BUILD_ROOT_LOC)$(KERNEL_OUT),$(KERNEL_CONFIG),$(TARGET_DEFCONFIG),$(TARGET_KERNEL_SOURCE),$(KERNEL_MAKE_ENV),$(KERNEL_ARCH),$(KERNEL_CROSS_COMPILE),$(MAKE)); fi
 	$(hide) if [ ! -z "$(KERNEL_CONFIG_OVERRIDE)" ]; then \
 			echo "Overriding kernel config with '$(KERNEL_CONFIG_OVERRIDE)'"; \
 			echo $(KERNEL_CONFIG_OVERRIDE) >> $(KERNEL_OUT)/.config; \
