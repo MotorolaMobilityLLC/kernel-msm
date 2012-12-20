@@ -142,4 +142,30 @@ struct msm_camera_sensor_info msm_camera_sensor_ov8835_data = {
 	.sensor_type = BAYER_SENSOR,
 };
 
+
+static struct msm_camera_csi_lane_params ar0834_csi_lane_params = {
+	.csi_lane_assign = 0xE4,
+	.csi_lane_mask = 0xF,
+};
+
+struct msm_camera_sensor_platform_info sensor_board_info_ar0834 = {
+	.mount_angle = 90,
+	.csi_lane_params = &ar0834_csi_lane_params,
+};
+
+static struct msm_camera_sensor_flash_data flash_ar0834 = {
+	.flash_type = MSM_CAMERA_FLASH_NONE
+};
+
+struct msm_camera_sensor_info msm_camera_sensor_ar0834_data = {
+	.sensor_name = "ar0834",
+	.pdata = &msm_camera_csi_device_data[0],
+	.flash_data = &flash_ar0834,
+	.sensor_platform_info = &sensor_board_info_ar0834,
+	.csi_if = 1,
+	.camera_type = BACK_CAMERA_2D,
+	.sensor_type = BAYER_SENSOR,
+};
+
+
 #endif
