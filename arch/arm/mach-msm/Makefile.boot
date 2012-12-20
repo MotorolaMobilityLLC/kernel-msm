@@ -61,6 +61,7 @@ initrd_phys-$(CONFIG_ARCH_FSM9XXX)	:= 0x12000000
 
 dtb-$(CONFIG_MACH_MSM8960_MMI) += mmi-8960pro.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-sasquatch-p1.dtb
+dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-sasquatch-p2.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ghost-p0.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultra-p0.dtb
 dtb-$(CONFIG_MACH_MSM8960_MMI) += msm8960ab-ultram-p0.dtb
