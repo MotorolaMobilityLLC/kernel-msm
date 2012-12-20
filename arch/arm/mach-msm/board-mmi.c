@@ -522,6 +522,11 @@ static void __init mmi_mmc_init(struct msm8960_oem_init_ptrs *oem_ptr,
 		 * this, but they are coming soon.
 		 */
 		sdcc->uhs_caps2 = 0;
+
+		/*
+		 * Current hardware is rated to a maximum power class of 6.
+		 */
+		sdcc->msmsdcc_max_pwrclass = 6;
 		break;
 	case 3:		/* SDCC3 */
 		sdcc->pin_data->pad_data->drv->on[0].val = GPIO_CFG_8MA;
