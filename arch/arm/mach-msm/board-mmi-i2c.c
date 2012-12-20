@@ -204,6 +204,22 @@ static int __init ov8835_init_i2c_device(struct i2c_board_info *info,
 	return 0;
 }
 
+static int __init ar0834_init_i2c_device(struct i2c_board_info *info,
+						struct device_node *node)
+{
+	/* get reset gpio */
+	of_property_read_u32(node, "gpio_reset",
+			&msm_camera_sensor_ar0834_data.sensor_reset);
+
+	/* get pwd gpio */
+	of_property_read_u32(node, "gpio_pwd",
+			&msm_camera_sensor_ar0834_data.sensor_pwd);
+
+	info->platform_data = &msm_camera_sensor_ar0834_data;
+
+	return 0;
+}
+
 static int __init lm3556_init_i2c_device(struct i2c_board_info *info,
                                           struct device_node *node)
 {
@@ -520,6 +536,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00030015, msp430_init_i2c_device}, /* TI MSP430 */
 	{0x00190001, pn544_init_i2c_device}, /* NXP PN544 */
 	{0x00290002, ov8835_init_i2c_device},  /* Omnivision 8MP Bayer */
+	{0x00280001, ar0834_init_i2c_device},  /* Aptina 8MP */
 	{0x00030017, drv2605_init_i2c_device}, /* TI DRV2605 Haptic driver */
 	{0x00030018, aic3253_init_i2c_device}, /* TI aic3253 audio codec Driver */
 	{0x0003001A, tpa6165a2_init_i2c_device}, /* TI headset Det/amp Driver */
