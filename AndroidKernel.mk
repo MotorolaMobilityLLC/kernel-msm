@@ -32,11 +32,17 @@ mpath=`dirname $$mdpath`; rm -rf $$mpath;\
 fi
 endef
 
+include kernel/defconfig.mk
+
+define do-kernel-config
+	( cp $(3) $(2) && $(7) -C $(4) O=$(1) ARCH=$(5) CROSS_COMPILE=$(6) defoldconfig ) || ( rm -f $(2) && false )
+endef
+
 $(KERNEL_OUT):
 	mkdir -p $(KERNEL_OUT)
 
-$(KERNEL_CONFIG): $(KERNEL_OUT)
-	$(MAKE) -C kernel O=../$(KERNEL_OUT) ARCH=arm CROSS_COMPILE=arm-eabi- $(KERNEL_DEFCONFIG)
+$(KERNEL_CONFIG): $(KERNEL_OUT) $(TARGET_DEFCONFIG)
+	$(call do-kernel-config,../$(KERNEL_OUT),$@,$(TARGET_DEFCONFIG),kernel,arm,arm-eabi-,$(MAKE))
 
 $(KERNEL_OUT)/piggy : $(TARGET_PREBUILT_INT_KERNEL)
 	$(hide) gunzip -c $(KERNEL_OUT)/arch/arm/boot/compressed/piggy.gzip > $(KERNEL_OUT)/piggy
