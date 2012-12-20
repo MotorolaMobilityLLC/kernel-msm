@@ -154,6 +154,7 @@ obj-$(CONFIG_FB_MSM_MIPI_DSI_MOT) += mipi_mot_common.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_MOT) += mipi_mot_video_smd_hd_465.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_MOT) += mipi_mot_cmd_smd_qhd_429.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_MOT) += mipi_mot_cmd_jdi_hd_430.o
+obj-$(CONFIG_FB_MSM_MIPI_DSI_MOT) += lcd-bias-tps65132.o
 endif
 
 obj-$(CONFIG_FB_MSM_LCDC_PANEL) += lcdc_panel.o
