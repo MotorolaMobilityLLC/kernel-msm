@@ -428,9 +428,10 @@
 			reg = <0x801410 0x10>;
 			qcom,pin-num = <65>;
 			qcom,active@0 {
-				qcom,func = <1>;  /* audio_pcm_sync         */
-				qcom,pull = <0>;  /* none                   */
+				qcom,func = <0>;  /* gpio_in_out(65)        */
+				qcom,pull = <3>;  /* up                     */
 				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* in                     */
 			};
 			qcom,suspended@1 {
 				qcom,func = <0>;  /* gpio_in_out(65)        */
