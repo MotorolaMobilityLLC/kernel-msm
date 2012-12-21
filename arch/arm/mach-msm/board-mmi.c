@@ -653,6 +653,7 @@ static struct of_dev_auxdata mmi_auxdata[] __initdata = {
 	OF_DEV_AUXDATA("qcom,i2c-qup", 0x1a000000, "qup_i2c.8", NULL),
 	OF_DEV_AUXDATA("qcom,i2c-qup", 0x1a200000, "qup_i2c.10", NULL),
 	OF_DEV_AUXDATA("qcom,i2c-qup", 0x12480000, "qup_i2c.12", NULL),
+	OF_DEV_AUXDATA("qcom,msm-hsuart", 0x16440000, "msm_serial_hs.3", NULL),
 	{}
 };
 
