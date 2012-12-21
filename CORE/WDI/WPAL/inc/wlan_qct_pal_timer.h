@@ -111,6 +111,16 @@ wpt_status wpalTimerStart(wpt_timer * pTimer, wpt_uint32 timeout);
 wpt_status wpalTimerStop(wpt_timer * pTimer);
 
 /*---------------------------------------------------------------------------
+    wpalTimerGetCurStatus - Get the current status of timer
+
+    pTimer - a pointer to caller allocated wpt_timer object
+
+    return
+        VOS_TIMER_STATE
+---------------------------------------------------------------------------*/
+VOS_TIMER_STATE wpalTimerGetCurStatus(wpt_timer * pTimer);
+
+/*---------------------------------------------------------------------------
     wpalSleep - sleep for a specified interval
     Param:
         timeout - amount of time to sleep. In unit of milli-seconds.

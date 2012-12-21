@@ -999,6 +999,9 @@ WCTS_SendMessage
 
          smd_enable_read_intr(pWCTSCb->wctsChannel);
       }
+
+      /*indicate to client that message was placed in deferred queue*/
+      return eWLAN_PAL_STATUS_E_RESOURCES;
    }
 
    return eWLAN_PAL_STATUS_SUCCESS;
