@@ -1250,6 +1250,11 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	var->rotate = 0,	/* angle we rotate counter clockwise */
 	mfd->op_enable = FALSE;
 
+	if (panel_info->physical_height_mm)
+		var->height = panel_info->physical_height_mm;
+	if (panel_info->physical_width_mm)
+		var->width = panel_info->physical_width_mm;
+
 	switch (mfd->fb_imgType) {
 	case MDP_RGB_565:
 		fix->type = FB_TYPE_PACKED_PIXELS;
@@ -2027,7 +2032,7 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 	}
 
 	mdp_set_dma_pan_info(info, dirtyPtr,
-			     (var->activate == FB_ACTIVATE_VBL));
+		     ((var->activate & FB_ACTIVATE_VBL) == FB_ACTIVATE_VBL));
 	/* async call */
 
 	lock_panel_mutex(mfd);

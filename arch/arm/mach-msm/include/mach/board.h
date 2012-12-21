@@ -256,6 +256,7 @@ struct msm_eeprom_info {
 
 struct oem_camera_sensor_data {
 	int sensor_dig_en;
+	int sensor_avdd_en;
 };
 
 struct msm_camera_sensor_info {

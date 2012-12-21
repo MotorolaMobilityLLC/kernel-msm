@@ -483,4 +483,11 @@ config PM8921_FLOAT_CHARGE
 	help
 	  Say Y here to enable support for Pm8921 Float charge
 
+config CHARGER_BQ5101XB
+	tristate "BQ5101XB charger"
+	depends on GPIOLIB
+	help
+	  Say Y to include support for Wireless Charger support
+	  from the BQ5101XB Chip.
+
 endif # POWER_SUPPLY
