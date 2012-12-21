@@ -141,4 +141,27 @@
 		interrupt-names = "qup_err_intr";
 	};
 
+	/* GSBI 5 - UART DM Port */
+	serial@16440000 {
+		compatible = "qcom,msm-hsuart";
+		status = "disabled";
+
+		/*
+		 * MSM_GSBI5_PHYS          0x16400000
+		 * MSM_UART5DM_PHYS        (MSM_GSBI5_PHYS + 0x40000)
+		 */
+		reg = <0x16440000 0x1000 0x16400000 0x4>;
+		reg-names = "uartdm_resouce", "gsbi_resource";
+
+		/* GSBI5_UARTDM_IRQ (GIC_SPI_START + 154) */
+		interrupts = <0 154 0>;
+
+		/*
+		 * DMOV_HSUART_GSBI5_TX_CRCI  10
+		 * DMOV_HSUART_GSBI5_RX_CRCI  9
+		 */
+		qcom,msm-hs-dm-tx-crci = <10>;
+		qcom,msm-hs-dm-rx-crci = <9>;
+	};
+
 };
