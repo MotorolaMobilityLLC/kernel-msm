@@ -62,52 +62,13 @@ static struct msm_camera_sensor_flash_data camera_flash_none = {
 	.flash_type = MSM_CAMERA_FLASH_NONE
 };
 
-static struct msm_gpiomux_config sasquatch_cam_2d_configs[] = {
-};
-
-static struct gpio sasquatch_common_cam_gpio[] = {
-};
-
-static struct gpio sasquatch_front_cam_gpio[] = {
-	{76, GPIOF_DIR_OUT, "CAM_RESET"},
-	{82, GPIOF_DIR_OUT, "CAM_PWRDN"},
-	{89, GPIOF_DIR_OUT, "CAM_DIGEN"},
-};
-
-static struct msm_gpio_set_tbl sasquatch_front_cam_gpio_set_tbl[] = {
-	{76, GPIOF_OUT_INIT_LOW, 1000},
-	{89, GPIOF_OUT_INIT_HIGH, 1000},
-	{82, GPIOF_OUT_INIT_HIGH, 1000},
-	{76, GPIOF_OUT_INIT_HIGH, 4000},
-};
-
-static struct msm_camera_gpio_conf sasquatch_front_cam_gpio_conf = {
-	.cam_gpiomux_conf_tbl = sasquatch_cam_2d_configs,
-	.cam_gpiomux_conf_tbl_size = ARRAY_SIZE(sasquatch_cam_2d_configs),
-	.cam_gpio_common_tbl = sasquatch_common_cam_gpio,
-	.cam_gpio_common_tbl_size = ARRAY_SIZE(sasquatch_common_cam_gpio),
-	.cam_gpio_req_tbl = sasquatch_front_cam_gpio,
-	.cam_gpio_req_tbl_size = ARRAY_SIZE(sasquatch_front_cam_gpio),
-	.cam_gpio_set_tbl = sasquatch_front_cam_gpio_set_tbl,
-	.cam_gpio_set_tbl_size = ARRAY_SIZE(sasquatch_front_cam_gpio_set_tbl),
-};
-
 static struct msm_camera_csi_lane_params s5k5b3g_csi_lane_params = {
 	.csi_lane_assign = 0xE4,
 	.csi_lane_mask = 0x1,
 };
 
-static struct camera_vreg_t s5k5b3g_cam_vreg[] = {
-	{"cam_vdig", REG_LDO, 1200000, 1200000, 105000},
-	{"cam_vio", REG_VS, 0, 0, 0},
-	{"cam_mipi_mux", REG_LDO, 2800000, 2800000, 0},
-};
-
 static struct msm_camera_sensor_platform_info sensor_board_info_s5k5b3g = {
 	.mount_angle = 90,
-	.cam_vreg = s5k5b3g_cam_vreg,
-	.num_vreg = ARRAY_SIZE(s5k5b3g_cam_vreg),
-	.gpio_conf = &sasquatch_front_cam_gpio_conf,
 	.csi_lane_params = &s5k5b3g_csi_lane_params,
 };
 
@@ -141,5 +102,31 @@ struct msm_camera_sensor_info msm_camera_sensor_ov8835_data = {
 	.camera_type = BACK_CAMERA_2D,
 	.sensor_type = BAYER_SENSOR,
 };
+
+
+static struct msm_camera_csi_lane_params ar0834_csi_lane_params = {
+	.csi_lane_assign = 0xE4,
+	.csi_lane_mask = 0xF,
+};
+
+struct msm_camera_sensor_platform_info sensor_board_info_ar0834 = {
+	.mount_angle = 90,
+	.csi_lane_params = &ar0834_csi_lane_params,
+};
+
+static struct msm_camera_sensor_flash_data flash_ar0834 = {
+	.flash_type = MSM_CAMERA_FLASH_NONE
+};
+
+struct msm_camera_sensor_info msm_camera_sensor_ar0834_data = {
+	.sensor_name = "ar0834",
+	.pdata = &msm_camera_csi_device_data[0],
+	.flash_data = &flash_ar0834,
+	.sensor_platform_info = &sensor_board_info_ar0834,
+	.csi_if = 1,
+	.camera_type = BACK_CAMERA_2D,
+	.sensor_type = BAYER_SENSOR,
+};
+
 
 #endif

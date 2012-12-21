@@ -14,6 +14,7 @@
 #include <asm/mach-types.h>
 #include <asm/mach/map.h>
 #include <linux/platform_device.h>
+#include <linux/power/bq5101xb_charger.h>
 #include <linux/power/mmi-battery.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
@@ -72,9 +73,9 @@ struct pm8xxx_mpp_init {
 			PM_GPIO_STRENGTH_HIGH, \
 			PM_GPIO_FUNC_NORMAL, 0, 0)
 
-#define PM8XXX_GPIO_INPUT(_gpio, _pull) \
+#define PM8XXX_GPIO_INPUT(_gpio, _vin,  _pull) \
 	PM8XXX_GPIO_INIT(_gpio, PM_GPIO_DIR_IN, PM_GPIO_OUT_BUF_CMOS, 0, \
-			_pull, PM_GPIO_VIN_S4, \
+			_pull, _vin, \
 			PM_GPIO_STRENGTH_NO, \
 			PM_GPIO_FUNC_NORMAL, 0, 0)
 
@@ -200,13 +201,18 @@ static __init int load_pm8921_gpios_from_dt(struct pm8xxx_gpio_init **ptr,
 
 			case 0x001E0008: /* Input */
 				if (of_property_read_u32(
-					child, "pull", &param1))
+					child, "vin", &param1))
+					param1 = PM_GPIO_VIN_S4;
+
+				if (of_property_read_u32(
+					child, "pull", &param2))
 					break;
 
 				pm8921_gpios[index++] =
 					(struct pm8xxx_gpio_init)
 					PM8XXX_GPIO_INPUT(gpio,
-						(unsigned char)param1);
+						(unsigned char)param1,
+						(unsigned char)param2);
 				break;
 
 			case 0x001E0009: /* Output, Func */
@@ -536,6 +542,45 @@ out:
 	return;
 }
 
+static __init void load_wireless_pdata_from_dt(void)
+{
+	struct device_node *parent;
+	u32 gpio = 0;
+	struct bq5101xb_charger_platform_data *pdata =
+		((struct bq5101xb_charger_platform_data *)
+		 (mmi_bq5101xb_device.dev.platform_data));
+
+	parent = of_find_node_by_path("/System@0/WirelessChargerIC@0");
+	if (!parent) {
+		pr_err("Unable to get Wireless GPIOs from devtree!\n");
+		return;
+	}
+
+	if (of_property_read_u32(parent, "wireless_complete_gpio", &gpio)) {
+		pr_err("%s: wireless_complete_gpio property not found\n",
+		       __func__);
+		goto out;
+	} else {
+		pdata->en1_pin = gpio;
+		pr_info("wireless_complete_gpio = %d\n",
+			pdata->en1_pin);
+	}
+
+	if (of_property_read_u32(parent, "wireless_terminate_gpio", &gpio)) {
+		pr_err("%s: wireless_terminate_gpio property not found\n",
+		       __func__);
+		pdata->en1_pin = -1;
+		goto out;
+	} else {
+		pdata->ts_ctrl_fault_pin = gpio;
+		pr_info("wireless_terminate_gpio = %d\n",
+			pdata->ts_ctrl_fault_pin);
+	}
+
+out:
+	of_node_put(parent);
+	return;
+}
 
 static int pm8921_therm_mitigation[] = {
 	1100,
@@ -1148,4 +1193,5 @@ void __init mmi_pm8921_init(struct mmi_oem_data *mmi_data, void *pdata)
 	mmi_load_rgb_leds_from_dt();
 	mmi_load_pm8921_leds_from_dt();
 	pm8921_pdata->leds_pdata = &pm8xxx_leds_pdata;
+	load_wireless_pdata_from_dt();
 }
