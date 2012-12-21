@@ -1,0 +1,19 @@
+/* Common devices of all Motorola msm8960ab reference design based hardware */
+
+/include/ "skeleton.dtsi"
+/include/ "msm8960.dtsi"
+
+/include/ "msm8960-motref-pinmux.dtsi"
+
+/ {
+	/* GSBI5 - UART */
+	serial@16440000 {
+		status = "okay";
+
+		cell-index = <3>;
+
+		qcom,msm-hs-dm-tx-chan = <8>;
+		qcom,msm-hs-dm-rx-chan = <7>;
+	};
+
+};
