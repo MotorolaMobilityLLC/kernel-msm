@@ -5757,6 +5757,7 @@ msmsdcc_probe(struct platform_device *pdev)
 	mmc->ocr_avail = plat->ocr_mask;
 	mmc->clkgate_delay = MSM_MMC_CLK_GATE_DELAY;
 
+	mmc->max_pwrclass = plat->msmsdcc_max_pwrclass;
 	mmc->pm_caps |= MMC_PM_KEEP_POWER | MMC_PM_WAKE_SDIO_IRQ;
 	mmc->caps |= plat->mmc_bus_width;
 	mmc->caps |= MMC_CAP_MMC_HIGHSPEED | MMC_CAP_SD_HIGHSPEED;

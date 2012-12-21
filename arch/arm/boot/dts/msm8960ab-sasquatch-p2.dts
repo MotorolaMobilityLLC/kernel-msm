@@ -1,0 +1,8 @@
+/dts-v1/;
+
+/include/ "msm8960ab-sasquatch-common.dtsi"
+
+/ {
+	mmi,revision = "p2";
+
+};

@@ -128,6 +128,9 @@ static struct of_device_id msm_hsl_match_table[] = {
 	{	.compatible = "qcom,msm-lsuart-v14",
 		.data = (void *)UARTDM_VERSION_14
 	},
+	{	.compatible = "qcom,msm-lsuart",
+		.data = (void *)UARTDM_VERSION_11_13
+	},
 	{}
 };
 

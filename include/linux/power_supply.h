@@ -13,6 +13,7 @@
 #ifndef __LINUX_POWER_SUPPLY_H__
 #define __LINUX_POWER_SUPPLY_H__
 
+#include <linux/notifier.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
 #include <linux/leds.h>
@@ -140,9 +141,7 @@ enum power_supply_type {
 	POWER_SUPPLY_TYPE_USB_DCP,	/* Dedicated Charging Port */
 	POWER_SUPPLY_TYPE_USB_CDP,	/* Charging Downstream Port */
 	POWER_SUPPLY_TYPE_USB_ACA,	/* Accessory Charger Adapters */
-#ifdef CONFIG_WIRELESS_CHARGER
         POWER_SUPPLY_TYPE_WIRELESS,
-#endif
 };
 
 union power_supply_propval {
@@ -179,6 +178,7 @@ struct power_supply {
 	spinlock_t changed_lock;
 	bool changed;
 	struct wake_lock work_wake_lock;
+	struct blocking_notifier_head notify_head;
 
 #ifdef CONFIG_LEDS_TRIGGERS
 	struct led_trigger *charging_full_trig;

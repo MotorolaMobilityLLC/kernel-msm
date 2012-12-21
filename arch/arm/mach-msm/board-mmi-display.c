@@ -94,6 +94,7 @@ struct mmi_disp_reg {
 
 struct mmi_disp_reg_lst {
 	int num_disp_regs;
+	bool en_gpio_init;
 	struct mmi_disp_reg disp_reg[DISP_MAX_REGS];
 };
 
@@ -155,10 +156,6 @@ static int mipi_dsi_power(int on)
 		 */
 		if (mmi_disp_info.disp_intf == MMI_DISP_MIPI_DSI_CM)
 			panel_power_ctrl_en(0);
-
-		rc = panel_regs_gpio_init(&dsi_regs_lst);
-		if (rc)
-			goto end;
 	}
 
 	if (on) {
@@ -377,24 +374,87 @@ static void __init load_disp_regs_info_from_dt(struct device_node *node)
 	}
 }
 
+static __init struct device_node *search_panel_from_dt(void)
+{
+	int i, max_disp_dt = 10;
+	struct device_node *node = NULL;
+	const char *name;
+	char node_name[PANEL_NAME_MAX_LEN];
+
+	for (i = 0; i < max_disp_dt; i++) {
+		snprintf(node_name, PANEL_NAME_MAX_LEN,
+						"/System@0/Display@%d", i);
+		node = of_find_node_by_path(node_name);
+		if (!node)
+			continue;
+
+		if (of_property_read_string(node, "panel_name", &name)) {
+			pr_err("%s: can not find panel_name in this node %s\n",
+							__func__, node_name);
+			of_node_put(node);
+			goto err;
+			break;
+		}
+
+		if (!strncmp(panel_name, name, strlen(panel_name))) {
+			pr_info("%s: found panel_name=%s in %s of devtree\n",
+					__func__, panel_name, node_name);
+			break;
+		} else {
+			of_node_put(node);
+			pr_debug("%s: found panel=%s but isn't matched %s\n",
+						__func__, name, panel_name);
+		}
+	}
+
+	if (i >= max_disp_dt) {
+		pr_err("%s: can not locate panel=%s in devtree\n",
+							__func__, panel_name);
+		goto err;
+	}
+
+	return node;
+err:
+	return NULL;
+}
+
+static void __init load_panel_name_from_dt(void)
+{
+	struct device_node *chosen;
+	const char *name;
+
+	chosen = of_find_node_by_path("/chosen");
+	if (!chosen) {
+		pr_err("%s : can not find /chosen in the devtree\n", __func__);
+		return;
+	}
+
+	if (!of_property_read_string(chosen, "mmi,panel_name", &name)) {
+		strlcpy(panel_name, name, PANEL_NAME_MAX_LEN);
+		pr_debug("%s: panel: %s\n", __func__, panel_name);
+	}
+
+	of_node_put(chosen);
+}
+
 static void __init mmi_load_panel_from_dt(void)
 {
 	struct device_node *node;
-	const char *name;
 
-	node = of_find_node_by_path("/System@0/Display@0");
+	if (!strlen(panel_name)) {
+		pr_debug("%s: No UTAG for panel name, search in devtree\n",
+								__func__);
+		load_panel_name_from_dt();
+	} else
+		pr_info("%s: panel_name =%s is set by UTAG\n",
+							__func__, panel_name);
 
+	node = search_panel_from_dt();
 	if (!node)
 		return;
-
-	if (!of_property_read_string(node, "panel_name", &name)) {
-		strlcpy(panel_name, name, PANEL_NAME_MAX_LEN);
-		pr_info("%s: panel: %s\n", __func__, panel_name);
-	} else
-		pr_info("%s: No panel_name in devtree\n", __func__);
-
 	if (of_property_read_u32(node, "disp_intf", &mmi_disp_info.disp_intf))
-		pr_err("%s: no panel interface setting\n", __func__);
+		pr_err("%s: no panel interface setting. disp_intf=%d\n",
+					__func__, mmi_disp_info.disp_intf);
 
 	load_disp_reset_info_from_dt(node);
 	load_disp_regs_info_from_dt(node);
@@ -685,6 +745,14 @@ end:
 static int panel_power_ctrl_en(int on)
 {
 	int rc;
+	struct mmi_disp_reg_lst *reg_lst = &mmi_disp_info.reg_lst;
+
+	if (!reg_lst->en_gpio_init) {
+		rc = panel_regs_gpio_init(reg_lst);
+		if (rc)
+			goto end;
+		reg_lst->en_gpio_init = true;
+	}
 
 	if (!on) {
 		rc = panel_reset_enable(on);
@@ -692,7 +760,7 @@ static int panel_power_ctrl_en(int on)
 			goto end;
 	}
 
-	rc = panel_power_output(on, &mmi_disp_info.reg_lst);
+	rc = panel_power_output(on, reg_lst);
 	if (rc)
 		goto end;
 
@@ -754,6 +822,13 @@ static int power_rail_on(struct mmi_disp_reg_lst *reg_lst)
 
 	pr_debug("%s is called\n", __func__);
 
+	if (!reg_lst->en_gpio_init) {
+		rc = panel_regs_gpio_init(reg_lst);
+		if (rc)
+			goto end;
+		reg_lst->en_gpio_init = true;
+	}
+
 	rc = power_rail_on_stage(reg_lst);
 	if (rc)
 		goto end;
@@ -810,6 +885,13 @@ static int power_rail_off(struct mmi_disp_reg_lst *reg_lst)
 
 	pr_debug("%s is called\n", __func__);
 
+	if (!reg_lst->en_gpio_init) {
+		rc = panel_regs_gpio_init(reg_lst);
+		if (rc)
+			goto end;
+		reg_lst->en_gpio_init = true;
+	}
+
 	rc = panel_power_output(0, reg_lst);
 	if (rc)
 		goto end;
@@ -823,18 +905,9 @@ end:
 
 static int panel_power_ctrl(int on)
 {
-	static bool panel_gpio_init;
 	int rc;
 
 	pr_debug("%s (%d) is called\n", __func__, on);
-
-	if (!panel_gpio_init) {
-		rc = panel_regs_gpio_init(&mmi_disp_info.reg_lst);
-		if (rc)
-			goto end;
-
-		panel_gpio_init = true;
-	}
 
 	if (on) {
 		rc = power_rail_on(&mmi_disp_info.reg_lst);

@@ -40,6 +40,7 @@
 #include <linux/remote_spinlock.h>
 #include <linux/pm_qos.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/of_gpio.h>
 #include "spi_qsd.h"
 
@@ -1811,6 +1812,18 @@ static __init int msm_spi_init_dma(struct msm_spi *dd)
 	return 0;
 }
 
+static struct of_device_id msm_spi_dt_match[] = {
+	{
+		.compatible = "qcom,spi-qup-v2",
+		.data = (void *)SPI_QUP_VERSION_BFAM,
+	},
+	{
+		.compatible = "qcom,spi-qup",
+		.data = (void *)SPI_QUP_VERSION_NONE,
+	},
+	{}
+};
+
 struct msm_spi_platform_data *msm_spi_dt_to_pdata(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -1842,6 +1855,7 @@ static int __init msm_spi_probe(struct platform_device *pdev)
 	int                     pclk_enabled = 0;
 	struct msm_spi_platform_data *pdata;
 	enum of_gpio_flags flags;
+	const struct of_device_id *match;
 
 	master = spi_alloc_master(&pdev->dev, sizeof(struct msm_spi));
 	if (!master) {
@@ -1859,7 +1873,11 @@ static int __init msm_spi_probe(struct platform_device *pdev)
 	dd = spi_master_get_devdata(master);
 
 	if (pdev->dev.of_node) {
-		dd->qup_ver = SPI_QUP_VERSION_BFAM;
+		match = of_match_device(msm_spi_dt_match, &pdev->dev);
+		if (match)
+			dd->qup_ver = (unsigned int)match->data;
+		else
+			dd->qup_ver = SPI_QUP_VERSION_BFAM;
 		master->dev.of_node = pdev->dev.of_node;
 		pdata = msm_spi_dt_to_pdata(pdev);
 		if (!pdata) {
@@ -2185,13 +2203,6 @@ static int __devexit msm_spi_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
-static struct of_device_id msm_spi_dt_match[] = {
-	{
-		.compatible = "qcom,spi-qup-v2",
-	},
-	{}
-};
 
 static struct platform_driver msm_spi_driver = {
 	.driver		= {

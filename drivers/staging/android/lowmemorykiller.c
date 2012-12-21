@@ -80,6 +80,68 @@ static int test_task_flag(struct task_struct *p, int flag)
 	return 0;
 }
 
+/*
+ * The # of pages, that should be reduced for each zone, will be
+ * minfree * p. and  p = (zone_size)/total_size * 100%.
+ * Here is the algorithm of how to calculate it:
+ *
+ *     there is always such n that n/2^k < p < (n+1)/2^k
+ *     so  n = 2^k * p; and k is the precision, set it 16.
+ *
+ *     Then, minfree * p =  (minfree * n) >> k
+ */
+#define LOWMEM_ZONE_ADJ_PRECISION 16
+static int lowmem_zone_n[MAX_NR_ZONES];
+
+static void lowmem_zone_adj_init(void)
+{
+	unsigned long int total_pages;
+	unsigned long long int p;
+	struct zone *zone;
+
+	if (MAX_NR_ZONES == 1) /* if there is only one zone, just return */
+		return;
+
+	total_pages = 0;
+	for_each_zone(zone)
+		total_pages += zone->present_pages;
+
+	lowmem_print(2, "%s: total pages = %lu in %d zones\n", __func__,
+		total_pages, MAX_NR_ZONES);
+
+	for_each_zone(zone) {
+
+		p = (zone->present_pages << 10)/total_pages;
+		lowmem_zone_n[zone_idx(zone)] =
+			(int)((p << LOWMEM_ZONE_ADJ_PRECISION) >> 10);
+
+		lowmem_print(2, "%s: zone (%s, %d) present=%lu,"
+				"(0.%03lld, n=%d)\n",
+				__func__, zone->name,
+				zone_idx(zone), zone->present_pages,
+				p, lowmem_zone_n[zone_idx(zone)]);
+	}
+}
+static int lowmem_zone_adj(int min_size_indx, int high_zoneidx)
+{
+	int s, minfree, i;
+	unsigned long long t;
+
+	if (high_zoneidx >= MAX_NR_ZONES - 1)
+		return 0;
+
+	minfree = lowmem_minfree[min_size_indx];
+
+	s = 0;
+	for (i = MAX_NR_ZONES - 1; i > high_zoneidx; i--) {
+		t = (unsigned long long) minfree * lowmem_zone_n[i];
+		s += (int) t >> LOWMEM_ZONE_ADJ_PRECISION;
+	}
+
+	lowmem_print(5, "%s: original min = %d, high_indx = %d, reduce = %d\n",
+			__func__, minfree, high_zoneidx, s);
+	return s;
+}
 void tune_lmk_zone_param(struct zonelist *zonelist, int classzone_idx,
 					int *other_free, int *other_file)
 {
@@ -170,6 +232,8 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	int other_free = global_page_state(NR_FREE_PAGES);
 	int other_file = global_page_state(NR_FILE_PAGES) -
 						global_page_state(NR_SHMEM);
+	int high_zoneidx = gfp_zone(sc->gfp_mask);
+	int zone_adj;
 
 	tune_lmk_param(&other_free, &other_file, sc);
 
@@ -178,8 +242,11 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	if (lowmem_minfree_size < array_size)
 		array_size = lowmem_minfree_size;
 	for (i = 0; i < array_size; i++) {
-		if (other_free < lowmem_minfree[i] &&
-		    other_file < lowmem_minfree[i]) {
+
+		zone_adj = lowmem_zone_adj(i, high_zoneidx);
+
+		if (other_free < (lowmem_minfree[i] - zone_adj) &&
+		    other_file < (lowmem_minfree[i] - zone_adj)) {
 			min_score_adj = lowmem_adj[i];
 			break;
 		}
@@ -268,6 +335,9 @@ static struct shrinker lowmem_shrinker = {
 static int __init lowmem_init(void)
 {
 	register_shrinker(&lowmem_shrinker);
+
+	lowmem_zone_adj_init();
+
 	return 0;
 }
 
