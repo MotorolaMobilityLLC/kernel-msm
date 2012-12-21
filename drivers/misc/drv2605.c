@@ -152,6 +152,8 @@
 
 #define MAX_TIMEOUT 10000	/* 10s */
 
+#define DEFAULT_EFFECT 14	/* Strong buzz 100% */
+
 static struct drv260x {
 	struct class *class;
 	struct device *device;
@@ -160,7 +162,9 @@ static struct drv260x {
 	struct semaphore sem;
 	struct cdev cdev;
 	int en_gpio;
+	int external_trigger;
 	int trigger_gpio;
+	unsigned char default_sequence[4];
 } *drv260x;
 
 static struct vibrator {
@@ -336,7 +340,22 @@ static void drv260x_change_mode(char mode)
 	unsigned char tmp[] = {
 		MODE_REG, mode
 	};
+	if (drv260x->external_trigger)
+		gpio_set_value(drv260x->en_gpio, GPIO_LEVEL_HIGH);
 	drv260x_write_reg_val(tmp, sizeof(tmp));
+}
+
+static void drv260x_standby(void)
+{
+	unsigned char tmp[] = {
+		MODE_REG, MODE_EXTERNAL_TRIGGER_EDGE
+	};
+	if (drv260x->external_trigger) {
+		drv2605_set_waveform_sequence(drv260x->default_sequence, 1);
+		drv260x_write_reg_val(tmp, sizeof(tmp));
+		gpio_set_value(drv260x->en_gpio, GPIO_LEVEL_LOW);
+	} else
+		drv260x_change_mode(MODE_STANDBY);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -366,7 +385,7 @@ static void vibrator_off(void)
 			    MODE_AUDIOHAPTIC)
 				setAudioHapticsEnabled(YES);
 		} else {
-			drv260x_change_mode(MODE_STANDBY);
+			drv260x_standby();
 		}
 	}
 
@@ -442,7 +461,7 @@ static void play_effect(struct work_struct *work)
 	if (audio_haptics_enabled)
 		setAudioHapticsEnabled(YES);
 	else
-		drv260x_change_mode(MODE_STANDBY);
+		drv260x_standby();
 }
 
 static void setAudioHapticsEnabled(int enable)
@@ -508,6 +527,7 @@ static int drv260x_probe(struct i2c_client *client,
 
 	drv260x->en_gpio = pdata->en_gpio;
 	drv260x->trigger_gpio = pdata->trigger_gpio;
+	drv260x->external_trigger = pdata->external_trigger;
 
 	if (gpio_request(drv260x->en_gpio, "vibrator-en") < 0) {
 		printk(KERN_ALERT "drv260x: error requesting gpio\n");
@@ -516,7 +536,13 @@ static int drv260x_probe(struct i2c_client *client,
 	drv260x->client = client;
 
 	/* Enable power to the chip */
+	gpio_export(drv260x->en_gpio, 0);
 	gpio_direction_output(drv260x->en_gpio, GPIO_LEVEL_HIGH);
+
+	if (pdata->default_effect)
+		drv260x->default_sequence[0] = pdata->default_effect;
+	else
+		drv260x->default_sequence[0] = DEFAULT_EFFECT;
 
 	/* Wait 30 us */
 	udelay(30);
@@ -587,7 +613,7 @@ static int drv260x_probe(struct i2c_client *client,
 	drv2605_select_library(g_effect_bank);
 
 	/* Put hardware in standby */
-	drv260x_change_mode(MODE_STANDBY);
+	drv260x_standby();
 
 	if (timed_output_dev_register(&to_dev) < 0) {
 		printk(KERN_ALERT "drv260x: fail to create timed output dev\n");
@@ -642,7 +668,7 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len,
 
 	if (vibrator_is_playing) {
 		vibrator_is_playing = NO;
-		drv260x_change_mode(MODE_STANDBY);
+		drv260x_standby();
 	}
 
 	switch (buff[0]) {
@@ -702,7 +728,7 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len,
 				if (audio_haptics_enabled)
 					setAudioHapticsEnabled(YES);
 				else
-					drv260x_change_mode(MODE_STANDBY);
+					drv260x_standby();
 			}
 			vibdata.should_stop = YES;
 			break;
@@ -750,7 +776,7 @@ static ssize_t drv260x_write(struct file *filp, const char *buff, size_t len,
 				     DRV260X_MODE_MASK) == MODE_AUDIOHAPTIC)
 					setAudioHapticsEnabled(NO);
 				audio_haptics_enabled = NO;
-				drv260x_change_mode(MODE_STANDBY);
+				drv260x_standby();
 			}
 			break;
 		}
