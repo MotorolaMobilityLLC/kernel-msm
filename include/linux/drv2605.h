@@ -335,5 +335,7 @@
 struct drv260x_platform_data {
 	int en_gpio;
 	int trigger_gpio;
+	int external_trigger;
+	int default_effect;
 };
 #endif				/* __KERNEL__ */
