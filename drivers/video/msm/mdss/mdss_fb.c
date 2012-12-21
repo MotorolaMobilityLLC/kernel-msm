@@ -597,14 +597,14 @@ static int mdss_fb_alloc_fbmem(struct msm_fb_data_type *mfd)
 		if (iclient) {
 			mfd->ihdl = ion_alloc(iclient, size, SZ_4K,
 					 ION_HEAP(ION_CP_MM_HEAP_ID) |
-					 ION_HEAP(ION_SF_HEAP_ID));
+					 ION_HEAP(ION_SF_HEAP_ID), 0);
 			if (IS_ERR_OR_NULL(mfd->ihdl)) {
 				pr_err("unable to alloc fbmem from ion (%p)\n",
 					mfd->ihdl);
 				return -ENOMEM;
 			}
 
-			virt = ion_map_kernel(iclient, mfd->ihdl, 0);
+			virt = ion_map_kernel(iclient, mfd->ihdl);
 			ion_phys(iclient, mfd->ihdl, &phys, &size);
 		} else {
 			virt = dma_alloc_coherent(NULL, size,

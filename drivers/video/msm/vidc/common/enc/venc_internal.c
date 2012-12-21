@@ -1688,7 +1688,7 @@ u32 vid_enc_encode_frame(struct video_client_ctx *client_ctx,
 				&buff_handle);
 
 		if (vcd_input_buffer.data_len > 0) {
-			if (ion_flag == CACHED && buff_handle) {
+			if (ion_flag == ION_FLAG_CACHED && buff_handle) {
 				msm_ion_do_cache_op(
 				client_ctx->user_ion_client,
 				buff_handle,
@@ -1837,8 +1837,7 @@ u32 vid_enc_set_recon_buffers(struct video_client_ctx *client_ctx,
 		}
 		control->kernel_virtual_addr = (u8 *) ion_map_kernel(
 			client_ctx->user_ion_client,
-			client_ctx->recon_buffer_ion_handle[i],
-			ionflag);
+			client_ctx->recon_buffer_ion_handle[i]);
 		if (!control->kernel_virtual_addr) {
 			ERR("%s(): get_ION_kernel virtual addr fail\n",
 				 __func__);
@@ -1867,7 +1866,7 @@ u32 vid_enc_set_recon_buffers(struct video_client_ctx *client_ctx,
 					0,
 					(unsigned long *)&iova,
 					(unsigned long *)&buffer_size,
-					UNCACHED, 0);
+					0, 0);
 			if (rc || !iova) {
 				ERR(
 				"%s():ION map iommu addr fail, rc = %d, iova = 0x%lx\n",

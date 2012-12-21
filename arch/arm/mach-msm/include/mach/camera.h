@@ -635,6 +635,7 @@ enum msm_bus_perf_setting {
 	S_DEFAULT,
 	S_LIVESHOT,
 	S_DUAL,
+	S_LOW_POWER,
 	S_EXIT
 };
 

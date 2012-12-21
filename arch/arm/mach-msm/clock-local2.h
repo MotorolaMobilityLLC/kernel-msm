@@ -15,7 +15,8 @@
 #define __ARCH_ARM_MACH_MSM_CLOCK_LOCAL_2_H
 
 #include <linux/spinlock.h>
-#include "clock.h"
+#include <mach/clk-provider.h>
+#include <mach/clk.h>
 
 /*
  * Generic frequency-definition structs and macros
@@ -36,7 +37,7 @@ struct clk_freq_tbl {
 	const u32	m_val;
 	const u32	n_val;
 	const u32	d_val;
-	const u32	div_src_val;
+	u32	div_src_val;
 	const unsigned	sys_vdd;
 };
 
