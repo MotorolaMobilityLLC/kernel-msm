@@ -44,4 +44,5 @@ static inline int tcm_bind_config(struct usb_configuration *c)
 }
 #endif
 
+void handle_switch_index(int index, struct usb_composite_dev *cdev);
 #endif	/* __LINUX_USB_ANDROID_H */
