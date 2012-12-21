@@ -148,12 +148,6 @@ struct kgsl_mmu_ops {
 	unsigned int (*mmu_get_pt_base_addr)
 			(struct kgsl_mmu *mmu,
 			struct kgsl_pagetable *pt);
-	unsigned int (*mmu_sync_lock)
-			(struct kgsl_mmu *mmu,
-			unsigned int *cmds);
-	unsigned int (*mmu_sync_unlock)
-			(struct kgsl_mmu *mmu,
-			unsigned int *cmds);
 };
 
 struct kgsl_mmu_pt_ops {
@@ -167,8 +161,6 @@ struct kgsl_mmu_pt_ops {
 	void *(*mmu_create_pagetable) (void);
 	void (*mmu_destroy_pagetable) (void *pt);
 };
-
-#define KGSL_MMU_FLAGS_IOMMU_SYNC BIT(31)
 
 struct kgsl_mmu {
 	unsigned int     refcnt;
@@ -325,26 +317,6 @@ static inline int kgsl_mmu_get_num_iommu_units(struct kgsl_mmu *mmu)
 {
 	if (mmu->mmu_ops && mmu->mmu_ops->mmu_get_num_iommu_units)
 		return mmu->mmu_ops->mmu_get_num_iommu_units(mmu);
-	else
-		return 0;
-}
-
-static inline int kgsl_mmu_sync_lock(struct kgsl_mmu *mmu,
-				unsigned int *cmds)
-{
-	if ((mmu->flags & KGSL_MMU_FLAGS_IOMMU_SYNC) &&
-		mmu->mmu_ops && mmu->mmu_ops->mmu_sync_lock)
-		return mmu->mmu_ops->mmu_sync_lock(mmu, cmds);
-	else
-		return 0;
-}
-
-static inline int kgsl_mmu_sync_unlock(struct kgsl_mmu *mmu,
-				unsigned int *cmds)
-{
-	if ((mmu->flags & KGSL_MMU_FLAGS_IOMMU_SYNC) &&
-		mmu->mmu_ops && mmu->mmu_ops->mmu_sync_unlock)
-		return mmu->mmu_ops->mmu_sync_unlock(mmu, cmds);
 	else
 		return 0;
 }
