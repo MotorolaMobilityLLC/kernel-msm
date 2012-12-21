@@ -25,6 +25,14 @@ DEFINE_MUTEX(s5k5b3g_mut);
 
 static struct msm_sensor_ctrl_t s5k5b3g_s_ctrl;
 
+static struct regulator *cam_vdig;
+static struct regulator *cam_vio;
+static struct regulator *cam_mipi_mux;
+
+static struct msm_cam_clk_info cam_mot_8960_clk_info[] = {
+	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
+};
+
 static struct msm_camera_i2c_reg_conf s5k5b3g_start_settings[] = {
 	{0x0100, 0x01, MSM_CAMERA_I2C_BYTE_DATA},  /* */
 };
@@ -238,6 +246,206 @@ static int32_t s5k5b3g_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 	return rc;
 }
 
+static int32_t s5k5b3g_regulator_on(struct regulator **reg,
+				struct device *dev, char *regname, int uV)
+{
+	int32_t rc;
+
+	pr_debug("s5k5b3g_regulator_on: %s %d\n", regname, uV);
+
+	*reg = regulator_get(dev, regname);
+	if (IS_ERR(*reg)) {
+		pr_err("s5k5b3g: failed to get %s (%d)\n",
+				regname, rc = PTR_ERR(*reg));
+		goto reg_on_done;
+	}
+
+	if (uV != 0) {
+		rc = regulator_set_voltage(*reg, uV, uV);
+		if (rc) {
+			pr_err("s5k5b3g: failed to set voltage for %s (%d)\n",
+					regname, rc);
+			goto reg_on_done;
+		}
+	}
+
+	rc = regulator_enable(*reg);
+	if (rc) {
+		pr_err("s5k5b3g: failed to enable %s (%d)\n",
+				regname, rc);
+		goto reg_on_done;
+	}
+
+reg_on_done:
+	return rc;
+}
+
+static int32_t s5k5b3g_regulator_off(struct regulator **reg, char *regname)
+{
+	int32_t rc;
+
+	if (regname)
+		pr_debug("s5k5b3g_regulator_off: %s\n", regname);
+
+	if (*reg == NULL) {
+		if (regname)
+			pr_err("s5k5b3g_regulator_off: %s is null, aborting\n",
+								regname);
+		rc = -EINVAL;
+		goto reg_off_done;
+	}
+
+	rc = regulator_disable(*reg);
+	if (rc) {
+		if (regname)
+			pr_err("s5k5b3g: failed to disable %s (%d)\n",
+								regname, rc);
+		goto reg_off_done;
+	}
+
+	regulator_put(*reg);
+
+reg_off_done:
+	return rc;
+}
+
+
+static int32_t s5k5b3g_power_up(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc;
+	struct device *dev = &s_ctrl->sensor_i2c_client->client->dev;
+	struct msm_camera_sensor_info *info = s_ctrl->sensordata;
+
+	pr_debug("s5k5b3g_power_up\n");
+
+	if (!info->oem_data) {
+		pr_err("s5k5b3g: oem data NULL in sensor info, aborting");
+		rc = -EINVAL;
+		goto power_up_done;
+	}
+
+	/* Request gpios */
+	rc = gpio_request(info->oem_data->sensor_avdd_en, "s5k5b3g");
+	if (rc < 0) {
+		pr_err("s5k5b3g: gpio request sensor_avdd_en failed (%d)\n", rc);
+		goto power_up_done;
+	}
+
+	rc = gpio_request(info->sensor_reset, "s5k5b3g");
+	if (rc < 0) {
+		pr_err("s5k5b3g: gpio request sensor_reset failed (%d)\n", rc);
+		goto abort0;
+	}
+
+	rc = gpio_request(info->oem_data->sensor_dig_en, "s5k5b3g");
+	if (rc < 0) {
+		pr_err("s5k5b3g: gpio request sensor_dig_en failed (%d)\n", rc);
+		goto abort1;
+	}
+
+	/* Set reset low */
+	gpio_direction_output(info->sensor_reset, 0);
+
+	/* Enable supplies */
+	rc = s5k5b3g_regulator_on(&cam_vio, dev, "cam_vio", 0);
+	if (rc < 0)
+		goto abort2;
+
+	rc = s5k5b3g_regulator_on(&cam_vdig, dev, "cam_vdig", 1200000);
+	if (rc < 0)
+		goto abort2;
+
+	/* Not every board will use this so if devtree doesn't define it just
+	   ignore the error and move on */
+	rc = s5k5b3g_regulator_on(&cam_mipi_mux, dev, "cam_mipi_mux", 2800000);
+
+	/* Wait for core supplies to power up */
+	usleep_range(10000, 15000);
+
+	/* Set dig_en high */
+	gpio_direction_output(info->oem_data->sensor_dig_en, 1);
+
+	/*Enable MCLK*/
+	cam_mot_8960_clk_info->clk_rate = s_ctrl->clk_rate;
+	rc = msm_cam_clk_enable(dev, cam_mot_8960_clk_info,
+			s_ctrl->cam_clk, ARRAY_SIZE(cam_mot_8960_clk_info), 1);
+	if (rc < 0) {
+		pr_err("s5k5b3g: msm_cam_clk_enable failed (%d)\n", rc);
+		goto abort2;
+	}
+
+	/* Set avdd_en high */
+	gpio_direction_output(info->oem_data->sensor_avdd_en, 1);
+
+	/* Set reset high */
+	gpio_direction_output(info->sensor_reset, 1);
+	usleep_range(1000, 2000);
+
+	goto power_up_done;
+
+
+	/* Cleanup, ignore errors during abort */
+abort2:
+	gpio_free(info->oem_data->sensor_dig_en);
+abort1:
+	gpio_free(info->sensor_reset);
+abort0:
+	gpio_free(info->oem_data->sensor_avdd_en);
+
+	s5k5b3g_regulator_off(&cam_vio, NULL);
+	s5k5b3g_regulator_off(&cam_vdig, NULL);
+	s5k5b3g_regulator_off(&cam_mipi_mux, NULL);
+
+power_up_done:
+	return rc;
+}
+
+static int32_t s5k5b3g_power_down(
+		struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc;
+	struct device *dev = &s_ctrl->sensor_i2c_client->client->dev;
+	struct msm_camera_sensor_info *info = s_ctrl->sensordata;
+
+	pr_debug("s5k5b3g_power_down\n");
+
+	/*Set Reset Low*/
+	gpio_direction_output(info->sensor_reset, 0);
+	usleep_range(1000, 2000);
+
+	/*Set avdd_en low*/
+	gpio_direction_output(info->oem_data->sensor_avdd_en, 0);
+
+	/*Set dig_en low*/
+	gpio_direction_output(info->oem_data->sensor_dig_en, 0);
+
+	/* Disable supplies */
+
+	/* Not every board needs this so ignore error */
+	s5k5b3g_regulator_off(&cam_mipi_mux, NULL);
+
+	rc = s5k5b3g_regulator_off(&cam_vdig, "cam_vdig");
+	if (rc < 0)
+		pr_err("s5k5b3g: regulator off for cam_vdig failed (%d)\n", rc);
+
+	rc = s5k5b3g_regulator_off(&cam_vio, "cam_vio");
+	if (rc < 0)
+		pr_err("s5k5b3g: regulator off for cam_vio failed (%d)\n", rc);
+
+	/*Disable MCLK*/
+	rc = msm_cam_clk_enable(dev, cam_mot_8960_clk_info, s_ctrl->cam_clk,
+			ARRAY_SIZE(cam_mot_8960_clk_info), 0);
+	if (rc < 0)
+		pr_err("s5k5b3g: msm_cam_clk_enable failed (%d)\n", rc);
+
+	/*Clean up*/
+	gpio_free(info->oem_data->sensor_avdd_en);
+	gpio_free(info->sensor_reset);
+	gpio_free(info->oem_data->sensor_dig_en);
+
+	return rc;
+}
+
 static const struct i2c_device_id s5k5b3g_i2c_id[] = {
 	{SENSOR_NAME, (kernel_ulong_t)&s5k5b3g_s_ctrl},
 	{ }
@@ -287,8 +495,8 @@ static struct msm_sensor_fn_t s5k5b3g_func_tbl = {
 	.sensor_mode_init = msm_sensor_mode_init,
 	.sensor_get_output_info = msm_sensor_get_output_info,
 	.sensor_config = msm_sensor_config,
-	.sensor_power_up = msm_sensor_power_up,
-	.sensor_power_down = msm_sensor_power_down,
+	.sensor_power_up = s5k5b3g_power_up,
+	.sensor_power_down = s5k5b3g_power_down,
 	.sensor_get_csi_params = msm_sensor_get_csi_params,
 };
 

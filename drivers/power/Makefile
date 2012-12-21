@@ -61,3 +61,4 @@ obj-$(CONFIG_CHARGER_SMB347)	+= smb347-charger.o
 obj-$(CONFIG_BQ51051B_CHARGER)	+= bq51051b_charger.o
 obj-$(CONFIG_BATTERY_TEMP_CONTROL) += battery_temp_ctrl.o
 obj-$(CONFIG_BATTERY_MMI)       += mmi-battery.o
+obj-$(CONFIG_CHARGER_BQ5101XB)  += bq5101xb_charger.o

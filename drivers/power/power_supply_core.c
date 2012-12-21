@@ -11,6 +11,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/notifier.h>
 #include <linux/types.h>
 #include <linux/init.h>
 #include <linux/slab.h>
@@ -144,6 +145,10 @@ static void power_supply_changed_work(struct work_struct *work)
 
 		class_for_each_device(power_supply_class, NULL, psy,
 				      __power_supply_changed_work);
+
+		blocking_notifier_call_chain(&psy->notify_head,
+					     (unsigned long)KOBJ_CHANGE,
+					     (void *)NULL);
 
 		power_supply_update_leds(psy);
 
@@ -295,6 +300,7 @@ int power_supply_register(struct device *parent, struct power_supply *psy)
 	psy->dev = dev;
 
 	INIT_WORK(&psy->changed_work, power_supply_changed_work);
+	BLOCKING_INIT_NOTIFIER_HEAD(&psy->notify_head);
 
 	rc = kobject_set_name(&dev->kobj, "%s", psy->name);
 	if (rc)
