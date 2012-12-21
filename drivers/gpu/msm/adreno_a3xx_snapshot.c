@@ -297,6 +297,41 @@ static void *a3xx_snapshot_debugbus(struct kgsl_device *device,
 	return snapshot;
 }
 
+static void _snapshot_a3xx_regs(struct kgsl_snapshot_registers *regs,
+	struct kgsl_snapshot_registers_list *list)
+{
+	regs[list->count].regs = (unsigned int *) a3xx_registers;
+	regs[list->count].count = a3xx_registers_count;
+	list->count++;
+}
+
+static void _snapshot_hlsq_regs(struct kgsl_snapshot_registers *regs,
+	struct kgsl_snapshot_registers_list *list,
+	struct adreno_device *adreno_dev)
+{
+	/* HLSQ specific registers */
+	/*
+	 * Don't dump any a3xx HLSQ registers just yet.  Reading the HLSQ
+	 * registers can cause the device to hang if the HLSQ block is
+	 * busy.  Add specific checks for each a3xx core as the requirements
+	 * are discovered.  Disable by default for now.
+	 */
+	if (!adreno_is_a3xx(adreno_dev)) {
+		regs[list->count].regs = (unsigned int *) a3xx_hlsq_registers;
+		regs[list->count].count = a3xx_hlsq_registers_count;
+		list->count++;
+	}
+}
+
+static void _snapshot_a330_regs(struct kgsl_snapshot_registers *regs,
+	struct kgsl_snapshot_registers_list *list)
+{
+	/* For A330, append the additional list of new registers to grab */
+	regs[list->count].regs = (unsigned int *) a330_registers;
+	regs[list->count].count = a330_registers_count;
+	list->count++;
+}
+
 /* A3XX GPU snapshot function - this is where all of the A3XX specific
  * bits and pieces are grabbed into the snapshot memory
  */
@@ -306,20 +341,19 @@ void *a3xx_snapshot(struct adreno_device *adreno_dev, void *snapshot,
 {
 	struct kgsl_device *device = &adreno_dev->dev;
 	struct kgsl_snapshot_registers_list list;
-	struct kgsl_snapshot_registers regs[2];
-
-	regs[0].regs = (unsigned int *) a3xx_registers;
-	regs[0].count = a3xx_registers_count;
+	struct kgsl_snapshot_registers regs[5];
 
 	list.registers = regs;
-	list.count = 1;
+	list.count = 0;
 
-	/* For A330, append the additional list of new registers to grab */
-	if (adreno_is_a330(adreno_dev)) {
-		regs[1].regs = (unsigned int *) a330_registers;
-		regs[1].count = a330_registers_count;
-		list.count++;
-	}
+	/* Disable Clock gating temporarily for the debug bus to work */
+	adreno_regwrite(device, A3XX_RBBM_CLOCK_CTL, 0x00);
+
+	/* Store relevant registers in list to snapshot */
+	_snapshot_a3xx_regs(regs, &list);
+	_snapshot_hlsq_regs(regs, &list, adreno_dev);
+	if (adreno_is_a330(adreno_dev))
+		_snapshot_a330_regs(regs, &list);
 
 	/* Master set of (non debug) registers */
 	snapshot = kgsl_snapshot_add_section(device,
@@ -335,9 +369,6 @@ void *a3xx_snapshot(struct adreno_device *adreno_dev, void *snapshot,
 	snapshot = kgsl_snapshot_indexed_registers(device, snapshot,
 			remain, REG_CP_ME_CNTL, REG_CP_ME_STATUS,
 			64, 44);
-
-	/* Disable Clock gating temporarily for the debug bus to work */
-	adreno_regwrite(device, A3XX_RBBM_CLOCK_CTL, 0x00);
 
 	/* VPC memory */
 	snapshot = kgsl_snapshot_add_section(device,

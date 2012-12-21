@@ -385,13 +385,6 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 		*cmds++ = cp_type3_packet(CP_INVALIDATE_STATE, 1);
 		*cmds++ = 0x7fff;
 		sizedwords += 2;
-		/*
-		 * add an interrupt at the end of commands so that the smmu
-		 * disable clock off function will get called
-		 */
-		*cmds++ = cp_type3_packet(CP_INTERRUPT, 1);
-		*cmds++ = CP_INT_CNTL__RB_INT_MASK;
-		sizedwords += 2;
 		/* This returns the per context timestamp but we need to
 		 * use the global timestamp for iommu clock disablement */
 		adreno_ringbuffer_issuecmds(device, adreno_ctx,
@@ -857,8 +850,8 @@ static struct msm_dcvs_core_info *adreno_of_get_dcvs(struct device_node *parent)
 	if (adreno_of_read_property(node, "qcom,algo-ss-util-pct",
 		&info->algo_param.ss_util_pct))
 		goto err;
-	if (adreno_of_read_property(node, "qcom,algo-ss-iobusy-conv",
-		&info->algo_param.ss_iobusy_conv))
+	if (adreno_of_read_property(node, "qcom,algo-ss-no-corr-below-freq",
+		&info->algo_param.ss_no_corr_below_freq))
 		goto err;
 
 	if (adreno_of_read_property(node, "qcom,energy-active-coeff-a",
@@ -2055,13 +2048,73 @@ static unsigned int _get_context_id(struct kgsl_context *k_ctxt)
 	return context_id;
 }
 
+static void adreno_next_event(struct kgsl_device *device,
+		struct kgsl_event *event)
+{
+	int status;
+	unsigned int ref_ts, enableflag;
+	unsigned int context_id = _get_context_id(event->context);
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+
+	status = kgsl_check_timestamp(device, event->context, event->timestamp);
+	if (!status) {
+		kgsl_sharedmem_readl(&device->memstore, &enableflag,
+			KGSL_MEMSTORE_OFFSET(context_id, ts_cmp_enable));
+		/*
+		 * Barrier is needed here to make sure the read from memstore
+		 * has posted
+		 */
+
+		mb();
+
+		if (enableflag) {
+			kgsl_sharedmem_readl(&device->memstore, &ref_ts,
+				KGSL_MEMSTORE_OFFSET(context_id,
+					ref_wait_ts));
+
+			/* Make sure the memstore read has posted */
+			mb();
+			if (timestamp_cmp(ref_ts, event->timestamp) >= 0) {
+				kgsl_sharedmem_writel(&device->memstore,
+				KGSL_MEMSTORE_OFFSET(context_id,
+					ref_wait_ts), event->timestamp);
+				/* Make sure the memstore write is posted */
+				wmb();
+			}
+		} else {
+			unsigned int cmds[2];
+			kgsl_sharedmem_writel(&device->memstore,
+				KGSL_MEMSTORE_OFFSET(context_id,
+					ref_wait_ts), event->timestamp);
+			enableflag = 1;
+			kgsl_sharedmem_writel(&device->memstore,
+				KGSL_MEMSTORE_OFFSET(context_id,
+					ts_cmp_enable), enableflag);
+
+			/* Make sure the memstore write gets posted */
+			wmb();
+
+			/*
+			 * submit a dummy packet so that even if all
+			 * commands upto timestamp get executed we will still
+			 * get an interrupt
+			 */
+			cmds[0] = cp_type3_packet(CP_NOP, 1);
+			cmds[1] = 0;
+
+			if (adreno_dev->drawctxt_active)
+				adreno_ringbuffer_issuecmds_intr(device,
+						event->context, &cmds[0], 2);
+		}
+	}
+}
+
 static int kgsl_check_interrupt_timestamp(struct kgsl_device *device,
 		struct kgsl_context *context, unsigned int timestamp)
 {
 	int status;
 	unsigned int ref_ts, enableflag;
 	unsigned int context_id;
-	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 
 	mutex_lock(&device->mutex);
 	context_id = _get_context_id(context);
@@ -2108,13 +2161,9 @@ static int kgsl_check_interrupt_timestamp(struct kgsl_device *device,
 			cmds[0] = cp_type3_packet(CP_NOP, 1);
 			cmds[1] = 0;
 
-			if (adreno_dev->drawctxt_active)
+			if (context)
 				adreno_ringbuffer_issuecmds_intr(device,
 						context, &cmds[0], 2);
-			else
-				/* We would never call this function if there
-				 * was no active contexts running */
-				BUG();
 		}
 	}
 unlock:
@@ -2458,6 +2507,7 @@ static const struct kgsl_functable adreno_functable = {
 	.drawctxt_destroy = adreno_drawctxt_destroy,
 	.setproperty = adreno_setproperty,
 	.postmortem_dump = adreno_dump,
+	.next_event = adreno_next_event,
 };
 
 static struct platform_driver adreno_platform_driver = {

@@ -26,6 +26,7 @@
 #include <mach/msm_sps.h>
 #include <mach/dma.h>
 #include <mach/msm_dsps.h>
+#include <mach/clk-provider.h>
 #include <sound/msm-dai-q6.h>
 #include <sound/apr_audio.h>
 #include <mach/msm_tsif.h>
@@ -36,7 +37,7 @@
 #include <mach/msm_smd.h>
 #include <mach/msm_dcvs.h>
 #include <mach/msm_rtb.h>
-#include <linux/ion.h>
+#include <linux/msm_ion.h>
 #include "clock.h"
 #include "devices.h"
 #include "footswitch.h"
@@ -2623,18 +2624,27 @@ struct platform_device i2s_mdm_8064_device = {
 	.resource	= i2s_mdm_resources,
 };
 
-static struct msm_dcvs_freq_entry apq8064_freq[] = {
-	{ 384000, 900,  0, 0, 0},
-	{ 594000, 950,  0, 0, 0},
-	{ 702000, 975,  0, 0, 0},
-	{1026000, 1075, 0, 0, 0},
-	{1242000, 1150, 0, 100, 100},
-	{1458000, 1188, 0, 100, 100},
-	{1512000, 1200, 1, 100, 100},
+static struct msm_dcvs_sync_rule apq8064_dcvs_sync_rules[] = {
+	{1026000,	400000},
+	{384000,	200000},
+	{0,		128000},
+};
+
+static struct msm_dcvs_platform_data apq8064_dcvs_data = {
+	.sync_rules	= apq8064_dcvs_sync_rules,
+	.num_sync_rules = ARRAY_SIZE(apq8064_dcvs_sync_rules),
+	.gpu_max_nom_khz = 320000,
+};
+
+struct platform_device apq8064_dcvs_device = {
+	.name		= "dcvs",
+	.id		= -1,
+	.dev		= {
+		.platform_data = &apq8064_dcvs_data,
+	},
 };
 
 static struct msm_dcvs_core_info apq8064_core_info = {
-	.freq_tbl		= &apq8064_freq[0],
 	.num_cores		= 4,
 	.sensors		= (int[]){7, 8, 9, 10},
 	.thermal_poll_ms	= 60000,
@@ -2652,7 +2662,7 @@ static struct msm_dcvs_core_info apq8064_core_info = {
 		.slack_weight_thresh_pct	= 3,
 		.slack_time_min_us		= 45000,
 		.slack_time_max_us		= 45000,
-		.ss_iobusy_conv			= 100,
+		.ss_no_corr_below_freq		= 0,
 		.ss_win_size_min_us		= 1000000,
 		.ss_win_size_max_us		= 1000000,
 		.ss_util_pct			= 95,
@@ -2669,7 +2679,7 @@ static struct msm_dcvs_core_info apq8064_core_info = {
 	},
 	.power_param		= {
 		.current_temp	= 25,
-		.num_freq	= ARRAY_SIZE(apq8064_freq),
+		.num_freq	= 0, /* set at runtime */
 	}
 };
 

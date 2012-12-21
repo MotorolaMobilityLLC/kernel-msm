@@ -5758,6 +5758,7 @@ int msm_axi_subdev_init(struct v4l2_subdev *sd,
 	if (axi_ctrl->share_ctrl->axi_ref_cnt > 1)
 		return rc;
 	axi_ctrl->share_ctrl->dual_enabled = dual_enabled;
+	axi_ctrl->share_ctrl->lp_mode = 0;
 	spin_lock_init(&axi_ctrl->tasklet_lock);
 	INIT_LIST_HEAD(&axi_ctrl->tasklet_q);
 	spin_lock_init(&axi_ctrl->share_ctrl->sd_notify_lock);
@@ -5914,6 +5915,23 @@ void msm_vfe_subdev_release(struct v4l2_subdev *sd)
 		(struct vfe32_ctrl_type *)v4l2_get_subdevdata(sd);
 	CDBG("vfe subdev release %p\n",
 		vfe32_ctrl->share_ctrl->vfebase);
+}
+
+int msm_axi_set_low_power_mode(struct v4l2_subdev *sd, void *arg)
+{
+	uint8_t lp_mode = 0;
+	int rc = 0;
+	struct axi_ctrl_t *axi_ctrl = v4l2_get_subdevdata(sd);
+	if (copy_from_user(&lp_mode,
+		(void __user *)(arg),
+		sizeof(uint8_t))) {
+		rc = -EFAULT;
+		return rc;
+	}
+	axi_ctrl->share_ctrl->lp_mode = lp_mode;
+	if (lp_mode)
+		axi_ctrl->share_ctrl->dual_enabled = 0;
+	return rc;
 }
 
 void axi_abort(struct axi_ctrl_t *axi_ctrl)
@@ -6144,9 +6162,14 @@ void axi_start(struct msm_cam_media_controller *pmctl,
 
 	switch (vfe_params.cmd_type) {
 	case AXI_CMD_PREVIEW:
-		if (!axi_ctrl->share_ctrl->dual_enabled)
+		if (axi_ctrl->share_ctrl->lp_mode)
 			msm_camio_bus_scale_cfg(
-			pmctl->sdata->pdata->cam_bus_scale_table, S_PREVIEW);
+				pmctl->sdata->pdata->cam_bus_scale_table,
+				S_LOW_POWER);
+		else if (!axi_ctrl->share_ctrl->dual_enabled)
+			msm_camio_bus_scale_cfg(
+				pmctl->sdata->pdata->cam_bus_scale_table,
+				S_PREVIEW);
 		break;
 	case AXI_CMD_CAPTURE:
 	case AXI_CMD_RAW_CAPTURE:
@@ -6160,9 +6183,14 @@ void axi_start(struct msm_cam_media_controller *pmctl,
 			pmctl->sdata->pdata->cam_bus_scale_table, S_VIDEO);
 		return;
 	case AXI_CMD_ZSL:
-		if (!axi_ctrl->share_ctrl->dual_enabled)
+		if (axi_ctrl->share_ctrl->lp_mode)
 			msm_camio_bus_scale_cfg(
-			pmctl->sdata->pdata->cam_bus_scale_table, S_ZSL);
+				pmctl->sdata->pdata->cam_bus_scale_table,
+				S_LOW_POWER);
+		else if (!axi_ctrl->share_ctrl->dual_enabled)
+			msm_camio_bus_scale_cfg(
+				pmctl->sdata->pdata->cam_bus_scale_table,
+				S_ZSL);
 		break;
 	case AXI_CMD_LIVESHOT:
 		if (!axi_ctrl->share_ctrl->dual_enabled)
@@ -6434,6 +6462,16 @@ void axi_stop(struct msm_cam_media_controller *pmctl,
 		axi_disable_irq(axi_ctrl->share_ctrl,
 			axi_ctrl->share_ctrl->current_mode);
 		axi_stop_process(axi_ctrl->share_ctrl);
+
+		if (axi_ctrl->share_ctrl->stream_error == 1) {
+			pr_err(" Indicate stream error");
+			vfe32_send_isp_msg(
+				&(axi_ctrl->share_ctrl->vfe32_ctrl->subdev),
+				axi_ctrl->share_ctrl->vfe32_ctrl->
+				share_ctrl->vfeFrameId,
+				MSG_ID_PREV_STOP_ACK);
+		}
+
 		return;
 	}
 
@@ -6757,6 +6795,8 @@ static int msm_axi_config(struct v4l2_subdev *sd, void __user *arg)
 			vfe_params.operation_mode;
 		axi_ctrl->share_ctrl->stop_immediately =
 			vfe_params.stop_immediately;
+		axi_ctrl->share_ctrl->stream_error =
+			vfe_params.stream_error;
 		axi_stop(pmctl, axi_ctrl, vfe_params);
 		}
 		break;
@@ -6965,6 +7005,9 @@ static long msm_axi_subdev_ioctl(struct v4l2_subdev *sd,
 		}
 		rc = msm_axi_subdev_init(sd, dual_enabled);
 		}
+		break;
+	case VIDIOC_MSM_AXI_LOW_POWER_MODE:
+		rc = msm_axi_set_low_power_mode(sd, arg);
 		break;
 	case VIDIOC_MSM_AXI_CFG:
 		rc = msm_axi_config(sd, arg);

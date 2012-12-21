@@ -23,11 +23,11 @@
 #include <linux/clkdev.h>
 
 #include <mach/msm_iomap.h>
-#include <mach/clk.h>
 #include <mach/scm-io.h>
 #include <mach/rpm.h>
 #include <mach/rpm-regulator.h>
 
+#include "clock.h"
 #include "clock-local.h"
 #include "clock-rpm.h"
 #include "clock-voter.h"
@@ -268,7 +268,8 @@ enum vdd_dig_levels {
 	VDD_DIG_NONE,
 	VDD_DIG_LOW,
 	VDD_DIG_NOMINAL,
-	VDD_DIG_HIGH
+	VDD_DIG_HIGH,
+	VDD_DIG_NUM
 };
 
 static int set_vdd_dig(struct clk_vdd_class *vdd_class, int level)
@@ -284,20 +285,29 @@ static int set_vdd_dig(struct clk_vdd_class *vdd_class, int level)
 				    vdd_uv[level], 1200000, 1);
 }
 
-static DEFINE_VDD_CLASS(vdd_dig, set_vdd_dig);
+static DEFINE_VDD_CLASS(vdd_dig, set_vdd_dig, VDD_DIG_NUM);
 
 #define VDD_DIG_FMAX_MAP1(l1, f1) \
-	.vdd_class = &vdd_dig, \
-	.fmax[VDD_DIG_##l1] = (f1)
+	.vdd_class = &vdd_dig,			\
+	.fmax = (unsigned long[VDD_DIG_NUM]) {	\
+		[VDD_DIG_##l1] = (f1),		\
+	},					\
+	.num_fmax = VDD_DIG_NUM
 #define VDD_DIG_FMAX_MAP2(l1, f1, l2, f2) \
-	.vdd_class = &vdd_dig, \
-	.fmax[VDD_DIG_##l1] = (f1), \
-	.fmax[VDD_DIG_##l2] = (f2)
+	.vdd_class = &vdd_dig,			\
+	.fmax = (unsigned long[VDD_DIG_NUM]) {	\
+		[VDD_DIG_##l1] = (f1),		\
+		[VDD_DIG_##l2] = (f2),		\
+	},					\
+	.num_fmax = VDD_DIG_NUM
 #define VDD_DIG_FMAX_MAP3(l1, f1, l2, f2, l3, f3) \
-	.vdd_class = &vdd_dig, \
-	.fmax[VDD_DIG_##l1] = (f1), \
-	.fmax[VDD_DIG_##l2] = (f2), \
-	.fmax[VDD_DIG_##l3] = (f3)
+	.vdd_class = &vdd_dig,			\
+	.fmax = (unsigned long[VDD_DIG_NUM]) {	\
+		[VDD_DIG_##l1] = (f1),		\
+		[VDD_DIG_##l2] = (f2),		\
+		[VDD_DIG_##l3] = (f3),		\
+	},					\
+	.num_fmax = VDD_DIG_NUM
 
 DEFINE_CLK_RPM_BRANCH(pxo_clk, pxo_a_clk, PXO, 27000000);
 DEFINE_CLK_RPM_BRANCH(cxo_clk, cxo_a_clk, CXO, 19200000);
@@ -313,7 +323,6 @@ static struct pll_vote_clk pll8_clk = {
 		.rate = 384000000,
 		.ops = &clk_ops_pll_vote,
 		CLK_INIT(pll8_clk.c),
-		.warned = true,
 	},
 };
 
@@ -325,7 +334,6 @@ static struct pll_clk pll2_clk = {
 		.rate = 800000000,
 		.ops = &clk_ops_local_pll,
 		CLK_INIT(pll2_clk.c),
-		.warned = true,
 	},
 };
 
@@ -337,7 +345,6 @@ static struct pll_clk pll3_clk = {
 		.rate = 0, /* TODO: Detect rate dynamically */
 		.ops = &clk_ops_local_pll,
 		CLK_INIT(pll3_clk.c),
-		.warned = true,
 	},
 };
 
@@ -387,7 +394,6 @@ static struct fixed_clk pll4_clk = {
 		.rate = 540672000,
 		.ops = &clk_ops_pll4,
 		CLK_INIT(pll4_clk.c),
-		.warned = true,
 	},
 };
 
