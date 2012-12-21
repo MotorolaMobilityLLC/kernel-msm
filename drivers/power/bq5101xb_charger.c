@@ -123,22 +123,13 @@ static void bq5101xb_worker(struct work_struct *work)
 	chip = container_of(dwork, struct bq5101xb_chip, bq5101xb_work);
 	pdata = chip->dev->platform_data;
 
-	if (pdata->chrg_b_pin > 0)
-		powered = !gpio_get_value(pdata->chrg_b_pin);
-	else if (pdata->check_powered)
-		powered = pdata->check_powered();
-
-	if (pdata->check_wired)
-		wired = pdata->check_wired();
-
 	if (!chip->batt_psy) {
 		for (i = 0; i < pdata->num_supplies; i++) {
 			chip->batt_psy =
 				power_supply_get_by_name(pdata->supply_list[i]);
 
 			if (!chip->batt_psy) {
-				dev_err(chip->dev,
-					"Batt PSY Not Found\n");
+				pr_err_once("Batt PSY Not Found\n");
 				continue;
 			}
 
@@ -157,6 +148,14 @@ static void bq5101xb_worker(struct work_struct *work)
 	}
 
 	if (chip->batt_psy) {
+		if (pdata->chrg_b_pin > 0)
+			powered = !gpio_get_value(pdata->chrg_b_pin);
+		else if (pdata->check_powered)
+			powered = pdata->check_powered();
+
+		if (pdata->check_wired)
+			wired = pdata->check_wired();
+
 		if (bq5101xb_get_batt_info(chip->batt_psy,
 					   POWER_SUPPLY_PROP_TEMP,
 					   &batt_temp)) {
@@ -180,7 +179,7 @@ static void bq5101xb_worker(struct work_struct *work)
 			return;
 		}
 	} else {
-		dev_err(chip->dev, "batt_psy not found\n");
+		pr_err_once("batt_psy not found\n");
 		schedule_delayed_work(&chip->bq5101xb_work,
 				      msecs_to_jiffies(100));
 		return;
