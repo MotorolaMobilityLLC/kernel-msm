@@ -1616,10 +1616,20 @@ static bool __zone_watermark_ok(struct zone *z, int order, unsigned long mark,
 		/* At the next order, this order's pages become unavailable */
 		free_pages -= z->free_area[o].nr_free << o;
 
+		/*
+		 * z->free_area[o].nr_free is changing. It may increase if
+		 * there are newly freed pages. So free_pages may become
+		 * negative (then always < min). But it should not block
+		 * memory allocation due to new free pages added in lower
+		 * order. Just amend some to save some margin case...
+		 */
+		if (free_pages < 0)
+			free_pages = 0;
+
 		/* Require fewer higher order pages to be free */
 		min >>= min_free_order_shift;
 
-		if (free_pages <= min)
+		if (free_pages < min)
 			return false;
 	}
 	return true;
@@ -2064,6 +2074,7 @@ out:
 }
 
 #ifdef CONFIG_COMPACTION
+#define COMPACTION_RETRY_TIMES 2
 /* Try memory compaction for high-order allocations before reclaim */
 static struct page *
 __alloc_pages_direct_compact(gfp_t gfp_mask, unsigned int order,
@@ -2074,6 +2085,7 @@ __alloc_pages_direct_compact(gfp_t gfp_mask, unsigned int order,
 	unsigned long *did_some_progress)
 {
 	struct page *page;
+	int retry_times = 0, order_adj = order;
 
 	if (!order)
 		return NULL;
@@ -2083,8 +2095,9 @@ __alloc_pages_direct_compact(gfp_t gfp_mask, unsigned int order,
 		return NULL;
 	}
 
+retry_compact:
 	current->flags |= PF_MEMALLOC;
-	*did_some_progress = try_to_compact_pages(zonelist, order, gfp_mask,
+	*did_some_progress = try_to_compact_pages(zonelist, order_adj, gfp_mask,
 						nodemask, sync_migration);
 	current->flags &= ~PF_MEMALLOC;
 	if (*did_some_progress != COMPACT_SKIPPED) {
@@ -2103,7 +2116,20 @@ __alloc_pages_direct_compact(gfp_t gfp_mask, unsigned int order,
 			if (order >= preferred_zone->compact_order_failed)
 				preferred_zone->compact_order_failed = order + 1;
 			count_vm_event(COMPACTSUCCESS);
+
+			if (retry_times)
+				count_vm_event(COMPACTSUCCESS_RETRY);
+
 			return page;
+		}
+
+		if (retry_times++ < COMPACTION_RETRY_TIMES) {
+
+			order_adj++;
+			if (order_adj >= MAX_ORDER)
+				order_adj = -1;
+
+			goto retry_compact;
 		}
 
 		/*
