@@ -4,6 +4,7 @@
  *
  * Copyright (c) 2008 Google Inc.
  * Copyright (c) 2007-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, Motorola Mobility LLC
  * Modified: Nick Pelly <npelly@google.com>
  *
  * All source code in this file is licensed under the following license
@@ -35,6 +36,7 @@
 #include <linux/serial.h>
 #include <linux/serial_core.h>
 #include <linux/slab.h>
+#include <linux/gpio.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
@@ -45,6 +47,7 @@
 #include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
+#include <linux/of.h>
 #include <linux/dma-mapping.h>
 #include <linux/dmapool.h>
 #include <linux/tty_flip.h>
@@ -1907,6 +1910,66 @@ free_tx_command_ptr:
 	return ret;
 }
 
+#ifdef CONFIG_OF
+static u64 msm_serial_hs_dma_mask = DMA_BIT_MASK(32);
+
+static struct msm_serial_hs_platform_data __devinit *
+msm_hs_of_init(struct platform_device *pdev)
+{
+	struct msm_serial_hs_platform_data *pdata;
+	struct device_node *np = pdev->dev.of_node;
+	int size, i;
+	struct resource *r;
+
+	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata)
+		return NULL;
+
+	/* Default to an invalid GPIO so its not configured */
+	/* TODO: expand support for wakeup IRQ capable devices */
+	pdata->wakeup_irq = -1;
+
+	/* OF driver does not populate/parse built-in IORESOURCE_DMA
+	 * resource types. To minimize impact on the original probe, we'll
+	 * stuff them from the DT properties.....
+	 */
+	size = pdev->num_resources + 2; /* uartdm channels & crci */
+	r = devm_kzalloc(&pdev->dev, size*sizeof(*r), GFP_KERNEL);
+	if (!r)
+		return NULL;
+	memcpy(r, pdev->resource, pdev->num_resources*sizeof(*r));
+	i = pdev->num_resources;
+
+	of_property_read_u32(np, "qcom,msm-hs-dm-tx-chan", &r[i].start);
+	of_property_read_u32(np, "qcom,msm-hs-dm-rx-chan", &r[i].end);
+	r[i].name = "uartdm_channels";
+	r[i].flags = IORESOURCE_DMA;
+	i++;
+
+	of_property_read_u32(np, "qcom,msm-hs-dm-tx-crci", &r[i].start);
+	of_property_read_u32(np, "qcom,msm-hs-dm-rx-crci", &r[i].end);
+	r[i].name = "uartdm_crci";
+	r[i].flags = IORESOURCE_DMA;
+	i++;
+
+	of_property_read_u32(np, "cell-index", &pdev->id);
+
+	/* Right now, device-tree probed devices don't get dma_mask set. */
+	pdev->dev.dma_mask = &msm_serial_hs_dma_mask;
+
+	pdev->num_resources = size;
+	pdev->resource = r;
+
+	return pdata;
+}
+#else
+static inline struct msm_serial_hs_platform_data *
+msm_hs_of_init(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
+
 static int __devinit msm_hs_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -1915,6 +1978,8 @@ static int __devinit msm_hs_probe(struct platform_device *pdev)
 	struct resource *resource;
 	struct msm_serial_hs_platform_data *pdata = pdev->dev.platform_data;
 
+	if (pdev->dev.of_node)
+		pdata = msm_hs_of_init(pdev);
 	if (pdev->id < 0 || pdev->id >= UARTDM_NR) {
 		printk(KERN_ERR "Invalid plaform device ID = %d\n", pdev->id);
 		return -EINVAL;
@@ -1938,7 +2003,7 @@ static int __devinit msm_hs_probe(struct platform_device *pdev)
 	if (unlikely((int)uport->irq < 0))
 		return -ENXIO;
 
-	if (pdata == NULL)
+	if (pdata == NULL || !gpio_is_valid(pdata->wakeup_irq))
 		msm_uport->wakeup.irq = -1;
 	else {
 		msm_uport->wakeup.irq = pdata->wakeup_irq;
@@ -2195,12 +2260,21 @@ static const struct dev_pm_ops msm_hs_dev_pm_ops = {
 	.runtime_idle    = msm_hs_runtime_idle,
 };
 
+#ifdef CONFIG_OF
+static struct of_device_id msm_hs_match_table[] = {
+	{ .compatible = "qcom,msm-hsuart", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, msm_hs_match_table);
+#endif
+
 static struct platform_driver msm_serial_hs_platform_driver = {
 	.probe	= msm_hs_probe,
 	.remove = __devexit_p(msm_hs_remove),
 	.driver = {
 		.name = "msm_serial_hs",
 		.pm   = &msm_hs_dev_pm_ops,
+		.of_match_table = of_match_ptr(msm_hs_match_table),
 	},
 };
 
