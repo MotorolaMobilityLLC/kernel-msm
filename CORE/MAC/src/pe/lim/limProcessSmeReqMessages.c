@@ -104,6 +104,8 @@
  */
 #define SCAN_MESSAGING_OVERHEAD 5 // in msecs
 
+#define CONV_MS_TO_US 1024 //conversion factor from ms to us
+
 // SME REQ processing function templates
 static void __limProcessSmeStartReq(tpAniSirGlobal, tANI_U32 *);
 static tANI_BOOLEAN __limProcessSmeSysReadyInd(tpAniSirGlobal, tANI_U32 *);
@@ -4953,6 +4955,9 @@ __limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
     /* Adding an overhead of 5ms to account for the scan messaging delays */
     pMsgNoA->single_noa_duration += SCAN_MESSAGING_OVERHEAD;
+
+    /* Multiplying with 1024 since riva is expecting in micro Seconds */
+     pMsgNoA->single_noa_duration *= CONV_MS_TO_US;
 
     /* Start Insert NOA timer
      * If insert NOA req fails or NOA rsp fails or start NOA indication doesn't come from FW due to GO session deletion
