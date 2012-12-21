@@ -495,18 +495,27 @@ static struct drv260x_platform_data drv2605_data;
 static int __init drv2605_init_i2c_device(struct i2c_board_info *info,
 				       struct device_node *child)
 {
-	int value;
-
 	info->platform_data = &drv2605_data;
 	/* enable gpio */
-	if (of_property_read_u32(child, "en_gpio", &value))
+	if (of_property_read_u32(child, "en_gpio", &drv2605_data.en_gpio))
 		return -EINVAL;
-	drv2605_data.en_gpio = (u8)value;
 
 	/* trigger gpio */
-	if (of_property_read_u32(child, "trigger_gpio", &value))
-		return 0;
-	drv2605_data.trigger_gpio = (u8)value;
+	if (!of_property_read_u32(child, "trigger_gpio",
+					&drv2605_data.trigger_gpio)) {
+		if (!gpio_request(drv2605_data.trigger_gpio, "vib-trigger")) {
+			gpio_direction_output(drv2605_data.trigger_gpio, 0);
+			gpio_export(drv2605_data.trigger_gpio, 0);
+		}
+	}
+
+	/* external trigger mode enable flag*/
+	of_property_read_u32(child, "external_trigger",
+					&drv2605_data.external_trigger);
+
+	/* default vibration effect for external trigger mode */
+	of_property_read_u32(child, "default_effect",
+					&drv2605_data.default_effect);
 
 	return 0;
 }
