@@ -34,6 +34,8 @@
 
 struct alsa_to_h2w_data {
 	struct switch_dev sdev;
+	struct work_struct work;
+	int state;
 };
 
 static char *name_headsets_with_mic = "Headset with a mic";
@@ -47,8 +49,18 @@ static struct alsa_to_h2w_data *headset_switch_data;
 
 static void alsa_to_h2w_headset_report(int state)
 {
-	if (headset_switch_data)
-		switch_set_state(&headset_switch_data->sdev, state);
+	if (headset_switch_data) {
+		headset_switch_data->state = state;
+		schedule_work(&headset_switch_data->work);
+	}
+
+}
+
+static void alsa_to_h2w_work(struct work_struct *work)
+{
+	struct alsa_to_h2w_data *data =
+		container_of(work, struct alsa_to_h2w_data, work);
+	switch_set_state(&data->sdev, data->state);
 }
 
 static int switch_to_h2w(unsigned long switch_state)
@@ -206,6 +218,8 @@ static int __devinit alsa_to_h2w_probe(struct platform_device *pdev)
 		goto err_switch_dev_register;
 
 	platform_set_drvdata(pdev, switch_data);
+
+	INIT_WORK(&switch_data->work, alsa_to_h2w_work);
 
 	if (input_register_handler(&alsa_to_h2w_handler))
 		pr_info("input_register_handler failed\n");
