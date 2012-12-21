@@ -24,10 +24,10 @@
 #include <asm/mach-types.h>
 
 #include <mach/msm_iomap.h>
-#include <mach/clk.h>
 #include <mach/rpm-9615.h>
 #include <mach/rpm-regulator.h>
 
+#include "clock.h"
 #include "clock-local.h"
 #include "clock-voter.h"
 #include "clock-rpm.h"
@@ -182,7 +182,8 @@ enum vdd_dig_levels {
 	VDD_DIG_NONE,
 	VDD_DIG_LOW,
 	VDD_DIG_NOMINAL,
-	VDD_DIG_HIGH
+	VDD_DIG_HIGH,
+	VDD_DIG_NUM
 };
 
 static int set_vdd_dig(struct clk_vdd_class *vdd_class, int level)
@@ -198,15 +199,21 @@ static int set_vdd_dig(struct clk_vdd_class *vdd_class, int level)
 		RPM_VREG_VOTER3, vdd_corner[level], RPM_VREG_CORNER_HIGH, 1);
 }
 
-static DEFINE_VDD_CLASS(vdd_dig, set_vdd_dig);
+static DEFINE_VDD_CLASS(vdd_dig, set_vdd_dig, VDD_DIG_NUM);
 
 #define VDD_DIG_FMAX_MAP1(l1, f1) \
-	.vdd_class = &vdd_dig, \
-	.fmax[VDD_DIG_##l1] = (f1)
+	.vdd_class = &vdd_dig,			\
+	.fmax = (unsigned long[VDD_DIG_NUM]) {	\
+		[VDD_DIG_##l1] = (f1),		\
+	},					\
+	.num_fmax = VDD_DIG_NUM
 #define VDD_DIG_FMAX_MAP2(l1, f1, l2, f2) \
-	.vdd_class = &vdd_dig, \
-	.fmax[VDD_DIG_##l1] = (f1), \
-	.fmax[VDD_DIG_##l2] = (f2)
+	.vdd_class = &vdd_dig,			\
+	.fmax = (unsigned long[VDD_DIG_NUM]) {	\
+		[VDD_DIG_##l1] = (f1),		\
+		[VDD_DIG_##l2] = (f2),		\
+	},					\
+	.num_fmax = VDD_DIG_NUM
 
 /*
  * Clock Descriptions
@@ -272,7 +279,6 @@ static struct pll_vote_clk pll0_clk = {
 		.rate = 276000000,
 		.ops = &clk_ops_pll_acpu_vote,
 		CLK_INIT(pll0_clk.c),
-		.warned = true,
 	},
 };
 
@@ -288,7 +294,6 @@ static struct pll_vote_clk pll0_activeonly_clk = {
 		.rate = 276000000,
 		.ops = &clk_ops_pll_acpu_vote,
 		CLK_INIT(pll0_activeonly_clk.c),
-		.warned = true,
 	},
 };
 
@@ -303,7 +308,6 @@ static struct pll_vote_clk pll4_clk = {
 		.rate = 393216000,
 		.ops = &clk_ops_pll_vote,
 		CLK_INIT(pll4_clk.c),
-		.warned = true,
 	},
 };
 
@@ -322,7 +326,6 @@ static struct pll_vote_clk pll8_clk = {
 		.rate = 384000000,
 		.ops = &clk_ops_pll_acpu_vote,
 		CLK_INIT(pll8_clk.c),
-		.warned = true,
 	},
 };
 
@@ -338,7 +341,6 @@ static struct pll_vote_clk pll8_activeonly_clk = {
 		.rate = 384000000,
 		.ops = &clk_ops_pll_acpu_vote,
 		CLK_INIT(pll8_activeonly_clk.c),
-		.warned = true,
 	},
 };
 
@@ -349,7 +351,6 @@ static struct pll_clk pll9_activeonly_clk = {
 		.rate = 440000000,
 		.ops = &clk_ops_local_pll,
 		CLK_INIT(pll9_activeonly_clk.c),
-		.warned = true,
 	},
 };
 
@@ -364,7 +365,6 @@ static struct pll_vote_clk pll14_clk = {
 		.rate = 480000000,
 		.ops = &clk_ops_pll_vote,
 		CLK_INIT(pll14_clk.c),
-		.warned = true,
 	},
 };
 

@@ -15,7 +15,7 @@
 #include <linux/list.h>
 #include <linux/platform_device.h>
 #include <linux/msm_rotator.h>
-#include <linux/ion.h>
+#include <linux/msm_ion.h>
 #include <linux/gpio.h>
 #include <linux/coresight.h>
 #include <asm/clkdev.h>
@@ -35,6 +35,7 @@
 #include <mach/msm_dcvs.h>
 #include <mach/msm_rtb.h>
 #include <mach/msm_cache_dump.h>
+#include <mach/clk-provider.h>
 #include <sound/msm-dai-q6.h>
 #include <sound/apr_audio.h>
 #include <mach/msm_tsif.h>
@@ -2947,7 +2948,7 @@ static struct msm_dcvs_core_info grp3d_core_info = {
 		.ss_win_size_min_us		= 1000000,
 		.ss_win_size_max_us		= 1000000,
 		.ss_util_pct			= 95,
-		.ss_iobusy_conv			= 100,
+		.ss_no_corr_below_freq		= 0,
 	},
 	.energy_coeffs	= {
 		.active_coeff_a		= 2492,
@@ -2984,7 +2985,7 @@ static struct msm_dcvs_core_info grp2d_core_info = {
 		.ss_win_size_min_us		= 1000000,
 		.ss_win_size_max_us		= 1000000,
 		.ss_util_pct			= 95,
-		.ss_iobusy_conv			= 100,
+		.ss_no_corr_below_freq		= 0,
 	},
 	.energy_coeffs	= {
 		.active_coeff_a		= 2492,
