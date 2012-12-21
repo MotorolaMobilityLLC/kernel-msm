@@ -28,6 +28,14 @@
 
 #define GSL_RB_NOP_SIZEDWORDS				2
 
+/*
+ * CP DEBUG settings for all cores:
+ * DYNAMIC_CLK_DISABLE [27] - turn off the dynamic clock control
+ * PROG_END_PTR_ENABLE [25] - Allow 128 bit writes to the VBIF
+ */
+
+#define CP_DEBUG_DEFAULT ((1 << 27) | (1 << 25))
+
 void adreno_ringbuffer_submit(struct adreno_ringbuffer *rb)
 {
 	BUG_ON(rb->wptr == 0);
@@ -231,7 +239,7 @@ static int adreno_ringbuffer_load_pm4_ucode(struct kgsl_device *device)
 	KGSL_DRV_INFO(device, "loading pm4 ucode version: %d\n",
 		adreno_dev->pm4_fw[0]);
 
-	adreno_regwrite(device, REG_CP_DEBUG, 0x02000000);
+	adreno_regwrite(device, REG_CP_DEBUG, CP_DEBUG_DEFAULT);
 	adreno_regwrite(device, REG_CP_ME_RAM_WADDR, 0);
 	for (i = 1; i < adreno_dev->pm4_fw_size; i++)
 		adreno_regwrite(device, REG_CP_ME_RAM_DATA,
@@ -512,6 +520,8 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	total_sizedwords += flags & KGSL_CMD_FLAGS_PMODE ? 4 : 0;
 	/* 2 dwords to store the start of command sequence */
 	total_sizedwords += 2;
+
+	/* Add CP_COND_EXEC commands to generate CP_INTERRUPT */
 	total_sizedwords += context ? 7 : 0;
 
 	if (adreno_is_a3xx(adreno_dev))

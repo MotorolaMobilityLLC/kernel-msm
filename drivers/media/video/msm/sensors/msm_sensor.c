@@ -102,11 +102,12 @@ static void msm_sensor_delay_frames(struct msm_sensor_ctrl_t *s_ctrl)
 
 int32_t msm_sensor_write_init_settings(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	int32_t rc;
-	rc = msm_sensor_write_all_conf_array(
-		s_ctrl->sensor_i2c_client,
-		s_ctrl->msm_sensor_reg->init_settings,
-		s_ctrl->msm_sensor_reg->init_size);
+	int32_t rc = 0;
+	if (s_ctrl->msm_sensor_reg->init_settings)
+		rc = msm_sensor_write_all_conf_array(
+			s_ctrl->sensor_i2c_client,
+			s_ctrl->msm_sensor_reg->init_settings,
+			s_ctrl->msm_sensor_reg->init_size);
 	return rc;
 }
 

@@ -127,6 +127,7 @@ struct msm_fb_data_type {
 	__u32 channel_irq;
 
 	struct mdp_dma_data *dma;
+	struct device_attribute dev_attr;
 	void (*dma_fnc) (struct msm_fb_data_type *mfd);
 	int (*cursor_update) (struct fb_info *info,
 			      struct fb_cursor *cursor);
@@ -137,7 +138,8 @@ struct msm_fb_data_type {
 	int (*start_histogram) (struct mdp_histogram_start_req *req);
 	int (*stop_histogram) (struct fb_info *info, uint32_t block);
 	void (*vsync_ctrl) (int enable);
-	void (*vsync_init) (int cndx, struct msm_fb_data_type *mfd);
+	void (*vsync_init) (int cndx);
+	void *vsync_show;
 	int (*reg_read)(struct msm_fb_data_type *mfd, __u16 address,
 				__u16 size, __u8 *buf, __u8 use_hs_mode);
 	int (*reg_write)(struct msm_fb_data_type *mfd, __u16 size,
@@ -209,11 +211,11 @@ struct msm_fb_data_type {
 	struct work_struct commit_work;
 	void *msm_fb_backup;
 	boolean panel_driver_on;
+	int vsync_sysfs_created;
 };
 struct msm_fb_backup_type {
 	struct fb_info info;
-	struct fb_var_screeninfo var;
-	struct msm_fb_data_type mfd;
+	struct mdp_display_commit disp_commit;
 };
 
 struct dentry *msm_fb_get_debugfs_root(void);

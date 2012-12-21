@@ -25,7 +25,7 @@
 #include <linux/rbtree.h>
 #include <linux/ashmem.h>
 #include <linux/major.h>
-#include <linux/ion.h>
+#include <linux/msm_ion.h>
 #include <linux/io.h>
 #include <mach/socinfo.h>
 
@@ -447,6 +447,22 @@ void kgsl_timestamp_expired(struct work_struct *work)
 
 		list_del(&event->list);
 		kfree(event);
+	}
+
+	/* Send the next pending event for each context to the device */
+	if (device->ftbl->next_event) {
+		unsigned int id = KGSL_MEMSTORE_GLOBAL;
+
+		list_for_each_entry(event, &device->events, list) {
+
+			if (!event->context)
+				continue;
+
+			if (event->context->id != id) {
+				device->ftbl->next_event(device, event);
+				id = event->context->id;
+			}
+		}
 	}
 
 	mutex_unlock(&device->mutex);

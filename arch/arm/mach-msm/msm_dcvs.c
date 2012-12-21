@@ -23,6 +23,7 @@
 #include <linux/stringify.h>
 #include <linux/debugfs.h>
 #include <linux/msm_tsens.h>
+#include <linux/platform_device.h>
 #include <asm/atomic.h>
 #include <asm/page.h>
 #include <mach/msm_dcvs.h>
@@ -32,6 +33,8 @@
 #define __err(f, ...) pr_err("MSM_DCVS: %s: " f, __func__, __VA_ARGS__)
 #define __info(f, ...) pr_info("MSM_DCVS: %s: " f, __func__, __VA_ARGS__)
 #define MAX_PENDING	(5)
+
+#define CORE_FLAG_TEMP_UPDATE		0x1
 
 struct core_attribs {
 	struct kobj_attribute freq_change_us;
@@ -46,7 +49,7 @@ struct core_attribs {
 	struct kobj_attribute slack_time_min_us;
 	struct kobj_attribute slack_time_max_us;
 	struct kobj_attribute slack_weight_thresh_pct;
-	struct kobj_attribute ss_iobusy_conv;
+	struct kobj_attribute ss_no_corr_below_freq;
 	struct kobj_attribute ss_win_size_min_us;
 	struct kobj_attribute ss_win_size_max_us;
 	struct kobj_attribute ss_util_pct;
@@ -60,6 +63,9 @@ struct core_attribs {
 	struct kobj_attribute leakage_coeff_d;
 
 	struct kobj_attribute thermal_poll_ms;
+
+	struct kobj_attribute freq_tbl;
+	struct kobj_attribute offset_tbl;
 
 	struct attribute_group attrib_group;
 };
@@ -121,12 +127,14 @@ struct dcvs_core {
 	unsigned int (*get_frequency)(int type_core_num);
 	int (*idle_enable)(int type_core_num,
 			enum msm_core_control_event event);
+	int (*set_floor_frequency)(int type_core_num, unsigned int freq);
 
 	spinlock_t	pending_freq_lock;
 	int pending_freq;
 
 	struct hrtimer	slack_timer;
 	struct delayed_work	temperature_work;
+	int flags;
 };
 
 static int msm_dcvs_enabled = 1;
@@ -137,6 +145,14 @@ static struct dentry		*debugfs_base;
 static struct dcvs_core core_list[CORES_MAX];
 
 static struct kobject *cores_kobj;
+
+#define DCVS_MAX_NUM_FREQS 15
+static struct msm_dcvs_freq_entry cpu_freq_tbl[DCVS_MAX_NUM_FREQS];
+static unsigned num_cpu_freqs;
+static struct msm_dcvs_platform_data *dcvs_pdata;
+
+static DEFINE_MUTEX(param_update_mutex);
+static DEFINE_MUTEX(gpu_floor_mutex);
 
 static void force_stop_slack_timer(struct dcvs_core *core)
 {
@@ -244,6 +260,70 @@ static void restart_slack_timer(struct dcvs_core *core, int slack_us)
 	spin_unlock_irqrestore(&core->idle_state_change_lock, flags2);
 }
 
+void msm_dcvs_apply_gpu_floor(unsigned long cpu_freq)
+{
+	static unsigned long curr_cpu0_freq;
+	unsigned long gpu_floor_freq = 0;
+	struct dcvs_core *gpu;
+	int i;
+
+	if (!dcvs_pdata)
+		return;
+
+	mutex_lock(&gpu_floor_mutex);
+
+	if (cpu_freq)
+		curr_cpu0_freq = cpu_freq;
+
+	for (i = 0; i < dcvs_pdata->num_sync_rules; i++)
+		if (curr_cpu0_freq > dcvs_pdata->sync_rules[i].cpu_khz) {
+			gpu_floor_freq =
+				dcvs_pdata->sync_rules[i].gpu_floor_khz;
+			break;
+		}
+
+	if (num_online_cpus() > 1)
+		gpu_floor_freq = max(gpu_floor_freq,
+				     dcvs_pdata->gpu_max_nom_khz);
+
+	if (!gpu_floor_freq) {
+		mutex_unlock(&gpu_floor_mutex);
+		return;
+	}
+
+	for (i = GPU_OFFSET; i < CORES_MAX; i++) {
+		gpu = &core_list[i];
+		if (gpu->dcvs_core_id == -1)
+			continue;
+
+		if (gpu->pending_freq != STOP_FREQ_CHANGE &&
+		    gpu->set_floor_frequency) {
+			gpu->set_floor_frequency(gpu->type_core_num,
+						 gpu_floor_freq);
+			/* TZ will know about a freq change (if any)
+			 * at next idle exit. */
+			gpu->actual_freq =
+				gpu->get_frequency(gpu->type_core_num);
+		}
+	}
+
+	mutex_unlock(&gpu_floor_mutex);
+}
+
+static void check_power_collapse_modes(struct dcvs_core *core)
+{
+	struct msm_dcvs_algo_param *params;
+
+	params = &core_list[CPU_OFFSET + num_online_cpus() - 1].algo_param;
+
+	if (core->actual_freq >= params->disable_pc_threshold)
+		core->idle_enable(core->type_core_num,
+				  MSM_DCVS_DISABLE_HIGH_LATENCY_MODES);
+	else
+		core->idle_enable(core->type_core_num,
+				  MSM_DCVS_ENABLE_HIGH_LATENCY_MODES);
+}
+
 static int __msm_dcvs_change_freq(struct dcvs_core *core)
 {
 	int ret = 0;
@@ -254,26 +334,25 @@ static int __msm_dcvs_change_freq(struct dcvs_core *core)
 	uint32_t ret1 = 0;
 
 	spin_lock_irqsave(&core->pending_freq_lock, flags);
+	if (core->pending_freq == STOP_FREQ_CHANGE)
+		goto out;
 repeat:
 	BUG_ON(!core->pending_freq);
-	if (core->pending_freq == STOP_FREQ_CHANGE)
-		BUG();
 
 	requested_freq = core->pending_freq;
 	time_start = core->time_start;
 	core->time_start = ns_to_ktime(0);
 
-	if (requested_freq < 0) {
-		requested_freq = -1 * requested_freq;
-		core->pending_freq = STOP_FREQ_CHANGE;
-	} else {
-		core->pending_freq = NO_OUTSTANDING_FREQ_CHANGE;
-	}
+	core->pending_freq = NO_OUTSTANDING_FREQ_CHANGE;
 
 	if (requested_freq == core->actual_freq)
 		goto out;
 
 	spin_unlock_irqrestore(&core->pending_freq_lock, flags);
+
+	if (core->type == MSM_DCVS_CORE_TYPE_CPU &&
+	    core->type_core_num == 0)
+		msm_dcvs_apply_gpu_floor(requested_freq);
 
 	/**
 	 * Call the frequency sink driver to change the frequency
@@ -291,16 +370,11 @@ repeat:
 	core->freq_change_us = (uint32_t)ktime_to_us(
 					ktime_sub(ktime_get(), time_start));
 
-	/**
-	 * Disable low power modes if the actual frequency is >
-	 * disable_pc_threshold.
-	 */
-	if (core->actual_freq > core->algo_param.disable_pc_threshold) {
-		core->idle_enable(core->type_core_num,
-				MSM_DCVS_DISABLE_HIGH_LATENCY_MODES);
-	} else if (core->actual_freq <= core->algo_param.disable_pc_threshold) {
-		core->idle_enable(core->type_core_num,
-				MSM_DCVS_ENABLE_HIGH_LATENCY_MODES);
+	if (core->type == MSM_DCVS_CORE_TYPE_CPU &&
+	    core->type_core_num == 0) {
+		mutex_lock(&param_update_mutex);
+		check_power_collapse_modes(core);
+		mutex_unlock(&param_update_mutex);
 	}
 
 	/**
@@ -351,6 +425,9 @@ static void msm_dcvs_report_temp_work(struct work_struct *work)
 	unsigned long temp = 0;
 	int interval_ms;
 
+	if (!(core->flags & CORE_FLAG_TEMP_UPDATE))
+		return;
+
 	tsens_dev.sensor_num = core->sensor;
 	ret = tsens_get_temp(&tsens_dev, &temp);
 	if (!temp) {
@@ -382,9 +459,6 @@ out:
 static int msm_dcvs_do_freq(void *data)
 {
 	struct dcvs_core *core = (struct dcvs_core *)data;
-	static struct sched_param param = {.sched_priority = MAX_RT_PRIO - 1};
-
-	sched_setscheduler(current, SCHED_FIFO, &param);
 
 	while (!kthread_should_stop()) {
 		wait_event(core->wait_q, !(core->pending_freq == 0 ||
@@ -413,10 +487,7 @@ static void request_freq_change(struct dcvs_core *core, int new_freq)
 	}
 
 	if (new_freq == STOP_FREQ_CHANGE) {
-		if (core->pending_freq == NO_OUTSTANDING_FREQ_CHANGE)
-			core->pending_freq = STOP_FREQ_CHANGE;
-		else if (core->pending_freq > 0)
-			core->pending_freq = -1 * core->pending_freq;
+		core->pending_freq = STOP_FREQ_CHANGE;
 		return;
 	}
 
@@ -492,6 +563,38 @@ static enum hrtimer_restart msm_dcvs_core_slack_timer(struct hrtimer *timer)
 	return HRTIMER_NORESTART;
 }
 
+int msm_dcvs_update_algo_params(void)
+{
+	static struct msm_dcvs_algo_param curr_params;
+	struct msm_dcvs_algo_param *new_params;
+	int cpu, ret = 0;
+
+	mutex_lock(&param_update_mutex);
+	new_params = &core_list[CPU_OFFSET + num_online_cpus() - 1].algo_param;
+
+	if (memcmp(&curr_params, new_params,
+		   sizeof(struct msm_dcvs_algo_param))) {
+		for_each_possible_cpu(cpu) {
+			struct dcvs_core *core = &core_list[CPU_OFFSET + cpu];
+			ret = msm_dcvs_scm_set_algo_params(CPU_OFFSET + cpu,
+							   new_params);
+			if (ret) {
+				pr_err("scm set algo params failed on cpu %d, ret %d\n",
+				       cpu, ret);
+				mutex_unlock(&param_update_mutex);
+				return ret;
+			}
+			if (cpu == 0)
+				check_power_collapse_modes(core);
+		}
+		memcpy(&curr_params, new_params,
+		       sizeof(struct msm_dcvs_algo_param));
+	}
+
+	mutex_unlock(&param_update_mutex);
+	return ret;
+}
+
 /* Helper functions and macros for sysfs nodes for a core */
 #define CORE_FROM_ATTRIBS(attr, name) \
 	container_of(container_of(attr, struct core_attribs, name), \
@@ -546,12 +649,9 @@ static ssize_t msm_dcvs_attr_##_name##_store(struct kobject *kobj, \
 	} else { \
 		uint32_t old_val = core->algo_param._name; \
 		core->algo_param._name = val; \
-		ret = msm_dcvs_scm_set_algo_params(core->dcvs_core_id, \
-				&core->algo_param); \
+		ret = msm_dcvs_update_algo_params(); \
 		if (ret) { \
 			core->algo_param._name = old_val; \
-			__err("Error(%d) in setting %d for algo param %s\n",\
-					ret, val, __stringify(_name)); \
 		} \
 	} \
 	return count; \
@@ -618,7 +718,7 @@ DCVS_ALGO_PARAM(slack_mode_dynamic)
 DCVS_ALGO_PARAM(slack_time_min_us)
 DCVS_ALGO_PARAM(slack_time_max_us)
 DCVS_ALGO_PARAM(slack_weight_thresh_pct)
-DCVS_ALGO_PARAM(ss_iobusy_conv)
+DCVS_ALGO_PARAM(ss_no_corr_below_freq)
 DCVS_ALGO_PARAM(ss_win_size_min_us)
 DCVS_ALGO_PARAM(ss_win_size_max_us)
 DCVS_ALGO_PARAM(ss_util_pct)
@@ -633,11 +733,154 @@ DCVS_ENERGY_PARAM(leakage_coeff_d)
 
 DCVS_PARAM_STORE(thermal_poll_ms)
 
+static ssize_t msm_dcvs_attr_offset_tbl_show(struct kobject *kobj,
+					     struct kobj_attribute *attr,
+					     char *buf)
+{
+	struct msm_dcvs_freq_entry *freq_tbl;
+	char *buf_idx = buf;
+	int i, len;
+	struct dcvs_core *core = CORE_FROM_ATTRIBS(attr, offset_tbl);
+
+	freq_tbl = core->info->freq_tbl;
+	*buf_idx = '\0';
+
+	/* limit the number of frequencies we will print into
+	 * the PAGE_SIZE sysfs show buffer. */
+	if (core->info->power_param.num_freq > 64)
+		return 0;
+
+	for (i = 0; i < core->info->power_param.num_freq; i++) {
+		len = snprintf(buf_idx, 30, "%7d %7d %7d\n",
+			       freq_tbl[i].freq,
+			       freq_tbl[i].active_energy_offset,
+			       freq_tbl[i].leakage_energy_offset);
+		/* buf_idx always points at terminating null */
+		buf_idx += len;
+	}
+	return buf_idx - buf;
+}
+
+static ssize_t msm_dcvs_attr_offset_tbl_store(struct kobject *kobj,
+					      struct kobj_attribute *attr,
+					      const char *buf,
+					      size_t count)
+{
+	struct msm_dcvs_freq_entry *freq_tbl;
+	uint32_t freq, active_energy_offset, leakage_energy_offset;
+	int i, ret;
+	struct dcvs_core *core = CORE_FROM_ATTRIBS(attr, offset_tbl);
+
+	freq_tbl = core->info->freq_tbl;
+
+	ret = sscanf(buf, "%u %u %u",
+		     &freq, &active_energy_offset, &leakage_energy_offset);
+	if (ret != 3) {
+		__err("Invalid input %s for offset_tbl\n", buf);
+		return count;
+	}
+
+	for (i = 0; i < core->info->power_param.num_freq; i++)
+		if (freq_tbl[i].freq == freq) {
+			freq_tbl[i].active_energy_offset =
+				active_energy_offset;
+			freq_tbl[i].leakage_energy_offset =
+				leakage_energy_offset;
+			break;
+		}
+
+	if (i >= core->info->power_param.num_freq) {
+		__err("Invalid frequency for offset_tbl: %d\n", freq);
+		return count;
+	}
+
+	ret = msm_dcvs_scm_set_power_params(core->dcvs_core_id,
+					    &core->info->power_param,
+					    &core->info->freq_tbl[0],
+					    &core->coeffs);
+	if (ret)
+		__err("Error %d in updating active/leakage energy\n", ret);
+
+	return count;
+}
+
+static ssize_t msm_dcvs_attr_freq_tbl_show(struct kobject *kobj,
+					   struct kobj_attribute *attr,
+					   char *buf)
+{
+	struct msm_dcvs_freq_entry *freq_tbl;
+	char *buf_idx = buf;
+	int i, len;
+	struct dcvs_core *core = CORE_FROM_ATTRIBS(attr, freq_tbl);
+
+	freq_tbl = core->info->freq_tbl;
+	*buf_idx = '\0';
+
+	/* limit the number of frequencies we will print into
+	 * the PAGE_SIZE sysfs show buffer. */
+	if (core->info->power_param.num_freq > 64)
+		return 0;
+
+	for (i = 0; i < core->info->power_param.num_freq; i++) {
+		if (freq_tbl[i].is_trans_level) {
+			len = snprintf(buf_idx, 10, "%7d ", freq_tbl[i].freq);
+			/* buf_idx always points at terminating null */
+			buf_idx += len;
+		}
+	}
+	/* overwrite final trailing space with newline */
+	if (buf_idx > buf)
+		*(buf_idx - 1) = '\n';
+
+	return buf_idx - buf;
+}
+
+static ssize_t msm_dcvs_attr_freq_tbl_store(struct kobject *kobj,
+					    struct kobj_attribute *attr,
+					    const char *buf,
+					    size_t count)
+{
+	struct msm_dcvs_freq_entry *freq_tbl;
+	uint32_t freq;
+	int i, ret;
+	struct dcvs_core *core = CORE_FROM_ATTRIBS(attr, freq_tbl);
+
+	freq_tbl = core->info->freq_tbl;
+
+	ret = kstrtouint(buf, 10, &freq);
+	if (ret) {
+		__err("Invalid input %s for freq_tbl\n", buf);
+		return count;
+	}
+
+	for (i = 0; i < core->info->power_param.num_freq; i++)
+		if (freq_tbl[i].freq == freq) {
+			freq_tbl[i].is_trans_level ^= 1;
+			break;
+		}
+
+	if (i >= core->info->power_param.num_freq) {
+		__err("Invalid frequency for freq_tbl: %d\n", freq);
+		return count;
+	}
+
+	ret = msm_dcvs_scm_set_power_params(core->dcvs_core_id,
+					    &core->info->power_param,
+					    &core->info->freq_tbl[0],
+					    &core->coeffs);
+	if (ret) {
+		freq_tbl[i].is_trans_level ^= 1;
+		__err("Error %d in toggling freq %d (orig enable val %d)\n",
+		      ret, freq_tbl[i].freq, freq_tbl[i].is_trans_level);
+	}
+	return count;
+}
+
 static int msm_dcvs_setup_core_sysfs(struct dcvs_core *core)
 {
 	int ret = 0;
 	struct kobject *core_kobj = NULL;
-	const int attr_count = 24;
+	const int attr_count = 26;
 
 	BUG_ON(!cores_kobj);
 
@@ -661,7 +904,7 @@ static int msm_dcvs_setup_core_sysfs(struct dcvs_core *core)
 	DCVS_RW_ATTRIB(8, slack_weight_thresh_pct);
 	DCVS_RW_ATTRIB(9, slack_time_min_us);
 	DCVS_RW_ATTRIB(10, slack_time_max_us);
-	DCVS_RW_ATTRIB(11, ss_iobusy_conv);
+	DCVS_RW_ATTRIB(11, ss_no_corr_below_freq);
 	DCVS_RW_ATTRIB(12, ss_win_size_min_us);
 	DCVS_RW_ATTRIB(13, ss_win_size_max_us);
 	DCVS_RW_ATTRIB(14, ss_util_pct);
@@ -675,7 +918,10 @@ static int msm_dcvs_setup_core_sysfs(struct dcvs_core *core)
 	DCVS_RW_ATTRIB(21, leakage_coeff_d);
 	DCVS_RW_ATTRIB(22, thermal_poll_ms);
 
-	core->attrib.attrib_group.attrs[23] = NULL;
+	DCVS_RW_ATTRIB(23, freq_tbl);
+	DCVS_RW_ATTRIB(24, offset_tbl);
+
+	core->attrib.attrib_group.attrs[25] = NULL;
 
 	core_kobj = kobject_create_and_add(core->core_name, cores_kobj);
 	if (!core_kobj) {
@@ -752,6 +998,16 @@ static struct dcvs_core *msm_dcvs_get_core(int offset)
 	return &core_list[offset];
 }
 
+void msm_dcvs_register_cpu_freq(uint32_t freq, uint32_t voltage)
+{
+	BUG_ON(freq == 0 || voltage == 0 ||
+	       num_cpu_freqs == DCVS_MAX_NUM_FREQS);
+
+	cpu_freq_tbl[num_cpu_freqs].freq = freq;
+	cpu_freq_tbl[num_cpu_freqs].voltage = voltage;
+
+	num_cpu_freqs++;
+}
 
 int msm_dcvs_register_core(
 	enum msm_dcvs_core_type type,
@@ -761,6 +1017,7 @@ int msm_dcvs_register_core(
 	unsigned int (*get_frequency)(int type_core_num),
 	int (*idle_enable)(int type_core_num,
 					enum msm_core_control_event event),
+	int (*set_floor_frequency)(int type_core_num, unsigned int freq),
 	int sensor)
 {
 	int ret = -EINVAL;
@@ -784,9 +1041,15 @@ int msm_dcvs_register_core(
 	core->set_frequency = set_frequency;
 	core->get_frequency = get_frequency;
 	core->idle_enable = idle_enable;
-	core->pending_freq = STOP_FREQ_CHANGE;
+	core->set_floor_frequency = set_floor_frequency;
 
 	core->info = info;
+	if (type == MSM_DCVS_CORE_TYPE_CPU) {
+		BUG_ON(num_cpu_freqs == 0);
+		info->freq_tbl = cpu_freq_tbl;
+		info->power_param.num_freq = num_cpu_freqs;
+	}
+
 	memcpy(&core->algo_param, &info->algo_param,
 			sizeof(struct msm_dcvs_algo_param));
 
@@ -840,10 +1103,6 @@ int msm_dcvs_register_core(
 	core->task = kthread_run(msm_dcvs_do_freq, (void *)core,
 			"msm_dcvs/%d", core->dcvs_core_id);
 	ret = core->dcvs_core_id;
-
-	INIT_DELAYED_WORK(&core->temperature_work, msm_dcvs_report_temp_work);
-	schedule_delayed_work(&core->temperature_work,
-			msecs_to_jiffies(info->thermal_poll_ms));
 	return ret;
 bail:
 	core->dcvs_core_id = -1;
@@ -912,6 +1171,10 @@ int msm_dcvs_freq_sink_start(int dcvs_core_id)
 	}
 	force_start_slack_timer(core, timer_interval_us);
 
+	core->flags |= CORE_FLAG_TEMP_UPDATE;
+	INIT_DELAYED_WORK(&core->temperature_work, msm_dcvs_report_temp_work);
+	schedule_delayed_work(&core->temperature_work,
+			      msecs_to_jiffies(core->info->thermal_poll_ms));
 
 	core->idle_enable(core->type_core_num, MSM_DCVS_ENABLE_IDLE_PULSE);
 	return 0;
@@ -938,16 +1201,27 @@ int msm_dcvs_freq_sink_stop(int dcvs_core_id)
 		return ret;
 	}
 
+	core->flags &= ~CORE_FLAG_TEMP_UPDATE;
+	cancel_delayed_work(&core->temperature_work);
+
 	core->idle_enable(core->type_core_num, MSM_DCVS_DISABLE_IDLE_PULSE);
 	/* Notify TZ to stop receiving idle info for the core */
 	ret = msm_dcvs_scm_event(core->dcvs_core_id, MSM_DCVS_SCM_DCVS_ENABLE,
 				0, core->actual_freq, &freq, &ret1);
 	core->idle_enable(core->type_core_num,
 			MSM_DCVS_ENABLE_HIGH_LATENCY_MODES);
+
+	if (core->type == MSM_DCVS_CORE_TYPE_GPU)
+		mutex_lock(&gpu_floor_mutex);
+
 	spin_lock_irqsave(&core->pending_freq_lock, flags);
 	/* flush out all the pending freq changes */
 	request_freq_change(core, STOP_FREQ_CHANGE);
 	spin_unlock_irqrestore(&core->pending_freq_lock, flags);
+
+	if (core->type == MSM_DCVS_CORE_TYPE_GPU)
+		mutex_unlock(&gpu_floor_mutex);
+
 	force_stop_slack_timer(core);
 
 	return 0;
@@ -1036,10 +1310,28 @@ err:
 }
 late_initcall(msm_dcvs_late_init);
 
+static int __devinit dcvs_probe(struct platform_device *pdev)
+{
+	if (pdev->dev.platform_data)
+		dcvs_pdata = pdev->dev.platform_data;
+
+	return 0;
+}
+
+static struct platform_driver dcvs_driver = {
+	.probe = dcvs_probe,
+	.driver = {
+		.name = "dcvs",
+		.owner = THIS_MODULE,
+	},
+};
+
 static int __init msm_dcvs_early_init(void)
 {
 	int ret = 0;
 	int i;
+
+	platform_driver_register(&dcvs_driver);
 
 	if (!msm_dcvs_enabled) {
 		__info("Not enabled (%d)\n", msm_dcvs_enabled);
@@ -1054,8 +1346,10 @@ static int __init msm_dcvs_early_init(void)
 		goto done;
 	}
 
-	for (i = 0; i < CORES_MAX; i++)
+	for (i = 0; i < CORES_MAX; i++) {
 		core_list[i].dcvs_core_id = -1;
+		core_list[i].pending_freq = STOP_FREQ_CHANGE;
+	}
 done:
 	return ret;
 }

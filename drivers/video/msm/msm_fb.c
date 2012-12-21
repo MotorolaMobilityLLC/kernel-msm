@@ -1868,14 +1868,22 @@ static int msm_fb_pan_idle(struct msm_fb_data_type *mfd)
 	}
 	return ret;
 }
-static int msm_fb_pan_display_ex(struct fb_var_screeninfo *var,
-			      struct fb_info *info, u32 wait_for_finish)
+static int msm_fb_pan_display_ex(struct fb_info *info,
+		struct mdp_display_commit *disp_commit)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct msm_fb_backup_type *fb_backup;
+	struct fb_var_screeninfo *var = &disp_commit->var;
+	u32 wait_for_finish = disp_commit->wait_for_finish;
 	int ret = 0;
+
+	if (disp_commit->flags &
+		MDP_DISPLAY_COMMIT_OVERLAY) {
+		if (!mfd->panel_power_on) /* suspended */
+			return -EPERM;
+	} else {
 	/*
-	 * If framebuffer is 2, io pen display is not allowed.
+		 * If framebuffer is 2, io pan display is not allowed.
 	 */
 	if (bf_supported && info->node == 2) {
 		pr_err("%s: no pan display for fb%d!",
@@ -1892,21 +1900,27 @@ static int msm_fb_pan_display_ex(struct fb_var_screeninfo *var,
 
 	if (var->yoffset > (info->var.yres_virtual - info->var.yres))
 		return -EINVAL;
+	}
 	msm_fb_pan_idle(mfd);
 
 	mutex_lock(&mfd->sync_mutex);
 
+	if (!(disp_commit->flags &
+		MDP_DISPLAY_COMMIT_OVERLAY)) {
 	if (info->fix.xpanstep)
 		info->var.xoffset =
-		    (var->xoffset / info->fix.xpanstep) * info->fix.xpanstep;
+				(var->xoffset / info->fix.xpanstep) *
+					info->fix.xpanstep;
 
 	if (info->fix.ypanstep)
 		info->var.yoffset =
-		    (var->yoffset / info->fix.ypanstep) * info->fix.ypanstep;
-
+				(var->yoffset / info->fix.ypanstep) *
+					info->fix.ypanstep;
+	}
 	fb_backup = (struct msm_fb_backup_type *)mfd->msm_fb_backup;
 	memcpy(&fb_backup->info, info, sizeof(struct fb_info));
-	memcpy(&fb_backup->var, var, sizeof(struct fb_var_screeninfo));
+	memcpy(&fb_backup->disp_commit, disp_commit,
+		sizeof(struct mdp_display_commit));
 	mfd->is_committing = 1;
 	INIT_COMPLETION(mfd->commit_comp);
 	schedule_work(&mfd->commit_work);
@@ -1919,7 +1933,10 @@ static int msm_fb_pan_display_ex(struct fb_var_screeninfo *var,
 static int msm_fb_pan_display(struct fb_var_screeninfo *var,
 			      struct fb_info *info)
 {
-	return msm_fb_pan_display_ex(var, info, TRUE);
+	struct mdp_display_commit disp_commit;
+	memset(&disp_commit, 0, sizeof(disp_commit));
+	disp_commit.wait_for_finish = TRUE;
+	return msm_fb_pan_display_ex(info, &disp_commit);
 }
 
 static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
@@ -2051,9 +2068,14 @@ static void msm_fb_commit_wq_handler(struct work_struct *work)
 
 	mfd = container_of(work, struct msm_fb_data_type, commit_work);
 	fb_backup = (struct msm_fb_backup_type *)mfd->msm_fb_backup;
-	var = &fb_backup->var;
 	info = &fb_backup->info;
+	if (fb_backup->disp_commit.flags &
+		MDP_DISPLAY_COMMIT_OVERLAY) {
+			mdp4_overlay_commit(info);
+	} else {
+		var = &fb_backup->disp_commit.var;
 	msm_fb_pan_display_sub(var, info);
+	}
 	mutex_lock(&mfd->sync_mutex);
 	mfd->is_committing = 0;
 	complete_all(&mfd->commit_comp);
@@ -3192,20 +3214,6 @@ static int msmfb_overlay_play_wait(struct fb_info *info, unsigned long *argp)
 	return ret;
 }
 
-static int msmfb_overlay_commit(struct fb_info *info, unsigned long *argp)
-{
-	int ret, ndx;
-
-	ret = copy_from_user(&ndx, argp, sizeof(ndx));
-	if (ret) {
-		printk(KERN_ERR "%s:msmfb_overlay_unset ioctl failed \n",
-			__func__);
-		return ret;
-	}
-
-	return mdp4_overlay_commit(info, ndx);
-}
-
 static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 {
 	int	ret;
@@ -3513,19 +3521,25 @@ static int msmfb_notify_update(struct fb_info *info, unsigned long *argp)
 
 	if (notify == NOTIFY_UPDATE_START) {
 		INIT_COMPLETION(mfd->msmfb_update_notify);
-		wait_for_completion_interruptible(&mfd->msmfb_update_notify);
+		ret = wait_for_completion_interruptible_timeout(
+		&mfd->msmfb_update_notify, 4*HZ);
 	} else {
 		INIT_COMPLETION(mfd->msmfb_no_update_notify);
-		wait_for_completion_interruptible(&mfd->msmfb_no_update_notify);
+		ret = wait_for_completion_interruptible_timeout(
+		&mfd->msmfb_no_update_notify, 4*HZ);
 	}
-	return 0;
+	if (ret == 0)
+		ret = -ETIMEDOUT;
+	return (ret > 0) ? 0 : ret;
 }
 
 static int msmfb_handle_pp_ioctl(struct msm_fb_data_type *mfd,
 						struct msmfb_mdp_pp *pp_ptr)
 {
 	int ret = -1;
-
+#ifdef CONFIG_FB_MSM_MDP40
+	int i = 0;
+#endif
 	if (!pp_ptr)
 		return ret;
 
@@ -3533,6 +3547,15 @@ static int msmfb_handle_pp_ioctl(struct msm_fb_data_type *mfd,
 #ifdef CONFIG_FB_MSM_MDP40
 	case mdp_op_csc_cfg:
 		ret = mdp4_csc_config(&(pp_ptr->data.csc_cfg_data));
+		for (i = 0; i < CSC_MAX_BLOCKS; i++) {
+			if (pp_ptr->data.csc_cfg_data.block ==
+					csc_cfg_matrix[i].block) {
+				memcpy(&csc_cfg_matrix[i].csc_data,
+				&(pp_ptr->data.csc_cfg_data.csc_data),
+				sizeof(struct mdp_csc_cfg));
+				break;
+			}
+		}
 		break;
 
 	case mdp_op_pcc_cfg:
@@ -3747,20 +3770,24 @@ static int msmfb_display_commit(struct fb_info *info,
 		pr_err("%s:copy_from_user failed", __func__);
 		return ret;
 	}
-	buf_fence = &disp_commit.buf_fence;
-	if (buf_fence->acq_fen_fd_cnt > 0)
-		ret = buf_fence_process(mfd, buf_fence);
-	if ((!ret) && (buf_fence->rel_fen_fd[0] > 0))
-		copy_back = TRUE;
 
-	ret = msm_fb_pan_display_ex(&disp_commit.var,
-			      info, disp_commit.wait_for_finish);
+	if (disp_commit.flags & MDP_DISPLAY_COMMIT_OVERLAY) {
+		ret = mdp4_overlay_commit(info);
+	} else {
+		buf_fence = &disp_commit.buf_fence;
+		if (buf_fence->acq_fen_fd_cnt > 0)
+			ret = buf_fence_process(mfd, buf_fence);
+		if ((!ret) && (buf_fence->rel_fen_fd[0] > 0))
+			copy_back = TRUE;
 
-	if (copy_back) {
-		ret = copy_to_user(argp,
-			&disp_commit, sizeof(disp_commit));
-		if (ret)
-			pr_err("%s:copy_to_user failed", __func__);
+		ret = msm_fb_pan_display_ex(info, &disp_commit);
+
+		if (copy_back) {
+			ret = copy_to_user(argp,
+				&disp_commit, sizeof(disp_commit));
+			if (ret)
+				pr_err("%s:copy_to_user failed", __func__);
+		}
 	}
 	return ret;
 }
@@ -3797,11 +3824,6 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		break;
 	case MSMFB_OVERLAY_UNSET:
 		ret = msmfb_overlay_unset(info, argp);
-		break;
-	case MSMFB_OVERLAY_COMMIT:
-		down(&msm_fb_ioctl_ppp_sem);
-		ret = msmfb_overlay_commit(info, argp);
-		up(&msm_fb_ioctl_ppp_sem);
 		break;
 	case MSMFB_OVERLAY_PLAY:
 		ret = msmfb_overlay_play(info, argp);
