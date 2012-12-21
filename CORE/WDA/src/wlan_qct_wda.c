@@ -9403,7 +9403,7 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
                                 after the packet gets completed(packet freed once)*/
 
       /* TX MGMT fail with COMP timeout, try to detect DXE stall */
-      WDA_TransportChannelDebug(0, 1);
+      WDA_TransportChannelDebug(1, 0);
 
       /*Tag Frame as timed out for later deletion*/
       vos_pkt_set_user_data_ptr( (vos_pkt_t *)pFrmBuf, VOS_PKT_USER_DATA_ID_WDA, 
