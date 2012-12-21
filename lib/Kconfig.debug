@@ -182,6 +182,18 @@ config LOCKUP_DETECTOR
 	  The frequency of hrtimer and NMI events and the soft and hard lockup
 	  thresholds can be controlled through the sysctl watchdog_thresh.
 
+config SOFTLOCKUP_WATCHDOG_TEST
+	bool "To test softlockup watchdog"
+	depends on LOCKUP_DETECTOR && DEBUG_FS
+	default n
+	help
+	  This option provides a kernel debugfs item that can be used
+	  to test softlockup watchdog reset. This option is not useful
+	  for distributions or general kernels, but only for kernel
+	  developers working on architecture code for test purpose.
+
+	  Say N if you are unsure.
+
 config HARDLOCKUP_DETECTOR
 	def_bool LOCKUP_DETECTOR && PERF_EVENTS && HAVE_PERF_EVENTS_NMI && \
 		 !HAVE_NMI_WATCHDOG
