@@ -437,7 +437,7 @@ eHalStatus csrSetChannels(tHalHandle hHal,  tCsrConfigParam *pParam  )
 eHalStatus csrClose(tpAniSirGlobal pMac)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
-    
+
     csrStop(pMac);
     csrRoamClose(pMac);
     csrScanClose(pMac);
@@ -510,7 +510,7 @@ eHalStatus csrStop(tpAniSirGlobal pMac)
     (void) pmcDeregisterPowerSaveCheck(pMac, csrCheckPSReady);
     //Reset the domain back to the deault
     pMac->scan.domainIdCurrent = pMac->scan.domainIdDefault;
-    csrResetCountryInformation(pMac, eANI_BOOLEAN_TRUE);
+    csrResetCountryInformation(pMac, eANI_BOOLEAN_TRUE, eANI_BOOLEAN_FALSE );
 
     for( i = 0; i < CSR_ROAM_SESSION_MAX; i++ )
     {
@@ -1712,7 +1712,7 @@ eHalStatus csrInitChannelList( tHalHandle hHal )
     csrPruneChannelListForMode(pMac, &pMac->scan.baseChannels);
     csrPruneChannelListForMode(pMac, &pMac->scan.base20MHzChannels);
     // Apply the base channel list, power info, and set the Country code...
-    csrApplyChannelPowerCountryInfo( pMac, &pMac->scan.base20MHzChannels, pMac->scan.countryCodeCurrent );
+    csrApplyChannelPowerCountryInfo( pMac, &pMac->scan.base20MHzChannels, pMac->scan.countryCodeCurrent, eANI_BOOLEAN_TRUE );
  
     return (status);
 }
@@ -1796,7 +1796,7 @@ static eHalStatus CsrInit11dInfo(tpAniSirGlobal pMac, tCsr11dinfo *ps11dinfo)
     if(TRUE == applyConfig)
     {
         // Apply the base channel list, power info, and set the Country code...
-        csrApplyChannelPowerCountryInfo( pMac, &pMac->scan.base20MHzChannels, pMac->scan.countryCodeCurrent );
+        csrApplyChannelPowerCountryInfo( pMac, &pMac->scan.base20MHzChannels, pMac->scan.countryCodeCurrent, eANI_BOOLEAN_TRUE );
     }
 
   }
