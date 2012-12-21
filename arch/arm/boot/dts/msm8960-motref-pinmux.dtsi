@@ -223,6 +223,23 @@
 			};
 		};
 
+		pin@801220 { /* TOUCH_R_RST_N */
+			reg = <0x801220 0x10>;
+			qcom,pin-num = <34>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(34)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* out_high               */
+			};
+			qcom,suspended@1 {
+				qcom,func = <0>;  /* gpio_in_out(34)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <1>;   /* out_high               */
+			};
+		};
+
 		pin@801240 {
 			reg = <0x801240 0x10>;
 			qcom,pin-num = <36>;
@@ -457,7 +474,7 @@
 			qcom,pin-num = <70>;
 			qcom,suspended@1 {
 				qcom,func = <0>;  /* gpio_in_out(70)        */
-				qcom,pull = <1>;  /* down                   */
+				qcom,pull = <3>;  /* up                     */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <0>;   /* in                     */
 			};
