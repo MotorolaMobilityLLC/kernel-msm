@@ -1016,6 +1016,7 @@ static void adjust_pon_ocv_raw(struct pm8921_bms_chip *chip,
 		raw->last_good_ocv_raw -= MBG_TRANSIENT_ERROR_RAW;
 }
 
+#ifdef CONFIG_WIRELESS_CHARGER
 #define SEL_ALT_OREG_BIT  BIT(2)
 static int ocv_ir_compensation(struct pm8921_bms_chip *chip, int ocv)
 {
@@ -1035,6 +1036,7 @@ static int ocv_ir_compensation(struct pm8921_bms_chip *chip, int ocv)
 	pm_bms_masked_write(chip, BMS_TEST1, SEL_ALT_OREG_BIT, 0);
 	return compensated_ocv;
 }
+#endif
 
 static bool is_warm_restart(struct pm8921_bms_chip *chip)
 {
@@ -1078,8 +1080,10 @@ static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 		adjust_pon_ocv_raw(chip, raw);
 		convert_vbatt_raw_to_uv(chip, usb_chg,
 			raw->last_good_ocv_raw, &raw->last_good_ocv_uv);
+#ifdef CONFIG_WIRELESS_CHARGER
 		raw->last_good_ocv_uv = ocv_ir_compensation(chip,
 						raw->last_good_ocv_uv);
+#endif
 		chip->last_ocv_uv = raw->last_good_ocv_uv;
 
 		if (is_warm_restart(chip)) {
