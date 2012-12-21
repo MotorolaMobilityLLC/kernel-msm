@@ -14,7 +14,7 @@
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <asm/io.h>
-#include <linux/ion.h>
+#include <linux/msm_ion.h>
 #include <mach/msm_iomap.h>
 #include <mach/irqs-8930.h>
 #include <mach/rpm.h>
@@ -638,6 +638,18 @@ struct platform_device msm8930_device_acpuclk = {
 struct platform_device msm8930aa_device_acpuclk = {
 	.name		= "acpuclk-8930aa",
 	.id		= -1,
+};
+
+static struct acpuclk_platform_data acpuclk_8930ab_pdata = {
+	.uses_pm8917 = false,
+};
+
+struct platform_device msm8930ab_device_acpuclk = {
+	.name		= "acpuclk-8930ab",
+	.id		= -1,
+	.dev = {
+		.platform_data = &acpuclk_8930ab_pdata,
+	},
 };
 
 static struct fs_driver_data gfx3d_fs_data = {

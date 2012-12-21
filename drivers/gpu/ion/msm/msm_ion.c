@@ -13,12 +13,17 @@
 
 #include <linux/export.h>
 #include <linux/err.h>
-#include <linux/ion.h>
+#include <linux/msm_ion.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/memory_alloc.h>
 #include <linux/fmem.h>
 #include <linux/of.h>
+#include <linux/mm.h>
+#include <linux/mm_types.h>
+#include <linux/sched.h>
+#include <linux/rwsem.h>
+#include <linux/uaccess.h>
 #include <mach/ion.h>
 #include <mach/msm_memtypes.h>
 #include "../ion_priv.h"
@@ -259,7 +264,7 @@ static void msm_ion_allocate(struct ion_platform_heap *heap)
 
 	if (!heap->base && heap->extra_data) {
 		unsigned int align = 0;
-		switch (heap->type) {
+		switch ((int) heap->type) {
 		case ION_HEAP_TYPE_CARVEOUT:
 			align =
 			((struct ion_co_heap_pdata *) heap->extra_data)->align;
@@ -341,7 +346,7 @@ static int msm_init_extra_data(struct ion_platform_heap *heap,
 {
 	int ret = 0;
 
-	switch (heap->type) {
+	switch ((int) heap->type) {
 	case ION_HEAP_TYPE_CP:
 	{
 		heap->extra_data = kzalloc(sizeof(struct ion_cp_heap_pdata),
@@ -409,7 +414,7 @@ static void msm_ion_get_heap_align(struct device_node *node,
 
 	int ret = of_property_read_u32(node, "qcom,heap-align", &val);
 	if (!ret) {
-		switch (heap->type) {
+		switch ((int) heap->type) {
 		case ION_HEAP_TYPE_CP:
 		{
 			struct ion_cp_heap_pdata *extra =
@@ -556,6 +561,102 @@ free_heaps:
 	return ERR_PTR(ret);
 }
 
+static int check_vaddr_bounds(unsigned long start, unsigned long end)
+{
+	struct mm_struct *mm = current->active_mm;
+	struct vm_area_struct *vma;
+	int ret = 1;
+
+	if (end < start)
+		goto out;
+
+	down_read(&mm->mmap_sem);
+	vma = find_vma(mm, start);
+	if (vma && vma->vm_start < end) {
+		if (start < vma->vm_start)
+			goto out_up;
+		if (end > vma->vm_end)
+			goto out_up;
+		ret = 0;
+	}
+
+out_up:
+	up_read(&mm->mmap_sem);
+out:
+	return ret;
+}
+
+static long msm_ion_custom_ioctl(struct ion_client *client,
+				unsigned int cmd,
+				unsigned long arg)
+{
+	switch (cmd) {
+	case ION_IOC_CLEAN_CACHES:
+	case ION_IOC_INV_CACHES:
+	case ION_IOC_CLEAN_INV_CACHES:
+	{
+		struct ion_flush_data data;
+		unsigned long start, end;
+		struct ion_handle *handle = NULL;
+		int ret;
+
+		if (copy_from_user(&data, (void __user *)arg,
+					sizeof(struct ion_flush_data)))
+			return -EFAULT;
+
+		start = (unsigned long) data.vaddr;
+		end = (unsigned long) data.vaddr + data.length;
+
+		if (check_vaddr_bounds(start, end)) {
+			pr_err("%s: virtual address %p is out of bounds\n",
+				__func__, data.vaddr);
+			return -EINVAL;
+		}
+
+		if (!data.handle) {
+			handle = ion_import_dma_buf(client, data.fd);
+			if (IS_ERR(handle)) {
+				pr_info("%s: Could not import handle: %d\n",
+					__func__, (int)handle);
+				return -EINVAL;
+			}
+		}
+
+		ret = ion_do_cache_op(client,
+				data.handle ? data.handle : handle,
+				data.vaddr, data.offset, data.length,
+				cmd);
+
+		if (!data.handle)
+			ion_free(client, handle);
+
+		if (ret < 0)
+			return ret;
+		break;
+
+	}
+	case ION_IOC_GET_FLAGS:
+	{
+		struct ion_flag_data data;
+		int ret;
+		if (copy_from_user(&data, (void __user *)arg,
+					sizeof(struct ion_flag_data)))
+			return -EFAULT;
+
+		ret = ion_handle_get_flags(client, data.handle, &data.flags);
+		if (ret < 0)
+			return ret;
+		if (copy_to_user((void __user *)arg, &data,
+					sizeof(struct ion_flag_data)))
+			return -EFAULT;
+		break;
+	}
+	default:
+		return -ENOTTY;
+	}
+	return 0;
+}
+
 static int msm_ion_probe(struct platform_device *pdev)
 {
 	struct ion_platform_data *pdata;
@@ -583,7 +684,7 @@ static int msm_ion_probe(struct platform_device *pdev)
 		goto out;
 	}
 
-	idev = ion_device_create(NULL);
+	idev = ion_device_create(msm_ion_custom_ioctl);
 	if (IS_ERR_OR_NULL(idev)) {
 		err = PTR_ERR(idev);
 		goto freeheaps;
