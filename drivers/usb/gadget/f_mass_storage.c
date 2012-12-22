@@ -310,13 +310,6 @@ static const char fsg_string_interface[] = "Mass Storage";
 
 #include "storage_common.c"
 
-#define SWITCH_INDEX_UNKNOWN   0x00
-#define SWITCH_INDEX_CDROM     0x01
-#define SWITCH_INDEX_MTP       0x1E
-#define SWITCH_INDEX_RESET     0x41
-
-int ms_cdrom_enable;
-
 #ifdef CONFIG_USB_CSW_HACK
 static int write_error_after_csw_sent;
 static int csw_hack_sent;
@@ -415,8 +408,6 @@ struct fsg_common {
 	char inquiry_string[8 + 16 + 4 + 1];
 
 	struct kref		ref;
-	unsigned int            cdrom_lun_num;
-	unsigned int            switch_mode:1;
 };
 
 struct fsg_config {
@@ -442,7 +433,6 @@ struct fsg_config {
 	u16 release;
 
 	char			can_stall;
-	unsigned		cdrom_lun_num;
 };
 
 struct fsg_dev {
@@ -657,18 +647,7 @@ static int fsg_setup(struct usb_function *f,
 				w_length != 1)
 			return -EDOM;
 		VDBG(fsg, "get max LUN\n");
-		if (fsg->common->cdrom_lun_num > 0) {
-			if (ms_cdrom_enable)
-				*(u8 *)req->buf = fsg->common->nluns - 1;
-			else
-				*(u8 *)req->buf =
-					fsg->common->cdrom_lun_num - 1;
-		} else {
-			if (ms_cdrom_enable)
-				*(u8 *)req->buf = 0;
-			else
-				*(u8 *)req->buf = fsg->common->nluns - 1;
-		}
+		*(u8 *)req->buf = fsg->common->nluns - 1;
 
 		/* Respond with data/status */
 		req->length = min((u16)1, w_length);
@@ -1395,104 +1374,12 @@ static int do_read_header(struct fsg_common *common, struct fsg_buffhd *bh)
 	return 8;
 }
 
-struct toc_header {
-	u8 data_len_msb;
-	u8 data_len_lsb;
-	u8 first_track_number;
-	u8 last_track_number;
-};
-
-struct toc_descriptor {
-	u8 ctrl;
-	u8 adr;
-	u8 tno;
-	u8 point;
-	u8 min;
-	u8 sec;
-	u8 frame;
-	u8 zero;
-	u8 pmin;
-	u8 psec;
-	u8 pframe;
-};
-
-static int build_toc_response_buf(u8 *dest)
-{
-	struct toc_header *pheader = (struct toc_header *)dest;
-	struct toc_descriptor *pdesc;
-
-	/* build header */
-	pheader->data_len_msb = 0x00;
-	pheader->data_len_lsb = 0x2E; /* TOC data length */
-	pheader->first_track_number = 0x01;
-	pheader->last_track_number = 0x01;
-
-	/* toc descriptor 1 */
-	pdesc = (struct toc_descriptor *)&dest[4];
-	pdesc->ctrl = 0x01;
-	pdesc->adr = 0x16;
-	pdesc->tno = 0x00;
-	pdesc->point = 0xA0;
-	pdesc->min = 0x00;
-	pdesc->sec = 0x00;
-	pdesc->frame = 0x00;
-	pdesc->zero = 0x00;
-	pdesc->pmin = 0x01;	/* first track number */
-	pdesc->psec = 0x00;
-	pdesc->pframe = 0x00;
-
-	/* toc descriptor 2 */
-	pdesc = pdesc + 1;
-	pdesc->ctrl = 0x01;
-	pdesc->adr = 0x16;
-	pdesc->tno = 0x00;
-	pdesc->point = 0xA1;
-	pdesc->min = 0x00;
-	pdesc->sec = 0x00;
-	pdesc->frame = 0x00;
-	pdesc->zero = 0x00;
-	pdesc->pmin = 0x01;	/* last track number */
-	pdesc->psec = 0x00;
-	pdesc->pframe = 0x00;
-
-	/* toc descriptor 3 */
-	pdesc = pdesc + 1;
-	pdesc->ctrl = 0x01;
-	pdesc->adr = 0x16;
-	pdesc->tno = 0x00;
-	pdesc->point = 0xA2;
-	pdesc->min = 0x00;
-	pdesc->sec = 0x00;
-	pdesc->frame = 0x00;
-	pdesc->zero = 0x00;
-	pdesc->pmin = 0x4F;	/* pmin, psec, pframe represents */
-	pdesc->psec = 0x21;	/* start position of lead-out */
-	pdesc->pframe = 0x029;
-
-	/* toc descriptor 4 */
-	pdesc = pdesc + 1;
-	pdesc->ctrl = 0x01;
-	pdesc->adr = 0x14;
-	pdesc->tno = 0x00;
-	pdesc->point = 0x01;
-	pdesc->min = 0x00;
-	pdesc->sec = 0x00;
-	pdesc->frame = 0x00;
-	pdesc->zero = 0x00;
-	pdesc->pmin = 0x00;	/* pmin, psec, pframe represents */
-	pdesc->psec = 0x02;	/* start position of track */
-	pdesc->pframe = 0x00;
-
-	/* return total packet length */
-	return (sizeof(struct toc_descriptor)*4) + sizeof(struct toc_header);
-}
-
 static int do_read_toc(struct fsg_common *common, struct fsg_buffhd *bh)
 {
 	struct fsg_lun	*curlun = common->curlun;
+	int		msf = common->cmnd[1] & 0x02;
 	int		start_track = common->cmnd[6];
 	u8		*buf = (u8 *)bh->buf;
-	int toc_buf_len = 0;
 
 	if ((common->cmnd[1] & ~0x02) != 0 ||	/* Mask away MSF */
 			start_track > 1) {
@@ -1500,8 +1387,18 @@ static int do_read_toc(struct fsg_common *common, struct fsg_buffhd *bh)
 		return -EINVAL;
 	}
 
-	toc_buf_len = build_toc_response_buf(buf);
-	return toc_buf_len;
+	memset(buf, 0, 20);
+	buf[1] = (20-2);		/* TOC data length */
+	buf[2] = 1;			/* First track number */
+	buf[3] = 1;			/* Last track number */
+	buf[5] = 0x16;			/* Data track, copying allowed */
+	buf[6] = 0x01;			/* Only track is number 1 */
+	store_cdrom_address(&buf[8], msf, 0);
+
+	buf[13] = 0x16;			/* Lead-out track is data */
+	buf[14] = 0xAA;			/* Lead-out track number */
+	store_cdrom_address(&buf[16], msf, curlun->num_sectors);
+	return 20;
 }
 
 static int do_mode_sense(struct fsg_common *common, struct fsg_buffhd *bh)
@@ -1639,16 +1536,6 @@ static int do_start_stop(struct fsg_common *common)
 			return r;
 		else if (r)
 			return 0;
-	}
-
-	/* If lun is removable disk then cdrom parameter is set to '0',
-	 * if lun is cdrom cdrom parameter is set to 1.
-	 * Depending on cdrom value, loej=1, start=0 then schedule
-	 * a work-queue for mode change.
-	 */
-	if (curlun->cdrom && loej && !start) {
-		printk(KERN_INFO "schedule fsg cdrom eject\n");
-		common->switch_mode = 1;
 	}
 
 	up_read(&common->filesem);
@@ -2270,15 +2157,9 @@ static int do_scsi_command(struct fsg_common *common)
 			goto unknown_cmnd;
 		common->data_size_from_cmnd =
 			get_unaligned_be16(&common->cmnd[7]);
-
-		/* Set bit 9 to 1 in the mask because Mac Sends a value in byte
-		* 9  of the READ_TOC . Windows does not set it, but changing
-		* the mask covers both host envs.
-		*/
 		reply = check_command(common, 10, DATA_DIR_TO_HOST,
-				      (0xf<<6) | (1<<1), 1,
+				      (7<<6) | (1<<1), 1,
 				      "READ TOC");
-
 		if (reply == 0)
 			reply = do_read_toc(common, bh);
 		break;
@@ -2609,7 +2490,6 @@ static int fsg_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 	struct fsg_dev *fsg = fsg_from_func(f);
 	struct fsg_common *common = fsg->common;
 	int rc;
-	int i;
 
 	/* Enable the endpoints */
 	rc = config_ep_by_speed(common->gadget, &(fsg->function), fsg->bulk_in);
@@ -2634,17 +2514,6 @@ static int fsg_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 	clear_bit(IGNORE_BULK_OUT, &fsg->atomic_bitflags);
 	fsg->common->new_fsg = fsg;
 	raise_exception(fsg->common, FSG_STATE_CONFIG_CHANGE);
-
-	for (i = 0; i < fsg->common->nluns; ++i) {
-		if ((i == fsg->common->cdrom_lun_num) && ms_cdrom_enable) {
-			fsg->common->luns[i].cdrom = 1;
-			fsg->common->luns[i].ro = 1;
-		} else {
-			fsg->common->luns[i].cdrom = 0;
-			fsg->common->luns[i].ro = 0;
-		}
-	}
-
 	return USB_GADGET_DELAYED_STATUS;
 
 reset_bulk_int:
@@ -2853,11 +2722,6 @@ static int fsg_main_thread(void *common_)
 			continue;
 		}
 
-		if (common->switch_mode) {
-			common->switch_mode = 0;
-			handle_switch_index(SWITCH_INDEX_MTP, common->cdev);
-		}
-
 		if (!common->running) {
 			sleep_thread(common);
 			continue;
@@ -2993,7 +2857,6 @@ static struct fsg_common *fsg_common_init(struct fsg_common *common,
 		return ERR_PTR(-ENOMEM);
 	}
 
-	common->cdrom_lun_num = cfg->cdrom_lun_num;
 	common->ops = cfg->ops;
 	common->private_data = cfg->private_data;
 
