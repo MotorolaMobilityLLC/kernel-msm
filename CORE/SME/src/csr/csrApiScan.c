@@ -2716,7 +2716,6 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac )
             csrSaveToChannelPower2G_5G( pMac, pIesLocal->Country.num_triplets * sizeof(tSirMacChanInfo), 
                                         (tSirMacChanInfo *)(&pIesLocal->Country.triplets[0]) );
         }
-	
         if(pIesLocal->HTCaps.present && pIesLocal->HTInfo.present) 
         {
             pBssDescription->Result.BssDescriptor.channelWidth = pIesLocal->HTCaps.supportedChannelWidthSet;
