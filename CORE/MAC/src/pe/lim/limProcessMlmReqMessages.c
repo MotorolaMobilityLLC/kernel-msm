@@ -2816,6 +2816,36 @@ end:
                       (tANI_U32 *) &mlmDisassocCnf);
 }
 
+tANI_BOOLEAN limCheckDisassocDeauthAckPending(tpAniSirGlobal pMac,
+                                              tANI_U8 *staMac
+                                              )
+{
+    tLimMlmDisassocReq      *pMlmDisassocReq;
+    tLimMlmDeauthReq        *pMlmDeauthReq;
+    pMlmDisassocReq = pMac->lim.limDisassocDeauthCnfReq.pMlmDisassocReq;
+    pMlmDeauthReq = pMac->lim.limDisassocDeauthCnfReq.pMlmDeauthReq;
+    if (
+            (pMlmDisassocReq &&
+             (palEqualMemory( pMac->hHdd,(tANI_U8 *) staMac,
+                              (tANI_U8 *) &pMlmDisassocReq->peerMacAddr,
+                              sizeof(tSirMacAddr)))) 
+            ||
+            (pMlmDeauthReq &&
+             (palEqualMemory( pMac->hHdd,(tANI_U8 *) staMac,
+                              (tANI_U8 *) &pMlmDeauthReq->peerMacAddr,
+                              sizeof(tSirMacAddr))))
+       )
+    {
+        PELOGE(limLog(pMac, LOGE,FL("Disassoc/Deauth ack pending\n"));)
+        return eANI_BOOLEAN_TRUE;
+    }
+     else
+     {
+        PELOGE(limLog(pMac, LOGE,FL("Disassoc/Deauth Ack not pending\n"));)
+        return eANI_BOOLEAN_FALSE;
+     }
+}
+
 void limCleanUpDisassocDeauthReq(tpAniSirGlobal pMac,
         tANI_U8 *staMac,
         tANI_BOOLEAN cleanRxPath)
