@@ -1230,8 +1230,11 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
              /* Under assumtion that we don't receive any action frame
               * with BCST as destination we dropping action frame
               */
-             VOS_ASSERT(0);
-             hddLog( LOGP, FL("pAdapter for action frame is NULL"));
+             hddLog(VOS_TRACE_LEVEL_FATAL,"pAdapter for action frame is NULL Macaddr = "
+                               MAC_ADDRESS_STR ,
+                               MAC_ADDR_ARRAY(&pbFrames[WLAN_HDD_80211_FRM_DA_OFFSET]));
+             hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Frame Type = %d Frame Length = %d"
+                              " subType = %d \n",__func__,frameType,nFrameLength,subType);
              return;
          }
     }
