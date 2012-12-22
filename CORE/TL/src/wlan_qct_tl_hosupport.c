@@ -427,23 +427,51 @@ VOS_STATUS WLANTL_StatHandleRXFrame
       return VOS_STATUS_E_INVAL;
    }
 
-   /* TODO : BC/MC/UC have to be determined by MAC address */
    statistics = &tlCtxt->atlSTAClients[STAid].trafficStatistics;
    vos_pkt_get_packet_length(dataBuffer, &packetSize);
-   if(WDA_IS_RX_BCAST(pBDHeader))
+
+   if(isBroadcast)
    {
-      TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"This is RX BC/MC frame"));
-      if(isBroadcast)
+      /* Above flag is set for both broadcast and multicast frame. So
+         find frame type to distinguish between multicast and broadcast.
+         Ideally, it would be better if BD header has a field to indicate
+         multicast frame and then we would not need to call below function */
+
+      v_U8_t ucFrameCastType;
+
+      status = WLANTL_FindFrameTypeBcMcUc(tlCtxt, STAid, dataBuffer,
+                                          &ucFrameCastType);
+
+      if (VOS_STATUS_SUCCESS != status)
       {
-         TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"This is RX BC frame"));
-         statistics->rxBCFcnt++;
-         statistics->rxBCBcnt += (packetSize - WLANHAL_RX_BD_HEADER_SIZE);
+         TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"WLAN TL: failed to distinguish if Rx frame is broadcast or multicast"));
+         return status;
       }
-      else
+
+      switch (ucFrameCastType)
       {
-         TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"This is RX MC frame"));
-         statistics->rxMCFcnt++;
-         statistics->rxMCBcnt += (packetSize - WLANHAL_RX_BD_HEADER_SIZE);
+         case WLANTL_FRAME_TYPE_BCAST:
+            TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"This is RX BC frame"));
+            statistics->rxBCFcnt++;
+            statistics->rxBCBcnt += (packetSize - WLANHAL_RX_BD_HEADER_SIZE);
+            break;
+
+         case WLANTL_FRAME_TYPE_MCAST:
+            TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"This is RX MC frame"));
+            statistics->rxMCFcnt++;
+            statistics->rxMCBcnt += (packetSize - WLANHAL_RX_BD_HEADER_SIZE);
+            break;
+
+         case WLANTL_FRAME_TYPE_UCAST:
+            /* error - for unicast frame we should not reach here */
+            TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"WLAN TL: BD header indicates broadcast but MAC address indicates unicast"));
+            return VOS_STATUS_E_INVAL;
+            break;
+
+         default:
+            TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"WLAN TL: error in finding bc/mc/uc type of the received frame"));
+            return VOS_STATUS_E_INVAL;
+            break;
       }
    }
    else
