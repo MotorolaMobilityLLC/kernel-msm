@@ -43,6 +43,9 @@
 #define STA_ENTRY_BSSID             2
 #define STA_ENTRY_BCAST             3 //Special station id for transmitting broadcast frames.
 #define STA_ENTRY_PEER              STA_ENTRY_OTHER
+#ifdef FEATURE_WLAN_TDLS
+#define STA_ENTRY_TDLS_PEER         4
+#endif /* FEATURE_WLAN_TDLS */
 
 #define STA_ENTRY_TRANSMITTER       STA_ENTRY_SELF
 #define STA_ENTRY_RECEIVER          STA_ENTRY_OTHER

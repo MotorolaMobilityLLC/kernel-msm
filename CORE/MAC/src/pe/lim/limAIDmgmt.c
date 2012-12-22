@@ -41,6 +41,11 @@
 #include "limSession.h"
 
 #define LIM_START_AID   1
+#ifdef FEATURE_WLAN_TDLS_INTERNAL 
+#define LIM_START_AID_STA   2
+#else
+#define LIM_START_AID_STA   1
+#endif
 
 
 /**

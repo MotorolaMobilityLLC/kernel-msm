@@ -23,6 +23,9 @@
 #define HDD_CONNECTION_H__ 
 #include <wlan_hdd_mib.h>
 #define HDD_MAX_NUM_IBSS_STA ( 4 )
+#ifdef FEATURE_WLAN_TDLS
+#define HDD_MAX_NUM_TDLS_STA ( 4 )
+#endif
 #define TKIP_COUNTER_MEASURE_STARTED 1
 #define TKIP_COUNTER_MEASURE_STOPED  0 
 /* Timeout (in ms) for Link to Up before Registering Station */

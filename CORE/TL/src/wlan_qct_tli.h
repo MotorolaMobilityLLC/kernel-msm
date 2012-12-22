@@ -125,6 +125,10 @@ when        who    what, where, why
 /*WAPI protocol type */
 #define WLANTL_LLC_WAI_TYPE              0x88b4
 
+#ifdef FEATURE_WLAN_TDLS
+#define WLANTL_LLC_TDLS_TYPE             0x890d
+#endif
+
 /*Length offset inside the AMSDU sub-frame header*/
 #define WLANTL_AMSDU_SUBFRAME_LEN_OFFSET     12
 

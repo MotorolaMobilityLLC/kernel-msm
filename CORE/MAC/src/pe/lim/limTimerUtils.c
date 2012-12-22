@@ -466,6 +466,39 @@ limCreateTimers(tpAniSirGlobal pMac)
             goto err_timer;
         }
 #endif
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+        /* 
+         * create TDLS timers..
+         * a) TDLS discovery response timer.
+         */        
+
+        if (wlan_cfgGetInt(pMac, WNI_CFG_ASSOCIATION_FAILURE_TIMEOUT,
+                                            &cfgValue) != eSIR_SUCCESS)
+        {
+            /*
+             * Could not get discovery response Timeout value
+             * from CFG. Log error.
+             */
+            limLog(pMac, LOGP,
+               FL("could not retrieve ReassocFailureTimeout value\n"));
+        }
+        cfgValue = SYS_MS_TO_TICKS(cfgValue);
+
+        /* 
+         * create TDLS discovery response wait timer and activate it later
+         */
+        if (tx_timer_create(&pMac->lim.limTimers.gLimTdlsDisRspWaitTimer,
+                            "TDLS discovery response WAIT",
+                            limTimerHandler,
+                            SIR_LIM_TDLS_DISCOVERY_RSP_WAIT,
+                            cfgValue, 0,
+                            TX_NO_ACTIVATE) != TX_SUCCESS)
+        {
+            limLog(pMac, LOGP,
+               FL("could not create TDLS discovery response wait timer\n"));
+        goto err_timer;
+        }
+#endif
     }
 
 

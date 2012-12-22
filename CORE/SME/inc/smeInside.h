@@ -102,6 +102,64 @@ typedef struct sNoACmd
     tP2pPsConfig NoA;
 } tNoACmd;
 #endif
+#ifdef FEATURE_WLAN_TDLS
+typedef struct TdlsSendMgmtInfo
+{
+  tSirMacAddr peerMac;
+  tANI_U8 frameType;
+  tANI_U8 dialog;
+  tANI_U16 statusCode;
+  tANI_U8 *buf;
+  tANI_U8 len;
+} tTdlsSendMgmtCmdInfo;
+
+typedef struct TdlsAddStaInfo
+{
+  tSirMacAddr peerMac;
+} tTdlsAddStaCmdInfo;
+
+typedef struct TdlsDelStaInfo
+{
+  tSirMacAddr peerMac;
+} tTdlsDelStaCmdInfo;
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+typedef struct TdlsDisReqCmdinfo
+{
+      tSirMacAddr peerMac;
+          tANI_U8 tdlsDisType;
+} tTdlsDisReqCmdinfo;
+
+typedef struct tdlsLinkSetupReqCmdinfo
+{
+      tSirMacAddr peerMac;
+} tTdlsLinkSetupReqCmdinfo;
+
+typedef struct tdlsLinkTeardownCmdinfo
+{
+      tSirMacAddr peerMac;
+} tTdlsLinkTeardownCmdinfo;
+#endif
+/*
+ * TDLS cmd info, CMD from SME to PE.
+ */
+typedef struct s_tdls_cmd
+{
+  tANI_U32 size;
+  union
+  {
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+    tTdlsDisReqCmdinfo tdlsDisReqCmdInfo ;
+    tTdlsLinkSetupReqCmdinfo tdlsLinkSetupReqCmdInfo ;
+    tTdlsLinkTeardownCmdinfo tdlsLinkTeardownCmdInfo ;
+    //tEnterPeerUAPSDInfo enterUapsdInfo ;
+    //tExitPeerUAPSDinfo  exitUapsdInfo ;
+#endif
+    tTdlsSendMgmtCmdInfo tdlsSendMgmtCmdInfo;
+    tTdlsAddStaCmdInfo   tdlsAddStaCmdInfo;
+    tTdlsDelStaCmdInfo   tdlsDelStaCmdInfo;
+  }u;
+} tTdlsCmd;
+#endif  /* FEATURE_WLAN_TDLS */
 
 typedef struct tagSmeCmd
 {
@@ -126,6 +184,9 @@ typedef struct tagSmeCmd
 #endif
         tAddStaForSessionCmd addStaSessionCmd;
         tDelStaForSessionCmd delStaSessionCmd;
+#ifdef FEATURE_WLAN_TDLS
+        tTdlsCmd  tdlsCmd;
+#endif
     }u;
 }tSmeCmd;
 
@@ -202,4 +263,24 @@ eHalStatus pmcSetRssiFilter(tHalHandle hHal,   v_U8_t        rssiThreshold);
 eHalStatus pmcSetPowerParams(tHalHandle hHal,   tSirSetPowerParamsReq*  pwParams);
 
 tANI_BOOLEAN csrRoamGetConcurrencyConnectStatusForBmps(tpAniSirGlobal pMac);
+#ifdef FEATURE_WLAN_TDLS
+eHalStatus csrTdlsSendMgmtReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsSendMgmt *tdlsSendMgmt);
+eHalStatus csrTdlsAddPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
+eHalStatus csrTdlsDelPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac);
+eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac,tSmeCmd *pCommand );
+eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,v_U16_t msg_type,
+                                                           void *pMsgBuf);
+eHalStatus csrTdlsOpen(tHalHandle hHal);
+tANI_BOOLEAN csrTdlsPowerSaveCheck( void* hHal );
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+eHalStatus csrTdlsDiscoveryReq(tHalHandle hHal, tANI_U8 sessionId,
+                                          tCsrTdlsDisRequest *tdlsDisReq);
+eHalStatus csrTdlsSetupReq(tHalHandle hHal, tANI_U8 sessionId,
+                                         tCsrTdlsSetupRequest *tdlsSetupReq);
+eHalStatus csrTdlsTeardownReq(tHalHandle hHal, tANI_U8 sessionId,
+                                         tCsrTdlsTeardownRequest *teardown);
+#endif
+
+#endif /* FEATURE_WLAN_TDLS */
+
 #endif //#if !defined( __SMEINSIDE_H )
