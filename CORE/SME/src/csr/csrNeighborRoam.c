@@ -1080,23 +1080,23 @@ static void csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac, tScanResultHa
             continue;
         }
 
-       /*
-        * If RSSI is lower than the lookup threshold, then continue.
-        */
-       if (abs(pScanResult->BssDescriptor.rssi) >
-           pNeighborRoamInfo->currentNeighborLookupThreshold)
-       {
-           VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-               "%s: [INFOLOG] new ap rssi (%d) lower than lookup threshold (%d)\n",
-               __func__, (int)pScanResult->BssDescriptor.rssi * (-1),
-               (int)pNeighborRoamInfo->currentNeighborLookupThreshold * (-1));
-           continue;
-       }
-
        /* This condition is to ensure to roam to an AP with better RSSI. if the value of RoamRssiDiff is Zero, this feature
         * is disabled and we continue to roam without any check*/
        if(RoamRssiDiff > 0)
        {
+               /*
+               * If RSSI is lower than the lookup threshold, then continue.
+               */
+               if (abs(pScanResult->BssDescriptor.rssi) >
+                   pNeighborRoamInfo->currentNeighborLookupThreshold)
+               {
+                    VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                    "%s: [INFOLOG] new ap rssi (%d) lower than lookup threshold (%d)\n",
+                    __func__, (int)pScanResult->BssDescriptor.rssi * (-1),
+                    (int)pNeighborRoamInfo->currentNeighborLookupThreshold * (-1));
+                    continue;
+               }
+
                if (abs(CurrAPRssi) < abs(pScanResult->BssDescriptor.rssi))
                {
                        /*Do not roam to an AP with worse RSSI than the current*/
