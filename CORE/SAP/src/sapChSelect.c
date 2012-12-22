@@ -348,6 +348,7 @@ v_BOOL_t sapChanSelInit(tHalHandle halHandle, tSapChSelSpectInfo *pSpectInfoPara
         pSpectCh->chNum = *pChans;
         pSpectCh->valid = eSAP_TRUE;
         pSpectCh->rssiAgr = SOFTAP_MIN_RSSI;// Initialise for all channels
+        pSpectCh->channelWidth = SOFTAP_HT20_CHANNELWIDTH; // Initialise 20MHz for all the Channels 
         pSpectCh++;
         pChans++;
     }
@@ -439,18 +440,21 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
 
     tCsrScanResultInfo *pScanResult;
     tSapSpectChInfo *pSpectCh   = pSpectInfoParams->pSpectCh;
+    v_U32_t operatingBand;
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Computing spectral weight", __func__);
 
     /**
     * Soft AP specific channel weight calculation using DFS formula
     */
+    ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_OPERATING_BAND, &operatingBand);
 
     pScanResult = sme_ScanResultGetFirst(halHandle, pResult);    
 
     while (pScanResult) {
         pSpectCh = pSpectInfoParams->pSpectCh;
-        // Processing for each tCsrScanResultInfo in the tCsrScanResult DLink list
+        
+	// Processing for each tCsrScanResultInfo in the tCsrScanResult DLink list
         for (chn_num = 0; chn_num < pSpectInfoParams->numSpectChans; chn_num++) {
 
             /*
@@ -468,11 +472,166 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
 
                 ++pSpectCh->bssCount; // Increment the count of BSS
 
+                if(operatingBand) // Connsidering the Extension Channel only in a channels
+                {
+                    /* Updating the received ChannelWidth */
+                    if (pSpectCh->channelWidth != pScanResult->BssDescriptor.channelWidth) 
+                        pSpectCh->channelWidth = pScanResult->BssDescriptor.channelWidth;
+		    
+                    /* If received ChannelWidth is other than HT20, we need to update the extension channel Params as well
+                     * channelWidth == 0, HT20
+                     * channelWidth == 1, HT40
+                     * channelWidth == 2, VHT80
+                     */
+                    switch(pSpectCh->channelWidth)
+                    {
+                        case eHT_CHANNEL_WIDTH_40MHZ: //HT40
+                            switch( pScanResult->BssDescriptor.secondaryChannelOffset)
+                            {
+                                tSapSpectChInfo *pExtSpectCh = NULL;
+                                case PHY_DOUBLE_CHANNEL_LOW_PRIMARY: // Above the Primary Channel
+                                    pExtSpectCh = (pSpectCh + 1);
+                                    if(pExtSpectCh != NULL)
+                                    {
+                                        ++pExtSpectCh->bssCount;
+                                        // REducing the rssi by -20 and assigning it to Extension channel
+                                        pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_CHAN_RSSI);
+                                        if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                            pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                    }
+                                break;
+                                case PHY_DOUBLE_CHANNEL_HIGH_PRIMARY: // Below the Primary channel
+                                    pExtSpectCh = (pSpectCh - 1);
+                                    if(pExtSpectCh != NULL) 
+                                    {
+                                        pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_CHAN_RSSI);
+                                        if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                            pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                        ++pExtSpectCh->bssCount;
+                                    }
+                                break;
+                            }
+                        break;
+                        case eHT_CHANNEL_WIDTH_80MHZ: // VHT80
+                            if((pScanResult->BssDescriptor.centerFreq - channel_id) == 6)
+                            {
+                                tSapSpectChInfo *pExtSpectCh = NULL;
+                                pExtSpectCh = (pSpectCh + 1);
+                                if(pExtSpectCh != NULL)
+                                {
+                                    ++pExtSpectCh->bssCount;
+                                    pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_CHAN_RSSI); // Reducing the rssi by -20 and assigning it to Subband 1 
+                                    if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                        pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                }
+                                pExtSpectCh = (pSpectCh + 2);
+                                if(pExtSpectCh != NULL)
+                                {
+                                    ++pExtSpectCh->bssCount;
+                                    pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_SUBBAND2_RSSI); // Reducing the rssi by -30 and assigning it to Subband 2
+                                    if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                        pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                }
+                                pExtSpectCh = (pSpectCh + 3);
+                                if(pExtSpectCh != NULL)
+                                {
+                                    ++pExtSpectCh->bssCount;
+                                    pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_SUBBAND3_RSSI); // Reducing the rssi by -40 and assigning it to Subband 3
+                                    if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                        pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                }  
+                            }
+                            else if((pScanResult->BssDescriptor.centerFreq - channel_id) == 2)
+                            {
+                                tSapSpectChInfo *pExtSpectCh = NULL;
+                                pExtSpectCh = (pSpectCh - 1 );
+                                if(pExtSpectCh != NULL)
+                                {
+                                    ++pExtSpectCh->bssCount;
+                                    pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_CHAN_RSSI);
+                                    if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                        pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                }
+                                pExtSpectCh = (pSpectCh + 1);
+                                if(pExtSpectCh != NULL)
+                                {
+                                    ++pExtSpectCh->bssCount;
+                                    pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_CHAN_RSSI);
+                                    if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                        pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                }
+                                pExtSpectCh = (pSpectCh + 2);
+                                if(pExtSpectCh != NULL)
+                                {
+                                    ++pExtSpectCh->bssCount;
+                                    pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_SUBBAND2_RSSI);
+                                    if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                        pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                }
+                            }
+                            else if((pScanResult->BssDescriptor.centerFreq - channel_id) == -2)
+                            {
+                                tSapSpectChInfo *pExtSpectCh = NULL;
+                                pExtSpectCh = (pSpectCh - 1 );
+                                if(pExtSpectCh != NULL)
+                                {
+                                    ++pExtSpectCh->bssCount;
+                                    pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_CHAN_RSSI);
+                                    if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                        pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                }
+                                pExtSpectCh = (pSpectCh - 2);
+                                if(pExtSpectCh != NULL)
+                                {
+                                    ++pExtSpectCh->bssCount;
+                                    pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_SUBBAND2_RSSI);
+                                    if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                        pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                }
+                                pExtSpectCh = (pSpectCh + 1);
+                                if(pExtSpectCh != NULL)
+                                {
+                                    ++pExtSpectCh->bssCount;
+                                    pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_CHAN_RSSI);
+                                    if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                        pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                }
+                            }
+                            else if((pScanResult->BssDescriptor.centerFreq - channel_id) == -6)
+                            {
+                                tSapSpectChInfo *pExtSpectCh = NULL;
+                                pExtSpectCh = (pSpectCh - 1 );
+                                if(pExtSpectCh != NULL)
+                                {
+                                    ++pExtSpectCh->bssCount;
+                                    pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_CHAN_RSSI);
+                                    if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                        pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                }
+                                pExtSpectCh = (pSpectCh - 2);
+                                if(pExtSpectCh != NULL)
+                                {
+                                    ++pExtSpectCh->bssCount;
+                                    pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_SUBBAND2_RSSI);
+                                    if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                        pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                }
+                                pExtSpectCh = (pSpectCh - 3);
+                                if(pExtSpectCh != NULL)
+                                {
+                                    ++pExtSpectCh->bssCount;
+                                    pExtSpectCh->rssiAgr = (pSpectCh->rssiAgr + SAP_EXT_SUBBAND3_RSSI);
+                                    if(pExtSpectCh->rssiAgr < SOFTAP_MIN_RSSI)
+                                        pExtSpectCh->rssiAgr = SOFTAP_MIN_RSSI;
+                                }
+                            }
+                        break;
+                    }
+                } 
+
                 VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
-                   "In %s, bssdes.ch_self=%d, bssdes.ch_ID=%d, bssdes.rssi=%d, SpectCh.bssCount=%d, pScanResult=0x%x",
-                  __func__, pScanResult->BssDescriptor.channelIdSelf, pScanResult->BssDescriptor.channelId, 
-                  pScanResult->BssDescriptor.rssi, pSpectCh->bssCount, pScanResult);
-                         
+                   "In %s, bssdes.ch_self=%d, bssdes.ch_ID=%d, bssdes.rssi=%d, SpectCh.bssCount=%d, pScanResult=0x%x, ChannelWidth %d, secondaryChanOffset %d, center frequency %d \n",
+                  __func__, pScanResult->BssDescriptor.channelIdSelf, pScanResult->BssDescriptor.channelId, pScanResult->BssDescriptor.rssi, pSpectCh->bssCount, pScanResult,pSpectCh->channelWidth,pScanResult->BssDescriptor.secondaryChannelOffset,pScanResult->BssDescriptor.centerFreq);
                  pSpectCh++;
                  break;
            } else {

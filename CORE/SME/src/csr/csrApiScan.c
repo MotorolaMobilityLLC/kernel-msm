@@ -2716,7 +2716,29 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac )
             csrSaveToChannelPower2G_5G( pMac, pIesLocal->Country.num_triplets * sizeof(tSirMacChanInfo), 
                                         (tSirMacChanInfo *)(&pIesLocal->Country.triplets[0]) );
         }
-
+	
+        if(pIesLocal->HTCaps.present && pIesLocal->HTInfo.present) 
+        {
+            pBssDescription->Result.BssDescriptor.channelWidth = pIesLocal->HTCaps.supportedChannelWidthSet;
+            pBssDescription->Result.BssDescriptor.secondaryChannelOffset = pIesLocal->HTInfo.secondaryChannelOffset;
+            if(pIesLocal->VHTOperation.present)
+            {
+                pBssDescription->Result.BssDescriptor.vhtSupport = pIesLocal->VHTOperation.present;
+                if(pIesLocal->VHTOperation.chanWidth > eHT_CHANNEL_WIDTH_20MHZ) 
+                {
+                    pBssDescription->Result.BssDescriptor.channelWidth = eHT_CHANNEL_WIDTH_80MHZ;
+                    pBssDescription->Result.BssDescriptor.centerFreq = pIesLocal->VHTOperation.chanCenterFreqSeg1; 
+                }
+            }
+        }  
+        else
+        {
+            pBssDescription->Result.BssDescriptor.channelWidth = eHT_CHANNEL_WIDTH_20MHZ;
+            pBssDescription->Result.BssDescriptor.secondaryChannelOffset = PHY_SINGLE_CHANNEL_CENTERED;
+            pBssDescription->Result.BssDescriptor.vhtSupport = 0;
+            pBssDescription->Result.BssDescriptor.centerFreq = 0;
+        }
+        
         // append to main list
         csrScanAddResult(pMac, pBssDescription, pIesLocal);
         if( (pBssDescription->Result.pvIes == NULL) && pIesLocal )
