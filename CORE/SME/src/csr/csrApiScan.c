@@ -405,10 +405,13 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
     tSmeCmd *pQueueScanCmd=NULL;
     tSmeCmd *pSendScanCmd=NULL;
 
-    /* split scan if any session is connected */
-    if (eANI_BOOLEAN_TRUE == csrIsAnySessionConnected(pMac))
+    /* split scan if any one of the following:
+     * - STA session is connected and the scan is not a P2P search
+     * - any P2P session is connected
+     */
+    if ( (csrIsStaSessionConnected(pMac) && (pScanCmd->u.scanCmd.u.scanRequest.p2pSearch != 1)) ||
+         (csrIsP2pSessionConnected(pMac)) )
     {
-
         tCsrScanRequest scanReq;
         tANI_U8 numChn = pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels;
         tCsrChannelInfo *pChnInfo = &scanReq.ChannelInfo;
@@ -4460,7 +4463,15 @@ static tANI_BOOLEAN csrScanProcessScanResults( tpAniSirGlobal pMac, tSmeCmd *pCo
 #ifdef WLAN_AP_STA_CONCURRENCY
     if (!csrLLIsListEmpty( &pMac->scan.scanCmdPendingList, LL_ACCESS_LOCK ))
     {
-        if (eANI_BOOLEAN_TRUE == csrIsAnySessionConnected(pMac)) {
+        /* Pending scan commands in the list because the previous scan command
+         * was split into a scan command on one channel + a scan command for all
+         * remaining channels.
+         *
+         * Start timer to trigger processing of the next scan command.
+         */
+        if ( (csrIsStaSessionConnected(pMac) && (pCommand->u.scanCmd.u.scanRequest.p2pSearch != 1)) ||
+             (csrIsP2pSessionConnected(pMac)) )
+        {
             /* if active connected sessions present then continue to split scan
              * with specified interval between consecutive scans */
             csrSetDefaultScanTiming(pMac, pCommand->u.scanCmd.u.scanRequest.scanType, &(pCommand->u.scanCmd.u.scanRequest));
@@ -5538,7 +5549,15 @@ static void csrStaApConcTimerHandler(void *pv)
          * greater than 1 then split the scan into multiple scan operations
          * on each individual channel else continue to perform scan on all
          * specified channels */
-        if ( (eANI_BOOLEAN_TRUE == csrIsAnySessionConnected(pMac)) && (numChn > 1) )
+
+        /* split scan if number of channels to scan is greater than 1 and
+         * any one of the following:
+         * - STA session is connected and the scan is not a P2P search
+         * - any P2P session is connected
+         */
+        if ( (numChn > 1) &&
+             ((csrIsStaSessionConnected(pMac) && (pScanCmd->u.scanCmd.u.scanRequest.p2pSearch != 1)) ||
+              (csrIsP2pSessionConnected(pMac))))
         {
              palZeroMemory(pMac->hHdd, &scanReq, sizeof(tCsrScanRequest));
 
