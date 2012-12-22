@@ -3233,10 +3233,18 @@ int wlan_hdd_cfg80211_set_channel( struct wiphy *wiphy, struct net_device *dev,
 {
     v_U32_t num_ch = 0;
     u32 channel = 0;
-    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev ); 
+    hdd_adapter_t *pAdapter = NULL; 
     int freq = chan->center_freq; /* freq is in MHZ */ 
  
     ENTER();
+
+    if( NULL == dev )
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, 
+                "%s: Called with dev = NULL.\n", __func__);
+        return -ENODEV;
+    }
+    pAdapter = WLAN_HDD_GET_PRIV_PTR( dev ); 
     
     hddLog(VOS_TRACE_LEVEL_INFO, 
                 "%s: device_mode = %d  freq = %d \n",__func__, 
