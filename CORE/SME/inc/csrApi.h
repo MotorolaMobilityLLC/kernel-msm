@@ -1023,6 +1023,9 @@ typedef struct tagCsrConfigParam
     tANI_BOOLEAN fFirstScanOnly2GChnl;
 
     tANI_BOOLEAN fIgnore_chan165;
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    tANI_BOOLEAN nRoamPrefer5GHz;
+#endif
 
 }tCsrConfigParam;   
 
