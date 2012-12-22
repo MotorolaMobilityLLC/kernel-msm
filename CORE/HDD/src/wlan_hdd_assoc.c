@@ -1878,8 +1878,16 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
             }
             if(eHAL_STATUS_SUCCESS == status)
             {
-                /* start TDLS client registration with TL */
-                status = hdd_roamRegisterTDLSSTA( pAdapter, pRoamInfo, 1) ;
+                eCsrEncryptionType connectedCipherAlgo = eCSR_ENCRYPT_TYPE_UNKNOWN;
+                v_BOOL_t fConnected   = FALSE;
+
+                fConnected = hdd_connGetConnectedCipherAlgo( pHddStaCtx, &connectedCipherAlgo );
+                if( fConnected )
+                {
+                    /* start TDLS client registration with TL */
+                    status = hdd_roamRegisterTDLSSTA( pAdapter, pRoamInfo,
+                            ( connectedCipherAlgo != eCSR_ENCRYPT_TYPE_NONE )? 1 : 0 ) ;
+                }
             }
             break ;
         }
