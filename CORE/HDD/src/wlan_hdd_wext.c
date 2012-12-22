@@ -2241,12 +2241,17 @@ static int iw_softap_set_channel_range( struct net_device *dev,
     int ret = 0;
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pHostapdAdapter);
+
 
     status = WLANSAP_SetChannelRange(hHal, startChannel, endChannel, band);
     if (VOS_STATUS_SUCCESS != status)
     {
         ret = -EINVAL;
     }
+	
+	pHddCtx->is_dynamic_channel_range_set = 1;
+	
     return ret;
 }
 

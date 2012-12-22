@@ -1354,6 +1354,7 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext;
     struct qc_mac_acl_entry *acl_entry = NULL;
     v_SINT_t i;
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pHostapdAdapter);
 
     ENTER();
 
@@ -1410,8 +1411,14 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
              */
             else
             {
-                hdd_config_t *hdd_pConfig= (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini;
-                WLANSAP_SetChannelRange(hHal,hdd_pConfig->apStartChannelNum,hdd_pConfig->apEndChannelNum,hdd_pConfig->apOperatingBand);
+            	if(1 != pHddCtx->is_dynamic_channel_range_set) 
+            	{
+                    hdd_config_t *hdd_pConfig= (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini;
+                    WLANSAP_SetChannelRange(hHal, hdd_pConfig->apStartChannelNum, 
+					    hdd_pConfig->apEndChannelNum,hdd_pConfig->apOperatingBand);
+                }
+				
+				pHddCtx->is_dynamic_channel_range_set = 0;
             }
         }
         else

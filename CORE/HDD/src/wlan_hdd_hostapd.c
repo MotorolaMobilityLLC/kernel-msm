@@ -1535,6 +1535,7 @@ static int iw_softap_set_channel_range(struct net_device *dev,
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pHostapdAdapter);
 
     int *value = (int *)extra;
     int startChannel = value[0];
@@ -1550,6 +1551,9 @@ static int iw_softap_set_channel_range(struct net_device *dev,
                                   startChannel,endChannel, band);
       ret = -EINVAL;
     }
+	
+	pHddCtx->is_dynamic_channel_range_set = 1;
+	
     return ret;
 }
 
