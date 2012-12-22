@@ -2036,7 +2036,7 @@ VOS_STATUS csrNeighborRoamMergeChannelLists(
         {
             if (pInputChannelList[i])
             {
-                VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
+                VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
                         "%s: [INFOLOG] Adding extra %d to Neighbor channel list\n", __func__, 
                         pInputChannelList[i]); 
                 pOutputChannelList[numChannels] = pInputChannelList[i]; 
