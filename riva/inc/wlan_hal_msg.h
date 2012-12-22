@@ -2231,11 +2231,11 @@ typedef PACKED_PRE struct PACKED_POST
 #ifdef FEATURE_OEM_DATA_SUPPORT
 
 #ifndef OEM_DATA_REQ_SIZE
-#define OEM_DATA_REQ_SIZE 134 
+#define OEM_DATA_REQ_SIZE 70 
 #endif
 
 #ifndef OEM_DATA_RSP_SIZE
-#define OEM_DATA_RSP_SIZE 1968
+#define OEM_DATA_RSP_SIZE 968
 #endif
 
 /*-------------------------------------------------------------------------
