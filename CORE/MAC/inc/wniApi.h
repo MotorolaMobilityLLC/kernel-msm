@@ -357,6 +357,7 @@ enum eWniMsgTypes
     eWNI_SME_ADD_TDLS_PEER_IND,    
     eWNI_SME_DELETE_TDLS_PEER_IND,    
 #endif
+    eWNI_SME_SET_BCN_FILTER_REQ,
     eWNI_SME_MSG_TYPES_END
 };
 

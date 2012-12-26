@@ -1211,8 +1211,9 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
          * scan is in progress if the system is in Active mode *
          * AND it is not a ROAMING ("background") scan */
         if(((ePMM_STATE_BMPS_WAKEUP == pMac->pmm.gPmmState) ||
-           (ePMM_STATE_READY == pMac->pmm.gPmmState))
-            && (pScanReq->backgroundScanMode != eSIR_ROAMING_SCAN ))
+           (ePMM_STATE_READY == pMac->pmm.gPmmState)) &&
+           (pScanReq->backgroundScanMode != eSIR_ROAMING_SCAN ) &&
+           (!IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
         {
           for(i=0;i<pMac->lim.maxBssId;i++)
           {

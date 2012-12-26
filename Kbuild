@@ -521,7 +521,8 @@ CDEFINES :=	-DANI_PRODUCT_TYPE_CLIENT=1 \
 		-DWLAN_FEATURE_VOWIFI \
 		-DWLAN_FEATURE_11AC \
 		-DWLAN_FEATURE_P2P_DEBUG \
-		-DWLAN_ENABLE_AGEIE_ON_SCAN_RESULTS
+		-DWLAN_ENABLE_AGEIE_ON_SCAN_RESULTS \
+		-DWLAN_ACTIVEMODE_OFFLOAD_FEATURE
 
 # there are still pieces of code which are conditional upon these
 # need to investigate all of them to see which should also be
