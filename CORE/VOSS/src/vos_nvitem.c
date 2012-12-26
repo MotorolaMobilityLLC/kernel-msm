@@ -1754,7 +1754,7 @@ eNVChannelEnabledType vos_nv_getChannelEnabledState
    if(INVALID_RF_CHANNEL == channelEnum)
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                "vos_nv_getChannelEnabledState, invalid cahnnel %d", rfChannel);
+                "vos_nv_getChannelEnabledState, invalid channel %d", rfChannel);
       return NV_CHANNEL_INVALID;
    }
 

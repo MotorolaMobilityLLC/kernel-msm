@@ -11962,7 +11962,7 @@ VOS_STATUS WDA_ProcessUpdateOpMode(tWDA_CbContext *pWDA,
     Or if host driver detects any abnormal stcuk may display
 
   PARAMETERS
-    displaySnapshot : Dispaly DXE snapshot option
+    displaySnapshot : Display DXE snapshot option
     enableStallDetect : Enable stall detect feature
                         This feature will take effect to data performance
                         Not integrate till fully verification
