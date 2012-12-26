@@ -8651,7 +8651,7 @@ void WDA_StartOemDataReqCallback(
    vos_mem_free(pWdaParams) ;
 
    /* 
-    * Now go ahead and copy other stuff for PE in incase of sucess only 
+    * Now go ahead and copy other stuff for PE in incase of success only 
     * Also, here success always means that we have atleast one BSSID.
     */
    vos_mem_copy(pOemDataRspParams->oemDataRsp, wdiOemDataRspParams->oemDataRsp, OEM_DATA_RSP_SIZE);
@@ -9264,7 +9264,7 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
            else
            {
                VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-                       "Tx Complete timeout Timer Stop Sucess ");
+                       "Tx Complete timeout Timer Stop Success ");
            }
        }
 

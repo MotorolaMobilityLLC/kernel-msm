@@ -61,7 +61,7 @@
  AMP Assoc*/
 #define WLAN_BAP_PAL_AMP_ASSOC_CONN_CH_TLV_MIN_LEN    3
 
-/*Length of the value field expected in a TLV of type Prefered Channel in an 
+/*Length of the value field expected in a TLV of type Preferred Channel in an 
  AMP Assoc*/
 #define WLAN_BAP_PAL_AMP_ASSOC_PREF_CH_TLV_MIN_LEN    3
 
