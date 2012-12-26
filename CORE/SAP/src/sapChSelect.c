@@ -519,8 +519,7 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
                 {
                     /* Updating the received ChannelWidth */
                     if (pSpectCh->channelWidth != channelWidth) 
-                        pSpectCh->channelWidth = channelWidth;
-		    
+                        pSpectCh->channelWidth = channelWidth; 
                     /* If received ChannelWidth is other than HT20, we need to update the extension channel Params as well */
                     /* channelWidth == 0, HT20 */
                     /* channelWidth == 1, HT40 */
