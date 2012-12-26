@@ -19369,7 +19369,7 @@ WDI_SendMsg
   }
   else
   {
-     /*Inform upper stack layers that a transport fatal error occured*/
+     /*Inform upper stack layers that a transport fatal error occurred*/
      WDI_DetectedDeviceError(pWDICtx, WDI_ERR_TRANSPORT_FAILURE);
   }
 
