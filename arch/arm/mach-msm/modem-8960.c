@@ -32,6 +32,7 @@
 #include "smd_private.h"
 #include "modem_notifier.h"
 #include "ramdump.h"
+#include "modem_coredump.h"
 
 static int crash_shutdown;
 
@@ -150,11 +151,18 @@ static struct ramdump_segment smem_segments[] = {
 static void *modemfw_ramdump_dev;
 static void *modemsw_ramdump_dev;
 static void *smem_ramdump_dev;
+static void *modem_coredump_dev;
+
 
 static int modem_ramdump(int enable, const struct subsys_desc *crashed_subsys)
 {
 	int ret = 0;
-
+	ret = do_modem_coredump(modem_coredump_dev);
+	if (ret < 0) {
+		/* Continue with ramdump even coredump failure*/
+		pr_err("Unable to dump modem coredump (rc = %d).\n",
+			ret);
+	}
 	if (enable) {
 		ret = do_ramdump(modemsw_ramdump_dev, modemsw_segments,
 			ARRAY_SIZE(modemsw_segments));
@@ -313,10 +321,20 @@ static int __init modem_8960_init(void)
 		goto out;
 	}
 
-	smem_ramdump_dev = create_ramdump_device("smem-modem");
+	/*smem being common, remove the "-modem" suffix added in QC 2.x*/
+	smem_ramdump_dev = create_ramdump_device("smem");
 
 	if (!smem_ramdump_dev) {
 		pr_err("%s: Unable to create smem ramdump device. (%d)\n",
+				__func__, -ENOMEM);
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	modem_coredump_dev = create_modem_coredump_device("modem");
+
+	if (!modem_coredump_dev) {
+		pr_err("%s: Unable to create modem coredump device. (%d)\n",
 				__func__, -ENOMEM);
 		ret = -ENOMEM;
 		goto out;
