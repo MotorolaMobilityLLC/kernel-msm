@@ -509,7 +509,7 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
             operMode = pStaDs->vhtSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_80MHZ : pStaDs->htSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_40MHZ: eHT_CHANNEL_WIDTH_20MHZ;
             if( operMode != pBeacon->OperatingMode.chanWidth)
             {
-                PELOG1(limLog(pMac, LOG1, FL(" recevied Chanwidth %d, staIdx = %d\n"),
+                PELOG1(limLog(pMac, LOG1, FL(" received Chanwidth %d, staIdx = %d\n"),
                                           pBeacon->OperatingMode.chanWidth, 
                                           pStaDs->staIndex);)
                 PELOG1(limLog(pMac, LOG1, FL(" MAC - %0x:%0x:%0x:%0x:%0x:%0x\n"),

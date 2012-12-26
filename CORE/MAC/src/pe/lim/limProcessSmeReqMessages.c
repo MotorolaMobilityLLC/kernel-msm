@@ -3090,7 +3090,7 @@ void limProcessSmeGetAssocSTAsInfo(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
             break;
     }
 
-    // Get Assoctiated stations from PE
+    // Get Associated stations from PE
     // Find PE session Entry
     if ((psessionEntry = peFindSessionByBssid(pMac, getAssocSTAsReq.bssId, &sessionId)) == NULL)
     {
@@ -3192,7 +3192,7 @@ void limProcessSmeGetWPSPBCSessions(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         goto limGetWPSPBCSessionsEnd;
     }
 
-    // Get Assoctiated stations from PE
+    // Get Associated stations from PE
     // Find PE session Entry
     if ((psessionEntry = peFindSessionByBssid(pMac, GetWPSPBCSessionsReq.bssId, &sessionId)) == NULL)
     {
@@ -3209,7 +3209,7 @@ void limProcessSmeGetWPSPBCSessions(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         goto limGetWPSPBCSessionsEnd;
     }
 
-    // Call hdd callback with sap event to send the WPS PBC overlap infromation
+    // Call hdd callback with sap event to send the WPS PBC overlap information
     sapEvent.sapHddEventCode =  eSAP_GET_WPSPBC_SESSION_EVENT;
     sapEvent.sapevt.sapGetWPSPBCSessionEvent.module = VOS_MODULE_ID_PE;
 

@@ -3779,7 +3779,7 @@ eHalStatus sme_QosAddTsReq(tpAniSirGlobal pMac,
    if (NULL == pSession->assocInfo.pBssDesc)
    {
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-                "%s: %d: BSS descriptor is NULL so we don't send requst to PE",
+                "%s: %d: BSS descriptor is NULL so we don't send request to PE",
                 __func__, __LINE__);
       return eHAL_STATUS_FAILURE;
    }
