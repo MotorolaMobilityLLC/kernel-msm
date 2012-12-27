@@ -35,6 +35,7 @@
 #include <linux/poll.h>
 #include <linux/uaccess.h>
 #include <linux/slab.h>
+#include <linux/switch.h>
 #include <linux/time.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
@@ -68,75 +69,61 @@
 #define ID				0x00
 #define REV_ID				0x01
 #define ERROR_STATUS			0x02
-#define STEP_LENGTH_WALK		0x03
-#define STEP_LENGTH_RUN			0x04
-#define HEIGHT				0x05
-#define WEIGHT				0x06
-#define GENDER_AGE			0x07
-#define DISTANCE_THR			0x08
-#define TOTAL_DISTANCE			0x09
-
-#define TOTAL_STEP_COUNT		0x0A
-#define STEP_COUNT_LAST_ACT		0x0B
-#define STEP_COUNT_CURENT_ACT		0x0C
-#define TIME_ACT_CHANGE			0x0D
-#define SPEED				0x0E
 
 #define AP_POSIX_TIME			0x10
-
-#define PRESSURE_SEA_LEVEL		0x14
 
 #define ACCEL_UPDATE_RATE		0x16
 #define MAG_UPDATE_RATE			0x17
 #define PRESSURE_UPDATE_RATE		0x18
 #define GYRO_UPDATE_RATE		0x19
-#define MODULE_CONFIG			0x1A
-#define GYRO_CONFIG			0x1B
-#define ACCEL_CONFIG			0x1C
-#define FF_THR				0x1D
-#define FF_DUR				0x1E
-#define MOTION_THR			0x1F
+
+#define NONWAKESENSOR_CONFIG		0x1A
+#define WAKESENSOR_CONFIG		0x1B
+
 #define MOTION_DUR			0x20
-#define ZRMOTION_THR			0x21
+
 #define ZRMOTION_DUR			0x22
-#define RINGBUFFER_EN			0x23
+
 #define BYPASS_MODE			0x24
 #define SLAVE_ADDRESS			0x25
 
 #define ALGO_CONFIG			0x26
 #define ALGO_INT_STATUS			0x27
-#define RADIAL_THR			0x28
+
 #define RADIAL_DUR			0x2A
-#define RADIAL_NORTHING			0x2C
-#define RADIAL_EASTING			0x2E
+
+#define RADIAL_DATA			0x2C
+#define MOTION_DATA			0x2D
+
+#define LUX_TABLE_VALUES                0x34
+#define BRIGHTNESS_TABLE_VALUES         0x35
 
 #define INTERRUPT_MASK			0x37
+#define WAKESENSOR_STATUS		0x39
 #define INTERRUPT_STATUS		0x3A
 
 #define ACCEL_X				0x3B
-#define ACCEL_Y				0x3D
-#define ACCEL_Z				0x3F
+
+#define DOCK_DATA			0x3F
 
 #define TEMPERATURE_DATA		0x41
 
 #define GYRO_X				0x43
-#define GYRO_Y				0x45
-#define GYRO_Z				0x47
 
 #define MAG_HX				0x49
-#define MAG_HY				0x4B
-#define MAG_HZ				0x4D
 
-#define DEVICE_ORIEN_HEAD		0x4F
-#define DEVICE_ORIEN_PITCH		0x51
-#define DEVICE_ORIEN_ROLL		0x53
-#define CAL_STATUS			0x55
+#define DISP_ROTATE_DATA		0x4A
+#define FLAT_DATA			0x4B
 
 #define CURRENT_PRESSURE		0x66
 
 #define ALS_LUX				0x6A
 
+#define DISPLAY_BRIGHTNESS		0x6B
+
 #define PROXIMITY			0x6C
+
+#define STOWED				0x6D
 
 #define MOTION_DUR_1			0x71
 #define ZRMOTION_DUR_1			0x72
@@ -159,13 +146,14 @@
 #define MSP430_ES_DATA_QUEUE_MASK	0x07
 
 #define KDEBUG(format, s...)	if (g_debug) pr_info(format, ##s)
+static char g_debug;
 
 static unsigned int msp430_irq_disable;
 module_param_named(irq_disable, msp430_irq_disable, uint, 0644);
 
-static char g_debug;
 /* to hold sensor state so that it can be restored on resume */
-static unsigned char g_sensor_state;
+static unsigned short g_nonwake_sensor_state;
+static unsigned short g_wake_sensor_state;
 
 static unsigned char msp_cmdbuff[MSP430_HEADER_LENGTH + MSP430_CMDLENGTH_BYTES +
 			MSP430_CORECOMMAND_LENGTH + MSP430_CRC_LENGTH];
@@ -183,6 +171,7 @@ struct msp430_data {
 	/* to avoid two i2c communications at the same time */
 	struct mutex lock;
 	struct work_struct irq_work;
+	struct work_struct irq_wake_work;
 	struct workqueue_struct *irq_work_queue;
 	struct wake_lock wakelock;
 
@@ -190,6 +179,7 @@ struct msp430_data {
 
 	atomic_t enabled;
 	int irq;
+	int irq_wake;
 	unsigned int current_addr;
 	enum msp_mode mode;
 	unsigned char intp_mask;
@@ -199,6 +189,9 @@ struct msp430_data {
 	struct class *msp430_class;
 	struct cdev as_cdev;
 	struct cdev ms_cdev;
+
+	struct switch_dev dsdev; /* Standard Dock switch */
+	struct switch_dev edsdev; /* Motorola Dock switch */
 
 	struct msp430_android_sensor_data
 		msp430_as_data_buffer[MSP430_AS_DATA_QUEUE_SIZE];
@@ -240,25 +233,11 @@ struct msp_response {
 	unsigned char crc_msb;
 };
 
-static const unsigned char msp_motion_thr_a[] = {
-	MOTION_THR,
-	MOTION_THR_1,
-	MOTION_THR_2,
-	MOTION_THR_3
-};
-
 static const unsigned char msp_motion_dur_a[] = {
 	MOTION_DUR,
 	MOTION_DUR_1,
 	MOTION_DUR_2,
 	MOTION_DUR_3
-};
-
-static const unsigned char msp_zrmotion_thr_a[] = {
-	ZRMOTION_THR,
-	ZRMOTION_THR_1,
-	ZRMOTION_THR_2,
-	ZRMOTION_THR_3
 };
 
 static const unsigned char msp_zrmotion_dur_a[] = {
@@ -470,6 +449,20 @@ static int msp430_device_power_on(struct msp430_data *ps_msp430)
 	return err;
 }
 
+static ssize_t dock_print_name(struct switch_dev *switch_dev, char *buf)
+{
+	switch (switch_get_state(switch_dev)) {
+	case NO_DOCK:
+		return sprintf(buf, "None\n");
+	case DESK_DOCK:
+		return sprintf(buf, "DESK\n");
+	case CAR_DOCK:
+		return sprintf(buf, "CAR\n");
+	}
+
+	return -EINVAL;
+}
+
 static int msp430_as_data_buffer_write(struct msp430_data *ps_msp430,
 	unsigned char type, signed short data1, signed short data2,
 	signed short data3, unsigned char status)
@@ -577,17 +570,32 @@ static irqreturn_t msp430_isr(int irq, void *dev)
 	}
 
 	queue_work(ps_msp430->irq_work_queue, &ps_msp430->irq_work);
+	if (ps_msp430->irq_wake == -1)
+		queue_work(ps_msp430->irq_work_queue,
+			&ps_msp430->irq_wake_work);
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t msp430_wake_isr(int irq, void *dev)
+{
+	struct msp430_data *ps_msp430 = dev;
+
+	if (msp430_irq_disable) {
+		disable_irq_wake(ps_msp430->irq);
+		return IRQ_HANDLED;
+	}
+
+	queue_work(ps_msp430->irq_work_queue, &ps_msp430->irq_wake_work);
 	return IRQ_HANDLED;
 }
 
 static void msp430_irq_work_func(struct work_struct *work)
 {
 	int err;
-	unsigned char irq_status, irq2_status;
+	unsigned short irq_status;
 	signed short x, y, z;
 	struct msp430_data *ps_msp430 = container_of(work,
 			struct msp430_data, irq_work);
-
 
 	if (ps_msp430->mode == BOOTMODE)
 		return;
@@ -597,20 +605,12 @@ static void msp430_irq_work_func(struct work_struct *work)
 
 	/* read interrupt mask register */
 	msp_cmdbuff[0] = INTERRUPT_STATUS;
-	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
 	if (err < 0) {
 		pr_err("MSP430 Reading from msp failed\n");
 		goto EXIT;
 	}
-	irq_status = msp_cmdbuff[0];
-	/* read algorithm interrupt status register */
-	msp_cmdbuff[0] = ALGO_INT_STATUS;
-	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
-	if (err < 0) {
-		pr_err("MSP430 Reading from msp failed\n");
-		goto EXIT;
-	}
-	irq2_status = msp_cmdbuff[0];
+	irq_status = (msp_cmdbuff[1] << 8) | msp_cmdbuff[0];
 
 	if (irq_status & M_ACCEL) {
 		/* read accelerometer values from MSP */
@@ -682,18 +682,6 @@ static void msp430_irq_work_func(struct work_struct *work)
 
 		KDEBUG("Sending ALS %d\n", x);
 	}
-	if (irq_status & M_PROXIMITY) {
-		msp_cmdbuff[0] = PROXIMITY;
-		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
-		if (err < 0) {
-			pr_err("MSP430 Reading prox from msp failed\n");
-			goto EXIT;
-		}
-		x = msp_cmdbuff[0];
-		msp430_as_data_buffer_write(ps_msp430, DT_PROX, x, 0, 0, 0);
-
-		KDEBUG("Sending Proximity distance %d\n", x);
-	}
 	if (irq_status & M_TEMPERATURE) {
 		/*Read temperature value */
 		msp_cmdbuff[0] = TEMPERATURE_DATA;
@@ -721,6 +709,136 @@ static void msp430_irq_work_func(struct work_struct *work)
 
 		KDEBUG("MSP430 Sending pressure %d\n", (x << 16) | (y & 0xFFFF));
 	}
+	if (irq_status & M_DISP_ROTATE) {
+		/*Read Display Rotate value */
+		msp_cmdbuff[0] = DISP_ROTATE_DATA;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+		if (err < 0) {
+			pr_err("MSP430 Reading disp_rotate failed\n");
+			goto EXIT;
+		}
+		x = msp_cmdbuff[0];
+		msp430_as_data_buffer_write(ps_msp430,
+			DT_DISP_ROTATE, x, 0, 0, 0);
+
+		KDEBUG("MSP430 Sending disp_rotate(x)value: %d\n", x);
+	}
+	if (irq_status & M_DISP_BRIGHTNESS) {
+		msp_cmdbuff[0] = DISPLAY_BRIGHTNESS;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+		if (err < 0) {
+			pr_err("MSP430 Reading Display Brightness failed\n");
+			goto EXIT;
+		}
+		x = msp_cmdbuff[0];
+		msp430_as_data_buffer_write(ps_msp430, DT_DISP_BRIGHT,
+			x, 0, 0, 0);
+
+		KDEBUG("MSP430 Sending Display Brightness %d\n", x);
+	}
+
+EXIT:
+	/* For now HAE needs events even if the activity is still */
+	mutex_unlock(&ps_msp430->lock);
+}
+
+static void msp430_irq_wake_work_func(struct work_struct *work)
+{
+	int err;
+	unsigned short irq_status, irq2_status;
+	signed short x, y;
+	struct msp430_data *ps_msp430 = container_of(work,
+			struct msp430_data, irq_wake_work);
+
+	if (ps_msp430->mode == BOOTMODE)
+		return;
+
+	KDEBUG("MSP430 In msp430_irq_wake_work_func\n");
+	mutex_lock(&ps_msp430->lock);
+
+	/* read interrupt mask register */
+	msp_cmdbuff[0] = WAKESENSOR_STATUS;
+	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
+	if (err < 0) {
+		pr_err("MSP430 Reading from msp failed\n");
+		goto EXIT;
+	}
+	irq_status = (msp_cmdbuff[1] << 8) | msp_cmdbuff[0];
+
+	/* read algorithm interrupt status register */
+	msp_cmdbuff[0] = ALGO_INT_STATUS;
+	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
+	if (err < 0) {
+		pr_err("MSP430 Reading from msp failed\n");
+		goto EXIT;
+	}
+	irq2_status = (msp_cmdbuff[1] << 8) | msp_cmdbuff[0];
+
+	if (irq_status & M_DOCK) {
+		msp_cmdbuff[0] = DOCK_DATA;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+		if (err < 0) {
+			pr_err("MSP430 Reading Dock state failed\n");
+			goto EXIT;
+		}
+		x = msp_cmdbuff[0];
+		msp430_as_data_buffer_write(ps_msp430, DT_DOCK, x, 0, 0, 0);
+		if (ps_msp430->dsdev.dev != NULL)
+			switch_set_state(&ps_msp430->dsdev, x);
+		if (ps_msp430->edsdev.dev != NULL)
+			switch_set_state(&ps_msp430->edsdev, x);
+
+		KDEBUG("MSP430 Dock status:%d\n", x);
+	}
+	if (irq_status & M_PROXIMITY) {
+		msp_cmdbuff[0] = PROXIMITY;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+		if (err < 0) {
+			pr_err("MSP430 Reading prox from msp failed\n");
+			goto EXIT;
+		}
+		x = msp_cmdbuff[0];
+		msp430_as_data_buffer_write(ps_msp430, DT_PROX, x, 0, 0, 0);
+
+		KDEBUG("Sending Proximity distance %d\n", x);
+	}
+	if (irq_status & M_FLATUP) {
+		msp_cmdbuff[0] = FLAT_DATA;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+		if (err < 0) {
+			pr_err("MSP430 Reading flat data from msp failed\n");
+			goto EXIT;
+		}
+		x = msp_cmdbuff[0];
+		msp430_as_data_buffer_write(ps_msp430, DT_FLAT_UP, x, 0, 0, 0);
+
+		KDEBUG("MSP430 Sending Flat up %d\n", x);
+	}
+	if (irq_status & M_FLATDOWN) {
+		msp_cmdbuff[0] = FLAT_DATA;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+		if (err < 0) {
+			pr_err("MSP430 Reading flat data from msp failed\n");
+			goto EXIT;
+		}
+		x = msp_cmdbuff[0];
+		msp430_as_data_buffer_write(ps_msp430,
+			DT_FLAT_DOWN, x, 0, 0, 0);
+
+		KDEBUG("MSP430 Sending Flat down %d\n", x);
+	}
+	if (irq_status & M_STOWED) {
+		msp_cmdbuff[0] = STOWED;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+		if (err < 0) {
+			pr_err("MSP430 Reading stowed from msp failed\n");
+			goto EXIT;
+		}
+		x = msp_cmdbuff[0];
+		msp430_as_data_buffer_write(ps_msp430, DT_STOWED, x, 0, 0, 0);
+
+		KDEBUG("Sending Stowed status %d\n", x);
+	}
 	if (irq2_status & M_MMOVEME) {
 		/* Client recieving action will be upper 2 MSB of status */
 		x = (irq2_status & MSP430_CLIENT_MASK) | M_MMOVEME;
@@ -736,7 +854,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		KDEBUG("MSP430 Sending no meaningful movement event\n");
 	}
 	if (irq2_status & M_RADIAL) {
-		msp_cmdbuff[0] = RADIAL_NORTHING;
+		msp_cmdbuff[0] = RADIAL_DATA;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 4);
 		if (err < 0) {
 			pr_err("MSP430 Reading Radial movement failed\n");
@@ -748,12 +866,9 @@ static void msp430_irq_work_func(struct work_struct *work)
 
 		KDEBUG("MSP430 Radial north:%d,east:%d", x, y);
 	}
-
 EXIT:
-	/* For now HAE needs events even if the activity is still */
 	mutex_unlock(&ps_msp430->lock);
 }
-
 
 static int msp430_enable(struct msp430_data *ps_msp430)
 {
@@ -904,6 +1019,8 @@ static ssize_t msp430_misc_write(struct file *file, const char __user *buff,
 	}
 	KDEBUG("MSP430 Leng = %d", len); /* debug */
 
+	mutex_lock(&ps_msp430->lock);
+
 	if (ps_msp430->mode == BOOTMODE) {
 		KDEBUG("MSP430  msp430_misc_write: boot mode\n");
 		/* build the msp430 command to program code */
@@ -922,16 +1039,17 @@ static ssize_t msp430_misc_write(struct file *file, const char __user *buff,
 			pr_err("MSP430 copy from user returned error\n");
 			err = -EINVAL;
 		}
-		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, count);
+		if (err == 0)
+			err = msp430_i2c_write(ps_msp430, msp_cmdbuff, count);
 		if (err == 0)
 			err = len;
 	}
+	mutex_unlock(&ps_msp430->lock);
 	return err;
 }
 
 /* gpio toggling to switch modes(boot mode,normal mode)on MSP430 */
-void switch_msp430_mode(enum msp_mode mode)
-
+int switch_msp430_mode(enum msp_mode mode)
 {
 	unsigned int bslen_pin_active_value =
 		msp430_misc_data->pdata->bslen_pin_active_value;
@@ -953,6 +1071,7 @@ void switch_msp430_mode(enum msp_mode mode)
 	gpio_set_value(msp430_misc_data->pdata->gpio_reset, 1);
 	msleep_interruptible(I2C_RETRY_DELAY);
 	msp430_misc_data->mode = mode;
+	return 0;
 }
 
 static int msp430_get_version(struct msp430_data *ps_msp430)
@@ -979,7 +1098,7 @@ static int msp430_bootloadermode(struct msp430_data *ps_msp430)
 	unsigned int cmdlen = 0;
 	/* switch MSP to bootloader mode */
 	KDEBUG("MSP430 Switching to bootloader mode\n");
-	switch_msp430_mode(BOOTMODE);
+	err = switch_msp430_mode(BOOTMODE);
 	/* send password reset command to unlock MSP	 */
 	KDEBUG("MSP430 Password reset for reset vector\n");
 	msp430_build_command(PASSWORD_RESET, NULL, &cmdlen);
@@ -1024,25 +1143,25 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
-	int err = 0;
+	static int brightness_table_loaded;
+	int err = -ENOTTY;
 	unsigned int addr = 0;
 	struct msp430_data *ps_msp430 = file->private_data;
 	unsigned int cmdlen = 0;
 	unsigned char byte;
+	unsigned char bytes[2];
 	unsigned short delay;
+	int index;
 
 	mutex_lock(&ps_msp430->lock);
 
 	KDEBUG("MSP430 msp430_misc_ioctl = %d\n", cmd);
 	switch (cmd) {
-	case MSP430_IOCTL_GET_VERSION:
-		err = msp430_get_version(ps_msp430);
-		break;
 	case MSP430_IOCTL_BOOTLOADERMODE:
 		err = msp430_bootloadermode(ps_msp430);
 		break;
 	case MSP430_IOCTL_NORMALMODE:
-		switch_msp430_mode(NORMALMODE);
+		err = switch_msp430_mode(NORMALMODE);
 		break;
 	case MSP430_IOCTL_MASSERASE:
 		msp430_build_command(MASS_ERASE, NULL, &cmdlen);
@@ -1052,33 +1171,52 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 	case MSP430_IOCTL_SETSTARTADDR:
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
 			pr_err("copy start address returned error\n");
-			return -EFAULT;
+			err = -EFAULT;
+			break;
 		}
 		/* store the start addr */
 		msp430_misc_data->current_addr = addr;
+		err = 0;
 		break;
-	case MSP430_IOCTL_TEST_READ:
-		err = msp430_i2c_read(ps_msp430, &byte, 1);
-		/* msp430 will return num of bytes read or error */
-		if (err > 0)
-			err = byte;
+	case MSP430_IOCTL_SET_FACTORY_MODE:
+		KDEBUG("MSP430 set factory mode\n");
+		err = switch_msp430_mode(FACTORYMODE);
 		break;
-	case MSP430_IOCTL_TEST_WRITE:
-		if (copy_from_user(&byte, argp, sizeof(unsigned char))) {
-			pr_err("copy test write returned error\n");
-			return -EFAULT;
-		}
-		err = msp430_i2c_write(ps_msp430, &byte, 1);
-		break;
-	case MSP430_IOCTL_TEST_WRITE_READ:
-		err = msp430_test_write_read(ps_msp430, argp);
+	case MSP430_IOCTL_TEST_BOOTMODE:
+		/* switch MSP to bootloader mode */
+		err = switch_msp430_mode(BOOTMODE);
 		break;
 
+	case MSP430_IOCTL_SET_DEBUG:
+		/* enable or disble msp driver debug messages */
+		if (copy_from_user(&g_debug, argp, sizeof(g_debug))) {
+			KDEBUG("copy set debug state returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		err = 0;
+		break;
+	default:
+		/* The IOCLTS below in next switch should not be called
+		   when device is in boot mode */
+		if (ps_msp430->mode == BOOTMODE) {
+			pr_err("MSP430 Attempted normal mode ioctl in boot\n");
+			mutex_unlock(&ps_msp430->lock);
+			return -EFAULT;
+		}
+	}
+
+
+	switch (cmd) {
+	case MSP430_IOCTL_GET_VERSION:
+		err = msp430_get_version(ps_msp430);
+		break;
 	case MSP430_IOCTL_SET_ACC_DELAY:
 		delay = 0;
 		if (copy_from_user(&delay, argp, sizeof(delay))) {
 			KDEBUG("copy acc delay returned error\n");
-			return -EFAULT;
+			err = -EFAULT;
+			break;
 		}
 		msp_cmdbuff[0] = ACCEL_UPDATE_RATE;
 		msp_cmdbuff[1] = delay;
@@ -1089,17 +1227,19 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		delay = 0;
 		if (copy_from_user(&delay, argp, sizeof(delay))) {
 			KDEBUG("copy mag delay returned error\n");
-			return -EFAULT;
+			err = -EFAULT;
+		} else {
+			msp_cmdbuff[0] = MAG_UPDATE_RATE;
+			msp_cmdbuff[1] = delay;
+			err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		}
-		msp_cmdbuff[0] = MAG_UPDATE_RATE;
-		msp_cmdbuff[1] = delay;
-		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 	case MSP430_IOCTL_SET_GYRO_DELAY:
 		delay = 0;
 		if (copy_from_user(&delay, argp, sizeof(delay))) {
 			KDEBUG("copy gyro delay returned error\n");
-			return -EFAULT;
+			err = -EFAULT;
+			break;
 		}
 		msp_cmdbuff[0] = GYRO_UPDATE_RATE;
 		msp_cmdbuff[1] = delay;
@@ -1109,40 +1249,97 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		delay = 0;
 		if (copy_from_user(&delay, argp, sizeof(delay))) {
 			KDEBUG("copy pres delay returned error\n");
-			return -EFAULT;
+			err = -EFAULT;
+			break;
 		}
 		msp_cmdbuff[0] = PRESSURE_UPDATE_RATE;
 		msp_cmdbuff[1] = delay;
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 	case MSP430_IOCTL_SET_SENSORS:
-		byte = 0;
-		if (copy_from_user(&byte, argp, sizeof(byte))) {
+		if (copy_from_user(bytes, argp, 2 * sizeof(unsigned char))) {
 			KDEBUG("copy set sensors returned error\n");
-			return -EFAULT;
+			err = -EFAULT;
+			break;
 		}
-		msp_cmdbuff[0] = MODULE_CONFIG;
-		msp_cmdbuff[1] = byte;
-		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
+
+		if ((brightness_table_loaded == 0)
+				&& (bytes[1] & (M_DISP_BRIGHTNESS >> 8))) {
+			msp_cmdbuff[0] = LUX_TABLE_VALUES;
+			for (index = 0; index < LIGHTING_TABLE_SIZE; index++) {
+				msp_cmdbuff[(2 * index) + 1]
+					= ps_msp430->pdata->lux_table[index]
+					>> 8;
+				msp_cmdbuff[(2 * index) + 2]
+					= ps_msp430->pdata->lux_table[index]
+					& 0xFF;
+			}
+			err = msp430_i2c_write(ps_msp430, msp_cmdbuff,
+				(2 * LIGHTING_TABLE_SIZE) + 1);
+			if (err)
+				break;
+			msp_cmdbuff[0] = BRIGHTNESS_TABLE_VALUES;
+			for (index = 0; index < LIGHTING_TABLE_SIZE; index++) {
+				msp_cmdbuff[index + 1]
+				= ps_msp430->pdata->brightness_table[index];
+			}
+			err = msp430_i2c_write(ps_msp430, msp_cmdbuff,
+				LIGHTING_TABLE_SIZE + 1);
+			if (err)
+				break;
+			KDEBUG("MSP430 brightness tables loaded\n");
+			brightness_table_loaded = 1;
+		}
+
+		msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
+		msp_cmdbuff[1] = bytes[0];
+		msp_cmdbuff[2] = bytes[1];
+		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
 		/* save sensor state any time this changes */
-		g_sensor_state =  byte;
+		g_nonwake_sensor_state = (msp_cmdbuff[2] << 8) | msp_cmdbuff[1];
 		break;
 	case MSP430_IOCTL_GET_SENSORS:
-		msp_cmdbuff[0] = MODULE_CONFIG;
-		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+		msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
 		if (err < 0) {
 			pr_err("MSP430 Reading get sensors failed\n");
 			break;
 		}
-		byte = msp_cmdbuff[0];
-		if (copy_to_user(argp, &byte, sizeof(byte)))
+		bytes[0] = msp_cmdbuff[0];
+		bytes[1] = msp_cmdbuff[1];
+		if (copy_to_user(argp, bytes, 2 * sizeof(unsigned char)))
+			err = -EFAULT;
+		break;
+	case MSP430_IOCTL_SET_WAKESENSORS:
+		if (copy_from_user(bytes, argp, 2 * sizeof(unsigned char))) {
+			KDEBUG("copy set sensors returned error\n");
+			return -EFAULT;
+		}
+		msp_cmdbuff[0] = WAKESENSOR_CONFIG;
+		msp_cmdbuff[1] = bytes[0];
+		msp_cmdbuff[2] = bytes[1];
+		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
+		/* save sensor state any time this changes */
+		g_wake_sensor_state =  (msp_cmdbuff[2] << 8) | msp_cmdbuff[1];
+		break;
+	case MSP430_IOCTL_GET_WAKESENSORS:
+		msp_cmdbuff[0] = WAKESENSOR_CONFIG;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
+		if (err < 0) {
+			pr_err("MSP430 Reading get sensors failed\n");
+			break;
+		}
+		bytes[0] = msp_cmdbuff[0];
+		bytes[1] = msp_cmdbuff[1];
+		if (copy_to_user(argp, bytes, 2 * sizeof(unsigned char)))
 			return -EFAULT;
 		break;
 	case MSP430_IOCTL_SET_ALGOS:
 		byte = 0;
 		if (copy_from_user(&byte, argp, sizeof(byte))) {
 			KDEBUG("copy set algos returned error\n");
-			return -EFAULT;
+			err = -EFAULT;
+			break;
 		}
 		msp_cmdbuff[0] = ALGO_CONFIG;
 		msp_cmdbuff[1] = byte;
@@ -1157,71 +1354,33 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		byte = msp_cmdbuff[0];
 		if (copy_to_user(argp, &byte, sizeof(byte)))
-			return -EFAULT;
-		break;
-	case MSP430_IOCTL_SET_RADIAL_THR:
-		byte = 0;
-		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			KDEBUG("copy set radial thr returned error\n");
-			return -EFAULT;
-		}
-		msp_cmdbuff[0] = RADIAL_THR;
-		msp_cmdbuff[1] = addr >> 8;
-		msp_cmdbuff[2] = addr & 0xFF;
-		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
+			err = -EFAULT;
 		break;
 	case MSP430_IOCTL_SET_RADIAL_DUR:
 		byte = 0;
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
 			KDEBUG("copy set radial dur returned error\n");
-			return -EFAULT;
+			err = -EFAULT;
+			break;
 		}
 		msp_cmdbuff[0] = RADIAL_DUR;
 		msp_cmdbuff[1] = addr >> 8;
 		msp_cmdbuff[2] = addr & 0xFF;
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
 		break;
-	case MSP430_IOCTL_SET_MOTION_THR:
-		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			KDEBUG("copy set motion thr returned error\n");
-			return -EFAULT;
-		}
-		byte = addr >> 8;
-		if (byte < sizeof(msp_motion_thr_a))
-			msp_cmdbuff[0] = msp_motion_thr_a[byte];
-		else {
-			KDEBUG("invalid motion thr arg passed in\n");
-			return -EFAULT;
-		}
-		msp_cmdbuff[1] = addr & 0xFF;
-		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
-		break;
 	case MSP430_IOCTL_SET_MOTION_DUR:
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
 			KDEBUG("copy set motion dur returned error\n");
-			return -EFAULT;
+			err = -EFAULT;
+			break;
 		}
 		byte = addr >> 8;
 		if (byte < sizeof(msp_motion_dur_a))
 			msp_cmdbuff[0] = msp_motion_dur_a[byte];
 		else {
 			KDEBUG("invalid set motion dur arg passed in\n");
-			return -EFAULT;
-		}
-		msp_cmdbuff[1] = addr & 0xFF;
-		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
-		break;
-	case MSP430_IOCTL_SET_ZRMOTION_THR:
-		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			KDEBUG("copy zmotion thr returned error\n");
-			return -EFAULT;
-		}
-		byte = addr >> 8;
-		if (byte < sizeof(msp_zrmotion_thr_a))
-			msp_cmdbuff[0] = msp_zrmotion_thr_a[byte];
-		else {
-			KDEBUG("invalid zmotion thr arg passed in\n");
-			return -EFAULT;
+			err = -EFAULT;
+			break;
 		}
 		msp_cmdbuff[1] = addr & 0xFF;
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
@@ -1229,44 +1388,53 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 	case MSP430_IOCTL_SET_ZRMOTION_DUR:
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
 			KDEBUG("copy zmotion dur returned error\n");
-			return -EFAULT;
+			err = -EFAULT;
+			break;
 		}
 		byte = addr >> 8;
 		if (byte < sizeof(msp_zrmotion_dur_a))
 			msp_cmdbuff[0] = msp_zrmotion_dur_a[byte];
 		else {
 			KDEBUG("invalid zmotion dur arg passed in\n");
-			return -EFAULT;
+			err = -EFAULT;
+			break;
 		}
 		msp_cmdbuff[1] = addr & 0xFF;
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
-	case MSP430_IOCTL_SET_FACTORY_MODE:
-		KDEBUG("MSP430 set factory mode\n");
-		switch_msp430_mode(FACTORYMODE);
-		break;
-	case MSP430_IOCTL_TEST_BOOTMODE:
-		/* switch MSP to bootloader mode */
-		switch_msp430_mode(BOOTMODE);
-		break;
 
-	case MSP430_IOCTL_SET_DEBUG:
-		/* enable or disble msp driver debug messages */
-		if (copy_from_user(&g_debug, argp, sizeof(g_debug))) {
-			KDEBUG("copy set debug state returned error\n");
-			return -EFAULT;
-		}
+	case MSP430_IOCTL_GET_DOCK_STATUS:
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+		byte = msp_cmdbuff[0];
+		if (copy_to_user(argp, &byte, sizeof(byte)))
+			err = -EFAULT;
 		break;
-
-	case MSP430_IOCTL_SET_DOCK_STATUS:
-		if (copy_from_user(&byte, argp, sizeof(byte))) {
-			pr_err("copy from user returned error doc status\n");
-			return -EFAULT;
-		}
+	case MSP430_IOCTL_TEST_READ:
+		err = msp430_i2c_read(ps_msp430, &byte, 1);
+		/* msp430 will return num of bytes read or error */
+		if (err > 0)
+			err = byte;
 		break;
-	default:
-		pr_err("MSP430 MSP430:Invalid ioctl command %d\n", cmd);
-		err = -EINVAL;
+	case MSP430_IOCTL_TEST_WRITE:
+		if (copy_from_user(&byte, argp, sizeof(unsigned char))) {
+			pr_err("copy test write returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		err = msp430_i2c_write(ps_msp430, &byte, 1);
+		break;
+	case MSP430_IOCTL_TEST_WRITE_READ:
+		err = msp430_test_write_read(ps_msp430, argp);
+		break;
+	case MSP430_IOCTL_GET_VERNAME:
+		if (copy_to_user(argp, &(ps_msp430->pdata->fw_version),
+				FW_VERSION_SIZE))
+			err = -EFAULT;
+		else
+			err = 0;
+		break;
+	/* No default here since previous switch could have
+	   handled the command and cannot over write that */
 	}
 
 	mutex_unlock(&ps_msp430->lock);
@@ -1430,11 +1598,13 @@ static int msp430_probe(struct i2c_client *client,
 
 	/* Set to passive mode by default */
 	g_debug = 0;
-	g_sensor_state = 0;
+	g_nonwake_sensor_state = 0;
+	g_wake_sensor_state = 0;
 	/* clear the interrupt mask */
 	ps_msp430->intp_mask = 0x00;
 
 	INIT_WORK(&ps_msp430->irq_work, msp430_irq_work_func);
+	INIT_WORK(&ps_msp430->irq_wake_work, msp430_irq_wake_work_func);
 
 	ps_msp430->irq_work_queue = create_singlethread_workqueue("msp430_wq");
 	if (!ps_msp430->irq_work_queue) {
@@ -1464,13 +1634,20 @@ static int msp430_probe(struct i2c_client *client,
 
 	/*configure interrupt*/
 	ps_msp430->irq = gpio_to_irq(ps_msp430->pdata->gpio_int);
+	if (ps_msp430->pdata->gpio_wakeirq != -1)
+		ps_msp430->irq_wake
+			= gpio_to_irq(ps_msp430->pdata->gpio_wakeirq);
+	else
+		ps_msp430->irq_wake = -1;
 
 	err = msp430_device_power_on(ps_msp430);
 	if (err < 0) {
 		dev_err(&client->dev, "power on failed: %d\n", err);
 		goto err4;
 	}
-	enable_irq_wake(ps_msp430->irq);
+
+	if (ps_msp430->irq_wake != -1)
+		enable_irq_wake(ps_msp430->irq_wake);
 	atomic_set(&ps_msp430->enabled, 1);
 
 	msp430_misc_data = ps_msp430;
@@ -1517,6 +1694,17 @@ static int msp430_probe(struct i2c_client *client,
 		goto err7;
 	}
 
+	if (ps_msp430->irq_wake != -1) {
+		err = request_irq(ps_msp430->irq_wake, msp430_wake_isr,
+				(IRQF_TRIGGER_RISING | IRQF_TRIGGER_HIGH),
+				NAME, ps_msp430);
+		if (err < 0) {
+			dev_err(&client->dev, "request wake irq failed: %d\n",
+				err);
+			goto err8;
+		}
+	}
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	ps_msp430->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	ps_msp430->early_suspend.suspend = msp430_early_suspend;
@@ -1527,12 +1715,32 @@ static int msp430_probe(struct i2c_client *client,
 	init_waitqueue_head(&ps_msp430->msp430_as_data_wq);
 	init_waitqueue_head(&ps_msp430->msp430_ms_data_wq);
 
+	ps_msp430->dsdev.name = "dock";
+	ps_msp430->dsdev.print_name = dock_print_name;
+	err = switch_dev_register(&ps_msp430->dsdev);
+	if (err) {
+		pr_err("couldn't register switch (%s) rc=%d\n",
+					ps_msp430->dsdev.name, err);
+		ps_msp430->dsdev.dev = NULL;
+	}
+
+	ps_msp430->edsdev.name = "extdock";
+	ps_msp430->edsdev.print_name = dock_print_name;
+	err = switch_dev_register(&ps_msp430->edsdev);
+	if (err) {
+		pr_err("couldn't register switch (%s) rc=%d\n",
+					ps_msp430->edsdev.name, err);
+		ps_msp430->edsdev.dev = NULL;
+	}
+
 	mutex_unlock(&ps_msp430->lock);
 
 	dev_info(&client->dev, "msp430 probed\n");
 
 	return 0;
 
+err8:
+	free_irq(ps_msp430->irq, ps_msp430);
 err7:
 	misc_deregister(&msp430_misc_device);
 err6:
@@ -1557,6 +1765,10 @@ static int msp430_remove(struct i2c_client *client)
 {
 	struct msp430_data *ps_msp430 = i2c_get_clientdata(client);
 	pr_err("MSP430 msp430_remove\n");
+	switch_dev_unregister(&ps_msp430->dsdev);
+	switch_dev_unregister(&ps_msp430->edsdev);
+	if (ps_msp430->irq_wake != -1)
+		free_irq(ps_msp430->irq_wake, ps_msp430);
 	free_irq(ps_msp430->irq, ps_msp430);
 	misc_deregister(&msp430_misc_device);
 	msp430_device_power_off(ps_msp430);
@@ -1580,11 +1792,13 @@ static int msp430_resume(struct i2c_client *client)
 	struct msp430_data *ps_msp430 = i2c_get_clientdata(client);
 	KDEBUG("MSP430 msp430_resume\n");
 	mutex_lock(&ps_msp430->lock);
-	if ((ps_msp430->mode == NORMALMODE) && (g_sensor_state != 0)) {
+
+	if ((ps_msp430->mode == NORMALMODE) && (g_nonwake_sensor_state != 0)) {
 		/* restore traditional sensor data */
-		msp_cmdbuff[0] = MODULE_CONFIG;
-		msp_cmdbuff[1] = g_sensor_state;
-		msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
+		msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
+		msp_cmdbuff[1] = g_nonwake_sensor_state & 0xFF;
+		msp_cmdbuff[2] = g_nonwake_sensor_state >> 8;
+		msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
 	}
 
 	mutex_unlock(&ps_msp430->lock);
@@ -1596,11 +1810,13 @@ static int msp430_suspend(struct i2c_client *client, pm_message_t mesg)
 	struct msp430_data *ps_msp430 = i2c_get_clientdata(client);
 	KDEBUG("MSP430 msp430_suspend\n");
 	mutex_lock(&ps_msp430->lock);
-	if ((ps_msp430->mode == NORMALMODE) && (g_sensor_state != 0)) {
+
+	if ((ps_msp430->mode == NORMALMODE) && (g_nonwake_sensor_state != 0)) {
 		/* turn off traditional sensor data */
-		msp_cmdbuff[0] = MODULE_CONFIG;
+		msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
 		msp_cmdbuff[1] = 0;
-		msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
+		msp_cmdbuff[2] = 0;
+		msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
 	}
 
 	mutex_unlock(&ps_msp430->lock);
