@@ -69,8 +69,8 @@
 		_IOR(MSP430_IOCTL_BASE, 22, unsigned char)
 #define MSP430_IOCTL_SET_MONITOR_DELAY	\
 		_IOW(MSP430_IOCTL_BASE, 23, unsigned char)
-#define MSP430_IOCTL_SET_DOCK_STATUS	\
-		_IOW(MSP430_IOCTL_BASE, 24, unsigned char)
+#define MSP430_IOCTL_GET_DOCK_STATUS	\
+		_IOR(MSP430_IOCTL_BASE, 24, unsigned char)
 #define MSP430_IOCTL_SET_ORIENTATION_DELAY	\
 		_IOW(MSP430_IOCTL_BASE, 25, unsigned char)
 #define MSP430_IOCTL_SET_EQUIPMENT_TYPE	\
@@ -85,16 +85,24 @@
 		_IOW(MSP430_IOCTL_BASE, 30, unsigned int)
 #define MSP430_IOCTL_SET_RADIAL_DUR	\
 		_IOW(MSP430_IOCTL_BASE, 31, unsigned int)
-#define MSP430_IOCTL_SET_MOTION_THR	\
-		_IOW(MSP430_IOCTL_BASE, 32, unsigned int)
+/* 32 unused */
 #define MSP430_IOCTL_SET_MOTION_DUR	\
 		_IOW(MSP430_IOCTL_BASE, 33, unsigned int)
-#define MSP430_IOCTL_SET_ZRMOTION_THR	\
-		_IOW(MSP430_IOCTL_BASE, 34, unsigned int)
+/* 34 unused */
 #define MSP430_IOCTL_SET_ZRMOTION_DUR	\
 		_IOW(MSP430_IOCTL_BASE, 35, unsigned int)
+#define MSP430_IOCTL_GET_WAKESENSORS	\
+		_IOR(MSP430_IOCTL_BASE, 36, unsigned char)
+#define MSP430_IOCTL_SET_WAKESENSORS	\
+		_IOW(MSP430_IOCTL_BASE, 37, unsigned char)
+#define MSP430_IOCTL_GET_VERNAME	\
+		_IOW(MSP430_IOCTL_BASE, 38, char*)
+
+#define FW_VERSION_SIZE 8
 
 #ifdef __KERNEL__
+#define LIGHTING_TABLE_SIZE 32
+
 struct msp430_platform_data {
 	int (*init)(void);
 	void (*exit)(void);
@@ -102,23 +110,44 @@ struct msp430_platform_data {
 	int (*power_off)(void);
 	int gpio_reset;
 	int gpio_bslen;
+	int gpio_wakeirq;
 	int gpio_int;
 	unsigned int bslen_pin_active_value;
+	u16 lux_table[LIGHTING_TABLE_SIZE];
+	u8 brightness_table[LIGHTING_TABLE_SIZE];
+	char fw_version[FW_VERSION_SIZE];
 };
 #endif /* __KERNEL__ */
 
 /* Mask values */
-#define M_ACCEL				0x01
-#define M_GYRO				0x02
-#define M_PRESSURE			0x04
-#define M_ECOMPASS			0x08
-#define M_TEMPERATURE			0x10
-#define M_ALS				0x20
-#define M_PROXIMITY			0x40
-#define M_ACTIVITY_CHANGE		0x80
-#define M_MMOVEME			0x01
-#define M_NOMMOVE			0x02
-#define M_RADIAL			0x04
+
+/* Non wakable sensors */
+#define M_ACCEL			0x0001
+#define M_GYRO			0x0002
+#define M_PRESSURE		0x0004
+#define M_ECOMPASS		0x0008
+#define M_TEMPERATURE		0x0010
+#define M_ALS			0x0020
+
+#define M_LIN_ACCEL		0x0100
+#define M_QUATERNION		0x0200
+#define M_GRAVITY		0x0400
+#define M_DISP_ROTATE		0x0800
+#define M_DISP_BRIGHTNESS	0x1000
+
+/* Wakable sensors */
+#define M_DOCK			0x0001
+#define M_PROXIMITY		0x0002
+
+#define M_FLATUP		0x0100
+#define M_FLATDOWN		0x0200
+#define M_STOWED		0x0400
+#define M_CAMERA_ACT		0x0800
+
+/* Modality */
+#define M_MMOVEME		0x01
+#define M_NOMMOVE		0x02
+#define M_RADIAL		0x04
 
 struct msp430_android_sensor_data {
 	int64_t timestamp;
@@ -138,16 +167,32 @@ struct msp430_moto_sensor_data {
 
 enum MSP430_data_types {
 	DT_ACCEL,
+	DT_GYRO,
+	DT_PRESSURE,
 	DT_MAG,
 	DT_ORIENT,
-	DT_GYRO,
-	DT_ALS,
-	DT_PROX,
 	DT_TEMP,
-	DT_PRESSURE,
+	DT_ALS,
+	DT_LIN_ACCEL,
+	DT_QUATERNION,
+	DT_GRAVITY,
+	DT_DISP_ROTATE,
+	DT_DISP_BRIGHT,
+	DT_DOCK,
+	DT_PROX,
+	DT_FLAT_UP,
+	DT_FLAT_DOWN,
+	DT_STOWED,
 	DT_MMMOVE,
 	DT_NOMOVE,
 	DT_RADIAL,
+	DT_CAMERA_ACT,
+};
+
+enum {
+	NO_DOCK,
+	DESK_DOCK,
+	CAR_DOCK
 };
 
 #endif  /* __MSP430_H__ */
