@@ -710,4 +710,67 @@
 		};
 	};
 
+	/* PM8921 - MPP */
+	pm8921_mpp: qcom,msm-pm8921-mpps {
+		mux {
+			status = "okay";
+
+			mpp@9 {
+				/* ADC_MCLK_EN */
+				qcom,pm8xxx-mpp-pin = <9>;
+
+				/*
+				 * type   : D_INPUT
+				 * level  : S4
+				 * control: DIN_TO_INT
+				 */
+				qcom,pm8xxx-mpp-type = <0>;
+				qcom,pm8xxx-mpp-level = <1>;
+				qcom,pm8xxx-mpp-ctrl = <0>;
+			};
+
+			mpp@10 {
+				/* ID_GND */
+				qcom,pm8xxx-mpp-pin = <10>;
+
+				/*
+				 * type   : D_INPUT
+				 * level  : L17
+				 * control: DIN_TO_INT
+				 */
+				qcom,pm8xxx-mpp-type = <0>;
+				qcom,pm8xxx-mpp-level = <4>;
+				qcom,pm8xxx-mpp-ctrl = <0>;
+			};
+
+			mpp@11 {
+				/* BATT_ID_MSM */
+				qcom,pm8xxx-mpp-pin = <11>;
+
+				/*
+				 * type   : D_BI_DIR
+				 * level  : S4
+				 * control: PULLUP_1KOHM
+				 */
+				qcom,pm8xxx-mpp-type = <2>;
+				qcom,pm8xxx-mpp-level = <1>;
+				qcom,pm8xxx-mpp-ctrl = <0>;
+			};
+
+			mpp@12 {
+				/* BATT_ID */
+				qcom,pm8xxx-mpp-pin = <12>;
+
+				/*
+				 * type   : D_BI_DIR
+				 * level  : L17
+				 * control: PULLUP_OPEN
+				 */
+				qcom,pm8xxx-mpp-type = <2>;
+				qcom,pm8xxx-mpp-level = <4>;
+				qcom,pm8xxx-mpp-ctrl = <1>;
+			};
+		};
+	};
+
 };
