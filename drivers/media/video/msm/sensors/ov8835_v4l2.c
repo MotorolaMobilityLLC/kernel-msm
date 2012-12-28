@@ -17,6 +17,16 @@
 #define SENSOR_NAME "ov8835"
 #define PLATFORM_DRIVER_NAME "msm_camera_ov8835"
 
+#define OV8835_OTP_DATA       0x3D00
+#define OV8835_OTP_LOAD       0x3D81
+#define OV8835_OTP_BANK       0x3D84
+#define OV8835_OTP_BANK_SIZE  0x10
+#define OV8835_OTP_BANK_COUNT 32
+#define OV8835_OTP_SIZE       (OV8835_OTP_BANK_COUNT * OV8835_OTP_BANK_SIZE)
+#if OV8835_OTP_SIZE > MAX_OTP_SIZE
+#error OV8835_OTP_SIZE must not be greater than MAX_OTP_SIZE
+#endif
+
 #define OV8835_DEFAULT_MCLK_RATE 24000000
 
 DEFINE_MUTEX(ov8835_mut);
@@ -25,6 +35,8 @@ static struct msm_sensor_ctrl_t ov8835_s_ctrl;
 static struct regulator *cam_vdig;
 static struct regulator *cam_vio;
 static struct regulator *cam_mipi_mux;
+
+static struct otp_info_t otp_info;
 
 static struct msm_cam_clk_info cam_mot_8960_clk_info[] = {
 	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
@@ -486,6 +498,91 @@ static struct msm_sensor_exp_gain_info_t ov8835_exp_gain_info = {
 	.vert_offset = 6,
 };
 
+static int32_t ov8835_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	int16_t i, j;
+	uint16_t readData;
+
+	/* Start Stream to read OTP Data */
+	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			0x0100, 0x01, MSM_CAMERA_I2C_BYTE_DATA);
+
+	if (rc < 0) {
+		pr_err("%s: Unable to read otp\n", __func__);
+		return rc;
+	}
+
+	/* Read all banks */
+	for (i = 0; i < OV8835_OTP_BANK_COUNT; i++) {
+		/* Reset OTP Buffer Registers */
+		for (j = 0; j < OV8835_OTP_BANK_SIZE; j++) {
+			rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+					(uint16_t)(OV8835_OTP_DATA+j), 0xFF,
+					MSM_CAMERA_I2C_BYTE_DATA);
+			if (rc < 0)
+				return rc;
+		}
+
+		/* Set OTP Bank & Enable */
+		rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+				OV8835_OTP_BANK, 0xC0 | i,
+				MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0)
+			return rc;
+
+		/* Set Read OTP Bank */
+		rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+				OV8835_OTP_LOAD, 0x01,
+				MSM_CAMERA_I2C_BYTE_DATA);
+
+		if (rc < 0)
+			return rc;
+
+		/* Delay */
+		msleep(25);
+
+		/* Read OTP Buffer Registers */
+		for (j = 0; j < OV8835_OTP_BANK_SIZE; j++) {
+			rc = msm_camera_i2c_read(s_ctrl->sensor_i2c_client,
+					OV8835_OTP_DATA+j,
+					&readData,
+					MSM_CAMERA_I2C_BYTE_DATA);
+
+			otp_info.otp_info[(i*OV8835_OTP_BANK_SIZE)+j] =
+				(uint8_t)readData;
+
+			if (rc < 0)
+				return rc;
+		}
+
+		/* Reset Read OTP Bank */
+		rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+				OV8835_OTP_LOAD, 0x00,
+				MSM_CAMERA_I2C_BYTE_DATA);
+
+		if (rc < 0)
+			return rc;
+	}
+
+	/* Stop Streaming */
+	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			0x0100, 0x00, MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0) {
+		pr_err("%s: Unable to stop streaming of imager\n", __func__);
+		return rc;
+	}
+
+	return rc;
+}
+
+static int32_t ov8835_get_module_info(struct msm_sensor_ctrl_t *s_ctrl,
+		struct otp_info_t *module_info)
+{
+	*(module_info) = otp_info;
+	return 0;
+}
+
 /* TBD: Need to revisit*/
 static int32_t ov8835_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 		uint16_t gain, uint32_t line)
@@ -734,6 +831,12 @@ static int32_t ov8835_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 		return -ENODEV;
 	}
 
+	rc = ov8835_read_otp(s_ctrl);
+	if (rc < 0) {
+		pr_err("%s: unable to read otp data\n", __func__);
+		return -ENODEV;
+	}
+
 	pr_debug("ov8835: match_id success\n");
 	return 0;
 }
@@ -772,6 +875,7 @@ static struct msm_sensor_fn_t ov8835_func_tbl = {
 	.sensor_config                  = msm_sensor_config,
 	.sensor_power_up                = ov8835_power_up,
 	.sensor_power_down              = ov8835_power_down,
+	.sensor_get_module_info         = ov8835_get_module_info,
 	.sensor_match_id                = ov8835_match_id,
 	.sensor_get_csi_params          = msm_sensor_get_csi_params,
 };
