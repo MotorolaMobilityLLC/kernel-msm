@@ -1,0 +1,98 @@
+PM8xxx GPIO Controllers by Qualcomm, Inc.
+
+This is for the QC PM8xxx GPIO controller found on various Qualcomm
+PowerICs such as: pm8921, pm8038, etc.
+
+Required properties:
+- compatible : "qcom,msm-pm8xxx-gpios"
+- #gpio-cells : Should be two.  The first cell is the pin number and the
+  second cell is used to specific optional parameters (unused).
+- gpio-controller : Marks the port as a GPIO controller.
+
+Optional children nodes:
+- mux : defines pin mux control for the GPIO controller, and has following
+  required and optional properties.
+
+  Required properties:
+  - qcom,pm8xxx-gpio-pin : the gpio pin number, must match the range of valid
+    pin numbers for the specific chip (ex: 1-44 for 8921, 1-12 on 8038, etc)
+
+  Optional properties (will default to value of '0' if not specified):
+  - qcom,pm8xxx-gpio-func : choose alternate function for the gpio:
+           PM_GPIO_FUNC_NORMAL             0
+           PM_GPIO_FUNC_PAIRED             1
+           PM_GPIO_FUNC_1                  2
+           PM_GPIO_FUNC_2                  3
+           PM_GPIO_DTEST1                  4
+           PM_GPIO_DTEST2                  5
+           PM_GPIO_DTEST3                  6
+           PM_GPIO_DTEST4                  7
+
+  - qcom,pm8xxx-gpio-direction : indicates whether gpio should be input, output
+    or both:
+           PM_GPIO_DIR_NONE                0
+           PM_GPIO_DIR_OUT                 1
+           PM_GPIO_DIR_IN                  2
+           PM_GPIO_DIR_BOTH                3
+
+  - qcom,pm8xxx-gpio-out-buffer : inidcates gpio should be configured as CMOS
+    or open drain:
+           PM_GPIO_OUT_BUF_CMOS            0
+           PM_GPIO_OUT_BUF_OPEN_DRAIN      1
+
+  - qcom,pm8xxx-gpio-out-value : the output value of the gpio line, 0 or 1
+  - qcom,pm8xxx-gpio-pull : indicates whether a pull up or pull down should be
+    applied:
+           PM_GPIO_PULL_UP_30              0
+           PM_GPIO_PULL_UP_1P5             1
+           PM_GPIO_PULL_UP_31P5            2
+           PM_GPIO_PULL_UP_1P5_30          3
+           PM_GPIO_PULL_DN                 4
+           PM_GPIO_PULL_NO                 5
+
+  - qcom,pm8xxx-gpio-vin-sel : specifies the voltage level when the output is
+    set to 1, or if an input, the votlage level at which the input is
+    interpreted as a logical 1:
+           PM_GPIO_VIN_VPH                 0
+           PM_GPIO_VIN_BB                  1
+           PM_GPIO_VIN_S4                  2
+           PM_GPIO_VIN_L15                 3
+           PM_GPIO_VIN_L4                  4
+           PM_GPIO_VIN_L3                  5
+           PM_GPIO_VIN_L17                 6
+
+  - qcom,pm8xxx-gpio-out-strength : the amount of current supplied for an
+    output gpio:
+           PM_GPIO_STRENGTH_NO             0
+           PM_GPIO_STRENGTH_HIGH           1
+           PM_GPIO_STRENGTH_MED            2
+           PM_GPIO_STRENGTH_LOW            3
+
+  - qcom,pm8xxx-gpio-inv-int-pol : speicifes whether to invert the polarity
+    before feeding the line to the interrupt module in pmic, 0 or 1.
+  - qcom,pm8xxx-gpio-disable-pin : disable the gpio by configuring it as high
+    impedance, 0 or 1.
+
+Example of gpio-controller nodes for PM8921:
+
+	qcom,msm-pm8921-gpios {
+		compatible = "qcom,msm-pm8xxx-gpios";
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+
+Example using the option "mux" child node:
+
+	pm8921_gpio: qcom,msm-pm8921-gpios {
+		mux {
+			gpioi@12 {
+				qcom,pm8xxx-gpio-pin = <12>;
+
+				qcom,pm8xxx-gpio-func = <0>;      /* Normal  */
+				qcom,pm8xxx-gpio-direction = <2>; /* Input   */
+				qcom,pm8xxx-gpio-pull = <4>;      /* Down    */
+				qcom,pm8xxx-gpio-vin-sel = <4>;   /* S4      */
+			};
+	};
+
+
