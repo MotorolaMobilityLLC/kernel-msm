@@ -922,7 +922,7 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
             }
             /* Now free the memory for this message */
             break ;    
-	}    
+        }    
         case eWNI_SME_TDLS_LINK_START_RSP:
         {
             /* remove pending eSmeCommandTdlsLinkSetup command */
