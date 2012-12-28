@@ -95,7 +95,7 @@
 #define CSR_DEF_IBSS_START_CHANNEL_50       36
 #define CSR_DEF_IBSS_START_CHANNEL_24       1
 #define CSR_IBSS_JOIN_TIMEOUT_PERIOD        ( 1 *  PAL_TIMER_TO_SEC_UNIT )  // 1 second
-#define CSR_WAIT_FOR_KEY_TIMEOUT_PERIOD         ( 50 * PAL_TIMER_TO_SEC_UNIT )  // 50 seconds, for WPA, WPA2, CCKM
+#define CSR_WAIT_FOR_KEY_TIMEOUT_PERIOD         ( 5 * PAL_TIMER_TO_SEC_UNIT )  // 50 seconds, for WPA, WPA2, CCKM
 #define CSR_WAIT_FOR_WPS_KEY_TIMEOUT_PERIOD         ( 120 * PAL_TIMER_TO_SEC_UNIT )  // 120 seconds, for WPS
 /*---------------------------------------------------------------------------
   OBIWAN recommends [8 10]% : pick 9% 
@@ -8851,10 +8851,10 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
 #endif //FEATURE_WLAN_DIAG_SUPPORT_CSR
                         if( CSR_IS_WAIT_FOR_KEY( pMac, sessionId) )
                         {
+                            csrRoamStopWaitForKeyTimer( pMac );
+
                             //We are done with authentication, whethere succeed or not
                             csrRoamSubstateChange( pMac, eCSR_ROAM_SUBSTATE_NONE, sessionId);
-
-                            csrRoamStopWaitForKeyTimer( pMac );
                             //We do it here because this linkup function is not called after association 
                             //when a key needs to be set. 
                             if( csrIsConnStateConnectedInfra(pMac, sessionId) ) 
@@ -9213,11 +9213,49 @@ void csrRoamWaitForKeyTimeOutHandler(void *pv)
 {
     tCsrTimerInfo *pInfo = (tCsrTimerInfo *)pv;
     tpAniSirGlobal pMac = pInfo->pMac;
+    tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, pInfo->sessionId );
+
+    smsLog(pMac, LOGW, "WaitForKey timer expired in state=%d sub-state=%d\n",
+            pMac->roam.neighborRoamInfo.neighborRoamState,
+            pMac->roam.curSubState[pInfo->sessionId]);
+
     if( CSR_IS_WAIT_FOR_KEY( pMac, pInfo->sessionId ) )
     {
+#ifdef FEATURE_WLAN_LFR
+        if (csrNeighborRoamIsHandoffInProgress(pMac))
+        {
+            /* 
+             * Enable heartbeat timer when hand-off is in progress
+             * and Key Wait timer expired. 
+             */
+            smsLog(pMac, LOG2, "Enabling HB timer after WaitKey expiry"
+                    " (nHBCount=%d)\n",
+                    pMac->roam.configParam.HeartbeatThresh24);
+            ccmCfgSetInt(pMac, WNI_CFG_HEART_BEAT_THRESHOLD,
+                    pMac->roam.configParam.HeartbeatThresh24,
+                    NULL, eANI_BOOLEAN_FALSE);
+        }
+#endif
         smsLog(pMac, LOGW, " SME pre-auth state timeout. \n ");
         //Change the substate so command queue is unblocked.
         csrRoamSubstateChange( pMac, eCSR_ROAM_SUBSTATE_NONE, pInfo->sessionId);
+        if (pSession)
+        {
+            if( csrIsConnStateConnectedInfra(pMac, pInfo->sessionId) ) 
+            {
+                csrRoamLinkUp(pMac, pSession->connectedProfile.bssid);
+                smeProcessPendingQueue(pMac);
+            }
+            else
+            {
+                smsLog(pMac, LOGW, "%s: could not post link up\n", 
+                        __func__);
+            }
+        }
+        else
+        {
+            smsLog(pMac, LOGW, "%s: session not found\n", __func__);
+        }
     }
     
 }
@@ -9225,7 +9263,17 @@ void csrRoamWaitForKeyTimeOutHandler(void *pv)
 eHalStatus csrRoamStartWaitForKeyTimer(tpAniSirGlobal pMac, tANI_U32 interval)
 {
     eHalStatus status;
-    
+#ifdef FEATURE_WLAN_LFR
+    if (csrNeighborRoamIsHandoffInProgress(pMac))
+    {
+        /* Disable heartbeat timer when hand-off is in progress */
+        smsLog(pMac, LOG2, "%s: disabling HB timer in state=%d sub-state=%d\n",
+                __func__,
+                pMac->roam.neighborRoamInfo.neighborRoamState,
+                pMac->roam.curSubState[pMac->roam.WaitForKeyTimerInfo.sessionId]);
+        ccmCfgSetInt(pMac, WNI_CFG_HEART_BEAT_THRESHOLD, 0, NULL, eANI_BOOLEAN_FALSE);
+    }
+#endif
     smsLog(pMac, LOG1, " csrScanStartWaitForKeyTimer \n ");
     status = palTimerStart(pMac->hHdd, pMac->roam.hTimerWaitForKey, interval, eANI_BOOLEAN_FALSE);
     
@@ -9234,6 +9282,24 @@ eHalStatus csrRoamStartWaitForKeyTimer(tpAniSirGlobal pMac, tANI_U32 interval)
 
 eHalStatus csrRoamStopWaitForKeyTimer(tpAniSirGlobal pMac)
 {
+    smsLog(pMac, LOG2, "WaitForKey timer stopped in state=%d sub-state=%d\n",
+            pMac->roam.neighborRoamInfo.neighborRoamState,
+            pMac->roam.curSubState[pMac->roam.WaitForKeyTimerInfo.sessionId]);
+#ifdef FEATURE_WLAN_LFR
+    if (csrNeighborRoamIsHandoffInProgress(pMac))
+    {
+        /* 
+         * Enable heartbeat timer when hand-off is in progress
+         * and Key Wait timer got stopped for some reason 
+         */
+        smsLog(pMac, LOG2, "Enabling HB timer after WaitKey stop"
+                " (nHBCount=%d)\n",
+                pMac->roam.configParam.HeartbeatThresh24);
+        ccmCfgSetInt(pMac, WNI_CFG_HEART_BEAT_THRESHOLD,
+            pMac->roam.configParam.HeartbeatThresh24,
+            NULL, eANI_BOOLEAN_FALSE);
+    }
+#endif
     return (palTimerStop(pMac->hHdd, pMac->roam.hTimerWaitForKey));
 }
 
