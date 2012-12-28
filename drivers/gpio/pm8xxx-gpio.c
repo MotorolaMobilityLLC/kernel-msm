@@ -2,7 +2,7 @@
  * Qualcomm PMIC8XXX GPIO driver
  *
  * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
- * Copyright (c) 2012, Motorola Mobility LLC
+ * Copyright (c) 2012-2013, Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -298,12 +298,69 @@ static int pm_gpio_of_xlate(struct gpio_chip *gpio_chip,
 	/* Decrement as GPIO naming convention is 1-based */
 	return --gpio;
 }
+
+static void __devinit pm8xxx_gpio_dt_mux_init(struct platform_device *pdev,
+					      unsigned int base)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct device_node *cp;
+	unsigned gpio;
+
+	if (!np)
+		return;
+
+	np = of_find_node_by_name(np, "mux");
+	if (!np || !of_device_is_available(np))
+		goto out;
+
+	for_each_child_of_node(np, cp) {
+		struct pm_gpio cfg = {0};
+
+		if (of_property_read_u32(cp, "qcom,pm8xxx-gpio-pin", &gpio)) {
+			pr_err("required 'qcom,pm8xxx-gpio-pin' missing\n");
+			continue;
+		}
+
+		of_property_read_u32(cp, "qcom,pm8xxx-gpio-direction",
+					&cfg.direction);
+		of_property_read_u32(cp, "qcom,pm8xxx-gpio-out-buffer",
+					&cfg.output_buffer);
+		of_property_read_u32(cp, "qcom,pm8xxx-gpio-out-value",
+					&cfg.output_value);
+		of_property_read_u32(cp, "qcom,pm8xxx-gpio-pull",
+					&cfg.pull);
+		of_property_read_u32(cp, "qcom,pm8xxx-gpio-vin-sel",
+					&cfg.vin_sel);
+		of_property_read_u32(cp, "qcom,pm8xxx-gpio-out-strength",
+					&cfg.out_strength);
+		of_property_read_u32(cp, "qcom,pm8xxx-gpio-func",
+					&cfg.function);
+		of_property_read_u32(cp, "qcom,pm8xxx-gpio-inv-int-pol",
+					&cfg.inv_int_pol);
+		of_property_read_u32(cp, "qcom,pm8xxx-gpio-disable-pin",
+					&cfg.disable_pin);
+
+		/* Translate the GPIO to be base-1 offsetted */
+		gpio += base - 1;
+
+		pm8xxx_gpio_config(gpio, &cfg);
+	}
+
+out:
+	of_node_put(np);
+}
 #else
 static inline struct device_node *
 pm_gpio_of_find(struct platform_device *pdev)
 {
 	return NULL;
 }
+
+static inline void pm8xxx_gpio_dt_mux_init(struct platform_device *pdev,
+					   unsigned int base)
+{
+}
+
 #define pm_gpio_of_xlate NULL
 #endif
 
@@ -372,6 +429,8 @@ static int __devinit pm_gpio_probe(struct platform_device *pdev)
 
 	pr_info("OK: base=%d, ngpio=%d\n", pm_gpio_chip->gpio_chip.base,
 		pm_gpio_chip->gpio_chip.ngpio);
+
+	pm8xxx_gpio_dt_mux_init(pdev, pm_gpio_chip->gpio_chip.base);
 
 	return 0;
 
