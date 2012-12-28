@@ -959,6 +959,17 @@ void msm_pm_cpu_enter_lowpower(unsigned int cpu)
 		msm_pm_swfi();
 }
 
+#ifdef CONFIG_PM_DEBUG
+static void msm_show_suspend_time(int64_t time)
+{
+	struct timespec suspend_time = {0, 0};
+
+	timespec_add_ns(&suspend_time, time);
+	pr_info("Suspended for %lu.%03lu seconds\n", suspend_time.tv_sec,
+			suspend_time.tv_nsec / NSEC_PER_MSEC);
+}
+#endif
+
 static int msm_pm_enter(suspend_state_t state)
 {
 	bool allow[MSM_PM_SLEEP_MODE_NR];
@@ -1027,6 +1038,9 @@ static int msm_pm_enter(suspend_state_t state)
 		}
 		time = msm_pm_timer_exit_suspend(time, period);
 		msm_pm_add_stat(MSM_PM_STAT_SUSPEND, time);
+#ifdef CONFIG_PM_DEBUG
+		msm_show_suspend_time(time);
+#endif
 	} else if (allow[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE]) {
 		if (MSM_PM_DEBUG_SUSPEND & msm_pm_debug_mask)
 			pr_info("%s: standalone power collapse\n", __func__);
