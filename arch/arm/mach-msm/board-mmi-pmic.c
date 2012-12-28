@@ -120,6 +120,18 @@ static struct pm8xxx_mpp_init mmi_pm8921_mpps[] __initdata = {
 static __init int load_pm8921_mpps_from_dt(struct pm8xxx_mpp_init **ptr,
 			unsigned int *entries)
 {
+	struct device_node *np;
+
+	np = of_find_node_by_path("/qcom,msm-pm8921-mpps/mux");
+	if (np) {
+		if (of_device_is_available(np)) {
+			pr_debug("%s: OF DT MPP mux being used\n", __func__);
+			of_node_put(np);
+			return -ENODEV;
+		}
+		of_node_put(np);
+	}
+
 	*ptr = mmi_pm8921_mpps;
 	*entries = ARRAY_SIZE(mmi_pm8921_mpps);
 	return 0;
@@ -313,7 +325,7 @@ void __init mmi_init_pm8921_gpio_mpp(void)
 
 	if (load_pm8921_mpps_from_dt(&mpps, &size)) {
 		size = 0;
-		pr_err("%s: error initializing pm8921 MPPS\n", __func__);
+		pr_debug("%s: not using legacy pm8921 MPP init\n", __func__);
 	}
 
 	for (i = 0; i < size; i++) {
