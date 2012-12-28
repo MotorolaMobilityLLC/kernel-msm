@@ -100,7 +100,7 @@ static VOS_STATUS vos_pkti_packet_init( struct vos_pkt_t *pPkt,
       // these need an attached skb.
       // we preallocate a fixed-size skb and reserve the entire buffer
       // as headroom since that is what other components expect
-      pPkt->pSkb = alloc_skb(VPKT_SIZE_BUFFER, GFP_ATOMIC);
+      pPkt->pSkb = alloc_skb(VPKT_SIZE_BUFFER , in_interrupt()? GFP_ATOMIC : GFP_KERNEL);
       if (likely(pPkt->pSkb))
       {
          skb_reserve(pPkt->pSkb, VPKT_SIZE_BUFFER);
