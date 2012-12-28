@@ -3401,6 +3401,54 @@ struct platform_device msm_kgsl_2d1 = {
 };
 
 #ifdef CONFIG_MSM_GEMINI
+
+static struct msm_bus_vectors gemini_init_vector[] = {
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_MM_IMEM,
+		.ab  = 0,
+		.ib  = 0,
+	},
+};
+
+static struct msm_bus_vectors gemini_encode_vector[] = {
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 540000000,
+		.ib  = 1350000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_MM_IMEM,
+		.ab  = 43200000,
+		.ib  = 69120000,
+	},
+};
+
+static struct msm_bus_paths gemini_bus_path[] = {
+	{
+		ARRAY_SIZE(gemini_init_vector),
+		gemini_init_vector,
+	},
+	{
+		ARRAY_SIZE(gemini_encode_vector),
+		gemini_encode_vector,
+	},
+};
+
+static struct msm_bus_scale_pdata gemini_bus_scale_pdata = {
+	gemini_bus_path,
+	ARRAY_SIZE(gemini_bus_path),
+	.name = "msm_gemini",
+};
+
 static struct resource msm_gemini_resources[] = {
 	{
 		.start  = 0x04600000,
@@ -3418,6 +3466,9 @@ struct platform_device msm8960_gemini_device = {
 	.name           = "msm_gemini",
 	.resource       = msm_gemini_resources,
 	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
+	.dev = {
+		.platform_data = &gemini_bus_scale_pdata,
+	},
 };
 #endif
 
