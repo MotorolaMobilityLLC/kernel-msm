@@ -1,0 +1,153 @@
+PM8xxx MPP GPIO Controllers by Qualcomm, Inc.
+
+This is for the QC PM8xxx MPP GPIO controller found on various Qualcomm
+PowerICs such as: pm8921, pm8038, etc.
+
+Required properties:
+- compatible : "qcom,msm-pm8xxx-mpps"
+- #gpio-cells : Should be two.  The first cell is the pin number and the
+  second cell is used to specific optional parameters (unused).
+- gpio-controller : Marks the port as a GPIO controller.
+
+Optional children nodes:
+- mux : defines pin mux control for the MPP controller, and has following
+  required and optional properties.
+
+  Required properties:
+  - qcom,pm8xxx-mpp-pin : the MPP pin number, must match the range of valid
+    pin numbers for the specific chip (ex: 1-12 for 8921, 1-6 on 8038, etc)
+
+  Optional properties (will default to value of '0' if not specified):
+  - qcom,pm8xxx-mpp-type : the function of the MPP pin, can be following:
+          PM8XXX_MPP_TYPE_D_INPUT         0
+          PM8XXX_MPP_TYPE_D_OUTPUT        1
+          PM8XXX_MPP_TYPE_D_BI_DIR        2
+          PM8XXX_MPP_TYPE_A_INPUT         3
+          PM8XXX_MPP_TYPE_A_OUTPUT        4
+          PM8XXX_MPP_TYPE_SINK            5
+          PM8XXX_MPP_TYPE_DTEST_SINK      6
+          PM8XXX_MPP_TYPE_DTEST_OUTPUT    7
+
+ - qcom,pm8xxx-mpp-level : the meaning of level depends on the type above:
+          - if type = PM8XXX_MPP_TYPE_D_INPUT, PM8XXX_MPP_TYPE_D_OUTPUT,
+                    PM8XXX_MPP_TYPE_D_BI_DIR, or PM8XXX_MPP_TYPE_DTEST_OUTPUT:
+              - specifies the digital logic level to use for the MPP:
+                  PM8XXX_MPP_DIG_LEVEL_VIO_0   0
+                  PM8XXX_MPP_DIG_LEVEL_VIO_1   1
+                  PM8XXX_MPP_DIG_LEVEL_VIO_2   2
+                  PM8XXX_MPP_DIG_LEVEL_VIO_3   3
+                  PM8XXX_MPP_DIG_LEVEL_VIO_4   4
+                  PM8XXX_MPP_DIG_LEVEL_VIO_5   5
+                  PM8XXX_MPP_DIG_LEVEL_VIO_6   6
+                  PM8XXX_MPP_DIG_LEVEL_VIO_7   7
+
+                  /* PM8921 */
+                  PM8921_MPP_DIG_LEVEL_S4         1
+                  PM8921_MPP_DIG_LEVEL_L15        3
+                  PM8921_MPP_DIG_LEVEL_L17        4
+                  PM8921_MPP_DIG_LEVEL_VPH        7
+
+                  /* PM8038 */
+                  PM8038_MPP_DIG_LEVEL_L20        0
+                  PM8038_MPP_DIG_LEVEL_L11        1
+                  PM8038_MPP_DIG_LEVEL_L5         2
+                  PM8038_MPP_DIG_LEVEL_L15        3
+                  PM8038_MPP_DIG_LEVEL_L17        4
+                  PM8038_MPP_DIG_LEVEL_VPH        7
+          - if type = PM8XXX_MPP_TYPE_A_INPUT
+              - specifies where the analog input value should be routed to:
+                  PM8XXX_MPP_AIN_AMUX_CH5         0
+                  PM8XXX_MPP_AIN_AMUX_CH6         1
+                  PM8XXX_MPP_AIN_AMUX_CH7         2
+                  PM8XXX_MPP_AIN_AMUX_CH8         3
+                  PM8XXX_MPP_AIN_AMUX_CH9         4
+                  PM8XXX_MPP_AIN_AMUX_ABUS1       5
+                  PM8XXX_MPP_AIN_AMUX_ABUS2       6
+                  PM8XXX_MPP_AIN_AMUX_ABUS3       7
+          - if type = PM8XXX_MPP_TYPE_A_OUTPUT
+              - specifies the output analog voltage reference level:
+                  PM8XXX_MPP_AOUT_LVL_1V25        0
+                  PM8XXX_MPP_AOUT_LVL_1V25_2      1
+                  PM8XXX_MPP_AOUT_LVL_0V625       2
+                  PM8XXX_MPP_AOUT_LVL_0V3125      3
+                  PM8XXX_MPP_AOUT_LVL_MPP         4
+                  PM8XXX_MPP_AOUT_LVL_ABUS1       5
+                  PM8XXX_MPP_AOUT_LVL_ABUS2       6
+                  PM8XXX_MPP_AOUT_LVL_ABUS3       7
+          - if type = PM8XXX_MPP_TYPE_SINK or PM8XXX_MPP_TYPE_DTEST_SINK:
+              - speicifes the output current level:
+                  PM8XXX_MPP_CS_OUT_5MA           0
+                  PM8XXX_MPP_CS_OUT_10MA          1
+                  PM8XXX_MPP_CS_OUT_15MA          2
+                  PM8XXX_MPP_CS_OUT_20MA          3
+                  PM8XXX_MPP_CS_OUT_25MA          4
+                  PM8XXX_MPP_CS_OUT_30MA          5
+                  PM8XXX_MPP_CS_OUT_35MA          6
+                  PM8XXX_MPP_CS_OUT_40MA          7
+
+ - qcom,pm8xxx-mpp-control : the meaning of control depends on the type above:
+          - if type = PM8XXX_MPP_TYPE_D_INPUT
+              - specifies how the digital input should be routed in the chip:
+                  PM8XXX_MPP_DIN_TO_INT           0
+                  PM8XXX_MPP_DIN_TO_DBUS1         1
+                  PM8XXX_MPP_DIN_TO_DBUS2         2
+                  PM8XXX_MPP_DIN_TO_DBUS3         3
+          - if type = PM8XXX_MPP_TYPE_D_OUTPUT
+              - specifies how the digital output value:
+                  PM8XXX_MPP_DOUT_CTRL_LOW        0
+                  PM8XXX_MPP_DOUT_CTRL_HIGH       1
+                  PM8XXX_MPP_DOUT_CTRL_MPP        2
+                  PM8XXX_MPP_DOUT_CTRL_INV_MPP    3
+          - if type = PM8XXX_MPP_TYPE_D_BI_DIR
+              - specifies the pullup resistor value
+                  PM8XXX_MPP_BI_PULLUP_1KOHM      0
+                  PM8XXX_MPP_BI_PULLUP_OPEN       1
+                  PM8XXX_MPP_BI_PULLUP_10KOHM     2
+                  PM8XXX_MPP_BI_PULLUP_30KOHM     3
+          - if type = PM8XXX_MPP_TYPE_A_INPUT
+              - unused, should be 0
+          - if type = PM8XXX_MPP_TYPE_A_OUTPUT
+              - specifies if analog output is enabled:
+                  PM8XXX_MPP_AOUT_CTRL_DISABLE            0
+                  PM8XXX_MPP_AOUT_CTRL_ENABLE             1
+                  PM8XXX_MPP_AOUT_CTRL_MPP_HIGH_EN        2
+                  PM8XXX_MPP_AOUT_CTRL_MPP_LOW_EN         3
+          - if type = PM8XXX_MPP_TYPE_SINK
+              - specifies if current sinking is enabled:
+                  PM8XXX_MPP_CS_CTRL_DISABLE      0
+                  PM8XXX_MPP_CS_CTRL_ENABLE       1
+                  PM8XXX_MPP_CS_CTRL_MPP_HIGH_EN  2
+                  PM8XXX_MPP_CS_CTRL_MPP_LOW_EN   3
+          - if type = PM8XXX_MPP_TYPE_DTEST_SINK
+              - specifies if current sinking is enabled:
+                  PM8XXX_MPP_DTEST_CS_CTRL_EN1    0
+                  PM8XXX_MPP_DTEST_CS_CTRL_EN2    1
+                  PM8XXX_MPP_DTEST_CS_CTRL_EN3    2
+                  PM8XXX_MPP_DTEST_CS_CTRL_EN4    3
+          - if type = PM8XXX_MPP_TYPE_DTEST_OUTPUT
+              - specifies which DTEST bus value to output:
+                  PM8XXX_MPP_DTEST_DBUS1          0
+                  PM8XXX_MPP_DTEST_DBUS2          1
+                  PM8XXX_MPP_DTEST_DBUS3          2
+                  PM8XXX_MPP_DTEST_DBUS4          3
+
+Example of gpio-controller nodes for PM8921:
+
+	qcom,msm-pm8921-mpps {
+		compatible = "qcom,msm-pm8xxx-mpps";
+		gpio-controller;
+		#gpio-cells = <2>;
+	};
+
+Example using the option "mux" child node:
+
+	pm8921_mpp: qcom,msm-pm8921-mpps {
+		mux {
+			mpp@12 {
+				qcom,pm8xxx-mpp-pin = <12>;
+				qcom,pm8xxx-mpp-type = <2>;    /* D_BI_DIR */
+				qcom,pm8xxx-mpp-level = <4>;   /* L17 */
+				qcom,pm8xxx-mpp-control = <0>; /* PULLUP_1K */
+			};
+	};
+

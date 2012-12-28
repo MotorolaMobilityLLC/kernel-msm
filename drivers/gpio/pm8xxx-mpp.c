@@ -2,7 +2,7 @@
  * Qualcomm PM8XXX Multi-Purpose Pin (MPP) driver
  *
  * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
- * Copyright (c) 2012, Motorola Mobility LLC
+ * Copyright (c) 2012-2013, Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -245,12 +245,55 @@ static int pm8xxx_mpp_of_xlate(struct gpio_chip *gpio_chip,
 	/* Decrement as GPIO naming convention is 1-based */
 	return --gpio;
 }
+
+static void __devinit pm8xxx_mpp_dt_mux_init(struct platform_device *pdev,
+					     unsigned int base)
+{
+	struct device_node *np = pdev->dev.of_node;
+	struct device_node *cp;
+	unsigned mpp;
+
+	if (!np)
+		return;
+
+	np = of_find_node_by_name(np, "mux");
+	if (!np || !of_device_is_available(np))
+		goto out;
+
+	for_each_child_of_node(np, cp) {
+		struct pm8xxx_mpp_config_data cfg = {0};
+
+		if (of_property_read_u32(cp, "qcom,pm8xxx-mpp-pin", &mpp)) {
+			pr_err("required 'qcom,pm8xx-mpp-pin' missing\n");
+			continue;
+		}
+
+		of_property_read_u32(cp, "qcom,pm8xxx-mpp-type", &cfg.type);
+		of_property_read_u32(cp, "qcom,pm8xxx-mpp-level", &cfg.level);
+		of_property_read_u32(cp, "qcom,pm8xxx-mpp-ctrl", &cfg.control);
+
+		/* Translate the MPP to be base-1 offsetted */
+		mpp += base - 1;
+
+		pm8xxx_mpp_config(mpp, &cfg);
+	}
+
+out:
+	of_node_put(np);
+}
+
 #else
 static inline struct device_node *
 pm8xxx_mpp_of_find(struct platform_device *pdev)
 {
 	return NULL;
 }
+
+static inline void pm8xxx_mpp_dt_mux_init(struct platform_device *pdev,
+					  unsigned int base)
+{
+}
+
 #define pm8xxx_mpp_of_xlate NULL
 #endif
 
@@ -325,6 +368,8 @@ static int __devinit pm8xxx_mpp_probe(struct platform_device *pdev)
 
 	pr_info("OK: base=%d, ngpio=%d\n", mpp_chip->gpio_chip.base,
 		mpp_chip->gpio_chip.ngpio);
+
+	pm8xxx_mpp_dt_mux_init(pdev, mpp_chip->gpio_chip.base);
 
 	return 0;
 
