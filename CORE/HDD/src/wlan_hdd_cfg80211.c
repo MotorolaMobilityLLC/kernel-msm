@@ -1423,14 +1423,14 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
              */
             else
             {
-            	if(1 != pHddCtx->is_dynamic_channel_range_set) 
-            	{
+                if(1 != pHddCtx->is_dynamic_channel_range_set) 
+                {
                     hdd_config_t *hdd_pConfig= (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini;
                     WLANSAP_SetChannelRange(hHal, hdd_pConfig->apStartChannelNum, 
-					    hdd_pConfig->apEndChannelNum,hdd_pConfig->apOperatingBand);
+                        hdd_pConfig->apEndChannelNum,hdd_pConfig->apOperatingBand);
                 }
-				
-				pHddCtx->is_dynamic_channel_range_set = 0;
+                
+                pHddCtx->is_dynamic_channel_range_set = 0;
             }
         }
         else
@@ -6272,7 +6272,7 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
 
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
                      "Request to send TDLS management: action = %d, status = %d, \
-		      len = %d", action_code, status_code, len);
+                      len = %d", action_code, status_code, len);
 
     buf_1 = vos_mem_malloc(len);
     if(buf_1 == NULL) {
