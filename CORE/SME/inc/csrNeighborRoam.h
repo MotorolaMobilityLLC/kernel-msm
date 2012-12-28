@@ -198,6 +198,7 @@ typedef struct sCsrNeighborRoamControlInfo
     tCsrRoamConnectedProfile    prevConnProfile; /* Previous connected profile. If the
                                                     new profile does not match previous
                                                     we re-initialize occupied channel list */
+    tANI_S8                     lookupDOWNRssi;
 #endif
 } tCsrNeighborRoamControlInfo, *tpCsrNeighborRoamControlInfo;
 
