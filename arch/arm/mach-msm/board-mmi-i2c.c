@@ -284,8 +284,10 @@ static int __init lm3556_init_i2c_device(struct i2c_board_info *info,
 struct msp430_platform_data mp_msp430_data = {
 	.gpio_reset = -1,
 	.gpio_bslen = -1,
+	.gpio_wakeirq = -1,
 	.gpio_int = -1,
 	.bslen_pin_active_value = 1,
+	.fw_version = {'\0'},
 };
 
 struct platform_device msp430_platform_device = {
@@ -300,7 +302,13 @@ int __init msp430_init_i2c_device(struct i2c_board_info *info,
 		struct device_node *child)
 {
 	int err = 0;
-	unsigned int irq_gpio = -1, reset_gpio = -1, bsl_gpio  = -1;
+	int len = 0;
+	int irq_gpio = -1, reset_gpio = -1, bsl_gpio = -1, wake_gpio = -1;
+	int lsize, bsize;
+	int index;
+	unsigned int lux_table[LIGHTING_TABLE_SIZE];
+	unsigned int brightness_table[LIGHTING_TABLE_SIZE];
+	const char *name;
 
 	info->platform_data = &mp_msp430_data;
 
@@ -356,6 +364,70 @@ int __init msp430_init_i2c_device(struct i2c_board_info *info,
 	gpio_direction_output(bsl_gpio, 0);
 	gpio_set_value(bsl_gpio, 0);
 	err = gpio_export(bsl_gpio, 0);
+
+	/* lux table */
+	of_get_property(child, "lux_table", &len);
+	lsize = len / sizeof(u32);
+	if ((lsize != 0) && (lsize < (LIGHTING_TABLE_SIZE - 1)) &&
+		(!of_property_read_u32_array(child, "lux_table",
+					(u32 *)(lux_table),
+					lsize)))
+		for (index = 0; index < lsize; index++)
+			mp_msp430_data.lux_table[index] = ((u32 *)lux_table)[index];
+	else {
+		pr_err("%s: Lux table is missing\n", __func__);
+		err = -EINVAL;
+		goto fail;
+	}
+	mp_msp430_data.lux_table[lsize] = 0xFFFF;
+
+	/* brightness table */
+	of_get_property(child, "brightness_table", &len);
+	bsize = len / sizeof(u32);
+	if ((bsize != 0) && (bsize < (LIGHTING_TABLE_SIZE)) &&
+		!of_property_read_u32_array(child,
+					"brightness_table",
+					(u32 *)(brightness_table),
+					bsize)) {
+
+		for (index = 0; index < bsize; index++)
+			mp_msp430_data.brightness_table[index]
+				= ((u32 *)brightness_table)[index];
+	} else {
+		pr_err("%s: Brightness table is missing\n", __func__);
+		err = -EINVAL;
+		goto fail;
+	}
+
+	if ((lsize + 1) != bsize) {
+		pr_err("%s: Lux and Brightness table sizes don't match\n",
+			__func__);
+		err = -EINVAL;
+		goto fail;
+	}
+
+	/* wakeirq */
+	if (!of_property_read_u32(child, "msp430_gpio_wakeirq", &wake_gpio)) {
+		wake_gpio = PM8921_GPIO_PM_TO_SYS(wake_gpio);
+		mp_msp430_data.gpio_wakeirq = wake_gpio;
+
+		err = gpio_request(wake_gpio, "msp430 wakeirq");
+		if (err) {
+			pr_err("msp430 wakeirq gpio_request failed: %d\n", err);
+			goto fail;
+		}
+		gpio_direction_input(wake_gpio);
+		err = gpio_export(wake_gpio, 0);
+	} else {
+		pr_err("msp430 wakeirq not specified\n");
+		mp_msp430_data.gpio_wakeirq = -1;
+	}
+
+	/* firmware version */
+	of_get_property(child, "msp430_fw_version", &len);
+	if((len < FW_VERSION_SIZE) &&
+		(!of_property_read_string(child, "msp430_fw_version", &name)))
+		strcpy(mp_msp430_data.fw_version, name);
 
  fail:
 	return err;
