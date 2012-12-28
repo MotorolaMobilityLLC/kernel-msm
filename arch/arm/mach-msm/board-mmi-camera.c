@@ -125,6 +125,7 @@ struct msm_camera_sensor_info msm_camera_sensor_ov8835_data = {
 	.csi_if = 1,
 	.camera_type = BACK_CAMERA_2D,
 	.sensor_type = BAYER_SENSOR,
+	.actuator_info = &msm_act_main_cam_0_dw9714_info,
 };
 
 
