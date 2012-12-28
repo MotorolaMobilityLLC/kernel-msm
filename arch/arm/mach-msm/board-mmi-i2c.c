@@ -26,6 +26,7 @@
 #include <linux/drv2605.h>
 #include <linux/tpa6165a2.h>
 #include <linux/leds-lm3556.h>
+#include <linux/tps65132.h>
 
 #define MELFAS_TOUCH_SCL_GPIO       17
 #define MELFAS_TOUCH_SDA_GPIO       16
@@ -277,6 +278,20 @@ static int __init lm3556_init_i2c_device(struct i2c_board_info *info,
 	msm_camera_sensor_ov8820_data.flash_data = &camera_flash_lm3556;
 
 	info->platform_data = &cam_flash_3556;
+
+	return 0;
+}
+
+static struct tps65132_platform_data mp_tps65132_data = {
+	.disp_v1_en = 13,
+	.disp_v3_en = 90,
+};
+static int __init tps65132_init_i2c_device(struct i2c_board_info *info,
+		struct device_node *child)
+{
+	pr_debug("...%s: +\n", __func__);
+
+	info->platform_data = &mp_tps65132_data;
 
 	return 0;
 }
@@ -659,6 +674,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x0003001A, tpa6165a2_init_i2c_device}, /* TI headset Det/amp Driver */
 	{0x00090007, s5k5b3g_init_i2c_device}, /* Samsung 2MP Bayer */
 	{0x000B0006, lm3556_init_i2c_device}, /* National LM3556 LED Flash */
+	{0x0003001C, tps65132_init_i2c_device}, /* TI lcd bias Driver */
 };
 
 static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device)
