@@ -641,7 +641,6 @@ tSirRetStatus  pmmSendInitPowerSaveMsg(tpAniSirGlobal pMac,tpPESession psessionE
     tSirRetStatus   retCode = eSIR_SUCCESS;
     tSirMsgQ msgQ;
     tpEnterBmpsParams pBmpsParams = NULL;
-    int         i=0;
 
     tANI_U32    rssiFilterPeriod = 5;
     tANI_U32    numBeaconPerRssiAverage = 5;
@@ -673,21 +672,6 @@ tSirRetStatus  pmmSendInitPowerSaveMsg(tpAniSirGlobal pMac,tpPESession psessionE
     if(wlan_cfgGetInt(pMac, WNI_CFG_PS_ENABLE_RSSI_MONITOR, &bRssiFilterEnable) != eSIR_SUCCESS)
         pmmLog(pMac, LOGP, FL("pmmCfg: cfgGet failed for Rssi monitor enable flag"));
     pBmpsParams->bRssiFilterEnable = bRssiFilterEnable;
-
-
-#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-    // If there is a CCX assoc or 11r assoc we need to pick up the rssiFilterPeriod from the
-    // FT config value.
-    for(i =0; i < pMac->lim.maxBssId; i++)
-    {
-        if (limisFastTransitionRequired(pMac, i))
-        {
-            if(wlan_cfgGetInt(pMac, WNI_CFG_FT_RSSI_FILTER_PERIOD, &rssiFilterPeriod) != eSIR_SUCCESS)
-                pmmLog(pMac, LOGP, FL("pmmCfg: cfgGet failed for Rssi filter period"));
-            break;
-        }
-    }
-#endif
 
     pBmpsParams->rssiFilterPeriod = (tANI_U8)rssiFilterPeriod;
 
