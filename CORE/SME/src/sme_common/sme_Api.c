@@ -6886,7 +6886,139 @@ eHalStatus sme_UpdateImmediateRoamRssiDiff(tHalHandle hHal, v_U8_t nImmediateRoa
     pMac->roam.configParam.nImmediateRoamRssiDiff = nImmediateRoamRssiDiff;
     return(eHAL_STATUS_SUCCESS);
 }
+
+/*--------------------------------------------------------------------------
+  \brief sme_UpdateFastTransitionEnabled() - enable/disable Fast Transition support at runtime
+  It is used at in the REG_DYNAMIC_VARIABLE macro definition of 
+  isFastTransitionEnabled.
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update isFastTransitionEnabled config successfully.
+          Other status means SME is failed to update isFastTransitionEnabled.
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_UpdateFastTransitionEnabled(tHalHandle hHal, 
+        v_BOOL_t isFastTransitionEnabled)
+{
+  tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+  pMac->roam.configParam.isFastTransitionEnabled = isFastTransitionEnabled;
+  return eHAL_STATUS_SUCCESS;
+}
+#endif /* (WLAN_FEATURE_VOWIFI_11R) || (FEATURE_WLAN_CCX) || (FEATURE_WLAN_LFR) */
+
+#ifdef FEATURE_WLAN_LFR
+/*--------------------------------------------------------------------------
+  \brief sme_UpdateIsFastRoamIniFeatureEnabled() - enable/disable LFR support at runtime
+  It is used at in the REG_DYNAMIC_VARIABLE macro definition of 
+  isFastRoamIniFeatureEnabled.
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update isFastRoamIniFeatureEnabled config successfully.
+          Other status means SME is failed to update isFastRoamIniFeatureEnabled.
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_UpdateIsFastRoamIniFeatureEnabled(tHalHandle hHal, 
+        v_BOOL_t isFastRoamIniFeatureEnabled)
+{
+  tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+  pMac->roam.configParam.isFastRoamIniFeatureEnabled = isFastRoamIniFeatureEnabled;
+
+  if(TRUE == isFastRoamIniFeatureEnabled)
+  {
+      sme_UpdateFastTransitionEnabled(hHal, TRUE);
+      sme_UpdateConfigFwRssiMonitoring(hHal, TRUE);
+  }
+  else
+  {
+      /* CCX also depend on FW Monitoring/FastTransition.
+         Hence Disabling LFR should check for CCX enable before disabling FW Monitoring and Fast Transition */
+#ifdef FEATURE_WLAN_CCX
+      if(FALSE == pMac->roam.configParam.isCcxIniFeatureEnabled)
 #endif
+      {
+          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                     "%s: Turn off FW Monitoring/Fast Transition", __func__);
+          sme_UpdateFastTransitionEnabled(hHal, FALSE);
+          sme_UpdateConfigFwRssiMonitoring(hHal, FALSE);
+      }
+  }
+
+  return eHAL_STATUS_SUCCESS;
+}
+#endif /* FEATURE_WLAN_LFR */
+
+#ifdef FEATURE_WLAN_CCX
+/*--------------------------------------------------------------------------
+  \brief sme_UpdateIsCcxFeatureEnabled() - enable/disable CCX support at runtime
+  It is used at in the REG_DYNAMIC_VARIABLE macro definition of
+  isCcxIniFeatureEnabled.
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update isCcxIniFeatureEnabled config successfully.
+          Other status means SME is failed to update isCcxIniFeatureEnabled.
+  \sa
+  --------------------------------------------------------------------------*/
+
+eHalStatus sme_UpdateIsCcxFeatureEnabled(tHalHandle hHal,
+        v_BOOL_t isCcxIniFeatureEnabled)
+{
+  tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+  pMac->roam.configParam.isCcxIniFeatureEnabled = isCcxIniFeatureEnabled;
+
+  if(TRUE == isCcxIniFeatureEnabled)
+  {
+      sme_UpdateFastTransitionEnabled(hHal, TRUE);
+      sme_UpdateConfigFwRssiMonitoring(hHal, TRUE);
+  }
+  else
+  {
+      /* LFR also depend on FW Monitoring/FastTransition.
+         Hence Disabling CCX should check for LFR enable before disabling FW Monitoring and Fast Transition */
+#ifdef FEATURE_WLAN_LFR
+      if(FALSE == pMac->roam.configParam.isFastRoamIniFeatureEnabled)
+#endif
+      {
+          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                     "%s: Turn off FW Monitoring/Fast Transition", __func__);
+          sme_UpdateFastTransitionEnabled(hHal, FALSE);
+          sme_UpdateConfigFwRssiMonitoring(hHal, FALSE);
+      }
+  }
+  return eHAL_STATUS_SUCCESS;
+}
+#endif /* FEATURE_WLAN_CCX */
+
+/*--------------------------------------------------------------------------
+  \brief sme_UpdateConfigFwRssiMonitoring() - enable/disable firmware RSSI Monitoring at runtime
+  It is used at in the REG_DYNAMIC_VARIABLE macro definition of
+  fEnableFwRssiMonitoring.
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update fEnableFwRssiMonitoring. config successfully.
+          Other status means SME is failed to update fEnableFwRssiMonitoring.
+  \sa
+  --------------------------------------------------------------------------*/
+
+eHalStatus sme_UpdateConfigFwRssiMonitoring(tHalHandle hHal,
+        v_BOOL_t fEnableFwRssiMonitoring)
+{
+    eHalStatus halStatus = eHAL_STATUS_SUCCESS;
+
+
+    if (ccmCfgSetInt(hHal, WNI_CFG_PS_ENABLE_RSSI_MONITOR, fEnableFwRssiMonitoring,
+                    NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+    {
+        halStatus = eHAL_STATUS_FAILURE;
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                     "Failure: Could not pass on WNI_CFG_PS_RSSI_MONITOR configuration info to CCM\n");
+    }
+
+    return (halStatus);
+}
+
 
 
 /* ---------------------------------------------------------------------------
