@@ -74,6 +74,6 @@ TRACE_EVENT(rpm_send_message,
 );
 #endif
 #undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH .
+#define TRACE_INCLUDE_PATH ../../arch/arm/mach-msm
 #define TRACE_INCLUDE_FILE trace_rpm_smd
 #include <trace/define_trace.h>

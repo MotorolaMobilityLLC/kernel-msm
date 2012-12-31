@@ -149,6 +149,6 @@ TRACE_EVENT(lpm_resources,
 );
 #endif
 #undef TRACE_INCLUDE_PATH
-#define TRACE_INCLUDE_PATH .
+#define TRACE_INCLUDE_PATH ../../arch/arm/mach-msm
 #define TRACE_INCLUDE_FILE trace_msm_low_power
 #include <trace/define_trace.h>
