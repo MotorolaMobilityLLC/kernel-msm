@@ -1893,7 +1893,6 @@ eHalStatus csrNeighborRoamPerformBgScan(tpAniSirGlobal pMac)
     if (eHAL_STATUS_SUCCESS != status)
     {
         smsLog(pMac, LOGE, FL("Issue of BG Scan request failed: Status = %d"), status);
-        return status;
     }
 
     pNeighborRoamInfo->roamChannelInfo.currentChanIndex++;
@@ -1911,6 +1910,15 @@ eHalStatus csrNeighborRoamPerformBgScan(tpAniSirGlobal pMac)
         {
             pNeighborRoamInfo->roamChannelInfo.chanListScanInProgress = eANI_BOOLEAN_FALSE;
         }
+    }
+
+    if (eHAL_STATUS_SUCCESS != status)
+    {
+        /*
+         * If the status is not success, we need to call the callback
+         * routine so that the state machine does not get stuck.
+         */
+        csrNeighborRoamScanRequestCallback(pMac, NULL, 0, eCSR_SCAN_FAILURE);
     }
 
     return status;
