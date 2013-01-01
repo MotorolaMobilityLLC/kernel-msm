@@ -3397,7 +3397,7 @@ limSendReassocReqMgmtFrame(tpAniSirGlobal     pMac,
     }
 
 #ifdef WLAN_FEATURE_P2P
-    if(psessionEntry->pePersona == VOS_P2P_CLIENT_MODE)	
+    if(psessionEntry->pePersona == VOS_P2P_CLIENT_MODE)
     {
         txFlag |= HAL_USE_PEER_STA_REQUESTED_MASK;
     }
