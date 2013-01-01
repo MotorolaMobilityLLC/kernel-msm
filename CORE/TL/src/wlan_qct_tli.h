@@ -829,6 +829,8 @@ typedef struct
 #endif
   /*whether we are in BMPS/UAPSD/WOWL mode, since the latter 2 need to be BMPS first*/
   v_BOOL_t                  isBMPS;
+  /* Whether WDA_DS_TX_START_XMIT msg is pending or not */
+  v_BOOL_t   isTxTranmitMsgPending;
 }WLANTL_CbType;
 
 /*==========================================================================

@@ -89,6 +89,11 @@ when        who          what, where, why
 
 #define VOS_TO_WPAL_PKT(_vos_pkt) ((wpt_packet*)_vos_pkt)
 
+/* macro's for acessing TL API/data structures */
+#define WDA_TL_SET_TX_XMIT_PENDING(a) WLANTL_SetTxXmitPending(a)
+#define WDA_TL_IS_TX_XMIT_PENDING(a) WLANTL_IsTxXmitPending(a)
+#define WDA_TL_CLEAR_TX_XMIT_PENDING(a) WLANTL_ClearTxXmitPending(a)
+
 #if defined( FEATURE_WLAN_INTEGRATED_SOC )
 #define WDA_HI_FLOW_MASK 0xF0
 #define WDA_LO_FLOW_MASK 0x0F
@@ -584,6 +589,7 @@ WDA_DS_StartXmit
 {
 #if defined( FEATURE_WLAN_INTEGRATED_SOC )
   vos_msg_t                    sMessage;
+  VOS_STATUS                   status;
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
   if ( NULL == pvosGCtx )
@@ -593,6 +599,11 @@ WDA_DS_StartXmit
     return VOS_STATUS_E_FAULT;
   }
 
+  if(WDA_TL_IS_TX_XMIT_PENDING( pvosGCtx ))
+  {  
+    /*Already WDA_DS_TX_START_XMIT msg is pending in TL msg queue */
+    return VOS_STATUS_SUCCESS;
+  }
   /* Serialize our event  */
   VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
              "Serializing WDA TX Start Xmit event" );
@@ -602,7 +613,17 @@ WDA_DS_StartXmit
   sMessage.bodyptr = NULL;
   sMessage.type    = WDA_DS_TX_START_XMIT;
 
-  return vos_tx_mq_serialize(VOS_MQ_ID_TL, &sMessage);
+  WDA_TL_SET_TX_XMIT_PENDING(pvosGCtx);
+
+  status = vos_tx_mq_serialize(VOS_MQ_ID_TL, &sMessage);
+
+  if(status != VOS_STATUS_SUCCESS)
+  {
+    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_FATAL,
+             "Serializing WDA TX Start Xmit event FAILED" );
+    WDA_TL_CLEAR_TX_XMIT_PENDING(pvosGCtx);
+  }
+  return status;
 #else  /* FEATURE_WLAN_INTEGRATED_SOC */
   return WLANBAL_StartXmit( pvosGCtx );
 #endif /* FEATURE_WLAN_INTEGRATED_SOC */

@@ -2534,4 +2534,92 @@ VOS_STATUS WLANTL_Finish_ULA( void (*callbackRoutine) (void *callbackContext),
 
 void WLANTL_UpdateRssiBmps(v_PVOID_t pvosGCtx, v_U8_t staId, v_S7_t rssi);
 
+/*==========================================================================
+  FUNCTION   WLANTL_SetTxXmitPending
+
+  DESCRIPTION
+    Called by the WDA when it wants to indicate that WDA_DS_TX_START_XMIT msg
+    is pending in TL msg queue 
+
+  DEPENDENCIES
+    The TL must be registered with WDA before this function can be called.
+
+  PARAMETERS
+
+    IN
+    pvosGCtx:       pointer to the global vos context; a handle to TL's
+                    or WDA's control block can be extracted from its context
+
+  RETURN VALUE      None
+
+  SIDE EFFECTS
+
+============================================================================*/
+
+v_VOID_t
+WLANTL_SetTxXmitPending
+(
+  v_PVOID_t       pvosGCtx
+);
+
+/*==========================================================================
+  FUNCTION   WLANTL_IsTxXmitPending
+
+  DESCRIPTION
+    Called by the WDA when it wants to know whether WDA_DS_TX_START_XMIT msg
+    is pending in TL msg queue 
+
+  DEPENDENCIES
+    The TL must be registered with WDA before this function can be called.
+
+  PARAMETERS
+
+    IN
+    pvosGCtx:       pointer to the global vos context; a handle to TL's
+                    or WDA's control block can be extracted from its context
+
+  RETURN VALUE
+    The result code associated with performing the operation
+
+    0:   No WDA_DS_TX_START_XMIT msg pending 
+    1:   Msg WDA_DS_TX_START_XMIT already pending in TL msg queue 
+
+  SIDE EFFECTS
+
+============================================================================*/
+
+v_BOOL_t
+WLANTL_IsTxXmitPending
+(
+  v_PVOID_t       pvosGCtx
+);
+
+/*==========================================================================
+  FUNCTION   WLANTL_ClearTxXmitPending
+
+  DESCRIPTION
+    Called by the WDA when it wants to indicate that no WDA_DS_TX_START_XMIT msg
+    is pending in TL msg queue 
+
+  DEPENDENCIES
+    The TL must be registered with WDA before this function can be called.
+
+  PARAMETERS
+
+    IN
+    pvosGCtx:       pointer to the global vos context; a handle to TL's
+                    or WDA's control block can be extracted from its context
+
+  RETURN VALUE      None
+
+  SIDE EFFECTS
+
+============================================================================*/
+
+v_VOID_t
+WLANTL_ClearTxXmitPending
+(
+  v_PVOID_t       pvosGCtx
+);
+
 #endif /* #ifndef WLAN_QCT_WLANTL_H */
