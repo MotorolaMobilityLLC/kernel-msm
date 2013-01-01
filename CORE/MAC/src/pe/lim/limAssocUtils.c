@@ -647,7 +647,7 @@ limCleanupRxPath(tpAniSirGlobal pMac, tpDphHashNode pStaDs,tpPESession psessionE
             if ((psessionEntry->limSystemRole == eLIM_AP_ROLE) || 
                 (psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE))
             {    
-                limReleaseAID(pMac, pStaDs->assocId);
+                limReleasePeerIdx(pMac, pStaDs->assocId, psessionEntry);
             }
             limDeleteDphHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId,psessionEntry);
 
@@ -3918,7 +3918,7 @@ limPrepareAndSendDelStaCnf(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tSirResult
         if ((psessionEntry->limSystemRole == eLIM_AP_ROLE) ||
             (psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE))
         {
-            limReleaseAID(pMac, pStaDs->assocId);
+            limReleasePeerIdx(pMac, pStaDs->assocId, psessionEntry);
         }
 
         limDeleteDphHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId,psessionEntry);

@@ -130,8 +130,8 @@ tANI_U8           limIsGroupAddr(tSirMacAddr);
 tANI_U8 limActiveScanAllowed(tpAniSirGlobal, tANI_U8);
 
 // AID pool management functions
-void    limInitAIDpool(tpAniSirGlobal,tpPESession);
-tANI_U16     limAssignAID(tpAniSirGlobal);
+void    limInitPeerIdxpool(tpAniSirGlobal,tpPESession);
+tANI_U16     limAssignPeerIdx(tpAniSirGlobal,tpPESession);
 
 void limEnableOverlap11gProtection(tpAniSirGlobal pMac, tpUpdateBeaconParams pBeaconParams, tpSirMacMgmtHdr pMh,tpPESession psessionEntry);
 void limUpdateOverlapStaParam(tpAniSirGlobal pMac, tSirMacAddr bssId, tpLimProtStaParams pStaParams);
@@ -142,7 +142,7 @@ void limUpdateShortSlotTime(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tpUpda
  * The below 'product' check tobe removed if 'Association' is
  * allowed in IBSS.
  */
-void    limReleaseAID(tpAniSirGlobal, tANI_U16);
+void    limReleasePeerIdx(tpAniSirGlobal, tANI_U16, tpPESession);
 
 #if (WNI_POLARIS_FW_PRODUCT == AP)
 // LIM informs WSM that radar is detected
