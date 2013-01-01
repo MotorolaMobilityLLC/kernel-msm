@@ -424,3 +424,28 @@ limIsInMCC (tpAniSirGlobal pMac)
     }
     return FALSE;
 }
+
+/*--------------------------------------------------------------------------
+  \brief peGetCurrentSTAsCount() - Returns total stations associated on 
+                                      all session.
+
+  \param pMac                   - pointer to global adapter context
+  \return                       - Number of station active on all sessions.
+  
+  \sa
+  --------------------------------------------------------------------------*/
+
+tANI_U8 peGetCurrentSTAsCount(tpAniSirGlobal pMac)
+{
+    tANI_U8 i;
+    tANI_U8 staCount = 0;
+    for(i =0; i < pMac->lim.maxBssId; i++)
+    {
+        if(pMac->lim.gpSession[i].valid == TRUE) 
+        {
+           staCount += pMac->lim.gpSession[i].gLimNumOfCurrentSTAs;
+        }
+    }
+    return staCount;
+}
+

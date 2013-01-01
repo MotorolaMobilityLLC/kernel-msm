@@ -227,5 +227,16 @@ limIsQuietBegin (tpAniSirGlobal pMac);
   --------------------------------------------------------------------------*/
 tANI_U8
 limIsInMCC (tpAniSirGlobal pMac);
+/*--------------------------------------------------------------------------
+  \brief peGetCurrentSTAsCount() - Returns total stations associated on 
+                                      all session.
+
+  \param pMac                   - pointer to global adapter context
+  \return                       - Number of station active on all sessions.
+  
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_U8
+peGetCurrentSTAsCount(tpAniSirGlobal pMac);
 #endif //#if !defined( __LIM_SESSION_UTILS_H )
 

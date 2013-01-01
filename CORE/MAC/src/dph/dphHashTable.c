@@ -183,12 +183,12 @@ tpDphHashNode dphLookupHashEntry(tpAniSirGlobal pMac, tANI_U8 staAddr[], tANI_U1
  *         NULL if lookup was a failure
  */
 
-tpDphHashNode dphGetHashEntry(tpAniSirGlobal pMac, tANI_U16 assocId, dphHashTableClass* pDphHashTable)
+tpDphHashNode dphGetHashEntry(tpAniSirGlobal pMac, tANI_U16 peerIdx, dphHashTableClass* pDphHashTable)
 {
-    if (assocId < pDphHashTable->size)
+    if (peerIdx < pDphHashTable->size)
     {
-        if (pDphHashTable->pDphNodeArray[assocId].added)
-          return &pDphHashTable->pDphNodeArray[assocId];
+        if (pDphHashTable->pDphNodeArray[peerIdx].added)
+          return &pDphHashTable->pDphNodeArray[peerIdx];
         else
             return NULL;
     }

@@ -2644,7 +2644,7 @@ limMeasurementIndSerDes(tpAniSirGlobal pMac, tANI_U8 *pBuf)
     pBuf += sizeof(tANI_U32);
     len += sizeof(tANI_U32);
 
-    load.numStas            = pMac->lim.gLimNumOfCurrentSTAs;
+    load.numStas            = peGetCurrentSTAsCount(pMac);
     load.channelUtilization =
                         pMac->lim.gpLimMeasData->avgChannelUtilization;
     limCopyLoad(pBuf, load);
