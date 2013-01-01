@@ -672,7 +672,11 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
     tSmeCmd *pScanCmd = NULL;
     eCsrConnectState ConnectState;
     
-    VOS_ASSERT(pScanRequest != NULL);
+    if(pScanRequest == NULL)
+    {
+        smsLog( pMac, LOGE, FL(" pScanRequest is NULL\n"));
+        VOS_ASSERT(0);
+    }
 
     do
     {
@@ -754,7 +758,7 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
                     *pScanRequestID = pScanCmd->u.scanCmd.scanID; 
                 }
 
-                //Tush : If it is the first scan request from HDD, CSR checks if it is for 11d. 
+                // If it is the first scan request from HDD, CSR checks if it is for 11d. 
                 // If it is not, CSR will save the scan request in the pending cmd queue 
                 // & issue an 11d scan request to PE.
                 if(((0 == pScanCmd->u.scanCmd.scanID)
@@ -849,6 +853,7 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
                 //Once we turn on Wifi
                 if(pMac->scan.fFirstScanOnly2GChnl)
                 {
+                    smsLog( pMac, LOG1, FL("Scanning only 2G Channels during first scan\n"));
                     csrScan2GOnyRequest(pMac, pScanCmd, pScanRequest);
                 }
 
@@ -875,7 +880,7 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
             }
             else 
             {
-                //log error
+                smsLog( pMac, LOGE, FL(" pScanCmd is NULL\n"));
                 break;
             }
         }
@@ -887,6 +892,7 @@ eHalStatus csrScanRequest(tpAniSirGlobal pMac, tANI_U16 sessionId,
             //Set the flag back for restarting idle scan
             pMac->scan.fRestartIdleScan = eANI_BOOLEAN_TRUE;
         }
+        smsLog( pMac, LOGE, FL(" failed with status = %d, releasing scan cmd\n"), status );
         csrReleaseCommandScan(pMac, pScanCmd);
     }
 
@@ -4974,15 +4980,29 @@ eHalStatus csrSendMBScanReq( tpAniSirGlobal pMac, tANI_U16 sessionId,
             } 
 
         }while(0);
+        smsLog(pMac, LOG1, FL("domainIdCurrent %d scanType %d bssType %d requestType %d numChannels %d  \n"), 
+               pMac->scan.domainIdCurrent, pMsg->scanType, pMsg->bssType, 
+               pScanReq->requestType, pMsg->channelList.numChannels);
+
+        for(i = 0; i < pMsg->channelList.numChannels; i++)
+        {
+            smsLog(pMac, LOG3, FL("channelNumber[%d]= %d\n"), i, pMsg->channelList.channelNumber[i]);
+        }
+
         if(HAL_STATUS_SUCCESS(status))
         {
             status = palSendMBMessage(pMac->hHdd, pMsg);
         }
-        else {
+        else 
+        {
+            smsLog( pMac, LOGE, FL(" failed to send down scan req with status = %d\n"), status );
             palFreeMemory(pMac->hHdd, pMsg);
         }
     }//Success allocated memory
-
+    else
+    {
+        smsLog( pMac, LOGE, FL(" memory allocation failure\n"));
+    }
 
     return( status );
 }
