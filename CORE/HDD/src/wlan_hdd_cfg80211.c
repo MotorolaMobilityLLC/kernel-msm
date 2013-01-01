@@ -2252,7 +2252,8 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                 hdd_cfg_xlate_to_csr_phy_mode(pConfig->dot11Mode);
                 wdev->iftype = type;
 #ifdef WLAN_FEATURE_P2P
-                if (!strcmp("p2p0",ndev->name))
+                //Check for sub-string p2p to confirm its a p2p interface
+                if (NULL != strstr(ndev->name,"p2p"))
                 {     
                     pAdapter->device_mode = (type == NL80211_IFTYPE_STATION) ?
                                 WLAN_HDD_P2P_DEVICE : WLAN_HDD_P2P_CLIENT;
@@ -2282,6 +2283,11 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                       "%s: setting interface Type to %s", __func__,
                       (type == NL80211_IFTYPE_AP) ? "SoftAP" : "P2pGo");
 
+                //Cancel any remain on channel for GO mode
+                if (NL80211_IFTYPE_P2P_GO == type)
+                {
+                    wlan_hdd_cancel_existing_remain_on_channel(pAdapter);
+                }
                 if (NL80211_IFTYPE_AP == type)
                 {
                      /* As Loading WLAN Driver one interface being created for p2p device
@@ -2398,7 +2404,8 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                 hdd_deinit_adapter( pHddCtx, pAdapter );
                 wdev->iftype = type;
 #ifdef WLAN_FEATURE_P2P
-                if (!strcmp("p2p0",ndev->name))
+                //Check for sub-string p2p to confirm its a p2p interface
+                if (NULL != strstr(ndev->name,"p2p"))
                 {
                     pAdapter->device_mode = (type == NL80211_IFTYPE_STATION) ?
                                   WLAN_HDD_P2P_DEVICE : WLAN_HDD_P2P_CLIENT;
