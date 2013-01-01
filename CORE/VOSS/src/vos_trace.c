@@ -77,7 +77,7 @@
   Include Files
   ------------------------------------------------------------------------*/
 #include <vos_trace.h>
-
+#include <vos_timer.h>  /* added for vos_timer_get_system_ticks() */
 /*--------------------------------------------------------------------------
   Preprocessor definitions and constants
   ------------------------------------------------------------------------*/
@@ -234,6 +234,31 @@ void vos_snprintf(char *strBuffer, unsigned  int size, char *strFormat, ...)
 }
 
 
+#ifdef WCONN_TRACE_KMSG_LOG_BUFF  /* feature to record KMSG in circular buffer */
+
+#define WCONN_TRACE_LOG_MAX     2048
+
+unsigned int WconnTraceLogIdx = 0;
+unsigned long nWconnTraceTicks = 0;
+typedef struct _kmsg_wconn_trace_log
+{
+    unsigned long timeStamp;
+    unsigned char logbuff[100];
+} kmsgWconnTraceType;
+
+kmsgWconnTraceType kmsgWconnStrLogBuff[WCONN_TRACE_LOG_MAX];
+
+void wconnStrBuff_log(const char *wconnStrBuff)
+{
+        if(++WconnTraceLogIdx >= WCONN_TRACE_LOG_MAX)
+        {
+                WconnTraceLogIdx = 0;
+        }
+        kmsgWconnStrLogBuff[WconnTraceLogIdx].timeStamp = (unsigned long) vos_timer_get_system_ticks();
+        memcpy(kmsgWconnStrLogBuff[WconnTraceLogIdx].logbuff, wconnStrBuff, 100);
+}
+
+#endif
 
 #ifdef VOS_ENABLE_TRACING
 
@@ -265,29 +290,35 @@ void vos_trace_msg( VOS_MODULE_ID module, VOS_TRACE_LEVEL level, char *strFormat
    char strBuffer[VOS_TRACE_BUFFER_SIZE];
    int n;
 
-   // Print the trace message when the desired level bit is set in the module
-   // tracel level mask.
-   if ( gVosTraceInfo[ module ].moduleTraceLevel & VOS_TRACE_LEVEL_TO_MODULE_BITMASK( level ) )
-   {
-      // the trace level strings in an array.  these are ordered in the same order
-      // as the trace levels are defined in the enum (see VOS_TRACE_LEVEL) so we
-      // can index into this array with the level and get the right string.  The
-      // vos trace levels are...
-      // none, Fata, Error, Warning, Info, InfoHigh, InfoMed, InfoLow
-      static const char * TRACE_LEVEL_STR[] = { "  ", "F ", "E ", "W ", "I ", "IH", "IM", "IL" };
-      va_list val;
-      va_start(val, strFormat);
+   // the trace level strings in an array.  these are ordered in the same order
+   // as the trace levels are defined in the enum (see VOS_TRACE_LEVEL) so we
+   // can index into this array with the level and get the right string.  The
+   // vos trace levels are...
+   // none, Fata, Error, Warning, Info, InfoHigh, InfoMed, InfoLow
+   static const char * TRACE_LEVEL_STR[] = { "  ", "F ", "E ", "W ", "I ", "IH", "IM", "IL" };
+   va_list val;
+   va_start(val, strFormat);
 
-      // print the prefix string into the string buffer...
-      n = snprintf(strBuffer, VOS_TRACE_BUFFER_SIZE, "wlan: [%d:%2s:%3s] ",
+   // print the prefix string into the string buffer...
+   n = snprintf(strBuffer, VOS_TRACE_BUFFER_SIZE, "wlan: [%d:%2s:%3s] ",
                    in_interrupt() ? 0 : current->pid,
                    (char *) TRACE_LEVEL_STR[ level ],
                    (char *) gVosTraceInfo[ module ].moduleNameStr );
 
-      // print the formatted log message after the prefix string.
-      vsnprintf(strBuffer + n, VOS_TRACE_BUFFER_SIZE - n, strFormat, val );
+   // print the formatted log message after the prefix string.
+   vsnprintf(strBuffer + n, VOS_TRACE_BUFFER_SIZE - n, strFormat, val );   
+
+#ifdef WCONN_TRACE_KMSG_LOG_BUFF
+   wconnStrBuff_log(strBuffer);
+#endif
+      
+   va_end( val);
+   
+   // Print the trace message when the desired level bit is set in the module
+   // tracel level mask.
+   if ( gVosTraceInfo[ module ].moduleTraceLevel & VOS_TRACE_LEVEL_TO_MODULE_BITMASK( level ) )
+   {
       pr_err("%s\n", strBuffer);
-      va_end( val);
    }
 }
 

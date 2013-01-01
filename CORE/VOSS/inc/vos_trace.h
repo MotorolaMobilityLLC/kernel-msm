@@ -104,6 +104,7 @@ typedef enum
 // below definition is obsolete and is no longer being used in BMP and WM
 // TODO: remove this once this is not used on Android
 #define VOS_ENABLE_TRACING 
+#define WCONN_TRACE_KMSG_LOG_BUFF /* feature to record KMSG in circular buffer */
 
 #include  <i_vos_trace.h>   
 
