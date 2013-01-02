@@ -246,6 +246,9 @@ static int usb_diag_update_pid_and_serial_num(uint32_t pid, const char *snum);
 static char manufacturer_string[256];
 static char product_string[256];
 static char serial_string[256];
+/* sizes based on inquiry string requirements */
+static char ms_vendor[9];
+static char ms_product[17];
 
 /* String Table */
 static struct usb_string strings_dev[] = {
@@ -1779,6 +1782,12 @@ static int mass_storage_function_init(struct android_usb_function *f,
 	config->fsg.nluns = 1;
 	config->fsg.luns[0].removable = 1;
 
+	/* defaults that should be overriden by user space */
+	strncpy(ms_vendor, "Android", sizeof(ms_vendor));
+	strncpy(ms_product, "Android", sizeof(ms_product));
+	config->fsg.vendor_name = ms_vendor;
+	config->fsg.product_name = ms_product;
+
 	common = fsg_common_init(NULL, cdev, &config->fsg);
 	if (IS_ERR(common)) {
 		kfree(config);
@@ -1836,8 +1845,50 @@ static DEVICE_ATTR(inquiry_string, S_IRUGO | S_IWUSR,
 					mass_storage_inquiry_show,
 					mass_storage_inquiry_store);
 
+static ssize_t mass_storage_vendor_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct mass_storage_function_config *config = f->config;
+
+	if ((size - 1) >= sizeof(ms_vendor))
+		return -EINVAL;
+
+	strncpy(ms_vendor, buf, sizeof(ms_vendor));
+	ms_vendor[sizeof(ms_vendor)-1] = 0;
+	snprintf(config->common->inquiry_string,
+		sizeof config->common->inquiry_string,
+		"%-8s%-16s%04x", ms_vendor, ms_product, 1);
+
+	return size;
+}
+
+static DEVICE_ATTR(vendor, S_IWUSR, NULL, mass_storage_vendor_store);
+
+static ssize_t mass_storage_product_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct mass_storage_function_config *config = f->config;
+
+	if ((size - 1) >= sizeof(ms_product))
+		return -EINVAL;
+
+	strncpy(ms_product, buf, sizeof(ms_product));
+	ms_product[sizeof(ms_product)-1] = 0;
+	snprintf(config->common->inquiry_string,
+		sizeof config->common->inquiry_string,
+		"%-8s%-16s%04x", ms_vendor, ms_product, 1);
+
+	return size;
+}
+
+static DEVICE_ATTR(product, S_IWUSR, NULL, mass_storage_product_store);
+
 static struct device_attribute *mass_storage_function_attributes[] = {
 	&dev_attr_inquiry_string,
+	&dev_attr_vendor,
+	&dev_attr_product,
 	NULL
 };
 
