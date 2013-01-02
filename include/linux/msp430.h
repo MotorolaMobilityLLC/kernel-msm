@@ -112,6 +112,8 @@ struct msp430_platform_data {
 	int gpio_bslen;
 	int gpio_wakeirq;
 	int gpio_int;
+	int gpio_mipi_req;
+	int gpio_mipi_busy;
 	unsigned int bslen_pin_active_value;
 	u16 lux_table[LIGHTING_TABLE_SIZE];
 	u8 brightness_table[LIGHTING_TABLE_SIZE];
