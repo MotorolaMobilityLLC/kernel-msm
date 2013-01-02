@@ -16,4 +16,698 @@
 		qcom,msm-hs-dm-rx-chan = <7>;
 	};
 
+	qcom,msm-pm8921-gpios {
+		mux {
+			status = "okay";
+
+			/* KYPD_SNS1 */
+			gpio@1 {
+				qcom,pm8xxx-gpio-pin = <1>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullUp 31P5
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <2>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* KYPD_SNS2 */
+			gpio@2 {
+				qcom,pm8xxx-gpio-pin = <2>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullUp 31P5
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <2>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* KYPD_SNS3 */
+			gpio@3 {
+				qcom,pm8xxx-gpio-pin = <3>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullUp 31P5
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <2>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* TOUCH_R_REQ */
+			gpio@4 {
+				qcom,pm8xxx-gpio-pin = <4>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : L17
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <6>;
+			};
+
+			/* KYPD_SNS5 */
+			gpio@5 {
+				qcom,pm8xxx-gpio-pin = <5>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullUp 31P5
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <2>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* CAM_F_SEL */
+			gpio@6 {
+				qcom,pm8xxx-gpio-pin = <6>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* MSP_MSM_INT2 */
+			gpio@7 {
+				qcom,pm8xxx-gpio-pin = <7>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullDown
+				 * VIN Select  : L17
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <4>;
+				qcom,pm8xxx-gpio-vin-sel = <6>;
+			};
+
+			/* AUD_MCLK_SEL */
+			gpio@8 {
+				qcom,pm8xxx-gpio-pin = <8>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* CAM_R_DIG_EN */
+			gpio@9 {
+				qcom,pm8xxx-gpio-pin = <9>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* MIPI_D0_SEL */
+			gpio@10 {
+				qcom,pm8xxx-gpio-pin = <10>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* MIPI_D0_REQ */
+			gpio@11 {
+				qcom,pm8xxx-gpio-pin = <11>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* MIPI_D0_BUSY */
+			gpio@12 {
+				qcom,pm8xxx-gpio-pin = <12>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullDown
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <4>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* TOUCH_R_BUSY */
+			gpio@13 {
+				qcom,pm8xxx-gpio-pin = <13>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullDown
+				 * VIN Select  : L17
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <4>;
+				qcom,pm8xxx-gpio-vin-sel = <6>;
+			};
+
+			/* C55_CORE_EN */
+			gpio@14 {
+				qcom,pm8xxx-gpio-pin = <14>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : High
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <1>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* C55_RST_N */
+			gpio@15 {
+				qcom,pm8xxx-gpio-pin = <15>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* NFC_FW_UPDATE */
+			gpio@16 {
+				qcom,pm8xxx-gpio-pin = <16>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* UNUSUED - INPUT, PULLDOWN */
+			gpio@17 {
+				qcom,pm8xxx-gpio-pin = <17>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullDown
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <4>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* AUD_AIC_RST_N */
+			gpio@18 {
+				qcom,pm8xxx-gpio-pin = <18>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* ID_FLOAT */
+			gpio@19 {
+				qcom,pm8xxx-gpio-pin = <19>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullDown
+				 * VIN Select  : L17
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <4>;
+				qcom,pm8xxx-gpio-vin-sel = <6>;
+			};
+
+			/* SD_DET_N */
+			gpio@20 {
+				qcom,pm8xxx-gpio-pin = <20>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullUp 30
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <0>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* UNUSUED - INPUT, PULLDOWN */
+			gpio@21 {
+				qcom,pm8xxx-gpio-pin = <21>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullDown
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <4>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* UNUSUED - INPUT, PULLDOWN */
+			gpio@22 {
+				qcom,pm8xxx-gpio-pin = <22>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullDown
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <4>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* EXT_VREG_S3_VSEL */
+			gpio@23 {
+				qcom,pm8xxx-gpio-pin = <23>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* RED_LED_SINK */
+			gpio@24 {
+				qcom,pm8xxx-gpio-pin = <24>;
+
+				/*
+				 * Function    : FUNC_2
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <3>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* GREEN_LED_SINK */
+			gpio@25 {
+				qcom,pm8xxx-gpio-pin = <25>;
+
+				/*
+				 * Function    : FUNC_2
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <3>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* BLUE_LED_SINK */
+			gpio@26 {
+				qcom,pm8xxx-gpio-pin = <26>;
+
+				/*
+				 * Function    : FUNC_2
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <3>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* NFC_ENABLE */
+			gpio@33 {
+				qcom,pm8xxx-gpio-pin = <33>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* WCD9310_RESET_N */
+			gpio@34 {
+				qcom,pm8xxx-gpio-pin = <34>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* EXT_VREG_S3_EN */
+			gpio@35 {
+				qcom,pm8xxx-gpio-pin = <35>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* SIM_DET */
+			gpio@36 {
+				qcom,pm8xxx-gpio-pin = <36>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : None
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* DISP_RST_N */
+			gpio@37 {
+				qcom,pm8xxx-gpio-pin = <37>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : High
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <1>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* HEADSET_INT */
+			gpio@38 {
+				qcom,pm8xxx-gpio-pin = <38>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullUp 1P5
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <1>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* CLK_MSM_FWD */
+			gpio@39 {
+				qcom,pm8xxx-gpio-pin = <39>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : None
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* OTG_OVP_CNTL */
+			gpio@40 {
+				qcom,pm8xxx-gpio-pin = <40>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* UNUSUED - INPUT, PULLDOWN */
+			gpio@41 {
+				qcom,pm8xxx-gpio-pin = <41>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullDown
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <4>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* UNUSUED - INPUT, PULLDOWN */
+			gpio@42 {
+				qcom,pm8xxx-gpio-pin = <42>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : PullDown
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <4>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* OTG_OC_FLAG_N */
+			gpio@43 {
+				qcom,pm8xxx-gpio-pin = <43>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Input
+				 * Pull        : None
+				 * VIN Select  : S4
+				 */
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <2>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+
+			/* SPKR_RIGHT_EN */
+			gpio@44 {
+				qcom,pm8xxx-gpio-pin = <44>;
+
+				/*
+				 * Function    : Normal
+				 * Direction   : Output
+				 * Output Val  : Low
+				 * Out Strngth : High
+				 * Pull        : None
+				 * VIN Select  : S4
+				*/
+				qcom,pm8xxx-gpio-func = <0>;
+				qcom,pm8xxx-gpio-direction = <1>;
+				qcom,pm8xxx-gpio-out-value = <0>;
+				qcom,pm8xxx-gpio-out-strength = <1>;
+				qcom,pm8xxx-gpio-pull = <5>;
+				qcom,pm8xxx-gpio-vin-sel = <2>;
+			};
+		};
+	};
+
 };
