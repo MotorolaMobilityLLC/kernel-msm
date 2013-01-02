@@ -15,5 +15,5 @@
 /include/ "msm8960ab-ghost-common.dtsi"
 
 / {
-	mmi,revision = "p0";
+	mmi,revision = "p1";
 };
