@@ -458,12 +458,12 @@
 			};
 		};
 
-		pin@801450 {
+		pin@801450 { /* SP_INT */
 			reg = <0x801450 0x10>;
 			qcom,pin-num = <69>;
 			qcom,suspended@1 {
 				qcom,func = <0>;  /* gpio_in_out(69)        */
-				qcom,pull = <1>;  /* down                   */
+				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <0>;   /* in                     */
 			};
