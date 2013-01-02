@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Motorola Mobility, Inc
+/* Copyright (c) 2012-2013, Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -133,6 +133,18 @@ static __init int load_pm8921_gpios_from_dt(struct pm8xxx_gpio_init **ptr,
 	int count = 0, index = 0;
 	struct pm8xxx_gpio_init *pm8921_gpios;
 	int ret = -EINVAL;
+	struct device_node *np;
+
+	np = of_find_node_by_path("/qcom,msm-pm8921-gpios/mux");
+	if (np) {
+		bool avail = of_device_is_available(np);
+
+		of_node_put(np);
+		if (avail) {
+			pr_debug("%s: OF DT GPIO mux being used\n", __func__);
+			return -EINVAL;
+		}
+	}
 
 	parent = of_find_node_by_path("/System@0/PowerIC@0");
 	if (!parent)
@@ -289,7 +301,7 @@ void __init mmi_init_pm8921_gpio_mpp(void)
 
 	if (load_pm8921_gpios_from_dt(&gpios, &size)) {
 		size = 0;
-		pr_err("%s: error initializing pm8921 GPIOS\n", __func__);
+		pr_debug("%s: not using legacy pm8921 GPIO init\n", __func__);
 	}
 
 	for (i = 0; i < size; i++) {
