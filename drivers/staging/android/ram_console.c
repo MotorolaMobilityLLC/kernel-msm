@@ -152,13 +152,14 @@ static int __init ram_console_late_init(void)
 	struct proc_dir_entry *entry;
 	struct persistent_ram_zone *prz = ram_console_zone;
 
+	persistent_ram_ext_oldbuf_merge(prz);
+
 	if (!prz)
 		return 0;
 
 	if (persistent_ram_old_size(prz) == 0)
 		return 0;
 
-	persistent_ram_ext_oldbuf_merge(prz);
 	entry = create_proc_entry("last_kmsg", S_IFREG | S_IRUGO, NULL);
 	if (!entry) {
 		printk(KERN_ERR "ram_console: failed to create proc entry\n");
