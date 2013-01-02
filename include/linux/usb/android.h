@@ -23,7 +23,6 @@ struct android_usb_platform_data {
 	int (*update_pid_and_serial_num)(uint32_t, const char *);
 	u32 swfi_latency;
 	u8 usb_core_id;
-	bool cdrom;
 };
 
 #ifndef CONFIG_TARGET_CORE
