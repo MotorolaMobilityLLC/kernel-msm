@@ -1037,7 +1037,6 @@ static void vfe32_set_default_reg_values(
 	CDBG("%s: Use bayer stats = %d\n", __func__,
 		 vfe32_use_bayer_stats(vfe32_ctrl));
 	if (!vfe32_use_bayer_stats(vfe32_ctrl)) {
-#if 1
 		msm_camera_io_w(0x3980007,
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_AEC_BG_UB_CFG);
@@ -1056,23 +1055,6 @@ static void vfe32_set_default_reg_values(
 		msm_camera_io_w(0x3E0001F,
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_HIST_UB_CFG);
-#else //PIP roll-off changes
-	msm_camera_io_w(0x3C00007,
-		vfe32_ctrl->share_ctrl->vfebase +
-			VFE_BUS_STATS_AEC_BG_UB_CFG);
-
-	msm_camera_io_w(0x3C8000F,
-		vfe32_ctrl->share_ctrl->vfebase +
-			VFE_BUS_STATS_AWB_UB_CFG);
-
-	msm_camera_io_w(0x3D80007,
-		vfe32_ctrl->share_ctrl->vfebase +
-			VFE_BUS_STATS_RS_UB_CFG);
-
-	msm_camera_io_w(0x3E0001F,
-		vfe32_ctrl->share_ctrl->vfebase +
-			VFE_BUS_STATS_HIST_UB_CFG);
-#endif
 	} else {
 		msm_camera_io_w(0x350001F,
 			vfe32_ctrl->share_ctrl->vfebase +
