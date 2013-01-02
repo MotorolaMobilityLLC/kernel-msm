@@ -1885,10 +1885,31 @@ static ssize_t mass_storage_product_store(struct device *dev,
 
 static DEVICE_ATTR(product, S_IWUSR, NULL, mass_storage_product_store);
 
+static ssize_t mass_storage_cdrom_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct mass_storage_function_config *config = f->config;
+	int value;
+
+	if (sscanf(buf, "%d", &value) == 1) {
+		pr_info("android_usb: cdrom_enable =  %d\n", value);
+		config->common->luns[0].cdrom = !!value;
+		config->common->luns[0].ro = !!value;
+		return size;
+	}
+
+	return -EINVAL;
+}
+
+
+static DEVICE_ATTR(cdrom, S_IWUSR, NULL, mass_storage_cdrom_store);
+
 static struct device_attribute *mass_storage_function_attributes[] = {
 	&dev_attr_inquiry_string,
 	&dev_attr_vendor,
 	&dev_attr_product,
+	&dev_attr_cdrom,
 	NULL
 };
 
