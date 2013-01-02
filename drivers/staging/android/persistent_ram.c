@@ -347,8 +347,10 @@ static void __init persistent_ram_ext_oldbuf_push(char *ptr)
 
 	spin_lock_irqsave(&rs_ext_buf.lock, flags);
 	list_for_each_entry_safe(buf, n, &rs_ext_buf.list, list) {
-		memcpy(ptr, buf->data, buf->size);
-		ptr += buf->size;
+		if (ptr) {
+			memcpy(ptr, buf->data, buf->size);
+			ptr += buf->size;
+		}
 		list_del(&buf->list);
 		free_page((unsigned long)buf);
 	}
@@ -362,6 +364,12 @@ void __init persistent_ram_ext_oldbuf_merge(struct persistent_ram_zone *prz)
 
 	ext_size = persistent_ram_ext_oldbuf_print_stop();
 	if (ext_size) {
+		if (!prz || !prz->old_log_size) {
+			persistent_ram_ext_oldbuf_push(NULL);
+			pr_info("persistent_ram: discarded ext buf size %zu\n",
+				ext_size);
+			return;
+		}
 		old_log2 = krealloc(prz->old_log,
 				prz->old_log_size + ext_size, GFP_KERNEL);
 		if (old_log2) {
@@ -374,6 +382,7 @@ void __init persistent_ram_ext_oldbuf_merge(struct persistent_ram_zone *prz)
 		} else {
 			pr_err("persistent_ram: cannot merge ext buf size %zu\n",
 				ext_size);
+			persistent_ram_ext_oldbuf_push(NULL);
 		}
 	}
 }
