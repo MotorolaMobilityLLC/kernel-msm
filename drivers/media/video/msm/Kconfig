@@ -237,6 +237,20 @@ config AR0834
 	---help---
 	  Aptina 8MP Sensor
 
+config OV660
+	bool "Sensor OV660 (ASIC)"
+	depends on MSM_CAMERA && (ARCH_MSM8X60 || ARCH_MSM8960)
+	default n
+	---help---
+	  Omnivision ASIC for 8MP and 10MP Sensor.
+
+config OV10820
+	bool "Sensor OV10820 (RGBC 10MP)"
+	depends on OV660
+	default n
+	---help---
+	  Omnivision RGBC 10 MP Sensor with auto focus.
+
 config VB6801
 	bool "Sensor vb6801"
 	depends on MSM_CAMERA && !ARCH_MSM8X60 && !MSM_CAMERA_V4L2
