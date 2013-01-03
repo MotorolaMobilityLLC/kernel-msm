@@ -308,6 +308,39 @@ static int __init ar0834_init_i2c_device(struct i2c_board_info *info,
 	return 0;
 }
 
+static int __init ov660_init_i2c_device(struct i2c_board_info *info,
+		struct device_node *node)
+{
+	/* TODO - Hardware will be changing for P1, will add in support
+	 * any necessary gpio changes here. NOTE: ov10820 has shared
+	 * supplies with ov660 and ov10820 is already enabling them */
+	return 0;
+}
+
+static struct oem_camera_sensor_data ov10820_oem_data;
+
+static int __init ov10820_init_i2c_device(struct i2c_board_info *info,
+		struct device_node *node)
+{
+	/* get reset gpio */
+	of_property_read_u32(node, "gpio_reset",
+			&msm_camera_sensor_ov10820_data.sensor_reset);
+
+	/* get pwd gpio */
+	of_property_read_u32(node, "gpio_pwd",
+			&msm_camera_sensor_ov10820_data.sensor_pwd);
+
+	/* get digital supply enable gpio */
+	of_property_read_u32(node, "gpio_dig_en",
+			&ov10820_oem_data.sensor_dig_en);
+
+	msm_camera_sensor_ov10820_data.oem_data = &ov10820_oem_data;
+	info->platform_data = &msm_camera_sensor_ov10820_data;
+
+	return 0;
+}
+
+
 static struct oem_camera_sensor_data ov8820_oem_data;
 
 static int __init ov8820_init_i2c_device(struct i2c_board_info *info,
@@ -336,7 +369,7 @@ static int __init ov8820_init_i2c_device(struct i2c_board_info *info,
 }
 
 static int __init lm3556_init_i2c_device(struct i2c_board_info *info,
-                                          struct device_node *node)
+		struct device_node *node)
 {
 	int value = 0;
 
@@ -348,6 +381,7 @@ static int __init lm3556_init_i2c_device(struct i2c_board_info *info,
 	/* Set back cameras to use available camera flash */
 	msm_camera_sensor_ov8835_data.flash_data = &camera_flash_lm3556;
 	msm_camera_sensor_ov8820_data.flash_data = &camera_flash_lm3556;
+	msm_camera_sensor_ov10820_data.flash_data = &camera_flash_lm3556;
 
 	info->platform_data = &cam_flash_3556;
 
@@ -850,6 +884,8 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x00190001, pn544_init_i2c_device}, /* NXP PN544 */
 	{0x00290002, ov8835_init_i2c_device},  /* Omnivision 8MP Bayer */
 	{0x00280001, ar0834_init_i2c_device},  /* Aptina 8MP */
+	{0x00290004, ov660_init_i2c_device},  /* Omnivision OV660 ASIC IC */
+	{0x00290003, ov10820_init_i2c_device},  /* Omnivision 8MP RGBC */
 	{0x00030017, drv2605_init_i2c_device}, /* TI DRV2605 Haptic driver */
 	{0x00030018, aic3253_init_i2c_device}, /* TI aic3253 audio codec Driver */
 	{0x0003001A, tpa6165a2_init_i2c_device}, /* TI headset Det/amp Driver */
