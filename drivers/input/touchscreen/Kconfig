@@ -11,6 +11,18 @@ menuconfig INPUT_TOUCHSCREEN
 
 if INPUT_TOUCHSCREEN
 
+config TOUCHSCREEN_DEBUG
+	bool "debug"
+	default n
+
+config TOUCHSCREEN_SY3200
+	tristate "Synaptics 32xx Touchscreen Driver"
+	depends on I2C
+	help
+	  Say Y here if you have an Synaptics 32xx touchscreen.
+
+	  If unsure, say N.
+
 config TOUCHSCREEN_ATMXT
 	tristate "Atmel mXT Touchscreen Driver"
 	depends on I2C
