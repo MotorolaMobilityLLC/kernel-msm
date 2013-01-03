@@ -2547,6 +2547,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"INTERNAL_BT_SCO_RX_Voice Mixer", "Voice Stub", "VOICE_STUB_DL"},
 	{"MI2S_RX_Voice Mixer", "Voice Stub", "VOICE_STUB_DL"},
 	{"MI2S_RX", NULL, "MI2S_RX_Voice Mixer"},
+	{"MI2S_RX_Voice Mixer", "CSVoice", "CS-VOICE_DL1"},
 	{"HDMI_RX_Voice Mixer", "Voice Stub", "VOICE_STUB_DL"},
 	{"AFE_PCM_RX_Voice Mixer", "Voice Stub", "VOICE_STUB_DL"},
 
