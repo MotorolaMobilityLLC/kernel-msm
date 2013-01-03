@@ -380,9 +380,11 @@ typedef struct
    /* Tx Complete Timeout timer */
    TX_TIMER TxCompleteTimer ;
 }tWdaTimers ;
-
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+#define WDA_MAX_STA    (38)
+#else
 #define WDA_MAX_STA    (16)
-
+#endif
 typedef struct
 {
    v_PVOID_t            pVosContext;             /* global VOSS context*/

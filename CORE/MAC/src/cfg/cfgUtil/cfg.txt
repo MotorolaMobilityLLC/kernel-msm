@@ -4310,10 +4310,10 @@ HAL
 WNI_CFG_ASSOC_STA_LIMIT    I   4   8
 V    RW    NP
 LIM
-1    10    10
+1    32    10
 V    RW    NP
 LIM
-1    10    10
+1    32    10
 
 *
 *  SAP channel select start channel number

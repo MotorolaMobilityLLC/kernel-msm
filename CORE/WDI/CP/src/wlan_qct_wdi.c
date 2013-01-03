@@ -22259,6 +22259,15 @@ WDI_IsHwFrameTxTranslationCapable
     return WDI_STATUS_E_NOT_ALLOWED;
   }
 
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+  if (IS_VSTA_IDX(uSTAIdx))
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+              "STA %d is a Virtual STA, "
+              "HW frame translation disabled", uSTAIdx);
+    return eWLAN_PAL_FALSE;
+  }
+#endif
 
   return gWDICb.bFrameTransEnabled;
 }/*WDI_IsHwFrameTxTranslationCapable*/
@@ -25416,7 +25425,6 @@ WDI_ProcessFeatureCapsExchangeRsp
       gpFwWlanFeatCaps->featCaps[2],
       gpFwWlanFeatCaps->featCaps[3]
      );
-
    wdiFeatureCapsExchangeCb = (WDI_featureCapsExchangeCb) pWDICtx -> pfncRspCB; 
 
    /*Notify UMAC - there is no callback right now but can be used in future if reqd */

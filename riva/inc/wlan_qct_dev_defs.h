@@ -58,7 +58,50 @@
  */
 
 #ifdef WCN_PRONTO
+
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+#define HAL_NUM_ASSOC_STA           16
+#define HAL_NUM_STA                 18
+#define HAL_NUM_HW_STA              10
+#define HAL_NUM_GPSTA               2
+#define HAL_NUM_UMA_DESC_ENTRIES    HAL_NUM_HW_STA // or HAL_NUM_STA
+
 #ifdef WCN_PRONTO_V1
+#define HAL_NUM_BSSID               2
+#define HAL_NUM_STA_WITHOUT_VSTA    9
+#else /* WCN_PRONTO_V1 */
+#define HAL_NUM_BSSID               4
+#define HAL_NUM_STA_WITHOUT_VSTA    14
+#endif
+
+
+#define HAL_NUM_VSTA                (HAL_NUM_STA - HAL_NUM_HW_STA)
+#define QWLANFW_MAX_NUM_VSTA        (HAL_NUM_VSTA)
+#define QWLANFW_VSTA_INVALID_IDX    (HAL_NUM_STA+1)
+#define QWLAN_VSTA_MIN_IDX          (HAL_NUM_HW_STA)
+#define QWLANFW_NUM_GPSTA           (HAL_NUM_GPSTA)
+
+
+#define IS_VSTA_VALID_IDX(__x) \
+                          ((__x) != QWLANFW_VSTA_INVALID_IDX)
+
+#define IS_VSTA_IDX(__x) \
+                   (((__x) >= QWLAN_VSTA_MIN_IDX) && ((__x) < HAL_NUM_STA))
+
+#define GET_VSTA_INDEX_FOR_STA_INDEX(__idx)    ((__idx) - QWLAN_VSTA_MIN_IDX)
+
+// is the STA a General Purpose STA?
+#define IS_GPSTA_IDX(__x) \
+    (((__x) >= (HAL_NUM_HW_STA-HAL_NUM_GPSTA)) && \
+     ((__x) < HAL_NUM_HW_STA))
+
+// is the STA a HW STA (excluding GP STAs)
+#define IS_HWSTA_IDX(__x) \
+    ((__x) < (HAL_NUM_HW_STA-HAL_NUM_GPSTA))
+
+#define HAL_NUM_STA_INCLUDING_VSTA  32
+
+#elif WCN_PRONTO_V1
 
 /* In Pronto 1.0 TPE descriptor size is increased to 1K per station
  * but not the cMEM allocated for hardware descriptors. Due to this
@@ -73,28 +116,82 @@
  * and SELF STA(staId 1). So total ASSOC stations which can connect to
  * Pronto 1.0 Softap = 9 - 1(self sta) - 1(Bcast sta) = 7 stations
  */
-#define HAL_NUM_STA                 9
+#define HAL_NUM_HW_STA              9
+#define HAL_NUM_STA                 (HAL_NUM_HW_STA)
 #define HAL_NUM_BSSID               2
 #define HAL_NUM_UMA_DESC_ENTRIES    9
+#define HAL_NUM_ASSOC_STA           7
+
 
 #else /* WCN_PRONTO_V1 */
 
-#define HAL_NUM_STA                 14
+#define HAL_NUM_HW_STA              14
+#define HAL_NUM_STA                 (HAL_NUM_HW_STA)
 #define HAL_NUM_BSSID               4
 #define HAL_NUM_UMA_DESC_ENTRIES    14
+#define HAL_NUM_ASSOC_STA           12
 
-#endif /* WCN_PRONTO_V1 */
+
+#endif /* WCN_PRONTO_V1 and WLAN_SOFTAP_VSTA_FEATURE*/
 #else  /* WCN_PRONTO */
 
-/*In prima 12 HW stations are supported including BCAST STA(staId 0)
- and SELF STA(staId 1) so total ASSOC stations which can connect to Prima
- SoftAP = 12 - 1(Self STa) - 1(Bcast Sta) = 10 Stations. */
+/*
+ * Riva supports 16 stations in hardware
+ *
+ * Riva without Virtual STA feature can only support 12 stations:
+ *    1 Broadcast STA (hard)
+ *    1 "Self" STA (hard)
+ *    10 Soft AP Stations (hard)
+ *
+ * Riva with Virtual STA feature supports 38 stations:
+ *    1 Broadcast STA (hard)
+ *    1 "Self" STA (hard)
+ *    4 General Purpose Stations to support Virtual STAs (hard)
+ *   32 Soft AP Stations (10 hard/22 virtual)
+ */
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+#define HAL_NUM_ASSOC_STA           32
+#define HAL_NUM_STA                 38
+#define HAL_NUM_HW_STA              16
+#define HAL_NUM_GPSTA               4
+#define HAL_NUM_VSTA                (HAL_NUM_STA - HAL_NUM_HW_STA)
+
+#define QWLANFW_MAX_NUM_VSTA        HAL_NUM_VSTA
+#define QWLANFW_VSTA_INVALID_IDX    (HAL_NUM_STA+1)
+#define QWLAN_VSTA_MIN_IDX          HAL_NUM_HW_STA
+#define QWLANFW_NUM_GPSTA           HAL_NUM_GPSTA
+
+
+#define IS_VSTA_VALID_IDX(__x) \
+                          ((__x) != QWLANFW_VSTA_INVALID_IDX)
+
+#define IS_VSTA_IDX(__x) \
+                   (((__x) >= QWLAN_VSTA_MIN_IDX) && ((__x) < HAL_NUM_STA))
+
+#define GET_VSTA_INDEX_FOR_STA_INDEX(__idx)    ((__idx) - QWLAN_VSTA_MIN_IDX)
+
+// is the STA a General Purpose STA?
+#define IS_GPSTA_IDX(__x) \
+    (((__x) >= (HAL_NUM_HW_STA-HAL_NUM_GPSTA)) && \
+     ((__x) < HAL_NUM_HW_STA))
+
+// is the STA a HW STA (excluding GP STAs)
+#define IS_HWSTA_IDX(__x) \
+    ((__x) < (HAL_NUM_HW_STA-HAL_NUM_GPSTA))
+
+#define HAL_NUM_STA_INCLUDING_VSTA  32
+#define HAL_NUM_STA_WITHOUT_VSTA    12
+
+#else
 #define HAL_NUM_STA                 12
+#define HAL_NUM_ASSOC_STA           10
+#define HAL_NUM_HW_STA              12
+#endif
+
 #define HAL_NUM_BSSID               2
-#define HAL_NUM_UMA_DESC_ENTRIES    12
+#define HAL_NUM_UMA_DESC_ENTRIES    HAL_NUM_HW_STA
 
 #endif /* WCN_PRONTO */
-
 
 #define HAL_INVALID_BSSIDX          HAL_NUM_BSSID
 
