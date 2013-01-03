@@ -136,13 +136,13 @@ static int aic3253_spkramp_event(struct snd_soc_dapm_widget *wgt,
 }
 
 static const struct snd_soc_dapm_widget aic3253_dapm_widgets[] = {
-	SND_SOC_DAPM_DAC("Left DAC", "MI2S Playback" , AIC3253_DACSETUP, 7, 0),
+	SND_SOC_DAPM_DAC("Left DAC", "Playback" , AIC3253_DACSETUP, 7, 0),
 	SND_SOC_DAPM_MIXER("HPL AIC Output Mixer", SND_SOC_NOPM, 0, 0,
 			   &hpl_output_mixer_controls[0],
 			   ARRAY_SIZE(hpl_output_mixer_controls)),
 	SND_SOC_DAPM_PGA("HPL Power", AIC3253_OUTPWRCTL, 5, 0, NULL, 0),
 
-	SND_SOC_DAPM_DAC("Right DAC", "MI2S Playback", AIC3253_DACSETUP, 6, 0),
+	SND_SOC_DAPM_DAC("Right DAC", "Playback", AIC3253_DACSETUP, 6, 0),
 	SND_SOC_DAPM_MIXER("HPR AIC Output Mixer", SND_SOC_NOPM, 0, 0,
 			   &hpr_output_mixer_controls[0],
 			   ARRAY_SIZE(hpr_output_mixer_controls)),
@@ -589,7 +589,7 @@ static const struct snd_soc_dai_ops aic3253_ops = {
 static struct snd_soc_dai_driver aic3253_dai = {
 	.name = "tlv320aic3253_codec",
 	.playback = {
-		     .stream_name = "MI2S Playback",
+		     .stream_name = "Playback",
 		     .channels_min = 1,
 		     .channels_max = 2,
 		     .rates = AIC3253_RATES,
