@@ -395,10 +395,10 @@ typedef enum
                         ((__x) < HAL_NUM_BSSID)
 
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
-#define HAL_NUM_ASSOC_STA           10
-#define HAL_NUM_STA                 14
-#define HAL_NUM_HW_STA              8
-#define HAL_NUM_GPSTA               2
+#define HAL_NUM_ASSOC_STA           32
+#define HAL_NUM_STA                 38
+#define HAL_NUM_HW_STA              16
+#define HAL_NUM_GPSTA               4
 #define HAL_NUM_VSTA                (HAL_NUM_STA - HAL_NUM_HW_STA)
 
 #define QWLANFW_MAX_NUM_VSTA        HAL_NUM_VSTA

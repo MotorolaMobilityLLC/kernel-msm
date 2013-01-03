@@ -1786,6 +1786,14 @@ REG_VARIABLE( CFG_TDLS_SUPPORT_ENABLE, WLAN_PARAM_Integer,
               CFG_TDLS_SUPPORT_ENABLE_MAX ),
 #endif
 
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+REG_VARIABLE( CFG_VSTA_SUPPORT_ENABLE, WLAN_PARAM_Integer,
+              hdd_config_t, fEnableVSTASupport,
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+              CFG_VSTA_SUPPORT_ENABLE_DEFAULT,
+              CFG_VSTA_SUPPORT_ENABLE_MIN,
+              CFG_VSTA_SUPPORT_ENABLE_MAX ),
+#endif
 REG_VARIABLE( CFG_ENABLE_LPWR_IMG_TRANSITION_NAME, WLAN_PARAM_Integer,
              hdd_config_t, enableLpwrImgTransition, 
              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
@@ -2716,6 +2724,9 @@ static VOS_STATUS hdd_string_to_u8_array( char *str, tANI_U8 *intArray, tANI_U8 
 v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
 {
    v_BOOL_t  fStatus = TRUE;
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+   tANI_U32 val;
+#endif
 
    hdd_config_t *pConfig = pHddCtx->cfg_ini;
    tSirMacHTCapabilityInfo htCapInfo;
@@ -3217,6 +3228,25 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
          fStatus = FALSE;
          hddLog(LOGE, "Could not pass on WNI_CFG_VHT_RXSTBC to CCM\n");
      }
+
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+     if(pConfig->fEnableVSTASupport)
+     {
+        ccmCfgGetInt(pHddCtx->hHal, WNI_CFG_ASSOC_STA_LIMIT, &val);
+        if( val <= WNI_CFG_ASSOC_STA_LIMIT_STADEF)
+            val = WNI_CFG_ASSOC_STA_LIMIT_STAMAX;
+     }
+     else
+     {
+            val = WNI_CFG_ASSOC_STA_LIMIT_STADEF;
+     }
+     if(ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_ASSOC_STA_LIMIT, val, 
+         NULL, eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+     {
+         fStatus = FALSE;
+         hddLog(LOGE,"Failure: Could not pass on WNI_CFG_ASSOC_STA_LIMIT configuration info to CCM\n"  );
+     }
+#endif
    if(ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_ENABLE_LPWR_IMG_TRANSITION, 
                    pConfig->enableLpwrImgTransition, NULL, eANI_BOOLEAN_FALSE)
        ==eHAL_STATUS_FAILURE)

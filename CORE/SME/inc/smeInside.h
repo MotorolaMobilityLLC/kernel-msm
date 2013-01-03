@@ -84,7 +84,7 @@
   Type declarations
   ------------------------------------------------------------------------*/
 
-#define SME_TOTAL_COMMAND  20
+#define SME_TOTAL_COMMAND  30
 
 
 typedef struct sGenericPmcCmd

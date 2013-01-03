@@ -1423,6 +1423,22 @@ VOS_STATUS WDA_prepareConfigTLV(v_PVOID_t pVosContext,
       
    tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
                             + sizeof(tHalCfg) + tlvStruct->length) ; 
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+   tlvStruct->type = QWLAN_HAL_CFG_MAX_ASSOC_LIMIT;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+   if(wlan_cfgGetInt(pMac, WNI_CFG_ASSOC_STA_LIMIT, configDataValue)
+                                                     != eSIR_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                    "Failed to get value for WNI_CFG_ASSOC_STA_LIMIT");
+      goto handle_failure;
+   }
+      
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
+                            + sizeof(tHalCfg) + tlvStruct->length) ;
+#endif
+
    wdiStartParams->usConfigBufferLen = (tANI_U8 *)tlvStruct - tlvStructStart ;
 #ifdef WLAN_DEBUG
    {
@@ -10538,8 +10554,15 @@ void WDA_BaCheckActivity(tWDA_CbContext *pWDA)
    /* walk through all STA entries and find out TX packet count */ 
    for(curSta = 0 ; curSta < pWDA->wdaMaxSta ; curSta++)
    {
-      for(tid = 0 ; tid < STACFG_MAX_TC ; tid++)
-      {
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+        // We can only do BA on "hard" STAs.  
+         if (!(IS_HWSTA_IDX(curSta)))
+         {
+             continue;
+         }
+#endif //WLAN_SOFTAP_VSTA_FEATURE
+    for(tid = 0 ; tid < STACFG_MAX_TC ; tid++)
+    {
          WLANTL_STAStateType tlSTAState ;
          tANI_U32 txPktCount = 0 ;
          tANI_U8 validStaIndex = pWDA->wdaStaInfo[curSta].ucValidStaIndex ;
