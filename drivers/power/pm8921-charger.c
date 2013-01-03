@@ -3658,6 +3658,8 @@ static int is_charging_finished(struct pm8921_chg_chip *chip)
 #endif
 		pr_debug("vddmax = %d vbat_meas_mv=%d\n",
 			 vbat_programmed, vbat_meas_mv);
+		if (vbat_meas_mv < vbat_programmed - VBAT_TOLERANCE_MV)
+			return CHG_IN_PROGRESS;
 
 		if (last_vbat_programmed == -EINVAL)
 			last_vbat_programmed = vbat_programmed;
@@ -3677,7 +3679,7 @@ static int is_charging_finished(struct pm8921_chg_chip *chip)
 		}
 		pr_debug("regulation_loop=%d\n", regulation_loop);
 
-		if (regulation_loop != 0 && regulation_loop != VDD_LOOP)
+		if (regulation_loop != VDD_LOOP)
 			return CHG_IN_PROGRESS;
 	} /* !is_ext_charging */
 
