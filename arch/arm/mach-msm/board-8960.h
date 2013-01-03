@@ -70,7 +70,7 @@ enum {
 	SX150X_LIQUID,
 };
 
-#endif
+
 
 extern struct sx150x_platform_data msm8960_sx150x_data[];
 extern struct msm_camera_board_info msm8960_camera_board_info;
@@ -93,3 +93,4 @@ void msm8960_mdp_writeback(struct memtype_reserve *reserve_table);
 extern struct msm_rtb_platform_data msm8960_rtb_pdata;
 extern struct msm_cache_dump_platform_data msm8960_cache_dump_pdata;
 extern void msm8960_add_vidc_device(void);
+#endif
