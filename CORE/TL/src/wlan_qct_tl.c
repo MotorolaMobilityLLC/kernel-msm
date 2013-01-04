@@ -1038,10 +1038,10 @@ void WLANTL_AssocFailed(v_U8_t staId)
 ============================================================================*/
 
 VOS_STATUS WLANTL_Finish_ULA( void (*callbackRoutine) (void *callbackContext),
-                              void *callbackContext)
+                              void *callbackContext, uint8 staId)
 {
 #if defined( FEATURE_WLAN_INTEGRATED_SOC )
-   return WDA_DS_FinishULA( callbackRoutine, callbackContext); 
+   return WDA_DS_FinishULA( callbackRoutine, callbackContext, staId); 
 #else
    vos_msg_t  vosMsg;   
    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
@@ -3828,8 +3828,20 @@ WLANTL_GetFrames
 
               vos_pkt_chain_packet( vosDataBuff, vosTempBuf, 1 /*true*/ );
 
-              pTLCb->atlSTAClients[i].ucEapolPktPending = 0;
+              //Check if EAPOL pkt is pending and ULA notification is pending 
+              //if both the condition are met then send the notification to ULA
+              if ( pTLCb->atlSTAClients[i].ucEapolPktPending &&
+                   pTLCb->atlSTAClients[i].ucULANotificationPending ) 
+              {
+                 //Error check if callback routine is not NULL
+                 if(pTLCb->atlSTAClients[i].callbackRoutine != NULL )
+                 {
+                     pTLCb->atlSTAClients[i].callbackRoutine(pTLCb->atlSTAClients[i].callbackContext); 
+                     pTLCb->atlSTAClients[i].ucULANotificationPending = 0; 
+                 }
+              }
 
+              pTLCb->atlSTAClients[i].ucEapolPktPending = 0;
               VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
                 "WLAN TL:GetFrames STA: %d EAPOLPktPending %d",
                          ucSTAId, pTLCb->atlSTAClients[ucSTAId].ucEapolPktPending);
@@ -7822,6 +7834,7 @@ WLANTL_TxProcessMsg
    v_U8_t          ucSTAId; 
    v_U8_t          ucUcastSig;
    v_U8_t          ucBcastSig;
+   v_U8_t          staId;
 #ifdef WLAN_SOFTAP_FEATURE
    WLANTL_CbType*  pTLCb = NULL;
    WLANTL_ACEnumType    ucAC;
@@ -7899,10 +7912,32 @@ WLANTL_TxProcessMsg
       break;
 
   case WDA_DS_FINISH_ULA:
-    callbackContext = (void *)message->bodyval;
-   
-    callbackRoutine = message->bodyptr;
-    callbackRoutine(callbackContext);
+    pTLCb = VOS_GET_TL_CB(pvosGCtx);
+    if ( NULL == pTLCb )
+    {
+        TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+            "WLAN TL:Invalid TL pointer from pvosGCtx on WLANTL_STAPktPending"));
+        return VOS_STATUS_E_FAULT;
+    }
+    staId = message->reserved; 
+    //change for ULA 
+    if ( pTLCb->atlSTAClients[staId].ucEapolPktPending == 0  )
+    {
+      //ULA notification done bc no eapol pending 
+      callbackContext = (void *)message->bodyval;
+      callbackRoutine = message->bodyptr;
+      callbackRoutine(callbackContext);
+
+    }
+    else 
+    {
+      //ULA notification delayed bc eapol pending 
+       TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
+            "WLAN TL:EAPOL pkt pending. ULA notification has been delayed..."));
+       pTLCb->atlSTAClients[staId].ucULANotificationPending = 1; 
+       pTLCb->atlSTAClients[staId].callbackRoutine = message->bodyptr; 
+       pTLCb->atlSTAClients[staId].callbackContext = (void *)message->bodyval; 
+    }
     break;
 #endif
 
@@ -9255,7 +9290,9 @@ WLAN_TLAPGetNextTxIds
   v_U8_t          ucACLoopNum = WLANTL_AC_VO + 1; //number of loop to go
   v_U8_t          uFlowMask; // TX FlowMask from WDA
   uint8           ucACMask; 
-  uint8           i; 
+  uint8           i = 0; 
+  uint8           ucIndexSTA = 0;
+  uint8           j = 0; 
   /*------------------------------------------------------------------------
     Extract TL control block
   ------------------------------------------------------------------------*/
@@ -9275,6 +9312,34 @@ WLAN_TLAPGetNextTxIds
       "WLAN TL:Failed to retrieve Flow control mask from WDA"));
     return VOS_STATUS_E_FAULT;
   }
+
+  /* ! walk the STA table and check for :*/
+  for ( ucIndexSTA = 0; ucIndexSTA < WLAN_MAX_STA_COUNT; ucIndexSTA++ )
+  {
+      WLAN_TL_AC_ARRAY_2_MASK (&pTLCb->atlSTAClients[ucIndexSTA], ucACMask, i); 
+      if ( ( pTLCb->atlSTAClients[ucIndexSTA].ucExists) &&
+            ( WLANTL_STA_CONNECTED ==  pTLCb->atlSTAClients[ucIndexSTA].tlState) &&
+            ((pTLCb->atlSTAClients[ucIndexSTA].ucPktPending) && !(ucACMask)) &&
+            (0 != (ucACMask & uFlowMask)) )
+      {
+          // Find a station. Weight is updated already.
+          *pucSTAId = ucNextSTA;
+          pTLCb->ucCurrentSTA = ucNextSTA;
+   
+          //walk array : aucACMask[i] and pick the 1st one with the highest priority that is non 0 
+          for( j = WLANTL_MAX_AC; j >= 0; j--)
+          {
+            if(  0!= pTLCb->atlSTAClients[*pucSTAId].aucACMask[j] )
+               pTLCb->atlSTAClients[*pucSTAId].ucCurrentAC = pTLCb->atlSTAClients[*pucSTAId].aucACMask[i];
+          }
+  
+          TLLOG4(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_LOW,
+                   " TL serve one station AC: %d  W: %d StaId: %d",
+                   pTLCb->uCurServedAC, pTLCb->ucCurLeftWeight, pTLCb->ucCurrentSTA ));
+      
+          return VOS_STATUS_SUCCESS;
+      }
+   }
 
   ucNextSTA = pTLCb->ucCurrentSTA;
 
