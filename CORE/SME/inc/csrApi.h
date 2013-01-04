@@ -1057,7 +1057,10 @@ typedef struct tagCsrConfigParam
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
     tANI_BOOLEAN nRoamPrefer5GHz;
 #endif
+
     tANI_U8 scanCfgAgingTime;
+
+    tANI_U8   enableTxLdpc;
 }tCsrConfigParam;   
 
 //Tush

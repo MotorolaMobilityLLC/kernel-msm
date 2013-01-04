@@ -330,6 +330,8 @@ typedef struct
     tANI_U8    vhtTxChannelWidthSet;
 #endif
 
+    tANI_U8    htLdpcCapable;
+    tANI_U8    vhtLdpcCapable;
 } tAddStaParams, *tpAddStaParams;
 
 

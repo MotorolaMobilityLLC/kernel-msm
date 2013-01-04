@@ -1347,6 +1347,9 @@ typedef struct
   wpt_uint8                 ucVhtCapableSta;
   wpt_uint8                 ucVhtTxChannelWidthSet;
 #endif
+
+  wpt_uint8                 ucHtLdpcEnabled;
+  wpt_uint8                 ucVhtLdpcEnabled;
 }WDI_ConfigStaReqInfoType;
 
 
