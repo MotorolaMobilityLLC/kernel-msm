@@ -433,6 +433,9 @@ static irqreturn_t arizona_hpdet_irq(int irq, void *data)
 		goto done;
 	}
 
+	if (arizona->pdata.hpdet_cb)
+		arizona->pdata.hpdet_cb(reading);
+
 	if (info->mic)
 		switch_set_state(&info->sdev, BIT_HEADSET);
 	else
