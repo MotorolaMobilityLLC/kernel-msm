@@ -317,11 +317,6 @@ config FB_MSM_LVDS_CHIMEI_WXGA
 	select FB_MSM_LVDS
 	default n
 
-config FB_MSM_LVDS_FRC_FHD
-	bool
-	select FB_MSM_LVDS
-	default n
-
 config FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT
 	bool
 	select FB_MSM_MIPI_DSI_TOSHIBA
