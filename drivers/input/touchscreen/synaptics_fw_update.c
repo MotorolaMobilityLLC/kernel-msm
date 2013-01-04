@@ -791,7 +791,7 @@ static int fwu_write_blocks(unsigned char *block_ptr, unsigned short block_cnt,
 			dev_err(&i2c_client->dev,
 					"%s: Flash block %d failed, status 0x%02X\n",
 					__func__, block_num, retval);
-			return -1;
+			return retval;
 		}
 
 		block_ptr += fwu->block_size;
@@ -1449,7 +1449,7 @@ static ssize_t fwu_sysfs_config_area_store(struct device *dev,
 	int retval;
 	unsigned long config_area;
 
-	retval = sstrtoul(buf, 10, &config_area);
+	retval = kstrtoul(buf, 10, &config_area);
 	if (retval)
 		return retval;
 
@@ -1465,7 +1465,7 @@ static ssize_t fwu_sysfs_image_size_store(struct device *dev,
 	unsigned long size;
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 
-	retval = sstrtoul(buf, 10, &size);
+	retval = kstrtoul(buf, 10, &size);
 	if (retval)
 		return retval;
 
