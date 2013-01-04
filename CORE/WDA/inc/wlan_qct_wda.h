@@ -1546,7 +1546,8 @@ VOS_STATUS
 WDA_DS_FinishULA
 (
  void (*callbackRoutine) (void *callbackContext),
- void  *callbackContext
+ void  *callbackContext,
+ v_U8_t staId
 );
 
 /*==========================================================================
