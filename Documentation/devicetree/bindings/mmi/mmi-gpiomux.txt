@@ -60,8 +60,8 @@ qcom,dir:     Only applicable for qcom,func = <0>.  Defines
               the direction of the gpio and for a output
               gpio defines the initial state.
                     <0> - input
-                    <1> - output low
-                    <2> - output high
+                    <1> - output high
+                    <2> - output low
 
 Example:
 
