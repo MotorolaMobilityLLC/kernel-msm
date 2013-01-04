@@ -873,12 +873,13 @@ static int arizona_extcon_probe(struct platform_device *pdev)
 
 			regmap_update_bits(arizona->regmap,
 					   ARIZONA_MICD_CLAMP_CONTROL,
-					   ARIZONA_MICD_CLAMP_MODE_MASK, 0xc);
+					   ARIZONA_MICD_CLAMP_MODE_MASK, 9);
 		} else {
 			regmap_update_bits(arizona->regmap,
 					   ARIZONA_MICD_CLAMP_CONTROL,
 					   ARIZONA_MICD_CLAMP_MODE_MASK, 4);
 		}
+
 		regmap_update_bits(arizona->regmap,
 				   ARIZONA_JACK_DETECT_DEBOUNCE,
 				   ARIZONA_MICD_CLAMP_DB,
