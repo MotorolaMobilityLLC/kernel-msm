@@ -2289,7 +2289,25 @@ static bool wm5110_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_DSP4_STATUS_2:
 		return true;
 	default:
-		return false;
+		if ((reg >= 0x100000 && reg < 0x103000) ||
+		    (reg >= 0x180000 && reg < 0x188000) ||
+		    (reg >= 0x190000 && reg < 0x192000) ||
+		    (reg >= 0x1a8000 && reg < 0x1a9000) ||
+		    (reg >= 0x200000 && reg < 0x209000) ||
+		    (reg >= 0x280000 && reg < 0x280100) ||
+		    (reg >= 0x290000 && reg < 0x29a000) ||
+		    (reg >= 0x2a8000 && reg < 0x2aa000) ||
+		    (reg >= 0x300000 && reg < 0x30f000) ||
+		    (reg >= 0x380000 && reg < 0x381000) ||
+		    (reg >= 0x390000 && reg < 0x39e000) ||
+		    (reg >= 0x3a8000 && reg < 0x3b6000) ||
+		    (reg >= 0x400000 && reg < 0x403000) ||
+		    (reg >= 0x480000 && reg < 0x481000) ||
+		    (reg >= 0x490000 && reg < 0x492000) ||
+		    (reg >= 0x4a8000 && reg < 0x4a9000))
+			return true;
+		else
+			return false;
 	}
 }
 
@@ -2344,7 +2362,25 @@ static bool wm5110_volatile_register(struct device *dev, unsigned int reg)
 	case ARIZONA_DSP4_STATUS_2:
 		return true;
 	default:
-		return false;
+		if ((reg >= 0x100000 && reg < 0x103000) ||
+		    (reg >= 0x180000 && reg < 0x188000) ||
+		    (reg >= 0x190000 && reg < 0x192000) ||
+		    (reg >= 0x1a8000 && reg < 0x1a9000) ||
+		    (reg >= 0x200000 && reg < 0x209000) ||
+		    (reg >= 0x280000 && reg < 0x280100) ||
+		    (reg >= 0x290000 && reg < 0x29a000) ||
+		    (reg >= 0x2a8000 && reg < 0x2aa000) ||
+		    (reg >= 0x300000 && reg < 0x30f000) ||
+		    (reg >= 0x380000 && reg < 0x381000) ||
+		    (reg >= 0x390000 && reg < 0x39e000) ||
+		    (reg >= 0x3a8000 && reg < 0x3b6000) ||
+		    (reg >= 0x400000 && reg < 0x403000) ||
+		    (reg >= 0x480000 && reg < 0x481000) ||
+		    (reg >= 0x490000 && reg < 0x492000) ||
+		    (reg >= 0x4a8000 && reg < 0x4a9000))
+			return true;
+		else
+			return false;
 	}
 }
 
