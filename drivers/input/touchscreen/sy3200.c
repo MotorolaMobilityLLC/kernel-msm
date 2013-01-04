@@ -98,7 +98,9 @@ static int sy3200_validate_firmware(uint8_t *data, uint32_t size);
 static int sy3200_enable_reflashing(struct sy3200_driver_data *dd);
 static int sy3200_flash_record(struct sy3200_driver_data *dd, int type);
 #endif
+#ifdef CONFIG_TOUCHSCREEN_DEBUG
 static char *sy3200_msg2str(const uint8_t *msg, int size);
+#endif
 static bool sy3200_wait4irq(struct sy3200_driver_data *dd);
 static int sy3200_create_sysfs_files(struct sy3200_driver_data *dd);
 static void sy3200_remove_sysfs_files(struct sy3200_driver_data *dd);
@@ -2980,6 +2982,8 @@ sy3200_flash_record_fail:
 }
 #endif
 
+
+#ifdef CONFIG_TOUCHSCREEN_DEBUG
 static char *sy3200_msg2str(const uint8_t *msg, int size)
 {
 	char *str = NULL;
@@ -3009,6 +3013,7 @@ static char *sy3200_msg2str(const uint8_t *msg, int size)
 sy3200_msg2str_exit:
 	return str;
 }
+#endif
 
 static bool sy3200_wait4irq(struct sy3200_driver_data *dd)
 {
