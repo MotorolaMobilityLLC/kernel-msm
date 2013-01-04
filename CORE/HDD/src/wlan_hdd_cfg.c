@@ -1816,6 +1816,14 @@ REG_VARIABLE( CFG_SCAN_AGING_PARAM_NAME, WLAN_PARAM_Integer,
              CFG_SCAN_AGING_PARAM_DEFAULT,
              CFG_SCAN_AGING_PARAM_MIN,
              CFG_SCAN_AGING_PARAM_MAX ),
+
+REG_VARIABLE( CFG_TX_LDPC_ENABLE_FEATURE, WLAN_PARAM_Integer,
+              hdd_config_t, enableTxLdpc,
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+              CFG_TX_LDPC_ENABLE_FEATURE_DEFAULT,
+              CFG_TX_LDPC_ENABLE_FEATURE_MIN,
+              CFG_TX_LDPC_ENABLE_FEATURE_MAX ),
+
 };
 
 /*
@@ -3426,6 +3434,8 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 
    //Scan Results Aging Time out value
    smeConfig.csrConfig.scanCfgAgingTime = pConfig->scanAgingTimeout;
+
+   smeConfig.csrConfig.enableTxLdpc = pConfig->enableTxLdpc;
 
    halStatus = sme_UpdateConfig( pHddCtx->hHal, &smeConfig);    
    if ( !HAL_STATUS_SUCCESS( halStatus ) )

@@ -1137,8 +1137,13 @@ sendIndToSme:
 
 #endif
         pStaDs->baPolicyFlag = 0xFF;
+        pStaDs->htLdpcCapable = (tANI_U8)pAssocReq->HTCaps.advCodingCap;
     }
 
+    if(pAssocReq->VHTCaps.present)
+    {
+        pStaDs->vhtLdpcCapable = (tANI_U8)pAssocReq->VHTCaps.ldpcCodingCap;
+    }
 
 #ifdef WLAN_FEATURE_11AC
 if (limPopulateMatchingRateSet(pMac,

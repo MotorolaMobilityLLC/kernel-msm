@@ -1356,6 +1356,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         pMac->roam.configParam.nVhtChannelWidth = pParam->nVhtChannelWidth;
 #endif
         pMac->scan.fIgnore_chan165 = pParam->fIgnore_chan165;
+        pMac->roam.configParam.txLdpcEnable = pParam->enableTxLdpc;
     }
     
     return status;
@@ -11667,6 +11668,11 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
             pBuf += sizeof(tAniBool);        
         }
 #endif
+
+        // txLdpcIniFeatureEnabled
+        *pBuf = (tANI_U8)pMac->roam.configParam.txLdpcEnable;
+        pBuf++;
+
         //BssDesc
         csrPrepareJoinReassocReqBuffer( pMac, pBssDescription, pBuf, 
                 (tANI_U8)pProfile->uapsd_mask);
@@ -12802,6 +12808,9 @@ eHalStatus csrSendMBStartBssReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, eCs
         *pBuf = (tANI_U8)pParam->bssPersona;
         pBuf++;
         
+        //txLdpcIniFeatureEnabled
+        *pBuf = (tANI_U8)(tANI_U8)pMac->roam.configParam.txLdpcEnable;
+        pBuf++;
         
         
         // set RSN IE 
