@@ -70,6 +70,9 @@
 #define REV_ID				0x01
 #define ERROR_STATUS			0x02
 
+#define MSP_STATUS_REG			0x0B
+#define MSP_TOUCH_REG			0x0C
+#define MSP_CONTROL_REG			0x0D
 #define AP_POSIX_TIME			0x10
 
 #define ACCEL_UPDATE_RATE		0x16
@@ -1152,6 +1155,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned char bytes[2];
 	unsigned short delay;
 	int index;
+	unsigned long current_posix_time;
 
 	mutex_lock(&ps_msp430->lock);
 
@@ -1313,7 +1317,8 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 	case MSP430_IOCTL_SET_WAKESENSORS:
 		if (copy_from_user(bytes, argp, 2 * sizeof(unsigned char))) {
 			KDEBUG("copy set sensors returned error\n");
-			return -EFAULT;
+			err = -EFAULT;
+			break;
 		}
 		msp_cmdbuff[0] = WAKESENSOR_CONFIG;
 		msp_cmdbuff[1] = bytes[0];
@@ -1332,7 +1337,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		bytes[0] = msp_cmdbuff[0];
 		bytes[1] = msp_cmdbuff[1];
 		if (copy_to_user(argp, bytes, 2 * sizeof(unsigned char)))
-			return -EFAULT;
+			err = -EFAULT;
 		break;
 	case MSP430_IOCTL_SET_ALGOS:
 		byte = 0;
@@ -1433,6 +1438,59 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		else
 			err = 0;
 		break;
+	case MSP430_IOCTL_SET_POSIX_TIME:
+		if (copy_from_user(&current_posix_time, argp,
+			 sizeof(current_posix_time))) {
+			pr_err("copy from user returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		msp_cmdbuff[0] = AP_POSIX_TIME;
+		msp_cmdbuff[1] = (unsigned char)(current_posix_time >> 24);
+		msp_cmdbuff[2] = (unsigned char)((current_posix_time >> 16)
+				& 0xff);
+		msp_cmdbuff[3] = (unsigned char)((current_posix_time >> 8)
+				& 0xff);
+		msp_cmdbuff[4] = (unsigned char)((current_posix_time) & 0xff);
+		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 5);
+		break;
+	case MSP430_IOCTL_SET_CONTROL_REG:
+		msp_cmdbuff[0] = MSP_CONTROL_REG;
+		if (copy_from_user(&msp_cmdbuff[1], argp,
+			 MSP_CONTROL_REG_SIZE)) {
+			pr_err("copy from user returned error\n");
+			err = -EFAULT;
+			break;
+		}
+
+		err = msp430_i2c_write(ps_msp430, msp_cmdbuff,
+			(MSP_CONTROL_REG_SIZE + 1));
+		break;
+	case MSP430_IOCTL_GET_STATUS_REG:
+		msp_cmdbuff[0] = MSP_STATUS_REG;
+		err = msp430_i2c_write_read(ps_msp430,
+			 msp_cmdbuff, 1, MSP_STATUS_REG_SIZE);
+		if (err < 0) {
+			pr_err("MSP430 get status reg failed\n");
+			break;
+		}
+
+		if (copy_to_user(argp, msp_cmdbuff, MSP_STATUS_REG_SIZE))
+			err = -EFAULT;
+		break;
+	case MSP430_IOCTL_GET_TOUCH_REG:
+		msp_cmdbuff[0] = MSP_TOUCH_REG;
+		err = msp430_i2c_write_read(ps_msp430,
+			 msp_cmdbuff, 1, MSP_TOUCH_REG_SIZE);
+		if (err < 0) {
+			pr_err("MSP430 get touch reg failed\n");
+			break;
+		}
+
+		if (copy_to_user(argp, msp_cmdbuff, MSP_STATUS_REG_SIZE))
+			err = -EFAULT;
+		break;
+
 	/* No default here since previous switch could have
 	   handled the command and cannot over write that */
 	}
