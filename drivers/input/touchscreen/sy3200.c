@@ -25,6 +25,8 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/mod_devicetable.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/errno.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
@@ -108,10 +110,20 @@ static const struct i2c_device_id sy3200_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, sy3200_id);
 
+#ifdef CONFIG_OF
+static struct of_device_id sy3200_match_tbl[] = {
+	{ .compatible = "synaptics,sy3200" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, sy3200_match_tbl);
+#endif
+
+
 static struct i2c_driver sy3200_driver = {
 	.driver = {
 		.name = SY3200_I2C_NAME,
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(sy3200_match_tbl),
 	},
 	.probe = sy3200_probe,
 	.remove = __devexit_p(sy3200_remove),
@@ -121,6 +133,38 @@ static struct i2c_driver sy3200_driver = {
 	.resume = sy3200_resume,
 #endif
 };
+
+#ifdef CONFIG_OF
+static struct touch_platform_data *
+sy3200_of_init(struct i2c_client *client)
+{
+	struct touch_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	const char *fp = NULL;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "pdata allocation failure\n");
+		return NULL;
+	}
+
+	of_property_read_string(np, "synaptics,sy3200-tdat-filename", &fp);
+
+	pdata->filename = (char *)fp;
+	pdata->gpio_interrupt = of_get_gpio(np, 0);
+	pdata->gpio_reset = of_get_gpio(np, 1);
+	pdata->gpio_enable = of_get_gpio(np, 2);
+
+	return pdata;
+}
+#else
+static inline struct touch_platform_data *
+sy3200_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
+
 
 static int sy3200_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
@@ -150,7 +194,12 @@ static int sy3200_probe(struct i2c_client *client,
 	dd->ic_stat = SY3200_IC_UNKNOWN;
 	dd->status = 0x0000;
 	dd->client = client;
-	dd->pdata = client->dev.platform_data;
+
+	if (client->dev.of_node)
+		dd->pdata = sy3200_of_init(client);
+	else
+		dd->pdata = client->dev.platform_data;
+
 	i2c_set_clientdata(client, dd);
 	dd->in_dev = NULL;
 
