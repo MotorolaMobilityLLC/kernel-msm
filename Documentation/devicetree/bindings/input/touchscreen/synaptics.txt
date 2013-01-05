@@ -1,0 +1,42 @@
+Synaptics Touch Controllers
+
+Required properties:
+
+ - compatible:
+        should be "synaptics,sy3200", or "synaptics,sy3400"
+ - reg:
+        i2c slave address of the device
+ - interrupt-parent:
+        parent controller of interrupt
+ - interrupts:
+        touch sample interrupt to indicate presense or release of fingers on the
+        panel.
+ - gpios:
+        <0> interrupt - the interrupt gpio, should match the interrupts param
+        <1> reset     - the reset line
+        <2> enable    - optional, enable gpio
+
+        The interrupt and reset lines are required, the enable GPIO is optional
+        if its not connected.
+ - synaptics,sy3200-tdat-filename:
+        firmware filename to flash to the controller
+
+Example:
+	i2c@16200000 {
+		status = "okay";
+
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <24000000>;
+
+		sy3200@20 {
+			compatible = "synaptics,sy3200";
+			reg = <0x20>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <46 0>;
+			gpios = <&msmgpio 46 0>, /* IRQ */
+				<&msmgpio 63 0>; /* RESET */
+
+			synaptics,sy3200-tdat-filename = "sy3200-r0.tdat";
+		};
+	};
+
