@@ -8279,11 +8279,3 @@ struct cgroup_subsys cpuacct_subsys = {
 	.subsys_id = cpuacct_subsys_id,
 };
 #endif	/* CONFIG_CGROUP_CPUACCT */
-
-u32 cpu_curr_ptr_addr(int cpu)
-{
-	u32 ret = 0;
-	if (cpu_present(cpu))
-		ret = (unsigned long)&cpu_curr(cpu);
-	return ret;
-}
