@@ -958,7 +958,7 @@ static int __init cpufreq_interactive_init(void)
 	/* Initalize per-cpu timers */
 	for_each_possible_cpu(i) {
 		pcpu = &per_cpu(cpuinfo, i);
-		init_timer(&pcpu->cpu_timer);
+		init_timer_deferrable(&pcpu->cpu_timer);
 		pcpu->cpu_timer.function = cpufreq_interactive_timer;
 		pcpu->cpu_timer.data = i;
 	}
