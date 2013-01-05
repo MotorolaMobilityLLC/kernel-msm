@@ -339,11 +339,21 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 #define TZBSP_DUMP_CTX_VERSION		1
 
 #define MSM_WDT_CTX_SIG			0x77647473
-#define MSM_WDT_CTX_REV			0x00010001
+#define MSM_WDT_CTX_REV			0x00010002
 
 #define NR_CPUS_MAX			4
 #define NR_CPUS_2			2
 #define NR_CPUS_4			4
+
+#define RET_STAGE_SHIFT			(28)
+#define RET_SECTION_SHIFT		(24)
+#define RET_ERR_SHIFT			(16)
+#define RET_MISC_SHIFT			(12)
+
+#define RET_TZ				(0xfu << RET_STAGE_SHIFT)
+#define RET_SBL2			(0xeu << RET_STAGE_SHIFT)
+
+#define ERR_NONE			(0xffu << RET_ERR_SHIFT)
 
 struct tzbsp_mon_cpu_ctx_s {
 	u32 mon_lr;
@@ -419,61 +429,50 @@ union tzbsp_dump_buf_s {
 	struct tzbsp_dump_buf_s4 s4;
 };
 
-struct msm_wdt_tz_percpu {
-	u32 ret;
-	u32 stack_va;
-};
-
-struct msm_wdt_tz_info {
-	u32 rev;
-	u32 size;
-	struct msm_wdt_tz_percpu percpu[NR_CPUS_MAX];
-};
-
-struct msm_wdt_lnx_percpu {
-	u32 curr_ptr_pa;
-};
-
 struct msm_wdt_lnx_info {
-	u32 rev;
+	u32 tsk_size;
+	u32 ti_tsk_offset;
+} __packed __aligned(4);
+
+struct msm_wdt_ctx_info {
+	struct msm_wdt_lnx_info lnx;
+	u32 size_tz;
+	u32 rev_tz;
 	u32 size;
 	u32 cpu_count;
-	u32 tsk_stack_offset;
-	u32 tsk_size;
-	struct msm_wdt_lnx_percpu percpu[NR_CPUS_MAX];
-};
-
-struct msm_wdt_dump_buf {
-	struct msm_wdt_tz_info tz;
-	struct msm_wdt_lnx_info lnx;
+	u32 ret;
+	u32 rev;
 	u32 sig;
-};
+} __packed __aligned(4);
 
-struct msm_wdt_dump_s {
-	u8 spare[PAGE_SIZE - sizeof(struct msm_wdt_dump_buf)];
-	struct msm_wdt_dump_buf buf;
-};
-
-union msm_wdt_page1 {
-	u8 padding[PAGE_SIZE];
+struct msm_wdt_page1 {
 	union tzbsp_dump_buf_s tzbsp;
-	struct msm_wdt_dump_s wdt;
-};
+	u8 spare[PAGE_SIZE - sizeof(union tzbsp_dump_buf_s)
+			- sizeof(struct msm_wdt_ctx_info)];
+	struct msm_wdt_ctx_info cinfo;
+} __packed __aligned(PAGE_SIZE);
 
-struct msm_wdt_tsk {
+struct msm_wdt_cpy {
+	u32 from;
+	u32 to;
+	u32 size;
+} __packed __aligned(4);
+
+#define LNX_STACK	0
+#define LNX_TASK	1
+#define LNX_CTX_AREAS	2
+
+struct msm_wdt_pcp {
+	u32 ret;
+	u32 stack_va;
+	struct msm_wdt_cpy jobs[LNX_CTX_AREAS];
 	struct task_struct ts;
-	u8 padding1[PAGE_SIZE / 4 - sizeof(struct task_struct)];
-};
-
-union msm_wdt_page2 {
-	u8 padding[PAGE_SIZE];
-	struct msm_wdt_tsk tsk[NR_CPUS_MAX];
-};
+} __packed __aligned(1024);
 
 struct msm_wdt_ctx {
-	union msm_wdt_page1 p1;
-	union msm_wdt_page2 p2;
-};
+	struct msm_wdt_page1 p1;
+	struct msm_wdt_pcp pcp[NR_CPUS_MAX];
+} __packed __aligned(PAGE_SIZE);
 
 #define MSM_WDT_CTX_SIZE	(sizeof(struct msm_wdt_ctx)	\
 				+ (THREAD_SIZE * get_core_count()))
@@ -486,9 +485,9 @@ void __init reserve_memory_for_watchdog(void)
 
 static unsigned long msm_watchdog_alloc_buf(void)
 {
-	BUILD_BUG_ON(sizeof(struct task_struct) > (PAGE_SIZE / 4));
+	BUILD_BUG_ON(sizeof(struct msm_wdt_pcp) != 1024);
 	BUILD_BUG_ON((sizeof(union tzbsp_dump_buf_s)
-		+ sizeof(struct msm_wdt_dump_buf)) > PAGE_SIZE);
+		+ sizeof(struct msm_wdt_ctx_info)) > PAGE_SIZE);
 	BUILD_BUG_ON(CONFIG_NR_CPUS > NR_CPUS_MAX);
 	return allocate_contiguous_memory_nomap(MSM_WDT_CTX_SIZE,
 			MEMTYPE_EBI1, PAGE_SIZE);
@@ -500,6 +499,10 @@ static unsigned long msm_watchdog_alloc_buf(void)
 
 static void __init msm_wdt_show_status(u32 sc_status, const char *label)
 {
+	if (!sc_status) {
+		MSMWDTD("%s: probably didn't finish dump.\n", label);
+		return;
+	}
 	MSMWDTD("%s: was in %ssecure world.\n", label,
 		(sc_status & TZBSP_SC_STATUS_NS_BIT) ? "non-" : "");
 	if (sc_status & TZBSP_SC_STATUS_WDT)
@@ -647,7 +650,7 @@ static void __init msm_wdt_unwind_backtrace(struct tzbsp_mon_cpu_ctx_s *regs,
 static void __init msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 {
 	int i;
-	unsigned long stack_tmp = 0, mon_lr = 0;
+	unsigned long stack_tmp = 0, orr = 0;
 	u32 *sc_status, *wdt0_sts;
 	struct tzbsp_mon_cpu_ctx_s *sc_ns;
 	char label[64];
@@ -681,21 +684,21 @@ static void __init msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 			get_core_count());
 		return;
 	}
-	for (i = 0; i < get_core_count(); i++)
-		mon_lr |= sc_ns[i].mon_lr;
-	if (!mon_lr) {
-		u32 *tzctx = (u32 *)((u8 *)ctx +
-				sizeof(struct tzbsp_dump_buf_s0));
+	for (i = 0; i < get_core_count(); i++) {
+		orr |= wdt0_sts[i];
+		orr |= sc_ns[i].mon_lr;
+	}
+	if (!orr) {
+		u32 *tzctx;
 		if (bi_powerup_reason() != PU_REASON_WDOG_AP_RESET)
 			return;
-		for ( ; tzctx < (u32 *)((u8 *)ctx +
-				sizeof(union tzbsp_dump_buf_s)); tzctx++) {
-			mon_lr |= *tzctx;
-			if (mon_lr)
+		for (tzctx = sc_status; tzctx < (u32 *)ctx->p1.spare; tzctx++) {
+			orr |= *tzctx;
+			if (orr)
 				break;
 		}
-		if (!mon_lr) {
-			MSMWDTD("\n*** Likely Watchdog Bite ***\n");
+		if (!orr) {
+			MSMWDTD("\n*** Might be Watchdog Bite ***\n");
 			return;
 		} else {
 			MSMWDTD("*** Likely Bad Dump ***\n");
@@ -718,25 +721,29 @@ static void __init msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 		msm_wdt_show_regs(&sc_ns[i], label);
 	}
 	msm_wdt_show_regs(&sc_ns[get_core_count()], "sec");
-	if ((ctx->p1.wdt.buf.sig != MSM_WDT_CTX_SIG)
-		|| (ctx->p1.wdt.buf.tz.rev != MSM_WDT_CTX_REV)
-		|| (ctx->p1.wdt.buf.tz.size != MSM_WDT_CTX_SIZE)) {
+	if ((ctx->p1.cinfo.sig != MSM_WDT_CTX_SIG)
+		|| (ctx->p1.cinfo.rev_tz != MSM_WDT_CTX_REV)
+		|| (ctx->p1.cinfo.size_tz != MSM_WDT_CTX_SIZE)) {
 		MSMWDTD("msm_wdt_ctx: linux dump buffer mismatch.\n");
 		MSMWDTD("Expected: sig 0x%08x, ver 0x%08x size 0x%08x\n",
 			MSM_WDT_CTX_SIG, MSM_WDT_CTX_REV, MSM_WDT_CTX_SIZE);
 		MSMWDTD("Found:    sig 0x%08x, ver 0x%08x size 0x%08x\n",
-			ctx->p1.wdt.buf.sig, ctx->p1.wdt.buf.tz.rev,
-			ctx->p1.wdt.buf.tz.size);
+			ctx->p1.cinfo.sig, ctx->p1.cinfo.rev_tz,
+			ctx->p1.cinfo.size_tz);
 		return;
 	}
 	/* now dump customized stuff */
 	MSMWDTD("\n");
+	MSMWDTD("ret 0x%08x\n", ctx->p1.cinfo.ret);
+	MSMWDTD("\n");
 	for (i = 0; i < get_core_count(); i++) {
 		MSMWDTD("CPU%d: ", i);
-		MSMWDTD("ret 0x%x ", ctx->p1.wdt.buf.tz.percpu[i].ret);
-		MSMWDTD("stack %08x ", ctx->p1.wdt.buf.tz.percpu[i].stack_va);
+		MSMWDTD("ret 0x%x ", ctx->pcp[i].ret);
+		MSMWDTD("stack %08x ", ctx->pcp[i].stack_va);
 		MSMWDTD("\n");
 	}
+	if ((ctx->p1.cinfo.ret != (RET_SBL2 | ERR_NONE)))
+		return;
 	MSMWDTD("\n");
 	stack = (u8 (*)[THREAD_SIZE])(ctx + 1);
 	if (!IS_ALIGNED((unsigned long)stack, THREAD_SIZE)) {
@@ -747,15 +754,17 @@ static void __init msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 	for (i = 0; i < get_core_count(); i++) {
 		unsigned long addr, data;
 
+		if (ctx->pcp[i].ret != (RET_SBL2 | ERR_NONE))
+			continue;
 		MSMWDTD("CPU%d: ", i);
-		addr = ctx->p1.wdt.buf.tz.percpu[i].stack_va;
+		addr = ctx->pcp[i].stack_va;
 		if (stack_tmp) {
 			memcpy((void *)stack_tmp, stack[i], THREAD_SIZE);
 			data = stack_tmp;
 		} else {
 			data = (unsigned long)stack[i];
 		}
-		msm_wdt_show_task(&ctx->p2.tsk[i].ts,
+		msm_wdt_show_task(&ctx->pcp[i].ts,
 				(struct thread_info *)data);
 		msm_wdt_unwind_backtrace(&sc_ns[i], addr, data);
 		MSMWDTD("\n");
@@ -766,21 +775,18 @@ static void __init msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 
 static void __init msm_watchdog_ctx_lnx(struct msm_wdt_lnx_info *lnx)
 {
-	int i;
-	lnx->tsk_stack_offset = offsetof(struct task_struct, stack);
 	lnx->tsk_size = sizeof(struct task_struct);
-	for_each_present_cpu(i)
-		lnx->percpu[i].curr_ptr_pa = __pa(cpu_curr_ptr_addr(i));
+	lnx->ti_tsk_offset = offsetof(struct thread_info, task);
 }
 
 static void __init msm_wdt_ctx_reset(struct msm_wdt_ctx *ctx)
 {
 	memset(ctx, 0, MSM_WDT_CTX_SIZE);
-	ctx->p1.wdt.buf.sig = MSM_WDT_CTX_SIG;
-	ctx->p1.wdt.buf.lnx.rev = MSM_WDT_CTX_REV;
-	ctx->p1.wdt.buf.lnx.size = MSM_WDT_CTX_SIZE;
-	ctx->p1.wdt.buf.lnx.cpu_count = get_core_count();
-	msm_watchdog_ctx_lnx(&ctx->p1.wdt.buf.lnx);
+	ctx->p1.cinfo.sig = MSM_WDT_CTX_SIG;
+	ctx->p1.cinfo.rev = MSM_WDT_CTX_REV;
+	ctx->p1.cinfo.cpu_count = get_core_count();
+	ctx->p1.cinfo.size = MSM_WDT_CTX_SIZE;
+	msm_watchdog_ctx_lnx(&ctx->p1.cinfo.lnx);
 }
 
 #else /* CONFIG_MSM_WATCHDOG_CTX_PRINT undefined below */
