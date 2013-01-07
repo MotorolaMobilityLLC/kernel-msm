@@ -2964,29 +2964,27 @@ sy3200_flash_record_fail:
 #ifdef CONFIG_TOUCHSCREEN_DEBUG
 static char *sy3200_msg2str(const uint8_t *msg, int size)
 {
-	char *str = NULL;
+	char *str = NULL, *cur;
 	int i = 0;
 	int err = 0;
-	char buf[5] = {0x00, 0x00, 0x00, 0x00, 0x00};
 
-	str = kzalloc(sizeof(char) * (size * 5), GFP_KERNEL);
+	str = kzalloc(sizeof(char) * (size * 5) + 1, GFP_KERNEL);
 	if (str == NULL) {
 		printk(KERN_ERR "%s: Failed to allocate message string.\n",
 			__func__);
 		goto sy3200_msg2str_exit;
 	}
 
+	cur = str;
 	for (i = 0; i < size; i++) {
-		err = sprintf(buf, "0x%02X ", msg[i]);
+		err = snprintf(cur, 6, "0x%02X ", msg[i]);
 		if (err < 0) {
 			printk(KERN_ERR "%s: Error in sprintf on pass %d",
 				__func__, i);
 			goto sy3200_msg2str_exit;
 		}
-		strncpy(&(str[i*5]), buf, 5);
+		cur += 5;
 	}
-
-	str[(size*5)-1] = 0x00;
 
 sy3200_msg2str_exit:
 	return str;
