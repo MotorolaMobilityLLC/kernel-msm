@@ -1,0 +1,34 @@
+mmi-factory-driver
+
+This is a mechanism to use the standard device tree to export the GPIOs
+required in factory test environments. It is dependent upon environment
+variable of /chosen/mmi,factory-cable being present.  If the property
+does not exist, the platform driver will not probe.
+
+Required properties:
+- compatible: "mmi,factory-support-msm8960"
+
+- gpios: array of GPIOs and GPIOF flags to request, configure, and export by
+    the driver.  The flags are standard GPIO flag bitmasks:
+
+        GPIOF_DIR_OUT           (0 << 0)
+        GPIOF_DIR_IN            (1 << 0)
+        GPIOF_INIT_LOW          (0 << 1)
+        GPIOF_INIT_HIGH         (1 << 1)
+        GPIOF_OPEN_DRAIN        (1 << 2)
+        GPIOF_OPEN_SOURCE       (1 << 3)
+
+- gpio-names: matching label to apply to the above GPIO list. It must contain
+    same number of entries as the gpio array.
+
+Example:
+
+factory_support {
+	compatible = "mmi,factory-support-msm8960";
+
+	gpios = <&msmgpio 75 0x2>, /* GPIOF_DIR_OUT | GPIOF_INIT_HIGH */
+		<&msmgpio 98 0x1>; /* GPIOF_DIR_IN */
+	gpio-names = "factory_kill_disable",
+		     "temp_sensor";
+};
+
