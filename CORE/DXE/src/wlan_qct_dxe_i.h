@@ -96,8 +96,6 @@ when           who        what, where, why
  * If official msmreg.h integrated, this part will be eliminated */
 /* Start with base address */
 
-#define WLANDXE_BMU_AVAILABLE_BD_PDU     0x03080084
-
 #ifdef WCN_PRONTO
 #define WLANDXE_CCU_DXE_INT_SELECT       0xfb2050dc
 #define WLANDXE_CCU_DXE_INT_SELECT_STAT  0xfb2050e0
@@ -117,6 +115,8 @@ when           who        what, where, why
 #define WLANDXE_WCNSS_BASE_ADDRESS        0x03000000
 #endif
 #endif /* PAL_OS_TYPE_BMP */
+
+#define WLANDXE_BMU_AVAILABLE_BD_PDU     (WLANDXE_WCNSS_BASE_ADDRESS + 0x80084)
 
 #define WLANDXE_REGISTER_BASE_ADDRESS    (WLANDXE_WCNSS_BASE_ADDRESS + 0x202000)
 
