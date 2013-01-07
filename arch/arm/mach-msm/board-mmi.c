@@ -26,7 +26,6 @@
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/persistent_ram.h>
-#include <linux/platform_data/mmi-factory.h>
 
 #include <mach/devtree_util.h>
 #include <mach/gpio.h>
@@ -192,101 +191,6 @@ static struct platform_device *mmi_devices[] __initdata = {
 	&mmi_bq5101xb_device,
 };
 
-static void __init mmi_factory_register(void)
-{
-	struct device_node *factory_node;
-	struct device_node *gpio_node;
-	struct mmi_factory_gpio_entry *gpios;
-	int num_gpios;
-	int ret;
-
-	factory_node = of_find_node_by_path("/System@0/FactoryDevice@0");
-	if (!factory_node)
-		goto register_device;
-
-	num_gpios = dt_children_count(factory_node);
-	if (!num_gpios) {
-		pr_warn("%s read empty node\n", factory_node->full_name);
-		goto register_device;
-	}
-
-	gpios = kzalloc(num_gpios * sizeof(struct mmi_factory_gpio_entry),
-		GFP_KERNEL);
-	if (!gpios) {
-		pr_err("%s allocation failure for factory device "\
-			"failed to allocate %d gpios.",
-			__func__, num_gpios);
-		goto register_device;
-	}
-
-	num_gpios = 0;
-	for_each_child_of_node(factory_node, gpio_node) {
-		const char *gpio_name;
-		u32 gpio_number;
-		u8 gpio_direction;  /* 0 == IN, 1 == OUT */
-		u32 gpio_value = 0; /* value is only used for output */
-		u32 val;
-
-		if (of_property_read_string(gpio_node,
-				"gpio_name", &gpio_name)) {
-			pr_warn("%s missing required property - gpio_name\n",
-				gpio_node->full_name);
-			continue;
-		}
-
-		ret = of_property_read_u32(gpio_node, "gpio_number",
-					   &gpio_number);
-		if (ret) {
-			pr_warn("%s missing required property - gpio_number\n",
-				gpio_node->full_name);
-			continue;
-		}
-
-		if (gpio_number >= NR_GPIO_IRQS) {
-			pr_warn("%s gpio_number (%d) is out of range\n",
-				gpio_node->full_name, gpio_number);
-			continue;
-		}
-
-		ret  = of_property_read_u32(gpio_node, "gpio_direction",
-					    &val);
-		if (ret) {
-			pr_warn("%s missing required property - gpio_number\n",
-				gpio_node->full_name);
-			continue;
-		}
-		gpio_direction = val ? GPIOF_DIR_OUT : GPIOF_DIR_IN;
-
-		if (gpio_direction == GPIOF_DIR_OUT) {
-			ret = of_property_read_u32(gpio_node, "gpio_value",
-						   &gpio_value);
-			if (ret) {
-				pr_warn("%s missing required property "\
-				"- gpio_direction\n", gpio_node->full_name);
-				continue;
-			}
-		}
-
-		gpios[num_gpios].name = gpio_name;
-		gpios[num_gpios].number = gpio_number;
-		gpios[num_gpios].direction = gpio_direction;
-		gpios[num_gpios].value = gpio_value;
-		num_gpios++;
-	}
-
-	if (num_gpios) {
-		((struct mmi_factory_platform_data *)
-			mmi_factory_device.dev.platform_data)->gpios = gpios;
-		((struct mmi_factory_platform_data *)
-			mmi_factory_device.dev.platform_data)->num_gpios =
-			num_gpios;
-	}
-
-register_device:
-	of_node_put(factory_node);
-	platform_device_register(&mmi_factory_device);
-}
-
 #define SERIALNO_MAX_LEN 64
 static char serialno[SERIALNO_MAX_LEN + 1];
 int __init board_serialno_init(char *s)
@@ -404,8 +308,6 @@ static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 	platform_add_devices(mmi_devices, ARRAY_SIZE(mmi_devices));
 	mmi_audio_dsp_init();
 	mmi_i2s_dai_init();
-	if (mmi_boot_mode_is_factory())
-		mmi_factory_register();
 
 	mmi_vibrator_init();
 	mmi_unit_info_init();
