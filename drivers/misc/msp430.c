@@ -148,6 +148,8 @@
 #define MSP430_ES_DATA_QUEUE_SIZE	0x08
 #define MSP430_ES_DATA_QUEUE_MASK	0x07
 
+#define CAMERA_DATA				0x01
+
 #define KDEBUG(format, s...)	if (g_debug) pr_info(format, ##s)
 static char g_debug;
 
@@ -841,6 +843,12 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		msp430_as_data_buffer_write(ps_msp430, DT_STOWED, x, 0, 0, 0);
 
 		KDEBUG("Sending Stowed status %d\n", x);
+	}
+	if (irq_status & M_CAMERA_ACT) {
+		x = CAMERA_DATA;
+		msp430_as_data_buffer_write(ps_msp430, DT_CAMERA_ACT, x, 0, 0, 0);
+
+		KDEBUG("Sending Camera Gesture status %d\n", x);
 	}
 	if (irq2_status & M_MMOVEME) {
 		/* Client recieving action will be upper 2 MSB of status */
