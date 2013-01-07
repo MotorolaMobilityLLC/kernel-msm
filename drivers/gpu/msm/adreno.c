@@ -133,6 +133,10 @@ unsigned int hang_detect_regs[] = {
 
 const unsigned int hang_detect_regs_count = ARRAY_SIZE(hang_detect_regs);
 
+static void adreno_hang_panic_work_func(struct work_struct *work);
+static struct delayed_work adreno_hang_panic_work;
+static struct kgsl_device *adreno_hang_panic_device = NULL;
+
 /*
  * This is the master list of all GPU cores that are supported by this
  * driver.
@@ -1132,6 +1136,8 @@ adreno_probe(struct platform_device *pdev)
 	kgsl_pwrscale_init(device);
 	kgsl_pwrscale_attach_policy(device, ADRENO_DEFAULT_PWRSCALE_POLICY);
 
+	INIT_DELAYED_WORK(&adreno_hang_panic_work, adreno_hang_panic_work_func);
+
 	device->flags &= ~KGSL_FLAGS_SOFT_RESET;
 	return 0;
 
@@ -1603,6 +1609,8 @@ adreno_dump_and_recover(struct kgsl_device *device)
 		adreno_destroy_recovery_data(&rec_data);
 		if (result) {
 			kgsl_pwrctrl_set_state(device, KGSL_STATE_HUNG);
+			adreno_hang_panic_device = device;
+			schedule_delayed_work(&adreno_hang_panic_work, msecs_to_jiffies(10000));
 		} else {
 			kgsl_pwrctrl_set_state(device, KGSL_STATE_ACTIVE);
 			mod_timer(&device->idle_timer, jiffies + FIRST_TIMEOUT);
@@ -1613,6 +1621,13 @@ done:
 	return result;
 }
 EXPORT_SYMBOL(adreno_dump_and_recover);
+
+static void adreno_hang_panic_work_func(struct work_struct *work)
+{
+	KGSL_DRV_ERR(adreno_hang_panic_device,
+	             "Cannot recover GPU. Device will be restarted");
+	BUG();
+}
 
 static int adreno_getproperty(struct kgsl_device *device,
 				enum kgsl_property_type type,
