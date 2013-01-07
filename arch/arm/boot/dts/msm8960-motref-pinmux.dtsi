@@ -491,6 +491,23 @@
 			};
 		};
 
+		pin@8015a0 {
+			reg = <0x8015a0 0x10>;
+			qcom,pin-num = <90>;
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(90)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <1>;   /* out_high               */
+			};
+			qcom,suspended@1 {
+				qcom,func = <0>;  /* gpio_in_out(90)        */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <1>;   /* out_high               */
+			};
+		};
+
 		pin@8015c0 {
 			reg = <0x8015c0 0x10>;
 			qcom,pin-num = <92>;
