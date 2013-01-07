@@ -1573,9 +1573,9 @@ static int iw_softap_set_channel_range(struct net_device *dev,
                                   startChannel,endChannel, band);
       ret = -EINVAL;
     }
-	
-	pHddCtx->is_dynamic_channel_range_set = 1;
-	
+
+    pHddCtx->is_dynamic_channel_range_set = 1;
+
     return ret;
 }
 
