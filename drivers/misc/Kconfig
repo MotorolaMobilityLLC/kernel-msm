@@ -669,6 +669,7 @@ config ALSA_TO_H2W
 
 config MMI_FACTORY
 	tristate "Motorola Mobility Factory driver"
+	depends on OF
 	help
 	  This option enables a device driver that is collects many
 	  of the extensions needed by the Motorola factory.  If you
