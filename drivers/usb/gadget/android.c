@@ -159,6 +159,10 @@ struct android_dev {
 	/* A list node inside the android_dev_list */
 	struct list_head list_item;
 
+	/* For handling switch requests from hosts */
+	int switch_index;
+	struct work_struct async_work;
+
 };
 
 struct android_configuration {
@@ -321,6 +325,33 @@ static void android_work(struct work_struct *data)
 		pr_info("%s: did not send uevent (%d %d %p)\n", __func__,
 			 dev->connected, dev->sw_connected, cdev->config);
 	}
+}
+
+static void send_usb_action_uevents(struct android_dev *dev)
+{
+	char tmp_str[30];
+	char *uevent_envp[3];
+
+	if (!dev->switch_index)
+		snprintf(tmp_str, 30, "USB_ACTION_VALUE=none");
+	else
+		snprintf(tmp_str, 30, "USB_ACTION_VALUE=switch%02d",
+				dev->switch_index);
+
+	uevent_envp[0] = "USB_ACTION_NAME=SETPROP";
+	uevent_envp[1] = tmp_str;
+	uevent_envp[2] = NULL;
+
+	kobject_uevent_env(&dev->dev->kobj, KOBJ_CHANGE, uevent_envp);
+	pr_info("android_usb: sent action event %s \n", uevent_envp[1]);
+}
+
+static void android_async_work(struct work_struct *data)
+{
+	struct android_dev *dev =
+		container_of(data, struct android_dev, async_work);
+	send_usb_action_uevents(dev);
+	return;
 }
 
 static void android_enable(struct android_dev *dev)
@@ -2259,6 +2290,19 @@ out:
 	return snprintf(buf, PAGE_SIZE, "%s\n", state);
 }
 
+static ssize_t usb_action_show(struct device *pdev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct android_dev *dev = dev_get_drvdata(pdev);
+
+	if (!dev->switch_index)
+		return snprintf(buf, PAGE_SIZE, "none\n");
+	else
+		return snprintf(buf, PAGE_SIZE, "switch%02d\n",
+				dev->switch_index);
+}
+
 #define DESCRIPTOR_ATTR(field, format_string)				\
 static ssize_t								\
 field ## _show(struct device *dev, struct device_attribute *attr,	\
@@ -2318,6 +2362,7 @@ static DEVICE_ATTR(pm_qos, S_IRUGO | S_IWUSR,
 static DEVICE_ATTR(state, S_IRUGO, state_show, NULL);
 static DEVICE_ATTR(remote_wakeup, S_IRUGO | S_IWUSR,
 		remote_wakeup_show, remote_wakeup_store);
+static DEVICE_ATTR(usb_action, S_IRUGO, usb_action_show, NULL);
 
 static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_idVendor,
@@ -2334,6 +2379,7 @@ static struct device_attribute *android_usb_attributes[] = {
 	&dev_attr_pm_qos,
 	&dev_attr_state,
 	&dev_attr_remote_wakeup,
+	&dev_attr_usb_action,
 	NULL
 };
 
@@ -2435,6 +2481,7 @@ static int android_usb_unbind(struct usb_composite_dev *cdev)
 	product_string[0] = '\0';
 	serial_string[0] = '0';
 	cancel_work_sync(&dev->work);
+	cancel_work_sync(&dev->async_work);
 	android_cleanup_functions(dev->functions);
 	return 0;
 }
@@ -2457,11 +2504,41 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 	struct android_configuration	*conf;
 	int value = -EOPNOTSUPP;
 	unsigned long flags;
+	u16 wIndex = le16_to_cpu(c->wIndex);
+	u16 wValue = le16_to_cpu(c->wValue);
+	u16 wLength = le16_to_cpu(c->wLength);
 
 	req->zero = 0;
 	req->complete = composite_setup_complete;
 	req->length = 0;
 	gadget->ep0->driver_data = cdev;
+
+	switch (c->bRequestType & USB_TYPE_MASK) {
+	case USB_TYPE_VENDOR:
+		switch (c->bRequest) {
+		case 1:
+			if ((wValue == 0) && (wLength == 0)) {
+				value = 0;
+				req->zero = 0;
+				req->length = value;
+				if (usb_ep_queue
+				    (cdev->gadget->ep0, req, GFP_ATOMIC))
+					pr_err("ep0 in queue failed\n");
+
+				dev->switch_index = wIndex;
+				schedule_work(&dev->async_work);
+			}
+			break;
+		default:
+			break;
+		}
+	default:
+			break;
+	}
+
+	/*if request processed ,return */
+	if (value >= 0)
+		return value;
 
 	list_for_each_entry(conf, &dev->configs, list_item)
 		list_for_each_entry(f, &conf->enabled_functions, enabled_list)
@@ -2623,6 +2700,7 @@ static int __devinit android_probe(struct platform_device *pdev)
 	android_dev->configs_num = 0;
 	INIT_LIST_HEAD(&android_dev->configs);
 	INIT_WORK(&android_dev->work, android_work);
+	INIT_WORK(&android_dev->async_work, android_async_work);
 	mutex_init(&android_dev->mutex);
 
 	android_dev->pdata = pdata;
