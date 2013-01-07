@@ -312,9 +312,10 @@ int wcd9xxx_irq_init(struct wcd9xxx *wcd9xxx)
 			free_irq(wcd9xxx->irq, wcd9xxx);
 	}
 
-	if (ret)
+	if (ret) {
 		mutex_destroy(&wcd9xxx->irq_lock);
 		mutex_destroy(&wcd9xxx->nested_irq_lock);
+	}
 
 	return ret;
 }
