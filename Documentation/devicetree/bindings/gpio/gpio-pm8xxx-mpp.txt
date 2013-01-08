@@ -85,7 +85,7 @@ Optional children nodes:
                   PM8XXX_MPP_CS_OUT_35MA          6
                   PM8XXX_MPP_CS_OUT_40MA          7
 
- - qcom,pm8xxx-mpp-control : the meaning of control depends on the type above:
+ - qcom,pm8xxx-mpp-ctrl : the meaning of control depends on the type above:
           - if type = PM8XXX_MPP_TYPE_D_INPUT
               - specifies how the digital input should be routed in the chip:
                   PM8XXX_MPP_DIN_TO_INT           0
@@ -147,7 +147,7 @@ Example using the option "mux" child node:
 				qcom,pm8xxx-mpp-pin = <12>;
 				qcom,pm8xxx-mpp-type = <2>;    /* D_BI_DIR */
 				qcom,pm8xxx-mpp-level = <4>;   /* L17 */
-				qcom,pm8xxx-mpp-control = <0>; /* PULLUP_1K */
+				qcom,pm8xxx-mpp-ctrl = <0>;    /* PULLUP_1K */
 			};
 	};
 
