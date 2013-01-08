@@ -28,6 +28,7 @@
 #include <linux/leds-lm3556.h>
 #include <linux/tps65132.h>
 #include <linux/lp8556.h>
+#include <sound/tfa9890.h>
 
 #define SY32xx_TOUCH_SCL_GPIO       37
 #define SY32xx_TOUCH_SDA_GPIO       36
@@ -880,6 +881,23 @@ out:
 	return err;
 }
 
+static struct tfa9890_pdata tfa_platform_data;
+
+static int __init tfa9890_init_i2c_device(struct i2c_board_info *info,
+		struct device_node *node)
+{
+	int rst_gpio;
+
+	info->platform_data = &tfa_platform_data;
+
+	if (of_property_read_u32(node, "reset_gpio", &rst_gpio))
+		return -EINVAL;
+
+	tfa_platform_data.reset_gpio = rst_gpio;
+
+	return 0;
+}
+
 /* backlight init */
 static struct lp8556_eeprom_data lp8556_eeprom_pdata[] = {
 	{0, 0x98, 0x00},
@@ -968,6 +986,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x000B0007, lp8556_init_i2c_device}, /* National LP8556 Backlight */
 	{0x002B0000, sy3200_init_i2c_device},   /* Synaptics 32xx */
 	{0x002B0001, sy3400_init_i2c_device},   /* Synaptics 34xx */
+	{0x00190002, tfa9890_init_i2c_device}, /* NXP Audio Codec Driver */
 };
 
 static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device)
