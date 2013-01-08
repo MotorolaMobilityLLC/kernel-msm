@@ -484,6 +484,15 @@ int tpa6165_hs_detect(struct snd_soc_jack *hs_jack,
 		tpa6165->button_jack = button_jack;
 		/* check device status registers for boot time detection */
 		tpa6165_update_device_status(tpa6165);
+		/* check JKIN bit: During shutdown mode it will report */
+		/* whether Pin 5 is open or closed. */
+		/* Wake up the device if the detection pin is closed */
+		if( tpa6165->dev_status_reg1 & TPA6165_JACK_DETECT_MASK) {
+			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG1,
+						TPA6165_SHUTDOWN_DISABLE,
+						TPA6165_SHUTDOWN_DISABLE);
+			tpa6165->shutdown_state = 0;
+		}
 		tpa6165_report_hs(tpa6165);
 	} else
 		return -EINVAL;
