@@ -27,7 +27,7 @@
   
     Implementation for the TDLS interface to PE.
   
-
+    Copyright (C) 2010 Qualcomm, Incorporated
   
  
    ========================================================================== */
