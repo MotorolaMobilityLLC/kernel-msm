@@ -34,6 +34,7 @@ Qualcomm Atheros Confidential and Proprietary.
 
 Copyright (c) 2010 Qualcomm Technologies, Inc.All Rights Reserved.
 Qualcomm Technologies Confidential and Proprietary
+
 ===========================================================================*/
 
 /*===========================================================================
