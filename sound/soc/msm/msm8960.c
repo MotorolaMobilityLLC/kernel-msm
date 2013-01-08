@@ -86,11 +86,10 @@ static int msm8960_btsco_ch = 1;
 static int hdmi_rate_variable;
 static int msm8960_auxpcm_rate = SAMPLE_RATE_8KHZ;
 
-#ifdef CONFIG_SND_SOC_TLV320AIC3253
 static struct clk *mi2s_rx_osr_clk;
 static struct clk *mi2s_rx_bit_clk;
 static atomic_t mi2s_rsc_ref;
-#endif
+
 static struct clk *pri_i2s_tx_bit_clk;
 static struct clk *pri_i2s_tx_osr_clk;
 
@@ -1117,7 +1116,6 @@ fail_dout:
 }
 
 /* Begin MI2S SOC ops Implementation */
-#ifdef CONFIG_SND_SOC_TLV320AIC3253
 static int msm_mi2s_rx_free_gpios(struct gpio *gpios, int num_gpios)
 {
 	gpio_free_array(gpios, num_gpios);
@@ -1252,7 +1250,6 @@ mi2s_gpio_fail:
 
 	return ret;
 }
-#endif /* End MI2S soc ops functions */
 
 static int msm8960_aux_pcm_free_gpios(void)
 {
@@ -1444,13 +1441,11 @@ static struct snd_soc_ops msm8960_slimbus_2_be_ops = {
 	.shutdown = msm8960_shutdown,
 };
 
-#ifdef CONFIG_SND_SOC_TLV320AIC3253
 static struct snd_soc_ops msm_mi2s_rx_be_ops = {
 	.startup = msm_mi2s_rx_startup,
 	.shutdown = msm_mi2s_rx_shutdown,
 	.hw_params = msm_mi2s_rx_hw_params,
 };
-#endif
 
 static struct snd_soc_ops msm_primary_i2s_tx_be_ops = {
 	.startup = msm_primary_i2s_tx_startup,
@@ -1946,6 +1941,34 @@ static struct snd_soc_dai_link mmi_dai_links[] = {
 		.be_hw_params_fixup = msm8960_be_hw_pri_i2s_params_fixup,
 		.ops = &msm_primary_i2s_tx_be_ops,
 	},
+#ifdef CONFIG_SND_SOC_TFA9890
+	/* MI2S I2S RX BACK END DAI Link */
+	{
+		.name = LPASS_BE_MI2S_RX,
+		.stream_name = "MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "tfa9890.10-0034",
+		.codec_dai_name = "tfa9890_codec",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_MI2S_RX,
+		.be_hw_params_fixup = msm8960_be_hw_params_fixup,
+		.ops = &msm_mi2s_rx_be_ops,
+	},
+#endif
+	/* MI2S I2S RX BACK END DAI Link */
+	{
+		.name = LPASS_BE_MI2S_RX,
+		.stream_name = "MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-rx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_MI2S_RX,
+		.be_hw_params_fixup = msm8960_be_hw_params_fixup,
+		.ops = &msm_mi2s_rx_be_ops,
+	},
 };
 
 static struct snd_soc_dai_link msm8960_tabla1x_dai[
@@ -2147,9 +2170,8 @@ static int __init msm8960_audio_init(void)
 
 	mutex_init(&cdc_mclk_mutex);
 	atomic_set(&auxpcm_rsc_ref, 0);
-#ifdef CONFIG_SND_SOC_TLV320AIC3253
 	atomic_set(&mi2s_rsc_ref, 0);
-#endif
+
 	return ret;
 
 }
