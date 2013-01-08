@@ -5,4 +5,22 @@
 / {
 	mmi,revision = "p2";
 
+	/* PM8921 - MPP */
+	qcom,msm-pm8921-mpps {
+		mux {
+			mpp@9 {
+				/* EMU_DMB_PPD_DET_N */
+				qcom,pm8xxx-mpp-pin = <9>;
+
+				/*
+				 * type   : D_INPUT
+				 * level  : L17
+				 * ctrl   : DIN_TO_INT
+				 */
+				qcom,pm8xxx-mpp-type = <0>;
+				qcom,pm8xxx-mpp-level = <4>;
+				qcom,pm8xxx-mpp-ctrl = <0>;
+			};
+		};
+	};
 };
