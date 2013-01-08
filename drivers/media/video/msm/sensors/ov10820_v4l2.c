@@ -23,6 +23,7 @@
 #define PLATFORM_DRIVER_NAME "msm_camera_ov10820"
 
 #define OV10820_DEFAULT_MCLK_RATE 24000000
+#define OV10820_SECONDARY_I2C_ADDRESS 0x20
 
 static struct regulator *cam_vdig;
 static struct regulator *cam_mipi_mux;
@@ -564,18 +565,33 @@ static int32_t ov10820_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 			s_ctrl->sensor_i2c_client,
 			s_ctrl->sensor_id_info->sensor_id_reg_addr, &chipid,
 			MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc >= 0)
+		goto check_chipid;
+
+	/* Need to re-assign i2c address to secondary address of the
+	 * sensor to see if the part exists under the second address.
+	 */
+	s_ctrl->sensor_i2c_addr = OV10820_SECONDARY_I2C_ADDRESS;
+	s_ctrl->sensor_i2c_client->client->addr = OV10820_SECONDARY_I2C_ADDRESS;
+	rc = msm_camera_i2c_read(
+			s_ctrl->sensor_i2c_client,
+			s_ctrl->sensor_id_info->sensor_id_reg_addr, &chipid,
+			MSM_CAMERA_I2C_BYTE_DATA);
+
 	if (rc < 0) {
 		pr_err("%s: read id failed\n", __func__);
 		return rc;
 	}
 
+check_chipid:
 	if (chipid != s_ctrl->sensor_id_info->sensor_id) {
 		pr_err("%s: chip id %x does not match expected %x\n", __func__,
 				chipid, s_ctrl->sensor_id_info->sensor_id);
 		return -ENODEV;
 	}
 
-	pr_debug("%s: success\n", __func__);
+	pr_debug("%s: success and using i2c address of: %x\n", __func__,
+			s_ctrl->sensor_i2c_client->client->addr);
 	return 0;
 }
 
