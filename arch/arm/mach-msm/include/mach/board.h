@@ -180,30 +180,14 @@ enum msm_sensor_type {
 	YUV_SENSOR,
 };
 
-enum camera_vreg_type {
-	REG_LDO,
-	REG_VS,
-	REG_GPIO,
-	REG_MAX
-};
-
-struct camera_vreg_t {
-	const char *reg_name;
-	enum camera_vreg_type type;
-	int min_voltage;
-	int max_voltage;
-	int op_mode;
-};
-
 struct msm_gpio_set_tbl {
 	unsigned gpio;
 	unsigned long flags;
 	uint32_t delay;
 };
 
-struct msm_camera_csi_lane_params {
-	uint16_t csi_lane_assign;
-	uint16_t csi_lane_mask;
+struct msm_camera_gpio_num_info {
+	uint16_t gpio_num[2];
 };
 
 struct msm_camera_gpio_conf {
@@ -220,6 +204,7 @@ struct msm_camera_gpio_conf {
 	uint8_t camera_off_table_size;
 	uint32_t *camera_on_table;
 	uint8_t camera_on_table_size;
+	struct msm_camera_gpio_num_info *gpio_num_info;
 };
 
 enum msm_camera_i2c_mux_mode {
