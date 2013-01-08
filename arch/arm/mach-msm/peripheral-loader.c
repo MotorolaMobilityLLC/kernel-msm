@@ -83,9 +83,17 @@ static ssize_t state_show(struct device *dev, struct device_attribute *attr,
 	return snprintf(buf, PAGE_SIZE, "%s\n", pil_states[state]);
 }
 
+static ssize_t count_show(struct device *dev, struct device_attribute *attr,
+		char *buf)
+{
+	int count = to_pil_device(dev)->count;
+	return snprintf(buf, PAGE_SIZE, "%d\n", count);
+}
+
 static struct device_attribute pil_attrs[] = {
 	__ATTR_RO(name),
 	__ATTR_RO(state),
+	__ATTR_RO(count),
 	{ },
 };
 
