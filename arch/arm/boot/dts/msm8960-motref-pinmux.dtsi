@@ -305,6 +305,12 @@
 		pin@8012f0 {
 			reg = <0x8012f0 0x10>;
 			qcom,pin-num = <47>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* mi2s_ws                */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* n/a                    */
+			};
 			qcom,suspended@1 {
 				qcom,func = <1>;  /* mi2s_ws                */
 				qcom,pull = <0>;  /* none                   */
@@ -316,6 +322,12 @@
 		pin@801300 {
 			reg = <0x801300 0x10>;
 			qcom,pin-num = <48>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* mi2s_sclk              */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* n/a                    */
+			};
 			qcom,suspended@1 {
 				qcom,func = <1>;  /* mi2s_sclk              */
 				qcom,pull = <0>;  /* none                   */
@@ -327,6 +339,12 @@
 		pin@801310 {
 			reg = <0x801310 0x10>;
 			qcom,pin-num = <49>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* mi2s_fm_data_sd3       */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* n/a                    */
+			};
 			qcom,suspended@1 {
 				qcom,func = <1>;  /* mi2s_fm_data_sd3       */
 				qcom,pull = <0>;  /* none                   */
@@ -338,6 +356,12 @@
 		pin@801320 {
 			reg = <0x801320 0x10>;
 			qcom,pin-num = <50>;
+			qcom,active@0 {
+				qcom,func = <1>;  /* mi2s_fm_data_sd2       */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* n/a                    */
+			};
 			qcom,suspended@1 {
 				qcom,func = <1>;  /* mi2s_fm_data_sd2       */
 				qcom,pull = <0>;  /* none                   */
