@@ -32,6 +32,8 @@ static int arizona_map_irq(struct arizona *arizona, int irq)
 	case ARIZONA_IRQ_GP5_RISE:
 	case ARIZONA_IRQ_JD_FALL:
 	case ARIZONA_IRQ_JD_RISE:
+	case ARIZONA_IRQ_MICD_CLAMP_FALL:
+	case ARIZONA_IRQ_MICD_CLAMP_RISE:
 		return arizona->pdata.irq_base + 2 + irq;
 	default:
 		return arizona->pdata.irq_base + 2 + ARIZONA_NUM_IRQ + irq;
