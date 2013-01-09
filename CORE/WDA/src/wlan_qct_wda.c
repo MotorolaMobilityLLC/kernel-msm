@@ -8762,8 +8762,9 @@ VOS_STATUS WDA_ProcessStartOemDataReq(tWDA_CbContext *pWDA,
       return VOS_STATUS_E_NOMEM;
    }
 
-   pWdaParams->wdaMsgParam          =          (void *)pOemDataReqParams;
-   pWdaParams->wdaWdiApiMsgParam    =          (void *)wdiOemDataReqParams;
+   pWdaParams->pWdaContext       = (void*)pWDA;
+   pWdaParams->wdaMsgParam       = (void*)pOemDataReqParams;
+   pWdaParams->wdaWdiApiMsgParam = (void*)wdiOemDataReqParams;
 
    status = WDI_StartOemDataReq(wdiOemDataReqParams, 
       (WDI_oemDataRspCb)WDA_StartOemDataReqCallback, pWdaParams);
