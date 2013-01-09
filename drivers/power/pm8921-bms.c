@@ -2225,11 +2225,6 @@ static int calculate_state_of_charge(struct pm8921_bms_chip *chip,
 			pm8921_bms_charging_full();
 	}
 
-	if (bms_fake_battery != -EINVAL) {
-		pr_debug("Returning Fake SOC = %d%%\n", bms_fake_battery);
-		return bms_fake_battery;
-	}
-
 	if (soc < 0) {
 		pr_err("bad rem_usb_chg = %d rem_chg %d,"
 				"cc_uah %d, unusb_chg %d\n",
@@ -2347,6 +2342,11 @@ static int report_state_of_charge(struct pm8921_bms_chip *chip)
 	struct pm8xxx_adc_chan_result result;
 	int batt_temp;
 	int rc;
+
+	if (bms_fake_battery != -EINVAL) {
+		pr_debug("Returning Fake SOC = %d%%\n", bms_fake_battery);
+		return bms_fake_battery;
+	}
 
 	rc = pm8xxx_adc_read(the_chip->batt_temp_channel, &result);
 	if (rc) {
