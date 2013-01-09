@@ -140,7 +140,7 @@ static void arizona_start_mic(struct arizona_extcon_info *info)
 				 &change);
 	if (!change) {
 		regulator_disable(info->micvdd);
-		pm_runtime_put_autosuspend(info->dev);
+		pm_runtime_put(info->dev);
 	}
 }
 
@@ -161,8 +161,7 @@ static void arizona_stop_mic(struct arizona_extcon_info *info)
 
 	if (change) {
 		regulator_disable(info->micvdd);
-		pm_runtime_mark_last_busy(info->dev);
-		pm_runtime_put_autosuspend(info->dev);
+		pm_runtime_put(info->dev);
 	}
 }
 
@@ -463,7 +462,7 @@ done:
 		arizona_start_mic(info);
 
 	if (info->hpdet_active) {
-		pm_runtime_put_autosuspend(info->dev);
+		pm_runtime_put(info->dev);
 		info->hpdet_active = false;
 	}
 
@@ -721,7 +720,7 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 		dev_err(arizona->dev, "Failed to read jackdet status: %d\n",
 			ret);
 		mutex_unlock(&info->lock);
-		pm_runtime_put_autosuspend(info->dev);
+		pm_runtime_put(info->dev);
 		return IRQ_NONE;
 	}
 
@@ -763,8 +762,7 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 
 	mutex_unlock(&info->lock);
 
-	pm_runtime_mark_last_busy(info->dev);
-	pm_runtime_put_autosuspend(info->dev);
+	pm_runtime_put(info->dev);
 
 	return IRQ_HANDLED;
 }
