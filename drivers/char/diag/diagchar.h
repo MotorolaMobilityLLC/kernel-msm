@@ -47,16 +47,16 @@
 #define POOL_TYPE_HSIC		8
 #define POOL_TYPE_HSIC_WRITE	16
 #define POOL_TYPE_ALL		7
-#define MODEM_DATA 		1
-#define QDSP_DATA  		2
-#define APPS_DATA  		3
+#define MODEM_DATA		1
+#define LPASS_DATA		2
+#define APPS_DATA		3
 #define SDIO_DATA		4
 #define WCNSS_DATA		5
 #define HSIC_DATA		6
 #define SMUX_DATA		7
 #define MODEM_PROC		0
 #define APPS_PROC		1
-#define QDSP_PROC		2
+#define LPASS_PROC		2
 #define WCNSS_PROC		3
 #define MSG_MASK_SIZE 10000
 #define LOG_MASK_SIZE 8000
@@ -73,6 +73,15 @@
 #define DIAG_CON_MPSS (0x0002)	/* Bit mask for MPSS */
 #define DIAG_CON_LPASS (0x0004)	/* Bit mask for LPASS */
 #define DIAG_CON_WCNSS (0x0008)	/* Bit mask for WCNSS */
+
+/*
+ * The status bit masks when received in a signal handler are to be
+ * used in conjunction with the peripheral list bit mask to determine the
+ * status for a peripheral. For instance, 0x00010002 would denote an open
+ * status on the MPSS
+ */
+#define DIAG_STATUS_OPEN (0x00010000)	/* DCI channel open status mask   */
+#define DIAG_STATUS_CLOSED (0x00020000)	/* DCI channel closed status mask */
 
 /* Maximum number of pkt reg supported at initialization*/
 extern unsigned int diag_max_reg;
@@ -155,14 +164,15 @@ struct diagchar_dev {
 	struct diag_write_device *buf_tbl;
 	int use_device_tree;
 	/* DCI related variables */
-	struct diag_dci_tbl *dci_tbl;
-	struct dci_notification_tbl *dci_notify_tbl;
+	struct dci_pkt_req_tracking_tbl *req_tracking_tbl;
+	struct diag_dci_client_tbl *dci_client_tbl;
 	int dci_tag;
 	int dci_client_id;
 	struct mutex dci_mutex;
 	int num_dci_client;
 	unsigned char *apps_dci_buf;
 	int dci_state;
+	struct workqueue_struct *diag_dci_wq;
 	/* Memory pool parameters */
 	unsigned int itemsize;
 	unsigned int poolsize;
@@ -189,9 +199,9 @@ struct diagchar_dev {
 	unsigned char *buf_in_1;
 	unsigned char *buf_in_2;
 	unsigned char *buf_in_cntl;
-	unsigned char *buf_in_qdsp_1;
-	unsigned char *buf_in_qdsp_2;
-	unsigned char *buf_in_qdsp_cntl;
+	unsigned char *buf_in_lpass_1;
+	unsigned char *buf_in_lpass_2;
+	unsigned char *buf_in_lpass_cntl;
 	unsigned char *buf_in_wcnss_1;
 	unsigned char *buf_in_wcnss_2;
 	unsigned char *buf_in_wcnss_cntl;
@@ -207,14 +217,14 @@ struct diagchar_dev {
 	smd_channel_t *ch;
 	smd_channel_t *ch_cntl;
 	smd_channel_t *ch_dci;
-	smd_channel_t *chqdsp;
-	smd_channel_t *chqdsp_cntl;
+	smd_channel_t *chlpass;
+	smd_channel_t *chlpass_cntl;
 	smd_channel_t *ch_wcnss;
 	smd_channel_t *ch_wcnss_cntl;
 	int in_busy_1;
 	int in_busy_2;
-	int in_busy_qdsp_1;
-	int in_busy_qdsp_2;
+	int in_busy_lpass_1;
+	int in_busy_lpass_2;
 	int in_busy_wcnss_1;
 	int in_busy_wcnss_2;
 	int in_busy_dci;
@@ -233,15 +243,16 @@ struct diagchar_dev {
 	struct work_struct diag_drain_work;
 	struct work_struct diag_read_smd_work;
 	struct work_struct diag_read_smd_cntl_work;
-	struct work_struct diag_read_smd_qdsp_work;
-	struct work_struct diag_read_smd_qdsp_cntl_work;
+	struct work_struct diag_read_smd_lpass_work;
+	struct work_struct diag_read_smd_lpass_cntl_work;
 	struct work_struct diag_read_smd_wcnss_work;
 	struct work_struct diag_read_smd_wcnss_cntl_work;
 	struct workqueue_struct *diag_cntl_wq;
 	struct work_struct diag_modem_mask_update_work;
-	struct work_struct diag_qdsp_mask_update_work;
+	struct work_struct diag_lpass_mask_update_work;
 	struct work_struct diag_wcnss_mask_update_work;
 	struct work_struct diag_read_smd_dci_work;
+	struct work_struct diag_update_smd_dci_work;
 	struct work_struct diag_clean_modem_reg_work;
 	struct work_struct diag_clean_lpass_reg_work;
 	struct work_struct diag_clean_wcnss_reg_work;
@@ -256,8 +267,8 @@ struct diagchar_dev {
 	struct diag_request *write_ptr_2;
 	struct diag_request *channel_read_ptr;
 	struct diag_request *write_ptr_svc;
-	struct diag_request *write_ptr_qdsp_1;
-	struct diag_request *write_ptr_qdsp_2;
+	struct diag_request *write_ptr_lpass_1;
+	struct diag_request *write_ptr_lpass_2;
 	struct diag_request *write_ptr_wcnss_1;
 	struct diag_request *write_ptr_wcnss_2;
 	struct diag_write_device *write_ptr_dci;
