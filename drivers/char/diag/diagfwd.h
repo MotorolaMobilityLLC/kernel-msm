@@ -16,11 +16,14 @@
 #define NO_PROCESS	0
 #define NON_APPS_PROC	-1
 
+#define CHK_OVERFLOW(bufStart, start, end, length) \
+	((((bufStart) <= (start)) && ((end) - (start) >= (length))) ? 1 : 0)
+
 void diagfwd_init(void);
 void diagfwd_exit(void);
 void diag_process_hdlc(void *data, unsigned len);
 void __diag_smd_send_req(void);
-void __diag_smd_qdsp_send_req(void);
+void __diag_smd_lpass_send_req(void);
 void __diag_smd_wcnss_send_req(void);
 void diag_legacy_notifier(void *, unsigned, struct diag_request *);
 long diagchar_ioctl(struct file *, unsigned int, unsigned long);
@@ -31,11 +34,9 @@ int chk_config_get_id(void);
 int chk_apps_only(void);
 int chk_apps_master(void);
 int chk_polling_response(void);
-void diag_send_event_mask_update(smd_channel_t *, int num_bytes);
-void diag_send_msg_mask_update(smd_channel_t *, int ssid_first,
-					 int ssid_last, int proc);
-void diag_send_log_mask_update(smd_channel_t *, int);
+void diag_update_userspace_clients(unsigned int type);
 void diag_update_sleeping_process(int process_id, int data_type);
+void encode_rsp_and_send(int buf_length);
 /* State for diag forwarding */
 #if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
 int diagfwd_connect(void);
@@ -48,6 +49,5 @@ int channel_diag_write(struct legacy_diag_ch *ch, struct diag_request *d_req);
 #endif
 extern int diag_debug_buf_idx;
 extern unsigned char diag_debug_buf[1024];
-extern int diag_event_num_bytes;
 extern struct platform_driver msm_diag_dci_driver;
 #endif
