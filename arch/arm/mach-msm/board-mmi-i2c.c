@@ -100,6 +100,79 @@ static int __init sy3200_init_i2c_device(struct i2c_board_info *info,
 
 	return retval;
 }
+
+#define SY34xx_TOUCH_SCL_GPIO       17
+#define SY34xx_TOUCH_SDA_GPIO       16
+
+#define SY34xx_TOUCH_INT_GPIO       46
+#define SY34xx_TOUCH_RESET_GPIO     63
+
+struct touch_platform_data sy3400_touch_pdata = {
+	.flags          = TS_FLIP_X | TS_FLIP_Y,
+
+	.gpio_interrupt = SY34xx_TOUCH_INT_GPIO,
+	.gpio_reset     = SY34xx_TOUCH_RESET_GPIO,
+	.gpio_scl       = SY34xx_TOUCH_SCL_GPIO,
+	.gpio_sda       = SY34xx_TOUCH_SDA_GPIO,
+
+	.max_x          = 1023,
+	.max_y          = 1023,
+
+	.invert_x       = 1,
+	.invert_y       = 1,
+
+	.int_latency    = MMI_TOUCH_CALCULATE_LATENCY_FUNC,
+	.int_time       = MMI_TOUCH_SET_INT_TIME_FUNC,
+	.get_avg_lat    = MMI_TOUCH_GET_AVG_LATENCY_FUNC,
+	.get_high_lat   = MMI_TOUCH_GET_HIGH_LATENCY_FUNC,
+	.get_slow_cnt   = MMI_TOUCH_GET_SLOW_INT_COUNT_FUNC,
+	.get_int_cnt    = MMI_TOUCH_GET_INT_COUNT_FUNC,
+	.set_dbg_lvl    = MMI_TOUCH_SET_LATENCY_DEBUG_LEVEL_FUNC,
+	.get_dbg_lvl    = MMI_TOUCH_GET_LATENCY_DEBUG_LEVEL_FUNC,
+	.get_time_ptr   = MMI_TOUCH_GET_TIMESTAMP_PTR_FUNC,
+	.get_lat_ptr    = MMI_TOUCH_GET_LATENCY_PTR_FUNC,
+};
+
+static int __init sy3400_init_i2c_device(struct i2c_board_info *info,
+                                      struct device_node *node)
+{
+	int retval = 0;
+	unsigned int irq_gpio = -1, i2c_address = -1;
+	unsigned int rst_gpio = -1;
+	const char *name;
+
+	info->platform_data = &sy3400_touch_pdata;
+
+	/* i2c address */
+	if(of_property_read_u32(node, "i2c,address", &i2c_address))
+		return -EINVAL;
+	sy3400_touch_pdata.addr[0] = (u8)i2c_address;
+	sy3400_touch_pdata.addr[1] = 0;
+
+	/* interrupt gpio */
+	if(of_property_read_u32(node, "irq,gpio", &irq_gpio))
+		return -EINVAL;
+	sy3400_touch_pdata.gpio_interrupt = irq_gpio;
+
+	/* reset gpio */
+	if(of_property_read_u32(node, "rst_gpio", &rst_gpio))
+		return -EINVAL;
+	sy3400_touch_pdata.gpio_reset = rst_gpio;
+
+	/* tdat_filename */
+	if (of_property_read_string(node, "tdat_filename", &name)) {
+		pr_err("%s: tdat file name is missing.\n", __func__);
+		return -ENOENT;
+	}
+	sy3400_touch_pdata.filename = (char *)name;
+
+	pr_info("%s: i2c addr: 0x%x gpio:%u,%u tdat: %s\n",
+		__func__, i2c_address, irq_gpio, rst_gpio,
+		sy3400_touch_pdata.filename);
+
+	return retval;
+}
+
 #define MELFAS_TOUCH_SCL_GPIO       17
 #define MELFAS_TOUCH_SDA_GPIO       16
 #define MELFAS_TOUCH_INT_GPIO       46
@@ -894,6 +967,7 @@ struct mmi_apq_i2c_lookup mmi_apq_i2c_lookup_table[] __initdata = {
 	{0x0003001C, tps65132_init_i2c_device}, /* TI lcd bias Driver */
 	{0x000B0007, lp8556_init_i2c_device}, /* National LP8556 Backlight */
 	{0x002B0000, sy3200_init_i2c_device},   /* Synaptics 32xx */
+	{0x002B0001, sy3400_init_i2c_device},   /* Synaptics 34xx */
 };
 
 static __init I2C_INIT_FUNC get_init_i2c_func(u32 dt_device)
