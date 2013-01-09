@@ -120,6 +120,39 @@ static struct mmi_battery_cell mmi_eg30_lg_cell_data = {
 	.cell_id = 0x424C, /* Cell code BL */
 };
 
+/* Initial EU20 LG Tables and Charging Parameters */
+static struct pm8921_bms_battery_data  mmi_eu20_lg_metering_data = {
+	.fcc			= 2070,
+	.fcc_temp_lut		= &mmi_eg30_lg_fcc_temp,
+	.fcc_sf_lut		= &mmi_eg30_lg_fcc_sf,
+	.pc_temp_ocv_lut	= &mmi_eg30_lg_pc_temp_ocv,
+	.pc_sf_lut		= &mmi_eg30_lg_pc_sf,
+	.default_rbatt_mohm	= 183,
+};
+
+static struct pm8921_charger_battery_data mmi_eu20_lg_charging_data = {
+	.max_voltage			= 4350,
+	.min_voltage			= 3200,
+	.resume_voltage_delta		= 100,
+	.term_current			= 195,
+	.cool_temp			= 0,
+	.warm_temp			= 45,
+	.max_bat_chg_current		= 1966,
+	.cool_bat_chg_current		= 0,
+	.warm_bat_chg_current		= 0,
+	.cool_bat_voltage		= 4000,
+	.warm_bat_voltage		= 4000,
+	.step_charge_current		= 1250,
+	.step_charge_voltage		= 4200,
+};
+
+static struct mmi_battery_cell mmi_eu20_lg_cell_data = {
+	.capacity = 0xCF,
+	.peak_voltage = 0xB9,
+	.dc_impedance = 0x5C,
+	.cell_id = 0x4250, /* Cell code BP */
+};
+
 /* EB40 SDI Tables and Charging Parameters */
 static struct single_row_lut mmi_eb40_lg_fcc_temp = {
 	.x	= {-10, 0, 23, 60},
@@ -908,6 +941,7 @@ struct mmi_battery_list mmi_batts = {
 		&mmi_eb20_sdi_cell_data,
 		&mmi_eb40_lg_cell_data,
 		&mmi_eg30_lg_cell_data,
+		&mmi_eu20_lg_cell_data,
 	},
 	.bms_list = {
 		 &mmi_df_metering_data,
@@ -920,6 +954,7 @@ struct mmi_battery_list mmi_batts = {
 		 &mmi_eb20_sdi_metering_data,
 		 &mmi_eb40_lg_metering_data,
 		 &mmi_eg30_lg_metering_data,
+		 &mmi_eu20_lg_metering_data,
 	 },
 	.chrg_list = {
 		 &mmi_df_charging_data,
@@ -932,5 +967,6 @@ struct mmi_battery_list mmi_batts = {
 		 &mmi_eb20_sdi_charging_data,
 		 &mmi_eb40_lg_charging_data,
 		 &mmi_eg30_lg_charging_data,
+		 &mmi_eu20_lg_charging_data,
 	 },
 };
