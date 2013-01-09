@@ -456,8 +456,6 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 			     arizona->pdata.micd_level[i]);
 	}
 
-	pm_runtime_set_autosuspend_delay(arizona->dev, 100);
-	pm_runtime_use_autosuspend(arizona->dev);
 	pm_runtime_enable(arizona->dev);
 
 	/* Chip default */
