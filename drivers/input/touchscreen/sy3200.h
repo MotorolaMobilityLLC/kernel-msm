@@ -29,8 +29,8 @@
 #include <linux/earlysuspend.h>
 #endif
 
-#define SY3200_DRIVER_VERSION       "AR-01-00"
-#define SY3200_DRIVER_DATE          "2012-12-21"
+#define SY3200_DRIVER_VERSION       "AR-01-00-v2"
+#define SY3200_DRIVER_DATE          "2013-01-09"
 
 #ifdef CONFIG_TOUCHSCREEN_DEBUG
 #define sy3200_dbg(dd, level, format, args...) \
