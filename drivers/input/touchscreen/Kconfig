@@ -15,6 +15,14 @@ config TOUCHSCREEN_DEBUG
 	bool "debug"
 	default n
 
+config TOUCHSCREEN_SY3400
+	tristate "Synaptics 34xx Touchscreen Driver"
+	depends on I2C
+	help
+	  Say Y here if you have an Synaptics 34xx touchscreen.
+
+	  If unsure, say N.
+
 config TOUCHSCREEN_SY3200
 	tristate "Synaptics 32xx Touchscreen Driver"
 	depends on I2C
