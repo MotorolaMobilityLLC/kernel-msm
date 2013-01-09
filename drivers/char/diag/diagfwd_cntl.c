@@ -17,9 +17,6 @@
 #include "diagchar.h"
 #include "diagfwd.h"
 #include "diagfwd_cntl.h"
-#ifdef CONFIG_DEBUG_FS
-#include <linux/debugfs.h>
-#endif
 /* tracks which peripheral is undergoing SSR */
 static uint16_t reg_dirty;
 #define HDR_SIZ 8
@@ -36,7 +33,7 @@ void diag_clean_lpass_reg_fn(struct work_struct *work)
 {
 	pr_debug("diag: clean lpass registration\n");
 	reg_dirty |= DIAG_CON_LPASS;
-	diag_clear_reg(QDSP_PROC);
+	diag_clear_reg(LPASS_PROC);
 	reg_dirty ^= DIAG_CON_LPASS;
 }
 
@@ -72,26 +69,26 @@ void diag_smd_cntl_notify(void *ctxt, unsigned event)
 	}
 }
 
-void diag_smd_qdsp_cntl_notify(void *ctxt, unsigned event)
+void diag_smd_lpass_cntl_notify(void *ctxt, unsigned event)
 {
 	int r1, r2;
 
-	if (!(driver->chqdsp_cntl))
+	if (!(driver->chlpass_cntl))
 		return;
 
 	switch (event) {
 	case SMD_EVENT_DATA:
-		r1 = smd_read_avail(driver->chqdsp_cntl);
-		r2 = smd_cur_packet_size(driver->chqdsp_cntl);
+		r1 = smd_read_avail(driver->chlpass_cntl);
+		r2 = smd_cur_packet_size(driver->chlpass_cntl);
 		if (r1 > 0 && r1 == r2)
 			queue_work(driver->diag_wq,
-				 &(driver->diag_read_smd_qdsp_cntl_work));
+				 &(driver->diag_read_smd_lpass_cntl_work));
 		else
 			pr_debug("diag: incomplete pkt on LPASS CNTL ch\n");
 		break;
 	case SMD_EVENT_OPEN:
 		queue_work(driver->diag_cntl_wq,
-			 &(driver->diag_qdsp_mask_update_work));
+			 &(driver->diag_lpass_mask_update_work));
 		break;
 	}
 }
@@ -142,9 +139,9 @@ static void diag_smd_cntl_send_req(int proc_num)
 		buf = driver->buf_in_cntl;
 		smd_ch = driver->ch_cntl;
 		reg_mask = DIAG_CON_MPSS;
-	} else if (proc_num == QDSP_PROC) {
-		buf = driver->buf_in_qdsp_cntl;
-		smd_ch = driver->chqdsp_cntl;
+	} else if (proc_num == LPASS_PROC) {
+		buf = driver->buf_in_lpass_cntl;
+		smd_ch = driver->chlpass_cntl;
 		reg_mask = DIAG_CON_LPASS;
 	} else if (proc_num == WCNSS_PROC) {
 		buf = driver->buf_in_wcnss_cntl;
@@ -230,8 +227,8 @@ static void diag_smd_cntl_send_req(int proc_num)
 		/* Poll SMD CNTL channels to check for data */
 		if (proc_num == MODEM_PROC)
 			diag_smd_cntl_notify(NULL, SMD_EVENT_DATA);
-		else if (proc_num == QDSP_PROC)
-			diag_smd_qdsp_cntl_notify(NULL, SMD_EVENT_DATA);
+		else if (proc_num == LPASS_PROC)
+			diag_smd_lpass_cntl_notify(NULL, SMD_EVENT_DATA);
 		else if (proc_num == WCNSS_PROC)
 			diag_smd_wcnss_cntl_notify(NULL, SMD_EVENT_DATA);
 	}
@@ -242,9 +239,9 @@ void diag_read_smd_cntl_work_fn(struct work_struct *work)
 	diag_smd_cntl_send_req(MODEM_PROC);
 }
 
-void diag_read_smd_qdsp_cntl_work_fn(struct work_struct *work)
+void diag_read_smd_lpass_cntl_work_fn(struct work_struct *work)
 {
-	diag_smd_cntl_send_req(QDSP_PROC);
+	diag_smd_cntl_send_req(LPASS_PROC);
 }
 
 void diag_read_smd_wcnss_cntl_work_fn(struct work_struct *work)
@@ -263,8 +260,8 @@ static int diag_smd_cntl_probe(struct platform_device *pdev)
 							diag_smd_cntl_notify);
 		if (pdev->id == SMD_APPS_QDSP)
 			r = smd_named_open_on_edge("DIAG_CNTL", SMD_APPS_QDSP
-				, &driver->chqdsp_cntl, driver,
-					 diag_smd_qdsp_cntl_notify);
+					, &driver->chlpass_cntl, driver,
+					diag_smd_lpass_cntl_notify);
 		if (pdev->id == SMD_APPS_WCNSS)
 			r = smd_named_open_on_edge("APPS_RIVA_CTRL",
 				SMD_APPS_WCNSS, &driver->ch_wcnss_cntl,
@@ -322,11 +319,11 @@ void diagfwd_cntl_init(void)
 			goto err;
 		kmemleak_not_leak(driver->buf_in_cntl);
 	}
-	if (driver->buf_in_qdsp_cntl == NULL) {
-		driver->buf_in_qdsp_cntl = kzalloc(IN_BUF_SIZE, GFP_KERNEL);
-		if (driver->buf_in_qdsp_cntl == NULL)
+	if (driver->buf_in_lpass_cntl == NULL) {
+		driver->buf_in_lpass_cntl = kzalloc(IN_BUF_SIZE, GFP_KERNEL);
+		if (driver->buf_in_lpass_cntl == NULL)
 			goto err;
-		kmemleak_not_leak(driver->buf_in_qdsp_cntl);
+		kmemleak_not_leak(driver->buf_in_lpass_cntl);
 	}
 	if (driver->buf_in_wcnss_cntl == NULL) {
 		driver->buf_in_wcnss_cntl = kzalloc(IN_BUF_SIZE, GFP_KERNEL);
@@ -341,7 +338,7 @@ void diagfwd_cntl_init(void)
 err:
 		pr_err("diag: Could not initialize diag buffers");
 		kfree(driver->buf_in_cntl);
-		kfree(driver->buf_in_qdsp_cntl);
+		kfree(driver->buf_in_lpass_cntl);
 		kfree(driver->buf_in_wcnss_cntl);
 		if (driver->diag_cntl_wq)
 			destroy_workqueue(driver->diag_cntl_wq);
@@ -350,304 +347,16 @@ err:
 void diagfwd_cntl_exit(void)
 {
 	smd_close(driver->ch_cntl);
-	smd_close(driver->chqdsp_cntl);
+	smd_close(driver->chlpass_cntl);
 	smd_close(driver->ch_wcnss_cntl);
 	driver->ch_cntl = 0;
-	driver->chqdsp_cntl = 0;
+	driver->chlpass_cntl = 0;
 	driver->ch_wcnss_cntl = 0;
 	destroy_workqueue(driver->diag_cntl_wq);
 	platform_driver_unregister(&msm_smd_ch1_cntl_driver);
 	platform_driver_unregister(&diag_smd_lite_cntl_driver);
 
 	kfree(driver->buf_in_cntl);
-	kfree(driver->buf_in_qdsp_cntl);
+	kfree(driver->buf_in_lpass_cntl);
 	kfree(driver->buf_in_wcnss_cntl);
 }
-
-#ifdef CONFIG_DEBUG_FS
-#define DEBUG_BUF_SIZE	4096
-static struct dentry *diag_dbgfs_dent;
-static int diag_dbgfs_table_index;
-
-static ssize_t diag_dbgfs_read_status(struct file *file, char __user *ubuf,
-				      size_t count, loff_t *ppos)
-{
-	char *buf;
-	int ret;
-
-	buf = kzalloc(sizeof(char) * DEBUG_BUF_SIZE, GFP_KERNEL);
-	if (!buf) {
-		pr_err("diag: %s, Error allocating memory\n", __func__);
-		return -ENOMEM;
-	}
-
-	ret = scnprintf(buf, DEBUG_BUF_SIZE,
-		"modem ch: 0x%x\n"
-		"lpass ch: 0x%x\n"
-		"riva ch: 0x%x\n"
-		"dci ch: 0x%x\n"
-		"modem cntl_ch: 0x%x\n"
-		"lpass cntl_ch: 0x%x\n"
-		"riva cntl_ch: 0x%x\n"
-		"CPU Tools id: %d\n"
-		"Apps only: %d\n"
-		"Apps master: %d\n"
-		"Check Polling Response: %d\n"
-		"polling_reg_flag: %d\n"
-		"uses device tree: %d\n"
-		"in_busy_1: %d\n"
-		"in_busy_2: %d\n"
-		"in_busy_qdsp_1: %d\n"
-		"in_busy_qdsp_2: %d\n"
-		"in_busy_wcnss_1: %d\n"
-		"in_busy_wcnss_2: %d\n"
-		"in_busy_dci: %d\n"
-		"logging_mode: %d\n",
-		(unsigned int)driver->ch,
-		(unsigned int)driver->chqdsp,
-		(unsigned int)driver->ch_wcnss,
-		(unsigned int)driver->ch_dci,
-		(unsigned int)driver->ch_cntl,
-		(unsigned int)driver->chqdsp_cntl,
-		(unsigned int)driver->ch_wcnss_cntl,
-		chk_config_get_id(),
-		chk_apps_only(),
-		chk_apps_master(),
-		chk_polling_response(),
-		driver->polling_reg_flag,
-		driver->use_device_tree,
-		driver->in_busy_1,
-		driver->in_busy_2,
-		driver->in_busy_qdsp_1,
-		driver->in_busy_qdsp_2,
-		driver->in_busy_wcnss_1,
-		driver->in_busy_wcnss_2,
-		driver->in_busy_dci,
-		driver->logging_mode);
-
-#ifdef CONFIG_DIAG_OVER_USB
-	ret += scnprintf(buf+ret, DEBUG_BUF_SIZE,
-		"channel_connected: %d\n",
-		driver->channel_connected);
-#endif
-	ret = simple_read_from_buffer(ubuf, count, ppos, buf, ret);
-
-	kfree(buf);
-	return ret;
-}
-
-static ssize_t diag_dbgfs_read_workpending(struct file *file,
-				char __user *ubuf, size_t count, loff_t *ppos)
-{
-	char *buf;
-	int ret;
-
-	buf = kzalloc(sizeof(char) * DEBUG_BUF_SIZE, GFP_KERNEL);
-	if (!buf) {
-		pr_err("diag: %s, Error allocating memory\n", __func__);
-		return -ENOMEM;
-	}
-
-	ret = scnprintf(buf, DEBUG_BUF_SIZE,
-		"Pending status for work_stucts:\n"
-		"diag_drain_work: %d\n"
-		"diag_read_smd_work: %d\n"
-		"diag_read_smd_cntl_work: %d\n"
-		"diag_read_smd_qdsp_work: %d\n"
-		"diag_read_smd_qdsp_cntl_work: %d\n"
-		"diag_read_smd_wcnss_work: %d\n"
-		"diag_read_smd_wcnss_cntl_work: %d\n"
-		"diag_modem_mask_update_work: %d\n"
-		"diag_qdsp_mask_update_work: %d\n"
-		"diag_wcnss_mask_update_work: %d\n"
-		"diag_read_smd_dci_work: %d\n",
-		work_pending(&(driver->diag_drain_work)),
-		work_pending(&(driver->diag_read_smd_work)),
-		work_pending(&(driver->diag_read_smd_cntl_work)),
-		work_pending(&(driver->diag_read_smd_qdsp_work)),
-		work_pending(&(driver->diag_read_smd_qdsp_cntl_work)),
-		work_pending(&(driver->diag_read_smd_wcnss_work)),
-		work_pending(&(driver->diag_read_smd_wcnss_cntl_work)),
-		work_pending(&(driver->diag_modem_mask_update_work)),
-		work_pending(&(driver->diag_qdsp_mask_update_work)),
-		work_pending(&(driver->diag_wcnss_mask_update_work)),
-		work_pending(&(driver->diag_read_smd_dci_work)));
-
-#ifdef CONFIG_DIAG_OVER_USB
-	ret += scnprintf(buf+ret, DEBUG_BUF_SIZE,
-		"diag_proc_hdlc_work: %d\n"
-		"diag_read_work: %d\n",
-		work_pending(&(driver->diag_proc_hdlc_work)),
-		work_pending(&(driver->diag_read_work)));
-#endif
-	ret = simple_read_from_buffer(ubuf, count, ppos, buf, ret);
-
-	kfree(buf);
-	return ret;
-}
-
-static ssize_t diag_dbgfs_read_table(struct file *file, char __user *ubuf,
-				     size_t count, loff_t *ppos)
-{
-	char *buf;
-	int ret = 0;
-	int i;
-	int bytes_remaining;
-	int bytes_in_buffer = 0;
-	int bytes_written;
-	int buf_size = (DEBUG_BUF_SIZE < count) ? DEBUG_BUF_SIZE : count;
-
-	if (diag_dbgfs_table_index >= diag_max_reg) {
-		/* Done. Reset to prepare for future requests */
-		diag_dbgfs_table_index = 0;
-		return 0;
-	}
-
-	buf = kzalloc(sizeof(char) * buf_size, GFP_KERNEL);
-	if (!buf) {
-		pr_err("diag: %s, Error allocating memory\n", __func__);
-		return -ENOMEM;
-	}
-
-	bytes_remaining = buf_size;
-	for (i = diag_dbgfs_table_index; i < diag_max_reg; i++) {
-		/* Do not process empty entries in the table */
-		if (driver->table[i].process_id == 0)
-			continue;
-
-		bytes_written = scnprintf(buf+bytes_in_buffer, bytes_remaining,
-			"i: %3d, cmd_code: %4x, subsys_id: %4x, "
-			"client: %2d, cmd_code_lo: %4x, "
-			"cmd_code_hi: %4x, process_id: %5d\n",
-			i,
-			driver->table[i].cmd_code,
-			driver->table[i].subsys_id,
-			driver->table[i].client_id,
-			driver->table[i].cmd_code_lo,
-			driver->table[i].cmd_code_hi,
-			driver->table[i].process_id);
-
-		bytes_in_buffer += bytes_written;
-
-		/* Check if there is room to add another table entry */
-		bytes_remaining = buf_size - bytes_in_buffer;
-		if (bytes_remaining < bytes_written)
-			break;
-	}
-	diag_dbgfs_table_index = i;
-
-	*ppos = 0;
-	ret = simple_read_from_buffer(ubuf, count, ppos, buf, bytes_in_buffer);
-
-	kfree(buf);
-	return ret;
-}
-
-#ifdef CONFIG_DIAG_BRIDGE_CODE
-static ssize_t diag_dbgfs_read_hsic(struct file *file, char __user *ubuf,
-				    size_t count, loff_t *ppos)
-{
-	char *buf;
-	int ret;
-
-	buf = kzalloc(sizeof(char) * DEBUG_BUF_SIZE, GFP_KERNEL);
-	if (!buf) {
-		pr_err("diag: %s, Error allocating memory\n", __func__);
-		return -ENOMEM;
-	}
-
-	ret = scnprintf(buf, DEBUG_BUF_SIZE,
-		"hsic ch: %d\n"
-		"hsic_inited: %d\n"
-		"hsic enabled: %d\n"
-		"hsic_opened: %d\n"
-		"hsic_suspend: %d\n"
-		"in_busy_hsic_read_on_device: %d\n"
-		"in_busy_hsic_write: %d\n"
-		"count_hsic_pool: %d\n"
-		"count_hsic_write_pool: %d\n"
-		"diag_hsic_pool: %x\n"
-		"diag_hsic_write_pool: %x\n"
-		"write_len_mdm: %d\n"
-		"num_hsic_buf_tbl_entries: %d\n"
-		"usb_mdm_connected: %d\n"
-		"diag_read_mdm_work: %d\n"
-		"diag_read_hsic_work: %d\n"
-		"diag_disconnect_work: %d\n"
-		"diag_usb_read_complete_work: %d\n",
-		driver->hsic_ch,
-		driver->hsic_inited,
-		driver->hsic_device_enabled,
-		driver->hsic_device_opened,
-		driver->hsic_suspend,
-		driver->in_busy_hsic_read_on_device,
-		driver->in_busy_hsic_write,
-		driver->count_hsic_pool,
-		driver->count_hsic_write_pool,
-		(unsigned int)driver->diag_hsic_pool,
-		(unsigned int)driver->diag_hsic_write_pool,
-		driver->write_len_mdm,
-		driver->num_hsic_buf_tbl_entries,
-		driver->usb_mdm_connected,
-		work_pending(&(driver->diag_read_mdm_work)),
-		work_pending(&(driver->diag_read_hsic_work)),
-		work_pending(&(driver->diag_disconnect_work)),
-		work_pending(&(driver->diag_usb_read_complete_work)));
-
-	ret = simple_read_from_buffer(ubuf, count, ppos, buf, ret);
-
-	kfree(buf);
-	return ret;
-}
-
-const struct file_operations diag_dbgfs_hsic_ops = {
-	.read = diag_dbgfs_read_hsic,
-};
-#endif
-
-const struct file_operations diag_dbgfs_status_ops = {
-	.read = diag_dbgfs_read_status,
-};
-
-const struct file_operations diag_dbgfs_table_ops = {
-	.read = diag_dbgfs_read_table,
-};
-
-const struct file_operations diag_dbgfs_workpending_ops = {
-	.read = diag_dbgfs_read_workpending,
-};
-
-void diag_debugfs_init(void)
-{
-	diag_dbgfs_dent = debugfs_create_dir("diag", 0);
-	if (IS_ERR(diag_dbgfs_dent))
-		return;
-
-	debugfs_create_file("status", 0444, diag_dbgfs_dent, 0,
-		&diag_dbgfs_status_ops);
-
-	debugfs_create_file("table", 0444, diag_dbgfs_dent, 0,
-		&diag_dbgfs_table_ops);
-
-	debugfs_create_file("work_pending", 0444, diag_dbgfs_dent, 0,
-		&diag_dbgfs_workpending_ops);
-
-#ifdef CONFIG_DIAG_BRIDGE_CODE
-	debugfs_create_file("hsic", 0444, diag_dbgfs_dent, 0,
-		&diag_dbgfs_hsic_ops);
-#endif
-
-	diag_dbgfs_table_index = 0;
-}
-
-void diag_debugfs_cleanup(void)
-{
-	if (diag_dbgfs_dent) {
-		debugfs_remove_recursive(diag_dbgfs_dent);
-		diag_dbgfs_dent = NULL;
-	}
-}
-#else
-void diag_debugfs_init(void) { }
-void diag_debugfs_cleanup(void) { }
-#endif
