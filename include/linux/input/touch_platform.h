@@ -24,6 +24,7 @@
 
 #define ATMXT_I2C_NAME		"atmxt-i2c"
 #define SY3200_I2C_NAME		"sy3200-i2c"
+#define SY3400_I2C_NAME		"sy3400-i2c"
 
 struct touch_settings {
 	uint8_t		*data;
