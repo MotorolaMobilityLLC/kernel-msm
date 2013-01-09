@@ -57,7 +57,7 @@
 #define SY3200_MAX_TOUCHES          10
 #define SY3200_ABS_RESERVED         0xFFFF
 #define SY3200_IC_RESET_HOLD_TIME   1000
-#define SY3200_BL_HOLDOFF_TIME      200
+#define SY3200_BL_HOLDOFF_TIME      800
 
 
 enum sy3200_driver_state {
