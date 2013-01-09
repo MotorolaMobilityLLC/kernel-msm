@@ -76,10 +76,8 @@ static int sy3200_validate_f01(struct sy3200_driver_data *dd);
 static int sy3200_validate_f34(struct sy3200_driver_data *dd);
 static int sy3200_validate_f11(struct sy3200_driver_data *dd);
 static int sy3200_get_verinfo(struct sy3200_driver_data *dd);
-#ifdef FIX_TOUCH_REFLASH_FIRMWARE_ISSUE
 static int sy3200_check_bootloader(struct sy3200_driver_data *dd, bool *bl);
 static bool sy3200_check_firmware(struct sy3200_driver_data *dd);
-#endif
 static int sy3200_check_settings(struct sy3200_driver_data *dd, bool *sett);
 static int sy3200_set_ic_data(struct sy3200_driver_data *dd);
 static int sy3200_create_irq_table(struct sy3200_driver_data *dd);
@@ -94,10 +92,8 @@ static void sy3200_report_touches(struct sy3200_driver_data *dd);
 static void sy3200_release_touches(struct sy3200_driver_data *dd);
 static int sy3200_resume_restart(struct sy3200_driver_data *dd);
 static int sy3200_validate_firmware(uint8_t *data, uint32_t size);
-#ifdef FIX_TOUCH_REFLASH_FIRMWARE_ISSUE
 static int sy3200_enable_reflashing(struct sy3200_driver_data *dd);
 static int sy3200_flash_record(struct sy3200_driver_data *dd, int type);
-#endif
 #ifdef CONFIG_TOUCHSCREEN_DEBUG
 static char *sy3200_msg2str(const uint8_t *msg, int size);
 #endif
@@ -1135,11 +1131,9 @@ static int sy3200_restart_ic(struct sy3200_driver_data *dd)
 	bool update_fw = false;
 	bool update_sett = false;
 	uint8_t p0_hack = 0x01;	/* Temp P0 Hack */
-#ifdef FIX_TOUCH_REFLASH_FIRMWARE_ISSUE
 	bool bl_present = false;
 	bool update_complete = false;
 	int cur_drv_state = 0;
-#endif
 
 sy3200_restart_ic_start:
 	sy3200_dbg(dd, SY3200_DBG3, "%s: Restarting IC...\n", __func__);
@@ -1206,7 +1200,6 @@ sy3200_restart_ic_start:
 		goto sy3200_restart_ic_fail;
 	}
 
-#ifdef FIX_TOUCH_REFLASH_FIRMWARE_ISSUE
 	err = sy3200_check_bootloader(dd, &bl_present);
 	if (err < 0) {
 		printk(KERN_ERR
@@ -1264,14 +1257,12 @@ sy3200_restart_ic_start:
 		err = sy3200_i2c_write(dd, 0x9F, &p0_hack, 1);
 		goto sy3200_restart_ic_start;
 	}
-#endif
 
 	sy3200_set_ic_state(dd, SY3200_IC_PRESENT);
 	printk(KERN_INFO "%s: Product ID: %s, Build ID: 0x%02X%02X%02X\n",
 		__func__, &(dd->pblk->prodid[0]), dd->pblk->bldid[2],
 		dd->pblk->bldid[1], dd->pblk->bldid[0]);
 
-#ifdef FIX_TOUCH_REFLASH_FIRMWARE_ISSUE
 	update_fw = sy3200_check_firmware(dd);
 	if (update_fw) {
 		if (update_complete) {
@@ -1293,7 +1284,6 @@ sy3200_restart_ic_start:
 
 		goto sy3200_restart_ic_start;
 	}
-#endif
 
 	err = sy3200_check_settings(dd, &update_sett);
 	if (err < 0) {
@@ -1303,7 +1293,6 @@ sy3200_restart_ic_start:
 		goto sy3200_restart_ic_start;
 	}
 
-#ifdef FIX_TOUCH_REFLASH_FIRMWARE_ISSUE
 	if (update_sett) {
 		if (update_complete) {
 			printk(KERN_ERR "%s: %s.\n", __func__,
@@ -1324,7 +1313,6 @@ sy3200_restart_ic_start:
 
 		goto sy3200_restart_ic_start;
 	}
-#endif
 
 	err = sy3200_validate_f11(dd);
 	if (err < 0) {
@@ -1460,9 +1448,7 @@ static int sy3200_validate_f01(struct sy3200_driver_data *dd)
 	uint8_t query43[2] = {0x00, 0x00};
 	bool has_sensor_id = false;
 	uint8_t addr = 0x00;
-#ifdef FIX_TOUCH_REFLASH_FIRMWARE_ISSUE
 	bool bl = false;
-#endif
 
 	cur = dd->pblk->pdt;
 	while (cur != NULL) {
@@ -1521,7 +1507,6 @@ static int sy3200_validate_f01(struct sy3200_driver_data *dd)
 		goto sy3200_validate_f01_fail;
 	}
 
-#ifdef FIX_TOUCH_REFLASH_FIRMWARE_ISSUE
 	err = sy3200_check_bootloader(dd, &bl);
 	if (err < 0) {
 		printk(KERN_ERR "%s: Unable to check for bootloader mode.\n",
@@ -1530,7 +1515,6 @@ static int sy3200_validate_f01(struct sy3200_driver_data *dd)
 	} else if (bl) {
 		goto sy3200_validate_f01_fail;
 	}
-#endif
 
 	if (!(query1 & 0x80)) {
 		printk(KERN_ERR "%s: Query42 does not exist.\n", __func__);
@@ -1835,7 +1819,6 @@ sy3200_get_verinfo_fail:
 	return err;
 }
 
-#ifdef FIX_TOUCH_REFLASH_FIRMWARE_ISSUE
 static int sy3200_check_bootloader(struct sy3200_driver_data *dd, bool *bl)
 {
 	int err = 0;
@@ -1884,8 +1867,6 @@ static int sy3200_check_bootloader(struct sy3200_driver_data *dd, bool *bl)
 sy3200_check_bootloader_fail:
 	return err;
 }
-#endif
-#ifdef FIX_TOUCH_REFLASH_FIRMWARE_ISSUE
 static bool sy3200_check_firmware(struct sy3200_driver_data *dd)
 {
 	bool update_fw = false;
@@ -1896,7 +1877,6 @@ static bool sy3200_check_firmware(struct sy3200_driver_data *dd)
 
 	return update_fw;
 }
-#endif
 
 static int sy3200_check_settings(struct sy3200_driver_data *dd, bool *sett)
 {
@@ -2532,7 +2512,6 @@ sy3200_validate_firmware_fail:
 	return err;
 }
 
-#ifdef FIX_TOUCH_REFLASH_FIRMWARE_ISSUE
 static int sy3200_enable_reflashing(struct sy3200_driver_data *dd)
 {
 	int err = 0;
@@ -2980,7 +2959,6 @@ static int sy3200_flash_record(struct sy3200_driver_data *dd, int type)
 sy3200_flash_record_fail:
 	return err;
 }
-#endif
 
 
 #ifdef CONFIG_TOUCHSCREEN_DEBUG
