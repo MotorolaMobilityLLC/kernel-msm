@@ -984,6 +984,8 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mdp4_clear_dump_flags();
 
 			mfd->op_enable = TRUE;
+			mfd->suspend_cfg.partial = 0;
+			mfd->resume_cfg.partial = 0;
 		}
 		break;
 	}
@@ -4151,6 +4153,63 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 
 		kfree(reg_access_buf);
 
+		break;
+
+	case MSMFB_HIDE_IMG:
+		if (msm_fb_pdata
+			&& msm_fb_pdata->is_partial_mode_supported
+			&& msm_fb_pdata->is_partial_mode_supported()) {
+			struct msm_fb_panel_data *pdata;
+			int hide = 0;
+
+			if (copy_from_user(&hide,
+							(void __user *)arg,
+							sizeof(hide)))
+				return -EFAULT;
+			pdata = (struct msm_fb_panel_data *)
+				mfd->pdev->dev.platform_data;
+			if (pdata && pdata->hide_img)
+				ret = pdata->hide_img(mfd, hide);
+		}
+		break;
+
+	case MSMFB_PREPARE_FOR_SUSPEND:
+		if (msm_fb_pdata
+			&& msm_fb_pdata->is_partial_mode_supported
+			&& msm_fb_pdata->is_partial_mode_supported()) {
+			struct msm_fb_panel_data *pdata;
+
+			if (copy_from_user(&mfd->suspend_cfg,
+							(void __user *)arg,
+							sizeof(mfd->suspend_cfg)))
+				return -EFAULT;
+			pdata = (struct msm_fb_panel_data *)
+				mfd->pdev->dev.platform_data;
+			if (pdata && pdata->prepare_for_suspend)
+				ret = pdata->prepare_for_suspend(mfd,
+					mfd->suspend_cfg.partial);
+		}
+		break;
+
+	case MSMFB_PREPARE_FOR_RESUME:
+		if (msm_fb_pdata
+			&& msm_fb_pdata->is_partial_mode_supported
+			&& msm_fb_pdata->is_partial_mode_supported()) {
+			struct msm_fb_panel_data *pdata;
+			struct msmfb_resume_cfg resume_cfg;
+
+			if (copy_from_user(&mfd->resume_cfg,
+							(void __user *)arg,
+							sizeof(resume_cfg)))
+				return -EFAULT;
+			pdata = (struct msm_fb_panel_data *)
+				mfd->pdev->dev.platform_data;
+			if (pdata && pdata->prepare_for_resume)
+				ret = pdata->prepare_for_resume(mfd,
+					resume_cfg.partial,
+					resume_cfg.out_of_sleep,
+					resume_cfg.gamma);
+		}
 		break;
 
 	default:
