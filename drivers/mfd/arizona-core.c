@@ -523,6 +523,27 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 	arizona->virq[0] = arizona->pdata.irq_base;
 	arizona->virq[1] = arizona->pdata.irq_base + ARIZONA_NUM_IRQ;
 
+	switch (arizona->pdata.mic_spk_clamp) {
+	case ARIZONA_MIC_CLAMP_SPKLN:
+		regmap_update_bits(arizona->regmap, ARIZONA_SPK_CTRL_2,
+				   0x3c, 0xc);
+		break;
+	case ARIZONA_MIC_CLAMP_SPKLP:
+		regmap_update_bits(arizona->regmap, ARIZONA_SPK_CTRL_2,
+				   0x3c, 0x1c);
+		break;
+	case ARIZONA_MIC_CLAMP_SPKRN:
+		regmap_update_bits(arizona->regmap, ARIZONA_SPK_CTRL_3,
+				   0x3c, 0xc);
+		break;
+	case ARIZONA_MIC_CLAMP_SPKRP:
+		regmap_update_bits(arizona->regmap, ARIZONA_SPK_CTRL_3,
+				   0x3c, 0x1c);
+		break;
+	default:
+		break;
+	}
+
 	/* Set up for interrupts */
 	ret = arizona_irq_init(arizona);
 	if (ret != 0)
