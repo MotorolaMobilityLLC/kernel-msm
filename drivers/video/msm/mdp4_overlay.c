@@ -1,4 +1,5 @@
-/* Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
+/*
+ * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -3346,9 +3347,6 @@ int mdp4_overlay_play(struct fb_info *info, struct msmfb_overlay_data *req)
 
 	if (mfd == NULL)
 		return -ENODEV;
-
-	if (!mfd->panel_power_on) /* suspended */
-		return -EPERM;
 
 	pipe = mdp4_overlay_ndx2pipe(req->id);
 	if (pipe == NULL) {
