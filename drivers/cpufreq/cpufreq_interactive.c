@@ -21,13 +21,13 @@
 #include <linux/cpufreq.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
+#include <linux/rwsem.h>
 #include <linux/sched.h>
 #include <linux/tick.h>
 #include <linux/time.h>
 #include <linux/timer.h>
 #include <linux/workqueue.h>
 #include <linux/kthread.h>
-#include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <asm/cputime.h>
@@ -52,6 +52,7 @@ struct cpufreq_interactive_cpuinfo {
 	unsigned int floor_freq;
 	u64 floor_validate_time;
 	u64 hispeed_validate_time;
+	struct rw_semaphore enable_sem;
 	int governor_enabled;
 };
 
@@ -141,7 +142,8 @@ static void cpufreq_interactive_timer(unsigned long data)
 	unsigned int index;
 	unsigned long flags;
 
-	smp_rmb();
+	if (!down_read_trylock(&pcpu->enable_sem))
+		return;
 
 	if (!pcpu->governor_enabled)
 		goto exit;
@@ -304,6 +306,7 @@ rearm:
 	}
 
 exit:
+	up_read(&pcpu->enable_sem);
 	return;
 }
 
@@ -313,8 +316,13 @@ static void cpufreq_interactive_idle_start(void)
 		&per_cpu(cpuinfo, smp_processor_id());
 	int pending;
 
-	if (!pcpu->governor_enabled)
+	if (!down_read_trylock(&pcpu->enable_sem))
 		return;
+
+	if (!pcpu->governor_enabled) {
+		up_read(&pcpu->enable_sem);
+		return;
+	}
 
 	pcpu->idling = 1;
 	smp_wmb();
@@ -357,6 +365,8 @@ static void cpufreq_interactive_idle_start(void)
 		}
 	}
 
+	up_read(&pcpu->enable_sem);
+
 }
 
 static void cpufreq_interactive_idle_end(void)
@@ -364,8 +374,13 @@ static void cpufreq_interactive_idle_end(void)
 	struct cpufreq_interactive_cpuinfo *pcpu =
 		&per_cpu(cpuinfo, smp_processor_id());
 
-	if (!pcpu->governor_enabled)
+	if (!down_read_trylock(&pcpu->enable_sem))
 		return;
+
+	if (!pcpu->governor_enabled) {
+		up_read(&pcpu->enable_sem);
+		return;
+	}
 
 	pcpu->idling = 0;
 	smp_wmb();
@@ -391,6 +406,8 @@ static void cpufreq_interactive_idle_end(void)
 		mod_timer(&pcpu->cpu_timer,
 			  jiffies + usecs_to_jiffies(timer_rate));
 	}
+
+	up_read(&pcpu->enable_sem);
 
 }
 
@@ -425,10 +442,12 @@ static int cpufreq_interactive_up_task(void *data)
 			unsigned int max_freq = 0;
 
 			pcpu = &per_cpu(cpuinfo, cpu);
-			smp_rmb();
-
-			if (!pcpu->governor_enabled)
+			if (!down_read_trylock(&pcpu->enable_sem))
 				continue;
+			if (!pcpu->governor_enabled) {
+				up_read(&pcpu->enable_sem);
+				continue;
+			}
 
 			mutex_lock(&set_speed_lock);
 
@@ -447,6 +466,8 @@ static int cpufreq_interactive_up_task(void *data)
 			mutex_unlock(&set_speed_lock);
 			trace_cpufreq_interactive_up(cpu, pcpu->target_freq,
 						     pcpu->policy->cur);
+
+			up_read(&pcpu->enable_sem);
 		}
 	}
 
@@ -470,10 +491,12 @@ static void cpufreq_interactive_freq_down(struct work_struct *work)
 		unsigned int max_freq = 0;
 
 		pcpu = &per_cpu(cpuinfo, cpu);
-		smp_rmb();
-
-		if (!pcpu->governor_enabled)
+		if (!down_read_trylock(&pcpu->enable_sem))
 			continue;
+		if (!pcpu->governor_enabled) {
+			up_read(&pcpu->enable_sem);
+			continue;
+		}
 
 		mutex_lock(&set_speed_lock);
 
@@ -492,6 +515,8 @@ static void cpufreq_interactive_freq_down(struct work_struct *work)
 		mutex_unlock(&set_speed_lock);
 		trace_cpufreq_interactive_down(cpu, pcpu->target_freq,
 					       pcpu->policy->cur);
+
+		up_read(&pcpu->enable_sem);
 	}
 }
 
@@ -870,11 +895,12 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 				pcpu->target_set_time;
 			pcpu->hispeed_validate_time =
 				pcpu->target_set_time;
-			pcpu->governor_enabled = 1;
+			down_write(&pcpu->enable_sem);
 			pcpu->idle_exit_time = pcpu->target_set_time;
 			mod_timer(&pcpu->cpu_timer,
 				jiffies + usecs_to_jiffies(timer_rate));
-			smp_wmb();
+			pcpu->governor_enabled = 1;
+			up_write(&pcpu->enable_sem);
 		}
 
 		if (!hispeed_freq)
@@ -911,8 +937,8 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		mutex_lock(&gov_lock);
 		for_each_cpu(j, policy->cpus) {
 			pcpu = &per_cpu(cpuinfo, j);
+			down_write(&pcpu->enable_sem);
 			pcpu->governor_enabled = 0;
-			smp_wmb();
 			del_timer_sync(&pcpu->cpu_timer);
 
 			/*
@@ -922,6 +948,7 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			 * that is trying to run.
 			 */
 			pcpu->idle_exit_time = 0;
+			up_write(&pcpu->enable_sem);
 		}
 
 		flush_work(&freq_scale_down_work);
@@ -967,6 +994,7 @@ static int __init cpufreq_interactive_init(void)
 		init_timer_deferrable(&pcpu->cpu_timer);
 		pcpu->cpu_timer.function = cpufreq_interactive_timer;
 		pcpu->cpu_timer.data = i;
+		init_rwsem(&pcpu->enable_sem);
 	}
 
 	up_task = kthread_create(cpufreq_interactive_up_task, NULL,
