@@ -25,3 +25,8 @@ static inline void touch_hw_watchdog(void)
 {
 	pet_watchdog();
 }
+
+static inline void trigger_watchdog_reset(void)
+{
+	msm_watchdog_reset(0);
+}
