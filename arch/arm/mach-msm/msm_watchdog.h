@@ -75,8 +75,10 @@ extern unsigned int msm_wdog_fiq_length, msm_wdog_fiq_start;
 
 #ifdef CONFIG_MSM_WATCHDOG
 void pet_watchdog(void);
+void msm_watchdog_reset(unsigned int timeout);
 #else
 static inline void pet_watchdog(void) { }
+static inline void msm_watchdog_reset(unsigned int timeout) { }
 #endif
 
 #ifdef CONFIG_MSM_WATCHDOG_CTX_PRINT
