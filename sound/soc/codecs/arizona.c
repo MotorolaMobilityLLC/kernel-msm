@@ -125,15 +125,50 @@ static const struct snd_soc_dapm_widget arizona_spkr =
 			   ARIZONA_OUT4R_ENA_SHIFT, 0, NULL, 0, arizona_spk_ev,
 			   SND_SOC_DAPM_PRE_PMD | SND_SOC_DAPM_POST_PMU);
 
+static const struct snd_soc_dapm_widget arizona_spkl_dummy =
+	SND_SOC_DAPM_PGA("OUT4L", SND_SOC_NOPM, 0, 0, NULL, 0);
+
+static const struct snd_soc_dapm_widget arizona_spkr_dummy =
+	SND_SOC_DAPM_PGA("OUT4R", SND_SOC_NOPM, 0, 0, NULL, 0);
+
 int arizona_init_spk(struct snd_soc_codec *codec)
 {
+	struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
+	struct arizona *arizona = priv->arizona;
+	bool spkl = true;
+	bool spkr = true;
 	int ret;
 
-	ret = snd_soc_dapm_new_controls(&codec->dapm, &arizona_spkl, 1);
+	switch (arizona->pdata.mic_spk_clamp) {
+	case ARIZONA_MIC_CLAMP_SPKLN:
+	case ARIZONA_MIC_CLAMP_SPKLP:
+		spkl = false;
+		break;
+	case ARIZONA_MIC_CLAMP_SPKRN:
+	case ARIZONA_MIC_CLAMP_SPKRP:
+		spkr = false;
+		break;
+	default:
+		break;
+	}
+
+	if (spkl)
+		ret = snd_soc_dapm_new_controls(&codec->dapm,
+						&arizona_spkl, 1);
+	else
+		ret = snd_soc_dapm_new_controls(&codec->dapm,
+						&arizona_spkl_dummy, 1);
+
 	if (ret != 0)
 		return ret;
 
-	ret = snd_soc_dapm_new_controls(&codec->dapm, &arizona_spkr, 1);
+	if (spkr)
+		ret = snd_soc_dapm_new_controls(&codec->dapm,
+						&arizona_spkr, 1);
+	else
+		ret = snd_soc_dapm_new_controls(&codec->dapm,
+						&arizona_spkr_dummy, 1);
+
 	if (ret != 0)
 		return ret;
 
