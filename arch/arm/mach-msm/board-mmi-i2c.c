@@ -331,7 +331,7 @@ out:
 static struct oem_camera_sensor_data s5k5b3g_oem_data;
 
 static int __init s5k5b3g_init_i2c_device(struct i2c_board_info *info,
-                                          struct device_node *node)
+		struct device_node *node)
 {
 	/* get reset gpio */
 	of_property_read_u32(node, "gpio_reset",
@@ -344,6 +344,10 @@ static int __init s5k5b3g_init_i2c_device(struct i2c_board_info *info,
 	/* get dig_en gpio */
 	of_property_read_u32(node, "gpio_dig_en",
 		&s5k5b3g_oem_data.sensor_dig_en);
+
+	/* get dig_en gpio */
+	of_property_read_u32(node, "vdig_on_always",
+		&s5k5b3g_oem_data.sensor_vdig_on_always);
 
 	msm_camera_sensor_s5k5b3g_data.oem_data = &s5k5b3g_oem_data;
 	info->platform_data = &msm_camera_sensor_s5k5b3g_data;
@@ -407,6 +411,10 @@ static int __init ov10820_init_i2c_device(struct i2c_board_info *info,
 	/* get digital supply enable gpio */
 	of_property_read_u32(node, "gpio_dig_en",
 			&ov10820_oem_data.sensor_dig_en);
+
+	/* see if we are using a different dvdd regulator */
+	of_property_read_u32(node, "is_separate_dvdd",
+				&ov10820_oem_data.sensor_using_separate_dvdd);
 
 	msm_camera_sensor_ov10820_data.oem_data = &ov10820_oem_data;
 	info->platform_data = &msm_camera_sensor_ov10820_data;
