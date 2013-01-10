@@ -18,6 +18,7 @@
 #include "mdp4.h"
 #include <linux/atomic.h>
 #include <linux/reboot.h>
+#include <mach/mmi_panel_notifier.h>
 
 /*
  * This is a flag that only be used when bringup a new platform.
@@ -266,6 +267,23 @@ err:
 	return ret;
 }
 
+int mmi_panel_register_notifier(struct notifier_block *nb)
+{
+	return srcu_notifier_chain_register(&mot_panel.panel_notifier_list, nb);
+}
+
+int mmi_panel_unregister_notifier(struct notifier_block *nb)
+{
+	return srcu_notifier_chain_unregister(&mot_panel.panel_notifier_list,
+					nb);
+}
+
+void mmi_panel_notify(unsigned int state, void *data)
+{
+	pr_debug("%s (%d) is called\n", __func__, state);
+	srcu_notifier_call_chain(&mot_panel.panel_notifier_list, state, data);
+}
+
 static int panel_enable(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
@@ -293,6 +311,7 @@ static int panel_enable(struct platform_device *pdev)
 	get_controller_ver(mfd);
 	get_controller_drv_ver(mfd);
 
+	mmi_panel_notify(MMI_PANEL_EVENT_POST_INIT, NULL);
 	pr_info("%s completed. Power_mode =0x%x\n",
 				__func__, mipi_mode_get_pwr_mode(mfd));
 
@@ -636,6 +655,7 @@ static int __init mipi_mot_lcd_init(void)
 	mot_panel.mot_rx_buf = &mot_rx_buf;
 
 	mipi_mot_set_mot_panel(&mot_panel);
+	srcu_init_notifier_head(&mot_panel.panel_notifier_list);
 	mot_panel.get_manufacture_id = mipi_mot_get_manufacture_id;
 	mot_panel.get_controller_ver = mipi_mot_get_controller_ver;
 	mot_panel.get_controller_drv_ver = mipi_mot_get_controller_drv_ver;
