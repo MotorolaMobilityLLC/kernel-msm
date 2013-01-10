@@ -27,6 +27,7 @@ static char manufacture_id[2] = {DCS_CMD_READ_DA, 0x00}; /* DTYPE_DCS_READ */
 static char controller_ver[2] = {DCS_CMD_READ_DB, 0x00};
 static char controller_drv_ver[2] = {DCS_CMD_READ_DC, 0x00};
 static char display_on[2] = {DCS_CMD_SET_DISPLAY_ON, 0x00};
+static char normal_mode_on[2] = {DCS_CMD_SET_NORMAL_MODE_ON, 0x00};
 static char display_off[2] = {DCS_CMD_SET_DISPLAY_OFF, 0x00};
 static char get_power_mode[2] = {DCS_CMD_GET_POWER_MODE, 0x00};
 
@@ -40,8 +41,14 @@ static struct dsi_cmd_desc mot_controller_drv_ver_cmd = {
 	DTYPE_DCS_READ, 1, 0, 1, 5, sizeof(controller_drv_ver),
 							controller_drv_ver};
 
-static struct dsi_cmd_desc mot_display_on_cmd = {
-	DTYPE_DCS_WRITE, 1, 0, 0, 5, sizeof(display_on), display_on};
+static struct dsi_cmd_desc mot_display_on_cmds[] = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 5, sizeof(display_on), display_on}
+};
+
+static struct dsi_cmd_desc mot_display_normal_mode_on_cmds[] = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(normal_mode_on), normal_mode_on},
+	{DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(display_on), display_on},
+};
 
 static struct dsi_cmd_desc mot_display_off_cmd = {
 	DTYPE_DCS_WRITE, 1, 0, 0, 10, sizeof(display_off), display_off};
@@ -49,13 +56,22 @@ static struct dsi_cmd_desc mot_display_off_cmd = {
 static struct dsi_cmd_desc mot_get_pwr_mode_cmd = {
 	DTYPE_DCS_READ,  1, 0, 1, 0, sizeof(get_power_mode), get_power_mode};
 
+static struct dsi_cmd_desc mot_hide_img_cmd = {
+	DTYPE_DCS_WRITE, 1, 0, 0, 10, sizeof(display_off), display_off};
 
 int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
 {
 	struct dcs_cmd_req cmdreq;
 
-	cmdreq.cmds = &mot_display_on_cmd;
-	cmdreq.cmds_cnt = 1;
+	if (mfd->resume_cfg.partial) {
+		pr_debug("%s: sending normal mode on\n", __func__);
+		cmdreq.cmds = &mot_display_normal_mode_on_cmds[0];
+		cmdreq.cmds_cnt = ARRAY_SIZE(mot_display_normal_mode_on_cmds);
+	} else {
+		pr_debug("%s: sending display on\n", __func__);
+		cmdreq.cmds = &mot_display_on_cmds[0];
+		cmdreq.cmds_cnt = ARRAY_SIZE(mot_display_on_cmds);
+	}
 	cmdreq.flags = CMD_REQ_TX | CMD_REQ_COMMIT;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
@@ -294,4 +310,14 @@ void mipi_mot_esd_work(void)
 #endif
 	queue_delayed_work(mot_panel->esd_wq, &mot_panel->esd_work,
 						MOT_PANEL_ESD_CHECK_PERIOD);
+}
+int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide)
+{
+	pr_debug("%s(%d)\n", __func__, hide);
+	if ((mfd->op_enable != 0) && (mfd->panel_power_on != 0)) {
+		/* TODO: implement "unhide" */
+		mipi_set_tx_power_mode(0);
+		mipi_mot_tx_cmds(&mot_hide_img_cmd, 1);
+	}
+	return 0;
 }
