@@ -25,6 +25,7 @@
 #include <mach/gpiomux.h>
 #include <mach/ion.h>
 #include <mach/socinfo.h>
+#include <mach/mmi_panel_notifier.h>
 
 #include "devices.h"
 #include "board-8960.h"
@@ -788,6 +789,7 @@ static int panel_power_ctrl_en(int on)
 	}
 
 	if (!on) {
+		mmi_panel_notify(MMI_PANEL_EVENT_PWR_OFF, NULL);
 		rc = panel_reset_enable(on);
 		if (rc)
 			goto end;
@@ -808,6 +810,8 @@ static int panel_power_ctrl_en(int on)
 		rc = panel_reset_enable(on);
 		if (rc)
 			goto end;
+
+		mmi_panel_notify(MMI_PANEL_EVENT_PWR_ON, NULL);
 	}
 end:
 	return rc;
@@ -874,6 +878,7 @@ static int power_rail_on(struct mmi_disp_reg_lst *reg_lst)
 		goto end;
 
 	rc = panel_power_output(1, reg_lst);
+
 end:
 	return rc;
 }
@@ -968,12 +973,15 @@ static int panel_power_ctrl(int on)
 		rc = panel_reset_enable(on);
 		if (rc)
 			goto end;
+
+		mmi_panel_notify(MMI_PANEL_EVENT_PWR_ON, NULL);
 	} else {
 		if (on == MSM_DISP_POWER_OFF_PARTIAL) {
 			/* switch mipi mux to msp */
 			if (is_partial_mode_supported())
 				panel_gpio_enable(&mmi_disp_info.mipi_mux_select, 0);
 		} else {
+			mmi_panel_notify(MMI_PANEL_EVENT_PWR_OFF, NULL);
 			rc = panel_reset_enable(on);
 			if (rc)
 				goto end;
