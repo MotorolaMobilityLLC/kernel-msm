@@ -108,6 +108,7 @@ struct mipi_mot_panel {
 
 	/* reboot notifier for panel flash when power down or unplug charger */
 	struct notifier_block reboot_notifier;
+	struct srcu_notifier_head panel_notifier_list;
 
 	int (*panel_enable) (struct msm_fb_data_type *mfd);
 	int (*panel_disable) (struct msm_fb_data_type *mfd);
