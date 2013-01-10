@@ -52,6 +52,7 @@ struct arizona_extcon_info {
 
 	bool micd_reva;
 	bool micd_clamp;
+	unsigned int spk_clamp;
 
 	bool hpdet_active;
 
@@ -732,6 +733,11 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 			dev_err(arizona->dev, "Mechanical report failed: %d\n",
 				ret);
 
+		if (info->spk_clamp)
+			regmap_update_bits(arizona->regmap,
+					   ARIZONA_OUTPUT_ENABLES_1,
+					   info->spk_clamp, 0);
+
 		if (!arizona->pdata.hpdet_acc_id) {
 			info->detecting = true;
 			info->mic = false;
@@ -746,6 +752,11 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 
 		info->cable = false;
 		arizona_stop_mic(info);
+
+		if (info->spk_clamp)
+			regmap_update_bits(arizona->regmap,
+					   ARIZONA_OUTPUT_ENABLES_1,
+					   info->spk_clamp, info->spk_clamp);
 
 		info->num_hpdet_res = 0;
 		for (i = 0; i < ARRAY_SIZE(info->hpdet_res); i++)
@@ -882,6 +893,19 @@ static int arizona_extcon_probe(struct platform_device *pdev)
 				   ARIZONA_JACK_DETECT_DEBOUNCE,
 				   ARIZONA_MICD_CLAMP_DB,
 				   ARIZONA_MICD_CLAMP_DB);
+	}
+
+	switch (arizona->pdata.mic_spk_clamp) {
+	case ARIZONA_MIC_CLAMP_SPKLN:
+	case ARIZONA_MIC_CLAMP_SPKLP:
+		info->spk_clamp = ARIZONA_OUT4L_ENA;
+		break;
+	case ARIZONA_MIC_CLAMP_SPKRN:
+	case ARIZONA_MIC_CLAMP_SPKRP:
+		info->spk_clamp = ARIZONA_OUT4R_ENA;
+		break;
+	default:
+		break;
 	}
 
 	arizona_extcon_set_mode(info, 0);
