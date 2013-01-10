@@ -433,6 +433,13 @@ struct mddi_platform_data {
 	int (*mddi_client_power)(u32 client_id);
 };
 
+enum msm_disp_power_mode {
+	MSM_DISP_POWER_OFF = 0,
+	MSM_DISP_POWER_ON,
+	MSM_DISP_POWER_OFF_PARTIAL,
+	MSM_DISP_POWER_ON_PARTIAL,
+};
+
 struct mipi_dsi_platform_data {
 	int vsync_gpio;
 	int (*dsi_power_save)(int on);
@@ -485,6 +492,7 @@ struct msm_fb_platform_data {
 	int (*allow_set_offset)(void);
 	char prim_panel_name[PANEL_NAME_MAX_LEN];
 	char ext_panel_name[PANEL_NAME_MAX_LEN];
+	bool (*is_partial_mode_supported)(void);
 };
 
 struct msm_hdmi_platform_data {
