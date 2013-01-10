@@ -35,6 +35,7 @@
 #define DCS_CMD_GET_POWER_MODE       0x0A
 #define DCS_CMD_ENTER_SLEEP_MODE     0x10
 #define DCS_CMD_EXIT_SLEEP_MODE      0x11
+#define DCS_CMD_SET_NORMAL_MODE_ON   0x13
 #define DCS_CMD_SET_DISPLAY_ON       0x29
 #define DCS_CMD_SET_DISPLAY_OFF      0x28
 #define DCS_CMD_SET_COLUMN_ADDRESS   0x2A
@@ -117,6 +118,11 @@ struct mipi_mot_panel {
 	void (*enable_acl)(struct msm_fb_data_type *mfd);
 	int (*is_valid_manufacture_id)(struct msm_fb_data_type *mfd, u8 id);
 	int (*is_valid_power_mode)(struct msm_fb_data_type *mfd);
+
+	int (*hide_img)(struct msm_fb_data_type *, int hide);
+	int (*prepare_for_suspend) (struct msm_fb_data_type *, int full);
+	int (*prepare_for_resume) (struct msm_fb_data_type *,
+		int full, int in_sleep, int gamma);
 };
 
 int mipi_mot_device_register(struct msm_panel_info *pinfo, u32 channel,
@@ -135,4 +141,5 @@ u8 mipi_mode_get_pwr_mode(struct msm_fb_data_type *mfd);
 void mipi_mot_esd_work(void);
 void mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt);
 int mipi_mot_rx_cmd(struct dsi_cmd_desc *cmd, u8 *data, int rlen);
+int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide);
 #endif /* MIPI_MOT_PANEL_H */

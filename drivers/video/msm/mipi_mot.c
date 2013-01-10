@@ -279,9 +279,10 @@ static int panel_enable(struct platform_device *pdev)
 	if (ret != 0)
 		goto err;
 
-	if (mot_panel.panel_enable)
-		mot_panel.panel_enable(mfd);
-	else {
+	if (mot_panel.panel_enable) {
+		if (!mfd->resume_cfg.partial)
+			mot_panel.panel_enable(mfd);
+	} else {
 		pr_err("%s: no panel support\n", __func__);
 		ret = -ENODEV;
 		goto err;
@@ -337,9 +338,10 @@ static int panel_disable(struct platform_device *pdev)
 	if (atomic_read(&mot_panel.state) == MOT_PANEL_ON) {
 		atomic_set(&mot_panel.state, MOT_PANEL_OFF);
 
-		if (mot_panel.panel_disable)
-			mot_panel.panel_disable(mfd);
-		else {
+		if (mot_panel.panel_disable) {
+			if (!mfd->suspend_cfg.partial)
+				mot_panel.panel_disable(mfd);
+		} else {
 			pr_err("%s: no panel support\n", __func__);
 			ret = -ENODEV;
 			goto err1;
@@ -564,6 +566,18 @@ int mipi_mot_device_register(struct msm_panel_info *pinfo,
 		mot_panel_data.set_backlight_curve =
 						mot_panel.set_backlight_curve;
 
+	if (mot_panel.hide_img)
+		mot_panel_data.hide_img = mot_panel.hide_img;
+
+	if (mot_panel.prepare_for_resume)
+		mot_panel_data.prepare_for_resume =
+			mot_panel.prepare_for_resume;
+
+	if (mot_panel.prepare_for_suspend)
+		mot_panel_data.prepare_for_suspend =
+			mot_panel.prepare_for_suspend;
+
+
 #ifdef MIPI_MOT_PANEL_PLATF_BRINGUP
 	mot_panel.esd_enabled = false;
 #endif
@@ -629,6 +643,8 @@ static int __init mipi_mot_lcd_init(void)
 
 	mot_panel.panel_on = mipi_mot_panel_on;
 	mot_panel.panel_off = NULL;
+
+	mot_panel.hide_img = mipi_mot_hide_img;
 
 /*
 	factory_run = mot_panel_is_factory_mode();
