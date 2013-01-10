@@ -115,7 +115,7 @@ static inline void set_cold_file(struct f2fs_sb_info *sbi, struct inode *inode,
 }
 
 static int f2fs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
-						bool excl)
+						struct nameidata *nd)
 {
 	struct super_block *sb = dir->i_sb;
 	struct f2fs_sb_info *sbi = F2FS_SB(sb);
@@ -183,7 +183,7 @@ out:
 
 struct dentry *f2fs_get_parent(struct dentry *child)
 {
-	struct qstr dotdot = QSTR_INIT("..", 2);
+	struct qstr dotdot = {.name = "..", .len = 2};
 	unsigned long ino = f2fs_inode_by_name(child->d_inode, &dotdot);
 	if (!ino)
 		return ERR_PTR(-ENOENT);
@@ -191,7 +191,7 @@ struct dentry *f2fs_get_parent(struct dentry *child)
 }
 
 static struct dentry *f2fs_lookup(struct inode *dir, struct dentry *dentry,
-		unsigned int flags)
+		struct nameidata *nd)
 {
 	struct inode *inode = NULL;
 	struct f2fs_dir_entry *de;
