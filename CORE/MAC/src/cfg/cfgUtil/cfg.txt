@@ -1242,10 +1242,10 @@ NONE
 WNI_CFG_MAX_TX_POWER_5    S    128    8
 V    RW    NP
 NONE
-3 36 126 14
+3 36 126 20
 V    RW    NP
 NONE
-3 36 126 14
+3 36 126 20
 
 *
 * Cell size configurations. These are canned configurations for a specified
