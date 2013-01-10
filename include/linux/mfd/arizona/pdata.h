@@ -49,6 +49,11 @@
 #define ARIZONA_32KZ_MCLK2 2
 #define ARIZONA_32KZ_NONE  3
 
+#define ARIZONA_MIC_CLAMP_SPKLN 1
+#define ARIZONA_MIC_CLAMP_SPKLP 2
+#define ARIZONA_MIC_CLAMP_SPKRN 3
+#define ARIZONA_MIC_CLAMP_SPKRP 4
+
 #define ARIZONA_MAX_INPUT 4
 
 #define ARIZONA_DMIC_MICVDD   0
@@ -143,6 +148,9 @@ struct arizona_pdata {
 
 	/** Haptic actuator type */
 	unsigned int hap_act;
+
+	/** Extra microphone clamping enabled by speaker driver? */
+	unsigned int mic_spk_clamp;
 };
 
 #endif
