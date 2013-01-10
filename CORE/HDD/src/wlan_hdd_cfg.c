@@ -164,6 +164,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_11D_SUPPORT_ENABLED_DEFAULT, 
                  CFG_11D_SUPPORT_ENABLED_MIN, 
                  CFG_11D_SUPPORT_ENABLED_MAX ),
+   
+   REG_VARIABLE( CFG_11H_SUPPORT_ENABLED_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, Is11hSupportEnabled, 
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK, 
+                 CFG_11H_SUPPORT_ENABLED_DEFAULT, 
+                 CFG_11H_SUPPORT_ENABLED_MIN, 
+                 CFG_11H_SUPPORT_ENABLED_MAX ),
 
    REG_VARIABLE( CFG_ENFORCE_11D_CHANNELS_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, fEnforce11dChannels, 
@@ -3349,8 +3356,13 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig.csrConfig.AdHocChannel5G            = 44; 
    smeConfig.csrConfig.ProprietaryRatesEnabled   = 0;  
    smeConfig.csrConfig.HeartbeatThresh50         = 40; 
-   smeConfig.csrConfig.Is11hSupportEnabled       = 1;
    smeConfig.csrConfig.bandCapability            = pConfig->nBandCapability; 
+   if (pConfig->nBandCapability == eCSR_BAND_24)
+   {
+       smeConfig.csrConfig.Is11hSupportEnabled       = 0;
+   } else {
+       smeConfig.csrConfig.Is11hSupportEnabled       = pConfig->Is11hSupportEnabled;
+   }
    smeConfig.csrConfig.cbChoice                  = 0;   
    smeConfig.csrConfig.bgScanInterval            = 0; 
    smeConfig.csrConfig.eBand                     = pConfig->nBandCapability; 
