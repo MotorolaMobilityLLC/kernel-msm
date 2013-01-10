@@ -102,11 +102,18 @@ struct mmi_disp_data {
 	enum mmi_disp_intf_type disp_intf;
 	int num_disp_reset;
 	struct mmi_disp_gpio_config disp_gpio[DISP_MAX_RESET];
-
+	struct mmi_disp_gpio_config mipi_mux_select;
 	struct mmi_disp_reg_lst reg_lst;
+	bool partial_mode_supported;
 };
 
 static struct mmi_disp_data mmi_disp_info;
+
+static bool is_partial_mode_supported(void)
+{
+	return mmi_disp_info.partial_mode_supported;
+}
+
 static struct mmi_disp_reg_lst dsi_regs_lst = {
 	.num_disp_regs = 2,
 	.disp_reg[0] = {
@@ -240,12 +247,52 @@ static void __init print_mmi_disp_data(void)
 		print_mmi_reg_info(&reg_lst->disp_reg[i]);
 }
 
-static void __init load_disp_reset_info_from_dt(struct device_node *node)
+static void __init load_disp_pin_info_from_dt(struct device_node *node,
+	struct mmi_disp_gpio_config *gpio_info,
+	const char *pin, int i)
 {
-	struct mmi_disp_gpio_config *gpio_info;
-	int i;
 	char prop_name[PANEL_NAME_MAX_LEN];
 	int len = PANEL_NAME_MAX_LEN;
+
+	gpio_info->num = -1;
+	gpio_info->type = MMI_DISP_INVAL_GPIO;
+
+	snprintf(prop_name, len, "%s_gpio_%d", pin, i);
+	strlcpy(gpio_info->gpio_name, prop_name, PANEL_NAME_MAX_LEN);
+
+	gpio_info->num = load_disp_value(node, prop_name);
+
+	snprintf(prop_name, len, "%s_gpio_type_%d", pin, i);
+	gpio_info->type = load_disp_value(node, prop_name);
+	if (gpio_info->type < 0)
+		gpio_info->type = MMI_DISP_INVAL_GPIO;
+
+	snprintf(prop_name, len, "%s_init_state_%d", pin, i);
+	gpio_info->init_val = load_disp_value(node, prop_name);
+
+	snprintf(prop_name, len, "%s_en_state_%d", pin, i);
+	gpio_info->en_val = load_disp_value(node, prop_name);
+
+	snprintf(prop_name, len, "%s_en_pre_delay_%d", pin, i);
+	gpio_info->en_pre_delay =
+			ZERO_IF_NEG(load_disp_value(node, prop_name));
+
+	snprintf(prop_name, len, "%s_en_post_delay_%d", pin, i);
+	gpio_info->en_post_delay =
+			ZERO_IF_NEG(load_disp_value(node, prop_name));
+
+	snprintf(prop_name, len, "%s_dis_pre_delay_%d", pin, i);
+	gpio_info->dis_pre_delay =
+			ZERO_IF_NEG(load_disp_value(node, prop_name));
+
+	snprintf(prop_name, len, "%s_dis_post_delay_%d", pin, i);
+	gpio_info->dis_post_delay =
+			ZERO_IF_NEG(load_disp_value(node, prop_name));
+}
+
+static void __init load_disp_reset_info_from_dt(struct device_node *node)
+{
+	int i;
 
 	mmi_disp_info.num_disp_reset = load_disp_value(node, "num_disp_rst");
 	if (mmi_disp_info.num_disp_reset == -EINVAL)
@@ -257,41 +304,9 @@ static void __init load_disp_reset_info_from_dt(struct device_node *node)
 		mmi_disp_info.num_disp_reset = DISP_MAX_RESET;
 	}
 
-	for (i = 1; i <= mmi_disp_info.num_disp_reset; i++) {
-		gpio_info = &mmi_disp_info.disp_gpio[i-1];
-
-		snprintf(gpio_info->gpio_name, len, "rst_gpio_%d", i);
-
-		snprintf(prop_name, len, "rst_gpio_%d", i);
-		gpio_info->num = load_disp_value(node, prop_name);
-
-		snprintf(prop_name, len, "rst_gpio_type_%d", i);
-		gpio_info->type = load_disp_value(node, prop_name);
-		if (gpio_info->type < 0)
-			gpio_info->type = MMI_DISP_INVAL_GPIO;
-
-		snprintf(prop_name, len, "rst_init_state_%d", i);
-		gpio_info->init_val = load_disp_value(node, prop_name);
-
-		snprintf(prop_name, len, "rst_en_state_%d", i);
-		gpio_info->en_val = load_disp_value(node, prop_name);
-
-		snprintf(prop_name, len, "rst_en_pre_delay_%d", i);
-		gpio_info->en_pre_delay =
-				ZERO_IF_NEG(load_disp_value(node, prop_name));
-
-		snprintf(prop_name, len, "rst_en_post_delay_%d", i);
-		gpio_info->en_post_delay =
-				ZERO_IF_NEG(load_disp_value(node, prop_name));
-
-		snprintf(prop_name, len, "rst_dis_pre_delay_%d", i);
-		gpio_info->dis_pre_delay =
-				ZERO_IF_NEG(load_disp_value(node, prop_name));
-
-		snprintf(prop_name, len, "rst_dis_post_delay_%d", i);
-		gpio_info->dis_post_delay =
-				ZERO_IF_NEG(load_disp_value(node, prop_name));
-	}
+	for (i = 1; i <= mmi_disp_info.num_disp_reset; i++)
+		load_disp_pin_info_from_dt(node, &mmi_disp_info.disp_gpio[i-1],
+			"rst", i);
 }
 
 static void __init load_disp_regs_info_from_dt(struct device_node *node)
@@ -437,33 +452,6 @@ static void __init load_panel_name_from_dt(void)
 	of_node_put(chosen);
 }
 
-static void __init mmi_load_panel_from_dt(void)
-{
-	struct device_node *node;
-
-	if (!strlen(panel_name)) {
-		pr_debug("%s: No UTAG for panel name, search in devtree\n",
-								__func__);
-		load_panel_name_from_dt();
-	} else
-		pr_info("%s: panel_name =%s is set by UTAG\n",
-							__func__, panel_name);
-
-	node = search_panel_from_dt();
-	if (!node)
-		return;
-	if (of_property_read_u32(node, "disp_intf", &mmi_disp_info.disp_intf))
-		pr_err("%s: no panel interface setting. disp_intf=%d\n",
-					__func__, mmi_disp_info.disp_intf);
-
-	load_disp_reset_info_from_dt(node);
-	load_disp_regs_info_from_dt(node);
-
-	print_mmi_disp_data();
-
-	of_node_put(node);
-}
-
 static int panel_gpio_init(struct mmi_disp_gpio_config *en)
 {
 	int rc;
@@ -502,6 +490,45 @@ end:
 	return rc;
 }
 
+static void __init mmi_load_panel_from_dt(void)
+{
+	struct device_node *node;
+
+	if (!strlen(panel_name)) {
+		pr_debug("%s: No UTAG for panel name, search in devtree\n",
+								__func__);
+		load_panel_name_from_dt();
+	} else
+		pr_info("%s: panel_name =%s is set by UTAG\n",
+							__func__, panel_name);
+
+	node = search_panel_from_dt();
+	if (!node)
+		return;
+	if (of_property_read_u32(node, "disp_intf", &mmi_disp_info.disp_intf))
+		pr_err("%s: no panel interface setting. disp_intf=%d\n",
+					__func__, mmi_disp_info.disp_intf);
+
+	load_disp_reset_info_from_dt(node);
+	load_disp_regs_info_from_dt(node);
+	load_disp_pin_info_from_dt(node, &mmi_disp_info.mipi_mux_select,
+		"mipi_d0_sel", 1);
+	mmi_disp_info.partial_mode_supported =
+		ZERO_IF_NEG(load_disp_value(node, "partial_mode_supported"));
+	pr_debug("%s: partial_mode_supported %d\n", __func__,
+		mmi_disp_info.partial_mode_supported);
+
+	if (mmi_disp_info.partial_mode_supported) {
+		panel_gpio_init(&mmi_disp_info.mipi_mux_select);
+		if (gpio_export(mmi_disp_info.mipi_mux_select.handle, 0))
+			pr_err("%s: failed to export mipi_d0_sel\n", __func__);
+	}
+
+	print_mmi_disp_data();
+
+	of_node_put(node);
+}
+
 static void panel_delay_time(int delay_msec)
 {
 	unsigned long delay_usec = (unsigned long) delay_msec * 1000;
@@ -517,6 +544,11 @@ static int panel_gpio_enable(struct mmi_disp_gpio_config *en, int enable)
 {
 	int rc = 0, val;
 	int pre_delay, post_delay;
+
+	if (en->handle == -1) {
+		pr_err("%s: attempt to enable unconfigured gpio\n", __func__);
+		return rc;
+	}
 
 	if (enable) {
 		val = en->en_val;
@@ -905,11 +937,22 @@ end:
 
 static int panel_power_ctrl(int on)
 {
-	int rc;
+	int rc = 0;
 
 	pr_debug("%s (%d) is called\n", __func__, on);
+	if (on == MSM_DISP_POWER_ON_PARTIAL
+			&& !is_partial_mode_supported())
+		on = MSM_DISP_POWER_ON;
 
-	if (on) {
+	if (on == MSM_DISP_POWER_OFF_PARTIAL
+			&& !is_partial_mode_supported())
+		on = MSM_DISP_POWER_OFF;
+
+	if (on == MSM_DISP_POWER_ON
+		|| on == MSM_DISP_POWER_ON_PARTIAL) {
+		/* switch mipi mux to msm */
+		if (is_partial_mode_supported())
+			panel_gpio_enable(&mmi_disp_info.mipi_mux_select, 1);
 		rc = power_rail_on(&mmi_disp_info.reg_lst);
 		if (rc)
 			goto end;
@@ -918,13 +961,19 @@ static int panel_power_ctrl(int on)
 		if (rc)
 			goto end;
 	} else {
-		rc = panel_reset_enable(on);
-		if (rc)
-			goto end;
+		if (on == MSM_DISP_POWER_OFF_PARTIAL) {
+			/* switch mipi mux to msp */
+			if (is_partial_mode_supported())
+				panel_gpio_enable(&mmi_disp_info.mipi_mux_select, 0);
+		} else {
+			rc = panel_reset_enable(on);
+			if (rc)
+				goto end;
 
-		rc = power_rail_off(&mmi_disp_info.reg_lst);
-		if (rc)
-			goto end;
+			rc = power_rail_off(&mmi_disp_info.reg_lst);
+			if (rc)
+				goto end;
+		}
 	}
 end:
 	return rc;
@@ -961,6 +1010,7 @@ void __init mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 				struct mipi_dsi_platform_data *mipi_dsi_pdata)
 {
 	mmi_load_panel_from_dt();
+	msm_fb_pdata->is_partial_mode_supported = is_partial_mode_supported;
 	msm_fb_pdata->detect_client = msm_fb_detect_panel;
 	mipi_dsi_pdata->vsync_gpio = 0;
 	mipi_dsi_pdata->dsi_power_save = mipi_dsi_power;
