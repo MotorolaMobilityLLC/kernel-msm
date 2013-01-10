@@ -110,6 +110,8 @@ struct msm_fb_data_type {
 	struct hrtimer dma_hrtimer;
 
 	boolean panel_power_on;
+	struct msmfb_suspend_cfg suspend_cfg;
+	struct msmfb_resume_cfg resume_cfg;
 	struct work_struct dma_update_worker;
 	struct semaphore sem;
 
