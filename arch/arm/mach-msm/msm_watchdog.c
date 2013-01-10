@@ -258,6 +258,40 @@ static void pet_watchdog_work(struct work_struct *work)
 		schedule_delayed_work_on(0, &dogwork_struct, delay_time);
 }
 
+void msm_watchdog_reset(unsigned int timeout)
+{
+	unsigned long flags;
+
+	local_irq_save(flags);
+
+	if (timeout > 60)
+		timeout = 60;
+
+	__raw_writel(WDT_HZ * timeout, msm_wdt_base + WDT_BARK_TIME);
+	__raw_writel(WDT_HZ * (timeout + 2), msm_wdt_base + WDT_BITE_TIME);
+	__raw_writel(1, msm_wdt_base + WDT_EN);
+	__raw_writel(1, msm_wdt_base + WDT_RST);
+
+	for (timeout += 2; timeout > 0; timeout--)
+		mdelay(1000);
+
+	for (timeout = 2; timeout > 0; timeout--) {
+		__raw_writel(0, msm_wdt_base + WDT_BARK_TIME);
+		__raw_writel(WDT_HZ, msm_wdt_base + WDT_BITE_TIME);
+		__raw_writel(1, msm_wdt_base + WDT_RST);
+		mdelay(1000);
+	}
+
+	for (timeout = 2; timeout > 0; timeout--) {
+		__raw_writel(WDT_HZ, msm_wdt_base + WDT_BARK_TIME);
+		__raw_writel(0, msm_wdt_base + WDT_BITE_TIME);
+		__raw_writel(1, msm_wdt_base + WDT_RST);
+		mdelay(1000);
+	}
+	pr_err("Watchdog reset has failed\n");
+
+	local_irq_restore(flags);
+}
 static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 {
 	unsigned long nanosec_rem;
