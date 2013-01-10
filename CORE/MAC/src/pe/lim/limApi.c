@@ -380,13 +380,18 @@ static void __limInitVars(tpAniSirGlobal pMac)
 
 static void __limInitAssocVars(tpAniSirGlobal pMac)
 {
+    tANI_U32 val;
 #if 0
     palZeroMemory(pMac->hHdd, pMac->lim.gpLimAIDpool,
                   sizeof(*pMac->lim.gpLimAIDpool) * (WNI_CFG_ASSOC_STA_LIMIT_STAMAX+1));
     pMac->lim.freeAidHead = 0;
     pMac->lim.freeAidTail = 0;
 #endif
-    pMac->lim.gLimAssocStaLimit = WNI_CFG_ASSOC_STA_LIMIT_STADEF;
+    if(wlan_cfgGetInt(pMac, WNI_CFG_ASSOC_STA_LIMIT, &val) != eSIR_SUCCESS)
+    {
+        limLog( pMac, LOGP, FL( "cfg get assoc sta limit failed" ));
+    }
+    pMac->lim.gLimAssocStaLimit = val;
 
     // Place holder for current authentication request
     // being handled

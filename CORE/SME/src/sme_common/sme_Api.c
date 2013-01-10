@@ -624,6 +624,14 @@ tANI_BOOLEAN smeProcessCommand( tpAniSirGlobal pMac )
                         case eSmeCommandRoam:
                             csrLLUnlock( &pMac->sme.smeCmdActiveList );
                             status  = csrRoamProcessCommand( pMac, pCommand );
+                            if(!HAL_STATUS_SUCCESS(status))
+                            {
+                                if( csrLLRemoveEntry( &pMac->sme.smeCmdActiveList, 
+                                            &pCommand->Link, LL_ACCESS_LOCK ) )
+                                {
+                                    csrReleaseCommandRoam( pMac, pCommand );
+                                }
+                            }
                             break;
 
                         case eSmeCommandWmStatusChange:
