@@ -87,8 +87,8 @@ static int do_read_inode(struct inode *inode)
 	ri = &(rn->i);
 
 	inode->i_mode = le16_to_cpu(ri->i_mode);
-	i_uid_write(inode, le32_to_cpu(ri->i_uid));
-	i_gid_write(inode, le32_to_cpu(ri->i_gid));
+	inode->i_uid  = le32_to_cpu(ri->i_uid);
+	inode->i_gid  = le32_to_cpu(ri->i_gid);
 	set_nlink(inode, le32_to_cpu(ri->i_links));
 	inode->i_size = le64_to_cpu(ri->i_size);
 	inode->i_blocks = le64_to_cpu(ri->i_blocks);
@@ -185,8 +185,8 @@ void update_inode(struct inode *inode, struct page *node_page)
 
 	ri->i_mode = cpu_to_le16(inode->i_mode);
 	ri->i_advise = F2FS_I(inode)->i_advise;
-	ri->i_uid = cpu_to_le32(i_uid_read(inode));
-	ri->i_gid = cpu_to_le32(i_gid_read(inode));
+	ri->i_uid = cpu_to_le32(inode->i_uid);
+	ri->i_gid = cpu_to_le32(inode->i_gid);
 	ri->i_links = cpu_to_le32(inode->i_nlink);
 	ri->i_size = cpu_to_le64(i_size_read(inode));
 	ri->i_blocks = cpu_to_le64(inode->i_blocks);
@@ -264,5 +264,5 @@ void f2fs_evict_inode(struct inode *inode)
 
 	remove_inode_page(inode);
 no_delete:
-	clear_inode(inode);
+	end_writeback(inode);
 }
