@@ -24,6 +24,7 @@
 #include <linux/miscdevice.h>
 #include <linux/keychord.h>
 #include <linux/sched.h>
+#include <linux/workqueue.h>
 
 #define KEYCHORD_NAME		"keychord"
 #define BUFFER_SIZE			16
@@ -60,7 +61,36 @@ struct keychord_device {
 	unsigned char		head;
 	unsigned char		tail;
 	__u16			buff[BUFFER_SIZE];
+
+	/* the id of the keychord currently being timed */
+	int			timed_keychord_id;
+	struct delayed_work	timed_work;
 };
+
+static void timed_work_func(struct work_struct *work)
+{
+	/* we timed out, so the keychord can be reported to user space */
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct keychord_device *kdev =
+		container_of(dwork, struct keychord_device, timed_work);
+
+	kdev->buff[kdev->head] = kdev->timed_keychord_id;
+	kdev->head = (kdev->head + 1) % BUFFER_SIZE;
+	kdev->timed_keychord_id = 0;
+	wake_up_interruptible(&kdev->waitq);
+}
+
+static int get_keychord_timeout(struct input_keychord *keychord)
+{
+	/* each instance of KEY_TIME in the keychord adds a 1-second delay */
+	int i, timeout = 0;
+	for (i = 0; i < keychord->count; i++) {
+		if (keychord->keycodes[i] == KEY_TIME)
+			timeout += 1000;
+	}
+	return timeout;
+}
+
 
 static int check_keychord(struct keychord_device *kdev,
 		struct input_keychord *keychord)
@@ -84,7 +114,7 @@ static void keychord_event(struct input_handle *handle, unsigned int type,
 {
 	struct keychord_device *kdev = handle->private;
 	struct input_keychord *keychord;
-	unsigned long flags;
+	unsigned long flags, timeout;
 	int i, got_chord = 0;
 
 	if (type != EV_KEY || code >= KEY_MAX)
@@ -101,8 +131,15 @@ static void keychord_event(struct input_handle *handle, unsigned int type,
 		kdev->key_down--;
 
 	/* don't notify on key up */
-	if (!value)
+	if (!value) {
+		if (kdev->timed_keychord_id) {
+			/* we had a delayed match, but the keys have changed,
+			 * so cancel the timer */
+			__cancel_delayed_work(&kdev->timed_work);
+			kdev->timed_keychord_id = 0;
+		}
 		goto done;
+	}
 	/* ignore this event if it is not one of the keys we are monitoring */
 	if (!test_bit(code, kdev->keybit))
 		goto done;
@@ -114,9 +151,18 @@ static void keychord_event(struct input_handle *handle, unsigned int type,
 	/* check to see if the keyboard state matches any keychords */
 	for (i = 0; i < kdev->keychord_count; i++) {
 		if (check_keychord(kdev, keychord)) {
-			kdev->buff[kdev->head] = keychord->id;
-			kdev->head = (kdev->head + 1) % BUFFER_SIZE;
-			got_chord = 1;
+			timeout = get_keychord_timeout(keychord);
+			if (timeout) {
+				/* we have a match, but a timeout is specified,
+				 * so we must set a timer */
+				kdev->timed_keychord_id = keychord->id;
+				schedule_delayed_work(&kdev->timed_work,
+						msecs_to_jiffies(timeout));
+			} else {
+				kdev->buff[kdev->head] = keychord->id;
+				kdev->head = (kdev->head + 1) % BUFFER_SIZE;
+				got_chord = 1;
+			}
 			break;
 		}
 		/* skip to next keychord */
@@ -285,6 +331,12 @@ static ssize_t keychord_write(struct file *file, const char __user *buffer,
 				goto err_unlock_return;
 			}
 			__set_bit(key, kdev->keybit);
+			if (key == KEY_TIME) {
+				/* this isn't handled like a normal key, so set
+				 * the bit all the time */
+				__set_bit(KEY_TIME, kdev->keystate);
+				kdev->key_down++;
+			}
 		}
 
 		kdev->keychord_count++;
@@ -343,7 +395,7 @@ static int keychord_open(struct inode *inode, struct file *file)
 	__set_bit(EV_KEY, kdev->device_ids[0].evbit);
 
 	file->private_data = kdev;
-
+	INIT_DELAYED_WORK(&kdev->timed_work, timed_work_func);
 	return 0;
 }
 
