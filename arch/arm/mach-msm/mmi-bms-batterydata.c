@@ -186,6 +186,41 @@ static struct mmi_battery_cell mmi_ex34_lg_cell_data = {
 	.cell_id = 0x4254, /* Cell code BT */
 };
 
+/* Mock EX34 LG Tables and Charging Parameters */
+/* Mock Batteries are ones that are used in eary stages of Development */
+/* Mock Batteries are used as stop gap until true batteries are available */
+static struct pm8921_bms_battery_data  mmi_mock_ex34_lg_metering_data = {
+	.fcc			= 1150,
+	.fcc_temp_lut		= &mmi_eg30_lg_fcc_temp,
+	.fcc_sf_lut		= &mmi_eg30_lg_fcc_sf,
+	.pc_temp_ocv_lut	= &mmi_eg30_lg_pc_temp_ocv,
+	.pc_sf_lut		= &mmi_eg30_lg_pc_sf,
+	.default_rbatt_mohm	= 196,
+};
+
+static struct pm8921_charger_battery_data mmi_mock_ex34_lg_charging_data = {
+	.max_voltage			= 4200,
+	.min_voltage			= 3200,
+	.resume_voltage_delta		= 100,
+	.term_current			= 179,
+	.cool_temp			= 0,
+	.warm_temp			= 45,
+	.max_bat_chg_current		= 1092,
+	.cool_bat_chg_current		= 0,
+	.warm_bat_chg_current		= 0,
+	.cool_bat_voltage		= 4000,
+	.warm_bat_voltage		= 4000,
+	.step_charge_current		= 1000,
+	.step_charge_voltage		= 4200,
+};
+
+static struct mmi_battery_cell mmi_mock_ex34_lg_cell_data = {
+	.capacity = 0x73,
+	.peak_voltage = 0xB0,
+	.dc_impedance = 0x62,
+	.cell_id = 0x0000, /* No Cell code for Mock batteries */
+};
+
 /* EB40 SDI Tables and Charging Parameters */
 static struct single_row_lut mmi_eb40_lg_fcc_temp = {
 	.x	= {-10, 0, 23, 60},
@@ -976,6 +1011,7 @@ struct mmi_battery_list mmi_batts = {
 		&mmi_eg30_lg_cell_data,
 		&mmi_eu20_lg_cell_data,
 		&mmi_ex34_lg_cell_data,
+		&mmi_mock_ex34_lg_cell_data,
 	},
 	.bms_list = {
 		 &mmi_df_metering_data,
@@ -990,6 +1026,7 @@ struct mmi_battery_list mmi_batts = {
 		 &mmi_eg30_lg_metering_data,
 		 &mmi_eu20_lg_metering_data,
 		 &mmi_ex34_lg_metering_data,
+		 &mmi_mock_ex34_lg_metering_data,
 	 },
 	.chrg_list = {
 		 &mmi_df_charging_data,
@@ -1004,5 +1041,6 @@ struct mmi_battery_list mmi_batts = {
 		 &mmi_eg30_lg_charging_data,
 		 &mmi_eu20_lg_charging_data,
 		 &mmi_ex34_lg_charging_data,
+		 &mmi_mock_ex34_lg_charging_data,
 	 },
 };
