@@ -30,11 +30,11 @@
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MSM_FB_PRIM_BUF_SIZE \
-		(roundup((roundup(1920, 32) * roundup(1200, 32) * 4), 4096) * 3)
+		(roundup((roundup(1280, 32) * roundup(720, 32) * 4), 4096) * 3)
 			/* 4 bpp x 3 pages */
 #else
 #define MSM_FB_PRIM_BUF_SIZE \
-		(roundup((roundup(1920, 32) * roundup(1200, 32) * 4), 4096) * 2)
+		(roundup((roundup(1280, 32) * roundup(720, 32) * 4), 4096) * 2)
 			/* 4 bpp x 2 pages */
 #endif
 
