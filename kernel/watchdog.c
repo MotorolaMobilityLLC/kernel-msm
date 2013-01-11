@@ -22,7 +22,6 @@
 #include <linux/notifier.h>
 #include <linux/module.h>
 #include <linux/sysctl.h>
-#include <linux/smp.h>
 
 #include <asm/irq_regs.h>
 #include <linux/perf_event.h>
@@ -310,21 +309,8 @@ static enum hrtimer_restart watchdog_timer_fn(struct hrtimer *hrtimer)
 		else
 			dump_stack();
 
-		if (softlockup_panic) {
-
-			if (is_csd_lock_waiting()) {
-				printk(KERN_ERR "softlockup: trigger watchdog reset!\n");
-				/*
-				 * Preemption has been diabled in current
-				 * context. And in case it fails to trigger
-				 * watchdog reset, handle it as normal
-				 * softlockup panic.
-				 */
-				trigger_watchdog_reset();
-			}
-
+		if (softlockup_panic)
 			panic("softlockup: hung tasks");
-		}
 		__this_cpu_write(soft_watchdog_warn, true);
 	} else
 		__this_cpu_write(soft_watchdog_warn, false);
