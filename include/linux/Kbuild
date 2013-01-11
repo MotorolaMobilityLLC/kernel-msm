@@ -413,4 +413,5 @@ header-y += xattr.h
 header-y += xfrm.h
 header-y += msm_mdp.h
 header-y += msm_rotator.h
+header-y += qcedev.h
 header-y += genlock.h
