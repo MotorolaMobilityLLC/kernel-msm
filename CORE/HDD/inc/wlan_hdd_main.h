@@ -539,6 +539,8 @@ typedef struct {
    /** Track QoS status of station */
    v_BOOL_t isQosEnabled;
 
+   /** The station entry for which Deauth is in progress  */
+   v_BOOL_t isDeauthInProgress;
 } hdd_station_info_t;
 
 struct hdd_ap_ctx_s

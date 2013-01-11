@@ -6079,6 +6079,8 @@ static int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
                                          struct net_device *dev, u8 *mac)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    VOS_STATUS vos_status;
+    v_U8_t staId;
 
     ENTER();
     if ( NULL == pAdapter || NULL == pAdapter->pHddCtx)
@@ -6127,13 +6129,52 @@ static int wlan_hdd_cfg80211_del_station(struct wiphy *wiphy,
         }
         else
         {
+
+            vos_status = hdd_softap_GetStaId(pAdapter,(v_MACADDR_t *)mac, &staId);
+            if (!VOS_IS_STATUS_SUCCESS(vos_status))
+            {
+                hddLog(VOS_TRACE_LEVEL_INFO,
+                                "%s: Skip this DEL STA as this is not used::"
+                                "%02x:%02x:%02x:%02x:%02x:%02x",
+                                __func__,
+                                mac[0], mac[1], mac[2],
+                                mac[3], mac[4], mac[5]);
+                return -ENOENT;
+            }
+
+            if( pAdapter->aStaInfo[staId].isDeauthInProgress == TRUE)
+            {
+                hddLog(VOS_TRACE_LEVEL_INFO,
+                                "%s: Skip this DEL STA as deauth is in progress::"
+                                "%02x:%02x:%02x:%02x:%02x:%02x",
+                                __func__,
+                                mac[0], mac[1], mac[2],
+                                mac[3], mac[4], mac[5]);
+                return -ENOENT;
+            }
+
+            pAdapter->aStaInfo[staId].isDeauthInProgress = TRUE;
+
             hddLog(VOS_TRACE_LEVEL_INFO,
                                 "%s: Delete STA with MAC::"
                                 "%02x:%02x:%02x:%02x:%02x:%02x",
                                 __func__,
                                 mac[0], mac[1], mac[2],
                                 mac[3], mac[4], mac[5]);
-            hdd_softap_sta_deauth(pAdapter, mac);
+
+            vos_status = hdd_softap_sta_deauth(pAdapter, mac);
+            if (!VOS_IS_STATUS_SUCCESS(vos_status))
+            {
+                pAdapter->aStaInfo[staId].isDeauthInProgress = FALSE;
+                hddLog(VOS_TRACE_LEVEL_INFO,
+                                "%s: STA removal failed for ::"
+                                "%02x:%02x:%02x:%02x:%02x:%02x",
+                                __func__,
+                                mac[0], mac[1], mac[2],
+                                mac[3], mac[4], mac[5]);
+                return -ENOENT;
+            }
+
         }
     }
 

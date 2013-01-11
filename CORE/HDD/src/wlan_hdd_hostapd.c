@@ -456,6 +456,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
     v_BYTE_t we_custom_start_event[64];
     char *startBssEvent; 
     hdd_context_t *pHddCtx;
+    hdd_scaninfo_t *pScanInfo  = NULL;
 
     dev = (struct net_device *)usrDataForCallback;
     pHostapdAdapter = netdev_priv(dev);
@@ -674,6 +675,12 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
              }
 #endif
 #endif
+            pScanInfo =  &pHddCtx->scan_info;
+            // Lets do abort scan to ensure smooth authentication for client
+            if ((pScanInfo != NULL) && pScanInfo->mScanPending)
+            {
+                hdd_abort_mac_scan(pHddCtx);
+            }
 
             break;
         case eSAP_STA_DISASSOC_EVENT:
