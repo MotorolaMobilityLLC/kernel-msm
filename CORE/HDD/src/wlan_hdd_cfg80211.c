@@ -3894,6 +3894,76 @@ allow_suspend:
 }
 
 /*
+ * FUNCTION: hdd_isScanAllowed
+ * Go through each adapter and check if scan allowed
+ *
+ */
+v_BOOL_t hdd_isScanAllowed( hdd_context_t *pHddCtx )
+{
+    hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
+    hdd_station_ctx_t *pHddStaCtx = NULL;
+    hdd_adapter_t *pAdapter = NULL;
+    VOS_STATUS status = 0;
+    v_U8_t staId = 0;
+    v_U8_t *staMac = NULL;
+
+    status = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
+
+    while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == status )
+    {
+        pAdapter = pAdapterNode->pAdapter;
+
+        if( pAdapter )
+        {
+            hddLog(VOS_TRACE_LEVEL_INFO,
+                    "%s: Adapter with device mode %d exists", 
+                    __func__, pAdapter->device_mode);
+            if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+                    (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode) ||
+                    (WLAN_HDD_P2P_DEVICE == pAdapter->device_mode))
+            {
+                pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+                if ((eConnectionState_Associated == pHddStaCtx->conn_info.connState) &&
+                        (VOS_FALSE == pHddStaCtx->conn_info.uIsAuthenticated))
+                {
+                    staMac = (v_U8_t *) &(pAdapter->macAddressCurrent.bytes[0]);
+                    hddLog(VOS_TRACE_LEVEL_ERROR,
+                            "%s: client %02x:%02x:%02x:%02x:%02x:%02x is in the "
+                            "middle of WPS/EAPOL exchange.", __func__, 
+                            staMac[0], staMac[1], staMac[2],
+                            staMac[3], staMac[4], staMac[5]);
+                    return VOS_FALSE;
+                }
+            }
+            else if ((WLAN_HDD_SOFTAP == pAdapter->device_mode) ||
+                    (WLAN_HDD_P2P_GO == pAdapter->device_mode))
+            {
+                for (staId = 0; staId < WLAN_MAX_STA_COUNT; staId++)
+                {
+                    if ((pAdapter->aStaInfo[staId].isUsed) && 
+                            (WLANTL_STA_CONNECTED == pAdapter->aStaInfo[staId].tlSTAState))
+                    {
+                        staMac = (v_U8_t *) &(pAdapter->aStaInfo[staId].macAddrSTA.bytes[0]);
+
+                        hddLog(VOS_TRACE_LEVEL_ERROR,
+                                "%s: client %02x:%02x:%02x:%02x:%02x:%02x of SoftAP/P2P-GO is in the "
+                                "middle of WPS/EAPOL exchange.", __func__, 
+                                staMac[0], staMac[1], staMac[2],
+                                staMac[3], staMac[4], staMac[5]);
+                        return VOS_FALSE;
+                    }
+                }
+            }
+        }
+        status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
+        pAdapterNode = pNext;
+    }
+    hddLog(VOS_TRACE_LEVEL_INFO,
+            "%s: Scan allowed", __func__);
+    return VOS_TRUE;
+} 
+
+/*
  * FUNCTION: wlan_hdd_cfg80211_scan
  * this scan respond to scan trigger and update cfg80211 scan database
  * later, scan dump command can be used to recieve scan results
@@ -3991,6 +4061,14 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
     }
     mutex_unlock(&pHddCtx->tmInfo.tmOperationLock);
 
+    /* Check if scan is allowed at this point of time.
+     */
+    if (!hdd_isScanAllowed(pHddCtx))
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Scan not allowed", __func__);
+        return -EBUSY;
+    }
+    
     vos_mem_zero( &scanRequest, sizeof(scanRequest));
 
     if (NULL != request)
