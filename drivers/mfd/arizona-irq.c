@@ -64,11 +64,45 @@ EXPORT_SYMBOL_GPL(arizona_free_irq);
 
 int arizona_set_irq_wake(struct arizona *arizona, int irq, int on)
 {
-	irq = arizona_map_irq(arizona, irq);
-	if (irq < 0)
-		return irq;
+	int val = 0;
 
-	return irq_set_irq_wake(irq, on);
+	if (on)
+		val = 0xffff;
+
+	switch (irq) {
+	case ARIZONA_IRQ_MICD_CLAMP_RISE:
+		return regmap_update_bits(arizona->regmap,
+					  ARIZONA_WAKE_CONTROL,
+					  val & ARIZONA_WKUP_MICD_CLAMP_RISE,
+					  val & ARIZONA_WKUP_MICD_CLAMP_RISE);
+	case ARIZONA_IRQ_MICD_CLAMP_FALL:
+		return regmap_update_bits(arizona->regmap,
+					  ARIZONA_WAKE_CONTROL,
+					  val & ARIZONA_WKUP_MICD_CLAMP_FALL,
+					  val & ARIZONA_WKUP_MICD_CLAMP_FALL);
+	case ARIZONA_IRQ_GP5_FALL:
+		return regmap_update_bits(arizona->regmap,
+					  ARIZONA_WAKE_CONTROL,
+					  val & ARIZONA_WKUP_GP5_RISE,
+					  val & ARIZONA_WKUP_GP5_RISE);
+	case ARIZONA_IRQ_GP5_RISE:
+		return regmap_update_bits(arizona->regmap,
+					  ARIZONA_WAKE_CONTROL,
+					  val & ARIZONA_WKUP_GP5_FALL,
+					  val & ARIZONA_WKUP_GP5_FALL);
+	case ARIZONA_IRQ_JD_RISE:
+		return regmap_update_bits(arizona->regmap,
+					  ARIZONA_WAKE_CONTROL,
+					  val & ARIZONA_WKUP_JD1_RISE,
+					  val & ARIZONA_WKUP_JD1_RISE);
+	case ARIZONA_IRQ_JD_FALL:
+		return regmap_update_bits(arizona->regmap,
+					  ARIZONA_WAKE_CONTROL,
+					  val & ARIZONA_WKUP_JD1_FALL,
+					  val & ARIZONA_WKUP_JD1_FALL);
+	default:
+		return -ENXIO;
+	}
 }
 EXPORT_SYMBOL_GPL(arizona_set_irq_wake);
 
