@@ -4483,9 +4483,10 @@ void hdd_set_conparam ( v_UINT_t newParam )
 
   --------------------------------------------------------------------------*/
 
-void hdd_softap_sta_deauth(hdd_adapter_t *pAdapter, v_U8_t *pDestMacAddress)
+VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t *pAdapter, v_U8_t *pDestMacAddress)
 {
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
+    VOS_STATUS vosStatus = VOS_STATUS_E_FAULT;
 #ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
     tHalHandle hHalHandle;
 #endif
@@ -4496,12 +4497,12 @@ void hdd_softap_sta_deauth(hdd_adapter_t *pAdapter, v_U8_t *pDestMacAddress)
 
     //Ignore request to deauth bcmc station
     if( pDestMacAddress[0] & 0x1 )
-       return;
+       return vosStatus;
 
-    WLANSAP_DeauthSta(pVosContext,pDestMacAddress);
-
+    vosStatus = WLANSAP_DeauthSta(pVosContext,pDestMacAddress);
 
     EXIT();
+    return vosStatus;
 }
 
 /**---------------------------------------------------------------------------
