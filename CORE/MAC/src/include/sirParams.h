@@ -573,6 +573,8 @@ typedef struct sSirMbMsgP2p
 #define SIR_HAL_TDLS_LINK_TEARDOWN         (SIR_HAL_ITC_MSG_TYPES_BEGIN + 190)
 #endif
 
+#define SIR_HAL_TRAFFIC_STATS_IND          (SIR_HAL_ITC_MSG_TYPES_BEGIN + 195)
+
 #define SIR_HAL_MSG_TYPES_END              (SIR_HAL_ITC_MSG_TYPES_BEGIN + 0xFF)
 // CFG message types
 #define SIR_CFG_MSG_TYPES_BEGIN        (SIR_CFG_MODULE_ID << 8)

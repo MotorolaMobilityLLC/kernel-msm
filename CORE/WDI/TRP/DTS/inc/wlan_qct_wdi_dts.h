@@ -41,6 +41,9 @@
 
 #ifndef __WLAN_QCT_DTS_H
 #define __WLAN_QCT_DTS_H
+
+#include "wlan_qct_wdi.h"
+
 /**=========================================================================
  *     
  *       \file  wlan_qct_wdi_dts.h
@@ -135,6 +138,36 @@ typedef struct {
    WDTS_SetPowerStateCbType cback;
    void*        pUserData;
 } WDTS_SetPowerStateCbInfoType;
+
+/* Tx/Rx stats function
+ * This function should be invoked to fetch the current stats
+  * Parameters:
+ *  pStats:Pointer to the collected stats
+ *  len: length of buffer pointed to by pStats
+ *  Return Status: None
+ */
+void WDTS_GetTrafficStats(WDI_TrafficStatsType** pStats, wpt_uint32 *len);
+
+/* WDTS_DeactivateTrafficStats
+ * This function should be invoked to suspend traffic stats collection
+  * Parameters: None
+ *  Return Status: None
+ */
+void WDTS_DeactivateTrafficStats(void);
+
+/* WDTS_ActivateTrafficStats
+ * This function should be invoked to activate traffic stats collection
+  * Parameters: None
+ *  Return Status: None
+ */
+void WDTS_ActivateTrafficStats(void);
+
+/* WDTS_ClearTrafficStats
+ * This function should be invoked to clear all past stats
+  * Parameters: None
+ *  Return Status: None
+ */
+void WDTS_ClearTrafficStats(void);
 
 /* DTS open  function. 
  * On open the transport device should initialize itself.

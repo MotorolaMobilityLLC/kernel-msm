@@ -133,6 +133,7 @@
 #define WDA_INVALID_KEY_INDEX  0xFF
 #define WDA_NUM_PWR_SAVE_CFG       11
 #define WDA_TX_COMPLETE_TIME_OUT_VALUE 1000
+#define WDA_TRAFFIC_STATS_TIME_OUT_VALUE 1000
   
 #define WDA_MAX_RETRIES_TILL_RING_EMPTY  1000   /* MAX 10000 msec = 10 seconds wait */
 
@@ -168,6 +169,7 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
 static VOS_STATUS wdaCreateTimers(tWDA_CbContext *pWDA) ;
 static VOS_STATUS wdaDestroyTimers(tWDA_CbContext *pWDA);
 void WDA_BaCheckActivity(tWDA_CbContext *pWDA) ;
+void WDA_TimerTrafficStatsInd(tWDA_CbContext *pWDA);
 void WDA_HALDumpCmdCallback(WDI_HALDumpCmdRspParamsType *wdiRspParams, void* pUserData);
 #ifdef WLAN_FEATURE_VOWIFI_11R
 VOS_STATUS WDA_ProcessAggrAddTSReq(tWDA_CbContext *pWDA, tAggrAddTsParams *pAggrAddTsReqParams);
@@ -1440,6 +1442,22 @@ VOS_STATUS WDA_prepareConfigTLV(v_PVOID_t pVosContext,
    tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct
                             + sizeof(tHalCfg) + tlvStruct->length) ;
 #endif
+
+   /* QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER */
+   tlvStruct->type = QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER;
+   tlvStruct->length = sizeof(tANI_U32);
+   configDataValue = (tANI_U32 *)(tlvStruct + 1);
+
+   if(wlan_cfgGetInt(pMac, WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, configDataValue) 
+                                                      != eSIR_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                    "Failed to get value for WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED");
+      goto handle_failure;
+   }
+
+   tlvStruct = (tHalCfg *)( (tANI_U8 *) tlvStruct 
+                            + sizeof(tHalCfg) + tlvStruct->length) ;
 
    wdiStartParams->usConfigBufferLen = (tANI_U8 *)tlvStruct - tlvStructStart ;
 #ifdef WLAN_DEBUG
@@ -9909,6 +9927,13 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          WDA_BaCheckActivity(pWDA) ;
          break ;
       }
+
+      /* timer related messages */
+      case WDA_TIMER_TRAFFIC_STATS_IND:
+      {
+         WDA_TimerTrafficStatsInd(pWDA);
+         break;
+      }
 #ifdef WLAN_FEATURE_VOWIFI_11R
       case WDA_AGGR_QOS_REQ:
       {
@@ -10530,6 +10555,132 @@ void WDA_TriggerBaReqCallback(WDI_TriggerBARspParamsType *wdiTriggerBaRsp,
    }
    return ;
 }
+
+
+/*
+ * API to activate/deactivate Traffic Stats timer. Traffic stats timer is only needed
+ * during MCC
+ */
+void WDA_TrafficStatsTimerActivate(wpt_boolean activate)
+{
+   wpt_uint32 enabled;
+   v_VOID_t * pVosContext = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
+   tWDA_CbContext *pWDA =  vos_get_context(VOS_MODULE_ID_WDA, pVosContext);
+   tpAniSirGlobal pMac = (tpAniSirGlobal )VOS_GET_MAC_CTXT(pVosContext);
+   
+   if(wlan_cfgGetInt(pMac, WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, &enabled) 
+                                                      != eSIR_SUCCESS)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "Failed to get WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED");
+      return;
+   }
+
+   if(!enabled)
+   {
+      return;
+   }
+
+   if(NULL == pWDA)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s:WDA context is NULL", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
+
+   if(activate)
+   {
+      if( VOS_STATUS_SUCCESS != 
+         WDA_START_TIMER(&pWDA->wdaTimers.trafficStatsTimer))
+      {
+         VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                    "Traffic Stats Timer Start Failed ");
+         return;
+      }
+      WDI_DS_ActivateTrafficStats();
+   }
+   else
+   {
+      WDI_DS_DeactivateTrafficStats();
+      WDI_DS_ClearTrafficStats();
+
+      if( VOS_STATUS_SUCCESS !=
+         WDA_STOP_TIMER(&pWDA->wdaTimers.trafficStatsTimer))
+      {
+         VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                    "Traffic Stats Timer Stop Failed ");
+         return;
+      }
+   }
+}
+
+/*
+ * Traffic Stats Timer handler
+ */
+void WDA_TimerTrafficStatsInd(tWDA_CbContext *pWDA)
+{
+   WDI_Status wdiStatus;
+   WDI_TrafficStatsType *pWdiTrafficStats = NULL;
+   WDI_TrafficStatsIndType trafficStatsIndParams;
+   wpt_uint32 length, enabled;
+   tpAniSirGlobal pMac = (tpAniSirGlobal )VOS_GET_MAC_CTXT(pWDA->pVosContext);
+
+   if(wlan_cfgGetInt(pMac, WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, &enabled) 
+                                                      != eSIR_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                    "Failed to get WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED");
+      return;
+   }
+
+   if(!enabled)
+   {
+      WDI_DS_DeactivateTrafficStats();
+      return;
+   }
+
+   WDI_DS_GetTrafficStats(&pWdiTrafficStats, &length);
+
+   if(pWdiTrafficStats != NULL)
+   {
+      trafficStatsIndParams.pTrafficStats = pWdiTrafficStats;
+      trafficStatsIndParams.length = length;
+      trafficStatsIndParams.duration =
+         pWDA->wdaTimers.trafficStatsTimer.rescheduleTimeInMsecs;
+      trafficStatsIndParams.wdiReqStatusCB = WDA_WdiIndicationCallback;
+      trafficStatsIndParams.pUserData = pWDA;
+
+      wdiStatus = WDI_TrafficStatsInd(&trafficStatsIndParams);
+
+      if(WDI_STATUS_PENDING == wdiStatus)
+      {
+         VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                 "Pending received for %s:%d ",__func__,__LINE__ );
+      }
+      else if( WDI_STATUS_SUCCESS_SYNC != wdiStatus )
+      {
+         VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "Failure in %s:%d ",__func__,__LINE__ );
+      }
+      
+      WDI_DS_ClearTrafficStats();
+   }
+   else
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_WARN,
+         "pWdiTrafficStats is Null");
+   }
+
+   if( VOS_STATUS_SUCCESS != 
+      WDA_START_TIMER(&pWDA->wdaTimers.trafficStatsTimer))
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_WARN,
+                              "Traffic Stats Timer Start Failed ");
+      return;
+   }
+}
+
 /*
  * BA Activity check timer handler
  */
@@ -10731,6 +10882,33 @@ static VOS_STATUS wdaCreateTimers(tWDA_CbContext *pWDA)
       } 
       return VOS_STATUS_E_FAILURE ;
    }
+
+   val = SYS_MS_TO_TICKS( WDA_TRAFFIC_STATS_TIME_OUT_VALUE );
+
+   /* Traffic Stats timer */
+   status = WDA_CREATE_TIMER(&pWDA->wdaTimers.trafficStatsTimer,
+                         "Traffic Stats timer", WDA_TimerHandler,
+                         WDA_TIMER_TRAFFIC_STATS_IND, val, val, TX_NO_ACTIVATE) ;
+   if(status != TX_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                               "Unable to create traffic stats timer");
+      /* Destroy timer of BA activity check timer */
+      status = WDA_DESTROY_TIMER(&pWDA->wdaTimers.baActivityChkTmr);
+      if(status != TX_SUCCESS)
+      {
+         VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                                  "Unable to Destroy BA activity timer");
+      }
+      /* Destroy timer of tx complete timer */
+      status = WDA_DESTROY_TIMER(&pWDA->wdaTimers.TxCompleteTimer);
+      if(status != TX_SUCCESS)
+      {
+         VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                                  "Unable to Tx complete timer");
+      }
+      return VOS_STATUS_E_FAILURE ;
+   }
    return VOS_STATUS_SUCCESS ;
 }
 /*
@@ -10753,7 +10931,13 @@ static VOS_STATUS wdaDestroyTimers(tWDA_CbContext *pWDA)
                                "Unable to Destroy BA activity timer");
       return eSIR_FAILURE ;
    }
-                           
+   status = WDA_DESTROY_TIMER(&pWDA->wdaTimers.trafficStatsTimer);
+   if(status != TX_SUCCESS)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                               "Unable to Destroy traffic stats timer");
+      return eSIR_FAILURE ;
+   }
    return eSIR_SUCCESS ;
 }
 /*

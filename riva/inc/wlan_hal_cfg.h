@@ -171,11 +171,12 @@
 #define QWLAN_HAL_CFG_ENABLE_UNICAST_FILTER              97
 #define QWLAN_HAL_CFG_MAX_ASSOC_LIMIT                    98
 #define QWLAN_HAL_CFG_ENABLE_LPWR_IMG_TRANSITION         99
-#define QWLAN_HAL_CFG_MAX_PARAMS                         100
+#define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER     100
+#define QWLAN_HAL_CFG_MAX_PARAMS                        101
 
 
 /* Total number of Integer CFGs. This is used while allocating the memory for TLV */
-#define QWLAN_HAL_CFG_INTEGER_PARAM                      96
+#define QWLAN_HAL_CFG_INTEGER_PARAM                      97
 
 
 /*-------------------------------------------------------------------------
@@ -745,6 +746,10 @@
 #define QWLAN_HAL_CFG_ENABLE_LPWR_IMG_TRANSITION_MAX    1
 #define QWLAN_HAL_CFG_ENABLE_LPWR_IMG_TRANSITION_DEF    0
 
+/* QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER */
+#define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER_MIN    0
+#define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER_MAX    1
+#define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER_DEF    0
 
 typedef struct 
 {
