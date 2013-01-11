@@ -21,6 +21,7 @@
 #include <linux/wakelock.h>
 #ifdef CONFIG_WAKELOCK_STAT
 #include <linux/proc_fs.h>
+#include <linux/earlysuspend.h>
 #endif
 #include "power.h"
 
@@ -53,6 +54,8 @@ struct wake_lock main_wake_lock;
 suspend_state_t requested_suspend_state = PM_SUSPEND_MEM;
 static struct wake_lock unknown_wakeup;
 static struct wake_lock suspend_backoff_lock;
+static struct wake_lock *longest_background_lock;
+static s64 longest;
 
 #define SUSPEND_BACKOFF_THRESHOLD	10
 #define SUSPEND_BACKOFF_INTERVAL	10000
@@ -63,6 +66,9 @@ static unsigned suspend_short_count;
 static struct wake_lock deleted_wake_locks;
 static ktime_t last_sleep_time_update;
 static int wait_for_wakeup;
+static int early_suspend_called;
+static ktime_t early_suspend_time;
+static ktime_t wakeup_time;
 
 int get_expired_time(struct wake_lock *lock, ktime_t *expire_time)
 {
@@ -158,6 +164,39 @@ static void wake_unlock_stat_locked(struct wake_lock *lock, int expired)
 	lock->stat.count++;
 	if (expired)
 		lock->stat.expire_count++;
+	if (early_suspend_called) {
+		if (ktime_to_ns(lock->stat.last_unlock_time)
+				< ktime_to_ns(early_suspend_time))
+				lock->stat.background_locked_time
+						= ktime_set(0, 0);
+		/* If last_time is later than early_suspend_time, then this lock
+		   was held after early_suspend called */
+		if (ktime_to_ns(lock->stat.last_time) >
+			ktime_to_ns(early_suspend_time))
+			duration = ktime_sub(now, lock->stat.last_time);
+		else
+			duration = ktime_sub(now, early_suspend_time);
+	} else {
+		/* If last_unlock_time is earlier than wakeup_time, then this
+		   lock was held for the first time after system resumed*/
+		if (ktime_to_ns(lock->stat.last_unlock_time)
+				< ktime_to_ns(wakeup_time)) {
+				lock->stat.background_locked_time
+						= ktime_set(0, 0);
+		}
+		duration = ktime_sub(
+				now, lock->stat.last_time);
+	}
+	lock->stat.background_locked_time = ktime_add(
+			lock->stat.background_locked_time,
+			duration);
+	if (ktime_to_ns(lock->stat.background_locked_time) > longest) {
+			longest = ktime_to_ns(
+					lock->stat.background_locked_time);
+			longest_background_lock = lock;
+	}
+	lock->stat.last_unlock_time = now;
+
 	duration = ktime_sub(now, lock->stat.last_time);
 	lock->stat.total_time = ktime_add(lock->stat.total_time, duration);
 	if (ktime_to_ns(duration) > ktime_to_ns(lock->stat.max_time))
@@ -212,13 +251,26 @@ static void expire_wake_lock(struct wake_lock *lock)
 }
 
 /* Caller must acquire the list_lock spinlock */
-static void print_active_locks(int type)
+void print_active_locks(int type)
 {
 	struct wake_lock *lock;
 	bool print_expired = true;
+	ktime_t active_time = ktime_set(0, 0);
+	ktime_t total_time;
 
 	BUG_ON(type >= WAKE_LOCK_TYPE_COUNT);
 	list_for_each_entry(lock, &active_wake_locks[type], link) {
+		total_time = lock->stat.total_time;
+		if (lock->flags & WAKE_LOCK_ACTIVE) {
+			ktime_t now, add_time;
+			int expired = get_expired_time(lock, &now);
+			if (!expired)
+				now = ktime_get();
+			add_time = ktime_sub(now, lock->stat.last_time);
+			if (!expired)
+				active_time = add_time;
+			total_time = ktime_add(total_time, add_time);
+		}
 		if (lock->flags & WAKE_LOCK_AUTO_EXPIRE) {
 			long timeout = lock->expires - jiffies;
 			if (timeout > 0)
@@ -227,7 +279,9 @@ static void print_active_locks(int type)
 			else if (print_expired)
 				pr_info("wake lock %s, expired\n", lock->name);
 		} else {
-			pr_info("active wake lock %s\n", lock->name);
+			pr_info("active wake lock %s active %lld total %lld\n",
+				lock->name, ktime_to_ns(active_time),
+				ktime_to_ns(total_time));
 			if (!(debug_mask & DEBUG_EXPIRE))
 				print_expired = false;
 		}
@@ -407,11 +461,38 @@ static int power_suspend_late(struct device *dev)
 	int ret = has_wake_lock(WAKE_LOCK_SUSPEND) ? -EAGAIN : 0;
 #ifdef CONFIG_WAKELOCK_STAT
 	wait_for_wakeup = !ret;
+	if (longest_background_lock && longest_background_lock->flags
+			& WAKE_LOCK_INITIALIZED) {
+		s64 ns;
+		ns = ktime_to_ns(
+				longest_background_lock
+				->stat.background_locked_time);
+		pr_info("longest wake lock: [%s][%lld]\n",
+				longest_background_lock->name,
+				ns);
+	}
+	longest_background_lock = NULL;
+	longest = 0;
+	early_suspend_called = 0;
 #endif
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("power_suspend_late return %d\n", ret);
 	return ret;
 }
+
+#ifdef CONFIG_WAKELOCK_STAT
+static void power_early_suspend(struct early_suspend *h)
+{
+	early_suspend_called = 1;
+	early_suspend_time = ktime_get();
+	longest = 0;
+	longest_background_lock = NULL;
+}
+static struct early_suspend power_early_suspend_desc = {
+	.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING,
+	.suspend = power_early_suspend,
+};
+#endif
 
 static struct dev_pm_ops power_driver_pm_ops = {
 	.suspend_noirq = power_suspend_late,
@@ -443,6 +524,8 @@ void wake_lock_init(struct wake_lock *lock, int type, const char *name)
 	lock->stat.prevent_suspend_time = ktime_set(0, 0);
 	lock->stat.max_time = ktime_set(0, 0);
 	lock->stat.last_time = ktime_set(0, 0);
+	lock->stat.last_unlock_time = ktime_set(0, 0);
+	lock->stat.background_locked_time = ktime_set(0, 0);
 #endif
 	lock->flags = (type & WAKE_LOCK_TYPE_MASK) | WAKE_LOCK_INITIALIZED;
 
@@ -503,6 +586,7 @@ static void wake_lock_internal(
 		wake_unlock_stat_locked(lock, 0);
 		lock->stat.last_time = ktime_get();
 	}
+	wakeup_time = ktime_get();
 #endif
 	if (!(lock->flags & WAKE_LOCK_ACTIVE)) {
 		lock->flags |= WAKE_LOCK_ACTIVE;
@@ -675,6 +759,10 @@ static int __init wakelocks_init(void)
 
 #ifdef CONFIG_WAKELOCK_STAT
 	proc_create("wakelocks", S_IRUGO, NULL, &wakelock_stats_fops);
+	register_early_suspend(&power_early_suspend_desc);
+	wakeup_time = ktime_get();
+	longest = 0;
+	longest_background_lock = NULL;
 #endif
 
 	return 0;
@@ -707,6 +795,7 @@ static void  __exit wakelocks_exit(void)
 	wake_lock_destroy(&unknown_wakeup);
 	wake_lock_destroy(&main_wake_lock);
 #ifdef CONFIG_WAKELOCK_STAT
+	unregister_early_suspend(&power_early_suspend_desc);
 	wake_lock_destroy(&deleted_wake_locks);
 #endif
 }
