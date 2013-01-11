@@ -1831,6 +1831,12 @@ REG_VARIABLE( CFG_TX_LDPC_ENABLE_FEATURE, WLAN_PARAM_Integer,
               CFG_TX_LDPC_ENABLE_FEATURE_MIN,
               CFG_TX_LDPC_ENABLE_FEATURE_MAX ),
 
+REG_VARIABLE( CFG_ENABLE_MCC_ADATIVE_SCHEDULER_ENABLED_NAME, WLAN_PARAM_Integer,
+             hdd_config_t, enableMCCAdaptiveScheduler, 
+             VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
+             CFG_ENABLE_MCC_ADATIVE_SCHEDULER_ENABLED_DEFAULT, 
+             CFG_ENABLE_MCC_ADATIVE_SCHEDULER_ENABLED_MIN, 
+             CFG_ENABLE_MCC_ADATIVE_SCHEDULER_ENABLED_MAX ),             
 };
 
 /*
@@ -3270,6 +3276,12 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
       hddLog(LOGE, "Could not pass on WNI_CFG_ENABLE_LPWR_IMG_TRANSITION to CCM\n");
    }
 
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, pConfig->enableMCCAdaptiveScheduler,
+      NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED to CCM\n");
+   }
    return fStatus;
 }
 

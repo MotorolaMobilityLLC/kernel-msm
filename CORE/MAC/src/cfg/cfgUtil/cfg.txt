@@ -4435,4 +4435,16 @@ NONE
 0    1     0
 V    RW    NP
 NONE
+
+*
+* MCC Adaptive Scheduler will be enabled if value is set to 1
+* 
+*
+*
+WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED  I   4   0
+V    RW    NP
+NONE
+0    1     0
+V    RW    NP
+NONE
 0    1     0
