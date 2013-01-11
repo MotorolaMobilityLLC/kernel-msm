@@ -35,7 +35,6 @@ int smp_call_function_single(int cpuid, smp_call_func_t func, void *info,
 #include <linux/kernel.h>
 #include <linux/compiler.h>
 #include <linux/thread_info.h>
-#include <linux/percpu.h>
 #include <asm/smp.h>
 
 /*
@@ -95,19 +94,6 @@ void ipi_call_lock_irq(void);
 void ipi_call_unlock_irq(void);
 #else
 static inline void call_function_init(void) { }
-#endif
-
-#ifdef CONFIG_LOCKUP_IPI_CALL_WDT
-DECLARE_PER_CPU(int, csd_lock_waiting_flag);
-static inline int is_csd_lock_waiting(void)
-{
-	return __get_cpu_var(csd_lock_waiting_flag);
-}
-#else
-static inline int is_csd_lock_waiting(void)
-{
-	return 0;
-}
 #endif
 
 /*
