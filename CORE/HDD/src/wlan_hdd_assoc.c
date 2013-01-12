@@ -2190,10 +2190,10 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
             break;
 #endif
 #ifdef FEATURE_WLAN_TDLS
-	case eCSR_ROAM_TDLS_STATUS_UPDATE:
-          halStatus = hdd_RoamTdlsStatusUpdateHandler( pAdapter, pRoamInfo, 
-                                            roamId, roamStatus, roamResult );
-          break ;
+        case eCSR_ROAM_TDLS_STATUS_UPDATE:
+              halStatus = hdd_RoamTdlsStatusUpdateHandler( pAdapter, pRoamInfo, 
+                                                roamId, roamStatus, roamResult );
+            break ;
 #endif
         default:
             break;
