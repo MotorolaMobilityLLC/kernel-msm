@@ -1,9 +1,23 @@
 /*
-* Copyright (c) 2012 Qualcomm Atheros, Inc.
-* All Rights Reserved.
-* Qualcomm Atheros Confidential and Proprietary.
-*/
-
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
 /*==========================================================================
  *
  *  @file:     wlan_hal_msg.h
@@ -24,6 +38,7 @@
 #include "halCompiler.h"
 #include "wlan_qct_dev_defs.h"
 #include "wlan_nv.h"
+
 /*---------------------------------------------------------------------------
   API VERSIONING INFORMATION
 
@@ -334,12 +349,27 @@ typedef enum
    WLAN_HAL_SET_THERMAL_MITIGATION_REQ      = 178,
    WLAN_HAL_SET_THERMAL_MITIGATION_RSP      = 179,
 
-  WLAN_HAL_UPDATE_VHT_OP_MODE_REQ           = 182,
-  WLAN_HAL_UPDATE_VHT_OP_MODE_RSP           = 183,
+   WLAN_HAL_UPDATE_VHT_OP_MODE_REQ          = 182,
+   WLAN_HAL_UPDATE_VHT_OP_MODE_RSP          = 183,
 
-  WLAN_HAL_P2P_NOA_START_IND                = 184,
+   WLAN_HAL_P2P_NOA_START_IND               = 184,
+
+   WLAN_HAL_GET_ROAM_RSSI_REQ               = 185,
+   WLAN_HAL_GET_ROAM_RSSI_RSP               = 186,
+
+   WLAN_HAL_SCAN_TX_BD_COMPLETE_IND         = 187,
+   WLAN_HAL_CXM2SLM_OPERATING_MODE          = 188,
+   WLAN_HAL_P2P_MSG                         = 189,
+   WLAN_HAL_PS_TX_BPS_MSG                   = 190,
+   WLAN_HAL_PS_MODE_TO_MSG                  = 191,
+   WLAN_HAL_P2P_INDICATE_NOA_ATTR_TO_HOST   = 192,
+   WLAN_HAL_P2P_INDICATE_NOA_START_TO_HOST  = 193,
+   WLAN_HAL_DEL_STA_IND                     = 194,
+   /* DEL BD IND from RPE interrupt */
+   WLAN_HAL_DEL_BA_IND                      = 195,
+   WLAN_HAL_SCAN_INTERNAL_EVENTID           = 196,
    WLAN_HAL_CLASS_B_STATS_IND               = 197,
-  WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
+   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
 
 /* Enumeration for Version */
@@ -2221,11 +2251,11 @@ typedef PACKED_PRE struct PACKED_POST
 #ifdef FEATURE_OEM_DATA_SUPPORT
 
 #ifndef OEM_DATA_REQ_SIZE
-#define OEM_DATA_REQ_SIZE 70 
+#define OEM_DATA_REQ_SIZE 134
 #endif
 
 #ifndef OEM_DATA_RSP_SIZE
-#define OEM_DATA_RSP_SIZE 968
+#define OEM_DATA_RSP_SIZE 1968
 #endif
 
 /*-------------------------------------------------------------------------
@@ -3072,6 +3102,45 @@ typedef PACKED_PRE struct PACKED_POST
    tSetKeyDoneParams setKeyDoneParams;
 }  tSetKeyDoneMsg, *tpSetKeyDoneMsg;
 
+typedef PACKED_PRE struct PACKED_POST
+{
+  uint8 selfStaIdx;
+  uint8 peerStaIdx;
+  boolean frameSentForStart;
+  boolean frameSuccessfullySent;
+
+} tScanTxBdCompParams, *tpScanTxBdCompParams;
+
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tScanTxBdCompParams scanTxBdCompleteIndParams;
+} tScanTxBdCompleteInd, *tpScanTxBdCompleteInd;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tANI_U32      mode;
+   tANI_U32      parameter;
+} tCoexOpModeType, *tpCoexOpModeType;
+
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tANI_U32 bssIdx:8;
+   tANI_U32 timerType:3;
+   tANI_U32 reserved:21;
+} tPwrSaveModeTOReqType, *tpPwrSaveModeTOReqType;
+
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader header;
+} tTxBpsReqType, *tpTxBpsReqType;
+
+
 /*---------------------------------------------------------------------------
  * WLAN_HAL_DOWNLOAD_NV_REQ
  *--------------------------------------------------------------------------*/
@@ -3471,6 +3540,15 @@ typedef PACKED_PRE struct PACKED_POST
     tDeleteStaContextParams deleteStaContextParams;
 }tDeleteStaContextIndMsg, *tpDeleteStaContextIndMsg;
 
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tANI_U8  assocId;
+   tANI_U8  staIdx;
+   tANI_U8  bssIdx;
+   tANI_U8  uReasonCode;
+   tANI_U32  uStatus;
+} tIndicateDelSta, *tpIndicateDelSta;
 
 /*---------------------------------------------------------------------------
  *WLAN_HAL_SIGNAL_BTAMP_EVENT_REQ
@@ -3951,6 +4029,24 @@ typedef PACKED_PRE struct PACKED_POST
    tHalMsgHeader header;
 }  tHalGetRssiReqMsg, *tpHalGetRssiReqMsg;
 
+typedef PACKED_PRE struct PACKED_POST
+{
+   /* Valid STA Idx for per STA stats request */
+   tANI_U32    staId;
+
+}tHalRoamRssiReqParams, *tpHalRoamRssiReqParams;
+
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_GET_ROAM_RSSI_REQ
+ *--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalRoamRssiReqParams roamRssiReqParams;
+}  tHalGetRoamRssiReqMsg, *tpHalGetRoamRssiReqMsg;
+
+
 /*---------------------------------------------------------------------------
  * WLAN_HAL_SET_UAPSD_AC_PARAMS_REQ
  *--------------------------------------------------------------------------*/
@@ -4113,6 +4209,24 @@ typedef PACKED_PRE struct PACKED_POST
    tHalMsgHeader header;
    tHalGetRssiParams rssiRspParams;
 }  tHalGetRssiRspMsg, *tpHalGetRssiRspMsg;
+
+/*---------------------------------------------------------------------------
+ * WLAN_HAL_GET_ROAM_RSSI_RSP
+ *--------------------------------------------------------------------------*/
+typedef PACKED_PRE struct PACKED_POST
+{
+    /* success or failure */
+    tANI_U32   status;
+
+    tANI_U8    staId;
+    tANI_S8    rssi;
+} tHalGetRoamRssiParams, *tpHalGetRoamRspParams;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+   tHalMsgHeader header;
+   tHalGetRoamRssiParams roamRssiRspParams;
+}  tHalGetRoamRssiRspMsg, *tpHalGetRoamRssiRspMsg;
 
 /*---------------------------------------------------------------------------
  * WLAN_HAL_ENTER_WOWL_RSP
@@ -4720,7 +4834,7 @@ typedef PACKED_PRE struct PACKED_POST
    tANI_U16     ctWin  ;
 
    tANI_U16      uNoa1IntervalCnt;
-   tANI_U16      rsvd1 ;
+   tANI_U16      bssIdx;
    tANI_U32      uNoa1Duration;
    tANI_U32      uNoa1Interval;
    tANI_U32      uNoa1StartTime;
@@ -4786,6 +4900,27 @@ typedef PACKED_PRE struct PACKED_POST
    tHalMsgHeader header;
    tHalHostResumeRspParams hostResumeRspParams;
 }  tHalHostResumeRspMsg, *tpHalHostResumeRspMsg;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+	tANI_U16 staIdx;
+	// Peer MAC Address, whose BA session has timed out
+	tSirMacAddr peerMacAddr;
+	// TID for which a BA session timeout is being triggered
+	tANI_U8 baTID;
+	// DELBA direction
+	// 1 - Originator
+	// 0 - Recipient
+	tANI_U8 baDirection;
+	tANI_U32 reasonCode;
+	tSirMacAddr  bssId; // TO SUPPORT BT-AMP
+} tHalWlanDelBaIndMsg, *tpHalWlanDelBaIndMsg;
+
+typedef PACKED_PRE struct PACKED_POST
+{
+    tHalMsgHeader   header;
+	tHalWlanDelBaIndMsg hostdelBaParam;
+} tHalDelBAIndMsg, *tpHalDelBAIndMsg;
 
 /*---------------------------------------------------------------------------
  *PNO Messages
@@ -5423,10 +5558,36 @@ typedef PACKED_PRE struct PACKED_POST{
  ****************Capability bitmap exchange definitions and macros starts*************
  *--------------------------------------------------------------------------*/
 
+typedef enum {
+    MCC        = 0,
+    P2P        = 1,
+    DOT11AC    = 2,
+    SLM_SESSIONIZATION = 3,
+    DOT11AC_OPMODE     = 4,
+    SAP32STA = 5,
+    TDLS       = 6,
+    P2P_GO_NOA_DECOUPLE_INIT_SCAN = 7,
+    WLANACTIVE_OFFLOAD = 8,
+    BEACON_OFFLOAD     = 9,
+    SCAN_OFFLOAD       = 10,
+    ROAM_OFFLOAD       = 11,
+    BCN_MISS_OFFLOAD   = 12,
+    STA_POWERSAVE      = 13,
+    STA_ADVANCED_PWRSAVE = 14,
+    AP_UAPSD           = 15,
+    AP_DFS             = 16,
+    BLOCKACK           = 17,
+    PHY_ERR            = 18,
+    BCN_FILTER         = 19,
+    RTT                = 20,
+    RATECTRL           = 21,
+    WOW                = 22,
+    MAX_FEATURE_SUPPORTED = 128,
+} placeHolderInCapBitmap;
+
 typedef PACKED_PRE struct PACKED_POST{
 
    tANI_U32 featCaps[4];
-
 }  tWlanFeatCaps, *tpWlanFeatCaps;
 
 typedef PACKED_PRE struct PACKED_POST{
@@ -5437,24 +5598,9 @@ typedef PACKED_PRE struct PACKED_POST{
 }  tWlanFeatCapsMsg, *tpWlanFeatCapsMsg;
 
 
-typedef enum {
-    MCC        = 0,
-    P2P        = 1,
-    DOT11AC    = 2,
-    SLM_SESSIONIZATION = 3,
-    DOT11AC_OPMODE  = 4,
-    SAP32STA = 5,
-    TDLS       = 6,
-    P2P_GO_NOA_DECOUPLE_INIT_SCAN = 7,
-	WLANACTIVE_OFFLOAD = 8,
-    MAX_FEATURE_SUPPORTED = 128,
-} placeHolderInCapBitmap;
-
-
 #define IS_MCC_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(MCC)))
 #define IS_SLM_SESSIONIZATION_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(SLM_SESSIONIZATION)))
 #define IS_FEATURE_SUPPORTED_BY_HOST(featEnumValue) (!!halMsg_GetHostWlanFeatCaps(featEnumValue))
-
 tANI_U8 halMsg_GetHostWlanFeatCaps(tANI_U8 feat_enum_value);
 
 #define setFeatCaps(a,b)   {  tANI_U32 arr_index, bit_index; \
