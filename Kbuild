@@ -31,6 +31,9 @@ ifeq ($(KERNEL_BUILD),0)
 
 	# JB kernel has CPU enablement patches, so enable
 	CONFIG_PRIMA_WLAN_11AC_HIGH_TP := y
+
+	#Flag to enable TDLS feature
+	CONFIG_QCOM_TDLS := y
 endif
 
 # Feature flags which are not (currently) configurable via Kconfig
