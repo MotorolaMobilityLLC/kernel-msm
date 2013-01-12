@@ -383,7 +383,7 @@ eCsrCfgDot11Mode csrGetCfgDot11ModeFromCsrPhyMode(eCsrPhyMode phyMode, tANI_BOOL
 #endif
 tANI_U32 csrTranslateToWNICfgDot11Mode(tpAniSirGlobal pMac, eCsrCfgDot11Mode csrDot11Mode);
 void csrSaveChannelPowerForBand( tpAniSirGlobal pMac, tANI_BOOLEAN fPopulate5GBand );
-void csrApplyChannelPowerCountryInfo( tpAniSirGlobal pMac, tCsrChannel *pChannelList, tANI_U8 *countryCode);
+void csrApplyChannelPowerCountryInfo( tpAniSirGlobal pMac, tCsrChannel *pChannelList, tANI_U8 *countryCode, tANI_BOOLEAN updateRiva);
 void csrApplyPower2Current( tpAniSirGlobal pMac );
 void csrAssignRssiForCategory(tpAniSirGlobal pMac, tANI_U8 catOffset);
 tANI_BOOLEAN csrIsMacAddressZero( tpAniSirGlobal pMac, tCsrBssid *pMacAddr );
@@ -395,7 +395,7 @@ tANI_BOOLEAN csrRoamCompleteRoaming(tpAniSirGlobal pMac, tANI_U32 sessionId,
                                     tANI_BOOLEAN fForce, eCsrRoamResult roamResult);
 void csrRoamCompletion(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamInfo *pRoamInfo, tSmeCmd *pCommand, eCsrRoamResult roamResult, tANI_BOOLEAN fSuccess);
 void csrRoamCancelRoaming(tpAniSirGlobal pMac, tANI_U32 sessionId);
-void csrResetCountryInformation( tpAniSirGlobal pMac, tANI_BOOLEAN fForce );
+void csrResetCountryInformation( tpAniSirGlobal pMac, tANI_BOOLEAN fForce, tANI_BOOLEAN updateRiva );
 void csrResetPMKIDCandidateList( tpAniSirGlobal pMac, tANI_U32 sessionId );
 #ifdef FEATURE_WLAN_WAPI
 void csrResetBKIDCandidateList( tpAniSirGlobal pMac, tANI_U32 sessionId );
