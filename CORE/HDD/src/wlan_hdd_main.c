@@ -2704,8 +2704,13 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
 
    ENTER();
 
-   // Unloading, restart logic is no more required.
-   wlan_hdd_restart_deinit(pHddCtx);
+#ifdef ANI_MANF_DIAG
+      if (VOS_FTM_MODE != hdd_get_conparam())
+#endif /* ANI_MANF_DIAG */
+      {
+         // Unloading, restart logic is no more required.
+         wlan_hdd_restart_deinit(pHddCtx);
+      }
 
 #ifdef CONFIG_CFG80211
 #ifdef WLAN_SOFTAP_FEATURE
