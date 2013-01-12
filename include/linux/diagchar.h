@@ -73,6 +73,8 @@ struct legacy_diag_ch {
 #define DIAG_IOCTL_DCI_DEINIT		21
 #define DIAG_IOCTL_DCI_SUPPORT		22
 #define DIAG_IOCTL_DCI_REG		23
+#define DIAG_IOCTL_DCI_STREAM_INIT	24
+#define DIAG_IOCTL_DCI_HEALTH_STATS	25
 
 /* PC Tools IDs */
 #define APQ8060_TOOLS_ID	4062
@@ -738,5 +740,6 @@ static const uint32_t msg_bld_masks_22[] = {
 #define LOG_15	0x0
 
 #define LOG_GET_ITEM_NUM(xx_code) (xx_code & 0x0FFF)
+#define LOG_GET_EQUIP_ID(xx_code) ((xx_code & 0xF000) >> 12)
 
 #endif
