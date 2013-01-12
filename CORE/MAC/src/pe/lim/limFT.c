@@ -278,7 +278,8 @@ int limProcessFTPreAuthReq(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             __func__);)
         limPrintMacAddr( pMac, pMac->ft.ftPEContext.pFTPreAuthReq->currbssId, LOGE );
         // Post the FT Pre Auth Response to SME
-        limPostFTPreAuthRsp(pMac, eSIR_FAILURE, NULL, 0, NULL); 
+        limPostFTPreAuthRsp(pMac, eSIR_FAILURE, NULL, 0, NULL);
+        pMac->ft.ftPEContext.pFTPreAuthReq = NULL;	
         return TRUE;
     }
 
