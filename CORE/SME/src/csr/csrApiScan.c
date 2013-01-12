@@ -5364,6 +5364,11 @@ eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCs
         if(HAL_STATUS_SUCCESS(status))
         {
             status = palCopyMemory(pMac->hHdd, pDstReq, pSrcReq, sizeof(tCsrScanRequest));
+            /* Re-initialize the pointers to NULL since we did a copy */
+            pDstReq->pIEField = NULL;
+            pDstReq->ChannelInfo.ChannelList = NULL;
+            pDstReq->SSIDs.SSIDList = NULL;
+
             if(pSrcReq->uIEFieldLen == 0)
             {
                 pDstReq->pIEField = NULL;
