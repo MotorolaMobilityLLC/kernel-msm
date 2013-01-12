@@ -1470,6 +1470,15 @@ typedef enum
 #define CFG_ACTIVEMODE_OFFLOAD_ENABLE_MAX     ( 1 )
 #define CFG_ACTIVEMODE_OFFLOAD_ENABLE_DEFAULT ( 0 )
 #endif
+
+/*
+ * Scan Aging timeout value in seconds
+ */
+#define CFG_SCAN_AGING_PARAM_NAME          "gScanAgingTime"
+#define CFG_SCAN_AGING_PARAM_MIN           ( 0 )
+#define CFG_SCAN_AGING_PARAM_MAX           ( 200 )
+#define CFG_SCAN_AGING_PARAM_DEFAULT       ( 60 )
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -1791,6 +1800,7 @@ typedef struct
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
    v_BOOL_t                    fEnableActiveModeOffload;
 #endif
+   v_U8_t                      scanAgingTimeout;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation
