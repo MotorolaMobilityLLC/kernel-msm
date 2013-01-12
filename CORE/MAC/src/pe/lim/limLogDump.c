@@ -142,7 +142,7 @@ char *dumpLim( tpAniSirGlobal pMac, char *p, tANI_U32 sessionId)
   else if (pMac->lim.gLimSystemRole == eLIM_AP_ROLE)
   {
       p += log_sprintf( pMac,p, "Num of STAs associated                     = %d\n",
-                      pMac->lim.gLimNumOfCurrentSTAs);
+                      peGetCurrentSTAsCount(pMac));
 
       p += log_sprintf( pMac,p, "Num of Pre-auth contexts                   = %d\n",
                       pMac->lim.gLimNumPreAuthContexts);
@@ -1072,15 +1072,15 @@ dump_lim_add_sta( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 ar
     tpDphHashNode pStaDs;
     tpPESession psessionEntry = &pMac->lim.gpSession[0];  //TBD-RAJESH HOW TO GET sessionEntry?????
     tSirMacAddr staMac = {0};
-    tANI_U16 aid;
+    tANI_U16 peerIdx;
     if(arg2 > 5)
       goto addStaFail;
-    aid = limAssignAID(pMac);
-    pStaDs = dphGetHashEntry(pMac, aid);
+    peerIdx = limAssignPeerIdx(pMac, psessionEntry);
+    pStaDs = dphGetHashEntry(pMac, peerIdx);
     if(NULL == pStaDs)
     {
         staMac[5] = (tANI_U8) arg1;
-        pStaDs = dphAddHashEntry(pMac, staMac, aid, &psessionEntry->dph.dphHashTable);
+        pStaDs = dphAddHashEntry(pMac, staMac, peerIdx, &psessionEntry->dph.dphHashTable);
         if(NULL == pStaDs)
           goto addStaFail;
 

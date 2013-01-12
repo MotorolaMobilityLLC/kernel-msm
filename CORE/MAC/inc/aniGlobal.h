@@ -492,7 +492,6 @@ typedef struct sAniSirLim
     tANI_U32    gLimNumDeferredMsgs;
 
     /// Variable to keep track of number of currently associated STAs
-    tANI_U16  gLimNumOfCurrentSTAs;
     tANI_U16  gLimNumOfAniSTAs;      // count of ANI peers
     tANI_U16  gLimAssocStaLimit;
 
@@ -728,15 +727,6 @@ typedef struct sAniSirLim
     // Place holder for ReassocReq message
     // received by SME state machine
     //tpSirSmeReassocReq    gpLimReassocReq;  sep23 review
-
-    /**
-     * Following is the place holder for free AID pool.
-     * A non-zero value indicates that AID is available
-     * for assignment.
-     */
-    tANI_U8    *gpLimAIDpool;
-    tANI_U8    freeAidHead;
-    tANI_U8    freeAidTail;
 
     // Current Authentication type used at STA
     //tAniAuthType        gLimCurrentAuthType;

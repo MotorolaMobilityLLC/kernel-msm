@@ -231,12 +231,12 @@ static void printMacAddr(tSirMacAddr macAddr)
     return ;
 }
 #endif
-#ifdef FEATURE_WLAN_TDLS_INTERNAL
 /*
  * initialize TDLS setup list and related data structures.
  */
-void limInitTdlsData(tpAniSirGlobal pMac, tpPESession sessionEntry)
+void limInitTdlsData(tpAniSirGlobal pMac, tpPESession pSessionEntry)
 {
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
     pMac->lim.gLimTdlsDisResultList = NULL ;
     pMac->lim.gLimTdlsDisStaCount = 0 ;
     palZeroMemory(pMac->hHdd, &pMac->lim.gLimTdlsDisReq, 
@@ -250,11 +250,11 @@ void limInitTdlsData(tpAniSirGlobal pMac, tpPESession sessionEntry)
     /* you have to explicitly enable negative behavior per (re)association */
     pMac->lim.gLimTdlsNegativeBehavior = 0;
 #endif
-    limInitAIDpool(pMac, sessionEntry) ;
+#endif
+    limInitPeerIdxpool(pMac, pSessionEntry) ;
 
     return ;
 }
-#endif
 #ifdef FEATURE_WLAN_TDLS_NEGATIVE
 void limTdlsSetNegativeBehavior(tpAniSirGlobal pMac, tANI_U8 value, tANI_BOOLEAN on)
 {
@@ -3323,7 +3323,7 @@ static tSirRetStatus limTdlsDisAddSta(tpAniSirGlobal pMac, tSirMacAddr peerMac,
         return status ;
     }
 
-    aid = limAssignAID(pMac) ;
+    aid = limAssignPeerIdx(pMac, psessionEntry) ;
 
     pStaDs = dphGetHashEntry(pMac, aid, &psessionEntry->dph.dphHashTable);
 
@@ -3437,8 +3437,13 @@ static tSirRetStatus limTdlsSetupAddSta(tpAniSirGlobal pMac,
         VOS_ASSERT(0) ;
         return status ;
     }
-    aid = limAssignAID(pMac) ;
+    aid = limAssignPeerIdx(pMac, psessionEntry) ;
 
+    if( !aid )
+    {
+       //Reject request.
+       return eSIR_FAILURE;
+    }
     VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO, 
           ("Aid = %d, for peer = %02x,%02x,%02x,%02x,%02x,%02x\n"),
                      aid, peerMac[0],peerMac[1],peerMac[2],
@@ -3483,10 +3488,10 @@ static tpDphHashNode limTdlsDelSta(tpAniSirGlobal pMac, tSirMacAddr peerMac,
                                                     tpPESession psessionEntry)
 {
     tSirRetStatus status = eSIR_SUCCESS ;
-    tANI_U16 aid = 0 ;
+    tANI_U16 peerIdx = 0 ;
     tpDphHashNode pStaDs = NULL ;
  
-    pStaDs = dphLookupHashEntry(pMac, peerMac, &aid, 
+    pStaDs = dphLookupHashEntry(pMac, peerMac, &peerIdx, 
                                          &psessionEntry->dph.dphHashTable) ;
 
     if(pStaDs)
@@ -3509,8 +3514,8 @@ static tpDphHashNode limTdlsDelSta(tpAniSirGlobal pMac, tSirMacAddr peerMac,
         status = limDelSta(pMac, pStaDs, false, psessionEntry) ;
         if(eSIR_SUCCESS == status)
         {
-            limDeleteDphHashEntry(pMac, pStaDs->staAddr, aid, psessionEntry) ;
-            limReleaseAID(pMac, aid) ;
+            limDeleteDphHashEntry(pMac, pStaDs->staAddr, peerIdx, psessionEntry) ;
+            limReleasePeerIdx(pMac, peerIdx, psessionEntry) ;
         }
         else
         {

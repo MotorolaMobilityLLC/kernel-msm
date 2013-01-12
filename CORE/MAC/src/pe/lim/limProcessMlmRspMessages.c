@@ -2214,7 +2214,7 @@ void limProcessBtAmpApMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPES
     limDeletePreAuthList(pMac);
 #ifdef WLAN_SOFTAP_FEATURE
     //Initialize number of associated stations during cleanup
-    pMac->lim.gLimNumOfCurrentSTAs = 0;
+    psessionEntry->gLimNumOfCurrentSTAs = 0;
 #endif
     end:
     limSendSmeRsp(pMac, eWNI_SME_STOP_BSS_RSP, rc,  psessionEntry->smeSessionId,  psessionEntry->transactionId);
@@ -2559,7 +2559,7 @@ limProcessApMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ)
 #endif
         schEdcaProfileUpdate(pMac, psessionEntry);
         limInitPreAuthList(pMac);
-        limInitAIDpool(pMac,psessionEntry);
+        limInitPeerIdxpool(pMac,psessionEntry);
         // Create timers used by LIM
         if (!pMac->lim.gLimTimersCreated)
             limCreateTimers(pMac);
@@ -2662,7 +2662,7 @@ limProcessIbssMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ ,tpPESession 
         schEdcaProfileUpdate(pMac, psessionEntry);
         //TBD-RAJESH limInitPreauthList should re removed for IBSS also ?????
        //limInitPreAuthList(pMac);
-        limInitAIDpool(pMac,psessionEntry);
+        limInitPeerIdxpool(pMac,psessionEntry);
         // Create timers used by LIM
 #ifdef FIXME_GEN6  //following code may not be required, as limCreateTimers is now invoked from limInitialize (peStart)
         if (!pMac->lim.gLimTimersCreated)
@@ -3217,7 +3217,7 @@ limProcessStaMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession ps
                 PELOGE(limLog(pMac, LOGE, FL("could not Add Self Entry for the station\n"));)
                 mlmAssocCnf.resultCode = (tSirResultCodes) eSIR_SME_REFUSED;
             }
-#ifdef FEATURE_WLAN_TDLS_INTERNAL
+#ifdef FEATURE_WLAN_TDLS
             else {
                /* initialize TDLS peer related data */
                limInitTdlsData(pMac,psessionEntry);
@@ -4870,7 +4870,7 @@ limProcessBtampAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ ,tpPESession ps
         psessionEntry->statypeForBss = STA_ENTRY_SELF; // to know session started for peer or for self
         psessionEntry->bssIdx = (tANI_U8) pAddBssParams->bssIdx;
         schEdcaProfileUpdate(pMac, psessionEntry);
-        limInitAIDpool(pMac,psessionEntry);
+        limInitPeerIdxpool(pMac,psessionEntry);
         // Create timers used by LIM
         if (!pMac->lim.gLimTimersCreated)
         limCreateTimers(pMac);

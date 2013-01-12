@@ -59,17 +59,12 @@
 #include "limUtils.h"
 #include "limTimerUtils.h"
 #include "limSession.h"
+#include "limSessionUtils.h"
 
-#define LIM_START_AID   1
-#ifdef FEATURE_WLAN_TDLS_INTERNAL 
-#define LIM_START_AID_STA   2
-#else
-#define LIM_START_AID_STA   1
-#endif
-
+#define LIM_START_PEER_IDX   1
 
 /**
- * limInitAIDpool()
+ * limInitPeerIdxpool()
  *
  *FUNCTION:
  * This function is called while starting a BSS at AP
@@ -90,31 +85,46 @@
  */
 
 void
-limInitAIDpool(tpAniSirGlobal pMac,tpPESession sessionEntry)
+limInitPeerIdxpool(tpAniSirGlobal pMac,tpPESession pSessionEntry)
 {
     tANI_U8 i;
     tANI_U8 maxAssocSta = pMac->lim.gLimAssocStaLimit;
 
-    pMac->lim.gpLimAIDpool[0]=0;
-    pMac->lim.freeAidHead=LIM_START_AID;
+    pSessionEntry->gpLimPeerIdxpool[0]=0;
 
-    for (i=pMac->lim.freeAidHead;i<maxAssocSta; i++)
+#ifdef FEATURE_WLAN_TDLS
+    //In station role, DPH_STA_HASH_INDEX_PEER (index 1) is reserved for peer
+    //station index corresponding to AP. Avoid choosing that index and get index
+    //starting from (DPH_STA_HASH_INDEX_PEER + 1) (index 2) for TDLS stations;
+    if (pSessionEntry->limSystemRole == eLIM_STA_ROLE )
     {
-        pMac->lim.gpLimAIDpool[i]         = i+1;
+        pSessionEntry->freePeerIdxHead = DPH_STA_HASH_INDEX_PEER + 1;
     }
-    pMac->lim.gpLimAIDpool[i]         =  0;
+    else
+#endif
+    {
+        pSessionEntry->freePeerIdxHead=LIM_START_PEER_IDX;
+    }
 
-    pMac->lim.freeAidTail=i;
+    for (i=pSessionEntry->freePeerIdxHead;i<maxAssocSta; i++)
+    {
+        pSessionEntry->gpLimPeerIdxpool[i]         = i+1;
+    }
+    pSessionEntry->gpLimPeerIdxpool[i]         =  0;
+
+    pSessionEntry->freePeerIdxTail=i;
 
 }
 
 
 /**
- * limAssignAID()
+ * limAssignPeerIdx()
  *
  *FUNCTION:
- * This function is called during Association/Reassociation
+ * This function is called to get a peer station index. This index is
+ * used during Association/Reassociation
  * frame handling to assign association ID (aid) to a STA.
+ * In case of TDLS, this is used to assign a index into the Dph hash entry.
  *
  *LOGIC:
  *
@@ -124,16 +134,17 @@ limInitAIDpool(tpAniSirGlobal pMac,tpPESession sessionEntry)
  *NOTE:
  *
  * @param  pMac - Pointer to Global MAC structure
- * @return aid  - assigned Association ID for STA
+ * @return peerIdx  - assigned peer Station IDx for STA
  */
 
 tANI_U16
-limAssignAID(tpAniSirGlobal pMac)
+limAssignPeerIdx(tpAniSirGlobal pMac, tpPESession pSessionEntry)
 {
-    tANI_U16 aid;
+    tANI_U16 peerId;
 
     // make sure we haven't exceeded the configurable limit on associations
-    if (pMac->lim.gLimNumOfCurrentSTAs >= pMac->lim.gLimAssocStaLimit)
+    // This count is global to ensure that it doesnt exceed the hardware limits.
+    if (peGetCurrentSTAsCount(pMac) >= pMac->lim.gLimAssocStaLimit)
     {
         // too many associations already active
         return 0;
@@ -141,27 +152,27 @@ limAssignAID(tpAniSirGlobal pMac)
 
     /* return head of free list */
 
-    if (pMac->lim.freeAidHead)
+    if (pSessionEntry->freePeerIdxHead)
     {
-        aid=pMac->lim.freeAidHead;
-        pMac->lim.freeAidHead=pMac->lim.gpLimAIDpool[pMac->lim.freeAidHead];
-        if (pMac->lim.freeAidHead==0)
-            pMac->lim.freeAidTail=0;
-        pMac->lim.gLimNumOfCurrentSTAs++;
-        //PELOG2(limLog(pMac, LOG2,FL("Assign aid %d, numSta %d, head %d tail %d \n"),aid,pMac->lim.gLimNumOfCurrentSTAs,pMac->lim.freeAidHead,pMac->lim.freeAidTail);)
-        return aid;
+        peerId=pSessionEntry->freePeerIdxHead;
+        pSessionEntry->freePeerIdxHead = pSessionEntry->gpLimPeerIdxpool[pSessionEntry->freePeerIdxHead];
+        if (pSessionEntry->freePeerIdxHead==0)
+            pSessionEntry->freePeerIdxTail=0;
+        pSessionEntry->gLimNumOfCurrentSTAs++;
+        //PELOG2(limLog(pMac, LOG2,FL("Assign aid %d, numSta %d, head %d tail %d \n"),aid,pSessionEntry->gLimNumOfCurrentSTAs,pSessionEntry->freeAidHead,pSessionEntry->freeAidTail);)
+        return peerId;
     }
 
-    return 0; /* no more free aids */
+    return 0; /* no more free peer index */
 }
 
 
 /**
- * limReleaseAID()
+ * limReleasePeerIdx()
  *
  *FUNCTION:
  * This function is called when a STA context is removed
- * at AP (or at a STA in IBSS mode) to return association ID (aid)
+ * at AP (or at a STA in IBSS mode or TDLS) to return peer Index
  * to free pool.
  *
  *LOGIC:
@@ -172,27 +183,27 @@ limAssignAID(tpAniSirGlobal pMac)
  *NOTE:
  *
  * @param  pMac - Pointer to Global MAC structure
- * @param  aid - Association ID that need to return to free pool
+ * @param  peerIdx - peer station index that need to return to free pool
  *
  * @return None
  */
 
 void
-limReleaseAID(tpAniSirGlobal pMac, tANI_U16 aid)
+limReleasePeerIdx(tpAniSirGlobal pMac, tANI_U16 peerIdx, tpPESession pSessionEntry)
 {
-    pMac->lim.gLimNumOfCurrentSTAs--;
+    pSessionEntry->gLimNumOfCurrentSTAs--;
 
     /* insert at tail of free list */
-    if (pMac->lim.freeAidTail)
+    if (pSessionEntry->freePeerIdxTail)
     {
-        pMac->lim.gpLimAIDpool[pMac->lim.freeAidTail]=(tANI_U8)aid;
-        pMac->lim.freeAidTail=(tANI_U8)aid;
+        pSessionEntry->gpLimPeerIdxpool[pSessionEntry->freePeerIdxTail]=(tANI_U8)peerIdx;
+        pSessionEntry->freePeerIdxTail=(tANI_U8)peerIdx;
     }
     else
     {
-        pMac->lim.freeAidTail=pMac->lim.freeAidHead=(tANI_U8)aid;
+        pSessionEntry->freePeerIdxTail=pSessionEntry->freePeerIdxHead=(tANI_U8)peerIdx;
     }
-    pMac->lim.gpLimAIDpool[(tANI_U8)aid]=0;
+    pSessionEntry->gpLimPeerIdxpool[(tANI_U8)peerIdx]=0;
     //PELOG2(limLog(pMac, LOG2,FL("Release aid %d, numSta %d, head %d tail %d \n"),aid,pMac->lim.gLimNumOfCurrentSTAs,pMac->lim.freeAidHead,pMac->lim.freeAidTail);)
 
 }

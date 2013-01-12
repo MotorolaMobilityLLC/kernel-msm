@@ -2847,19 +2847,6 @@ __limProcessSmeSetContextReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 #endif
 
         limPostMlmMessage(pMac, LIM_MLM_SETKEYS_REQ, (tANI_U32 *) pMlmSetKeysReq);
-
-#ifdef ANI_AP_SDK
-        /* For SDK acting as STA under Linux, need to consider the AP as *
-         * as authenticatated.                                           */
-        if ( (psessionEntry->limSystemRole == eLIM_STA_ROLE) &&
-             (psessionEntry->limSmeState == eLIM_SME_LINK_EST_STATE))
-        {
-            tpDphHashNode pSta;
-            pSta = dphGetHashEntry(pMac, 0, &psessionEntry->dph.dphHashTable);
-            if (pSta)
-                pSta->staAuthenticated = 1;
-        }
-#endif
     }
     else
     {
