@@ -283,7 +283,7 @@ typedef struct tagCsrBGScanRequest
     tANI_U32 restTime;      //in units of milliseconds  //ignored when not connected
     tANI_U32 throughputImpact;      //specify whether BG scan cares about impacting throughput  //ignored when not connected
     tCsrBssid bssid;    //how to use it?? Apple
-}tCsrBGScanRequest;
+}tCsrBGScanRequest, *tpCsrBGScanRequest;
 
 
 typedef struct tagCsrScanResultInfo

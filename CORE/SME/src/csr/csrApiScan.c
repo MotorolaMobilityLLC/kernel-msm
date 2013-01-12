@@ -437,8 +437,20 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
     /* split scan if any one of the following:
      * - STA session is connected and the scan is not a P2P search
      * - any P2P session is connected
+     * Do not split scans if no concurrent infra connections are 
+     * active and if the scan is a BG scan triggered by LFR (OR)
+     * any scan if LFR is in the middle of a BG scan. Splitting
+     * the scan is delaying the time it takes for LFR to find
+     * candidates and resulting in disconnects.
      */
-    if ( (csrIsStaSessionConnected(pMac) && (pScanCmd->u.scanCmd.u.scanRequest.p2pSearch != 1)) ||
+    if ( (csrIsStaSessionConnected(pMac) && 
+#ifdef FEATURE_WLAN_LFR
+         (csrIsConcurrentInfraConnected(pMac) ||
+          ((pScanCmd->u.scanCmd.reason != eCsrScanBgScan) &&
+           (pMac->roam.neighborRoamInfo.neighborRoamState != 
+            eCSR_NEIGHBOR_ROAM_STATE_CFG_CHAN_LIST_SCAN))) &&
+#endif
+         (pScanCmd->u.scanCmd.u.scanRequest.p2pSearch != 1)) ||
             (csrIsP2pSessionConnected(pMac)) )
     {
         tCsrScanRequest scanReq;
@@ -598,6 +610,11 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
     }
     else
     {  //No concurrency case
+        smsLog( pMac, LOG2, FL("Queuing scan command (reason=%d, roamState=%d"
+                " numOfChannels=%d)\n"),  
+                pScanCmd->u.scanCmd.reason, 
+                pMac->roam.neighborRoamInfo.neighborRoamState,
+                pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels);
         return csrQueueSmeCommand(pMac, pScanCmd, eANI_BOOLEAN_FALSE);
     }
 
@@ -1841,12 +1858,12 @@ static tANI_BOOLEAN csrIsBetterBss(tCsrScanResult *pBss1, tCsrScanResult *pBss2)
 }
 
 
-#ifdef FEATURE_WLAN_LFR
+#ifdef FEATURE_WLAN_LFR 
 //Add the channel to the occupiedChannels array
 static void csrScanAddToOccupiedChannels(
-        tpAniSirGlobal pMac,
-        tCsrScanResult *pResult,
-        tCsrChannel *pOccupiedChannels,
+        tpAniSirGlobal pMac, 
+        tCsrScanResult *pResult, 
+        tCsrChannel *pOccupiedChannels, 
         tDot11fBeaconIEs *pIes)
 {
     eHalStatus status;
@@ -1859,15 +1876,15 @@ static void csrScanAddToOccupiedChannels(
     if (!csrIsChannelPresentInList(pOccupiedChannelList, numOccupiedChannels, channel)
         && csrNeighborRoamConnectedProfileMatch(pMac, pResult, pIes))
     {
-        status = csrAddToChannelListFront(pOccupiedChannelList, numOccupiedChannels, channel);
+        status = csrAddToChannelListFront(pOccupiedChannelList, numOccupiedChannels, channel); 
         if(HAL_STATUS_SUCCESS(status))
-        {
+        { 
             pOccupiedChannels->numChannels++;
             smsLog(pMac, LOG2, FL("%s: added channel %d to the list (count=%d)\n"),
               __func__, channel, pOccupiedChannels->numChannels);
-            if (pOccupiedChannels->numChannels > CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN)
-                pOccupiedChannels->numChannels = CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN;
-        }
+            if (pOccupiedChannels->numChannels > CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN) 
+                pOccupiedChannels->numChannels = CSR_BG_SCAN_OCCUPIED_CHANNEL_LIST_LEN; 
+        } 
     }
 }
 #endif
@@ -1883,7 +1900,7 @@ static void csrScanAddResult(tpAniSirGlobal pMac, tCsrScanResult *pResult, tDot1
     pResult->preferValue = csrGetBssPreferValue(pMac, (int)pResult->Result.BssDescriptor.rssi);
     pResult->capValue = csrGetBssCapValue(pMac, &pResult->Result.BssDescriptor, pIes);
     csrLLInsertTail( &pMac->scan.scanResultList, &pResult->Link, LL_ACCESS_LOCK );
-#ifdef FEATURE_WLAN_LFR
+#ifdef FEATURE_WLAN_LFR 
     if(0 == pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels)
     {
         /* Build the occupied channel list, only if "gNeighborScanChannelList" is 
@@ -2998,7 +3015,7 @@ void csrApplyChannelPowerCountryInfo( tpAniSirGlobal pMac, tCsrChannel *pChannel
              }
              if( NV_CHANNEL_ENABLE ==  channelEnabledType)
              {
-                // Ignore the channel 165 for the country INDONESIA
+                // Ignore the channel 165 for the country INDONESIA 
                 if (( pChannelList->channelList[i] == 165 )
                       && ( pMac->scan.fIgnore_chan165 == VOS_TRUE )
                       && vos_mem_compare(countryCode, "ID", VOS_COUNTRY_CODE_LEN ))
@@ -3012,8 +3029,8 @@ void csrApplyChannelPowerCountryInfo( tpAniSirGlobal pMac, tCsrChannel *pChannel
                  }
              }
         }
-        ChannelList.numChannels = numChannels;
-
+        ChannelList.numChannels = numChannels;   
+   
         csrSetCfgValidChannelList(pMac, ChannelList.channelList, ChannelList.numChannels);
         // extend scan capability
         csrSetCfgScanControlList(pMac, countryCode, &ChannelList);     //  build a scan list based on the channel list : channel# + active/passive scan
@@ -4445,7 +4462,7 @@ static tANI_BOOLEAN csrScanProcessScanResults( tpAniSirGlobal pMac, tSmeCmd *pCo
         }
         else
         {
-            smsLog( pMac, LOGW, " Scanrsp fail (0x%08X), length = %d (expected %d)\n",
+            smsLog( pMac, LOGW, " Scanrsp fail (0x%08X), length = %d (expected %d)\n", 
                     pScanRsp->statusCode, pScanRsp->length, cbScanResult);
             //HO bg scan/probe failed no need to try autonomously
             if(eCsrScanBgScan == pCommand->u.scanCmd.reason ||
@@ -4475,14 +4492,27 @@ static tANI_BOOLEAN csrScanProcessScanResults( tpAniSirGlobal pMac, tSmeCmd *pCo
          * remaining channels.
          *
          * Start timer to trigger processing of the next scan command.
+         * NOTE for LFR:
+         * Do not split scans if no concurrent infra connections are 
+         * active and if the scan is a BG scan triggered by LFR (OR)
+         * any scan if LFR is in the middle of a BG scan. Splitting
+         * the scan is delaying the time it takes for LFR to find
+         * candidates and resulting in disconnects.
          */
-        if ( (csrIsStaSessionConnected(pMac) && (pCommand->u.scanCmd.u.scanRequest.p2pSearch != 1)) ||
+        if ( (csrIsStaSessionConnected(pMac) && 
+#ifdef FEATURE_WLAN_LFR
+                    (csrIsConcurrentInfraConnected(pMac) ||
+                     ((pCommand->u.scanCmd.reason != eCsrScanBgScan) &&
+                      (pMac->roam.neighborRoamInfo.neighborRoamState != 
+                       eCSR_NEIGHBOR_ROAM_STATE_CFG_CHAN_LIST_SCAN))) &&
+#endif
+                    (pCommand->u.scanCmd.u.scanRequest.p2pSearch != 1)) ||
              (csrIsP2pSessionConnected(pMac)) )
         {
             /* if active connected sessions present then continue to split scan
              * with specified interval between consecutive scans */
             csrSetDefaultScanTiming(pMac, pCommand->u.scanCmd.u.scanRequest.scanType, &(pCommand->u.scanCmd.u.scanRequest));
-            palTimerStart(pMac->hHdd, pMac->scan.hTimerStaApConcTimer,
+            palTimerStart(pMac->hHdd, pMac->scan.hTimerStaApConcTimer, 
                 pCommand->u.scanCmd.u.scanRequest.restTime * PAL_TIMER_TO_MS_UNIT, eANI_BOOLEAN_FALSE);
         } else {
             /* if no connected sessions present then initiate next scan command immediately */
@@ -4579,7 +4609,7 @@ eHalStatus csrScanSmeScanResponse( tpAniSirGlobal pMac, void *pMsgBuf )
 
                 csrReleaseScanCommand(pMac, pCommand, scanStatus);
 
-            }
+                }
             smeProcessPendingQueue( pMac );
         }
         else
@@ -5392,10 +5422,34 @@ eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCs
                                ((eCSR_SCAN_P2P_DISCOVERY == pSrcReq->requestType) &&
                                 CSR_IS_SOCIAL_CHANNEL(pSrcReq->ChannelInfo.ChannelList[index])))
                             {
-
-                                if( pSrcReq->skipDfsChnlInP2pSearch &&
+                                if( (pSrcReq->skipDfsChnlInP2pSearch && 
                                     (NV_CHANNEL_DFS == vos_nv_getChannelEnabledState(pSrcReq->ChannelInfo.ChannelList[index])) )
+#ifdef FEATURE_WLAN_LFR
+                                     /* 
+                                      * If LFR is requesting a contiguous scan
+                                      * (i.e. numOfChannels > 1), then ignore 
+                                      * DFS channels.
+                                      * TODO: vos_nv_getChannelEnabledState is returning
+                                      * 120, 124 and 128 as non-DFS channels. Hence, the
+                                      * use of direct check for channels below.
+                                      */
+                                     || ((eCSR_SCAN_HO_BG_SCAN == pSrcReq->requestType) &&
+                                         (pSrcReq->ChannelInfo.numOfChannels > 1) &&
+                                         (pSrcReq->ChannelInfo.ChannelList[index] > 48 &&
+                                          pSrcReq->ChannelInfo.ChannelList[index] < 149))
+#endif
+                                  )
+                                {
+#ifdef FEATURE_WLAN_LFR
+                                    smsLog(pMac, LOG2, 
+                                            "%s: reqType=%d, numOfChannels=%d,"
+                                            " ignoring DFS channel %d\n",
+                                            __func__, pSrcReq->requestType,
+                                            pSrcReq->ChannelInfo.numOfChannels,
+                                            pSrcReq->ChannelInfo.ChannelList[index]);
+#endif
                                   continue;
+                                }
 
                                 pDstReq->ChannelInfo.ChannelList[new_index] =
                                     pSrcReq->ChannelInfo.ChannelList[index];
@@ -5403,6 +5457,28 @@ eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCs
                             }
                         }
                         pDstReq->ChannelInfo.numOfChannels = new_index;
+#ifdef FEATURE_WLAN_LFR
+                        if ((eCSR_SCAN_HO_BG_SCAN == pSrcReq->requestType) &&
+                                (0 == pDstReq->ChannelInfo.numOfChannels))
+                        {
+                            /*
+                             * No valid channels found in the request.
+                             * Only perform scan on the channels passed
+                             * pSrcReq if it is a eCSR_SCAN_HO_BG_SCAN.
+                             * Passing 0 to LIM will trigger a scan on 
+                             * all valid channels which is not desirable.
+                             */
+                            smsLog(pMac, LOGE, "%s: no valid channels found (request=%d)\n",
+                                    __func__, pSrcReq->requestType);
+                            for ( index = 0; index < pSrcReq->ChannelInfo.numOfChannels ; index++ )
+                            {
+                                smsLog(pMac, LOGE, "pSrcReq index=%d channel=%d\n",
+                                        index, pSrcReq->ChannelInfo.ChannelList[index]);
+                            }
+                            status = eHAL_STATUS_FAILURE;
+                            break;
+                    }
+#endif
                     }
                     else
                     {
@@ -5566,9 +5642,21 @@ static void csrStaApConcTimerHandler(void *pv)
          * any one of the following:
          * - STA session is connected and the scan is not a P2P search
          * - any P2P session is connected
+         * Do not split scans if no concurrent infra connections are 
+         * active and if the scan is a BG scan triggered by LFR (OR)
+         * any scan if LFR is in the middle of a BG scan. Splitting
+         * the scan is delaying the time it takes for LFR to find
+         * candidates and resulting in disconnects.
          */
         if ( (numChn > pMac->roam.configParam.nNumChanCombinedConc) &&
-             ((csrIsStaSessionConnected(pMac) && (pScanCmd->u.scanCmd.u.scanRequest.p2pSearch != 1)) ||
+                ((csrIsStaSessionConnected(pMac) && 
+#ifdef FEATURE_WLAN_LFR
+                  (csrIsConcurrentInfraConnected(pMac) ||
+                   ((pScanCmd->u.scanCmd.reason != eCsrScanBgScan) &&
+                    (pMac->roam.neighborRoamInfo.neighborRoamState != 
+                     eCSR_NEIGHBOR_ROAM_STATE_CFG_CHAN_LIST_SCAN))) &&
+#endif
+                  (pScanCmd->u.scanCmd.u.scanRequest.p2pSearch != 1)) ||
               (csrIsP2pSessionConnected(pMac))))
         {
              palZeroMemory(pMac->hHdd, &scanReq, sizeof(tCsrScanRequest));
@@ -7091,7 +7179,7 @@ void csrInitOccupiedChannelsList(tpAniSirGlobal pMac)
       pIes = (tDot11fBeaconIEs *)( pBssDesc->Result.pvIes );
 
       //At this time, pBssDescription->Result.pvIes may be NULL
-      if( !pIes && (!HAL_STATUS_SUCCESS(csrGetParsedBssDescriptionIEs(pMac,
+      if( !pIes && (!HAL_STATUS_SUCCESS(csrGetParsedBssDescriptionIEs(pMac, 
                     &pBssDesc->Result.BssDescriptor, &pIes))) )
       {
           continue;
@@ -7110,7 +7198,7 @@ void csrInitOccupiedChannelsList(tpAniSirGlobal pMac)
       pEntry = csrLLNext( &pMac->scan.scanResultList, pEntry, LL_ACCESS_NOLOCK );
   }//while
   csrLLUnlock(&pMac->scan.scanResultList);
-
+    
 }
 #endif
 
