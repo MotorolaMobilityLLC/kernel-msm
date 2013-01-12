@@ -294,6 +294,14 @@ limSendProbeReqMgmtFrame(tpAniSirGlobal pMac,
                PopulateDot11fHTCaps( pMac, psessionEntry, &pr.HTCaps );
            }
     }
+
+    /* Set channelbonding information as "disabled" when tunned to a 2.4 GHz channel */
+    if( nChannelNum <= SIR_11B_CHANNEL_END)
+    {
+        pr.HTCaps.supportedChannelWidthSet = eHT_CHANNEL_WIDTH_20MHZ;
+        pr.HTCaps.shortGI40MHz = 0;
+    }
+
 #ifdef WLAN_FEATURE_11AC
     if (psessionEntry != NULL ) {
        psessionEntry->vhtCapability = IS_DOT11_MODE_VHT(dot11mode);
