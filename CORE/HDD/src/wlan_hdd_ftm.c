@@ -1672,6 +1672,7 @@ int wlan_hdd_ftm_get_nv_table
    v_SIZE_t            nvSize;
    sHalNv             *nvContents = NULL;
 
+
    if (NULL == pHddCtx)
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
@@ -1728,9 +1729,14 @@ int wlan_hdd_ftm_get_nv_table
             pHddCtx->ftm.targetNVTablePointer = (v_U8_t *)&nvContents->tables.rssiChanOffsets[0];
             break;
 
-         case NV_TABLE_RF_CAL_VALUES:
-            pHddCtx->ftm.targetNVTableSize = sizeof(nvContents->tables.rFCalValues);
-            pHddCtx->ftm.targetNVTablePointer = (v_U8_t *)&nvContents->tables.rFCalValues;
+         case NV_TABLE_HW_CAL_VALUES:
+            pHddCtx->ftm.targetNVTableSize = sizeof(nvContents->tables.hwCalValues);
+            pHddCtx->ftm.targetNVTablePointer = (v_U8_t *)&nvContents->tables.hwCalValues;
+            break;
+
+         case NV_TABLE_FW_CONFIG:
+            pHddCtx->ftm.targetNVTableSize = sizeof(nvContents->tables.fwConfig);
+            pHddCtx->ftm.targetNVTablePointer = (v_U8_t *)&nvContents->tables.fwConfig;
             break;
 
          case NV_TABLE_ANTENNA_PATH_LOSS:
@@ -1754,7 +1760,9 @@ int wlan_hdd_ftm_get_nv_table
       {
          /* Invalid table size, discard and initialize data */
          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                    "Invalid Table Size %d", nvTable->tableSize);
+                    "Invalid Table Size %d for Table %d"
+                    " expected size %d\n", nvTable->tableSize, nvTable->nvTable,
+                    pHddCtx->ftm.targetNVTableSize);
          pHddCtx->ftm.processingNVTable    = NV_MAX_TABLE;
          pHddCtx->ftm.targetNVTableSize    = 0;
          pHddCtx->ftm.processedNVTableSize = 0;
@@ -1883,9 +1891,14 @@ int wlan_hdd_ftm_set_nv_table
             pHddCtx->ftm.targetNVTablePointer = (v_U8_t *)&nvContents->tables.rssiChanOffsets[0];
             break;
 
-         case NV_TABLE_RF_CAL_VALUES:
-            pHddCtx->ftm.targetNVTableSize    = sizeof(nvContents->tables.rFCalValues);
-            pHddCtx->ftm.targetNVTablePointer = (v_U8_t *)&nvContents->tables.rFCalValues;
+         case NV_TABLE_HW_CAL_VALUES:
+            pHddCtx->ftm.targetNVTableSize    = sizeof(nvContents->tables.hwCalValues);
+            pHddCtx->ftm.targetNVTablePointer = (v_U8_t *)&nvContents->tables.hwCalValues;
+            break;
+
+         case NV_TABLE_FW_CONFIG:
+            pHddCtx->ftm.targetNVTableSize    = sizeof(nvContents->tables.fwConfig);
+            pHddCtx->ftm.targetNVTablePointer = (v_U8_t *)&nvContents->tables.fwConfig;
             break;
 
          case NV_TABLE_ANTENNA_PATH_LOSS:
@@ -2014,9 +2027,9 @@ int wlan_hdd_ftm_blank_nv_table
           &nvDefaults.tables.rssiChanOffsets[0],
           itemSize);
 
-   itemSize = sizeof(nvContents->tables.rFCalValues);
-   memcpy(&nvContents->tables.rFCalValues,
-          &nvDefaults.tables.rFCalValues,
+   itemSize = sizeof(nvContents->tables.hwCalValues);
+   memcpy(&nvContents->tables.hwCalValues,
+          &nvDefaults.tables.hwCalValues,
           itemSize);
 
    itemSize = sizeof(nvContents->tables.antennaPathLoss);
@@ -2114,10 +2127,17 @@ int wlan_hdd_ftm_delete_nv_table
                 itemSize);
          break;
 
-      case NV_TABLE_RF_CAL_VALUES:
-         itemSize = sizeof(nvContents->tables.rFCalValues);
-         memcpy(&nvContents->tables.rFCalValues,
-                &nvDefaults.tables.rFCalValues,
+      case NV_TABLE_HW_CAL_VALUES:
+         itemSize = sizeof(nvContents->tables.hwCalValues);
+         memcpy(&nvContents->tables.hwCalValues,
+                &nvDefaults.tables.hwCalValues,
+                itemSize);
+         break;
+
+      case NV_TABLE_FW_CONFIG:
+         itemSize = sizeof(nvContents->tables.fwConfig);
+         memcpy(&nvContents->tables.fwConfig,
+                &nvDefaults.tables.fwConfig,
                 itemSize);
          break;
 
@@ -2215,10 +2235,22 @@ int wlan_hdd_ftm_get_nv_field
              NV_FIELD_MFG_SN_SIZE);
          break;
 
+      case NV_COMMON_WLAN_NV_REV_ID:
+         memcpy((void *)&nvField->fieldData,
+             &nvFieldDataBuffer.wlanNvRevId,
+             sizeof(nvFieldDataBuffer.wlanNvRevId));
+         break;
+
       case NV_COMMON_COUPLER_TYPE:
          memcpy((void *)&nvField->fieldData,
                 &nvFieldDataBuffer.couplerType,
                 sizeof(nvFieldDataBuffer.couplerType));
+         break;
+
+      case NV_COMMON_NV_VERSION:
+         memcpy((void *)&nvField->fieldData,
+                &nvFieldDataBuffer.nvVersion,
+                sizeof(nvFieldDataBuffer.nvVersion));
          break;
 
       default:
@@ -2256,6 +2288,7 @@ int wlan_hdd_ftm_set_nv_field
    v_U8_t            *pNVMac;
    v_U8_t             lastByteMAC;
 
+   
    nvStatus = vos_nv_getNVBuffer((void **)&nvContents, &nvSize);
    if((VOS_STATUS_SUCCESS != nvStatus) || (NULL == nvContents))
    {
@@ -2320,10 +2353,22 @@ int wlan_hdd_ftm_set_nv_field
              NV_FIELD_MFG_SN_SIZE);
          break;
 
+     case NV_COMMON_WLAN_NV_REV_ID:
+        memcpy(&nvContents->fields.wlanNvRevId,
+               &nvField->fieldData,
+               sizeof(nvContents->fields.wlanNvRevId));
+        break;
+
       case NV_COMMON_COUPLER_TYPE:
          memcpy(&nvContents->fields.couplerType,
                 &nvField->fieldData,
                 sizeof(nvContents->fields.couplerType));
+         break;
+
+      case NV_COMMON_NV_VERSION:
+         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                    "Cannot modify NV version field %d", nvField->nvField);
+         return -EIO;
          break;
 
       default:
@@ -2420,11 +2465,17 @@ int wlan_hdd_ftm_store_nv_table
          tableVNVType = VNV_RSSI_CHANNEL_OFFSETS;
          break;
 
-      case NV_TABLE_RF_CAL_VALUES:
-         tablePtr     = (void *)&nvContents->tables.rFCalValues;
-         tableSize    = sizeof(nvContents->tables.rFCalValues);
-         tableVNVType = VNV_RF_CAL_VALUES;
+      case NV_TABLE_HW_CAL_VALUES:
+         tablePtr     = (void *)&nvContents->tables.hwCalValues;
+         tableSize    = sizeof(nvContents->tables.hwCalValues);
+         tableVNVType = VNV_HW_CAL_VALUES;
          break;
+
+      case NV_TABLE_FW_CONFIG:
+         tablePtr     = (void *)&nvContents->tables.fwConfig;
+         tableSize    = sizeof(nvContents->tables.fwConfig);
+         tableVNVType = VNV_FW_CONFIG;
+         break;         
 
       case NV_TABLE_ANTENNA_PATH_LOSS:
          tablePtr     = (void *)&nvContents->tables.antennaPathLoss[0];

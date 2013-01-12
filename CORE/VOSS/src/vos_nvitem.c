@@ -518,6 +518,10 @@ VOS_STATUS vos_nv_open(void)
          return VOS_STATUS_E_RESOURCES;
     }
 
+     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+           "INFO: NV binary file version=%d Driver default NV version=%d, continue...\n",
+           gnvEFSTable->halnv.fields.nvVersion, WLAN_NV_VERSION);
+
      /* Copying the read nv data to the globa NV EFS table */
     {
         /* Allocate memory to global NV table */
@@ -531,15 +535,36 @@ VOS_STATUS vos_nv_open(void)
 
         /*Copying the NV defaults */
         vos_mem_copy(&(pnvEFSTable->halnv),&nvDefaults,sizeof(sHalNv));
-       
+
+        /* Size mismatch */
         if ( nvReadBufSize != bufSize)
         {
             pnvEFSTable->nvValidityBitmap = DEFAULT_NV_VALIDITY_BITMAP;
             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                       "!!!WARNING: INVALID NV FILE, DRIVER IS USING DEFAULT CAL VALUES %d %d!!!",
                       nvReadBufSize, bufSize);
-            goto error;
+            return VOS_STATUS_SUCCESS;
         }
+
+       /* Version mismatch */
+       if (gnvEFSTable->halnv.fields.nvVersion != WLAN_NV_VERSION)
+       {
+           if ((WLAN_NV_VERSION == NV_VERSION_11N_11AC_FW_CONFIG) &&
+               (gnvEFSTable->halnv.fields.nvVersion == NV_VERSION_11N_11AC_COUPER_TYPE))
+           {
+               VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                     "!!!WARNING: Using Coupler Type field instead of Fw Config table,\n"
+                     "Make sure that this is intented or may impact performance!!!\n");
+           }
+           else
+           {
+               VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                     "!!!WARNING: NV binary file version doesn't match with Driver default NV version\n"
+                     "Driver NV defaults will be used, may impact performance!!!\n");
+
+               return VOS_STATUS_SUCCESS;
+           }
+       }
 
        pnvEFSTable->nvValidityBitmap = gnvEFSTable->nvValidityBitmap;
         /* Copy the valid fields to the NV Global structure */ 
@@ -626,13 +651,24 @@ VOS_STATUS vos_nv_open(void)
             }
         }
     
-        if (vos_nv_getValidity(VNV_RF_CAL_VALUES, &itemIsValid) == 
+        if (vos_nv_getValidity(VNV_HW_CAL_VALUES, &itemIsValid) == 
          VOS_STATUS_SUCCESS)
         {
             if (itemIsValid == VOS_TRUE)
             {
-                if(vos_nv_read( VNV_RF_CAL_VALUES, (v_VOID_t *)&pnvEFSTable->halnv
-    .tables.rFCalValues, NULL, sizeof(sRFCalValues) ) != VOS_STATUS_SUCCESS)
+                if(vos_nv_read( VNV_HW_CAL_VALUES, (v_VOID_t *)&pnvEFSTable->halnv
+    .tables.hwCalValues, NULL, sizeof(sHwCalValues) ) != VOS_STATUS_SUCCESS)
+                    goto error;
+            }
+        }
+
+        if (vos_nv_getValidity(VNV_FW_CONFIG, &itemIsValid) == 
+         VOS_STATUS_SUCCESS)
+        {
+            if (itemIsValid == VOS_TRUE)
+            {
+                if(vos_nv_read( VNV_FW_CONFIG, (v_VOID_t *)&pnvEFSTable->halnv
+    .tables.fwConfig, NULL, sizeof(sFwConfig) ) != VOS_STATUS_SUCCESS)
                     goto error;
             }
         }
@@ -1216,9 +1252,9 @@ VOS_STATUS vos_nv_read( VNV_TYPE type, v_VOID_t *outputVoidBuffer,
                memcpy(outputVoidBuffer,&gnvEFSTable->halnv.tables.rssiChanOffsets[0],bufferSize);
            }
            break;
-       case VNV_RF_CAL_VALUES:
+       case VNV_HW_CAL_VALUES:
 
-           itemSize = sizeof(gnvEFSTable->halnv.tables.rFCalValues);
+           itemSize = sizeof(gnvEFSTable->halnv.tables.hwCalValues);
 
            if(bufferSize != itemSize) {
 
@@ -1228,7 +1264,22 @@ VOS_STATUS vos_nv_read( VNV_TYPE type, v_VOID_t *outputVoidBuffer,
                status = VOS_STATUS_E_INVAL;
            }
            else {
-               memcpy(outputVoidBuffer,&gnvEFSTable->halnv.tables.rFCalValues,bufferSize);
+               memcpy(outputVoidBuffer,&gnvEFSTable->halnv.tables.hwCalValues,bufferSize);
+           }
+           break;
+       case VNV_FW_CONFIG:
+       
+           itemSize = sizeof(gnvEFSTable->halnv.tables.fwConfig);
+       
+           if(bufferSize != itemSize) {
+       
+               VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                ("type = %d buffer size=%d is less than data size=%d\r\n"),type, bufferSize,
+                 itemSize);
+               status = VOS_STATUS_E_INVAL;
+           }
+           else {
+               memcpy(outputVoidBuffer,&gnvEFSTable->halnv.tables.fwConfig,bufferSize);
            }
            break;
        case VNV_ANTENNA_PATH_LOSS:
@@ -1443,9 +1494,9 @@ VOS_STATUS vos_nv_write( VNV_TYPE type, v_VOID_t *inputVoidBuffer,
                 memcpy(&gnvEFSTable->halnv.tables.rssiChanOffsets[0],inputVoidBuffer,bufferSize);
             }
             break;
-         case VNV_RF_CAL_VALUES:
+         case VNV_HW_CAL_VALUES:
 
-            itemSize = sizeof(gnvEFSTable->halnv.tables.rFCalValues);
+            itemSize = sizeof(gnvEFSTable->halnv.tables.hwCalValues);
 
             if(bufferSize != itemSize) {
 
@@ -1455,9 +1506,24 @@ VOS_STATUS vos_nv_write( VNV_TYPE type, v_VOID_t *inputVoidBuffer,
                 status = VOS_STATUS_E_INVAL;
             }
             else {
-                memcpy(&gnvEFSTable->halnv.tables.rFCalValues,inputVoidBuffer,bufferSize);
+                memcpy(&gnvEFSTable->halnv.tables.hwCalValues,inputVoidBuffer,bufferSize);
             }
             break;
+        case VNV_FW_CONFIG:
+        
+           itemSize = sizeof(gnvEFSTable->halnv.tables.fwConfig);
+        
+           if(bufferSize != itemSize) {
+        
+               VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                ("type = %d buffer size=%d is less than data size=%d\r\n"),type, bufferSize,
+                 itemSize);
+               status = VOS_STATUS_E_INVAL;
+           }
+           else {
+               memcpy(&gnvEFSTable->halnv.tables.fwConfig,inputVoidBuffer,bufferSize);
+           }
+           break;
         case VNV_ANTENNA_PATH_LOSS:
             itemSize = sizeof(gnvEFSTable->halnv.tables.antennaPathLoss);
             if(bufferSize != itemSize) {
