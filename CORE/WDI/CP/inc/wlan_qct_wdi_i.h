@@ -1065,6 +1065,11 @@ typedef struct
   /*Version of the WLAN HAL API received on start resp*/
   WDI_WlanVersionType wlanVersion;
 
+  /*timestamp when we start response timer*/
+  wpt_uint32                  uTimeStampRspTmrStart;
+
+  /*timestamp when we get response timer event*/
+  wpt_uint32                  uTimeStampRspTmrExp;
 }WDI_ControlBlockType; 
 
 

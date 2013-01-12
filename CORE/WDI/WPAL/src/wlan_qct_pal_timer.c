@@ -187,6 +187,26 @@ wpt_status wpalTimerStop(wpt_timer * pTimer)
 }/*wpalTimerStop*/
 
 /*---------------------------------------------------------------------------
+    \brief wpalTimerGetCurStatus - Get the current status of timer
+
+    \param pTimer - a pointer to caller allocated wpt_timer object
+
+    \return
+        VOS_TIMER_STATE
+---------------------------------------------------------------------------*/
+VOS_TIMER_STATE wpalTimerGetCurStatus(wpt_timer * pTimer)
+{
+   /* Sanity Checks */
+   if( pTimer == NULL )
+   {
+      WPAL_TRACE( eWLAN_MODULE_PAL, eWLAN_PAL_TRACE_LEVEL_ERROR, " %s Wrong param pTimer(%d)\n",
+         __func__, (wpt_uint32)pTimer );
+      return eWLAN_PAL_STATUS_E_INVAL;
+   }
+   return vos_timer_getCurrentState( &pTimer->timer.timerObj );
+}/*wpalTimerStop*/
+
+/*---------------------------------------------------------------------------
     wpalSleep - sleep for a specified interval
     Param:
         timeout - amount of time to sleep. In unit of milli-seconds.

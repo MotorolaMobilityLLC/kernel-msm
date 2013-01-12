@@ -83,6 +83,7 @@
 /*----------------------------------------------------------------------------
  * Include Files
  * -------------------------------------------------------------------------*/
+#include <vos_trace.h>
 #include "wlan_qct_wdi.h"
 #include "wlan_qct_wdi_i.h"
 #include "wlan_qct_wdi_sta.h"
@@ -19399,6 +19400,7 @@ WDI_SendMsg
 )
 {
   WDI_Status wdiStatus = WDI_STATUS_SUCCESS;
+  wpt_uint32 ret;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
   /*------------------------------------------------------------------------
@@ -19413,12 +19415,29 @@ WDI_SendMsg
      - notify transport failure
      Note: CTS is reponsible for freeing the message buffer.
    -----------------------------------------------------------------------*/
-   if ( 0 != WCTS_SendMessage( pWDICtx->wctsHandle, (void*)pSendBuffer, usSendSize ))
+   ret = WCTS_SendMessage(pWDICtx->wctsHandle, (void*)pSendBuffer, usSendSize);
+   if ((eWLAN_PAL_STATUS_SUCCESS != ret) &&
+       (eWLAN_PAL_STATUS_E_RESOURCES != ret))
    {
      WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
                 "Failed to send message over the bus - catastrophic failure");
 
      wdiStatus = WDI_STATUS_E_FAILURE;
+   }
+   else
+   {
+     /* even when message was placed in CTS deferred Q, we will treat it
+        success but log this info
+      */
+     if (eWLAN_PAL_STATUS_E_RESOURCES == ret)
+     {
+       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+                  "WDI_SendMsg: message placed in CTS deferred Q, expected "
+                  "response %s (%d)",
+                  WDI_getRespMsgString(pWDICtx->wdiExpectedResponse),
+                  pWDICtx->wdiExpectedResponse);
+       VOS_ASSERT(0);
+     }
    }
 
   /*Check if originator provided a request status callback*/
@@ -19444,6 +19463,9 @@ WDI_SendMsg
   {
    /*Start timer for the expected response */
    wpalTimerStart(&pWDICtx->wptResponseTimer, WDI_RESPONSE_TIMEOUT);
+
+   /*cache current timestamp for debugging */
+   pWDICtx->uTimeStampRspTmrStart = vos_timer_get_system_time();
   }
   else
   {
@@ -19493,14 +19515,18 @@ WDI_SendIndication
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_INFO,
                 "Send indication status : %d", uStatus);
 
-      pWDICtx->wdiReqStatusCB( (uStatus != 0 ) ? WDI_STATUS_E_FAILURE:
-                                                 WDI_STATUS_SUCCESS,
+      /* even if CTS placed indication into its deferred Q, we treat it
+       * as success and let CTS drain its queue as per smd interrupt to CTS
+       */
+      pWDICtx->wdiReqStatusCB( ((uStatus != eWLAN_PAL_STATUS_SUCCESS) && (uStatus != eWLAN_PAL_STATUS_E_RESOURCES)) ? WDI_STATUS_E_FAILURE: WDI_STATUS_SUCCESS,
                                pWDICtx->pReqStatusUserData);
    }
 
    /*If sending of the message failed - it is considered catastrophic and
      indicates an error with the device*/
-   if ( 0 != uStatus)
+   if (( eWLAN_PAL_STATUS_SUCCESS != uStatus) &&
+       ( eWLAN_PAL_STATUS_E_RESOURCES != uStatus))
+
    {
       WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
                 "Failed to send indication over the bus - catastrophic failure");
@@ -19598,14 +19624,32 @@ WDI_ResponseTimerCB
     return;
   }
 
+  /*cache current timestamp for debugging */
+  pWDICtx->uTimeStampRspTmrExp = vos_timer_get_system_time();
+
+  /* If response timer is running at this time that means this timer
+   * event is not for the last request but rather last-to-last request and
+   * this timer event has come after we recevied respone for last-to-last
+   * message
+   */
+  if (VOS_TIMER_STATE_RUNNING == wpalTimerGetCurStatus(&pWDICtx->wptResponseTimer))
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
+               "WDI_ResponseTimerCB: timer in running state on timer event, "
+               "ignore tmr event, timeStampTmrStart: %ld, timeStampTmrExp: %ld",
+               pWDICtx->uTimeStampRspTmrStart, pWDICtx->uTimeStampRspTmrExp);
+    return;
+  }
+
   if ( WDI_MAX_RESP != pWDICtx->wdiExpectedResponse )
   {
 
   WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
             "Timeout occurred while waiting for %s (%d) message from device "
-            " - catastrophic failure",
+            " - catastrophic failure, timeStampTmrStart: %ld, timeStampTmrExp: %ld",
             WDI_getRespMsgString(pWDICtx->wdiExpectedResponse),
-            pWDICtx->wdiExpectedResponse);
+            pWDICtx->wdiExpectedResponse, pWDICtx->uTimeStampRspTmrStart,
+            pWDICtx->uTimeStampRspTmrExp);
   /* WDI timeout means Riva is not responding or SMD communication to Riva
    * is not happening. The only possible way to recover from this error
    * is to initiate SSR from APPS 
@@ -19624,8 +19668,10 @@ WDI_ResponseTimerCB
   else
   {
      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
-                 "Timeout occurred but not waiting for any response %d", 
-                 pWDICtx->wdiExpectedResponse);
+                 "Timeout occurred but not waiting for any response %d "
+                 "timeStampTmrStart: %ld, timeStampTmrExp: %ld",
+                 pWDICtx->wdiExpectedResponse, pWDICtx->uTimeStampRspTmrStart,
+                 pWDICtx->uTimeStampRspTmrExp);
   }
 
   return; 
