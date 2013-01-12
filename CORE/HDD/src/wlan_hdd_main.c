@@ -202,7 +202,7 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
 
    if(NULL == pAdapter)
    {
-      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: HDD Adaptor Null Pointer", __func__);
+      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: HDD Adapter Null Pointer", __func__);
       VOS_ASSERT(0);
       return NOTIFY_DONE;
    }

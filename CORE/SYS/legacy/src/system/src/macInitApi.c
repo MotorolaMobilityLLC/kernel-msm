@@ -293,7 +293,7 @@ tSirRetStatus macOpen(tHalHandle *pHalHandle, tHddHandle hHdd, tMacOpenParameter
         return eSIR_FAILURE;
 
     /*
-     * Make sure this adapter is not already opened. (Compare pAdaptor pointer in already
+     * Make sure this adapter is not already opened. (Compare pAdapter pointer in already
      * allocated pMac structures.)
      * If it is opened just return pointer to previously allocated pMac pointer.
      * Or should this result in error?

@@ -5012,7 +5012,7 @@ static int wlan_hdd_cfg80211_connect( struct wiphy *wiphy,
     }
 
     //If Device Mode is Station Concurrent Sessions Exit BMps
-    //P2P Mode will be taken care in Open/close adaptor
+    //P2P Mode will be taken care in Open/close adapter
     if((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) &&
         (vos_concurrent_sessions_running()))
     {
