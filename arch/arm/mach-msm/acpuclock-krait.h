@@ -39,6 +39,7 @@ enum src_id {
 	PLL_0 = 0,
 	HFPLL,
 	PLL_8,
+	NUM_SRC_ID,
 };
 
 /**
