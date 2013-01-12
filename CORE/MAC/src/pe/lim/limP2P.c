@@ -408,6 +408,13 @@ void limProcessInsertSingleShotNOATimeout(tpAniSirGlobal pMac)
     
     // send the scan response back and do not even call insert NOA
     limSendSmeScanRsp(pMac, sizeof(tSirSmeScanRsp), eSIR_SME_SCAN_FAILED, pMac->lim.gSmeSessionId, pMac->lim.gTransactionId);
+
+    if(pMac->lim.gpLimSmeScanReq != NULL)
+    {
+        palFreeMemory( pMac->hHdd, (tANI_U8 *) pMac->lim.gpLimSmeScanReq);
+        pMac->lim.gpLimSmeScanReq = NULL;
+    }
+
     return;
 }
 

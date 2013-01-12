@@ -5181,6 +5181,18 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                                                 eCSR_ROAM_RESULT_FAILURE);
                             }
                         }
+                        else
+                        {
+                            /* bRefAssocStartCnt is not incremented when
+                             * eRoamState == eCsrStopRoamingDueToConcurrency
+                             * in csrRoamJoinNextBss API. so handle this in
+                             * else case by sending assoc failure
+                             */
+                            csrRoamCallCallback(pMac, sessionId, NULL,
+                                    pCommand->u.scanCmd.roamId,
+                                    eCSR_ROAM_ASSOCIATION_FAILURE,
+                                    eCSR_ROAM_RESULT_FAILURE);
+                        }
                     smsLog(pMac, LOG1, FL("  roam(reason %d) failed\n"), pCommand->u.roamCmd.roamReason);
 #ifndef WLAN_MDM_CODE_REDUCTION_OPT
                     sme_QosCsrEventInd(pMac, (tANI_U8)sessionId, SME_QOS_CSR_DISCONNECT_IND, NULL);

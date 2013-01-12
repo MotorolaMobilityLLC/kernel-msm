@@ -172,6 +172,8 @@ limProcessMlmReqMessages(tpAniSirGlobal pMac, tpSirMsgQ Msg)
 #endif
 #ifdef WLAN_FEATURE_P2P
         case SIR_LIM_REMAIN_CHN_TIMEOUT:    limProcessRemainOnChnTimeout(pMac); break;
+        case SIR_LIM_INSERT_SINGLESHOT_NOA_TIMEOUT:   
+                                            limProcessInsertSingleShotNOATimeout(pMac); break;
 #endif
         case SIR_LIM_DISASSOC_ACK_TIMEOUT:  limProcessDisassocAckTimeout(pMac); break;
         case SIR_LIM_DEAUTH_ACK_TIMEOUT:    limProcessDeauthAckTimeout(pMac); break;
