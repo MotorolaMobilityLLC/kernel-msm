@@ -122,9 +122,9 @@ int mdp_close(struct v4l2_subdev *sd, void *arg)
 	if (inst) {
 		fbi = (struct fb_info *)inst->mdp;
 		msm_fb_writeback_terminate(fbi);
-		kfree(inst);
 		/* Unregister wfd node from switch driver */
 		switch_dev_unregister(&inst->sdev);
+		kfree(inst);
 	}
 	return 0;
 }
