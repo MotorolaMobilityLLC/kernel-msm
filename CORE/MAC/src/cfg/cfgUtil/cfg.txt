@@ -3255,21 +3255,6 @@ LIM
 WNI_CFG_RSSI_FILTER_PERIOD    I    4    5
 V    RW    NP
 LIM
-0    255    20
-NV    RW    NP
-LIM
-0    255    20
-
-*
-* Period for which Firmware will collect the 
-* RSSI stats. Its in units of beacon interval. 
-* Rssi Filter period should always be >=
-* the num_beacon_per_rssi_average.
-* This value is used ONLY for CCX and 11r Fasttransition
-*
-WNI_CFG_FT_RSSI_FILTER_PERIOD    I    4    5
-V    RW    NP
-LIM
 0    255    5
 NV    RW    NP
 LIM

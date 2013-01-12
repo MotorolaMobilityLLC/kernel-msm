@@ -264,7 +264,6 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"MAX_PS_POLL",
     (unsigned char *)"NUM_BEACON_PER_RSSI_AVERAGE",
     (unsigned char *)"RSSI_FILTER_PERIOD",
-    (unsigned char *)"FT_RSSI_FILTER_PERIOD",
     (unsigned char *)"MIN_RSSI_THRESHOLD",
     (unsigned char *)"NTH_BEACON_FILTER",
     (unsigned char *)"BROADCAST_FRAME_FILTER_ENABLE",
