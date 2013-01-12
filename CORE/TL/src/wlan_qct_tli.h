@@ -1262,7 +1262,11 @@ WLANTL_PrepareBDHeader
 
    IN
     pTLCb:            TL control block
+#ifdef FEATURE_WLAN_TDLS
+    *pucStaId         Returns the staId used in case of TDLS
+#else
     ucStaId:          station ID
+#endif
 
    IN/OUT
     vosDataBuff:      vos data buffer, will contain the new header on output
@@ -1276,6 +1280,19 @@ WLANTL_PrepareBDHeader
   SIDE EFFECTS
 
 ============================================================================*/
+#ifdef FEATURE_WLAN_TDLS
+VOS_STATUS
+WLANTL_Translate8023To80211Header
+(
+  vos_pkt_t*      vosDataBuff,
+  VOS_STATUS*     pvosStatus,
+  WLANTL_CbType*  pTLCb,
+  v_U8_t          *pucStaId,
+  v_U8_t          ucUP,
+  v_U8_t          *ucWDSEnabled,
+  v_U8_t          *extraHeadSpace
+);
+#else
 VOS_STATUS
 WLANTL_Translate8023To80211Header
 (
@@ -1287,7 +1304,7 @@ WLANTL_Translate8023To80211Header
   v_U8_t          *ucWDSEnabled,
   v_U8_t          *extraHeadSpace
 );
-
+#endif
 /*==========================================================================
   FUNCTION    WLANTL_Translate80211To8023Header
 
