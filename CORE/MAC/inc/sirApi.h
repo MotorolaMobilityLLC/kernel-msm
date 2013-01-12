@@ -2783,9 +2783,11 @@ typedef struct sSirRSSINotification
     tANI_U32             bRssiThres2NegCross : 1;
     tANI_U32             bRssiThres3PosCross : 1;
     tANI_U32             bRssiThres3NegCross : 1;
-    tANI_U32             bReserved           : 26;
+    v_S7_t               avgRssi             : 8;
+    tANI_U32             bReserved           : 18;
 #else
-    tANI_U32             bReserved           : 26;
+    tANI_U32             bReserved           : 18;
+    v_S7_t               avgRssi             : 8;
     tANI_U32             bRssiThres3NegCross : 1;
     tANI_U32             bRssiThres3PosCross : 1;
     tANI_U32             bRssiThres2NegCross : 1;

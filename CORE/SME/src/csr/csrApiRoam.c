@@ -8097,7 +8097,7 @@ static void csrRoamRssiIndHdlr(tpAniSirGlobal pMac, void* pMsg)
         if(NULL != pTlRssiInd->tlCallback)
         {
             ((WLANTL_RSSICrossThresholdCBType)(pTlRssiInd->tlCallback))
-            (pTlRssiInd->pAdapter, pTlRssiInd->rssiNotification, pTlRssiInd->pUserCtxt);
+            (pTlRssiInd->pAdapter, pTlRssiInd->rssiNotification, pTlRssiInd->pUserCtxt, pTlRssiInd->avgRssi);
         }
         else
         {
