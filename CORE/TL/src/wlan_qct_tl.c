@@ -226,7 +226,7 @@ int bdPduInterruptGetThreshold = WLANTL_BD_PDU_INTERRUPT_GET_THRESHOLD;
 #define WLANTL_STA_BMU_THRESHOLD_MAX (256)
 
 #define WLANTL_AC_MASK (0x7)
-#define WLANTL_STAID_OFFSET (0x4)
+#define WLANTL_STAID_OFFSET (0x6)
 #endif
 
 /* UINT32 type endian swap */
@@ -7010,7 +7010,7 @@ WLANTL_FwdPktToHDD
       vos_pkt_get_user_data_ptr( vosDataBuff, VOS_PKT_USER_DATA_ID_TL,
                                  (v_PVOID_t *)&STAMetaInfo );
       wRxMetaInfo.ucUP = (v_U8_t)(STAMetaInfo & WLANTL_AC_MASK);
-      ucDesSTAId = ((v_U8_t)STAMetaInfo) >> WLANTL_STAID_OFFSET; 
+      ucDesSTAId = (v_U8_t)((STAMetaInfo) >> WLANTL_STAID_OFFSET); 
        
       vosStatus = vos_pkt_extract_data( vosDataBuff, 0, (v_VOID_t *)pDestMacAddress, &usMacAddSize);
       if ( VOS_STATUS_SUCCESS != vosStatus )
@@ -7125,7 +7125,7 @@ WLANTL_STARxAuth
    WLANTL_RxMetaInfoType    wRxMetaInfo;
    static v_U8_t            ucPMPDUHLen;
 #ifdef WLAN_SOFTAP_FEATURE
-   v_U8_t*                  STAMetaInfoPtr;
+   v_U32_t*                  STAMetaInfoPtr;
 #endif
 #ifdef ANI_CHIPSET_VOLANS
    v_U8_t                   ucEsf=0; /* first subframe of AMSDU flag */
@@ -7337,7 +7337,7 @@ WLANTL_STARxAuth
 #ifdef WLAN_SOFTAP_FEATURE
     if( WLAN_STA_SOFTAP == pTLCb->atlSTAClients[ucSTAId].wSTADesc.wSTAType)
     {
-       STAMetaInfoPtr = (v_U8_t *)(ucTid | (WDA_GET_RX_ADDR3_IDX(aucBDHeader) << WLANTL_STAID_OFFSET));
+       STAMetaInfoPtr = (v_U32_t *)(ucTid | (WDA_GET_RX_ADDR3_IDX(aucBDHeader) << WLANTL_STAID_OFFSET));
        vos_pkt_set_user_data_ptr( vosDataBuff, VOS_PKT_USER_DATA_ID_TL,
                                  (v_PVOID_t)STAMetaInfoPtr);
     }
@@ -7883,7 +7883,7 @@ WLANTL_TxProcessMsg
       }
 
       ucAC = message->bodyval &  WLANTL_AC_MASK;
-      ucSTAId = (v_U8_t)message->bodyval >> WLANTL_STAID_OFFSET;  
+      ucSTAId = (v_U8_t)(message->bodyval >> WLANTL_STAID_OFFSET);  
       pTLCb->atlSTAClients[ucSTAId].aucACMask[ucAC] = 1; 
 
       vos_atomic_set_U8( &pTLCb->atlSTAClients[ucSTAId].ucPktPending, 1);

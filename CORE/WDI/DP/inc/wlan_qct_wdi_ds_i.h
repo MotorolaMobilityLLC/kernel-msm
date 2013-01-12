@@ -118,8 +118,11 @@ WPT_STATIC WPT_INLINE void DTI_TRACE ( DTI_TRACE_LEVEL level, ...) { };
 /* !!! MAX NUM STA is not identified yet, 16 is correct value,
    but need to get from correct common def
    This should be identified ASAP */
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+#define WDI_DS_MAX_STA_ID 38
+#else
 #define WDI_DS_MAX_STA_ID 16
-
+#endif
 /* !!! MAX NUM SUPPORTED BSS is not identified yet, 2 is correct value,
     but need to get from correct common def
    This should be identified ASAP */

@@ -108,7 +108,12 @@ when        who    what, where, why
 /*In prima 12 HW stations are supported including BCAST STA(staId 0)
  and SELF STA(staId 1) so total ASSOC stations which can connect to Prima
  SoftAP = 12 - 1(Self STa) - 1(Bcast Sta) = 10 Stations. */
+ 
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+#define WDI_MAX_SUPPORTED_STAS    38 
+#else
 #define WDI_MAX_SUPPORTED_STAS    12 
+#endif
 #define WDI_MAX_SUPPORTED_BSS     5 
 
 /* Control transport channel size*/

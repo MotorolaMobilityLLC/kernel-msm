@@ -1442,6 +1442,16 @@ typedef enum
 #define CFG_ENABLE_RX_STBC_MAX                   ( 1 )
 #define CFG_ENABLE_RX_STBC_DEFAULT               ( 1 )
 
+/* 
+ * Enable/Disable vsta based on MAX Assoc limit 
+ * defined in WCNSS_qcom_cfg.ini.
+ */
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+#define CFG_VSTA_SUPPORT_ENABLE               "gEnableVSTASupport"
+#define CFG_VSTA_SUPPORT_ENABLE_MIN           ( 0 )
+#define CFG_VSTA_SUPPORT_ENABLE_MAX           ( 1 )
+#define CFG_VSTA_SUPPORT_ENABLE_DEFAULT       ( 0 )
+#endif
 
 #ifdef FEATURE_WLAN_TDLS
 #define CFG_TDLS_SUPPORT_ENABLE               "gEnableTDLSSupport"
@@ -1789,6 +1799,9 @@ typedef struct
    v_BOOL_t                    fEnableTDLSSupport;
 #endif
    v_U32_t                     enableLpwrImgTransition;
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+   v_BOOL_t                    fEnableVSTASupport;
+#endif
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
    v_BOOL_t                    fEnableActiveModeOffload;
 #endif

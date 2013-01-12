@@ -894,6 +894,14 @@ WDI_FillTxBd
             WPAL_TRACE( WPT_WDI_CONTROL_MODULE, WPT_MSG_LEVEL_HIGH, "halDpu_GetSignature() failed for dpuId = %d\n", pBd->dpuDescIdx));
             return VOS_STATUS_E_FAILURE;
         } */
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+       // if this is a Virtual Station then change the DPU Routing Flag so
+       // that the frame will be routed to Firmware for queuing & transmit
+       if (IS_VSTA_IDX(ucStaId))
+       {
+           pBd->dpuRF = BMUWQ_FW_DPU_TX;
+       }
+#endif
 
     } 
     
