@@ -3669,7 +3669,11 @@ WLANTL_GetFrames
 #endif //WLAN_SOFTAP_FLOWCTRL_EN
 #endif //#ifdef WLAN_SOFTAP_FEATURE
 
-    if ( NULL != pTLCb->tlMgmtFrmClient.vosPendingDataBuff )
+    if (( NULL != pTLCb->tlMgmtFrmClient.vosPendingDataBuff )
+#if defined( FEATURE_WLAN_INTEGRATED_SOC )
+        && ( uFlowMask & ( 1 << WDA_TXFLOW_MGMT ) )
+#endif
+       )
     {
       WDA_TLI_PROCESS_FRAME_LEN( pTLCb->tlMgmtFrmClient.vosPendingDataBuff,
                           usPktLen, uResLen, uTotalPktLen);
@@ -3710,11 +3714,7 @@ WLANTL_GetFrames
     }
     else if (( pTLCb->tlBAPClient.vosPendingDataBuff ) &&
              ( WDA_TLI_MIN_RES_BAP <= pTLCb->uResCount ) &&
-             ( 0 == pTLCb->ucTxSuspended )
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
-           && ( uFlowMask & ( 1 << WDA_TXFLOW_BAP ) )
-#endif
-          )
+             ( 0 == pTLCb->ucTxSuspended )          )
     {
       WDA_TLI_PROCESS_FRAME_LEN( pTLCb->tlBAPClient.vosPendingDataBuff,
                           usPktLen, uResLen, uTotalPktLen);
