@@ -670,7 +670,6 @@ tSirRetStatus  pmmSendInitPowerSaveMsg(tpAniSirGlobal pMac,tpPESession psessionE
     if(wlan_cfgGetInt(pMac, WNI_CFG_RSSI_FILTER_PERIOD, &rssiFilterPeriod) != eSIR_SUCCESS)
         pmmLog(pMac, LOGP, FL("pmmCfg: cfgGet failed for Rssi filter period"));
 
-    // This flag can be overridden when 11r/CCXEnabled=1 and FastTransition=1
     if(wlan_cfgGetInt(pMac, WNI_CFG_PS_ENABLE_RSSI_MONITOR, &bRssiFilterEnable) != eSIR_SUCCESS)
         pmmLog(pMac, LOGP, FL("pmmCfg: cfgGet failed for Rssi monitor enable flag"));
     pBmpsParams->bRssiFilterEnable = bRssiFilterEnable;
@@ -685,11 +684,6 @@ tSirRetStatus  pmmSendInitPowerSaveMsg(tpAniSirGlobal pMac,tpPESession psessionE
         {
             if(wlan_cfgGetInt(pMac, WNI_CFG_FT_RSSI_FILTER_PERIOD, &rssiFilterPeriod) != eSIR_SUCCESS)
                 pmmLog(pMac, LOGP, FL("pmmCfg: cfgGet failed for Rssi filter period"));
-            // We need to override the ini value to enable 
-            // FW RSSI Monitoring. Basically if CCX and FT are enabled
-            // then enable FW RSSI Monitoring
-
-            pBmpsParams->bRssiFilterEnable = TRUE;
             break;
         }
     }

@@ -85,7 +85,34 @@ static void cbNotifySetImmediateRoamRssiDiff(hdd_context_t *pHddCtx, unsigned lo
     sme_UpdateImmediateRoamRssiDiff((tHalHandle)(pHddCtx->hHal), 
                                     pHddCtx->cfg_ini->nImmediateRoamRssiDiff);
 }
+
+static void cbNotifySetFastTransitionEnabled(hdd_context_t *pHddCtx, unsigned long NotifyId)
+{
+    sme_UpdateFastTransitionEnabled((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->isFastTransitionEnabled);
+}
 #endif
+
+#ifdef FEATURE_WLAN_LFR
+static void NotifyIsFastRoamIniFeatureEnabled(hdd_context_t *pHddCtx, unsigned long NotifyId)
+{
+    // at the point this routine is called, the value in the cfg_ini table has already been updated
+    sme_UpdateIsFastRoamIniFeatureEnabled((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->isFastRoamIniFeatureEnabled );
+}
+#endif
+
+#ifdef FEATURE_WLAN_CCX
+static void cbNotifySetCcxFeatureEnabled(hdd_context_t *pHddCtx, unsigned long NotifyId)
+{
+    // at the point this routine is called, the value in the cfg_ini table has already been updated
+    sme_UpdateIsCcxFeatureEnabled((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->isCcxIniFeatureEnabled );
+}
+#endif
+
+static void cbNotifySetFwRssiMonitoring(hdd_context_t *pHddCtx, unsigned long NotifyId)
+{
+    // at the point this routine is called, the value in the cfg_ini table has already been updated
+    sme_UpdateConfigFwRssiMonitoring((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->fEnableFwRssiMonitoring );
+}
 
 REG_TABLE_ENTRY g_registry_table[] =
 {
@@ -764,12 +791,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_FW_BEACON_FILTERING_MIN, 
                 CFG_FW_BEACON_FILTERING_MAX ),
 
-   REG_VARIABLE( CFG_FW_RSSI_MONITORING_NAME, WLAN_PARAM_Integer,
+   REG_DYNAMIC_VARIABLE( CFG_FW_RSSI_MONITORING_NAME, WLAN_PARAM_Integer,
                 hdd_config_t, fEnableFwRssiMonitoring, 
                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
                 CFG_FW_RSSI_MONITORING_DEFAULT, 
                 CFG_FW_RSSI_MONITORING_MIN, 
-                CFG_FW_RSSI_MONITORING_MAX ),
+                CFG_FW_RSSI_MONITORING_MAX,
+                cbNotifySetFwRssiMonitoring, 0 ),
 
    REG_VARIABLE( CFG_DATA_INACTIVITY_TIMEOUT_NAME, WLAN_PARAM_Integer,
                 hdd_config_t, nDataInactivityTimeout, 
@@ -876,22 +904,24 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_QOS_WMM_INFRA_INACTIVITY_INTERVAL_DEFAULT, 
                  CFG_QOS_WMM_INFRA_INACTIVITY_INTERVAL_MIN, 
                  CFG_QOS_WMM_INFRA_INACTIVITY_INTERVAL_MAX),
-   REG_VARIABLE( CFG_CCX_FEATURE_ENABLED_NAME, WLAN_PARAM_Integer,
+   REG_DYNAMIC_VARIABLE( CFG_CCX_FEATURE_ENABLED_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, isCcxIniFeatureEnabled, 
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
                  CFG_CCX_FEATURE_ENABLED_DEFAULT, 
                  CFG_CCX_FEATURE_ENABLED_MIN, 
-                 CFG_CCX_FEATURE_ENABLED_MAX),
+                 CFG_CCX_FEATURE_ENABLED_MAX,
+                 cbNotifySetCcxFeatureEnabled, 0 ),
 #endif // FEATURE_WLAN_CCX
 
 #ifdef FEATURE_WLAN_LFR
    // flag to turn ON/OFF Legacy Fast Roaming
-   REG_VARIABLE( CFG_LFR_FEATURE_ENABLED_NAME, WLAN_PARAM_Integer,
+   REG_DYNAMIC_VARIABLE( CFG_LFR_FEATURE_ENABLED_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, isFastRoamIniFeatureEnabled, 
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
                  CFG_LFR_FEATURE_ENABLED_DEFAULT, 
                  CFG_LFR_FEATURE_ENABLED_MIN, 
-                 CFG_LFR_FEATURE_ENABLED_MAX),
+                       CFG_LFR_FEATURE_ENABLED_MAX,
+                       NotifyIsFastRoamIniFeatureEnabled, 0 ),
 #endif // FEATURE_WLAN_LFR
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
@@ -904,12 +934,13 @@ REG_TABLE_ENTRY g_registry_table[] =
 
 
    // flag to turn ON/OFF 11r and CCX FastTransition
-   REG_VARIABLE( CFG_FAST_TRANSITION_ENABLED_NAME, WLAN_PARAM_Integer,
+   REG_DYNAMIC_VARIABLE( CFG_FAST_TRANSITION_ENABLED_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, isFastTransitionEnabled,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
                  CFG_FAST_TRANSITION_ENABLED_NAME_DEFAULT, 
                  CFG_FAST_TRANSITION_ENABLED_NAME_MIN, 
-                 CFG_FAST_TRANSITION_ENABLED_NAME_MAX),
+                 CFG_FAST_TRANSITION_ENABLED_NAME_MAX,
+                 cbNotifySetFastTransitionEnabled, 0 ),
 
    /* Variable to specify the delta/difference between the RSSI of current AP 
     * and roamable AP while roaming */
@@ -2893,6 +2924,18 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
       hddLog(LOGE, "Failure: Could not pass on WNI_CFG_PS_BCN_FILTER configuration info to CCM\n");
    }
 
+#ifdef FEATURE_WLAN_LFR
+   if (pConfig->isFastRoamIniFeatureEnabled)
+   {
+       pConfig->fEnableFwRssiMonitoring = TRUE;
+   }
+#endif
+#ifdef FEATURE_WLAN_CCX
+   if (pConfig->isCcxIniFeatureEnabled)
+   {
+       pConfig->fEnableFwRssiMonitoring = TRUE;
+   }
+#endif
    if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_PS_ENABLE_RSSI_MONITOR, pConfig->fEnableFwRssiMonitoring, 
                     NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
    {
@@ -3329,9 +3372,17 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 #endif
 #ifdef FEATURE_WLAN_LFR
    smeConfig.csrConfig.isFastRoamIniFeatureEnabled = pConfig->isFastRoamIniFeatureEnabled;
+   if( pConfig->isFastRoamIniFeatureEnabled )
+   {
+       pConfig->isFastTransitionEnabled = TRUE;
+   }
 #endif
 #ifdef FEATURE_WLAN_CCX
    smeConfig.csrConfig.isCcxIniFeatureEnabled = pConfig->isCcxIniFeatureEnabled;
+   if( pConfig->isCcxIniFeatureEnabled )
+   {
+       pConfig->isFastTransitionEnabled = TRUE;
+   }
 #endif
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
    smeConfig.csrConfig.isFastTransitionEnabled = pConfig->isFastTransitionEnabled;

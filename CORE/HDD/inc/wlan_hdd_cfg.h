@@ -1643,7 +1643,7 @@ typedef struct
    v_U8_t         nRxAnt;
    v_U8_t         fEnableFwHeartBeatMonitoring;
    v_U8_t         fEnableFwBeaconFiltering;
-   v_U8_t         fEnableFwRssiMonitoring;
+   v_BOOL_t       fEnableFwRssiMonitoring;
    v_U8_t         nDataInactivityTimeout;
    v_U8_t         nthBeaconFilter;
 
