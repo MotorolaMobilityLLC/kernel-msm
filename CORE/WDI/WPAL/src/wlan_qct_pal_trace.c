@@ -276,8 +276,7 @@ void wpalTrace( wpt_moduleid module, wpt_tracelevel level, char *strFormat, ... 
       va_start(val, strFormat);
 
       // print the prefix string into the string buffer...
-      n = snprintf(strBuffer, WPAL_TRACE_BUFFER_SIZE, "wlan: [%d:%d:%2s:%3s] ",
-                   smp_processor_id(),
+      n = snprintf(strBuffer, WPAL_TRACE_BUFFER_SIZE, "wlan: [%d:%2s:%3s] ",
                    in_interrupt() ? 0 : current->pid,
                    (char *) TRACE_LEVEL_STR[ level ],
                    (char *) gTraceInfo[ module ].moduleNameStr);
