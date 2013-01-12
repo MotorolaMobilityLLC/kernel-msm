@@ -5,8 +5,10 @@
 \file         wlan_hdd_tdls.h
 
 \brief       Linux HDD TDLS include file
+
 Copyright (c) 2013 Qualcomm Atheros, Inc. All Rights Reserved.
 Qualcomm Atheros Confidential and Proprietary.
+
 ==========================================================================*/
 
 #define MAX_NUM_TDLS_PEER	4
