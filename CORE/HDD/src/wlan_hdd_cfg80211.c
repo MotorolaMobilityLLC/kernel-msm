@@ -2252,8 +2252,16 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                 hdd_cfg_xlate_to_csr_phy_mode(pConfig->dot11Mode);
                 wdev->iftype = type;
 #ifdef WLAN_FEATURE_P2P
-                pAdapter->device_mode = (type == NL80211_IFTYPE_STATION) ?
+                if (!strcmp("p2p0",ndev->name))
+                {     
+                    pAdapter->device_mode = (type == NL80211_IFTYPE_STATION) ?
+                                WLAN_HDD_P2P_DEVICE : WLAN_HDD_P2P_CLIENT;
+                }
+                else
+                {
+                    pAdapter->device_mode = (type == NL80211_IFTYPE_STATION) ?
                                 WLAN_HDD_INFRA_STATION: WLAN_HDD_P2P_CLIENT;
+                }
 #endif
                 break;
             case NL80211_IFTYPE_ADHOC:
@@ -2390,8 +2398,16 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                 hdd_deinit_adapter( pHddCtx, pAdapter );
                 wdev->iftype = type;
 #ifdef WLAN_FEATURE_P2P
-                pAdapter->device_mode = (type == NL80211_IFTYPE_STATION) ?
+                if (!strcmp("p2p0",ndev->name))
+                {
+                    pAdapter->device_mode = (type == NL80211_IFTYPE_STATION) ?
+                                  WLAN_HDD_P2P_DEVICE : WLAN_HDD_P2P_CLIENT;
+                }
+                else
+                {
+                    pAdapter->device_mode = (type == NL80211_IFTYPE_STATION) ?
                                   WLAN_HDD_INFRA_STATION: WLAN_HDD_P2P_CLIENT;
+                }
 #endif
                 hdd_set_conparam(0);
                 pHddCtx->change_iface = type;
