@@ -1423,13 +1423,13 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
              */
             else
             {
-                if(1 != pHddCtx->is_dynamic_channel_range_set) 
+                if(1 != pHddCtx->is_dynamic_channel_range_set)
                 {
                     hdd_config_t *hdd_pConfig= (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini;
-                    WLANSAP_SetChannelRange(hHal, hdd_pConfig->apStartChannelNum, 
+                    WLANSAP_SetChannelRange(hHal, hdd_pConfig->apStartChannelNum,
                         hdd_pConfig->apEndChannelNum,hdd_pConfig->apOperatingBand);
                 }
-                
+
                 pHddCtx->is_dynamic_channel_range_set = 0;
             }
         }
