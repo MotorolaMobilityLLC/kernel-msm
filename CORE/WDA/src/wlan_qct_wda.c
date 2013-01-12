@@ -143,6 +143,8 @@
 
 #define WDA_MAC_ADDR_ARRAY(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define WDA_MAC_ADDRESS_STR "%02x:%02x:%02x:%02x:%02x:%02x"
+#define WDA_DUMPCMD_WAIT_TIMEOUT 10000
+
 /* extern declarations */
 extern void vos_WDAComplete_cback(v_PVOID_t pVosContext);
 /* forward declarations */
@@ -9087,7 +9089,7 @@ VOS_STATUS WDA_HALDumpCmdReq(tpAniSirGlobal   pMac, tANI_U32  cmd,
    pWdaParams->wdaWdiApiMsgParam = (void *)wdiHALDumpCmdReqParam ;
    /* Send command to WDI */
    status = WDI_HALDumpCmdReq(wdiHALDumpCmdReqParam, WDA_HALDumpCmdCallback, pWdaParams);
-   vStatus = vos_wait_single_event( &(pVosContext->wdaCompleteEvent), 1000 );
+   vStatus = vos_wait_single_event( &(pVosContext->wdaCompleteEvent), WDA_DUMPCMD_WAIT_TIMEOUT );
    if ( vStatus != VOS_STATUS_SUCCESS )
    {
       if ( vStatus == VOS_STATUS_E_TIMEOUT )

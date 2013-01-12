@@ -18998,7 +18998,7 @@ WDI_ProcessHALDumpCmdRsp
 )
 {
   WDI_HALDumpCmdRspCb     wdiHALDumpCmdRspCb;
-  tpHalDumpCmdRspParams   halDumpCmdRspParams;
+  tHalDumpCmdRspParams   halDumpCmdRspParams;
   WDI_HALDumpCmdRspParamsType wdiHALDumpCmdRsp;
 
   /*-------------------------------------------------------------------------
@@ -19019,19 +19019,22 @@ WDI_ProcessHALDumpCmdRsp
   wdiHALDumpCmdRsp.usBufferLen = 0;
   wdiHALDumpCmdRsp.pBuffer = NULL;
 
-  halDumpCmdRspParams = (tHalDumpCmdRspParams *)pEventData->pEventData;
+  wpalMemoryCopy( &halDumpCmdRspParams, 
+                 pEventData->pEventData, 
+                 sizeof(tHalDumpCmdRspParams));
 
   wdiHALDumpCmdRsp.wdiStatus   =
-              WDI_HAL_2_WDI_STATUS(halDumpCmdRspParams->status);
+              WDI_HAL_2_WDI_STATUS(halDumpCmdRspParams.status);
 
   if (( wdiHALDumpCmdRsp.wdiStatus  ==  WDI_STATUS_SUCCESS) &&
-      (halDumpCmdRspParams->rspLength != 0))
+      (halDumpCmdRspParams.rspLength != 0))
   {
       /* Copy the response data */
-      wdiHALDumpCmdRsp.usBufferLen = halDumpCmdRspParams->rspLength;
-      wdiHALDumpCmdRsp.pBuffer = wpalMemoryAllocate(halDumpCmdRspParams->rspLength);
-      wpalMemoryCopy( &halDumpCmdRspParams->rspBuffer,
-                  wdiHALDumpCmdRsp.pBuffer,
+      wdiHALDumpCmdRsp.usBufferLen = halDumpCmdRspParams.rspLength;
+      wdiHALDumpCmdRsp.pBuffer = wpalMemoryAllocate(halDumpCmdRspParams.rspLength);
+
+      wpalMemoryCopy( wdiHALDumpCmdRsp.pBuffer,
+                  &halDumpCmdRspParams.rspBuffer, 
                   sizeof(wdiHALDumpCmdRsp.usBufferLen));
   }
 
