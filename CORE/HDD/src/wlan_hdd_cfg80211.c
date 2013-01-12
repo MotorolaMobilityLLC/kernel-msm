@@ -1315,10 +1315,6 @@ VOS_STATUS wlan_sap_select_cbmode(void *pAdapter,eSapPhyMode SapHw_mode, v_U8_t 
            smeConfig.csrConfig.channelBondingMode5GHz = 
                           PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_HIGH - 1;
         }
-        else
-        {
-           smeConfig.csrConfig.channelBondingMode5GHz=0;
-        }
     }
 #endif
     if ( SapHw_mode == eSAP_DOT11_MODE_11n ||
@@ -1337,10 +1333,6 @@ VOS_STATUS wlan_sap_select_cbmode(void *pAdapter,eSapPhyMode SapHw_mode, v_U8_t 
              channel == 140 || channel == 149 || channel == 157 )
         {
            smeConfig.csrConfig.channelBondingMode5GHz = 2;
-        }
-        else
-        {
-           smeConfig.csrConfig.channelBondingMode5GHz=0;
         }
     }
     pr_info ("cbmode selected=%ld\n",smeConfig.csrConfig.channelBondingMode5GHz);
