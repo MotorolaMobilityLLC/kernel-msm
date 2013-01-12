@@ -21751,6 +21751,9 @@ WDI_CopyWDIStaCtxToHALStaCtx
   {
      phalConfigSta_V1->vhtCapable = pwdiConfigSta->ucVhtCapableSta;
      phalConfigSta_V1->vhtTxChannelWidthSet = pwdiConfigSta->ucVhtTxChannelWidthSet;
+     phalConfigSta_V1->htLdpcEnabled = pwdiConfigSta->ucHtLdpcEnabled;
+     phalConfigSta_V1->vhtLdpcEnabled = pwdiConfigSta->ucVhtLdpcEnabled;
+
   }
 #endif
 }/*WDI_CopyWDIStaCtxToHALStaCtx*/;

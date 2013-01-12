@@ -670,6 +670,10 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         VOS_TRACE(VOS_MODULE_ID_PE,VOS_TRACE_LEVEL_INFO,
             FL("*****psessionEntry->vhtCapability = %d"),psessionEntry->vhtCapability);
 #endif
+
+        psessionEntry->txLdpcIniFeatureEnabled = 
+                                    pSmeStartBssReq->txLdpcIniFeatureEnabled;
+
         palCopyMemory(pMac->hHdd, (void*)&psessionEntry->rateSet,
             (void*)&pSmeStartBssReq->operationalRateSet,
             sizeof(tSirMacRateSet));
@@ -1624,6 +1628,8 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 #ifdef FEATURE_WLAN_LFR
             psessionEntry->isFastRoamIniFeatureEnabled = pSmeJoinReq->isFastRoamIniFeatureEnabled;
 #endif
+            psessionEntry->txLdpcIniFeatureEnabled = pSmeJoinReq->txLdpcIniFeatureEnabled;
+
             if(psessionEntry->bssType == eSIR_INFRASTRUCTURE_MODE)
             {
                 psessionEntry->limSystemRole = eLIM_STA_ROLE;

@@ -620,6 +620,7 @@ typedef struct tagCsrConfig
 #ifdef WLAN_FEATURE_11AC
     tANI_U32  nVhtChannelWidth;
 #endif
+    tANI_U8   txLdpcEnable;
 
 }tCsrConfig;
 

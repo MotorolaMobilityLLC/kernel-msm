@@ -1453,6 +1453,12 @@ mlm_add_sta(
     pSta->maxAmpduSize          = 0; // 0: 8k, 1: 16k,2: 32k,3: 64k
 
 
+    /* For Self STA get the LDPC capability from config.ini*/
+    pSta->htLdpcCapable = 
+                      (psessionEntry->txLdpcIniFeatureEnabled & 0x01);
+    pSta->vhtLdpcCapable = 
+                      ((psessionEntry->txLdpcIniFeatureEnabled >> 1)& 0x01);
+
     if(IS_DOT11_MODE_HT(psessionEntry->dot11mode)) 
     {
         pSta->htCapable         = htCapable;
