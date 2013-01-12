@@ -430,179 +430,169 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
      * - any P2P session is connected
      */
     if ( (csrIsStaSessionConnected(pMac) && (pScanCmd->u.scanCmd.u.scanRequest.p2pSearch != 1)) ||
-         (csrIsP2pSessionConnected(pMac)) )
+            (csrIsP2pSessionConnected(pMac)) )
     {
         tCsrScanRequest scanReq;
         tANI_U8 numChn = pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels;
         tCsrChannelInfo *pChnInfo = &scanReq.ChannelInfo;
         tANI_U8    channelToScan[WNI_CFG_VALID_CHANNEL_LIST_LEN];
-        tANI_U8    i = 0;
         tANI_BOOLEAN bMemAlloc = eANI_BOOLEAN_FALSE;
 
         if (numChn == 0)
         {
 
             numChn = pMac->scan.baseChannels.numChannels;
-             
-             status = palAllocateMemory( pMac->hHdd, (void **)&pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList, numChn );
-             if( !HAL_STATUS_SUCCESS( status ) )
-             {
-                 smsLog( pMac, LOGE, FL(" Failed to get memory for channel list \n") );
-                 return eHAL_STATUS_FAILURE;
-             }
-             bMemAlloc = eANI_BOOLEAN_TRUE;
-             status = palCopyMemory( pMac->hHdd, pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList, 
-                         pMac->scan.baseChannels.channelList, numChn );
-             if( !HAL_STATUS_SUCCESS( status ) )
-             {
-                 palFreeMemory( pMac->hHdd, pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList );
-                 pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList = NULL;
-                 smsLog( pMac, LOGE, FL(" Failed to copy memory to channel list \n") );
-                 return eHAL_STATUS_FAILURE;
-             }
-             pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels = numChn;
-         }
 
-         //Whenever we get a scan request with multiple channels we break it up into 2 requests
-         //First request  for first channel to scan and second request to scan remaining channels
-         for  (i=0; i < 2; i++)
-         {   //go through max 2 iterations. 
-             //Once for using the existing command when number of channels is 1 
-             //Second to go over the remaining channels after creating a new command
-            
-            if (1 == numChn)
+            status = palAllocateMemory( pMac->hHdd, (void **)&pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList, numChn );
+            if( !HAL_STATUS_SUCCESS( status ) )
             {
-                pSendScanCmd = pScanCmd;
-                pSendScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels = 1;
-                //Use concurrency values for min/maxChnTime. 
-                //We know csrIsAnySessionConnected(pMac) returns TRUE here
-                csrSetDefaultScanTiming(pMac, pSendScanCmd->u.scanCmd.u.scanRequest.scanType, &pSendScanCmd->u.scanCmd.u.scanRequest);
-                if (i != 0)
-                { //Callback should be NULL for all except last channel So hdd_callback will be called only after last command
-                  //i!=0 then we came here in second iteration 
-                   pSendScanCmd->u.scanCmd.callback = NULL;
-                }
-                break; //break out of this loop in case there is only 1 channel then no need for 2nd iteration
-            
-            } else { //if number of channels > 1 then
-            
-                palZeroMemory(pMac->hHdd, &scanReq, sizeof(tCsrScanRequest));
+                smsLog( pMac, LOGE, FL(" Failed to get memory for channel list \n") );
+                return eHAL_STATUS_FAILURE;
+            }
+            bMemAlloc = eANI_BOOLEAN_TRUE;
+            status = palCopyMemory( pMac->hHdd, pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList,
+                    pMac->scan.baseChannels.channelList, numChn );
+            if( !HAL_STATUS_SUCCESS( status ) )
+            {
+                palFreeMemory( pMac->hHdd, pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList );
+                pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList = NULL;
+                smsLog( pMac, LOGE, FL(" Failed to copy memory to channel list \n") );
+                return eHAL_STATUS_FAILURE;
+            }
+            pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels = numChn;
+        }
 
-                pQueueScanCmd = csrGetCommandBuffer(pMac); //optimize this to use 2 command buffer only
-                if (!pQueueScanCmd)
+        //Whenever we get a scan request with multiple channels we break it up into 2 requests
+        //First request  for first channel to scan and second request to scan remaining channels
+        if (numChn > pMac->roam.configParam.nNumChanCombinedConc)
+        {
+            palZeroMemory(pMac->hHdd, &scanReq, sizeof(tCsrScanRequest));
+
+            pQueueScanCmd = csrGetCommandBuffer(pMac); //optimize this to use 2 command buffer only
+            if (!pQueueScanCmd)
+            {
+                if (bMemAlloc)
                 {
-                    if (bMemAlloc)
-                    {
-                        palFreeMemory( pMac->hHdd, pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList );
-                        pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList = NULL;
-                 
-                    }
-                    smsLog( pMac, LOGE, FL(" Failed to get Queue command buffer\n") );
-                    return eHAL_STATUS_FAILURE;
+                    palFreeMemory( pMac->hHdd, pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList );
+                    pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList = NULL;
+
                 }
-                pQueueScanCmd->command = pScanCmd->command; 
-                pQueueScanCmd->sessionId = pScanCmd->sessionId;
-                pQueueScanCmd->u.scanCmd.callback = pScanCmd->u.scanCmd.callback;
-                pQueueScanCmd->u.scanCmd.pContext = pScanCmd->u.scanCmd.pContext;
-                pQueueScanCmd->u.scanCmd.reason = pScanCmd->u.scanCmd.reason;
-                pQueueScanCmd->u.scanCmd.scanID = pMac->scan.nextScanID++; //let it wrap around
+                smsLog( pMac, LOGE, FL(" Failed to get Queue command buffer\n") );
+                return eHAL_STATUS_FAILURE;
+            }
+            pQueueScanCmd->command = pScanCmd->command;
+            pQueueScanCmd->sessionId = pScanCmd->sessionId;
+            pQueueScanCmd->u.scanCmd.callback = pScanCmd->u.scanCmd.callback;
+            pQueueScanCmd->u.scanCmd.pContext = pScanCmd->u.scanCmd.pContext;
+            pQueueScanCmd->u.scanCmd.reason = pScanCmd->u.scanCmd.reason;
+            pQueueScanCmd->u.scanCmd.scanID = pMac->scan.nextScanID++; //let it wrap around
 
-                /* First copy all the parameters to local variable of scan request */
-                csrScanCopyRequest(pMac, &scanReq, &pScanCmd->u.scanCmd.u.scanRequest);
+            /* First copy all the parameters to local variable of scan request */
+            csrScanCopyRequest(pMac, &scanReq, &pScanCmd->u.scanCmd.u.scanRequest);
 
-                /* Now modify the elements of local var scan request required to be modified for split scan */
-                if(scanReq.ChannelInfo.ChannelList != NULL)
-                {
-                    palFreeMemory(pMac->hHdd, scanReq.ChannelInfo.ChannelList);
-                    scanReq.ChannelInfo.ChannelList = NULL;
-                }
-                
-                pChnInfo->numOfChannels = pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels - 1;
-
-                VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN, 
-                   FL(" &channelToScan %0x pScanCmd(0x%X) pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList(0x%X)numChn(%d)"),
-                   &channelToScan[0], (unsigned int)pScanCmd, 
-                   (unsigned int)pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList, numChn);
-              
-                palCopyMemory(pMac->hHdd, &channelToScan[0], &pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[1], 
-                              pChnInfo->numOfChannels * sizeof(tANI_U8));
-
-                pChnInfo->ChannelList = &channelToScan[0];
-              
-                scanReq.BSSType = eCSR_BSS_TYPE_ANY;
-                //Modify callers parameters in case of concurrency
-                scanReq.scanType = eSIR_ACTIVE_SCAN;
-                //Use concurrency values for min/maxChnTime. 
-                //We know csrIsAnySessionConnected(pMac) returns TRUE here
-                csrSetDefaultScanTiming(pMac, scanReq.scanType, &scanReq);
-
-                status = csrScanCopyRequest(pMac, &pQueueScanCmd->u.scanCmd.u.scanRequest, &scanReq);
-
-                if(!HAL_STATUS_SUCCESS(status))
-                {
-                    if (bMemAlloc)
-                    {
-                        palFreeMemory( pMac->hHdd, pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList );
-                        pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList = NULL;
-                 
-                    }
-                    if( scanReq.pIEField != NULL)
-                    {
-                        palFreeMemory(pMac->hHdd, scanReq.pIEField);
-                        scanReq.pIEField = NULL;
-                    }
-                    smsLog( pMac, LOGE, FL(" Failed to get copy csrScanRequest = %d\n"), status );
-                    return eHAL_STATUS_FAILURE;
-                }
-                /* Clean the local scan variable */
+            /* Now modify the elements of local var scan request required to be modified for split scan */
+            if(scanReq.ChannelInfo.ChannelList != NULL)
+            {
+                palFreeMemory(pMac->hHdd, scanReq.ChannelInfo.ChannelList);
                 scanReq.ChannelInfo.ChannelList = NULL;
-                scanReq.ChannelInfo.numOfChannels = 0;
-                csrScanFreeRequest(pMac, &scanReq);
-                numChn = 1; //make numChn to be 1 for second iteration to create a send command
-            }  
+            }
 
-         }
+            pChnInfo->numOfChannels = pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels - pMac->roam.configParam.nNumChanCombinedConc;
 
-         fNoCmdPending = csrLLIsListEmpty( &pMac->scan.scanCmdPendingList, LL_ACCESS_LOCK );
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN,
+                    FL(" &channelToScan %0x pScanCmd(0x%X) pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList(0x%X)numChn(%d)"),
+                    &channelToScan[0], (unsigned int)pScanCmd,
+                    (unsigned int)pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList, numChn);
 
-         //Logic Below is as follows
-         // If the scanCmdPendingList is empty then we directly send that command
-         // to smeCommandQueue else we buffer it in our scanCmdPendingList Queue
-         if( fNoCmdPending )
-         {
-            
+            palCopyMemory(pMac->hHdd, &channelToScan[0], &pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[pMac->roam.configParam.nNumChanCombinedConc],
+                    pChnInfo->numOfChannels * sizeof(tANI_U8));
+
+            pChnInfo->ChannelList = &channelToScan[0];
+
+            scanReq.BSSType = eCSR_BSS_TYPE_ANY;
+            //Modify callers parameters in case of concurrency
+            scanReq.scanType = eSIR_ACTIVE_SCAN;
+            //Use concurrency values for min/maxChnTime.
+            //We know csrIsAnySessionConnected(pMac) returns TRUE here
+            csrSetDefaultScanTiming(pMac, scanReq.scanType, &scanReq);
+
+            status = csrScanCopyRequest(pMac, &pQueueScanCmd->u.scanCmd.u.scanRequest, &scanReq);
+
+            if(!HAL_STATUS_SUCCESS(status))
+            {
+                if (bMemAlloc)
+                {
+                    palFreeMemory( pMac->hHdd, pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList );
+                    pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList = NULL;
+
+                }
+                if( scanReq.pIEField != NULL)
+                {
+                    palFreeMemory(pMac->hHdd, scanReq.pIEField);
+                    scanReq.pIEField = NULL;
+                }
+                smsLog( pMac, LOGE, FL(" Failed to get copy csrScanRequest = %d\n"), status );
+                return eHAL_STATUS_FAILURE;
+            }
+            /* Clean the local scan variable */
+            scanReq.ChannelInfo.ChannelList = NULL;
+            scanReq.ChannelInfo.numOfChannels = 0;
+            csrScanFreeRequest(pMac, &scanReq);
+
+            /* setup the command to scan 2 channels */
+            pSendScanCmd = pScanCmd;
+            pSendScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels = pMac->roam.configParam.nNumChanCombinedConc;
+            pSendScanCmd->u.scanCmd.u.scanRequest.BSSType = eCSR_BSS_TYPE_ANY;
+            pSendScanCmd->u.scanCmd.u.scanRequest.scanType = eSIR_ACTIVE_SCAN;
+            //Use concurrency values for min/maxChnTime.
+            //We know csrIsAnySessionConnected(pMac) returns TRUE here
+            csrSetDefaultScanTiming(pMac, pSendScanCmd->u.scanCmd.u.scanRequest.scanType, &pSendScanCmd->u.scanCmd.u.scanRequest);
+            pSendScanCmd->u.scanCmd.callback = NULL;
+        } else {
+            pSendScanCmd = pScanCmd;
+            pSendScanCmd->u.scanCmd.u.scanRequest.BSSType = eCSR_BSS_TYPE_ANY;
+            pSendScanCmd->u.scanCmd.u.scanRequest.scanType = eSIR_ACTIVE_SCAN;
+            //Use concurrency values for min/maxChnTime.
+            //We know csrIsAnySessionConnected(pMac) returns TRUE here
+            csrSetDefaultScanTiming(pMac, pSendScanCmd->u.scanCmd.u.scanRequest.scanType, &pSendScanCmd->u.scanCmd.u.scanRequest);
+        }
+
+        fNoCmdPending = csrLLIsListEmpty( &pMac->scan.scanCmdPendingList, LL_ACCESS_LOCK );
+
+        //Logic Below is as follows
+        // If the scanCmdPendingList is empty then we directly send that command
+        // to smeCommandQueue else we buffer it in our scanCmdPendingList Queue
+        if( fNoCmdPending )
+        {
             if (pQueueScanCmd != NULL)
             {            
-              csrLLInsertTail( &pMac->scan.scanCmdPendingList, &pQueueScanCmd->Link, LL_ACCESS_LOCK );
+                csrLLInsertTail( &pMac->scan.scanCmdPendingList, &pQueueScanCmd->Link, LL_ACCESS_LOCK );
             }
 
             if (pSendScanCmd != NULL)
             {            
                 return csrQueueSmeCommand(pMac, pSendScanCmd, eANI_BOOLEAN_FALSE);
             }
-         }
-         else
-         {           
+        }
+        else
+        {
             if (pSendScanCmd != NULL)
             {
                 csrLLInsertTail( &pMac->scan.scanCmdPendingList, &pSendScanCmd->Link, LL_ACCESS_LOCK );
             }
+
             if (pQueueScanCmd != NULL)
             {
                 csrLLInsertTail( &pMac->scan.scanCmdPendingList, &pQueueScanCmd->Link, LL_ACCESS_LOCK );
             }
-         }
-
+        }
     }
     else
     {  //No concurrency case
         return csrQueueSmeCommand(pMac, pScanCmd, eANI_BOOLEAN_FALSE);
     }
-    
-
 
     return ( status );
-
 }
 #endif
 
@@ -5545,7 +5535,7 @@ static void csrStaApConcTimerHandler(void *pv)
         tCsrScanRequest scanReq;
         tSmeCmd *pSendScanCmd = NULL;
         tANI_U8 numChn = 0;
-        tANI_U8 i;
+        tANI_U8 i, j;
         tCsrChannelInfo *pChnInfo = &scanReq.ChannelInfo;
         tANI_U8    channelToScan[WNI_CFG_VALID_CHANNEL_LIST_LEN];
         eHalStatus status;
@@ -5563,7 +5553,7 @@ static void csrStaApConcTimerHandler(void *pv)
          * - STA session is connected and the scan is not a P2P search
          * - any P2P session is connected
          */
-        if ( (numChn > 1) &&
+        if ( (numChn > pMac->roam.configParam.nNumChanCombinedConc) &&
              ((csrIsStaSessionConnected(pMac) && (pScanCmd->u.scanCmd.u.scanRequest.p2pSearch != 1)) ||
               (csrIsP2pSessionConnected(pMac))))
         {
@@ -5593,18 +5583,18 @@ static void csrStaApConcTimerHandler(void *pv)
                  scanReq.ChannelInfo.ChannelList = NULL;
              }
              
-             pChnInfo->numOfChannels = 1;
-             palCopyMemory(pMac->hHdd, &channelToScan[0], &pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[0], 
-                          1 * sizeof(tANI_U8)); //just send one channel
+             pChnInfo->numOfChannels = pMac->roam.configParam.nNumChanCombinedConc;
+             palCopyMemory(pMac->hHdd, &channelToScan[0], &pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[0],
+                     pChnInfo->numOfChannels * sizeof(tANI_U8)); //just send one channel
              pChnInfo->ChannelList = &channelToScan[0];
 
-             for (i = 0; i <= (numChn-2); i++)
+             for (i = 0, j = pMac->roam.configParam.nNumChanCombinedConc; i < (numChn-pMac->roam.configParam.nNumChanCombinedConc); i++, j++)
              {
                  pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[i] = 
-                 pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[i+1]; //Move all the channels one step
+                 pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.ChannelList[j]; //Move all the channels one step
              }
           
-             pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels = numChn -1; //reduce outstanding # of channels to be scanned
+             pScanCmd->u.scanCmd.u.scanRequest.ChannelInfo.numOfChannels = numChn - pMac->roam.configParam.nNumChanCombinedConc; //reduce outstanding # of channels to be scanned
 
              scanReq.BSSType = eCSR_BSS_TYPE_ANY;
              //Modify callers parameters in case of concurrency
