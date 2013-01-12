@@ -654,7 +654,8 @@ VOS_STATUS
 WDA_DS_FinishULA
 (
  void (*callbackRoutine) (void *callbackContext),
- void  *callbackContext
+ void  *callbackContext,
+ v_U8_t staId
 )
 {
   vos_msg_t                    sMessage;
@@ -666,6 +667,7 @@ WDA_DS_FinishULA
 
   vos_mem_zero( &sMessage, sizeof(vos_msg_t) );
 
+  sMessage.reserved = staId;
   sMessage.bodyval  = (v_U32_t)callbackContext;
   sMessage.bodyptr  = callbackRoutine;
   sMessage.type     = WDA_DS_FINISH_ULA;

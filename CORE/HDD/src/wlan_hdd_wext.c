@@ -827,7 +827,8 @@ VOS_STATUS wlan_hdd_check_ula_done(hdd_adapter_t *pAdapter)
         /*To avoid race condition between the set key and the last EAPOL
           packet, notify TL to finish upper layer authentication incase if the
           last EAPOL packet pending in the TL queue.*/
-        vos_status = WLANTL_Finish_ULA(wlan_hdd_ula_done_cb,pAdapter);
+        vos_status = WLANTL_Finish_ULA(wlan_hdd_ula_done_cb,pAdapter,
+                                       pHddStaCtx->conn_info.staId[0]);
 
         if ( vos_status != VOS_STATUS_SUCCESS )
         {
