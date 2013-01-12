@@ -61,6 +61,8 @@
 #include "wlan_qct_os_timer.h"
 
 
+typedef VOS_TIMER_STATE WPAL_TIMER_STATE;
+
 typedef void (*wpal_timer_callback)(void *pUserData);
 
 typedef struct
@@ -116,9 +118,17 @@ wpt_status wpalTimerStop(wpt_timer * pTimer);
     pTimer - a pointer to caller allocated wpt_timer object
 
     return
-        VOS_TIMER_STATE
+        WPAL_TIMER_STATE
 ---------------------------------------------------------------------------*/
-VOS_TIMER_STATE wpalTimerGetCurStatus(wpt_timer * pTimer);
+WPAL_TIMER_STATE wpalTimerGetCurStatus(wpt_timer * pTimer);
+
+/*---------------------------------------------------------------------------
+    wpalGetSystemTime - Get the system time in milliseconds
+
+    return
+        current time in milliseconds
+---------------------------------------------------------------------------*/
+wpt_uint32 wpalGetSystemTime(void);
 
 /*---------------------------------------------------------------------------
     wpalSleep - sleep for a specified interval

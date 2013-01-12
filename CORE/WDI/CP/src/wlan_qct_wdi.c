@@ -83,7 +83,6 @@
 /*----------------------------------------------------------------------------
  * Include Files
  * -------------------------------------------------------------------------*/
-#include <vos_trace.h>
 #include "wlan_qct_wdi.h"
 #include "wlan_qct_wdi_i.h"
 #include "wlan_qct_wdi_sta.h"
@@ -19436,7 +19435,7 @@ WDI_SendMsg
                   "response %s (%d)",
                   WDI_getRespMsgString(pWDICtx->wdiExpectedResponse),
                   pWDICtx->wdiExpectedResponse);
-       VOS_ASSERT(0);
+       WDI_ASSERT(0);
      }
    }
 
@@ -19465,7 +19464,7 @@ WDI_SendMsg
    wpalTimerStart(&pWDICtx->wptResponseTimer, WDI_RESPONSE_TIMEOUT);
 
    /*cache current timestamp for debugging */
-   pWDICtx->uTimeStampRspTmrStart = vos_timer_get_system_time();
+   pWDICtx->uTimeStampRspTmrStart = wpalGetSystemTime();
   }
   else
   {
@@ -19625,7 +19624,7 @@ WDI_ResponseTimerCB
   }
 
   /*cache current timestamp for debugging */
-  pWDICtx->uTimeStampRspTmrExp = vos_timer_get_system_time();
+  pWDICtx->uTimeStampRspTmrExp = wpalGetSystemTime();
 
   /* If response timer is running at this time that means this timer
    * event is not for the last request but rather last-to-last request and
