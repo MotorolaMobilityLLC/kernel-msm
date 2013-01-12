@@ -590,6 +590,7 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
         {
             tANI_U16 sessionId;
             pMac->sys.gSysEnableLinkMonitorMode = 1;
+            PELOGE(limLog(pMac, LOGE, "Reactivating heartbeat link monitoring\n");)
             for(sessionId = 0; sessionId < pMac->lim.maxBssId; sessionId++)
             {
                 if( (pMac->lim.gpSession[sessionId].valid )&&
@@ -597,10 +598,18 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
                     ( pMac->pmm.gPmmState != ePMM_STATE_BMPS_SLEEP) &&
                     (!IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
                 {
+                    PELOG2(limLog(pMac, LOG2, "HB link monitoring reactivated"
+                           " for session=%d", sessionId);)
                     limReactivateHeartBeatTimer(pMac, &pMac->lim.gpSession[sessionId]);
                 }
+                else if ( pMac->lim.gpSession[sessionId].valid )
+                {
+                    PELOG2(limLog(pMac, LOG2, "HB link monitoring not reactivated-"
+                           "session=%d, limMlmState=%d, gPmmState=%d", 
+                           sessionId, pMac->lim.gpSession[sessionId].limMlmState,
+                           pMac->pmm.gPmmState);)
+                }
             }
-            PELOGE(limLog(pMac, LOGE, "Reactivating heartbeat link monitoring\n");)
         }        
     case WNI_CFG_MAX_PS_POLL:
     case WNI_CFG_NUM_BEACON_PER_RSSI_AVERAGE:
