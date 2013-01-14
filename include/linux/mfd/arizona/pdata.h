@@ -92,6 +92,9 @@ struct arizona_pdata {
 	/** Regulator configuration for LDO1 */
 	struct regulator_init_data *ldo1;
 
+	/** Time for control bus to stabalise (ms) */
+	int control_init_time;
+
 	/** If a direct 32kHz clock is provided on an MCLK specify it here */
 	int clk32k_src;
 

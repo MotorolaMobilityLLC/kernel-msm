@@ -231,6 +231,9 @@ static int arizona_runtime_resume(struct device *dev)
 		return ret;
 	}
 
+	if (arizona->pdata.control_init_time)
+		msleep(arizona->pdata.control_init_time);
+
 	regcache_cache_only(arizona->regmap, false);
 
 	ret = arizona_wait_for_boot(arizona);
@@ -382,6 +385,9 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 		dev_err(dev, "Failed to enable DCVDD: %d\n", ret);
 		goto err_enable;
 	}
+
+	if (arizona->pdata.control_init_time)
+		msleep(arizona->pdata.control_init_time);
 
 	if (arizona->pdata.reset) {
 		/* Start out with /RESET low to put the chip into reset */
