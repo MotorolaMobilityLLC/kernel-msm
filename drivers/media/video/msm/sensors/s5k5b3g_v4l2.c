@@ -27,7 +27,6 @@ static struct msm_sensor_ctrl_t s5k5b3g_s_ctrl;
 
 static struct regulator *cam_vdig;
 static struct regulator *cam_vio;
-static struct regulator *cam_mipi_mux;
 
 static struct msm_cam_clk_info cam_mot_8960_clk_info[] = {
 	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
@@ -316,30 +315,38 @@ static int32_t s5k5b3g_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	struct device *dev = &s_ctrl->sensor_i2c_client->client->dev;
 	struct msm_camera_sensor_info *info = s_ctrl->sensordata;
 
-	pr_debug("s5k5b3g_power_up\n");
-
 	if (!info->oem_data) {
-		pr_err("s5k5b3g: oem data NULL in sensor info, aborting");
+		pr_err("%s: oem data NULL in sensor info, aborting", __func__);
 		rc = -EINVAL;
 		goto power_up_done;
 	}
 
+	pr_debug("%s: R: %d, A: %d D: %d D_On %d\n",
+			__func__,
+			info->sensor_reset,
+			info->oem_data->sensor_avdd_en,
+			info->oem_data->sensor_dig_en,
+			info->oem_data->sensor_vdig_on_always);
+
 	/* Request gpios */
 	rc = gpio_request(info->oem_data->sensor_avdd_en, "s5k5b3g");
 	if (rc < 0) {
-		pr_err("s5k5b3g: gpio request sensor_avdd_en failed (%d)\n", rc);
+		pr_err("%s: gpio request sensor_avdd_en failed (%d)\n",
+				__func__, rc);
 		goto power_up_done;
 	}
 
 	rc = gpio_request(info->sensor_reset, "s5k5b3g");
 	if (rc < 0) {
-		pr_err("s5k5b3g: gpio request sensor_reset failed (%d)\n", rc);
+		pr_err("%s: gpio request sensor_reset failed (%d)\n",
+				__func__, rc);
 		goto abort0;
 	}
 
 	rc = gpio_request(info->oem_data->sensor_dig_en, "s5k5b3g");
 	if (rc < 0) {
-		pr_err("s5k5b3g: gpio request sensor_dig_en failed (%d)\n", rc);
+		pr_err("%s: gpio request sensor_dig_en failed (%d)\n",
+				__func__, rc);
 		goto abort1;
 	}
 
@@ -351,13 +358,14 @@ static int32_t s5k5b3g_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	if (rc < 0)
 		goto abort2;
 
-	rc = s5k5b3g_regulator_on(&cam_vdig, dev, "cam_vdig", 1200000);
-	if (rc < 0)
-		goto abort2;
-
-	/* Not every board will use this so if devtree doesn't define it just
-	   ignore the error and move on */
-	rc = s5k5b3g_regulator_on(&cam_mipi_mux, dev, "cam_mipi_mux", 2800000);
+	if (info->oem_data->sensor_vdig_on_always == 0) {
+		rc = s5k5b3g_regulator_on(&cam_vdig, dev, "cam_vdig", 1200000);
+		if (rc < 0) {
+			pr_err("%s: cam_vdig is unable to turn on (%d)\n",
+					__func__, rc);
+			goto abort2;
+		}
+	}
 
 	/* Wait for core supplies to power up */
 	usleep_range(10000, 15000);
@@ -370,7 +378,8 @@ static int32_t s5k5b3g_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	rc = msm_cam_clk_enable(dev, cam_mot_8960_clk_info,
 			s_ctrl->cam_clk, ARRAY_SIZE(cam_mot_8960_clk_info), 1);
 	if (rc < 0) {
-		pr_err("s5k5b3g: msm_cam_clk_enable failed (%d)\n", rc);
+		pr_err("%s: msm_cam_clk_enable failed (%d)\n",
+				__func__, rc);
 		goto abort2;
 	}
 
@@ -383,7 +392,6 @@ static int32_t s5k5b3g_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	goto power_up_done;
 
-
 	/* Cleanup, ignore errors during abort */
 abort2:
 	gpio_free(info->oem_data->sensor_dig_en);
@@ -393,8 +401,9 @@ abort0:
 	gpio_free(info->oem_data->sensor_avdd_en);
 
 	s5k5b3g_regulator_off(&cam_vio, NULL);
-	s5k5b3g_regulator_off(&cam_vdig, NULL);
-	s5k5b3g_regulator_off(&cam_mipi_mux, NULL);
+
+	if (info->oem_data->sensor_vdig_on_always == 0)
+		s5k5b3g_regulator_off(&cam_vdig, NULL);
 
 power_up_done:
 	return rc;
@@ -407,7 +416,7 @@ static int32_t s5k5b3g_power_down(
 	struct device *dev = &s_ctrl->sensor_i2c_client->client->dev;
 	struct msm_camera_sensor_info *info = s_ctrl->sensordata;
 
-	pr_debug("s5k5b3g_power_down\n");
+	pr_debug("%s\n", __func__);
 
 	/*Set Reset Low*/
 	gpio_direction_output(info->sensor_reset, 0);
@@ -421,22 +430,24 @@ static int32_t s5k5b3g_power_down(
 
 	/* Disable supplies */
 
-	/* Not every board needs this so ignore error */
-	s5k5b3g_regulator_off(&cam_mipi_mux, NULL);
-
-	rc = s5k5b3g_regulator_off(&cam_vdig, "cam_vdig");
-	if (rc < 0)
-		pr_err("s5k5b3g: regulator off for cam_vdig failed (%d)\n", rc);
+	if (info->oem_data->sensor_vdig_on_always == 0) {
+		rc = s5k5b3g_regulator_off(&cam_vdig, "cam_vdig");
+		if (rc < 0)
+			pr_err("%s: regulator off for cam_vdig failed (%d)\n",
+					__func__, rc);
+	}
 
 	rc = s5k5b3g_regulator_off(&cam_vio, "cam_vio");
 	if (rc < 0)
-		pr_err("s5k5b3g: regulator off for cam_vio failed (%d)\n", rc);
+		pr_err("%s: regulator off for cam_vio failed (%d)\n",
+				__func__, rc);
 
 	/*Disable MCLK*/
 	rc = msm_cam_clk_enable(dev, cam_mot_8960_clk_info, s_ctrl->cam_clk,
 			ARRAY_SIZE(cam_mot_8960_clk_info), 0);
 	if (rc < 0)
-		pr_err("s5k5b3g: msm_cam_clk_enable failed (%d)\n", rc);
+		pr_err("%s: msm_cam_clk_enable failed (%d)\n",
+				__func__, rc);
 
 	/*Clean up*/
 	gpio_free(info->oem_data->sensor_avdd_en);

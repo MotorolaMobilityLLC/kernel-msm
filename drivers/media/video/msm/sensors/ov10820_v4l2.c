@@ -27,6 +27,7 @@
 
 static struct regulator *cam_vdig;
 static struct regulator *cam_mipi_mux;
+static struct regulator *cam_dvdd;
 
 DEFINE_MUTEX(ov10820_mut);
 static struct msm_sensor_ctrl_t ov10820_s_ctrl;
@@ -399,11 +400,12 @@ static int32_t ov10820_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		goto power_up_done;
 	}
 
-	pr_debug("%s: R: %d, P: %d D: %d\n",
+	pr_debug("%s: R: %d, P: %d D: %d DVDD %d\n",
 			__func__,
 			info->sensor_reset,
 			info->sensor_pwd,
-			info->oem_data->sensor_dig_en);
+			info->oem_data->sensor_dig_en,
+			info->oem_data->sensor_using_separate_dvdd);
 
 	/* Request gpios */
 	rc = gpio_request(info->sensor_pwd, "ov10820");
@@ -427,13 +429,22 @@ static int32_t ov10820_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		goto abort2;
 	}
 
-	rc = ov10820_regulator_on(&cam_vdig, dev, "cam_vdig", 1200000);
-	if (rc < 0)
-		goto abort2;
+	if (info->oem_data->sensor_using_separate_dvdd) {
+		rc = ov10820_regulator_on(&cam_dvdd, dev, "cam_dvdd", 0);
+		if (rc < 0) {
+			pr_err("%s: cam_dvdd was unable to be turned on (%d)\n",
+					__func__, rc);
+			goto abort2;
+		}
+	} else {
+		rc = ov10820_regulator_on(&cam_vdig, dev, "cam_vdig", 1200000);
+		if (rc < 0)
+			goto abort2;
 
-	/* Set PWDN to low for power up */
-	gpio_direction_output(info->sensor_pwd, 0);
-	usleep(500);
+		/* Set PWDN to low for power up */
+		gpio_direction_output(info->sensor_pwd, 0);
+		usleep(500);
+	}
 
 	/* This regulator is not for mipi but to enable AF supply */
 	rc = ov10820_regulator_on(&cam_mipi_mux, dev, "cam_mipi_mux", 2800000);
@@ -481,7 +492,11 @@ abort1:
 abort0:
 	gpio_free(info->sensor_pwd);
 
-	ov10820_regulator_off(&cam_vdig, NULL);
+	if (info->oem_data->sensor_using_separate_dvdd)
+		ov10820_regulator_off(&cam_dvdd, NULL);
+	else
+		ov10820_regulator_off(&cam_vdig, NULL);
+
 	ov10820_regulator_off(&cam_mipi_mux, NULL);
 power_up_done:
 	return rc;
@@ -511,17 +526,16 @@ static int32_t ov10820_power_down(
 	gpio_direction_output(info->oem_data->sensor_dig_en, 0);
 	usleep(500);
 
+	if (info->oem_data->sensor_using_separate_dvdd)
+		ov10820_regulator_off(&cam_dvdd, "cam_dvdd");
+	else
+		ov10820_regulator_off(&cam_vdig, "cam_vdig");
+
 	/* Turn off AF regulator supply */
 	ov10820_regulator_off(&cam_mipi_mux, NULL);
 
 	/*Set pwd low*/
 	gpio_direction_output(info->sensor_pwd, 0);
-
-	/* Turn off vdig */
-	rc = ov10820_regulator_off(&cam_vdig, "cam_vdig");
-	if (rc < 0)
-		pr_err("%s: regulator off for cam_vdig failed (%d)\n",
-				__func__, rc);
 
 	/*Clean up*/
 	gpio_free(info->sensor_pwd);
