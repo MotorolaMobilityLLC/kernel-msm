@@ -6,6 +6,22 @@
 /include/ "msm8960-motref-pinmux.dtsi"
 
 / {
+	/* GSBI3 - I2C */
+	i2c@16200000 {
+		status = "okay";
+
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <24000000>;
+	};
+
+	/* GSBI4 - I2C */
+	i2c@16300000 {
+		status = "okay";
+
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <24000000>;
+	};
+
 	/* GSBI5 - UART */
 	serial@16440000 {
 		status = "okay";
@@ -14,6 +30,22 @@
 
 		qcom,msm-hs-dm-tx-chan = <8>;
 		qcom,msm-hs-dm-rx-chan = <7>;
+	};
+
+	/* GSBI10 - I2C */
+	i2c@1a200000 {
+		status = "okay";
+
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <24000000>;
+	};
+
+	/* GSBI12 - I2C */
+	i2c@12480000 {
+		status = "okay";
+
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <24000000>;
 	};
 
 	qcom,msm-pm8921-gpios {
