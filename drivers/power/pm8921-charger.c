@@ -288,6 +288,8 @@ struct pm8921_chg_chip {
 	int				eoc_check_soc;
 	int 				factory_mode;
 	int				meter_lock;
+	struct power_supply		*wl_psy;
+	char				*wl_name;
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	unsigned int			step_charge_current;
 	unsigned int			step_charge_voltage;
@@ -1394,6 +1396,19 @@ static char *pm_power_supplied_to[] = {
 	"battery",
 };
 
+static void get_wl_psy(void)
+{
+	/* Check if called before init */
+	if (!the_chip)
+		return;
+
+	if (!the_chip->wl_psy && the_chip->wl_name)
+		the_chip->wl_psy = power_supply_get_by_name(the_chip->wl_name);
+
+	if (!the_chip->wl_psy)
+		pr_err_once("%s PSY Not Found\n", the_chip->wl_name);
+}
+
 #define USB_WALL_THRESHOLD_MA	500
 static int pm_power_get_property_mains(struct power_supply *psy,
 				  enum power_supply_property psp,
@@ -1407,6 +1422,8 @@ static int pm_power_get_property_mains(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PRESENT:
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = 0;
+
+		get_wl_psy();
 
 		if (the_chip->has_dc_supply) {
 			val->intval = 1;
@@ -1429,6 +1446,17 @@ static int pm_power_get_property_mains(struct power_supply *psy,
 
 		if (the_chip->dc_present) {
 			val->intval = 1;
+			if (the_chip->wl_psy) {
+				union power_supply_propval ret = {0,};
+				struct power_supply *psy = the_chip->wl_psy;
+
+				if (psy->get_property &&
+				    !psy->get_property(psy,
+						       POWER_SUPPLY_PROP_ONLINE,
+						       &ret))
+					if (ret.intval)
+						val->intval = 0;
+			}
 			return 0;
 		}
 
@@ -3402,6 +3430,8 @@ static void update_heartbeat(struct work_struct *work)
 	int fcc;
 	int seconds = 0;
 #endif
+
+	get_wl_psy();
 
 	pm_chg_failed_clear(chip, 1);
 
@@ -5613,6 +5643,7 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	chip->thermal_levels = pdata->thermal_levels;
 	chip->factory_mode = pdata->factory_mode;
 	chip->meter_lock = pdata->meter_lock;
+	chip->wl_name = pdata->wl_name;
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	chip->hot_temp_dc = pdata->hot_temp * 10;
 	chip->hot_temp_offset_dc = pdata->hot_temp_offset * 10;
@@ -5742,6 +5773,8 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, chip);
 	the_chip = chip;
+
+	get_wl_psy();
 
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	if (!chip->factory_mode) {
