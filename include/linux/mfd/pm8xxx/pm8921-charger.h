@@ -264,6 +264,7 @@ struct pm8921_charger_platform_data {
 	int				eoc_check_soc;
 	int				factory_mode;
 	int				meter_lock;
+	char				*wl_name;
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	int64_t (*get_batt_info) (int64_t battery_id,
 				  struct pm8921_charger_battery_data *data);
