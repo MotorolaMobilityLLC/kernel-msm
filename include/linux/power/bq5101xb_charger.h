@@ -21,7 +21,7 @@
 #define __LINUX_POWER_BQ5101XB_CHARGER_H__
 
 #define BQ5101XB_DRV_NAME "bq5101xb-charger"
-
+#define BQ5101XB_PSY_NAME "wireless"
 
 enum bq5101xb_charger_priority {
 	BQ5101XB_WIRELESS = 0,

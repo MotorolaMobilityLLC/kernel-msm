@@ -28,7 +28,6 @@
 
 #define BQ5101XB_TEMP_HYS 2
 #define BQ5101XB_CHRG_CMPLT_SOC 100
-#define BQ5101XB_PSY_NAME "wireless"
 
 struct bq5101xb_chip {
 	struct device *dev;
