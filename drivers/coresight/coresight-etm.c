@@ -2045,6 +2045,11 @@ static int __devinit etm_probe(struct platform_device *pdev)
 		pdev->dev.platform_data = pdata;
 	}
 
+#ifdef CONFIG_SMP
+	if (count >= setup_max_cpus)
+		return -ENODEV;
+#endif
+
 	drvdata = devm_kzalloc(dev, sizeof(*drvdata), GFP_KERNEL);
 	if (!drvdata)
 		return -ENOMEM;
