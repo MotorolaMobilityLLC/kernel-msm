@@ -1177,6 +1177,7 @@ static struct pm8921_charger_platform_data pm8921_chg_pdata __devinitdata = {
 	.rconn_mohm		= 18,
 	.factory_mode		= 0,
 	.meter_lock		= 0,
+	.wl_name		= BQ5101XB_PSY_NAME,
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	.get_batt_info		= read_mmi_battery_chrg,
 	.temp_range_cb		= temp_range_check,
