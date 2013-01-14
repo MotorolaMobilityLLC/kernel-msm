@@ -210,6 +210,7 @@ obj-y	+= davinci/
 
 obj-$(CONFIG_MSM_CAMERA) += msm/
 obj-$(CONFIG_ARCH_OMAP)	+= omap/
+obj-$(CONFIG_MSM_VIDC) += msm_vidc/
 
 ccflags-y += -I$(srctree)/drivers/media/dvb/dvb-core
 ccflags-y += -I$(srctree)/drivers/media/dvb/frontends
