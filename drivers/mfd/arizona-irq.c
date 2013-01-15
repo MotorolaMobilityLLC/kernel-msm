@@ -68,9 +68,9 @@ int arizona_set_irq_wake(struct arizona *arizona, int irq, int on)
 
 	if (on) {
 		val = 0xffff;
-		irq_set_irq_rate(arizona->irq, 1);
+		irq_set_irq_wake(arizona->irq, 1);
 	} else {
-		irq_set_irq_rate(arizona->irq, 0);
+		irq_set_irq_wake(arizona->irq, 0);
 	}
 
 	switch (irq) {
