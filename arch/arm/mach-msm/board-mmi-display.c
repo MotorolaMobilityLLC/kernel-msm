@@ -361,8 +361,9 @@ static void __init load_disp_regs_info_from_dt(struct device_node *node)
 				ZERO_IF_NEG(load_disp_value(node, prop_name));
 
 		snprintf(prop_name, len, "reg_gpio_name_%d", i);
-		of_property_read_string(node, prop_name, &temp);
-		strlcpy(en_gpio->gpio_name, temp, sizeof(en_gpio->gpio_name));
+		if (!of_property_read_string(node, prop_name, &temp))
+			strlcpy(en_gpio->gpio_name, temp,
+				sizeof(en_gpio->gpio_name));
 
 		snprintf(prop_name, len, "reg_gpio_en_type_%d", i);
 		en_gpio->type = load_disp_value(node, prop_name);
