@@ -394,12 +394,12 @@
 				/*
 				 * Function    : Normal
 				 * Direction   : Input
-				 * Pull        : PullDown
+				 * Pull        : None
 				 * VIN Select  : L17
 				 */
 				qcom,pm8xxx-gpio-func = <0>;
 				qcom,pm8xxx-gpio-direction = <2>;
-				qcom,pm8xxx-gpio-pull = <4>;
+				qcom,pm8xxx-gpio-pull = <5>;
 				qcom,pm8xxx-gpio-vin-sel = <6>;
 			};
 
