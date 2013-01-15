@@ -231,8 +231,9 @@ static int arizona_hpdet_read(struct arizona_extcon_info *info)
 		if (range < ARRAY_SIZE(arizona_hpdet_b_ranges) - 1 &&
 		    (val < 100 || val > 0x3fb)) {
 			range++;
-			dev_dbg(arizona->dev, "Moving to HPDET range %d\n",
-				range);
+			dev_dbg(arizona->dev,
+				"Moving to HPDET range %d (%x)\n",
+				range, val);
 			regmap_update_bits(arizona->regmap,
 					   ARIZONA_HEADPHONE_DETECT_1,
 					   ARIZONA_HP_IMPEDANCE_RANGE_MASK,
@@ -243,7 +244,8 @@ static int arizona_hpdet_read(struct arizona_extcon_info *info)
 
 		/* If we go out of range report top of range */
 		if (val < 100 || val > 0x3fb) {
-			dev_dbg(arizona->dev, "Measurement out of range\n");
+			dev_dbg(arizona->dev, "Measurement out of range: %x\n",
+				val);
 			return 10000;
 		}
 
