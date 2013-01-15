@@ -652,6 +652,7 @@ VOS_STATUS hdd_softap_init_tx_rx_sta( hdd_adapter_t *pAdapter, v_U8_t STAId, v_M
    }
 
    pAdapter->aStaInfo[STAId].isUsed = TRUE;
+   pAdapter->aStaInfo[STAId].isDeauthInProgress = FALSE;
    vos_copy_macaddr( &pAdapter->aStaInfo[STAId].macAddrSTA, pmacAddrSTA);
 
    spin_unlock_bh( &pAdapter->staInfo_lock );
@@ -690,6 +691,7 @@ VOS_STATUS hdd_softap_deinit_tx_rx_sta ( hdd_adapter_t *pAdapter, v_U8_t STAId )
    status = hdd_softap_flush_tx_queues_sta(pAdapter, STAId);
 
    pAdapter->aStaInfo[STAId].isUsed = FALSE;
+   pAdapter->aStaInfo[STAId].isDeauthInProgress = FALSE;
 
    /* if this STA had any of its WMM TX queues suspended, then the
       associated queue on the network interface was disabled.  check

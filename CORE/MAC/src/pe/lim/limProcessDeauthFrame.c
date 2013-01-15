@@ -133,6 +133,15 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
         limMlmStateStr(psessionEntry->limMlmState), reasonCode);
     limPrintMacAddr(pMac, pHdr->sa, LOGE);)
       
+    if (limCheckDisassocDeauthAckPending(pMac, (tANI_U8*)pHdr->sa))
+    {
+        PELOGW(limLog(pMac, LOGE, 
+                    FL("Ignore the Deauth received, while waiting for ack of disassoc/deauth\n"));)
+        limCleanUpDisassocDeauthReq(pMac,(tANI_U8*)pHdr->sa, 1);
+        return;
+    }
+
+  
     if ( (psessionEntry->limSystemRole == eLIM_AP_ROLE )||(psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE) )
     {
         switch (reasonCode)
