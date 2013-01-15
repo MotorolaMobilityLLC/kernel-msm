@@ -106,6 +106,11 @@
 #define CFG_11D_SUPPORT_ENABLED_MAX            WNI_CFG_11D_ENABLED_STAMAX 
 #define CFG_11D_SUPPORT_ENABLED_DEFAULT        WNI_CFG_11D_ENABLED_STADEF    // Default is ON 
 
+#define CFG_11H_SUPPORT_ENABLED_NAME           "g11hSupportEnabled"
+#define CFG_11H_SUPPORT_ENABLED_MIN            ( 0 )
+#define CFG_11H_SUPPORT_ENABLED_MAX            ( 1 )
+#define CFG_11H_SUPPORT_ENABLED_DEFAULT        ( 1 ) // Default is ON 
+
 #define CFG_ENFORCE_11D_CHANNELS_NAME          "gEnforce11dChannel"
 #define CFG_ENFORCE_11D_CHANNELS_MIN           ( 0 )
 #define CFG_ENFORCE_11D_CHANNELS_MAX           ( 1 )
@@ -1510,6 +1515,7 @@ typedef struct
    v_U8_t        OperatingChannel;
    v_BOOL_t      ShortSlotTimeEnabled;
    v_BOOL_t      Is11dSupportEnabled;
+   v_BOOL_t      Is11hSupportEnabled;
    v_BOOL_t      fEnforce11dChannels;
    v_BOOL_t      fSupplicantCountryCodeHasPriority;
    v_BOOL_t      fEnforceCountryCodeMatch;
