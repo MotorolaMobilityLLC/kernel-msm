@@ -66,8 +66,12 @@ int arizona_set_irq_wake(struct arizona *arizona, int irq, int on)
 {
 	int val = 0;
 
-	if (on)
+	if (on) {
 		val = 0xffff;
+		irq_set_irq_rate(arizona->irq, 1);
+	} else {
+		irq_set_irq_rate(arizona->irq, 0);
+	}
 
 	switch (irq) {
 	case ARIZONA_IRQ_MICD_CLAMP_RISE:
