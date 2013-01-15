@@ -494,6 +494,20 @@ static void __init mmi_otg_init(struct msm8960_oem_init_ptrs *oem_ptr,
 		otg_pdata->pmic_id_irq_active_high = val;
 	}
 
+	ret = of_property_read_u32(chosen, "emu_id_flt_gpio", &val);
+	if (!ret) {
+		otg_pdata->pmic_id_flt_gpio = val;
+		pr_debug("%s: PMIC id irq = %d\n", __func__,
+				otg_pdata->pmic_id_flt_gpio);
+	}
+
+	ret = of_property_read_u32(chosen, "emu_id_flt_activehigh", &val);
+	if (!ret) {
+		pr_debug("%s: PMIC id flt is active %s\n",
+				__func__, val ? "high" : "low");
+		otg_pdata->pmic_id_flt_gpio_active_high = val;
+	}
+
 put_node:
 	of_node_put(chosen);
 	return;
