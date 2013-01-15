@@ -18,6 +18,7 @@
 
 /* #define DEBUG */
 #define DEV_DBG_PREFIX "EXT_COMMON: "
+#define SUPPORT_RAW_EDID_READS
 
 /* The start of the data block collection within the CEA Extension Version 3 */
 #define DBC_START_OFFSET 4
@@ -357,6 +358,38 @@ static ssize_t hdmi_common_rda_edid_3d_modes(struct device *dev,
 	ret += snprintf(buf+ret, PAGE_SIZE-ret, "\n");
 	return ret;
 }
+
+#ifdef SUPPORT_RAW_EDID_READS
+/* EDID_BLOCK_SIZE[0x80] Each page size in the EDID ROM */
+static uint8 sysfs_edid[(0x80 * 4)];
+
+static ssize_t hdmi_common_rda_edid_data(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	uint32 ndx, start, end;
+	ssize_t ret = 0;
+	int block;
+
+	/* Return no data if HDMI is not connected */
+	if (!external_common_state->hpd_state)
+		return 0;
+	/* Read all 4 Blocks of EDID data */
+	for (block = 0; block < 4; block++) {
+		DEV_DBG("READING EDID BLOCK %d\n", block);
+		start = 0x80 * block;
+		end = start + (0x80 - 1);
+		for (ndx = start; ndx < end; ndx += 8) {
+			ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				"%02x%02x%02x%02x%02x%02x%02x%02x",
+				sysfs_edid[ndx+0], sysfs_edid[ndx+1],
+				sysfs_edid[ndx+2], sysfs_edid[ndx+3],
+				sysfs_edid[ndx+4], sysfs_edid[ndx+5],
+				sysfs_edid[ndx+6], sysfs_edid[ndx+7]);
+		}
+	}
+	return ret;
+}
+#endif
 
 static ssize_t hdmi_common_rda_hdcp(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -773,6 +806,9 @@ static DEVICE_ATTR(connected, S_IRUGO, external_common_rda_connected, NULL);
 static DEVICE_ATTR(hdmi_mode, S_IRUGO, external_common_rda_hdmi_mode, NULL);
 #ifdef CONFIG_FB_MSM_HDMI_COMMON
 static DEVICE_ATTR(edid_modes, S_IRUGO, hdmi_common_rda_edid_modes, NULL);
+#ifdef SUPPORT_RAW_EDID_READS
+static DEVICE_ATTR(edid_data, S_IRUGO, hdmi_common_rda_edid_data, NULL);
+#endif
 static DEVICE_ATTR(hpd, S_IRUGO | S_IWUSR | S_IWGRP, hdmi_common_rda_hpd,
 	hdmi_common_wta_hpd);
 static DEVICE_ATTR(hdcp, S_IRUGO, hdmi_common_rda_hdcp, NULL);
@@ -806,6 +842,9 @@ static struct attribute *external_common_fs_attrs[] = {
 	&dev_attr_connected.attr,
 	&dev_attr_hdmi_mode.attr,
 #ifdef CONFIG_FB_MSM_HDMI_COMMON
+#ifdef SUPPORT_RAW_EDID_READS
+	&dev_attr_edid_data.attr,
+#endif
 	&dev_attr_edid_modes.attr,
 	&dev_attr_hdcp.attr,
 	&dev_attr_hpd.attr,
@@ -2004,6 +2043,9 @@ int hdmi_common_read_edid(void)
 	hdmi_edid_get_display_mode(edid_buf,
 		&external_common_state->disp_mode_list, num_og_cea_blocks);
 
+#ifdef SUPPORT_RAW_EDID_READS
+	memcpy(sysfs_edid, edid_buf, (0x80 * 4));
+#endif
 	return 0;
 
 error:
