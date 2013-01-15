@@ -1020,7 +1020,7 @@ __init void mmi_register_i2c_devices_from_dt(void)
 		cnt = sscanf(bus_node->full_name,
 				"/System@0/I2C@%d", &bus_no);
 		if (cnt != 1) {
-			pr_err("%s: bad i2c bus entry %s",
+			pr_debug("%s: bad i2c bus entry %s",
 					__func__, bus_node->full_name);
 			continue;
 		}
