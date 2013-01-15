@@ -2,7 +2,7 @@
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.7006
+ * only version 2 as published by the Free Software Foundation.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,10 +23,22 @@ DEFINE_MUTEX(s5k5b3g_2nd_mut);
 DEFINE_MUTEX(s5k5b3g_mut);
 #endif
 
+#define S5K5B3G_OTP_DATA       0x0A04
+#define S5K5B3G_OTP_LOAD       0x0A00
+#define S5K5B3G_OTP_BANK       0x0A02
+#define S5K5B3G_OTP_BANK_SIZE  0x40
+#define S5K5B3G_OTP_BANK_COUNT 2
+#define S5K5B3G_OTP_SIZE       (S5K5B3G_OTP_BANK_COUNT * S5K5B3G_OTP_BANK_SIZE)
+#if S5K5B3G_OTP_SIZE > MAX_OTP_SIZE
+#error S5K5B3G_OTP_SIZE must not be greater than MAX_OTP_SIZE
+#endif
+
 static struct msm_sensor_ctrl_t s5k5b3g_s_ctrl;
 
 static struct regulator *cam_vdig;
 static struct regulator *cam_vio;
+
+static struct otp_info_t otp_info;
 
 static struct msm_cam_clk_info cam_mot_8960_clk_info[] = {
 	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
@@ -197,6 +209,75 @@ static struct msm_sensor_exp_gain_info_t s5k5b3g_exp_gain_info = {
 	.global_gain_addr = 0x0204,
 	.vert_offset = 6,
 };
+
+static int32_t s5k5b3g_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	int16_t i, j;
+	uint16_t readData;
+
+	/* Stream on */
+	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			0x0100, 0x01, MSM_CAMERA_I2C_BYTE_DATA);
+	/* Set mclk */
+	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			0x3000, 0x1800, MSM_CAMERA_I2C_WORD_DATA);
+
+	usleep_range(5000, 10000);
+
+	/* Set Read OTP Bank */
+	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			S5K5B3G_OTP_LOAD, 0x01,
+			MSM_CAMERA_I2C_BYTE_DATA);
+
+	if (rc < 0)
+		return rc;
+
+	/* Read programmed banks */
+	for (i = 0; i < S5K5B3G_OTP_BANK_COUNT; i++) {
+		/* Set OTP Bank */
+		rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+				S5K5B3G_OTP_BANK, i,
+				MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0)
+			return rc;
+
+		/* Delay */
+		usleep_range(1000, 2000);
+
+		/* Read OTP Buffer Registers */
+		for (j = 0; j < S5K5B3G_OTP_BANK_SIZE; j++) {
+			rc = msm_camera_i2c_read(s_ctrl->sensor_i2c_client,
+					S5K5B3G_OTP_DATA+j,
+					&readData,
+					MSM_CAMERA_I2C_BYTE_DATA);
+
+			otp_info.otp_info[(i*S5K5B3G_OTP_BANK_SIZE)+j] =
+				(uint8_t)readData;
+
+			if (rc < 0)
+				return rc;
+		}
+	}
+
+	/* Reset Read OTP Bank */
+	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			S5K5B3G_OTP_LOAD, 0x00,
+			MSM_CAMERA_I2C_BYTE_DATA);
+
+	/* Stream off */
+	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			0x0100, 0x00, MSM_CAMERA_I2C_BYTE_DATA);
+
+	return rc;
+}
+
+static int32_t s5k5b3g_get_module_info(struct msm_sensor_ctrl_t *s_ctrl,
+		struct otp_info_t *module_info)
+{
+	*(module_info) = otp_info;
+	return 0;
+}
 
 static int32_t s5k5b3g_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 		uint16_t gain, uint32_t line)
@@ -457,6 +538,38 @@ static int32_t s5k5b3g_power_down(
 	return rc;
 }
 
+static int32_t s5k5b3g_match_id(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	uint16_t chipid = 0;
+
+	/*Read sensor id*/
+	rc = msm_camera_i2c_read(
+			s_ctrl->sensor_i2c_client,
+			s_ctrl->sensor_id_info->sensor_id_reg_addr, &chipid,
+			MSM_CAMERA_I2C_WORD_DATA);
+	if (rc < 0) {
+		pr_err("%s: read id failed\n", __func__);
+		return rc;
+	}
+
+	if (chipid != s_ctrl->sensor_id_info->sensor_id) {
+		pr_err("%s: chip id %x does not match expected %x\n", __func__,
+				chipid, s_ctrl->sensor_id_info->sensor_id);
+		return -ENODEV;
+	}
+
+	rc = s5k5b3g_read_otp(s_ctrl);
+	if (rc < 0) {
+		pr_err("%s: unable to read otp data\n", __func__);
+		return -ENODEV;
+	}
+
+	pr_debug("s5k5b3g: match_id success\n");
+	return 0;
+}
+
+
 static const struct i2c_device_id s5k5b3g_i2c_id[] = {
 	{SENSOR_NAME, (kernel_ulong_t)&s5k5b3g_s_ctrl},
 	{ }
@@ -508,6 +621,8 @@ static struct msm_sensor_fn_t s5k5b3g_func_tbl = {
 	.sensor_config = msm_sensor_config,
 	.sensor_power_up = s5k5b3g_power_up,
 	.sensor_power_down = s5k5b3g_power_down,
+	.sensor_get_module_info = s5k5b3g_get_module_info,
+	.sensor_match_id = s5k5b3g_match_id,
 	.sensor_get_csi_params = msm_sensor_get_csi_params,
 };
 
