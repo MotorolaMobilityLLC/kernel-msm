@@ -2308,10 +2308,12 @@ u32 vcd_handle_frame_done(
 	op_frm->vcd_frm.time_stamp = transc->time_stamp;
 	op_frm->vcd_frm.ip_frm_tag = transc->ip_frm_tag;
 
-	if (transc->flags & VCD_FRAME_FLAG_EOSEQ)
-		op_frm->vcd_frm.flags |= VCD_FRAME_FLAG_EOSEQ;
-	else
-		op_frm->vcd_frm.flags &= ~VCD_FRAME_FLAG_EOSEQ;
+	if (!(op_frm->vcd_frm.flags & VCD_FRAME_FLAG_EOSEQ)) {
+		if (transc->flags & VCD_FRAME_FLAG_EOSEQ)
+			op_frm->vcd_frm.flags |= VCD_FRAME_FLAG_EOSEQ;
+		else
+			op_frm->vcd_frm.flags &= ~VCD_FRAME_FLAG_EOSEQ;
+	}
 
 	if (cctxt->decoding)
 		op_frm->vcd_frm.frame = transc->frame;
