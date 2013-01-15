@@ -24,6 +24,7 @@
 #include <linux/smp.h>
 #include <linux/suspend.h>
 #include <linux/tick.h>
+#include <linux/platform_device.h>
 #include <mach/msm_iomap.h>
 #include <mach/socinfo.h>
 #include <mach/system.h>
@@ -73,7 +74,6 @@ module_param_named(
 	debug_mask, msm_pm_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP
 );
 static int msm_pm_retention_tz_call;
-
 
 /******************************************************************************
  * Sleep Modes and Parameters
@@ -548,7 +548,6 @@ static bool __ref msm_pm_spm_power_collapse(
 #ifdef CONFIG_VFP
 	vfp_pm_suspend();
 #endif
-
 	collapsed = msm_pm_l2x0_power_collapse();
 
 	msm_pm_boot_config_after_pc(cpu);
@@ -1069,6 +1068,46 @@ void __init msm_pm_set_tz_retention_flag(unsigned int flag)
 	msm_pm_retention_tz_call = flag;
 }
 
+static int __devinit msm_pc_debug_probe(struct platform_device *pdev)
+{
+	struct resource *res = NULL;
+	int i ;
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res)
+		goto fail;
+
+	msm_pc_debug_counters_phys = res->start;
+	WARN_ON(resource_size(res) < SZ_64);
+	msm_pc_debug_counters = devm_ioremap(&pdev->dev, res->start,
+					resource_size(res));
+
+	if (!msm_pc_debug_counters)
+		goto fail;
+
+	for (i = 0; i < resource_size(res)/4; i++)
+		__raw_writel(0, msm_pc_debug_counters + i * 4);
+	return 0;
+fail:
+	msm_pc_debug_counters = 0;
+	msm_pc_debug_counters_phys = 0;
+	return -EFAULT;
+}
+
+static struct of_device_id msm_pc_debug_table[] = {
+	{.compatible = "qcom,pc-cntr"},
+	{},
+};
+
+static struct platform_driver msm_pc_counter_driver = {
+	.probe = msm_pc_debug_probe,
+	.driver = {
+		.name = "pc-cntr",
+		.owner = THIS_MODULE,
+		.of_match_table = msm_pc_debug_table,
+	},
+};
+
 static int __init msm_pm_init(void)
 {
 	pgd_t *pc_pgd;
@@ -1084,6 +1123,7 @@ static int __init msm_pm_init(void)
 	unsigned long exit_phys;
 
 	/* Page table for cores to come back up safely. */
+
 	pc_pgd = pgd_alloc(&init_mm);
 	if (!pc_pgd)
 		return -ENOMEM;
@@ -1127,6 +1167,7 @@ static int __init msm_pm_init(void)
 	msm_pm_target_init();
 	hrtimer_init(&pm_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
 	msm_cpuidle_init();
+	platform_driver_register(&msm_pc_counter_driver);
 
 	return 0;
 }
