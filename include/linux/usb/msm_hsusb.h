@@ -186,8 +186,10 @@ enum usb_vdd_value {
  * @otg_control: OTG switch controlled by user/Id pin
  * @default_mode: Default operational mode. Applicable only if
  *              OTG switch is controller by user.
- * @pmic_id_irq: IRQ number assigned for PMIC USB ID line.
- * @pmic_id_irq_active_high: ID interrupt line active logic.
+ * @pmic_id_irq: IRQ number assigned for PMIC USB ID GND line.
+ * @pmic_id_irq_active_high: ID GND interrupt line active logic.
+ * @pmic_id_flt_gpio: GPIO number assigned for PMIC USB ID FLOAT line.
+ * @pmic_id_flt_gpio_active_high: ID FLOAT GPIO active logic.
  * @mpm_otgsessvld_int: MPM wakeup pin assigned for OTG SESSVLD
  *              interrupt. Used when .otg_control == OTG_PHY_CONTROL.
  * @mhl_enable: indicates MHL connector or not.
@@ -212,6 +214,8 @@ struct msm_otg_platform_data {
 	void (*setup_gpio)(enum usb_otg_state state);
 	int pmic_id_irq;
 	bool pmic_id_irq_active_high;
+	int pmic_id_flt_gpio;
+	bool pmic_id_flt_gpio_active_high;
 	unsigned int mpm_otgsessvld_int;
 	bool mhl_enable;
 	bool disable_reset_on_disconnect;

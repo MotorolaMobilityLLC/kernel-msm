@@ -27,6 +27,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/of.h>
 #include <linux/dma-mapping.h>
+#include <linux/gpio.h>
 
 #include <linux/usb.h>
 #include <linux/usb/otg.h>
@@ -2206,8 +2207,10 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 			if (pdata->pmic_id_irq) {
 				unsigned long flags;
 				local_irq_save(flags);
-				if (irq_read_line(pdata->pmic_id_irq) ^
-					pdata->pmic_id_irq_active_high)
+				if ((irq_read_line(pdata->pmic_id_irq) ^
+					pdata->pmic_id_irq_active_high) ||
+				    !(gpio_get_value(pdata->pmic_id_flt_gpio) ^
+				      pdata->pmic_id_flt_gpio_active_high))
 					set_bit(ID, &motg->inputs);
 				else
 					clear_bit(ID, &motg->inputs);
@@ -3014,10 +3017,20 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 						pmic_id_status_work.work);
 	int work = 0;
 	unsigned long flags;
+	int id_gnd = 0;
+	int id_flt = 0;
 
 	local_irq_save(flags);
-	if (irq_read_line(motg->pdata->pmic_id_irq) ^
-		motg->pdata->pmic_id_irq_active_high) {
+	id_gnd = irq_read_line(motg->pdata->pmic_id_irq);
+	id_gnd ^= motg->pdata->pmic_id_irq_active_high;
+	id_flt = gpio_get_value(motg->pdata->pmic_id_flt_gpio);
+	id_flt ^= motg->pdata->pmic_id_flt_gpio_active_high;
+
+	pr_debug("PMIC: ID GND %d\n", id_gnd);
+	pr_debug("PMIC: ID FLT %d\n", id_flt);
+	if (id_gnd || !id_flt) {
+		if (!id_flt)
+			pr_info_once("Factory Cable Attached!\n");
 		if (!test_and_set_bit(ID, &motg->inputs)) {
 			pr_debug("PMIC: ID set\n");
 			work = 1;
@@ -3737,6 +3750,18 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 				dev_err(&pdev->dev, "request irq failed for PMIC ID\n");
 				goto remove_phy;
 			}
+
+			if (motg->pdata->pmic_id_flt_gpio) {
+				int id_flt = motg->pdata->pmic_id_flt_gpio;
+				ret = gpio_request_one(id_flt,
+						       GPIOF_IN,
+						       "msm_otg_id_flt");
+				if (ret) {
+					dev_err(&pdev->dev,
+						"PMIC ID FLT request fail\n");
+					goto free_pmic_id_irq;
+				}
+			}
 		} else {
 			ret = -ENODEV;
 			dev_err(&pdev->dev, "PMIC IRQ for ID notifications doesn't exist\n");
@@ -3788,6 +3813,8 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 
 	return 0;
 
+free_pmic_id_irq:
+	free_irq(motg->pdata->pmic_id_irq, motg);
 remove_phy:
 	usb_set_transceiver(NULL);
 free_async_irq:
@@ -3859,6 +3886,8 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 	msm_hsusb_mhl_switch_enable(motg, 0);
 	if (motg->pdata->pmic_id_irq)
 		free_irq(motg->pdata->pmic_id_irq, motg);
+	if (motg->pdata->pmic_id_flt_gpio)
+		gpio_free(motg->pdata->pmic_id_flt_gpio);
 	usb_set_transceiver(NULL);
 	free_irq(motg->irq, motg);
 
