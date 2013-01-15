@@ -184,7 +184,8 @@ EXPORT_SYMBOL_GPL(cpu_idle_wait);
  * This is our default idle handler.
  */
 
-void (*arm_pm_idle)(void);
+extern void arch_idle(void);
+void (*arm_pm_idle)(void) = arch_idle;
 
 static void default_idle(void)
 {
