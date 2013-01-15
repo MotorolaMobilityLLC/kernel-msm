@@ -492,3 +492,46 @@ WDI_Status WDI_DS_ClearStaIdxPerBssIdx(void *pContext, wpt_uint8 bssIdx, wpt_uin
   /* Could not find associated STA index with BSS index */
   return WDI_STATUS_E_FAILURE;
 }
+
+/* Tx/Rx stats function
+ * This function should be invoked to fetch the current stats
+  * Parameters:
+ *  pStats:Pointer to the collected stats
+ *  len: length of buffer pointed to by pStats
+ *  Return Status: None
+ */
+void WDI_DS_GetTrafficStats(WDI_TrafficStatsType** pStats, wpt_uint32 *len)
+{
+   return WDTS_GetTrafficStats(pStats, len);
+}
+
+/* WDI_DS_DeactivateTrafficStats
+ * This function should be invoked to deactivate traffic stats collection
+  * Parameters: None
+ *  Return Status: None
+ */
+void WDI_DS_DeactivateTrafficStats(void)
+{
+   return WDTS_DeactivateTrafficStats();
+}
+
+/* WDI_DS_ActivateTrafficStats
+ * This function should be invoked to activate traffic stats collection
+  * Parameters: None
+ *  Return Status: None
+ */
+void WDI_DS_ActivateTrafficStats(void)
+{
+   return WDTS_ActivateTrafficStats();
+}
+
+/* WDI_DS_ClearTrafficStats
+ * This function should be invoked to clear all past stats
+  * Parameters: None
+ *  Return Status: None
+ */
+void WDI_DS_ClearTrafficStats(void)
+{
+   return WDTS_ClearTrafficStats();
+}
+

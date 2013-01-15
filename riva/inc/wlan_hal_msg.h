@@ -338,7 +338,7 @@ typedef enum
   WLAN_HAL_UPDATE_VHT_OP_MODE_RSP           = 183,
 
   WLAN_HAL_P2P_NOA_START_IND                = 184,
-
+   WLAN_HAL_CLASS_B_STATS_IND               = 197,
   WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
 
@@ -5694,6 +5694,36 @@ typedef PACKED_PRE struct PACKED_POST{
    tANI_U32   status;
 
 }  tSetThermalMitigationResp, *tpSetThermalMitigationResp;
+
+/* Per STA Class B Statistics. Class B statistics are STA TX/RX stats  
+provided to FW from Host via periodic messages */
+typedef PACKED_PRE struct PACKED_POST {
+   /* TX stats */
+   uint32 txBytesPushed;
+   uint32 txPacketsPushed;
+
+   /* RX stats */
+   uint32 rxBytesRcvd;
+   uint32 rxPacketsRcvd;
+   uint32 rxTimeTotal;
+} tStaStatsClassB, *tpStaStatsClassB;
+
+typedef PACKED_PRE struct PACKED_POST {
+
+   /* Duration over which this stats was collected */
+   tANI_U32 duration;
+
+   /* Per STA Stats */
+   tStaStatsClassB staStatsClassB[HAL_NUM_STA];
+} tStatsClassBIndParams, *tpStatsClassBIndParams;
+
+typedef PACKED_PRE struct PACKED_POST {
+
+   tHalMsgHeader header;
+
+   /* Class B Stats */
+   tStatsClassBIndParams statsClassBIndParams;
+} tStatsClassBInd, *tpStatsClassBInd;
 
 #if defined(__ANI_COMPILER_PRAGMA_PACK_STACK)
 #pragma pack(pop)

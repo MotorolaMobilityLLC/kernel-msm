@@ -1496,7 +1496,16 @@ typedef enum
 #define CFG_TX_LDPC_ENABLE_FEATURE_MIN     ( 0 )
 #define CFG_TX_LDPC_ENABLE_FEATURE_MAX     ( 3 )
 #define CFG_TX_LDPC_ENABLE_FEATURE_DEFAULT ( 0 )
- 
+
+/*
+ * Enable / Disable MCC Adaptive Scheduler feature
+ * Default: Enable
+ */
+#define CFG_ENABLE_MCC_ADATIVE_SCHEDULER_ENABLED_NAME             "gEnableMCCAdaptiveScheduler"      
+#define CFG_ENABLE_MCC_ADATIVE_SCHEDULER_ENABLED_MIN              ( 0 )
+#define CFG_ENABLE_MCC_ADATIVE_SCHEDULER_ENABLED_MAX              ( 1 )
+#define CFG_ENABLE_MCC_ADATIVE_SCHEDULER_ENABLED_DEFAULT          ( 0 ) 
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -1823,6 +1832,7 @@ typedef struct
 #endif
    v_U8_t                      scanAgingTimeout;
    v_BOOL_t                    enableTxLdpc;
+   v_U8_t                      enableMCCAdaptiveScheduler;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation

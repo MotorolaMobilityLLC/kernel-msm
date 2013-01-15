@@ -2085,6 +2085,11 @@ void limProcessMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession 
 #if defined(ANI_PRODUCT_TYPE_CLIENT) || defined(ANI_AP_CLIENT_SDK)
     limProcessStaMlmDelBssRsp(pMac, limMsgQ,psessionEntry);
 #endif
+
+   if(!limIsInMCC(pMac))
+   {
+      WDA_TrafficStatsTimerActivate(FALSE);
+   }
 }
 
 void limProcessStaMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession psessionEntry)
@@ -3329,6 +3334,11 @@ void limProcessMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
         else
             /* Called while processing assoc response */
             limProcessStaMlmAddBssRsp( pMac, limMsgQ,psessionEntry);
+    }
+
+    if(limIsInMCC(pMac))
+    {
+       WDA_TrafficStatsTimerActivate(TRUE);
     }
 }
 /**

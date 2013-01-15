@@ -379,6 +379,9 @@ typedef struct
 
    /* Tx Complete Timeout timer */
    TX_TIMER TxCompleteTimer ;
+
+   /* Traffic Stats timer */
+   TX_TIMER trafficStatsTimer ;
 }tWdaTimers ;
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
 #define WDA_MAX_STA    (38)
@@ -1160,6 +1163,8 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_TIMER_CHIP_MONITOR_TIMEOUT SIR_HAL_TIMER_CHIP_MONITOR_TIMEOUT
 #define WDA_TIMER_TRAFFIC_ACTIVITY_REQ SIR_HAL_TIMER_TRAFFIC_ACTIVITY_REQ
 #define WDA_TIMER_ADC_RSSI_STATS       SIR_HAL_TIMER_ADC_RSSI_STATS
+#define WDA_TIMER_TRAFFIC_STATS_IND    SIR_HAL_TRAFFIC_STATS_IND
+
 
 #ifdef FEATURE_WLAN_CCX
 #define WDA_TSM_STATS_REQ              SIR_HAL_TSM_STATS_REQ
@@ -2097,4 +2102,19 @@ void WDA_TransportChannelDebug
    v_BOOL_t   displaySnapshot,
    v_BOOL_t   toggleStallDetect
 );
+
+/*==========================================================================
+  FUNCTION   WDA_TrafficStatsTimerActivate
+
+  DESCRIPTION
+    API to activate/deactivate Traffic Stats timer. Traffic stats timer is only needed during MCC
+  PARAMETERS
+    activate : Activate or not
+
+  RETURN VALUE
+    NONE
+
+===========================================================================*/
+void WDA_TrafficStatsTimerActivate(wpt_boolean activate);
+
 #endif

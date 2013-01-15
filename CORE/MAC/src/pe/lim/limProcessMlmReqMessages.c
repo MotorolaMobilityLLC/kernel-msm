@@ -309,6 +309,8 @@ limSuspendLink(tpAniSirGlobal pMac, tSirLinkTrafficCheck trafficCheck,  SUSPEND_
    pMac->lim.gpLimSuspendCallback = callback;
    pMac->lim.gpLimSuspendData = data;
    limSendHalInitScanReq(pMac, eLIM_HAL_SUSPEND_LINK_WAIT_STATE, trafficCheck );
+
+   WDA_TrafficStatsTimerActivate(FALSE);
 }
 
 /**
@@ -349,6 +351,11 @@ limResumeLink(tpAniSirGlobal pMac, SUSPEND_RESUME_LINK_CALLBACK callback, tANI_U
    pMac->lim.gpLimResumeCallback = callback;
    pMac->lim.gpLimResumeData = data;
    limSendHalFinishScanReq(pMac, eLIM_HAL_RESUME_LINK_WAIT_STATE );
+
+   if(limIsInMCC(pMac))
+   {
+      WDA_TrafficStatsTimerActivate(TRUE);
+   }
 }
 //end WLAN_SUSPEND_LINK Related
 

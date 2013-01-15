@@ -347,6 +347,7 @@ unsigned char *gCfgParamName[] = {
     (unsigned char *)"ENABLE_MC_ADDR_LIST",
     (unsigned char *)"ENABLE_UC_FILTER",
     (unsigned char *)"ENABLE_LPWR_IMG_TRANSITION",
+    (unsigned char *)"ENABLE_MCC_ADAPTIVE_SCHED",
 };
 
 
