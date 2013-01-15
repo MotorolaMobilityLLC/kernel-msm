@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -307,7 +307,9 @@
 #define VIDC_SM_MP2_DATA_DUMP_BUFFER_ADDR                         0x01a4
 #define VIDC_SM_MP2_DATA_DUMP_BUFFER_SIZE_ADDR                    0x01a8
 
-
+#define VIDC_SM_MP2_COMMON_STATUS_DEC_ORDER_ADDR                  0x01b0
+#define VIDC_SM_MP2_SEQ_END_CODE_BMSK                             0x00000002
+#define VIDC_SM_MP2_SEQ_END_CODE_SHIFT                            1
 
 #define VIDC_SM_ENC_EXT_CTRL_CLOSED_GOP_ENABLE_BMSK	0x40
 #define VIDC_SM_ENC_EXT_CTRL_CLOSED_GOP_ENABLE_SHFT	6
@@ -1186,4 +1188,15 @@ void vidc_sm_set_h264_encoder_timing_info(struct ddl_buf_addr *shared_mem,
 	DDL_MEM_WRITE_32(shared_mem,
 			VIDC_SM_ENC_TIME_SCALE_ADDR,
 			time_scale);
+}
+
+void vidc_sm_get_mp2common_status(struct ddl_buf_addr *shared_mem,
+	u32 *seq_end_code_present)
+{
+	u32 status;
+	status = DDL_MEM_READ_32(shared_mem,
+			VIDC_SM_MP2_COMMON_STATUS_DEC_ORDER_ADDR);
+	*seq_end_code_present = (u32) VIDC_GETFIELD(status,
+				VIDC_SM_MP2_SEQ_END_CODE_BMSK,
+				VIDC_SM_MP2_SEQ_END_CODE_SHIFT);
 }
