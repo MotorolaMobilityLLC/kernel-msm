@@ -103,7 +103,8 @@ static void sy3400_remove_sysfs_files(struct sy3400_driver_data *dd);
 
 static const struct i2c_device_id sy3400_id[] = {
 	/* This name must match the i2c_board_info name */
-	{ SY3400_I2C_NAME, 0 }
+	{ SY3400_I2C_NAME, 0 },
+	{ /* END OF LIST */ }
 };
 
 MODULE_DEVICE_TABLE(i2c, sy3400_id);
