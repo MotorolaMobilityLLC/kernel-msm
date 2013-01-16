@@ -11,25 +11,12 @@
  */
 
 #include <linux/platform_device.h>
-#include <linux/irq.h>
 #include <asm/pmu.h>
 #include <mach/irqs.h>
 #include <mach/socinfo.h>
 
 #if defined(CONFIG_ARCH_MSM_KRAITMP) || defined(CONFIG_ARCH_MSM_SCORPIONMP)
 static DEFINE_PER_CPU(u32, pmu_irq_cookie);
-
-static void enable_irq_callback(void *info)
-{
-	int irq = *(unsigned int *)info;
-	enable_percpu_irq(irq, IRQ_TYPE_EDGE_RISING);
-}
-
-static void disable_irq_callback(void *info)
-{
-	int irq = *(unsigned int *)info;
-	disable_percpu_irq(irq);
-}
 
 static int
 multicore_request_irq(int irq, irq_handler_t *handle_irq)
