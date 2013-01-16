@@ -167,6 +167,65 @@ sy3400_of_init(struct i2c_client *client)
 }
 #endif
 
+static void sy3400_hw_ic_reset(struct sy3400_driver_data *dd)
+{
+	sy3400_dbg(dd, SY3400_DBG2,
+			"%s: Resetting touch IC...\n", __func__);
+	gpio_set_value(dd->pdata->gpio_reset, 0);
+	udelay(SY3400_IC_RESET_HOLD_TIME);
+	gpio_set_value(dd->pdata->gpio_reset, 1);
+	msleep(SY3400_BL_HOLDOFF_TIME);
+}
+
+static int sy3400_detect(struct sy3400_driver_data *dd)
+{
+	int err;
+	uint16_t blk_sz, blk_ct;
+	uint8_t qaddr;
+
+	err = sy3400_get_pdt(dd);
+	if (err < 0) {
+		printk(KERN_ERR "%s: Failed to find touch IC.\n", __func__);
+		goto sy3400_detect_fail;
+	}
+
+	err = sy3400_validate_f34(dd);
+	if (err < 0) {
+		printk(KERN_ERR "%s: Function $34 failed validation.\n",
+			__func__);
+		goto sy3400_detect_fail;
+	}
+
+	qaddr = dd->pblk->query_base_addr;
+	if (qaddr == 0) {
+		printk(KERN_ERR "%s: Bad IC query address.\n", __func__);
+		err = -ENODEV;
+		goto sy3400_detect_fail;
+	}
+
+	sy3400_i2c_write(dd, SY3400_QUERY(qaddr, 3), NULL, 0);
+	sy3400_i2c_read(dd, (uint8_t *)&blk_sz, 2);
+	blk_sz = le16_to_cpu(blk_sz);
+
+	sy3400_i2c_write(dd, SY3400_QUERY(qaddr, 5), NULL, 0);
+	sy3400_i2c_read(dd, (uint8_t *)&blk_ct, 2);
+	blk_ct = le16_to_cpu(blk_ct);
+
+	pr_debug("%s: blk_sz=0x%x, blk_ct=0x%x\n", __func__, blk_sz, blk_ct);
+
+	if ((blk_sz != SY3400_BLK_SZ) || (blk_ct != SY3400_BLK_CT))
+		err = -ENODEV;
+
+sy3400_detect_fail:
+	return err;
+}
+
+static void sy3400_gpio_release(struct sy3400_driver_data *dd)
+{
+	gpio_free(dd->pdata->gpio_reset);
+	gpio_free(dd->pdata->gpio_interrupt);
+}
+
 static int sy3400_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
@@ -249,11 +308,18 @@ static int sy3400_probe(struct i2c_client *client,
 
 	err = sy3400_request_irq(dd);
 	if (err < 0)
-		goto sy3400_probe_fail;
+		goto sy3400_free_gpio;
+
+	sy3400_hw_ic_reset(dd);
+	err = sy3400_detect(dd);
+	if (err < 0) {
+		printk(KERN_ERR "%s: IC detection failed.\n", __func__);
+		goto sy3400_free_irq;
+	}
 
 	err = sy3400_request_tdat(dd);
 	if (err < 0)
-		goto sy3400_probe_fail;
+		goto sy3400_free_irq;
 
 	err = sy3400_create_sysfs_files(dd);
 	if (err < 0) {
@@ -265,6 +331,10 @@ static int sy3400_probe(struct i2c_client *client,
 
 	goto sy3400_probe_pass;
 
+sy3400_free_irq:
+	free_irq(dd->client->irq, dd);
+sy3400_free_gpio:
+	sy3400_gpio_release(dd);
 sy3400_probe_fail:
 	sy3400_free(dd);
 	printk(KERN_ERR "%s: Probe failed with error code %d.\n",
@@ -289,8 +359,7 @@ static int sy3400_remove(struct i2c_client *client)
 	if (dd != NULL) {
 		free_irq(dd->client->irq, dd);
 		sy3400_remove_sysfs_files(dd);
-		gpio_free(dd->pdata->gpio_reset);
-		gpio_free(dd->pdata->gpio_interrupt);
+		sy3400_gpio_release(dd);
 		sy3400_free(dd);
 	}
 
@@ -505,9 +574,7 @@ static int sy3400_resume(struct i2c_client *client)
 	}
 
 	/* Perform hard reset of the IC. Seem to help on resume */
-	gpio_set_value(dd->pdata->gpio_reset, 0);
-	udelay(SY3400_IC_RESET_HOLD_TIME);
-	gpio_set_value(dd->pdata->gpio_reset, 1);
+	sy3400_hw_ic_reset(dd);
 	sy3400_dbg(dd, SY3400_DBG3, "%s: Resume complete.\n", __func__);
 
 sy3400_resume_fail:
@@ -738,7 +805,6 @@ static int sy3400_gpio_init(struct sy3400_driver_data *dd)
 			__func__);
 		goto sy3400_gpio_init_fail;
 	}
-	udelay(SY3400_IC_RESET_HOLD_TIME);
 
 	dd->client->irq = gpio_to_irq(dd->pdata->gpio_interrupt);
 
@@ -1253,28 +1319,14 @@ sy3400_restart_ic_start:
 	if (sy3400_get_ic_state(dd) != SY3400_IC_UNKNOWN)
 		sy3400_set_ic_state(dd, SY3400_IC_UNKNOWN);
 
-	if (!update_fw && !update_sett) {
-		sy3400_dbg(dd, SY3400_DBG2,
-			"%s: Resetting touch IC...\n", __func__);
-		gpio_set_value(dd->pdata->gpio_reset, 0);
-		udelay(SY3400_IC_RESET_HOLD_TIME);
-		gpio_set_value(dd->pdata->gpio_reset, 1);
-	}
+	if (!update_fw && !update_sett)
+		sy3400_hw_ic_reset(dd);
 
-	msleep(SY3400_BL_HOLDOFF_TIME);
 	irq_low = sy3400_wait4irq(dd);
 	if (!irq_low) {
 		printk(KERN_ERR "%s: Timeout waiting for interrupt.\n",
 			__func__);
 		err = -ETIME;
-		goto sy3400_restart_ic_fail;
-	}
-
-	dd->pblk = kzalloc(sizeof(struct sy3400_page_block), GFP_KERNEL);
-	if (dd->pblk == NULL) {
-		printk(KERN_ERR "%s: Unable to create page block data.\n",
-			__func__);
-		err = -ENOMEM;
 		goto sy3400_restart_ic_fail;
 	}
 
@@ -1458,6 +1510,17 @@ static int sy3400_get_pdt(struct sy3400_driver_data *dd)
 	struct sy3400_pdt_node *first = NULL;
 	struct sy3400_pdt_node *cur = NULL;
 	struct sy3400_pdt_node *prev = NULL;
+
+	if (dd->pblk == NULL) {
+		dd->pblk = kzalloc(sizeof(struct sy3400_page_block),
+					GFP_KERNEL);
+		if (dd->pblk == NULL) {
+			printk(KERN_ERR "%s: Unable to create page block data\n",
+				__func__);
+			err = -ENOMEM;
+			goto sy3400_get_pdt_fail;
+		}
+	}
 
 	err = sy3400_i2c_write(dd, 0xEF, NULL, 0);
 	if (err < 0) {
@@ -1734,6 +1797,9 @@ static int sy3400_validate_f34(struct sy3400_driver_data *dd)
 		err = -EOVERFLOW;
 		goto sy3400_validate_f34_fail;
 	}
+
+	/* store a valid query base address for further use */
+	dd->pblk->query_base_addr = (uint8_t)query;
 
 	err = sy3400_i2c_write(dd, query+1, NULL, 0);
 	if (err < 0) {
