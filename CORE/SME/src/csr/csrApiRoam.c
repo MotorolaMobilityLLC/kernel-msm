@@ -4949,7 +4949,7 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                         pIes = (tDot11fBeaconIEs *)( pScanResult->Result.pvIes );
                         // Set the roaming substate to 'join attempt'...
                         csrRoamSubstateChange( pMac, eCSR_ROAM_SUBSTATE_JOIN_REQ, sessionId);
-                        status = csrSendJoinReqMsg( pMac, sessionId, pSirBssDesc, pProfile, pIes );
+                        status = csrSendJoinReqMsg( pMac, sessionId, pSirBssDesc, pProfile, pIes, eWNI_SME_JOIN_REQ );
                     }
                 }
                 else
@@ -6555,7 +6555,7 @@ eHalStatus csrRoamIssueJoin( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDes
     // Set the roaming substate to 'join attempt'...
     csrRoamSubstateChange( pMac, eCSR_ROAM_SUBSTATE_JOIN_REQ, sessionId);
     // attempt to Join this BSS...
-    status = csrSendJoinReqMsg( pMac, sessionId, pSirBssDesc, pProfile, pIes );
+    status = csrSendJoinReqMsg( pMac, sessionId, pSirBssDesc, pProfile, pIes, eWNI_SME_JOIN_REQ );
     return (status);
 }
 
@@ -6566,10 +6566,10 @@ static eHalStatus csrRoamIssueReassociate( tpAniSirGlobal pMac, tANI_U32 session
     // Set the roaming substate to 'join attempt'...
     csrRoamSubstateChange( pMac, eCSR_ROAM_SUBSTATE_REASSOC_REQ, sessionId );
 
-    smsLog(pMac, LOGE, FL("  calling csrSendSmeReassocReqMsg\n"));
+    smsLog(pMac, LOGE, FL(" calling csrSendJoinReqMsg (eWNI_SME_REASSOC_REQ)\n"));
     
     // attempt to Join this BSS...
-    return csrSendSmeReassocReqMsg( pMac, sessionId, pSirBssDesc, pIes, pProfile );
+    return csrSendJoinReqMsg( pMac, sessionId, pSirBssDesc, pProfile, pIes, eWNI_SME_REASSOC_REQ);
 }
 
 void csrRoamReissueRoamCommand(tpAniSirGlobal pMac)
@@ -11316,11 +11316,12 @@ static void csrPrepareJoinReassocReqBuffer( tpAniSirGlobal pMac,
   *  limJoinReqSerDes() of limSerDesUtils.cc) should keep in mind not to access the components DIRECTLY after tSirRSNie.
   */
 eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDescription *pBssDescription, 
-                              tCsrRoamProfile *pProfile, tDot11fBeaconIEs *pIes )
+                              tCsrRoamProfile *pProfile, tDot11fBeaconIEs *pIes, tANI_U16 messageType )
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tSirSmeJoinReq *pMsg;
     tANI_U8 *pBuf;
+    v_U8_t acm_mask = 0, uapsd_mask;
     tANI_U16 msgLen, wTmp, ieLen;
     tSirMacRateSet OpRateSet;
     tSirMacRateSet ExRateSet;
@@ -11333,7 +11334,13 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
         return eHAL_STATUS_FAILURE;
     }
-    
+    /* To satisfy klockworks */
+    if (NULL == pBssDescription)
+    {
+        smsLog(pMac, LOGE, FL(" pBssDescription is NULL\n"));
+        return eHAL_STATUS_FAILURE;
+    }
+
     do {
         pSession->joinFailStatusCode.statusCode = eSIR_SME_SUCCESS;
         pSession->joinFailStatusCode.reasonCode = 0;
@@ -11351,7 +11358,7 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         status = palAllocateMemory(pMac->hHdd, (void **)&pMsg, msgLen);
         if ( !HAL_STATUS_SUCCESS(status) ) break;
         palZeroMemory(pMac->hHdd, pMsg, msgLen);
-        pMsg->messageType = pal_cpu_to_be16((tANI_U16)eWNI_SME_JOIN_REQ);
+        pMsg->messageType = pal_cpu_to_be16((tANI_U16)messageType);
         pMsg->length = pal_cpu_to_be16(msgLen);
         pBuf = &pMsg->sessionId;
         // sessionId
@@ -11400,12 +11407,12 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         *pBuf = pProfile->uapsd_mask;
         pBuf++;
 
-    
-    
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)        
+
+
+#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
 #endif /*(WNI_POLARIS_FW_PACKAGE == ADVANCED)*/
         status = csrGetRateSet(pMac, pProfile, (eCsrPhyMode)pProfile->phyMode, pBssDescription, pIes, &OpRateSet, &ExRateSet);
-        if (HAL_STATUS_SUCCESS(status) ) 
+        if (HAL_STATUS_SUCCESS(status) )
         {
             // OperationalRateSet
             if (OpRateSet.numRates) {
@@ -11524,412 +11531,50 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
             pBuf += 2;
         }
 #ifdef FEATURE_WLAN_CCX
-        // Never include the cckmIE in an Join Request
-        //length is two bytes
-        *pBuf = 0;
-        *(pBuf + 1) = 0;
-        pBuf += 2;
-#endif 
-        // addIEScan
-        if(pProfile->nAddIEScanLength && pProfile->pAddIEScan)
+        if( eWNI_SME_JOIN_REQ == messageType )
         {
-            ieLen = pProfile->nAddIEScanLength;
-            if(ieLen > pSession->nAddIEScanLength)
-            {
-                if(pSession->pAddIEScan && pSession->nAddIEScanLength)
-        {
-                    palFreeMemory(pMac->hHdd, pSession->pAddIEScan);
-                }
-                status = palAllocateMemory(pMac->hHdd, 
-                                 (void **)&pSession->pAddIEScan, ieLen);
-                if(!HAL_STATUS_SUCCESS(status)) break;
-            }
-            pSession->nAddIEScanLength = ieLen;
-            palCopyMemory(pMac->hHdd, pSession->pAddIEScan, 
-                                      pProfile->pAddIEScan, ieLen);
-            wTmp = pal_cpu_to_be16( ieLen );
-            palCopyMemory( pMac->hHdd, pBuf, &wTmp, sizeof(tANI_U16) );
-            pBuf += sizeof(tANI_U16);
-            palCopyMemory( pMac->hHdd, pBuf, pProfile->pAddIEScan, ieLen );
-            pBuf += ieLen;
-        }
-        else
-        {
-            pSession->nAddIEScanLength = 0;
-            if(pSession->pAddIEScan)
-            {
-                palFreeMemory(pMac->hHdd, pSession->pAddIEScan);
-                pSession->pAddIEScan = NULL;
-            }
-            *pBuf = 0;
-            *(pBuf + 1) = 0;
-            pBuf += 2;
-        }
-        // addIEAssoc
-        if(pProfile->nAddIEAssocLength && pProfile->pAddIEAssoc)
-        {
-            ieLen = pProfile->nAddIEAssocLength;
-            if(ieLen > pSession->nAddIEAssocLength)
-            {
-                if(pSession->pAddIEAssoc && pSession->nAddIEAssocLength)
-                {
-                    palFreeMemory(pMac->hHdd, pSession->pAddIEAssoc);
-                }
-                status = palAllocateMemory(pMac->hHdd, 
-                                 (void **)&pSession->pAddIEAssoc, ieLen);
-                if(!HAL_STATUS_SUCCESS(status)) break;
-            }
-            pSession->nAddIEAssocLength = ieLen;
-            palCopyMemory(pMac->hHdd, pSession->pAddIEAssoc, 
-                                      pProfile->pAddIEAssoc, ieLen);
-            wTmp = pal_cpu_to_be16( ieLen );
-            palCopyMemory( pMac->hHdd, pBuf, &wTmp, sizeof(tANI_U16) );
-            pBuf += sizeof(tANI_U16);
-            palCopyMemory( pMac->hHdd, pBuf, pProfile->pAddIEAssoc, ieLen );
-            pBuf += ieLen;
-        }
-        else
-        {
-            pSession->nAddIEAssocLength = 0;
-            if(pSession->pAddIEAssoc)
-            {
-                palFreeMemory(pMac->hHdd, pSession->pAddIEAssoc);
-                pSession->pAddIEAssoc = NULL;
-            }
-            *pBuf = 0;
-            *(pBuf + 1) = 0;
-            pBuf += 2;
-        }
-        dwTmp = pal_cpu_to_be32( csrTranslateEncryptTypeToEdType( pProfile->negotiatedUCEncryptionType) );
-        palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tANI_U32) );
-        pBuf += sizeof(tANI_U32);        
-        dwTmp = pal_cpu_to_be32( csrTranslateEncryptTypeToEdType( pProfile->negotiatedMCEncryptionType) );
-        palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tANI_U32) );
-        pBuf += sizeof(tANI_U32);        
-#ifdef WLAN_FEATURE_VOWIFI_11R
-        pProfile->MDID.mdiePresent = pBssDescription->mdiePresent;
-        if (csrIsProfile11r( pProfile ) )
-        {
-            // is11Rconnection;
-            dwTmp = pal_cpu_to_be32(TRUE); 
-            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
-        }
-        else
-        {
-            // is11Rconnection;
-            dwTmp = pal_cpu_to_be32(FALSE); 
-            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
-        }
-#endif
-#ifdef FEATURE_WLAN_CCX
-        /* A profile can not be both CCX and 11R. But an 802.11R AP
-         * may be advertising support for CCX as well. So if we are 
-         * associating Open or explicitly CCX then we will get CCX.
-         * If we are associating explictly 11R only then we will get
-         * 11R.
-         */
-        if ((csrIsProfileCCX(pProfile) || 
-             ((pIes->CCXVersion.present) 
-              && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM) 
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA) 
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA_PSK) 
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN) 
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK)))) 
-            && (!(csrIsProfile11r( pProfile ))) 
-            && (pMac->roam.configParam.isCcxIniFeatureEnabled))
-        {
-            // isCCXconnection;
-            dwTmp = pal_cpu_to_be32(TRUE); 
-            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
-        }
-        else 
-        {
-            //isCCXconnection;
-            dwTmp = pal_cpu_to_be32(FALSE); 
-            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
-        }
-        {
-            tCCXTspecInfo ccxTspec;
-            // CCX-Tspec IEs in the ASSOC request is presently not supported
-            // so nullify the TSPEC parameters
-            palZeroMemory(pMac->hHdd, &ccxTspec, sizeof(tCCXTspecInfo));
-            palCopyMemory( pMac->hHdd, pBuf, &ccxTspec, sizeof(tCCXTspecInfo));
-            pBuf += sizeof(tCCXTspecInfo);
-        }
-#endif
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
-        // Fill in isFastTransitionEnabled
-        if (pMac->roam.configParam.isFastTransitionEnabled
-#ifdef FEATURE_WLAN_LFR
-        || csrRoamIsFastRoamEnabled(pMac, sessionId)
-#endif
-        )
-        {
-            dwTmp = pal_cpu_to_be32(TRUE); 
-            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
-        }
-        else
-        {
-            dwTmp = pal_cpu_to_be32(FALSE); 
-            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
-        }
-#endif
-#ifdef FEATURE_WLAN_LFR
-        if(csrRoamIsFastRoamEnabled(pMac, sessionId))
-        {
-            //legacy fast roaming enabled
-            dwTmp = pal_cpu_to_be32(TRUE); 
-            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
-        }
-        else
-        {
-            dwTmp = pal_cpu_to_be32(FALSE); 
-            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
-        }
-#endif
-
-        // txLdpcIniFeatureEnabled
-        *pBuf = (tANI_U8)pMac->roam.configParam.txLdpcEnable;
-        pBuf++;
-
-        //BssDesc
-        csrPrepareJoinReassocReqBuffer( pMac, pBssDescription, pBuf, 
-                (tANI_U8)pProfile->uapsd_mask);
-        status = palSendMBMessage(pMac->hHdd, pMsg );    
-        if(!HAL_STATUS_SUCCESS(status)) 
-        {
-            break;
-        }
-        //Tush-QoS: notify QoS module that join happening
-        else
-        {
-#ifndef WLAN_MDM_CODE_REDUCTION_OPT
-            sme_QosCsrEventInd(pMac, (v_U8_t)sessionId, SME_QOS_CSR_JOIN_REQ, NULL);
-#endif
-        }
-    } while( 0 );
-    return( status );
-}
-
-eHalStatus csrSendSmeReassocReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDescription *pBssDescription, 
-                                    tDot11fBeaconIEs *pIes, tCsrRoamProfile *pProfile )
-{
-    eHalStatus status;
-    tSirSmeReassocReq *pMsg;
-    tANI_U8 *pBuf;
-    v_U8_t acm_mask = 0, uapsd_mask;
-    tANI_U16 msgLen, ieLen, wTmp;
-    tANI_U32 dwTmp;
-    tSirMacRateSet OpRateSet;
-    tSirMacRateSet ExRateSet;
-    tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
-    tANI_U8 wpaRsnIE[DOT11F_IE_RSN_MAX_LEN];    //RSN MAX is bigger than WPA MAX
-
-    if(!pSession)
-    {
-        smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
-        return eHAL_STATUS_FAILURE;
-    }
-    
-    /* To satisfy klockworks */
-    if (pBssDescription == NULL)
-    {
-        smsLog(pMac, LOGE, FL(" pBssDescription is NULL\n"));
-        return eHAL_STATUS_FAILURE;
-    }
-    do {
-        // There are a number of variable length fields to consider.  First, the tSirSmeJoinReq
-        // includes a single bssDescription.   bssDescription includes a single tANI_U32 for the 
-        // IE fields, but the length field in the bssDescription needs to be interpreted to 
-        // determine length of the IE fields.
-        //
-        // So, take the size of the JoinReq, subtract the size of the bssDescription and 
-        // add in the length from the bssDescription (then add the size of the 'length' field
-        // itself because that is NOT included in the length field).
-        msgLen = sizeof( tSirSmeReassocReq ) - sizeof( *pBssDescription ) + 
-                 pBssDescription->length + sizeof( pBssDescription->length ) +
-                 sizeof( tCsrWpaIe ) + sizeof( tCsrWpaAuthIe ) + sizeof( tANI_U16 ); // add in the size of the WPA IE that we may build.
-        status = palAllocateMemory(pMac->hHdd, (void **)&pMsg, msgLen);         
-        if ( !HAL_STATUS_SUCCESS(status) ) break;
-        palZeroMemory(pMac->hHdd, pMsg, msgLen);
-        pMsg->messageType = pal_cpu_to_be16((tANI_U16)eWNI_SME_REASSOC_REQ);
-                pMsg->length = pal_cpu_to_be16(msgLen);
-        pBuf = &pMsg->sessionId;
-        // sessionId
-        *pBuf++ = (tANI_U8)sessionId;
-        // transactionId
-        *pBuf = 0;
-        *(pBuf + 1) = 0;
-        pBuf += sizeof (tANI_U16);
-        // ssId
-        if( pIes->SSID.present && pIes->SSID.num_ssid )
-        {
-            // ssId len
-            *pBuf++ = pIes->SSID.num_ssid;
-            palCopyMemory( pMac->hHdd, pBuf, pIes->SSID.ssid, pIes->SSID.num_ssid );
-            pBuf += pIes->SSID.num_ssid;
-        } 
-        else
-        {
-            *pBuf++ = 0;
-        }
-        // selfMacAddr
-        palCopyMemory( pMac->hHdd, (tSirMacAddr *)pBuf, &pSession->selfMacAddr, sizeof(tSirMacAddr) );
-        pBuf += sizeof(tSirMacAddr);
-        // bsstype
-        dwTmp = pal_cpu_to_be32( csrTranslateBsstypeToMacType( pProfile->BSSType ) );
-        palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tSirBssType) );
-        pBuf += sizeof(tSirBssType);
-        // dot11mode
-        *pBuf = (tANI_U8)csrTranslateToWNICfgDot11Mode( pMac, pSession->bssParams.uCfgDot11Mode );
-        pBuf++;
-        //Persona
-        *pBuf = (tANI_U8)pProfile->csrPersona;
-        pBuf++;
-        //CBMode
-        *pBuf = (tANI_U8)pSession->bssParams.cbMode;
-        pBuf++;
-
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-            FL("CSR PERSONA=%d CSR CBMode=%u\n"), pProfile->csrPersona, pSession->bssParams.cbMode);
-
-        // uapsdPerAcBitmask
-        *pBuf = pProfile->uapsd_mask;
-        pBuf++;
-
-        status = csrGetRateSet(pMac, pProfile, (eCsrPhyMode)pProfile->phyMode, 
-                        pBssDescription, pIes, &OpRateSet, &ExRateSet);
-        if (HAL_STATUS_SUCCESS(status) ) 
-        {
-            // OperationalRateSet
-            if (OpRateSet.numRates) 
-            {
-                *pBuf++ = OpRateSet.numRates;
-                palCopyMemory(pMac->hHdd, pBuf, OpRateSet.rate, OpRateSet.numRates);
-                pBuf += OpRateSet.numRates;
-            } 
-            else *pBuf++ = 0;
-            // ExtendedRateSet
-            if (ExRateSet.numRates) 
-            {
-                *pBuf++ = ExRateSet.numRates;
-                palCopyMemory(pMac->hHdd, pBuf, ExRateSet.rate, ExRateSet.numRates);
-                pBuf += ExRateSet.numRates;
-            } 
-            else *pBuf++ = 0;
-        }
-        else
-        {
-            *pBuf++ = 0;
-            *pBuf++ = 0;
-        }
-                // rsnIE
-        if ( csrIsProfileWpa( pProfile ) )
-                {
-                    // Insert the Wpa IE into the join request
-            ieLen = csrRetrieveWpaIe( pMac, pProfile, pBssDescription, pIes,
-                                                   (tCsrWpaIe *)( wpaRsnIE ) );
-                }
-                else if( csrIsProfileRSN( pProfile ) )
-                {
-                    // Insert the RSN IE into the join request
-            ieLen = csrRetrieveRsnIe( pMac, sessionId, pProfile, pBssDescription, pIes,
-                                                    (tCsrRSNIe *)( wpaRsnIE ) );
-        }
-#ifdef FEATURE_WLAN_WAPI
-        else if( csrIsProfileWapi( pProfile ) )
-        {
-            // Insert the WAPI IE into the join request
-            ieLen = csrRetrieveWapiIe( pMac, sessionId, pProfile, pBssDescription, pIes,
-                                                (tCsrWapiIe *)( wpaRsnIE) );
-        }
-#endif /* FEATURE_WLAN_WAPI */
-        else
-        {
-            ieLen = 0;
-        }
-        //remember the IE for future use
-        if( ieLen )
-        {
-            if(ieLen > DOT11F_IE_RSN_MAX_LEN)
-             {
-                 smsLog(pMac, LOGE, FL(" WPA RSN IE length :%d is more than DOT11F_IE_RSN_MAX_LEN, resetting to %d\n"), ieLen, DOT11F_IE_RSN_MAX_LEN);
-                 ieLen = DOT11F_IE_RSN_MAX_LEN;
-             }
-            //Check whether we need to allocate more memory
-            if(ieLen > pSession->nWpaRsnReqIeLength)
-            {
-                if(pSession->pWpaRsnReqIE && pSession->nWpaRsnReqIeLength)
-                {
-                    palFreeMemory(pMac->hHdd, pSession->pWpaRsnReqIE);
-                }
-                status = palAllocateMemory(pMac->hHdd, (void **)&pSession->pWpaRsnReqIE, ieLen);
-                if(!HAL_STATUS_SUCCESS(status)) break;
-            }
-            pSession->nWpaRsnReqIeLength = ieLen;
-            palCopyMemory(pMac->hHdd, pSession->pWpaRsnReqIE, wpaRsnIE, ieLen);
-            wTmp = pal_cpu_to_be16( ieLen );
-            palCopyMemory( pMac->hHdd, pBuf, &wTmp, sizeof(tANI_U16) );
-            pBuf += sizeof(tANI_U16);
-            palCopyMemory( pMac->hHdd, pBuf, wpaRsnIE, ieLen );
-            pBuf += ieLen;
-                }
-                else
-                {
-            //free whatever old info
-            pSession->nWpaRsnReqIeLength = 0;
-            if(pSession->pWpaRsnReqIE)
-            {
-                palFreeMemory(pMac->hHdd, pSession->pWpaRsnReqIE);
-                pSession->pWpaRsnReqIE = NULL;
-            }
+            // Never include the cckmIE in an Join Request
             //length is two bytes
             *pBuf = 0;
             *(pBuf + 1) = 0;
             pBuf += 2;
-                }
-#ifdef FEATURE_WLAN_CCX
-        // cckmIE
-        if( csrIsProfileCCX( pProfile ) )
+        }
+        else if(eWNI_SME_REASSOC_REQ == messageType )
         {
-            // Insert the CCKM IE into the join request
-            ieLen = csrConstructCcxCckmIe( pMac, 
-                                          pSession, 
-                                          pProfile, 
-                                          pBssDescription, 
-                                          pSession->pWpaRsnReqIE, 
+            // cckmIE
+            if( csrIsProfileCCX( pProfile ) )
+            {
+                // Insert the CCKM IE into the join request
+                ieLen = csrConstructCcxCckmIe( pMac,
+                                          pSession,
+                                          pProfile,
+                                          pBssDescription,
+                                          pSession->pWpaRsnReqIE,
                                           pSession->nWpaRsnReqIeLength,
                                           (void *)( wpaRsnIE ) );
-        }
-        else
-        {
-            ieLen = 0;
-        }
-        //If present, copy the IE into the eWNI_SME_REASSOC_REQ message buffer
-        if( ieLen )
-        {
-            //Copy the CCKM IE over from the temp buffer (wpaRsnIE)
-            wTmp = pal_cpu_to_be16( ieLen );
-            palCopyMemory( pMac->hHdd, pBuf, &wTmp, sizeof(tANI_U16) );
-            pBuf += sizeof(tANI_U16);
-            palCopyMemory( pMac->hHdd, pBuf, wpaRsnIE, ieLen );
-            pBuf += ieLen;
-        }
-        else
-        {
-            //Indicate you have no CCKM IE
-            //length is two bytes
-            *pBuf = 0;
-            *(pBuf + 1) = 0;
-            pBuf += 2;
+            }
+            else
+            {
+                ieLen = 0;
+            }
+            //If present, copy the IE into the eWNI_SME_REASSOC_REQ message buffer
+            if( ieLen )
+            {
+                //Copy the CCKM IE over from the temp buffer (wpaRsnIE)
+                wTmp = pal_cpu_to_be16( ieLen );
+                palCopyMemory( pMac->hHdd, pBuf, &wTmp, sizeof(tANI_U16) );
+                pBuf += sizeof(tANI_U16);
+                palCopyMemory( pMac->hHdd, pBuf, wpaRsnIE, ieLen );
+                pBuf += ieLen;
+            }
+            else
+            {
+                //Indicate you have no CCKM IE
+                //length is two bytes
+                *pBuf = 0;
+                *(pBuf + 1) = 0;
+                pBuf += 2;
+            }
         }
 #endif /* FEATURE_WLAN_CCX */
         // addIEScan
@@ -11942,7 +11587,7 @@ eHalStatus csrSendSmeReassocReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSi
                 {
                     palFreeMemory(pMac->hHdd, pSession->pAddIEScan);
                 }
-                status = palAllocateMemory(pMac->hHdd, 
+                status = palAllocateMemory(pMac->hHdd,
                                  (void **)&pSession->pAddIEScan, ieLen);
                 if(!HAL_STATUS_SUCCESS(status)) break;
             }
@@ -11977,12 +11622,12 @@ eHalStatus csrSendSmeReassocReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSi
         {
                     palFreeMemory(pMac->hHdd, pSession->pAddIEAssoc);
         }
-                status = palAllocateMemory(pMac->hHdd, 
+                status = palAllocateMemory(pMac->hHdd,
                                  (void **)&pSession->pAddIEAssoc, ieLen);
                 if(!HAL_STATUS_SUCCESS(status)) break;
         }
             pSession->nAddIEAssocLength = ieLen;
-            palCopyMemory(pMac->hHdd, pSession->pAddIEAssoc, 
+            palCopyMemory(pMac->hHdd, pSession->pAddIEAssoc,
                                       pProfile->pAddIEAssoc, ieLen);
             wTmp = pal_cpu_to_be16( ieLen );
             palCopyMemory( pMac->hHdd, pBuf, &wTmp, sizeof(tANI_U16) );
@@ -12002,61 +11647,100 @@ eHalStatus csrSendSmeReassocReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSi
             *(pBuf + 1) = 0;
             pBuf += 2;
         }
-        //Unmask any AC in reassoc that is ACM-set
-        uapsd_mask = (v_U8_t)pProfile->uapsd_mask;
-        if( uapsd_mask && ( NULL != pBssDescription ) )
+
+        if(eWNI_SME_REASSOC_REQ == messageType )
         {
-            if( CSR_IS_QOS_BSS(pIes) && CSR_IS_UAPSD_BSS(pIes) )
+            //Unmask any AC in reassoc that is ACM-set
+            uapsd_mask = (v_U8_t)pProfile->uapsd_mask;
+            if( uapsd_mask && ( NULL != pBssDescription ) )
             {
+                if( CSR_IS_QOS_BSS(pIes) && CSR_IS_UAPSD_BSS(pIes) )
+                {
 #ifndef WLAN_MDM_CODE_REDUCTION_OPT
-                acm_mask = sme_QosGetACMMask(pMac, pBssDescription, pIes);
+                    acm_mask = sme_QosGetACMMask(pMac, pBssDescription, pIes);
 #endif /* WLAN_MDM_CODE_REDUCTION_OPT*/
-                uapsd_mask &= ~(acm_mask);
-            }
-            else
-            {
-                uapsd_mask = 0;
+                    uapsd_mask &= ~(acm_mask);
+                }
+                else
+                {
+                    uapsd_mask = 0;
+                }
             }
         }
-        
+
         dwTmp = pal_cpu_to_be32( csrTranslateEncryptTypeToEdType( pProfile->negotiatedUCEncryptionType) );
         palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tANI_U32) );
-        pBuf += sizeof(tANI_U32);        
-        
+        pBuf += sizeof(tANI_U32);
+
         dwTmp = pal_cpu_to_be32( csrTranslateEncryptTypeToEdType( pProfile->negotiatedMCEncryptionType) );
         palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tANI_U32) );
-        pBuf += sizeof(tANI_U32);        
+        pBuf += sizeof(tANI_U32);
 #ifdef WLAN_FEATURE_VOWIFI_11R
-        // is11Rconnection;
-        dwTmp = csrIsProfile11r( pProfile )?  pal_cpu_to_be32(TRUE) : 0; 
-        palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-        pBuf += sizeof(tAniBool);        
+        pProfile->MDID.mdiePresent = pBssDescription->mdiePresent;
+        if (csrIsProfile11r( pProfile ) )
+        {
+            // is11Rconnection;
+            dwTmp = pal_cpu_to_be32(TRUE);
+            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
+            pBuf += sizeof(tAniBool);
+        }
+        else
+        {
+            // is11Rconnection;
+            dwTmp = pal_cpu_to_be32(FALSE);
+            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
+            pBuf += sizeof(tAniBool);
+        }
+#endif
 #ifdef FEATURE_WLAN_CCX
-        //isCCXconnection;
-        //CCKM profile, ccxversion ie present, not 11r and ini file has CCX enabled
-        dwTmp = ( ((csrIsProfileCCX(pProfile) || 
-                  ((pIes->CCXVersion.present) 
-                   && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM) 
+        /* A profile can not be both CCX and 11R. But an 802.11R AP
+         * may be advertising support for CCX as well. So if we are
+         * associating Open or explicitly CCX then we will get CCX.
+         * If we are associating explictly 11R only then we will get
+         * 11R.
+         */
+        if ((csrIsProfileCCX(pProfile) ||
+                  ((pIes->CCXVersion.present)
+                   && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM)
                        || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA)
                        || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA_PSK)
                        || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN)
-                       || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK)))) 
-                 && (!(csrIsProfile11r( pProfile ))) 
-                 && (pMac->roam.configParam.isCcxIniFeatureEnabled)) 
-                ? pal_cpu_to_be32(TRUE) : 0);
-        palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-        pBuf += sizeof(tAniBool);        
-#endif // FEATURE_WLAN_CCX
-#endif // WLAN_FEATURE_VOWIFI_11R
-#ifdef FEATURE_WLAN_CCX
-        if ((csrIsProfileCCX(pProfile) || 
-             ((pIes->CCXVersion.present) 
-              && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM) 
+                       || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK))))
+                 && (!(csrIsProfile11r( pProfile )))
+                 && (pMac->roam.configParam.isCcxIniFeatureEnabled))
+        {
+            // isCCXconnection;
+            dwTmp = pal_cpu_to_be32(TRUE);
+            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
+            pBuf += sizeof(tAniBool);
+        }
+        else
+        {
+            //isCCXconnection;
+            dwTmp = pal_cpu_to_be32(FALSE);
+            palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
+            pBuf += sizeof(tAniBool);
+        }
+
+        if (eWNI_SME_JOIN_REQ == messageType)
+        {
+            tCCXTspecInfo ccxTspec;
+            // CCX-Tspec IEs in the ASSOC request is presently not supported
+            // so nullify the TSPEC parameters
+            palZeroMemory(pMac->hHdd, &ccxTspec, sizeof(tCCXTspecInfo));
+            palCopyMemory( pMac->hHdd, pBuf, &ccxTspec, sizeof(tCCXTspecInfo));
+            pBuf += sizeof(tCCXTspecInfo);
+        }
+        else if (eWNI_SME_REASSOC_REQ == messageType)
+        {
+        if ((csrIsProfileCCX(pProfile) ||
+             ((pIes->CCXVersion.present)
+              && ((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM)
                   || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA)
                   || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_WPA_PSK)
                   || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN)
-                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK)))) 
-            && (!(csrIsProfile11r( pProfile ))) 
+                  || (pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_RSN_PSK))))
+            && (!(csrIsProfile11r( pProfile )))
             && (pMac->roam.configParam.isCcxIniFeatureEnabled))
         {
            tCCXTspecInfo ccxTspec;
@@ -12071,9 +11755,8 @@ eHalStatus csrSendSmeReassocReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSi
            }
            pBuf += sizeof(ccxTspec.tspec);
         }
-        else 
+        else
         {
-            {
                 tCCXTspecInfo ccxTspec;
                 // CCX-Tspec IEs in the ASSOC request is presently not supported
                 // so nullify the TSPEC parameters
@@ -12091,39 +11774,60 @@ eHalStatus csrSendSmeReassocReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSi
 #endif
          )
         {
-            dwTmp = pal_cpu_to_be32(TRUE); 
+            dwTmp = pal_cpu_to_be32(TRUE);
             palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
+            pBuf += sizeof(tAniBool);
         }
         else
         {
-            dwTmp = pal_cpu_to_be32(FALSE); 
+            dwTmp = pal_cpu_to_be32(FALSE);
             palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
+            pBuf += sizeof(tAniBool);
         }
 #endif
 #ifdef FEATURE_WLAN_LFR
         if(csrRoamIsFastRoamEnabled(pMac, sessionId))
         {
             //legacy fast roaming enabled
-            dwTmp = pal_cpu_to_be32(TRUE); 
+            dwTmp = pal_cpu_to_be32(TRUE);
             palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
+            pBuf += sizeof(tAniBool);
         }
         else
         {
-            dwTmp = pal_cpu_to_be32(FALSE); 
+            dwTmp = pal_cpu_to_be32(FALSE);
             palCopyMemory( pMac->hHdd, pBuf, &dwTmp, sizeof(tAniBool) );
-            pBuf += sizeof(tAniBool);        
+            pBuf += sizeof(tAniBool);
         }
 #endif
-        csrPrepareJoinReassocReqBuffer( pMac, pBssDescription, pBuf, uapsd_mask);
-        
+
+        // txLdpcIniFeatureEnabled
+        *pBuf = (tANI_U8)pMac->roam.configParam.txLdpcEnable;
+        pBuf++;
+
+        //BssDesc
+        csrPrepareJoinReassocReqBuffer( pMac, pBssDescription, pBuf,
+                (tANI_U8)pProfile->uapsd_mask);
+        status = palSendMBMessage(pMac->hHdd, pMsg );
+        if(!HAL_STATUS_SUCCESS(status))
+        {
+            break;
+        }
+        else
+        {
 #ifndef WLAN_MDM_CODE_REDUCTION_OPT
-        //Tush-QoS: notify QoS module that reassoc happening
-        sme_QosCsrEventInd(pMac, (v_U8_t)sessionId, SME_QOS_CSR_REASSOC_REQ, NULL);
+            if (eWNI_SME_JOIN_REQ == messageType)
+            {
+                //Tush-QoS: notify QoS module that join happening
+                sme_QosCsrEventInd(pMac, (v_U8_t)sessionId, SME_QOS_CSR_JOIN_REQ, NULL);
+            }
+            else if (eWNI_SME_REASSOC_REQ == messageType)
+            {
+                //Tush-QoS: notify QoS module that reassoc happening
+                sme_QosCsrEventInd(pMac, (v_U8_t)sessionId, SME_QOS_CSR_REASSOC_REQ, NULL);
+            }
 #endif
-        status = palSendMBMessage( pMac->hHdd, pMsg );
+        }
     } while( 0 );
     return( status );
 }
