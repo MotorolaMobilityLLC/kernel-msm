@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -132,6 +132,7 @@ int mdp4_overlay_writeback_on(struct platform_device *pdev)
 		pipe = mdp4_overlay_pipe_alloc(OVERLAY_TYPE_BF, MDP4_MIXER2);
 		if (pipe == NULL) {
 			pr_info("%s: pipe_alloc failed\n", __func__);
+			mdp_clk_ctrl(0);
 			return -EIO;
 		}
 		pipe->pipe_used++;
