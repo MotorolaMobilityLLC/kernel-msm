@@ -383,7 +383,10 @@ static struct led_info pm8921_led_info[] = {
 		.name			= "charging",
 	},
 	[1] = {
-		.name			= "reserved",
+		.name			= "led1",
+	},
+	[2] = {
+		.name			= "led2",
 	},
 };
 
@@ -441,6 +444,13 @@ static struct pm8xxx_led_config pm8921_led_configs[] = {
 		.mode = PM8XXX_LED_MODE_PWM1,
 		.max_current = 8,
 		.pwm_channel = 4,
+		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
+	},
+	[2] = {
+		.id = PM8XXX_ID_LED_2,
+		.mode = PM8XXX_LED_MODE_PWM1,
+		.max_current = 8,
+		.pwm_channel = PM8XXX_PWM_CHANNEL_NONE,
 		.pwm_period_us = PM8XXX_LED_PWM_PERIOD,
 	},
 };
@@ -540,7 +550,8 @@ static  __init void mmi_load_pm8921_leds_from_dt(void)
 						GFP_KERNEL);
 				BUG_ON(!led_info);
 
-				of_property_read_string(child, "name", &name);
+				of_property_read_string(child,
+							"led_name", &name);
 				BUG_ON(!name);
 
 				led_info->name = kstrndup(name,
