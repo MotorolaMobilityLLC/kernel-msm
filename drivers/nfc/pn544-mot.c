@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 NXP Semiconductors
+ * Copyright (C) 2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,10 +36,6 @@
 #include <linux/miscdevice.h>
 #include <linux/spinlock.h>
 #include <linux/nfc/pn544-mot.h>
-
-#include <linux/platform_device.h>
-#include <mach/gpio.h>
-#include <mach/gpiomux.h>
 
 #define MAX_BUFFER_SIZE	512
 
@@ -303,35 +300,79 @@ static ssize_t pn544_debug_read(struct device *dev,
 static DEVICE_ATTR(pn544_control_dev, 0660, pn544_debug_read,
 			pn544_control_func);
 
+static int pn544_gpio_init(struct pn544_i2c_platform_data *pdata)
+{
+	int ret;
+
+	/* Validate and get the IRQ line */
+	ret = gpio_request(pdata->irq_gpio, "pn544 irq");
+	if (ret)
+		return ret;
+
+	gpio_direction_input(pdata->irq_gpio);
+	ret = gpio_export(pdata->irq_gpio, 0);
+	if (ret)
+		goto free_irq;
+
+	/* Validate and get the reset line */
+	ret = gpio_request(pdata->ven_gpio, "pn544 reset");
+	if (ret)
+		goto free_irq;
+
+	/* Set VEN GPIO to disabled/reset, whose value depends on polarity */
+	gpio_direction_output(pdata->ven_gpio, pdata->ven_polarity ? 1 : 0);
+	ret = gpio_export(pdata->ven_gpio, 0);
+	if (ret)
+		goto free_ven;
+
+	/* Validate and get the firmware line */
+	ret = gpio_request(pdata->firmware_gpio, "pn544 firmware download");
+	if (ret)
+		goto free_ven;
+
+	gpio_direction_output(pdata->firmware_gpio, 0);
+	ret = gpio_export(pdata->firmware_gpio, 0);
+	if (ret)
+		goto free_fw;
+
+	return 0;
+
+free_fw:
+	gpio_free(pdata->firmware_gpio);
+free_ven:
+	gpio_free(pdata->ven_gpio);
+free_irq:
+	gpio_free(pdata->irq_gpio);
+	return ret;
+}
+
+static void pn544_gpio_free(struct pn544_dev *dev)
+{
+	gpio_free(dev->firmware_gpio);
+	gpio_free(dev->ven_gpio);
+	gpio_free(dev->irq_gpio);
+}
+
 static int pn544_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
-	int ret;
+	int ret = -ENODEV;
 	struct pn544_i2c_platform_data *platform_data;
 	struct pn544_dev *pn544_dev;
-	int ven_logic_high = 1;
-	int ven_logic_low = 0;
 
-	pr_info("%s : Probing pn544 driver\n", __func__);
+	pr_debug("%s : Probing pn544 driver\n", __func__);
 
 	platform_data = client->dev.platform_data;
 
-	if (platform_data == NULL || platform_data->irq_gpio == 0
-			|| platform_data->ven_gpio == 0
-			|| platform_data->firmware_gpio == 0) {
+	if (!platform_data) {
 		pr_err("%s : GPIO has value 0, nfc probe fail.\n", __func__);
-		goto err_nodev;
+		goto err_exit;
 	}
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		pr_err("%s : i2c_check_functionality I2C_FUNC_I2C failed.\n",
 			__func__);
-		goto err_nodev;
-	}
-
-	if (platform_data->ven_polarity == 1) {
-		ven_logic_high = 0;
-		ven_logic_low = 1;
+		goto err_exit;
 	}
 
 	pn544_dev = kzalloc(sizeof(*pn544_dev), GFP_KERNEL);
@@ -340,6 +381,12 @@ static int pn544_probe(struct i2c_client *client,
 				"failed to allocate memory for module data\n");
 		ret = -ENOMEM;
 		goto err_exit;
+	}
+
+	ret = pn544_gpio_init(platform_data);
+	if (ret) {
+		dev_err(&client->dev, "gpio init failed\n");
+		goto err_gpio_init;
 	}
 
 	pn544_dev->irq_gpio = platform_data->irq_gpio;
@@ -364,10 +411,10 @@ static int pn544_probe(struct i2c_client *client,
 		goto err_misc_register;
 	}
 
-	pr_info("%s : PN544 Misc Minor: %d\n",
+	pr_debug("%s : PN544 Misc Minor: %d\n",
 		__func__, pn544_dev->pn544_device.minor);
 
-	 /* Get the device statucture */
+	/* Get the device structure */
 	pn544_dev->pn544_control_device = pn544_dev->pn544_device.this_device;
 
 	/* Create sysfs device for PN544 control functionality */
@@ -381,13 +428,12 @@ static int pn544_probe(struct i2c_client *client,
 	/* request irq.  the irq is set whenever the chip has data available
 	 * for reading.  it is cleared when all data has been read.
 	 */
-	pr_info("%s : requesting IRQ %d\n", __func__, client->irq);
+	pr_debug("%s : requesting IRQ %d\n", __func__, client->irq);
 	pn544_dev->irq_enabled = true;
 	ret = request_irq(client->irq, pn544_dev_irq_handler,
 			  IRQF_TRIGGER_HIGH, client->name, pn544_dev);
 	if (ret) {
 		dev_err(&client->dev, "request_irq failed\n");
-		pr_info("%s : request_irq failed\n", __func__);
 		goto err_request_irq_failed;
 	}
 	if (unlikely(irq_set_irq_wake(client->irq, 1)))
@@ -405,11 +451,11 @@ err_device_create_file_failed:
 	misc_deregister(&pn544_dev->pn544_device);
 err_misc_register:
 	mutex_destroy(&pn544_dev->read_mutex);
+	pn544_gpio_free(pn544_dev);
+err_gpio_init:
 	kfree(pn544_dev);
 err_exit:
 	return ret;
-err_nodev:
-	return  -ENODEV;
 }
 
 static int pn544_remove(struct i2c_client *client)
@@ -418,6 +464,7 @@ static int pn544_remove(struct i2c_client *client)
 
 	pn544_dev = i2c_get_clientdata(client);
 	free_irq(client->irq, pn544_dev);
+	pn544_gpio_free(pn544_dev);
 	device_remove_file(pn544_dev->pn544_control_device,
 				&dev_attr_pn544_control_dev);
 	misc_deregister(&pn544_dev->pn544_device);
