@@ -665,133 +665,62 @@ int __init msp430_init_i2c_device(struct i2c_board_info *info,
 }
 
 /* NXP PN544 Init */
-struct pn544_i2c_platform_data pn544_platform_data = {
-	.irq_gpio = 0,
-	.ven_gpio = 0,
-	.firmware_gpio = 0,
-	.ven_polarity = 0,
-	.discharge_delay = 0,
-};
+struct pn544_i2c_platform_data pn544_platform_data;
 
-struct platform_device pn544_platform_device = {
-	.name = "pn544",
-	.id = -1,
-	.dev = {
-		.platform_data = &pn544_platform_data,
-	},
-};
-
-int __init pn544_init_i2c_device(struct i2c_board_info *info,
+static int __init pn544_init_i2c_device(struct i2c_board_info *info,
 		struct device_node *child)
 {
-	int err;
-	unsigned int irq_gpio = 0;
-	unsigned int ven_gpio = 0;
-	unsigned int firmware_gpio = 0;
-	unsigned int ven_polarity = 0;
-	unsigned int discharge_delay = 0;
+	unsigned int irq_gpio = -1;
+	unsigned int ven_gpio = -1;
+	unsigned int firmware_gpio = -1;
+	unsigned int ven_polarity;
+	unsigned int delay;
 
+	/* Read legacy format of PN544 DT, should become deprecated */
 	if (!of_property_read_u32_array(child, "platform_data",
 					(u32 *)(&pn544_platform_data), 4)) {
 		info->platform_data = &pn544_platform_data;
-		pr_info("pn544 got platform_data from dt\n");
+		pr_warn("%s: Using deprecated DT entry\n", __func__);
 		return 0;
-	} else {
-		pr_info("pn544 platform_data not found in dt\n");
 	}
 
 	info->platform_data = &pn544_platform_data;
 
-	/* irq */
-	if (of_property_read_u32(child, "pn544_gpio_irq", &irq_gpio))
-		return -EINVAL;
+	of_property_read_u32(child, "pn544_gpio_irq", &irq_gpio);
 	pn544_platform_data.irq_gpio = irq_gpio;
 
-	err = gpio_request(irq_gpio, "pn544 irq");
-	if (err) {
-		pr_err("pn544 irq gpio_request failed: %d\n", err);
-		goto fail;
-	}
-	gpio_direction_input(irq_gpio);
-	err = gpio_export(irq_gpio, 0);
-	if (err)
-		pr_err("pn544 irq gpio_export failed: %d\n", err);
-
-	/* ven */
-	if (of_property_read_u32(child, "pn544_gpio_ven", &ven_gpio)) {
-		gpio_free(irq_gpio);
-		return -EINVAL;
-	}
+	of_property_read_u32(child, "pn544_gpio_ven", &ven_gpio);
 	ven_gpio = PM8921_GPIO_PM_TO_SYS(ven_gpio);
 	pn544_platform_data.ven_gpio = ven_gpio;
 
-	err = gpio_request(ven_gpio, "pn544 reset");
-	if (err) {
-		gpio_free(irq_gpio);
-		pr_err("pn544 ven gpio_request failed: %d\n", err);
-		goto fail;
-	}
-	gpio_direction_output(ven_gpio, 0);
-	gpio_set_value(ven_gpio, 0);
-	err = gpio_export(ven_gpio, 0);
-	if (err)
-		pr_err("pna544 ven gpio_export failed: %d\n", err);
-
-	/* firmware download */
-	if (of_property_read_u32(child, "pn544_gpio_fwdownload",
-						&firmware_gpio)) {
-		gpio_free(irq_gpio);
-		gpio_free(ven_gpio);
-		return -EINVAL;
-	}
+	of_property_read_u32(child, "pn544_gpio_fwdownload", &firmware_gpio);
 	firmware_gpio = PM8921_GPIO_PM_TO_SYS(firmware_gpio);
 	pn544_platform_data.firmware_gpio = firmware_gpio;
 
-	err = gpio_request(firmware_gpio, "pn544 firmware download");
-	if (err) {
-		gpio_free(irq_gpio);
-		gpio_free(ven_gpio);
-		pr_err("pn544 firmware gpio_request failed: %d\n",
-			err);
-		goto fail;
-	}
-	gpio_direction_output(firmware_gpio, 0);
-	gpio_set_value(firmware_gpio, 0);
-	err = gpio_export(firmware_gpio, 0);
-
 	/* ven polarity */
 	if (of_property_read_u32(child, "pn544_ven_polarity", &ven_polarity)) {
-		gpio_free(irq_gpio);
-		gpio_free(ven_gpio);
-		gpio_free(firmware_gpio);
+		pr_err("%s: could not find ven_polarity!\n", __func__);
 		return -EINVAL;
 	}
-
 	pn544_platform_data.ven_polarity = ven_polarity;
 
 	/* dischage delay */
-	if (of_property_read_u32(child, "pn544_discharge_delay",
-						&discharge_delay)) {
-		gpio_free(irq_gpio);
-		gpio_free(ven_gpio);
-		gpio_free(firmware_gpio);
+	if (of_property_read_u32(child, "pn544_discharge_delay", &delay)) {
+		pr_err("%s: could not find discharge delayy!\n", __func__);
 		return -EINVAL;
 	}
-	pn544_platform_data.discharge_delay = discharge_delay;
+	pn544_platform_data.discharge_delay = delay;
 
-	pr_info("pn544 initialized i2c device. irq = %d, ven = %d, \
-		fwdownload = %d, polarity = %d, delay = %d\n",
+	pr_info("pn544 initialized i2c device. irq = %d, ven = %d, " \
+		"fwdownload = %d, polarity = %d, delay = %d\n",
 		pn544_platform_data.irq_gpio,
 		pn544_platform_data.ven_gpio,
 		pn544_platform_data.firmware_gpio,
 		pn544_platform_data.ven_polarity,
 		pn544_platform_data.discharge_delay);
 
- fail:
-	pr_err("pn544 init returned: %d\n", err);
-	return err;
+	return 0;
 }
-/* End of NXP PN544 Init */
 
 static struct drv260x_platform_data drv2605_data;
 
