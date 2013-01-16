@@ -1195,7 +1195,7 @@ int arizona_set_fll(struct arizona_fll *fll, int source,
 				   ARIZONA_FLL1_SYNC_ENA, 0);
 
 		if (ena)
-			pm_runtime_put_autosuspend(arizona->dev);
+			pm_runtime_put_sync(arizona->dev);
 
 		fll->fref = Fref;
 		fll->fout = Fout;
