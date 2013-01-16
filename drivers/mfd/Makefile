@@ -54,6 +54,7 @@ obj-$(CONFIG_MFD_TWL4030_AUDIO)	+= twl4030-audio.o
 
 obj-$(CONFIG_MARIMBA_CORE)	+= marimba-core.o
 obj-$(CONFIG_MARIMBA_TSADC)	+= marimba-tsadc.o
+obj-$(CONFIG_TPS65023)		+= tps65023.o
 
 obj-$(CONFIG_TIMPANI_CODEC)	+= timpani-codec.o
 
