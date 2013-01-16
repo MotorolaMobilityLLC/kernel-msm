@@ -59,6 +59,10 @@
 #define SY3400_IC_RESET_HOLD_TIME   1000
 #define SY3400_BL_HOLDOFF_TIME      120
 
+#define SY3400_QUERY(base, n)       (base + n)
+
+#define SY3400_BLK_SZ               0x0EE0
+#define SY3400_BLK_CT               0x00E0
 
 enum sy3400_driver_state {
 	SY3400_DRV_ACTIVE,
@@ -109,6 +113,7 @@ struct sy3400_page_block {
 	uint8_t         bldid[3];
 	uint8_t         prodid[11];
 	uint8_t         cfgid[4];
+	uint8_t         query_base_addr;
 	uint8_t         *irq_table;
 	uint8_t         irq_size;
 } __packed;
