@@ -829,11 +829,34 @@ static ssize_t tfa9890_show_spkr_imp(struct device *dev,
 			/* convert to fixed point decimal*/
 			tfa9890->speaker_imp =
 				read_imp/(1 << (23 - TFA9890_SPKR_IMP_EXP));
-			return snprintf(buf, 8, "%u\n", tfa9890->speaker_imp);
 		}
-		return snprintf(buf, 8, "%u\n", tfa9890->speaker_imp);
 	}
-	return snprintf(buf, 8, "%u\n", 0);
+	return scnprintf(buf, PAGE_SIZE, "%u\n", tfa9890->speaker_imp);
+}
+
+
+static ssize_t tfa9890_show_ic_temp(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct tfa9890_priv *tfa9890 = i2c_get_clientdata(to_i2c_client(dev));
+	u16 val;
+	int temp = 0;
+
+	if (tfa9890->codec) {
+		val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
+		if ((val & TFA9890_STATUS_PLLS) &&
+				(val & TFA9890_STATUS_CLKS)) {
+			/* calibaration should take place when the IC temp is
+			 * between 0 and 50C, factory test command will verify
+			 * factory test command will verify the temp along
+			 * with impdedence to pass the test.
+			 */
+			val = snd_soc_read(tfa9890->codec,
+						TFA9890_TEMP_STATUS_REG);
+			temp = val & TFA9890_STATUS_TEMP;
+		}
+	}
+	return scnprintf(buf, PAGE_SIZE, "%u\n", temp);
 }
 
 static ssize_t tfa9890_force_calibaration(struct device *dev,
@@ -854,6 +877,9 @@ static ssize_t tfa9890_force_calibaration(struct device *dev,
 	return count;
 }
 
+static DEVICE_ATTR(ic_temp, S_IRUGO,
+		   tfa9890_show_ic_temp, NULL);
+
 static DEVICE_ATTR(spkr_imp, S_IRUGO,
 		   tfa9890_show_spkr_imp, NULL);
 
@@ -863,6 +889,7 @@ static DEVICE_ATTR(force_calib, S_IWUSR,
 static struct attribute *tfa9890_attributes[] = {
 	&dev_attr_spkr_imp.attr,
 	&dev_attr_force_calib.attr,
+	&dev_attr_ic_temp.attr,
 	NULL
 };
 
