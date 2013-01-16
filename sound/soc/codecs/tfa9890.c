@@ -52,7 +52,8 @@ struct tfa9890_priv {
 	struct regulator *vdd;
 	struct snd_soc_codec *codec;
 	struct workqueue_struct *tfa9890_wq;
-	struct work_struct work;
+	struct work_struct init_work;
+	struct work_struct calib_work;
 	struct mutex dsp_init_lock;
 	struct mutex i2c_rw_lock;
 	int dsp_init;
@@ -469,10 +470,29 @@ static void tfa9890_calibaration(struct tfa9890_priv *tfa9890)
 	snd_soc_write(codec, TFA9890_VOL_CTL_REG, val);
 }
 
+static void tfa9890_read_calib_imp(struct work_struct *work)
+{
+	struct tfa9890_priv *tfa9890 =
+			container_of(work, struct tfa9890_priv, calib_work);
+	int read;
+	u16 val;
+
+	val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
+	if ((val & TFA9890_STATUS_PLLS) && (val & TFA9890_STATUS_CLKS)) {
+
+		if (tfa9890_dsp_transfer(tfa9890->codec,
+			TFA9890_DSP_MOD_SPEAKERBOOST,
+			TFA9890_PARAM_GET_RE0, 0, 3,
+			TFA9890_DSP_READ, &read) == 0)
+			tfa9890->speaker_imp =
+					read/(1 << (23 - TFA9890_SPKR_IMP_EXP));
+	}
+}
+
 static void tfa9890_dsp_init(struct work_struct *work)
 {
 	struct tfa9890_priv *tfa9890 =
-			container_of(work, struct tfa9890_priv, work);
+			container_of(work, struct tfa9890_priv, init_work);
 	struct snd_soc_codec *codec = tfa9890->codec;
 	const struct firmware *fw_speaker;
 	const struct firmware *fw_config;
@@ -789,7 +809,17 @@ static int tfa9890_trigger(struct snd_pcm_substream *substream, int cmd,
 		 * so this should be the place where DSP is initialized
 		 */
 		if (tfa9890->dsp_init == TFA9890_DSP_INIT_PENDING)
-			queue_work(tfa9890->tfa9890_wq, &tfa9890->work);
+			queue_work(tfa9890->tfa9890_wq, &tfa9890->init_work);
+		/* will need to read speaker impedence here if its not read yet
+		 * to complete the calibartion process. This step will enable
+		 * device to calibrate if its not calibrated/validated in the
+		 * factory. When the factory process is in place speaker imp
+		 * will be read from sysfs and validated.
+		 */
+		else if (tfa9890->dsp_init == TFA9890_DSP_INIT_DONE
+					&& tfa9890->speaker_imp == 0)
+			queue_work(tfa9890->tfa9890_wq, &tfa9890->calib_work);
+		/* else nothing to do */
 		break;
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
@@ -1037,7 +1067,8 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 		goto wq_fail;
 	}
 
-	INIT_WORK(&tfa9890->work, tfa9890_dsp_init);
+	INIT_WORK(&tfa9890->init_work, tfa9890_dsp_init);
+	INIT_WORK(&tfa9890->calib_work, tfa9890_read_calib_imp);
 
 	ret = gpio_request(pdata->reset_gpio, "tfa reset gpio");
 	if (ret < 0) {
