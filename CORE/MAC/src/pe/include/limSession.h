@@ -112,7 +112,7 @@ typedef struct sPESession           // Added to Support BT-AMP
     tSirNwType              nwType;
     tpSirSmeStartBssReq     pLimStartBssReq;        //handle to smestart bss req
     tpSirSmeJoinReq         pLimJoinReq;            // handle to sme join req
-    tpSirSmeReassocReq      pLimReAssocReq;         //handle to sme reassoc req
+    tpSirSmeJoinReq         pLimReAssocReq;         //handle to sme reassoc req
     tpLimMlmJoinReq         pLimMlmJoinReq;         //handle to MLM join Req
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
     void                    *pLimMlmReassocRetryReq; //keep reasoc req for retry

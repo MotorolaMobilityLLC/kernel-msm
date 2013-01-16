@@ -1885,7 +1885,7 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 {
     tANI_U16                caps;
     tANI_U32                val;
-    tpSirSmeReassocReq pReassocReq = NULL;
+    tpSirSmeJoinReq    pReassocReq = NULL;
     tLimMlmReassocReq  *pMlmReassocReq;
     tSirResultCodes    retCode = eSIR_SME_SUCCESS;
     tpPESession        psessionEntry = NULL;
