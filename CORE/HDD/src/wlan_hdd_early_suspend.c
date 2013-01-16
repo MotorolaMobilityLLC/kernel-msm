@@ -1323,13 +1323,16 @@ void hdd_resume_wlan(struct early_suspend *wlan_suspend)
                         "Switch to DTIM%d \n",powerRequest.uListenInterval);
          sme_SetPowerParams( WLAN_HDD_GET_HAL_CTX(pAdapter), &powerRequest);    
 
-         /* put the device into full power */
-         wlan_hdd_enter_bmps(pAdapter, DRIVER_POWER_MODE_ACTIVE);
+         if (BMPS == pmcGetPmcState(pHddCtx->hHal))
+         {
+             /* put the device into full power */
+             wlan_hdd_enter_bmps(pAdapter, DRIVER_POWER_MODE_ACTIVE);
 
-         /* put the device back into BMPS */
-         wlan_hdd_enter_bmps(pAdapter, DRIVER_POWER_MODE_AUTO);
+             /* put the device back into BMPS */
+             wlan_hdd_enter_bmps(pAdapter, DRIVER_POWER_MODE_AUTO);
 
-         pHddCtx->hdd_ignore_dtim_enabled = FALSE;
+             pHddCtx->hdd_ignore_dtim_enabled = FALSE;
+         }
       }
 
          if(pHddCtx->hdd_mcastbcast_filter_set == TRUE) {
