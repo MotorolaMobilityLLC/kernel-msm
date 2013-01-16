@@ -119,6 +119,7 @@
 #define TFA9890_STATUS_AMPE			(1<<3)
 #define TFA9890_STATUS_MUTE			(1<<5)
 #define TFA9890_STATUS_CF			(1<<8)
+#define TFA9890_STATUS_TEMP			(0x1ff)
 
 /* Params masks */
 #define TFA9890_I2S_FORMAT		(0x8)
