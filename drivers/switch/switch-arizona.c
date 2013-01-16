@@ -411,6 +411,13 @@ static irqreturn_t arizona_hpdet_irq(int irq, void *data)
 
 	if (!info->cable) {
 		dev_dbg(arizona->dev, "Ignoring HPDET for removed cable\n");
+
+		/* Reset back to starting range */
+		regmap_update_bits(arizona->regmap,
+				   ARIZONA_HEADPHONE_DETECT_1,
+				   ARIZONA_HP_IMPEDANCE_RANGE_MASK |
+				   ARIZONA_HP_POLL, 0);
+
 		goto done;
 	}
 
@@ -443,6 +450,7 @@ static irqreturn_t arizona_hpdet_irq(int irq, void *data)
 	else
 		switch_set_state(&info->sdev, BIT_HEADSET_NO_MIC);
 
+done:
 	ret = regmap_update_bits(arizona->regmap, 0x225, 0x4000, 0);
 	if (ret != 0)
 		dev_warn(arizona->dev, "Failed to undo magic: %d\n", ret);
@@ -451,7 +459,6 @@ static irqreturn_t arizona_hpdet_irq(int irq, void *data)
 	if (ret != 0)
 		dev_warn(arizona->dev, "Failed to undo magic: %d\n", ret);
 
-done:
 	if (id_gpio)
 		gpio_set_value_cansleep(id_gpio, 0);
 
