@@ -1354,6 +1354,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
 
 #ifdef WLAN_FEATURE_11AC
         pMac->roam.configParam.nVhtChannelWidth = pParam->nVhtChannelWidth;
+        pMac->roam.configParam.txBFEnable= pParam->enableTxBF;
 #endif
         pMac->scan.fIgnore_chan165 = pParam->fIgnore_chan165;
         pMac->roam.configParam.txLdpcEnable = pParam->enableTxLdpc;
@@ -1435,6 +1436,7 @@ eHalStatus csrGetConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pParam)
 #endif
 #ifdef WLAN_FEATURE_11AC
         pParam->nVhtChannelWidth = pMac->roam.configParam.nVhtChannelWidth;
+        pParam->enableTxBF = pMac->roam.configParam.txBFEnable;
 #endif
 
         csrSetChannels(pMac, pParam);
@@ -11806,6 +11808,11 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         *pBuf = (tANI_U8)pMac->roam.configParam.txLdpcEnable;
         pBuf++;
 
+#ifdef WLAN_FEATURE_11AC
+	// txBFIniFeatureEnabled
+	*pBuf = (tANI_U8)pMac->roam.configParam.txBFEnable;
+	 pBuf++;
+#endif
         //BssDesc
         csrPrepareJoinReassocReqBuffer( pMac, pBssDescription, pBuf,
                 (tANI_U8)pProfile->uapsd_mask);

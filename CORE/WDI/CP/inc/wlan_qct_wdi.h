@@ -1346,6 +1346,7 @@ typedef struct
 #ifdef WLAN_FEATURE_11AC
   wpt_uint8                 ucVhtCapableSta;
   wpt_uint8                 ucVhtTxChannelWidthSet;
+  wpt_uint8                 ucVhtTxBFEnabled;
 #endif
 
   wpt_uint8                 ucHtLdpcEnabled;

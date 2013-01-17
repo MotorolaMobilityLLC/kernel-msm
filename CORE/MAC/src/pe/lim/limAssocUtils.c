@@ -2230,6 +2230,9 @@ limAddSta(
     if(pAddStaParams->vhtCapable)
     {
         pAddStaParams->vhtTxChannelWidthSet = pStaDs->vhtSupportedChannelWidthSet;
+        pAddStaParams->vhtTxBFCapable =
+        ( STA_ENTRY_PEER == pStaDs->staType ) ? pStaDs->vhtBeamFormerCapable :
+                                psessionEntry->txBFIniFeatureEnabled ;
     }
 #endif
 
@@ -2626,6 +2629,7 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
 #ifdef WLAN_FEATURE_11AC
     pAddStaParams->vhtCapable = psessionEntry->vhtCapability;
     pAddStaParams->vhtTxChannelWidthSet = psessionEntry->apChanWidth;
+    pAddStaParams->vhtTxBFCapable = psessionEntry->txBFIniFeatureEnabled;
 #endif
 
     /* For Self STA get the LDPC capability from session i.e config.ini*/
@@ -3309,6 +3313,12 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
                 {
                     pAddBssParams->staContext.vhtCapable = 1;
                     pAddBssParams->staContext.vhtTxChannelWidthSet = pAssocRsp->VHTOperation.chanWidth; //pMac->lim.apChanWidth;
+                    if ( (pAssocRsp->VHTCaps.suBeamFormerCap ||
+                          pAssocRsp->VHTCaps.muBeamformerCap) &&
+                          psessionEntry->txBFIniFeatureEnabled )
+                    {
+                        pAddBssParams->staContext.vhtTxBFCapable = 1;
+                    }
                 }
 #endif
             }
@@ -3588,6 +3598,12 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
                 {
                     pAddBssParams->staContext.vhtCapable = 1;
                     pAddBssParams->staContext.vhtTxChannelWidthSet = pBeaconStruct->VHTOperation.chanWidth; 
+                    if ((pBeaconStruct->VHTCaps.suBeamFormerCap ||
+                         pBeaconStruct->VHTCaps.muBeamformerCap) &&
+                         psessionEntry->txBFIniFeatureEnabled )
+                    {
+                        pAddBssParams->staContext.vhtTxBFCapable = 1;
+                    }
                 }
           #endif
             }

@@ -1894,6 +1894,14 @@ REG_VARIABLE( CFG_ANDRIOD_POWER_SAVE_NAME, WLAN_PARAM_Integer,
               CFG_ANDRIOD_POWER_SAVE_MIN,
               CFG_ANDRIOD_POWER_SAVE_MAX),
 
+#ifdef WLAN_FEATURE_11AC
+REG_VARIABLE( CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE, WLAN_PARAM_Integer,
+             hdd_config_t, enableTxBF,
+             VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+             CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE_DEFAULT,
+             CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE_MIN,
+             CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE_MAX ),
+#endif
 };
 
 /*
@@ -3425,6 +3433,7 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    // On RF EVB beacon using channel 1.
 #ifdef WLAN_FEATURE_11AC
     smeConfig.csrConfig.nVhtChannelWidth = pConfig->vhtChannelWidth;
+    smeConfig.csrConfig.enableTxBF = pConfig->enableTxBF;
 #endif
    smeConfig.csrConfig.AdHocChannel5G            = 44; 
    smeConfig.csrConfig.ProprietaryRatesEnabled   = 0;  

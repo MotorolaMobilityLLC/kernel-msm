@@ -328,6 +328,7 @@ typedef struct
 #ifdef WLAN_FEATURE_11AC
     tANI_U8    vhtCapable;
     tANI_U8    vhtTxChannelWidthSet;
+    tANI_U8    vhtTxBFCapable;
 #endif
 
     tANI_U8    htLdpcCapable;

@@ -1046,6 +1046,7 @@ typedef struct tagCsrConfigParam
     tANI_BOOLEAN fScanTwice;
 #ifdef WLAN_FEATURE_11AC
     tANI_U32  nVhtChannelWidth;
+    tANI_U8   enableTxBF;
 #endif
 
     /*

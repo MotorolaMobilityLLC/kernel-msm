@@ -3809,6 +3809,7 @@ void WDA_UpdateSTAParams(tWDA_CbContext *pWDA,
 #ifdef WLAN_FEATURE_11AC
    wdiStaParams->ucVhtCapableSta = wdaStaParams->vhtCapable;
    wdiStaParams->ucVhtTxChannelWidthSet = wdaStaParams->vhtTxChannelWidthSet;
+   wdiStaParams->ucVhtTxBFEnabled = wdaStaParams->vhtTxBFCapable;
 #endif
    wdiStaParams->ucHtLdpcEnabled= wdaStaParams->htLdpcCapable;
    wdiStaParams->ucVhtLdpcEnabled = wdaStaParams->vhtLdpcCapable;

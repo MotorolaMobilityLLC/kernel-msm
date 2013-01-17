@@ -625,6 +625,7 @@ typedef struct sDphHashNode
 
 #ifdef WLAN_FEATURE_11AC
     tANI_U8  vhtSupportedChannelWidthSet;
+    tANI_U8  vhtBeamFormerCapable;
 #endif
 
     tANI_U8 htLdpcCapable;

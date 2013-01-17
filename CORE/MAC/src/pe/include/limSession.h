@@ -332,6 +332,7 @@ typedef struct sPESession           // Added to Support BT-AMP
     tANI_U8    vhtCapabilityPresentInBeacon;
     tANI_U8    apCenterChan;
     tANI_U8    apChanWidth;
+    tANI_U8    txBFIniFeatureEnabled;
 #endif
     tANI_U8            spectrumMgtEnabled;
     /* *********************11H related*****************************/
