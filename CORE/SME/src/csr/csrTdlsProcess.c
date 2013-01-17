@@ -381,7 +381,7 @@ eHalStatus tdlsSendMessage(tpAniSirGlobal pMac, tANI_U16 msg_type,
     pMsg->type = msg_type ;
     pMsg->msgLen = (tANI_U16) (msg_size) ;
 
-    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
                               ("sending msg = %d\n"), pMsg->type) ;
       /* Send message. */
     if (palSendMBMessage(pMac->hHdd, pMsg) != eHAL_STATUS_SUCCESS)
@@ -427,7 +427,7 @@ eHalStatus csrTdlsProcessSendMgmt( tpAniSirGlobal pMac, tSmeCmd *cmd )
 
     }
     // Send the request to PE.
-    smsLog( pMac, LOGE, "sending TDLS Mgmt Frame req to PE \n" );
+    smsLog( pMac, LOG1, "sending TDLS Mgmt Frame req to PE \n" );
     status = tdlsSendMessage(pMac, eWNI_SME_TDLS_SEND_MGMT_REQ, 
             (void *)tdlsSendMgmtReq , sizeof(tSirTdlsSendMgmtReq)+tdlsSendMgmtCmdInfo->len) ;
     if(!HAL_STATUS_SUCCESS( status ) )
@@ -504,7 +504,14 @@ eHalStatus csrTdlsProcessDelSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
             tdlsDelStaCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
 
     // Send the request to PE.
-    smsLog( pMac, LOGE, "sending TDLS Del Sta req to PE \n" );
+#ifdef WLAN_FEATURE_TDLS_DEBUG
+    smsLog( pMac, LOGE,
+#else
+    smsLog( pMac, LOG1,
+#endif
+        "sending TDLS Del Sta %02x:%02x:%02x:%02x:%02x:%02x req to PE\n",
+        tdlsDelStaCmdInfo->peerMac[0], tdlsDelStaCmdInfo->peerMac[1], tdlsDelStaCmdInfo->peerMac[2],
+        tdlsDelStaCmdInfo->peerMac[3], tdlsDelStaCmdInfo->peerMac[4], tdlsDelStaCmdInfo->peerMac[5]);
     status = tdlsSendMessage(pMac, eWNI_SME_TDLS_DEL_STA_REQ, 
             (void *)tdlsDelStaReq , sizeof(tSirTdlsDelStaReq)) ;
     if(!HAL_STATUS_SUCCESS( status ) )
