@@ -200,13 +200,14 @@ void mdp4_sw_reset(ulong bits)
 
 	bits &= 0x1f;	/* 5 bits */
 	outpdw(MDP_BASE + 0x001c, bits);	/* MDP_SW_RESET */
+	wmb();
 
 	while (inpdw(MDP_BASE + 0x001c) & bits) /* self clear when complete */
 		;
 	/* MDP cmd block disable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 
-	MSM_FB_DEBUG("mdp4_sw_reset: 0x%x\n", (int)bits);
+	pr_debug("mdp4_sw_reset: 0x%x\n", (int)bits);
 }
 
 void mdp4_overlay_cfg(int overlayer, int blt_mode, int refresh, int direct_out)
@@ -1389,6 +1390,14 @@ struct mdp_csc_cfg mdp_csc_convert[4] = {
 		{ 0x0, 0xff, 0x0, 0xff, 0x0, 0xff, },
 	},
 };
+
+void mdp4_vg_csc_restore(void)
+{
+        int i;
+
+        for (i = 0; i < CSC_MAX_BLOCKS; i++)
+                mdp4_csc_config(&csc_cfg_matrix[i]);
+}
 
 
 void mdp4_vg_csc_update(struct mdp_csc *p)
