@@ -895,10 +895,7 @@ static int _qce_sps_add_sg_data(struct qce_device *pce_dev,
 			len = ALIGN(len, pce_dev->ce_sps.ce_burst_size);
 		while (len > 0) {
 			if (len > SPS_MAX_PKT_SIZE) {
-				if ((len % SPS_MAX_PKT_SIZE) > 0)
-					data_cnt = (len % SPS_MAX_PKT_SIZE);
-				else
-					data_cnt = SPS_MAX_PKT_SIZE;
+				data_cnt = SPS_MAX_PKT_SIZE;
 				iovec->size = data_cnt;
 				iovec->addr = addr;
 				iovec->flags = 0;
