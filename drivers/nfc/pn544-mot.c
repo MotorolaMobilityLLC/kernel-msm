@@ -39,8 +39,6 @@
 #include <linux/spinlock.h>
 #include <linux/nfc/pn544-mot.h>
 
-#define MAX_BUFFER_SIZE	512
-
 /*
  * Virtual device /sys/devices/virtual/misc/pn544/pn544_control_dev
 **/
@@ -87,12 +85,15 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 		size_t count, loff_t *offset)
 {
 	struct pn544_dev *pn544_dev = filp->private_data;
-	char tmp[MAX_BUFFER_SIZE];
+	char *data;
 	int ret;
-	int tries;
+	int tries = 0;
 
-	if (count > MAX_BUFFER_SIZE)
-		count = MAX_BUFFER_SIZE;
+	data = kzalloc(count, GFP_KERNEL);
+	if (!data) {
+		pr_err("%s: could not allocate buffer\n", __func__);
+		return -ENOMEM;
+	}
 
 	pr_debug("%s : reading %zu bytes.\n", __func__, count);
 
@@ -101,7 +102,8 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 	if (!gpio_get_value(pn544_dev->irq_gpio)) {
 		if (filp->f_flags & O_NONBLOCK) {
 			ret = -EAGAIN;
-			goto fail;
+			mutex_unlock(&pn544_dev->read_mutex);
+			goto free_buf;
 		}
 
 		pn544_dev->irq_enabled = true;
@@ -111,15 +113,16 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 
 		pn544_disable_irq(pn544_dev);
 
-		if (ret)
-			goto fail;
+		if (ret) {
+			mutex_unlock(&pn544_dev->read_mutex);
+			goto free_buf;
+		}
 
 	}
 
 	/* Read data */
-	tries = 0;
 	do {
-		ret = i2c_master_recv(pn544_dev->client, tmp, count);
+		ret = i2c_master_recv(pn544_dev->client, data, count);
 		if (ret < 0)
 			msleep_interruptible(5);
 	} while ((ret < 0) && (++tries < 5));
@@ -129,57 +132,54 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 	if (ret < 0) {
 		pr_err("%s: i2c_master_recv failed, returned %d\n",
 			__func__, ret);
-		return ret;
+		goto free_buf;
 	}
-	if (ret > count) {
-		pr_err("%s: received too many bytes from i2c (%d)\n",
-			__func__, ret);
-		return -EIO;
-	}
-	if (copy_to_user(buf, tmp, ret)) {
-		pr_err("%s : failed to copy to user space\n", __func__);
-		return -EFAULT;
-	}
-	return ret;
 
-fail:
-	mutex_unlock(&pn544_dev->read_mutex);
+	if (copy_to_user(buf, data, count)) {
+		pr_err("%s : failed to copy to user space\n", __func__);
+		ret = -EFAULT;
+	}
+
+free_buf:
+	kfree(data);
 	return ret;
 }
 
 static ssize_t pn544_dev_write(struct file *filp, const char __user *buf,
 		size_t count, loff_t *offset)
 {
-	struct pn544_dev  *pn544_dev;
-	char tmp[MAX_BUFFER_SIZE];
+	struct pn544_dev *pn544_dev = filp->private_data;
+	char *data;
 	int ret;
 	int tries = 0;
 
-	pn544_dev = filp->private_data;
+	data = kzalloc(count, GFP_KERNEL);
+	if (!data) {
+		pr_err("%s: could not allocate buffer\n", __func__);
+		return -ENOMEM;
+	}
 
-	if (count > MAX_BUFFER_SIZE)
-		count = MAX_BUFFER_SIZE;
-
-	if (copy_from_user(tmp, buf, count)) {
+	if (copy_from_user(data, buf, count)) {
 		pr_err("%s : failed to copy from user space\n", __func__);
-		return -EFAULT;
+		ret = -EFAULT;
+		goto free_buf;
 	}
 
 	pr_debug("%s : writing %zu bytes.\n", __func__, count);
+
 	/* Write data */
-	tries = 0;
 	do {
-		ret = i2c_master_send(pn544_dev->client, tmp, count);
+		ret = i2c_master_send(pn544_dev->client, data, count);
 		if (ret < 0)
 			msleep_interruptible(5);
 	} while ((ret < 0) && (++tries < 5));
 
-	if (ret != count || ret < 0) {
+	if (ret < 0)
 		pr_err("%s : i2c_master_send failed, returned %d\n",
 			__func__, ret);
-		ret = -EIO;
-	}
 
+free_buf:
+	kfree(data);
 	return ret;
 }
 
