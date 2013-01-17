@@ -28,6 +28,10 @@
 #include <linux/rcupdate.h>
 #include "input-compat.h"
 
+#ifdef CONFIG_PM_DEEPSLEEP
+#include <linux/suspend.h>
+#endif
+
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
 MODULE_DESCRIPTION("Input core");
 MODULE_LICENSE("GPL");
@@ -252,6 +256,13 @@ static void input_handle_event(struct input_dev *dev,
 			}
 
 			disposition = INPUT_PASS_TO_HANDLERS;
+#ifdef CONFIG_PM_DEEPSLEEP
+			/*
+			 * Ignore KEY events in deep sleep mode
+			 */
+			if (get_deepsleep_mode() && code != KEY_POWER)
+				disposition = INPUT_IGNORE_EVENT;
+#endif
 		}
 		break;
 
@@ -261,6 +272,13 @@ static void input_handle_event(struct input_dev *dev,
 
 			__change_bit(code, dev->sw);
 			disposition = INPUT_PASS_TO_HANDLERS;
+#ifdef CONFIG_PM_DEEPSLEEP
+			/*
+			 * Ignore Slider open/close events in deep sleep mode
+			 */
+			if (get_deepsleep_mode() && value == 0)
+				disposition = INPUT_IGNORE_EVENT;
+#endif
 		}
 		break;
 
@@ -279,7 +297,13 @@ static void input_handle_event(struct input_dev *dev,
 	case EV_MSC:
 		if (is_event_supported(code, dev->mscbit, MSC_MAX))
 			disposition = INPUT_PASS_TO_ALL;
-
+#ifdef CONFIG_PM_DEEPSLEEP
+			/*
+			 * Ignore MICS SCAN events from keypad driver
+			 */
+			if (get_deepsleep_mode() && code == MSC_SCAN)
+				disposition = INPUT_IGNORE_EVENT;
+#endif
 		break;
 
 	case EV_LED:
