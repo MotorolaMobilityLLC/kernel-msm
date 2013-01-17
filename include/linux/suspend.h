@@ -407,6 +407,10 @@ static inline void unlock_system_sleep(void) {}
 
 #endif /* !CONFIG_PM_SLEEP */
 
+#ifdef CONFIG_PM_DEEPSLEEP
+extern int get_deepsleep_mode(void);
+#endif
+
 #ifdef CONFIG_ARCH_SAVE_PAGE_KEYS
 /*
  * The ARCH_SAVE_PAGE_KEYS functions can be used by an architecture
