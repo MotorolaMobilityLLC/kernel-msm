@@ -88,6 +88,26 @@ static int32_t msm_actuator_parse_i2c_params(struct msm_actuator_ctrl_t *a_ctrl,
 				i2c_byte1 = (value & 0xFF00) >> 8;
 				i2c_byte2 = value & 0xFF;
 			}
+		} else if (write_arr[i].reg_write_type ==
+				MSM_ACTUATOR_WRITE_DAC_DW9735) {
+			value = next_lens_position >>
+				write_arr[i].data_shift;
+			i2c_byte1 = write_arr[i].reg_addr;
+			i2c_byte2 = value;
+			if (size != (i+1)) {
+				i2c_byte2 = value & 0xFF;
+				CDBG("%s: byte1:0x%x, byte2:0x%x\n",
+						__func__, i2c_byte1, i2c_byte2);
+				i2c_tbl[a_ctrl->i2c_tbl_index].reg_addr =
+					i2c_byte1;
+				i2c_tbl[a_ctrl->i2c_tbl_index].reg_data =
+					i2c_byte2;
+				i2c_tbl[a_ctrl->i2c_tbl_index].delay = 0;
+				a_ctrl->i2c_tbl_index++;
+				i++;
+				i2c_byte1 = write_arr[i].reg_addr;
+				i2c_byte2 = (value & 0xFF00) >> 8;
+			}
 		} else {
 			i2c_byte1 = write_arr[i].reg_addr;
 			i2c_byte2 = (hw_dword & write_arr[i].hw_mask) >>
