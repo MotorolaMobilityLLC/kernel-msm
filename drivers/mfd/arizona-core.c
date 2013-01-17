@@ -604,6 +604,9 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 		goto err_irq;
 	}
 
+	if (arizona->pdata.init_done)
+		arizona->pdata.init_done();
+
 #ifdef CONFIG_PM_RUNTIME
 	regulator_disable(arizona->dcvdd);
 #endif
