@@ -74,6 +74,8 @@
 
 #define ARIZONA_NUM_MICD_LEVEL 4
 
+#define ARIZONA_MAX_AIF 3
+
 struct regulator_init_data;
 
 struct arizona_micd_config {
@@ -154,6 +156,13 @@ struct arizona_pdata {
 
 	/** Extra microphone clamping enabled by speaker driver? */
 	unsigned int mic_spk_clamp;
+
+	/**
+	 * Maximum number of channels clocks will be generated for,
+	 * useful for systems where and I2S bus with multiple data
+	 * lines is mastered.
+	 */
+	int max_channels_clocked[ARIZONA_MAX_AIF];
 
 	/** Callback run at the end of mfd probe() */
 	void (*init_done)(void);
