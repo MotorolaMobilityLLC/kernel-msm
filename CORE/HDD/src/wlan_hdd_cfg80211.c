@@ -6467,9 +6467,12 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
     }
     vos_mem_copy( peerMac, peer, 6);
 
-    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
-                     "Request to send TDLS management: action = %d, status = %d, \
-                      len = %d", action_code, status_code, len);
+#ifdef WLAN_FEATURE_TDLS_DEBUG
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                     "%s: %02x:%02x:%02x:%02x:%02x:%02x) action %d, dialog_token %d status %d, len = %d",
+                     "tdls_mgmt", peer[0], peer[1], peer[2], peer[3], peer[4], peer[5],
+                      action_code, dialog_token, status_code, len);
+#endif
 
     buf_1 = vos_mem_malloc(len);
     if(buf_1 == NULL) {
@@ -6497,6 +6500,15 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_context_t *pHddCtx = wiphy_priv(wiphy);
+#ifdef WLAN_FEATURE_TDLS_DEBUG
+    const char *tdls_oper_str[]= {
+        "NL80211_TDLS_DISCOVERY_REQ",
+        "NL80211_TDLS_SETUP",
+        "NL80211_TDLS_TEARDOWN",
+        "NL80211_TDLS_ENABLE_LINK",
+        "NL80211_TDLS_DISABLE_LINK",
+        "NL80211_TDLS_UNKONW_OPER"};
+#endif
 
     if( NULL == pHddCtx || NULL == pHddCtx->cfg_ini )
     {
@@ -6504,14 +6516,21 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                 "Invalid arguments");
         return -EINVAL;
     }
-       
-    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
-            "Request for TDLS oper: %d", (int)oper);
+
+#ifdef WLAN_FEATURE_TDLS_DEBUG
+    if((int)oper > 4)
+        oper = 5;
+
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+            "%s: %02x:%02x:%02x:%02x:%02x:%02x: %d (%s) ", "tdls_oper",
+            peer[0], peer[1], peer[2], peer[3], peer[4], peer[5], (int)oper,
+            tdls_oper_str[(int)oper]);
+#endif
 
     if( FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport ||
-        FALSE == sme_IsFeatureSupportedByFW(TDLS)) 
+        FALSE == sme_IsFeatureSupportedByFW(TDLS))
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "TDLS Disabled in INI OR not enabled in FW.\
                 Cannot process TDLS commands \n");
         return -ENOTSUPP;
@@ -6520,7 +6539,7 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
     switch (oper) {
         case NL80211_TDLS_ENABLE_LINK:
             {
-                v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;  
+                v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
                 v_U8_t my_peer[6];
                 v_U8_t ucSTAId;
                 VOS_STATUS status;

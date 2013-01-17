@@ -103,6 +103,11 @@ Qualcomm Technologies Confidential and Proprietary
 #include "dphHashTable.h"
 #include "wlan_qct_wda.h"
 
+#ifdef WLAN_FEATURE_TDLS_DEBUG
+#define TDLS_DEBUG_LOG_LEVEL VOS_TRACE_LEVEL_ERROR
+#else
+#define TDLS_DEBUG_LOG_LEVEL VOS_TRACE_LEVEL_INFO
+#endif
 
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 /* forword declarations */
@@ -533,7 +538,7 @@ tSirRetStatus limSendTdlsDisReqFrame(tpAniSirGlobal pMac, tSirMacAddr peer_mac,
     }
 
 
-    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, ("Send TDLS action %d (%s)"),  
+    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL, ("[TDLS] action %d (%s) -AP-> OTA "),
             SIR_MAC_TDLS_DIS_REQ, limTraceTdlsActionString(SIR_MAC_TDLS_DIS_REQ) ));
 
     halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
@@ -989,7 +994,7 @@ static tSirRetStatus limSendTdlsDisRspFrame(tpAniSirGlobal pMac,
     VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO, 
                  ("transmitting Discovery response on direct link\n")) ;
 
-    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, ("Send TDLS action %d (%s)"),  
+    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL, ("[TDLS] action %d (%s) -DIRECT-> OTA"),
             SIR_MAC_TDLS_DIS_RSP, limTraceTdlsActionString(SIR_MAC_TDLS_DIS_RSP) ));
 
 
@@ -1197,7 +1202,7 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
        palCopyMemory( pMac->hHdd, pFrame + header_offset + nPayload, addIe, addIeLen ); 
     }
 
-    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, ("Send TDLS action %d (%s)"),  
+    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL, ("[TDLS] action %d (%s) -AP-> OTA"),
             SIR_MAC_TDLS_SETUP_REQ, limTraceTdlsActionString(SIR_MAC_TDLS_SETUP_REQ) ));
 
     halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
@@ -1347,8 +1352,9 @@ tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
        palCopyMemory( pMac->hHdd, pFrame + header_offset + nPayload, addIe, addIeLen ); 
     }
 
-    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, ("Send TDLS action %d (%s)"),  
-         SIR_MAC_TDLS_TEARDOWN, limTraceTdlsActionString(SIR_MAC_TDLS_TEARDOWN) ));
+    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL, ("[TDLS] action %d (%s) -%s-> OTA"),
+         SIR_MAC_TDLS_TEARDOWN, limTraceTdlsActionString(SIR_MAC_TDLS_TEARDOWN),
+         (reason == eSIR_MAC_TDLS_TEARDOWN_PEER_UNREACHABLE) ? "AP": "DIRECT" ));
 
     halstatus = halTxFrameWithTxComplete( pMac, pPacket, ( tANI_U16 ) nBytes,
                             HAL_TXRX_FRM_802_11_DATA,
@@ -1548,7 +1554,7 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
        palCopyMemory( pMac->hHdd, pFrame + header_offset + nPayload, addIe, addIeLen ); 
     }
 
-    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, ("Send TDLS action %d (%s)"),  
+    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL, ("[TDLS] action %d (%s) -AP-> OTA"),
          SIR_MAC_TDLS_SETUP_RSP, limTraceTdlsActionString(SIR_MAC_TDLS_SETUP_RSP) ));
 
     halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
@@ -1726,7 +1732,7 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
        palCopyMemory( pMac->hHdd, pFrame + header_offset + nPayload, addIe, addIeLen ); 
     }
 
-    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, ("Send TDLS action %d (%s)"),  
+    LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL, ("[TDLS] action %d (%s) -AP-> OTA"),
          SIR_MAC_TDLS_SETUP_CNF, limTraceTdlsActionString(SIR_MAC_TDLS_SETUP_CNF) ));
 
     halstatus = halTxFrameWithTxComplete( pMac, pPacket, ( tANI_U16 ) nBytes,
@@ -3444,8 +3450,8 @@ static tSirRetStatus limTdlsSetupAddSta(tpAniSirGlobal pMac,
        //Reject request.
        return eSIR_FAILURE;
     }
-    VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO, 
-          ("Aid = %d, for peer = %02x,%02x,%02x,%02x,%02x,%02x\n"),
+    VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL,
+          ("limTdlsSetupAddSta: Aid = %d, for peer = %02x,%02x,%02x,%02x,%02x,%02x\n"),
                      aid, peerMac[0],peerMac[1],peerMac[2],
                               peerMac[3],peerMac[4],peerMac[5]) ;
     pStaDs = dphGetHashEntry(pMac, aid, &psessionEntry->dph.dphHashTable);
@@ -3507,8 +3513,8 @@ static tpDphHashNode limTdlsDelSta(tpAniSirGlobal pMac, tSirMacAddr peerMac,
                                    pStaDs->staAddr[5]
                                     ) ;
 
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO, 
-                   ("STA type = %x, sta idx = %x\n"),pStaDs->staType, 
+        VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL,
+                   ("limTdlsDelSta: STA type = %x, sta idx = %x\n"),pStaDs->staType,
                                                            pStaDs->staIndex) ;
  
         status = limDelSta(pMac, pStaDs, false, psessionEntry) ;
@@ -4126,8 +4132,8 @@ eHalStatus limProcessTdlsAddStaRsp(tpAniSirGlobal pMac, void *msg,
     tANI_U16        aid = 0 ;
 
     SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
-    VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-            ("ADD_STA_RSP received :staIdx=%d, staMac=%02x:%02x:%02x:%02x:%02x:%02x"), pAddStaParams->staIdx, \
+    VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL,
+            ("limTdlsAddStaRsp: staIdx=%d, staMac=%02x:%02x:%02x:%02x:%02x:%02x"), pAddStaParams->staIdx, \
                             pAddStaParams->staMac[0], 
                             pAddStaParams->staMac[1], 
                             pAddStaParams->staMac[2], 
