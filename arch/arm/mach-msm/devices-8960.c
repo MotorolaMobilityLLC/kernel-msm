@@ -104,6 +104,24 @@
 #define MSM8960_HSUSB_SIZE		SZ_4K
 #define MSM8960_RPM_MASTER_STATS_BASE	0x10BB00
 
+#define MSM8960_PC_CNTR_PHYS	(MSM8960_IMEM_PHYS + 0x664)
+#define MSM8960_PC_CNTR_SIZE		0x40
+
+static struct resource msm8960_resources_pccntr[] = {
+	{
+		.start	= MSM8960_PC_CNTR_PHYS,
+		.end	= MSM8960_PC_CNTR_PHYS + MSM8960_PC_CNTR_SIZE,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+struct platform_device msm8960_pc_cntr = {
+	.name		= "pc-cntr",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(msm8960_resources_pccntr),
+	.resource	= msm8960_resources_pccntr,
+};
+
 static struct resource resources_otg[] = {
 	{
 		.start	= MSM8960_HSUSB_PHYS,
@@ -2436,6 +2454,17 @@ static struct fs_driver_data gfx3d_fs_data = {
 	.bus_port0 = MSM_BUS_MASTER_GRAPHICS_3D,
 };
 
+static struct fs_driver_data gfx3d_fs_data_8960ab = {
+	.clks = (struct fs_clk_data[]){
+		{ .name = "core_clk", .reset_rate = 27000000 },
+		{ .name = "iface_clk" },
+		{ .name = "bus_clk" },
+		{ 0 }
+	},
+	.bus_port0 = MSM_BUS_MASTER_GRAPHICS_3D,
+	.bus_port1 = MSM_BUS_MASTER_GRAPHICS_3D_PORT1,
+};
+
 static struct fs_driver_data ijpeg_fs_data = {
 	.clks = (struct fs_clk_data[]){
 		{ .name = "core_clk" },
@@ -2484,6 +2513,17 @@ static struct fs_driver_data ved_fs_data = {
 	.bus_port1 = MSM_BUS_MASTER_HD_CODEC_PORT1,
 };
 
+static struct fs_driver_data ved_fs_data_8960ab = {
+	.clks = (struct fs_clk_data[]){
+		{ .name = "core_clk" },
+		{ .name = "iface_clk" },
+		{ .name = "bus_clk" },
+		{ 0 }
+	},
+	.bus_port0 = MSM_BUS_MASTER_VIDEO_DEC,
+	.bus_port1 = MSM_BUS_MASTER_VIDEO_ENC,
+};
+
 static struct fs_driver_data vfe_fs_data = {
 	.clks = (struct fs_clk_data[]){
 		{ .name = "core_clk" },
@@ -2516,6 +2556,17 @@ struct platform_device *msm8960_footswitch[] __initdata = {
 	FS_8X60(FS_VED,    "vdd",	"msm_vidc.0",	&ved_fs_data),
 };
 unsigned msm8960_num_footswitch __initdata = ARRAY_SIZE(msm8960_footswitch);
+
+struct platform_device *msm8960ab_footswitch[] __initdata = {
+	FS_8X60(FS_MDP,    "vdd",	"mdp.0",	&mdp_fs_data),
+	FS_8X60(FS_ROT,    "vdd",	"msm_rotator.0", &rot_fs_data),
+	FS_8X60(FS_IJPEG,  "vdd",	"msm_gemini.0",	&ijpeg_fs_data),
+	FS_8X60(FS_VFE,    "vdd",	"msm_vfe.0",	&vfe_fs_data),
+	FS_8X60(FS_VPE,    "vdd",	"msm_vpe.0",	&vpe_fs_data),
+	FS_8X60(FS_GFX3D,  "vdd",	"kgsl-3d0.0",	&gfx3d_fs_data_8960ab),
+	FS_8X60(FS_VED,    "vdd",	"msm_vidc.0",	&ved_fs_data_8960ab),
+};
+unsigned msm8960ab_num_footswitch __initdata = ARRAY_SIZE(msm8960ab_footswitch);
 
 #ifdef CONFIG_MSM_ROTATOR
 static struct msm_bus_vectors rotator_init_vectors[] = {
@@ -3401,6 +3452,54 @@ struct platform_device msm_kgsl_2d1 = {
 };
 
 #ifdef CONFIG_MSM_GEMINI
+
+static struct msm_bus_vectors gemini_init_vector[] = {
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 0,
+		.ib  = 0,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_MM_IMEM,
+		.ab  = 0,
+		.ib  = 0,
+	},
+};
+
+static struct msm_bus_vectors gemini_encode_vector[] = {
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_EBI_CH0,
+		.ab  = 540000000,
+		.ib  = 1350000000,
+	},
+	{
+		.src = MSM_BUS_MASTER_JPEG_ENC,
+		.dst = MSM_BUS_SLAVE_MM_IMEM,
+		.ab  = 43200000,
+		.ib  = 69120000,
+	},
+};
+
+static struct msm_bus_paths gemini_bus_path[] = {
+	{
+		ARRAY_SIZE(gemini_init_vector),
+		gemini_init_vector,
+	},
+	{
+		ARRAY_SIZE(gemini_encode_vector),
+		gemini_encode_vector,
+	},
+};
+
+static struct msm_bus_scale_pdata gemini_bus_scale_pdata = {
+	gemini_bus_path,
+	ARRAY_SIZE(gemini_bus_path),
+	.name = "msm_gemini",
+};
+
 static struct resource msm_gemini_resources[] = {
 	{
 		.start  = 0x04600000,
@@ -3418,6 +3517,9 @@ struct platform_device msm8960_gemini_device = {
 	.name           = "msm_gemini",
 	.resource       = msm_gemini_resources,
 	.num_resources  = ARRAY_SIZE(msm_gemini_resources),
+	.dev = {
+		.platform_data = &gemini_bus_scale_pdata,
+	},
 };
 #endif
 

@@ -101,20 +101,6 @@ ENTRY(msm_pm_collapse)
 	mrc     p15, 0, r9, c13, c0, 3 /* TPIDRURO */
 	mrc     p15, 0, ip, c13, c0, 1 /* context ID */
 	stmia   r0!, {r1-r9, ip}
-#ifdef CONFIG_MSM_CPU_AVS
-	mrc     p15, 7, r1, c15, c1, 7 /* AVSCSR is the Adaptive Voltage Scaling
-	                                * Control and Status Register */
-	mrc     p15, 7, r2, c15, c0, 6 /* AVSDSCR is the Adaptive Voltage
-	                                * Scaling Delay Synthesizer Control
-					* Register */
-#ifndef CONFIG_ARCH_MSM_KRAIT
-	mrc     p15, 7, r3, c15, c1, 0 /* TSCSR is the Temperature Status and
-	                                * Control Register
-					*/
-#endif
-
-	stmia   r0!, {r1-r3}
-#endif
 
 #ifdef CONFIG_MSM_JTAG
 	bl      msm_jtag_save_state
@@ -133,6 +119,19 @@ ENTRY(msm_pm_collapse)
 	bne	skip
 	bl	v7_flush_dcache_all
 skip:
+	mrc	p15, 0, r0, c0, c0, 5	/* MPIDR */
+	and	r0, r0, #15		/* what CPU am I */
+
+	ldr	r1, =msm_pc_debug_counters /*load the IMEM debug location */
+	ldr	r1, [r1]
+	cmp	r1, #0
+	beq	skip_pc_debug1
+	add	r1, r1, r0, LSL #4	/* debug location for this CPU */
+	ldr	r2, [r1]
+	add	r2, #1
+	str	r2, [r1]
+skip_pc_debug1:
+
 #ifdef CONFIG_ARCH_MSM_KRAIT
 	ldr	r0, =SCM_SVC_BOOT
 	ldr	r1, =SCM_CMD_TERMINATE_PC
@@ -160,6 +159,21 @@ skip:
 #if defined(CONFIG_MSM_FIQ_SUPPORT)
 	cpsie   f
 #endif
+	mrc	p15, 0, r0, c0, c0, 5 /* MPIDR */
+	and	r0, r0, #15              /* what CPU am I                  */
+
+	ldr	r1, =msm_pc_debug_counters /*load the IMEM debug location */
+	ldr	r1, [r1]
+	cmp	r1, #0
+	beq	skip_pc_debug2
+	add	r1, r1, r0, LSL #4	/* debug location for this CPU */
+	add	r1, #8
+	ldr	r2, [r1]
+	add	r2, #1
+	str	r2, [r1]
+
+skip_pc_debug2:
+
 #ifdef CONFIG_MSM_JTAG
 	bl	msm_jtag_restore_state
 #endif
@@ -204,14 +218,6 @@ ENTRY(msm_pm_collapse_exit)
 	add	r1, r1, r2
 #endif
 
-#ifdef CONFIG_MSM_CPU_AVS
-	ldmdb   r1!, {r2-r4}
-#ifndef CONFIG_ARCH_MSM_KRAIT
-	mcr     p15, 7, r4, c15, c1, 0 /* TSCSR */
-#endif
-	mcr     p15, 7, r3, c15, c0, 6 /* AVSDSCR */
-	mcr     p15, 7, r2, c15, c1, 7 /* AVSCSR */
-#endif
 	ldmdb   r1!, {r2-r11}
 	mcr     p15, 0, r4, c3, c0, 0 /* dacr */
 	mcr     p15, 0, r3, c2, c0, 0 /* TTBR0 */
@@ -286,6 +292,22 @@ ENTRY(msm_pm_boot_entry)
 	mrc     p15, 0, r0, c0, c0, 5    /* MPIDR                          */
 	and     r0, r0, #15              /* what CPU am I                  */
 
+	ldr	r1, =msm_pc_debug_counters_phys /*phys addr for IMEM reg */
+	ldr	r2, =msm_pm_boot_entry
+	adr	r3, msm_pm_boot_entry
+	add	r1, r1, r3               /* translate virt to phys addr    */
+	sub	r1, r1, r2
+	ldr	r1,[r1]
+
+	cmp	r1, #0
+	beq	skip_pc_debug3
+	add	r1, r1, r0, LSL #4	/* debug location for this CPU */
+	add	r1, #4			/* warmboot entry counter*/
+	ldr	r2, [r1]
+	add	r2, #1
+	str	r2, [r1]
+
+skip_pc_debug3:
 	ldr     r1, =msm_pm_boot_vector
 	ldr     r2, =msm_pm_boot_entry
 	adr     r3, msm_pm_boot_entry
@@ -298,11 +320,19 @@ ENDPROC(msm_pm_boot_entry)
 
 ENTRY(msm_pm_set_l2_flush_flag)
  UNWIND(.fnstart	)
-	ldr r1, =msm_pm_flush_l2_flag
-	str r0, [r1]
-	bx lr
+	ldr     r1, =msm_pm_flush_l2_flag
+	str     r0, [r1]
+	bx      lr
  UNWIND(.fnend		)
 ENDPROC(msm_pm_set_l2_flush_flag)
+
+ENTRY(msm_pm_get_l2_flush_flag)
+ UNWIND(.fnstart	)
+	ldr     r1, =msm_pm_flush_l2_flag
+	ldr     r0, [r1]
+	bx      lr
+ UNWIND(.fnend		)
+ENDPROC(msm_pm_get_l2_flush_flag)
 
 	.data
 
@@ -332,6 +362,14 @@ apps_power_collapse:
 
 	.globl l2x0_base_addr
 l2x0_base_addr:
+	.long 0x0
+
+	.globl msm_pc_debug_counters_phys
+msm_pc_debug_counters_phys:
+	.long 0x0
+
+	.globl msm_pc_debug_counters
+msm_pc_debug_counters:
 	.long 0x0
 
 /*

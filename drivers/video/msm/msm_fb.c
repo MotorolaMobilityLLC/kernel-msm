@@ -3,7 +3,7 @@
  * Core MSM framebuffer driver.
  *
  * Copyright (C) 2007 Google Incorporated
- * Copyright (c) 2008-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2008-2013, Code Aurora Forum. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -116,11 +116,6 @@ static void msm_fb_scale_bl(__u32 *bl_lvl);
 static void msm_fb_commit_wq_handler(struct work_struct *work);
 static int msm_fb_pan_idle(struct msm_fb_data_type *mfd);
 
-#ifdef CONFIG_LGE_DISP_FBREAD
-static ssize_t msm_fb_read(struct fb_info *info, char __user *buf,
-		size_t count, loff_t *ppos);
-#endif
-
 #ifdef MSM_FB_ENABLE_DBGFS
 
 #define MSM_FB_MAX_DBGFS 1024
@@ -130,6 +125,7 @@ static ssize_t msm_fb_read(struct fb_info *info, char __user *buf,
 #define WAIT_FENCE_TIMEOUT 800
 /* 900 ms for display operation time out */
 #define WAIT_DISP_OP_TIMEOUT 900
+#define MAX_TIMELINE_NAME_LEN 16
 
 int msm_fb_debugfs_file_index;
 struct dentry *msm_fb_debugfs_root;
@@ -429,7 +425,10 @@ static int msm_fb_probe(struct platform_device *pdev)
 	pdev_list[pdev_list_cnt++] = pdev;
 	msm_fb_create_sysfs(pdev);
 	if (mfd->timeline == NULL) {
-		mfd->timeline = sw_sync_timeline_create("mdp-timeline");
+		char timeline_name[MAX_TIMELINE_NAME_LEN];
+		snprintf(timeline_name, sizeof(timeline_name),
+			"mdp_fb_%d", mfd->index);
+		mfd->timeline = sw_sync_timeline_create(timeline_name);
 		if (mfd->timeline == NULL) {
 			pr_err("%s: cannot create time line", __func__);
 			return -ENOMEM;
@@ -969,20 +968,9 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			if (ret)
 				mfd->panel_power_on = curr_pwr_state;
 
-			if (mfd->timeline) {
-				/* Adding 1 is enough when pan_display is still
-				 * a blocking call and with mutex protection.
-				 * But if it is an async call, we will still
-				 * need to add 2. Adding 2 can be safer in
-				 * order to signal all existing fences, and it
-				 * is harmless. */
-				sw_sync_timeline_inc(mfd->timeline, 2);
-				mfd->timeline_value+= 2;
-			}
-
+			msm_fb_release_timeline(mfd);
 			/* These flags are using for MDP hang debug purpose */
 			mdp4_clear_dump_flags();
-
 			mfd->op_enable = TRUE;
 			mfd->suspend_cfg.partial = 0;
 			mfd->resume_cfg.partial = 0;
@@ -1176,11 +1164,7 @@ static struct fb_ops msm_fb_ops = {
 	.owner = THIS_MODULE,
 	.fb_open = msm_fb_open,
 	.fb_release = msm_fb_release,
-#ifdef CONFIG_LGE_DISP_FBREAD
-	.fb_read = msm_fb_read,
-#else
 	.fb_read = NULL,
-#endif
 	.fb_write = NULL,
 	.fb_cursor = NULL,
 	.fb_check_var = msm_fb_check_var,	/* vinfo check */
@@ -1240,13 +1224,8 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	var->grayscale = 0,	/* No graylevels */
 	var->nonstd = 0,	/* standard pixel format */
 	var->activate = FB_ACTIVATE_VBL,	/* activate it at vsync */
-#if defined(CONFIG_FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT)
-	var->height = 102,      /* height of picture in mm */
-	var->width = 61,        /* width of picture in mm */
-#else
 	var->height = -1,	/* height of picture in mm */
 	var->width = -1,	/* width of picture in mm */
-#endif
 	var->accel_flags = 0,	/* acceleration flags */
 	var->sync = 0,	/* see FB_SYNC_* */
 	var->rotate = 0,	/* angle we rotate counter clockwise */
@@ -1601,10 +1580,6 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	    ("FrameBuffer[%d] %dx%d size=%d bytes is registered successfully!\n",
 	     mfd->index, fbi->var.xres, fbi->var.yres, fbi->fix.smem_len);
 
-#ifdef CONFIG_UPDATE_LCDC_LUT
-	if (msm_fb_pdata->update_lcdc_lut)
-		msm_fb_pdata->update_lcdc_lut();
-#endif
 #ifdef CONFIG_FB_MSM_LOGO
 	/* Flip buffer */
 	if (!load_565rle_image(INIT_IMAGE_FILE, bf_supported))
@@ -1814,7 +1789,7 @@ static int msm_fb_release(struct fb_info *info, int user)
 	return ret;
 }
 
-int msm_fb_wait_for_fence(struct msm_fb_data_type *mfd)
+void msm_fb_wait_for_fence(struct msm_fb_data_type *mfd)
 {
 	int i, ret = 0;
 	/* buf sync */
@@ -1827,8 +1802,13 @@ int msm_fb_wait_for_fence(struct msm_fb_data_type *mfd)
 			break;
 		}
 	}
+	if (ret < 0) {
+		while (i < mfd->acq_fen_cnt) {
+			sync_fence_put(mfd->acq_fen[i]);
+			i++;
+		}
+	}
 	mfd->acq_fen_cnt = 0;
-	return ret;
 }
 int msm_fb_signal_timeline(struct msm_fb_data_type *mfd)
 {
@@ -1841,6 +1821,18 @@ int msm_fb_signal_timeline(struct msm_fb_data_type *mfd)
 	mfd->cur_rel_fence = 0;
 	mutex_unlock(&mfd->sync_mutex);
 	return 0;
+}
+
+void msm_fb_release_timeline(struct msm_fb_data_type *mfd)
+{
+	mutex_lock(&mfd->sync_mutex);
+	if (mfd->timeline) {
+		sw_sync_timeline_inc(mfd->timeline, 2);
+		mfd->timeline_value += 2;
+	}
+	mfd->last_rel_fence = 0;
+	mfd->cur_rel_fence = 0;
+	mutex_unlock(&mfd->sync_mutex);
 }
 
 DEFINE_SEMAPHORE(msm_fb_pan_sem);
@@ -2025,10 +2017,7 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 		if (msm_fb_blank_sub(FB_BLANK_UNBLANK, info, mfd->op_enable)) {
 			pr_err("%s: can't turn on display!\n", __func__);
 			up(&msm_fb_pan_sem);
-			if (mfd->timeline) {
-				sw_sync_timeline_inc(mfd->timeline, 2);
-				mfd->timeline_value+= 2;
-			}
+			msm_fb_release_timeline(mfd);
 			return -EINVAL;
 		}
 	}
@@ -3605,6 +3594,7 @@ static int msmfb_handle_pp_ioctl(struct msm_fb_data_type *mfd,
 
 	return ret;
 }
+
 static int msmfb_handle_buf_sync_ioctl(struct msm_fb_data_type *mfd,
 						struct mdp_buf_sync *buf_sync)
 {
@@ -3691,103 +3681,23 @@ buf_sync_err_1:
 	return ret;
 }
 
-static int buf_fence_process(struct msm_fb_data_type *mfd,
-						struct mdp_buf_fence *buf_fence)
-{
-	int i, fence_cnt = 0, ret;
-	struct sync_fence *fence;
-
-	if ((buf_fence->acq_fen_fd_cnt == 0) ||
-		(buf_fence->acq_fen_fd_cnt > MDP_MAX_FENCE_FD) ||
-		(mfd->timeline == NULL))
-		return -EINVAL;
-
-	mutex_lock(&mfd->sync_mutex);
-	for (i = 0; i < buf_fence->acq_fen_fd_cnt; i++) {
-		fence = sync_fence_fdget(buf_fence->acq_fen_fd[i]);
-		if (fence == NULL) {
-			pr_info("%s: null fence! i=%d fd=%d\n", __func__, i,
-				buf_fence->acq_fen_fd[i]);
-			ret = -EINVAL;
-			break;
-		}
-		mfd->acq_fen[i] = fence;
-	}
-	fence_cnt = i;
-	if (ret)
-		goto buf_fence_err_1;
-	mfd->cur_rel_sync_pt = sw_sync_pt_create(mfd->timeline,
-			mfd->timeline_value + 2);
-	if (mfd->cur_rel_sync_pt == NULL) {
-		pr_err("%s: cannot create sync point", __func__);
-		ret = -ENOMEM;
-		goto buf_fence_err_1;
-	}
-	/* create fence */
-	mfd->cur_rel_fence = sync_fence_create("mdp-fence",
-			mfd->cur_rel_sync_pt);
-	if (mfd->cur_rel_fence == NULL) {
-		sync_pt_free(mfd->cur_rel_sync_pt);
-		mfd->cur_rel_sync_pt = NULL;
-		pr_err("%s: cannot create fence", __func__);
-		ret = -ENOMEM;
-		goto buf_fence_err_1;
-	}
-	/* create fd */
-	mfd->cur_rel_fen_fd = get_unused_fd_flags(0);
-	if (mfd->cur_rel_fen_fd < 0) {
-		pr_err("%s: get_unused_fd_flags failed", __func__);
-		ret = -EIO;
-		goto buf_fence_err_2;
-	}
-	sync_fence_install(mfd->cur_rel_fence, mfd->cur_rel_fen_fd);
-	buf_fence->rel_fen_fd[0] = mfd->cur_rel_fen_fd;
-	/* Only one released fd for now, -1 indicates an end */
-	buf_fence->rel_fen_fd[1] = -1;
-	mfd->acq_fen_cnt = buf_fence->acq_fen_fd_cnt;
-	mutex_unlock(&mfd->sync_mutex);
-	return ret;
-buf_fence_err_2:
-	sync_fence_put(mfd->cur_rel_fence);
-	mfd->cur_rel_fence = NULL;
-	mfd->cur_rel_fen_fd = 0;
-buf_fence_err_1:
-	for (i = 0; i < fence_cnt; i++)
-		sync_fence_put(mfd->acq_fen[i]);
-	mfd->acq_fen_cnt = 0;
-	mutex_unlock(&mfd->sync_mutex);
-	return ret;
-}
 static int msmfb_display_commit(struct fb_info *info,
 						unsigned long *argp)
 {
 	int ret;
-	u32 copy_back = FALSE;
-	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct mdp_display_commit disp_commit;
-	struct mdp_buf_fence *buf_fence;
 	ret = copy_from_user(&disp_commit, argp,
 			sizeof(disp_commit));
 	if (ret) {
 		pr_err("%s:copy_from_user failed", __func__);
 		return ret;
 	}
-	buf_fence = &disp_commit.buf_fence;
-	if (buf_fence->acq_fen_fd_cnt > 0)
-		ret = buf_fence_process(mfd, buf_fence);
-	if ((!ret) && (buf_fence->rel_fen_fd[0] > 0))
-		copy_back = TRUE;
 
 	ret = msm_fb_pan_display_ex(info, &disp_commit);
 
-	if (copy_back) {
-		ret = copy_to_user(argp,
-			&disp_commit, sizeof(disp_commit));
-		if (ret)
-			pr_err("%s:copy_to_user failed", __func__);
-	}
 	return ret;
 }
+
 static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			unsigned long arg)
 {
@@ -4435,84 +4345,6 @@ int __init msm_fb_init(void)
 
 	return 0;
 }
-
-/*
- * To implement "msm_fb_read" for screenshot such as DDMS"
- */
-#ifdef CONFIG_LGE_DISP_FBREAD
-static ssize_t
-msm_fb_read(struct fb_info *info, char __user *buf, size_t count, loff_t *ppos)
-{
-
-	unsigned long p = *ppos;
-	u32 *buffer;
-	u8 *dst;
-	u8 __iomem *src;
-	u8 r, g, b;
-	int c, i, cnt = 0, err = 0;
-	unsigned long total_size;
-	int line_length, xres, bpp;
-
-	total_size = info->screen_size;
-
-	if (total_size == 0)
-		total_size = info->fix.smem_len;
-
-	if (p >= total_size)
-		return 0;
-
-	if (count >= total_size)
-		count = total_size;
-
-	if (count + p > total_size)
-		count = total_size - p;
-
-	buffer = kmalloc((count > PAGE_SIZE) ? PAGE_SIZE : count,
-			GFP_KERNEL);
-
-	if (!buffer)
-		return -ENOMEM;
-
-	src = (u8 __iomem *) (info->screen_base + p);
-
-	xres = info->var.xres;
-	line_length = ALIGN(xres, 32);
-
-	bpp = info->var.bits_per_pixel/8;
-
-	for (i = 0; i < count; i += 4) {
-
-		c = 4;
-		r = fb_readb(src++);
-		g = fb_readb(src++);
-		b = fb_readb(src++);
-		src++;
-
-		*ppos += c;
-
-		if ((p+i)%(line_length*bpp) >= xres*bpp)
-			continue;
-
-		dst = (u8 *)buffer;
-		*dst++ = r;
-		*dst++ = g;
-		*dst++ = b;
-		*dst++ = 0xff;
-
-		if (copy_to_user(buf, buffer, c)) {
-			err = -EFAULT;
-			break;
-		}
-
-		cnt += c;
-		buf += c;
-	}
-
-	kfree(buffer);
-
-	return (err) ? err : cnt;
-}
-#endif
 
 /* Called by v4l2 driver to enable/disable overlay pipe */
 int msm_fb_v4l2_enable(struct mdp_overlay *req, bool enable, void **par)
