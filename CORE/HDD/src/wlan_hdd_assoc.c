@@ -1945,6 +1945,7 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
             {
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                                ("HDD: del STA IDX = %x\n"), pRoamInfo->staId) ;
+                wlan_hdd_removeTdlsPeer(pRoamInfo);
                 hdd_roamDeregisterSTA( pAdapter, pRoamInfo->staId );
                 (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = NULL;
             }

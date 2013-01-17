@@ -1113,6 +1113,11 @@ limCleanupMlm(tpAniSirGlobal pMac)
         tx_timer_deactivate(&pMac->lim.limTimers.gLimDeauthAckTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimDeauthAckTimer);
 
+#ifdef WLAN_FEATURE_P2P
+        tx_timer_deactivate(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer);
+        tx_timer_delete(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer);
+#endif
+
         pMac->lim.gLimTimersCreated = 0;
     }
 
