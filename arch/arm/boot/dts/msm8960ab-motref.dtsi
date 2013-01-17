@@ -45,6 +45,19 @@
 			interrupt-parent = <&msmgpio>;
 			interrupts = <98 0>;
 		};
+
+		pnxxx@28 {
+			compatible = "nxp,pn544";
+			reg = <0x28>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <106 0>;
+			gpios = <&msmgpio 106 0>,     /* IRQ */
+				<&pm8921_gpio 33 0>,  /* VEN */
+				<&pm8921_gpio 16 0>;  /* Firmware */
+
+			nxp,pnxxx-discharge-delay = <2000>;
+			nxp,pnxxx-ven-inv-polarity = <0>;
+		};
 	};
 
 	/* GSBI12 - I2C */
@@ -55,7 +68,7 @@
 		qcom,i2c-src-freq = <24000000>;
 	};
 
-	qcom,msm-pm8921-gpios {
+	pm8921_gpio: qcom,msm-pm8921-gpios {
 		mux {
 			status = "okay";
 
