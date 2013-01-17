@@ -74,6 +74,18 @@ static struct msm_actuator_info msm_act_main_cam_0_dw9714_info = {
 	.vcm_enable = 0,
 };
 
+static struct i2c_board_info msm_act_main_cam0_dw9735_i2c_info = {
+	I2C_BOARD_INFO("msm_actuator", 0x18),
+};
+
+static struct msm_actuator_info msm_act_main_cam_0_dw9735_info = {
+	.board_info = &msm_act_main_cam0_dw9735_i2c_info,
+	.cam_name   = MSM_ACTUATOR_MAIN_DW9735,
+	.bus_id     = MSM_8960_GSBI4_QUP_I2C_BUS_ID,
+	.vcm_pwd    = 0,
+	.vcm_enable = 0,
+};
+
 static struct msm_camera_csi_lane_params s5k5b3g_csi_lane_params = {
 	.csi_lane_assign = 0xE4,
 	.csi_lane_mask = 0x1,
@@ -179,6 +191,7 @@ struct msm_camera_sensor_info msm_camera_sensor_ov10820_data = {
 	.csi_if = 1,
 	.camera_type = BACK_CAMERA_2D,
 	.sensor_type = BAYER_SENSOR,
+	.actuator_info = &msm_act_main_cam_0_dw9735_info,
 };
 
 #endif
