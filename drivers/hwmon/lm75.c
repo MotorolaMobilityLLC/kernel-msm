@@ -48,6 +48,7 @@ enum lm75_type {		/* keep sorted in alphabetical order */
 	tmp100,
 	tmp101,
 	tmp105,
+	tmp108,
 	tmp175,
 	tmp275,
 	tmp75,
@@ -66,8 +67,14 @@ static const u8 LM75_REG_TEMP[3] = {
 	0x02,		/* hyst */
 };
 
+#define TMP108_MODE_MASK 0x3
+#define TMP108_SHUTDOWN  0
+#define TMP108_ONESHOT   1
+#define TMP108_CONT      2
+
 /* Each client has this additional data */
 struct lm75_data {
+	enum lm75_type          sensor;
 	struct device		*hwmon_dev;
 	struct mutex		update_lock;
 	u8			orig_conf;
@@ -163,12 +170,18 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	i2c_set_clientdata(client, data);
 	mutex_init(&data->update_lock);
 
-	/* Set to LM75 resolution (9 bits, 1/2 degree C) and range.
-	 * Then tweak to be more precise when appropriate.
-	 */
-	set_mask = 0;
-	clr_mask = (1 << 0)			/* continuous conversions */
-		| (1 << 6) | (1 << 5);		/* 9-bit mode */
+	data->sensor = id->driver_data;
+	if (data->sensor == tmp108) {
+		set_mask = 0;
+		clr_mask = (1 << 2); /* comparator mode */
+	} else {
+		/* Set to LM75 resolution (9 bits, 1/2 degree C) and range.
+		 * Then tweak to be more precise when appropriate.
+		 */
+		set_mask = 0;
+		clr_mask = (1 << 0)		    /* continuous conversions */
+			| (1 << 6) | (1 << 5);	    /* 9-bit mode */
+	}
 
 	/* configure as specified */
 	status = lm75_read_value(client, LM75_REG_CONF);
@@ -231,6 +244,7 @@ static const struct i2c_device_id lm75_ids[] = {
 	{ "tmp100", tmp100, },
 	{ "tmp101", tmp101, },
 	{ "tmp105", tmp105, },
+	{ "tmp108", tmp108, },
 	{ "tmp175", tmp175, },
 	{ "tmp275", tmp275, },
 	{ "tmp75", tmp75, },
@@ -331,12 +345,17 @@ static int lm75_suspend(struct device *dev)
 {
 	int status;
 	struct i2c_client *client = to_i2c_client(dev);
+	struct lm75_data *data = i2c_get_clientdata(client);
+
 	status = lm75_read_value(client, LM75_REG_CONF);
 	if (status < 0) {
 		dev_dbg(&client->dev, "Can't read config? %d\n", status);
 		return status;
 	}
-	status = status | LM75_SHUTDOWN;
+	if (data->sensor == tmp108)
+		status = ((status & ~(TMP108_MODE_MASK)) | TMP108_SHUTDOWN);
+	else
+		status = status | LM75_SHUTDOWN;
 	lm75_write_value(client, LM75_REG_CONF, status);
 	return 0;
 }
@@ -345,12 +364,17 @@ static int lm75_resume(struct device *dev)
 {
 	int status;
 	struct i2c_client *client = to_i2c_client(dev);
+	struct lm75_data *data = i2c_get_clientdata(client);
+
 	status = lm75_read_value(client, LM75_REG_CONF);
 	if (status < 0) {
 		dev_dbg(&client->dev, "Can't read config? %d\n", status);
 		return status;
 	}
-	status = status & ~LM75_SHUTDOWN;
+	if (data->sensor == tmp108)
+		status = ((status & ~(TMP108_MODE_MASK)) | TMP108_CONT);
+	else
+		status = status & ~LM75_SHUTDOWN;
 	lm75_write_value(client, LM75_REG_CONF, status);
 	return 0;
 }
