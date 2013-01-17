@@ -66,6 +66,24 @@ static struct {
     hddTdlsPInfo peer;
 } hddTdlsPTable[MAX_NUM_TDLS_PEER];
 
+void wlan_hdd_removeTdlsPeer(tCsrRoamInfo *pRoamInfo)
+{
+    int i;
+
+    for (i = 0; i < MAX_NUM_TDLS_PEER; i++)
+    {
+       if (pRoamInfo->staId == hddTdlsPTable[i].peer.staId)
+       {
+         vos_mem_zero( hddTdlsPTable[i].peer.peerMac, 6 );
+         hddTdlsPTable[i].peer.staId = 0;
+         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                 "removeTdlsPeer: removed staId %d", pRoamInfo->staId);
+         break;
+       }
+    }
+
+    return;
+}
 int wlan_hdd_saveTdlsPeer(tCsrRoamInfo *pRoamInfo)
 {
     int i;

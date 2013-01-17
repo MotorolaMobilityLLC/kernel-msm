@@ -3516,6 +3516,7 @@ static tpDphHashNode limTdlsDelSta(tpAniSirGlobal pMac, tSirMacAddr peerMac,
                                                            pStaDs->staIndex) ;
  
         status = limDelSta(pMac, pStaDs, false, psessionEntry) ;
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
         if(eSIR_SUCCESS == status)
         {
             limDeleteDphHashEntry(pMac, pStaDs->staAddr, peerIdx, psessionEntry) ;
@@ -3525,6 +3526,7 @@ static tpDphHashNode limTdlsDelSta(tpAniSirGlobal pMac, tSirMacAddr peerMac,
         {
             VOS_ASSERT(0) ;
         }
+#endif
     }
            
     return pStaDs ;
@@ -4198,21 +4200,10 @@ eHalStatus limProcessTdlsAddStaRsp(tpAniSirGlobal pMac, void *msg,
             peerInfo->tdlsPeerState = TDLS_DIS_RSP_SENT_WAIT_STATE ;
         }
     } while(0) ;
-#else
-    status = limSendSmeTdlsAddStaRsp(pMac, psessionEntry->smeSessionId, 
-                                        pAddStaParams->staMac, pStaDs, status) ;
-    if(eSIR_FAILURE == status)
-    {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
-                                         ("Peer IND msg to SME failed\n")) ;
-        palFreeMemory( pMac->hHdd, (void *) pAddStaParams );
-    }
-    return status;
-
 #endif
 add_sta_error:
     status = limSendSmeTdlsAddStaRsp(pMac, psessionEntry->smeSessionId, 
-                                        pAddStaParams->staMac, NULL, status) ;
+                                        pAddStaParams->staMac, pStaDs, status) ;
     palFreeMemory( pMac->hHdd, (void *) pAddStaParams );
     return status ;
 }
@@ -4579,7 +4570,7 @@ tSirRetStatus limProcessSmeTdlsDelStaReq(tpAniSirGlobal pMac,
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
                 "PE Session does not exist for given sme sessionId %d\n", 
                 pDelStaReq->sessionId);
-        limSendSmeTdlsDelStaRsp(pMac, 0, pDelStaReq->peerMac,
+        limSendSmeTdlsDelStaRsp(pMac, pDelStaReq->sessionId, pDelStaReq->peerMac,
              NULL, eSIR_FAILURE) ;
         return eSIR_FAILURE;
     }
@@ -4614,6 +4605,10 @@ tSirRetStatus limProcessSmeTdlsDelStaReq(tpAniSirGlobal pMac,
     {
         limSendSmeTdlsDelStaRsp(pMac, psessionEntry->smeSessionId, pDelStaReq->peerMac,
                 pStaDs, eSIR_SUCCESS) ;
+
+        limReleasePeerIdx(pMac, pStaDs->staIndex, psessionEntry) ;
+        limDeleteDphHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId, psessionEntry) ;
+
         return eSIR_SUCCESS;
 
     }

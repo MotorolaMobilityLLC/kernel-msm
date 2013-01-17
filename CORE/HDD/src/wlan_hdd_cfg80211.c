@@ -6556,18 +6556,21 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
 
                     if (-1 == ucSTAId ) {
                         hddLog(VOS_TRACE_LEVEL_ERROR, "wlan_hdd_findTdlsPeer failed" );
-                        return 0;
+                        return -EINVAL;
                     }
 
                     status = WLANTL_ChangeSTAState( pVosContext, ucSTAId, 
                             WLANTL_STA_AUTHENTICATED );
 
+                    //This can fail only if the staId is not registered yet with TL
+                    //return -EINVAL in such case.
                     if (0 != status) {
                         hddLog(VOS_TRACE_LEVEL_ERROR, 
                                 "%s: WLANTL_ChangeSTAState failed, returned %d", 
                                 __func__, status);
-                        return status;
+                        return -EINVAL;
                     }
+
                 } else {
                     hddLog(VOS_TRACE_LEVEL_WARN, "wlan_hdd_cfg80211_add_key: peer NULL" );
                 }

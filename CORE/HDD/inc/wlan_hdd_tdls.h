@@ -56,4 +56,5 @@ extern int wlan_hdd_saveTdlsPeer(tCsrRoamInfo *pRoamInfo);
 
 extern int wlan_hdd_findTdlsPeer(tSirMacAddr peerMac);
 
+extern void wlan_hdd_removeTdlsPeer(tCsrRoamInfo *pRoamInfo);
 #endif // __HDD_TDSL_H
