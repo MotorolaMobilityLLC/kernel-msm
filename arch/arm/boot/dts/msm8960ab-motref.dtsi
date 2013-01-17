@@ -7,7 +7,7 @@
 
 / {
 	/* GSBI3 - I2C */
-	i2c@16200000 {
+	i2c3: i2c@16200000 {
 		status = "okay";
 
 		qcom,i2c-bus-freq = <400000>;
