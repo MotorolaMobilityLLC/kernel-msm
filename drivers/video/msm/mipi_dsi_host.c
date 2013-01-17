@@ -1822,10 +1822,8 @@ int __mipi_dsi_cmdlist_commit(int from_mdp, struct dcs_cmd_req *cmdreq)
 	{
 #endif
 		/* command mode */
-		if (!from_mdp) { /* cmdlist_put */
-			/* make sure dsi_cmd_mdp is idle */
-			mipi_dsi_cmd_mdp_busy();
-		}
+		/* make sure dsi_cmd_mdp is idle */
+		mipi_dsi_cmd_mdp_busy();
 	}
 
 	if (cmdreq->flags & CMD_REQ_RX)
