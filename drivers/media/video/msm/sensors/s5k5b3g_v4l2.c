@@ -71,7 +71,7 @@ static struct msm_camera_i2c_reg_conf s5k5b3g_snap_settings[] = {
 };
 
 static struct msm_camera_i2c_reg_conf s5k5b3g_reset_settings[] = {
-	{0x0103, 0x0001},
+	{0x6010, 0x0001},
 };
 
 static struct msm_camera_i2c_reg_conf s5k5b3g_recommend_settings[] = {
