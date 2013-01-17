@@ -69,6 +69,9 @@ static void enable_acl(struct msm_fb_data_type *mfd)
 {
 	/* Write the value only if the display is enable and powered on */
 	if ((mfd->op_enable != 0) && (mfd->panel_power_on != 0)) {
+		/* TODO: Chosen acl_on = ACL Mid per DDC */
+		ACL_enable_disable_settings[1] =
+				(mot_panel->acl_enabled == 1) ? 2 : 0;
 		mipi_set_tx_power_mode(0);
 		mipi_mot_tx_cmds(&acl_enable_disable[0],
 					ARRAY_SIZE(acl_enable_disable));
