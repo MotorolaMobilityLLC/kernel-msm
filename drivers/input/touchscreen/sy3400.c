@@ -25,6 +25,8 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/mod_devicetable.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/errno.h>
 #include <linux/slab.h>
 #include <linux/mutex.h>
@@ -101,6 +103,14 @@ static bool sy3400_wait4irq(struct sy3400_driver_data *dd);
 static int sy3400_create_sysfs_files(struct sy3400_driver_data *dd);
 static void sy3400_remove_sysfs_files(struct sy3400_driver_data *dd);
 
+#ifdef CONFIG_OF
+static struct of_device_id sy3400_match_tbl[] = {
+	{ .compatible = "synaptics,sy3400" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, sy3400_match_tbl);
+#endif
+
 static const struct i2c_device_id sy3400_id[] = {
 	/* This name must match the i2c_board_info name */
 	{ SY3400_I2C_NAME, 0 },
@@ -113,6 +123,7 @@ static struct i2c_driver sy3400_driver = {
 	.driver = {
 		.name = SY3400_I2C_NAME,
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(sy3400_match_tbl),
 	},
 	.probe = sy3400_probe,
 	.remove = __devexit_p(sy3400_remove),
@@ -122,6 +133,37 @@ static struct i2c_driver sy3400_driver = {
 	.resume = sy3400_resume,
 #endif
 };
+
+#ifdef CONFIG_OF
+static struct touch_platform_data *
+sy3400_of_init(struct i2c_client *client)
+{
+	struct touch_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	const char *fp = NULL;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "pdata allocation failure\n");
+		return NULL;
+	}
+
+	of_property_read_string(np, "synaptics,sy3400-tdat-filename", &fp);
+
+	pdata->filename = (char *)fp;
+	pdata->gpio_interrupt = of_get_gpio(np, 0);
+	pdata->gpio_reset = of_get_gpio(np, 1);
+	pdata->gpio_enable = of_get_gpio(np, 2);
+
+	return pdata;
+}
+#else
+static inline struct touch_platform_data *
+sy3400_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
 
 static int sy3400_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
@@ -151,7 +193,12 @@ static int sy3400_probe(struct i2c_client *client,
 	dd->ic_stat = SY3400_IC_UNKNOWN;
 	dd->status = 0x0000;
 	dd->client = client;
-	dd->pdata = client->dev.platform_data;
+
+	if (client->dev.of_node)
+		dd->pdata = sy3400_of_init(client);
+	else
+		dd->pdata = client->dev.platform_data;
+
 	i2c_set_clientdata(client, dd);
 	dd->in_dev = NULL;
 
