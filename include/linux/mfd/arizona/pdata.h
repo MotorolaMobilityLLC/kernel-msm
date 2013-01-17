@@ -154,6 +154,9 @@ struct arizona_pdata {
 
 	/** Extra microphone clamping enabled by speaker driver? */
 	unsigned int mic_spk_clamp;
+
+	/** Callback run at the end of mfd probe() */
+	void (*init_done)(void);
 };
 
 #endif
