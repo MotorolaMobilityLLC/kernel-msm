@@ -1551,6 +1551,13 @@ typedef enum
 #define CFG_ENABLE_MCC_ADATIVE_SCHEDULER_ENABLED_MAX              ( 1 )
 #define CFG_ENABLE_MCC_ADATIVE_SCHEDULER_ENABLED_DEFAULT          ( 0 ) 
 
+#ifdef WLAN_FEATURE_11AC
+#define CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE         "gTxBFEnable"
+#define CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE_MIN     ( WNI_CFG_VHT_SU_BEAMFORMEE_CAP_STAMIN )
+#define CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE_MAX     ( WNI_CFG_VHT_SU_BEAMFORMEE_CAP_STAMAX )
+#define CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE_DEFAULT ( WNI_CFG_VHT_SU_BEAMFORMEE_CAP_STADEF )
+#endif
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -1855,6 +1862,7 @@ typedef struct
    v_U8_t                      vhtChannelWidth;
    v_U8_t                      vhtRxMCS;
    v_U8_t                      vhtTxMCS;
+   v_BOOL_t                    enableTxBF;
 #endif
    v_U8_t                      enableModulatedDTIM;
    v_U32_t                     fEnableMCAddrList;

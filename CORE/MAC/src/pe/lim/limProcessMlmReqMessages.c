@@ -1500,6 +1500,7 @@ mlm_add_sta(
     if (psessionEntry->vhtCapability)
     {
         pSta->vhtCapable = VOS_TRUE;
+        pSta->vhtTxBFCapable = psessionEntry->txBFIniFeatureEnabled;
     }
 #endif
 #ifdef WLAN_FEATURE_11AC

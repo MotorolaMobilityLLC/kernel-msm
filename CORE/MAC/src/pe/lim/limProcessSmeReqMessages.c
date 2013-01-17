@@ -1588,6 +1588,33 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         psessionEntry->vhtCapability = IS_DOT11_MODE_VHT(psessionEntry->dot11mode);
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO_MED,
             "***__limProcessSmeJoinReq: vhtCapability=%d****\n",psessionEntry->vhtCapability);
+        if (psessionEntry->vhtCapability )
+        {
+            psessionEntry->txBFIniFeatureEnabled = pSmeJoinReq->txBFIniFeatureEnabled;
+
+            VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO_MED,
+                "***__limProcessSmeJoinReq: txBFIniFeatureEnabled=%d****\n",
+                psessionEntry->txBFIniFeatureEnabled);
+
+            if( psessionEntry->txBFIniFeatureEnabled )
+            {
+                if (cfgSetInt(pMac, WNI_CFG_VHT_SU_BEAMFORMEE_CAP, psessionEntry->txBFIniFeatureEnabled)
+                                                             != eSIR_SUCCESS)
+                {
+                    limLog(pMac, LOGP, FL("could not set  WNI_CFG_VHT_SU_BEAMFORMEE_CAP at CFG\n"));
+                    retCode = eSIR_LOGP_EXCEPTION;
+                    goto end;
+                }
+                if (cfgSetInt(pMac, WNI_CFG_VHT_MU_BEAMFORMEE_CAP, psessionEntry->txBFIniFeatureEnabled)
+                                                             != eSIR_SUCCESS)
+                {
+                    limLog(pMac, LOGP, FL("could not set  WNI_CFG_VHT_MU_BEAMFORMEE_CAP at CFG\n"));
+                    retCode = eSIR_LOGP_EXCEPTION;
+                    goto end;
+                }
+            }
+        }
+
 #endif
 
         /*Phy mode*/
