@@ -793,9 +793,16 @@ static int panel_power_ctrl_en(int on)
 			goto end;
 	}
 
-	rc = panel_power_output(on, reg_lst);
-	if (rc)
-		goto end;
+	/* Hack for Ultra bring-up, will remove once we can handle
+	   shared display / touch power rails */
+	if (!strncmp(panel_name, "mipi_mot_cmd_smd_hd_497",
+			strlen(panel_name)) && !on)
+		pr_info("%s skipping panel power off\n", __func__);
+	else {
+		rc = panel_power_output(on, reg_lst);
+		if (rc)
+			goto end;
+	}
 
 	if (on) {
 		rc = panel_reset_enable(on);
@@ -971,9 +978,17 @@ static int panel_power_ctrl(int on)
 			if (rc)
 				goto end;
 
-			rc = power_rail_off(&mmi_disp_info.reg_lst);
-			if (rc)
-				goto end;
+			/* Hack for Ultra bring-up, will remove once we can
+			   handle shared display / touch power rails */
+			if (!strncmp(panel_name, "mipi_mot_cmd_smd_hd_497",
+					strlen(panel_name)))
+				pr_info("%s skipping panel power off\n",
+					__func__);
+			else {
+				rc = power_rail_off(&mmi_disp_info.reg_lst);
+				if (rc)
+					goto end;
+			}
 		}
 	}
 end:
