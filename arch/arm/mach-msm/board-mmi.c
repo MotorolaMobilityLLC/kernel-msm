@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Motorola Mobility. All rights reserved.
+/* Copyright (c) 2011-2013, Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,28 +18,29 @@
 #include <asm/setup.h>
 #include <asm/system_info.h>
 
+#include <linux/apanic_mmc.h>
 #include <linux/bootmem.h>
+#include <linux/gpio.h>
 #include <linux/of.h>
 #include <linux/of_fdt.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/persistent_ram.h>
 #include <linux/platform_data/mmi-factory.h>
-#include <linux/apanic_mmc.h>
 
 #include <mach/devtree_util.h>
 #include <mach/gpio.h>
 #include <mach/gpiomux.h>
 #include <mach/mpm.h>
-#include <mach/restart.h>
-#include <mach/msm_smsm.h>
 #include <mach/msm_iomap.h>
+#include <mach/msm_smsm.h>
+#include <mach/restart.h>
 
 #include "board-8960.h"
 #include "board-mmi.h"
 #include "devices-mmi.h"
-#include "timer.h"
 #include "msm_watchdog.h"
+#include "timer.h"
 
 static void (*msm8960_common_cal_rsv_sizes)(void) __initdata;
 
