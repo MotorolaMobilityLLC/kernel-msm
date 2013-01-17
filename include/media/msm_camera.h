@@ -1715,6 +1715,7 @@ enum msm_actuator_addr_type {
 enum msm_actuator_write_type {
 	MSM_ACTUATOR_WRITE_HW_DAMP,
 	MSM_ACTUATOR_WRITE_DAC,
+	MSM_ACTUATOR_WRITE_DAC_DW9735,
 };
 
 struct msm_actuator_reg_params_t {
@@ -1797,6 +1798,7 @@ enum af_camera_name {
 	ACTUATOR_WEB_CAM_1,
 	ACTUATOR_WEB_CAM_2,
 	ACTUATOR_MAIN_DW9714,
+	ACTUATOR_MAIN_DW9735,
 };
 
 struct msm_actuator_cfg_data {
