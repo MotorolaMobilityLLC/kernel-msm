@@ -19,7 +19,9 @@ Required properties:
         The interrupt and reset lines are required, the enable GPIO is optional
         if its not connected.
  - synaptics,sy3200-tdat-filename:
-        firmware filename to flash to the controller
+        firmware filename to flash to the 3200 controller
+ - synaptics,sy3400-tdat-filename:
+        firmware filename to flash to the 3400 controller
 
 Example:
 	i2c@16200000 {
