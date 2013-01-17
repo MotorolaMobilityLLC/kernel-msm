@@ -81,6 +81,10 @@ enum {
 static int global_timer_offset;
 static int msm_global_timer;
 
+static struct timespec persistent_ts;
+static u64 persistent_ns;
+static u64 last_persistent_ns;
+
 #define NR_TIMERS ARRAY_SIZE(msm_clocks)
 
 unsigned int gpt_hz = 32768;
@@ -1009,6 +1013,24 @@ static struct local_timer_ops msm_lt_ops = {
 	local_timer_stop,
 };
 #endif /* CONFIG_LOCAL_TIMERS */
+
+void read_persistent_clock(struct timespec *ts)
+{
+	int64_t delta;
+	int64_t sclk_max;
+	struct timespec *tsp = &persistent_ts;
+
+	last_persistent_ns = persistent_ns;
+	persistent_ns = msm_timer_get_sclk_time(&sclk_max);
+
+	if (persistent_ns < last_persistent_ns)
+		delta = sclk_max - last_persistent_ns + persistent_ns;
+	else
+		delta = persistent_ns - last_persistent_ns;
+
+	timespec_add_ns(tsp, delta);
+	*ts = *tsp;
+}
 
 static void __init msm_timer_init(void)
 {
