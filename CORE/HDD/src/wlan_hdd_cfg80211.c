@@ -2821,6 +2821,9 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
 
         pWextState->roamProfile.Keys.KeyLength[key_index] = (u8)params->key_len;
 
+        pWextState->roamProfile.Keys.defaultIndex = key_index;
+
+
         vos_mem_copy(&pWextState->roamProfile.Keys.KeyMaterial[key_index][0], 
                 params->key, params->key_len);
 
