@@ -27,6 +27,8 @@
 #include <linux/i2c.h>
 #include <linux/irq.h>
 #include <linux/jiffies.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/uaccess.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -353,6 +355,38 @@ static void pn544_gpio_free(struct pn544_dev *dev)
 	gpio_free(dev->irq_gpio);
 }
 
+#ifdef CONFIG_OF
+static struct pn544_i2c_platform_data *
+pn544_of_init(struct i2c_client *client)
+{
+	struct pn544_i2c_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "pdata allocation failure\n");
+		return NULL;
+	}
+
+	of_property_read_u32(np, "nxp,pnxxx-discharge-delay",
+				&pdata->discharge_delay);
+	of_property_read_u32(np, "nxp,pnxxx-ven-inv-polarity",
+				&pdata->ven_polarity);
+
+	pdata->irq_gpio = of_get_gpio(np, 0);
+	pdata->ven_gpio = of_get_gpio(np, 1);
+	pdata->firmware_gpio = of_get_gpio(np, 2);
+
+	return pdata;
+}
+#else
+static inline struct pn544_i2c_platform_data *
+pn544_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
+
 static int pn544_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
@@ -362,7 +396,10 @@ static int pn544_probe(struct i2c_client *client,
 
 	pr_debug("%s : Probing pn544 driver\n", __func__);
 
-	platform_data = client->dev.platform_data;
+	if (client->dev.of_node)
+		platform_data = pn544_of_init(client);
+	else
+		platform_data = client->dev.platform_data;
 
 	if (!platform_data) {
 		pr_err("%s : GPIO has value 0, nfc probe fail.\n", __func__);
@@ -479,6 +516,14 @@ static const struct i2c_device_id pn544_id[] = {
 	{ }
 };
 
+#ifdef CONFIG_OF
+static struct of_device_id pn544_match_tbl[] = {
+	{ .compatible = "nxp,pn544" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, pn544_match_tbl);
+#endif
+
 static struct i2c_driver pn544_driver = {
 	.id_table	= pn544_id,
 	.probe		= pn544_probe,
@@ -486,6 +531,7 @@ static struct i2c_driver pn544_driver = {
 	.driver		= {
 		.owner	= THIS_MODULE,
 		.name	= "pn544",
+		.of_match_table = of_match_ptr(pn544_match_tbl),
 	},
 };
 
