@@ -415,6 +415,7 @@ header-y += x25.h
 header-y += xattr.h
 header-y += xfrm.h
 header-y += msm_mdp.h
+header-y += msm_kgsl.h
 header-y += msm_rotator.h
 header-y += tzcom.h
 header-y += qseecom.h
