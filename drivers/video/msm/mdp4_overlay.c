@@ -3224,17 +3224,17 @@ int mdp4_overlay_unset(struct fb_info *info, int ndx)
 	return 0;
 }
 
-int mdp4_overlay_wait4vsync(struct fb_info *info, long long *vtime)
+int mdp4_overlay_wait4vsync(struct fb_info *info)
 {
 	if (!hdmi_prim_display && info->node == 0) {
 		if (ctrl->panel_mode & MDP4_PANEL_DSI_VIDEO)
-			mdp4_dsi_video_wait4vsync(0, vtime);
+			mdp4_dsi_video_wait4vsync(0);
 		else if (ctrl->panel_mode & MDP4_PANEL_DSI_CMD)
-			mdp4_dsi_cmd_wait4vsync(0, vtime);
+			mdp4_dsi_cmd_wait4vsync(0);
 		else if (ctrl->panel_mode & MDP4_PANEL_LCDC)
-			mdp4_lcdc_wait4vsync(0, vtime);
+			mdp4_lcdc_wait4vsync(0);
 	} else if (hdmi_prim_display || info->node == 1) {
-		mdp4_dtv_wait4vsync(0, vtime);
+		mdp4_dtv_wait4vsync(0);
 	}
 
 	return 0;
