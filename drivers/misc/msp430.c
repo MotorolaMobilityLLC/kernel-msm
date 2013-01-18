@@ -179,6 +179,7 @@ struct msp430_data {
 	struct work_struct irq_wake_work;
 	struct workqueue_struct *irq_work_queue;
 	struct wake_lock wakelock;
+	struct input_dev *input_dev;
 
 	int hw_initialized;
 
@@ -806,6 +807,13 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		msp430_as_data_buffer_write(ps_msp430, DT_PROX, x, 0, 0, 0);
 
 		KDEBUG("Sending Proximity distance %d\n", x);
+	}
+	if (irq_status & M_TOUCH) {
+		input_report_key(ps_msp430->input_dev, KEY_POWER, 1);
+		input_report_key(ps_msp430->input_dev, KEY_POWER, 0);
+		input_sync(ps_msp430->input_dev);
+		pr_info("%s: Report pwrkey toggle, touch event wake\n",
+			 __func__);
 	}
 	if (irq_status & M_FLATUP) {
 		msp_cmdbuff[0] = FLAT_DATA;
@@ -1495,7 +1503,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			break;
 		}
 
-		if (copy_to_user(argp, msp_cmdbuff, MSP_STATUS_REG_SIZE))
+		if (copy_to_user(argp, msp_cmdbuff, MSP_TOUCH_REG_SIZE))
 			err = -EFAULT;
 		break;
 
@@ -1799,12 +1807,33 @@ static int msp430_probe(struct i2c_client *client,
 		ps_msp430->edsdev.dev = NULL;
 	}
 
+	ps_msp430->input_dev = input_allocate_device();
+	if (!ps_msp430->input_dev) {
+		err = -ENOMEM;
+		dev_err(&ps_msp430->client->dev,
+			"input device allocate failed: %d\n", err);
+		goto err8;
+	}
+	input_set_drvdata(ps_msp430->input_dev, ps_msp430);
+	input_set_capability(ps_msp430->input_dev, EV_KEY, KEY_POWER);
+	ps_msp430->input_dev->name = "msp430sensorprocessor";
+
+	err = input_register_device(ps_msp430->input_dev);
+	if (err) {
+		dev_err(&ps_msp430->client->dev,
+			"unable to register input polled device %s: %d\n",
+			ps_msp430->input_dev->name, err);
+		goto err9;
+	}
+
 	mutex_unlock(&ps_msp430->lock);
 
 	dev_info(&client->dev, "msp430 probed\n");
 
 	return 0;
 
+err9:
+	input_free_device(ps_msp430->input_dev);
 err8:
 	free_irq(ps_msp430->irq, ps_msp430);
 err7:
@@ -1837,6 +1866,8 @@ static int msp430_remove(struct i2c_client *client)
 		free_irq(ps_msp430->irq_wake, ps_msp430);
 	free_irq(ps_msp430->irq, ps_msp430);
 	misc_deregister(&msp430_misc_device);
+	input_unregister_device(ps_msp430->input_dev);
+	input_free_device(ps_msp430->input_dev);
 	msp430_device_power_off(ps_msp430);
 	if (ps_msp430->pdata->exit)
 		ps_msp430->pdata->exit();
