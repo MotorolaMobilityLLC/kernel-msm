@@ -43,6 +43,8 @@ static struct kgsl_iommu_register_list kgsl_iommuv1_reg[KGSL_IOMMU_REG_MAX] = {
 	{ 0x820, 0, 0 },			/* RESUME */
 	{ 0x03C, 0, 0 },			/* TLBLKCR */
 	{ 0x818, 0, 0 },			/* V2PUR */
+	{ 0x2C, 0, 0 },                         /* FSYNR0 */
+	{ 0x2C, 0, 0 },                         /* FSYNR0 */
 };
 
 static struct kgsl_iommu_register_list kgsl_iommuv2_reg[KGSL_IOMMU_REG_MAX] = {
@@ -51,7 +53,11 @@ static struct kgsl_iommu_register_list kgsl_iommuv2_reg[KGSL_IOMMU_REG_MAX] = {
 	{ 0x28, 0x00FFFFFF, 14 },		/* TTBR1 */
 	{ 0x58, 0, 0 },				/* FSR */
 	{ 0x618, 0, 0 },			/* TLBIALL */
-	{ 0x008, 0, 0 }				/* RESUME */
+	{ 0x008, 0, 0 },			/* RESUME */
+	{ 0, 0, 0 },				/* TLBLKCR */
+	{ 0, 0, 0 },				/* V2PUR */
+	{ 0x68, 0, 0 },				/* FSYNR0 */
+	{ 0x6C, 0, 0 }				/* FSYNR1 */
 };
 
 struct remote_iommu_petersons_spinlock kgsl_iommu_sync_lock_vars;
@@ -115,6 +121,9 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 	struct kgsl_device *device;
 	struct adreno_device *adreno_dev;
 	unsigned int no_page_fault_log = 0;
+	unsigned int pid;
+	unsigned int fsynr0, fsynr1;
+	int write;
 
 	ret = get_iommu_unit(dev, &mmu, &iommu_unit);
 	if (ret)
@@ -134,23 +143,36 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 
 	fsr = KGSL_IOMMU_GET_CTX_REG(iommu, iommu_unit,
 		iommu_dev->ctx_id, FSR);
+	fsynr0 = KGSL_IOMMU_GET_CTX_REG(iommu, iommu_unit,
+		iommu_dev->ctx_id, FSYNR0);
+	fsynr1 = KGSL_IOMMU_GET_CTX_REG(iommu, iommu_unit,
+		iommu_dev->ctx_id, FSYNR1);
+
+	if (!msm_soc_version_supports_iommu_v1())
+		write = ((fsynr1 & (KGSL_IOMMU_FSYNR1_AWRITE_MASK <<
+			KGSL_IOMMU_FSYNR1_AWRITE_SHIFT)) ? 1 : 0);
+	else
+		write = ((fsynr0 & (KGSL_IOMMU_V1_FSYNR0_WNR_MASK <<
+			KGSL_IOMMU_V1_FSYNR0_WNR_SHIFT)) ? 1 : 0);
 
 	if (adreno_dev->ft_pf_policy & KGSL_FT_PAGEFAULT_LOG_ONE_PER_PAGE)
 		no_page_fault_log = kgsl_mmu_log_fault_addr(mmu, ptbase, addr);
 
+	pid = kgsl_mmu_get_ptname_from_ptbase(mmu, ptbase);
 	if (!no_page_fault_log) {
 		KGSL_MEM_CRIT(iommu_dev->kgsldev,
-			"GPU PAGE FAULT: addr = %lX pid = %d\n",
-			addr, kgsl_mmu_get_ptname_from_ptbase(mmu, ptbase));
-		KGSL_MEM_CRIT(iommu_dev->kgsldev, "context = %d FSR = %X\n",
-			iommu_dev->ctx_id, fsr);
+			"GPU PAGE FAULT: addr = %lX pid = %d\n", addr, pid);
+		KGSL_MEM_CRIT(iommu_dev->kgsldev,
+		"context = %d FSR = %X FSYNR0 = %X FSYNR1 = %X(%s fault)\n",
+			iommu_dev->ctx_id, fsr, fsynr0, fsynr1,
+			write ? "write" : "read");
 	}
 
 	mmu->fault = 1;
 	iommu_dev->fault = 1;
 
-	trace_kgsl_mmu_pagefault(iommu_dev->kgsldev, addr,
-			kgsl_mmu_get_ptname_from_ptbase(mmu, ptbase), 0);
+	trace_kgsl_mmu_pagefault(iommu_dev->kgsldev, addr, pid,
+			write ? "write" : "read");
 
 	/*
 	 * We do not want the h/w to resume fetching data from an iommu unit
