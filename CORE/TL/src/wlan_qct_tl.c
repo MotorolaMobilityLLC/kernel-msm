@@ -4330,7 +4330,7 @@ WLANTL_CacheSTAFrame
     In case the SIG does not match - this is a packet for a potentially new
     associated station 
   -------------------------------------------------------------------------*/
-  if ( bOldSTAPkt )
+  if ( bOldSTAPkt || bBcast )
   {
     TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
                "WLAN TL:Data packet matches old sig for sig DPU: %d UC: %d, "
