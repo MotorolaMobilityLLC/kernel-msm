@@ -237,16 +237,12 @@ static DEVICE_ATTR(registers, 0644, ld_tps65132_registers_show,
 static int tps65132_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
-	struct tps65132_platform_data *pdata = client->dev.platform_data;
-	struct tps65132_data *tps65132_data = NULL;
-	int error = 0;
+	struct tps65132_data *tps65132_data;
+	int error;
 
 	pr_debug("...%s +\n", __func__);
 
-	if (pdata == NULL) {
-		pr_err("%s: platform data required\n", __func__);
-		return -ENODEV;
-	} else if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
+	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		pr_err("%s: I2C_FUNC_I2C not supported\n", __func__);
 		return -ENODEV;
 	}
