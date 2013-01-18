@@ -83,6 +83,7 @@ typedef struct
    wpt_uint8 fProtectedFrame;
    wpt_uint16 fPktlen;
    wpt_status txCompleteStatus;
+   wpt_uint8  staIdx;
 } WDI_DS_TxMetaInfoType;
 
 
@@ -328,7 +329,7 @@ WDI_Status WDI_DS_GetStaIdxFromBssIdx(void *pContext, wpt_uint8 bssIdx, wpt_uint
  */
 WDI_Status WDI_DS_ClearStaIdxPerBssIdx(void *pContext, wpt_uint8 bssIdx, wpt_uint8 staIdx);
 
-/* Tx/Rx stats function
+/* @brief: WDI_DS_GetTrafficStats
  * This function should be invoked to fetch the current stats
   * Parameters:
  *  pStats:Pointer to the collected stats
@@ -337,21 +338,21 @@ WDI_Status WDI_DS_ClearStaIdxPerBssIdx(void *pContext, wpt_uint8 bssIdx, wpt_uin
  */
 void WDI_DS_GetTrafficStats(WDI_TrafficStatsType** pStats, wpt_uint32 *len);
 
-/* WDI_DS_DeactivateTrafficStats
+/* @brief: WDI_DS_DeactivateTrafficStats
  * This function should be invoked to deactivate traffic stats collection
   * Parameters: None
  *  Return Status: None
  */
 void WDI_DS_DeactivateTrafficStats(void);
 
-/* WDI_DS_ActivateTrafficStats
+/* @brief: WDI_DS_ActivateTrafficStats
  * This function should be invoked to activate traffic stats collection
   * Parameters: None
  *  Return Status: None
  */
 void WDI_DS_ActivateTrafficStats(void);
 
-/* WDI_DS_ClearTrafficStats
+/* @brief: WDI_DS_ClearTrafficStats
  * This function should be invoked to clear all past stats
   * Parameters: None
  *  Return Status: None
