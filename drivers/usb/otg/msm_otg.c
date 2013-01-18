@@ -689,9 +689,12 @@ static int msm_otg_set_suspend(struct usb_phy *phy, int suspend)
 	if (aca_enabled())
 		return 0;
 
-	if (atomic_read(&motg->in_lpm) == suspend)
-		return 0;
-
+	/*
+	 * UDC and HCD call usb_phy_set_suspend() to enter/exit LPM
+	 * during bus suspend/resume.  Update the relevant state
+	 * machine inputs and trigger LPM entry/exit.  Checking
+	 * in_lpm flag would avoid unnecessary work scheduling.
+	 */
 	if (suspend) {
 		switch (phy->state) {
 		case OTG_STATE_A_WAIT_BCON:
@@ -701,14 +704,16 @@ static int msm_otg_set_suspend(struct usb_phy *phy, int suspend)
 		case OTG_STATE_A_HOST:
 			pr_debug("host bus suspend\n");
 			clear_bit(A_BUS_REQ, &motg->inputs);
-			queue_work(system_nrt_wq, &motg->sm_work);
+			if (!atomic_read(&motg->in_lpm))
+				queue_work(system_nrt_wq, &motg->sm_work);
 			break;
 		case OTG_STATE_B_PERIPHERAL:
 			pr_debug("peripheral bus suspend\n");
 			if (!(motg->caps & ALLOW_LPM_ON_DEV_SUSPEND))
 				break;
 			set_bit(A_BUS_SUSPEND, &motg->inputs);
-			queue_work(system_nrt_wq, &motg->sm_work);
+			if (!atomic_read(&motg->in_lpm))
+				queue_work(system_nrt_wq, &motg->sm_work);
 			break;
 
 		default:
@@ -716,20 +721,29 @@ static int msm_otg_set_suspend(struct usb_phy *phy, int suspend)
 		}
 	} else {
 		switch (phy->state) {
+		case OTG_STATE_A_WAIT_BCON:
+			/* Remote wakeup or resume */
+			set_bit(A_BUS_REQ, &motg->inputs);
+			/* ensure hardware is not in low power mode */
+			if (atomic_read(&motg->in_lpm))
+				pm_runtime_resume(phy->dev);
+			break;
 		case OTG_STATE_A_SUSPEND:
 			/* Remote wakeup or resume */
 			set_bit(A_BUS_REQ, &motg->inputs);
 			phy->state = OTG_STATE_A_HOST;
 
 			/* ensure hardware is not in low power mode */
-			pm_runtime_resume(phy->dev);
+			if (atomic_read(&motg->in_lpm))
+				pm_runtime_resume(phy->dev);
 			break;
 		case OTG_STATE_B_PERIPHERAL:
 			pr_debug("peripheral bus resume\n");
 			if (!(motg->caps & ALLOW_LPM_ON_DEV_SUSPEND))
 				break;
 			clear_bit(A_BUS_SUSPEND, &motg->inputs);
-			queue_work(system_nrt_wq, &motg->sm_work);
+			if (atomic_read(&motg->in_lpm))
+				queue_work(system_nrt_wq, &motg->sm_work);
 			break;
 		default:
 			break;
@@ -1457,6 +1471,26 @@ static int msm_otg_set_peripheral(struct usb_otg *otg,
 	return 0;
 }
 
+static bool msm_otg_read_pmic_id_state(struct msm_otg *motg)
+{
+	unsigned long flags;
+	int id;
+
+	if (!motg->pdata->pmic_id_irq)
+		return -ENODEV;
+
+	local_irq_save(flags);
+	id = irq_read_line(motg->pdata->pmic_id_irq);
+	local_irq_restore(flags);
+
+	/*
+	 * If we can not read ID line state for some reason, treat
+	 * it as float. This would prevent MHL discovery and kicking
+	 * host mode unnecessarily.
+	 */
+	return !!id;
+}
+
 static int msm_otg_mhl_register_callback(struct msm_otg *motg,
 						void (*callback)(int on))
 {
@@ -1534,14 +1568,11 @@ static bool msm_otg_is_mhl(struct msm_otg *motg)
 static bool msm_chg_mhl_detect(struct msm_otg *motg)
 {
 	bool ret, id;
-	unsigned long flags;
 
 	if (!motg->mhl_enabled)
 		return false;
 
-	local_irq_save(flags);
-	id = irq_read_line(motg->pdata->pmic_id_irq);
-	local_irq_restore(flags);
+	id = msm_otg_read_pmic_id_state(motg);
 
 	/* The following check is to escape from doing MHL detection
 	 * if ID is no more grounded. It depends on ID interrupt's
@@ -2190,14 +2221,11 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 				clear_bit(B_SESS_VLD, &motg->inputs);
 		} else if (pdata->otg_control == OTG_PMIC_CONTROL) {
 			if (pdata->pmic_id_irq) {
-				unsigned long flags;
-				local_irq_save(flags);
-				if (irq_read_line(pdata->pmic_id_irq) ^
+				if (msm_otg_read_pmic_id_state(motg) ^
 					pdata->pmic_id_irq_active_high)
 					set_bit(ID, &motg->inputs);
 				else
 					clear_bit(ID, &motg->inputs);
-				local_irq_restore(flags);
 			}
 			/*
 			 * VBUS initial state is reported after PMIC
@@ -2348,6 +2376,18 @@ static void msm_otg_sm_work(struct work_struct *w)
 			motg->chg_type = USB_INVALID_CHARGER;
 			msm_otg_notify_charger(motg, 0);
 			msm_otg_reset(otg->phy);
+			/*
+			 * There is a small window where ID interrupt
+			 * is not monitored during ID detection circuit
+			 * switch from ACA to PMIC.  Check ID state
+			 * before entering into low power mode.
+			 */
+			if (!msm_otg_read_pmic_id_state(motg)) {
+				pr_debug("process missed ID intr\n");
+				clear_bit(ID, &motg->inputs);
+				work = 1;
+				break;
+			}
 			pm_runtime_put_noidle(otg->phy->dev);
 			pm_runtime_suspend(otg->phy->dev);
 		}
@@ -2999,10 +3039,8 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 	struct msm_otg *motg = container_of(w, struct msm_otg,
 						pmic_id_status_work.work);
 	int work = 0;
-	unsigned long flags;
 
-	local_irq_save(flags);
-	if (irq_read_line(motg->pdata->pmic_id_irq) ^
+	if (msm_otg_read_pmic_id_state(motg) ^
 		motg->pdata->pmic_id_irq_active_high) {
 		if (!test_and_set_bit(ID, &motg->inputs)) {
 			pr_debug("PMIC: ID set\n");
@@ -3022,7 +3060,6 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 		else
 			queue_work(system_nrt_wq, &motg->sm_work);
 	}
-	local_irq_restore(flags);
 
 }
 
