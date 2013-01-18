@@ -33,7 +33,7 @@
 	};
 
 	/* GSBI10 - I2C */
-	i2c@1a200000 {
+	i2c10: i2c@1a200000 {
 		status = "okay";
 
 		qcom,i2c-bus-freq = <400000>;
