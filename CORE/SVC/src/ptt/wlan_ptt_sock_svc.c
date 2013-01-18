@@ -119,8 +119,13 @@ int ptt_sock_send_msg_to_app(tAniHdr *wmsg, int radio, int src_mod, int pid)
          __func__, tot_msg_len);
       return -ENOMEM;
    }
-   nlh = NLMSG_PUT(skb, pid, nlmsg_seq++, src_mod, payload_len);
-   nlh->nlmsg_flags = NLM_F_REQUEST;
+   nlh = nlmsg_put(skb, pid, nlmsg_seq++, src_mod, payload_len, NLM_F_REQUEST);
+   if (NULL == nlh) {
+      PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: nlmsg_put() failed for msg size[%d]\n",
+         __func__, tot_msg_len);
+      kfree_skb(skb);
+      return -ENOMEM;
+   }
    wnl = (tAniNlHdr *) nlh;
    wnl->radio = radio;
    memcpy(&wnl->wmsg, wmsg, wmsg_length);
@@ -130,7 +135,6 @@ int ptt_sock_send_msg_to_app(tAniHdr *wmsg, int radio, int src_mod, int pid)
    ptt_sock_dump_buf((const unsigned char *)skb->data, skb->len);
 #endif
    err = nl_srv_ucast(skb, pid);
-nlmsg_failure:
    return err;
 }
 /*
