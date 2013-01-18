@@ -38,6 +38,13 @@
 
 		qcom,i2c-bus-freq = <400000>;
 		qcom,i2c-src-freq = <24000000>;
+
+		tmp108@48 {
+			compatible = "ti,tmp108";
+			reg = <0x48>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <98 0>;
+		};
 	};
 
 	/* GSBI12 - I2C */
