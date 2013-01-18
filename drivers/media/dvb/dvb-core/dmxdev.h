@@ -34,7 +34,7 @@
 #include <linux/string.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
-#include <linux/workqueue.h>
+#include <linux/kthread.h>
 #include <linux/dvb/dmx.h>
 
 #include "dvbdev.h"
@@ -113,24 +113,26 @@ struct dmxdev_filter {
 	enum dmxdev_state state;
 	struct dmxdev *dev;
 	struct dvb_ringbuffer buffer;
+	void *priv_buff_handle;
+	enum dmx_buffer_mode buffer_mode;
 	u32 flush_data_len;
 
 	struct mutex mutex;
 
-	/* relevent for decoder PES */
-	unsigned long pes_buffer_size;
-
+	/* for recording output */
+	enum dmx_tsp_format_t dmx_tsp_format;
 	u32 rec_chunk_size;
 
 	/* only for sections */
 	struct timer_list timer;
 	int todo;
 	u8 secheader[3];
+
+	/* Decoder buffer(s) related */
+	struct dmx_decoder_buffers decoder_buffers;
 };
 
 struct dmxdev {
-	struct work_struct dvr_input_work;
-
 	struct dvb_device *dvbdev;
 	struct dvb_device *dvr_dvbdev;
 
@@ -139,9 +141,10 @@ struct dmxdev {
 
 	int filternum;
 	int capabilities;
-#define DMXDEV_CAP_DUPLEX	0x1
-#define DMXDEV_CAP_PULL_MODE	0x2
-#define DMXDEV_CAP_INDEXING	0x4
+#define DMXDEV_CAP_DUPLEX	0x01
+#define DMXDEV_CAP_PULL_MODE	0x02
+#define DMXDEV_CAP_INDEXING	0x04
+#define DMXDEV_CAP_EXTERNAL_BUFFS_ONLY	0x08
 
 	enum dmx_playback_mode_t playback_mode;
 	dmx_source_t source;
@@ -153,13 +156,16 @@ struct dmxdev {
 	struct dmx_frontend *dvr_orig_fe;
 
 	struct dvb_ringbuffer dvr_buffer;
+	void *dvr_priv_buff_handle;
+	enum dmx_buffer_mode dvr_buffer_mode;
 	struct dmxdev_events_queue dvr_output_events;
 	struct dmxdev_filter *dvr_feed;
 	u32 dvr_flush_data_len;
 	int dvr_feeds_count;
 
 	struct dvb_ringbuffer dvr_input_buffer;
-	struct workqueue_struct *dvr_input_workqueue;
+	enum dmx_buffer_mode dvr_input_buffer_mode;
+	struct task_struct *dvr_input_thread;
 
 #define DVR_BUFFER_SIZE (10*188*1024)
 
