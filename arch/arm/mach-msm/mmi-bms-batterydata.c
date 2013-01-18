@@ -121,9 +121,15 @@ static struct mmi_battery_cell mmi_eg30_lg_cell_data = {
 };
 
 /* Initial EU20 LG Tables and Charging Parameters */
+static struct single_row_lut mmi_eu20_lg_fcc_temp = {
+	.x	= {-10, 0, 23, 60},
+	.y	= {1842, 2030, 2144, 2118},
+	.cols	= 4,
+};
+
 static struct pm8921_bms_battery_data  mmi_eu20_lg_metering_data = {
 	.fcc			= 2070,
-	.fcc_temp_lut		= &mmi_eg30_lg_fcc_temp,
+	.fcc_temp_lut		= &mmi_eu20_lg_fcc_temp,
 	.fcc_sf_lut		= &mmi_eg30_lg_fcc_sf,
 	.pc_temp_ocv_lut	= &mmi_eg30_lg_pc_temp_ocv,
 	.pc_sf_lut		= &mmi_eg30_lg_pc_sf,
