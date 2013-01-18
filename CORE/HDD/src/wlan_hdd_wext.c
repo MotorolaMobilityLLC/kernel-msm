@@ -4270,13 +4270,13 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
             {
                 cmd = 287; //Command should be updated if there is any change
                            // in the Riva dump command
-                if((apps_args[0] >= 50 ) && (apps_args[0] <= 150 ))
+                if((apps_args[0] >= 40 ) && (apps_args[0] <= 160 ))
                 {
                     logPrintf(hHal, cmd, staId, apps_args[0], apps_args[1], apps_args[2]);
                 }
                 else
                 {
-                     hddLog(LOGE, "%s : Enter valid MccCredential value between MIN :50 and MAX:150\n");
+                     hddLog(LOGE, "%s : Enter valid MccCredential value between MIN :40 and MAX:160\n");
                      return 0;
                 }
             }
