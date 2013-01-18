@@ -82,6 +82,7 @@ enum {
 };
 
 
+
 extern struct sx150x_platform_data msm8960_sx150x_data[];
 extern struct msm_camera_board_info msm8960_camera_board_info;
 

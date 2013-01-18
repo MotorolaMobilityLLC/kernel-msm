@@ -47,6 +47,8 @@
 
 #define MAX_PID 0x1fff
 
+#define TIMESTAMP_LEN	4
+
 #define SPEED_PKTS_INTERVAL 50000
 
 struct dvb_demux_filter {
@@ -90,6 +92,7 @@ struct dvb_demux_feed {
 	u16 pid;
 	u8 *buffer;
 	int buffer_size;
+	enum dmx_tsp_format_t tsp_out_format;
 
 	struct timespec timeout;
 	struct dvb_demux_filter *filter;
@@ -124,6 +127,8 @@ struct dvb_demux {
 	int (*decoder_fullness_abort)(struct dvb_demux_feed *feed);
 	int (*decoder_buffer_status)(struct dvb_demux_feed *feed,
 				struct dmx_buffer_status *dmx_buffer_status);
+	int (*reuse_decoder_buffer)(struct dvb_demux_feed *feed,
+				int cookie);
 	u32 (*check_crc32)(struct dvb_demux_feed *feed,
 			    const u8 *buf, size_t len);
 	void (*memcopy)(struct dvb_demux_feed *feed, u8 *dst,
@@ -155,7 +160,6 @@ struct dvb_demux {
 	uint32_t speed_pkts_cnt; /* for TS speed check */
 
 	enum dmx_tsp_format_t tsp_format;
-	enum dmx_tsp_format_t tsp_out_format;
 
 	enum dmx_playback_mode_t playback_mode;
 	int sw_filter_abort;
@@ -174,7 +178,6 @@ struct dvb_demux {
 
 	u32 total_process_time;
 	u32 total_crc_time;
-	struct dentry *debugfs_demux_dir;
 };
 
 int dvb_dmx_init(struct dvb_demux *dvbdemux);
@@ -190,6 +193,8 @@ void dvb_dmx_swfilter_format(
 			struct dvb_demux *demux, const u8 *buf,
 			size_t count,
 			enum dmx_tsp_format_t tsp_format);
+void dvb_dmx_swfilter_packet(struct dvb_demux *demux, const u8 *buf,
+				const u8 timestamp[TIMESTAMP_LEN]);
 
 
 #endif /* _DVB_DEMUX_H_ */

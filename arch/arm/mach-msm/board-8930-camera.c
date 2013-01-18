@@ -609,12 +609,13 @@ void __init msm8930_init_cam(void)
 		struct msm_camera_sensor_info *s_info;
 		s_info = &msm_camera_sensor_s5k3l1yx_data;
 		s_info->sensor_platform_info->mount_angle = 0;
+#if defined(CONFIG_I2C) && (defined(CONFIG_GPIO_SX150X) || \
+	defined(CONFIG_GPIO_SX150X_MODULE))
 		msm_flash_src._fsrc.ext_driver_src.led_en =
 			GPIO_CAM_GP_LED_EN1;
 		msm_flash_src._fsrc.ext_driver_src.led_flash_en =
 			GPIO_CAM_GP_LED_EN2;
-#if defined(CONFIG_I2C) && (defined(CONFIG_GPIO_SX150X) || \
-	defined(CONFIG_GPIO_SX150X_MODULE))
+
 		msm_flash_src._fsrc.ext_driver_src.expander_info =
 			cam_expander_info;
 #endif
