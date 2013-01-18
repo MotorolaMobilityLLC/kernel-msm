@@ -227,6 +227,8 @@ int mdp4_dsi_video_pipe_commit(int cndx, int wait)
 	pipe = vctrl->base_pipe;
 	mixer = pipe->mixer_num;
 
+	mdp_update_pm(vctrl->mfd, vctrl->vsync_time);
+
 	if (vp->update_cnt == 0) {
 		mutex_unlock(&vctrl->update_lock);
 		return cnt;
@@ -655,6 +657,7 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 	pipe->dst_w = fbi->var.xres;
 
 	mdp4_overlay_mdp_pipe_req(pipe, mfd);
+	mdp4_calc_blt_mdp_bw(mfd, pipe);
 
 	atomic_set(&vctrl->suspend, 0);
 
@@ -1189,7 +1192,7 @@ void mdp4_dsi_video_overlay(struct msm_fb_data_type *mfd)
 	uint8 *buf;
 	unsigned int buf_offset;
 	int bpp;
-	int cndx = 0;
+	int cnt, cndx = 0;
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
 
@@ -1219,12 +1222,14 @@ void mdp4_dsi_video_overlay(struct msm_fb_data_type *mfd)
 	}
 
 	mdp4_overlay_mdp_perf_upd(mfd, 1);
-	mdp4_dsi_video_pipe_commit(0, 0);
 
-	if (pipe->ov_blt_addr)
-		mdp4_dsi_video_wait4ov(0);
-	else
-		mdp4_dsi_video_wait4dmap(0);
+	cnt = mdp4_dsi_video_pipe_commit(cndx, 0);
+	if (cnt) {
+		if (pipe->ov_blt_addr)
+			mdp4_dsi_video_wait4ov(cndx);
+		else
+			mdp4_dsi_video_wait4dmap(cndx);
+	}
 
 	mdp4_dsi_panel_on(mfd);
 	mdp4_overlay_mdp_perf_upd(mfd, 0);
