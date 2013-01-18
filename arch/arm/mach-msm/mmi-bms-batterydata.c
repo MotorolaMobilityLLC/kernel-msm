@@ -201,9 +201,15 @@ static struct mmi_battery_cell mmi_ex34_lg_cell_data = {
 /* Mock EX34 LG Tables and Charging Parameters */
 /* Mock Batteries are ones that are used in eary stages of Development */
 /* Mock Batteries are used as stop gap until true batteries are available */
+static struct single_row_lut mmi_mock_ex34_lg_fcc_temp = {
+	.x	= {-10, 0, 23, 60},
+	.y	= {1026, 1132, 1195, 1181},
+	.cols	= 4,
+};
+
 static struct pm8921_bms_battery_data  mmi_mock_ex34_lg_metering_data = {
 	.fcc			= 1150,
-	.fcc_temp_lut		= &mmi_eg30_lg_fcc_temp,
+	.fcc_temp_lut		= &mmi_mock_ex34_lg_fcc_temp,
 	.fcc_sf_lut		= &mmi_eg30_lg_fcc_sf,
 	.pc_temp_ocv_lut	= &mmi_eg30_lg_pc_temp_ocv,
 	.pc_sf_lut		= &mmi_eg30_lg_pc_sf,
