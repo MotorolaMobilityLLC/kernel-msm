@@ -55,7 +55,7 @@
 #define WLAN_NLINK_SRV_H 
 
 #include <linux/skbuff.h>
-#include <linux/netlink.h>
+#include <net/netlink.h>
 #include <wlan_nlink_common.h>
 
 #define NLINK_MAX_CALLBACKS (WLAN_NL_MSG_MAX - WLAN_NL_MSG_BASE)
