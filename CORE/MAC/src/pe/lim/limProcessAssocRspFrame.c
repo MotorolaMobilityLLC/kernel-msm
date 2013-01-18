@@ -629,7 +629,22 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         goto assocReject;
     }
     // Association Response received with success code
-
+    /*
+     * Set the link state to POSTASSOC now that we have received
+     * assoc/reassoc response
+     * NOTE: for BTAMP case, it is being handled in limProcessMlmAssocReq
+     */
+    if (!((psessionEntry->bssType == eSIR_BTAMP_STA_MODE) ||
+          ((psessionEntry->bssType == eSIR_BTAMP_AP_MODE) &&
+          (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))))
+    {
+            if (limSetLinkState(pMac, eSIR_LINK_POSTASSOC_STATE, psessionEntry->bssId,
+                                psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS)
+            {
+                    PELOGE(limLog(pMac, LOGE, FL("Set link state to POSTASSOC failed\n"));)
+                            return;
+            }
+    }
     if (subType == LIM_REASSOC)
     {
         // Log success

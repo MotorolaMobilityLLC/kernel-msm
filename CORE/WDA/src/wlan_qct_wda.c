@@ -4726,7 +4726,6 @@ WDA_processSetLinkStateStatus WDA_IsHandleSetLinkStateReq(
          }
          //populate linkState info in WDACbCtxt
          pWDA->linkState = linkStateParams->state;
-         status = WDA_IGNORE_SET_LINK_STATE;
          break;
       default:
          if(pWDA->wdaState != WDA_READY_STATE)
