@@ -137,7 +137,7 @@ int hdd_setP2pNoa( struct net_device *dev, tANI_U8 *command );
 void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
                             tANI_U32 nFrameLength, tANI_U8* pbFrames,
                             tANI_U8 frameType,
-                            tANI_U32 rxChan);
+                            tANI_U32 rxChan, tANI_S8 rxRssi);
 
 void hdd_remainChanReadyHandler( hdd_adapter_t *pAdapter );
 void hdd_sendActionCnf( hdd_adapter_t *pAdapter, tANI_BOOLEAN actionSendSuccess );

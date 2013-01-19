@@ -581,7 +581,8 @@ void limRemainOnChnRsp(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data)
 void limSendSmeMgmtFrameInd(
                     tpAniSirGlobal pMac, tANI_U8 frameType,
                     tANI_U8  *frame, tANI_U32 frameLen, tANI_U16 sessionId,
-                    tANI_U32 rxChannel, tpPESession psessionEntry)
+                    tANI_U32 rxChannel, tpPESession psessionEntry,
+                    tANI_S8 rxRssi)
 {
     tSirMsgQ              mmhMsg;
     tpSirSmeMgmtFrameInd pSirSmeMgmtFrame = NULL;
@@ -602,6 +603,7 @@ void limSendSmeMgmtFrameInd(
     pSirSmeMgmtFrame->mesgLen = length;
     pSirSmeMgmtFrame->sessionId = sessionId;
     pSirSmeMgmtFrame->frameType = frameType;
+    pSirSmeMgmtFrame->rxRssi = rxRssi;
 
     /* work around for 5Ghz channel is not correct since rxhannel 
      * is 4 bits. So we don't indicate more than 16 channels 

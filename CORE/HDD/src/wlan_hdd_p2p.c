@@ -1312,7 +1312,8 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
                             tANI_U32 nFrameLength, 
                             tANI_U8* pbFrames,
                             tANI_U8 frameType,
-                            tANI_U32 rxChan )
+                            tANI_U32 rxChan,
+                            tANI_S8 rxRssi )
 {
     tANI_U16 freq;
     tANI_U8 type = 0;
@@ -1466,6 +1467,8 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
 #ifdef WLAN_FEATURE_TDLS_DEBUG
             else if(pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+1] == WLAN_HDD_PUBLIC_ACTION_TDLS_DISC_RESP)
             {
+                wlan_hdd_tdls_set_cap(&pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+6], 1);
+                wlan_hdd_tdls_set_rssi(&pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+6], rxRssi);
                 hddLog(VOS_TRACE_LEVEL_ERROR,"[TDLS] TDLS Discovery Response <--- OTA");
             }
 #endif
