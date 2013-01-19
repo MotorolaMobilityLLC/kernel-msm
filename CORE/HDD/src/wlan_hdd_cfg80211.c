@@ -348,7 +348,7 @@ wlan_hdd_txrx_stypes[NUM_NL80211_IFTYPES] = {
             BIT(SIR_MAC_MGMT_DEAUTH) |
             BIT(SIR_MAC_MGMT_ACTION),
     },
-#endif    
+#endif
 };
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
@@ -545,7 +545,7 @@ int wlan_hdd_cfg80211_register(struct device *dev,
 #ifdef WLAN_FEATURE_P2P
                              | BIT(NL80211_IFTYPE_P2P_CLIENT)
                              | BIT(NL80211_IFTYPE_P2P_GO)
-#endif                       
+#endif
                              | BIT(NL80211_IFTYPE_AP);
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
@@ -3322,6 +3322,7 @@ static int wlan_hdd_cfg80211_set_default_key( struct wiphy *wiphy,
     return status;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
 /**
  * FUNCTION: wlan_hdd_cfg80211_set_channel
  * This function is used to set the channel number 
@@ -3448,6 +3449,7 @@ int wlan_hdd_cfg80211_set_channel( struct wiphy *wiphy, struct net_device *dev,
     EXIT();
     return 0;
 }
+#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)) */
 
 
 
@@ -4026,9 +4028,15 @@ v_BOOL_t hdd_isScanAllowed( hdd_context_t *pHddCtx )
  * this scan respond to scan trigger and update cfg80211 scan database
  * later, scan dump command can be used to recieve scan results
  */
-int wlan_hdd_cfg80211_scan( struct wiphy *wiphy, struct net_device *dev,
-        struct cfg80211_scan_request *request)
-{  
+int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
+                            struct net_device *dev,
+#endif
+                            struct cfg80211_scan_request *request)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
+   struct net_device *dev = request->wdev->netdev;
+#endif
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev ); 
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
     hdd_wext_state_t *pwextBuf = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
@@ -6616,7 +6624,9 @@ static struct cfg80211_ops wlan_hdd_cfg80211_ops =
     .get_key = wlan_hdd_cfg80211_get_key,
     .del_key = wlan_hdd_cfg80211_del_key,
     .set_default_key = wlan_hdd_cfg80211_set_default_key,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
     .set_channel = wlan_hdd_cfg80211_set_channel,
+#endif
     .scan = wlan_hdd_cfg80211_scan,
     .connect = wlan_hdd_cfg80211_connect,
     .disconnect = wlan_hdd_cfg80211_disconnect,
