@@ -363,6 +363,21 @@ static irqreturn_t armpmu_platform_irq(int irq, void *dev)
 	return plat->handle_irq(irq, dev, armpmu->handle_irq);
 }
 
+int
+armpmu_generic_request_irq(int irq, irq_handler_t *handle_irq)
+{
+        return request_irq(irq, *handle_irq,
+                        IRQF_DISABLED | IRQF_NOBALANCING,
+                        "armpmu", NULL);
+}
+
+void
+armpmu_generic_free_irq(int irq)
+{
+        if (irq >= 0)
+                free_irq(irq, NULL);
+}
+
 static void
 armpmu_release_hardware(struct arm_pmu *armpmu)
 {
@@ -377,6 +392,7 @@ armpmu_release_hardware(struct arm_pmu *armpmu)
 		if (!cpumask_test_and_clear_cpu(i, &armpmu->active_irqs))
 			continue;
 		irq = platform_get_irq(pmu_device, i);
+		armpmu->free_pmu_irq(irq);
 		if (irq >= 0) {
 			if (plat && plat->disable_irq)
 				plat->disable_irq(irq);
@@ -432,6 +448,16 @@ armpmu_reserve_hardware(struct arm_pmu *armpmu)
 				    irq, i);
 			continue;
 		}
+
+		err = armpmu->request_pmu_irq(irq, &handle_irq);
+
+                if (err) {
+                        pr_warning("unable to request IRQ%d for %s perf "
+                                "counters\n", irq, armpmu->name);
+
+			armpmu_release_hardware(cpu_pmu);
+                        return err;
+                }
 
 		err = request_irq(irq, handle_irq,
 				  IRQF_DISABLED | IRQF_NOBALANCING,
@@ -638,7 +664,7 @@ static struct of_device_id armpmu_of_device_ids[] = {
 };
 
 static struct platform_device_id armpmu_plat_device_ids[] = {
-	{.name = "arm-pmu"},
+	{.name = "cpu-arm-pmu"},
 	{},
 };
 
@@ -653,7 +679,7 @@ static int __devinit armpmu_device_probe(struct platform_device *pdev)
 
 static struct platform_driver armpmu_driver = {
 	.driver		= {
-		.name	= "arm-pmu",
+		.name	= "cpu-arm-pmu",
 		.of_match_table = armpmu_of_device_ids,
 	},
 	.probe		= armpmu_device_probe,
