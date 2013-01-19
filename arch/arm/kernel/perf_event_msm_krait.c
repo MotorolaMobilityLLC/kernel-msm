@@ -424,7 +424,7 @@ krait_dis_out:
 	raw_spin_unlock_irqrestore(&events->pmu_lock, flags);
 }
 
-static void krait_pmu_enable_event(struct hw_perf_event *hwc, int idx, int cpu)
+static void krait_pmu_enable_event(struct hw_perf_event *hwc, int idx)
 {
 	unsigned long flags;
 	u32 val = 0;
