@@ -73,6 +73,10 @@ Qualcomm Confidential and Proprietary
 #include "wlan_qct_wda.h"
 
 void WDA_TimerTrafficStatsInd(tWDA_CbContext *pWDA);
+#ifdef WLANTL_DEBUG
+extern void WLANTLPrintPktsRcvdPerRssi(v_PVOID_t pAdapter, v_U8_t staId, v_BOOL_t flush);
+extern void WLANTLPrintPktsRcvdPerRateIdx(v_PVOID_t pAdapter, v_U8_t staId, v_BOOL_t flush);
+#endif
 
 static char *getRole( tLimSystemRole role )
 {
@@ -2528,6 +2532,36 @@ dump_lim_mcc_policy_maker(tpAniSirGlobal pMac, tANI_U32 arg1,tANI_U32 arg2,tANI_
    return p;
 }
 
+#ifdef WLANTL_DEBUG
+/* API to print number of pkts received based on rate index */
+/* arg1 = station Id */
+/* arg2 = BOOLEAN value to either or not flush the counters */
+static char *
+dump_lim_get_pkts_rcvd_per_rate_idx( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
+{
+    /* if anything other than 1, then we need not flush the counters */
+    if( arg2 != 1)
+        arg2 = FALSE;
+
+    WLANTLPrintPktsRcvdPerRateIdx(pMac->roam.gVosContext, (tANI_U8)arg1, (v_BOOL_t)arg2);
+    return p;
+}
+
+/* API to print number of pkts received based on rssi */
+/* arg1 = station Id */
+/* arg2 = BOOLEAN value to either or not flush the counters */
+static char *
+dump_lim_get_pkts_rcvd_per_rssi_values( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
+{
+    /* if anything other than 1, then we need not flush the counters */
+    if( arg2 != 1)
+        arg2 = FALSE;
+
+    WLANTLPrintPktsRcvdPerRssi(pMac->roam.gVosContext, (tANI_U8)arg1, (v_BOOL_t)arg2);
+    return p;
+}
+#endif
+
 static tDumpFuncEntry limMenuDumpTable[] = {
     {0,     "PE (300-499)",                                          NULL},
     {300,   "LIM: Dump state(s)/statistics <session id>",            dump_lim_info},
@@ -2598,6 +2632,10 @@ static tDumpFuncEntry limMenuDumpTable[] = {
     {366,   "PE.LIM: Send a VHT OPMode Action Frame",                dump_lim_vht_opmode_notification},
     {367,   "PE.LIM: Send a VHT Channel Switch Announcement",        dump_lim_vht_channel_switch_notification},
     {368,   "PE.LIM: MCC Policy Maker",                              dump_lim_mcc_policy_maker},
+#endif
+#ifdef WLANTL_DEBUG
+    {369,   "PE.LIM: pkts/rateIdx: iwpriv wlan0 dump 368 <staId> <boolean to flush counter>",    dump_lim_get_pkts_rcvd_per_rate_idx},
+    {370,   "PE.LIM: pkts/rssi: : iwpriv wlan0 dump 369 <staId> <boolean to flush counter>",    dump_lim_get_pkts_rcvd_per_rssi_values},
 #endif
 };
 

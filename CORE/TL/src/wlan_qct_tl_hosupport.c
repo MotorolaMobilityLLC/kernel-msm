@@ -212,6 +212,98 @@ void WLANTL_StatDebugDisplay
 }
 #endif /* WLANTL_HO_DEBUG_MSG */
 
+#ifdef WLANTL_DEBUG
+void WLANTLPrintPktsRcvdPerRateIdx(v_PVOID_t pAdapter, v_U8_t staId, v_BOOL_t flush)
+{
+    v_U16_t  ii;
+    WLANTL_CbType  *tlCtxt = VOS_GET_TL_CB(pAdapter);
+
+    if(NULL == tlCtxt)
+    {
+        TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Invalid TL handle"));
+        return;
+    }
+
+    if(tlCtxt->atlSTAClients[staId].ucExists == 0)
+    {
+        TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"WLAN TL: %d STA ID does not exist", staId));
+        return;
+    }
+
+    if(flush)
+    {
+        TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                         "flushed rateIdx counters"));
+
+        for(ii = 0; ii < MAX_RATE_INDEX; ii++)
+            tlCtxt->atlSTAClients[staId].trafficStatistics.pktCounterRateIdx[ii] = 0;
+
+        return;
+    }
+
+    TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR, "pkts per rate Index"));
+
+    for(ii = 0; ii < MAX_RATE_INDEX; ii++)
+    {
+        /* printing int the below format
+         * " rateIndex = pktCount "*/
+        TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                         "%d = %ld", ii+1,
+                         tlCtxt->atlSTAClients[staId].trafficStatistics.pktCounterRateIdx[ii]));
+    }
+
+    return;
+}
+
+void WLANTLPrintPktsRcvdPerRssi(v_PVOID_t pAdapter, v_U8_t staId, v_BOOL_t flush)
+{
+    v_U16_t ii,jj;
+    v_U32_t count = 0;
+    WLANTL_CbType  *tlCtxt = VOS_GET_TL_CB(pAdapter);
+
+    if(NULL == tlCtxt)
+    {
+        TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"Invalid TL handle"));
+        return;
+    }
+
+    if(tlCtxt->atlSTAClients[staId].ucExists == 0)
+    {
+        TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"WLAN TL: %d STA ID does not exist", staId));
+        return;
+    }
+
+    if(flush)
+    {
+        TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                         "flushed rssi counters"));
+
+        for(ii = 0; ii < MAX_NUM_RSSI; ii++)
+            tlCtxt->atlSTAClients[staId].trafficStatistics.pktCounterRssi[ii] = 0;
+
+        return;
+    }
+
+    TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR, "pkts per RSSI"));
+
+    for(ii = 0; ii < MAX_NUM_RSSI; ii += MAX_RSSI_INTERVAL)
+    {
+        count = 0;
+
+        for(jj = ii; jj < (ii + MAX_RSSI_INTERVAL); jj++)
+            count += tlCtxt->atlSTAClients[staId].trafficStatistics.pktCounterRssi[jj];
+
+        /* prints are in the below format
+         * " fromRSSI - toRSSI = pktCount " */
+        TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                         " %d - %d = %ld",
+                         ii, ii+(MAX_RSSI_INTERVAL - 1), count));
+    }
+
+    return;
+}
+#endif
+
 /*==========================================================================
 
    FUNCTION
@@ -503,7 +595,17 @@ VOS_STATUS WLANTL_StatHandleRXFrame
 
    /* TODO caculation is needed, dimension of 500kbps */
    statistics->rxRate = WDA_GET_RX_MAC_RATE_IDX(pBDHeader);
-   
+
+#ifdef WLANTL_DEBUG
+   if( (statistics->rxRate - 1) < MAX_RATE_INDEX)
+     tlCtxt->atlSTAClients[STAid].trafficStatistics.pktCounterRateIdx[statistics->rxRate - 1]++;
+
+   /* Check if the +ve value of RSSI is within the valid range.
+    * And increment pkt counter based on RSSI */
+   if( (v_U16_t)((WDA_GET_RX_RSSI_DB(pBDHeader)) * (-1)) < MAX_NUM_RSSI)
+     tlCtxt->atlSTAClients[STAid].trafficStatistics.pktCounterRssi[(v_U16_t)((WDA_GET_RX_RSSI_DB(pBDHeader)) * (-1))]++;
+#endif
+
    TLLOG1(VOS_TRACE (VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_MED,
                   "****Received rate Index = %ld type=%d subtype=%d****\n",
                   statistics->rxRate,WDA_GET_RX_TYPE(pBDHeader),WDA_GET_RX_SUBTYPE(pBDHeader)));
