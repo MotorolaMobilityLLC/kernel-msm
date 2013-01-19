@@ -1109,7 +1109,7 @@ void hdd_set_station_ops( struct net_device *pWlanDev )
 #endif
 }
 
-hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMacAddr macAddr, char* name )
+static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMacAddr macAddr, const char* name )
 {
    struct net_device *pWlanDev = NULL;
    hdd_adapter_t *pAdapter = NULL;
@@ -1584,7 +1584,7 @@ VOS_STATUS hdd_disable_bmps_imps(hdd_context_t *pHddCtx, tANI_U8 session_type)
 }
 
 hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
-                                 char *iface_name, tSirMacAddr macAddr, 
+                                 const char *iface_name, tSirMacAddr macAddr,
                                  tANI_U8 rtnl_held )
 {
    hdd_adapter_t *pAdapter = NULL;
