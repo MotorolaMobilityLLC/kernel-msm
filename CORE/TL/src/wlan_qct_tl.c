@@ -8635,7 +8635,7 @@ WLANTL_Translate8023To80211Header
 /*=============================================================================
    BEGIN LOG FUNCTION    !!! Remove me or clean me
 =============================================================================*/
-#ifdef WLANTL_DEBUG 
+#if 0 //def WLANTL_DEBUG
 
 #define WLANTL_DEBUG_FRAME_BYTE_PER_LINE    16
 #define WLANTL_DEBUG_FRAME_BYTE_PER_BYTE    4
