@@ -43,9 +43,11 @@ char *op_name_from_perf_id(void)
 	case ARM_PERF_PMU_ID_CA9:
 		return "arm/armv7-ca9";
 	case ARM_PERF_PMU_ID_SCORPION:
-		return "arm/armv7";
+		return "arm/armv7-scorpion";
 	case ARM_PERF_PMU_ID_SCORPIONMP:
-		return "arm/armv7";
+		return "arm/armv7-scorpionmp";
+	case ARM_PERF_PMU_ID_KRAIT:
+		return "arm/armv7-krait";
 	default:
 		return NULL;
 	}
