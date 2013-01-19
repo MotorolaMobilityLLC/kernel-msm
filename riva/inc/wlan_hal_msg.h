@@ -351,24 +351,13 @@ typedef enum
 
    WLAN_HAL_UPDATE_VHT_OP_MODE_REQ          = 182,
    WLAN_HAL_UPDATE_VHT_OP_MODE_RSP          = 183,
-
    WLAN_HAL_P2P_NOA_START_IND               = 184,
 
    WLAN_HAL_GET_ROAM_RSSI_REQ               = 185,
    WLAN_HAL_GET_ROAM_RSSI_RSP               = 186,
 
-   WLAN_HAL_SCAN_TX_BD_COMPLETE_IND         = 187,
-   WLAN_HAL_CXM2SLM_OPERATING_MODE          = 188,
-   WLAN_HAL_P2P_MSG                         = 189,
-   WLAN_HAL_PS_TX_BPS_MSG                   = 190,
-   WLAN_HAL_PS_MODE_TO_MSG                  = 191,
-   WLAN_HAL_P2P_INDICATE_NOA_ATTR_TO_HOST   = 192,
-   WLAN_HAL_P2P_INDICATE_NOA_START_TO_HOST  = 193,
-   WLAN_HAL_DEL_STA_IND                     = 194,
-   /* DEL BD IND from RPE interrupt */
-   WLAN_HAL_DEL_BA_IND                      = 195,
-   WLAN_HAL_SCAN_INTERNAL_EVENTID           = 196,
-   WLAN_HAL_CLASS_B_STATS_IND               = 197,
+   WLAN_HAL_CLASS_B_STATS_IND               = 187,
+   WLAN_HAL_DEL_BA_IND                      = 188,
    WLAN_HAL_MSG_MAX = WLAN_HAL_MSG_TYPE_MAX_ENUM_SIZE
 }tHalHostMsgType;
 
@@ -5597,7 +5586,6 @@ typedef PACKED_PRE struct PACKED_POST{
    tWlanFeatCaps wlanFeatCaps;
 
 }  tWlanFeatCapsMsg, *tpWlanFeatCapsMsg;
-
 
 #define IS_MCC_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(MCC)))
 #define IS_SLM_SESSIONIZATION_SUPPORTED_BY_HOST (!!(halMsg_GetHostWlanFeatCaps(SLM_SESSIONIZATION)))
