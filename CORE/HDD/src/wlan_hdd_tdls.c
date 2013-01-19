@@ -187,8 +187,16 @@ static v_VOID_t wlan_hdd_update_peer_cb( v_PVOID_t userData )
 int wlan_hdd_tdls_init(struct net_device *dev)
 {
     VOS_STATUS status;
-    pHddTdlsCtx = vos_mem_malloc(sizeof(tdlsCtx_t));
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
 
+    if(FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s TDLS not enabled!", __func__);
+        return -1;
+    }
+
+    pHddTdlsCtx = vos_mem_malloc(sizeof(tdlsCtx_t));
     if (NULL == pHddTdlsCtx) {
         hddLog(VOS_TRACE_LEVEL_ERROR, "%s malloc failed!", __func__);
         return -1;
@@ -198,12 +206,17 @@ int wlan_hdd_tdls_init(struct net_device *dev)
 
     pHddTdlsCtx->dev = dev;
 
-    pHddTdlsCtx->threshold_config.tx_period_t = TDLS_TX_STATS_PERIOD;
-    pHddTdlsCtx->threshold_config.tx_packet_n = TDLS_IMPLICIT_TRIGGER_PKT_THRESHOLD;
-    pHddTdlsCtx->threshold_config.discovery_period_t = TDLS_DISCOVERY_PERIOD;
-    pHddTdlsCtx->threshold_config.discovery_tries_n = TDLS_MAX_DISCOVER_ATTEMPT;
-    pHddTdlsCtx->threshold_config.rx_timeout_t = TDLS_RX_IDLE_TIMEOUT;
-    pHddTdlsCtx->threshold_config.rssi_hysteresis = TDLS_RSSI_TRIGGER_HYSTERESIS;
+    if(FALSE == pHddCtx->cfg_ini->fEnableTDLSImplicitTrigger)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s TDLS Implicit trigger not enabled!", __func__);
+        return -1;
+    }
+    pHddTdlsCtx->threshold_config.tx_period_t = pHddCtx->cfg_ini->fTDLSTxStatsPeriod;
+    pHddTdlsCtx->threshold_config.tx_packet_n = pHddCtx->cfg_ini->fTDLSTxPacketThreshold;
+    pHddTdlsCtx->threshold_config.discovery_period_t = pHddCtx->cfg_ini->fTDLSDiscoveryPeriod;
+    pHddTdlsCtx->threshold_config.discovery_tries_n = pHddCtx->cfg_ini->fTDLSMaxDiscoveryAttempt;
+    pHddTdlsCtx->threshold_config.rx_timeout_t = pHddCtx->cfg_ini->fTDLSRxIdleTimeout;
+    pHddTdlsCtx->threshold_config.rssi_hysteresis = pHddCtx->cfg_ini->fTDLSRssiHysteresis;
 
     status = vos_timer_init(&pHddTdlsCtx->peerDiscoverTimer,
                      VOS_TIMER_TYPE_SW,

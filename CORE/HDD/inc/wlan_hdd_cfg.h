@@ -1469,10 +1469,45 @@ typedef enum
 #endif
 
 #ifdef FEATURE_WLAN_TDLS
-#define CFG_TDLS_SUPPORT_ENABLE               "gEnableTDLSSupport"
-#define CFG_TDLS_SUPPORT_ENABLE_MIN           ( 0 )
-#define CFG_TDLS_SUPPORT_ENABLE_MAX           ( 1 )
-#define CFG_TDLS_SUPPORT_ENABLE_DEFAULT       ( 0 )
+#define CFG_TDLS_SUPPORT_ENABLE                     "gEnableTDLSSupport"
+#define CFG_TDLS_SUPPORT_ENABLE_MIN                 ( 0 )
+#define CFG_TDLS_SUPPORT_ENABLE_MAX                 ( 1 )
+#define CFG_TDLS_SUPPORT_ENABLE_DEFAULT             ( 0 )
+
+#define CFG_TDLS_IMPLICIT_TRIGGER                   "gEnableTDLSImplicitTrigger"
+#define CFG_TDLS_IMPLICIT_TRIGGER_MIN               ( 0 )
+#define CFG_TDLS_IMPLICIT_TRIGGER_MAX               ( 1 )
+#define CFG_TDLS_IMPLICIT_TRIGGER_DEFAULT           ( 0 )
+
+#define CFG_TDLS_TX_STATS_PERIOD                    "gTDLSTxStatsPeriod"
+#define CFG_TDLS_TX_STATS_PERIOD_MIN                ( 0 )
+#define CFG_TDLS_TX_STATS_PERIOD_MAX                ( 4294967295UL )
+#define CFG_TDLS_TX_STATS_PERIOD_DEFAULT            ( 2000 )
+
+#define CFG_TDLS_TX_PACKET_THRESHOLD                "gTDLSTxPacketThreshold"
+#define CFG_TDLS_TX_PACKET_THRESHOLD_MIN            ( 0 )
+#define CFG_TDLS_TX_PACKET_THRESHOLD_MAX            ( 4294967295UL )
+#define CFG_TDLS_TX_PACKET_THRESHOLD_DEFAULT        ( 1000 )
+
+#define CFG_TDLS_DISCOVERY_PERIOD                   "gTDLSDiscoveryPeriod"
+#define CFG_TDLS_DISCOVERY_PERIOD_MIN               ( 0 )
+#define CFG_TDLS_DISCOVERY_PERIOD_MAX               ( 4294967295UL )
+#define CFG_TDLS_DISCOVERY_PERIOD_DEFAULT           ( 60000 )
+
+#define CFG_TDLS_MAX_DISCOVERY_ATTEMPT              "gTDLSMaxDiscoveryAttempt"
+#define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_MIN          ( 0 )
+#define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_MAX          ( 100 )
+#define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_DEFAULT      ( 2 )
+
+#define CFG_TDLS_RX_IDLE_TIMEOUT                    "gTDLSRxIdleTimeout"
+#define CFG_TDLS_RX_IDLE_TIMEOUT_MIN                ( 0 )
+#define CFG_TDLS_RX_IDLE_TIMEOUT_MAX                ( 40000 )
+#define CFG_TDLS_RX_IDLE_TIMEOUT_DEFAULT            ( 5000 )
+
+#define CFG_TDLS_RSSI_HYSTERESIS                    "gTDLSRssiHysteresis"
+#define CFG_TDLS_RSSI_HYSTERESIS_MIN                ( 0 )
+#define CFG_TDLS_RSSI_HYSTERESIS_MAX                ( 100 )
+#define CFG_TDLS_RSSI_HYSTERESIS_DEFAULT            ( 100 )
 #endif
 
 /* Enable/Disable LPWR Image(cMEM uBSP) Transition */
@@ -1832,6 +1867,13 @@ typedef struct
    v_BOOL_t                    enableRxSTBC;
 #ifdef FEATURE_WLAN_TDLS       
    v_BOOL_t                    fEnableTDLSSupport;
+   v_BOOL_t                    fEnableTDLSImplicitTrigger;
+   v_U32_t                     fTDLSTxStatsPeriod;
+   v_U32_t                     fTDLSTxPacketThreshold;
+   v_U32_t                     fTDLSDiscoveryPeriod;
+   v_U32_t                     fTDLSMaxDiscoveryAttempt;
+   v_U32_t                     fTDLSRxIdleTimeout;
+   v_U32_t                     fTDLSRssiHysteresis;
 #endif
    v_U32_t                     enableLpwrImgTransition;
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
