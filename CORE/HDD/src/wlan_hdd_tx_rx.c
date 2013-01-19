@@ -69,6 +69,10 @@
 #include "sapApi.h"
 #endif
 
+#ifdef FEATURE_WLAN_TDLS
+#include "wlan_hdd_tdls.h"
+#endif
+
 /*--------------------------------------------------------------------------- 
   Preprocessor definitions and constants
   -------------------------------------------------------------------------*/ 
@@ -1058,6 +1062,31 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
       kfree_skb(skb);
       return VOS_STATUS_E_FAILURE;
    }
+
+#ifdef FEATURE_WLAN_TDLS
+    {
+        hdd_station_ctx_t *pHddStaCtx = &pAdapter->sessionCtx.station;
+        u8 key;
+        u8 mac[6];
+
+        key = wlan_hdd_tdls_extract_da(skb, mac);
+
+        if (vos_is_macaddr_broadcast((v_MACADDR_t *)mac)) {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
+                      "broadcast packet, not adding to peer list");
+        } else if (memcmp(pHddStaCtx->conn_info.bssId,
+                            mac, 6) != 0) {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
+                      "extract mac:%x %x %x %x %x %x",
+                      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5] );
+
+            wlan_hdd_tdls_add_peer_to_list(key, mac);
+        } else {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
+                       "packet da is bssid, not adding to peer list");
+        }
+    }
+#endif
 
    //Return VOS packet to TL;
    *ppVosPacket = pVosPacket;

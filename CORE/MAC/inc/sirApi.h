@@ -3787,9 +3787,10 @@ typedef struct sSirSmeMgmtFrameInd
 {
     tANI_U16        mesgType;
     tANI_U16        mesgLen;
+    tANI_U32        rxChan;
     tANI_U8        sessionId;
     tANI_U8         frameType;
-    tANI_U32        rxChan;
+    tANI_S8         rxRssi;
     tANI_U8  frameBuf[1]; //variable
 }tSirSmeMgmtFrameInd, *tpSirSmeMgmtFrameInd;
 #endif
