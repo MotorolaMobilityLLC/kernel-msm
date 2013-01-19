@@ -638,6 +638,7 @@ int __init armpmu_register(struct arm_pmu *armpmu, char *name, int type)
 #include "perf_event_xscale.c"
 #include "perf_event_v6.c"
 #include "perf_event_v7.c"
+#include "perf_event_msm_krait.c"
 
 /*
  * Ensure the PMU has sane values out of reset.
@@ -780,44 +781,27 @@ init_hw_perf_events(void)
 			cpu_pmu = xscale2pmu_init();
 			break;
 		}
-	}
 	/* Qualcomm CPUs */
 	} else if (0x51 == implementor) {
 		switch (part_number) {
 		case 0x00F0:    /* 8x50 & 7x30*/
-                        scorpion_pmu.id = ARM_PERF_PMU_ID_SCORPION;
-			memcpy(armpmu_perf_cache_map,
-					armv7_scorpion_perf_cache_map,
-						sizeof(armv7_scorpion_perf_cache_map));
-			scorpion_pmu.event_map =
-				armv7_scorpion_pmu_event_map;
-			armpmu = &scorpion_pmu;
-
-			/* Reset PMNC and read the nb of CNTx counters
-			   supported */
-			scorpion_pmu.num_events
-				= armv7_reset_read_pmnc();
-			perf_max_events =
-				scorpion_pmu.num_events;
-			scorpion_clear_pmuregs();
+//			cpu_pmu = armv7_scorpion_pmu_init();
 			break;
 		case 0x02D0:    /* 8x60 */
-			scorpion_pmu.id = ARM_PERF_PMU_ID_SCORPIONMP;
-			memcpy(armpmu_perf_cache_map,
-					armv7_scorpion_perf_cache_map,
-					sizeof(armv7_scorpion_perf_cache_map));
-			scorpion_pmu.event_map = armv7_scorpion_pmu_event_map;
-			armpmu = &scorpion_pmu;
-
-			/* Reset PMNC and read the nb of CNTx counters
-			   supported */
-
-			scorpion_pmu.num_events = armv7_reset_read_pmnc();
-			perf_max_events = scorpion_pmu.num_events;
-			scorpion_clear_pmuregs();
+//			fabricmon_pmu_init();
+//			cpu_pmu = armv7_scorpionmp_pmu_init();
+//			scorpionmp_l2_pmu_init();
+			break;
+		case 0x0490:    /* 8960 sim */
+		case 0x04D0:    /* 8960 */
+		case 0x06F0:    /* 8064 */
+//			fabricmon_pmu_init();
+			cpu_pmu = armv7_krait_pmu_init();
+//			krait_l2_pmu_init();
 			break;
 		}
 	}
+
 
 	if (cpu_pmu) {
 		pr_info("enabled with %s PMU driver, %d counters available\n",
