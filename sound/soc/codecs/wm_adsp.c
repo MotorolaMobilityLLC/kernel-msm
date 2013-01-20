@@ -410,7 +410,7 @@ static int wm_adsp_load(struct wm_adsp *dsp)
 
 		if (reg) {
 			buf = kmemdup(region->data, le32_to_cpu(region->len),
-				      GFP_KERNEL);
+				      GFP_KERNEL | GFP_DMA);
 			if (!buf) {
 				adsp_err(dsp, "Out of memory\n");
 				return -ENOMEM;
@@ -544,7 +544,7 @@ static int wm_adsp_setup_algs(struct wm_adsp *dsp)
 		adsp_warn(dsp, "Algorithm list end %zx 0x%x != 0xbeadead\n",
 			  term, be32_to_cpu(val));
 
-	alg = kzalloc((term - pos) * 2, GFP_KERNEL);
+	alg = kzalloc((term - pos) * 2, GFP_KERNEL | GFP_DMA);
 	if (!alg)
 		return -ENOMEM;
 
@@ -766,7 +766,7 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 
 		if (reg) {
 			buf = kmemdup(blk->data, le32_to_cpu(blk->len),
-				      GFP_KERNEL);
+				      GFP_KERNEL | GFP_DMA);
 			if (!buf) {
 				adsp_err(dsp, "Out of memory\n");
 				return -ENOMEM;
