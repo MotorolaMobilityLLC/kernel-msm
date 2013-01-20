@@ -650,7 +650,7 @@ static int wm_adsp_load_coeff(struct wm_adsp *dsp)
 	struct wmfw_coeff_hdr *hdr;
 	struct wmfw_coeff_item *blk;
 	const struct firmware *firmware;
-	struct wm_adsp_region *mem;
+	const struct wm_adsp_region *mem;
 	struct wm_adsp_alg_region *alg_region;
 	const char *region_name;
 	int ret, pos, blocks, type, offset, reg;
