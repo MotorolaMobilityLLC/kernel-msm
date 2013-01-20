@@ -64,6 +64,7 @@ typedef struct {
 
 tdlsCtx_t *pHddTdlsCtx;
 
+void wlan_hdd_freeTdlsPeer(void);
 
 static v_VOID_t wlan_hdd_discover_peer_cb( v_PVOID_t userData )
 {
@@ -143,10 +144,11 @@ static v_VOID_t wlan_hdd_update_peer_cb( v_PVOID_t userData )
                                                    NL80211_TDLS_SETUP, FALSE,
                                                    GFP_KERNEL);
 #endif
+                        goto next_peer;
                     }
 
-                    if (curr_peer->rssi >
-                            (pHddTdlsCtx->threshold_config.rssi_hysteresis +
+                    if ((tANI_S32)curr_peer->rssi >
+                            (tANI_S32)(pHddTdlsCtx->threshold_config.rssi_hysteresis +
                                 pHddTdlsCtx->ap_rssi)) {
 
                         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
@@ -160,20 +162,31 @@ static v_VOID_t wlan_hdd_update_peer_cb( v_PVOID_t userData )
 #endif
                     }
                 } else {
-                    if (curr_peer->rssi <
-                            (pHddTdlsCtx->threshold_config.rssi_hysteresis +
-                                pHddTdlsCtx->ap_rssi)) {
-
-#ifdef CONFIG_TDLS_IMPLICIT
+                    if (curr_peer->tx_pkt <
+                            pHddTdlsCtx->threshold_config.tx_packet_n) {
                         cfg80211_tdls_oper_request(pHddTdlsCtx->dev,
                                                    curr_peer->peerMac,
                                                    NL80211_TDLS_TEARDOWN, FALSE,
                                                    GFP_KERNEL);
-#endif
+
+                        goto next_peer;
                     }
+
+//                    if (curr_peer->rssi <
+//                            (pHddTdlsCtx->threshold_config.rssi_hysteresis +
+//                                pHddTdlsCtx->ap_rssi)) {
+//
+//#ifdef CONFIG_TDLS_IMPLICIT
+//                        cfg80211_tdls_oper_request(pHddTdlsCtx->dev,
+//                                                   curr_peer->peerMac,
+//                                                   NL80211_TDLS_TEARDOWN, FALSE,
+//                                                   GFP_KERNEL);
+//#endif
+//                    }
                 }
             }
 
+next_peer:
             curr_peer->tx_pkt = 0;
 
             curr_peer = (hddTdlsPeer_t *)curr_peer->node.next;
@@ -243,6 +256,10 @@ void wlan_hdd_tdls_exit()
     vos_timer_destroy(&pHddTdlsCtx->peerDiscoverTimer);
     vos_timer_stop(&pHddTdlsCtx->peerUpdateTimer);
     vos_timer_destroy(&pHddTdlsCtx->peerUpdateTimer);
+
+    wlan_hdd_freeTdlsPeer();
+    if(pHddTdlsCtx)
+        vos_mem_free(pHddTdlsCtx);
 }
 
 int wlan_hdd_tdls_set_link_status(u8 *mac, int status)
@@ -584,7 +601,28 @@ void wlan_hdd_removeTdlsPeer(tCsrRoamInfo *pRoamInfo)
     if (i == 256) return;
 
 found_peer:
-    wlan_hdd_tdls_set_link_status(curr_peer->peerMac, 0);
-    wlan_hdd_tdls_set_cap(curr_peer->peerMac, 0);
-    wlan_hdd_tdls_set_rssi(curr_peer->peerMac, -120);
+    curr_peer->link_status = eTDLS_LINK_NOT_CONNECTED;
+    curr_peer->staId = 0;
+    curr_peer->rssi = -120;
+}
+
+void wlan_hdd_freeTdlsPeer(void)
+{
+    int i;
+    hddTdlsPeer_t *curr_peer;
+    hddTdlsPeer_t *temp_peer;
+
+    for (i = 0; i < 256; i++) {
+
+        curr_peer = pHddTdlsCtx->peer_list[i];
+
+        if (NULL != curr_peer) {
+            do {
+                temp_peer = curr_peer;
+                curr_peer = (hddTdlsPeer_t *)curr_peer->node.next;
+                vos_mem_free(temp_peer);
+
+            } while (&curr_peer->node != curr_peer->node.next);
+        }
+    }
 }
