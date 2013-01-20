@@ -166,7 +166,7 @@ static __devinit int arizona_micsupp_probe(struct platform_device *pdev)
 	 * platform data if provided.
 	 */
 	micsupp->init_data = arizona_micsupp_default;
-	micsupp->init_data.consumer_supplies = &micsupp->supply;
+	micsupp->init_data.consumer_supplies = micsupp->supply;
 	micsupp->init_data.num_consumer_supplies = ARRAY_SIZE(micsupp->supply);
 	for (i = 0; i < ARRAY_SIZE(micsupp->supply); i++) {
 		micsupp->supply[i].supply = "MICVDD";
