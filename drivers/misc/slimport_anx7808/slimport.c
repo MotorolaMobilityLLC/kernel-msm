@@ -521,6 +521,7 @@ static int anx7808_i2c_remove(struct i2c_client *client)
 	wake_lock_destroy(&anx7808->slimport_lock);
 	destroy_workqueue(anx7808->workqueue);
 	anx7808_free_gpio(anx7808);
+	anx7808_client = NULL;
 	kfree(anx7808);
 	return 0;
 }
