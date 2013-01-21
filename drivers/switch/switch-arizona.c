@@ -888,6 +888,12 @@ static int arizona_extcon_probe(struct platform_device *pdev)
 				   arizona->pdata.micd_bias_start_time
 				   << ARIZONA_MICD_BIAS_STARTTIME_SHIFT);
 
+	if (arizona->pdata.micd_rate)
+		regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_1,
+				   ARIZONA_MICD_RATE_MASK,
+				   arizona->pdata.micd_rate
+				   << ARIZONA_MICD_RATE_SHIFT);
+
 	/*
 	 * If we have a clamp use it, activating in conjunction with
 	 * GPIO5 if that is connected for jack detect operation.
