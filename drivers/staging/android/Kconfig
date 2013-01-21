@@ -105,6 +105,33 @@ config ANDROID_INTF_ALARM_DEV
 	  elapsed realtime, and a non-wakeup alarm on the monotonic clock.
 	  Also exports the alarm interface to user-space.
 
+config ANDROID_DEBUG_FD_LEAK
+	bool "Android file descriptor leak debugger"
+	default n
+	---help---
+	  This Motorola Android extension helps debugging file descriptor
+	  leak bugs by dumping the backtrace of the culprit thread which
+	  is either creating a big file descriptor or injecting
+	  a big file descriptor into another process. A file descriptor
+	  is big when it is no less than CONFIG_ANDROID_BIG_FD.
+
+	  In Motorola Android platform, this feature is enabled in eng
+	  and userdebug build, and disabled in user build, same as the
+	  helsmond feature which is controlled by the HELSMON_INCL build
+	  variable.
+
+config ANDROID_BIG_FD
+	int "Minimum value of a big file descriptor"
+	depends on ANDROID_DEBUG_FD_LEAK
+	default 512
+	---help---
+	  Set this value to one that is unlikely reached by well-behaved
+	  processes which have no file descriptor leak bugs, but likely
+	  reached by the processes which do leak file descriptors.
+
+	  If this value is undefined but CONFIG_ANDROID_DEBUG_FD_LEAK is
+	  enabled, the value (__FD_SETSIZE / 2) will be assumed.
+
 endif # if ANDROID
 
 endmenu
