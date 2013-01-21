@@ -129,6 +129,9 @@ struct arizona_pdata {
 	/** Mic detect sample rate */
 	int micd_rate;
 
+	/** Mic detect debounce level */
+	int micd_dbtime;
+
 	/** Mic detect level parameters */
 	int micd_level[ARIZONA_NUM_MICD_LEVEL];
 
