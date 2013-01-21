@@ -126,6 +126,9 @@ struct arizona_pdata {
 	/** Mic detect ramp rate */
 	int micd_bias_start_time;
 
+	/** Mic detect sample rate */
+	int micd_rate;
+
 	/** Mic detect level parameters */
 	int micd_level[ARIZONA_NUM_MICD_LEVEL];
 
