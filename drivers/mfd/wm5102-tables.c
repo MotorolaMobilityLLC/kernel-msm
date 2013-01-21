@@ -78,12 +78,10 @@ int wm5102_patch(struct arizona *arizona)
 		return regmap_register_patch(arizona->regmap,
 					     wm5102_reva_patch,
 					     ARRAY_SIZE(wm5102_reva_patch));
-	case 1:
+	default:
 		return regmap_register_patch(arizona->regmap,
 					     wm5102_revb_patch,
 					     ARRAY_SIZE(wm5102_revb_patch));
-	default:
-		return 0;
 	}
 }
 
