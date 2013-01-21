@@ -1360,6 +1360,11 @@ MODULE_LICENSE ("GPL");
 #define PLATFORM_DRIVER_PRESENT
 #endif
 
+#ifdef CONFIG_USB_EHCI_MSM_72K
+#include "ehci-msm72k.c"
+#define PLATFORM_DRIVER_PRESENT
+#endif
+
 #ifdef CONFIG_USB_EHCI_MSM
 #include "ehci-msm.c"
 #define PLATFORM_DRIVER_PRESENT
@@ -1499,7 +1504,7 @@ static struct platform_driver *plat_drivers[]  = {
 	&ehci_grlib_driver
 #endif
 
-#ifdef CONFIG_USB_EHCI_MSM
+#if defined(CONFIG_USB_EHCI_MSM_72K) || defined(CONFIG_USB_EHCI_MSM)
 	&ehci_msm_driver,
 #endif
 
