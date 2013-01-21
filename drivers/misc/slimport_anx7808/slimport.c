@@ -412,16 +412,16 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 	ret = anx7808_init_gpio(anx7808);
 	if (ret) {
 		pr_err("%s: failed to initialize gpio\n", __func__);
-		goto err1;
+		goto err0;
 	}
 
 	INIT_DELAYED_WORK(&anx7808->work, anx7808_work_func);
 
 	anx7808->workqueue = create_singlethread_workqueue("anx7808_work");
-	if (anx7808->workqueue == NULL) {
+	if (!anx7808->workqueue) {
 		pr_err("%s: failed to create work queue\n", __func__);
 		ret = -ENOMEM;
-		goto err2;
+		goto err1;
 	}
 
 	anx7808->pdata->avdd_power(1);
@@ -436,7 +436,7 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 	client->irq = gpio_to_irq(anx7808->pdata->gpio_cbl_det);
 	if (client->irq < 0) {
 		pr_err("%s : failed to get gpio irq\n", __func__);
-		goto err3;
+		goto err2;
 	}
 
 	ret = request_threaded_irq(client->irq, NULL, anx7808_cbl_det_isr,
@@ -444,7 +444,7 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 					"anx7808", anx7808);
 	if (ret  < 0) {
 		pr_err("%s : failed to request irq \n", __func__);
-		goto err3;
+		goto err2;
 	}
 
 	ret = irq_set_irq_wake(client->irq, 1);
