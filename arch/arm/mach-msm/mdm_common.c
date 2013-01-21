@@ -983,7 +983,8 @@ static int mdm_configure_ipc(struct mdm_device *mdev)
 			mdm_drv->usb_switch_gpio = -1;
 		}
 	}
-	gpio_direction_output(mdm_drv->ap2mdm_status_gpio, 1);
+
+	gpio_direction_output(mdm_drv->ap2mdm_status_gpio, 0);
 	gpio_direction_output(mdm_drv->ap2mdm_errfatal_gpio, 0);
 
 	if (GPIO_IS_VALID(mdm_drv->ap2mdm_wakeup_gpio))
