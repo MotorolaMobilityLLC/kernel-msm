@@ -433,10 +433,13 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 		goto err2;
 	}
 
+	wake_lock_init(&anx7808->slimport_lock, WAKE_LOCK_SUSPEND,
+			"slimport_wake_lock");
+
 	client->irq = gpio_to_irq(anx7808->pdata->gpio_cbl_det);
 	if (client->irq < 0) {
 		pr_err("%s : failed to get gpio irq\n", __func__);
-		goto err2;
+		goto err3;
 	}
 
 	ret = request_threaded_irq(client->irq, NULL, anx7808_cbl_det_isr,
@@ -444,20 +447,21 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 					"anx7808", anx7808);
 	if (ret  < 0) {
 		pr_err("%s : failed to request irq \n", __func__);
-		goto err2;
+		goto err3;
 	}
 
 	ret = enable_irq_wake(client->irq);
 	if (ret  < 0) {
 		pr_err("%s : Enable irq for cable detect"
 			"interrupt wake enable fail\n", __func__);
-		goto err3;
+		goto err4;
 	}
-	wake_lock_init(&anx7808->slimport_lock, WAKE_LOCK_SUSPEND, "slimport_wake_lock");
 	goto exit;
 
-err3:
+err4:
 	free_irq(client->irq, anx7808);
+err3:
+	wake_lock_destroy(&anx7808->slimport_lock);
 err2:
 	destroy_workqueue(anx7808->workqueue);
 err1:
@@ -514,9 +518,9 @@ static int anx7808_i2c_remove(struct i2c_client *client)
 	struct anx7808_data *anx7808 = i2c_get_clientdata(client);
 
 	free_irq(client->irq, anx7808);
-	anx7808_free_gpio(anx7808);
-	destroy_workqueue(anx7808->workqueue);
 	wake_lock_destroy(&anx7808->slimport_lock);
+	destroy_workqueue(anx7808->workqueue);
+	anx7808_free_gpio(anx7808);
 	kfree(anx7808);
 	return 0;
 }
