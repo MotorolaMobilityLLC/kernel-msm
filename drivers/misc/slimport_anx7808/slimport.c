@@ -447,13 +447,6 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 		goto err2;
 	}
 
-	ret = irq_set_irq_wake(client->irq, 1);
-	if (ret  < 0) {
-		pr_err("%s : Request irq for cable detect"
-			"interrupt wake set fail\n", __func__);
-		goto err3;
-	}
-
 	ret = enable_irq_wake(client->irq);
 	if (ret  < 0) {
 		pr_err("%s : Enable irq for cable detect"
