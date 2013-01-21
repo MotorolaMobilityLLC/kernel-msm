@@ -30,6 +30,7 @@
 #include <linux/fs_struct.h>
 #include <linux/ima.h>
 #include <linux/dnotify.h>
+#include <linux/fdleak_dbg.h>
 
 #include "internal.h"
 
@@ -873,6 +874,7 @@ void fd_install(unsigned int fd, struct file *file)
 	BUG_ON(fdt->fd[fd] != NULL);
 	rcu_assign_pointer(fdt->fd[fd], file);
 	spin_unlock(&files->file_lock);
+	warn_if_big_fd(fd, current);
 }
 
 EXPORT_SYMBOL(fd_install);
