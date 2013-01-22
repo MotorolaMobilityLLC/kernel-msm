@@ -834,6 +834,12 @@ typedef struct
   v_U8_t done_once;
   v_U8_t uFramesProcThres;
 #endif
+#ifdef FEATURE_WLAN_TDLS
+  /*number of total TDLS peers registered to TL
+    Incremented at WLANTL_RegisterSTAClient(staType == WLAN_STA_TDLS)
+    Decremented at WLANTL_ClearSTAClient(staType == WLAN_STA_TDLS) */
+  v_U8_t        ucTdlsPeerCount;
+#endif
   /*whether we are in BMPS/UAPSD/WOWL mode, since the latter 2 need to be BMPS first*/
   v_BOOL_t                  isBMPS;
   /* Whether WDA_DS_TX_START_XMIT msg is pending or not */
