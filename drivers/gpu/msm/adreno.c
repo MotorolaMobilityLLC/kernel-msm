@@ -1383,6 +1383,7 @@ static void adreno_destroy_recovery_data(struct adreno_recovery_data *rec_data)
 {
 	vfree(rec_data->rb_buffer);
 	vfree(rec_data->bad_rb_buffer);
+	vfree(rec_data->good_rb_buffer);
 }
 
 static int _find_start_of_cmd_seq(struct adreno_ringbuffer *rb,
@@ -1564,9 +1565,9 @@ static int adreno_setup_recovery_data(struct kgsl_device *device,
 			current_context));
 
 	kgsl_sharedmem_readl(&device->memstore,
-				&rec_data->global_eop,
-				KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL,
-				eoptimestamp));
+			&rec_data->global_eop,
+			KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL,
+			eoptimestamp));
 
 	rec_data->rb_buffer = vmalloc(rb->buffer_desc.size);
 	if (!rec_data->rb_buffer) {
@@ -1582,7 +1583,17 @@ static int adreno_setup_recovery_data(struct kgsl_device *device,
 		ret = -ENOMEM;
 		goto done;
 	}
+
+	rec_data->good_rb_buffer = vmalloc(rb->buffer_desc.size);
+	if (!rec_data->good_rb_buffer) {
+		KGSL_MEM_ERR(device, "vmalloc(%d) failed\n",
+				rb->buffer_desc.size);
+		ret = -ENOMEM;
+		goto done;
+	}
 	rec_data->fault = device->mmu.fault;
+	rec_data->step =  adreno_dev->ft_policy;
+
 	/* find the start of bad command sequence in rb */
 	context = idr_find(&device->context_idr, rec_data->context_id);
 	/* Look for the command stream that is right after the global eop */
@@ -1621,16 +1632,73 @@ done:
 	if (ret) {
 		vfree(rec_data->rb_buffer);
 		vfree(rec_data->bad_rb_buffer);
+		vfree(rec_data->good_rb_buffer);
 	}
 	return ret;
 }
 
 static int
-_adreno_recover_hang(struct kgsl_device *device,
-			struct adreno_recovery_data *rec_data,
-			bool try_bad_commands)
+_adreno_restart_device(struct kgsl_device *device,
+					   struct kgsl_context *context)
 {
-	int ret;
+
+	struct adreno_context *adreno_context = context->devctxt;
+
+	/* restart device */
+	if (adreno_stop(device)) {
+		KGSL_DRV_ERR(device, "Device stop failed in recovery\n");
+		return 1;
+	}
+
+	if (adreno_start(device, true)) {
+		KGSL_DRV_ERR(device, "Device start failed in recovery\n");
+		return 1;
+	}
+
+	if (context)
+		kgsl_mmu_setstate(&device->mmu, adreno_context->pagetable,
+			KGSL_MEMSTORE_GLOBAL);
+
+	/* If iommu is used then we need to make sure that the iommu clocks
+	 * are on since there could be commands in pipeline that touch iommu */
+	if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_get_mmutype()) {
+		if (kgsl_mmu_enable_clk(&device->mmu,
+				KGSL_IOMMU_CONTEXT_USER))
+			return 1;
+	}
+
+	return 0;
+}
+
+static int
+_adreno_recovery_resubmit(struct kgsl_device *device,
+			struct adreno_ringbuffer *rb,
+			struct kgsl_context *context,
+			struct adreno_recovery_data *rec_data,
+			unsigned int *buff, unsigned int size)
+{
+	unsigned int ret = 0;
+
+	if (_adreno_restart_device(device, context))
+		return 1;
+
+	if (size) {
+
+		/* submit commands and wait for them to pass */
+		adreno_ringbuffer_restore(rb, buff, size);
+
+		ret = adreno_idle(device);
+	}
+
+	return ret;
+}
+
+
+static int
+_adreno_recover_hang(struct kgsl_device *device,
+			struct adreno_recovery_data *rec_data)
+{
+	int ret = 0, i;
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 	struct adreno_ringbuffer *rb = &adreno_dev->ringbuffer;
 	struct kgsl_context *context;
@@ -1655,103 +1723,117 @@ _adreno_recover_hang(struct kgsl_device *device,
 	 * hang */
 	adreno_ringbuffer_extract(rb, rec_data);
 
-	/* restart device */
-	ret = adreno_stop(device);
-	if (ret) {
-		KGSL_DRV_ERR(device, "Device stop failed in recovery\n");
-		goto done;
-	}
+	/* Do not try the bad commands if  hang is due to a fault */
+	if (rec_data->fault)
+		goto play_good_cmds;
 
-	ret = adreno_start(device, true);
-	if (ret) {
-		KGSL_DRV_ERR(device, "Device start failed in recovery\n");
-		goto done;
-	}
+	if (rec_data->step == FT_REPLAY_BAD_CTXT_CMDS) {
 
-	if (context)
-		kgsl_mmu_setstate(&device->mmu, adreno_context->pagetable,
-			KGSL_MEMSTORE_GLOBAL);
+		ret = _adreno_recovery_resubmit(device, rb, context, rec_data,
+				rec_data->bad_rb_buffer, rec_data->bad_rb_size);
 
-	/* If iommu is used then we need to make sure that the iommu clocks
-	 * are on since there could be commands in pipeline that touch iommu */
-	if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_get_mmutype()) {
-		ret = kgsl_mmu_enable_clk(&device->mmu,
-			KGSL_IOMMU_CONTEXT_USER);
 		if (ret)
-			goto done;
+			rec_data->step = FT_NOT_IB_BAD_CTXT_CMDS;
+		else
+			goto play_good_cmds;
+
 	}
 
-	/* Do not try the bad commands if recovery has failed bad commands
-	 * once already or if hang is due to a fault */
-	if (!try_bad_commands || rec_data->fault)
-		rec_data->bad_rb_size = 0;
+	if (rec_data->step == FT_NOT_IB_BAD_CTXT_CMDS) {
 
-	if (rec_data->bad_rb_size) {
-		int idle_ret;
-		/* submit the bad and good context commands and wait for
-		 * them to pass */
-		adreno_ringbuffer_restore(rb, rec_data->bad_rb_buffer,
-					rec_data->bad_rb_size);
-		idle_ret = adreno_idle(device);
-		if (idle_ret) {
-			ret = adreno_stop(device);
-			if (ret) {
-				KGSL_DRV_ERR(device,
-				"Device stop failed in recovery\n");
-				goto done;
-			}
-			ret = adreno_start(device, true);
-			if (ret) {
-				KGSL_DRV_ERR(device,
-				"Device start failed in recovery\n");
-				goto done;
-			}
-			if (context)
-				kgsl_mmu_setstate(&device->mmu,
-						adreno_context->pagetable,
-						KGSL_MEMSTORE_GLOBAL);
+		for (i = 0; i < rec_data->bad_rb_size; i++) {
+			if ((rec_data->bad_rb_buffer[i] ==
+				CP_HDR_INDIRECT_BUFFER_PFD) &&
+				(rec_data->bad_rb_buffer[i+1] ==
+				rec_data->ib1)) {
 
-			if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_get_mmutype()) {
-				ret = kgsl_mmu_enable_clk(&device->mmu,
-						KGSL_IOMMU_CONTEXT_USER);
-				if (ret)
-					goto done;
+				rec_data->bad_rb_buffer[i] = cp_nop_packet(2);
+				rec_data->bad_rb_buffer[i+1] =
+							KGSL_NOP_IB_IDENTIFIER;
+				rec_data->bad_rb_buffer[i+2] =
+							KGSL_NOP_IB_IDENTIFIER;
+				break;
 			}
-
-			ret = idle_ret;
-			KGSL_DRV_ERR(device,
-			"Bad context commands hung in recovery\n");
-		} else {
-			KGSL_DRV_ERR(device,
-			"Bad context commands succeeded in recovery\n");
-			if (adreno_context)
-				adreno_context->flags = (adreno_context->flags &
-					~CTXT_FLAGS_GPU_HANG) |
-					CTXT_FLAGS_GPU_HANG_RECOVERED;
-			adreno_dev->drawctxt_active = last_active_ctx;
 		}
-	}
-	/* If either the bad command sequence failed or we did not play it */
-	if (ret || !rec_data->bad_rb_size) {
-		adreno_ringbuffer_restore(rb, rec_data->rb_buffer,
-				rec_data->rb_size);
-		ret = adreno_idle(device);
+
+		if ((i == (rec_data->bad_rb_size)) || (!rec_data->ib1)) {
+			KGSL_DRV_ERR(device, "Bad IB to NOP not found\n");
+			rec_data->step = FT_FAIL_BAD_CTXT_CMDS;
+			goto play_good_cmds;
+		}
+
+		ret = _adreno_recovery_resubmit(device, rb, context, rec_data,
+				rec_data->bad_rb_buffer, rec_data->bad_rb_size);
+
 		if (ret) {
-			/* If we fail here we can try to invalidate another
-			 * context and try recovering again */
-			ret = -EAGAIN;
-			goto done;
-		}
-		/* ringbuffer now has data from the last valid context id,
-		 * so restore the active_ctx to the last valid context */
-		if (rec_data->last_valid_ctx_id) {
-			struct kgsl_context *last_ctx =
-					idr_find(&device->context_idr,
-					rec_data->last_valid_ctx_id);
-			if (last_ctx)
-				adreno_dev->drawctxt_active = last_ctx->devctxt;
-		}
+			KGSL_DRV_ERR(device, "NOP faulty IB unsuccessful\n");
+			rec_data->step = FT_SKIP_EOF_BAD_CTXT_CMDS;
+		} else
+			goto play_good_cmds;
 	}
+
+	if (rec_data->step == FT_SKIP_EOF_BAD_CTXT_CMDS) {
+
+		for (i = 0; i < rec_data->bad_rb_size; i++) {
+			if (rec_data->bad_rb_buffer[i] ==
+				KGSL_END_OF_FRAME_IDENTIFIER) {
+				rec_data->bad_rb_buffer[0] = cp_nop_packet(i);
+				break;
+			}
+		}
+
+		/* EOF not found in RB, discard till EOF in
+		   next IB submission */
+		if (i == rec_data->bad_rb_size) {
+			adreno_context->flags |= CTXT_FLAGS_SKIP_EOF;
+			rec_data->bad_rb_buffer[0] = cp_nop_packet(i);
+		}
+
+		ret = _adreno_recovery_resubmit(device, rb, context, rec_data,
+				rec_data->bad_rb_buffer, rec_data->bad_rb_size);
+
+		if (ret) {
+			KGSL_DRV_ERR(device, "Skip EOF unsuccessful\n");
+			rec_data->step = FT_FAIL_BAD_CTXT_CMDS;
+		} else
+			goto play_good_cmds;
+	}
+
+play_good_cmds:
+
+	if (rec_data->step == FT_FAIL_BAD_CTXT_CMDS)
+		KGSL_DRV_ERR(device, "Bad context commands failed\n");
+	else {
+
+		if (adreno_context) {
+			adreno_context->flags = (adreno_context->flags &
+			~CTXT_FLAGS_GPU_HANG) | CTXT_FLAGS_GPU_HANG_RECOVERED;
+		}
+		adreno_dev->drawctxt_active = last_active_ctx;
+	}
+
+	ret = _adreno_recovery_resubmit(device, rb, context, rec_data,
+			rec_data->good_rb_buffer, rec_data->good_rb_size);
+
+	if (ret) {
+		/* If we fail here we can try to invalidate another
+		 * context and try fault tolerance again */
+		ret = -EAGAIN;
+		KGSL_DRV_ERR(device, "Playing good commands unsuccessful\n");
+		goto done;
+	}
+
+
+	/* ringbuffer now has data from the last valid context id,
+	 * so restore the active_ctx to the last valid context */
+	if (rec_data->last_valid_ctx_id) {
+		struct kgsl_context *last_ctx =
+				idr_find(&device->context_idr,
+				rec_data->last_valid_ctx_id);
+		if (last_ctx)
+			adreno_dev->drawctxt_active = last_ctx->devctxt;
+	}
+
 done:
 	/* Turn off iommu clocks */
 	if (KGSL_MMU_TYPE_IOMMU == kgsl_mmu_get_mmutype())
@@ -1779,10 +1861,8 @@ adreno_recover_hang(struct kgsl_device *device,
 	/* We may need to replay commands multiple times based on whether
 	 * multiple contexts hang the GPU */
 	while (true) {
-		if (!ret)
-			ret = _adreno_recover_hang(device, rec_data, true);
-		else
-			ret = _adreno_recover_hang(device, rec_data, false);
+
+		ret = _adreno_recover_hang(device, rec_data);
 
 		if (-EAGAIN == ret) {
 			/* setup new recovery parameters and retry, this
