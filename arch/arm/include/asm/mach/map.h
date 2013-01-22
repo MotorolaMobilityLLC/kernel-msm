@@ -41,6 +41,9 @@ extern const struct mem_type *get_mem_type(unsigned int type);
  */
 extern int ioremap_page(unsigned long virt, unsigned long phys,
 			const struct mem_type *mtype);
+
+extern int ioremap_pages(unsigned long virt, unsigned long phys,
+			unsigned long size, const struct mem_type *mtype);
 #else
 #define iotable_init(map,num)	do { } while (0)
 #endif
