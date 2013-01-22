@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1016,8 +1016,8 @@ struct msm_snapshot_pp_status {
 #define CFG_GPIO_OP                   54
 #define CFG_SET_VISION_MODE           55
 #define CFG_SET_VISION_AE             56
-#define CFG_MAX                       57
-
+#define CFG_HDR_UPDATE                57
+#define CFG_MAX                       58
 
 #define MOVE_NEAR	0
 #define MOVE_FAR	1
@@ -1220,6 +1220,8 @@ struct sensor_pict_fps {
 struct exp_gain_cfg {
 	uint16_t gain;
 	uint32_t line;
+	int32_t luma_avg;
+	uint16_t fgain;
 };
 
 struct focus_cfg {
@@ -1328,6 +1330,17 @@ struct msm_sensor_output_reg_addr_t {
 	uint16_t y_output;
 	uint16_t line_length_pclk;
 	uint16_t frame_length_lines;
+};
+
+enum sensor_hdr_update_t {
+	SENSOR_HDR_UPDATE_AWB,
+	SENSOR_HDR_UPDATE_LSC,
+};
+
+struct sensor_hdr_update_parm_t {
+	enum sensor_hdr_update_t type;
+	uint16_t awb_gain_r, awb_gain_b;
+	uint8_t lsc_table[504];
 };
 
 struct sensor_driver_params_type {
@@ -1646,6 +1659,7 @@ struct sensor_cfg_data {
 		struct sensor_output_info_t output_info;
 		struct msm_eeprom_data_t eeprom_data;
 		struct csi_lane_params_t csi_lane_params;
+		struct sensor_hdr_update_parm_t hdr_update_parm;
 		/* QRD */
 		uint16_t antibanding;
 		uint8_t contrast;
