@@ -70,8 +70,13 @@ static v_VOID_t wlan_hdd_discover_peer_cb( v_PVOID_t userData )
 {
     int i;
     hddTdlsPeer_t *curr_peer;
-    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(pHddTdlsCtx->dev);
-    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
+    hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
+
+    if (NULL == pHddTdlsCtx) return;
+
+    pAdapter = WLAN_HDD_GET_PRIV_PTR(pHddTdlsCtx->dev);
+    pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
 
     for (i = 0; i < 256; i++) {
         curr_peer = pHddTdlsCtx->peer_list[i];
@@ -118,6 +123,8 @@ static v_VOID_t wlan_hdd_update_peer_cb( v_PVOID_t userData )
 {
     int i;
     hddTdlsPeer_t *curr_peer;
+
+    if (NULL == pHddTdlsCtx) return;
 
     for (i = 0; i < 256; i++) {
         curr_peer = pHddTdlsCtx->peer_list[i];
@@ -252,10 +259,26 @@ int wlan_hdd_tdls_init(struct net_device *dev)
 
 void wlan_hdd_tdls_exit()
 {
-    vos_timer_stop(&pHddTdlsCtx->peerDiscoverTimer);
-    vos_timer_destroy(&pHddTdlsCtx->peerDiscoverTimer);
-    vos_timer_stop(&pHddTdlsCtx->peerUpdateTimer);
-    vos_timer_destroy(&pHddTdlsCtx->peerUpdateTimer);
+    hdd_adapter_t *pAdapter;
+    hdd_context_t *pHddCtx;
+
+    if (NULL == pHddTdlsCtx) return;
+
+    pAdapter = WLAN_HDD_GET_PRIV_PTR(pHddTdlsCtx->dev);
+    pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
+
+    if(FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport)
+    {
+        hddLog(VOS_TRACE_LEVEL_WARN, "%s TDLS not enabled, exiting!", __func__);
+        return;
+    }
+
+    if(FALSE != pHddCtx->cfg_ini->fEnableTDLSImplicitTrigger) {
+        vos_timer_stop(&pHddTdlsCtx->peerDiscoverTimer);
+        vos_timer_destroy(&pHddTdlsCtx->peerDiscoverTimer);
+        vos_timer_stop(&pHddTdlsCtx->peerUpdateTimer);
+        vos_timer_destroy(&pHddTdlsCtx->peerUpdateTimer);
+    }
 
     wlan_hdd_freeTdlsPeer();
     if(pHddTdlsCtx)
@@ -267,6 +290,8 @@ int wlan_hdd_tdls_set_link_status(u8 *mac, int status)
     hddTdlsPeer_t *curr_peer;
     int i;
     u8 key = 0;
+
+    if (NULL == pHddTdlsCtx) return -1;
 
     for (i = 0; i < 6; i++)
        key ^= mac[i];
@@ -301,6 +326,8 @@ int wlan_hdd_tdls_set_cap(u8 *mac, int cap)
     hddTdlsPeer_t *curr_peer;
     int i;
     u8 key = 0;
+
+    if (NULL == pHddTdlsCtx) return -1;
 
     for (i = 0; i < 6; i++)
        key ^= mac[i];
@@ -353,6 +380,8 @@ int wlan_hdd_tdls_set_rssi(u8 *mac, tANI_S8 rxRssi)
     hddTdlsPeer_t *curr_peer;
     int i;
     u8 key = 0;
+
+    if (NULL == pHddTdlsCtx) return -1;
 
     for (i = 0; i < 6; i++)
        key ^= mac[i];
@@ -416,6 +445,8 @@ int wlan_hdd_tdls_add_peer_to_list(u8 key, u8 *mac)
 {
     hddTdlsPeer_t *new_peer, *curr_peer;
 
+    if (NULL == pHddTdlsCtx) return -1;
+
     curr_peer = pHddTdlsCtx->peer_list[key];
 
     if (NULL == curr_peer) {
@@ -474,6 +505,8 @@ known_peer:
 
 int wlan_hdd_tdls_set_params(tdls_config_params_t *config)
 {
+    if (NULL == pHddTdlsCtx) return -1;
+
     vos_timer_stop( &pHddTdlsCtx->peerDiscoverTimer);
 
     vos_timer_stop( &pHddTdlsCtx->peerUpdateTimer);
@@ -502,6 +535,8 @@ int wlan_hdd_saveTdlsPeer(tCsrRoamInfo *pRoamInfo)
     hddTdlsPeer_t *new_peer, *curr_peer;
     int i;
     u8 key = 0;
+
+    if (NULL == pHddTdlsCtx) return -1;
 
     for (i = 0; i < 6; i++)
        key ^= pRoamInfo->peerMac[i];
@@ -559,6 +594,8 @@ int wlan_hdd_findTdlsPeer(tSirMacAddr peerMac)
     int i;
     hddTdlsPeer_t *curr_peer;
 
+    if (NULL == pHddTdlsCtx) return -1;
+
     for (i = 0; i < 256; i++) {
         curr_peer = pHddTdlsCtx->peer_list[i];
         if (NULL == curr_peer) continue;
@@ -584,6 +621,8 @@ void wlan_hdd_removeTdlsPeer(tCsrRoamInfo *pRoamInfo)
 {
     int i;
     hddTdlsPeer_t *curr_peer;
+
+    if (NULL == pHddTdlsCtx) return;
 
     for (i = 0; i < 256; i++) {
 
@@ -612,17 +651,19 @@ void wlan_hdd_freeTdlsPeer(void)
     hddTdlsPeer_t *curr_peer;
     hddTdlsPeer_t *temp_peer;
 
+    if (NULL == pHddTdlsCtx) return;
+
     for (i = 0; i < 256; i++) {
 
         curr_peer = pHddTdlsCtx->peer_list[i];
 
         if (NULL != curr_peer) {
-            do {
+            while (&curr_peer->node != curr_peer->node.next) {
                 temp_peer = curr_peer;
                 curr_peer = (hddTdlsPeer_t *)curr_peer->node.next;
                 vos_mem_free(temp_peer);
-
-            } while (&curr_peer->node != curr_peer->node.next);
+            }
+            vos_mem_free(curr_peer);
         }
     }
 }
