@@ -21,7 +21,7 @@ static struct msm_sensor_ctrl_t ar0834_s_ctrl;
 
 static struct regulator *cam_vdig;
 static struct regulator *cam_vio;
-static struct regulator *cam_mipi_mux;
+static struct regulator *cam_vana;
 
 /*#define QTR*/
 #define STUB_GAINS
@@ -323,7 +323,7 @@ static int32_t ar0834_regulator_off(struct regulator **reg, char *regname)
 	if (regname)
 		pr_debug("ar0834_regulator_off: %s\n", regname);
 
-	if (*reg == NULL) {
+	if (IS_ERR_OR_NULL(*reg)) {
 		if (regname)
 			pr_err("ar0834_regulator_off: %s is null, aborting\n",
 								regname);
@@ -351,7 +351,10 @@ static int32_t ar0834_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	struct device *dev = &s_ctrl->sensor_i2c_client->client->dev;
 	struct msm_camera_sensor_info *info = s_ctrl->sensordata;
 
-	pr_debug("ar0834_power_up\n");
+	pr_debug("%s: R: %d, P: %d\n",
+			__func__,
+			info->sensor_reset,
+			info->sensor_pwd);
 
 	/* Request gpios */
 	rc = gpio_request(info->sensor_pwd, "ar0834");
@@ -381,11 +384,16 @@ static int32_t ar0834_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	usleep(10000);
 
 	rc = ar0834_regulator_on(&cam_vdig, dev, "cam_vdig", 1200000);
-	if (rc < 0)
+	if (rc < 0) {
+		pr_err("ar0834: cam_vdig failed to turn on (%d)\n", rc);
 		goto power_up_done;
+	}
 
-	/* Not every board needs this so ignore error */
-	rc = ar0834_regulator_on(&cam_mipi_mux, dev, "cam_mipi_mux", 2800000);
+	rc = ar0834_regulator_on(&cam_vana, dev, "cam_vana", 2800000);
+	if (rc < 0) {
+		pr_err("ar0834: cam_vana failed to turn on (%d)\n", rc);
+		goto power_up_done;
+	}
 
 	/*Enable MCLK*/
 	cam_mot_8960_clk_info->clk_rate = s_ctrl->clk_rate;
@@ -437,11 +445,9 @@ static int32_t ar0834_power_down(
 
 	rc = ar0834_regulator_off(&cam_vdig, "cam_vdig");
 	if (rc < 0)
-		pr_err("ar0834: regulator off for cam_vdig failed (%d)\n",
-									rc);
+		pr_err("ar0834: regulator off for cam_vdig failed (%d)\n", rc);
 
-	/* Not every board needs this so ignore error */
-	ar0834_regulator_off(&cam_mipi_mux, NULL);
+	ar0834_regulator_off(&cam_vana, NULL);
 
 	/* Wait for core to shut off */
 	usleep(10000);

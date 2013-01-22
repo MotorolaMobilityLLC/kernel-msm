@@ -34,7 +34,7 @@ static struct msm_sensor_ctrl_t ov8835_s_ctrl;
 
 static struct regulator *cam_vdig;
 static struct regulator *cam_vio;
-static struct regulator *cam_mipi_mux;
+static struct regulator *cam_afvdd;
 
 static struct otp_info_t otp_info;
 
@@ -655,7 +655,7 @@ static int32_t ov8835_regulator_off(struct regulator **reg, char *regname)
 	if (regname)
 		pr_debug("ov8835_regulator_off: %s\n", regname);
 
-	if (*reg == NULL) {
+	if (IS_ERR_OR_NULL(*reg)) {
 		if (regname)
 			pr_err("ov8835_regulator_off: %s is null, aborting\n",
 								regname);
@@ -708,8 +708,9 @@ static int32_t ov8835_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	if (rc < 0)
 		goto power_up_done;
 
-	/* Not every board needs this so ignore error */
-	rc = ov8835_regulator_on(&cam_mipi_mux, dev, "cam_mipi_mux", 2800000);
+	rc = ov8835_regulator_on(&cam_afvdd, dev, "cam_afvdd", 2800000);
+	if (rc < 0)
+		goto power_up_done;
 
 	/* Set reset low */
 	gpio_direction_output(info->sensor_reset, 0);
@@ -768,9 +769,7 @@ static int32_t ov8835_power_down(
 	if (rc < 0)
 		pr_err("ov8835: regulator off for cam_vdig failed (%d)\n",
 									rc);
-
-	/* Not every board needs this so ignore error */
-	ov8835_regulator_off(&cam_mipi_mux, NULL);
+	ov8835_regulator_off(&cam_afvdd, NULL);
 
 	/* Wait for core to shut off */
 	usleep(10000);
