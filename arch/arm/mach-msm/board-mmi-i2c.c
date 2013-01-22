@@ -349,6 +349,11 @@ static int __init s5k5b3g_init_i2c_device(struct i2c_board_info *info,
 	of_property_read_u32(node, "vdig_on_always",
 		&s5k5b3g_oem_data.sensor_vdig_on_always);
 
+	/* Determine if mipi lines are shared to see if we have to enable
+	 * another regulator supply */
+	of_property_read_u32(node, "is_shared_mipi",
+				&s5k5b3g_oem_data.sensor_using_shared_mipi);
+
 	msm_camera_sensor_s5k5b3g_data.oem_data = &s5k5b3g_oem_data;
 	info->platform_data = &msm_camera_sensor_s5k5b3g_data;
 	return 0;
