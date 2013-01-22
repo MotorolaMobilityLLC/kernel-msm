@@ -35,10 +35,6 @@
 #include <mach/subsystem_notif.h>
 #include <mach/subsystem_restart.h>
 
-#if defined(CONFIG_LGE_CRASH_HANDLER)
-#include <mach/restart.h>
-#include <mach/board_lge.h>
-#endif
 #include "smd_private.h"
 
 struct subsys_soc_restart_order {
@@ -205,9 +201,6 @@ static void do_epoch_check(struct subsys_device *dev)
 	struct restart_log *r_log, *temp;
 	static int max_restarts_check;
 	static long max_history_time_check;
-#if defined(CONFIG_LGE_CRASH_HANDLER)
-	int ssr_magic_number = get_ssr_magic_number();
-#endif
 
 	mutex_lock(&restart_log_mutex);
 
@@ -250,9 +243,6 @@ static void do_epoch_check(struct subsys_device *dev)
 	if (time_first && n >= max_restarts_check) {
 		if ((curr_time->tv_sec - time_first->tv_sec) <
 				max_history_time_check) {
-#if defined(CONFIG_LGE_CRASH_HANDLER)
-			msm_set_restart_mode(ssr_magic_number | SUB_UNAB_THD);
-#endif
 			WARN(1, "Subsystems have crashed %d times in less than "\
 				"%ld seconds!", max_restarts_check,
 				max_history_time_check);
@@ -290,15 +280,9 @@ static void send_notification_to_order(struct subsys_device **l, unsigned n,
 static void subsystem_shutdown(struct subsys_device *dev, void *data)
 {
 	const char *name = dev->desc->name;
-#if defined(CONFIG_LGE_CRASH_HANDLER)
-	int ssr_magic_number = get_ssr_magic_number();
-#endif
 
 	pr_info("[%p]: Shutting down %s\n", current, name);
 	if (dev->desc->shutdown(dev->desc) < 0) {
-#if defined(CONFIG_LGE_CRASH_HANDLER)
-		msm_set_restart_mode(ssr_magic_number | SUB_THD_F_SD);
-#endif
 		panic("subsys-restart: [%p]: Failed to shutdown %s!",
 			current, name);
 	}
@@ -333,10 +317,6 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 	struct mutex *shutdown_lock;
 	unsigned count;
 	unsigned long flags;
-
-#if defined(CONFIG_LGE_CRASH_HANDLER)
-	int ssr_magic_number = get_ssr_magic_number();
-#endif
 
 	if (restart_level != RESET_SUBSYS_INDEPENDENT)
 		soc_restart_order = dev->restart_order;
@@ -376,9 +356,6 @@ static void subsystem_restart_wq_func(struct work_struct *work)
 	 * out, since a subsystem died in its powerup sequence.
 	 */
 	if (!mutex_trylock(powerup_lock)) {
-#if defined(CONFIG_LGE_CRASH_HANDLER)
-		msm_set_restart_mode(ssr_magic_number | SUB_THD_F_PWR);
-#endif
 		WARN(1, "%s[%p]: Subsystem died during powerup!",
 						__func__, current);
 	}
