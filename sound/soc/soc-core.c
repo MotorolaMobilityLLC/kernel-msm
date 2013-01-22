@@ -1160,7 +1160,8 @@ static int soc_probe_platform(struct snd_soc_card *card,
 
 	/* Create DAPM widgets for each DAI stream */
 	list_for_each_entry(dai, &dai_list, list) {
-		if (dai->dev != platform->dev)
+		if (dai->dev != platform->dev ||
+		    dai->playback_widget || dai->capture_widget)
 			continue;
 
 		snd_soc_dapm_new_dai_widgets(&platform->dapm, dai);
