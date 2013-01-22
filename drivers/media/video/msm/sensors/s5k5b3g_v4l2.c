@@ -37,6 +37,7 @@ static struct msm_sensor_ctrl_t s5k5b3g_s_ctrl;
 
 static struct regulator *cam_vdig;
 static struct regulator *cam_vio;
+static struct regulator *cam_mipi_mux;
 
 static struct otp_info_t otp_info;
 
@@ -367,7 +368,7 @@ static int32_t s5k5b3g_regulator_off(struct regulator **reg, char *regname)
 	if (regname)
 		pr_debug("s5k5b3g_regulator_off: %s\n", regname);
 
-	if (*reg == NULL) {
+	if (IS_ERR_OR_NULL(*reg)) {
 		if (regname)
 			pr_err("s5k5b3g_regulator_off: %s is null, aborting\n",
 								regname);
@@ -402,12 +403,13 @@ static int32_t s5k5b3g_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		goto power_up_done;
 	}
 
-	pr_debug("%s: R: %d, A: %d D: %d D_On %d\n",
+	pr_debug("%s: R: %d, A: %d D: %d D_On %d MIPI %d\n",
 			__func__,
 			info->sensor_reset,
 			info->oem_data->sensor_avdd_en,
 			info->oem_data->sensor_dig_en,
-			info->oem_data->sensor_vdig_on_always);
+			info->oem_data->sensor_vdig_on_always,
+			info->oem_data->sensor_using_shared_mipi);
 
 	/* Request gpios */
 	rc = gpio_request(info->oem_data->sensor_avdd_en, "s5k5b3g");
@@ -443,6 +445,16 @@ static int32_t s5k5b3g_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		rc = s5k5b3g_regulator_on(&cam_vdig, dev, "cam_vdig", 1200000);
 		if (rc < 0) {
 			pr_err("%s: cam_vdig is unable to turn on (%d)\n",
+					__func__, rc);
+			goto abort2;
+		}
+	}
+
+	if (info->oem_data->sensor_using_shared_mipi) {
+		rc = s5k5b3g_regulator_on(&cam_mipi_mux, dev, "cam_mipi_mux",
+				2800000);
+		if (rc < 0) {
+			pr_err("%s: cam_mipi_mux is unable to turn on (%d)\n",
 					__func__, rc);
 			goto abort2;
 		}
@@ -486,6 +498,9 @@ abort0:
 	if (info->oem_data->sensor_vdig_on_always == 0)
 		s5k5b3g_regulator_off(&cam_vdig, NULL);
 
+	if (info->oem_data->sensor_using_shared_mipi)
+		s5k5b3g_regulator_off(&cam_mipi_mux, NULL);
+
 power_up_done:
 	return rc;
 }
@@ -510,6 +525,8 @@ static int32_t s5k5b3g_power_down(
 	gpio_direction_output(info->oem_data->sensor_dig_en, 0);
 
 	/* Disable supplies */
+	if (info->oem_data->sensor_using_shared_mipi)
+		s5k5b3g_regulator_off(&cam_mipi_mux, NULL);
 
 	if (info->oem_data->sensor_vdig_on_always == 0) {
 		rc = s5k5b3g_regulator_off(&cam_vdig, "cam_vdig");
