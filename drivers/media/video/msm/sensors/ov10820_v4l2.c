@@ -26,7 +26,7 @@
 #define OV10820_SECONDARY_I2C_ADDRESS 0x20
 
 static struct regulator *cam_vdig;
-static struct regulator *cam_mipi_mux;
+static struct regulator *cam_afvdd;
 static struct regulator *cam_dvdd;
 
 DEFINE_MUTEX(ov10820_mut);
@@ -365,7 +365,7 @@ static int32_t ov10820_regulator_off(struct regulator **reg, char *regname)
 	if (regname)
 		pr_debug("%s: %s\n", __func__, regname);
 
-	if (*reg == NULL) {
+	if (IS_ERR_OR_NULL(*reg)) {
 		if (regname)
 			pr_err("%s: %s is null, aborting\n", __func__,
 								regname);
@@ -446,10 +446,10 @@ static int32_t ov10820_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		usleep(500);
 	}
 
-	/* This regulator is not for mipi but to enable AF supply */
-	rc = ov10820_regulator_on(&cam_mipi_mux, dev, "cam_mipi_mux", 2800000);
+	/* Enable AF supply */
+	rc = ov10820_regulator_on(&cam_afvdd, dev, "cam_afvdd", 2800000);
 	if (rc < 0) {
-		pr_err("%s: cam_mipi_mux was unable to be turned on (%d)\n",
+		pr_err("%s: cam_afvdd was unable to be turned on (%d)\n",
 				__func__, rc);
 		goto abort2;
 	}
@@ -497,7 +497,7 @@ abort0:
 	else
 		ov10820_regulator_off(&cam_vdig, NULL);
 
-	ov10820_regulator_off(&cam_mipi_mux, NULL);
+	ov10820_regulator_off(&cam_afvdd, NULL);
 power_up_done:
 	return rc;
 }
@@ -532,7 +532,7 @@ static int32_t ov10820_power_down(
 		ov10820_regulator_off(&cam_vdig, "cam_vdig");
 
 	/* Turn off AF regulator supply */
-	ov10820_regulator_off(&cam_mipi_mux, NULL);
+	ov10820_regulator_off(&cam_afvdd, NULL);
 
 	/*Set pwd low*/
 	gpio_direction_output(info->sensor_pwd, 0);
