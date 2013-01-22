@@ -533,6 +533,10 @@ WLANTL_Open
                 pTLConfig->uMinFramesProcThres;
 #endif
 
+#ifdef FEATURE_WLAN_TDLS
+  pTLCb->ucTdlsPeerCount = 0;
+#endif
+
   pTLCb->tlConfigInfo.uDelayedTriggerFrmInt =
                 pTLConfig->uDelayedTriggerFrmInt;
 
@@ -1360,6 +1364,10 @@ WLANTL_RegisterSTAClient
       VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
          " %s fails to start forwarding", __func__);
     }
+#ifdef FEATURE_WLAN_TDLS
+    if( WLAN_STA_TDLS == pwSTADescType->wSTAType )
+        pTLCb->ucTdlsPeerCount++;
+#endif
 #ifdef WLAN_SOFTAP_FEATURE
   }
 #endif
@@ -1442,6 +1450,13 @@ WLANTL_ClearSTAClient
   {
      WLANTL_BaSessionDel (pvosGCtx, ucSTAId, ucIndex);
   }
+
+#ifdef FEATURE_WLAN_TDLS
+  /* decrement ucTdlsPeerCount only if it is non-zero */
+  if(WLAN_STA_TDLS == pTLCb->atlSTAClients[ucSTAId].wSTADesc.wSTAType
+      && pTLCb->ucTdlsPeerCount)
+      pTLCb->ucTdlsPeerCount--;
+#endif
 
   /*------------------------------------------------------------------------
     Clear station
@@ -1639,7 +1654,7 @@ WLANTL_GetSTAState
 
   if ( 0 == pTLCb->atlSTAClients[ucSTAId].ucExists )
   {
-    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
      "WLAN TL:Station was not previously registered on WLANTL_GetSTAState"));
     return VOS_STATUS_E_EXISTS;
   }
@@ -1764,9 +1779,16 @@ WLANTL_STAPktPending
     through WLANTL_TX_STAID_AC_IND message.
   -----------------------------------------------------------------------*/
 #ifdef WLAN_SOFTAP_FEATURE
+#ifdef FETURE_WLAN_TDLS
+    if ((WLAN_STA_SOFTAP != pTLCb->atlSTAClients[ucSTAId].wSTADesc.wSTAType) &&
+        !(vos_concurrent_sessions_running()) &&
+        !pTLCb->ucTdlsPeerCount)
+    {
+#else
     if ((WLAN_STA_SOFTAP != pTLCb->atlSTAClients[ucSTAId].wSTADesc.wSTAType) &&
         !(vos_concurrent_sessions_running()))
     {
+#endif
 #endif
 
       pTLCb->atlSTAClients[ucSTAId].aucACMask[ucAc] = 1; 
@@ -5970,9 +5992,16 @@ WLANTL_STATxConn
   /*------------------------------------------------------------------------
     Fetch packet from HDD
    ------------------------------------------------------------------------*/
+#ifdef FEATURE_WLAN_TDLS
+  if ((WLAN_STA_SOFTAP != pTLCb->atlSTAClients[ucSTAId].wSTADesc.wSTAType) &&
+      (!vos_concurrent_sessions_running()) &&
+      !pTLCb->ucTdlsPeerCount)
+  {
+#else
   if ((WLAN_STA_SOFTAP != pTLCb->atlSTAClients[ucSTAId].wSTADesc.wSTAType) &&
       (!vos_concurrent_sessions_running()))
   {
+#endif
       ucAC = pTLCb->atlSTAClients[ucSTAId].ucCurrentAC;
 
   /*-------------------------------------------------------------------
@@ -6314,9 +6343,16 @@ WLANTL_STATxAuth
     Fetch packet from HDD
    ------------------------------------------------------------------------*/
 #ifdef WLAN_SOFTAP_FEATURE
+#ifdef FEATURE_WLAN_TDLS
+  if ((WLAN_STA_SOFTAP != pTLCb->atlSTAClients[ucSTAId].wSTADesc.wSTAType) &&
+      (!vos_concurrent_sessions_running()) &&
+      !pTLCb->ucTdlsPeerCount)
+  {
+#else
   if ((WLAN_STA_SOFTAP != pStaClient->wSTADesc.wSTAType) &&
       (!vos_concurrent_sessions_running()))
   {
+#endif
 #endif
   ucAC = pStaClient->ucCurrentAC;
 
@@ -6860,7 +6896,7 @@ WLANTL_STARxConn
     /* that we get an EAPOL packet in WAPI mode or vice versa? */
     if ( WLANTL_LLC_8021X_TYPE  != usEtherType && WLANTL_LLC_WAI_TYPE  != usEtherType )
     {
-      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
                  "WLAN TL:RX Frame not EAPOL or WAI EtherType %d - dropping", usEtherType );
       /* Drop packet */
       vos_pkt_return_packet(vosDataBuff);
@@ -8349,7 +8385,8 @@ WLANTL_Translate8023To80211Header
 
 #ifdef FEATURE_WLAN_TDLS
 
-  if( WLAN_STA_INFRA == pTLCb->atlSTAClients[ucStaId].wSTADesc.wSTAType )
+  if( WLAN_STA_INFRA == pTLCb->atlSTAClients[ucStaId].wSTADesc.wSTAType
+      && pTLCb->ucTdlsPeerCount)
   {
     v_U8_t ucIndex = 0;
     for ( ucIndex = 0; ucIndex < WLAN_MAX_STA_COUNT ; ucIndex++)
@@ -9514,12 +9551,7 @@ WLAN_TLGetNextTxIds
   }
 
   systemRole = wdaGetGlobalSystemRole(pMac);
-  if ((eSYSTEM_AP_ROLE == systemRole) || (vos_concurrent_sessions_running()))
-  {
-    return WLAN_TLAPGetNextTxIds(pvosGCtx,pucSTAId);
-  }
 
-  
   /*------------------------------------------------------------------------
     Extract TL control block
   ------------------------------------------------------------------------*/
@@ -9530,6 +9562,16 @@ WLAN_TLGetNextTxIds
       "WLAN TL:Invalid TL pointer from pvosGCtx on WLAN_TLGetNextTxIds"));
     return VOS_STATUS_E_FAULT;
   }
+
+#ifdef FEATURE_WLAN_TDLS
+  if ((eSYSTEM_AP_ROLE == systemRole) || (vos_concurrent_sessions_running()) || pTLCb->ucTdlsPeerCount)
+#else
+  if ((eSYSTEM_AP_ROLE == systemRole) || (vos_concurrent_sessions_running()))
+#endif
+  {
+    return WLAN_TLAPGetNextTxIds(pvosGCtx,pucSTAId);
+  }
+
 
   if ( VOS_STATUS_SUCCESS != WDA_DS_GetTxFlowMask( pvosGCtx, &uFlowMask ) )
   {
