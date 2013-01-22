@@ -64,5 +64,16 @@ void adreno_debugfs_init(struct kgsl_device *device)
 	adreno_dev->fast_hang_detect = 1;
 	debugfs_create_u32("fast_hang_detect", 0644, device->d_debugfs,
 			   &adreno_dev->fast_hang_detect);
+	/*
+	 * FT policy can be set to any of the options below.
+	 * FT_REPLAY_BAD_CTXT_CMDS -> try replay, NOP IB and skip to EOF
+	 * of bad cmds
+	 * FT_NOT_IB_BAD_CTXT_CMDS -> try replay and NOP IB of bad cmds
+	 * FT_SKIP_EOF_BAD_CTXT_CMDS -> try skip to EOF of bad cmds
+	 * by default set FT policy to FT_REPLAY_BAD_CTXT_CMDS
+	 */
+	adreno_dev->ft_policy = FT_REPLAY_BAD_CTXT_CMDS;
+	debugfs_create_u32("fault_tolerance_policy", 0644, device->d_debugfs,
+			   &adreno_dev->ft_policy);
 
 }
