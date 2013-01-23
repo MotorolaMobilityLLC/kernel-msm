@@ -46,4 +46,16 @@
 			};
 		};
 	};
+
+};
+
+/* GSBI10 - I2C */
+&i2c10 {
+	/* TI tlv320aic3253 */
+	aic3253@18 {
+		compatible = "ti,aic3253";
+		reg = <0x18>;
+		gpios = <&pm8921_gpio 18 0>, /* RESET */
+			<0>; 		     /* MCLK  */
+	};
 };
