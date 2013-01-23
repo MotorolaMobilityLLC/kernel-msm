@@ -63,6 +63,7 @@ static void pn544_disable_irq(struct pn544_dev *pn544_dev)
 
 	spin_lock_irqsave(&pn544_dev->irq_enabled_lock, flags);
 	if (pn544_dev->irq_enabled) {
+		irq_set_irq_wake(pn544_dev->client->irq, 0);
 		disable_irq_nosync(pn544_dev->client->irq);
 		pn544_dev->irq_enabled = false;
 	}
@@ -107,6 +108,7 @@ static ssize_t pn544_dev_read(struct file *filp, char __user *buf,
 		}
 
 		pn544_dev->irq_enabled = true;
+		irq_set_irq_wake(pn544_dev->client->irq, 1);
 		enable_irq(pn544_dev->client->irq);
 		ret = wait_event_interruptible(pn544_dev->read_wq,
 				gpio_get_value(pn544_dev->irq_gpio));
