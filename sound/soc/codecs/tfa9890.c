@@ -42,6 +42,7 @@
 #define I2C_RETRY_DELAY		5 /* ms */
 #define I2C_RETRIES		5
 #define PLL_SYNC_RETRIES		10
+#define MTPB_RETRIES		5
 
 #define TFA9890_RATES	SNDRV_PCM_RATE_8000_48000
 #define TFA9890_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE)
@@ -76,15 +77,15 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 },
 {
 	.reg = TFA9890_SPK_CTL_REG,
-	.value = 0x4800,
+	.value = 0x7832,
 },
 {
 	.reg = TFA9890_DC2DC_CTL_REG,
-	.value = 0x8FFE,
+	.value = 0x8FE6,
 },
 {
 	.reg = TFA9890_SYS_CTL1_REG,
-	.value =  0x82D5,
+	.value =  0x82FD,
 },
 {
 	.reg = TFA9890_SYS_CTL2_REG,
@@ -99,8 +100,8 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 	.value = 0x0308,
 },
 {
-	.reg = TFA9890_CURRT_SNS_REG,
-	.value = 0x0340,
+	.reg = TFA9890_CURRT_SNS1_REG,
+	.value = 0x0640,
 },
 {
 	.reg = TFA9890_CURRC_SNS_REG,
@@ -113,6 +114,10 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 {
 	.reg = TFA9890_DEM_CTL_REG,
 	.value = 0x00,
+},
+{
+	.reg = TFA9890_CURRT_SNS2_REG,
+	.value = 0x5901,
 },
 };
 
@@ -134,7 +139,8 @@ static u8 tfa9890_reg_readable[TFA9890_REG_CACHE_SIZE] = {
 [TFA9890_MTP_KEY_REG] = 1,
 [TFA9890_RESERVED_REG] = 1,
 [TFA9890_PWM_CTL_REG] = 1,
-[TFA9890_CURRT_SNS_REG] = 1,
+[TFA9890_CURRT_SNS1_REG] = 1,
+[TFA9890_CURRT_SNS2_REG] = 1,
 [TFA9890_CURRC_SNS_REG] = 1,
 [TFA9890_CURRT_CTL_REG] = 1,
 [TFA9890_DEM_CTL_REG] = 1,
@@ -250,11 +256,26 @@ static int tfa9890_bulk_write(struct snd_soc_codec *codec, unsigned int reg,
 				const void *data, size_t len)
 {
 	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
-	u8 *data_buf = (u8 *)data;
-	int ret;
+	u8 chunk_buf[TFA9890_MAX_I2C_SIZE + 1];
+	int offset = 0;
+	int ret = 0;
+	/* first byte is mem address */
+	int remaining_bytes = len - 1;
+	int chunk_size = TFA9890_MAX_I2C_SIZE;
 
+	chunk_buf[0] = reg & 0xff;
 	mutex_lock(&tfa9890->i2c_rw_lock);
-	ret = tfa9890_i2c_write(codec->control_data, data_buf, len);
+	while ((remaining_bytes > 0)) {
+		if (remaining_bytes < chunk_size)
+			chunk_size = remaining_bytes;
+
+		memcpy(chunk_buf + 1, data + 1 + offset, chunk_size);
+		ret = tfa9890_i2c_write(codec->control_data, chunk_buf,
+					chunk_size + 1);
+		offset = offset + chunk_size;
+		remaining_bytes = remaining_bytes - chunk_size;
+	}
+
 	mutex_unlock(&tfa9890->i2c_rw_lock);
 	return ret;
 }
@@ -301,6 +322,29 @@ static unsigned int tfa9890_read(struct snd_soc_codec *codec, unsigned int reg)
 	return val;
 }
 
+static int tfa9890_bulk_read(struct snd_soc_codec *codec, u8 reg,
+				u8 *data, int len)
+{
+	struct tfa9890_priv *tfa9890 = snd_soc_codec_get_drvdata(codec);
+	int ret = 0;
+	int offset = 0;
+	int remaining_bytes = len;
+	int chunk_size = TFA9890_MAX_I2C_SIZE;
+
+	mutex_lock(&tfa9890->i2c_rw_lock);
+	while ((remaining_bytes > 0)) {
+		if (remaining_bytes < chunk_size)
+			chunk_size = remaining_bytes;
+		ret = tfa9890_i2c_read(codec->control_data, reg, data + offset,
+				chunk_size);
+		offset = offset + chunk_size;
+		remaining_bytes = remaining_bytes - chunk_size;
+	}
+	mutex_unlock(&tfa9890->i2c_rw_lock);
+
+	return ret;
+}
+
 /*
  * DSP Read/Write/Setup Functions
  */
@@ -318,7 +362,7 @@ static unsigned int tfa9890_read(struct snd_soc_codec *codec, unsigned int reg)
 
 static int tfa9890_dsp_transfer(struct snd_soc_codec *codec,
 			int module_id, int param_id, const u8 *bytes,
-			int len, int type, int *read)
+			int len, int type, u8 *read)
 {
 	u8 buffer[8];
 	/* DSP mem access control */
@@ -391,7 +435,8 @@ static int tfa9890_dsp_transfer(struct snd_soc_codec *codec,
 	if (type == TFA9890_DSP_READ) {
 		cf_mad = TFA9890_CF_MAD_PARAM;
 		snd_soc_write(codec, TFA9890_CF_MAD, cf_mad);
-		*read = snd_soc_read(codec, TFA9890_CF_MEM);
+		tfa9890_bulk_read(codec, TFA9890_CF_MEM,
+				read, len);
 	}
 
 	return 0;
@@ -439,91 +484,69 @@ static void tfa9890_power(struct snd_soc_codec *codec, int on)
 	snd_soc_write(codec, TFA9890_SYS_CTL1_REG, val);
 }
 
-static void tfa9890_calibaration(struct tfa9890_priv *tfa9890)
+static void tfa9890_set_mute(struct snd_soc_codec *codec, int mute_state)
 {
-	u16 val;
-	struct snd_soc_codec *codec = tfa9890->codec;
+	u16 mute_val;
+	u16 amp_en;
 
-	/* set PWM slope to 0000 while calibarating */
-	val = snd_soc_read(codec, TFA9890_VOL_CTL_REG);
-	val = val & ~(TFA9890_PWM_MASK);
-	snd_soc_write(codec, TFA9890_VOL_CTL_REG, val);
+	/* read volume ctrl register */
+	mute_val = snd_soc_read(codec, TFA9890_VOL_CTL_REG);
+	/* read sys ctrl register */
+	amp_en = snd_soc_read(codec, TFA9890_SYS_CTL1_REG);
 
-	/* unlock write access MTP memory*/
-	snd_soc_write(codec, TFA9890_MTP_KEY_REG, TFA9890_MTK_KEY);
-
-	val = snd_soc_read(codec, TFA9890_MTP_REG);
-	/* set MTPOTC = 1 and MTPEX = 0 */
-	val = val | TFA9890_MTPOTC;
-	val = val & (~(TFA9890_STATUS_MTPEX));
-	snd_soc_write(codec, TFA9890_MTP_REG, val);
-	/* set CIMTB to initiate copy of calib values */
-	val = snd_soc_read(codec, TFA9890_MTP_COPY_REG);
-	val = val | TFA9890_STATUS_CIMTP;
-	snd_soc_write(codec, TFA9890_MTP_COPY_REG, val);
-
-	tfa9890_coldboot(codec);
-
-	/* set pwm slope back to init val */
-	val = snd_soc_read(codec, TFA9890_VOL_CTL_REG);
-	val = val | (TFA9890_PWM_VAL);
-	snd_soc_write(codec, TFA9890_VOL_CTL_REG, val);
-}
-
-static void tfa9890_read_calib_imp(struct work_struct *work)
-{
-	struct tfa9890_priv *tfa9890 =
-			container_of(work, struct tfa9890_priv, calib_work);
-	int read;
-	u16 val;
-
-	val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
-	if ((val & TFA9890_STATUS_PLLS) && (val & TFA9890_STATUS_CLKS)) {
-
-		if (tfa9890_dsp_transfer(tfa9890->codec,
-			TFA9890_DSP_MOD_SPEAKERBOOST,
-			TFA9890_PARAM_GET_RE0, 0, 3,
-			TFA9890_DSP_READ, &read) == 0)
-			tfa9890->speaker_imp =
-					read/(1 << (23 - TFA9890_SPKR_IMP_EXP));
+	switch (mute_state) {
+	case TFA9890_MUTE_OFF:
+		/* unmute and enable amp */
+		mute_val = mute_val & ~(TFA9890_STATUS_MUTE);
+		amp_en = amp_en | (TFA9890_STATUS_AMPE);
+		break;
+	case TFA9890_DIGITAL_MUTE:
+		/* mute amp and enable amp */
+		mute_val = mute_val | (TFA9890_STATUS_MUTE);
+		amp_en = amp_en | (TFA9890_STATUS_AMPE);
+		break;
+	case TFA9890_AMP_MUTE:
+		/* turn off amp */
+		mute_val = mute_val & ~(TFA9890_STATUS_MUTE);
+		amp_en = amp_en & ~(TFA9890_STATUS_AMPE);
+		break;
+	default:
+		break;
 	}
+	/* update register settings */
+	snd_soc_write(codec, TFA9890_VOL_CTL_REG, mute_val);
+	snd_soc_write(codec, TFA9890_SYS_CTL1_REG, amp_en);
 }
 
-static void tfa9890_dsp_init(struct work_struct *work)
+static int tfa9890_read_spkr_imp(struct tfa9890_priv *tfa9890)
 {
-	struct tfa9890_priv *tfa9890 =
-			container_of(work, struct tfa9890_priv, init_work);
+	int imp;
+	u8 buf[3];
+	int ret;
+
+	ret = tfa9890_dsp_transfer(tfa9890->codec,
+			TFA9890_DSP_MOD_SPEAKERBOOST,
+			TFA9890_PARAM_GET_RE0, 0, ARRAY_SIZE(buf),
+			TFA9890_DSP_READ, buf);
+	if (ret == 0) {
+		imp = (buf[0] << 16 | buf[1] << 8 | buf[2]);
+		imp = imp/(1 << (23 - TFA9890_SPKR_IMP_EXP));
+	} else
+		imp = 0;
+
+	return imp;
+}
+
+static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
+{
 	struct snd_soc_codec *codec = tfa9890->codec;
+	int ret;
 	const struct firmware *fw_speaker;
 	const struct firmware *fw_config;
 	const struct firmware *fw_preset;
 	const struct firmware *fw_coeff;
 	u16 val;
-	int read;
-	int ret;
-	int tries = 0;
 
-	pr_info("tfa9890: Initializing DSP");
-	mutex_lock(&tfa9890->dsp_init_lock);
-	/* check if DSP pll is synced, It should be sync'ed at this point */
-	do {
-		val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
-		if ((val & TFA9890_STATUS_PLLS) && (val & TFA9890_STATUS_CLKS))
-			break;
-		msleep_interruptible(1);
-	} while ((++tries < PLL_SYNC_RETRIES));
-
-	if (tries == PLL_SYNC_RETRIES) {
-		pr_err("tfa9890:DSP pll sync failed!!");
-		goto out;
-	}
-
-	/* cold boot device before loading firmware and parameters */
-	ret = tfa9890_coldboot(codec);
-	if (ret < 0) {
-		pr_err("tfa9890: cold boot failed!!");
-		goto out;
-	}
 	/* Load DSP config and firmware files */
 	ret = request_firmware(&fw_speaker, "tfa9890.speaker", codec->dev);
 	if (ret) {
@@ -570,6 +593,7 @@ static void tfa9890_dsp_init(struct work_struct *work)
 	if (ret < 0)
 		goto out;
 
+
 	ret = request_firmware(&fw_coeff, "tfa9890.eq", codec->dev);
 	if (ret) {
 		pr_err("tfa9890: Failed to locate DSP coefficients");
@@ -577,7 +601,6 @@ static void tfa9890_dsp_init(struct work_struct *work)
 	}
 	if (fw_coeff->size != TFA9890_COEFF_FW_SIZE) {
 		pr_err("tfa9890: Data size check failed coefficients");
-
 		goto out;
 	}
 	ret = tfa9890_dsp_transfer(codec, TFA9890_DSP_MOD_BIQUADFILTERBANK,
@@ -591,21 +614,99 @@ static void tfa9890_dsp_init(struct work_struct *work)
 	val = val | TFA9890_SYSCTRL_CONFIGURED;
 	snd_soc_write(codec, TFA9890_SYS_CTL1_REG, val);
 
-	/* check if calibaration completed, Calibaration is one time event.
-	 * will be done only once when device boots up for the first time.Once
-	 * calibarated info is stored in non-volatile memory of the device.
-	 * It will be part of the factory test to validate speaker imp.
-	 */
+	return 0;
+out:
+	return -EIO;
+}
+
+static void tfa9890_calibaration(struct tfa9890_priv *tfa9890)
+{
+	u16 val;
+	struct snd_soc_codec *codec = tfa9890->codec;
+
+	/* Ensure no audio playback while calibarating but leave
+	 * amp enabled*/
+	tfa9890_set_mute(codec, TFA9890_DIGITAL_MUTE);
+
+	/* unlock write access MTP memory*/
+	snd_soc_write(codec, TFA9890_MTP_KEY_REG, TFA9890_MTK_KEY);
+
 	val = snd_soc_read(codec, TFA9890_MTP_REG);
+	/* set MTPOTC = 1 & MTPEX = 0*/
+	val = val | TFA9890_MTPOTC;
+	val = val & (~(TFA9890_STATUS_MTPEX));
+	snd_soc_write(codec, TFA9890_MTP_REG, val);
+
+	/* set CIMTB to initiate copy of calib values */
+	val = snd_soc_read(codec, TFA9890_MTP_COPY_REG);
+	val = val | TFA9890_STATUS_CIMTP;
+	snd_soc_write(codec, TFA9890_MTP_COPY_REG, val);
+}
+
+static void tfa9890_work_read_imp(struct work_struct *work)
+{
+	struct tfa9890_priv *tfa9890 =
+			container_of(work, struct tfa9890_priv, calib_work);
+	u16 val;
+
+	val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
+	if ((val & TFA9890_STATUS_PLLS) && (val & TFA9890_STATUS_CLKS))
+		tfa9890->speaker_imp = tfa9890_read_spkr_imp(tfa9890);
+}
+
+static void tfa9890_dsp_init(struct work_struct *work)
+{
+	struct tfa9890_priv *tfa9890 =
+			container_of(work, struct tfa9890_priv, init_work);
+	struct snd_soc_codec *codec = tfa9890->codec;
+	u16 val;
+	int ret;
+	int tries = 0;
+
+	mutex_lock(&tfa9890->dsp_init_lock);
+	/* check if DSP pll is synced, It should be sync'ed at this point */
+	do {
+		val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
+		if ((val & TFA9890_STATUS_PLLS) && (val & TFA9890_STATUS_CLKS)
+			&& (val & TFA9890_STATUS_VDDS))
+			break;
+		msleep_interruptible(1);
+	} while ((++tries < PLL_SYNC_RETRIES));
+
+	if (tries == PLL_SYNC_RETRIES) {
+		pr_err("tfa9890:DSP pll sync failed!!");
+		goto out;
+	}
+
+	pr_info("tfa9890: Initializing DSP, status:0x%x", val);
+
+	/* cold boot device before loading firmware and parameters */
+	ret = tfa9890_coldboot(codec);
+	if (ret < 0) {
+		pr_err("tfa9890: cold boot failed!!");
+		goto out;
+	}
+
+	ret = tfa9890_load_config(tfa9890);
+	if (ret < 0) {
+		pr_err("tfa9890: load dsp config failed!!");
+		goto out;
+	}
+
+	val = snd_soc_read(codec, TFA9890_MTP_REG);
+	/* check if calibaration completed, Calibaration is one time event.
+	 * Will be done only once when device boots up for the first time.Once
+	 * calibarated info is stored in non-volatile memory of the device.
+	 * It will be part of the factory test to validate spkr imp.
+	 * The MTPEX will be set to 1 always after calibration, on subsequent
+	 * power down/up as well.
+	 */
 	if (!(val & TFA9890_STATUS_MTPEX)) {
 		pr_info("tfa9890:Calib not completed initiating ..");
 		tfa9890_calibaration(tfa9890);
-	} else {
-		/* speaker impedence available to read*/
-		tfa9890_dsp_transfer(codec, TFA9890_DSP_MOD_SPEAKERBOOST,
-		TFA9890_PARAM_GET_RE0, 0, 3, TFA9890_DSP_READ, &read);
-		tfa9890->speaker_imp = read/(1 << (23 - TFA9890_SPKR_IMP_EXP));
-	}
+	} else
+		/* speaker impedence available to read */
+		tfa9890->speaker_imp = tfa9890_read_spkr_imp(tfa9890);
 
 	tfa9890->dsp_init = TFA9890_DSP_INIT_DONE;
 	mutex_unlock(&tfa9890->dsp_init_lock);
@@ -749,27 +850,11 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 static int tfa9890_mute(struct snd_soc_dai *dai, int mute)
 {
 	struct snd_soc_codec *codec = dai->codec;
-	u16 val;
 
-	if (mute) {
-		val = snd_soc_read(codec, TFA9890_SYS_CTL1_REG);
-		/* turn Off amp */
-		val = val & ~(TFA9890_STATUS_AMPE);
-		snd_soc_write(codec, TFA9890_SYS_CTL1_REG, val);
-		/* mute amp */
-		val = snd_soc_read(codec, TFA9890_VOL_CTL_REG);
-		val = val | (TFA9890_STATUS_MUTE);
-		snd_soc_write(codec,  TFA9890_VOL_CTL_REG, val);
-	} else {
-		val = snd_soc_read(codec, TFA9890_SYS_CTL1_REG);
-		/* turn ON amp */
-		val = val | TFA9890_STATUS_AMPE;
-		snd_soc_write(codec, TFA9890_SYS_CTL1_REG, val);
-		/* unmute amp */
-		val = snd_soc_read(codec, TFA9890_VOL_CTL_REG);
-		val = val & ~(TFA9890_STATUS_MUTE);
-		snd_soc_write(codec,  TFA9890_VOL_CTL_REG, val);
-	}
+	if (mute)
+		tfa9890_set_mute(codec, TFA9890_DIGITAL_MUTE);
+	else
+		tfa9890_set_mute(codec, TFA9890_MUTE_OFF);
 
 	return 0;
 }
@@ -841,29 +926,142 @@ static int tfa9890_trigger(struct snd_pcm_substream *substream, int cmd,
 static ssize_t tfa9890_show_spkr_imp(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct tfa9890_priv *tfa9890 = i2c_get_clientdata(to_i2c_client(dev));
+	struct tfa9890_priv *tfa9890 =
+				i2c_get_clientdata(to_i2c_client(dev));
 	u16 val;
-	int read_imp = 0;
+
+	if (tfa9890->codec) {
+		val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
+		if ((val & TFA9890_STATUS_PLLS) &&
+				(val & TFA9890_STATUS_CLKS))
+			/* if I2S CLKS are ON read from DSP mem, otherwise print
+			 * stored value as DSP mem cannot be accessed.
+			 */
+			tfa9890->speaker_imp =
+				tfa9890_read_spkr_imp(tfa9890);
+	}
+	return scnprintf(buf, PAGE_SIZE, "%u\n", tfa9890->speaker_imp);
+}
+
+static ssize_t tfa9890_show_dev_state_info(struct file *filp,
+					struct kobject *kobj,
+				  struct bin_attribute *attr,
+				  char *buf, loff_t off, size_t count)
+{
+	struct tfa9890_priv *tfa9890 =
+				i2c_get_clientdata(kobj_to_i2c_client(kobj));
+	u16 val;
+
+	if (off >= attr->size)
+		return 0;
+
+	if (off + count > attr->size)
+		count = attr->size - off;
 
 	if (tfa9890->codec) {
 		val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
 		if ((val & TFA9890_STATUS_PLLS) &&
 				(val & TFA9890_STATUS_CLKS)) {
-			/* if I2S CLKS are ON read from DSP mem, otherwise print
-			 * stored value as DSP mem cannot be accessed.
-			 */
 			tfa9890_dsp_transfer(tfa9890->codec,
 				TFA9890_DSP_MOD_SPEAKERBOOST,
-				TFA9890_PARAM_GET_RE0,
-				0, 3, TFA9890_DSP_READ, &read_imp);
-			/* convert to fixed point decimal*/
-			tfa9890->speaker_imp =
-				read_imp/(1 << (23 - TFA9890_SPKR_IMP_EXP));
+				TFA9890_PARAM_GET_STATE,
+				0, attr->size, TFA9890_DSP_READ, buf);
+
+			return count;
 		}
 	}
-	return scnprintf(buf, PAGE_SIZE, "%u\n", tfa9890->speaker_imp);
+	return 0;
 }
 
+static ssize_t tfa9890_show_spkr_imp_model(struct file *filp,
+					struct kobject *kobj,
+				  struct bin_attribute *attr,
+				  char *buf, loff_t off, size_t count)
+{
+	struct tfa9890_priv *tfa9890 =
+				i2c_get_clientdata(kobj_to_i2c_client(kobj));
+	u16 val;
+
+	if (off >= attr->size)
+		return 0;
+
+	if (off + count > attr->size)
+		count = attr->size - off;
+
+	if (tfa9890->codec) {
+		val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
+		if ((val & TFA9890_STATUS_PLLS) &&
+				(val & TFA9890_STATUS_CLKS)) {
+			tfa9890_dsp_transfer(tfa9890->codec,
+				TFA9890_DSP_MOD_SPEAKERBOOST,
+				TFA9890_PARAM_GET_LSMODEL,
+				0, attr->size, TFA9890_DSP_READ, buf);
+
+			return count;
+		}
+	}
+	return 0;
+}
+
+static ssize_t tfa9890_show_spkr_exc_model(struct file *filp,
+					struct kobject *kobj,
+				  struct bin_attribute *attr,
+				  char *buf, loff_t off, size_t count)
+{
+	struct tfa9890_priv *tfa9890 =
+				i2c_get_clientdata(kobj_to_i2c_client(kobj));
+	u16 val;
+
+	if (off >= attr->size)
+		return 0;
+
+	if (off + count > attr->size)
+		count = attr->size - off;
+
+	if (tfa9890->codec) {
+		val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
+		if ((val & TFA9890_STATUS_PLLS) &&
+				(val & TFA9890_STATUS_CLKS)) {
+			tfa9890_dsp_transfer(tfa9890->codec,
+				TFA9890_DSP_MOD_SPEAKERBOOST,
+				TFA9890_PARAM_GET_LSMODELW,
+				0, attr->size, TFA9890_DSP_READ, buf);
+
+			return count;
+		}
+	}
+	return 0;
+}
+
+static ssize_t tfa9890_show_config_preset(struct file *filp,
+					struct kobject *kobj,
+				  struct bin_attribute *attr,
+				  char *buf, loff_t off, size_t count)
+{
+	struct tfa9890_priv *tfa9890 =
+				i2c_get_clientdata(kobj_to_i2c_client(kobj));
+	u16 val;
+
+	if (off >= attr->size)
+		return 0;
+
+	if (off + count > (attr->size))
+		count = (attr->size) - off;
+
+	if (tfa9890->codec) {
+		val = snd_soc_read(tfa9890->codec, TFA9890_SYS_STATUS_REG);
+		if ((val & TFA9890_STATUS_PLLS) &&
+				(val & TFA9890_STATUS_CLKS)) {
+			tfa9890_dsp_transfer(tfa9890->codec,
+				TFA9890_DSP_MOD_SPEAKERBOOST,
+				TFA9890_PARAM_GET_CFGPST,
+				0, (attr->size), TFA9890_DSP_READ, buf);
+
+			return count;
+		}
+	}
+	return 0;
+}
 
 static ssize_t tfa9890_show_ic_temp(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -906,6 +1104,29 @@ static ssize_t tfa9890_force_calibaration(struct device *dev,
 
 	return count;
 }
+
+static const struct bin_attribute tf9890_raw_bin_attr[] = {
+{
+	.attr = {.name = "device_state", .mode = S_IRUGO},
+	.read = tfa9890_show_dev_state_info,
+	.size = TFA9890_DEV_STATE_SIZE,
+},
+{
+	.attr = {.name = "spkr_imp_model", .mode = S_IRUGO},
+	.read = tfa9890_show_spkr_imp_model,
+	.size = TFA9890_SPK_FW_SIZE - 1,
+},
+{
+	.attr = {.name = "config_preset", .mode = S_IRUGO},
+	.read = tfa9890_show_config_preset,
+	.size = TFA9890_CFG_FW_SIZE + TFA9890_PST_FW_SIZE - 2,
+},
+{
+	.attr = {.name = "spkr_exc_model", .mode = S_IRUGO},
+	.read = tfa9890_show_spkr_exc_model,
+	.size = TFA9890_SPK_EX_FW_SIZE - 1,
+},
+};
 
 static DEVICE_ATTR(ic_temp, S_IRUGO,
 		   tfa9890_show_ic_temp, NULL);
@@ -1014,6 +1235,7 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 	struct tfa9890_pdata *pdata = i2c->dev.platform_data;
 	struct tfa9890_priv *tfa9890;
 	int ret;
+	int i;
 
 	if (!i2c_check_functionality(i2c->adapter, I2C_FUNC_I2C)) {
 		dev_err(&i2c->dev, "check_functionality failed\n");
@@ -1059,6 +1281,14 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 	if (ret)
 		pr_err("%s: Error registering tfa9890 sysfs\n", __func__);
 
+	for (i = 0; i < ARRAY_SIZE(tf9890_raw_bin_attr); i++) {
+		ret = sysfs_create_bin_file(&i2c->dev.kobj,
+						&tf9890_raw_bin_attr[i]);
+		if (ret)
+			pr_warn("%s: Error creating tfa9890 sysfs bin attr\n",
+				__func__);
+	}
+
 	/* setup work queue, will be used to initial DSP on first boot up */
 	tfa9890->tfa9890_wq =
 			create_singlethread_workqueue("tfa9890");
@@ -1068,7 +1298,7 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 	}
 
 	INIT_WORK(&tfa9890->init_work, tfa9890_dsp_init);
-	INIT_WORK(&tfa9890->calib_work, tfa9890_read_calib_imp);
+	INIT_WORK(&tfa9890->calib_work, tfa9890_work_read_imp);
 
 	ret = gpio_request(pdata->reset_gpio, "tfa reset gpio");
 	if (ret < 0) {
