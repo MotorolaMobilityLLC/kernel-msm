@@ -279,6 +279,9 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_remain_on_chan_ctx_t *pRemainChanCtx;
+    hdd_context_t  *pHddCtx    = (hdd_context_t*)pAdapter->pHddCtx;
+    hdd_scaninfo_t *pScanInfo  = NULL;
+    tANI_U8 status = 0;
     hdd_cfg80211_state_t *cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d",
                                  __func__,pAdapter->device_mode);
@@ -307,6 +310,25 @@ static int wlan_hdd_request_remain_on_channel( struct wiphy *wiphy,
                 "%s:LOGP in Progress. Ignore!!!", __func__);
         return -EAGAIN;
     }
+
+    pScanInfo =  &pHddCtx->scan_info;
+    if ((pScanInfo != NULL) && pScanInfo->mScanPending)
+    {
+        //Cancel scan to ensure fast p2p connection.
+        INIT_COMPLETION(pScanInfo->abortscan_event_var);
+        hdd_abort_mac_scan(pHddCtx);
+        status = wait_for_completion_interruptible_timeout(
+                       &pScanInfo->abortscan_event_var,
+                       msecs_to_jiffies(WLAN_WAIT_TIME_ABORTSCAN));
+        if (!status)
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                     "%s: Timeout occurred while waiting for abortscan" ,
+                         __func__);
+            return -EBUSY;
+        }
+    }
+
     pRemainChanCtx = vos_mem_malloc( sizeof(hdd_remain_on_chan_ctx_t) );
     if( NULL == pRemainChanCtx )
     {
