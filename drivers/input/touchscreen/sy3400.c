@@ -149,6 +149,8 @@ sy3400_of_init(struct i2c_client *client)
 	}
 
 	of_property_read_string(np, "synaptics,sy3400-tdat-filename", &fp);
+	of_property_read_u32(np, "always_on_capable",
+			 &pdata->always_on_capable);
 
 	pdata->filename = (char *)fp;
 	pdata->gpio_interrupt = of_get_gpio(np, 0);
@@ -305,7 +307,13 @@ static int sy3400_suspend(struct i2c_client *client, pm_message_t message)
 	int ic_state = 0;
 	uint8_t sleep = 0x01;
 
-	goto sy3400_suspend_no_dd_fail;
+	uint8_t x_y_supp_addr = 0x15;
+	uint8_t x_y_supp[2] = {0x32, /* suppresion for x */
+				0x32}; /* suppresion for y */
+	uint8_t obj_rep_addr = 0x17;
+	uint8_t obj_rep_en[2] = {0x03, /* enable finger, stylus */
+				0x01}; /* 1 - max number of touches */
+
 
 	dd = i2c_get_clientdata(client);
 	if (dd == NULL) {
@@ -315,6 +323,23 @@ static int sy3400_suspend(struct i2c_client *client, pm_message_t message)
 	}
 
 	mutex_lock(dd->mutex);
+
+	if (dd->status & (1 << SY3400_IRQ_ENABLED_FLAG)) {
+		disable_irq_nosync(dd->client->irq);
+		dd->status = dd->status & ~(1 << SY3400_IRQ_ENABLED_FLAG);
+	}
+
+	if (dd->pdata->always_on_capable) {
+		/* TODO: config for msp430 handover
+		*  This config should not impact normal suspend with
+		*  no handover.
+		*  This should be re-worked for better implementation
+		*/
+		sy3400_i2c_write(dd, x_y_supp_addr, x_y_supp, 2);
+		sy3400_i2c_write(dd, obj_rep_addr, obj_rep_en, 2);
+	}
+
+	goto sy3400_suspend_fail;
 
 	sy3400_dbg(dd, SY3400_DBG3, "%s: Suspending...\n", __func__);
 
@@ -372,7 +397,13 @@ static int sy3400_resume(struct i2c_client *client)
 	int drv_state = 0;
 	int ic_state = 0;
 
-	goto sy3400_resume_no_dd_fail;
+	uint8_t x_y_supp_addr = 0x15;
+	uint8_t x_y_supp[2] = {0x00, /* 00 - no suppresion for x */
+				0x00}; /* 00 - no suppresion for y */
+	uint8_t obj_rep_addr = 0x17;
+	uint8_t obj_rep_en[2] = {0x07, /* 07 - enable finger, stylus, palm */
+				0x0A}; /* 10 - max number of touches */
+
 
 	dd = i2c_get_clientdata(client);
 	if (dd == NULL) {
@@ -382,6 +413,23 @@ static int sy3400_resume(struct i2c_client *client)
 	}
 
 	mutex_lock(dd->mutex);
+
+	if ((!(dd->status & (1 << SY3400_IRQ_ENABLED_FLAG)))) {
+		dd->status = dd->status | (1 << SY3400_IRQ_ENABLED_FLAG);
+		enable_irq(dd->client->irq);
+	}
+
+	if (dd->pdata->always_on_capable) {
+		/* TODO: restore original config from msp430 handover
+		*  This clean-up should not impact normal resume
+		*  with no handover.
+		*  This should be re-worked for better implementation
+		*/
+		sy3400_i2c_write(dd, x_y_supp_addr, x_y_supp, 2);
+		sy3400_i2c_write(dd, obj_rep_addr, obj_rep_en, 2);
+	}
+
+	goto sy3400_resume_fail;
 
 	sy3400_dbg(dd, SY3400_DBG3, "%s: Resuming...\n", __func__);
 
