@@ -2840,15 +2840,15 @@ LIM
 
 *
 * Compressed Steering Number of Beamformer Antennas Supported
-* Riva/Pronto does not support, default set to 0
+* Riva does not support,Pronto supports, default set to 0
 *
 WNI_CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED  I    4    19
 V    RW    NP    
 LIM
-0    1    0
+0    3    0
 V    RW    NP    
 LIM
-0    1    0
+0    3    0
 
 *
 * Number of Sounding Dimensions indicates Number
@@ -2858,10 +2858,10 @@ LIM
 WNI_CFG_VHT_NUM_SOUNDING_DIMENSIONS  I    4    19
 V    RW    NP    
 LIM
-0    1    0
+0    3    0
 V    RW    NP    
 LIM
-0    1    0
+0    3    0
 
 *
 * MU Beamformer Capable

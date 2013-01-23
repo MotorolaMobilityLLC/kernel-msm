@@ -1606,10 +1606,10 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                     retCode = eSIR_LOGP_EXCEPTION;
                     goto end;
                 }
-                if (cfgSetInt(pMac, WNI_CFG_VHT_MU_BEAMFORMEE_CAP, psessionEntry->txBFIniFeatureEnabled)
+                if (cfgSetInt(pMac, WNI_CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED, WNI_CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED_STAMAX)
                                                              != eSIR_SUCCESS)
                 {
-                    limLog(pMac, LOGP, FL("could not set  WNI_CFG_VHT_MU_BEAMFORMEE_CAP at CFG\n"));
+                    limLog(pMac, LOGP, FL("could not set  WNI_CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED at CFG\n"));
                     retCode = eSIR_LOGP_EXCEPTION;
                     goto end;
                 }
