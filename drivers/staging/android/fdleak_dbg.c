@@ -28,6 +28,11 @@
 #include <linux/fdtable.h>
 #include <linux/slab.h>
 
+/*
+ * A small fdleak_dbg_bigfd value can lead to obvious performance issues
+ * in Android. Use MIN_BIG_FD as the bottom line.
+ */
+#define MIN_BIG_FD			(0x80)
 #ifndef CONFIG_ANDROID_BIG_FD
 #define CONFIG_ANDROID_BIG_FD		(__FD_SETSIZE / 2)
 #endif
@@ -37,10 +42,13 @@
 
 /*
  * Value of "/sys/kernel/debug/fdleak_dbg_bigfd":
- * 0 ~ (CONFIG_ANDROID_BIG_FD - 1)		==> See CONFIG_ANDROID_BIG_FD
- * CONFIG_ANDROID_BIG_FD ~ (__FD_SETSIZE - 1)	==> Enable FD leak debugging
- * __FD_SETSIZE ~ UINT_MAX			==> Disable FD leak debugging
- * -1						==> Disable FD leak debugging
+ * 0 ~ (MIN_BIG_FD - 1)			==> See MIN_BIG_FD
+ * MIN_BIG_FD ~ (__FD_SETSIZE - 1)	==> Enable FD leak debugging
+ * __FD_SETSIZE ~ UINT_MAX		==> Disable FD leak debugging
+ * -1					==> Disable FD leak debugging
+ *
+ * Assuming one slightly-outdated fdleak_dbg_bigfd value adds no big noise,
+ * we now have no memory barriers for fdleak_dbg_bigfd.
  */
 static uint32_t fdleak_dbg_bigfd = UINT_MAX;
 
@@ -134,8 +142,8 @@ static int get_fdleak_dbg_bigfd(void *data, u64 *val)
 static int set_fdleak_dbg_bigfd(void *data, u64 val)
 {
 	uint32_t bigfd = (uint32_t)val;
-	if (bigfd < CONFIG_ANDROID_BIG_FD)
-		bigfd = CONFIG_ANDROID_BIG_FD;
+	if (bigfd < MIN_BIG_FD)
+		bigfd = MIN_BIG_FD;
 	fdleak_dbg_bigfd = bigfd;
 	return 0;
 }
