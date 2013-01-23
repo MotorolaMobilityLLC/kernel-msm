@@ -1,0 +1,31 @@
+* TI TLV320AIC3253
+
+The TLV320AIC3253 is a flexible, low-power, low-voltage stereo audio codec
+with programmable outputs, fully-programmable miniDSP, fixed predefined and
+parameterizable signal processing blocks, integrated PLL, integrated LDO and
+flexible digital interfaces, it is connected to the host processor via i2c for
+commands and have various GPIOs connected to control reset, mclk selection.
+
+Required properties:
+ - compatible:
+		the string of "ti,aic3253"
+ - reg:
+		the i2c slave address of the IC
+ - gpios:
+		an array specifiying the two required GPIOs for operation. They must
+		be specified in exact order:
+			- RESET GPIO
+			- MCLK - the mclk selection gpio
+
+Example:
+
+	/* GSBI10 - I2C */
+	&i2c10 {
+		/* TI tlv320aic3253 */
+		aic3253@18 {
+			compatible = "ti,aic3253";
+			reg = <0x18>;
+			gpios = <&pm8921_gpio 18 0>, /* RESET */
+				<&pm8921_gpio 8 0>;  /* MCLK  */
+		};
+	};
