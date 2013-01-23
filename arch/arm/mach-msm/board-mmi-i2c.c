@@ -858,7 +858,7 @@ static struct lp8556_eeprom_data lp8556_eeprom_pdata[] = {
 };
 
 static struct lp8556_platform_data lp8556_backlight_pdata = {
-	.power_up_brightness = 0x80,
+	.power_up_brightness = 0x3A,
 	.dev_ctrl_config = 0x84, /* no PWM */
 	.dev_id = 0xfc,
 	.eeprom_table = lp8556_eeprom_pdata,
