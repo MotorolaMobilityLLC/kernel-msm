@@ -781,46 +781,20 @@ static struct aic3253_pdata aic_platform_data;
 static int __init aic3253_init_i2c_device(struct i2c_board_info *info,
 		struct device_node *node)
 {
-	int err;
-	int rst_gpio;
-	int mclk_gpio;
+	int rst_gpio = -1;
+	int mclk_gpio = -1;
 
 	info->platform_data = &aic_platform_data;
 
-	if (of_property_read_u32(node, "reset_gpio", &rst_gpio))
-		return -EINVAL;
+	of_property_read_u32(node, "reset_gpio", &rst_gpio);
 
 	aic_platform_data.reset_gpio = rst_gpio;
 
-	err = gpio_request(aic_platform_data.reset_gpio, "aic reset gpio");
-	if (err) {
-		pr_err("aic3253 reset gpio_request failed: %d\n", err);
-		goto out;
-	}
-	/* GPIO will be pulled high by the driver to bring the
-		device out of reset */
-	gpio_direction_output(aic_platform_data.reset_gpio, 0);
-
-	if (of_property_read_u32(node, "mclk_sel_gpio", &mclk_gpio)) {
-		aic_platform_data.mclk_sel_gpio = -1;
-		return 0;
-	}
+	of_property_read_u32(node, "mclk_sel_gpio", &mclk_gpio);
 
 	aic_platform_data.mclk_sel_gpio = mclk_gpio;
-	err = gpio_request(aic_platform_data.mclk_sel_gpio, "mclk sel gpio");
-	if (err) {
-		pr_err("aic3253 aud mclk gpio_request failed: %d\n", err);
-		goto out;
-	}
 
-	/* By default mclk selection gpio should be high
-	 * to select MI2S mclk as input. Driver will toggle
-	 * it, if needed in future to select slimbus mclk.
-	*/
-	gpio_direction_output(aic_platform_data.mclk_sel_gpio, 1);
-
-out:
-	return err;
+	return 0;
 }
 
 static struct tfa9890_pdata tfa_platform_data;
