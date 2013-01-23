@@ -422,7 +422,7 @@ static int __init mipi_mot_cmd_smd_hd_465_init(void)
 	pinfo->mipi.wr_mem_continue = 0x3c;
 	pinfo->mipi.wr_mem_start = 0x3c;
 	pinfo->mipi.dsi_phy_db = &dsi_cmd_mode_phy_db;
-	pinfo->mipi.esc_byte_ratio = 4;
+	pinfo->mipi.esc_byte_ratio = 2;
 	pinfo->mipi.tx_eot_append = 0x01;
 	pinfo->mipi.rx_eot_ignore = 0;
 
