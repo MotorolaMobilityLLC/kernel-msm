@@ -42,7 +42,8 @@
 #define TFA9890_RESERVED_REG		0x0e
 #define TFA9890_PWM_CTL_REG			0x41
 #define TFA9890_CURRT_CTL_REG		0x46
-#define TFA9890_CURRT_SNS_REG		0x48
+#define TFA9890_CURRT_SNS1_REG		0x47
+#define TFA9890_CURRT_SNS2_REG		0x48
 #define TFA9890_CURRC_SNS_REG		0x49
 #define TFA9890_DEM_CTL_REG			0x4E
 #define TFA9890_MTP_COPY_REG		0x62
@@ -75,9 +76,10 @@
 /* Gets current LoudSpeaker Model. */
 #define TFA9890_PARAM_GET_LSMODEL      0x86
 #define TFA9890_PARAM_GET_STATE        0xC0
-
+#define TFA9890_PARAM_GET_LSMODELW		0xC1
 #define TFA9890_FW_PARAM_GET_STATE		0x84
 #define TFA9890_PARAM_GET_FEATURE_BITS 0x85
+#define TFA9890_PARAM_GET_CFGPST		0x80
 
 
 /* DSP Firmware Size in bytes*/
@@ -85,6 +87,8 @@
 #define TFA9890_CFG_FW_SIZE			166
 #define TFA9890_PST_FW_SIZE			88
 #define TFA9890_COEFF_FW_SIZE		181
+#define TFA9890_DEV_STATE_SIZE		24
+#define TFA9890_SPK_EX_FW_SIZE		424
 
 /* DSP Write/Read */
 #define TFA9890_DSP_WRITE			0
@@ -120,6 +124,7 @@
 #define TFA9890_STATUS_MUTE			(1<<5)
 #define TFA9890_STATUS_CF			(1<<8)
 #define TFA9890_STATUS_TEMP			(0x1ff)
+#define TFA9890_STATUS_VDDS			(0x1)
 
 /* Params masks */
 #define TFA9890_I2S_FORMAT		(0x8)
@@ -141,6 +146,11 @@
 #define TFA9890_POWER_DOWN		(0x1)
 #define TFA9890_MTPOTC			(0x1)
 
+/* Mute States */
+#define TFA9890_MUTE_OFF	0
+#define TFA9890_DIGITAL_MUTE	1
+#define TFA9890_AMP_MUTE	2
+
 /* MTP memory unlock key */
 #define TFA9890_MTK_KEY		0x005A
 
@@ -152,6 +162,7 @@
 /* Spkr impedence exponent, used for converting to Fixed pt
  *value */
 #define TFA9890_SPKR_IMP_EXP	9
+#define TFA9890_MAX_I2C_SIZE	252
 
 struct tfa9890_regs {
 	int reg;
