@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Motorola Mobility, LLC.
+ * Copyright (C) 2012-2013 Motorola Mobility, LLC.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,6 +19,8 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/pm.h>
 #include <linux/i2c.h>
@@ -688,29 +690,103 @@ static struct snd_soc_codec_driver soc_codec_dev_aic3253 = {
 	.set_bias_level = aic3253_set_bias_level,
 };
 
+#ifdef CONFIG_OF
+static struct aic3253_pdata *
+aic3253_of_init(struct i2c_client *client)
+{
+	struct aic3253_pdata *pdata;
+	struct device_node *np = client->dev.of_node;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		pr_err("%s : pdata allocation failure\n", __func__);
+		return NULL;
+	}
+
+	pdata->reset_gpio = of_get_gpio(np, 0);
+	pdata->mclk_sel_gpio = of_get_gpio(np, 1);
+
+	return pdata;
+}
+#else
+static inline struct aic3253_pdata *
+aic3253_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
+
+static int aic3253_gpio_init(struct aic3253_pdata *pdata)
+{
+	int ret;
+
+	ret = gpio_request(pdata->reset_gpio, "aic reset gpio");
+	if (ret)
+		return ret;
+
+	ret = gpio_direction_output(pdata->reset_gpio, 0);
+	if (ret)
+		goto free_reset;
+
+	ret = gpio_request(pdata->mclk_sel_gpio, "mclk sel gpio");
+	if (ret)
+		pr_info("%s : mclk gpio not assigned\n", __func__);
+	else {
+		ret = gpio_direction_output(pdata->mclk_sel_gpio, 1);
+		if (ret)
+			goto free_mclk;
+	}
+
+	return 0;
+
+free_mclk:
+	gpio_free(pdata->mclk_sel_gpio);
+free_reset:
+	gpio_free(pdata->reset_gpio);
+	return ret;
+}
+
+static void aic3253_gpio_free(struct aic3253_priv *dev)
+{
+	gpio_free(dev->rst_gpio);
+	gpio_free(dev->mclk_gpio);
+}
+
 static __devinit int aic3253_i2c_probe(struct i2c_client *i2c,
 				      const struct i2c_device_id *id)
 {
-	struct aic3253_pdata *pdata = i2c->dev.platform_data;
+	struct aic3253_pdata *pdata;
 	struct aic3253_priv *aic3253;
 	int ret;
+
+	dev_dbg(&i2c->dev, "Probing aic3253 driver\n");
+
+	if (i2c->dev.of_node)
+		pdata = aic3253_of_init(i2c);
+	else
+		pdata = i2c->dev.platform_data;
+
+	/* Check platform data */
+	if (pdata == NULL) {
+		dev_err(&i2c->dev, "no pdata found, aic3253 probe fail\n");
+		return -EINVAL;
+	}
 
 	if (!i2c_check_functionality(i2c->adapter, I2C_FUNC_I2C)) {
 		dev_err(&i2c->dev, "check_functionality failed\n");
 		return -EIO;
 	}
 
-	/* Check platform data */
-	if (i2c->dev.platform_data == NULL) {
-		dev_err(&i2c->dev,
-			"platform data is NULL\n");
-		return -EINVAL;
-	}
-
 	aic3253 = devm_kzalloc(&i2c->dev, sizeof(struct aic3253_priv),
 			       GFP_KERNEL);
 	if (aic3253 == NULL)
 		return -ENOMEM;
+
+	ret = aic3253_gpio_init(pdata);
+	if (ret) {
+		dev_err(&i2c->dev, "gpio init failed\n");
+		return ret;
+	}
 
 	aic3253->control_data = i2c;
 	i2c_set_clientdata(i2c, aic3253);
@@ -760,7 +836,7 @@ reg_enable:
 	regulator_disable(aic3253->s4);
 	regulator_put(aic3253->s4);
 reg_get:
-	kfree(aic3253);
+	aic3253_gpio_free(aic3253);
 	return ret;
 }
 
@@ -770,7 +846,7 @@ static __devexit int aic3253_i2c_remove(struct i2c_client *client)
 	snd_soc_unregister_codec(&client->dev);
 	regulator_disable(aic3253->s4);
 	regulator_put(aic3253->s4);
-	kfree(aic3253);
+	aic3253_gpio_free(aic3253);
 	return 0;
 }
 
@@ -778,12 +854,22 @@ static const struct i2c_device_id aic3253_i2c_id[] = {
 	{ "tlv320aic3253", 0 },
 	{ }
 };
+
 MODULE_DEVICE_TABLE(i2c, aic3253_i2c_id);
+
+#ifdef CONFIG_OF
+static struct of_device_id aic3253_match_tbl[] = {
+	{ .compatible = "ti,aic3253" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, aic3253_match_tbl);
+#endif
 
 static struct i2c_driver aic3253_i2c_driver = {
 	.driver = {
 		.name = "tlv320aic3253",
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(aic3253_match_tbl),
 	},
 	.probe =    aic3253_i2c_probe,
 	.remove =   __devexit_p(aic3253_i2c_remove),
