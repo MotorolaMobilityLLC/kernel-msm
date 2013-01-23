@@ -591,6 +591,8 @@ static irqreturn_t msp430_wake_isr(int irq, void *dev)
 		return IRQ_HANDLED;
 	}
 
+	wake_lock_timeout(&ps_msp430->wakelock, HZ);
+
 	queue_work(ps_msp430->irq_work_queue, &ps_msp430->irq_wake_work);
 	return IRQ_HANDLED;
 }
@@ -1850,6 +1852,7 @@ err2:
 err1:
 	mutex_unlock(&ps_msp430->lock);
 	mutex_destroy(&ps_msp430->lock);
+	wake_unlock(&ps_msp430->wakelock);
 	wake_lock_destroy(&ps_msp430->wakelock);
 	kfree(ps_msp430);
 err0:
@@ -1874,6 +1877,7 @@ static int msp430_remove(struct i2c_client *client)
 	kfree(ps_msp430->pdata);
 	destroy_workqueue(ps_msp430->irq_work_queue);
 	mutex_destroy(&ps_msp430->lock);
+	wake_unlock(&ps_msp430->wakelock);
 	wake_lock_destroy(&ps_msp430->wakelock);
 	disable_irq_wake(ps_msp430->irq);
 #ifdef CONFIG_HAS_EARLYSUSPEND
