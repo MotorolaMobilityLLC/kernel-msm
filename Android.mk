@@ -80,13 +80,21 @@ KBUILD_OPTIONS += MODNAME=wlan
 KBUILD_OPTIONS += BOARD_PLATFORM=$(TARGET_BOARD_PLATFORM)
 KBUILD_OPTIONS += $(WLAN_SELECT)
 
-#include $(CLEAR_VARS)
-#LOCAL_MODULE              := $(WLAN_CHIPSET)_wlan.ko
-#LOCAL_MODULE_KBUILD_NAME  := wlan.ko
-#LOCAL_MODULE_TAGS         := debug
-#LOCAL_MODULE_DEBUG_ENABLE := true
-#LOCAL_MODULE_PATH         := $(TARGET_OUT)/lib/modules/$(WLAN_CHIPSET)
-#include $(DLKM_DIR)/AndroidKernelModule.mk
+
+VERSION=$(shell grep -w "VERSION =" $(TOP)/kernel/Makefile | sed 's/^VERSION = //' )
+PATCHLEVEL=$(shell grep -w "PATCHLEVEL =" $(TOP)/kernel/Makefile | sed 's/^PATCHLEVEL = //' )
+
+ifeq ($(VERSION), 3)
+ifeq ($(PATCHLEVEL), 4)
+include $(CLEAR_VARS)
+LOCAL_MODULE              := $(WLAN_CHIPSET)_wlan.ko
+LOCAL_MODULE_KBUILD_NAME  := wlan.ko
+LOCAL_MODULE_TAGS         := debug
+LOCAL_MODULE_DEBUG_ENABLE := true
+LOCAL_MODULE_PATH         := $(TARGET_OUT)/lib/modules/$(WLAN_CHIPSET)
+include $(DLKM_DIR)/AndroidKernelModule.mk
+endif
+endif
 ###########################################################
 
 #Create symbolic link
