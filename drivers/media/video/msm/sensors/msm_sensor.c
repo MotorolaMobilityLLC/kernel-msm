@@ -161,7 +161,8 @@ void msm_sensor_start_stream(struct msm_sensor_ctrl_t *s_ctrl)
 	if (s_ctrl->curr_res >= s_ctrl->msm_sensor_reg->num_conf)
 		return;
 
-	if (s_ctrl->func_tbl->sensor_adjust_frame_lines)
+	if (s_ctrl->func_tbl->sensor_adjust_frame_lines &&
+			s_ctrl->vision_mode_flag == 0)
 		s_ctrl->func_tbl->sensor_adjust_frame_lines(s_ctrl);
 
 	msm_camera_i2c_write_tbl(
@@ -443,6 +444,9 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 			break;
 
 		case CFG_SET_EXP_GAIN:
+			if(s_ctrl->vision_mode_flag) {
+				break;
+			}
 			if (s_ctrl->func_tbl->
 			sensor_write_exp_gain == NULL) {
 				rc = -EFAULT;
@@ -457,6 +461,9 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 			break;
 
 		case CFG_SET_PICT_EXP_GAIN:
+			if(s_ctrl->vision_mode_flag) {
+				break;
+			}
 			if (s_ctrl->func_tbl->
 			sensor_write_snapshot_exp_gain == NULL) {
 				rc = -EFAULT;
@@ -562,7 +569,21 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 			else
 				rc = -EFAULT;
 			break;
-
+		case CFG_SET_VISION_MODE:
+			if (s_ctrl->func_tbl->sensor_set_vision_mode)
+				rc = s_ctrl->func_tbl->sensor_set_vision_mode(
+					s_ctrl, cdata.cfg.vision_mode_enable);
+			else
+				rc = -EFAULT;
+				break;
+		case CFG_SET_VISION_AE:
+			if (s_ctrl->func_tbl->sensor_set_vision_ae_control)
+				rc = s_ctrl->func_tbl->
+					sensor_set_vision_ae_control(
+					s_ctrl, cdata.cfg.vision_ae);
+			else
+				rc = -EFAULT;
+			break;
 		default:
 			rc = -EFAULT;
 			break;
