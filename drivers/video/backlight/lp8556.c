@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2010-2012 Motorola, LLC.
+ * Copyright (C) 2010-2011 Motorola Mobility, Inc.
+ * Copyright (C) 2012-2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -408,6 +409,31 @@ static void lp8556_late_resume(struct early_suspend *h)
 }
 #endif
 
+static int lp8556_gpio_init(struct lp8556_platform_data *pdata)
+{
+	int ret;
+
+	ret = gpio_request(pdata->enable_gpio, "lp8556_enable");
+	if (ret) {
+		pr_err("%s: error requesting enable_gpio\n", __func__);
+		return ret;
+	}
+
+	gpio_direction_output(pdata->enable_gpio, 1);
+	ret = gpio_export(pdata->enable_gpio, 0);
+	if (ret) {
+		pr_err("%s: failed to export enable_gpio\n", __func__);
+		goto free_gpio;
+	}
+
+	return 0;
+
+free_gpio:
+	gpio_free(pdata->enable_gpio);
+
+	return ret;
+}
+
 static int __devinit lp8556_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
@@ -435,7 +461,7 @@ static int __devinit lp8556_probe(struct i2c_client *client,
 
 	led_data->led_dev.name = "lcd-backlight";
 	led_data->led_dev.brightness_set = lp8556_brightness_set;
-	led_data->pdata = client->dev.platform_data;
+	led_data->pdata = pdata;
 
 	i2c_set_clientdata(client, led_data);
 
@@ -457,6 +483,12 @@ static int __devinit lp8556_probe(struct i2c_client *client,
 		if (error != 0)
 			pr_err("%s: regulator_enable(\"%s\"):%d\n", __func__,
 				LP8556_REGULATOR_NAME, error);
+	}
+
+	error = lp8556_gpio_init(pdata);
+	if (error) {
+		pr_err("%s: gpio_init failure\n", __func__);
+		goto err_gpio_init;
 	}
 
 	error = gpio_export_link(&led_data->client->dev, "reset",
@@ -514,21 +546,24 @@ static int __devinit lp8556_probe(struct i2c_client *client,
 			__func__, error);
 #endif
 	pr_debug("Backlight driver initialized\n");
+
 	return 0;
 
- err_bl_device_register:
+err_bl_device_register:
 	led_classdev_unregister(&led_data->led_dev);
- err_classdev_failed:
- err_reg_init_failed:
+err_classdev_failed:
+err_reg_init_failed:
 	lp8556_enable(led_data, false);
- err_gpio_export_link:
+err_gpio_export_link:
+	gpio_free(led_data->pdata->enable_gpio);
+err_gpio_init:
 	if (!IS_ERR(led_data->regulator)) {
 		regulator_disable(led_data->regulator);
 		regulator_put(led_data->regulator);
 	}
 	kfree(led_data);
 	i2c_set_clientdata(client, NULL);
- err_alloc_data_failed:
+err_alloc_data_failed:
 	return error;
 }
 
@@ -548,14 +583,12 @@ static int __devexit lp8556_remove(struct i2c_client *client)
 	if (led_data->bl_dev)
 		backlight_device_unregister(led_data->bl_dev);
 	led_classdev_unregister(&led_data->led_dev);
-	if (led_data->pdata->enable_gpio >= 0) {
-		gpio_unexport(led_data->pdata->enable_gpio);
-		gpio_free(led_data->pdata->enable_gpio);
-	}
+	gpio_free(led_data->pdata->enable_gpio);
 	if (!IS_ERR(led_data->regulator))
 		regulator_put(led_data->regulator);
 	kfree(led_data);
 	i2c_set_clientdata(client, NULL);
+
 	return 0;
 }
 
