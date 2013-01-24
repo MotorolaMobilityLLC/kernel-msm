@@ -2154,6 +2154,24 @@ limDetectChangeInApCapabilities(tpAniSirGlobal pMac,
                           psessionEntry->currentOperChannel, newChannel);)
             return;
         }
+
+       /**
+        * When Cisco 1262 Enterprise APs are configured with WPA2-PSK with
+        * AES+TKIP Pairwise ciphers and WEP-40 Group cipher, they do not set
+        * the privacy bit in Beacons (wpa/rsnie is still present in beacons),
+        * the privacy bit is set in Probe and association responses.
+        * Due to this anomaly, we detect a change in
+        * AP capabilities when we receive a beacon after association and
+        * disconnect from the AP. The following check makes sure that we can
+        * connect to such APs
+        */
+        else if ((SIR_MAC_GET_PRIVACY(apNewCaps.capabilityInfo) == 0) &&
+                (pBeacon->rsnPresent || pBeacon->wpaPresent))
+        {
+            PELOGE(limLog(pMac, LOGE, FL("BSS Caps (Privacy) bit 0 in beacon,"
+                                         " but WPA or RSN IE present, Ignore Beacon!\n"));)
+            return;
+        }
         else
             apNewCaps.channelId = psessionEntry->currentOperChannel;
         palCopyMemory( pMac->hHdd, (tANI_U8 *) &apNewCaps.ssId,
