@@ -290,6 +290,7 @@ struct pm8921_chg_chip {
 	int				meter_lock;
 	struct power_supply		*wl_psy;
 	char				*wl_name;
+	struct work_struct		chg_src_work;
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	unsigned int			step_charge_current;
 	unsigned int			step_charge_voltage;
@@ -1407,11 +1408,36 @@ static void get_wl_psy(void)
 	if (!the_chip)
 		return;
 
+	if (the_chip->wl_psy)
+		return;
+
 	if (!the_chip->wl_psy && the_chip->wl_name)
 		the_chip->wl_psy = power_supply_get_by_name(the_chip->wl_name);
 
 	if (!the_chip->wl_psy)
 		pr_err_once("%s PSY Not Found\n", the_chip->wl_name);
+}
+
+static int get_wl_present(void)
+{
+	/* Check if called before init */
+	if (!the_chip)
+		return -EINVAL;
+
+	get_wl_psy();
+
+	if (the_chip->wl_psy) {
+		union power_supply_propval ret = {0,};
+		struct power_supply *psy = the_chip->wl_psy;
+
+		if (psy->get_property &&
+		    !psy->get_property(psy,
+				       POWER_SUPPLY_PROP_ONLINE,
+				       &ret))
+			return ret.intval;
+	}
+
+	return 0;
 }
 
 #define USB_WALL_THRESHOLD_MA	500
@@ -1427,8 +1453,6 @@ static int pm_power_get_property_mains(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PRESENT:
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = 0;
-
-		get_wl_psy();
 
 		if (the_chip->has_dc_supply) {
 			val->intval = 1;
@@ -1451,17 +1475,8 @@ static int pm_power_get_property_mains(struct power_supply *psy,
 
 		if (the_chip->dc_present) {
 			val->intval = 1;
-			if (the_chip->wl_psy) {
-				union power_supply_propval ret = {0,};
-				struct power_supply *psy = the_chip->wl_psy;
-
-				if (psy->get_property &&
-				    !psy->get_property(psy,
-						       POWER_SUPPLY_PROP_ONLINE,
-						       &ret))
-					if (ret.intval)
-						val->intval = 0;
-			}
+			if (get_wl_present())
+				val->intval = 0;
 			return 0;
 		}
 
@@ -2811,6 +2826,7 @@ static irqreturn_t usbin_valid_irq_handler(int irq, void *data)
 						(VIN_MIN_COLLAPSE_CHECK_MS)));
 	else
 	    handle_usb_insertion_removal(data);
+
 	return IRQ_HANDLED;
 }
 
@@ -3344,6 +3360,16 @@ static irqreturn_t batfet_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static void chg_src_setup(struct work_struct *work)
+{
+	struct pm8921_chg_chip *chip = container_of(work,
+				struct pm8921_chg_chip, chg_src_work);
+
+	cancel_delayed_work(&chip->update_heartbeat_work);
+	schedule_delayed_work(&chip->update_heartbeat_work,
+			      msecs_to_jiffies(0));
+}
+
 static irqreturn_t dcin_valid_irq_handler(int irq, void *data)
 {
 	struct pm8921_chg_chip *chip = data;
@@ -3357,6 +3383,9 @@ static irqreturn_t dcin_valid_irq_handler(int irq, void *data)
 		handle_start_ext_chg(chip);
 	else
 		handle_stop_ext_chg(chip);
+
+	schedule_work(&chip->chg_src_work);
+
 	return IRQ_HANDLED;
 }
 
@@ -3408,6 +3437,7 @@ static void pm_batt_external_power_changed(struct power_supply *psy)
 }
 
 #define PM8921_CHG_STEP_HYST 100
+#define PM8921_DCIN_VINMIN 4700
 /**
  * update_heartbeat - internal function to update userspace
  *		per update_time minutes
@@ -3435,6 +3465,7 @@ static void update_heartbeat(struct work_struct *work)
 	int percent_soc;
 	int fcc;
 	int seconds = 0;
+	int vinmin_lvl = 0;
 #endif
 
 	get_wl_psy();
@@ -3511,16 +3542,20 @@ static void update_heartbeat(struct work_struct *work)
 		    chip->step_charge_voltage) {
 			pr_debug("Step Rate used Batt V = %d\n",
 				batt_mvolt);
-			pm_chg_vinmin_set(chip, chip->step_charge_vinmin);
+			vinmin_lvl = chip->step_charge_vinmin;
 			pm_chg_ibatmax_set(chip, chip->step_charge_current);
 		} else if (batt_mvolt <= (chip->step_charge_voltage -
 					PM8921_CHG_STEP_HYST)) {
 			pr_debug("Step Rate NOT used Batt V = %d\n",
 				batt_mvolt);
 			pm_chg_ibatmax_set(chip, chip->max_bat_chg_current);
-			pm_chg_vinmin_set(chip, chip->vin_min);
+			vinmin_lvl = chip->vin_min;
 		}
 	}
+
+	if (!is_usb_chg_plugged_in(chip) && is_dc_chg_plugged_in(chip))
+		vinmin_lvl = PM8921_DCIN_VINMIN;
+	pm_chg_vinmin_set(chip, vinmin_lvl);
 #endif
 
 	power_supply_changed(&chip->batt_psy);
@@ -5880,6 +5915,7 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 
 	INIT_WORK(&chip->bms_notify.work, bms_notify);
 	INIT_WORK(&chip->battery_id_valid_work, battery_id_valid);
+	INIT_WORK(&chip->chg_src_work, chg_src_setup);
 
 	/* Clear Any Charge Failures */
 	pm_chg_failed_clear(chip, 1);
