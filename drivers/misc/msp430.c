@@ -1160,6 +1160,32 @@ static int msp430_test_write_read(struct msp430_data *ps_msp430,
 	return err;
 }
 
+static int msp430_load_brightness_table(struct msp430_data *ps_msp430)
+{
+	int err = -ENOTTY;
+	int index = 0;
+	msp_cmdbuff[0] = LUX_TABLE_VALUES;
+	for (index = 0; index < LIGHTING_TABLE_SIZE; index++) {
+		msp_cmdbuff[(2 * index) + 1]
+			= ps_msp430->pdata->lux_table[index] >> 8;
+		msp_cmdbuff[(2 * index) + 2]
+			= ps_msp430->pdata->lux_table[index] & 0xFF;
+	}
+	err = msp430_i2c_write(ps_msp430, msp_cmdbuff,
+				(2 * LIGHTING_TABLE_SIZE) + 1);
+	if (err)
+		return err;
+
+	msp_cmdbuff[0] = BRIGHTNESS_TABLE_VALUES;
+	for (index = 0; index < LIGHTING_TABLE_SIZE; index++) {
+		msp_cmdbuff[index + 1]
+				= ps_msp430->pdata->brightness_table[index];
+	}
+	err = msp430_i2c_write(ps_msp430, msp_cmdbuff, LIGHTING_TABLE_SIZE + 1);
+	KDEBUG("MSP430 brightness tables loaded\n");
+	return err;
+}
+
 static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		unsigned long arg)
 {
@@ -1172,7 +1198,6 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 	unsigned char byte;
 	unsigned char bytes[2];
 	unsigned short delay;
-	int index;
 	unsigned long current_posix_time;
 
 	mutex_lock(&ps_msp430->lock);
@@ -1287,29 +1312,11 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 
 		if ((brightness_table_loaded == 0)
 				&& (bytes[1] & (M_DISP_BRIGHTNESS >> 8))) {
-			msp_cmdbuff[0] = LUX_TABLE_VALUES;
-			for (index = 0; index < LIGHTING_TABLE_SIZE; index++) {
-				msp_cmdbuff[(2 * index) + 1]
-					= ps_msp430->pdata->lux_table[index]
-					>> 8;
-				msp_cmdbuff[(2 * index) + 2]
-					= ps_msp430->pdata->lux_table[index]
-					& 0xFF;
-			}
-			err = msp430_i2c_write(ps_msp430, msp_cmdbuff,
-				(2 * LIGHTING_TABLE_SIZE) + 1);
-			if (err)
+			err = msp430_load_brightness_table(ps_msp430);
+			if (err) {
+				pr_err("MSP430 Loading brightness failed\n");
 				break;
-			msp_cmdbuff[0] = BRIGHTNESS_TABLE_VALUES;
-			for (index = 0; index < LIGHTING_TABLE_SIZE; index++) {
-				msp_cmdbuff[index + 1]
-				= ps_msp430->pdata->brightness_table[index];
 			}
-			err = msp430_i2c_write(ps_msp430, msp_cmdbuff,
-				LIGHTING_TABLE_SIZE + 1);
-			if (err)
-				break;
-			KDEBUG("MSP430 brightness tables loaded\n");
 			brightness_table_loaded = 1;
 		}
 
@@ -1473,6 +1480,14 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 5);
 		break;
 	case MSP430_IOCTL_SET_CONTROL_REG:
+		if (brightness_table_loaded == 0) {
+			err = msp430_load_brightness_table(ps_msp430);
+			if (err) {
+				pr_err("MSP430 Loading brightness failed\n");
+				break;
+			}
+			brightness_table_loaded = 1;
+		}
 		msp_cmdbuff[0] = MSP_CONTROL_REG;
 		if (copy_from_user(&msp_cmdbuff[1], argp,
 			 MSP_CONTROL_REG_SIZE)) {
