@@ -39,8 +39,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * */
 #ifndef WLAN_QCT_TLI_H
 #define WLAN_QCT_TLI_H
 
@@ -743,7 +741,8 @@ typedef struct
   WLANTL_ConfigInfoType     tlConfigInfo;
 
   /* list of the active stations */
-  WLANTL_STAClientType      *atlSTAClients; /*Allocate memory [WLAN_MAX_STA_COUNT] of station */
+  WLANTL_STAClientType*      atlSTAClients[WLAN_MAX_STA_COUNT];
+
 
   /* information on the management frame client */
   WLANTL_MgmtFrmClientType  tlMgmtFrmClient;

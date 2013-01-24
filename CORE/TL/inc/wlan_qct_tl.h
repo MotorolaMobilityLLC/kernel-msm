@@ -137,7 +137,7 @@ when        who    what, where, why
 
 /* Maximum number of station supported by TL, including BC. */
 #define WLAN_MAX_STA_COUNT  (HAL_NUM_STA)
-
+#define WLAN_NON32_STA_COUNT   14
 /* The symbolic station ID return to HDD to specify the packet is bc/mc */
 #define WLAN_RX_BCMC_STA_ID (WLAN_MAX_STA_COUNT + 1)
 
