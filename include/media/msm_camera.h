@@ -1014,7 +1014,9 @@ struct msm_snapshot_pp_status {
 #define CFG_CONFIG_VREG_ARRAY         52
 #define CFG_CONFIG_CLK_ARRAY          53
 #define CFG_GPIO_OP                   54
-#define CFG_MAX                       55
+#define CFG_SET_VISION_MODE           55
+#define CFG_SET_VISION_AE             56
+#define CFG_MAX                       57
 
 
 #define MOVE_NEAR	0
@@ -1672,6 +1674,8 @@ struct sensor_cfg_data {
 		int is_autoflash;
 		struct mirror_flip mirror_flip;
 		void *setting;
+		int32_t vision_mode_enable;
+		int32_t vision_ae;
 	} cfg;
 };
 
