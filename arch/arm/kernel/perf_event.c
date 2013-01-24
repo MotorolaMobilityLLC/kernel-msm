@@ -254,7 +254,7 @@ armpmu_start(struct perf_event *event, int flags)
 	 * happened since disabling.
 	 */
 	armpmu_event_set_period(event, hwc, hwc->idx);
-	armpmu->enable(hwc, hwc->idx);
+	armpmu->enable(hwc, hwc->idx, event->cpu);
 }
 
 static void
