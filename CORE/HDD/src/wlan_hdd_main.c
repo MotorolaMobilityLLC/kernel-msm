@@ -327,6 +327,48 @@ static int con_mode;
 static int curr_con_mode;
 #endif
 
+/**---------------------------------------------------------------------------
+
+  \brief hdd_vos_trace_enable() - Configure initial VOS Trace enable
+
+  Called immediately after the cfg.ini is read in order to configure
+  the desired trace levels.
+
+  \param  - moduleId - module whose trace level is being configured
+  \param  - bitmask - bitmask of log levels to be enabled
+
+  \return - void
+
+  --------------------------------------------------------------------------*/
+static void hdd_vos_trace_enable(VOS_MODULE_ID moduleId, v_U32_t bitmask)
+{
+   wpt_tracelevel level;
+
+   /* if the bitmask is the default value, then a bitmask was not
+      specified in cfg.ini, so leave the logging level alone (it
+      will remain at the "compiled in" default value) */
+   if (CFG_VOS_TRACE_ENABLE_DEFAULT == bitmask)
+   {
+      return;
+   }
+
+   /* a mask was specified.  start by disabling all logging */
+   vos_trace_setValue(moduleId, VOS_TRACE_LEVEL_NONE, 0);
+
+   /* now cycle through the bitmask until all "set" bits are serviced */
+   level = VOS_TRACE_LEVEL_FATAL;
+   while (0 != bitmask)
+   {
+      if (bitmask & 1)
+      {
+         vos_trace_setValue(moduleId, level, 1);
+      }
+      level++;
+      bitmask >>= 1;
+   }
+}
+
+
 #ifdef FEATURE_WLAN_INTEGRATED_SOC
 /**---------------------------------------------------------------------------
 
@@ -3494,6 +3536,32 @@ int hdd_wlan_startup(struct device *dev )
               "%s: wlan_hdd_cfg80211_register return failure", __func__);
       goto err_wiphy_reg;
    }
+#endif
+
+   // Update VOS trace levels based upon the cfg.ini
+   hdd_vos_trace_enable(VOS_MODULE_ID_BAP,
+                        pHddCtx->cfg_ini->vosTraceEnableBAP);
+   hdd_vos_trace_enable(VOS_MODULE_ID_TL,
+                        pHddCtx->cfg_ini->vosTraceEnableTL);
+   hdd_vos_trace_enable(VOS_MODULE_ID_WDI,
+                        pHddCtx->cfg_ini->vosTraceEnableWDI);
+   hdd_vos_trace_enable(VOS_MODULE_ID_HDD,
+                        pHddCtx->cfg_ini->vosTraceEnableHDD);
+   hdd_vos_trace_enable(VOS_MODULE_ID_SME,
+                        pHddCtx->cfg_ini->vosTraceEnableSME);
+   hdd_vos_trace_enable(VOS_MODULE_ID_PE,
+                        pHddCtx->cfg_ini->vosTraceEnablePE);
+   hdd_vos_trace_enable(VOS_MODULE_ID_WDA,
+                        pHddCtx->cfg_ini->vosTraceEnableWDA);
+   hdd_vos_trace_enable(VOS_MODULE_ID_SYS,
+                        pHddCtx->cfg_ini->vosTraceEnableSYS);
+   hdd_vos_trace_enable(VOS_MODULE_ID_VOSS,
+                        pHddCtx->cfg_ini->vosTraceEnableVOSS);
+#ifdef WLAN_SOFTAP_FEATURE
+   hdd_vos_trace_enable(VOS_MODULE_ID_SAP,
+                        pHddCtx->cfg_ini->vosTraceEnableSAP);
+   hdd_vos_trace_enable(VOS_MODULE_ID_HDD_SOFTAP,
+                        pHddCtx->cfg_ini->vosTraceEnableHDDSAP);
 #endif
 
 #ifdef FEATURE_WLAN_INTEGRATED_SOC

@@ -1503,6 +1503,85 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_ENABLE_BEACON_EARLY_TERMINATION_DEFAULT, 
                 CFG_ENABLE_BEACON_EARLY_TERMINATION_MIN, 
                 CFG_ENABLE_BEACON_EARLY_TERMINATION_MAX ), 
+/* CFG_VOS_TRACE_ENABLE Parameters */
+   REG_VARIABLE( CFG_VOS_TRACE_ENABLE_BAP_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, vosTraceEnableBAP,
+                VAR_FLAGS_OPTIONAL,
+                CFG_VOS_TRACE_ENABLE_DEFAULT,
+                CFG_VOS_TRACE_ENABLE_MIN,
+                CFG_VOS_TRACE_ENABLE_MAX ),
+
+   REG_VARIABLE( CFG_VOS_TRACE_ENABLE_TL_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, vosTraceEnableTL,
+                VAR_FLAGS_OPTIONAL,
+                CFG_VOS_TRACE_ENABLE_DEFAULT,
+                CFG_VOS_TRACE_ENABLE_MIN,
+                CFG_VOS_TRACE_ENABLE_MAX ),
+
+   REG_VARIABLE( CFG_VOS_TRACE_ENABLE_WDI_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, vosTraceEnableWDI,
+                VAR_FLAGS_OPTIONAL,
+                CFG_VOS_TRACE_ENABLE_DEFAULT,
+                CFG_VOS_TRACE_ENABLE_MIN,
+                CFG_VOS_TRACE_ENABLE_MAX ),
+
+   REG_VARIABLE( CFG_VOS_TRACE_ENABLE_HDD_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, vosTraceEnableHDD,
+                VAR_FLAGS_OPTIONAL,
+                CFG_VOS_TRACE_ENABLE_DEFAULT,
+                CFG_VOS_TRACE_ENABLE_MIN,
+                CFG_VOS_TRACE_ENABLE_MAX ),
+
+   REG_VARIABLE( CFG_VOS_TRACE_ENABLE_SME_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, vosTraceEnableSME,
+                VAR_FLAGS_OPTIONAL,
+                CFG_VOS_TRACE_ENABLE_DEFAULT,
+                CFG_VOS_TRACE_ENABLE_MIN,
+                CFG_VOS_TRACE_ENABLE_MAX ),
+
+   REG_VARIABLE( CFG_VOS_TRACE_ENABLE_PE_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, vosTraceEnablePE,
+                VAR_FLAGS_OPTIONAL,
+                CFG_VOS_TRACE_ENABLE_DEFAULT,
+                CFG_VOS_TRACE_ENABLE_MIN,
+                CFG_VOS_TRACE_ENABLE_MAX ),
+
+   REG_VARIABLE( CFG_VOS_TRACE_ENABLE_WDA_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, vosTraceEnableWDA,
+                VAR_FLAGS_OPTIONAL,
+                CFG_VOS_TRACE_ENABLE_DEFAULT,
+                CFG_VOS_TRACE_ENABLE_MIN,
+                CFG_VOS_TRACE_ENABLE_MAX ),
+
+   REG_VARIABLE( CFG_VOS_TRACE_ENABLE_SYS_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, vosTraceEnableSYS,
+                VAR_FLAGS_OPTIONAL,
+                CFG_VOS_TRACE_ENABLE_DEFAULT,
+                CFG_VOS_TRACE_ENABLE_MIN,
+                CFG_VOS_TRACE_ENABLE_MAX ),
+
+   REG_VARIABLE( CFG_VOS_TRACE_ENABLE_VOSS_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, vosTraceEnableVOSS,
+                VAR_FLAGS_OPTIONAL,
+                CFG_VOS_TRACE_ENABLE_DEFAULT,
+                CFG_VOS_TRACE_ENABLE_MIN,
+                CFG_VOS_TRACE_ENABLE_MAX ),
+
+#ifdef WLAN_SOFTAP_FEATURE
+   REG_VARIABLE( CFG_VOS_TRACE_ENABLE_SAP_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, vosTraceEnableSAP,
+                VAR_FLAGS_OPTIONAL,
+                CFG_VOS_TRACE_ENABLE_DEFAULT,
+                CFG_VOS_TRACE_ENABLE_MIN,
+                CFG_VOS_TRACE_ENABLE_MAX ),
+
+   REG_VARIABLE( CFG_VOS_TRACE_ENABLE_HDD_SAP_NAME, WLAN_PARAM_Integer,
+                hdd_config_t, vosTraceEnableHDDSAP,
+                VAR_FLAGS_OPTIONAL,
+                CFG_VOS_TRACE_ENABLE_DEFAULT,
+                CFG_VOS_TRACE_ENABLE_MIN,
+                CFG_VOS_TRACE_ENABLE_MAX ),
+#endif
 
 #ifdef FEATURE_WLAN_INTEGRATED_SOC
    /* note that since the default value is out of range we cannot
