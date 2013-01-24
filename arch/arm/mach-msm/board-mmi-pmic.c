@@ -1170,6 +1170,7 @@ static struct pm8921_charger_platform_data pm8921_chg_pdata __devinitdata = {
 	.warm_bat_voltage	= 3800,
 	.batt_id_min		= 0,
 	.batt_id_max		= 1,
+	.dc_unplug_check	= 1,
 	.thermal_mitigation	= pm8921_therm_mitigation,
 	.thermal_levels		= ARRAY_SIZE(pm8921_therm_mitigation),
 	.cold_thr		= PM_SMBC_BATT_TEMP_COLD_THR__HIGH,
