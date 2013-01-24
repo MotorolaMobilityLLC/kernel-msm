@@ -25,6 +25,8 @@
 #include <linux/lp8556.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/slab.h>
 #include <linux/types.h>
 #include <linux/earlysuspend.h>
@@ -434,14 +436,113 @@ free_gpio:
 	return ret;
 }
 
-static int __devinit lp8556_probe(struct i2c_client *client,
-			   const struct i2c_device_id *id)
+#ifdef CONFIG_OF
+static struct lp8556_platform_data *
+lp8556_of_init(struct i2c_client *client)
 {
-	struct lp8556_platform_data *pdata = client->dev.platform_data;
-	struct lp8556_data *led_data = NULL;
+	struct lp8556_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	int *buf;
+	int temp;
+	int ret;
+	int len;
+	const void *prop;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "pdata alloc failure\n");
+		return NULL;
+	}
+
+	ret = of_property_read_u32(np, "ti,lp8556-initial-brightness", &temp);
+	if (!ret)
+		pdata->power_up_brightness = (u8)temp;
+
+	ret = of_property_read_u32(np, "ti,lp8556-dev-ctrl-config", &temp);
+	if (!ret)
+		pdata->dev_ctrl_config = (u8)temp;
+
+	ret = of_property_read_u32(np, "ti,lp8556-direct-ctrl", &temp);
+	if (!ret)
+		pdata->direct_ctrl = (u8)temp;
+
+	prop = of_get_property(np, "ti,lp8556-eeprom-settings", &len);
+	if (prop) {
+		int size;
+		int i;
+
+		/* Firmware should be pairs of register / value entries */
+		if (!len || (len % (sizeof(int)*2))) {
+			dev_err(&client->dev, "eeprom entry invalid\n");
+			return NULL;
+		}
+
+		/* Populate the number of entries, and allocate memory to hold
+		 * all of the 'lp8556_eeprom_data' entries.
+		 */
+		pdata->eeprom_tbl_sz = len / (sizeof(int)*2);
+		size = pdata->eeprom_tbl_sz * sizeof(struct lp8556_eeprom_data);
+
+		pdata->eeprom_table = devm_kzalloc(&client->dev, size,
+							GFP_KERNEL);
+		if (!pdata->eeprom_table) {
+			dev_err(&client->dev, "eeprom table alloc failure\n");
+			return NULL;
+		}
+
+		buf = kzalloc(len, GFP_KERNEL);
+		if (!buf) {
+			dev_err(&client->dev, "temp buffer alloc failure\n");
+			return NULL;
+		}
+
+		ret = of_property_read_u32_array(np,
+						"ti,lp8556-eeprom-settings",
+						buf, pdata->eeprom_tbl_sz * 2);
+		if (ret) {
+			dev_err(&client->dev, "reading eeprom data failed\n");
+			kfree(buf);
+			return NULL;
+		}
+
+		for (i = 0; i < pdata->eeprom_tbl_sz; i++) {
+			pdata->eeprom_table[i].flag = 1;
+			pdata->eeprom_table[i].addr = (u8)buf[i*2];
+			pdata->eeprom_table[i].data = (u8)buf[i*2 + 1];
+			dev_dbg(&client->dev, "ADDR: %02X DATA: %02X\n",
+				pdata->eeprom_table[i].addr,
+				pdata->eeprom_table[i].data);
+		}
+
+		kfree(buf);
+	}
+
+	/* Grab the enable GPIO, if it exists */
+	pdata->enable_gpio = of_get_gpio(np, 0);
+
+	return pdata;
+}
+#else
+static inline struct lp8556_platform_data *
+lp8556_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
+
+static int __devinit lp8556_probe(struct i2c_client *client,
+				  const struct i2c_device_id *id)
+{
+	struct lp8556_platform_data *pdata;
+	struct lp8556_data *led_data;
 	int error;
 
 	pr_info("%s\n", __func__);
+
+	if (client->dev.of_node)
+		pdata = lp8556_of_init(client);
+	else
+		pdata = client->dev.platform_data;
 
 	if (pdata == NULL) {
 		pr_err("%s: platform data required\n", __func__);
@@ -599,10 +700,19 @@ static const struct i2c_device_id lp8556_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, lp8556_id);
 
+#ifdef CONFIG_OF
+static struct of_device_id lp8556_match_tbl[] = {
+	{ .compatible = "ti,lp8556" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, lp8556_match_tbl);
+#endif
+
 static struct i2c_driver lp8556_i2c_driver = {
 	.driver = {
 		.name = "lp8556",
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(lp8556_match_tbl),
 	},
 	.probe = lp8556_probe,
 	.remove = __devexit_p(lp8556_remove),
