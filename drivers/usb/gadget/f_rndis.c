@@ -422,6 +422,9 @@ static void rndis_response_complete(struct usb_ep *ep, struct usb_request *req)
 	switch (status) {
 	case -ECONNRESET:
 	case -ESHUTDOWN:
+                if(WARN_ON(!rndis))
+                        return;
+
 		/* connection gone */
 		atomic_set(&rndis->notify_count, 0);
 		break;
