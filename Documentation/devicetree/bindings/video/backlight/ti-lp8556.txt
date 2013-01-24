@@ -1,0 +1,46 @@
+Texas Instrument LP8556 Backlight Controller
+
+Required Properties:
+ - compatible:
+        should be set to "ti,lp8556"
+ - reg:
+        the i2c slave address of the IC
+ - gpios:
+        entry specifying the enable pin (EN_VDDIO) of the IC.
+
+Optional Properties:
+ - vddio-supply:
+        phandle to the IC's regulator supply for VDD if required
+ - ti,lp8556-initial-brightness:
+        power up brightness to set during first initialization. If not
+        supplied it will be set to 0x00. This value is programmed to
+        the BRT_CTRL_REG (0x00) register.
+ - ti,lp8556-dev-ctrl-config:
+        initial setting for device control register.  If it is not
+        supplied 0x00 will be used. This value is programmed to the
+        DEVICE_CTRL_REG (0x01) register.
+ - ti,lp8556-direct-ctrl:
+        initial setting for the direct control register.  If it is not
+        supplied 0x00 will be programmed.  The value is programmed into
+        the DIRECT_CTRL_REG (0x04) register.
+ - ti,lp8556-eeprom-settings:
+        initial firmware control register array.  This is an array of
+        register address and value pairs to be progammed into the EEPROM
+        register space [registers 0x98 to 0xaf].  They should be of the
+        format of: <addr> <value>.
+
+Example:
+
+lp8556@2c {
+	compatible = "ti,lp8556";
+	reg = <0x2c>;
+	gpios = <&msmgpio 52 0>;  /* enable GPIO */
+
+	ti,lp8556-initial-brightness = <0x3a>;
+	ti,lp8556-dev-ctrl-config = <0x84>;
+	ti,lp8556-eeprom-settings = <0x9e 0x02
+				     0xa5 0x3c
+				     0xa6 0x40
+				     0xa7 0xfc>;
+};
+
