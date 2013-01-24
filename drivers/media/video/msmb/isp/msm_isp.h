@@ -80,7 +80,8 @@ struct msm_vfe_axi_ops {
 		uint32_t reload_mask);
 	void (*enable_wm) (struct vfe_device *vfe_dev,
 		uint8_t wm_idx, uint8_t enable);
-
+	void (*cfg_io_format) (struct vfe_device *vfe_dev,
+		struct msm_vfe_axi_stream_request_cmd *stream_req_cmd);
 	void (*cfg_framedrop) (struct vfe_device *vfe_dev,
 		struct msm_vfe_axi_stream *stream_info);
 	void (*clear_framedrop) (struct vfe_device *vfe_dev,
@@ -255,6 +256,7 @@ enum msm_wm_ub_cfg_type {
 	MSM_WM_UB_EQUAL_SLICING,
 	MSM_WM_UB_CFG_MAX_NUM
 };
+
 struct msm_vfe_axi_shared_data {
 	struct msm_vfe_axi_hardware_info *hw_info;
 	struct msm_vfe_axi_stream stream_info[MAX_NUM_STREAM];
