@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Motorola Mobility, Inc
+/* Copyright (c) 2012-2013, Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -837,41 +837,23 @@ static struct lp8556_eeprom_data lp8556_eeprom_pdata[] = {
 };
 
 static struct lp8556_platform_data lp8556_backlight_pdata = {
+	.enable_gpio = -1,
 	.power_up_brightness = 0x3A,
 	.dev_ctrl_config = 0x84, /* no PWM */
-	.dev_id = 0xfc,
 	.eeprom_table = lp8556_eeprom_pdata,
 	.eeprom_tbl_sz = ARRAY_SIZE(lp8556_eeprom_pdata),
 };
 
 static int __init lp8556_init_i2c_device(struct i2c_board_info *info,
-                                          struct device_node *node)
+					 struct device_node *node)
 {
-	int err = 0;
-
 	/* lp8556 gpios */
-	if (of_property_read_u32(node, "enable_gpio",
-				 &lp8556_backlight_pdata.enable_gpio))
-		return -EINVAL;
-
-	err = gpio_request(lp8556_backlight_pdata.enable_gpio, "lp8556 enable");
-	if (err) {
-		pr_err("lp8556 enable gpio request failed: %d\n", err);
-		goto err1;
-	}
-	gpio_direction_output(lp8556_backlight_pdata.enable_gpio, 1);
-	err = gpio_export(lp8556_backlight_pdata.enable_gpio, 0);
-	if (err) {
-		pr_err("lp8556 enable gpio export failed: %d\n", err);
-		goto err2;
-	}
+	of_property_read_u32(node, "enable_gpio",
+			     &lp8556_backlight_pdata.enable_gpio);
 
 	info->platform_data = &lp8556_backlight_pdata;
+
 	return 0;
- err2:
-	gpio_free(lp8556_backlight_pdata.enable_gpio);
- err1:
-	return -EINVAL;
 }
 /* end backlight init */
 
