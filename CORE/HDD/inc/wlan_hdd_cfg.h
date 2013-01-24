@@ -1270,6 +1270,45 @@ typedef enum
 #endif
 
 /*
+ * VOS Trace Enable Control
+ * Notes:
+ *  the MIN/MAX/DEFAULT values apply for all modules
+ *  the DEFAULT value is outside the valid range.  if the DEFAULT
+ *    value is not overridden, then no change will be made to the
+ *    "built in" default values compiled into the code
+ *  values are a bitmap indicating which log levels are to enabled
+ *    (must match order of vos_trace_level enumerations)
+ *    00000001  FATAL
+ *    00000010  ERROR
+ *    00000100  WARN
+ *    00001000  INFO
+ *    00010000  INFO HIGH
+ *    00100000  INFO MED
+ *    01000000  INFO LOW
+ *    10000000  DEBUG
+ *
+ *  hence a value of 0xFF would set all bits (enable all logs)
+ */
+
+#define CFG_VOS_TRACE_ENABLE_BAP_NAME     "vosTraceEnableBAP"
+#define CFG_VOS_TRACE_ENABLE_TL_NAME      "vosTraceEnableTL"
+#define CFG_VOS_TRACE_ENABLE_WDI_NAME     "vosTraceEnableWDI"
+#define CFG_VOS_TRACE_ENABLE_HDD_NAME     "vosTraceEnableHDD"
+#define CFG_VOS_TRACE_ENABLE_SME_NAME     "vosTraceEnableSME"
+#define CFG_VOS_TRACE_ENABLE_PE_NAME      "vosTraceEnablePE"
+#define CFG_VOS_TRACE_ENABLE_WDA_NAME     "vosTraceEnableWDA"
+#define CFG_VOS_TRACE_ENABLE_SYS_NAME     "vosTraceEnableSYS"
+#define CFG_VOS_TRACE_ENABLE_VOSS_NAME    "vosTraceEnableVOSS"
+#ifdef WLAN_SOFTAP_FEATURE
+#define CFG_VOS_TRACE_ENABLE_SAP_NAME     "vosTraceEnableSAP"
+#define CFG_VOS_TRACE_ENABLE_HDD_SAP_NAME "vosTraceEnableHDDSAP"
+#endif
+
+#define CFG_VOS_TRACE_ENABLE_MIN          (0)
+#define CFG_VOS_TRACE_ENABLE_MAX          (0xff)
+#define CFG_VOS_TRACE_ENABLE_DEFAULT      (0xffff)
+
+/*
  * WDI Trace Enable Control
  * Notes:
  *  the MIN/MAX/DEFAULT values apply for all modules
@@ -1823,6 +1862,21 @@ typedef struct
    v_U32_t                     apDataAvailPollPeriodInMs;
    v_BOOL_t                    fEnableBeaconEarlyTermination;
    v_BOOL_t                    teleBcnWakeupEn;
+
+/* VOS Trace Control*/
+   v_U16_t                     vosTraceEnableBAP;
+   v_U16_t                     vosTraceEnableTL;
+   v_U16_t                     vosTraceEnableWDI;
+   v_U16_t                     vosTraceEnableHDD;
+   v_U16_t                     vosTraceEnableSME;
+   v_U16_t                     vosTraceEnablePE;
+   v_U16_t                     vosTraceEnableWDA;
+   v_U16_t                     vosTraceEnableSYS;
+   v_U16_t                     vosTraceEnableVOSS;
+#ifdef WLAN_SOFTAP_FEATURE
+   v_U16_t                     vosTraceEnableSAP;
+   v_U16_t                     vosTraceEnableHDDSAP;
+#endif
 
 #ifdef FEATURE_WLAN_INTEGRATED_SOC
    /* WDI Trace Control */
