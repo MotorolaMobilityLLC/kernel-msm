@@ -86,8 +86,7 @@
 #define WAKESENSOR_CONFIG		0x1B
 
 #define MOTION_DUR			0x20
-
-#define ZRMOTION_DUR			0x22
+#define ZRMOTION_DUR		0x22
 
 #define BYPASS_MODE			0x24
 #define SLAVE_ADDRESS			0x25
@@ -95,9 +94,6 @@
 #define ALGO_CONFIG			0x26
 #define ALGO_INT_STATUS			0x27
 
-#define RADIAL_DUR			0x2A
-
-#define RADIAL_DATA			0x2C
 #define MOTION_DATA			0x2D
 
 #define LUX_TABLE_VALUES                0x34
@@ -131,20 +127,22 @@
 
 #define STOWED				0x6D
 
-#define MOTION_DUR_1			0x71
-#define ZRMOTION_DUR_1			0x72
-#define MOTION_DUR_2			0x73
-#define ZRMOTION_DUR_2			0x74
-#define MOTION_DUR_3			0x75
-#define ZRMOTION_DUR_3			0x76
-#define MOTION_THR_1			0x77
-#define ZRMOTION_THR_1			0x78
-#define MOTION_THR_2			0x79
-#define ZRMOTION_THR_2			0x7A
-#define MOTION_THR_3			0x7B
-#define ZRMOTION_THR_3			0x7C
+#define ALGO_CFG_MODALITY       0x6E
+#define ALGO_CFG_ORIENTATION    0x6F
+#define ALGO_CFG_STOWED         0x70
+#define ALGO_CFG_ACCUM_MVMT     0x71
 
-#define RESET				0x7F
+#define ALGO_REQ_MODALITY       0x72
+#define ALGO_REQ_ORIENTATION    0x73
+#define ALGO_REQ_STOWED         0x74
+#define ALGO_REQ_ACCUM_MVMT     0x75
+
+#define ALGO_EVT_MODALITY       0x76
+#define ALGO_EVT_ORIENTATION    0x77
+#define ALGO_EVT_STOWED         0x78
+#define ALGO_EVT_ACCUM_MVMT     0x79
+
+#define RESET                   0x7F
 
 #define MSP430_AS_DATA_QUEUE_SIZE	0x20
 #define MSP430_AS_DATA_QUEUE_MASK	0x1F
@@ -229,7 +227,6 @@ enum msp_opcode {
 	RXDATA_OPCODE = 0x10,
 };
 
-
 struct msp_response {
 
 	/* 0x0080 */
@@ -242,18 +239,23 @@ struct msp_response {
 	unsigned char crc_msb;
 };
 
-static const unsigned char msp_motion_dur_a[] = {
-	MOTION_DUR,
-	MOTION_DUR_1,
-	MOTION_DUR_2,
-	MOTION_DUR_3
+/* per algo config, request, and event registers */
+struct msp_algo_info_t {
+	unsigned short config_bit;
+	unsigned char cfg_register;
+	unsigned char req_register;
+	unsigned char evt_register;
 };
 
-static const unsigned char msp_zrmotion_dur_a[] = {
-	ZRMOTION_DUR,
-	ZRMOTION_DUR_1,
-	ZRMOTION_DUR_2,
-	ZRMOTION_DUR_3
+static const struct msp_algo_info_t msp_algo_info[MSP_NUM_ALGOS] = {
+	{ M_ALGO_MODALITY, ALGO_CFG_MODALITY, ALGO_REQ_MODALITY,
+	  ALGO_EVT_MODALITY },
+	{ M_ALGO_ORIENTATION, ALGO_CFG_ORIENTATION, ALGO_REQ_ORIENTATION,
+	  ALGO_EVT_ORIENTATION },
+	{ M_ALGO_STOWED, ALGO_CFG_STOWED, ALGO_REQ_STOWED,
+	  ALGO_EVT_STOWED },
+	{ M_ALGO_ACCUM_MVMT, ALGO_CFG_ACCUM_MVMT, ALGO_REQ_ACCUM_MVMT,
+	  ALGO_EVT_ACCUM_MVMT }
 };
 
 static const unsigned short crc_table[256] = {
@@ -523,7 +525,8 @@ static int msp430_as_data_buffer_read(struct msp430_data *ps_msp430,
 }
 
 static int msp430_ms_data_buffer_write(struct msp430_data *ps_msp430,
-	unsigned char type, signed short data1, signed short data2)
+	unsigned char type, signed short data1, signed short data2,
+	signed short data3, signed short data4)
 {
 	int new_head;
 	struct timespec ts;
@@ -539,6 +542,8 @@ static int msp430_ms_data_buffer_write(struct msp430_data *ps_msp430,
 	ps_msp430->msp430_ms_data_buffer[new_head].type = type;
 	ps_msp430->msp430_ms_data_buffer[new_head].data1 = data1;
 	ps_msp430->msp430_ms_data_buffer[new_head].data2 = data2;
+	ps_msp430->msp430_ms_data_buffer[new_head].data3 = data3;
+	ps_msp430->msp430_ms_data_buffer[new_head].data4 = data4;
 
 	ktime_get_ts(&ts);
 	ps_msp430->msp430_ms_data_buffer[new_head].timestamp
@@ -652,7 +657,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
 		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
 		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
-		msp430_as_data_buffer_write(ps_msp430, DT_LIN_ACCEL, x, y, z, 0);
+		msp430_as_data_buffer_write(ps_msp430, DT_LIN_ACCEL,
+			x, y, z, 0);
 
 		KDEBUG("MSP430 Sending lin_acc(x,y,z)values:x=%d,y=%d,z=%d\n",
 			x, y, z);
@@ -735,7 +741,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
 		msp430_as_data_buffer_write(ps_msp430, DT_PRESSURE, x, y, 0, 0);
 
-		KDEBUG("MSP430 Sending pressure %d\n", (x << 16) | (y & 0xFFFF));
+		KDEBUG("MSP430 Sending pressure %d\n",
+			(x << 16) | (y & 0xFFFF));
 	}
 	if (irq_status & M_DISP_ROTATE) {
 		/*Read Display Rotate value */
@@ -774,7 +781,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 {
 	int err;
 	unsigned short irq_status, irq2_status;
-	signed short x, y;
+	signed short x, y, z, q;
 	struct msp430_data *ps_msp430 = container_of(work,
 			struct msp430_data, irq_wake_work);
 
@@ -876,36 +883,58 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 	}
 	if (irq_status & M_CAMERA_ACT) {
 		x = CAMERA_DATA;
-		msp430_as_data_buffer_write(ps_msp430, DT_CAMERA_ACT, x, 0, 0, 0);
+		msp430_as_data_buffer_write(ps_msp430, DT_CAMERA_ACT,
+			x, 0, 0, 0);
 
 		KDEBUG("Sending Camera Gesture status %d\n", x);
 	}
 	if (irq2_status & M_MMOVEME) {
 		/* Client recieving action will be upper 2 MSB of status */
 		x = (irq2_status & MSP430_CLIENT_MASK) | M_MMOVEME;
-		msp430_ms_data_buffer_write(ps_msp430, DT_MMMOVE, x, 0);
+		msp430_ms_data_buffer_write(ps_msp430, DT_MMMOVE, x, 0, 0, 0);
 
 		KDEBUG("MSP430 Sending meaningful movement event\n");
 	}
 	if (irq2_status & M_NOMMOVE) {
 		/* Client recieving action will be upper 2 MSB of status */
 		x = (irq2_status & MSP430_CLIENT_MASK) | M_NOMMOVE;
-		msp430_ms_data_buffer_write(ps_msp430, DT_NOMOVE, x, 0);
+		msp430_ms_data_buffer_write(ps_msp430, DT_NOMOVE, x, 0, 0, 0);
 
 		KDEBUG("MSP430 Sending no meaningful movement event\n");
 	}
-	if (irq2_status & M_RADIAL) {
-		msp_cmdbuff[0] = RADIAL_DATA;
-		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 4);
+	if (irq2_status & M_ALGO_MODALITY) {
+		msp_cmdbuff[0] = msp_algo_info[MSP_IDX_MODALITY].evt_register;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 7);
 		if (err < 0) {
-			pr_err("MSP430 Reading Radial movement failed\n");
+			pr_err("MSP430 reading modality event failed\n");
 			goto EXIT;
 		}
-		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
-		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
-		msp430_ms_data_buffer_write(ps_msp430, DT_RADIAL, x, y);
-
-		KDEBUG("MSP430 Radial north:%d,east:%d", x, y);
+		/* x (data1) msb: algo index, lsb: past, confidence */
+		x = (MSP_IDX_MODALITY << 8) | msp_cmdbuff[0];
+		/* y (data2) old state */
+		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[1];
+		/* z (data3) new state */
+		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[3];
+		/* q (data4) time in state, in seconds */
+		q = (msp_cmdbuff[6] << 8) | msp_cmdbuff[5];
+		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, q);
+		KDEBUG("MSP430 sending modality event\n");
+	}
+	if (irq2_status & M_ALGO_ACCUM_MVMT) {
+		msp_cmdbuff[0] = msp_algo_info[MSP_IDX_ACCUM_MVMT].evt_register;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 4);
+		if (err < 0) {
+			pr_err("MSP430 reading accum mvmt event failed\n");
+			goto EXIT;
+		}
+		/* x (data1) msb: algo index */
+		x = MSP_IDX_ACCUM_MVMT << 8;
+		/* y (data2) time_s */
+		y = (msp_cmdbuff[1] << 8) | msp_cmdbuff[0];
+		/* z (data3) distance */
+		z = (msp_cmdbuff[3] << 8) | msp_cmdbuff[2];
+		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, 0);
+		KDEBUG("MSP430 sending accum mvmt event\n");
 	}
 EXIT:
 	mutex_unlock(&ps_msp430->lock);
@@ -1264,7 +1293,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		err = 0;
 		break;
 	default:
-		/* The IOCLTS below in next switch should not be called
+		/* The IOCTLs below in next switch should not be called
 		   when device is in boot mode */
 		if (ps_msp430->mode == BOOTMODE) {
 			pr_err("MSP430 Attempted normal mode ioctl in boot\n");
@@ -1272,7 +1301,6 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			return -EFAULT;
 		}
 	}
-
 
 	switch (cmd) {
 	case MSP430_IOCTL_GET_VERSION:
@@ -1385,38 +1413,29 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 		break;
 	case MSP430_IOCTL_SET_ALGOS:
-		byte = 0;
-		if (copy_from_user(&byte, argp, sizeof(byte))) {
-			KDEBUG("copy set algos returned error\n");
+		if (copy_from_user(&bytes, argp, sizeof(bytes))) {
+			pr_err("copy set algos returned error\n");
 			err = -EFAULT;
 			break;
 		}
+		KDEBUG("set algos config: 0x%x", (bytes[1] << 8) | bytes[0]);
 		msp_cmdbuff[0] = ALGO_CONFIG;
-		msp_cmdbuff[1] = byte;
-		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
+		msp_cmdbuff[1] = bytes[0];
+		msp_cmdbuff[2] = bytes[1];
+		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
 		break;
 	case MSP430_IOCTL_GET_ALGOS:
 		msp_cmdbuff[0] = ALGO_CONFIG;
-		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
 		if (err < 0) {
 			pr_err("MSP430 Reading get algos failed\n");
 			break;
 		}
-		byte = msp_cmdbuff[0];
-		if (copy_to_user(argp, &byte, sizeof(byte)))
+		bytes[0] = msp_cmdbuff[0];
+		bytes[1] = msp_cmdbuff[1];
+		pr_info("get algos config: 0x%x", (bytes[1] << 8) | bytes[0]);
+		if (copy_to_user(argp, bytes, sizeof(bytes)))
 			err = -EFAULT;
-		break;
-	case MSP430_IOCTL_SET_RADIAL_DUR:
-		byte = 0;
-		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			KDEBUG("copy set radial dur returned error\n");
-			err = -EFAULT;
-			break;
-		}
-		msp_cmdbuff[0] = RADIAL_DUR;
-		msp_cmdbuff[1] = addr >> 8;
-		msp_cmdbuff[2] = addr & 0xFF;
-		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
 		break;
 	case MSP430_IOCTL_SET_MOTION_DUR:
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
@@ -1424,14 +1443,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 			break;
 		}
-		byte = addr >> 8;
-		if (byte < sizeof(msp_motion_dur_a))
-			msp_cmdbuff[0] = msp_motion_dur_a[byte];
-		else {
-			KDEBUG("invalid set motion dur arg passed in\n");
-			err = -EFAULT;
-			break;
-		}
+		msp_cmdbuff[0] = MOTION_DUR;
 		msp_cmdbuff[1] = addr & 0xFF;
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
@@ -1441,18 +1453,10 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 			break;
 		}
-		byte = addr >> 8;
-		if (byte < sizeof(msp_zrmotion_dur_a))
-			msp_cmdbuff[0] = msp_zrmotion_dur_a[byte];
-		else {
-			KDEBUG("invalid zmotion dur arg passed in\n");
-			err = -EFAULT;
-			break;
-		}
+		msp_cmdbuff[0] = ZRMOTION_DUR;
 		msp_cmdbuff[1] = addr & 0xFF;
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
-
 	case MSP430_IOCTL_GET_DOCK_STATUS:
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
 		byte = msp_cmdbuff[0];
@@ -1542,6 +1546,37 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 
 		if (copy_to_user(argp, msp_cmdbuff, MSP_TOUCH_REG_SIZE))
 			err = -EFAULT;
+		break;
+	case MSP430_IOCTL_SET_ALGO_REQ:
+		/* copy algo index into bytes[2] */
+		if (copy_from_user(&bytes, argp, sizeof(bytes))) {
+			pr_err("set algo req copy bytes returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		addr = (bytes[1] << 8) | bytes[0];
+		/* copy len into byte */
+		if (copy_from_user(&byte, argp + sizeof(bytes), sizeof(byte))) {
+			pr_err("get algo req copy byte returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		KDEBUG("set algo req, algo index: %d, len: %u\n", addr, byte);
+		if (addr < MSP_NUM_ALGOS) {
+			msp_cmdbuff[0] = msp_algo_info[addr].req_register;
+			KDEBUG("register: 0x%x", msp_cmdbuff[0]);
+		} else {
+			pr_err("set algo req invalid arg\n");
+			err = -EFAULT;
+			break;
+		}
+		if (copy_from_user(&msp_cmdbuff[1],
+			argp + sizeof(bytes) + sizeof(byte), byte)) {
+			pr_err("set algo req copy req info returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 1 + byte);
 		break;
 
 	/* No default here since previous switch could have
