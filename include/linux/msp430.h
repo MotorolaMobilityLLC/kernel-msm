@@ -78,14 +78,10 @@
 #define MSP430_IOCTL_SET_POWER_MODE	\
 		_IOW(MSP430_IOCTL_BASE, 27, unsigned char)
 #define MSP430_IOCTL_GET_ALGOS	\
-		_IOR(MSP430_IOCTL_BASE, 28, unsigned char)
+		_IOR(MSP430_IOCTL_BASE, 28, char*)
 #define MSP430_IOCTL_SET_ALGOS	\
-		_IOW(MSP430_IOCTL_BASE, 29, unsigned char)
-#define MSP430_IOCTL_SET_RADIAL_THR	\
-		_IOW(MSP430_IOCTL_BASE, 30, unsigned int)
-#define MSP430_IOCTL_SET_RADIAL_DUR	\
-		_IOW(MSP430_IOCTL_BASE, 31, unsigned int)
-/* 32 unused */
+		_IOW(MSP430_IOCTL_BASE, 29, char*)
+/* 30-32 unused */
 #define MSP430_IOCTL_SET_MOTION_DUR	\
 		_IOW(MSP430_IOCTL_BASE, 33, unsigned int)
 /* 34 unused */
@@ -105,6 +101,8 @@
 		_IOR(MSP430_IOCTL_BASE, 41, char*)
 #define MSP430_IOCTL_GET_TOUCH_REG	\
 		_IOR(MSP430_IOCTL_BASE, 42, char*)
+#define MSP430_IOCTL_SET_ALGO_REQ \
+		_IOR(MSP430_IOCTL_BASE, 43, char*)
 
 #define FW_VERSION_SIZE 8
 #define MSP_CONTROL_REG_SIZE 200
@@ -148,7 +146,7 @@ struct msp430_platform_data {
 #define M_DISP_ROTATE		0x0800
 #define M_DISP_BRIGHTNESS	0x1000
 
-/* Wakable sensors */
+/* wake sensor status */
 #define M_DOCK			0x0001
 #define M_PROXIMITY		0x0002
 #define M_TOUCH			0x0004
@@ -158,10 +156,21 @@ struct msp430_platform_data {
 #define M_STOWED		0x0400
 #define M_CAMERA_ACT		0x0800
 
-/* Modality */
-#define M_MMOVEME		0x01
-#define M_NOMMOVE		0x02
-#define M_RADIAL		0x04
+/* algo config mask */
+#define M_MMOVEME           0x0001
+#define M_NOMMOVE		    0x0002
+#define M_ALGO_MODALITY     0x0008
+#define M_ALGO_ORIENTATION  0x0010
+#define M_ALGO_STOWED       0x0020
+#define M_ALGO_ACCUM_MVMT   0x0040
+
+/* algo index */
+#define MSP_IDX_MODALITY    0
+#define MSP_IDX_ORIENTATION 1
+#define MSP_IDX_STOWED      2
+#define MSP_IDX_ACCUM_MVMT  3
+
+#define MSP_NUM_ALGOS   4
 
 struct msp430_android_sensor_data {
 	int64_t timestamp;
@@ -176,6 +185,8 @@ struct msp430_moto_sensor_data {
 	int64_t timestamp;
 	signed short data1;
 	signed short data2;
+	signed short data3;
+	signed short data4;
 	unsigned char type;
 };
 
@@ -199,8 +210,9 @@ enum MSP430_data_types {
 	DT_STOWED,
 	DT_MMMOVE,
 	DT_NOMOVE,
-	DT_RADIAL,
 	DT_CAMERA_ACT,
+	DT_ALGO_EVT,
+	DT_ACCUM_MVMT
 };
 
 enum {
