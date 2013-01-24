@@ -2583,6 +2583,15 @@ static void handle_start_ext_chg(struct pm8921_chg_chip *chip)
 	unsigned long delay =
 		round_jiffies_relative(msecs_to_jiffies(EOC_CHECK_PERIOD_MS));
 
+	if (chip->wl_psy) {
+		schedule_delayed_work(&chip->unplug_check_work,
+				      round_jiffies_relative(msecs_to_jiffies
+				      (UNPLUG_CHECK_WAIT_PERIOD_MS)));
+		pm8921_chg_enable_irq(chip, CHG_GONE_IRQ);
+		pr_debug("Wireless Charger Connected.\n");
+		return;
+	}
+
 	if (!chip->ext_psy) {
 		pr_debug("external charger not registered.\n");
 		return;
