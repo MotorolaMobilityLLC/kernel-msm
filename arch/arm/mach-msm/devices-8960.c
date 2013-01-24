@@ -2025,13 +2025,13 @@ struct platform_device msm8960_device_ispif = {
 
 static struct resource msm_vfe_resources[] = {
 	{
-		.name	= "vfe32",
+		.name	= "vfe",
 		.start	= 0x04500000,
 		.end	= 0x04500000 + SZ_1M - 1,
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.name	= "vfe32",
+		.name	= "vfe",
 		.start	= VFE_IRQ,
 		.end	= VFE_IRQ,
 		.flags	= IORESOURCE_IRQ,
@@ -2039,7 +2039,7 @@ static struct resource msm_vfe_resources[] = {
 };
 
 struct platform_device msm8960_device_vfe = {
-	.name           = "msm_vfe",
+	.name           = "msm_vfe32",
 	.id             = 0,
 	.resource       = msm_vfe_resources,
 	.num_resources  = ARRAY_SIZE(msm_vfe_resources),
@@ -2549,7 +2549,7 @@ struct platform_device *msm8960_footswitch[] __initdata = {
 	FS_8X60(FS_MDP,    "vdd",	"mdp.0",	&mdp_fs_data),
 	FS_8X60(FS_ROT,    "vdd",	"msm_rotator.0", &rot_fs_data),
 	FS_8X60(FS_IJPEG,  "vdd",	"msm_gemini.0",	&ijpeg_fs_data),
-	FS_8X60(FS_VFE,    "vdd",	"msm_vfe.0",	&vfe_fs_data),
+	FS_8X60(FS_VFE,    "vdd",	"msm_vfe32.0",	&vfe_fs_data),
 	FS_8X60(FS_VPE,    "vdd",	"msm_vpe.0",	&vpe_fs_data),
 	FS_8X60(FS_GFX3D,  "vdd",	"kgsl-3d0.0",	&gfx3d_fs_data),
 	FS_8X60(FS_GFX2D0, "vdd",	"kgsl-2d0.0",	&gfx2d0_fs_data),
