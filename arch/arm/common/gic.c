@@ -204,86 +204,93 @@ static void gic_disable_irq(struct irq_data *d)
 }
 
 #ifdef CONFIG_PM
-void gic_suspend(unsigned int gic_nr)
+static int gic_suspend_one(struct gic_chip_data *gic)
 {
 	unsigned int i;
-	void __iomem *base = gic_data[gic_nr].dist_base;
-	/* Dont disable STI's and PPI's. Assume they are quiesced
-	 * by the suspend framework */
-	for (i = 1; i * 32 < gic_data[gic_nr].max_irq; i++) {
-		gic_data[gic_nr].enabled_irqs[i]
-			= readl(base + GIC_DIST_ENABLE_SET + i * 4);
+	void __iomem *base = gic_data_dist_base(gic);
+
+	for (i = 0; i * 32 < gic->max_irq; i++) {
+		gic->enabled_irqs[i]
+			= readl_relaxed(base + GIC_DIST_ENABLE_SET + i * 4);
 		/* disable all of them */
-		writel(0xffffffff, base + GIC_DIST_ENABLE_CLEAR + i * 4);
+		writel_relaxed(0xffffffff, base + GIC_DIST_ENABLE_CLEAR + i * 4);
 		/* enable the wakeup set */
-		writel(gic_data[gic_nr].wakeup_irqs[i],
+		writel_relaxed(gic->wakeup_irqs[i],
 			base + GIC_DIST_ENABLE_SET + i * 4);
 	}
+	mb();
+	return 0;
 }
 
-void gic_show_resume_irq(unsigned int gic_nr)
+static int gic_suspend(void)
+{
+	int i;
+	for (i = 0; i < MAX_GIC_NR; i++)
+		gic_suspend_one(&gic_data[i]);
+	return 0;
+}
+
+extern int msm_show_resume_irq_mask;
+
+static void gic_show_resume_irq(struct gic_chip_data *gic)
 {
 	unsigned int i;
 	u32 enabled;
 	unsigned long pending[32];
-	void __iomem *base = gic_data[gic_nr].dist_base;
+	void __iomem *base = gic_data_dist_base(gic);
 
-	pending[0] = 0;
-	spin_lock(&irq_controller_lock);
-	for (i = 1; i * 32 < gic_data[gic_nr].max_irq; i++) {
-		enabled = readl(base + GIC_DIST_ENABLE_CLEAR + i * 4);
-		pending[i] = readl(base + GIC_DIST_PENDING_SET + i * 4);
+	if (!msm_show_resume_irq_mask)
+		return;
+
+	for (i = 0; i * 32 < gic->max_irq; i++) {
+		enabled = readl_relaxed(base + GIC_DIST_ENABLE_CLEAR + i * 4);
+		pending[i] = readl_relaxed(base + GIC_DIST_PENDING_SET + i * 4);
 		pending[i] &= enabled;
 	}
 	spin_unlock(&irq_controller_lock);
 
-	for (i = find_first_bit(pending, gic_data[gic_nr].max_irq);
-	     i < gic_data[gic_nr].max_irq;
-	     i = find_next_bit(pending, gic_data[gic_nr].max_irq, i+1)) {
+	for (i = find_first_bit(pending, gic->max_irq);
+	     i < gic->max_irq;
+	     i = find_next_bit(pending, gic->max_irq, i+1)) {
 		pr_warning("%s: %d triggered", __func__,
-					i + gic_data[gic_nr].irq_offset);
+					i + gic->irq_offset);
 	}
 }
 
-void gic_resume(unsigned int gic_nr)
+static void gic_resume_one(struct gic_chip_data *gic)
 {
 	unsigned int i;
-	void __iomem *base = gic_data[gic_nr].dist_base;
-	for (i = 1; i * 32 < gic_data[gic_nr].max_irq; i++) {
+	void __iomem *base = gic_data_dist_base(gic);
+	gic_show_resume_irq(gic);
+	for (i = 0; i * 32 < gic->max_irq; i++) {
 		/* disable all of them */
-		writel(0xffffffff, base + GIC_DIST_ENABLE_CLEAR + i * 4);
+		writel_relaxed(0xffffffff, base + GIC_DIST_ENABLE_CLEAR + i * 4);
 		/* enable the enabled set */
-		writel(gic_data[gic_nr].enabled_irqs[i],
+		writel_relaxed(gic->enabled_irqs[i],
 			base + GIC_DIST_ENABLE_SET + i * 4);
 	}
+	mb();
 }
 
-static int gic_set_wake(unsigned int irq, unsigned int on)
+static void gic_resume(void)
 {
-	unsigned int reg_offset, bit_offset;
-	unsigned int gicirq = gic_irq(irq);
-	struct gic_chip_data *gic_data = get_irq_chip_data(irq);
+	int i;
+	for (i = 0; i < MAX_GIC_NR; i++)
+		gic_resume_one(&gic_data[i]);
+}
 
-	/* per-cpu interrupts cannot be wakeup interrupts */
-	WARN_ON(gicirq < 32);
+static struct syscore_ops gic_syscore_ops = {
+	.suspend = gic_suspend,
+	.resume = gic_resume,
+};
 
-	reg_offset = gicirq / 32;
-	bit_offset = gicirq % 32;
-
-	if (on)
-		gic_data->wakeup_irqs[reg_offset] |=  1 << bit_offset;
-	else
-		gic_data->wakeup_irqs[reg_offset] &=  ~(1 << bit_offset);
-
+static int __init gic_init_sys(void)
+{
+	register_syscore_ops(&gic_syscore_ops);
 	return 0;
 }
-#else
-void gic_suspend(unsigned int gic_nr) {}
-void gic_resume(unsigned int gic_nr) {}
-static int gic_set_wake(unsigned int irq, unsigned int on)
-{
-	return 0;
-}
+arch_initcall(gic_init_sys);
+
 #endif
 
 static void gic_eoi_irq(struct irq_data *d)
