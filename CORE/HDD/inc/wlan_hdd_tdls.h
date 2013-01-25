@@ -105,4 +105,7 @@ int wlan_hdd_tdls_set_rssi(u8 *mac, tANI_S8 rxRssi);
 int wlan_hdd_tdls_set_params(tdls_config_params_t *config);
 
 void wlan_hdd_removeTdlsPeer(tCsrRoamInfo *pRoamInfo);
+
+u8 wlan_hdd_tdlsConnectedPeers(void);
+
 #endif // __HDD_TDSL_H
