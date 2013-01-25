@@ -88,7 +88,9 @@ void wlan_hdd_tdls_exit(void);
 
 u8 wlan_hdd_tdls_extract_da(struct sk_buff *skb, u8 *mac);
 
-int wlan_hdd_tdls_add_peer_to_list(u8 key, u8 *mac);
+u8 wlan_hdd_tdls_extract_sa(struct sk_buff *skb, u8 *mac);
+
+int wlan_hdd_tdls_add_peer_to_list(u8 key, u8 *mac, u8 tx);
 
 int wlan_hdd_saveTdlsPeer(tCsrRoamInfo *pRoamInfo);
 
