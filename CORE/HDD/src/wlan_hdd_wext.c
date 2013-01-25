@@ -5494,23 +5494,34 @@ VOS_STATUS iw_set_pno(struct net_device *dev, struct iw_request_info *info,
     /*Advance to SSID*/
     ptr += nOffset;
 
-    ucParams = sscanf(ptr,"%32s %lu %lu %hhu %n",
-           pnoRequest.aNetworks[i].ssId.ssId,
-           &(pnoRequest.aNetworks[i].authentication),
-           &(pnoRequest.aNetworks[i].encryption),
-           &(pnoRequest.aNetworks[i].ucChannelCount),
-           &nOffset);
+ memcpy(pnoRequest.aNetworks[i].ssId.ssId, ptr,
+           pnoRequest.aNetworks[i].ssId.length);
+    ptr += pnoRequest.aNetworks[i].ssId.length;
+
+    ucParams = sscanf(ptr,"%lu %lu %hhu %n",
+                      &(pnoRequest.aNetworks[i].authentication),
+                      &(pnoRequest.aNetworks[i].encryption),
+                      &(pnoRequest.aNetworks[i].ucChannelCount),
+                      &nOffset);
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-            "PNO len %d ssid %s auth %d encry %d channel count %d offset %d",
-            pnoRequest.aNetworks[i].ssId.length,
-            pnoRequest.aNetworks[i].ssId.ssId,
-            pnoRequest.aNetworks[i].authentication,
-            pnoRequest.aNetworks[i].encryption,
-            pnoRequest.aNetworks[i].ucChannelCount,
-            nOffset );
+              "PNO len %d ssid 0x%08lx%08lx%08lx%08lx%08lx%08lx%08lx%08lx"
+              "auth %d encry %d channel count %d offset %d",
+              pnoRequest.aNetworks[i].ssId.length,
+              *((v_U32_t *) &pnoRequest.aNetworks[i].ssId.ssId[0]),
+              *((v_U32_t *) &pnoRequest.aNetworks[i].ssId.ssId[4]),
+              *((v_U32_t *) &pnoRequest.aNetworks[i].ssId.ssId[8]),
+              *((v_U32_t *) &pnoRequest.aNetworks[i].ssId.ssId[12]),
+              *((v_U32_t *) &pnoRequest.aNetworks[i].ssId.ssId[16]),
+              *((v_U32_t *) &pnoRequest.aNetworks[i].ssId.ssId[20]),
+              *((v_U32_t *) &pnoRequest.aNetworks[i].ssId.ssId[24]),
+              *((v_U32_t *) &pnoRequest.aNetworks[i].ssId.ssId[28]),
+              pnoRequest.aNetworks[i].authentication,
+              pnoRequest.aNetworks[i].encryption,
+              pnoRequest.aNetworks[i].ucChannelCount,
+              nOffset );
 
-    if ( 4 != ucParams )
+    if ( 3 != ucParams )
     {
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                 "Incorrect cmd");
