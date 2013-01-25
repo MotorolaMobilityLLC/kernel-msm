@@ -3639,7 +3639,23 @@ wlan_hdd_cfg80211_inform_bss_frame( hdd_adapter_t *pAdapter,
     freq = ieee80211_channel_to_frequency(chan_no);
 #endif
     chan = __ieee80211_get_channel(wiphy, freq);
-
+    /*when the band is changed on the fly using the GUI, three things are done
+     * 1. scan abort 2.flush scan results from cache 3.update the band with the new band user specified(refer to the hdd_setBand_helper function)
+     * as part of the scan abort, message willbe queued to PE and we proceed with flushing and changinh the band.
+     * pe will stop the scanning further and report back the results what ever it had till now by calling the call back function.
+     * if the time between update band and scandone call back is sufficent enough the band change reflects in SME, SME validates the channels
+     * and discards the channels correponding to previous band and calls back with zero bss results.
+     * but if the time between band update and scan done callback is very small then band change will not reflect in SME and SME reports to HDD
+     * all the channels correponding to previous band.this is due to race condition.but those channels are invalid to the new band and so
+     * this function __ieee80211_get_channel will return NULL.Each time we report scan result with this pointer null warning kernel trace is printed.
+     * if the scan results contain large number of APs continuosly kernel warning trace is printed and it will lead to apps watch dog bark.
+     * So drop the bss and continue to next bss.
+     */
+    if(chan == NULL)
+    {
+       hddLog(VOS_TRACE_LEVEL_INFO, "%s chan pointer is NULL", __func__);
+       return NULL;
+    }
     /*To keep the rssi icon of the connected AP in the scan window
     *and the rssi icon of the wireless networks in sync 
     * */
