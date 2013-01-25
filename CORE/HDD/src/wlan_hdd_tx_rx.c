@@ -1080,7 +1080,7 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
                       "extract mac:%x %x %x %x %x %x",
                       mac[0], mac[1], mac[2], mac[3], mac[4], mac[5] );
 
-            wlan_hdd_tdls_add_peer_to_list(key, mac);
+            wlan_hdd_tdls_add_peer_to_list(key, mac, 1);
         } else {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
                        "packet da is bssid, not adding to peer list");
@@ -1382,6 +1382,31 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
            "Magic cookie(%x) for adapter sanity verification is invalid", pAdapter->magic);
          return eHAL_STATUS_FAILURE;
       }
+
+#ifdef FEATURE_WLAN_TDLS
+    {
+        hdd_station_ctx_t *pHddStaCtx = &pAdapter->sessionCtx.station;
+        u8 key;
+        u8 mac[6];
+
+        key = wlan_hdd_tdls_extract_sa(skb, mac);
+
+        if (vos_is_macaddr_broadcast((v_MACADDR_t *)mac)) {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
+                      "rx broadcast packet, not adding to peer list");
+        } else if (memcmp(pHddStaCtx->conn_info.bssId,
+                            mac, 6) != 0) {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
+                      "rx extract mac:%x %x %x %x %x %x",
+                      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5] );
+
+            wlan_hdd_tdls_add_peer_to_list(key, mac, 0);
+        } else {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
+                       "rx packet sa is bssid, not adding to peer list");
+        }
+    }
+#endif
 
       skb->dev = pAdapter->dev;
       skb->protocol = eth_type_trans(skb, skb->dev);

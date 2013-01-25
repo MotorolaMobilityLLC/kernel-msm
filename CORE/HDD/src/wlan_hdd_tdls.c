@@ -48,6 +48,8 @@ typedef struct {
     tANI_S8     link_status;
     tANI_U16    discovery_attempt;
     tANI_U16    tx_pkt;
+    tANI_U16    rx_pkt;
+    vos_timer_t     peerIdleTimer;
 } hddTdlsPeer_t;
 
 
@@ -57,7 +59,6 @@ typedef struct {
     spinlock_t      lock;
     vos_timer_t     peerDiscoverTimer;
     vos_timer_t     peerUpdateTimer;
-    vos_timer_t     peerIdleTimer;
     tdls_config_params_t threshold_config;
     tANI_S8         ap_rssi;
 } tdlsCtx_t;
@@ -169,13 +170,17 @@ static v_VOID_t wlan_hdd_update_peer_cb( v_PVOID_t userData )
 #endif
                     }
                 } else {
-                    if (curr_peer->tx_pkt <
-                            pHddTdlsCtx->threshold_config.tx_packet_n) {
-                        cfg80211_tdls_oper_request(pHddTdlsCtx->dev,
-                                                   curr_peer->peerMac,
-                                                   NL80211_TDLS_TEARDOWN, FALSE,
-                                                   GFP_KERNEL);
-
+                    if ((curr_peer->tx_pkt > 0 &&
+                            curr_peer->tx_pkt <
+                            pHddTdlsCtx->threshold_config.tx_packet_n) ||
+                        (curr_peer->tx_pkt == 0 &&
+                            curr_peer->rx_pkt == 0)) {
+                        if (VOS_TIMER_STATE_RUNNING !=
+                                vos_timer_getCurrentState(&curr_peer->peerIdleTimer)) {
+                            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, "Tx/Rx Idle!");
+                            vos_timer_start( &curr_peer->peerIdleTimer,
+                                        pHddTdlsCtx->threshold_config.rx_timeout_t );
+                        }
                         goto next_peer;
                     }
 
@@ -195,6 +200,7 @@ static v_VOID_t wlan_hdd_update_peer_cb( v_PVOID_t userData )
 
 next_peer:
             curr_peer->tx_pkt = 0;
+            curr_peer->rx_pkt = 0;
 
             curr_peer = (hddTdlsPeer_t *)curr_peer->node.next;
         } while (&curr_peer->node != curr_peer->node.next);
@@ -202,6 +208,20 @@ next_peer:
 
     vos_timer_start( &pHddTdlsCtx->peerUpdateTimer,
                         pHddTdlsCtx->threshold_config.tx_period_t );
+}
+
+static v_VOID_t wlan_hdd_tdls_idle_cb( v_PVOID_t userData )
+{
+    hddTdlsPeer_t *curr_peer = (hddTdlsPeer_t *)userData;
+
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, "Tx/Rx Idle - teardown!");
+
+#ifdef CONFIG_TDLS_IMPLICIT
+    cfg80211_tdls_oper_request(pHddTdlsCtx->dev,
+                               curr_peer->peerMac,
+                               NL80211_TDLS_TEARDOWN, FALSE,
+                               GFP_KERNEL);
+#endif
 }
 
 int wlan_hdd_tdls_init(struct net_device *dev)
@@ -317,6 +337,13 @@ found_peer:
             key, status);
 
     curr_peer->link_status = status;
+
+    if (eTDLS_LINK_CONNECTED == status) {
+        vos_timer_init(&curr_peer->peerIdleTimer,
+                         VOS_TIMER_TYPE_SW,
+                         wlan_hdd_tdls_idle_cb,
+                         curr_peer);
+    }
 
     return status;
 }
@@ -441,7 +468,19 @@ u8 wlan_hdd_tdls_extract_da(struct sk_buff *skb, u8 *mac)
     return hash;
 }
 
-int wlan_hdd_tdls_add_peer_to_list(u8 key, u8 *mac)
+u8 wlan_hdd_tdls_extract_sa(struct sk_buff *skb, u8 *mac)
+{
+    int i;
+    u8 hash = 0;
+
+    memcpy(mac, skb->data+6, 6);
+    for (i = 0; i < 6; i++)
+       hash ^= mac[i];
+
+    return hash;
+}
+
+int wlan_hdd_tdls_add_peer_to_list(u8 key, u8 *mac, u8 tx)
 {
     hddTdlsPeer_t *new_peer, *curr_peer;
 
@@ -493,7 +532,10 @@ int wlan_hdd_tdls_add_peer_to_list(u8 key, u8 *mac)
     curr_peer = new_peer;
 
 known_peer:
-    curr_peer->tx_pkt++;
+    if (tx)
+        curr_peer->tx_pkt++;
+    else
+        curr_peer->rx_pkt++;
 
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                "known peer - key:%d, mac:%x %x %x %x %x %x, tx:%d",
@@ -643,6 +685,8 @@ found_peer:
     curr_peer->link_status = eTDLS_LINK_NOT_CONNECTED;
     curr_peer->staId = 0;
     curr_peer->rssi = -120;
+    vos_timer_stop( &curr_peer->peerIdleTimer );
+    vos_timer_destroy( &curr_peer->peerIdleTimer );
 }
 
 void wlan_hdd_freeTdlsPeer(void)
