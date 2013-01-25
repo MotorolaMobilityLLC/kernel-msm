@@ -212,7 +212,9 @@ next_peer:
 
 static v_VOID_t wlan_hdd_tdls_idle_cb( v_PVOID_t userData )
 {
+#ifdef CONFIG_TDLS_IMPLICIT
     hddTdlsPeer_t *curr_peer = (hddTdlsPeer_t *)userData;
+#endif
 
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, "Tx/Rx Idle - teardown!");
 
@@ -710,4 +712,27 @@ void wlan_hdd_freeTdlsPeer(void)
             vos_mem_free(curr_peer);
         }
     }
+}
+
+/* TODO: Currently I am using conn_info.staId
+   here as per current design but tdls.c shouldn't
+   have touch this.*/
+u8 wlan_hdd_tdlsConnectedPeers(void)
+{
+    hdd_adapter_t *pAdapter;
+    hdd_station_ctx_t *pHddStaCtx;
+    u8 staIdx;
+    u8 count = 0;
+
+    if (NULL == pHddTdlsCtx) return -1;
+
+    pAdapter = WLAN_HDD_GET_PRIV_PTR(pHddTdlsCtx->dev);
+    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+
+    for ( staIdx = 0 ; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
+    {
+        if (0 != pHddStaCtx->conn_info.staId[staIdx] )
+            count++;
+    }
+    return count;
 }
