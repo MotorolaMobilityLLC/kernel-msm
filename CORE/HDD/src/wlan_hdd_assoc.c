@@ -1847,6 +1847,21 @@ static VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
     return( vosStatus );
 }
 
+static VOS_STATUS hdd_roamDeregisterTDLSSTA( hdd_adapter_t *pAdapter, tANI_U8 staId )
+{
+    VOS_STATUS vosStatus;
+    vosStatus = WLANTL_ClearSTAClient( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext, staId );
+    if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
+                   "%s: WLANTL_ClearSTAClient() failed to for staID %d.  "
+                   "Status= %d [0x%08lX]",
+                   __func__, staId, vosStatus, vosStatus );
+    }
+    return( vosStatus );
+}
+
+
 /*
  * HDD interface between SME and TL to ensure TDLS client registration with
  * TL in case of new TDLS client is added and deregistration at the time
@@ -1946,7 +1961,7 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                                ("HDD: del STA IDX = %x\n"), pRoamInfo->staId) ;
                 wlan_hdd_removeTdlsPeer(pRoamInfo);
-                hdd_roamDeregisterSTA( pAdapter, pRoamInfo->staId );
+                hdd_roamDeregisterTDLSSTA ( pAdapter, pRoamInfo->staId );
                 (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = NULL;
             }
             break ; 
