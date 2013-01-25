@@ -1217,6 +1217,8 @@ void __init mmi_pm8921_init(struct mmi_oem_data *mmi_data, void *pdata)
 		pm8921_pdata->charger_pdata->meter_lock =
 			mmi_data->is_meter_locked();
 
+	battery_timeout = mmi_data->is_factory();
+
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	pm8921_pdata->charger_pdata->hot_temp = get_hot_temp_dt();
 	pm8921_pdata->charger_pdata->hot_temp_offset = get_hot_offset_dt();
