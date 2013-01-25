@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,14 +18,14 @@
 #define EVENT_MASKS_TYPE		4
 #define PKT_TYPE			8
 #define DEINIT_TYPE			16
-#define USER_SPACE_LOG_TYPE		32
+#define USER_SPACE_DATA_TYPE		32
 #define DCI_DATA_TYPE			64
 #define USB_MODE			1
 #define MEMORY_DEVICE_MODE		2
 #define NO_LOGGING_MODE			3
 #define UART_MODE			4
 #define SOCKET_MODE			5
-
+#define CALLBACK_MODE			6
 /* different values that go in for diag_data_type */
 #define DATA_TYPE_EVENT         	0
 #define DATA_TYPE_F3            	1
@@ -43,6 +43,7 @@
 #define DIAG_IOCTL_DCI_REG		23
 #define DIAG_IOCTL_DCI_STREAM_INIT	24
 #define DIAG_IOCTL_DCI_HEALTH_STATS	25
+#define DIAG_IOCTL_REMOTE_DEV		32
 
 /* PC Tools IDs */
 #define APQ8060_TOOLS_ID	4062
@@ -111,7 +112,7 @@ the appropriate macros. */
 /* This needs to be modified manually now, when we add
  a new RANGE of SSIDs to the msg_mask_tbl */
 #define MSG_MASK_TBL_CNT		24
-#define EVENT_LAST_ID			0x08AD
+#define EVENT_LAST_ID			0x099F
 
 #define MSG_SSID_0			0
 #define MSG_SSID_0_LAST			93
@@ -674,24 +675,24 @@ static const uint32_t msg_bld_masks_21[] = {
 };
 
 static const uint32_t msg_bld_masks_22[] = {
-	MSG_LVL_HIGH,
-	MSG_LVL_HIGH,
-	MSG_LVL_HIGH,
-	MSG_LVL_HIGH,
-	MSG_LVL_HIGH,
-	MSG_LVL_HIGH,
-	MSG_LVL_HIGH,
-	MSG_LVL_HIGH,
-	MSG_LVL_HIGH,
-	MSG_LVL_HIGH,
-	MSG_LVL_HIGH,
-	MSG_LVL_HIGH
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW
 };
 
 /* LOG CODES */
 
 #define LOG_0	0x0
-#define LOG_1	0x15A7
+#define LOG_1	0x1750
 #define LOG_2	0x0
 #define LOG_3	0x0
 #define LOG_4	0x4910
