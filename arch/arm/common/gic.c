@@ -377,6 +377,35 @@ static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 }
 #endif
 
+#ifdef CONFIG_PM
+static int gic_set_wake(struct irq_data *d, unsigned int on)
+{
+	int ret = -ENXIO;
+	unsigned int reg_offset, bit_offset;
+	unsigned int gicirq = gic_irq(d);
+	struct gic_chip_data *gic_data = irq_data_get_irq_chip_data(d);
+
+	/* per-cpu interrupts cannot be wakeup interrupts */
+	WARN_ON(gicirq < 32);
+
+	reg_offset = gicirq / 32;
+	bit_offset = gicirq % 32;
+
+	if (on)
+		gic_data->wakeup_irqs[reg_offset] |=  1 << bit_offset;
+	else
+		gic_data->wakeup_irqs[reg_offset] &=  ~(1 << bit_offset);
+
+	if (gic_arch_extn.irq_set_wake)
+		ret = gic_arch_extn.irq_set_wake(d, on);
+
+	return ret;
+}
+
+#else
+#define gic_set_wake	NULL
+#endif
+
 asmlinkage void __exception_irq_entry gic_handle_irq(struct pt_regs *regs)
 {
 	u32 irqstat, irqnr;
