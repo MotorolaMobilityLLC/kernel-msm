@@ -3822,6 +3822,36 @@ eHalStatus sme_GetRssi(tHalHandle hHal,
    }
    return (status);
 }
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+/* ---------------------------------------------------------------------------
+    \fn sme_GetRoamRssi
+    \brief a wrapper function that client calls to register a callback to get Roam RSSI
+
+    \param callback - SME sends back the requested stats using the callback
+    \param staId - The station ID for which the stats is requested for
+    \param pContext - user context to be passed back along with the callback
+    \param pVosContext - vos context
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+eHalStatus sme_GetRoamRssi(tHalHandle hHal,
+                             tCsrRssiCallback callback,
+                             tANI_U8 staId, tCsrBssid bssId,
+                             void *pContext, void* pVosContext)
+{
+   eHalStatus status = eHAL_STATUS_FAILURE;
+   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+   status = sme_AcquireGlobalLock( &pMac->sme );
+   if ( HAL_STATUS_SUCCESS( status ) )
+   {
+      status = csrGetRoamRssi( pMac, callback,
+                                 staId, bssId, pContext, pVosContext);
+      sme_ReleaseGlobalLock( &pMac->sme );
+   }
+   return (status);
+}
+#endif
+
 
 /* ---------------------------------------------------------------------------
     \fn sme_GetStatistics

@@ -771,7 +771,14 @@ eHalStatus sme_GetStatistics(tHalHandle hHal, eCsrStatsRequesterType requesterId
 eHalStatus sme_GetRssi(tHalHandle hHal, 
                              tCsrRssiCallback callback, 
                              tANI_U8 staId, tCsrBssid bssId, void *pContext, void* pVosContext);
-
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+eHalStatus sme_GetRoamRssi(tHalHandle hHal,
+                           tCsrRssiCallback callback,
+                           tANI_U8 staId,
+                           tCsrBssid bssId,
+                           void *pContext,
+                           void* pVosContext);
+#endif
 /* ---------------------------------------------------------------------------
     \fn sme_CfgSetInt
     \brief a wrapper function that HDD calls to set parameters in CFG. 

@@ -4918,6 +4918,136 @@ VOS_STATUS WDA_ProcessGetStatsReq(tWDA_CbContext *pWDA,
    vos_mem_free(pGetStatsParams);
    return CONVERT_WDI2VOS_STATUS(status);
 }
+
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+/*
+ * FUNCTION: WDA_GetGetRssiReqRoamRssiReqParamsCallback
+ * send the response to PE with roam Rssi received from WDI
+ */
+void WDA_GetRoamRssiReqParamsCallback(
+                              WDI_GetRoamRssiRspParamsType *wdiGetRoamRssiRsp,
+                              void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+   tWDA_CbContext *pWDA = NULL;
+   tAniGetRoamRssiRsp *pGetRoamRssiRspParams = NULL;
+   tpAniGetRssiReq  pGetRoamRssiReqParams = NULL;
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                                          "<------ %s " ,__func__);
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0) ;
+      return ;
+   }
+   pWDA = (tWDA_CbContext *)pWdaParams->pWdaContext;
+   pGetRoamRssiReqParams = (tAniGetRssiReq *)pWdaParams->wdaMsgParam;
+
+   if(NULL == pGetRoamRssiReqParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                  "%s: pGetRoamRssiReqParams received NULL", __func__);
+      VOS_ASSERT(0);
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+      vos_mem_free(pWdaParams);
+      return ;
+   }
+   pGetRoamRssiRspParams =
+       (tAniGetRoamRssiRsp *)vos_mem_malloc(sizeof(tAniGetRoamRssiRsp));
+
+   if(NULL == pGetRoamRssiRspParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
+   vos_mem_set(pGetRoamRssiRspParams, sizeof(tAniGetRoamRssiRsp), 0);
+   pGetRoamRssiRspParams->rc =
+                      CONVERT_WDI2VOS_STATUS(wdiGetRoamRssiRsp->wdiStatus);
+   pGetRoamRssiRspParams->staId   = wdiGetRoamRssiRsp->ucSTAIdx;
+   pGetRoamRssiRspParams->rssi = wdiGetRoamRssiRsp->rssi;
+
+   /* Assign get roam rssi req (backup) in to the response */
+   pGetRoamRssiRspParams->rssiReq = pGetRoamRssiReqParams;
+
+   /* free WDI command buffer */
+   vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+   vos_mem_free(pWdaParams) ;
+
+  /* send response to UMAC*/
+   WDA_SendMsg(pWDA, WDA_GET_ROAM_RSSI_RSP, pGetRoamRssiRspParams , 0) ;
+
+   return;
+}
+
+
+
+/*
+ * FUNCTION: WDA_ProcessGetRoamRssiReq
+ * Request to WDI to get the statistics
+ */
+VOS_STATUS WDA_ProcessGetRoamRssiReq(tWDA_CbContext *pWDA,
+                                    tAniGetRssiReq *pGetRoamRssiParams)
+{
+   WDI_Status status = WDI_STATUS_SUCCESS ;
+   WDI_GetRoamRssiReqParamsType wdiGetRoamRssiParam;
+   tAniGetRoamRssiRsp *pGetRoamRssiRspParams = NULL;
+   tWDA_ReqParams *pWdaParams = NULL;
+
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                                          "------> %s " ,__func__);
+   wdiGetRoamRssiParam.wdiGetRoamRssiParamsInfo.ucSTAIdx =
+                                          pGetRoamRssiParams->staId;
+   wdiGetRoamRssiParam.wdiReqStatusCB = NULL ;
+
+   pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams)) ;
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      return VOS_STATUS_E_NOMEM;
+   }
+
+   /* Store Init Req pointer, as this will be used for response */
+   pWdaParams->pWdaContext = pWDA;
+
+   /* Take Get roam Rssi req backup as it stores the callback to be called after
+      receiving the response */
+   pWdaParams->wdaMsgParam = pGetRoamRssiParams;
+   pWdaParams->wdaWdiApiMsgParam = NULL;
+
+   status = WDI_GetRoamRssiReq(&wdiGetRoamRssiParam,
+       (WDI_GetRoamRssiRspCb)WDA_GetRoamRssiReqParamsCallback, pWdaParams);
+   if(IS_WDI_STATUS_FAILURE(status))
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+          "Failure in Get RoamRssi Req WDI API, free all the memory status=%d", status );
+      pGetRoamRssiRspParams =
+         (tAniGetRoamRssiRsp *)vos_mem_malloc(sizeof(tAniGetRoamRssiRsp));
+      if(NULL == pGetRoamRssiRspParams)
+      {
+          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __func__);
+          VOS_ASSERT(0);
+          vos_mem_free(pGetRoamRssiParams);
+          vos_mem_free(pWdaParams);
+          return VOS_STATUS_E_NOMEM;
+      }
+      pGetRoamRssiRspParams->staId = pGetRoamRssiParams->staId;
+      pGetRoamRssiRspParams->rc    = eSIR_FAILURE;
+      pGetRoamRssiRspParams->rssi    = 0;
+      pGetRoamRssiRspParams->rssiReq = pGetRoamRssiParams;
+      WDA_SendMsg(pWDA, WDA_GET_ROAM_RSSI_RSP,
+                                 (void *)pGetRoamRssiRspParams, 0) ;
+   }
+   return CONVERT_WDI2VOS_STATUS(status);
+}
+#endif
+
+
 /*
  * FUNCTION: WDA_UpdateEDCAParamCallback
  * call back function for Update EDCA params from WDI
@@ -9599,6 +9729,13 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          WDA_ProcessGetStatsReq(pWDA, (tAniGetPEStatsReq *)pMsg->bodyptr);
          break;
       }
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+      case WDA_GET_ROAM_RSSI_REQ:
+      {
+         WDA_ProcessGetRoamRssiReq(pWDA, (tAniGetRssiReq *)pMsg->bodyptr);
+         break;
+      }
+#endif
       case WDA_PWR_SAVE_CFG:
       {
          if(pWDA->wdaState == WDA_READY_STATE)

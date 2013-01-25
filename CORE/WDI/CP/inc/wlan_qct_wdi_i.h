@@ -439,6 +439,9 @@ typedef enum
   WDI_UPDATE_VHT_OP_MODE_REQ                    = 80,
 #endif
 
+  /*WLAN DAL Get Roam Rssi Request*/
+  WDI_GET_ROAM_RSSI_REQ                         = 81,
+
   WDI_MAX_REQ,
 
   /*Send a suspend Indication down to HAL*/
@@ -696,6 +699,9 @@ typedef enum
 #ifdef WLAN_FEATURE_11AC
   WDI_UPDATE_VHT_OP_MODE_RESP                   = 79,
 #endif
+
+  /* WLAN DAL Get Roam Rssi Response*/
+  WDI_GET_ROAM_RSSI_RESP                        = 80,
 
   /*-------------------------------------------------------------------------
     Indications
@@ -1995,6 +2001,45 @@ WDI_ProcessGetStatsReq
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
+
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+/**
+ @brief Process Get Roam rssi Request function (called when Main FSM
+        allows it)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessGetRoamRssiReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
+
+/**
+ @brief Process Get Roam Rssi Rsp function (called when a response is
+        being received over the bus from HAL)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessGetRoamRssiRsp
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
+#endif
+
 
 /**
  @brief Process Update Cfg Request function (called when Main 

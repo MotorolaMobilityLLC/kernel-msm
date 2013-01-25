@@ -8362,6 +8362,41 @@ static void csrUpdateRssi(tpAniSirGlobal pMac, void* pMsg)
     }
     return;
 }
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+void csrRoamRssiRspProcessor(tpAniSirGlobal pMac, void* pMsg)
+{
+    v_S7_t  rssi = 0;
+    tAniGetRoamRssiRsp* pRoamRssiRsp = (tAniGetRoamRssiRsp*)pMsg;
+
+    /* Get roam Rssi request is backed up and passed back to the response,
+       Extract the request message to fetch callback */
+    tpAniGetRssiReq reqBkp = (tAniGetRssiReq*)pRoamRssiRsp->rssiReq;
+    if(pRoamRssiRsp)
+    {
+        rssi = pRoamRssiRsp->rssi;
+        if((reqBkp) && (NULL != reqBkp->rssiCallback))
+        {
+            ((tCsrRssiCallback)(reqBkp->rssiCallback))(rssi, pRoamRssiRsp->staId, reqBkp->pDevContext);
+            reqBkp->rssiCallback = NULL;
+            vos_mem_free(reqBkp);
+        }
+        else
+        {
+            smsLog( pMac, LOGE, FL("reqBkp->rssiCallback is NULL"));
+            if (NULL != reqBkp)
+            {
+                vos_mem_free(reqBkp);
+            }
+        }
+    }
+    else
+    {
+        smsLog( pMac, LOGE, FL("pRoamRssiRsp is NULL"));
+    }
+    return;
+}
+#endif
+
 static void csrRoamRssiIndHdlr(tpAniSirGlobal pMac, void* pMsg)
 {
     WLANTL_TlIndicationReq *pTlRssiInd = (WLANTL_TlIndicationReq*)pMsg;
@@ -8374,12 +8409,12 @@ static void csrRoamRssiIndHdlr(tpAniSirGlobal pMac, void* pMsg)
         }
         else
         {
-            smsLog( pMac, LOGE, FL("pTlRssiInd->tlCallback is NULL\n"));                
+            smsLog( pMac, LOGE, FL("pTlRssiInd->tlCallback is NULL\n"));
         }
     }
     else
     {
-        smsLog( pMac, LOGE, FL("pTlRssiInd is NULL\n"));    
+        smsLog( pMac, LOGE, FL("pTlRssiInd is NULL\n"));
     }
     return;
 }
@@ -9231,6 +9266,12 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
             smsLog( pMac, LOG2, FL("Stats rsp from PE\n"));
             csrRoamStatsRspProcessor( pMac, pSirMsg );
             break;
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+        case eWNI_SME_GET_ROAM_RSSI_RSP:
+            smsLog( pMac, LOG2, FL("Stats rsp from PE"));
+            csrRoamRssiRspProcessor( pMac, pSirMsg );
+            break;
+#endif
         case eWNI_SME_GET_RSSI_REQ:
             smsLog( pMac, LOG2, FL("GetRssiReq from self\n"));
             csrUpdateRssi( pMac, pSirMsg );
@@ -13990,6 +14031,39 @@ eHalStatus csrGetRssi(tpAniSirGlobal pMac,
    smsLog(pMac, LOG2, FL("returned"));      
    return status;
 }
+
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+eHalStatus csrGetRoamRssi(tpAniSirGlobal pMac,
+                            tCsrRssiCallback callback,
+                            tANI_U8 staId, tCsrBssid bssId, void *pContext, void* pVosContext)
+{
+   eHalStatus status = eHAL_STATUS_SUCCESS;
+   tAniGetRssiReq *pMsg;
+
+   status = palAllocateMemory(pMac->hHdd, (void **)&pMsg, sizeof(tAniGetRssiReq));
+   if ( !HAL_STATUS_SUCCESS(status) )
+   {
+      smsLog(pMac, LOGE, " csrGetRoamRssi: failed to allocate mem for req");
+      return status;
+   }
+   // need to initiate a stats request to PE
+   pMsg->msgType = pal_cpu_to_be16((tANI_U16)eWNI_SME_GET_ROAM_RSSI_REQ);
+   pMsg->msgLen = (tANI_U16)sizeof(tAniGetRssiReq);
+   pMsg->staId = staId;
+   pMsg->rssiCallback = callback;
+   pMsg->pDevContext = pContext;
+   pMsg->pVosContext = pVosContext;
+   status = palSendMBMessage(pMac->hHdd, pMsg );
+   if(!HAL_STATUS_SUCCESS(status))
+   {
+      smsLog(pMac, LOG1, " csrGetRoamRssi: failed to send down the stats req");
+      palFreeMemory(pMac->hHdd, (void *)pMsg);
+      status = eHAL_STATUS_FAILURE;
+   }
+   return status;
+}
+#endif
+
 eHalStatus csrGetStatistics(tpAniSirGlobal pMac, eCsrStatsRequesterType requesterId, 
                             tANI_U32 statsMask, 
                             tCsrStatsCallback callback, 
