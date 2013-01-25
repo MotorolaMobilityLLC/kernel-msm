@@ -106,6 +106,7 @@
 #define INTERRUPT_STATUS		0x3A
 
 #define ACCEL_X				0x3B
+#define LIN_ACCEL_X         0x3C
 
 #define DOCK_DATA			0x3F
 
@@ -635,6 +636,23 @@ static void msp430_irq_work_func(struct work_struct *work)
 		msp430_as_data_buffer_write(ps_msp430, DT_ACCEL, x, y, z, 0);
 
 		KDEBUG("MSP430 Sending acc(x,y,z)values:x=%d,y=%d,z=%d\n",
+			x, y, z);
+	}
+	if (irq_status & M_LIN_ACCEL) {
+		/* read linear accelerometer values from MSP */
+		msp_cmdbuff[0] = LIN_ACCEL_X;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 6);
+		if (err < 0) {
+			pr_err("MSP430 Reading Linear Accel from msp failed\n");
+			goto EXIT;
+		}
+
+		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
+		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
+		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
+		msp430_as_data_buffer_write(ps_msp430, DT_LIN_ACCEL, x, y, z, 0);
+
+		KDEBUG("MSP430 Sending lin_acc(x,y,z)values:x=%d,y=%d,z=%d\n",
 			x, y, z);
 	}
 	if (irq_status & M_ECOMPASS) {
