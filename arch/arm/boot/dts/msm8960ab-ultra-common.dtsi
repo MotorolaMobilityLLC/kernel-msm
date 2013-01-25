@@ -18,3 +18,18 @@
 
 	mmi,product = "mmi,msm8960ab-ultra";
 };
+
+&i2c3 {
+	/* FRONT TOUCH */
+	sy3400@20 {
+		compatible = "synaptics,sy3400";
+		reg = <0x20>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <46 0>;
+		gpios = <&msmgpio 46 0>, /* IRQ */
+			<&msmgpio 63 0>; /* RESET */
+
+		always_on_capable = <1>;
+		synaptics,sy3400-tdat-filename = "sy3400-r0.tdat";
+	};
+};
