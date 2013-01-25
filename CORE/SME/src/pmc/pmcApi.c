@@ -2932,10 +2932,28 @@ eHalStatus pmcSetPreferredNetworkList
     vos_msg_t msg;
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
-    tANI_U8 ucDot11Mode; 
+    tANI_U8 ucDot11Mode;
 
-    VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s: SSID = %s, %s", __func__,
-        pRequest->aNetworks[0].ssId.ssId, pRequest->aNetworks[1].ssId.ssId);
+    VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+               "%s: SSID = 0x%08lx%08lx%08lx%08lx%08lx%08lx%08lx%08lx, "
+               "0x%08lx%08lx%08lx%08lx%08lx%08lx%08lx%08lx", __func__,
+               *((v_U32_t *) &pRequest->aNetworks[0].ssId.ssId[0]),
+               *((v_U32_t *) &pRequest->aNetworks[0].ssId.ssId[4]),
+               *((v_U32_t *) &pRequest->aNetworks[0].ssId.ssId[8]),
+               *((v_U32_t *) &pRequest->aNetworks[0].ssId.ssId[12]),
+               *((v_U32_t *) &pRequest->aNetworks[0].ssId.ssId[16]),
+               *((v_U32_t *) &pRequest->aNetworks[0].ssId.ssId[20]),
+               *((v_U32_t *) &pRequest->aNetworks[0].ssId.ssId[24]),
+               *((v_U32_t *) &pRequest->aNetworks[0].ssId.ssId[28]),
+               *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[0]),
+               *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[4]),
+               *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[8]),
+               *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[12]),
+               *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[16]),
+               *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[20]),
+               *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[24]),
+               *((v_U32_t *) &pRequest->aNetworks[1].ssId.ssId[28]));
+
 
     pRequestBuf = vos_mem_malloc(sizeof(tSirPNOScanReq));
     if (NULL == pRequestBuf)
