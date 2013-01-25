@@ -418,33 +418,51 @@
 		pin@801370 {
 			reg = <0x801370 0x10>;
 			qcom,pin-num = <55>;
-			qcom,suspended@1 {
+			qcom,active@0 {
 				qcom,func = <1>;  /* codec_mic_i2s_sck      */
 				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <3>;   /* 8ma                    */
 				qcom,dir = <0>;   /* n/a                    */
+			};
+			qcom,suspended@1 {
+				qcom,func = <0>;  /* gpio_in_out(55)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* in                     */
 			};
 		};
 
 		pin@801380 {
 			reg = <0x801380 0x10>;
 			qcom,pin-num = <56>;
-			qcom,suspended@1 {
+			qcom,active@0 {
 				qcom,func = <1>;  /* codec_mic_i2s_ws       */
 				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <3>;   /* 8ma                    */
 				qcom,dir = <0>;   /* n/a                    */
+			};
+			qcom,suspended@1 {
+				qcom,func = <0>;  /* gpio_in_out(56)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* in                     */
 			};
 		};
 
 		pin@801390 {
 			reg = <0x801390 0x10>;
 			qcom,pin-num = <57>;
-			qcom,suspended@1 {
+			qcom,active@0 {
 				qcom,func = <1>;  /* codec_mic_i2s_din0     */
 				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <3>;   /* 8ma                    */
 				qcom,dir = <0>;   /* n/a                    */
+			};
+			qcom,suspended@1 {
+				qcom,func = <0>;  /* gpio_in_out(57)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <0>;   /* in                     */
 			};
 		};
 
