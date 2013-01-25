@@ -2682,6 +2682,56 @@ typedef struct
    * structure depending on statsMask.*/
 }WDI_GetStatsRspParamsType;
 
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+/*---------------------------------------------------------------------------
+  WDI_GetRoamRssiParamsInfoType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  /*Indicates the station for which Get Stats are requested..*/
+  wpt_uint8        ucSTAIdx;
+
+  /* categories of stats requested */
+  wpt_uint32       uStatsMask;
+}WDI_GetRoamRssiParamsInfoType;
+
+/*---------------------------------------------------------------------------
+  WDI_GetRoamRssiReqParamsType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  /*Get Roam Rssi Params  Info*/
+  WDI_GetRoamRssiParamsInfoType  wdiGetRoamRssiParamsInfo;
+
+  /*Request status callback offered by UMAC - it is called if the current
+    req has returned PENDING as status; it delivers the status of sending
+    the message over the BUS */
+  WDI_ReqStatusCb   wdiReqStatusCB;
+
+  /*The user data passed in by UMAC, it will be sent back when the above
+    function pointer will be called */
+  void*             pUserData;
+}WDI_GetRoamRssiReqParamsType;
+
+/*---------------------------------------------------------------------------
+  WDI_GetRoamRssiRspParamsType
+---------------------------------------------------------------------------*/
+typedef struct
+{
+  /*Result of the operation*/
+  WDI_Status       wdiStatus;
+
+  /*Indicates the station for which Get Stats are requested..*/
+  wpt_uint8        ucSTAIdx;
+
+  /* roam rssi requested */
+  wpt_int8       rssi;
+
+  /* The Stats buffer starts here and can be an aggregate of more than one statistics
+   * structure depending on statsMask.*/
+}WDI_GetRoamRssiRspParamsType;
+#endif
+
 #ifdef FEATURE_WLAN_CCX
 /*---------------------------------------------------------------------------
   WDI_TSMStatsParamsInfoType
@@ -5289,6 +5339,29 @@ typedef void  (*WDI_SetLinkStateRspCb)( WDI_Status   wdiStatus,
 ---------------------------------------------------------------------------*/
 typedef void  (*WDI_GetStatsRspCb)(WDI_GetStatsRspParamsType*  pwdiGetStatsRsp,
                                    void*                       pUserData);
+
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+/*---------------------------------------------------------------------------
+   WDI_GetRoamRssiRspCb
+
+   DESCRIPTION
+
+   This callback is invoked by DAL when it has received a Get Roam Rssi response
+   from the underlying device.
+
+   PARAMETERS
+
+    IN
+    wdiRspParams:  response parameters received from HAL
+    pUserData:      user data
+
+
+  RETURN VALUE
+    The result code associated with performing the operation
+---------------------------------------------------------------------------*/
+typedef void  (*WDI_GetRoamRssiRspCb)(WDI_GetRoamRssiRspParamsType* pwdiGetRoamRssiRsp,
+                                      void*                         pUserData);
+#endif
 
  
 /*---------------------------------------------------------------------------
@@ -8362,6 +8435,39 @@ WDI_GetStatsReq
   void*                      pUserData
 );
 
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+/**
+ @brief WDI_GetRoamRssiReq will be called when the upper MAC wants
+        to get roam rssi from the device. Upon
+        the call of this API the WLAN DAL will pack and send a
+        HAL Start request message to the lower RIVA sub-system
+        if DAL is in state STARTED.
+
+        In state BUSY this request will be queued. Request won't
+        be allowed in any other state.
+
+ WDI_Start must have been called.
+
+ @param wdiGetRoamRssiReqParams: the stats parameters to get as
+                      specified by the Device Interface
+
+        wdiGetRoamRssispCb: callback for passing back the response
+        of the get stats operation received from the device
+
+        pUserData: user data will be passed back with the
+        callback
+
+ @see WDI_Start
+ @return Result of the function call
+*/
+WDI_Status
+WDI_GetRoamRssiReq
+(
+  WDI_GetRoamRssiReqParamsType* pwdiGetRoamRssiReqParams,
+  WDI_GetRoamRssiRspCb          wdiGetRoamRssiRspCb,
+  void*                      pUserData
+);
+#endif
 
 /**
  @brief WDI_UpdateCfgReq will be called when the upper MAC when 
