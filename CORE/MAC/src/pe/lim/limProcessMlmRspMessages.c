@@ -2852,7 +2852,7 @@ void limSetLinkStateForPostAssocCallback(tpAniSirGlobal pMac, void *msgParam )
 
     pMlmReassocReq = (tLimMlmReassocReq *)(psessionEntry->pLimMlmReassocReq);
 
-    limPrintMacAddr(pMac, pAddBssParams->bssId, LOGE);
+    limPrintMacAddr(pMac, pAddBssParams->bssId, LOG1);
 
     if ((pStaDs = dphAddHashEntry(pMac, pAddBssParams->bssId, DPH_STA_HASH_INDEX_PEER,
         &psessionEntry->dph.dphHashTable)) == NULL)
@@ -2895,7 +2895,7 @@ void limSetLinkStateForPostAssocCallback(tpAniSirGlobal pMac, void *msgParam )
 
     psessionEntry->limPrevMlmState = psessionEntry->limMlmState;
     psessionEntry->limMlmState = eLIM_MLM_WT_FT_REASSOC_RSP_STATE;
-    PELOGE(limLog(pMac, LOGE,  FL("Set the mlm state to %d session=%d\n"),
+    PELOGE(limLog(pMac, LOG1,  FL("Set the mlm state to %d session=%d"),
         psessionEntry->limMlmState, psessionEntry->peSessionId);)
 
     psessionEntry->bssIdx     = (tANI_U8) pAddBssParams->bssIdx;
@@ -3172,7 +3172,7 @@ limProcessStaMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession ps
         if( eLIM_MLM_WT_ADD_BSS_RSP_FT_REASSOC_STATE == psessionEntry->limMlmState )
         {
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-            PELOGE(limLog(pMac, LOGE, FL("Mlm=%d %d\n"),
+            PELOGE(limLog(pMac, LOG1, FL("Mlm=%d %d"),
                 psessionEntry->limMlmState,
                 eLIM_MLM_WT_ADD_BSS_RSP_REASSOC_STATE);)
 #endif

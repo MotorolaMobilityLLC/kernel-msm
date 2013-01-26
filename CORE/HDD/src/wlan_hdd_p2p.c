@@ -63,6 +63,9 @@
 #include <linux/skbuff.h>
 #include <linux/etherdevice.h>
 #include <net/ieee80211_radiotap.h>
+#ifdef FEATURE_WLAN_TDLS
+#include "wlan_hdd_tdls.h"
+#endif
 
 //Ms to Micro Sec
 #define MS_TO_MUS(x)   ((x)*1000);
@@ -86,6 +89,20 @@ const char *p2p_action_frame_type[]={"GO Negotiation Request",
  */
 tP2PConnectionStatus globalP2PConnectionStatus = P2P_NOT_ACTIVE;
 
+#endif
+#ifdef WLAN_FEATURE_TDLS_DEBUG
+#define MAX_TDLS_ACTION_FRAME_TYPE 11
+const char *tdls_action_frame_type[] = {"TDLS Setup Request",
+                                        "TDLS Setup Response",
+                                        "TDLS Setup Confirm",
+                                        "TDLS Teardown",
+                                        "TDLS Peer Traffic Indication",
+                                        "TDLS Channel Switch Request",
+                                        "TDLS Channel Switch Response",
+                                        "TDLS Peer PSM Request",
+                                        "TDLS Peer PSM Response",
+                                        "TDLS Peer Traffic Response",
+                                        "TDLS Discovery Request" };
 #endif
 
 extern struct net_device_ops net_ops_struct;
@@ -514,7 +531,7 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
             (buf[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_PUBLIC_ACTION_FRAME))
     {
         actionFrmType = buf[WLAN_HDD_PUBLIC_ACTION_FRAME_TYPE_OFFSET];
-        if(actionFrmType > MAX_P2P_ACTION_FRAME_TYPE)
+        if(actionFrmType >= MAX_P2P_ACTION_FRAME_TYPE)
         {
             hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P] unknown[%d] ---> OTA",
                                    actionFrmType);
@@ -697,6 +714,7 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
        )
     {
         tANI_U8 sessionId = pAdapter->sessionId;
+
         if ((type == SIR_MAC_MGMT_FRAME) &&
                 (subType == SIR_MAC_MGMT_ACTION) &&
                 (buf[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_PUBLIC_ACTION_FRAME))
@@ -1315,54 +1333,84 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
     cfgState = WLAN_HDD_GET_CFG_STATE_PTR( pAdapter );
     
     if ((type == SIR_MAC_MGMT_FRAME) && 
-            (subType == SIR_MAC_MGMT_ACTION) &&
-            (pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_PUBLIC_ACTION_FRAME))
+        (subType == SIR_MAC_MGMT_ACTION))
     {
-        actionFrmType = pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_TYPE_OFFSET];
-        hddLog(LOG1, "Rx Action Frame %u", actionFrmType);
+        if(pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_PUBLIC_ACTION_FRAME)
+        {
+            // public action frame
+            if((pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+1] == SIR_MAC_ACTION_VENDOR_SPECIFIC) &&
+                !vos_mem_compare(&pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+2], SIR_MAC_P2P_OUI, SIR_MAC_P2P_OUI_SIZE))
+            // P2P action frames
+            {
+                actionFrmType = pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_TYPE_OFFSET];
+                hddLog(LOG1, "Rx Action Frame %u \n", actionFrmType);
 #ifdef WLAN_FEATURE_P2P_DEBUG
-        if(actionFrmType > MAX_P2P_ACTION_FRAME_TYPE)
-        {
-            hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P] unknown[%d] <--- OTA",
-                                                        actionFrmType);
-        }
-        else
-        {
-            hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P] %s <--- OTA",
-            p2p_action_frame_type[actionFrmType]);
-            if( (actionFrmType == WLAN_HDD_PROV_DIS_REQ) &&
-                (globalP2PConnectionStatus == P2P_NOT_ACTIVE) )
-            {
-                 globalP2PConnectionStatus = P2P_GO_NEG_PROCESS;
-                 hddLog(LOGE,"[P2P State]Inactive state to "
+                if(actionFrmType >= MAX_P2P_ACTION_FRAME_TYPE)
+                {
+                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P] unknown[%d] <--- OTA",
+                                                                actionFrmType);
+                }
+                else
+                {
+                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P] %s <--- OTA",
+                    p2p_action_frame_type[actionFrmType]);
+                    if( (actionFrmType == WLAN_HDD_PROV_DIS_REQ) &&
+                        (globalP2PConnectionStatus == P2P_NOT_ACTIVE) )
+                    {
+                         globalP2PConnectionStatus = P2P_GO_NEG_PROCESS;
+                         hddLog(LOGE,"[P2P State]Inactive state to "
                            "GO negotiation progress state");
-            }
-            else if( (actionFrmType == WLAN_HDD_GO_NEG_CNF) &&
-                (globalP2PConnectionStatus == P2P_GO_NEG_PROCESS) )
-            {
-                 globalP2PConnectionStatus = P2P_GO_NEG_COMPLETED;
+                    }
+                    else if( (actionFrmType == WLAN_HDD_GO_NEG_CNF) &&
+                        (globalP2PConnectionStatus == P2P_GO_NEG_PROCESS) )
+                    {
+                         globalP2PConnectionStatus = P2P_GO_NEG_COMPLETED;
                  hddLog(LOGE,"[P2P State]GO negotiation progress to "
                              "GO negotiation completed state");
+                    }
+                    else if( (actionFrmType == WLAN_HDD_INVITATION_REQ) &&
+                        (globalP2PConnectionStatus == P2P_NOT_ACTIVE) )
+                    {
+                         globalP2PConnectionStatus = P2P_GO_NEG_COMPLETED;
+                         hddLog(LOGE,"[P2P State]Inactive state to GO negotiation"
+                                     " completed state Autonomous GO formation");
+                    }
+                }
+#endif
+
+                if (((actionFrmType == WLAN_HDD_PROV_DIS_RESP) &&
+                            (cfgState->actionFrmState == HDD_PD_REQ_ACK_PENDING)) ||
+                        ((actionFrmType == WLAN_HDD_GO_NEG_RESP) &&
+                         (cfgState->actionFrmState == HDD_GO_NEG_REQ_ACK_PENDING)))
+                {
+                    hddLog(LOG1, "%s: ACK_PENDING and But received RESP for Action frame ",
+                            __func__);
+                    hdd_sendActionCnf(pAdapter, TRUE);
+                }
             }
-            else if( (actionFrmType == WLAN_HDD_INVITATION_REQ) &&
-                (globalP2PConnectionStatus == P2P_NOT_ACTIVE) )
+#ifdef WLAN_FEATURE_TDLS_DEBUG
+            else if(pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+1] == WLAN_HDD_PUBLIC_ACTION_TDLS_DISC_RESP)
             {
-                 globalP2PConnectionStatus = P2P_GO_NEG_COMPLETED;
-                 hddLog(LOGE,"[P2P State]Inactive state to GO negotiation"
-                             " completed state Autonomous GO formation");
+                hddLog(VOS_TRACE_LEVEL_ERROR,"[TDLS] TDLS Discovery Response <--- OTA");
+            }
+#endif
+        }
+#ifdef WLAN_FEATURE_TDLS_DEBUG
+        if(pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_TDLS_ACTION_FRAME)
+        {
+            actionFrmType = pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+1];
+            if(actionFrmType >= MAX_TDLS_ACTION_FRAME_TYPE)
+            {
+                hddLog(VOS_TRACE_LEVEL_ERROR,"[TDLS] unknown[%d] <--- OTA",
+                                                            actionFrmType);
+            }
+            else
+            {
+                hddLog(VOS_TRACE_LEVEL_ERROR,"[TDLS] %s <--- OTA",
+                    tdls_action_frame_type[actionFrmType]);
             }
         }
 #endif
-
-        if (((actionFrmType == WLAN_HDD_PROV_DIS_RESP) &&
-                    (cfgState->actionFrmState == HDD_PD_REQ_ACK_PENDING)) ||
-                ((actionFrmType == WLAN_HDD_GO_NEG_RESP) &&
-                 (cfgState->actionFrmState == HDD_GO_NEG_REQ_ACK_PENDING)))
-        {
-            hddLog(LOG1, "%s: ACK_PENDING and But received RESP for Action frame ", 
-                    __func__);
-            hdd_sendActionCnf(pAdapter, TRUE);
-        }
     }
 
     //Indicate Frame Over Normal Interface
