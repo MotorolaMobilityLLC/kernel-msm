@@ -895,6 +895,17 @@ extern eHalStatus sme_DisablePowerSave (
    tHalHandle hHal,
    tPmcPowerSavingMode psMode);
 
+ /* ---------------------------------------------------------------------------
+   \fn sme_SetHostPowerSave
+    \brief   The BMPS logic is controlled by the User level Apps
+    \param  hHal - The handle returned by macOpen.
+    \param  psMode - The power saving mode to enable.
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+extern eHalStatus sme_SetHostPowerSave (
+   tHalHandle hHal,
+   v_BOOL_t psMode);
+
 /* ---------------------------------------------------------------------------
     \fn sme_StartAutoBmpsTimer
     \brief  Starts a timer that periodically polls all the registered

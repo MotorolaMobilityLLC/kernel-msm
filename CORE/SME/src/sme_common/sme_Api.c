@@ -3215,6 +3215,25 @@ eHalStatus sme_DisablePowerSave (tHalHandle hHal, tPmcPowerSavingMode psMode)
  }
 
 /* ---------------------------------------------------------------------------
++    \fn sme_SetHostPowerSave
++    \brief   Enables BMPS logic to be controlled by User level apps
++    \param  hHal - The handle returned by macOpen.
++    \param  psMode - The power saving mode to disable. Disabling does not imply
++                     that device will be brought out of the current PS mode. This
++                     is purely a configuration API.
++    \return eHalStatus
++  ---------------------------------------------------------------------------*/
+eHalStatus sme_SetHostPowerSave (tHalHandle hHal, v_BOOL_t psMode)
+{
+   eHalStatus status = eHAL_STATUS_FAILURE;
+   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+   pMac->pmc.isHostPsEn = psMode;
+
+   return (status);
+}
+
+/* ---------------------------------------------------------------------------
     \fn sme_StartAutoBmpsTimer
     \brief  Starts a timer that periodically polls all the registered
             module for entry into Bmps mode. This timer is started only if BMPS is
