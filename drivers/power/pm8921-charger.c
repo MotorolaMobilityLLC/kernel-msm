@@ -1794,6 +1794,20 @@ int pm8921_charger_enable(bool enable)
 }
 EXPORT_SYMBOL(pm8921_charger_enable);
 
+int pm8921_is_chg_auto_enable(void)
+{
+	u8 temp = 0;
+
+	if (!the_chip) {
+		pr_err("called before init\n");
+		return -EINVAL;
+	}
+
+	pm8xxx_readb(the_chip->dev->parent, CHG_CNTRL_3, &temp);
+	return  temp & CHG_EN_BIT;
+}
+EXPORT_SYMBOL(pm8921_is_chg_auto_enable);
+
 int pm8921_force_start_charging(void)
 {
 	int rc;

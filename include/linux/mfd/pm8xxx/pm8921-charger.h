@@ -291,6 +291,7 @@ int pm8921_usb_ovp_disable(int disable);
 int pm8921_get_batt_state(void);
 int pm8921_force_start_charging(void);
 int pm8921_get_batt_health(void);
+int pm8921_is_chg_auto_enable(void);
 
 /**
  * pm8921_is_batfet_closed - battery fet status
