@@ -1090,23 +1090,24 @@ int __init gic_of_init(struct device_node *node, struct device_node *parent)
 	return 0;
 }
 #endif
-
 /* before calling this function the interrupts should be disabled
  * and the irq must be disabled at gic to avoid spurious interrupts */
 bool gic_is_spi_pending(unsigned int irq)
 {
+	struct irq_data *d = irq_get_irq_data(irq);
+	struct gic_chip_data *gic_data = &gic_data[0];
 	u32 mask, val;
 
 	WARN_ON(!irqs_disabled());
-	spin_lock(&irq_controller_lock);
-	mask = 1 << (gic_irq(irq) % 32);
-	val = readl(gic_dist_base(irq) +
-			GIC_DIST_ENABLE_SET + (gic_irq(irq) / 32) * 4);
+	raw_spin_lock(&irq_controller_lock);
+	mask = 1 << (gic_irq(d) % 32);
+	val = readl(gic_dist_base(d) +
+			GIC_DIST_ENABLE_SET + (gic_irq(d) / 32) * 4);
 	/* warn if the interrupt is enabled */
 	WARN_ON(val & mask);
-	val = readl(gic_dist_base(irq) +
-			GIC_DIST_PENDING_SET + (gic_irq(irq) / 32) * 4);
-	spin_unlock(&irq_controller_lock);
+	val = readl(gic_dist_base(d) +
+			GIC_DIST_PENDING_SET + (gic_irq(d) / 32) * 4);
+	raw_spin_unlock(&irq_controller_lock);
 	return (bool) (val & mask);
 }
 
@@ -1114,17 +1115,20 @@ bool gic_is_spi_pending(unsigned int irq)
  * and the irq must be disabled at gic to avoid spurious interrupts */
 void gic_clear_spi_pending(unsigned int irq)
 {
+	struct gic_chip_data *gic_data = &gic_data[0];
+	struct irq_data *d = irq_get_irq_data(irq);
+
 	u32 mask, val;
 	WARN_ON(!irqs_disabled());
-	spin_lock(&irq_controller_lock);
-	mask = 1 << (gic_irq(irq) % 32);
-	val = readl(gic_dist_base(irq) +
-			GIC_DIST_ENABLE_SET + (gic_irq(irq) / 32) * 4);
+	raw_spin_lock(&irq_controller_lock);
+	mask = 1 << (gic_irq(d) % 32);
+	val = readl(gic_dist_base(d) +
+			GIC_DIST_ENABLE_SET + (gic_irq(d) / 32) * 4);
 	/* warn if the interrupt is enabled */
 	WARN_ON(val & mask);
-	val = writel(mask, gic_dist_base(irq) +
-			GIC_DIST_PENDING_CLEAR + (gic_irq(irq) / 32) * 4);
-	spin_unlock(&irq_controller_lock);
+	writel(mask, gic_dist_base(d) +
+			GIC_DIST_PENDING_CLEAR + (gic_irq(d) / 32) * 4);
+	raw_spin_unlock(&irq_controller_lock);
 }
 
 #ifdef CONFIG_ARCH_MSM8625
