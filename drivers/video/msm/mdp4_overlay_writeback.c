@@ -226,6 +226,7 @@ int mdp4_overlay_writeback_off(struct platform_device *pdev)
 	/* MDP_LAYERMIXER_WB_MUX_SEL to restore to default cfg*/
 	outpdw(MDP_BASE + 0x100F4, 0x0);
 	mdp_clk_ctrl(0);
+
 	pr_debug("%s-:\n", __func__);
 	return ret;
 }
@@ -858,4 +859,24 @@ static void mdp4_wfd_queue_wakeup(struct msm_fb_data_type *mfd,
 	mfd->writeback_active_cnt--;
 	mutex_unlock(&mfd->writeback_mutex);
 	wake_up(&mfd->wait_q);
+}
+
+int mdp4_writeback_set_mirroring_hint(struct fb_info *info, int hint)
+{
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+
+	if (mfd->panel.type != WRITEBACK_PANEL)
+		return -ENOTSUPP;
+
+	switch (hint) {
+	case MDP_WRITEBACK_MIRROR_ON:
+	case MDP_WRITEBACK_MIRROR_PAUSE:
+	case MDP_WRITEBACK_MIRROR_RESUME:
+	case MDP_WRITEBACK_MIRROR_OFF:
+		pr_info("wfd state switched to %d\n", hint);
+		switch_set_state(&mfd->writeback_sdev, hint);
+		return 0;
+	default:
+		return -EINVAL;
+	}
 }
