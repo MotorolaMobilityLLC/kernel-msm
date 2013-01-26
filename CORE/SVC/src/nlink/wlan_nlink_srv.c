@@ -74,8 +74,23 @@ static void nl_srv_rcv_msg (struct sk_buff *skb, struct nlmsghdr *nlh);
 int nl_srv_init(void)
 {
    int retcode = 0;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
+   struct netlink_kernel_cfg cfg = {
+      .groups = WLAN_NLINK_MCAST_GRP_ID,
+      .input = nl_srv_rcv
+   };
+#endif
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
+   nl_srv_sock = netlink_kernel_create(&init_net, WLAN_NLINK_PROTO_FAMILY,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,7,0))
+                                       THIS_MODULE,
+#endif
+                                       &cfg);
+#else
    nl_srv_sock = netlink_kernel_create(&init_net, WLAN_NLINK_PROTO_FAMILY,
       WLAN_NLINK_MCAST_GRP_ID, nl_srv_rcv, NULL, THIS_MODULE);
+#endif
 
    if (nl_srv_sock != NULL) {
       memset(nl_srv_msg_handler, 0, sizeof(nl_srv_msg_handler));
@@ -148,7 +163,11 @@ int nl_srv_ucast(struct sk_buff *skb, int dst_pid)
 {
    int err;
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,7,0))
    NETLINK_CB(skb).pid = 0; //sender's pid
+#else
+   NETLINK_CB(skb).portid = 0; //sender's pid
+#endif
    NETLINK_CB(skb).dst_group = 0; //not multicast
 
    err = netlink_unicast(nl_srv_sock, skb, dst_pid, MSG_DONTWAIT);
@@ -168,7 +187,11 @@ int nl_srv_bcast(struct sk_buff *skb)
 {
    int err;
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,7,0))
    NETLINK_CB(skb).pid = 0; //sender's pid
+#else
+   NETLINK_CB(skb).portid = 0; //sender's pid
+#endif
    NETLINK_CB(skb).dst_group = WLAN_NLINK_MCAST_GRP_ID; //destination group
 
    err = netlink_broadcast(nl_srv_sock, skb, 0, WLAN_NLINK_MCAST_GRP_ID, GFP_KERNEL);
