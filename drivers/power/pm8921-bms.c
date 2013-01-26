@@ -130,7 +130,7 @@ struct pm8921_bms_chip {
 	int			default_rbatt_mohm;
 	int			amux_2_trim_delta;
 	uint16_t		prev_last_good_ocv_raw;
-	unsigned int		rconn_mohm;
+	int			rconn_mohm;
 	struct mutex		last_ocv_uv_mutex;
 	int			last_ocv_uv;
 	int			pon_ocv_uv;
@@ -1652,6 +1652,8 @@ static int charging_adjustments(struct pm8921_bms_chip *chip,
 	int chg_soc;
 	int max_vol;
 	int eoc_current;
+	int vbat_batt_terminal_uv = vbat_uv
+			+ (ibat_ua * chip->rconn_mohm) / 1000;
 
 	max_vol = chip->max_voltage_uv;
 	eoc_current = -chip->chg_term_ua;
@@ -1663,15 +1665,15 @@ static int charging_adjustments(struct pm8921_bms_chip *chip,
 
 	if (chip->soc_at_cv == -EINVAL) {
 		/* In constant current charging return the calc soc */
-		if (vbat_uv <= max_vol)
+		if (vbat_batt_terminal_uv <= max_vol)
 			pr_debug("CC CHG SOC %d\n", soc);
 
 		/* Note the CC to CV point */
-		if (vbat_uv >= max_vol) {
+		if (vbat_batt_terminal_uv >= max_vol) {
 			chip->soc_at_cv = soc;
 			chip->prev_chg_soc = soc;
 			chip->ibat_at_cv_ua = ibat_ua;
-			chip->vbat_at_cv = vbat_uv;
+			chip->vbat_at_cv = max_vol;
 			pr_debug("CC_TO_CV ibat_ua = %d CHG SOC %d\n",
 					ibat_ua, soc);
 		}
@@ -1680,7 +1682,7 @@ static int charging_adjustments(struct pm8921_bms_chip *chip,
 			chip->soc_at_cv = soc;
 			chip->prev_chg_soc = soc;
 			chip->ibat_at_cv_ua = ibat_ua;
-			chip->vbat_at_cv = vbat_uv;
+			chip->vbat_at_cv = vbat_batt_terminal_uv;
 			pr_debug("Force CC_TO_CV ibat_ua = %d CHG SOC %d\n",
 					ibat_ua, soc);
 		}
@@ -1696,9 +1698,9 @@ static int charging_adjustments(struct pm8921_bms_chip *chip,
 	 * if voltage lessened (possibly because of a system load)
 	 * keep reporting the prev chg soc
 	 */
-	if (vbat_uv <= chip->vbat_at_cv) {
+	if (vbat_batt_terminal_uv <= chip->vbat_at_cv) {
 		pr_debug("vbat %d < max = %d CC CHG SOC %d\n",
-			vbat_uv, chip->vbat_at_cv, chip->prev_chg_soc);
+			vbat_batt_terminal_uv, chip->vbat_at_cv, chip->prev_chg_soc);
 		return chip->prev_chg_soc;
 	}
 
@@ -1706,7 +1708,7 @@ static int charging_adjustments(struct pm8921_bms_chip *chip,
 			&& chip->wlc_is_plugged()
 			&& chip->prev_chg_soc < 99
 			&& ibat_ua > eoc_current) {
-		pr_info("ibat < eco_current ! soc = %d \n", chip->prev_chg_soc);
+		pr_info("ibat < eoc_current ! soc = %d \n", chip->prev_chg_soc);
 		return chip->prev_chg_soc;
 	}
 
