@@ -351,6 +351,40 @@ wlan_hdd_txrx_stypes[NUM_NL80211_IFTYPES] = {
 #endif    
 };
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
+#ifdef WLAN_FEATURE_P2P
+static const struct ieee80211_iface_limit
+wlan_hdd_iface_limit[] = {
+    {
+        /* max=2 is to support JellyBean architecture which has wlan0
+         * and p2p0 interfaces during init. p2p0 is considered station
+         * interface until a group is formed */
+        .max = 2,
+        .types = BIT(NL80211_IFTYPE_STATION),
+    },
+    {
+        .max = 1,
+        .types = BIT(NL80211_IFTYPE_AP),
+    },
+    {
+        .max = 1,
+        .types = BIT(NL80211_IFTYPE_P2P_GO) |
+                 BIT(NL80211_IFTYPE_P2P_CLIENT),
+    },
+};
+
+/* By default, only single channel concurrency is allowed */
+static struct ieee80211_iface_combination
+wlan_hdd_iface_combination = {
+        .limits = wlan_hdd_iface_limit,
+        .num_different_channels = 1,
+        .max_interfaces = 2,
+        .n_limits = ARRAY_SIZE(wlan_hdd_iface_limit),
+        .beacon_int_infra_match = false,
+};
+#endif
+#endif
+
 static struct cfg80211_ops wlan_hdd_cfg80211_ops;
 
 /* Data rate 100KBPS based on IE Index */
@@ -513,6 +547,22 @@ int wlan_hdd_cfg80211_register(struct device *dev,
                              | BIT(NL80211_IFTYPE_P2P_GO)
 #endif                       
                              | BIT(NL80211_IFTYPE_AP);
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
+#ifdef WLAN_FEATURE_P2P
+    if( pCfg->enableMCC )
+    {
+        /* Currently, supports up to two channels */
+        wlan_hdd_iface_combination.num_different_channels = 2;
+
+        if( !pCfg->allowMCCGODiffBI )
+            wlan_hdd_iface_combination.beacon_int_infra_match = true;
+
+    }
+    wiphy->iface_combinations = &wlan_hdd_iface_combination;
+    wiphy->n_iface_combinations = 1;
+#endif
+#endif
 
     /* Before registering we need to update the ht capabilitied based
      * on ini values*/
