@@ -968,7 +968,8 @@ VOS_STATUS hdd_add_adapter_front( hdd_context_t *pHddCtx,
                                   hdd_adapter_list_node_t* pAdapterNode);
 
 hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
-                                 char* name, tSirMacAddr macAddr, tANI_U8 rtnl_held );
+                                 const char* name, tSirMacAddr macAddr,
+                                 tANI_U8 rtnl_held );
 VOS_STATUS hdd_close_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter, tANI_U8 rtnl_held );
 VOS_STATUS hdd_close_all_adapters( hdd_context_t *pHddCtx );
 VOS_STATUS hdd_stop_all_adapters( hdd_context_t *pHddCtx );
