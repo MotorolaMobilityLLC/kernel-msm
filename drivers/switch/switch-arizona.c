@@ -35,7 +35,7 @@
 
 #define ARIZONA_DEFAULT_HP 32
 
-#define ARIZONA_NUM_BUTTONS 6
+#define ARIZONA_MAX_MICD_RANGE 8
 
 #define ARIZONA_ACCDET_MODE_MIC 0
 #define ARIZONA_ACCDET_MODE_HPL 1
@@ -51,6 +51,9 @@ struct arizona_extcon_info {
 	int micd_mode;
 	const struct arizona_micd_config *micd_modes;
 	int micd_num_modes;
+
+	const struct arizona_micd_range *micd_ranges;
+	int num_micd_ranges;
 
 	bool micd_reva;
 	bool micd_clamp;
@@ -75,20 +78,25 @@ struct arizona_extcon_info {
 };
 
 static const struct arizona_micd_config micd_default_modes[] = {
-	{ 0,                  2 << ARIZONA_MICD_BIAS_SRC_SHIFT, 1 },
 	{ ARIZONA_ACCDET_SRC, 1 << ARIZONA_MICD_BIAS_SRC_SHIFT, 0 },
+	{ 0,                  2 << ARIZONA_MICD_BIAS_SRC_SHIFT, 1 },
 };
 
-static struct {
-	u16 status;
-	int report;
-} arizona_lvl_to_key[ARIZONA_NUM_BUTTONS] = {
-	{  0x1, BTN_0 },
-	{  0x2, BTN_1 },
-	{  0x4, BTN_2 },
-	{  0x8, BTN_3 },
-	{ 0x10, BTN_4 },
-	{ 0x20, BTN_5 },
+static const struct arizona_micd_range micd_default_ranges[] = {
+	{ .max =  11, .key = BTN_0 },
+	{ .max =  28, .key = BTN_1 },
+	{ .max =  54, .key = BTN_2 },
+	{ .max = 100, .key = BTN_3 },
+	{ .max = 186, .key = BTN_4 },
+	{ .max = 430, .key = BTN_5 },
+};
+
+static const int arizona_micd_levels[] = {
+	3, 6, 8, 11, 13, 16, 18, 21, 23, 26, 28, 31, 34, 36, 39, 41, 44, 46,
+	49, 52, 54, 57, 60, 62, 65, 67, 70, 73, 75, 78, 81, 83, 89, 94, 100,
+	105, 111, 116, 122, 127, 139, 150, 161, 173, 186, 196, 209, 220, 245,
+	270, 295, 321, 348, 375, 402, 430, 489, 550, 614, 681, 752, 903, 1071,
+	1257,
 };
 
 /* These values are copied from Android WiredAccessoryObserver */
@@ -135,7 +143,7 @@ static void arizona_extcon_set_mode(struct arizona_extcon_info *info, int mode)
 {
 	struct arizona *arizona = info->arizona;
 
-	mode %= info->num_micd_modes;
+	mode %= info->micd_num_modes;
 
 	if (arizona->pdata.micd_pol_gpio > 0)
 		gpio_set_value_cansleep(arizona->pdata.micd_pol_gpio,
@@ -692,7 +700,7 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 	struct arizona_extcon_info *info = data;
 	struct arizona *arizona = info->arizona;
 	unsigned int val, lvl;
-	int ret, i;
+	int ret, i, key;
 
 	mutex_lock(&info->lock);
 
@@ -766,12 +774,13 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 			lvl = val & ARIZONA_MICD_LVL_MASK;
 			lvl >>= ARIZONA_MICD_LVL_SHIFT;
 
-			for (i = 0; i < ARIZONA_NUM_BUTTONS; i++)
-				if (lvl & arizona_lvl_to_key[i].status)
-					input_report_key(info->input,
-							 arizona_lvl_to_key[i].report,
-							 1);
-			input_sync(info->input);
+			WARN_ON(!lvl);
+			WARN_ON(ffs(lvl) - 1 >= info->num_micd_ranges);
+			if (lvl && ffs(lvl) - 1 < info->num_micd_ranges) {
+				key = info->micd_ranges[ffs(lvl) - 1].key;
+				input_report_key(info->input, key, 1);
+				input_sync(info->input);
+			}
 
 		} else if (info->detecting) {
 			dev_dbg(arizona->dev, "Headphone detected\n");
@@ -785,9 +794,9 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 		}
 	} else {
 		dev_dbg(arizona->dev, "Mic button released\n");
-		for (i = 0; i < ARIZONA_NUM_BUTTONS; i++)
+		for (i = 0; i < info->num_micd_ranges; i++)
 			input_report_key(info->input,
-					 arizona_lvl_to_key[i].report, 0);
+					 info->micd_ranges[i].key, 0);
 		input_sync(info->input);
 		arizona_extcon_pulse_micbias(info);
 	}
@@ -880,9 +889,9 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 		info->mic = false;
 		info->hpdet_done = false;
 
-		for (i = 0; i < ARIZONA_NUM_BUTTONS; i++)
+		for (i = 0; i < info->num_micd_ranges; i++)
 			input_report_key(info->input,
-					 arizona_lvl_to_key[i].report, 0);
+					 info->micd_ranges[i].key, 0);
 		input_sync(info->input);
 
 		if (switch_get_state(&info->sdev) != BIT_NO_HEADSET) {
@@ -909,13 +918,33 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+/* Map a level onto a slot in the register bank */
+static void arizona_micd_set_level(struct arizona *arizona, int index,
+				   unsigned int level)
+{
+	int reg;
+	unsigned int mask;
+
+	reg = ARIZONA_MIC_DETECT_LEVEL_4 - (index / 2);
+
+	if (index % 2) {
+		mask = 0x3f00;
+		level <<= 8;
+	} else {
+		mask = 0x3f;
+	}
+
+	/* Program the level itself */
+	regmap_update_bits(arizona->regmap, reg, mask, level);
+}
+
 static int arizona_extcon_probe(struct platform_device *pdev)
 {
 	struct arizona *arizona = dev_get_drvdata(pdev->dev.parent);
 	struct arizona_pdata *pdata;
 	struct arizona_extcon_info *info;
 	int jack_irq_fall, jack_irq_rise;
-	int ret, mode, i;
+	int ret, mode, i, j;
 
 	pdata = dev_get_platdata(arizona->dev);
 
@@ -996,6 +1025,17 @@ static int arizona_extcon_probe(struct platform_device *pdev)
 		}
 	}
 
+	info->input = input_allocate_device();
+	if (!info->input) {
+		dev_err(arizona->dev, "Can't allocate input dev\n");
+		ret = -ENOMEM;
+		goto err_register;
+	}
+
+	info->input->name = "Headset";
+	info->input->phys = "arizona/extcon";
+	info->input->dev.parent = &pdev->dev;
+
 	if (arizona->pdata.micd_bias_start_time)
 		regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_1,
 				   ARIZONA_MICD_BIAS_STARTTIME_MASK,
@@ -1013,6 +1053,66 @@ static int arizona_extcon_probe(struct platform_device *pdev)
 				   ARIZONA_MICD_DBTIME_MASK,
 				   arizona->pdata.micd_dbtime
 				   << ARIZONA_MICD_DBTIME_SHIFT);
+
+	BUILD_BUG_ON(ARRAY_SIZE(arizona_micd_levels) != 0x40);
+
+	if (arizona->pdata.num_micd_ranges) {
+		info->micd_ranges = pdata->micd_ranges;
+		info->num_micd_ranges = pdata->num_micd_ranges;
+	} else {
+		info->micd_ranges = micd_default_ranges;
+		info->num_micd_ranges = ARRAY_SIZE(micd_default_ranges);
+	}
+
+	if (arizona->pdata.num_micd_ranges > ARIZONA_MAX_MICD_RANGE) {
+		dev_err(arizona->dev, "Too many MICD ranges: %d\n",
+			arizona->pdata.num_micd_ranges);
+	}
+
+	if (info->num_micd_ranges > 1) {
+		for (i = 1; i < info->num_micd_ranges; i++) {
+			if (info->micd_ranges[i - 1].max >
+			    info->micd_ranges[i].max) {
+				dev_err(arizona->dev,
+					"MICD ranges must be sorted\n");
+				ret = -EINVAL;
+				goto err_input;
+			}
+		}
+	}
+
+	/* Disable all buttons by default */
+	regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_2,
+			   ARIZONA_MICD_LVL_SEL_MASK, 0x81);
+
+	/* Set up all the buttons the user specified */
+	for (i = 0; i < info->num_micd_ranges; i++) {
+		for (j = 0; j < ARRAY_SIZE(arizona_micd_levels); j++)
+			if (arizona_micd_levels[j] >= info->micd_ranges[i].max)
+				break;
+
+		if (j == ARRAY_SIZE(arizona_micd_levels)) {
+			dev_err(arizona->dev, "Unsupported MICD level %d\n",
+				info->micd_ranges[i].max);
+			ret = -EINVAL;
+			goto err_input;
+		}
+
+		dev_dbg(arizona->dev, "%d ohms for MICD threshold %d\n",
+			arizona_micd_levels[j], i);
+
+		arizona_micd_set_level(arizona, i, j);
+		input_set_capability(info->input, EV_KEY,
+				     info->micd_ranges[i].key);
+
+		/* Enable reporting of that range */
+		regmap_update_bits(arizona->regmap, ARIZONA_MIC_DETECT_2,
+				   1 << i, 1 << i);
+	}
+
+	/* Set all the remaining keys to a maximum */
+	for (; i < ARIZONA_MAX_MICD_RANGE; i++)
+		arizona_micd_set_level(arizona, i, 0x37);
 
 	/*
 	 * If we have a clamp use it, activating in conjunction with
@@ -1053,20 +1153,6 @@ static int arizona_extcon_probe(struct platform_device *pdev)
 	}
 
 	arizona_extcon_set_mode(info, 0);
-
-	info->input = input_allocate_device();
-	if (!info->input) {
-		dev_err(arizona->dev, "Can't allocate input dev\n");
-		ret = -ENOMEM;
-		goto err_register;
-	}
-
-	for (i = 0; i < ARIZONA_NUM_BUTTONS; i++)
-		input_set_capability(info->input, EV_KEY,
-				     arizona_lvl_to_key[i].report);
-	info->input->name = "Headset";
-	info->input->phys = "arizona/extcon";
-	info->input->dev.parent = &pdev->dev;
 
 	pm_runtime_enable(&pdev->dev);
 	pm_runtime_idle(&pdev->dev);
