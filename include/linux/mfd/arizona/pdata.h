@@ -133,7 +133,6 @@ struct arizona_pdata {
 	int micd_dbtime;
 
 	/** Mic detect level parameters */
-	int micd_level[ARIZONA_NUM_MICD_LEVEL];
 
 	/** Headset polarity configurations */
 	struct arizona_micd_config *micd_configs;
