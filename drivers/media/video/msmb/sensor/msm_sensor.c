@@ -642,7 +642,7 @@ static int32_t msm_sensor_get_dt_data(struct platform_device *pdev,
 
 	rc = of_property_read_u32(of_node, "qcom,cci-master",
 		&s_ctrl->cci_i2c_master);
-	CDBG("%s qcom,cci-master %d, rc %d\n", __func__, s_ctrl->cci_i2c_master
+	CDBG("%s qcom,cci-master %d, rc %d\n", __func__, s_ctrl->cci_i2c_master,
 		rc);
 	if (rc < 0) {
 		/* Set default master 0 */
@@ -888,7 +888,7 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		}
 	}
 
-	if (s_ctrl->sensor_device_type == MSM_SENSOR_PLATFORM_DEVICE) {
+	if (s_ctrl->sensor_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_util(
 			s_ctrl->sensor_i2c_client, MSM_CCI_INIT);
 		if (rc < 0) {
@@ -910,7 +910,7 @@ int32_t msm_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	return 0;
 power_up_failed:
 	pr_err("%s:%d failed\n", __func__, __LINE__);
-	if (s_ctrl->sensor_device_type == MSM_SENSOR_PLATFORM_DEVICE) {
+	if (s_ctrl->sensor_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
 		s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_util(
 			s_ctrl->sensor_i2c_client, MSM_CCI_RELEASE);
 	}
@@ -970,7 +970,7 @@ int32_t msm_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	CDBG("%s:%d\n", __func__, __LINE__);
 	power_setting_array = &s_ctrl->power_setting_array;
 
-	if (s_ctrl->sensor_device_type == MSM_SENSOR_PLATFORM_DEVICE) {
+	if (s_ctrl->sensor_device_type == MSM_CAMERA_PLATFORM_DEVICE) {
 		s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_util(
 			s_ctrl->sensor_i2c_client, MSM_CCI_RELEASE);
 	}
@@ -1392,7 +1392,8 @@ static struct msm_camera_i2c_fn_t msm_sensor_qup_func_tbl = {
 		msm_camera_qup_i2c_write_table_w_microdelay,
 };
 
-int32_t msm_sensor_platform_probe(struct platform_device *pdev, void *data)
+int32_t msm_sensor_platform_probe(struct platform_device *pdev,
+				  const void *data)
 {
 	int32_t rc = 0;
 	struct msm_sensor_ctrl_t *s_ctrl =
@@ -1410,7 +1411,7 @@ int32_t msm_sensor_platform_probe(struct platform_device *pdev, void *data)
 			return rc;
 		}
 	}
-	s_ctrl->sensor_device_type = MSM_SENSOR_PLATFORM_DEVICE;
+	s_ctrl->sensor_device_type = MSM_CAMERA_PLATFORM_DEVICE;
 	s_ctrl->sensor_i2c_client->cci_client = kzalloc(sizeof(
 		struct msm_camera_cci_client), GFP_KERNEL);
 	if (!s_ctrl->sensor_i2c_client->cci_client) {
@@ -1489,7 +1490,7 @@ int32_t msm_sensor_i2c_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 
-	s_ctrl->sensor_device_type = MSM_SENSOR_I2C_DEVICE;
+	s_ctrl->sensor_device_type = MSM_CAMERA_I2C_DEVICE;
 	s_ctrl->sensordata = client->dev.platform_data;
 	if (s_ctrl->sensordata == NULL) {
 		pr_err("%s %s NULL sensor data\n", __func__, client->name);
