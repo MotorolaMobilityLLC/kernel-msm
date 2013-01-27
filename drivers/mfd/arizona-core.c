@@ -212,8 +212,6 @@ static int arizona_wait_for_boot(struct arizona *arizona)
 		return -ETIMEDOUT;
 	}
 
-	pm_runtime_mark_last_busy(arizona->dev);
-
 	return 0;
 }
 
