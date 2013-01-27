@@ -478,14 +478,6 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 			     arizona->pdata.gpio_defaults[i]);
 	}
 
-	for (i = 0; i < ARRAY_SIZE(arizona->pdata.micd_level); i++) {
-		if (!arizona->pdata.micd_level[i])
-			continue;
-
-		regmap_write(arizona->regmap, ARIZONA_MIC_DETECT_LEVEL_1 + i,
-			     arizona->pdata.micd_level[i]);
-	}
-
 	pm_runtime_enable(arizona->dev);
 
 	/* Chip default */
