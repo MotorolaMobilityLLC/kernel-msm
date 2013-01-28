@@ -1094,7 +1094,8 @@ static int msm_mi2s_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_add_routes(dapm, apq8064_common_audio_map,
 		ARRAY_SIZE(apq8064_common_audio_map));
 
-	if (machine_is_apq8064_mtp() || machine_is_apq8064_flo()) {
+	if (machine_is_apq8064_mtp() || machine_is_apq8064_flo()
+		|| machine_is_apq8064_deb()) {
 		snd_soc_dapm_add_routes(dapm, apq8064_mtp_audio_map,
 			ARRAY_SIZE(apq8064_mtp_audio_map));
 	} else  {
@@ -1812,7 +1813,8 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_add_routes(dapm, apq8064_common_audio_map,
 		ARRAY_SIZE(apq8064_common_audio_map));
 
-	if (machine_is_apq8064_mtp() || machine_is_apq8064_flo()) {
+	if (machine_is_apq8064_mtp() || machine_is_apq8064_flo() ||
+		machine_is_apq8064_deb()) {
 		snd_soc_dapm_add_routes(dapm, apq8064_mtp_audio_map,
 			ARRAY_SIZE(apq8064_mtp_audio_map));
 	} else  {
@@ -2741,7 +2743,8 @@ static int __init msm_audio_init(void)
 	int ret;
 	u32	version = socinfo_get_platform_version();
 	if (!machine_is_apq8064_mtp() || !machine_is_apq8064_flo() ||
-	(SOCINFO_VERSION_MINOR(version) != 1)) {
+		!machine_is_apq8064_deb() ||
+		(SOCINFO_VERSION_MINOR(version) != 1)) {
 		pr_info("%s: Not APQ8064 in I2S mode\n", __func__);
 		return -ENODEV;
 	}

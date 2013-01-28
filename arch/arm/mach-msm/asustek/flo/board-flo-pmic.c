@@ -214,7 +214,7 @@ void __init apq8064_pm8xxx_gpio_mpp_init(void)
 					ARRAY_SIZE(pm8917_cdp_kp_gpios));
 	}
 
-	if (machine_is_apq8064_flo())
+	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
 		apq8064_configure_gpios(pm8921_mtp_kp_gpios,
 					ARRAY_SIZE(pm8921_mtp_kp_gpios));
 
@@ -490,7 +490,7 @@ void __init apq8064_init_pmic(void)
 			= msm8064_pm8917_regulator_pdata_len;
 	}
 
-	if (machine_is_apq8064_flo()) {
+	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
 		apq8064_pm8921_bms_pdata.battery_type = BATT_PALLADIUM;
 	} else if (machine_is_apq8064_liquid()) {
 		apq8064_pm8921_bms_pdata.battery_type = BATT_DESAY;

@@ -1325,7 +1325,7 @@ void __init apq8064_init_gpiomux(void)
 	msm_gpiomux_install(apq8064_ext_regulator_configs,
 			ARRAY_SIZE(apq8064_ext_regulator_configs));
 
-	if (machine_is_apq8064_flo()) {
+	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
 		if (SOCINFO_VERSION_MINOR(platform_version) == 1)
 			msm_gpiomux_install(mdm_i2s_configs,
 					ARRAY_SIZE(mdm_i2s_configs));
@@ -1334,7 +1334,7 @@ void __init apq8064_init_gpiomux(void)
 					ARRAY_SIZE(mdm_configs));
 	}
 
-	if (machine_is_apq8064_flo()) {
+	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
 		if (SOCINFO_VERSION_MINOR(platform_version) == 1) {
 			msm_gpiomux_install(cyts_gpio_alt_config,
 					ARRAY_SIZE(cyts_gpio_alt_config));
@@ -1345,7 +1345,7 @@ void __init apq8064_init_gpiomux(void)
 	}
 
 #ifdef CONFIG_USB_EHCI_MSM_HSIC
-	if (machine_is_apq8064_flo())
+	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
 		msm_gpiomux_install(apq8064_hsic_configs,
 				ARRAY_SIZE(apq8064_hsic_configs));
 #endif
