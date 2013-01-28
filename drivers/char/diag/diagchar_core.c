@@ -711,8 +711,8 @@ long diagchar_ioctl(struct file *filp,
 	} else if (iocmd == DIAG_IOCTL_SWITCH_LOGGING) {
 		diag_switch_logging_mode(ioarg);
 		success = 1;
-	}
-
+	} else
+		DIAGADDON_ioctl(&success, filp, iocmd, ioarg);
 	return success;
 }
 
@@ -1219,6 +1219,7 @@ static int diagchar_write(struct file *file, const char __user *buf,
 	}
 
 	driver->used = (uint32_t) enc.dest - (uint32_t) buf_hdlc;
+	DIAGADDON_force_returntype(&pkt_type, pkt_type);
 	if (pkt_type == DATA_TYPE_RESPONSE) {
 		err = diag_device_write(buf_hdlc, APPS_DATA, NULL);
 		if (err) {
