@@ -3016,7 +3016,7 @@ static void __init register_i2c_devices(void)
 	/* Build the matching 'supported_machs' bitmask */
 	if (machine_is_apq8064_cdp())
 		mach_mask = I2C_SURF;
-	else if (machine_is_apq8064_mtp())
+	else if (machine_is_apq8064_flo())
 		mach_mask = I2C_FFA;
 	else if (machine_is_apq8064_liquid())
 		mach_mask = I2C_LIQUID;
@@ -3137,7 +3137,7 @@ static void __init apq8064_common_init(void)
 	enable_ddr3_regulator();
 	msm_hsic_pdata.swfi_latency =
 		msm_rpmrs_levels[0].latency_us;
-	if (machine_is_apq8064_mtp()) {
+	if (machine_is_apq8064_flo()) {
 		msm_hsic_pdata.log2_irq_thresh = 5,
 		apq8064_device_hsic_host.dev.platform_data = &msm_hsic_pdata;
 		device_initialize(&apq8064_device_hsic_host.dev);
@@ -3145,7 +3145,7 @@ static void __init apq8064_common_init(void)
 	apq8064_pm8xxx_gpio_mpp_init();
 	apq8064_init_mmc();
 
-	if (machine_is_apq8064_mtp()) {
+	if (machine_is_apq8064_flo()) {
 		mdm_8064_device.dev.platform_data = &mdm_platform_data;
 		platform_version = socinfo_get_platform_version();
 		if (SOCINFO_VERSION_MINOR(platform_version) == 1) {
@@ -3180,7 +3180,7 @@ static void __init apq8064_cdp_init(void)
 {
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
 		pr_err("meminfo_init() failed!\n");
-	if (machine_is_apq8064_mtp() &&
+	if (machine_is_apq8064_flo() &&
 		SOCINFO_VERSION_MINOR(socinfo_get_platform_version()) == 1)
 			cyttsp_pdata.sleep_gpio = CYTTSP_TS_GPIO_SLEEP_ALT;
 	apq8064_common_init();
@@ -3207,7 +3207,7 @@ static void __init apq8064_cdp_init(void)
 	if (machine_is_apq8064_cdp() || machine_is_apq8064_liquid())
 		platform_device_register(&cdp_kp_pdev);
 
-	if (machine_is_apq8064_mtp())
+	if (machine_is_apq8064_flo())
 		platform_device_register(&mtp_kp_pdev);
 
 	change_memory_power = &apq8064_change_memory_power;
@@ -3218,7 +3218,7 @@ static void __init apq8064_cdp_init(void)
 	}
 }
 
-MACHINE_START(APQ8064_MTP, "QCT APQ8064 MTP")
+MACHINE_START(APQ8064_FLO, "QCT APQ8064 FLO")
 	.map_io = apq8064_map_io,
 	.reserve = apq8064_reserve,
 	.init_irq = apq8064_init_irq,
