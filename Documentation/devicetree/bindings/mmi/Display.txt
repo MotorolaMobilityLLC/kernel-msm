@@ -1,0 +1,130 @@
+Display
+
+The device tree bindings for Motorola's handling of display panels
+represent a direct copy from the legacy code.  This definition will
+(hopefully) be in flux as it is brought in-line with current practice.
+
+Multiple Display nodes (currently up to 10) can be defined, but only
+one will be used based on the matching panel_name.
+
+Required properties:
+
+- panel_name:  parallels the general use of the compatible node.
+      This entry is compared with the /chosen/mmi,panel_name entry and
+      only the Display node with the matching panel_name will be registered.
+
+- disp_intf: determines if this display is command mode (4) or
+      video mode (6).
+
+The rest of the parameters model gpio input pins.  These fall into three classes
+reset (rst), fixed regulators (reg) and mipi selection (mipi_d0_sel).  For each
+class the same set of gpio properties are supported, so much of the content below
+is not only vague but also redundant.
+
+- num_disp_rst: defines the number of reset entries that will follow, if this
+      parameter is not defined it is assumed one stanza of "rst" entries will
+      follow.
+
+- rst_gpio_<n>: the gpio number for this reset line.
+- rst_gpio_type_<n>: the gpio source will either be 0, for a standard gpio or 1
+      for a pmic gpio.
+- rst_init_state_<n>: initial state of the pin (0 or 1)
+- rst_en_state_<n>: state, 0 or 1, representing enabled
+- rst_en_pre_delay_<n>: time in millisec to delay before enabling this pin
+- rst_en_post_delay_<n>: time in millisec to delay after enabling this pin
+- rst_dis_pre_delay_<n>: time in millisec to delay before disabling this pin
+- rst_dis_post_delay_<n>: time in millisec to delay after disabling this pin
+
+- num_disp_reg: defines the number of regulator entries that will follow, if this
+      parameter is not defined it is assumed one stanza of "reg" entries will
+      follow.  stanza for class = reg
+
+- reg_gpio_<n>: the gpio number for this gpio regulator-like device.
+- reg_gpio_type_<n>: the gpio source will either be 0, for a standard gpio or 1
+      for a pmic gpio.
+- reg_init_state_<n>: initial state of the pin (0 or 1)
+- reg_en_state_<n>: state, 0 or 1, representing enabled
+- reg_en_pre_delay_<n>: time in millisec to delay before enabling this pin
+- reg_en_post_delay_<n>: time in millisec to delay after enabling this pin
+- reg_dis_pre_delay_<n>: time in millisec to delay before disabling this pin
+- reg_dis_post_delay_<n>: time in millisec to delay after disabling this pin
+- reg_shared_gpio_en_<n>: ?
+
+num_disp_mipi_d0_sel: defines the number of mipi_d0_sel entries that will follow, if
+       this parameter is not defined it defaults to 1.
+
+- mipi_d0_sel_gpio_<n>: the gpio number associated.
+- mipi_d0_sel_gpio_type_<n>: the gpio source will either be 0, for a standard gpio
+        or 1 for a pmic gpio.
+- mipi_d0_sel_init_state_<n>: initial state of the pin (0 or 1)
+- mipi_d0_sel_en_state_<n>: state, 0 or 1, representing enabled
+- mipi_d0_sel_en_pre_delay_<n>: time in millisec to delay before enabling this pin
+- mipi_d0_sel_en_post_delay_<n>: time in millisec to delay after enabling this pin
+- mipi_d0_sel_dis_pre_delay_<n>:  time in millisec to delay before disabling this pin
+- mipi_d0_sel_dis_post_delay_<n>:  time in millisec to delay after disabling this pin
+- mipi_d0_sel_shared_gpio_en_<n>:
+
+- partial_mode_supported:
+
+Example:
+
+	System@0 {
+		Display@0 {
+			panel_name = "mipi_mot_cmd_smd_hd_465";
+			disp_intf = <4>;  /* MIPI_VP_CM */
+
+			num_disp_rst = <1>;
+
+			rst_gpio_1 = <37>;
+			rst_gpio_type_1 = <1>;   /* PM_GPIO */
+			rst_init_state_1 = <1>;
+			rst_en_state_1 = <1>;
+			rst_en_pre_delay_1 = <15>;
+			rst_en_post_delay_1 = <15>;
+			rst_dis_post_delay_1 = <10>;
+
+			num_disp_reg = <3>;
+
+			/* Display's VDDIO reg */
+			reg_id_1 = "dsi_s4";
+			reg_name_1 = "VDD_DISP_CONN";
+			reg_min_mv_1 = <1800000>;
+			reg_max_mv_1 = <1800000>;
+			reg_gpio_en_1 = <12>;
+			reg_gpio_name_1 = "DISP_V2_EN";
+			reg_gpio_en_type_1 = <0>;   /* MSM_GPIO */
+			reg_gpio_en_init_state_1 = <1>;
+			reg_gpio_en_state_1 = <1>;
+
+			/* Display's VCI reg */
+			reg_id_2 = "disp_vci";
+			reg_name_2 = "VCI_DISP_CONN";
+			reg_min_mv_2 = <3100000>;
+			reg_max_mv_2 = <3100000>;
+			reg_gpio_en_2 = <0x90>;
+			reg_gpio_name_2 = "DISP_V3_EN";
+			reg_gpio_en_type_2 = <0>;   /* MSM_GPIO */
+			reg_gpio_en_init_state_2 = <1>;
+			reg_gpio_en_state_2 = <1>;
+
+			reg_id_3 = "";
+			reg_name_3 = "VBATT_DISP_CONN";
+			reg_gpio_en_3 = <13>;
+			reg_gpio_name_3 = "DISP_V1_EN";
+			reg_gpio_en_init_state_3 = <1>;
+			reg_gpio_en_state_3 = <1>;
+			reg_gpio_en_type_3 = <0>;
+
+			mipi_d0_sel_gpio_1 = <10>;
+			mipi_d0_sel_name_1 = "mipi_d0_sel";
+			mipi_d0_sel_gpio_type_1 = <1>;  /* PM_GPIO */
+			mipi_d0_sel_init_state_1 = <0>;
+			mipi_d0_sel_en_state_1 = <0>;
+			mipi_d0_sel_en_pre_delay_1 = <0>;
+			mipi_d0_sel_en_post_delay_1 = <0>;
+			mipi_d0_sel_dis_pre_delay_1 = <0>;
+			mipi_d0_sel_dis_post_delay_1 = <0>;
+
+			partial_mode_supported = <1>;
+		};
+	};
