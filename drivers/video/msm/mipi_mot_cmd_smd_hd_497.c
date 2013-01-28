@@ -192,8 +192,8 @@ static int __init mipi_mot_cmd_smd_hd_497_init(void)
 	pinfo->bl_min = 0;
 	pinfo->fb_num = 2;
 	pinfo->clk_rate = 460000000; /* TODO: Need to optimize */
-	pinfo->physical_width_mm = 58; /* TODO: Need to check */
-	pinfo->physical_height_mm = 103; /* TODO: Need to check */
+	pinfo->physical_width_mm = 62;
+	pinfo->physical_height_mm = 110;
 
 	pinfo->lcd.vsync_enable = TRUE;
 	pinfo->lcd.hw_vsync_mode = TRUE;
