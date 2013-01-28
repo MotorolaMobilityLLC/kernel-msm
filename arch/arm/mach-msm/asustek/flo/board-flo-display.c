@@ -30,10 +30,10 @@
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 /* prim = 1366 x 768 x 3(bpp) x 3(pages) */
-#define MSM_FB_PRIM_BUF_SIZE roundup(1920 * 1088 * 4 * 3, 0x10000)
+#define MSM_FB_PRIM_BUF_SIZE roundup(1920 * 1920 * 4 * 3, 0x10000)
 #else
 /* prim = 1366 x 768 x 3(bpp) x 2(pages) */
-#define MSM_FB_PRIM_BUF_SIZE roundup(1920 * 1088 * 4 * 2, 0x10000)
+#define MSM_FB_PRIM_BUF_SIZE roundup(1920 * 1920 * 4 * 2, 0x10000)
 #endif
 
 #define MSM_FB_SIZE roundup(MSM_FB_PRIM_BUF_SIZE, 4096)
@@ -67,6 +67,12 @@ static struct resource msm_fb_resources[] = {
 
 #define LVDS_PIXEL_MAP_PATTERN_1	1
 #define LVDS_PIXEL_MAP_PATTERN_2	2
+
+#define gpio_EN_VDD_BL PM8921_GPIO_PM_TO_SYS(23)	//panel VCC
+#define gpio_LCD_BL_EN PM8921_GPIO_PM_TO_SYS(30)	//panel enable and backlight enable
+#define gpio_LCD_BL_PWM PM8921_GPIO_PM_TO_SYS(26)	//backlight pwm
+#define gpio_display_ID1 12
+#define gpio_display_ID2 1
 
 #ifdef CONFIG_FB_MSM_HDMI_AS_PRIMARY
 static unsigned char hdmi_is_primary = 1;
@@ -313,12 +319,12 @@ static struct platform_device hdmi_msm_device = {
 	.dev.platform_data = &hdmi_msm_data,
 };
 
+#ifdef CONFIG_FB_MSM_WRITEBACK_MSM_PANEL
 static char wfd_check_mdp_iommu_split_domain(void)
 {
 	return mdp_pdata.mdp_iommu_split_domain;
 }
 
-#ifdef CONFIG_FB_MSM_WRITEBACK_MSM_PANEL
 static struct msm_wfd_platform_data wfd_pdata = {
 	.wfd_check_mdp_iommu_split = wfd_check_mdp_iommu_split_domain,
 };
@@ -345,11 +351,10 @@ static struct platform_device wfd_device = {
 static bool dsi_power_on;
 static int mipi_dsi_panel_power(int on)
 {
-	static struct regulator *reg_lvs7, *reg_l2, *reg_l11, *reg_ext_3p3v;
-	static int gpio36, gpio25, gpio26, mpp3;
+	static struct regulator *reg_lvs7, *reg_l2, *reg_l11, *reg_l17;
 	int rc;
 
-	pr_debug("%s: on=%d\n", __func__, on);
+	printk("%s+, on=%d\n", __func__, on);
 
 	if (!dsi_power_on) {
 		reg_lvs7 = regulator_get(&msm_mipi_dsi1_device.dev,
@@ -386,41 +391,30 @@ static int mipi_dsi_panel_power(int on)
 				return -EINVAL;
 		}
 
-		if (machine_is_apq8064_liquid()) {
-			reg_ext_3p3v = regulator_get(&msm_mipi_dsi1_device.dev,
-				"dsi1_vccs_3p3v");
-			if (IS_ERR_OR_NULL(reg_ext_3p3v)) {
-				pr_err("could not get reg_ext_3p3v, rc = %ld\n",
-					PTR_ERR(reg_ext_3p3v));
-				reg_ext_3p3v = NULL;
-				return -ENODEV;
-			}
-			mpp3 = PM8921_MPP_PM_TO_SYS(3);
-			rc = gpio_request(mpp3, "backlight_en");
-			if (rc) {
-				pr_err("request mpp3 failed, rc=%d\n", rc);
-				return -ENODEV;
-			}
-		}
-
-		gpio25 = PM8921_GPIO_PM_TO_SYS(25);
-		rc = gpio_request(gpio25, "disp_rst_n");
-		if (rc) {
-			pr_err("request gpio 25 failed, rc=%d\n", rc);
+		//for pwm and LCD_BL_EN power
+		reg_l17 = regulator_get(NULL, "pwm_power");
+		if (IS_ERR_OR_NULL(reg_l17)) {
+			pr_err("could not get 8921_l17, rc = %ld\n",
+				PTR_ERR(reg_l17));
 			return -ENODEV;
 		}
 
-		gpio26 = PM8921_GPIO_PM_TO_SYS(26);
-		rc = gpio_request(gpio26, "pwm_backlight_ctrl");
+		//EN_VDD_BL
+		rc = gpio_request(gpio_EN_VDD_BL, "EN_VDD_BL");
+		if (rc) {
+			pr_err("request gpio 23 failed, rc=%d\n", rc);
+			return -ENODEV;
+		}
+		//LCD_BL_PWM
+		rc = gpio_request(gpio_LCD_BL_PWM, "pwm_backlight_ctrl");
 		if (rc) {
 			pr_err("request gpio 26 failed, rc=%d\n", rc);
 			return -ENODEV;
 		}
-
-		gpio36 = PM8921_GPIO_PM_TO_SYS(36); /* lcd1_pwr_en_n */
-		rc = gpio_request(gpio36, "lcd1_pwr_en_n");
+		//LCD_BL_EN
+		rc = gpio_request(gpio_LCD_BL_EN, "LCD_BL_EN");
 		if (rc) {
-			pr_err("request gpio 36 failed, rc=%d\n", rc);
+			pr_err("request gpio 30 failed, rc=%d\n", rc);
 			return -ENODEV;
 		}
 
@@ -456,35 +450,27 @@ static int mipi_dsi_panel_power(int on)
 			return -ENODEV;
 		}
 
-		if (machine_is_apq8064_liquid()) {
-			rc = regulator_enable(reg_ext_3p3v);
-			if (rc) {
-				pr_err("enable reg_ext_3p3v failed, rc=%d\n",
-					rc);
-				return -ENODEV;
-			}
-			gpio_set_value_cansleep(mpp3, 1);
+		rc = regulator_enable(reg_l17);
+		if (rc) {
+			pr_err("enable l17 failed, rc=%d\n", rc);
+			return -ENODEV;
 		}
 
-		gpio_set_value_cansleep(gpio36, 0);
-		gpio_set_value_cansleep(gpio25, 1);
-		if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917)
-			gpio_set_value_cansleep(gpio26, 1);
+		gpio_set_value_cansleep(gpio_EN_VDD_BL, 1);
+		msleep(20);
+		gpio_set_value_cansleep(gpio_LCD_BL_EN, 1);
+		msleep(20);
 	} else {
-		if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917)
-			gpio_set_value_cansleep(gpio26, 0);
-		gpio_set_value_cansleep(gpio25, 0);
-		gpio_set_value_cansleep(gpio36, 1);
 
-		if (machine_is_apq8064_liquid()) {
-			gpio_set_value_cansleep(mpp3, 0);
+		msleep(20);
+		gpio_set_value_cansleep(gpio_LCD_BL_EN, 0);
+		msleep(20);
+		gpio_set_value_cansleep(gpio_EN_VDD_BL, 0);
 
-			rc = regulator_disable(reg_ext_3p3v);
-			if (rc) {
-				pr_err("disable reg_ext_3p3v failed, rc=%d\n",
-					rc);
-				return -ENODEV;
-			}
+		rc = regulator_disable(reg_l17);
+		if (rc) {
+			pr_err("disable reg_l17 failed, rc=%d\n", rc);
+			return -ENODEV;
 		}
 
 		rc = regulator_disable(reg_l11);
@@ -506,6 +492,7 @@ static int mipi_dsi_panel_power(int on)
 		}
 	}
 
+	printk("%s-\n", __func__);
 	return 0;
 }
 
@@ -513,6 +500,7 @@ static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 	.dsi_power_save = mipi_dsi_panel_power,
 };
 
+#if 0
 static bool lvds_power_on;
 static int lvds_panel_power(int on)
 {
@@ -667,7 +655,39 @@ static struct platform_device lvds_chimei_panel_device = {
 		.platform_data = &lvds_chimei_pdata,
 	}
 };
+#endif
 
+#define LPM_CHANNEL 2
+
+static int mipi_novatek_gpio[] = {LPM_CHANNEL};
+
+static struct mipi_dsi_panel_platform_data mipi_novatek_pdata = {
+	.gpio = mipi_novatek_gpio,
+};
+
+static struct platform_device mipi_novatek_panel_device = {
+	.name = "mipi_novatek",
+	.id = 0,
+	.dev = {
+		.platform_data = &mipi_novatek_pdata,
+	}
+};
+
+static int mipi_lg_gpio[] = {LPM_CHANNEL};
+
+static struct mipi_dsi_panel_platform_data mipi_lg_pdata = {
+	.gpio = mipi_lg_gpio,
+};
+
+static struct platform_device mipi_lg_panel_device = {
+	.name = "mipi_lg",
+	.id = 0,
+	.dev = {
+		.platform_data = &mipi_lg_pdata,
+	}
+};
+
+#if 0
 #define FRC_GPIO_UPDATE	(SX150X_EXP4_GPIO_BASE + 8)
 #define FRC_GPIO_RESET	(SX150X_EXP4_GPIO_BASE + 9)
 #define FRC_GPIO_PWR	(SX150X_EXP4_GPIO_BASE + 10)
@@ -711,6 +731,7 @@ static struct platform_device mipi_dsi_toshiba_panel_device = {
 			.platform_data = &toshiba_pdata,
 	}
 };
+#endif
 
 static struct msm_bus_vectors dtv_bus_init_vectors[] = {
 	{
@@ -1005,23 +1026,37 @@ error:
 
 void __init apq8064_init_fb(void)
 {
+	int rc;
+
+	set_mdp_clocks_for_wuxga();
+
 	platform_device_register(&msm_fb_device);
-	platform_device_register(&lvds_chimei_panel_device);
 
 #ifdef CONFIG_FB_MSM_WRITEBACK_MSM_PANEL
 	platform_device_register(&wfd_panel_device);
 	platform_device_register(&wfd_device);
 #endif
 
-	if (machine_is_apq8064_liquid())
-		platform_device_register(&mipi_dsi2lvds_bridge_device);
-	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
-		platform_device_register(&mipi_dsi_toshiba_panel_device);
-	if (machine_is_mpq8064_dtv())
-		platform_device_register(&lvds_frc_panel_device);
+	//request display ID gpio
+	rc = gpio_request(gpio_display_ID1, "display_ID1");
+	if (rc) {
+		pr_err("%s: request gpio 12 failed, rc=%d\n", __func__, rc);
+	}
+	rc = gpio_request(gpio_display_ID2, "display_ID2");
+	if (rc) {
+		pr_err("%s: request gpio 1 failed, rc=%d\n", __func__, rc);
+	}
+
+	//the display ID gpio should be requested by pcdid in asustek-pcbid.c
+	if(gpio_get_value(gpio_display_ID1) && gpio_get_value(gpio_display_ID2)) {
+		printk("%s: register mipi_lg_panel_device\n", __func__);
+		platform_device_register(&mipi_lg_panel_device);
+	} else {
+		printk("%s: register mipi_novatek_panel_device\n", __func__);
+		platform_device_register(&mipi_novatek_panel_device);
+	}
 
 	msm_fb_register_device("mdp", &mdp_pdata);
-	msm_fb_register_device("lvds", &lvds_pdata);
 	msm_fb_register_device("mipi_dsi", &mipi_dsi_pdata);
 	platform_device_register(&hdmi_msm_device);
 	msm_fb_register_device("dtv", &dtv_pdata);

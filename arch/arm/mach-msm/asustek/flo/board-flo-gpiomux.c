@@ -1267,6 +1267,30 @@ static struct msm_gpiomux_config apq8064_sdc3_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting display_ID_gpio_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir   = GPIOMUX_IN,
+};
+
+//add display ID gpio
+static struct msm_gpiomux_config msm8064_display_ID_gpio_config[] __initdata = {
+	{
+		.gpio = 12,	/* ID1 (pcbid 2) */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &display_ID_gpio_config,
+			[GPIOMUX_ACTIVE]= &display_ID_gpio_config,
+		},
+	},
+	{
+		.gpio = 1,	/* ID2 (pcbid 3) */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &display_ID_gpio_config,
+			[GPIOMUX_ACTIVE]= &display_ID_gpio_config,
+		},
+	},
+};
 void __init apq8064_init_gpiomux(void)
 {
 	int rc;
@@ -1373,4 +1397,7 @@ void __init apq8064_init_gpiomux(void)
 
 	msm_gpiomux_install(apq8064_sdc3_configs,
 			ARRAY_SIZE(apq8064_sdc3_configs));
+
+	msm_gpiomux_install(msm8064_display_ID_gpio_config,
+			ARRAY_SIZE(msm8064_display_ID_gpio_config));
 }

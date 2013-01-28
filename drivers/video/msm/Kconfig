@@ -203,6 +203,11 @@ config FB_MSM_MIPI_DSI_NOVATEK
         select FB_MSM_MIPI_DSI
         default n
 
+config FB_MSM_MIPI_DSI_LG
+	bool
+	select FB_MSM_MIPI_DSI
+	default n
+
 config FB_MSM_MIPI_DSI_NT35510
 	bool
 	select FB_MSM_MIPI_DSI
@@ -347,6 +352,16 @@ config FB_MSM_MIPI_NOVATEK_CMD_QHD_PT
 	select FB_MSM_MIPI_DSI_NOVATEK
 	default n
 
+config FB_MSM_MIPI_NOVATEK_1080_HD_PT
+	bool
+	select FB_MSM_MIPI_DSI_NOVATEK
+	default n
+
+config FB_MSM_MIPI_LG_1080_HD_PT
+	bool
+	select FB_MSM_MIPI_DSI_LG
+	default n
+
 config FB_MSM_MIPI_ORISE_VIDEO_720P_PT
 	bool
 	select FB_MSM_MIPI_DSI_ORISE
@@ -442,313 +457,27 @@ config FB_MSM_WRITEBACK_MSM_PANEL
         bool "MDP overlay write back panel enable"
 	---help---
 	  Support for MDP4 OVERLAY write back mode
-choice
-	prompt "LCD Panel"
-	default FB_MSM_MDDI_AUTO_DETECT
 
-config FB_MSM_LCDC_PRISM_WVGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC Prism WVGA Panel"
-	select FB_MSM_LCDC_PRISM_WVGA
-	---help---
-	  Support for LCDC Prism WVGA (800x480) panel
+# need to config multiple mipi panels simultaneously in ASUS project
+config FB_MSM_MIPI_NOVATEK_CMD_MODE
+	bool "MIPI NOVATEK 1080P HD PT Panel"
+	select FB_MSM_MIPI_NOVATEK_1080_HD_PT
 
-config FB_MSM_LCDC_SAMSUNG_WSVGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC Samsung WSVGA Panel"
-	select FB_MSM_LCDC_SAMSUNG_WSVGA
-	---help---
-	  Support for LCDC Samsung WSVGA (1024x600) panel
+config FB_MSM_MIPI_NOVATEK_VIDEO_MODE
+	bool "MIPI NOVATEK 1080P HD PT Panel"
+	select FB_MSM_MIPI_NOVATEK_1080_HD_PT
 
-config FB_MSM_LCDC_CHIMEI_WXGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC Chimei WXGA Panel"
-	select FB_MSM_LCDC_CHIMEI_WXGA
-	---help---
-	  Support for LCDC Chimei WXGA (1366x768) panel
+config FB_MSM_MIPI_LG_VIDEO_MODE
+	bool "MIPI LG 1080P HD PT Panel"
+	select FB_MSM_MIPI_LG_1080_HD_PT
 
-config FB_MSM_LCDC_GORDON_VGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC Gordon VGA Panel"
-	select FB_MSM_LCDC_GORDON_VGA
-	---help---
-	  Support for LCDC Gordon VGA (480x640) panel
+config FB_MSM_MIPI_JDI_CMD_MODE
+	bool "MIPI JDI 1080P HD PT Panel"
+	select FB_MSM_MIPI_JDI_1080_HD_PT
 
-config FB_MSM_LCDC_TOSHIBA_WVGA_PT_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC Toshiba WVGA PT Panel"
-	select FB_MSM_LCDC_TOSHIBA_WVGA_PT
-	---help---
-	  Support for LCDC Toshiba WVGA PT (480x800) panel
+# end the multiple mipi panels config
 
-config FB_MSM_LCDC_TOSHIBA_FWVGA_PT_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC Toshiba FWVGA PT Panel"
-	select FB_MSM_LCDC_TOSHIBA_FWVGA_PT
-	---help---
-	  Support for LCDC Toshiba FWVGA PT (480x864) panel. This
-	  configuration has to be selected to support the Toshiba
-	  FWVGA (480x864) portrait panel.
-
-config FB_MSM_LCDC_SHARP_WVGA_PT_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC Sharp WVGA PT Panel"
-	select FB_MSM_LCDC_SHARP_WVGA_PT
-	---help---
-	  Support for LCDC Sharp WVGA PT (480x800) panel
-
-config FB_MSM_LCDC_AUO_WVGA_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC AUO WVGA Panel"
-	select FB_MSM_LCDC_AUO_WVGA
-	---help---
-	  Support for LCDC AUO WVGA(480x800) panel
-
-config FB_MSM_LCDC_NT35582_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC NT35582 WVGA Panel"
-	select FB_MSM_LCDC_NT35582_WVGA
-	---help---
-	  Support for LCDC NT35582 WVGA(480x800) panel
-
-config FB_MSM_LCDC_SAMSUNG_OLED_PT_PANEL
-	depends on FB_MSM_LCDC_HW
-	bool "LCDC Samsung OLED PT Panel"
-	select FB_MSM_LCDC_SAMSUNG_OLED_PT
-	---help---
-	  Support for LCDC Samsung OLED PT (480x800) panel
-
-config FB_MSM_LVDS_CHIMEI_WXGA_PANEL
-        bool "LVDS Chimei WXGA Panel"
-        select FB_MSM_LVDS_CHIMEI_WXGA
-        ---help---
-          Support for LVDS Chimei WXGA(1366x768) panel
-
-config FB_MSM_LVDS_FRC_FHD_PANEL
-	bool "LVDS FRC FHD Panel"
-	select FB_MSM_LVDS_FRC_FHD
-	---help---
-	  Support for LVDS Frc FHD(1920x1080) panel
-	  FRC(Frame Rate Converter) uses LVDS as input
-	  interface. It is treated as a HDMI panel with
-	  1920x1080 resolution.
-
-config FB_MSM_TRY_MDDI_CATCH_LCDC_PRISM
-	depends on FB_MSM_LCDC_HW
-	bool "MDDI Panel Auto Detect + LCDC Prism WVGA"
-	select FB_MSM_MDDI_AUTO_DETECT
-	select FB_MSM_LCDC_PRISM_WVGA
-	select FB_MSM_LCDC_GORDON_VGA
-	select FB_MSM_LCDC_WXGA
-	select FB_MSM_LCDC_TOSHIBA_WVGA_PT
-	select FB_MSM_LCDC_TOSHIBA_FWVGA_PT
-	select FB_MSM_LCDC_SHARP_WVGA_PT
-	select FB_MSM_LCDC_ST15_WXGA
-	---help---
-	  Support for MDDI panel auto detect.
-	  If it can't find any MDDI panel, it will load an LCDC panel.
-
-config FB_MSM_MIPI_PANEL_DETECT
-	bool "MIPI Panel Detect"
-	select FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT
-	select FB_MSM_MIPI_TOSHIBA_VIDEO_WSVGA_PT
-	select FB_MSM_MIPI_TOSHIBA_VIDEO_WUXGA
-	select FB_MSM_MIPI_RENESAS_VIDEO_FWVGA_PT
-	select FB_MSM_MIPI_RENESAS_CMD_FWVGA_PT
-	select FB_MSM_MIPI_TRULY_VIDEO_WVGA_PT
-	select FB_MSM_MIPI_NOVATEK_VIDEO_QHD_PT
-	select FB_MSM_MIPI_NOVATEK_CMD_QHD_PT
-	select FB_MSM_MIPI_NT35510_VIDEO_WVGA_PT
-	select FB_MSM_MIPI_NT35510_CMD_WVGA_PT
-	select FB_MSM_MIPI_ORISE_VIDEO_720P_PT
-	select FB_MSM_MIPI_ORISE_CMD_720P_PT
-	select FB_MSM_MIPI_NT35516_VIDEO_QHD_PT
-	select FB_MSM_MIPI_NT35516_CMD_QHD_PT
-	select FB_MSM_MIPI_SIMULATOR_VIDEO
-	select FB_MSM_MIPI_CHIMEI_WXGA
-	select FB_MSM_MIPI_CHIMEI_WUXGA
-	---help---
-	  Support for MIPI panel auto detect
-
-config FB_MSM_MDDI_PANEL_AUTO_DETECT
-	bool "MDDI Panel Auto Detect"
-	select FB_MSM_MDDI_AUTO_DETECT
-	---help---
-	  Support for MDDI panel auto detect
-
-config FB_MSM_LCDC_PANEL_AUTO_DETECT
-	bool "LCDC Panel Auto Detect"
-	select FB_MSM_LCDC_AUTO_DETECT
-	select FB_MSM_LCDC_SAMSUNG_WSVGA
-	select FB_MSM_LCDC_AUO_WVGA
-	select FB_MSM_LCDC_NT35582_WVGA
-	select FB_MSM_LCDC_SAMSUNG_OLED_PT
-	---help---
-	  Support for LCDC panel auto detect
-
-config FB_MSM_LCDC_MIPI_PANEL_AUTO_DETECT
-	bool "LCDC + MIPI Panel Auto Detect"
-	select FB_MSM_LCDC_AUTO_DETECT
-	select FB_MSM_LCDC_SAMSUNG_WSVGA
-	select FB_MSM_LCDC_AUO_WVGA
-	select FB_MSM_LCDC_SAMSUNG_OLED_PT
-	select FB_MSM_LCDC_NT35582_WVGA
-	select FB_MSM_LCDC_TOSHIBA_FWVGA_PT
-	select FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT
-	select FB_MSM_MIPI_TOSHIBA_VIDEO_WSVGA_PT
-	select FB_MSM_MIPI_RENESAS_VIDEO_FWVGA_PT
-	select FB_MSM_MIPI_RENESAS_CMD_FWVGA_PT
-	select FB_MSM_MIPI_NOVATEK_VIDEO_QHD_PT
-	select FB_MSM_MIPI_NOVATEK_CMD_QHD_PT
-	select FB_MSM_MIPI_NT35510_VIDEO_WVGA_PT
-	select FB_MSM_MIPI_NT35510_CMD_WVGA_PT
-	select FB_MSM_MIPI_NT35516_VIDEO_QHD_PT
-	select FM_MSM_MIPI_NT35516_CMD_QHD_PT
-	select FB_MSM_MIPI_SIMULATOR_VIDEO
-	---help---
-	  Support for LCDC + MIPI panel auto detect
-
-config FB_MSM_LVDS_MIPI_PANEL_DETECT
-	bool "LVDS + MIPI Panel Auto Detect"
-	select FB_MSM_LVDS_CHIMEI_WXGA
-	select FB_MSM_LVDS_FRC_FHD
-	select FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT
-	select FB_MSM_MIPI_TOSHIBA_VIDEO_WSVGA_PT
-	select FB_MSM_MIPI_TOSHIBA_VIDEO_WUXGA
-	select FB_MSM_MIPI_RENESAS_VIDEO_FWVGA_PT
-	select FB_MSM_MIPI_RENESAS_CMD_FWVGA_PT
-	select FB_MSM_MIPI_TRULY_VIDEO_WVGA_PT
-	select FB_MSM_MIPI_NOVATEK_VIDEO_QHD_PT
-	select FB_MSM_MIPI_NOVATEK_CMD_QHD_PT
-	select FB_MSM_MIPI_NT35510_VIDEO_WVGA_PT
-	select FB_MSM_MIPI_NT35510_CMD_WVGA_PT
-	select FB_MSM_MIPI_ORISE_VIDEO_720P_PT
-	select FB_MSM_MIPI_ORISE_CMD_720P_PT
-	select FB_MSM_MIPI_SIMULATOR_VIDEO
-	select FB_MSM_MIPI_CHIMEI_WXGA
-	select FB_MSM_MIPI_CHIMEI_WUXGA
-	---help---
-	  Support for LVDS + MIPI panel auto detect
-
-config FB_MSM_MDDI_PRISM_WVGA
-	bool "MDDI Prism WVGA Panel"
-	select FB_MSM_MDDI
-	---help---
-	  Support for MDDI Prism WVGA (800x480) panel
-
-config FB_MSM_MDDI_TOSHIBA_WVGA_PORTRAIT
-	bool "MDDI Toshiba WVGA Portrait Panel"
-	select FB_MSM_MDDI_TOSHIBA_COMMON
-	---help---
-	  Support for MDDI Toshiba WVGA (480x800) panel
-
-config FB_MSM_MDDI_TOSHIBA_VGA
-	bool "MDDI Toshiba VGA Panel"
-	select FB_MSM_MDDI_TOSHIBA_COMMON_VGA
-	---help---
-	  Support for MDDI Toshiba VGA (480x640) and QCIF (176x220) panel
-
-config FB_MSM_MDDI_TOSHIBA_WVGA
-	bool "MDDI Toshiba WVGA panel"
-	select FB_MSM_MDDI_TOSHIBA_COMMON
-	---help---
-	  Support for MDDI Toshiba (800x480) WVGA panel
-
-config FB_MSM_MDDI_SHARP_QVGA_128x128
-	bool "MDDI Sharp QVGA Dual Panel"
-	select FB_MSM_MDDI
-	---help---
-	  Support for MDDI Sharp QVGA (240x320) and 128x128 dual panel
-
-config FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT_PANEL
-	bool "MIPI LG Display WXGA PT Panel"
-	select FB_MSM_MIPI_LGIT_VIDEO_WXGA_PT
-
-config FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT_PANEL
-	bool "MIPI Toshiba WVGA PT Panel"
-	select FB_MSM_MIPI_TOSHIBA_VIDEO_WVGA_PT
-
-config FB_MSM_MIPI_TOSHIBA_VIDEO_WSVGA_PT_PANEL
-	bool "MIPI Toshiba WSVGA PT Panel"
-	select FB_MSM_MIPI_TOSHIBA_VIDEO_WSVGA_PT
-
-config FB_MSM_MIPI_TOSHIBA_VIDEO_WUXGA_PANEL
-	bool "MIPI Toshiba WUXGA (1920x1200) Panel"
-	select FB_MSM_MIPI_TOSHIBA_VIDEO_WUXGA
-
-config FB_MSM_MIPI_NOVATEK_VIDEO_QHD_PT_PANEL
-	bool "MIPI NOVATEK VIDEO QHD PT Panel"
-	select FB_MSM_MIPI_NOVATEK_VIDEO_QHD_PT
-
-config FB_MSM_MIPI_NOVATEK_CMD_QHD_PT_PANEL
-	bool "MIPI NOVATEK CMD QHD PT Panel"
-	select FB_MSM_MIPI_NOVATEK_CMD_QHD_PT
-
-config FB_MSM_MIPI_ORISE_VIDEO_720P_PT_PANEL
-	bool "MIPI ORISE VIDEO 720P PT Panel"
-	select FB_MSM_MIPI_ORISE_VIDEO_720P_PT
-
-config FB_MSM_MIPI_ORISE_CMD_720P_PT_PANEL
-	bool "MIPI ORISE CMD 720P PT Panel"
-	select FB_MSM_MIPI_ORISE_CMD_720P_PT
-
-config FB_MSM_MIPI_RENESAS_VIDEO_FWVGA_PT_PANEL
-	bool "MIPI Renesas Video FWVGA PT Panel"
-	select FB_MSM_MIPI_RENESAS_VIDEO_FWVGA_PT
-
-config FB_MSM_MIPI_RENESAS_CMD_FWVGA_PT_PANEL
-	bool "MIPI Renesas Command FWVGA PT Panel"
-	select FB_MSM_MIPI_RENESAS_CMD_FWVGA_PT
-
-config FB_MSM_MIPI_CHIMEI_WXGA_PANEL
-	bool "MIPI Chimei WXGA PT Panel"
-	select FB_MSM_MIPI_CHIMEI_WXGA
-
-config FB_MSM_MIPI_CHIMEI_WUXGA_PANEL
-	bool "MIPI Chimei WUXGA Panel"
-	select FB_MSM_MIPI_CHIMEI_WUXGA
-
-config FB_MSM_MIPI_TRULY_VIDEO_WVGA_PT_PANEL
-	bool "MIPI Truly Video WVGA PT Panel"
-	select FB_MSM_MIPI_TRULY_VIDEO_WVGA_PT
-
-config FB_MSM_MIPI_NT35510_VIDEO_WVGA_PT_PANEL
-	bool "MIPI NT35510 Video WVGA PT Panel"
-	select FB_MSM_MIPI_NT35510_VIDEO_WVGA_PT
-
-config FB_MSM_MIPI_NT35510_CMD_WVGA_PT_PANEL
-	bool "MIPI NT35510 Command WVGA PT Panel"
-	select FB_MSM_MIPI_NT35510_CMD_WVGA_PT
-
-config FB_MSM_MIPI_NT35516_VIDEO_QHD_PT_PANEL
-        bool "MIPI NT35516 Video qHD PT Panel"
-        select FB_MSM_MIPI_NT35516_VIDEO_QHD_PT
-
-config FB_MSM_MIPI_NT35516_CMD_QHD_PT_PANEL
-        bool "MIPI NT35516 Command qHD PT Panel"
-        select FB_MSM_MIPI_NT35516_CMD_QHD_PT
-
-config FB_MSM_MIPI_SIMULATOR_VIDEO_PANEL
-	bool "MIPI Simulator Video Panel"
-	select FB_MSM_MIPI_SIMULATOR_VIDEO
-
-config FB_MSM_EBI2_TMD_QVGA_EPSON_QCIF
-	bool "EBI2 TMD QVGA Epson QCIF Dual Panel"
-	select FB_MSM_EBI2
-	---help---
-	  Support for EBI2 TMD QVGA (240x320) and Epson QCIF (176x220) panel
-
-config FB_MSM_HDMI_AS_PRIMARY
-	depends on FB_MSM_HDMI_COMMON
-	bool "Use HDMI as primary panel"
-	---help---
-	Support for using HDMI as primary
-
-config FB_MSM_PANEL_NONE
-	bool "NONE"
-	---help---
-	  This will disable LCD panel
-endchoice
+# remove the choice
 
 config LGIT_VIDEO_WXGA_CABC
 	bool "Content Adaptive Backlight Control on LGIT WXGA Panel"

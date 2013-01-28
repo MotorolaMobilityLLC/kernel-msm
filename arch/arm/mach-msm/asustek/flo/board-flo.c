@@ -964,6 +964,7 @@ static void __init apq8064_ehci_host_init(void)
 	}
 }
 
+#if 0
 static struct smb349_platform_data smb349_data __initdata = {
 	.en_n_gpio		= PM8921_GPIO_PM_TO_SYS(37),
 	.chg_susp_gpio		= PM8921_GPIO_PM_TO_SYS(30),
@@ -976,6 +977,7 @@ static struct i2c_board_info smb349_charger_i2c_info[] __initdata = {
 		.platform_data	= &smb349_data,
 	},
 };
+#endif
 
 struct sx150x_platform_data apq8064_sx150x_data[] = {
 	[SX150X_EPM] = {
@@ -2894,12 +2896,14 @@ struct i2c_registry {
 };
 
 static struct i2c_registry apq8064_i2c_devices[] __initdata = {
+#if 0
 	{
 		I2C_LIQUID,
 		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
 		smb349_charger_i2c_info,
 		ARRAY_SIZE(smb349_charger_i2c_info)
 	},
+#endif
 	{
 		I2C_SURF | I2C_LIQUID,
 		APQ_8064_GSBI3_QUP_I2C_BUS_ID,
