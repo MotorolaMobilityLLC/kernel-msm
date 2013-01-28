@@ -36,6 +36,67 @@
 			synaptics,sy3200-tdat-filename = "sy3200-r0.tdat";
 		};
 	};
+
+	System@0 {
+		Display@0 {
+			/* Name of display driver */
+			panel_name = "mipi_mot_cmd_jdi_hd_430";
+			disp_intf = <4>;  /* MIPI_VP_CM */
+
+			/* Display reset lines */
+			rst_gpio_1 = <37>;
+			rst_gpio_type_1 = <1>; /* PM_GPIO */
+			rst_init_state_1 = <0>;
+			rst_en_state_1 = <1>;
+			rst_en_pre_delay_1 = <10>;
+			rst_en_post_delay_1 = <10>;
+			rst_dis_post_delay_1 = <10>;
+
+			/* Display's regulators and regulator gpio en  */
+			num_disp_reg = <4>;
+
+			/* Display's VCI reg which shared same gpio_en as VDDIO */
+			reg_id_1 = "dsi_vci";
+			reg_name_1 = "TOUCH_VDD";
+			reg_min_mv_1 = <3100000>;
+			reg_max_mv_1 = <3100000>;
+			reg_delay_1 = <5>;
+
+			/* Display's VDDIO reg */
+			reg_id_2 = "disp_s4";
+			reg_name_2 = "DISP_VDDIO";
+			reg_min_mv_2 = <1800000>;
+			reg_max_mv_2 = <1800000>;
+			reg_gpio_en_2 = <12>;
+			reg_gpio_name_2 = "DISP_V2_EN";
+			reg_gpio_en_type_2 = <0>; /* MSM_GPIO */
+			reg_gpio_en_init_state_2 = <1>;
+			reg_gpio_en_state_2 = <1>;
+			reg_gpio_en_delay_2 = <0>;
+			reg_gpio_dis_delay_2 =<0>;
+
+			/* Display's VCI reg which shared same gpio_en as VDDIO */
+			reg_id_3 = "";
+			reg_name_3 = "DISP_VSP";
+			reg_gpio_en_3 = <13>;
+			reg_gpio_name_3 = "DISP_V1_EN";
+			reg_gpio_en_type_3 = <0>; /* MSM_GPIO */
+			reg_gpio_en_init_state_3 = <1> ;
+			reg_gpio_en_state_3 = <1>;
+			reg_gpio_en_delay_3 = <2>;
+			reg_gpio_dis_delay_3 = <0>;
+
+			reg_id_4 = "";
+			reg_name_4 = "DISP_VSN" ;
+			reg_gpio_en_4 = <90>;
+			reg_gpio_name_4 = "DISP_V3_EN" ;
+			reg_gpio_en_type_4 = <0>; /* MSM_GPIO */
+			reg_gpio_init_state_4 = <1>;
+			reg_gpio_en_state_4 = <1>;
+			reg_gpio_en_delay_4 = <0>;
+			reg_gpio_dis_delay_4 = <2>;
+		};
+	};
 };
 
 &i2c10 {
