@@ -69,6 +69,12 @@ struct legacy_diag_ch {
 #define DIAG_IOCTL_SWITCH_LOGGING	7
 #define DIAG_IOCTL_GET_DELAYED_RSP_ID 	8
 #define DIAG_IOCTL_LSM_DEINIT		9
+
+/* 15 ~ 17 are allocated for slate feature */
+#define DIAG_IOCTL_RESERVED_FOR_ADDON_0 15
+#define DIAG_IOCTL_RESERVED_FOR_ADDON_1 16
+#define DIAG_IOCTL_RESERVED_FOR_ADDON_2 17
+
 #define DIAG_IOCTL_DCI_INIT		20
 #define DIAG_IOCTL_DCI_DEINIT		21
 #define DIAG_IOCTL_DCI_SUPPORT		22
