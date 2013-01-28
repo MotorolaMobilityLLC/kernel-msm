@@ -1803,6 +1803,9 @@ static int adjust_soc(struct pm8921_bms_chip *chip, int soc,
 	int rc = 0;
 	int delta_ocv_uv_limit = 0;
 
+	if (chip->adjust_soc_low_threshold < 0)
+		goto out;
+
 	rc = pm8921_bms_get_simultaneous_battery_voltage_and_current(
 							&ibat_ua,
 							&vbat_uv);
