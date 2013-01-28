@@ -381,7 +381,11 @@ int diag_device_write(void *buf, int proc_num, struct diag_request *write_ptr)
 				" CHANNEL: ", 16, 1, DUMP_PREFIX_ADDRESS,
 					    buf, write_ptr->length, 1);
 #endif /* DIAG DEBUG */
-			err = channel_diag_write(driver->legacy_ch, write_ptr);
+			if (DIAGADDON_EXIST() == false)
+				err = channel_diag_write
+						(driver->legacy_ch, write_ptr);
+			else
+				DIAGADDON_channel_diag_write(&err, write_ptr);
 		} else if (proc_num == LPASS_DATA) {
 			write_ptr->buf = buf;
 			err = channel_diag_write(driver->legacy_ch, write_ptr);
@@ -1307,6 +1311,26 @@ int channel_diag_write(struct legacy_diag_ch *ch, struct diag_request *d_req)
 
 #endif /* DIAG OVER USB OR DIAG INTERNAL */
 
+#ifdef CONFIG_DIAG_EXTENSION
+int diag_addon_register(struct diag_addon *addon)
+{
+	if (addon == NULL)
+		return -EPERM;
+
+	addon->diag_process_apps_pkt = diag_process_apps_pkt;
+	list_add_tail(&addon->list, &driver->addon_list);
+	return 0;
+}
+EXPORT_SYMBOL(diag_addon_register);
+
+int diag_addon_unregister(struct diag_addon *addon)
+{
+	list_del(&addon->list);
+	return 0;
+}
+EXPORT_SYMBOL(diag_addon_unregister);
+#endif
+
 static void diag_smd_notify(void *ctxt, unsigned event)
 {
 	if (event == SMD_EVENT_CLOSE) {
@@ -1420,6 +1444,9 @@ void diagfwd_init(void)
 	diag_debug_buf_idx = 0;
 	driver->read_len_legacy = 0;
 	driver->use_device_tree = has_device_tree();
+#ifdef CONFIG_DIAG_EXTENSION
+	INIT_LIST_HEAD(&driver->addon_list);
+#endif
 	mutex_init(&driver->diag_cntl_mutex);
 
 	if (driver->buf_in_1 == NULL) {
