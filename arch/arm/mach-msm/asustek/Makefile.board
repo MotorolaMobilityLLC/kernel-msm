@@ -1,0 +1,7 @@
+#
+# Makefile for the AsusTek board
+#
+
+#FLO/DEB
+obj-$(CONFIG_MACH_APQ8064_FLO) += flo/
+

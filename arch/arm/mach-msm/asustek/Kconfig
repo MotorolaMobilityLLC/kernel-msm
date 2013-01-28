@@ -1,0 +1,6 @@
+config MACH_ASUSTEK
+	bool
+
+menu "ASUSTek Board Selection"
+source "arch/arm/mach-msm/asustek/Kconfig.board"
+endmenu

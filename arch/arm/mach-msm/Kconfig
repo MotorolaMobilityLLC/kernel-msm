@@ -914,6 +914,7 @@ config MACH_MSM_DUMMY
 endmenu
 
 source "arch/arm/mach-msm/lge/Kconfig"
+source "arch/arm/mach-msm/asustek/Kconfig"
 
 config MSM_STACKED_MEMORY
 	bool "Stacked Memory"

@@ -1,0 +1,13 @@
+config MACH_APQ8064_FLO
+	depends on ARCH_APQ8064
+	select MACH_ASUSTEK
+	bool "APQ8064 FLO"
+	help
+	  Support for ASUSTek FLO device.
+
+config MACH_APQ8064_DEB
+	depends on ARCH_APQ8064
+	select MACH_ASUSTEK
+	bool "APQ8064 DEB"
+	help
+	  Support for ASUSTek DEB device.

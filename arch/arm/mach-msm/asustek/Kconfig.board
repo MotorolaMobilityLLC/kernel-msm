@@ -1,0 +1,13 @@
+#
+# Include the specific Kconfig file for ASUSTek boards
+#
+
+#flo/deb
+source "arch/arm/mach-msm/asustek/flo/Kconfig"
+
+config MACH_ASUSTEK_DUMMY
+	depends on ARCH_APQ8064
+	select MACH_ASUSTEK
+	bool "NONE (No device)"
+	help
+	  Support for ASUSTek dummy device.
