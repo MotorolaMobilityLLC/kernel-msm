@@ -53,7 +53,6 @@ static struct msm_camera_i2c_reg_conf ov10820_groupoff_settings[] = {
 	{0x3208, 0xA0},
 };
 
-/*RES_4320x2432_15fps_4lane*/
 static struct msm_camera_i2c_reg_conf ov10820_snap_settings[] = {
 };
 
@@ -61,7 +60,17 @@ static struct msm_camera_i2c_reg_conf ov10820_reset_settings[] = {
 	{0x0103, 0x01},
 };
 
-/*From OV10820_AM03_redFPGA_0x6c.ovd - RES_1632x1224_BIN_30fps_4lane */
+static struct msm_camera_i2c_reg_conf ov10820_BLC_work_around_settings[] = {
+	{0x4000, 0x00},
+	{0x4001, 0x00},
+	{0x4004, 0x00},
+	{0x4005, 0x00},
+	{0x4006, 0x00},
+	{0x4007, 0x00},
+	{0x4008, 0x00},
+	{0x3509, 0x0a},
+};
+
 static struct msm_camera_i2c_reg_conf ov10820_recommend_settings[] = {
 	{0x3080, 0x04},
 	{0x3082, 0x7e},
@@ -251,6 +260,9 @@ static struct msm_camera_i2c_conf_array ov10820_init_conf[] = {
 		MSM_CAMERA_I2C_BYTE_DATA},
 	{&ov10820_recommend_settings[0],
 		ARRAY_SIZE(ov10820_recommend_settings), 0,
+		MSM_CAMERA_I2C_BYTE_DATA},
+	{&ov10820_BLC_work_around_settings[0],
+		ARRAY_SIZE(ov10820_BLC_work_around_settings), 0,
 		MSM_CAMERA_I2C_BYTE_DATA}
 };
 
