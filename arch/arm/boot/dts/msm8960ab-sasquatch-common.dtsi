@@ -5,6 +5,115 @@
 	compatible = "mmi,msm8960";
 
 	mmi,product = "mmi,msm8960ab-sasquatch";
+
+	System@0 {
+		Display@0 {
+			/* Name of display driver */
+			panel_name = "mipi_mot_cmd_smd_qhd_429";
+			disp_intf = <4>;  /* MIPI_VP_CM */
+
+			rst_gpio_1 = <37>;
+			rst_gpio_type_1 = <1>; /* PM_GPIO */
+			rst_init_state_1 = <1>;
+			rst_en_state_1 = <1>;
+			rst_en_pre_delay_1 = <25>;
+			rst_en_post_delay_1 = <20>;
+			rst_dis_post_delay_1 = <10>;
+
+			num_disp_reg = <3>;
+
+			reg_id_1 = "dsi_s4";
+			reg_name_1 = "DISP_VDDIO";
+			reg_min_mv_1 = <1800000>;
+			reg_max_mv_1 = <1800000>;
+			reg_gpio_en_1 = <12>;
+			reg_gpio_name_1 = "DISP_V2_EN";
+			reg_gpio_en_type_1 = <0>;  /* MSM_GPIO */
+			reg_gpio_en_init_state_1 = <1>;
+			reg_gpio_en_state_1 = <1>;
+
+			reg_id_2 = "disp_vci";
+			reg_name_2 = "DISP_VCI";
+			reg_max_mv_2 = <3100000>;
+			reg_min_mv_2 = <3100000>;
+			reg_shared_gpio_en_2 = <1>;
+
+			reg_id_3 = "";
+			reg_name_3 = "V_3P80_DISP";
+			reg_gpio_en_3 = <13>;
+			reg_gpio_name_3 = "DISP_V1_EN";
+			reg_gpio_en_type_3 = <0>;  /* MSM_GPIO */
+			reg_gpio_en_init_state_3 = <1>;
+			reg_gpio_en_state_3 = <1>;
+
+			mipi_d0_sel_gpio_1 = <10>;
+			mipi_d0_sel_name_1 = "mipi_d0_sel";
+			mipi_d0_sel_gpio_type_1 = <1>;  /* PM_GPIO */
+			mipi_d0_sel_init_state_1 = <0>;
+			mipi_d0_sel_en_state_1 = <0>;
+			mipi_d0_sel_en_pre_delay_1 = <0>;
+			mipi_d0_sel_en_post_delay_1 = <0>;
+			mipi_d0_sel_dis_pre_delay_1 = <0>;
+			mipi_d0_sel_dis_post_delay_1 = <0>;
+
+			partial_mode_supported = <1>;
+		};
+
+		Display@1 {
+			panel_name = "mipi_mot_cmd_smd_hd_465";
+			disp_intf = <4>;  /* MIPI_VP_CM */
+
+			rst_gpio_1 = <37>;
+			rst_gpio_type_1 = <1>;  /* PM_GPIO */
+			rst_init_state_1 = <1>;
+			rst_en_state_1 = <1>;
+			rst_en_pre_delay_1 = <15>;
+			rst_en_post_delay_1 = <15>;
+			rst_dis_post_delay_1 = <10>;
+
+			num_disp_reg = <3>;
+
+			reg_id_1 = "dsi_s4";
+			reg_name_1 = "VDD_DISP_CONN";
+			reg_min_mv_1 = <1800000>;
+			reg_max_mv_1 = <1800000>;
+			reg_gpio_en_1 = <12>;
+			reg_gpio_name_1 = "DISP_V2_EN";
+			reg_gpio_en_type_1 = <0>;  /* MSM_GPIO */
+			reg_gpio_en_init_state_1 = <1>;
+			reg_gpio_en_state_1 = <1>;
+
+			reg_id_2 = "disp_vci";
+			reg_name_2 = "VDD_DISP_CONN";
+			reg_min_mv_2 = <3100000>;
+			reg_max_mv_2 = <3100000>;
+			reg_gpio_en_2 = <90>;
+			reg_gpio_name_2 = "DISP_V3_EN";
+			reg_gpio_en_type_2 = <0>;  /* MSM_GPIO */
+			reg_gpio_en_init_state_2 = <1>;
+			reg_gpio_en_state_2 = <1>;
+
+			reg_id_3 = "";
+			reg_name_3 = "VBATT_DISP_CONN";
+			reg_gpio_en_3 = <13>;
+			reg_gpio_name_3 = "DISP_V1_EN";
+			reg_gpio_en_type_3 = <0>;  /* MSM_GPIO */
+			reg_gpio_en_init_state_3 = <1>;
+			reg_gpio_en_state_3 = <1>;
+
+			mipi_d0_sel_gpio_1 = <10>;
+			mipi_d0_sel_name_1 = "mipi_d0_sel";
+			mipi_d0_sel_gpio_type_1 = <1>; /* PM_GPIO */
+			mipi_d0_sel_init_state_1 = <0>;
+			mipi_d0_sel_en_state_1 = <0>;
+			mipi_d0_sel_en_pre_delay_1 = <0>;
+			mipi_d0_sel_en_post_delay_1 = <0>;
+			mipi_d0_sel_dis_pre_delay_1 = <0>;
+			mipi_d0_sel_dis_post_delay_1 = <0>;
+
+			partial_mode_supported = <1>;
+		};
+	};
 };
 
 &i2c3 {
