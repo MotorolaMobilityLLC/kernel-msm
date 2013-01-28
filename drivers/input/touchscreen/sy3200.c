@@ -103,6 +103,8 @@ static bool sy3200_wait4irq(struct sy3200_driver_data *dd);
 static int sy3200_create_sysfs_files(struct sy3200_driver_data *dd);
 static void sy3200_remove_sysfs_files(struct sy3200_driver_data *dd);
 
+static int error_count;
+
 static const struct i2c_device_id sy3200_id[] = {
 	/* This name must match the i2c_board_info name */
 	{ SY3200_I2C_NAME, 0 },
@@ -173,6 +175,8 @@ static int sy3200_probe(struct i2c_client *client,
 	struct sy3200_driver_data *dd = NULL;
 	int err = 0;
 	bool debugfail = false;
+
+	error_count = 0;
 
 	printk(KERN_INFO "%s: Driver: %s, Version: %s, Date: %s\n", __func__,
 		SY3200_I2C_NAME, SY3200_DRIVER_VERSION, SY3200_DRIVER_DATE);
@@ -463,6 +467,8 @@ static void sy3200_early_suspend(struct early_suspend *handler)
 
 	dd = container_of(handler, struct sy3200_driver_data, es);
 
+	disable_irq_nosync(dd->client->irq);
+
 	err = sy3200_suspend(dd->client, PMSG_SUSPEND);
 	if (err < 0) {
 		printk(KERN_ERR "%s: Suspend failed with error code %d",
@@ -483,6 +489,8 @@ static void sy3200_late_resume(struct early_suspend *handler)
 		printk(KERN_ERR "%s: Resume failed with error code %d.\n",
 			__func__, err);
 	}
+
+	enable_irq(dd->client->irq);
 
 	return;
 }
@@ -757,8 +765,13 @@ static int sy3200_i2c_write(struct sy3200_driver_data *dd,
 		udelay(SY3200_I2C_WAIT_TIME);
 	}
 
-	if (err < 0)
+	if (err < 0) {
 		printk(KERN_ERR "%s: I2C write failed.\n", __func__);
+		error_count++;
+		if (error_count > 5)
+			BUG();
+	} else
+		error_count = 0;
 
 #ifdef CONFIG_TOUCHSCREEN_DEBUG
 	if ((dd->dbg->dbg_lvl) >= SY3200_DBG2)
