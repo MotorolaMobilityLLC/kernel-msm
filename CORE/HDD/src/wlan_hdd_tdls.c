@@ -63,7 +63,8 @@ typedef struct {
     tANI_S8         ap_rssi;
 } tdlsCtx_t;
 
-tdlsCtx_t *pHddTdlsCtx;
+static tdlsCtx_t *pHddTdlsCtx;
+static v_BOOL_t tdlsImplicitTrigger;
 
 void wlan_hdd_freeTdlsPeer(void);
 
@@ -248,7 +249,8 @@ int wlan_hdd_tdls_init(struct net_device *dev)
 
     pHddTdlsCtx->dev = dev;
 
-    if(FALSE == pHddCtx->cfg_ini->fEnableTDLSImplicitTrigger)
+    tdlsImplicitTrigger = pHddCtx->cfg_ini->fEnableTDLSImplicitTrigger;
+    if(FALSE == tdlsImplicitTrigger)
     {
         hddLog(VOS_TRACE_LEVEL_ERROR, "%s TDLS Implicit trigger not enabled!", __func__);
         return -1;
@@ -281,21 +283,12 @@ int wlan_hdd_tdls_init(struct net_device *dev)
 
 void wlan_hdd_tdls_exit()
 {
-    hdd_adapter_t *pAdapter;
-    hdd_context_t *pHddCtx;
-
-    if (NULL == pHddTdlsCtx) return;
-
-    pAdapter = WLAN_HDD_GET_PRIV_PTR(pHddTdlsCtx->dev);
-    pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
-
-    if(FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport)
-    {
+    if (NULL == pHddTdlsCtx) {
         hddLog(VOS_TRACE_LEVEL_WARN, "%s TDLS not enabled, exiting!", __func__);
         return;
     }
 
-    if(FALSE != pHddCtx->cfg_ini->fEnableTDLSImplicitTrigger) {
+    if(FALSE != tdlsImplicitTrigger) {
         vos_timer_stop(&pHddTdlsCtx->peerDiscoverTimer);
         vos_timer_destroy(&pHddTdlsCtx->peerDiscoverTimer);
         vos_timer_stop(&pHddTdlsCtx->peerUpdateTimer);
@@ -303,8 +296,9 @@ void wlan_hdd_tdls_exit()
     }
 
     wlan_hdd_freeTdlsPeer();
-    if(pHddTdlsCtx)
-        vos_mem_free(pHddTdlsCtx);
+
+    vos_mem_free(pHddTdlsCtx);
+    pHddTdlsCtx = NULL;
 }
 
 int wlan_hdd_tdls_set_link_status(u8 *mac, int status)
@@ -340,11 +334,13 @@ found_peer:
 
     curr_peer->link_status = status;
 
-    if (eTDLS_LINK_CONNECTED == status) {
-        vos_timer_init(&curr_peer->peerIdleTimer,
-                         VOS_TIMER_TYPE_SW,
-                         wlan_hdd_tdls_idle_cb,
-                         curr_peer);
+    if(FALSE != tdlsImplicitTrigger) {
+        if (eTDLS_LINK_CONNECTED == status) {
+            vos_timer_init(&curr_peer->peerIdleTimer,
+                             VOS_TIMER_TYPE_SW,
+                             wlan_hdd_tdls_idle_cb,
+                             curr_peer);
+        }
     }
 
     return status;
@@ -549,7 +545,8 @@ known_peer:
 
 int wlan_hdd_tdls_set_params(tdls_config_params_t *config)
 {
-    if (NULL == pHddTdlsCtx) return -1;
+    if (NULL == pHddTdlsCtx ||
+        FALSE == tdlsImplicitTrigger) return -1;
 
     vos_timer_stop( &pHddTdlsCtx->peerDiscoverTimer);
 
@@ -687,8 +684,10 @@ found_peer:
     curr_peer->link_status = eTDLS_LINK_NOT_CONNECTED;
     curr_peer->staId = 0;
     curr_peer->rssi = -120;
-    vos_timer_stop( &curr_peer->peerIdleTimer );
-    vos_timer_destroy( &curr_peer->peerIdleTimer );
+    if(FALSE != tdlsImplicitTrigger) {
+        vos_timer_stop( &curr_peer->peerIdleTimer );
+        vos_timer_destroy( &curr_peer->peerIdleTimer );
+    }
 }
 
 void wlan_hdd_freeTdlsPeer(void)
