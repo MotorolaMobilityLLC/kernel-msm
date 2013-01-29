@@ -18,25 +18,6 @@
 
 	mmi,product = "mmi,msm8960ab-ghost";
 
-	/* GSBI8 - Rear I2C Touch Bus */
-	i2c@1a000000 {
-		status = "okay";
-
-		qcom,i2c-bus-freq = <400000>;
-		qcom,i2c-src-freq = <24000000>;
-
-		sy3200@20 {
-			compatible = "synaptics,sy3200";
-			reg = <0x20>;
-			interrupt-parent = <&msmgpio>;
-			interrupts = <70 0>;
-			gpios = <&msmgpio 70 0>, /* IRQ */
-				<&msmgpio 34 0>; /* RESET */
-
-			synaptics,sy3200-tdat-filename = "sy3200-r0.tdat";
-		};
-	};
-
 };
 
 &i2c3 {
