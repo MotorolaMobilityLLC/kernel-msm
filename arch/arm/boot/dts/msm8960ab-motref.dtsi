@@ -58,6 +58,12 @@
 			nxp,pnxxx-discharge-delay = <2000>;
 			nxp,pnxxx-ven-inv-polarity = <0>;
 		};
+
+		tpa6165xx@40 {
+			compatible = "ti,tpa6165";
+			reg = <0x40>;
+			gpios = <&pm8921_gpio 38 0>;     /* IRQ */
+		};
 	};
 
 	/* GSBI12 - I2C */
