@@ -762,18 +762,15 @@ static struct tpa6165a2_platform_data tpa6165_pdata;
 static int __init tpa6165a2_init_i2c_device(struct i2c_board_info *info,
 		struct device_node *node)
 {
-	int err;
+	int irq_gpio = -1;
 
 	info->platform_data = &tpa6165_pdata;
 	/* get irq */
-	if (of_property_read_u32(node, "hs_irq_gpio", &tpa6165_pdata.irq_gpio))
-		return -EINVAL;
+	of_property_read_u32(node, "hs_irq_gpio", &irq_gpio);
 
-	err = gpio_request(tpa6165_pdata.irq_gpio, "hs irq");
-	if (err)
-		pr_err("tpa6165 hs irq gpio_request failed: %d\n", err);
+	tpa6165_pdata.irq_gpio = irq_gpio;
 
-	return err;
+	return 0;
 }
 
 static struct aic3253_pdata aic_platform_data;
