@@ -86,6 +86,33 @@
 #include "pm-boot.h"
 #include "devices-msm8x60.h"
 #include "smd_private.h"
+#ifdef CONFIG_BCM2079X
+#include <linux/nfc/bcm2079x.h>
+#endif
+
+#define NFC_GPIO_VEN PM8921_GPIO_PM_TO_SYS(9)
+#define NFC_GPIO_WAKE PM8921_GPIO_PM_TO_SYS(8)
+#define NFC_GPIO_IRQ 32
+
+static struct bcm2079x_platform_data bcm2079x_pdata = {
+	.irq_gpio = NFC_GPIO_IRQ,
+	.wake_gpio  = NFC_GPIO_WAKE,
+	.en_gpio = NFC_GPIO_VEN,
+};
+
+static struct i2c_board_info i2c_bcm2079x[] __initdata = {
+	{
+		I2C_BOARD_INFO("bcm2079x-i2c", 0x77),
+		.irq = MSM_GPIO_TO_INT(NFC_GPIO_IRQ),
+		.platform_data = &bcm2079x_pdata,
+	},
+};
+
+static void nfc_init(void) {
+	i2c_register_board_info(APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+		i2c_bcm2079x,
+		ARRAY_SIZE(i2c_bcm2079x));
+}
 
 #define MSM_PMEM_ADSP_SIZE         0x7800000
 #define MSM_PMEM_AUDIO_SIZE        0x4CF000
@@ -3173,6 +3200,9 @@ static void __init apq8064_common_init(void)
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
 	apq8064_epm_adc_init();
 	msm_pm_set_tz_retention_flag(1);
+
+	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
+		nfc_init();
 }
 
 static void __init apq8064_allocate_memory_regions(void)

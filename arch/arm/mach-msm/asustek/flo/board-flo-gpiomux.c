@@ -1291,6 +1291,23 @@ static struct msm_gpiomux_config msm8064_display_ID_gpio_config[] __initdata = {
 		},
 	},
 };
+
+static struct gpiomux_setting nfc_bcm2079x_irq_cfg = { // NFC_IRQ
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+	.dir = GPIOMUX_IN,
+};
+
+static struct msm_gpiomux_config apq8064_bcm2079x_nfc_configs[] __initdata = {
+	{
+		.gpio = 32,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &nfc_bcm2079x_irq_cfg,
+		},
+	},
+};
+
 void __init apq8064_init_gpiomux(void)
 {
 	int rc;
@@ -1400,4 +1417,8 @@ void __init apq8064_init_gpiomux(void)
 
 	msm_gpiomux_install(msm8064_display_ID_gpio_config,
 			ARRAY_SIZE(msm8064_display_ID_gpio_config));
+
+	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
+		msm_gpiomux_install(apq8064_bcm2079x_nfc_configs,
+			ARRAY_SIZE(apq8064_bcm2079x_nfc_configs));
 }
