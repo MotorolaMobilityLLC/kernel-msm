@@ -291,6 +291,7 @@ struct pm8921_chg_chip {
 	struct power_supply		*wl_psy;
 	char				*wl_name;
 	struct work_struct		chg_src_work;
+	struct wake_lock		chg_wake_lock;
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	unsigned int			step_charge_current;
 	unsigned int			step_charge_voltage;
@@ -2525,6 +2526,32 @@ int pm8921_batt_temperature(void)
 	return get_prop_batt_temp(the_chip);
 }
 
+static void handle_chg_insertion_removal(struct pm8921_chg_chip *chip)
+{
+	struct pm8921_charger_platform_data *pdata;
+	char plugged;
+	static char prev_plugged;
+
+	plugged = (is_usb_chg_plugged_in(chip) ||
+		   is_dc_chg_plugged_in(chip)) ? 1 : 0;
+
+	if (chip && (prev_plugged != plugged)) {
+		pdata = chip->dev->platform_data;
+		if (plugged) {
+			wake_lock(&chip->chg_wake_lock);
+			if (pdata->force_therm_bias)
+				pdata->force_therm_bias(chip->dev, 1);
+		} else {
+			chip->bms_notify.is_battery_full = 0;
+			pm8921_bms_no_external_accy();
+			if (pdata->force_therm_bias)
+				pdata->force_therm_bias(chip->dev, 0);
+			wake_unlock(&chip->chg_wake_lock);
+		}
+		prev_plugged = plugged;
+	}
+}
+
 static void handle_usb_insertion_removal(struct pm8921_chg_chip *chip)
 {
 	int usb_present;
@@ -2835,6 +2862,8 @@ static irqreturn_t usbin_valid_irq_handler(int irq, void *data)
 						(VIN_MIN_COLLAPSE_CHECK_MS)));
 	else
 	    handle_usb_insertion_removal(data);
+
+	schedule_work(&the_chip->chg_src_work);
 
 	return IRQ_HANDLED;
 }
@@ -3373,6 +3402,8 @@ static void chg_src_setup(struct work_struct *work)
 {
 	struct pm8921_chg_chip *chip = container_of(work,
 				struct pm8921_chg_chip, chg_src_work);
+
+	handle_chg_insertion_removal(chip);
 
 	cancel_delayed_work(&chip->update_heartbeat_work);
 	schedule_delayed_work(&chip->update_heartbeat_work,
@@ -5884,6 +5915,8 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	}
 #endif
 
+	wake_lock_init(&chip->chg_wake_lock, WAKE_LOCK_SUSPEND, "pm8921_chg");
+
 	wake_lock_init(&chip->eoc_wake_lock, WAKE_LOCK_SUSPEND, "pm8921_eoc");
 	INIT_DELAYED_WORK(&chip->eoc_work, eoc_worker);
 	INIT_DELAYED_WORK(&chip->vin_collapse_check_work,
@@ -5959,6 +5992,7 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 free_irq:
 	free_irqs(chip);
 destroy_wakelock:
+	wake_lock_destroy(&chip->chg_wake_lock);
 	wake_lock_destroy(&chip->eoc_wake_lock);
 unregister_batt:
 	power_supply_unregister(&chip->batt_psy);
@@ -5984,6 +6018,7 @@ static int __devexit pm8921_charger_remove(struct platform_device *pdev)
 	free_irqs(chip);
 	platform_set_drvdata(pdev, NULL);
 	the_chip = NULL;
+	wake_lock_destroy(&chip->chg_wake_lock);
 	wake_lock_destroy(&chip->eoc_wake_lock);
 	wake_lock_destroy(&chip->heartbeat_wake_lock);
 	kfree(chip);
