@@ -211,6 +211,9 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #ifdef WLAN_FEATURE_11AC
 #define WE_GET_RSSI          6
 #endif
+#ifdef FEATURE_WLAN_TDLS
+#define WE_GET_TDLS_PEERS    8
+#endif
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_NONE_GET_NONE   (SIOCIWFIRSTPRIV + 6)
@@ -4053,6 +4056,13 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
 
             break;
         }
+#ifdef FEATURE_WLAN_TDLS
+        case WE_GET_TDLS_PEERS:
+        {
+            wrqu->data.length = wlan_hdd_tdls_get_all_peers(extra, WE_MAX_STR_LEN)+1;
+            break;
+        }
+#endif
         default:  
         {
             hddLog(LOGE, "Invalid IOCTL command %d  \n",  sub_cmd );
@@ -4301,15 +4311,6 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
                 tdlsParams.discovery_tries_n = apps_args[3];
                 tdlsParams.rx_timeout_t      = apps_args[4];
                 tdlsParams.rssi_hysteresis   = apps_args[5];
-
-                  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                            "iw set tdls params: %d %d %d %d %d %d",
-                            tdlsParams.tx_period_t,
-                            tdlsParams.tx_packet_n,
-                            tdlsParams.discovery_period_t,
-                            tdlsParams.discovery_tries_n,
-                            tdlsParams.rx_timeout_t,
-                            tdlsParams.rssi_hysteresis);
 
                 wlan_hdd_tdls_set_params(&tdlsParams);
             }
@@ -6262,7 +6263,13 @@ static const struct iw_priv_args we_private_args[] = {
         0, 
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
         "getChannelList" },
-
+#ifdef FEATURE_WLAN_TDLS
+    {
+        WE_GET_TDLS_PEERS,
+        0,
+        IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
+        "getTdlsPeers" },
+#endif
     /* handlers for main ioctl */
     {   WLAN_PRIV_SET_NONE_GET_NONE,
         0,
