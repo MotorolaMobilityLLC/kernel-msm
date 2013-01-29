@@ -3293,6 +3293,7 @@ static void __init apq8064_allocate_memory_regions(void)
 
 static void __init apq8064_cdp_init(void)
 {
+	printk(KERN_NOTICE "MIDR      = 0x%08x\n", read_cpuid_id());
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
 		pr_err("meminfo_init() failed!\n");
 	if (machine_is_apq8064_mtp() &&
