@@ -3431,47 +3431,51 @@ static tSirRetStatus limTdlsSetupAddSta(tpAniSirGlobal pMac,
     tSirRetStatus status = eSIR_SUCCESS ;
     tANI_U16 aid = 0 ;
 
-    if(NULL != dphLookupHashEntry(pMac, peerMac, &aid, 
-                                      &psessionEntry->dph.dphHashTable))
-    {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-                    (" there is hash entry for this client\n")) ;
-        status = eSIR_FAILURE ;
-        /* TDLS_TODO: I have seen this VOS ASSERT happened. must handle this (called from limProcessTdlsSetupReqFrame) */
-        VOS_ASSERT(0) ;
-        return status ;
-    }
-    aid = limAssignPeerIdx(pMac, psessionEntry) ;
-
-    if( !aid )
-    {
-       //Reject request.
-       return eSIR_FAILURE;
-    }
-    VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL,
-          ("limTdlsSetupAddSta: Aid = %d, for peer = %02x,%02x,%02x,%02x,%02x,%02x\n"),
-                     aid, peerMac[0],peerMac[1],peerMac[2],
-                              peerMac[3],peerMac[4],peerMac[5]) ;
-    pStaDs = dphGetHashEntry(pMac, aid, &psessionEntry->dph.dphHashTable);
-
-    if (pStaDs)
-    {
-        (void) limDelSta(pMac, pStaDs, false /*asynchronous*/, psessionEntry);
-        limDeleteDphHashEntry(pMac, pStaDs->staAddr, aid, psessionEntry);
-    }
-
-    pStaDs = dphAddHashEntry(pMac, peerMac, aid, 
-                                          &psessionEntry->dph.dphHashTable) ;
-
+    pStaDs = dphLookupHashEntry(pMac, peerMac, &aid,
+                                      &psessionEntry->dph.dphHashTable);
     if(NULL == pStaDs)
     {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR, 
-                    (" add hash entry failed\n")) ;
-        status = eSIR_FAILURE ;
-        VOS_ASSERT(0) ;
+        aid = limAssignPeerIdx(pMac, psessionEntry) ;
+
+        if( !aid )
+        {
+            //Reject request.
+            return eSIR_FAILURE;
+        }
+        VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL,
+              ("limTdlsSetupAddSta: Aid = %d, for peer = %02x,%02x,%02x,%02x,%02x,%02x\n"),
+                         aid, peerMac[0],peerMac[1],peerMac[2],
+                         peerMac[3],peerMac[4],peerMac[5]) ;
+        pStaDs = dphGetHashEntry(pMac, aid, &psessionEntry->dph.dphHashTable);
+
+        if (pStaDs)
+        {
+            (void) limDelSta(pMac, pStaDs, false /*asynchronous*/, psessionEntry);
+            limDeleteDphHashEntry(pMac, pStaDs->staAddr, aid, psessionEntry);
+        }
+
+        pStaDs = dphAddHashEntry(pMac, peerMac, aid,
+                                             &psessionEntry->dph.dphHashTable) ;
+
+        if(NULL == pStaDs)
+        {
+            VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+                        (" add hash entry failed\n")) ;
+            status = eSIR_FAILURE ;
+            VOS_ASSERT(0) ;
+        }
     }
-  
-    limTdlsUpdateHashNodeInfo(pMac, pStaDs, setupPeer, psessionEntry) ; 
+    else
+    {
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+                    (" there is hash entry for this client\n")) ;
+        /*TODO: for now We are returning from here but we should tell
+          firmware that station configuration is modified once we
+          got that from supplicant*/
+        return eSIR_FAILURE;
+    }
+
+    limTdlsUpdateHashNodeInfo(pMac, pStaDs, setupPeer, psessionEntry) ;
 
     pStaDs->staType = STA_ENTRY_TDLS_PEER ;
 
@@ -3481,7 +3485,7 @@ static tSirRetStatus limTdlsSetupAddSta(tpAniSirGlobal pMac,
     {
         /* should not fail */
         VOS_ASSERT(0) ;
-    }  
+    }
     return status ;
 }
 
@@ -4539,7 +4543,7 @@ tSirRetStatus limProcessSmeTdlsAddStaReq(tpAniSirGlobal pMac,
      if(eSIR_FAILURE == limTdlsSetupAddSta(pMac, pAddStaReq->peerMac, 
                                                &setupPeer, psessionEntry))
      {
-         VOS_ASSERT(0) ;
+         limLog(pMac, LOGE, "%s: Add TDLS Station request failed \n", __func__);
          goto lim_tdls_add_sta_error;
      }
      return eSIR_SUCCESS;

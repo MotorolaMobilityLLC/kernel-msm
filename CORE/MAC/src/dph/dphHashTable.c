@@ -447,6 +447,7 @@ tSirRetStatus dphDeleteHashEntry(tpAniSirGlobal pMac, tSirMacAddr staAddr, tANI_
     {
       /// Delete the entry after invalidating it
       ptr->valid = 0;
+      memset(ptr->staAddr, 0, sizeof(ptr->staAddr));
       if (prev == 0)
          pDphHashTable->pHashTable[index] = ptr->next;
       else
