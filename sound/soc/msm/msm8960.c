@@ -1002,7 +1002,7 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 	mbhc_cfg.read_fw_bin = hs_detect_use_firmware;
 
-	err = tabla_hs_detect(codec, &mbhc_cfg);
+//	err = tabla_hs_detect(codec, &mbhc_cfg);
 
 	return err;
 }
