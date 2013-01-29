@@ -197,6 +197,7 @@ struct kgsl_device {
 	int mem_log;
 	int pwr_log;
 	int ft_log;
+	int pm_dump_enable;
 	struct kgsl_pwrscale pwrscale;
 	struct kobject pwrscale_kobj;
 	struct pm_qos_request pm_qos_req_dma;
