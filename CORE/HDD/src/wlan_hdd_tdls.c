@@ -153,6 +153,9 @@ static v_VOID_t wlan_hdd_update_peer_cb( v_PVOID_t userData )
                                                    NL80211_TDLS_SETUP, FALSE,
                                                    GFP_KERNEL);
 #endif
+                        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                                "Tput triggering TDLS");
+
                         goto next_peer;
                     }
 
@@ -160,8 +163,8 @@ static v_VOID_t wlan_hdd_update_peer_cb( v_PVOID_t userData )
                             (tANI_S32)(pHddTdlsCtx->threshold_config.rssi_hysteresis +
                                 pHddTdlsCtx->ap_rssi)) {
 
-                        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                                "RSSI triggering");
+                        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                                "RSSI triggering TDLS");
 
 #ifdef CONFIG_TDLS_IMPLICIT
                         cfg80211_tdls_oper_request(pHddTdlsCtx->dev,
@@ -178,7 +181,7 @@ static v_VOID_t wlan_hdd_update_peer_cb( v_PVOID_t userData )
                             curr_peer->rx_pkt == 0)) {
                         if (VOS_TIMER_STATE_RUNNING !=
                                 vos_timer_getCurrentState(&curr_peer->peerIdleTimer)) {
-                            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, "Tx/Rx Idle!");
+                            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, "Tx/Rx Idle timer start!");
                             vos_timer_start( &curr_peer->peerIdleTimer,
                                         pHddTdlsCtx->threshold_config.rx_timeout_t );
                         }
@@ -217,7 +220,7 @@ static v_VOID_t wlan_hdd_tdls_idle_cb( v_PVOID_t userData )
     hddTdlsPeer_t *curr_peer = (hddTdlsPeer_t *)userData;
 #endif
 
-    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, "Tx/Rx Idle - teardown!");
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, "Tx/Rx Idle - teardown now!");
 
 #ifdef CONFIG_TDLS_IMPLICIT
     cfg80211_tdls_oper_request(pHddTdlsCtx->dev,
@@ -734,4 +737,50 @@ u8 wlan_hdd_tdlsConnectedPeers(void)
             count++;
     }
     return count;
+}
+
+int wlan_hdd_tdls_get_all_peers(char *buf, int buflen)
+{
+    int i;
+    int len, init_len;
+    hddTdlsPeer_t *curr_peer;
+
+    if (NULL == pHddTdlsCtx) {
+        len = snprintf(buf, buflen, "TDLS not enabled\n");
+        return len;
+    }
+
+    init_len = buflen;
+    len = snprintf(buf, buflen, "\n%-18s%-3s%-4s%-3s%-5s\n", "MAC", "Id", "cap", "up", "RSSI");
+    buf += len;
+    buflen -= len;
+    /*                           1234567890123456789012345678901234567 */
+    len = snprintf(buf, buflen, "---------------------------------\n");
+    buf += len;
+    buflen -= len;
+
+    for (i = 0; i < 256; i++) {
+
+        curr_peer = pHddTdlsCtx->peer_list[i];
+
+        if (NULL != curr_peer) {
+            do {
+                if(buflen < 32+1)
+                    break;
+                len = snprintf(buf, buflen,
+                    "%02x:%02x:%02x:%02x:%02x:%02x%3d%4s%3s%5d\n",
+                    curr_peer->peerMac[0], curr_peer->peerMac[1],
+                    curr_peer->peerMac[2], curr_peer->peerMac[3],
+                    curr_peer->peerMac[4], curr_peer->peerMac[5],
+                    curr_peer->staId,
+                    (curr_peer->tdls_support == eTDLS_CAP_SUPPORTED) ? "Y":"N",
+                    (curr_peer->link_status == eTDLS_LINK_CONNECTED) ? "Y":"N",
+                    curr_peer->rssi);
+                buf += len;
+                buflen -= len;
+                curr_peer = (hddTdlsPeer_t *)curr_peer->node.next;
+            } while (&curr_peer->node != curr_peer->node.next);
+        }
+    }
+    return init_len-buflen;
 }

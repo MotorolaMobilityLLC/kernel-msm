@@ -108,4 +108,6 @@ void wlan_hdd_removeTdlsPeer(tCsrRoamInfo *pRoamInfo);
 
 u8 wlan_hdd_tdlsConnectedPeers(void);
 
+int wlan_hdd_tdls_get_all_peers(char *buf, int buflen);
+
 #endif // __HDD_TDSL_H
