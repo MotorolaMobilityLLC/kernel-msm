@@ -47,6 +47,10 @@
 #define SY3400_DBG2                 2
 #define SY3400_DBG3                 3
 
+#define SY3400_SWAP_XY_FLAG         0
+#define SY3400_INVERT_X_FLAG        1
+#define SY3400_INVERT_Y_FLAG        2
+
 #define SY3400_IRQ_ENABLED_FLAG     0
 #define SY3400_WAITING_FOR_TDAT     1
 #define SY3400_REPORT_TOUCHES       2
