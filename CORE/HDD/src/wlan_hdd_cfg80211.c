@@ -529,6 +529,9 @@ int wlan_hdd_cfg80211_register(struct device *dev,
                  |  WIPHY_FLAG_HAS_REMAIN_ON_CHANNEL
                     | WIPHY_FLAG_OFFCHAN_TX;
 #endif
+#ifdef FEATURE_WLAN_LFR
+    wiphy->flags |= WIPHY_FLAG_SUPPORTS_FW_ROAM;
+#endif
 #ifdef FEATURE_WLAN_TDLS
     wiphy->flags |= WIPHY_FLAG_SUPPORTS_TDLS
                  |  WIPHY_FLAG_TDLS_EXTERNAL_SETUP;
