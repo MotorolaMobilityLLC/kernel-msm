@@ -15,7 +15,6 @@
 #include <linux/i2c.h>
 #include <linux/gpio.h>
 #include <linux/platform_data/flash_lm3559.h>
-#include <media/msm_camera.h>
 #include <asm/mach-types.h>
 #include <mach/board.h>
 #include <mach/msm_bus_board.h>
@@ -432,8 +431,10 @@ static struct msm_actuator_info msm_act_main_cam_0_info = {
 #endif
 
 #ifdef CONFIG_IMX111
-static struct msm_camera_sensor_flash_data flash_imx111 = {
-	.flash_type	= MSM_CAMERA_FLASH_LED,
+static struct msm_camera_slave_info imx111_slave_info = {
+	.sensor_slave_addr = 0x34,
+	.sensor_id_reg_addr = 0x0,
+	.sensor_id = 0x0111,
 };
 
 static struct msm_camera_csi_lane_params imx111_csi_lane_params = {
@@ -441,27 +442,36 @@ static struct msm_camera_csi_lane_params imx111_csi_lane_params = {
 	.csi_lane_mask = 0xF,
 };
 
-static struct msm_camera_sensor_platform_info sensor_board_info_imx111 = {
-	.mount_angle	= 90,
-	.cam_vreg = apq_8064_back_cam_vreg,
-	.num_vreg = ARRAY_SIZE(apq_8064_back_cam_vreg),
-	.gpio_conf = &apq8064_back_cam_gpio_conf,
-	.i2c_conf = &apq8064_back_cam_i2c_conf,
-	.csi_lane_params = &imx111_csi_lane_params,
+static struct msm_sensor_info_t imx111_sensor_info = {
+	.subdev_id = {
+		[SUB_MODULE_SENSOR] = -1,
+		[SUB_MODULE_CHROMATIX] = -1,
+		[SUB_MODULE_ACTUATOR] = -1,
+		[SUB_MODULE_EEPROM] = -1,
+		[SUB_MODULE_LED_FLASH] = -1,
+		[SUB_MODULE_STROBE_FLASH] = -1,
+		[SUB_MODULE_CSIPHY] = 0,
+		[SUB_MODULE_CSIPHY_3D] = -1,
+		[SUB_MODULE_CSID] = 0,
+		[SUB_MODULE_CSID_3D] = -1,
+	}
 };
 
-static struct msm_camera_sensor_info msm_camera_sensor_imx111_data = {
-	.sensor_name	= "imx111",
-	.pdata	= &msm_camera_csi_device_data[0],
-	.flash_data	= &flash_imx111,
-	.sensor_platform_info = &sensor_board_info_imx111,
-	.csi_if	= 1,
-	.camera_type = BACK_CAMERA_2D,
-	.sensor_type = BAYER_SENSOR,
-#ifdef CONFIG_SEKONIX_LENS_ACT
-	.actuator_info = &msm_act_main_cam_0_info,
+static struct msm_sensor_init_params imx111_init_params = {
+	.modes_supported = CAMERA_MODE_2D_B,
+	.position = BACK_CAMERA_B,
+	.sensor_mount_angle = 90,
+};
 
-#endif
+static struct msm_camera_sensor_board_info msm_camera_sensor_imx111_data = {
+	.sensor_name = "imx111",
+	.slave_info = &imx111_slave_info,
+	.csi_lane_params = &imx111_csi_lane_params,
+	.cam_vreg = apq_8064_cam_vreg,
+	.num_vreg = ARRAY_SIZE(apq_8064_cam_vreg),
+	.gpio_conf = &apq8064_back_cam_gpio_conf,
+	.sensor_info = &imx111_sensor_info,
+	.sensor_init_params = &imx111_init_params,
 };
 #endif
 

@@ -443,4 +443,6 @@ struct msm_actuator_reg_params_t {
 
 #define MSM_V4L2_PIX_FMT_META v4l2_fourcc('M', 'E', 'T', 'A') /* META */
 
-#endif /* _UAPI_MEDIA_MSM_CAM_SENSOR_H */
+#define MSM_V4L2_PIX_FMT_RESERVED_0 v4l2_fourcc('R', 'E', 'S', '0')
+
+#endif /* __LINUX_MSM_CAM_SENSOR_H */
