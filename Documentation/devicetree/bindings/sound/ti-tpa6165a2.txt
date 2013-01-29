@@ -1,0 +1,36 @@
+* TI TPA6165A2
+
+TPA6165A2 is a headset interface IC with a high-performance, low-power
+DirectPath variable-attenuation Class-G stereo headphone amplifier,
+variable=gain microphone pre-amplifier with bias, and advanced accessory
+detection circuitry.
+
+Required properties:
+	- compatible:
+		the string of "ti,tpa6165"
+	- reg:
+		the i2c slave address of the IC
+	- interrupts:
+		there is one interrupt line connected to the main SoC
+	- interrupt-parent:
+		The parent interrupt controller
+	- gpios:
+		an array specifiying the required GPIO for operation
+			- IRQ GPIO
+
+Example:
+
+	i2c@1a200000 {
+		status = "okay";
+
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <24000000>;
+
+		tpa6165xx@40 {
+			compatible = "ti,tpa6165";
+			reg = <0x40>;
+			interrupt-parent = <&pm8921_gpio>;
+			interrupts = <38 0>;
+			gpios = <&pm8921_gpio 38 0>;     /* IRQ */
+		};
+	};

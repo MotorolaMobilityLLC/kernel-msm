@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Motorola Mobility, Inc.
+ * Copyright (C) 2012-2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -26,6 +26,8 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/miscdevice.h>
 #include <linux/regulator/consumer.h>
 #include <linux/seq_file.h>
@@ -518,6 +520,31 @@ static irqreturn_t tpa6165_det_thread(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+#ifdef CONFIG_OF
+static struct tpa6165a2_platform_data *
+tpa6165_of_init(struct i2c_client *client)
+{
+	struct tpa6165a2_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "pdata allocation failure\n");
+		return NULL;
+	}
+
+	pdata->irq_gpio = of_get_gpio(np, 0);
+
+	return pdata;
+}
+#else
+static inline struct tpa6165a2_platform_data *
+tpa6165_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
+
 static int __devinit tpa6165_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
@@ -531,19 +558,29 @@ static int __devinit tpa6165_probe(struct i2c_client *client,
 		return -EIO;
 	}
 
+	if (client->dev.of_node)
+			tpa6165_pdata = tpa6165_of_init(client);
+	else
+			tpa6165_pdata = client->dev.platform_data;
+
 	/* Check platform data */
-	if (client->dev.platform_data == NULL) {
+	if (tpa6165_pdata == NULL) {
 		dev_err(&client->dev,
 			"platform data is NULL\n");
 		return -EINVAL;
 	}
-	tpa6165_pdata = client->dev.platform_data;
-	tpa6165 = kzalloc(sizeof(*tpa6165), GFP_KERNEL);
 
+	tpa6165 = kzalloc(sizeof(*tpa6165), GFP_KERNEL);
 	if (tpa6165 == NULL) {
 		dev_err(&client->dev,
 			"Failed to allocate memory for module data\n");
 		return -ENOMEM;
+	}
+
+	err = gpio_request(tpa6165_pdata->irq_gpio, "hs irq");
+	if (err) {
+		dev_err(&client->dev, "tpa6165 irq gpio init failed\n");
+		goto gpio_init_fail;
 	}
 
 	/* set global variables */
@@ -624,6 +661,8 @@ reg_get_micvdd:
 reg_enable_vdd_fail:
 	regulator_put(tpa6165->vdd);
 reg_get_vdd:
+	gpio_free(tpa6165->gpio);
+gpio_init_fail:
 	kfree(tpa6165);
 	return err;
 }
@@ -635,6 +674,7 @@ static int __devexit tpa6165_remove(struct i2c_client *client)
 	regulator_put(tpa6165->vdd);
 	regulator_disable(tpa6165->micvdd);
 	regulator_put(tpa6165->micvdd);
+	gpio_free(tpa6165->gpio);
 	wake_lock_destroy(&tpa6165->wake_lock);
 	tpa6165_remove_debugfs();
 	kfree(tpa6165);
@@ -648,10 +688,19 @@ static const struct i2c_device_id tpa6165_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, tpa6165_id);
 
+#ifdef CONFIG_OF
+static struct of_device_id tpa6165_match_tbl[] = {
+	{ .compatible = "ti,tpa6165" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, tpa6165_match_tbl);
+#endif
+
 static struct i2c_driver tpa6165_driver = {
 	.driver = {
 			.name = NAME,
 			.owner = THIS_MODULE,
+			.of_match_table = of_match_ptr(tpa6165_match_tbl),
 	},
 	.probe = tpa6165_probe,
 	.remove = __devexit_p(tpa6165_remove),
