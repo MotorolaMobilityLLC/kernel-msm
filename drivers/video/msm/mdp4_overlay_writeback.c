@@ -166,8 +166,13 @@ int mdp4_overlay_writeback_on(struct platform_device *pdev)
 		(0x0 & 0xFFF));         /* 12-bit R */
 
 	mdp_clk_ctrl(0);
+
+	atomic_set(&vctrl->suspend, 0);
+
 	return ret;
 }
+
+static void mdp4_wfd_wait4ov(int cndx);
 
 int mdp4_overlay_writeback_off(struct platform_device *pdev)
 {
@@ -185,17 +190,23 @@ int mdp4_overlay_writeback_off(struct platform_device *pdev)
 
 	vctrl = &vsync_ctrl_db[cndx];
 	pipe = vctrl->base_pipe;
+
+	atomic_set(&vctrl->suspend, 1);
+
 	if (pipe == NULL) {
 		pr_err("%s: NO base pipe\n", __func__);
 		return ret;
 	}
 
+	complete(&vctrl->ov_comp);
+	msleep(20);
+	mdp_clk_ctrl(1);
 	/* sanity check, free pipes besides base layer */
 	mdp4_overlay_unset_mixer(pipe->mixer_num);
 	mdp4_mixer_stage_down(pipe, 1);
 	mdp4_overlay_pipe_free(pipe);
 	vctrl->base_pipe = NULL;
-
+	mdp_clk_ctrl(0);
 	undx =  vctrl->update_ndx;
 	vp = &vctrl->vlist[undx];
 	if (vp->update_cnt) {
@@ -321,8 +332,6 @@ void mdp4_wfd_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe)
 	mdp4_stat.overlay_play[pipe->mixer_num]++;
 }
 
-static void mdp4_wfd_wait4ov(int cndx);
-
 int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 			int cndx, int wait)
 {
@@ -360,6 +369,7 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 	/* free previous committed iommu back to pool */
 	mdp4_overlay_iommu_unmap_freelist(mixer);
 
+	mdp_clk_ctrl(1);
 	pipe = vp->plist;
 	for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
 		if (pipe->pipe_used) {
@@ -428,6 +438,7 @@ void mdp4_wfd_init(int cndx)
 	vctrl->update_ndx = 0;
 	mutex_init(&vctrl->update_lock);
 	init_completion(&vctrl->ov_comp);
+	atomic_set(&vctrl->suspend, 1);
 	spin_lock_init(&vctrl->spin_lock);
 	INIT_WORK(&vctrl->clk_work, clk_ctrl_work);
 }
