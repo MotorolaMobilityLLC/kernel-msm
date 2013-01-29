@@ -1446,6 +1446,13 @@ static int calculate_unusable_charge_uah(struct pm8921_bms_chip *chip,
 	int pc_unusable;
 
 	/*
+	 * UUC will be inaccurate if rbatt_sf_lut is null
+	 * so Disable this calculation by returning UUC = 0
+	 */
+	if (chip->rbatt_sf_lut == NULL)
+		return 0;
+
+	/*
 	 * if we are called first time fill all the
 	 * samples with the the shutdown_iavg_ma
 	 */
