@@ -68,6 +68,12 @@ static v_BOOL_t tdlsImplicitTrigger;
 
 void wlan_hdd_freeTdlsPeer(void);
 
+#ifndef WLAN_FEATURE_TDLS_DEBUG
+#define TDLS_LOG_LEVEL VOS_TRACE_LEVEL_INFO
+#else
+#define TDLS_LOG_LEVEL VOS_TRACE_LEVEL_WARN
+#endif
+
 static v_VOID_t wlan_hdd_discover_peer_cb( v_PVOID_t userData )
 {
     int i;
@@ -144,27 +150,42 @@ static v_VOID_t wlan_hdd_update_peer_cb( v_PVOID_t userData )
 
         do {
             if (eTDLS_CAP_SUPPORTED == curr_peer->tdls_support) {
+                VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                    "%s: (tx %d, rx %d, config %d) %02x:%02x:%02x:%02x:%02x:%02x (%d) ",
+                       __func__,  curr_peer->tx_pkt, curr_peer->rx_pkt,
+                        pHddTdlsCtx->threshold_config.tx_packet_n,
+                        curr_peer->peerMac[0], curr_peer->peerMac[1], curr_peer->peerMac[2],
+                        curr_peer->peerMac[3], curr_peer->peerMac[4], curr_peer->peerMac[5],
+                        curr_peer->link_status);
                 if (eTDLS_LINK_CONNECTED != curr_peer->link_status) {
                     if (curr_peer->tx_pkt >=
                             pHddTdlsCtx->threshold_config.tx_packet_n) {
+
+                    VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "-> Tput trigger TDLS SETUP");
 #ifdef CONFIG_TDLS_IMPLICIT
                         cfg80211_tdls_oper_request(pHddTdlsCtx->dev,
                                                    curr_peer->peerMac,
                                                    NL80211_TDLS_SETUP, FALSE,
                                                    GFP_KERNEL);
 #endif
-                        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                                "Tput triggering TDLS");
-
                         goto next_peer;
                     }
-
+#ifdef WLAN_FEATURE_TDLS_DEBUG
+                    else  {
+                        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "-> ignored.");
+                    }
+#endif
                     if ((tANI_S32)curr_peer->rssi >
                             (tANI_S32)(pHddTdlsCtx->threshold_config.rssi_hysteresis +
                                 pHddTdlsCtx->ap_rssi)) {
 
-                        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                                "RSSI triggering TDLS");
+                        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                                "%s: RSSI (peer %d > ap %d + hysteresis %d) triggering to %02x:%02x:%02x:%02x:%02x:%02x ",
+                                __func__, (tANI_S32)curr_peer->rssi,
+                                pHddTdlsCtx->ap_rssi,
+                                (tANI_S32)(pHddTdlsCtx->threshold_config.rssi_hysteresis),
+                                curr_peer->peerMac[0], curr_peer->peerMac[1], curr_peer->peerMac[2],
+                                curr_peer->peerMac[3], curr_peer->peerMac[4], curr_peer->peerMac[5]);
 
 #ifdef CONFIG_TDLS_IMPLICIT
                         cfg80211_tdls_oper_request(pHddTdlsCtx->dev,
@@ -181,13 +202,24 @@ static v_VOID_t wlan_hdd_update_peer_cb( v_PVOID_t userData )
                             curr_peer->rx_pkt == 0)) {
                         if (VOS_TIMER_STATE_RUNNING !=
                                 vos_timer_getCurrentState(&curr_peer->peerIdleTimer)) {
-                            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, "Tx/Rx Idle timer start!");
+                            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "-> start Idle Timer (%d)", pHddTdlsCtx->threshold_config.rx_timeout_t);
                             vos_timer_start( &curr_peer->peerIdleTimer,
                                         pHddTdlsCtx->threshold_config.rx_timeout_t );
                         }
+
                         goto next_peer;
                     }
-
+                    else {
+                        if (VOS_TIMER_STATE_RUNNING ==
+                                vos_timer_getCurrentState(&curr_peer->peerIdleTimer)) {
+                            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "-> stop Idle Timer ");
+                            vos_timer_stop ( &curr_peer->peerIdleTimer );
+                        }
+#ifdef WLAN_FEATURE_TDLS_DEBUG
+                        else
+                            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "-> idle time was not running. ignored.");
+#endif
+                    }
 //                    if (curr_peer->rssi <
 //                            (pHddTdlsCtx->threshold_config.rssi_hysteresis +
 //                                pHddTdlsCtx->ap_rssi)) {
@@ -218,11 +250,14 @@ static v_VOID_t wlan_hdd_tdls_idle_cb( v_PVOID_t userData )
 {
 #ifdef CONFIG_TDLS_IMPLICIT
     hddTdlsPeer_t *curr_peer = (hddTdlsPeer_t *)userData;
-#endif
 
-    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, "Tx/Rx Idle - teardown now!");
 
-#ifdef CONFIG_TDLS_IMPLICIT
+    VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+               "%s: Tx/Rx Idle %02x:%02x:%02x:%02x:%02x:%02x trigger teardown",
+               __func__,
+               curr_peer->peerMac[0], curr_peer->peerMac[1], curr_peer->peerMac[2],
+               curr_peer->peerMac[3], curr_peer->peerMac[4], curr_peer->peerMac[5]);
+
     cfg80211_tdls_oper_request(pHddTdlsCtx->dev,
                                curr_peer->peerMac,
                                NL80211_TDLS_TEARDOWN, FALSE,
