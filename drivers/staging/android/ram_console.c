@@ -22,11 +22,15 @@
 #include <linux/string.h>
 #include <linux/uaccess.h>
 #include <linux/io.h>
+#include <asm/bootinfo.h>
 #include "ram_console.h"
 
 static struct persistent_ram_zone *ram_console_zone;
 static const char *bootinfo;
 static size_t bootinfo_size;
+static const char *bootinfo_label =
+	"\n\n#############\nCurrent Boot info:\nPOWERUPREASON: 0x%08x\n";
+static size_t bootinfo_label_size;
 
 static void
 ram_console_write(struct console *console, const char *s, unsigned int count)
@@ -59,11 +63,14 @@ static int __devinit ram_console_probe(struct platform_device *pdev)
 	if (IS_ERR(prz))
 		return PTR_ERR(prz);
 
-
 	if (pdata) {
 		bootinfo = kstrdup(pdata->bootinfo, GFP_KERNEL);
-		if (bootinfo)
-			bootinfo_size = strlen(bootinfo);
+		if (bootinfo) {
+			bootinfo_label_size = snprintf(NULL, 0,
+				bootinfo_label, bi_powerup_reason());
+			bootinfo_size = strlen(bootinfo)
+					 + bootinfo_label_size;
+		}
 	}
 
 	ram_console_zone = prz;
@@ -123,6 +130,7 @@ static ssize_t ram_console_read_old(struct file *file, char __user *buf,
 		count = min(len, (size_t)(count - pos));
 		ret = copy_to_user(buf, str + pos, count);
 		kfree(str);
+		str = NULL;
 		if (ret)
 			return -EFAULT;
 		goto out;
@@ -130,8 +138,25 @@ static ssize_t ram_console_read_old(struct file *file, char __user *buf,
 
 	/* Boot info passed through pdata */
 	pos -= count;
-	if (pos < bootinfo_size) {
-		count = min(len, (size_t)(bootinfo_size - pos));
+	count = snprintf(NULL, 0, bootinfo_label, bi_powerup_reason());
+	if (pos < bootinfo_label_size) {
+		str = kmalloc(count, GFP_KERNEL);
+		if (!str)
+			return -ENOMEM;
+		snprintf(str, count + 1, bootinfo_label, bi_powerup_reason());
+		count = min(len, (size_t)(bootinfo_label_size - pos));
+		ret = copy_to_user(buf, str + pos, count);
+		kfree(str);
+		str = NULL;
+		if (ret)
+			return -EFAULT;
+		goto out;
+
+	}
+	pos -= count;
+	if (pos < (bootinfo_size - bootinfo_label_size)) {
+		count = min(len, (size_t)(bootinfo_size -
+					bootinfo_label_size - pos));
 		if (copy_to_user(buf, bootinfo + pos, count))
 			return -EFAULT;
 		goto out;
@@ -162,6 +187,17 @@ static int __init ram_console_late_init(void)
 
 	if (persistent_ram_old_size(prz) == 0)
 		return 0;
+
+	if (!bootinfo) {
+		bootinfo = kstrdup(boot_command_line, GFP_KERNEL);
+		if (bootinfo) {
+			bootinfo_label_size =
+				snprintf(NULL, 0, bootinfo_label,
+						bi_powerup_reason());
+			bootinfo_size = strlen(bootinfo)
+					 + bootinfo_label_size;
+		}
+	}
 
 	entry = create_proc_entry("last_kmsg", S_IFREG | S_IRUGO, NULL);
 	if (!entry) {
