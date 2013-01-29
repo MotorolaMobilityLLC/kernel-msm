@@ -408,8 +408,6 @@ static int sy3400_suspend(struct i2c_client *client, pm_message_t message)
 		sy3400_i2c_write(dd, obj_rep_addr, obj_rep_en, 2);
 	}
 
-	goto sy3400_suspend_fail;
-
 	sy3400_dbg(dd, SY3400_DBG3, "%s: Suspending...\n", __func__);
 
 	drv_state = sy3400_get_drv_state(dd);
@@ -421,6 +419,7 @@ static int sy3400_suspend(struct i2c_client *client, pm_message_t message)
 		switch (ic_state) {
 		case SY3400_IC_ACTIVE:
 			sleep = sleep | dd->icdat->pwr_dat;
+			sleep &= 0xFD;
 			sy3400_dbg(dd, SY3400_DBG3,
 				"%s: Suspending touch IC...Writing %d to 0x%04x\n",
 					__func__,
@@ -497,8 +496,6 @@ static int sy3400_resume(struct i2c_client *client)
 		sy3400_i2c_write(dd, x_y_supp_addr, x_y_supp, 2);
 		sy3400_i2c_write(dd, obj_rep_addr, obj_rep_en, 2);
 	}
-
-	goto sy3400_resume_fail;
 
 	sy3400_dbg(dd, SY3400_DBG3, "%s: Resuming...\n", __func__);
 
@@ -2133,7 +2130,7 @@ static int sy3400_check_bootloader(struct sy3400_driver_data *dd, bool *bl)
 
 	if (data0 & 0x40) {
 		*bl = true;
-		if ((data & 0x0E) != 0x00) {
+		if ((data0 & 0x0E) != 0x00) {
 			printk(KERN_ERR
 				"%s: Touch IC is in bootloader%s0x%02X.\n",
 				__func__, " with status code ", (data0 & 0x0F));
@@ -2672,6 +2669,18 @@ static void sy3400_report_touches(struct sy3400_driver_data *dd)
 		y = dd->rdat->tchdat[i].y;
 		p = dd->rdat->tchdat[i].p;
 		w = dd->rdat->tchdat[i].w;
+
+		if (dd->settings & (1 << SY3400_SWAP_XY_FLAG)) {
+			rval = x;
+			x = y;
+			y = rval;
+		}
+
+		if (dd->settings & (1 << SY3400_INVERT_X_FLAG))
+			x = dd->rdat->axis[0] - x;
+
+		if (dd->settings & (1 << SY3400_INVERT_Y_FLAG))
+			y = dd->rdat->axis[1] - y;
 
 		sy3400_dbg(dd, SY3400_DBG1,
 			"%s: ID=%d, X=%d, Y=%d, P=%d, W=%d\n",
@@ -3247,9 +3256,9 @@ static bool sy3400_wait4irq(struct sy3400_driver_data *dd)
 	bool irq_low = false;
 	int i = 0;
 
-	for (i = 0; i < 500; i++) {
+	for (i = 0; i < 5000; i++) {
 		if (gpio_get_value(dd->pdata->gpio_interrupt) != 0) {
-			msleep(20);
+			udelay(1000);
 		} else {
 			irq_low = true;
 			break;
