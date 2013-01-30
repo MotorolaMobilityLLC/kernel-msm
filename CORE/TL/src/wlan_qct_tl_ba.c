@@ -163,7 +163,7 @@ v_VOID_t WLANTL_ReorderingAgingTimerExpierCB
    pClientSTA = pTLHandle->atlSTAClients[ucSTAID];
    if( NULL == pClientSTA ){
       TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-          "WLAN TL:Client Memory was not allocated for STA ID: %d on %s", ucSTAID, __func__));
+          "TL:STA Memory not allocated STA ID: %d, %s", ucSTAID, __func__));
       return;
    }
 

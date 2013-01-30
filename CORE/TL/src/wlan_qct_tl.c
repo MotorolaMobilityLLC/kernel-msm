@@ -1386,9 +1386,7 @@ WLANTL_RegisterSTAClient
   /*------------------------------------------------------------------------
     Start with the state suggested by client caller
     -----------------------------------------------------------------------*/
-  pClientSTA->tlState =
-    pwSTADescType->ucInitState;
-
+  pClientSTA->tlState = pwSTADescType->ucInitState;
   pClientSTA->ucRxBlocked = 1;
   /*-----------------------------------------------------------------------
     After all the init is complete we can mark the existance flag 
@@ -4085,10 +4083,11 @@ WLANTL_GetFrames
         {
             TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
                 "WLAN TL:Client Memory was not allocated on %s", __func__));
-            return VOS_STATUS_E_FAILURE;
+            continue;
         }
 
         pTLCb->atlSTAClients[ucSTAId]->ucNoMoreData = 0;
+        pClientSTA = pTLCb->atlSTAClients[ucSTAId];
 
         TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
                    "WLAN TL:Chaining cached data frame on GetFrame"));
@@ -4108,12 +4107,11 @@ WLANTL_GetFrames
         /* ucCurrentAC should have correct AC to be served by calling
            WLAN_TLGetNextTxIds */
         pClientSTA = pTLCb->atlSTAClients[ucSTAId];
-
         if ( NULL == pClientSTA )
         {
             TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
                 "WLAN TL:Client Memory was not allocated on %s", __func__));
-            return VOS_STATUS_E_FAILURE;
+            continue;
         }
 
         ucAC = pClientSTA->ucCurrentAC;
@@ -7357,7 +7355,7 @@ WLANTL_FwdPktToHDD
             TLLOG4(VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO_LOW,
                      "%s: packet to AP itself, id %d\n", __func__, WLAN_RX_SAP_SELF_STA_ID));
          }
-         else if (( WLAN_MAX_STA_COUNT <= ucDesSTAId ) || (pClientSTA->ucExists == 0))
+         else if (( WLAN_MAX_STA_COUNT <= ucDesSTAId ) || (NULL != pTLCb->atlSTAClients[ucDesSTAId] && pTLCb->atlSTAClients[ucDesSTAId]->ucExists == 0))
          {
             // destination station is something else
             TLLOG4(VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO_LOW,
@@ -8690,20 +8688,27 @@ WLANTL_Translate8023To80211Header
 
 #ifdef FEATURE_WLAN_TDLS
 
-  if( WLAN_STA_INFRA == pClientSTA->wSTADesc.wSTAType
-      && pTLCb->ucTdlsPeerCount)
+  if ( WLAN_STA_INFRA == pTLCb->atlSTAClients[ucStaId]->wSTADesc.wSTAType
+      && pTLCb->ucTdlsPeerCount )
   {
     v_U8_t ucIndex = 0;
     for ( ucIndex = 0; ucIndex < WLAN_MAX_STA_COUNT ; ucIndex++)
     {
-      if( ucIndex != ucStaId && pClientSTA->ucExists &&
-          vos_mem_compare( (void*)pClientSTA->wSTADesc.vSTAMACAddress.bytes,
+      if ( ucIndex != ucStaId && pTLCb->atlSTAClients[ucIndex] && pTLCb->atlSTAClients[ucIndex]->ucExists &&
+          vos_mem_compare( (void*)pTLCb->atlSTAClients[ucIndex]->wSTADesc.vSTAMACAddress.bytes,
             (void*)w8023Header.vDA, 6) )
       {
         TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_LOW,
               "WLAN TL: Got a TDLS station. Using that index"));
         ucStaId = ucIndex;
         *pucStaId = ucStaId;
+        pClientSTA = pTLCb->atlSTAClients[ucStaId];
+        if ( NULL == pClientSTA )
+        {
+            TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                "WLAN TL:Client Memory was not allocated on %s", __func__));
+            return VOS_STATUS_E_FAILURE;
+        }
         break;
       }
     }
