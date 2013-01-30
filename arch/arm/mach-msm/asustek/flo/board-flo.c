@@ -77,6 +77,8 @@
 #include <mach/msm_iomap.h>
 #ifdef CONFIG_SLIMPORT_ANX7808
 #include <linux/platform_data/slimport_device.h>
+#ifdef CONFIG_MACH_ASUSTEK
+#include <mach/board_asustek.h>
 #endif
 
 #include "msm_watchdog.h"
@@ -775,6 +777,10 @@ static void __init apq8064_reserve(void)
 	apq8064_set_display_params(prim_panel_name, ext_panel_name,
 		ext_resolution);
 	msm_reserve();
+
+#ifdef CONFIG_MACH_ASUSTEK
+	asustek_reserve();
+#endif
 }
 
 static void __init place_movable_zone(void)
@@ -3324,6 +3330,9 @@ static void __init apq8064_cdp_init(void)
 		SOCINFO_VERSION_MINOR(socinfo_get_platform_version()) == 1)
 			cyttsp_pdata.sleep_gpio = CYTTSP_TS_GPIO_SLEEP_ALT;
 	apq8064_common_init();
+#ifdef CONFIG_MACH_ASUSTEK
+	asustek_add_ramconsole_devices();
+#endif
 	if (machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd() ||
 		machine_is_mpq8064_dtv()) {
 		enable_avc_i2c_bus();
