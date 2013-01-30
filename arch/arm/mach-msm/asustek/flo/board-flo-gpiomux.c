@@ -660,21 +660,9 @@ static struct msm_gpiomux_config apq8064_gsbi_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio      = 53,		/* Funny CS0 */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_spi_config,
-		},
-	},
-	{
 		.gpio      = 31,		/* GSBI5 QUP SPI_CS2_N */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_spi_cs2_config,
-		},
-	},
-	{
-		.gpio      = 54,		/* GSBI5 QUP SPI_CLK */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_spi_config,
 		},
 	},
 #endif
@@ -688,12 +676,6 @@ static struct msm_gpiomux_config apq8064_gsbi_configs[] __initdata = {
 		.gpio      = 32,		/* EPM CS */
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_epm_spi_cs_config,
-		},
-	},
-	{
-		.gpio      = 53,		/* NOR CS */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_spi_cs_config,
 		},
 	},
 	{
@@ -1271,6 +1253,36 @@ static struct msm_gpiomux_config apq8064_sdc3_configs[] __initdata = {
 	},
 };
 
+#ifdef CONFIG_MACH_ASUSTEK
+static struct gpiomux_setting gpio_keys_active_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct gpiomux_setting gpio_keys_suspended_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct msm_gpiomux_config asustek_gpio_keys_configs[] __initdata = {
+	{	.gpio = 53,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_keys_active_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_keys_suspended_cfg,
+		},
+	},
+	{
+		.gpio = 54,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_keys_active_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_keys_suspended_cfg,
+		},
+	},
+};
+#endif
+
 static struct gpiomux_setting display_ID_gpio_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv  = GPIOMUX_DRV_2MA,
@@ -1390,6 +1402,13 @@ void __init apq8064_init_gpiomux(void)
 		msm_gpiomux_install(apq8064_gsbi_configs,
 				ARRAY_SIZE(apq8064_gsbi_configs));
 	}
+
+#ifdef CONFIG_MACH_ASUSTEK
+	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
+		msm_gpiomux_install(asustek_gpio_keys_configs,
+			ARRAY_SIZE(asustek_gpio_keys_configs));
+	}
+#endif
 
 	msm_gpiomux_install(apq8064_slimbus_config,
 			ARRAY_SIZE(apq8064_slimbus_config));
