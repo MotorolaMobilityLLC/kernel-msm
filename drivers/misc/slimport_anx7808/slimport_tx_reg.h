@@ -12,10 +12,10 @@
  *
  */
 
-#ifndef __SP_TX_REG_DEF_H
-#define __SP_TX_REG_DEF_H
+#ifndef _SP_TX_REG_DEF_H
+#define _SP_TX_REG_DEF_H
 
-#define TX_P0 0x78
+#define TX_P0 0x70
 #define TX_P1 0x7A
 #define TX_P2 0x72
 
@@ -55,8 +55,6 @@
 
 #define HDMI_RX_SYS_PWDN1_REG 0X18
 #define PWDN_CTRL	0X01
-
-#define HDMI_RX_PIO_CTRL 0X1B
 
 #define HDMI_RX_AEC_CTRL_REG 0X20
 #define AVC_OE 0x80
@@ -309,7 +307,6 @@
 
 #define SP_TX_HDCP_LINK_CHK_FRAME_NUM 0x03
 #define SP_TX_HDCP_CTRL2_REG 0x04
-
 #define SP_TX_HDCP_KEY_STATUS 0x1E
 
 #define SP_TX_VID_BLANK_SET1 0X2C
@@ -504,6 +501,15 @@
 #define SP_TX_VID_CTRL3_REG 0x0A
 #define HPD_OUT 0x40
 
+#define SP_TX_VID_CTRL5_REG 0x0C
+#define CSC_STD_SEL 0x80
+#define RANGE_Y2R 0x20
+#define CSPACE_Y2R 0x10
+
+#define SP_TX_VID_CTRL6_REG 0x0D
+#define VIDEO_PROCESS_EN 0x40
+#define UP_SAMPLE 0x02
+#define DOWN_SAMPLE 0x01
 #define SP_TX_TOTAL_LINE_STA_L 0x24
 #define SP_TX_TOTAL_LINE_STA_H 0x25
 #define SP_TX_ACT_LINE_STA_L 0x26
@@ -553,6 +559,9 @@
 #define SP_TX_AUD_CH_NUM_REG5 0xD5
 #define CH_NUM_8 0xE0
 #define AUD_LAYOUT 0x01
+
+#define SP_TX_ANAOG_DBG_REG1 0xDC
+#define PULL_DOWN_ID 0x80
 
 #define SP_TX_ANALOG_DEBUG_REG2 0xDD
 #define POWERON_TIME_1P5MS 0X06

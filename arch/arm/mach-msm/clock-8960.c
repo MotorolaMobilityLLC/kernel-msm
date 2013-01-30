@@ -5295,7 +5295,7 @@ static struct clk_lookup msm_clocks_8064[] = {
 	CLK_LOOKUP("cfpb_a_clk",	cfpb_a_clk.c,		"clock-8960"),
 
 	CLK_LOOKUP("core_clk",		gp0_clk.c,		""),
-	CLK_LOOKUP("core_clk",		gp1_clk.c,		""),
+	CLK_LOOKUP("core_clk",		gp1_clk.c,		"slimport"),
 	CLK_LOOKUP("core_clk",		gp2_clk.c,		""),
 #ifdef CONFIG_MACH_LGE
 	CLK_LOOKUP("core_clk",		gsbi1_uart_clk.c,	""),

@@ -229,6 +229,7 @@ struct msm_gpiomux_config vcap_configs[] = {
 			[GPIOMUX_ACTIVE] =		&gpio_vcap_config[3],
 		}
 	},
+#if 0
 	{
 		.gpio = 7,
 		.settings = {
@@ -236,6 +237,7 @@ struct msm_gpiomux_config vcap_configs[] = {
 			[GPIOMUX_ACTIVE] =		&gpio_vcap_config[7],
 		}
 	},
+#endif
 	{
 		.gpio = 6,
 		.settings = {
@@ -378,14 +380,14 @@ static struct gpiomux_setting gsbi1_uart_config = {
 	.drv = GPIOMUX_DRV_16MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
-
+/*
 static struct gpiomux_setting ext_regulator_config = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 	.dir = GPIOMUX_OUT_LOW,
 };
-
+*/
 static struct gpiomux_setting gsbi7_func1_cfg = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
@@ -786,14 +788,14 @@ static struct msm_gpiomux_config apq8064_audio_codec_configs[] __initdata = {
 };
 
 /* External 3.3 V regulator enable */
-static struct msm_gpiomux_config apq8064_ext_regulator_configs[] __initdata = {
+/*static struct msm_gpiomux_config apq8064_ext_regulator_configs[] __initdata = {
 	{
 		.gpio = APQ8064_EXT_3P3V_REG_EN_GPIO,
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &ext_regulator_config,
 		},
 	},
-};
+};*/
 
 static struct gpiomux_setting ap2mdm_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -921,6 +923,7 @@ static struct msm_gpiomux_config mdm_i2s_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &ap2mdm_soft_reset_cfg,
 		}
 	},
+#if 0
 	/* AP2MDM_WAKEUP */
 	{
 		.gpio = 44,
@@ -928,6 +931,7 @@ static struct msm_gpiomux_config mdm_i2s_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &ap2mdm_wakeup,
 		}
 	},
+#endif
 	/* MDM2AP_PBL_READY*/
 	{
 		.gpio = 81,
@@ -1308,6 +1312,51 @@ static struct msm_gpiomux_config apq8064_bcm2079x_nfc_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting sp_clk_config = {
+	.func = GPIOMUX_FUNC_2,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting sp_gpio_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir   = GPIOMUX_IN,
+};
+
+//add slimport gpio
+static struct msm_gpiomux_config msm8064_sp_gpio_config[] __initdata = {
+	{
+		.gpio = 7,	/* SP_CBL_DET */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &sp_gpio_config,
+			[GPIOMUX_ACTIVE]= &sp_gpio_config,
+		},
+	},
+	{
+		.gpio = 44,	/* SP_INT */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &sp_gpio_config,
+			[GPIOMUX_ACTIVE]= &sp_gpio_config,
+		},
+	},
+	{
+		.gpio = 50,	/* slimport 27M clock */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &sp_clk_config,
+			[GPIOMUX_ACTIVE]= &sp_clk_config,
+		},
+	},
+	{
+		.gpio = 77,	/* APQ_USB_ID */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &sp_gpio_config,
+			[GPIOMUX_ACTIVE]= &sp_gpio_config,
+		},
+	},
+};
+
 void __init apq8064_init_gpiomux(void)
 {
 	int rc;
@@ -1362,10 +1411,10 @@ void __init apq8064_init_gpiomux(void)
 		machine_is_mpq8064_dtv())
 		msm_gpiomux_install(mpq8064_mi2s_configs,
 			ARRAY_SIZE(mpq8064_mi2s_configs));
-
+/*
 	msm_gpiomux_install(apq8064_ext_regulator_configs,
 			ARRAY_SIZE(apq8064_ext_regulator_configs));
-
+*/
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
 		if (SOCINFO_VERSION_MINOR(platform_version) == 1)
 			msm_gpiomux_install(mdm_i2s_configs,
@@ -1421,4 +1470,8 @@ void __init apq8064_init_gpiomux(void)
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
 		msm_gpiomux_install(apq8064_bcm2079x_nfc_configs,
 			ARRAY_SIZE(apq8064_bcm2079x_nfc_configs));
+#ifdef CONFIG_SLIMPORT_ANX7808
+	msm_gpiomux_install(msm8064_sp_gpio_config,
+			ARRAY_SIZE(msm8064_sp_gpio_config));
+#endif
 }

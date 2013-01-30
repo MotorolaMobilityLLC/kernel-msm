@@ -12,14 +12,17 @@
  *
  */
 
-#ifndef __SP_TX_DRV_H
-#define __SP_TX_DRV_H
+#ifndef _SP_TX_DRV_H
+#define _SP_TX_DRV_H
 
 
 #define FALSE 0
 #define TRUE 1
 
+/*#define D(fmt, arg...) printk("<1>```%s:%d: " fmt, __func__, __LINE__, ##arg)*/
+
 #define MAX_BUF_CNT 10
+
 #define VID_DVI_MODE 0x00
 #define VID_HDMI_MODE 0x01
 #define VIDEO_STABLE_TH 3
@@ -30,8 +33,9 @@
 
 extern unchar bedid_extblock[128];
 extern unchar bedid_firstblock[128];
+extern unchar slimport_link_bw;
 
-extern bool anx7808_ver_ba;
+
 
 enum SP_TX_System_State {
 	STATE_INIT = 1,
@@ -122,7 +126,6 @@ enum RX_CBL_TYPE {
 	RX_VGA = 0x03,
 	RX_NULL = 0x00
 };
-
 void sp_tx_variable_init(void);
 void sp_tx_initialization(void);
 void sp_tx_show_infomation(void);
@@ -139,7 +142,6 @@ unchar sp_tx_hw_link_training(void);
 unchar sp_tx_lt_pre_config(void);
 void sp_tx_video_mute(unchar enable);
 void sp_tx_set_colorspace(void);
-void sp_tx_set_3d_packets(void);
 void sp_tx_int_irq_handler(void);
 void sp_tx_send_message(enum SP_TX_SEND_MSG message);
 void sp_tx_hdcp_process(void);
@@ -153,6 +155,7 @@ uint sp_tx_link_err_check(void);
 void sp_tx_eye_diagram_test(void);
 void sp_tx_phy_auto_test(void);
 void sp_tx_enable_video_input(unchar enable);
+void sp_tx_pull_down_id(bool enable);
 
 /* ***************************************************************** */
 /* Functions protoype for HDMI Input */

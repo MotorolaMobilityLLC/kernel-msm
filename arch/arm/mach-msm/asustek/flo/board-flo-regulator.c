@@ -144,6 +144,7 @@ VREG_CONSUMERS(L27) = {
 VREG_CONSUMERS(L28) = {
 	REGULATOR_SUPPLY("8921_l28",		NULL),
 	REGULATOR_SUPPLY("core_vdd",		"pil_qdsp6v4.1"),
+	REGULATOR_SUPPLY("slimport_1p0",		NULL),
 };
 VREG_CONSUMERS(L29) = {
 	REGULATOR_SUPPLY("8921_l29",		NULL),
@@ -238,7 +239,7 @@ VREG_CONSUMERS(EXT_MPP8) = {
 	REGULATOR_SUPPLY("ext_mpp8",		NULL),
 	REGULATOR_SUPPLY("vbus",		"msm_ehci_host.1"),
 };
-VREG_CONSUMERS(EXT_3P3V) = {
+/*VREG_CONSUMERS(EXT_3P3V) = {
 	REGULATOR_SUPPLY("ext_3p3v",		NULL),
 	REGULATOR_SUPPLY("vdd_io",		"spi0.2"),
 	REGULATOR_SUPPLY("mhl_usb_hs_switch",	"msm_otg"),
@@ -247,7 +248,7 @@ VREG_CONSUMERS(EXT_3P3V) = {
 	REGULATOR_SUPPLY("hdmi_mux_vdd",        "hdmi_msm.0"),
 	REGULATOR_SUPPLY("pcie_ext_3p3v",       "msm_pcie"),
 };
-/*VREG_CONSUMERS(EXT_TS_SW) = {
+VREG_CONSUMERS(EXT_TS_SW) = {
 	REGULATOR_SUPPLY("ext_ts_sw",		NULL),
 	REGULATOR_SUPPLY("vdd_ana",		"3-005b"),
 };*/
@@ -552,9 +553,9 @@ struct gpio_regulator_platform_data
 apq8064_gpio_regulator_pdata[] __devinitdata = {
 	/*        ID      vreg_name gpio_label   gpio                  supply */
 	GPIO_VREG(EXT_5V, "ext_5v", "ext_5v_en", PM8921_MPP_PM_TO_SYS(7), NULL),
-	GPIO_VREG(EXT_3P3V, "ext_3p3v", "ext_3p3v_en",
+/*	GPIO_VREG(EXT_3P3V, "ext_3p3v", "ext_3p3v_en",
 		  APQ8064_EXT_3P3V_REG_EN_GPIO, NULL),
-/*	GPIO_VREG(EXT_TS_SW, "ext_ts_sw", "ext_ts_sw_en",
+	GPIO_VREG(EXT_TS_SW, "ext_ts_sw", "ext_ts_sw_en",
 		  PM8921_GPIO_PM_TO_SYS(23), "ext_3p3v"),*/
 	GPIO_VREG(EXT_MPP8, "ext_mpp8", "ext_mpp8_en",
 			PM8921_MPP_PM_TO_SYS(8), NULL),

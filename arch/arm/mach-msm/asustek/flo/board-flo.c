@@ -75,6 +75,9 @@
 #include <mach/msm_pcie.h>
 #include <mach/restart.h>
 #include <mach/msm_iomap.h>
+#ifdef CONFIG_SLIMPORT_ANX7808
+#include <linux/platform_data/slimport_device.h>
+#endif
 
 #include "msm_watchdog.h"
 #include "board-flo.h"
@@ -2244,7 +2247,7 @@ static struct platform_device apq8064_device_ext_mpp8_vreg __devinitdata = {
 			= &apq8064_gpio_regulator_pdata[GPIO_VREG_ID_EXT_MPP8],
 	},
 };
-
+/*
 static struct platform_device apq8064_device_ext_3p3v_vreg __devinitdata = {
 	.name	= GPIO_REGULATOR_DEV_NAME,
 	.id	= APQ8064_EXT_3P3V_REG_EN_GPIO,
@@ -2253,7 +2256,7 @@ static struct platform_device apq8064_device_ext_3p3v_vreg __devinitdata = {
 			&apq8064_gpio_regulator_pdata[GPIO_VREG_ID_EXT_3P3V],
 	},
 };
-
+*/
 static struct platform_device apq8064_device_ext_ts_sw_vreg __devinitdata = {
 	.name	= GPIO_REGULATOR_DEV_NAME,
 	.id	= PM8921_GPIO_PM_TO_SYS(23),
@@ -2307,7 +2310,7 @@ static struct platform_device *early_common_devices[] __initdata = {
 static struct platform_device *pm8921_common_devices[] __initdata = {
 	&apq8064_device_ext_5v_vreg,
 	&apq8064_device_ext_mpp8_vreg,
-	&apq8064_device_ext_3p3v_vreg,
+	//&apq8064_device_ext_3p3v_vreg,
 	&apq8064_device_ssbi_pmic1,
 	&apq8064_device_ssbi_pmic2,
 	&apq8064_device_ext_ts_sw_vreg,
@@ -2315,7 +2318,7 @@ static struct platform_device *pm8921_common_devices[] __initdata = {
 
 static struct platform_device *pm8917_common_devices[] __initdata = {
 	&apq8064_device_ext_mpp8_vreg,
-	&apq8064_device_ext_3p3v_vreg,
+	//&apq8064_device_ext_3p3v_vreg,
 	&apq8064_device_ssbi_pmic1,
 	&apq8064_device_ssbi_pmic2,
 	&apq8064_device_ext_ts_sw_vreg,
@@ -3113,6 +3116,106 @@ static void __init apq8064_pm8917_pdata_fixup(void)
 	cdp_keys_data.nbuttons = ARRAY_SIZE(cdp_keys_pm8917);
 }
 
+#ifdef CONFIG_SLIMPORT_ANX7808
+#define GPIO_SLIMPORT_CBL_DET    7
+#define GPIO_SLIMPORT_PWR_DWN    PM8921_GPIO_PM_TO_SYS(2)
+#define GPIO_SLIMPORT_RESET_N    PM8921_GPIO_PM_TO_SYS(1)
+#define GPIO_SLIMPORT_INT_N      44
+#define GPIO_SLIMPORT_27M_CLOCK      50
+
+static int anx7808_switch_onoff(bool on)
+{
+	static bool power_state = 0;
+	static struct regulator *anx7808_power_1p0 = NULL;
+	int rc = 0;
+
+	if (power_state == on) {
+		pr_info("anx7808_power_1p0 is already %s \n", power_state ? "on" : "off");
+		goto out;
+	}
+
+	if (!anx7808_power_1p0) {
+		anx7808_power_1p0= regulator_get(NULL, "slimport_1p0");
+		if (IS_ERR(anx7808_power_1p0)) {
+			rc = PTR_ERR(anx7808_power_1p0);
+			pr_err("%s: regulator_get anx7808_power_1p0 failed. rc=%d\n",
+					__func__, rc);
+			anx7808_power_1p0 = NULL;
+			goto out;
+		}
+		rc = regulator_set_voltage(anx7808_power_1p0, 1050000, 1050000);
+		if (rc ) {
+			pr_err("%s: regulator_set_voltage anx7808_power_1p0 failed\
+				rc=%d\n", __func__, rc);
+			goto out;
+		}
+	}
+
+	if (on) {
+		rc = regulator_set_optimum_mode(anx7808_power_1p0, 100000);
+		if (rc < 0) {
+			pr_err("%s : set optimum mode 100000, anx7808_power_1p0 failed \
+					(%d)\n", __func__, rc);
+			goto out;
+		}
+		rc = regulator_enable(anx7808_power_1p0);
+		if (rc) {
+			pr_err("%s : anx7808_power_1p0 enable failed (%d)\n",
+					__func__, rc);
+			goto out;
+		}
+	}
+	else {
+		rc = regulator_disable(anx7808_power_1p0);
+		if (rc) {
+			pr_err("%s : anx7808_power_1p0 disable failed (%d)\n",
+				__func__, rc);
+			goto out;
+		}
+		rc = regulator_set_optimum_mode(anx7808_power_1p0, 100);
+		if (rc < 0) {
+			pr_err("%s : set optimum mode 100, anx7808_power_1p0 failed \
+				(%d)\n", __func__, rc);
+			goto out;
+		}
+	}
+	power_state = on;
+
+out:
+	return rc;
+
+}
+
+static struct anx7808_platform_data anx7808_pdata = {
+	.gpio_p_dwn = GPIO_SLIMPORT_PWR_DWN,
+	.gpio_reset = GPIO_SLIMPORT_RESET_N,
+	.gpio_int = GPIO_SLIMPORT_INT_N,
+	.gpio_cbl_det = GPIO_SLIMPORT_CBL_DET,
+	.switch_power = anx7808_switch_onoff,
+};
+
+struct i2c_board_info i2c_anx7808_info[] = {
+	{
+		I2C_BOARD_INFO("anx7808", 0x72 >> 1),
+		.platform_data = &anx7808_pdata,
+	},
+};
+
+static struct i2c_registry i2c_anx7808_devices __initdata = {
+	I2C_SURF | I2C_FFA | I2C_RUMI,
+	APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+	i2c_anx7808_info,
+	ARRAY_SIZE(i2c_anx7808_info),
+};
+
+static void __init add_i2c_anx7808_device(void)
+{
+	i2c_register_board_info(i2c_anx7808_devices.bus,
+		i2c_anx7808_devices.info,
+		i2c_anx7808_devices.len);
+}
+#endif
+
 static void __init apq8064_common_init(void)
 {
 	u32 platform_version;
@@ -3203,6 +3306,9 @@ static void __init apq8064_common_init(void)
 
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
 		nfc_init();
+#ifdef CONFIG_SLIMPORT_ANX7808
+	add_i2c_anx7808_device();
+#endif
 }
 
 static void __init apq8064_allocate_memory_regions(void)

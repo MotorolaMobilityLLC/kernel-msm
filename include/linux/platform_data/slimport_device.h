@@ -24,8 +24,7 @@ struct anx7808_platform_data
 
 	spinlock_t lock;
 
-	int (*dvdd_power)(bool on);
-	int (*avdd_power)(bool on);
+	int (*switch_power)(bool on);
 };
 
 #endif
