@@ -1426,6 +1426,15 @@ config SENSORS_MC13783_ADC
         help
           Support for the A/D converter on MC13783 and MC13892 PMIC.
 
+config SENSORS_CAP1106
+	tristate "SMSC CAP1106"
+	depends on I2C
+	help
+	  Say yes if you want SMSC 1106 cap sensor driver.
+	  This is for i2c connected version. If unsure, say N here.
+	  To compile this driver as a module, choose m here. The module will
+	  be called cap1106.
+
 if ACPI
 
 comment "ACPI drivers"

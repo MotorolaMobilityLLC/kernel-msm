@@ -99,6 +99,7 @@
 #define NFC_GPIO_VEN PM8921_GPIO_PM_TO_SYS(9)
 #define NFC_GPIO_WAKE PM8921_GPIO_PM_TO_SYS(8)
 #define NFC_GPIO_IRQ 32
+#define CAP1106_GPIO_IRQ 52
 
 static struct bcm2079x_platform_data bcm2079x_pdata = {
 	.irq_gpio = NFC_GPIO_IRQ,
@@ -118,6 +119,55 @@ static void nfc_init(void) {
 	i2c_register_board_info(APQ_8064_GSBI1_QUP_I2C_BUS_ID,
 		i2c_bcm2079x,
 		ARRAY_SIZE(i2c_bcm2079x));
+}
+
+static struct i2c_board_info i2c_cap1106[] __initdata = {
+	{
+		I2C_BOARD_INFO("cap1106", 0x28),
+		.irq = MSM_GPIO_TO_INT(CAP1106_GPIO_IRQ),
+	},
+};
+
+static void cap1106_init(void) {
+	i2c_register_board_info(APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+		i2c_cap1106,
+		ARRAY_SIZE(i2c_cap1106));
+}
+
+static void enable_cap1106_regulator(void) {
+	static struct regulator *pm8921_cap1106;
+	const char *vdd_name = "8921_l15";
+	int rc = -EINVAL;
+
+	pr_info("enable_cap1106_regulator() <<\n");
+
+	pm8921_cap1106 = regulator_get(NULL, vdd_name);
+	if (IS_ERR(pm8921_cap1106)) {
+		pr_err("%s: regulator get of %s failed (%ld)\n",
+			__func__, vdd_name, PTR_ERR(pm8921_cap1106));
+		return;
+	}
+
+	// Set LDO_CAP1106 to 3.30V
+	rc = regulator_set_voltage(pm8921_cap1106, 3300000, 3300000);
+	if (rc) {
+		pr_err("%s: regulator_set_voltage of %s failed(%d)\n",
+			__func__, vdd_name, rc);
+		regulator_put(pm8921_cap1106);
+		return;
+	}
+
+	// Enable LDO_CAP1106
+	rc = regulator_enable(pm8921_cap1106);
+	if (rc) {
+		pr_err("%s: regulator_enable of %s failed(%d)\n",
+			__func__, vdd_name, rc);
+		//goto reg_put_LDO_CAP1106;
+		regulator_put(pm8921_cap1106);
+		return;
+	}
+
+	pr_info("enable_cap1106_regulator() >>\n");
 }
 
 #define MSM_PMEM_ADSP_SIZE         0x7800000
@@ -3072,6 +3122,10 @@ static void __init apq8064_common_init(void)
 
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
 		nfc_init();
+	if (machine_is_apq8064_deb()) {
+		enable_cap1106_regulator();
+		cap1106_init();
+	}
 #ifdef CONFIG_SLIMPORT_ANX7808
 	add_i2c_anx7808_device();
 #endif
