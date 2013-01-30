@@ -1960,11 +1960,6 @@ sub process {
 			     "unnecessary whitespace before a quoted newline\n" . $herecurr);
 		}
 
-# check for spaces before a quoted newline
-		if ($rawline =~ /^.*\".*\s\\n/) {
-			WARN("unnecessary whitespace before a quoted newline\n" . $herecurr);
-		}
-
 # check for adding lines without a newline.
 		if ($line =~ /^\+/ && defined $lines[$linenr] && $lines[$linenr] =~ /^\\ No newline at end of file/) {
 			WARN("MISSING_EOF_NEWLINE",
@@ -2050,12 +2045,6 @@ sub process {
 			my $herevet = "$here\n" . cat_vet($rawline) . "\n";
 			WARN("LEADING_SPACE",
 			     "please, no spaces at the start of a line\n" . $herevet);
-		}
-
-# check for space before tabs.
-		if ($rawline =~ /^\+/ && $rawline =~ / \t/) {
-			my $herevet = "$here\n" . cat_vet($rawline) . "\n";
-			WARN("please, no space before tabs\n" . $herevet);
 		}
 
 # check we are in a valid C source file if not then ignore this hunk
@@ -2858,7 +2847,7 @@ sub process {
 		if ($line =~ /\(\s/ && $line !~ /\(\s*(?:\\)?$/ &&
 		    $line !~ /for\s*\(\s+;/ && $line !~ /^\+\s*[A-Z_][A-Z\d_]*\(\s*\d+(\,.*)?\)\,?$/) {
 			ERROR("SPACING",
-			      "space prohibited after that open parenthesis '('\n" . $herecurr);
+				  "space prohibited after that open parenthesis '('\n" . $herecurr);
 		}
 		if ($line =~ /(\s+)\)/ && $line !~ /^.\s*\)/ &&
 		    $line !~ /for\s*\(.*;\s+\)/ &&
@@ -3092,17 +3081,17 @@ sub process {
 			{
 			}
 
-			# Flatten any obvious string concatentation.
-			while ($dstat =~ s/("X*")\s*$Ident/$1/ ||
-			       $dstat =~ s/$Ident\s*("X*")/$1/)
-			{
-			}
-
 			# Extremely long macros may fall off the end of the
 			# available context without closing.  Give a dangling
 			# backslash the benefit of the doubt and allow it
 			# to gobble any hanging open-parens.
 			$dstat =~ s/\(.+\\$/1/;
+
+			# Flatten any obvious string concatentation.
+			while ($dstat =~ s/("X*")\s*$Ident/$1/ ||
+			       $dstat =~ s/$Ident\s*("X*")/$1/)
+			{
+			}
 
 			my $exceptions = qr{
 				$Declare|
@@ -3461,11 +3450,6 @@ sub process {
 		if ($line =~ /\b$Storage\b/ && $line !~ /^.\s*$Storage\b/) {
 			WARN("STORAGE_CLASS",
 			     "storage class should be at the beginning of the declaration\n" . $herecurr)
-		}
-
-# Check that the storage class is at the beginning of a declaration
-		if ($line =~ /\b$Storage\b/ && $line !~ /^.\s*$Storage\b/) {
-			WARN("storage class should be at the beginning of the declaration\n" . $herecurr)
 		}
 
 # check the location of the inline attribute, that it is between
