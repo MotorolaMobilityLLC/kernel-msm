@@ -664,6 +664,7 @@ reg_get_vdd:
 	gpio_free(tpa6165->gpio);
 gpio_init_fail:
 	kfree(tpa6165);
+	tpa6165_client = NULL;
 	return err;
 }
 
@@ -678,6 +679,7 @@ static int __devexit tpa6165_remove(struct i2c_client *client)
 	wake_lock_destroy(&tpa6165->wake_lock);
 	tpa6165_remove_debugfs();
 	kfree(tpa6165);
+	tpa6165_client = NULL;
 	return 0;
 }
 
