@@ -1435,13 +1435,8 @@ static int msm_close_server(struct file *fp)
 	struct v4l2_event_subscription sub;
 	D("%s\n", __func__);
 	mutex_lock(&g_server_dev.server_lock);
-	if (g_server_dev.use_count > 0)
-		g_server_dev.use_count--;
-	mutex_unlock(&g_server_dev.server_lock);
-
-	if (g_server_dev.use_count == 0) {
+	if ((g_server_dev.use_count > 0) && (--g_server_dev.use_count == 0)) {
 		int i;
-		mutex_lock(&g_server_dev.server_lock);
 		for (i = 0; i < MAX_NUM_ACTIVE_CAMERA; i++) {
 			if (g_server_dev.pcam_active[i]) {
 				struct msm_cam_media_controller *pmctl = NULL;
@@ -1461,8 +1456,8 @@ static int msm_close_server(struct file *fp)
 		sub.type = V4L2_EVENT_ALL;
 		msm_server_v4l2_unsubscribe_event(
 			&g_server_dev.server_command_queue.eventHandle, &sub);
-		mutex_unlock(&g_server_dev.server_lock);
 	}
+	mutex_unlock(&g_server_dev.server_lock);
 	return 0;
 }
 
