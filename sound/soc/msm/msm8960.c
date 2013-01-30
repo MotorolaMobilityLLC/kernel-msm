@@ -474,11 +474,11 @@ static const struct snd_soc_dapm_route common_audio_map[] = {
 	{"LDO_H", NULL, "MCLK"},
 
 	/* Speaker path */
-	{"Ext Spk Bottom Pos", NULL, "LINEOUT1"},
-	{"Ext Spk Bottom Neg", NULL, "LINEOUT3"},
+	{"Ext Spk Bottom Pos", NULL, "LINEOUT2"},
+	{"Ext Spk Bottom Neg", NULL, "LINEOUT4"},
 
-	{"Ext Spk Top Pos", NULL, "LINEOUT2"},
-	{"Ext Spk Top Neg", NULL, "LINEOUT4"},
+	{"Ext Spk Top Pos", NULL, "LINEOUT1"},
+	{"Ext Spk Top Neg", NULL, "LINEOUT3"},
 	{"Ext Spk Top", NULL, "LINEOUT5"},
 
 	/* Microphone path */
