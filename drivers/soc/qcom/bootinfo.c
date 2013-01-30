@@ -271,31 +271,26 @@ static void convert_to_upper(char *str)
 
 void bi_add_bl_build_sig(char *bld_sig)
 {
-	char *item;
-	char *value = NULL;
+	int pos;
+	char *value;
+	char *ptr;
 
 	if (!bld_sig || (bl_build_sig_count >= MAX_BL_BUILD_SIG)) {
 		return;
 	}
 
-	item = strsep(&bld_sig, "=");
-	if (!item) {
-		return;
-	}
-
-	value = strsep((char **)&bld_sig, "=");
+	value = (char *)memchr((void *)bld_sig, '=', MAX_BLD_SIG_ITEM);
 	if (!value) {
 		return;
 	}
+	pos = value - bld_sig;
 
-	convert_to_upper(item);
-	strncpy((char *)bl_build_sigs[bl_build_sig_count].item,
-		item, MAX_BLD_SIG_ITEM);
-	bl_build_sigs[bl_build_sig_count].item[MAX_BLD_SIG_ITEM - 1] = '\0';
+	ptr = bl_build_sigs[bl_build_sig_count].item;
+	strlcpy(ptr, bld_sig, pos+1);
+	convert_to_upper(ptr);
 
-	strncpy((char *)bl_build_sigs[bl_build_sig_count].value,
-		value, MAX_BLD_SIG_VALUE);
-	bl_build_sigs[bl_build_sig_count].value[MAX_BLD_SIG_VALUE - 1] = '\0';
+	ptr = bl_build_sigs[bl_build_sig_count].value;
+	strlcpy(ptr, value+1, MAX_BLD_SIG_VALUE);
 
 	bl_build_sig_count++;
 
