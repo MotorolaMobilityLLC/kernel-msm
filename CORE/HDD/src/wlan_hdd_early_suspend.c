@@ -2110,6 +2110,10 @@ VOS_STATUS hdd_wlan_re_init(void)
 
    hdd_ssr_timer_del();
    hdd_prevent_suspend();
+
+   /* The driver should always be initialized in STA mode after SSR */
+   hdd_set_conparam(0);
+
    /* Re-open VOSS, it is a re-open b'se control transport was never closed. */
    vosStatus = vos_open(&pVosContext, 0);
    if (!VOS_IS_STATUS_SUCCESS(vosStatus))
