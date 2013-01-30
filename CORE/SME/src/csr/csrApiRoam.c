@@ -2292,7 +2292,7 @@ eHalStatus csrRoamIssueDeauth( tpAniSirGlobal pMac, tANI_U32 sessionId, eCsrRoam
                   bssId[ 3 ], bssId[ 4 ], bssId[ 5 ] );    
     csrRoamSubstateChange( pMac, NewSubstate, sessionId);
     
-    status = csrSendMBDeauthReqMsg( pMac, sessionId, bssId, eSIR_MAC_DISASSOC_LEAVING_BSS_REASON );    
+    status = csrSendMBDeauthReqMsg( pMac, sessionId, bssId, eSIR_MAC_DEAUTH_LEAVING_BSS_REASON );
     if(!HAL_STATUS_SUCCESS(status))
     {
         smsLog(pMac, LOGW, FL("csrSendMBDeauthReqMsg failed with status %d"), status);
