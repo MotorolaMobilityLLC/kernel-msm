@@ -1,4 +1,5 @@
 /* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2013, Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -67,11 +68,6 @@
 #define JACK_DETECT_INT PM8921_GPIO_IRQ(PM8921_IRQ_BASE, JACK_DETECT_GPIO)
 
 #define JACK_US_EURO_SEL_GPIO 35
-
-/* DAI Device tree node */
-#define DT_DAI_NODE_NAME		"DAIDevice"
-#define DT_DAI_PROP_NAME		"dai_name"
-#define DT_TYPE_DAI			0x00000022
 
 static u32 top_spk_pamp_gpio  = PM8921_GPIO_PM_TO_SYS(18);
 static u32 bottom_spk_pamp_gpio = PM8921_GPIO_PM_TO_SYS(19);
@@ -1983,6 +1979,7 @@ static struct snd_soc_dai_link msm8960_dai[
 
 static struct snd_soc_card snd_soc_tabla1x_card_msm8960 = {
 		.name		= "msm8960-tabla1x-snd-card",
+		.long_name	= "msm8960-snd-card-wcd",
 		.dai_link	= msm8960_tabla1x_dai,
 		.num_links	= ARRAY_SIZE(msm8960_tabla1x_dai),
 		.controls = tabla_msm8960_controls,
@@ -1991,6 +1988,7 @@ static struct snd_soc_card snd_soc_tabla1x_card_msm8960 = {
 
 static struct snd_soc_card snd_soc_card_msm8960 = {
 		.name		= "msm8960-snd-card",
+		.long_name	= "msm8960-snd-card-wcd",
 		.dai_link	= msm8960_dai,
 		.num_links	= ARRAY_SIZE(msm8960_dai),
 		.controls = tabla_msm8960_controls,
@@ -2058,42 +2056,75 @@ static void msm8960_free_headset_mic_gpios(void)
 	}
 }
 
-static int add_mmi_dai_links(struct snd_soc_dai_link *platform_dai_link)
+#ifdef CONFIG_OF
+static void msm8960_of_add_dai_links(struct snd_soc_card *card,
+						struct device_node *np)
 {
-	struct device_node *node;
-	const char *name;
-	int type = 0;
+	struct snd_soc_dai_link *tbl = card->dai_link;
+	struct device_node *dai;
 	int i;
-	int cnt = 0;
+	int ret;
+	const char *ln;
 
-	/* Read DAI name from device tree */
-	for_each_node_by_name(node, DT_DAI_NODE_NAME) {
-		if (of_property_read_u32(node, "type", &type))
-			continue;
-		if (type != DT_TYPE_DAI)
-			continue;
-		if (of_property_read_string(node, DT_DAI_PROP_NAME, &name))
-			continue;
-		/* verify if the DAI is present in MMI DAI Link Array */
-		for (i = 0; i < ARRAY_SIZE(mmi_dai_links); i++) {
-			if (!strcmp(mmi_dai_links[i].codec_dai_name, name)) {
-				pr_debug("Add MMI DAI link to snd card %s",
-					mmi_dai_links[i].codec_dai_name);
-				/* Add DAI link */
-				memcpy(platform_dai_link + cnt,
-					&mmi_dai_links[i],
-					sizeof(struct snd_soc_dai_link));
-				cnt++;
-			}
-		}
+	if (!np)
+		return;
+
+	/* Get the specified longname */
+	ret = of_property_read_string(np, "qcom,msm8960-card-longname", &ln);
+	if (!ret) {
+		snd_soc_tabla1x_card_msm8960.long_name = ln;
+		snd_soc_card_msm8960.long_name = ln;
 	}
 
-	return cnt;
+	/* Move pointer to end of table */
+	tbl += card->num_links;
+
+	for_each_child_of_node(np, dai) {
+		const char *name;
+
+		if (!of_device_is_available(dai))
+			continue;
+
+		if (!of_device_is_compatible(dai, "qcom,msm8960-dai-link"))
+			continue;
+
+		ret = of_property_read_string(dai, "qcom,msm8960-codec-name",
+						&name);
+
+		if (ret) {
+			pr_err("%s: missing codec-name property\n", __func__);
+			continue;
+		}
+
+		for (i = 0; i < ARRAY_SIZE(mmi_dai_links); i++) {
+			struct snd_soc_dai_link *cur = &mmi_dai_links[i];
+
+			/* If no match, skip it */
+			if (of_prop_cmp(cur->codec_dai_name, name))
+				continue;
+
+			pr_debug("%s: Adding MMI DAI link: %s\n",
+					__func__, name);
+
+			memcpy(tbl, cur, sizeof(struct snd_soc_dai_link));
+			tbl++;
+			card->num_links++;
+
+			break;
+		}
+	}
 }
+#else
+static inline void msm8960_of_add_dai_links(struct snd_soc_card *card,
+						struct device_node *np)
+{
+}
+#endif
 
 static int __init msm8960_audio_init(void)
 {
 	int ret;
+	struct device_node *np;
 
 	if (!soc_class_is_msm8960()) {
 		pr_debug("%s: Not the right machine type\n", __func__);
@@ -2113,6 +2144,8 @@ static int __init msm8960_audio_init(void)
 		return -ENOMEM;
 	}
 
+	np = of_find_compatible_node(NULL, NULL, "qcom,msm8960-soc-audio");
+
 	snd_soc_card_msm8960.num_links = 0;
 
 	memcpy(msm8960_dai, msm8960_dai_common, sizeof(msm8960_dai_common));
@@ -2122,9 +2155,8 @@ static int __init msm8960_audio_init(void)
 		msm8960_dai_delta_tabla2x, sizeof(msm8960_dai_delta_tabla2x));
 	snd_soc_card_msm8960.num_links += ARRAY_SIZE(msm8960_dai_delta_tabla2x);
 
-	/* Add MMI DAI Links */
-	snd_soc_card_msm8960.num_links += add_mmi_dai_links(msm8960_dai +
-						snd_soc_card_msm8960.num_links);
+	/* Add DT supported DAI Links */
+	msm8960_of_add_dai_links(&snd_soc_card_msm8960, np);
 
 	platform_set_drvdata(msm8960_snd_device, &snd_soc_card_msm8960);
 	ret = platform_device_add(msm8960_snd_device);
