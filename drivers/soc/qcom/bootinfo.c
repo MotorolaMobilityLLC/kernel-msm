@@ -302,12 +302,16 @@ EXPORT_SYMBOL(bi_add_bl_build_sig);
 static void of_blsig(void)
 {
 	struct property *p;
-	struct device_node *n = of_find_node_by_path("/chosen/mmi,bl_sigs");
+	struct device_node *n;
 
+	/* Only do this one time once we find the sigs */
+	if (bl_build_sig_count)
+		return;
+
+	n = of_find_node_by_path("/chosen/mmi,bl_sigs");
 	if (n == NULL)
 		return;
 
-	bl_build_sig_count = 0;
 	for_each_property_of_node(n, p)
 		if (strcmp(p->name, "name"))
 			bi_add_bl_build_sig(p->value);
