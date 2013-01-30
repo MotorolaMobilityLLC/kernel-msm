@@ -1,0 +1,43 @@
+* MSM8960 ASoC Machine driver
+
+Required properties:
+- compatible : "qcom,msm8960-soc-audio"
+
+Optional properties:
+- qcom,msm8960-card-longname :
+    This property will be used to fill in the long_name of the standard
+    snd_soc_card structures.  It is visible in the /proc/asound/cards entry
+    for user space to identify specific codecs available to it
+
+Optional Children:
+
+* DAI Links:
+
+Required properties:
+- compatible :
+    "qcom,msm8960-dai-link"
+- qcom,msm8960-codec-name :
+    codec name to match in dynamic DAI link table that can differ from device
+    to device.  This string needs to match the 'codec_dai_name' field in order
+    for the link to be initialized.
+
+Example:
+
+sound {
+	status = "okay";
+	compatible = "qcom,msm8960-soc-audio";
+
+	qcom,msm8960-card-longname = "msm8960-snd-card-wcd,tfa9890_codec";
+
+	/* DAI Links */
+	dai-msm-stub-tx {
+		compatible = "qcom,msm8960-dai-link";
+		qcom,msm8960-codec-name = "msm-stub-tx";
+	};
+
+	dai-tfa9890 {
+		compatible = "qcom,msm8960-dai-link";
+		qcom,msm8960-codec-name = "tfa9890_codec";
+	};
+};
+
