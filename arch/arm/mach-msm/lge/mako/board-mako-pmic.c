@@ -488,7 +488,7 @@ apq8064_pm8xxx_ccadc_pdata = {
 
 static struct pm8921_bms_platform_data
 apq8064_pm8921_bms_pdata __devinitdata = {
-	.battery_type  = BATT_LGE,
+	.battery_type	= BATT_UNKNOWN, //FIXME Define correct type
 	.r_sense  = 10,
 	.v_cutoff  = 3500,
 	.max_voltage_uv  = MAX_VOLTAGE_MV * 1000,

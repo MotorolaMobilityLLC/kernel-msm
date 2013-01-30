@@ -435,23 +435,4 @@ config AB8500_BATTERY_THERM_ON_BATCTRL
 	  Say Y to enable battery temperature measurements using
 	  thermistor connected on BATCTRL ADC.
 
-config WIRELESS_CHARGER
-	bool "Wireless Charger Configuration"
-	default n
-	help
-	  wireless charger configuration
-
-config BQ51051B_CHARGER
-	bool "TI BQ51051B Wireless Charging control Driver"
-	depends on WIRELESS_CHARGER
-	help
-	  TI BQ51051B wireless charging control driver
-
-config BATTERY_TEMP_CONTROL
-	default n
-	bool "Battery Temperature Control Configuration"
-	help
-	  Say Y to enable battery temperature control for safty.
-	  It controls charging current depending on battery temperature.
-
 endif # POWER_SUPPLY
