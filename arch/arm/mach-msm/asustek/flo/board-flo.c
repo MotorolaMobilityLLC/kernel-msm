@@ -2858,6 +2858,21 @@ static struct i2c_board_info bq27541_bat_device_info[] = {
     },
 };
 
+//+++ ALS
+static struct i2c_board_info al3320a_als_i2c_boardinfo[] = {
+    {
+        I2C_BOARD_INFO("al3320a",0x1C),
+    }
+};
+
+static struct i2c_registry __initdata apq8064_als_al3320a_device = {
+    I2C_SURF | I2C_FFA | I2C_RUMI,
+    APQ_8064_GSBI2_QUP_I2C_BUS_ID,
+    al3320a_als_i2c_boardinfo,
+    ARRAY_SIZE(al3320a_als_i2c_boardinfo),
+};
+//---
+
 // +++ sensors initial porting +++
 static struct i2c_registry __initdata apq8064_sensor_devices[] = {
 	{
@@ -2923,6 +2938,13 @@ static void __init register_sensor_devices(void)
 						apq8064_sensor_devices[i].len);
 		}
 	}
+
+    //+++ ALS
+    i2c_register_board_info(apq8064_als_al3320a_device.bus,
+            apq8064_als_al3320a_device.info,
+            apq8064_als_al3320a_device.len);
+    //---
+
 }
 
 static int sensor_platform_init(void)
