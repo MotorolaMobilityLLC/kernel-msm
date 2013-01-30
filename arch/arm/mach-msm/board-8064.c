@@ -1837,6 +1837,25 @@ static struct mdm_platform_data mdm_platform_data = {
 	.sysmon_subsys_id = SYSMON_SS_EXT_MODEM,
 };
 
+static struct mdm_vddmin_resource bmdm_vddmin_rscs = {
+	.rpm_id = MSM_RPM_ID_VDDMIN_GPIO,
+	.ap2mdm_vddmin_gpio = 30,
+	.modes  = 0x03,
+	.drive_strength = 8,
+	.mdm2ap_vddmin_gpio = 64,
+};
+
+static struct mdm_platform_data bmdm_platform_data = {
+	.mdm_version = "3.0",
+	.ramdump_delay_ms = 2000,
+	.sfr_query = 1,
+	.send_shdn = 1,
+	.vddmin_resource = &bmdm_vddmin_rscs,
+	.peripheral_platform_device = &apq8064_device_ehci_host3,
+	.ramdump_timeout_ms = 120000,
+	.mdm2ap_status_gpio_run_cfg = &mdm2ap_status_gpio_run_cfg,
+};
+
 static struct tsens_platform_data apq_tsens_pdata  = {
 		.tsens_factor		= 1000,
 		.hw_type		= APQ_8064,
@@ -3133,7 +3152,7 @@ static void __init apq8064_pm8917_pdata_fixup(void)
 
 static void __init apq8064_common_init(void)
 {
-	u32 platform_version;
+	u32 platform_version = socinfo_get_platform_version();
 
 	if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917)
 		apq8064_pm8917_pdata_fixup();
@@ -3189,14 +3208,23 @@ static void __init apq8064_common_init(void)
 		msm_hsic_pdata.log2_irq_thresh = 5,
 		apq8064_device_hsic_host.dev.platform_data = &msm_hsic_pdata;
 		device_initialize(&apq8064_device_hsic_host.dev);
+		if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_DSDA2) {
+			apq8064_device_ehci_host3.dev.platform_data =
+				&msm_ehci_host_pdata3;
+			device_initialize(&apq8064_device_ehci_host3.dev);
+		}
 	}
 	apq8064_pm8xxx_gpio_mpp_init();
 	apq8064_init_mmc();
 
 	if (machine_is_apq8064_mtp()) {
-		mdm_8064_device.dev.platform_data = &mdm_platform_data;
-		platform_version = socinfo_get_platform_version();
-		if (SOCINFO_VERSION_MINOR(platform_version) == 1) {
+		if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_DSDA2) {
+			amdm_8064_device.dev.platform_data = &mdm_platform_data;
+			platform_device_register(&amdm_8064_device);
+			bmdm_8064_device.dev.platform_data =
+				&bmdm_platform_data;
+			platform_device_register(&bmdm_8064_device);
+		} else if (SOCINFO_VERSION_MINOR(platform_version) == 1) {
 			i2s_mdm_8064_device.dev.platform_data =
 				&mdm_platform_data;
 			platform_device_register(&i2s_mdm_8064_device);
