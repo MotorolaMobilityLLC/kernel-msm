@@ -236,7 +236,6 @@ void msm_restart(char mode, const char *cmd)
 {
 
 #ifdef CONFIG_MSM_DLOAD_MODE
-
 	/* This looks like a normal reboot at this point. */
 	set_dload_mode(0);
 
@@ -280,6 +279,12 @@ void msm_restart(char mode, const char *cmd)
 	if (in_panic == 1)
 		set_kernel_crash_magic_number();
 reset:
+#else
+	if (in_panic == 1) {
+		__raw_writel(0x6d630100, restart_reason);
+		pr_notice("in panic\n");
+		mdelay(500);
+	}
 #endif /* CONFIG_LGE_CRASH_HANDLER */
 
 	__raw_writel(0, msm_tmr0_base + WDT0_EN);
