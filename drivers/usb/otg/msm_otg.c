@@ -50,6 +50,9 @@
 #include <mach/msm_xo.h>
 #include <mach/msm_bus.h>
 #include <mach/rpm-regulator.h>
+#include <linux/workqueue.h>
+#include <linux/gpio.h>
+#include <asm/mach-types.h>
 
 #define MSM_USB_BASE	(motg->regs)
 #define DRIVER_NAME	"msm_otg"
@@ -84,6 +87,12 @@ static struct regulator *mhl_usb_hs_switch;
 static struct power_supply *psy;
 
 static bool aca_id_turned_on;
+static struct workqueue_struct *msm_otg_acok_wq;
+static int pm_suspend_acok_status = 0;
+
+/* APQ8064 GPIO pin definition */
+#define APQ_AP_ACOK	23
+
 static inline bool aca_enabled(void)
 {
 #ifdef CONFIG_USB_MSM_ACA
@@ -2183,7 +2192,7 @@ static void msm_chg_detect_work(struct work_struct *w)
 		 */
 		udelay(100);
 		msm_chg_enable_aca_intr(motg);
-		dev_dbg(phy->dev, "chg_type = %s\n",
+		dev_info(phy->dev, "chg_type = %s\n",
 			chg_to_string(motg->chg_type));
 		queue_work(system_nrt_wq, &motg->sm_work);
 		return;
@@ -2235,6 +2244,10 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 					set_bit(ID, &motg->inputs);
 				else
 					clear_bit(ID, &motg->inputs);
+			} else {
+				// set to peripheral
+				printk("[usb_otg] switch to peripheral mode by default (boot)\r\n");
+				set_bit(ID, &motg->inputs);
 			}
 			/*
 			 * VBUS initial state is reported after PMIC
@@ -3042,6 +3055,76 @@ static void msm_otg_set_vbus_state(int online)
 		queue_work(system_nrt_wq, &motg->sm_work);
 }
 
+static void (*notify_vbus_state_func_ptr)(int);
+static void acok_irq_work_function(struct work_struct *work)
+{
+	int gpio = !gpio_get_value(APQ_AP_ACOK);
+
+	if (notify_vbus_state_func_ptr) {
+		pr_info("notifying plugin\n");
+		(*notify_vbus_state_func_ptr) (gpio);
+	} else {
+		pr_info("unable to notify plugin\n");
+	}
+}
+
+static int msm_otg_register_vbus_sn(void (*callback)(int))
+{
+	pr_debug("%p\n", callback);
+	notify_vbus_state_func_ptr = callback;
+	return 0;
+}
+
+static void msm_otg_unregister_vbus_sn(void (*callback)(int))
+{
+	pr_debug("%p\n", callback);
+	notify_vbus_state_func_ptr = NULL;
+}
+
+static irqreturn_t msm_otg_acok_irq(int irq, void *dev_id)
+{
+	struct msm_otg *motg = dev_id;
+
+	queue_delayed_work(msm_otg_acok_wq, &motg->acok_irq_work, 0.6*HZ);
+
+	return IRQ_HANDLED;
+}
+
+static void msm_otg_acok_init(struct msm_otg *motg)
+{
+	int err = 0 ;
+	unsigned gpio = APQ_AP_ACOK;
+	unsigned irq_num = gpio_to_irq(gpio);
+
+	err = gpio_request(gpio, "msm_otg_ap_acok");
+	if (err) {
+		printk("gpio %d request failed \n", gpio);
+	}
+
+	err = gpio_direction_input(gpio);
+	if (err) {
+		printk("gpio %d unavaliable for input \n", gpio);
+	}
+
+	err = request_irq(irq_num, msm_otg_acok_irq, IRQF_TRIGGER_FALLING |IRQF_TRIGGER_RISING|IRQF_SHARED,
+				"msm_otg_ap_acok", motg);
+	if (err < 0) {
+		printk("%s irq %d request failed \n","msm_otg_ap_acok", irq_num);
+	}
+	printk("%s: GPIO pin irq %d requested ok, msm_otg_ACOK = %s\n", __func__, irq_num, gpio_get_value(gpio)? "H":"L");
+
+	enable_irq_wake(irq_num);
+}
+
+static void msm_otg_acok_free(struct msm_otg *motg)
+{
+	unsigned gpio = APQ_AP_ACOK;
+	unsigned irq_num = gpio_to_irq(gpio);
+
+	disable_irq_wake(irq_num);
+	free_irq(irq_num, motg);
+}
+
 static void msm_pmic_id_status_w(struct work_struct *w)
 {
 	struct msm_otg *motg = container_of(w, struct msm_otg,
@@ -3768,9 +3851,9 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 				goto remove_phy;
 			}
 		} else {
-			ret = -ENODEV;
+			//ret = -ENODEV;
 			dev_err(&pdev->dev, "PMIC IRQ for ID notifications doesn't exist\n");
-			goto remove_phy;
+			//goto remove_phy;
 		}
 	}
 
@@ -3780,20 +3863,23 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	device_init_wakeup(&pdev->dev, 1);
 	motg->mA_port = IUNIT;
 
+	msm_otg_acok_init(motg);
+	msm_otg_acok_wq = create_singlethread_workqueue("msm_otg_acok_wq");
+	INIT_DELAYED_WORK_DEFERRABLE(&motg->acok_irq_work, acok_irq_work_function);
+
 	ret = msm_otg_debugfs_init(motg);
 	if (ret)
 		dev_dbg(&pdev->dev, "mode debugfs file is"
 			"not available\n");
 
 	if (motg->pdata->otg_control == OTG_PMIC_CONTROL)
-		pm8921_charger_register_vbus_sn(&msm_otg_set_vbus_state);
+		msm_otg_register_vbus_sn(&msm_otg_set_vbus_state);
 
 	if (motg->pdata->phy_type == SNPS_28NM_INTEGRATED_PHY) {
-		if (motg->pdata->otg_control == OTG_PMIC_CONTROL &&
-			(!(motg->pdata->mode == USB_OTG) ||
-			 motg->pdata->pmic_id_irq))
+		if (motg->pdata->otg_control == OTG_PMIC_CONTROL) {
 			motg->caps = ALLOW_PHY_POWER_COLLAPSE |
 				ALLOW_PHY_RETENTION;
+		}
 
 		if (motg->pdata->otg_control == OTG_PHY_CONTROL)
 			motg->caps = ALLOW_PHY_RETENTION;
@@ -3815,6 +3901,8 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 		else
 			debug_bus_voting_enabled = true;
 	}
+
+	queue_delayed_work(msm_otg_acok_wq, &motg->acok_irq_work, 0.5*HZ);
 
 	return 0;
 
@@ -3872,7 +3960,7 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 	if (pdev->dev.of_node)
 		msm_otg_setup_devices(pdev, motg->pdata->mode, false);
 	if (motg->pdata->otg_control == OTG_PMIC_CONTROL)
-		pm8921_charger_unregister_vbus_sn(0);
+		msm_otg_unregister_vbus_sn(0);
 	msm_otg_mhl_register_callback(motg, NULL);
 	msm_otg_debugfs_cleanup();
 	cancel_delayed_work_sync(&motg->chg_work);
@@ -3885,6 +3973,8 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 	device_init_wakeup(&pdev->dev, 0);
 	pm_runtime_disable(&pdev->dev);
 	wake_lock_destroy(&motg->wlock);
+
+	msm_otg_acok_free(motg);
 
 	msm_hsusb_mhl_switch_enable(motg, 0);
 	if (motg->pdata->pmic_id_irq)
@@ -3985,6 +4075,8 @@ static int msm_otg_pm_suspend(struct device *dev)
 	if (ret)
 		atomic_set(&motg->pm_suspended, 0);
 
+	pm_suspend_acok_status = !gpio_get_value(APQ_AP_ACOK);
+
 	return ret;
 }
 
@@ -3992,6 +4084,7 @@ static int msm_otg_pm_resume(struct device *dev)
 {
 	int ret = 0;
 	struct msm_otg *motg = dev_get_drvdata(dev);
+	int ac_gpio;
 
 	dev_dbg(dev, "OTG PM resume\n");
 
@@ -4010,6 +4103,10 @@ static int msm_otg_pm_resume(struct device *dev)
 			queue_work(system_nrt_wq, &motg->sm_work);
 		}
 	}
+
+	ac_gpio = !gpio_get_value(APQ_AP_ACOK);
+	if (pm_suspend_acok_status != ac_gpio)
+		acok_irq_work_function(NULL);
 
 	return ret;
 }

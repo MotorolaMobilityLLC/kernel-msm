@@ -961,9 +961,9 @@ static int phy_init_seq[] = {
 
 static struct msm_otg_platform_data msm_otg_pdata = {
 	.mode			= USB_OTG,
-	.otg_control		= OTG_PHY_CONTROL,
+	.otg_control		= OTG_PMIC_CONTROL,
 	.phy_type		= SNPS_28NM_INTEGRATED_PHY,
-	.pmic_id_irq		= PM8921_USB_ID_IN_IRQ(PM8921_IRQ_BASE),
+//	.pmic_id_irq		= PM8921_USB_ID_IN_IRQ(PM8921_IRQ_BASE),
 	.power_budget		= 750,
 	.bus_scale_table	= &usb_bus_scale_pdata,
 	.phy_init_seq		= phy_init_seq,
