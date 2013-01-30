@@ -181,13 +181,6 @@ struct msm_gpiomux_config vcap_configs[] = {
 		}
 	},
 	{
-		.gpio = 12,
-		.settings = {
-			[GPIOMUX_SUSPENDED] =	&gpio_vcap_config[6],
-			[GPIOMUX_ACTIVE] =		&gpio_vcap_config[6],
-		}
-	},
-	{
 		.gpio = 18,
 		.settings = {
 			[GPIOMUX_SUSPENDED] =	&gpio_vcap_config[9],
@@ -250,13 +243,6 @@ struct msm_gpiomux_config vcap_configs[] = {
 		.settings = {
 			[GPIOMUX_SUSPENDED] =	&gpio_vcap_config[2],
 			[GPIOMUX_ACTIVE] =		&gpio_vcap_config[2],
-		}
-	},
-	{
-		.gpio = 86,
-		.settings = {
-			[GPIOMUX_SUSPENDED] =	&gpio_vcap_config[1],
-			[GPIOMUX_ACTIVE] =		&gpio_vcap_config[1],
 		}
 	},
 	{
@@ -647,12 +633,6 @@ static struct msm_gpiomux_config apq8064_gsbi_configs[] __initdata = {
 		},
 	},
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
-	{
-		.gpio      = 51,		/* GSBI5 QUP SPI_DATA_MOSI */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gpio_spi_config,
-		},
-	},
 	{
 		.gpio      = 52,		/* GSBI5 QUP SPI_DATA_MISO */
 		.settings = {
@@ -1281,32 +1261,86 @@ static struct msm_gpiomux_config asustek_gpio_keys_configs[] __initdata = {
 		},
 	},
 };
-#endif
 
-static struct gpiomux_setting display_ID_gpio_config = {
+static struct gpiomux_setting pcbid_pins_active_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
-	.drv  = GPIOMUX_DRV_2MA,
+	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_NONE,
-	.dir   = GPIOMUX_IN,
+
 };
 
-//add display ID gpio
-static struct msm_gpiomux_config msm8064_display_ID_gpio_config[] __initdata = {
+static struct gpiomux_setting pcbid_pins_suspended_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct msm_gpiomux_config asustek_pcbid_pins_configs[] __initdata = {
 	{
-		.gpio = 12,	/* ID1 (pcbid 2) */
+		.gpio = 57,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &display_ID_gpio_config,
-			[GPIOMUX_ACTIVE]= &display_ID_gpio_config,
+			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
+			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
 		},
 	},
 	{
-		.gpio = 1,	/* ID2 (pcbid 3) */
+		.gpio = 59,
 		.settings = {
-			[GPIOMUX_SUSPENDED] = &display_ID_gpio_config,
-			[GPIOMUX_ACTIVE]= &display_ID_gpio_config,
+			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
+			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
+		},
+	},
+	{
+		.gpio = 12,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
+			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
+		},
+	},
+	{
+		.gpio = 1,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
+			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
+		},
+	},
+	{
+		.gpio = 14,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
+			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
+		},
+	},
+	{
+		.gpio = 15,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
+			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
+		},
+	},
+	{
+		.gpio = 51,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
+			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
+		},
+	},
+	{
+		.gpio = 28,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
+			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
+		},
+	},
+	{
+		.gpio = 86,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
+			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
 		},
 	},
 };
+#endif
 
 static struct gpiomux_setting nfc_bcm2079x_irq_cfg = { // NFC_IRQ
 	.func = GPIOMUX_FUNC_GPIO,
@@ -1407,6 +1441,8 @@ void __init apq8064_init_gpiomux(void)
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
 		msm_gpiomux_install(asustek_gpio_keys_configs,
 			ARRAY_SIZE(asustek_gpio_keys_configs));
+		msm_gpiomux_install(asustek_pcbid_pins_configs,
+			ARRAY_SIZE(asustek_pcbid_pins_configs));
 	}
 #endif
 
@@ -1482,9 +1518,6 @@ void __init apq8064_init_gpiomux(void)
 
 	msm_gpiomux_install(apq8064_sdc3_configs,
 			ARRAY_SIZE(apq8064_sdc3_configs));
-
-	msm_gpiomux_install(msm8064_display_ID_gpio_config,
-			ARRAY_SIZE(msm8064_display_ID_gpio_config));
 
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
 		msm_gpiomux_install(apq8064_bcm2079x_nfc_configs,
