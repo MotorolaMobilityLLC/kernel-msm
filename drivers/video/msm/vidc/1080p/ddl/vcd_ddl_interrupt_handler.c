@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1188,6 +1188,7 @@ static u32 ddl_decoder_output_done_callback(
 	enum vidc_1080p_decode_frame frame_type = 0;
 	u32 vcd_status, free_luma_dpb = 0, disp_pict = 0, is_interlaced;
 	u32 idr_frame = 0, coded_frame = 0;
+	u32 seq_end_code_present = 0;
 	get_dec_op_done_data(dec_disp_info, decoder->output_order,
 		&output_vcd_frm->physical, &is_interlaced);
 	decoder->progressive_only = !(is_interlaced);
@@ -1261,6 +1262,15 @@ static u32 ddl_decoder_output_done_callback(
 		if (decoder->codec.codec != VCD_CODEC_H264 &&
 			decoder->codec.codec != VCD_CODEC_MPEG2)
 			output_vcd_frm->flags &= ~VCD_FRAME_FLAG_DATACORRUPT;
+		if (decoder->codec.codec == VCD_CODEC_MPEG2) {
+			vidc_sm_get_mp2common_status(&ddl->shared_mem
+				[ddl->command_channel],
+				&seq_end_code_present);
+			if (seq_end_code_present)
+				output_vcd_frm->flags |= VCD_FRAME_FLAG_EOSEQ;
+			else
+				output_vcd_frm->flags &= ~VCD_FRAME_FLAG_EOSEQ;
+		}
 		output_vcd_frm->ip_frm_tag = dec_disp_info->tag_top;
 		vidc_sm_get_picture_times(&ddl->shared_mem
 			[ddl->command_channel],
