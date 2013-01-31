@@ -25,11 +25,7 @@
 #include "msm_sd.h"
 #include "msm_camera_io_util.h"
 
-#ifdef CONFIG_MSM_ISPIF_V1
 #include "msm_ispif_hwreg_v1.h"
-#else
-#include "msm_ispif_hwreg_v2.h"
-#endif
 
 #define V4L2_IDENT_ISPIF                      50001
 #define MSM_ISPIF_DRV_NAME                    "msm_ispif"

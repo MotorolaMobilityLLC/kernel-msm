@@ -1846,7 +1846,7 @@ struct platform_device msm8960_device_qup_i2c_gsbi12 = {
 	.resource	= resources_qup_i2c_gsbi12,
 };
 
-#ifdef CONFIG_MSM_CAMERA
+#ifdef CONFIG_MSMB_CAMERA
 static struct resource msm_cam_gsbi4_i2c_mux_resources[] = {
 	{
 		.name   = "i2c_mux_rw",

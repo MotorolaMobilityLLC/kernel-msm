@@ -1848,7 +1848,7 @@ static void __init apq8064_init_dsps(void)
 
 static void __init register_i2c_devices(void)
 {
-#ifdef CONFIG_MSM_CAMERA
+#ifdef CONFIG_MSMB_CAMERA
 	struct i2c_registry apq8064_camera_i2c_devices = {
 		I2C_FFA,
 		APQ_8064_GSBI4_QUP_I2C_BUS_ID,
@@ -1865,7 +1865,7 @@ static void __init register_i2c_devices(void)
 #endif
 
 
-#ifdef CONFIG_MSM_CAMERA
+#ifdef CONFIG_MSMB_CAMERA
 	i2c_register_board_info(apq8064_camera_i2c_devices.bus,
 		apq8064_camera_i2c_devices.info,
 		apq8064_camera_i2c_devices.len);
@@ -2009,7 +2009,7 @@ static void __init apq8064_mako_init(void)
 	apq8064_init_fb();
 	apq8064_init_gpu();
 	platform_add_devices(apq8064_footswitch, apq8064_num_footswitch);
-#ifdef CONFIG_MSM_CAMERA
+#ifdef CONFIG_MSMB_CAMERA
 	apq8064_init_cam();
 #endif
 	change_memory_power = &apq8064_change_memory_power;

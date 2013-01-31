@@ -17,6 +17,7 @@
 #include <linux/platform_data/flash_lm3559.h>
 #include <asm/mach-types.h>
 #include <mach/board.h>
+#include <mach/camera2.h>
 #include <mach/msm_bus_board.h>
 #include <mach/gpiomux.h>
 #include <mach/board_lge.h>
@@ -24,7 +25,7 @@
 #include "devices.h"
 #include "board-mako.h"
 
-#ifdef CONFIG_MSM_CAMERA
+#ifdef CONFIG_MSMB_CAMERA
 static struct gpiomux_setting cam_settings[] = {
 	{
 		.func = GPIOMUX_FUNC_GPIO, /*suspend*/
@@ -168,6 +169,8 @@ static struct msm_gpiomux_config apq8064_cam_common_configs[] = {
 };
 
 #if defined(CONFIG_IMX111) || defined(CONFIG_IMX091)
+
+#ifdef NO_CAMERA2
 static struct msm_bus_vectors cam_init_vectors[] = {
 	{
 		.src = MSM_BUS_MASTER_VFE,
@@ -339,6 +342,8 @@ static struct msm_camera_device_platform_data msm_camera_csi_device_data[] = {
 		.cam_bus_scale_table = &cam_bus_client_pdata,
 	},
 };
+#endif
+
 static struct camera_vreg_t apq_8064_back_cam_vreg[] = {
 	{"cam1_vdig", REG_LDO, 1200000, 1200000, 105000},
 	{"cam1_vio", REG_VS, 0, 0, 0},
@@ -370,17 +375,24 @@ static struct gpio apq8064_back_cam_gpio[] = {
 	{GPIO_CAM1_RST_N, GPIOF_DIR_OUT, "CAM_RESET"},
 };
 
-static struct msm_gpio_set_tbl apq8064_back_cam_gpio_set_tbl[] = {
-	{GPIO_CAM1_RST_N, GPIOF_OUT_INIT_LOW, 10000},
-	{GPIO_CAM1_RST_N, GPIOF_OUT_INIT_HIGH, 10000},
+static struct msm_camera_gpio_num_info apq8064_gpio_num_info[] = {
+	{
+		.gpio_num = {
+			[SENSOR_GPIO_RESET] = GPIO_CAM1_RST_N,
+		}
+	},
+	{
+		.gpio_num = {
+			[SENSOR_GPIO_RESET] = GPIO_CAM2_RST_N,
+		}
+	},
 };
 
 static struct msm_camera_gpio_conf apq8064_back_cam_gpio_conf = {
 	.gpio_no_mux = 1,
 	.cam_gpio_req_tbl = apq8064_back_cam_gpio,
 	.cam_gpio_req_tbl_size = ARRAY_SIZE(apq8064_back_cam_gpio),
-	.cam_gpio_set_tbl = apq8064_back_cam_gpio_set_tbl,
-	.cam_gpio_set_tbl_size = ARRAY_SIZE(apq8064_back_cam_gpio_set_tbl),
+	.gpio_num_info = &apq8064_gpio_num_info[0],
 };
 #endif
 
@@ -409,7 +421,7 @@ static struct msm_camera_gpio_conf apq8064_front_cam_gpio_conf = {
 };
 #endif
 
-#if defined (CONFIG_IMX091) || defined (CONFIG_IMX111)
+#if defined(CONFIG_IMX091)
 static struct msm_camera_i2c_conf apq8064_back_cam_i2c_conf = {
 	.use_i2c_mux = 1,
 	.mux_dev = &msm8960_device_i2c_mux_gsbi4,
@@ -467,8 +479,8 @@ static struct msm_camera_sensor_board_info msm_camera_sensor_imx111_data = {
 	.sensor_name = "imx111",
 	.slave_info = &imx111_slave_info,
 	.csi_lane_params = &imx111_csi_lane_params,
-	.cam_vreg = apq_8064_cam_vreg,
-	.num_vreg = ARRAY_SIZE(apq_8064_cam_vreg),
+	.cam_vreg = apq_8064_back_cam_vreg,
+	.num_vreg = ARRAY_SIZE(apq_8064_back_cam_vreg),
 	.gpio_conf = &apq8064_back_cam_gpio_conf,
 	.sensor_info = &imx111_sensor_info,
 	.sensor_init_params = &imx111_init_params,
@@ -580,7 +592,7 @@ static struct lm3559_flash_platform_data lm3559_flash_pdata[] = {
 };
 
 static struct platform_device msm_camera_server = {
-	.name = "msm_cam_server",
+	.name = "msm",
 	.id = 0,
 };
 
@@ -614,7 +626,7 @@ static __init void mako_fixup_cam(void)
 void __init apq8064_init_cam(void)
 {
 	msm_gpiomux_install(apq8064_cam_common_configs,
-			ARRAY_SIZE(apq8064_cam_common_configs));
+		ARRAY_SIZE(apq8064_cam_common_configs));
 
 	mako_fixup_cam();
 
@@ -627,6 +639,7 @@ void __init apq8064_init_cam(void)
 	platform_device_register(&msm8960_device_ispif);
 	platform_device_register(&msm8960_device_vfe);
 	platform_device_register(&msm8960_device_vpe);
+
 }
 
 #ifdef CONFIG_I2C
