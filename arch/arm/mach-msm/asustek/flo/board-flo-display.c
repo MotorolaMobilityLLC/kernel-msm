@@ -27,6 +27,7 @@
 
 #include "devices.h"
 #include "board-flo.h"
+#include <mach/board_asustek.h>
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 /* prim = 1366 x 768 x 3(bpp) x 3(pages) */
@@ -1030,7 +1031,8 @@ error:
 
 void __init apq8064_init_fb(void)
 {
-	int rc;
+	lcd_type type = asustek_get_lcd_type();
+	printk("%s: lcd_type=%d\n", __func__, type);
 
 	set_mdp_clocks_for_wuxga();
 
@@ -1041,18 +1043,7 @@ void __init apq8064_init_fb(void)
 	platform_device_register(&wfd_device);
 #endif
 
-	//request display ID gpio
-	rc = gpio_request(gpio_display_ID1, "display_ID1");
-	if (rc) {
-		pr_err("%s: request gpio 12 failed, rc=%d\n", __func__, rc);
-	}
-	rc = gpio_request(gpio_display_ID2, "display_ID2");
-	if (rc) {
-		pr_err("%s: request gpio 1 failed, rc=%d\n", __func__, rc);
-	}
-
-	//the display ID gpio should be requested by pcdid in asustek-pcbid.c
-	if(gpio_get_value(gpio_display_ID1) && gpio_get_value(gpio_display_ID2)) {
+	if (type==3) {
 		printk("%s: register mipi_lg_panel_device\n", __func__);
 		platform_device_register(&mipi_lg_panel_device);
 	} else {

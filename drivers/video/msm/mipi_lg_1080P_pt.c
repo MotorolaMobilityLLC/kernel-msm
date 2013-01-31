@@ -16,6 +16,7 @@
 #include "mipi_lg.h"
 #include <asm/mach-types.h>
 #include <linux/gpio.h>
+#include <mach/board_asustek.h>
 
 #define gpio_display_ID1 12
 #define gpio_display_ID2 1
@@ -42,8 +43,9 @@ static struct mipi_dsi_phy_ctrl dsi_video_mode_phy_db = {
 static int __init mipi_lg_1080P_pt_init(void)
 {
 	int ret;
+	lcd_type type = asustek_get_lcd_type();
 
-	if(!gpio_get_value(gpio_display_ID1) || !gpio_get_value(gpio_display_ID2))
+	if (type!=3)
 		return 0;
 
 	printk("%s+\n", __func__);

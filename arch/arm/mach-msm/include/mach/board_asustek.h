@@ -41,6 +41,8 @@ typedef enum {
 	LCD_TYPE_INVALID = -1,
 	LCD_TYPE_A = 0,
 	LCD_TYPE_B = 1,
+	LCD_TYPE_C = 2,
+	LCD_TYPE_D = 3,
 	LCD_TYPE_MAX
 } lcd_type;
 
