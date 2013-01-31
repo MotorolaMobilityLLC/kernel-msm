@@ -1443,7 +1443,8 @@ typedef PACKED_PRE struct PACKED_POST
     /*Reserved to align next field on a dword boundary*/
     tANI_U8 htLdpcEnabled:1;
     tANI_U8 vhtLdpcEnabled:1;
-    tANI_U8 reserved:6;
+    tANI_U8 vhtTxBFEnabled:1;
+    tANI_U8 reserved:5;
 
     /*These rates are the intersection of peer and self capabilities.*/
     tSirSupportedRates_V1 supportedRates;
