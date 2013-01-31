@@ -6582,6 +6582,8 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                         return -EINVAL;
                     }
 
+                    wlan_hdd_tdls_set_link_status(peer, eTDLS_LINK_CONNECTED);
+
                 } else {
                     hddLog(VOS_TRACE_LEVEL_WARN, "wlan_hdd_cfg80211_add_key: peer NULL" );
                 }
@@ -6600,6 +6602,16 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
             return -ENOTSUPP;
     }
     return 0;
+}
+
+int wlan_hdd_cfg80211_send_tdls_discover_req(struct wiphy *wiphy,
+                            struct net_device *dev, u8 *peer)
+{
+    hddLog(VOS_TRACE_LEVEL_INFO, "tdls send discover req: %x %x %x %x %x %x",
+            peer[0], peer[1], peer[2], peer[3], peer[4], peer[5]);
+
+    return wlan_hdd_cfg80211_tdls_mgmt(wiphy, dev, peer,
+                            WLAN_TDLS_DISCOVERY_REQUEST, 1, 0, NULL, 0);
 }
 #endif
 

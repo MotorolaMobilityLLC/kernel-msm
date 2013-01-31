@@ -140,6 +140,9 @@ int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
 #endif /* FEATURE_WLAN_INTEGRATED_SOC */
 #include "qwlan_version.h"
 #include "wlan_qct_wda.h"
+#ifdef FEATURE_WLAN_TDLS
+#include "wlan_hdd_tdls.h"
+#endif
 
 #ifdef MODULE
 #define WLAN_MODULE_NAME  module_name(THIS_MODULE)
@@ -2789,6 +2792,10 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    }
 #endif //FEATURE_WLAN_INTEGRATED_SOC
 
+#ifdef FEATURE_WLAN_TDLS
+    wlan_hdd_tdls_exit();
+#endif
+
    // Cancel any outstanding scan requests.  We are about to close all
    // of our adapters, but an adapter structure is what SME passes back
    // to our callback function.  Hence if there are any outstanding scan
@@ -3936,6 +3943,10 @@ int hdd_wlan_startup(struct device *dev )
    
    // Initialize the restart logic
    wlan_hdd_restart_init(pHddCtx);
+
+#ifdef FEATURE_WLAN_TDLS
+   wlan_hdd_tdls_init(pAdapter->dev);
+#endif
   
    goto success;
 

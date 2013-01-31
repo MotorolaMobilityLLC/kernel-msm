@@ -208,6 +208,7 @@ eHalStatus sme_mgmtFrmInd( tHalHandle hHal, tpSirSmeMgmtFrameInd pSmeMgmtFrm)
        pRoamInfo.pbFrames = pSmeMgmtFrm->frameBuf;
        pRoamInfo.frameType = pSmeMgmtFrm->frameType;
        pRoamInfo.rxChan   = pSmeMgmtFrm->rxChan;
+       pRoamInfo.rxRssi   = pSmeMgmtFrm->rxRssi;
 
        //Somehow we don't get the right sessionId.
        for(i = 0; i < CSR_ROAM_SESSION_MAX; i++)
@@ -225,6 +226,7 @@ eHalStatus sme_mgmtFrmInd( tHalHandle hHal, tpSirSmeMgmtFrameInd pSmeMgmtFrm)
     pRoamInfo.pbFrames = pSmeMgmtFrm->frameBuf;
     pRoamInfo.frameType = pSmeMgmtFrm->frameType;
     pRoamInfo.rxChan   = pSmeMgmtFrm->rxChan;
+    pRoamInfo.rxRssi   = pSmeMgmtFrm->rxRssi;
 
     /* forward the mgmt frame to HDD */
     csrRoamCallCallback(pMac, SessionId, &pRoamInfo, 0, eCSR_ROAM_INDICATE_MGMT_FRAME, 0);

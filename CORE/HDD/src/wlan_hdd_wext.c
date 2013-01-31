@@ -87,6 +87,9 @@
 #ifdef WLAN_FEATURE_P2P
 #include "wlan_hdd_p2p.h"
 #endif
+#ifdef FEATURE_WLAN_TDLS
+#include "wlan_hdd_tdls.h"
+#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
@@ -230,6 +233,10 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 //IOCTL to configure MCC params
 #define WE_MCC_CONFIG_CREDENTIAL 3
 #define WE_MCC_CONFIG_PARAMS  4
+
+#ifdef FEATURE_WLAN_TDLS
+#define WE_TDLS_CONFIG_PARAMS   5
+#endif
 
 #define MAX_VAR_ARGS         7
 
@@ -4283,6 +4290,31 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
             }
         break;
 
+#ifdef FEATURE_WLAN_TDLS
+        case WE_TDLS_CONFIG_PARAMS :
+            {
+                tdls_config_params_t tdlsParams;
+
+                tdlsParams.tx_period_t       = apps_args[0];
+                tdlsParams.tx_packet_n       = apps_args[1];
+                tdlsParams.discovery_period_t= apps_args[2];
+                tdlsParams.discovery_tries_n = apps_args[3];
+                tdlsParams.rx_timeout_t      = apps_args[4];
+                tdlsParams.rssi_hysteresis   = apps_args[5];
+
+                  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                            "iw set tdls params: %d %d %d %d %d %d",
+                            tdlsParams.tx_period_t,
+                            tdlsParams.tx_packet_n,
+                            tdlsParams.discovery_period_t,
+                            tdlsParams.discovery_tries_n,
+                            tdlsParams.rx_timeout_t,
+                            tdlsParams.rssi_hysteresis);
+
+                wlan_hdd_tdls_set_params(&tdlsParams);
+            }
+        break;
+#endif
         default:
             {
                 hddLog(LOGE, "Invalid IOCTL command %d",  sub_cmd );
@@ -6286,6 +6318,15 @@ static const struct iw_priv_args we_private_args[] = {
        IW_PRIV_TYPE_INT | MAX_VAR_ARGS,
        0,
        "setMccConfig" },
+
+#ifdef FEATURE_WLAN_TDLS
+    /* handlers for sub ioctl */
+   {
+       WE_TDLS_CONFIG_PARAMS,
+       IW_PRIV_TYPE_INT | MAX_VAR_ARGS,
+       0,
+       "setTdlsConfig" },
+#endif
 
     /* handlers for main ioctl */
     {   WLAN_PRIV_ADD_TSPEC,
