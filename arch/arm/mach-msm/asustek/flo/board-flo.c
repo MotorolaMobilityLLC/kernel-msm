@@ -3037,7 +3037,7 @@ static void __init apq8064_common_init(void)
 	enable_ddr3_regulator();
 	msm_hsic_pdata.swfi_latency =
 		msm_rpmrs_levels[0].latency_us;
-	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
+	if (machine_is_apq8064_deb()) {
 		msm_hsic_pdata.log2_irq_thresh = 5,
 		apq8064_device_hsic_host.dev.platform_data = &msm_hsic_pdata;
 		device_initialize(&apq8064_device_hsic_host.dev);
