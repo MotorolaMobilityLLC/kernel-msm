@@ -362,6 +362,11 @@ static int mipi_dsi_generic_lwrite(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 	uint32 *hp;
 	int i, len;
 
+	if (cm->dlen + DSI_HOST_HDR_SIZE > DSI_BUF_SIZE) {
+		dp->len = 0;
+		goto end;
+	}
+
 	bp = mipi_dsi_buf_reserve_hdr(dp, DSI_HOST_HDR_SIZE);
 
 	/* fill up payload */
@@ -390,7 +395,7 @@ static int mipi_dsi_generic_lwrite(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 		*hp |= DSI_HDR_LAST;
 
 	mipi_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-
+end:
 	return dp->len;
 }
 
@@ -486,6 +491,11 @@ static int mipi_dsi_dcs_lwrite(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 	uint32 *hp;
 	int i, len;
 
+	if (cm->dlen + DSI_HOST_HDR_SIZE > DSI_BUF_SIZE) {
+		dp->len = 0;
+		goto end;
+	}
+
 	bp = mipi_dsi_buf_reserve_hdr(dp, DSI_HOST_HDR_SIZE);
 
 	/*
@@ -517,7 +527,7 @@ static int mipi_dsi_dcs_lwrite(struct dsi_buf *dp, struct dsi_cmd_desc *cm)
 		*hp |= DSI_HDR_LAST;
 
 	mipi_dsi_buf_push(dp, DSI_HOST_HDR_SIZE);
-
+end:
 	return dp->len;
 }
 
