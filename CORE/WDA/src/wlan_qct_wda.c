@@ -10647,7 +10647,7 @@ void WDA_TimerTrafficStatsInd(tWDA_CbContext *pWDA)
       trafficStatsIndParams.pTrafficStats = pWdiTrafficStats;
       trafficStatsIndParams.length = length;
       trafficStatsIndParams.duration =
-         pWDA->wdaTimers.trafficStatsTimer.rescheduleTimeInMsecs;
+         pWDA->wdaTimers.trafficStatsTimer.initScheduleTimeInMsecs;
       trafficStatsIndParams.wdiReqStatusCB = WDA_WdiIndicationCallback;
       trafficStatsIndParams.pUserData = pWDA;
 
