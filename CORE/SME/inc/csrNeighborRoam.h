@@ -222,7 +222,7 @@ tANI_BOOLEAN csrNeighborRoamIs11rAssoc(tpAniSirGlobal pMac);
 VOS_STATUS csrNeighborRoamCreateChanListFromNeighborReport(tpAniSirGlobal pMac);
 void csrNeighborRoamTranistionPreauthDoneToDisconnected(tpAniSirGlobal pMac);
 tANI_BOOLEAN csrNeighborRoamStatePreauthDone(tpAniSirGlobal pMac);
-
+tANI_BOOLEAN csrNeighborRoamScanRspPending(tHalHandle hHal);
 
 
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */
