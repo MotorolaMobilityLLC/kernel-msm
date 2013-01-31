@@ -122,10 +122,10 @@ static int msm_fb_pan_idle(struct msm_fb_data_type *mfd);
 #define MSM_FB_MAX_DBGFS 1024
 #define MAX_BACKLIGHT_BRIGHTNESS 255
 
-/* 800 ms for fence time out */
-#define WAIT_FENCE_TIMEOUT 800
-/* 900 ms for display operation time out */
-#define WAIT_DISP_OP_TIMEOUT 900
+/* 900 ms for fence time out */
+#define WAIT_FENCE_TIMEOUT 900
+/* 950 ms for display operation time out */
+#define WAIT_DISP_OP_TIMEOUT 950
 #define MAX_TIMELINE_NAME_LEN 16
 
 int msm_fb_debugfs_file_index;
@@ -1751,12 +1751,12 @@ void msm_fb_wait_for_fence(struct msm_fb_data_type *mfd)
 	/* buf sync */
 	for (i = 0; i < mfd->acq_fen_cnt; i++) {
 		ret = sync_fence_wait(mfd->acq_fen[i], WAIT_FENCE_TIMEOUT);
-		sync_fence_put(mfd->acq_fen[i]);
 		if (ret < 0) {
 			pr_err("%s: sync_fence_wait failed! ret = %x\n",
 				__func__, ret);
 			break;
 		}
+		sync_fence_put(mfd->acq_fen[i]);
 	}
 	if (ret < 0) {
 		while (i < mfd->acq_fen_cnt) {
