@@ -153,24 +153,10 @@ struct msm_gpiomux_config vcap_configs[] = {
 		}
 	},
 	{
-		.gpio = 23,
-		.settings = {
-			[GPIOMUX_SUSPENDED] =	&gpio_vcap_config[2],
-			[GPIOMUX_ACTIVE] =		&gpio_vcap_config[2],
-		}
-	},
-	{
 		.gpio = 19,
 		.settings = {
 			[GPIOMUX_SUSPENDED] =	&gpio_vcap_config[8],
 			[GPIOMUX_ACTIVE] =		&gpio_vcap_config[8],
-		}
-	},
-	{
-		.gpio = 22,
-		.settings = {
-			[GPIOMUX_SUSPENDED] =	&gpio_vcap_config[2],
-			[GPIOMUX_ACTIVE] =		&gpio_vcap_config[2],
 		}
 	},
 	{
@@ -317,6 +303,35 @@ struct msm_gpiomux_config vcap_configs[] = {
 	},
 };
 #endif
+
+static struct gpiomux_setting stat_pin_setting = {
+		.func = GPIOMUX_FUNC_GPIO,
+		.pull = GPIOMUX_PULL_NONE,
+		.dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting acok_pin_setting = {
+		.func = GPIOMUX_FUNC_GPIO,
+		.pull = GPIOMUX_PULL_NONE,
+		.dir = GPIOMUX_IN,
+};
+
+struct msm_gpiomux_config smb345_pin_configs[] = {
+	{
+		.gpio = 22,
+		.settings = {
+			[GPIOMUX_SUSPENDED] =	&stat_pin_setting,
+			[GPIOMUX_ACTIVE] =		&stat_pin_setting,
+		}
+	},
+	{
+		.gpio = 23,
+		.settings = {
+			[GPIOMUX_SUSPENDED] =	&acok_pin_setting,
+			[GPIOMUX_ACTIVE] =		&acok_pin_setting,
+		}
+	},
+};
 
 static struct gpiomux_setting gpio_i2c_config = {
 	.func = GPIOMUX_FUNC_1,
@@ -1574,6 +1589,9 @@ void __init apq8064_init_gpiomux(void)
 	//add touch
 	msm_gpiomux_install(msm8064_ts_gpio_config,
 			ARRAY_SIZE(msm8064_ts_gpio_config));  
+
+	msm_gpiomux_install(smb345_pin_configs,
+			ARRAY_SIZE(smb345_pin_configs));
 
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
 		msm_gpiomux_install(apq8064_bcm2079x_nfc_configs,

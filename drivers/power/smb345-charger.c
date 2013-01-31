@@ -1,0 +1,762 @@
+/*
+  * drivers/power/Smb345-charger.c
+  *
+  * Charger driver for Summit SMB345
+  *
+  * Copyright (c) 2012, ASUSTek Inc.
+  *
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+  * the Free Software Foundation; either version 2 of the License, or
+  * (at your option) any later version.
+  *
+  * This program is distributed in the hope that it will be useful, but WITHOUT
+  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+  * more details.
+  */
+
+#include <linux/module.h>
+#include <linux/init.h>
+#include <linux/platform_device.h>
+#include <linux/mutex.h>
+#include <linux/err.h>
+#include <linux/i2c.h>
+#include <linux/delay.h>
+#include <linux/power_supply.h>
+#include <linux/platform_device.h>
+#include <linux/regulator/driver.h>
+#include <linux/regulator/machine.h>
+#include <linux/smb345-charger.h>
+#include <linux/slab.h>
+#include <linux/gpio.h>
+#include <linux/interrupt.h>
+#include <linux/irq.h>
+#include <linux/usb/otg.h>
+#include <linux/workqueue.h>
+#include <linux/fs.h>
+#include <linux/miscdevice.h>
+#include <linux/ioctl.h>
+#include <asm/uaccess.h>
+#include <asm/mach-types.h>
+
+#define smb345_CHARGE		0x00
+#define smb345_CHRG_CRNTS	0x01
+#define smb345_VRS_FUNC		0x02
+#define smb345_FLOAT_VLTG	0x03
+#define smb345_CHRG_CTRL	0x04
+#define smb345_STAT_TIME_CTRL	0x05
+#define smb345_PIN_CTRL		0x06
+#define smb345_THERM_CTRL	0x07
+#define smb345_SYSOK_USB3	0x08
+#define smb345_CTRL_REG		0x09
+
+#define smb345_OTG_TLIM_REG	0x0A
+#define smb345_HRD_SFT_TEMP	0x0B
+#define smb345_FAULT_INTR	0x0C
+#define smb345_STS_INTR_1	0x0D
+#define smb345_I2C_ADDR	0x0E
+#define smb345_IN_CLTG_DET	0x10
+#define smb345_STS_INTR_2	0x11
+
+/* Command registers */
+#define smb345_CMD_REG		0x30
+#define smb345_CMD_REG_B	0x31
+#define smb345_CMD_REG_c	0x33
+
+/* Interrupt Status registers */
+#define smb345_INTR_STS_A	0x35
+#define smb345_INTR_STS_B	0x36
+#define smb345_INTR_STS_C	0x37
+#define smb345_INTR_STS_D	0x38
+#define smb345_INTR_STS_E	0x39
+#define smb345_INTR_STS_F	0x3A
+
+/* Status registers */
+#define smb345_STS_REG_A	0x3B
+#define smb345_STS_REG_B	0x3C
+#define smb345_STS_REG_C	0x3D
+#define smb345_STS_REG_D	0x3E
+#define smb345_STS_REG_E	0x3F
+
+/* APQ8064 GPIO pin definition */
+#define APQ_AP_CHAR	22
+#define APQ_AP_ACOK	23
+
+#define smb345_ENABLE_WRITE	1
+#define smb345_DISABLE_WRITE	0
+#define ENABLE_WRT_ACCESS	0x80
+#define ENABLE_APSD		0x04
+#define PIN_CTRL		0x10
+#define PIN_ACT_LOW	0x20
+#define ENABLE_CHARGE		0x02
+#define USBIN		0x80
+#define APSD_OK		0x08
+#define APSD_RESULT		0x07
+#define FLOAT_VOLT_MASK	0x3F
+#define STAT_OUTPUT_EN		0x20
+#define GPIO_AC_OK		APQ_AP_ACOK
+
+/* Functions declaration */
+extern int  bq27541_battery_callback(unsigned usb_cable_state);
+static ssize_t smb345_reg_show(struct device *dev, struct device_attribute *attr, char *buf);
+
+/* Global variables */
+static struct smb345_charger *charger;
+static struct workqueue_struct *smb345_wq;
+struct wake_lock charger_wakelock;
+static int charge_en_flag = 1;
+
+/* Sysfs interface */
+static DEVICE_ATTR(reg_status, S_IWUSR | S_IRUGO, smb345_reg_show, NULL);
+
+static struct attribute *smb345_attributes[] = {
+	&dev_attr_reg_status.attr,
+NULL
+};
+
+static const struct attribute_group smb345_group = {
+	.attrs = smb345_attributes,
+};
+
+static int smb345_read(struct i2c_client *client, int reg)
+{
+	int ret;
+
+	ret = i2c_smbus_read_byte_data(client, reg);
+
+	if (ret < 0)
+		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
+
+	return ret;
+}
+
+static int smb345_write(struct i2c_client *client, int reg, u8 value)
+{
+	int ret;
+
+	ret = i2c_smbus_write_byte_data(client, reg, value);
+
+	if (ret < 0)
+		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
+
+	return ret;
+}
+
+static int smb345_update_reg(struct i2c_client *client, int reg, u8 value)
+{
+	int ret, retval;
+
+	retval = smb345_read(client, reg);
+	if (retval < 0) {
+		dev_err(&client->dev, "%s: err %d\n", __func__, retval);
+		return retval;
+	}
+
+	ret = smb345_write(client, reg, retval | value);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
+		return ret;
+	}
+
+	return ret;
+}
+
+static int smb345_clear_reg(struct i2c_client *client, int reg, u8 value)
+{
+	int ret, retval;
+
+	retval = smb345_read(client, reg);
+	if (retval < 0) {
+		dev_err(&client->dev, "%s: err %d\n", __func__, retval);
+		return retval;
+	}
+
+	ret = smb345_write(client, reg, retval & (~value));
+	if (ret < 0) {
+		dev_err(&client->dev, "%s: err %d\n", __func__, ret);
+		return ret;
+	}
+
+	return ret;
+}
+
+int smb345_volatile_writes(struct i2c_client *client, uint8_t value)
+{
+	int ret = 0;
+
+	if (value == smb345_ENABLE_WRITE) {
+		/* Enable volatile write to config registers */
+		ret = smb345_update_reg(client, smb345_CMD_REG,
+						ENABLE_WRT_ACCESS);
+		if (ret < 0) {
+			dev_err(&client->dev, "%s(): Failed in writing"
+				"register 0x%02x\n", __func__, smb345_CMD_REG);
+			return ret;
+		}
+	} else {
+		ret = smb345_read(client, smb345_CMD_REG);
+		if (ret < 0) {
+			dev_err(&client->dev, "%s: err %d\n", __func__, ret);
+			return ret;
+		}
+
+		ret = smb345_write(client, smb345_CMD_REG, ret & (~(1<<7)));
+		if (ret < 0) {
+			dev_err(&client->dev, "%s: err %d\n", __func__, ret);
+			return ret;
+		}
+	}
+	return ret;
+}
+
+static int smb345_pin_control(bool state)
+{
+	struct i2c_client *client = charger->client;
+	u8 ret = 0;
+
+	mutex_lock(&charger->pinctrl_lock);
+
+	if (state) {
+		/*Pin Controls -active low */
+		ret = smb345_update_reg(client, smb345_PIN_CTRL, PIN_ACT_LOW);
+		if (ret < 0) {
+			dev_err(&client->dev, "%s(): Failed to"
+						"enable charger\n", __func__);
+		}
+	} else {
+		/*Pin Controls -active high */
+		ret = smb345_clear_reg(client, smb345_PIN_CTRL, PIN_ACT_LOW);
+		if (ret < 0) {
+			dev_err(&client->dev, "%s(): Failed to"
+						"disable charger\n", __func__);
+		}
+	}
+
+	mutex_unlock(&charger->pinctrl_lock);
+	return ret;
+}
+
+int smb345_charger_enable(bool state)
+{
+	struct i2c_client *client = charger->client;
+	u8 ret = 0;
+
+	ret = smb345_volatile_writes(client, smb345_ENABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() error in configuring charger..\n",
+								__func__);
+		goto error;
+	}
+	charge_en_flag = state;
+	smb345_pin_control(state);
+
+	ret = smb345_volatile_writes(client, smb345_DISABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() error in configuring charger..\n",
+								__func__);
+		goto error;
+	}
+
+error:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(smb345_charger_enable);
+
+int
+smb345_set_InputCurrentlimit(struct i2c_client *client, u32 current_setting)
+{
+	int ret = 0, retval;
+	u8 setting = 0;
+
+	wake_lock(&charger_wakelock);
+
+	ret = smb345_volatile_writes(client, smb345_ENABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() error in configuring charger..\n",
+								__func__);
+		goto error;
+	}
+
+	if (charge_en_flag)
+		smb345_pin_control(0);
+
+	retval = smb345_read(client, smb345_VRS_FUNC);
+	if (retval < 0) {
+		dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
+				__func__, smb345_VRS_FUNC);
+		goto error;
+	}
+
+	setting = retval & (~(BIT(4)));
+	SMB_NOTICE("Disable AICL, retval=%x setting=%x\n", retval, setting);
+	ret = smb345_write(client, smb345_VRS_FUNC, setting);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s(): Failed in writing 0x%02x to register"
+			"0x%02x\n", __func__, setting, smb345_VRS_FUNC);
+		goto error;
+	}
+
+	retval = smb345_read(client, smb345_CHRG_CRNTS);
+	if (retval < 0) {
+		dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
+			__func__, smb345_CHRG_CRNTS);
+		goto error;
+	}
+	setting = retval & 0xF0;
+	if(current_setting == 2000)
+		setting |= 0x07;
+	else if(current_setting == 1800)
+		setting |= 0x06;
+	else if(current_setting == 900)
+		setting |= 0x03;
+	else if(current_setting == 500)
+		setting |= 0x01;
+	else
+		setting |= 0x07;
+
+	SMB_NOTICE("Set ICL=%u retval =%x setting=%x\n", current_setting, retval, setting);
+
+	ret = smb345_write(client, smb345_CHRG_CRNTS, setting);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s(): Failed in writing 0x%02x to register"
+			"0x%02x\n", __func__, setting, smb345_CHRG_CRNTS);
+		goto error;
+	}
+
+	if(current_setting == 2000)
+		charger->curr_limit = 2000;
+	else if(current_setting == 1800)
+		charger->curr_limit = 1800;
+	else if(current_setting == 900)
+		charger->curr_limit = 900;
+	else if(current_setting == 500)
+		charger->curr_limit = 500;
+	else
+		charger->curr_limit = 2000;
+
+	if (current_setting > 900) {
+		charger->time_of_1800mA_limit = jiffies;
+	} else{
+		charger->time_of_1800mA_limit = 0;
+	}
+
+	retval = smb345_read(client, smb345_VRS_FUNC);
+	if (retval < 0) {
+		dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
+				__func__, smb345_VRS_FUNC);
+		goto error;
+	}
+
+	setting = retval | BIT(4);
+	SMB_NOTICE("Re-enable AICL, setting=%x\n", setting);
+	msleep(20);
+	ret = smb345_write(client, smb345_VRS_FUNC, setting);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s(): Failed in writing 0x%02x to register"
+			"0x%02x\n", __func__, setting, smb345_VRS_FUNC);
+			goto error;
+	}
+
+	if (charge_en_flag)
+		smb345_pin_control(1);
+
+	ret = smb345_volatile_writes(client, smb345_DISABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() error in configuring charger..\n",
+								__func__);
+		goto error;
+	}
+
+error:
+	wake_unlock(&charger_wakelock);
+	return ret;
+}
+
+static irqreturn_t smb345_inok_isr(int irq, void *dev_id)
+{
+	return IRQ_HANDLED;
+}
+
+static int smb345_inok_irq(struct smb345_charger *smb)
+{
+	int err = 0 ;
+	unsigned gpio = GPIO_AC_OK;
+	unsigned irq_num = gpio_to_irq(gpio);
+
+	err = gpio_request(gpio, "smb345_inok");
+	if (err) {
+		SMB_ERR("gpio %d request failed \n", gpio);
+	}
+
+	err = gpio_direction_input(gpio);
+	if (err) {
+		SMB_ERR("gpio %d unavaliable for input \n", gpio);
+	}
+
+	err = request_irq(irq_num, smb345_inok_isr, IRQF_TRIGGER_FALLING |IRQF_TRIGGER_RISING|IRQF_SHARED,
+		"smb345_inok", smb);
+	if (err < 0) {
+		SMB_ERR("%s irq %d request failed \n","smb345_inok", irq_num);
+		goto fault ;
+	}
+	enable_irq_wake(irq_num);
+	SMB_NOTICE("GPIO pin irq %d requested ok, smb345_INOK = %s\n", irq_num, gpio_get_value(gpio)? "H":"L");
+	return 0;
+
+fault:
+	gpio_free(gpio);
+	return err;
+}
+
+static int smb345_configure_otg(struct i2c_client *client)
+{
+	int ret = 0;
+
+	/*Enable volatile writes to registers and Allow fast charge */
+	ret = smb345_write(client, smb345_CMD_REG, 0xc0);
+       if (ret < 0) {
+		dev_err(&client->dev, "%s(): Failed in writing"
+			"register 0x%02x\n", __func__, smb345_CMD_REG);
+		goto error;
+       }
+
+	/* Change "OTG output current limit" to 250mA */
+      ret = smb345_write(client, smb345_OTG_TLIM_REG, 0x34);
+       if (ret < 0) {
+		dev_err(&client->dev, "%s(): Failed in writing"
+			"register 0x%02x\n", __func__, smb345_OTG_TLIM_REG);
+		goto error;
+       }
+
+	/* Enable OTG */
+       ret = smb345_update_reg(client, smb345_CMD_REG, 0x10);
+       if (ret < 0) {
+	       dev_err(&client->dev, "%s: Failed in writing register"
+			"0x%02x\n", __func__, smb345_CMD_REG);
+		goto error;
+       }
+
+	/* Change "OTG output current limit" from 250mA to 750mA */
+	ret = smb345_update_reg(client, smb345_OTG_TLIM_REG, 0x08);
+       if (ret < 0) {
+	       dev_err(&client->dev, "%s: Failed in writing register"
+			"0x%02x\n", __func__, smb345_OTG_TLIM_REG);
+		goto error;
+       }
+
+	/* Change OTG to Pin control */
+       ret = smb345_write(client, smb345_CTRL_REG, 0x65);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s(): Failed in writing"
+			"register 0x%02x\n", __func__, smb345_CTRL_REG);
+		goto error;
+       }
+
+	/* Disable volatile writes to registers */
+	ret = smb345_volatile_writes(client, smb345_DISABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s error in configuring OTG..\n",
+								__func__);
+	       goto error;
+	}
+	return 0;
+error:
+	return ret;
+}
+
+void smb345_otg_status(bool on)
+{
+	struct i2c_client *client = charger->client;
+	int ret;
+
+	SMB_NOTICE("otg function: %s", on? "on":"off");
+
+	if (on) {
+		/* ENABLE OTG */
+		ret = smb345_configure_otg(client);
+		if (ret < 0)
+			dev_err(&client->dev, "%s() error in configuring"
+				"otg..\n", __func__);
+	}
+}
+EXPORT_SYMBOL_GPL(smb345_otg_status);
+
+int smb345_float_volt_set(unsigned int val)
+{
+	struct i2c_client *client = charger->client;
+	int ret = 0, retval;
+
+	if (val > 4500 || val < 3500) {
+		SMB_ERR("%s(): val=%d is out of range !\n",__func__, val);
+	}
+
+	printk("%s(): val=%d\n",__func__, val);
+
+	ret = smb345_volatile_writes(client, smb345_ENABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() charger enable write error..\n", __func__);
+		goto fault;
+	}
+
+	retval = smb345_read(client, smb345_FLOAT_VLTG);
+	if (retval < 0) {
+		dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
+				__func__, smb345_FLOAT_VLTG);
+		goto fault;
+	}
+	retval = retval & (~FLOAT_VOLT_MASK);
+	val = clamp_val(val, 3500, 4500) - 3500;
+	val /= 20;
+	retval |= val;
+	ret = smb345_write(client, smb345_FLOAT_VLTG, retval);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s(): Failed in writing"
+			"register 0x%02x\n", __func__, smb345_FLOAT_VLTG);
+		goto fault;
+       }
+
+	ret = smb345_volatile_writes(client, smb345_DISABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() charger disable write error..\n", __func__);
+	}
+	return 0;
+fault:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(smb345_float_volt_set);
+
+int usb_cable_type_detect(unsigned int chgr_type)
+{
+	struct i2c_client *client = charger->client;
+	int  success = 0;
+	int ac_ok = GPIO_AC_OK;
+
+	mutex_lock(&charger->usb_lock);
+
+	if (gpio_get_value(ac_ok) && (chgr_type == CHARGER_NONE)) {
+		SMB_NOTICE("INOK=H\n");
+		success =  bq27541_battery_callback(non_cable);
+	} else {
+		SMB_NOTICE("INOK=L\n");
+
+		if (chgr_type == CHARGER_SDP) {
+			SMB_NOTICE("Cable: SDP\n");
+			success =  bq27541_battery_callback(usb_cable);
+		} else {
+			if (chgr_type == CHARGER_CDP) {
+				SMB_NOTICE("Cable: CDP\n");
+			} else if (chgr_type == CHARGER_DCP) {
+				SMB_NOTICE("Cable: DCP\n");
+			} else if (chgr_type == CHARGER_OTHER) {
+				SMB_NOTICE("Cable: OTHER\n");
+			} else if (chgr_type == CHARGER_ACA) {
+				SMB_NOTICE("Cable: ACA\n");
+			} else {
+				SMB_NOTICE("Cable: TBD\n");
+			}
+			smb345_set_InputCurrentlimit(client, 2000);
+			success =  bq27541_battery_callback(ac_cable);
+		}
+	}
+
+	mutex_unlock(&charger->usb_lock);
+	return success;
+}
+EXPORT_SYMBOL_GPL(usb_cable_type_detect);
+
+/* Sysfs function */
+static ssize_t smb345_reg_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct i2c_client *client = charger->client;
+	uint8_t config_reg[15], cmd_reg[2], status_reg[11];
+	char tmp_buf[64];
+	int i, cfg_ret, cmd_ret, sts_ret = 0;
+
+	cfg_ret = i2c_smbus_read_i2c_block_data(client, smb345_CHARGE, 15, config_reg);
+	cmd_ret = i2c_smbus_read_i2c_block_data(client, smb345_CMD_REG, 2, cmd_reg);
+	sts_ret = i2c_smbus_read_i2c_block_data(client, smb345_INTR_STS_A, 11, status_reg);
+
+	sprintf(tmp_buf, "SMB34x Configuration Registers Detail\n"
+					"==================\n");
+	strcpy(buf, tmp_buf);
+
+	if (cfg_ret > 0) {
+		for(i=0;i<=14;i++) {
+			sprintf(tmp_buf, "Reg%02xh:\t0x%02x\n", i, config_reg[i]);
+			strcat(buf, tmp_buf);
+		}
+	}
+	if (cmd_ret > 0) {
+		for(i=0;i<=1;i++) {
+			sprintf(tmp_buf, "Reg%02xh:\t0x%02x\n", 48+i, cmd_reg[i]);
+			strcat(buf, tmp_buf);
+		}
+	}
+	if (sts_ret > 0) {
+		for(i=0;i<=10;i++) {
+			sprintf(tmp_buf, "Reg%02xh:\t0x%02x\n", 53+i, status_reg[i]);
+			strcat(buf, tmp_buf);
+		}
+	}
+	return strlen(buf);
+}
+
+static int smb345_otg_setting(struct i2c_client *client)
+{
+	int ret;
+
+	/*Enable volatile writes to registers and Allow fast charge */
+	ret = smb345_update_reg(client, smb345_CMD_REG, 0xc0);
+       if (ret < 0) {
+		dev_err(&client->dev, "%s(): Failed in writing"
+			"register 0x%02x\n", __func__, smb345_CMD_REG);
+		goto error;
+       }
+
+	/* Change OTG to I2C control */
+	ret = smb345_update_reg(client, smb345_CTRL_REG, 0x25);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s(): Failed in writing"
+			"register 0x%02x\n", __func__, smb345_CTRL_REG);
+		goto error;
+       }
+
+	/*Enable volatile writes to registers and Allow fast charge */
+	ret = smb345_update_reg(client, smb345_CMD_REG, 0xc0);
+       if (ret < 0) {
+		dev_err(&client->dev, "%s(): Failed in writing"
+			"register 0x%02x\n", __func__, smb345_CMD_REG);
+		goto error;
+       }
+
+	/* Change "OTG output current limit" to 250mA */
+	ret = smb345_update_reg(client, smb345_OTG_TLIM_REG, 0x34);
+       if (ret < 0) {
+		dev_err(&client->dev, "%s(): Failed in writing"
+			"register 0x%02x\n", __func__, smb345_OTG_TLIM_REG);
+		goto error;
+       }
+
+	/* Disable volatile writes to registers */
+	ret = smb345_volatile_writes(client, smb345_DISABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s error in configuring OTG..\n",
+								__func__);
+	       goto error;
+	}
+	return 0;
+error:
+	return ret;
+}
+
+static int __devinit smb345_probe(struct i2c_client *client,
+			const struct i2c_device_id *id)
+{
+	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
+	int ret;
+
+	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE))
+		return -EIO;
+
+	charger = kzalloc(sizeof(*charger), GFP_KERNEL);
+	if (!charger)
+		return -ENOMEM;
+
+	printk("smb345_probe+\n");
+	charger->client = client;
+	charger->dev = &client->dev;
+	i2c_set_clientdata(client, charger);
+
+	smb345_otg_setting(charger->client);
+
+	ret = sysfs_create_group(&client->dev.kobj, &smb345_group);
+	if (ret) {
+		SMB_ERR("Unable to create the sysfs\n");
+		goto error;
+	}
+
+	mutex_init(&charger->apsd_lock);
+	mutex_init(&charger->usb_lock);
+	mutex_init(&charger->pinctrl_lock);
+
+	smb345_wq = create_singlethread_workqueue("smb345_wq");
+
+	wake_lock_init(&charger_wakelock, WAKE_LOCK_SUSPEND,
+			"charger_configuration");
+	charger->curr_limit = UINT_MAX;
+	charger->cur_cable_type = non_cable;
+	charger->old_cable_type = non_cable;
+
+	ret = smb345_inok_irq(charger);
+	if (ret) {
+		SMB_ERR("Failed in requesting ACOK# pin isr\n");
+		goto error;
+	}
+
+	printk("smb345_probe-\n");
+
+	return 0;
+error:
+	kfree(charger);
+	return ret;
+}
+
+static int __devexit smb345_remove(struct i2c_client *client)
+{
+	struct smb345_charger *charger = i2c_get_clientdata(client);
+	kfree(charger);
+	return 0;
+}
+
+static int smb345_suspend(struct i2c_client *client, pm_message_t mesg)
+{
+	printk("smb345_suspend+\n");
+	flush_workqueue(smb345_wq);
+	printk("smb345_suspend-\n");
+	return 0;
+}
+
+static int smb345_resume(struct i2c_client *client)
+{
+	return 0;
+}
+
+void smb345_shutdown(struct i2c_client *client)
+{
+	printk("smb345_shutdown+\n");
+	printk("smb345_shutdown-\n");
+}
+
+static const struct i2c_device_id smb345_id[] = {
+	{ "smb345", 0 },
+	{ }
+};
+MODULE_DEVICE_TABLE(i2c, smb345_id);
+
+static struct i2c_driver smb345_i2c_driver = {
+	.driver	= {
+		.name	= "smb345",
+	},
+	.probe		= smb345_probe,
+	.remove		= __devexit_p(smb345_remove),
+	.shutdown	= smb345_shutdown,
+	.suspend 		= smb345_suspend,
+	.resume 		= smb345_resume,
+	.id_table	= smb345_id,
+};
+
+static int __init smb345_init(void)
+{
+	return i2c_add_driver(&smb345_i2c_driver);
+}
+module_init(smb345_init);
+
+static void __exit smb345_exit(void)
+{
+	i2c_del_driver(&smb345_i2c_driver);
+}
+module_exit(smb345_exit);
+
+MODULE_DESCRIPTION("smb345 Battery-Charger");
+MODULE_LICENSE("GPL");

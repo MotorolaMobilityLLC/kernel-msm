@@ -62,6 +62,12 @@ config TEST_POWER
 	help
 	  This driver is used for testing. It's safe to say M here.
 
+config CHARGER_SMB345
+        tristate "SMB345 battery charger driver"
+        depends on I2C
+        help
+          Say Y here to enable support for battery charging with SMB345 chips.
+
 config BATTERY_DS2760
 	tristate "DS2760 battery driver (HP iPAQ & others)"
 	depends on W1 && W1_SLAVE_DS2760

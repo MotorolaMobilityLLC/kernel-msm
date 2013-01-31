@@ -1056,6 +1056,12 @@ static void __init apq8064_ehci_host_init(void)
 	}
 }
 
+static struct i2c_board_info smb345_charger_i2c_info[] __initdata = {
+	{
+		I2C_BOARD_INFO("smb345", 0x6a),
+	},
+};
+
 #if 0
 static struct smb349_platform_data smb349_data __initdata = {
 	.en_n_gpio		= PM8921_GPIO_PM_TO_SYS(37),
@@ -2773,6 +2779,12 @@ static struct i2c_board_info bq27541_bat_device_info[] = {
 };
 
 static struct i2c_registry apq8064_i2c_devices[] __initdata = {
+	{
+		I2C_SURF | I2C_FFA | I2C_LIQUID | I2C_RUMI,
+		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+		smb345_charger_i2c_info,
+		ARRAY_SIZE(smb345_charger_i2c_info)
+	},
 #if 0
 	{
 		I2C_LIQUID,
