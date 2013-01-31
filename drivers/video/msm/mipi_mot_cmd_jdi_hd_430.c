@@ -125,10 +125,10 @@ static int __init mipi_mot_cmd_jdi_hd_430_init(void)
 
 	pinfo->lcd.vsync_enable = TRUE;
 	pinfo->lcd.hw_vsync_mode = TRUE;
-	pinfo->lcd.v_back_porch = 10;
-	pinfo->lcd.v_front_porch = 10;
-	pinfo->lcd.v_pulse_width = 5;
-	pinfo->lcd.refx100 = 6000; /* adjust refx100 to prevent tearing */
+	pinfo->lcd.v_back_porch = 2;
+	pinfo->lcd.v_front_porch = 2;
+	pinfo->lcd.v_pulse_width = 2;
+	pinfo->lcd.refx100 = 5800; /* adjust refx100 to prevent tearing */
 
 	pinfo->mipi.mode = DSI_CMD_MODE;
 	pinfo->mipi.dst_format = DSI_CMD_DST_FORMAT_RGB888;
