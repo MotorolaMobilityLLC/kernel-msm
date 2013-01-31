@@ -454,4 +454,10 @@ config BATTERY_TEMP_CONTROL
 	  Say Y to enable battery temperature control for safty.
 	  It controls charging current depending on battery temperature.
 
+config BATTERY_ASUS_BQ27541
+	tristate "ASUS bq27541 battery driver"
+	depends on I2C
+	help
+	  Say Y here to enable support for batteries with BQ27541 chip.
+
 endif # POWER_SUPPLY

@@ -1437,6 +1437,21 @@ static struct msm_gpiomux_config msm8064_sp_gpio_config[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting gpio_bat_low_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct msm_gpiomux_config gpio_bat_low_configs[] __initdata = {
+	{
+		.gpio = 29,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gpio_bat_low_cfg,
+			[GPIOMUX_SUSPENDED] = &gpio_bat_low_cfg,
+		},
+	},
+};
+
 void __init apq8064_init_gpiomux(void)
 {
 	int rc;
@@ -1479,6 +1494,10 @@ void __init apq8064_init_gpiomux(void)
 			ARRAY_SIZE(asustek_pcbid_pins_configs));
 	}
 #endif
+
+	msm_gpiomux_install(gpio_bat_low_configs,
+			ARRAY_SIZE(gpio_bat_low_configs));
+
 
 	msm_gpiomux_install(apq8064_slimbus_config,
 			ARRAY_SIZE(apq8064_slimbus_config));

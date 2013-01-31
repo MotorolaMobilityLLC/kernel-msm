@@ -2671,7 +2671,7 @@ static struct slim_boardinfo apq8064_slim_devices[] = {
 };
 
 static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi1_pdata = {
-	.clk_freq = 100000,
+	.clk_freq = 400000,
 	.src_clk_rate = 24000000,
 };
 
@@ -2766,6 +2766,12 @@ struct i2c_registry {
 	int                    len;
 };
 
+static struct i2c_board_info bq27541_bat_device_info[] = {
+    {
+        I2C_BOARD_INFO("bq27541-battery", 0x55),
+    },
+};
+
 static struct i2c_registry apq8064_i2c_devices[] __initdata = {
 #if 0
 	{
@@ -2776,6 +2782,13 @@ static struct i2c_registry apq8064_i2c_devices[] __initdata = {
 	},
 #endif
 	/*
+	{
+		I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID,
+		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+		bq27541_bat_device_info,
+		ARRAY_SIZE(bq27541_bat_device_info)
+	},
+
 	{
 		I2C_SURF | I2C_LIQUID,
 		APQ_8064_GSBI3_QUP_I2C_BUS_ID,
