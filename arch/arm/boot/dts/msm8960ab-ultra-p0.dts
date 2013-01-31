@@ -28,4 +28,10 @@
 		gpios = <&pm8921_gpio 18 0>, /* RESET */
 			<&pm8921_gpio 8 0>;  /* MCLK  */
 	};
+
+	tas2552@41 {
+		compatible = "ti,tas2552";
+		reg = <0x41>;
+		tas_avdd-supply = <&rpm_8921_s4>;
+	};
 };
