@@ -965,5 +965,12 @@ config TOUCH_REG_MAP_TM2000
 	default y
 	help
 	  Synaptics Register map TM2000.
+
+config TOUCHSCREEN_ELAN_TF_3K
+        tristate "ELAN legacy Touchscreen Interface"
+        depends on I2C
+        help
+          To compile this driver as a module, choose M here: the
+          module will be called atmel_tsadcc.
 endif
 

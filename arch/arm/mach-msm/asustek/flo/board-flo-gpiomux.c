@@ -1342,6 +1342,40 @@ static struct msm_gpiomux_config asustek_pcbid_pins_configs[] __initdata = {
 };
 #endif
 
+
+static struct gpiomux_setting ts_init_config = {
+        .func = GPIOMUX_FUNC_GPIO,
+        .drv  = GPIOMUX_DRV_2MA,
+        .pull = GPIOMUX_PULL_NONE,
+        .dir   = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting ts_reset_config = {
+        .func = GPIOMUX_FUNC_GPIO,
+        .drv = GPIOMUX_DRV_2MA,
+        .pull = GPIOMUX_PULL_NONE,
+};
+
+//add touch gpio
+static struct msm_gpiomux_config msm8064_ts_gpio_config[] __initdata = {
+	{  
+		.gpio = 6,	/* tp IRQ*/  
+		.settings = {  
+			[GPIOMUX_SUSPENDED] = &ts_init_config,  
+			[GPIOMUX_ACTIVE]= &ts_init_config,    
+		},  
+	},
+
+	{  
+		.gpio = 31,	/* tp reset*/  
+		.settings = {  
+			[GPIOMUX_SUSPENDED] = &ts_reset_config,  
+			[GPIOMUX_ACTIVE]= &ts_reset_config,  
+		},  
+	},	
+};
+
+
 static struct gpiomux_setting nfc_bcm2079x_irq_cfg = { // NFC_IRQ
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -1518,6 +1552,9 @@ void __init apq8064_init_gpiomux(void)
 
 	msm_gpiomux_install(apq8064_sdc3_configs,
 			ARRAY_SIZE(apq8064_sdc3_configs));
+	//add touch
+	msm_gpiomux_install(msm8064_ts_gpio_config,
+			ARRAY_SIZE(msm8064_ts_gpio_config));  
 
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
 		msm_gpiomux_install(apq8064_bcm2079x_nfc_configs,

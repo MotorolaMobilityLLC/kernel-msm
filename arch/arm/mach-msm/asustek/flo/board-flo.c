@@ -218,6 +218,11 @@ static void enable_cap1106_regulator(void) {
 #define PCIE_PWR_EN_PMIC_GPIO 13
 #define PCIE_RST_N_PMIC_MPP 1
 
+
+/*regulator for touch*/
+static struct regulator *pm8921_l17_ts;
+static struct regulator *pm8921_lvs4;
+
 #ifdef CONFIG_KERNEL_MSM_CONTIG_MEM_REGION
 static unsigned msm_contig_mem_size = MSM_CONTIG_MEM_SIZE;
 static int __init msm_contig_mem_size_setup(char *p)
@@ -1455,10 +1460,13 @@ static const u8 mxt1386e_config_data_v2_1[] = {
 	0,
 };
 
+/*
 #define MXT_TS_GPIO_IRQ			6
 #define MXT_TS_PWR_EN_GPIO		PM8921_GPIO_PM_TO_SYS(23)
 #define MXT_TS_RESET_GPIO		33
+*/
 
+/*
 static struct mxt_config_info mxt_config_array[] = {
 	{
 		.config		= mxt1386e_config_data_v2_1,
@@ -1471,7 +1479,7 @@ static struct mxt_config_info mxt_config_array[] = {
 		.fw_name	= "atmel_8064_liquid_v2_2_AA.hex",
 	},
 	{
-		/* The config data for V2.2.AA is the same as for V2.1.AA */
+		//The config data for V2.2.AA is the same as for V2.1.AA
 		.config		= mxt1386e_config_data_v2_1,
 		.config_length	= ARRAY_SIZE(mxt1386e_config_data_v2_1),
 		.family_id	= 0xA0,
@@ -1506,10 +1514,14 @@ static struct i2c_board_info mxt_device_info[] __initdata = {
 		.irq = MSM_GPIO_TO_INT(MXT_TS_GPIO_IRQ),
 	},
 };
+*/
+
+/*
 #define CYTTSP_TS_GPIO_IRQ		6
 #define CYTTSP_TS_GPIO_SLEEP		33
 #define CYTTSP_TS_GPIO_SLEEP_ALT	12
-
+*/
+/*
 static ssize_t tma340_vkeys_show(struct kobject *kobj,
 			struct kobj_attribute *attr, char *buf)
 {
@@ -1520,7 +1532,8 @@ static ssize_t tma340_vkeys_show(struct kobject *kobj,
 	":" __stringify(EV_KEY) ":" __stringify(KEY_SEARCH) ":544:1120:97:97"
 	"\n");
 }
-
+*/
+/*
 static struct kobj_attribute tma340_vkeys_attr = {
 	.attr = {
 		.mode = S_IRUGO,
@@ -1532,11 +1545,11 @@ static struct attribute *tma340_properties_attrs[] = {
 	&tma340_vkeys_attr.attr,
 	NULL
 };
-
 static struct attribute_group tma340_properties_attr_group = {
 	.attrs = tma340_properties_attrs,
 };
-
+*/
+/*
 static int cyttsp_platform_init(struct i2c_client *client)
 {
 	int rc = 0;
@@ -1555,6 +1568,7 @@ static int cyttsp_platform_init(struct i2c_client *client)
 	return 0;
 }
 
+
 static struct cyttsp_regulator cyttsp_regulator_data[] = {
 	{
 		.name = "vdd",
@@ -1571,7 +1585,8 @@ static struct cyttsp_regulator cyttsp_regulator_data[] = {
 		.lpm_load_uA = CY_I2C_CURR_UA,
 	},
 };
-
+*/
+/*
 static struct cyttsp_platform_data cyttsp_pdata = {
 	.panel_maxx = 634,
 	.panel_maxy = 1166,
@@ -1588,17 +1603,19 @@ static struct cyttsp_platform_data cyttsp_pdata = {
 	.use_sleep = CY_USE_DEEP_SLEEP_SEL,
 	.use_gestures = CY_USE_GESTURES,
 	.fw_fname = "cyttsp_8064_mtp.hex",
+	*/
 	/* change act_intrvl to customize the Active power state
 	 * scanning/processing refresh interval for Operating mode
 	 */
-	.act_intrvl = CY_ACT_INTRVL_DFLT,
+	//.act_intrvl = CY_ACT_INTRVL_DFLT,
 	/* change tch_tmout to customize the touch timeout for the
 	 * Active power state for Operating mode
 	 */
-	.tch_tmout = CY_TCH_TMOUT_DFLT,
+	//.tch_tmout = CY_TCH_TMOUT_DFLT,
 	/* change lp_intrvl to customize the Low Power power state
 	 * scanning/processing refresh interval for Operating mode
 	 */
+	 /*
 	.lp_intrvl = CY_LP_INTRVL_DFLT,
 	.sleep_gpio = CYTTSP_TS_GPIO_SLEEP,
 	.resout_gpio = -1,
@@ -1607,8 +1624,9 @@ static struct cyttsp_platform_data cyttsp_pdata = {
 	.num_regulators = ARRAY_SIZE(cyttsp_regulator_data),
 	.init = cyttsp_platform_init,
 	.correct_fw_ver = 17,
-};
+};*/
 
+/*
 static struct i2c_board_info cyttsp_info[] __initdata = {
 	{
 		I2C_BOARD_INFO(CY_I2C_NAME, 0x24),
@@ -1616,6 +1634,7 @@ static struct i2c_board_info cyttsp_info[] __initdata = {
 		.irq = MSM_GPIO_TO_INT(CYTTSP_TS_GPIO_IRQ),
 	},
 };
+*/
 
 #define MSM_WCNSS_PHYS	0x03000000
 #define MSM_WCNSS_SIZE	0x280000
@@ -2657,7 +2676,7 @@ static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi1_pdata = {
 };
 
 static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi3_pdata = {
-	.clk_freq = 384000,
+	.clk_freq = 400000,
 	.src_clk_rate = 24000000,
 };
 
@@ -2756,6 +2775,7 @@ static struct i2c_registry apq8064_i2c_devices[] __initdata = {
 		ARRAY_SIZE(smb349_charger_i2c_info)
 	},
 #endif
+	/*
 	{
 		I2C_SURF | I2C_LIQUID,
 		APQ_8064_GSBI3_QUP_I2C_BUS_ID,
@@ -2768,6 +2788,7 @@ static struct i2c_registry apq8064_i2c_devices[] __initdata = {
 		cyttsp_info,
 		ARRAY_SIZE(cyttsp_info),
 	},
+	*/
 	{
 		I2C_FFA | I2C_LIQUID,
 		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
@@ -2929,6 +2950,89 @@ static void enable_avc_i2c_bus(void)
 						 "rc=%d\n", rc);
 	else
 		gpio_set_value_cansleep(avc_i2c_en_mpp, 1);
+}
+
+//Touch init
+#define TS_IRQ_GPIO 6
+#define TS_RESET_GPIO 31
+
+#include <linux/i2c/ektf3k.h>
+
+
+static struct elan_ktf3k_i2c_platform_data ts_elan_ktf3k_data[] = {
+        {
+                .version = 0x0001,
+                .abs_x_min = 0,
+                .abs_x_max = ELAN_X_MAX_571K,   //LG 9.7" Dpin 2368, Spin 2112
+                .abs_y_min = 0,
+                .abs_y_max = ELAN_Y_MAX_571K,   //LG 9.7" Dpin 1728, Spin 1600
+                .intr_gpio = TS_IRQ_GPIO,
+                .rst_gpio = TS_RESET_GPIO,
+        },
+};
+static struct i2c_board_info elan_i2c_devices[] = {
+        {
+                I2C_BOARD_INFO(ELAN_KTF3K_NAME, 0x10),
+                .platform_data = &ts_elan_ktf3k_data,
+                .irq = TS_IRQ_GPIO,
+        },
+};
+
+static void touch_init(void){
+	int rc = 0;
+       struct elan_ktf3k_i2c_platform_data *platform;
+
+    // get LSV4 for i2c3
+    pm8921_lvs4 = regulator_get(NULL, "8921_lvs4");
+    if (IS_ERR(pm8921_lvs4)) {
+        pr_err("%s: regulator get of 8921_lvs4 failed (%ld)\n",
+                        __func__, PTR_ERR(pm8921_lvs4));
+        rc = PTR_ERR(pm8921_lvs4);
+        return;
+    }
+
+    rc = regulator_enable(pm8921_lvs4);
+    if (rc) {
+                pr_err("%s: regulator_enable of 8921_lvs4 failed(%d)\n",
+                        __func__, rc);
+        regulator_put(pm8921_lvs4);
+    }
+	
+       // get LDO17
+       pm8921_l17_ts = regulator_get(NULL, "8921_l17");
+       if (IS_ERR(pm8921_l17_ts)) {
+       	pr_err("%s: regulator get of 8921_l17 failed (%ld)\n",
+				__func__, PTR_ERR(pm8921_l17_ts));
+             return;
+       }
+	// set LDO17 to 3.0V
+	rc = regulator_set_voltage(pm8921_l17_ts, 3300000, 3300000);
+ 	if (rc) {
+		pr_err("%s: regulator_set_voltage of 8921_l17 failed(%d)\n",
+  				__func__, rc);
+		regulator_put(pm8921_l17_ts);
+	}
+
+ 	//enable LDO17 for cap sensor
+  	rc = regulator_enable(pm8921_l17_ts);
+	if (rc) {
+		pr_err("%s: regulator_enable of 8921_l17 failed(%d)\n",
+ 			__func__, rc);
+		regulator_put(pm8921_l17_ts);
+	}
+
+	//set gpio
+	gpio_request(TS_RESET_GPIO,"tp_reset");
+ 	gpio_direction_output(TS_RESET_GPIO,1);
+	gpio_request(TS_IRQ_GPIO,"tp_irq");
+	gpio_direction_input(TS_IRQ_GPIO);
+ 	platform = (struct elan_ktf3k_i2c_platform_data *)elan_i2c_devices[0].platform_data;
+	platform->abs_x_max = ELAN_X_MAX_571K - 1;
+	platform->abs_y_max = ELAN_Y_MAX_571K - 1;
+	elan_i2c_devices[0].irq = gpio_to_irq(TS_IRQ_GPIO);
+	//register
+	printk("[ELAN] Touch dirver register\n");
+ 	i2c_register_board_info(APQ_8064_GSBI3_QUP_I2C_BUS_ID, elan_i2c_devices, 1);
 }
 
 #ifdef CONFIG_SLIMPORT_ANX7808
@@ -3120,6 +3224,9 @@ static void __init apq8064_common_init(void)
 	apq8064_epm_adc_init();
 	msm_pm_set_tz_retention_flag(1);
 
+	//add touch
+	touch_init();
+	
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
 		nfc_init();
 	if (machine_is_apq8064_deb()) {
@@ -3141,9 +3248,9 @@ static void __init apq8064_cdp_init(void)
 	printk(KERN_NOTICE "MIDR      = 0x%08x\n", read_cpuid_id());
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
 		pr_err("meminfo_init() failed!\n");
-	if ((machine_is_apq8064_flo() || machine_is_apq8064_deb()) &&
-		SOCINFO_VERSION_MINOR(socinfo_get_platform_version()) == 1)
-			cyttsp_pdata.sleep_gpio = CYTTSP_TS_GPIO_SLEEP_ALT;
+	//if ((machine_is_apq8064_flo() || machine_is_apq8064_deb()) &&
+	//	SOCINFO_VERSION_MINOR(socinfo_get_platform_version()) == 1)
+	//		cyttsp_pdata.sleep_gpio = CYTTSP_TS_GPIO_SLEEP_ALT;
 	apq8064_common_init();
 #ifdef CONFIG_MACH_ASUSTEK
 	asustek_add_ramconsole_devices();
