@@ -197,10 +197,10 @@ static int __init mipi_mot_cmd_smd_hd_497_init(void)
 
 	pinfo->lcd.vsync_enable = TRUE;
 	pinfo->lcd.hw_vsync_mode = TRUE;
-	pinfo->lcd.v_back_porch = 64; /* TODO: Need to check */
+	pinfo->lcd.v_back_porch = 2; /* TODO: Need to check */
 	pinfo->lcd.v_front_porch = 2; /* TODO: Need to check */
 	pinfo->lcd.v_pulse_width = 2; /* TODO: Need to check */
-	pinfo->lcd.refx100 = 6000; /* adjust refx100 to prevent tearing */
+	pinfo->lcd.refx100 = 5800; /* adjust refx100 to prevent tearing */
 
 	pinfo->mipi.mode = DSI_CMD_MODE;
 	pinfo->mipi.dst_format = DSI_CMD_DST_FORMAT_RGB888;
