@@ -306,18 +306,12 @@ static struct platform_driver asustek_pcbid_driver __refdata = {
 	},
 };
 
-static int __init asustek_pcbid_init(void)
+static int __devinit asustek_pcbid_init(void)
 {
 	return platform_driver_register(&asustek_pcbid_driver);
 }
 
-static void __exit asustek_pcbid_exit(void)
-{
-	platform_driver_unregister(&asustek_pcbid_driver);
-}
-
-module_init(asustek_pcbid_init);
-module_exit(asustek_pcbid_exit);
+postcore_initcall(asustek_pcbid_init);
 
 MODULE_DESCRIPTION("ASUSTek PCBID driver");
 MODULE_AUTHOR("Paris Yeh <paris_yeh@asus.com>");
