@@ -829,13 +829,13 @@ static int hdmi_enable_5v(int on)
 
 static int hdmi_core_power(int on, int show)
 {
-	static struct regulator *reg_8921_lvs7, *reg_8921_s4, *reg_ext_3p3v;
+	static struct regulator *reg_8921_lvs7, *reg_8921_s4;
 	static int prev_on;
 	int rc;
 
 	if (on == prev_on)
 		return 0;
-
+#if 0
 	/* TBD: PM8921 regulator instead of 8901 */
 	if (!reg_ext_3p3v) {
 		reg_ext_3p3v = regulator_get(&hdmi_msm_device.dev,
@@ -847,7 +847,7 @@ static int hdmi_core_power(int on, int show)
 			return -ENODEV;
 		}
 	}
-
+#endif
 	if (!reg_8921_lvs7) {
 		reg_8921_lvs7 = regulator_get(&hdmi_msm_device.dev,
 					      "hdmi_vdda");
@@ -875,6 +875,7 @@ static int hdmi_core_power(int on, int show)
 	}
 
 	if (on) {
+#if 0
 		/*
 		 * Configure 3P3V_BOOST_EN as GPIO, 8mA drive strength,
 		 * pull none, out-high
@@ -890,6 +891,7 @@ static int hdmi_core_power(int on, int show)
 			pr_err("enable reg_ext_3p3v failed, rc=%d\n", rc);
 			return rc;
 		}
+#endif
 		rc = regulator_enable(reg_8921_lvs7);
 		if (rc) {
 			pr_err("'%s' regulator enable failed, rc=%d\n",
@@ -904,11 +906,13 @@ static int hdmi_core_power(int on, int show)
 		}
 		pr_debug("%s(on): success\n", __func__);
 	} else {
+#if 0
 		rc = regulator_disable(reg_ext_3p3v);
 		if (rc) {
 			pr_err("disable reg_ext_3p3v failed, rc=%d\n", rc);
 			return -ENODEV;
 		}
+#endif
 		rc = regulator_disable(reg_8921_lvs7);
 		if (rc) {
 			pr_err("disable reg_8921_l23 failed, rc=%d\n", rc);
@@ -929,7 +933,7 @@ static int hdmi_core_power(int on, int show)
 error2:
 	regulator_disable(reg_8921_lvs7);
 error1:
-	regulator_disable(reg_ext_3p3v);
+//	regulator_disable(reg_ext_3p3v);
 	return rc;
 }
 
