@@ -167,6 +167,9 @@
 
 #define HDD_SAP_WAKE_LOCK_DURATION 10000 //10 sec
 
+/* Maximum number of interfaces allowed(STA, P2P Device, P2P Interface) */
+#define WLAN_MAX_INTERFACES 3
+
 typedef struct hdd_tx_rx_stats_s
 {
    // start_xmit stats

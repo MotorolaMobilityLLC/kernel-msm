@@ -362,10 +362,25 @@ wlan_hdd_txrx_stypes[NUM_NL80211_IFTYPES] = {
 static const struct ieee80211_iface_limit
 wlan_hdd_iface_limit[] = {
     {
-        /* max=2 is to support JellyBean architecture which has wlan0
-         * and p2p0 interfaces during init. p2p0 is considered station
-         * interface until a group is formed */
-        .max = 2,
+        /* max = 3 ; Our driver create two interfaces during driver init
+         * wlan0 and p2p0 interfaces. p2p0 is considered as station
+         * interface until a group is formed. In JB architecture, once the
+         * group is formed, interface type of p2p0 is changed to P2P GO or
+         * Client.
+         * When supplicant remove the group, it first issue a set interface
+         * cmd to change the mode back to Station. In JB this works fine as
+         * we advertize two station type interface during driver init.
+         * Some vendors create separate interface for P2P GO/Client,
+         * after group formation(Third one). But while group remove
+         * supplicant first tries to change the mode(3rd interface) to STATION
+         * But as we advertized only two sta type interfaces nl80211 was
+         * returning error for the third one which was leading to failure in
+         * delete interface. Ideally while removing the group, supplicant
+         * should not try to change the 3rd interface mode to Station type.
+         * Till we get a fix in wpa_supplicant, we advertize max STA
+         * interface type to 3
+         */
+        .max = 3,
         .types = BIT(NL80211_IFTYPE_STATION),
     },
     {
@@ -384,7 +399,17 @@ static struct ieee80211_iface_combination
 wlan_hdd_iface_combination = {
         .limits = wlan_hdd_iface_limit,
         .num_different_channels = 1,
-        .max_interfaces = 2,
+        /*
+         * max = WLAN_MAX_INTERFACES ; JellyBean architecture creates wlan0
+         * and p2p0 interfaces during driver init
+         * Some vendors create separate interface for P2P operations.
+         * wlan0: STA interface
+         * p2p0: P2P Device interface, action frames goes
+         * through this interface.
+         * p2p-xx: P2P interface, After GO negotiation this interface is
+         * created for p2p operations(GO/CLIENT interface).
+         */
+        .max_interfaces = WLAN_MAX_INTERFACES,
         .n_limits = ARRAY_SIZE(wlan_hdd_iface_limit),
         .beacon_int_infra_match = false,
 };
