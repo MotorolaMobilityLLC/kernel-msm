@@ -1795,12 +1795,12 @@ void msm_fb_wait_for_fence(struct msm_fb_data_type *mfd)
 	/* buf sync */
 	for (i = 0; i < mfd->acq_fen_cnt; i++) {
 		ret = sync_fence_wait(mfd->acq_fen[i], WAIT_FENCE_TIMEOUT);
-		sync_fence_put(mfd->acq_fen[i]);
 		if (ret < 0) {
 			pr_err("%s: sync_fence_wait failed! ret = %x\n",
 				__func__, ret);
 			break;
 		}
+		sync_fence_put(mfd->acq_fen[i]);
 	}
 	if (ret < 0) {
 		while (i < mfd->acq_fen_cnt) {
