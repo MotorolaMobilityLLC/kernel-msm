@@ -1715,6 +1715,8 @@ eHalStatus csrInitChannelList( tHalHandle hHal )
     eHalStatus status = eHAL_STATUS_SUCCESS;
     csrPruneChannelListForMode(pMac, &pMac->scan.baseChannels);
     csrPruneChannelListForMode(pMac, &pMac->scan.base20MHzChannels);
+    csrSaveChannelPowerForBand(pMac, eANI_BOOLEAN_FALSE);
+    csrSaveChannelPowerForBand(pMac, eANI_BOOLEAN_TRUE);
     // Apply the base channel list, power info, and set the Country code...
     csrApplyChannelPowerCountryInfo( pMac, &pMac->scan.base20MHzChannels, pMac->scan.countryCodeCurrent, eANI_BOOLEAN_TRUE );
  
@@ -3268,8 +3270,12 @@ eHalStatus csrRoamSetBssConfigCfg(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrR
             pMac->scan.fAmbiguous11dInfoFound = eANI_BOOLEAN_FALSE;
             csrApplyCountryInformation( pMac, TRUE );
         }
+        if ((csrIs11dSupported (pMac)) && pIes)
+        {
+            if (!pIes->Country.present)
+                csrResetCountryInformation(pMac, eANI_BOOLEAN_FALSE, eANI_BOOLEAN_FALSE );
+        }
     }
-        
     //Qos
     csrSetQosToCfg( pMac, sessionId, pBssConfig->qosType );
     //SSID
@@ -9930,6 +9936,65 @@ eHalStatus csrGetCfgValidChannels(tpAniSirGlobal pMac, tANI_U8 *pChannels, tANI_
                   pNumChan));
 }
 
+tPowerdBm csrGetCfgMaxTxPower (tpAniSirGlobal pMac, tANI_U8 channel)
+{
+    tANI_U32    cfgLength = 0;
+    tANI_U16    cfgId = 0;
+    tPowerdBm   maxTxPwr = 0;
+    tANI_U8     *pCountryInfo = NULL;
+    eHalStatus  status;
+    tANI_U8     count = 0;
+    tANI_U8     firstChannel;
+    tANI_U8     maxChannels;
+
+    if (CSR_IS_CHANNEL_5GHZ(channel))
+    {
+        cfgId = WNI_CFG_MAX_TX_POWER_5;
+        cfgLength = WNI_CFG_MAX_TX_POWER_5_LEN;
+    }
+    else if (CSR_IS_CHANNEL_24GHZ(channel))
+    {
+        cfgId = WNI_CFG_MAX_TX_POWER_2_4;
+        cfgLength = WNI_CFG_MAX_TX_POWER_2_4_LEN;
+    }
+    else
+        return  maxTxPwr;
+
+    status = palAllocateMemory(pMac->hHdd, (void **)&pCountryInfo, cfgLength);
+    if (status != eHAL_STATUS_SUCCESS)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                 FL("%s: palAllocateMemory() failed, status = %d"),
+              __FUNCTION__, status);
+        goto error;
+    }
+    status = ccmCfgGetStr(pMac, cfgId, (tANI_U8 *)pCountryInfo, &cfgLength);
+    if (status != eHAL_STATUS_SUCCESS)
+    {
+        goto error;
+    }
+    /* Identify the channel and maxtxpower */
+    while (count <= (cfgLength - (sizeof(tSirMacChanInfo))))
+    {
+        firstChannel = pCountryInfo[count++];
+        maxChannels = pCountryInfo[count++];
+        maxTxPwr = pCountryInfo[count++];
+
+        if ((channel >= firstChannel) &&
+            (channel < (firstChannel + maxChannels)))
+        {
+            break;
+        }
+    }
+
+error:
+    if (NULL != pCountryInfo)
+        palFreeMemory(pMac->hHdd, pCountryInfo);
+
+    return maxTxPwr;
+}
+
+
 tANI_BOOLEAN csrRoamIsChannelValid( tpAniSirGlobal pMac, tANI_U8 channel )
 {
     tANI_BOOLEAN fValid = FALSE;
@@ -11248,7 +11313,8 @@ static void csrPrepareJoinReassocReqBuffer( tpAniSirGlobal pMac,
     tAniBool fTmp;
     tANI_BOOLEAN found = FALSE;
     tANI_U32 size = 0;
-        tANI_U16 i;
+    tANI_S8 pwrLimit = 0;
+    tANI_U16 i;
     // plug in neighborhood occupancy info (i.e. BSSes on primary or secondary channels)
     *pBuf++ = (tANI_U8)FALSE;  //tAniTitanCBNeighborInfo->cbBssFoundPri
     *pBuf++ = (tANI_U8)FALSE;  //tAniTitanCBNeighborInfo->cbBssFoundSecDown
@@ -11256,9 +11322,9 @@ static void csrPrepareJoinReassocReqBuffer( tpAniSirGlobal pMac,
     // 802.11h
     //We can do this because it is in HOST CPU order for now.
     pAP_capabilityInfo = (tSirMacCapabilityInfo *)&pBssDescription->capabilityInfo;
-        //tell the target AP my 11H capability only if both AP and STA support 11H and the channel being used is 11a
-        if ( csrIs11hSupported( pMac ) && pAP_capabilityInfo->spectrumMgt && eSIR_11A_NW_TYPE == pBssDescription->nwType )   
-        {  
+    //tell the target AP my 11H capability only if both AP and STA support 11H and the channel being used is 11a
+    if ( csrIs11hSupported( pMac ) && pAP_capabilityInfo->spectrumMgt && eSIR_11A_NW_TYPE == pBssDescription->nwType )
+    {
         fTmp = (tAniBool)pal_cpu_to_be32(1);
     }
     else
@@ -11268,12 +11334,20 @@ static void csrPrepareJoinReassocReqBuffer( tpAniSirGlobal pMac,
     palCopyMemory( pMac->hHdd, pBuf, (tANI_U8 *)&fTmp, sizeof(tAniBool) );
     pBuf += sizeof(tAniBool);
     *pBuf++ = MIN_STA_PWR_CAP_DBM; // it is for pMsg->powerCap.minTxPower = 0;
-        found = csrSearchChannelListForTxPower(pMac, pBssDescription, &channelGroup);
+    found = csrSearchChannelListForTxPower(pMac, pBssDescription, &channelGroup);
     // This is required for 11k test VoWiFi Ent: Test 2.
     // We need the power capabilities for Assoc Req. 
     // This macro is provided by the halPhyCfg.h. We pick our
     // max and min capability by the halPhy provided macros
-    *pBuf++ = MAX_STA_PWR_CAP_DBM;
+    pwrLimit = csrGetCfgMaxTxPower (pMac, pBssDescription->channelId);
+    if (0 != pwrLimit)
+    {
+        *pBuf++ = pwrLimit;
+    }
+    else
+    {
+        *pBuf++ = MAX_STA_PWR_CAP_DBM;
+    }
     size = sizeof(pMac->roam.validChannelList);
     if(HAL_STATUS_SUCCESS(csrGetCfgValidChannels(pMac, (tANI_U8 *)pMac->roam.validChannelList, &size)))
     { 
@@ -11808,10 +11882,18 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         *pBuf = (tANI_U8)pMac->roam.configParam.txLdpcEnable;
         pBuf++;
 
+        if ((csrIs11hSupported (pMac)) && (CSR_IS_CHANNEL_5GHZ(pBssDescription->channelId)) &&
+            (pIes->Country.present) && (!pMac->roam.configParam.fSupplicantCountryCodeHasPriority))
+        {
+            csrSaveToChannelPower2G_5G( pMac, pIes->Country.num_triplets * sizeof(tSirMacChanInfo),
+                                        (tSirMacChanInfo *)(&pIes->Country.triplets[0]) );
+            csrApplyPower2Current(pMac);
+        }
+
 #ifdef WLAN_FEATURE_11AC
-	// txBFIniFeatureEnabled
-	*pBuf = (tANI_U8)pMac->roam.configParam.txBFEnable;
-	 pBuf++;
+        // txBFIniFeatureEnabled
+        *pBuf = (tANI_U8)pMac->roam.configParam.txBFEnable;
+        pBuf++;
 #endif
         //BssDesc
         csrPrepareJoinReassocReqBuffer( pMac, pBssDescription, pBuf,

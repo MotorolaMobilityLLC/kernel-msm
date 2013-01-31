@@ -6905,6 +6905,19 @@ void sme_transportDebug
    WDA_TransportChannelDebug(displaySnapshot, toggleStallDetect);
 }
 
+/* ---------------------------------------------------------------------------
+    \fn     sme_ResetPowerValuesFor5G
+    \brief  Reset the power values for 5G band with NV power values.
+    \param  hHal - HAL handle for device
+    \- return NONE
+    -------------------------------------------------------------------------*/
+void sme_ResetPowerValuesFor5G (tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT (hHal);
+    csrSaveChannelPowerForBand(pMac, eANI_BOOLEAN_TRUE);
+    csrApplyPower2Current(pMac);     // Store the channel+power info in the global place: Cfg
+}
+
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
 /* ---------------------------------------------------------------------------
     \fn sme_UpdateRoamPrefer5GHz
