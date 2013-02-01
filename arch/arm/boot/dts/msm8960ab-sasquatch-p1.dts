@@ -57,6 +57,7 @@
 		reg = <0x18>;
 		gpios = <&pm8921_gpio 18 0>, /* RESET */
 			<0>; 		     /* MCLK  */
+		aic_vdd-supply = <&rpm_8921_s4>;
 	};
 
 	tas2552@41 {
