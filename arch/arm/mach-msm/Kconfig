@@ -412,6 +412,7 @@ config  ARCH_MSM_KRAITMP
 	select ARCH_MSM_KRAIT
 	select MSM_SMP
 	select HAVE_ARCH_HAS_CURRENT_TIMER
+	select MSM_JTAG if MSM_QDSS
 	bool
 	select HAVE_HW_BRKPT_RESERVED_RW_ACCESS
 
@@ -2177,7 +2178,6 @@ config MSM_DLOAD_MODE
 
 config MSM_JTAG
 	bool "JTAG and kernel debug and trace support across power collapse"
-	default n
 	help
 	  Enables support for kernel debugging (specifically breakpoints) and
 	  processor tracing across power collapse both for JTag and OS hosted
@@ -2190,6 +2190,7 @@ config MSM_JTAG
 config MSM_ETM
 	tristate "Enable MSM ETM and ETB"
 	depends on ARCH_MSM8X60
+	select MSM_JTAG
 	help
 	  Enables embedded trace collection on MSM8660
 
