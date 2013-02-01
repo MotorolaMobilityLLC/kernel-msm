@@ -220,6 +220,9 @@ struct vdec_ioctl_msg {
 #define VDEC_IOCTL_FREE_META_BUFFERS \
 	_IO(VDEC_IOCTL_MAGIC, 40)
 
+#define VDEC_IOCTL_GET_ENABLE_SEC_METADATA \
+	_IOR(VDEC_IOCTL_MAGIC, 41, struct vdec_ioctl_msg)
+
 enum vdec_picture {
 	PICTURE_TYPE_I,
 	PICTURE_TYPE_P,
