@@ -569,11 +569,13 @@ static irqreturn_t mdm_status_change(int irq, void *dev_id)
 	struct mdm_modem_drv *mdm_drv;
 	struct mdm_device *mdev = (struct mdm_device *)dev_id;
 	int value;
+	unsigned int mdm2ap_pblrdy_irq;
 	if (!mdev)
 		return IRQ_HANDLED;
 
 	mdm_drv = &mdev->mdm_data;
 	value = gpio_get_value(mdm_drv->mdm2ap_status_gpio);
+	mdm2ap_pblrdy_irq = MSM_GPIO_TO_INT(mdm_drv->mdm2ap_pblrdy);
 
 	if ((mdm_debug_mask & MDM_DEBUG_MASK_SHDN_LOG) && (value == 0))
 		pr_info("%s: mdm2ap_status went low\n", __func__);
@@ -590,6 +592,7 @@ static irqreturn_t mdm_status_change(int irq, void *dev_id)
 		pr_info("%s: status = 1: mdm id %d is now ready\n",
 				__func__, mdev->mdm_data.device_id);
 		queue_work(mdev->mdm_queue, &mdev->mdm_status_work);
+		disable_irq(mdm2ap_pblrdy_irq);
 	}
 	return IRQ_HANDLED;
 }
@@ -613,6 +616,7 @@ static int mdm_subsys_shutdown(const struct subsys_desc *crashed_subsys)
 	struct mdm_device *mdev =
 	 container_of(crashed_subsys, struct mdm_device, mdm_subsys);
 	struct mdm_modem_drv *mdm_drv = &mdev->mdm_data;
+	unsigned int mdm2ap_pblrdy_irq = MSM_GPIO_TO_INT(mdm_drv->mdm2ap_pblrdy);
 
 	pr_debug("%s: ssr on modem id %d\n", __func__,
 			 mdev->mdm_data.device_id);
@@ -622,6 +626,8 @@ static int mdm_subsys_shutdown(const struct subsys_desc *crashed_subsys)
 
 	if (!mdm_drv->pdata->no_a2m_errfatal_on_ssr)
 		gpio_direction_output(mdm_drv->ap2mdm_errfatal_gpio, 1);
+
+	enable_irq(mdm2ap_pblrdy_irq);
 
 	if (mdm_drv->pdata->ramdump_delay_ms > 0) {
 		/* Wait for the external modem to complete
