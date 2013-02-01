@@ -370,6 +370,7 @@ struct msm_otg {
 	struct hrtimer timer;
 	enum usb_vdd_type vdd_type;
 	struct delayed_work acok_irq_work;
+	struct delayed_work id_pin_irq_work;
 };
 
 struct msm_hsic_host_platform_data {

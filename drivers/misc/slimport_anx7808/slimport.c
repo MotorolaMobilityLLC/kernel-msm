@@ -50,6 +50,8 @@ static bool hdcp_enable = 1;
 static bool hdcp_enable = 0;
 #endif
 
+extern void msm_otg_id_pin_irq_enabled(bool enabled);
+
 //extern void msm_otg_id_pin_irq_enabled(bool enabled);
 
 int sp_read_reg(uint8_t slave_addr, uint8_t offset, uint8_t *buf)
@@ -383,14 +385,14 @@ static irqreturn_t anx7808_cbl_det_isr(int irq, void *data)
 		wake_lock(&anx7808->slimport_lock);
 		SP_DEV_DBG("%s : detect cable insertion\n", __func__);
 		queue_delayed_work(anx7808->workqueue, &anx7808->work, 0);
-		//msm_otg_id_pin_irq_enabled(false);
+		msm_otg_id_pin_irq_enabled(false);
 	} else {
 		SP_DEV_DBG("%s : detect cable removal\n", __func__);
 		status = cancel_delayed_work_sync(&anx7808->work);
 		if(status == 0)
 			flush_workqueue(anx7808 ->workqueue);
 		wake_unlock(&anx7808->slimport_lock);
-		//msm_otg_id_pin_irq_enabled(true);
+		msm_otg_id_pin_irq_enabled(true);
 	}
 	return IRQ_HANDLED;
 }
