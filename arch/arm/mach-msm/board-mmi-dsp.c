@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Motorola Mobility, Inc
+ * Copyright (c) 2012-2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -25,15 +25,18 @@
 #define DT_TYPE_AUDIO_C55		0x00030016
 
 static struct msm_xo_voter *xo;
+static unsigned xo_enable_mode = MSM_XO_MODE_PIN_CTRL;
 
 int mmi_c55_adc_clk_en(int en)
 {
-	pr_debug("%s: %sable D1 clock\n", __func__, (en > 0) ? "En" : "Dis");
+	pr_debug("%s: %sable D1 clock, mode: %d\n", __func__,
+		(en > 0) ? "En" : "Dis", xo_enable_mode);
 
 	if (!xo)
 		xo = msm_xo_get(MSM_XO_TCXO_D1, "c55_ctrl");
 
-	return msm_xo_mode_vote(xo, (en > 0) ? MSM_XO_MODE_ON : MSM_XO_MODE_OFF);
+	return msm_xo_mode_vote(xo, (en > 0) ?
+					xo_enable_mode : MSM_XO_MODE_OFF);
 }
 
 static struct gpio mmi_c55_gpios[] = {
@@ -98,6 +101,9 @@ void __init mmi_audio_dsp_init(void)
 		}
 		mmi_c55_gpios[i].gpio = (u8)value;
 	}
+
+	if (of_property_read_bool(node, "xo_clock_always_on"))
+		xo_enable_mode = MSM_XO_MODE_ON;
 
 	platform_device_register(&mmi_c55_ctrl_device);
 
