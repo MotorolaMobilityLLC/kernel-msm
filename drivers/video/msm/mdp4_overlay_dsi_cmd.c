@@ -301,8 +301,10 @@ int mdp4_dsi_cmd_pipe_commit(int cndx, int wait)
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	if (pipe->ov_blt_addr) {
 		/* Blt */
-		if (vctrl->blt_wait)
+		if (vctrl->blt_wait) {
+			INIT_COMPLETION(vctrl->dmap_comp);
 			need_dmap_wait = 1;
+		}
 		if (vctrl->ov_koff != vctrl->ov_done) {
 			INIT_COMPLETION(vctrl->ov_comp);
 			need_ov_wait = 1;
