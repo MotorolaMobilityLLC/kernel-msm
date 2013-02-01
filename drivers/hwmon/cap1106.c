@@ -67,7 +67,7 @@ static struct switch_dev prox_sdev;
 static long checking_work_period = 100; //default (ms)
 static int is_wood_sensitivity = 0;
 static int ac2 = 0; // Accumulated Count Ch2
-static int ac3 = 0; // Accumulated Count Ch3
+//static int ac3 = 0; // Accumulated Count Ch3
 static int ac6 = 0; // Accumulated Count Ch6
 static int ac_limit = 10;
 static int force_enable = 1;
@@ -127,8 +127,8 @@ DEVICE_ATTR(sensor_input_status, 0644, show_attrs_handler, NULL);
 DEVICE_ATTR(sensing_cycle, 0644, show_attrs_handler, store_attrs_handler);
 DEVICE_ATTR(sensor_onoff, 0644, show_attrs_handler, store_attrs_handler);
 DEVICE_ATTR(sensor_recal, 0644, show_attrs_handler, store_attrs_handler);
-DEVICE_ATTR(sensor_input_3_delta_count, 0644, show_attrs_handler, NULL);
-DEVICE_ATTR(sensor_input_3_th, 0644, show_attrs_handler, store_attrs_handler);
+//DEVICE_ATTR(sensor_input_3_delta_count, 0644, show_attrs_handler, NULL);
+//DEVICE_ATTR(sensor_input_3_th, 0644, show_attrs_handler, store_attrs_handler);
 
 static struct attribute *cap1106_attr_deb[] = {
     &dev_attr_obj_detect.attr,                  // 1
@@ -143,8 +143,8 @@ static struct attribute *cap1106_attr_deb[] = {
     &dev_attr_sensing_cycle.attr,               // 10
     &dev_attr_sensor_onoff.attr,                // 11
     &dev_attr_sensor_recal.attr,                // 12
-    &dev_attr_sensor_input_3_delta_count.attr,  // 13
-    &dev_attr_sensor_input_3_th.attr,           // 14
+    //&dev_attr_sensor_input_3_delta_count.attr,  // 13
+    //&dev_attr_sensor_input_3_th.attr,           // 14
     NULL
 };
 
@@ -183,11 +183,11 @@ static ssize_t show_attrs_handler(struct device *dev, struct device_attribute *d
             ret = sprintf(buf, "%d\n", data->enable);
         } else if (!strcmp(attr_name, dev_attr_sensor_recal.attr.name)) {               // 12
             ret = sprintf(buf, cap1106_read_reg(client, 0x26) == 0x0 ? "OK\n" : "FAIL\n");
-        } else if (!strcmp(attr_name, dev_attr_sensor_input_3_delta_count.attr.name)) { // 13
-            ret = sprintf(buf, "%02X\n", cap1106_read_reg(client, 0x12));
-        } else if (!strcmp(attr_name, dev_attr_sensor_input_3_th.attr.name)) {          // 14
-            ret = sprintf(buf, "%02X\n", cap1106_read_reg(client, 0x32));
-        }
+        }// else if (!strcmp(attr_name, dev_attr_sensor_input_3_delta_count.attr.name)) { // 13
+        //    ret = sprintf(buf, "%02X\n", cap1106_read_reg(client, 0x12));
+        //} else if (!strcmp(attr_name, dev_attr_sensor_input_3_th.attr.name)) {          // 14
+        //    ret = sprintf(buf, "%02X\n", cap1106_read_reg(client, 0x32));
+        //}
     } else {
         ret = sprintf(buf, "SENSOR DISABLED\n");
     }
@@ -229,9 +229,9 @@ static ssize_t store_attrs_handler(struct device *dev, struct device_attribute *
             }
         } else if (!strcmp(attr_name, dev_attr_sensor_recal.attr.name)) { // 12
             cap1106_write_reg(client, 0x26, 0x22);
-        } else if (!strcmp(attr_name, dev_attr_sensor_input_3_th.attr.name)) { // 14
-            cap1106_write_reg(client, 0x32, value & 0x7F);
-        }
+        }// else if (!strcmp(attr_name, dev_attr_sensor_input_3_th.attr.name)) { // 14
+        //    cap1106_write_reg(client, 0x32, value & 0x7F);
+        //}
     } else {
         if (!strcmp(attr_name, dev_attr_sensor_onoff.attr.name)) { // 11
             if ((value == 0) || (value == 1)) {
@@ -330,56 +330,63 @@ static s32 cap1106_write_reg(struct i2c_client *client, u8 command, u8 value)
 static void cap1106_work_function(struct work_struct *work)
 {
     int status;
-    int dc2, dc3, dc6; // Delta Count Ch2, Ch3, Ch6
-    int bc2, bc3, bc6; // Base Count Ch2, Ch3, Ch6
+    //int dc2, dc3, dc6; // Delta Count Ch2, Ch3, Ch6
+    //int bc2, bc3, bc6; // Base Count Ch2, Ch3, Ch6
+    int dc2, dc6; // Delta Count Ch2, Ch6
+    int bc2, bc6; // Base Count Ch2, Ch6
     struct cap1106_data *data = container_of((struct delayed_work *)work, struct cap1106_data, work);
 
     disable_irq(data->client->irq);
     cap1106_write_reg(data->client, 0x00, 0x80); // Clear INT and Set Gain to MAX
     status = cap1106_read_reg(data->client, 0x03);
     dc2 = cap1106_read_reg(prox_data->client, 0x11);
-    dc3 = cap1106_read_reg(prox_data->client, 0x12);
+    //dc3 = cap1106_read_reg(prox_data->client, 0x12);
     dc6 = cap1106_read_reg(prox_data->client, 0x15);
     bc2 = cap1106_read_reg(prox_data->client, 0x51);
-    bc3 = cap1106_read_reg(prox_data->client, 0x52);
+    //bc3 = cap1106_read_reg(prox_data->client, 0x52);
     bc6 = cap1106_read_reg(prox_data->client, 0x55);
-    PROX_DEBUG("Status: 0x%02X, BC2=0x%02X, DC2=0x%02X, BC3=0x%02X, DC3=0x%02X, BC6=0x%02X, DC6=0x%02X\n", status, bc2, dc2, bc3, dc3, bc6, dc6);
+    //PROX_DEBUG("Status: 0x%02X, BC2=0x%02X, DC2=0x%02X, BC3=0x%02X, DC3=0x%02X, BC6=0x%02X, DC6=0x%02X\n", status, bc2, dc2, bc3, dc3, bc6, dc6);
+    PROX_DEBUG("Status: 0x%02X, BC2=0x%02X, DC2=0x%02X, BC6=0x%02X, DC6=0x%02X\n", status, bc2, dc2, bc6, dc6);
     if (is_wood_sensitivity == 0) {
         if (machine_is_apq8064_deb()) {
-            data->obj_detect = status & 0x26 ? 1 : 0;
+            //data->obj_detect = status & 0x26 ? 1 : 0;
+            data->obj_detect = status & 0x22 ? 1 : 0;
             switch_set_state(&prox_sdev, data->obj_detect);
             if ((status == 0x02 && dc2 == 0x7F)
-                    || (status == 0x04 && dc3 == 0x7F)
+                    //|| (status == 0x04 && dc3 == 0x7F)
                     || (status == 0x20 && dc6 == 0x7F)
-                    || (status == 0x06 && (dc2 == 0x7F || dc3 == 0x7F))
-                    || (status == 0x22 && (dc2 == 0x7F || dc6 == 0x7F))
-                    || (status == 0x24 && (dc3 == 0x7F || dc6 == 0x7F))
-                    || (status == 0x26 && (dc2 == 0x7F || dc3 == 0x7F || dc6 == 0x7F))) {
+                    //|| (status == 0x06 && (dc2 == 0x7F || dc3 == 0x7F))
+                    || (status == 0x22 && (dc2 == 0x7F || dc6 == 0x7F))) {
+                    //|| (status == 0x24 && (dc3 == 0x7F || dc6 == 0x7F))
+                    //|| (status == 0x26 && (dc2 == 0x7F || dc3 == 0x7F || dc6 == 0x7F))) {
                 PROX_DEBUG("Deb, set to wood sensitivity------>\n");
                 //set sensitivity and threshold for wood touch
                 cap1106_write_reg(prox_data->client, 0x1f, 0x4f);
                 cap1106_write_reg(prox_data->client, 0x31, 0x50);
-                cap1106_write_reg(prox_data->client, 0x32, 0x50);
+                //cap1106_write_reg(prox_data->client, 0x32, 0x50);
                 cap1106_write_reg(prox_data->client, 0x35, 0x50);
                 is_wood_sensitivity = 1;
                 data->overflow_status = status;
                 ac2 = 0;
-                ac3 = 0;
+                //ac3 = 0;
                 ac6 = 0;
             } else {
                 if (dc2 >= 0x08 && dc2 <= 0x3F)
                     ac2++;
-                if (dc3 >= 0x08 && dc3 <= 0x3F)
-                    ac3++;
+                //if (dc3 >= 0x08 && dc3 <= 0x3F)
+                //    ac3++;
                 if (dc6 >= 0x0a && dc6 <= 0x3F)
                     ac6++;
 
-                PROX_DEBUG("Deb, ac2=%d, ac3=%d, ac6=%d\n", ac2, ac3, ac6);
-                if (ac2 >= ac_limit || ac3 >= ac_limit || ac6 >= ac_limit) {
+                //PROX_DEBUG("Deb, ac2=%d, ac3=%d, ac6=%d\n", ac2, ac3, ac6);
+                PROX_DEBUG("Deb, ac2=%d, ac6=%d\n", ac2, ac6);
+                //if (ac2 >= ac_limit || ac3 >= ac_limit || ac6 >= ac_limit) {
+                if (ac2 >= ac_limit || ac6 >= ac_limit) {
                     PROX_DEBUG("Deb, +++ FORCE RECALIBRATION +++\n");
-                    cap1106_write_reg(data->client, 0x26, 0x26);
+                    //cap1106_write_reg(data->client, 0x26, 0x26);
+                    cap1106_write_reg(data->client, 0x26, 0x22);
                     ac2 = 0;
-                    ac3 = 0;
+                    //ac3 = 0;
                     ac6 = 0;
                 }
             }
@@ -440,16 +447,19 @@ static int cap1106_init_sensor(struct i2c_client *client)
     const u8 init_table_deb[] = {
         0x1f, 0x1f, // Data sensitivity (need to be fine tune for real system).
         0x20, 0x20, // MAX duration disable
-        0x21, 0x26, // Enable CS2+CS3+CS6.
+        //0x21, 0x26, // Enable CS2+CS3+CS6.
+        0x21, 0x22, // Enable CS2+CS6.
         0x22, 0xff, // MAX duration time to max , repeat period time to max
         0x24, 0x39, // digital count update time to 140*64ms
-        0x27, 0x26, // Enable INT. for CS2+CS3+CS6.
+        //0x27, 0x26, // Enable INT. for CS2+CS3+CS6.
+        0x27, 0x22, // Enable INT. for CS2+CS6.
         0x28, 0x22, // disable repeat irq
         0x2a, 0x00, // all channel run in the same time
         0x31, 0x08, // Threshold of CS 2 (need to be fine tune for real system).
-        0x32, 0x0a, // Threshold of CS 3 (need to be fine tune for real system).
+        //0x32, 0x0a, // Threshold of CS 3 (need to be fine tune for real system).
         0x35, 0x0a, // Threshold of CS 6 (need to be fine tune for real system).
-        0x26, 0x22, // force re-cal
+        //0x26, 0x26, // force re-cal CS2+CS3+CS6
+        0x26, 0x22, // force re-cal CS2+CS6
         0x00, 0x00, // Reset INT. bit.
     };
 
@@ -474,45 +484,48 @@ static int cap1106_init_sensor(struct i2c_client *client)
 
 static void cap1106_checking_work_function(struct work_struct *work) {
     int status;
-    int dc2, dc3, dc6;
-    int bc2, bc3, bc6;
+    //int dc2, dc3, dc6;
+    //int bc2, bc3, bc6;
+    int dc2, dc6;
+    int bc2, bc6;
 
     if (is_wood_sensitivity == 1){
         mutex_lock(&prox_mtx);
         if (prox_data->enable) {
             status = cap1106_read_reg(prox_data->client, 0x03);
             dc2 = cap1106_read_reg(prox_data->client, 0x11);
-            dc3 = cap1106_read_reg(prox_data->client, 0x12);
+            //dc3 = cap1106_read_reg(prox_data->client, 0x12);
             dc6 = cap1106_read_reg(prox_data->client, 0x15);
             bc2 = cap1106_read_reg(prox_data->client, 0x51);
-            bc3 = cap1106_read_reg(prox_data->client, 0x52);
+            //bc3 = cap1106_read_reg(prox_data->client, 0x52);
             bc6 = cap1106_read_reg(prox_data->client, 0x55);
-            PROX_DEBUG("Status: 0x%02X, BC2=0x%02X, DC2=0x%02X, BC3=0x%02X, DC3=0x%02X, BC6=0x%02X, DC6=0x%02X\n", status, bc2, dc2, bc3, dc3, bc6, dc6);
+            //PROX_DEBUG("Status: 0x%02X, BC2=0x%02X, DC2=0x%02X, BC3=0x%02X, DC3=0x%02X, BC6=0x%02X, DC6=0x%02X\n", status, bc2, dc2, bc3, dc3, bc6, dc6);
+            PROX_DEBUG("Status: 0x%02X, BC2=0x%02X, DC2=0x%02X, BC6=0x%02X, DC6=0x%02X\n", status, bc2, dc2, bc6, dc6);
             if (machine_is_apq8064_deb()) {
-                if ((dc2 == 0x00 && dc3 == 0x00)
-                    || (dc2 == 0xFF && dc3 == 0xFF)
-                    || (dc2 == 0x00 && dc3 == 0xFF)
-                    || (dc2 == 0xFF && dc3 == 0x00)
-                    || (dc2 == 0x00 && dc6 == 0x00)
+                if (//(dc2 == 0x00 && dc3 == 0x00)
+                    //|| (dc2 == 0xFF && dc3 == 0xFF)
+                    //|| (dc2 == 0x00 && dc3 == 0xFF)
+                    //|| (dc2 == 0xFF && dc3 == 0x00)
+                    (dc2 == 0x00 && dc6 == 0x00)
                     || (dc2 == 0xFF && dc6 == 0xFF)
                     || (dc2 == 0x00 && dc6 == 0xFF)
                     || (dc2 == 0xFF && dc6 == 0x00)
-                    || (dc3 == 0x00 && dc6 == 0x00)
-                    || (dc3 == 0xFF && dc6 == 0xFF)
-                    || (dc3 == 0x00 && dc6 == 0xFF)
-                    || (dc3 == 0xFF && dc6 == 0x00)
+                    //|| (dc3 == 0x00 && dc6 == 0x00)
+                    //|| (dc3 == 0xFF && dc6 == 0xFF)
+                    //|| (dc3 == 0x00 && dc6 == 0xFF)
+                    //|| (dc3 == 0xFF && dc6 == 0x00)
                     || (prox_data->overflow_status == 0x02 && (dc2 > 0x50) && (dc2 <= 0x7F))
-                    || (prox_data->overflow_status == 0x04 && (dc3 > 0x50) && (dc3 <= 0x7F))
+                    //|| (prox_data->overflow_status == 0x04 && (dc3 > 0x50) && (dc3 <= 0x7F))
                     || (prox_data->overflow_status == 0x20 && (dc6 > 0x50) && (dc6 <= 0x7F))
-                    || (prox_data->overflow_status == 0x06 && (((dc2 > 0x50) && (dc2 <= 0x7F)) || ((dc3 > 0x50) && (dc3 <= 0x7F))))
-                    || (prox_data->overflow_status == 0x22 && (((dc2 > 0x50) && (dc2 <= 0x7F)) || ((dc6 > 0x50) && (dc6 <= 0x7F))))
-                    || (prox_data->overflow_status == 0x24 && (((dc3 > 0x50) && (dc3 <= 0x7F)) || ((dc6 > 0x50) && (dc6 <= 0x7F))))
-                    || (prox_data->overflow_status == 0x26 && (((dc2 > 0x50) && (dc2 <= 0x7F)) || ((dc3 > 0x50) && (dc3 <= 0x7F)) || ((dc6 > 0x50) && (dc6 <= 0x7F))))) {
+                    //|| (prox_data->overflow_status == 0x06 && (((dc2 > 0x50) && (dc2 <= 0x7F)) || ((dc3 > 0x50) && (dc3 <= 0x7F))))
+                    || (prox_data->overflow_status == 0x22 && (((dc2 > 0x50) && (dc2 <= 0x7F)) || ((dc6 > 0x50) && (dc6 <= 0x7F))))) {
+                    //|| (prox_data->overflow_status == 0x24 && (((dc3 > 0x50) && (dc3 <= 0x7F)) || ((dc6 > 0x50) && (dc6 <= 0x7F))))
+                    //|| (prox_data->overflow_status == 0x26 && (((dc2 > 0x50) && (dc2 <= 0x7F)) || ((dc3 > 0x50) && (dc3 <= 0x7F)) || ((dc6 > 0x50) && (dc6 <= 0x7F))))) {
                     PROX_DEBUG("Deb, unset is_wood_sensitivity to 0\n");
                     //set sensitivity and threshold for 2cm body distance
                     cap1106_write_reg(prox_data->client, 0x1f, 0x1f);
                     cap1106_write_reg(prox_data->client, 0x31, 0x08);
-                    cap1106_write_reg(prox_data->client, 0x32, 0x0a);
+                    //cap1106_write_reg(prox_data->client, 0x32, 0x0a);
                     cap1106_write_reg(prox_data->client, 0x35, 0x0a);
                     is_wood_sensitivity = 0;
                     queue_delayed_work(prox_wq, &prox_data->work, 0);
