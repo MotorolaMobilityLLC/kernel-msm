@@ -114,6 +114,15 @@ config CORESIGHT_ETM_DEFAULT_ENABLE
 	  If unsure, say 'N' here to avoid potential power and performance
 	  penalty.
 
+config CORESIGHT_ETM_PCSAVE_DEFAULT_ENABLE
+	bool "Turn on PC saving by default"
+	depends on CORESIGHT_ETM
+	help
+	  Turns on program counter saving on reset by default. Otherwise,
+	  PC saving is disabled by default but can be enabled via sysfs.
+
+	  If unsure, say 'N' here to avoid potential power penalty.
+
 endif
 
 config CORESIGHT_EVENT
