@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -53,6 +53,7 @@ struct res_trk_context {
 	struct ion_client *res_ion_client;
 	u32 disable_dmx;
 	u32 disable_fullhd;
+	u32 enable_sec_metadata;
 	enum ddl_mem_area res_mem_type;
 	u32 mmu_clks_on;
 	u32 secure_session;
