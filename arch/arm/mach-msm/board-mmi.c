@@ -18,7 +18,6 @@
 #include <asm/setup.h>
 #include <asm/system_info.h>
 
-#include <linux/apanic_mmc.h>
 #include <linux/bootmem.h>
 #include <linux/gpio.h>
 #include <linux/of.h>
@@ -32,7 +31,6 @@
 #include <mach/gpio.h>
 #include <mach/gpiomux.h>
 #include <mach/mpm.h>
-#include <mach/msm_iomap.h>
 #include <mach/msm_smsm.h>
 #include <mach/restart.h>
 
@@ -271,39 +269,6 @@ static void __init mmi_unit_info_init(void){
 		mui->baseband, mui->carrier);
 }
 
-static void __init mmi_msm8960_get_acputype(void)
-{
-/* PTE EFUSE register. */
-#define QFPROM_PTE_EFUSE_ADDR	(MSM_QFPROM_BASE + 0x00C0)
-
-	uint32_t pte_efuse, pvs;
-	char acpu_type[32];
-
-	pte_efuse = readl_relaxed(QFPROM_PTE_EFUSE_ADDR);
-	pvs = (pte_efuse >> 10) & 0x7;
-	if (pvs == 0x7)
-		pvs = (pte_efuse >> 13) & 0x7;
-
-	switch (pvs) {
-	case 0x0:
-	case 0x7:
-		snprintf(acpu_type, 30, "ACPU PVS: Slow(%1d)\n", pvs);
-		break;
-	case 0x1:
-		snprintf(acpu_type, 30, "ACPU PVS: Nominal\n");
-		break;
-	case 0x3:
-		snprintf(acpu_type, 30, "ACPU PVS: Fast\n");
-		break;
-	default:
-		snprintf(acpu_type, 30, "ACPU PVS: Unknown(%1d)\n", pvs);
-		break;
-	}
-
-	apanic_mmc_annotate(acpu_type);
-	persistent_ram_ext_oldbuf_print(acpu_type);
-}
-
 static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	platform_add_devices(mmi_devices, ARRAY_SIZE(mmi_devices));
@@ -312,7 +277,6 @@ static void __init mmi_device_init(struct msm8960_oem_init_ptrs *oem_ptr)
 
 	mmi_vibrator_init();
 	mmi_unit_info_init();
-	mmi_msm8960_get_acputype();
 
 	if (mbmprotocol == 0) {
 		/* do not reboot - version was not reported */
