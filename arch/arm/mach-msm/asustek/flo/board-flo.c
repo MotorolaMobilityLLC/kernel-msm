@@ -2781,14 +2781,13 @@ static struct i2c_registry apq8064_i2c_devices[] __initdata = {
 		ARRAY_SIZE(smb349_charger_i2c_info)
 	},
 #endif
-	/*
 	{
 		I2C_SURF | I2C_FFA | I2C_RUMI | I2C_SIM | I2C_LIQUID,
 		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
 		bq27541_bat_device_info,
 		ARRAY_SIZE(bq27541_bat_device_info)
 	},
-
+	/*
 	{
 		I2C_SURF | I2C_LIQUID,
 		APQ_8064_GSBI3_QUP_I2C_BUS_ID,
