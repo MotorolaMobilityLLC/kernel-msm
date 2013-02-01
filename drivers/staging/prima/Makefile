@@ -431,6 +431,9 @@ EXTRA_CFLAGS += $(INCS)
 # to exceed that value in a "normal" call tree
 EXTRA_CFLAGS += -Wframe-larger-than=${CONFIG_FRAME_WARN}
 
+# Fix build for GCC 4.7
+EXTRA_CFLAGS += -Wno-maybe-uninitialized -Wno-unused-function
+
 CDEFINES  := -DANI_PRODUCT_TYPE_CLIENT=1 \
 		-DANI_BUS_TYPE_PLATFORM=1 \
 		-DANI_LITTLE_BYTE_ENDIAN \

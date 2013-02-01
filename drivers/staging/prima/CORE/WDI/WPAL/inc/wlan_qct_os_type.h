@@ -57,7 +57,7 @@ typedef unsigned long long wpt_uint64;
 
 typedef long long wpt_int64;
 
-#define WPT_INLINE __inline__
+#define WPT_INLINE /*__inline__*/
 #define WPT_STATIC static
 
 
