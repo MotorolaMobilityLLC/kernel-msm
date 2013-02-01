@@ -3077,7 +3077,7 @@ void limSendRetryReassocReqFrame(tpAniSirGlobal     pMac,
     // start reassoc timer.
     pMac->lim.limTimers.gLimReassocFailureTimer.sessionId = psessionEntry->peSessionId;
     // Start reassociation failure timer
-    MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, 0, eLIM_REASSOC_FAIL_TIMER));
+    MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, psessionEntry->peSessionId, eLIM_REASSOC_FAIL_TIMER));
     if (tx_timer_activate(&pMac->lim.limTimers.gLimReassocFailureTimer)
                                                != TX_SUCCESS)
     {

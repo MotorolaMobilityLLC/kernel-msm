@@ -1081,7 +1081,11 @@ tSirRetStatus peOpen(tpAniSirGlobal pMac, tMacOpenParameters *pMacOpenParam)
 #ifdef WLAN_FEATURE_P2P
     pMac->lim.actionFrameSessionId = 0xff;
 #endif
-
+    if( !VOS_IS_STATUS_SUCCESS( vos_lock_init( &pMac->lim.lkPeGlobalLock ) ) )
+    {
+        PELOGE(limLog(pMac, LOGE, FL("pe lock init failed!\n"));)
+        return eSIR_FAILURE;
+    }
     return eSIR_SUCCESS;
 }
 
@@ -1133,7 +1137,10 @@ tSirRetStatus peClose(tpAniSirGlobal pMac)
     palFreeMemory(pMac->hHdd, pMac->pmm.gpPmmPSState);
     pMac->pmm.gpPmmPSState = NULL;
 #endif
-
+    if( !VOS_IS_STATUS_SUCCESS( vos_lock_destroy( &pMac->lim.lkPeGlobalLock ) ) )
+    {
+        return eSIR_FAILURE;
+    }
     return eSIR_SUCCESS;
 }
 
@@ -2645,7 +2652,7 @@ void limMicFailureInd(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
     mmhMsg.type = eWNI_SME_MIC_FAILURE_IND;
     mmhMsg.bodyptr = pSirSmeMicFailureInd;
     mmhMsg.bodyval = 0;
-    MTRACE(macTraceMsgTx(pMac, 0, mmhMsg.type));
+    MTRACE(macTraceMsgTx(pMac, sessionId, mmhMsg.type));
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
     return;
 }
@@ -2739,4 +2746,28 @@ tMgmtFrmDropReason limIsPktCandidateForDrop(tpAniSirGlobal pMac, tANI_U8 *pRxPac
     return eMGMT_DROP_NO_DROP;
 }
 
+eHalStatus pe_AcquireGlobalLock( tAniSirLim *psPe)
+{
+    eHalStatus status = eHAL_STATUS_INVALID_PARAMETER;
 
+    if(psPe)
+    {
+        if( VOS_IS_STATUS_SUCCESS( vos_lock_acquire( &psPe->lkPeGlobalLock) ) )
+        {
+            status = eHAL_STATUS_SUCCESS;
+        }
+    }
+    return (status);
+}
+eHalStatus pe_ReleaseGlobalLock( tAniSirLim *psPe)
+{
+    eHalStatus status = eHAL_STATUS_INVALID_PARAMETER;
+    if(psPe)
+    {
+        if( VOS_IS_STATUS_SUCCESS( vos_lock_release( &psPe->lkPeGlobalLock) ) )
+        {
+            status = eHAL_STATUS_SUCCESS;
+        }
+    }
+    return (status);
+}
