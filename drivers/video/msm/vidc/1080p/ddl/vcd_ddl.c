@@ -198,7 +198,9 @@ u32 ddl_open(u32 **ddl_handle, u32 decoding)
 		ddl->client_state = DDL_CLIENT_OPEN;
 		ddl->codec_data.hdr.decoding = decoding;
 		ddl->decoding = decoding;
-		ddl_set_default_meta_data_hdr(ddl);
+		if (!res_trk_check_for_sec_session() ||
+				res_trk_get_enable_sec_metadata())
+			ddl_set_default_meta_data_hdr(ddl);
 		ddl_set_initial_default_values(ddl);
 		*ddl_handle	= (u32 *) ddl;
 	} else {

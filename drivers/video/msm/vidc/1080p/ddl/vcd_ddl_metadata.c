@@ -14,6 +14,7 @@
 #include "vcd_ddl.h"
 #include "vcd_ddl_shared_mem.h"
 #include "vcd_ddl_metadata.h"
+#include "vcd_res_tracker_api.h"
 
 static u32 *ddl_metadata_hdr_entry(struct ddl_client_context *ddl,
 	u32 meta_data)
@@ -188,6 +189,8 @@ void ddl_set_default_decoder_metadata_buffer_size(struct ddl_decoder_data
 	u32 flag = decoder->meta_data_enable_flag;
 	u32 suffix = 0, size = 0;
 	if (!flag) {
+		output_buf_req->meta_buffer_size =
+			DDL_SECURE_METADATA_DEFAULT_SIZE;
 		decoder->suffix = 0;
 		return;
 	}
@@ -493,7 +496,7 @@ void ddl_vidc_decode_set_metadata_output(struct ddl_decoder_data *decoder)
 			align_physical_addr, decoder->dp_buf.
 			dec_pic_buffers[loopc].vcd_frm.physical));
 		}
-	} else {
+	} else if (res_trk_get_enable_sec_metadata()) {
 		*buffer++ = decoder->actual_output_buf_req.meta_buffer_size;
 		for (loopc = 0; loopc < dpb; ++loopc) {
 			*buffer++ = DDL_ADDR_OFFSET(ddl_context->dram_base_a,
