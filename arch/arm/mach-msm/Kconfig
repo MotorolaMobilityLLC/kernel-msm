@@ -2638,4 +2638,11 @@ config MMI_RAM_INFO
 	bool "Motorola Mobility RAM Info"
 	help
 	Provide mechanism to access RAM size and MR registers values via sysfs.
+
+config MMI_ACPU_INFO
+	depends on ARCH_MSM && ARCH_MSM8960
+	default n
+	bool "Motorola Mobility ACPU Info"
+	help
+	Provide mechanism to access ACPU binning info via procfs.
 endif
