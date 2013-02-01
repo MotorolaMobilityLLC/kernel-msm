@@ -92,6 +92,11 @@
 #include "pm-boot.h"
 #include "devices-msm8x60.h"
 #include "smd_private.h"
+// +++ 9-axis sensors porting +++
+#include <linux/mpu.h>
+#include <linux/akm8963.h>
+// --- 9-axis sensors porting ---
+
 #ifdef CONFIG_BCM2079X
 #include <linux/nfc/bcm2079x.h>
 #endif
@@ -100,6 +105,71 @@
 #define NFC_GPIO_WAKE PM8921_GPIO_PM_TO_SYS(8)
 #define NFC_GPIO_IRQ 32
 #define CAP1106_GPIO_IRQ 52
+
+// +++ 9-axis sensors porting +++
+#define QCOM_DSPS 0	// ASUS BSP
+#define ECOM_GPIO_DRDY_AKM8963 85
+#define GYRO_GPIO_IRQ_MPU6500 56
+static struct regulator *pm8921_l9;
+/*static struct regulator *pm8921_cap1106;
+static struct regulator *pm8921_l17_ts;
+static struct regulator *pm8921_lvs4;*/
+
+// ---- sensors for mullet ----
+#define SEAMULLET_GYRO_ORIENTATION	{ 0, -1, 0, -1, 0, 0, 0, 0, -1 }
+#define GREYMULLET_GYRO_ORIENTATION	{ 0, 1, 0, 1, 0, 0, 0, 0, -1 }
+// ----------------------------
+#define MPU_TYPE_MPU3050    	1
+#define MPU_TYPE_MPU6050    	2
+#define MPU_TYPE_MPU6500    	3
+#define MPU_GYRO_TYPE       	MPU_TYPE_MPU6500
+#define MPU_GYRO_IRQ_GPIO   	GYRO_GPIO_IRQ_MPU6500
+#define MPU_GYRO_ADDR       	0x68
+#define MPU_GYRO_BUS_NUM    	2
+#define MPU_GYRO_ORIENTATION	{ 0, 1, 0, 1, 0, 0, 0, 0, -1 }
+
+#define MPU_COMPASS_NAME    	"akm8963"
+#define MPU_COMPASS_ADDR    	0x0E
+#define MPU_COMPASS_ORIENTATION	{ 0, -1, 0, -1, 0, 0, 0, 0, -1 }
+
+#if (MPU_GYRO_TYPE == MPU_TYPE_MPU6500)
+#define MPU_GYRO_NAME		"mpu6500"
+static struct mpu_platform_data mpu_gyro_data = {
+	.int_config    	    = 0x10,
+	.level_shifter 	    = 0,
+	.orientation   	    = SEAMULLET_GYRO_ORIENTATION,
+	.sec_slave_type     = SECONDARY_SLAVE_TYPE_NONE,
+	.sec_slave_id       = ID_INVALID,
+	.secondary_i2c_addr = 0,
+	.key = {221, 22, 205, 7,   217, 186, 151, 55,
+	        206, 254, 35, 144, 225, 102,  47, 50},
+};
+
+static struct i2c_board_info __initdata mpu_i2c_boardinfo[] = {
+	{
+		I2C_BOARD_INFO(MPU_GYRO_NAME, MPU_GYRO_ADDR),
+		.irq = MSM_GPIO_TO_INT(MPU_GYRO_IRQ_GPIO),
+		.platform_data = &mpu_gyro_data,
+	},
+};
+#endif	// MPU_GYRO_TYPE == MPU_TYPE_MPU6500
+
+static struct akm8963_platform_data akm_platform_data_8963 = {
+	.gpio_DRDY = 85,
+	.gpio_RSTN = 0,
+	.layout = 5,
+};
+
+static struct i2c_board_info __initdata akm8963_i2c_boardinfo[] = {
+	{
+		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
+		.platform_data = &akm_platform_data_8963,
+		.flags = I2C_CLIENT_WAKE,
+		.irq = MSM_GPIO_TO_INT(ECOM_GPIO_DRDY_AKM8963),
+	},
+};
+
+// --- 9-axis sensors porting ---
 
 static struct bcm2079x_platform_data bcm2079x_pdata = {
 	.irq_gpio = NFC_GPIO_IRQ,
@@ -2379,6 +2449,9 @@ static struct platform_device gpio_ir_recv_pdev = {
 
 static struct platform_device *common_not_mpq_devices[] __initdata = {
 	&apq8064_device_qup_i2c_gsbi1,
+	//ASUS BSP mini-porting +++ GSBI2 porting
+	&apq8064_device_qup_i2c_gsbi2,
+	//ASUS BSP mini-porting --- GSBI2 porting
 	&apq8064_device_qup_i2c_gsbi3,
 	&apq8064_device_qup_i2c_gsbi4,
 };
@@ -2681,6 +2754,11 @@ static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi1_pdata = {
 	.src_clk_rate = 24000000,
 };
 
+static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi2_pdata = {
+	.clk_freq = 400000,
+	.src_clk_rate = 24000000,
+};
+
 static struct msm_i2c_platform_data apq8064_i2c_qup_gsbi3_pdata = {
 	.clk_freq = 400000,
 	.src_clk_rate = 24000000,
@@ -2714,6 +2792,8 @@ static void __init apq8064_i2c_init(void)
 					&apq8064_i2c_qup_gsbi3_pdata;
 	apq8064_device_qup_i2c_gsbi1.dev.platform_data =
 					&apq8064_i2c_qup_gsbi1_pdata;
+	apq8064_device_qup_i2c_gsbi2.dev.platform_data =
+					&apq8064_i2c_qup_gsbi2_pdata;
 	apq8064_device_qup_i2c_gsbi4.dev.platform_data =
 					&apq8064_i2c_qup_gsbi4_pdata;
 	mpq8064_device_qup_i2c_gsbi5.dev.platform_data =
@@ -2743,9 +2823,9 @@ static int ethernet_init(void)
 
 /* Sensors DSPS platform data */
 #define DSPS_PIL_GENERIC_NAME		"dsps"
+#if QCOM_DSPS
 static void __init apq8064_init_dsps(void)
 {
-#if 0
 	struct msm_dsps_platform_data *pdata =
 		msm_dsps_device_8064.dev.platform_data;
 	pdata->pil_name = DSPS_PIL_GENERIC_NAME;
@@ -2753,8 +2833,8 @@ static void __init apq8064_init_dsps(void)
 	pdata->gpios_num = 0;
 
 	platform_device_register(&msm_dsps_device_8064);
-#endif
 }
+#endif
 
 #define I2C_SURF 1
 #define I2C_FFA  (1 << 1)
@@ -2777,6 +2857,193 @@ static struct i2c_board_info bq27541_bat_device_info[] = {
         I2C_BOARD_INFO("bq27541-battery", 0x55),
     },
 };
+
+// +++ sensors initial porting +++
+static struct i2c_registry __initdata apq8064_sensor_devices[] = {
+	{
+		I2C_SURF | I2C_FFA | I2C_RUMI,
+		APQ_8064_GSBI2_QUP_I2C_BUS_ID,
+		mpu_i2c_boardinfo,
+		ARRAY_SIZE(mpu_i2c_boardinfo),
+	},
+
+	{
+		I2C_SURF | I2C_FFA | I2C_RUMI,
+		APQ_8064_GSBI2_QUP_I2C_BUS_ID,
+		akm8963_i2c_boardinfo,
+		ARRAY_SIZE(akm8963_i2c_boardinfo),
+	},
+
+};
+
+/*Sensors orientation definition*/
+/*struct mpu_orientation_def {
+	__s8 gyro_orientation[9];
+	__s8 accel_orientation[9];
+};*/
+
+static void __init register_sensor_devices(void)
+{
+	u8 mach_mask = 0;
+	int i;
+
+	/* Set orientations by porkect.*/
+/*	if (machine_is_apq8064_duma()) {
+		struct mpu_orientation_def duma_orien = {
+			DUMA_GYRO_ORIENTATION,
+			DUMA_GYRO_ORIENTATION,
+		};
+		memcpy( mpu_gyro_data.orientation, duma_orien.gyro_orientation, sizeof(mpu_gyro_data.orientation));
+		pr_info("Sensors: Set MPU orientation. Target Project: Duma.\n");
+	} else if (machine_is_apq8064_seamullet()) {
+		struct mpu_orientation_def seamullet_orien = {
+			SEAMULLET_GYRO_ORIENTATION,
+			SEAMULLET_GYRO_ORIENTATION,
+		};
+		memcpy( mpu_gyro_data.orientation, seamullet_orien.gyro_orientation, sizeof(mpu_gyro_data.orientation));
+		pr_info("Sensors: Set MPU orientation. Target Project: Seamullet.\n");
+	} else if (machine_is_apq8064_greymullet()) {
+		struct mpu_orientation_def greymullet_orien = {
+			GREYMULLET_GYRO_ORIENTATION,
+			GREYMULLET_GYRO_ORIENTATION,
+		};
+		memcpy( mpu_gyro_data.orientation, greymullet_orien.gyro_orientation, sizeof(mpu_gyro_data.orientation));
+		pr_info("Sensors: Set MPU orientation. Target Project: Greymullet.\n");
+	} else
+		pr_err("Sensors: Set MPU orientation FAIL. No Target Project\n");
+*/
+	/* Build the matching 'supported_machs' bitmask */
+	mach_mask = I2C_SURF | I2C_FFA | I2C_LIQUID | I2C_RUMI | I2C_SIM;
+
+	/* Run the array and install devices as appropriate */
+	for (i = 0; i < ARRAY_SIZE(apq8064_sensor_devices); ++i) {
+		if (apq8064_sensor_devices[i].machs & mach_mask) {
+			i2c_register_board_info(apq8064_sensor_devices[i].bus,
+						apq8064_sensor_devices[i].info,
+						apq8064_sensor_devices[i].len);
+		}
+	}
+}
+
+static int sensor_platform_init(void)
+{
+    int rc = -EINVAL;
+    int gyro_gpio = MPU_GYRO_IRQ_GPIO;
+    int ecompass_gpio = ECOM_GPIO_DRDY_AKM8963;
+
+    pr_info("sensor_platform_init()++\n");
+
+    // get LDO9
+    pm8921_l9 = regulator_get(NULL, "8921_l9");
+    if (IS_ERR(pm8921_l9)) {
+        pr_err("%s: regulator get of 8921_l9 failed (%ld)\n",
+			__func__, PTR_ERR(pm8921_l9));
+	rc = PTR_ERR(pm8921_l9);
+	return rc;
+    }
+
+    // set LDO9 to 2.85V
+    rc = regulator_set_voltage(pm8921_l9, 2850000, 2850000);
+    if (rc) {
+	pr_err("%s: regulator_set_voltage of 8921_l9 failed(%d)\n",
+	        	__func__, rc);
+	goto reg_put_LDO9;
+    }
+
+    //enable LDO9 for sensors
+    rc = regulator_enable(pm8921_l9);
+    if (rc) {
+	pr_err("%s: regulator_enable of 8921_l9 failed(%d)\n",
+			__func__, rc);
+	goto reg_put_LDO9;
+    }
+
+    // get LSV4
+#if 0
+    pm8921_lvs4 = regulator_get(NULL, "8921_lvs4");
+    if (IS_ERR(pm8921_lvs4)) {
+        pr_err("%s: regulator get of 8921_lvs4 failed (%ld)\n",
+			__func__, PTR_ERR(pm8921_lvs4));
+	rc = PTR_ERR(pm8921_lvs4);
+	return rc;
+    }
+
+    rc = regulator_enable(pm8921_lvs4);
+    if (rc) {
+		pr_err("%s: regulator_enable of 8921_lvs4 failed(%d)\n",
+			__func__, rc);
+	goto reg_put_lv4;
+    }
+#endif
+
+    /* configure mpu interrupt gpio */
+    pr_info("Setting gyro irq PIN\n");
+    rc = gpio_request(gyro_gpio, "gyro-irq");
+    if (rc) {
+        pr_err("%s: unable to request gpio %d (gyro-irq)\n",
+			__func__, gyro_gpio);
+        goto reg_disable;
+    } else {
+        pr_info("%s: request gpio as %d (gyro-irq)\n",
+			__func__, gyro_gpio);
+    }
+
+    rc = gpio_direction_input(gyro_gpio);
+    if (rc < 0) {
+        pr_err("%s: unable to set the direction of gpio %d\n",
+			__func__, gyro_gpio);
+        goto free_gyro_gpio;
+    }
+
+    /* configure e-compass interrupt gpio */
+    pr_info("Setting e-compass irq PIN\n");
+    rc = gpio_request(ecompass_gpio, "e-compass-DRDY");
+    if (rc) {
+        pr_err("%s: unable to request gpio %d (e-compass-DRDY)\n",
+			__func__, ecompass_gpio);
+        goto reg_disable;
+    } else {
+        pr_info("%s: request gpio as %d (e-compass-DRDY)\n",
+			__func__, ecompass_gpio);
+    }
+
+    rc = gpio_direction_input(ecompass_gpio);
+    if (rc < 0) {
+        pr_err("%s: unable to set the direction of gpio %d\n",
+			__func__, ecompass_gpio);
+        goto free_compass_gpio;
+    }
+
+    pr_info("sensor_platform_init() --\n");
+    return 0;
+
+free_compass_gpio:
+    gpio_free(ecompass_gpio);
+
+free_gyro_gpio:
+    gpio_free(gyro_gpio);
+
+reg_disable:
+    regulator_disable(pm8921_l9);
+    regulator_disable(pm8921_lvs4);
+
+reg_put_LDO9:
+    regulator_put(pm8921_l9);
+
+    return rc;
+}
+
+static void apq8064_mpuirq_init(void)
+{
+        pr_info("*** MPU START *** enterprise_mpuirq_init...\n");
+
+        if(sensor_platform_init())
+            pr_info("sensor_platform_init fail\n");
+
+        pr_info("*** MPU END *** enterprise_mpuirq_init...\n");
+        return;
+}
+// --- sensors initial porting ---
 
 static struct i2c_registry apq8064_i2c_devices[] __initdata = {
 	{
@@ -3238,10 +3505,19 @@ static void __init apq8064_common_init(void)
 	platform_device_register(&apq8064_slim_ctrl);
 	slim_register_board_info(apq8064_slim_devices,
 		ARRAY_SIZE(apq8064_slim_devices));
+
+	// +++ sensors initial porting +++
+#if QCOM_DSPS
 	if (!PLATFORM_IS_MPQ8064()) {
 		apq8064_init_dsps();
 		platform_device_register(&msm_8960_riva);
 	}
+#else
+	register_sensor_devices();
+	apq8064_mpuirq_init();
+#endif
+	// --- sensors initial porting ---
+
 	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
 	msm_spm_l2_init(msm_spm_l2_data);
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));

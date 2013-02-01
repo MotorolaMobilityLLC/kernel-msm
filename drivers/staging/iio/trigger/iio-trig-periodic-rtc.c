@@ -96,11 +96,6 @@ static void iio_prtc_trigger_poll(void *private_data)
 	iio_trigger_poll(private_data, 0);
 }
 
-static const struct iio_trigger_ops iio_prtc_trigger_ops = {
-	.owner = THIS_MODULE,
-	.set_trigger_state = &iio_trig_periodic_rtc_set_state,
-};
-
 static int iio_trig_periodic_rtc_probe(struct platform_device *dev)
 {
 	char **pdata = dev->dev.platform_data;
@@ -125,7 +120,8 @@ static int iio_trig_periodic_rtc_probe(struct platform_device *dev)
 			goto error_put_trigger_and_remove_from_list;
 		}
 		trig->private_data = trig_info;
-		trig->ops = &iio_prtc_trigger_ops;
+		trig->owner = THIS_MODULE;
+		trig->set_trigger_state = &iio_trig_periodic_rtc_set_state;
 		/* RTC access */
 		trig_info->rtc
 			= rtc_class_open(pdata[i]);
@@ -195,8 +191,18 @@ static struct platform_driver iio_trig_periodic_rtc_driver = {
 	},
 };
 
-module_platform_driver(iio_trig_periodic_rtc_driver);
+static int __init iio_trig_periodic_rtc_init(void)
+{
+	return platform_driver_register(&iio_trig_periodic_rtc_driver);
+}
 
+static void __exit iio_trig_periodic_rtc_exit(void)
+{
+	return platform_driver_unregister(&iio_trig_periodic_rtc_driver);
+}
+
+module_init(iio_trig_periodic_rtc_init);
+module_exit(iio_trig_periodic_rtc_exit);
 MODULE_AUTHOR("Jonathan Cameron <jic23@cam.ac.uk>");
 MODULE_DESCRIPTION("Periodic realtime clock  trigger for the iio subsystem");
 MODULE_LICENSE("GPL v2");

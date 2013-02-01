@@ -56,6 +56,8 @@ unsigned int iio_buffer_poll(struct file *filp,
 {
 	struct iio_dev *indio_dev = filp->private_data;
 	struct iio_buffer *rb = indio_dev->buffer;
+	if (rb->stufftoread)
+		return POLLIN | POLLRDNORM;
 
 	poll_wait(filp, &rb->pollq, wait);
 	if (rb->stufftoread)
