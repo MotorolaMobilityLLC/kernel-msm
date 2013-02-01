@@ -493,8 +493,10 @@ limCheckRxRSNIeMatch(tpAniSirGlobal pMac, tDot11fIERSN rxRSNIe,tpPESession pSess
     {
         return eSIR_MAC_INVALID_PAIRWISE_CIPHER_STATUS;
     }
-    /* Check RSN capabilities */
-    if(rxRSNIe.preauth == true) //this is supported by AP only
+    /* Check RSN capabilities
+     * Bit 0 of First Byte - PreAuthentication Capability
+     */
+    if(((rxRSNIe.RSN_Cap[0] >> 0) & 0x1) == true) //this is supported by AP only
     {
         return eSIR_MAC_INVALID_RSN_IE_CAPABILITIES_STATUS;
     }
