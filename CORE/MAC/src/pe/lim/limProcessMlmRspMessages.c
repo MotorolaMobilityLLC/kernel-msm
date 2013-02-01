@@ -4744,7 +4744,6 @@ limHandleDelBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode pStaDs,tpPESe
     /** Skipped the DeleteDPH Hash Entry as we need it for the new BSS*/
     /** Set the MlmState to IDLE*/
     psessionEntry->limMlmState = eLIM_MLM_IDLE_STATE;
-    MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
    /* Update PE session Id*/
     mlmReassocCnf.sessionId = psessionEntry->peSessionId;
     switch (psessionEntry->limMlmState) {
@@ -4825,13 +4824,11 @@ limHandleDelBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode pStaDs,tpPESe
             mlmReassocCnf.protStatusCode = pStaDs->mlmStaContext.cleanupTrigger;
             /** Set the SME State back to WT_Reassoc State*/
             psessionEntry->limSmeState = eLIM_SME_WT_REASSOC_STATE;
-            MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, psessionEntry->peSessionId, psessionEntry->limSmeState));
             limDeleteDphHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId,psessionEntry);
             if((psessionEntry->limSystemRole == eLIM_STA_ROLE)||
                 (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))
             {
                psessionEntry->limMlmState = eLIM_MLM_IDLE_STATE;
-               MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
             }
             limPostSmeMessage(pMac, LIM_MLM_REASSOC_CNF, (tANI_U32 *) &mlmReassocCnf);
         }

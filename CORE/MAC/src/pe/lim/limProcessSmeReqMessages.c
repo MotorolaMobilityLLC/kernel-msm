@@ -1217,7 +1217,7 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
          pMac->lim.gLimPrevSmeState = pMac->lim.gLimSmeState;
         
         pMac->lim.gLimSmeState = eLIM_SME_WT_SCAN_STATE;
-        MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, NO_SESSION, pMac->lim.gLimSmeState));
+        MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, pScanReq->sessionId, pMac->lim.gLimSmeState));
 
         if (pScanReq->returnFreshResults & SIR_BG_SCAN_PURGE_RESUTLS)
         {
