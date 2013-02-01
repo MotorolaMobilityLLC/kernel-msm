@@ -412,3 +412,4 @@ obj-$(CONFIG_MSM_CPU_PWRCTL) +=  msm_cpu_pwrctl.o
 
 obj-$(CONFIG_HOB_SHARED_RAM_MMI) += mmi_hob_ram_mmap.o
 obj-$(CONFIG_MMI_RAM_INFO) += mmi-ram-info.o
+obj-$(CONFIG_MMI_ACPU_INFO) += mmi_acpu_info.o
