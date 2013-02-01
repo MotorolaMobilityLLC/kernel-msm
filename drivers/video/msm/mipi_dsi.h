@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -347,6 +347,8 @@ int mipi_dsi_cmdlist_put(struct dcs_cmd_req *cmdreq);
 struct dcs_cmd_req *mipi_dsi_cmdlist_get(void);
 void mipi_dsi_cmdlist_commit(int from_mdp);
 void mipi_dsi_cmd_mdp_busy(void);
+void mipi_dsi_configure_fb_divider(u32 fps_level);
+void mipi_dsi_wait4video_done(void);
 
 #ifdef CONFIG_FB_MSM_MDP303
 void update_lane_config(struct msm_panel_info *pinfo);
