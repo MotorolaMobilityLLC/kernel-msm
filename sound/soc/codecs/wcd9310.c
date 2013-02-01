@@ -134,6 +134,8 @@ static int tabla_codec_enable_slimrx(struct snd_soc_dapm_widget *w,
 static int tabla_codec_enable_slimtx(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event);
 
+struct snd_soc_codec *wcd9310_codec = NULL;
+EXPORT_SYMBOL(wcd9310_codec);
 
 enum tabla_bandgap_type {
 	TABLA_BANDGAP_OFF = 0,
@@ -8408,6 +8410,7 @@ static int tabla_codec_probe(struct snd_soc_codec *codec)
 	tabla->hs_polling_irq_prepared = false;
 	mutex_init(&tabla->codec_resource_lock);
 	tabla->codec = codec;
+	wcd9310_codec = codec;
 	tabla->mbhc_state = MBHC_STATE_NONE;
 	tabla->mbhc_last_resume = 0;
 	for (i = 0; i < COMPANDER_MAX; i++) {

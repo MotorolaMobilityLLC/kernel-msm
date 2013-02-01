@@ -764,6 +764,48 @@ static struct msm_gpiomux_config apq8064_audio_codec_configs[] __initdata = {
 	},
 };
 
+/* Config Headphone detect and Hook detect pin */
+static struct gpiomux_setting hs_detect = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting hs_hook_detect = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting hs_db_detect = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct msm_gpiomux_config apq8064_headphone_configs[] = {
+	{
+		.gpio = 85,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &hs_db_detect,
+		},
+	},
+
+	{
+		.gpio = 45,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &hs_detect,
+		},
+	},
+
+	{
+		.gpio = 62,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &hs_hook_detect,
+		},
+	},
+};
+
 /* External 3.3 V regulator enable */
 /*static struct msm_gpiomux_config apq8064_ext_regulator_configs[] __initdata = {
 	{
@@ -1128,6 +1170,7 @@ static struct msm_gpiomux_config apq8064_sdc2_configs[] __initdata = {
 		},
 
 	},
+#if 0
 	{
 		.gpio      = 62,
 		.settings = {
@@ -1135,6 +1178,7 @@ static struct msm_gpiomux_config apq8064_sdc2_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &sdc2_suspended_cfg,
 		},
 	},
+#endif
 	{
 		.gpio      = 61,
 		.settings = {
@@ -1600,4 +1644,7 @@ void __init apq8064_init_gpiomux(void)
 	msm_gpiomux_install(msm8064_sp_gpio_config,
 			ARRAY_SIZE(msm8064_sp_gpio_config));
 #endif
+	msm_gpiomux_install(apq8064_headphone_configs,
+			ARRAY_SIZE(apq8064_headphone_configs));
+
 }

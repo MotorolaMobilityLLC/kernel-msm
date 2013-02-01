@@ -209,4 +209,10 @@ config SND_SOC_DUAL_AMIC
 	help
 	 To add support for dual analog mic.
 
+config ASUSTEK_HEADSET
+	tristate "ASUSTek Headset/headphone detection driver"
+	default n
+	help
+	 Provides support for detecting ASUSTek headset/headphone devices.
+
 endmenu
