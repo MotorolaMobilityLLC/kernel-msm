@@ -1131,7 +1131,6 @@ static irqreturn_t elan_ktf3k_ts_irq_handler(int irq, void *dev_id)
 	struct elan_ktf3k_ts_data *ts = dev_id;
 	struct i2c_client *client = ts->client;
 	
-	printk("#####elan_ktf3k_ts_irq_handler#####");
 	dev_dbg(&client->dev, "[elan] %s\n", __func__);
 	disable_irq_nosync(ts->client->irq);
 	queue_work(ts->elan_wq, &ts->work);
