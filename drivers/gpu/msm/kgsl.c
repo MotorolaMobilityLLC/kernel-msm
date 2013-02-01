@@ -99,6 +99,10 @@ int kgsl_add_event(struct kgsl_device *device, u32 id, u32 ts,
 	event->func = cb;
 	event->owner = owner;
 
+	/* inc refcount to avoid race conditions in cleanup */
+	if (context)
+		kgsl_context_get(context);
+
 	/*
 	 * Add the event in order to the list.  Order is by context id
 	 * first and then by timestamp for that context.
@@ -153,6 +157,7 @@ static void kgsl_cancel_events_ctxt(struct kgsl_device *device,
 		if (event->func)
 			event->func(device, event->priv, id, cur);
 
+		kgsl_context_put(context);
 		list_del(&event->list);
 		kfree(event);
 	}
@@ -186,6 +191,9 @@ void kgsl_cancel_events(struct kgsl_device *device,
 		 */
 		if (event->func)
 			event->func(device, event->priv, id, cur);
+
+		if (event->context)
+			kgsl_context_put(event->context);
 
 		list_del(&event->list);
 		kfree(event);
@@ -444,6 +452,9 @@ void kgsl_timestamp_expired(struct work_struct *work)
 
 		if (event->func)
 			event->func(device, event->priv, id, ts_processed);
+
+		if (event->context)
+			kgsl_context_put(event->context);
 
 		list_del(&event->list);
 		kfree(event);
