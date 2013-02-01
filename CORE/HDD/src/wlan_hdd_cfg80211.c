@@ -1448,6 +1448,7 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     hdd_hostapd_state_t *pHostapdState;
     v_U8_t wpaRsnIEdata[(SIR_MAC_MAX_IE_LENGTH * 2)+4];  //Max ie length 255 * 2(WPA+RSN) + 2 bytes (vendor specific ID) * 2
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext;
+    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
     struct qc_mac_acl_entry *acl_entry = NULL;
     v_SINT_t i;
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pHostapdAdapter);
@@ -1484,42 +1485,37 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
         if(pIe)
         {
             tANI_BOOLEAN restartNeeded;
-            tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
             pConfig->ieee80211d = 1;
             vos_mem_copy(pConfig->countryCode, &pIe[2], 3);
             sme_setRegInfo(hHal, pConfig->countryCode);
             sme_ResetCountryCodeInformation(hHal, &restartNeeded);
-            /*
-             * If auto channel is configured i.e. channel is 0,
-             * so skip channel validation.
-             */
-            if( AUTO_CHANNEL_SELECT != pConfig->channel )
-            {
-                if(VOS_STATUS_SUCCESS != wlan_hdd_validate_operation_channel(pHostapdAdapter,pConfig->channel))
-                {
-                    hddLog(VOS_TRACE_LEVEL_ERROR,
-                            "%s: Invalid Channel [%d] \n", __func__, pConfig->channel);
-                    return -EINVAL;
-                }
-            }
-            /* 
-             * Validate the given channel range for the given country code
-             */
-            else
-            {
-                if(1 != pHddCtx->is_dynamic_channel_range_set)
-                {
-                    hdd_config_t *hdd_pConfig= (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini;
-                    WLANSAP_SetChannelRange(hHal, hdd_pConfig->apStartChannelNum,
-                        hdd_pConfig->apEndChannelNum,hdd_pConfig->apOperatingBand);
-                }
-
-                pHddCtx->is_dynamic_channel_range_set = 0;
-            }
         }
         else
         {
             pConfig->ieee80211d = 0;
+        }
+        /*
+        * If auto channel is configured i.e. channel is 0,
+        * so skip channel validation.
+        */
+        if( AUTO_CHANNEL_SELECT != pConfig->channel )
+        {
+            if(VOS_STATUS_SUCCESS != wlan_hdd_validate_operation_channel(pHostapdAdapter,pConfig->channel))
+            {
+                 hddLog(VOS_TRACE_LEVEL_ERROR,
+                         "%s: Invalid Channel [%d] \n", __func__, pConfig->channel);
+                 return -EINVAL;
+            }
+        }
+        else
+        {
+             if(1 != pHddCtx->is_dynamic_channel_range_set)
+             {
+                  hdd_config_t *hdd_pConfig= (WLAN_HDD_GET_CTX(pHostapdAdapter))->cfg_ini;
+                  WLANSAP_SetChannelRange(hHal, hdd_pConfig->apStartChannelNum,
+                       hdd_pConfig->apEndChannelNum,hdd_pConfig->apOperatingBand);
+             }
+                   pHddCtx->is_dynamic_channel_range_set = 0;
         }
     }
     else
