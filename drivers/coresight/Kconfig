@@ -116,4 +116,11 @@ config CORESIGHT_ETM_DEFAULT_ENABLE
 
 endif
 
+config CORESIGHT_EVENT
+	tristate "CoreSight Event driver"
+	help
+	  This driver provides support for registering with various events
+	  and performing CoreSight actions like aborting trace on their
+	  occurrence.
+
 endif
