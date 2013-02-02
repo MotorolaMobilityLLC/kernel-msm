@@ -738,10 +738,6 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 		dev_dbg(arizona->dev, "Detected jack\n");
 		info->cable = true;
 
-		if (ret != 0)
-			dev_err(arizona->dev, "Mechanical report failed: %d\n",
-				ret);
-
 		if (info->spk_clamp)
 			regmap_update_bits(arizona->regmap,
 					   ARIZONA_OUTPUT_ENABLES_1,
