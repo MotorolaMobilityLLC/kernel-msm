@@ -1,5 +1,5 @@
 /* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
- * Copyright (c) 2012, LGE Inc.
+ * Copyright (c) 2012,2013 LGE Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -66,9 +66,6 @@
 #include <mach/msm_xo.h>
 #ifdef CONFIG_MSM_RTB
 #include <mach/msm_rtb.h>
-#endif
-#ifdef CONFIG_SND_SOC_CS8427
-#include <sound/cs8427.h>
 #endif
 #ifdef CONFIG_IR_GPIO_CIR
 #include <media/gpio-ir-recv.h>
@@ -1016,99 +1013,6 @@ static struct slim_device apq8064_slim_tabla20 = {
 	.dev = {
 		.platform_data = &apq8064_tabla20_platform_data,
 	},
-};
-
-#ifdef CONFIG_SND_SOC_CS8427
-/* enable the level shifter for cs8427 to make sure the I2C
- * clock is running at 100KHz and voltage levels are at 3.3
- * and 5 volts
- */
-static int enable_100KHz_ls(int enable)
-{
-	int ret = 0;
-	if (enable) {
-		ret = gpio_request(SX150X_GPIO(1, 10),
-					"cs8427_100KHZ_ENABLE");
-		if (ret) {
-			pr_err("%s: Failed to request gpio %d\n", __func__,
-				SX150X_GPIO(1, 10));
-			return ret;
-		}
-		gpio_direction_output(SX150X_GPIO(1, 10), 1);
-	} else
-		gpio_free(SX150X_GPIO(1, 10));
-	return ret;
-}
-
-static struct cs8427_platform_data cs8427_i2c_platform_data = {
-	.irq = SX150X_GPIO(1, 4),
-	.reset_gpio = SX150X_GPIO(1, 6),
-	.enable = enable_100KHz_ls,
-};
-
-static struct i2c_board_info cs8427_device_info[] __initdata = {
-	{
-		I2C_BOARD_INFO("cs8427", CS8427_ADDR4),
-		.platform_data = &cs8427_i2c_platform_data,
-	},
-};
-#endif
-
-/* configuration data for mxt1386e using V2.1 firmware */
-static const u8 mxt1386e_config_data_v2_1[] = {
-	/* T6 Object */
-	0, 0, 0, 0, 0, 0,
-	/* T38 Object */
-	14, 2, 0, 24, 5, 12, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0,
-	/* T7 Object */
-	100, 10, 50,
-	/* T8 Object */
-	25, 0, 20, 20, 0, 0, 0, 0, 0, 0,
-	/* T9 Object */
-	139, 0, 0, 26, 42, 0, 32, 80, 2, 5,
-	0, 5, 5, 0, 10, 30, 10, 10, 255, 2,
-	85, 5, 0, 5, 9, 5, 12, 35, 70, 40,
-	20, 5, 0, 0, 0,
-	/* T18 Object */
-	0, 0,
-	/* T24 Object */
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0,
-	/* T25 Object */
-	1, 0, 60, 115, 156, 99,
-	/* T27 Object */
-	0, 0, 0, 0, 0, 0, 0,
-	/* T40 Object */
-	0, 0, 0, 0, 0,
-	/* T42 Object */
-	0, 0, 255, 0, 255, 0, 0, 0, 0, 0,
-	/* T43 Object */
-	0, 0, 0, 0, 0, 0, 0, 64, 0, 8,
-	16,
-	/* T46 Object */
-	68, 0, 16, 16, 0, 0, 0, 0, 0,
-	/* T47 Object */
-	0, 0, 0, 0, 0, 0, 3, 64, 66, 0,
-	/* T48 Object */
-	1, 64, 64, 0, 0, 0, 0, 0, 0, 0,
-	32, 40, 0, 10, 10, 0, 0, 100, 10, 90,
-	0, 0, 0, 0, 0, 0, 0, 10, 1, 10,
-	52, 10, 12, 0, 33, 0, 1, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0,
-	/* T56 Object */
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0,
 };
 
 #define MSM_WCNSS_PHYS	0x03000000
