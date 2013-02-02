@@ -24,9 +24,11 @@
 DEFINE_MUTEX(pm_mutex);
 
 #ifdef CONFIG_PM_SLEEP
-
+#ifdef CONFIG_PM_DEEPSLEEP
+#include <linux/wakelock.h>
+struct wake_lock  deepsleep_wakelock;
+#endif
 /* Routines for PM-transition notifications */
-
 static BLOCKING_NOTIFIER_HEAD(pm_chain_head);
 
 static void touch_event_fn(struct work_struct *work);
@@ -405,6 +407,7 @@ static ssize_t state_store(struct kobject *kobj, struct kobj_attribute *attr,
 		} else {
 			memset(temp, 0, sizeof(temp));
 			strlcpy(temp, *s, strlen(*s)+1);
+			wake_lock_timeout(&deepsleep_wakelock, 3*HZ);
 			pm_deepsleep_enabled = 1;
 		}
 	} else if (pm_deepsleep_enabled == 1 && len == 2
@@ -595,6 +598,8 @@ static int __init pm_init(void)
 	tc_ev_processed = 1;
 
 #ifdef CONFIG_PM_DEEPSLEEP
+	wake_lock_init(&deepsleep_wakelock, WAKE_LOCK_SUSPEND,
+			"deepsleep_wakelock");
 	pm_deepsleep_enabled = 0;
 #endif
 
