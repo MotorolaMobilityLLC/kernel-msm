@@ -20,19 +20,11 @@
 #include <linux/spinlock.h>
 #include <linux/workqueue.h>
 #include <linux/sched.h>
-#include <linux/diagchar.h>
 #include <mach/msm_smd.h>
 #include <asm/atomic.h>
 #include <asm/mach-types.h>
-#ifdef CONFIG_DIAG_OVER_USB
-#include <mach/usbdiag.h>
-#endif
-#ifdef CONFIG_DIAG_INTERNAL
-#include <mach/tty_diag.h>
-#endif
 /* Size of the USB buffers used for read and write*/
-#define MAX_OUT_BUF 4096
-#define USB_MAX_OUT_BUF	MAX_OUT_BUF
+#define USB_MAX_OUT_BUF 4096
 #define APPS_BUF_SIZE	2000
 #define IN_BUF_SIZE		16384
 #define MAX_IN_BUF_SIZE	32768
@@ -134,7 +126,7 @@ struct diag_client_map {
 };
 
 /* This structure is defined in USB header file */
-#if !defined(CONFIG_DIAG_OVER_USB) && !defined(CONFIG_DIAG_INTERNAL)
+#ifndef CONFIG_DIAG_OVER_USB
 struct diag_request {
 	char *buf;
 	int length;
@@ -205,7 +197,6 @@ struct diagchar_dev {
 	unsigned char *buf_in_wcnss_1;
 	unsigned char *buf_in_wcnss_2;
 	unsigned char *buf_in_wcnss_cntl;
-	unsigned char *buf_out;
 	unsigned char *buf_in_dci;
 	unsigned char *usb_buf_out;
 	unsigned char *apps_rsp_buf;
@@ -232,10 +223,9 @@ struct diagchar_dev {
 	unsigned char *hdlc_buf;
 	unsigned hdlc_count;
 	unsigned hdlc_escape;
-#if defined(CONFIG_DIAG_OVER_USB) || defined(CONFIG_DIAG_INTERNAL)
-	struct legacy_diag_ch *legacy_ch;
-	int channel_connected;
-	int usb_req_allocated;
+#ifdef CONFIG_DIAG_OVER_USB
+	int usb_connected;
+	struct usb_diag_ch *legacy_ch;
 	struct work_struct diag_proc_hdlc_work;
 	struct work_struct diag_read_work;
 #endif
@@ -265,7 +255,7 @@ struct diagchar_dev {
 	int pkt_length;
 	struct diag_request *write_ptr_1;
 	struct diag_request *write_ptr_2;
-	struct diag_request *channel_read_ptr;
+	struct diag_request *usb_read_ptr;
 	struct diag_request *write_ptr_svc;
 	struct diag_request *write_ptr_lpass_1;
 	struct diag_request *write_ptr_lpass_2;
@@ -310,11 +300,10 @@ struct diagchar_dev {
 	struct mutex bridge_mutex;
 	/* USB MDM channel variables */
 	int usb_mdm_connected;
-	int usb_mdm_req_allocated;
 	int read_len_mdm;
 	int write_len_mdm;
 	unsigned char *usb_buf_mdm_out;
-	struct legacy_diag_ch *mdm_ch;
+	struct usb_diag_ch *mdm_ch;
 	struct workqueue_struct *diag_bridge_wq;
 	struct work_struct diag_read_mdm_work;
 	struct work_struct diag_disconnect_work;
@@ -332,62 +321,7 @@ struct diagchar_dev {
 	struct diag_write_device *hsic_buf_tbl;
 	spinlock_t hsic_spinlock;
 #endif
-#ifdef CONFIG_DIAG_EXTENSION
-	struct list_head addon_list;
-#endif
 };
 
 extern struct diagchar_dev *driver;
-
-#ifdef CONFIG_DIAG_EXTENSION
-/* This structure is for addon. It is used by slate feature */
-struct diag_addon {
-	struct list_head list;
-
-	/* function list of addon
-	return-value of the functions decide
-	whether the callback-function of next-addon is called or not.
-	refer to DIAGADDON_BASE below.
-	*/
-	int (*ioctl)(struct file *filp, unsigned int iocmd,
-					unsigned long ioarg, int *retval);
-	int (*force_returntype)(int pkt_type, int *retval);
-	int (*channel_diag_write)(struct diag_request *write_ptr, int *retval);
-	void *private;
-
-	/* function list of diag-driver to use addon */
-	int (*diag_process_apps_pkt)(unsigned char *buf, int len);
-};
-
-#define DIAGADDON_BASE(func, retval, ...)		\
-	do {						\
-		struct diag_addon *addon;		 \
-		int next_addon_call;			\
-		list_for_each_entry(addon, &driver->addon_list, list) {	\
-			if (addon->func) {		\
-				next_addon_call =	\
-					addon->func(__VA_ARGS__, retval);\
-				if (next_addon_call == false)	\
-					break;			\
-			}				\
-		}					\
-	} while (0)
-
-#define DIAGADDON_EXIST() (!list_empty(&driver->addon_list))
-#define DIAGADDON_ioctl(retval, ...)\
-		DIAGADDON_BASE(ioctl, retval, ##__VA_ARGS__)
-#define DIAGADDON_force_returntype(retval, ...)\
-		DIAGADDON_BASE(force_returntype, retval, ##__VA_ARGS__)
-#define DIAGADDON_channel_diag_write(retval, ...)\
-		DIAGADDON_BASE(channel_diag_write, retval, ##__VA_ARGS__)
-
-int diag_addon_register(struct diag_addon *addon);
-int diag_addon_unregister(struct diag_addon *addon);
-#else
-#define DIAGADDON_EXIST() 0
-#define DIAGADDON_ioctl(retval, ...) do {} while (0)
-#define DIAGADDON_force_returntype(retval, ...) do {} while (0)
-#define DIAGADDON_channel_diag_write(retval, i...) do {} while (0)
-#endif /* endif of '#ifdef CONFIG_DIAG_EXTENSION' */
-
 #endif
