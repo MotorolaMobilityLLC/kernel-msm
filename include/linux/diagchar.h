@@ -25,38 +25,6 @@
 #define NO_LOGGING_MODE			3
 #define UART_MODE			4
 #define SOCKET_MODE			5
-#define INTERNAL_MODE			6
-
-#define USB_MODE_NAME			"usb"
-#define MEMORY_DEVICE_MODE_NAME		"memory"
-#define NO_LOGGING_MODE_NAME		"none"
-#define UART_MODE_NAME			"uart"
-#define INTERNAL_MODE_NAME		"internal"
-
-#define USB_DIAG_CONNECT		0
-#define USB_DIAG_DISCONNECT		1
-#define USB_DIAG_WRITE_DONE		2
-#define USB_DIAG_READ_DONE		3
-#define CHANNEL_DIAG_CONNECT		USB_DIAG_CONNECT
-#define CHANNEL_DIAG_DISCONNECT		USB_DIAG_DISCONNECT
-#define CHANNEL_DIAG_WRITE_DONE		USB_DIAG_WRITE_DONE
-#define CHANNEL_DIAG_READ_DONE		USB_DIAG_READ_DONE
-
-struct diag_request {
-	char *buf;
-	int length;
-	int actual;
-	int status;
-	void *context;
-};
-
-struct legacy_diag_ch {
-	const char *name;
-	struct list_head list;
-	void (*notify)(void *priv, unsigned event, struct diag_request *d_req);
-	void *priv;
-	void *priv_channel;
-};
 
 /* different values that go in for diag_data_type */
 #define DATA_TYPE_EVENT         	0
@@ -69,12 +37,6 @@ struct legacy_diag_ch {
 #define DIAG_IOCTL_SWITCH_LOGGING	7
 #define DIAG_IOCTL_GET_DELAYED_RSP_ID 	8
 #define DIAG_IOCTL_LSM_DEINIT		9
-
-/* 15 ~ 17 are allocated for slate feature */
-#define DIAG_IOCTL_RESERVED_FOR_ADDON_0 15
-#define DIAG_IOCTL_RESERVED_FOR_ADDON_1 16
-#define DIAG_IOCTL_RESERVED_FOR_ADDON_2 17
-
 #define DIAG_IOCTL_DCI_INIT		20
 #define DIAG_IOCTL_DCI_DEINIT		21
 #define DIAG_IOCTL_DCI_SUPPORT		22

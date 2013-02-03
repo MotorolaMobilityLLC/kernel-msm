@@ -79,8 +79,8 @@ static ssize_t diag_dbgfs_read_status(struct file *file, char __user *ubuf,
 
 #ifdef CONFIG_DIAG_OVER_USB
 	ret += scnprintf(buf+ret, DEBUG_BUF_SIZE,
-		"channel_connected: %d\n",
-		driver->channel_connected);
+		"usb_connected: %d\n",
+		driver->usb_connected);
 #endif
 	ret = simple_read_from_buffer(ubuf, count, ppos, buf, ret);
 
