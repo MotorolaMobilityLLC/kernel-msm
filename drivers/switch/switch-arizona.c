@@ -529,13 +529,12 @@ err:
 			   ARIZONA_ACCDET_MODE_MASK, ARIZONA_ACCDET_MODE_MIC);
 
 	/* Just report headphone */
-	if (info->mic)
+	if (info->mic) {
 		switch_set_state(&info->sdev, BIT_HEADSET);
-	else
-		switch_set_state(&info->sdev, BIT_HEADSET_NO_MIC);
-
-	if (info->mic)
 		arizona_start_mic(info);
+	} else {
+		switch_set_state(&info->sdev, BIT_HEADSET_NO_MIC);
+	}
 
 	info->hpdet_active = false;
 }
