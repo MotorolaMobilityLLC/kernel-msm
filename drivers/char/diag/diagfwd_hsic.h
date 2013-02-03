@@ -27,6 +27,4 @@ int diagfwd_cancel_hsic(void);
 void diagfwd_bridge_init(void);
 void diagfwd_bridge_exit(void);
 
-void diagfwd_bridge_notifier(void *, unsigned, struct diag_request *);
-
 #endif
