@@ -119,11 +119,32 @@ int slimport_read_edid_block(int block, uint8_t *edid_buf)
 }
 EXPORT_SYMBOL(slimport_read_edid_block);
 
+static void sp_tx_power_down_and_init(void)
+{
+	sp_tx_vbus_powerdown();
+	sp_tx_power_down(SP_TX_PWR_REG);
+	sp_tx_power_down(SP_TX_PWR_TOTAL);
+	sp_tx_hardware_powerdown();
+	sp_tx_pd_mode = 1;
+	sp_tx_link_config_done = 0;
+	sp_tx_hw_lt_enable = 0;
+	sp_tx_hw_lt_done = 0;
+	sp_tx_rx_type = RX_NULL;
+	sp_tx_rx_type_backup = RX_NULL;
+	sp_tx_set_sys_state(STATE_CABLE_PLUG);
+}
+
 static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 {
 	struct anx7808_platform_data *pdata = anx7808->pdata;
 
 	if (gpio_get_value_cansleep(pdata->gpio_cbl_det)) {
+		/* Previously, if sp tx is turned on, turn it off to
+		 * avoid the cable detection erorr.
+		 */
+		if (!sp_tx_pd_mode)
+			sp_tx_power_down_and_init();
+		/* debounce time for avoiding glitch */
 		msleep(50);
 		if (gpio_get_value_cansleep(pdata->gpio_cbl_det)) {
 			if (sp_tx_pd_mode) {
@@ -137,17 +158,7 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 				msleep(200);
 				if (!sp_tx_get_cable_type()) {
 					pr_err("%s:AUX ERR\n", __func__);
-					sp_tx_vbus_powerdown();
-					sp_tx_power_down(SP_TX_PWR_REG);
-					sp_tx_power_down(SP_TX_PWR_TOTAL);
-					sp_tx_hardware_powerdown();
-					sp_tx_pd_mode = 1;
-					sp_tx_link_config_done = 0;
-					sp_tx_hw_lt_enable = 0;
-					sp_tx_hw_lt_done = 0;
-					sp_tx_rx_type = RX_NULL;
-					sp_tx_rx_type_backup = RX_NULL;
-					sp_tx_set_sys_state(STATE_CABLE_PLUG);
+					sp_tx_power_down_and_init();
 					return;
 				}
 				sp_tx_rx_type_backup = sp_tx_rx_type;
@@ -172,18 +183,9 @@ static void slimport_cable_plug_proc(struct anx7808_data *anx7808)
 				break;
 			}
 		}
-	} else if (sp_tx_pd_mode == 0) {
-		sp_tx_vbus_powerdown();
-		sp_tx_power_down(SP_TX_PWR_REG);
-		sp_tx_power_down(SP_TX_PWR_TOTAL);
-		sp_tx_hardware_powerdown();
-		sp_tx_pd_mode = 1;
-		sp_tx_link_config_done = 0;
-		sp_tx_hw_lt_enable = 0;
-		sp_tx_hw_lt_done = 0;
-		sp_tx_rx_type = RX_NULL;
-		sp_tx_rx_type_backup = RX_NULL;
-		sp_tx_set_sys_state(STATE_CABLE_PLUG);
+	} else { /* dettach cable */
+		if (sp_tx_pd_mode == 0)
+			sp_tx_power_down_and_init();
 	}
 }
 
