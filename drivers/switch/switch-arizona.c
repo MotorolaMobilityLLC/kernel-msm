@@ -367,6 +367,9 @@ static int arizona_hpdet_do_id(struct arizona_extcon_info *info, int *reading)
 			info->hpdet_res[0], info->hpdet_res[1],
 			info->hpdet_res[2]);
 
+		/* Take the headphone impedance for the main report */
+		*reading = info->hpdet_res[0];
+
 		/*
 		 * Either the two grounds measure differently or we
 		 * measure the mic as high impedance.
@@ -376,9 +379,6 @@ static int arizona_hpdet_do_id(struct arizona_extcon_info *info, int *reading)
 			dev_dbg(arizona->dev, "Detected mic\n");
 			info->mic = true;
 			switch_set_state(&info->sdev, BIT_HEADSET);
-
-			/* Take the headphone impedance for the main report */
-			*reading = info->hpdet_res[1];
 		} else {
 			dev_dbg(arizona->dev, "Detected headphone\n");
 		}
