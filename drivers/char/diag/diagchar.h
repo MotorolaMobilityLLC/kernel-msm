@@ -250,6 +250,7 @@ struct diagchar_dev {
 #ifdef CONFIG_DIAG_OVER_USB
 	int usb_connected;
 	struct usb_diag_ch *legacy_ch;
+	int usb_req_allocated;
 	struct work_struct diag_proc_hdlc_work;
 	struct work_struct diag_read_work;
 #endif
