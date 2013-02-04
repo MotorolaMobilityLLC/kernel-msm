@@ -3529,16 +3529,15 @@ static void __init apq8064_common_init(void)
 		ARRAY_SIZE(apq8064_slim_devices));
 
 	// +++ sensors initial porting +++
-#if QCOM_DSPS
 	if (!PLATFORM_IS_MPQ8064()) {
+#if QCOM_DSPS
 		apq8064_init_dsps();
+#else
+		register_sensor_devices();
+		apq8064_mpuirq_init();
+#endif
 		platform_device_register(&msm_8960_riva);
 	}
-#else
-	register_sensor_devices();
-	apq8064_mpuirq_init();
-#endif
-	// --- sensors initial porting ---
 
 	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
 	msm_spm_l2_init(msm_spm_l2_data);
