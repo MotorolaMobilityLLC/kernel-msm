@@ -70,4 +70,16 @@
 		reg = <0x41>;
 		tas_avdd-supply = <&rpm_8921_s4>;
 	};
+	/* TI drv2605 */
+	drv2605@5a {
+		compatible = "ti,drv2605";
+		reg = <0x5A>;
+		gpios = <&pm8921_gpio 4 0>, /* EN_GPIO */
+			<&msmgpio 79 0>;    /* Trigger */
+
+		external_trigger = <1>;
+		default_effect = <19>;      /* Strong Click 3 60% */
+		rated_voltage = <0x6D>;
+		overdrive_voltage = <0xF0>;
+	};
 };
