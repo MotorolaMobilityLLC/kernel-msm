@@ -2500,9 +2500,9 @@ static int sy3200_irq_handler11(struct sy3200_driver_data *dd,
 
 		dd->rdat->tchdat[tchidx].active = true;
 		dd->rdat->tchdat[tchidx].x = (data[fregs+(tchidx*5)+0] << 4) |
-			((data[fregs+(tchidx*5)+2] & 0xF0) >> 4);
-		dd->rdat->tchdat[tchidx].y = (data[fregs+(tchidx*5)+1] << 4) |
 			(data[fregs+(tchidx*5)+2] & 0x0F);
+		dd->rdat->tchdat[tchidx].y = (data[fregs+(tchidx*5)+1] << 4) |
+			((data[fregs+(tchidx*5)+2] & 0xF0) >> 4);
 		dd->rdat->tchdat[tchidx].p = data[fregs+(tchidx*5)+4];
 		dd->rdat->tchdat[tchidx].w = data[fregs+(tchidx*5)+4];
 		dd->rdat->tchdat[tchidx].id = tchidx;
