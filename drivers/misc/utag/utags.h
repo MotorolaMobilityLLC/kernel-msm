@@ -114,10 +114,11 @@ struct frozen_utag {
 #define UTAG_CARRIER    0xCAFE0008
 
 /*
- * kernel log switch: store the kernel uart log switch status. If it is true,
- *                    the kernel uart log is enabled, otherwise it is disabled.
+ * kernel log console: store the kernel uart console. If it is not used,
+ * the kernel uart console will be "/dev/null". Anything defined will be passed
+ * into kernel as console in command line.
  */
-#define UTAG_KERNEL_LOG_SWITCH  0xCAFE0009
+#define UTAG_CONSOLE_NAME  0xCAFE0009
 
 /*
  * baseband: indicates baseband type as an ASCII string ("cdma", "umts", etc)
@@ -125,11 +126,11 @@ struct frozen_utag {
 #define UTAG_BASEBAND   0xCAFE000A
 
 /*
- * display: high-level display type as an ASCII string, intended for hardware
+ * display: basic display type as an ASCII string, intended for hardware
  * that can support wildly-different panels (such as mortables).  This tag is
  * not indended for differentiating between panel sub-versions or 2nd source
- * types because the factory cannot be expected to program this correctly for
- * a single product.
+ * types because the factory cannot be expected to program this correctly over
+ * the lifespan of a product.
  */
 #define UTAG_DISPLAY    0xCAFE000B
 
@@ -138,6 +139,57 @@ struct frozen_utag {
  * androidboot.mode.
  */
 #define UTAG_BOOTMODE   0xCAFE000C
+
+/*
+ * hwrev: this string is used as an override for the board revision field in
+ * the FTI.
+ */
+#define UTAG_HWREV          0xCAFE000D
+
+/*
+ * flags: general purpose bit flags
+ */
+#define UTAG_FLAGS          0xCAFE000E
+
+/*
+ * baseband version
+ */
+#define UTAG_VERSION_BASEBAND   0xCAFE000F
+
+/*
+ * system version
+ */
+#define UTAG_VERSION_SYSTEM     0xCAFE0010
+
+/*
+ * kernel version
+ */
+#define UTAG_VERSION_KERNEL     0xCAFE0011
+
+/*
+ * webtop version
+ */
+#define UTAG_VERSION_WEBTOP     0xCAFE0012
+
+/*
+ * locked status
+ */
+#define UTAG_UNLOCKED       0xCAFE0013
+
+/*
+ * data for charging/battery
+ */
+#define UTAG_BATTERY      0xCAFE0014
+
+/*
+ * QCOM DLOAD mode enable/disable
+ */
+#define UTAG_DLOAD_MODE  0xCAFE0015
+
+/*
+ * IMEI: 14 decimal digits plus a check digit
+ */
+#define UTAG_IMEI  0xCAFE0016
 
 extern struct utag *thaw_tags(size_t block_size, void *buf,
 			      enum utag_error *status);
