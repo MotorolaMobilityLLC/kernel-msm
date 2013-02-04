@@ -114,6 +114,10 @@
 			partial_mode_supported = <1>;
 		};
 	};
+
+	qcom,sdcc@3 {
+		status = "okay";
+	};
 };
 
 &i2c3 {
