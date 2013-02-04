@@ -5913,6 +5913,8 @@ int msm_axi_set_low_power_mode(struct v4l2_subdev *sd, void *arg)
 	axi_ctrl->share_ctrl->lp_mode = lp_mode;
 	if (lp_mode)
 		axi_ctrl->share_ctrl->dual_enabled = 0;
+	else
+		axi_ctrl->share_ctrl->dual_enabled = 1;
 	return rc;
 }
 
