@@ -107,6 +107,9 @@ int msm_mctl_check_pp(struct msm_cam_media_controller *p_mctl,
 		if (p_mctl->pp_info.pp_ctrl.pp_msg_type & OUTPUT_TYPE_R)
 			*pp_type = OUTPUT_TYPE_R;
 		break;
+	case MSM_V4L2_EXT_CAPTURE_MODE_RDI2:
+		*pp_divert_type = OUTPUT_TYPE_R2;
+		break;
 	default:
 		break;
 	}
