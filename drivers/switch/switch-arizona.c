@@ -625,12 +625,12 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 
 	/* If we got a high impedence we should have a headset, report it. */
 	if (info->detecting && (val & 0x400)) {
+		info->mic = true;
+
 		arizona_identify_headphone(info);
 
-		switch_set_state(&info->sdev, BIT_HEADSET);
-
-		info->mic = true;
 		info->detecting = false;
+
 		goto handled;
 	}
 
