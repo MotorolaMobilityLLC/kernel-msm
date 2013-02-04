@@ -1,9 +1,10 @@
-/* drivers/video/msm/msm_fb.c
+/*
+ * drivers/video/msm/msm_fb.c
  *
  * Core MSM framebuffer driver.
  *
  * Copyright (C) 2007 Google Incorporated
- * Copyright (c) 2008-2013, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -558,10 +559,6 @@ static int msm_fb_suspend_sub(struct msm_fb_data_type *mfd)
 		return 0;
 
 	lock_panel_mutex(mfd);
-	if (mfd->msmfb_no_update_notify_timer.function)
-		del_timer(&mfd->msmfb_no_update_notify_timer);
-	complete(&mfd->msmfb_no_update_notify);
-
 	/*
 	 * suspend this channel
 	 */
@@ -958,6 +955,11 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mfd->op_enable = FALSE;
 			curr_pwr_state = mfd->panel_power_on;
 			mfd->panel_power_on = FALSE;
+
+			if (mfd->msmfb_no_update_notify_timer.function)
+				del_timer(&mfd->msmfb_no_update_notify_timer);
+			complete(&mfd->msmfb_no_update_notify);
+
 			bl_updated = 0;
 
 			/* clean fb to prevent displaying old fb */
@@ -1393,27 +1395,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	var->yres_virtual = panel_info->yres * mfd->fb_page +
 		((PAGE_SIZE - remainder)/fix->line_length) * mfd->fb_page;
 	var->bits_per_pixel = bpp * 8;	/* FrameBuffer color depth */
-	if (mfd->dest == DISPLAY_LCD) {
-		if (panel_info->type == MDDI_PANEL && panel_info->mddi.is_type1)
-			var->reserved[3] = panel_info->lcd.refx100 / (100 * 2);
-		else
-			var->reserved[3] = panel_info->lcd.refx100 / 100;
-	} else {
-		if (panel_info->type == MIPI_VIDEO_PANEL) {
-			var->reserved[3] = panel_info->mipi.frame_rate;
-		} else {
-			var->reserved[3] = panel_info->clk_rate /
-				((panel_info->lcdc.h_back_porch +
-				  panel_info->lcdc.h_front_porch +
-				  panel_info->lcdc.h_pulse_width +
-				  panel_info->xres) *
-				 (panel_info->lcdc.v_back_porch +
-				  panel_info->lcdc.v_front_porch +
-				  panel_info->lcdc.v_pulse_width +
-				  panel_info->yres));
-		}
-	}
-	pr_debug("reserved[3] %u\n", var->reserved[3]);
+	var->reserved[3] = mdp_get_panel_framerate(mfd);
 
 		/*
 		 * id field for fb app
@@ -1590,8 +1572,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 
 	if (hdmi_prim_display ||
-	    (mfd->panel_info.type != DTV_PANEL &&
-	     mfd->panel_info.type != WRITEBACK_PANEL)) {
+	    (mfd->panel_info.type != DTV_PANEL)) {
 		mfd->early_suspend.suspend = msmfb_early_suspend;
 		mfd->early_suspend.resume = msmfb_early_resume;
 		mfd->early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB - 2;
@@ -2024,13 +2005,16 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 	}
 
 	mdp_set_dma_pan_info(info, dirtyPtr,
-		     ((var->activate & FB_ACTIVATE_VBL) == FB_ACTIVATE_VBL));
+			     (var->activate & FB_ACTIVATE_VBL));
 	/* async call */
 
 	lock_panel_mutex(mfd);
 	mdp_dma_pan_update(info);
 	unlock_panel_mutex(mfd);
 	msm_fb_signal_timeline(mfd);
+
+	if (mdp4_unmap_sec_resource())
+		pr_err("%s: unmap secure res failed\n", __func__);
 
 	up(&msm_fb_pan_sem);
 
@@ -3213,6 +3197,9 @@ static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	struct msm_fb_panel_data *pdata;
 
+	if (!mfd->panel_power_on) /* suspended */
+		return -EPERM;
+
 	if (mfd->overlay_play_enable == 0)	/* nothing to do */
 		return 0;
 
@@ -3699,6 +3686,23 @@ static int msmfb_display_commit(struct fb_info *info,
 	return ret;
 }
 
+static int msmfb_get_metadata(struct msm_fb_data_type *mfd,
+				struct msmfb_metadata *metadata_ptr)
+{
+	int ret = 0;
+	switch (metadata_ptr->op) {
+	case metadata_op_frame_rate:
+		metadata_ptr->data.panel_frame_rate =
+			mdp_get_panel_framerate(mfd);
+		break;
+	default:
+		pr_warn("Unsupported request to MDP META IOCTL.\n");
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
 static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			unsigned long arg)
 {
@@ -3717,6 +3721,7 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	struct mdp_page_protection fb_page_protection;
 	struct msmfb_mdp_pp mdp_pp;
 	struct mdp_buf_sync buf_sync;
+	struct msmfb_metadata mdp_metadata;
 	struct msmfb_reg_access reg_access;
 	u8 *reg_access_buf;
 	int ret = 0;
@@ -4013,6 +4018,17 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 
 	case MSMFB_DISPLAY_COMMIT:
 		ret = msmfb_display_commit(info, argp);
+		break;
+
+	case MSMFB_METADATA_GET:
+		ret = copy_from_user(&mdp_metadata, argp, sizeof(mdp_metadata));
+		if (ret)
+			return ret;
+		ret = msmfb_get_metadata(mfd, &mdp_metadata);
+		if (!ret)
+			ret = copy_to_user(argp, &mdp_metadata,
+				sizeof(mdp_metadata));
+
 		break;
 
 	case MSMFB_REG_WRITE:

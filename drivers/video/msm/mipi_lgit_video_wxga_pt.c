@@ -68,7 +68,6 @@ static int __init mipi_video_lgit_wxga_pt_init(void)
 	pinfo.bl_max = 0x72;
 	pinfo.bl_min = 0x02;
 	pinfo.fb_num = 2;
-	pinfo.lcd.blt_ctrl = 1;
 
 	pinfo.mipi.mode = DSI_VIDEO_MODE;
 	pinfo.mipi.pulse_mode_hsa_he = FALSE;
