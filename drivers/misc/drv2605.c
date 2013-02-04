@@ -61,6 +61,8 @@
 #include <linux/mutex.h>
 #include <linux/clk.h>
 #include <linux/wakelock.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 
 /* Address of our device */
 #define DEVICE_ADDR 0x5A
@@ -154,6 +156,8 @@
 
 #define DEFAULT_EFFECT 14	/* Strong buzz 100% */
 
+#define RTP_CLOSED_LOOP_ENABLE  /* Set closed loop mode for RTP */
+
 static struct drv260x {
 	struct class *class;
 	struct device *device;
@@ -165,6 +169,8 @@ static struct drv260x {
 	int external_trigger;
 	int trigger_gpio;
 	unsigned char default_sequence[4];
+	unsigned char rated_voltage;
+	unsigned char overdrive_voltage;
 } *drv260x;
 
 static struct vibrator {
@@ -181,7 +187,7 @@ static struct vibrator {
 static char g_effect_bank = EFFECT_LIBRARY;
 static int device_id = -1;
 
-static const unsigned char ERM_autocal_sequence[] = {
+static unsigned char ERM_autocal_sequence[] = {
 	MODE_REG, AUTO_CALIBRATION,
 	REAL_TIME_PLAYBACK_REG, REAL_TIME_PLAYBACK_STRENGTH,
 	LIBRARY_SELECTION_REG, EFFECT_LIBRARY,
@@ -219,7 +225,7 @@ static const unsigned char ERM_autocal_sequence[] = {
 	GO_REG, GO,
 };
 
-static const unsigned char LRA_autocal_sequence[] = {
+static unsigned char LRA_autocal_sequence[] = {
 	MODE_REG, AUTO_CALIBRATION,
 	RATED_VOLTAGE_REG, LRA_RATED_VOLTAGE,
 	OVERDRIVE_CLAMP_VOLTAGE_REG, LRA_OVERDRIVE_CLAMP_VOLTAGE,
@@ -230,7 +236,7 @@ static const unsigned char LRA_autocal_sequence[] = {
 };
 
 #if SKIP_LRA_AUTOCAL == 1
-static const unsigned char LRA_init_sequence[] = {
+static unsigned char LRA_init_sequence[] = {
 	MODE_REG, MODE_INTERNAL_TRIGGER,
 	REAL_TIME_PLAYBACK_REG, REAL_TIME_PLAYBACK_STRENGTH,
 	LIBRARY_SELECTION_REG, LIBRARY_F,
@@ -268,6 +274,36 @@ static const unsigned char LRA_init_sequence[] = {
 	Control3_REG, NG_Thresh_2 | INPUT_ANALOG,
 	AUTOCAL_MEM_INTERFACE_REG, AUTOCAL_TIME_500MS,
 };
+#endif
+
+#ifdef CONFIG_OF
+static struct drv260x_platform_data *drv260x_of_init(struct i2c_client *client)
+{
+	struct drv260x_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+
+	if (!pdata) {
+		dev_err(&client->dev, "pdata allocation failure\n");
+		return NULL;
+	}
+
+	pdata->en_gpio = of_get_gpio(np, 0);
+	pdata->trigger_gpio = of_get_gpio(np, 1);
+	of_property_read_u32(np, "external_trigger", &pdata->external_trigger);
+	of_property_read_u32(np, "default_effect", &pdata->default_effect);
+	of_property_read_u32(np, "rated_voltage", &pdata->rated_voltage);
+	of_property_read_u32(np, "overdrive_voltage",
+				&pdata->overdrive_voltage);
+	return pdata;
+}
+#else
+static inline struct drv260x_platform_data
+				*drv260x_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
 #endif
 
 static void drv260x_write_reg_val(const unsigned char *data, unsigned int size)
@@ -338,10 +374,17 @@ static void drv2605_set_waveform_sequence(unsigned char *seq,
 static void drv260x_change_mode(char mode)
 {
 	unsigned char tmp[] = {
+#ifdef RTP_CLOSED_LOOP_ENABLE
+		Control3_REG, NG_Thresh_2,
+#endif
 		MODE_REG, mode
 	};
 	if (drv260x->external_trigger)
 		gpio_set_value(drv260x->en_gpio, GPIO_LEVEL_HIGH);
+#ifdef RTP_CLOSED_LOOP_ENABLE
+	if (mode != MODE_REAL_TIME_PLAYBACK)
+		tmp[1] |= ERM_OpenLoop_Enabled;
+#endif
 	drv260x_write_reg_val(tmp, sizeof(tmp));
 }
 
@@ -385,6 +428,12 @@ static void vibrator_off(void)
 			    MODE_AUDIOHAPTIC)
 				setAudioHapticsEnabled(YES);
 		} else {
+			/* Write 0V to the RTP register, and then place the IC
+			   in standby 20ms later. This delay is required to
+			   give the active braking circuitry time to stop
+			   the motor. */
+			drv260x_set_rtp_val(0x0);
+			schedule_timeout_interruptible(msecs_to_jiffies(20));
 			drv260x_standby();
 		}
 	}
@@ -509,14 +558,28 @@ static struct timed_output_dev to_dev = {
 	.get_time = vibrator_get_time,
 	.enable = vibrator_enable,
 };
+static void drv260x_update_init_sequence(unsigned char *seq, int size,
+					unsigned char reg, unsigned char data)
+{
+	int i;
+	for (i = 0; i < size; i += 2) {
+		if (seq[i] == reg)
+			seq[i + 1] = data;
+	}
+}
 
 static int drv260x_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
 	char status;
-	struct drv260x_platform_data *pdata = client->dev.platform_data;
+	struct drv260x_platform_data *pdata = NULL;
 
-	if (client->dev.platform_data == NULL) {
+	if (client->dev.of_node)
+		pdata = drv260x_of_init(client);
+	else
+		pdata = client->dev.platform_data;
+
+	if (pdata == NULL) {
 		dev_err(&client->dev, "platform data is NULL, exiting\n");
 		return -ENODEV;
 	}
@@ -544,6 +607,41 @@ static int drv260x_probe(struct i2c_client *client,
 	else
 		drv260x->default_sequence[0] = DEFAULT_EFFECT;
 
+	if (pdata->rated_voltage)
+		drv260x->rated_voltage = pdata->rated_voltage;
+	else
+		drv260x->rated_voltage = ERM_RATED_VOLTAGE;
+
+	drv260x_update_init_sequence(ERM_autocal_sequence,
+					sizeof(ERM_autocal_sequence),
+					RATED_VOLTAGE_REG,
+					pdata->rated_voltage);
+	drv260x_update_init_sequence(LRA_autocal_sequence,
+					sizeof(LRA_autocal_sequence),
+					RATED_VOLTAGE_REG,
+					pdata->rated_voltage);
+	drv260x_update_init_sequence(LRA_init_sequence,
+					sizeof(LRA_init_sequence),
+					RATED_VOLTAGE_REG,
+					pdata->rated_voltage);
+
+	if (pdata->overdrive_voltage)
+		drv260x->overdrive_voltage = pdata->overdrive_voltage;
+	else
+		drv260x->overdrive_voltage = ERM_OVERDRIVE_CLAMP_VOLTAGE;
+
+	drv260x_update_init_sequence(ERM_autocal_sequence,
+					sizeof(ERM_autocal_sequence),
+					OVERDRIVE_CLAMP_VOLTAGE_REG,
+					drv260x->overdrive_voltage);
+	drv260x_update_init_sequence(LRA_autocal_sequence,
+					sizeof(LRA_autocal_sequence),
+					OVERDRIVE_CLAMP_VOLTAGE_REG,
+					drv260x->overdrive_voltage);
+	drv260x_update_init_sequence(LRA_init_sequence,
+					sizeof(LRA_init_sequence),
+					OVERDRIVE_CLAMP_VOLTAGE_REG,
+					drv260x->overdrive_voltage);
 	/* Wait 30 us */
 	udelay(30);
 
@@ -637,11 +735,20 @@ static struct i2c_device_id drv260x_id_table[] = {
 };
 
 MODULE_DEVICE_TABLE(i2c, drv260x_id_table);
+#ifdef CONFIG_OF
+static struct of_device_id drv260x_match_tbl[] = {
+		{ .compatible = "ti,drv2604" },
+		{ .compatible = "ti,drv2605" },
+		{ },
+	};
+MODULE_DEVICE_TABLE(of, drv260x_match_tbl);
+#endif
 
 static struct i2c_driver drv260x_driver = {
 	.driver = {
-		   .name = DEVICE_NAME,
-		   },
+		  .name = DEVICE_NAME,
+		  .of_match_table = of_match_ptr(drv260x_match_tbl),
+		  },
 	.id_table = drv260x_id_table,
 	.probe = drv260x_probe,
 	.remove = drv260x_remove

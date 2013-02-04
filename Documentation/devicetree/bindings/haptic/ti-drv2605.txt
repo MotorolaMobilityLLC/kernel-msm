@@ -1,0 +1,41 @@
+* TI DRV2505
+
+DRV2605 is a haptic driver for ERM and LRA motors with build-in haptic effects
+library and intelegent control engine.
+
+Required properties:
+	- compatible:
+		the string of "ti,drv2605"
+	- reg:
+		the i2c slave address of the IC
+	- gpios:
+		<0> enable - the enable gpio
+		<1> trigger - optional, external trigger or PWM/Audio in gpio
+	- external_trigger:
+		enable external trigger in stand-by mode
+	- default_effect:
+		the library effect ID for the trigger pin activated vibes
+	- rated_voltage:
+		rated voltage for the motor
+	- overdrive_voltage:
+		overdrive voltage for the motor
+Example:
+
+	i2c@1a200000 {
+		status = "okay";
+
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <24000000>;
+
+		drv2605@5A {
+			compatible = "ti,drv2605";
+			reg = <0x5A>;
+			gpios = <&pm8921_gpio 4 0>, /* EN_GPIO */
+				<&msmgpio 79 0>;    /* Trigger */
+
+			external_trigger = <1>;
+			default_effect = <19>;      /* Strong Click 3 60% */
+			rated_voltage = <0x6D>;
+			overdrive_voltage = <0xF0>;
+		};
+	};
