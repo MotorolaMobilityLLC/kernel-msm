@@ -26,6 +26,9 @@
 
 /* Bluetooth L2CAP sockets. */
 
+#include <linux/interrupt.h>
+#include <linux/module.h>
+
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
 #include <net/bluetooth/l2cap.h>
