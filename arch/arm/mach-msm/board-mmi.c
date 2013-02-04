@@ -24,6 +24,7 @@
 #include <linux/of.h>
 #include <linux/of_fdt.h>
 #include <linux/of_irq.h>
+#include <linux/of_gpio.h>
 #include <linux/of_platform.h>
 #include <linux/persistent_ram.h>
 
@@ -416,33 +417,22 @@ put_node:
 	return;
 }
 
-static void __init mmi_mmc_init(struct msm8960_oem_init_ptrs *oem_ptr,
-				int host, void *pdata)
+static void __init mmi_mmc_init_legacy(struct msm8960_oem_init_ptrs *oem_ptr,
+					int host, void *pdata, int *disable)
 {
 	struct mmc_platform_data *sdcc = (struct mmc_platform_data *)pdata;
+
+	pr_info("%s: sdcc.%d\n", __func__, host);
 	switch (host) {
 	case 1:		/* SDCC1 */
 		sdcc->pin_data->pad_data->drv->on[0].val = GPIO_CFG_6MA;
 		sdcc->pin_data->pad_data->drv->on[1].val = GPIO_CFG_6MA;
 		sdcc->pin_data->pad_data->drv->on[2].val = GPIO_CFG_6MA;
 		/* Enable UHS rates up to DDR50 */
-		/*
-		 * FIXME: investigate SDR100 modes on pro HW (no card support
-		 * right now).
-		 */
 		sdcc->uhs_caps = (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
 				  MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 |
 				  MMC_CAP_1_8V_DDR);
-		/*
-		 * FIXME: Might need devtree here if it turns out that 8960
-		 * layout can't support HS200.  No cards currently support
-		 * this, but they are coming soon.
-		 */
 		sdcc->uhs_caps2 = 0;
-
-		/*
-		 * Current hardware is rated to a maximum power class of 6.
-		 */
 		sdcc->msmsdcc_max_pwrclass = 6;
 		break;
 	case 3:		/* SDCC3 */
@@ -452,13 +442,155 @@ static void __init mmi_mmc_init(struct msm8960_oem_init_ptrs *oem_ptr,
 		sdcc->status_gpio = PM8921_GPIO_PM_TO_SYS(20);
 		sdcc->status_irq = gpio_to_irq(sdcc->status_gpio);
 		sdcc->is_status_gpio_active_low = true;
-		/* FIXME: need to validate SDR100 on the SD slot. */
+		/* Enable UHS rates up to DDR50 */
 		sdcc->uhs_caps = (MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 |
 				  MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 |
 				  MMC_CAP_MAX_CURRENT_600);
 		sdcc->uhs_caps2 = 0;
 		break;
+	default:
+		if (disable)
+			*disable = 1;
+		break;
 	}
+}
+
+/*
+ * MSM8974-style device tree -> MSM8960 platform data glue
+ */
+static void __init mmi_mmc_init(struct msm8960_oem_init_ptrs *oem_ptr,
+				int host, void *pdata, int *disable)
+{
+	struct mmc_platform_data *sdcc = (struct mmc_platform_data *)pdata;
+	struct device_node *n = NULL;
+	int i = -1, len;
+
+	do {
+		n = of_find_compatible_node(n, NULL, "mmi,msm-sdcc");
+		of_property_read_u32(n, "cell-index", &i);
+	} while (n && i != host);
+
+	/* Fall back on legacy settings if DT node not found */
+	if (i != host)
+		return mmi_mmc_init_legacy(oem_ptr, host, pdata, disable);
+
+	if (!of_device_is_available(n)) {
+		pr_info("%s: sdcc.%d: disabled\n", __func__, host);
+		if (disable)
+			*disable = 1;
+		goto put_node;
+	}
+
+	/* Rebuild a new clock table, if necessary */
+	if (of_get_property(n, "qcom,sdcc-clk-rates", &len)) {
+		u32 *clks;
+
+		clks = kzalloc(len, GFP_KERNEL);
+		if (clks) {
+			len /= sizeof(*clks);
+			if (!of_property_read_u32_array(n,
+					"qcom,sdcc-clk-rates", clks, len))
+				sdcc->sup_clk_table = clks;
+				sdcc->sup_clk_cnt = len;
+		} else
+			pr_err("%s: sdcc%d: sdcc-clk-rates: out of memory\n",
+				__func__, host);
+	}
+
+	/* Update any drive strength settings for this PCB layout */
+	if (of_get_property(n, "qcom,sdcc-pad-drv-on", &len)) {
+		u32 drvs[3] = { GPIO_CFG_8MA, GPIO_CFG_8MA, GPIO_CFG_8MA };
+
+		if (len > sizeof(drvs))
+			len = sizeof(drvs);
+		len /= sizeof(drvs[0]);
+		of_property_read_u32_array(n, "qcom,sdcc-pad-drv-on",
+				drvs, len);
+		sdcc->pin_data->pad_data->drv->on[0].val = drvs[0];
+		sdcc->pin_data->pad_data->drv->on[1].val = drvs[1];
+		sdcc->pin_data->pad_data->drv->on[2].val = drvs[2];
+	}
+
+	/* Pry the card detect GPIO config from the clutches of DT */
+	if (of_get_property(n, "cd-gpios", &len)) {
+		int gpio;
+		enum of_gpio_flags flags = OF_GPIO_ACTIVE_LOW;
+		struct of_phandle_args args;
+
+		gpio = of_get_named_gpio_flags(n, "cd-gpios", 0, &flags);
+		/* pm8xxx's of_xlate() doesn't fill in flags >:( */
+		if (of_parse_phandle_with_args(n, "cd-gpios", "#gpio-cells",
+				0, &args) == 0)
+			flags = args.args[1];
+		if (gpio_is_valid(gpio)) {
+			sdcc->status_gpio = gpio;
+			sdcc->status_irq = gpio_to_irq(gpio);
+			sdcc->is_status_gpio_active_low =
+					(flags & OF_GPIO_ACTIVE_LOW);
+		}
+	}
+
+	/* Update bus speed capabilities, if specified */
+	len = of_property_count_strings(n, "qcom,sdcc-bus-speed-mode");
+	if (len > 0)
+		sdcc->uhs_caps = sdcc->uhs_caps2 = 0;	/* reset and reload */
+	for (i = 0; i < len; i++) {
+		const char *name = NULL;
+
+		of_property_read_string_index(n,
+			"qcom,sdcc-bus-speed-mode", i, &name);
+		if (!name)
+			continue;
+
+		if (!strncmp(name, "SDR12", sizeof("SDR12")))
+			sdcc->uhs_caps |= MMC_CAP_UHS_SDR12;
+		else if (!strncmp(name, "SDR25", sizeof("SDR25")))
+			sdcc->uhs_caps |= MMC_CAP_UHS_SDR25;
+		else if (!strncmp(name, "SDR50", sizeof("SDR50")))
+			sdcc->uhs_caps |= MMC_CAP_UHS_SDR50;
+		else if (!strncmp(name, "DDR50", sizeof("DDR50")))
+			sdcc->uhs_caps |= MMC_CAP_UHS_DDR50;
+		else if (!strncmp(name, "SDR104", sizeof("SDR104")))
+			sdcc->uhs_caps |= MMC_CAP_UHS_SDR104;
+		else if (!strncmp(name, "HS200_1p8v", sizeof("HS200_1p8v")))
+			sdcc->uhs_caps2 |= MMC_CAP2_HS200_1_8V_SDR;
+		else if (!strncmp(name, "HS200_1p2v", sizeof("HS200_1p2v")))
+			sdcc->uhs_caps2 |= MMC_CAP2_HS200_1_2V_SDR;
+		else if (!strncmp(name, "DDR_1p8v", sizeof("DDR_1p8v")))
+			sdcc->uhs_caps |= MMC_CAP_1_8V_DDR
+						| MMC_CAP_UHS_DDR50;
+		else if (!strncmp(name, "DDR_1p2v", sizeof("DDR_1p2v")))
+			sdcc->uhs_caps |= MMC_CAP_1_2V_DDR
+						| MMC_CAP_UHS_DDR50;
+	}
+
+	/* Maximum power class for eMMC cards */
+	if (of_property_read_u32(n, "qcom,sdcc-max-power-class", &i) == 0)
+		sdcc->msmsdcc_max_pwrclass = i;
+
+	/* Current limit for SD cards */
+	of_property_read_u32(n, "qcom,sdcc-current-limit", &i);
+	if (i == 800)
+		sdcc->uhs_caps |= MMC_CAP_MAX_CURRENT_800;
+	else if (i == 600)
+		sdcc->uhs_caps |= MMC_CAP_MAX_CURRENT_600;
+	else if (i == 400)
+		sdcc->uhs_caps |= MMC_CAP_MAX_CURRENT_400;
+	else if (i == 200)
+		sdcc->uhs_caps |= MMC_CAP_MAX_CURRENT_200;
+
+	pr_info("%s: sdcc.%d: maxclk=%dMHz, class=%d, caps=0x%08X:%08X, "
+			"drv=%d:%d:%d\n",
+			__func__, host,
+			sdcc->sup_clk_table[sdcc->sup_clk_cnt - 1] / 1000000,
+			sdcc->msmsdcc_max_pwrclass,
+			sdcc->uhs_caps, sdcc->uhs_caps2,
+			sdcc->pin_data->pad_data->drv->on[0].val,
+			sdcc->pin_data->pad_data->drv->on[1].val,
+			sdcc->pin_data->pad_data->drv->on[2].val);
+
+put_node:
+	of_node_put(n);
 }
 
 static struct mmi_oem_data mmi_data;
