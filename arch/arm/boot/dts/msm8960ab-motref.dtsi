@@ -864,4 +864,24 @@
 		qcom,sdcc-bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50";
 		qcom,sdcc-current-limit = <600>;
 	};
+
+	sound {
+		status = "okay";
+		compatible = "qcom,msm8960-soc-audio";
+
+		qcom,msm8960-card-longname =
+			"msm8960-snd-card-wcd,tfa9890_codec";
+
+		/* DAI Links */
+		dai-msm-stub-tx {
+			compatible = "qcom,msm8960-dai-link";
+			qcom,msm8960-codec-name = "msm-stub-tx";
+		};
+
+		dai-tfa9890 {
+			compatible = "qcom,msm8960-dai-link";
+			qcom,msm8960-codec-name = "tfa9890_codec";
+		};
+	};
+
 };
