@@ -362,6 +362,7 @@ static struct mmc_platform_data msm8960_sdc4_data = {
 
 void __init msm8960_init_mmc(void)
 {
+	int disable = 0;
 #ifdef CONFIG_MMC_MSM_SDC1_SUPPORT
 	/*
 	 * When eMMC runs in DDR mode on CDP platform, we have
@@ -375,29 +376,33 @@ void __init msm8960_init_mmc(void)
 					       MMC_CAP_UHS_DDR50);
 	if (msm8960_oem_funcs.msm_mmc_init)
 		msm8960_oem_funcs.msm_mmc_init(&msm8960_oem_funcs,
-					       1, &msm8960_sdc1_data);
+					       1, &msm8960_sdc1_data, &disable);
 	/* SDC1 : eMMC card connected */
-	msm_add_sdcc(1, &msm8960_sdc1_data);
+	if (!disable)
+		msm_add_sdcc(1, &msm8960_sdc1_data);
 #endif
 #ifdef CONFIG_MMC_MSM_SDC2_SUPPORT
 	if (msm8960_oem_funcs.msm_mmc_init)
 		msm8960_oem_funcs.msm_mmc_init(&msm8960_oem_funcs,
-					       2, &msm8960_sdc2_data);
+					       2, &msm8960_sdc2_data, &disable);
 	/* SDC2: SDIO slot for WLAN*/
-	msm_add_sdcc(2, &msm8960_sdc2_data);
+	if (!disable)
+		msm_add_sdcc(2, &msm8960_sdc2_data);
 #endif
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
 	if (msm8960_oem_funcs.msm_mmc_init)
 		msm8960_oem_funcs.msm_mmc_init(&msm8960_oem_funcs,
-					       3, &msm8960_sdc3_data);
+					       3, &msm8960_sdc3_data, &disable);
 	/* SDC3: External card slot */
-	msm_add_sdcc(3, &msm8960_sdc3_data);
+	if (!disable)
+		msm_add_sdcc(3, &msm8960_sdc3_data);
 #endif
 #ifdef CONFIG_MMC_MSM_SDC4_SUPPORT
 	if (msm8960_oem_funcs.msm_mmc_init)
 		msm8960_oem_funcs.msm_mmc_init(&msm8960_oem_funcs,
-					       4, &msm8960_sdc4_data);
+					       4, &msm8960_sdc4_data, &disable);
 	/* SDC4: SDIO slot for WLAN */
-	msm_add_sdcc(4, &msm8960_sdc4_data);
+	if (!disable)
+		msm_add_sdcc(4, &msm8960_sdc4_data);
 #endif
 }
