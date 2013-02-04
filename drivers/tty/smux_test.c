@@ -690,6 +690,7 @@ static int smux_ut_remote_ssr_basic(char *buf, int max)
 	};
 	int i = 0;
 	int failed = 0;
+	int retry_count = 0;
 	int ret;
 
 	i += scnprintf(buf + i, max - i, "Running %s\n", __func__);
@@ -701,7 +702,13 @@ static int smux_ut_remote_ssr_basic(char *buf, int max)
 
 		i += smux_ut_basic_core(buf + i, max - i, test_data, __func__);
 		subsystem_restart("external_modem");
-		msleep(5000);
+
+		do {
+			msleep(500);
+			++retry_count;
+			UT_ASSERT_INT(retry_count, <, 20);
+		} while (!smux_remote_is_active() && !failed);
+
 		i += smux_ut_basic_core(buf + i, max - i, test_data, __func__);
 		break;
 	}
@@ -721,6 +728,7 @@ static int smux_ut_remote_ssr_open(char *buf, int max)
 	static struct smux_mock_callback cb_data;
 	static int cb_initialized;
 	int ret;
+	int retry_count;
 	int i = 0;
 	int failed = 0;
 
@@ -763,6 +771,14 @@ static int smux_ut_remote_ssr_open(char *buf, int max)
 		/* close port */
 		ret = msm_smux_close(SMUX_TEST_LCID);
 		UT_ASSERT_INT(ret, ==, 0);
+
+		/* wait for remote side to finish booting */
+		retry_count = 0;
+		do {
+			msleep(500);
+			++retry_count;
+			UT_ASSERT_INT(retry_count, <, 20);
+		} while (!smux_remote_is_active() && !failed);
 		break;
 	}
 
@@ -795,6 +811,7 @@ static int smux_ut_remote_ssr_rx_buff_retry(char *buf, int max)
 	static int cb_initialized;
 	int i = 0;
 	int failed = 0;
+	int retry_count;
 	int ret;
 
 	i += scnprintf(buf + i, max - i, "Running %s\n", __func__);
@@ -841,12 +858,16 @@ static int smux_ut_remote_ssr_rx_buff_retry(char *buf, int max)
 		subsystem_restart("external_modem");
 
 		/* verify SSR completed */
-		UT_ASSERT_INT(ret, ==, 0);
-		UT_ASSERT_INT(
-			(int)wait_for_completion_timeout(
-				&cb_data.cb_completion, 5*HZ),
-			>, 0);
-		UT_ASSERT_INT(cb_data.cb_count, ==, 1);
+		retry_count = 0;
+		while (cb_data.event_disconnected_ssr == 0) {
+			(void)wait_for_completion_timeout(
+				&cb_data.cb_completion, HZ);
+			INIT_COMPLETION(cb_data.cb_completion);
+			++retry_count;
+			UT_ASSERT_INT(retry_count, <, 10);
+		}
+		if (failed)
+			break;
 		UT_ASSERT_INT(cb_data.event_disconnected, ==, 1);
 		UT_ASSERT_INT(cb_data.event_disconnected_ssr, ==, 1);
 		mock_cb_data_reset(&cb_data);
@@ -854,6 +875,14 @@ static int smux_ut_remote_ssr_rx_buff_retry(char *buf, int max)
 		/* close port */
 		ret = msm_smux_close(SMUX_TEST_LCID);
 		UT_ASSERT_INT(ret, ==, 0);
+
+		/* wait for remote side to finish booting */
+		retry_count = 0;
+		do {
+			msleep(500);
+			++retry_count;
+			UT_ASSERT_INT(retry_count, <, 20);
+		} while (!smux_remote_is_active() && !failed);
 		break;
 	}
 
@@ -1924,6 +1953,136 @@ static int smux_ut_local_get_rx_buff_retry_auto(char *buf, int max)
 	return i;
 }
 
+/**
+ * Verify remote flow control (remote TX stop).
+ *
+ * @buf  Buffer for status message
+ * @max  Size of buffer
+ *
+ * @returns Number of bytes written to @buf
+ */
+static int smux_ut_remote_tx_stop(char *buf, int max)
+{
+	static struct smux_mock_callback cb_data;
+	static int cb_initialized;
+	int i = 0;
+	int failed = 0;
+	int ret;
+
+	i += scnprintf(buf + i, max - i, "Running %s\n", __func__);
+	pr_err("%s", buf);
+
+	if (!cb_initialized)
+		mock_cb_data_init(&cb_data);
+
+	mock_cb_data_reset(&cb_data);
+	while (!failed) {
+		/* open port for remote loopback */
+		ret = msm_smux_set_ch_option(SMUX_TEST_LCID,
+				SMUX_CH_OPTION_REMOTE_LOOPBACK, 0);
+		UT_ASSERT_INT(ret, ==, 0);
+
+		ret = msm_smux_open(SMUX_TEST_LCID, &cb_data, smux_mock_cb,
+								get_rx_buffer);
+		UT_ASSERT_INT(ret, ==, 0);
+		UT_ASSERT_INT(
+				(int)wait_for_completion_timeout(
+					&cb_data.cb_completion, HZ), >, 0);
+		UT_ASSERT_INT(cb_data.cb_count, ==, 1);
+		UT_ASSERT_INT(cb_data.event_connected, ==, 1);
+		mock_cb_data_reset(&cb_data);
+
+		/* send 1 packet and verify response */
+		ret = msm_smux_write(SMUX_TEST_LCID, (void *)1,
+					test_array, sizeof(test_array));
+		UT_ASSERT_INT(ret, ==, 0);
+		UT_ASSERT_INT(
+			(int)wait_for_completion_timeout(
+				&cb_data.cb_completion, HZ),
+			>, 0);
+		UT_ASSERT_INT(cb_data.event_write_done, ==, 1);
+
+		INIT_COMPLETION(cb_data.cb_completion);
+		if (!cb_data.event_read_done) {
+			UT_ASSERT_INT(
+				(int)wait_for_completion_timeout(
+					&cb_data.cb_completion, HZ),
+				>, 0);
+		}
+		UT_ASSERT_INT(cb_data.event_read_done, ==, 1);
+		mock_cb_data_reset(&cb_data);
+
+		/* enable flow control */
+		UT_ASSERT_INT(smux_lch[SMUX_TEST_LCID].tx_flow_control, ==, 0);
+		ret = msm_smux_set_ch_option(SMUX_TEST_LCID,
+				SMUX_CH_OPTION_REMOTE_TX_STOP, 0);
+		UT_ASSERT_INT(ret, ==, 0);
+
+		/* wait for remote echo and clear our tx_flow control */
+		msleep(500);
+		UT_ASSERT_INT(smux_lch[SMUX_TEST_LCID].tx_flow_control, ==, 1);
+		smux_lch[SMUX_TEST_LCID].tx_flow_control = 0;
+
+		/* Send 1 packet and verify no response */
+		ret = msm_smux_write(SMUX_TEST_LCID, (void *)2,
+					test_array, sizeof(test_array));
+		UT_ASSERT_INT(ret, ==, 0);
+		UT_ASSERT_INT(
+			(int)wait_for_completion_timeout(
+				&cb_data.cb_completion, HZ),
+				>, 0);
+		INIT_COMPLETION(cb_data.cb_completion);
+		UT_ASSERT_INT(cb_data.event_write_done, ==, 1);
+		UT_ASSERT_INT(cb_data.event_read_done, ==, 0);
+		UT_ASSERT_INT(cb_data.cb_count, ==, 1);
+
+		UT_ASSERT_INT(
+			(int)wait_for_completion_timeout(
+				&cb_data.cb_completion, 1*HZ),
+			==, 0);
+		UT_ASSERT_INT(cb_data.event_read_done, ==, 0);
+		mock_cb_data_reset(&cb_data);
+
+		/* disable flow control and verify response is received */
+		UT_ASSERT_INT(cb_data.event_read_done, ==, 0);
+		ret = msm_smux_set_ch_option(SMUX_TEST_LCID,
+				0, SMUX_CH_OPTION_REMOTE_TX_STOP);
+		UT_ASSERT_INT(ret, ==, 0);
+
+		UT_ASSERT_INT(
+			(int)wait_for_completion_timeout(
+				&cb_data.cb_completion, HZ),
+			>, 0);
+		UT_ASSERT_INT(cb_data.event_read_done, ==, 1);
+		mock_cb_data_reset(&cb_data);
+
+		/* close port */
+		ret = msm_smux_close(SMUX_TEST_LCID);
+		UT_ASSERT_INT(ret, ==, 0);
+		UT_ASSERT_INT(
+			(int)wait_for_completion_timeout(
+				&cb_data.cb_completion, HZ),
+			>, 0);
+		UT_ASSERT_INT(cb_data.cb_count, ==, 1);
+		UT_ASSERT_INT(cb_data.event_disconnected, ==, 1);
+		UT_ASSERT_INT(cb_data.event_disconnected_ssr, ==, 0);
+		break;
+	}
+
+	if (!failed) {
+		i += scnprintf(buf + i, max - i, "\tOK\n");
+	} else {
+		pr_err("%s: Failed\n", __func__);
+		i += scnprintf(buf + i, max - i, "\tFailed\n");
+		i += mock_cb_data_print(&cb_data, buf + i, max - i);
+		msm_smux_set_ch_option(SMUX_TEST_LCID,
+			0, SMUX_CH_OPTION_REMOTE_TX_STOP);
+		msm_smux_close(SMUX_TEST_LCID);
+	}
+	mock_cb_data_reset(&cb_data);
+	return i;
+}
+
 static char debug_buffer[DEBUG_BUFMAX];
 
 static ssize_t debug_read(struct file *file, char __user *buf,
@@ -1961,7 +2120,7 @@ static int __init smux_debugfs_init(void)
 {
 	struct dentry *dent;
 
-	dent = debugfs_create_dir("n_smux", 0);
+	dent = debugfs_create_dir("n_smux_test", 0);
 	if (IS_ERR(dent))
 		return PTR_ERR(dent);
 
@@ -1995,6 +2154,8 @@ static int __init smux_debugfs_init(void)
 			smux_ut_remote_ssr_open);
 	debug_create("ut_remote_ssr_rx_buff_retry", 0444, dent,
 			smux_ut_remote_ssr_rx_buff_retry);
+	debug_create("ut_remote_tx_stop", 0444, dent,
+			smux_ut_remote_tx_stop);
 
 	return 0;
 }

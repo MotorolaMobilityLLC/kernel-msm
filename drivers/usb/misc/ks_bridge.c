@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012-2013, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -283,6 +283,10 @@ static ssize_t ksb_fs_write(struct file *fp, const char __user *buf,
 	struct data_pkt		*pkt;
 	unsigned long		flags;
 	struct ks_bridge	*ksb = fp->private_data;
+
+
+	if (count > MAX_DATA_PKT_SIZE)
+		count = MAX_DATA_PKT_SIZE;
 
 	pkt = ksb_alloc_data_pkt(count, GFP_KERNEL, ksb);
 	if (IS_ERR(pkt)) {
