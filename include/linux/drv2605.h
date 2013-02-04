@@ -337,5 +337,7 @@ struct drv260x_platform_data {
 	int trigger_gpio;
 	int external_trigger;
 	int default_effect;
+	int rated_voltage;
+	int overdrive_voltage;
 };
 #endif				/* __KERNEL__ */
