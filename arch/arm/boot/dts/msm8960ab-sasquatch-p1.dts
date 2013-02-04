@@ -47,6 +47,11 @@
 		};
 	};
 
+	/* eMMC - P1 layout can only do HS200 at 96MHz */
+	qcom,sdcc@1 {
+		qcom,sdcc-clk-rates = <400000 24000000 48000000 96000000>;
+	};
+
 };
 
 /* GSBI10 - I2C */
