@@ -776,7 +776,9 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 					 arizona_lvl_to_key[i].report, 0);
 		input_sync(info->input);
 
-		switch_set_state(&info->sdev, BIT_NO_HEADSET);
+		if (switch_get_state(&info->sdev) != BIT_NO_HEADSET) {
+			switch_set_state(&info->sdev, BIT_NO_HEADSET);
+		}
 
 		regmap_update_bits(arizona->regmap,
 				   ARIZONA_JACK_DETECT_DEBOUNCE,
