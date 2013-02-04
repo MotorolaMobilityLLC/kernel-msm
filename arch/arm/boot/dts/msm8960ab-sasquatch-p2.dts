@@ -24,3 +24,19 @@
 		};
 	};
 };
+
+/* GSBI10 - I2C */
+&i2c10 {
+	/* TI drv2605 */
+	drv2605@5A {
+		compatible = "ti,drv2605";
+		reg = <0x5A>;
+		gpios = <&msmgpio 43 0>,    /* EN_GPIO */
+			<&msmgpio 79 0>;    /* Trigger */
+
+		external_trigger = <1>;
+		default_effect = <19>;      /* Strong Click 3 60% */
+		rated_voltage = <0x6D>;
+		overdrive_voltage = <0xF0>;
+	};
+};
