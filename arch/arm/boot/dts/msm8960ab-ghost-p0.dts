@@ -17,6 +17,19 @@
 / {
 	mmi,revision = "p0";
 
+	sound {
+		qcom,msm8960-card-longname =
+			"msm8960-snd-card-wcd,tlv320aic3253_codec";
+
+		dai-tfa9890 {
+			status = "disabled";
+		};
+
+		dai-tlv320 {
+			compatible = "qcom,msm8960-dai-link";
+			qcom,msm8960-codec-name = "tlv320aic3253_codec";
+		};
+	};
 };
 
 /* GSBI10 - I2C */
