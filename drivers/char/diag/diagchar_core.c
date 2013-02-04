@@ -22,6 +22,9 @@
 #ifdef CONFIG_DIAG_OVER_USB
 #include <mach/usbdiag.h>
 #endif
+#ifdef CONFIG_DIAG_OVER_TTY
+#include <mach/tty_diag.h>
+#endif
 #include <asm/current.h>
 #include "diagchar_hdlc.h"
 #include "diagmem.h"
@@ -47,6 +50,13 @@ MODULE_VERSION("1.0");
 
 #define INIT	1
 #define EXIT	-1
+
+#define NO_LOGGING_MODE_NAME		"none"
+#define MEMORY_DEVICE_MODE_NAME		"memory"
+#define USB_MODE_NAME			"usb"
+#define UART_MODE_NAME			"uart"
+#define TTY_MODE_NAME			"internal" /* "tty" */
+
 struct diagchar_dev *driver;
 struct diagchar_priv {
 	int pid;
@@ -755,20 +765,21 @@ long diagchar_ioctl(struct file *filp,
 #endif
 		}
 #ifdef CONFIG_DIAG_OVER_USB
-		else if (temp == USB_MODE && driver->logging_mode
-							 == NO_LOGGING_MODE) {
+		else if ((temp == USB_MODE || temp == TTY_MODE) &&
+				driver->logging_mode == NO_LOGGING_MODE) {
 			diagfwd_disconnect();
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 			diagfwd_disconnect_bridge(0);
 #endif
-		} else if (temp == NO_LOGGING_MODE && driver->logging_mode
-								== USB_MODE) {
+		} else if (temp == NO_LOGGING_MODE &&
+				(driver->logging_mode == USB_MODE ||
+				driver->logging_mode == TTY_MODE)) {
 			diagfwd_connect();
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 			diagfwd_connect_bridge(0);
 #endif
-		} else if (temp == USB_MODE && driver->logging_mode
-							== MEMORY_DEVICE_MODE) {
+	    } else if ((temp == USB_MODE || temp == TTY_MODE) &&
+				driver->logging_mode == MEMORY_DEVICE_MODE) {
 			diagfwd_disconnect();
 			for (i = 0; i < NUM_SMD_DATA_CHANNELS; i++) {
 				driver->smd_data[i].in_busy_1 = 0;
@@ -791,13 +802,23 @@ long diagchar_ioctl(struct file *filp,
 			diagfwd_connect_bridge(0);
 #endif
 		} else if (temp == MEMORY_DEVICE_MODE &&
-				 driver->logging_mode == USB_MODE) {
+				(driver->logging_mode == USB_MODE ||
+				driver->logging_mode == TTY_MODE)) {
 			diagfwd_connect();
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 			diag_clear_hsic_tbl();
 			diagfwd_cancel_hsic();
 			diagfwd_connect_bridge(0);
 #endif
+		}
+		else if (temp == USB_MODE && driver->logging_mode == TTY_MODE) {
+			usb_diag_close(driver->legacy_ch);
+			driver->legacy_ch = tty_diag_channel_open(DIAG_LEGACY,
+							driver, diag_usb_legacy_notifier);
+		} else if (temp == TTY_MODE && driver->logging_mode == USB_MODE) {
+			tty_diag_channel_close(driver->legacy_ch);
+			driver->legacy_ch = usb_diag_open(DIAG_LEGACY,
+							driver, diag_usb_legacy_notifier);
 		}
 #endif /* DIAG over USB */
 		success = 1;
@@ -1121,7 +1142,9 @@ static int diagchar_write(struct file *file, const char __user *buf,
 	void *buf_copy = NULL;
 	unsigned int payload_size;
 #ifdef CONFIG_DIAG_OVER_USB
-	if (((driver->logging_mode == USB_MODE) && (!driver->usb_connected)) ||
+	if (((driver->logging_mode == USB_MODE ||
+				driver->logging_mode == TTY_MODE) &&
+				(!driver->usb_connected)) ||
 				(driver->logging_mode == NO_LOGGING_MODE)) {
 		/*Drop the diag payload */
 		return -EIO;
@@ -1458,10 +1481,95 @@ static const struct file_operations diagcharfops = {
 	.release = diagchar_close
 };
 
+static ssize_t diag_logging_mode_show(struct device *dev,
+		struct device_attribute *attr, char *buff)
+{
+
+	switch (driver->logging_mode) {
+	case USB_MODE:
+		return snprintf(buff, PAGE_SIZE, "%s", USB_MODE_NAME);
+	case MEMORY_DEVICE_MODE:
+		return snprintf(buff, PAGE_SIZE, "%s", MEMORY_DEVICE_MODE_NAME);
+	case NO_LOGGING_MODE:
+		return snprintf(buff, PAGE_SIZE, "%s", NO_LOGGING_MODE_NAME);
+	case UART_MODE:
+		return snprintf(buff, PAGE_SIZE, "%s", UART_MODE_NAME);
+	case TTY_MODE:
+		return snprintf(buff, PAGE_SIZE, "%s", TTY_MODE_NAME);
+	default:
+		return snprintf(buff, PAGE_SIZE, "%s", "invalid");
+	}
+}
+
+static ssize_t diag_logging_mode_store(struct device *dev,
+		struct device_attribute *attr, const char *buff, size_t size)
+{
+	char buf[256], *b;
+
+	strlcpy(buf, buff, sizeof(buf));
+	b = strim(buf);
+
+	if (strlen(b)) {
+		if (!strcmp(b, MEMORY_DEVICE_MODE_NAME))
+			diagchar_ioctl(NULL, DIAG_IOCTL_SWITCH_LOGGING, (int)MEMORY_DEVICE_MODE);
+		else if (!strcmp(b, NO_LOGGING_MODE_NAME))
+			diagchar_ioctl(NULL, DIAG_IOCTL_SWITCH_LOGGING, (int)NO_LOGGING_MODE);
+		else if (!strcmp(b, UART_MODE_NAME))
+			diagchar_ioctl(NULL, DIAG_IOCTL_SWITCH_LOGGING, (int)UART_MODE);
+#ifdef CONFIG_DIAG_OVER_USB
+		else if (!strcmp(b, USB_MODE_NAME))
+			diagchar_ioctl(NULL, DIAG_IOCTL_SWITCH_LOGGING, (int)USB_MODE);
+#endif
+#ifdef CONFIG_DIAG_OVER_TTY
+		else if (!strcmp(b, TTY_MODE_NAME))
+			diagchar_ioctl(NULL, DIAG_IOCTL_SWITCH_LOGGING, (int)TTY_MODE);
+#endif
+	}
+
+	return size;
+}
+
+#ifdef CONFIG_DIAG_OVER_TTY
+static ssize_t diag_dbg_ftm_show(struct device *dev,
+		struct device_attribute *attr, char *buff)
+{
+	/* print current dbg_ftm flag value */
+	return snprintf(buff, PAGE_SIZE, "%d",
+			tty_diag_get_dbg_ftm_flag_value());
+}
+
+static ssize_t diag_dbg_ftm_store(struct device *dev,
+		struct device_attribute *attr, const char *buff, size_t size)
+{
+	char buf[256], *b;
+
+	strlcpy(buf, buff, sizeof(buf));
+	b = strim(buf);
+
+	if (strnlen(b, 1)) {
+		if (!strncmp(b, "0", 1)) {
+			tty_diag_set_dbg_ftm_flag_value(0);
+		} else {
+			/* we consider other non-ZERO value as "1" here */
+			tty_diag_set_dbg_ftm_flag_value(1);
+		}
+	}
+
+	return size;
+}
+
+static DEVICE_ATTR(dbg_ftm, S_IRUGO | S_IWUSR, diag_dbg_ftm_show,
+						diag_dbg_ftm_store);
+#endif
+
+static DEVICE_ATTR(logging_mode, S_IRUGO | S_IWUSR, diag_logging_mode_show,
+						 diag_logging_mode_store);
+
 static int diagchar_setup_cdev(dev_t devno)
 {
 
 	int err;
+	struct device *dev;
 
 	cdev_init(driver->cdev, &diagcharfops);
 
@@ -1482,8 +1590,25 @@ static int diagchar_setup_cdev(dev_t devno)
 		return -1;
 	}
 
-	device_create(driver->diagchar_class, NULL, devno,
+	dev = device_create(driver->diagchar_class, NULL, devno,
 				  (void *)driver, "diag");
+	if (dev)
+		err = device_create_file(dev, &dev_attr_logging_mode);
+
+	if (!dev || err) {
+		printk(KERN_ERR "Error creating diag sysfs\n");
+		return -1;
+	}
+
+#ifdef CONFIG_DIAG_OVER_TTY
+	if (dev)
+		err = device_create_file(dev, &dev_attr_dbg_ftm);
+
+	if (!dev || err) {
+		printk(KERN_ERR "Error creating diag sysfs on dbg_ftm_mode\n");
+		return -ENXIO;
+	}
+#endif
 
 	return 0;
 
