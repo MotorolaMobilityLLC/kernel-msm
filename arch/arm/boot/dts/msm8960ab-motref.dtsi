@@ -840,4 +840,28 @@
 			     "temp_sensor";
 	};
 
+	/* SDCC */
+	qcom,sdcc@1 {
+		cell-index = <1>; /* SDC1 eMMC slot */
+		compatible = "mmi,msm-sdcc";
+
+		qcom,sdcc-pad-drv-on = <0x2 0x2 0x2>; /* 6mA, 6mA, 6mA */
+
+		qcom,sdcc-clk-rates = <400000 24000000 48000000 96000000 192000000>;
+		qcom,sdcc-bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
+		qcom,sdcc-max-power-class = <6>;
+	};
+
+	qcom,sdcc@3 {
+		cell-index = <3>; /* SDC3 SD card slot */
+		compatible = "mmi,msm-sdcc";
+		cd-gpios = <&pm8921_gpio 20 0x1>;
+		status = "disabled";
+
+		qcom,sdcc-pad-drv-on = <0x3 0x3 0x3>; /* 8mA, 8mA, 8mA */
+
+		qcom,sdcc-clk-rates = <400000 24000000 48000000 96000000 192000000>;
+		qcom,sdcc-bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50";
+		qcom,sdcc-current-limit = <600>;
+	};
 };
