@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012-2013, Linux Foundation. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License version 2 and
@@ -2431,7 +2431,7 @@ static long venc_get_property(struct v4l2_subdev *sd, void *arg)
 
 long venc_mmap(struct v4l2_subdev *sd, void *arg)
 {
-	struct venc_inst *inst = sd->dev_priv;
+	struct venc_inst *inst = NULL;
 	struct mem_region_map *mmap = arg;
 	struct mem_region *mregion = NULL;
 	unsigned long rc = 0, size = 0;
@@ -2445,6 +2445,7 @@ long venc_mmap(struct v4l2_subdev *sd, void *arg)
 		return -EINVAL;
 	}
 
+	inst = sd->dev_priv;
 	mregion = mmap->mregion;
 	if (mregion->size % SZ_4K != 0) {
 		WFD_MSG_ERR("Memregion not aligned to %d\n", SZ_4K);
@@ -2476,17 +2477,18 @@ long venc_mmap(struct v4l2_subdev *sd, void *arg)
 
 long venc_munmap(struct v4l2_subdev *sd, void *arg)
 {
-	struct venc_inst *inst = sd->dev_priv;
+	struct venc_inst *inst = NULL;
 	struct mem_region_map *mmap = arg;
 	struct mem_region *mregion = NULL;
 	if (!sd) {
 		WFD_MSG_ERR("Subdevice required for %s\n", __func__);
 		return -EINVAL;
-	} else if (!mregion) {
+	} else if (!mmap || !mmap->mregion) {
 		WFD_MSG_ERR("Memregion required for %s\n", __func__);
 		return -EINVAL;
 	}
 
+	inst = sd->dev_priv;
 	mregion = mmap->mregion;
 	if (!inst->secure) {
 		ion_unmap_iommu(mmap->ion_client, mregion->ion_handle,

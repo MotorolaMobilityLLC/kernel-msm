@@ -3,7 +3,7 @@
  * MSM 7k High speed uart driver
  *
  * Copyright (c) 2008 Google Inc.
- * Copyright (c) 2007-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2007-2013, The Linux Foundation. All rights reserved.
  * Copyright (c) 2012, Motorola Mobility LLC
  * Modified: Nick Pelly <npelly@google.com>
  *
@@ -171,6 +171,7 @@ struct msm_hs_port {
 	struct work_struct clock_off_w; /* work for actual clock off */
 	struct workqueue_struct *hsuart_wq; /* hsuart workqueue */
 	struct mutex clk_mutex; /* mutex to guard against clock off/clock on */
+	bool tty_flush_receive;
 };
 
 #define MSM_UARTDM_BURST_SIZE 16   /* DM burst size (in bytes) */
@@ -759,6 +760,7 @@ static void msm_hs_set_termios(struct uart_port *uport,
 	uport->ignore_status_mask = termios->c_iflag & INPCK;
 	uport->ignore_status_mask |= termios->c_iflag & IGNPAR;
 	uport->ignore_status_mask |= termios->c_iflag & IGNBRK;
+
 	uport->read_status_mask = (termios->c_cflag & CREAD);
 
 	msm_hs_write(uport, UARTDM_IMR_ADDR, 0);
@@ -1039,7 +1041,7 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 	if (unlikely(status & UARTDM_SR_PAR_FRAME_BMSK)) {
 		/* Can not tell difference between parity & frame error */
 		if (hs_serial_debug_mask)
-			printk(KERN_WARNING "msm_serial_hs: parity error");
+			printk(KERN_WARNING "msm_serial_hs: parity error\n");
 		uport->icount.parity++;
 		error_f = 1;
 		if (!(uport->ignore_status_mask & IGNPAR)) {
@@ -1051,14 +1053,14 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 
 	if (unlikely(status & UARTDM_SR_RX_BREAK_BMSK)) {
 		if (hs_serial_debug_mask)
-			printk(KERN_INFO "msm_serial_hs: break");
+			printk(KERN_WARNING "msm_serial_hs: Rx break\n");
+		uport->icount.brk++;
+		error_f = 1;
 		if (!(uport->ignore_status_mask & IGNBRK)) {
 			retval = tty_insert_flip_char(tty, 0, TTY_BREAK);
 			if (!retval)
 				msm_uport->rx.buffer_pending |= TTY_BREAK;
 		}
-		uport->icount.brk++;
-		error_f = 1;
 	}
 
 	if (error_f)
@@ -1264,6 +1266,13 @@ static void msm_hs_enable_ms_locked(struct uart_port *uport)
 	msm_hs_write(uport, UARTDM_IMR_ADDR, msm_uport->imr_reg);
 	mb();
 
+}
+
+static void msm_hs_flush_buffer(struct uart_port *uport)
+{
+	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
+
+	msm_uport->tty_flush_receive = true;
 }
 
 /*
@@ -1481,7 +1490,14 @@ static irqreturn_t msm_hs_isr(int irq, void *dev)
 		 */
 		mb();
 		/* Complete DMA TX transactions and submit new transactions */
-		tx_buf->tail = (tx_buf->tail + tx->tx_count) & ~UART_XMIT_SIZE;
+
+		/* Do not update tx_buf.tail if uart_flush_buffer already
+						called in serial core */
+		if (!msm_uport->tty_flush_receive)
+			tx_buf->tail = (tx_buf->tail +
+					tx->tx_count) & ~UART_XMIT_SIZE;
+		else
+			msm_uport->tty_flush_receive = false;
 
 		tx->dma_in_flight = 0;
 
@@ -2306,6 +2322,7 @@ static struct uart_ops msm_hs_ops = {
 	.config_port = msm_hs_config_port,
 	.release_port = msm_hs_release_port,
 	.request_port = msm_hs_request_port,
+	.flush_buffer = msm_hs_flush_buffer,
 };
 
 module_init(msm_serial_hs_init);
