@@ -1927,12 +1927,19 @@ static int msp430_resume(struct i2c_client *client)
 	KDEBUG("MSP430 msp430_resume\n");
 	mutex_lock(&ps_msp430->lock);
 
-	if ((ps_msp430->mode == NORMALMODE) && (g_nonwake_sensor_state != 0)) {
-		/* restore traditional sensor data */
-		msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
-		msp_cmdbuff[1] = g_nonwake_sensor_state & 0xFF;
-		msp_cmdbuff[2] = g_nonwake_sensor_state >> 8;
-		msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
+	if (ps_msp430->mode == NORMALMODE) {
+		/* read interrupt mask register to clear
+			any interrupt during suspend state */
+		msp_cmdbuff[0] = INTERRUPT_STATUS;
+		msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
+
+		if (g_nonwake_sensor_state != 0) {
+			/* restore traditional sensor data */
+			msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
+			msp_cmdbuff[1] = g_nonwake_sensor_state & 0xFF;
+			msp_cmdbuff[2] = g_nonwake_sensor_state >> 8;
+			msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
+		}
 	}
 
 	mutex_unlock(&ps_msp430->lock);
