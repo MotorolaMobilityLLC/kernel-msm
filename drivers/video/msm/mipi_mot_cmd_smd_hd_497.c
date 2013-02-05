@@ -22,6 +22,7 @@
 #define DEFAULT_BRIGHTNESS_LEVELS 19
 
 static struct mipi_mot_panel *mot_panel;
+static int is_bl_supported(void);
 
 /* TODO: Need to confirm */
 static struct mipi_dsi_phy_ctrl dsi_cmd_mode_phy_db = {
@@ -40,8 +41,20 @@ static struct mipi_dsi_phy_ctrl dsi_cmd_mode_phy_db = {
 
 static char enter_sleep[2] = {DCS_CMD_ENTER_SLEEP_MODE, 0x00};
 static char exit_sleep[2] = {DCS_CMD_EXIT_SLEEP_MODE, 0x00};
-
 static char display_off[2] = {DCS_CMD_SET_DISPLAY_OFF, 0x00};
+static char enable_te[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
+static char set_column[5] = {DCS_CMD_SET_COLUMN_ADDRESS,
+			     0x00, 0x00, 0x02, 0xcf};
+static char set_addr[5] = {DCS_CMD_SET_PAGE_ADDRESS,
+			   0x00, 0x00, 0x04, 0xff};
+static char unlock_lvl_2[3] = {0xf0, 0x5a, 0x5a};
+static char unlock_lvl_mtp[3] = {0xf1, 0x5a, 0x5a};
+static char unlock_lvl_3[3] = {0xfc, 0x5a, 0x5a};
+static char mtp_read_off[2] = {0xb0, 0x21};
+static char mtp_read[2] = {0xc8, 0x00};
+static char init_bl[2] = {0x51, 0x7f};
+static char init_disp_ctrl[2] = {0x53, 0x28};
+
 
 #define DEFAULT_DELAY 1
 
@@ -56,7 +69,21 @@ static struct dsi_cmd_desc acl_enable_disable[] = {
 static struct dsi_cmd_desc smd_hd_497_init_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
 		sizeof(exit_sleep), exit_sleep},
+	{DTYPE_DCS_WRITE1, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(enable_te), enable_te},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(set_column), set_column},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(set_addr), set_addr},
 };
+
+static struct dsi_cmd_desc bl_supported_init_cmds[] = {
+	{DTYPE_DCS_WRITE1, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(init_bl), init_bl},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(init_disp_ctrl), init_disp_ctrl},
+};
+
 
 static struct dsi_cmd_desc mot_display_off_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, DEFAULT_DELAY,
@@ -64,6 +91,20 @@ static struct dsi_cmd_desc mot_display_off_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
 		sizeof(enter_sleep), enter_sleep}
 };
+
+static struct dsi_cmd_desc set_mtp_read_off[] = {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(unlock_lvl_2), unlock_lvl_2},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(unlock_lvl_mtp), unlock_lvl_mtp},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(unlock_lvl_3), unlock_lvl_3},
+	{DTYPE_DCS_WRITE, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(mtp_read_off), mtp_read_off}
+};
+
+static struct dsi_cmd_desc mtp_read_cmd = {
+	DTYPE_DCS_READ, 1, 0, 1, 0, sizeof(mtp_read), mtp_read};
 
 static void enable_acl(struct msm_fb_data_type *mfd)
 {
@@ -100,6 +141,12 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 
 	mipi_mot_tx_cmds(&smd_hd_497_init_cmds[0],
 					ARRAY_SIZE(smd_hd_497_init_cmds));
+
+
+	if (is_bl_supported() == 1) {
+		mipi_mot_tx_cmds(&bl_supported_init_cmds[0],
+				ARRAY_SIZE(bl_supported_init_cmds));
+	}
 
 	/* TODO: Chosen acl_on = ACL Mid per DDC */
 	/* acl */
@@ -152,6 +199,33 @@ static int is_valid_power_mode(struct msm_fb_data_type *mfd)
 	pwr_mod = mipi_mode_get_pwr_mode(mfd);
 	/*Bit7: Booster on ;Bit4: Sleep Out ;Bit2: Display On*/
 	return (pwr_mod & 0x94) == 0x94;
+}
+
+static int is_bl_supported(void)
+{
+	static int is_bl_supported = -1;
+	int ret;
+	u8 rdata;
+
+	if (is_bl_supported == -1) {
+		/* To determine if BL is supported, need to read MTP to see
+		   if it is programmed.  Per spec, must be done in LP mode */
+		mipi_set_tx_power_mode(1);
+		mipi_mot_tx_cmds(&set_mtp_read_off[0],
+				ARRAY_SIZE(set_mtp_read_off));
+		ret = mipi_mot_rx_cmd(&mtp_read_cmd, &rdata, 1);
+		mipi_set_tx_power_mode(0);
+		if (ret < 0)
+			pr_err("%s: failed to determine if MTP is programmed, ret = %d",
+				__func__, ret);
+		else {
+			pr_info("%s: Panel MTP data = 0x%02x\n",
+				__func__, rdata);
+			is_bl_supported = (!rdata) ? 0 : 1;
+		}
+	}
+
+	return is_bl_supported;
 }
 
 static int __init mipi_mot_cmd_smd_hd_497_init(void)
