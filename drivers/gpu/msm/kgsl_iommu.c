@@ -600,7 +600,7 @@ static int kgsl_iommu_init_sync_lock(struct kgsl_mmu *mmu)
 		return status;
 
 	/* Map Lock variables to GPU pagetable */
-	iommu->sync_lock_desc.priv |= KGSL_MEMFLAGS_GLOBAL;
+	iommu->sync_lock_desc.priv |= KGSL_MEMDESC_GLOBAL;
 
 	pagetable = mmu->priv_bank_table ? mmu->priv_bank_table :
 				mmu->defaultpagetable;
@@ -610,7 +610,7 @@ static int kgsl_iommu_init_sync_lock(struct kgsl_mmu *mmu)
 
 	if (status) {
 		kgsl_mmu_unmap(pagetable, &iommu->sync_lock_desc);
-		iommu->sync_lock_desc.priv &= ~KGSL_MEMFLAGS_GLOBAL;
+		iommu->sync_lock_desc.priv &= ~KGSL_MEMDESC_GLOBAL;
 		return status;
 	}
 
@@ -976,13 +976,13 @@ static int kgsl_iommu_setup_defaultpagetable(struct kgsl_mmu *mmu)
 	if (msm_soc_version_supports_iommu_v1()) {
 		for (i = 0; i < iommu->unit_count; i++) {
 			iommu->iommu_units[i].reg_map.priv |=
-						KGSL_MEMFLAGS_GLOBAL;
+						KGSL_MEMDESC_GLOBAL;
 			status = kgsl_mmu_map(pagetable,
 				&(iommu->iommu_units[i].reg_map),
 				GSL_PT_PAGE_RV | GSL_PT_PAGE_WV);
 			if (status) {
 				iommu->iommu_units[i].reg_map.priv &=
-							~KGSL_MEMFLAGS_GLOBAL;
+							~KGSL_MEMDESC_GLOBAL;
 				goto err;
 			}
 		}
@@ -992,7 +992,7 @@ err:
 	for (i--; i >= 0; i--) {
 		kgsl_mmu_unmap(pagetable,
 				&(iommu->iommu_units[i].reg_map));
-		iommu->iommu_units[i].reg_map.priv &= ~KGSL_MEMFLAGS_GLOBAL;
+		iommu->iommu_units[i].reg_map.priv &= ~KGSL_MEMDESC_GLOBAL;
 	}
 	if (mmu->priv_bank_table) {
 		kgsl_mmu_putpagetable(mmu->priv_bank_table);

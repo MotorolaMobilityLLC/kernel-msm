@@ -20,6 +20,9 @@
 #include <linux/pm_runtime.h>
 #include <linux/platform_device.h>
 #include <asm/current.h>
+#ifdef CONFIG_DIAG_OVER_USB
+#include <mach/usbdiag.h>
+#endif
 #include "diagchar_hdlc.h"
 #include "diagmem.h"
 #include "diagchar.h"
