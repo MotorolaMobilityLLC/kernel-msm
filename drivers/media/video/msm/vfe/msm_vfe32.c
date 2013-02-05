@@ -236,7 +236,8 @@ static struct vfe32_cmd_type vfe32_cmd[] = {
 /*145*/ {VFE_CMD_STATS_BF_STOP},
 		{VFE_CMD_STATS_BHIST_START, V32_STATS_BHIST_LEN,
 			V32_STATS_BHIST_OFF},
-/*147*/	{VFE_CMD_STATS_BHIST_STOP},
+		{VFE_CMD_STATS_BHIST_STOP},
+/*148*/	{VFE_CMD_SELECT_RDI},
 };
 
 uint32_t vfe32_AXI_WM_CFG[] = {
@@ -400,6 +401,7 @@ static const char * const vfe32_general_cmd[] = {
 	"STATS_BHIST_START",
 	"STATS_BHIST_STOP",
 	"RESET_2",
+	"RDI_SEL" /*150*/
 };
 
 uint8_t vfe32_use_bayer_stats(struct vfe32_ctrl_type *vfe32_ctrl)
@@ -416,6 +418,7 @@ static void axi_enable_wm_irq(struct vfe_share_ctrl_t *share_ctrl)
 {
 	uint32_t irq_mask = 0, irq_comp_mask = 0;
 	uint16_t vfe_output_mode1 = 0;
+	uint32_t rdi_comp_select = 0;
 
 	uint16_t vfe_output_mode =
 		share_ctrl->outpath.output_mode &
@@ -485,8 +488,9 @@ static void axi_enable_wm_irq(struct vfe_share_ctrl_t *share_ctrl)
 		irq_mask |= (0x1 << (share_ctrl->outpath.out4.ch0 +
 			VFE_WM_OFFSET));
 	}
-
-	if (vfe_output_mode1) {
+	rdi_comp_select = (vfe_output_mode1 &&
+		(share_ctrl->rdi_comp == VFE_RDI_COMPOSITE));
+	if (rdi_comp_select) {
 		irq_comp_mask |= (
 		0x1 << (share_ctrl->outpath.out2.ch0 + 16) |
 		0x1 << (share_ctrl->outpath.out3.ch0 + 16));
@@ -495,7 +499,7 @@ static void axi_enable_wm_irq(struct vfe_share_ctrl_t *share_ctrl)
 
 	msm_camera_io_w(irq_mask, share_ctrl->vfebase +
 			VFE_IRQ_MASK_0);
-	if (vfe_output_mode || vfe_output_mode1)
+	if (vfe_output_mode || rdi_comp_select)
 		msm_camera_io_w(irq_comp_mask,
 			share_ctrl->vfebase + VFE_IRQ_COMP_MASK);
 }
@@ -505,6 +509,7 @@ static void axi_disable_wm_irq(struct vfe_share_ctrl_t *share_ctrl,
 {
 	uint32_t irq_mask, irq_comp_mask = 0;
 	uint16_t vfe_output_mode1 = 0;
+	uint32_t rdi_comp_select = 0;
 	uint16_t vfe_output_mode =
 		output_mode &
 			~(VFE32_OUTPUT_MODE_TERTIARY1|
@@ -564,7 +569,9 @@ static void axi_disable_wm_irq(struct vfe_share_ctrl_t *share_ctrl,
 		irq_mask &= ~(0x1 << (share_ctrl->outpath.out4.ch0 +
 			VFE_WM_OFFSET));
 	}
-	if (vfe_output_mode1) {
+	rdi_comp_select = (vfe_output_mode1 &&
+		(share_ctrl->rdi_comp == VFE_RDI_COMPOSITE));
+	if (rdi_comp_select) {
 		irq_comp_mask &= ~(
 		0x1 << (share_ctrl->outpath.out2.ch0 + 16) |
 		0x1 << (share_ctrl->outpath.out3.ch0 + 16));
@@ -1890,6 +1897,7 @@ static int configure_pingpong_buffers(
 	struct vfe32_output_ch *outch = NULL;
 	int rc = 0;
 	uint32_t inst_handle = 0;
+	uint32_t rdi_comp_select = 0;
 	static uint32_t ping_t1_ch0_paddr, pong_t1_ch0_paddr;
 
 	if (path == VFE_MSG_OUTPUT_PRIMARY)
@@ -1904,20 +1912,27 @@ static int configure_pingpong_buffers(
 		inst_handle = axi_ctrl->share_ctrl->outpath.out4.inst_handle;
 
 	CDBG("%s path %d, inst_handle 0x%x\n", __func__, path, inst_handle);
-
-	if (path != VFE_MSG_OUTPUT_TERTIARY2) {
+	if ((axi_ctrl->share_ctrl->rdi_comp == VFE_RDI_COMPOSITE) &&
+		path == VFE_MSG_OUTPUT_TERTIARY2) {
+		/* Do Nothing, since buf address will be
+			fetched in TERTIARY1 case */
+	} else {
 		vfe32_subdev_notify(id, path, inst_handle,
 			&axi_ctrl->subdev, axi_ctrl->share_ctrl);
 	}
 
 	outch = vfe32_get_ch(path, axi_ctrl->share_ctrl);
 
-	if (path == VFE_MSG_OUTPUT_TERTIARY1) {
+	if ((axi_ctrl->share_ctrl->rdi_comp == VFE_RDI_COMPOSITE) &&
+		(path == VFE_MSG_OUTPUT_TERTIARY1)) {
 		ping_t1_ch0_paddr = outch->ping.ch_paddr[1];
 		pong_t1_ch0_paddr = outch->pong.ch_paddr[1];
 	}
-	if (path == VFE_MSG_OUTPUT_TERTIARY2 && ping_t1_ch0_paddr &&
-			pong_t1_ch0_paddr) {
+	rdi_comp_select =
+		(axi_ctrl->share_ctrl->rdi_comp  == VFE_RDI_COMPOSITE) &&
+		(path == VFE_MSG_OUTPUT_TERTIARY2) && ping_t1_ch0_paddr &&
+		pong_t1_ch0_paddr;
+	if (rdi_comp_select) {
 		vfe32_put_ch_ping_addr(
 			axi_ctrl->share_ctrl->vfebase, outch->ch0,
 			ping_t1_ch0_paddr);
@@ -3422,6 +3437,19 @@ static int vfe32_proc_general(
 		CDBG("%s Stopping liveshot ", __func__);
 		vfe32_stop_liveshot(pmctl, vfe32_ctrl);
 		break;
+	case VFE_CMD_SELECT_RDI: {
+		uint32_t rdi_sel;
+		if (copy_from_user(&rdi_sel,
+				(void __user *)(cmd->value),
+				sizeof(uint32_t))) {
+				rc = -EFAULT;
+				goto proc_general_done;
+		}
+		pr_info("%s: rdi interface: %d\n", __func__, rdi_sel);
+		vfe32_ctrl->share_ctrl->rdi_comp = rdi_sel;
+	}
+		break;
+
 	default:
 		if (cmd->length != vfe32_cmd[cmd->id].length)
 			return -EINVAL;
@@ -4408,7 +4436,6 @@ static void vfe32_process_output_path_irq_1(
 	}
 }
 
-#if 0 /* Disabled for SOC sensor with Y on RDI0 & CB on RDI1 */
 static void vfe32_process_output_path_irq_rdi0(
 			struct axi_ctrl_t *axi_ctrl)
 {
@@ -4500,7 +4527,6 @@ static void vfe32_process_output_path_irq_rdi1(
 		}
 	}
 }
-#endif
 
 static void vfe32_process_output_path_irq_rdi2(
 	struct axi_ctrl_t *axi_ctrl)
@@ -5843,6 +5869,7 @@ int msm_vfe_subdev_init(struct v4l2_subdev *sd)
 	vfe32_ctrl->update_gamma = false;
 	vfe32_ctrl->vfe_sof_count_enable = false;
 	vfe32_ctrl->hfr_mode = HFR_MODE_OFF;
+	vfe32_ctrl->share_ctrl->rdi_comp = VFE_RDI_COMPOSITE;
 
 	memset(&vfe32_ctrl->stats_ctrl, 0,
 		sizeof(struct msm_stats_bufq_ctrl));
@@ -6832,25 +6859,28 @@ static void msm_axi_process_irq(struct v4l2_subdev *sd, void *arg)
 		vfe32_process_output_path_irq_1(axi_ctrl);
 	}
 	if (irqstatus &
-		VFE_IRQ_STATUS0_IMAGE_COMPOSIT_DONE2_MASK) {
+		VFE_IRQ_STATUS0_IMAGE_COMPOSIT_DONE2_MASK &&
+		(axi_ctrl->share_ctrl->rdi_comp == VFE_RDI_COMPOSITE)) {
 		CDBG("Image composite done 2 irq occured.\n");
 		vfe32_process_output_path_irq_rdi0_and_rdi1(axi_ctrl);
 	}
 
 	if (axi_ctrl->share_ctrl->comp_output_mode &
-		VFE32_OUTPUT_MODE_TERTIARY1) {
+		VFE32_OUTPUT_MODE_TERTIARY1 &&
+		(axi_ctrl->share_ctrl->rdi_comp == VFE_RDI_NON_COMPOSITE)) {
 		if (irqstatus & (0x1 << (axi_ctrl->share_ctrl->outpath.out2.ch0
 			+ VFE_WM_OFFSET))) {
 			CDBG("VFE32_OUTPUT_MODE_TERTIARY1\n");
-			/*vfe32_process_output_path_irq_rdi0(axi_ctrl);*/
+			vfe32_process_output_path_irq_rdi0(axi_ctrl);
 		}
 	}
 	if (axi_ctrl->share_ctrl->comp_output_mode &
-		VFE32_OUTPUT_MODE_TERTIARY2){
+		VFE32_OUTPUT_MODE_TERTIARY2 &&
+		(axi_ctrl->share_ctrl->rdi_comp == VFE_RDI_NON_COMPOSITE)) {
 		if (irqstatus & (0x1 << (axi_ctrl->share_ctrl->outpath.out3.ch0
 			+ VFE_WM_OFFSET))) {
 			CDBG("VFE32_OUTPUT_MODE_TERTIARY2\n");
-			/*vfe32_process_output_path_irq_rdi1(axi_ctrl);*/
+			vfe32_process_output_path_irq_rdi1(axi_ctrl);
 		}
 	}
 	if (axi_ctrl->share_ctrl->comp_output_mode &
