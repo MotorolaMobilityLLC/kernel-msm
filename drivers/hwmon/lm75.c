@@ -27,6 +27,9 @@
 #include <linux/hwmon-sysfs.h>
 #include <linux/err.h>
 #include <linux/mutex.h>
+#include <linux/gpio.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include "lm75.h"
 
 
@@ -76,6 +79,7 @@ static const u8 LM75_REG_TEMP[3] = {
 /* Each client has this additional data */
 struct lm75_data {
 	enum lm75_type          sensor;
+	int                     irq_gpio;
 	struct device		*hwmon_dev;
 	struct mutex		update_lock;
 	u8			orig_conf;
@@ -166,6 +170,47 @@ static const struct attribute_group lm75_group = {
 	.attrs = lm75_attributes,
 };
 
+#ifdef CONFIG_OF
+static int lm75_of_init(struct lm75_data *data, struct i2c_client *client)
+{
+	struct device_node *np;
+
+	np = client->dev.of_node;
+	data->irq_gpio = of_get_gpio(np, 0);
+	return ((data->irq_gpio < 0) ? data->irq_gpio : 0);
+}
+#else
+static inline int lm75_of_init(struct lm75_data *data,
+			       struct i2c_client *client)
+{
+	return -EINVAL;
+}
+#endif
+
+static int lm75_init_irq_gpio(struct lm75_data *data, struct i2c_client *client)
+{
+	int ret;
+
+	ret = gpio_request_one(data->irq_gpio, GPIOF_IN, "temp1_alarm");
+	if (ret) {
+		dev_err(&client->dev, "GPIO request failed: %d\n", ret);
+		return ret;
+	}
+	ret = gpio_export(data->irq_gpio, false);
+	if (ret) {
+		dev_err(&client->dev, "GPIO export failed: %d\n", ret);
+		gpio_free(data->irq_gpio);
+		return ret;
+	}
+	ret = gpio_export_link(&client->dev, "temp1_alarm", data->irq_gpio);
+	if (ret) {
+		dev_err(&client->dev, "GPIO export link failed: %d\n", ret);
+		gpio_free(data->irq_gpio);
+		return ret;
+	}
+	return ret;
+}
+
 /*-----------------------------------------------------------------------*/
 
 /* device probe and removal */
@@ -188,6 +233,7 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return -ENOMEM;
 
 	i2c_set_clientdata(client, data);
+	data->irq_gpio = -1;
 	mutex_init(&data->update_lock);
 
 	data->sensor = id->driver_data;
@@ -285,6 +331,13 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		status = PTR_ERR(data->hwmon_dev);
 		goto exit_remove;
 	}
+	if (client->dev.of_node) {
+		status = lm75_of_init(data, client);
+		if (!status)
+			status = lm75_init_irq_gpio(data, client);
+		if (status < 0)
+			dev_err(&client->dev, "unable to config IRQ.\n");
+	}
 
 	dev_info(&client->dev, "%s: sensor '%s'\n",
 		 dev_name(data->hwmon_dev), client->name);
@@ -300,6 +353,7 @@ static int lm75_remove(struct i2c_client *client)
 {
 	struct lm75_data *data = i2c_get_clientdata(client);
 
+	gpio_free(data->irq_gpio);
 	hwmon_device_unregister(data->hwmon_dev);
 	sysfs_remove_group(&client->dev.kobj, &lm75_group);
 	lm75_write_value(client, LM75_REG_CONF, data->orig_conf);
