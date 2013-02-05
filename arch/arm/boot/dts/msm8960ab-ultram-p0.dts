@@ -48,4 +48,8 @@
 		reg = <0x41>;
 		tas_avdd-supply = <&rpm_8921_s4>;
 	};
+
+	tfa9890@34 {
+		status = "disabled";
+	};
 };
