@@ -1879,15 +1879,18 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
 
 #ifdef WLAN_FEATURE_TDLS_DEBUG
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-    ("hdd_tdlsStatusUpdate: %s staIdx %d %02x:%02x:%02x:%02x:%02x:%02x \n"), roamResult == eCSR_ROAM_RESULT_ADD_TDLS_PEER ? "ADD_TDLS_PEER" :
-    roamResult == eCSR_ROAM_RESULT_DELETE_TDLS_PEER ? "DEL_TDLS_PEER": "UNKNOWN",
-        pRoamInfo->staId,
-        pRoamInfo->peerMac[0],
-        pRoamInfo->peerMac[1],
-        pRoamInfo->peerMac[2],
-        pRoamInfo->peerMac[3],
-        pRoamInfo->peerMac[4],
-        pRoamInfo->peerMac[5]) ;
+    ("hdd_tdlsStatusUpdate: %s staIdx %d %02x:%02x:%02x:%02x:%02x:%02x \n"),
+      roamResult == eCSR_ROAM_RESULT_ADD_TDLS_PEER ? "ADD_TDLS_PEER" :
+      roamResult == eCSR_ROAM_RESULT_DELETE_TDLS_PEER ? "DEL_TDLS_PEER" :
+      roamResult == eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND ? "DEL_TDLS_PEER_IND" :
+      "UNKNOWN",
+       pRoamInfo->staId,
+       pRoamInfo->peerMac[0],
+       pRoamInfo->peerMac[1],
+       pRoamInfo->peerMac[2],
+       pRoamInfo->peerMac[3],
+       pRoamInfo->peerMac[4],
+       pRoamInfo->peerMac[5]) ;
 #endif
     switch( roamResult )
     {
@@ -1972,6 +1975,21 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
                 (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = NULL;
             }
             break ; 
+        }
+        case eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND:
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                       "%s: Sending teardown to supplicant with reason code %u",
+                       __func__, pRoamInfo->reasonCode);
+
+#ifdef CONFIG_TDLS_IMPLICIT
+            cfg80211_tdls_oper_request(pAdapter->dev,
+                                       pRoamInfo->peerMac,
+                                       NL80211_TDLS_TEARDOWN,
+                                       pRoamInfo->reasonCode,
+                                       GFP_KERNEL);
+#endif
+            break ;
         }
         default:
         {
