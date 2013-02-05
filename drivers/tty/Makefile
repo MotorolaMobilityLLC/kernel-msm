@@ -6,7 +6,7 @@ obj-$(CONFIG_AUDIT)		+= tty_audit.o
 obj-$(CONFIG_MAGIC_SYSRQ)	+= sysrq.o
 obj-$(CONFIG_N_HDLC)		+= n_hdlc.o
 obj-$(CONFIG_N_GSM)		+= n_gsm.o
-obj-$(CONFIG_N_SMUX)		+= n_smux.o
+obj-$(CONFIG_N_SMUX)		+= n_smux.o smux_debug.o
 obj-$(CONFIG_N_SMUX_LOOPBACK)	+= smux_test.o smux_loopback.o
 obj-$(CONFIG_SMUX_CTL)		+= smux_ctl.o
 obj-$(CONFIG_TRACE_ROUTER)	+= n_tracerouter.o
@@ -16,7 +16,7 @@ obj-$(CONFIG_R3964)		+= n_r3964.o
 obj-y				+= vt/
 obj-$(CONFIG_HVC_DRIVER)	+= hvc/
 obj-y				+= serial/
-obj-$(CONFIG_DIAG_INTERNAL) 	+= diag/
+obj-$(CONFIG_DIAG_OVER_TTY) 	+= diag/
 
 # tty drivers
 obj-$(CONFIG_AMIGA_BUILTIN_SERIAL) += amiserial.o

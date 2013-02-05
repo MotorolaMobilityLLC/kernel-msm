@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2013, Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -214,7 +214,7 @@ void vidc_pix_cache_set_ram(u32 ram_select)
 	VIDC_HWIO_IN(REG_261029, &dmi_cfg_reg);
 	dmi_cfg_reg &= (~HWIO_REG_261029_DMI_RAM_SEL_BMSK);
 	dmi_cfg_reg |= VIDC_SETFIELD(ram_select,
-			HWIO_REG_261029_AUTO_INC_EN_SHFT,
+			HWIO_REG_261029_DMI_RAM_SEL_SHFT,
 			HWIO_REG_261029_DMI_RAM_SEL_BMSK);
 	VIDC_HWIO_OUT(REG_261029, dmi_cfg_reg);
 }

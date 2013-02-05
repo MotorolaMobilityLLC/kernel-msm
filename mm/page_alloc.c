@@ -913,14 +913,12 @@ struct page *__rmqueue_smallest(struct zone *zone, unsigned int order,
  * This array describes the order lists are fallen back to when
  * the free lists for the desirable migrate type are depleted
  */
-static int fallbacks[MIGRATE_TYPES][4] = {
+static int fallbacks[MIGRATE_TYPES][3] = {
 	[MIGRATE_UNMOVABLE]   = { MIGRATE_RECLAIMABLE, MIGRATE_MOVABLE,     MIGRATE_RESERVE },
 	[MIGRATE_RECLAIMABLE] = { MIGRATE_UNMOVABLE,   MIGRATE_MOVABLE,     MIGRATE_RESERVE },
-#ifdef CONFIG_CMA
-	[MIGRATE_MOVABLE]     = { MIGRATE_CMA,         MIGRATE_RECLAIMABLE, MIGRATE_UNMOVABLE, MIGRATE_RESERVE },
-	[MIGRATE_CMA]         = { MIGRATE_RESERVE }, /* Never used */
-#else
 	[MIGRATE_MOVABLE]     = { MIGRATE_RECLAIMABLE, MIGRATE_UNMOVABLE,   MIGRATE_RESERVE },
+#ifdef CONFIG_CMA
+	[MIGRATE_CMA]         = { MIGRATE_RESERVE }, /* Never used */
 #endif
 	[MIGRATE_RESERVE]     = { MIGRATE_RESERVE }, /* Never used */
 	[MIGRATE_ISOLATE]     = { MIGRATE_RESERVE }, /* Never used */
@@ -1043,17 +1041,10 @@ __rmqueue_fallback(struct zone *zone, int order, int start_migratetype)
 			 * pages to the preferred allocation list. If falling
 			 * back for a reclaimable kernel allocation, be more
 			 * aggressive about taking ownership of free pages
-			 *
-			 * On the other hand, never change migration
-			 * type of MIGRATE_CMA pageblocks nor move CMA
-			 * pages on different free lists. We don't
-			 * want unmovable pages to be allocated from
-			 * MIGRATE_CMA areas.
 			 */
-			if (!is_migrate_cma(migratetype) &&
-			    (unlikely(current_order >= pageblock_order / 2) ||
-			     start_migratetype == MIGRATE_RECLAIMABLE ||
-			     page_group_by_mobility_disabled)) {
+			if (unlikely(current_order >= pageblock_order / 2) ||
+			    start_migratetype == MIGRATE_RECLAIMABLE ||
+			    page_group_by_mobility_disabled) {
 				int pages;
 				pages = move_freepages_block(zone, page,
 								start_migratetype);
@@ -1072,14 +1063,12 @@ __rmqueue_fallback(struct zone *zone, int order, int start_migratetype)
 			rmv_page_order(page);
 
 			/* Take ownership for orders >= pageblock_order */
-			if (current_order >= pageblock_order &&
-			    !is_migrate_cma(migratetype))
+			if (current_order >= pageblock_order)
 				change_pageblock_range(page, current_order,
 							start_migratetype);
 
 			expand(zone, page, order, current_order, area,
-			       is_migrate_cma(migratetype)
-			     ? migratetype : start_migratetype);
+			       start_migratetype);
 
 			trace_mm_page_alloc_extfrag(page, order, current_order,
 				start_migratetype, migratetype);
@@ -1100,21 +1089,27 @@ static struct page *__rmqueue(struct zone *zone, unsigned int order,
 {
 	struct page *page;
 
-retry_reserve:
-	page = __rmqueue_smallest(zone, order, migratetype);
+#ifdef CONFIG_CMA
+	if (migratetype == MIGRATE_MOVABLE)
+		migratetype = MIGRATE_CMA;
+#endif
 
-	if (unlikely(!page) && migratetype != MIGRATE_RESERVE) {
-		page = __rmqueue_fallback(zone, order, migratetype);
+	for(;;) {
+		page = __rmqueue_smallest(zone, order, migratetype);
+		if (likely(page) || migratetype == MIGRATE_RESERVE)
+			break;
 
-		/*
-		 * Use MIGRATE_RESERVE rather than fail an allocation. goto
-		 * is used because __rmqueue_smallest is an inline function
-		 * and we want just one call site
-		 */
-		if (!page) {
-			migratetype = MIGRATE_RESERVE;
-			goto retry_reserve;
+		if (is_migrate_cma(migratetype)) {
+			migratetype = MIGRATE_MOVABLE;
+			continue;
 		}
+
+		page = __rmqueue_fallback(zone, order, migratetype);
+		if (page)
+			break;
+
+		/* Use MIGRATE_RESERVE rather than fail an allocation. */
+		migratetype = MIGRATE_RESERVE;
 	}
 
 	trace_mm_page_alloc_zone_locked(page, order, migratetype);
@@ -2817,6 +2812,31 @@ out:
 
 #define K(x) ((x) << (PAGE_SHIFT-10))
 
+static void show_migration_types(unsigned char type)
+{
+	static const char types[MIGRATE_TYPES] = {
+		[MIGRATE_UNMOVABLE]	= 'U',
+		[MIGRATE_RECLAIMABLE]	= 'E',
+		[MIGRATE_MOVABLE]	= 'M',
+		[MIGRATE_RESERVE]	= 'R',
+#ifdef CONFIG_CMA
+		[MIGRATE_CMA]		= 'C',
+#endif
+		[MIGRATE_ISOLATE]	= 'I',
+	};
+	char tmp[MIGRATE_TYPES + 1];
+	char *p = tmp;
+	int i;
+
+	for (i = 0; i < MIGRATE_TYPES; i++) {
+		if (type & (1 << i))
+			*p++ = types[i];
+	}
+
+	*p = '\0';
+	printk("(%s) ", tmp);
+}
+
 /*
  * Show free area list (used inside shift_scroll-lock stuff)
  * We also calculate the percentage fragmentation. We do this by counting the
@@ -2945,6 +2965,7 @@ void show_free_areas(unsigned int filter)
 
 	for_each_populated_zone(zone) {
  		unsigned long nr[MAX_ORDER], flags, order, total = 0;
+		unsigned char types[MAX_ORDER];
 
 		if (skip_free_areas_node(filter, zone_to_nid(zone)))
 			continue;
@@ -2953,12 +2974,24 @@ void show_free_areas(unsigned int filter)
 
 		spin_lock_irqsave(&zone->lock, flags);
 		for (order = 0; order < MAX_ORDER; order++) {
-			nr[order] = zone->free_area[order].nr_free;
+			struct free_area *area = &zone->free_area[order];
+			int type;
+
+			nr[order] = area->nr_free;
 			total += nr[order] << order;
+
+			types[order] = 0;
+			for (type = 0; type < MIGRATE_TYPES; type++) {
+				if (!list_empty(&area->free_list[type]))
+					types[order] |= 1 << type;
+			}
 		}
 		spin_unlock_irqrestore(&zone->lock, flags);
-		for (order = 0; order < MAX_ORDER; order++)
+		for (order = 0; order < MAX_ORDER; order++) {
 			printk("%lu*%lukB ", nr[order], K(1UL) << order);
+			if (nr[order])
+				show_migration_types(types[order]);
+		}
 		printk("= %lukB\n", K(total));
 	}
 

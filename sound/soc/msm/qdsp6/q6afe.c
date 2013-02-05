@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -38,6 +38,8 @@ struct afe_ctl {
 static struct afe_ctl this_afe;
 
 static struct acdb_cal_block afe_cal_addr[MAX_AUDPROC_TYPES];
+static int pcm_afe_instance[2];
+static int proxy_afe_instance[2];
 
 #define TIMEOUT_MS 1000
 #define Q6AFE_MAX_VOLUME 0x3FFF
@@ -447,11 +449,22 @@ int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 	pr_debug("%s: %d %d\n", __func__, port_id, rate);
 
 	if ((port_id == RT_PROXY_DAI_001_RX) ||
-		(port_id == RT_PROXY_DAI_002_TX))
-		return 0;
-	if ((port_id == RT_PROXY_DAI_002_RX) ||
-		(port_id == RT_PROXY_DAI_001_TX))
+		(port_id == RT_PROXY_DAI_002_TX)) {
+		pr_debug("%s: before incrementing pcm_afe_instance %d"\
+				"port_id %d\n", __func__,
+				pcm_afe_instance[port_id & 0x1], port_id);
 		port_id = VIRTUAL_ID_TO_PORTID(port_id);
+		pcm_afe_instance[port_id & 0x1]++;
+		return 0;
+	}
+	if ((port_id == RT_PROXY_DAI_002_RX) ||
+		(port_id == RT_PROXY_DAI_001_TX)) {
+		pr_debug("%s: before incrementing proxy_afe_instance %d"\
+				"port_id %d\n", __func__,
+				proxy_afe_instance[port_id & 0x1], port_id);
+		port_id = VIRTUAL_ID_TO_PORTID(port_id);
+		proxy_afe_instance[port_id & 0x1]++;
+	}
 
 	ret = afe_q6_interface_prepare();
 	if (IS_ERR_VALUE(ret))
@@ -1700,6 +1713,29 @@ int afe_close(int port_id)
 		goto fail_cmd;
 	}
 	pr_debug("%s: port_id=%d\n", __func__, port_id);
+
+	if ((port_id == RT_PROXY_DAI_001_RX) ||
+		(port_id == RT_PROXY_DAI_002_TX)) {
+		pr_debug("%s: before decrementing pcm_afe_instance %d\n",
+				__func__, pcm_afe_instance[port_id & 0x1]);
+		port_id = VIRTUAL_ID_TO_PORTID(port_id);
+		pcm_afe_instance[port_id & 0x1]--;
+		if (!(pcm_afe_instance[port_id & 0x1] == 0 &&
+			proxy_afe_instance[port_id & 0x1] == 0))
+			return 0;
+	}
+
+	if ((port_id == RT_PROXY_DAI_002_RX) ||
+		(port_id == RT_PROXY_DAI_001_TX)) {
+		pr_debug("%s: before decrementing proxy_afe_instance %d\n",
+				__func__, proxy_afe_instance[port_id & 0x1]);
+		port_id = VIRTUAL_ID_TO_PORTID(port_id);
+		proxy_afe_instance[port_id & 0x1]--;
+		if (!(pcm_afe_instance[port_id & 0x1] == 0 &&
+			proxy_afe_instance[port_id & 0x1] == 0))
+			return 0;
+	}
+
 	port_id = afe_convert_virtual_to_portid(port_id);
 
 	stop.hdr.hdr_field = APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
