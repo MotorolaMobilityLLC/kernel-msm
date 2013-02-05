@@ -2538,10 +2538,14 @@ static void handle_chg_insertion_removal(struct pm8921_chg_chip *chip)
 	if (chip && (prev_plugged != plugged)) {
 		pdata = chip->dev->platform_data;
 		if (plugged) {
+			pr_info("Plugged usb: %d dc: %d\n",
+				is_usb_chg_plugged_in(chip),
+				is_dc_chg_plugged_in(chip));
 			wake_lock(&chip->chg_wake_lock);
 			if (pdata->force_therm_bias)
 				pdata->force_therm_bias(chip->dev, 1);
 		} else {
+			pr_info("Not Plugged\n");
 			chip->bms_notify.is_battery_full = 0;
 			pm8921_bms_no_external_accy();
 			if (pdata->force_therm_bias)
@@ -5961,6 +5965,8 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 
 	/* Clear Any Charge Failures */
 	pm_chg_failed_clear(chip, 1);
+
+	handle_chg_insertion_removal(chip);
 
 	/* determine what state the charger is in */
 	determine_initial_state(chip);
