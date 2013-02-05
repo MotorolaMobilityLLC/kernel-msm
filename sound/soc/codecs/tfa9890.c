@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Motorola Mobility, LLC.
+ * Copyright (C) 2012-2013 Motorola Mobility, LLC.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -21,6 +21,8 @@
 #include <linux/delay.h>
 #include <linux/firmware.h>
 #include <linux/init.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/i2c.h>
 #include <linux/gpio.h>
 #include <linux/module.h>
@@ -60,6 +62,7 @@ struct tfa9890_priv {
 	int dsp_init;
 	int speaker_imp;
 	int sysclk;
+	int rst_gpio;
 };
 
 static const struct tfa9890_regs tfa9890_reg_defaults[] = {
@@ -1229,10 +1232,35 @@ static struct snd_soc_codec_driver soc_codec_dev_tfa9890 = {
 	.reg_word_size = 2,
 };
 
+#ifdef CONFIG_OF
+static struct tfa9890_pdata *
+tfa9890_of_init(struct i2c_client *client)
+{
+	struct tfa9890_pdata *pdata;
+	struct device_node *np = client->dev.of_node;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		pr_err("%s : pdata allocation failure\n", __func__);
+		return NULL;
+	}
+
+	pdata->reset_gpio = of_get_gpio(np, 0);
+
+	return pdata;
+}
+#else
+static inline struct tfa9890_pdata *
+tfa9890_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
+
 static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 				      const struct i2c_device_id *id)
 {
-	struct tfa9890_pdata *pdata = i2c->dev.platform_data;
+	struct tfa9890_pdata *pdata;
 	struct tfa9890_priv *tfa9890;
 	int ret;
 	int i;
@@ -1242,8 +1270,13 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 		return -EIO;
 	}
 
+	if (i2c->dev.of_node)
+		pdata = tfa9890_of_init(i2c);
+	else
+		pdata = i2c->dev.platform_data;
+
 	/* check platform data */
-	if (i2c->dev.platform_data == NULL) {
+	if (pdata == NULL) {
 		dev_err(&i2c->dev,
 			"platform data is NULL\n");
 		return -EINVAL;
@@ -1254,6 +1287,7 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 	if (tfa9890 == NULL)
 		return -ENOMEM;
 
+	tfa9890->rst_gpio = pdata->reset_gpio;
 	tfa9890->control_data = i2c;
 	tfa9890->dsp_init = TFA9890_DSP_INIT_PENDING;
 	i2c_set_clientdata(i2c, tfa9890);
@@ -1300,7 +1334,7 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 	INIT_WORK(&tfa9890->init_work, tfa9890_dsp_init);
 	INIT_WORK(&tfa9890->calib_work, tfa9890_work_read_imp);
 
-	ret = gpio_request(pdata->reset_gpio, "tfa reset gpio");
+	ret = gpio_request(tfa9890->rst_gpio, "tfa reset gpio");
 	if (ret < 0) {
 		pr_err("%s: tfa reset gpio_request failed: %d\n",
 			__func__, ret);
@@ -1309,7 +1343,7 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 	/* take IC out of reset, device registers are reset in codec probe
 	 * through register write.
 	 */
-	gpio_direction_output(pdata->reset_gpio, 0);
+	gpio_direction_output(tfa9890->rst_gpio, 0);
 
 	/* register codec */
 	ret = snd_soc_register_codec(&i2c->dev,
@@ -1324,6 +1358,7 @@ static __devinit int tfa9890_i2c_probe(struct i2c_client *i2c,
 	return ret;
 
 codec_fail:
+	gpio_free(tfa9890->rst_gpio);
 gpio_fail:
 	destroy_workqueue(tfa9890->tfa9890_wq);
 wq_fail:
@@ -1342,6 +1377,7 @@ static __devexit int tfa9890_i2c_remove(struct i2c_client *client)
 
 	snd_soc_unregister_codec(&client->dev);
 	regulator_disable(tfa9890->vdd);
+	gpio_free(tfa9890->rst_gpio);
 	regulator_put(tfa9890->vdd);
 	destroy_workqueue(tfa9890->tfa9890_wq);
 	return 0;
@@ -1353,10 +1389,19 @@ static const struct i2c_device_id tfa9890_i2c_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, tfa9890_i2c_id);
 
+#ifdef CONFIG_OF
+static struct of_device_id tfa9890_match_tbl[] = {
+	{ .compatible = "nxp,tfa9890" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, aic3253_match_tbl);
+#endif
+
 static struct i2c_driver tfa9890_i2c_driver = {
 	.driver = {
 		.name = "tfa9890",
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(tfa9890_match_tbl),
 	},
 	.probe =    tfa9890_i2c_probe,
 	.remove =   __devexit_p(tfa9890_i2c_remove),
