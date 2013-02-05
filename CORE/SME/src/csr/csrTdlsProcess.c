@@ -866,6 +866,21 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
             csrTdlsRemoveSmeCmd(pMac, eSmeCommandTdlsDelPeer) ;
         }
         break;
+        case eWNI_SME_TDLS_DEL_STA_IND:
+        {
+            tpSirTdlsDelStaInd pSirTdlsDelStaInd = (tpSirTdlsDelStaInd) pMsgBuf ;
+            tCsrRoamInfo roamInfo = {0} ;
+            palCopyMemory(pMac->hHdd, &roamInfo.peerMac, pSirTdlsDelStaInd->peerMac,
+                                         sizeof(tSirMacAddr)) ;
+            roamInfo.staId = pSirTdlsDelStaInd->staId ;
+            roamInfo.reasonCode = pSirTdlsDelStaInd->reasonCode ;
+
+            /* Sending the TEARDOWN indication to HDD. */
+            csrRoamCallCallback(pMac, pSirTdlsDelStaInd->sessionId, &roamInfo, 0,
+                         eCSR_ROAM_TDLS_STATUS_UPDATE,
+                               eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND);
+            break ;
+        }
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
         case eWNI_SME_TDLS_DISCOVERY_START_RSP:
         {

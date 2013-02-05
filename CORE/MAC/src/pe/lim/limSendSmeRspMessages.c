@@ -1420,6 +1420,64 @@ limSendSmeDeauthInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession psess
     return;
 } /*** end limSendSmeDeauthInd() ***/
 
+#ifdef FEATURE_WLAN_TDLS
+/**
+ * limSendSmeTDLSDelStaInd()
+ *
+ *FUNCTION:
+ * This function is called to send the TDLS STA context deletion to SME.
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ *
+ *NOTE:
+ * NA
+ *
+ * @param  pMac   - Pointer to global MAC structure
+ * @param  pStaDs - Pointer to internal STA Datastructure
+ * @param  psessionEntry - Pointer to the session entry
+ * @param  reasonCode - Reason for TDLS sta deletion
+ * @return None
+ */
+void
+limSendSmeTDLSDelStaInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession psessionEntry, tANI_U16 reasonCode)
+{
+    tSirMsgQ  mmhMsg;
+    tSirTdlsDelStaInd  *pSirTdlsDelStaInd;
+
+    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pSirTdlsDelStaInd, sizeof(tSirTdlsDelStaInd)))
+    {
+        limLog(pMac, LOGP, FL("palAllocateMemory failed for eWNI_SME_TDLS_DEL_STA_IND \n"));
+        return;
+    }
+
+    //messageType
+    pSirTdlsDelStaInd->messageType = eWNI_SME_TDLS_DEL_STA_IND;
+    pSirTdlsDelStaInd->length = sizeof(tSirTdlsDelStaInd);
+
+    //sessionId
+    pSirTdlsDelStaInd->sessionId = psessionEntry->smeSessionId;
+
+    //peerMacAddr
+    palCopyMemory( pMac->hHdd, pSirTdlsDelStaInd->peerMac, pStaDs->staAddr, sizeof(tSirMacAddr));
+
+    //staId
+    limCopyU16((tANI_U8*)(&pSirTdlsDelStaInd->staId), (tANI_U16)pStaDs->staIndex);
+
+    //reasonCode
+    limCopyU16((tANI_U8*)(&pSirTdlsDelStaInd->reasonCode), reasonCode);
+
+    mmhMsg.type = eWNI_SME_TDLS_DEL_STA_IND;
+    mmhMsg.bodyptr = pSirTdlsDelStaInd;
+    mmhMsg.bodyval = 0;
+
+
+    limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+    return;
+}/*** end limSendSmeTDLSDelStaInd() ***/
+#endif
+
 
 /**
  * limSendSmeDeauthNtf()
