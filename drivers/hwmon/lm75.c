@@ -29,6 +29,8 @@
 #include <linux/mutex.h>
 #include <linux/of.h>
 #include <linux/thermal.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
 #include "lm75.h"
 
 
@@ -81,6 +83,7 @@ static const u8 LM75_REG_TEMP[3] = {
 struct lm75_data {
 	struct i2c_client	*client;
 	enum lm75_type          sensor;
+	int                     irq_gpio;
 	struct device		*hwmon_dev;
 	struct thermal_zone_device	*tz;
 	struct mutex		update_lock;
@@ -187,6 +190,47 @@ static const struct thermal_zone_of_device_ops lm75_of_thermal_ops = {
 	.get_temp = lm75_read_temp,
 };
 
+#ifdef CONFIG_OF
+static int lm75_of_init(struct lm75_data *data, struct i2c_client *client)
+{
+	struct device_node *np;
+
+	np = client->dev.of_node;
+	data->irq_gpio = of_get_gpio(np, 0);
+	return ((data->irq_gpio < 0) ? data->irq_gpio : 0);
+}
+#else
+static inline int lm75_of_init(struct lm75_data *data,
+			       struct i2c_client *client)
+{
+	return -EINVAL;
+}
+#endif
+
+static int lm75_init_irq_gpio(struct lm75_data *data, struct i2c_client *client)
+{
+	int ret;
+
+	ret = gpio_request_one(data->irq_gpio, GPIOF_IN, "temp1_alarm");
+	if (ret) {
+		dev_err(&client->dev, "GPIO request failed: %d\n", ret);
+		return ret;
+	}
+	ret = gpio_export(data->irq_gpio, false);
+	if (ret) {
+		dev_err(&client->dev, "GPIO export failed: %d\n", ret);
+		gpio_free(data->irq_gpio);
+		return ret;
+	}
+	ret = gpio_export_link(&client->dev, "temp1_alarm", data->irq_gpio);
+	if (ret) {
+		dev_err(&client->dev, "GPIO export link failed: %d\n", ret);
+		gpio_free(data->irq_gpio);
+		return ret;
+	}
+	return ret;
+}
+
 /*-----------------------------------------------------------------------*/
 
 /* device probe and removal */
@@ -211,6 +255,7 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	data->client = client;
 	i2c_set_clientdata(client, data);
+	data->irq_gpio = -1;
 	mutex_init(&data->update_lock);
 
 	data->sensor = id->driver_data;
@@ -310,6 +355,14 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	if (IS_ERR(data->hwmon_dev))
 		return PTR_ERR(data->hwmon_dev);
 
+	if (client->dev.of_node) {
+		status = lm75_of_init(data, client);
+		if (!status)
+			status = lm75_init_irq_gpio(data, client);
+		if (status < 0)
+			dev_err(&client->dev, "unable to config IRQ.\n");
+	}
+
 	data->tz = thermal_zone_of_sensor_register(data->hwmon_dev, 0,
 						   data->hwmon_dev,
 						   &lm75_of_thermal_ops);
@@ -327,6 +380,7 @@ static int lm75_remove(struct i2c_client *client)
 	struct lm75_data *data = i2c_get_clientdata(client);
 
 	thermal_zone_of_sensor_unregister(data->hwmon_dev, data->tz);
+	gpio_free(data->irq_gpio);
 	hwmon_device_unregister(data->hwmon_dev);
 	lm75_write_value(client, LM75_REG_CONF, data->orig_conf);
 	return 0;
