@@ -42,8 +42,7 @@
 		tmp108@48 {
 			compatible = "ti,tmp108";
 			reg = <0x48>;
-			interrupt-parent = <&msmgpio>;
-			interrupts = <98 0>;
+			gpios = <&msmgpio 98 0>;
 		};
 
 		pnxxx@28 {
@@ -834,10 +833,8 @@
 	factory_support {
 		compatible = "mmi,factory-support-msm8960";
 
-		gpios = <&msmgpio 75 0x2>, /* GPIOF_DIR_OUT | GPIOF_INIT_HIGH */
-			<&msmgpio 98 0x1>; /* GPIOF_DIR_IN */
-		gpio-names = "factory_kill_disable",
-			     "temp_sensor";
+		gpios = <&msmgpio 75 0x2>; /* GPIOF_DIR_OUT | GPIOF_INIT_HIGH */
+		gpio-names = "factory_kill_disable";
 	};
 
 	/* SDCC */
