@@ -27,6 +27,8 @@
 #include <linux/regulator/consumer.h>
 #include <linux/switch.h>
 
+#include <sound/soc.h>
+
 #include <linux/mfd/arizona/core.h>
 #include <linux/mfd/arizona/pdata.h>
 #include <linux/mfd/arizona/registers.h>
@@ -114,6 +116,52 @@ static void arizona_extcon_set_mode(struct arizona_extcon_info *info, int mode)
 	dev_dbg(arizona->dev, "Set jack polarity to %d\n", mode);
 }
 
+static const char *arizona_extcon_get_micbias(struct arizona_extcon_info *info)
+{
+	switch (info->micd_modes[0].bias >> ARIZONA_MICD_BIAS_SRC_SHIFT) {
+	case 1:
+		return "MICBIAS1";
+	case 2:
+		return "MICBIAS2";
+	case 3:
+		return "MICBIAS3";
+	default:
+		return "MICVDD";
+	}
+}
+
+static void arizona_extcon_pulse_micbias(struct arizona_extcon_info *info)
+{
+	struct arizona *arizona = info->arizona;
+	const char *widget = arizona_extcon_get_micbias(info);
+	struct snd_soc_dapm_context *dapm = arizona->dapm;
+	int ret;
+
+	mutex_lock(&dapm->card->mutex);
+
+	ret = snd_soc_dapm_force_enable_pin(dapm, widget);
+	if (ret != 0)
+		dev_warn(arizona->dev, "Failed to enable %s: %d\n",
+			 widget, ret);
+
+	mutex_unlock(&dapm->card->mutex);
+
+	snd_soc_dapm_sync(dapm);
+
+	if (!arizona->pdata.micd_force_micbias) {
+		mutex_lock(&dapm->card->mutex);
+
+		ret = snd_soc_dapm_disable_pin(arizona->dapm, widget);
+		if (ret != 0)
+			dev_warn(arizona->dev, "Failed to disable %s: %d\n",
+				 widget, ret);
+
+		mutex_unlock(&dapm->card->mutex);
+
+		snd_soc_dapm_sync(dapm);
+	}
+}
+
 static void arizona_start_mic(struct arizona_extcon_info *info)
 {
 	struct arizona *arizona = info->arizona;
@@ -139,6 +187,8 @@ static void arizona_start_mic(struct arizona_extcon_info *info)
 			   ARIZONA_ACCESSORY_DETECT_MODE_1,
 			   ARIZONA_ACCDET_MODE_MASK, ARIZONA_ACCDET_MODE_MIC);
 
+	arizona_extcon_pulse_micbias(info);
+
 	regmap_update_bits_check(arizona->regmap, ARIZONA_MIC_DETECT_1,
 				 ARIZONA_MICD_ENA, ARIZONA_MICD_ENA,
 				 &change);
@@ -151,11 +201,26 @@ static void arizona_start_mic(struct arizona_extcon_info *info)
 static void arizona_stop_mic(struct arizona_extcon_info *info)
 {
 	struct arizona *arizona = info->arizona;
+	const char *widget = arizona_extcon_get_micbias(info);
+	struct snd_soc_dapm_context *dapm = arizona->dapm;
 	bool change;
+	int ret;
 
 	regmap_update_bits_check(arizona->regmap, ARIZONA_MIC_DETECT_1,
 				 ARIZONA_MICD_ENA, 0,
 				 &change);
+
+	mutex_lock(&dapm->card->mutex);
+
+	ret = snd_soc_dapm_disable_pin(dapm, widget);
+	if (ret != 0)
+		dev_warn(arizona->dev,
+			 "Failed to disable %s: %d\n",
+			 widget, ret);
+
+	mutex_unlock(&dapm->card->mutex);
+
+	snd_soc_dapm_sync(dapm);
 
 	if (info->micd_reva) {
 		regmap_write(arizona->regmap, 0x80, 0x3);
@@ -559,6 +624,8 @@ static void arizona_start_hpdet_acc_id(struct arizona_extcon_info *info)
 
 	info->hpdet_active = true;
 
+	arizona_extcon_pulse_micbias(info);
+
 	ret = regmap_update_bits(arizona->regmap, 0x225, 0x4000, 0x4000);
 	if (ret != 0)
 		dev_warn(arizona->dev, "Failed to do magic: %d\n", ret);
@@ -702,6 +769,7 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 			input_report_key(info->input,
 					 arizona_lvl_to_key[i].report, 0);
 		input_sync(info->input);
+		arizona_extcon_pulse_micbias(info);
 	}
 
 handled:
@@ -1119,7 +1187,7 @@ static int __init arizona_extcon_gpio_init(void)
 {
 	return platform_driver_register(&arizona_extcon_driver);
 }
-module_init(arizona_extcon_gpio_init);
+late_initcall(arizona_extcon_gpio_init);
 
 static void __exit arizona_extcon_gpio_exit(void)
 {
