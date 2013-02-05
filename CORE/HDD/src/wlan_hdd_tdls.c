@@ -192,11 +192,12 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
 #endif
                     }
                 } else {
-                    if ((curr_peer->tx_pkt > 0 &&
-                            curr_peer->tx_pkt <
-                            pHddTdlsCtx->threshold_config.tx_packet_n) ||
-                        (curr_peer->tx_pkt == 0 &&
-                            curr_peer->rx_pkt == 0)) {
+                    /* if we are receiving pakcets (rx_pkt > 0), don't start
+                     * the idle timer regardless of tx
+                     */
+                    if (((curr_peer->rx_pkt == 0) &&
+                            (curr_peer->tx_pkt <
+                            pHddTdlsCtx->threshold_config.tx_packet_n))){
                         if (VOS_TIMER_STATE_RUNNING !=
                                 vos_timer_getCurrentState(&curr_peer->peerIdleTimer)) {
                             VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "-> start Idle Timer (%d)", pHddTdlsCtx->threshold_config.rx_timeout_t);
