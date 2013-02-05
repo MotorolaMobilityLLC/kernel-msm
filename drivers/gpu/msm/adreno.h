@@ -169,18 +169,11 @@ struct adreno_ft_data {
 	unsigned int *good_rb_buffer;
 	unsigned int good_rb_size;
 	unsigned int last_valid_ctx_id;
-	unsigned int step;
-	int fault;
+	unsigned int status;
+	unsigned int ft_policy;
+	unsigned int err_code;
 	unsigned int start_of_replay_cmds;
 	unsigned int replay_for_snapshot;
-};
-
-enum ft_steps {
-	FT_REPLAY_BAD_CTXT_CMDS = 0,
-	FT_NOP_IB_BAD_CTXT_CMDS,
-	FT_SKIP_EOF_BAD_CTXT_CMDS,
-	FT_FAIL_BAD_CTXT_CMDS,
-	FT_PLAY_GOOD_CTXT_CMDS
 };
 
 extern struct adreno_gpudev adreno_a2xx_gpudev;
