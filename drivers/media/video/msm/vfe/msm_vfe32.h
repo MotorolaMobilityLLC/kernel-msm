@@ -1000,6 +1000,7 @@ struct vfe_share_ctrl_t {
 	atomic_t rdi2_update_ack_pending;
 
 	uint8_t stream_error;
+	uint32_t rdi_comp;
 
 };
 
