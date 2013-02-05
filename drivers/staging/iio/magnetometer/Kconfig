@@ -24,15 +24,4 @@ config SENSORS_HMC5843
 	  To compile this driver as a module, choose M here: the module
 	  will be called hmc5843
 
-config AMI306
-        tristate "invensense implementation of ami306"
-	depends on I2C && IIO_KFIFO_BUF && SYSFS && IIO && IIO_TRIGGER
-	default n
-	help
-      This driver supports the ami306. It is Invensense implementation
-      of ami306 compass device.
-      This driver can be built as a module. The module will be called
-      inv-ami306-iio.
-
-source "drivers/staging/iio/magnetometer/inv_compass/Kconfig"
 endmenu

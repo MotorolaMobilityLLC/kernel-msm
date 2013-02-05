@@ -139,10 +139,17 @@ struct msm_gpiomux_config vcap_configs[] = {
 		}
 	},
 	{
-		.gpio = 23,
+		.gpio = 25,
 		.settings = {
 			[GPIOMUX_SUSPENDED] =	&gpio_vcap_config[2],
 			[GPIOMUX_ACTIVE] =		&gpio_vcap_config[2],
+		}
+	},
+	{
+		.gpio = 24,
+		.settings = {
+			[GPIOMUX_SUSPENDED] =	&gpio_vcap_config[1],
+			[GPIOMUX_ACTIVE] =		&gpio_vcap_config[1],
 		}
 	},
 	{
@@ -390,18 +397,6 @@ static struct gpiomux_setting gsbi7_func1_cfg = {
 
 static struct gpiomux_setting gsbi7_func2_cfg = {
 	.func = GPIOMUX_FUNC_2,
-	.drv = GPIOMUX_DRV_8MA,
-	.pull = GPIOMUX_PULL_NONE,
-};
-
-static struct gpiomux_setting gsbi2_suspended = {
-	.func = GPIOMUX_FUNC_1,
-	.drv = GPIOMUX_DRV_2MA,
-	.pull = GPIOMUX_PULL_KEEPER,
-};
-
-static struct gpiomux_setting gsbi2_active = {
-	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
 };
@@ -702,20 +697,6 @@ static struct msm_gpiomux_config apq8064_gsbi_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &gpio_i2c_config_sus,
 			[GPIOMUX_ACTIVE] = &gpio_i2c_config,
-		},
-	},
-	{
-		.gpio      = 24,		/* GSBI2 QUP I2C_DATA */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gsbi2_suspended,
-			[GPIOMUX_ACTIVE] = &gsbi2_active,
-		},
-	},
-	{
-		.gpio      = 25,		/* GSBI2 QUP I2C_CLK */
-		.settings = {
-			[GPIOMUX_SUSPENDED] = &gsbi2_suspended,
-			[GPIOMUX_ACTIVE] = &gsbi2_active,
 		},
 	},
 };

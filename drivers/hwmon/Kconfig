@@ -1435,16 +1435,6 @@ config SENSORS_CAP1106
 	  To compile this driver as a module, choose m here. The module will
 	  be called cap1106.
 
-config SENSORS_AL3320A
-	tristate "Lite-On light sensor"
-	depends on I2C
-	help
-	  If you say yes here you get support for ambient light sensing from
-	  lite-on AL3320A.
-	  This driver will provide the measurements of ambient light intensity
-	  in lux.
-	  Data from sensor is accessible via sysfs.
-
 if ACPI
 
 comment "ACPI drivers"

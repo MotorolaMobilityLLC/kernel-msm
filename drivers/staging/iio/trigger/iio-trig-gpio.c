@@ -47,6 +47,10 @@ static irqreturn_t iio_gpio_trigger_poll(int irq, void *private)
 	return IRQ_HANDLED;
 }
 
+static const struct iio_trigger_ops iio_gpio_trigger_ops = {
+	.owner = THIS_MODULE,
+};
+
 static int iio_gpio_trigger_probe(struct platform_device *pdev)
 {
 	struct iio_gpio_trigger_info *trig_info;
@@ -81,7 +85,7 @@ static int iio_gpio_trigger_probe(struct platform_device *pdev)
 			}
 			trig->private_data = trig_info;
 			trig_info->irq = irq;
-			trig->owner = THIS_MODULE;
+			trig->ops = &iio_gpio_trigger_ops;
 			ret = request_irq(irq, iio_gpio_trigger_poll,
 					  irqflags, trig->name, trig);
 			if (ret) {
@@ -156,17 +160,7 @@ static struct platform_driver iio_gpio_trigger_driver = {
 	},
 };
 
-static int __init iio_gpio_trig_init(void)
-{
-	return platform_driver_register(&iio_gpio_trigger_driver);
-}
-module_init(iio_gpio_trig_init);
-
-static void __exit iio_gpio_trig_exit(void)
-{
-	platform_driver_unregister(&iio_gpio_trigger_driver);
-}
-module_exit(iio_gpio_trig_exit);
+module_platform_driver(iio_gpio_trigger_driver);
 
 MODULE_AUTHOR("Jonathan Cameron <jic23@cam.ac.uk>");
 MODULE_DESCRIPTION("Example gpio trigger for the iio subsystem");
