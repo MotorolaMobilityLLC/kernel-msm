@@ -56,14 +56,14 @@
 			num_disp_reg = <4>;
 
 			/* Display's VCI reg which shared same gpio_en as VDDIO */
-			reg_id_1 = "dsi_vci";
+			reg_id_1 = "disp_vci";
 			reg_name_1 = "TOUCH_VDD";
 			reg_min_mv_1 = <3100000>;
 			reg_max_mv_1 = <3100000>;
 			reg_delay_1 = <5>;
 
 			/* Display's VDDIO reg */
-			reg_id_2 = "disp_s4";
+			reg_id_2 = "dsi_s4";
 			reg_name_2 = "DISP_VDDIO";
 			reg_min_mv_2 = <1800000>;
 			reg_max_mv_2 = <1800000>;
