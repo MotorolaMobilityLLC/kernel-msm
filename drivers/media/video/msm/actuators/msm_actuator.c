@@ -260,6 +260,7 @@ static int32_t msm_actuator_move_focus(
 	int16_t dest_step_pos = move_params->dest_step_pos;
 	uint16_t curr_lens_pos = 0;
 	int dir = move_params->dir;
+	struct damping_params_t damping_param;
 #ifdef CONFIG_MSM_CAMERA_DEBUG
 	int32_t num_steps = move_params->num_steps;
 #endif
@@ -282,6 +283,16 @@ static int32_t msm_actuator_move_focus(
 		step_boundary =
 			a_ctrl->region_params[a_ctrl->curr_region_index].
 			step_bound[dir];
+
+		if (copy_from_user(&damping_param,
+				   &(move_params->
+					   ringing_params[a_ctrl->
+					   curr_region_index]),
+				   sizeof(struct damping_params_t))) {
+			pr_err("%s: copy_from_user\n", __func__);
+			return -EFAULT;
+		}
+
 		if ((dest_step_pos * sign_dir) <=
 			(step_boundary * sign_dir)) {
 
@@ -294,9 +305,7 @@ static int32_t msm_actuator_move_focus(
 				actuator_write_focus(
 					a_ctrl,
 					curr_lens_pos,
-					&(move_params->
-						ringing_params[a_ctrl->
-						curr_region_index]),
+					&damping_param,
 					sign_dir,
 					target_lens_pos);
 			if (rc < 0) {
@@ -321,9 +330,7 @@ static int32_t msm_actuator_move_focus(
 				actuator_write_focus(
 					a_ctrl,
 					curr_lens_pos,
-					&(move_params->
-						ringing_params[a_ctrl->
-						curr_region_index]),
+					&damping_param,
 					sign_dir,
 					target_lens_pos);
 			if (rc < 0) {
