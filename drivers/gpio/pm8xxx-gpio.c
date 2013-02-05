@@ -295,6 +295,9 @@ static int pm_gpio_of_xlate(struct gpio_chip *gpio_chip,
 		return -EINVAL;
 	}
 
+	if (flags)
+		*flags = gpiospec->args[1];
+
 	/* Decrement as GPIO naming convention is 1-based */
 	return --gpio;
 }
