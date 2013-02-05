@@ -137,7 +137,7 @@ void modem_crash_shutdown(const struct subsys_desc *subsys)
 
 /* FIXME: Get address, size from PIL */
 static struct ramdump_segment modemsw_segments[] = {
-	{0x89000000, 0x8D400000 - 0x89000000},
+	{0x88400000, 0x8D400000 - 0x88400000},
 };
 
 static struct ramdump_segment modemfw_segments[] = {
