@@ -271,7 +271,7 @@ static struct pm8xxx_misc_platform_data apq8064_pm8921_misc_pdata = {
 
 static struct led_info pm8921_led_info[] = {
 	[0] = {
-		.name			= "led:red",
+		.name			= "white",
 		.default_trigger	= "ac-online",
 	},
 };
@@ -304,7 +304,7 @@ static struct pm8xxx_pwm_duty_cycles pm8921_led0_pwm_duty_cycles = {
 
 static struct pm8xxx_led_config pm8921_led_configs[] = {
 	[0] = {
-		.id = PM8XXX_ID_LED_0,
+		.id = PM8XXX_ID_LED_1,
 		.mode = PM8XXX_LED_MODE_PWM2,
 		.max_current = PM8921_LC_LED_MAX_CURRENT,
 		.pwm_channel = 5,
@@ -317,6 +317,7 @@ static struct pm8xxx_led_platform_data apq8064_pm8921_leds_pdata = {
 		.led_core = &pm8921_led_core_pdata,
 		.configs = pm8921_led_configs,
 		.num_configs = ARRAY_SIZE(pm8921_led_configs),
+		.use_pwm = 1,
 };
 
 static struct pm8xxx_adc_amux apq8064_pm8921_adc_channels_data[] = {

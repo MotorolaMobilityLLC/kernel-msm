@@ -1110,6 +1110,105 @@ static ssize_t pm8xxx_led_blink_store(struct device *dev,
 
 static DEVICE_ATTR(blink, 0644, pm8xxx_led_blink_show, pm8xxx_led_blink_store);
 
+static ssize_t store_led_brightness(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t len)
+{
+	const struct pm8xxx_led_platform_data *pdata = dev->platform_data;
+	struct pm8xxx_led_data *leds = (struct pm8xxx_led_data *)dev_get_drvdata(dev);
+	unsigned long val;
+	int ret;
+	int i = 0;
+
+	ret = strict_strtoul(buf, 16, &val);
+
+	for (i = 0; i < pdata->num_configs; i++){
+		leds[i].cdev.brightness = val;
+		schedule_work(&leds[i].work);
+		printk("leds: [%s] leds->id = %d, leds->cdev.name = %s\n", __FUNCTION__, leds[i].id, leds[i].cdev.name);
+		printk("leds: [%s] leds[i].cdev.brightness = %d\n", __FUNCTION__, leds[i].cdev.brightness);
+	}
+
+	return len;
+}
+
+static ssize_t store_led_pwm_period_us(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t len)
+{
+	const struct pm8xxx_led_platform_data *pdata = dev->platform_data;
+	struct pm8xxx_led_data *leds = (struct pm8xxx_led_data *)dev_get_drvdata(dev);
+	unsigned long val;
+	int ret, start_idx, idx_len, rc;
+	int i = 0;
+
+	ret = strict_strtoul(buf, 16, &val);
+
+	for (i = 0; i < pdata->num_configs; i++){
+		leds[i].pwm_period_us = val;
+		start_idx = leds[i].pwm_duty_cycles->start_idx;
+		idx_len = leds[i].pwm_duty_cycles->num_duty_pcts;
+		rc = pm8xxx_pwm_lut_config(leds[i].pwm_dev, leds[i].pwm_period_us,
+				leds[i].pwm_duty_cycles->duty_pcts,
+				leds[i].pwm_duty_cycles->duty_ms,
+				start_idx, idx_len, 0, 0,
+				PM8XXX_LED_PWM_FLAGS);
+
+		schedule_work(&leds[i].work);
+		printk("leds: [%s] leds->id = %d, leds->cdev.name = %s\n", __FUNCTION__, leds[i].id, leds[i].cdev.name);
+		printk("leds: [%s] leds[i].pwm_period_us = %d\n", __FUNCTION__, leds[i].pwm_period_us);
+	}
+
+	return len;
+}
+
+static ssize_t store_led_duty_ms(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t len)
+{
+	const struct pm8xxx_led_platform_data *pdata = dev->platform_data;
+	struct pm8xxx_led_data *leds = (struct pm8xxx_led_data *)dev_get_drvdata(dev);
+	unsigned long val;
+	int ret, start_idx, idx_len, rc;
+	int i = 0;
+
+	ret = strict_strtoul(buf, 16, &val);
+
+	for (i = 0; i < pdata->num_configs; i++){
+		leds[i].pwm_duty_cycles->duty_ms = val;
+		start_idx = leds[i].pwm_duty_cycles->start_idx;
+		idx_len = leds[i].pwm_duty_cycles->num_duty_pcts;
+		rc = pm8xxx_pwm_lut_config(leds[i].pwm_dev, leds[i].pwm_period_us,
+				leds[i].pwm_duty_cycles->duty_pcts,
+				leds[i].pwm_duty_cycles->duty_ms,
+				start_idx, idx_len, 0, 0,
+				PM8XXX_LED_PWM_FLAGS);
+
+		schedule_work(&leds[i].work);
+
+		printk("leds: [%s] leds->id = %d, leds->cdev.name = %s\n", __FUNCTION__, leds[i].id, leds[i].cdev.name);
+		printk("leds: [%s] leds[i].pwm_duty_cycles->duty_ms = %d\n", __FUNCTION__, leds[i].pwm_duty_cycles->duty_ms);
+	}
+
+	return len;
+}
+
+static DEVICE_ATTR(led_brightness, S_IWUSR, NULL, store_led_brightness);
+static DEVICE_ATTR(led_pwm_period_us, S_IWUSR, NULL, store_led_pwm_period_us);
+static DEVICE_ATTR(led_duty_ms, S_IWUSR, NULL, store_led_duty_ms);
+
+
+
+static struct attribute *pm8xxx_attributes[] = {
+	&dev_attr_led_brightness.attr,
+	&dev_attr_led_pwm_period_us.attr,
+	&dev_attr_led_duty_ms.attr,
+	NULL
+};
+
+static const struct attribute_group pm8xxx_group = {
+	.attrs = pm8xxx_attributes,
+};
 
 static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 {
@@ -1118,6 +1217,7 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 	struct led_info *curr_led;
 	struct pm8xxx_led_data *led, *led_dat;
 	struct pm8xxx_led_config *led_cfg;
+	struct device *dev = &pdev->dev;
 	enum pm8xxx_version version;
 	bool found = false;
 	int rc, i, j;
@@ -1243,6 +1343,9 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 			__pm8xxx_led_work(led_dat, led_dat->cdev.brightness);
 		}
 	}
+	rc = sysfs_create_group(&dev->kobj, &pm8xxx_group);
+	if (rc)
+		dev_err(&pdev->dev, "unable to register led sysfs\n");
 
 	led->use_pwm = pdata->use_pwm;
 
