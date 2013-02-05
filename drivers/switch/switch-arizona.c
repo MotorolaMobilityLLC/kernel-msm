@@ -55,6 +55,7 @@ struct arizona_extcon_info {
 	unsigned int spk_clamp;
 
 	bool hpdet_active;
+	bool hpdet_done;
 
 	int num_hpdet_res;
 	unsigned int hpdet_res[3];
@@ -378,7 +379,7 @@ static int arizona_hpdet_do_id(struct arizona_extcon_info *info, int *reading)
 		    (id_gpio && info->hpdet_res[2] > 10)) {
 			dev_dbg(arizona->dev, "Detected mic\n");
 			info->mic = true;
-			switch_set_state(&info->sdev, BIT_HEADSET);
+			info->detecting = true;
 		} else {
 			dev_dbg(arizona->dev, "Detected headphone\n");
 		}
@@ -476,6 +477,8 @@ done:
 		info->hpdet_active = false;
 	}
 
+	info->hpdet_done = true;
+
 out:
 	mutex_unlock(&info->lock);
 
@@ -486,6 +489,9 @@ static void arizona_identify_headphone(struct arizona_extcon_info *info)
 {
 	struct arizona *arizona = info->arizona;
 	int ret;
+
+	if (info->hpdet_done)
+		return;
 
 	dev_dbg(arizona->dev, "Starting HPDET\n");
 
@@ -768,6 +774,7 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 		for (i = 0; i < ARRAY_SIZE(info->hpdet_res); i++)
 			info->hpdet_res[i] = 0;
 		info->mic = false;
+		info->hpdet_done = false;
 
 		for (i = 0; i < ARIZONA_NUM_BUTTONS; i++)
 			input_report_key(info->input,
