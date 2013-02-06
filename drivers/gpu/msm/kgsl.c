@@ -915,9 +915,10 @@ kgsl_get_process_private(struct kgsl_device_private *cur_dev_priv)
 
 	if ((!private->pagetable) && kgsl_mmu_enabled()) {
 		unsigned long pt_name;
+		struct kgsl_mmu *mmu = &cur_dev_priv->device->mmu;
 
 		pt_name = task_tgid_nr(current);
-		private->pagetable = kgsl_mmu_getpagetable(pt_name);
+		private->pagetable = kgsl_mmu_getpagetable(mmu, pt_name);
 		if (private->pagetable == NULL) {
 			mutex_unlock(&private->process_private_mutex);
 			kgsl_put_process_private(cur_dev_priv->device,
@@ -1116,7 +1117,7 @@ kgsl_sharedmem_find_region(struct kgsl_process_private *private,
 {
 	struct rb_node *node;
 
-	if (!kgsl_mmu_gpuaddr_in_range(gpuaddr))
+	if (!kgsl_mmu_gpuaddr_in_range(private->pagetable, gpuaddr))
 		return NULL;
 
 	spin_lock(&private->mem_lock);
@@ -1184,7 +1185,7 @@ kgsl_sharedmem_region_empty(struct kgsl_process_private *private,
 
 	assert_spin_locked(&private->mem_lock);
 
-	if (!kgsl_mmu_gpuaddr_in_range(gpuaddr))
+	if (!kgsl_mmu_gpuaddr_in_range(private->pagetable, gpuaddr))
 		return 0;
 
 	/* don't overflow */
@@ -1795,20 +1796,23 @@ static struct kgsl_cmdbatch *kgsl_cmdbatch_create(struct kgsl_device *device,
  * Do a quick sanity test on the list of indirect buffers in a command batch
  * verifying that the size and GPU address
  */
-static bool _kgsl_cmdbatch_verify(struct kgsl_device *device,
+static bool _kgsl_cmdbatch_verify(struct kgsl_device_private *dev_priv,
 	struct kgsl_cmdbatch *cmdbatch)
 {
 	int i;
 
+	struct kgsl_process_private *private = dev_priv->process_priv;
+
 	for (i = 0; i < cmdbatch->ibcount; i++) {
 		if (cmdbatch->ibdesc[i].sizedwords == 0) {
-			KGSL_DRV_ERR(device,
+			KGSL_DRV_ERR(dev_priv->device,
 				"Invalid IB: size is 0\n");
 			return false;
 		}
 
-		if (!kgsl_mmu_gpuaddr_in_range(cmdbatch->ibdesc[i].gpuaddr)) {
-			KGSL_DRV_ERR(device,
+		if (!kgsl_mmu_gpuaddr_in_range(private->pagetable,
+			cmdbatch->ibdesc[i].gpuaddr)) {
+			KGSL_DRV_ERR(dev_priv->device,
 				"Invalid IB: address 0x%X is out of range\n",
 				cmdbatch->ibdesc[i].gpuaddr);
 			return false;
@@ -1949,7 +1953,7 @@ static long kgsl_ioctl_rb_issueibcmds(struct kgsl_device_private *dev_priv,
 	}
 
 	/* Run basic sanity checking on the command */
-	if (!_kgsl_cmdbatch_verify(device, cmdbatch)) {
+	if (!_kgsl_cmdbatch_verify(dev_priv, cmdbatch)) {
 		KGSL_DRV_ERR(device, "Unable to verify the IBs\n");
 		goto free_cmdbatch;
 	}
@@ -1999,7 +2003,7 @@ static long kgsl_ioctl_submit_commands(struct kgsl_device_private *dev_priv,
 	}
 
 	/* Run basic sanity checking on the command */
-	if (!_kgsl_cmdbatch_verify(device, cmdbatch)) {
+	if (!_kgsl_cmdbatch_verify(dev_priv, cmdbatch)) {
 		KGSL_DRV_ERR(device, "Unable to verify the IBs\n");
 		goto free_cmdbatch;
 	}
@@ -2604,13 +2608,6 @@ err1:
 	return ret;
 }
 
-static inline int
-can_use_cpu_map(void)
-{
-	return (kgsl_mmu_get_mmutype() == KGSL_MMU_TYPE_IOMMU
-		&& kgsl_mmu_is_perprocess());
-}
-
 static long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
 				     unsigned int cmd, void *data)
 {
@@ -2642,7 +2639,7 @@ static long kgsl_ioctl_map_user_mem(struct kgsl_device_private *dev_priv,
 			| KGSL_MEMFLAGS_USE_CPU_MAP;
 
 	entry->memdesc.flags = param->flags;
-	if (!can_use_cpu_map())
+	if (!kgsl_mmu_use_cpu_map(private->pagetable->mmu))
 		entry->memdesc.flags &= ~KGSL_MEMFLAGS_USE_CPU_MAP;
 
 	if (kgsl_mmu_get_mmutype() == KGSL_MMU_TYPE_IOMMU)
@@ -3028,7 +3025,7 @@ kgsl_ioctl_gpumem_alloc_id(struct kgsl_device_private *dev_priv,
 	struct kgsl_mem_entry *entry = NULL;
 	int result;
 
-	if (!can_use_cpu_map())
+	if (!kgsl_mmu_use_cpu_map(private->pagetable->mmu))
 		param->flags &= ~KGSL_MEMFLAGS_USE_CPU_MAP;
 
 	result = _gpumem_alloc(dev_priv, &entry, param->size, param->flags);
