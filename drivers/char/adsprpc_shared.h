@@ -14,6 +14,12 @@
 #ifndef ADSPRPC_SHARED_H
 #define ADSPRPC_SHARED_H
 
+#ifdef __KERNEL__
+#include <linux/types.h>
+#endif /*__KERNEL__*/
+
+
+
 #define FASTRPC_IOCTL_INVOKE _IOWR('R', 1, struct fastrpc_ioctl_invoke)
 #define FASTRPC_SMD_GUID "fastrpcsmd-apps-dsp"
 #define DEVICE_NAME      "adsprpc-smd"
