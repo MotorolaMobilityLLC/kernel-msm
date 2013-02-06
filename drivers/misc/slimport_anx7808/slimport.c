@@ -462,11 +462,13 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 		goto err2;
 	}
 
+	//this pin request is to make sure that USB_ID is requested
+	//if USB side already request this, we could ignore this pin request
 	ret = gpio_request(GPIO_APQ_USB_ID, "msm_otg_id_pin");
 	if (ret) {
 		pr_err("'%s: (%d) gpio_request failed, ret=%d\n",
 			"GPIO_APQ_USB_ID", GPIO_APQ_USB_ID, ret);
-		goto err2;
+		//goto err2;
 	}
 	ret = gpio_direction_input(GPIO_APQ_USB_ID);
 	if (ret) {
