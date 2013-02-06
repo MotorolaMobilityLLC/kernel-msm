@@ -847,7 +847,7 @@
 
 		qcom,sdcc-pad-drv-on = <0x2 0x2 0x2>; /* 6mA, 6mA, 6mA */
 
-		qcom,sdcc-clk-rates = <400000 24000000 48000000 96000000 192000000>;
+		qcom,sdcc-clk-rates = <400000 24000000 48000000 96000000>;
 		qcom,sdcc-bus-speed-mode = "HS200_1p8v", "DDR_1p8v";
 		qcom,sdcc-max-power-class = <6>;
 	};
