@@ -1896,6 +1896,8 @@ static void __init register_i2c_devices(void)
 
 static void __init apq8064_common_init(void)
 {
+	struct msm_rpmrs_level rpmrs_level;
+
 	platform_device_register(&msm_gpio_device);
 	msm_tsens_early_init(&apq_tsens_pdata);
 	msm_thermal_init(&msm_thermal_pdata);
@@ -1928,7 +1930,12 @@ static void __init apq8064_common_init(void)
 	platform_add_devices(common_not_mpq_devices,
 			ARRAY_SIZE(common_not_mpq_devices));
 	if (!mako_charger_mode) {
-		msm_hsic_pdata.swfi_latency = msm_rpmrs_levels[0].latency_us;
+		rpmrs_level =
+			msm_rpmrs_levels[MSM_PM_SLEEP_MODE_WAIT_FOR_INTERRUPT];
+		msm_hsic_pdata.swfi_latency = rpmrs_level.latency_us;
+		rpmrs_level =
+			msm_rpmrs_levels[MSM_PM_SLEEP_MODE_POWER_COLLAPSE_STANDALONE];
+		msm_hsic_pdata.standalone_latency = rpmrs_level.latency_us;
 		apq8064_device_hsic_host.dev.platform_data = &msm_hsic_pdata;
 		device_initialize(&apq8064_device_hsic_host.dev);
 	}
