@@ -299,6 +299,10 @@ int mdp4_dsi_cmd_pipe_commit(int cndx, int wait)
 	if (mdp4_dsi_cmd_clk_check(vctrl) < 0)
 		return 0;
 
+	spin_lock_irqsave(&vctrl->spin_lock, flags);
+	vctrl->pan_display++;
+	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
+
 	/* free previous committed iommu back to pool */
 	mdp4_overlay_iommu_unmap_freelist(mixer);
 
@@ -1159,7 +1163,6 @@ static int mdp4_dsi_cmd_clk_check(struct vsycn_ctrl *vctrl)
 
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	vctrl->clk_control = 0;
-	vctrl->pan_display++;
 	if (!vctrl->clk_enabled) {
 		clk_set_on = 1;
 		vctrl->clk_enabled = 1;
