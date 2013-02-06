@@ -8,6 +8,15 @@ Optional properties:
     This property will be used to fill in the long_name of the standard
     snd_soc_card structures.  It is visible in the /proc/asound/cards entry
     for user space to identify specific codecs available to it
+- gpios-pri-i2s :
+    This GPIO list is used to request the necessary GPIOs for the Primary I2S
+    TX Path.  It should consist of the neccessary GPIOs to be requested and
+    placed in their active configuration.  The necessary GPIOs can vary based
+    on the device.
+- gpios-pri-i2s-names :
+    This is a required property if gpios-pri-i2s is provided above.  It must
+    provide the corresponding GPIO labels to match with the above defined
+    GPIOs.
 
 Optional Children:
 
@@ -28,6 +37,14 @@ sound {
 	compatible = "qcom,msm8960-soc-audio";
 
 	qcom,msm8960-card-longname = "msm8960-snd-card-wcd,tfa9890_codec";
+
+	/* Primary I2S TX */
+	gpios-pri-i2s = <&msmgpio 55 0>, /* SCK */
+			<&msmgpio 56 0>, /* WS */
+			<&msmgpio 57 0>; /* DIN */
+	gpios-pri-i2s-names = "pri-i2s-sck",
+			      "pri-i2s-ws",
+			      "pri-i2s-din";
 
 	/* DAI Links */
 	dai-msm-stub-tx {
