@@ -1777,9 +1777,9 @@ static VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
     VOS_STATUS vosStatus = VOS_STATUS_E_FAILURE;
     WLAN_STADescType staDesc = {0};
 
-    if (-1 == wlan_hdd_saveTdlsPeer(pRoamInfo)) {
+    if (-1 == wlan_hdd_tdls_set_sta_id(pRoamInfo->peerMac, pRoamInfo->staId)) {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-                     "wlan_hdd_saveTdlsPeer() failed");
+                     "wlan_hdd_tdls_set_sta_id() failed");
     }
     /*
      * TDLS sta in BSS should be set as STA type TDLS and STA MAC should
@@ -1967,7 +1967,7 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
             {
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                                ("HDD: del STA IDX = %x\n"), pRoamInfo->staId) ;
-                wlan_hdd_removeTdlsPeer(pRoamInfo);
+                wlan_hdd_tdls_reset_peer(pRoamInfo->peerMac);
                 hdd_roamDeregisterTDLSSTA ( pAdapter, pRoamInfo->staId );
                 (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = NULL;
             }
