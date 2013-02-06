@@ -91,7 +91,7 @@ static const struct tpa6165_regs tpa6165_reg_defaults[] = {
 },
 {
 	.reg = TPA6165_MICB_CTL_REG,
-	.value = 0x44,
+	.value = 0x04,
 },
 {
 	.reg = TPA6165_RSVD_DEF_REG1,
