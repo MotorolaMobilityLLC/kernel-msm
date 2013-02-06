@@ -101,6 +101,16 @@
 #include "dphHashTable.h"
 #include "wlan_qct_wda.h"
 
+/* define NO_PAD_TDLS_MIN_8023_SIZE to NOT padding: See CR#447630
+There was IOT issue with cisco 1252 open mode, where it pads
+discovery req/teardown frame with some junk value up to min size.
+To avoid this issue, we pad QCOM_VENDOR_IE.
+If there is other IOT issue because of this bandage, define NO_PAD...
+*/
+#ifndef NO_PAD_TDLS_MIN_8023_SIZE
+#define MIN_IEEE_8023_SIZE              46
+#define MIN_VENDOR_SPECIFIC_IE_SIZE     5
+#endif
 #ifdef WLAN_FEATURE_TDLS_DEBUG
 #define TDLS_DEBUG_LOG_LEVEL VOS_TRACE_LEVEL_ERROR
 #else
@@ -427,6 +437,9 @@ tSirRetStatus limSendTdlsDisReqFrame(tpAniSirGlobal pMac, tSirMacAddr peer_mac,
     tANI_U8            *pFrame;
     void               *pPacket;
     eHalStatus          halstatus;
+#ifndef NO_PAD_TDLS_MIN_8023_SIZE
+    tANI_U32            padLen = 0;
+#endif
 
     /* 
      * The scheme here is to fill out a 'tDot11fProbeRequest' structure
@@ -477,6 +490,23 @@ tSirRetStatus limSendTdlsDisReqFrame(tpAniSirGlobal pMac, tSirMacAddr peer_mac,
     nBytes = nPayload + sizeof( tSirMacMgmtHdr ) 
                      + sizeof( eth_890d_header ) 
                         + PAYLOAD_TYPE_TDLS_SIZE ;
+
+#ifndef NO_PAD_TDLS_MIN_8023_SIZE
+    /* IOT issue with some AP : some AP doesn't like the data packet size < minimum 802.3 frame length (64)
+       Hence AP itself padding some bytes, which caused teardown packet is dropped at
+       receiver side. To avoid such IOT issue, we added some extra bytes to meet data frame size >= 64
+     */
+    if (nPayload + PAYLOAD_TYPE_TDLS_SIZE < MIN_IEEE_8023_SIZE)
+    {
+        padLen = MIN_IEEE_8023_SIZE - (nPayload + PAYLOAD_TYPE_TDLS_SIZE ) ;
+
+        /* if padLen is less than minimum vendorSpecific (5), pad up to 5 */
+        if (padLen < MIN_VENDOR_SPECIFIC_IE_SIZE)
+            padLen = MIN_VENDOR_SPECIFIC_IE_SIZE;
+
+        nBytes += padLen;
+    }
+#endif
 
     /* Ok-- try to allocate memory from MGMT PKT pool */
 
@@ -535,6 +565,26 @@ tSirRetStatus limSendTdlsDisReqFrame(tpAniSirGlobal pMac, tSirMacAddr peer_mac,
                                "Discovery Request (0x%08x).\n") );
     }
 
+#ifndef NO_PAD_TDLS_MIN_8023_SIZE
+    if (padLen != 0)
+    {
+        /* QCOM VENDOR OUI = { 0x00, 0xA0, 0xC6, type = 0x0000 }; */
+        tANI_U8 *padVendorSpecific = pFrame + header_offset + nPayload;
+        /* make QCOM_VENDOR_OUI, and type = 0x0000, and all the payload to be zero */
+        padVendorSpecific[0] = 221;
+        padVendorSpecific[1] = padLen - 2;
+        padVendorSpecific[2] = 0x00;
+        padVendorSpecific[3] = 0xA0;
+        padVendorSpecific[4] = 0xC6;
+
+        LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO, ("Padding Vendor Specific Ie Len = %d"),
+                padLen ));
+
+        /* padding zero if more than 5 bytes are required */
+        if (padLen > MIN_VENDOR_SPECIFIC_IE_SIZE)
+            palZeroMemory( pMac->hHdd, pFrame + header_offset + nPayload + MIN_VENDOR_SPECIFIC_IE_SIZE, padLen - MIN_VENDOR_SPECIFIC_IE_SIZE);
+    }
+#endif
 
     LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL, ("[TDLS] action %d (%s) -AP-> OTA "),
             SIR_MAC_TDLS_DIS_REQ, limTraceTdlsActionString(SIR_MAC_TDLS_DIS_REQ) ));
@@ -1234,7 +1284,9 @@ tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
     tANI_U8            *pFrame;
     void               *pPacket;
     eHalStatus          halstatus;
-
+#ifndef NO_PAD_TDLS_MIN_8023_SIZE
+    tANI_U32            padLen = 0;
+#endif
     /* 
      * The scheme here is to fill out a 'tDot11fProbeRequest' structure
      * and then hand it off to 'dot11fPackProbeRequest' (for
@@ -1280,6 +1332,23 @@ tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
                      + sizeof( eth_890d_header ) 
                         + PAYLOAD_TYPE_TDLS_SIZE
                         + addIeLen;
+
+#ifndef NO_PAD_TDLS_MIN_8023_SIZE
+    /* IOT issue with some AP : some AP doesn't like the data packet size < minimum 802.3 frame length (64)
+       Hence AP itself padding some bytes, which caused teardown packet is dropped at
+       receiver side. To avoid such IOT issue, we added some extra bytes to meet data frame size >= 64
+     */
+    if (nPayload + PAYLOAD_TYPE_TDLS_SIZE < MIN_IEEE_8023_SIZE)
+    {
+        padLen = MIN_IEEE_8023_SIZE - (nPayload + PAYLOAD_TYPE_TDLS_SIZE ) ;
+
+        /* if padLen is less than minimum vendorSpecific (5), pad up to 5 */
+        if (padLen < MIN_VENDOR_SPECIFIC_IE_SIZE)
+            padLen = MIN_VENDOR_SPECIFIC_IE_SIZE;
+
+        nBytes += padLen;
+    }
+#endif
 
     /* Ok-- try to allocate memory from MGMT PKT pool */
 
@@ -1350,6 +1419,26 @@ tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
        palCopyMemory( pMac->hHdd, pFrame + header_offset + nPayload, addIe, addIeLen ); 
     }
 
+#ifndef NO_PAD_TDLS_MIN_8023_SIZE
+    if (padLen != 0)
+    {
+        /* QCOM VENDOR OUI = { 0x00, 0xA0, 0xC6, type = 0x0000 }; */
+        tANI_U8 *padVendorSpecific = pFrame + header_offset + nPayload + addIeLen;
+        /* make QCOM_VENDOR_OUI, and type = 0x0000, and all the payload to be zero */
+        padVendorSpecific[0] = 221;
+        padVendorSpecific[1] = padLen - 2;
+        padVendorSpecific[2] = 0x00;
+        padVendorSpecific[3] = 0xA0;
+        padVendorSpecific[4] = 0xC6;
+
+        LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO, ("Padding Vendor Specific Ie Len = %d"),
+                padLen ));
+
+        /* padding zero if more than 5 bytes are required */
+        if (padLen > MIN_VENDOR_SPECIFIC_IE_SIZE)
+            palZeroMemory( pMac->hHdd, pFrame + header_offset + nPayload + addIeLen + MIN_VENDOR_SPECIFIC_IE_SIZE, padLen - MIN_VENDOR_SPECIFIC_IE_SIZE);
+    }
+#endif
     LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL, ("[TDLS] action %d (%s) -%s-> OTA"),
          SIR_MAC_TDLS_TEARDOWN, limTraceTdlsActionString(SIR_MAC_TDLS_TEARDOWN),
          (reason == eSIR_MAC_TDLS_TEARDOWN_PEER_UNREACHABLE) ? "AP": "DIRECT" ));
