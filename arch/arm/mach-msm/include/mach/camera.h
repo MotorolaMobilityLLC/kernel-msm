@@ -27,7 +27,6 @@
 #include <linux/msm_ion.h>
 #include <mach/iommu_domains.h>
 
-#define CONFIG_MSM_CAMERA_DEBUG
 #ifdef CONFIG_MSM_CAMERA_DEBUG
 #define CDBG(fmt, args...) pr_debug(fmt, ##args)
 #else
@@ -95,7 +94,6 @@ enum vfe_resp_msg {
 	VFE_MSG_OUTPUT_SECONDARY,
 	VFE_MSG_OUTPUT_TERTIARY1,
 	VFE_MSG_OUTPUT_TERTIARY2,
-	VFE_MSG_OUTPUT_TERTIARY3,
 };
 
 enum vpe_resp_msg {
@@ -126,6 +124,30 @@ struct msm_vpe_phy_info {
 	uint32_t p2_phy;
 	uint8_t  output_id; /* VFE31_OUTPUT_MODE_PT/S/V */
 	uint32_t frame_id;
+};
+
+struct msm_camera_csid_lut_params {
+	uint8_t num_cid;
+	struct msm_camera_csid_vc_cfg *vc_cfg;
+};
+
+struct msm_camera_csid_params {
+	uint8_t lane_cnt;
+	uint16_t lane_assign;
+	uint8_t phy_sel;
+	struct msm_camera_csid_lut_params lut_params;
+};
+
+struct msm_camera_csiphy_params {
+	uint8_t lane_cnt;
+	uint8_t settle_cnt;
+	uint16_t lane_mask;
+	uint8_t combo_mode;
+};
+
+struct msm_camera_csi2_params {
+	struct msm_camera_csid_params csid_params;
+	struct msm_camera_csiphy_params csiphy_params;
 };
 
 #ifndef CONFIG_MSM_CAMERA_V4L2
@@ -309,6 +331,21 @@ struct msm_camera_cci_gpio_cfg {
 	uint16_t i2c_queue;
 };
 
+enum msm_camera_i2c_reg_addr_type {
+	MSM_CAMERA_I2C_BYTE_ADDR = 1,
+	MSM_CAMERA_I2C_WORD_ADDR,
+};
+
+enum msm_camera_i2c_data_type {
+	MSM_CAMERA_I2C_BYTE_DATA = 1,
+	MSM_CAMERA_I2C_WORD_DATA,
+	MSM_CAMERA_I2C_SET_BYTE_MASK,
+	MSM_CAMERA_I2C_UNSET_BYTE_MASK,
+	MSM_CAMERA_I2C_SET_WORD_MASK,
+	MSM_CAMERA_I2C_UNSET_WORD_MASK,
+	MSM_CAMERA_I2C_SET_BYTE_WRITE_MASK_DATA,
+};
+
 enum msm_camera_i2c_cmd_type {
 	MSM_CAMERA_I2C_CMD_WRITE,
 	MSM_CAMERA_I2C_CMD_POLL,
@@ -368,7 +405,6 @@ struct msm_queue_cmd {
 	atomic_t on_heap;
 	struct timespec ts;
 	uint32_t error_code;
-	uint32_t trans_code;
 };
 
 struct msm_device_queue {
@@ -633,9 +669,12 @@ enum msm_bus_perf_setting {
 	S_STEREO_CAPTURE,
 	S_DEFAULT,
 	S_LIVESHOT,
-	S_DUAL,
-	S_LOW_POWER,
 	S_EXIT
+};
+
+struct msm_cam_clk_info {
+	const char *clk_name;
+	long clk_rate;
 };
 
 int msm_camio_enable(struct platform_device *dev);
@@ -678,6 +717,7 @@ void msm_camera_io_w_mb(u32 data, void __iomem *addr);
 u32 msm_camera_io_r(void __iomem *addr);
 u32 msm_camera_io_r_mb(void __iomem *addr);
 void msm_camera_io_dump(void __iomem *addr, int size);
+void msm_camera_io_dump2(void __iomem *addr, int size);
 void msm_camera_io_memcpy(void __iomem *dest_addr,
 		void __iomem *src_addr, u32 len);
 void msm_camio_set_perf_lvl(enum msm_bus_perf_setting);
@@ -693,16 +733,12 @@ int msm_cam_clk_enable(struct device *dev, struct msm_cam_clk_info *clk_info,
 int msm_cam_core_reset(void);
 
 int msm_camera_config_vreg(struct device *dev, struct camera_vreg_t *cam_vreg,
-		int num_vreg, enum msm_camera_vreg_name_t *vreg_seq,
-		int num_vreg_seq, struct regulator **reg_ptr, int config);
+		int num_vreg, struct regulator **reg_ptr, int config);
 int msm_camera_enable_vreg(struct device *dev, struct camera_vreg_t *cam_vreg,
-		int num_vreg, enum msm_camera_vreg_name_t *vreg_seq,
-		int num_vreg_seq, struct regulator **reg_ptr, int enable);
+		int num_vreg, struct regulator **reg_ptr, int enable);
 
 int msm_camera_config_gpio_table
 	(struct msm_camera_sensor_info *sinfo, int gpio_en);
 int msm_camera_request_gpio_table
 	(struct msm_camera_sensor_info *sinfo, int gpio_en);
-void msm_camera_bus_scale_cfg(uint32_t bus_perf_client,
-		enum msm_bus_perf_setting perf_setting);
 #endif
