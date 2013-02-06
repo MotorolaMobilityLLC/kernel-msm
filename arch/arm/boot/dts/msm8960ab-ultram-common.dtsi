@@ -72,8 +72,8 @@
 			reg_gpio_en_type_3 = <0>; /* MSM_GPIO */
 			reg_gpio_en_init_state_3 = <1> ;
 			reg_gpio_en_state_3 = <1>;
-			reg_gpio_en_delay_3 = <2>;
-			reg_gpio_dis_delay_3 = <0>;
+			reg_gpio_en_delay_3 = <3>;
+			reg_gpio_dis_delay_3 = <5>;
 
 			reg_id_4 = "";
 			reg_name_4 = "DISP_VSN" ;
@@ -83,7 +83,7 @@
 			reg_gpio_init_state_4 = <1>;
 			reg_gpio_en_state_4 = <1>;
 			reg_gpio_en_delay_4 = <0>;
-			reg_gpio_dis_delay_4 = <2>;
+			reg_gpio_dis_delay_4 = <4>;
 		};
 	};
 };
