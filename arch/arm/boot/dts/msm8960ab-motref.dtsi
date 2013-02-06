@@ -876,6 +876,14 @@
 		qcom,msm8960-card-longname =
 			"msm8960-snd-card-wcd,tfa9890_codec";
 
+		/* Primary I2S GPIOs - c55 path */
+		gpios-pri-i2s = <&msmgpio 55 0>, /* SCK */
+				<&msmgpio 56 0>, /* WS */
+				<&msmgpio 57 0>; /* DIN */
+		gpios-pri-i2s-names = "pri-i2s-sck",
+				      "pri-i2s-ws",
+				      "pri-i2s-din";
+
 		/* DAI Links */
 		dai-msm-stub-tx {
 			compatible = "qcom,msm8960-dai-link";
