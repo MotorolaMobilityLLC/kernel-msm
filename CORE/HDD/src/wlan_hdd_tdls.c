@@ -255,7 +255,8 @@ static v_VOID_t wlan_hdd_tdls_idle_cb( v_PVOID_t userData )
 
     cfg80211_tdls_oper_request(pHddTdlsCtx->dev,
                                curr_peer->peerMac,
-                               NL80211_TDLS_TEARDOWN, FALSE,
+                               NL80211_TDLS_TEARDOWN,
+                               eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON,
                                GFP_KERNEL);
 #endif
 }
@@ -439,6 +440,35 @@ int wlan_hdd_tdls_set_rssi(u8 *mac, tANI_S8 rxRssi)
 
     return 0;
 }
+
+int wlan_hdd_tdls_set_responder(u8 *mac, tANI_U8 responder)
+{
+    hddTdlsPeer_t *curr_peer;
+
+    if (NULL == pHddTdlsCtx) return -1;
+
+    curr_peer = wlan_hdd_tdls_get_peer(mac);
+    if(curr_peer == NULL)
+        return -1;
+
+    curr_peer->is_responder = responder;
+
+    return 0;
+}
+
+int wlan_hdd_tdls_get_responder(u8 *mac)
+{
+    hddTdlsPeer_t *curr_peer;
+
+    if (NULL == pHddTdlsCtx) return -1;
+
+    curr_peer = wlan_hdd_tdls_find_peer(mac);
+    if(curr_peer == NULL)
+        return -1;
+
+    return (curr_peer->is_responder);
+}
+
 
 void wlan_hdd_tdls_extract_da(struct sk_buff *skb, u8 *mac)
 {

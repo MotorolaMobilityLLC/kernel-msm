@@ -161,7 +161,8 @@ eHalStatus csrTdlsSendMgmtReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsSendMg
 
             tdlsSendMgmtCmdInfo->frameType = tdlsSendMgmt->frameType ;   
             tdlsSendMgmtCmdInfo->dialog = tdlsSendMgmt->dialog ;   
-            tdlsSendMgmtCmdInfo->statusCode = tdlsSendMgmt->statusCode ;   
+            tdlsSendMgmtCmdInfo->statusCode = tdlsSendMgmt->statusCode ;
+            tdlsSendMgmtCmdInfo->responder = tdlsSendMgmt->responder;
             palCopyMemory(pMac->hHdd, tdlsSendMgmtCmdInfo->peerMac, 
                                    tdlsSendMgmt->peerMac, sizeof(tSirMacAddr)) ; 
 
@@ -415,6 +416,7 @@ eHalStatus csrTdlsProcessSendMgmt( tpAniSirGlobal pMac, tSmeCmd *cmd )
     tdlsSendMgmtReq->reqType =  tdlsSendMgmtCmdInfo->frameType ;
     tdlsSendMgmtReq->dialog =  tdlsSendMgmtCmdInfo->dialog ;
     tdlsSendMgmtReq->statusCode =  tdlsSendMgmtCmdInfo->statusCode ;
+    tdlsSendMgmtReq->responder =  tdlsSendMgmtCmdInfo->responder;
     palCopyMemory(pMac->hHdd, tdlsSendMgmtReq->bssid, pSession->pConnectBssDesc->bssId, 
             sizeof (tSirMacAddr));
     palCopyMemory(pMac->hHdd, tdlsSendMgmtReq->peerMac, 

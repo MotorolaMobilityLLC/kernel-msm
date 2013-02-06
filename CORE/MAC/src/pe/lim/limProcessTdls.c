@@ -1223,7 +1223,7 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
  */
 
 tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
-            tSirMacAddr peerMac, tANI_U16 reason, tpPESession psessionEntry,
+            tSirMacAddr peerMac, tANI_U16 reason, tANI_U8 responder, tpPESession psessionEntry,
             tANI_U8 *addIe, tANI_U16 addIeLen) 
 {
     tDot11fTDLSTeardown teardown ;
@@ -1247,7 +1247,7 @@ tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
     teardown.Reason.code       = reason ;
 
     PopulateDot11fLinkIden( pMac, psessionEntry, &teardown.LinkIdentifier, 
-                                                peerMac, TDLS_INITIATOR) ;
+                                                peerMac, (responder == TRUE) ? TDLS_RESPONDER : TDLS_INITIATOR) ;
 
 
     /* 
@@ -4419,7 +4419,7 @@ tSirRetStatus limProcessSmeTdlsMgmtSendReq(tpAniSirGlobal pMac,
         case SIR_MAC_TDLS_TEARDOWN:
             {
                 limSendTdlsTeardownFrame(pMac,
-                        pSendMgmtReq->peerMac, pSendMgmtReq->statusCode, psessionEntry,
+                        pSendMgmtReq->peerMac, pSendMgmtReq->statusCode, pSendMgmtReq->responder, psessionEntry,
                         &pSendMgmtReq->addIe[0], (pSendMgmtReq->length - sizeof(tSirTdlsSendMgmtReq))); 
                 resultCode = eSIR_SME_SUCCESS;
             }

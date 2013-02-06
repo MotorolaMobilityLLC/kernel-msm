@@ -1299,6 +1299,7 @@ typedef struct tagCsrTdlsSendMgmt
         tANI_U8 frameType;
         tANI_U8 dialog;
         tANI_U16 statusCode;
+        tANI_U8 responder;
         tANI_U8 *buf;
         tANI_U8 len;
 
