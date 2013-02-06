@@ -4013,7 +4013,11 @@ int hdd_wlan_startup(struct device *dev )
    wlan_hdd_restart_init(pHddCtx);
 
 #ifdef FEATURE_WLAN_TDLS
-   wlan_hdd_tdls_init(pAdapter->dev);
+   if(0 != wlan_hdd_tdls_init(pAdapter->dev))
+   {
+       hddLog(VOS_TRACE_LEVEL_FATAL,"%s: wlan_hdd_tdls_init failed",__func__);
+       goto err_nl_srv;
+   }
 #endif
   
    goto success;
