@@ -339,7 +339,7 @@ static irqreturn_t wdog_bark_handler(int irq, void *dev_id)
 #define TZBSP_DUMP_CTX_VERSION		1
 
 #define MSM_WDT_CTX_SIG			0x77647473
-#define MSM_WDT_CTX_REV			0x00010002
+#define MSM_WDT_CTX_REV			0x00010003
 
 #define NR_CPUS_MAX			4
 #define NR_CPUS_2			2
@@ -466,16 +466,35 @@ struct msm_wdt_pcp {
 	u32 ret;
 	u32 stack_va;
 	struct msm_wdt_cpy jobs[LNX_CTX_AREAS];
-	struct task_struct ts;
-} __packed __aligned(1024);
+} __packed __aligned(4);
 
 struct msm_wdt_ctx {
 	struct msm_wdt_page1 p1;
-	struct msm_wdt_pcp pcp[NR_CPUS_MAX];
 } __packed __aligned(PAGE_SIZE);
 
+/*
+ *	---------	---------------------
+ *	|	|	| tzbsp_dump_buf_s
+ *	| page1 |	| padding
+ *	|	|	| msm_wdt_ctx_info
+ *	---------	---------------------
+ *	| page2 |	| msm_wdt_pcp[0], ...
+ *	| ...	|	| task_struct[0], ...
+ *	| pagex |	| padding
+ *	---------	---------------------
+ *	| ...	|	| stack[0], ...
+ *	|	|	|
+ */
+
+#define MSM_WDT_CTX_PCP_SIZE	(sizeof(struct msm_wdt_pcp) * get_core_count())
+#define MSM_WDT_CTX_TSK_SIZE	(sizeof(struct task_struct) * get_core_count())
+
+#define MSM_WDT_CTX_MID_SIZE	(ALIGN((MSM_WDT_CTX_PCP_SIZE + \
+					MSM_WDT_CTX_TSK_SIZE), PAGE_SIZE))
+#define MSM_WDT_CTX_THREAD_SIZE	(THREAD_SIZE * get_core_count())
 #define MSM_WDT_CTX_SIZE	(sizeof(struct msm_wdt_ctx)	\
-				+ (THREAD_SIZE * get_core_count()))
+				+ MSM_WDT_CTX_MID_SIZE \
+				+ MSM_WDT_CTX_THREAD_SIZE)
 
 void __init reserve_memory_for_watchdog(void)
 {
@@ -485,7 +504,6 @@ void __init reserve_memory_for_watchdog(void)
 
 static unsigned long msm_watchdog_alloc_buf(void)
 {
-	BUILD_BUG_ON(sizeof(struct msm_wdt_pcp) != 1024);
 	BUILD_BUG_ON((sizeof(union tzbsp_dump_buf_s)
 		+ sizeof(struct msm_wdt_ctx_info)) > PAGE_SIZE);
 	BUILD_BUG_ON(CONFIG_NR_CPUS > NR_CPUS_MAX);
@@ -655,20 +673,23 @@ static void __init msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 	struct tzbsp_mon_cpu_ctx_s *sc_ns;
 	char label[64];
 	u8 (*stack)[THREAD_SIZE];
+	const int cpu_count = get_core_count();
+	struct msm_wdt_pcp *pcp;
+	struct task_struct *task;
 
 	if ((ctx->p1.tzbsp.s0.magic != TZBSP_DUMP_CTX_MAGIC)
 		|| (ctx->p1.tzbsp.s0.version != TZBSP_DUMP_CTX_VERSION)
-		|| (ctx->p1.tzbsp.s0.cpu_count != get_core_count())) {
+		|| (ctx->p1.tzbsp.s0.cpu_count != cpu_count)) {
 		MSMWDTD("msm_wdt_ctx: tzbsp dump buffer mismatch.\n");
 		MSMWDTD("Expected: magic 0x%08x, version %d, cpu_count %d\n",
 			TZBSP_DUMP_CTX_MAGIC, TZBSP_DUMP_CTX_VERSION,
-			get_core_count());
+			cpu_count);
 		MSMWDTD("Found:    magic 0x%08x, version %d, cpu_count %d\n",
 			ctx->p1.tzbsp.s0.magic, ctx->p1.tzbsp.s0.version,
 			ctx->p1.tzbsp.s0.cpu_count);
 		return;
 	}
-	switch (get_core_count()) {
+	switch (cpu_count) {
 	case NR_CPUS_2:
 		sc_status = ctx->p1.tzbsp.s2.sc_status;
 		sc_ns = ctx->p1.tzbsp.s2.sc_ns;
@@ -680,11 +701,10 @@ static void __init msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 		wdt0_sts = ctx->p1.tzbsp.s4.wdt0_sts;
 		break;
 	default:
-		MSMWDTD("msm_wdt_ctx: unsupported cpu_count %d\n",
-			get_core_count());
+		MSMWDTD("msm_wdt_ctx: unsupported cpu_count %d\n", cpu_count);
 		return;
 	}
-	for (i = 0; i < get_core_count(); i++) {
+	for (i = 0; i < cpu_count; i++) {
 		orr |= wdt0_sts[i];
 		orr |= sc_ns[i].mon_lr;
 	}
@@ -705,22 +725,22 @@ static void __init msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 		}
 	}
 	MSMWDTD("sc_status: ");
-	for (i = 0; i < get_core_count(); i++)
+	for (i = 0; i < cpu_count; i++)
 		MSMWDTD("0x%x ", sc_status[i]);
 	MSMWDTD("\n");
-	for (i = 0; i < get_core_count(); i++) {
+	for (i = 0; i < cpu_count; i++) {
 		snprintf(label, sizeof(label) - 1, "CPU%d", i);
 		msm_wdt_show_status(sc_status[i], label);
 	}
 	MSMWDTD("wdt0_sts: ");
-	for (i = 0; i < get_core_count(); i++)
+	for (i = 0; i < cpu_count; i++)
 		MSMWDTD("0x%08x ", wdt0_sts[i]);
 	MSMWDTD("\n");
-	for (i = 0; i < get_core_count(); i++) {
+	for (i = 0; i < cpu_count; i++) {
 		snprintf(label, sizeof(label) - 1, "CPU%d nsec", i);
 		msm_wdt_show_regs(&sc_ns[i], label);
 	}
-	msm_wdt_show_regs(&sc_ns[get_core_count()], "sec");
+	msm_wdt_show_regs(&sc_ns[cpu_count], "sec");
 	if ((ctx->p1.cinfo.sig != MSM_WDT_CTX_SIG)
 		|| (ctx->p1.cinfo.rev_tz != MSM_WDT_CTX_REV)
 		|| (ctx->p1.cinfo.size_tz != MSM_WDT_CTX_SIZE)) {
@@ -736,36 +756,43 @@ static void __init msm_wdt_ctx_print(struct msm_wdt_ctx *ctx)
 	MSMWDTD("\n");
 	MSMWDTD("ret 0x%08x\n", ctx->p1.cinfo.ret);
 	MSMWDTD("\n");
-	for (i = 0; i < get_core_count(); i++) {
+	pcp = (struct msm_wdt_pcp *)(ctx + 1);
+	for (i = 0; i < cpu_count; i++) {
+		struct msm_wdt_cpy *job;
 		MSMWDTD("CPU%d: ", i);
-		MSMWDTD("ret 0x%x ", ctx->pcp[i].ret);
-		MSMWDTD("stack %08x ", ctx->pcp[i].stack_va);
+		MSMWDTD("ret 0x%x ", pcp[i].ret);
+		MSMWDTD("stack %08x ", pcp[i].stack_va);
+		job = &pcp[i].jobs[LNX_TASK];
+		MSMWDTD("%08x -> %08x (%x) ", job->from, job->to, job->size);
+		job = &pcp[i].jobs[LNX_STACK];
+		MSMWDTD("%08x -> %08x (%x)", job->from, job->to, job->size);
 		MSMWDTD("\n");
 	}
 	if ((ctx->p1.cinfo.ret != (RET_SBL2 | ERR_NONE)))
 		return;
 	MSMWDTD("\n");
-	stack = (u8 (*)[THREAD_SIZE])(ctx + 1);
+	task = (struct task_struct *)(pcp + cpu_count);
+	stack = (u8 (*)[THREAD_SIZE])(ALIGN((unsigned long)(task + cpu_count),
+					PAGE_SIZE));
 	if (!IS_ALIGNED((unsigned long)stack, THREAD_SIZE)) {
 		stack_tmp = __get_free_pages(GFP_KERNEL, THREAD_SIZE_ORDER);
 		if (!stack_tmp)
 			pr_err("Allocating temporary storage for stack failed.\n");
 	}
-	for (i = 0; i < get_core_count(); i++) {
+	for (i = 0; i < cpu_count; i++) {
 		unsigned long addr, data;
 
-		if (ctx->pcp[i].ret != (RET_SBL2 | ERR_NONE))
+		if (pcp[i].ret != (RET_SBL2 | ERR_NONE))
 			continue;
 		MSMWDTD("CPU%d: ", i);
-		addr = ctx->pcp[i].stack_va;
+		addr = pcp[i].stack_va;
 		if (stack_tmp) {
 			memcpy((void *)stack_tmp, stack[i], THREAD_SIZE);
 			data = stack_tmp;
 		} else {
 			data = (unsigned long)stack[i];
 		}
-		msm_wdt_show_task(&ctx->pcp[i].ts,
-				(struct thread_info *)data);
+		msm_wdt_show_task(&task[i], (struct thread_info *)data);
 		msm_wdt_unwind_backtrace(&sc_ns[i], addr, data);
 		MSMWDTD("\n");
 	}
