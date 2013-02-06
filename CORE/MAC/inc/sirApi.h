@@ -4179,6 +4179,7 @@ typedef struct sSirTdlsSendMgmtReq
     tANI_U8             reqType;
     tANI_U8             dialog;
     tANI_U16            statusCode;
+    tANI_U8             responder;
     tSirMacAddr         bssid;         // For multi-session, for PE to locate peSession ID
     tSirMacAddr         peerMac;
     tANI_U8             addIe[1];      //Variable lenght. Dont add any field after this.

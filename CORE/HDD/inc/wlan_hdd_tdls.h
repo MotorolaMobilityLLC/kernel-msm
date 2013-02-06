@@ -88,6 +88,7 @@ typedef struct {
     tANI_S8     rssi;
     tANI_S8     tdls_support;
     tANI_S8     link_status;
+    tANI_U8     is_responder;
     tANI_U16    discovery_attempt;
     tANI_U16    tx_pkt;
     tANI_U16    rx_pkt;
@@ -126,6 +127,10 @@ void wlan_hdd_tdls_set_link_status(hddTdlsPeer_t *curr_peer, int status);
 int wlan_hdd_tdls_set_cap(u8 *mac, int cap);
 
 int wlan_hdd_tdls_set_rssi(u8 *mac, tANI_S8 rxRssi);
+
+int wlan_hdd_tdls_set_responder(u8 *mac, tANI_U8 responder);
+
+int wlan_hdd_tdls_get_responder(u8 *mac);
 
 int wlan_hdd_tdls_set_params(tdls_config_params_t *config);
 
