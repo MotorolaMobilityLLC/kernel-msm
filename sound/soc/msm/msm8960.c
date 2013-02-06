@@ -18,6 +18,8 @@
 #include <linux/platform_device.h>
 #include <linux/mfd/pm8xxx/pm8921.h>
 #include <linux/slab.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <sound/core.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
@@ -68,6 +70,11 @@
 #define JACK_DETECT_INT PM8921_GPIO_IRQ(PM8921_IRQ_BASE, JACK_DETECT_GPIO)
 
 #define JACK_US_EURO_SEL_GPIO 35
+
+struct msm8960_asoc_mach_data {
+	struct gpio *pri_i2s_gpios;
+	unsigned int num_pri_i2s_gpios;
+};
 
 static u32 top_spk_pamp_gpio  = PM8921_GPIO_PM_TO_SYS(18);
 static u32 bottom_spk_pamp_gpio = PM8921_GPIO_PM_TO_SYS(19);
@@ -1257,12 +1264,6 @@ static int msm8960_aux_pcm_free_gpios(void)
 	return 0;
 }
 
-static int msm_primary_i2s_tx_free_gpios(struct gpio *gpios, int num_gpios)
-{
-	gpio_free_array(gpios, num_gpios);
-	return 0;
-}
-
 static int msm_primary_i2s_tx_hw_params(struct snd_pcm_substream *substream,
 			struct snd_pcm_hw_params *params)
 {
@@ -1280,8 +1281,13 @@ static int msm_primary_i2s_tx_hw_params(struct snd_pcm_substream *substream,
 static void msm_primary_i2s_tx_shutdown(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	struct msm_mi2s_pdata *pdata = (cpu_dai->dev)->platform_data;
+	struct snd_soc_card *card = rtd->card;
+	struct msm8960_asoc_mach_data *data = snd_soc_card_get_drvdata(card);
+
+	if (!data) {
+		pr_err("%s: no machine data!\n", __func__);
+		return;
+	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 
@@ -1295,20 +1301,8 @@ static void msm_primary_i2s_tx_shutdown(struct snd_pcm_substream *substream)
 			clk_put(pri_i2s_tx_bit_clk);
 			pri_i2s_tx_bit_clk = NULL;
 		}
-		msm_primary_i2s_tx_free_gpios(pdata->gpios,
-							pdata->num_gpios);
+		gpio_free_array(data->pri_i2s_gpios, data->num_pri_i2s_gpios);
 	}
-}
-
-static int configure_primary_i2s_tx_gpio(struct gpio *gpios, int num_gpios)
-{
-	int ret;
-	ret = gpio_request_array(gpios, num_gpios);
-	if (ret < 0)
-		pr_err("%s:failed to request Pri I2S Gpios %d",
-						__func__, ret);
-
-	return ret;
 }
 
 static int msm_primary_i2s_tx_startup(struct snd_pcm_substream *substream)
@@ -1316,11 +1310,17 @@ static int msm_primary_i2s_tx_startup(struct snd_pcm_substream *substream)
 	int ret = -EINVAL;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	struct msm_primary_i2s_pdata *pdata = (cpu_dai->dev)->platform_data;
+	struct snd_soc_card *card = rtd->card;
+	struct msm8960_asoc_mach_data *data = snd_soc_card_get_drvdata(card);
+
+	if (!data) {
+		pr_err("%s: no machine data!\n", __func__);
+		return -ENODEV;
+	}
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-		ret = configure_primary_i2s_tx_gpio(pdata->gpios,
-							pdata->num_gpios);
+		ret = gpio_request_array(data->pri_i2s_gpios,
+						data->num_pri_i2s_gpios);
 		if (ret < 0)
 			goto gpio_fail;
 
@@ -1372,7 +1372,7 @@ osr_clk_fail:
 	clk_put(pri_i2s_tx_osr_clk);
 	pri_i2s_tx_osr_clk = NULL;
 gpio_fail:
-	msm_primary_i2s_tx_free_gpios(pdata->gpios, pdata->num_gpios);
+	gpio_free_array(data->pri_i2s_gpios, data->num_pri_i2s_gpios);
 
 	return ret;
 }
@@ -2114,8 +2114,77 @@ static void msm8960_of_add_dai_links(struct snd_soc_card *card,
 		}
 	}
 }
+
+static void msm8960_free_mach_data(struct snd_soc_card *card)
+{
+	struct msm8960_asoc_mach_data *data = snd_soc_card_get_drvdata(card);
+
+	if (data)
+		kfree(data->pri_i2s_gpios);
+	kfree(data);
+}
+
+static void msm8960_of_parse_dt(struct snd_soc_card *card,
+						struct device_node *np)
+{
+	struct msm8960_asoc_mach_data *data;
+	struct gpio *p = NULL;
+	unsigned int cnt;
+	int ret;
+	int i;
+
+	if (!np)
+		return;
+
+	data = kzalloc(sizeof(*data), GFP_KERNEL);
+	if (!data) {
+		pr_err("%s: couldn't allocate mach data\n", __func__);
+		return;
+	}
+
+	cnt = of_gpio_named_count(np, "gpios-pri-i2s");
+	ret = of_property_count_strings(np, "gpios-pri-i2s-names");
+	if (cnt && cnt != ret) {
+		pr_err("%s: PRI I2S GPIO and label mismatch\n", __func__);
+		goto free_data;
+	}
+
+	if (cnt) {
+		p = kzalloc(sizeof(struct gpio) * cnt, GFP_KERNEL);
+		if (!p) {
+			pr_err("%s: pri_i2s_gpio alloc failed\n", __func__);
+			goto free_data;
+		}
+		data->pri_i2s_gpios = p;
+		data->num_pri_i2s_gpios = cnt;
+	}
+
+	for (i = 0; p && i < cnt; i++) {
+		p[i].gpio = of_get_named_gpio(np, "gpios-pri-i2s", i);
+		of_property_read_string_index(np, "gpios-pri-i2s-names", i,
+								&p[i].label);
+		pr_debug("%s: index: %d GPIO: %d name: %s\n", __func__, i,
+			p[i].gpio, p[i].label);
+	}
+
+	snd_soc_card_set_drvdata(card, data);
+
+	return;
+
+free_data:
+	kfree(data);
+	return;
+}
+
 #else
 static inline void msm8960_of_add_dai_links(struct snd_soc_card *card,
+						struct device_node *np)
+{
+}
+
+static inline void msm8960_free_mach_data(struct snd_soc_card *card) { }
+
+static inline void msm8960_of_parse_dt(struct snd_soc_card *card,
 						struct device_node *np)
 {
 }
@@ -2158,6 +2227,9 @@ static int __init msm8960_audio_init(void)
 	/* Add DT supported DAI Links */
 	msm8960_of_add_dai_links(&snd_soc_card_msm8960, np);
 
+	/* Parse DT */
+	msm8960_of_parse_dt(&snd_soc_card_msm8960, np);
+
 	platform_set_drvdata(msm8960_snd_device, &snd_soc_card_msm8960);
 	ret = platform_device_add(msm8960_snd_device);
 	if (ret) {
@@ -2170,6 +2242,7 @@ static int __init msm8960_audio_init(void)
 	if (!msm8960_snd_tabla1x_device) {
 		pr_err("Platform device allocation failed\n");
 		kfree(mbhc_cfg.calibration);
+		msm8960_free_mach_data(&snd_soc_card_msm8960);
 		return -ENOMEM;
 	}
 
@@ -2184,6 +2257,7 @@ static int __init msm8960_audio_init(void)
 	if (ret) {
 		platform_device_put(msm8960_snd_tabla1x_device);
 		kfree(mbhc_cfg.calibration);
+		msm8960_free_mach_data(&snd_soc_card_msm8960);
 		return ret;
 	}
 
@@ -2215,6 +2289,7 @@ static void __exit msm8960_audio_exit(void)
 		pr_debug("%s: Not the right machine type\n", __func__);
 		return ;
 	}
+	msm8960_free_mach_data(&snd_soc_card_msm8960);
 	msm8960_free_headset_mic_gpios();
 	platform_device_unregister(msm8960_snd_device);
 	platform_device_unregister(msm8960_snd_tabla1x_device);
