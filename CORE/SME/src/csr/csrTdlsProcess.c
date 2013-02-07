@@ -829,7 +829,7 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
             roamInfo.staId = addStaRsp->staId ;
             roamInfo.ucastSig = addStaRsp->ucastSig ;
             roamInfo.bcastSig = addStaRsp->bcastSig ;
-            roamInfo.statusCode = addStaRsp->bcastSig ;
+            roamInfo.statusCode = addStaRsp->statusCode ;
             pMac->tdlsCtx.tdlsPeerCount++;
             /*
              * register peer with TL, we have to go through HDD as this is

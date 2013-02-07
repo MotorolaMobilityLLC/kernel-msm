@@ -1894,6 +1894,13 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
         case eCSR_ROAM_RESULT_ADD_TDLS_PEER:
         {
             tANI_U8 staIdx = 0 ;
+
+            if(eSIR_SME_SUCCESS != pRoamInfo->statusCode)
+            {
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                     ("%s: Add Sta is failed."),__func__ );
+                break;
+            }
             /*
              * check if there is available index for this new TDLS STA
              * since TDLS is setup in BSS, we need to start from +1
