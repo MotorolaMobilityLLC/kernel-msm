@@ -3777,4 +3777,18 @@ void csrNeighborRoamTranistionPreauthDoneToDisconnected(tpAniSirGlobal pMac)
     CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_INIT)
 }
 
+/* ---------------------------------------------------------------------------
+    \brief  This function returns TRUE if preauth is completed
+
+    \param  halHandle - The handle from HDD context.
+
+    \return boolean
+
+---------------------------------------------------------------------------*/
+tANI_BOOLEAN csrNeighborRoamScanRspPending (tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+    return (pMac->roam.neighborRoamInfo.scanRspPending);
+}
+
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */
