@@ -558,6 +558,12 @@ typedef struct sap_WPSIE_s {
     } sapwpsie;
 } tSap_WPSIE, *tpSap_WPSIE;
 
+#ifdef WLANTL_DEBUG
+#define MAX_RATE_INDEX      136
+#define MAX_NUM_RSSI        100
+#define MAX_RSSI_INTERVAL     5
+#endif
+
 typedef struct sap_SoftapStats_s {
    v_U32_t txUCFcnt;
    v_U32_t txMCFcnt;
@@ -574,6 +580,10 @@ typedef struct sap_SoftapStats_s {
    v_U32_t rxBcnt;
    v_U32_t rxBcntCRCok;
    v_U32_t rxRate;
+#ifdef WLANTL_DEBUG
+   v_U32_t pktCounterRateIdx[MAX_RATE_INDEX];
+   v_U32_t pktCounterRssi[MAX_NUM_RSSI];
+#endif
 } tSap_SoftapStats, *tpSap_SoftapStats;
 
 
