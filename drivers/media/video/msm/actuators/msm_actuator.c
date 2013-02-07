@@ -170,13 +170,19 @@ static int32_t msm_actuator_write_focus(
 	int16_t code_boundary)
 {
 	int32_t rc = 0;
+#if 0
 	int16_t next_lens_pos = 0;
 	uint16_t damping_code_step = 0;
+#endif
 	uint16_t wait_time = 0;
 
-	damping_code_step = damping_params->damping_step;
 	wait_time = damping_params->damping_delay;
-
+	/* Fix Me - Getting improper focus data from the
+	 * user side actuator driver is resulting in
+	 * an infinity loop which leads to memory corruption
+	 */
+#if 0
+	damping_code_step = damping_params->damping_step;
 	/* Write code based on damping_code_step in a loop */
 	for (next_lens_pos =
 		curr_lens_pos + (sign_direction * damping_code_step);
@@ -195,6 +201,7 @@ static int32_t msm_actuator_write_focus(
 		}
 		curr_lens_pos = next_lens_pos;
 	}
+#endif
 
 	if (curr_lens_pos != code_boundary) {
 		rc = a_ctrl->func_tbl->
