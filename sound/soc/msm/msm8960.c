@@ -74,6 +74,8 @@
 struct msm8960_asoc_mach_data {
 	struct gpio *pri_i2s_gpios;
 	unsigned int num_pri_i2s_gpios;
+	struct gpio *mi2s_gpios;
+	unsigned int num_mi2s_gpios;
 };
 
 static u32 top_spk_pamp_gpio  = PM8921_GPIO_PM_TO_SYS(18);
@@ -1118,13 +1120,6 @@ fail_dout:
 	return ret;
 }
 
-/* Begin MI2S SOC ops Implementation */
-static int msm_mi2s_rx_free_gpios(struct gpio *gpios, int num_gpios)
-{
-	gpio_free_array(gpios, num_gpios);
-	return 0;
-}
-
 static int msm_mi2s_rx_hw_params(struct snd_pcm_substream *substream,
 			struct snd_pcm_hw_params *params)
 {
@@ -1149,8 +1144,14 @@ static int msm_mi2s_rx_hw_params(struct snd_pcm_substream *substream,
 static void msm_mi2s_rx_shutdown(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	struct msm_mi2s_pdata *pdata = (cpu_dai->dev)->platform_data;
+	struct snd_soc_card *card = rtd->card;
+	struct msm8960_asoc_mach_data *data = snd_soc_card_get_drvdata(card);
+
+	if (!data) {
+		pr_err("%s: no machine data!\n", __func__);
+		return;
+	}
+
 	if (atomic_dec_return(&mi2s_rsc_ref) == 0) {
 		if (mi2s_rx_bit_clk) {
 			clk_disable_unprepare(mi2s_rx_bit_clk);
@@ -1162,19 +1163,8 @@ static void msm_mi2s_rx_shutdown(struct snd_pcm_substream *substream)
 			clk_put(mi2s_rx_osr_clk);
 			mi2s_rx_osr_clk = NULL;
 		}
-		msm_mi2s_rx_free_gpios(pdata->gpios, pdata->num_gpios);
+		gpio_free_array(data->mi2s_gpios, data->num_mi2s_gpios);
 	}
-}
-
-static int configure_mi2s_rx_gpio(struct gpio *gpios, int num_gpios)
-{
-	int ret;
-	ret = gpio_request_array(gpios, num_gpios);
-	if (ret < 0)
-		pr_err("%s:failed to request MI2S Gpios %d",
-						__func__, ret);
-
-	return ret;
 }
 
 static int msm_mi2s_rx_startup(struct snd_pcm_substream *substream)
@@ -1183,9 +1173,17 @@ static int msm_mi2s_rx_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
-	struct msm_mi2s_pdata *pdata = (cpu_dai->dev)->platform_data;
+	struct snd_soc_card *card = rtd->card;
+	struct msm8960_asoc_mach_data *data = snd_soc_card_get_drvdata(card);
+
+	if (!data) {
+		pr_err("%s: no machine data!\n", __func__);
+		return -ENODEV;
+	}
+
 	if (atomic_inc_return(&mi2s_rsc_ref) == 1) {
-		ret = configure_mi2s_rx_gpio(pdata->gpios, pdata->num_gpios);
+		ret = gpio_request_array(data->mi2s_gpios,
+						data->num_mi2s_gpios);
 		if (ret < 0)
 			goto mi2s_gpio_fail;
 
@@ -1247,7 +1245,7 @@ bit_clk_fail:
 	clk_put(mi2s_rx_osr_clk);
 	mi2s_rx_osr_clk = NULL;
 osr_clk_fail:
-	msm_mi2s_rx_free_gpios(pdata->gpios, pdata->num_gpios);
+	gpio_free_array(data->mi2s_gpios, data->num_mi2s_gpios);
 mi2s_gpio_fail:
 	atomic_dec(&mi2s_rsc_ref);
 
@@ -2119,8 +2117,10 @@ static void msm8960_free_mach_data(struct snd_soc_card *card)
 {
 	struct msm8960_asoc_mach_data *data = snd_soc_card_get_drvdata(card);
 
-	if (data)
+	if (data) {
 		kfree(data->pri_i2s_gpios);
+		kfree(data->mi2s_gpios);
+	}
 	kfree(data);
 }
 
@@ -2167,10 +2167,37 @@ static void msm8960_of_parse_dt(struct snd_soc_card *card,
 			p[i].gpio, p[i].label);
 	}
 
+	cnt = of_gpio_named_count(np, "gpios-mi2s");
+	ret = of_property_count_strings(np, "gpios-mi2s-names");
+	if (cnt && cnt != ret) {
+		pr_err("%s: MI2S GPIO and label mismatch\n", __func__);
+		goto free_pri_i2s;
+	}
+
+	if (cnt) {
+		p = kzalloc(sizeof(struct gpio) * cnt, GFP_KERNEL);
+		if (!p) {
+			pr_err("%s: mi2s_gpio alloc failed\n", __func__);
+			goto free_pri_i2s;
+		}
+		data->mi2s_gpios = p;
+		data->num_mi2s_gpios = cnt;
+	}
+
+	for (i = 0; p && i < cnt; i++) {
+		p[i].gpio = of_get_named_gpio(np, "gpios-mi2s", i);
+		of_property_read_string_index(np, "gpios-mi2s-names", i,
+								&p[i].label);
+		pr_debug("%s: index: %d GPIO: %d name: %s\n", __func__, i,
+			p[i].gpio, p[i].label);
+	}
+
 	snd_soc_card_set_drvdata(card, data);
 
 	return;
 
+free_pri_i2s:
+	kfree(data->pri_i2s_gpios);
 free_data:
 	kfree(data);
 	return;
