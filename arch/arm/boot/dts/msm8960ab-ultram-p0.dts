@@ -69,3 +69,10 @@
 		status = "disabled";
 	};
 };
+
+/* GSBI12 - I2C */
+&i2c12 {
+	msp430@48 {
+		msp430_fw_version = "_p0";
+	};
+};
