@@ -884,6 +884,18 @@
 				      "pri-i2s-ws",
 				      "pri-i2s-din";
 
+		/* MI2S */
+		gpios-mi2s = <&msmgpio 47 0>, /* WS   */
+			     <&msmgpio 48 0>, /* SCK  */
+			     <&msmgpio 49 0>, /* DIN  */
+			     <&msmgpio 50 0>, /* DOUT */
+			     <&msmgpio 53 0>; /* MCLK */
+		gpios-mi2s-names = "mi2s_ws",
+				  "mi2s_sck",
+				  "mi2s_din",
+				  "mi2s_dout",
+				  "mi2s_mclk";
+
 		/* DAI Links */
 		dai-msm-stub-tx {
 			compatible = "qcom,msm8960-dai-link";
