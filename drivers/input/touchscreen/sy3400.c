@@ -103,6 +103,25 @@ static bool sy3400_wait4irq(struct sy3400_driver_data *dd);
 static int sy3400_create_sysfs_files(struct sy3400_driver_data *dd);
 static void sy3400_remove_sysfs_files(struct sy3400_driver_data *dd);
 
+static int sy3400_purge_flag(struct notifier_block *nb,
+		unsigned long event, void *ignore)
+{
+	int value;
+	struct sy3400_driver_data *dd;
+	dd = container_of(nb, struct sy3400_driver_data, panel_nb);
+	switch (event) {
+	case MMI_PANEL_EVENT_PWR_OFF:
+		value = 1; /* set purge flag */
+			break;
+	case MMI_PANEL_EVENT_POST_INIT:
+		value = 0; /* clear purge flag */
+			break;
+	default: return 1; /* not interested at this time */
+	}
+	atomic_set(&dd->purge_flag, value);
+	return 0;
+}
+
 #ifdef CONFIG_OF
 static struct of_device_id sy3400_match_tbl[] = {
 	{ .compatible = "synaptics,sy3400" },
@@ -151,6 +170,8 @@ sy3400_of_init(struct i2c_client *client)
 	of_property_read_string(np, "synaptics,sy3400-tdat-filename", &fp);
 	of_property_read_u32(np, "always_on_capable",
 			 &pdata->always_on_capable);
+	of_property_read_u32(np, "synaptics,purge-enabled",
+			 &pdata->purge_enabled);
 
 	pdata->filename = (char *)fp;
 	pdata->gpio_interrupt = of_get_gpio(np, 0);
@@ -329,6 +350,12 @@ static int sy3400_probe(struct i2c_client *client,
 		debugfail = true;
 	}
 
+	if (dd->pdata->purge_enabled) {
+		dd->panel_nb.notifier_call = sy3400_purge_flag;
+		mmi_panel_register_notifier(&dd->panel_nb);
+		pr_info("%s: Register display notifier.\n", __func__);
+	}
+
 	goto sy3400_probe_pass;
 
 sy3400_free_irq:
@@ -362,6 +389,9 @@ static int sy3400_remove(struct i2c_client *client)
 		sy3400_gpio_release(dd);
 		sy3400_free(dd);
 	}
+
+	if (dd->pdata->purge_enabled)
+		mmi_panel_unregister_notifier(&dd->panel_nb);
 
 	i2c_set_clientdata(client, NULL);
 
@@ -2657,6 +2687,12 @@ static void sy3400_report_touches(struct sy3400_driver_data *dd)
 	int p = 0;
 	int w = 0;
 	bool touches_reported = false;
+
+	if (atomic_read(&dd->purge_flag)) {
+		sy3400_dbg(dd, SY3400_DBG3, "%s: skip reporting a touch "
+			" while display is off\n", __func__);
+		return;
+	}
 
 	for (i = 0; i < SY3400_MAX_TOUCHES; i++) {
 		if (!(dd->rdat->tchdat[i].active))
