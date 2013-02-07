@@ -100,9 +100,10 @@
 
 /* This overhead is time for sending NOA start to host in case of GO/sending NULL data & receiving ACK 
  * in case of P2P Client and starting actual scanning with init scan req/rsp plus in case of concurrency,
- * taking care of sending null data and receiving ACK to/from AP.
+ * taking care of sending null data and receiving ACK to/from AP/Also SetChannel with calibration is taking
+ * around 7ms .
  */
-#define SCAN_MESSAGING_OVERHEAD 5 // in msecs
+#define SCAN_MESSAGING_OVERHEAD 10 // in msecs
 
 #define CONV_MS_TO_US 1024 //conversion factor from ms to us
 

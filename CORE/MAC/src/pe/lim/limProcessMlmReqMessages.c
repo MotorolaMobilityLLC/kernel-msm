@@ -2076,8 +2076,7 @@ limProcessMlmPostJoinSuspendLink(tpAniSirGlobal pMac, eHalStatus status, tANI_U3
 
     if( eHAL_STATUS_SUCCESS != status )
     {
-       limLog(pMac, LOGP, FL("Suspend link failed. Not proceeding with join\n"));
-       goto error;
+       limLog(pMac, LOGE, FL("Suspend link(NOTIFY_BSS) failed. still proceeding with join\n"));
     }
     psessionEntry->limPrevMlmState = psessionEntry->limMlmState;
     psessionEntry->limMlmState = eLIM_MLM_WT_JOIN_BEACON_STATE;
