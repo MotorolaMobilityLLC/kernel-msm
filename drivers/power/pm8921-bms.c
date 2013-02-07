@@ -281,6 +281,18 @@ module_param(timestamp, int, 0644);
 MODULE_PARM_DESC(timestamp, "Epoch format timestamp value which indicates last"
 		 "time when cycle_count var was updated");
 
+static int calculate_pc(struct pm8921_bms_chip *chip, int ocv_uv, int batt_temp,
+			int chargecycles);
+static void find_ocv_for_soc(struct pm8921_bms_chip *chip,
+			     int batt_temp,
+			     int chargecycles,
+			     int fcc_uah,
+			     int uuc_uah,
+			     int cc_uah,
+			     int shutdown_soc,
+			     int *rc_uah,
+			     int *ocv_uv);
+
 static void readjust_fcc_table(void)
 {
 	struct single_row_lut *temp, *old;
@@ -886,6 +898,65 @@ static struct kernel_param_ops bms_reset_ops = {
 
 static bool bms_reset;
 module_param_cb(bms_reset, &bms_reset_ops, &bms_reset, 0644);
+
+#define MAX_OCV_UV_VAL 4500000
+#define MIN_OCV_UV_VAL 2500000
+#define MAX_SOC_DIFF 10
+static void validate_ocv(struct pm8921_bms_chip *chip,
+			 struct pm8921_soc_params *raw)
+{
+	int batt_uvolt;
+	int batt_uamp;
+	int batt_temp;
+	int pc;
+	int rc_uah;
+	int soc_ocv_uv;
+
+	if (!raw || !chip)
+		return;
+
+	/* Bounds Check the OCV value */
+	if ((raw->last_good_ocv_uv > MAX_OCV_UV_VAL) ||
+	    (raw->last_good_ocv_uv < MIN_OCV_UV_VAL)) {
+		pr_err("OCV Bound Check Error:\n");
+		pr_err("Calc raw= 0x%x, ocv_uv= %d uV\n",
+		       raw->last_good_ocv_raw,
+		       raw->last_good_ocv_uv);
+
+		pm8921_bms_get_simultaneous_battery_voltage_and_current(
+			&batt_uamp, &batt_uvolt);
+
+		raw->last_good_ocv_raw = 1;
+		raw->last_good_ocv_uv = batt_uvolt +
+			((batt_uamp * chip->default_rbatt_mohm) / 1000);
+		if ((raw->last_good_ocv_uv > MAX_OCV_UV_VAL) ||
+		    (raw->last_good_ocv_uv < MIN_OCV_UV_VAL))
+			raw->last_good_ocv_uv = 4200000;
+
+		pr_err("Replaced raw= 0x%x, ocv_uv= %duV\n",
+		       raw->last_good_ocv_raw, raw->last_good_ocv_uv);
+	}
+
+	/* Check that last_soc has been set */
+	if (last_soc == -EINVAL)
+		return;
+
+	/* Sanity Check the OCV Value */
+	batt_temp = pm8921_batt_temperature();
+	pc = calculate_pc(chip, raw->last_good_ocv_uv, batt_temp,
+			  last_chargecycles);
+	if (abs(pc - last_soc) > MAX_SOC_DIFF) {
+		pr_err("OCV Sanity Check Error:\n");
+		find_ocv_for_soc(chip, batt_temp, last_chargecycles,
+				 100, 0, 0, last_soc, &rc_uah,
+				 &soc_ocv_uv);
+		pr_err("Calc ocv_uv= %d uV, pc = %d, calc_soc = %d\n",
+		       raw->last_good_ocv_uv,
+		       pc, last_soc);
+		raw->last_good_ocv_uv = soc_ocv_uv;
+	}
+}
+
 /*
  * This reflects what should the CC readings should be for
  * a 5mAh discharge. This value is dependent on
@@ -930,6 +1001,7 @@ static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 		raw->last_good_ocv_uv = ocv_ir_compensation(chip,
 						raw->last_good_ocv_uv);
 #endif
+		validate_ocv(chip, raw);
 		chip->last_ocv_uv = raw->last_good_ocv_uv;
 
 		if (is_warm_restart(chip)
@@ -953,6 +1025,7 @@ static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 			est_ocv_uv = estimate_ocv(chip);
 			if (est_ocv_uv > 0) {
 				raw->last_good_ocv_uv = est_ocv_uv;
+				validate_ocv(chip, raw);
 				chip->last_ocv_uv = est_ocv_uv;
 				reset_cc(chip);
 				raw->cc = 0;
@@ -964,6 +1037,7 @@ static int read_soc_params_raw(struct pm8921_bms_chip *chip,
 		chip->prev_last_good_ocv_raw = raw->last_good_ocv_raw;
 		convert_vbatt_raw_to_uv(chip, usb_chg,
 			raw->last_good_ocv_raw, &raw->last_good_ocv_uv);
+		validate_ocv(chip, raw);
 		chip->last_ocv_uv = raw->last_good_ocv_uv;
 		chip->last_ocv_temp_decidegc = batt_temp_decidegc;
 		/* forget the old cc value upon ocv */
@@ -2934,6 +3008,7 @@ static void check_initial_ocv(struct pm8921_bms_chip *chip)
 	int ocv_uv, rc;
 	int16_t ocv_raw;
 	int usb_chg;
+	struct pm8921_soc_params raw;
 
 	/*
 	 * Check if a ocv is available in bms hw,
@@ -2951,7 +3026,9 @@ static void check_initial_ocv(struct pm8921_bms_chip *chip)
 			ocv_uv = DEFAULT_OCV_MICROVOLTS;
 		}
 	}
-	chip->last_ocv_uv = ocv_uv;
+	raw.last_good_ocv_uv = ocv_uv;
+	validate_ocv(chip, &raw);
+	chip->last_ocv_uv = raw.last_good_ocv_uv;
 	pr_debug("ocv_uv = %d last_ocv_uv = %d\n", ocv_uv, chip->last_ocv_uv);
 }
 
