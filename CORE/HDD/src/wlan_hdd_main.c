@@ -508,7 +508,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                       " Received Command to Set Preferred Channels for SAP in %s", __func__);
 
-           ret = sapSetPreferredChannel(dev, ptr);
+           ret = sapSetPreferredChannel(ptr);
        }
        else if(strncmp(command, "SETSUSPENDMODE", 14) == 0)
        {
