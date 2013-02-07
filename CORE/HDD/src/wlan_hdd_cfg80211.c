@@ -138,6 +138,12 @@
     .flags = flag, \
 }
 
+#ifndef WLAN_FEATURE_TDLS_DEBUG
+#define TDLS_LOG_LEVEL VOS_TRACE_LEVEL_INFO
+#else
+#define TDLS_LOG_LEVEL VOS_TRACE_LEVEL_ERROR
+#endif
+
 static const u32 hdd_cipher_suites[] = 
 {
     WLAN_CIPHER_SUITE_WEP40,
@@ -6274,14 +6280,24 @@ static int wlan_hdd_cfg80211_add_station(struct wiphy *wiphy,
                 Cannot process TDLS commands \n");
         return -ENOTSUPP;
     }
+    /* first to check if we reached to maximum supported TDLS peer.
+       TODO: for now, return -EPERM looks working fine,
+       but need to check if any other errno fit into this category.*/
+    if(HDD_MAX_NUM_TDLS_STA == wlan_hdd_tdlsConnectedPeers())
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                "%s: TDLS Max peer already connected. Request declined. \n",
+                __func__);
+        return -EPERM;
+    }
 
     mask = params->sta_flags_mask;
 
     set = params->sta_flags_set;
 
 
-    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
-            "Add Station Request Mask = 0x%x set = 0x%x\n", mask, set);
+    VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+            "%s: mask 0x%x set 0x%x\n",__func__, mask, set);
 
     if (mask & BIT(NL80211_STA_FLAG_TDLS_PEER)) {
         if (set & BIT(NL80211_STA_FLAG_TDLS_PEER)) {
@@ -6476,6 +6492,32 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
                 Cannot process TDLS commands \n");
         return -ENOTSUPP;
     }
+
+    if(SIR_MAC_TDLS_SETUP_REQ == action_code ||
+       SIR_MAC_TDLS_SETUP_RSP == action_code )
+    {
+        if(HDD_MAX_NUM_TDLS_STA == wlan_hdd_tdlsConnectedPeers())
+        {
+            /* supplicant still sends tdls_mgmt(SETUP_REQ) even after
+               we return error code at 'add_station()'. Hence we have this
+               check again in addtion to add_station().
+               Anyway, there is no hard to double-check. */
+            if(SIR_MAC_TDLS_SETUP_REQ == action_code)
+            {
+                VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                        "%s: TDLS Max peer already connected. Request declined. \n",
+                        __func__);
+                return -EPERM;
+            }
+            else
+            {
+                status_code = eSIR_MAC_UNSPEC_FAILURE_STATUS;
+                VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                        "%s: TDLS Max peer already connected send response status %d \n",
+                        __func__,status_code);
+            }
+        }
+    }
     vos_mem_copy( peerMac, peer, 6);
 
 #ifdef WLAN_FEATURE_TDLS_DEBUG
@@ -6590,9 +6632,19 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
             }
             break;
         case NL80211_TDLS_DISABLE_LINK:
-            sme_DeleteTdlsPeerSta( WLAN_HDD_GET_HAL_CTX(pAdapter), 
-                    pAdapter->sessionId, peer );
-            return 0;
+            {
+                if(-1 != wlan_hdd_findTdlsPeer(peer))
+                {
+                    sme_DeleteTdlsPeerSta( WLAN_HDD_GET_HAL_CTX(pAdapter),
+                            pAdapter->sessionId, peer );
+                }
+                else
+                {
+                    VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                    "%s: TDLS Peer Station doesn't exist \n",__func__);
+                }
+                return 0;
+            }
         case NL80211_TDLS_TEARDOWN:
         case NL80211_TDLS_SETUP:
         case NL80211_TDLS_DISCOVERY_REQ:
