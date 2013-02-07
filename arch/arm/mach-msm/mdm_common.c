@@ -615,7 +615,10 @@ static int mdm_subsys_shutdown(const struct subsys_desc *crashed_subsys)
 
 	mdm_ssr_started(mdev);
 	cancel_delayed_work(&mdev->mdm2ap_status_check_work);
-	gpio_direction_output(mdm_drv->ap2mdm_errfatal_gpio, 1);
+
+	if (!mdm_drv->pdata->no_a2m_errfatal_on_ssr)
+		gpio_direction_output(mdm_drv->ap2mdm_errfatal_gpio, 1);
+
 	if (mdm_drv->pdata->ramdump_delay_ms > 0) {
 		/* Wait for the external modem to complete
 		 * its preparation for ramdumps.
