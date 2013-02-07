@@ -478,6 +478,7 @@ static int32_t s5k5b3g_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	/* Set avdd_en high */
 	gpio_direction_output(info->oem_data->sensor_avdd_en, 1);
+	usleep_range(1000, 2000);
 
 	/* Set reset high */
 	gpio_direction_output(info->sensor_reset, 1);
