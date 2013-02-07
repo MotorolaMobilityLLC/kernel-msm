@@ -143,7 +143,7 @@
 
 #if EFFECT_LIBRARY == LIBRARY_A
 /* ~44% of overdrive voltage (open loop) */
-#define REAL_TIME_PLAYBACK_STRENGTH 0x38
+#define REAL_TIME_PLAYBACK_STRENGTH 0x7F
 #elif EFFECT_LIBRARY == LIBRARY_F
 /* 100% of rated voltage (closed loop) */
 #define REAL_TIME_PLAYBACK_STRENGTH 0x7F
@@ -157,6 +157,7 @@
 #define DEFAULT_EFFECT 14	/* Strong buzz 100% */
 
 #define RTP_CLOSED_LOOP_ENABLE  /* Set closed loop mode for RTP */
+#define RTP_ERM_OVERDRIVE_CLAMP_VOLTAGE     0xF0
 
 static struct drv260x {
 	struct class *class;
@@ -376,14 +377,17 @@ static void drv260x_change_mode(char mode)
 	unsigned char tmp[] = {
 #ifdef RTP_CLOSED_LOOP_ENABLE
 		Control3_REG, NG_Thresh_2,
+		OVERDRIVE_CLAMP_VOLTAGE_REG, RTP_ERM_OVERDRIVE_CLAMP_VOLTAGE,
 #endif
 		MODE_REG, mode
 	};
 	if (drv260x->external_trigger)
 		gpio_set_value(drv260x->en_gpio, GPIO_LEVEL_HIGH);
 #ifdef RTP_CLOSED_LOOP_ENABLE
-	if (mode != MODE_REAL_TIME_PLAYBACK)
+	if (mode != MODE_REAL_TIME_PLAYBACK) {
 		tmp[1] |= ERM_OpenLoop_Enabled;
+		tmp[3] = drv260x->overdrive_voltage;
+	}
 #endif
 	drv260x_write_reg_val(tmp, sizeof(tmp));
 }
@@ -391,6 +395,10 @@ static void drv260x_change_mode(char mode)
 static void drv260x_standby(void)
 {
 	unsigned char tmp[] = {
+#ifdef RTP_CLOSED_LOOP_ENABLE
+		Control3_REG, NG_Thresh_2|ERM_OpenLoop_Enabled,
+		OVERDRIVE_CLAMP_VOLTAGE_REG, drv260x->overdrive_voltage,
+#endif
 		MODE_REG, MODE_EXTERNAL_TRIGGER_EDGE
 	};
 	if (drv260x->external_trigger) {
