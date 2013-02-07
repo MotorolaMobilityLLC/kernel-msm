@@ -16,10 +16,11 @@
 #include "mipi_mot.h"
 #include "mdp4.h"
 
-#define NUMBER_BRIGHTNESS_LEVELS 30
+#define MAX_BRIGHTNESS_LEVEL 255
+#define MIN_BRIGHTNESS_LEVEL 10
 
-/* 200 nits. Default brightness should be same with it in bootloader */
-#define DEFAULT_BRIGHTNESS_LEVELS 19
+/* 150 nits. Default brightness should be same with it in bootloader */
+#define DEFAULT_BRIGHTNESS 0x7f
 
 static struct mipi_mot_panel *mot_panel;
 static int is_bl_supported(void);
@@ -52,9 +53,8 @@ static char unlock_lvl_mtp[3] = {0xf1, 0x5a, 0x5a};
 static char unlock_lvl_3[3] = {0xfc, 0x5a, 0x5a};
 static char mtp_read_off[2] = {0xb0, 0x21};
 static char mtp_read[2] = {0xc8, 0x00};
-static char init_bl[2] = {0x51, 0x7f};
-static char init_disp_ctrl[2] = {0x53, 0x28};
-
+static char brightness_ctrl[2] = {0x51, DEFAULT_BRIGHTNESS};
+static char disp_ctrl[2] = {0x53, 0x20};
 
 #define DEFAULT_DELAY 1
 
@@ -81,12 +81,14 @@ static struct dsi_cmd_desc smd_hd_497_init_cmds[] = {
 };
 
 static struct dsi_cmd_desc bl_supported_init_cmds[] = {
-	{DTYPE_DCS_WRITE1, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(init_bl), init_bl},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(init_disp_ctrl), init_disp_ctrl},
+	 sizeof(disp_ctrl), disp_ctrl},
 };
 
+static struct dsi_cmd_desc set_brightness_cmds[] = {
+	{DTYPE_DCS_WRITE1, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(brightness_ctrl), brightness_ctrl},
+};
 
 static struct dsi_cmd_desc mot_display_off_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, DEFAULT_DELAY,
@@ -131,23 +133,25 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 		 * Kernel bootup. Set it to default nit which should
 		 * be same with it in bootloader.
 		 */
-		idx = NUMBER_BRIGHTNESS_LEVELS - DEFAULT_BRIGHTNESS_LEVELS - 1;
+		idx = DEFAULT_BRIGHTNESS;
 		first_boot = false;
 	} else
-		idx = NUMBER_BRIGHTNESS_LEVELS - mfd->bl_level - 1;
+		idx = mfd->bl_level;
 
-	if (idx < 0)
-		idx = 0;
-	if (idx > NUMBER_BRIGHTNESS_LEVELS - 1)
-		idx = NUMBER_BRIGHTNESS_LEVELS - 1;
+	if (idx < MIN_BRIGHTNESS_LEVEL)
+		idx = MIN_BRIGHTNESS_LEVEL;
+	if (idx > MAX_BRIGHTNESS_LEVEL)
+		idx = MAX_BRIGHTNESS_LEVEL;
 
 	mipi_mot_tx_cmds(&smd_hd_497_init_cmds[0],
 					ARRAY_SIZE(smd_hd_497_init_cmds));
 
-
 	if (is_bl_supported() == 1) {
 		mipi_mot_tx_cmds(&bl_supported_init_cmds[0],
 				ARRAY_SIZE(bl_supported_init_cmds));
+		brightness_ctrl[1] = idx;
+		mipi_mot_tx_cmds(&set_brightness_cmds[0],
+				ARRAY_SIZE(set_brightness_cmds));
 	}
 
 	/* acl */
@@ -165,27 +169,38 @@ static int panel_disable(struct msm_fb_data_type *mfd)
 	return 0;
 }
 
-/* TODO.. Need to get more information from DDC how to configure backlight */
 static void panel_set_backlight(struct msm_fb_data_type *mfd)
 {
-
 	static int bl_level_old = -1;
 	int idx = 0;
 
-	pr_debug("%s(%d)\n", __func__, (s32)mfd->bl_level);
-
+	pr_debug("%s +(%d)\n", __func__, (s32)mfd->bl_level);
 	if (!mfd->panel_power_on)
 		return;
 
 	if (bl_level_old == mfd->bl_level)
 		return;
 
-	idx = NUMBER_BRIGHTNESS_LEVELS - mfd->bl_level - 1;
-	if (idx < 0)
-		idx = 0;
-	if (idx > NUMBER_BRIGHTNESS_LEVELS - 1)
-		idx = NUMBER_BRIGHTNESS_LEVELS - 1;
+	if (is_bl_supported() != 1)
+		return;
 
+	idx = mfd->bl_level;
+	if (mfd->bl_level < MIN_BRIGHTNESS_LEVEL)
+		idx = MIN_BRIGHTNESS_LEVEL;
+	if (mfd->bl_level > MAX_BRIGHTNESS_LEVEL)
+		idx = MAX_BRIGHTNESS_LEVEL;
+
+	brightness_ctrl[1] = idx;
+
+	mutex_lock(&mfd->dma->ov_mutex);
+	mipi_set_tx_power_mode(0);
+	mipi_mot_tx_cmds(&set_brightness_cmds[0],
+			ARRAY_SIZE(set_brightness_cmds));
+
+	bl_level_old = mfd->bl_level;
+	mutex_unlock(&mfd->dma->ov_mutex);
+
+	pr_debug("%s -(%d)\n", __func__, idx);
 	return;
 }
 
@@ -263,8 +278,8 @@ static int __init mipi_mot_cmd_smd_hd_497_init(void)
 	pinfo->lcdc.border_clr = 0;     /* blk */
 	pinfo->lcdc.underflow_clr = 0xff;       /* blue */
 	pinfo->lcdc.hsync_skew = 0;
-	pinfo->bl_max = NUMBER_BRIGHTNESS_LEVELS - 1;
-	pinfo->bl_min = 0;
+	pinfo->bl_max = MAX_BRIGHTNESS_LEVEL;
+	pinfo->bl_min = MIN_BRIGHTNESS_LEVEL;
 	pinfo->fb_num = 2;
 	pinfo->clk_rate = 460000000; /* TODO: Need to optimize */
 	pinfo->physical_width_mm = 62;
