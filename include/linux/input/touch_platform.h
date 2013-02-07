@@ -65,6 +65,7 @@ struct touch_platform_data {
 	int			gpio_scl;
 	char			*filename;
 	int			always_on_capable;
+	int			purge_enabled;
 
 	/* as of 2/8/2012, used only by Melfas driver */
 	int			max_x;

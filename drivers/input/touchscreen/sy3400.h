@@ -25,6 +25,7 @@
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/mutex.h>
+#include <mach/mmi_panel_notifier.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 #endif
@@ -166,6 +167,10 @@ struct sy3400_driver_data {
 	struct sy3400_icdat         *icdat;
 	struct sy3400_report_data   *rdat;
 	struct sy3400_debug         *dbg;
+
+	struct notifier_block       panel_nb;
+
+	atomic_t        purge_flag;
 
 	uint16_t        status;
 	uint16_t        settings;
