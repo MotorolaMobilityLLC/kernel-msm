@@ -2372,7 +2372,7 @@ dump_lim_channel_switch_announcement( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U
     {
         p += log_sprintf( pMac,
             p,"Session does not exist usage: 363 <0> sessionid channel \n");
-        printk("Session Not found!!!!\n");
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_WARN,"Session Not found!!!!");
         return p;
     }
 
@@ -2430,7 +2430,7 @@ dump_lim_vht_channel_switch_notification(tpAniSirGlobal pMac, tANI_U32 arg1,tANI
     {
         p += log_sprintf( pMac,
             p,"Session does not exist usage: 367 <0> sessionid channel \n");
-        printk("Session Not found!!!!\n");
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_WARN,"Session Not found!!!!");
         return p;
     }
 
@@ -2460,7 +2460,7 @@ dump_lim_cancel_channel_switch_announcement( tpAniSirGlobal pMac, tANI_U32 arg1,
     {
         p += log_sprintf( pMac,
             p,"Session does not exist usage: 363 <0> sessionid channel \n");
-        printk("Session Not found!!!!\n");
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_WARN,"Session Not found!!!!");
         return p;
     }
     psessionEntry->gLimChannelSwitch.switchCount = 0;
