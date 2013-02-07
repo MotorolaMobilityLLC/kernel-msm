@@ -600,7 +600,7 @@ static void __exit anx7808_exit(void)
 	i2c_del_driver(&anx7808_driver);
 }
 
-late_initcall(anx7808_init);
+module_init(anx7808_init);
 module_exit(anx7808_exit);
 
 MODULE_DESCRIPTION("Slimport  transmitter ANX7808 driver");
