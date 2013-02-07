@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2012 Motorola, Inc.
+ * Copyright (C) 2010-2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -22,6 +22,8 @@
 #include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/export.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/fs.h>
 #include <linux/gpio.h>
 #include <linux/i2c.h>
@@ -1671,30 +1673,243 @@ static struct miscdevice msp430_misc_device = {
 	.fops = &msp430_misc_fops,
 };
 
+#ifdef CONFIG_OF
+static struct msp430_platform_data *
+msp430_of_init(struct i2c_client *client)
+{
+	int len;
+	int lsize, bsize, index;
+	struct msp430_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+	unsigned int lux_table[LIGHTING_TABLE_SIZE];
+	unsigned int brightness_table[LIGHTING_TABLE_SIZE];
+	const char *name;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		pr_err("%s : pdata allocation failure\n", __func__);
+		return NULL;
+	}
+
+	pdata->gpio_int = of_get_gpio(np, 0);
+	pdata->gpio_reset = of_get_gpio(np, 1);
+	pdata->gpio_bslen = of_get_gpio(np, 2);
+	pdata->gpio_wakeirq = of_get_gpio(np, 3);
+	pdata->gpio_mipi_req = of_get_gpio(np, 4);
+	pdata->gpio_mipi_busy = of_get_gpio(np, 5);
+
+	if (of_get_property(np, "lux_table", &len) == NULL) {
+		pr_err("%s: lux_table len access failure\n", __func__);
+		return NULL;
+	}
+	lsize = len / sizeof(u32);
+	if ((lsize != 0) && (lsize < (LIGHTING_TABLE_SIZE - 1)) &&
+		(!of_property_read_u32_array(np, "lux_table",
+					(u32 *)(lux_table),
+					lsize))) {
+		for (index = 0; index < lsize; index++)
+			pdata->lux_table[index] = ((u32 *)lux_table)[index];
+	} else {
+		pr_err("%s: Lux table is missing\n", __func__);
+		return NULL;
+	}
+	pdata->lux_table[lsize] = 0xFFFF;
+
+	if (of_get_property(np, "brightness_table", &len) == NULL) {
+		pr_err("%s: brightness_table len access failure\n", __func__);
+		return NULL;
+	}
+	bsize = len / sizeof(u32);
+	if ((bsize != 0) && (bsize < (LIGHTING_TABLE_SIZE)) &&
+		!of_property_read_u32_array(np,
+					"brightness_table",
+					(u32 *)(brightness_table),
+					bsize)) {
+
+		for (index = 0; index < bsize; index++) {
+			pdata->brightness_table[index]
+				= ((u32 *)brightness_table)[index];
+		}
+	} else {
+		pr_err("%s: Brightness table is missing\n", __func__);
+		return NULL;
+	}
+
+	if ((lsize + 1) != bsize) {
+		pr_err("%s: Lux and Brightness table sizes don't match\n",
+			__func__);
+		return NULL;
+	}
+
+	of_property_read_u32(np, "bslen_pin_active_value",
+				&pdata->bslen_pin_active_value);
+
+	of_get_property(np, "msp430_fw_version", &len);
+	if (!of_property_read_string(np, "msp430_fw_version", &name))
+		strlcpy(pdata->fw_version, name, FW_VERSION_SIZE);
+	else
+		pr_debug("%s: not use ms430_fw_version override\n", __func__);
+
+	return pdata;
+}
+#else
+static inline struct msp430_platform_data *
+msp430_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
+
+static int msp430_gpio_init(struct msp430_platform_data *pdata)
+{
+	int err;
+
+	err = gpio_request(pdata->gpio_int, "msp430 int");
+	if (err) {
+		pr_err("msp430 int gpio_request failed: %d\n", err);
+		return err;
+	}
+	gpio_direction_input(pdata->gpio_int);
+	err = gpio_export(pdata->gpio_int, 0);
+	if (err) {
+		pr_err("msp430 int gpio_export failed: %d\n", err);
+		goto free_int;
+	}
+
+	err = gpio_request(pdata->gpio_reset, "msp430 reset");
+	if (err) {
+		pr_err("msp430 reset gpio_request failed: %d\n", err);
+		goto free_int;
+	}
+	gpio_direction_output(pdata->gpio_reset, 1);
+	gpio_set_value(pdata->gpio_reset, 1);
+	err = gpio_export(pdata->gpio_reset, 0);
+	if (err) {
+		pr_err("msp430 reset gpio_export failed: %d\n", err);
+		goto free_reset;
+	}
+
+	err = gpio_request(pdata->gpio_bslen, "msp430 bslen");
+	if (err) {
+		pr_err("msp430 bslen gpio_request failed: %d\n", err);
+		goto free_reset;
+	}
+	gpio_direction_output(pdata->gpio_bslen, 0);
+	gpio_set_value(pdata->gpio_bslen, 0);
+	err = gpio_export(pdata->gpio_bslen, 0);
+	if (err) {
+		pr_err("msp430 bslen gpio_export failed: %d\n", err);
+		goto free_bslen;
+	}
+
+	if (gpio_is_valid(pdata->gpio_wakeirq)) {
+		err = gpio_request(pdata->gpio_wakeirq, "msp430 wakeirq");
+		if (err) {
+			pr_err("msp430 wakeirq gpio_request failed: %d\n", err);
+			goto free_bslen;
+		}
+		gpio_direction_input(pdata->gpio_wakeirq);
+		err = gpio_export(pdata->gpio_wakeirq, 0);
+		if (err) {
+			pr_err("msp430 wakeirq gpio_export failed: %d\n", err);
+			goto free_wakeirq;
+		}
+	} else {
+		pr_warn("%s: gpio wake irq not specified\n", __func__);
+	}
+
+	if (gpio_is_valid(pdata->gpio_mipi_req)) {
+		err = gpio_request(pdata->gpio_mipi_req, "mipi_d0_req");
+		if (err) {
+			pr_err(" mipi_req_gpio gpio_request failed: %d\n", err);
+			goto free_wakeirq;
+		}
+		gpio_direction_output(pdata->gpio_mipi_req, 0);
+		err = gpio_export(pdata->gpio_mipi_req, 0);
+		if (err) {
+			pr_err(" mipi_req_gpio gpio_export failed: %d\n", err);
+			goto free_mipi_req;
+		}
+	} else {
+		pr_warn("%s: gpio mipi req not specified\n", __func__);
+	}
+
+	if (gpio_is_valid(pdata->gpio_mipi_busy)) {
+		err = gpio_request(pdata->gpio_mipi_busy, "mipi_d0_busy");
+		if (err) {
+			pr_err(" mipi_d0_busy gpio_request failed: %d\n", err);
+			goto free_mipi_req;
+		}
+		gpio_direction_input(pdata->gpio_mipi_busy);
+		err = gpio_export(pdata->gpio_mipi_busy, 0);
+		if (err) {
+			pr_err(" mipi_d0_busy gpio_export failed: %d\n", err);
+			goto free_mipi_busy;
+		}
+	} else {
+		pr_warn("%s: gpio mipi busy not specified\n", __func__);
+	}
+
+	return 0;
+
+free_mipi_busy:
+	gpio_free(pdata->gpio_mipi_busy);
+free_mipi_req:
+	gpio_free(pdata->gpio_mipi_req);
+free_wakeirq:
+	gpio_free(pdata->gpio_wakeirq);
+free_bslen:
+	gpio_free(pdata->gpio_bslen);
+free_reset:
+	gpio_free(pdata->gpio_reset);
+free_int:
+	gpio_free(pdata->gpio_int);
+	return err;
+}
+
+static void msp430_gpio_free(struct msp430_platform_data *pdata)
+{
+	gpio_free(pdata->gpio_int);
+	gpio_free(pdata->gpio_reset);
+	gpio_free(pdata->gpio_bslen);
+	gpio_free(pdata->gpio_wakeirq);
+	gpio_free(pdata->gpio_mipi_req);
+	gpio_free(pdata->gpio_mipi_busy);
+}
 
 static int msp430_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
+	struct msp430_platform_data *pdata;
 	struct msp430_data *ps_msp430;
 	int err = -1;
 	dev_info(&client->dev, "msp430 probe begun\n");
 
-	if (client->dev.platform_data == NULL) {
-		dev_err(&client->dev, "platform data is NULL, exiting\n");
-		err = -ENODEV;
-		goto err0;
-	}
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "client not i2c capable\n");
-		err = -ENODEV;
-		goto err0;
+		return -ENODEV;
+	}
+
+	if (client->dev.of_node)
+		pdata = msp430_of_init(client);
+	else
+		pdata = client->dev.platform_data;
+
+	if (pdata == NULL) {
+		dev_err(&client->dev, "platform data is NULL, exiting\n");
+		return -ENODEV;
 	}
 	ps_msp430 = kzalloc(sizeof(*ps_msp430), GFP_KERNEL);
 	if (ps_msp430 == NULL) {
-		err = -ENOMEM;
 		dev_err(&client->dev,
 			"failed to allocate memory for module data: %d\n", err);
-		goto err0;
+		return -ENOMEM;
+	}
+
+	err = msp430_gpio_init(pdata);
+	if (err) {
+		dev_err(&client->dev, "msp430 gpio init failed\n");
+		goto err_gpio_init;
 	}
 
 	mutex_init(&ps_msp430->lock);
@@ -1721,15 +1936,7 @@ static int msp430_probe(struct i2c_client *client,
 		dev_err(&client->dev, "cannot create work queue: %d\n", err);
 		goto err1;
 	}
-	ps_msp430->pdata = kmalloc(sizeof(*ps_msp430->pdata), GFP_KERNEL);
-	if (ps_msp430->pdata == NULL) {
-		err = -ENOMEM;
-		dev_err(&client->dev,
-			"failed to allocate memory for pdata: %d\n", err);
-		goto err2;
-	}
-	memcpy(ps_msp430->pdata, client->dev.platform_data,
-		sizeof(*ps_msp430->pdata));
+	ps_msp430->pdata = pdata;
 	i2c_set_clientdata(client, ps_msp430);
 	ps_msp430->client->flags &= 0x00;
 
@@ -1737,13 +1944,13 @@ static int msp430_probe(struct i2c_client *client,
 		err = ps_msp430->pdata->init();
 		if (err < 0) {
 			dev_err(&client->dev, "init failed: %d\n", err);
-			goto err3;
+			goto err2;
 		}
 	}
 
 	/*configure interrupt*/
 	ps_msp430->irq = gpio_to_irq(ps_msp430->pdata->gpio_int);
-	if (ps_msp430->pdata->gpio_wakeirq != -1)
+	if (gpio_is_valid(ps_msp430->pdata->gpio_wakeirq))
 		ps_msp430->irq_wake
 			= gpio_to_irq(ps_msp430->pdata->gpio_wakeirq);
 	else
@@ -1878,8 +2085,6 @@ err6:
 err4:
 	if (ps_msp430->pdata->exit)
 		ps_msp430->pdata->exit();
-err3:
-	kfree(ps_msp430->pdata);
 err2:
 	destroy_workqueue(ps_msp430->irq_work_queue);
 err1:
@@ -1887,8 +2092,9 @@ err1:
 	mutex_destroy(&ps_msp430->lock);
 	wake_unlock(&ps_msp430->wakelock);
 	wake_lock_destroy(&ps_msp430->wakelock);
+	msp430_gpio_free(pdata);
+err_gpio_init:
 	kfree(ps_msp430);
-err0:
 	return err;
 }
 
@@ -1907,7 +2113,7 @@ static int msp430_remove(struct i2c_client *client)
 	msp430_device_power_off(ps_msp430);
 	if (ps_msp430->pdata->exit)
 		ps_msp430->pdata->exit();
-	kfree(ps_msp430->pdata);
+	msp430_gpio_free(ps_msp430->pdata);
 	destroy_workqueue(ps_msp430->irq_work_queue);
 	mutex_destroy(&ps_msp430->lock);
 	wake_unlock(&ps_msp430->wakelock);
@@ -1989,10 +2195,19 @@ static const struct i2c_device_id msp430_id[] = {
 
 MODULE_DEVICE_TABLE(i2c, msp430_id);
 
+#ifdef CONFIG_OF
+static struct of_device_id msp430_match_tbl[] = {
+	{ .compatible = "ti,msp430" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, msp430_match_tbl);
+#endif
+
 static struct i2c_driver msp430_driver = {
 	.driver = {
 		   .name = NAME,
 		   .owner = THIS_MODULE,
+		   .of_match_table = of_match_ptr(msp430_match_tbl),
 		   },
 	.probe = msp430_probe,
 	.remove = msp430_remove,
