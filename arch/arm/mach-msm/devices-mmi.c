@@ -313,8 +313,9 @@ struct platform_device mmi_pm8xxx_rgb_leds_device = {
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
 
+/* Put RAM Console adjacent to Device Tree at 0x88100000 */
 #define MSM_RAM_CONSOLE_SIZE    128 * SZ_1K
-#define MSM_RAM_CONSOLE_START   0x88C00000
+#define MSM_RAM_CONSOLE_START   0x880E0000
 
 struct platform_device mmi_ram_console_device = {
 	.name = "ram_console",
