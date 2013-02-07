@@ -494,29 +494,12 @@ static int __init tps65132_init_i2c_device(struct i2c_board_info *info,
 	return 0;
 }
 
-struct msp430_platform_data mp_msp430_data = {
-	.gpio_reset = -1,
-	.gpio_bslen = -1,
-	.gpio_wakeirq = -1,
-	.gpio_int = -1,
-	.gpio_mipi_req = -1,
-	.gpio_mipi_busy = -1,
-	.bslen_pin_active_value = 1,
-	.fw_version = {'\0'},
-};
+/* TI MSP430 Init */
+struct msp430_platform_data mp_msp430_data;
 
-struct platform_device msp430_platform_device = {
-	.name = "msp430",
-	.id = -1,
-	.dev = {
-		.platform_data = &mp_msp430_data,
-	},
-};
-
-int __init msp430_init_i2c_device(struct i2c_board_info *info,
+static int __init msp430_init_i2c_device(struct i2c_board_info *info,
 		struct device_node *child)
 {
-	int err = 0;
 	int len = 0;
 	int irq_gpio = -1, reset_gpio = -1, bsl_gpio = -1, wake_gpio = -1;
 	int mipi_busy_gpio = -1, mipi_req_gpio = -1;
@@ -529,81 +512,32 @@ int __init msp430_init_i2c_device(struct i2c_board_info *info,
 	info->platform_data = &mp_msp430_data;
 
 	/* irq */
-	if (of_property_read_u32(child, "irq,gpio", &irq_gpio))
-		return -EINVAL;
-
+	of_property_read_u32(child, "irq,gpio", &irq_gpio);
 	mp_msp430_data.gpio_int = irq_gpio;
 
-	err = gpio_request(irq_gpio, "msp430 int");
-	if (err) {
-		pr_err("msp430 gpio_request failed: %d\n", err);
-		goto fail;
-	}
-	gpio_direction_input(irq_gpio);
-	err = gpio_export(irq_gpio, 0);
-	if (err)
-		pr_err("msp430 gpio_export failed: %d\n", err);
-
 	/* reset */
-	if (of_property_read_u32(child, "msp430_gpio_reset", &reset_gpio)) {
-		err = -ENODEV;
-		goto fail;
-	}
-
+	of_property_read_u32(child, "msp430_gpio_reset", &reset_gpio);
 	mp_msp430_data.gpio_reset = reset_gpio;
 
-	err = gpio_request(reset_gpio, "msp430 reset");
-	if (err) {
-		pr_err("msp430 reset gpio_request failed: %d\n", err);
-		goto fail;
-	}
-	gpio_direction_output(reset_gpio, 1);
-	gpio_set_value(reset_gpio, 1);
-	err = gpio_export(reset_gpio, 0);
-	if (err)
-		pr_err("msp430 reset gpio_export failed: %d\n", err);
-
 	/* bslen */
-	if (of_property_read_u32(child, "msp430_gpio_bslen", &bsl_gpio)) {
-		err = -ENODEV;
-		goto fail;
-	}
-
+	of_property_read_u32(child, "msp430_gpio_bslen", &bsl_gpio);
 	mp_msp430_data.gpio_bslen = bsl_gpio;
 
-	err = gpio_request(bsl_gpio, "msp430 bslen");
-	if (err) {
-		pr_err("msp430 bslen gpio_request failed: %d\n", err);
-		goto fail;
-	}
-	gpio_direction_output(bsl_gpio, 0);
-	gpio_set_value(bsl_gpio, 0);
-	err = gpio_export(bsl_gpio, 0);
-
 	/* mipi_busy */
-	if (!of_property_read_u32(child, "msp430_gpio_mipi_busy", &mipi_busy_gpio)) {
-		mp_msp430_data.gpio_mipi_busy = mipi_busy_gpio;
-
-		err = gpio_request(mipi_busy_gpio, "mipi_d0_busy");
-		if (err) {
-			pr_err(" mipi_d0_busy gpio_request failed: %d\n", err);
-			goto fail;
-		}
-		gpio_direction_input(mipi_busy_gpio);
-		gpio_export(mipi_busy_gpio, 0);
-	}
+	of_property_read_u32(child, "msp430_gpio_mipi_busy", &mipi_busy_gpio);
+	mp_msp430_data.gpio_mipi_busy = mipi_busy_gpio;
 
 	/* mipi_req */
-	if (!of_property_read_u32(child, "msp430_gpio_mipi_req", &mipi_req_gpio)) {
-		mp_msp430_data.gpio_mipi_req = mipi_req_gpio;
+	of_property_read_u32(child, "msp430_gpio_mipi_req", &mipi_req_gpio);
+	mp_msp430_data.gpio_mipi_req = mipi_req_gpio;
 
-		err = gpio_request(mipi_req_gpio, "mipi_d0_req");
-		if (err) {
-			pr_err(" mipi_req_gpio gpio_request failed: %d\n", err);
-			goto fail;
-		}
-		gpio_direction_output(mipi_req_gpio, 0);
-		gpio_export(mipi_req_gpio, 0);
+	/* wakeirq, need to tell whether it is correctly retrieved, as after
+	 * PM8921_GPIO_PM_TO_SYS, -1 is changed as 150 which is valid gpio */
+	if (!of_property_read_u32(child, "msp430_gpio_wakeirq", &wake_gpio)) {
+		wake_gpio = PM8921_GPIO_PM_TO_SYS(wake_gpio);
+		mp_msp430_data.gpio_wakeirq = wake_gpio;
+	} else {
+		pr_warn("msp430 wakeirq not specified\n");
 	}
 
 	/* lux table */
@@ -617,8 +551,7 @@ int __init msp430_init_i2c_device(struct i2c_board_info *info,
 			mp_msp430_data.lux_table[index] = ((u32 *)lux_table)[index];
 	else {
 		pr_err("%s: Lux table is missing\n", __func__);
-		err = -EINVAL;
-		goto fail;
+		return -EINVAL;
 	}
 	mp_msp430_data.lux_table[lsize] = 0xFFFF;
 
@@ -636,32 +569,13 @@ int __init msp430_init_i2c_device(struct i2c_board_info *info,
 				= ((u32 *)brightness_table)[index];
 	} else {
 		pr_err("%s: Brightness table is missing\n", __func__);
-		err = -EINVAL;
-		goto fail;
+		return -EINVAL;
 	}
 
 	if ((lsize + 1) != bsize) {
 		pr_err("%s: Lux and Brightness table sizes don't match\n",
 			__func__);
-		err = -EINVAL;
-		goto fail;
-	}
-
-	/* wakeirq */
-	if (!of_property_read_u32(child, "msp430_gpio_wakeirq", &wake_gpio)) {
-		wake_gpio = PM8921_GPIO_PM_TO_SYS(wake_gpio);
-		mp_msp430_data.gpio_wakeirq = wake_gpio;
-
-		err = gpio_request(wake_gpio, "msp430 wakeirq");
-		if (err) {
-			pr_err("msp430 wakeirq gpio_request failed: %d\n", err);
-			goto fail;
-		}
-		gpio_direction_input(wake_gpio);
-		err = gpio_export(wake_gpio, 0);
-	} else {
-		pr_err("msp430 wakeirq not specified\n");
-		mp_msp430_data.gpio_wakeirq = -1;
+		return -EINVAL;
 	}
 
 	/* firmware version */
@@ -669,9 +583,13 @@ int __init msp430_init_i2c_device(struct i2c_board_info *info,
 	if((len < FW_VERSION_SIZE) &&
 		(!of_property_read_string(child, "msp430_fw_version", &name)))
 		strcpy(mp_msp430_data.fw_version, name);
+	else
+		mp_msp430_data.fw_version[0] = '\0';
 
- fail:
-	return err;
+	/* set the pin as acive high */
+	mp_msp430_data.bslen_pin_active_value = 1;
+
+	return 0;
 }
 
 /* NXP PN544 Init */
