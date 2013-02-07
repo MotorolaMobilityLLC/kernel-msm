@@ -1874,6 +1874,8 @@ static bool wm5102_volatile_register(struct device *dev, unsigned int reg)
 	case ARIZONA_HEADPHONE_DETECT_2:
 	case ARIZONA_HP_DACVAL:
 	case ARIZONA_MIC_DETECT_3:
+	case 0x225:
+	case 0x226:
 		return true;
 	default:
 		if ((reg >= 0x100000 && reg < 0x106000) ||
