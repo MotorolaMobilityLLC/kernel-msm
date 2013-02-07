@@ -1,0 +1,49 @@
+* TI MSP430
+
+The MSP430 microcontrollers are Ultra-Low-Power mixed signal, 16-Bit RISC Core devices.
+
+Required properties:
+ - compatible:
+        the string of "ti,msp430"
+ - reg:
+        the i2c slave address of the IC
+ - gpios:
+        an array specifiying the three required GPIOs for operation. They must
+        be specified in exact order:
+           - IRQ GPIO
+           - RESET GPIO
+           - BSLEN GPIO
+           - WakeIRQ
+                Optional GPIO, If this line is not connected, input <0> here
+           - MIPI_REQ
+                Optional GPIO, If this line is not connected, input <0> here
+           - MIPI_BUSY
+                Optional GPIO, If this line is not connected, input <0> here
+
+ - lux_table:
+        an array to define the ambiment light lux level, according to this
+        lux level, if the LCD brightness set as automatic, the LCD brightness
+        will be set according to the value defined in brightness_table
+
+ - brightness_table:
+        an array to define which the LCD brightness(0~255 scale) will be set
+        according to the ambient light strength (in lux) defined in lux_table
+
+ - bslen_pin_active_value:
+        specify bslen pin active high or active low for enable
+
+Example:
+
+	msp430@48 {
+		compatible = "ti,msp430";
+		reg = <0x48>;
+		gpios = <&msmgpio 69 0>,     /* IRQ */
+			<&msmgpio 92 0>,     /* RESET */
+			<&msmgpio 51 0>,     /* BSLEN */
+			<&pm8921_gpio 7 0>,  /* WakeIRQ */
+			<&pm8921_gpio 11 0>, /* MIPI_REQ */
+			<&pm8921_gpio 12 0>; /* MIPI_BUSY */
+		lux_table = <5 50 100 3000 8000>;
+		brightness_table = <25 42 68 127 178 246>;
+		bslen_pin_active_value = <1>;
+	};
