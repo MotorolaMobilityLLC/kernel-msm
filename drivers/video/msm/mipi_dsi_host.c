@@ -1200,7 +1200,6 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 	uint32 dsi_ctrl, ctrl;
 	int i, ret, cnt_xfer;
 	uint32 panel_mode;
-	long long vtime;
 
 	/* turn on cmd mode
 	* for video mode, do not send cmds more than
@@ -1214,7 +1213,7 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, ctrl);
 
 		/* VIDEO_MODE */
-		mdp4_dsi_video_wait4vsync(0, &vtime);
+		mdp4_dsi_video_wait4vsync(0);
 		udelay(MOT_VIDEO_WAIT4VSYNC_DELAY);
 	}
 
@@ -1280,7 +1279,6 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 	static int cur_pkt_size;
 	bool send_max_pkt_size = false;
 	uint32 panel_mode;
-	long long vtime;
 
 	if (rlen != cur_pkt_size) {
 		cur_pkt_size = rlen;
@@ -1328,7 +1326,7 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, ctrl);
 
 		/* VIDEO_MODE */
-		mdp4_dsi_video_wait4vsync(0, &vtime);
+		mdp4_dsi_video_wait4vsync(0);
 		udelay(MOT_VIDEO_WAIT4VSYNC_DELAY);
 	}
 
@@ -1454,7 +1452,6 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 	static int cur_pkt_size;
 	bool send_max_pkt_size = false;
 	uint32 panel_mode;
-	long long vtime;
 
 	if (rlen != cur_pkt_size) {
 		cur_pkt_size = rlen;
@@ -1504,7 +1501,7 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, ctrl);
 
 		/* VIDEO_MODE */
-		mdp4_dsi_video_wait4vsync(0, &vtime);
+		mdp4_dsi_video_wait4vsync(0);
 		udelay(MOT_VIDEO_WAIT4VSYNC_DELAY);
 	}
 
