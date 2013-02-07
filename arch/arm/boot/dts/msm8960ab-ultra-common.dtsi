@@ -95,7 +95,7 @@
 
 		external_trigger = <1>;
 		default_effect = <22>;      /* Medium Click 2 80% */
-		rated_voltage = <0x6D>;
-		overdrive_voltage = <0xF0>;
+		rated_voltage = <0x70>;
+		overdrive_voltage = <0xA0>;
 	};
 };
