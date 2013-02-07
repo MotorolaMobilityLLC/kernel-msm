@@ -89,6 +89,7 @@
 			<&msmgpio 63 0>; /* RESET */
 
 		always_on_capable = <1>;
+		synaptics,purge-enabled = <1>;
 		synaptics,sy3400-tdat-filename = "sy3400-r0.tdat";
 	};
 };
