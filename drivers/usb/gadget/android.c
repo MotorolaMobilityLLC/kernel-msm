@@ -90,6 +90,7 @@
 #include "u_uac1.c"
 #include "f_uac1.c"
 #endif
+#include "f_laf.c"
 
 MODULE_AUTHOR("Mike Lockwood");
 MODULE_DESCRIPTION("Android Composite USB Driver");
@@ -510,6 +511,78 @@ static void adb_closed_callback(void)
 		android_disable(dev);
 		mutex_unlock(&dev->mutex);
 	}
+}
+
+/*-------------------------------------------------------------------------*/
+/* Supported functions initialization */
+
+/* laf */
+struct laf_data {
+	bool opened;
+	bool enabled;
+};
+
+static int
+laf_function_init(struct android_usb_function *f,
+		struct usb_composite_dev *cdev)
+{
+	f->config = kzalloc(sizeof(struct laf_data), GFP_KERNEL);
+	if (!f->config)
+		return -ENOMEM;
+
+	return laf_setup();
+}
+
+static void laf_function_cleanup(struct android_usb_function *f)
+{
+	laf_cleanup();
+	kfree(f->config);
+}
+
+static int
+laf_function_bind_config(struct android_usb_function *f,
+		struct usb_configuration *c)
+{
+	return laf_bind_config(c);
+}
+
+static void laf_android_function_enable(struct android_usb_function *f)
+{
+	struct laf_data *data = f->config;
+
+	data->enabled = true;
+
+	pr_err("laf_android_function_enable");
+}
+
+static void laf_android_function_disable(struct android_usb_function *f)
+{
+	struct laf_data *data = f->config;
+
+	data->enabled = false;
+}
+
+static struct android_usb_function laf_function = {
+	.name		= "laf",
+	.enable		= laf_android_function_enable,
+	.disable	= laf_android_function_disable,
+	.init		= laf_function_init,
+	.cleanup	= laf_function_cleanup,
+	.bind_config	= laf_function_bind_config,
+};
+
+static void laf_ready_callback(void)
+{
+	struct laf_data *data = laf_function.config;
+
+	data->opened = true;
+}
+
+static void laf_closed_callback(void)
+{
+	struct laf_data *data = laf_function.config;
+
+	data->opened = false;
 }
 
 
@@ -1787,6 +1860,7 @@ static struct android_usb_function *supported_functions[] = {
 	&qdss_function,
 	&serial_function,
 	&adb_function,
+	&laf_function,
 	&ccid_function,
 	&acm_function,
 	&mtp_function,
