@@ -142,7 +142,6 @@ static uint32_t pil_ref_cnt;
 static DEFINE_MUTEX(pil_access_lock);
 
 static DEFINE_MUTEX(qsee_bw_mutex);
-static DEFINE_MUTEX(qsee_sfpb_bw_mutex);
 static DEFINE_MUTEX(app_access_lock);
 
 static int qsee_bw_count;
@@ -1222,28 +1221,41 @@ static int qsee_vote_for_clock(int32_t clk_type)
 	case CLK_DFAB:
 		mutex_lock(&qsee_bw_mutex);
 		if (!qsee_bw_count) {
-			ret = msm_bus_scale_client_update_request(
-					qsee_perf_client, 1);
+			if (qsee_sfpb_bw_count > 0)
+				ret = msm_bus_scale_client_update_request(
+						qsee_perf_client, 3);
+			else
+				ret = msm_bus_scale_client_update_request(
+						qsee_perf_client, 1);
 			if (ret)
 				pr_err("DFAB Bandwidth req failed (%d)\n",
 								ret);
 			else
 				qsee_bw_count++;
+		} else {
+			qsee_bw_count++;
 		}
 		mutex_unlock(&qsee_bw_mutex);
 		break;
 	case CLK_SFPB:
-		mutex_lock(&qsee_sfpb_bw_mutex);
+		mutex_lock(&qsee_bw_mutex);
 		if (!qsee_sfpb_bw_count) {
-			ret = msm_bus_scale_client_update_request(
-					qsee_perf_client, 2);
+			if (qsee_bw_count > 0)
+				ret = msm_bus_scale_client_update_request(
+						qsee_perf_client, 3);
+			else
+				ret = msm_bus_scale_client_update_request(
+						qsee_perf_client, 2);
+
 			if (ret)
 				pr_err("SFPB Bandwidth req failed (%d)\n",
 								ret);
 			else
 				qsee_sfpb_bw_count++;
+		} else {
+			qsee_sfpb_bw_count++;
 		}
-		mutex_unlock(&qsee_sfpb_bw_mutex);
+		mutex_unlock(&qsee_bw_mutex);
 		break;
 	default:
 		pr_err("Clock type not defined\n");
@@ -1262,29 +1274,44 @@ static void qsee_disable_clock_vote(int32_t clk_type)
 	switch (clk_type) {
 	case CLK_DFAB:
 		mutex_lock(&qsee_bw_mutex);
-		if (qsee_bw_count > 0) {
-			if (qsee_bw_count-- == 1) {
+		if (qsee_bw_count == 0) {
+			pr_err("Client error.Extra call to disable DFAB clk\n");
+			mutex_unlock(&qsee_bw_mutex);
+			return;
+		}
+
+		if ((qsee_bw_count > 0) && (qsee_bw_count-- == 1)) {
+			if (qsee_sfpb_bw_count > 0)
+				ret = msm_bus_scale_client_update_request(
+						qsee_perf_client, 2);
+			else
 				ret = msm_bus_scale_client_update_request(
 						qsee_perf_client, 0);
-				if (ret)
-					pr_err("SFPB Bandwidth req fail (%d)\n",
+			if (ret)
+				pr_err("SFPB Bandwidth req fail (%d)\n",
 								ret);
-			}
 		}
 		mutex_unlock(&qsee_bw_mutex);
 		break;
 	case CLK_SFPB:
-		mutex_lock(&qsee_sfpb_bw_mutex);
-		if (qsee_sfpb_bw_count > 0) {
-			if (qsee_sfpb_bw_count-- == 1) {
+		mutex_lock(&qsee_bw_mutex);
+		if (qsee_sfpb_bw_count == 0) {
+			pr_err("Client error.Extra call to disable SFPB clk\n");
+			mutex_unlock(&qsee_bw_mutex);
+			return;
+		}
+		if ((qsee_sfpb_bw_count > 0) && (qsee_sfpb_bw_count-- == 1)) {
+			if (qsee_bw_count > 0)
+				ret = msm_bus_scale_client_update_request(
+						qsee_perf_client, 1);
+			else
 				ret = msm_bus_scale_client_update_request(
 						qsee_perf_client, 0);
-				if (ret)
-					pr_err("SFPB Bandwidth req fail (%d)\n",
+			if (ret)
+				pr_err("SFPB Bandwidth req fail (%d)\n",
 								ret);
-			}
 		}
-		mutex_unlock(&qsee_sfpb_bw_mutex);
+		mutex_unlock(&qsee_bw_mutex);
 		break;
 	default:
 		pr_err("Clock type not defined\n");
@@ -1606,12 +1633,16 @@ static long qseecom_ioctl(struct file *file, unsigned cmd,
 		ret = qsee_vote_for_clock(CLK_DFAB);
 		if (ret)
 			pr_err("Failed to vote for DFAB clock%d\n", ret);
+		ret = qsee_vote_for_clock(CLK_SFPB);
+		if (ret)
+			pr_err("Failed to vote for SFPB clock%d\n", ret);
 		atomic_dec(&data->ioctl_count);
 		break;
 	}
 	case QSEECOM_IOCTL_PERF_DISABLE_REQ:{
 		atomic_inc(&data->ioctl_count);
 		qsee_disable_clock_vote(CLK_DFAB);
+		qsee_disable_clock_vote(CLK_SFPB);
 		atomic_dec(&data->ioctl_count);
 		break;
 	}

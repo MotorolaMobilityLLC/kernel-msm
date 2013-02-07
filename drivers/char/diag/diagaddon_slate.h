@@ -40,4 +40,3 @@
 #define DIAG_LOG_TYPE_CONN_ATT                    2
 
 #endif
-
