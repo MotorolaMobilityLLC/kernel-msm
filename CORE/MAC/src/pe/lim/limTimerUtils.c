@@ -813,6 +813,9 @@ limCreateTimers(tpAniSirGlobal pMac)
         tx_timer_delete(&pMac->lim.limTimers.gLimMaxChannelTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimPeriodicProbeReqTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimMinChannelTimer);
+#ifdef WLAN_FEATURE_P2P
+        tx_timer_delete(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer);
+#endif
 
         if(NULL != pMac->lim.gLimPreAuthTimerTable.pTable)
             palFreeMemory(pMac->hHdd, pMac->lim.gLimPreAuthTimerTable.pTable);
