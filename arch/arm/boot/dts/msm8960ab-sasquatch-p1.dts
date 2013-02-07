@@ -56,6 +56,17 @@
 		/* P1 aren't properly connected; use wcd only */
 		qcom,msm8960-card-longname = "msm8960-snd-card-wcd";
 
+		/* P1 does not have MCLK for MI2S */
+		gpios-mi2s = <&msmgpio 47 0>, /* WS   */
+			     <&msmgpio 48 0>, /* SCK  */
+			     <&msmgpio 49 0>, /* DIN  */
+			     <&msmgpio 50 0>; /* DOUT */
+		gpios-mi2s-names = "mi2s_ws",
+				  "mi2s_sck",
+				  "mi2s_din",
+				  "mi2s_dout";
+
+
 		dai-tfa9890 {
 			status = "disabled";
 		};
