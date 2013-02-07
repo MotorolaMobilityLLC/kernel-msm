@@ -18,9 +18,8 @@
 
 #define MAX_BRIGHTNESS_LEVEL 255
 #define MIN_BRIGHTNESS_LEVEL 10
-
-/* 200 nits. Default brightness should be same with it in bootloader */
-#define DEFAULT_BRIGHTNESS_LEVEL 200
+/* 150 nits. Default brightness should be same with it in bootloader */
+#define DEFAULT_BRIGHTNESS  0x7f
 
 static struct mipi_mot_panel *mot_panel;
 
@@ -104,16 +103,10 @@ static char C9_data[] = {0xC9,
 		0xBF, 0xC5, 0xC9, 0x8D, 0xA2, 0x9C, 0xE0, 0xDD, 0xD2, 0x0A,
 		0x0B, 0x0B };
 
-static char wr_ctrl_disp[2] = {0x53, 0x20};
 static char C7_reg[2] = {0xC7, 0x07};
 
-static struct dsi_cmd_desc c8_c9_53_c7_reg[] = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-		sizeof(unlock_level_2), unlock_level_2},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-		sizeof(unlock_MTP), unlock_MTP},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-		sizeof(unlock_level_3), unlock_level_3},
+/* only for non-mtped panels */
+static struct dsi_cmd_desc c8_c9_c7_reg[] = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, DEFAULT_DELAY,
 		sizeof(C8_offset), C8_offset},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
@@ -123,14 +116,18 @@ static struct dsi_cmd_desc c8_c9_53_c7_reg[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
 		sizeof(C9_data), C9_data},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, DEFAULT_DELAY,
-		sizeof(wr_ctrl_disp), wr_ctrl_disp},
-	{DTYPE_DCS_WRITE1, 1, 0, 0, DEFAULT_DELAY,
 		sizeof(C7_reg), C7_reg},
 };
 
-static char brightness_ctrl[2] = {0x51, 0xff};
+static char disp_ctrl[2] = {0x53, 0x20};
+/* default 150 nits */
+static char brightness_ctrl[2] = {0x51, 0x7f};
 
-static struct dsi_cmd_desc set_brightness_cmds_51h[] = {
+static struct dsi_cmd_desc set_disp_ctrl_cmds[] = {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
+		sizeof(disp_ctrl), disp_ctrl},
+};
+static struct dsi_cmd_desc set_brightness_cmds[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
 		sizeof(brightness_ctrl), brightness_ctrl},
 };
@@ -165,7 +162,7 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 		 * Kernel bootup. Set it to default nit which should
 		 * be same with it in bootloader.
 		 */
-		idx = DEFAULT_BRIGHTNESS_LEVEL;
+		idx = DEFAULT_BRIGHTNESS;
 		first_boot = false;
 	} else
 		idx = mfd->bl_level;
@@ -178,12 +175,15 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 	mipi_mot_tx_cmds(&smd_hd_465_init_cmds[0],
 					ARRAY_SIZE(smd_hd_465_init_cmds));
 
-	mipi_mot_tx_cmds(&c8_c9_53_c7_reg[0],
-			ARRAY_SIZE(c8_c9_53_c7_reg));
+	if (mipi_mot_get_controller_ver(mfd) < 2)
+		mipi_mot_tx_cmds(&c8_c9_c7_reg[0], ARRAY_SIZE(c8_c9_c7_reg));
+
+	mipi_mot_tx_cmds(&set_disp_ctrl_cmds[0],
+			ARRAY_SIZE(set_disp_ctrl_cmds));
 
 	brightness_ctrl[1] = idx;
-	mipi_mot_tx_cmds(&set_brightness_cmds_51h[0],
-			ARRAY_SIZE(set_brightness_cmds_51h));
+	mipi_mot_tx_cmds(&set_brightness_cmds[0],
+			ARRAY_SIZE(set_brightness_cmds));
 
 	/* TODO: Chosen acl_on = ACL Mid per DDC */
 	/* acl */
@@ -201,7 +201,6 @@ static int panel_disable(struct msm_fb_data_type *mfd)
 	return 0;
 }
 
-/* TODO.. Need to get more information from DDC how to configure backlight */
 static void panel_set_backlight(struct msm_fb_data_type *mfd)
 {
 
@@ -225,8 +224,8 @@ static void panel_set_backlight(struct msm_fb_data_type *mfd)
 
 	mutex_lock(&mfd->dma->ov_mutex);
 	mipi_set_tx_power_mode(0);
-	mipi_mot_tx_cmds(&set_brightness_cmds_51h[0],
-	ARRAY_SIZE(set_brightness_cmds_51h));
+	mipi_mot_tx_cmds(&set_brightness_cmds[0],
+		ARRAY_SIZE(set_brightness_cmds));
 
 	bl_level_old = mfd->bl_level;
 	mutex_unlock(&mfd->dma->ov_mutex);
