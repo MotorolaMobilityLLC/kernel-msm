@@ -22,6 +22,10 @@
 #include <linux/param.h>
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
+#include <linux/diagchar.h>
+#ifdef CONFIG_DIAG_OVER_USB
+#include <mach/usbdiag.h>
+#endif
 #include "diagchar.h"
 #include "diagfwd.h"
 #include "diagaddon_slate.h"
@@ -130,10 +134,12 @@ static int slate_ioctl(struct file *filp, unsigned int iocmd,
 
 static void __clear_in_busy(struct diag_request *write_ptr)
 {
-	if (write_ptr->buf == (void *)driver->buf_in_1)
-		driver->in_busy_1 = 0;
-	else if (write_ptr->buf == (void *)driver->buf_in_2)
-		driver->in_busy_2 = 0;
+	struct diag_smd_info *smd_info = &(driver->smd_data[MODEM_DATA]);
+
+	if (write_ptr->buf == (void *)smd_info->buf_in_1)
+		smd_info->in_busy_1 = 0;
+	else if (write_ptr->buf == (void *)smd_info->buf_in_2)
+		smd_info->in_busy_2 = 0;
 }
 
 static int slate_channel_diag_write(struct diag_request *write_ptr,
@@ -142,11 +148,14 @@ static int slate_channel_diag_write(struct diag_request *write_ptr,
 	struct slate_ctx *ctx = slate_addon.private;
 	int err = 0;
 
+    /* Slate only needs to run in BP Tools Mode, so we can just write directly
+     * to USB.  We don't need to worry about TTY_MODE or MEMORY_DEVICE_MODE.
+     */
 	if (ctx->slate_enable == false) {
-		err = channel_diag_write(driver->legacy_ch, write_ptr);
+		err = usb_diag_write(driver->legacy_ch, write_ptr);
 	} else if (slate_diag_process_modem_pkt(write_ptr->buf,
 							write_ptr->length)) {
-		err = channel_diag_write(driver->legacy_ch, write_ptr);
+		err = usb_diag_write(driver->legacy_ch, write_ptr);
 	} else {
 		err = 0;
 		__clear_in_busy(write_ptr);
@@ -503,13 +512,14 @@ static int slate_diag_process_modem_pkt(unsigned char *buf, int len)
 static void slate_diag_process_user_pkt(unsigned char *data, unsigned len)
 {
 	int type = 0;
+	struct diag_smd_info *smd_info = &(driver->smd_data[MODEM_DATA]);
 
 	slatedbg_hex_dump(KERN_DEBUG, "slate_diag_process_user_pkt ",
 				 16, 1, DUMP_PREFIX_ADDRESS, data, len, 1);
 
 	type = slate_addon.diag_process_apps_pkt(data, len);
-	if (driver->ch && type)
-		smd_write(driver->ch, data, len);
+	if (smd_info->ch && type)
+		smd_write(smd_info->ch, data, len);
 	else
 		pr_err("DIAG User Packet not written to SMD (MODEM) type=%d\n",
 			type);

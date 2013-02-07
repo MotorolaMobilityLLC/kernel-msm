@@ -1,1 +1,1 @@
-obj-$(CONFIG_DIAG_INTERNAL) 	+= tty_diag.o
+obj-$(CONFIG_DIAG_OVER_TTY) 	+= tty_diag.o

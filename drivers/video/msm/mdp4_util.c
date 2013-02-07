@@ -1,4 +1,4 @@
-/* Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2009-2013, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -446,6 +446,8 @@ void mdp4_hw_init(void)
 
 	/* max read pending cmd config */
 	outpdw(MDP_BASE + 0x004c, 0x02222);	/* 3 pending requests */
+	outpdw(MDP_BASE + 0x0400, 0x7FF);
+	outpdw(MDP_BASE + 0x0404, 0x30050);
 
 #ifndef CONFIG_FB_MSM_OVERLAY
 	/* both REFRESH_MODE and DIRECT_OUT are ignored at BLT mode */
@@ -455,6 +457,11 @@ void mdp4_hw_init(void)
 
 	clk_rate = mdp_get_core_clk();
 	mdp4_fetch_cfg(clk_rate);
+
+	if (mdp_rev >= MDP_REV_42) {
+		/* MDP_LAYERMIXER_IN_CFG_UPDATE_METHOD */
+		outpdw(MDP_BASE + 0x100fc, 0x01);
+	}
 
 	/* Mark hardware as initialized. Only revisions > v2.1 have a register
 	 * for tracking core reset status. */
