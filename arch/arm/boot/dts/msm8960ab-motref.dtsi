@@ -73,11 +73,25 @@
 	};
 
 	/* GSBI12 - I2C */
-	i2c@12480000 {
+	i2c12: i2c@12480000 {
 		status = "okay";
 
 		qcom,i2c-bus-freq = <400000>;
 		qcom,i2c-src-freq = <24000000>;
+
+		msp430@48 {
+			compatible = "ti,msp430";
+			reg = <0x48>;
+			gpios = <&msmgpio 69 0>,     /* IRQ */
+				<&msmgpio 92 0>,     /* RESET */
+				<&msmgpio 51 0>,     /* BSLEN */
+				<&pm8921_gpio 7 0>,  /* WakeIRQ */
+				<&pm8921_gpio 11 0>, /* MIPI_REQ */
+				<&pm8921_gpio 12 0>; /* MIPI_BUSY */
+			lux_table = <5 50 100 3000 8000>;
+			brightness_table = <25 42 68 127 127 127>;
+			bslen_pin_active_value = <1>;
+		};
 	};
 
 	pm8921_gpio: qcom,msm-pm8921-gpios {

@@ -55,3 +55,16 @@
 		status = "disabled";
 	};
 };
+
+/* GSBI12 - I2C */
+&i2c12 {
+	msp430@48 {
+		gpios = <&msmgpio 69 0>,     /* IRQ */
+			<&msmgpio 92 0>,     /* RESET */
+			<&msmgpio 51 0>,     /* BSLEN */
+			<0>,                 /* WakeIRQ */
+			<0>,                 /* MIPI_REQ */
+			<0>;                 /* MIPI_BUSY */
+		msp430_fw_version = "_p0";
+	};
+};
