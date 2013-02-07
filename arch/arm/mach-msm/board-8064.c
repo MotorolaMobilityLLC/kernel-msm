@@ -1855,6 +1855,21 @@ static struct mdm_platform_data mdm_platform_data = {
 	.sysmon_subsys_id = SYSMON_SS_EXT_MODEM,
 };
 
+static struct mdm_platform_data amdm_platform_data = {
+	.mdm_version = "3.0",
+	.ramdump_delay_ms = 2000,
+	.early_power_on = 1,
+	.sfr_query = 1,
+	.send_shdn = 1,
+	.vddmin_resource = &mdm_vddmin_rscs,
+	.peripheral_platform_device = &apq8064_device_hsic_host,
+	.ramdump_timeout_ms = 120000,
+	.mdm2ap_status_gpio_run_cfg = &mdm2ap_status_gpio_run_cfg,
+	.sysmon_subsys_id_valid = 1,
+	.sysmon_subsys_id = SYSMON_SS_EXT_MODEM,
+	.no_a2m_errfatal_on_ssr = 1,
+};
+
 static struct mdm_vddmin_resource bmdm_vddmin_rscs = {
 	.rpm_id = MSM_RPM_ID_VDDMIN_GPIO,
 	.ap2mdm_vddmin_gpio = 30,
@@ -1872,6 +1887,9 @@ static struct mdm_platform_data bmdm_platform_data = {
 	.peripheral_platform_device = &apq8064_device_ehci_host3,
 	.ramdump_timeout_ms = 120000,
 	.mdm2ap_status_gpio_run_cfg = &mdm2ap_status_gpio_run_cfg,
+	.sysmon_subsys_id_valid = 1,
+	.sysmon_subsys_id = SYSMON_SS_EXT_MODEM2,
+	.no_a2m_errfatal_on_ssr = 1,
 };
 
 static struct tsens_platform_data apq_tsens_pdata  = {
@@ -3237,7 +3255,8 @@ static void __init apq8064_common_init(void)
 
 	if (machine_is_apq8064_mtp()) {
 		if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_DSDA2) {
-			amdm_8064_device.dev.platform_data = &mdm_platform_data;
+			amdm_8064_device.dev.platform_data =
+				&amdm_platform_data;
 			platform_device_register(&amdm_8064_device);
 			bmdm_8064_device.dev.platform_data =
 				&bmdm_platform_data;
