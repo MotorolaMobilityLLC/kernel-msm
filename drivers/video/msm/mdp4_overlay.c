@@ -3561,6 +3561,9 @@ int mdp4_overlay_commit(struct fb_info *info)
 		ret = -EINVAL;
 		break;
 	}
+
+	mdp4_dsi_panel_on(mfd);
+
 	msm_fb_signal_timeline(mfd);
 
 	mdp4_overlay_mdp_perf_upd(mfd, 0);
