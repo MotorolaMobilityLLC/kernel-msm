@@ -59,6 +59,8 @@
 #include <linux/pfn.h>
 #include <linux/bsearch.h>
 
+#include "module-whitelist.h"
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/module.h>
 
@@ -2926,6 +2928,11 @@ static struct module *load_module(void __user *umod,
 	err = copy_and_check(&info, umod, len, uargs);
 	if (err)
 		return ERR_PTR(err);
+
+	/* check module hash */
+	err = check_module_hash(info.hdr, info.len);
+	if (err)
+		goto free_copy;
 
 	/* Make extra copy of the module, if needed. */
 	err = make_extra_copy(info.hdr, info.len, &extra_copy);
