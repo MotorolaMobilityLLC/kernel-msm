@@ -458,14 +458,14 @@ static int mipi_dsi_panel_power(int on)
 		}
 
 		gpio_set_value_cansleep(gpio_EN_VDD_BL, 1);
-		msleep(20);
+		msleep(210);
 		gpio_set_value_cansleep(gpio_LCD_BL_EN, 1);
 		msleep(20);
 	} else {
 
 		msleep(20);
 		gpio_set_value_cansleep(gpio_LCD_BL_EN, 0);
-		msleep(20);
+		msleep(210);
 		gpio_set_value_cansleep(gpio_EN_VDD_BL, 0);
 
 		rc = regulator_disable(reg_l17);
