@@ -211,6 +211,7 @@ static void kgsl_sync_pt_value_str(struct sync_pt *sync_pt,
 }
 
 static const struct sync_timeline_ops kgsl_sync_timeline_ops = {
+	.driver_name = "kgsl_sync",
 	.dup = kgsl_sync_pt_dup,
 	.has_signaled = kgsl_sync_pt_has_signaled,
 	.compare = kgsl_sync_pt_compare,
@@ -227,7 +228,8 @@ int kgsl_sync_timeline_create(struct kgsl_context *context)
 	 * identify the context of a timeline in the sync dump. */
 	char ktimeline_name[sizeof(context->timeline->name)] = {};
 	snprintf(ktimeline_name, sizeof(ktimeline_name),
-		"kgsl-timeline-%.15s(%d)-%.15s(%d)-%d",
+		"%s_%.15s(%d)-%.15s(%d)-%d",
+		context->dev_priv->device->name,
 		current->group_leader->comm, current->group_leader->pid,
 		current->comm, current->pid, context->id);
 
