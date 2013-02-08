@@ -64,6 +64,8 @@
 #include <uapi/linux/module.h>
 #include "module-internal.h"
 
+#include "module-whitelist.h"
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/module.h>
 
@@ -3216,6 +3218,11 @@ static int load_module(struct load_info *info, const char __user *uargs,
 		goto free_copy;
 
 	err = elf_header_check(info);
+	if (err)
+		goto free_copy;
+
+	/* check module hash */
+	err = check_module_hash(info->hdr, info->len);
 	if (err)
 		goto free_copy;
 
