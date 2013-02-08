@@ -1375,7 +1375,8 @@ tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
     header_offset = limPrepareTdlsFrameHeader(pMac, pFrame, 
                      LINK_IDEN_ADDR_OFFSET(teardown), 
                           (reason == eSIR_MAC_TDLS_TEARDOWN_PEER_UNREACHABLE) 
-                              ? TDLS_LINK_AP : TDLS_LINK_DIRECT, TDLS_INITIATOR,
+                              ? TDLS_LINK_AP : TDLS_LINK_DIRECT,
+                              (responder == TRUE) ? TDLS_RESPONDER : TDLS_INITIATOR,
                               psessionEntry) ;
 
     status = dot11fPackTDLSTeardown( pMac, &teardown, pFrame 
