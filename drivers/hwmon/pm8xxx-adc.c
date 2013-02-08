@@ -279,6 +279,7 @@ static int32_t pm8xxx_adc_patherm_power(bool on)
 					"with error %d\n", rc);
 			return rc;
 		}
+		msleep(30);
 	} else {
 		rc = regulator_disable(pa_therm);
 		if (rc < 0) {
@@ -297,6 +298,7 @@ static int32_t pm8xxx_adc_channel_power_enable(uint32_t channel,
 	int rc = 0;
 
 	switch (channel)
+	case ADC_MPP_1_AMUX3:
 	case ADC_MPP_1_AMUX8:
 		rc = pm8xxx_adc_patherm_power(power_cntrl);
 
