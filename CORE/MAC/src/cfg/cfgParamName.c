@@ -44,7 +44,7 @@
  */
 
 /*
- * DO NOT EDIT - This file is generated automaticlly
+ * DO NOT EDIT - This file is generated automatically
  */
 
 /*
