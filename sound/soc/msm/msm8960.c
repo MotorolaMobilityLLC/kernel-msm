@@ -1320,7 +1320,7 @@ static int msm_primary_i2s_tx_startup(struct snd_pcm_substream *substream)
 		ret = gpio_request_array(data->pri_i2s_gpios,
 						data->num_pri_i2s_gpios);
 		if (ret < 0)
-			goto gpio_fail;
+			return ret;
 
 		pri_i2s_tx_osr_clk = clk_get(cpu_dai->dev, "osr_clk");
 		if (IS_ERR(pri_i2s_tx_osr_clk)) {
@@ -1332,7 +1332,7 @@ static int msm_primary_i2s_tx_startup(struct snd_pcm_substream *substream)
 		ret = clk_prepare_enable(pri_i2s_tx_osr_clk);
 		if (ret != 0) {
 			pr_err("Unable to enable pri_i2s_tx_osr_clk\n");
-			goto osr_clk_fail;
+			goto osr_clk_en_fail;
 		}
 		pri_i2s_tx_bit_clk = clk_get(cpu_dai->dev, "bit_clk");
 		if (IS_ERR(pri_i2s_tx_bit_clk)) {
@@ -1346,9 +1346,7 @@ static int msm_primary_i2s_tx_startup(struct snd_pcm_substream *substream)
 		ret = clk_prepare_enable(pri_i2s_tx_bit_clk);
 		if (ret != 0) {
 			pr_err("Unable to enable pri_i2s_tx_bit_clk\n");
-			clk_put(pri_i2s_tx_bit_clk);
-			pri_i2s_tx_bit_clk = NULL;
-			goto bit_clk_fail;
+			goto bit_clk_en_fail;
 		}
 		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
 
@@ -1362,14 +1360,15 @@ static int msm_primary_i2s_tx_startup(struct snd_pcm_substream *substream)
 
 set_fmt_fail:
 	clk_disable_unprepare(pri_i2s_tx_bit_clk);
+bit_clk_en_fail:
 	clk_put(pri_i2s_tx_bit_clk);
 	pri_i2s_tx_bit_clk = NULL;
 bit_clk_fail:
 	clk_disable_unprepare(pri_i2s_tx_osr_clk);
-osr_clk_fail:
+osr_clk_en_fail:
 	clk_put(pri_i2s_tx_osr_clk);
 	pri_i2s_tx_osr_clk = NULL;
-gpio_fail:
+osr_clk_fail:
 	gpio_free_array(data->pri_i2s_gpios, data->num_pri_i2s_gpios);
 
 	return ret;
