@@ -3459,6 +3459,42 @@ static int msm_otg_setup_devices(struct platform_device *ofdev,
 	return retval;
 }
 
+static ssize_t
+get_id_gnd(struct device *dev, struct device_attribute *attr,
+		char *buf)
+{
+	struct msm_otg *motg = dev_get_drvdata(dev);
+	int id_gnd = irq_read_line(motg->pdata->pmic_id_irq);
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
+			id_gnd);
+}
+
+static DEVICE_ATTR(id_gnd, S_IRUGO, get_id_gnd, NULL);
+
+static ssize_t
+get_id_flt(struct device *dev, struct device_attribute *attr,
+		char *buf)
+{
+	struct msm_otg *motg = dev_get_drvdata(dev);
+	int id_flt = gpio_get_value(motg->pdata->pmic_id_flt_gpio);
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
+			id_flt);
+}
+
+static DEVICE_ATTR(id_flt, S_IRUGO, get_id_flt, NULL);
+
+static struct attribute *idstate_attrs[] = {
+	&dev_attr_id_gnd.attr,
+	&dev_attr_id_flt.attr,
+	NULL,
+};
+
+static struct attribute_group idstate_attr_group = {
+	.name = "idstate",
+	.attrs = idstate_attrs,
+};
+
+
 struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -3742,6 +3778,13 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 
 	if (motg->pdata->mode == USB_OTG &&
 		motg->pdata->otg_control == OTG_PMIC_CONTROL) {
+		ret = sysfs_create_group(&pdev->dev.kobj, &idstate_attr_group);
+		if (ret) {
+			dev_err(&pdev->dev, "Can't register sysfs attr group:"
+				"%d\n", ret);
+			goto remove_phy;
+		}
+
 		if (motg->pdata->pmic_id_irq) {
 			ret = request_irq(motg->pdata->pmic_id_irq,
 						msm_pmic_id_irq,
@@ -3750,7 +3793,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 						"msm_otg", motg);
 			if (ret) {
 				dev_err(&pdev->dev, "request irq failed for PMIC ID\n");
-				goto remove_phy;
+				goto remove_sysfs;
 			}
 
 			if (motg->pdata->pmic_id_flt_gpio) {
@@ -3767,7 +3810,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 		} else {
 			ret = -ENODEV;
 			dev_err(&pdev->dev, "PMIC IRQ for ID notifications doesn't exist\n");
-			goto remove_phy;
+			goto remove_sysfs;
 		}
 	}
 
@@ -3817,6 +3860,8 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 
 free_pmic_id_irq:
 	free_irq(motg->pdata->pmic_id_irq, motg);
+remove_sysfs:
+	sysfs_remove_group(&pdev->dev.kobj, &idstate_attr_group);
 remove_phy:
 	usb_set_transceiver(NULL);
 free_async_irq:
@@ -3870,8 +3915,12 @@ static int __devexit msm_otg_remove(struct platform_device *pdev)
 
 	if (pdev->dev.of_node)
 		msm_otg_setup_devices(pdev, motg->pdata->mode, false);
-	if (motg->pdata->otg_control == OTG_PMIC_CONTROL)
+	if (motg->pdata->otg_control == OTG_PMIC_CONTROL) {
+		if (motg->pdata->mode == USB_OTG)
+			sysfs_remove_group(&pdev->dev.kobj,
+						&idstate_attr_group);
 		pm8921_charger_unregister_vbus_sn(0);
+	}
 	msm_otg_mhl_register_callback(motg, NULL);
 	msm_otg_debugfs_cleanup();
 	cancel_delayed_work_sync(&motg->chg_work);
