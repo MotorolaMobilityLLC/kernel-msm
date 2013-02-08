@@ -421,6 +421,11 @@ static int __init ov10820_init_i2c_device(struct i2c_board_info *info,
 	of_property_read_u32(node, "is_separate_dvdd",
 				&ov10820_oem_data.sensor_using_separate_dvdd);
 
+	/* see if we will allow detection of 10mp if asic is there
+	 * or not */
+	of_property_read_u32(node, "allow_asic_bypass",
+			&ov10820_oem_data.sensor_allow_asic_bypass);
+
 	msm_camera_sensor_ov10820_data.oem_data = &ov10820_oem_data;
 	info->platform_data = &msm_camera_sensor_ov10820_data;
 
