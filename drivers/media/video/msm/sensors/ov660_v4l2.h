@@ -24,11 +24,19 @@
 #define OV660_NAME "ov660"
 #define OV660_NAME_LEN (sizeof(OV660_NAME)-1)
 
+#define I2C_ADDR_BYPASS 0x6106
+
 struct ov660_reg_i2c_tbl {
 	uint16_t reg_addr;
 	uint8_t reg_data;
 };
 
+extern bool allow_asic_control;
+
+extern int32_t ov660_set_exposure_gain(uint16_t gain, uint32_t line);
+extern int32_t ov660_set_i2c_bypass(int bypassOn);
+extern int32_t ov660_add_blc_firmware(uint16_t addr);
+extern int32_t ov660_use_work_around_blc(void);
 extern int32_t ov660_check_probe(void);
 extern int32_t ov660_intialize_8MP(void);
 extern int32_t ov660_intialize_10MP(void);
