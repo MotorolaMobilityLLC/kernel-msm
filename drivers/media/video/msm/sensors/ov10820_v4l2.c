@@ -577,8 +577,17 @@ static int32_t ov10820_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
 	uint16_t chipid = 0;
+	int32_t ov660_exists = 0;
+	struct msm_camera_sensor_info *info = s_ctrl->sensordata;
 
-	if (ov660_check_probe() == 0) {
+	if (!info->oem_data) {
+		pr_err("%s: oem data NULL in sensor info, aborting",
+				__func__);
+		return -EINVAL;
+	}
+
+	ov660_exists = ov660_check_probe();
+	if (ov660_exists == 0) {
 		ov660_intialize_10MP();
 		usleep(10000);
 	}
@@ -618,6 +627,13 @@ check_chipid:
 
 	pr_debug("%s: success and using i2c address of: %x\n", __func__,
 			s_ctrl->sensor_i2c_client->client->addr);
+	if ((ov660_exists != 0) &&
+			(info->oem_data->sensor_allow_asic_bypass != 1)) {
+		pr_err("%s: detected 10mp, but asic not working!\n",
+				__func__);
+		return -ENODEV;
+	}
+
 	return 0;
 }
 
