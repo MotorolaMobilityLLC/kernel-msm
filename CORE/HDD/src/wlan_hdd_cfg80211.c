@@ -1361,6 +1361,133 @@ static VOS_STATUS wlan_hdd_validate_operation_channel(hdd_adapter_t *pAdapter,in
          
 }
 
+/**
+ * FUNCTION: wlan_hdd_cfg80211_set_channel
+ * This function is used to set the channel number
+ */
+static int wlan_hdd_cfg80211_set_channel( struct wiphy *wiphy, struct net_device *dev,
+                                   struct ieee80211_channel *chan,
+                                   enum nl80211_channel_type channel_type
+                                 )
+{
+    v_U32_t num_ch = 0;
+    u32 channel = 0;
+    hdd_adapter_t *pAdapter = NULL;
+    int freq = chan->center_freq; /* freq is in MHZ */
+
+    ENTER();
+
+    if( NULL == dev )
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+                "%s: Called with dev = NULL.\n", __func__);
+        return -ENODEV;
+    }
+    pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
+
+    hddLog(VOS_TRACE_LEVEL_INFO,
+                "%s: device_mode = %d  freq = %d \n",__func__,
+                            pAdapter->device_mode, chan->center_freq);
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
+        return -EAGAIN;
+    }
+
+    /*
+     * Do freq to chan conversion
+     * TODO: for 11a
+     */
+
+    channel = ieee80211_frequency_to_channel(freq);
+
+    /* Check freq range */
+    if ((WNI_CFG_CURRENT_CHANNEL_STAMIN > channel) ||
+            (WNI_CFG_CURRENT_CHANNEL_STAMAX < channel))
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR,
+                "%s: Channel [%d] is outside valid range from %d to %d\n",
+                __func__, channel, WNI_CFG_CURRENT_CHANNEL_STAMIN,
+                WNI_CFG_CURRENT_CHANNEL_STAMAX);
+        return -EINVAL;
+    }
+
+    num_ch = WNI_CFG_VALID_CHANNEL_LIST_LEN;
+
+    if ((WLAN_HDD_SOFTAP != pAdapter->device_mode)
+#ifdef WLAN_FEATURE_P2P
+     && (WLAN_HDD_P2P_GO != pAdapter->device_mode)
+#endif
+      )
+    {
+        if(VOS_STATUS_SUCCESS != wlan_hdd_validate_operation_channel(pAdapter,channel))
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR,
+                    "%s: Invalid Channel [%d] \n", __func__, channel);
+            return -EINVAL;
+        }
+        hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
+                "%s: set channel to [%d] for device mode =%d",
+                          __func__, channel,pAdapter->device_mode);
+    }
+    if( (pAdapter->device_mode == WLAN_HDD_INFRA_STATION)
+#ifdef WLAN_FEATURE_P2P
+     || (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)
+#endif
+      )
+    {
+        hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+        tCsrRoamProfile * pRoamProfile = &pWextState->roamProfile;
+        hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+
+        if (eConnectionState_IbssConnected == pHddStaCtx->conn_info.connState)
+        {
+           /* Link is up then return cant set channel*/
+            hddLog( VOS_TRACE_LEVEL_ERROR,
+                   "%s: IBSS Associated, can't set the channel\n", __func__);
+            return -EINVAL;
+        }
+
+        num_ch = pRoamProfile->ChannelInfo.numOfChannels = 1;
+        pHddStaCtx->conn_info.operationChannel = channel;
+        pRoamProfile->ChannelInfo.ChannelList =
+            &pHddStaCtx->conn_info.operationChannel;
+    }
+    else if ((pAdapter->device_mode == WLAN_HDD_SOFTAP)
+#ifdef WLAN_FEATURE_P2P
+        ||   (pAdapter->device_mode == WLAN_HDD_P2P_GO)
+#endif
+            )
+    {
+        (WLAN_HDD_GET_AP_CTX_PTR(pAdapter))->sapConfig.channel = channel;
+
+        if ( WLAN_HDD_SOFTAP == pAdapter->device_mode )
+        {
+            hdd_config_t *cfg_param = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
+
+            /* If auto channel selection is configured as enable/ 1 then ignore
+            channel set by supplicant
+            */
+            if ( cfg_param->apAutoChannelSelection )
+            {
+                (WLAN_HDD_GET_AP_CTX_PTR(pAdapter))->sapConfig.channel = AUTO_CHANNEL_SELECT;
+
+                hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
+                       "%s: set channel to auto channel (0) for device mode =%d",
+                       __func__, pAdapter->device_mode);
+            }
+        }
+    }
+    else
+    {
+        hddLog(VOS_TRACE_LEVEL_FATAL,
+               "%s: Invalid device mode failed to set valid channel", __func__);
+        return -EINVAL;
+    }
+    EXIT();
+    return 0;
+}
+
 /* 
  * FUNCTION: wlan_hdd_select_cbmode
  * called by wlan_hdd_cfg80211_start_bss() and
@@ -2187,6 +2314,9 @@ static int wlan_hdd_cfg80211_start_ap(struct wiphy *wiphy,
              return -EINVAL;
         }
         pAdapter->sessionCtx.ap.beacon = new;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,6,0))
+        wlan_hdd_cfg80211_set_channel(wiphy, dev, params->channel, params->channel_type);
+#endif
         status = wlan_hdd_cfg80211_start_bss(pAdapter, &params->beacon, params->ssid,
                                              params->ssid_len, params->hidden_ssid);
     }
@@ -3374,137 +3504,6 @@ static int wlan_hdd_cfg80211_set_default_key( struct wiphy *wiphy,
  
     return status;
 }
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
-/**
- * FUNCTION: wlan_hdd_cfg80211_set_channel
- * This function is used to set the channel number 
- */
-int wlan_hdd_cfg80211_set_channel( struct wiphy *wiphy, struct net_device *dev,
-                                   struct ieee80211_channel *chan,
-                                   enum nl80211_channel_type channel_type
-                                 )
-{
-    v_U32_t num_ch = 0;
-    u32 channel = 0;
-    hdd_adapter_t *pAdapter = NULL; 
-    int freq = chan->center_freq; /* freq is in MHZ */ 
- 
-    ENTER();
-
-    if( NULL == dev )
-    {
-        hddLog(VOS_TRACE_LEVEL_ERROR, 
-                "%s: Called with dev = NULL.\n", __func__);
-        return -ENODEV;
-    }
-    pAdapter = WLAN_HDD_GET_PRIV_PTR( dev ); 
-    
-    hddLog(VOS_TRACE_LEVEL_INFO, 
-                "%s: device_mode = %d  freq = %d \n",__func__, 
-                            pAdapter->device_mode, chan->center_freq);
-    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
-    {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
-        return -EAGAIN;
-    }
-
-    /* 
-     * Do freq to chan conversion
-     * TODO: for 11a
-     */
-
-    channel = ieee80211_frequency_to_channel(freq);
-    
-    /* Check freq range */
-    if ((WNI_CFG_CURRENT_CHANNEL_STAMIN > channel) || 
-            (WNI_CFG_CURRENT_CHANNEL_STAMAX < channel)) 
-    {
-        hddLog(VOS_TRACE_LEVEL_ERROR, 
-                "%s: Channel [%d] is outside valid range from %d to %d\n",
-                __func__, channel, WNI_CFG_CURRENT_CHANNEL_STAMIN,
-                WNI_CFG_CURRENT_CHANNEL_STAMAX);
-        return -EINVAL;
-    }
-
-    num_ch = WNI_CFG_VALID_CHANNEL_LIST_LEN;
-
-    if ((WLAN_HDD_SOFTAP != pAdapter->device_mode)
-#ifdef WLAN_FEATURE_P2P
-     && (WLAN_HDD_P2P_GO != pAdapter->device_mode)
-#endif
-      )
-    {
-        if(VOS_STATUS_SUCCESS != wlan_hdd_validate_operation_channel(pAdapter,channel))
-        {
-            hddLog(VOS_TRACE_LEVEL_ERROR,
-                    "%s: Invalid Channel [%d] \n", __func__, channel);
-            return -EINVAL;
-        }
-        hddLog(VOS_TRACE_LEVEL_INFO_HIGH, 
-                "%s: set channel to [%d] for device mode =%d", 
-                          __func__, channel,pAdapter->device_mode);
-    }
-    if( (pAdapter->device_mode == WLAN_HDD_INFRA_STATION)
-#ifdef WLAN_FEATURE_P2P
-     || (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)
-#endif
-      )
-    {
-        hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter); 
-        tCsrRoamProfile * pRoamProfile = &pWextState->roamProfile;
-        hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-
-        if (eConnectionState_IbssConnected == pHddStaCtx->conn_info.connState)
-        {
-           /* Link is up then return cant set channel*/
-            hddLog( VOS_TRACE_LEVEL_ERROR, 
-                   "%s: IBSS Associated, can't set the channel\n", __func__);
-            return -EINVAL;
-        }
-
-        num_ch = pRoamProfile->ChannelInfo.numOfChannels = 1;
-        pHddStaCtx->conn_info.operationChannel = channel; 
-        pRoamProfile->ChannelInfo.ChannelList = 
-            &pHddStaCtx->conn_info.operationChannel; 
-    }
-    else if ((pAdapter->device_mode == WLAN_HDD_SOFTAP) 
-#ifdef WLAN_FEATURE_P2P
-        ||   (pAdapter->device_mode == WLAN_HDD_P2P_GO)
-#endif
-            ) 
-    {
-        (WLAN_HDD_GET_AP_CTX_PTR(pAdapter))->sapConfig.channel = channel;
-
-        if ( WLAN_HDD_SOFTAP == pAdapter->device_mode )
-        {
-            hdd_config_t *cfg_param = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
-
-            /* If auto channel selection is configured as enable/ 1 then ignore
-            channel set by supplicant
-            */
-            if ( cfg_param->apAutoChannelSelection )
-            {
-                (WLAN_HDD_GET_AP_CTX_PTR(pAdapter))->sapConfig.channel = AUTO_CHANNEL_SELECT;
-
-                hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
-                       "%s: set channel to auto channel (0) for device mode =%d",
-                       __func__, pAdapter->device_mode);
-            }
-        }
-    }
-    else 
-    {
-        hddLog(VOS_TRACE_LEVEL_FATAL, 
-               "%s: Invalid device mode failed to set valid channel", __func__);
-        return -EINVAL;
-    }
-    EXIT();
-    return 0;
-}
-#endif /* (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0)) */
-
-
 
 /*
  * FUNCTION: wlan_hdd_cfg80211_inform_bss
