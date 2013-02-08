@@ -49,9 +49,8 @@ static struct dsi_cmd_desc mot_display_on_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 5, sizeof(display_on), display_on}
 };
 
-static struct dsi_cmd_desc mot_display_normal_mode_on_cmds[] = {
+static struct dsi_cmd_desc mot_display_normal_mode_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(normal_mode_on), normal_mode_on},
-	{DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(display_on), display_on},
 };
 
 static struct dsi_cmd_desc mot_display_off_cmd = {
@@ -77,24 +76,25 @@ static struct dsi_cmd_desc set_offset_cmd[] = {
 static u8 panel_raw_mtp[RAW_MTP_SIZE];
 static u8 gamma_settings[NUM_NIT_LVLS][RAW_GAMMA_SIZE];
 
-int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
+int mipi_mot_enter_normal_mode(struct msm_fb_data_type *mfd)
 {
-	struct dcs_cmd_req cmdreq;
-
 	if (mfd->resume_cfg.partial) {
 		pr_debug("%s: sending normal mode on\n", __func__);
-		cmdreq.cmds = &mot_display_normal_mode_on_cmds[0];
-		cmdreq.cmds_cnt = ARRAY_SIZE(mot_display_normal_mode_on_cmds);
-	} else {
-		pr_debug("%s: sending display on\n", __func__);
-		cmdreq.cmds = &mot_display_on_cmds[0];
-		cmdreq.cmds_cnt = ARRAY_SIZE(mot_display_on_cmds);
-	}
-	cmdreq.flags = CMD_REQ_TX | CMD_REQ_COMMIT;
-	cmdreq.rlen = 0;
-	cmdreq.cb = NULL;
+		mipi_mot_tx_cmds(&mot_display_normal_mode_cmds[0],
+				ARRAY_SIZE(mot_display_normal_mode_cmds));
 
-	mipi_dsi_cmdlist_put(&cmdreq);
+		if (mot_panel && mot_panel->shift_correct)
+			mot_panel->shift_correct();
+	}
+
+	return 0;
+}
+
+int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
+{
+	pr_debug("%s: sending display on\n", __func__);
+	mipi_mot_tx_cmds(&mot_display_on_cmds[0],
+			ARRAY_SIZE(mot_display_on_cmds));
 
 	return 0;
 }

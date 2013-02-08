@@ -139,6 +139,29 @@ static struct dsi_cmd_desc mot_display_off_cmds[] = {
 		sizeof(enter_sleep), enter_sleep}
 };
 
+/* Settings for correct 2Ch shift issue */
+static char small_col[] = {0x2a, 0x02, 0xc8, 0x02, 0xcf};
+static char small_row[] = {0x2b, 0x04, 0xfe, 0x04, 0xff};
+static char frame[] = {
+	0x2c,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static char normal_col[] = {0x2a, 0x00, 0x00, 0x02, 0xcf};
+static char normal_row[] = {0x2b, 0x00, 0x00, 0x04, 0xff};
+
+static struct dsi_cmd_desc correct_shift_cmds[] = {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	 sizeof(small_col), small_col},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	 sizeof(small_row), small_row},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	 sizeof(frame), frame},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	 sizeof(normal_col), normal_col},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	 sizeof(normal_row), normal_row} };
+
 static void enable_acl(struct msm_fb_data_type *mfd)
 {
 	/* Write the value only if the display is enable and powered on */
@@ -247,6 +270,12 @@ static int is_valid_power_mode(struct msm_fb_data_type *mfd)
 	return (pwr_mod & 0x94) == 0x94;
 }
 
+static void shift_correct(void)
+{
+	mipi_mot_tx_cmds(&correct_shift_cmds[0],
+			ARRAY_SIZE(correct_shift_cmds));
+}
+
 static int __init mipi_mot_cmd_smd_hd_465_init(void)
 {
 	int ret;
@@ -325,6 +354,8 @@ static int __init mipi_mot_cmd_smd_hd_465_init(void)
 	mot_panel->panel_disable = panel_disable;
 	mot_panel->set_backlight = panel_set_backlight;
 	mot_panel->enable_acl = enable_acl;
+	/* TODO: Remove on displays which have shift issue fixed */
+	mot_panel->shift_correct = shift_correct;
 
 	/* For ESD detection information */
 	mot_panel->esd_enabled = false;

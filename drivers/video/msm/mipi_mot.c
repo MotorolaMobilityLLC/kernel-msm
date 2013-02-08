@@ -311,7 +311,12 @@ static int panel_enable(struct platform_device *pdev)
 	get_controller_ver(mfd);
 	get_controller_drv_ver(mfd);
 
+	if (mfd->resume_cfg.partial &&
+		mot_panel.panel_enter_normal_mode)
+		mot_panel.panel_enter_normal_mode(mfd);
+
 	mmi_panel_notify(MMI_PANEL_EVENT_POST_INIT, NULL);
+
 	pr_info("%s completed. Power_mode =0x%x\n",
 				__func__, mipi_mode_get_pwr_mode(mfd));
 
@@ -663,6 +668,7 @@ static int __init mipi_mot_lcd_init(void)
 
 	mot_panel.panel_on = mipi_mot_panel_on;
 	mot_panel.panel_off = NULL;
+	mot_panel.panel_enter_normal_mode = mipi_mot_enter_normal_mode;
 
 	mot_panel.hide_img = mipi_mot_hide_img;
 	moto_panel_debug_init();
