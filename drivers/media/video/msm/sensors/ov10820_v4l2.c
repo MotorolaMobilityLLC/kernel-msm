@@ -84,7 +84,7 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings[] = {
 	{0x3002, 0x80},
 	{0x3009, 0x06},
 	{0x300f, 0x11},
-	{0x3011, 0xd0},
+	{0x3011, 0xe0},
 	{0x3012, 0x41},
 	{0x301e, 0x00},
 	{0x3106, 0x04},
@@ -106,25 +106,52 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings[] = {
 	{0x3507, 0x02},
 	{0x3508, 0x00},
 	{0x350a, 0x00},
+	{0x3603, 0x04},
 	{0x3604, 0x00},
-	{0x3641, 0x8d},
+	{0x3641, 0x8f},
 	{0x3645, 0x41},
+	{0x3648, 0x0d},
+	{0x3649, 0x86},
+	{0x3656, 0xf8},
 	{0x3660, 0x83},
 	{0x3663, 0x02},
 	{0x3664, 0x00},
 	{0x3708, 0x84},
 	{0x3709, 0x50},
+	{0x370b, 0xa0},
+	{0x370c, 0xf0},
 	{0x370d, 0x03},
-	{0x370e, 0x05},
-	{0x370f, 0x68},
+	{0x370e, 0x0f},
+	{0x370f, 0x48},
 	{0x3710, 0x05},
-	{0x3714, 0x45},
+	{0x3714, 0x42},
 	{0x3718, 0x00},
 	{0x371b, 0x30},
 	{0x371e, 0x01},
+	{0x371f, 0x20},
 	{0x3720, 0x30},
+	{0x3723, 0x38},
 	{0x372a, 0x00},
 	{0x372c, 0x11},
+	{0x3730, 0x03},
+	{0x3731, 0xa0},
+	{0x3732, 0x03},
+	{0x3733, 0xde},
+	{0x3738, 0x03},
+	{0x3739, 0xde},
+	{0x373a, 0x03},
+	{0x373b, 0xa0},
+	{0x373c, 0x00},
+	{0x373d, 0x00},
+	{0x373e, 0x00},
+	{0x373f, 0x00},
+	{0x3740, 0x03},
+	{0x3741, 0xc8},
+	{0x3742, 0x03},
+	{0x3743, 0xe1},
+	{0x3748, 0x1e},
+	{0x3749, 0x93},
+	{0x374a, 0x17},
 	{0x37c5, 0x00},
 	{0x37c6, 0x00},
 	{0x37c7, 0x08},
@@ -158,6 +185,7 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings[] = {
 	{0x3b02, 0x00},
 	{0x3b03, 0x00},
 	{0x3b05, 0x00},
+	{0x4000, 0x71},
 	{0x4001, 0x08},
 	{0x4003, 0x30},
 	{0x4004, 0x00},
@@ -165,7 +193,7 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings[] = {
 	{0x4011, 0x00},
 	{0x4012, 0x00},
 	{0x4013, 0x00},
-	{0x401f, 0x04},
+	{0x401f, 0x00},
 	{0x4020, 0x01},
 	{0x4021, 0x90},
 	{0x4022, 0x03},
@@ -187,6 +215,10 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings[] = {
 	{0x430c, 0x00},
 	{0x430d, 0xf0},
 	{0x4501, 0x00},
+	{0x4602, 0x02},
+	{0x481b, 0x35},
+	{0x4823, 0x35},
+	{0x4837, 0x08},
 	{0x4d00, 0x04},
 	{0x4d01, 0x71},
 	{0x4d02, 0xfd},
@@ -211,7 +243,7 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings[] = {
 	{0x5a08, 0x00},
 	{0x5e01, 0x41},
 	{0x3106, 0x00},
-	{0x370a, 0x04},
+	{0x370a, 0x21},
 	{0x3800, 0x00},
 	{0x3801, 0x00},
 	{0x3802, 0x00},
@@ -241,6 +273,7 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings[] = {
 	{0x350b, 0x40},
 	{0x3083, 0x01},
 	{0x308e, 0x02},
+	{0x3092, 0x07},
 	{0x4837, 0x10},
 };
 
@@ -260,9 +293,6 @@ static struct msm_camera_i2c_conf_array ov10820_init_conf[] = {
 		MSM_CAMERA_I2C_BYTE_DATA},
 	{&ov10820_recommend_settings[0],
 		ARRAY_SIZE(ov10820_recommend_settings), 0,
-		MSM_CAMERA_I2C_BYTE_DATA},
-	{&ov10820_BLC_work_around_settings[0],
-		ARRAY_SIZE(ov10820_BLC_work_around_settings), 0,
 		MSM_CAMERA_I2C_BYTE_DATA}
 };
 
@@ -317,21 +347,30 @@ static int32_t ov10820_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 		fl_lines = line + offset;
 
 	fl_lines += (fl_lines & 0x1);
-	s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);
 	msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
-		s_ctrl->sensor_output_reg_addr->frame_length_lines, fl_lines,
-		MSM_CAMERA_I2C_WORD_DATA);
+				s_ctrl->sensor_output_reg_addr->
+				frame_length_lines, fl_lines,
+				MSM_CAMERA_I2C_WORD_DATA);
+
 	int_time[0] = line >> 12;
 	int_time[1] = line >> 4;
 	int_time[2] = line << 4;
 
-	msm_camera_i2c_write_seq(s_ctrl->sensor_i2c_client,
-		s_ctrl->sensor_exp_gain_info->coarse_int_time_addr-1,
-		&int_time[0], 3);
-	msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
-		s_ctrl->sensor_exp_gain_info->global_gain_addr, gain,
-		MSM_CAMERA_I2C_WORD_DATA);
-	s_ctrl->func_tbl->sensor_group_hold_off(s_ctrl);
+	if (allow_asic_control) {
+		ov660_set_i2c_bypass(0);
+		ov660_set_exposure_gain(gain, line);
+		ov660_set_i2c_bypass(1);
+	} else {
+		s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);
+		msm_camera_i2c_write_seq(s_ctrl->sensor_i2c_client,
+				s_ctrl->sensor_exp_gain_info->
+				coarse_int_time_addr-1, &int_time[0], 3);
+		msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+				s_ctrl->sensor_exp_gain_info->
+				global_gain_addr, gain,
+				MSM_CAMERA_I2C_WORD_DATA);
+		s_ctrl->func_tbl->sensor_group_hold_off(s_ctrl);
+	}
 
 	return 0;
 }
@@ -573,6 +612,48 @@ static struct msm_camera_i2c_client ov10820_sensor_i2c_client = {
 	.addr_type = MSM_CAMERA_I2C_WORD_ADDR,
 };
 
+static int32_t check_i2c_configuration(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	uint16_t chipid = 0;
+
+	ov660_set_i2c_bypass(0);
+
+	rc = msm_camera_i2c_read(
+			s_ctrl->sensor_i2c_client,
+			s_ctrl->sensor_id_info->sensor_id_reg_addr, &chipid,
+			MSM_CAMERA_I2C_BYTE_DATA);
+
+	if (rc < 0) {
+		pr_debug("%s: I2C is configured through ASIC.\n", __func__);
+		allow_asic_control = true;
+
+		rc = ov660_add_blc_firmware(s_ctrl->sensor_i2c_addr);
+		if (rc < 0)
+			pr_err("%s: Unable to set blc firmware!\n", __func__);
+
+	} else {
+		pr_debug("%s: I2C is configured around ASIC.\n", __func__);
+		allow_asic_control = false;
+		rc = ov660_use_work_around_blc();
+
+		if (rc < 0)
+			pr_err("%s: unable to set ov660 blc workaround!\n",
+					__func__);
+
+		rc = msm_camera_i2c_write_tbl(s_ctrl->sensor_i2c_client,
+				ov10820_BLC_work_around_settings,
+				ARRAY_SIZE(ov10820_BLC_work_around_settings),
+				MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0)
+			pr_err("%s: unable to write 10MP blc workaround!\n",
+					__func__);
+	}
+
+	ov660_set_i2c_bypass(1);
+	return 0;
+}
+
 static int32_t ov10820_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
@@ -624,6 +705,10 @@ check_chipid:
 				chipid, s_ctrl->sensor_id_info->sensor_id);
 		return -ENODEV;
 	}
+
+	/* Need to determine when to apply BLC firmware fix
+	 * or when to use the old method of blc work around fix */
+	check_i2c_configuration(s_ctrl);
 
 	pr_debug("%s: success and using i2c address of: %x\n", __func__,
 			s_ctrl->sensor_i2c_client->client->addr);
