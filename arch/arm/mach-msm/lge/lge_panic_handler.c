@@ -174,10 +174,15 @@ void set_crash_store_disable(void)
 
 void store_crash_log(char *p)
 {
+	if (!crash_dump_log)
+		return;
+
 	if (!crash_store_flag)
 		return;
+
 	if (crash_dump_log->size == crash_buf_size)
 		return;
+
 	for ( ; *p; p++) {
 		if (*p == '[') {
 			for ( ; *p != ']'; p++)
@@ -191,8 +196,12 @@ void store_crash_log(char *p)
 				;
 			p++;
 		}
-		crash_dump_log->buffer[crash_dump_log->size] = *p;
-		crash_dump_log->size++;
+
+		crash_dump_log->buffer[crash_dump_log->size++] = *p;
+
+		/* check the buffer size */
+		if (crash_dump_log->size == crash_buf_size)
+			break;
 	}
 	crash_dump_log->buffer[crash_dump_log->size] = 0;
 
@@ -265,7 +274,8 @@ static int __init panic_handler_probe(struct platform_device *pdev)
 	memset(crash_dump_log, 0, buffer_size);
 	crash_dump_log->magic_key = NORMAL_MAGIC_KEY;
 	crash_dump_log->size = 0;
-	crash_buf_size = buffer_size - offsetof(struct crash_log_dump, buffer);
+	crash_buf_size =
+		buffer_size - offsetof(struct crash_log_dump, buffer) - 1;
 #ifdef CONFIG_CPU_CP15_MMU
 	ctx_buf = (void *)(buffer + buffer_size);
 	cpu_crash_ctx = (unsigned long *)ctx_buf;
