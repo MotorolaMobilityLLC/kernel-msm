@@ -1,4 +1,5 @@
 /* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2013 Motorola Mobility LLC. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -18,6 +19,7 @@
 #include <linux/bitops.h>
 #include <linux/slab.h>
 #include <linux/clk.h>
+#include <linux/of.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/soc.h>
@@ -303,6 +305,37 @@ error_invalid_data:
 	return -EINVAL;
 }
 
+#ifdef CONFIG_OF
+static struct msm_mi2s_pdata *
+msm_dai_q6_mi2s_of_init(struct platform_device *pdev)
+{
+	struct msm_mi2s_pdata *pdata;
+	struct device_node *np = pdev->dev.of_node;
+	u32 val;
+
+	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&pdev->dev, "memory allocation failure\n");
+		return NULL;
+	}
+
+	if (!of_property_read_u32(np, "qcom,msm-mi2s-rx-lines", &val))
+		pdata->rx_sd_lines = (u16)val;
+	if (!of_property_read_u32(np, "qcom,msm-mi2s-tx-lines", &val))
+		pdata->tx_sd_lines = (u16)val;
+
+	dev_set_name(&pdev->dev, "%s", "msm-dai-q6-mi2s");
+
+	return pdata;
+}
+#else
+static inline struct msm_mi2s_pdata *
+msm_dai_q6_mi2s_of_init(struct platform_device *pdev)
+{
+	return NULL;
+}
+#endif
+
 static int msm_dai_q6_mi2s_platform_data_validation(
 	struct platform_device *pdev, struct snd_soc_dai_driver *dai_driver)
 {
@@ -312,6 +345,14 @@ static int msm_dai_q6_mi2s_platform_data_validation(
 	u16 sdline_config;
 	unsigned int ch_cnt;
 	int rc = 0;
+
+	if (pdev->dev.of_node)
+		mi2s_pdata = msm_dai_q6_mi2s_of_init(pdev);
+
+	if (mi2s_pdata == NULL) {
+		dev_err(&pdev->dev, "no platform data found\n");
+		return -ENODEV;
+	}
 
 	if ((mi2s_pdata->rx_sd_lines & mi2s_pdata->tx_sd_lines) ||
 	    (!mi2s_pdata->rx_sd_lines && !mi2s_pdata->tx_sd_lines)) {
@@ -1818,10 +1859,28 @@ static struct snd_soc_dai_driver msm_dai_q6_slimbus_3_rx_dai = {
 	.remove = msm_dai_q6_dai_remove,
 };
 
+#ifdef CONFIG_OF
+static void msm_dai_q6_of_init(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+	u32 dev_id;
+
+	if (!of_property_read_u32(np, "qcom,msm-dai-q6-dev-id", &dev_id)) {
+		pdev->id = dev_id;
+		dev_set_name(&pdev->dev, "%s.%d", "msm-dai-q6", dev_id);
+	}
+}
+#else
+static inline void msm_dai_q6_of_init(struct platform_device *pdev) { }
+#endif
+
 /* To do: change to register DAIs as batch */
 static __devinit int msm_dai_q6_dev_probe(struct platform_device *pdev)
 {
 	int rc = 0;
+
+	if (pdev->dev.of_node)
+		msm_dai_q6_of_init(pdev);
 
 	dev_dbg(&pdev->dev, "dev name %s\n", dev_name(&pdev->dev));
 
@@ -1970,14 +2029,31 @@ static __devexit int msm_dai_q6_mi2s_dev_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static const struct of_device_id msm_dai_q6_dt_match[] = {
+	{ .compatible = "qcom,msm-dai-q6", },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, msm_dai_q6_dt_match);
+#endif
+
 static struct platform_driver msm_dai_q6_driver = {
 	.probe  = msm_dai_q6_dev_probe,
 	.remove = msm_dai_q6_dev_remove,
 	.driver = {
 		.name = "msm-dai-q6",
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(msm_dai_q6_dt_match),
 	},
 };
+
+#ifdef CONFIG_OF
+static const struct of_device_id msm_dai_q6_mi2s_dt_match[] = {
+	{ .compatible = "qcom,msm-dai-q6-mi2s", },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, msm_dai_q6_mi2s_dt_match);
+#endif
 
 static struct platform_driver msm_dai_q6_mi2s_driver = {
 	.probe  = msm_dai_q6_mi2s_dev_probe,
@@ -1985,6 +2061,7 @@ static struct platform_driver msm_dai_q6_mi2s_driver = {
 	.driver = {
 		.name = "msm-dai-q6-mi2s",
 		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(msm_dai_q6_mi2s_dt_match),
 	},
 };
 
