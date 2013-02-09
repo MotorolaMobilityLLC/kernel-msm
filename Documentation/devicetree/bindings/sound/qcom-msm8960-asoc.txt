@@ -77,3 +77,50 @@ sound {
 	};
 };
 
+* MSM DAI Q6 MI2S
+
+Required properties:
+- compatible :
+    "qcom,msm-dai-q6-mi2s"
+- qcom,msm-mi2s-rx-lines :
+    This property describes the SD lines allocated to RX on the MI2S interface.
+    This should be expressed as a bitmask and should not overlap those
+    allocated in the TX definition.  The masks are defined with the following:
+        MSM_MI2S_SD0    1
+        MSM_MI2S_SD1    2
+        MSM_MI2S_SD2    4
+        MSM_MI2S_SD3    8
+- qcom,msm-mi2s-tx-lines :
+    This property describes the SD lines allocated to TX on the MI2S interface.
+    This should be expressed as a bitmask and should not overlap those
+    allocated in the RX definition.  The masks are defined with the following:
+        MSM_MI2S_SD0    1
+        MSM_MI2S_SD1    2
+        MSM_MI2S_SD2    4
+        MSM_MI2S_SD3    8
+
+Example:
+
+qcom,msm-dai-q6-mi2s {
+	compatible = "qcom,msm-dai-q6-mi2s";
+	qcom,msm-mi2s-rx-lines = <4>; /* MSM_MI2S_SD2 */
+};
+
+
+* MSM DAI Q6
+
+Required properties:
+- compatible :
+    "qcom,msm-dai-q6"
+- qcom,msm-dai-q6-dev-id :
+    This property determines which snd_soc_dai_driver the MSM audio driver will
+    register with the sound framework. It will also be used to determine the
+    device's name in the format of: msm-dai-q6.<dev_id>
+
+Example:
+
+qcom,msm-dai-q6 {
+	compatible = "qcom,msm-dai-q6";
+	qcom,msm-dai-q6-dev-id = <1>; /* PRIMARY_I2S_TX */
+};
+
