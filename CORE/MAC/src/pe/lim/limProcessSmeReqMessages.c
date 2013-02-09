@@ -2626,7 +2626,7 @@ __limProcessSmeDeauthReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                 case eLIM_SME_IDLE_STATE:
                     psessionEntry->limPrevSmeState = psessionEntry->limSmeState;
                     psessionEntry->limSmeState = eLIM_SME_WT_DEAUTH_STATE;
-              MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, psessionEntry->peSessionId, pMac->lim.gLimSmeState));
+                    MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, psessionEntry->peSessionId, psessionEntry->limSmeState));
 
                     // Send Deauthentication request to MLM below
 
@@ -4701,6 +4701,7 @@ limSendSetMaxTxPowerReq ( tpAniSirGlobal pMac, tPowerdBm txPower, tpPESession pS
     msgQ.bodyptr = pMaxTxParams;
     msgQ.bodyval = 0;
     PELOGW(limLog(pMac, LOG1, FL("Posting WDA_SET_MAX_TX_POWER_REQ to WDA\n"));)
+    MTRACE(macTraceMsgTx(pMac, pSessionEntry->peSessionId, msgQ.type));
     if(eSIR_SUCCESS != (retCode = wdaPostCtrlMsg(pMac, &msgQ)))
     {
        PELOGW(limLog(pMac, LOGW, FL("wdaPostCtrlMsg() failed\n"));)
