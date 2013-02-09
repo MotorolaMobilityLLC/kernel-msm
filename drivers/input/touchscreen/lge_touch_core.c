@@ -29,8 +29,7 @@
 #include <linux/types.h>
 #include <linux/time.h>
 #include <linux/version.h>
-
-#include <asm/atomic.h>
+#include <linux/atomic.h>
 #include <linux/gpio.h>
 
 #include <linux/input/lge_touch_core.h>
@@ -1556,45 +1555,7 @@ static ssize_t store_pointer_location(struct lge_touch_data *ts, const char *buf
  */
 static ssize_t show_charger(struct lge_touch_data *ts, char *buf)
 {
-	int ret = 0;
-
-	switch (ts->charger_type) {
-	case 0:
-		ret = sprintf(buf, "%s\n", "NO CHARGER");
-		break;
-	case 1:
-		ret = sprintf(buf, "%s\n", "WIRELESS");
-		break;
-	case 2:
-		ret = sprintf(buf, "%s\n", "USB");
-		break;
-	case 3:
-		ret = sprintf(buf, "%s\n", "AC");
-		break;
-	}
-
-	return ret;
-}
-
-/* store_charger
- *
- * Store the charger status
- * Syntax: <type> <1:0>  type: 0: NO Charger, 1: WIRELESS, 2: USB, 3: AC
- */
-static ssize_t store_charger(struct lge_touch_data *ts, const char *buf, size_t count)
-{
-	long type;
-
-	if (!kstrtol(buf, 10, &type)) {
-		if (type >= 0 && type <= 3) {
-			/* regardless of charger type */
-			ts->charger_type = type;
-			touch_device_func->ic_ctrl(ts->client,
-				IC_CTRL_CHARGER, ts->charger_type);
-		}
-	}
-
-	return count;
+	return sprintf(buf, "%d\n", ts->charger_type);
 }
 
 static LGE_TOUCH_ATTR(platform_data, S_IRUGO | S_IWUSR, show_platform_data, NULL);
@@ -1607,7 +1568,7 @@ static LGE_TOUCH_ATTR(accuracy, S_IRUGO | S_IWUSR, NULL, store_accuracy_solution
 static LGE_TOUCH_ATTR(show_touches, S_IRUGO | S_IWUSR, show_show_touches, store_show_touches);
 static LGE_TOUCH_ATTR(pointer_location, S_IRUGO | S_IWUSR, show_pointer_location,
 					store_pointer_location);
-static LGE_TOUCH_ATTR(charger, S_IRUGO | S_IWUSR, show_charger, store_charger);
+static LGE_TOUCH_ATTR(charger, S_IRUGO | S_IWUSR, show_charger, NULL);
 
 static struct attribute *lge_touch_attribute_list[] = {
 	&lge_touch_attr_platform_data.attr,
@@ -1675,6 +1636,80 @@ static struct sys_device lge_touch_sys_device = {
 	.id	= 0,
 	.cls	= &lge_touch_sys_class,
 };
+
+#ifdef CONFIG_TOUCHSCREEN_CHARGER_NOTIFY
+static void touch_external_power_changed(struct power_supply *psy)
+{
+	int status;
+	struct lge_touch_data *ts = container_of(psy, struct lge_touch_data, touch_psy);
+
+	status = power_supply_am_i_supplied(psy);
+
+	pr_debug("psy name = %s ... status = %d\n", psy->name, status);
+
+	if (ts->charger_type != status) {
+		ts->charger_type = status;
+		queue_work(touch_wq, &ts->work_charger);
+	}
+}
+
+static enum power_supply_property touch_power_props_mains[] = {
+	POWER_SUPPLY_PROP_PRESENT,
+	POWER_SUPPLY_PROP_ONLINE
+};
+
+static int touch_power_get_property_mains(struct power_supply *psy,
+			enum power_supply_property psp,
+			union power_supply_propval *val)
+{
+	switch (psp) {
+	case POWER_SUPPLY_PROP_PRESENT:
+	case POWER_SUPPLY_PROP_ONLINE:
+		val->intval = 0;
+		return 0;
+	default:
+		return -EINVAL;
+	}
+	return -EINVAL;
+}
+
+/*
+ * Touch work for charger
+ */
+static void touch_work_charger(struct work_struct *work)
+{
+	struct lge_touch_data *ts =
+			container_of(work, struct lge_touch_data, work_charger);
+
+	TOUCH_INFO_MSG("CHARGER = %d\n", ts->charger_type);
+
+	if (ts->curr_resume_state)
+		touch_device_func->ic_ctrl(ts->client,
+					IC_CTRL_CHARGER, ts->charger_type);
+}
+
+static void touch_psy_init(struct lge_touch_data *ts)
+{
+	int rc;
+
+	INIT_WORK(&ts->work_charger, touch_work_charger);
+
+	ts->touch_psy.name = "touch";
+	ts->touch_psy.type = POWER_SUPPLY_TYPE_UNKNOWN;
+	ts->touch_psy.properties = touch_power_props_mains,
+	ts->touch_psy.num_properties = ARRAY_SIZE(touch_power_props_mains);
+	ts->touch_psy.get_property = touch_power_get_property_mains;
+	ts->touch_psy.external_power_changed = touch_external_power_changed;
+
+	rc = power_supply_register(NULL, &ts->touch_psy);
+	if (rc < 0) {
+		pr_err("power_supply_register FAILED*** rc = %d\n", rc);
+	}
+	else {
+		pr_debug("power_supply_register SUCCESS\n");
+	}
+}
+#endif
 
 static int touch_probe(struct i2c_client *client,
 				const struct i2c_device_id *id)
@@ -1892,6 +1927,10 @@ static int touch_probe(struct i2c_client *client,
 
 	if (likely(touch_debug_mask & DEBUG_BASE_INFO))
 		TOUCH_INFO_MSG("Touch driver is initialized\n");
+
+#ifdef CONFIG_TOUCHSCREEN_CHARGER_NOTIFY
+	touch_psy_init(ts);
+#endif
 
 	return 0;
 

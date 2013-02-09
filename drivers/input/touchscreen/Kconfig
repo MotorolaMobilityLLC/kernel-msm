@@ -965,5 +965,17 @@ config TOUCH_REG_MAP_TM2000
 	default y
 	help
 	  Synaptics Register map TM2000.
+
+config TOUCHSCREEN_CHARGER_NOTIFY
+	bool "Notify charger status to touch driver"
+	depends on I2C
+	depends on TOUCHSCREEN_LGE_SYNAPTICS
+	help
+	  Define a dummy power supply for touch and register it as
+	  supplicant of usb/dc/wireless power source so that the touch
+	  driver can get the charging start and stop events.
+	  The touch firmware will use this information to decide whether
+	  a new algorithm to reduce the noise impact needs to be applied
+	  or not.
 endif
 

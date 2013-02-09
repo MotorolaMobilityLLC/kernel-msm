@@ -60,6 +60,9 @@ static enum power_supply_property pm_power_props_wireless[] = {
 
 static char *pm_power_supplied_to[] = {
 	"battery",
+#ifdef CONFIG_TOUCHSCREEN_CHARGER_NOTIFY
+	"touch"
+#endif
 };
 
 static int pm_power_get_property_wireless(struct power_supply *psy,

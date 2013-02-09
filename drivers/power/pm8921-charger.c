@@ -1202,6 +1202,9 @@ static enum power_supply_property pm_power_props_mains[] = {
 
 static char *pm_power_supplied_to[] = {
 	"battery",
+#ifdef CONFIG_TOUCHSCREEN_CHARGER_NOTIFY
+	"touch",
+#endif
 };
 
 #define USB_WALL_THRESHOLD_MA	500
