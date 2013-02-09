@@ -908,4 +908,14 @@
 		};
 	};
 
+	qcom,msm-dai-q6-mi2s {
+		compatible = "qcom,msm-dai-q6-mi2s";
+		qcom,msm-mi2s-rx-lines = <4>; /* MSM_MI2S_SD2 */
+	};
+
+	qcom,msm-dai-q6 {
+		compatible = "qcom,msm-dai-q6";
+		qcom,msm-dai-q6-dev-id = <1>; /* PRIMARY_I2S_TX */
+	};
+
 };
