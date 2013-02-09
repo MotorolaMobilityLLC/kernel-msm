@@ -1677,6 +1677,9 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
     tANI_U8            *pFrame;
     void               *pPacket;
     eHalStatus          halstatus;
+#ifndef NO_PAD_TDLS_MIN_8023_SIZE
+    tANI_U32            padLen = 0;
+#endif
 
     /* 
      * The scheme here is to fill out a 'tDot11fProbeRequest' structure
@@ -1744,6 +1747,24 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
                      + sizeof( eth_890d_header ) 
                         + PAYLOAD_TYPE_TDLS_SIZE
                         + addIeLen;
+
+#ifndef NO_PAD_TDLS_MIN_8023_SIZE
+    /* IOT issue with some AP : some AP doesn't like the data packet size < minimum 802.3 frame length (64)
+       Hence AP itself padding some bytes, which caused teardown packet is dropped at
+       receiver side. To avoid such IOT issue, we added some extra bytes to meet data frame size >= 64
+     */
+    if (nPayload + PAYLOAD_TYPE_TDLS_SIZE < MIN_IEEE_8023_SIZE)
+    {
+        padLen = MIN_IEEE_8023_SIZE - (nPayload + PAYLOAD_TYPE_TDLS_SIZE ) ;
+
+        /* if padLen is less than minimum vendorSpecific (5), pad up to 5 */
+        if (padLen < MIN_VENDOR_SPECIFIC_IE_SIZE)
+            padLen = MIN_VENDOR_SPECIFIC_IE_SIZE;
+
+        nBytes += padLen;
+    }
+#endif
+
 
     /* Ok-- try to allocate memory from MGMT PKT pool */
 
@@ -1819,6 +1840,28 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
     {
        palCopyMemory( pMac->hHdd, pFrame + header_offset + nPayload, addIe, addIeLen ); 
     }
+
+#ifndef NO_PAD_TDLS_MIN_8023_SIZE
+    if (padLen != 0)
+    {
+        /* QCOM VENDOR OUI = { 0x00, 0xA0, 0xC6, type = 0x0000 }; */
+        tANI_U8 *padVendorSpecific = pFrame + header_offset + nPayload + addIeLen;
+        /* make QCOM_VENDOR_OUI, and type = 0x0000, and all the payload to be zero */
+        padVendorSpecific[0] = 221;
+        padVendorSpecific[1] = padLen - 2;
+        padVendorSpecific[2] = 0x00;
+        padVendorSpecific[3] = 0xA0;
+        padVendorSpecific[4] = 0xC6;
+
+        LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO, ("Padding Vendor Specific Ie Len = %d"),
+                padLen ));
+
+        /* padding zero if more than 5 bytes are required */
+        if (padLen > MIN_VENDOR_SPECIFIC_IE_SIZE)
+            palZeroMemory( pMac->hHdd, pFrame + header_offset + nPayload + addIeLen + MIN_VENDOR_SPECIFIC_IE_SIZE, padLen - MIN_VENDOR_SPECIFIC_IE_SIZE);
+    }
+#endif
+
 
     LIM_LOG_TDLS(VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL, ("[TDLS] action %d (%s) -AP-> OTA"),
          SIR_MAC_TDLS_SETUP_CNF, limTraceTdlsActionString(SIR_MAC_TDLS_SETUP_CNF) ));
