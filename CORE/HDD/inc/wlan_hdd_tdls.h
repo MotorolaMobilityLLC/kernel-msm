@@ -110,6 +110,8 @@ int wlan_hdd_tdls_init(struct net_device *dev);
 
 void wlan_hdd_tdls_exit(void);
 
+void wlan_hdd_tdls_timers_stop(void);
+
 void wlan_hdd_tdls_extract_da(struct sk_buff *skb, u8 *mac);
 
 void wlan_hdd_tdls_extract_sa(struct sk_buff *skb, u8 *mac);
@@ -135,8 +137,6 @@ int wlan_hdd_tdls_get_responder(u8 *mac);
 int wlan_hdd_tdls_set_params(tdls_config_params_t *config);
 
 int wlan_hdd_tdls_reset_peer(u8 *mac);
-
-void wlan_hdd_tdls_free_list(void);
 
 u8 wlan_hdd_tdlsConnectedPeers(void);
 
