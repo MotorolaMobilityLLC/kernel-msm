@@ -234,7 +234,8 @@ static int sy3400_detect(struct sy3400_driver_data *dd)
 
 	pr_debug("%s: blk_sz=0x%x, blk_ct=0x%x\n", __func__, blk_sz, blk_ct);
 
-	if ((blk_sz != SY3400_BLK_SZ) || (blk_ct != SY3400_BLK_CT))
+	if ((blk_sz != SY3400_BLK_SZ) ||
+		((blk_ct != SY3400_BLK_CT) && (blk_ct != SY3300_BLK_CT)))
 		err = -ENODEV;
 
 sy3400_detect_fail:
