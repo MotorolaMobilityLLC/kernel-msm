@@ -2430,10 +2430,15 @@ int soc_dpcm_fe_dai_open(struct snd_pcm_substream *fe_substream)
 
 	fe->dpcm[stream].runtime = fe_substream->runtime;
 
-	if (fe_path_get(fe, stream, &list) <= 0) {
+	ret = fe_path_get(fe, stream, &list);
+	if (ret <= 0) {
 		pr_warn_ratelimited("asoc: %s no valid %s route from source to sink\n",
 			fe->dai_link->name, stream ? "capture" : "playback");
-			return -EINVAL;
+
+		/* If failure is because of no paths, free the memory */
+		if (ret == 0)
+			fe_path_put(&list);
+		return -EINVAL;
 	}
 
 	/* calculate valid and active FE <-> BE dpcm_paramss */
