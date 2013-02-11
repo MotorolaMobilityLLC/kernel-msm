@@ -201,6 +201,25 @@ typedef enum tdlsLinkSetupStatus
 #define TDLS_SUPPORT              (1)
 #define TDLS_PROHIBITED           (0)
 #define TDLS_CH_SWITCH_PROHIBITED (1)
+/** @brief Set bit manipulation macro */
+#define SET_BIT(value,mask)       ((value) |= (1 << (mask)))
+/** @brief Clear bit manipulation macro */
+#define CLEAR_BIT(value,mask)     ((value) &= ~(1 << (mask)))
+/** @brief Check bit manipulation macro */
+#define CHECK_BIT(value, mask)    ((value) & (1 << (mask)))
+
+#define SET_PEER_AID_BITMAP(peer_bitmap, aid) \
+                                if ((aid) < (sizeof(tANI_U32) << 3)) \
+                                        SET_BIT(peer_bitmap[0], (aid)); \
+                                else if ((aid) < (sizeof(tANI_U32) << 4)) \
+                                        SET_BIT(peer_bitmap[1], ((aid) - (sizeof(tANI_U32) << 3)));
+
+#define CLEAR_PEER_AID_BITMAP(peer_bitmap, aid) \
+                                if ((aid) < (sizeof(tANI_U32) << 3)) \
+                                        CLEAR_BIT(peer_bitmap[0], (aid)); \
+                                else if ((aid) < (sizeof(tANI_U32) << 4)) \
+                                        CLEAR_BIT(peer_bitmap[1], ((aid) - (sizeof(tANI_U32) << 3)));
+
 
 #ifdef LIM_DEBUG_TDLS
 #define TDLS_CASE_RETURN_STRING(x) case (x): return( ((const tANI_U8*)#x) + 8);  /* 8 = remove redundant SIR_MAC_ */
@@ -3483,6 +3502,9 @@ static tSirRetStatus limTdlsDisAddSta(tpAniSirGlobal pMac, tSirMacAddr peerMac,
 
     aid = limAssignPeerIdx(pMac, psessionEntry) ;
 
+    /* Set the aid in peerAIDBitmap as it has been assigned to TDLS peer */
+    SET_PEER_AID_BITMAP(psessionEntry->peerAIDBitmap, aid);
+
     pStaDs = dphGetHashEntry(pMac, aid, &psessionEntry->dph.dphHashTable);
 
     if (pStaDs)
@@ -3593,9 +3615,16 @@ static tSirRetStatus limTdlsSetupAddSta(tpAniSirGlobal pMac,
 
         if( !aid )
         {
-            //Reject request.
+            VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
+              ("%s: No more free AID for peer %02x:%02x:%02x:%02x:%02x:%02x"),
+                         __func__, peerMac[0], peerMac[1], peerMac[2],
+                         peerMac[3], peerMac[4], peerMac[5]) ;
             return eSIR_FAILURE;
         }
+
+        /* Set the aid in peerAIDBitmap as it has been assigned to TDLS peer */
+        SET_PEER_AID_BITMAP(psessionEntry->peerAIDBitmap, aid);
+
         VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL,
               ("limTdlsSetupAddSta: Aid = %d, for peer = %02x,%02x,%02x,%02x,%02x,%02x\n"),
                          aid, peerMac[0],peerMac[1],peerMac[2],
@@ -4629,6 +4658,9 @@ static eHalStatus limSendSmeTdlsDelStaRsp(tpAniSirGlobal pMac,
     {
         pDelSta->staId = pStaDs->staIndex ;
     }
+    else
+        pDelSta->staId = HAL_STA_INVALID_IDX;
+
     if( peerMac )
     {
         palCopyMemory(pMac->hHdd, pDelSta->peerMac, peerMac, sizeof(tSirMacAddr));
@@ -4763,8 +4795,10 @@ tSirRetStatus limProcessSmeTdlsDelStaReq(tpAniSirGlobal pMac,
     {
         limSendSmeTdlsDelStaRsp(pMac, psessionEntry->smeSessionId, pDelStaReq->peerMac,
                 pStaDs, eSIR_SUCCESS) ;
+        limReleasePeerIdx(pMac, pStaDs->assocId, psessionEntry) ;
 
-        limReleasePeerIdx(pMac, pStaDs->staIndex, psessionEntry) ;
+        /* Clear the aid in peerAIDBitmap as this aid is now in freepool */
+        CLEAR_PEER_AID_BITMAP(psessionEntry->peerAIDBitmap, pStaDs->assocId);
         limDeleteDphHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId, psessionEntry) ;
 
         return eSIR_SUCCESS;
@@ -4777,4 +4811,47 @@ lim_tdls_del_sta_error:
 
     return eSIR_SUCCESS;
 }
+
+/* Delete all the TDLS peer connected before leaving the BSS */
+tSirRetStatus limDeleteTDLSPeers(tpAniSirGlobal pMac, tpPESession psessionEntry)
+{
+    tpDphHashNode pStaDs = NULL ;
+    int i, aid;
+
+    if (NULL == psessionEntry)
+    {
+        PELOGE(limLog(pMac, LOGE, FL("NULL psessionEntry"));)
+        return eSIR_FAILURE;
+    }
+
+    /* Check all the set bit in peerAIDBitmap and delete the peer (with that aid) entry
+       from the hash table and add the aid in free pool */
+    for (i = 0; i < sizeof(psessionEntry->peerAIDBitmap)/sizeof(tANI_U32); i++)
+    {
+        for (aid = 0; aid < (sizeof(tANI_U32) << 3); aid++)
+        {
+            if (CHECK_BIT(psessionEntry->peerAIDBitmap[i], aid))
+            {
+                pStaDs = dphGetHashEntry(pMac, (aid + i*(sizeof(tANI_U32) << 3)), &psessionEntry->dph.dphHashTable);
+
+                if (NULL != pStaDs)
+                {
+                    PELOGE(limLog(pMac, LOGE, FL("Deleting %02x:%02x:%02x:%02x:%02x:%02x"),
+                            pStaDs->staAddr[0], pStaDs->staAddr[1], pStaDs->staAddr[2],
+                            pStaDs->staAddr[3], pStaDs->staAddr[4], pStaDs->staAddr[5]);)
+
+                    limSendDeauthMgmtFrame(pMac, eSIR_MAC_DEAUTH_LEAVING_BSS_REASON,
+                                           pStaDs->staAddr, psessionEntry, FALSE);
+                    dphDeleteHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId, &psessionEntry->dph.dphHashTable);
+                }
+                limReleasePeerIdx(pMac, (aid + i*(sizeof(tANI_U32) << 3)), psessionEntry) ;
+                CLEAR_BIT(psessionEntry->peerAIDBitmap[i], aid);
+            }
+        }
+    }
+    limSendSmeTDLSDeleteAllPeerInd(pMac, psessionEntry);
+
+    return eSIR_SUCCESS;
+}
+
 #endif

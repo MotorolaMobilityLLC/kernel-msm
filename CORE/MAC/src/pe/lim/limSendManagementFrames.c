@@ -4117,6 +4117,11 @@ limSendDeauthMgmtFrame(tpAniSirGlobal pMac,
     eHalStatus       halstatus;
     tANI_U8          txFlag = 0;
     tANI_U32         val = 0;
+#ifdef FEATURE_WLAN_TDLS
+    tANI_U16          aid;
+    tpDphHashNode     pStaDs;
+#endif
+
     if(NULL == psessionEntry)
     {
         return;
@@ -4214,6 +4219,10 @@ limSendDeauthMgmtFrame(tpAniSirGlobal pMac,
     }
 #endif
 
+#ifdef FEATURE_WLAN_TDLS
+    pStaDs = dphLookupHashEntry(pMac, peer, &aid, &psessionEntry->dph.dphHashTable);
+#endif
+
     if (waitForAck)
     {
         // Queue Disassociation frame in high priority WQ
@@ -4257,12 +4266,28 @@ limSendDeauthMgmtFrame(tpAniSirGlobal pMac,
     }
     else
     {
-        // Queue Disassociation frame in high priority WQ
-        halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
+#ifdef FEATURE_WLAN_TDLS
+        if ((NULL != pStaDs) && (STA_ENTRY_TDLS_PEER == pStaDs->staType))
+        {
+            // Queue Disassociation frame in high priority WQ
+            halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
                 HAL_TXRX_FRM_802_11_MGMT,
-                ANI_TXDIR_TODS,
+                ANI_TXDIR_IBSS,
                 7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
                 limTxComplete, pFrame, txFlag );
+        }
+        else
+        {
+#endif
+            // Queue Disassociation frame in high priority WQ
+            halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
+                    HAL_TXRX_FRM_802_11_MGMT,
+                    ANI_TXDIR_TODS,
+                    7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
+                    limTxComplete, pFrame, txFlag );
+#ifdef FEATURE_WLAN_TDLS
+        }
+#endif
         if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
         {
             limLog( pMac, LOGE, FL("Failed to send De-Authentication "

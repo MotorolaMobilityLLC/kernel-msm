@@ -1476,6 +1476,52 @@ limSendSmeTDLSDelStaInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
     return;
 }/*** end limSendSmeTDLSDelStaInd() ***/
+
+/**
+ * limSendSmeTDLSDeleteAllPeerInd()
+ *
+ *FUNCTION:
+ * This function is called to send the eWNI_SME_TDLS_DEL_ALL_PEER_IND
+ * message to SME.
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ *
+ *NOTE:
+ * NA
+ *
+ * @param  pMac   - Pointer to global MAC structure
+ * @param  psessionEntry - Pointer to the session entry
+ * @return None
+ */
+void
+limSendSmeTDLSDeleteAllPeerInd(tpAniSirGlobal pMac, tpPESession psessionEntry)
+{
+    tSirMsgQ  mmhMsg;
+    tSirTdlsDelAllPeerInd  *pSirTdlsDelAllPeerInd;
+
+    if ( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pSirTdlsDelAllPeerInd, sizeof(tSirTdlsDelAllPeerInd)))
+    {
+        limLog(pMac, LOGP, FL("palAllocateMemory failed for eWNI_SME_TDLS_DEL_ALL_PEER_IND"));
+        return;
+    }
+
+    //messageType
+    pSirTdlsDelAllPeerInd->messageType = eWNI_SME_TDLS_DEL_ALL_PEER_IND;
+    pSirTdlsDelAllPeerInd->length = sizeof(tSirTdlsDelAllPeerInd);
+
+    //sessionId
+    pSirTdlsDelAllPeerInd->sessionId = psessionEntry->smeSessionId;
+
+    mmhMsg.type = eWNI_SME_TDLS_DEL_ALL_PEER_IND;
+    mmhMsg.bodyptr = pSirTdlsDelAllPeerInd;
+    mmhMsg.bodyval = 0;
+
+
+    limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+    return;
+}/*** end limSendSmeTDLSDeleteAllPeerInd() ***/
 #endif
 
 

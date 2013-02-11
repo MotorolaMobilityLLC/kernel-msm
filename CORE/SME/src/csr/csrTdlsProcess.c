@@ -883,6 +883,19 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
                                eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND);
             break ;
         }
+        case eWNI_SME_TDLS_DEL_ALL_PEER_IND:
+        {
+            tpSirTdlsDelAllPeerInd pSirTdlsDelAllPeerInd = (tpSirTdlsDelAllPeerInd) pMsgBuf ;
+            tCsrRoamInfo roamInfo = {0} ;
+
+            /* Sending the TEARDOWN indication to HDD. */
+            csrRoamCallCallback(pMac, pSirTdlsDelAllPeerInd->sessionId, &roamInfo, 0,
+                                eCSR_ROAM_TDLS_STATUS_UPDATE,
+                                eCSR_ROAM_RESULT_DELETE_ALL_TDLS_PEER_IND);
+
+            pMac->tdlsCtx.tdlsPeerCount = 0;
+            break ;
+        }
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
         case eWNI_SME_TDLS_DISCOVERY_START_RSP:
         {
