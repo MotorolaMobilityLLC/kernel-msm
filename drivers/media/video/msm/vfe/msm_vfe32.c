@@ -1248,8 +1248,16 @@ static unsigned long vfe32_stats_dqbuf(struct vfe32_ctrl_type *vfe32_ctrl,
 {
 	struct msm_stats_meta_buf *buf = NULL;
 	int rc = 0;
-	rc = vfe32_ctrl->stats_ops.dqbuf(
-			vfe32_ctrl->stats_ops.stats_ctrl, stats_type, &buf);
+	if (vfe32_ctrl &&
+		vfe32_ctrl->stats_ops.dqbuf &&
+		vfe32_ctrl->stats_ops.stats_ctrl) {
+		rc = vfe32_ctrl->stats_ops.dqbuf(
+			 vfe32_ctrl->stats_ops.stats_ctrl, stats_type, &buf);
+	} else {
+		pr_err("%s: stats_ctrl ops not initialized", __func__);
+		return 0L;
+	}
+
 	if (rc < 0) {
 		CDBG("%s: dq stats buf (type = %d) err = %d",
 			__func__, stats_type, rc);
