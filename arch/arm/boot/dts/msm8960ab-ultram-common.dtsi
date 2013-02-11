@@ -24,17 +24,6 @@
 
 		qcom,i2c-bus-freq = <400000>;
 		qcom,i2c-src-freq = <24000000>;
-
-		sy3200@20 {
-			compatible = "synaptics,sy3200";
-			reg = <0x20>;
-			interrupt-parent = <&msmgpio>;
-			interrupts = <46 0>;
-			gpios = <&msmgpio 46 0>, /* IRQ */
-			        <&msmgpio 63 0>; /* RESET */
-
-			synaptics,sy3200-tdat-filename = "sy3200-r0.tdat";
-		};
 	};
 
 	System@0 {

@@ -19,3 +19,17 @@
 
 };
 
+&i2c3 {
+
+	sy3400@20 {
+		compatible = "synaptics,sy3400";
+		reg = <0x20>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <46 0>;
+		gpios = <&msmgpio 46 0>, /* IRQ */
+			<&msmgpio 63 0>; /* RESET */
+
+		synaptics,sy3400-tdat-filename = "sy3400-r1.tdat";
+	};
+
+};
