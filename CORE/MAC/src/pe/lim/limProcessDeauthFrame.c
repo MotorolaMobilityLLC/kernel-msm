@@ -250,7 +250,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
 #ifdef WLAN_SOFTAP_FEATURE
     if(psessionEntry->limSystemRole != eLIM_AP_ROLE ){
 #endif
-        if (!IS_CURRENT_BSSID(pMac, pHdr->sa,psessionEntry)) 
+        if (!IS_CURRENT_BSSID(pMac, pHdr->bssId, psessionEntry))
         {
             PELOGE(limLog(pMac, LOGE, FL("received DeAuth from an AP other than we're trying to join. Ignore. \n"));)
             if (limSearchPreAuthList(pMac, pHdr->sa))
@@ -263,6 +263,8 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
 #ifdef WLAN_SOFTAP_FEATURE
     }
 #endif
+
+        pStaDs = dphLookupHashEntry(pMac, pHdr->sa, &aid, &psessionEntry->dph.dphHashTable);
 
         // Check for pre-assoc states
         switch (psessionEntry->limSystemRole)
@@ -345,14 +347,31 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
 
                     case eLIM_MLM_IDLE_STATE:
                     case eLIM_MLM_LINK_ESTABLISHED_STATE:
-                        /**
-                         * This could be Deauthentication frame from
-                         * a BSS with which pre-authentication was
-                         * performed. Delete Pre-auth entry if found.
-                         */
-                        if (limSearchPreAuthList(pMac, pHdr->sa))
-                           limDeletePreAuthNode(pMac, pHdr->sa);
-
+#ifdef FEATURE_WLAN_TDLS
+                        if ((NULL != pStaDs) && (STA_ENTRY_TDLS_PEER == pStaDs->staType))
+                        {
+                           PELOGE(limLog(pMac, LOGE,
+                              FL("received Deauth frame with reason code %d from Tdls peer"),
+                                 reasonCode);
+                           limPrintMacAddr(pMac, pHdr->sa, LOGE);)
+                           limSendSmeTDLSDelStaInd(pMac, pStaDs, psessionEntry,
+                                                   reasonCode);
+                           return;
+                        }
+                        else
+                        {
+                           limDeleteTDLSPeers(pMac, psessionEntry);
+#endif
+                           /**
+                            * This could be Deauthentication frame from
+                            * a BSS with which pre-authentication was
+                            * performed. Delete Pre-auth entry if found.
+                            */
+                           if (limSearchPreAuthList(pMac, pHdr->sa))
+                              limDeletePreAuthNode(pMac, pHdr->sa);
+#ifdef FEATURE_WLAN_TDLS
+                        }
+#endif
                         break;
 
                     case eLIM_MLM_WT_REASSOC_RSP_STATE:
@@ -425,7 +444,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
      * Extract 'associated' context for STA, if any.
      * This is maintained by DPH and created by LIM.
      */
-    if( (pStaDs = dphLookupHashEntry(pMac, pHdr->sa, &aid, &psessionEntry->dph.dphHashTable)) == NULL)
+    if (NULL == pStaDs)
         return;
 
 
