@@ -350,6 +350,7 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 		ctrlcmd_data = kzalloc(out->length, GFP_KERNEL);
 		if (!ctrlcmd_data) {
 			rc = -ENOMEM;
+			mutex_unlock(&server_dev->server_queue_lock);
 			goto ctrlcmd_alloc_fail;
 		}
 		memcpy(ctrlcmd_data, out->value, out->length);
@@ -2514,6 +2515,7 @@ int msm_server_send_ctrl(struct msm_ctrl_cmd *out,
 		ctrlcmd_data = kzalloc(out->length, GFP_KERNEL);
 		if (!ctrlcmd_data) {
 			rc = -ENOMEM;
+			mutex_unlock(&server_dev->server_queue_lock);
 			goto ctrlcmd_alloc_fail;
 		}
 		memcpy(ctrlcmd_data, out->value, out->length);
