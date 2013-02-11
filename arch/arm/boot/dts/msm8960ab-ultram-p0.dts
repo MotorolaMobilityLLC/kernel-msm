@@ -32,6 +32,20 @@
 	};
 };
 
+/* GSBI3 - I2C Touch Bus */
+&i2c3 {
+	sy3200@20 {
+		compatible = "synaptics,sy3200";
+		reg = <0x20>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <46 0>;
+		gpios = <&msmgpio 46 0>, /* IRQ */
+		        <&msmgpio 63 0>; /* RESET */
+
+		synaptics,sy3200-tdat-filename = "sy3200-r0.tdat";
+	};
+};
+
 /* GSBI10 - I2C */
 &i2c10 {
 	/* TI tlv320aic3253 */
