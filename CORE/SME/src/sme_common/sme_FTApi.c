@@ -186,7 +186,7 @@ void sme_SetFTIEs( tHalHandle hHal, tANI_U8 sessionId, tANI_U8 *ft_ies,
             pMac->ft.ftSmeContext.FTState = eFT_AUTH_REQ_READY;
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-            smsLog( pMac, LOGE, "ft_ies_length=%d\n", ft_ies_length);
+            smsLog( pMac, LOG1, "ft_ies_length=%d", ft_ies_length);
             /*
             smsLog( pMac, LOGE, "%d: New Auth ft_ies_length=%02x%02x%02x\n", 
                 current->pid, pMac->ft.ftSmeContext.auth_ft_ies[0],
@@ -245,7 +245,7 @@ void sme_SetFTIEs( tHalHandle hHal, tANI_U8 sessionId, tANI_U8 *ft_ies,
                 
             pMac->ft.ftSmeContext.FTState = eFT_SET_KEY_WAIT;
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-            smsLog( pMac, LOGE, "ft_ies_length=%d state=%d\n", ft_ies_length,
+            smsLog( pMac, LOG1, "ft_ies_length=%d state=%d", ft_ies_length,
                 pMac->ft.ftSmeContext.FTState);
             /*
             smsLog( pMac, LOGE, "%d: New Auth ft_ies_length=%02x%02x%02x\n", 
