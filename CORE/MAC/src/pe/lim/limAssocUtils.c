@@ -2248,8 +2248,16 @@ limAddSta(
     {
         /* peer STA get the LDPC capability from pStaDs, which populated from 
          * HT/VHT capability*/
-        pAddStaParams->htLdpcCapable = pStaDs->htLdpcCapable;
-        pAddStaParams->vhtLdpcCapable = pStaDs->vhtLdpcCapable;
+        if(pAddStaParams->vhtTxBFCapable && pMac->lim.disableLDPCWithTxbfAP)
+        {
+            pAddStaParams->htLdpcCapable = 0;
+            pAddStaParams->vhtLdpcCapable = 0;
+        }
+        else
+        {
+            pAddStaParams->htLdpcCapable = pStaDs->htLdpcCapable;
+            pAddStaParams->vhtLdpcCapable = pStaDs->vhtLdpcCapable;
+        }
     }
     else if( STA_ENTRY_SELF == pStaDs->staType)
     {
@@ -3338,8 +3346,16 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
             pAddBssParams->staContext.fShortGI20Mhz = (tANI_U8)pAssocRsp->HTCaps.shortGI20MHz;
             pAddBssParams->staContext.fShortGI40Mhz = (tANI_U8)pAssocRsp->HTCaps.shortGI40MHz;
             pAddBssParams->staContext.maxAmpduSize= pAssocRsp->HTCaps.maxRxAMPDUFactor;
-            pAddBssParams->staContext.htLdpcCapable = (tANI_U8)pAssocRsp->HTCaps.advCodingCap;
-            pAddBssParams->staContext.vhtLdpcCapable = (tANI_U8)pAssocRsp->VHTCaps.ldpcCodingCap;
+            if( pAddBssParams->staContext.vhtTxBFCapable && pMac->lim.disableLDPCWithTxbfAP )
+            {
+                pAddBssParams->staContext.htLdpcCapable = 0;
+                pAddBssParams->staContext.vhtLdpcCapable = 0;
+            }
+            else
+            {
+                pAddBssParams->staContext.htLdpcCapable = (tANI_U8)pAssocRsp->HTCaps.advCodingCap;
+                pAddBssParams->staContext.vhtLdpcCapable = (tANI_U8)pAssocRsp->VHTCaps.ldpcCodingCap;
+            }
 
             if( pBeaconStruct->HTInfo.present )
                 pAddBssParams->staContext.rifsMode = pAssocRsp->HTInfo.rifsMode;
@@ -3623,8 +3639,16 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
             pAddBssParams->staContext.fShortGI20Mhz = (tANI_U8)pBeaconStruct->HTCaps.shortGI20MHz;
             pAddBssParams->staContext.fShortGI40Mhz = (tANI_U8)pBeaconStruct->HTCaps.shortGI40MHz;
             pAddBssParams->staContext.maxAmpduSize= pBeaconStruct->HTCaps.maxRxAMPDUFactor;
-            pAddBssParams->staContext.htLdpcCapable = (tANI_U8)pBeaconStruct->HTCaps.advCodingCap;
-            pAddBssParams->staContext.vhtLdpcCapable = (tANI_U8)pBeaconStruct->VHTCaps.ldpcCodingCap;
+            if( pAddBssParams->staContext.vhtTxBFCapable && pMac->lim.disableLDPCWithTxbfAP )
+            {
+                pAddBssParams->staContext.htLdpcCapable = 0;
+                pAddBssParams->staContext.vhtLdpcCapable = 0;
+            }
+            else
+            {
+                pAddBssParams->staContext.htLdpcCapable = (tANI_U8)pBeaconStruct->HTCaps.advCodingCap;
+                pAddBssParams->staContext.vhtLdpcCapable = (tANI_U8)pBeaconStruct->VHTCaps.ldpcCodingCap;
+            }
             
             if( pBeaconStruct->HTInfo.present )
                 pAddBssParams->staContext.rifsMode = pBeaconStruct->HTInfo.rifsMode;

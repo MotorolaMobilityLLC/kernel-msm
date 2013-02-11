@@ -644,6 +644,11 @@ static tSirRetStatus __limInitConfig( tpAniSirGlobal pMac )
    /* This was initially done after resume notification from HAL. Now, DAL is
       started before PE so this can be done here */
    handleHTCapabilityandHTInfo(pMac, NULL);
+   if(wlan_cfgGetInt(pMac, WNI_CFG_DISABLE_LDPC_WITH_TXBF_AP,(tANI_U32 *) &pMac->lim.disableLDPCWithTxbfAP) != eSIR_SUCCESS)
+   {
+      limLog(pMac, LOGP, FL("cfg get disableLDPCWithTxbfAP failed\n"));
+      return eSIR_FAILURE;
+   }
 
    return eSIR_SUCCESS;
 }
