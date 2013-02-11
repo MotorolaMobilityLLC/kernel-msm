@@ -116,6 +116,7 @@ int chk_config_get_id(void)
 			return AO8960_TOOLS_ID;
 		case MSM_CPU_8064:
 		case MSM_CPU_8064AB:
+		case MSM_CPU_8064AA:
 			return APQ8064_TOOLS_ID;
 		case MSM_CPU_8930:
 		case MSM_CPU_8930AA:
@@ -145,6 +146,7 @@ int chk_apps_only(void)
 	case MSM_CPU_8960AB:
 	case MSM_CPU_8064:
 	case MSM_CPU_8064AB:
+	case MSM_CPU_8064AA:
 	case MSM_CPU_8930:
 	case MSM_CPU_8930AA:
 	case MSM_CPU_8930AB:
