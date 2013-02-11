@@ -1979,7 +1979,7 @@ __limProcessSmeReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         if (psessionEntry->limSmeState == eLIM_SME_WT_REASSOC_STATE)
         {
             // May be from 11r FT pre-auth. So lets check it before we bail out
-            limLog(pMac, LOGE, FL("Session in reassoc state is %d\n"), 
+            limLog(pMac, LOG1, FL("Session in reassoc state is %d"),
                 psessionEntry->peSessionId);
 
             // Make sure its our preauth bssid

@@ -210,6 +210,12 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
         return;
     }
 
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+              FL("Auth Frame Received: BSSID %02x:%02x:%02x:%02x:%02x:%02x (Rssi %d)"),
+              pHdr->bssId[0], pHdr->bssId[1], pHdr->bssId[2],
+              pHdr->bssId[3], pHdr->bssId[4], pHdr->bssId[5],
+              (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pRxPacketInfo)));
+
     pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
 
     //PELOG3(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG3, (tANI_U8*)pBd, ((tpHalBufDesc) pBd)->mpduDataOffset + frameLen);)
@@ -1715,6 +1721,12 @@ int limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, void *body)
     pBody = WDA_GET_RX_MPDU_DATA(pBd);
     frameLen = WDA_GET_RX_PAYLOAD_LEN(pBd);
 
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+              FL("Auth Frame Received: BSSID %02x:%02x:%02x:%02x:%02x:%02x (Rssi %d)"),
+              pHdr->bssId[0], pHdr->bssId[1], pHdr->bssId[2],
+              pHdr->bssId[3], pHdr->bssId[4], pHdr->bssId[5],
+              (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pBd)));
+
     // Check for the operating channel and see what needs to be done next.
     psessionEntry = pMac->ft.ftPEContext.psavedsessionEntry;
     if (psessionEntry == NULL) 
@@ -1734,8 +1746,8 @@ int limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, void *body)
         return eSIR_FAILURE;
     }
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-    limPrintMacAddr(pMac, pHdr->bssId, LOGE);
-    limPrintMacAddr(pMac, pMac->ft.ftPEContext.pFTPreAuthReq->preAuthbssId, LOGE);
+    limPrintMacAddr(pMac, pHdr->bssId, LOG2);
+    limPrintMacAddr(pMac, pMac->ft.ftPEContext.pFTPreAuthReq->preAuthbssId, LOG2);
     limLog(pMac,LOG2,FL("seqControl 0x%X\n"), 
             ((pHdr->seqControl.seqNumHi << 8) | 
             (pHdr->seqControl.seqNumLo << 4) |
@@ -1771,23 +1783,23 @@ int limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, void *body)
          * as this was indeed a response from the BSSID we tried to 
          * pre-auth.
          */
-        PELOGE(limLog(pMac,LOGE,"Auth rsp already posted to SME"
-               " (session %p, FT session %p)\n", psessionEntry,
+        PELOGE(limLog(pMac,LOG1,"Auth rsp already posted to SME"
+               " (session %p, FT session %p)", psessionEntry,
                pMac->ft.ftPEContext.pftSessionEntry););
         return eSIR_SUCCESS;
     }
     else
     {
-        PELOGE(limLog(pMac,LOGE,"Auth rsp not yet posted to SME"
-               " (session %p, FT session %p)\n", psessionEntry,
+        PELOGE(limLog(pMac,LOGW,"Auth rsp not yet posted to SME"
+               " (session %p, FT session %p)", psessionEntry,
                pMac->ft.ftPEContext.pftSessionEntry););
         pMac->ft.ftPEContext.pFTPreAuthReq->bPreAuthRspProcessed =
             eANI_BOOLEAN_TRUE;
     }
 
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-    limLog(pMac, LOGE, FL("Pre-Auth response received from neighbor"));
-    limLog(pMac, LOGE, FL("Pre-Auth done state"));
+    limLog(pMac, LOG1, FL("Pre-Auth response received from neighbor"));
+    limLog(pMac, LOG1, FL("Pre-Auth done state"));
 #endif
     // Stopping timer now, that we have our unicast from the AP
     // of our choice.
@@ -1803,8 +1815,8 @@ int limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, void *body)
     pRxAuthFrameBody = &rxAuthFrame;
 
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-    PELOGE(limLog(pMac, LOGE,
-           FL("Received Auth frame with type=%d seqnum=%d, status=%d (%d)\n"),
+    PELOGE(limLog(pMac, LOG1,
+           FL("Received Auth frame with type=%d seqnum=%d, status=%d (%d)"),
            (tANI_U32) pRxAuthFrameBody->authAlgoNumber,
            (tANI_U32) pRxAuthFrameBody->authTransactionSeqNumber,
            (tANI_U32) pRxAuthFrameBody->authStatusCode,(tANI_U32)pMac->lim.gLimNumPreAuthContexts);)

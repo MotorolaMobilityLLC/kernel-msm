@@ -112,12 +112,38 @@ static eHalStatus csrNeighborRoamIssuePreauthReq(tpAniSirGlobal pMac);
 VOS_STATUS csrNeighborRoamIssueNeighborRptRequest(tpAniSirGlobal pMac);
 #endif
 
+#define ROAM_STATE_RETURN_STRING( str )\
+        case ( ( str ) ): return( #str )
+
+
+v_U8_t *csrNeighborRoamStateToString(v_U8_t state)
+{
+    switch(state)
+    {
+        ROAM_STATE_RETURN_STRING( eCSR_NEIGHBOR_ROAM_STATE_CLOSED );
+        ROAM_STATE_RETURN_STRING( eCSR_NEIGHBOR_ROAM_STATE_INIT );
+        ROAM_STATE_RETURN_STRING( eCSR_NEIGHBOR_ROAM_STATE_CONNECTED );
+        ROAM_STATE_RETURN_STRING( eCSR_NEIGHBOR_ROAM_STATE_CFG_CHAN_LIST_SCAN );
+        ROAM_STATE_RETURN_STRING( eCSR_NEIGHBOR_ROAM_STATE_REASSOCIATING );
+        ROAM_STATE_RETURN_STRING( eCSR_NEIGHBOR_ROAM_STATE_REPORT_QUERY );
+        ROAM_STATE_RETURN_STRING( eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN );
+        ROAM_STATE_RETURN_STRING( eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING );
+        ROAM_STATE_RETURN_STRING( eCSR_NEIGHBOR_ROAM_STATE_PREAUTH_DONE );
+            default:
+        return "eCSR_NEIGHBOR_ROAM_STATE_UNKNOWN";
+    }
+
+}
+
 /* State Transition macro */
 #define CSR_NEIGHBOR_ROAM_STATE_TRANSITION(newState)\
 {\
     pMac->roam.neighborRoamInfo.prevNeighborRoamState = pMac->roam.neighborRoamInfo.neighborRoamState;\
     pMac->roam.neighborRoamInfo.neighborRoamState = newState;\
-    smsLog(pMac, LOG1, FL("Neighbor Roam Transition from state %d ==> %d"), pMac->roam.neighborRoamInfo.prevNeighborRoamState, newState);\
+    VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG, \
+               FL("Neighbor Roam Transition from state %s ==> %s"), \
+               csrNeighborRoamStateToString (pMac->roam.neighborRoamInfo.prevNeighborRoamState), \
+               csrNeighborRoamStateToString (newState));\
 }
 
 /* ---------------------------------------------------------------------------
@@ -753,14 +779,14 @@ static eHalStatus csrNeighborRoamIssuePreauthReq(tpAniSirGlobal pMac)
         status = csrRoamEnqueuePreauth(pMac, pNeighborRoamInfo->csrSessionId, pNeighborBssNode->pBssDescription,
                 eCsrPerformPreauth, eANI_BOOLEAN_TRUE);
 
-        smsLog(pMac, LOGE, FL("Before Pre-Auth: BSSID %02x:%02x:%02x:%02x:%02x:%02x %d"), 
+        smsLog(pMac, LOG1, FL("Before Pre-Auth: BSSID %02x:%02x:%02x:%02x:%02x:%02x, Ch:%d"),
                pNeighborBssNode->pBssDescription->bssId[0],
                pNeighborBssNode->pBssDescription->bssId[1],
                pNeighborBssNode->pBssDescription->bssId[2],
                pNeighborBssNode->pBssDescription->bssId[3],
                pNeighborBssNode->pBssDescription->bssId[4],
-               pNeighborBssNode->pBssDescription->bssId[5]);
-        smsLog(pMac, LOGE, FL("Before Pre-Auth: Channel %d\n"), (int)pNeighborBssNode->pBssDescription->channelId);
+               pNeighborBssNode->pBssDescription->bssId[5],
+               (int)pNeighborBssNode->pBssDescription->channelId);
 
         if (eHAL_STATUS_SUCCESS != status)
         {
@@ -858,14 +884,14 @@ eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosS
     {
         NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Preauth completed successfully after %d tries\n"), pNeighborRoamInfo->FTRoamInfo.numPreAuthRetries);
 
-        smsLog(pMac, LOGE, FL("After Pre-Auth: BSSID %02x:%02x:%02x:%02x:%02x:%02x\n"), 
+        smsLog(pMac, LOG1, FL("After Pre-Auth: BSSID %02x:%02x:%02x:%02x:%02x:%02x, Ch:%d"),
                pPreauthRspNode->pBssDescription->bssId[0],
                pPreauthRspNode->pBssDescription->bssId[1],
                pPreauthRspNode->pBssDescription->bssId[2],
                pPreauthRspNode->pBssDescription->bssId[3],
                pPreauthRspNode->pBssDescription->bssId[4],
-               pPreauthRspNode->pBssDescription->bssId[5]);
-        smsLog(pMac, LOGE, FL("After Pre-Auth: Channel %d\n"), (int)pPreauthRspNode->pBssDescription->channelId);
+               pPreauthRspNode->pBssDescription->bssId[5],
+               (int)pPreauthRspNode->pBssDescription->channelId);
 
         /* Preauth competer successfully. Insert the preauthenticated node to tail of preAuthDoneList */
         csrNeighborRoamRemoveRoamableAPListEntry(pMac, &pNeighborRoamInfo->roamableAPList, pPreauthRspNode);
@@ -1101,15 +1127,16 @@ static tANI_BOOLEAN csrNeighborRoamProcessScanResults(tpAniSirGlobal pMac,
 
     while (NULL != (pScanResult = csrScanResultGetNext(pMac, *pScanResultList)))
     {
-        NEIGHBOR_ROAM_DEBUG(pMac, LOGE, 
-            FL("Scan result: BSSID %02x:%02x:%02x:%02x:%02x:%02x (Rssi %d)"), 
+            VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+            FL("Scan result: BSSID %02x:%02x:%02x:%02x:%02x:%02x (Rssi %d, Ch:%d)"),
             pScanResult->BssDescriptor.bssId[0],
             pScanResult->BssDescriptor.bssId[1],
             pScanResult->BssDescriptor.bssId[2],
             pScanResult->BssDescriptor.bssId[3],
             pScanResult->BssDescriptor.bssId[4],
             pScanResult->BssDescriptor.bssId[5],
-            abs(pScanResult->BssDescriptor.rssi));
+            abs(pScanResult->BssDescriptor.rssi),
+            pScanResult->BssDescriptor.channelId);
 
        if (VOS_TRUE == vos_mem_compare(pScanResult->BssDescriptor.bssId, 
                        pNeighborRoamInfo->currAPbssid, sizeof(tSirMacAddr)))
@@ -3604,7 +3631,8 @@ void csrNeighborRoamRequestHandoff(tpAniSirGlobal pMac)
     CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_REASSOCIATING)
     
     csrNeighborRoamGetHandoffAPInfo(pMac, &handoffNode);
-    smsLog(pMac, LOGE, FL("HANDOFF CANDIDATE BSSID %02x:%02x:%02x:%02x:%02x:%02x"),
+    VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+               FL("HANDOFF CANDIDATE BSSID %02x:%02x:%02x:%02x:%02x:%02x"),
                                                 handoffNode.pBssDescription->bssId[0], 
                                                 handoffNode.pBssDescription->bssId[1], 
                                                 handoffNode.pBssDescription->bssId[2], 
