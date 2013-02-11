@@ -797,8 +797,10 @@ static int panel_power_ctrl_en(int on)
 
 	/* Hack for Ultra bring-up, will remove once we can handle
 	   shared display / touch power rails */
-	if (!strncmp(panel_name, "mipi_mot_cmd_smd_hd_497",
-			strlen(panel_name)) && !on)
+	if ((!strncmp(panel_name, "mipi_mot_cmd_smd_hd_497",
+			strlen(panel_name)) ||
+	     !strncmp(panel_name, "mipi_mot_cmd_jdi_hd_430",
+			strlen(panel_name))) && !on)
 		pr_info("%s skipping panel power off\n", __func__);
 	else {
 		rc = panel_power_output(on, reg_lst);
@@ -989,6 +991,8 @@ static int panel_power_ctrl(int on)
 			/* Hack for Ultra bring-up, will remove once we can
 			   handle shared display / touch power rails */
 			if (!strncmp(panel_name, "mipi_mot_cmd_smd_hd_497",
+					strlen(panel_name)) ||
+			    !strncmp(panel_name, "mipi_mot_cmd_jdi_hd_430",
 					strlen(panel_name)))
 				pr_info("%s skipping panel power off\n",
 					__func__);
