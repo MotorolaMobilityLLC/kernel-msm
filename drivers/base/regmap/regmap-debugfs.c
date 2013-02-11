@@ -157,6 +157,19 @@ static unsigned int regmap_debugfs_get_dump_start(struct regmap *map,
 	return ret;
 }
 
+static inline void regmap_calc_tot_len(struct regmap *map,
+				       void *buf, size_t count)
+{
+	/* Calculate the length of a fixed format  */
+	if (!map->debugfs_tot_len) {
+		map->debugfs_reg_len = regmap_calc_reg_len(map->max_register,
+							   buf, count);
+		map->debugfs_val_len = 2 * map->format.val_bytes;
+		map->debugfs_tot_len = map->debugfs_reg_len +
+			map->debugfs_val_len + 3;      /* : \n */
+	}
+}
+
 static ssize_t regmap_map_read_file(struct file *file, char __user *user_buf,
 				    size_t count, loff_t *ppos)
 {
@@ -175,14 +188,7 @@ static ssize_t regmap_map_read_file(struct file *file, char __user *user_buf,
 	if (!buf)
 		return -ENOMEM;
 
-	/* Calculate the length of a fixed format  */
-	if (!map->debugfs_tot_len) {
-		map->debugfs_reg_len = regmap_calc_reg_len(map->max_register,
-							   buf, count);
-		map->debugfs_val_len = 2 * map->format.val_bytes;
-		map->debugfs_tot_len = map->debugfs_reg_len +
-			map->debugfs_val_len + 3;      /* : \n */
-	}
+	regmap_calc_tot_len(map, buf, count);
 
 	/* Work out which register we're starting at */
 	start_reg = regmap_debugfs_get_dump_start(map, 0, *ppos, &p);
