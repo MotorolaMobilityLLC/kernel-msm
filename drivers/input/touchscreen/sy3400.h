@@ -67,6 +67,7 @@
 #define SY3400_QUERY(base, n)       (base + n)
 
 #define SY3400_BLK_SZ               0x0EE0
+#define SY3300_BLK_CT               0x00C0
 #define SY3400_BLK_CT               0x00E0
 
 enum sy3400_driver_state {
