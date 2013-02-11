@@ -271,6 +271,12 @@ static int32_t msm_actuator_move_focus(
 #endif
 	CDBG("%s called, dir %d, num_steps %d\n",__func__,dir,num_steps);
 
+	if (!a_ctrl->step_position_table) {
+		pr_err("%s: Not yet configured (step_position_table is NULL)\n",
+				__func__);
+		return -EINVAL;
+	}
+
 	if (dest_step_pos == a_ctrl->curr_step_pos)
 		return rc;
 
