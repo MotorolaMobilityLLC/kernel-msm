@@ -1760,7 +1760,8 @@ msp430_of_init(struct i2c_client *client)
 }
 #endif
 
-static int msp430_gpio_init(struct msp430_platform_data *pdata)
+static int msp430_gpio_init(struct msp430_platform_data *pdata,
+				struct i2c_client *pdev)
 {
 	int err;
 
@@ -1773,6 +1774,11 @@ static int msp430_gpio_init(struct msp430_platform_data *pdata)
 	err = gpio_export(pdata->gpio_int, 0);
 	if (err) {
 		pr_err("msp430 int gpio_export failed: %d\n", err);
+		goto free_int;
+	}
+	err = gpio_export_link(&pdev->dev, "gpio_irq", pdata->gpio_int);
+	if (err) {
+		pr_err("msp430 gpio irq link failed: %d\n", err);
 		goto free_int;
 	}
 
@@ -1812,6 +1818,13 @@ static int msp430_gpio_init(struct msp430_platform_data *pdata)
 		err = gpio_export(pdata->gpio_wakeirq, 0);
 		if (err) {
 			pr_err("msp430 wakeirq gpio_export failed: %d\n", err);
+			goto free_wakeirq;
+		}
+
+		err = gpio_export_link(&pdev->dev, "wakeirq",
+						pdata->gpio_wakeirq);
+		if (err) {
+			pr_err("msp430 wakeirq link failed: %d\n", err);
 			goto free_wakeirq;
 		}
 	} else {
@@ -1906,7 +1919,7 @@ static int msp430_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
-	err = msp430_gpio_init(pdata);
+	err = msp430_gpio_init(pdata, client);
 	if (err) {
 		dev_err(&client->dev, "msp430 gpio init failed\n");
 		goto err_gpio_init;
