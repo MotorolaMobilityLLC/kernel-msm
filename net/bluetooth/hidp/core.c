@@ -756,7 +756,7 @@ static int hidp_session(void *arg)
 				kfree_skb(skb);
 		}
 
-		hidp_le_process_transmit(session);
+		hidp_process_transmit(session);
 
 		schedule();
 	}
@@ -838,7 +838,7 @@ static int hidp_le_session(void *arg)
 				kfree_skb(skb);
 		}
 
-		hidp_process_transmit(session);
+		hidp_le_process_transmit(session);
 
 		schedule();
 	}
