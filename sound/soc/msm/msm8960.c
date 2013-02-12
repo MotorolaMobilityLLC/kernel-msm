@@ -928,7 +928,7 @@ static int msm8960_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	}
 
 #ifdef CONFIG_SND_SOC_TPA6165A2
-	err = tpa6165_hs_detect(&hs_jack, &button_jack);
+	err = tpa6165_hs_detect(codec, &hs_jack, &button_jack);
 	if (!err) {
 		pr_info("%s:tpa6165 hs det mechanism is used", __func__);
 		return err;
