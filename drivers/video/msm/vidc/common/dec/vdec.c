@@ -273,7 +273,8 @@ static void vid_dec_output_frame_done(struct video_client_ctx *client_ctx,
 		(vcd_frame_data->flags & VCD_FRAME_FLAG_EOS)) {
 
 		if (res_trk_check_for_sec_session() &&
-				event == VCD_EVT_RESP_OUTPUT_DONE) {
+			res_trk_get_enable_sec_metadata() &&
+			event == VCD_EVT_RESP_OUTPUT_DONE) {
 			DBG("Buffer Index = %d", buffer_index);
 			if (buffer_index != -1) {
 				if (client_ctx->meta_addr_table[buffer_index].
@@ -730,6 +731,22 @@ static u32 vid_dec_get_progressive_only(struct video_client_ctx *client_ctx,
 	vcd_property_hdr.sz = sizeof(u32);
 	if (vcd_get_property(client_ctx->vcd_handle, &vcd_property_hdr,
 						 progressive_only))
+		return false;
+	else
+		return true;
+}
+
+static u32 vid_dec_get_enable_secure_metadata(struct video_client_ctx
+				*client_ctx, u32 *enable_sec_metadata)
+{
+
+	struct vcd_property_hdr vcd_property_hdr;
+	if (!client_ctx || !enable_sec_metadata)
+		return false;
+	vcd_property_hdr.prop_id = VCD_I_ENABLE_SEC_METADATA;
+	vcd_property_hdr.sz = sizeof(u32);
+	if (vcd_get_property(client_ctx->vcd_handle, &vcd_property_hdr,
+						 enable_sec_metadata))
 		return false;
 	else
 		return true;
@@ -2242,6 +2259,23 @@ static long vid_dec_ioctl(struct file *file,
 		break;
 	}
 
+	case VDEC_IOCTL_GET_ENABLE_SEC_METADATA:
+	{
+		u32 enable_sec_metadata;
+		DBG("VDEC_IOCTL_GET_ENABLE_SEC_METADATA\n");
+		if (copy_from_user(&vdec_msg, arg, sizeof(vdec_msg)))
+			return -EFAULT;
+		result = vid_dec_get_enable_secure_metadata(client_ctx,
+					&enable_sec_metadata);
+		if (result) {
+			if (copy_to_user(vdec_msg.out, &enable_sec_metadata,
+					sizeof(u32)))
+				return -EFAULT;
+		} else
+			return -EIO;
+		break;
+	}
+
 	case VDEC_IOCTL_GET_DISABLE_DMX_SUPPORT:
 	{
 		u32 disable_dmx;
@@ -2334,7 +2368,11 @@ static long vid_dec_ioctl(struct file *file,
 		if (copy_from_user(&meta_buffers, vdec_msg.in,
 						   sizeof(meta_buffers)))
 			return -EFAULT;
-		result = vid_dec_set_meta_buffers(client_ctx, &meta_buffers);
+		if (res_trk_get_enable_sec_metadata())
+			result =
+			vid_dec_set_meta_buffers(client_ctx, &meta_buffers);
+		else
+			ERR("ERROR : Meta data is not enabled.\n");
 
 		if (!result)
 			return -EIO;
@@ -2343,7 +2381,10 @@ static long vid_dec_ioctl(struct file *file,
 	case VDEC_IOCTL_FREE_META_BUFFERS:
 	{
 		DBG("VDEC_IOCTL_FREE_META_BUFFERS\n");
-		result = vid_dec_free_meta_buffers(client_ctx);
+		if (res_trk_get_enable_sec_metadata())
+			result = vid_dec_free_meta_buffers(client_ctx);
+		else
+			ERR("ERROR : Can't free. Meta data is not enabled.\n");
 		if (!result)
 			return -EIO;
 		break;
