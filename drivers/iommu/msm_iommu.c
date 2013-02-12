@@ -30,6 +30,7 @@
 #include <mach/iommu_hw-8xxx.h>
 #include <mach/iommu.h>
 #include <mach/msm_smsm.h>
+#include <mach/socinfo.h>
 
 #define MRC(reg, processor, op1, crn, crm, op2)				\
 __asm__ __volatile__ (							\
@@ -371,7 +372,11 @@ static int msm_iommu_domain_init(struct iommu_domain *domain, int flags)
 		goto fail_nomem;
 
 #ifdef CONFIG_IOMMU_PGTABLES_L2
-	priv->redirect = flags & MSM_IOMMU_DOMAIN_PT_CACHEABLE;
+	/* Workaround: skip ES1.0 chip to fix stability issue */
+	if (!((SOCINFO_VERSION_MAJOR(socinfo_get_version()) == 1) &&
+		(SOCINFO_VERSION_MINOR(socinfo_get_version()) == 0))) {
+		priv->redirect = flags & MSM_IOMMU_DOMAIN_PT_CACHEABLE;
+	}
 #endif
 
 	memset(priv->pgtable, 0, SZ_16K);
