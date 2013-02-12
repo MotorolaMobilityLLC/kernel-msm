@@ -14,6 +14,9 @@
 
 /include/ "msm8960ab-ghost-common.dtsi"
 
+/* Note, this is common with p1 */
+/include/ "msm8960ab-ghost-p1-legacy.dtsi"
+
 / {
 	mmi,revision = "p2";
 };
