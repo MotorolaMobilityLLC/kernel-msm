@@ -349,6 +349,7 @@ static void msmsdcc_soft_reset(struct msmsdcc_host *host)
 			mb();
 		}
 	} else {
+		mmc_cmd_log(host->mmc, 0, 0);
 		writel_relaxed(0, host->base + MMCICOMMAND);
 		msmsdcc_sync_reg_wr(host);
 		writel_relaxed(0, host->base + MMCIDATACTRL);
@@ -583,6 +584,7 @@ static inline void msmsdcc_delay(struct msmsdcc_host *host)
 static inline void
 msmsdcc_start_command_exec(struct msmsdcc_host *host, u32 arg, u32 c)
 {
+	mmc_cmd_log(host->mmc, c, arg);
 	writel_relaxed(arg, host->base + MMCIARGUMENT);
 	writel_relaxed(c, host->base + MMCICOMMAND);
 	/*
@@ -1786,6 +1788,7 @@ static void msmsdcc_do_cmdirq(struct msmsdcc_host *host, uint32_t status)
 	host->curr.cmd = NULL;
 	if (mmc_resp_type(cmd))
 		cmd->resp[0] = readl_relaxed(host->base + MMCIRESPONSE0);
+	mmc_cmd_log_resp(host->mmc, cmd->resp[0]);
 	/*
 	 * Read rest of the response registers only if
 	 * long response is expected for this command
