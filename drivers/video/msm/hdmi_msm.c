@@ -4497,6 +4497,7 @@ static int hdmi_msm_power_off(struct platform_device *pdev)
 		cancel_work_sync(&hdmi_msm_state->hdcp_reauth_work);
 		cancel_work_sync(&hdmi_msm_state->hdcp_work);
 		del_timer_sync(&hdmi_msm_state->hdcp_timer);
+		hdmi_msm_state->reauth = FALSE;
 
 		hdcp_deauthenticate();
 	}
