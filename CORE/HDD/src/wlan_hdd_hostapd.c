@@ -2419,20 +2419,14 @@ static int iw_softap_stopbss(struct net_device *dev,
 
 static int iw_softap_version(struct net_device *dev,
         struct iw_request_info *info,
-        union iwreq_data *wrqu, 
+        union iwreq_data *wrqu,
         char *extra)
 {
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
-    VOS_STATUS status;
+
     ENTER();
-    status = hdd_wlan_get_version(pHostapdAdapter, wrqu, extra);
-    if ( !VOS_IS_STATUS_SUCCESS( status ) ) {
-       hddLog(VOS_TRACE_LEVEL_ERROR, "%s Failed!!!\n",__func__);
-       return -EINVAL;
-    }
+    hdd_wlan_get_version(pHostapdAdapter, wrqu, extra);
     EXIT();
-#endif//TODO need to handle in prima
     return 0;
 }
 

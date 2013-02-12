@@ -371,57 +371,60 @@ int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest,
 void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set, v_U8_t sessionId);
 #endif
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
 /**---------------------------------------------------------------------------
 
   \brief hdd_wlan_get_version() -
 
-   This function use to get Wlan Driver And Firmware Version.
+   This function use to get Wlan Driver, Firmware, & Hardware Version.
 
   \param  - pAdapter Pointer to the adapter.
             wrqu - Pointer to IOCTL REQUEST Data.
             extra - Pointer to char
 
-  \return - 0 for success, non zero for failure
+  \return - none
 
   --------------------------------------------------------------------------*/
-int hdd_wlan_get_version(hdd_adapter_t *pAdapter, union iwreq_data *wrqu,
-                         char *extra)
+void hdd_wlan_get_version(hdd_adapter_t *pAdapter, union iwreq_data *wrqu,
+                          char *extra)
 {
     VOS_STATUS status;
-    FwVersionInfo fwversion;
+    tSirVersionString wcnss_SW_version;
+    tSirVersionString wcnss_HW_version;
+    char *pSWversion;
+    char *pHWversion;
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
-    v_U32_t reg_val;
-    char *buf = extra;
 
-    buf += snprintf(buf, VERSION_VALUE_MAX_LEN, "%s_", WLAN_CHIP_VERSION);
-    /*Read the RevID*/
-    status = sme_DbgReadRegister(hHal, QWLAN_RFAPB_REV_ID_REG, &reg_val);
-
-    if ( !VOS_IS_STATUS_SUCCESS( status ) ) {
-       hddLog(VOS_TRACE_LEVEL_ERROR, "%s Failed!!!\n", __func__);
-       return -EINVAL;
+    status = sme_GetWcnssSoftwareVersion(hHal, wcnss_SW_version,
+                                         sizeof(wcnss_SW_version));
+    if (VOS_IS_STATUS_SUCCESS(status))
+    {
+        pSWversion = wcnss_SW_version;
+    }
+    else
+    {
+        pSWversion = "Unknown";
     }
 
-    buf += snprintf(buf, VERSION_VALUE_MAX_LEN, "%x.%x-", (v_U8_t)(reg_val >> 8),
-                               (v_U8_t)(reg_val & 0x000000FF));
-
-    status = sme_GetFwVersion(hHal, &fwversion);
-
-    if ( !VOS_IS_STATUS_SUCCESS( status ) ) {
-        hddLog(VOS_TRACE_LEVEL_ERROR, "%s Failed!!!\n", __func__);
-        return -EINVAL;
+    status = sme_GetWcnssHardwareVersion(hHal, wcnss_HW_version,
+                                         sizeof(wcnss_HW_version));
+    if (VOS_IS_STATUS_SUCCESS(status))
+    {
+        pHWversion = wcnss_HW_version;
     }
-    buf += snprintf(buf, VERSION_VALUE_MAX_LEN, "%s-", QWLAN_VERSIONSTR);
-    buf += snprintf(buf, VERSION_VALUE_MAX_LEN, "%ld.%ld.%ld.%ld",
-                                    fwversion.uMj, fwversion.uMn,
-                                    fwversion.uPatch, fwversion.uBuild);
-    wrqu->data.length = strlen(extra);
+    else
+    {
+        pHWversion = "Unknown";
+    }
 
-    return 0;
+    wrqu->data.length = snprintf(extra, WE_MAX_STR_LEN,
+                                 "Host SW:%s, FW:%s, HW:%s",
+                                 QWLAN_VERSIONSTR,
+                                 pSWversion,
+                                 pHWversion);
+
+    return;
 }
 
-#endif
 int hdd_wlan_get_rts_threshold(hdd_adapter_t *pAdapter, union iwreq_data *wrqu)
 {
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
@@ -3860,20 +3863,11 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     int sub_cmd = wrqu->data.flags;
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-    VOS_STATUS status;
-#endif // FEATURE_WLAN_NON_INTEGRATED_SOC
     switch(sub_cmd)
     {
         case WE_WLAN_VERSION:
         {
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-            status = hdd_wlan_get_version(pAdapter, wrqu, extra);
-#else // FEATURE_WLAN_NON_INTEGRATED_SOC
-            char *buf = extra;
-            wrqu->data.length = snprintf(buf, WE_MAX_STR_LEN, "%s_",
-                                         WLAN_CHIP_VERSION);
-#endif
+            hdd_wlan_get_version(pAdapter, wrqu, extra);
             break;
         }
 
