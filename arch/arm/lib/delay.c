@@ -2,7 +2,7 @@
  *  Originally from linux/arch/arm/lib/delay.S
  *
  *  Copyright (C) 1995, 1996 Russell King
- *  Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+ *  Copyright (c) 2010, The Linux Foundation. All rights reserved.
  *  Copyright (C) 1993 Linus Torvalds
  *  Copyright (C) 1997 Martin Mares <mj@atrey.karlin.mff.cuni.cz>
  *  Copyright (C) 2005-2006 Atmel Corporation

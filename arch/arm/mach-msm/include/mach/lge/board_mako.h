@@ -1,7 +1,7 @@
 /* arch/arm/mach-msm/include/mach/board_mako.h
  *
  * Copyright (C) 2007 Google, Inc.
- * Copyright (c) 2008-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2008-2012, The Linux Foundation. All rights reserved.
  * Copyright (c) 2012, LGE.
  * Author: Brian Swetland <swetland@google.com>
  *
