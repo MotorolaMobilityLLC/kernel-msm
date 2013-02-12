@@ -1,0 +1,319 @@
+/ {
+
+	Aliases@0 {
+	};
+
+	Chosen@0 {
+		batt_eprom_gpio = <0x5d>;
+		emu_id_activehigh = <0x01>;
+		emu_id_flt_activehigh = <0x01>;
+		emu_id_flt_gpio = <0xaa>;
+		emu_id_mpp_gpio = <0xcd>;
+		factory_kill_disable = <0x00>;
+		factory_kill_gpio = <0x0000004b>;
+		formfactor = <0x00000003>;
+		last_compat_version = <0x01330684>;
+		product = <0x000026ff>;
+		version = <0x0133068b>;
+	};
+
+	Machine@0 {
+	};
+
+	System@0 {
+
+		Audio@0 {
+			class = [417564696f00];
+			gpio_ap_int = <0x41>;
+			gpio_c55_int = <0x0f>;
+			gpio_core = <0xa5>;
+			gpio_reset = <0xa6>;
+			type = <0x00030016>;
+			xo_clock_always_on = <0x00000001>;
+		};
+
+		ClockTree@0 {
+			class = [436c6f636b5472656500];
+			type = <0x001e0014>;
+
+			Clock@0 {
+				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
+				clock = <0x0003>;
+				clockname = [636f72655f636c6b00];
+				deviceid = [6d736d5f73657269616c5f68736c2e3200];
+				type = <0x001e0015>;
+			};
+
+			Clock@1 {
+				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
+				clock = <0x0005>;
+				clockname = [69666163655f636c6b00];
+				deviceid = [6d736d5f73657269616c5f68736c2e3200];
+				type = <0x001e0015>;
+			};
+
+			Clock@2 {
+				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
+				clock = <0x000c>;
+				clockname = [636f72655f636c6b00];
+				deviceid = [6d736d5f73657269616c5f68732e3300];
+				type = <0x001e0015>;
+			};
+
+			Clock@3 {
+				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
+				clock = <0x000e>;
+				clockname = [69666163655f636c6b00];
+				deviceid = [6d736d5f73657269616c5f68732e3300];
+				type = <0x001e0015>;
+			};
+
+			Clock@4 {
+				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
+				clock = <0x0024>;
+				clockname = [63616d5f636c6b00];
+				deviceid = [342d3030326400];
+				type = <0x001e0015>;
+			};
+
+			Clock@5 {
+				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
+				clock = <0x0025>;
+				clockname = [63616d5f636c6b00];
+				deviceid = [342d3030313000];
+				type = <0x001e0015>;
+			};
+
+			Clock@6 {
+				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
+				clock = <0x0016>;
+				clockname = [636f72655f636c6b00];
+				deviceid = [7175705f6932632e3800];
+				type = <0x001e0015>;
+			};
+
+			Clock@7 {
+				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
+				clock = <0x0017>;
+				clockname = [69666163655f636c6b00];
+				deviceid = [7175705f6932632e3800];
+				type = <0x001e0015>;
+			};
+
+			Clock@8 {
+				class = [5175616c636f6d6d436c6f636b54726565436c6f636b00];
+				clock = <0x0025>;
+				clockname = [63616d5f636c6b00];
+				deviceid = [342d3030333600];
+				type = <0x001e0015>;
+			};
+		};
+
+		FactoryDevice@0 {
+			class = [4e6f6e654174416c6c00];
+			type = <0x00000023>;
+
+			GPIO@75 {
+				class = [4e6f6e654174416c6c00];
+				gpio_direction = <0x01>;
+				gpio_name = [666163746f72795f6b696c6c5f64697361626c6500];
+				gpio_number = <0x0000004b>;
+				gpio_value = <0x00000001>;
+				type = <0x00000014>;
+			};
+
+			GPIO@98 {
+				class = [4e6f6e654174416c6c00];
+				gpio_direction = <0x00>;
+				gpio_name = [74656d705f73656e736f7200];
+				gpio_number = <0x00000062>;
+				type = <0x00000014>;
+			};
+		};
+
+		GSBISetup@0 {
+			class = [47534249536574757000];
+			type = <0x001e0012>;
+
+			GSBI@1 {
+				class = [5175616c636f6d6d47534249504f525400];
+				gsbi_type = <0x03>;
+				max_clock_speed = <0x00e5cc20>;
+				type = <0x001e0013>;
+			};
+
+			GSBI@11 {
+				class = [5175616c636f6d6d47534249504f525400];
+				gsbi_type = <0x03>;
+				type = <0x001e0013>;
+			};
+
+			GSBI@2 {
+				class = [5175616c636f6d6d47534249504f525400];
+				gsbi_type = <0x04>;
+				type = <0x001e0013>;
+				uart_line = <0x00>;
+			};
+
+			GSBI@7 {
+				class = [5175616c636f6d6d47534249504f525400];
+				gsbi_type = <0x05>;
+				type = <0x001e0013>;
+			};
+		};
+
+		I2C@12 {
+			class = <0x49324300>;
+			type = <0x001e0003>;
+
+			I2C,Board@0 {
+				brightness_table = [000000190000002a000000440000007f0000007f0000007f];
+				class = [4d535034333000];
+				i2c,address = <0x00000048>;
+				i2c,type = [6d737034333000];
+				irq,gpio = <0x45>;
+				lux_table = [00000005000000320000006400000bb800001f40];
+				msp430_fw_version = <0x5f703000>;
+				msp430_gpio_bslen = <0x33>;
+				msp430_gpio_reset = <0x5c>;
+				type = <0x00030015>;
+			};
+		};
+
+		I2C@4 {
+			class = <0x49324300>;
+			type = <0x001e0003>;
+
+			I2C,Board@0 {
+				class = [53354b3542334700];
+				gpio_avdd_en = <0x00000052>;
+				gpio_dig_en = <0x00000059>;
+				gpio_reset = <0x0000004c>;
+				i2c,address = <0x0000002d>;
+				i2c,type = [73356b3562336700];
+				type = <0x00090007>;
+			};
+
+			I2C,Board@1 {
+				class = [4c4d3335353600];
+				current_cntrl_reg_val = <0x2b>;
+				enable_gpio = <0x00000002>;
+				i2c,address = <0x00000063>;
+				i2c,type = [6c6d333535365f6c656400];
+				type = <0x000b0006>;
+			};
+
+			I2C,Board@2 {
+				class = [4f563838333500];
+				gpio_pwd = <0x5f>;
+				gpio_reset = <0x61>;
+				i2c,address = <0x00000010>;
+				i2c,type = [6f763838333500];
+				type = <0x00290002>;
+			};
+
+			I2C,Board@3 {
+				class = [4f56313038323000];
+				gpio_dig_en = <0x000000a0>;
+				gpio_pwd = <0x0000005f>;
+				gpio_reset = <0x00000061>;
+				i2c,address = <0x00000036>;
+				i2c,type = [6f76313038323000];
+				type = <0x00290003>;
+			};
+
+			I2C,Board@4 {
+				class = [4f5636363000];
+				i2c,address = <0x00000035>;
+				i2c,type = [6f7636363000];
+				type = <0x00290004>;
+			};
+		};
+
+		PowerIC@0 {
+			class = [506f776572494300];
+			type = <0x001e0004>;
+
+			RGBLED@0 {
+				class = [5175616c636f6d6d504d383932315247424c454400];
+				max_brightness = <0x00000080>;
+				type = <0x001e0011>;
+			};
+		};
+
+		Regulators@0 {
+			class = [47656e65726963526567756c61746f7253657400];
+			type = <0x00000021>;
+
+			RegulatorChip@0 {
+				class = [47656e65726963526567756c61746f7200];
+				type = <0x001e001a>;
+
+				Regulator@0 {
+					class = [47656e65726963526567756c61746f7200];
+					id = <0x00000007>;
+					type = <0x00000020>;
+
+					ConsumerSupply@0 {
+						dev_name = [342d3030313000];
+						supply = [63616d5f616676646400];
+					};
+
+					ConsumerSupply@1 {
+						dev_name = [342d3030333600];
+						supply = [63616d5f616676646400];
+					};
+				};
+
+				Regulator@1 {
+					class = [47656e65726963526567756c61746f7200];
+					id = <0x0000000b>;
+					type = <0x00000020>;
+
+					ConsumerSupply@0 {
+						dev_name = [342d3030313000];
+						supply = [63616d5f7664696700];
+					};
+
+					ConsumerSupply@1 {
+						dev_name = [342d3030333600];
+						supply = [63616d5f7664696700];
+					};
+
+					ConsumerSupply@2 {
+						dev_name = [342d3030326400];
+						supply = [63616d5f7664696700];
+					};
+				};
+
+				Regulator@2 {
+					class = [47656e65726963526567756c61746f7200];
+					id = <0x00000028>;
+					type = <0x00000020>;
+
+					ConsumerSupply@0 {
+						dev_name = [342d3030313000];
+						supply = [63616d5f76696f00];
+					};
+
+					ConsumerSupply@1 {
+						dev_name = [342d3030333600];
+						supply = [63616d5f76696f00];
+					};
+
+					ConsumerSupply@2 {
+						dev_name = [342d3030326400];
+						supply = [63616d5f76696f00];
+					};
+				};
+			};
+		};
+
+		WirelessChargerIC@0 {
+			class = [576972656c65737343686172676572494300];
+			type = <0x0003001b>;
+			wireless_complete_gpio = <0x0000004d>;
+			wireless_terminate_gpio = <0x00000020>;
+		};
+	};
+};

@@ -14,6 +14,8 @@
 
 /include/ "msm8960ab-ultram-common.dtsi"
 
+/include/ "msm8960ab-ultram-p0-legacy.dtsi"
+
 / {
 	mmi,revision = "p0";
 
