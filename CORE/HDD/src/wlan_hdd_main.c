@@ -468,9 +468,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                ret = -EFAULT;
            }
        }
-       else if(strncmp(priv_data.buf, "SETBAND", 7) == 0)
+       else if(strncmp(command, "SETBAND", 7) == 0)
        {
-           tANI_U8 *ptr = (tANI_U8*)priv_data.buf ;
+           tANI_U8 *ptr = command ;
            int ret = 0 ;
         
            /* Change band request received */
@@ -478,7 +478,7 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            /* First 8 bytes will have "SETBAND " and 
             * 9 byte will have band setting value */
            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                    "%s: SetBandCommand Info  comm %s UL %d, TL %d", __func__, priv_data.buf, priv_data.used_len, priv_data.total_len);
+                    "%s: SetBandCommand Info  comm %s UL %d, TL %d", __func__, command, priv_data.used_len, priv_data.total_len);
         
            /* Change band request received */
            ret = hdd_setBand_helper(dev, ptr);   
@@ -501,9 +501,9 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
           command should be a string having format
           SET_SAP_CHANNEL_LIST <num of channels> <the channels seperated by spaces>
        */
-       else if(strncmp(priv_data.buf, "SET_SAP_CHANNEL_LIST", 20) == 0)
+       else if(strncmp(command, "SET_SAP_CHANNEL_LIST", 20) == 0)
        {
-           tANI_U8 *ptr = (tANI_U8*)priv_data.buf;
+           tANI_U8 *ptr = command;
 
            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                       " Received Command to Set Preferred Channels for SAP in %s", __func__);
