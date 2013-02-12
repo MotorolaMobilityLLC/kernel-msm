@@ -2,6 +2,8 @@
 
 /include/ "msm8960ab-sasquatch-common.dtsi"
 
+/include/ "msm8960ab-sasquatch-p2-legacy.dtsi"
+
 / {
 	mmi,revision = "p2";
 
