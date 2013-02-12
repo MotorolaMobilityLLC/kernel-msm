@@ -190,6 +190,7 @@ static int last_charge_increase;
 module_param(last_chargecycles, int, 0644);
 module_param(last_charge_increase, int, 0644);
 
+static int last_ocv_uv = -EINVAL;
 static int calculated_soc = -EINVAL;
 static int last_soc = -EINVAL;
 static int last_real_fcc_mah = -EINVAL;
@@ -208,6 +209,22 @@ static struct kernel_param_ops bms_param_ops = {
 	.get = param_get_int,
 };
 
+static int ocv_ops_get(char *buffer, const struct kernel_param *kp)
+{
+	if (the_chip) {
+		last_ocv_uv = the_chip->last_ocv_uv;
+		return param_get_int(buffer, kp);
+	} else {
+		return 0;
+	}
+}
+
+static struct kernel_param_ops ocv_param_ops = {
+	.set = bms_ops_set,
+	.get = ocv_ops_get,
+};
+
+module_param_cb(last_ocv_uv, &ocv_param_ops, &last_ocv_uv, 0644);
 module_param_cb(last_soc, &bms_param_ops, &last_soc, 0644);
 
 /*
