@@ -114,7 +114,7 @@ struct mipi_mot_panel {
 	int (*panel_disable) (struct msm_fb_data_type *mfd);
 	int (*panel_on)(struct msm_fb_data_type *mfd);
 	int (*panel_off)(struct msm_fb_data_type *mfd);
-	int (*panel_enter_normal_mode)(struct msm_fb_data_type *mfd);
+	void (*panel_en_from_partial) (struct msm_fb_data_type *mfd);
 	void (*esd_run) (void);
 	void (*set_backlight)(struct msm_fb_data_type *mfd);
 	void (*set_backlight_curve)(struct msm_fb_data_type *mfd);
@@ -129,7 +129,6 @@ struct mipi_mot_panel {
 	int (*prepare_for_suspend) (struct msm_fb_data_type *, int full);
 	int (*prepare_for_resume) (struct msm_fb_data_type *,
 		int full, int in_sleep, int gamma);
-	void (*shift_correct) (void);
 };
 
 int mipi_mot_device_register(struct msm_panel_info *pinfo, u32 channel,
@@ -149,11 +148,12 @@ void mipi_mot_dynamic_gamma_calc(uint32_t v0_val, uint8_t preamble_1,
 u8 *mipi_mot_get_gamma_setting(struct msm_fb_data_type *mfd, int level);
 int mipi_mot_panel_on(struct msm_fb_data_type *mfd);
 int mipi_mot_panel_off(struct msm_fb_data_type *mfd);
+void mipi_mot_panel_exit_sleep(void);
 u8 mipi_mode_get_pwr_mode(struct msm_fb_data_type *mfd);
 void mipi_mot_esd_work(void);
 void mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt);
 int mipi_mot_rx_cmd(struct dsi_cmd_desc *cmd, u8 *data, int rlen);
 int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide);
-int mipi_mot_enter_normal_mode(struct msm_fb_data_type *mfd);
+void mipi_mot_panel_enter_normal_mode(void);
 int __init moto_panel_debug_init(void);
 #endif /* MIPI_MOT_PANEL_H */

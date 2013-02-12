@@ -160,7 +160,14 @@ static struct dsi_cmd_desc correct_shift_cmds[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
 	 sizeof(normal_col), normal_col},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-	 sizeof(normal_row), normal_row} };
+	 sizeof(normal_row), normal_row}
+};
+
+static char undo_partial_rows[] = {0x30, 0x00, 0x00, 0x04, 0xff};
+static struct dsi_cmd_desc undo_partial_rows_cmds[] = {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	 sizeof(undo_partial_rows), undo_partial_rows},
+};
 
 static void enable_acl(struct msm_fb_data_type *mfd)
 {
@@ -270,8 +277,14 @@ static int is_valid_power_mode(struct msm_fb_data_type *mfd)
 	return (pwr_mod & 0x94) == 0x94;
 }
 
-static void shift_correct(void)
+static void panel_en_from_partial(struct msm_fb_data_type *mfd)
 {
+	mipi_set_tx_power_mode(0);
+
+	mipi_mot_tx_cmds(&undo_partial_rows_cmds[0],
+			ARRAY_SIZE(undo_partial_rows_cmds));
+
+	/* TODO: Remove on displays which have shift issue fixed */
 	mipi_mot_tx_cmds(&correct_shift_cmds[0],
 			ARRAY_SIZE(correct_shift_cmds));
 }
@@ -354,8 +367,7 @@ static int __init mipi_mot_cmd_smd_hd_465_init(void)
 	mot_panel->panel_disable = panel_disable;
 	mot_panel->set_backlight = panel_set_backlight;
 	mot_panel->enable_acl = enable_acl;
-	/* TODO: Remove on displays which have shift issue fixed */
-	mot_panel->shift_correct = shift_correct;
+	mot_panel->panel_en_from_partial = panel_en_from_partial;
 
 	/* For ESD detection information */
 	mot_panel->esd_enabled = false;
