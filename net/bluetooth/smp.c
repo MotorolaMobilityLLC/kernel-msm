@@ -1,5 +1,6 @@
 /*
    BlueZ - Bluetooth protocol stack for Linux
+   Copyright (c) 2013 The Linux Foundation.  All rights reserved.
    Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
 
    This program is free software; you can redistribute it and/or modify
@@ -213,6 +214,7 @@ static __u8 authreq_to_seclevel(__u8 authreq)
 static __u8 seclevel_to_authreq(__u8 level)
 {
 	switch (level) {
+	case BT_SECURITY_VERY_HIGH:
 	case BT_SECURITY_HIGH:
 		return SMP_AUTH_MITM | SMP_AUTH_BONDING;
 
