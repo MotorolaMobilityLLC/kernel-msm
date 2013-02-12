@@ -406,7 +406,7 @@ static const char * const vfe32_general_cmd[] = {
 
 uint8_t vfe32_use_bayer_stats(struct vfe32_ctrl_type *vfe32_ctrl)
 {
-	if (vfe32_ctrl->ver_num.main >= 4) {
+	if (vfe32_ctrl->ver_num.main >= VFE_STATS_TYPE_BAYER) {
 		/* VFE 4 or above uses bayer stats */
 		return TRUE;
 	} else {
@@ -3449,7 +3449,22 @@ static int vfe32_proc_general(
 		vfe32_ctrl->share_ctrl->rdi_comp = rdi_sel;
 	}
 		break;
+	case VFE_CMD_SET_STATS_VER:
+		cmdp = kmalloc(cmd->length, GFP_ATOMIC);
+		if (!cmdp) {
+			rc = -ENOMEM;
+			goto proc_general_done;
+		}
+		if (copy_from_user(cmdp, (void __user *)(cmd->value),
+			cmd->length)) {
+			rc = -EFAULT;
+			goto proc_general_done;
+		}
+		vfe32_ctrl->ver_num.main = *(uint32_t *)cmdp;
+		CDBG("%s:Set Stats version %d", __func__,
+			vfe32_ctrl->ver_num.main);
 
+		break;
 	default:
 		if (cmd->length != vfe32_cmd[cmd->id].length)
 			return -EINVAL;
@@ -7247,7 +7262,7 @@ static int __devinit vfe32_probe(struct platform_device *pdev)
 
 	vfe32_ctrl->pdev = pdev;
 	/*disable bayer stats by default*/
-	vfe32_ctrl->ver_num.main = 0;
+	vfe32_ctrl->ver_num.main = VFE_STATS_TYPE_LEGACY;
 	return 0;
 
 vfe32_no_resource:
