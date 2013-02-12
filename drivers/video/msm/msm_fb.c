@@ -4129,7 +4129,7 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			if (pdata && pdata->prepare_for_resume)
 				ret = pdata->prepare_for_resume(mfd,
 					resume_cfg.partial,
-					resume_cfg.out_of_sleep,
+					resume_cfg.panel_state,
 					resume_cfg.gamma);
 		}
 		break;

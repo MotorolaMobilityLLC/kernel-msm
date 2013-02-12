@@ -185,13 +185,17 @@ enum {
 /* Count of the number of MDP_FB_PAGE_PROTECTION_... values. */
 #define MDP_NUM_FB_PAGE_PROTECTION_VALUES        (5)
 
+#define MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_OUT 0
+#define MSMFB_RESUME_CFG_STATE_DISP_ON_SLEEP_OUT  1
+#define MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_IN  2
+
 struct msmfb_suspend_cfg {
 	unsigned int partial;
 };
 
 struct msmfb_resume_cfg {
 	unsigned int partial;
-	unsigned int out_of_sleep;
+	unsigned int panel_state;
 	unsigned int gamma;
 };
 
