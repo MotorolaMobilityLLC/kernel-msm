@@ -1501,11 +1501,6 @@ VOS_STATUS sme_DbgReadMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_U
 //Caller needs to validate the input values
 VOS_STATUS sme_DbgWriteMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_U32_t nLen);
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-//sme_GetFwVersion
-VOS_STATUS sme_GetFwVersion (tHalHandle hHal,FwVersionInfo *pVersion);
-#endif
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 VOS_STATUS sme_GetWcnssWlanCompiledVersion(tHalHandle hHal,
                                            tSirVersionType *pVersion);
 VOS_STATUS sme_GetWcnssWlanReportedVersion(tHalHandle hHal,
@@ -1516,7 +1511,6 @@ VOS_STATUS sme_GetWcnssSoftwareVersion(tHalHandle hHal,
 VOS_STATUS sme_GetWcnssHardwareVersion(tHalHandle hHal,
                                        tANI_U8 *pVersion,
                                        tANI_U32 versionBufferSize);
-#endif
 eHalStatus sme_RoamRegisterCallback(tHalHandle hHal,
                                     csrRoamCompleteCallback callback,
                                     void *pContext);
