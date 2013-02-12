@@ -540,7 +540,7 @@ static void msm_vfe32_axi_cfg_wm_reg(
 		msm_isp_cal_word_per_line(stream_cfg_cmd->output_format,
 		  stream_cfg_cmd->plane_cfg[plane_idx].output_stride) << 16 |
 		(stream_cfg_cmd->plane_cfg[
-			plane_idx].output_scan_lines - 1) << 4 |
+			plane_idx].output_height - 1) << 4 |
 		VFE32_BURST_LEN >> 2;
 	msm_camera_io_w(val, vfe_dev->vfe_base + wm_base + 0x14);
 	return;
