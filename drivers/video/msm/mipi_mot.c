@@ -297,23 +297,30 @@ static int panel_enable(struct platform_device *pdev)
 	if (ret != 0)
 		goto err;
 
-	if (mot_panel.panel_enable) {
-		if (!mfd->resume_cfg.partial)
-			mot_panel.panel_enable(mfd);
-	} else {
+	if (!mot_panel.panel_enable) {
 		pr_err("%s: no panel support\n", __func__);
 		ret = -ENODEV;
 		goto err;
-	}
+	} else if (mfd->resume_cfg.partial) {
+		pr_debug("%s: from partial panel state = %d\n",
+			__func__, mfd->resume_cfg.panel_state);
+		if (mfd->resume_cfg.panel_state ==
+			MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_IN) {
+			mipi_mot_panel_exit_sleep();
+		} else
+			/* Display is on, turn it off for init sequence */
+			mipi_mot_panel_off(mfd);
+
+		mipi_mot_panel_enter_normal_mode();
+		if (mot_panel.panel_en_from_partial)
+			mot_panel.panel_en_from_partial(mfd);
+	} else if (!mfd->resume_cfg.partial)
+		mot_panel.panel_enable(mfd);
 
 	mipi_set_tx_power_mode(0);
 	get_manufacture_id(mfd);
 	get_controller_ver(mfd);
 	get_controller_drv_ver(mfd);
-
-	if (mfd->resume_cfg.partial &&
-		mot_panel.panel_enter_normal_mode)
-		mot_panel.panel_enter_normal_mode(mfd);
 
 	mmi_panel_notify(MMI_PANEL_EVENT_POST_INIT, NULL);
 
@@ -363,8 +370,7 @@ static int panel_disable(struct platform_device *pdev)
 		atomic_set(&mot_panel.state, MOT_PANEL_OFF);
 
 		if (mot_panel.panel_disable) {
-			if (!mfd->suspend_cfg.partial)
-				mot_panel.panel_disable(mfd);
+			mot_panel.panel_disable(mfd);
 		} else {
 			pr_err("%s: no panel support\n", __func__);
 			ret = -ENODEV;
@@ -668,7 +674,6 @@ static int __init mipi_mot_lcd_init(void)
 
 	mot_panel.panel_on = mipi_mot_panel_on;
 	mot_panel.panel_off = NULL;
-	mot_panel.panel_enter_normal_mode = mipi_mot_enter_normal_mode;
 
 	mot_panel.hide_img = mipi_mot_hide_img;
 	moto_panel_debug_init();

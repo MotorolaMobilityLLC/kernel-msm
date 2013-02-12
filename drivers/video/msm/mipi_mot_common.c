@@ -34,6 +34,7 @@ static char get_raw_mtp[2] = {DCS_CMD_READ_RAW_MTP, 0x00};
 static char  set_reg_offset_0[2] = {DCS_CMD_SET_OFFSET, 0x0};
 static char  set_reg_offset_8[2] = {DCS_CMD_SET_OFFSET, 0x8};
 static char  set_reg_offset_16[2] = {DCS_CMD_SET_OFFSET, 0x10};
+static char exit_sleep[2] = {DCS_CMD_EXIT_SLEEP_MODE, 0x00};
 
 static struct dsi_cmd_desc mot_manufacture_id_cmd = {
 	DTYPE_DCS_READ, 1, 0, 1, 0, sizeof(manufacture_id), manufacture_id};
@@ -73,21 +74,25 @@ static struct dsi_cmd_desc set_offset_cmd[] = {
 							set_reg_offset_16},
 };
 
+static struct dsi_cmd_desc mot_display_exit_sleep_cmds[] = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 120, sizeof(exit_sleep), exit_sleep},
+};
+
 static u8 panel_raw_mtp[RAW_MTP_SIZE];
 static u8 gamma_settings[NUM_NIT_LVLS][RAW_GAMMA_SIZE];
 
-int mipi_mot_enter_normal_mode(struct msm_fb_data_type *mfd)
+void mipi_mot_panel_exit_sleep(void)
 {
-	if (mfd->resume_cfg.partial) {
-		pr_debug("%s: sending normal mode on\n", __func__);
-		mipi_mot_tx_cmds(&mot_display_normal_mode_cmds[0],
-				ARRAY_SIZE(mot_display_normal_mode_cmds));
+	pr_debug("%s: exiting sleep mode\n", __func__);
+	mipi_mot_tx_cmds(&mot_display_exit_sleep_cmds[0],
+			ARRAY_SIZE(mot_display_exit_sleep_cmds));
+}
 
-		if (mot_panel && mot_panel->shift_correct)
-			mot_panel->shift_correct();
-	}
-
-	return 0;
+void mipi_mot_panel_enter_normal_mode(void)
+{
+	pr_debug("%s: sending normal mode on\n", __func__);
+	mipi_mot_tx_cmds(&mot_display_normal_mode_cmds[0],
+			ARRAY_SIZE(mot_display_normal_mode_cmds));
 }
 
 int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
