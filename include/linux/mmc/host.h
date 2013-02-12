@@ -353,6 +353,27 @@ struct mmc_host {
 	bool perf_enable;
 #endif
 
+#ifdef CONFIG_MMC_CMD_LOG
+	unsigned int		mmc_cmd_log_mode;
+#define MMC_CMD_LOG_MODE_EN		(1 << 0)
+#define MMC_CMD_LOG_MODE_RESP		(1 << 1)
+#define MMC_CMD_LOG_MODE_TIME		(1 << 2)
+#define MMC_CMD_LOG_MODE_DELTA		(1 << 3)
+#define MMC_CMD_LOG_MODE_FORCE_DUMP	(1 << 7)
+
+	unsigned int		mmc_cmd_log_recsize;
+#define MMC_CMD_LOG_RECSIZE_BASE	2  /* base record size */
+#define MMC_CMD_LOG_RECSIZE_RESP	1  /* command responses */
+#define MMC_CMD_LOG_RECSIZE_TIME	1  /* time stamps */
+
+	unsigned int		mmc_cmd_log_flags;
+#define MMC_CMD_LOG_FLAG_RESP		(1 << 0)  /* response is pending */
+
+	int			mmc_cmd_log_idx;
+	int			mmc_cmd_log_len;
+
+	u32			*mmc_cmd_log;
+#endif
 	struct mmc_ios saved_ios;
 	unsigned long		private[0] ____cacheline_aligned;
 };
@@ -486,6 +507,23 @@ static inline void mmc_host_clk_release(struct mmc_host *host)
 static inline unsigned int mmc_host_clk_rate(struct mmc_host *host)
 {
 	return host->ios.clock;
+}
+#endif
+#ifdef CONFIG_MMC_CMD_LOG
+void mmc_cmd_log(struct mmc_host *, u32, u32);
+void mmc_cmd_log_resp(struct mmc_host *, u32);
+void mmc_cmd_log_dump(struct mmc_host *);
+#else
+static inline void mmc_cmd_log(struct mmc_host *host, u32 cmd, u32 arg)
+{
+}
+
+static inline void mmc_cmd_log_resp(struct mmc_host *host, u32 resp)
+{
+}
+
+static inline void mmc_cmd_log_dump(struct mmc_host *host)
+{
 }
 #endif
 #endif /* LINUX_MMC_HOST_H */
