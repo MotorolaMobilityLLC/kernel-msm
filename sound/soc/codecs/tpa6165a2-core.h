@@ -41,7 +41,7 @@
 #define TPA6165_KEYSCAN_DELAY_REG		0x16
 #define TPA6165_MB_KEYSCAN_REG			0x17
 #define TPA6165_JACK_DETECT_TEST_HW1		0x18
-#define TPA6165_STATE_REG			0x19
+#define TPA6165_ACC_STATE_REG			0x19
 #define TPA6165_JACK_DETECT_TEST_HW2		0x1A
 #define TPA6165_CLK_CTL			0x1C
 #define TPA6165_ENABLE_REG1			0x1D
@@ -52,25 +52,46 @@
 #define TPA6165_MAX_REGISTER_VAL 0x1F
 
 /* jack Detect Mask */
-#define TPA6165_JACK_DETECT_MASK  0x80
+#define TPA6165_JACK_DETECT  0x80
 
 /* jack sense mask */
-#define TPA6165_JACK_SENSE_MASK  0x04
+#define TPA6165_JACK_SENSE  0x04
 
 /* button press mask */
-#define TPA6165_JACK_BUTTON_MASK  0x02
+#define TPA6165_JACK_BUTTON  0x02
 
 /* mic in mask */
 #define TPA6165_MIC_IN_MASK  0x08
 
-/*config det done mask */
+/* config det done mask */
 #define TPA6165_DET_DONE  0x40
 
 /* wake up the device from lowest power state, shutdown mask */
-#define TPA6165_SHUTDOWN_DISABLE  0x80
+#define TPA6165_SHUTDOWN_DISABLE  0x0
 
 /* sleep state mask */
-#define TPA6165_SLEEP_ENABLE  0x40
+#define TPA6165_SLEEP_ENABLE  (1<<6)
+
+/* mute/unmute mask */
+#define TPA6165_MUTE (1<<6)
+
+/* vol slew interrupt mask */
+#define TPA6165_VOL_SLEW_INT (1<<5)
+
+/* vol slew done */
+#define TPA6165_VOL_SLEW_DONE (1<<5)
+
+/* left/right channels mask */
+#define TPA6165_LEFT_RIGHT_CH (0x3<<6)
+
+/* mic en mask */
+#define TPA6165_MIC_AMP_EN (0x1 << 3)
+
+/* mic bias en mask */
+#define TPA6165_MIC_BIAS_EN (0x1 << 4)
+
+/* auto mode mask */
+#define TPA6165_AUTO_MODE (0x3)
 
 /* Accesory Types Masks */
 
@@ -100,11 +121,23 @@
 #define TPA6165_STEREO_HEADPHONE2  0x11
 #define TPA6165_STEREO_HEADPHONE3  0x12
 
+/* Stereo Lineout */
+#define TPA6165_STEREO_LINEOUT1  0x1A
+#define TPA6165_STEREO_LINEOUT2  0x1B
+#define TPA6165_STEREO_LINEOUT3  0x1C
+#define TPA6165_STEREO_LINEOUT4  0x1F
+
+/* amp states */
+#define TPA6165_AMP_DISABLED	0
+#define TPA6165_AMP_ENABLED		1
+#define TPA6165_AMP_EN_PENDING	2
+
 struct tpa6165_regs {
 	u8 reg;
 	u8 value;
 };
 
-extern int tpa6165_hs_detect(struct snd_soc_jack *hs_jack,
+extern int tpa6165_hs_detect(struct snd_soc_codec *codec,
+				struct snd_soc_jack *hs_jack,
 				struct snd_soc_jack *button_jack);
 #endif  /* __TPA6165_CORE_H__ */
