@@ -89,6 +89,7 @@ VREG_CONSUMERS(L12) = {
 };
 VREG_CONSUMERS(L14) = {
 	REGULATOR_SUPPLY("8921_l14",		NULL),
+	REGULATOR_SUPPLY("batt_therm",		"pm8xxx-adc"),
 	REGULATOR_SUPPLY("pa_therm",		"pm8xxx-adc"),
 };
 VREG_CONSUMERS(L15) = {
