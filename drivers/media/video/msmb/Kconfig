@@ -88,6 +88,12 @@ config IMX111
 	---help---
 	  Sensorony 8M Bayer Sensor modules with Autofocus
 
+config IMX119
+	bool "Sensor IMX119"
+	depends on MSMB_CAMERA
+	---help---
+	  Bayer Sensor modules with Autofocus.
+
 config MSM_V4L2_VIDEO_OVERLAY_DEVICE
 	tristate "Qualcomm MSM V4l2 video overlay device"
 	---help---

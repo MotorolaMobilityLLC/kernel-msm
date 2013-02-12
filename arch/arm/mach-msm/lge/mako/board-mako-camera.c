@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, Code Aurora Forum. All rights reserved.
  * Copyright (c) 2012, LGE Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -418,6 +418,7 @@ static struct msm_camera_gpio_conf apq8064_front_cam_gpio_conf = {
 	.cam_gpio_req_tbl_size = ARRAY_SIZE(apq8064_front_cam_gpio),
 	.cam_gpio_set_tbl = apq8064_front_cam_gpio_set_tbl,
 	.cam_gpio_set_tbl_size = ARRAY_SIZE(apq8064_front_cam_gpio_set_tbl),
+	.gpio_num_info = &apq8064_gpio_num_info[1],
 };
 #endif
 
@@ -543,18 +544,12 @@ static struct msm_camera_sensor_info msm_camera_sensor_imx091_data = {
 };
 #endif
 
-#ifdef CONFIG_IMX119
-static struct msm_camera_i2c_conf apq8064_front_cam_i2c_conf = {
-	.use_i2c_mux = 1,
-	.mux_dev = &msm8960_device_i2c_mux_gsbi4,
-	.i2c_mux_mode = MODE_L,
-};
-#endif
-
 
 #ifdef CONFIG_IMX119
-static struct msm_camera_sensor_flash_data flash_imx119 = {
-	.flash_type	= MSM_CAMERA_FLASH_NONE,
+static struct msm_camera_slave_info imx119_slave_info = {
+	.sensor_slave_addr = 0x6E,
+	.sensor_id_reg_addr = 0x0,
+	.sensor_id = 0x0119,
 };
 
 static struct msm_camera_csi_lane_params imx119_csi_lane_params = {
@@ -562,23 +557,36 @@ static struct msm_camera_csi_lane_params imx119_csi_lane_params = {
 	.csi_lane_mask = 0x1,
 };
 
-static struct msm_camera_sensor_platform_info sensor_board_info_imx119 = {
-	.mount_angle	= 270,
+static struct msm_sensor_info_t imx119_sensor_info = {
+	.subdev_id = {
+		[SUB_MODULE_SENSOR] = -1,
+		[SUB_MODULE_CHROMATIX] = -1,
+		[SUB_MODULE_ACTUATOR] = -1,
+		[SUB_MODULE_EEPROM] = -1,
+		[SUB_MODULE_LED_FLASH] = -1,
+		[SUB_MODULE_STROBE_FLASH] = -1,
+		[SUB_MODULE_CSIPHY] = 1,
+		[SUB_MODULE_CSIPHY_3D] = -1,
+		[SUB_MODULE_CSID] = 1,
+		[SUB_MODULE_CSID_3D] = -1,
+	}
+};
+
+static struct msm_sensor_init_params imx119_init_params = {
+	.modes_supported = CAMERA_MODE_2D_B,
+	.position = FRONT_CAMERA_B,
+	.sensor_mount_angle = 270,
+};
+
+static struct msm_camera_sensor_board_info msm_camera_sensor_imx119_data = {
+	.sensor_name = "imx119",
+	.slave_info = &imx119_slave_info,
+	.csi_lane_params = &imx119_csi_lane_params,
 	.cam_vreg = apq_8064_front_cam_vreg,
 	.num_vreg = ARRAY_SIZE(apq_8064_front_cam_vreg),
 	.gpio_conf = &apq8064_front_cam_gpio_conf,
-	.i2c_conf = &apq8064_front_cam_i2c_conf,
-	.csi_lane_params = &imx119_csi_lane_params,
-};
-
-static struct msm_camera_sensor_info msm_camera_sensor_imx119_data = {
-	.sensor_name	= "imx119",
-	.pdata	= &msm_camera_csi_device_data[1],
-	.flash_data	= &flash_imx119,
-	.sensor_platform_info = &sensor_board_info_imx119,
-	.csi_if	= 1,
-	.camera_type = FRONT_CAMERA_2D,
-	.sensor_type = BAYER_SENSOR,
+	.sensor_info = &imx119_sensor_info,
+	.sensor_init_params = &imx119_init_params,
 };
 #endif
 
