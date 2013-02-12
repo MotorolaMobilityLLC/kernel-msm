@@ -898,8 +898,10 @@ static u32 ddl_set_enc_property(struct ddl_client_context *ddl,
 			property_hdr->sz &&
 			((buffer_format->buffer_format ==
 			VCD_BUFFER_FORMAT_NV12_16M2KA) ||
-			(VCD_BUFFER_FORMAT_TILE_4x2 ==
-			buffer_format->buffer_format))) {
+			(buffer_format->buffer_format ==
+			VCD_BUFFER_FORMAT_TILE_4x2) ||
+			(buffer_format->buffer_format ==
+			VCD_BUFFER_FORMAT_NV21_16M2KA))) {
 			if (buffer_format->buffer_format !=
 				encoder->buf_format.buffer_format) {
 				encoder->buf_format = *buffer_format;
@@ -1944,12 +1946,14 @@ void ddl_set_default_encoder_buffer_req(struct ddl_encoder_data *encoder)
 		encoder->input_buf_req.min_count;
 	encoder->input_buf_req.max_count    = DDL_MAX_BUFFER_COUNT;
 	encoder->input_buf_req.sz = y_cb_cr_size;
-	if (encoder->buf_format.buffer_format ==
-		VCD_BUFFER_FORMAT_NV12_16M2KA)
+	if ((encoder->buf_format.buffer_format ==
+		VCD_BUFFER_FORMAT_NV12_16M2KA) ||
+		(encoder->buf_format.buffer_format ==
+		VCD_BUFFER_FORMAT_NV21_16M2KA))
 		encoder->input_buf_req.align =
 			DDL_LINEAR_BUFFER_ALIGN_BYTES;
-	else if (VCD_BUFFER_FORMAT_TILE_4x2 ==
-		encoder->buf_format.buffer_format)
+	else if (encoder->buf_format.buffer_format ==
+		VCD_BUFFER_FORMAT_TILE_4x2)
 		encoder->input_buf_req.align = DDL_TILE_BUFFER_ALIGN_BYTES;
 	encoder->client_input_buf_req = encoder->input_buf_req;
 	memset(&encoder->output_buf_req , 0 ,

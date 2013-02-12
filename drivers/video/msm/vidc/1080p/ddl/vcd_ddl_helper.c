@@ -814,13 +814,13 @@ u32 ddl_calc_enc_hw_buffers_size(enum vcd_codec codec, u32 width,
 		height, DDL_YUV_BUF_TYPE_TILE);
 	sz_dpb_c = ddl_get_yuv_buf_size(width, height>>1,
 		DDL_YUV_BUF_TYPE_TILE);
-	if (input_format ==
-		VCD_BUFFER_FORMAT_NV12_16M2KA) {
+	if ((input_format == VCD_BUFFER_FORMAT_NV12_16M2KA) ||
+		(input_format == VCD_BUFFER_FORMAT_NV21_16M2KA)) {
 		sz_cur_y = ddl_get_yuv_buf_size(width, height,
 			DDL_YUV_BUF_TYPE_LINEAR);
 		sz_cur_c = ddl_get_yuv_buf_size(width, height>>1,
 			DDL_YUV_BUF_TYPE_LINEAR);
-	} else if (VCD_BUFFER_FORMAT_TILE_4x2 == input_format) {
+	} else if (input_format == VCD_BUFFER_FORMAT_TILE_4x2) {
 		sz_cur_y = sz_dpb_y;
 		sz_cur_c = sz_dpb_c;
 	} else

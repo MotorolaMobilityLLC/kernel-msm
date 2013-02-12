@@ -151,7 +151,8 @@ enum vcd_yuv_buffer_format {
 	VCD_BUFFER_FORMAT_NV12      = 0x1,
 	VCD_BUFFER_FORMAT_TILE_4x2    = 0x2,
 	VCD_BUFFER_FORMAT_NV12_16M2KA = 0x3,
-	VCD_BUFFER_FORMAT_TILE_1x1    = 0x4
+	VCD_BUFFER_FORMAT_TILE_1x1    = 0x4,
+	VCD_BUFFER_FORMAT_NV21_16M2KA = 0x5
 };
 
 struct vcd_property_buffer_format {
