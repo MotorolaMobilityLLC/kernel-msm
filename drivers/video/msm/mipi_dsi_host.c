@@ -1862,6 +1862,10 @@ int mipi_dsi_cmdlist_commit(int from_mdp)
 
 	mutex_lock(&cmd_mutex);
 	req = mipi_dsi_cmdlist_get();
+
+	/* make sure dsi_cmd_mdp is idle */
+	mipi_dsi_cmd_mdp_busy();
+
 	if (req == NULL)
 		goto need_lock;
 	else
