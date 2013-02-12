@@ -586,4 +586,6 @@ void vidc_1080p_get_intermedia_stage_debug_counter(
 	u32 *intermediate_stage_counter);
 void vidc_1080p_get_exception_status(u32 *exception_status);
 void vidc_1080p_frame_start_realloc(u32 instance_id);
+void vidc_1080p_set_enc_NV21(u32 enc_nv21);
+
 #endif
