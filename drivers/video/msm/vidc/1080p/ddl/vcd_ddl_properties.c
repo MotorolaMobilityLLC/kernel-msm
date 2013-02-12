@@ -1311,6 +1311,13 @@ static u32 ddl_get_dec_property(struct ddl_client_context *ddl,
 			vcd_status = VCD_S_SUCCESS;
 		}
 	break;
+	case VCD_I_ENABLE_SEC_METADATA:
+		if (sizeof(u32) == property_hdr->sz) {
+			*(u32 *)property_value =
+				res_trk_get_enable_sec_metadata();
+			vcd_status = VCD_S_SUCCESS;
+		}
+	break;
 	case VCD_I_DISABLE_DMX:
 		if (sizeof(u32) == property_hdr->sz) {
 			*(u32 *)property_value = decoder->dmx_disable;
