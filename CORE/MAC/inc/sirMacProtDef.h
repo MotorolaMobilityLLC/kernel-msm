@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file sirMacProtDef.h contains the MAC/PHY protocol
@@ -1297,12 +1296,7 @@ typedef __ani_attr_pre_packed struct sSirMacTspecIE
     tANI_U16            surplusBw;
     tANI_U16            mediumTime;
 }
-#ifndef LX5280
-__ani_attr_packed
-#else
-__ani_attr_aligned_4  __ani_attr_packed
-#endif
-tSirMacTspecIE;
+__ani_attr_packed tSirMacTspecIE;
 
 // max size of the classifier params in the tclas IE
 #define SIR_MAC_CLSPARAM_LEN 253
