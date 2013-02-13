@@ -88,7 +88,13 @@ u32 ddl_device_init(struct ddl_init_config *ddl_init_config,
 			ddl_context->dram_base_a.align_virtual_addr;
 	}
 	if (!status) {
-		ddl_context->metadata_shared_input.mem_type = DDL_CMD_MEM;
+		if (res_trk_get_enable_sec_metadata()) {
+			ddl_context->metadata_shared_input.mem_type =
+				DDL_CMD_MEM;
+		} else {
+			ddl_context->metadata_shared_input.mem_type =
+				DDL_FW_MEM;
+		}
 		ptr = ddl_pmem_alloc(&ddl_context->metadata_shared_input,
 			DDL_METADATA_TOTAL_INPUTBUFSIZE,
 			DDL_LINEAR_BUFFER_ALIGN_BYTES);
