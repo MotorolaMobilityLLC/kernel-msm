@@ -306,13 +306,6 @@ struct kfifo bam_dmux_state_log;
 static int bam_dmux_uplink_vote;
 static int bam_dmux_power_state;
 
-
-#define DMUX_LOG_KERR(fmt...) \
-do { \
-	BAM_DMUX_LOG(fmt); \
-	pr_err(fmt); \
-} while (0)
-
 static void *bam_ipc_log_txt;
 
 #define BAM_IPC_LOG_PAGES 5
@@ -352,6 +345,12 @@ do { \
 		disconnect_ack ? 'D' : 'd', \
 		args); \
 	} \
+} while (0)
+
+#define DMUX_LOG_KERR(fmt, args...) \
+do { \
+	BAM_DMUX_LOG(fmt, args); \
+	pr_err(fmt, args); \
 } while (0)
 
 static inline void set_tx_timestamp(struct tx_pkt_info *pkt)
@@ -1905,7 +1904,7 @@ static int restart_notifier_cb(struct notifier_block *this,
 	if (code == SUBSYS_BEFORE_SHUTDOWN) {
 		in_global_reset = 1;
 		in_ssr = 1;
-		bam_dmux_log("%s: begin\n", __func__);
+		BAM_DMUX_LOG("%s: begin\n", __func__);
 		flush_workqueue(bam_mux_rx_workqueue);
 	}
 	if (code != SUBSYS_AFTER_SHUTDOWN)
