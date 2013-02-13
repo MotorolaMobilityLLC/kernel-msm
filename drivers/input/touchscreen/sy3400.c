@@ -609,7 +609,7 @@ static int sy3400_resume(struct i2c_client *client)
 	/*
 	For the normal operation, the last 3 bits of power register must be 101
 	*/
-	sleep = dd->icdat->pwr_addr;
+	sleep = dd->icdat->pwr_dat;
 	sleep &= ~0x7;
 	sleep |= 0x05;
 	err = sy3400_i2c_write(dd, dd->icdat->pwr_addr,
@@ -985,6 +985,7 @@ static void sy3400_tdat_callback(const struct firmware *tdat, void *context)
 	uint32_t cur_size = 0;
 	uint8_t *cur_data = NULL;
 	size_t loc = 0;
+	uint8_t sleep = 0;
 
 	mutex_lock(dd->mutex);
 
@@ -1133,6 +1134,14 @@ static void sy3400_tdat_callback(const struct firmware *tdat, void *context)
 			"%s: Touch initialization completed with errors.\n",
 			__func__);
 	}
+	/*
+	For the normal operation, the last 3 bits of power register must be 101
+	*/
+	sleep = dd->icdat->pwr_dat;
+	sleep &= ~0x7;
+	sleep |= 0x05;
+	err = sy3400_i2c_write(dd, dd->icdat->pwr_addr,
+			&(sleep), 1);
 
 	goto sy3400_tdat_callback_exit;
 
