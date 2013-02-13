@@ -2720,6 +2720,14 @@ static struct i2c_board_info __initdata lis3dh_i2c_boardinfo[] = {
 };
 #endif /* CONFIG_STM_LIS3DH */
 
+#ifdef CONFIG_BMP18X_I2C
+static struct i2c_board_info __initdata bmp18x_i2c_boardinfo[] = {
+	{
+		I2C_BOARD_INFO("bmp18x", 0x77),
+	},
+};
+#endif
+
 static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 #ifdef CONFIG_ISL9519_CHARGER
 	{
@@ -2763,6 +2771,16 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 		ARRAY_SIZE(lis3dh_i2c_boardinfo),
 	},
 #endif
+#ifdef CONFIG_BMP18X_I2C
+	{
+		I2C_FFA | I2C_FLUID,
+		MSM_8930_GSBI12_QUP_I2C_BUS_ID,
+		bmp18x_i2c_boardinfo,
+		ARRAY_SIZE(bmp18x_i2c_boardinfo),
+	},
+#endif
+
+
 };
 #endif /* CONFIG_I2C */
 
