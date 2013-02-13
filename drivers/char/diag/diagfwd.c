@@ -504,7 +504,11 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 					   " USB: ", 16, 1, DUMP_PREFIX_ADDRESS,
 					    buf, write_ptr->length, 1);
 #endif /* DIAG DEBUG */
-			err = channel_diag_write(driver->legacy_ch, write_ptr);
+			if (DIAGADDON_EXIST() && data_type == MODEM_DATA)
+				DIAGADDON_channel_diag_write(&err, write_ptr);
+			else
+				err = channel_diag_write
+						(driver->legacy_ch, write_ptr);
 		}
 #ifdef CONFIG_DIAG_SDIO_PIPE
 		else if (data_type == SDIO_DATA) {
@@ -1280,6 +1284,30 @@ void diag_usb_legacy_notifier(void *priv, unsigned event,
 
 #endif /* DIAG OVER USB */
 
+#ifdef CONFIG_DIAG_EXTENSION
+int diag_addon_register(struct diag_addon *addon)
+{
+	if (addon == NULL)
+		return -EPERM;
+
+	addon->diag_process_apps_pkt = diag_process_apps_pkt;
+	addon->channel_diag_write = channel_diag_write;
+	list_add_tail(&addon->list, &driver->addon_list);
+	return 0;
+}
+EXPORT_SYMBOL(diag_addon_register);
+
+int diag_addon_unregister(struct diag_addon *addon)
+{
+	if (addon == NULL)
+		return -EPERM;
+
+	list_del(&addon->list);
+	return 0;
+}
+EXPORT_SYMBOL(diag_addon_unregister);
+#endif
+
 void diag_smd_notify(void *ctxt, unsigned event)
 {
 	struct diag_smd_info *smd_info = (struct diag_smd_info *)ctxt;
@@ -1537,6 +1565,9 @@ void diagfwd_init(void)
 	diag_debug_buf_idx = 0;
 	driver->read_len_legacy = 0;
 	driver->use_device_tree = has_device_tree();
+#ifdef CONFIG_DIAG_EXTENSION
+	INIT_LIST_HEAD(&driver->addon_list);
+#endif
 	mutex_init(&driver->diag_cntl_mutex);
 
 	success = diag_smd_constructor(&driver->smd_data[MODEM_DATA],
