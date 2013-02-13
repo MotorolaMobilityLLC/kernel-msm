@@ -50,6 +50,7 @@ static char switch_pwr_to_mem_2[3] = {0xc4, 0x07, 0x01};
 
 #define DEFAULT_DELAY 1
 
+static char acl_default_setting[6] = {0xB5, 0x03, 0x6B, 0x45, 0x35, 0x26};
 static char ACL_enable_disable_settings[2] = {0x55, 0x00};
 
 static struct dsi_cmd_desc acl_enable_disable[] = {
@@ -71,6 +72,8 @@ static struct dsi_cmd_desc smd_hd_465_init_cmds[] = {
 			sizeof(switch_pwr_to_mem_1), switch_pwr_to_mem_1},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
 			sizeof(switch_pwr_to_mem_2), switch_pwr_to_mem_2},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
+			sizeof(acl_default_setting), acl_default_setting},
 };
 
 static char C8_offset[] = {0xB0, 0x00};
@@ -173,9 +176,8 @@ static void enable_acl(struct msm_fb_data_type *mfd)
 {
 	/* Write the value only if the display is enable and powered on */
 	if ((mfd->op_enable != 0) && (mfd->panel_power_on != 0)) {
-		/* TODO: Chosen acl_on = ACL Mid per DDC */
 		ACL_enable_disable_settings[1] =
-				(mot_panel->acl_enabled == 1) ? 2 : 0;
+				(mot_panel->acl_enabled == 1) ? 3 : 0;
 		mipi_set_tx_power_mode(0);
 		mipi_mot_tx_cmds(&acl_enable_disable[0],
 					ARRAY_SIZE(acl_enable_disable));
@@ -215,9 +217,8 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 	mipi_mot_tx_cmds(&set_brightness_cmds[0],
 			ARRAY_SIZE(set_brightness_cmds));
 
-	/* TODO: Chosen acl_on = ACL Mid per DDC */
 	/* acl */
-	ACL_enable_disable_settings[1] = (mot_panel->acl_enabled == 1) ? 2 : 0;
+	ACL_enable_disable_settings[1] = (mot_panel->acl_enabled == 1) ? 3 : 0;
 	mipi_mot_tx_cmds(&acl_enable_disable[0],
 						ARRAY_SIZE(acl_enable_disable));
 
