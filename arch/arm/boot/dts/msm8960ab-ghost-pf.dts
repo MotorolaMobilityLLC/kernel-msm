@@ -1,0 +1,33 @@
+/* Copyright (c) 2012-2013, Motorola Mobility LLC. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+/include/ "msm8960ab-ghost-common.dtsi"
+
+/ {
+	mmi,revision = "pf";
+};
+
+&i2c3 {
+	/* Set HW revision to PF to enable Synptics DSX driver */
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <46 0>;
+		gpios = <&msmgpio 46 0>, /* IRQ */
+			<&msmgpio 63 0>; /* RESET */
+
+		synaptics,panel-sync-enabled = <1>;
+	};
+};
