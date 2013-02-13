@@ -2874,6 +2874,7 @@ static uint16_t msm_mpm_irqs_m2a[MSM_MPM_NR_MPM_IRQS] __initdata = {
 	[53] = MSM_GPIO_TO_INT(37),
 	[54] = MSM_GPIO_TO_INT(24),
 	[55] = MSM_GPIO_TO_INT(14),
+	[56] = MSM_GPIO_TO_INT(98),
 };
 
 static uint16_t msm_mpm_bypassed_apps_irqs[] __initdata = {
