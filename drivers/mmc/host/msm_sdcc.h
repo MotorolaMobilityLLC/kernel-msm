@@ -417,7 +417,9 @@ struct msmsdcc_host {
 	struct device_attribute idle_timeout;
 };
 
-#define MSMSDCC_VERSION_MASK	0xFFFF
+#define MSMSDCC_VERSION_STEP_MASK	0x0000FFFF
+#define MSMSDCC_VERSION_MINOR_MASK	0x0FFF0000
+#define MSMSDCC_VERSION_MINOR_SHIFT	16
 #define MSMSDCC_DMA_SUP	(1 << 0)
 #define MSMSDCC_SPS_BAM_SUP	(1 << 1)
 #define MSMSDCC_SOFT_RESET	(1 << 2)
@@ -443,6 +445,8 @@ struct msmsdcc_host {
 static inline void set_default_hw_caps(struct msmsdcc_host *host)
 {
 	u32 version;
+	u16 step, minor;
+
 	/*
 	 * Lookup the Controller Version, to identify the supported features
 	 * Version number read as 0 would indicate SDCC3 or earlier versions.
@@ -453,13 +457,20 @@ static inline void set_default_hw_caps(struct msmsdcc_host *host)
 	if (!version)
 		return;
 
-	version &= MSMSDCC_VERSION_MASK;
+	step = version & MSMSDCC_VERSION_STEP_MASK;
+	minor = (version & MSMSDCC_VERSION_MINOR_MASK) >>
+		MSMSDCC_VERSION_MINOR_SHIFT;
+
 	if (version) /* SDCC v4 and greater */
 		host->hw_caps |= MSMSDCC_AUTO_PROG_DONE |
 			MSMSDCC_SOFT_RESET | MSMSDCC_REG_WR_ACTIVE
 			| MSMSDCC_WAIT_FOR_TX_RX | MSMSDCC_IO_PAD_PWR_SWITCH;
 
-	if (version >= 0x2D) /* SDCC v4 2.1.0 and greater */
+	if ((step == 0x18) && (minor >= 3))
+		/* Version 0x06000018 need hard reset on errors */
+		host->hw_caps &= ~MSMSDCC_SOFT_RESET;
+
+	if (step >= 0x2b) /* SDCC v4 2.1.0 and greater */
 		host->hw_caps |= MSMSDCC_SW_RST | MSMSDCC_SW_RST_CFG;
 }
 
