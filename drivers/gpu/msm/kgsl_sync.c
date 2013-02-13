@@ -184,12 +184,12 @@ fail_pt:
 static unsigned int kgsl_sync_get_timestamp(
 	struct kgsl_sync_timeline *ktimeline, enum kgsl_timestamp_type type)
 {
-	struct kgsl_context *context = kgsl_find_context(ktimeline->owner,
-							 ktimeline->context_id);
+	struct kgsl_context *context = idr_find(&ktimeline->device->context_idr,
+						ktimeline->context_id);
 	if (context == NULL)
 		return 0;
 
-	return kgsl_readtimestamp(ktimeline->owner->device, context, type);
+	return kgsl_readtimestamp(ktimeline->device, context, type);
 }
 
 static void kgsl_sync_timeline_value_str(struct sync_timeline *sync_timeline,
@@ -240,7 +240,7 @@ int kgsl_sync_timeline_create(struct kgsl_context *context)
 
 	ktimeline = (struct kgsl_sync_timeline *) context->timeline;
 	ktimeline->last_timestamp = 0;
-	ktimeline->owner = context->dev_priv;
+	ktimeline->device = context->dev_priv->device;
 	ktimeline->context_id = context->id;
 
 	return 0;
