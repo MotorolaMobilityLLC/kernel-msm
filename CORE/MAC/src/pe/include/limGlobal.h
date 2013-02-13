@@ -827,6 +827,7 @@ typedef enum tdlsLinkMode
 {
     TDLS_LINK_MODE_BG,
     TDLS_LINK_MODE_N,
+    TDLS_LINK_MODE_AC,
     TDLS_LINK_MODE_NONE
 } eLimTdlsLinkMode ;
 #endif  /* FEATURE_WLAN_TDLS */
