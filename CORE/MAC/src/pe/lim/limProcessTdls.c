@@ -2065,13 +2065,16 @@ static void limTdlsUpdateHashNodeInfo(tpAniSirGlobal pMac, tDphHashNode *pStaDs,
 {
     //tDot11fIEHTCaps *htCaps = &setupPeerInfo->tdlsPeerHTCaps ;
     tDot11fIEHTCaps htCap, *htCaps;
+#ifdef WLAN_FEATURE_11AC
+    tDot11fIEVHTCaps vhtCap, *pVhtCaps;
+#endif
     tpDphHashNode pSessStaDs = NULL;
     tANI_U16 aid;
 
     //HACK- to get the session's htcaps.
     PopulateDot11fHTCaps(pMac, psessionEntry, &htCap);
     htCaps = &htCap;
-    if(htCaps->present)
+    if (htCaps->present)
     {
         pStaDs->mlmStaContext.htCapability = 1 ;
         pStaDs->htGreenfield = htCaps->greenField ;
@@ -2095,6 +2098,24 @@ static void limTdlsUpdateHashNodeInfo(tpAniSirGlobal pMac, tDphHashNode *pStaDs,
         pStaDs->mlmStaContext.htCapability = 0 ;
         pMac->lim.gLimTdlsLinkMode = TDLS_LINK_MODE_BG ;
     }
+#ifdef WLAN_FEATURE_11AC
+    //HACK- this needs to get from peer
+    PopulateDot11fVHTCaps(pMac, &vhtCap);
+    pVhtCaps = &vhtCap;
+    if (pVhtCaps->present)
+    {
+        pStaDs->mlmStaContext.vhtCapability = 1 ;
+        pStaDs->vhtSupportedChannelWidthSet= 1; // pVhtCaps->supportedChannelWidthSet;
+        pStaDs->vhtLdpcCapable = 1; // pVhtCaps->ldpcCodingCap
+        pStaDs->vhtBeamFormerCapable= 1; // pVhtCaps->suBeamFormerCap
+
+        pMac->lim.gLimTdlsLinkMode = TDLS_LINK_MODE_AC;
+    }
+    else
+    {
+        pStaDs->mlmStaContext.vhtCapability = 0 ;
+    }
+#endif
     
     pSessStaDs = dphLookupHashEntry(pMac, psessionEntry->bssId, &aid, 
                                           &psessionEntry->dph.dphHashTable) ;
