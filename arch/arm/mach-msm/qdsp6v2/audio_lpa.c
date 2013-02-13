@@ -1126,7 +1126,6 @@ static int audio_release(struct inode *inode, struct file *file)
 	if (audio->out_enabled)
 		audlpa_async_flush(audio);
 	audio->wflush = 0;
-	audlpa_unmap_ion_region(audio);
 	audio_disable(audio);
 	audlpa_unmap_ion_region(audio);
 	msm_clear_session_id(audio->ac->session);
