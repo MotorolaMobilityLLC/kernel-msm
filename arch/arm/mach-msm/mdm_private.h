@@ -51,7 +51,6 @@ struct mdm_modem_drv {
 	int mdm_debug_on;
 	int mdm_unexpected_reset_occurred;
 	int disable_status_check;
-	unsigned int dump_timeout_ms;
 	int power_on_count;
 	int peripheral_status;
 	struct mutex peripheral_status_lock;
