@@ -914,12 +914,6 @@ typedef struct hdd_netdev_priv_s
     /* Stats */
     struct net_device_stats stats;
     int curr_acc_cat;
-#ifdef LX5280
-    unsigned short rtl_pvid; //VLAN id this Interface belongs to
-    int rtl_extPortNum; //ext port used in RTL865x driver
-    int rtl_linkId[16];//link ID of each interface for RTL865x driver
-    int rtl_wdsActive;
-#endif
     tANI_U16 lport; /* switch logical port */
 
     /* management and control */
@@ -1065,9 +1059,6 @@ typedef struct hdd_netdev_priv_s
      */
     t_mac_block_table * mac_block_table;
     struct sk_buff_head mac_list;
-#if  defined(ASICDXE_PROFILE) && defined(LX5280)
-    tANI_U32 num_of_reg_switches;
-#endif
     tANI_U32 magic_tail;
 } hdd_netdev_priv_t;
 
