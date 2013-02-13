@@ -76,11 +76,13 @@
 #define MSM_GSBI11_PHYS		0x12440000
 #define MSM_GSBI12_PHYS		0x12480000
 
+/* GSBI UART devices */
 #define MSM_UART2DM_PHYS	(MSM_GSBI2_PHYS + 0x40000)
 #define MSM_UART5DM_PHYS	(MSM_GSBI5_PHYS + 0x40000)
 #define MSM_UART6DM_PHYS	(MSM_GSBI6_PHYS + 0x40000)
 #define MSM_UART8DM_PHYS	(MSM_GSBI8_PHYS + 0x40000)
 #define MSM_UART9DM_PHYS	(MSM_GSBI9_PHYS + 0x40000)
+#define MSM_UART10DM_PHYS	(MSM_GSBI10_PHYS + 0x40000)
 
 /* GSBI QUP devices */
 #define MSM_GSBI1_QUP_PHYS	(MSM_GSBI1_PHYS + 0x80000)
@@ -410,6 +412,37 @@ struct platform_device msm_device_uart_dm9 = {
 		.dma_mask		= &msm_uart_dm9_dma_mask,
 		.coherent_dma_mask	= DMA_BIT_MASK(32),
 	},
+};
+
+/* GSBI10 used for serial console on 8930 SGLTE*/
+static struct msm_serial_hslite_platform_data uart_gsbi10_pdata;
+
+static struct resource resources_uart_gsbi10[] = {
+	{
+		.start  = GSBI10_UARTDM_IRQ,
+		.end    = GSBI10_UARTDM_IRQ,
+		.flags  = IORESOURCE_IRQ,
+	},
+	{
+		.start  = MSM_UART10DM_PHYS,
+		.end    = MSM_UART10DM_PHYS + PAGE_SIZE - 1,
+		.name   = "uartdm_resource",
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.start  = MSM_GSBI10_PHYS,
+		.end    = MSM_GSBI10_PHYS + PAGE_SIZE - 1,
+		.name   = "gsbi_resource",
+		.flags  = IORESOURCE_MEM,
+	},
+};
+
+struct platform_device msm8930_device_uart_gsbi10 = {
+	.name	= "msm_serial_hsl",
+	.id	= 1,
+	.num_resources	= ARRAY_SIZE(resources_uart_gsbi10),
+	.resource	= resources_uart_gsbi10,
+	.dev.platform_data	= &uart_gsbi10_pdata,
 };
 
 static struct resource resources_uart_gsbi5[] = {
