@@ -1166,9 +1166,6 @@ int audio_aio_open(struct q6audio_aio *audio, struct file *file)
 	return 0;
 
 fail:
-	q6asm_audio_client_free(audio->ac);
-	kfree(audio->codec_cfg);
-	kfree(audio);
 	return rc;
 }
 

@@ -199,6 +199,10 @@ static int audio_open(struct inode *inode, struct file *file)
 		goto fail;
 	}
 	rc = audio_aio_open(audio, file);
+	if (rc < 0) {
+		pr_err("audio_aio_open rc=%d\n", rc);
+		goto fail;
+	}
 
 	config_debug_fs(audio);
 	pr_debug("%s: AMRWBPLUS dec success mode[%d]session[%d]\n", __func__,
