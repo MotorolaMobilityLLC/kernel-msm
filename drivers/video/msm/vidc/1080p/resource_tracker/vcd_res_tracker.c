@@ -1032,9 +1032,9 @@ int res_trk_open_secure_session()
 	mutex_unlock(&resource_context.secure_lock);
 	return 0;
 unsecure_cmd_heap:
-	msm_ion_unsecure_heap(ION_HEAP(resource_context.memtype));
-unsecure_memtype_heap:
 	msm_ion_unsecure_heap(ION_HEAP(resource_context.cmd_mem_type));
+unsecure_memtype_heap:
+	msm_ion_unsecure_heap(ION_HEAP(resource_context.memtype));
 disable_iommu_clks:
 	res_trk_disable_iommu_clocks();
 error_open:
