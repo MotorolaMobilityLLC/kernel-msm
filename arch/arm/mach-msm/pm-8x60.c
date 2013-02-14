@@ -902,6 +902,18 @@ int msm_pm_idle_enter(enum msm_pm_sleep_mode sleep_mode)
 		if (MSM_PM_DEBUG_IDLE_CLK & msm_pm_debug_mask)
 			clock_debug_print_enabled();
 
+		if (MSM_PM_DEBUG_IDLE_LIMITS & msm_pm_debug_mask) {
+
+			struct msm_rpmrs_limits *limits = msm_pm_idle_rs_limits;
+
+			pr_info("CPU%d: %s: PC Limits: pxo:%d, l2_cache:%d, "
+				"vdd_mem:%d, vdd_dig:%d, limit:%p\n",
+				smp_processor_id(), __func__,
+				limits->pxo, limits->l2_cache,
+				limits->vdd_mem, limits->vdd_dig,
+				msm_pm_idle_rs_limits);
+		}
+
 		if (pm_sleep_ops.enter_sleep)
 			ret = pm_sleep_ops.enter_sleep(sleep_delay,
 					msm_pm_idle_rs_limits,
