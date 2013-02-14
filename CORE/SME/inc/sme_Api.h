@@ -2228,6 +2228,14 @@ void sme_transportDebug
    v_BOOL_t  toggleStallDetect
 );
 
+/* ---------------------------------------------------------------------------
+    \fn     sme_ResetPowerValuesFor5G
+    \brief  Reset the power values for 5G band with NV power values.
+    \param  hHal - HAL handle for device
+    \- return NONE
+    -------------------------------------------------------------------------*/
+void sme_ResetPowerValuesFor5G (tHalHandle hHal);
+
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
 /* ---------------------------------------------------------------------------
     \fn sme_UpdateRoamPrefer5GHz

@@ -364,6 +364,8 @@ eHalStatus csrGetCfgValidChannels(tpAniSirGlobal pMac, tANI_U8 *pChannels, tANI_
 void csrRoamCcmCfgSetCallback(tHalHandle hHal, tANI_S32 result);
 void csrScanCcmCfgSetCallback(tHalHandle hHal, tANI_S32 result);
 
+tPowerdBm csrGetCfgMaxTxPower (tpAniSirGlobal pMac, tANI_U8 channel);
+
 //To free the last roaming profile
 void csrFreeRoamProfile(tpAniSirGlobal pMac, tANI_U32 sessionId);
 void csrFreeConnectBssDesc(tpAniSirGlobal pMac, tANI_U32 sessionId);

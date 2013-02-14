@@ -2814,13 +2814,6 @@ static void csrMoveTempScanResultsToMainList( tpAniSirGlobal pMac )
             }
         }
 
-        else if( csrIs11hSupported( pMac ) && pIesLocal->Country.present && 
-                 !pMac->roam.configParam.fSupplicantCountryCodeHasPriority )
-        {
-             /* If 11h is supported, store the power information received in the Country IE */
-            csrSaveToChannelPower2G_5G( pMac, pIesLocal->Country.num_triplets * sizeof(tSirMacChanInfo), 
-                                        (tSirMacChanInfo *)(&pIesLocal->Country.triplets[0]) );
-        }
         
         // append to main list
         csrScanAddResult(pMac, pBssDescription, pIesLocal);
@@ -3766,11 +3759,6 @@ static void csrSaveScanResults( tpAniSirGlobal pMac )
     {
         csrApplyCountryInformation( pMac, FALSE );
     }
-    else if( csrIs11hSupported(pMac) && !pMac->roam.configParam.fSupplicantCountryCodeHasPriority) 
-    {
-        // If llh is enabled, store the channel + power information gathered  in the cfg
-        csrApplyPower2Current( pMac );
-    }     
 }
 
 

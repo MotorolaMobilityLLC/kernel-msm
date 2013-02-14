@@ -2911,6 +2911,8 @@ VOS_STATUS WDA_ProcessConfigBssReq(tWDA_CbContext *pWDA,
       vos_mem_free(wdiConfigBssReqParam);
       return VOS_STATUS_E_NOMEM;
    }
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                           "%s: maxTxPower %d", __func__, configBssReqParam->maxTxPower);
    vos_mem_set(wdiConfigBssReqParam, sizeof(WDI_ConfigBSSReqParamsType), 0);
    WDA_UpdateBSSParams(pWDA, &wdiConfigBssReqParam->wdiReqInfo, 
                        configBssReqParam) ;

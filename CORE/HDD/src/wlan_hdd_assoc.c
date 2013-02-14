@@ -3313,5 +3313,12 @@ void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter)
             }
         }
     }
+    else if (smeConfig.csrConfig.Is11hSupportEnabled)
+    {
+        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
+                            "%s: Disconnected from the AP/Assoc failed and "
+                            "resetting the 5G power values to default", __func__);
+        sme_ResetPowerValuesFor5G (pHddCtx->hHal);
+    }
 }
 
