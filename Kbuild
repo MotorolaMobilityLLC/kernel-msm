@@ -628,6 +628,10 @@ ifeq ($(KERNEL_BUILD),1)
 CDEFINES += -DWLAN_OPEN_SOURCE
 endif
 
+ifeq ($(findstring opensource, $(WLAN_ROOT)), opensource)
+CDEFINES += -DWLAN_OPEN_SOURCE
+endif
+
 KBUILD_CPPFLAGS += $(CDEFINES)
 
 # Module information used by KBuild framework
