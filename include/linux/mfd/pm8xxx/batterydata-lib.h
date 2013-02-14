@@ -88,6 +88,8 @@ enum battery_type {
  *			readings from bms are not available.
  * @delta_rbatt_mohm:	the resistance to be added towards lower soc to
  *			compensate for battery capacitance.
+ * @rbatt_capacitve_mohm: the resistance to be added to compensate for
+ *				battery capacitance
  */
 
 struct bms_battery_data {
@@ -99,6 +101,7 @@ struct bms_battery_data {
 	struct sf_lut		*rbatt_sf_lut;
 	int			default_rbatt_mohm;
 	int			delta_rbatt_mohm;
+	int			rbatt_capacitive_mohm;
 };
 
 #if defined(CONFIG_PM8921_BMS) || \
