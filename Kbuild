@@ -31,6 +31,10 @@ ifeq ($(KERNEL_BUILD),0)
 
 	#Flag to enable TDLS feature
 	CONFIG_QCOM_TDLS := y
+
+	#Flag to enable Fast Transition (11r) feature
+	CONFIG_QCOM_VOWIFI_11R := n
+
 endif
 
 # Feature flags which are not (currently) configurable via Kconfig
