@@ -40,12 +40,14 @@
  */
 
 /**=========================================================================
+* Copyright (c) 2013 Qualcomm Atheros, Inc.
+* All Rights Reserved.
+* Qualcomm Atheros Confidential and Proprietary.
+*  \file  limTrace.h
 
-  \file  limTrace.h
+*  \brief definition for trace related APIs
 
-  \brief definition for trace related APIs
-
-  \author Sunit Bhatia
+*  \author Sunit Bhatia
 
    Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
 
@@ -62,8 +64,6 @@
 #include "macTrace.h"
 #ifdef LIM_TRACE_RECORD
 
-#define CASE_RETURN_STRING( str )           \
-    case ( ( str ) ): return( #str ); break \
 
 
 #define LIM_TRACE_GET_SSN(data)    (((data) >> 16) & 0xff)
@@ -83,7 +83,7 @@
 
 
 
-typedef enum {
+enum {
     TRACE_CODE_MLM_STATE,
     TRACE_CODE_SME_STATE,
     TRACE_CODE_TX_MGMT,
@@ -92,8 +92,8 @@ typedef enum {
     TRACE_CODE_TX_COMPLETE,
     TRACE_CODE_TX_SME_MSG,
     TRACE_CODE_RX_SME_MSG,
-    TRACE_CODE_TX_HAL_MSG,
-    TRACE_CODE_RX_HAL_MSG,
+    TRACE_CODE_TX_WDA_MSG,
+    TRACE_CODE_RX_WDA_MSG,
     TRACE_CODE_TX_LIM_MSG,
     TRACE_CODE_RX_LIM_MSG,
     TRACE_CODE_TX_CFG_MSG,
