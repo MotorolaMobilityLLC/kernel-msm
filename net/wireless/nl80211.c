@@ -2862,8 +2862,8 @@ nl80211_sta_wme_policy[NL80211_STA_WME_MAX + 1] __read_mostly = {
 	[NL80211_STA_WME_MAX_SP] = { .type = NLA_U8 },
 };
 
-static int nl80211_set_station_tdls(struct genl_info *info,
-				    struct station_parameters *params)
+static int nl80211_parse_sta_wme(struct genl_info *info,
+				 struct station_parameters *params)
 {
 	struct nlattr *tb[NL80211_STA_WME_MAX + 1];
 	struct nlattr *nla;
@@ -2909,20 +2909,13 @@ static int nl80211_set_station_tdls(struct genl_info *info,
 static int nl80211_set_station_tdls(struct genl_info *info,
 				    struct station_parameters *params)
 {
-	int err;
 	/* Dummy STA entry gets updated once the peer capabilities are known */
-	if (info->attrs[NL80211_ATTR_PEER_AID])
-		params->aid = nla_get_u16(info->attrs[NL80211_ATTR_PEER_AID]);
 	if (info->attrs[NL80211_ATTR_HT_CAPABILITY])
 		params->ht_capa =
 			nla_data(info->attrs[NL80211_ATTR_HT_CAPABILITY]);
 	if (info->attrs[NL80211_ATTR_VHT_CAPABILITY])
 		params->vht_capa =
 			nla_data(info->attrs[NL80211_ATTR_VHT_CAPABILITY]);
-
-	err = nl80211_parse_sta_channel_info(info, params);
-	if (err)
-		return err;
 
 	return nl80211_parse_sta_wme(info, params);
 }
