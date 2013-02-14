@@ -1175,7 +1175,6 @@ static struct pm8921_charger_platform_data pm8921_chg_pdata __devinitdata = {
 	.thermal_levels		= ARRAY_SIZE(pm8921_therm_mitigation),
 	.cold_thr		= PM_SMBC_BATT_TEMP_COLD_THR__HIGH,
 	.hot_thr		= PM_SMBC_BATT_TEMP_HOT_THR__LOW,
-	.rconn_mohm		= 18,
 	.factory_mode		= 0,
 	.meter_lock		= 0,
 	.wl_name		= BQ5101XB_PSY_NAME,
