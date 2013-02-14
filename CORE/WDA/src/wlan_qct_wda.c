@@ -11783,6 +11783,8 @@ VOS_STATUS WDA_ProcessReceiveFilterClearFilterReq (tWDA_CbContext *pWDA,
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
               "Failure in WDA_ProcessReceiveFilterClearFilterReq(), free all the memory " );
       vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
+      vos_mem_free(pWdaParams->wdaMsgParam);
+      vos_mem_free(pWdaParams);
    }
    return CONVERT_WDI2VOS_STATUS(status) ;
 }
