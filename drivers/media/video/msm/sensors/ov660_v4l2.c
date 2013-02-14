@@ -391,6 +391,11 @@ static void __exit ov660_exit(void)
 	i2c_del_driver(&ov660_i2c_driver);
 }
 
+static struct ov660_reg_i2c_tbl ov660_ov10820_af_filter_fix[] = {
+	{0x79AA, 0x07},
+	{0x79AB, 0x64},
+};
+
 static struct ov660_reg_i2c_tbl ov660_ov8835_init_settings[] = {
 	{0x6b00, 0x10},
 	{0x6103, 0x20},
@@ -5725,6 +5730,12 @@ int32_t ov660_intialize_10MP(void)
 		goto initialize_done;
 	}
 
+	rc = ov660_write_i2c_tbl(ov660_ov10820_af_filter_fix,
+			ARRAY_SIZE(ov660_ov10820_af_filter_fix));
+	if (rc < 0) {
+		pr_err("%s: unable to write AF filter fix\n", __func__);
+		goto initialize_done;
+	}
 
 initialize_done:
 	pr_debug("%s: exit\n", __func__);
