@@ -6512,10 +6512,9 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
 
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_context_t *pHddCtx = wiphy_priv(wiphy);
-    u8 *buf_1;
-    size_t len_1 = len;
     u8 peerMac[6];
     VOS_STATUS status;
+    int responder;
 
     if( NULL == pHddCtx || NULL == pHddCtx->cfg_ini )
     {
@@ -6567,23 +6566,37 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
                       action_code, dialog_token, status_code, len);
 #endif
 
-    buf_1 = vos_mem_malloc(len);
-    if(buf_1 == NULL) {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "%s: malloc failed!", __func__);
-        return -ENOMEM;
+    /*Except teardown responder will not be used so just make 0*/
+    responder = 0;
+    if(SIR_MAC_TDLS_TEARDOWN == action_code)
+    {
+       responder = wlan_hdd_tdls_get_responder(peerMac);
+       if(-1 == responder)
+       {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                     "%s: %02x:%02x:%02x:%02x:%02x:%02x) peer doesn't exist dialog_token %d status %d, len = %d",
+                     "tdls_mgmt", peer[0], peer[1], peer[2], peer[3], peer[4], peer[5],
+                      dialog_token, status_code, len);
+            return -EPERM;
+       }
     }
-    vos_mem_copy(buf_1, buf, len);
 
     status = sme_SendTdlsMgmtFrame(WLAN_HDD_GET_HAL_CTX(pAdapter), pAdapter->sessionId,
-            peerMac, action_code, dialog_token, status_code, buf_1, len_1);
+            peerMac, action_code, dialog_token, status_code, (tANI_U8 *)buf, len, responder);
 
     if (VOS_STATUS_SUCCESS != status) {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s: sme_SendTdlsMgmtFrame failed!", __func__);
     }
 
-    vos_mem_free(buf_1);
+    if (SIR_MAC_TDLS_SETUP_RSP == action_code)
+    {
+        wlan_hdd_tdls_set_responder(peerMac, TRUE);
+    }
+    else if (SIR_MAC_TDLS_SETUP_CNF == action_code)
+    {
+        wlan_hdd_tdls_set_responder(peerMac, FALSE);
+    }
 
     return 0;
 }
