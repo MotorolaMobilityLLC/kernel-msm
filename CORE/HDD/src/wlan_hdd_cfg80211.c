@@ -104,6 +104,7 @@
 #ifdef FEATURE_WLAN_TDLS
 #include "wlan_hdd_tdls.h"
 #endif
+#include "wlan_nv.h"
 
 #define g_mode_rates_size (12)
 #define a_mode_rates_size (8)
@@ -1309,30 +1310,52 @@ static VOS_STATUS wlan_hdd_validate_operation_channel(hdd_adapter_t *pAdapter,in
     u8 valid_ch[WNI_CFG_VALID_CHANNEL_LIST_LEN];
     u32 indx = 0;
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+    v_U8_t fValidChannel = FALSE, count = 0;
+    hdd_config_t *hdd_pConfig_ini= (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
      
     num_ch = WNI_CFG_VALID_CHANNEL_LIST_LEN;
 
-    if (0 != ccmCfgGetStr(hHal, WNI_CFG_VALID_CHANNEL_LIST,
-            valid_ch, &num_ch))
+    if ( hdd_pConfig_ini->sapAllowAllChannel)
     {
-        hddLog(VOS_TRACE_LEVEL_ERROR,
-                "%s: failed to get valid channel list\n", __func__);
-        return VOS_STATUS_E_FAILURE;
-    }
-
-    for (indx = 0; indx < num_ch; indx++)
-    {
-        if (channel == valid_ch[indx])
+         /* Validate the channel */
+        for (count = RF_CHAN_1 ; count <= RF_CHAN_165 ; count++)
         {
-            break;
+            if ( channel == rfChannels[count].channelNum )
+            {
+                fValidChannel = TRUE;
+                break;
+            }
+        }
+        if (fValidChannel != TRUE)
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR,
+                "%s: Invalid Channel [%d]", __func__, channel);
+            return VOS_STATUS_E_FAILURE;
         }
     }
-
-    if (indx >= num_ch)
+    else
     {
-        hddLog(VOS_TRACE_LEVEL_ERROR,
-                "%s: Invalid Channel [%d] \n", __func__, channel);
-        return VOS_STATUS_E_FAILURE;
+        if (0 != ccmCfgGetStr(hHal, WNI_CFG_VALID_CHANNEL_LIST,
+            valid_ch, &num_ch))
+            {
+                hddLog(VOS_TRACE_LEVEL_ERROR,
+                    "%s: failed to get valid channel list", __func__);
+                return VOS_STATUS_E_FAILURE;
+            }
+        for (indx = 0; indx < num_ch; indx++)
+        {
+            if (channel == valid_ch[indx])
+            {
+                break;
+            }
+         }
+
+        if (indx >= num_ch)
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR,
+                "%s: Invalid Channel [%d]", __func__, channel);
+            return VOS_STATUS_E_FAILURE;
+        }
     }
     return VOS_STATUS_SUCCESS;
          

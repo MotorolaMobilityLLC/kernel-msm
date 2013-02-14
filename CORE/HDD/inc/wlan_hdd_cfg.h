@@ -1597,6 +1597,15 @@ typedef enum
 #define CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE_DEFAULT ( WNI_CFG_VHT_SU_BEAMFORMEE_CAP_STADEF )
 #endif
 
+/*
+ * SAP ALLOW All Channels
+ */
+#define CFG_SAP_ALLOW_ALL_CHANNEL_PARAM_NAME          "gSapAllowAllChannel"
+#define CFG_SAP_ALLOW_ALL_CHANNEL_PARAM_MIN           ( 0 )
+#define CFG_SAP_ALLOW_ALL_CHANNEL_PARAM_MAX           ( 1 )
+#define CFG_SAP_ALLOW_ALL_CHANNEL_PARAM_DEFAULT       ( 0 )
+
+
 /*--------------------------------------------------------------------------- 
   Type declarations
   -------------------------------------------------------------------------*/ 
@@ -1948,6 +1957,7 @@ typedef struct
    v_BOOL_t                    enableTxLdpc;
    v_U8_t                      enableMCCAdaptiveScheduler;
    v_BOOL_t                    isAndroidPsEn;
+   v_BOOL_t                    sapAllowAllChannel;
 } hdd_config_t;
 /*--------------------------------------------------------------------------- 
   Function declarations and documenation
