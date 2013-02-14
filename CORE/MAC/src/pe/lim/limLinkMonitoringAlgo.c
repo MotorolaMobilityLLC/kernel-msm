@@ -196,15 +196,8 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
         case HAL_DEL_STA_REASON_CODE_TIM_BASED:
              PELOGE(limLog(pMac, LOGE, FL(" Deleting station: staId = %d, reasonCode = %d\n"), pMsg->staId, pMsg->reasonCode);)
 #endif
-             if((eLIM_BT_AMP_AP_ROLE == psessionEntry->limSystemRole) ||
-                         (eLIM_AP_ROLE == psessionEntry->limSystemRole))
-             {
-                 pStaDs = dphGetHashEntry(pMac, pMsg->assocId, &psessionEntry->dph.dphHashTable);
-             }
-             else
-             {
-                 pStaDs = dphGetHashEntry(pMac, DPH_STA_HASH_INDEX_PEER, &psessionEntry->dph.dphHashTable);
-             }
+             pStaDs = dphGetHashEntry(pMac, pMsg->assocId, &psessionEntry->dph.dphHashTable);
+
              if (!pStaDs)
              {
                  PELOGE(limLog(pMac, LOGE, FL("Skip STA deletion (invalid STA) limSystemRole=%d\n"),psessionEntry->limSystemRole);)
@@ -231,23 +224,39 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
              }
              else
              {
-                 //TearDownLink with AP
-                 tLimMlmDeauthInd  mlmDeauthInd;
-                 PELOGW(limLog(pMac, LOGW, FL("lim Delete Station Context (staId: %d, assocId: %d) \n"),
-                             pMsg->staId, pMsg->assocId);)
+#ifdef FEATURE_WLAN_TDLS
+                if(eLIM_STA_ROLE == psessionEntry->limSystemRole &&
+                    STA_ENTRY_TDLS_PEER == pStaDs->staType)
+                {
+                    //TeardownLink with PEER
+                    //Reason code HAL_DEL_STA_REASON_CODE_KEEP_ALIVE means
+                    //eSIR_MAC_TDLS_TEARDOWN_PEER_UNREACHABLE
+                    limSendSmeTDLSDelStaInd(pMac, pStaDs, psessionEntry,
+                    /*pMsg->reasonCode*/ eSIR_MAC_TDLS_TEARDOWN_PEER_UNREACHABLE);
+                }
+                else
+                {
+#endif
+                    //TearDownLink with AP
+                    tLimMlmDeauthInd  mlmDeauthInd;
+                    PELOGW(limLog(pMac, LOGW, FL("lim Delete Station Context (staId: %d, assocId: %d) \n"),
+                                pMsg->staId, pMsg->assocId);)
 
-                     pStaDs->mlmStaContext.disassocReason = eSIR_MAC_UNSPEC_FAILURE_REASON;
-                 pStaDs->mlmStaContext.cleanupTrigger = eLIM_LINK_MONITORING_DEAUTH;
+                    pStaDs->mlmStaContext.disassocReason = eSIR_MAC_UNSPEC_FAILURE_REASON;
+                    pStaDs->mlmStaContext.cleanupTrigger = eLIM_LINK_MONITORING_DEAUTH;
 
-                 // Issue Deauth Indication to SME.
-                 palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDeauthInd.peerMacAddr,
-                         pStaDs->staAddr, sizeof(tSirMacAddr));
-                 mlmDeauthInd.reasonCode    = (tANI_U8) pStaDs->mlmStaContext.disassocReason;
-                 mlmDeauthInd.deauthTrigger =  pStaDs->mlmStaContext.cleanupTrigger;
+                    // Issue Deauth Indication to SME.
+                    palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDeauthInd.peerMacAddr,
+                            pStaDs->staAddr, sizeof(tSirMacAddr));
+                    mlmDeauthInd.reasonCode    = (tANI_U8) pStaDs->mlmStaContext.disassocReason;
+                    mlmDeauthInd.deauthTrigger =  pStaDs->mlmStaContext.cleanupTrigger;
 
-                 limPostSmeMessage(pMac, LIM_MLM_DEAUTH_IND, (tANI_U32 *) &mlmDeauthInd);
+                    limPostSmeMessage(pMac, LIM_MLM_DEAUTH_IND, (tANI_U32 *) &mlmDeauthInd);
 
-                 limSendSmeDeauthInd(pMac, pStaDs, psessionEntry);
+                    limSendSmeDeauthInd(pMac, pStaDs, psessionEntry);
+#ifdef FEATURE_WLAN_TDLS
+                 }
+#endif
              }
 #ifdef WLAN_SOFTAP_FEATURE
              break;        

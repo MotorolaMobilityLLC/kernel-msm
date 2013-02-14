@@ -4226,6 +4226,16 @@ typedef struct sSirTdlsDelStaRsp
    tSirMacAddr            peerMac;
    tANI_U16               staId;
 } tSirTdlsDelStaRsp, *tpSirTdlsDelStaRsp;
+/* TDLS Delete Indication struct PE-->SME */
+typedef struct sSirTdlsDelStaInd
+{
+   tANI_U16               messageType;
+   tANI_U16               length;
+   tANI_U8                sessionId;     // Session ID
+   tSirMacAddr            peerMac;
+   tANI_U16               staId;
+   tANI_U16               reasonCode;
+} tSirTdlsDelStaInd, *tpSirTdlsDelStaInd;
 #endif /* FEATURE_WLAN_TDLS */
 
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
