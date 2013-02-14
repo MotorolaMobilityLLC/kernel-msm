@@ -6633,26 +6633,27 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
         case NL80211_TDLS_ENABLE_LINK:
             {
                 v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
-                v_U8_t my_peer[6];
-                v_U8_t ucSTAId;
+                hddTdlsPeer_t *pTdlsPeer;
                 VOS_STATUS status;
 
                 if (peer) {
-                    vos_mem_copy(my_peer, peer, 6);
-                    ucSTAId = wlan_hdd_findTdlsPeer(my_peer);
+                    pTdlsPeer = wlan_hdd_tdls_find_peer(peer);
 
                     hddLog(VOS_TRACE_LEVEL_INFO_HIGH, 
-                            "%s: set key for peer %2x:%2x:%2x:%2x:%2x:%2x",
+                            "%s: TDLS_LINK_ENABLE %2x:%2x:%2x:%2x:%2x:%2x",
                             __func__, peer[0], peer[1], 
                             peer[2], peer[3], 
                             peer[4], peer[5] );
 
-                    if (-1 == ucSTAId ) {
-                        hddLog(VOS_TRACE_LEVEL_ERROR, "wlan_hdd_findTdlsPeer failed" );
+                    if ( NULL == pTdlsPeer ) {
+                        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: wlan_hdd_tdls_find_peer %2x:%2x:%2x:%2x:%2x:%2x failed",
+                            __func__, peer[0], peer[1],
+                            peer[2], peer[3],
+                            peer[4], peer[5] );
                         return -EINVAL;
                     }
 
-                    status = WLANTL_ChangeSTAState( pVosContext, ucSTAId, 
+                    status = WLANTL_ChangeSTAState( pVosContext, pTdlsPeer->staId,
                             WLANTL_STA_AUTHENTICATED );
 
                     //This can fail only if the staId is not registered yet with TL
@@ -6664,7 +6665,7 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                         return -EINVAL;
                     }
 
-                    wlan_hdd_tdls_set_link_status(peer, eTDLS_LINK_CONNECTED);
+                    wlan_hdd_tdls_set_link_status(pTdlsPeer, eTDLS_LINK_CONNECTED);
 
                 } else {
                     hddLog(VOS_TRACE_LEVEL_WARN, "wlan_hdd_cfg80211_add_key: peer NULL" );
@@ -6673,7 +6674,7 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
             break;
         case NL80211_TDLS_DISABLE_LINK:
             {
-                if(-1 != wlan_hdd_findTdlsPeer(peer))
+                if(NULL != wlan_hdd_tdls_find_peer(peer))
                 {
                     sme_DeleteTdlsPeerSta( WLAN_HDD_GET_HAL_CTX(pAdapter),
                             pAdapter->sessionId, peer );
