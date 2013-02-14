@@ -64,6 +64,11 @@ void adreno_debugfs_init(struct kgsl_device *device)
 	adreno_dev->fast_hang_detect = 1;
 	debugfs_create_u32("fast_hang_detect", 0644, device->d_debugfs,
 			   &adreno_dev->fast_hang_detect);
+
+	/* Top level switch to enable/disable userspace FT control */
+	adreno_dev->ft_user_control = 0;
+	debugfs_create_u32("ft_user_control", 0644, device->d_debugfs,
+			   &adreno_dev->ft_user_control);
 	/*
 	 * FT policy can be set to any of the options below.
 	 * KGSL_FT_DISABLE -> BIT(0) Set to disable FT

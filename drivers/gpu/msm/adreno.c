@@ -2231,6 +2231,9 @@ static int adreno_setproperty(struct kgsl_device *device,
 	case KGSL_PROP_FAULT_TOLERANCE: {
 			struct kgsl_ft_config ftd;
 
+			if (adreno_dev->ft_user_control == 0)
+				break;
+
 			if (sizebytes != sizeof(ftd))
 				break;
 
