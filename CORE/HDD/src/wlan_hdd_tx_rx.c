@@ -1070,7 +1070,7 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
 
         wlan_hdd_tdls_extract_da(skb, mac);
 
-        if (vos_is_macaddr_broadcast((v_MACADDR_t *)mac)) {
+        if (vos_is_macaddr_group((v_MACADDR_t *)mac)) {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
                       "broadcast packet, not adding to peer list");
         } else if (memcmp(pHddStaCtx->conn_info.bssId,
@@ -1389,7 +1389,7 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
 
         wlan_hdd_tdls_extract_sa(skb, mac);
 
-        if (vos_is_macaddr_broadcast((v_MACADDR_t *)mac)) {
+        if (vos_is_macaddr_group((v_MACADDR_t *)mac)) {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
                       "rx broadcast packet, not adding to peer list");
         } else if (memcmp(pHddStaCtx->conn_info.bssId,
