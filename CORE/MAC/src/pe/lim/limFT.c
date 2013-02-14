@@ -687,6 +687,11 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
                        
     pftSessionEntry->limCurrentBssCaps = pbssDescription->capabilityInfo;
     pftSessionEntry->limReassocBssCaps = pbssDescription->capabilityInfo;
+    if( pMac->roam.configParam.shortSlotTime &&
+        SIR_MAC_GET_SHORT_SLOT_TIME(pftSessionEntry->limReassocBssCaps))
+    {
+        pftSessionEntry->shortSlotTimeSupported = TRUE;
+    }
 
     regMax = cfgGetRegulatoryMaxTransmitPower( pMac, pftSessionEntry->currentOperChannel ); 
     localPowerConstraint = regMax;
