@@ -3562,7 +3562,8 @@ int mdp4_overlay_commit(struct fb_info *info)
 		break;
 	}
 
-	mdp4_dsi_panel_on(mfd);
+	if (mfd->index == 0)
+		mdp4_dsi_panel_on(mfd);
 
 	msm_fb_signal_timeline(mfd);
 
