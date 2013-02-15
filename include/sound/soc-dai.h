@@ -122,6 +122,10 @@ int snd_soc_dai_set_channel_map(struct snd_soc_dai *dai,
 	unsigned int tx_num, unsigned int *tx_slot,
 	unsigned int rx_num, unsigned int *rx_slot);
 
+int snd_soc_dai_get_channel_map(struct snd_soc_dai *dai,
+	unsigned int *tx_num, unsigned int *tx_slot,
+	unsigned int *rx_num, unsigned int *rx_slot);
+
 int snd_soc_dai_set_tristate(struct snd_soc_dai *dai, int tristate);
 
 /* Digital Audio Interface mute */
@@ -151,6 +155,9 @@ struct snd_soc_dai_ops {
 		unsigned int rx_num, unsigned int *rx_slot);
 	int (*set_tristate)(struct snd_soc_dai *dai, int tristate);
 
+	int (*get_channel_map)(struct snd_soc_dai *dai,
+		unsigned int *tx_num, unsigned int *tx_slot,
+		unsigned int *rx_num, unsigned int *rx_slot);
 	/*
 	 * DAI digital mute - optional.
 	 * Called by soc-core to minimise any pops.
@@ -259,6 +266,13 @@ struct snd_soc_dai {
 
 	struct list_head list;
 	struct list_head card_list;
+
+	/* runtime AIF widget and channel mmap updates */
+	u64 playback_channel_map;
+	u64 capture_channel_map;
+	struct snd_soc_dapm_widget *playback_aif;
+	struct snd_soc_dapm_widget *capture_aif;
+	bool channel_map_instanciated;
 };
 
 static inline void *snd_soc_dai_get_dma_data(const struct snd_soc_dai *dai,

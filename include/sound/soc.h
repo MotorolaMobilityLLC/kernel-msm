@@ -565,6 +565,7 @@ struct snd_soc_jack {
 /* SoC PCM stream information */
 struct snd_soc_pcm_stream {
 	const char *stream_name;
+	const char *aif_name;	/* DAPM AIF widget name */
 	u64 formats;			/* SNDRV_PCM_FMTBIT_* */
 	unsigned int rates;		/* SNDRV_PCM_RATE_* */
 	unsigned int rate_min;		/* min rate */
@@ -889,6 +890,8 @@ struct snd_soc_card {
 	int num_links;
 	struct snd_soc_pcm_runtime *rtd;
 	int num_rtd;
+	int num_playback_channels;
+	int num_capture_channels;
 
 	/* optional codec specific configuration */
 	struct snd_soc_codec_conf *codec_conf;

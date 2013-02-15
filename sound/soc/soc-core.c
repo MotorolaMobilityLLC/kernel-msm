@@ -1457,6 +1457,96 @@ static int snd_soc_init_codec_cache(struct snd_soc_codec *codec,
 	return 0;
 }
 
+static void soc_init_dai_aif_channel_map(struct snd_soc_card *card,
+		struct snd_soc_dai *dai, int stream)
+{
+	struct snd_soc_dapm_widget *w = NULL;
+	const char *aif_name;
+
+	if (stream == SNDRV_PCM_STREAM_PLAYBACK)
+		aif_name = dai->driver->playback.aif_name;
+	else
+		aif_name = dai->driver->capture.aif_name;
+
+	if (dai->codec) {
+		struct snd_soc_codec *codec;
+
+		list_for_each_entry(codec, &card->codec_dev_list, card_list) {
+			w = snd_soc_get_codec_widget(card, codec, aif_name);
+			if (w)
+				break;
+		}
+	} else if (dai->platform) {
+		struct snd_soc_platform *platform;
+
+		list_for_each_entry(platform, &card->platform_dev_list, card_list) {
+			w = snd_soc_get_platform_widget(card, platform, aif_name);
+			if (w)
+				break;
+		}
+	}
+
+	if (w) {
+		if (stream == SNDRV_PCM_STREAM_PLAYBACK)
+			dai->playback_aif = w;
+		else
+			dai->capture_aif = w;
+	} else
+		dev_err(dai->dev, "unable to find %s DAI AIF %s\n",
+			stream ? "capture" : "playback", aif_name);
+
+	dai->channel_map_instanciated = 1;
+}
+
+static int soc_is_dai_pcm(struct snd_soc_card *card, struct snd_soc_dai *dai)
+{
+	int i;
+
+	for (i = 0; i < card->num_rtd; i++) {
+		if (card->rtd[i].cpu_dai == dai && !card->rtd[i].dai_link->no_pcm)
+			return 1;
+	}
+	return 0;
+}
+
+static void soc_init_card_aif_channel_map(struct snd_soc_card *card)
+{
+	struct snd_soc_dai *dai;
+
+	list_for_each_entry(dai, &card->dai_dev_list, card_list) {
+
+		/* only process DAIs that use the new API until
+		 * the old "stream name" API is fully deprecated */
+		if (!dai->driver->playback.aif_name && !dai->driver->capture.aif_name)
+			continue;
+
+		/* channels are only mapped from PCM DAIs */
+		if (!soc_is_dai_pcm(card, dai))
+			continue;
+
+		/* skip if already instanciated */
+		if (dai->channel_map_instanciated)
+			continue;
+
+		/* create unique channels masks for each DAI in the sound card */
+		dai->playback_channel_map =
+			((1 << dai->driver->playback.channels_max) - 1)
+			<< card->num_playback_channels;
+		card->num_playback_channels += dai->driver->playback.channels_max;
+
+		dai->capture_channel_map =
+			((1 << dai->driver->capture.channels_max) - 1)
+			<< card->num_capture_channels;
+		card->num_capture_channels += dai->driver->capture.channels_max;
+
+		if (dai->driver->playback.channels_max)
+			soc_init_dai_aif_channel_map(card, dai, SNDRV_PCM_STREAM_PLAYBACK);
+		if (dai->driver->capture.channels_max)
+			soc_init_dai_aif_channel_map(card, dai, SNDRV_PCM_STREAM_CAPTURE);
+	}
+}
+
+
 static void snd_soc_instantiate_card(struct snd_soc_card *card)
 {
 	struct snd_soc_codec *codec;
@@ -1621,6 +1711,7 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 	}
 
 	snd_soc_dapm_new_widgets(&card->dapm);
+	soc_init_card_aif_channel_map(card);
 
 	if (card->fully_routed)
 		list_for_each_entry(codec, &card->codec_dev_list, card_list)
@@ -3066,6 +3157,29 @@ int snd_soc_dai_set_channel_map(struct snd_soc_dai *dai,
 }
 EXPORT_SYMBOL_GPL(snd_soc_dai_set_channel_map);
 
+/**
+ * snd_soc_dai_get_channel_map - configure DAI audio channel map
+ * @dai: DAI
+ * @tx_num: how many TX channels
+ * @tx_slot: pointer to an array which imply the TX slot number channel
+ *           0~num-1 uses
+ * @rx_num: how many RX channels
+ * @rx_slot: pointer to an array which imply the RX slot number channel
+ *           0~num-1 uses
+ *
+ * configure the relationship between channel number and TDM slot number.
+ */
+int snd_soc_dai_get_channel_map(struct snd_soc_dai *dai,
+	unsigned int *tx_num, unsigned int *tx_slot,
+	unsigned int *rx_num, unsigned int *rx_slot)
+{
+	if (dai->driver && dai->driver->ops->get_channel_map)
+		return dai->driver->ops->get_channel_map(dai, tx_num, tx_slot,
+			rx_num, rx_slot);
+	else
+		return -EINVAL;
+}
+EXPORT_SYMBOL_GPL(snd_soc_dai_get_channel_map);
 /**
  * snd_soc_dai_set_tristate - configure DAI system or master clock.
  * @dai: DAI
