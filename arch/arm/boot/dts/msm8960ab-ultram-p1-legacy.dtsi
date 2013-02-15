@@ -143,24 +143,6 @@
 			};
 		};
 
-		I2C@12 {
-			class = <0x49324300>;
-			type = <0x001e0003>;
-
-			I2C,Board@0 {
-				brightness_table = [000000190000002a000000440000007f000000b2000000f6];
-				class = [4d535034333000];
-				i2c,address = <0x00000048>;
-				i2c,type = [6d737034333000];
-				irq,gpio = <0x45>;
-				lux_table = [00000005000000320000006400000bb800001f40];
-				msp430_gpio_bslen = <0x33>;
-				msp430_gpio_reset = <0x5c>;
-				msp430_gpio_wakeirq = <0x00000007>;
-				type = <0x00030015>;
-			};
-		};
-
 		I2C@4 {
 			class = <0x49324300>;
 			type = <0x001e0003>;
