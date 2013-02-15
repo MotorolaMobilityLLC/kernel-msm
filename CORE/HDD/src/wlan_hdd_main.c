@@ -199,7 +199,11 @@ static void hdd_set_multicast_list(struct net_device *dev);
 void hdd_wlan_initial_scan(hdd_adapter_t *pAdapter);
 
 extern int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr);
-
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+void hdd_getBand_helper(hdd_context_t *pHddCtx, int *pBand);
+static VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8 *pNumChannels);
+static VOS_STATUS hdd_parse_countryrev(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8 *pNumChannels);
+#endif
 static int hdd_netdev_notifier_call(struct notifier_block * nb,
                                          unsigned long state,
                                          void *ndev)
@@ -472,17 +476,16 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        {
            tANI_U8 *ptr = command ;
            int ret = 0 ;
-        
+
            /* Change band request received */
-   
-           /* First 8 bytes will have "SETBAND " and 
+
+           /* First 8 bytes will have "SETBAND " and
             * 9 byte will have band setting value */
            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                     "%s: SetBandCommand Info  comm %s UL %d, TL %d", __func__, command, priv_data.used_len, priv_data.total_len);
-        
            /* Change band request received */
-           ret = hdd_setBand_helper(dev, ptr);   
-       } 
+           ret = hdd_setBand_helper(dev, ptr);
+       }
        else if ( strncasecmp(command, "COUNTRY", 7) == 0 )
        {
            char *country_code;
@@ -497,6 +500,67 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 
            }
        }
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+       else if ( strncasecmp(command, "SETCOUNTRYREV", 13) == 0 )
+       {
+           tANI_U8 *value = command;
+           tANI_U8 countryCode[WNI_CFG_COUNTRY_CODE_LEN] = {0};
+           tANI_U8 revision = 0;
+           eHalStatus status = eHAL_STATUS_SUCCESS;
+           v_REGDOMAIN_t regId;
+
+           status = hdd_parse_countryrev(value, countryCode, &revision);
+           if (eHAL_STATUS_SUCCESS != status)
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Failed to parse country revision information", __func__);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           /* Validate country code */
+           status = sme_GetRegulatoryDomainForCountry(pHddCtx->hHal, countryCode, &regId);
+           if (eHAL_STATUS_SUCCESS != status)
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Invalid country code %s", __func__, countryCode);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           /* Validate revision */
+           if ((SME_KR_3 != revision) && (SME_KR_24 != revision) && (SME_KR_25 != revision))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Invalid revision %d", __func__, revision);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           ret = (int)sme_ChangeCountryCode(pHddCtx->hHal, NULL, countryCode,
+                    pAdapter, pHddCtx->pvosContext);
+           if (0 != ret)
+           {
+               VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                       "%s: SME Change Country code fail ret=%d", __func__, ret);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           if (0 == strncmp(countryCode, "KR", 2))
+           {
+               status = sme_ChangeCountryValidChannelListByRevision((tHalHandle)(pHddCtx->hHal),
+                                                       revision);
+               if (eHAL_STATUS_SUCCESS != status)
+               {
+                   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                             "%s: Failed to build valid channel list", __func__);
+                   ret = -EINVAL;
+                   goto exit;
+               }
+           }
+       }
+#endif
        /*
           command should be a string having format
           SET_SAP_CHANNEL_LIST <num of channels> <the channels seperated by spaces>
@@ -518,6 +582,297 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
            suspend = *ptr - '0';
            hdd_set_wlan_suspend_mode(suspend);
        }
+#ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
+       else if (strncmp(command, "SETROAMTRIGGER", 14) == 0)
+       {
+           tANI_U8 *value = command;
+           int rssi = 0;
+           tANI_U8 lookUpThreshold = CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_DEFAULT;
+           eHalStatus status = eHAL_STATUS_SUCCESS;
+
+           /* Move pointer to ahead of SETROAMTRIGGER<delimiter> */
+           value = value + 15;
+
+           sscanf(value, "%d", &rssi);
+           lookUpThreshold = abs(rssi);
+           if ((lookUpThreshold < CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MIN) ||
+               (lookUpThreshold > CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MAX))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "Neighbor lookup threshold value %d is out of range"
+                      " (Min: %d Max: %d)", lookUpThreshold,
+                      CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MIN,
+                      CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MAX);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                      "%s: Received Command to Set Roam trigger"
+                      " (Neighbor lookup threshold) = %d", __func__, lookUpThreshold);
+
+           pHddCtx->cfg_ini->nNeighborLookupRssiThreshold = lookUpThreshold;
+           status = sme_setNeighborLookupRssiThreshold((tHalHandle)(pHddCtx->hHal), lookUpThreshold);
+           if (eHAL_STATUS_SUCCESS != status)
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Failed to set roam trigger, try again", __func__);
+               ret = -EPERM;
+               goto exit;
+           }
+
+           /* Set Reassoc threshold to (lookup rssi threshold + 5 dBm) */
+           sme_setNeighborReassocRssiThreshold((tHalHandle)(pHddCtx->hHal), lookUpThreshold + 5);
+       }
+       else if (strncmp(command, "GETROAMTRIGGER", 14) == 0)
+       {
+           tANI_U8 lookUpThreshold = sme_getNeighborLookupRssiThreshold((tHalHandle)(pHddCtx->hHal));
+           int rssi = (-1) * lookUpThreshold;
+           char extra[32];
+           tANI_U8 len = 0;
+
+           len = snprintf(extra, sizeof(extra), "%s %d", command, rssi);
+           if (copy_to_user(priv_data.buf, &extra, len + 1))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: failed to copy data to user buffer", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+       }
+       else if (strncmp(command, "SETROAMSCANPERIOD", 17) == 0)
+       {
+           tANI_U8 *value = command;
+           tANI_U16 neighborScanRefreshPeriod = CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_DEFAULT;
+           /* input refresh period is in terms of seconds */
+           /* Move pointer to ahead of SETROAMSCANPERIOD<delimiter> */
+           value = value + 18;
+           /* Convert the value from ascii to integer */
+           ret = kstrtou16(value, 10, &neighborScanRefreshPeriod);
+           if (ret < 0)
+           {
+               /* If the input value is greater than max value of datatype, then also
+                  kstrtou16 fails */
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: kstrtou16 failed ",
+                      "Input value may be out of range[%d - %d]",
+                      __func__,
+                      (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN/1000),
+                      (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX/1000));
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           neighborScanRefreshPeriod = neighborScanRefreshPeriod * 1000;
+           if ((neighborScanRefreshPeriod < CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN) ||
+               (neighborScanRefreshPeriod > CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "Neighbor scan results refresh period value %d is out of range"
+                      " (Min: %d Max: %d)", neighborScanRefreshPeriod,
+                      (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN/1000),
+                      (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX/1000));
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                      "%s: Received Command to Set roam scan period"
+                      " (Neighbor Scan refresh period) = %d", __func__, neighborScanRefreshPeriod);
+
+           pHddCtx->cfg_ini->nEmptyScanRefreshPeriod = neighborScanRefreshPeriod;
+           sme_UpdateEmptyScanRefreshPeriod((tHalHandle)(pHddCtx->hHal), neighborScanRefreshPeriod);
+       }
+       else if (strncmp(command, "GETROAMSCANPERIOD", 17) == 0)
+       {
+           tANI_U16 nEmptyScanRefreshPeriod = sme_getEmptyScanRefreshPeriod((tHalHandle)(pHddCtx->hHal));
+           char extra[32];
+           tANI_U8 len = 0;
+
+           len = snprintf(extra, sizeof(extra), "%s %d", "GETROAMSCANPERIOD", (nEmptyScanRefreshPeriod/1000));
+           /* Returned value is in units of seconds */
+           if (copy_to_user(priv_data.buf, &extra, len + 1))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: failed to copy data to user buffer", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+       }
+#endif
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+       else if (strncmp(command, "SETROAMDELTA", 12) == 0)
+       {
+           tANI_U8 *value = command;
+           tANI_U8 roamRssiDiff = CFG_ROAM_RSSI_DIFF_DEFAULT;
+
+           /* Move pointer to ahead of SETROAMDELTA<delimiter> */
+           value = value + 13;
+           /* Convert the value from ascii to integer */
+           ret = kstrtou8(value, 10, &roamRssiDiff);
+           if (ret < 0)
+           {
+               /* If the input value is greater than max value of datatype, then also
+                  kstrtou8 fails */
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: kstrtou8 failed range [%d - %d]", __func__,
+                      CFG_ROAM_RSSI_DIFF_MIN,
+                      CFG_ROAM_RSSI_DIFF_MAX);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           if ((roamRssiDiff < CFG_ROAM_RSSI_DIFF_MIN) ||
+               (roamRssiDiff > CFG_ROAM_RSSI_DIFF_MAX))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "Roam rssi diff value %d is out of range"
+                      " (Min: %d Max: %d)", roamRssiDiff,
+                      CFG_ROAM_RSSI_DIFF_MIN,
+                      CFG_ROAM_RSSI_DIFF_MAX);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                      "%s: Received Command to Set roam rssi diff = %d", __func__, roamRssiDiff);
+
+           pHddCtx->cfg_ini->RoamRssiDiff = roamRssiDiff;
+           sme_UpdateRoamRssiDiff((tHalHandle)(pHddCtx->hHal), roamRssiDiff);
+       }
+       else if (strncmp(priv_data.buf, "GETROAMDELTA", 12) == 0)
+       {
+           tANI_U8 roamRssiDiff = sme_getRoamRssiDiff((tHalHandle)(pHddCtx->hHal));
+           char extra[32];
+           tANI_U8 len = 0;
+
+           len = snprintf(extra, sizeof(extra), "%s %d", command, roamRssiDiff);
+           if (copy_to_user(priv_data.buf, &extra, len + 1))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: failed to copy data to user buffer", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+       }
+#endif
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+       else if (strncmp(command, "GETBAND", 7) == 0)
+       {
+           int band = -1;
+           char extra[32];
+           tANI_U8 len = 0;
+           hdd_getBand_helper(pHddCtx, &band);
+
+           len = snprintf(extra, sizeof(extra), "%s %d", command, band);
+           if (copy_to_user(priv_data.buf, &extra, len + 1))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: failed to copy data to user buffer", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+       }
+       else if (strncmp(command, "GETCOUNTRYREV", 13) == 0)
+       {
+           tANI_U8 pBuf[WNI_CFG_COUNTRY_CODE_LEN];
+           tANI_U8 uBufLen = WNI_CFG_COUNTRY_CODE_LEN;
+           tANI_U8 revision = 0;
+           /* The format of the data copied to the user is GETCOUNTRYREV KR 25,
+              hence size of the array is country code + whitespace + 2 byte revision + ASCII NUL */
+           char extra[32] = {0};
+           tANI_U8 len = 0;
+
+           if (eHAL_STATUS_SUCCESS != sme_GetCountryCode( (tHalHandle)(pHddCtx->hHal), pBuf, &uBufLen ))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "%s: failed to get country code", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+           pBuf[uBufLen] = '\0';
+           sme_GetCountryRevision((tHalHandle)(pHddCtx->hHal), &revision);
+
+           if (0 == strncmp(pBuf, "KR", 2))
+               len = snprintf(extra, sizeof(extra), "%s %s %u", command, pBuf, revision);
+           else
+               len = snprintf(extra, sizeof(extra), "%s %s", command, pBuf);
+
+           if (copy_to_user(priv_data.buf, &extra, len + 1))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: failed to copy data to user buffer", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+       }
+       else if (strncmp(command, "SETROAMSCANCHANNELS", 19) == 0)
+       {
+           tANI_U8 *value = command;
+           tANI_U8 ChannelList[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
+           tANI_U8 numChannels = 0;
+           eHalStatus status = eHAL_STATUS_SUCCESS;
+
+           status = hdd_parse_channellist(value, ChannelList, &numChannels);
+           if (eHAL_STATUS_SUCCESS != status)
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Failed to parse channel list information", __func__);
+               ret = -EINVAL;
+               goto exit;
+           }
+
+           if (numChannels > WNI_CFG_VALID_CHANNEL_LIST_LEN)
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: number of channels (%d) supported exceeded max (%d)", __func__,
+                   numChannels, WNI_CFG_VALID_CHANNEL_LIST_LEN);
+               ret = -EINVAL;
+               goto exit;
+           }
+           status = sme_ChangeRoamScanChannelList((tHalHandle)(pHddCtx->hHal), ChannelList,
+                                                  numChannels);
+           if (eHAL_STATUS_SUCCESS != status)
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Failed to update channel list information", __func__);
+               ret = -EINVAL;
+               goto exit;
+           }
+       }
+       else if (strncmp(command, "GETROAMSCANCHANNELS", 19) == 0)
+       {
+           tANI_U8 ChannelList[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
+           tANI_U8 numChannels = 0;
+           tANI_U8 len = 0, j = 0;
+           char extra[128] = {0};
+
+           if (eHAL_STATUS_SUCCESS != sme_getRoamScanChannelList( (tHalHandle)(pHddCtx->hHal),
+                                              ChannelList, &numChannels ))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "%s: failed to get roam scan channel list", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+           /* output channel list is of the format
+           [Number of roam scan channels][Channel1][Channel2]... */
+           /* copy the number of channels in the 0th index */
+           len = snprintf(extra, sizeof(extra), "%s %d", command, numChannels);
+           for (j = 0; (j < numChannels); j++)
+           {
+               len += snprintf(extra + len, sizeof(extra) - len, " %d", ChannelList[j]);
+           }
+
+           if (copy_to_user(priv_data.buf, &extra, len + 1))
+           {
+               VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: failed to copy data to user buffer", __func__);
+               ret = -EFAULT;
+               goto exit;
+           }
+       }
+#endif
        else {
            hddLog( VOS_TRACE_LEVEL_WARN, "%s: Unsupported GUI command %s",
                    __func__, command);
@@ -532,6 +887,201 @@ exit:
    return ret;
 }
 
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+void hdd_getBand_helper(hdd_context_t *pHddCtx, int *pBand)
+{
+    eCsrBand band = -1;
+    sme_GetFreqBand((tHalHandle)(pHddCtx->hHal), &band);
+    switch (band)
+    {
+        case eCSR_BAND_ALL:
+            *pBand = WLAN_HDD_UI_BAND_AUTO;
+            break;
+
+        case eCSR_BAND_24:
+            *pBand = WLAN_HDD_UI_BAND_2_4_GHZ;
+            break;
+
+        case eCSR_BAND_5G:
+            *pBand = WLAN_HDD_UI_BAND_5_GHZ;
+            break;
+
+        default:
+            hddLog( VOS_TRACE_LEVEL_WARN, "%s: Invalid Band %d", __func__, band);
+            *pBand = -1;
+            break;
+    }
+}
+
+/**---------------------------------------------------------------------------
+
+  \brief hdd_parse_countryrev() - HDD Parse country code revision
+
+  This function parses the country code revision passed in the format
+  SETCOUNTRYREV<space><Country code><space>revision
+
+  \param  - pValue Pointer to input country code revision
+  \param  - pCountryCode Pointer to local output array to record country code
+  \param  - pRevision Pointer to store revision integer number
+
+  \return - 0 for success non-zero for failure
+
+  --------------------------------------------------------------------------*/
+VOS_STATUS hdd_parse_countryrev(tANI_U8 *pValue, tANI_U8 *pCountryCode, tANI_U8 *pRevision)
+{
+    tANI_U8 *inPtr = pValue;
+    int tempInt;
+
+    inPtr = strnchr(pValue, strlen(pValue), SPACE_ASCII_VALUE);
+    /*no argument after the command*/
+    if (NULL == inPtr)
+    {
+        return -EINVAL;
+    }
+
+    /*no space after the command*/
+    else if (SPACE_ASCII_VALUE != *inPtr)
+    {
+        return -EINVAL;
+    }
+
+    /*removing empty spaces*/
+    while ((SPACE_ASCII_VALUE  == *inPtr)&& ('\0' !=  *inPtr) ) inPtr++;
+
+    /*no argument followed by spaces*/
+    if ('\0' == *inPtr)
+    {
+        return -EINVAL;
+    }
+
+    /*getting the first argument ie the country code */
+    sscanf(inPtr, "%s ", pCountryCode);
+
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+               "Country code is : %s", pCountryCode);
+
+    /*inPtr pointing to the beginning of first space after country code */
+    inPtr = strpbrk( inPtr, " " );
+    /*no revision number after the country code argument */
+    if (NULL == inPtr)
+    {
+        return -EINVAL;
+    }
+
+    inPtr++;
+
+    /*removing empty space*/
+    while ((SPACE_ASCII_VALUE == *inPtr) && ('\0' != *inPtr) ) inPtr++;
+
+    /*no channel list after the number of channels argument and spaces*/
+    if (0 == strncmp(pCountryCode, "KR", 2))
+    {
+        if ('\0' == *inPtr)
+        {
+            return -EINVAL;
+        }
+
+        sscanf(inPtr, "%d", &tempInt);
+        *pRevision = tempInt;
+    }
+    else
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+               "Revision input is required only for Country KR");
+        return -EINVAL;
+    }
+    return VOS_STATUS_SUCCESS;
+}
+
+/**---------------------------------------------------------------------------
+
+  \brief hdd_parse_channellist() - HDD Parse channel list
+
+  This function parses the channel list passed in the format
+  SETROAMSCANCHANNELS<space><Number of channels><space>Channel 1<space>Channel 2<space>Channel N
+
+  \param  - pValue Pointer to input channel list
+  \param  - ChannelList Pointer to local output array to record channel list
+  \param  - pNumChannels Pointer to number of roam scan channels
+
+  \return - 0 for success non-zero for failure
+
+  --------------------------------------------------------------------------*/
+VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8 *pNumChannels)
+{
+    tANI_U8 *inPtr = pValue;
+    int tempInt;
+    int j = 0;
+    int v = 0;
+    char buf[32];
+
+    inPtr = strnchr(pValue, strlen(pValue), SPACE_ASCII_VALUE);
+    /*no argument after the command*/
+    if (NULL == inPtr)
+    {
+        return -EINVAL;
+    }
+
+    /*no space after the command*/
+    else if (SPACE_ASCII_VALUE != *inPtr)
+    {
+        return -EINVAL;
+    }
+
+    /*removing empty spaces*/
+    while ((SPACE_ASCII_VALUE  == *inPtr)&& ('\0' !=  *inPtr) ) inPtr++;
+
+    /*no argument followed by spaces*/
+    if ('\0' == *inPtr)
+    {
+        return -EINVAL;
+    }
+
+    /*getting the first argument ie the number of channels*/
+    sscanf(inPtr, "%s ", buf);
+    v = kstrtos32(buf, 10, &tempInt);
+    if ( v < 0) return -EINVAL;
+
+    *pNumChannels = tempInt;
+
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+               "Number of channels are: %d", *pNumChannels);
+
+    for (j = 0; j < (*pNumChannels); j++)
+    {
+        /*inPtr pointing to the beginning of first space after number of channels*/
+        inPtr = strpbrk( inPtr, " " );
+        /*no channel list after the number of channels argument*/
+        if (NULL == inPtr)
+        {
+            return -EINVAL;
+        }
+
+        /*removing empty space*/
+        while ((SPACE_ASCII_VALUE == *inPtr) && ('\0' != *inPtr) ) inPtr++;
+
+        /*no channel list after the number of channels argument and spaces*/
+        if ( '\0' == *inPtr )
+        {
+            return -EINVAL;
+        }
+
+        sscanf(inPtr, "%s ", buf);
+        v = kstrtos32(buf, 10, &tempInt);
+        if ( v < 0) return -EINVAL;
+        pChannelList[j] = tempInt;
+
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+                   "Channel %d added to preferred channel list",
+                   pChannelList[j] );
+    }
+
+    /* if the actual number of channels passed are more than
+       pNumChannels then ignore the rest; take only pNumChannels */
+    return VOS_STATUS_SUCCESS;
+}
+
+#endif
 /**---------------------------------------------------------------------------
 
   \brief hdd_open() - HDD Open function

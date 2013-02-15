@@ -2257,6 +2257,20 @@ eHalStatus sme_UpdateRoamPrefer5GHz(tHalHandle hHal, v_BOOL_t nRoamPrefer5GHz);
 
 eHalStatus sme_UpdateImmediateRoamRssiDiff(tHalHandle hHal, v_U8_t nImmediateRoamRssiDiff);
 
+/* ---------------------------------------------------------------------------
+    \fn sme_UpdateRoamRssiDiff
+    \brief  Update RoamRssiDiff
+            This function is called through dynamic setConfig callback function
+            to configure RoamRssiDiff
+            Usage: adb shell iwpriv wlan0 setConfig RoamRssiDiff=[0 .. 125]
+    \param  hHal - HAL handle for device
+    \param  RoamRssiDiff - minimum rssi difference between potential
+            candidate and current AP.
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+
+eHalStatus sme_UpdateRoamRssiDiff(tHalHandle hHal, v_U8_t RoamRssiDiff);
+
 /*--------------------------------------------------------------------------
   \brief sme_UpdateFastTransitionEnabled() - enable/disable Fast Transition support at runtime
   It is used at in the REG_DYNAMIC_VARIABLE macro definition of
@@ -2275,7 +2289,7 @@ eHalStatus sme_UpdateFastTransitionEnabled(tHalHandle hHal,
 #ifdef FEATURE_WLAN_LFR
 /*--------------------------------------------------------------------------
   \brief sme_UpdateIsFastRoamIniFeatureEnabled() - enable/disable LFR support at runtime
-  It is used at in the REG_DYNAMIC_VARIABLE macro definition of 
+  It is used at in the REG_DYNAMIC_VARIABLE macro definition of
   isFastRoamIniFeatureEnabled.
   This is a synchronuous call
   \param hHal - The handle returned by macOpen.
@@ -2284,7 +2298,7 @@ eHalStatus sme_UpdateFastTransitionEnabled(tHalHandle hHal,
   \sa
   --------------------------------------------------------------------------*/
 
-eHalStatus sme_UpdateIsFastRoamIniFeatureEnabled(tHalHandle hHal, 
+eHalStatus sme_UpdateIsFastRoamIniFeatureEnabled(tHalHandle hHal,
         v_BOOL_t isFastRoamIniFeatureEnabled);
 #endif /* FEATURE_WLAN_LFR */
 
@@ -2318,6 +2332,152 @@ eHalStatus sme_UpdateIsCcxFeatureEnabled(tHalHandle hHal,
 
 eHalStatus sme_UpdateConfigFwRssiMonitoring(tHalHandle hHal,
         v_BOOL_t fEnableFwRssiMonitoring);
+
+/*--------------------------------------------------------------------------
+  \brief sme_setNeighborLookupRssiThreshold() - update neighbor lookup rssi threshold
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_setNeighborLookupRssiThreshold(tHalHandle hHal,
+        v_U8_t neighborLookupRssiThreshold);
+
+/*--------------------------------------------------------------------------
+  \brief sme_setNeighborReassocRssiThreshold() - update neighbor reassoc rssi threshold
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_setNeighborReassocRssiThreshold(tHalHandle hHal,
+        v_U8_t neighborReassocRssiThreshold);
+
+/*--------------------------------------------------------------------------
+  \brief sme_getNeighborLookupRssiThreshold() - get neighbor lookup rssi threshold
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+v_U8_t sme_getNeighborLookupRssiThreshold(tHalHandle hHal);
+
+/*--------------------------------------------------------------------------
+  \brief sme_setNeighborScanRefreshPeriod() - set neighbor scan results refresh period
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_setNeighborScanRefreshPeriod(tHalHandle hHal,
+        v_U16_t neighborScanResultsRefreshPeriod);
+
+/*--------------------------------------------------------------------------
+  \brief sme_getNeighborScanRefreshPeriod() - get neighbor scan results refresh period
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+v_U16_t sme_getNeighborScanRefreshPeriod(tHalHandle hHal);
+
+/*--------------------------------------------------------------------------
+  \brief sme_getEmptyScanRefreshPeriod() - get empty scan refresh period
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+v_U16_t sme_getEmptyScanRefreshPeriod(tHalHandle hHal);
+
+
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+/*--------------------------------------------------------------------------
+  \brief sme_getRoamRssiDiff() - get Roam rssi diff
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+v_U8_t sme_getRoamRssiDiff(tHalHandle hHal);
+
+/*--------------------------------------------------------------------------
+  \brief sme_ChangeRoamScanChannelList() - Change roam scan channel list
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_ChangeRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
+                                         tANI_U8 numChannels);
+
+/*--------------------------------------------------------------------------
+  \brief sme_ChangeCountryValidChannelListByRevision() - Change Korea valid channel list
+  based on country revision number
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_ChangeCountryValidChannelListByRevision(tHalHandle hHal,
+                                         tANI_U8 Revision);
+
+/*--------------------------------------------------------------------------
+  \brief csrUpdateBgScanConfigIniChannelList() - Update bgscan roam cache
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_UpdateBgScanConfigIniChannelList(tHalHandle hHal,
+                                               eCsrBand eBand);
+
+
+/*--------------------------------------------------------------------------
+  \brief sme_getRoamScanChannelList() - get roam scan channel list
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_getRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
+                                         tANI_U8 *pNumChannels);
+
+/*--------------------------------------------------------------------------
+  \brief sme_GetCountryRevision() - get Country revision index
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_GetCountryRevision(tHalHandle hHal, tANI_U8 *pRevision);
+
+#endif
+
+/* ---------------------------------------------------------------------------
+    \fn sme_UpdateEmptyScanRefreshPeriod
+    \brief  Update nnEmptyScanRefreshPeriod
+            This function is called through dynamic setConfig callback function
+            to configure nnEmptyScanRefreshPeriod
+            Usage: adb shell iwpriv wlan0 setConfig nEmptyScanRefreshPeriod=[0 .. 60]
+    \param  hHal - HAL handle for device
+    \param  nEmptyScanRefreshPeriod - scan period following empty scan results.
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+
+eHalStatus sme_UpdateEmptyScanRefreshPeriod(tHalHandle hHal, v_U16_t nEmptyScanRefreshPeriod);
 
 /* ---------------------------------------------------------------------------
     \fn sme_IsFeatureSupportedByFW

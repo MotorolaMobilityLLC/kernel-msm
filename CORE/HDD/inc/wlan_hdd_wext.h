@@ -75,6 +75,12 @@
 
 #define MHZ 6
 
+#define WE_MAX_STR_LEN                                 1024
+#define WLAN_HDD_UI_BAND_AUTO                          0
+#define WLAN_HDD_UI_BAND_5_GHZ                         1
+#define WLAN_HDD_UI_BAND_2_4_GHZ                       2
+#define WLAN_HDD_UI_SET_BAND_VALUE_OFFSET              8
+
 typedef enum
 {
    HDD_WLAN_WMM_DIRECTION_UPSTREAM      = 0,
