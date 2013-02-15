@@ -217,6 +217,12 @@
 #define SOC_VALUE_ENUM_SINGLE_DECL(name, xreg, xshift, xmask, xtexts, xvalues) \
 	SOC_VALUE_ENUM_DOUBLE_DECL(name, xreg, xshift, xshift, xmask, xtexts, xvalues)
 
+
+/* DAI Link Host Mode Support */
+#define SND_SOC_DAI_LINK_NO_HOST		0x1
+#define SND_SOC_DAI_LINK_OPT_HOST		0x2
+
+
 /*
  * Component probe and remove ordering levels for components with runtime
  * dependencies.
@@ -263,6 +269,7 @@ struct snd_soc_jack;
 struct snd_soc_jack_zone;
 struct snd_soc_jack_pin;
 struct snd_soc_cache_ops;
+struct snd_soc_dpcm_link;
 #include <sound/soc-dapm.h>
 
 #ifdef CONFIG_GPIOLIB
@@ -286,6 +293,35 @@ enum snd_soc_compress_type {
 enum snd_soc_pcm_subclass {
 	SND_SOC_PCM_CLASS_PCM	= 0,
 	SND_SOC_PCM_CLASS_BE	= 1,
+};
+
+/*
+ * Dynamic PCM DAI link states.
+ */
+enum snd_soc_dpcm_state {
+	SND_SOC_DPCM_STATE_NEW	= 0,
+	SND_SOC_DPCM_STATE_OPEN,
+	SND_SOC_DPCM_STATE_HW_PARAMS,
+	SND_SOC_DPCM_STATE_PREPARE,
+	SND_SOC_DPCM_STATE_START,
+	SND_SOC_DPCM_STATE_STOP,
+	SND_SOC_DPCM_STATE_PAUSED,
+	SND_SOC_DPCM_STATE_SUSPEND,
+	SND_SOC_DPCM_STATE_HW_FREE,
+	SND_SOC_DPCM_STATE_CLOSE,
+};
+
+/*
+ * Dynamic PCM trigger ordering. Triggering flexibility is required as some
+ * DSPs require triggering before/after their clients/hosts.
+ *
+ * i.e. some clients may want to manually order this call in their PCM
+ * trigger() whilst others will just use the regular core ordering.
+ */
+enum snd_soc_dpcm_trigger {
+	SND_SOC_DPCM_TRIGGER_PRE		= 0,
+	SND_SOC_DPCM_TRIGGER_POST,
+	SND_SOC_DPCM_TRIGGER_BESPOKE,
 };
 
 int snd_soc_codec_set_sysclk(struct snd_soc_codec *codec, int clk_id,
@@ -332,6 +368,11 @@ int snd_soc_platform_read(struct snd_soc_platform *platform,
 int snd_soc_platform_write(struct snd_soc_platform *platform,
 					unsigned int reg, unsigned int val);
 int soc_new_pcm(struct snd_soc_pcm_runtime *rtd, int num);
+
+struct snd_pcm_substream *snd_soc_get_dai_substream(struct snd_soc_card *card,
+		const char *dai_link, int stream);
+struct snd_soc_pcm_runtime *snd_soc_get_pcm_runtime(struct snd_soc_card *card,
+		const char *dai_link);
 
 /* Utility functions to get clock rates from various things */
 int snd_soc_calc_frame_size(int sample_size, int channels, int tdm_slots);
@@ -664,8 +705,6 @@ struct snd_soc_codec_driver {
 	/* codec stream completion event */
 	int (*stream_event)(struct snd_soc_dapm_context *dapm, int event);
 
-	bool ignore_pmdown_time;  /* Doesn't benefit from pmdown delay */
-
 	/* probe ordering - for components with runtime dependencies */
 	int probe_order;
 	int remove_order;
@@ -711,6 +750,8 @@ struct snd_soc_platform_driver {
 	/* platform IO - used for platform DAPM */
 	unsigned int (*read)(struct snd_soc_platform *, unsigned int);
 	int (*write)(struct snd_soc_platform *, unsigned int, unsigned int);
+
+	int (*bespoke_trigger)(struct snd_pcm_substream *, int);
 };
 
 struct snd_soc_platform {
@@ -718,7 +759,6 @@ struct snd_soc_platform {
 	int id;
 	struct device *dev;
 	struct snd_soc_platform_driver *driver;
-	struct mutex mutex;
 
 	unsigned int suspended:1; /* platform is suspended */
 	unsigned int probed:1;
@@ -749,17 +789,31 @@ struct snd_soc_dai_link {
 
 	unsigned int dai_fmt;           /* format to set on init */
 
+	enum snd_soc_dpcm_trigger trigger[2]; /* trigger type for DPCM */
+
 	/* Keep DAI active over suspend */
 	unsigned int ignore_suspend:1;
 
 	/* Symmetry requirements */
 	unsigned int symmetric_rates:1;
+	/* No PCM created for this DAI link */
+	unsigned int no_pcm:1;
+	/* This DAI link can change CODEC and platform at runtime*/
+	unsigned int dynamic:1;
+	/* This DAI has a Backend ID */
+	unsigned int be_id;
+	/* This DAI can support no host IO (no pcm data is copied to from host) */
+	unsigned int no_host_mode:2;
 
 	/* pmdown_time is ignored at stop */
 	unsigned int ignore_pmdown_time:1;
 
 	/* codec/machine specific init - e.g. add machine controls */
 	int (*init)(struct snd_soc_pcm_runtime *rtd);
+
+	/* hw_params re-writing for BE and FE sync */
+	int (*be_hw_params_fixup)(struct snd_soc_pcm_runtime *rtd,
+			struct snd_pcm_hw_params *params);
 
 	/* machine stream operations */
 	struct snd_soc_ops *ops;
@@ -800,6 +854,12 @@ struct snd_soc_card {
 
 	struct list_head list;
 	struct mutex mutex;
+	struct mutex dpcm_mutex;
+
+	struct mutex dapm_mutex;
+	struct mutex dapm_power_mutex;
+	struct mutex dsp_mutex;
+	spinlock_t dsp_spinlock;
 
 	bool instantiated;
 
@@ -880,6 +940,17 @@ struct snd_soc_card {
 	void *drvdata;
 };
 
+/* DSP runtime data */
+struct snd_soc_dpcm_runtime {
+	struct list_head be_clients;
+	struct list_head fe_clients;
+	int users;
+	struct snd_pcm_runtime *runtime;
+	struct snd_pcm_hw_params hw_params;
+	int runtime_update;
+	enum snd_soc_dpcm_state state;
+};
+
 /* SoC machine DAI configuration, glues a codec and cpu DAI together */
 struct snd_soc_pcm_runtime {
 	struct device *dev;
@@ -892,6 +963,9 @@ struct snd_soc_pcm_runtime {
 	unsigned int complete:1;
 	unsigned int dev_registered:1;
 
+	/* Dynamic PCM BE runtime data */
+	struct snd_soc_dpcm_runtime dpcm[2];
+
 	long pmdown_time;
 
 	/* runtime devices */
@@ -902,6 +976,11 @@ struct snd_soc_pcm_runtime {
 	struct snd_soc_dai *cpu_dai;
 
 	struct delayed_work delayed_work;
+
+#ifdef CONFIG_DEBUG_FS
+	struct dentry *debugfs_dpcm_root;
+	struct dentry *debugfs_dpcm_state;
+#endif
 };
 
 /* mixer control */

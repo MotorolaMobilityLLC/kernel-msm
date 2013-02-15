@@ -264,7 +264,7 @@ struct snd_pcm_hw_constraint_ratdens {
 
 struct snd_pcm_hw_constraint_list {
 	unsigned int count;
-	const unsigned int *list;
+	unsigned int *list;
 	unsigned int mask;
 };
 
@@ -454,7 +454,6 @@ struct snd_pcm {
 	void *private_data;
 	void (*private_free) (struct snd_pcm *pcm);
 	struct device *dev; /* actual hw device this belongs to */
-	bool internal; /* pcm is for internal use only */
 #if defined(CONFIG_SND_PCM_OSS) || defined(CONFIG_SND_PCM_OSS_MODULE)
 	struct snd_pcm_oss oss;
 #endif
