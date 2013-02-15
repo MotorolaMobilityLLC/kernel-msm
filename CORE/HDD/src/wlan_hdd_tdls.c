@@ -641,6 +641,21 @@ int wlan_hdd_tdls_get_responder(u8 *mac)
     return (curr_peer->is_responder);
 }
 
+int wlan_hdd_tdls_set_signature(u8 *mac, tANI_U8 uSignature)
+{
+    hddTdlsPeer_t *curr_peer;
+
+    if (NULL == pHddTdlsCtx) return -1;
+
+    curr_peer = wlan_hdd_tdls_get_peer(mac);
+    if (curr_peer == NULL)
+        return -1;
+
+    curr_peer->signature = uSignature;
+
+    return 0;
+}
+
 
 void wlan_hdd_tdls_extract_da(struct sk_buff *skb, u8 *mac)
 {

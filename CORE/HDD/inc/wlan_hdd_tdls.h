@@ -90,6 +90,7 @@ typedef struct {
     tANI_S8     rssi;
     tANI_S8     tdls_support;
     tANI_S8     link_status;
+    tANI_U8     signature;
     tANI_U8     is_responder;
     tANI_U8     discovery_processed;
     tANI_U16    discovery_attempt;
@@ -139,6 +140,8 @@ int wlan_hdd_tdls_set_rssi(u8 *mac, tANI_S8 rxRssi);
 int wlan_hdd_tdls_set_responder(u8 *mac, tANI_U8 responder);
 
 int wlan_hdd_tdls_get_responder(u8 *mac);
+
+int wlan_hdd_tdls_set_signature(u8 *mac, tANI_U8 uSignature);
 
 int wlan_hdd_tdls_set_params(tdls_config_params_t *config);
 
