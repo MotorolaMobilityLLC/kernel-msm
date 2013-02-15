@@ -147,10 +147,10 @@ static void bq5101xb_worker(struct work_struct *work)
 	}
 
 	if (chip->batt_psy) {
-		if (pdata->chrg_b_pin > 0)
-			powered = !gpio_get_value(pdata->chrg_b_pin);
-		else if (pdata->check_powered)
+		if (pdata->check_powered)
 			powered = pdata->check_powered();
+		else if (pdata->chrg_b_pin > 0)
+			powered = !gpio_get_value(pdata->chrg_b_pin);
 
 		if (pdata->check_wired)
 			wired = pdata->check_wired();
