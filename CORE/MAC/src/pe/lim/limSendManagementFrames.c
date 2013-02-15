@@ -396,6 +396,11 @@ limSendProbeReqMgmtFrame(tpAniSirGlobal pMac,
 #ifdef WLAN_FEATURE_P2P
       || (( pMac->lim.gpLimMlmScanReq != NULL) &&
           pMac->lim.gpLimMlmScanReq->p2pSearch )
+      /* For unicast probe req mgmt from Join function
+         we don't set above variables. So we need to add
+         one more check whether it is pePersona is P2P_CLIENT or not */
+      || ( ( psessionEntry != NULL ) &&
+           ( VOS_P2P_CLIENT_MODE == psessionEntry->pePersona ) )
 #endif
       ) 
     {
