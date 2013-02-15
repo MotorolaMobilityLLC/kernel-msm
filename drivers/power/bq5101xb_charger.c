@@ -347,6 +347,14 @@ static int __devinit bq5101xb_charger_probe(struct platform_device *pdev)
 				ret);
 			goto fail_free_dev;
 		}
+		ret = gpio_export(pdata->en1_pin, false);
+		if (ret)
+			dev_err(&pdev->dev, "GPIO export failed: %d\n", ret);
+
+		ret = gpio_export_link(&pdev->dev, "en1_pin", pdata->en1_pin);
+		if (ret)
+			dev_err(&pdev->dev, "GPIO export link failed: %d\n",
+				ret);
 	}
 
 	if (pdata->en2_pin >= 0) {
@@ -359,6 +367,14 @@ static int __devinit bq5101xb_charger_probe(struct platform_device *pdev)
 				ret);
 			goto fail_free_en1;
 		}
+		ret = gpio_export(pdata->en2_pin, false);
+		if (ret)
+			dev_err(&pdev->dev, "GPIO export failed: %d\n", ret);
+
+		ret = gpio_export_link(&pdev->dev, "en2_pin", pdata->en2_pin);
+		if (ret)
+			dev_err(&pdev->dev, "GPIO export link failed: %d\n",
+				ret);
 	}
 
 	if (pdata->ts_ctrl_term_b_pin >= 0) {
@@ -371,6 +387,15 @@ static int __devinit bq5101xb_charger_probe(struct platform_device *pdev)
 				ret);
 			goto fail_free_en2;
 		}
+		ret = gpio_export(pdata->ts_ctrl_term_b_pin, false);
+		if (ret)
+			dev_err(&pdev->dev, "GPIO export failed: %d\n", ret);
+
+		ret = gpio_export_link(&pdev->dev, "ts_ctrl_term_b_pin",
+				       pdata->ts_ctrl_term_b_pin);
+		if (ret)
+			dev_err(&pdev->dev, "GPIO export link failed: %d\n",
+				ret);
 	}
 
 	if (pdata->ts_ctrl_fault_pin >= 0) {
@@ -383,6 +408,15 @@ static int __devinit bq5101xb_charger_probe(struct platform_device *pdev)
 				ret);
 			goto fail_free_term;
 		}
+		ret = gpio_export(pdata->ts_ctrl_fault_pin, false);
+		if (ret)
+			dev_err(&pdev->dev, "GPIO export failed: %d\n", ret);
+
+		ret = gpio_export_link(&pdev->dev, "ts_ctrl_fault_pin",
+				       pdata->ts_ctrl_fault_pin);
+		if (ret)
+			dev_err(&pdev->dev, "GPIO export link failed: %d\n",
+				ret);
 	}
 
 	if (pdata->chrg_b_pin >= 0) {
@@ -395,6 +429,15 @@ static int __devinit bq5101xb_charger_probe(struct platform_device *pdev)
 				ret);
 			goto fail_free_fault;
 		}
+		ret = gpio_export(pdata->chrg_b_pin, false);
+		if (ret)
+			dev_err(&pdev->dev, "GPIO export failed: %d\n", ret);
+
+		ret = gpio_export_link(&pdev->dev, "chrg_b_pin",
+				       pdata->chrg_b_pin);
+		if (ret)
+			dev_err(&pdev->dev, "GPIO export link failed: %d\n",
+				ret);
 	}
 
 	platform_set_drvdata(pdev, chip);
