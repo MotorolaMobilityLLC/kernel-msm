@@ -3868,7 +3868,7 @@ int hdd_wlan_startup(struct device *dev )
 #ifdef ANI_BUS_TYPE_SDIO
      goto err_balstop;
 #else
-     goto err_clkvote;
+     goto err_close_adapter;
 #endif
    }
 
@@ -4068,8 +4068,8 @@ err_balstop:
 err_salstop:
    WLANSAL_Stop(pHddCtx->pvosContext);
 
-#endif
 err_clkvote:
+#endif
     vos_chipVoteOffXOBuffer(NULL, NULL, NULL);
 
 #ifdef ANI_BUS_TYPE_SDIO
