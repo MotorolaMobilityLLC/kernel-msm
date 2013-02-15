@@ -612,7 +612,7 @@ tSirRetStatus limSendTdlsDisReqFrame(tpAniSirGlobal pMac, tSirMacAddr peer_mac,
                             HAL_TXRX_FRM_802_11_DATA,
                             ANI_TXDIR_TODS,
                             7,
-                            limTxComplete, pFrame, 0 );
+                            limTxComplete, pFrame, HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME);
     if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
     {
         limLog( pMac, LOGE, FL("could not send TDLS Dis Request frame!\n" ));
@@ -1276,7 +1276,7 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
                             HAL_TXRX_FRM_802_11_DATA,
                             ANI_TXDIR_TODS,
                             7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
-                            limTxComplete, pFrame, 0 );
+                            limTxComplete, pFrame, HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME );
     if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
     {
         limLog( pMac, LOGE, FL("could not send TDLS Dis Request frame!\n" ));
@@ -1469,7 +1469,7 @@ tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
                             7,
                             limTxComplete, pFrame, 
                             limTdlsTeardownTxComplete,
-                            0 );
+                            HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME );
     if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
     {
         limLog( pMac, LOGE, FL("could not send TDLS Dis Request frame!\n" ));
@@ -1669,7 +1669,7 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
                             ANI_TXDIR_TODS,
                             //ANI_TXDIR_IBSS,
                             7,
-                            limTxComplete, pFrame, 0 );
+                            limTxComplete, pFrame, HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME );
     if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
     {
         limLog( pMac, LOGE, FL("could not send TDLS Dis Request frame!\n" ));
@@ -1891,7 +1891,7 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
                             7,
                             limTxComplete, pFrame, 
                             limTdlsSetupCnfTxComplete,
-                            0 );
+                            HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME );
 
 
     if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
