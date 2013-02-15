@@ -1403,7 +1403,7 @@ void hdd_cleanup_actionframe( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
                      msecs_to_jiffies(ACTION_FRAME_TX_TIMEOUT));
       if(!rc)
       {
-         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
+         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
               ("ERROR: HDD Wait for Action Confirmation Failed!!\n"));
       }
    }
