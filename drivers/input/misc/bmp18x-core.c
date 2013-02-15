@@ -45,6 +45,7 @@
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
+#include <linux/module.h>
 #include <linux/device.h>
 #include <linux/init.h>
 #include <linux/slab.h>
@@ -71,7 +72,9 @@
 
 #define ABS_MIN_PRESSURE	30000
 #define ABS_MAX_PRESSURE	120000
-#define BMP_DELAY_DEFAULT   200
+#define BMP_DELAY_DEFAULT	200
+#define BMP_DELAY_MIN		20
+#define BMP_DELAY_MAX		2000
 
 struct bmp18x_calibration_data {
 	s16 AC1, AC2, AC3;
@@ -400,13 +403,17 @@ static ssize_t set_delay(struct device *dev,
 	unsigned long delay;
 	int success = strict_strtoul(buf, 10, &delay);
 	if (success == 0) {
-		mutex_lock(&data->lock);
-		data->delay = delay;
-		mutex_unlock(&data->lock);
+		if ((delay >= BMP_DELAY_MIN) &&
+			(delay <= BMP_DELAY_MAX)) {
+			mutex_lock(&data->lock);
+			data->delay = delay;
+			mutex_unlock(&data->lock);
+		}
+		return count;
 	}
 	return success;
 }
-static DEVICE_ATTR(delay, S_IWUSR | S_IRUGO,
+static DEVICE_ATTR(pollrate_ms, S_IWUSR | S_IRUGO,
 				show_delay, set_delay);
 
 static ssize_t show_enable(struct device *dev,
@@ -436,7 +443,7 @@ static ssize_t set_enable(struct device *dev,
 			bmp18x_disable(dev);
 		}
 		mutex_unlock(&data->lock);
-
+		return count;
 	}
 	return success;
 }
@@ -480,7 +487,7 @@ static struct attribute *bmp18x_attributes[] = {
 	&dev_attr_pressure0_input.attr,
 	&dev_attr_oversampling.attr,
 	&dev_attr_sw_oversampling.attr,
-	&dev_attr_delay.attr,
+	&dev_attr_pollrate_ms.attr,
 	&dev_attr_enable.attr,
 	NULL
 };
@@ -509,7 +516,7 @@ static void bmp18x_work_func(struct work_struct *work)
 	schedule_delayed_work(&client_data->work, delay-(jiffies-j1));
 }
 
-static int bmp18x_input_init(struct bmp18x_data *data)
+static int bmp18x_input_init(struct bmp18x_data *data, struct device *parent)
 {
 	struct input_dev *dev;
 	int err;
@@ -519,6 +526,7 @@ static int bmp18x_input_init(struct bmp18x_data *data)
 		return -ENOMEM;
 	dev->name = BMP18X_NAME;
 	dev->id.bustype = BUS_I2C;
+	dev->dev.parent = parent;
 
 	input_set_capability(dev, EV_ABS, ABS_MISC);
 	input_set_abs_params(dev, ABS_PRESSURE,
@@ -600,12 +608,13 @@ __devinit int bmp18x_probe(struct device *dev, struct bmp18x_data_bus *data_bus)
 		goto exit_free;
 
 	/* Initialize the BMP18X input device */
-	err = bmp18x_input_init(data);
+	err = bmp18x_input_init(data, dev);
 	if (err != 0)
 		goto exit_free;
 
+
 	/* Register sysfs hooks */
-	err = sysfs_create_group(&data->input->dev.kobj, &bmp18x_attr_group);
+	err = sysfs_create_group(&dev->kobj, &bmp18x_attr_group);
 	if (err)
 		goto error_sysfs;
 	/* workqueue init */
@@ -640,7 +649,7 @@ int bmp18x_remove(struct device *dev)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&data->early_suspend);
 #endif
-	sysfs_remove_group(&data->input->dev.kobj, &bmp18x_attr_group);
+	sysfs_remove_group(&dev->kobj, &bmp18x_attr_group);
 	kfree(data);
 
 	return 0;
