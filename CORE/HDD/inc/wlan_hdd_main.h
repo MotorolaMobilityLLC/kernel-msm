@@ -118,6 +118,9 @@
 #define WLAN_WAIT_TIME_SESSIONOPENCLOSE  15000
 #define WLAN_WAIT_TIME_ABORTSCAN  2000
 
+/** Maximum time(ms) to wait for tdls add sta to complete **/
+#define WAIT_TIME_TDLS_ADD_STA      1500
+
 /* Maximum time to get crda entry settings */
 #define CRDA_WAIT_TIME 300
 
@@ -701,6 +704,9 @@ struct hdd_adapter_s
    struct completion rem_on_chan_ready_event;
 #endif
 
+#ifdef FEATURE_WLAN_TDLS
+   struct completion tdls_add_station_comp;
+#endif
    /* Track whether the linkup handling is needed  */
    v_BOOL_t isLinkUpSvcNeeded;
 
