@@ -221,8 +221,8 @@ static int soc_pcm_open(struct snd_pcm_substream *substream)
 	if (cpu_dai->driver->ops->startup) {
 		ret = cpu_dai->driver->ops->startup(substream, cpu_dai);
 		if (ret < 0) {
-			dev_err(cpu_dai->dev, "can't open interface %s: %d\n",
-				cpu_dai->name, ret);
+			printk(KERN_ERR "asoc: can't open interface %s\n",
+				cpu_dai->name);
 			goto out;
 		}
 	}
@@ -230,8 +230,7 @@ static int soc_pcm_open(struct snd_pcm_substream *substream)
 	if (platform->driver->ops && platform->driver->ops->open) {
 		ret = platform->driver->ops->open(substream);
 		if (ret < 0) {
-			dev_err(platform->dev, "can't open platform %s: %d\n",
-				platform->name, ret);
+			printk(KERN_ERR "asoc: can't open platform %s\n", platform->name);
 			goto platform_err;
 		}
 	}
@@ -239,8 +238,8 @@ static int soc_pcm_open(struct snd_pcm_substream *substream)
 	if (codec_dai->driver->ops->startup) {
 		ret = codec_dai->driver->ops->startup(substream, codec_dai);
 		if (ret < 0) {
-			dev_err(codec_dai->dev, "can't open codec %s: %d\n",
-				codec_dai->name, ret);
+			printk(KERN_ERR "asoc: can't open codec %s\n",
+				codec_dai->name);
 			goto codec_dai_err;
 		}
 	}
@@ -248,8 +247,7 @@ static int soc_pcm_open(struct snd_pcm_substream *substream)
 	if (rtd->dai_link->ops && rtd->dai_link->ops->startup) {
 		ret = rtd->dai_link->ops->startup(substream);
 		if (ret < 0) {
-			pr_err("asoc: %s startup failed: %d\n",
-			       rtd->dai_link->name, ret);
+			printk(KERN_ERR "asoc: %s startup failed\n", rtd->dai_link->name);
 			goto machine_err;
 		}
 	}
@@ -519,7 +517,7 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 	if (rtd->dai_link->ops && rtd->dai_link->ops->prepare) {
 		ret = rtd->dai_link->ops->prepare(substream);
 		if (ret < 0) {
-			pr_err("asoc: machine prepare error: %d\n", ret);
+			printk(KERN_ERR "asoc: machine prepare error\n");
 			goto out;
 		}
 	}
@@ -527,8 +525,7 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 	if (platform->driver->ops && platform->driver->ops->prepare) {
 		ret = platform->driver->ops->prepare(substream);
 		if (ret < 0) {
-			dev_err(platform->dev, "platform prepare error: %d\n",
-				ret);
+			printk(KERN_ERR "asoc: platform prepare error\n");
 			goto out;
 		}
 	}
@@ -536,8 +533,7 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 	if (codec_dai->driver->ops->prepare) {
 		ret = codec_dai->driver->ops->prepare(substream, codec_dai);
 		if (ret < 0) {
-			dev_err(codec_dai->dev, "DAI prepare error: %d\n",
-				ret);
+			printk(KERN_ERR "asoc: codec DAI prepare error\n");
 			goto out;
 		}
 	}
@@ -545,8 +541,7 @@ static int soc_pcm_prepare(struct snd_pcm_substream *substream)
 	if (cpu_dai->driver->ops->prepare) {
 		ret = cpu_dai->driver->ops->prepare(substream, cpu_dai);
 		if (ret < 0) {
-			dev_err(cpu_dai->dev, "DAI prepare error: %d\n",
-				ret);
+			printk(KERN_ERR "asoc: cpu DAI prepare error\n");
 			goto out;
 		}
 	}
@@ -593,7 +588,7 @@ static int soc_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (rtd->dai_link->ops && rtd->dai_link->ops->hw_params) {
 		ret = rtd->dai_link->ops->hw_params(substream, params);
 		if (ret < 0) {
-			pr_err("asoc: machine hw_params failed: %d\n", ret);
+			printk(KERN_ERR "asoc: machine hw_params failed\n");
 			goto out;
 		}
 	}
@@ -601,8 +596,8 @@ static int soc_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (codec_dai->driver->ops->hw_params) {
 		ret = codec_dai->driver->ops->hw_params(substream, params, codec_dai);
 		if (ret < 0) {
-			dev_err(codec_dai->dev, "can't set %s hw params: %d\n",
-				codec_dai->name, ret);
+			printk(KERN_ERR "asoc: can't set codec %s hw params\n",
+				codec_dai->name);
 			goto codec_err;
 		}
 	}
@@ -610,8 +605,8 @@ static int soc_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (cpu_dai->driver->ops->hw_params) {
 		ret = cpu_dai->driver->ops->hw_params(substream, params, cpu_dai);
 		if (ret < 0) {
-			dev_err(cpu_dai->dev, "%s hw params failed: %d\n",
-				cpu_dai->name, ret);
+			printk(KERN_ERR "asoc: interface %s hw params failed\n",
+				cpu_dai->name);
 			goto interface_err;
 		}
 	}
@@ -619,8 +614,8 @@ static int soc_pcm_hw_params(struct snd_pcm_substream *substream,
 	if (platform->driver->ops && platform->driver->ops->hw_params) {
 		ret = platform->driver->ops->hw_params(substream, params);
 		if (ret < 0) {
-			dev_err(platform->dev, "%s hw params failed: %d\n",
-			       platform->name, ret);
+			printk(KERN_ERR "asoc: platform %s hw params failed\n",
+				platform->name);
 			goto platform_err;
 		}
 	}
@@ -2562,3 +2557,146 @@ out:
 		cpu_dai->name);
 	return ret;
 }
+
+#ifdef CONFIG_DEBUG_FS
+static char *dpcm_state_string(enum snd_soc_dpcm_state state)
+{
+	switch (state) {
+	case SND_SOC_DPCM_STATE_NEW:
+		return "new";
+	case SND_SOC_DPCM_STATE_OPEN:
+		return "open";
+	case SND_SOC_DPCM_STATE_HW_PARAMS:
+		return "hw_params";
+	case SND_SOC_DPCM_STATE_PREPARE:
+		return "prepare";
+	case SND_SOC_DPCM_STATE_START:
+		return "start";
+	case SND_SOC_DPCM_STATE_STOP:
+		return "stop";
+	case SND_SOC_DPCM_STATE_SUSPEND:
+		return "suspend";
+	case SND_SOC_DPCM_STATE_PAUSED:
+		return "paused";
+	case SND_SOC_DPCM_STATE_HW_FREE:
+		return "hw_free";
+	case SND_SOC_DPCM_STATE_CLOSE:
+		return "close";
+	}
+
+	return "unknown";
+}
+
+static int soc_dpcm_state_open_file(struct inode *inode, struct file *file)
+{
+	file->private_data = inode->i_private;
+	return 0;
+}
+
+static ssize_t soc_dpcm_show_state(struct snd_soc_pcm_runtime *fe,
+				int stream, char *buf, size_t size)
+{
+	struct snd_pcm_hw_params *params = &fe->dpcm[stream].hw_params;
+	struct snd_soc_dpcm_params *dpcm_params;
+	ssize_t offset = 0;
+
+	/* FE state */
+	offset += snprintf(buf + offset, size - offset,
+			"[%s - %s]\n", fe->dai_link->name,
+			stream ? "Capture" : "Playback");
+
+	offset += snprintf(buf + offset, size - offset, "State: %s\n",
+	                dpcm_state_string(fe->dpcm[stream].state));
+
+	if ((fe->dpcm[stream].state >= SND_SOC_DPCM_STATE_HW_PARAMS) &&
+	    (fe->dpcm[stream].state <= SND_SOC_DPCM_STATE_STOP))
+		offset += snprintf(buf + offset, size - offset,
+				"Hardware Params: "
+				"Format = %s, Channels = %d, Rate = %d\n",
+				snd_pcm_format_name(params_format(params)),
+				params_channels(params),
+				params_rate(params));
+
+	/* BEs state */
+	offset += snprintf(buf + offset, size - offset, "Backends:\n");
+
+	if (list_empty(&fe->dpcm[stream].be_clients)) {
+		offset += snprintf(buf + offset, size - offset,
+				" No active DSP links\n");
+		goto out;
+	}
+
+	list_for_each_entry(dpcm_params, &fe->dpcm[stream].be_clients, list_be) {
+		struct snd_soc_pcm_runtime *be = dpcm_params->be;
+
+		offset += snprintf(buf + offset, size - offset,
+				"- %s\n", be->dai_link->name);
+
+		offset += snprintf(buf + offset, size - offset,
+				"   State: %s\n",
+				dpcm_state_string(fe->dpcm[stream].state));
+
+		if ((be->dpcm[stream].state >= SND_SOC_DPCM_STATE_HW_PARAMS) &&
+		    (be->dpcm[stream].state <= SND_SOC_DPCM_STATE_STOP))
+			offset += snprintf(buf + offset, size - offset,
+				"   Hardware Params: "
+				"Format = %s, Channels = %d, Rate = %d\n",
+				snd_pcm_format_name(params_format(params)),
+				params_channels(params),
+				params_rate(params));
+	}
+
+out:
+	return offset;
+}
+
+static ssize_t soc_dpcm_state_read_file(struct file *file, char __user *user_buf,
+				size_t count, loff_t *ppos)
+{
+	struct snd_soc_pcm_runtime *fe = file->private_data;
+	ssize_t out_count = PAGE_SIZE, offset = 0, ret = 0;
+	char *buf;
+
+	buf = kmalloc(out_count, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	if (fe->cpu_dai->driver->playback.channels_min)
+		offset += soc_dpcm_show_state(fe, SNDRV_PCM_STREAM_PLAYBACK,
+					buf + offset, out_count - offset);
+
+	if (fe->cpu_dai->driver->capture.channels_min)
+		offset += soc_dpcm_show_state(fe, SNDRV_PCM_STREAM_CAPTURE,
+					buf + offset, out_count - offset);
+
+        ret = simple_read_from_buffer(user_buf, count, ppos, buf, offset);
+
+        kfree(buf);
+
+        return ret;
+}
+
+static const struct file_operations soc_dpcm_state_fops = {
+	.open = soc_dpcm_state_open_file,
+	.read = soc_dpcm_state_read_file,
+	.llseek = default_llseek,
+};
+
+int soc_dpcm_debugfs_add(struct snd_soc_pcm_runtime *rtd)
+{
+	rtd->debugfs_dpcm_root = debugfs_create_dir(rtd->dai_link->name,
+			rtd->card->debugfs_card_root);
+	if (!rtd->debugfs_dpcm_root) {
+		dev_dbg(rtd->dev,
+			 "ASoC: Failed to create dpcm debugfs directory %s\n",
+			 rtd->dai_link->name);
+		return -EINVAL;
+	}
+
+	rtd->debugfs_dpcm_state = debugfs_create_file("state", 0644,
+						rtd->debugfs_dpcm_root,
+						rtd, &soc_dpcm_state_fops);
+
+	return 0;
+}
+#endif
