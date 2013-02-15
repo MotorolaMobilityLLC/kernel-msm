@@ -286,6 +286,7 @@
 			type = <0x0003001b>;
 			wireless_complete_gpio = <0x0000004d>;
 			wireless_terminate_gpio = <0x00000020>;
+			wireless_good_gpio = <0x00000021>;
 		};
 	};
 };
