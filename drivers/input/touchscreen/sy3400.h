@@ -60,6 +60,7 @@
 #define SY3400_I2C_ATTEMPTS         10
 #define SY3400_I2C_WAIT_TIME        50
 #define SY3400_MAX_TOUCHES          10
+#define SY3400_MAX_BUTTONS          3
 #define SY3400_ABS_RESERVED         0xFFFF
 #define SY3400_IC_RESET_HOLD_TIME   1000
 #define SY3400_BL_HOLDOFF_TIME      120
@@ -111,6 +112,7 @@ struct sy3400_tdat {
 
 struct sy3400_pdt_node {
 	uint8_t         desc[6];
+	uint8_t         page;
 	struct sy3400_pdt_node   *next;
 } __packed;
 
@@ -129,6 +131,7 @@ struct sy3400_icdat {
 	uint8_t         xy_addr;
 	uint8_t         pwr_addr;
 	uint8_t         pwr_dat;
+	uint8_t         buttons_addr;
 } __packed;
 
 struct sy3400_touch_data {
@@ -168,6 +171,10 @@ struct sy3400_driver_data {
 	struct sy3400_icdat         *icdat;
 	struct sy3400_report_data   *rdat;
 	struct sy3400_debug         *dbg;
+
+	uint8_t         btn_curr;
+	uint8_t         btn_prev;
+	uint8_t         maxButtonCount;
 
 	struct notifier_block       panel_nb;
 
