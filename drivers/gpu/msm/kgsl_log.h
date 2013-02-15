@@ -15,6 +15,24 @@
 
 extern unsigned int kgsl_cff_dump_enable;
 
+#define KGSL_LOG_POSTMORTEM_SYSFS(_dev, fmt, args...) \
+	do { \
+		if (_dev->postmortem_dump != NULL && \
+					_dev->postmortem_size > 0) { \
+			_dev->postmortem_pos += scnprintf( \
+				&_dev->postmortem_dump[_dev->postmortem_pos], \
+				_dev->postmortem_size-_dev->postmortem_pos-1, \
+				fmt, ##args); \
+			if (_dev->postmortem_pos > 0 && \
+				_dev->postmortem_dump[_dev->postmortem_pos-1] \
+					!= '\n') \
+				_dev->postmortem_pos += scnprintf( \
+				&_dev->postmortem_dump[_dev->postmortem_pos], \
+				_dev->postmortem_size-_dev->postmortem_pos-1, \
+				"\n"); \
+		} \
+	} while (0)
+
 #define KGSL_LOG_INFO(dev, lvl, fmt, args...) \
 	do { \
 		if ((lvl) >= 6)  \
@@ -44,9 +62,16 @@ extern unsigned int kgsl_cff_dump_enable;
 	} while (0)
 
 #define KGSL_LOG_POSTMORTEM_WRITE(_dev, fmt, args...) \
-	do { dev_crit(_dev->dev, fmt, ##args); } while (0)
+	do { \
+		dev_crit(_dev->dev, fmt, ##args); \
+		KGSL_LOG_POSTMORTEM_SYSFS(_dev, fmt, ##args); \
+	} while (0)
 
-#define KGSL_LOG_DUMP(_dev, fmt, args...)	dev_err(_dev->dev, fmt, ##args)
+#define KGSL_LOG_DUMP(_dev, fmt, args...) \
+	do { \
+		dev_err(_dev->dev, fmt, ##args); \
+		KGSL_LOG_POSTMORTEM_SYSFS(_dev, fmt, ##args); \
+	} while (0)
 
 #define KGSL_DEV_ERR_ONCE(_dev, fmt, args...) \
 ({ \

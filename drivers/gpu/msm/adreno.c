@@ -1157,6 +1157,7 @@ adreno_probe(struct platform_device *pdev)
 	if (status)
 		goto error_close_rb;
 
+	adreno_postmortem_sysfs_init(device);
 	adreno_debugfs_init(device);
 
 	kgsl_pwrscale_init(device);
@@ -1182,6 +1183,8 @@ static int __devexit adreno_remove(struct platform_device *pdev)
 
 	device = (struct kgsl_device *)pdev->id_entry->driver_data;
 	adreno_dev = ADRENO_DEVICE(device);
+
+	adreno_postmortem_sysfs_close(device);
 
 	kgsl_pwrscale_detach_policy(device);
 	kgsl_pwrscale_close(device);
