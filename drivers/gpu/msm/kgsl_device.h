@@ -183,6 +183,11 @@ struct kgsl_device {
 				   losing the output on multiple hangs  */
 	struct kobject snapshot_kobj;
 
+	char *postmortem_dump;	/* Pointer to postmortem memory region */
+	int postmortem_size;	/* The size of the memory region */
+	int postmortem_pos;	/* Position/size of the previous postmortem */
+	struct kobject postmortem_kobj;
+
 	/*
 	 * List of GPU buffers that have been frozen in memory until they can be
 	 * dumped
@@ -394,6 +399,9 @@ const char *kgsl_pwrstate_to_str(unsigned int state);
 int kgsl_device_snapshot_init(struct kgsl_device *device);
 int kgsl_device_snapshot(struct kgsl_device *device, int hang);
 void kgsl_device_snapshot_close(struct kgsl_device *device);
+
+int kgsl_device_postmortem_init(struct kgsl_device *device);
+void kgsl_device_postmortem_close(struct kgsl_device *device);
 
 static inline struct kgsl_device_platform_data *
 kgsl_device_get_drvdata(struct kgsl_device *dev)
