@@ -1749,11 +1749,10 @@ static int msm_fb_open(struct fb_info *info, int user)
 		if (mfd->is_panel_ready && !mfd->is_panel_ready())
 			unblank = false;
 
-		if (unblank) {
+		if (unblank && (mfd->panel_info.type != DTV_PANEL)) {
 			if (msm_fb_blank_sub(FB_BLANK_UNBLANK, info, TRUE)) {
-				MSM_FB_ERR("%s: can't turn on display!\n",
-					__func__);
-				return -EPERM;
+				pr_err("msm_fb_open: can't turn on display\n");
+				return -EINVAL;
 			}
 		}
 	}
@@ -2251,12 +2250,13 @@ static int msm_fb_set_par(struct fb_info *info)
 	mfd->fbi->fix.line_length = msm_fb_line_length(mfd->index, var->xres,
 						       var->bits_per_pixel/8);
 
-	if (blank) {
+	if (mfd->update_panel_info)
+		mfd->update_panel_info(mfd);
+
+	if ((mfd->panel_info.type == DTV_PANEL) && !mfd->panel_power_on) {
+		msm_fb_blank_sub(FB_BLANK_UNBLANK, info, mfd->op_enable);
+	} else if (blank) {
 		msm_fb_blank_sub(FB_BLANK_POWERDOWN, info, mfd->op_enable);
-
-		if (mfd->update_panel_info)
-			mfd->update_panel_info(mfd);
-
 		msm_fb_blank_sub(FB_BLANK_UNBLANK, info, mfd->op_enable);
 	}
 
