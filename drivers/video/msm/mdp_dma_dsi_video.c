@@ -108,6 +108,7 @@ int mdp_dsi_video_on(struct platform_device *pdev)
 
 	vsync_cntrl.dev = mfd->fbi->dev;
 	atomic_set(&vsync_cntrl.suspend, 0);
+	vsync_cntrl.vsync_irq_enabled = 0;
 	bpp = fbi->var.bits_per_pixel / 8;
 	buf = (uint8 *) fbi->fix.smem_start;
 

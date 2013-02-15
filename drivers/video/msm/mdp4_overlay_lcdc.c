@@ -525,6 +525,7 @@ int mdp4_lcdc_on(struct platform_device *pdev)
 
 	vctrl->mfd = mfd;
 	vctrl->dev = mfd->fbi->dev;
+	vctrl->vsync_irq_enabled = 0;
 
 	/* mdp clock on */
 	mdp_clk_ctrl(1);
