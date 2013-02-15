@@ -5907,7 +5907,6 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
 
     hdd_context_t *pHddCtx = (hdd_context_t*) wiphy_priv(wiphy);
     hdd_config_t  *pCfg    = pHddCtx->cfg_ini;
-    tHalHandle hHal        = WLAN_HDD_GET_HAL_CTX(pAdapter);
 
     tANI_U8  OperationalRates[CSR_DOT11_SUPPORTED_RATES_MAX];
     tANI_U32 ORLeng = CSR_DOT11_SUPPORTED_RATES_MAX;
@@ -6006,7 +6005,14 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
         maxRate = 0;
 
         /* Get Basic Rate Set */
-        ccmCfgGetStr(hHal, WNI_CFG_OPERATIONAL_RATE_SET, OperationalRates, &ORLeng);
+        if (0 != ccmCfgGetStr(WLAN_HDD_GET_HAL_CTX(pAdapter), WNI_CFG_OPERATIONAL_RATE_SET,
+                             OperationalRates, &ORLeng))
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR, "%s: ccm api returned failure", __func__);
+            /*To keep GUI happy*/
+            return 0;
+        }
+
         for (i = 0; i < ORLeng; i++)
         {
             for (j = 0; j < (sizeof(supported_data_rate) / sizeof(supported_data_rate[0])); j ++)
@@ -6023,7 +6029,14 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
         }
 
         /* Get Extended Rate Set */
-        ccmCfgGetStr(hHal, WNI_CFG_EXTENDED_OPERATIONAL_RATE_SET, ExtendedRates, &ERLeng);
+        if (0 != ccmCfgGetStr(WLAN_HDD_GET_HAL_CTX(pAdapter), WNI_CFG_EXTENDED_OPERATIONAL_RATE_SET,
+                             ExtendedRates, &ERLeng))
+        {
+            hddLog(VOS_TRACE_LEVEL_ERROR, "%s: ccm api returned failure", __func__);
+            /*To keep GUI happy*/
+            return 0;
+        }
+
         for (i = 0; i < ERLeng; i++)
         {
             for (j = 0; j < (sizeof(supported_data_rate) / sizeof(supported_data_rate[0])); j ++)
@@ -6043,7 +6056,13 @@ static int wlan_hdd_cfg80211_get_station(struct wiphy *wiphy, struct net_device 
            good rssi */
         if ((0 == rssidx) && !(rate_flags & eHAL_TX_RATE_LEGACY))
         {
-            ccmCfgGetStr(hHal, WNI_CFG_CURRENT_MCS_SET, MCSRates, &MCSLeng);
+            if (0 != ccmCfgGetStr(WLAN_HDD_GET_HAL_CTX(pAdapter), WNI_CFG_CURRENT_MCS_SET,
+                                 MCSRates, &MCSLeng))
+            {
+                hddLog(VOS_TRACE_LEVEL_ERROR, "%s: ccm api returned failure", __func__);
+                /*To keep GUI happy*/
+                return 0;
+            }
             rateFlag = 0;
             if (rate_flags & eHAL_TX_RATE_HT40)
             {

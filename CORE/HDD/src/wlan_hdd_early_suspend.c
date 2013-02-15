@@ -1604,6 +1604,11 @@ VOS_STATUS hdd_wlan_shutdown(void)
 
    /* shutdown VOSS */
    vos_shutdown(pVosContext);
+
+   /*mac context has already been released in mac_close call
+     so setting it to NULL in hdd context*/
+   pHddCtx->hHal = (tHalHandle)NULL;
+
    if (free_riva_power_on_lock("wlan"))
    {
       hddLog(VOS_TRACE_LEVEL_ERROR, "%s: failed to free power on lock",
