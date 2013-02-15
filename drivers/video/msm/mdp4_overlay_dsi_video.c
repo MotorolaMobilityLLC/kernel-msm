@@ -619,8 +619,6 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 		pipe = vctrl->base_pipe;
 	}
 
-	atomic_set(&vctrl->suspend, 0);
-
 	pipe->src_height = fbi->var.yres;
 	pipe->src_width = fbi->var.xres;
 	pipe->src_h = fbi->var.yres;
@@ -732,6 +730,8 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 	mdp_histogram_ctrl_all(TRUE);
 	mdp4_overlay_dsi_video_start();
 	mutex_unlock(&mfd->dma->ov_mutex);
+
+	atomic_set(&vctrl->suspend, 0);
 
 	return ret;
 }
