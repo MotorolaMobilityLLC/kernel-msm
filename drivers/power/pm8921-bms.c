@@ -2133,8 +2133,7 @@ void pm8921_bms_voltage_based_capacity(int batt_mvolt,
 {
 	int charging_src;
 	int volt_ocv_now = (batt_mvolt * 1000) +
-		(batt_mcurr * the_chip->default_rbatt_mohm) /
-		100;
+		(batt_mcurr * the_chip->default_rbatt_mohm);
 	int soc_adjusted = calculate_pc(the_chip, volt_ocv_now, batt_temp,
 					last_chargecycles);
 
