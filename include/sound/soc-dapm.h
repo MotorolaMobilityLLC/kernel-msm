@@ -275,6 +275,12 @@
 	.get = xget, \
 	.put = xput, \
 	.private_value = (unsigned long)&xenum }
+#define SOC_DAPM_ENUM_EXT(xname, xenum, xget, xput) \
+{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+	.info = snd_soc_info_enum_double, \
+	.get = xget, \
+	.put = xput, \
+	.private_value = (unsigned long)&xenum }
 #define SOC_DAPM_VALUE_ENUM(xname, xenum) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
 	.info = snd_soc_info_enum_double, \
@@ -319,6 +325,7 @@ struct snd_soc_dapm_path;
 struct snd_soc_dapm_pin;
 struct snd_soc_dapm_route;
 struct snd_soc_dapm_context;
+struct snd_soc_dapm_widget_list;
 
 int dapm_reg_event(struct snd_soc_dapm_widget *w,
 		   struct snd_kcontrol *kcontrol, int event);
@@ -346,12 +353,11 @@ int snd_soc_dapm_get_pin_switch(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *uncontrol);
 int snd_soc_dapm_put_pin_switch(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *uncontrol);
+int snd_soc_dapm_new_control(struct snd_soc_dapm_context *dapm,
+	const struct snd_soc_dapm_widget *widget);
 int snd_soc_dapm_new_controls(struct snd_soc_dapm_context *dapm,
 	const struct snd_soc_dapm_widget *widget,
 	int num);
-int snd_soc_dapm_new_dai_widgets(struct snd_soc_dapm_context *dapm,
-				 struct snd_soc_dai *dai);
-int snd_soc_dapm_link_dai_widgets(struct snd_soc_card *card);
 
 /* dapm path setup */
 int snd_soc_dapm_new_widgets(struct snd_soc_dapm_context *dapm);
@@ -371,7 +377,8 @@ void snd_soc_dapm_shutdown(struct snd_soc_card *card);
 int snd_soc_dapm_mixer_update_power(struct snd_soc_dapm_widget *widget,
 		struct snd_kcontrol *kcontrol, int connect);
 int snd_soc_dapm_mux_update_power(struct snd_soc_dapm_widget *widget,
-				 struct snd_kcontrol *kcontrol, int mux, struct soc_enum *e);
+				 struct snd_kcontrol *kcontrol, int change,
+				 int mux, struct soc_enum *e);
 
 /* dapm sys fs - used by the core */
 int snd_soc_dapm_sys_add(struct device *dev);

@@ -2177,7 +2177,7 @@ EXPORT_SYMBOL_GPL(snd_soc_set_runtime_hwparams);
  * Returns 0 for success, else error.
  */
 struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
-				  void *data, const char *long_name,
+				  void *data, char *long_name,
 				  const char *prefix)
 {
 	struct snd_kcontrol_new template;
@@ -2334,7 +2334,8 @@ int snd_soc_info_enum_double(struct snd_kcontrol *kcontrol,
 	if (uinfo->value.enumerated.item > e->max - 1)
 		uinfo->value.enumerated.item = e->max - 1;
 	strcpy(uinfo->value.enumerated.name,
-		e->texts[uinfo->value.enumerated.item]);
+		snd_soc_get_enum_text(e, uinfo->value.enumerated.item));
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_info_enum_double);
@@ -2498,7 +2499,7 @@ int snd_soc_info_enum_ext(struct snd_kcontrol *kcontrol,
 	if (uinfo->value.enumerated.item > e->max - 1)
 		uinfo->value.enumerated.item = e->max - 1;
 	strcpy(uinfo->value.enumerated.name,
-		e->texts[uinfo->value.enumerated.item]);
+		snd_soc_get_enum_text(e, uinfo->value.enumerated.item));
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_info_enum_ext);
@@ -2528,6 +2529,39 @@ int snd_soc_info_volsw_ext(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_info_volsw_ext);
+
+/**
+ * snd_soc_info_multi_ext - external single mixer info callback
+ * @kcontrol: mixer control
+ * @uinfo: control element information
+ *
+ * Callback to provide information about a single external mixer control.
+ * that accepts multiple input.
+ *
+ * Returns 0 for success.
+ */
+int snd_soc_info_multi_ext(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_info *uinfo)
+{
+	struct soc_multi_mixer_control *mc =
+		(struct soc_multi_mixer_control *)kcontrol->private_value;
+	int platform_max;
+
+	if (!mc->platform_max)
+		mc->platform_max = mc->max;
+	platform_max = mc->platform_max;
+
+	if (platform_max == 1 && !strnstr(kcontrol->id.name, " Volume", 30))
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
+	else
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+
+	uinfo->count = mc->count;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = platform_max;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(snd_soc_info_multi_ext);
 
 /**
  * snd_soc_info_volsw - single mixer info callback
@@ -2680,13 +2714,15 @@ int snd_soc_info_volsw_s8(struct snd_kcontrol *kcontrol,
 		(struct soc_mixer_control *)kcontrol->private_value;
 	int platform_max;
 	int min = mc->min;
+	unsigned int shift = mc->shift;
+	unsigned int rshift = mc->rshift;
 
 	if (!mc->platform_max)
 		mc->platform_max = mc->max;
 	platform_max = mc->platform_max;
 
 	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-	uinfo->count = 2;
+	uinfo->count = shift == rshift ? 1 : 2;
 	uinfo->value.integer.min = 0;
 	uinfo->value.integer.max = platform_max - min;
 	return 0;
@@ -2709,13 +2745,16 @@ int snd_soc_get_volsw_s8(struct snd_kcontrol *kcontrol,
 		(struct soc_mixer_control *)kcontrol->private_value;
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	unsigned int reg = mc->reg;
+	unsigned int shift = mc->shift;
+	unsigned int rshift = mc->rshift;
 	int min = mc->min;
 	int val = snd_soc_read(codec, reg);
 
 	ucontrol->value.integer.value[0] =
-		((signed char)(val & 0xff))-min;
-	ucontrol->value.integer.value[1] =
-		((signed char)((val >> 8) & 0xff))-min;
+		((signed char)((val >> shift) & 0xff))-min;
+	if (shift != rshift)
+		ucontrol->value.integer.value[1] =
+			((signed char)((val >> rshift) & 0xff))-min;
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_get_volsw_s8);
@@ -2736,13 +2775,20 @@ int snd_soc_put_volsw_s8(struct snd_kcontrol *kcontrol,
 		(struct soc_mixer_control *)kcontrol->private_value;
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	unsigned int reg = mc->reg;
+	unsigned int shift = mc->shift;
+	unsigned int rshift = mc->rshift;
 	int min = mc->min;
-	unsigned int val;
+	unsigned int val, val2, val_mask;
 
-	val = (ucontrol->value.integer.value[0]+min) & 0xff;
-	val |= ((ucontrol->value.integer.value[1]+min) & 0xff) << 8;
+	val = ((ucontrol->value.integer.value[0]+min) & 0xff) << shift;
+	val_mask = 0xff << shift;
+	if (shift != rshift) {
+		val2 = (ucontrol->value.integer.value[1]+min) & 0xff;
+		val |= val2 << rshift;
+		val_mask |= 0xff << rshift;
+	}
 
-	return snd_soc_update_bits_locked(codec, reg, 0xffff, val);
+	return snd_soc_update_bits_locked(codec, reg, val_mask, val);
 }
 EXPORT_SYMBOL_GPL(snd_soc_put_volsw_s8);
 
@@ -2877,115 +2923,6 @@ int snd_soc_put_volsw_2r_sx(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(snd_soc_put_volsw_2r_sx);
-
-int snd_soc_bytes_info(struct snd_kcontrol *kcontrol,
-		       struct snd_ctl_elem_info *uinfo)
-{
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
-	struct soc_bytes *params = (void *)kcontrol->private_value;
-
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_BYTES;
-	uinfo->count = params->num_regs * codec->val_bytes;
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(snd_soc_bytes_info);
-
-int snd_soc_bytes_get(struct snd_kcontrol *kcontrol,
-		      struct snd_ctl_elem_value *ucontrol)
-{
-	struct soc_bytes *params = (void *)kcontrol->private_value;
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
-	int ret;
-
-	if (codec->using_regmap)
-		ret = regmap_raw_read(codec->control_data, params->base,
-				      ucontrol->value.bytes.data,
-				      params->num_regs * codec->val_bytes);
-	else
-		ret = -EINVAL;
-
-	/* Hide any masked bytes to ensure consistent data reporting */
-	if (ret == 0 && params->mask) {
-		switch (codec->val_bytes) {
-		case 1:
-			ucontrol->value.bytes.data[0] &= ~params->mask;
-			break;
-		case 2:
-			((u16 *)(&ucontrol->value.bytes.data))[0]
-				&= ~params->mask;
-			break;
-		case 4:
-			((u32 *)(&ucontrol->value.bytes.data))[0]
-				&= ~params->mask;
-			break;
-		default:
-			return -EINVAL;
-		}
-	}
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(snd_soc_bytes_get);
-
-int snd_soc_bytes_put(struct snd_kcontrol *kcontrol,
-		      struct snd_ctl_elem_value *ucontrol)
-{
-	struct soc_bytes *params = (void *)kcontrol->private_value;
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
-	int ret, len;
-	unsigned int val;
-	void *data;
-
-	if (!codec->using_regmap)
-		return -EINVAL;
-
-	data = ucontrol->value.bytes.data;
-	len = params->num_regs * codec->val_bytes;
-
-	/*
-	 * If we've got a mask then we need to preserve the register
-	 * bits.  We shouldn't modify the incoming data so take a
-	 * copy.
-	 */
-	if (params->mask) {
-		ret = regmap_read(codec->control_data, params->base, &val);
-		if (ret != 0)
-			return ret;
-
-		val &= params->mask;
-
-		data = kmemdup(data, len, GFP_KERNEL);
-		if (!data)
-			return -ENOMEM;
-
-		switch (codec->val_bytes) {
-		case 1:
-			((u8 *)data)[0] &= ~params->mask;
-			((u8 *)data)[0] |= val;
-			break;
-		case 2:
-			((u16 *)data)[0] &= cpu_to_be16(~params->mask);
-			((u16 *)data)[0] |= cpu_to_be16(val);
-			break;
-		case 4:
-			((u32 *)data)[0] &= cpu_to_be32(~params->mask);
-			((u32 *)data)[0] |= cpu_to_be32(val);
-			break;
-		default:
-			return -EINVAL;
-		}
-	}
-
-	ret = regmap_raw_write(codec->control_data, params->base,
-			       data, len);
-
-	if (params->mask)
-		kfree(data);
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(snd_soc_bytes_put);
 
 /**
  * snd_soc_dai_set_sysclk - configure DAI system or master clock.

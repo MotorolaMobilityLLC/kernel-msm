@@ -55,6 +55,16 @@
 	.info = snd_soc_info_volsw, .get = snd_soc_get_volsw,\
 	.put = snd_soc_put_volsw, \
 	.private_value =  SOC_SINGLE_VALUE(reg, shift, max, invert) }
+#define SOC_SINGLE_S8_TLV(xname, xreg, xmin, xmax, tlv_array) \
+{	.iface  = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname), \
+	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ | \
+		SNDRV_CTL_ELEM_ACCESS_READWRITE, \
+	.tlv.p  = (tlv_array), \
+	.info   = snd_soc_info_volsw_s8, .get = snd_soc_get_volsw_s8, \
+	.put    = snd_soc_put_volsw_s8, \
+	.private_value = (unsigned long)&(struct soc_mixer_control) \
+		{.reg = xreg, .min = xmin, .max = xmax, \
+		 .platform_max = xmax} }
 #define SOC_DOUBLE(xname, reg, shift_left, shift_right, max, invert) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname),\
 	.info = snd_soc_info_volsw, .get = snd_soc_get_volsw, \
@@ -131,6 +141,14 @@
 	.get = xhandler_get, .put = xhandler_put, \
 	.private_value = \
 		SOC_DOUBLE_VALUE(reg, shift_left, shift_right, max, invert) }
+ #define SOC_SINGLE_MULTI_EXT(xname, xreg, xshift, xmax, xinvert, xcount,\
+	xhandler_get, xhandler_put) \
+{      .iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+	.info = snd_soc_info_multi_ext, \
+	.get = xhandler_get, .put = xhandler_put, \
+	.private_value = (unsigned long)&(struct soc_multi_mixer_control) \
+		{.reg = xreg, .shift = xshift, .rshift = xshift, .max = xmax, \
+		.count = xcount, .platform_max = xmax, .invert = xinvert} }
 #define SOC_SINGLE_EXT_TLV(xname, xreg, xshift, xmax, xinvert,\
 	 xhandler_get, xhandler_put, tlv_array) \
 {	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
@@ -185,20 +203,6 @@
 		 .rreg = xreg_right, .shift = xshift, \
 		 .min = xmin, .max = xmax} }
 
-#define SND_SOC_BYTES(xname, xbase, xregs)		      \
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname,   \
-	.info = snd_soc_bytes_info, .get = snd_soc_bytes_get, \
-	.put = snd_soc_bytes_put, .private_value =	      \
-		((unsigned long)&(struct soc_bytes)           \
-		{.base = xbase, .num_regs = xregs }) }
-
-#define SND_SOC_BYTES_MASK(xname, xbase, xregs, xmask)	      \
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname,   \
-	.info = snd_soc_bytes_info, .get = snd_soc_bytes_get, \
-	.put = snd_soc_bytes_put, .private_value =	      \
-		((unsigned long)&(struct soc_bytes)           \
-		{.base = xbase, .num_regs = xregs,	      \
-		 .mask = xmask }) }
 
 /*
  * Simplified versions of above macros, declaring a struct and calculating
@@ -221,6 +225,9 @@
 /* DAI Link Host Mode Support */
 #define SND_SOC_DAI_LINK_NO_HOST		0x1
 #define SND_SOC_DAI_LINK_OPT_HOST		0x2
+
+#define snd_soc_get_enum_text(soc_enum, idx) \
+	(soc_enum->texts ? soc_enum->texts[idx] : soc_enum->dtexts[idx])
 
 
 /*
@@ -421,7 +428,7 @@ void snd_soc_free_ac97_codec(struct snd_soc_codec *codec);
  *Controls
  */
 struct snd_kcontrol *snd_soc_cnew(const struct snd_kcontrol_new *_template,
-				  void *data, const char *long_name,
+				  void *data, char *long_name,
 				  const char *prefix);
 int snd_soc_add_codec_controls(struct snd_soc_codec *codec,
 	const struct snd_kcontrol_new *controls, int num_controls);
@@ -444,6 +451,8 @@ int snd_soc_get_value_enum_double(struct snd_kcontrol *kcontrol,
 int snd_soc_put_value_enum_double(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 int snd_soc_info_volsw(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_info *uinfo);
+int snd_soc_info_multi_ext(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_info *uinfo);
 int snd_soc_info_volsw_ext(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_info *uinfo);
@@ -468,13 +477,6 @@ int snd_soc_get_volsw_2r_sx(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
 int snd_soc_put_volsw_2r_sx(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol);
-int snd_soc_bytes_info(struct snd_kcontrol *kcontrol,
-		       struct snd_ctl_elem_info *uinfo);
-int snd_soc_bytes_get(struct snd_kcontrol *kcontrol,
-		      struct snd_ctl_elem_value *ucontrol);
-int snd_soc_bytes_put(struct snd_kcontrol *kcontrol,
-		      struct snd_ctl_elem_value *ucontrol);
-
 
 /**
  * struct snd_soc_reg_access - Describes whether a given register is
@@ -991,12 +993,11 @@ struct soc_mixer_control {
 	int min, max, platform_max;
 	unsigned int reg, rreg, shift, rshift, invert;
 };
-
-struct soc_bytes {
-	int base;
-	int num_regs;
-	u32 mask;
+struct soc_multi_mixer_control {
+	int min, max, platform_max, count;
+	unsigned int reg, rreg, shift, rshift, invert;
 };
+
 
 /* enumerated kcontrol */
 struct soc_enum {
@@ -1007,6 +1008,7 @@ struct soc_enum {
 	unsigned int max;
 	unsigned int mask;
 	const char * const *texts;
+	char **dtexts;
 	const unsigned int *values;
 	void *dapm;
 };
