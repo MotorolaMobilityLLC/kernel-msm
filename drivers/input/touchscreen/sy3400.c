@@ -67,7 +67,8 @@ static int sy3400_i2c_write(struct sy3400_driver_data *dd,
 		uint8_t addr, uint8_t *buf, int size);
 static int sy3400_i2c_read(struct sy3400_driver_data *dd,
 		uint8_t *buf, int size);
-static void sy3400_tdat_callback(const struct firmware *tdat, void *context);
+static void sy3400_tdat_callback(const struct firmware *tdat,
+		void *context);
 static int sy3400_validate_tdat(const struct firmware *tdat);
 static int sy3400_validate_settings(uint8_t *data, uint32_t size);
 static int sy3400_register_inputs(struct sy3400_driver_data *dd,
@@ -77,6 +78,7 @@ static int sy3400_get_pdt(struct sy3400_driver_data *dd);
 static int sy3400_validate_f01(struct sy3400_driver_data *dd);
 static int sy3400_validate_f34(struct sy3400_driver_data *dd);
 static int sy3400_validate_f12(struct sy3400_driver_data *dd);
+static int sy3400_validate_f1A(struct sy3400_driver_data *dd);
 static int sy3400_get_verinfo(struct sy3400_driver_data *dd);
 static int sy3400_check_bootloader(struct sy3400_driver_data *dd, bool *bl);
 static bool sy3400_check_firmware(struct sy3400_driver_data *dd);
@@ -85,10 +87,13 @@ static int sy3400_set_ic_data(struct sy3400_driver_data *dd);
 static int sy3400_create_irq_table(struct sy3400_driver_data *dd);
 static irqreturn_t sy3400_isr(int irq, void *handle);
 static void sy3400_active_handler(struct sy3400_driver_data *dd);
-static int sy3400_process_irq(struct sy3400_driver_data *dd, uint8_t irq_bit);
+static int sy3400_process_irq(struct sy3400_driver_data *dd,
+		uint8_t irq_bit);
 static int sy3400_irq_handler01(struct sy3400_driver_data *dd,
 		uint8_t *data, uint8_t size);
 static int sy3400_irq_handler12(struct sy3400_driver_data *dd,
+		uint8_t *data, uint8_t size);
+static int sy3400_irq_handler1A(struct sy3400_driver_data *dd,
 		uint8_t *data, uint8_t size);
 static void sy3400_report_touches(struct sy3400_driver_data *dd);
 static void sy3400_release_touches(struct sy3400_driver_data *dd);
@@ -233,11 +238,11 @@ static int sy3400_detect(struct sy3400_driver_data *dd)
 	blk_ct = le16_to_cpu(blk_ct);
 
 	pr_debug("%s: blk_sz=0x%x, blk_ct=0x%x\n", __func__, blk_sz, blk_ct);
-
+/*
 	if ((blk_sz != SY3400_BLK_SZ) ||
 		((blk_ct != SY3400_BLK_CT) && (blk_ct != SY3300_BLK_CT)))
 		err = -ENODEV;
-
+*/
 sy3400_detect_fail:
 	return err;
 }
@@ -1289,7 +1294,7 @@ static int sy3400_register_inputs(struct sy3400_driver_data *dd,
 
 	dd->rdat = kzalloc(sizeof(struct sy3400_report_data), GFP_KERNEL);
 	if (dd->rdat == NULL) {
-		printk(KERN_ERR "%s: Unable to create report data.\n",
+		printk(KERN_ERR "%s: Unable to create report data for touch.\n",
 			__func__);
 		err = -ENOMEM;
 		goto sy3400_register_inputs_fail;
@@ -1310,6 +1315,11 @@ static int sy3400_register_inputs(struct sy3400_driver_data *dd,
 	input_set_drvdata(dd->in_dev, dd);
 
 	set_bit(INPUT_PROP_DIRECT, dd->in_dev->propbit);
+
+	set_bit(EV_KEY, dd->in_dev->evbit);
+	input_set_capability(dd->in_dev, EV_KEY, KEY_F1);
+	input_set_capability(dd->in_dev, EV_KEY, KEY_F2);
+	input_set_capability(dd->in_dev, EV_KEY, KEY_F3);
 
 	set_bit(EV_ABS, dd->in_dev->evbit);
 	for (i = 0; i < rsize; i += 10) {
@@ -1522,6 +1532,16 @@ sy3400_restart_ic_start:
 		goto sy3400_restart_ic_fail;
 	}
 
+	err = sy3400_validate_f1A(dd);
+	/*
+	Since the buttons are optional, we will not fail if they are not present
+	*/
+	if (err < 0 && err != -ENODATA) {
+		printk(KERN_ERR "%s: Function $1A failed validation.\n",
+			__func__);
+		goto sy3400_restart_ic_fail;
+	}
+
 	dd->icdat = kzalloc(sizeof(struct sy3400_icdat), GFP_KERNEL);
 	if (dd->icdat == NULL) {
 		printk(KERN_ERR "%s: Unable to create IC data.\n", __func__);
@@ -1558,6 +1578,7 @@ static int sy3400_get_pdt(struct sy3400_driver_data *dd)
 	struct sy3400_pdt_node *first = NULL;
 	struct sy3400_pdt_node *cur = NULL;
 	struct sy3400_pdt_node *prev = NULL;
+	int current_page;
 
 	if (dd->pblk == NULL) {
 		dd->pblk = kzalloc(sizeof(struct sy3400_page_block),
@@ -1591,58 +1612,82 @@ static int sy3400_get_pdt(struct sy3400_driver_data *dd)
 		goto sy3400_get_pdt_fail;
 	}
 
-	buf = 0x00;
+	/*
+	In order to support capacitive button sensors we have to use function
+	$1A. This function currently does not reside on page 0. Also, there are
+	some other functions that may be usefull (ex: $54). So, now we need to
+	process page 0, 1, 2, and 3.
+	*/
+	for (current_page = 0; current_page < 4; current_page++) {
+		sy3400_dbg(dd, SY3400_DBG3, "%s: Switching to page %d\n",
+			__func__, current_page);
+		buf = current_page;
+		err = sy3400_i2c_write(dd, 0xFF, &buf, 1);
+		if (err < 0) {
+			printk(KERN_ERR "%s: Unable to switch to page %d.\n",
+				__func__, current_page);
+			goto sy3400_get_pdt_fail;
+		}
+
+		for (i = 0; i < 39 ; i++) {
+			err = sy3400_i2c_write(dd, 0xE9 - i * 6, NULL, 0);
+			if (err < 0) {
+				printk(KERN_ERR
+					"%s: Unable to set address for entry %d.\n",
+					__func__, i);
+				goto sy3400_get_pdt_fail;
+			}
+
+			err = sy3400_i2c_read(dd, &(desc[0]), 6);
+			if (err < 0) {
+				printk(KERN_ERR "%s: Unable to read entry %d.\n",
+					__func__, i);
+				goto sy3400_get_pdt_fail;
+			}
+
+			if (desc[5] == 0x00)
+				break;
+
+			sy3400_dbg(dd, SY3400_DBG3,
+				"%s: Processing function 0x%x\n",
+				__func__, desc[5]);
+
+			cur = kzalloc(sizeof(struct sy3400_pdt_node),
+						GFP_KERNEL);
+			if (cur == NULL) {
+				printk(KERN_ERR "%s: Unable to save entry $%02X.\n",
+					__func__, desc[5]);
+				err = -ENOMEM;
+				goto sy3400_get_pdt_fail;
+			}
+
+			if (first == NULL)
+				first = cur;
+			if (prev != NULL)
+				prev->next = cur;
+
+			cur->page = current_page;
+			for (j = 0; j <= 5; j++)
+				cur->desc[j] = desc[j];
+
+			prev = cur;
+		}
+		if (i >= 39) {
+			printk(KERN_ERR "%s: End of PDT is missing.\n",
+						__func__);
+			err = -EPROTO;
+			goto sy3400_get_pdt_fail;
+		}
+	}
+	/*
+	Switch back to page 0, since the rest of the driver assumes we are on
+	that page
+	*/
+	buf = 0;
 	err = sy3400_i2c_write(dd, 0xFF, &buf, 1);
 	if (err < 0) {
-		printk(KERN_ERR "%s: Unable to switch to page 00.\n",
-			__func__);
-		goto sy3400_get_pdt_fail;
-	}
-
-	for (i = 0; i < 39 ; i++) {
-		err = sy3400_i2c_write(dd, 0xE9 - i * 6, NULL, 0);
-		if (err < 0) {
-			printk(KERN_ERR
-				"%s: Unable to set address for entry %d.\n",
-				__func__, i);
-			goto sy3400_get_pdt_fail;
-		}
-
-		err = sy3400_i2c_read(dd, &(desc[0]), 6);
-		if (err < 0) {
-			printk(KERN_ERR "%s: Unable to read entry %d.\n",
-				__func__, i);
-			goto sy3400_get_pdt_fail;
-		}
-
-		if (desc[5] == 0x00)
-			break;
-
-		cur = kzalloc(sizeof(struct sy3400_pdt_node), GFP_KERNEL);
-		if (cur == NULL) {
-			printk(KERN_ERR "%s: Unable to save entry $%02X.\n",
-				__func__, desc[5]);
-			err = -ENOMEM;
-			goto sy3400_get_pdt_fail;
-		}
-
-		if (first == NULL)
-			first = cur;
-
-		if (prev != NULL)
-			prev->next = cur;
-
-		for (j = 0; j <= 5; j++)
-			cur->desc[j] = desc[j];
-
-		prev = cur;
-		cur = cur->next;
-	}
-
-	if (i >= 39) {
-		printk(KERN_ERR "%s: End of PDT is missing.\n", __func__);
-		err = -EPROTO;
-		goto sy3400_get_pdt_fail;
+		printk(KERN_ERR "%s: Unable to switch to page %d.\n",
+			__func__, current_page);
 	}
 
 sy3400_get_pdt_fail:
@@ -1711,13 +1756,14 @@ static int sy3400_validate_f01(struct sy3400_driver_data *dd)
 		printk(KERN_ERR "%s: Unable to read Query1.\n", __func__);
 		goto sy3400_validate_f01_fail;
 	}
-
 	if (query1 & 0x02) {
 		printk(KERN_ERR "%s: Register map is non-compliant.\n",
 			__func__);
 		err = -EPROTO;
 		goto sy3400_validate_f01_fail;
 	}
+	if (query1 & 0x08)
+		has_sensor_id = true;
 
 	err = sy3400_check_bootloader(dd, &bl);
 	if (err < 0) {
@@ -1727,15 +1773,6 @@ static int sy3400_validate_f01(struct sy3400_driver_data *dd)
 	} else if (bl) {
 		goto sy3400_validate_f01_fail;
 	}
-
-	if (!(query1 & 0x80)) {
-		printk(KERN_ERR "%s: Query42 does not exist.\n", __func__);
-		err = -EINVAL;
-		goto sy3400_validate_f01_fail;
-	}
-
-	if (query1 & 0x08)
-		has_sensor_id = true;
 
 	addr = query + 20 + 1;
 	if (has_sensor_id)
@@ -1755,7 +1792,7 @@ static int sy3400_validate_f01(struct sy3400_driver_data *dd)
 	}
 
 	if (!(query42 & 0x01)) {
-		printk(KERN_ERR "%s: Query43 does not exist.\n", __func__);
+		printk(KERN_ERR "%s: Query42 does not exist.\n", __func__);
 		err = -EINVAL;
 		goto sy3400_validate_f01_fail;
 	}
@@ -1863,7 +1900,8 @@ static int sy3400_validate_f34(struct sy3400_driver_data *dd)
 	}
 
 	if (!(query1 & 0x04)) {
-		printk(KERN_ERR "%s: ConfigID is not available.\n", __func__);
+		printk(KERN_ERR "%s: ConfigID is not available (%d) .\n",
+			__func__, query1);
 		err = -ENODATA;
 		goto sy3400_validate_f34_fail;
 	}
@@ -2091,6 +2129,84 @@ sy3400_validate_f12_fail:
 	return err;
 }
 
+static int sy3400_validate_f1A(struct sy3400_driver_data *dd)
+{
+	int err = 0;
+	struct sy3400_pdt_node *cur = NULL;
+	uint8_t query = 0;
+	int data = 0;
+
+	cur = dd->pblk->pdt;
+	while (cur != NULL) {
+		if (cur->desc[5] == 0x1A)
+			break;
+		else
+			cur = cur->next;
+	}
+
+	if (cur == NULL) {
+		printk(KERN_ERR "%s: Function $1A is missing.\n", __func__);
+		err = -ENODATA;
+		goto sy3400_validate_f1A_fail;
+	}
+
+	if (cur->desc[4] != 0x01) {
+		printk(KERN_ERR "%s: Function $1A is invalid.\n", __func__);
+		err = -EINVAL;
+		goto sy3400_validate_f1A_fail;
+	}
+
+	/* Switch to the appropriate page */
+	err = sy3400_i2c_write(dd, 0xFF, &cur->page, 1);
+	if (err < 0) {
+		printk(KERN_ERR "%s: Unable to switch to page 1.\n",
+			__func__);
+		err = -EIO;
+		goto sy3400_validate_f1A_fail;
+	}
+
+	query = cur->desc[0];
+	if ((query + 9) > 0xE8) {
+		printk(KERN_ERR
+			"%s: Function $1A query registers overlap PDT.\n",
+			__func__);
+		err = -EOVERFLOW;
+		goto sy3400_validate_f1A_fail;
+	}
+
+	data = cur->desc[3];
+	if (data + 1 > 0xE8) {
+		printk(KERN_ERR
+			"%s: Function $1A data registers overlap PDT.\n",
+			__func__);
+		err = -EOVERFLOW;
+		goto sy3400_validate_f1A_fail;
+	}
+
+	err = sy3400_i2c_write(dd, query, NULL, 0);
+	if (err < 0) {
+		printk(KERN_ERR "%s: Unable to get MaxButtonCount\n",
+			__func__);
+		err = -EIO;
+		goto sy3400_validate_f1A_fail;
+	}
+
+	err = sy3400_i2c_read(dd, &dd->maxButtonCount, 1);
+	if (err < 0) {
+		printk(KERN_ERR "%s: Unable to read MaxButtonCount.\n",
+				__func__);
+		err = -EIO;
+		goto sy3400_validate_f1A_fail;
+	}
+	/* only least 3 bits are used for this */
+	dd->maxButtonCount &= 0x07;
+	/* The value is one less then actual number of supported buttons */
+	dd->maxButtonCount++;
+
+sy3400_validate_f1A_fail:
+	return err;
+}
+
 static int sy3400_get_verinfo(struct sy3400_driver_data *dd)
 {
 	int err = 0;
@@ -2299,6 +2415,11 @@ static int sy3400_set_ic_data(struct sy3400_driver_data *dd)
 			dd->icdat->xy_addr = cur->desc[3];
 			break;
 
+		case 0x1A:
+			dd->icdat->buttons_addr = cur->desc[3];
+			dd->btn_curr = 0;
+			dd->btn_prev = 0;
+			break;
 		default:
 			break;
 		}
@@ -2531,6 +2652,8 @@ static int sy3400_process_irq(struct sy3400_driver_data *dd, uint8_t irq_bit)
 	uint8_t *data = NULL;
 	int size = 0;
 	uint8_t addr = 0x00;
+	struct sy3400_pdt_node *cur;
+	uint8_t buf = 0x00;
 
 	switch (dd->pblk->irq_table[irq_bit]) {
 	case 0x01:
@@ -2541,6 +2664,32 @@ static int sy3400_process_irq(struct sy3400_driver_data *dd, uint8_t irq_bit)
 	case 0x12:
 		size = SY3400_MAX_TOUCHES * 8;
 		addr = dd->icdat->xy_addr;
+		break;
+
+	case 0x1A:
+		addr = dd->icdat->buttons_addr;
+		size = 1;
+		/* Switch to the appropriate page before reading the data */
+		/* find the function in the list */
+		sy3400_dbg(dd, SY3400_DBG3, "%s: Trying to handle irq $1A\n",
+					 __func__);
+		sy3400_dbg(dd, SY3400_DBG3, "%s: Will read from 0x%x\n",
+				__func__, addr);
+		cur = dd->pblk->pdt;
+		while (cur != NULL) {
+			if (cur->desc[5] == 0x1A)
+				break;
+			else
+				cur = cur->next;
+		}
+		/* Switch to the appropriate page */
+		err = sy3400_i2c_write(dd, 0xFF, &cur->page, 1);
+		if (err < 0) {
+			printk(KERN_ERR "%s: Unable to switch to page %d.\n",
+				__func__, cur->page);
+			err = -EIO;
+			goto sy3400_process_irq_fail;
+		}
 		break;
 
 	default:
@@ -2577,6 +2726,20 @@ static int sy3400_process_irq(struct sy3400_driver_data *dd, uint8_t irq_bit)
 
 	case 0x12:
 		err = sy3400_irq_handler12(dd, data, size);
+		break;
+
+	case 0x1A:
+		err = sy3400_irq_handler1A(dd, data, size);
+		/* Switch back to page 0 */
+		buf = 0x00;
+		err = sy3400_i2c_write(dd, 0xFF, &buf, 1);
+		if (err < 0) {
+			printk(KERN_ERR "%s: Handled $1A. Unable to switch to page %d.\n",
+				__func__, buf);
+			err = -EIO;
+			goto sy3400_process_irq_fail;
+		}
+
 		break;
 
 	default:
@@ -2697,6 +2860,30 @@ sy3400_irq_handler12_fail:
 	return err;
 }
 
+static int sy3400_irq_handler1A(struct sy3400_driver_data *dd,
+		uint8_t *data, uint8_t size)
+{
+	int err = 0;
+
+	sy3400_dbg(dd, SY3400_DBG3, "%s: Handling IRQ type $1A...Data: 0x%x\n",
+			__func__, data[0]);
+
+/* Buttons are controlled by bits in a single byte, so size has to be 1 */
+	if (size != 1) {
+		printk(KERN_ERR "%s: Data size is wrong(%d).\n",
+				__func__, size);
+		err = -EINVAL;
+		goto sy3400_irq_handler1A_fail;
+	}
+
+	dd->status = dd->status | (1 << SY3400_REPORT_TOUCHES);
+
+	dd->btn_curr = data[0];
+
+sy3400_irq_handler1A_fail:
+	return err;
+}
+
 static void sy3400_report_touches(struct sy3400_driver_data *dd)
 {
 	int i = 0;
@@ -2708,6 +2895,8 @@ static void sy3400_report_touches(struct sy3400_driver_data *dd)
 	int p = 0;
 	int w = 0;
 	bool touches_reported = false;
+	uint8_t c_button;
+	uint8_t p_button;
 
 	if (atomic_read(&dd->purge_flag)) {
 		sy3400_dbg(dd, SY3400_DBG3, "%s: skip reporting a touch "
@@ -2768,6 +2957,19 @@ static void sy3400_report_touches(struct sy3400_driver_data *dd)
 		}
 		input_mt_sync(dd->in_dev);
 	}
+
+	for (i = 0; i < SY3400_MAX_BUTTONS; i++) {
+		c_button = dd->btn_curr & (1<<i);
+		p_button = dd->btn_prev & (1<<i);
+
+		/* Check of status of the button has changed */
+		if (c_button == p_button)
+			continue;
+
+		input_report_key(dd->in_dev, i+KEY_F1, c_button);
+		touches_reported = true;
+	}
+	dd->btn_prev = dd->btn_curr;
 
 	if (!touches_reported)
 		input_mt_sync(dd->in_dev);
