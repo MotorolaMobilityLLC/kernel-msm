@@ -612,6 +612,17 @@ static __init void load_wireless_pdata_from_dt(void)
 			pdata->ts_ctrl_fault_pin);
 	}
 
+	if (of_property_read_u32(parent, "wireless_good_gpio", &gpio)) {
+		pr_err("%s: wireless_good_gpio property not found\n",
+		       __func__);
+		pdata->chrg_b_pin = -1;
+		goto out;
+	} else {
+		pdata->chrg_b_pin = gpio;
+		pr_info("wireless_good_gpio = %d\n",
+			pdata->chrg_b_pin);
+	}
+
 out:
 	of_node_put(parent);
 	return;
