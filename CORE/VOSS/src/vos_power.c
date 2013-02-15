@@ -93,10 +93,6 @@ when       who     what, where, why
 ===========================================================================*/
 #include <vos_power.h>
 
-#ifdef ANI_BUS_TYPE_SDIO
-#include <libra_sdioif.h>
-#endif
-
 #ifdef MSM_PLATFORM
 #include <mach/mpp.h>
 #include <mach/vreg.h>
@@ -622,29 +618,6 @@ VOS_STATUS vos_chipPowerDown
   v_PVOID_t             user_data
 )
 {
-
-#ifdef ANI_BUS_TYPE_SDIO
-#ifdef MSM_PLATFORM
-   struct sdio_func *sdio_func_dev = NULL;
-
-   // Get the SDIO func device
-   sdio_func_dev = libra_getsdio_funcdev();
-   if (sdio_func_dev == NULL)
-   {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL, "%s: Libra WLAN sdio device is NULL \n"
-             "exiting", __func__);
-   }
-   else 
-   {
-      // Set sdio clock to lower config cycle frequency before chip power down.
-      // Setting this low freq, will also internally in msm_sdcc disable power save.
-      // Once the card is power down and powered up and detected
-      // after the config cycles the clock freq will be set back up
-      // to our capability of 50MHz
-      libra_sdio_set_clock(sdio_func_dev, WLAN_LOW_SD_CONFIG_CLOCK_FREQ);
-   }
-#endif
-#endif
 
 #ifdef MSM_PLATFORM_8660
    if(vos_chip_power_qrf8615(CHIP_POWER_OFF))

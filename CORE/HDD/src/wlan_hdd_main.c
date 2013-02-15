@@ -75,21 +75,11 @@
   ------------------------------------------------------------------------*/
 //#include <wlan_qct_driver.h>
 #include <wlan_hdd_includes.h>
-#ifdef ANI_BUS_TYPE_SDIO
-#include <wlan_sal_misc.h>
-#endif // ANI_BUS_TYPE_SDIO
 #include <vos_api.h>
 #include <vos_sched.h>
 #include <vos_power.h>
 #include <linux/etherdevice.h>
 #include <linux/firmware.h>
-#ifdef ANI_BUS_TYPE_SDIO
-#include <linux/mmc/sdio_func.h>
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(2,6,32))
-// added in 2.6.32, need to define locally if using an earlier kernel
-#define dev_to_sdio_func(d)      container_of(d, struct sdio_func, dev)
-#endif
-#endif // ANI_BUS_TYPE_SDIO
 #ifdef ANI_BUS_TYPE_PLATFORM
 #include <linux/wcnss_wlan.h>
 #endif //ANI_BUS_TYPE_PLATFORM
@@ -3340,9 +3330,6 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    eHalStatus halStatus;
    v_CONTEXT_t pVosContext = pHddCtx->pvosContext;
    VOS_STATUS vosStatus;
-#ifdef ANI_BUS_TYPE_SDIO
-   struct sdio_func *sdio_func_dev = NULL;
-#endif // ANI_BUS_TYPE_SDIO
 #ifdef CONFIG_CFG80211
     struct wiphy *wiphy = pHddCtx->wiphy;
 #endif 
@@ -3503,24 +3490,6 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    
    hdd_stop_all_adapters( pHddCtx );
 
-#ifdef ANI_BUS_TYPE_SDIO
-   sdio_func_dev = libra_getsdio_funcdev();
-
-   if(sdio_func_dev == NULL)
-   {
-        hddLog(VOS_TRACE_LEVEL_FATAL, "%s: sdio_func_dev is NULL!",__func__);
-        VOS_ASSERT(0);
-        return;
-   }
-
-   sd_claim_host(sdio_func_dev);
-
-   /* Disable SDIO IRQ since we are exiting */
-   libra_enable_sdio_irq(sdio_func_dev, 0);
-
-   sd_release_host(sdio_func_dev);
-#endif // ANI_BUS_TYPE_SDIO
-
 #ifdef WLAN_BTAMP_FEATURE
    vosStatus = WLANBAP_Stop(pVosContext);
    if (!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -3538,40 +3507,6 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
          "%s: Failed to stop VOSS",__func__);
       VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
    }
-
-#ifdef ANI_BUS_TYPE_SDIO
-   vosStatus = WLANBAL_Stop( pVosContext );
-
-   hddLog(VOS_TRACE_LEVEL_ERROR,"WLAN BAL STOP\n");
-   if (!VOS_IS_STATUS_SUCCESS(vosStatus))
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-         "%s: Failed to stop BAL",__func__);
-      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
-   }
-
-    msleep(50);
-   //Put the chip is standby before asserting deep sleep
-   vosStatus = WLANBAL_SuspendChip( pVosContext );
-
-   hddLog(VOS_TRACE_LEVEL_ERROR,"WLAN Suspend Chip\n");
-
-   if (!VOS_IS_STATUS_SUCCESS(vosStatus))
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-         "%s: Failed to suspend chip ",__func__);
-      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
-   }
-   //Invoke SAL stop
-   vosStatus = WLANSAL_Stop( pVosContext );
-   if (!VOS_IS_STATUS_SUCCESS(vosStatus))
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-         "%s: Failed to stop SAL",__func__);
-      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
-   }
-
-#endif // ANI_BUS_TYPE_SDIO
 
    //Assert Deep sleep signal now to put Libra HW in lowest power state
    vosStatus = vos_chipAssertDeepSleep( NULL, NULL, NULL );
@@ -3610,17 +3545,6 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    //Close VOSS
    //This frees pMac(HAL) context. There should not be any call that requires pMac access after this.
    vos_close(pVosContext);
-
-#ifdef ANI_BUS_TYPE_SDIO
-   vosStatus = WLANBAL_Close(pVosContext);
-   if (!VOS_IS_STATUS_SUCCESS(vosStatus))
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, 
-          "%s: Failed to close BAL",__func__);
-      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
-   }
-   hddLog(VOS_TRACE_LEVEL_ERROR,"Returned WLAN BAL CLOSE\n\n\n\n");
-#endif // ANI_BUS_TYPE_SDIO
 
    //Close Watchdog
    if(pHddCtx->cfg_ini->fIsLogpEnabled)
@@ -3823,28 +3747,6 @@ VOS_STATUS hdd_post_voss_start_config(hdd_context_t* pHddCtx)
    return VOS_STATUS_SUCCESS;
 }
 
-#ifdef ANI_BUS_TYPE_SDIO
-
-#ifndef ANI_MANF_DIAG
-// Routine to initialize the PMU
-void wlan_hdd_enable_deepsleep(v_VOID_t * pVosContext)
-{
-/*-------------- Need to fix this correctly while doing Deepsleep testing
-    tANI_U32 regValue = 0;
-
-    regValue  = QWLAN_PMU_LDO_CTRL_REG_PMU_ANA_DEEP_SLEEP_EN_MASK |
-                QWLAN_PMU_LDO_CTRL_REG_PMU_ANA_1P23_LPM_AON_MASK_MASK |
-                QWLAN_PMU_LDO_CTRL_REG_PMU_ANA_1P23_LPM_SW_MASK_MASK |
-                QWLAN_PMU_LDO_CTRL_REG_PMU_ANA_2P3_LPM_MASK_MASK;
-
-    WLANBAL_WriteRegister(pVosContext, QWLAN_PMU_LDO_CTRL_REG_REG, regValue);
----------------------*/
-
-    return;
-}
-#endif
-#endif
-
 /* wake lock APIs for HDD */
 void hdd_prevent_suspend(void)
 {
@@ -4032,9 +3934,6 @@ int hdd_wlan_startup(struct device *dev )
 #ifdef CONFIG_CFG80211
    struct wiphy *wiphy;
 #endif
-#ifdef ANI_BUS_TYPE_SDIO
-   struct sdio_func *sdio_func_dev = dev_to_sdio_func(dev);
-#endif //ANI_BUS_TYPE_SDIO
 
    ENTER();
 #ifdef CONFIG_CFG80211
@@ -4086,12 +3985,6 @@ int hdd_wlan_startup(struct device *dev )
 
    //Save the adapter context in global context for future.
    ((VosContextType*)(pVosContext))->pHDDContext = (v_VOID_t*)pHddCtx;
-
-#ifdef ANI_BUS_TYPE_SDIO
-   // Set the private data for the device to our adapter.
-   libra_sdio_setprivdata (sdio_func_dev, pHddCtx);
-   atomic_set(&pHddCtx->sdio_claim_count, 0);
-#endif // ANI_BUS_TYPE_SDIO
 
    pHddCtx->parent_dev = dev;
 
@@ -4205,88 +4098,45 @@ int hdd_wlan_startup(struct device *dev )
    pHddCtx->isLogpInProgress = FALSE;
    vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, FALSE);
 
-#ifdef ANI_BUS_TYPE_SDIO
-   status = WLANBAL_Open(pHddCtx->pvosContext);
-   if(!VOS_IS_STATUS_SUCCESS(status))
-   {
-     VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-        "%s: Failed to open BAL",__func__);
-      goto err_wdclose;
-   }
-#endif // ANI_BUS_TYPE_SDIO
-
    status = vos_chipVoteOnXOBuffer(NULL, NULL, NULL);
    if(!VOS_IS_STATUS_SUCCESS(status))
    {
       hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Failed to configure 19.2 MHz Clock", __func__);
-#ifdef ANI_BUS_TYPE_SDIO
-      goto err_balclose;
-#else
       goto err_wdclose;
-#endif
    }
-
-
-#ifdef ANI_BUS_TYPE_SDIO
-   status = WLANSAL_Start(pHddCtx->pvosContext);
-   if (!VOS_IS_STATUS_SUCCESS(status))
-   {
-      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Failed to start SAL",__func__);
-      goto err_clkvote;
-   }
-
-  /* Start BAL */
-  status = WLANBAL_Start(pHddCtx->pvosContext);
-
-  if (!VOS_IS_STATUS_SUCCESS(status))
-   {
-     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-              "%s: Failed to start BAL",__func__);
-     goto err_salstop;
-  }
-#endif // ANI_BUS_TYPE_SDIO
-
-#ifdef MSM_PLATFORM_7x30
-   /* FIXME: Volans 2.0 configuration. Reconfigure 1.3v SW supply to 1.3v. It will be configured to
-    * 1.4v in vos_ChipPowerup() routine above
-    */
-#endif
 
    status = vos_open( &pVosContext, 0);
    if ( !VOS_IS_STATUS_SUCCESS( status ))
    {
-      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: vos_open failed",__func__);
-      goto err_balstop;   
+      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: vos_open failed", __func__);
+      goto err_clkvote;
    }
 
-   /* Save the hal context in Adapter */
    pHddCtx->hHal = (tHalHandle)vos_get_context( VOS_MODULE_ID_SME, pVosContext );
 
    if ( NULL == pHddCtx->hHal )
    {
-      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: HAL context is null",__func__);      
+      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: HAL context is null", __func__);
       goto err_vosclose;
    }
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
-      /* Vos preStart is calling */
-      /* vos preStart which does cfg download should be called before set sme config which accesses/sets some cfgs */
-      status = vos_preStart( pHddCtx->pvosContext );
-      if ( !VOS_IS_STATUS_SUCCESS( status ) )
-      {
-         hddLog(VOS_TRACE_LEVEL_FATAL,"%s: vos_preStart failed",__func__);
-         goto err_vosclose;
-      }
-#endif
+   status = vos_preStart( pHddCtx->pvosContext );
+   if ( !VOS_IS_STATUS_SUCCESS( status ) )
+   {
+      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: vos_preStart failed", __func__);
+      goto err_vosclose;
+   }
 
-   // Set the SME configuration parameters...
+   /* Note that the vos_preStart() sequence triggers the cfg download.
+      The cfg download must occur before we update the SME config
+      since the SME config operation must access the cfg database */
    status = hdd_set_sme_config( pHddCtx );
 
    if ( VOS_STATUS_SUCCESS != status )
    {
-      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: Failed hdd_set_sme_config",__func__); 
-         goto err_vosclose;
-      }
+      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Failed hdd_set_sme_config", __func__);
+      goto err_vosclose;
+   }
 
    //Initialize the WMM module
    status = hdd_wmm_init(pHddCtx);
@@ -4360,7 +4210,7 @@ int hdd_wlan_startup(struct device *dev )
       else
 #endif //WLAN_AUTOGEN_MACADDR_FEATURE
       {
-      hddLog(VOS_TRACE_LEVEL_ERROR,
+         hddLog(VOS_TRACE_LEVEL_ERROR,
                 "%s: Invalid MAC address in NV, using MAC from ini file "
                 MAC_ADDRESS_STR, __func__,
                 MAC_ADDR_ARRAY(pHddCtx->cfg_ini->intfMacAddr[0].bytes));
@@ -4462,12 +4312,8 @@ int hdd_wlan_startup(struct device *dev )
 
    if( pAdapter == NULL )
    {
-     hddLog(VOS_TRACE_LEVEL_ERROR,"%s: hdd_open_adapter failed",__func__);
-#ifdef ANI_BUS_TYPE_SDIO
-     goto err_balstop;
-#else
-     goto err_close_adapter;
-#endif
+      hddLog(VOS_TRACE_LEVEL_ERROR, "%s: hdd_open_adapter failed", __func__);
+      goto err_close_adapter;
    }
 
 #ifdef WLAN_BTAMP_FEATURE
@@ -4654,28 +4500,8 @@ err_vosclose:
    }
    vos_close(pVosContext ); 
 
-err_balstop:
-#ifdef ANI_BUS_TYPE_SDIO
-#ifndef ANI_MANF_DIAG
-       wlan_hdd_enable_deepsleep(pHddCtx->pvosContext);
-#endif
-
-   WLANBAL_Stop(pHddCtx->pvosContext);
-   WLANBAL_SuspendChip(pHddCtx->pvosContext);
-#endif
-
-#ifdef ANI_BUS_TYPE_SDIO
-err_salstop:
-   WLANSAL_Stop(pHddCtx->pvosContext);
-
 err_clkvote:
-#endif
-    vos_chipVoteOffXOBuffer(NULL, NULL, NULL);
-
-#ifdef ANI_BUS_TYPE_SDIO
-err_balclose:
-   WLANBAL_Close(pHddCtx->pvosContext);
-#endif // ANI_BUS_TYPE_SDIO
+   vos_chipVoteOffXOBuffer(NULL, NULL, NULL);
 
 err_wdclose:
    if(pHddCtx->cfg_ini->fIsLogpEnabled)
@@ -4731,10 +4557,6 @@ static int hdd_driver_init( void)
 {
    VOS_STATUS status;
    v_CONTEXT_t pVosContext = NULL;
-#ifdef ANI_BUS_TYPE_SDIO
-   struct sdio_func *sdio_func_dev = NULL;
-   unsigned int attempts = 0;
-#endif // ANI_BUS_TYPE_SDIO
    struct device *dev = NULL;
    int ret_status = 0;
 
@@ -4755,71 +4577,6 @@ static int hdd_driver_init( void)
           "exiting", __func__);
       return -EIO;
    }
-
-#ifdef ANI_BUS_TYPE_SDIO
-   //SDIO Polling should be turned on for card detection. When using Android Wi-Fi GUI
-   //users need not trigger SDIO polling explicitly. However when loading drivers via
-   //command line (Adb shell), users must turn on SDIO polling prior to loading WLAN.
-   do {
-      sdio_func_dev = libra_getsdio_funcdev();
-      if (NULL == sdio_func_dev) {
-         hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Libra WLAN not detected yet.",__func__);
-         attempts++;
-      }
-      else {
-         hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Libra WLAN detecton succeeded",__func__);
-         dev = &sdio_func_dev->dev;
-         break;
-      }
-
-      if(attempts == 7)
-         break;
-
-      msleep(250);
-
-   }while (attempts < 7);
-
-   //Retry to detect the card again by Powering Down the chip and Power up the chip
-   //again. This retry is done to recover from CRC Error
-   if (NULL == sdio_func_dev) {
-
-      attempts = 0;
-
-      //Vote off any PMIC voltage supplies
-      vos_chipPowerDown(NULL, NULL, NULL);
-
-      msleep(1000);
-
-      //Power Up Libra WLAN card first if not already powered up
-      status = vos_chipPowerUp(NULL,NULL,NULL);
-      if (!VOS_IS_STATUS_SUCCESS(status))
-      {
-         hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Retry Libra WLAN not Powered Up. "
-             "exiting", __func__);
-         return -EIO;
-      }
-
-      do {
-         sdio_func_dev = libra_getsdio_funcdev();
-         if (NULL == sdio_func_dev) {
-            hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Retry Libra WLAN not detected yet.",__func__);
-            attempts++;
-         }
-         else {
-            hddLog(VOS_TRACE_LEVEL_FATAL, "%s: Retry Libra WLAN detecton succeeded",__func__);
-            dev = &sdio_func_dev->dev;
-            break;
-         }
-
-         if(attempts == 2)
-           break;
-
-         msleep(1000);
-
-      }while (attempts < 3);
-   }
-
-#endif // ANI_BUS_TYPE_SDIO
 
 #ifdef ANI_BUS_TYPE_PCI
 
@@ -4857,21 +4614,6 @@ static int hdd_driver_init( void)
          break;
    }
 
-#ifdef ANI_BUS_TYPE_SDIO
-   /* Now Open SAL */
-   status = WLANSAL_Open(pVosContext, 0);
-
-   if(!VOS_IS_STATUS_SUCCESS(status))
-   {
-         hddLog(VOS_TRACE_LEVEL_FATAL,"%s: Failed to open SAL", __func__);
-
-      /* If unable to open, cleanup and return failure */
-      vos_preClose( &pVosContext );
-         ret_status = -1;
-         break;
-   }
-#endif // ANI_BUS_TYPE_SDIO
-
 #ifndef MODULE
       /* For statically linked driver, call hdd_set_conparam to update curr_con_mode
        */
@@ -4879,12 +4621,10 @@ static int hdd_driver_init( void)
 #endif
 
       // Call our main init function
-      if(hdd_wlan_startup(dev)) {
+      if (hdd_wlan_startup(dev))
+      {
          hddLog(VOS_TRACE_LEVEL_FATAL,"%s: WLAN Driver Initialization failed",
-          __func__);
-#ifdef ANI_BUS_TYPE_SDIO
-         WLANSAL_Close(pVosContext);
-#endif // ANI_BUS_TYPE_SDIO
+                __func__);
          vos_preClose( &pVosContext );
          ret_status = -1;
          break;
@@ -5012,10 +4752,6 @@ static void hdd_driver_exit(void)
       //Do all the cleanup before deregistering the driver
       hdd_wlan_exit(pHddCtx);
    }
-
-#ifdef ANI_BUS_TYPE_SDIO
-   WLANSAL_Close(pVosContext);
-#endif // ANI_BUS_TYPE_SDIO
 
    vos_preClose( &pVosContext );
 
@@ -5164,9 +4900,6 @@ VOS_STATUS hdd_softap_sta_deauth(hdd_adapter_t *pAdapter, v_U8_t *pDestMacAddres
 {
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
     VOS_STATUS vosStatus = VOS_STATUS_E_FAULT;
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-    tHalHandle hHalHandle;
-#endif
 
     ENTER();
 
