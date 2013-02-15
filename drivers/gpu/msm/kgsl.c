@@ -2541,6 +2541,9 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	/* Initalize the snapshot engine */
 	kgsl_device_snapshot_init(device);
 
+	/* Initialize the postmortem sysfs engine */
+	kgsl_device_postmortem_init(device);
+
 	/* Initialize common sysfs entries */
 	kgsl_pwrctrl_init_sysfs(device);
 
@@ -2581,6 +2584,13 @@ int kgsl_postmortem_dump(struct kgsl_device *device, int manual)
 			kgsl_idle(device);
 
 	}
+
+	if (device->postmortem_dump != NULL && device->postmortem_size > 0) {
+		/* Clear the sysfs buffer of previous postmortem */
+		memset(device->postmortem_dump, 0, device->postmortem_size);
+		device->postmortem_pos = 0;
+	}
+
 	KGSL_LOG_DUMP(device, "|%s| Dump Started\n", device->name);
 	KGSL_LOG_DUMP(device, "POWER: FLAGS = %08lX | ACTIVE POWERLEVEL = %08X",
 			pwr->power_flags, pwr->active_pwrlevel);
@@ -2638,6 +2648,7 @@ EXPORT_SYMBOL(kgsl_postmortem_dump);
 
 void kgsl_device_platform_remove(struct kgsl_device *device)
 {
+	kgsl_device_postmortem_close(device);
 	kgsl_device_snapshot_close(device);
 
 	kgsl_cffdump_close(device->id);

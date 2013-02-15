@@ -884,3 +884,20 @@ error_vfree:
 end:
 	return result;
 }
+
+int adreno_postmortem_sysfs_init(struct kgsl_device *device)
+{
+	device->postmortem_size = PAGE_SIZE;
+	device->postmortem_dump = kzalloc(device->postmortem_size, GFP_KERNEL);
+	device->postmortem_pos = 0;
+
+	return 0;
+}
+
+void adreno_postmortem_sysfs_close(struct kgsl_device *device)
+{
+	device->postmortem_size = 0;
+	device->postmortem_pos = 0;
+	kfree(device->postmortem_dump);
+	device->postmortem_dump = NULL;
+}
