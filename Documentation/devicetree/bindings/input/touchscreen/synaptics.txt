@@ -3,7 +3,8 @@ Synaptics Touch Controllers
 Required properties:
 
  - compatible:
-        should be "synaptics,sy3200", or "synaptics,sy3400"
+        should be "synaptics,sy3200", or "synaptics,sy3400",
+        or "synaptics,synaptics_dsx_i2c"
  - reg:
         i2c slave address of the device
  - interrupt-parent:
@@ -22,6 +23,14 @@ Required properties:
         firmware filename to flash to the 3200 controller
  - synaptics,sy3400-tdat-filename:
         firmware filename to flash to the 3400 controller
+ - synaptics,panel-sync-enabled:
+        flag to enable state changes notifications from panel driver
+
+        Those notifications include power on/off and display on and can be used
+        to control suspend/resume for in-cell touch solutions and/or to purge
+        touch events received before display is on.
+ - synaptics,key-buttons:
+        key codes for the supported buttons
 
 Example:
 	i2c@16200000 {
@@ -39,6 +48,22 @@ Example:
 				<&msmgpio 63 0>; /* RESET */
 
 			synaptics,sy3200-tdat-filename = "sy3200-r0.tdat";
+		};
+	};
+
+	or
+
+	&i2c@3 {
+		synaptics_dsx_i2c@20 {
+			compatible = "synaptics,synaptics_dsx_i2c";
+			reg = <0x20>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <46 0>;
+			gpios = <&msmgpio 46 0>, /* IRQ */
+				<&msmgpio 63 0>; /* RESET */
+
+			synaptics,panel-sync-enabled = <1>;
+			synaptics,key-buttons = <139 102 158 0>; /* KEY_MENU, KEY_HOME, KEY_BACK */
 		};
 	};
 
