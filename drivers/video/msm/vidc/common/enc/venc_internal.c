@@ -1870,7 +1870,7 @@ u32 vid_enc_set_recon_buffers(struct video_client_ctx *client_ctx,
 					VIDEO_DOMAIN,
 					VIDEO_MAIN_POOL,
 					SZ_4K,
-					0,
+					control->buffer_size * 2,
 					(unsigned long *)&iova,
 					(unsigned long *)&buffer_size,
 					0, 0);
