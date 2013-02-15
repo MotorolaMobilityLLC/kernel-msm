@@ -498,6 +498,7 @@ typedef struct tagCsrNeighborRoamConfig
     sCsrChannel    neighborScanChanList;
     tANI_U8        nMaxNeighborRetries;
     tANI_U16       nNeighborResultsRefreshPeriod;
+    tANI_U16       nEmptyScanRefreshPeriod;
 }tCsrNeighborRoamConfig;
 #endif
 
@@ -1052,6 +1053,9 @@ typedef struct tagCsrRoamStruct
 
 #define CSR_IS_CHANNEL_5GHZ(chnNum) \
         (((chnNum) >= CSR_MIN_5GHz_CHANNEL_NUMBER) && ((chnNum) <= CSR_MAX_5GHz_CHANNEL_NUMBER))
+
+#define CSR_IS_CHANNEL_DFS(chnNum) \
+         (NV_CHANNEL_ENABLE != vos_nv_getChannelEnabledState(chnNum))
 
 #define CSR_IS_CHANNEL_24GHZ(chnNum) \
         (((chnNum) > 0) && ((chnNum) <= CSR_MAX_24GHz_CHANNEL_NUMBER))

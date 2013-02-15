@@ -123,6 +123,17 @@
   Static Type declarations
   ------------------------------------------------------------------------*/
 static tCsrRoamSession csrRoamRoamSession[CSR_ROAM_SESSION_MAX];
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+static const char KR_3[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                            36, 40, 44, 48, 52, 56, 60, 64, 100, 104,
+                            108, 112, 116, 120, 124, 149, 153, 157, 161};
+static const char KR_24[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                            36, 40, 44, 48, 52, 56, 60, 64, 100, 104,
+                            108, 112, 116, 120, 124, 149, 153, 157, 161};
+static const char KR_25[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                            36, 40, 44, 48, 149, 153, 157, 161};
+#endif
+
 /*-------------------------------------------------------------------------- 
   Type declarations
   ------------------------------------------------------------------------*/
@@ -966,6 +977,7 @@ static void initConfigParam(tpAniSirGlobal pMac)
     pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.channelList[1] = 6;
     pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.channelList[2] = 11;
     pMac->roam.configParam.neighborRoamConfig.nNeighborResultsRefreshPeriod = 20000; //20 seconds
+    pMac->roam.configParam.neighborRoamConfig.nEmptyScanRefreshPeriod = 0;
 #endif
 #ifdef WLAN_FEATURE_11AC
      pMac->roam.configParam.nVhtChannelWidth = WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ + 1;
@@ -984,6 +996,209 @@ eCsrBand csrGetCurrentBand(tHalHandle hHal)
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     return pMac->roam.configParam.bandCapability;
 }
+
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+tANI_BOOLEAN csrIsChannelInCountryValidList(tpAniSirGlobal pMac, tANI_U8 channel)
+{
+    /* Get country code from CFG */
+    tANI_U8 *pCountryCode = pMac->scan.countryCodeCurrent;
+    tANI_U8 i = 0;
+    v_BOOL_t retVal = FALSE;
+    tANI_U8 *pCountryValidChannelList = pMac->roam.neighborRoamInfo.cfgParams.countryChannelInfo.countryValidChannelList.ChannelList;
+    tANI_U8 *pNumChannels = &pMac->roam.neighborRoamInfo.cfgParams.countryChannelInfo.countryValidChannelList.numOfChannels;
+
+    /* Compare against KR valid list */
+    if ((0 == strncmp(pCountryCode, "KR", 2)) &&
+        (NULL != pCountryValidChannelList))
+    {
+        for (i = 0; i <(*pNumChannels); i++)
+        {
+            if (channel == pCountryValidChannelList[i])
+            {
+                retVal = TRUE;
+                break;
+            }
+        }
+    }
+    else
+    {
+        retVal = csrRoamIsChannelValid(pMac, channel);
+    }
+
+    return retVal;
+}
+
+void csr_SetRevision(tpAniSirGlobal pMac, tANI_U8 revision)
+{
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    pNeighborRoamInfo->cfgParams.countryChannelInfo.revision = revision;
+}
+
+/*
+ This function flushes the roam scan cache and creates fresh cache
+ based on the input channel list
+*/
+eHalStatus csrFlushAndCreateBgScanRoamChannelList(tpAniSirGlobal pMac,
+                                                  const tANI_U8 *pChannelList,
+                                                  const tANI_U8 numChannels)
+{
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+
+    /* Free up the memory first (if required) */
+    if (NULL != pNeighborRoamInfo->cfgParams.channelInfo.ChannelList)
+    {
+        vos_mem_free(pNeighborRoamInfo->cfgParams.channelInfo.ChannelList);
+        pNeighborRoamInfo->cfgParams.channelInfo.ChannelList = NULL;
+    }
+    pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels = numChannels;
+
+    pNeighborRoamInfo->cfgParams.channelInfo.ChannelList =
+            vos_mem_malloc(pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels);
+
+    if (NULL == pNeighborRoamInfo->cfgParams.channelInfo.ChannelList)
+    {
+        smsLog(pMac, LOGE, FL("Memory Allocation for CFG Channel List failed"));
+        pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels = 0;
+        return eHAL_STATUS_RESOURCES;
+    }
+
+    /* Update the roam global structure */
+    palCopyMemory(pMac->hHdd, pNeighborRoamInfo->cfgParams.channelInfo.ChannelList,
+                        pChannelList,
+                        pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels);
+    return status;
+}
+
+/* This function modifies the bgscan channel list set via config ini or
+   runtime, whenever the band changes.
+   if the band is auto, then no operation is performed on the channel list
+   if the band is 2.4G, then make sure channel list contains only 2.4G valid channels
+   if the band is 5G, then make sure channel list contains only 5G valid channels
+*/
+eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac,
+                                               eCsrBand eBand)
+{
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    tANI_U8 outNumChannels = 0;
+    tANI_U8 inNumChannels = 0;
+    tANI_U8 *inPtr = NULL;
+    tANI_U8 i = 0;
+    tANI_U8 ChannelList[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
+
+    if (NULL == pNeighborRoamInfo->cfgParams.channelInfo.ChannelList)
+
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+            "No update required for channel list "
+            "either cfg.ini channel list is not set up or "
+            "auto band (Band %d)", eBand);
+        return status;
+    }
+
+    inNumChannels = pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels;
+    inPtr = pNeighborRoamInfo->cfgParams.channelInfo.ChannelList;
+    if (eCSR_BAND_24 == eBand)
+    {
+        for (i = 0; i < inNumChannels; i++)
+        {
+            if (CSR_IS_CHANNEL_24GHZ(inPtr[i]) && csrIsChannelInCountryValidList(pMac, inPtr[i]))
+            {
+                ChannelList[outNumChannels++] = inPtr[i];
+            }
+        }
+        csrFlushAndCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
+    }
+    else if (eCSR_BAND_5G == eBand)
+    {
+        for (i = 0; i < inNumChannels; i++)
+        {
+            /* Add 5G Non-DFS channel */
+            if (CSR_IS_CHANNEL_5GHZ(inPtr[i]) &&
+               csrIsChannelInCountryValidList(pMac, inPtr[i]) &&
+               !CSR_IS_CHANNEL_DFS(inPtr[i]))
+            {
+               ChannelList[outNumChannels++] = inPtr[i];
+            }
+        }
+        csrFlushAndCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
+    }
+    else if (eCSR_BAND_ALL == eBand)
+    {
+        for (i = 0; i < inNumChannels; i++)
+        {
+            if (csrIsChannelInCountryValidList(pMac, inPtr[i]) &&
+               !CSR_IS_CHANNEL_DFS(inPtr[i]))
+            {
+               ChannelList[outNumChannels++] = inPtr[i];
+            }
+        }
+        csrFlushAndCreateBgScanRoamChannelList(pMac, ChannelList, outNumChannels);
+    }
+    else
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN,
+            "Invalid band, No operation carried out (Band %d)", eBand);
+        status = eHAL_STATUS_INVALID_PARAMETER;
+    }
+
+    return status;
+}
+
+/*
+ This function initializes the valid channel list based on country code
+*/
+eHalStatus csrInitCountryValidChannelList(tpAniSirGlobal pMac,
+                                        tANI_U8 Revision)
+{
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    tANI_U8 *pOutChannelList = pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.ChannelList;
+    tANI_U8 *pNumChannels = &pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.numOfChannels;
+    const tANI_U8 *pChannelList = NULL;
+
+    if (SME_KR_3 == Revision)
+    {
+        pChannelList = KR_3;
+        *pNumChannels = sizeof(KR_3)/sizeof(KR_3[0]);
+    }
+    else if (SME_KR_24 == Revision)
+    {
+        pChannelList = KR_24;
+        *pNumChannels = sizeof(KR_24)/sizeof(KR_24[0]);
+    }
+    else if (SME_KR_25 == Revision)
+    {
+        pChannelList = KR_25;
+        *pNumChannels = sizeof(KR_25)/sizeof(KR_25[0]);
+    }
+    else
+        return eHAL_STATUS_INVALID_PARAMETER;
+
+    /* Free up the memory first */
+    if (NULL != pOutChannelList)
+    {
+        vos_mem_free(pOutChannelList);
+        pOutChannelList = NULL;
+    }
+
+    pOutChannelList = vos_mem_malloc(*pNumChannels);
+
+    if (NULL == pOutChannelList)
+    {
+        smsLog(pMac, LOGE, FL("Memory Allocation for CFG Channel List failed"));
+        *pNumChannels = 0;
+        return eHAL_STATUS_RESOURCES;
+    }
+
+    /* Update the roam global structure */
+    palCopyMemory(pMac->hHdd, pOutChannelList, pChannelList, *pNumChannels);
+    return status;
+}
+
+#endif
+
 eHalStatus csrSetBand(tHalHandle hHal, eCsrBand eBand)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
@@ -991,10 +1206,10 @@ eHalStatus csrSetBand(tHalHandle hHal, eCsrBand eBand)
     if (CSR_IS_PHY_MODE_A_ONLY(pMac) &&
             (eBand == eCSR_BAND_24))
     {
-        /* DOT11 mode configured to 11a only and received 
+        /* DOT11 mode configured to 11a only and received
            request to change the band to 2.4 GHz */
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-            "failed to set band cfg80211 = %u, band = %u\n",  
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+            "failed to set band cfg80211 = %u, band = %u\n",
             pMac->roam.configParam.uCfgDot11Mode, eBand);
         return eHAL_STATUS_INVALID_PARAMETER;
     }
@@ -1002,23 +1217,28 @@ eHalStatus csrSetBand(tHalHandle hHal, eCsrBand eBand)
                 CSR_IS_PHY_MODE_G_ONLY(pMac)) &&
             (eBand == eCSR_BAND_5G))
     {
-        /* DOT11 mode configured to 11b/11g only and received 
+        /* DOT11 mode configured to 11b/11g only and received
            request to change the band to 5 GHz */
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-            "failed to set band dot11mode = %u, band = %u\n",  
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+            "failed to set band dot11mode = %u, band = %u\n",
             pMac->roam.configParam.uCfgDot11Mode, eBand);
         return eHAL_STATUS_INVALID_PARAMETER;
     }
-    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
+    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
             "Band changed to %u (0 - ALL, 1 - 2.4 GHZ, 2 - 5GHZ)\n", eBand);
-    pMac->roam.configParam.eBand = eBand; 
-    pMac->roam.configParam.bandCapability = eBand; 
+    pMac->roam.configParam.eBand = eBand;
+    pMac->roam.configParam.bandCapability = eBand;
     csrScanGetSupportedChannels( pMac );
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    csrUpdateBgScanConfigIniChannelList( pMac, eBand );
+#endif
     status = csrInitGetChannels( pMac );
     if (eHAL_STATUS_SUCCESS == status)
         csrInitChannelList( hHal );
     return status;
 }
+
+
 /* The funcns csrConvertCBIniValueToPhyCBState and csrConvertPhyCBStateToIniValue have been
  * introduced to convert the ini value to the ENUM used in csr and MAC for CB state
  * Ideally we should have kept the ini value and enum value same and representing the same
@@ -1323,8 +1543,9 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         smsLog( pMac, LOG1, "nNeighborLookupRssiThreshold = %d\n", pMac->roam.configParam.neighborRoamConfig.nNeighborLookupRssiThreshold);  
         smsLog( pMac, LOG1, "nNeighborScanMinChanTime = %d\n", pMac->roam.configParam.neighborRoamConfig.nNeighborScanMinChanTime); 
         smsLog( pMac, LOG1, "nNeighborScanMaxChanTime = %d\n", pMac->roam.configParam.neighborRoamConfig.nNeighborScanMaxChanTime);
-        smsLog( pMac, LOG1, "nMaxNeighborRetries = %d\n", pMac->roam.configParam.neighborRoamConfig.nMaxNeighborRetries); 
-        smsLog( pMac, LOG1, "nNeighborResultsRefreshPeriod = %d\n", pMac->roam.configParam.neighborRoamConfig.nNeighborResultsRefreshPeriod); 
+        smsLog( pMac, LOG1, "nMaxNeighborRetries = %d\n", pMac->roam.configParam.neighborRoamConfig.nMaxNeighborRetries);
+        smsLog( pMac, LOG1, "nNeighborResultsRefreshPeriod = %d\n", pMac->roam.configParam.neighborRoamConfig.nNeighborResultsRefreshPeriod);
+        smsLog( pMac, LOG1, "nEmptyScanRefreshPeriod = %d\n", pMac->roam.configParam.neighborRoamConfig.nEmptyScanRefreshPeriod);
         {
            int i;
            smsLog( pMac, LOG1, FL("Num of Channels in CFG Channel List: %d\n"), pMac->roam.configParam.neighborRoamConfig.neighborScanChanList.numChannels); 

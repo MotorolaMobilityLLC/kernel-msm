@@ -356,7 +356,7 @@ typedef enum
 #define CFG_RSSI_CATEGORY_GAP_NAME             "gRssiCatGap"
 #define CFG_RSSI_CATEGORY_GAP_MIN              ( 5 )  
 #define CFG_RSSI_CATEGORY_GAP_MAX              ( 100 )  
-#define CFG_RSSI_CATEGORY_GAP_DEFAULT          ( 30 )
+#define CFG_RSSI_CATEGORY_GAP_DEFAULT          ( 5 )
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
 #define CFG_ROAM_PREFER_5GHZ                   "gRoamPrefer5GHz"
@@ -763,7 +763,7 @@ typedef enum
  * This check is not done if the value is Zero */
 #define CFG_ROAM_RSSI_DIFF_NAME                             "RoamRssiDiff"
 #define CFG_ROAM_RSSI_DIFF_MIN                              (0)
-#define CFG_ROAM_RSSI_DIFF_MAX                              (125)
+#define CFG_ROAM_RSSI_DIFF_MAX                              (30)
 #define CFG_ROAM_RSSI_DIFF_DEFAULT                          (0)
 
 /*
@@ -1108,6 +1108,11 @@ typedef enum
 #define CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN          (1000)
 #define CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX          (60000)
 #define CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_DEFAULT      (20000)
+
+#define CFG_EMPTY_SCAN_REFRESH_PERIOD_NAME         "gEmptyScanRefreshPeriod"
+#define CFG_EMPTY_SCAN_REFRESH_PERIOD_MIN          (1000)
+#define CFG_EMPTY_SCAN_REFRESH_PERIOD_MAX          (60000)
+#define CFG_EMPTY_SCAN_REFRESH_PERIOD_DEFAULT      (0)
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */
 
 #define CFG_QOS_WMM_BURST_SIZE_DEFN_NAME                        "burstSizeDefinition" 
@@ -1761,13 +1766,14 @@ typedef struct
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
    v_U16_t       nNeighborScanPeriod;
-   v_U16_t       nNeighborReassocRssiThreshold;
-   v_U16_t       nNeighborLookupRssiThreshold;
-   char          neighborScanChanList[100];         
+   v_U8_t        nNeighborReassocRssiThreshold;
+   v_U8_t        nNeighborLookupRssiThreshold;
+   v_U8_t        neighborScanChanList[WNI_CFG_VALID_CHANNEL_LIST_LEN];
    v_U16_t       nNeighborScanMinChanTime; 
    v_U16_t       nNeighborScanMaxChanTime; 
    v_U16_t       nMaxNeighborReqTries;
-   v_U16_t       nNeighborResultsRefreshPeriod; 
+   v_U16_t       nNeighborResultsRefreshPeriod;
+   v_U16_t       nEmptyScanRefreshPeriod;
 #endif
 
    //Handoff Parameters
