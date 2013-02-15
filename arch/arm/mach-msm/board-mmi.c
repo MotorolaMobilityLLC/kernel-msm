@@ -341,9 +341,6 @@ static void __init mmi_otg_init(struct msm8960_oem_init_ptrs *oem_ptr,
 	} else
 		otg_pdata->phy_init_seq = mmi_phy_settings;
 
-	/* Skip EMU id logic detection for factory mode */
-	if (mmi_boot_mode_is_factory())
-		goto put_node;
 	/*
 	 * If the EMU circuitry provides id, then read the id irq and
 	 * active logic from the device tree.
