@@ -376,13 +376,19 @@ static int touch_ic_init(struct lge_touch_data *ts)
 		goto err_out_critical;
 	}
 
-	atomic_set(&ts->next_work, 0);
-	atomic_set(&ts->device_init, 1);
-
 	if (touch_device_func->init == NULL) {
 		TOUCH_INFO_MSG("There is no specific IC init function\n");
 		goto err_out_critical;
 	}
+
+	/* Do the soft reset to make sure the controller is reset OK */
+	if (touch_device_func->ic_ctrl(ts->client, IC_CTRL_RESET_CMD, 0) < 0) {
+		TOUCH_ERR_MSG("RESET FAILED\n");
+		goto err_out_retry;
+	}
+
+	atomic_set(&ts->next_work, 0);
+	atomic_set(&ts->device_init, 1);
 
 	if (touch_device_func->init(ts->client, &ts->fw_info) < 0) {
 		TOUCH_ERR_MSG("specific device initialization fail\n");

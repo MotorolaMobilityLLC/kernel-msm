@@ -1048,6 +1048,9 @@ int synaptics_ts_ic_ctrl(struct i2c_client *client, u8 code, u16 value)
 			TOUCH_ERR_MSG("IC Reset command write fail\n");
 			return -EIO;
 		}
+
+		msleep(10);
+
 		break;
 	case IC_CTRL_CHARGER:
 		if (touch_i2c_read(client, DEVICE_CONTROL_REG, 1, &buf) < 0) {
