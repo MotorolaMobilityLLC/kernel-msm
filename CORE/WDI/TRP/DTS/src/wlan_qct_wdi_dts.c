@@ -578,9 +578,18 @@ wpt_status WDTS_RxPacket (void *pContext, wpt_packet *pFrame, WDTS_ChannelType c
         wpalPacketFree(pFrame);
         return eWLAN_PAL_STATUS_SUCCESS;
       }
-      wpalPacketSetRxLength(pFrame, usMPDULen+ucMPDUHOffset);
-      wpalPacketRawTrimHead(pFrame, ucMPDUHOffset);
-
+      if(eWLAN_PAL_STATUS_SUCCESS != wpalPacketSetRxLength(pFrame, usMPDULen+ucMPDUHOffset))
+      {
+          DTI_TRACE( DTI_TRACE_LEVEL_ERROR, "Invalid Frame Length, Frame dropped..");
+          wpalPacketFree(pFrame);
+          return eWLAN_PAL_STATUS_SUCCESS;
+      }
+      if(eWLAN_PAL_STATUS_SUCCESS != wpalPacketRawTrimHead(pFrame, ucMPDUHOffset))
+      {
+          DTI_TRACE( DTI_TRACE_LEVEL_ERROR, "Failed to trim Raw Packet Head, Frame dropped..");
+          wpalPacketFree(pFrame);
+          return eWLAN_PAL_STATUS_SUCCESS;
+      }
      
 
       pRxMetadata = WDI_DS_ExtractRxMetaData(pFrame);
