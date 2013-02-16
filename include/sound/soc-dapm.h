@@ -368,6 +368,8 @@ int snd_soc_dapm_weak_routes(struct snd_soc_dapm_context *dapm,
 			     const struct snd_soc_dapm_route *route, int num);
 
 /* dapm events */
+void snd_soc_dapm_codec_stream_event(struct snd_soc_codec *codec,
+	const char *stream, int event);
 int snd_soc_dapm_stream_event(struct snd_soc_pcm_runtime *rtd,
 	const char *stream, int event);
 void snd_soc_dapm_rtd_stream_event(struct snd_soc_pcm_runtime *rtd,
@@ -402,6 +404,15 @@ void snd_soc_dapm_auto_nc_codec_pins(struct snd_soc_codec *codec);
 
 /* Mostly internal - should not normally be used */
 void dapm_mark_dirty(struct snd_soc_dapm_widget *w, const char *reason);
+
+struct snd_soc_dapm_widget *snd_soc_get_codec_widget(struct snd_soc_card *card,
+		struct snd_soc_codec *codec, const char *name);
+struct snd_soc_dapm_widget *snd_soc_get_platform_widget(struct snd_soc_card *card,
+		struct snd_soc_platform *platform, const char *name);
+
+/* dapm path query */
+int snd_soc_dapm_dai_get_connected_widgets(struct snd_soc_dai *dai, int stream,
+	struct snd_soc_dapm_widget_list **list);
 
 /* dapm widget types */
 enum snd_soc_dapm_type {
@@ -449,8 +460,8 @@ struct snd_soc_dapm_route {
 
 /* dapm audio path between two widgets */
 struct snd_soc_dapm_path {
-	const char *name;
-	const char *long_name;
+	char *name;
+	char *long_name;
 
 	/* source (input) and sink (output) widgets */
 	struct snd_soc_dapm_widget *source;
@@ -573,5 +584,17 @@ struct snd_soc_dapm_stats {
 	int path_checks;
 	int neighbour_checks;
 };
+
+/* Accessors for snd_soc_dapm_widget->private_data */
+static inline void *snd_soc_dapm_widget_get_pdata(struct snd_soc_dapm_widget *w)
+{
+	return w->private_data;
+}
+
+static inline void snd_soc_dapm_widget_set_pdata(struct snd_soc_dapm_widget *w,
+		void *data)
+{
+	w->private_data = data;
+}
 
 #endif
