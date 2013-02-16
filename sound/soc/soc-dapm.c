@@ -1810,7 +1810,7 @@ void snd_soc_dapm_debugfs_init(struct snd_soc_dapm_context *dapm,
 	dapm->debugfs_dapm = debugfs_create_dir("dapm", parent);
 
 	if (!dapm->debugfs_dapm) {
-		dev_warn(dapm->dev,
+		printk(KERN_WARNING
 		       "Failed to create DAPM debugfs directory\n");
 		return;
 	}

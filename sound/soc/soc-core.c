@@ -212,6 +212,12 @@ static ssize_t pmdown_time_set(struct device *dev,
 static DEVICE_ATTR(pmdown_time, 0644, pmdown_time_show, pmdown_time_set);
 
 #ifdef CONFIG_DEBUG_FS
+static int codec_reg_open_file(struct inode *inode, struct file *file)
+{
+	file->private_data = inode->i_private;
+	return 0;
+}
+
 static ssize_t codec_reg_read_file(struct file *file, char __user *user_buf,
 				   size_t count, loff_t *ppos)
 {
@@ -282,7 +288,8 @@ static void soc_init_codec_debugfs(struct snd_soc_codec *codec)
 	codec->debugfs_codec_root = debugfs_create_dir(codec->name,
 						       debugfs_card_root);
 	if (!codec->debugfs_codec_root) {
-		dev_warn(codec->dev, "Failed to create codec debugfs directory\n");
+		printk(KERN_WARNING
+		       "ASoC: Failed to create codec debugfs directory\n");
 		return;
 	}
 
@@ -295,7 +302,8 @@ static void soc_init_codec_debugfs(struct snd_soc_codec *codec)
 						 codec->debugfs_codec_root,
 						 codec, &codec_reg_fops);
 	if (!codec->debugfs_reg)
-		dev_warn(codec->dev, "Failed to create codec register debugfs file\n");
+		printk(KERN_WARNING
+		       "ASoC: Failed to create codec register debugfs file\n");
 
 	snd_soc_dapm_debugfs_init(&codec->dapm, codec->debugfs_codec_root);
 }
@@ -312,13 +320,12 @@ static void soc_init_platform_debugfs(struct snd_soc_platform *platform)
 	platform->debugfs_platform_root = debugfs_create_dir(platform->name,
 						       debugfs_card_root);
 	if (!platform->debugfs_platform_root) {
-		dev_warn(platform->dev,
-			"Failed to create platform debugfs directory\n");
+		printk(KERN_WARNING
+		       "ASoC: Failed to create platform debugfs directory\n");
 		return;
 	}
 
-	snd_soc_dapm_debugfs_init(&platform->dapm,
-		platform->debugfs_platform_root);
+	snd_soc_dapm_debugfs_init(&platform->dapm, platform->debugfs_platform_root);
 }
 
 static void soc_cleanup_platform_debugfs(struct snd_soc_platform *platform)
@@ -987,8 +994,7 @@ static void soc_remove_dai_link(struct snd_soc_card *card, int num, int order)
 		if (codec_dai->driver->remove) {
 			err = codec_dai->driver->remove(codec_dai);
 			if (err < 0)
-				pr_err("asoc: failed to remove %s: %d\n",
-							codec_dai->name, err);
+				printk(KERN_ERR "asoc: failed to remove %s\n", codec_dai->name);
 		}
 		codec_dai->probed = 0;
 		list_del(&codec_dai->card_list);
@@ -1000,10 +1006,8 @@ static void soc_remove_dai_link(struct snd_soc_card *card, int num, int order)
 		if (platform->driver->remove) {
 			err = platform->driver->remove(platform);
 			if (err < 0)
-				pr_err("asoc: failed to remove %s: %d\n",
-							platform->name, err);
+				printk(KERN_ERR "asoc: failed to remove %s\n", platform->name);
 		}
-
 		/* Make sure all DAPM widgets are freed */
 		snd_soc_dapm_free(&platform->dapm);
 
@@ -1024,8 +1028,7 @@ static void soc_remove_dai_link(struct snd_soc_card *card, int num, int order)
 		if (cpu_dai->driver->remove) {
 			err = cpu_dai->driver->remove(cpu_dai);
 			if (err < 0)
-				pr_err("asoc: failed to remove %s: %d\n",
-							cpu_dai->name, err);
+				printk(KERN_ERR "asoc: failed to remove %s\n", cpu_dai->name);
 		}
 		cpu_dai->probed = 0;
 		list_del(&cpu_dai->card_list);
@@ -1157,7 +1160,6 @@ static int soc_probe_platform(struct snd_soc_card *card,
 	return 0;
 
 err_probe:
-	soc_cleanup_platform_debugfs(platform);
 	module_put(platform->dev->driver->owner);
 
 	return ret;
@@ -1244,6 +1246,17 @@ static int soc_post_component_init(struct snd_soc_card *card,
 		dev_err(codec->dev,
 			"asoc: failed to add codec sysfs files: %d\n", ret);
 
+#ifdef CONFIG_DEBUG_FS
+	/* add DSP sysfs entries */
+	if (!dai_link->dynamic)
+		goto out;
+
+	ret = soc_dpcm_debugfs_add(rtd);
+	if (ret < 0)
+		dev_err(rtd->dev, "asoc: failed to add dpcm sysfs entries: %d\n", ret);
+
+out:
+#endif
 	return 0;
 }
 
@@ -1277,8 +1290,8 @@ static int soc_probe_dai_link(struct snd_soc_card *card, int num, int order)
 		if (cpu_dai->driver->probe) {
 			ret = cpu_dai->driver->probe(cpu_dai);
 			if (ret < 0) {
-				pr_err("asoc: failed to probe CPU DAI %s: %d\n",
-							cpu_dai->name, ret);
+				printk(KERN_ERR "asoc: failed to probe CPU DAI %s\n",
+						cpu_dai->name);
 				module_put(cpu_dai->dev->driver->owner);
 				return ret;
 			}
@@ -1309,8 +1322,8 @@ static int soc_probe_dai_link(struct snd_soc_card *card, int num, int order)
 		if (codec_dai->driver->probe) {
 			ret = codec_dai->driver->probe(codec_dai);
 			if (ret < 0) {
-				pr_err("asoc: failed to probe CODEC DAI %s: %d\n",
-							codec_dai->name, ret);
+				printk(KERN_ERR "asoc: failed to probe CODEC DAI %s\n",
+						codec_dai->name);
 				return ret;
 			}
 		}
@@ -1330,13 +1343,12 @@ static int soc_probe_dai_link(struct snd_soc_card *card, int num, int order)
 
 	ret = device_create_file(rtd->dev, &dev_attr_pmdown_time);
 	if (ret < 0)
-		pr_warn("asoc: failed to add pmdown_time sysfs:%d\n", ret);
+		printk(KERN_WARNING "asoc: failed to add pmdown_time sysfs\n");
 
 	/* create the pcm */
 	ret = soc_new_pcm(rtd, num);
 	if (ret < 0) {
-		pr_err("asoc: can't create pcm %s :%d\n",
-				dai_link->stream_name, ret);
+		printk(KERN_ERR "asoc: can't create pcm %s\n", dai_link->stream_name);
 		return ret;
 	}
 
@@ -1369,7 +1381,7 @@ static int soc_register_ac97_dai_link(struct snd_soc_pcm_runtime *rtd)
 
 		ret = soc_ac97_dev_register(rtd->codec);
 		if (ret < 0) {
-			pr_err("asoc: AC97 device register failed:%d\n", ret);
+			printk(KERN_ERR "asoc: AC97 device register failed\n");
 			return ret;
 		}
 
@@ -1599,8 +1611,8 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 	ret = snd_card_create(SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1,
 			card->owner, 0, &card->snd_card);
 	if (ret < 0) {
-		pr_err("asoc: can't create sound card for card %s: %d\n",
-			card->name, ret);
+		printk(KERN_ERR "asoc: can't create sound card for card %s\n",
+			card->name);
 		mutex_unlock(&card->mutex);
 		return;
 	}
@@ -1719,8 +1731,7 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 
 	ret = snd_card_register(card->snd_card);
 	if (ret < 0) {
-		pr_err("asoc: failed to register soundcard for %s: %d\n",
-							card->name, ret);
+		printk(KERN_ERR "asoc: failed to register soundcard for %s\n", card->name);
 		goto probe_aux_dev_err;
 	}
 
@@ -1729,8 +1740,7 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 	for (i = 0; i < card->num_rtd; i++) {
 		ret = soc_register_ac97_dai_link(&card->rtd[i]);
 		if (ret < 0) {
-			pr_err("asoc: failed to register AC97 %s: %d\n",
-							card->name, ret);
+			printk(KERN_ERR "asoc: failed to register AC97 %s\n", card->name);
 			while (--i >= 0)
 				soc_unregister_ac97_dai_link(card->rtd[i].codec);
 			goto probe_aux_dev_err;
@@ -3303,7 +3313,7 @@ static inline char *fmt_multiple_name(struct device *dev,
 		struct snd_soc_dai_driver *dai_drv)
 {
 	if (dai_drv->name == NULL) {
-		pr_err("asoc: error - multiple DAI %s registered with no name\n",
+		printk(KERN_ERR "asoc: error - multiple DAI %s registered with no name\n",
 				dev_name(dev));
 		return NULL;
 	}
@@ -3775,7 +3785,8 @@ static int __init snd_soc_init(void)
 #ifdef CONFIG_DEBUG_FS
 	snd_soc_debugfs_root = debugfs_create_dir("asoc", NULL);
 	if (IS_ERR(snd_soc_debugfs_root) || !snd_soc_debugfs_root) {
-		pr_warn("ASoC: Failed to create debugfs directory\n");
+		printk(KERN_WARNING
+		       "ASoC: Failed to create debugfs directory\n");
 		snd_soc_debugfs_root = NULL;
 	}
 
