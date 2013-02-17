@@ -9515,33 +9515,33 @@ eHalStatus csrRoamLostLink( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32 ty
     }
     if(!HAL_STATUS_SUCCESS(status))
     {
-       //If fail to send confirmation to PE, not to trigger roaming
-       fToRoam = eANI_BOOLEAN_FALSE;
+        //If fail to send confirmation to PE, not to trigger roaming
+        fToRoam = eANI_BOOLEAN_FALSE;
     }
 
-    //tell HDD to disconnect
+    //prepare to tell HDD to disconnect
     palZeroMemory(pMac->hHdd, &roamInfo, sizeof(tCsrRoamInfo));
     roamInfo.statusCode = (tSirResultCodes)pSession->roamingStatusCode;
     roamInfo.reasonCode = pSession->joinFailStatusCode.reasonCode;
-#ifdef WLAN_SOFTAP_FEATURE
     if( eWNI_SME_DISASSOC_IND == type)
     {
-            //staMacAddr
-            palCopyMemory(pMac->hHdd, roamInfo.peerMac, pDisassocIndMsg->peerMacAddr, sizeof(tSirMacAddr));
-            roamInfo.staId = (tANI_U8)pDisassocIndMsg->staId;
-        }
+        //staMacAddr
+        palCopyMemory(pMac->hHdd, roamInfo.peerMac, pDisassocIndMsg->peerMacAddr, sizeof(tSirMacAddr));
+        roamInfo.staId = (tANI_U8)pDisassocIndMsg->staId;
+    }
     else if( eWNI_SME_DEAUTH_IND == type )
     {
-            //staMacAddr
-            palCopyMemory(pMac->hHdd, roamInfo.peerMac, pDeauthIndMsg->peerMacAddr, sizeof(tSirMacAddr));
-            roamInfo.staId = (tANI_U8)pDeauthIndMsg->staId;
-        }
-#endif
+        //staMacAddr
+        palCopyMemory(pMac->hHdd, roamInfo.peerMac, pDeauthIndMsg->peerMacAddr, sizeof(tSirMacAddr));
+        roamInfo.staId = (tANI_U8)pDeauthIndMsg->staId;
+    }
     smsLog(pMac, LOGW, FL("roamInfo.staId (%d)\n"), roamInfo.staId);
+
+    /* See if we can possibly roam.  If so, start the roaming process and notify HDD
+       that we are roaming.  But if we cannot possibly roam, or if we are unable to
+       currently roam, then notify HDD of the lost link */
     if(fToRoam)
     {
-        //Tell HDD about the lost link
-        csrRoamCallCallback(pMac, sessionId, &roamInfo, 0, eCSR_ROAM_LOSTLINK, result);
         //Only remove the connected BSS in infrastructure mode
         csrRoamRemoveConnectedBssFromScanCache(pMac, &pSession->connectedProfile);
         //Not to do anying for lostlink with WDS
@@ -9583,27 +9583,13 @@ eHalStatus csrRoamLostLink( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32 ty
     }
     if(!fToRoam)
     {
-       if( eWNI_SME_DISASSOC_IND == type)
-       {
-           //staMacAddr
-           palCopyMemory(pMac->hHdd, roamInfo.peerMac, pDisassocIndMsg->peerMacAddr, sizeof(tSirMacAddr));
-           roamInfo.staId = (tANI_U8)pDisassocIndMsg->staId;
-       }
-       else if( eWNI_SME_DEAUTH_IND == type )
-       {
-           //staMacAddr
-            palCopyMemory(pMac->hHdd, roamInfo.peerMac, pDeauthIndMsg->peerMacAddr, sizeof(tSirMacAddr));
-            roamInfo.staId = (tANI_U8)pDeauthIndMsg->staId;
-        }
         //Tell HDD about the lost link
-#ifdef WLAN_SOFTAP_FEATURE
-       if(!CSR_IS_INFRA_AP(&pSession->connectedProfile))
-#endif
+        if(!CSR_IS_INFRA_AP(&pSession->connectedProfile))
         {
-           /* Dont call csrRoamCallCallback for GO/SoftAp case as this indication 
-            * was alredy given as part of eWNI_SME_DISASSOC_IND msg handling in 
-            * csrRoamCheckForLinkStatusChange API.
-           */ 
+            /* Don't call csrRoamCallCallback for GO/SoftAp case as this indication
+             * was already given as part of eWNI_SME_DISASSOC_IND msg handling in
+             * csrRoamCheckForLinkStatusChange API.
+             */
             csrRoamCallCallback(pMac, sessionId, &roamInfo, 0, eCSR_ROAM_LOSTLINK, result);
         }
 
@@ -9611,7 +9597,7 @@ eHalStatus csrRoamLostLink( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32 ty
          Still enable idle scan for polling in case concurrent sessions are running */
         if(CSR_IS_INFRASTRUCTURE(&pSession->connectedProfile))
         {
-           csrScanStartIdleScan(pMac);
+            csrScanStartIdleScan(pMac);
         }
     }
     
