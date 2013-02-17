@@ -1049,6 +1049,7 @@ typedef struct tagCsrConfigParam
 #ifdef WLAN_FEATURE_11AC
     tANI_U32  nVhtChannelWidth;
     tANI_U8   enableTxBF;
+    tANI_U8   txBFCsnValue;
 #endif
 
     /*
