@@ -298,6 +298,8 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	int array_size = ARRAY_SIZE(lowmem_adj);
 	int other_free;
 	int other_file;
+	int high_zoneidx = gfp_zone(sc->gfp_mask);
+	int zone_adj;
 	unsigned long nr_to_scan = sc->nr_to_scan;
 
 	if (nr_to_scan > 0) {
@@ -308,8 +310,6 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 	other_free = global_page_state(NR_FREE_PAGES);
 	other_file = global_page_state(NR_FILE_PAGES) -
 						global_page_state(NR_SHMEM);
-	int high_zoneidx = gfp_zone(sc->gfp_mask);
-	int zone_adj;
 
 	tune_lmk_param(&other_free, &other_file, sc);
 
