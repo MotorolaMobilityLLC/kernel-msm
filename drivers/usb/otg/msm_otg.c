@@ -128,10 +128,15 @@ static const int vdd_val[VDD_TYPE_MAX][VDD_VAL_MAX] = {
 			[VDD_MAX]	= USB_PHY_VDD_DIG_VOL_MAX,
 		},
 };
-
+static int old_chg_type = 0;
 static void asus_chg_set_chg_mode(enum usb_chg_type chg_src)
 {
 	int chg_type = chg_src;
+
+	if (old_chg_type == chg_type) {
+		printk(KERN_INFO "The USB charging type is same : return\n");
+		return;
+	}
 
 	switch (chg_type) {
 	case USB_INVALID_CHARGER:
@@ -165,6 +170,8 @@ static void asus_chg_set_chg_mode(enum usb_chg_type chg_src)
 		usb_cable_type_detect(CHARGER_TBD);
 		printk(KERN_INFO "The USB cable status = CHARGER_TBD\n");
 	}
+
+	old_chg_type = chg_type;
 }
 
 static int msm_hsusb_ldo_init(struct msm_otg *motg, int init)
