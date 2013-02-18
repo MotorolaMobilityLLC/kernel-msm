@@ -137,7 +137,7 @@ the appropriate macros. */
 #define MSG_SSID_9			5500
 #define MSG_SSID_9_LAST			5516
 #define MSG_SSID_10			6000
-#define MSG_SSID_10_LAST		6072
+#define MSG_SSID_10_LAST		6080
 #define MSG_SSID_11			6500
 #define MSG_SSID_11_LAST		6521
 #define MSG_SSID_12			7000
@@ -161,7 +161,7 @@ the appropriate macros. */
 #define MSG_SSID_21			10300
 #define MSG_SSID_21_LAST		10300
 #define MSG_SSID_22			10350
-#define MSG_SSID_22_LAST		10361
+#define MSG_SSID_22_LAST		10374
 #define MSG_SSID_23			0xC000
 #define MSG_SSID_23_LAST		0xC063
 
@@ -527,6 +527,14 @@ static const uint32_t msg_bld_masks_10[] =  {
 	MSG_LVL_MED,
 	MSG_LVL_MED,
 	MSG_LVL_MED,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
 	MSG_LVL_LOW
 };
 
@@ -677,6 +685,19 @@ static const uint32_t msg_bld_masks_21[] = {
 };
 
 static const uint32_t msg_bld_masks_22[] = {
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
+	MSG_LVL_LOW,
 	MSG_LVL_LOW,
 	MSG_LVL_LOW,
 	MSG_LVL_LOW,

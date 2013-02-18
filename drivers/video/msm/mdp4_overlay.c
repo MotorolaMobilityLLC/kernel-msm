@@ -1715,6 +1715,7 @@ void mdp4_overlay_borderfill_stage_up(struct mdp4_overlay_pipe *pipe)
 	struct mdp4_overlay_pipe *bspipe;
 	int ptype, pnum, pndx, mixer;
 	int format, alpha_enable, alpha;
+	struct mdp4_iommu_pipe_info iom;
 
 	if (pipe->pipe_type != OVERLAY_TYPE_BF)
 		return;
@@ -1735,6 +1736,7 @@ void mdp4_overlay_borderfill_stage_up(struct mdp4_overlay_pipe *pipe)
 	/* save original base layer */
 	ctrl->baselayer[mixer] = bspipe;
 
+	iom = pipe->iommu;
 	pipe->alpha = 0;	/* make sure bf pipe has alpha 0 */
 	ptype = pipe->pipe_type;
 	pnum = pipe->pipe_num;
@@ -1749,6 +1751,7 @@ void mdp4_overlay_borderfill_stage_up(struct mdp4_overlay_pipe *pipe)
 	pipe->src_format = format;
 	pipe->alpha_enable = alpha_enable;
 	pipe->alpha = alpha;
+	pipe->iommu = iom;
 
 	/* free original base layer pipe to be sued as normal pipe */
 	bspipe->pipe_used = 0;
@@ -1978,7 +1981,8 @@ void mdp4_mixer_blend_setup(int mixer)
 			s_pipe->alpha_enable &&
 			((s_pipe->op_mode & MDP4_OP_SCALEY_EN) ||
 			(s_pipe->op_mode & MDP4_OP_SCALEX_EN)) &&
-			!(s_pipe->op_mode & MDP4_OP_SCALEY_PIXEL_RPT))
+			!(s_pipe->op_mode & (MDP4_OP_SCALEX_PIXEL_RPT |
+						MDP4_OP_SCALEY_PIXEL_RPT)))
 			alpha_drop = 1;
 
 		d_pipe = mdp4_background_layer(mixer, s_pipe);
@@ -2014,7 +2018,8 @@ void mdp4_mixer_blend_setup(int mixer)
 				blend->op = MDP4_BLEND_BG_ALPHA_FG_CONST;
 		} else if (d_alpha) {
 			ptype = mdp4_overlay_format2type(s_pipe->src_format);
-			if (ptype == OVERLAY_TYPE_VIDEO) {
+			if (ptype == OVERLAY_TYPE_VIDEO &&
+				(!(s_pipe->flags & MDP_BACKEND_COMPOSITION))) {
 				blend->op = (MDP4_BLEND_FG_ALPHA_BG_PIXEL |
 					MDP4_BLEND_FG_INV_ALPHA);
 				if (!(s_pipe->flags & MDP_BLEND_FG_PREMULT))
@@ -2200,7 +2205,9 @@ void mdp4_overlay_pipe_free(struct mdp4_overlay_pipe *pipe)
 	ndx = pipe->pipe_ndx;
 	mixer = pipe->mixer_num;
 
-	mdp4_overlay_iommu_pipe_free(pipe->pipe_ndx, 0);
+	/* No need for borderfill pipe */
+	if (pipe->pipe_type != OVERLAY_TYPE_BF)
+		mdp4_overlay_iommu_pipe_free(pipe->pipe_ndx, 0);
 
 	iom = pipe->iommu;
 
@@ -2674,13 +2681,13 @@ static int mdp4_calc_pipe_mdp_bw(struct msm_fb_data_type *mfd,
 	/* factor 1.25 for ib */
 	pipe->bw_ib_quota = quota * MDP4_BW_IB_FACTOR / 100;
 	/* down scaling factor for ib */
-	if ((!pipe->dst_h) && (!pipe->src_h) &&
+	if ((pipe->dst_h) && (pipe->src_h) &&
 	    (pipe->src_h > pipe->dst_h)) {
-		u64 ib = quota;
+		u32 ib = quota;
 		ib *= pipe->src_h;
 		ib /= pipe->dst_h;
-		pipe->bw_ib_quota = max(ib, pipe->bw_ib_quota);
-		pr_debug("%s: src_h=%d dst_h=%d mdp ib %llu, ib_quota=%llu\n",
+		pipe->bw_ib_quota = max((u64)ib, pipe->bw_ib_quota);
+		pr_debug("%s: src_h=%d dst_h=%d mdp ib %u, ib_quota=%llu\n",
 			 __func__, pipe->src_h, pipe->dst_h,
 			 ib<<shift, pipe->bw_ib_quota<<shift);
 	}

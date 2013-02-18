@@ -1,6 +1,6 @@
 /* ehci-msm-hsic.c - HSUSB Host Controller Driver Implementation
  *
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2013, Linux Foundation. All rights reserved.
  *
  * Partly derived from ehci-fsl.c and ehci-hcd.c
  * Copyright (c) 2000-2004 by David Brownell
@@ -76,7 +76,7 @@ struct msm_hsic_hcd {
 	struct clk		*phy_clk;
 	struct clk		*cal_clk;
 	struct regulator	*hsic_vddcx;
-	bool			async_int;
+	atomic_t		async_int;
 	atomic_t                in_lpm;
 	struct wake_lock	wlock;
 	int			peripheral_status_irq;
@@ -97,6 +97,8 @@ struct msm_hsic_hcd {
 	struct completion	rt_completion;
 	int			resume_status;
 	int			resume_again;
+	int			bus_reset;
+	int			reset_again;
 
 	struct pm_qos_request pm_qos_req_dma;
 };
@@ -394,7 +396,7 @@ reg_enable_err:
 
 }
 
-static int ulpi_read(struct msm_hsic_hcd *mehci, u32 reg)
+static int __maybe_unused ulpi_read(struct msm_hsic_hcd *mehci, u32 reg)
 {
 	struct usb_hcd *hcd = hsic_to_hcd(mehci);
 	int cnt = 0;
@@ -463,37 +465,6 @@ static int ulpi_write(struct msm_hsic_hcd *mehci, u32 val, u32 reg)
 	}
 
 	return 0;
-}
-
-#define HSIC_DBG1		0X38
-#define ULPI_MANUAL_ENABLE	BIT(4)
-#define ULPI_LINESTATE_DATA	BIT(5)
-#define ULPI_LINESTATE_STROBE	BIT(6)
-static void ehci_msm_enable_ulpi_control(struct usb_hcd *hcd, u32 linestate)
-{
-	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
-	int val;
-
-	switch (linestate) {
-	case PORT_RESET:
-		val = ulpi_read(mehci, HSIC_DBG1);
-		val |= ULPI_MANUAL_ENABLE;
-		val &= ~(ULPI_LINESTATE_DATA | ULPI_LINESTATE_STROBE);
-		ulpi_write(mehci, val, HSIC_DBG1);
-		break;
-	default:
-		pr_info("%s: Unknown linestate:%0x\n", __func__, linestate);
-	}
-}
-
-static void ehci_msm_disable_ulpi_control(struct usb_hcd *hcd)
-{
-	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
-	int val;
-
-	val = ulpi_read(mehci, HSIC_DBG1);
-	val &= ~ULPI_MANUAL_ENABLE;
-	ulpi_write(mehci, val, HSIC_DBG1);
 }
 
 static int msm_hsic_config_gpios(struct msm_hsic_hcd *mehci, int gpio_en)
@@ -696,9 +667,14 @@ static int msm_hsic_suspend(struct msm_hsic_hcd *mehci)
 	 * power mode (LPM). This interrupt is level triggered. So USB IRQ
 	 * line must be disabled till async interrupt enable bit is cleared
 	 * in USBCMD register. Assert STP (ULPI interface STOP signal) to
-	 * block data communication from PHY.
+	 * block data communication from PHY.  Enable asynchronous interrupt
+	 * only when wakeup gpio IRQ is not present.
 	 */
-	writel_relaxed(readl_relaxed(USB_USBCMD) | ASYNC_INTR_CTRL |
+	if (mehci->wakeup_irq)
+		writel_relaxed(readl_relaxed(USB_USBCMD) |
+				ULPI_STP_CTRL, USB_USBCMD);
+	else
+		writel_relaxed(readl_relaxed(USB_USBCMD) | ASYNC_INTR_CTRL |
 				ULPI_STP_CTRL, USB_USBCMD);
 
 	/*
@@ -750,6 +726,9 @@ static int msm_hsic_resume(struct msm_hsic_hcd *mehci)
 		dev_dbg(mehci->dev, "%s called in !in_lpm\n", __func__);
 		return 0;
 	}
+
+	/* Handles race with Async interrupt */
+	disable_irq(hcd->irq);
 
 	spin_lock_irqsave(&mehci->wakeup_lock, flags);
 	if (mehci->wakeup_irq_enabled) {
@@ -813,8 +792,8 @@ skip_phy_resume:
 
 	atomic_set(&mehci->in_lpm, 0);
 
-	if (mehci->async_int) {
-		mehci->async_int = false;
+	if (atomic_read(&mehci->async_int)) {
+		atomic_set(&mehci->async_int, 0);
 		pm_runtime_put_noidle(mehci->dev);
 		enable_irq(hcd->irq);
 	}
@@ -824,6 +803,7 @@ skip_phy_resume:
 		pm_runtime_put_noidle(mehci->dev);
 	}
 
+	enable_irq(hcd->irq);
 	dev_dbg(mehci->dev, "HSIC-USB exited from low power mode\n");
 
 	return 0;
@@ -843,18 +823,45 @@ static void ehci_hsic_bus_vote_w(struct work_struct *w)
 				__func__, ret);
 }
 
+static int msm_hsic_reset_done(struct usb_hcd *hcd)
+{
+	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
+	u32 __iomem *status_reg = &ehci->regs->port_status[0];
+	int ret;
+
+	ehci_writel(ehci, ehci_readl(ehci, status_reg) & ~(PORT_RWC_BITS |
+					PORT_RESET), status_reg);
+
+	ret = handshake(ehci, status_reg, PORT_RESET, 0, 1 * 1000);
+
+	if (ret)
+		pr_err("reset handshake failed in %s\n", __func__);
+	else
+		ehci_writel(ehci, ehci_readl(ehci, &ehci->regs->command) |
+				CMD_RUN, &ehci->regs->command);
+
+	return ret;
+}
+
 #define STS_GPTIMER0_INTERRUPT	BIT(24)
 static irqreturn_t msm_hsic_irq(struct usb_hcd *hcd)
 {
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
 	u32			status;
+	int			ret;
 
 	if (atomic_read(&mehci->in_lpm)) {
-		disable_irq_nosync(hcd->irq);
 		dev_dbg(mehci->dev, "phy async intr\n");
-		mehci->async_int = true;
-		pm_runtime_get(mehci->dev);
+		dbg_log_event(NULL, "Async IRQ", 0);
+		ret = pm_runtime_get(mehci->dev);
+		if ((ret == 1) || (ret == -EINPROGRESS)) {
+			pm_runtime_put_noidle(mehci->dev);
+		} else {
+			disable_irq_nosync(hcd->irq);
+			atomic_set(&mehci->async_int, 1);
+		}
+
 		return IRQ_HANDLED;
 	}
 
@@ -863,16 +870,28 @@ static irqreturn_t msm_hsic_irq(struct usb_hcd *hcd)
 	if (status & STS_GPTIMER0_INTERRUPT) {
 		int timeleft;
 
-		dbg_log_event(NULL, "FPR: gpt0_isr", 0);
+		dbg_log_event(NULL, "FPR: gpt0_isr", mehci->bus_reset);
 
 		timeleft = GPT_CNT(ehci_readl(ehci,
 						 &mehci->timer->gptimer1_ctrl));
 		if (timeleft) {
-			ehci_writel(ehci, ehci_readl(ehci,
-				&ehci->regs->command) | CMD_RUN,
-				&ehci->regs->command);
-		} else
-			mehci->resume_again = 1;
+			if (mehci->bus_reset) {
+				ret = msm_hsic_reset_done(hcd);
+				if (ret) {
+					mehci->reset_again = 1;
+					dbg_log_event(NULL, "RESET: fail", 0);
+				}
+			} else {
+				ehci_writel(ehci, ehci_readl(ehci,
+					&ehci->regs->command) | CMD_RUN,
+					&ehci->regs->command);
+			}
+		} else {
+			if (mehci->bus_reset)
+				mehci->reset_again = 1;
+			else
+				mehci->resume_again = 1;
+		}
 
 		dbg_log_event(NULL, "FPR: timeleft", timeleft);
 
@@ -926,6 +945,83 @@ static int ehci_hsic_reset(struct usb_hcd *hcd)
 	return 0;
 }
 
+#define RESET_RETRY_LIMIT 3
+#define RESET_SIGNAL_TIME_SOF_USEC (50 * 1000)
+#define RESET_SIGNAL_TIME_USEC (20 * 1000)
+static void ehci_hsic_reset_sof_bug_handler(struct usb_hcd *hcd, u32 val)
+{
+	struct ehci_hcd	*ehci = hcd_to_ehci(hcd);
+	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
+	struct msm_hsic_host_platform_data *pdata = mehci->dev->platform_data;
+	u32 __iomem *status_reg = &ehci->regs->port_status[0];
+	unsigned long flags;
+	int retries = 0, ret, cnt = RESET_SIGNAL_TIME_USEC;
+
+	if (pdata && pdata->swfi_latency)
+		pm_qos_update_request(&mehci->pm_qos_req_dma,
+			pdata->swfi_latency + 1);
+
+	mehci->bus_reset = 1;
+retry:
+	retries++;
+	dbg_log_event(NULL, "RESET: start", retries);
+	pr_debug("reset begin %d\n", retries);
+	mehci->reset_again = 0;
+	spin_lock_irqsave(&ehci->lock, flags);
+	ehci_writel(ehci, val, status_reg);
+	ehci_writel(ehci, GPT_LD(RESET_SIGNAL_TIME_USEC - 1),
+					&mehci->timer->gptimer0_ld);
+	ehci_writel(ehci, GPT_RESET | GPT_RUN,
+			&mehci->timer->gptimer0_ctrl);
+	ehci_writel(ehci, INTR_MASK | STS_GPTIMER0_INTERRUPT,
+			&ehci->regs->intr_enable);
+
+	ehci_writel(ehci, GPT_LD(RESET_SIGNAL_TIME_SOF_USEC - 1),
+			&mehci->timer->gptimer1_ld);
+	ehci_writel(ehci, GPT_RESET | GPT_RUN,
+		&mehci->timer->gptimer1_ctrl);
+
+	spin_unlock_irqrestore(&ehci->lock, flags);
+	wait_for_completion(&mehci->gpt0_completion);
+
+	if (!mehci->reset_again)
+		goto done;
+
+	if (handshake(ehci, status_reg, PORT_RESET, 0, 10 * 1000)) {
+		pr_err("reset handshake fatal error\n");
+		dbg_log_event(NULL, "RESET: fatal", retries);
+		goto fail;
+	}
+
+	if (retries < RESET_RETRY_LIMIT)
+		goto retry;
+
+	/* complete reset in tight loop */
+	pr_info("RESET in tight loop\n");
+	dbg_log_event(NULL, "RESET: tight", 0);
+
+	spin_lock_irqsave(&ehci->lock, flags);
+	ehci_writel(ehci, val, status_reg);
+	while (cnt--)
+		udelay(1);
+	ret = msm_hsic_reset_done(hcd);
+	spin_unlock_irqrestore(&ehci->lock, flags);
+	if (ret) {
+		pr_err("RESET in tight loop failed\n");
+		dbg_log_event(NULL, "RESET: tight failed", 0);
+		goto fail;
+	}
+
+done:
+	dbg_log_event(NULL, "RESET: done", retries);
+	pr_debug("reset completed\n");
+fail:
+	mehci->bus_reset = 0;
+	if (pdata && pdata->swfi_latency)
+		pm_qos_update_request(&mehci->pm_qos_req_dma,
+			PM_QOS_DEFAULT_VALUE);
+}
+
 static int ehci_hsic_bus_suspend(struct usb_hcd *hcd)
 {
 	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
@@ -942,8 +1038,8 @@ static int ehci_hsic_bus_suspend(struct usb_hcd *hcd)
 }
 
 #define RESUME_RETRY_LIMIT		3
-#define RESUME_SIGNAL_TIME_MS		(21 * 999)
-#define RESUME_SIGNAL_TIME_SOF_MS	(23 * 999)
+#define RESUME_SIGNAL_TIME_USEC		(21 * 1000)
+#define RESUME_SIGNAL_TIME_SOF_USEC	(23 * 1000)
 static int msm_hsic_resume_thread(void *data)
 {
 	struct msm_hsic_hcd *mehci = data;
@@ -1024,14 +1120,15 @@ resume_again:
 	if (ehci->resume_sof_bug && resume_needed) {
 		if (!tight_resume) {
 			mehci->resume_again = 0;
-			ehci_writel(ehci, GPT_LD(RESUME_SIGNAL_TIME_MS),
+			ehci_writel(ehci, GPT_LD(RESUME_SIGNAL_TIME_USEC - 1),
 					&mehci->timer->gptimer0_ld);
 			ehci_writel(ehci, GPT_RESET | GPT_RUN,
 					&mehci->timer->gptimer0_ctrl);
 			ehci_writel(ehci, INTR_MASK | STS_GPTIMER0_INTERRUPT,
 					&ehci->regs->intr_enable);
 
-			ehci_writel(ehci, GPT_LD(RESUME_SIGNAL_TIME_SOF_MS),
+			ehci_writel(ehci, GPT_LD(
+					RESUME_SIGNAL_TIME_SOF_USEC - 1),
 					&mehci->timer->gptimer1_ld);
 			ehci_writel(ehci, GPT_RESET | GPT_RUN,
 				&mehci->timer->gptimer1_ctrl);
@@ -1183,8 +1280,7 @@ static struct hc_driver msm_hsic_driver = {
 	.log_urb		= dbg_log_event,
 	.dump_regs		= dump_hsic_regs,
 
-	.enable_ulpi_control	= ehci_msm_enable_ulpi_control,
-	.disable_ulpi_control	= ehci_msm_disable_ulpi_control,
+	.reset_sof_bug_handler	= ehci_hsic_reset_sof_bug_handler,
 };
 
 static int msm_hsic_init_clocks(struct msm_hsic_hcd *mehci, u32 init)
@@ -1783,7 +1879,7 @@ static int msm_hsic_pm_suspend_noirq(struct device *dev)
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
 	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
 
-	if (mehci->async_int) {
+	if (atomic_read(&mehci->async_int)) {
 		dev_dbg(dev, "suspend_noirq: Aborting due to pending interrupt\n");
 		return -EBUSY;
 	}
@@ -1810,6 +1906,7 @@ static int msm_hsic_pm_resume(struct device *dev)
 	 * start I/O.
 	 */
 	if (!atomic_read(&mehci->pm_usage_cnt) &&
+			!atomic_read(&mehci->async_int) &&
 			pm_runtime_suspended(dev))
 		return 0;
 

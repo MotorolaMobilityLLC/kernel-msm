@@ -1,17 +1,5 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- */
-
-#ifndef __MACH_STM_H
-#define __MACH_STM_H
+#ifndef _LINUX_CORESIGHT_STM_H
+#define _LINUX_CORESIGHT_STM_H
 
 enum {
 	OST_ENTITY_NONE			= 0x00,
@@ -19,8 +7,8 @@ enum {
 	OST_ENTITY_TRACE_PRINTK		= 0x02,
 	OST_ENTITY_TRACE_MARKER		= 0x04,
 	OST_ENTITY_DEV_NODE		= 0x08,
-	OST_ENTITY_PRINTK		= 0x10,
-	OST_ENTITY_ALL			= 0x1F,
+	OST_ENTITY_QVIEW		= 0xFE,
+	OST_ENTITY_MAX			= 0xFF,
 };
 
 enum {
@@ -29,6 +17,7 @@ enum {
 	STM_OPTION_GUARANTEED		= 0x80,
 };
 
+#ifdef __KERNEL__
 #define stm_log_inv(entity_id, proto_id, data, size)			\
 	stm_trace(STM_OPTION_NONE, entity_id, proto_id, data, size)
 
@@ -47,7 +36,7 @@ enum {
 #define stm_log(entity_id, data, size)					\
 	stm_log_inv_ts(entity_id, 0, data, size)
 
-#ifdef CONFIG_MSM_QDSS
+#ifdef CONFIG_CORESIGHT_STM
 extern int stm_trace(uint32_t options, uint8_t entity_id, uint8_t proto_id,
 		     const void *data, uint32_t size);
 #else
@@ -57,5 +46,6 @@ static inline int stm_trace(uint32_t options, uint8_t entity_id,
 	return 0;
 }
 #endif
+#endif /* __KERNEL__ */
 
 #endif

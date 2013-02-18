@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2013, Linux Foundation. All rights reserved.
 *
 * This program is free software; you can redistribute it and/or modify
 * it under the terms of the GNU General Public License version 2 and
@@ -146,7 +146,7 @@ int mdp_q_buffer(struct v4l2_subdev *sd, void *arg)
 	fbdata.flags = 0;
 	fbdata.priv = (uint32_t)binfo->cookie;
 
-	WFD_MSG_INFO("queue buffer to mdp with offset = %u, fd = %u, "\
+	WFD_MSG_DBG("queue buffer to mdp with offset = %u, fd = %u, "\
 			"priv = %p, iova = %p\n",
 			fbdata.offset, fbdata.memory_id,
 			(void *)fbdata.priv, (void *)fbdata.iova);

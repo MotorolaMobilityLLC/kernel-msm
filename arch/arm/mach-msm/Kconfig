@@ -405,13 +405,14 @@ config  ARCH_MSM_SCORPIONMP
 	select ARCH_MSM_SCORPION
 	select MSM_SMP
 	select HAVE_ARCH_HAS_CURRENT_TIMER
-	select MSM_JTAG if MSM_QDSS
+	select MSM_JTAG if CORESIGHT_ETM
 	bool
 
 config  ARCH_MSM_KRAITMP
 	select ARCH_MSM_KRAIT
 	select MSM_SMP
 	select HAVE_ARCH_HAS_CURRENT_TIMER
+	select MSM_JTAG if CORESIGHT_ETM
 	bool
 	select HAVE_HW_BRKPT_RESERVED_RW_ACCESS
 
@@ -2193,20 +2194,34 @@ config MSM_DLOAD_MODE
 		enabled via another mechanism.
 
 config MSM_JTAG
-	bool "JTAG and kernel debug and trace support across power collapse"
-	default n
+	bool "Debug and ETM trace support across power collapse"
 	help
-	  Enables support for kernel debugging (specifically breakpoints) and
+	  Enables support for debugging (specifically breakpoints) and ETM
 	  processor tracing across power collapse both for JTag and OS hosted
 	  software running on the target. Enabling this will ensure debug
 	  and ETM registers are saved and restored across power collapse.
 
-	  For production builds, you should probably say 'N' here to avoid
-	  potential power, performance and memory penalty.
+	  If unsure, say 'N' here to avoid potential power, performance and
+	  memory penalty.
+
+config MSM_JTAG_MM
+	bool "Debug and ETM trace support across power collapse using memory mapped access"
+	help
+	  Enables support for debugging (specifically breakpoints) and ETM
+	  processor tracing across power collapse both for JTag and OS hosted
+	  software running on the target. Enabling this will ensure debug
+	  and ETM registers are saved and restored across power collapse.
+
+	  Required on targets on which cp14 access to debug and ETM registers is
+	  not permitted and so memory mapped access is necessary.
+
+	  If unsure, say 'N' here to avoid potential power, performance and
+	  memory penalty.
 
 config MSM_ETM
 	tristate "Enable MSM ETM and ETB"
 	depends on ARCH_MSM8X60
+	select MSM_JTAG
 	help
 	  Enables embedded trace collection on MSM8660
 
@@ -2485,21 +2500,6 @@ config MSM_L1_ERR_PANIC
 	  instability is suspected.
 
 	  For production builds, you should probably say 'N' here.
-
-config MSM_L1_RECOV_ERR_PANIC
-	bool "Panic on recoverable L1 cache errors"
-	depends on MSM_CACHE_ERP && MSM_L1_ERR_PANIC
-	help
-	  Certain CPU designs may be able to automatically recover from certain
-	  kinds of L1 cache errors, even though the L1 cache itself may not
-	  support error correction. These errors should not result in any kind
-	  of corruption, but their presence is nevertheless an indication of
-	  poor system health. To cause the kernel to panic whenever a
-	  recoverable L1 cache error is detected, say 'Y' here. This may be
-	  useful as a debugging technique if general system instability is
-	  suspected.
-
-	  For production builds, you should definitely say 'N' here.
 
 config MSM_L1_ERR_LOG
 	bool "Log CPU ERP events to system memory"
