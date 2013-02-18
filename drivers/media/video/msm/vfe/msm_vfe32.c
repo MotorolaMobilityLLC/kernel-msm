@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -406,7 +406,7 @@ static const char * const vfe32_general_cmd[] = {
 
 uint8_t vfe32_use_bayer_stats(struct vfe32_ctrl_type *vfe32_ctrl)
 {
-	if (vfe32_ctrl->ver_num.main >= 4) {
+	if (vfe32_ctrl->ver_num.main >= VFE_STATS_TYPE_BAYER) {
 		/* VFE 4 or above uses bayer stats */
 		return TRUE;
 	} else {
@@ -418,7 +418,7 @@ static void axi_enable_wm_irq(struct vfe_share_ctrl_t *share_ctrl)
 {
 	uint32_t irq_mask = 0, irq_comp_mask = 0;
 	uint16_t vfe_output_mode1 = 0;
-	uint32_t condition;
+	uint32_t rdi_comp_select = 0;
 
 	uint16_t vfe_output_mode =
 		share_ctrl->outpath.output_mode &
@@ -488,9 +488,9 @@ static void axi_enable_wm_irq(struct vfe_share_ctrl_t *share_ctrl)
 		irq_mask |= (0x1 << (share_ctrl->outpath.out4.ch0 +
 			VFE_WM_OFFSET));
 	}
-	condition = (vfe_output_mode1 &&
+	rdi_comp_select = (vfe_output_mode1 &&
 		(share_ctrl->rdi_comp == VFE_RDI_COMPOSITE));
-	if (condition) {
+	if (rdi_comp_select) {
 		irq_comp_mask |= (
 		0x1 << (share_ctrl->outpath.out2.ch0 + 16) |
 		0x1 << (share_ctrl->outpath.out3.ch0 + 16));
@@ -499,7 +499,7 @@ static void axi_enable_wm_irq(struct vfe_share_ctrl_t *share_ctrl)
 
 	msm_camera_io_w(irq_mask, share_ctrl->vfebase +
 			VFE_IRQ_MASK_0);
-	if (vfe_output_mode || condition)
+	if (vfe_output_mode || rdi_comp_select)
 		msm_camera_io_w(irq_comp_mask,
 			share_ctrl->vfebase + VFE_IRQ_COMP_MASK);
 }
@@ -509,7 +509,7 @@ static void axi_disable_wm_irq(struct vfe_share_ctrl_t *share_ctrl,
 {
 	uint32_t irq_mask, irq_comp_mask = 0;
 	uint16_t vfe_output_mode1 = 0;
-	uint32_t condition = 0;
+	uint32_t rdi_comp_select = 0;
 	uint16_t vfe_output_mode =
 		output_mode &
 			~(VFE32_OUTPUT_MODE_TERTIARY1|
@@ -569,9 +569,9 @@ static void axi_disable_wm_irq(struct vfe_share_ctrl_t *share_ctrl,
 		irq_mask &= ~(0x1 << (share_ctrl->outpath.out4.ch0 +
 			VFE_WM_OFFSET));
 	}
-	condition = (vfe_output_mode1 &&
+	rdi_comp_select = (vfe_output_mode1 &&
 		(share_ctrl->rdi_comp == VFE_RDI_COMPOSITE));
-	if (condition) {
+	if (rdi_comp_select) {
 		irq_comp_mask &= ~(
 		0x1 << (share_ctrl->outpath.out2.ch0 + 16) |
 		0x1 << (share_ctrl->outpath.out3.ch0 + 16));
@@ -1897,7 +1897,7 @@ static int configure_pingpong_buffers(
 	struct vfe32_output_ch *outch = NULL;
 	int rc = 0;
 	uint32_t inst_handle = 0;
-	uint32_t condition = 0;
+	uint32_t rdi_comp_select = 0;
 	static uint32_t ping_t1_ch0_paddr, pong_t1_ch0_paddr;
 
 	if (path == VFE_MSG_OUTPUT_PRIMARY)
@@ -1928,10 +1928,11 @@ static int configure_pingpong_buffers(
 		ping_t1_ch0_paddr = outch->ping.ch_paddr[1];
 		pong_t1_ch0_paddr = outch->pong.ch_paddr[1];
 	}
-	condition = (axi_ctrl->share_ctrl->rdi_comp  == VFE_RDI_COMPOSITE) &&
+	rdi_comp_select =
+		(axi_ctrl->share_ctrl->rdi_comp  == VFE_RDI_COMPOSITE) &&
 		(path == VFE_MSG_OUTPUT_TERTIARY2) && ping_t1_ch0_paddr &&
 		pong_t1_ch0_paddr;
-	if (condition) {
+	if (rdi_comp_select) {
 		vfe32_put_ch_ping_addr(
 			axi_ctrl->share_ctrl->vfebase, outch->ch0,
 			ping_t1_ch0_paddr);
@@ -3436,21 +3437,6 @@ static int vfe32_proc_general(
 		CDBG("%s Stopping liveshot ", __func__);
 		vfe32_stop_liveshot(pmctl, vfe32_ctrl);
 		break;
-	case VFE_CMD_SET_STATS_VER:
-		cmdp = kmalloc(cmd->length, GFP_ATOMIC);
-		if (!cmdp) {
-			rc = -ENOMEM;
-			goto proc_general_done;
-		}
-		if (copy_from_user(cmdp, (void __user *)(cmd->value),
-			cmd->length)) {
-			rc = -EFAULT;
-			goto proc_general_done;
-		}
-		vfe32_ctrl->ver_num.main = *(uint32_t *)cmdp;
-		CDBG("%s Set Stats version %d", __func__, vfe32_ctrl->ver_num.main);
-
-		break;
 	case VFE_CMD_SELECT_RDI: {
 		uint32_t rdi_sel;
 		if (copy_from_user(&rdi_sel,
@@ -3463,7 +3449,22 @@ static int vfe32_proc_general(
 		vfe32_ctrl->share_ctrl->rdi_comp = rdi_sel;
 	}
 		break;
+	case VFE_CMD_SET_STATS_VER:
+		cmdp = kmalloc(cmd->length, GFP_ATOMIC);
+		if (!cmdp) {
+			rc = -ENOMEM;
+			goto proc_general_done;
+		}
+		if (copy_from_user(cmdp, (void __user *)(cmd->value),
+			cmd->length)) {
+			rc = -EFAULT;
+			goto proc_general_done;
+		}
+		vfe32_ctrl->ver_num.main = *(uint32_t *)cmdp;
+		CDBG("%s:Set Stats version %d", __func__,
+			vfe32_ctrl->ver_num.main);
 
+		break;
 	default:
 		if (cmd->length != vfe32_cmd[cmd->id].length)
 			return -EINVAL;
@@ -7261,7 +7262,7 @@ static int __devinit vfe32_probe(struct platform_device *pdev)
 
 	vfe32_ctrl->pdev = pdev;
 	/*disable bayer stats by default*/
-	vfe32_ctrl->ver_num.main = 0;
+	vfe32_ctrl->ver_num.main = VFE_STATS_TYPE_LEGACY;
 	return 0;
 
 vfe32_no_resource:

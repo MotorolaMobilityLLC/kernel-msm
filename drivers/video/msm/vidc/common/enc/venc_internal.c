@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -123,6 +123,10 @@ u32 vid_enc_set_get_inputformat(struct video_client_ctx *client_ctx,
 			format.buffer_format =
 				VCD_BUFFER_FORMAT_NV12_16M2KA;
 			break;
+		case VEN_INPUTFMT_NV21_16M2KA:
+			format.buffer_format =
+				VCD_BUFFER_FORMAT_NV21_16M2KA;
+			break;
 		default:
 			status = false;
 			break;
@@ -151,6 +155,9 @@ u32 vid_enc_set_get_inputformat(struct video_client_ctx *client_ctx,
 				break;
 			case VCD_BUFFER_FORMAT_TILE_4x2:
 				*input_format = VEN_INPUTFMT_NV21;
+				break;
+			case VCD_BUFFER_FORMAT_NV21_16M2KA:
+				*input_format = VEN_INPUTFMT_NV21_16M2KA;
 				break;
 			default:
 				status = false;

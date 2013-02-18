@@ -453,3 +453,6 @@ extern struct platform_device msm9615_device_acpuclk;
 extern struct platform_device apq8064_msm_mpd_device;
 
 extern struct platform_device msm_gpio_device;
+
+extern struct platform_device amdm_8064_device;
+extern struct platform_device bmdm_8064_device;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -188,6 +188,7 @@ struct ddl_dec_buffers{
 	struct ddl_buf_addr h264_nb_ip;
 	struct ddl_buf_addr context;
 	struct ddl_buf_addr extnuserdata;
+	struct ddl_buf_addr meta_hdr[DDL_MAX_BUFFER_COUNT];
 };
 struct ddl_enc_buffer_size{
 	u32  sz_cur_y;
