@@ -61,7 +61,7 @@ struct pm8921_bms_platform_data {
 	int				low_voltage_calc_ms;
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	int64_t (*get_batt_info) (int64_t battery_id,
-				  struct pm8921_bms_battery_data *data);
+				  struct bms_battery_data *data);
 #endif
 };
 

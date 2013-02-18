@@ -2400,17 +2400,19 @@ EXPORT_SYMBOL_GPL(pm8921_bms_get_current_max);
 int pm8921_bms_get_cc_uah(int *result)
 {
 	struct pm8921_soc_params raw;
+	int batt_temp;
 
 	if (!the_chip) {
 		pr_err("called before initialization\n");
 		return -EINVAL;
 	}
-	if (the_chip->r_sense == 0) {
-		pr_err("r_sense is zero\n");
+	if (the_chip->r_sense_uohm == 0) {
+		pr_err("r_sense_uohm is zero\n");
 		return -EINVAL;
 	}
 
-	read_soc_params_raw(the_chip, &raw);
+	get_batt_temp(the_chip, &batt_temp);
+	read_soc_params_raw(the_chip, &raw, batt_temp);
 	calculate_cc_uah(the_chip, raw.cc, result);
 
 	return 0;
@@ -2607,6 +2609,7 @@ EXPORT_SYMBOL_GPL(pm8921_bms_no_external_accy);
 void pm8921_bms_charging_full(void)
 {
 	struct pm8921_soc_params raw;
+	int batt_temp;
 
 	if (the_chip == NULL)
 		return;
@@ -2616,7 +2619,8 @@ void pm8921_bms_charging_full(void)
 		return;
 #endif
 
-	read_soc_params_raw(the_chip, &raw);
+	get_batt_temp(the_chip, &batt_temp);
+	read_soc_params_raw(the_chip, &raw, batt_temp);
 
 	the_chip->ocv_reading_at_100 = raw.last_good_ocv_raw;
 	the_chip->cc_reading_at_100 = raw.cc;
@@ -2821,7 +2825,7 @@ static int set_battery_data(struct pm8921_bms_chip *chip)
 	int64_t battery_id;
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	int64_t batt_valid;
-	struct pm8921_bms_battery_data batt_data;
+	struct bms_battery_data batt_data;
 	struct pm8921_bms_platform_data *pdata = chip->dev->platform_data;
 #endif
 

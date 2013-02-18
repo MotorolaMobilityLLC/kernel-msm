@@ -606,7 +606,7 @@ static struct sf_lut batt_2100_pc_sf = {
 };
 
 /* used in drivers/power/pm8921-bms.c */
-struct pm8921_bms_battery_data lge_2100_mako_data =  {
+struct bms_battery_data lge_2100_mako_data =  {
 	.fcc = 2100,
 	.fcc_temp_lut = &batt_2100_fcc_temp,
 	.fcc_sf_lut = &batt_2100_fcc_sf,
