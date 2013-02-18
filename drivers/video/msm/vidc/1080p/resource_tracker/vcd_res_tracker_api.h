@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -34,6 +34,7 @@ unsigned int res_trk_get_ion_flags(void);
 u32 res_trk_get_enable_ion(void);
 u32 res_trk_is_cp_enabled(void);
 u32 res_trk_get_disable_fullhd(void);
+u32 res_trk_get_enable_sec_metadata(void);
 struct ion_client *res_trk_get_ion_client(void);
 u32 res_trk_get_disable_dmx(void);
 u32 res_trk_get_min_dpb_count(void);

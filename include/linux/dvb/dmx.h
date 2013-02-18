@@ -5,7 +5,7 @@
  *                  & Ralph  Metzler <ralph@convergence.de>
  *                    for convergence integrated media GmbH
  *
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -39,8 +39,7 @@
 /* Min recording chunk upon which event is generated */
 #define DMX_REC_BUFF_CHUNK_MIN_SIZE		(100*188)
 
-/* Decoder buffers are usually large ~1MB, 10 should suffice */
-#define DMX_MAX_DECODER_BUFFER_NUM		(10)
+#define DMX_MAX_DECODER_BUFFER_NUM		(32)
 
 typedef enum
 {
@@ -250,6 +249,18 @@ struct dmx_pes_event_info {
 
 	/* Flags passed in filter events */
 	__u32 flags;
+
+	/*
+	 * Number of TS packets with Transport Error Indicator (TEI)
+	 * found while constructing the PES.
+	 */
+	__u32 transport_error_indicator_counter;
+
+	/* Number of continuity errors found while constructing the PES */
+	__u32 continuity_error_counter;
+
+	/* Total number of TS packets holding the PES */
+	__u32 ts_packets_num;
 };
 
 /* Section info associated with DMX_EVENT_NEW_SECTION event */
@@ -562,6 +573,20 @@ struct dmx_decoder_buffers {
 	int handles[DMX_MAX_DECODER_BUFFER_NUM];
 };
 
+struct dmx_secure_mode {
+	/*
+	 * Specifies whether secure mode should be set or not for the filter's
+	 * pid. Note that DMX_OUT_TSDEMUX_TAP filters can have more than 1 pid
+	 */
+	int is_secured;
+
+	/* PID to associate with key ladder id */
+	__u16 pid;
+
+	/* key ladder information to associate with the specified pid */
+	__u32 key_ladder_id;
+};
+
 #define DMX_START                _IO('o', 41)
 #define DMX_STOP                 _IO('o', 42)
 #define DMX_SET_FILTER           _IOW('o', 43, struct dmx_sct_filter_params)
@@ -585,5 +610,7 @@ struct dmx_decoder_buffers {
 #define DMX_SET_BUFFER		 _IOW('o', 62, struct dmx_buffer)
 #define DMX_SET_DECODER_BUFFER	 _IOW('o', 63, struct dmx_decoder_buffers)
 #define DMX_REUSE_DECODER_BUFFER _IO('o', 64)
+#define DMX_SET_SECURE_MODE	_IOW('o', 65, struct dmx_secure_mode)
+
 
 #endif /*_DVBDMX_H_*/
