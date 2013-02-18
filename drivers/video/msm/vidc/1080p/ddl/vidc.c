@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1109,4 +1109,9 @@ void vidc_1080p_frame_start_realloc(u32 instance_id)
 	VIDC_HWIO_OUT(REG_666957, VIDC_1080P_INIT_CH_INST_ID);
 	VIDC_HWIO_OUT(REG_666957,
 		VIDC_1080P_DEC_TYPE_FRAME_START_REALLOC | instance_id);
+}
+
+void vidc_1080p_set_enc_NV21(u32 enc_nv21)
+{
+	VIDC_HWIO_OUT(REG_515664, enc_nv21);
 }

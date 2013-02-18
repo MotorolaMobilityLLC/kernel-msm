@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,9 +19,13 @@ enum dump_client_type {
 	MSM_CPU_CTXT = 0,
 	MSM_CACHE,
 	MSM_OCMEM,
-	MSM_ETB,
-	MSM_ETM,
-	MSM_TMC,
+	MSM_TMC_ETFETB,
+	MSM_ETM0_REG,
+	MSM_ETM1_REG,
+	MSM_ETM2_REG,
+	MSM_ETM3_REG,
+	MSM_TMC0_REG, /* TMC_ETR */
+	MSM_TMC1_REG, /* TMC_ETF */
 	MAX_NUM_CLIENTS,
 };
 

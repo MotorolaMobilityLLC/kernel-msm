@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -622,18 +622,6 @@ pm8921_add_subdevices(const struct pm8921_platform_data *pdata,
 		}
 	}
 
-	if (pdata->pwrkey_pdata) {
-		pwrkey_cell.platform_data = pdata->pwrkey_pdata;
-		pwrkey_cell.pdata_size =
-			sizeof(struct pm8xxx_pwrkey_platform_data);
-		ret = mfd_add_devices(pmic->dev, 0, &pwrkey_cell, 1, NULL,
-					irq_base);
-		if (ret) {
-			pr_err("Failed to add pwrkey subdevice ret=%d\n", ret);
-			goto bail;
-		}
-	}
-
 	if (pdata->mpp_pdata) {
 		if (version == PM8XXX_VERSION_8917) {
 			mpp_cell_resources[0].end = mpp_cell_resources[0].end
@@ -661,6 +649,18 @@ pm8921_add_subdevices(const struct pm8921_platform_data *pdata,
 				irq_base);
 		if (ret) {
 			pr_err("Failed to add rtc subdevice ret=%d\n", ret);
+			goto bail;
+		}
+	}
+
+	if (pdata->pwrkey_pdata) {
+		pwrkey_cell.platform_data = pdata->pwrkey_pdata;
+		pwrkey_cell.pdata_size =
+			sizeof(struct pm8xxx_pwrkey_platform_data);
+		ret = mfd_add_devices(pmic->dev, 0, &pwrkey_cell, 1, NULL,
+					irq_base);
+		if (ret) {
+			pr_err("Failed to add pwrkey subdevice ret=%d\n", ret);
 			goto bail;
 		}
 	}
@@ -804,6 +804,8 @@ pm8921_add_subdevices(const struct pm8921_platform_data *pdata,
 	}
 
 	if (pdata->ccadc_pdata) {
+		pdata->ccadc_pdata->ccadc_cdata.batt_temp_channel
+						= CHANNEL_BATT_THERM;
 		ccadc_cell.platform_data = pdata->ccadc_pdata;
 		ccadc_cell.pdata_size =
 				sizeof(struct pm8xxx_ccadc_platform_data);

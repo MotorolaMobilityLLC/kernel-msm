@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -57,6 +57,9 @@
 #define VCD_I_SET_TURBO_CLK (VCD_START_BASE + 0x29)
 #define VCD_I_ENABLE_DELIMITER_FLAG (VCD_START_BASE + 0x2A)
 #define VCD_I_ENABLE_VUI_TIMING_INFO (VCD_START_BASE + 0x2B)
+#define VCD_I_SET_EXT_METABUFFER (VCD_START_BASE + 0x2C)
+#define VCD_I_FREE_EXT_METABUFFER (VCD_START_BASE + 0x2D)
+#define VCD_I_ENABLE_SEC_METADATA (VCD_START_BASE + 0x2E)
 
 
 #define VCD_START_REQ      (VCD_START_BASE + 0x1000)
@@ -118,6 +121,7 @@ enum vcd_perf_level {
 
 #define VCD_METADATA_EXT_DATA       0x0800
 #define VCD_METADATA_USER_DATA      0x1000
+#define VCD_METADATA_SEPARATE_BUF   0x2000
 
 struct vcd_property_meta_data_enable {
 	u32 meta_data_enable_flag;
@@ -147,7 +151,8 @@ enum vcd_yuv_buffer_format {
 	VCD_BUFFER_FORMAT_NV12      = 0x1,
 	VCD_BUFFER_FORMAT_TILE_4x2    = 0x2,
 	VCD_BUFFER_FORMAT_NV12_16M2KA = 0x3,
-	VCD_BUFFER_FORMAT_TILE_1x1    = 0x4
+	VCD_BUFFER_FORMAT_TILE_1x1    = 0x4,
+	VCD_BUFFER_FORMAT_NV21_16M2KA = 0x5
 };
 
 struct vcd_property_buffer_format {
@@ -384,4 +389,19 @@ struct vcd_property_vui_timing_info_enable {
 	u32 vui_timing_info;
 };
 
+struct vcd_property_meta_buffer {
+	u8 *kernel_virtual_addr;
+	u8 *physical_addr;
+	u32 size;
+	u32 count;
+	int pmem_fd;
+	u32 offset;
+	u8 *dev_addr;
+	void *client_data;
+	u8 *kernel_virt_addr_iommu;
+	u8 *physical_addr_iommu;
+	int pmem_fd_iommu;
+	u8 *dev_addr_iommu;
+	void *client_data_iommu;
+};
 #endif

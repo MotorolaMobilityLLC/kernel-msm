@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -203,6 +203,21 @@ void mdp4_dsi_video_pipe_queue(int cndx, struct mdp4_overlay_pipe *pipe)
 	mdp4_stat.overlay_play[pipe->mixer_num]++;
 }
 
+static void mdp4_dsi_video_pipe_clean(struct vsync_update *vp)
+{
+	struct mdp4_overlay_pipe *pipe;
+	int i;
+
+	pipe = vp->plist;
+	for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
+		if (pipe->pipe_used) {
+			mdp4_overlay_iommu_pipe_free(pipe->pipe_ndx, 0);
+			pipe->pipe_used = 0; /* clear */
+		}
+	}
+	vp->update_cnt = 0;     /* empty queue */
+}
+
 static void mdp4_dsi_video_blt_ov_update(struct mdp4_overlay_pipe *pipe);
 static void mdp4_dsi_video_wait4dmap(int cndx);
 static void mdp4_dsi_video_wait4ov(int cndx);
@@ -388,9 +403,6 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 	data &= 0x01;
 	if (data == 0 || !dsi_video_enabled) /* timing generator disabled */
 		return;
-
-	/* start timing generator & mmu if they are not started yet */
-	mdp4_overlay_dsi_video_start();
 
 	mdp4_video_vsync_irq_ctrl(cndx, 1);
 
@@ -642,13 +654,15 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 		pipe = vctrl->base_pipe;
 	}
 
+	atomic_set(&vctrl->suspend, 0);
+
 	if (!(mfd->cont_splash_done)) {
 		mfd->cont_splash_done = 1;
-		mdp4_dsi_video_wait4dmap_done(0);
+		MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
+		mdp4_dsi_video_wait4vsync(0);
 		/* Turn off panel to avoid fading */
 		mipi_dsi_panel_power_en(pdev, 0);
 		/* disable timing generator */
-		MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
 		mipi_dsi_controller_cfg(0);
 		/* Clks are enabled in probe.
 		   Disabling clocks now */
@@ -679,8 +693,6 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 
 	mdp4_overlay_mdp_pipe_req(pipe, mfd);
 	mdp4_calc_blt_mdp_bw(mfd, pipe);
-
-	atomic_set(&vctrl->suspend, 0);
 
 	mdp4_overlay_dmap_xy(pipe);	/* dma_p */
 	mdp4_overlay_dmap_cfg(mfd, 1);
@@ -825,17 +837,8 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 		 * pipe's iommu will be freed at next overlay play
 		 * and iommu_drop statistic will be increased by one
 		 */
-		vp->update_cnt = 0;     /* empty queue */
-	}
-
-	undx =  vctrl->update_ndx;
-	vp = &vctrl->vlist[undx];
-	if (vp->update_cnt) {
-		/*
-		 * pipe's iommu will be freed at next overlay play
-		 * and iommu_drop statistic will be increased by one
-		 */
-		vp->update_cnt = 0;     /* empty queue */
+		pr_warn("%s: update_cnt=%d\n", __func__, vp->update_cnt);
+		mdp4_dsi_video_pipe_clean(vp);
 	}
 
 	if (pipe) {

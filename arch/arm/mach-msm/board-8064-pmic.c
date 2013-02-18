@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -176,6 +176,8 @@ static struct pm8xxx_gpio_init pm8921_mpq_gpios[] __initdata = {
 /* Initial PM8XXX MPP configurations */
 static struct pm8xxx_mpp_init pm8xxx_mpps[] __initdata = {
 	PM8921_MPP_INIT(3, D_OUTPUT, PM8921_MPP_DIG_LEVEL_VPH, DOUT_CTRL_LOW),
+	/* External 5V regulator enable; shared by HDMI and USB_OTG switches. */
+	PM8921_MPP_INIT(7, D_OUTPUT, PM8921_MPP_DIG_LEVEL_VPH, DOUT_CTRL_LOW),
 	PM8921_MPP_INIT(8, D_OUTPUT, PM8921_MPP_DIG_LEVEL_S4, DOUT_CTRL_LOW),
 	/*MPP9 is used to detect docking station connection/removal on Liquid*/
 	PM8921_MPP_INIT(9, D_INPUT, PM8921_MPP_DIG_LEVEL_S4, DIN_TO_INT),
@@ -382,15 +384,17 @@ static int apq8064_pm8921_therm_mitigation[] = {
 #define CHG_TERM_MA		100
 static struct pm8921_charger_platform_data
 apq8064_pm8921_chg_pdata __devinitdata = {
-	.safety_time		= 180,
 	.update_time		= 60000,
 	.max_voltage		= MAX_VOLTAGE_MV,
 	.min_voltage		= 3200,
 	.uvd_thresh_voltage	= 4050,
-	.resume_voltage_delta	= 100,
+	.alarm_low_mv		= 3400,
+	.alarm_high_mv		= 4000,
+	.resume_voltage_delta	= 60,
+	.resume_charge_percent	= 99,
 	.term_current		= CHG_TERM_MA,
 	.cool_temp		= 10,
-	.warm_temp		= 40,
+	.warm_temp		= 45,
 	.temp_check_period	= 1,
 	.max_bat_chg_current	= 1100,
 	.cool_bat_chg_current	= 350,
@@ -403,20 +407,22 @@ apq8064_pm8921_chg_pdata __devinitdata = {
 
 static struct pm8xxx_ccadc_platform_data
 apq8064_pm8xxx_ccadc_pdata = {
-	.r_sense		= 10,
+	.r_sense_uohm		= 10000,
 	.calib_delay_ms		= 600000,
 };
 
 static struct pm8921_bms_platform_data
 apq8064_pm8921_bms_pdata __devinitdata = {
 	.battery_type			= BATT_UNKNOWN,
-	.r_sense			= 10,
+	.r_sense_uohm			= 10000,
 	.v_cutoff			= 3400,
 	.max_voltage_uv			= MAX_VOLTAGE_MV * 1000,
 	.rconn_mohm			= 18,
 	.shutdown_soc_valid_limit	= 20,
 	.adjust_soc_low_threshold	= 25,
 	.chg_term_ua			= CHG_TERM_MA * 1000,
+	.normal_voltage_calc_ms		= 20000,
+	.low_voltage_calc_ms		= 1000,
 };
 
 static struct pm8921_platform_data
@@ -496,4 +502,7 @@ void __init apq8064_init_pmic(void)
 	} else if (machine_is_apq8064_cdp()) {
 		apq8064_pm8921_chg_pdata.has_dc_supply = true;
 	}
+
+	if (!machine_is_apq8064_mtp() && !machine_is_apq8064_liquid())
+		apq8064_pm8921_chg_pdata.battery_less_hardware = 1;
 }

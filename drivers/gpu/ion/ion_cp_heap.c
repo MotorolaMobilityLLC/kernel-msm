@@ -243,9 +243,13 @@ static int ion_cp_protect(struct ion_heap *heap, int version, void *data)
 
 	if (atomic_inc_return(&cp_heap->protect_cnt) == 1) {
 		/* Make sure we are in C state when the heap is protected. */
-		if (!cp_heap->allocated_bytes)
-			if (ion_on_first_alloc(heap))
+		if (!cp_heap->allocated_bytes) {
+			ret_value = ion_on_first_alloc(heap);
+			if (ret_value) {
+				atomic_dec(&cp_heap->protect_cnt);
 				goto out;
+			}
+		}
 
 		ret_value = ion_cp_protect_mem(cp_heap->secure_base,
 				cp_heap->secure_size, cp_heap->permission_type,

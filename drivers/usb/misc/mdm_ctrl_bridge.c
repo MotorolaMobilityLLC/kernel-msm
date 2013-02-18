@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -26,11 +26,6 @@
 #include <asm/unaligned.h>
 #include <mach/usb_bridge.h>
 
-static const char *ctrl_bridge_names[] = {
-	"dun_ctrl_hsic0",
-	"rmnet_ctrl_hsic0"
-};
-
 /* polling interval for Interrupt ep */
 #define HS_INTERVAL		7
 #define FS_LS_INTERVAL		3
@@ -43,6 +38,8 @@ static const char *ctrl_bridge_names[] = {
 struct ctrl_bridge {
 	struct usb_device	*udev;
 	struct usb_interface	*intf;
+
+	char			*name;
 
 	unsigned int		int_pipe;
 	struct urb		*inturb;
@@ -78,6 +75,20 @@ static struct ctrl_bridge	*__dev[MAX_BRIDGE_DEVICES];
 
 /* counter used for indexing ctrl bridge devices */
 static int	ch_id;
+
+static int get_ctrl_bridge_chid(char *xport_name)
+{
+	struct ctrl_bridge	*dev;
+	int			i;
+
+	for (i = 0; i < MAX_BRIDGE_DEVICES; i++) {
+		dev = __dev[i];
+		if (!strncmp(dev->name, xport_name, BRIDGE_NAME_MAX_LEN))
+			return i;
+	}
+
+	return -ENODEV;
+}
 
 unsigned int ctrl_bridge_get_cbits_tohost(unsigned int id)
 {
@@ -132,6 +143,10 @@ static void resp_avail_cb(struct urb *urb)
 	int			resubmit_urb = 1;
 	struct bridge		*brdg = dev->brdg;
 
+	/*usb device disconnect*/
+	if (urb->dev->state == USB_STATE_NOTATTACHED)
+		return;
+
 	switch (urb->status) {
 	case 0:
 		/*success*/
@@ -158,14 +173,11 @@ static void resp_avail_cb(struct urb *urb)
 
 	if (resubmit_urb) {
 		/*re- submit int urb to check response available*/
-		usb_anchor_urb(dev->inturb, &dev->tx_submitted);
 		status = usb_submit_urb(dev->inturb, GFP_ATOMIC);
-		if (status) {
+		if (status)
 			dev_err(&dev->intf->dev,
 				"%s: Error re-submitting Int URB %d\n",
 				__func__, status);
-			usb_unanchor_urb(dev->inturb);
-		}
 	}
 }
 
@@ -177,6 +189,10 @@ static void notification_available_cb(struct urb *urb)
 	struct bridge			*brdg = dev->brdg;
 	unsigned int			ctrl_bits;
 	unsigned char			*data;
+
+	/*usb device disconnect*/
+	if (urb->dev->state == USB_STATE_NOTATTACHED)
+		return;
 
 	switch (urb->status) {
 	case 0:
@@ -212,13 +228,11 @@ static void notification_available_cb(struct urb *urb)
 					DEFAULT_READ_URB_LENGTH,
 					resp_avail_cb, dev);
 
-		usb_anchor_urb(dev->readurb, &dev->tx_submitted);
 		status = usb_submit_urb(dev->readurb, GFP_ATOMIC);
 		if (status) {
 			dev_err(&dev->intf->dev,
 				"%s: Error submitting Read URB %d\n",
 				__func__, status);
-			usb_unanchor_urb(dev->readurb);
 			goto resubmit_int_urb;
 		}
 		return;
@@ -242,13 +256,10 @@ static void notification_available_cb(struct urb *urb)
 	}
 
 resubmit_int_urb:
-	usb_anchor_urb(urb, &dev->tx_submitted);
 	status = usb_submit_urb(urb, GFP_ATOMIC);
-	if (status) {
+	if (status)
 		dev_err(&dev->intf->dev, "%s: Error re-submitting Int URB %d\n",
 		__func__, status);
-		usb_unanchor_urb(urb);
-	}
 }
 
 static int ctrl_bridge_start_read(struct ctrl_bridge *dev)
@@ -260,16 +271,11 @@ static int ctrl_bridge_start_read(struct ctrl_bridge *dev)
 		return -ENODEV;
 	}
 
-	if (!dev->inturb->anchor) {
-		usb_anchor_urb(dev->inturb, &dev->tx_submitted);
-		retval = usb_submit_urb(dev->inturb, GFP_KERNEL);
-		if (retval < 0) {
-			dev_err(&dev->intf->dev,
-				"%s error submitting int urb %d\n",
-				__func__, retval);
-			usb_unanchor_urb(dev->inturb);
-		}
-	}
+	retval = usb_submit_urb(dev->inturb, GFP_KERNEL);
+	if (retval < 0)
+		dev_err(&dev->intf->dev,
+			"%s error submitting int urb %d\n",
+			__func__, retval);
 
 	return retval;
 }
@@ -277,21 +283,22 @@ static int ctrl_bridge_start_read(struct ctrl_bridge *dev)
 int ctrl_bridge_open(struct bridge *brdg)
 {
 	struct ctrl_bridge	*dev;
+	int			ch_id;
 
 	if (!brdg) {
 		err("bridge is null\n");
 		return -EINVAL;
 	}
 
-	if (brdg->ch_id >= MAX_BRIDGE_DEVICES)
-		return -EINVAL;
-
-	dev = __dev[brdg->ch_id];
-	if (!dev) {
-		err("dev is null\n");
-		return -ENODEV;
+	ch_id = get_ctrl_bridge_chid(brdg->name);
+	if (ch_id < 0 || ch_id >= MAX_BRIDGE_DEVICES) {
+		err("%s: %s dev not found\n", __func__, brdg->name);
+		return ch_id;
 	}
 
+	brdg->ch_id = ch_id;
+
+	dev = __dev[ch_id];
 	dev->brdg = brdg;
 	dev->snd_encap_cmd = 0;
 	dev->get_encap_res = 0;
@@ -337,7 +344,13 @@ static void ctrl_write_callback(struct urb *urb)
 	kfree(urb->transfer_buffer);
 	kfree(urb->setup_packet);
 	usb_free_urb(urb);
-	usb_autopm_put_interface_async(dev->intf);
+
+	/* if we are here after device disconnect
+	 * usb_unbind_interface() takes care of
+	 * residual pm_autopm_get_interface_* calls
+	 */
+	if (urb->dev->state != USB_STATE_NOTATTACHED)
+		usb_autopm_put_interface_async(dev->intf);
 }
 
 int ctrl_bridge_write(unsigned int id, char *data, size_t size)
@@ -455,6 +468,8 @@ int ctrl_bridge_suspend(unsigned int id)
 		return -ENODEV;
 
 	set_bit(SUSPENDED, &dev->flags);
+	usb_kill_urb(dev->inturb);
+	usb_kill_urb(dev->readurb);
 	usb_kill_anchored_urbs(&dev->tx_submitted);
 
 	return 0;
@@ -593,7 +608,7 @@ static void ctrl_bridge_debugfs_exit(void) { }
 
 int
 ctrl_bridge_probe(struct usb_interface *ifc, struct usb_host_endpoint *int_in,
-		int id)
+		char *name, int id)
 {
 	struct ctrl_bridge		*dev;
 	struct usb_device		*udev;
@@ -604,27 +619,26 @@ ctrl_bridge_probe(struct usb_interface *ifc, struct usb_host_endpoint *int_in,
 
 	udev = interface_to_usbdev(ifc);
 
-	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
+	dev = __dev[id];
 	if (!dev) {
-		dev_err(&ifc->dev, "%s: unable to allocate dev\n",
-			__func__);
-		return -ENOMEM;
+		pr_err("%s:device not found\n", __func__);
+		return -ENODEV;
 	}
-	dev->pdev = platform_device_alloc(ctrl_bridge_names[id], id);
+
+	dev->name = name;
+
+	dev->pdev = platform_device_alloc(name, -1);
 	if (!dev->pdev) {
 		dev_err(&ifc->dev, "%s: unable to allocate platform device\n",
 			__func__);
-		retval = -ENOMEM;
-		goto nomem;
+		return -ENOMEM;
 	}
 
+	dev->flags = 0;
 	dev->udev = udev;
 	dev->int_pipe = usb_rcvintpipe(udev,
 		int_in->desc.bEndpointAddress & USB_ENDPOINT_NUMBER_MASK);
 	dev->intf = ifc;
-
-	init_usb_anchor(&dev->tx_submitted);
-	init_usb_anchor(&dev->tx_deferred);
 
 	/*use max pkt size from ep desc*/
 	ep = &dev->intf->cur_altsetting->endpoint[0].desc;
@@ -685,8 +699,6 @@ ctrl_bridge_probe(struct usb_interface *ifc, struct usb_host_endpoint *int_in,
 		dev->intf->cur_altsetting->desc.bInterfaceNumber;
 	dev->in_ctlreq->wLength = cpu_to_le16(DEFAULT_READ_URB_LENGTH);
 
-	__dev[id] = dev;
-
 	platform_device_add(dev->pdev);
 
 	ch_id++;
@@ -703,8 +715,6 @@ free_inturb:
 	usb_free_urb(dev->inturb);
 pdev_del:
 	platform_device_unregister(dev->pdev);
-nomem:
-	kfree(dev);
 
 	return retval;
 }
@@ -717,7 +727,10 @@ void ctrl_bridge_disconnect(unsigned int id)
 
 	platform_device_unregister(dev->pdev);
 
-	usb_unlink_anchored_urbs(&dev->tx_submitted);
+	usb_kill_anchored_urbs(&dev->tx_submitted);
+
+	usb_kill_urb(dev->inturb);
+	usb_kill_urb(dev->readurb);
 
 	kfree(dev->in_ctlreq);
 	kfree(dev->readbuf);
@@ -726,25 +739,54 @@ void ctrl_bridge_disconnect(unsigned int id)
 	usb_free_urb(dev->readurb);
 	usb_free_urb(dev->inturb);
 
-	__dev[id] = NULL;
 	ch_id--;
-
-	kfree(dev);
 }
 
-static int __init ctrl_bridge_init(void)
+int ctrl_bridge_init(void)
 {
+	struct ctrl_bridge	*dev;
+	int			i;
+	int			retval = 0;
+
+	for (i = 0; i < MAX_BRIDGE_DEVICES; i++) {
+
+		dev = kzalloc(sizeof(*dev), GFP_KERNEL);
+		if (!dev) {
+			pr_err("%s: unable to allocate dev\n", __func__);
+			retval = -ENOMEM;
+			goto error;
+		}
+
+		/*transport name will be set during probe*/
+		dev->name = "";
+
+		init_usb_anchor(&dev->tx_submitted);
+		init_usb_anchor(&dev->tx_deferred);
+
+		__dev[i] = dev;
+	}
+
 	ctrl_bridge_debugfs_init();
 
 	return 0;
-}
-module_init(ctrl_bridge_init);
 
-static void __exit ctrl_bridge_exit(void)
+error:
+	while (--i >= 0) {
+		kfree(__dev[i]);
+		__dev[i] = NULL;
+	}
+
+	return retval;
+}
+
+void ctrl_bridge_exit(void)
 {
-	ctrl_bridge_debugfs_exit();
-}
-module_exit(ctrl_bridge_exit);
+	int	i;
 
-MODULE_DESCRIPTION("Qualcomm modem control bridge driver");
-MODULE_LICENSE("GPL v2");
+	ctrl_bridge_debugfs_exit();
+
+	for (i = 0; i < MAX_BRIDGE_DEVICES; i++) {
+		kfree(__dev[i]);
+		__dev[i] = NULL;
+	}
+}
