@@ -44,7 +44,7 @@ enum {
 struct mmi_battery_list {
 	unsigned int                        num_cells;
 	struct mmi_battery_cell             *cell_list[MMI_BATTERY_NUM];
-	struct pm8921_bms_battery_data      *bms_list[MMI_BATTERY_NUM];
+	struct bms_battery_data      *bms_list[MMI_BATTERY_NUM];
 	struct pm8921_charger_battery_data  *chrg_list[MMI_BATTERY_NUM];
 };
 

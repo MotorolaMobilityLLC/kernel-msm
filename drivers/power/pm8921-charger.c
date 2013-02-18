@@ -1336,9 +1336,8 @@ static void pm8921_chg_hw_config(struct pm8921_chg_chip *chip)
 	 * care for jeita compliance
 	 */
 	if (!(chip->cool_temp_dc == 0 && chip->warm_temp_dc == 0)) {
-		btm_config.low_thr_temp = chip->cool_temp_dc;
-		btm_config.high_thr_temp = chip->warm_temp_dc;
-		schedule_work(&btm_config_work);
+        /*Comment out for now, due to btm_config_work is removed*/
+		//schedule_work(&btm_config_work);
 	}
 }
 
@@ -3095,15 +3094,12 @@ static irqreturn_t vbatdet_low_irq_handler(int irq, void *data)
 	high_transition = pm_chg_get_rt_status(chip, VBATDET_LOW_IRQ);
 
 	if (high_transition) {
-		if (!chip->eoc_check_soc
-				|| pm_chg_get_fsm_state(data) == FSM_STATE_ON_BAT_3) {
-			/* enable auto charging */
+		/* enable auto charging */
 #ifndef CONFIG_PM8921_FLOAT_CHARGE
-			pm_chg_auto_enable(chip, !charging_disabled);
+		pm_chg_auto_enable(chip, !charging_disabled);
 #endif
-			pr_info("batt fell below resume voltage %s\n",
+		pr_info("batt fell below resume voltage %s\n",
 				charging_disabled ? "" : "charger enabled");
-		}
 	}
 	pr_debug("fsm_state=%d\n", pm_chg_get_fsm_state(data));
 
@@ -3761,13 +3757,7 @@ static void update_heartbeat(struct work_struct *work)
 			pr_debug("Config VDDMAX = %d mV, Enable = %d\n",
 				 data.max_voltage,
 				(int)enable);
-			btm_config.low_thr_temp = (data.cool_temp * 10);
-			btm_config.high_thr_temp = (data.warm_temp * 10);
-			pr_debug("Config BTM Low = %d dC, High = %d dC\n",
-				btm_config.low_thr_temp,
-				btm_config.high_thr_temp);
 			pr_info("Temperature State = %d\n", btm_state);
-			schedule_work(&btm_config_work);
 		}
 	}
 
@@ -4054,7 +4044,7 @@ static int is_charging_finished(struct pm8921_chg_chip *chip,
 #endif
 		pr_debug("vddmax = %d vbat_batt_terminal_uv=%d\n",
 			 vbat_programmed, vbat_batt_terminal_uv);
-		if (vbat_meas_mv < vbat_programmed - VBAT_TOLERANCE_MV)
+		if (vbat_batt_terminal_uv < vbat_programmed - VBAT_TOLERANCE_MV)
 			return CHG_IN_PROGRESS;
 
 		if (last_vbat_programmed == -EINVAL)
@@ -5854,7 +5844,7 @@ static ssize_t pcb_temp_store(struct device *dev,
 					      msecs_to_jiffies(0));
 		} else if ((the_chip->pcb_temp_state != PCB_TEMP_NORM) &&
 			   (pcb_temp < (the_chip->hot_temp_pcb_dc -
-					(TEMP_HYSTERISIS_DEGC*10)))) {
+					(TEMP_HYSTERISIS_DECIDEGC*10)))) {
 			the_chip->pcb_temp_state = PCB_TEMP_NORM;
 			cancel_delayed_work(&the_chip->update_heartbeat_work);
 			schedule_delayed_work(&the_chip->update_heartbeat_work,
