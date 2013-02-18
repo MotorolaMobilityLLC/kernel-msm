@@ -190,6 +190,14 @@
 			class = [506f776572494300];
 			type = <0x001e0004>;
 
+			LED@0 {
+				class = [5175616c636f6d6d504d383932314c454400];
+				default_trigger = [6e6f6e6500];
+				index = <0x00000001>;
+				led_name = [627574746f6e2d6261636b6c6967687400];
+				type = <0x001e000e>;
+			};
+
 			RGBLED@0 {
 				class = [5175616c636f6d6d504d383932315247424c454400];
 				max_brightness = <0x00000080>;
