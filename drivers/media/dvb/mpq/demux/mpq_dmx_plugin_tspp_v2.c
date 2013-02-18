@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -126,6 +126,7 @@ static int mpq_tspp_dmx_init(
 	mpq_demux->demux.decoder_fullness_abort = NULL;
 	mpq_demux->demux.decoder_buffer_status = NULL;
 	mpq_demux->demux.reuse_decoder_buffer = NULL;
+	mpq_demux->demux.set_secure_mode = NULL;
 
 	/* Initialize dvb_demux object */
 	result = dvb_dmx_init(&mpq_demux->demux);

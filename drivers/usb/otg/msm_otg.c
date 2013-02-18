@@ -1046,13 +1046,26 @@ skip_phy_resume:
 
 static int msm_otg_notify_host_mode(struct msm_otg *motg, bool host_mode)
 {
+	int ret;
+
 	if (!psy)
 		goto psy_not_supported;
 
-	if (host_mode)
-		power_supply_set_scope(psy, POWER_SUPPLY_SCOPE_SYSTEM);
-	else
-		power_supply_set_scope(psy, POWER_SUPPLY_SCOPE_DEVICE);
+	if (host_mode) {
+		ret = power_supply_set_scope(psy, POWER_SUPPLY_SCOPE_SYSTEM);
+	} else {
+		ret = power_supply_set_scope(psy, POWER_SUPPLY_SCOPE_DEVICE);
+		/*
+		 * VBUS comparator is disabled by PMIC charging driver
+		 * when SYSTEM scope is selected.  For ID_GND->ID_A
+		 * transition, give 50 msec delay so that PMIC charger
+		 * driver detect the VBUS and ready for accepting
+		 * charging current value from USB.
+		 */
+		if (test_bit(ID_A, &motg->inputs))
+			msleep(50);
+	}
+	return ret;
 
 psy_not_supported:
 	dev_dbg(motg->phy.dev, "Power Supply doesn't support USB charger\n");
@@ -1080,7 +1093,7 @@ static int msm_otg_notify_chg_type(struct msm_otg *motg)
 		motg->chg_type == USB_ACA_C_CHARGER))
 		charger_type = POWER_SUPPLY_TYPE_USB_ACA;
 	else
-		charger_type = POWER_SUPPLY_TYPE_BATTERY;
+		charger_type = POWER_SUPPLY_TYPE_UNKNOWN;
 
 	return pm8921_set_usb_power_supply_type(charger_type);
 }
@@ -1102,8 +1115,6 @@ static int msm_otg_notify_power_supply(struct msm_otg *motg, unsigned mA)
 		return 0;
 	}
 	/* Set max current limit */
-	dev_info(motg->phy.dev, "current: %d -> %d (mA)\n",
-			motg->cur_power, mA);
 	if (power_supply_set_current_limit(psy, 1000*mA))
 		goto psy_not_supported;
 
@@ -1138,8 +1149,12 @@ static void msm_otg_notify_charger(struct msm_otg *motg, unsigned mA)
 
 	dev_info(motg->phy.dev, "Avail curr from USB = %u\n", mA);
 
-	pm8921_charger_vbus_draw(mA);
-	msm_otg_notify_power_supply(motg, mA);
+	/*
+	 *  Use Power Supply API if supported, otherwise fallback
+	 *  to legacy pm8921 API.
+	 */
+	if (msm_otg_notify_power_supply(motg, mA))
+		pm8921_charger_vbus_draw(mA);
 
 	motg->cur_power = mA;
 }
@@ -2331,8 +2346,6 @@ static void msm_otg_sm_work(struct work_struct *w)
 						OTG_STATE_B_PERIPHERAL;
 					break;
 				case USB_SDP_CHARGER:
-					msm_otg_notify_charger(motg,
-							IDEV_CHG_MIN);
 					if(!slimport_is_connected()) {
 						msm_otg_start_peripheral(otg, 1);
 						otg->phy->state =

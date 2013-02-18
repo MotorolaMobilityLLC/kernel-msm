@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  * Copyright (c) 2012, LGE Inc.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -488,7 +488,7 @@ apq8064_pm8xxx_ccadc_pdata = {
 
 static struct pm8921_bms_platform_data
 apq8064_pm8921_bms_pdata __devinitdata = {
-	.battery_type  = BATT_LGE,
+	.battery_type	= BATT_UNKNOWN, //FIXME Define correct type
 	.r_sense  = 10,
 	.v_cutoff  = 3500,
 	.max_voltage_uv  = MAX_VOLTAGE_MV * 1000,

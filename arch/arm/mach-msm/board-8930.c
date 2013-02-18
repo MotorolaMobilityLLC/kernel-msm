@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -149,7 +149,7 @@ struct sx150x_platform_data msm8930_sx150x_data[] = {
 #define MSM_ION_MM_SIZE            0x3800000 /* Need to be multiple of 64K */
 #define MSM_ION_SF_SIZE            0x0
 #define MSM_ION_QSECOM_SIZE	0x780000 /* (7.5MB) */
-#define MSM_ION_HEAP_NUM	7
+#define MSM_ION_HEAP_NUM	8
 #else
 #define MSM_ION_SF_SIZE		MSM_PMEM_SIZE
 #define MSM_ION_MM_SIZE		MSM_PMEM_ADSP_SIZE
@@ -169,6 +169,7 @@ struct sx150x_platform_data msm8930_sx150x_data[] = {
 								HOLE_SIZE))
 #define MAX_FIXED_AREA_SIZE	0x10000000
 #define MSM8930_FW_START	MSM8930_FIXED_AREA_START
+#define MSM_ION_ADSP_SIZE	SZ_8M
 
 #else
 #define MSM_CONTIG_MEM_SIZE  0x110C000
@@ -382,6 +383,14 @@ static struct platform_device ion_mm_heap_device = {
 	}
 };
 
+static struct platform_device ion_adsp_heap_device = {
+	.name = "ion-adsp-heap-device",
+	.id = -1,
+	.dev = {
+		.dma_mask = &msm_dmamask,
+		.coherent_dma_mask = DMA_BIT_MASK(32),
+	}
+};
 /**
  * These heaps are listed in the order they will be allocated. Due to
  * video hardware restrictions and content protection the FW heap has to
@@ -455,6 +464,15 @@ struct ion_platform_heap msm8930_heaps[] = {
 			.size	= MSM_ION_AUDIO_SIZE,
 			.memory_type = ION_EBI_TYPE,
 			.extra_data = (void *) &co_msm8930_ion_pdata,
+		},
+		{
+			.id	= ION_ADSP_HEAP_ID,
+			.type	= ION_HEAP_TYPE_DMA,
+			.name	= ION_ADSP_HEAP_NAME,
+			.size	= MSM_ION_ADSP_SIZE,
+			.memory_type = ION_EBI_TYPE,
+			.extra_data = (void *) &co_msm8930_ion_pdata,
+			.priv	= &ion_adsp_heap_device.dev,
 		},
 #endif
 };
@@ -1486,6 +1504,16 @@ static struct msm_spi_platform_data msm8960_qup_spi_gsbi1_pdata = {
 #ifdef CONFIG_USB_MSM_OTG_72K
 static struct msm_otg_platform_data msm_otg_pdata;
 #else
+static int enable_usb_host_mode;
+static int __init usb_host_mode_with_pm8917(char *param)
+{
+	int ret;
+
+	ret = kstrtoint(param, 10, &enable_usb_host_mode);
+	return ret;
+}
+early_param("usb_host_mode_pm8917", usb_host_mode_with_pm8917);
+
 #ifdef CONFIG_MSM_BUS_SCALING
 /* Bandwidth requests (zero) if no vote placed */
 static struct msm_bus_vectors usb_init_vectors[] = {
@@ -1539,7 +1567,6 @@ static struct msm_otg_platform_data msm_otg_pdata = {
 	.mode			= USB_OTG,
 	.otg_control		= OTG_PMIC_CONTROL,
 	.phy_type		= SNPS_28NM_INTEGRATED_PHY,
-	.pmic_id_irq		= PM8038_USB_ID_IN_IRQ(PM8038_IRQ_BASE),
 	.power_budget		= 750,
 #ifdef CONFIG_MSM_BUS_SCALING
 	.bus_scale_table	= &usb_bus_scale_pdata,
@@ -2830,6 +2857,27 @@ static void __init msm8930_cdp_init(void)
 		msm_clock_init(&msm8930_pm8917_clock_init_data);
 	else
 		msm_clock_init(&msm8930_clock_init_data);
+
+	if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917) {
+		/*
+		 * By default, set USB mode as USB Peripheral only due to
+		 * hardware rework requirement for USB Host Mode.
+		 * Provide pmic_id_irq number only if host mode is enable
+		 * by user assuming that hardware rework is available.
+		 */
+		if (enable_usb_host_mode) {
+			/* MPP01 IRQ number */
+			msm_otg_pdata.pmic_id_irq =
+				PM8921_MPP_IRQ(PM8917_IRQ_BASE, 1);
+		} else {
+			pr_err("Enabling USB Peripheral Only mode.\n");
+			msm_otg_pdata.mode = USB_PERIPHERAL;
+		}
+	} else {
+		msm_otg_pdata.pmic_id_irq =
+				PM8038_USB_ID_IN_IRQ(PM8038_IRQ_BASE);
+	}
+
 	msm_otg_pdata.phy_init_seq = hsusb_phy_init_seq;
 	msm8960_device_otg.dev.platform_data = &msm_otg_pdata;
 	android_usb_pdata.swfi_latency =
