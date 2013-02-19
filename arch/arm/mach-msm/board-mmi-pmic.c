@@ -1188,7 +1188,7 @@ static struct pm8921_charger_platform_data pm8921_chg_pdata __devinitdata = {
 
 static struct pm8921_bms_platform_data pm8921_bms_pdata __devinitdata = {
 	.battery_type		= BATT_MMI,
-	.r_sense_uohm		= 10,
+	.r_sense_uohm		= 10000,
 	.i_test			= 0,
 	.v_cutoff		= 3200,
 	.max_voltage_uv		= MAX_VOLTAGE_MV * 1000,
@@ -1196,6 +1196,9 @@ static struct pm8921_bms_platform_data pm8921_bms_pdata __devinitdata = {
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	.get_batt_info=		read_mmi_battery_bms,
 #endif
+	.normal_voltage_calc_ms	= 20000,
+	.low_voltage_calc_ms	= 1000,
+
 };
 
 void __init mmi_pm8921_init(struct mmi_oem_data *mmi_data, void *pdata)
