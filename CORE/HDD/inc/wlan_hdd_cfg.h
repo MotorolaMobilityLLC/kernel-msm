@@ -1536,7 +1536,7 @@ typedef enum
 #define CFG_TDLS_MAX_DISCOVERY_ATTEMPT              "gTDLSMaxDiscoveryAttempt"
 #define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_MIN          ( 0 )
 #define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_MAX          ( 100 )
-#define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_DEFAULT      ( 2 )
+#define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_DEFAULT      ( 5 )
 
 #define CFG_TDLS_RX_IDLE_TIMEOUT                    "gTDLSRxIdleTimeout"
 #define CFG_TDLS_RX_IDLE_TIMEOUT_MIN                ( 0 )

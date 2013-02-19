@@ -130,17 +130,27 @@ static v_VOID_t wlan_hdd_tdls_discover_peer_cb( v_PVOID_t userData )
                     pHddTdlsCtx->discovery_peer_cnt--;
 
                     if ((eTDLS_CAP_UNKNOWN == curr_peer->tdls_support) &&
-                        (eTDLS_LINK_NOT_CONNECTED == curr_peer->link_status) &&
-                        (curr_peer->discovery_attempt <
-                        pHddTdlsCtx->threshold_config.discovery_tries_n)) {
+                        (eTDLS_LINK_NOT_CONNECTED == curr_peer->link_status)) {
+
+                        if (curr_peer->discovery_attempt <
+                            pHddTdlsCtx->threshold_config.discovery_tries_n) {
+
                             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                            "sme_SendTdlsMgmtFrame(%d)", pAdapter->sessionId);
+                                      "sme_SendTdlsMgmtFrame(%d)", pAdapter->sessionId);
 
                             sme_SendTdlsMgmtFrame(WLAN_HDD_GET_HAL_CTX(pAdapter),
                                                   pAdapter->sessionId,
                                                   curr_peer->peerMac,
                                                   WLAN_TDLS_DISCOVERY_REQUEST,
                                                   1, 0, NULL, 0, 0);
+                            curr_peer->discovery_attempt++;
+                        }
+                        else
+                        {
+                           VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                                     "%s: Maximum Discovery retries reached", __func__);
+                           curr_peer->tdls_support = eTDLS_CAP_NOT_SUPPORTED;
+                        }
 
                    }
                 }
