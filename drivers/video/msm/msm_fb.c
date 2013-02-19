@@ -4118,19 +4118,18 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			&& msm_fb_pdata->is_partial_mode_supported
 			&& msm_fb_pdata->is_partial_mode_supported()) {
 			struct msm_fb_panel_data *pdata;
-			struct msmfb_resume_cfg resume_cfg;
 
 			if (copy_from_user(&mfd->resume_cfg,
-							(void __user *)arg,
-							sizeof(resume_cfg)))
+						(void __user *)arg,
+						sizeof(mfd->resume_cfg)))
 				return -EFAULT;
 			pdata = (struct msm_fb_panel_data *)
 				mfd->pdev->dev.platform_data;
 			if (pdata && pdata->prepare_for_resume)
 				ret = pdata->prepare_for_resume(mfd,
-					resume_cfg.partial,
-					resume_cfg.panel_state,
-					resume_cfg.gamma);
+					mfd->resume_cfg.partial,
+					mfd->resume_cfg.panel_state,
+					mfd->resume_cfg.gamma);
 		}
 		break;
 
