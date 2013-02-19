@@ -6210,12 +6210,11 @@ eHalStatus sme_HandleChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
 }
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
-eHalStatus sme_8023MulticastList (tHalHandle hHal, tpSirRcvFltMcAddrList pMulticastAddrs)
+eHalStatus sme_8023MulticastList (tHalHandle hHal, tANI_U8 sessionId, tpSirRcvFltMcAddrList pMulticastAddrs)
 {
     tpSirRcvFltMcAddrList   pRequestBuf;
     vos_msg_t               msg;
     tpAniSirGlobal          pMac = PMAC_STRUCT(hHal);
-    tANI_U8                 sessionId = 0;
     tCsrRoamSession         *pSession = NULL;
 
     VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s: "
@@ -6225,15 +6224,12 @@ eHalStatus sme_8023MulticastList (tHalHandle hHal, tpSirRcvFltMcAddrList pMultic
 
     /*
      *Find the connected Infra / P2P_client connected session
-     */
-     for( sessionId = 0; sessionId < CSR_ROAM_SESSION_MAX; sessionId++ )
-     {
-         if( CSR_IS_SESSION_VALID( pMac, sessionId ) && 
-           ( csrIsConnStateInfra( pMac, sessionId )) )
-         {
-            pSession = CSR_GET_SESSION( pMac, sessionId );
-         }
-     }
+    */
+    if (CSR_IS_SESSION_VALID(pMac, sessionId) &&
+        csrIsConnStateInfra(pMac, sessionId))
+    {
+        pSession = CSR_GET_SESSION( pMac, sessionId );
+    }
 
     if(pSession == NULL )
     {
@@ -6241,7 +6237,7 @@ eHalStatus sme_8023MulticastList (tHalHandle hHal, tpSirRcvFltMcAddrList pMultic
             "the right session", __func__);
         return eHAL_STATUS_FAILURE;
     }
-    
+
     pRequestBuf = vos_mem_malloc(sizeof(tSirRcvFltMcAddrList));
     if (NULL == pRequestBuf)
     {
@@ -6249,7 +6245,15 @@ eHalStatus sme_8023MulticastList (tHalHandle hHal, tpSirRcvFltMcAddrList pMultic
             "allocate memory for 8023 Multicast List request", __func__);
         return eHAL_STATUS_FAILED_ALLOC;
     }
-    
+
+    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Ignoring the "
+                       "indication as we are not connected", __func__);
+        vos_mem_free(pRequestBuf);
+        return eHAL_STATUS_FAILURE;
+    }
+
     vos_mem_copy(pRequestBuf, pMulticastAddrs, sizeof(tSirRcvFltMcAddrList));
 
     vos_mem_copy(pRequestBuf->selfMacAddr, pSession->selfMacAddr, sizeof(tSirMacAddr));
