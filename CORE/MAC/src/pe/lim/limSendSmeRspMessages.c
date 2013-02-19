@@ -1522,6 +1522,57 @@ limSendSmeTDLSDeleteAllPeerInd(tpAniSirGlobal pMac, tpPESession psessionEntry)
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
     return;
 }/*** end limSendSmeTDLSDeleteAllPeerInd() ***/
+
+/**
+ * limSendSmeMgmtTXCompletion()
+ *
+ *FUNCTION:
+ * This function is called to send the eWNI_SME_MGMT_FRM_TX_COMPLETION_IND
+ * message to SME.
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ *
+ *NOTE:
+ * NA
+ *
+ * @param  pMac   - Pointer to global MAC structure
+ * @param  psessionEntry - Pointer to the session entry
+ * @param  txCompleteStatus - TX Complete Status of Mgmt Frames
+ * @return None
+ */
+void
+limSendSmeMgmtTXCompletion(tpAniSirGlobal pMac,
+                           tpPESession psessionEntry,
+                           tANI_U32 txCompleteStatus)
+{
+    tSirMsgQ  mmhMsg;
+    tSirMgmtTxCompletionInd  *pSirMgmtTxCompletionInd;
+
+    if ( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pSirMgmtTxCompletionInd, sizeof(tSirMgmtTxCompletionInd)))
+    {
+        limLog(pMac, LOGP, FL("palAllocateMemory failed for eWNI_SME_MGMT_FRM_TX_COMPLETION_IND"));
+        return;
+    }
+
+    //messageType
+    pSirMgmtTxCompletionInd->messageType = eWNI_SME_MGMT_FRM_TX_COMPLETION_IND;
+    pSirMgmtTxCompletionInd->length = sizeof(tSirMgmtTxCompletionInd);
+
+    //sessionId
+    pSirMgmtTxCompletionInd->sessionId = psessionEntry->smeSessionId;
+
+    pSirMgmtTxCompletionInd->txCompleteStatus = txCompleteStatus;
+
+    mmhMsg.type = eWNI_SME_MGMT_FRM_TX_COMPLETION_IND;
+    mmhMsg.bodyptr = pSirMgmtTxCompletionInd;
+    mmhMsg.bodyval = 0;
+
+
+    limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+    return;
+}/*** end limSendSmeTDLSDeleteAllPeerInd() ***/
 #endif
 
 

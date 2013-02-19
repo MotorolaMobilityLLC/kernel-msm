@@ -1082,10 +1082,8 @@ tSirRetStatus peOpen(tpAniSirGlobal pMac, tMacOpenParameters *pMacOpenParam)
         return eSIR_FAILURE;
     }
 #endif
+    pMac->lim.mgmtFrameSessionId = 0xff;
 
-#ifdef WLAN_FEATURE_P2P
-    pMac->lim.actionFrameSessionId = 0xff;
-#endif
     if( !VOS_IS_STATUS_SUCCESS( vos_lock_init( &pMac->lim.lkPeGlobalLock ) ) )
     {
         PELOGE(limLog(pMac, LOGE, FL("pe lock init failed!\n"));)

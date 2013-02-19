@@ -126,6 +126,9 @@
 /** Maximum time(ms) to wait for tdls add sta to complete **/
 #define WAIT_TIME_TDLS_ADD_STA      1500
 
+/** Maximum time(ms) to wait for tdls mgmt to complete **/
+#define WAIT_TIME_TDLS_MGMT         2000
+
 /* Maximum time to get crda entry settings */
 #define CRDA_WAIT_TIME 300
 
@@ -722,9 +725,14 @@ struct hdd_adapter_s
 
 #ifdef FEATURE_WLAN_TDLS
    struct completion tdls_add_station_comp;
+   struct completion tdls_mgmt_comp;
+   eHalStatus tdlsAddStaStatus;
 #endif
    /* Track whether the linkup handling is needed  */
    v_BOOL_t isLinkUpSvcNeeded;
+
+   /* Mgmt Frames TX completion status code */
+   tANI_U32 mgmtTxCompletionStatus;
 
 /*************************************************************
  *  Tx Queues
