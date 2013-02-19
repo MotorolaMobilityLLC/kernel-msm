@@ -106,6 +106,15 @@ enum pm8xxx_hsed_bias {
  */
 int pm8xxx_reset_pwr_off(int reset);
 
+/**
+ * pm8xxx_hw_reset_debounce_timer_set - set PM8XXX hardware reset debounce
+ *                                      timer
+ * @val: 0~15, representing different timer values
+ *
+ * RETURNS: an appropriate -ERRNO error value on error, or zero for success.
+ */
+int pm8xxx_hw_reset_debounce_timer_set(unsigned char val);
+
 int pm8xxx_uart_gpio_mux_ctrl(enum pm8xxx_uart_path_sel uart_path_sel);
 
 /**
@@ -227,6 +236,10 @@ int pm8xxx_hsed_bias_control(enum pm8xxx_hsed_bias bias, bool enable);
 #else
 
 static inline int pm8xxx_reset_pwr_off(int reset)
+{
+	return -ENODEV;
+}
+static inline int pm8xxx_hw_reset_debounce_timer_set(unsigned char val)
 {
 	return -ENODEV;
 }
