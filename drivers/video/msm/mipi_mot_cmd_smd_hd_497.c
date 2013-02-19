@@ -51,6 +51,8 @@ static char set_addr[5] = {DCS_CMD_SET_PAGE_ADDRESS,
 static char unlock_lvl_2[3] = {0xf0, 0x5a, 0x5a};
 static char unlock_lvl_mtp[3] = {0xf1, 0x5a, 0x5a};
 static char unlock_lvl_3[3] = {0xfc, 0x5a, 0x5a};
+static char switch_pwr_to_mem_1[3] = {0xfd, 0x10, 0xfc};
+static char switch_pwr_to_mem_2[3] = {0xc4, 0x07, 0x01};
 static char mtp_read_off[2] = {0xb0, 0x21};
 static char mtp_read[2] = {0xc8, 0x00};
 static char brightness_ctrl[2] = {0x51, DEFAULT_BRIGHTNESS};
@@ -83,6 +85,10 @@ static struct dsi_cmd_desc smd_hd_497_init_cmds[] = {
 	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
 	 sizeof(set_addr), set_addr},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(switch_pwr_to_mem_1), switch_pwr_to_mem_1},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(switch_pwr_to_mem_2), switch_pwr_to_mem_2},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
 	 sizeof(acl_default_setting), acl_default_setting},
 };
 
@@ -110,6 +116,34 @@ static struct dsi_cmd_desc set_mtp_read_off[] = {
 
 static struct dsi_cmd_desc mtp_read_cmd = {
 	DTYPE_DCS_READ, 1, 0, 1, 0, sizeof(mtp_read), mtp_read};
+
+/* Settings for correct 2Ch shift issue */
+static char small_col[] = {0x2a, 0x02, 0xc8, 0x02, 0xcf};
+static char small_row[] = {0x2b, 0x04, 0xfe, 0x04, 0xff};
+static char frame[] = {
+	0x2c,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+static struct dsi_cmd_desc correct_shift_cmds[] = {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	 sizeof(small_col), small_col},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	 sizeof(small_row), small_row},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	 sizeof(frame), frame},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	 sizeof(set_column), set_column},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	 sizeof(set_addr), set_addr}
+};
+
+static char undo_partial_rows[] = {0x30, 0x00, 0x00, 0x04, 0xff};
+static struct dsi_cmd_desc undo_partial_rows_cmds[] = {
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+	 sizeof(undo_partial_rows), undo_partial_rows},
+};
 
 static void enable_acl(struct msm_fb_data_type *mfd)
 {
@@ -244,6 +278,18 @@ static int is_bl_supported(void)
 	return is_bl_supported;
 }
 
+static void panel_en_from_partial(struct msm_fb_data_type *mfd)
+{
+	mipi_set_tx_power_mode(0);
+
+	mipi_mot_tx_cmds(&undo_partial_rows_cmds[0],
+			ARRAY_SIZE(undo_partial_rows_cmds));
+
+	/* TODO: Remove on displays which have shift issue fixed */
+	mipi_mot_tx_cmds(&correct_shift_cmds[0],
+			ARRAY_SIZE(correct_shift_cmds));
+}
+
 static int __init mipi_mot_cmd_smd_hd_497_init(void)
 {
 	int ret;
@@ -324,6 +370,7 @@ static int __init mipi_mot_cmd_smd_hd_497_init(void)
 	mot_panel->panel_disable = panel_disable;
 	mot_panel->set_backlight = panel_set_backlight;
 	mot_panel->enable_acl = enable_acl;
+	mot_panel->panel_en_from_partial = panel_en_from_partial;
 
 	/* For ESD detection information */
 	mot_panel->esd_enabled = false; /* TODO: Need to enable */
