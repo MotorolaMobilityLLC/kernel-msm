@@ -183,8 +183,8 @@ static enum hrtimer_restart event_hrtimer_cb(struct hrtimer *hrtimer)
 	if (next)
 		create_hrtimer(next->expires);
 
-	spin_unlock_irqrestore(&event_timer_lock, flags);
 hrtimer_cb_exit:
+	spin_unlock_irqrestore(&event_timer_lock, flags);
 	return HRTIMER_NORESTART;
 }
 
