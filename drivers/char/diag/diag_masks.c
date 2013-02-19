@@ -314,6 +314,13 @@ void diag_mask_update_fn(struct work_struct *work)
 	diag_send_event_mask_update(smd_info->ch, diag_event_num_bytes);
 	diag_send_feature_mask_update(smd_info->ch, smd_info->peripheral);
 
+	if (smd_info->notify_context == SMD_EVENT_OPEN &&
+		driver->logging_mode == MEMORY_DEVICE_MODE) {
+		pr_debug("diag: In %s, send optimized logging parameters\n",
+			__func__);
+		diag_send_diag_mode_update(smd_info, optimized_logging);
+	}
+
 	smd_info->notify_context = 0;
 }
 

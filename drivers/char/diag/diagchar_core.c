@@ -79,6 +79,9 @@ static unsigned int threshold_client_limit = 30;
 unsigned int diag_max_reg = 600;
 unsigned int diag_threshold_reg = 750;
 
+/* user selection, indicating whether to use optimized logging */
+unsigned int optimized_logging;
+
 /* Timer variables */
 static struct timer_list drain_timer;
 static int timer_in_progress;
@@ -942,6 +945,12 @@ long diagchar_ioctl(struct file *filp,
 			success = -EFAULT;
 		else
 			success = 1;
+	} else if (iocmd == DIAG_IOCTL_OPTIMIZED_LOGGING) {
+		mutex_lock(&driver->diagchar_mutex);
+		optimized_logging = (unsigned int)ioarg;
+		mutex_unlock(&driver->diagchar_mutex);
+		pr_debug("diag: optimized_logging = %d\n", optimized_logging);
+		success = 1;
 	} else
 		DIAGADDON_ioctl(&success, filp, iocmd, ioarg);
 	return success;
