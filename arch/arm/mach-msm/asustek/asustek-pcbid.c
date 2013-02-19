@@ -122,7 +122,7 @@ static hw_rev asustek_hw_rev = HW_REV_INVALID;
 static int __init hw_rev_setup(char *hw_rev_info)
 {
 	/* CAUTION: These strings comes from bootloader. */
-	char *hw_rev_str[] = {"SR1", "ER", "PR", "MP"};
+	char *hw_rev_str[] = {"rev_a", "rev_b", "rev_c", "rev_d"};
 	unsigned int i;
 
 	if (debug_mask & DEBUG_STATE)

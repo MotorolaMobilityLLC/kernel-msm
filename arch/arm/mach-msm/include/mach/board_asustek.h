@@ -48,10 +48,10 @@ typedef enum {
 
 typedef enum {
 	HW_REV_INVALID = -1,
-	HW_REV_SR1 = 0,
-	HW_REV_ER = 1,
-	HW_REV_PR = 2,
-	HW_REV_MP = 3,
+	HW_REV_A = 0,
+	HW_REV_B = 1,
+	HW_REV_C = 2,
+	HW_REV_D = 3,
 	HW_REV_MAX
 } hw_rev;
 
