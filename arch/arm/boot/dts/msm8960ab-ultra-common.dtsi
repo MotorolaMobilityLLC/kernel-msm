@@ -65,6 +65,18 @@
 			reg_gpio_en_type_3 = <0>; /* MSM_GPIO */
 			reg_gpio_en_init_state_3 = <1>;
 			reg_gpio_en_state_3 = <1>;
+
+			mipi_d0_sel_gpio_1 = <10>;
+			mipi_d0_sel_name_1 = "mipi_d0_sel";
+			mipi_d0_sel_gpio_type_1 = <1>;  /* PM_GPIO */
+			mipi_d0_sel_init_state_1 = <0>;
+			mipi_d0_sel_en_state_1 = <0>;
+			mipi_d0_sel_en_pre_delay_1 = <0>;
+			mipi_d0_sel_en_post_delay_1 = <0>;
+			mipi_d0_sel_dis_pre_delay_1 = <0>;
+			mipi_d0_sel_dis_post_delay_1 = <0>;
+
+			partial_mode_supported = <1>;
 		};
 	};
 };
