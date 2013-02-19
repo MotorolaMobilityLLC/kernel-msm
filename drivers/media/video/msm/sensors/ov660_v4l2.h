@@ -25,6 +25,13 @@
 #define OV660_NAME_LEN (sizeof(OV660_NAME)-1)
 
 #define I2C_ADDR_BYPASS 0x6106
+#define I2C_ADDR_RGBC_OUTPUT 0x7002
+#define AF_STATISTICS_ADDR 0x7980
+#define AF_STATISTICS_DATA 120
+
+/* MISC DEVICE COMMANDS */
+#define MAJOR_NUM 100
+#define CAMERA_SET_RGBC_OUTPUT _IOR(MAJOR_NUM, 0, long *)
 
 struct ov660_reg_i2c_tbl {
 	uint16_t reg_addr;
