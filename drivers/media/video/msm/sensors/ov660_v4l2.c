@@ -17,6 +17,10 @@
  */
 #include "ov660_v4l2.h"
 #include <linux/i2c.h>
+#include <linux/fs.h>
+#include <linux/of.h>
+#include <linux/miscdevice.h>
+#include <linux/uaccess.h>
 
 #define OV660_CHIP_ID_ADDR 0x6080
 #define OV660_CHIP_ID_DATA 0x0660
@@ -26,6 +30,27 @@
 	pr_err("\nError in %s, line: %d\n", __FILE__, __LINE__); \
 	goto EXIT_##N; \
 	}
+
+static int camera_dev_open(struct inode *inode, struct file *file);
+static int camera_dev_release(struct inode *inode, struct file *file);
+static long camera_dev_ioctl(struct file *file, unsigned int cmd,
+		unsigned long arg);
+static int camera_dev_read(struct file *file, char __user *buf, size_t size,
+		loff_t *ppos);
+
+const struct file_operations camera_dev_fops = {
+	.owner = THIS_MODULE,
+	.open = camera_dev_open,
+	.release = camera_dev_release,
+	.unlocked_ioctl = camera_dev_ioctl,
+	.read = camera_dev_read
+};
+
+static struct miscdevice cam_misc_device0 = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "motcamera0",
+	.fops = &camera_dev_fops
+};
 
 struct ov660_data_t {
 	struct i2c_client *client;
@@ -141,6 +166,26 @@ static int ov660_write_i2c_tbl(struct ov660_reg_i2c_tbl *in_table,
 	return rc;
 }
 
+static int32_t ov660_set_rgbc_output(int rgbc_output)
+{
+	uint8_t data;
+	int32_t rc = 0;
+
+	rc = ov660_read_i2c(I2C_ADDR_RGBC_OUTPUT, &data, 1);
+	GOTO_EXIT_IF((rc < 0), 1);
+
+	if (rgbc_output == 1)
+		data = data & 0xEF; /* RGBC Output */
+	else
+		data = data | 0x10; /* Bayer Output */
+
+	rc = ov660_write_i2c(I2C_ADDR_RGBC_OUTPUT, data);
+	GOTO_EXIT_IF((rc < 0), 1);
+
+EXIT_1:
+	return rc;
+}
+
 int32_t ov660_set_i2c_bypass(int bypassOn)
 {
 	uint8_t data;
@@ -163,6 +208,59 @@ int32_t ov660_set_i2c_bypass(int bypassOn)
 				__func__, data);
 done:
 	return rc;
+}
+
+static int camera_dev_open(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static int camera_dev_release(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static long camera_dev_ioctl(struct file *file, unsigned int cmd,
+		unsigned long arg)
+{
+	long rc = 0;
+
+	/* TODO: mutex_lock(); */
+	switch (cmd) {
+	case CAMERA_SET_RGBC_OUTPUT:
+		ov660_set_rgbc_output((int)arg);
+		break;
+	default:
+		break;
+	}
+
+	/* TODO: mutex_unlock(); */
+	return rc;
+}
+
+static ssize_t camera_dev_read(struct file *file, char __user *buf, size_t size,
+		loff_t *ppos)
+{
+	int rc = 0;
+	uint8_t data[AF_STATISTICS_DATA];
+	uint8_t *data_ptr = data;
+	int i;
+
+	for (i = 0; i < AF_STATISTICS_DATA; i++) {
+		rc = ov660_read_i2c((AF_STATISTICS_ADDR + i),
+				(data_ptr + i), 1);
+		GOTO_EXIT_IF((rc < 0), 1);
+	}
+
+	if (copy_to_user(buf, &data, size)) {
+		pr_err("%s: Unable to copy statistics to user space!\n",
+				__func__);
+		goto EXIT_1;
+	}
+
+	return size;
+EXIT_1:
+	return 0;
 }
 
 /* This function replaces the current probe since the power up
@@ -280,14 +378,18 @@ static struct i2c_driver ov660_i2c_driver = {
 
 static int __init ov660_init(void)
 {
+	if (misc_register(&cam_misc_device0)) {
+		pr_err("%s: Unable to register Mot camera misc device!\n",
+				__func__);
+	}
 	return i2c_add_driver(&ov660_i2c_driver);
 }
 
 static void __exit ov660_exit(void)
 {
+	misc_deregister(&cam_misc_device0);
 	i2c_del_driver(&ov660_i2c_driver);
 }
-
 
 static struct ov660_reg_i2c_tbl ov660_ov8835_init_settings[] = {
 	{0x6b00, 0x10},
@@ -449,7 +551,7 @@ static struct ov660_reg_i2c_tbl ov660_ov10820_init_settings[] = {
 	{0x7004, 0x21},
 	{0x7006, 0x03},
 	{0x7041, 0x00},
-	{0x7000, 0xc0},
+	{0x7000, 0xc8},
 	{0x704f, 0x11},
 	{0x7082, 0x00},
 	{0x7182, 0x05},
