@@ -12,6 +12,7 @@
 
 #include <linux/slab.h>
 #include <linux/diagchar.h>
+#include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/kmemleak.h>
 #include "diagchar.h"
@@ -129,6 +130,75 @@ int diag_process_smd_cntl_read_data(struct diag_smd_info *smd_info, void *buf,
 	kfree(pkt_params);
 
 	return flag;
+}
+
+void diag_send_diag_mode_update(struct diag_smd_info *smd_info,
+				unsigned int optimized)
+{
+	struct diag_ctrl_msg_diagmode_mdlog diagmode;
+	char buf[sizeof(struct diag_ctrl_msg_diagmode_mdlog)];
+	int msg_size = sizeof(struct diag_ctrl_msg_diagmode_mdlog);
+	int wr_size = -ENOMEM, retry_count = 0, timer;
+
+	/* For now only allow the modem to receive the message */
+	if (!smd_info || smd_info->peripheral != MODEM_DATA ||
+		smd_info->type != SMD_CNTL_TYPE) {
+		pr_err("diag: returning early smd_info->peripheral: %d,"
+			" smd_info->type: %d\n",
+			smd_info->peripheral, smd_info->type);
+		return;
+	}
+
+	pr_debug("diag: In %s,  sending diag_mode_message(%d)\n",
+		__func__, optimized);
+
+	mutex_lock(&driver->diag_cntl_mutex);
+	diagmode.ctrl_pkt_id = DIAG_CTRL_MSG_DIAGMODE_MDLOG;
+	diagmode.ctrl_pkt_data_len = 32;
+	diagmode.version = 1;
+
+	/* user option */
+	diagmode.optimized = optimized;
+
+	/* the following parameters are hard-coded for now.
+	   they could be modified by trial user through somehow
+	   in futrue enhancement */
+	/* commit threshold 128k */
+	diagmode.commit_threshold = 1024*128;
+	/* drain timer ticks in 60 seconds */
+	diagmode.drain_timer_val = 1000*60;
+	/* event stale timer ticks in 60 seconds */
+	diagmode.event_stale_timer_val = 1000*60;
+	/* don't drain if less than 1k total in buffer */
+	diagmode.drain_low_threshold = 1024;
+	/* drain if buffer in use exceed this */
+	diagmode.drain_high_threshold = 1024*128;
+	/* drain in 60 sec even if buf usage is < drain_high_threshold */
+	diagmode.drain_interval_in_secs = 60;
+
+	memcpy(buf, &diagmode, msg_size);
+
+	if (smd_info->ch) {
+		while (retry_count < 3) {
+			wr_size = smd_write(smd_info->ch, buf, msg_size);
+			if (wr_size == -ENOMEM) {
+				retry_count++;
+				for (timer = 0; timer < 5; timer++)
+					usleep_range(2000, 3000);
+			} else
+				break;
+		}
+		if (wr_size != msg_size)
+			pr_err("diag: proc %d fail feature update %d, tried %d",
+			smd_info->peripheral,
+			wr_size, msg_size);
+	} else {
+		pr_err("diag: ch invalid, feature update on proc %d\n",
+			smd_info->peripheral);
+	}
+
+	mutex_unlock(&driver->diag_cntl_mutex);
+	pr_debug("diag: Exiting %s\n", __func__);
 }
 
 static int diag_smd_cntl_probe(struct platform_device *pdev)
