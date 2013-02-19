@@ -182,6 +182,23 @@ static void cpu_power_off(void *data)
 		;
 }
 
+#define REBOOT_FASTBOOT     0x77665500
+#define REBOOT_NORMAL       0x77665501
+#define REBOOT_RECOVERY     0x77665502
+#define REBOOT_MBM_MISMATCH 0x77665503
+#define REBOOT_OUT_OF_COM   0x77665504
+#define REBOOT_AP_PANIC     0x77665505
+
+#define REBOOT_MIN          0x77665500
+#define REBOOT_MAX          0x7766550D
+static void set_restart_reason(unsigned reason)
+{
+	__raw_writel(reason, restart_reason);
+
+	if ((reason >= REBOOT_MIN) && (reason <= REBOOT_MAX))
+		pm8xxx_hw_reset_debounce_timer_set(reason - REBOOT_MIN + 1);
+}
+
 static irqreturn_t resout_irq_handler(int irq, void *dev_id)
 {
 	pr_warn("%s PMIC Initiated shutdown\n", __func__);
@@ -263,24 +280,24 @@ void msm_restart(char mode, const char *cmd)
 
 	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
-			__raw_writel(0x77665500, restart_reason);
+			set_restart_reason(REBOOT_FASTBOOT);
 		} else if (!strncmp(cmd, "recovery", 8)) {
-			__raw_writel(0x77665502, restart_reason);
+			set_restart_reason(REBOOT_RECOVERY);
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
 			code = simple_strtoul(cmd + 4, NULL, 16) & 0xff;
 			__raw_writel(0x6f656d00 | code, restart_reason);
 		} else if (!strncmp(cmd, "outofcharge", 11)) {
-			__raw_writel(0x77665504, restart_reason);
+			set_restart_reason(REBOOT_OUT_OF_COM);
 		} else if (!strncmp(cmd, "mbmprotocol_ver_mismatch", 24)) {
-			__raw_writel(0x77665503, restart_reason);
+			set_restart_reason(REBOOT_MBM_MISMATCH);
 		} else {
-			__raw_writel(0x77665501, restart_reason);
+			set_restart_reason(REBOOT_NORMAL);
 		}
 	} else if (in_panic == 1) {
-		__raw_writel(0x77665505, restart_reason);
+		set_restart_reason(REBOOT_AP_PANIC);
 	} else {
-		__raw_writel(0x77665501, restart_reason);
+		set_restart_reason(REBOOT_NORMAL);
 	}
 #ifdef CONFIG_LGE_CRASH_HANDLER
 	if (in_panic == 1)
