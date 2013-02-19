@@ -448,6 +448,7 @@ typedef enum
 #endif
 #ifdef FEATURE_WLAN_TDLS
     eCSR_ROAM_TDLS_STATUS_UPDATE,
+    eCSR_ROAM_RESULT_MGMT_TX_COMPLETE_IND,
 #endif
     eCSR_ROAM_DISCONNECT_ALL_P2P_CLIENTS, //Disaconnect all the clients
     eCSR_ROAM_SEND_P2P_STOP_BSS, //Stopbss triggered from SME due to different 

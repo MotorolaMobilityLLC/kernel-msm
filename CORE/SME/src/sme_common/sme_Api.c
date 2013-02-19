@@ -995,16 +995,6 @@ eHalStatus sme_Open(tHalHandle hHal)
 #if defined WLAN_FEATURE_P2P
       sme_p2pOpen(pMac);
 #endif
-#ifdef FEATURE_WLAN_TDLS
-      status = csrTdlsOpen(pMac) ;
-      if ( ! HAL_STATUS_SUCCESS( status ) )
-      {
-          smsLog( pMac, LOGE, "Tdlspen open failed during initialization with \
-                  status=%d\n", status );
-          break;
-      }
-#endif
-
 
    }while (0);
 
@@ -1724,6 +1714,7 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
           case eWNI_SME_TDLS_DEL_STA_RSP:
           case eWNI_SME_TDLS_DEL_STA_IND:
           case eWNI_SME_TDLS_DEL_ALL_PEER_IND:
+          case eWNI_SME_MGMT_FRM_TX_COMPLETION_IND:
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
           case eWNI_SME_TDLS_DISCOVERY_START_RSP:
           case eWNI_SME_TDLS_DISCOVERY_START_IND:

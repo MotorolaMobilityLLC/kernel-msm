@@ -1487,7 +1487,7 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
                     hdd_sendActionCnf(pAdapter, TRUE);
                 }
             }
-#ifdef WLAN_FEATURE_TDLS_DEBUG
+#ifdef FEATURE_WLAN_TDLS
             else if(pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+1] == WLAN_HDD_PUBLIC_ACTION_TDLS_DISC_RESP)
             {
                 wlan_hdd_tdls_set_cap(&pbFrames[WLAN_HDD_80211_FRM_DA_OFFSET+6], 1);
@@ -1496,7 +1496,7 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
             }
 #endif
         }
-#ifdef WLAN_FEATURE_TDLS_DEBUG
+#ifdef FEATURE_WLAN_TDLS
         if(pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_TDLS_ACTION_FRAME)
         {
             actionFrmType = pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+1];
