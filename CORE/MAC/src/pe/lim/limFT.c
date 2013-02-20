@@ -893,7 +893,7 @@ tSirRetStatus limFTFillRICBlockAckInfo(tpAniSirGlobal pMac, tANI_U8 *ric_ies, tA
  *  Will post pre auth response to SME.
  *
  *------------------------------------------------------------------*/
-void limPostFTPreAuthRsp(tpAniSirGlobal pMac, eHalStatus status,
+void limPostFTPreAuthRsp(tpAniSirGlobal pMac, tSirRetStatus status,
     tANI_U8 *auth_rsp, tANI_U16  auth_rsp_length,
     tpPESession psessionEntry)
 {
@@ -956,7 +956,7 @@ void limPostFTPreAuthRsp(tpAniSirGlobal pMac, eHalStatus status,
     mmhMsg.bodyval = 0;
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    PELOGE(limLog( pMac, LOGE, "Posted Auth Rsp to SME with status of %d\n", status);)
+    PELOGE(limLog( pMac, LOGE, "Posted Auth Rsp to SME with status of 0x%x", status);)
 #endif
     limSysProcessMmhMsgApi(pMac, &mmhMsg,  ePROT);
 }
@@ -970,7 +970,7 @@ void limPostFTPreAuthRsp(tpAniSirGlobal pMac, eHalStatus status,
  * FTIEs which will be required for Reassoc Req.
  *
  *------------------------------------------------------------------*/
-void limHandleFTPreAuthRsp(tpAniSirGlobal pMac, eHalStatus status,
+void limHandleFTPreAuthRsp(tpAniSirGlobal pMac, tSirRetStatus status,
     tANI_U8 *auth_rsp, tANI_U16  auth_rsp_length,
     tpPESession psessionEntry)
 {

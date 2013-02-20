@@ -703,7 +703,7 @@ void limProcessProbeReqFrame_multiple_BSS(tpAniSirGlobal, tANI_U8 *,tpPESession)
 // Process Auth frame when we have a session in progress.
 void limProcessAuthFrame(tpAniSirGlobal, tANI_U8 *,tpPESession);
 #ifdef WLAN_FEATURE_VOWIFI_11R
-int limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *, void *body);
+tSirRetStatus limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *, void *body);
 #endif
 
 void limProcessAssocReqFrame(tpAniSirGlobal, tANI_U8 *, tANI_U8, tpPESession);

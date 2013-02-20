@@ -438,9 +438,6 @@ static void csrNeighborRoamResetPreauthControlInfo(tpAniSirGlobal pMac)
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
         pNeighborRoamInfo->is11rAssoc = eANI_BOOLEAN_FALSE;
-        pNeighborRoamInfo->FTRoamInfo.preAuthRspWaitTimerInfo.pMac = pMac;
-        pNeighborRoamInfo->FTRoamInfo.preAuthRspWaitTimerInfo.sessionId = 
-                CSR_SESSION_ID_INVALID;
         /* Purge pre-auth fail list */
         csrNeighborRoamPurgePreauthFailedList(pMac);
 #endif
@@ -453,7 +450,6 @@ static void csrNeighborRoamResetPreauthControlInfo(tpAniSirGlobal pMac)
         pNeighborRoamInfo->FTRoamInfo.neighborRptPending = eANI_BOOLEAN_FALSE;
         pNeighborRoamInfo->FTRoamInfo.numBssFromNeighborReport = 0;
         vos_mem_zero(pNeighborRoamInfo->FTRoamInfo.neighboReportBssInfo, sizeof(tCsrNeighborReportBssInfo) * MAX_BSS_IN_NEIGHBOR_RPT);
-        palTimerStop(pMac->hHdd, pNeighborRoamInfo->FTRoamInfo.preAuthRspWaitTimer);
 #endif
 }
 
@@ -556,7 +552,6 @@ void csrNeighborRoamResetConnectedStateControlInfo(tpAniSirGlobal pMac)
     pNeighborRoamInfo->FTRoamInfo.numBssFromNeighborReport = 0;
     pNeighborRoamInfo->FTRoamInfo.preauthRspPending = 0;
     vos_mem_zero(pNeighborRoamInfo->FTRoamInfo.neighboReportBssInfo, sizeof(tCsrNeighborReportBssInfo) * MAX_BSS_IN_NEIGHBOR_RPT);
-    palTimerStop(pMac->hHdd, pNeighborRoamInfo->FTRoamInfo.preAuthRspWaitTimer);
 #endif
 }
 
@@ -802,17 +797,6 @@ static eHalStatus csrNeighborRoamIssuePreauthReq(tpAniSirGlobal pMac)
     
     /* Transition the state to preauthenticating */
     CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING)
-#if 0    
-    /* Start the preauth rsp timer */
-    status = palTimerStart(pMac->hHdd, pNeighborRoamInfo->FTRoamInfo.preAuthRspWaitTimer, 
-                   CSR_NEIGHBOR_ROAM_PREAUTH_RSP_WAIT_MULTIPLIER * pNeighborRoamInfo->cfgParams.neighborScanPeriod * PAL_TIMER_TO_MS_UNIT,
-                   eANI_BOOLEAN_FALSE);
-    if (eHAL_STATUS_SUCCESS != status)
-    {
-        smsLog(pMac, LOGE, FL("Preauth response wait timer start failed with status %d\n"), status);
-        return status;
-    }
-#endif
     
     return status;
 }
@@ -829,16 +813,18 @@ static eHalStatus csrNeighborRoamIssuePreauthReq(tpAniSirGlobal pMac)
             roamable AP list, transition to REPORT_SCAN state
 
     \param  pMac - The handle returned by macOpen.
-            vosStatus - VOS_STATUS_SUCCESS/FAILURE/TIMEOUT status from PE
+            limStatus - eSIR_SUCCESS/eSIR_FAILURE/eSIR_LIM_MAX_STA_REACHED_ERROR/
+                     eSIT_LIM_AUTH_RSP_TIMEOUT status from PE
 
     \return eHAL_STATUS_SUCCESS on success (i.e. pre-auth processed),
             eHAL_STATUS_FAILURE otherwise
 
 ---------------------------------------------------------------------------*/
-eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosStatus)
+eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, tSirRetStatus limStatus)
 {
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
     eHalStatus  status = eHAL_STATUS_SUCCESS;
+    VOS_STATUS  vosStatus = VOS_STATUS_SUCCESS;
     eHalStatus  preauthProcessed = eHAL_STATUS_SUCCESS;
     tpCsrNeighborRoamBSSInfo pPreauthRspNode = NULL;
 
@@ -867,20 +853,13 @@ eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosS
         goto DEQ_PREAUTH;
     }
 
-    if (VOS_STATUS_E_TIMEOUT != vosStatus)
-    {
-#if 0
-        /* This means we got the response from PE. Hence stop the timer */
-        status = palTimerStop(pMac->hHdd, pNeighborRoamInfo->FTRoamInfo.preAuthRspWaitTimer);
-#endif
-        pNeighborRoamInfo->FTRoamInfo.preauthRspPending = eANI_BOOLEAN_FALSE;
-    }
+    pNeighborRoamInfo->FTRoamInfo.preauthRspPending = eANI_BOOLEAN_FALSE;
 
-    if (VOS_STATUS_SUCCESS == vosStatus)
+    if (eSIR_SUCCESS == limStatus)
     {
         pPreauthRspNode = csrNeighborRoamGetRoamableAPListNextEntry(pMac, &pNeighborRoamInfo->roamableAPList, NULL);
     }
-    if ((VOS_STATUS_SUCCESS == vosStatus) && (NULL != pPreauthRspNode))
+    if ((eSIR_SUCCESS == limStatus) && (NULL != pPreauthRspNode))
     {
         NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Preauth completed successfully after %d tries\n"), pNeighborRoamInfo->FTRoamInfo.numPreAuthRetries);
 
@@ -909,10 +888,13 @@ eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosS
         tpCsrNeighborRoamBSSInfo    pNeighborBssNode = NULL;
         tListElem                   *pEntry;
 
-        smsLog(pMac, LOGE, FL("Preauth failed retry number %d, status = %d\n"), pNeighborRoamInfo->FTRoamInfo.numPreAuthRetries, vosStatus);
+        smsLog(pMac, LOGE, FL("Preauth failed retry number %d, status = 0x%x"),
+               pNeighborRoamInfo->FTRoamInfo.numPreAuthRetries, limStatus);
         
         /* Preauth failed. Add the bssId to the preAuth failed list MAC Address. Also remove the AP from roamable AP list */
-        if (pNeighborRoamInfo->FTRoamInfo.numPreAuthRetries >=  CSR_NEIGHBOR_ROAM_MAX_NUM_PREAUTH_RETRIES)
+        if ((pNeighborRoamInfo->FTRoamInfo.numPreAuthRetries >=
+             CSR_NEIGHBOR_ROAM_MAX_NUM_PREAUTH_RETRIES) ||
+            (eSIR_LIM_MAX_STA_REACHED_ERROR == limStatus))
         {
             /* We are going to remove the node as it fails for more than MAX tries. Reset this count to 0 */
             pNeighborRoamInfo->FTRoamInfo.numPreAuthRetries = 0;
@@ -3275,8 +3257,6 @@ eHalStatus csrNeighborRoamIndicateConnect(tpAniSirGlobal pMac, tANI_U8 sessionId
             if ( init_ft_flag == TRUE )
             {
                 /* Initialize all the data structures needed for the 11r FT Preauth */
-                pNeighborRoamInfo->FTRoamInfo.preAuthRspWaitTimerInfo.pMac = pMac;
-                pNeighborRoamInfo->FTRoamInfo.preAuthRspWaitTimerInfo.sessionId = sessionId;
                 pNeighborRoamInfo->FTRoamInfo.currentNeighborRptRetryNum = 0;
                 csrNeighborRoamPurgePreauthFailedList(pMac);
 
@@ -3307,30 +3287,6 @@ eHalStatus csrNeighborRoamIndicateConnect(tpAniSirGlobal pMac, tANI_U8 sessionId
 
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
-/* ---------------------------------------------------------------------------
-
-    \fn csrNeighborRoamPreAuthResponseWaitTimerHandler
-
-    \brief  If this function is invoked, that means the preauthentication response 
-            is timed out from the PE. Preauth rsp handler is called with status as 
-            TIMEOUT
-
-    \param  context - CSR Timer info which holds pMac and session ID
-
-    \return VOID
-
----------------------------------------------------------------------------*/
-void csrNeighborRoamPreAuthResponseWaitTimerHandler(void *context)
-{
-    tCsrTimerInfo *pTimerInfo = (tCsrTimerInfo *)context;
-    tpAniSirGlobal pMac = (tpAniSirGlobal)pTimerInfo->pMac;
-    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
-
-    pNeighborRoamInfo->FTRoamInfo.preauthRspPending = eANI_BOOLEAN_FALSE;
-
-    csrNeighborRoamPreauthRspHandler(pMac, VOS_STATUS_E_TIMEOUT);
-}
-
 /* ---------------------------------------------------------------------------
 
     \fn csrNeighborRoamPurgePreauthFailedList
@@ -3378,17 +3334,6 @@ eHalStatus csrNeighborRoamInit11rAssocInfo(tpAniSirGlobal pMac)
     pFTRoamInfo->neighborRptPending = eANI_BOOLEAN_FALSE;
     pFTRoamInfo->preauthRspPending = eANI_BOOLEAN_FALSE;
     
-    pFTRoamInfo->preAuthRspWaitTimerInfo.pMac = pMac;
-    pFTRoamInfo->preAuthRspWaitTimerInfo.sessionId = CSR_SESSION_ID_INVALID;
-    status = palTimerAlloc(pMac->hHdd, &pFTRoamInfo->preAuthRspWaitTimer, 
-                    csrNeighborRoamPreAuthResponseWaitTimerHandler, (void *)&pFTRoamInfo->preAuthRspWaitTimerInfo);
-
-    if (eHAL_STATUS_SUCCESS != status)
-    {
-        smsLog(pMac, LOGE, FL("Response wait Timer allocation failed"));
-        return eHAL_STATUS_RESOURCES;
-    }
-    
     pMac->roam.neighborRoamInfo.FTRoamInfo.currentNeighborRptRetryNum = 0;
     pMac->roam.neighborRoamInfo.FTRoamInfo.numBssFromNeighborReport = 0;
     vos_mem_zero(pMac->roam.neighborRoamInfo.FTRoamInfo.neighboReportBssInfo, 
@@ -3399,7 +3344,6 @@ eHalStatus csrNeighborRoamInit11rAssocInfo(tpAniSirGlobal pMac)
     if (eHAL_STATUS_SUCCESS != status)
     {
         smsLog(pMac, LOGE, FL("LL Open of preauth done AP List failed"));
-        palTimerFree(pMac->hHdd, pFTRoamInfo->preAuthRspWaitTimer);
         return eHAL_STATUS_RESOURCES;
     }
     return status;
@@ -3578,9 +3522,6 @@ void csrNeighborRoamClose(tpAniSirGlobal pMac)
 #endif
 #ifdef WLAN_FEATURE_VOWIFI_11R
     pMac->roam.neighborRoamInfo.FTRoamInfo.currentNeighborRptRetryNum = 0;
-    palTimerFree(pMac->hHdd, pMac->roam.neighborRoamInfo.FTRoamInfo.preAuthRspWaitTimer);
-    pMac->roam.neighborRoamInfo.FTRoamInfo.preAuthRspWaitTimerInfo.pMac = NULL;
-    pMac->roam.neighborRoamInfo.FTRoamInfo.preAuthRspWaitTimerInfo.sessionId = CSR_SESSION_ID_INVALID;
     pMac->roam.neighborRoamInfo.FTRoamInfo.numBssFromNeighborReport = 0;
     vos_mem_zero(pMac->roam.neighborRoamInfo.FTRoamInfo.neighboReportBssInfo, 
                             sizeof(tCsrNeighborReportBssInfo) * MAX_BSS_IN_NEIGHBOR_RPT);
@@ -3806,7 +3747,8 @@ void csrNeighborRoamTranistionPreauthDoneToDisconnected(tpAniSirGlobal pMac)
 }
 
 /* ---------------------------------------------------------------------------
-    \brief  This function returns TRUE if preauth is completed
+    \brief  This function returns TRUE if background scan triggered by
+            LFR is in progress.
 
     \param  halHandle - The handle from HDD context.
 
