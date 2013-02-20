@@ -236,7 +236,6 @@ static u32 ddl_handle_core_recoverable_errors(
 	case VIDC_1080P_ERROR_MV_RANGE_ERR:
 	case VIDC_1080P_ERROR_PICTURE_STRUCTURE_ERR:
 	case VIDC_1080P_ERROR_SLICE_ADDR_INVALID:
-	case VIDC_1080P_ERROR_NON_FRAME_DATA_RECEIVED:
 	case VIDC_1080P_ERROR_NALU_HEADER_ERROR:
 	case VIDC_1080P_ERROR_SPS_PARSE_ERROR:
 	case VIDC_1080P_ERROR_PPS_PARSE_ERROR:
@@ -255,6 +254,9 @@ static u32 ddl_handle_core_recoverable_errors(
 			DDL_MSG_ERROR("VIDC_BIT_STREAM_ERR (%u)",
 				(u32)ddl_context->cmd_err_status);
 		}
+		break;
+	case VIDC_1080P_ERROR_NON_FRAME_DATA_RECEIVED:
+		vcd_status = VCD_ERR_BITSTREAM_ERR;
 		break;
 	default:
 		break;
@@ -367,7 +369,7 @@ u32 ddl_handle_core_errors(struct ddl_context *ddl_context)
 	disp_status = ddl_handle_core_warnings(
 		ddl_context->disp_pic_err_status);
 	if (!status && !disp_status) {
-		DDL_MSG_ERROR("ddl_warning:Unknown");
+		DDL_MSG_HIGH("ddl_warning:Unknown");
 		status = ddl_handle_hw_fatal_errors(ddl);
 		if (!status)
 			status = ddl_handle_core_recoverable_errors(ddl);
@@ -397,7 +399,7 @@ static u32 ddl_handle_dec_seq_hdr_fail_error(struct ddl_client_context *ddl)
 
 	if ((ddl->cmd_state != DDL_CMD_HEADER_PARSE) ||
 		(ddl->client_state != DDL_CLIENT_WAIT_FOR_INITCODECDONE)) {
-		DDL_MSG_ERROR("STATE-CRITICAL-HDDONE");
+		DDL_MSG_HIGH("STATE-CRITICAL-HDDONE");
 		return false;
 	}
 
