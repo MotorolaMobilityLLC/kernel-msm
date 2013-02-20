@@ -55,6 +55,8 @@ static struct utag_node utag_tab[] = {
 	{UTAG_BATTERY, "battery", NULL, NULL, NULL, NULL},
 	{UTAG_DLOAD_MODE, "dload", NULL, NULL, NULL, NULL},
 	{UTAG_IMEI, "imei", NULL, NULL, NULL, NULL},
+	{UTAG_SKU, "sku", NULL, NULL, NULL, NULL},
+	{UTAG_DATE, "date", NULL, NULL, NULL, NULL},
 	{UTAG_END, "all", NULL, NULL, NULL, NULL},
 	{0, "", NULL, NULL, NULL, NULL},
 };
