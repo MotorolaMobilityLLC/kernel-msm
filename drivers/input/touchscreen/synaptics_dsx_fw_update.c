@@ -407,7 +407,7 @@ static int fwu_read_f34_queries(void)
 		return retval;
 	}
 
-	dev_info(&i2c_client->dev, "%s perm:%d, bl%d, display:%d\n",
+	dev_info(&i2c_client->dev, "%s perm:%d, bl:%d, display:%d\n",
 				__func__,
 				fwu->flash_properties.has_perm_config,
 				fwu->flash_properties.has_bl_config,

@@ -27,6 +27,8 @@
 #include <linux/earlysuspend.h>
 #endif
 
+#include <mach/mmi_panel_notifier.h>
+
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 38))
 #define KERNEL_ABOVE_2_6_38
 #endif
@@ -50,6 +52,7 @@
 
 #define SYNAPTICS_RMI4_F01 (0x01)
 #define SYNAPTICS_RMI4_F11 (0x11)
+#define SYNAPTICS_RMI4_F12 (0x12)
 #define SYNAPTICS_RMI4_F1A (0x1a)
 #define SYNAPTICS_RMI4_F34 (0x34)
 #define SYNAPTICS_RMI4_F54 (0x54)
@@ -202,6 +205,8 @@ struct synaptics_rmi4_data {
 	struct delayed_work det_work;
 	struct workqueue_struct *det_workqueue;
 	struct early_suspend early_suspend;
+	struct notifier_block panel_nb;
+	atomic_t panel_off_flag;
 	unsigned char current_page;
 	unsigned char button_0d_enabled;
 	unsigned char full_pm_cycle;
@@ -221,6 +226,7 @@ struct synaptics_rmi4_data {
 	bool touch_stopped;
 	bool fingers_on_2d;
 	bool sensor_sleep;
+	bool panel_sync_en;
 	wait_queue_head_t wait;
 	int (*i2c_read)(struct synaptics_rmi4_data *pdata, unsigned short addr,
 			unsigned char *data, unsigned short length);
