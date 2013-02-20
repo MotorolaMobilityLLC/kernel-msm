@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,6 +28,7 @@
 #include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/sched.h>
 #include <asm/hardware/gic.h>
 #include <mach/msm_iomap.h>
 #include <mach/rpm.h>
@@ -50,6 +51,25 @@ struct msm_rpm_notif_config {
 
 #define configured_iv(notif_cfg) ((notif_cfg)->iv)
 #define registered_iv(notif_cfg) ((notif_cfg)->iv + msm_rpm_sel_mask_size)
+
+struct msm_rpm_debug_request {
+	int request;
+	int ack_complete;
+	int ack_intr;
+	unsigned long long start_time;
+	unsigned long long time_taken;
+};
+struct msm_rpm_debug_request *rpm_dbg_ptr;
+
+struct msm_rpm_debug_noirq_request {
+	int request;
+	int ack_complete;
+	int ack_intr;
+	int gic_flag;
+	unsigned long long start_time;
+	unsigned long long time_taken;
+};
+struct msm_rpm_debug_noirq_request *rpm_dbg_noirq_ptr;
 
 static uint32_t msm_rpm_sel_mask_size;
 static struct msm_rpm_platform_data msm_rpm_data;
@@ -261,6 +281,8 @@ static irqreturn_t msm_rpm_ack_interrupt(int irq, void *dev_id)
 
 	spin_lock_irqsave(&msm_rpm_irq_lock, flags);
 	rc = msm_rpm_process_ack_interrupt();
+	if (rpm_dbg_ptr && rpm_dbg_ptr->request)
+		rpm_dbg_ptr->ack_intr = 1;
 	spin_unlock_irqrestore(&msm_rpm_irq_lock, flags);
 
 	return IRQ_HANDLED;
@@ -277,6 +299,8 @@ static void msm_rpm_busy_wait_for_request_completion(
 	do {
 		while (!gic_is_irq_pending(msm_rpm_data.irq_ack) &&
 				msm_rpm_request) {
+			if (rpm_dbg_noirq_ptr)
+				rpm_dbg_noirq_ptr->gic_flag = 1;
 			if (allow_async_completion)
 				spin_unlock(&msm_rpm_irq_lock);
 			if (gic_is_irq_pending(msm_rpm_data.irq_err))
@@ -290,6 +314,10 @@ static void msm_rpm_busy_wait_for_request_completion(
 		if (!msm_rpm_request)
 			break;
 
+		if (rpm_dbg_noirq_ptr) {
+			rpm_dbg_noirq_ptr->ack_intr = 1;
+			rpm_dbg_noirq_ptr->gic_flag = 0;
+		}
 		rc = msm_rpm_process_ack_interrupt();
 		gic_clear_irq_pending(msm_rpm_data.irq_ack);
 	} while (rc);
@@ -313,6 +341,10 @@ static int msm_rpm_set_exclusive(int ctx,
 	uint32_t sel_masks_ack[SEL_MASK_SIZE];
 	int i;
 
+	if (rpm_dbg_ptr) {
+		rpm_dbg_ptr->request = 1;
+		rpm_dbg_ptr->start_time = sched_clock();
+	}
 	msm_rpm_request_irq_mode.req = req;
 	msm_rpm_request_irq_mode.count = count;
 	msm_rpm_request_irq_mode.ctx_mask_ack = &ctx_mask_ack;
@@ -346,6 +378,11 @@ static int msm_rpm_set_exclusive(int ctx,
 
 	wait_for_completion(&ack);
 
+	if (rpm_dbg_ptr) {
+		rpm_dbg_ptr->ack_complete = 1;
+		rpm_dbg_ptr->time_taken = sched_clock() -
+				rpm_dbg_ptr->start_time;
+	}
 	BUG_ON((ctx_mask_ack & ~(msm_rpm_get_ctx_mask(MSM_RPM_CTX_REJECTED)))
 		!= ctx_mask);
 	BUG_ON(memcmp(sel_masks, sel_masks_ack, sizeof(sel_masks_ack)));
@@ -373,6 +410,10 @@ static int msm_rpm_set_exclusive_noirq(int ctx,
 	struct irq_chip *irq_chip, *err_chip;
 	int i;
 
+	if (rpm_dbg_noirq_ptr) {
+		rpm_dbg_noirq_ptr->request = 1;
+		rpm_dbg_noirq_ptr->start_time = sched_clock();
+	}
 	msm_rpm_request_poll_mode.req = req;
 	msm_rpm_request_poll_mode.count = count;
 	msm_rpm_request_poll_mode.ctx_mask_ack = &ctx_mask_ack;
@@ -419,6 +460,11 @@ static int msm_rpm_set_exclusive_noirq(int ctx,
 
 	msm_rpm_busy_wait_for_request_completion(false);
 	BUG_ON(msm_rpm_request);
+	if (rpm_dbg_noirq_ptr) {
+		rpm_dbg_noirq_ptr->ack_complete = 1;
+		rpm_dbg_noirq_ptr->time_taken = sched_clock() -
+				rpm_dbg_noirq_ptr->start_time;
+	}
 
 	err_chip->irq_unmask(irq_get_irq_data(msm_rpm_data.irq_err));
 	irq_chip->irq_unmask(irq_get_irq_data(irq));
@@ -459,10 +505,21 @@ static int msm_rpm_set_common(
 		unsigned long flags;
 
 		spin_lock_irqsave(&msm_rpm_lock, flags);
+		if (rpm_dbg_noirq_ptr) {
+			rpm_dbg_noirq_ptr->request = 0;
+			rpm_dbg_noirq_ptr->ack_complete = 0;
+			rpm_dbg_noirq_ptr->ack_intr = 0;
+			rpm_dbg_noirq_ptr->gic_flag = 0;
+		}
 		rc = msm_rpm_set_exclusive_noirq(ctx, sel_masks, req, count);
 		spin_unlock_irqrestore(&msm_rpm_lock, flags);
 	} else {
 		mutex_lock(&msm_rpm_mutex);
+		if (rpm_dbg_ptr) {
+			rpm_dbg_ptr->request = 0;
+			rpm_dbg_ptr->ack_complete = 0;
+			rpm_dbg_ptr->ack_intr = 0;
+		}
 		rc = msm_rpm_set_exclusive(ctx, sel_masks, req, count);
 		mutex_unlock(&msm_rpm_mutex);
 	}
@@ -1018,6 +1075,17 @@ int __init msm_rpm_init(struct msm_rpm_platform_data *data)
 	}
 
 	msm_rpm_populate_map(data);
+	rpm_dbg_ptr = kzalloc(sizeof(struct msm_rpm_debug_request),
+		GFP_DMA);
+	if (!rpm_dbg_ptr)
+		pr_err("memory allocation failed for rpm dbg ptr %s\n",
+			__func__);
+
+	rpm_dbg_noirq_ptr = kzalloc(sizeof(struct msm_rpm_debug_request),
+		GFP_DMA);
+	if (!rpm_dbg_noirq_ptr)
+		pr_err("memory allocation failed for rpm dbg noirq ptr %s\n",
+			__func__);
 
 	return platform_driver_register(&msm_rpm_platform_driver);
 }
