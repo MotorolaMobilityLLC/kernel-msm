@@ -176,7 +176,7 @@ static int wlan_hdd_inited;
  */
 #define WLAN_HDD_RESTART_RETRY_DELAY_MS 5000  /* 5 second */
 #define WLAN_HDD_RESTART_RETRY_MAX_CNT  5     /* 5 retries */
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
+#ifdef WLAN_OPEN_SOURCE
 static struct wake_lock wlan_wake_lock;
 #endif
 /* set when SSR is needed after unload */
@@ -3001,13 +3001,14 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
          "%s: Failed to close VOSS Scheduler",__func__);
       VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
    }
-
+#ifdef WLAN_OPEN_SOURCE
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
    /* Destroy the wake lock */
    wake_lock_destroy(&pHddCtx->rx_wake_lock);
 #endif
    /* Destroy the wake lock */
    wake_lock_destroy(&pHddCtx->sap_wake_lock);
+#endif
 
    //Close VOSS
    //This frees pMac(HAL) context. There should not be any call that requires pMac access after this.
@@ -3250,7 +3251,7 @@ void wlan_hdd_enable_deepsleep(v_VOID_t * pVosContext)
 /* wake lock APIs for HDD */
 void hdd_prevent_suspend(void)
 {
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
+#ifdef WLAN_OPEN_SOURCE
     wake_lock(&wlan_wake_lock);
 #else
     wcnss_prevent_suspend();
@@ -3259,7 +3260,7 @@ void hdd_prevent_suspend(void)
 
 void hdd_allow_suspend(void)
 {
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
+#ifdef WLAN_OPEN_SOURCE
     wake_unlock(&wlan_wake_lock);
 #else
     wcnss_allow_suspend();
@@ -3268,7 +3269,7 @@ void hdd_allow_suspend(void)
 
 void hdd_allow_suspend_timeout(v_U32_t timeout)
 {
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
+#ifdef WLAN_OPEN_SOURCE
     wake_lock_timeout(&wlan_wake_lock, timeout);
 #else
     /* Do nothing as there is no API in wcnss for timeout*/
@@ -3986,6 +3987,7 @@ int hdd_wlan_startup(struct device *dev )
 
    pHddCtx->isLoadUnloadInProgress = FALSE;
 
+#ifdef WLAN_OPEN_SOURCE
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
    /* Initialize the wake lcok */
    wake_lock_init(&pHddCtx->rx_wake_lock,
@@ -3996,6 +3998,7 @@ int hdd_wlan_startup(struct device *dev )
    wake_lock_init(&pHddCtx->sap_wake_lock,
            WAKE_LOCK_SUSPEND,
            "qcom_sap_wakelock");
+#endif
 
    vos_event_init(&pHddCtx->scan_info.scan_finished_event);
    pHddCtx->scan_info.scan_pending_option = WEXT_SCAN_PENDING_GIVEUP;
@@ -4140,7 +4143,7 @@ static int hdd_driver_init( void)
 
    ENTER();
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
+#ifdef WLAN_OPEN_SOURCE
    wake_lock_init(&wlan_wake_lock, WAKE_LOCK_SUSPEND, "wlan");
 #endif
 
@@ -4319,7 +4322,7 @@ static int hdd_driver_init( void)
       vos_mem_exit();
 #endif
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
+#ifdef WLAN_OPEN_SOURCE
       wake_lock_destroy(&wlan_wake_lock);
 #endif
       pr_err("%s: driver load failure\n", WLAN_MODULE_NAME);
@@ -4427,7 +4430,7 @@ static void hdd_driver_exit(void)
 #endif
 
 done:
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,5))
+#ifdef WLAN_OPEN_SOURCE
    wake_lock_destroy(&wlan_wake_lock);
 #endif
    pr_info("%s: driver unloaded\n", WLAN_MODULE_NAME);
