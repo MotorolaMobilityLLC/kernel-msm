@@ -89,7 +89,6 @@ static struct power_supply *psy;
 static bool aca_id_turned_on;
 static struct workqueue_struct *msm_otg_acok_wq;
 static struct workqueue_struct *msm_otg_id_pin_wq;
-static int pm_suspend_acok_status = 0;
 
 /* APQ8064 GPIO pin definition */
 #define APQ_AP_ACOK	23
@@ -3213,7 +3212,6 @@ static void msm_otg_acok_init(struct msm_otg *motg)
 	}
 	printk("%s: GPIO pin irq %d requested ok, msm_otg_ACOK = %s\n", __func__, irq_num, gpio_get_value(gpio)? "H":"L");
 
-	enable_irq_wake(irq_num);
 }
 
 static void msm_otg_acok_free(struct msm_otg *motg)
@@ -3249,7 +3247,6 @@ static void msm_otg_id_pin_init(struct msm_otg *motg)
 	}
 	printk("%s: GPIO pin irq %d requested ok, msm_otg_id_pin = %s\n", __func__, irq_num, gpio_get_value(gpio)? "H":"L");
 
-	enable_irq_wake(irq_num);
 	id_pin_irq_enable = 1;
 }
 
@@ -3268,10 +3265,8 @@ void msm_otg_id_pin_irq_enabled(bool enabled)
 
 	if (enabled && id_pin_irq_enable == 0) {
 		enable_irq(irq_num);
-		enable_irq_wake(irq_num);
 		id_pin_irq_enable = 1;
 	} else if (!enabled && id_pin_irq_enable == 1) {
-		disable_irq_wake(irq_num);
 		disable_irq(irq_num);
 		id_pin_irq_enable = 0;
 	}
@@ -4227,6 +4222,10 @@ static int msm_otg_pm_suspend(struct device *dev)
 {
 	int ret = 0;
 	struct msm_otg *motg = dev_get_drvdata(dev);
+	unsigned id_gpio = APQ_OTG_ID_PIN, vbus_det_gpio = APQ_AP_ACOK;
+	unsigned irq_num_id = gpio_to_irq(id_gpio);
+	unsigned irq_num_vbus = gpio_to_irq(vbus_det_gpio);
+
 
 	dev_dbg(dev, "OTG PM suspend\n");
 
@@ -4235,7 +4234,12 @@ static int msm_otg_pm_suspend(struct device *dev)
 	if (ret)
 		atomic_set(&motg->pm_suspended, 0);
 
-	pm_suspend_acok_status = !gpio_get_value(APQ_AP_ACOK);
+	disable_irq(irq_num_vbus);
+	enable_irq_wake(irq_num_vbus);
+
+	if (!slimport_is_connected())
+		disable_irq(irq_num_id);
+	enable_irq_wake(irq_num_id);
 
 	return ret;
 }
@@ -4244,7 +4248,9 @@ static int msm_otg_pm_resume(struct device *dev)
 {
 	int ret = 0;
 	struct msm_otg *motg = dev_get_drvdata(dev);
-	int ac_gpio, id_pin_gpio;
+	unsigned id_gpio = APQ_OTG_ID_PIN, vbus_det_gpio = APQ_AP_ACOK;
+	unsigned irq_num_id = gpio_to_irq(id_gpio);
+	unsigned irq_num_vbus = gpio_to_irq(vbus_det_gpio);
 
 	dev_dbg(dev, "OTG PM resume\n");
 
@@ -4264,13 +4270,12 @@ static int msm_otg_pm_resume(struct device *dev)
 		}
 	}
 
-	ac_gpio = !gpio_get_value(APQ_AP_ACOK);
-	if (pm_suspend_acok_status != ac_gpio)
-		acok_irq_work_function(NULL);
+	disable_irq_wake(irq_num_vbus);
+	enable_irq(irq_num_vbus);
 
-	id_pin_gpio = gpio_get_value(APQ_OTG_ID_PIN);
-	if (otg_host_on == id_pin_gpio)
-		queue_delayed_work(msm_otg_id_pin_wq, &motg->id_pin_irq_work, 0);
+	disable_irq_wake(irq_num_id);
+	if (!slimport_is_connected())
+		enable_irq(irq_num_id);
 
 	return ret;
 }
