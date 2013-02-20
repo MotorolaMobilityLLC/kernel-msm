@@ -106,7 +106,7 @@ static struct msm_camera_i2c_reg_conf s5k5b3g_recommend_settings[] = {
 	{0x0900, 0x01, MSM_CAMERA_I2C_BYTE_DATA},
 	/*V High nib vert;Low nib horiz; 1-Subsample; 2-Binning V*/
 	{0x0901, 0x22, MSM_CAMERA_I2C_BYTE_DATA},
-	{0x0101, 0x03, MSM_CAMERA_I2C_BYTE_DATA},  /* XY Mirror */
+	{0x0101, 0x00, MSM_CAMERA_I2C_BYTE_DATA},  /* XY Mirror */
 
 	/* Output Size and Format */
 	{0x034C, 0x0780,},/* (1920) */
