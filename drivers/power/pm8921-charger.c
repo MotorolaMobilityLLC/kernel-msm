@@ -1801,6 +1801,7 @@ static enum power_supply_property msm_batt_power_props[] = {
 	POWER_SUPPLY_PROP_CHARGE_COUNTER,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_CHARGE_NOW,
+	POWER_SUPPLY_PROP_ENERGY_FULL,
 	POWER_SUPPLY_PROP_CYCLE_COUNT,
 };
 
@@ -2181,6 +2182,7 @@ static int pm_batt_power_get_property(struct power_supply *psy,
 		val->intval = get_prop_batt_charge_counter(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
+	case POWER_SUPPLY_PROP_ENERGY_FULL:
 		val->intval = get_prop_batt_fcc(chip);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_NOW:
@@ -5844,7 +5846,7 @@ static ssize_t pcb_temp_store(struct device *dev,
 					      msecs_to_jiffies(0));
 		} else if ((the_chip->pcb_temp_state != PCB_TEMP_NORM) &&
 			   (pcb_temp < (the_chip->hot_temp_pcb_dc -
-					(TEMP_HYSTERISIS_DECIDEGC*10)))) {
+					(TEMP_HYSTERISIS_DECIDEGC)))) {
 			the_chip->pcb_temp_state = PCB_TEMP_NORM;
 			cancel_delayed_work(&the_chip->update_heartbeat_work);
 			schedule_delayed_work(&the_chip->update_heartbeat_work,
