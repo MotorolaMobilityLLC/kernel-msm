@@ -44,8 +44,8 @@
   
    Macros and Function prototypes FT and 802.11R purposes 
 
-   Copyright 2010 (c) Qualcomm, Incorporated.  All Rights Reserved.
-   Qualcomm Confidential and Proprietary.
+   Copyright 2010 (c) Qualcomm Technologies, Inc.  All Rights Reserved.
+   Qualcomm Technologies Confidential and Proprietary.
   
   ========================================================================*/
 
@@ -72,10 +72,10 @@ extern void limPerformFTPreAuth(tpAniSirGlobal pMac, eHalStatus status, tANI_U32
 void        limPerformPostFTPreAuth(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data, 
                 tpPESession psessionEntry);
 void        limFTResumeLinkCb(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data);
-void        limPostFTPreAuthRsp(tpAniSirGlobal pMac, eHalStatus status,
+void        limPostFTPreAuthRsp(tpAniSirGlobal pMac, tSirRetStatus status,
                 tANI_U8 *auth_rsp, tANI_U16  auth_rsp_length,
                 tpPESession psessionEntry);
-void        limHandleFTPreAuthRsp(tpAniSirGlobal pMac, eHalStatus status,
+void        limHandleFTPreAuthRsp(tpAniSirGlobal pMac, tSirRetStatus status,
                 tANI_U8 *auth_rsp, tANI_U16  auth_rsp_len,
                 tpPESession psessionEntry);
 void        limProcessMlmFTReassocReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf,

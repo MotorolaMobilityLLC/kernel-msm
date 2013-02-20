@@ -129,8 +129,6 @@ typedef struct sCsr11rAssocNeighborInfo
     tANI_BOOLEAN                preauthRspPending;
     tANI_BOOLEAN                neighborRptPending;
     tANI_U8                     currentNeighborRptRetryNum;
-    tPalTimerHandle             preAuthRspWaitTimer; //This timer is used for preauth response
-    tCsrTimerInfo               preAuthRspWaitTimerInfo;
     tCsrPreauthFailListInfo     preAuthFailList;
     tANI_U32                    neighborReportTimeout;
     tANI_U32                    PEPreauthRespTimeout;
@@ -215,7 +213,7 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac);
 VOS_STATUS csrNeighborRoamTransitionToPreauthDone(tpAniSirGlobal pMac);
 eHalStatus csrNeighborRoamPrepareScanProfileFilter(tpAniSirGlobal pMac, tCsrScanResultFilter *pScanFilter);
 void csrNeighborRoamGetHandoffAPInfo(tpAniSirGlobal pMac, tpCsrNeighborRoamBSSInfo pHandoffNode);
-eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, VOS_STATUS vosStatus);
+eHalStatus csrNeighborRoamPreauthRspHandler(tpAniSirGlobal pMac, tSirRetStatus limStatus);
 #ifdef WLAN_FEATURE_VOWIFI_11R
 tANI_BOOLEAN csrNeighborRoamIs11rAssoc(tpAniSirGlobal pMac);
 #endif

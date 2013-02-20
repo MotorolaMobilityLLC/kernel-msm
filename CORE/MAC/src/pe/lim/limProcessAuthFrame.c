@@ -1707,7 +1707,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
  * is received we will have a session in progress. !!!!!
  *----------------------------------------------------------------------
  */
-int limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, void *body)
+tSirRetStatus limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, void *body)
 {
     tpSirMacMgmtHdr pHdr;
     tpPESession psessionEntry = NULL;
@@ -1715,7 +1715,7 @@ int limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, void *body)
     tANI_U16  frameLen;
     tSirMacAuthFrameBody rxAuthFrame;
     tSirMacAuthFrameBody *pRxAuthFrameBody = NULL;
-    int ret_status = eSIR_FAILURE;
+    tSirRetStatus ret_status = eSIR_FAILURE;
 
     pHdr = WDA_GET_RX_MAC_HEADER(pBd);
     pBody = WDA_GET_RX_MPDU_DATA(pBd);
@@ -1828,9 +1828,11 @@ int limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, void *body)
             if (pRxAuthFrameBody->authStatusCode != eSIR_MAC_SUCCESS_STATUS)
             {
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-                PELOGE(limLog( pMac, LOGE, "Auth status code received is  %d\n", 
-                    (tANI_U32) pRxAuthFrameBody->authStatusCode);)
+                PELOGE(limLog( pMac, LOGE, "Auth status code received is %d",
+                    (tANI_U32) pRxAuthFrameBody->authStatusCode););
 #endif
+                if (eSIR_MAC_MAX_ASSOC_STA_REACHED_STATUS == pRxAuthFrameBody->authStatusCode)
+                    ret_status = eSIR_LIM_MAX_STA_REACHED_ERROR;
             }
             else 
             {
