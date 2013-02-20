@@ -5677,6 +5677,7 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	struct pm8921_chg_chip *chip;
 	const struct pm8921_charger_platform_data *pdata
 				= pdev->dev.platform_data;
+	struct msm_xo_voter *xo;
 
 	if (!pdata) {
 		pr_err("missing platform data\n");
@@ -5754,6 +5755,21 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	if (rc) {
 		pr_err("couldn't init hardware rc=%d\n", rc);
 		goto free_chip;
+	}
+
+	if (chip->factory_mode) {
+		xo = msm_xo_get(MSM_XO_TCXO_D0, "factory");
+		if (IS_ERR(xo)) {
+			pr_err("Failed to get XO CORE voter (%ld)\n",
+			       PTR_ERR(xo));
+			goto free_chip;
+		} else {
+			rc = msm_xo_mode_vote(xo, MSM_XO_MODE_ON);
+			if (rc < 0) {
+				pr_err("XO_D0 Core enable failed (%d)\n", rc);
+				goto free_chip;
+			}
+		}
 	}
 
 	rc = device_create_file(&pdev->dev,
