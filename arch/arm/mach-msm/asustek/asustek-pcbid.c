@@ -193,7 +193,7 @@ static ssize_t asustek_projectid_show(struct kobject *kobj,
 {
 	char *s = buf;
 
-	s += sprintf(s, "%02x\n", (asustek_pcbid >> 7) & 0x3);
+	s += sprintf(s, "%02x\n", (asustek_pcbid >> 6) & 0x3);
 
 	return s - buf;
 }
