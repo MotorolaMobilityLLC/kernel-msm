@@ -412,10 +412,10 @@ static int sy3400_suspend(struct i2c_client *client, pm_message_t message)
 	int ic_state = 0;
 	uint8_t sleep = 0x01;
 
-	uint8_t x_y_supp_addr = 0x15;
+	uint8_t x_y_supp_addr = SY3400_XY_COMPR_ADDR;
 	uint8_t x_y_supp[2] = {0x32, /* suppresion for x */
 				0x32}; /* suppresion for y */
-	uint8_t obj_rep_addr = 0x17;
+	uint8_t obj_rep_addr = SY3400_OBJ_REP_ADDR;
 	uint8_t obj_rep_en[2] = {0x03, /* enable finger, stylus */
 				0x01}; /* 1 - max number of touches */
 
@@ -504,10 +504,10 @@ static int sy3400_resume(struct i2c_client *client)
 	int ic_state = 0;
 	uint8_t sleep = 0;
 
-	uint8_t x_y_supp_addr = 0x15;
+	uint8_t x_y_supp_addr = SY3400_XY_COMPR_ADDR;
 	uint8_t x_y_supp[2] = {0x00, /* 00 - no suppresion for x */
 				0x00}; /* 00 - no suppresion for y */
-	uint8_t obj_rep_addr = 0x17;
+	uint8_t obj_rep_addr = SY3400_OBJ_REP_ADDR;
 	uint8_t obj_rep_en[2] = {0x07, /* 07 - enable finger, stylus, palm */
 				0x0A}; /* 10 - max number of touches */
 
