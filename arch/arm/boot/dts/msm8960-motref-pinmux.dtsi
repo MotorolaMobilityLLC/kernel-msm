@@ -293,7 +293,13 @@
 
 		pin@8012e0 {
 			reg = <0x8012e0 0x10>;
-			qcom,pin-num = <46>;
+			qcom,pin-num = <46>;      /* TOUCH_INT */
+			qcom,active@0 {
+				qcom,func = <0>;  /* gpio_in_out(46)        */
+				qcom,pull = <3>;  /* up                     */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* in                     */
+			};
 			qcom,suspended@1 {
 				qcom,func = <0>;  /* gpio_in_out(46)        */
 				qcom,pull = <3>;  /* up                     */
@@ -468,7 +474,7 @@
 
 		pin@8013f0 {
 			reg = <0x8013f0 0x10>;
-			qcom,pin-num = <63>;
+			qcom,pin-num = <63>;      /* TOUCH_RESET */
 			qcom,active@0 {
 				qcom,func = <0>;  /* gpio_in_out(63)        */
 				qcom,pull = <3>;  /* up                     */
