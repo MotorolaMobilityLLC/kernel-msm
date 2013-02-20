@@ -71,6 +71,9 @@
 #define SY3300_BLK_CT               0x00C0
 #define SY3400_BLK_CT               0x00E0
 
+#define SY3400_XY_COMPR_ADDR        0x18
+#define SY3400_OBJ_REP_ADDR         0x1A
+
 enum sy3400_driver_state {
 	SY3400_DRV_ACTIVE,
 	SY3400_DRV_IDLE,
