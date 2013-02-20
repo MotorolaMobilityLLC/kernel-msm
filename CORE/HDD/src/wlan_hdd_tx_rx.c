@@ -1412,8 +1412,10 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
       ++pAdapter->hdd_stats.hddTxRxStats.rxPackets;
       ++pAdapter->stats.rx_packets;
       pAdapter->stats.rx_bytes += skb->len;
+#ifdef WLAN_OPEN_SOURCE
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
       wake_lock_timeout(&pHddCtx->rx_wake_lock, HDD_WAKE_LOCK_DURATION);
+#endif
 #endif
       rxstat = netif_rx_ni(skb);
       if (NET_RX_SUCCESS == rxstat)
