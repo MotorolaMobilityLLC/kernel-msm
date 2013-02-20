@@ -97,7 +97,7 @@ static int __init mipi_lg_1080P_pt_init(void)
 	pinfo.mipi.eof_bllp_power_stop = TRUE;	//false means keep in HS mode when vertical blank period
 	pinfo.mipi.bllp_power_stop = TRUE;
 	pinfo.mipi.traffic_mode = DSI_NON_BURST_SYNCH_EVENT;
-	pinfo.mipi.frame_rate = 50; //60;	//should be in the range 58~62
+	pinfo.mipi.frame_rate = 60;	//should be in the range 58~62
 	pinfo.mipi.force_clk_lane_hs = 1;	//1: continuous clock
 
 	pinfo.mipi.dst_format = DSI_VIDEO_DST_FORMAT_RGB888;
