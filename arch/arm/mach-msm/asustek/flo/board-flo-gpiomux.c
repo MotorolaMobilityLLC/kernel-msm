@@ -1276,6 +1276,7 @@ static struct msm_gpiomux_config apq8064_sdc4_configs[] __initdata = {
 };
 #endif
 
+#ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
 static struct gpiomux_setting apq8064_sdc3_card_det_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -1291,6 +1292,7 @@ static struct msm_gpiomux_config apq8064_sdc3_configs[] __initdata = {
 		},
 	},
 };
+#endif
 
 #ifdef CONFIG_MACH_ASUSTEK
 static struct gpiomux_setting gpio_keys_active_cfg = {
@@ -1628,8 +1630,10 @@ void __init apq8064_init_gpiomux(void)
 			     ARRAY_SIZE(apq8064_sdc4_configs));
 #endif
 
+#ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
 	msm_gpiomux_install(apq8064_sdc3_configs,
 			ARRAY_SIZE(apq8064_sdc3_configs));
+#endif
 	//add touch
 	msm_gpiomux_install(msm8064_ts_gpio_config,
 			ARRAY_SIZE(msm8064_ts_gpio_config));  
