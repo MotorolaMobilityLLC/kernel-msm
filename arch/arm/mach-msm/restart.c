@@ -188,6 +188,7 @@ static void cpu_power_off(void *data)
 #define REBOOT_MBM_MISMATCH 0x77665503
 #define REBOOT_OUT_OF_COM   0x77665504
 #define REBOOT_AP_PANIC     0x77665505
+#define REBOOT_HARD_RESET   0x7766550B
 
 #define REBOOT_MIN          0x77665500
 #define REBOOT_MAX          0x7766550D
@@ -202,6 +203,7 @@ static void set_restart_reason(unsigned reason)
 static irqreturn_t resout_irq_handler(int irq, void *dev_id)
 {
 	pr_warn("%s PMIC Initiated shutdown\n", __func__);
+	set_restart_reason(REBOOT_HARD_RESET);
 	oops_in_progress = 1;
 	smp_call_function_many(cpu_online_mask, cpu_power_off, NULL, 0);
 	if (smp_processor_id() == 0)
