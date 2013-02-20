@@ -191,6 +191,46 @@ struct frozen_utag {
  */
 #define UTAG_IMEI  0xCAFE0016
 
+/*
+ * CMDLINE OVERLAY: kernel command line parameters which
+ * are appended to the command line
+ * or substitute existing parameters
+ */
+#define UTAG_CMDLINE_OVERLAY  0xCAFE0017
+
+/*
+ * TOD offset: offset in seconds of current time of day
+ * against PMIC RTC
+ * (offset + rtc) == seconds since Epoch (Jan. 1 1970 UTC 00:00AM)
+ */
+#define UTAG_TOD_OFFSET  0xCAFE0018
+
+/*
+ * SKU: Stock Keeping Unit code
+ */
+#define UTAG_SKU  0xCAFE0019
+
+/*
+ * Date Code: mm-dd-yyyy
+ */
+#define UTAG_DATE  0xCAFE001A
+
+/*
+ * tags to store android properties
+ */
+#define UTAG_BUILD_DATE           0xCAFE1000
+#define UTAG_BUILD_ID             0xCAFE1001
+#define UTAG_BUILD_TAGS           0xCAFE1002
+#define UTAG_BUILD_TYPE           0xCAFE1003
+#define UTAG_BUILD_USER           0xCAFE1004
+#define UTAG_BUILD_VER_CODENAME   0xCAFE1005
+#define UTAG_BUILD_VER_INC        0xCAFE1006
+#define UTAG_BUILD_VER_REL        0xCAFE1007
+#define UTAG_MOT_BUILD_CID        0xCAFE1008
+#define UTAG_MOT_BUILD_PRODUCT    0xCAFE1009
+#define UTAG_BUILD_FINGERPRINT    0xCAFE100A
+#define UTAG_KERNEL_VERSION       0xCAFE1020
+
 extern struct utag *thaw_tags(size_t block_size, void *buf,
 			      enum utag_error *status);
 extern void *freeze_tags(size_t block_size, const struct utag *tags,
