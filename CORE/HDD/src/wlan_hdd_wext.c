@@ -241,7 +241,13 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_TDLS_CONFIG_PARAMS   5
 #endif
 
+#ifdef FEATURE_WLAN_TDLS
+#undef  MAX_VAR_ARGS
+#define MAX_VAR_ARGS         10
+#else
 #define MAX_VAR_ARGS         7
+#endif
+
 
 /* Private ioctls (with no sub-ioctls) */
 /* note that they must be odd so that they have "get" semantics */
@@ -4299,14 +4305,18 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
             {
                 tdls_config_params_t tdlsParams;
 
-                tdlsParams.tx_period_t       = apps_args[0];
-                tdlsParams.tx_packet_n       = apps_args[1];
-                tdlsParams.discovery_period_t= apps_args[2];
-                tdlsParams.discovery_tries_n = apps_args[3];
-                tdlsParams.rx_timeout_t      = apps_args[4];
-                tdlsParams.rssi_hysteresis   = apps_args[5];
+                tdlsParams.tdls                    = apps_args[0];
+                tdlsParams.tx_period_t             = apps_args[1];
+                tdlsParams.tx_packet_n             = apps_args[2];
+                tdlsParams.discovery_period_t      = apps_args[3];
+                tdlsParams.discovery_tries_n       = apps_args[4];
+                tdlsParams.idle_timeout_t          = apps_args[5];
+                tdlsParams.idle_packet_n           = apps_args[6];
+                tdlsParams.rssi_hysteresis         = apps_args[7];
+                tdlsParams.rssi_trigger_threshold  = apps_args[8];
+                tdlsParams.rssi_teardown_threshold = apps_args[9];
 
-                wlan_hdd_tdls_set_params(&tdlsParams);
+                wlan_hdd_tdls_set_params(dev, &tdlsParams);
             }
         break;
 #endif
