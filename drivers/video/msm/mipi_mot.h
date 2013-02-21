@@ -166,6 +166,7 @@ struct mipi_mot_panel {
 	u16 (*get_controller_ver)(struct msm_fb_data_type *mfd);
 	u16 (*get_controller_drv_ver)(struct msm_fb_data_type *mfd);
 	void (*enable_acl)(struct msm_fb_data_type *mfd);
+	void (*enable_te)(struct msm_fb_data_type *mfd, int on);
 	int (*is_valid_manufacture_id)(struct msm_fb_data_type *mfd, u8 id);
 	int (*is_valid_power_mode)(struct msm_fb_data_type *mfd);
 
@@ -200,6 +201,7 @@ int mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt);
 int mipi_mot_rx_cmd(struct dsi_cmd_desc *cmd, u8 *data, int rlen);
 int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide);
 void mipi_mot_panel_enter_normal_mode(void);
+void mipi_mot_set_tear(struct msm_fb_data_type *mfd, int on);
 int __init moto_panel_debug_init(void);
 int mipi_mot_exec_cmd_seq(struct msm_fb_data_type *mfd,
 			struct mipi_mot_cmd_seq *seq, int cnt);
