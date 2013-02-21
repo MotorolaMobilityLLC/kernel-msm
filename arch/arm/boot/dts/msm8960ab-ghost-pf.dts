@@ -14,11 +14,18 @@
 
 /include/ "msm8960ab-ghost-common.dtsi"
 
+/include/ "msm8960ab-ghost-p1-legacy.dtsi"
+
 / {
 	mmi,revision = "pf";
 };
 
 &i2c3 {
+
+	sy3400@20 {
+		status = "disabled";
+	};
+
 	/* Set HW revision to PF to enable Synptics DSX driver */
 	synaptics_dsx_i2c@20 {
 		compatible = "synaptics,synaptics_dsx_i2c";
