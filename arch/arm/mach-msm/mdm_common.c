@@ -694,7 +694,6 @@ static int mdm_subsys_ramdumps(int want_dumps,
 		if (!wait_for_completion_timeout(&mdev->mdm_ram_dumps,
 				msecs_to_jiffies(mdev->dump_timeout_ms))) {
 			mdm_drv->mdm_ram_dump_status = -ETIMEDOUT;
-			mdm_ssr_completed(mdev);
 			pr_err("%s: mdm modem ramdumps timed out.\n",
 					__func__);
 		} else
@@ -858,7 +857,7 @@ static void mdm_modem_initialize_data(struct platform_device *pdev,
 
 	mdm_drv->boot_type                  = CHARM_NORMAL_BOOT;
 
-	mdm_drv->dump_timeout_ms = mdm_drv->pdata->ramdump_timeout_ms > 0 ?
+	mdev->dump_timeout_ms = mdm_drv->pdata->ramdump_timeout_ms > 0 ?
 		mdm_drv->pdata->ramdump_timeout_ms : MDM_RDUMP_TIMEOUT;
 
 	init_completion(&mdev->mdm_needs_reload);
