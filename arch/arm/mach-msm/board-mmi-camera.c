@@ -92,7 +92,7 @@ static struct msm_camera_csi_lane_params s5k5b3g_csi_lane_params = {
 };
 
 static struct msm_camera_sensor_platform_info sensor_board_info_s5k5b3g = {
-	.mount_angle = 90,
+	.mount_angle = 270,
 	.csi_lane_params = &s5k5b3g_csi_lane_params,
 };
 
