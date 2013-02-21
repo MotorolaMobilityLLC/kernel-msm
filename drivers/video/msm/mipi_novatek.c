@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -464,6 +464,12 @@ static struct dsi_cmd_desc backlight_cmd = {
 static void mipi_novatek_set_backlight(struct msm_fb_data_type *mfd)
 {
 	struct dcs_cmd_req cmdreq;
+
+	if (mipi_novatek_pdata &&
+	    mipi_novatek_pdata->gpio_set_backlight) {
+		mipi_novatek_pdata->gpio_set_backlight(mfd->bl_level);
+		return;
+	}
 
 	if ((mipi_novatek_pdata->enable_wled_bl_ctrl)
 	    && (wled_trigger_initialized)) {

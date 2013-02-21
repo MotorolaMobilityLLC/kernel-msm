@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -201,5 +201,7 @@ void vidc_sm_set_mp2datadumpbuffer(struct ddl_buf_addr *shared_mem,
 	u32 mp2datadumpaddr, u32 mp2datadumpsize);
 void vidc_sm_set_h264_encoder_timing_info(struct ddl_buf_addr *shared_mem,
 	u32 num_units_in_tick, u32 time_scale);
+void vidc_sm_get_mp2common_status(struct ddl_buf_addr *shared_mem,
+	u32 *seq_end_code_present);
 
 #endif
