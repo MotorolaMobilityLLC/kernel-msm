@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -25,7 +25,7 @@
    and provided to the battery driver in the units desired for
    their framework which is 0.1DegC. True resolution of 0.1DegC
    will result in the below table size to increase by 10 times */
-static struct pm8xxx_adc_map_pt def_adcmap_btm_threshold[] = {
+static const struct pm8xxx_adc_map_pt adcmap_btm_threshold[] = {
 	{-300,	1642},
 	{-200,	1544},
 	{-100,	1414},
@@ -111,7 +111,7 @@ static struct pm8xxx_adc_map_pt def_adcmap_btm_threshold[] = {
 	{790,	203}
 };
 
-static struct pm8xxx_adc_map_pt def_adcmap_pa_therm[] = {
+static const struct pm8xxx_adc_map_pt adcmap_pa_therm[] = {
 	{1731,	-30},
 	{1726,	-29},
 	{1721,	-28},
@@ -270,7 +270,7 @@ static struct pm8xxx_adc_map_pt def_adcmap_pa_therm[] = {
 	{49,	125}
 };
 
-static struct pm8xxx_adc_map_pt def_adcmap_ntcg_104ef_104fb[] = {
+static const struct pm8xxx_adc_map_pt adcmap_ntcg_104ef_104fb[] = {
 	{696483,	-40960},
 	{649148,	-39936},
 	{605368,	-38912},
@@ -438,40 +438,6 @@ static struct pm8xxx_adc_map_pt def_adcmap_ntcg_104ef_104fb[] = {
 	{431,		126976},
 	{419,		128000}
 };
-
-static struct pm8xxx_adc_map adcmap_btm_threshold = {
-	.pt = def_adcmap_btm_threshold,
-	.size = ARRAY_SIZE(def_adcmap_btm_threshold),
-};
-static struct pm8xxx_adc_map adcmap_pa_therm = {
-	.pt = def_adcmap_pa_therm,
-	.size = ARRAY_SIZE(def_adcmap_pa_therm),
-};
-static struct pm8xxx_adc_map adcmap_ntcg_104ef_104fb = {
-	.pt = def_adcmap_ntcg_104ef_104fb,
-	.size = ARRAY_SIZE(def_adcmap_ntcg_104ef_104fb),
-};
-
-void pm8xxx_set_adcmap_btm_threshold(void *pts, int size)
-{
-	adcmap_btm_threshold.pt = pts;
-	adcmap_btm_threshold.size = size;
-}
-EXPORT_SYMBOL(pm8xxx_set_adcmap_btm_threshold);
-
-void pm8xxx_set_adcmap_pa_therm(void *pts, int size)
-{
-	adcmap_pa_therm.pt = pts;
-	adcmap_pa_therm.size = size;
-}
-EXPORT_SYMBOL(pm8xxx_set_adcmap_pa_therm);
-
-void pm8xxx_set_adcmap_ntcg_104ef_104fb(void *pts, int size)
-{
-	adcmap_ntcg_104ef_104fb.pt = pts;
-	adcmap_ntcg_104ef_104fb.size = size;
-}
-EXPORT_SYMBOL(pm8xxx_set_adcmap_ntcg_104ef_104fb);
 
 static int32_t pm8xxx_adc_map_linear(const struct pm8xxx_adc_map_pt *pts,
 		uint32_t tablesize, int32_t input, int64_t *output)
@@ -652,8 +618,8 @@ int32_t pm8xxx_adc_scale_batt_therm(int32_t adc_code,
 		struct pm8xxx_adc_chan_result *adc_chan_result,
 		struct pm8xxx_adc_scale_tbl *scale_tbl)
 {
-	const struct pm8xxx_adc_map_pt *lu_tbl = adcmap_btm_threshold.pt;
-	uint32_t lu_tbl_size = adcmap_btm_threshold.size;
+	const struct pm8xxx_adc_map_pt *lu_tbl = adcmap_btm_threshold;
+	uint32_t lu_tbl_size = ARRAY_SIZE(adcmap_btm_threshold);
 	int64_t bat_voltage = 0;
 
 	bat_voltage = pm8xxx_adc_scale_ratiometric_calib(adc_code,
@@ -686,8 +652,8 @@ int32_t pm8xxx_adc_scale_pa_therm(int32_t adc_code,
 			adc_properties, chan_properties);
 
 	return pm8xxx_adc_map_linear(
-			adcmap_pa_therm.pt,
-			adcmap_pa_therm.size,
+			adcmap_pa_therm,
+			ARRAY_SIZE(adcmap_pa_therm),
 			pa_voltage,
 			&adc_chan_result->physical);
 }
@@ -773,8 +739,8 @@ int32_t pm8xxx_adc_tdkntcg_therm(int32_t adc_code,
 	xo_thm = pm8xxx_adc_scale_ratiometric_calib(adc_code,
 			adc_properties, chan_properties);
 	xo_thm <<= 4;
-	pm8xxx_adc_map_linear(adcmap_ntcg_104ef_104fb.pt,
-		adcmap_ntcg_104ef_104fb.size,
+	pm8xxx_adc_map_linear(adcmap_ntcg_104ef_104fb,
+		ARRAY_SIZE(adcmap_ntcg_104ef_104fb),
 		xo_thm, &adc_chan_result->physical);
 
 	return 0;
@@ -786,8 +752,8 @@ int32_t pm8xxx_adc_batt_scaler(struct pm8xxx_adc_arb_btm_param *btm_param,
 		const struct pm8xxx_adc_chan_properties *chan_properties,
 		struct pm8xxx_adc_scale_tbl *scale_tbl)
 {
-	const struct pm8xxx_adc_map_pt *lu_tbl = adcmap_btm_threshold.pt;
-	uint32_t lu_tbl_size = adcmap_btm_threshold.size;
+	const struct pm8xxx_adc_map_pt *lu_tbl = adcmap_btm_threshold;
+	uint32_t lu_tbl_size = ARRAY_SIZE(adcmap_btm_threshold);
 	int rc;
 
 	if (scale_tbl) {

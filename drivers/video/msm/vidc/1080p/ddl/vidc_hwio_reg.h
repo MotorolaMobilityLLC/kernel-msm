@@ -1,4 +1,4 @@
-/* Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2010,2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -3602,6 +3602,22 @@ extern u8 *VIDC_BASE_PTR;
 	HWIO_REG_515564_ADDR, m, v, HWIO_REG_515564_IN);
 #define HWIO_REG_515564_MSLICE_BIT_BMSK  0xffffffff
 #define HWIO_REG_515564_MSLICE_BIT_SHFT  0
+
+#define HWIO_REG_515664_ADDR  (VIDC_BLACKBIRD_REG_BASE + 0x0000c548)
+#define HWIO_REG_515664_PHYS  (VIDC_BLACKBIRD_REG_BASE_PHYS + 0x0000c548)
+#define HWIO_REG_515664_RMSK  0xffffffff
+#define HWIO_REG_515664_SHFT  0
+#define HWIO_REG_515664_IN    in_dword_masked(\
+	HWIO_REG_515664_ADDR, HWIO_REG_515664_RMSK)
+#define HWIO_REG_515664_INM(m)  in_dword_masked(\
+	HWIO_REG_515664_ADDR, m)
+#define HWIO_REG_515664_OUT(v)  out_dword(HWIO_REG_515664_ADDR, v)
+#define HWIO_REG_515664_OUTM(m, v)  out_dword_masked_ns(\
+	HWIO_REG_515664_ADDR, m, v, HWIO_REG_515664_IN);
+#define HWIO_REG_515664_NV21_SEL_BMSK   0xffffffff
+#define HWIO_REG_515664_NV21_SEL_SHFT   0
+
+
 
 #define HWIO_REG_886210_ADDR (VIDC_BLACKBIRD_REG_BASE + 0x0000c518)
 #define HWIO_REG_886210_PHYS (VIDC_BLACKBIRD_REG_BASE_PHYS + 0x0000c518)
