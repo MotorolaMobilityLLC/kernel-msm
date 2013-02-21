@@ -3392,6 +3392,7 @@ static inline void hci_le_adv_report_evt(struct hci_dev *hdev,
 {
 	struct hci_ev_le_advertising_info *ev;
 	u8 num_reports;
+	s8 rssi;
 
 	num_reports = skb->data[0];
 	ev = (void *) &skb->data[1];
@@ -3399,8 +3400,10 @@ static inline void hci_le_adv_report_evt(struct hci_dev *hdev,
 	hci_dev_lock(hdev);
 
 	while (num_reports--) {
+		rssi = ev->data[ev->length];
+
 		mgmt_device_found(hdev->id, &ev->bdaddr, LE_LINK,
-					ev->bdaddr_type, 1, NULL, 0,
+					ev->bdaddr_type, 1, NULL, rssi,
 					ev->length, ev->data);
 		hci_add_adv_entry(hdev, ev);
 		ev = (void *) (ev->data + ev->length + 1);
