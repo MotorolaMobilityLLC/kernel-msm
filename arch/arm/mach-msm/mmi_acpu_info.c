@@ -31,6 +31,12 @@ static int mmi_msm8960_acpu_proc_read(char *buf, char **start, off_t off,
 	return len;
 }
 
+static inline void mmi_panic_annotate(const char *str)
+{
+	apanic_mmc_annotate(str);
+	persistent_ram_ext_oldbuf_print(str);
+}
+
 static void __init mmi_msm8960_get_acpu_info(void)
 {
 	uint32_t pte_efuse, pvs;
@@ -56,14 +62,49 @@ static void __init mmi_msm8960_get_acpu_info(void)
 	else
 		proc->size = 1;
 
-	apanic_mmc_annotate(acpu_type);
-	persistent_ram_ext_oldbuf_print(acpu_type);
+	mmi_panic_annotate(acpu_type);
+}
+
+static void __init mmi_msm8960_annotate_socinfo(void)
+{
+	char socinfo[32];
+
+	snprintf(socinfo, sizeof(socinfo), "socinfo: id=%u, ",
+			socinfo_get_id());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "ver=%u.%u, ",
+			SOCINFO_VERSION_MAJOR(socinfo_get_version()),
+			SOCINFO_VERSION_MINOR(socinfo_get_version()));
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "raw_id=%u, ",
+			socinfo_get_raw_id());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "raw_ver=%u, ",
+			socinfo_get_raw_version());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "hw_plat=%u, ",
+			socinfo_get_platform_type());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "hw_plat_ver=%u, ",
+			socinfo_get_platform_version());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "hw_plat_subtype=%u\n",
+			socinfo_get_platform_subtype());
+	mmi_panic_annotate(socinfo);
 }
 
 static int __init init_mmi_acpu_info(void)
 {
-	if (soc_class_is_msm8960())
+	if (soc_class_is_msm8960()) {
 		mmi_msm8960_get_acpu_info();
+		mmi_msm8960_annotate_socinfo();
+	}
 	return 0;
 }
 module_init(init_mmi_acpu_info);
