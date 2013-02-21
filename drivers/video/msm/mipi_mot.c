@@ -249,6 +249,66 @@ static struct attribute_group elvss_tth_attr_group = {
 	.attrs = elvss_tth_attrs,
 };
 
+static ssize_t te_enable_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned long te_enable_val;
+	unsigned long r = 0;
+
+	if (mot_panel.mfd == 0) {
+		r = -ENODEV;
+		goto end;
+	}
+
+	r = kstrtoul(buf, 0, &te_enable_val);
+	if ((r) || ((te_enable_val != 0) && (te_enable_val != 1))) {
+		pr_err("%s: Invalid TE enable value = %lu\n",
+			__func__, te_enable_val);
+		r = -EINVAL;
+		goto end;
+	}
+	mutex_lock(&mot_panel.lock);
+	if (mot_panel.enable_te)
+		mot_panel.enable_te(mot_panel.mfd, te_enable_val);
+	mutex_unlock(&mot_panel.lock);
+
+end:
+	return r ? r : count;
+}
+
+static DEVICE_ATTR(te_enable, S_IWUSR | S_IWGRP,
+		NULL, te_enable_store);
+
+static struct attribute *te_enable_attrs[] = {
+	&dev_attr_te_enable.attr,
+	NULL,
+};
+static struct attribute_group te_enable_attr_group = {
+	.attrs = te_enable_attrs,
+};
+
+static ssize_t frame_counter_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	u32 count;
+	mutex_lock(&mot_panel.lock);
+	count = mdp_get_frame_counter();
+	mutex_unlock(&mot_panel.lock);
+	return snprintf(buf, PAGE_SIZE, "%d\n", count);
+}
+
+static DEVICE_ATTR(frame_counter, S_IRUSR | S_IRGRP,
+		frame_counter_show, NULL);
+
+static struct attribute *frame_counter_attrs[] = {
+	&dev_attr_frame_counter.attr,
+	NULL,
+};
+
+static struct attribute_group frame_counter_attr_group = {
+	.attrs = frame_counter_attrs,
+};
+
 static int valid_mfd_info(struct msm_fb_data_type *mfd)
 {
 	int ret = 0;
@@ -536,6 +596,24 @@ static int __devinit mipi_mot_lcd_probe(struct platform_device *pdev)
 				 __func__);
 			goto err;
 		}
+	}
+
+	if (mot_panel.enable_te) {
+		ret = sysfs_create_group(&mot_panel.mfd->fbi->dev->kobj,
+					&te_enable_attr_group);
+		if (ret < 0) {
+			pr_err("%s: te_enable file creation failed\n",
+				__func__);
+			goto err;
+		}
+	}
+
+	ret = sysfs_create_group(&mot_panel.mfd->fbi->dev->kobj,
+				&frame_counter_attr_group);
+	if (ret < 0) {
+		pr_err("%s: frame_counter file creation failed\n",
+			__func__);
+		goto err;
 	}
 
 	mot_panel.reboot_notifier.notifier_call = mot_panel_off_reboot;

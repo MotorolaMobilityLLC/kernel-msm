@@ -320,6 +320,7 @@ static int __init mipi_mot_cmd_smd_hd_465_init(void)
 	mot_panel->panel_disable = panel_disable;
 	mot_panel->set_backlight = panel_set_backlight;
 	mot_panel->enable_acl = enable_acl;
+	mot_panel->enable_te = mipi_mot_set_tear;
 	mot_panel->panel_en_from_partial = panel_en_from_partial;
 
 	/* For ESD detection information */
