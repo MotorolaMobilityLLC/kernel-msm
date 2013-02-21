@@ -231,6 +231,90 @@ static int32_t msm_actuator_piezo_move_focus(
 	return rc;
 }
 
+static int32_t msm_actuator_i2c_write(
+		struct msm_actuator_ctrl_t *a_ctrl,
+		struct msm_actuator_i2c_table *i2c_table)
+{
+	int32_t rc = -1;
+	int32_t i = 0;
+
+	if (NULL == i2c_table || NULL == a_ctrl) {
+		pr_err("%s: NULL pointer: i2c_table:%p, a_ctrl:%p\n",
+				__func__, i2c_table, a_ctrl);
+		return rc;
+	}
+
+	if (i2c_table->size > MSM_ACTUATOR_I2C_MAX_TABLE_SIZE) {
+		pr_err("%s: i2c table size exceeds the maximum allowed size.\n",
+				__func__);
+		pr_err("%s: size:%d, max size:%d\n",
+				__func__,
+				i2c_table->size,
+				MSM_ACTUATOR_I2C_MAX_TABLE_SIZE);
+		return rc;
+	}
+
+	for (i = 0; i < i2c_table->size; i++) {
+		uint16_t addr = i2c_table->data[i].addr;
+		uint8_t data = i2c_table->data[i].value;
+		uint32_t wait_time = i2c_table->data[i].wait_time;
+
+		rc = msm_camera_i2c_write(
+				&a_ctrl->i2c_client,
+				addr,
+				data,
+				MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0) {
+			pr_err("%s: msm_camera_i2c_write failed.\n", __func__);
+			break;
+		}
+		usleep_range(wait_time, wait_time + 1000);
+	}
+
+	return rc;
+}
+
+static int32_t msm_actuator_i2c_read(
+		struct msm_actuator_ctrl_t *a_ctrl,
+		struct msm_actuator_i2c_table *i2c_table)
+{
+	int32_t rc = -1;
+	int32_t i = 0;
+
+	if (NULL == i2c_table || NULL == a_ctrl) {
+		pr_err("%s: NULL pointer: i2c_table:%p, a_ctrl:%p\n",
+				__func__, i2c_table, a_ctrl);
+		return rc;
+	}
+
+	if (i2c_table->size > MSM_ACTUATOR_I2C_MAX_TABLE_SIZE) {
+		pr_err("%s: i2c table size exceeds the maximum allowed size.\n",
+				__func__);
+		pr_err("%s: size:%d, max size:%d\n",
+				__func__,
+				i2c_table->size,
+				MSM_ACTUATOR_I2C_MAX_TABLE_SIZE);
+		return rc;
+	}
+
+	for (i = 0; i < i2c_table->size; i++) {
+		uint16_t addr = i2c_table->data[i].addr;
+		uint16_t *data = &i2c_table->data[i].value;
+
+		rc = msm_camera_i2c_read(
+				&a_ctrl->i2c_client,
+				addr,
+				data,
+				MSM_CAMERA_I2C_BYTE_DATA);
+		if (rc < 0) {
+			pr_err("%s: msm_camera_i2c_write failed.\n", __func__);
+			break;
+		}
+	}
+
+	return rc;
+}
+
 static int32_t msm_actuator_move_focus(
 	struct msm_actuator_ctrl_t *a_ctrl,
 	struct msm_actuator_move_params_t *move_params)
@@ -586,6 +670,42 @@ static int32_t msm_actuator_config(struct msm_actuator_ctrl_t *a_ctrl,
 			rc = -EFAULT;
 		break;
 
+	case CFG_DIRECT_I2C_WRITE:
+		if (a_ctrl->func_tbl->actuator_i2c_write != NULL) {
+			rc = a_ctrl->func_tbl->actuator_i2c_write(a_ctrl,
+				&cdata.cfg.i2c_table);
+		} else {
+			pr_err("%s CFG_DIRECT_I2C_WRITE is not supported\n",
+					__func__);
+		}
+
+		if (rc < 0)
+			pr_err("%s CFG_DIRECT_I2C_WRITE failed %d\n",
+					__func__, rc);
+		break;
+
+	case CFG_DIRECT_I2C_READ:
+		if (a_ctrl->func_tbl->actuator_i2c_read != NULL) {
+			rc = a_ctrl->func_tbl->actuator_i2c_read(a_ctrl,
+						&cdata.cfg.i2c_table);
+		} else {
+			pr_err("%s CFG_DIRECT_I2C_READ is not supported\n",
+					__func__);
+			break;
+		}
+
+		if (rc < 0) {
+			pr_err("%s CFG_DIRECT_I2C_READ failed %d\n",
+					__func__, rc);
+			break;
+		}
+
+		if (copy_to_user((void *)argp,
+				&cdata,
+				sizeof(struct msm_actuator_cfg_data)))
+			rc = -EFAULT;
+		break;
+
 	default:
 		break;
 	}
@@ -729,6 +849,8 @@ static struct msm_actuator msm_vcm_actuator_table = {
 		.actuator_init_focus = msm_actuator_init_focus,
 		.actuator_parse_i2c_params = msm_actuator_parse_i2c_params,
 		.actuator_set_lens_mode =  msm_actuator_set_lens_mode,
+		.actuator_i2c_write = msm_actuator_i2c_write,
+		.actuator_i2c_read = msm_actuator_i2c_read,
 	},
 };
 

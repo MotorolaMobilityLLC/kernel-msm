@@ -60,6 +60,10 @@ struct msm_actuator_func_tbl {
 			int16_t);
 	int32_t (*actuator_set_lens_mode)(struct msm_actuator_ctrl_t *,
 			uint8_t);
+	int32_t (*actuator_i2c_write)(struct msm_actuator_ctrl_t *,
+			struct msm_actuator_i2c_table*);
+	int32_t (*actuator_i2c_read)(struct msm_actuator_ctrl_t *,
+			struct msm_actuator_i2c_table*);
 };
 
 struct msm_actuator {
