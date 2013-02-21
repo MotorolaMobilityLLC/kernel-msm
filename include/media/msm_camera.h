@@ -1019,7 +1019,9 @@ struct msm_snapshot_pp_status {
 #define CFG_GET_MODULE_INFO           57
 #define CFG_SET_LENS_MODE             58
 #define CFG_GET_CUR_LENS_POS          59
-#define CFG_MAX                       61
+#define CFG_DIRECT_I2C_WRITE          60
+#define CFG_DIRECT_I2C_READ           61
+#define CFG_MAX                       62
 
 
 #define MOVE_NEAR	0
@@ -1760,6 +1762,18 @@ struct msm_actuator_move_params_t {
 	struct damping_params_t *ringing_params;
 };
 
+struct msm_actuator_i2c {
+	uint16_t addr;
+	uint16_t value;
+	uint32_t wait_time;
+};
+
+#define MSM_ACTUATOR_I2C_MAX_TABLE_SIZE (8)
+struct msm_actuator_i2c_table {
+	struct msm_actuator_i2c data[MSM_ACTUATOR_I2C_MAX_TABLE_SIZE];
+	uint32_t size;
+};
+
 struct msm_actuator_tuning_params_t {
 	int16_t initial_code;
 	uint16_t pwd_step;
@@ -1824,6 +1838,7 @@ struct msm_actuator_cfg_data {
 		enum af_camera_name cam_name;
 		uint8_t lens_mode;
 		int16_t cur_lens_pos;
+		struct msm_actuator_i2c_table i2c_table;
 	} cfg;
 };
 
