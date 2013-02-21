@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 Motorola, Inc.
- * Copyright (C) 2012 Motorola Mobility. All rights reserved.
+ * Copyright (C) 2012 - 2013 Motorola Mobility. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,6 +29,9 @@
 #include <asm/system.h>
 #include <asm/bootinfo.h>
 #include <linux/notifier.h>
+#include <linux/persistent_ram.h>
+#include <linux/apanic_mmc.h>
+#include <linux/io.h>
 
 /*
  * EMIT_BOOTINFO and EMIT_BOOTINFO_STR are used to emit the bootinfo
@@ -116,7 +119,7 @@ EXPORT_SYMBOL(bi_set_powerup_reason);
  * bi_set_mbm_loader_version()     -- sets the MBM loader version
  */
 #ifdef CONFIG_OF
-static void of_mbmver(u32 *ver)
+static void __init of_mbmver(u32 *ver)
 {
 	struct device_node *n = of_find_node_by_path("/chosen");
 
@@ -130,10 +133,7 @@ static inline void of_mbmver(u32 *ver) { }
 static u32 mbm_version;
 u32 bi_mbm_version(void)
 {
-	u32 ver = mbm_version;
-
-	of_mbmver(&ver);
-	return ver;
+	return mbm_version;
 }
 EXPORT_SYMBOL(bi_mbm_version);
 
@@ -267,7 +267,104 @@ static void convert_to_upper(char *str)
 	}
 }
 
-void bi_add_bl_build_sig(char *bld_sig)
+#define BOOTINFO_BCK_BUF_ALIGN	512
+#define BOOTINFO_BCK_MAGIC	0x626f6f74696e666f	/* bootinfo */
+#define BOOTINFO_LKMSG(fmt, args...) do {		\
+	persistent_ram_ext_oldbuf_print(fmt, ##args);	\
+} while (0)
+
+struct bootinfo_bck {
+	u64 magic;
+	struct bl_build_sig bl[MAX_BL_BUILD_SIG];
+	char linux_banner[512];
+} __aligned(BOOTINFO_BCK_BUF_ALIGN);
+
+static int bootinfo_bck_buf_reserved;
+
+int __init bootinfo_bck_size(void)
+{
+	pr_debug("%s size %d\n", __func__, sizeof(struct bootinfo_bck));
+	return sizeof(struct bootinfo_bck);
+}
+
+void __init bootinfo_bck_buf_set_reserved(void)
+{
+	bootinfo_bck_buf_reserved = 1;
+}
+
+static void __init bootinfo_lkmsg_bl(struct bl_build_sig *bl)
+{
+	int i;
+	for (i = 0; i < bl_build_sig_count; i++) {
+		bl[i].item[MAX_BLD_SIG_ITEM - 1] = 0;
+		bl[i].value[MAX_BLD_SIG_VALUE - 1] = 0;
+		BOOTINFO_LKMSG("%s = %s\n", bl[i].item, bl[i].value);
+	}
+}
+
+static void __init bootinfo_apanic_annotate_bl(struct bl_build_sig *bl)
+{
+	int i;
+	for (i = 0; i < bl_build_sig_count; i++) {
+		bl[i].item[MAX_BLD_SIG_ITEM - 1] = 0;
+		bl[i].value[MAX_BLD_SIG_VALUE - 1] = 0;
+		apanic_mmc_annotate(bl[i].item);
+		apanic_mmc_annotate("=");
+		apanic_mmc_annotate(bl[i].value);
+		apanic_mmc_annotate("\n");
+	}
+}
+
+static void __init bootinfo_emit_to_last_kmsg(void)
+{
+	struct bootinfo_bck *bck_buf;
+
+	if (!bootinfo_bck_buf_reserved) {
+		pr_err("%s bck buf is not reserved\n", __func__);
+		BOOTINFO_LKMSG("\nTHIS\n");
+		goto print_this;
+	}
+
+	bck_buf = (struct bootinfo_bck *)allocate_contiguous_ebi(
+			bootinfo_bck_size(), BOOTINFO_BCK_BUF_ALIGN, 1);
+	if (!bck_buf) {
+		pr_err("%s can't get bck buf (size %d)\n", __func__,
+				bootinfo_bck_size());
+		BOOTINFO_LKMSG("\nTHIS\n");
+		goto print_this;
+	}
+
+	if (bck_buf->magic == BOOTINFO_BCK_MAGIC) {
+		int changed = 0;
+		if (memcmp(bl_build_sigs, bck_buf->bl, sizeof(bl_build_sigs)))
+			changed |= 1;
+		if (strncmp(linux_banner, bck_buf->linux_banner,
+			sizeof(bck_buf->linux_banner)))
+			changed |= 2;
+		if (changed) {
+			BOOTINFO_LKMSG("\nPREV\n");
+			if (changed & 1)
+				bootinfo_lkmsg_bl(bck_buf->bl);
+			if (changed & 2)
+				BOOTINFO_LKMSG(bck_buf->linux_banner);
+			BOOTINFO_LKMSG("\nTHIS\n");
+		}
+	} else {
+		BOOTINFO_LKMSG("\nTHIS\n");
+	}
+
+	memset(bck_buf, 0, sizeof(struct bootinfo_bck));
+	bck_buf->magic = BOOTINFO_BCK_MAGIC;
+	memcpy(bck_buf->bl, bl_build_sigs, sizeof(bl_build_sigs));
+	strlcpy(bck_buf->linux_banner, linux_banner,
+			sizeof(bck_buf->linux_banner));
+	iounmap(bck_buf);
+print_this:
+	bootinfo_lkmsg_bl(bl_build_sigs);
+	BOOTINFO_LKMSG(linux_banner);
+}
+
+void __init bi_add_bl_build_sig(char *bld_sig)
 {
 	int pos;
 	char *value;
@@ -294,10 +391,9 @@ void bi_add_bl_build_sig(char *bld_sig)
 
 	return;
 }
-EXPORT_SYMBOL(bi_add_bl_build_sig);
 
 #ifdef CONFIG_OF
-static void of_blsig(void)
+static void __init of_blsig(void)
 {
 	struct property *p;
 	struct device_node *n;
@@ -321,7 +417,6 @@ static inline void of_blsig(void) { }
 #endif
 
 #define EMIT_BL_BUILD_SIG() \
-		of_blsig(); \
 		do { \
 			int i; \
 			for (i = 0; i < bl_build_sig_count; i++) { \
@@ -379,25 +474,17 @@ static int get_bootinfo(char *buf, char **start,
 	return len;
 }
 
-static int bootinfo_panic(struct notifier_block *this,
-						unsigned long event, void *ptr)
-{
-	printk(KERN_ERR "mbm_version=0x%08x", mbm_version);
-	return NOTIFY_DONE;
-}
-
-static struct notifier_block panic_block = {
-	.notifier_call = bootinfo_panic,
-	.priority = 1,
-};
-
 static struct proc_dir_entry *proc_bootinfo;
 
 int __init bootinfo_init_module(void)
 {
+	of_blsig();
+	if (!mbm_version)
+		of_mbmver(&mbm_version);
 	proc_bootinfo = &proc_root;
 	create_proc_read_entry("bootinfo", 0, NULL, get_bootinfo, NULL);
-	atomic_notifier_chain_register(&panic_notifier_list, &panic_block);
+	bootinfo_emit_to_last_kmsg();
+	bootinfo_apanic_annotate_bl(bl_build_sigs);
 	return 0;
 }
 
