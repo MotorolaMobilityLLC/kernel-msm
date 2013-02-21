@@ -13,6 +13,7 @@
 
 #include <linux/module.h>
 #include <linux/proc_fs.h>
+#include <linux/apanic_mmc.h>
 #include <soc/qcom/socinfo.h>
 
 struct mmi_msm_bin {
@@ -30,6 +31,41 @@ static DEFINE_SPINLOCK(mmi_msm_bin_lock);
 
 static inline void mmi_panic_annotate(const char *str)
 {
+	apanic_mmc_annotate(str);
+}
+
+static void __init mmi_msm_annotate_socinfo(void)
+{
+	char socinfo[32];
+
+	snprintf(socinfo, sizeof(socinfo), "socinfo: id=%u, ",
+			socinfo_get_id());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "ver=%u.%u, ",
+			SOCINFO_VERSION_MAJOR(socinfo_get_version()),
+			SOCINFO_VERSION_MINOR(socinfo_get_version()));
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "raw_id=%u, ",
+			socinfo_get_raw_id());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "raw_ver=%u, ",
+			socinfo_get_raw_version());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "hw_plat=%u, ",
+			socinfo_get_platform_type());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "hw_plat_ver=%u, ",
+			socinfo_get_platform_version());
+	mmi_panic_annotate(socinfo);
+
+	snprintf(socinfo, sizeof(socinfo), "hw_plat_subtype=%u\n",
+			socinfo_get_platform_subtype());
+	mmi_panic_annotate(socinfo);
 }
 
 static ssize_t mmi_acpu_proc_read(struct file *file, char __user *buf,
@@ -105,6 +141,7 @@ static void __init mmi_msm_acpu_bin_export(void)
 
 static int __init init_mmi_soc_info(void)
 {
+	mmi_msm_annotate_socinfo();
 	mmi_msm_acpu_bin_export();
 	return 0;
 }
