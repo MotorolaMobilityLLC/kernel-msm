@@ -982,6 +982,7 @@ static VOS_STATUS hdd_roamRegisterSTA( hdd_adapter_t *pAdapter,
    staDesc.ucInitState = pRoamInfo->fAuthRequired ?
       WLANTL_STA_CONNECTED : WLANTL_STA_AUTHENTICATED;
    // Register the Station with TL...      
+   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "%s: HDD register TL ucInitState=%d", __func__, staDesc.ucInitState );
    vosStatus = WLANTL_RegisterSTAClient( pHddCtx->pvosContext, 
                                          hdd_rx_packet_cbk, 
                                          hdd_tx_complete_cbk, 
@@ -1318,6 +1319,9 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
             }
             else
             {
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+                          "%s: staId: %d Changing TL state to AUTHENTICATED",
+                          __func__, pHddStaCtx->conn_info.staId[ 0 ] );
                 vosStatus = WLANTL_ChangeSTAState( pHddCtx->pvosContext, pHddStaCtx->conn_info.staId[ 0 ], 
                         WLANTL_STA_AUTHENTICATED );
                 pHddStaCtx->conn_info.uIsAuthenticated = VOS_TRUE;
