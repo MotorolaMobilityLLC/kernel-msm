@@ -41,12 +41,16 @@
 #define ARIZONA_ACCDET_MODE_HPL 1
 #define ARIZONA_ACCDET_MODE_HPR 2
 
+#define HPDET_DEBOUNCE 250
+
 struct arizona_extcon_info {
 	struct device *dev;
 	struct arizona *arizona;
 	struct mutex lock;
 	struct regulator *micvdd;
 	struct input_dev *input;
+
+	u16 last_jackdet;
 
 	int micd_mode;
 	const struct arizona_micd_config *micd_modes;
@@ -822,11 +826,12 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 	struct arizona_extcon_info *info = data;
 	struct arizona *arizona = info->arizona;
 	unsigned int val, present, mask;
+	bool cancelled;
 	int ret, i;
 
-	pm_runtime_get_sync(info->dev);
+	cancelled = cancel_delayed_work_sync(&info->hpdet_work);
 
-	cancel_delayed_work_sync(&info->hpdet_work);
+	pm_runtime_get_sync(info->dev);
 
 	mutex_lock(&info->lock);
 
@@ -847,7 +852,18 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 		return IRQ_NONE;
 	}
 
-	if ((val & mask) == present) {
+	val &= mask;
+	if (val == info->last_jackdet) {
+		dev_dbg(arizona->dev, "Suppressing duplicate JACKDET\n");
+		if (cancelled)
+			schedule_delayed_work(&info->hpdet_work,
+					      msecs_to_jiffies(HPDET_DEBOUNCE));
+
+		goto out;
+	}
+	info->last_jackdet = val;
+
+	if (info->last_jackdet == present) {
 		dev_dbg(arizona->dev, "Detected jack\n");
 		info->cable = true;
 
@@ -864,7 +880,7 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 			arizona_start_mic(info);
 		} else {
 			schedule_delayed_work(&info->hpdet_work,
-					      msecs_to_jiffies(250));
+					      msecs_to_jiffies(HPDET_DEBOUNCE));
 		}
 
 		regmap_update_bits(arizona->regmap,
@@ -909,6 +925,7 @@ static irqreturn_t arizona_jackdet(int irq, void *data)
 		     ARIZONA_JD1_FALL_TRIG_STS |
 		     ARIZONA_JD1_RISE_TRIG_STS);
 
+out:
 	mutex_unlock(&info->lock);
 
 	pm_runtime_put(info->dev);
@@ -964,6 +981,7 @@ static int arizona_extcon_probe(struct platform_device *pdev)
 	mutex_init(&info->lock);
 	info->arizona = arizona;
 	info->dev = &pdev->dev;
+	info->last_jackdet = ~(ARIZONA_MICD_CLAMP_STS | ARIZONA_JD1_STS);
 	INIT_DELAYED_WORK(&info->hpdet_work, arizona_hpdet_work);
 	platform_set_drvdata(pdev, info);
 
