@@ -658,11 +658,11 @@ int mdp4_dsi_video_on(struct platform_device *pdev)
 
 	if (!(mfd->cont_splash_done)) {
 		mfd->cont_splash_done = 1;
-		MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
-		mdp4_dsi_video_wait4vsync(0);
 		/* Turn off panel to avoid fading */
 		mipi_dsi_panel_power_en(pdev, 0);
 		/* disable timing generator */
+		MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0);
+		mdp4_dsi_video_wait4vsync(0);
 		mipi_dsi_controller_cfg(0);
 		/* Clks are enabled in probe.
 		   Disabling clocks now */
