@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2002,2007-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -377,8 +377,11 @@ static void kgsl_page_alloc_free(struct kgsl_memdesc *memdesc)
 		kgsl_driver.stats.vmalloc -= memdesc->size;
 	}
 	if (memdesc->sg)
-		for_each_sg(memdesc->sg, sg, sglen, i)
+		for_each_sg(memdesc->sg, sg, sglen, i){
+			if (sg->length == 0)
+				break;
 			__free_pages(sg_page(sg), get_order(sg->length));
+		}
 }
 
 static int kgsl_contiguous_vmflags(struct kgsl_memdesc *memdesc)

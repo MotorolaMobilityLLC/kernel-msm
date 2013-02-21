@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -20,10 +20,15 @@
 #include <linux/printk.h>
 #include <linux/ratelimit.h>
 #include <linux/coresight.h>
+#include <asm/hardware/cp14.h>
 #include <mach/scm.h>
 #include <mach/jtag.h>
 
-#include "cp14.h"
+/* DBGv7 with baseline CP14 registers implemented */
+#define ARM_DEBUG_ARCH_V7B	(0x3)
+/* DBGv7 with all CP14 registers implemented */
+#define ARM_DEBUG_ARCH_V7	(0x4)
+#define ARM_DEBUG_ARCH_V7p1	(0x5)
 
 #define BM(lsb, msb)		((BIT(msb) - BIT(lsb)) + BIT(msb))
 #define BMVAL(val, lsb, msb)	((val & BM(lsb, msb)) >> lsb)
@@ -363,7 +368,7 @@ static int dbg_write_wxr(uint32_t *state, int i, int j)
 static inline bool dbg_arch_supported(uint8_t arch)
 {
 	switch (arch) {
-	case ARM_DEBUG_ARCH_V7_1:
+	case ARM_DEBUG_ARCH_V7p1:
 	case ARM_DEBUG_ARCH_V7:
 	case ARM_DEBUG_ARCH_V7B:
 		break;
@@ -381,7 +386,7 @@ static inline void dbg_save_state(int cpu)
 	i = cpu * MAX_DBG_REGS;
 
 	switch (dbg.arch) {
-	case ARM_DEBUG_ARCH_V7_1:
+	case ARM_DEBUG_ARCH_V7p1:
 		/* Set OS lock to inform the debugger that the OS is in the
 		 * process of saving debug registers. It prevents accidental
 		 * modification of the debug regs by the external debugger.
@@ -440,7 +445,7 @@ static inline void dbg_restore_state(int cpu)
 	i = cpu * MAX_DBG_REGS;
 
 	switch (dbg.arch) {
-	case ARM_DEBUG_ARCH_V7_1:
+	case ARM_DEBUG_ARCH_V7p1:
 		/* Clear the OS double lock */
 		isb();
 		dbg_write(0x0, DBGOSDLR);

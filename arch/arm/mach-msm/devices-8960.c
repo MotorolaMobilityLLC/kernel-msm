@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1082,6 +1082,7 @@ struct msm_vidc_platform_data vidc_platform_data = {
 	.disable_fullhd = 0,
 	.cont_mode_dpb_count = 18,
 	.fw_addr = 0x9fe00000,
+	.enable_sec_metadata = 0,
 };
 
 struct platform_device msm_device_vidc = {
