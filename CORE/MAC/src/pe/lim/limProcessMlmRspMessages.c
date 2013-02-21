@@ -3902,12 +3902,6 @@ static void limProcessSwitchChannelJoinReq(tpAniSirGlobal pMac, tpPESession pses
              psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS )
             goto error;
     }
-    else
-    {
-        if(limSetLinkState(pMac, eSIR_LINK_PREASSOC_STATE, psessionEntry->bssId,
-            psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS)
-            goto error;
-    }
 
     /* Update the lim global gLimTriggerBackgroundScanDuringQuietBss */
     if(wlan_cfgGetInt(pMac, WNI_CFG_TRIG_STA_BK_SCAN, &val) != eSIR_SUCCESS)
