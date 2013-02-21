@@ -763,6 +763,11 @@ static int tspp_config_gpios(struct tspp_device *device,
 /*** Clock functions ***/
 static int tspp_clock_start(struct tspp_device *device)
 {
+	if (device == NULL) {
+		pr_err("tspp: Can't start clocks, invalid device\n");
+		return -EINVAL;
+	}
+
 	if (device->tsif_pclk && clk_prepare_enable(device->tsif_pclk) != 0) {
 		pr_err("tspp: Can't start pclk");
 		return -EBUSY;
@@ -780,11 +785,16 @@ static int tspp_clock_start(struct tspp_device *device)
 
 static void tspp_clock_stop(struct tspp_device *device)
 {
+	if (device == NULL) {
+		pr_err("tspp: Can't stop clocks, invalid device\n");
+		return;
+	}
+
 	if (device->tsif_pclk)
-		clk_disable(device->tsif_pclk);
+		clk_disable_unprepare(device->tsif_pclk);
 
 	if (device->tsif_ref_clk)
-		clk_disable(device->tsif_ref_clk);
+		clk_disable_unprepare(device->tsif_ref_clk);
 }
 
 /*** TSIF functions ***/
@@ -1446,7 +1456,10 @@ int tspp_open_channel(u32 dev, u32 channel_id)
 
 	/* start the clocks if needed */
 	if (tspp_channels_in_use(pdev) == 0) {
-		tspp_clock_start(pdev);
+		rc = tspp_clock_start(pdev);
+		if (rc)
+			return rc;
+
 		wake_lock(&pdev->wake_lock);
 	}
 
@@ -1627,6 +1640,8 @@ int tspp_close_channel(u32 dev, u32 channel_id)
 		wake_unlock(&pdev->wake_lock);
 		tspp_clock_stop(pdev);
 	}
+
+	pm_runtime_put(&pdev->pdev->dev);
 
 	return 0;
 }
@@ -3009,6 +3024,7 @@ static int __devexit msm_tspp_remove(struct platform_device *pdev)
 {
 	struct tspp_channel *channel;
 	u32 i;
+	int rc;
 
 	struct tspp_device *device = platform_get_drvdata(pdev);
 
@@ -3021,9 +3037,11 @@ static int __devexit msm_tspp_remove(struct platform_device *pdev)
 	}
 
 	/* de-registering BAM device requires clocks */
-	tspp_clock_start(device);
-	sps_deregister_bam_device(device->bam_handle);
-	tspp_clock_stop(device);
+	rc = tspp_clock_start(device);
+	if (rc == 0) {
+		sps_deregister_bam_device(device->bam_handle);
+		tspp_clock_stop(device);
+	}
 
 	for (i = 0; i < TSPP_TSIF_INSTANCES; i++) {
 		tsif_debugfs_exit(&device->tsif[i]);
@@ -3046,7 +3064,7 @@ static int __devexit msm_tspp_remove(struct platform_device *pdev)
 		clk_put(device->tsif_pclk);
 
 	pm_runtime_disable(&pdev->dev);
-	pm_runtime_put(&pdev->dev);
+
 	kfree(device);
 
 	return 0;
