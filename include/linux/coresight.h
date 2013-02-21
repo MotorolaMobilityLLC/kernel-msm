@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -30,12 +30,11 @@
 #define CORESIGHT_COMPIDR2	(0xFF8)
 #define CORESIGHT_COMPIDR3	(0xFFC)
 
-/* DBGv7 with baseline CP14 registers implemented */
-#define ARM_DEBUG_ARCH_V7B	(0x3)
-/* DBGv7 with all CP14 registers implemented */
-#define ARM_DEBUG_ARCH_V7	(0x4)
-#define ARM_DEBUG_ARCH_V7_1	(0x5)
+#define ETM_ARCH_V1_0		(0x00)
+#define ETM_ARCH_V1_2		(0x02)
 #define ETM_ARCH_V3_3		(0x23)
+#define ETM_ARCH_V3_5		(0x25)
+#define PFT_ARCH_MAJOR		(0x30)
 #define PFT_ARCH_V1_1		(0x31)
 
 enum coresight_clk_rate {
@@ -45,6 +44,7 @@ enum coresight_clk_rate {
 };
 
 enum coresight_dev_type {
+	CORESIGHT_DEV_TYPE_NONE,
 	CORESIGHT_DEV_TYPE_SINK,
 	CORESIGHT_DEV_TYPE_LINK,
 	CORESIGHT_DEV_TYPE_LINKSINK,
@@ -151,7 +151,7 @@ struct coresight_ops {
 	const struct coresight_ops_source *source_ops;
 };
 
-#ifdef CONFIG_MSM_QDSS
+#ifdef CONFIG_CORESIGHT
 extern struct coresight_device *
 coresight_register(struct coresight_desc *desc);
 extern void coresight_unregister(struct coresight_device *csdev);

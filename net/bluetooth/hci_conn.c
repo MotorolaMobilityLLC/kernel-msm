@@ -1,6 +1,6 @@
 /*
    BlueZ - Bluetooth protocol stack for Linux
-   Copyright (c) 2000-2001, 2010-2012 Code Aurora Forum.  All rights reserved.
+   Copyright (c) 2000-2001, 2010-2012 The Linux Foundation.  All rights reserved.
 
    Written 2000,2001 by Maxim Krasnyansky <maxk@qualcomm.com>
 
@@ -206,6 +206,13 @@ void hci_le_remove_dev_white_list(struct hci_dev *hdev, bdaddr_t *dst)
 }
 EXPORT_SYMBOL(hci_le_remove_dev_white_list);
 
+static inline bool is_role_switch_possible(struct hci_dev *hdev)
+{
+	if (hci_conn_hash_lookup_state(hdev, ACL_LINK, BT_CONNECTED))
+		return false;
+	return true;
+}
+
 void hci_acl_connect(struct hci_conn *conn)
 {
 	struct hci_dev *hdev = conn->hdev;
@@ -241,7 +248,8 @@ void hci_acl_connect(struct hci_conn *conn)
 	}
 
 	cp.pkt_type = cpu_to_le16(conn->pkt_type);
-	if (lmp_rswitch_capable(hdev) && !(hdev->link_mode & HCI_LM_MASTER))
+	if (lmp_rswitch_capable(hdev) && !(hdev->link_mode & HCI_LM_MASTER)
+		&& is_role_switch_possible(hdev))
 		cp.role_switch = 0x01;
 	else
 		cp.role_switch = 0x00;
@@ -1449,8 +1457,24 @@ int hci_set_auth_info(struct hci_dev *hdev, void __user *arg)
 
 	hci_dev_lock_bh(hdev);
 	conn = hci_conn_hash_lookup_ba(hdev, ACL_LINK, &req.bdaddr);
-	if (conn)
+	if (conn) {
 		conn->auth_type = req.type;
+		switch (conn->auth_type) {
+		case HCI_AT_NO_BONDING:
+			conn->pending_sec_level = BT_SECURITY_LOW;
+			break;
+		case HCI_AT_DEDICATED_BONDING:
+		case HCI_AT_GENERAL_BONDING:
+			conn->pending_sec_level = BT_SECURITY_MEDIUM;
+			break;
+		case HCI_AT_DEDICATED_BONDING_MITM:
+		case HCI_AT_GENERAL_BONDING_MITM:
+			conn->pending_sec_level = BT_SECURITY_HIGH;
+			break;
+		default:
+			break;
+		}
+	}
 	hci_dev_unlock_bh(hdev);
 
 	if (!conn)

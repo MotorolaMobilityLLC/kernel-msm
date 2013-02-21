@@ -88,7 +88,7 @@ static struct pc_temp_ocv_lut mmi_eg30_lg_pc_temp_ocv = {
 	},
 };
 
-static struct pm8921_bms_battery_data  mmi_eg30_lg_metering_data = {
+static struct bms_battery_data  mmi_eg30_lg_metering_data = {
 	.fcc			= 1940,
 	.fcc_temp_lut		= &mmi_eg30_lg_fcc_temp,
 	.fcc_sf_lut		= &mmi_eg30_lg_fcc_sf,
@@ -128,7 +128,7 @@ static struct single_row_lut mmi_eu20_lg_fcc_temp = {
 	.cols	= 4,
 };
 
-static struct pm8921_bms_battery_data  mmi_eu20_lg_metering_data = {
+static struct bms_battery_data  mmi_eu20_lg_metering_data = {
 	.fcc			= 2070,
 	.fcc_temp_lut		= &mmi_eu20_lg_fcc_temp,
 	.fcc_sf_lut		= &mmi_eg30_lg_fcc_sf,
@@ -168,7 +168,7 @@ static struct single_row_lut mmi_ex34_lg_fcc_temp = {
 	.cols	= 4,
 };
 
-static struct pm8921_bms_battery_data  mmi_ex34_lg_metering_data = {
+static struct bms_battery_data  mmi_ex34_lg_metering_data = {
 	.fcc			= 2120,
 	.fcc_temp_lut		= &mmi_ex34_lg_fcc_temp,
 	.fcc_sf_lut		= &mmi_eg30_lg_fcc_sf,
@@ -210,7 +210,7 @@ static struct single_row_lut mmi_mock_ex34_lg_fcc_temp = {
 	.cols	= 4,
 };
 
-static struct pm8921_bms_battery_data  mmi_mock_ex34_lg_metering_data = {
+static struct bms_battery_data  mmi_mock_ex34_lg_metering_data = {
 	.fcc			= 1150,
 	.fcc_temp_lut		= &mmi_mock_ex34_lg_fcc_temp,
 	.fcc_sf_lut		= &mmi_eg30_lg_fcc_sf,
@@ -316,7 +316,7 @@ static struct pc_temp_ocv_lut mmi_eb40_lg_pc_temp_ocv = {
 	},
 };
 
-static struct pm8921_bms_battery_data  mmi_eb40_lg_metering_data = {
+static struct bms_battery_data  mmi_eb40_lg_metering_data = {
 	.fcc			= 3200,
 	.fcc_temp_lut		= &mmi_eb40_lg_fcc_temp,
 	.fcc_sf_lut		= &mmi_eb40_lg_fcc_sf,
@@ -357,7 +357,7 @@ static struct single_row_lut mmi_eu40_lg_fcc_temp = {
 	.cols	= 4,
 };
 
-static struct pm8921_bms_battery_data  mmi_eu40_lg_metering_data = {
+static struct bms_battery_data  mmi_eu40_lg_metering_data = {
 	.fcc			= 3400,
 	.fcc_temp_lut		= &mmi_eu40_lg_fcc_temp,
 	.fcc_sf_lut		= &mmi_eb40_lg_fcc_sf,
@@ -463,7 +463,7 @@ static struct pc_temp_ocv_lut mmi_eb20_sdi_pc_temp_ocv = {
 	},
 };
 
-static struct pm8921_bms_battery_data  mmi_eb20_sdi_metering_data = {
+static struct bms_battery_data  mmi_eb20_sdi_metering_data = {
 	.fcc			= 1750,
 	.fcc_temp_lut		= &mmi_eb20_sdi_fcc_temp,
 	.fcc_sf_lut		= &mmi_eb20_sdi_fcc_sf,
@@ -569,7 +569,7 @@ static struct pc_temp_ocv_lut mmi_eg30_sdi_pc_temp_ocv = {
 	},
 };
 
-static struct pm8921_bms_battery_data  mmi_eg30_sdi_metering_data = {
+static struct bms_battery_data  mmi_eg30_sdi_metering_data = {
 	.fcc			= 1940,
 	.fcc_temp_lut		= &mmi_eg30_sdi_fcc_temp,
 	.fcc_sf_lut		= &mmi_eg30_sdi_fcc_sf,
@@ -675,7 +675,7 @@ static struct pc_temp_ocv_lut mmi_ev30_pc_temp_ocv = {
 	},
 };
 
-static struct pm8921_bms_battery_data  mmi_ev30_metering_data = {
+static struct bms_battery_data  mmi_ev30_metering_data = {
 	.fcc			= 2500,
 	.fcc_temp_lut		= &mmi_ev30_fcc_temp,
 	.fcc_sf_lut		= &mmi_ev30_fcc_sf,
@@ -788,7 +788,7 @@ static struct pc_temp_ocv_lut mmi_eb41_pc_temp_ocv = {
 	},
 };
 
-static struct pm8921_bms_battery_data  mmi_eb41_metering_data = {
+static struct bms_battery_data  mmi_eb41_metering_data = {
 	.fcc			= 1767,
 	.fcc_temp_lut		= &mmi_eb41_fcc_temp,
 	.fcc_sf_lut		= &mmi_eb41_fcc_sf,
@@ -894,7 +894,7 @@ static struct pc_temp_ocv_lut mmi_eb20_pc_temp_ocv = {
 	},
 };
 
-static struct pm8921_bms_battery_data  mmi_eb20_metering_data = {
+static struct bms_battery_data  mmi_eb20_metering_data = {
 	.fcc			= 1767,
 	.fcc_temp_lut		= &mmi_eb20_fcc_temp,
 	.fcc_sf_lut		= &mmi_eb20_fcc_sf,
@@ -928,7 +928,7 @@ static struct mmi_battery_cell mmi_eb20_cell_data = {
 };
 
 /* EB20 Preliminary Tables and Charging Parameters */
-static struct pm8921_bms_battery_data  mmi_eb20_pre_metering_data = {
+static struct bms_battery_data  mmi_eb20_pre_metering_data = {
 	.fcc			= 1767,
 	.fcc_temp_lut		= &mmi_eb20_fcc_temp,
 	.fcc_sf_lut		= &mmi_eb20_fcc_sf,
@@ -1034,7 +1034,7 @@ static struct pc_temp_ocv_lut mmi_df_pc_temp_ocv = {
 	},
 };
 
-static struct pm8921_bms_battery_data  mmi_df_metering_data = {
+static struct bms_battery_data  mmi_df_metering_data = {
 	.fcc			= 1767,
 	.fcc_temp_lut		= &mmi_df_fcc_temp,
 	.fcc_sf_lut		= &mmi_df_fcc_sf,

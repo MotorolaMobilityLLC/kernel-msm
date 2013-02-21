@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2013, Code Aurora Forum. All rights reserved.
+/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -140,6 +140,8 @@ struct msm_fb_data_type {
 	int (*stop_histogram) (struct fb_info *info, uint32_t block);
 	void (*vsync_ctrl) (int enable);
 	void (*vsync_init) (int cndx);
+	void (*update_panel_info)(struct msm_fb_data_type *mfd);
+	bool (*is_panel_ready)(void);
 	void *vsync_show;
 	int (*reg_read)(struct msm_fb_data_type *mfd, __u16 address,
 				__u16 size, __u8 *buf, __u8 use_hs_mode);

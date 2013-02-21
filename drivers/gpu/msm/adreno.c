@@ -128,6 +128,10 @@ unsigned int hang_detect_regs[] = {
 	REG_CP_IB2_BASE,
 	REG_CP_IB2_BUFSZ,
 	0,
+	0,
+	0,
+	0,
+	0,
 	0
 };
 
@@ -299,6 +303,8 @@ static void adreno_iommu_setstate(struct kgsl_device *device,
 	num_iommu_units = kgsl_mmu_get_num_iommu_units(&device->mmu);
 
 	context = idr_find(&device->context_idr, context_id);
+	if (context == NULL)
+		return;
 	adreno_ctx = context->devctxt;
 
 	if (kgsl_mmu_enable_clk(&device->mmu,
@@ -449,6 +455,8 @@ static void adreno_gpummu_setstate(struct kgsl_device *device,
 	 */
 	if (!kgsl_cff_dump_enable && adreno_dev->drawctxt_active) {
 		context = idr_find(&device->context_idr, context_id);
+		if (context == NULL)
+			return;
 		adreno_ctx = context->devctxt;
 
 		if (flags & KGSL_MMUFLAGS_PTUPDATE) {
@@ -1261,6 +1269,10 @@ static int adreno_start(struct kgsl_device *device, unsigned int init_ram)
 	if (adreno_is_a3xx(adreno_dev)) {
 		hang_detect_regs[6] = A3XX_RBBM_PERFCTR_SP_7_LO;
 		hang_detect_regs[7] = A3XX_RBBM_PERFCTR_SP_7_HI;
+		hang_detect_regs[8] = A3XX_RBBM_PERFCTR_SP_6_LO;
+		hang_detect_regs[9] = A3XX_RBBM_PERFCTR_SP_6_HI;
+		hang_detect_regs[10] = A3XX_RBBM_PERFCTR_SP_5_LO;
+		hang_detect_regs[11] = A3XX_RBBM_PERFCTR_SP_5_HI;
 	}
 
 	status = kgsl_mmu_start(device);
@@ -1796,6 +1808,7 @@ static int adreno_setproperty(struct kgsl_device *device,
 				unsigned int sizebytes)
 {
 	int status = -EINVAL;
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 
 	switch (type) {
 	case KGSL_PROP_PWRCTRL: {
@@ -1815,10 +1828,11 @@ static int adreno_setproperty(struct kgsl_device *device,
 			if (enable) {
 				if (pdata->nap_allowed)
 					device->pwrctrl.nap_allowed = true;
-
+				adreno_dev->fast_hang_detect = 1;
 				kgsl_pwrscale_enable(device);
 			} else {
 				device->pwrctrl.nap_allowed = false;
+				adreno_dev->fast_hang_detect = 0;
 				kgsl_pwrscale_disable(device);
 			}
 
@@ -1893,7 +1907,7 @@ retry:
 		goto err;
 
 	/* now, wait for the GPU to finish its operations */
-	wait_time = jiffies + ADRENO_IDLE_TIMEOUT;
+	wait_time = jiffies + msecs_to_jiffies(ADRENO_IDLE_TIMEOUT);
 	wait_time_part = jiffies + msecs_to_jiffies(KGSL_TIMEOUT_PART);
 
 	while (time_before(jiffies, wait_time)) {
@@ -1922,7 +1936,7 @@ err:
 	KGSL_DRV_ERR(device, "spun too long waiting for RB to idle\n");
 	if (KGSL_STATE_DUMP_AND_RECOVER != device->state &&
 		!adreno_dump_and_recover(device)) {
-		wait_time = jiffies + ADRENO_IDLE_TIMEOUT;
+		wait_time = jiffies + msecs_to_jiffies(ADRENO_IDLE_TIMEOUT);
 		goto retry;
 	}
 	return -ETIMEDOUT;
@@ -2428,9 +2442,6 @@ static int adreno_waittimestamp(struct kgsl_device *device,
 	do {
 		long status;
 
-		if (wait > (msecs - time_elapsed))
-			wait = msecs - time_elapsed;
-
 		/*
 		 * if the timestamp happens while we're not
 		 * waiting, there's a chance that an interrupt
@@ -2482,7 +2493,6 @@ static int adreno_waittimestamp(struct kgsl_device *device,
 			ret = (status > 0) ? 0 : (int) status;
 			break;
 		}
-
 		time_elapsed += wait;
 
 		/* If user specified timestamps are being used, wait at least
@@ -2511,10 +2521,14 @@ static int adreno_waittimestamp(struct kgsl_device *device,
 		}
 
 		/*
-		 * all subsequent trips through the loop wait the full
-		 * KGSL_TIMEOUT_PART interval
+		 * We want to wait the floor of KGSL_TIMEOUT_PART
+		 * and (msecs - time_elapsed).
 		 */
+
+		if (KGSL_TIMEOUT_PART < (msecs - time_elapsed))
 		wait = KGSL_TIMEOUT_PART;
+		else
+			wait = (msecs - time_elapsed);
 
 	} while (!msecs || time_elapsed < msecs);
 

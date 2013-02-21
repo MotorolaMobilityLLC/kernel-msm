@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -678,6 +678,8 @@ pm8038_add_subdevices(const struct pm8038_platform_data *pdata,
 	}
 
 	if (pdata->ccadc_pdata) {
+		pdata->ccadc_pdata->ccadc_cdata.batt_temp_channel
+						= CHANNEL_BATT_THERM;
 		ccadc_cell.platform_data = pdata->ccadc_pdata;
 		ccadc_cell.pdata_size =
 				sizeof(struct pm8xxx_ccadc_platform_data);
