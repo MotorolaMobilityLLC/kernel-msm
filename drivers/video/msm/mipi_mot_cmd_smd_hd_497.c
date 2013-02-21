@@ -70,6 +70,12 @@ static struct dsi_cmd_desc acl_enable_disable[] = {
 static struct dsi_cmd_desc smd_hd_497_init_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
 		sizeof(exit_sleep), exit_sleep},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(unlock_lvl_2), unlock_lvl_2},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(unlock_lvl_mtp), unlock_lvl_mtp},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
+	 sizeof(unlock_lvl_3), unlock_lvl_3},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, DEFAULT_DELAY,
 	 sizeof(enable_te), enable_te},
 	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
@@ -98,12 +104,6 @@ static struct dsi_cmd_desc mot_display_off_cmds[] = {
 };
 
 static struct dsi_cmd_desc set_mtp_read_off[] = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(unlock_lvl_2), unlock_lvl_2},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(unlock_lvl_mtp), unlock_lvl_mtp},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(unlock_lvl_3), unlock_lvl_3},
 	{DTYPE_DCS_WRITE, 1, 0, 0, DEFAULT_DELAY,
 	 sizeof(mtp_read_off), mtp_read_off}
 };
