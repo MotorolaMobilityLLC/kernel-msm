@@ -31,6 +31,8 @@ static char  set_reg_offset_0[2] = {DCS_CMD_SET_OFFSET, 0x0};
 static char  set_reg_offset_8[2] = {DCS_CMD_SET_OFFSET, 0x8};
 static char  set_reg_offset_16[2] = {DCS_CMD_SET_OFFSET, 0x10};
 static char exit_sleep[2] = {DCS_CMD_EXIT_SLEEP_MODE, 0x00};
+static char set_tear_on[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
+static char set_tear_off[1] = {DCS_CMD_SET_TEAR_OFF};
 
 static struct dsi_cmd_desc mot_manufacture_id_cmd = {
 	DTYPE_DCS_READ, 1, 0, 1, 0, sizeof(manufacture_id), manufacture_id};
@@ -72,6 +74,14 @@ static struct dsi_cmd_desc set_offset_cmd[] = {
 
 static struct dsi_cmd_desc mot_display_exit_sleep_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 120, sizeof(exit_sleep), exit_sleep},
+};
+
+static struct dsi_cmd_desc mot_display_set_tear_on_cmds[] = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 1, sizeof(set_tear_on), set_tear_on},
+};
+
+static struct dsi_cmd_desc mot_display_set_tear_off_cmds[] = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 1, sizeof(set_tear_off), set_tear_off},
 };
 
 static u8 panel_raw_mtp[RAW_MTP_SIZE];
@@ -497,6 +507,23 @@ int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide)
 	return 0;
 }
 
+
+void mipi_mot_set_tear(struct msm_fb_data_type *mfd, int on)
+{
+	mutex_lock(&mfd->dma->ov_mutex);
+	if ((mfd->op_enable != 0) && (mfd->panel_power_on != 0)) {
+		pr_debug("%s: setting tear, on = %d\n", __func__, on);
+		mipi_set_tx_power_mode(0);
+		if (on)
+			mipi_mot_tx_cmds(&mot_display_set_tear_on_cmds[0],
+				ARRAY_SIZE(mot_display_set_tear_on_cmds));
+		else
+			mipi_mot_tx_cmds(&mot_display_set_tear_off_cmds[0],
+				ARRAY_SIZE(mot_display_set_tear_off_cmds));
+	}
+	mutex_unlock(&mfd->dma->ov_mutex);
+}
+
 int __init moto_panel_debug_init(void)
 {
 	struct dentry *panel_root;
@@ -510,3 +537,4 @@ int __init moto_panel_debug_init(void)
 
 	return 0;
 }
+

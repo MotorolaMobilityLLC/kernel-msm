@@ -750,6 +750,7 @@ void mdp_vsync_cfg_regs(struct msm_fb_data_type *mfd,
 void mdp_config_vsync(struct platform_device *pdev,
 	struct msm_fb_data_type *mfd);
 uint32 mdp_get_lcd_line_counter(struct msm_fb_data_type *mfd);
+uint32 mdp_get_frame_counter(void);
 enum hrtimer_restart mdp_dma2_vsync_hrtimer_handler(struct hrtimer *ht);
 void mdp_set_scale(MDPIBUF *iBuf,
 		   uint32 dst_roi_width,
