@@ -47,6 +47,7 @@
 #define MDP_VSYNC_SEL		0x124
 #define MDP_PRIM_VSYNC_INIT_VAL	0x128
 #define MDP_SEC_VSYNC_INIT_VAL	0x12C
+#define MDP_PRIM_INT_CNT_VAL	0x140
 #else
 #define MDP_SYNC_CFG_0		0x300
 #define MDP_SYNC_STATUS_0	0x30c
@@ -501,4 +502,17 @@ uint32 mdp_get_lcd_line_counter(struct msm_fb_data_type *mfd)
 	}
 
 	return lcd_line;
+}
+
+uint32 mdp_get_frame_counter(void)
+{
+	uint32 frame_count = 0;
+
+#ifdef CONFIG_FB_MSM_MDP40
+	mdp_clk_ctrl(1);
+	frame_count = inpdw(MDP_BASE + MDP_PRIM_INT_CNT_VAL) & 0xFFF0000;
+	frame_count >>= 16;
+	mdp_clk_ctrl(0);
+#endif
+	return frame_count;
 }

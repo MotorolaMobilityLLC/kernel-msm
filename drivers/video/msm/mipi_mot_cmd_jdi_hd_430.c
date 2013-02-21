@@ -149,6 +149,7 @@ static int __init mipi_mot_cmd_jdi_hd_430_init(void)
 
 	mot_panel->acl_support_present = false;
 	mot_panel->acl_enabled = FALSE; /* By default the ACL is disabled. */
+	mot_panel->enable_te = mipi_mot_set_tear;
 
 	mot_panel->elvss_tth_support_present = false;
 
