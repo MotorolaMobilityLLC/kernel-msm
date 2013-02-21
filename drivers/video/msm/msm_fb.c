@@ -1713,6 +1713,7 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 static int msm_fb_open(struct fb_info *info, int user)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+	bool unblank = true;
 	int result;
 
 	result = pm_runtime_get_sync(info->dev);
@@ -1734,9 +1735,15 @@ static int msm_fb_open(struct fb_info *info, int user)
 			pr_debug("%s:%d no mdp_set_dma_pan_info %d\n",
 				__func__, __LINE__, info->node);
 
+		if (mfd->is_panel_ready && !mfd->is_panel_ready())
+			unblank = false;
+
+		if (unblank) {
 		if (msm_fb_blank_sub(FB_BLANK_UNBLANK, info, TRUE)) {
-			printk(KERN_ERR "msm_fb_open: can't turn on display!\n");
-			return -1;
+				MSM_FB_ERR("%s: can't turn on display!\n",
+					__func__);
+				return -EPERM;
+			}
 		}
 	}
 
@@ -2152,12 +2159,6 @@ static int msm_fb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	if ((var->xres == 0) || (var->yres == 0))
 		return -EINVAL;
 
-	if ((var->xres > MAX(mfd->panel_info.xres,
-			     mfd->panel_info.mode2_xres)) ||
-		(var->yres > MAX(mfd->panel_info.yres,
-				 mfd->panel_info.mode2_yres)))
-		return -EINVAL;
-
 	if (var->xoffset > (var->xres_virtual - var->xres))
 		return -EINVAL;
 
@@ -2241,6 +2242,10 @@ static int msm_fb_set_par(struct fb_info *info)
 
 	if (blank) {
 		msm_fb_blank_sub(FB_BLANK_POWERDOWN, info, mfd->op_enable);
+
+		if (mfd->update_panel_info)
+			mfd->update_panel_info(mfd);
+
 		msm_fb_blank_sub(FB_BLANK_UNBLANK, info, mfd->op_enable);
 	}
 
@@ -3568,6 +3573,10 @@ static int msmfb_handle_pp_ioctl(struct msm_fb_data_type *mfd,
 		ret = mdp4_qseed_cfg((struct mdp_qseed_cfg_data *)
 						&pp_ptr->data.qseed_cfg_data);
 		break;
+	case mdp_op_calib_cfg:
+		ret = mdp4_calib_config((struct mdp_calib_config_data *)
+						&pp_ptr->data.calib_cfg);
+		break;
 #endif
 	case mdp_bl_scale_cfg:
 		ret = mdp_bl_scale_config(mfd, (struct mdp_bl_scale_data *)
@@ -4004,6 +4013,8 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			return ret;
 
 		ret = msmfb_handle_pp_ioctl(mfd, &mdp_pp);
+		if (ret == 1)
+			ret = copy_to_user(argp, &mdp_pp, sizeof(mdp_pp));
 		break;
 	case MSMFB_BUFFER_SYNC:
 		ret = copy_from_user(&buf_sync, argp, sizeof(buf_sync));

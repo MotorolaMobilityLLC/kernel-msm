@@ -1985,6 +1985,11 @@ u32 vcd_handle_input_done(
 	orig_frame = vcd_find_buffer_pool_entry(&cctxt->in_buf_pool,
 					 transc->ip_buf_entry->virtual);
 
+	if (!orig_frame) {
+		rc = VCD_ERR_ILLEGAL_PARM;
+		VCD_FAILED_RETURN(rc, "Couldn't find buffer");
+	}
+
 	if ((transc->ip_buf_entry->frame.virtual !=
 		 frame->vcd_frm.virtual)
 		|| !transc->ip_buf_entry->in_use) {
@@ -2308,10 +2313,12 @@ u32 vcd_handle_frame_done(
 	op_frm->vcd_frm.time_stamp = transc->time_stamp;
 	op_frm->vcd_frm.ip_frm_tag = transc->ip_frm_tag;
 
-	if (transc->flags & VCD_FRAME_FLAG_EOSEQ)
-		op_frm->vcd_frm.flags |= VCD_FRAME_FLAG_EOSEQ;
-	else
-		op_frm->vcd_frm.flags &= ~VCD_FRAME_FLAG_EOSEQ;
+	if (!(op_frm->vcd_frm.flags & VCD_FRAME_FLAG_EOSEQ)) {
+		if (transc->flags & VCD_FRAME_FLAG_EOSEQ)
+			op_frm->vcd_frm.flags |= VCD_FRAME_FLAG_EOSEQ;
+		else
+			op_frm->vcd_frm.flags &= ~VCD_FRAME_FLAG_EOSEQ;
+	}
 
 	if (cctxt->decoding)
 		op_frm->vcd_frm.frame = transc->frame;

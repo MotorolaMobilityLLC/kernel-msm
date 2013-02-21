@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -245,16 +245,6 @@ struct pm8xxx_adc_linear_graph {
 struct pm8xxx_adc_map_pt {
 	int32_t x;
 	int32_t y;
-};
-
-/**
- * struct pm8xxx_adc_map - container of pm8xxx_adc_map_pt
- * @pt: pointer of pm8xxx_adc_map_pt
- * @size: size of pm8xxx_adc_map_pt
- */
-struct pm8xxx_adc_map {
-	struct pm8xxx_adc_map_pt *pt;
-	int size;
 };
 
 /**
@@ -623,21 +613,6 @@ uint32_t pm8xxx_adc_btm_end(void);
  *			events are triggered.
  */
 uint32_t pm8xxx_adc_btm_configure(struct pm8xxx_adc_arb_btm_param *);
-
-/**
- * pm8xxx_set_adcmap_btm_threshold()
- */
-void pm8xxx_set_adcmap_btm_threshold(void *pts, int size);
-
-/**
- * pm8xxx_set_adcmap_pa_therm()
- */
-void pm8xxx_set_adcmap_pa_therm(void *pts, int size);
-
-/**
- * pm8xxx_st_adcmap_ntcg_104ef_104fb()
- */
-void pm8xxx_set_adcmap_ntcg_104ef_104fb(void *pts, int size);
 #else
 static inline uint32_t pm8xxx_adc_read(uint32_t channel,
 				struct pm8xxx_adc_chan_result *result)
@@ -653,9 +628,6 @@ static inline uint32_t pm8xxx_adc_btm_end(void)
 static inline uint32_t pm8xxx_adc_btm_configure(
 		struct pm8xxx_adc_arb_btm_param *param)
 { return -ENXIO; }
-static inline void pm8xxx_set_adcmap_btm_threshold(void) { }
-static inline void pm8xxx_set_adcmap_pa_therm(void) { }
-static inline void pm8xxx_set_adcmap_ntcg_104ef_104fb(void) { }
 #endif
 
 #endif /* PM8XXX_ADC_H */

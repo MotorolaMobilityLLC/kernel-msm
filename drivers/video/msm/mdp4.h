@@ -1,4 +1,5 @@
-/* Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+/*
+ * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -33,7 +34,6 @@ extern u64 mdp_max_bw;
 #define MDP4_BW_AB_FACTOR (115)	/* 1.15 */
 #define MDP4_BW_IB_FACTOR (125)	/* 1.25 */
 #define MDP_BUS_SCALE_AB_STEP (0x4000000)
-#define MDP_BUS_SCALE_INIT (0x10000000)
 
 #define WAIT_TOUT       (HZ/2) /* 500smec */
 
@@ -922,6 +922,7 @@ int mdp4_csc_enable(struct mdp_csc_cfg_data *config);
 int mdp4_pcc_cfg(struct mdp_pcc_cfg_data *cfg_ptr);
 int mdp4_argc_cfg(struct mdp_pgc_lut_data *pgc_ptr);
 int mdp4_qseed_cfg(struct mdp_qseed_cfg_data *cfg);
+int mdp4_calib_config(struct mdp_calib_config_data *cfg);
 int mdp4_qseed_access_cfg(struct mdp_qseed_cfg *cfg, uint32_t base);
 u32  mdp4_allocate_writeback_buf(struct msm_fb_data_type *mfd, u32 mix_num);
 void mdp4_init_writeback_buf(struct msm_fb_data_type *mfd, u32 mix_num);

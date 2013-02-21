@@ -4105,6 +4105,7 @@ static struct clk_freq_tbl clk_tbl_tv[] = {
 	F_TV( 27000000, hdmi_pll,  27000000, 1, 0, 0),
 	F_TV( 27030000, hdmi_pll,  27030000, 1, 0, 0),
 	F_TV( 74250000, hdmi_pll,  74250000, 1, 0, 0),
+	F_TV(108000000, hdmi_pll, 108000000, 1, 0, 0),
 	F_TV(148500000, hdmi_pll, 148500000, 1, 0, 0),
 	F_END
 };
@@ -6377,12 +6378,12 @@ static void __init reg_init(void)
 	 */
 	/*
 	 * Initialize MM AHB registers: Enable the FPB clock and disable HW
-	 * gating on 8627, 8960 and 8930ab for all clocks. Also set VFE_AHB's
+	 * gating on 8627 and 8930ab for all clocks. Also set VFE_AHB's
 	 * FORCE_CORE_ON bit to prevent its memory from being collapsed when
 	 * the clock is halted. The sleep and wake-up delays are set to safe
 	 * values.
 	 */
-	if (cpu_is_msm8627() || cpu_is_msm8960ab() || cpu_is_msm8930ab()) {
+	if (cpu_is_msm8627() || cpu_is_msm8930ab()) {
 		rmwreg(0x00000003, AHB_EN_REG,  0x6C000103);
 		writel_relaxed(0x000007F9, AHB_EN2_REG);
 	} else {
@@ -6400,7 +6401,7 @@ static void __init reg_init(void)
 	/* Initialize MM AXI registers: Enable HW gating for all clocks that
 	 * support it. Also set FORCE_CORE_ON bits, and any sleep and wake-up
 	 * delays to safe values. */
-	if (cpu_is_msm8960ab() || (cpu_is_msm8960() &&
+	if ((cpu_is_msm8960() &&
 			SOCINFO_VERSION_MAJOR(socinfo_get_version()) < 3) ||
 			cpu_is_msm8627() || cpu_is_msm8930ab()) {
 		rmwreg(0x000007F9, MAXI_EN_REG,  0x0803FFFF);
@@ -6423,8 +6424,6 @@ static void __init reg_init(void)
 
 	if (cpu_is_msm8627() || cpu_is_msm8930ab())
 		rmwreg(0x000003C7, SAXI_EN_REG,  0x00003FFF);
-	else if (cpu_is_msm8960ab())
-		rmwreg(0x000001C6, SAXI_EN_REG,  0x00001DF6);
 	else
 		rmwreg(0x00003C38, SAXI_EN_REG,  0x00003FFF);
 
