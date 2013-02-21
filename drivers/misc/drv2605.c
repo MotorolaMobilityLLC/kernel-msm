@@ -181,6 +181,7 @@ static struct vibrator {
 	struct mutex lock;
 	struct work_struct work;
 	struct work_struct work_play_eff;
+	struct work_struct work_probe;
 	unsigned char sequence[8];
 	volatile int should_stop;
 } vibdata;
@@ -576,10 +577,12 @@ static void drv260x_update_init_sequence(unsigned char *seq, int size,
 	}
 }
 
+static void drv260x_exit(void);
+static void probe_work(struct work_struct *work);
+
 static int drv260x_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)
 {
-	char status;
 	struct drv260x_platform_data *pdata = NULL;
 
 	if (client->dev.of_node)
@@ -620,23 +623,32 @@ static int drv260x_probe(struct i2c_client *client,
 	else
 		drv260x->rated_voltage = ERM_RATED_VOLTAGE;
 
-	drv260x_update_init_sequence(ERM_autocal_sequence,
-					sizeof(ERM_autocal_sequence),
-					RATED_VOLTAGE_REG,
-					pdata->rated_voltage);
-	drv260x_update_init_sequence(LRA_autocal_sequence,
-					sizeof(LRA_autocal_sequence),
-					RATED_VOLTAGE_REG,
-					pdata->rated_voltage);
-	drv260x_update_init_sequence(LRA_init_sequence,
-					sizeof(LRA_init_sequence),
-					RATED_VOLTAGE_REG,
-					pdata->rated_voltage);
-
 	if (pdata->overdrive_voltage)
 		drv260x->overdrive_voltage = pdata->overdrive_voltage;
 	else
 		drv260x->overdrive_voltage = ERM_OVERDRIVE_CLAMP_VOLTAGE;
+
+	INIT_WORK(&vibdata.work_probe, probe_work);
+	schedule_work(&vibdata.work_probe);
+	return 0;
+}
+
+static void probe_work(struct work_struct *work)
+{
+	char status;
+
+	drv260x_update_init_sequence(ERM_autocal_sequence,
+					sizeof(ERM_autocal_sequence),
+					RATED_VOLTAGE_REG,
+					drv260x->rated_voltage);
+	drv260x_update_init_sequence(LRA_autocal_sequence,
+					sizeof(LRA_autocal_sequence),
+					RATED_VOLTAGE_REG,
+					drv260x->rated_voltage);
+	drv260x_update_init_sequence(LRA_init_sequence,
+					sizeof(LRA_init_sequence),
+					RATED_VOLTAGE_REG,
+					drv260x->rated_voltage);
 
 	drv260x_update_init_sequence(ERM_autocal_sequence,
 					sizeof(ERM_autocal_sequence),
@@ -723,12 +735,13 @@ static int drv260x_probe(struct i2c_client *client,
 
 	if (timed_output_dev_register(&to_dev) < 0) {
 		printk(KERN_ALERT "drv260x: fail to create timed output dev\n");
-		return -ENODEV;
+		drv260x_exit();
+		/* return -ENODEV; */
+		return;
 	}
 
-	printk(KERN_ALERT "drv260x probe succeeded");
-	printk(KERN_ALERT "drv260x driver version: " DRIVER_VERSION);
-	return 0;
+	printk(KERN_ALERT "drv260x probe work succeeded");
+	return;
 }
 
 static int drv260x_remove(struct i2c_client *client)
