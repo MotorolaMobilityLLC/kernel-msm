@@ -76,6 +76,8 @@
 
 #define LP8556_MAX_BRIGHTNESS	255
 
+#define LCD_BACKLIGHT "lcd-backlight"
+
 static const unsigned short normal_i2c[] = { LP8556_I2C_ADDRESS,
 					     I2C_CLIENT_END };
 
@@ -560,7 +562,7 @@ static int __devinit lp8556_probe(struct i2c_client *client,
 
 	led_data->client = client;
 
-	led_data->led_dev.name = "lcd-backlight";
+	led_data->led_dev.name = LCD_BACKLIGHT;
 	led_data->led_dev.brightness_set = lp8556_brightness_set;
 	led_data->pdata = pdata;
 
@@ -620,7 +622,7 @@ static int __devinit lp8556_probe(struct i2c_client *client,
 		goto err_classdev_failed;
 	}
 
-	led_data->bl_dev = backlight_device_register("lp_8556",
+	led_data->bl_dev = backlight_device_register(LCD_BACKLIGHT,
 				&client->dev, led_data, &lp8556_bl_ops, NULL);
 
 	if (IS_ERR(led_data->bl_dev)) {
