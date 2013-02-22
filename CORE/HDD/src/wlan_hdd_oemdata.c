@@ -137,6 +137,13 @@ int iw_get_oem_data_rsp(
 
     hdd_adapter_t *pAdapter = (netdev_priv(dev));
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!",__func__);
+       return -EBUSY;
+    }
+
     do
     {
         //get the oem data response from sme
@@ -196,6 +203,12 @@ int iw_set_oem_data_req(
     hdd_adapter_t *pAdapter = (netdev_priv(dev));
     hdd_wext_state_t *pwextBuf = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!",__func__);
+       return -EBUSY;
+    }
 
     do
     {
