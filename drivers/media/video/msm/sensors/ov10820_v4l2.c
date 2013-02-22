@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 #include "msm_sensor.h"
+#include "msm.h"
 #include "ov660_v4l2.h"
 #include <linux/regulator/consumer.h>
 
@@ -31,6 +32,7 @@ static struct regulator *cam_dvdd;
 
 DEFINE_MUTEX(ov10820_mut);
 static struct msm_sensor_ctrl_t ov10820_s_ctrl;
+static bool ov660_exists;
 
 static struct msm_cam_clk_info cam_mot_8960_clk_info[] = {
 	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
@@ -53,7 +55,46 @@ static struct msm_camera_i2c_reg_conf ov10820_groupoff_settings[] = {
 	{0x3208, 0xA0},
 };
 
-static struct msm_camera_i2c_reg_conf ov10820_snap_settings[] = {
+static struct msm_camera_i2c_reg_conf ov10820_full_settings[] = {
+	{0x3720, 0x30},
+	{0x372a, 0x00},
+	{0x370a, 0x21},
+	{0x380a, 0x09},
+	{0x380b, 0x80},
+	{0x380e, 0x0a},
+	{0x380f, 0x38},
+	{0x3811, 0x11},
+	{0x3813, 0x10},
+	{0x3815, 0x11},
+	{0x3820, 0x00},
+	{0x3501, 0xa1},
+	{0x3502, 0x80},
+	{0x4001, 0x08},
+	{0x4003, 0x30},
+	{0x402a, 0x0c},
+	{0x402b, 0x08},
+	{0x402e, 0x1c},
+};
+
+static struct msm_camera_i2c_reg_conf ov10820_qtr_settings[] = {
+	{0x3720, 0x60},
+	{0x372a, 0x08},
+	{0x370a, 0x23},
+	{0x380a, 0x04},
+	{0x380b, 0xc0},
+	{0x380e, 0x05},
+	{0x380f, 0x1c},
+	{0x3811, 0x10},
+	{0x3813, 0x08},
+	{0x3815, 0x22},
+	{0x3820, 0x02},
+	{0x3501, 0x4f},
+	{0x3502, 0xc0},
+	{0x4001, 0x00},
+	{0x4003, 0x1c},
+	{0x402a, 0x0a},
+	{0x402b, 0x06},
+	{0x402e, 0x14},
 };
 
 static struct msm_camera_i2c_reg_conf ov10820_reset_settings[] = {
@@ -297,20 +338,31 @@ static struct msm_camera_i2c_conf_array ov10820_init_conf[] = {
 };
 
 static struct msm_camera_i2c_conf_array ov10820_confs[] = {
-	{&ov10820_snap_settings[0],
-		ARRAY_SIZE(ov10820_snap_settings), 0, MSM_CAMERA_I2C_BYTE_DATA},
+	{&ov10820_full_settings[0],
+		ARRAY_SIZE(ov10820_full_settings), 0, MSM_CAMERA_I2C_BYTE_DATA},
+	{&ov10820_qtr_settings[0],
+		ARRAY_SIZE(ov10820_qtr_settings), 0, MSM_CAMERA_I2C_BYTE_DATA},
 };
 
-/* vt_pixel_clk==pll sys clk, op_?pixel_clk==mipi clk */
+/* vt_pixel_clk==pll sys clk, op_pixel_clk==mipi clk */
 static struct msm_sensor_output_info_t ov10820_dimensions[] = {
 	{
-		.x_output = 0x10E0,
-		.y_output = 0x0980,
-		.line_length_pclk = 0xa28,
-		.frame_length_lines = 0xa38,
+		.x_output = 0x10E0,/*4320*/
+		.y_output = 0x0980,/*2432*/
+		.line_length_pclk = 0xa09, /*2569*/
+		.frame_length_lines = 0xa38,/*2616*/
 		.vt_pixel_clk = 200000000,
 		.op_pixel_clk = 320000000,
 		.binning_factor = 1,
+	},
+	{
+		.x_output = 0x870,/*2160*/
+		.y_output = 0x4c0,/*1216*/
+		.line_length_pclk = 0x1506,/*5382*/
+		.frame_length_lines = 0x51c, /*1308*/
+		.vt_pixel_clk = 63000000,
+		.op_pixel_clk = 264000000,
+		.binning_factor = 2,
 	},
 };
 
@@ -373,6 +425,32 @@ static int32_t ov10820_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 	}
 
 	return 0;
+}
+
+static int32_t ov10820_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
+			int update_type, int res)
+{
+	int32_t rc = 0;
+
+	if (update_type == MSM_SENSOR_REG_INIT) {
+		s_ctrl->func_tbl->sensor_stop_stream(s_ctrl);
+		msm_sensor_write_init_settings(s_ctrl);
+	} else if (update_type == MSM_SENSOR_UPDATE_PERIODIC) {
+		if (ov660_exists) {
+			rc = ov660_set_sensor_mode(res);
+			if (rc < 0)
+				return rc;
+		}
+		rc = msm_sensor_write_conf_array(
+				s_ctrl->sensor_i2c_client,
+				s_ctrl->msm_sensor_reg->mode_settings, res);
+		if (rc < 0)
+			return rc;
+		v4l2_subdev_notify(&s_ctrl->sensor_v4l2_subdev,
+			NOTIFY_PCLK_CHANGE, &s_ctrl->msm_sensor_reg->
+			output_settings[res].op_pixel_clk);
+	}
+	return rc;
 }
 
 static int32_t ov10820_regulator_on(struct regulator **reg,
@@ -612,7 +690,7 @@ static struct msm_camera_i2c_client ov10820_sensor_i2c_client = {
 	.addr_type = MSM_CAMERA_I2C_WORD_ADDR,
 };
 
-static int32_t check_i2c_configuration(struct msm_sensor_ctrl_t *s_ctrl)
+static int32_t ov10820_check_i2c_configuration(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
 	uint16_t chipid = 0;
@@ -625,7 +703,7 @@ static int32_t check_i2c_configuration(struct msm_sensor_ctrl_t *s_ctrl)
 			MSM_CAMERA_I2C_BYTE_DATA);
 
 	if (rc < 0) {
-		pr_debug("%s: I2C is configured through ASIC.\n", __func__);
+		pr_info("%s: I2C is configured through ASIC.\n", __func__);
 		allow_asic_control = true;
 
 		rc = ov660_add_blc_firmware(s_ctrl->sensor_i2c_addr);
@@ -633,7 +711,7 @@ static int32_t check_i2c_configuration(struct msm_sensor_ctrl_t *s_ctrl)
 			pr_err("%s: Unable to set blc firmware!\n", __func__);
 
 	} else {
-		pr_debug("%s: I2C is configured around ASIC.\n", __func__);
+		pr_info("%s: I2C is configured around ASIC.\n", __func__);
 		allow_asic_control = false;
 		rc = ov660_use_work_around_blc();
 
@@ -658,7 +736,6 @@ static int32_t ov10820_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
 	uint16_t chipid = 0;
-	int32_t ov660_exists = 0;
 	struct msm_camera_sensor_info *info = s_ctrl->sensordata;
 
 	if (!info->oem_data) {
@@ -667,8 +744,9 @@ static int32_t ov10820_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 		return -EINVAL;
 	}
 
-	ov660_exists = ov660_check_probe();
-	if (ov660_exists == 0) {
+	if (ov660_check_probe() >= 0)
+		ov660_exists = true;
+	if (ov660_exists) {
 		ov660_intialize_10MP();
 		usleep(10000);
 	}
@@ -708,11 +786,11 @@ check_chipid:
 
 	/* Need to determine when to apply BLC firmware fix
 	 * or when to use the old method of blc work around fix */
-	check_i2c_configuration(s_ctrl);
+	ov10820_check_i2c_configuration(s_ctrl);
 
 	pr_debug("%s: success and using i2c address of: %x\n", __func__,
 			s_ctrl->sensor_i2c_client->client->addr);
-	if ((ov660_exists != 0) &&
+	if ((!ov660_exists) &&
 			(info->oem_data->sensor_allow_asic_bypass != 1)) {
 		pr_err("%s: detected 10mp, but asic not working!\n",
 				__func__);
@@ -750,7 +828,7 @@ static struct msm_sensor_fn_t ov10820_func_tbl = {
 	.sensor_set_fps                 = msm_sensor_set_fps,
 	.sensor_write_exp_gain          = ov10820_write_exp_gain,
 	.sensor_write_snapshot_exp_gain = ov10820_write_exp_gain,
-	.sensor_setting                 = msm_sensor_setting,
+	.sensor_setting                 = ov10820_sensor_setting,
 	.sensor_set_sensor_mode         = msm_sensor_set_sensor_mode,
 	.sensor_mode_init               = msm_sensor_mode_init,
 	.sensor_get_output_info         = msm_sensor_get_output_info,

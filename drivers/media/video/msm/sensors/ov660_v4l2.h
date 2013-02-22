@@ -40,6 +40,7 @@ struct ov660_reg_i2c_tbl {
 
 extern bool allow_asic_control;
 
+extern int32_t ov660_set_sensor_mode(int mode);
 extern int32_t ov660_set_exposure_gain(uint16_t gain, uint32_t line);
 extern int32_t ov660_set_i2c_bypass(int bypassOn);
 extern int32_t ov660_add_blc_firmware(uint16_t addr);
