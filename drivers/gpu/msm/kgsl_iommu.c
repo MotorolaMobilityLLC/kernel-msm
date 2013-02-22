@@ -110,7 +110,8 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 	struct kgsl_iommu_device *iommu_dev;
 	unsigned int ptbase, fsr;
 	struct kgsl_device *device;
-	unsigned int no_page_fault_log;
+	struct adreno_device *adreno_dev;
+	unsigned int no_page_fault_log = 0;
 
 	ret = get_iommu_unit(dev, &mmu, &iommu_unit);
 	if (ret)
@@ -123,6 +124,7 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 	}
 	iommu = mmu->priv;
 	device = mmu->device;
+	adreno_dev = ADRENO_DEVICE(device);
 
 	ptbase = KGSL_IOMMU_GET_CTX_REG(iommu, iommu_unit,
 					iommu_dev->ctx_id, TTBR0);
@@ -130,7 +132,8 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 	fsr = KGSL_IOMMU_GET_CTX_REG(iommu, iommu_unit,
 		iommu_dev->ctx_id, FSR);
 
-	no_page_fault_log = kgsl_mmu_log_fault_addr(mmu, ptbase, addr);
+	if (adreno_dev->ft_pf_policy & KGSL_FT_PAGEFAULT_LOG_ONE_PER_PAGE)
+		no_page_fault_log = kgsl_mmu_log_fault_addr(mmu, ptbase, addr);
 
 	if (!no_page_fault_log) {
 		KGSL_MEM_CRIT(iommu_dev->kgsldev,
@@ -152,7 +155,8 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 	 * the GPU and trigger a snapshot. To stall the transaction return
 	 * EBUSY error.
 	 */
-	ret = -EBUSY;
+	if (adreno_dev->ft_pf_policy & KGSL_FT_PAGEFAULT_GPUHALT_ENABLE)
+		ret = -EBUSY;
 done:
 	return ret;
 }
