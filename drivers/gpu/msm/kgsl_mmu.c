@@ -359,11 +359,11 @@ kgsl_mmu_log_fault_addr(struct kgsl_mmu *mmu, unsigned int pt_base,
 	spin_lock(&kgsl_driver.ptlock);
 	list_for_each_entry(pt, &kgsl_driver.pagetable_list, list) {
 		if (mmu->mmu_ops->mmu_pt_equal(mmu, pt, pt_base)) {
-			if ((addr & PAGE_SIZE) == pt->fault_addr) {
+			if ((addr & (PAGE_SIZE-1)) == pt->fault_addr) {
 				ret = 1;
 				break;
 			} else {
-				pt->fault_addr = (addr & PAGE_SIZE);
+				pt->fault_addr = (addr & (PAGE_SIZE-1));
 				ret = 0;
 				break;
 			}
@@ -481,6 +481,7 @@ static struct kgsl_pagetable *kgsl_mmu_createpagetableobject(
 
 	pagetable->name = name;
 	pagetable->max_entries = KGSL_PAGETABLE_ENTRIES(ptsize);
+	pagetable->fault_addr = 0xFFFFFFFF;
 
 	/*
 	 * create a separate kgsl pool for IOMMU, global mappings can be mapped
