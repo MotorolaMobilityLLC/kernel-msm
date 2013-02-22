@@ -216,6 +216,10 @@ static inline int pm8921_bms_get_fcc(void)
 {
 	return -ENXIO;
 }
+static inline int pm8921_bms_get_cc_uah(int *result)
+{
+	return -ENXIO;
+}
 static inline int pm8921_bms_get_aged_capacity(int *result)
 {
 	return -ENXIO;
