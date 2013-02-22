@@ -46,7 +46,7 @@
 #define KGSL_STATE_SLEEP	0x00000008
 #define KGSL_STATE_SUSPEND	0x00000010
 #define KGSL_STATE_HUNG		0x00000020
-#define KGSL_STATE_DUMP_AND_RECOVER	0x00000040
+#define KGSL_STATE_DUMP_AND_FT	0x00000040
 #define KGSL_STATE_SLUMBER	0x00000080
 
 #define KGSL_GRAPHICS_MEMORY_LOW_WATERMARK  0x1000000
@@ -169,7 +169,7 @@ struct kgsl_device {
 	wait_queue_head_t wait_queue;
 	struct workqueue_struct *work_queue;
 	struct device *parentdev;
-	struct completion recovery_gate;
+	struct completion ft_gate;
 	struct dentry *d_debugfs;
 	struct idr context_idr;
 	struct early_suspend display_off;
@@ -195,6 +195,7 @@ struct kgsl_device {
 	int drv_log;
 	int mem_log;
 	int pwr_log;
+	int ft_log;
 	struct kgsl_pwrscale pwrscale;
 	struct kobject pwrscale_kobj;
 	struct pm_qos_request pm_qos_req_dma;
@@ -214,7 +215,7 @@ void kgsl_check_fences(struct work_struct *work);
 #define KGSL_DEVICE_COMMON_INIT(_dev) \
 	.hwaccess_gate = COMPLETION_INITIALIZER((_dev).hwaccess_gate),\
 	.suspend_gate = COMPLETION_INITIALIZER((_dev).suspend_gate),\
-	.recovery_gate = COMPLETION_INITIALIZER((_dev).recovery_gate),\
+	.ft_gate = COMPLETION_INITIALIZER((_dev).ft_gate),\
 	.ts_notifier_list = ATOMIC_NOTIFIER_INIT((_dev).ts_notifier_list),\
 	.idle_check_ws = __WORK_INITIALIZER((_dev).idle_check_ws,\
 			kgsl_idle_check),\

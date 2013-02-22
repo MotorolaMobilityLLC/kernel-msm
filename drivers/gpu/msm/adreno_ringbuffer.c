@@ -129,7 +129,7 @@ adreno_ringbuffer_waitspace(struct adreno_ringbuffer *rb,
 		continue;
 
 err:
-		if (!adreno_dump_and_recover(rb->device)) {
+		if (!adreno_dump_and_exec_ft(rb->device)) {
 			if (context && context->flags & CTXT_FLAGS_GPU_HANG) {
 				KGSL_CTXT_WARN(rb->device,
 				"Context %p caused a gpu hang. Will not accept commands for context %d\n",
@@ -138,7 +138,7 @@ err:
 			}
 			wait_time = jiffies + wait_timeout;
 		} else {
-			/* GPU is hung and we cannot recover */
+			/* GPU is hung and fault tolerance failed */
 			BUG();
 		}
 	}
@@ -572,7 +572,7 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	if (adreno_is_a3xx(adreno_dev))
 		total_sizedwords += 7;
 
-	total_sizedwords += 2; /* scratchpad ts for recovery */
+	total_sizedwords += 2; /* scratchpad ts for fault tolerance */
 	if (context && context->flags & CTXT_FLAGS_PER_CONTEXT_TS &&
 			!(flags & KGSL_CMD_FLAGS_INTERNAL_ISSUE)) {
 		total_sizedwords += 3; /* sop timestamp */
@@ -580,7 +580,7 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 		total_sizedwords += 3; /* global timestamp without cache
 					* flush for non-zero context */
 	} else {
-		total_sizedwords += 4; /* global timestamp for recovery*/
+		total_sizedwords += 4; /* global timestamp for fault tolerance*/
 	}
 
 	ringcmds = adreno_ringbuffer_allocspace(rb, context, total_sizedwords);
@@ -632,7 +632,7 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	}
 	timestamp = rb->timestamp[context_id];
 
-	/* scratchpad ts for recovery */
+	/* scratchpad ts for fault tolerance */
 	GSL_RB_WRITE(ringcmds, rcmd_gpu, cp_type0_packet(REG_CP_TIMESTAMP, 1));
 	GSL_RB_WRITE(ringcmds, rcmd_gpu, rb->timestamp[KGSL_MEMSTORE_GLOBAL]);
 
@@ -958,7 +958,7 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 	drawctxt = context->devctxt;
 
 	if (drawctxt->flags & CTXT_FLAGS_GPU_HANG) {
-		KGSL_CTXT_ERR(device, "Context %p caused a gpu hang.."
+		KGSL_CTXT_ERR(device, "Context %p failed fault tolerance"
 			" will not accept commands for context %d\n",
 			drawctxt, drawctxt->id);
 		return -EDEADLK;
@@ -966,7 +966,7 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 
 	if (drawctxt->flags & CTXT_FLAGS_SKIP_EOF) {
 		KGSL_CTXT_ERR(device,
-			"Context %p caused a gpu hang.."
+			"Context %p triggered fault tolerance"
 			" skipping commands for context till EOF %d\n",
 			drawctxt, drawctxt->id);
 		if (flags & KGSL_CMD_FLAGS_EOF)
@@ -1040,11 +1040,14 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 	adreno_idle(device);
 #endif
 
-	/* If context hung and recovered then return error so that the
-	 * application may handle it */
-	if (drawctxt->flags & CTXT_FLAGS_GPU_HANG_RECOVERED)
-		return -EAGAIN;
-	else
+	/*
+	 * If context hung and recovered then return error so that the
+	 * application may handle it
+	 */
+	if (drawctxt->flags & CTXT_FLAGS_GPU_HANG_FT) {
+		drawctxt->flags &= ~CTXT_FLAGS_GPU_HANG_FT;
+		return -EPROTO;
+	} else
 		return 0;
 }
 
@@ -1070,7 +1073,7 @@ static void _turn_preamble_on_for_ib_seq(struct adreno_ringbuffer *rb,
 				kgsl_sharedmem_writel(&rb->buffer_desc,
 					temp_rb_rptr, cp_nop_packet(1));
 			}
-			KGSL_DRV_ERR(rb->device,
+			KGSL_FT_INFO(rb->device,
 			"Turned preamble on at offset 0x%x\n",
 			temp_rb_rptr / 4);
 			break;
@@ -1093,10 +1096,10 @@ static void _turn_preamble_on_for_ib_seq(struct adreno_ringbuffer *rb,
 }
 
 void adreno_ringbuffer_extract(struct adreno_ringbuffer *rb,
-				struct adreno_recovery_data *rec_data)
+				struct adreno_ft_data *ft_data)
 {
 	struct kgsl_device *device = rb->device;
-	unsigned int rb_rptr = rec_data->start_of_replay_cmds;
+	unsigned int rb_rptr = ft_data->start_of_replay_cmds;
 	unsigned int good_rb_idx = 0, bad_rb_idx = 0, temp_rb_idx = 0;
 	unsigned int last_good_cmd_end_idx = 0, last_bad_cmd_end_idx = 0;
 	unsigned int cmd_start_idx = 0;
@@ -1106,21 +1109,21 @@ void adreno_ringbuffer_extract(struct adreno_ringbuffer *rb,
 	struct kgsl_context *k_ctxt;
 	struct adreno_context *a_ctxt;
 	unsigned int size = rb->buffer_desc.size;
-	unsigned int *temp_rb_buffer = rec_data->rb_buffer;
-	int *rb_size = &rec_data->rb_size;
-	unsigned int *bad_rb_buffer = rec_data->bad_rb_buffer;
-	int *bad_rb_size = &rec_data->bad_rb_size;
-	unsigned int *good_rb_buffer = rec_data->good_rb_buffer;
-	int *good_rb_size = &rec_data->good_rb_size;
+	unsigned int *temp_rb_buffer = ft_data->rb_buffer;
+	int *rb_size = &ft_data->rb_size;
+	unsigned int *bad_rb_buffer = ft_data->bad_rb_buffer;
+	int *bad_rb_size = &ft_data->bad_rb_size;
+	unsigned int *good_rb_buffer = ft_data->good_rb_buffer;
+	int *good_rb_size = &ft_data->good_rb_size;
 
 	/*
 	 * If the start index from where commands need to be copied is invalid
 	 * then no need to save off any commands
 	 */
-	if (0xFFFFFFFF == rec_data->start_of_replay_cmds)
+	if (0xFFFFFFFF == ft_data->start_of_replay_cmds)
 		return;
 
-	k_ctxt = idr_find(&device->context_idr, rec_data->context_id);
+	k_ctxt = idr_find(&device->context_idr, ft_data->context_id);
 	if (k_ctxt) {
 		a_ctxt = k_ctxt->devctxt;
 		if (a_ctxt->flags & CTXT_FLAGS_PREAMBLE)
@@ -1170,7 +1173,7 @@ void adreno_ringbuffer_extract(struct adreno_ringbuffer *rb,
 					temp_idx++)
 					good_rb_buffer[good_rb_idx++] =
 						temp_rb_buffer[temp_idx];
-				rec_data->last_valid_ctx_id = val2;
+				ft_data->last_valid_ctx_id = val2;
 				copy_rb_contents = 1;
 				/* remove the good commands from bad buffer */
 				bad_rb_idx = last_bad_cmd_end_idx;
