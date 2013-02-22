@@ -126,6 +126,7 @@ int mdp_lcdc_on(struct platform_device *pdev)
 	var = &fbi->var;
 	vsync_cntrl.dev = mfd->fbi->dev;
 	atomic_set(&vsync_cntrl.suspend, 0);
+	vsync_cntrl.vsync_irq_enabled = 0;
 
 	/* MDP cmd block enable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
