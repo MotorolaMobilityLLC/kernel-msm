@@ -14,29 +14,23 @@
 #include <linux/kernel.h>
 #include <linux/suspend.h>
 #include <linux/earlysuspend.h>
-#ifdef CONFIG_PM8921_BMS
 #include <linux/mfd/pm8xxx/pm8921-bms.h>
-#endif
 
 static struct notifier_block pmdbg_suspend_notifier;
 
 static void pmdbg_resume(struct early_suspend *h)
 {
 	int uah = 0;
-#ifdef CONFIG_PM8921_BMS
 	if (pm8921_bms_get_cc_uah(&uah) < 0)
 		uah = 0;
-#endif
 	pr_info("pm_debug: wakeup uah=%d\n", uah);
 }
 
 static void pmdbg_suspend(struct early_suspend *h)
 {
 	int uah = 0;
-#ifdef CONFIG_PM8921_BMS
 	if (pm8921_bms_get_cc_uah(&uah) < 0)
 		uah = 0;
-#endif
 	pr_info("pm_debug: sleep uah=%d\n", uah);
 }
 static struct early_suspend pmdbg_early_suspend_desc = {
@@ -52,10 +46,8 @@ pmdbg_suspend_notifier_call(struct notifier_block *bl, unsigned long state,
 			void *unused)
 {
 	int uah = 0;
-#ifdef CONFIG_PM8921_BMS
 	if (pm8921_bms_get_cc_uah(&uah) < 0)
 		uah = 0;
-#endif
 	switch (state) {
 	case PM_SUSPEND_PREPARE:
 		pr_info("pm_debug: suspend uah=%d\n", uah);
