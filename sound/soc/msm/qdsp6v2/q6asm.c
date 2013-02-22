@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  * Author: Brian Swetland <swetland@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -1885,6 +1885,13 @@ int q6asm_cfg_dual_mono_aac(struct audio_client *ac,
 	return 0;
 fail_cmd:
 	return -EINVAL;
+}
+
+/* Support for selecting stereo mixing coefficients for B family not done */
+int q6asm_cfg_aac_sel_mix_coef(struct audio_client *ac, uint32_t mix_coeff)
+{
+	/* To Be Done */
+	return 0;
 }
 
 int q6asm_enc_cfg_blk_qcelp(struct audio_client *ac, uint32_t frames_per_buf,
