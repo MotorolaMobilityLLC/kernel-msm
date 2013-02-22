@@ -23,6 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/syscore_ops.h>
+#include <linux/power/pm_debug.h>
 
 /* PMIC8xxx IRQ */
 
@@ -349,6 +350,8 @@ static int pm8xxx_show_resume_irq_chip(struct pm_irq_chip *chip)
 				if (bits & (1 << j)) {
 					pr_warning("%d triggered\n",
 					i * 8 + j + chip->irq_base);
+					wakeup_source_pm8xxx_add_irq(
+					i * 8 + j + chip->irq_base);
 				}
 			}
 		}
@@ -368,6 +371,7 @@ static void pm8xxx_show_resume_irq(void)
 
 	spin_lock_irqsave(&pm_irq_chips_lock, flags);
 
+	wakeup_source_pm8xxx_cleanup();
 	list_for_each_entry(chip, &pm_irq_chips, link) {
 		rc = pm8xxx_show_resume_irq_chip(chip);
 
