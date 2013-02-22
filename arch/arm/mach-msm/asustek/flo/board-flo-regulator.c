@@ -286,7 +286,6 @@ VREG_CONSUMERS(NCP) = {
 };
 VREG_CONSUMERS(EXT_5V) = {
 	REGULATOR_SUPPLY("ext_5v",		NULL),
-	REGULATOR_SUPPLY("ext_ddr3",		NULL),
 	REGULATOR_SUPPLY("vbus",		"msm_ehci_host.0"),
 };
 
@@ -318,7 +317,6 @@ VREG_CONSUMERS(L36) = {
 };
 VREG_CONSUMERS(BOOST) = {
 	REGULATOR_SUPPLY("8917_boost",		NULL),
-	REGULATOR_SUPPLY("ext_ddr3",		NULL),
 	REGULATOR_SUPPLY("vbus",		"msm_ehci_host.0"),
 	REGULATOR_SUPPLY("hdmi_mvs",		"hdmi_msm.0"),
 };
