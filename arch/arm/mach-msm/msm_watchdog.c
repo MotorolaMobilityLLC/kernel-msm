@@ -235,7 +235,7 @@ void pet_watchdog(void)
 	unsigned long long slack_ns;
 	unsigned long long bark_time_ns = bark_time * 1000000ULL;
 
-	if (!enable)
+	if (!enable || !msm_wdt_base)
 		return;
 
 	slack = __raw_readl(msm_wdt_base + WDT_STS) >> 3;
@@ -261,6 +261,9 @@ static void pet_watchdog_work(struct work_struct *work)
 void msm_watchdog_reset(unsigned int timeout)
 {
 	unsigned long flags;
+
+	if (!msm_wdt_base)
+		return;
 
 	local_irq_save(flags);
 
@@ -980,11 +983,6 @@ static struct platform_driver msm_watchdog_driver = {
 	},
 };
 
-static int init_watchdog(void)
-{
-	return platform_driver_register(&msm_watchdog_driver);
-}
-
 #ifdef CONFIG_MSM_WATCHDOG_CTX_PRINT
 static int __init init_watchdog_buf_early(void)
 {
@@ -1003,11 +1001,17 @@ static int __init init_watchdog_buf_early(void)
 	}
 	return 0;
 }
-
-core_initcall(init_watchdog_buf_early);
+#else
+static inline void init_watchdog_buf_early(void) { }
 #endif /* CONFIG_MSM_WATCHDOG_CTX_PRINT */
 
-late_initcall(init_watchdog);
+static int __init init_watchdog(void)
+{
+	init_watchdog_buf_early();
+	return platform_driver_register(&msm_watchdog_driver);
+}
+
+core_initcall(init_watchdog);
 MODULE_DESCRIPTION("MSM Watchdog Driver");
 MODULE_VERSION("1.0");
 MODULE_LICENSE("GPL v2");
