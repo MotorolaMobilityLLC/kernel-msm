@@ -17,6 +17,7 @@
 #include <linux/sched.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/msm_kgsl.h>
 
 #include <mach/socinfo.h>
 #include <mach/msm_bus_board.h>
@@ -1599,8 +1600,8 @@ static int adreno_setup_ft_data(struct kgsl_device *device,
 		ret = -ENOMEM;
 		goto done;
 	}
-	ft_data->fault = device->mmu.fault;
-	ft_data->step =  adreno_dev->ft_policy;
+
+	ft_data->status =  0;
 
 	/* find the start of bad command sequence in rb */
 	context = idr_find(&device->context_idr, ft_data->context_id);
@@ -1619,6 +1620,12 @@ static int adreno_setup_ft_data(struct kgsl_device *device,
 		goto done;
 
 	ft_data->start_of_replay_cmds = rb_rptr;
+
+	if (!adreno_dev->ft_policy)
+		adreno_dev->ft_policy = KGSL_FT_DEFAULT_POLICY;
+
+	ft_data->ft_policy = adreno_dev->ft_policy;
+
 
 	adreno_context = context->devctxt;
 	if (adreno_context->flags & CTXT_FLAGS_PREAMBLE) {
@@ -1789,14 +1796,17 @@ _adreno_ft(struct kgsl_device *device,
 		KGSL_FT_INFO(device, "Context found\n");
 	}
 
-	/* Extract valid contents from rb which can still be executed after
-	 * hang */
+	/*
+	 * Extract valid contents from rb which can still be executed after
+	 * hang
+	 */
 	adreno_ringbuffer_extract(rb, ft_data);
 
 	/* Check if we detected a long running IB,
 	 * if true do not attempt replay of bad cmds */
 	if (adreno_dev->long_ib) {
 		if (_adreno_check_long_ib(device)) {
+			ft_data->status = 1;
 			_adreno_debug_ft_info(device, ft_data);
 			goto play_good_cmds;
 		} else {
@@ -1806,24 +1816,30 @@ _adreno_ft(struct kgsl_device *device,
 	}
 
 	/* Do not try the bad commands if  hang is due to a fault */
-	if (ft_data->fault) {
-		KGSL_FT_ERR(device, "Page fault no FT for bad context\n");
+	if (device->mmu.fault) {
+		KGSL_FT_ERR(device, "MMU fault skipping bad cmds\n");
+		device->mmu.fault = 0;
 		goto play_good_cmds;
 	}
 
-	if (ft_data->step == FT_REPLAY_BAD_CTXT_CMDS) {
+	if (ft_data->ft_policy & KGSL_FT_DISABLE) {
+		KGSL_FT_ERR(device, "NO FT policy play only good cmds\n");
+		goto play_good_cmds;
+	}
+
+	if (ft_data->ft_policy & KGSL_FT_REPLAY) {
 
 		ret = _adreno_ft_resubmit_rb(device, rb, context, ft_data,
 				ft_data->bad_rb_buffer, ft_data->bad_rb_size);
 
-		if (ret)
-			KGSL_FT_INFO(device, "Replay unsuccessful\n");
-		else
+		if (ret) {
+			KGSL_FT_ERR(device, "Replay unsuccessful\n");
+			ft_data->status = 1;
+		} else
 			goto play_good_cmds;
-
 	}
 
-	if (ft_data->step == FT_NOP_IB_BAD_CTXT_CMDS) {
+	if (ft_data->ft_policy & KGSL_FT_SKIPIB) {
 
 		for (i = 0; i < ft_data->bad_rb_size; i++) {
 			if ((ft_data->bad_rb_buffer[i] ==
@@ -1841,7 +1857,7 @@ _adreno_ft(struct kgsl_device *device,
 
 		if ((i == (ft_data->bad_rb_size)) || (!ft_data->ib1)) {
 			KGSL_FT_ERR(device, "Bad IB to NOP not found\n");
-			ft_data->step = FT_FAIL_BAD_CTXT_CMDS;
+			ft_data->status = 1;
 			goto play_good_cmds;
 		}
 
@@ -1849,13 +1865,15 @@ _adreno_ft(struct kgsl_device *device,
 				ft_data->bad_rb_buffer, ft_data->bad_rb_size);
 
 		if (ret) {
-			KGSL_FT_INFO(device, "NOP faulty IB unsuccessful\n");
-			ft_data->step = FT_SKIP_EOF_BAD_CTXT_CMDS;
-		} else
+			KGSL_FT_ERR(device, "NOP faulty IB unsuccessful\n");
+			ft_data->status = 1;
+		} else {
+			ft_data->status = 0;
 			goto play_good_cmds;
+		}
 	}
 
-	if (ft_data->step == FT_SKIP_EOF_BAD_CTXT_CMDS) {
+	if (ft_data->ft_policy & KGSL_FT_SKIPFRAME) {
 
 		for (i = 0; i < ft_data->bad_rb_size; i++) {
 			if (ft_data->bad_rb_buffer[i] ==
@@ -1869,6 +1887,8 @@ _adreno_ft(struct kgsl_device *device,
 		   next IB submission */
 		if (i == ft_data->bad_rb_size) {
 			adreno_context->flags |= CTXT_FLAGS_SKIP_EOF;
+			KGSL_FT_INFO(device,
+			"EOF not found in RB, skip next issueib till EOF\n");
 			ft_data->bad_rb_buffer[0] = cp_nop_packet(i);
 		}
 
@@ -1876,15 +1896,17 @@ _adreno_ft(struct kgsl_device *device,
 				ft_data->bad_rb_buffer, ft_data->bad_rb_size);
 
 		if (ret) {
-			KGSL_FT_INFO(device, "Skip EOF unsuccessful\n");
-			ft_data->step = FT_FAIL_BAD_CTXT_CMDS;
-		} else
+			KGSL_FT_ERR(device, "Skip EOF unsuccessful\n");
+			ft_data->status = 1;
+		} else {
+			ft_data->status = 0;
 			goto play_good_cmds;
+		}
 	}
 
 play_good_cmds:
 
-	if (ft_data->step == FT_FAIL_BAD_CTXT_CMDS)
+	if (ft_data->status)
 		KGSL_FT_ERR(device, "Bad context commands failed\n");
 	else {
 		KGSL_FT_INFO(device, "Bad context commands success\n");
@@ -1948,8 +1970,6 @@ adreno_ft(struct kgsl_device *device,
 
 		ret = _adreno_ft(device, ft_data);
 
-		KGSL_FT_CRIT(device, "POLICY: 0x%X\n", ft_data->step);
-
 		if (-EAGAIN == ret) {
 			/* setup new fault tolerance parameters and retry, this
 			 * means more than 1 contexts are causing hang */
@@ -1989,8 +2009,8 @@ adreno_ft(struct kgsl_device *device,
 done:
 	adreno_set_max_ts_for_bad_ctxs(device);
 	adreno_mark_context_status(device, ret);
-	if (ret)
-		KGSL_FT_ERR(device, "Fault Tolerance failed\n");
+	KGSL_FT_ERR(device, "policy 0x%X status 0x%x\n",
+			ft_data->ft_policy, ret);
 	return ret;
 }
 
@@ -2197,6 +2217,30 @@ static int adreno_setproperty(struct kgsl_device *device,
 			}
 
 			status = 0;
+		}
+		break;
+	case KGSL_PROP_FAULT_TOLERANCE: {
+			struct kgsl_ft_config ftd;
+
+			if (sizebytes != sizeof(ftd))
+				break;
+
+			if (copy_from_user(&ftd, (void __user *) value,
+							   sizeof(ftd))) {
+				status = -EFAULT;
+				break;
+			}
+
+			if (ftd.ft_policy)
+				adreno_dev->ft_policy = ftd.ft_policy;
+			else
+				adreno_dev->ft_policy = KGSL_FT_DEFAULT_POLICY;
+
+			if (ftd.ft_pm_dump)
+				device->pm_dump_enable = 1;
+			else
+				device->pm_dump_enable = 0;
+
 		}
 		break;
 	default:
