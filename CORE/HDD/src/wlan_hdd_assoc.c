@@ -2947,6 +2947,14 @@ int iw_set_auth(struct net_device *dev,struct iw_request_info *info,
    eCsrEncryptionType ucEncryptionType;
    
    ENTER();
+
+   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+              "%s:LOGP in Progress. Ignore!!!", __func__);
+       return -EBUSY;
+   }
+
    switch(wrqu->param.flags & IW_AUTH_INDEX)
    {
       case IW_AUTH_WPA_VERSION:
@@ -3161,6 +3169,14 @@ int iw_get_auth(struct net_device *dev,struct iw_request_info *info,
     hdd_wext_state_t *pWextState= WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter); 
     tCsrRoamProfile *pRoamProfile = &pWextState->roamProfile;
     ENTER();
+
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+              "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EBUSY;
+    }
+
     switch(pRoamProfile->negotiatedAuthType)
     {
         case eCSR_AUTH_TYPE_WPA_NONE:
