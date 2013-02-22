@@ -711,6 +711,11 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 		GSL_RB_WRITE(ringcmds, rcmd_gpu, 0);
 	}
 
+	if (flags & KGSL_CMD_FLAGS_EOF) {
+		GSL_RB_WRITE(ringcmds, rcmd_gpu, cp_nop_packet(1));
+		GSL_RB_WRITE(ringcmds, rcmd_gpu, KGSL_END_OF_FRAME_IDENTIFIER);
+	}
+
 	adreno_ringbuffer_submit(rb);
 
 	return timestamp;
@@ -953,10 +958,20 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 	drawctxt = context->devctxt;
 
 	if (drawctxt->flags & CTXT_FLAGS_GPU_HANG) {
-		KGSL_CTXT_WARN(device, "Context %p caused a gpu hang.."
+		KGSL_CTXT_ERR(device, "Context %p caused a gpu hang.."
 			" will not accept commands for context %d\n",
 			drawctxt, drawctxt->id);
 		return -EDEADLK;
+	}
+
+	if (drawctxt->flags & CTXT_FLAGS_SKIP_EOF) {
+		KGSL_CTXT_ERR(device,
+			"Context %p caused a gpu hang.."
+			" skipping commands for context till EOF %d\n",
+			drawctxt, drawctxt->id);
+		if (flags & KGSL_CMD_FLAGS_EOF)
+			drawctxt->flags &= ~CTXT_FLAGS_SKIP_EOF;
+		numibs = 0;
 	}
 
 	cmds = link = kzalloc(sizeof(unsigned int) * (numibs * 3 + 4),
@@ -1008,7 +1023,7 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 
 	*timestamp = adreno_ringbuffer_addcmds(&adreno_dev->ringbuffer,
 					drawctxt,
-					0,
+					(flags & KGSL_CMD_FLAGS_EOF),
 					&link[0], (cmds - link), *timestamp);
 
 	KGSL_CMD_INFO(device, "ctxt %d g %08x numibs %d ts %d\n",
@@ -1024,13 +1039,13 @@ adreno_ringbuffer_issueibcmds(struct kgsl_device_private *dev_priv,
 	 */
 	adreno_idle(device);
 #endif
+
 	/* If context hung and recovered then return error so that the
 	 * application may handle it */
 	if (drawctxt->flags & CTXT_FLAGS_GPU_HANG_RECOVERED)
-		return -EDEADLK;
+		return -EAGAIN;
 	else
 		return 0;
-
 }
 
 static void _turn_preamble_on_for_ib_seq(struct adreno_ringbuffer *rb,
@@ -1082,20 +1097,21 @@ void adreno_ringbuffer_extract(struct adreno_ringbuffer *rb,
 {
 	struct kgsl_device *device = rb->device;
 	unsigned int rb_rptr = rec_data->start_of_replay_cmds;
+	unsigned int good_rb_idx = 0, bad_rb_idx = 0, temp_rb_idx = 0;
+	unsigned int last_good_cmd_end_idx = 0, last_bad_cmd_end_idx = 0;
+	unsigned int cmd_start_idx = 0;
+	unsigned int val1 = 0;
+	int copy_rb_contents = 0;
+	unsigned int temp_rb_rptr;
+	struct kgsl_context *k_ctxt;
+	struct adreno_context *a_ctxt;
+	unsigned int size = rb->buffer_desc.size;
 	unsigned int *temp_rb_buffer = rec_data->rb_buffer;
 	int *rb_size = &rec_data->rb_size;
 	unsigned int *bad_rb_buffer = rec_data->bad_rb_buffer;
 	int *bad_rb_size = &rec_data->bad_rb_size;
-
-	unsigned int good_rb_idx = 0, cmd_start_idx = 0;
-	unsigned int val1 = 0;
-	struct kgsl_context *k_ctxt;
-	struct adreno_context *a_ctxt;
-	unsigned int bad_rb_idx = 0;
-	int copy_rb_contents = 0;
-	unsigned int temp_rb_rptr;
-	unsigned int size = rb->buffer_desc.size;
-	unsigned int good_cmd_start_idx = 0;
+	unsigned int *good_rb_buffer = rec_data->good_rb_buffer;
+	int *good_rb_size = &rec_data->good_rb_size;
 
 	/*
 	 * If the start index from where commands need to be copied is invalid
@@ -1120,9 +1136,11 @@ void adreno_ringbuffer_extract(struct adreno_ringbuffer *rb,
 		if (KGSL_CMD_IDENTIFIER == val1) {
 			/* Start is the NOP dword that comes before
 			 * KGSL_CMD_IDENTIFIER */
-			cmd_start_idx = bad_rb_idx - 1;
-			if (copy_rb_contents)
-				good_cmd_start_idx = good_rb_idx - 1;
+			cmd_start_idx = temp_rb_idx - 1;
+			if ((copy_rb_contents) && (good_rb_idx))
+				last_good_cmd_end_idx = good_rb_idx - 1;
+			if ((!copy_rb_contents) && (bad_rb_idx))
+				last_bad_cmd_end_idx = bad_rb_idx - 1;
 		}
 
 		/* check for context switch indicator */
@@ -1148,33 +1166,48 @@ void adreno_ringbuffer_extract(struct adreno_ringbuffer *rb,
 				!(a_ctxt->flags & CTXT_FLAGS_GPU_HANG)) ||
 				!k_ctxt)) {
 				for (temp_idx = cmd_start_idx;
-					temp_idx < bad_rb_idx;
+					temp_idx < temp_rb_idx;
 					temp_idx++)
-					temp_rb_buffer[good_rb_idx++] =
-						bad_rb_buffer[temp_idx];
+					good_rb_buffer[good_rb_idx++] =
+						temp_rb_buffer[temp_idx];
 				rec_data->last_valid_ctx_id = val2;
 				copy_rb_contents = 1;
+				/* remove the good commands from bad buffer */
+				bad_rb_idx = last_bad_cmd_end_idx;
 			} else if (copy_rb_contents && k_ctxt &&
 				(a_ctxt->flags & CTXT_FLAGS_GPU_HANG)) {
-				/* If we are changing to bad context then remove
-				 * the dwords we copied for this sequence from
-				 * the good buffer */
-				good_rb_idx = good_cmd_start_idx;
+
+				/* If we are changing back to a bad context
+				 * from good ctxt and were not copying commands
+				 * to bad ctxt then copy over commands to
+				 * the bad context */
+				for (temp_idx = cmd_start_idx;
+					temp_idx < temp_rb_idx;
+					temp_idx++)
+					bad_rb_buffer[bad_rb_idx++] =
+						temp_rb_buffer[temp_idx];
+				/* If we are changing to bad context then
+				 * remove the dwords we copied for this
+				 * sequence from the good buffer */
+				good_rb_idx = last_good_cmd_end_idx;
 				copy_rb_contents = 0;
 			}
 			}
 		}
 
 		if (copy_rb_contents)
-			temp_rb_buffer[good_rb_idx++] = val1;
-		/* Copy both good and bad commands for replay to the bad
-		 * buffer */
-		bad_rb_buffer[bad_rb_idx++] = val1;
+			good_rb_buffer[good_rb_idx++] = val1;
+		else
+			bad_rb_buffer[bad_rb_idx++] = val1;
+
+		/* Copy both good and bad commands to temp buffer */
+		temp_rb_buffer[temp_rb_idx++] = val1;
 
 		rb_rptr = adreno_ringbuffer_inc_wrapped(rb_rptr, size);
 	}
-	*rb_size = good_rb_idx;
+	*good_rb_size = good_rb_idx;
 	*bad_rb_size = bad_rb_idx;
+	*rb_size = temp_rb_idx;
 }
 
 void
