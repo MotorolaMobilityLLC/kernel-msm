@@ -2245,6 +2245,12 @@ static int adreno_setproperty(struct kgsl_device *device,
 			else
 				adreno_dev->ft_policy = KGSL_FT_DEFAULT_POLICY;
 
+			if (ftd.ft_pf_policy)
+				adreno_dev->ft_pf_policy = ftd.ft_policy;
+			else
+				adreno_dev->ft_pf_policy =
+					KGSL_FT_PAGEFAULT_DEFAULT_POLICY;
+
 			if (ftd.ft_pm_dump)
 				device->pm_dump_enable = 1;
 			else
