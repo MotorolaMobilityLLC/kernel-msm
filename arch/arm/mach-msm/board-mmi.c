@@ -17,6 +17,7 @@
 #include <asm/mach/mmc.h>
 #include <asm/setup.h>
 #include <asm/system_info.h>
+#include <asm/bootinfo.h>
 
 #include <linux/bootmem.h>
 #include <linux/gpio.h>
@@ -47,6 +48,9 @@ static void __init msm8960_mmi_cal_rsv_sizes(void)
 	if (msm8960_common_cal_rsv_sizes)
 		msm8960_common_cal_rsv_sizes();
 	reserve_memory_for_watchdog();
+	reserve_info->memtype_reserve_table[MEMTYPE_EBI1].size
+		+= bootinfo_bck_size();
+	bootinfo_bck_buf_set_reserved();
 }
 
 static void __init mmi_msm8960_reserve(void)
