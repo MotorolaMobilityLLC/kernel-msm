@@ -75,6 +75,7 @@
 #include <mach/msm_pcie.h>
 #include <mach/restart.h>
 #include <mach/msm_iomap.h>
+#include <mach/msm_serial_hs.h>
 
 #include "msm_watchdog.h"
 #include "board-8064.h"
@@ -2394,7 +2395,6 @@ static struct platform_device gpio_ir_recv_pdev = {
 static struct platform_device *common_not_mpq_devices[] __initdata = {
 	&apq8064_device_qup_i2c_gsbi1,
 	&apq8064_device_qup_i2c_gsbi3,
-	&apq8064_device_qup_i2c_gsbi4,
 };
 
 static struct platform_device *early_common_devices[] __initdata = {
@@ -2728,8 +2728,13 @@ static void __init apq8064_i2c_init(void)
 					&apq8064_i2c_qup_gsbi3_pdata;
 	apq8064_device_qup_i2c_gsbi1.dev.platform_data =
 					&apq8064_i2c_qup_gsbi1_pdata;
-	apq8064_device_qup_i2c_gsbi4.dev.platform_data =
+
+	/* Add GSBI4 I2C pdata for non-fusion3 SGLTE2 */
+	if (socinfo_get_platform_subtype() !=
+				PLATFORM_SUBTYPE_SGLTE2) {
+		apq8064_device_qup_i2c_gsbi4.dev.platform_data =
 					&apq8064_i2c_qup_gsbi4_pdata;
+	}
 	mpq8064_device_qup_i2c_gsbi5.dev.platform_data =
 					&mpq8064_i2c_qup_gsbi5_pdata;
 }
@@ -3194,6 +3199,38 @@ static void __init apq8064_pm8917_pdata_fixup(void)
 	cdp_keys_data.nbuttons = ARRAY_SIZE(cdp_keys_pm8917);
 }
 
+#ifdef CONFIG_SERIAL_MSM_HS
+static int configure_uartdm_gsbi4_gpios(int on)
+{
+	int ret = 0, i;
+	int uart_gpios[] = {10, 11, 12, 13};
+
+	for (i = 0; i < ARRAY_SIZE(uart_gpios); i++) {
+		if (on) {
+			ret = gpio_request(uart_gpios[i], NULL);
+			if (ret) {
+				pr_err("%s: unable to request uart gpio[%d]\n",
+						__func__, uart_gpios[i]);
+				break;
+			}
+		} else {
+			gpio_free(uart_gpios[i]);
+		}
+	}
+
+	if (ret && on && i)
+		for (; i >= 0; i--)
+			gpio_free(uart_gpios[i]);
+	return ret;
+}
+
+static struct msm_serial_hs_platform_data apq8064_uartdm_gsbi4_pdata = {
+	.gpio_config	= configure_uartdm_gsbi4_gpios,
+};
+#else
+static struct msm_serial_hs_platform_data apq8064_uartdm_gsbi4_pdata;
+#endif
+
 static void __init apq8064_common_init(void)
 {
 	u32 platform_version = socinfo_get_platform_version();
@@ -3243,9 +3280,17 @@ static void __init apq8064_common_init(void)
 					ARRAY_SIZE(pm8917_common_devices));
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	if (!(machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd() ||
-			machine_is_mpq8064_dtv()))
+			machine_is_mpq8064_dtv())) {
 		platform_add_devices(common_not_mpq_devices,
 			ARRAY_SIZE(common_not_mpq_devices));
+
+		/* Add GSBI4 I2C Device for non-fusion3 platform */
+		if (socinfo_get_platform_subtype() !=
+					PLATFORM_SUBTYPE_SGLTE2) {
+			platform_device_register(&apq8064_device_qup_i2c_gsbi4);
+		}
+	}
+
 	msm_hsic_pdata.swfi_latency =
 		msm_rpmrs_levels[0].latency_us;
 	if (machine_is_apq8064_mtp()) {
@@ -3277,6 +3322,12 @@ static void __init apq8064_common_init(void)
 			sglte2_qsc_8064_device.dev.platform_data =
 				&sglte2_qsc_platform_data;
 			platform_device_register(&sglte2_qsc_8064_device);
+
+			/* GSBI4 UART device for Primay IPC */
+			apq8064_uartdm_gsbi4_pdata.wakeup_irq = gpio_to_irq(10);
+			apq8064_device_uartdm_gsbi4.dev.platform_data =
+						&apq8064_uartdm_gsbi4_pdata;
+			platform_device_register(&apq8064_device_uartdm_gsbi4);
 		} else if (SOCINFO_VERSION_MINOR(platform_version) == 1) {
 			i2s_mdm_8064_device.dev.platform_data =
 				&mdm_platform_data;
