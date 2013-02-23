@@ -66,7 +66,6 @@
 2010-12-30    smiryala     UMAC convergence changes
 2010-08-19    adwivedi    WLAN DAL AL(WDA) layer for Prima
 ===========================================================================*/
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
 #include "vos_mq.h" 
 #include "vos_api.h" 
 #include "vos_packet.h" 
@@ -10993,7 +10992,6 @@ eHalStatus WDA_SetRegDomain(void * clientCtxt, v_REGDOMAIN_t regId)
    }
    return eHAL_STATUS_SUCCESS;
 }
-#endif  /* FEATURE_WLAN_INTEGRATED_SOC */
 
 #ifdef FEATURE_WLAN_SCAN_PNO
 /*

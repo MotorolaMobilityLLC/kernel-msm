@@ -58,15 +58,6 @@
 #ifndef HALTYPES_H
 #define HALTYPES_H
 #ifndef WINXP_APPS_BUILD    //TODO: this header dependency does not belong in this file
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "wlan_qct_bal.h"
-
-#ifdef WLAN_HAL_VOLANS
-#include "volansDefs.h"
-#else
-#include "libraDefs.h"
-#endif
-#endif
 
 #endif /* WINXP_APPS_BUILD */
 
@@ -363,7 +354,6 @@ typedef enum
 #define offsetof(type, field) __offsetof(type, field)
 #endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #define HAL_MAX_TXPOWER_INVALID       127
 
 #define MIN_STA_PWR_CAP_DBM         13
@@ -455,7 +445,6 @@ typedef enum
 
 #define STACFG_MAX_TC   8
 
-#endif
 
 #endif
 
