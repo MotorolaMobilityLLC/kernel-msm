@@ -110,13 +110,11 @@ static VOS_STATUS vos_pkti_packet_init( struct vos_pkt_t *pPkt,
          vosStatus = VOS_STATUS_E_NOMEM;
       }
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
       /* Init PAL Packet */
       WPAL_PACKET_SET_BD_POINTER(&(pPkt->palPacket), NULL);
       WPAL_PACKET_SET_BD_PHYS(&(pPkt->palPacket), NULL);
       WPAL_PACKET_SET_BD_LENGTH(&(pPkt->palPacket), 0);
       WPAL_PACKET_SET_OS_STRUCT_POINTER(&(pPkt->palPacket), NULL);
-#endif
 
       break;
    default:
@@ -408,12 +406,10 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
          pPkt = &pVosPacketContext->vosPktBuffers[freePacketIndex++];
          vosStatus = vos_pkti_packet_init(pPkt, VOS_PKT_TYPE_RX_RAW);
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
          WPAL_PACKET_SET_METAINFO_POINTER(&(pPkt->palPacket),
                   (void*)&pVosPacketContext->rxMetaInfo[idx]);
          WPAL_PACKET_SET_TYPE(&(pPkt->palPacket), 
                               eWLAN_PAL_PKT_TYPE_RX_RAW);
-#endif
 
          if (VOS_STATUS_SUCCESS != vosStatus)
          {
@@ -440,12 +436,10 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
       {
          pPkt = &pVosPacketContext->vosPktBuffers[freePacketIndex++];
          vosStatus = vos_pkti_packet_init(pPkt, VOS_PKT_TYPE_TX_802_3_DATA);
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
          WPAL_PACKET_SET_METAINFO_POINTER(&(pPkt->palPacket),
                (void*)&pVosPacketContext->txDataMetaInfo[idx]);
          WPAL_PACKET_SET_TYPE(&(pPkt->palPacket), 
                               eWLAN_PAL_PKT_TYPE_TX_802_3_DATA);
-#endif
          if (VOS_STATUS_SUCCESS != vosStatus)
          {
             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
@@ -476,12 +470,10 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
 
          vosStatus = vos_pkti_packet_init(pPkt, VOS_PKT_TYPE_TX_802_11_MGMT);
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
          WPAL_PACKET_SET_METAINFO_POINTER(&(pPkt->palPacket),
                (void*)&pVosPacketContext->txMgmtMetaInfo[idx]);
          WPAL_PACKET_SET_TYPE(&(pPkt->palPacket), 
                               eWLAN_PAL_PKT_TYPE_TX_802_11_MGMT);
-#endif
 
          if (VOS_STATUS_SUCCESS != vosStatus)
          {
