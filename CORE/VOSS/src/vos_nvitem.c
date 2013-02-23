@@ -398,7 +398,6 @@ const tRfChannelProps rfChannels[NUM_RF_CHANNELS] =
     { 2467, 12 , RF_SUBBAND_2_4_GHZ},        //RF_CHAN_12,
     { 2472, 13 , RF_SUBBAND_2_4_GHZ},        //RF_CHAN_13,
     { 2484, 14 , RF_SUBBAND_2_4_GHZ},        //RF_CHAN_14,
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
     { 4920, 240, RF_SUBBAND_4_9_GHZ},        //RF_CHAN_240,
     { 4940, 244, RF_SUBBAND_4_9_GHZ},        //RF_CHAN_244,
     { 4960, 248, RF_SUBBAND_4_9_GHZ},        //RF_CHAN_248,
@@ -465,7 +464,6 @@ const tRfChannelProps rfChannels[NUM_RF_CHANNELS] =
     { 5775, 155, NUM_RF_SUBBANDS},           //RF_CHAN_BOND_155,
     { 5795, 159, NUM_RF_SUBBANDS},           //RF_CHAN_BOND_159,
     { 5815, 163, NUM_RF_SUBBANDS},           //RF_CHAN_BOND_163,
-#endif
 };
 
 extern const sHalNv nvDefaults;
@@ -1331,20 +1329,6 @@ VOS_STATUS vos_nv_read( VNV_TYPE type, v_VOID_t *outputVoidBuffer,
            }
            break;
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-       case VNV_FREQUENCY_FOR_1_3V_SUPPLY:
-           itemSize = sizeof(gnvEFSTable->halnv.tables.freqFor1p3VSupply);
-           if(bufferSize != itemSize) {
-               VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                ("type = %d buffer size=%d is less than data size=%d\r\n"),type, bufferSize,
-                 itemSize);
-               status = VOS_STATUS_E_INVAL;
-           }
-           else {
-               memcpy(outputVoidBuffer,&gnvEFSTable->halnv.tables.freqFor1p3VSupply,bufferSize);
-           }
-           break;
-#endif /* FEATURE_WLAN_NON_INTEGRATED_SOC */
 
        case VNV_TABLE_VIRTUAL_RATE:
            itemSize = sizeof(gnvEFSTable->halnv.tables.pwrOptimum_virtualRate);
@@ -1576,20 +1560,6 @@ VOS_STATUS vos_nv_write( VNV_TYPE type, v_VOID_t *inputVoidBuffer,
             }
             break;
             
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-        case VNV_FREQUENCY_FOR_1_3V_SUPPLY:
-            itemSize = sizeof(gnvEFSTable->halnv.tables.freqFor1p3VSupply);
-            if(bufferSize != itemSize) {
-                VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                 ("type = %d buffer size=%d is less than data size=%d\r\n"),type, bufferSize,
-                  itemSize);
-                status = VOS_STATUS_E_INVAL;
-            }
-            else {
-                memcpy(&gnvEFSTable->halnv.tables.freqFor1p3VSupply,inputVoidBuffer,bufferSize);
-            }
-            break;
-#endif /* FEATURE_WLAN_NON_INTEGRATED_SOC */
 
         case VNV_TABLE_VIRTUAL_RATE:
             itemSize = sizeof(gnvEFSTable->halnv.tables.pwrOptimum_virtualRate);
@@ -1660,7 +1630,6 @@ VOS_STATUS vos_nv_getChannelListWithPower(tChannelListWithPower *channels20MHz /
                 channels20MHz[count++].pwr  = regChannels[i].pwrLimit;
             }
         }
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
         for( i = RF_CHAN_36; i <= RF_CHAN_165; i++ )
         {
             if( regChannels[i].enabled )
@@ -1669,14 +1638,12 @@ VOS_STATUS vos_nv_getChannelListWithPower(tChannelListWithPower *channels20MHz /
                 channels20MHz[count++].pwr  = regChannels[i].pwrLimit;
             }
         }
-#endif
         *num20MHzChannelsFound = (tANI_U8)count;
     }
 
     if( channels40MHz && num40MHzChannelsFound )
     {
         count = 0;
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
         //center channels for 2.4 Ghz 40 MHz channels
         for( i = RF_CHAN_BOND_3; i <= RF_CHAN_BOND_11; i++ )
         {
@@ -1697,7 +1664,6 @@ VOS_STATUS vos_nv_getChannelListWithPower(tChannelListWithPower *channels20MHz /
                 channels40MHz[count++].pwr  = regChannels[i].pwrLimit;
             }
         }
-#endif
         *num40MHzChannelsFound = (tANI_U8)count;
     }
     return (status);
@@ -1739,12 +1705,10 @@ VOS_STATUS vos_nv_getSupportedChannels( v_U8_t *p20MhzChannels, int *pNum20MhzCh
             {
                 p20MhzChannels[count++] = rfChannels[i].channelNum;
             }
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
             for( i = RF_CHAN_36; i <= RF_CHAN_165; i++ )
             {
                 p20MhzChannels[count++] = rfChannels[i].channelNum;
             }
-#endif
             status = VOS_STATUS_SUCCESS;
         }
         *pNum20MhzChannels = count;
@@ -1787,7 +1751,6 @@ VOS_STATUS vos_nv_getNVBuffer(v_VOID_t **pNvBuffer,v_SIZE_t *pSize)
    return VOS_STATUS_SUCCESS;
 }
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /**------------------------------------------------------------------------
   \brief vos_nv_setRegDomain - 
   \param clientCtxt  - Client Context, Not used for PRIMA
@@ -1846,7 +1809,6 @@ eNVChannelEnabledType vos_nv_getChannelEnabledState
 
    return regChannels[channelEnum].enabled;
 }
-#endif /* FEATURE_WLAN_NON_INTEGRATED_SOC */
 
 /******************************************************************
  Add CRDA regulatory support
@@ -2015,7 +1977,6 @@ u32 center_freq = freq_khz + 10000;
   for (i=RF_CHAN_1;i<=RF_CHAN_14;i++)
     if (center_freq <= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   //RF_SUBBAND_4_9_GHZ, Ch 240, 244, 248, 252, 208, 212, 216
   for (i=RF_CHAN_240;i<=RF_CHAN_216;i++)
     if (center_freq <= (u32) (rfChannels[i].targetFreq) * 1000)
@@ -2032,7 +1993,6 @@ u32 center_freq = freq_khz + 10000;
   for (i=RF_CHAN_149;i<=RF_CHAN_165;i++)
     if (center_freq <= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
-#endif
 return -1;
 }
 
@@ -2041,7 +2001,6 @@ static int bw20_end_freq_to_channel_index(u32 freq_khz)
 int i;
 u32 center_freq = freq_khz - 10000;
   //Has to compare from high freq to low freq
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   //RF_SUBBAND_5_HIGH_GHZ
   for (i=RF_CHAN_165;i>=RF_CHAN_149;i--)
     if (center_freq >= (u32) (rfChannels[i].targetFreq) * 1000)
@@ -2058,7 +2017,6 @@ u32 center_freq = freq_khz - 10000;
   for (i=RF_CHAN_216;i>=RF_CHAN_240;i--)
     if (center_freq >= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
-#endif
   //RF_SUBBAND_2_4_GHZ
   for (i=RF_CHAN_14;i>=RF_CHAN_1;i--)
     if (center_freq >= (u32) (rfChannels[i].targetFreq) * 1000)
@@ -2075,7 +2033,6 @@ u32 center_freq = freq_khz + 20000;
   for (i=RF_CHAN_BOND_3;i<=RF_CHAN_BOND_11;i++)
     if (center_freq <= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   //RF_SUBBAND_4_9_GHZ, Ch 242, 246, 250, 210, 214
   for (i=RF_CHAN_BOND_242;i<=RF_CHAN_BOND_214;i++)
     if (center_freq <= (u32) (rfChannels[i].targetFreq) * 1000)
@@ -2092,7 +2049,6 @@ u32 center_freq = freq_khz + 20000;
   for (i=RF_CHAN_BOND_151;i<=RF_CHAN_BOND_163;i++)
     if (center_freq <= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
-#endif
 return -1;
 }
 
@@ -2101,7 +2057,6 @@ static int bw40_end_freq_to_channel_index(u32 freq_khz)
 int i;
 u32 center_freq = freq_khz - 20000;
   //Has to compare from high freq to low freq
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   //RF_SUBBAND_5_HIGH_GHZ
   for (i=RF_CHAN_BOND_163;i>=RF_CHAN_BOND_151;i--)
     if (center_freq >= (u32) (rfChannels[i].targetFreq) * 1000)
@@ -2118,7 +2073,6 @@ u32 center_freq = freq_khz - 20000;
   for (i=RF_CHAN_BOND_214;i>=RF_CHAN_BOND_242;i--)
     if (center_freq >= (u32) (rfChannels[i].targetFreq) * 1000)
       return i;
-#endif
   //RF_SUBBAND_2_4_GHZ
   for (i=RF_CHAN_BOND_11;i>=RF_CHAN_BOND_3;i--)
     if (center_freq >= (u32) (rfChannels[i].targetFreq) * 1000)
