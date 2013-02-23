@@ -39,12 +39,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * Qualcomm, Inc proprietary. All rights reserved.
- *
- * Date            Modified by    Modification Information
- * --------------------------------------------------------------------
- */
 #ifndef WLAN_QCT_HAL_H
 #define WLAN_QCT_HAL_H
 #include "vos_status.h"
@@ -72,9 +66,6 @@
 
 #define eHalStatus    VOS_STATUS
 
-#endif
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halBdDefs.h"
 #endif
 #define QWLAN_HAL_DXE0_MASTERID  5
 
@@ -180,14 +171,9 @@ typedef struct sUapsdInfo {
     
 #define WLANHAL_RX_BD_ADDR3_SELF_IDX      0
 
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
 // Should not use tHalTxBd nor tHalRxBd. UMAC doesn't know these HAL structure.
 #define WLANHAL_TX_BD_HEADER_SIZE 40
 #define WLANHAL_RX_BD_HEADER_SIZE 76
-#else
-#define WLANHAL_TX_BD_HEADER_SIZE        sizeof(tHalTxBd)
-#define WLANHAL_RX_BD_HEADER_SIZE        sizeof(tHalRxBd)
-#endif
 
 
 #define WLANHAL_RX_BD_HEADER_OFFSET       0
@@ -324,23 +310,11 @@ typedef struct sUapsdInfo {
 
 #define WLANHAL_RX_BD_FT_DONE                  1 /* The value of the field when frame xtl was done*/
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC 
-//Check whether a RX frame is unprotected over the air
-#if defined(LIBRA_WAPI_SUPPORT)
-#define WLANHAL_RX_IS_UNPROTECTED_WPI_FRAME(_pvBDHeader)  \
-        (((tpHalRxBd)_pvBDHeader)->uef)
-
-#else
-#define WLANHAL_RX_IS_UNPROTECTED_WPI_FRAME(_pvBDHeader)  \
-        (DPU_FEEDBACK_WPI_UNPROTECTED == ((tpHalRxBd)_pvBDHeader)->dpuFeedback)
-#endif
-#else
 /*DPU_FEEDBACK_WPI_UNPROTECTED macro defined in volansdefs.h which is not available
   for UMAC in prima so declared it here */
 #define DPU_FEEDBACK_WPI_UNPROTECTED 0x20   
 #define WLANHAL_RX_IS_UNPROTECTED_WPI_FRAME(_pvBDHeader)  \
         (DPU_FEEDBACK_WPI_UNPROTECTED == ((WDI_RxBdType *)_pvBDHeader)->dpuFeedback)
-#endif
 
 /*==========================================================================
 
