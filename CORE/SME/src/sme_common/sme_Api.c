@@ -72,9 +72,6 @@
   Include Files
   ------------------------------------------------------------------------*/
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halInternal.h"
-#endif
 
 #include "smsDebug.h"
 #include "sme_Api.h"
@@ -90,11 +87,9 @@
 
 
 
-#if !defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
 extern tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 
 #include <wlan_qct_pal_api.h>
-#endif
 
 #define READ_MEMORY_DUMP_CMD     9
 
@@ -1175,11 +1170,6 @@ eHalStatus sme_UpdateConfig(tHalHandle hHal, tpSmeConfigParams pSmeConfigParams)
    //For SOC, CFG is set before start
    //We don't want to apply global CFG in connect state because that may cause some side affect
    if(
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-      //For the new init sequence, CFGs need to apply before vos_start is call
-      //No need to wait for ready state.
-      SME_IS_READY(pMac) && 
-#endif
       csrIsAllSessionDisconnected( pMac) )
    {
        csrSetGlobalCfgs(pMac);
@@ -1262,9 +1252,6 @@ eHalStatus sme_HDDReadyInd(tHalHandle hHal)
 
    do
    {
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-      csrSetGlobalCfgs( pMac );
-#endif
 
       Msg.messageType = eWNI_SME_SYS_READY_IND;
       Msg.length      = sizeof( tSirSmeReadyReq );
@@ -1350,9 +1337,6 @@ eHalStatus sme_Start(tHalHandle hHal)
 
    do
    {
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC 
-      ccmStart(hHal);
-#endif
       status = csrStart(pMac);
       if ( ! HAL_STATUS_SUCCESS( status ) ) {
          smsLog( pMac, LOGE, "csrStart failed during smeStart with status=%d\n",
@@ -4362,9 +4346,6 @@ VOS_STATUS sme_DbgReadRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t *pRegVa
 {
    VOS_STATUS   status = VOS_STATUS_E_FAILURE;
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-   tHddHandle     hHdd = pMac->hHdd;
-#endif
    tPmcPowerState PowerState;
    tANI_U32  sessionId = 0;
 
@@ -4372,11 +4353,7 @@ VOS_STATUS sme_DbgReadRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t *pRegVa
 
    if(eDRIVER_TYPE_MFG == pMac->gDriverType)
    {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-      if (HAL_STATUS_SUCCESS(palReadRegister(hHdd, regAddr, pRegValue)))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
       if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgReadRegister(regAddr, pRegValue))
-#endif
       {
          return VOS_STATUS_SUCCESS;
       }
@@ -4396,11 +4373,7 @@ VOS_STATUS sme_DbgReadRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t *pRegVa
       /* Are we not in IMPS mode? Or are we in connected? Then we're safe*/
       if(!csrIsConnStateDisconnected(pMac, sessionId) || (ePMC_LOW_POWER != PowerState))
       {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-         if (HAL_STATUS_SUCCESS(palReadRegister(hHdd, regAddr, pRegValue )))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
          if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgReadRegister(regAddr, pRegValue))
-#endif
          {
             status = VOS_STATUS_SUCCESS;
          }
@@ -4436,9 +4409,6 @@ VOS_STATUS sme_DbgWriteRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t regVal
 {
    VOS_STATUS    status = VOS_STATUS_E_FAILURE;
    tpAniSirGlobal  pMac = PMAC_STRUCT(hHal);
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-   tHddHandle      hHdd = pMac->hHdd;
-#endif
    tPmcPowerState PowerState;
    tANI_U32   sessionId = 0;
 
@@ -4446,11 +4416,7 @@ VOS_STATUS sme_DbgWriteRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t regVal
 
    if(eDRIVER_TYPE_MFG == pMac->gDriverType)
    {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-      if (HAL_STATUS_SUCCESS(palWriteRegister(hHdd, regAddr, regValue)))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
       if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgWriteRegister(regAddr, regValue))
-#endif
       {
          return VOS_STATUS_SUCCESS;
       }
@@ -4470,11 +4436,7 @@ VOS_STATUS sme_DbgWriteRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t regVal
       /* Are we not in IMPS mode? Or are we in connected? Then we're safe*/
       if(!csrIsConnStateDisconnected(pMac, sessionId) || (ePMC_LOW_POWER != PowerState))
       {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-         if (HAL_STATUS_SUCCESS(palWriteRegister(hHdd, regAddr, regValue)))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
          if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgWriteRegister(regAddr, regValue))
-#endif
          {
             status = VOS_STATUS_SUCCESS;
          }
@@ -4504,10 +4466,6 @@ VOS_STATUS sme_DbgReadMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_U
 {
    VOS_STATUS  status  = VOS_STATUS_E_FAILURE;
    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-   v_PVOID_t  pvosGCTx = vos_get_global_context(VOS_MODULE_ID_PE, (v_VOID_t *)hHal);
-   tHddHandle     hHdd = pMac->hHdd;
-#endif
    tPmcPowerState PowerState;
    tANI_U32 sessionId  = 0;
    tANI_U32 cmd = READ_MEMORY_DUMP_CMD;
@@ -4519,11 +4477,7 @@ VOS_STATUS sme_DbgReadMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_U
 
    if(eDRIVER_TYPE_MFG == pMac->gDriverType)
    {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-      if (HAL_STATUS_SUCCESS(palReadDeviceMemory(hHdd, memAddr, (void *)pBuf, nLen)))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
       if (VOS_STATUS_SUCCESS == WDA_HALDumpCmdReq(pMac, cmd, arg1, arg2, arg3, arg4, (tANI_U8*)pBuf))
-#endif
       {
          return VOS_STATUS_SUCCESS;
       }
@@ -4543,11 +4497,7 @@ VOS_STATUS sme_DbgReadMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_U
       /* Are we not in IMPS mode? Or are we in connected? Then we're safe*/
       if(!csrIsConnStateDisconnected(pMac, sessionId) || (ePMC_LOW_POWER != PowerState))
       {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-         if (HAL_STATUS_SUCCESS(palReadDeviceMemory(pvosGCTx, memAddr, (void *)pBuf, nLen)))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
          if (VOS_STATUS_SUCCESS == WDA_HALDumpCmdReq(pMac, cmd, arg1, arg2, arg3, arg4, (tANI_U8 *)pBuf))
-#endif
          {
             status = VOS_STATUS_SUCCESS;
          }
@@ -4584,9 +4534,6 @@ VOS_STATUS sme_DbgWriteMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_
 {
    VOS_STATUS    status = VOS_STATUS_E_FAILURE;
    tpAniSirGlobal  pMac = PMAC_STRUCT(hHal);
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-   tHddHandle      hHdd = pMac->hHdd;
-#endif
    tPmcPowerState PowerState;
    tANI_U32   sessionId = 0;
 
@@ -4594,11 +4541,6 @@ VOS_STATUS sme_DbgWriteMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_
 
    if(eDRIVER_TYPE_MFG == pMac->gDriverType)
    {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-      if (HAL_STATUS_SUCCESS(palWriteDeviceMemory(hHdd, memAddr, (void *)pBuf, nLen)))
-#elif defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-      if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgWriteMemory( memAddr, (void *)pBuf, nLen))
-#endif
       {
          return VOS_STATUS_SUCCESS;
       }
@@ -4618,11 +4560,7 @@ VOS_STATUS sme_DbgWriteMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_
       /* Are we not in IMPS mode? Or are we in connected? Then we're safe*/
       if(!csrIsConnStateDisconnected(pMac, sessionId) || (ePMC_LOW_POWER != PowerState))
       {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-         if (HAL_STATUS_SUCCESS(palWriteDeviceMemory(hHdd, memAddr, (void *)pBuf, nLen)))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
          if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgWriteMemory(memAddr, (void *)pBuf, nLen))
-#endif
          {
             status = VOS_STATUS_SUCCESS;
          }
@@ -5775,7 +5713,6 @@ eHalStatus sme_ConfigureRxpFilter( tHalHandle hHal,
     return(status);
 }
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /* ---------------------------------------------------------------------------
 
   \fn    sme_ConfigureSuspendInd
@@ -5860,7 +5797,6 @@ eHalStatus sme_ConfigureResumeReq( tHalHandle hHal,
     return(status);
 }
 
-#endif
 /* ---------------------------------------------------------------------------
 
     \fn sme_GetInfraSessionId

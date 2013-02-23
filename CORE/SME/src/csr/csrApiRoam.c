@@ -64,13 +64,7 @@
 ===========================================================================*/
 #include "aniGlobal.h" //for tpAniSirGlobal
 #include "wlan_qct_wda.h"
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include "halMsgApi.h" //for HAL_STA_INVALID_IDX.
-#endif
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halPhyApi.h"
-#include "halInternal.h"
-#endif
 #include "limUtils.h"
 #include "palApi.h"
 #include "csrInsideApi.h"
@@ -1910,13 +1904,7 @@ eHalStatus csrInitGetChannels(tpAniSirGlobal pMac)
         // structure -- this will be used as the scan list
         for ( Index = 0; Index < num20MHzChannelsFound; Index++)
         {
-#ifdef FEATURE_WLAN_INTEGRATED_SOC /* Need to fix this while dealing with NV item */
             pMac->scan.base20MHzChannels.channelList[ Index ] = pMac->scan.defaultPowerTable[ Index ].chanId;
-#else
-           pMac->scan.base20MHzChannels.channelList[ Index ] = Index + 1;
-           pMac->scan.defaultPowerTable[Index].chanId = Index + 1;
-           pMac->scan.defaultPowerTable[Index].pwr = 25;
-#endif
         }
         pMac->scan.base20MHzChannels.numChannels = num20MHzChannelsFound;
         if(num40MHzChannelsFound > WNI_CFG_VALID_CHANNEL_LIST_LEN)
