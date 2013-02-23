@@ -12,7 +12,7 @@
 
 #ifndef _ARCH_ARM_MACH_MSM_MDM2_H
 #define _ARCH_ARM_MACH_MSM_MDM2_H
-#include "sysmon.h"
+#include "../../sysmon.h"
 
 struct mdm_vddmin_resource {
 	int rpm_id;
