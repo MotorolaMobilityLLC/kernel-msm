@@ -59,9 +59,6 @@
 #include "wniCfgSta.h"
 #endif
 #include "aniGlobal.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halCommonApi.h"
-#endif
 #include "schApi.h"
 #include "utilsApi.h"
 #include "limApi.h"
