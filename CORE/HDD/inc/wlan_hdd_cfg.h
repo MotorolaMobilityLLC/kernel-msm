@@ -1934,13 +1934,11 @@ typedef struct
    v_U16_t                     vosTraceEnableHDDSAP;
 #endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    /* WDI Trace Control */
    v_U32_t                     wdiTraceEnableDAL;
    v_U32_t                     wdiTraceEnableCTL;
    v_U32_t                     wdiTraceEnableDAT;
    v_U32_t                     wdiTraceEnablePAL;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
    v_U16_t                     nTeleBcnTransListenInterval;
    v_U16_t                     nTeleBcnMaxListenInterval;
    v_U16_t                     nTeleBcnTransLiNumIdleBeacons;
