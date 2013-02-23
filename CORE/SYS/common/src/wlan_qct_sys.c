@@ -85,9 +85,6 @@ when        who         what, where, why
 #include <wniApi.h>     // needed for WNI_... message types
 #include "aniGlobal.h"
 #include "wlan_qct_wda.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include <halCommonApi.h>  // needed for halMmhPostMsgApi()
-#endif
 #include "sme_Api.h"
 #include "macInitApi.h"
 
@@ -122,12 +119,6 @@ typedef struct
 
 } sysContextData;
 
-#if defined( FEATURE_WLAN_NON_INTEGRATED_SOC )
-// keep some static global sys context for the time being... Should we move this
-// into 'context' data?  Probably not, it doesn't need to be persistent except
-// during this messaging sequence.
-static sysContextData gSysContext;
-#endif
 
 static vos_event_t gStopEvt;
 
@@ -146,30 +137,6 @@ VOS_STATUS sysOpen( v_CONTEXT_t pVosContext )
 }
 
 
-#if defined( FEATURE_WLAN_NON_INTEGRATED_SOC )
-VOS_STATUS sysMcStart( v_CONTEXT_t pVosContext, sysResponseCback userCallback, v_VOID_t *pUserData )
-{
-   VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
-   vos_msg_t sysMsg;
-
-   sysBuildMessageHeader( SYS_MSG_ID_MC_START, &sysMsg );
-
-   // Save the user callback and user data to callback in the body pointer
-   // and body data portion of the message.
-   // finished.
-   sysMsg.bodyptr = (void *)userCallback;
-   sysMsg.bodyval = (v_U32_t)pUserData;
-
-   // post the message..
-   vosStatus = vos_mq_post_message( VOS_MQ_ID_SYS, &sysMsg );
-   if ( !VOS_IS_STATUS_SUCCESS(vosStatus) )
-   {
-      vosStatus = VOS_STATUS_E_BADMSG;
-   }
-
-   return( vosStatus );
-}
-#endif  /* FEATURE_WLAN_NON_INTEGRATED_SOC */
 
 v_VOID_t sysStopCompleteCb
 (
@@ -231,138 +198,9 @@ VOS_STATUS sysClose( v_CONTEXT_t pVosContext )
 }
 
 
-#if defined( FEATURE_WLAN_NON_INTEGRATED_SOC )
-static VOS_STATUS sys_PostMcThreadProbeMsg( v_CONTEXT_t pVosContext, sysResponseCback userCallback,
-                                          v_VOID_t *pUserData, SYS_MSG_ID sysMsgId )
-{
-   VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
-   vos_msg_t sysMsg;
-   tSirRetStatus sirStatus = eSIR_SUCCESS;
- /*----------------------------------------------------------------------------------------*/
-
-   sysBuildMessageHeader( sysMsgId, &sysMsg );
-
-
-   // Save the user callback and user data to callback in the body pointer
-   // and body data portion of the message.
-   sysMsg.bodyptr = (void *)userCallback;
-   sysMsg.bodyval = (v_U32_t)pUserData;
-
-   // Post the message...
-   vosStatus = vos_mq_post_message( VOS_MQ_ID_SYS, &sysMsg );
-
-   if ( eSIR_SUCCESS != sirStatus )
-   {
-      vosStatus = VOS_STATUS_E_BADMSG;
-   }
-
-   return( vosStatus );
-}
-
-
-static VOS_STATUS sys_PostTxThreadProbeMsg( v_CONTEXT_t pVosContext, sysResponseCback userCallback,
-                                          v_VOID_t *pUserData, SYS_MSG_ID sysMsgId )
-{
-   VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
-   vos_msg_t sysMsg;
-   tSirRetStatus sirStatus = eSIR_SUCCESS;
- /*----------------------------------------------------------------------------------------*/
-
-   sysBuildMessageHeader( sysMsgId, &sysMsg );
-
-
-   // Save the user callback and user data to callback in the body pointer
-   // and body data portion of the message.
-   sysMsg.bodyptr = (void *)userCallback;
-   sysMsg.bodyval = (v_U32_t)pUserData;
-
-   // Post the message...
-   vosStatus = vos_tx_mq_serialize( VOS_MQ_ID_SYS, &sysMsg );
-
-   if ( eSIR_SUCCESS != sirStatus )
-   {
-      vosStatus = VOS_STATUS_E_BADMSG;
-   }
-
-   return( vosStatus );
-}
-
-
-v_VOID_t sysMcThreadProbe( v_CONTEXT_t pVosContext, sysResponseCback userCallback,
-                           v_VOID_t *pUserData )
-{
-   VOS_STATUS vosStatus;
-
-   vosStatus = sys_PostMcThreadProbeMsg( pVosContext, userCallback, pUserData,
-                                       SYS_MSG_ID_MC_THR_PROBE );
-
-   if (VOS_IS_STATUS_SUCCESS( vosStatus ))
-   {
-      // we could have place the above condition within VOS_ASSERT, but
-      // unfortunately that would cause a compiler warning
-      VOS_ASSERT( 1 );
-   }
-   // !! no way to fail ??
-}
-
-
-v_VOID_t sysTxThreadProbe( v_CONTEXT_t pVosContext, sysResponseCback userCallback,
-                           v_VOID_t *pUserData )
-{
-   VOS_STATUS vosStatus;
-
-   vosStatus = sys_PostTxThreadProbeMsg( pVosContext, userCallback, pUserData,
-                                       SYS_MSG_ID_TX_THR_PROBE );
-
-   if (VOS_IS_STATUS_SUCCESS( vosStatus ))
-   {
-      // we could have place the above condition within VOS_ASSERT, but
-      // unfortunately that would cause a compiler warning
-      VOS_ASSERT( 1 );
-   }
-   // !! no way to fail ??
-}
-#endif /* FEATURE_WLAN_NON_INTEGRATED_SOC */
 
 
 
-#if defined( FEATURE_WLAN_NON_INTEGRATED_SOC )
-static VOS_STATUS sys_SendHalInitStartReqMsg( v_CONTEXT_t pVosContext )
-{
-   VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
-   tSirMbMsg msg;
-
-   tSirRetStatus sirStatus = eSIR_SUCCESS;
-   tSirMbMsg *pMsg = &msg;
-   v_VOID_t *hHal;
-
-   do
-   {
-      // get the HAL context...
-      hHal = vos_get_context( VOS_MODULE_ID_HAL, pVosContext );
-      if ( NULL == hHal ) break;
-
-     // format the Init start request message.  This message has
-     // the hal handle in the 'data' portion of the message.
-     pMsg->type = WDA_INIT_START_REQ;
-     pMsg->data[0] = (tANI_U32)hHal;
-
-     // message length is 4 greater than the config data size
-     // need to add in an extra 4 for the message header.
-     pMsg->msgLen = sizeof( tHalHandle ) + FIELD_OFFSET( tSirMbMsg, data );
-
-     // Send the HAL Init Start Request message...
-     sirStatus = uMacPostCtrlMsg( hHal, pMsg );
-     if ( eSIR_SUCCESS != sirStatus )
-     {
-        vosStatus = VOS_STATUS_E_FAILURE;
-     }
-
-  } while( 0 );
-
-   return( vosStatus );
-}
-#endif /* FEATURE_WLAN_NON_INTEGRATED_SOC */
 
 #if defined(__ANI_COMPILER_PRAGMA_PACK_STACK)
 #pragma pack( push )
@@ -431,13 +269,8 @@ static unsigned short polFileChkSum( unsigned short *FileData, unsigned long Num
   return( (unsigned short)( ~Sum ) );
 }
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-static v_BOOL_t sys_validateStaConfig( void *pImage, unsigned long cbFile,
-   void **ppStaConfig, v_SIZE_t *pcbStaConfig )
-#else
 v_BOOL_t sys_validateStaConfig( void *pImage, unsigned long cbFile,
    void **ppStaConfig, v_SIZE_t *pcbStaConfig )
-#endif
 {
    v_BOOL_t fFound = VOS_FALSE;
    tPolFileHeader   *pFileHeader = NULL;
@@ -494,196 +327,14 @@ v_BOOL_t sys_validateStaConfig( void *pImage, unsigned long cbFile,
    return( fFound );
 }
 
-#if defined( FEATURE_WLAN_NON_INTEGRATED_SOC )
-static v_U8_t _vImageArray[15000];
-
-static VOS_STATUS sys_getCfgBinaryMsgBuffer( tSirMbMsg **ppMsg, v_SIZE_t *pcbCfgBinary )
-{
-   VOS_STATUS vosStatus = VOS_STATUS_E_FAILURE;
-
-   v_VOID_t *pFileImage = NULL;
-   v_SIZE_t cbFileImage = 0;
-
-   v_VOID_t *pCfgBinary = NULL;
-   v_SIZE_t cbCfgBinary = 0;
-
-   v_BOOL_t bStatus = VOS_FALSE;
-
-   do
-   {
-      // get the number of bytes in the CFG Binary...
-      vosStatus = vos_get_binary_blob( VOS_BINARY_ID_CONFIG, NULL, &cbFileImage );
-      if ( VOS_STATUS_E_NOMEM != vosStatus )
-      {
-         VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                    "Error obtaining binary size" );
-         break;
-      }
-
-      // malloc a buffer to read in the Configuration binary file.
-      //pFileImage = vos_mem_malloc( cbFileImage );
-      pFileImage = (v_VOID_t*)_vImageArray;
-
-      if ( NULL == pFileImage )
-      {
-         VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                    "Unable to allocate memory for the CFG binary [size= %d bytes]",
-                    cbFileImage );
-
-         vosStatus = VOS_STATUS_E_NOMEM;
-         break;
-      }
-
-      // Get the entire CFG file image...
-      vosStatus = vos_get_binary_blob( VOS_BINARY_ID_CONFIG, pFileImage, &cbFileImage );
-      if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
-      {
-         VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                    "Error: Cannot retrieve CFG fine image from vOSS. [size= %d bytes]",
-                    cbFileImage );
-         break;
-      }
-
-      // Validate the binary image.  This function will return a pointer and length
-      // where the CFG binary is located within the binary image file.
-      bStatus = sys_validateStaConfig( pFileImage, cbFileImage,
-                                      &pCfgBinary, &cbCfgBinary );
-      if ( VOS_FALSE == bStatus )
-      {
-         VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                    "Error: Cannot find STA CFG in binary image fileze" );
-         vosStatus = VOS_STATUS_E_FAILURE;
-         break;
-      }
-
-      // caller wants to know the size of the cfg Binary.  Return it.
-      *pcbCfgBinary = cbCfgBinary;
-
-      // To build the CFG download message, we need build a buffer that includes the
-      // tSirMbMsg header followed by the CFG data.  So allocate enough space for the
-      // CFG binary plus the message header.
-      //
-      // This buffer (the tSir message) is returned to the caller...
-      *ppMsg = vos_mem_malloc( cbCfgBinary + FIELD_OFFSET( tSirMbMsg, data ) );
-      if ( NULL == *ppMsg )
-      {
-         VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                    "Unable to allocate memory for the CFG download message "
-                    "buffer [size= %d bytes]",
-                    cbCfgBinary + FIELD_OFFSET( tSirMbMsg, data ) );
-
-         vosStatus = VOS_STATUS_E_NOMEM;
-         break;
-      }
-
-      // copy the CFG binary data into the CFG download message buffer...
-      vos_mem_copy( (v_VOID_t *)( ( *ppMsg )->data ), pCfgBinary , cbCfgBinary );
-
-      // if we get here, we have succeeded!
-      vosStatus = VOS_STATUS_SUCCESS;
-
-   } while( 0 );
-
-   // Always need to free the buffer where the binary image file was
-   // temporarily read...
-   if ( NULL == pFileImage )
-   {
-     // vos_mem_free( pFileImage );
-   }
-
-   // If failed and we have already allocated the memory for the CFG
-   // binary download message, need to free that memory.  If succeeded,
-   // the caller is going to free this memory when it is done sending
-   // the message.
-   if ( ( !VOS_IS_STATUS_SUCCESS( vosStatus ) ) && ( NULL != *ppMsg ) )
-   {
-      vos_mem_free( *ppMsg );
-      *ppMsg = NULL;
-      *pcbCfgBinary = 0;
-   }
-
-   return( vosStatus );
-}
-#endif /* FEATURE_WLAN_NON_INTEGRATED_SOC */
 
 
 
 
 
 
-#if defined( FEATURE_WLAN_NON_INTEGRATED_SOC )
-static VOS_STATUS sys_SendWniCfgDnldMsg( v_CONTEXT_t pVosContext )
-{
-   VOS_STATUS vosStatus = VOS_STATUS_E_FAILURE;
-
-   tSirRetStatus sirStatus = eSIR_SUCCESS;
-   tSirMbMsg *pMsg = NULL;
-   v_VOID_t *hHal  = NULL;
-
-   v_SIZE_t cbCfgBinary = 0;
-
-   do
-   {
-      hHal = vos_get_context( VOS_MODULE_ID_HAL, pVosContext );
-      if ( NULL == hHal ) break;
-
-      vosStatus = sys_getCfgBinaryMsgBuffer( &pMsg, &cbCfgBinary );
-      if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) ) break;
-
-      pMsg->type = WNI_CFG_DNLD_RSP;
-
-      // message length is 4 greater than the config data size
-      // need to add in an extra 4 for the message header.
-      pMsg->msgLen = (tANI_U16)( cbCfgBinary + FIELD_OFFSET( tSirMbMsg, data ) );
-
-      sirStatus = halMmhForwardMBmsg( hHal, pMsg );
-      if ( eSIR_SUCCESS != sirStatus )
-      {
-         vosStatus = VOS_STATUS_E_FAILURE;
-      }
-      vos_mem_free(pMsg);
-   } while( 0 );
-
-   return( vosStatus );
-}
-#endif /* FEATURE_WLAN_NON_INTEGRATED_SOC */
 
 
-#if defined( FEATURE_WLAN_NON_INTEGRATED_SOC )
-VOS_STATUS sys_SendSmeStartReq( v_CONTEXT_t pVosContext )
-{
-   VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
-   tSirSmeStartReq msg;
-
-   tSirRetStatus sirStatus = eSIR_SUCCESS;
-   tSirSmeStartReq *pMsg = &msg;
-   v_VOID_t *hHal;
-
-   do
-   {
-      // get the HAL context...
-      hHal = vos_get_context( VOS_MODULE_ID_HAL, pVosContext );
-      if ( NULL == hHal ) break;
-
-      // format the Sme Start Request message.  This message has
-      // the hal handle in the 'data' portion of the message.
-      pMsg->messageType      = eWNI_SME_START_REQ;
-      pMsg->length           = sizeof( msg );
-      pMsg->roamingAtPolaris = 0;
-      pMsg->sendNewBssInd    = 0;
-
-     // Send the HAL Init Start Request message...
-     sirStatus = halMmhForwardMBmsg( hHal, (tSirMbMsg *)pMsg );
-     if ( eSIR_SUCCESS != sirStatus )
-     {
-        vosStatus = VOS_STATUS_E_FAILURE;
-     }
-
-  } while( 0 );
-
-   return( vosStatus );
-}
-#endif /* FEATURE_WLAN_NON_INTEGRATED_SOC */
 
 VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 {
@@ -704,23 +355,12 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
       {
          case SYS_MSG_ID_MC_START:
          {
-#if defined( FEATURE_WLAN_NON_INTEGRATED_SOC )
-            // save the callback pointer and user data in the context
-            // data
-            gSysContext.mcStartCB = (sysResponseCback)pMsg->bodyptr;
-            gSysContext.mcStartUserData= (v_VOID_t *)pMsg->bodyval;
-
-            // Trigger the CFG download sequence by sending the
-            // SIR_HAL_INIT_START_REQ message to the mac module.
-            vosStatus = sys_SendHalInitStartReqMsg( pVosContext );
-#else
             /* Handling for this message is not needed now so adding 
              *debug print and VOS_ASSERT*/
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
                        " Received SYS_MSG_ID_MC_START message msgType= %d [0x%08lx]",
                        pMsg->type, pMsg->type );
             VOS_ASSERT(0);
-#endif
             break;
          }
 
@@ -755,23 +395,12 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          // function that is in the message.
          case SYS_MSG_ID_MC_THR_PROBE:
          {
-#if defined( FEATURE_WLAN_NON_INTEGRATED_SOC )
-            sysResponseCback callback;
-
-            // Make a callback to the function based on the info
-            // in the message (callback is in bodyptr and user
-            // data is in bodyval)
-            callback = (sysResponseCback)pMsg->bodyptr;
-
-            callback( (v_VOID_t *)pMsg->bodyval );
-#else
             /* Handling for this message is not needed now so adding 
              *debug print and VOS_ASSERT*/
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
                        " Received SYS_MSG_ID_MC_THR_PROBE message msgType= %d [0x%08lx]",
                        pMsg->type, pMsg->type );
             VOS_ASSERT(0);
-#endif
             break;
          }
 
@@ -813,99 +442,6 @@ VOS_STATUS sysMcProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
       // Process all 'legacy' messages
       switch( pMsg->type )
       {
-#if defined( FEATURE_WLAN_NON_INTEGRATED_SOC )
-         /* Handling for these messages are not needed now. If a request comes for 
-            these messages they will goto default and give VOS_ASSERT*/
-         case WDA_APP_SETUP_NTF:
-         {
-            // we get this message after we send SIR_HAL_INIT_START_REQ but
-            // we have nothing to do.  This one is safely ignored.  Following
-            // this message we will get the WNI_CFG_DNLD_REQ from where we need
-            // to give the Configuration data back.
-            break;
-         }
-
-         case WNI_CFG_DNLD_REQ:
-         {
-            // This is the request from the MAC to download the configuration
-            // data.  Format and send the Cfg Download to the MAC.
-            vosStatus = sys_SendWniCfgDnldMsg( pVosContext );
-            if (pMsg->bodyptr) 
-               vos_mem_free(pMsg->bodyptr); 
-            break;
-         }
-
-         case WNI_CFG_DNLD_CNF:
-         {
-            tSirMbMsg *pSirMsg = (tSirMbMsg *)pMsg->bodyptr;
-
-            VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO,
-                       "WNI_CFG_DNLD_CNF message received with status code= %d [0x%08lX]",
-                       pSirMsg->data[0], pSirMsg->data[0] );
-
-            // Config download confirm contains a tANI_U32 status in the 'data' field
-            // of the WNI message.  Not sure we can do anything with this since we
-            // don't have a way to send a status to the waiting thread.
-
-            if ( WNI_CFG_SUCCESS == pSirMsg->data[ 0 ] )
-            {
-               VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO,
-                          "WNI_CFG_DNLD_CNF received with successful status" );
-            }
-            else
-            {
-               // What to do if the CFG Download fails?  We have the MC thread
-               // blocked waiting for a calback to unblock but we don't have
-               // a way to convey success / failure to the MC thread??
-               VOS_ASSERT( 0 );
-
-               VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO,
-                          "WNI_CFG_DNLD_CNF received with status= %d [0x%08lX]",
-                          pSirMsg->data[ 0 ], pSirMsg->data[ 0 ] );
-            }
-            if (pMsg->bodyptr) 
-               vos_mem_free(pMsg->bodyptr); 
-            break;
-         }
-
-         case WDA_NIC_OPER_NTF:
-         {
-            VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO,
-                       "WDA_NIC_OPER_NTF message received" );
-
-            // This is the NIC Operational Notify message that comes to the
-            // SYS module from HAL after the Configuration download is complete.
-            // This message comes *after* the WNI_CFG_DNLD_CNF message
-            // comes to SYS from the CFG module, also at the end of CFG
-            // download.  In response to this message, SYS has to respond with
-            // request from the MAC to download the configuration
-            // data.  Format and send the Cfg Download to the MAC.
-            vosStatus = sys_SendSmeStartReq( pVosContext );
-            if (pMsg->bodyptr) 
-                vos_mem_free(pMsg->bodyptr); 
-            break;
-         }
-
-         case eWNI_SME_START_RSP:
-         {
-            tSirSmeRsp *pSirSmeRspMsg = (tSirSmeRsp *)pMsg->bodyptr;
-#ifdef WLAN_DEBUG
-            VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO,
-                       "eWNI_SME_START_RSP received with status code= %d [0x%08lX]",
-                       pSirSmeRspMsg->statusCode, pSirSmeRspMsg->statusCode );
-#endif
-            // Make a callback to the Main Controller start callback routine when
-            // the CFG sequence is finished... (this is the confirmation message
-            // from the MAC that the CFG sequence is completed).
-            if ( gSysContext.mcStartCB )
-            {
-               gSysContext.mcStartCB( gSysContext.mcStartUserData );
-            }
-            if (pMsg->bodyptr) 
-                vos_mem_free(pMsg->bodyptr); 
-            break;
-         }
-#endif  /* FEATURE_WLAN_NON_INTEGRATED_SOC */
 
          default:
          {
@@ -949,16 +485,6 @@ VOS_STATUS sysTxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          // function that is in the message.
          case SYS_MSG_ID_TX_THR_PROBE:
          {
-#if defined( FEATURE_WLAN_NON_INTEGRATED_SOC )
-            sysResponseCback callback;
-
-            // Make a callback to the function based on the info
-            // in the message (callback is in bodyptr and user
-            // data is in bodyval)
-            callback = (sysResponseCback)pMsg->bodyptr;
-
-            callback( (v_VOID_t *)pMsg->bodyval );
-#else
            /* Handling for this message is not needed now so adding 
             * debug print and VOS_ASSERT*/
             VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
@@ -966,7 +492,6 @@ VOS_STATUS sysTxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
                        pMsg->type, pMsg->type );
             VOS_ASSERT(0);
 
-#endif
             break;
          }
 
@@ -1011,7 +536,6 @@ VOS_STATUS sysTxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 }
 
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 VOS_STATUS sysRxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
 {
    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
@@ -1068,7 +592,6 @@ VOS_STATUS sysRxProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
    return( vosStatus );
 }
 
-#endif
 
 v_VOID_t sysMcFreeMsg( v_CONTEXT_t pVContext, vos_msg_t* pMsg )
 {
@@ -1115,13 +638,11 @@ SysProcessMmhMsg
       /* Forward this message to the SYS module */
       targetMQ = VOS_MQ_ID_SYS;
 
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
       VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
                  "Handling for the Message ID %d is removed in SYS\r\n",
                  pMsg->type);
 
       VOS_ASSERT(0);
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
       break;
     }
 
@@ -1135,13 +656,11 @@ SysProcessMmhMsg
       /* Forward this message to the HAL module */
       targetMQ = VOS_MQ_ID_WDA;
 
-#if defined ( FEATURE_WLAN_INTEGRATED_SOC )
       VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
                  "Handling for the Message ID %d is removed as there is no HAL \r\n",
                  pMsg->type);
 
       VOS_ASSERT(0);
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
       break;
     }
 
