@@ -80,9 +80,7 @@
 #include <linux/ip.h>
 #include <linux/semaphore.h>
 #include <wlan_hdd_hostapd.h>
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include <wlan_hdd_softap_tx_rx.h>
-#endif
 
 // change logging behavior based upon debug flag
 #ifdef HDD_WMM_DEBUG
@@ -1760,22 +1758,10 @@ v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb)
    v_MACADDR_t *pDestMacAddress = (v_MACADDR_t*)skb->data;
    hdd_adapter_t *pAdapter = (hdd_adapter_t *)netdev_priv(dev);
    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-   tpAniSirGlobal  pMac = (tpAniSirGlobal) vos_get_context(VOS_MODULE_ID_HAL, pHddCtx->pvosContext);
-#endif //FEATURE_WLAN_NON_INTEGRATED_SOC
    v_U8_t STAId;
    v_U8_t *pSTAId = (v_U8_t *)(((v_U8_t *)(skb->data)) - 1);
 
    /*Get the Station ID*/
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-   if (eHAL_STATUS_SUCCESS != halTable_FindStaidByAddr(pMac, (tANI_U8 *)pDestMacAddress, &STAId))
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
-            "%s: Failed to find right station", __func__);
-      *pSTAId = HDD_WLAN_INVALID_STA_ID;
-      goto done;
-   }
-#else
    if (VOS_STATUS_SUCCESS != hdd_softap_GetStaId(pAdapter, pDestMacAddress, &STAId))
    {
       VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
@@ -1783,7 +1769,6 @@ v_U16_t hdd_hostapd_select_queue(struct net_device * dev, struct sk_buff *skb)
       *pSTAId = HDD_WLAN_INVALID_STA_ID;
       goto done;
    }
-#endif //FEATURE_WLAN_NON_INTEGRATED_SOC
 
    spin_lock_bh( &pAdapter->staInfo_lock );
    if (FALSE == vos_is_macaddr_equal(&pAdapter->aStaInfo[STAId].macAddrSTA, pDestMacAddress))

@@ -1415,11 +1415,7 @@ static iw_softap_commit(struct net_device *dev,
             // The actual processing may eventually be more extensive than this.
             // Right now, just consume any PMKIDs that are  sent in by the app.
             status = hdd_softap_unpackIE( 
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-                                  vos_get_context( VOS_MODULE_ID_HAL, pVosContext),
-#else
                                   vos_get_context( VOS_MODULE_ID_PE, pVosContext),
-#endif
                                   &RSNEncryptType,
                                   &mcRSNEncryptType,
                                   &RSNAuthType,

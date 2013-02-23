@@ -66,9 +66,6 @@
 #include <vos_types.h>
 #include <aniGlobal.h>
 #include <halTypes.h>
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include <halHddApis.h>
-#endif
 #include <net/ieee80211_radiotap.h>
 
 
@@ -1406,26 +1403,9 @@ VOS_STATUS hdd_softap_RegisterSTA( hdd_adapter_t *pAdapter,
    staDesc.ucProtectedFrame = (v_U8_t)fPrivacyBit ;
 
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-   /* Enable UMA for TX translation only when there is no concurrent session active */
-   if (vos_concurrent_sessions_running())
-   {
-      staDesc.ucSwFrameTXXlation = 1;
-   }
-   else
-   {
-      staDesc.ucSwFrameTXXlation = 0;
-   }
-
-   // Enable frame translation in software for AMSDU 
-   // reception ONLY. The remaining rx is still 
-   // translated in HW.
-   staDesc.ucSwFrameRXXlation = 1;
-#else
    // For PRIMA UMA frame translation is not enable yet.
    staDesc.ucSwFrameTXXlation = 1;
    staDesc.ucSwFrameRXXlation = 1;
-#endif
    staDesc.ucAddRmvLLC = 1;
 
    // Initialize signatures and state
@@ -1552,36 +1532,16 @@ VOS_STATUS hdd_softap_change_STA_state( hdd_adapter_t *pAdapter, v_MACADDR_t *pD
     v_U8_t ucSTAId = WLAN_MAX_STA_COUNT;
     VOS_STATUS vosStatus = eHAL_STATUS_SUCCESS;
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-    tHalHandle hHalHandle = (tHalHandle ) vos_get_context(VOS_MODULE_ID_HAL, pVosContext);
-#endif //FEATURE_WLAN_NON_INTEGRATED_SOC
 
     VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
                "%s: enter", __func__);
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-    if(!hHalHandle )
-    {
-      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_FATAL,
-                 "%s: The hHalHandle is  NULL ptr value");
-      VOS_ASSERT( 0 );
-      return VOS_STATUS_E_FAILURE;
-    }    
-
-    if (eHAL_STATUS_SUCCESS != halTable_FindStaidByAddr(hHalHandle, (tANI_U8 *)pDestMacAddress, &ucSTAId))
-    {
-        VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Failed to find right station", __func__);
-        return VOS_STATUS_E_FAILURE;
-    }
-#else
     if (VOS_STATUS_SUCCESS != hdd_softap_GetStaId(pAdapter, pDestMacAddress, &ucSTAId))
     {
         VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
                     "%s: Failed to find right station", __func__);
         return VOS_STATUS_E_FAILURE;
     }
-#endif //FEATURE_WLAN_NON_INTEGRATED_SOC
 
     if (FALSE == vos_is_macaddr_equal(&pAdapter->aStaInfo[ucSTAId].macAddrSTA, pDestMacAddress))
     {
