@@ -160,21 +160,17 @@ enum eWniMsgTypes
     eWNI_SME_STOP_BSS_REQ,
     eWNI_SME_STOP_BSS_RSP,
     eWNI_SME_DEL_BA_PEER_IND,
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
     eWNI_SME_DEFINE_QOS_REQ,
     eWNI_SME_DEFINE_QOS_RSP,
     eWNI_SME_DELETE_QOS_REQ,
     eWNI_SME_DELETE_QOS_RSP,
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
     eWNI_SME_PROMISCUOUS_MODE_REQ,
     eWNI_SME_PROMISCUOUS_MODE_RSP,
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
     eWNI_SME_LINK_TEST_START_REQ,
     eWNI_SME_LINK_TEST_START_RSP,
     eWNI_SME_LINK_TEST_STOP_REQ,
     eWNI_SME_LINK_TEST_STOP_RSP,
     eWNI_SME_LINK_TEST_REPORT_IND,
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
     eWNI_SME_NEIGHBOR_BSS_IND,
     eWNI_SME_MEASUREMENT_REQ,
     eWNI_SME_MEASUREMENT_RSP,
@@ -182,7 +178,6 @@ enum eWniMsgTypes
     eWNI_SME_SET_WDS_INFO_REQ,
     eWNI_SME_SET_WDS_INFO_RSP,
     eWNI_SME_WDS_INFO_IND,
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
     eWNI_SME_SET_POWER_REQ,
     eWNI_SME_SET_POWER_RSP,
     eWNI_SME_CLIENT_SIDE_LOAD_BALANCE_REQ,
@@ -192,7 +187,6 @@ enum eWniMsgTypes
     eWNI_SME_SET_PROPRIETARY_IE_REQ,
     eWNI_SME_SET_PROPRIETARY_IE_RSP, // #endif
     eWNI_SME_DISCARD_SKB_NTF,  // Used to cleanup SKBs by HDD
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
     eWNI_SME_DEAUTH_CNF,
     eWNI_SME_MIC_FAILURE_IND,
     eWNI_SME_ADDTS_REQ,
@@ -431,14 +425,12 @@ enum eWniMsgTypes
 /*                                   excluding variable data length    */
 /*---------------------------------------------------------------------*/
 
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
 // Parameter update indication
 #define WNI_CFG_PARAM_UPDATE_IND_PID   0
 
 #define WNI_CFG_PARAM_UPDATE_IND_NUM   1
 #define WNI_CFG_PARAM_UPDATE_IND_LEN   (WNI_CFG_MB_HDR_LEN + \
                                        (WNI_CFG_PARAM_UPDATE_IND_NUM << 2))
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 // Configuration download request
 #define WNI_CFG_DNLD_REQ_NUM           0

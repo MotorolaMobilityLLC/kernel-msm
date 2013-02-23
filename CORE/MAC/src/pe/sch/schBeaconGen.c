@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file schBeaconGen.cc contains beacon generation related
@@ -60,10 +59,6 @@
 #include "limUtils.h"
 #include "limApi.h"
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halCommonApi.h"
-#include "halDataStruct.h"
-#endif
 
 #include "halMsgApi.h"
 #include "cfgApi.h"

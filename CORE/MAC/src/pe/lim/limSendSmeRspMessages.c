@@ -64,10 +64,6 @@
 #include "sysDef.h"
 #include "cfgApi.h"
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halDataStruct.h"
-#include "halCommonApi.h"
-#endif
 
 #include "schApi.h"
 #include "utilsApi.h"

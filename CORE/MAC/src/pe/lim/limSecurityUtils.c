@@ -61,10 +61,6 @@
 #endif
 #include "cfgApi.h"
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halDataStruct.h"
-#include "halCommonApi.h"
-#endif
 
 #include "utilsApi.h"
 #include "limUtils.h"
