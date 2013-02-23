@@ -70,9 +70,6 @@
 #include "btcApi.h"
 #include "vos_nvitem.h"
 #include "p2p_Api.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halFw.h"
-#endif
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
 #include "oemDataApi.h"
@@ -1793,7 +1790,6 @@ eHalStatus sme_ConfigureRxpFilter( tHalHandle hHal,
 --------------------------------------------------------------------------- */
 eHalStatus sme_ConfigureAppsCpuWakeupState( tHalHandle hHal, tANI_BOOLEAN  isAppsAwake);
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /* ---------------------------------------------------------------------------
 
   \fn    sme_ConfigureSuspendInd
@@ -1838,7 +1834,6 @@ eHalStatus sme_ConfigureSuspendInd( tHalHandle hHal,
 eHalStatus sme_ConfigureResumeReq( tHalHandle hHal, 
                              tpSirWlanResumeParam  wlanResumeParam);
 
-#endif
 
 /* ---------------------------------------------------------------------------
 
