@@ -65,6 +65,7 @@ struct tpa6165_data {
 	int button_pressed;
 	int amp_state;
 	int special_hs;
+	int alwayson_micb;
 	struct mutex lock;
 	struct wake_lock wake_lock;
 };
@@ -382,41 +383,43 @@ static inline void tpa6165_remove_debugfs(void)
 #endif
 
 
-static void tpa6165_sleep(struct tpa6165_data *tpa6165, int sleep)
+static void tpa6165_sleep(struct tpa6165_data *tpa6165, int sleep_state)
 {
-	if (sleep) {
-		if (tpa6165->special_hs) {
-			/* if it is special headset wake up the device which
-			 * enables all blocks, and selectively disable L/R
-			 * channels and mic amp and enable Mic bias for proper
-			 * detection of the headset. The side effect is a bit
-			 * bit of extra current drain for special hs type.
-			 */
-			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG1,
-				~TPA6165_SLEEP_ENABLE, TPA6165_SLEEP_ENABLE);
-			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
-				~TPA6165_AUTO_MODE, TPA6165_AUTO_MODE);
-			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
-				(~TPA6165_LEFT_RIGHT_CH) & 0xff,
-				TPA6165_LEFT_RIGHT_CH);
-			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
-				(~TPA6165_MIC_AMP_EN) & 0xff,
-				TPA6165_MIC_AMP_EN);
-			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
-				(TPA6165_MIC_BIAS_EN), TPA6165_MIC_BIAS_EN);
-		} else {
-			/* set IC in sleep */
-			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG1,
-				TPA6165_SLEEP_ENABLE, TPA6165_SLEEP_ENABLE);
-			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
-				1, TPA6165_AUTO_MODE);
-		}
-	} else {
-			/* take IC out of sleep */
-			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
-				1, TPA6165_AUTO_MODE);
-			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG1,
-				~TPA6165_SLEEP_ENABLE, TPA6165_SLEEP_ENABLE);
+	switch (sleep_state) {
+	case TPA6165_SPECIAL_SLEEP:
+		/* if it is special headset or AOV, enables all blocks,
+		 * and selectively disable L/R channels and mic amp
+		 * and enable Mic bias for proper detection of the hs.
+		 * The side effect is a bit of extra current drain for
+		 * this use case.
+		 */
+		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG1,
+			~TPA6165_SLEEP_ENABLE, TPA6165_SLEEP_ENABLE);
+		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
+			~TPA6165_AUTO_MODE, TPA6165_AUTO_MODE);
+		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
+			(~TPA6165_LEFT_RIGHT_CH) & 0xff,
+			TPA6165_LEFT_RIGHT_CH);
+		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
+			(~TPA6165_MIC_AMP_EN) & 0xff,
+			TPA6165_MIC_AMP_EN);
+		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
+			(TPA6165_MIC_BIAS_EN), TPA6165_MIC_BIAS_EN);
+		break;
+	case TPA6165_SLEEP:
+		/* set IC in sleep */
+		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG1,
+			TPA6165_SLEEP_ENABLE, TPA6165_SLEEP_ENABLE);
+		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
+			1, TPA6165_AUTO_MODE);
+		break;
+	case TPA6165_WAKEUP:
+		/* take IC out of sleep */
+		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
+			1, TPA6165_AUTO_MODE);
+		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG1,
+			~TPA6165_SLEEP_ENABLE, TPA6165_SLEEP_ENABLE);
+		break;
 	}
 }
 
@@ -438,7 +441,7 @@ static int tpa6165_hp_event(struct snd_soc_dapm_widget *w,
 			tpa6165->amp_state = TPA6165_AMP_EN_PENDING;
 		else {
 			tpa6165->amp_state = TPA6165_AMP_ENABLED;
-			tpa6165_sleep(tpa6165, 0);
+			tpa6165_sleep(tpa6165, TPA6165_WAKEUP);
 		}
 	} else {
 		tpa6165->amp_state = TPA6165_AMP_DISABLED;
@@ -510,7 +513,7 @@ static int tpa6165_get_hs_acc_type(struct tpa6165_data *tpa6165)
 				 * out of sleep
 				 */
 				acc_type = SND_JACK_UNSUPPORTED;
-				tpa6165_sleep(tpa6165, 0);
+				tpa6165_sleep(tpa6165, TPA6165_WAKEUP);
 			} else {
 				acc_type = SND_JACK_HEADSET;
 				tpa6165->special_hs = 0;
@@ -520,11 +523,9 @@ static int tpa6165_get_hs_acc_type(struct tpa6165_data *tpa6165)
 				0xc2, 0xff);
 			tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG2,
 				0x4, 0xff);
-		} else {
-			/* if special hs flag is set wake up the device */
-			tpa6165_sleep(tpa6165, 1);
+		} else
 			acc_type = SND_JACK_HEADSET;
-		}
+
 		break;
 	case TPA6165_STEREO_MIC_0N_RING:
 	case TPA6165_MONO_MIC_0N_SLEEVE1:
@@ -552,6 +553,15 @@ static int tpa6165_get_hs_acc_type(struct tpa6165_data *tpa6165)
 		acc_type = SND_JACK_UNSUPPORTED;
 		break;
 	}
+
+	if (acc_type == SND_JACK_HEADSET && (tpa6165->alwayson_micb ||
+			tpa6165->special_hs))
+		/* need to call this here to trigger special sleep state
+		 * where all blocks are disabled but mic bias is enabled to
+		 * support always on voice or special hs case.
+		 */
+		tpa6165_sleep(tpa6165, TPA6165_SPECIAL_SLEEP);
+
 	return acc_type;
 }
 
@@ -588,10 +598,10 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 			snd_soc_jack_report_no_dapm(tpa6165->button_jack,
 				0, tpa6165->button_jack->jack->type);
 		}
-		if (tpa6165->special_hs) {
+		if (tpa6165->special_hs || tpa6165->alwayson_micb) {
 			/* clear flag and put the IC in regular sleep mode */
 			tpa6165->special_hs = 0;
-			tpa6165_sleep(tpa6165, 1);
+			tpa6165_sleep(tpa6165, TPA6165_SLEEP);
 		}
 	} else if ((tpa6165->dev_status_reg1 & TPA6165_JACK_DETECT) &&
 			tpa6165->inserted) {
@@ -631,12 +641,15 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 	 */
 	if (tpa6165->dev_status_reg1 & TPA6165_VOL_SLEW_DONE) {
 
-		if (tpa6165->amp_state == TPA6165_AMP_DISABLED)
+		if (tpa6165->amp_state == TPA6165_AMP_DISABLED) {
 			/* put the IC in sleep mode */
-			tpa6165_sleep(tpa6165, 1);
-		else if (tpa6165->amp_state == TPA6165_AMP_EN_PENDING)
+			if (tpa6165->alwayson_micb || tpa6165->special_hs)
+				tpa6165_sleep(tpa6165, TPA6165_SPECIAL_SLEEP);
+			else
+				tpa6165_sleep(tpa6165, TPA6165_SLEEP);
+		} else if (tpa6165->amp_state == TPA6165_AMP_EN_PENDING)
 			/* wake up IC */
-			tpa6165_sleep(tpa6165, 0);
+			tpa6165_sleep(tpa6165, TPA6165_WAKEUP);
 
 		/* clear vol slew interrupt mask */
 		tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG1,
@@ -706,6 +719,8 @@ tpa6165_of_init(struct i2c_client *client)
 		return NULL;
 	}
 
+	of_property_read_u32(np, "ti,tpa6165-always-on-micbias",
+				&pdata->alwayson_micbias);
 	pdata->irq_gpio = of_get_gpio(np, 0);
 
 	return pdata;
@@ -765,6 +780,11 @@ static int __devinit tpa6165_probe(struct i2c_client *client,
 	tpa6165->button_pressed = 0;
 	tpa6165->button_jack = NULL;
 	tpa6165->hs_jack = NULL;
+	/* This flag is used to indicate that mic bias should be always
+	 * on when headset is inserted, needed for always on voice
+	 * operations and noise estimate.
+	 */
+	tpa6165->alwayson_micb = tpa6165_pdata->alwayson_micbias;
 
 	/* enable regulators */
 	tpa6165->vdd = regulator_get(&client->dev, "hs_det_vdd");

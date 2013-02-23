@@ -132,6 +132,11 @@
 #define TPA6165_AMP_ENABLED		1
 #define TPA6165_AMP_EN_PENDING	2
 
+/* power states */
+#define TPA6165_SPECIAL_SLEEP	2
+#define TPA6165_SLEEP			1
+#define TPA6165_WAKEUP			0
+
 struct tpa6165_regs {
 	u8 reg;
 	u8 value;
