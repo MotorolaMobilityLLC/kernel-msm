@@ -2055,6 +2055,56 @@ void hdd_cleanup_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter, tANI_
 
 }
 
+void hdd_set_pwrparams(hdd_context_t *pHddCtx)
+{
+   tSirSetPowerParamsReq powerRequest = { 0 };
+
+   powerRequest.uIgnoreDTIM = 1;
+
+   if (pHddCtx->cfg_ini->enableModulatedDTIM)
+   {
+       powerRequest.uDTIMPeriod = pHddCtx->cfg_ini->enableModulatedDTIM;
+       powerRequest.uListenInterval = pHddCtx->hdd_actual_LI_value;
+   }
+   else
+   {
+       powerRequest.uListenInterval = pHddCtx->cfg_ini->enableDynamicDTIM;
+   }
+
+   /* Update ignoreDTIM and ListedInterval in CFG to remain at the DTIM
+   *specified during Enter/Exit BMPS when LCD off*/
+   ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_IGNORE_DTIM, powerRequest.uIgnoreDTIM,
+                    NULL, eANI_BOOLEAN_FALSE);
+   ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_LISTEN_INTERVAL, powerRequest.uListenInterval,
+                    NULL, eANI_BOOLEAN_FALSE);
+
+   /* switch to the DTIM specified in cfg.ini */
+   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                  "Switch to DTIM%d", powerRequest.uListenInterval);
+   sme_SetPowerParams( pHddCtx->hHal, &powerRequest, TRUE);
+
+}
+
+void hdd_reset_pwrparams(hdd_context_t *pHddCtx)
+{
+   /*Switch back to DTIM 1*/
+   tSirSetPowerParamsReq powerRequest = { 0 };
+
+   powerRequest.uIgnoreDTIM = pHddCtx->hdd_actual_ignore_DTIM_value;
+   powerRequest.uListenInterval = pHddCtx->hdd_actual_LI_value;
+
+   /* Update ignoreDTIM and ListedInterval in CFG with default values */
+   ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_IGNORE_DTIM, powerRequest.uIgnoreDTIM,
+                    NULL, eANI_BOOLEAN_FALSE);
+   ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_LISTEN_INTERVAL, powerRequest.uListenInterval,
+                    NULL, eANI_BOOLEAN_FALSE);
+
+   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                  "Switch to DTIM%d",powerRequest.uListenInterval);
+   sme_SetPowerParams( pHddCtx->hHal, &powerRequest, TRUE);
+
+}
+
 VOS_STATUS hdd_enable_bmps_imps(hdd_context_t *pHddCtx)
 {
    VOS_STATUS status = VOS_STATUS_SUCCESS;

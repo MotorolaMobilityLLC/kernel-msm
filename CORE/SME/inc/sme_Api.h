@@ -1945,9 +1945,12 @@ eHalStatus sme_PreferredNetworkFoundInd (tHalHandle hHal, void* pMsg);
     \brief  API to set Power Parameters 
     \param  hHal - The handle returned by macOpen.
     \param  pwParams -  Pointer to the power parameters requested.
+    \param  forced - if true, not to be dropped silently in host, it must reach
+    FW; It is added to avoid a race condition scenario where LIM hasn't deleted
+    the session yet before power params gets sent to PMC
     \return eHalStatus
   ---------------------------------------------------------------------------*/
-eHalStatus sme_SetPowerParams(tHalHandle hHal, tSirSetPowerParamsReq* pwParams);
+eHalStatus sme_SetPowerParams(tHalHandle hHal, tSirSetPowerParamsReq* pwParams, tANI_BOOLEAN forced);
 
 /* ---------------------------------------------------------------------------
     \fn sme_SetTxPerTracking
