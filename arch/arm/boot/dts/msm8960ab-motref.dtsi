@@ -62,6 +62,7 @@
 			compatible = "ti,tpa6165";
 			reg = <0x40>;
 			gpios = <&pm8921_gpio 38 0>;     /* IRQ */
+			ti,tpa6165-always-on-micbias = <1>;
 		};
 
 		tfa9890@34 {
