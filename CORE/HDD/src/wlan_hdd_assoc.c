@@ -122,10 +122,6 @@ v_U8_t ccpRSNOui06[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x40, 0x96, 0x00 }; // CCKM
 
 #define BEACON_FRAME_IES_OFFSET 12
 
-#ifdef WLAN_FEATURE_PACKET_FILTERING
-extern void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set, v_U8_t sessionId);
-#endif
-
 void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter);
 
 v_VOID_t hdd_connSetConnectionState( hdd_station_ctx_t *pHddStaCtx,
@@ -2198,11 +2194,11 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
                 if (pHddCtx->cfg_ini->isMcAddrListFilter)
                 {
                     /*Multicast addr filtering is enabled*/
-                    if(pHddCtx->mc_addr_list.isFilterApplied)
+                    if (pAdapter->mc_addr_list.isFilterApplied)
                     {
                         /*Filter applied during suspend mode*/
                         /*Clear it here*/
-                        wlan_hdd_set_mc_addr_list(pHddCtx, FALSE, pAdapter->sessionId);
+                        wlan_hdd_set_mc_addr_list(pAdapter, FALSE);
                     }
                 }
 #endif
