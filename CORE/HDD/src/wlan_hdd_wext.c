@@ -368,7 +368,6 @@ int hdd_validate_mcc_config(hdd_adapter_t *pAdapter, v_UINT_t staId,
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest, 
                            v_U8_t sessionId);
-void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set, v_U8_t sessionId);
 #endif
 
 /**---------------------------------------------------------------------------
@@ -5341,16 +5340,17 @@ int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest,
     return 0;
 }
 
-void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set, v_U8_t sessionId)
+void wlan_hdd_set_mc_addr_list(hdd_adapter_t *pAdapter, v_U8_t set)
 {
-    v_U8_t filterAction = 0; 
-    tPacketFilterCfg request = {0}; 
-    v_U8_t i = 0;
+    v_U8_t filterAction;
+    tPacketFilterCfg request;
+    v_U8_t i;
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
 
     filterAction = set ? HDD_RCV_FILTER_SET : HDD_RCV_FILTER_CLEAR;
 
     /*set mulitcast addr list*/
-    for (i = 0; i < pHddCtx->mc_addr_list.mc_cnt; i++)
+    for (i = 0; i < pAdapter->mc_addr_list.mc_cnt; i++)
     {
         memset(&request, 0, sizeof (tPacketFilterCfg));
         request.filterAction = filterAction;
@@ -5363,22 +5363,17 @@ void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set, v_U8_t sessio
             request.paramsData[0].dataOffset = WLAN_HDD_80211_FRM_DA_OFFSET;
             request.paramsData[0].dataLength = ETH_ALEN;
             memcpy(&(request.paramsData[0].compareData[0]), 
-                    &(pHddCtx->mc_addr_list.addr[i][0]), ETH_ALEN);
+                    &(pAdapter->mc_addr_list.addr[i][0]), ETH_ALEN);
             /*set mulitcast filters*/
             hddLog(VOS_TRACE_LEVEL_INFO, 
                     "%s: %s multicast filter: addr =" 
-                    "%02x:%02x:%02x:%02x:%02x:%02x", 
+                    MAC_ADDRESS_STR,
                     __func__, set ? "setting" : "clearing", 
-                    request.paramsData[0].compareData[0], 
-                    request.paramsData[0].compareData[1],
-                    request.paramsData[0].compareData[2], 
-                    request.paramsData[0].compareData[3],
-                    request.paramsData[0].compareData[4], 
-                    request.paramsData[0].compareData[5]);
+                    MAC_ADDR_ARRAY(request.paramsData[0].compareData));
         }
-        wlan_hdd_set_filter(pHddCtx, &request, sessionId);
+        wlan_hdd_set_filter(pHddCtx, &request, pAdapter->sessionId);
     }
-    pHddCtx->mc_addr_list.isFilterApplied = set ? TRUE : FALSE;
+    pAdapter->mc_addr_list.isFilterApplied = set ? TRUE : FALSE;
 }
 
 static int iw_set_packet_filter_params(struct net_device *dev, struct iw_request_info *info,

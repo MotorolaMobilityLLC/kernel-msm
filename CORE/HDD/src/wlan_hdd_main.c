@@ -3090,15 +3090,14 @@ v_U8_t hdd_get_operating_channel( hdd_context_t *pHddCtx, device_mode_t mode )
 static void hdd_set_multicast_list(struct net_device *dev)
 {
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-   hdd_context_t *pHddCtx;
    int mc_count;
    int i = 0;
    struct netdev_hw_addr *ha;
-   pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
-   if (NULL == pHddCtx)
+
+   if (NULL == pAdapter)
    {
       hddLog(VOS_TRACE_LEVEL_ERROR,
-            "%s: HDD context is Null", __func__);
+            "%s: Adapter context is Null", __func__);
       return;
    }
 
@@ -3106,7 +3105,7 @@ static void hdd_set_multicast_list(struct net_device *dev)
    {
       hddLog(VOS_TRACE_LEVEL_INFO,
             "%s: allow all multicast frames", __func__);
-      pHddCtx->mc_addr_list.mc_cnt = 0;
+      pAdapter->mc_addr_list.mc_cnt = 0;
    }
    else 
    {
@@ -3117,22 +3116,20 @@ static void hdd_set_multicast_list(struct net_device *dev)
       {
          hddLog(VOS_TRACE_LEVEL_INFO,
                "%s: No free filter available; allow all multicast frames", __func__);
-         pHddCtx->mc_addr_list.mc_cnt = 0;
+         pAdapter->mc_addr_list.mc_cnt = 0;
          return;
       }
 
-      pHddCtx->mc_addr_list.mc_cnt = mc_count;
+      pAdapter->mc_addr_list.mc_cnt = mc_count;
 
       netdev_for_each_mc_addr(ha, dev) {
          if (i == mc_count)
             break;
-         memset(&(pHddCtx->mc_addr_list.addr[i][0]), 0, ETH_ALEN);
-         memcpy(&(pHddCtx->mc_addr_list.addr[i][0]), ha->addr, ETH_ALEN);
-         hddLog(VOS_TRACE_LEVEL_INFO, "\n%s: mlist[%d] = %02x:%02x:%02x:%02x:%02x:%02x", 
+         memset(&(pAdapter->mc_addr_list.addr[i][0]), 0, ETH_ALEN);
+         memcpy(&(pAdapter->mc_addr_list.addr[i][0]), ha->addr, ETH_ALEN);
+         hddLog(VOS_TRACE_LEVEL_INFO, "\n%s: mlist[%d] = "MAC_ADDRESS_STR,
                __func__, i, 
-               pHddCtx->mc_addr_list.addr[i][0], pHddCtx->mc_addr_list.addr[i][1], 
-               pHddCtx->mc_addr_list.addr[i][2], pHddCtx->mc_addr_list.addr[i][3], 
-               pHddCtx->mc_addr_list.addr[i][4], pHddCtx->mc_addr_list.addr[i][5]);
+               MAC_ADDR_ARRAY(pAdapter->mc_addr_list.addr[i]));
          i++;
       }
    }
