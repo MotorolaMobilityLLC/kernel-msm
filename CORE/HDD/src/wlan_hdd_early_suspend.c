@@ -1101,7 +1101,7 @@ void hdd_suspend_wlan(void)
       /* switch to the DTIM specified in cfg.ini */
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
                      "Switch to DTIM%d \n", powerRequest.uListenInterval);
-      sme_SetPowerParams( WLAN_HDD_GET_HAL_CTX(pAdapter), &powerRequest);    
+      sme_SetPowerParams( WLAN_HDD_GET_HAL_CTX(pAdapter), &powerRequest, FALSE);
 
       if (BMPS == pmcGetPmcState(pHddCtx->hHal))
       {
@@ -1323,7 +1323,7 @@ void hdd_resume_wlan(void)
 
          VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
                         "Switch to DTIM%d \n",powerRequest.uListenInterval);
-         sme_SetPowerParams( WLAN_HDD_GET_HAL_CTX(pAdapter), &powerRequest);    
+         sme_SetPowerParams( WLAN_HDD_GET_HAL_CTX(pAdapter), &powerRequest, FALSE);
 
          if (BMPS == pmcGetPmcState(pHddCtx->hHal))
          {

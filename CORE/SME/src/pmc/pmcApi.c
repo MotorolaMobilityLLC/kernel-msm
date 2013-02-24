@@ -3042,14 +3042,15 @@ eHalStatus pmcUpdateScanParams(tHalHandle hHal, tCsrConfig *pRequest, tCsrChanne
 }
 #endif // FEATURE_WLAN_SCAN_PNO
 
-eHalStatus pmcSetPowerParams(tHalHandle hHal,   tSirSetPowerParamsReq*  pwParams)
+eHalStatus pmcSetPowerParams(tHalHandle hHal,   tSirSetPowerParamsReq*  pwParams, tANI_BOOLEAN forced)
 {
     tSirSetPowerParamsReq* pRequestBuf;
     vos_msg_t msg;
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
     tpPESession     psessionEntry;
 
-    if((psessionEntry = peGetValidPowerSaveSession(pMac))== NULL)
+    psessionEntry = peGetValidPowerSaveSession(pMac);
+    if (!forced && (psessionEntry == NULL))
     {
         return eHAL_STATUS_NOT_INITIALIZED;
     }
