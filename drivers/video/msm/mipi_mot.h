@@ -81,6 +81,32 @@ enum {
 	MOT_ESD_OK,
 };
 
+struct mipi_mot_cmd_seq {
+	enum {
+		MIPI_MOT_SEQ_TX,
+		MIPI_MOT_SEQ_EXEC_SUB_SEQ,
+		/* TODO: Add LP power mode when needed */
+		MIPI_MOT_SEQ_TX_PWR_MODE_HS,
+	} type;
+	int (*cond_func)(struct msm_fb_data_type *);
+	union {
+		struct dsi_cmd_desc cmd;
+		struct mipi_mot_cmd_seq_sub {
+			struct mipi_mot_cmd_seq *seq;
+			int count;
+		} sub;
+	};
+};
+
+#define MIPI_MOT_TX_DEF(cond, type, delay, data) \
+	{MIPI_MOT_SEQ_TX, (cond), .cmd.dtype = (type), .cmd.last = 1, \
+			.cmd.vc = 0, .cmd.ack = 0, .cmd.wait = (delay), \
+			.cmd.dlen = sizeof(data), .cmd.payload = data}
+#define MIPI_MOT_EXEC_SEQ(cond, data) \
+	{MIPI_MOT_SEQ_EXEC_SUB_SEQ, (cond), .sub.seq = data,\
+			.sub.count = ARRAY_SIZE(data)}
+
+
 struct mipi_mot_panel {
 
 	struct msm_panel_info pinfo;
@@ -156,4 +182,6 @@ int mipi_mot_rx_cmd(struct dsi_cmd_desc *cmd, u8 *data, int rlen);
 int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide);
 void mipi_mot_panel_enter_normal_mode(void);
 int __init moto_panel_debug_init(void);
+int mipi_mot_exec_cmd_seq(struct msm_fb_data_type *mfd,
+			struct mipi_mot_cmd_seq *seq, int cnt);
 #endif /* MIPI_MOT_PANEL_H */
