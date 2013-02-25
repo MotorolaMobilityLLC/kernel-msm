@@ -311,7 +311,7 @@ int ov660_set_exposure_gain(uint16_t gain, uint32_t line)
 	rc = ov660_write_i2c(0x6b24, (uint8_t)(gain & 0xFF));
 	GOTO_EXIT_IF((rc < 0), 1);
 
-	rc = ov660_write_i2c(0x608d, 0x00);
+	rc = ov660_write_i2c(0x608d, 0x80);
 	GOTO_EXIT_IF((rc < 0), 1);
 	rc = ov660_write_i2c(0x608e, 0x01);
 	GOTO_EXIT_IF((rc < 0), 1);
