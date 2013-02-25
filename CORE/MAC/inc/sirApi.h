@@ -1022,6 +1022,8 @@ typedef struct sSirSmeScanReq
      * Values of 0xC0, 0x80 & 0x40 are to be used by
      * Roaming/application when 11d is enabled.
      */
+    tANI_U32 minChannelTimeBtc;    //in units of milliseconds
+    tANI_U32 maxChannelTimeBtc;    //in units of milliseconds
     tANI_U8              returnAfterFirstMatch;
 
     /**
@@ -3776,6 +3778,8 @@ typedef struct sSirSmeDelStaSelfRsp
 #define SIR_COEX_IND_DATA_SIZE (4)
 #define SIR_COEX_IND_TYPE_DISABLE_HB_MONITOR (0)
 #define SIR_COEX_IND_TYPE_ENABLE_HB_MONITOR (1)
+#define SIR_COEX_IND_TYPE_SCAN_COMPROMISED (2)
+#define SIR_COEX_IND_TYPE_SCAN_NOT_COMPROMISED (3)
 
 typedef struct sSirSmeCoexInd
 {
