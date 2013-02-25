@@ -136,8 +136,17 @@ config GENERIC_IRQ_PROBE
 
 config GENERIC_LOCKBREAK
 	bool
-	default y
+	default y if !ARM_TICKET_LOCKS
 	depends on SMP && PREEMPT
+
+config ARM_TICKET_LOCKS
+	bool
+	help
+	  Enable ticket locks, which help preserve fairness among
+	  contended locks and prevent livelock in multicore systems.
+	  Say 'y' if system stability is important.
+	default y if ARCH_MSM_SCORPIONMP || ARCH_MSM_KRAITMP
+	depends on SMP
 
 config RWSEM_GENERIC_SPINLOCK
 	bool
@@ -732,6 +741,8 @@ config ARCH_MSM
 	select GENERIC_CLOCKEVENTS
 	select ARCH_REQUIRE_GPIOLIB
 	select CLKDEV_LOOKUP
+	select HAVE_SCHED_CLOCK
+	select HAVE_CLK_PREPARE
 	help
 	  Support for Qualcomm MSM/QSD based systems.  This runs on the
 	  apps processor of the MSM/QSD and depends on a shared memory
@@ -1158,6 +1169,15 @@ config ARM_NR_BANKS
 	default 16 if ARCH_EP93XX
 	default 8
 
+config RESERVE_FIRST_PAGE
+	bool
+	default n
+	help
+	  Reserve the first page at PHYS_OFFSET. The first
+	  physical page is used by many platforms for warm
+	  boot operations. Reserve this page so that it is
+	  not allocated by the kernel.
+
 config IWMMXT
 	bool "Enable iWMMXt support"
 	depends on CPU_XSCALE || CPU_XSC3 || CPU_MOHAWK || CPU_PJ4
@@ -1405,6 +1425,18 @@ config PL310_ERRATA_769419
 	  on systems with an outer cache, the store buffer is drained
 	  explicitly.
 
+config KSAPI
+        tristate "KSAPI support (EXPERIMENTAL)"
+	depends on ARCH_MSM_SCORPION || ARCH_MSM_KRAIT
+        default n
+        help
+          KSAPI: Performance monitoring tool for linux.
+          KSAPI records performance statistics for Snapdragon linux platform.
+          It uses the /proc FS as a means to exchange configuration data and
+          counter statistics. It can monitor the counter statistics for
+          Scorpion processor supported hardware performance counters on a per
+          thread basis or AXI counters on an overall system basis.
+
 endmenu
 
 source "arch/arm/common/Kconfig"
@@ -1491,7 +1523,7 @@ config SMP
 	depends on HAVE_SMP
 	depends on MMU
 	select USE_GENERIC_SMP_HELPERS
-	select HAVE_ARM_SCU if !ARCH_MSM_SCORPIONMP
+	select HAVE_ARM_SCU
 	help
 	  This enables support for systems with more than one CPU. If you have
 	  a system with only one CPU, like most personal computers, say N. If
@@ -1551,6 +1583,13 @@ config HAVE_ARM_SCU
 	bool
 	help
 	  This option enables support for the ARM system coherency unit
+
+config ARM_ARCH_TIMER
+	bool "Architected timer support"
+	depends on CPU_V7
+	select TICK_ONESHOT
+	help
+	  This option enables support for the ARM architected timer
 
 config HAVE_ARM_TWD
 	bool
@@ -1693,7 +1732,7 @@ config AEABI
 config OABI_COMPAT
 	bool "Allow old ABI binaries to run with this kernel (EXPERIMENTAL)"
 	depends on AEABI && EXPERIMENTAL && !THUMB2_KERNEL
-	default y
+	default y if !SMP
 	help
 	  This option preserves the old syscall interface along with the
 	  new (ARM EABI) one. It also provides a compatibility layer to
@@ -1752,6 +1791,35 @@ config HW_PERF_EVENTS
 	  disabled, perf events will use software events only.
 
 source "mm/Kconfig"
+
+config ARCH_MEMORY_PROBE
+	def_bool n
+
+config ARCH_MEMORY_REMOVE
+	def_bool n
+
+config ARCH_POPULATES_NODE_MAP
+	def_bool n
+
+config ENABLE_DMM
+	def_bool n
+
+config FIX_MOVABLE_ZONE
+	def_bool n
+
+config DONT_MAP_HOLE_AFTER_MEMBANK0
+	def_bool n
+	depends on SPARSEMEM
+
+config ARCH_ENABLE_MEMORY_HOTPLUG
+	def_bool n
+
+config ARCH_ENABLE_MEMORY_HOTREMOVE
+	def_bool n
+
+config HOLES_IN_ZONE
+	def_bool n
+	depends on SPARSEMEM
 
 config FORCE_MAX_ZONEORDER
 	int "Maximum zone order" if ARCH_SHMOBILE
@@ -1884,6 +1952,17 @@ config DEPRECATED_PARAM_STRUCT
 	help
 	  This was deprecated in 2001 and announced to live on for 5 years.
 	  Some old boot loaders still use this way.
+
+config CP_ACCESS
+	tristate "CP register access tool"
+	default m
+	help
+	  Provide support for Coprocessor register access using /sys
+	  interface. Read and write to CP registers from userspace
+	  through sysfs interface. A sys file (cp_rw) will be created under
+	  /sys/devices/system/cpaccess/cpaccess0.
+
+	  If unsure, say N.
 
 endmenu
 
@@ -2191,6 +2270,14 @@ endif
 source "drivers/cpuidle/Kconfig"
 
 endmenu
+
+config CPU_FREQ_MSM
+        bool
+        depends on CPU_FREQ && ARCH_MSM
+        default y
+        help
+          This enables the CPUFreq driver for Qualcomm CPUs.
+          If in doubt, say Y.
 
 menu "Floating point emulation"
 
