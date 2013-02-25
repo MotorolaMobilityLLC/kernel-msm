@@ -179,6 +179,53 @@ void mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt)
 						__func__, cmdreq.cmds_cnt);
 }
 
+int mipi_mot_exec_cmd_seq(struct msm_fb_data_type *mfd,
+			struct mipi_mot_cmd_seq *seq, int cnt)
+{
+	int r = 0;
+	int sub_ret;
+	int i;
+	struct mipi_mot_cmd_seq *cur;
+
+	for (i = 0; i < cnt; i++) {
+		cur = &seq[i];
+		if (!cur) {
+			pr_err("%s: Item %d - Invalid\n", __func__, i);
+			r = -EINVAL;
+			break;
+		}
+
+		if (cur->cond_func &&
+			!cur->cond_func(mfd)) {
+			pr_debug("%s: Item %d - Skipping\n", __func__, i);
+			continue;
+		}
+
+		if (cur->type == MIPI_MOT_SEQ_TX) {
+			pr_debug("%s: Item %d - TX MIPI cmd = 0x%02x, size = %d\n",
+				__func__, i, cur->cmd.payload[0],
+				cur->cmd.dlen);
+			mipi_mot_tx_cmds(&cur->cmd, 1);
+		} else if (cur->type == MIPI_MOT_SEQ_EXEC_SUB_SEQ) {
+			pr_debug("%s: Item %d - Executing sub sequence with %d items\n",
+				__func__, i, cur->sub.count);
+			sub_ret = mipi_mot_exec_cmd_seq(mfd, cur->sub.seq,
+							cur->sub.count);
+			if (sub_ret) {
+				pr_err("%s: Item %d - sub sequence failed, ret = %d\n",
+					__func__, i, sub_ret);
+				r = sub_ret;
+			}
+		} else if (cur->type == MIPI_MOT_SEQ_TX_PWR_MODE_HS) {
+			pr_debug("%s: Item %d - Enabling HS mode\n",
+				__func__, i);
+			mipi_set_tx_power_mode(0);
+		}
+	}
+
+	return r;
+}
+
 u8 mipi_mode_get_pwr_mode(struct msm_fb_data_type *mfd)
 {
 	int ret;
