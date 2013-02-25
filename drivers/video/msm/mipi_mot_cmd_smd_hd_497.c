@@ -23,7 +23,7 @@
 #define DEFAULT_BRIGHTNESS 0x7f
 
 static struct mipi_mot_panel *mot_panel;
-static int is_bl_supported(void);
+static int is_bl_supported(struct msm_fb_data_type *);
 
 /* TODO: Need to confirm */
 static struct mipi_dsi_phy_ctrl dsi_cmd_mode_phy_db = {
@@ -57,56 +57,47 @@ static char mtp_read_off[2] = {0xb0, 0x21};
 static char mtp_read[2] = {0xc8, 0x00};
 static char brightness_ctrl[2] = {0x51, DEFAULT_BRIGHTNESS};
 static char disp_ctrl[2] = {0x53, 0x20};
-
-#define DEFAULT_DELAY 1
-
 static char acl_default_setting[6] = {0xB5, 0x03, 0x6B, 0x45, 0x35, 0x26};
 static char acl_enable_disable_settings[2] = {0x55, 0x00};
 
-static struct dsi_cmd_desc acl_enable_disable[] = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-		sizeof(acl_enable_disable_settings),
-		acl_enable_disable_settings}
+#define DEFAULT_DELAY 1
+#define BL_SUPPORTED is_bl_supported
+
+static struct mipi_mot_cmd_seq acl_enable_disable_seq[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY,
+			acl_enable_disable_settings),
 };
 
-static struct dsi_cmd_desc smd_hd_497_init_cmds[] = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
-		sizeof(exit_sleep), exit_sleep},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(unlock_lvl_2), unlock_lvl_2},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(unlock_lvl_mtp), unlock_lvl_mtp},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(unlock_lvl_3), unlock_lvl_3},
-	{DTYPE_DCS_WRITE1, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(enable_te), enable_te},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(set_column), set_column},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(set_addr), set_addr},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(switch_pwr_to_mem_1), switch_pwr_to_mem_1},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(switch_pwr_to_mem_2), switch_pwr_to_mem_2},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(acl_default_setting), acl_default_setting},
+static struct mipi_mot_cmd_seq set_brightness_seq[] = {
+	MIPI_MOT_TX_DEF(BL_SUPPORTED, DTYPE_DCS_WRITE1,
+			DEFAULT_DELAY, brightness_ctrl),
 };
 
-static struct dsi_cmd_desc bl_supported_init_cmds[] = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(disp_ctrl), disp_ctrl},
+static struct mipi_mot_cmd_seq smd_hd_497_init_seq[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE, 120, exit_sleep),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_2),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_mtp),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_3),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, enable_te),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, set_column),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, set_addr),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
+			DEFAULT_DELAY, switch_pwr_to_mem_1),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
+			DEFAULT_DELAY, switch_pwr_to_mem_2),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
+			DEFAULT_DELAY, acl_default_setting),
+	MIPI_MOT_TX_DEF(BL_SUPPORTED, DTYPE_DCS_LWRITE,
+			DEFAULT_DELAY, disp_ctrl),
+	MIPI_MOT_EXEC_SEQ(BL_SUPPORTED, set_brightness_seq),
+	MIPI_MOT_EXEC_SEQ(NULL, acl_enable_disable_seq),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
+			DEFAULT_DELAY, acl_enable_disable_settings),
 };
 
-static struct dsi_cmd_desc set_brightness_cmds[] = {
-	{DTYPE_DCS_WRITE1, 1, 0, 0, DEFAULT_DELAY,
-	 sizeof(brightness_ctrl), brightness_ctrl},
-};
-
-static struct dsi_cmd_desc mot_display_off_cmds[] = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, DEFAULT_DELAY,
-		sizeof(display_off), display_off},
-	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
-		sizeof(enter_sleep), enter_sleep}
+static struct mipi_mot_cmd_seq smd_hd_497_disp_off_seq[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE, DEFAULT_DELAY, display_off),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE, 120, enter_sleep),
 };
 
 static struct dsi_cmd_desc set_mtp_read_off[] = {
@@ -126,23 +117,21 @@ static char frame[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-static struct dsi_cmd_desc correct_shift_cmds[] = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-	 sizeof(small_col), small_col},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-	 sizeof(small_row), small_row},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-	 sizeof(frame), frame},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-	 sizeof(set_column), set_column},
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-	 sizeof(set_addr), set_addr}
+static struct mipi_mot_cmd_seq correct_shift_seq[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, small_col),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, small_row),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, frame),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, set_column),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, set_addr),
 };
 
 static char undo_partial_rows[] = {0x30, 0x00, 0x00, 0x04, 0xff};
-static struct dsi_cmd_desc undo_partial_rows_cmds[] = {
-	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
-	 sizeof(undo_partial_rows), undo_partial_rows},
+
+static struct mipi_mot_cmd_seq smd_hd_497_en_from_partial_seq[] = {
+	{MIPI_MOT_SEQ_TX_PWR_MODE_HS, NULL},
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, undo_partial_rows),
+	/* TODO: Remove on displays which have shift issue fixed */
+	MIPI_MOT_EXEC_SEQ(NULL, correct_shift_seq),
 };
 
 static void enable_acl(struct msm_fb_data_type *mfd)
@@ -152,8 +141,8 @@ static void enable_acl(struct msm_fb_data_type *mfd)
 		acl_enable_disable_settings[1] =
 				(mot_panel->acl_enabled == 1) ? 3 : 0;
 		mipi_set_tx_power_mode(0);
-		mipi_mot_tx_cmds(&acl_enable_disable[0],
-					ARRAY_SIZE(acl_enable_disable));
+		mipi_mot_exec_cmd_seq(mfd, acl_enable_disable_seq,
+				ARRAY_SIZE(acl_enable_disable_seq));
 	}
 }
 
@@ -177,29 +166,19 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 	if (idx > MAX_BRIGHTNESS_LEVEL)
 		idx = MAX_BRIGHTNESS_LEVEL;
 
-	mipi_mot_tx_cmds(&smd_hd_497_init_cmds[0],
-					ARRAY_SIZE(smd_hd_497_init_cmds));
 
-	if (is_bl_supported() == 1) {
-		mipi_mot_tx_cmds(&bl_supported_init_cmds[0],
-				ARRAY_SIZE(bl_supported_init_cmds));
-		brightness_ctrl[1] = idx;
-		mipi_mot_tx_cmds(&set_brightness_cmds[0],
-				ARRAY_SIZE(set_brightness_cmds));
-	}
-
-	/* acl */
+	brightness_ctrl[1] = idx;
 	acl_enable_disable_settings[1] = (mot_panel->acl_enabled == 1) ? 3 : 0;
-	mipi_mot_tx_cmds(&acl_enable_disable[0],
-						ARRAY_SIZE(acl_enable_disable));
+	mipi_mot_exec_cmd_seq(mfd, smd_hd_497_init_seq,
+			ARRAY_SIZE(smd_hd_497_init_seq));
 
 	return 0;
 }
 
 static int panel_disable(struct msm_fb_data_type *mfd)
 {
-	mipi_mot_tx_cmds(&mot_display_off_cmds[0],
-				ARRAY_SIZE(mot_display_off_cmds));
+	mipi_mot_exec_cmd_seq(mfd, smd_hd_497_disp_off_seq,
+			ARRAY_SIZE(smd_hd_497_disp_off_seq));
 	return 0;
 }
 
@@ -215,7 +194,7 @@ static void panel_set_backlight(struct msm_fb_data_type *mfd)
 	if (bl_level_old == mfd->bl_level)
 		return;
 
-	if (is_bl_supported() != 1)
+	if (is_bl_supported(mfd) != 1)
 		return;
 
 	idx = mfd->bl_level;
@@ -228,9 +207,8 @@ static void panel_set_backlight(struct msm_fb_data_type *mfd)
 
 	mutex_lock(&mfd->dma->ov_mutex);
 	mipi_set_tx_power_mode(0);
-	mipi_mot_tx_cmds(&set_brightness_cmds[0],
-			ARRAY_SIZE(set_brightness_cmds));
-
+	mipi_mot_exec_cmd_seq(mfd, set_brightness_seq,
+			ARRAY_SIZE(set_brightness_seq));
 	bl_level_old = mfd->bl_level;
 	mutex_unlock(&mfd->dma->ov_mutex);
 
@@ -251,7 +229,7 @@ static int is_valid_power_mode(struct msm_fb_data_type *mfd)
 	return (pwr_mod & 0x94) == 0x94;
 }
 
-static int is_bl_supported(void)
+static int is_bl_supported(struct msm_fb_data_type *mfd)
 {
 	static int is_bl_supported = -1;
 	int ret;
@@ -275,19 +253,13 @@ static int is_bl_supported(void)
 		}
 	}
 
-	return is_bl_supported;
+	return ((is_bl_supported == 1) ? 1 : 0);
 }
 
 static void panel_en_from_partial(struct msm_fb_data_type *mfd)
 {
-	mipi_set_tx_power_mode(0);
-
-	mipi_mot_tx_cmds(&undo_partial_rows_cmds[0],
-			ARRAY_SIZE(undo_partial_rows_cmds));
-
-	/* TODO: Remove on displays which have shift issue fixed */
-	mipi_mot_tx_cmds(&correct_shift_cmds[0],
-			ARRAY_SIZE(correct_shift_cmds));
+	mipi_mot_exec_cmd_seq(mfd, smd_hd_497_en_from_partial_seq,
+			ARRAY_SIZE(smd_hd_497_en_from_partial_seq));
 }
 
 static int __init mipi_mot_cmd_smd_hd_497_init(void)
