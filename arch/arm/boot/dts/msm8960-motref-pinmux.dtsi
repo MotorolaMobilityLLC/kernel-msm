@@ -539,6 +539,17 @@
 			};
 		};
 
+		pin@801590 {
+			reg = <0x801590 0x10>;
+			qcom,pin-num = <89>;
+			qcom,suspended@1 {
+				qcom,func = <0>;  /* gpio_in_out(89)        */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <3>;   /* 8ma                    */
+				qcom,dir = <2>;   /* out_low                */
+			};
+		};
+
 		pin@8015a0 {
 			reg = <0x8015a0 0x10>;
 			qcom,pin-num = <90>;
