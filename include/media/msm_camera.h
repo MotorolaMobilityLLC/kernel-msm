@@ -1654,6 +1654,7 @@ struct msm_camsensor_info {
 	int mount_angle;
 	uint32_t max_width;
 	uint32_t max_height;
+	char vendor_name[MAX_SENSOR_NAME];
 };
 
 #define V4L2_SINGLE_PLANE	0

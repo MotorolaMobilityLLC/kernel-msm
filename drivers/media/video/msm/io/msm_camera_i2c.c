@@ -340,7 +340,7 @@ int32_t msm_camera_i2c_write_tbl(struct msm_camera_i2c_client *client,
 	struct msm_camera_i2c_reg_conf *reg_conf_tbl, uint16_t size,
 	enum msm_camera_i2c_data_type data_type)
 {
-	int i;
+	int i, j;
 	int32_t rc = -EFAULT;
 	if (client->cci_client) {
 		struct msm_camera_cci_ctrl cci_ctrl;
@@ -361,7 +361,15 @@ int32_t msm_camera_i2c_write_tbl(struct msm_camera_i2c_client *client,
 					reg_conf_tbl->reg_addr,
 					reg_conf_tbl->reg_data,
 					reg_conf_tbl->dt);
-			} else {
+			} else if (reg_conf_tbl->cmd_type == MSM_CAMERA_I2C_CMD_SEQ_WRITE) {
+				for(j = 0 ; j < reg_conf_tbl->num_byte ; j += 1){
+					rc = msm_camera_i2c_write(
+						client,
+						(reg_conf_tbl->reg_addr) + 2*j,
+						reg_conf_tbl->data[j], data_type);
+				}
+			}
+			else {
 				if (reg_conf_tbl->dt == 0)
 					dt = data_type;
 				else

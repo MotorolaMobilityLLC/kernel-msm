@@ -18,3 +18,5 @@ obj-$(CONFIG_OV7692) += ov7692_v4l2.o
 obj-$(CONFIG_IMX111) += imx111.o
 obj-$(CONFIG_IMX119) += imx119_v4l2.o
 obj-$(CONFIG_VX6953) += vx6953.o
+obj-$(CONFIG_OV5693) += ov5693_v4l2.o
+obj-$(CONFIG_MI1040) += mi1040.o

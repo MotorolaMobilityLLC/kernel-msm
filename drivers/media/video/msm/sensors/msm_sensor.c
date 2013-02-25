@@ -510,6 +510,15 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 			break;
 
 		case CFG_SET_EFFECT:
+			if (s_ctrl->func_tbl->
+			sensor_set_effect == NULL) {
+				rc = -EFAULT;
+				break;
+			}
+			rc = s_ctrl->func_tbl->
+				sensor_set_effect(
+					s_ctrl,
+					cdata.cfg.effect);
 			break;
 
 		case CFG_SENSOR_INIT:
@@ -582,6 +591,30 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 
 			if (copy_to_user((void *)argp, &cdata, sizeof(cdata)))
 				rc = -EFAULT;
+			break;
+
+		case CFG_SET_WB:
+			if (s_ctrl->func_tbl->
+			sensor_set_wb == NULL) {
+				rc = -EFAULT;
+				break;
+			}
+			rc = s_ctrl->func_tbl->
+				sensor_set_wb(
+					s_ctrl,
+					cdata.cfg.wb_val);
+			break;
+
+		case CFG_SET_EXPOSURE_COMPENSATION:
+			if (s_ctrl->func_tbl->
+			sensor_set_ev == NULL) {
+				rc = -EFAULT;
+				break;
+			}
+			rc = s_ctrl->func_tbl->
+				sensor_set_ev(
+					s_ctrl,
+					cdata.cfg.exp_compensation);
 			break;
 
 		default:

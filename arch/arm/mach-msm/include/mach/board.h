@@ -296,6 +296,7 @@ struct msm_camera_sensor_info {
 	struct msm_actuator_info *actuator_info;
 	int pmic_gpio_enable;
 	struct msm_eeprom_info *eeprom_info;
+	char vendor_name[32];
 };
 
 struct msm_camera_board_info {

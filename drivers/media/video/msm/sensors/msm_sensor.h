@@ -151,6 +151,12 @@ struct msm_sensor_fn_t {
 		(struct msm_sensor_ctrl_t *s_ctrl, uint16_t res);
 	int32_t (*sensor_get_csi_params)(struct msm_sensor_ctrl_t *,
 		struct csi_lane_params_t *);
+	int32_t (*sensor_set_effect)
+			(struct msm_sensor_ctrl_t *, int);
+	int32_t (*sensor_set_wb)
+			(struct msm_sensor_ctrl_t *, int);
+	int32_t (*sensor_set_ev)
+			(struct msm_sensor_ctrl_t *, int);
 };
 
 struct msm_sensor_csi_info {

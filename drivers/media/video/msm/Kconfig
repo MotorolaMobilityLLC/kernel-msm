@@ -441,3 +441,17 @@ config OV7692
 	depends on MSM_CAMERA
 	---help---
 	  Omni Vision VGA YUV Sensor
+
+config OV5693
+       bool "Sensor ov5693 (Bayer 5M)"
+       depends on MSM_CAMERA
+       default y
+       ---help---
+          Omni Vision 5M Bayer Sensor with AutoFocus
+
+config MI1040
+        bool "Sensor mi1040 (VGA YUV)"
+        depends on MSM_CAMERA
+        default y
+        ---help---
+          Aptina 1.2M Bayer Sensor

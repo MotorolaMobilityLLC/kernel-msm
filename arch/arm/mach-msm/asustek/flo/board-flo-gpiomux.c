@@ -1494,7 +1494,80 @@ static struct msm_gpiomux_config msm8064_sp_gpio_config[] __initdata = {
 		.settings = {
 			[GPIOMUX_SUSPENDED] = &sp_gpio_config,
 			[GPIOMUX_ACTIVE]= &sp_gpio_config,
+
+		}
+	},
+};
+
+static struct gpiomux_setting gsbi4_suspended = {
+    .func = GPIOMUX_FUNC_GPIO,
+    .drv = GPIOMUX_DRV_2MA,
+    .pull = GPIOMUX_PULL_KEEPER,
+};
+
+static struct gpiomux_setting gsbi4_sda_active = {
+    .func = GPIOMUX_FUNC_9,
+    .drv = GPIOMUX_DRV_8MA,
+    .pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gsbi4_scl_active = {
+    .func = GPIOMUX_FUNC_A,
+    .drv = GPIOMUX_DRV_8MA,
+    .pull = GPIOMUX_PULL_NONE,
+};
+
+static struct msm_gpiomux_config asustek_gsbi4_configs[] __initdata = {
+    {
+        .gpio      = 10,                 /* GSBI4 I2C SDA */
+        .settings = {
+            [GPIOMUX_SUSPENDED] = &gsbi4_suspended,
+            [GPIOMUX_ACTIVE] = &gsbi4_sda_active,
+        },
+    },
+    {
+        .gpio      = 11,                 /* GSBI4 I2C SCL */
+        .settings = {
+            [GPIOMUX_SUSPENDED] = &gsbi4_suspended,
+            [GPIOMUX_ACTIVE] = &gsbi4_scl_active,
+        },
+    },
+};
+
+static struct gpiomux_setting cam_settings[] = {
+	{
+		.func = GPIOMUX_FUNC_GPIO, /*suspend*/
+		.drv = GPIOMUX_DRV_2MA,
+		.pull = GPIOMUX_PULL_DOWN,
+	},
+
+	{
+		.func = GPIOMUX_FUNC_1, /*active 1*/
+		.drv = GPIOMUX_DRV_2MA,
+		.pull = GPIOMUX_PULL_NONE,
+	},
+
+	{
+		.func = GPIOMUX_FUNC_2, /*active 2*/
+		.drv = GPIOMUX_DRV_2MA,
+		.pull = GPIOMUX_PULL_NONE,
+	},
+};
+
+static struct msm_gpiomux_config asustek_camera_configs[] __initdata = {
+	{
+		.gpio = 5,	//CAM_MCLK0
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[1],
+			[GPIOMUX_SUSPENDED] = &cam_settings[0],
 		},
+	},
+	{
+		.gpio = 4,	//CAM_MCLK1
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[2],
+			[GPIOMUX_SUSPENDED] = &cam_settings[0],
+		}
 	},
 };
 
@@ -1650,5 +1723,11 @@ void __init apq8064_init_gpiomux(void)
 #endif
 	msm_gpiomux_install(apq8064_headphone_configs,
 			ARRAY_SIZE(apq8064_headphone_configs));
+
+	msm_gpiomux_install(asustek_gsbi4_configs,
+		ARRAY_SIZE(asustek_gsbi4_configs));
+
+	msm_gpiomux_install(asustek_camera_configs,
+			ARRAY_SIZE(asustek_camera_configs));
 
 }
