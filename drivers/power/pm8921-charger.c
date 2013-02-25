@@ -324,6 +324,7 @@ struct pm8921_chg_chip {
 	signed char			hot_temp_pcb_offset_dc;
 	int				pcb_temp_dc;
 	int				pcb_temp_state;
+	enum power_supply_type 		usb_type;
 #endif
 };
 
@@ -1671,6 +1672,9 @@ static int pm_power_get_property_mains(struct power_supply *psy,
 		}
 
 		type = the_chip->usb_psy.type;
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+		type = the_chip->usb_type;
+#endif
 		if (type == POWER_SUPPLY_TYPE_USB_DCP ||
 			type == POWER_SUPPLY_TYPE_USB_ACA ||
 			type == POWER_SUPPLY_TYPE_USB_CDP)
@@ -2575,8 +2579,11 @@ int pm8921_set_usb_power_supply_type(enum power_supply_type type)
 
 	if (type < POWER_SUPPLY_TYPE_USB && type > POWER_SUPPLY_TYPE_BATTERY)
 		return -EINVAL;
-
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	the_chip->usb_type = type;
+#else
 	the_chip->usb_psy.type = type;
+#endif
 	power_supply_changed(&the_chip->usb_psy);
 	power_supply_changed(&the_chip->dc_psy);
 	return 0;
@@ -6218,8 +6225,10 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, chip);
 	the_chip = chip;
 
+#ifndef CONFIG_PM8921_EXTENDED_INFO
 	/* set initial state of the USB charger type to UNKNOWN */
 	power_supply_set_supply_type(&chip->usb_psy, POWER_SUPPLY_TYPE_UNKNOWN);
+#endif
 
 	get_wl_psy();
 
