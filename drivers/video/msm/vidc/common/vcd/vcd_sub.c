@@ -2031,7 +2031,7 @@ u32 vcd_handle_input_done(
 	}
 
 	if (VCD_FAILED(status)) {
-		VCD_MSG_ERROR("INPUT_DONE returned err = 0x%x", status);
+		VCD_MSG_HIGH("INPUT_DONE returned err = 0x%x", status);
 		vcd_handle_input_done_failed(cctxt, transc);
 	} else
 		cctxt->status.mask |= VCD_FIRST_IP_DONE;
