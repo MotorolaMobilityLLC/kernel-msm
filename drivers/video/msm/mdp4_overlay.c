@@ -52,6 +52,7 @@ struct mdp4_overlay_ctrl {
 	uint32 mixer_cfg[MDP4_MIXER_MAX];
 	uint32 flush[MDP4_MIXER_MAX];
 	struct iommu_free_list iommu_free[MDP4_MIXER_MAX];
+	uint32 dmap_cfg[5];
 	uint32 cs_controller;
 	uint32 panel_3d;
 	uint32 panel_mode;
@@ -544,6 +545,7 @@ void mdp4_overlay_dmap_cfg(struct msm_fb_data_type *mfd, int lcdc)
 	mask = 0x0FFFFFFF;
 	dma2_cfg_reg = (dma2_cfg_reg & mask) | (curr & ~mask);
 	MDP_OUTP(MDP_BASE + 0x90000, dma2_cfg_reg);
+	ctrl->dmap_cfg[0] = dma2_cfg_reg;
 
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 }
@@ -567,23 +569,39 @@ void mdp4_overlay_dmap_xy(struct mdp4_overlay_pipe *pipe)
 		off = 0;
 		if (pipe->dmap_cnt & 0x01)
 			off = pipe->src_height * pipe->src_width * bpp;
+		ctrl->dmap_cfg[2] = pipe->dma_blt_addr + off;
 		MDP_OUTP(MDP_BASE + 0x90008, pipe->dma_blt_addr + off);
 		/* RGB888, output of overlay blending */
 		MDP_OUTP(MDP_BASE + 0x9000c, pipe->src_width * bpp);
+                ctrl->dmap_cfg[3] = pipe->src_width * bpp;
 	} else {
 		MDP_OUTP(MDP_BASE + 0x90008, pipe->srcp0_addr);
+		ctrl->dmap_cfg[2] = pipe->srcp0_addr;
 		MDP_OUTP(MDP_BASE + 0x9000c, pipe->srcp0_ystride);
+		ctrl->dmap_cfg[3] = pipe->srcp0_ystride;
 	}
 	/* dma_p source */
 	MDP_OUTP(MDP_BASE + 0x90004,
 			(pipe->src_height << 16 | pipe->src_width));
+	ctrl->dmap_cfg[1] = (pipe->src_height << 16 | pipe->src_width);
 
 	/* dma_p dest */
 	MDP_OUTP(MDP_BASE + 0x90010, (pipe->dst_y << 16 | pipe->dst_x));
+	ctrl->dmap_cfg[4] = (pipe->dst_y << 16 | pipe->dst_x);
 
 	if (!in_interrupt())
 		mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 }
+
+static void mdp4_overlay_dmap_reconfig(void)
+{
+        MDP_OUTP(MDP_BASE + 0x90000, ctrl->dmap_cfg[0]);
+        MDP_OUTP(MDP_BASE + 0x90004, ctrl->dmap_cfg[1]);
+        MDP_OUTP(MDP_BASE + 0x90008, ctrl->dmap_cfg[2]);
+        MDP_OUTP(MDP_BASE + 0x9000c, ctrl->dmap_cfg[3]);
+        MDP_OUTP(MDP_BASE + 0x90010, ctrl->dmap_cfg[4]);
+}
+
 
 #define MDP4_VG_PHASE_STEP_DEFAULT	0x20000000
 #define MDP4_VG_PHASE_STEP_SHIFT	29
@@ -1618,6 +1636,50 @@ int mdp4_mixer_info(int mixer_num, struct mdp_mixer_info *info)
 		cnt++;
 	}
 	return cnt;
+}
+
+void mdp4_mixer_reset(int mixer)
+{
+	uint32 data, data1, mask;
+	int i, ndx, min, max, bit;
+
+	mdp_clk_ctrl(1);
+	/* MDP_LAYERMIXER_IN_CFG, shard by both mixer 0 and 1  */
+	data = inpdw(MDP_BASE + 0x10100);
+	data1 = data;
+
+	if (mixer == 0) {
+		min = 1;
+		max = 8;
+		bit = 0x03; /* mixer0, dmap */
+	} else {
+		min = 9;
+		max = 0xf;
+		bit = 0x0C; /* mixer1, dmae */
+	}
+	mask = 0x0f;
+	for (i = 0 ; i < 8 ; i++) {
+		ndx = data & mask;
+		ndx >>= (i * 4);
+		if (ndx >= min && ndx <= max)
+			data1 &= ~mask;  /* unstage pipe from mixer */
+		mask <<= 4;
+	}
+	pr_debug("%s: => MIXER_RESET, data1=%x data=%x bit=%x\n",
+				__func__, data1, data, bit);
+	/* unstage pipes of mixer to be reset */
+	outpdw(MDP_BASE + 0x10100, data1); /* MDP_LAYERMIXER_IN_CFG */
+	outpdw(MDP_BASE + 0x18000, 0);
+
+	mdp4_sw_reset(bit); /* reset mixer */   /* 0 => mixer0, dmap */
+
+	/* restore origianl stage */
+	outpdw(MDP_BASE + 0x10100, data); /* MDP_LAYERMIXER_IN_CFG */
+	outpdw(MDP_BASE + 0x18000, 0);
+
+	mdp4_vg_csc_restore();
+	mdp4_overlay_dmap_reconfig();
+	mdp_clk_ctrl(0);
 }
 
 void mdp4_mixer_stage_commit(int mixer)
