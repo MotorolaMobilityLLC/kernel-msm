@@ -31,7 +31,7 @@
 		gpios = <&msmgpio 46 0>, /* IRQ */
 			<&msmgpio 63 0>; /* RESET */
 
-		synaptics,sy3400-tdat-filename = "sy3400-r1.tdat";
+		synaptics,sy3400-tdat-filename = "sy3310-r0.tdat";
 	};
 
 };
