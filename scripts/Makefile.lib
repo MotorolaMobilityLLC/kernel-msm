@@ -277,10 +277,14 @@ cmd_cat = (cat $(filter-out FORCE,$^) > $@) || (rm -f $@; false)
 
 # Bzip2 and LZMA do not include size in file... so we have to fake that;
 # append the size as a 32-bit littleendian number as gzip does.
+
+# if stat has no version, assuming it's non-GNU stat on mac
+check_stat = $(shell if stat --version >/dev/null 2>&1;\
+		then echo "stat -c %s"; else echo "stat -f %z"; fi)
 size_append = printf $(shell						\
 dec_size=0;								\
 for F in $1; do								\
-	fsize=$$(stat -c "%s" $$F);					\
+	fsize=$$($(call check_stat) $$F);					\
 	dec_size=$$(expr $$dec_size + $$fsize);				\
 done;									\
 printf "%08x\n" $$dec_size |						\
