@@ -3800,7 +3800,9 @@ static void update_heartbeat(struct work_struct *work)
 
 	if (!is_usb_chg_plugged_in(chip) && is_dc_chg_plugged_in(chip))
 		vinmin_lvl = PM8921_DCIN_VINMIN;
-	pm_chg_vinmin_set(chip, vinmin_lvl);
+
+	if (vinmin_lvl)
+		pm_chg_vinmin_set(chip, vinmin_lvl);
 #endif
 
 	power_supply_changed(&chip->batt_psy);
