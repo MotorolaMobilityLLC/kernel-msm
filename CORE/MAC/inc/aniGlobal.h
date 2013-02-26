@@ -713,6 +713,7 @@ typedef struct sAniSirLim
     // admission control policy information
     tLimAdmitPolicyInfo admitPolicyInfo;
     vos_lock_t lkPeGlobalLock;
+    tANI_U8 disableLDPCWithTxbfAP;
 
 
 

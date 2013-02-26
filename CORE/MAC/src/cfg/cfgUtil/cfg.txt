@@ -4462,3 +4462,15 @@ NONE
 V    RW    NP
 NONE
 0    1     0
+*
+*Disable LDPC in STA mode when AP is TXBF capable
+*
+*
+*
+WNI_CFG_DISABLE_LDPC_WITH_TXBF_AP  I   4   0
+V    RW    NP
+NONE
+0    1     0
+V    RW    NP
+NONE
+0    1     0

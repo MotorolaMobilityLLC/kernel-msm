@@ -1988,6 +1988,14 @@ REG_VARIABLE( CFG_SAP_ALLOW_ALL_CHANNEL_PARAM_NAME, WLAN_PARAM_Integer,
              CFG_SAP_ALLOW_ALL_CHANNEL_PARAM_DEFAULT,
              CFG_SAP_ALLOW_ALL_CHANNEL_PARAM_MIN,
              CFG_SAP_ALLOW_ALL_CHANNEL_PARAM_MAX ),
+#ifdef WLAN_FEATURE_11AC
+REG_VARIABLE( CFG_DISABLE_LDPC_WITH_TXBF_AP, WLAN_PARAM_Integer,
+             hdd_config_t, disableLDPCWithTxbfAP,
+             VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+             CFG_DISABLE_LDPC_WITH_TXBF_AP_DEFAULT,
+             CFG_DISABLE_LDPC_WITH_TXBF_AP_MIN,
+             CFG_DISABLE_LDPC_WITH_TXBF_AP_MAX ),
+#endif
 };
 
 /*
@@ -3436,6 +3444,12 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
    {
       fStatus = FALSE;
       hddLog(LOGE, "Could not pass on WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED to CCM\n");
+   }
+   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_DISABLE_LDPC_WITH_TXBF_AP, pConfig->disableLDPCWithTxbfAP,
+      NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+   {
+      fStatus = FALSE;
+      hddLog(LOGE, "Could not pass on WNI_CFG_DISABLE_LDPC_WITH_TXBF_AP to CCM\n");
    }
    return fStatus;
 }
