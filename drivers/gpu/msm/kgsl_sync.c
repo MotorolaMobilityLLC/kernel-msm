@@ -72,6 +72,7 @@ static int kgsl_sync_pt_compare(struct sync_pt *a, struct sync_pt *b)
 
 struct kgsl_fence_event_priv {
 	struct kgsl_context *context;
+	uint32_t timestamp;
 };
 
 /**
@@ -88,7 +89,14 @@ static inline void kgsl_fence_event_cb(struct kgsl_device *device,
 	void *priv, u32 context_id, u32 timestamp)
 {
 	struct kgsl_fence_event_priv *ev = priv;
-	kgsl_sync_timeline_signal(ev->context->timeline, timestamp);
+
+	/*
+	 * Always signal the timeline with the timestamp that it expects. If the
+	 * context is canceled, the passed in timestamp might be different which
+	 * confuses sync
+	 */
+
+	kgsl_sync_timeline_signal(ev->context->timeline, ev->timestamp);
 	kgsl_context_put(ev->context);
 	kfree(ev);
 }
@@ -128,6 +136,7 @@ int kgsl_add_fence_event(struct kgsl_device *device,
 	if (event == NULL)
 		return -ENOMEM;
 	event->context = context;
+	event->timestamp = timestamp;
 	kgsl_context_get(context);
 
 	pt = kgsl_sync_pt_create(context->timeline, timestamp);
