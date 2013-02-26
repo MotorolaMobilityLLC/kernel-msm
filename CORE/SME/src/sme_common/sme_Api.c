@@ -6279,13 +6279,6 @@ eHalStatus sme_8023MulticastList (tHalHandle hHal, tpSirRcvFltMcAddrList pMultic
         return eHAL_STATUS_FAILED_ALLOC;
     }
     
-    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Ignoring the "
-                       "indication as we are not connected", __func__);
-        vos_mem_free(pRequestBuf);
-        return eHAL_STATUS_FAILURE;
-    }
     vos_mem_copy(pRequestBuf, pMulticastAddrs, sizeof(tSirRcvFltMcAddrList));
 
     vos_mem_copy(pRequestBuf->selfMacAddr, pSession->selfMacAddr, sizeof(tSirMacAddr));
@@ -6334,14 +6327,6 @@ eHalStatus sme_ReceiveFilterSetFilter(tHalHandle hHal, tpSirRcvPktFilterCfgType 
     if( NULL == pSession )
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Session Not found ", __func__);
-        vos_mem_free(pRequestBuf);
-        return eHAL_STATUS_FAILURE;
-    }
-
-    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Ignoring the "
-                       "indication as we are not connected", __func__);
         vos_mem_free(pRequestBuf);
         return eHAL_STATUS_FAILURE;
     }
@@ -6452,14 +6437,6 @@ eHalStatus sme_ReceiveFilterClearFilter(tHalHandle hHal, tpSirRcvFltPktClearPara
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
             "%s: Session Not find ", __func__);
-        vos_mem_free(pRequestBuf);
-        return eHAL_STATUS_FAILURE;
-    }
-
-    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Ignoring the "
-                       "indication as we are not connected", __func__);
         vos_mem_free(pRequestBuf);
         return eHAL_STATUS_FAILURE;
     }
