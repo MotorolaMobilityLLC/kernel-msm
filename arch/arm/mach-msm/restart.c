@@ -57,6 +57,7 @@ static int ssr_magic_number = 0;
 static int restart_mode;
 void *restart_reason;
 
+struct work_struct msm_resout_work;
 int pmic_reset_irq;
 static void __iomem *msm_tmr0_base;
 
@@ -203,10 +204,12 @@ static void set_restart_reason(unsigned reason)
 		pm8xxx_hw_reset_debounce_timer_set(reason - REBOOT_MIN + 1);
 }
 
-static irqreturn_t resout_irq_handler(int irq, void *dev_id)
+struct work_struct msm_resout_work;
+
+static void msm_resout_work_fn(struct work_struct *work)
 {
-	pr_warn("%s PMIC Initiated shutdown\n", __func__);
-	set_restart_reason(REBOOT_HARD_RESET);
+	/* Halt the kernel before HW reset */
+	kernel_halt();
 	oops_in_progress = 1;
 	smp_call_function_many(cpu_online_mask, cpu_power_off, NULL, 0);
 	if (smp_processor_id() == 0)
@@ -214,6 +217,16 @@ static irqreturn_t resout_irq_handler(int irq, void *dev_id)
 	preempt_disable();
 	while (1)
 		;
+}
+
+static irqreturn_t resout_irq_handler(int irq, void *dev_id)
+{
+	pr_warn("%s External HW Initiated reboot\n", __func__);
+	set_restart_reason(REBOOT_HARD_RESET);
+	pr_warn("%s 2 sec to reboot.Halt the kernel.\n", __func__);
+
+	schedule_work(&msm_resout_work);
+
 	return IRQ_HANDLED;
 }
 
@@ -365,6 +378,7 @@ static int __init msm_restart_init(void)
 	msm_tmr0_base = msm_timer_get_timer0_base();
 	restart_reason = MSM_IMEM_BASE + RESTART_REASON_ADDR;
 	pm_power_off = msm_power_off;
+	INIT_WORK(&msm_resout_work, msm_resout_work_fn);
 
 	return 0;
 }
