@@ -1892,6 +1892,14 @@ static struct mdm_platform_data bmdm_platform_data = {
 	.no_a2m_errfatal_on_ssr = 1,
 };
 
+static struct mdm_platform_data sglte2_qsc_platform_data = {
+	.mdm_version = "3.0",
+	.ramdump_delay_ms = 2000,
+	.ramdump_timeout_ms = 600000,
+	.no_powerdown_after_ramdumps = 1,
+	.image_upgrade_supported = 1,
+};
+
 static struct tsens_platform_data apq_tsens_pdata  = {
 		.tsens_factor		= 1000,
 		.hw_type		= APQ_8064,
@@ -3261,6 +3269,14 @@ static void __init apq8064_common_init(void)
 			bmdm_8064_device.dev.platform_data =
 				&bmdm_platform_data;
 			platform_device_register(&bmdm_8064_device);
+		} else if (socinfo_get_platform_subtype() ==
+				   PLATFORM_SUBTYPE_SGLTE2) {
+			sglte_mdm_8064_device.dev.platform_data =
+				&mdm_platform_data;
+			platform_device_register(&sglte_mdm_8064_device);
+			sglte2_qsc_8064_device.dev.platform_data =
+				&sglte2_qsc_platform_data;
+			platform_device_register(&sglte2_qsc_8064_device);
 		} else if (SOCINFO_VERSION_MINOR(platform_version) == 1) {
 			i2s_mdm_8064_device.dev.platform_data =
 				&mdm_platform_data;
