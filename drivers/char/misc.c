@@ -59,8 +59,9 @@ static DEFINE_MUTEX(misc_mtx);
 /*
  * Assigned numbers, used for dynamic minors
  */
-#define DYNAMIC_MINORS 96 /* like dynamic majors */
+#define DYNAMIC_MINORS CONFIG_MISC_DYNAMIC_MINORS /* like dynamic majors */
 static DECLARE_BITMAP(misc_minors, DYNAMIC_MINORS);
+static int dynamic_minors_offset = MISC_DYNAMIC_MINOR_OFFSET;
 
 #ifdef CONFIG_PROC_FS
 static void *misc_seq_start(struct seq_file *seq, loff_t *pos)
@@ -203,7 +204,7 @@ int misc_register(struct miscdevice * misc)
 			mutex_unlock(&misc_mtx);
 			return -EBUSY;
 		}
-		misc->minor = DYNAMIC_MINORS - i - 1;
+		misc->minor = DYNAMIC_MINORS - i - 1 + dynamic_minors_offset;
 		set_bit(i, misc_minors);
 	}
 
