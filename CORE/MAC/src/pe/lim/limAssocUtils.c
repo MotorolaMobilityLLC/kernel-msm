@@ -2207,7 +2207,12 @@ limAddSta(
 #ifdef FEATURE_WLAN_TDLS
     /* SystemRole shouldn't be matter if staType is TDLS peer */
     else if(STA_ENTRY_TDLS_PEER == pStaDs->staType)
+    {
         pAddStaParams->htCapable = pStaDs->mlmStaContext.htCapability;
+#ifdef WLAN_FEATURE_11AC
+        pAddStaParams->vhtCapable = pStaDs->mlmStaContext.vhtCapability;
+#endif
+    }
 #endif
     else
     {
@@ -2234,8 +2239,13 @@ limAddSta(
     {
         pAddStaParams->vhtTxChannelWidthSet = pStaDs->vhtSupportedChannelWidthSet;
         pAddStaParams->vhtTxBFCapable =
+#ifdef FEATURE_WLAN_TDLS
+        (( STA_ENTRY_PEER == pStaDs->staType ) || (STA_ENTRY_TDLS_PEER == pStaDs->staType)) ?
+                pStaDs->vhtBeamFormerCapable : psessionEntry->txBFIniFeatureEnabled ;
+#else
         ( STA_ENTRY_PEER == pStaDs->staType ) ? pStaDs->vhtBeamFormerCapable :
                                 psessionEntry->txBFIniFeatureEnabled ;
+#endif
     }
 #endif
 
