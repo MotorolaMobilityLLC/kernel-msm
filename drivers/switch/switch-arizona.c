@@ -441,7 +441,8 @@ static int arizona_hpdet_read(struct arizona_extcon_info *info)
 	return val;
 }
 
-static int arizona_hpdet_do_id(struct arizona_extcon_info *info, int *reading)
+static int arizona_hpdet_do_id(struct arizona_extcon_info *info, int *reading,
+			       bool *mic)
 {
 	struct arizona *arizona = info->arizona;
 	int id_gpio = arizona->pdata.hpdet_id_gpio;
@@ -452,11 +453,9 @@ static int arizona_hpdet_do_id(struct arizona_extcon_info *info, int *reading)
 	 */
 	if (arizona->pdata.hpdet_acc_id) {
 		info->hpdet_res[info->num_hpdet_res++] = *reading;
-		info->hpdet_res[info->num_hpdet_res++] = *reading;
 
 		/* Only check the mic directly if we didn't already ID it */
-		if (id_gpio && info->num_hpdet_res == 2 &&
-		    !((info->hpdet_res[0] > info->hpdet_res[1] * 2))) {
+		if (id_gpio && info->num_hpdet_res == 1) {
 			dev_dbg(arizona->dev, "Measuring mic\n");
 
 			regmap_update_bits(arizona->regmap,
@@ -475,9 +474,8 @@ static int arizona_hpdet_do_id(struct arizona_extcon_info *info, int *reading)
 		}
 
 		/* OK, got both.  Now, compare... */
-		dev_dbg(arizona->dev, "HPDET measured %d %d %d\n",
-			info->hpdet_res[0], info->hpdet_res[1],
-			info->hpdet_res[2]);
+		dev_dbg(arizona->dev, "HPDET measured %d %d\n",
+			info->hpdet_res[0], info->hpdet_res[1]);
 
 		/* Take the headphone impedance for the main report */
 		*reading = info->hpdet_res[0];
@@ -493,13 +491,11 @@ static int arizona_hpdet_do_id(struct arizona_extcon_info *info, int *reading)
 		}
 
 		/*
-		 * Either the two grounds measure differently or we
-		 * measure the mic as high impedance.
+		 * If we measure the mic as 
 		 */
-		if ((info->hpdet_res[0] > info->hpdet_res[1] * 2) ||
-		    (id_gpio && info->hpdet_res[2] > 1257)) {
+		if (!id_gpio || info->hpdet_res[1] > 50) {
 			dev_dbg(arizona->dev, "Detected mic\n");
-			info->mic = true;
+			*mic = true;
 			info->detecting = true;
 		} else {
 			dev_dbg(arizona->dev, "Detected headphone\n");
@@ -522,6 +518,7 @@ static irqreturn_t arizona_hpdet_irq(int irq, void *data)
 	int id_gpio = arizona->pdata.hpdet_id_gpio;
 	unsigned int val;
 	int ret, reading;
+	bool mic = false;
 
 	mutex_lock(&info->lock);
 
@@ -558,7 +555,7 @@ static irqreturn_t arizona_hpdet_irq(int irq, void *data)
 			   ARIZONA_HP_IMPEDANCE_RANGE_MASK | ARIZONA_HP_POLL,
 			   0);
 
-	ret = arizona_hpdet_do_id(info, &reading);
+	ret = arizona_hpdet_do_id(info, &reading, &mic);
 	if (ret == -EAGAIN) {
 		goto out;
 	} else if (ret < 0) {
@@ -567,11 +564,6 @@ static irqreturn_t arizona_hpdet_irq(int irq, void *data)
 
 	if (arizona->pdata.hpdet_cb)
 		arizona->pdata.hpdet_cb(reading);
-
-	if (info->mic)
-		switch_set_state(&info->sdev, BIT_HEADSET);
-	else
-		switch_set_state(&info->sdev, BIT_HEADSET_NO_MIC);
 
 done:
 	arizona_extcon_do_magic(info, 0);
@@ -585,8 +577,10 @@ done:
 			   ARIZONA_ACCDET_MODE_MASK, ARIZONA_ACCDET_MODE_MIC);
 
 	/* If we have a mic then reenable MICDET */
-	if (info->mic)
+	if (mic)
 		arizona_start_mic(info);
+	else
+		switch_set_state(&info->sdev, BIT_HEADSET_NO_MIC);
 
 	if (info->hpdet_active) {
 		pm_runtime_put(info->dev);
@@ -608,7 +602,7 @@ static void arizona_identify_headphone(struct arizona_extcon_info *info)
 	int ret;
 
 	if (info->hpdet_done)
-		return;
+		goto err;
 
 	dev_dbg(arizona->dev, "Starting HPDET\n");
 
@@ -648,18 +642,16 @@ err:
 	/* Just report headphone */
 	if (info->mic) {
 		switch_set_state(&info->sdev, BIT_HEADSET);
-		arizona_start_mic(info);
 	} else {
 		switch_set_state(&info->sdev, BIT_HEADSET_NO_MIC);
 	}
-
-	info->hpdet_active = false;
 }
 
 static void arizona_start_hpdet_acc_id(struct arizona_extcon_info *info)
 {
 	struct arizona *arizona = info->arizona;
-	unsigned int val;
+	int hp_reading = 32;
+	bool mic;
 	int ret;
 
 	dev_dbg(arizona->dev, "Starting identification via HPDET\n");
@@ -681,12 +673,18 @@ static void arizona_start_hpdet_acc_id(struct arizona_extcon_info *info)
 		goto err;
 	}
 
-	ret = regmap_update_bits(arizona->regmap, ARIZONA_HEADPHONE_DETECT_1,
-				 ARIZONA_HP_POLL, ARIZONA_HP_POLL);
-	if (ret != 0) {
-		dev_err(arizona->dev, "Can't start HPDETL measurement: %d\n",
-			ret);
-		goto err;
+	if (arizona->pdata.hpdet_acc_id_line) {
+		ret = regmap_update_bits(arizona->regmap,
+					 ARIZONA_HEADPHONE_DETECT_1,
+					 ARIZONA_HP_POLL, ARIZONA_HP_POLL);
+		if (ret != 0) {
+			dev_err(arizona->dev,
+				"Can't start HPDETL measurement: %d\n",
+				ret);
+			goto err;
+		}
+	} else {
+		arizona_hpdet_do_id(info, &hp_reading, &mic);
 	}
 
 	return;
