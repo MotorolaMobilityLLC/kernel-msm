@@ -47,7 +47,7 @@ static int f2fs_vm_page_mkwrite(struct vm_area_struct *vma,
 
 	/* block allocation */
 	set_new_dnode(&dn, inode, NULL, NULL, 0);
-	err = get_dnode_of_data(&dn, page->index, 0);
+	err = get_dnode_of_data(&dn, page->index, ALLOC_NODE);
 	if (err) {
 		mutex_unlock_op(sbi, DATA_NEW);
 		goto out;
@@ -260,7 +260,7 @@ static int truncate_blocks(struct inode *inode, u64 from)
 	mutex_lock_op(sbi, DATA_TRUNC);
 
 	set_new_dnode(&dn, inode, NULL, NULL, 0);
-	err = get_dnode_of_data(&dn, free_from, RDONLY_NODE);
+	err = get_dnode_of_data(&dn, free_from, LOOKUP_NODE);
 	if (err) {
 		if (err == -ENOENT)
 			goto free_next;
@@ -428,7 +428,7 @@ int truncate_hole(struct inode *inode, pgoff_t pg_start, pgoff_t pg_end)
 
 		mutex_lock_op(sbi, DATA_TRUNC);
 		set_new_dnode(&dn, inode, NULL, NULL, 0);
-		err = get_dnode_of_data(&dn, index, RDONLY_NODE);
+		err = get_dnode_of_data(&dn, index, LOOKUP_NODE);
 		if (err) {
 			mutex_unlock_op(sbi, DATA_TRUNC);
 			if (err == -ENOENT)
@@ -512,7 +512,7 @@ static int expand_inode_data(struct inode *inode, loff_t offset,
 		mutex_lock_op(sbi, DATA_NEW);
 
 		set_new_dnode(&dn, inode, NULL, NULL, 0);
-		ret = get_dnode_of_data(&dn, index, 0);
+		ret = get_dnode_of_data(&dn, index, ALLOC_NODE);
 		if (ret) {
 			mutex_unlock_op(sbi, DATA_NEW);
 			break;
