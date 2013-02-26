@@ -4,6 +4,13 @@
 
 menu "Character devices"
 
+config MISC_DYNAMIC_MINORS
+	int "misc device dynamic minors"
+	default "96"
+	help
+	  Set the misc device dynamic minors which will be used by the MISC
+	  char device drivers.
+
 source "drivers/tty/Kconfig"
 
 config DEVMEM
