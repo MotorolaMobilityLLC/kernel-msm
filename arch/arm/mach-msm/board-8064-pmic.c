@@ -185,6 +185,11 @@ static struct pm8xxx_mpp_init pm8xxx_mpps[] __initdata = {
 	PM8921_MPP_INIT(1, D_OUTPUT, PM8921_MPP_DIG_LEVEL_VPH, DOUT_CTRL_HIGH),
 };
 
+static struct pm8xxx_gpio_init pm8921_sglte2_gpios[] __initdata = {
+	PM8921_GPIO_OUTPUT(2, 0, HIGH),		/* PM2QSC_SOFT_RESET */
+	PM8921_GPIO_OUTPUT(21, 0, HIGH),		/* PM2QSC_KEYPADPWR */
+
+};
 
 void __init apq8064_configure_gpios(struct pm8xxx_gpio_init *data, int len)
 {
@@ -216,9 +221,15 @@ void __init apq8064_pm8xxx_gpio_mpp_init(void)
 					ARRAY_SIZE(pm8917_cdp_kp_gpios));
 	}
 
-	if (machine_is_apq8064_mtp())
+	if (machine_is_apq8064_mtp()) {
 		apq8064_configure_gpios(pm8921_mtp_kp_gpios,
 					ARRAY_SIZE(pm8921_mtp_kp_gpios));
+		if (socinfo_get_platform_subtype() ==
+					PLATFORM_SUBTYPE_SGLTE2) {
+			apq8064_configure_gpios(pm8921_sglte2_gpios,
+					ARRAY_SIZE(pm8921_sglte2_gpios));
+		}
+	}
 
 	if (machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd()
 	    || machine_is_mpq8064_dtv())
