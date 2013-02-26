@@ -96,6 +96,8 @@
 
 #define MOTION_DATA			0x2D
 
+#define PROX_SETTINGS                   0x33
+
 #define LUX_TABLE_VALUES                0x34
 #define BRIGHTNESS_TABLE_VALUES         0x35
 
@@ -1121,26 +1123,52 @@ static ssize_t msp430_misc_write(struct file *file, const char __user *buff,
 /* gpio toggling to switch modes(boot mode,normal mode)on MSP430 */
 int switch_msp430_mode(enum msp_mode mode)
 {
+	int err;
+	struct msp430_platform_data *pdata;
 	unsigned int bslen_pin_active_value =
 		msp430_misc_data->pdata->bslen_pin_active_value;
 
+	pdata = msp430_misc_data->pdata;
+
 	/* bootloader mode */
 	if (mode == BOOTMODE) {
-		gpio_set_value(msp430_misc_data->pdata->gpio_bslen,
+		gpio_set_value(pdata->gpio_bslen,
 				(bslen_pin_active_value));
 		KDEBUG("MSP430 toggling to switch to boot mode\n");
 	} else {
 		/*normal mode */
-		gpio_set_value(msp430_misc_data->pdata->gpio_bslen,
+		gpio_set_value(pdata->gpio_bslen,
 				!(bslen_pin_active_value));
 		KDEBUG("MSP430 toggling to normal or factory mode\n");
 	}
 	msleep_interruptible(I2C_RETRY_DELAY);
-	gpio_set_value(msp430_misc_data->pdata->gpio_reset, 0);
+	gpio_set_value(pdata->gpio_reset, 0);
 	msleep_interruptible(I2C_RETRY_DELAY);
-	gpio_set_value(msp430_misc_data->pdata->gpio_reset, 1);
+	gpio_set_value(pdata->gpio_reset, 1);
 	msleep_interruptible(I2C_RETRY_DELAY);
 	msp430_misc_data->mode = mode;
+
+	if (mode == NORMALMODE) {
+		msp_cmdbuff[0] = PROX_SETTINGS;
+		msp_cmdbuff[1]
+			= (pdata->ct406_detect_threshold >> 8) & 0xff;
+		msp_cmdbuff[2]
+			= pdata->ct406_detect_threshold & 0xff;
+		msp_cmdbuff[3] = (pdata->ct406_undetect_threshold >> 8) & 0xff;
+		msp_cmdbuff[4] = pdata->ct406_undetect_threshold & 0xff;
+		msp_cmdbuff[5]
+			= (pdata->ct406_recalibrate_threshold >> 8) & 0xff;
+		msp_cmdbuff[6] = pdata->ct406_recalibrate_threshold & 0xff;
+		msp_cmdbuff[7] = pdata->ct406_pulse_count & 0xff;
+		err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 8);
+		if (err < 0)
+			dev_err(&msp430_misc_data->client->dev,
+				"unable to write proximity settings %d\n", err);
+		else
+			dev_err(&msp430_misc_data->client->dev,
+				"wrote proximity settings\n");
+	}
+
 	return 0;
 }
 
@@ -1784,6 +1812,19 @@ msp430_of_init(struct i2c_client *client)
 		strlcpy(pdata->fw_version, name, FW_VERSION_SIZE);
 	else
 		pr_debug("%s: not use ms430_fw_version override\n", __func__);
+
+	pdata->ct406_detect_threshold = 0x006E;
+	pdata->ct406_undetect_threshold = 0x0050;
+	pdata->ct406_recalibrate_threshold = 0x0064;
+	pdata->ct406_pulse_count = 0x04;
+	of_property_read_u32(np, "ct406_detect_threshold",
+				&pdata->ct406_detect_threshold);
+	of_property_read_u32(np, "ct406_undetect_threshold",
+				&pdata->ct406_undetect_threshold);
+	of_property_read_u32(np, "ct406_recalibrate_threshold",
+				&pdata->ct406_recalibrate_threshold);
+	of_property_read_u32(np, "ct406_pulse_count",
+				&pdata->ct406_pulse_count);
 
 	return pdata;
 }
