@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*===========================================================================
                         L I M _ P 2 P . C
 
@@ -605,20 +604,31 @@ void limSendSmeMgmtFrameInd(
     pSirSmeMgmtFrame->frameType = frameType;
     pSirSmeMgmtFrame->rxRssi = rxRssi;
 
-    /* work around for 5Ghz channel is not correct since rxhannel 
-     * is 4 bits. So we don't indicate more than 16 channels 
+    /*
+     *  Work around to address LIM sending wrong channel to HDD for p2p action
+     *  frames(In case of auto GO) recieved on 5GHz channel.
+     *  As RXP has only 4bits to store the channel, we need some mechanism to
+     *  to distinguish between 2.4Ghz/5GHz channel. if gLimRemainOnChannelTImer
+     *  is not running and if we get a frame then pass the Go session
+     *  operating channel to HDD. Some vendors create separate p2p interface
+     *  after group formation. In that case LIM session entry will be NULL for
+     *  p2p device address. So search for p2p go session and pass it's
+     *  operating channel.
+     *  Need to revisit this path in case of GO+CLIENT concurrency.
      */
-    if( (VOS_FALSE == 
-        tx_timer_running(&pMac->lim.limTimers.gLimRemainOnChannelTimer)) &&
-        (psessionEntry != NULL) && 
-        (SIR_BAND_5_GHZ == limGetRFBand(psessionEntry->currentOperChannel)) ) 
+    if( VOS_FALSE ==
+        tx_timer_running(&pMac->lim.limTimers.gLimRemainOnChannelTimer) )
     {
-        pSirSmeMgmtFrame->rxChan = psessionEntry->currentOperChannel;
+        tpPESession pTempSessionEntry = psessionEntry;
+        if( ( (NULL != pTempSessionEntry) ||
+              (pTempSessionEntry = limIsApSessionActive(pMac)) ) &&
+            (SIR_BAND_5_GHZ == limGetRFBand(pTempSessionEntry->currentOperChannel)) )
+        {
+            rxChannel = pTempSessionEntry->currentOperChannel;
+        }
     }
-    else
-    {
-        pSirSmeMgmtFrame->rxChan = rxChannel;
-    }
+
+    pSirSmeMgmtFrame->rxChan = rxChannel;
 
     vos_mem_zero(pSirSmeMgmtFrame->frameBuf,frameLen);
     vos_mem_copy(pSirSmeMgmtFrame->frameBuf,frame,frameLen);
