@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -44,7 +64,7 @@
 #define PTT_TRACE(level, args...)
 #endif
 // Global variables
-static struct hdd_context_s *pAdapterHandle = NULL;
+static struct hdd_context_s *pAdapterHandle;
 //Utility function to perform endianess swap
 static void ptt_sock_swap_32(void *pBuffer, unsigned int len)
 {
@@ -86,31 +106,35 @@ int ptt_sock_send_msg_to_app(tAniHdr *wmsg, int radio, int src_mod, int pid)
    struct sk_buff *skb;
    struct nlmsghdr *nlh;
    int wmsg_length = be16_to_cpu(wmsg->length);
-   static int nlmsg_seq = 0;
+   static int nlmsg_seq;
    if (radio < 0 || radio > ANI_MAX_RADIOS) {
       PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: invalid radio id [%d]\n",
-         __FUNCTION__, radio);
-      return -1;
+         __func__, radio);
+      return -EINVAL;
    }
    payload_len = wmsg_length + 4;  // 4 extra bytes for the radio idx
    tot_msg_len = NLMSG_SPACE(payload_len);
    if ((skb = dev_alloc_skb(tot_msg_len)) == NULL) {
       PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: dev_alloc_skb() failed for msg size[%d]\n",
-         __FUNCTION__, tot_msg_len);
-      return -1;
+         __func__, tot_msg_len);
+      return -ENOMEM;
    }
-   nlh = NLMSG_PUT(skb, pid, nlmsg_seq++, src_mod, payload_len);
-   nlh->nlmsg_flags = NLM_F_REQUEST;
+   nlh = nlmsg_put(skb, pid, nlmsg_seq++, src_mod, payload_len, NLM_F_REQUEST);
+   if (NULL == nlh) {
+      PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: nlmsg_put() failed for msg size[%d]\n",
+         __func__, tot_msg_len);
+      kfree_skb(skb);
+      return -ENOMEM;
+   }
    wnl = (tAniNlHdr *) nlh;
    wnl->radio = radio;
    memcpy(&wnl->wmsg, wmsg, wmsg_length);
    PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: Sending Msg Type [0x%X] to pid[%d]\n",
-      __FUNCTION__, be16_to_cpu(wmsg->type), pid);
+      __func__, be16_to_cpu(wmsg->type), pid);
 #ifdef PTT_SOCK_DEBUG_VERBOSE
    ptt_sock_dump_buf((const unsigned char *)skb->data, skb->len);
 #endif
    err = nl_srv_ucast(skb, pid);
-nlmsg_failure:
    return err;
 }
 /*
@@ -135,7 +159,7 @@ static void ptt_sock_proc_reg_req(tAniHdr *wmsg, int radio)
       ANI_NL_MSG_PUMAC, reg_req->pid) < 0)
    {
       PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Error sending ANI_MSG_APP_REG_RSP to pid[%d]\n",
-         __FUNCTION__, reg_req->pid);
+         __func__, reg_req->pid);
    }
 }
 /*
@@ -148,12 +172,12 @@ static void ptt_proc_pumac_msg(struct sk_buff * skb, tAniHdr *wmsg, int radio)
    {
       case ANI_MSG_APP_REG_REQ:
          PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: Received ANI_MSG_APP_REG_REQ [0x%X]\n",
-            __FUNCTION__, ani_msg_type);
+            __func__, ani_msg_type);
          ptt_sock_proc_reg_req(wmsg, radio);
          break;
       default:
          PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Received Unknown Msg Type[0x%X]\n",
-            __FUNCTION__, ani_msg_type);
+            __func__, ani_msg_type);
          break;
    }
 }
@@ -171,7 +195,7 @@ static void ptt_proc_quarky_msg(tAniNlHdr *wnl, tAniHdr *wmsg, int radio)
    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
    if (radio < 0 || radio > ANI_MAX_RADIOS) {
       PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: ANI Msg [0x%X] invalid radio id [%d]\n",
-         __FUNCTION__, ani_msg_type, radio);
+         __func__, ani_msg_type, radio);
       return;
    }
    if(ani_msg_type == ANI_MSG_APP_REG_REQ)
@@ -185,24 +209,24 @@ static void ptt_proc_quarky_msg(tAniNlHdr *wnl, tAniHdr *wmsg, int radio)
          case PTT_MSG_READ_REGISTER:
             reg_addr = *(v_U32_t*) ((char*)wmsg + 8);
             PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_READ_REGISTER [0x%08lX]\n",
-               __FUNCTION__, reg_addr);
+               __func__, reg_addr);
             vosStatus = sme_DbgReadRegister(pAdapterHandle->hHal, reg_addr, &reg_val);
             *(v_U32_t*) ((char*)wmsg + 12) = reg_val;
             if(vosStatus != VOS_STATUS_SUCCESS)
                PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Read Register [0x%08lX] failed!!\n",
-               __FUNCTION__, reg_addr);
+               __func__, reg_addr);
             ptt_sock_send_msg_to_app(wmsg, 0, ANI_NL_MSG_PUMAC, wnl->nlh.nlmsg_pid);
             break;
          case PTT_MSG_WRITE_REGISTER:
             reg_addr = *(v_U32_t*) ((const unsigned char*)wmsg + 8);
             reg_val = *(v_U32_t*)((const unsigned char*)wmsg + 12);
             PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_WRITE_REGISTER Addr [0x%08lX] value [0x%08lX]\n",
-               __FUNCTION__, reg_addr, reg_val);
+               __func__, reg_addr, reg_val);
             vosStatus = sme_DbgWriteRegister(pAdapterHandle->hHal, reg_addr, reg_val);
             if(vosStatus != VOS_STATUS_SUCCESS)
             {
                PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Write Register [0x%08lX] value [0x%08lX] failed!!\n",
-                  __FUNCTION__, reg_addr, reg_val);
+                  __func__, reg_addr, reg_val);
             }
             //send message to the app
             ptt_sock_send_msg_to_app(wmsg, 0, ANI_NL_MSG_PUMAC, wnl->nlh.nlmsg_pid);
@@ -211,12 +235,12 @@ static void ptt_proc_quarky_msg(tAniNlHdr *wnl, tAniHdr *wmsg, int radio)
             reg_addr = *(v_U32_t*) ((char*)wmsg + 8);
             len_payload = *(v_U32_t*) ((char*)wmsg + 12);
             PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_READ_MEMORY addr [0x%08lX] bytes [0x%08lX]\n",
-               __FUNCTION__, reg_addr, len_payload);
+               __func__, reg_addr, len_payload);
             buf = (v_U8_t*)wmsg + 16;
             vosStatus = sme_DbgReadMemory(pAdapterHandle->hHal, reg_addr, buf, len_payload);
             if(vosStatus != VOS_STATUS_SUCCESS) {
                PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Memory read failed for [0x%08lX]!!\n",
-                  __FUNCTION__, reg_addr);
+                  __func__, reg_addr);
             }
             ptt_sock_swap_32(buf, len_payload);
             //send message to the app
@@ -226,14 +250,14 @@ static void ptt_proc_quarky_msg(tAniNlHdr *wnl, tAniHdr *wmsg, int radio)
             reg_addr = *(v_U32_t*) ((char*)wmsg + 8);
             len_payload = *(v_U32_t*) ((char*)wmsg + 12);
             PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_DBG_WRITE_MEMORY addr [0x%08lX] bytes [0x%08lX]\n",
-               __FUNCTION__, reg_addr, len_payload);
+               __func__, reg_addr, len_payload);
             buf = (v_U8_t*)wmsg + 16;
             ptt_sock_swap_32(buf, len_payload);
             vosStatus = sme_DbgWriteMemory(pAdapterHandle->hHal, reg_addr, buf, len_payload);
             if(vosStatus != VOS_STATUS_SUCCESS)
             {
                PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Memory write failed for addr [0x%08lX]!!\n",
-                  __FUNCTION__, reg_addr);
+                  __func__, reg_addr);
             }
             //send message to the app
             ptt_sock_send_msg_to_app(wmsg, 0, ANI_NL_MSG_PUMAC, wnl->nlh.nlmsg_pid);
@@ -245,7 +269,7 @@ static void ptt_proc_quarky_msg(tAniNlHdr *wnl, tAniHdr *wmsg, int radio)
             arg3 = *(unsigned int *) ((char *)wmsg + 20);
             arg4 = *(unsigned int *) ((char *)wmsg + 24);
             PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_LOG_DUMP_DBG %d arg1 %d arg2 %d arg3 %d arg4 %d\n",
-               __FUNCTION__, cmd, arg1, arg2, arg3, arg4);
+               __func__, cmd, arg1, arg2, arg3, arg4);
 #ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
             // FIXME_PRIMA -- need logDump() replacement
             logPrintf(pAdapterHandle->hHal, cmd, arg1, arg2, arg3, arg4);
@@ -260,7 +284,7 @@ static void ptt_proc_quarky_msg(tAniNlHdr *wnl, tAniHdr *wmsg, int radio)
 #endif
          default:
             PTT_TRACE(VOS_TRACE_LEVEL_ERROR, "%s: Unknown ANI Msg [0x%X], length [0x%X]\n",
-               __FUNCTION__, ani_msg_type, be16_to_cpu(wmsg->length ));
+               __func__, ani_msg_type, be16_to_cpu(wmsg->length ));
             break;
       }
    }

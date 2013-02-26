@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -55,7 +75,7 @@
 
 static tSuppRsnFsmConsts suppConsts = { 2000, 3 };    //timeout, retry limit
 
-int gReadToSetKey = 0;
+int gReadToSetKey;
 
 /**************************************
  * Static functions in this module
@@ -632,7 +652,7 @@ gotoStateGroupKeySet(tSuppRsnFsm *fsm,
         {
             retVal = ANI_ERROR;
             VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR, "Supp could not send eapol. Disconnect\n" );
-            break;;    
+            break;
         }
 
         //FIX_RSN there is no need to set GTK retVal = setGtk(fsm->suppCtx, rxDesc->keyRecvSeqCounter);
@@ -1021,7 +1041,7 @@ static int suppRsnRxFrameHandler( v_PVOID_t pvosGCtx, vos_pkt_t *pPacket )
     if ((pvosGCtx == NULL) || (NULL == pPacket))
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "param is NULL in %s", __FUNCTION__);
+                     "param is NULL in %s", __func__);
 
         return retVal;
     }
@@ -1029,7 +1049,7 @@ static int suppRsnRxFrameHandler( v_PVOID_t pvosGCtx, vos_pkt_t *pPacket )
     if (NULL == ctx) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "ctx is NULL in %s", __FUNCTION__);
+                     "ctx is NULL in %s", __func__);
 
         return retVal;
     }
@@ -1038,7 +1058,7 @@ static int suppRsnRxFrameHandler( v_PVOID_t pvosGCtx, vos_pkt_t *pPacket )
     if (NULL == fsm) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "fsm is NULL in %s", __FUNCTION__);
+                     "fsm is NULL in %s", __func__);
 
         return retVal;
     }
@@ -1076,7 +1096,7 @@ static int suppRsnTxCompleteHandler( v_PVOID_t pvosGCtx, vos_pkt_t *pPacket, VOS
     if (pvosGCtx == NULL)
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "param is NULL in %s", __FUNCTION__);
+                     "param is NULL in %s", __func__);
 
         return ANI_ERROR;
     }
@@ -1084,7 +1104,7 @@ static int suppRsnTxCompleteHandler( v_PVOID_t pvosGCtx, vos_pkt_t *pPacket, VOS
     if (NULL == ctx) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "ctx is NULL in %s", __FUNCTION__);
+                     "ctx is NULL in %s", __func__);
 
         return ANI_ERROR;
     }
@@ -1093,7 +1113,7 @@ static int suppRsnTxCompleteHandler( v_PVOID_t pvosGCtx, vos_pkt_t *pPacket, VOS
     if (NULL == fsm) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "fsm is NULL in %s", __FUNCTION__);
+                     "fsm is NULL in %s", __func__);
 
         return ANI_ERROR;
     }

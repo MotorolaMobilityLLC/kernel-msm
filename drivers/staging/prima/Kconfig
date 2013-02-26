@@ -23,4 +23,8 @@ config PRIMA_WLAN_OKC
 	bool "Enable the Prima WLAN Opportunistic Key Caching feature"
 	default n
 
+config PRIMA_WLAN_11AC_HIGH_TP
+	bool "Enable the Prima WLAN 802.11ac High Throughput option (depends upon kernel support)"
+	default n
+
 endif # PRIMA_WLAN

@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -76,7 +96,7 @@
  * Data definitions
  * ------------------------------------------------------------------------*/
 static pVosSchedContext gpVosSchedContext;
-static pVosWatchdogContext gpVosWatchdogContext=NULL;
+static pVosWatchdogContext gpVosWatchdogContext;
 
 /*---------------------------------------------------------------------------
  * Forward declaration
@@ -371,7 +391,7 @@ VosMCThread
   if (Arg == NULL)
   {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-        "%s: Bad Args passed", __FUNCTION__);
+        "%s: Bad Args passed", __func__);
      return 0;
   }
   set_user_nice(current, -2);
@@ -409,7 +429,7 @@ VosMCThread
     if(retWaitStatus == -ERESTARTSYS)
     {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: wait_event_interruptible returned -ERESTARTSYS", __FUNCTION__);
+         "%s: wait_event_interruptible returned -ERESTARTSYS", __func__);
       break;
     }
     clear_bit(MC_POST_EVENT_MASK, &pSchedContext->mcEventFlag);
@@ -451,7 +471,7 @@ VosMCThread
         if (pMsgWrapper == NULL)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-               "%s: pMsgWrapper is NULL", __FUNCTION__);
+               "%s: pMsgWrapper is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -461,7 +481,7 @@ VosMCThread
         if(pWdiMsg == NULL || pWdiMsg->callback == NULL)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-               "%s: WDI Msg or Callback is NULL", __FUNCTION__);
+               "%s: WDI Msg or Callback is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -487,7 +507,7 @@ VosMCThread
         if (pMsgWrapper == NULL)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-              "%s: pMsgWrapper is NULL", __FUNCTION__);
+              "%s: pMsgWrapper is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -513,7 +533,7 @@ VosMCThread
         if (pMsgWrapper == NULL)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-              "%s: pMsgWrapper is NULL", __FUNCTION__);
+              "%s: pMsgWrapper is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -538,7 +558,7 @@ VosMCThread
         if(pMacContext == NULL)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-              "%s: pMacContext is NULL", __FUNCTION__);
+              "%s: pMacContext is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -550,7 +570,7 @@ VosMCThread
         if (pMsgWrapper == NULL)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-              "%s: pMsgWrapper is NULL", __FUNCTION__);
+              "%s: pMsgWrapper is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -577,7 +597,7 @@ VosMCThread
         if (NULL == pMsgWrapper)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-              "%s: pMsgWrapper is NULL", __FUNCTION__);
+              "%s: pMsgWrapper is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -612,7 +632,7 @@ VosMCThread
         if (NULL == pMsgWrapper)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-               "%s: pMsgWrapper is NULL", __FUNCTION__);
+               "%s: pMsgWrapper is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -647,7 +667,7 @@ VosMCThread
         if (pMsgWrapper == NULL)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-              "%s: pMsgWrapper is NULL", __FUNCTION__);
+              "%s: pMsgWrapper is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -683,7 +703,7 @@ VosMCThread
   } // while TRUE
   // If we get here the MC thread must exit
   VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-      "%s: MC Thread exiting!!!!", __FUNCTION__);
+      "%s: MC Thread exiting!!!!", __func__);
   complete_and_exit(&pSchedContext->McShutdown, 0);
 } /* VosMCThread() */
 int isWDresetInProgress(void)
@@ -725,7 +745,7 @@ VosWDThread
   if (Arg == NULL)
   {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-        "%s: Bad Args passed", __FUNCTION__);
+        "%s: Bad Args passed", __func__);
      return 0;
   }
   daemonize("WD_Thread");
@@ -745,7 +765,7 @@ VosWDThread
     if(retWaitStatus == -ERESTARTSYS)
     {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: wait_event_interruptible returned -ERESTARTSYS", __FUNCTION__);
+         "%s: wait_event_interruptible returned -ERESTARTSYS", __func__);
       break;
     }
     clear_bit(WD_POST_EVENT_MASK, &pWdContext->wdEventFlag);
@@ -819,12 +839,12 @@ VosWDThread
 
   // If we get here the Watchdog thread must exit
   VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-      "%s: Watchdog Thread exiting !!!!", __FUNCTION__);
+      "%s: Watchdog Thread exiting !!!!", __func__);
   complete_and_exit(&pWdContext->WdShutdown, 0);
 
 err_reset:
     VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-      "%s: Watchdog Thread Failed to Reset, Exiting!!!!", __FUNCTION__);
+      "%s: Watchdog Thread Failed to Reset, Exiting!!!!", __func__);
     return 0;
 
 } /* VosMCThread() */
@@ -849,11 +869,15 @@ static int VosTXThread ( void * Arg )
   v_CONTEXT_t pVosContext        = NULL;
 
   set_user_nice(current, -1);
+  
+#ifdef WLAN_FEATURE_11AC_HIGH_TP
+  set_wake_up_idle(true);
+#endif
 
   if (Arg == NULL)
   {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s Bad Args passed", __FUNCTION__);
+         "%s Bad Args passed", __func__);
      return 0;
   }
   daemonize("TX_Thread");
@@ -891,7 +915,7 @@ static int VosTXThread ( void * Arg )
     if(retWaitStatus == -ERESTARTSYS)
     {
         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-           "%s: wait_event_interruptible returned -ERESTARTSYS", __FUNCTION__);
+           "%s: wait_event_interruptible returned -ERESTARTSYS", __func__);
         break;
     }
     clear_bit(TX_POST_EVENT_MASK, &pSchedContext->txEventFlag);
@@ -923,7 +947,7 @@ static int VosTXThread ( void * Arg )
         if (pMsgWrapper == NULL)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-               "%s: pMsgWrapper is NULL", __FUNCTION__);
+               "%s: pMsgWrapper is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -948,7 +972,7 @@ static int VosTXThread ( void * Arg )
         if (pMsgWrapper == NULL)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-               "%s: pMsgWrapper is NULL", __FUNCTION__);
+               "%s: pMsgWrapper is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -976,7 +1000,7 @@ static int VosTXThread ( void * Arg )
         if (pMsgWrapper == NULL)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-               "%s: pMsgWrapper is NULL", __FUNCTION__);
+               "%s: pMsgWrapper is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -986,7 +1010,7 @@ static int VosTXThread ( void * Arg )
         if(pWdiMsg == NULL || pWdiMsg->callback == NULL)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-               "%s: WDI Msg or Callback is NULL", __FUNCTION__);
+               "%s: WDI Msg or Callback is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -1009,7 +1033,7 @@ static int VosTXThread ( void * Arg )
         if (pMsgWrapper == NULL)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-               "%s: pMsgWrapper is NULL", __FUNCTION__);
+               "%s: pMsgWrapper is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -1047,7 +1071,7 @@ static int VosTXThread ( void * Arg )
   } // while TRUE
   // If we get here the TX thread must exit
   VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-      "%s: TX Thread exiting!!!!", __FUNCTION__);
+      "%s: TX Thread exiting!!!!", __func__);
   complete_and_exit(&pSchedContext->TxShutdown, 0);
 } /* VosTxThread() */
 
@@ -1072,11 +1096,15 @@ static int VosRXThread ( void * Arg )
   VOS_STATUS       vStatus       = VOS_STATUS_SUCCESS;
 
   set_user_nice(current, -1);
+  
+#ifdef WLAN_FEATURE_11AC_HIGH_TP
+  set_wake_up_idle(true);
+#endif
 
   if (Arg == NULL)
   {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s Bad Args passed", __FUNCTION__);
+         "%s Bad Args passed", __func__);
      return 0;
   }
   daemonize("RX_Thread");
@@ -1113,7 +1141,7 @@ static int VosRXThread ( void * Arg )
     if(retWaitStatus == -ERESTARTSYS)
     {
         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-           "%s: wait_event_interruptible returned -ERESTARTSYS", __FUNCTION__);
+           "%s: wait_event_interruptible returned -ERESTARTSYS", __func__);
         break;
     }
     clear_bit(RX_POST_EVENT_MASK, &pSchedContext->rxEventFlag);
@@ -1147,7 +1175,7 @@ static int VosRXThread ( void * Arg )
         if (pMsgWrapper == NULL)
         {
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-               "%s: pMsgWrapper is NULL", __FUNCTION__);
+               "%s: pMsgWrapper is NULL", __func__);
            VOS_ASSERT(0);
            break;
         }
@@ -1174,7 +1202,7 @@ static int VosRXThread ( void * Arg )
         if ((NULL == pMsgWrapper) || (NULL == pMsgWrapper->pVosMsg))
         {
           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                    "%s: wdiRxMq message is NULL", __FUNCTION__);
+                    "%s: wdiRxMq message is NULL", __func__);
           VOS_ASSERT(0);
           // we won't return this wrapper since it is corrupt
         }
@@ -1184,7 +1212,7 @@ static int VosRXThread ( void * Arg )
           if ((NULL == pWdiMsg) || (NULL == pWdiMsg->callback))
           {
             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                      "%s: WDI Msg or callback is NULL", __FUNCTION__);
+                      "%s: WDI Msg or callback is NULL", __func__);
             VOS_ASSERT(0);
           }
           else
@@ -1220,7 +1248,7 @@ static int VosRXThread ( void * Arg )
   } // while TRUE
   // If we get here the RX thread must exit
   VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-      "%s: RX Thread exiting!!!!", __FUNCTION__);
+      "%s: RX Thread exiting!!!!", __func__);
   complete_and_exit(&pSchedContext->RxShutdown, 0);
 } /* VosRxThread() */
 #endif
@@ -1245,11 +1273,11 @@ static int VosRXThread ( void * Arg )
 VOS_STATUS vos_sched_close ( v_PVOID_t pVosContext )
 {
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
-        "%s: invoked", __FUNCTION__);
+        "%s: invoked", __func__);
     if (gpVosSchedContext == NULL)
     {
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-           "%s: gpVosSchedContext == NULL\n",__FUNCTION__);
+           "%s: gpVosSchedContext == NULL\n",__func__);
        return VOS_STATUS_E_FAILURE;
     }
 
@@ -1299,11 +1327,11 @@ VOS_STATUS vos_sched_close ( v_PVOID_t pVosContext )
 VOS_STATUS vos_watchdog_close ( v_PVOID_t pVosContext )
 {
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
-        "%s: vos_watchdog closing now", __FUNCTION__);
+        "%s: vos_watchdog closing now", __func__);
     if (gpVosWatchdogContext == NULL)
     {
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-           "%s: gpVosWatchdogContext is NULL\n",__FUNCTION__);
+           "%s: gpVosWatchdogContext is NULL\n",__func__);
        return VOS_STATUS_E_FAILURE;
     }
     set_bit(WD_SHUTDOWN_EVENT_MASK, &gpVosWatchdogContext->wdEventFlag);
@@ -1323,11 +1351,11 @@ VOS_STATUS vos_watchdog_chip_reset ( vos_chip_reset_reason_type  reason )
     struct sdio_func *sdio_func_dev = NULL;
     
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-        "%s: vos_watchdog resetting WLAN", __FUNCTION__);
+        "%s: vos_watchdog resetting WLAN", __func__);
     if (gpVosWatchdogContext == NULL)
     {
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-           "%s: Watchdog not enabled. LOGP ignored.",__FUNCTION__);
+           "%s: Watchdog not enabled. LOGP ignored.",__func__);
        return VOS_STATUS_E_FAILURE;
     }
 
@@ -1360,7 +1388,7 @@ VOS_STATUS vos_watchdog_chip_reset ( vos_chip_reset_reason_type  reason )
     {
         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
             "%s: Reset already in Progress. Ignoring signaling Watchdog",
-                                                           __FUNCTION__);
+                                                           __func__);
         /* Release the lock here */
         spin_unlock(&gpVosWatchdogContext->wdLock);
         return VOS_STATUS_E_FAILURE;
@@ -1369,7 +1397,7 @@ VOS_STATUS vos_watchdog_chip_reset ( vos_chip_reset_reason_type  reason )
     {
         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
             "%s: LOGP already in Progress. Ignoring signaling Watchdog",
-                                                           __FUNCTION__);
+                                                           __func__);
         /* Release the lock here */
         spin_unlock(&gpVosWatchdogContext->wdLock);
         return VOS_STATUS_E_FAILURE;
@@ -1391,7 +1419,7 @@ VOS_STATUS vos_watchdog_chip_reset ( vos_chip_reset_reason_type  reason )
     {
         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
             "%s: Load/unload in Progress. Ignoring signaling Watchdog",
-                                                          __FUNCTION__);
+                                                          __func__);
         return VOS_STATUS_E_FAILURE;    
     }
 
@@ -1702,7 +1730,7 @@ void vos_sched_flush_mc_mqs ( pVosSchedContext pSchedContext )
   if (NULL == pSchedContext)
   {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: pSchedContext is NULL", __FUNCTION__);
+         "%s: pSchedContext is NULL", __func__);
      return;
   }
 
@@ -1710,7 +1738,7 @@ void vos_sched_flush_mc_mqs ( pVosSchedContext pSchedContext )
   if (NULL == vosCtx)
   {
      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                "%s: vosCtx is NULL", __FUNCTION__);
+                "%s: vosCtx is NULL", __func__);
      return;
   }
 
@@ -1743,7 +1771,7 @@ void vos_sched_flush_mc_mqs ( pVosSchedContext pSchedContext )
     {
         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                    "%s: Freeing MC WDA MSG message type %d",
-                   __FUNCTION__, pMsgWrapper->pVosMsg->type );
+                   __func__, pMsgWrapper->pVosMsg->type );
         if (pMsgWrapper->pVosMsg->bodyptr) {
             vos_mem_free((v_VOID_t*)pMsgWrapper->pVosMsg->bodyptr);
         }
@@ -1762,7 +1790,7 @@ void vos_sched_flush_mc_mqs ( pVosSchedContext pSchedContext )
     {
         VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                    "%s: Freeing MC WDI MSG message type %d",
-                   __FUNCTION__, pMsgWrapper->pVosMsg->type );
+                   __func__, pMsgWrapper->pVosMsg->type );
         if (pMsgWrapper->pVosMsg->bodyptr) {
             vos_mem_free((v_VOID_t*)pMsgWrapper->pVosMsg->bodyptr);
         }
@@ -1827,7 +1855,7 @@ void vos_sched_flush_tx_mqs ( pVosSchedContext pSchedContext )
   if (NULL == pSchedContext)
   {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: pSchedContext is NULL", __FUNCTION__);
+         "%s: pSchedContext is NULL", __func__);
      return;
   }
 
@@ -1894,7 +1922,7 @@ void vos_sched_flush_rx_mqs ( pVosSchedContext pSchedContext )
   if (NULL == pSchedContext)
   {
      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: pSchedContext is NULL", __FUNCTION__);
+         "%s: pSchedContext is NULL", __func__);
      return;
   }
 
@@ -1929,7 +1957,7 @@ int vos_sched_is_tx_thread(int threadID)
    if (gpVosSchedContext == NULL)
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-          "%s: gpVosSchedContext == NULL",__FUNCTION__);
+          "%s: gpVosSchedContext == NULL",__func__);
       return 0;
    }
    return ((gpVosSchedContext->TxThread) && (threadID == gpVosSchedContext->TxThread->pid));
@@ -1945,7 +1973,7 @@ int vos_sched_is_rx_thread(int threadID)
    if (gpVosSchedContext == NULL)
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-          "%s: gpVosSchedContext == NULL",__FUNCTION__);
+          "%s: gpVosSchedContext == NULL",__func__);
       return 0;
    }
    return ((gpVosSchedContext->RxThread) && (threadID == gpVosSchedContext->RxThread->pid));
@@ -1960,7 +1988,7 @@ pVosSchedContext get_vos_sched_ctxt(void)
    if (gpVosSchedContext == NULL)
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: gpVosSchedContext == NULL",__FUNCTION__);
+         "%s: gpVosSchedContext == NULL",__func__);
    }
    return (gpVosSchedContext);
 }
@@ -1973,7 +2001,7 @@ pVosWatchdogContext get_vos_watchdog_ctxt(void)
    if (gpVosWatchdogContext == NULL)
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: gpVosWatchdogContext == NULL",__FUNCTION__);
+         "%s: gpVosWatchdogContext == NULL",__func__);
    }
    return (gpVosWatchdogContext);
 }
@@ -1997,11 +2025,11 @@ VOS_STATUS vos_watchdog_wlan_shutdown(void)
     hdd_context_t *pHddCtx = NULL;
 
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-        "%s: WLAN driver is shutting down ", __FUNCTION__);
+        "%s: WLAN driver is shutting down ", __func__);
     if (NULL == gpVosWatchdogContext)
     {
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-           "%s: Watchdog not enabled. LOGP ignored.", __FUNCTION__);
+           "%s: Watchdog not enabled. LOGP ignored.", __func__);
        return VOS_STATUS_E_FAILURE;
     }
 
@@ -2010,7 +2038,7 @@ VOS_STATUS vos_watchdog_wlan_shutdown(void)
     if (NULL == pHddCtx)
     {
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-           "%s: Invalid HDD Context", __FUNCTION__);
+           "%s: Invalid HDD Context", __func__);
        return VOS_STATUS_E_FAILURE;
     }
 
@@ -2022,7 +2050,7 @@ VOS_STATUS vos_watchdog_wlan_shutdown(void)
     {
         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
             "%s: Shutdown already in Progress. Ignoring signaling Watchdog",
-                                                           __FUNCTION__);
+                                                           __func__);
         /* Release the lock here */
         spin_unlock(&gpVosWatchdogContext->wdLock);
         return VOS_STATUS_E_FAILURE;
@@ -2033,7 +2061,7 @@ VOS_STATUS vos_watchdog_wlan_shutdown(void)
     {
         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
             "%s: shutdown/re-init already in Progress. Ignoring signaling Watchdog",
-                                                           __FUNCTION__);
+                                                           __func__);
         /* Release the lock here */
         spin_unlock(&gpVosWatchdogContext->wdLock);
         return VOS_STATUS_E_FAILURE;
@@ -2050,7 +2078,10 @@ VOS_STATUS vos_watchdog_wlan_shutdown(void)
     {
         VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                 "%s: Load/unload in Progress. Ignoring signaling Watchdog",
-                __FUNCTION__);
+                __func__);
+        /* wcnss has crashed, and SSR has alredy been started by Kernel driver.
+         * So disable SSR from WLAN driver */
+        hdd_set_ssr_required( HDD_SSR_DISABLED );
         return VOS_STATUS_E_FAILURE;
     }
     /* Update Riva Reset Statistics */

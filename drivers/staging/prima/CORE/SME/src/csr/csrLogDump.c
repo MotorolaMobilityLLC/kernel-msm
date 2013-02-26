@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -39,7 +59,7 @@ dump_csr( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI
 {
     static tCsrRoamProfile x;
     static tSirMacSSid ssid;   //To be allocated for array of SSIDs
-    static tANI_U8 sessionId = 0; // Defined for fixed session ID
+    static tANI_U8 sessionId; // Defined for fixed session ID
     palZeroMemory(pMac->hHdd, (void*)&x, sizeof(x)); 
     x.SSIDs.numOfSSIDs=1 ;
     x.SSIDs.SSIDList[0].SSID = ssid ;
@@ -96,11 +116,32 @@ static char *dump_btcSetEvent( tpAniSirGlobal pMac, tANI_U32 arg1,
     }
     return p;
 }
+static char* dump_csrApConcScanParams( tpAniSirGlobal pMac, tANI_U32 arg1, 
+                               tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p )
+{
+    if( arg1 )
+    {
+        pMac->roam.configParam.nRestTimeConc = arg1;
+    }
+    if( arg2 )
+    {
+        pMac->roam.configParam.nActiveMinChnTimeConc = arg2;
+    }
+    if( arg3 )
+    {
+        pMac->roam.configParam.nActiveMaxChnTimeConc = arg3;
+    }
+
+    smsLog(pMac, LOGE, FL(" Working %d %d %d\n"), (int) pMac->roam.configParam.nRestTimeConc,
+        (int)pMac->roam.configParam.nActiveMinChnTimeConc, (int) pMac->roam.configParam.nActiveMaxChnTimeConc);
+    return p;
+}
 
 static tDumpFuncEntry csrMenuDumpTable[] = {
     {0,     "CSR (850-860)",                                    NULL},
     {851,   "CSR: CSR testing connection to AniNet",            dump_csr},
     {852,   "BTC: Fake BT events (event, handle)",              dump_btcSetEvent},
+    {853,   "CSR: Split Scan related params",                   dump_csrApConcScanParams},
 };
 
 void csrDumpInit(tHalHandle hHal)

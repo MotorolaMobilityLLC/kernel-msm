@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -20,7 +40,9 @@
  */
 
 /**=========================================================================
-
+* Copyright (c) 2013 Qualcomm Atheros, Inc.
+* All Rights Reserved.
+* Qualcomm Atheros Confidential and Proprietary.
   \file  limTrace.c
 
   \brief implementation for trace related APIs
@@ -78,6 +100,23 @@ static tANI_U8* __limTraceGetTimerString( tANI_U16 timerId )
         CASE_RETURN_STRING(eLIM_LEARN_DURATION_TIMER);
         CASE_RETURN_STRING(eLIM_QUIET_TIMER);
         CASE_RETURN_STRING(eLIM_QUIET_BSS_TIMER);
+#ifdef WLAN_SOFTAP_FEATURE
+        CASE_RETURN_STRING(eLIM_WPS_OVERLAP_TIMER);
+#endif
+#ifdef WLAN_FEATURE_VOWIFI_11R
+        CASE_RETURN_STRING(eLIM_FT_PREAUTH_RSP_TIMER);
+#endif
+#ifdef WLAN_FEATURE_P2P
+        CASE_RETURN_STRING(eLIM_REMAIN_CHN_TIMER);
+#endif
+        CASE_RETURN_STRING(eLIM_PERIODIC_PROBE_REQ_TIMER);
+#ifdef FEATURE_WLAN_CCX
+        CASE_RETURN_STRING(eLIM_TSM_TIMER);
+#endif
+        CASE_RETURN_STRING(eLIM_DISASSOC_ACK_TIMER);
+        CASE_RETURN_STRING(eLIM_DEAUTH_ACK_TIMER);
+        CASE_RETURN_STRING(eLIM_PERIODIC_JOIN_PROBE_REQ_TIMER);
+        CASE_RETURN_STRING(eLIM_INSERT_SINGLESHOT_NOA_TIMER);
         default:
             return( "UNKNOWN" );
             break;
@@ -159,7 +198,7 @@ void limTraceDump(tpAniSirGlobal pMac, tpTraceRecord pRecord, tANI_U16 recIndex)
                                             "Drop RX Mgmt:", __limTraceGetMgmtDropReasonString((tANI_U16)pRecord->data), pRecord->data);
             break;
 
-            
+
         case TRACE_CODE_RX_MGMT_TSF:
             limLog(pMac, LOGE, "%04d    %012u  S%d    %-14s  %-30s0x%x(%d) \n", recIndex, pRecord->time, pRecord->session,
                                             "RX Mgmt TSF:", " ", pRecord->data, pRecord->data );
@@ -180,15 +219,15 @@ void limTraceDump(tpAniSirGlobal pMac, tpTraceRecord pRecord, tANI_U16 recIndex)
                                             macTraceGetSmeMsgString((tANI_U16)pRecord->data), pRecord->data );
             break;
 
-        case TRACE_CODE_TX_HAL_MSG:
+        case TRACE_CODE_TX_WDA_MSG:
             limLog(pMac, LOGE, "%04d    %012u  S%d    %-14s  %-30s(0x%x) \n", recIndex, pRecord->time, pRecord->session,
-                                            "TX HAL Msg:", macTraceGetHalMsgString((tANI_U16)pRecord->data), pRecord->data );
+                                            "TX WDA Msg:", macTraceGetWdaMsgString((tANI_U16)pRecord->data), pRecord->data );
             break;
 
-        case TRACE_CODE_RX_HAL_MSG:
+        case TRACE_CODE_RX_WDA_MSG:
             limLog(pMac, LOGE, "%04d    %012u  S%d    %-14s  %-30s(0x%x) \n", recIndex, pRecord->time, pRecord->session,
-                                            LIM_TRACE_GET_DEFRD_OR_DROPPED(pRecord->data) ? "Def/Drp LIM Msg:": "RX HAL Msg:",
-                                            macTraceGetHalMsgString((tANI_U16)pRecord->data), pRecord->data );
+                                            LIM_TRACE_GET_DEFRD_OR_DROPPED(pRecord->data) ? "Def/Drp LIM Msg:": "RX WDA Msg:",
+                                            macTraceGetWdaMsgString((tANI_U16)pRecord->data), pRecord->data );
             break;
 
         case TRACE_CODE_TX_LIM_MSG:
@@ -243,7 +282,7 @@ void macTraceMsgTx(tpAniSirGlobal pMac, tANI_U8 session, tANI_U32 data)
                 macTrace(pMac, TRACE_CODE_TX_SME_MSG, session, data);
             break;
         case SIR_WDA_MODULE_ID:
-            macTrace(pMac, TRACE_CODE_TX_HAL_MSG, session, data);
+            macTrace(pMac, TRACE_CODE_TX_WDA_MSG, session, data);
             break;
         case SIR_CFG_MODULE_ID:
             macTrace(pMac, TRACE_CODE_TX_CFG_MSG, session, data);
@@ -266,7 +305,7 @@ void macTraceMsgTxNew(tpAniSirGlobal pMac, tANI_U8 module, tANI_U8 session, tANI
                 macTraceNew(pMac, module, TRACE_CODE_TX_SME_MSG, session, data);
             break;
         case SIR_WDA_MODULE_ID:
-            macTraceNew(pMac, module, TRACE_CODE_TX_HAL_MSG, session, data);
+            macTraceNew(pMac, module, TRACE_CODE_TX_WDA_MSG, session, data);
             break;
         case SIR_CFG_MODULE_ID:
             macTraceNew(pMac, module, TRACE_CODE_TX_CFG_MSG, session, data);
@@ -293,7 +332,7 @@ void macTraceMsgRx(tpAniSirGlobal pMac, tANI_U8 session, tANI_U32 data)
                 macTrace(pMac, TRACE_CODE_RX_SME_MSG, session, data);
             break;
         case SIR_WDA_MODULE_ID:
-            macTrace(pMac, TRACE_CODE_RX_HAL_MSG, session, data);
+            macTrace(pMac, TRACE_CODE_RX_WDA_MSG, session, data);
             break;
         case SIR_CFG_MODULE_ID:
             macTrace(pMac, TRACE_CODE_RX_CFG_MSG, session, data);
@@ -322,7 +361,7 @@ void macTraceMsgRxNew(tpAniSirGlobal pMac, tANI_U8 module, tANI_U8 session, tANI
                 macTraceNew(pMac, module, TRACE_CODE_RX_SME_MSG, session, data);
             break;
         case SIR_WDA_MODULE_ID:
-            macTraceNew(pMac, module, TRACE_CODE_RX_HAL_MSG, session, data);
+            macTraceNew(pMac, module, TRACE_CODE_RX_WDA_MSG, session, data);
             break;
         case SIR_CFG_MODULE_ID:
             macTraceNew(pMac, module, TRACE_CODE_RX_CFG_MSG, session, data);
@@ -358,7 +397,7 @@ tANI_U8* limTraceGetMlmStateString( tANI_U32 mlmState )
         CASE_RETURN_STRING( eLIM_MLM_WT_ADD_BSS_RSP_STATE);
         CASE_RETURN_STRING( eLIM_MLM_WT_DEL_BSS_RSP_STATE);
         CASE_RETURN_STRING( eLIM_MLM_WT_ADD_BSS_RSP_ASSOC_STATE);
-        CASE_RETURN_STRING( eLIM_MLM_WT_ADD_BSS_RSP_PREASSOC_STATE);        
+        CASE_RETURN_STRING( eLIM_MLM_WT_ADD_BSS_RSP_PREASSOC_STATE);
         CASE_RETURN_STRING( eLIM_MLM_WT_ADD_BSS_RSP_REASSOC_STATE);
         CASE_RETURN_STRING( eLIM_MLM_WT_ADD_STA_RSP_STATE);
         CASE_RETURN_STRING( eLIM_MLM_WT_DEL_STA_RSP_STATE);

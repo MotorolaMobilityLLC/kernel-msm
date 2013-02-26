@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -123,7 +143,7 @@ limSendSmeRsp(tpAniSirGlobal pMac, tANI_U16 msgType,
     mmhMsg.type = msgType;
     mmhMsg.bodyptr = pSirSmeRsp;
     mmhMsg.bodyval = 0;
-    MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+    MTRACE(macTraceMsgTx(pMac, smesessionId , mmhMsg.type));
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT 
    {
@@ -395,6 +415,28 @@ limSendSmeJoinReassocRsp(tpAniSirGlobal pMac, tANI_U16 msgType,
             PELOG1(limLog(pMac, LOG1, FL("AssocRsp=%d\n"), psessionEntry->assocRspLen);)
 #endif
         }
+        else
+        {
+
+            if(psessionEntry->beacon != NULL)
+            {
+                palFreeMemory(pMac->hHdd, psessionEntry->beacon);
+                psessionEntry->beacon = NULL;
+            }
+
+            if(psessionEntry->assocReq != NULL)
+            {
+                palFreeMemory(pMac->hHdd, psessionEntry->assocReq);
+                psessionEntry->assocReq = NULL;
+            }
+
+            if(psessionEntry->assocRsp != NULL)
+            {
+                palFreeMemory(pMac->hHdd, psessionEntry->assocRsp);
+                psessionEntry->assocRsp = NULL;
+            }
+
+        }
     }
 
 
@@ -419,7 +461,9 @@ limSendSmeJoinReassocRsp(tpAniSirGlobal pMac, tANI_U16 msgType,
                /*Get 11ac cbState from 11n cbState*/
                  htSecondaryChannelOffset = limGet11ACPhyCBState(pMac, 
                                     psessionEntry->currentOperChannel,
-                                    psessionEntry->htSecondaryChannelOffset);
+                                    psessionEntry->htSecondaryChannelOffset,
+                                    psessionEntry->apCenterChan,
+                                    psessionEntry);
                 peSetResumeChannel( pMac, psessionEntry->currentOperChannel, htSecondaryChannelOffset);
             }
             else 
@@ -999,7 +1043,7 @@ limSendSmeAuthRsp(tpAniSirGlobal pMac,
 } /*** end limSendSmeAuthRsp() ***/
 
 
-void limSendSmeDisassocDeauthNtfPostResume( tpAniSirGlobal pMac,
+void limSendSmeDisassocDeauthNtf( tpAniSirGlobal pMac,
                                 eHalStatus status, tANI_U32 *pCtx )
 {
     tSirMsgQ                mmhMsg;
@@ -1192,22 +1236,8 @@ limSendSmeDisassocNtf(tpAniSirGlobal pMac,
         peDeleteSession(pMac,psessionEntry);
     }
         
-    if( IS_MCC_SUPPORTED && limIsLinkSuspended( pMac ) )
-    {
-        //Resume on the first active session channel.
-        tANI_U8 resumeChannel;
-        ePhyChanBondState resumePhyCbState;
-        peGetActiveSessionChannel( pMac, &resumeChannel, &resumePhyCbState );
-        peSetResumeChannel( pMac, resumeChannel, resumePhyCbState );
-
-        limResumeLink( pMac, limSendSmeDisassocDeauthNtfPostResume, 
+    limSendSmeDisassocDeauthNtf( pMac, eHAL_STATUS_SUCCESS,
                                               (tANI_U32*) pMsg );
-    }
-    else
-    {
-        limSendSmeDisassocDeauthNtfPostResume( pMac, eHAL_STATUS_SUCCESS,
-                                              (tANI_U32*) pMsg );
-    }
 } /*** end limSendSmeDisassocNtf() ***/
 
 
@@ -1390,6 +1420,64 @@ limSendSmeDeauthInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession psess
     return;
 } /*** end limSendSmeDeauthInd() ***/
 
+#ifdef FEATURE_WLAN_TDLS
+/**
+ * limSendSmeTDLSDelStaInd()
+ *
+ *FUNCTION:
+ * This function is called to send the TDLS STA context deletion to SME.
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ *
+ *NOTE:
+ * NA
+ *
+ * @param  pMac   - Pointer to global MAC structure
+ * @param  pStaDs - Pointer to internal STA Datastructure
+ * @param  psessionEntry - Pointer to the session entry
+ * @param  reasonCode - Reason for TDLS sta deletion
+ * @return None
+ */
+void
+limSendSmeTDLSDelStaInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession psessionEntry, tANI_U16 reasonCode)
+{
+    tSirMsgQ  mmhMsg;
+    tSirTdlsDelStaInd  *pSirTdlsDelStaInd;
+
+    if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pSirTdlsDelStaInd, sizeof(tSirTdlsDelStaInd)))
+    {
+        limLog(pMac, LOGP, FL("palAllocateMemory failed for eWNI_SME_TDLS_DEL_STA_IND \n"));
+        return;
+    }
+
+    //messageType
+    pSirTdlsDelStaInd->messageType = eWNI_SME_TDLS_DEL_STA_IND;
+    pSirTdlsDelStaInd->length = sizeof(tSirTdlsDelStaInd);
+
+    //sessionId
+    pSirTdlsDelStaInd->sessionId = psessionEntry->smeSessionId;
+
+    //peerMacAddr
+    palCopyMemory( pMac->hHdd, pSirTdlsDelStaInd->peerMac, pStaDs->staAddr, sizeof(tSirMacAddr));
+
+    //staId
+    limCopyU16((tANI_U8*)(&pSirTdlsDelStaInd->staId), (tANI_U16)pStaDs->staIndex);
+
+    //reasonCode
+    limCopyU16((tANI_U8*)(&pSirTdlsDelStaInd->reasonCode), reasonCode);
+
+    mmhMsg.type = eWNI_SME_TDLS_DEL_STA_IND;
+    mmhMsg.bodyptr = pSirTdlsDelStaInd;
+    mmhMsg.bodyval = 0;
+
+
+    limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+    return;
+}/*** end limSendSmeTDLSDelStaInd() ***/
+#endif
+
 
 /**
  * limSendSmeDeauthNtf()
@@ -1541,22 +1629,9 @@ limSendSmeDeauthNtf(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tSirResultCode
         peDeleteSession(pMac,psessionEntry);
     }   
 
-    if( IS_MCC_SUPPORTED && limIsLinkSuspended( pMac ) )
-    {
-        //Resume on the first active session channel.
-        tANI_U8 resumeChannel;
-        ePhyChanBondState resumePhyCbState;
-        peGetActiveSessionChannel( pMac, &resumeChannel, &resumePhyCbState );
-        peSetResumeChannel( pMac, resumeChannel, resumePhyCbState );
+    limSendSmeDisassocDeauthNtf( pMac, eHAL_STATUS_SUCCESS,
+                                              (tANI_U32*) pMsg );
 
-        limResumeLink( pMac, limSendSmeDisassocDeauthNtfPostResume, 
-                                              (tANI_U32*) pMsg );
-    }
-    else
-    {
-        limSendSmeDisassocDeauthNtfPostResume( pMac, eHAL_STATUS_SUCCESS,
-                                              (tANI_U32*) pMsg );
-    }
 } /*** end limSendSmeDeauthNtf() ***/
 
 
@@ -1702,7 +1777,7 @@ limSendSmeWmStatusChangeNtf(tpAniSirGlobal pMac, tSirSmeStatusChangeCode statusC
     }
 
 
-    MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+    MTRACE(macTraceMsgTx(pMac, sessionId, mmhMsg.type));
     if (eSIR_SUCCESS != limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT))
     {
         palFreeMemory(pMac->hHdd, (void *) pSirSmeWmStatusChangeNtf);
@@ -2345,7 +2420,7 @@ limSendSmeIBSSPeerInd(
     mmhMsg.type    = msgType;
 //    mmhMsg.bodyval = (tANI_U32) pNewPeerInd;
     mmhMsg.bodyptr = pNewPeerInd;
-    MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+    MTRACE(macTraceMsgTx(pMac, sessionId, mmhMsg.type));
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
     
 }
@@ -2457,7 +2532,7 @@ limSendSmeAggrQosRsp(tpAniSirGlobal pMac, tpSirAggrQosRsp aggrQosRsp,
     mmhMsg.type = eWNI_SME_FT_AGGR_QOS_RSP;
     mmhMsg.bodyptr = aggrQosRsp;
     mmhMsg.bodyval = 0;
-    MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+    MTRACE(macTraceMsgTx(pMac, smesessionId , mmhMsg.type));
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
 
     return;
@@ -2535,7 +2610,7 @@ void limSendSmeMaxAssocExceededNtf(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr,
     PELOG1(limLog(pMac, LOG1, FL("msgType %s peerMacAddr %02x-%02x-%02x-%02x-%02x-%02x"
                 "sme session id %d\n"),"eWNI_SME_MAX_ASSOC_EXCEEDED", peerMacAddr[0], peerMacAddr[1],
                 peerMacAddr[2], peerMacAddr[3], peerMacAddr[4], peerMacAddr[5], smesessionId);)
-    MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+    MTRACE(macTraceMsgTx(pMac, smesessionId, mmhMsg.type));
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
 
     return;

@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -115,7 +135,7 @@ static int wlan_suspend(hdd_context_t* pHddCtx)
    {
        /* Fail this suspend */
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, "%s: Fail wlan suspend: not in IMPS/BMPS", __func__);
-       return -1;
+       return -EPERM;
    }
 
    /*
@@ -138,7 +158,7 @@ static int wlan_suspend(hdd_context_t* pHddCtx)
       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s: Not able to suspend TX thread timeout happened", __func__);
       clear_bit(TX_SUSPEND_EVENT_MASK, &vosSchedContext->txEventFlag);
 
-      return -1;
+      return -ETIME;
    }
    /* Set the Tx Thread as Suspended */
    pHddCtx->isTxThreadSuspended = TRUE;
@@ -165,7 +185,7 @@ static int wlan_suspend(hdd_context_t* pHddCtx)
        /* Set the Tx Thread as Resumed */
        pHddCtx->isTxThreadSuspended = FALSE;
 
-       return -1;
+       return -ETIME;
    }
 
    /* Set the Rx Thread as Suspended */
@@ -199,7 +219,7 @@ static int wlan_suspend(hdd_context_t* pHddCtx)
        /* Set the Tx Thread as Resumed */
        pHddCtx->isTxThreadSuspended = FALSE;
 
-       return -1;
+       return -ETIME;
    }
 
    /* Set the Mc Thread as Suspended */
@@ -423,16 +443,27 @@ void hddDevTmTxBlockTimeoutHandler(void *usrData)
    }
 
    staAdapater = hdd_get_adapter(pHddCtx, WLAN_HDD_INFRA_STATION);
+
+   if(NULL == staAdapater)
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_ERROR,
+                "%s: NULL Adapter", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
+
    if(mutex_lock_interruptible(&pHddCtx->tmInfo.tmOperationLock))
    {
       VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_ERROR,
-                "%s: Aquire lock fail", __func__);
+                "%s: Acquire lock fail", __func__);
       return;
    }
    pHddCtx->tmInfo.txFrameCount = 0;
 
    /* Resume TX flow */
+    
    netif_tx_start_all_queues(staAdapater->dev);
+
    mutex_unlock(&pHddCtx->tmInfo.tmOperationLock);
 
    return;
@@ -474,7 +505,7 @@ void hddDevTmLevelChangedHandler(struct device *dev, int changedTmLevel)
    if(mutex_lock_interruptible(&pHddCtx->tmInfo.tmOperationLock))
    {
       VOS_TRACE(VOS_MODULE_ID_HDD,VOS_TRACE_LEVEL_ERROR,
-                "%s: Aquire lock fail", __func__);
+                "%s: Acquire lock fail", __func__);
       return;
    }
 

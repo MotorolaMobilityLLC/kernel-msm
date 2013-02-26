@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -19,8 +39,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * */
 
 #ifndef WLAN_QCT_WLANTL_H
 #define WLAN_QCT_WLANTL_H
@@ -119,7 +137,7 @@ when        who    what, where, why
 
 /* Maximum number of station supported by TL, including BC. */
 #define WLAN_MAX_STA_COUNT  (HAL_NUM_STA)
-
+#define WLAN_NON32_STA_COUNT   14
 /* The symbolic station ID return to HDD to specify the packet is bc/mc */
 #define WLAN_RX_BCMC_STA_ID (WLAN_MAX_STA_COUNT + 1)
 
@@ -168,7 +186,19 @@ typedef enum
 #ifdef WLAN_SOFTAP_FEATURE
   /* SoftAP station */
   WLAN_STA_SOFTAP,
+
+#ifdef FEATURE_WLAN_TDLS
+  /* TDLS direct link */
+  WLAN_STA_TDLS,    /* 4 */
 #endif
+
+#else   /* !defined WLAN_SOFTAP_FEATURE */
+#ifdef FEATURE_WLAN_TDLS
+  /* TDLS direct link */
+  WLAN_STA_TDLS,    /* 3 */
+#endif
+
+#endif/* WLAN_SOFTAP_FEATURE */
 
   /* Invalid link*/
   WLAN_STA_MAX
@@ -478,6 +508,13 @@ typedef struct
 #ifdef WLAN_SOFTAP_FEATURE
 typedef tSap_SoftapStats WLANTL_TRANSFER_STA_TYPE;
 #else
+
+#ifdef WLANTL_DEBUG
+#define MAX_RATE_INDEX      136
+#define MAX_NUM_RSSI        100
+#define MAX_RSSI_INTERVAL     5
+#endif
+
 typedef struct
 {
    v_U32_t txUCFcnt;
@@ -495,6 +532,10 @@ typedef struct
    v_U32_t rxBcnt;
    v_U32_t rxBcntCRCok;
    v_U32_t rxRate;
+#ifdef WLANTL_DEBUG
+   v_U32_t pktCounterRateIdx[MAX_RATE_INDEX];
+   v_U32_t pktCounterRssi[MAX_NUM_RSSI];
+#endif
 }WLANTL_TRANSFER_STA_TYPE;
 #endif
 
@@ -772,7 +813,8 @@ typedef VOS_STATUS (*WLANTL_RSSICrossThresholdCBType)
 (
    v_PVOID_t                       pAdapter,
    v_U8_t                          rssiNotification,
-   v_PVOID_t                       pUserCtxt
+   v_PVOID_t                       pUserCtxt,
+   v_S7_t                          avgRssi
 );
 
 typedef struct
@@ -782,6 +824,7 @@ typedef struct
     v_U16_t                         msgLen;  // length of the entire request
     v_U8_t                          sessionId; //sme Session Id
     v_U8_t                          rssiNotification;    
+    v_U8_t                          avgRssi;
     v_PVOID_t                       tlCallback;
     v_PVOID_t                       pAdapter;
     v_PVOID_t                       pUserCtxt;
@@ -2478,7 +2521,7 @@ void WLANTL_PostResNeeded(v_PVOID_t pvosGCtx);
 ============================================================================*/
 
 VOS_STATUS WLANTL_Finish_ULA( void (*callbackRoutine) (void *callbackContext),
-                              void *callbackContext);
+                              void *callbackContext, uint8 staId);
 
 /*===============================================================================
   FUNCTION       WLANTL_UpdateRssiBmps
@@ -2499,5 +2542,93 @@ VOS_STATUS WLANTL_Finish_ULA( void (*callbackRoutine) (void *callbackContext),
  ===============================================================================*/
 
 void WLANTL_UpdateRssiBmps(v_PVOID_t pvosGCtx, v_U8_t staId, v_S7_t rssi);
+
+/*==========================================================================
+  FUNCTION   WLANTL_SetTxXmitPending
+
+  DESCRIPTION
+    Called by the WDA when it wants to indicate that WDA_DS_TX_START_XMIT msg
+    is pending in TL msg queue 
+
+  DEPENDENCIES
+    The TL must be registered with WDA before this function can be called.
+
+  PARAMETERS
+
+    IN
+    pvosGCtx:       pointer to the global vos context; a handle to TL's
+                    or WDA's control block can be extracted from its context
+
+  RETURN VALUE      None
+
+  SIDE EFFECTS
+
+============================================================================*/
+
+v_VOID_t
+WLANTL_SetTxXmitPending
+(
+  v_PVOID_t       pvosGCtx
+);
+
+/*==========================================================================
+  FUNCTION   WLANTL_IsTxXmitPending
+
+  DESCRIPTION
+    Called by the WDA when it wants to know whether WDA_DS_TX_START_XMIT msg
+    is pending in TL msg queue 
+
+  DEPENDENCIES
+    The TL must be registered with WDA before this function can be called.
+
+  PARAMETERS
+
+    IN
+    pvosGCtx:       pointer to the global vos context; a handle to TL's
+                    or WDA's control block can be extracted from its context
+
+  RETURN VALUE
+    The result code associated with performing the operation
+
+    0:   No WDA_DS_TX_START_XMIT msg pending 
+    1:   Msg WDA_DS_TX_START_XMIT already pending in TL msg queue 
+
+  SIDE EFFECTS
+
+============================================================================*/
+
+v_BOOL_t
+WLANTL_IsTxXmitPending
+(
+  v_PVOID_t       pvosGCtx
+);
+
+/*==========================================================================
+  FUNCTION   WLANTL_ClearTxXmitPending
+
+  DESCRIPTION
+    Called by the WDA when it wants to indicate that no WDA_DS_TX_START_XMIT msg
+    is pending in TL msg queue 
+
+  DEPENDENCIES
+    The TL must be registered with WDA before this function can be called.
+
+  PARAMETERS
+
+    IN
+    pvosGCtx:       pointer to the global vos context; a handle to TL's
+                    or WDA's control block can be extracted from its context
+
+  RETURN VALUE      None
+
+  SIDE EFFECTS
+
+============================================================================*/
+
+v_VOID_t
+WLANTL_ClearTxXmitPending
+(
+  v_PVOID_t       pvosGCtx
+);
 
 #endif /* #ifndef WLAN_QCT_WLANTL_H */

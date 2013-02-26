@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -146,7 +166,7 @@ typedef struct sSapContext {
 
     // Include the current channel of AP
     v_U32_t             channel;
-
+ 
     // Include the SME(CSR) sessionId here
     v_U8_t              sessionId;
 
@@ -207,6 +227,7 @@ typedef struct sSapContext {
     v_U32_t           nStaAddIeLength;
     v_U8_t            pStaAddIE[MAX_ASSOC_IND_IE_LEN]; 
     v_U8_t            *channelList;
+    tSapChannelListInfo SapChnlList;
 } *ptSapContext;
 
 
@@ -411,6 +432,7 @@ WLANSAP_pmcFullPwrReqCB
 
     IN
        halHandle : Pointer to HAL handle
+       pSapCtx : Pointer to SAP context
        pResult : Pointer to tScanResultHandle
    
   RETURN VALUE
@@ -419,7 +441,8 @@ WLANSAP_pmcFullPwrReqCB
   SIDE EFFECTS 
 
 ============================================================================*/
-v_U8_t sapSelectChannel(tHalHandle halHandle, tScanResultHandle pScanResult);
+
+v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx, tScanResultHandle pScanResult);
 
 /*==========================================================================
 
@@ -730,6 +753,9 @@ sap_AcquireGlobalLock( ptSapContext  pSapCtx );
 ============================================================================*/
 VOS_STATUS
 sap_ReleaseGlobalLock( ptSapContext  pSapCtx );
+
+VOS_STATUS
+wlan_sap_select_cbmode(void *pAdapter,eSapPhyMode SapHw_mode, v_U8_t channel);
 
 #ifdef __cplusplus
 }

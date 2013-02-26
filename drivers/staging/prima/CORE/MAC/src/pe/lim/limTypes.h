@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -63,46 +83,46 @@
 // MLM message types
 #define LIM_MLM_MSG_START           1000
 #define LIM_MLM_SCAN_REQ            LIM_MLM_MSG_START
-#define LIM_MLM_SCAN_CNF            LIM_MLM_MSG_START + 1
-#define LIM_MLM_START_REQ           LIM_MLM_MSG_START + 2
-#define LIM_MLM_START_CNF           LIM_MLM_MSG_START + 3
-#define LIM_MLM_JOIN_REQ            LIM_MLM_MSG_START + 4
-#define LIM_MLM_JOIN_CNF            LIM_MLM_MSG_START + 5
-#define LIM_MLM_AUTH_REQ            LIM_MLM_MSG_START + 6
-#define LIM_MLM_AUTH_CNF            LIM_MLM_MSG_START + 7
-#define LIM_MLM_AUTH_IND            LIM_MLM_MSG_START + 8
-#define LIM_MLM_ASSOC_REQ           LIM_MLM_MSG_START + 9
-#define LIM_MLM_ASSOC_CNF           LIM_MLM_MSG_START + 10
-#define LIM_MLM_ASSOC_IND           LIM_MLM_MSG_START + 11
-#define LIM_MLM_DISASSOC_REQ        LIM_MLM_MSG_START + 12
-#define LIM_MLM_DISASSOC_CNF        LIM_MLM_MSG_START + 13
-#define LIM_MLM_DISASSOC_IND        LIM_MLM_MSG_START + 14
-#define LIM_MLM_REASSOC_REQ         LIM_MLM_MSG_START + 15
-#define LIM_MLM_REASSOC_CNF         LIM_MLM_MSG_START + 16
-#define LIM_MLM_REASSOC_IND         LIM_MLM_MSG_START + 17
-#define LIM_MLM_DEAUTH_REQ          LIM_MLM_MSG_START + 18
-#define LIM_MLM_DEAUTH_CNF          LIM_MLM_MSG_START + 19
-#define LIM_MLM_DEAUTH_IND          LIM_MLM_MSG_START + 20
-#define LIM_MLM_TSPEC_REQ           LIM_MLM_MSG_START + 21
-#define LIM_MLM_TSPEC_CNF           LIM_MLM_MSG_START + 22
-#define LIM_MLM_TSPEC_IND           LIM_MLM_MSG_START + 23
-#define LIM_MLM_SETKEYS_REQ         LIM_MLM_MSG_START + 24
-#define LIM_MLM_SETKEYS_CNF         LIM_MLM_MSG_START + 25
-#define LIM_MLM_LINK_TEST_STOP_REQ  LIM_MLM_MSG_START + 30
-#define LIM_MLM_PURGE_STA_IND       LIM_MLM_MSG_START + 31
-#define LIM_MLM_ADDBA_REQ           LIM_MLM_MSG_START + 32
-#define LIM_MLM_ADDBA_CNF           LIM_MLM_MSG_START + 33
-#define LIM_MLM_ADDBA_IND           LIM_MLM_MSG_START + 34
-#define LIM_MLM_ADDBA_RSP           LIM_MLM_MSG_START + 35
-#define LIM_MLM_DELBA_REQ           LIM_MLM_MSG_START + 36
-#define LIM_MLM_DELBA_CNF           LIM_MLM_MSG_START + 37
-#define LIM_MLM_DELBA_IND           LIM_MLM_MSG_START + 38
-#define LIM_MLM_REMOVEKEY_REQ  LIM_MLM_MSG_START + 39
-#define LIM_MLM_REMOVEKEY_CNF  LIM_MLM_MSG_START + 40
+#define LIM_MLM_SCAN_CNF            (LIM_MLM_MSG_START + 1)
+#define LIM_MLM_START_REQ           (LIM_MLM_MSG_START + 2)
+#define LIM_MLM_START_CNF           (LIM_MLM_MSG_START + 3)
+#define LIM_MLM_JOIN_REQ            (LIM_MLM_MSG_START + 4)
+#define LIM_MLM_JOIN_CNF            (LIM_MLM_MSG_START + 5)
+#define LIM_MLM_AUTH_REQ            (LIM_MLM_MSG_START + 6)
+#define LIM_MLM_AUTH_CNF            (LIM_MLM_MSG_START + 7)
+#define LIM_MLM_AUTH_IND            (LIM_MLM_MSG_START + 8)
+#define LIM_MLM_ASSOC_REQ           (LIM_MLM_MSG_START + 9)
+#define LIM_MLM_ASSOC_CNF           (LIM_MLM_MSG_START + 10)
+#define LIM_MLM_ASSOC_IND           (LIM_MLM_MSG_START + 11)
+#define LIM_MLM_DISASSOC_REQ        (LIM_MLM_MSG_START + 12)
+#define LIM_MLM_DISASSOC_CNF        (LIM_MLM_MSG_START + 13)
+#define LIM_MLM_DISASSOC_IND        (LIM_MLM_MSG_START + 14)
+#define LIM_MLM_REASSOC_REQ         (LIM_MLM_MSG_START + 15)
+#define LIM_MLM_REASSOC_CNF         (LIM_MLM_MSG_START + 16)
+#define LIM_MLM_REASSOC_IND         (LIM_MLM_MSG_START + 17)
+#define LIM_MLM_DEAUTH_REQ          (LIM_MLM_MSG_START + 18)
+#define LIM_MLM_DEAUTH_CNF          (LIM_MLM_MSG_START + 19)
+#define LIM_MLM_DEAUTH_IND          (LIM_MLM_MSG_START + 20)
+#define LIM_MLM_TSPEC_REQ           (LIM_MLM_MSG_START + 21)
+#define LIM_MLM_TSPEC_CNF           (LIM_MLM_MSG_START + 22)
+#define LIM_MLM_TSPEC_IND           (LIM_MLM_MSG_START + 23)
+#define LIM_MLM_SETKEYS_REQ         (LIM_MLM_MSG_START + 24)
+#define LIM_MLM_SETKEYS_CNF         (LIM_MLM_MSG_START + 25)
+#define LIM_MLM_LINK_TEST_STOP_REQ  (LIM_MLM_MSG_START + 30)
+#define LIM_MLM_PURGE_STA_IND       (LIM_MLM_MSG_START + 31)
+#define LIM_MLM_ADDBA_REQ           (LIM_MLM_MSG_START + 32)
+#define LIM_MLM_ADDBA_CNF           (LIM_MLM_MSG_START + 33)
+#define LIM_MLM_ADDBA_IND           (LIM_MLM_MSG_START + 34)
+#define LIM_MLM_ADDBA_RSP           (LIM_MLM_MSG_START + 35)
+#define LIM_MLM_DELBA_REQ           (LIM_MLM_MSG_START + 36)
+#define LIM_MLM_DELBA_CNF           (LIM_MLM_MSG_START + 37)
+#define LIM_MLM_DELBA_IND           (LIM_MLM_MSG_START + 38)
+#define LIM_MLM_REMOVEKEY_REQ  (LIM_MLM_MSG_START + 39)
+#define LIM_MLM_REMOVEKEY_CNF  (LIM_MLM_MSG_START + 40)
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
-#define LIM_MLM_OEM_DATA_REQ            LIM_MLM_MSG_START + 41
-#define LIM_MLM_OEM_DATA_CNF            LIM_MLM_MSG_START + 42
+#define LIM_MLM_OEM_DATA_REQ            (LIM_MLM_MSG_START + 41)
+#define LIM_MLM_OEM_DATA_CNF            (LIM_MLM_MSG_START + 42)
 #endif
 
 #define LIM_HASH_ADD            0
@@ -246,7 +266,7 @@ typedef struct sLimMlmAssocInd
     tAniAuthType         authType;
     tAniSSID             ssId;
     tSirRSNie            rsnIE;
-    tSirAddie            addIE; // additional IE recevied from the peer, which possibly includes WSC IE and/or P2P IE.
+    tSirAddie            addIE; // additional IE received from the peer, which possibly includes WSC IE and/or P2P IE.
     tSirMacCapabilityInfo capabilityInfo;
     tAniBool                spectrumMgtIndicator;
     tSirMacPowerCapInfo     powerCap;
@@ -300,7 +320,7 @@ typedef struct sLimMlmReassocInd
     tAniAuthType         authType;
     tAniSSID             ssId;
     tSirRSNie            rsnIE;
-    tSirAddie            addIE; // additional IE recevied from the peer, which can be WSC IE and/or P2P IE.
+    tSirAddie            addIE; // additional IE received from the peer, which can be WSC IE and/or P2P IE.
     tSirMacCapabilityInfo capabilityInfo;
     tAniBool                spectrumMgtIndicator;
     tSirMacPowerCapInfo     powerCap;
@@ -724,14 +744,19 @@ void limSendAssocRspMgmtFrame(tpAniSirGlobal, tANI_U16, tANI_U16, tSirMacAddr, t
 void limSendAssocRspMgmtFrame(tpAniSirGlobal, tANI_U16, tANI_U16, tSirMacAddr, tANI_U8, tpDphHashNode pSta,tpPESession);
 
 void limSendNullDataFrame(tpAniSirGlobal, tpDphHashNode);
-void limSendDisassocMgmtFrame(tpAniSirGlobal, tANI_U16, tSirMacAddr,tpPESession);
-void limSendDeauthMgmtFrame(tpAniSirGlobal, tANI_U16, tSirMacAddr,tpPESession);
+void limSendDisassocMgmtFrame(tpAniSirGlobal, tANI_U16, tSirMacAddr, tpPESession, tANI_BOOLEAN waitForAck);
+void limSendDeauthMgmtFrame(tpAniSirGlobal, tANI_U16, tSirMacAddr, tpPESession, tANI_BOOLEAN waitForAck);
 
 void limContinueChannelScan(tpAniSirGlobal);
 tSirResultCodes limMlmAddBss(tpAniSirGlobal, tLimMlmStartReq *,tpPESession psessionEntry);
 
 #if 1 //(WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
 tSirRetStatus limSendChannelSwitchMgmtFrame(tpAniSirGlobal, tSirMacAddr, tANI_U8, tANI_U8, tANI_U8, tpPESession);
+#endif
+
+#ifdef WLAN_FEATURE_11AC
+tSirRetStatus limSendVHTOpmodeNotificationFrame(tpAniSirGlobal pMac,tSirMacAddr peer,tANI_U8 nMode, tpPESession  psessionEntry );
+tSirRetStatus limSendVHTChannelSwitchMgmtFrame(tpAniSirGlobal pMac,tSirMacAddr peer,tANI_U8 nChanWidth, tANI_U8 nNewChannel, tANI_U8 ncbMode, tpPESession  psessionEntry );
 #endif
 
 #if defined WLAN_FEATURE_VOWIFI
@@ -742,6 +767,32 @@ tSirRetStatus limSendRadioMeasureReportActionFrame(tpAniSirGlobal, tANI_U8, tANI
 
 #ifdef FEATURE_WLAN_CCX
 void limProcessIappFrame(tpAniSirGlobal, tANI_U8 *,tpPESession);
+#endif
+
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+tSirRetStatus limSendTdlsDisReqFrame(tpAniSirGlobal pMac, 
+           tSirMacAddr peer_mac, tANI_U8 dialog, tpPESession psessionEntry);
+tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
+           tSirMacAddr peerMac, tANI_U8 dialog, tpPESession psessionEntry,
+           tANI_U8* addIe, tANI_U16 len); 
+
+eHalStatus limTdlsPrepareSetupReqFrame(tpAniSirGlobal pMac,
+                              tLimTdlsLinkSetupInfo *linkSetupInfo,
+                                 tANI_U8 dialog, tSirMacAddr peerMac,
+                                                 tpPESession psessionEntry);
+#endif
+#ifdef FEATURE_WLAN_TDLS
+void limInitTdlsData(tpAniSirGlobal, tpPESession);
+tSirRetStatus limProcessSmeTdlsMgmtSendReq(tpAniSirGlobal pMac, 
+                                                           tANI_U32 *pMsgBuf);
+tSirRetStatus limProcessSmeTdlsAddStaReq(tpAniSirGlobal pMac, 
+                                                           tANI_U32 *pMsgBuf);
+tSirRetStatus limProcessSmeTdlsDelStaReq(tpAniSirGlobal pMac, 
+                                                           tANI_U32 *pMsgBuf);
+eHalStatus limProcessTdlsAddStaRsp(tpAniSirGlobal pMac, void *msg, tpPESession);
+tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
+           tSirMacAddr peerMac, tANI_U16 reason, tANI_U8 responder, tpPESession psessionEntry,
+           tANI_U8 *addIe, tANI_U16 addIeLen); 
 #endif
 
 // Algorithms & Link Monitoring related functions
@@ -1072,11 +1123,43 @@ limChangeChannelWithCallback(tpAniSirGlobal pMac, tANI_U8 newChannel,
 void limSendSmeMgmtFrameInd(
                     tpAniSirGlobal pMac, tANI_U8 frameType,
                     tANI_U8  *frame, tANI_U32 frameLen, tANI_U16 sessionId,
-                    tANI_U32 rxChan, tpPESession psessionEntry);
+                    tANI_U32 rxChan, tpPESession psessionEntry,
+                    tANI_S8 rxRssi);
 void limProcessRemainOnChnTimeout(tpAniSirGlobal pMac);
+void limProcessInsertSingleShotNOATimeout(tpAniSirGlobal pMac);
 void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg);
 void limAbortRemainOnChan(tpAniSirGlobal pMac);
 tSirRetStatus __limProcessSmeNoAUpdate(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf);
+#endif
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+void limProcessTdlsFrame(tpAniSirGlobal, tANI_U32 *);
+void limProcessTdlsPublicActionFrame(tpAniSirGlobal pMac, tANI_U32 *pBd, 
+                                                               tpPESession) ;
+#ifdef FEATURE_WLAN_TDLS_NEGATIVE
+#define LIM_TDLS_NEGATIVE_WRONG_BSSID_IN_DSCV_REQ   0x1 /* 5.1.4-5 */
+#define LIM_TDLS_NEGATIVE_WRONG_BSSID_IN_SETUP_REQ  0x2 /* 5.2.4-16 */
+#define LIM_TDLS_NEGATIVE_STATUS_37_IN_SETUP_CNF    0x4 /* 5.2.4-10 */
+#define LIM_TDLS_NEGATIVE_SEND_REQ_TO_SETUP_REQ     0x8 /* 5.2.4-20/32 */
+#define LIM_TDLS_NEGATIVE_RSP_TIMEOUT_TO_SETUP_REQ  0x10 /* 5.2.3.4 */
+#define LIM_TDLS_NEGATIVE_TREAT_TDLS_PROHIBIT_AP    0x20 /* 5.2.4-49 */
+   /* following is not paticularily tested in WFA test plan, but will help to validate our TDLS behavior in-house */
+#define LIM_TDLS_NEGATIVE_WRONG_BSSID_IN_DSCV_RSP   0x40
+#define LIM_TDLS_NEGATIVE_WRONG_BSSID_IN_SETUP_RSP  0x80
+
+void limTdlsSetNegativeBehavior(tpAniSirGlobal pMac, tANI_U8 value, tANI_BOOLEAN on);
+#endif
+#endif
+
+void limProcessDisassocAckTimeout(tpAniSirGlobal pMac);
+void limProcessDeauthAckTimeout(tpAniSirGlobal pMac);
+eHalStatus limSendDisassocCnf(tpAniSirGlobal pMac);
+eHalStatus limSendDeauthCnf(tpAniSirGlobal pMac);
+
+#ifdef WLAN_FEATURE_VOWIFI_11R
+typedef struct sSetLinkCbackParams
+{
+    void * cbackDataPtr;
+} tSetLinkCbackParams;
 #endif
 #endif /* __LIM_TYPES_H */
 

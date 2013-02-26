@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -19,8 +39,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * */
 #ifndef WLAN_QCT_TLI_H
 #define WLAN_QCT_TLI_H
 
@@ -114,7 +132,7 @@ when        who    what, where, why
 #define WLANTL_LLC_OUI_SIZE                   3
 
 /*Offset of the protocol type field inside the LLC/SNAP header*/
-#define WLANTL_LLC_PROTO_TYPE_OFFSET  WLANTL_LLC_OUI_OFFSET +  WLANTL_LLC_OUI_SIZE
+#define WLANTL_LLC_PROTO_TYPE_OFFSET  (WLANTL_LLC_OUI_OFFSET +  WLANTL_LLC_OUI_SIZE)
 
 /*Size of the protocol type field inside the LLC/SNAP header*/
 #define WLANTL_LLC_PROTO_TYPE_SIZE            2
@@ -124,6 +142,10 @@ when        who    what, where, why
 
 /*WAPI protocol type */
 #define WLANTL_LLC_WAI_TYPE              0x88b4
+
+#ifdef FEATURE_WLAN_TDLS
+#define WLANTL_LLC_TDLS_TYPE             0x890d
+#endif
 
 /*Length offset inside the AMSDU sub-frame header*/
 #define WLANTL_AMSDU_SUBFRAME_LEN_OFFSET     12
@@ -171,6 +193,11 @@ when        who    what, where, why
 #define WLANTL_80211_DATA_QOS_SUBTYPE  0x08
 #define WLANTL_80211_NULL_QOS_SUBTYPE  0x0C
 
+/*Defines for internal utility functions */
+#define WLANTL_FRAME_TYPE_BCAST 0xff
+#define WLANTL_FRAME_TYPE_MCAST 0x01
+#define WLANTL_FRAME_TYPE_UCAST 0x00
+
 
 /*-------------------------------------------------------------------------
   BT-AMP related definition - !!! should probably be moved to BT-AMP header
@@ -213,12 +240,12 @@ when        who    what, where, why
 
 /*get TL control block from vos global context */
 #define VOS_GET_TL_CB(_pvosGCtx) \
-        (WLANTL_CbType*)vos_get_context( VOS_MODULE_ID_TL, _pvosGCtx)
+  ((WLANTL_CbType*)vos_get_context( VOS_MODULE_ID_TL, _pvosGCtx))
 
 /* Check whether Rx frame is LS or EAPOL packet (other than data) */
 #define WLANTL_BAP_IS_NON_DATA_PKT_TYPE(usType) \
-        (WLANTL_BT_AMP_TYPE_AR == usType) || (WLANTL_BT_AMP_TYPE_SEC == usType) || \
-        (WLANTL_BT_AMP_TYPE_LS_REQ == usType) || (WLANTL_BT_AMP_TYPE_LS_REP == usType)
+  ((WLANTL_BT_AMP_TYPE_AR == usType) || (WLANTL_BT_AMP_TYPE_SEC == usType) || \
+   (WLANTL_BT_AMP_TYPE_LS_REQ == usType) || (WLANTL_BT_AMP_TYPE_LS_REP == usType))
 
 /*get RSSI0 from a RX BD*/
 /* 7 bits in phystats represent -100dBm to +27dBm */
@@ -230,8 +257,8 @@ when        who    what, where, why
 
 /* Check whether Rx frame is LS or EAPOL packet (other than data) */
 #define WLANTL_BAP_IS_NON_DATA_PKT_TYPE(usType) \
-        (WLANTL_BT_AMP_TYPE_AR == usType) || (WLANTL_BT_AMP_TYPE_SEC == usType) || \
-        (WLANTL_BT_AMP_TYPE_LS_REQ == usType) || (WLANTL_BT_AMP_TYPE_LS_REP == usType)
+  ((WLANTL_BT_AMP_TYPE_AR == usType) || (WLANTL_BT_AMP_TYPE_SEC == usType) || \
+   (WLANTL_BT_AMP_TYPE_LS_REQ == usType) || (WLANTL_BT_AMP_TYPE_LS_REP == usType))
 
 /*---------------------------------------------------------------------------
   TL signals for TX thread
@@ -523,6 +550,9 @@ typedef struct
   /*Packet pending flag - set if tx is pending for the station*/
   v_U8_t                        ucPktPending;
   
+  /*EAPOL Packet pending flag - set if EAPOL packet is pending for the station*/
+  v_U8_t                        ucEapolPktPending;
+
   /*used on tx packet to signal when there is no more data to tx for the 
    moment=> packets can be passed to BAL */
   v_U8_t                    ucNoMoreData;
@@ -547,6 +577,13 @@ typedef struct
 
   /*Begining of the cached packets chain*/
   vos_pkt_t*                 vosEndCachedFrame;
+
+  /* ULA notfication is pending */
+  v_U8_t                ucULANotificationPending;
+
+  void (*callbackRoutine) (void *callbackContext);
+
+  void                 *callbackContext;
 
 #ifdef WLAN_SOFTAP_FEATURE
 
@@ -704,7 +741,8 @@ typedef struct
   WLANTL_ConfigInfoType     tlConfigInfo;
 
   /* list of the active stations */
-  WLANTL_STAClientType      *atlSTAClients; /*Allocate memory [WLAN_MAX_STA_COUNT] of station */
+  WLANTL_STAClientType*      atlSTAClients[WLAN_MAX_STA_COUNT];
+
 
   /* information on the management frame client */
   WLANTL_MgmtFrmClientType  tlMgmtFrmClient;
@@ -795,8 +833,16 @@ typedef struct
   v_U8_t done_once;
   v_U8_t uFramesProcThres;
 #endif
+#ifdef FEATURE_WLAN_TDLS
+  /*number of total TDLS peers registered to TL
+    Incremented at WLANTL_RegisterSTAClient(staType == WLAN_STA_TDLS)
+    Decremented at WLANTL_ClearSTAClient(staType == WLAN_STA_TDLS) */
+  v_U8_t        ucTdlsPeerCount;
+#endif
   /*whether we are in BMPS/UAPSD/WOWL mode, since the latter 2 need to be BMPS first*/
   v_BOOL_t                  isBMPS;
+  /* Whether WDA_DS_TX_START_XMIT msg is pending or not */
+  v_BOOL_t   isTxTranmitMsgPending;
 }WLANTL_CbType;
 
 /*==========================================================================
@@ -1230,7 +1276,9 @@ WLANTL_PrepareBDHeader
 
    IN
     pTLCb:            TL control block
-    ucStaId:          station ID
+
+    *pucStaId         Station ID. In case of TDLS, this return the actual
+                      station index used to transmit.
 
    IN/OUT
     vosDataBuff:      vos data buffer, will contain the new header on output
@@ -1250,12 +1298,11 @@ WLANTL_Translate8023To80211Header
   vos_pkt_t*      vosDataBuff,
   VOS_STATUS*     pvosStatus,
   WLANTL_CbType*  pTLCb,
-  v_U8_t          ucStaId,
+  v_U8_t          *pucStaId,
   v_U8_t          ucUP,
   v_U8_t          *ucWDSEnabled,
   v_U8_t          *extraHeadSpace
 );
-
 /*==========================================================================
   FUNCTION    WLANTL_Translate80211To8023Header
 
@@ -1294,6 +1341,45 @@ WLANTL_Translate80211To8023Header
   v_U8_t          ucHeaderLen,
   WLANTL_CbType*  pTLCb,
   v_U8_t          ucSTAId
+);
+
+/*==========================================================================
+  FUNCTION    WLANTL_FindFrameTypeBcMcUc
+
+  DESCRIPTION
+    Utility function to find whether received frame is broadcast, multicast
+    or unicast.
+
+  DEPENDENCIES
+    The STA must be registered with TL before this function can be called.
+
+  PARAMETERS
+
+   IN
+   pTLCb:          pointer to the TL's control block
+   ucSTAId:        identifier of the station being processed
+   vosDataBuff:    pointer to the vos buffer
+
+   IN/OUT
+    pucBcMcUc:       pointer to buffer, will contain frame type on return
+
+  RETURN VALUE
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_INVAL:   invalid input parameters
+    VOS_STATUS_E_BADMSG:  failed to extract info from data buffer
+    VOS_STATUS_SUCCESS:   success
+
+  SIDE EFFECTS
+    None.
+============================================================================*/
+VOS_STATUS
+WLANTL_FindFrameTypeBcMcUc
+(
+  WLANTL_CbType *pTLCb,
+  v_U8_t        ucSTAId,
+  vos_pkt_t     *vosDataBuff,
+  v_U8_t        *pucBcMcUc
 );
 
 /*==========================================================================

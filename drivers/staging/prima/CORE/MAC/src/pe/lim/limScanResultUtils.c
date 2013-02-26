@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -377,11 +397,11 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
      * a SSID (if it is also set). Ignore the other BSS in that case.
      */
 
-    if (((fScanning) && ( pMac->lim.gLimReturnAfterFirstMatch & 0x01 ) 
+    if ((pMac->lim.gpLimMlmScanReq) && (((fScanning) && ( pMac->lim.gLimReturnAfterFirstMatch & 0x01 ) 
         && (pMac->lim.gpLimMlmScanReq->numSsid) &&
                    !limIsScanRequestedSSID(pMac, &pBPR->ssId))
                    ||  (!fFound && (pMac->lim.gpLimMlmScanReq && pMac->lim.gpLimMlmScanReq->bssId) &&
-                   !palEqualMemory(pMac->hHdd, bssid, &pMac->lim.gpLimMlmScanReq->bssId, 6))
+                   !palEqualMemory(pMac->hHdd, bssid, &pMac->lim.gpLimMlmScanReq->bssId, 6)))
                    )
     {
         /**
@@ -421,7 +441,7 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
              if(WDA_IS_RX_BCAST(pRxPacketInfo))
              {
                 limLog(pMac, LOG3, FL("Beacon/Probe Rsp dropped. Channel in BD %d. "
-                                      "Channel in beacon" " %d\n"), 
+                                      "Channel in beacon" " %d\n"),
                        WDA_GET_RX_CH(pRxPacketInfo),limGetChannelFromBeacon(pMac, pBPR));
                 return;
              }
@@ -429,10 +449,11 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
              else
              {
                 dontUpdateAll = 1;
-                limLog(pMac, LOG3, FL("SSID %s, CH in ProbeRsp %d, CH in BD %d, miss-match, Do Not Drop"), 
+                limLog(pMac, LOG3, FL("SSID %s, CH in ProbeRsp %d, CH in BD %d, miss-match, Do Not Drop"),
                                        pBPR->ssId.ssId,
                                        rxChannelInBeacon,
-                                       limGetChannelFromBeacon(pMac, pBPR));
+                                       WDA_GET_RX_CH(pRxPacketInfo));
+                WDA_GET_RX_CH(pRxPacketInfo) = rxChannelInBeacon;
              }
           }
        }
@@ -735,7 +756,7 @@ limLookupNaddHashEntry(tpAniSirGlobal pMac,
     }
 
     //for now, only rssi, we can add more if needed
-    if ((action == LIM_HASH_UPDATE) && dontUpdateAll)
+    if ((action == LIM_HASH_UPDATE) && dontUpdateAll && rssi)
     {
         pBssDescr->bssDescription.rssi = rssi;
     }

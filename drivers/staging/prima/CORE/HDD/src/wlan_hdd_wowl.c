@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -49,8 +69,6 @@
  * Type Declarations
  * -------------------------------------------------------------------------*/
 
-static struct hdd_context_s *pAdapterHandle = NULL;
-
 char *g_hdd_wowl_ptrns[WOWL_MAX_PTRNS_ALLOWED]; //Patterns 0-7 
 
 static int parse_hex(unsigned char c)
@@ -78,7 +96,7 @@ static inline int find_ptrn_len(const char* ptrn)
 static void hdd_wowl_callback( void *pContext, eHalStatus halStatus )
 {
   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, 
-    "%s: Return code = (%ld)\n", __FUNCTION__, halStatus );
+    "%s: Return code = (%ld)\n", __func__, halStatus );
 }
 
 static void dump_hdd_wowl_ptrn(tSirWowlAddBcastPtrn *ptrn)
@@ -111,12 +129,14 @@ static void dump_hdd_wowl_ptrn(tSirWowlAddBcastPtrn *ptrn)
   @return     : FALSE if any errors encountered
               : TRUE otherwise
   ===========================================================================*/
-v_BOOL_t hdd_add_wowl_ptrn (const char * ptrn) 
+v_BOOL_t hdd_add_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn) 
 {
   tSirWowlAddBcastPtrn localPattern;
   int i, first_empty_slot, len, offset;
   eHalStatus halStatus;
   const char *temp;
+  tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+  v_U8_t sessionId = pAdapter->sessionId;
 
   len = find_ptrn_len(ptrn);
 
@@ -139,7 +159,7 @@ v_BOOL_t hdd_add_wowl_ptrn (const char * ptrn)
     if(first_empty_slot == -1)
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Cannot add anymore patterns. No free slot!", __FUNCTION__);
+          "%s: Cannot add anymore patterns. No free slot!", __func__);
       return VOS_FALSE;
     }
 
@@ -163,7 +183,7 @@ v_BOOL_t hdd_add_wowl_ptrn (const char * ptrn)
        ptrn[5] != WOWL_INTRA_PTRN_TOKENIZER)
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Malformed pattern string. Skip!\n", __FUNCTION__);
+          "%s: Malformed pattern string. Skip!\n", __func__);
       ptrn += len; 
       goto next_ptrn;
     }
@@ -180,7 +200,7 @@ v_BOOL_t hdd_add_wowl_ptrn (const char * ptrn)
        localPattern.ucPatternMaskSize > WOWL_PTRN_MASK_MAX_SIZE)
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Invalid length specified. Skip!\n", __FUNCTION__);
+          "%s: Invalid length specified. Skip!\n", __func__);
       ptrn += len; 
       goto next_ptrn;
     }
@@ -190,7 +210,7 @@ v_BOOL_t hdd_add_wowl_ptrn (const char * ptrn)
     if(offset >= len || ptrn[offset] != WOWL_INTRA_PTRN_TOKENIZER) 
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Malformed pattern string..skip!\n", __FUNCTION__);
+          "%s: Malformed pattern string..skip!\n", __func__);
       ptrn += len; 
       goto next_ptrn;
     }
@@ -200,7 +220,7 @@ v_BOOL_t hdd_add_wowl_ptrn (const char * ptrn)
     if(offset+1 != len) //offset begins with 0
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: Malformed pattern string...skip!\n", __FUNCTION__);
+          "%s: Malformed pattern string...skip!\n", __func__);
       ptrn += len; 
       goto next_ptrn;
     }
@@ -233,7 +253,7 @@ v_BOOL_t hdd_add_wowl_ptrn (const char * ptrn)
     if(g_hdd_wowl_ptrns[first_empty_slot] == NULL) 
     {
       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-          "%s: kmalloc failure", __FUNCTION__);
+          "%s: kmalloc failure", __func__);
       return VOS_FALSE;
     }
 
@@ -243,7 +263,7 @@ v_BOOL_t hdd_add_wowl_ptrn (const char * ptrn)
     localPattern.ucPatternByteOffset = 0;
 
     // Register the pattern downstream
-    halStatus = sme_WowlAddBcastPattern( pAdapterHandle->hHal, &localPattern );
+    halStatus = sme_WowlAddBcastPattern( hHal, &localPattern, sessionId );
     if ( !HAL_STATUS_SUCCESS( halStatus ) )
     {
       // Add failed, so invalidate the local storage
@@ -277,12 +297,14 @@ v_BOOL_t hdd_add_wowl_ptrn (const char * ptrn)
   @return     : FALSE if any errors encountered
               : TRUE otherwise
   ===========================================================================*/
-v_BOOL_t hdd_del_wowl_ptrn (const char * ptrn) 
+v_BOOL_t hdd_del_wowl_ptrn (hdd_adapter_t *pAdapter, const char * ptrn) 
 {
   tSirWowlDelBcastPtrn delPattern;
   unsigned char id;
+  tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
   v_BOOL_t patternFound = VOS_FALSE;
   eHalStatus halStatus;
+  v_U8_t sessionId = pAdapter->sessionId;
 
   // Detect pattern
   for (id=0; id<WOWL_MAX_PTRNS_ALLOWED && g_hdd_wowl_ptrns[id] != NULL; id++)
@@ -298,7 +320,7 @@ v_BOOL_t hdd_del_wowl_ptrn (const char * ptrn)
   if(patternFound)
   {
     delPattern.ucPatternId = id;
-    halStatus = sme_WowlDelBcastPattern( pAdapterHandle->hHal, &delPattern );
+    halStatus = sme_WowlDelBcastPattern( hHal, &delPattern, sessionId );
     if ( HAL_STATUS_SUCCESS( halStatus ) )
     {
       // Remove from local storage as well
@@ -327,6 +349,7 @@ v_BOOL_t hdd_enter_wowl (hdd_adapter_t *pAdapter, v_BOOL_t enable_mp, v_BOOL_t e
 {
   tSirSmeWowlEnterParams wowParams;
   eHalStatus halStatus;
+  tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
 
   wowParams.ucPatternFilteringEnable = enable_pbm;
   wowParams.ucMagicPktEnable = enable_mp;
@@ -337,8 +360,8 @@ v_BOOL_t hdd_enter_wowl (hdd_adapter_t *pAdapter, v_BOOL_t enable_mp, v_BOOL_t e
   }
 
   // Request to put Libra into WoWL
-  halStatus = sme_EnterWowl( pAdapterHandle->hHal, hdd_wowl_callback, 
-      pAdapterHandle, &wowParams );
+  halStatus = sme_EnterWowl( hHal, hdd_wowl_callback, 
+                             pAdapter, &wowParams, pAdapter->sessionId);
 
   if ( !HAL_STATUS_SUCCESS( halStatus ) )
   {
@@ -359,11 +382,12 @@ v_BOOL_t hdd_enter_wowl (hdd_adapter_t *pAdapter, v_BOOL_t enable_mp, v_BOOL_t e
   @return           : FALSE if any errors encountered
                     : TRUE otherwise
   ===========================================================================*/
-v_BOOL_t hdd_exit_wowl (void) 
+v_BOOL_t hdd_exit_wowl (hdd_adapter_t*pAdapter) 
 {
+  tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
   eHalStatus halStatus;
 
-  halStatus = sme_ExitWowl( pAdapterHandle->hHal );
+  halStatus = sme_ExitWowl( hHal );
   if ( !HAL_STATUS_SUCCESS( halStatus ) )
   {
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -381,14 +405,15 @@ v_BOOL_t hdd_exit_wowl (void)
   @return           : FALSE if any errors encountered
                     : TRUE otherwise
   ===========================================================================*/
-v_BOOL_t hdd_init_wowl (void *pAdapter) 
+v_BOOL_t hdd_init_wowl (hdd_adapter_t*pAdapter) 
 {
-  pAdapterHandle = (struct hdd_context_s*)pAdapter;
+  hdd_context_t *pHddCtx = NULL;
+  pHddCtx = pAdapter->pHddCtx;
 
   memset(g_hdd_wowl_ptrns, 0, sizeof(g_hdd_wowl_ptrns));
 
   //Add any statically configured patterns 
-  hdd_add_wowl_ptrn(pAdapterHandle->cfg_ini->wowlPattern); 
+  hdd_add_wowl_ptrn(pAdapter, pHddCtx->cfg_ini->wowlPattern); 
 
   return VOS_TRUE;
 }

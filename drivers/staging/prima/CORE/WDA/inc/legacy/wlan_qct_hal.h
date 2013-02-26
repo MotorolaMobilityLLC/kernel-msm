@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -204,7 +224,7 @@ typedef struct sUapsdInfo {
 #define WLANHAL_RX_BD_GET_DPU_SIG( _pvBDHeader )   (((tpHalRxBd)_pvBDHeader)->dpuSignature)
 
 #ifdef WLAN_SOFTAP_FEATURE
-#define WLANHAL_FC_RX_BD_REPORT_CONTENT_SIZE        2*HAL_NUM_STA*sizeof(tANI_U8)   // size of fcSTATxQLen[HAL_NUM_STA]+fcSTACurTxRate[HAL_NUM_STA]
+#define WLANHAL_FC_RX_BD_REPORT_CONTENT_SIZE        (2 * HAL_NUM_STA * sizeof(tANI_U8))   // size of fcSTATxQLen[HAL_NUM_STA]+fcSTACurTxRate[HAL_NUM_STA]
 #define WLANHAL_FC_TX_BD_HEADER_SIZE                sizeof(tHalFcTxBd)
 #define WLANHAL_RX_BD_GET_FC( _pvBDHeader )                      (((tpHalFcRxBd)_pvBDHeader)->fc)
 #define WLANHAL_RX_BD_GET_RX_TIME_STAMP( _pvBDHeader )           (((tpHalFcRxBd)_pvBDHeader)->mclkRxTimestamp)
@@ -362,7 +382,11 @@ tANI_U8 WLANHAL_RxBD_GetFrameTypeSubType(v_PVOID_t _pvBDHeader, tANI_U16 usFrmCt
 #define HAL_USE_NO_ACK_REQUESTED_MASK       0x20
 
 #define HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME 0x40 // Bit 6 will be used to control BD rate for Management frames
+#define HAL_USE_PEER_STA_REQUESTED_MASK   0x80 //bit 7 will be used to control frames for p2p interface
 
+#ifdef FEATURE_WLAN_TDLS
+#define HAL_TDLS_PEER_STA_MASK              0x80 //bit 7 set for TDLS peer station 
+#endif
 /*==========================================================================
 
   FUNCTION    WLANHAL_FillTxBd
@@ -404,7 +428,7 @@ tANI_U8 WLANHAL_RxBD_GetFrameTypeSubType(v_PVOID_t _pvBDHeader, tANI_U16 usFrmCt
   SIDE EFFECTS 
   
 ============================================================================*/
-VOS_STATUS WLANHAL_FillTxBd(void *pAdaptor, tANI_U8 typeSubtype, void *pDestMacAddr, void *pAddr2,
+VOS_STATUS WLANHAL_FillTxBd(void *pAdapter, tANI_U8 typeSubtype, void *pDestMacAddr, void *pAddr2,
         tANI_U8* ptid, tANI_U8 disableFrmXtl, void *pTxBd, tANI_U8 txFlag, tANI_U32 timeStamp);
 
 #ifdef WLAN_SOFTAP_FEATURE
@@ -421,7 +445,7 @@ void WLANHAL_SwapRxBd(tANI_U8 *pBd);
 void WLANHAL_RxAmsduBdFix(void *pVosGCtx,v_PVOID_t _pvBDHeader);
 
 #ifdef WLAN_PERF
-tANI_U32 WLANHAL_TxBdFastFwd(void *pAdaptor, tANI_U8 *pDestMac, tANI_U8 tid, tANI_U8 unicastDst,  void *pTxBd, tANI_U16);
+tANI_U32 WLANHAL_TxBdFastFwd(void *pAdapter, tANI_U8 *pDestMac, tANI_U8 tid, tANI_U8 unicastDst,  void *pTxBd, tANI_U16);
 #endif
 
 #ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES

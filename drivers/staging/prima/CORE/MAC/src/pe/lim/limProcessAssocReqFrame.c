@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -48,6 +68,7 @@
 #include "limStaHashApi.h"
 #include "limAdmitControl.h"
 #include "palApi.h"
+#include "limSessionUtils.h"
 
 
 #include "vos_types.h"
@@ -164,7 +185,7 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
 {
     tANI_U8                 updateContext;
     tANI_U8                 *pBody;
-    tANI_U16                aid, temp;
+    tANI_U16                peerIdx, temp;
     tANI_U32                val;
     tANI_S32                framelen;
     tSirRetStatus           status;
@@ -211,7 +232,7 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
         // Received Re/Assoc Req frame from a BC/MC address
         // Log error and ignore it
         if (subType == LIM_ASSOC)
-			limLog(pMac, LOGW, FL("received Assoc frame from a BC/MC address "MAC_ADDRESS_STR),
+            limLog(pMac, LOGW, FL("received Assoc frame from a BC/MC address "MAC_ADDRESS_STR),
                    MAC_ADDR_ARRAY(pHdr->sa));
         else
             limLog(pMac, LOGW, FL("received ReAssoc frame from a BC/MC address "MAC_ADDRESS_STR),
@@ -797,7 +818,7 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
      * Extract 'associated' context for STA, if any.
      * This is maintained by DPH and created by LIM.
      */
-    pStaDs = dphLookupHashEntry(pMac, pHdr->sa, &aid, &psessionEntry->dph.dphHashTable);
+    pStaDs = dphLookupHashEntry(pMac, pHdr->sa, &peerIdx, &psessionEntry->dph.dphHashTable);
 
     /// Extract pre-auth context for the STA, if any.
     pStaPreAuthContext = limSearchPreAuthList(pMac, pHdr->sa);
@@ -805,7 +826,7 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
     if (pStaDs == NULL)
     {
         /// Requesting STA is not currently associated
-        if (pMac->lim.gLimNumOfCurrentSTAs == pMac->lim.maxStation)
+        if (peGetCurrentSTAsCount(pMac) == pMac->lim.maxStation)
         {
             /**
              * Maximum number of STAs that AP can handle reached.
@@ -837,7 +858,7 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
             limSendDeauthMgmtFrame(
                      pMac,
                      eSIR_MAC_STA_NOT_PRE_AUTHENTICATED_REASON, //=9
-                     pHdr->sa,psessionEntry);
+                     pHdr->sa, psessionEntry, FALSE);
 
             // Log error
             if (subType == LIM_ASSOC)
@@ -911,9 +932,9 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
 
         updateContext = true;
 
-        if (dphInitStaState(pMac, pHdr->sa, aid, true, &psessionEntry->dph.dphHashTable) == NULL)   
+        if (dphInitStaState(pMac, pHdr->sa, peerIdx, true, &psessionEntry->dph.dphHashTable) == NULL)   
         {
-            limLog(pMac, LOGE, FL("could not Init STAid=%d\n"), aid);
+            limLog(pMac, LOGE, FL("could not Init STAid=%d\n"), peerIdx);
             goto  error;
         }
 
@@ -981,20 +1002,21 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
                MAC_ADDR_ARRAY(pHdr->sa));
 
     /**
-     * Assign unused/least recently used AID from perStaDs.
-     * This will 12-bit STAid used by MAC HW.
-     * NOTE: limAssignAID() assigns AID values ranging between 1 - 255
+     * AID for this association will be same as the peer Index used in DPH table.
+     * Assign unused/least recently used peer Index from perStaDs.
+     * NOTE: limAssignPeerIdx() assigns AID values ranging 
+     * between 1 - cfg_item(WNI_CFG_ASSOC_STA_LIMIT)
      */
 
-    aid = limAssignAID(pMac);
+    peerIdx = limAssignPeerIdx(pMac, psessionEntry);
 
-    if (!aid)
+    if (!peerIdx)
     {
         // Could not assign AID
         // Reject association
         limRejectAssociation(pMac, pHdr->sa,
                              subType, true, authType,
-                             aid, false,
+                             peerIdx, false,
                              (tSirResultCodes) eSIR_MAC_UNSPEC_FAILURE_STATUS, psessionEntry);
 
         goto error;
@@ -1004,21 +1026,21 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
      * Add an entry to hash table maintained by DPH module
      */
 
-    pStaDs = dphAddHashEntry(pMac, pHdr->sa, aid, &psessionEntry->dph.dphHashTable);
+    pStaDs = dphAddHashEntry(pMac, pHdr->sa, peerIdx, &psessionEntry->dph.dphHashTable);
 
     if (pStaDs == NULL)
     {
         // Could not add hash table entry at DPH
         limLog(pMac, LOGE,
            FL("could not add hash entry at DPH for aid=%d, MacAddr:\n"),
-           aid);
+           peerIdx);
         limPrintMacAddr(pMac, pHdr->sa, LOGE);
 
         // Release AID
-        limReleaseAID(pMac, aid);
+        limReleasePeerIdx(pMac, peerIdx, psessionEntry);
 
         limRejectAssociation(pMac, pHdr->sa,
-                             subType, true, authType, aid, false,
+                             subType, true, authType, peerIdx, false,
                              (tSirResultCodes) eSIR_MAC_UNSPEC_FAILURE_STATUS, psessionEntry);
 
         goto error;
@@ -1093,14 +1115,35 @@ sendIndToSme:
          */
         pStaDs->htSecondaryChannelOffset = (pStaDs->htSupportedChannelWidthSet)?psessionEntry->htSecondaryChannelOffset:0;
 #ifdef WLAN_FEATURE_11AC
-        if (pAssocReq->VHTCaps.present)
+        if(pAssocReq->operMode.present) 
         {
-            pStaDs->vhtSupportedChannelWidthSet = (tANI_U8)pAssocReq->VHTCaps.supportedChannelWidthSet; 
+            pStaDs->vhtSupportedChannelWidthSet = (tANI_U8)((pAssocReq->operMode.chanWidth == eHT_CHANNEL_WIDTH_80MHZ) ? WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ : WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ);
+            pStaDs->htSupportedChannelWidthSet  = (tANI_U8)(pAssocReq->operMode.chanWidth ? eHT_CHANNEL_WIDTH_40MHZ : eHT_CHANNEL_WIDTH_20MHZ);
         }
+        else if (pAssocReq->VHTCaps.present)
+        {
+            // Check if STA has enabled it's channel bonding mode. 
+            // If channel bonding mode is enabled, we decide based on SAP's current configuration.
+            // else, we set it to VHT20.
+            pStaDs->vhtSupportedChannelWidthSet = (tANI_U8)((pStaDs->htSupportedChannelWidthSet == eHT_CHANNEL_WIDTH_20MHZ) ? 
+                                                             WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ : 
+                                                             psessionEntry->vhtTxChannelWidthSet );
+        }
+
+        // Lesser among the AP and STA bandwidth of operation.
+        pStaDs->htSupportedChannelWidthSet = 
+                (pStaDs->htSupportedChannelWidthSet < psessionEntry->htSupportedChannelWidthSet) ?
+                pStaDs->htSupportedChannelWidthSet : psessionEntry->htSupportedChannelWidthSet ;
+
 #endif
         pStaDs->baPolicyFlag = 0xFF;
+        pStaDs->htLdpcCapable = (tANI_U8)pAssocReq->HTCaps.advCodingCap;
     }
 
+    if(pAssocReq->VHTCaps.present)
+    {
+        pStaDs->vhtLdpcCapable = (tANI_U8)pAssocReq->VHTCaps.ldpcCodingCap;
+    }
 
 #ifdef WLAN_FEATURE_11AC
 if (limPopulateMatchingRateSet(pMac,
@@ -1124,15 +1167,15 @@ if (limPopulateMatchingRateSet(pMac,
         // Could not update hash table entry at DPH with rateset
         limLog(pMac, LOGE,
            FL("could not update hash entry at DPH for aid=%d, MacAddr:\n"),
-           aid);
+           peerIdx);
         limPrintMacAddr(pMac, pHdr->sa, LOGE);
 
                 // Release AID
-        limReleaseAID(pMac, aid);
+        limReleasePeerIdx(pMac, peerIdx, psessionEntry);
 
 
         limRejectAssociation(pMac, pHdr->sa,
-                             subType, true, authType, aid, true,
+                             subType, true, authType, peerIdx, true,
                              (tSirResultCodes) eSIR_MAC_UNSPEC_FAILURE_STATUS, psessionEntry);
 
         /*return it from here rather than goto error statement.This is done as the memory is getting free twice*/
@@ -1182,7 +1225,7 @@ if (limPopulateMatchingRateSet(pMac,
                  */
                 limLog( pMac, LOGE, FL( "AP do not support UPASD REASSOC Failed\n" ));
                 limRejectAssociation(pMac, pHdr->sa,
-                                     subType, true, authType, aid, true,
+                                     subType, true, authType, peerIdx, true,
                                      (tSirResultCodes) eSIR_MAC_WME_REFUSED_STATUS, psessionEntry);
 
 
@@ -1374,7 +1417,7 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
 
         if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pMlmAssocInd, temp))
         {
-            limReleaseAID(pMac, pStaDs->assocId);
+            limReleasePeerIdx(pMac, pStaDs->assocId, psessionEntry);
             limLog(pMac, LOGP, FL("palAllocateMemory failed for pMlmAssocInd\n"));
             return;
         }
@@ -1408,7 +1451,7 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
             }
         }
         pMlmAssocInd->assocType = (tSirAssocType)pAssocReq->propIEinfo.assocType;
-        pMlmAssocInd->load.numStas = pMac->lim.gLimNumOfCurrentSTAs;
+        pMlmAssocInd->load.numStas = psessionEntry->gLimNumOfCurrentSTAs;
         pMlmAssocInd->load.channelUtilization =(pMac->lim.gpLimMeasData) ? pMac->lim.gpLimMeasData->avgChannelUtilization : 0;
         pMlmAssocInd->numBss = (tANI_U32) pAssocReq->propIEinfo.numBss;
         if (pAssocReq->propIEinfo.numBss)
@@ -1528,7 +1571,7 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
         if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pMlmReassocInd, temp))
         {
             limLog(pMac, LOGP, FL("call to palAllocateMemory failed for pMlmReassocInd\n"));
-            limReleaseAID(pMac, pStaDs->assocId);
+            limReleasePeerIdx(pMac, pStaDs->assocId, psessionEntry);
             return;
         }
         palZeroMemory( pMac->hHdd, pMlmReassocInd, temp);
@@ -1561,7 +1604,7 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
         }
 
         pMlmReassocInd->reassocType  = (tSirAssocType)pAssocReq->propIEinfo.assocType;
-        pMlmReassocInd->load.numStas = pMac->lim.gLimNumOfCurrentSTAs;
+        pMlmReassocInd->load.numStas = psessionEntry->gLimNumOfCurrentSTAs;
         pMlmReassocInd->load.channelUtilization = (pMac->lim.gpLimMeasData) ?
                                                   pMac->lim.gpLimMeasData->avgChannelUtilization : 0;
         pMlmReassocInd->numBss = (tANI_U32) pAssocReq->propIEinfo.numBss;

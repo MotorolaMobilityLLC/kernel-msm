@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -65,9 +85,14 @@ when        who          what, where, why
 #include "wlan_bal_misc.h"
 #endif
 
-#define WDA_DS_DXE_RES_COUNT   WDA_TLI_MIN_RES_DATA + 20
+#define WDA_DS_DXE_RES_COUNT   (WDA_TLI_MIN_RES_DATA + 20)
 
 #define VOS_TO_WPAL_PKT(_vos_pkt) ((wpt_packet*)_vos_pkt)
+
+/* macro's for acessing TL API/data structures */
+#define WDA_TL_SET_TX_XMIT_PENDING(a) WLANTL_SetTxXmitPending(a)
+#define WDA_TL_IS_TX_XMIT_PENDING(a) WLANTL_IsTxXmitPending(a)
+#define WDA_TL_CLEAR_TX_XMIT_PENDING(a) WLANTL_ClearTxXmitPending(a)
 
 #if defined( FEATURE_WLAN_INTEGRATED_SOC )
 #define WDA_HI_FLOW_MASK 0xF0
@@ -564,6 +589,7 @@ WDA_DS_StartXmit
 {
 #if defined( FEATURE_WLAN_INTEGRATED_SOC )
   vos_msg_t                    sMessage;
+  VOS_STATUS                   status;
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
   if ( NULL == pvosGCtx )
@@ -573,6 +599,11 @@ WDA_DS_StartXmit
     return VOS_STATUS_E_FAULT;
   }
 
+  if(WDA_TL_IS_TX_XMIT_PENDING( pvosGCtx ))
+  {  
+    /*Already WDA_DS_TX_START_XMIT msg is pending in TL msg queue */
+    return VOS_STATUS_SUCCESS;
+  }
   /* Serialize our event  */
   VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
              "Serializing WDA TX Start Xmit event" );
@@ -582,7 +613,17 @@ WDA_DS_StartXmit
   sMessage.bodyptr = NULL;
   sMessage.type    = WDA_DS_TX_START_XMIT;
 
-  return vos_tx_mq_serialize(VOS_MQ_ID_TL, &sMessage);
+  WDA_TL_SET_TX_XMIT_PENDING(pvosGCtx);
+
+  status = vos_tx_mq_serialize(VOS_MQ_ID_TL, &sMessage);
+
+  if(status != VOS_STATUS_SUCCESS)
+  {
+    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_FATAL,
+             "Serializing WDA TX Start Xmit event FAILED" );
+    WDA_TL_CLEAR_TX_XMIT_PENDING(pvosGCtx);
+  }
+  return status;
 #else  /* FEATURE_WLAN_INTEGRATED_SOC */
   return WLANBAL_StartXmit( pvosGCtx );
 #endif /* FEATURE_WLAN_INTEGRATED_SOC */
@@ -613,7 +654,8 @@ VOS_STATUS
 WDA_DS_FinishULA
 (
  void (*callbackRoutine) (void *callbackContext),
- void  *callbackContext
+ void  *callbackContext,
+ v_U8_t staId
 )
 {
   vos_msg_t                    sMessage;
@@ -625,6 +667,7 @@ WDA_DS_FinishULA
 
   vos_mem_zero( &sMessage, sizeof(vos_msg_t) );
 
+  sMessage.reserved = staId;
   sMessage.bodyval  = (v_U32_t)callbackContext;
   sMessage.bodyptr  = callbackRoutine;
   sMessage.type     = WDA_DS_FINISH_ULA;
@@ -1300,6 +1343,7 @@ WDA_DS_TxFrames
   v_U32_t     uMgmtAvailRes;
   v_U32_t     uDataAvailRes;
   WLANTL_TxCompCBType  pfnTxComp = NULL;
+  v_U32_t     uTxFailCount = 0;
 
   wdaContext = (tWDA_CbContext *)vos_get_context(VOS_MODULE_ID_WDA, pvosGCtx);
   if ( NULL == wdaContext )
@@ -1355,8 +1399,9 @@ WDA_DS_TxFrames
                                  0 /* more */ );
     if ( WDI_STATUS_SUCCESS != wdiStatus )
     {
-      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
                    "WDA : Pushing a packet to WDI failed.");
+      uTxFailCount++;
       VOS_ASSERT( wdiStatus != WDI_STATUS_E_NOT_ALLOWED );
       //We need to free the packet here
       vos_pkt_get_user_data_ptr(pTxPacket, VOS_PKT_USER_DATA_ID_TL, (void **)&pfnTxComp);
@@ -1367,6 +1412,13 @@ WDA_DS_TxFrames
     }
 
   };
+
+  if ( uTxFailCount )
+  {
+    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                 "WDA : Tx fail count for mgmt pkts: %d.", uTxFailCount);
+    uTxFailCount = 0;
+  }
 
   /*Data tx*/
   uDataAvailRes = WDI_GetAvailableResCount(wdaContext->pWdiContext, 
@@ -1410,8 +1462,9 @@ WDA_DS_TxFrames
                                  0 /* more */ );
     if ( WDI_STATUS_SUCCESS != wdiStatus )
     {
-      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+      VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
                    "WDA : Pushing a packet to WDI failed.");
+      uTxFailCount++;
       VOS_ASSERT( wdiStatus != WDI_STATUS_E_NOT_ALLOWED );
       //We need to free the packet here
       vos_pkt_get_user_data_ptr(pTxPacket, VOS_PKT_USER_DATA_ID_TL, (void **)&pfnTxComp);
@@ -1422,6 +1475,13 @@ WDA_DS_TxFrames
     }
 
   };
+
+  if ( uTxFailCount )
+  {
+    VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+                 "WDA : Tx fail count for data pkts: %d.", uTxFailCount);
+  }
+
 
   WDI_DS_TxComplete(wdaContext->pWdiContext, ucTxResReq);
 

@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -58,6 +78,298 @@ static WDTS_TransportDriverTrype gTransportDriver = {
 
 static WDTS_SetPowerStateCbInfoType gSetPowerStateCbInfo;
 
+typedef struct 
+{
+   uint32 phyRate;   //unit in Mega bits per sec X 10
+   uint32 tputRate;  //unit in Mega bits per sec X 10
+   uint32 tputBpms;  //unit in Bytes per msec = (tputRateX1024x1024)/(8x10X1000) ~= (tputRate*13)
+   uint32 tputBpus;  //unit in Bytes per usec: round off to integral value
+}WDTS_RateInfo;
+
+#define WDTS_MAX_RATE_NUM  137
+#define WDTS_MAX_11B_RATE_NUM  8
+
+WDTS_RateInfo g11bRateInfo[WDTS_MAX_11B_RATE_NUM]  = {
+    //11b rates
+    {  10,  9,  117, 8}, //index 0
+    {  20,  17, 221, 5}, //index 1
+    {  55,  41, 533, 2}, //index 2
+    { 110,  68, 884, 1}, //index 3
+
+    //11b short preamble
+    {  10,  10,  130, 8}, //index 4
+    {  20,  18,  234, 5}, //index 5
+    {  55,  44,  572, 2}, //index 6
+    { 110,  77, 1001, 1}, //index 7
+};
+
+WDTS_RateInfo gRateInfo[WDTS_MAX_RATE_NUM]  = {
+    //11b rates
+    {  10,  9,  117, 0}, //index 0
+    {  20,  17, 221, 0}, //index 1
+    {  55,  41, 533, 0}, //index 2
+    { 110,  68, 884, 0}, //index 3
+
+    //11b short preamble
+    {  10,  10,  130, 0}, //index 4
+    {  20,  18,  234, 0}, //index 5
+    {  55,  44,  572, 0}, //index 6
+    { 110,  77, 1001, 0}, //index 7
+
+    //11ag
+    {  60,  50,  650, 1}, //index 8
+    {  90,  70,  910, 1}, //index 9
+    { 120, 100, 1300, 1}, //index 10
+    { 180, 150, 1950, 2}, //index 11
+    { 240, 190, 2470, 2}, //index 12
+    { 360, 280, 3640, 4}, //index 13
+    { 480, 350, 4550, 5}, //index 14
+    { 540, 380, 4940, 6}, //index 15
+
+    //11n SIMO
+    {  65,  54,  702, 1}, //index 16
+    { 130, 108, 1404, 1}, //index 17
+    { 195, 161, 2093, 2}, //index 18
+    { 260, 217, 2821, 3}, //index 19
+    { 390, 326, 4238, 4}, //index 20
+    { 520, 435, 5655, 6}, //index 21
+    { 585, 492, 6396, 6}, //index 22
+    { 650, 548, 7124, 7}, //index 23
+
+    //11n SIMO SGI
+    {  72,  59,  767, 1}, //index 24
+    { 144, 118, 1534, 2}, //index 25
+    { 217, 180, 2340, 2}, //index 26
+    { 289, 243, 3159, 3}, //index 27
+    { 434, 363, 4719, 5}, //index 28
+    { 578, 486, 6318, 6}, //index 29
+    { 650, 548, 7124, 7}, //index 30
+    { 722, 606, 7878, 8}, //index 31
+
+    //11n GF SIMO
+    {  65,  54,  702, 1}, //index 32
+    { 130, 108, 1404, 1}, //index 33
+    { 195, 161, 2093, 2}, //index 34
+    { 260, 217, 2821, 3}, //index 35
+    { 390, 326, 4238, 4}, //index 36
+    { 520, 435, 5655, 6}, //index 37
+    { 585, 492, 6396, 6}, //index 38
+    { 650, 548, 7124, 7}, //index 39
+
+    //11n SIMO CB MCS 0 - 7 
+    { 135,   110,  1430,  1}, //index 40
+    { 270,   223,  2899,  3}, //index 41
+    { 405,   337,  4381,  4}, //index 42
+    { 540,   454,  5902,  6}, //index 43
+    { 810,   679,  8827,  9}, //index 44
+    { 1080,  909, 11817, 12}, //index 45
+    { 1215, 1022, 13286, 13}, //index 46
+    { 1350, 1137, 14781, 15}, //index 47
+
+    //11n SIMO CB SGI MCS 0 - 7
+    { 150,   121,  1573,  2}, //index 48
+    { 300,   249,  3237,  3}, //index 49
+    { 450,   378,  4914,  5}, //index 50
+    { 600,   503,  6539,  7}, //index 51
+    { 900,   758,  9854,  10}, //index 52
+    { 1200, 1010, 13130, 13}, //index 53
+    { 1350, 1137, 14781, 15}, //index 54
+    { 1500, 1262, 16406, 16}, //index 55
+
+    //11n SIMO GF CB MCS 0 - 7 
+    { 135,   110,   1430,  1}, //index 56
+    { 270,   223,   2899,  3}, //index 57
+    { 405,   337,   4381,  4}, //index 58
+    { 540,   454,   5902,  6}, //index 59
+    { 810,   679,   8827,  9}, //index 60
+    { 1080,  909,  11817, 12}, //index 61
+    { 1215, 1022,  13286, 13}, //index 62
+    { 1350, 1137,  14781, 15}, //index 63
+
+    //11AC  
+    { 1350, 1137, 14781, 15}, //reserved 64
+    { 1350, 1137, 14781, 15}, //reserved 65
+    { 65,     65,   845,  1}, //index 66
+    { 130,   130,  1690,  2}, //index 67
+    { 195,   195,  2535,  3}, //index 68
+    { 260,   260,  3380,  3}, //index 69
+    { 390,   390,  5070,  5}, //index 70
+    { 520,   520,  6760,  7}, //index 71
+    { 585,   585,  7605,  8}, //index 72
+    { 650,   650,  8450,  8}, //index 73
+    { 780,   780,  2340,  2}, //index 74
+    { 1350, 1137, 14781, 15}, //reserved 75
+    { 1350, 1137, 14781, 15}, //reserved 76
+    { 1350, 1137, 14781, 15}, //reserved 77
+    { 1350, 1137, 14781, 15}, //index 78
+    { 1350, 1137, 14781, 15}, //index 79
+    { 1350, 1137, 14781, 15}, //index 80
+    { 1350, 1137, 14781, 15}, //index 81
+    { 1350, 1137, 14781, 15}, //index 82
+    { 1350, 1137, 14781, 15}, //index 83
+    { 655,   655,  8515,  9}, //index 84
+    { 722,   722,  9386,  9}, //index 85
+    { 866,   866, 11258, 11}, //index 86
+    { 1350, 1137, 14781, 15}, //reserved 87
+    { 1350, 1137, 14781, 15}, //reserved 88
+    { 1350, 1137, 14781, 15}, //reserved 89
+    { 135,   135,  1755,  2}, //index 90
+    { 270,   270,  3510,  4}, //index 91
+    { 405,   405,  5265,  5}, //index 92
+    { 540,   540,  7020,  7}, //index 93
+    { 810,   810, 10530, 11}, //index 94
+    { 1080, 1080, 14040, 14}, //index 95
+    { 1215, 1215, 15795, 16}, //index 96
+    { 1350, 1350, 17550, 18}, //index 97
+    { 1350, 1137, 14781, 15}, //index 98
+    { 1620, 1620, 21060, 21}, //index 99
+    { 1800, 1800, 23400, 23}, //index 100
+    { 1350, 1137, 14781, 15}, //reserved 101
+    { 1350, 1137, 14781, 15}, //index 102
+    { 1350, 1137, 14781, 15}, //index 103
+    { 1350, 1137, 14781, 15}, //index 104
+    { 1350, 1137, 14781, 15}, //index 105
+    { 1350, 1137, 14781, 15}, //index 106
+    { 1200, 1200, 15600, 16}, //index 107
+    { 1350, 1350, 17550, 18}, //index 108
+    { 1500, 1500, 19500, 20}, //index 109
+    { 1350, 1137, 14781, 15}, //index 110
+    { 1800, 1800, 23400, 23}, //index 111
+    { 2000, 2000, 26000, 26}, //index 112
+    { 1350, 1137, 14781, 15}, //index 113
+    { 292,   292,  3796,  4}, //index 114
+    { 585,   585,  7605,  8}, //index 115
+    { 877,   877, 11401, 11}, //index 116
+    { 1170, 1170, 15210, 15}, //index 117
+    { 1755, 1755, 22815, 23}, //index 118
+    { 2340, 2340, 30420, 30}, //index 119
+    { 2632, 2632, 34216, 34}, //index 120
+    { 2925, 2925, 38025, 38}, //index 121
+    { 1350, 1137, 14781, 15}, //index 122
+    { 3510, 3510, 45630, 46}, //index 123
+    { 3900, 3900, 50700, 51}, //index 124
+    { 1350, 1137, 14781, 15}, //reserved 125
+    { 1350, 1137, 14781, 15}, //index 126
+    { 1350, 1137, 14781, 15}, //index 127
+    { 1350, 1137, 14781, 15}, //index 128
+    { 1350, 1137, 14781, 15}, //index 129
+    { 1350, 1137, 14781, 15}, //index 130
+    { 1350, 1137, 14781, 15}, //index 131
+    { 2925, 2925, 38025, 38}, //index 132
+    { 3250, 3250, 42250, 42}, //index 133
+    { 1350, 1137, 14781, 15}, //index 134
+    { 3900, 3900, 50700, 51}, //index 135
+    { 4333, 4333, 56329, 56}  //index 136
+ };
+
+/* TX stats */
+typedef struct
+{
+  wpt_uint32 txBytesPushed;
+  wpt_uint32 txPacketsPushed; //Can be removed to optimize memory
+}WDI_DTS_TX_TrafficStatsType;
+
+/* RX stats */
+typedef struct
+{
+  wpt_uint32 rxBytesRcvd;
+  wpt_uint32 rxPacketsRcvd;  //Can be removed to optimize memory
+}WDI_DTS_RX_TrafficStatsType;
+
+typedef struct {
+   wpt_uint8 running;
+   WDI_DTS_RX_TrafficStatsType rxStats[HAL_NUM_STA][WDTS_MAX_RATE_NUM];
+   WDI_DTS_TX_TrafficStatsType txStats[HAL_NUM_STA];
+   WDI_TrafficStatsType        netTxRxStats[HAL_NUM_STA];
+}WDI_DTS_TrafficStatsType;
+
+static WDI_DTS_TrafficStatsType gDsTrafficStats;
+
+#define DTS_RATE_TPUT(x) gRateInfo[x].tputBpus
+#define DTS_11BRATE_TPUT_MULTIPLIER(x) g11bRateInfo[x].tputBpus
+
+/* Tx/Rx stats function
+ * This function should be invoked to fetch the current stats
+  * Parameters:
+ *  pStats:Pointer to the collected stats
+ *  len: length of buffer pointed to by pStats
+ *  Return Status: None
+ */
+void WDTS_GetTrafficStats(WDI_TrafficStatsType** pStats, wpt_uint32 *len)
+{
+   if(gDsTrafficStats.running)
+   {
+      uint8 staIdx, rate;
+      WDI_TrafficStatsType *pNetTxRxStats = gDsTrafficStats.netTxRxStats;
+      wpalMemoryZero(pNetTxRxStats, sizeof(gDsTrafficStats.netTxRxStats));
+
+      for(staIdx = 0; staIdx < HAL_NUM_STA; staIdx++, pNetTxRxStats++)
+      {
+          pNetTxRxStats->txBytesPushed += gDsTrafficStats.txStats[staIdx].txBytesPushed;
+          pNetTxRxStats->txPacketsPushed+= gDsTrafficStats.txStats[staIdx].txPacketsPushed;
+          for(rate = 0; rate < WDTS_MAX_11B_RATE_NUM; rate++)
+          {
+             pNetTxRxStats->rxBytesRcvd +=
+               gDsTrafficStats.rxStats[staIdx][rate].rxBytesRcvd;
+             pNetTxRxStats->rxPacketsRcvd +=
+               gDsTrafficStats.rxStats[staIdx][rate].rxPacketsRcvd;
+             pNetTxRxStats->rxTimeTotal +=
+               gDsTrafficStats.rxStats[staIdx][rate].rxBytesRcvd*DTS_11BRATE_TPUT_MULTIPLIER(rate);
+          }
+          for(rate = WDTS_MAX_11B_RATE_NUM; rate < WDTS_MAX_RATE_NUM; rate++)
+          {
+             pNetTxRxStats->rxBytesRcvd += 
+               gDsTrafficStats.rxStats[staIdx][rate].rxBytesRcvd;
+             pNetTxRxStats->rxPacketsRcvd += 
+               gDsTrafficStats.rxStats[staIdx][rate].rxPacketsRcvd;
+             pNetTxRxStats->rxTimeTotal += 
+               gDsTrafficStats.rxStats[staIdx][rate].rxBytesRcvd/DTS_RATE_TPUT(rate);
+          }
+
+          pNetTxRxStats->rxTimeTotal = pNetTxRxStats->rxTimeTotal/1000;
+
+      }
+      *pStats = gDsTrafficStats.netTxRxStats;
+      *len = sizeof(gDsTrafficStats.netTxRxStats);
+   }
+   else
+   {
+      *pStats = NULL;
+      *len = 0;
+   }
+}
+
+/* WDTS_DeactivateTrafficStats
+ * This function should be invoked to deactivate traffic stats collection
+  * Parameters: None
+ *  Return Status: None
+ */
+void WDTS_DeactivateTrafficStats(void)
+{
+   gDsTrafficStats.running = eWLAN_PAL_FALSE;
+}
+
+/* WDTS_ActivateTrafficStats
+ * This function should be invoked to activate traffic stats collection
+  * Parameters: None
+ *  Return Status: None
+ */
+void WDTS_ActivateTrafficStats(void)
+{
+   gDsTrafficStats.running = eWLAN_PAL_TRUE;
+}
+
+/* WDTS_ClearTrafficStats
+ * This function should be invoked to clear traffic stats 
+  * Parameters: None
+ *  Return Status: None
+ */
+void WDTS_ClearTrafficStats(void)
+{
+   wpalMemoryZero(gDsTrafficStats.rxStats, sizeof(gDsTrafficStats.rxStats));
+   wpalMemoryZero(gDsTrafficStats.txStats, sizeof(gDsTrafficStats.txStats));
+}
+
 /* DTS Tx packet complete function. 
  * This function should be invoked by the transport device to indicate 
  * transmit complete for a frame.
@@ -90,12 +402,19 @@ wpt_status WDTS_TxPacketComplete(void *pContext, wpt_packet *pFrame, wpt_status 
   switch(pTxMetadata->frmType) 
   {
     case WDI_MAC_DATA_FRAME:
+    /* note that EAPOL frame hasn't incremented ReserveCount. see
+       WDI_DS_TxPacket() in wlan_qct_wdi_ds.c
+    */
+    if(!pTxMetadata->isEapol)
+    {
       /* SWAP BD header to get STA index for completed frame */
       WDI_SwapTxBd(pvBDHeader);
       staIndex = (wpt_uint8)WDI_TX_BD_GET_STA_ID(pvBDHeader);
       WDI_DS_MemPoolFree(&(pClientData->dataMemPool), pvBDHeader, physBDHeader);
       WDI_DS_MemPoolDecreaseReserveCount(&(pClientData->dataMemPool), staIndex);
       break;
+    }
+    // intentional fall-through to handle eapol packet as mgmt
     case WDI_MAC_MGMT_FRAME:
       WDI_DS_MemPoolFree(&(pClientData->mgmtMemPool), pvBDHeader, physBDHeader);
       break;
@@ -354,8 +673,21 @@ wpt_status WDTS_RxPacket (void *pContext, wpt_packet *pFrame, WDTS_ChannelType c
       // Invoke Rx complete callback
       pClientData->receiveFrameCB(pClientData->pCallbackContext, pFrame);  
   }
-  return eWLAN_PAL_STATUS_SUCCESS;
 
+  //Log the RX Stats
+  if(gDsTrafficStats.running && pRxMetadata->staId < HAL_NUM_STA)
+  {
+     if(pRxMetadata->rateIndex < WDTS_MAX_RATE_NUM)
+     {
+        if(pRxMetadata->type == WDI_MAC_DATA_FRAME)
+        {
+           gDsTrafficStats.rxStats[pRxMetadata->staId][pRxMetadata->rateIndex].rxBytesRcvd +=
+              pRxMetadata->mpduLength;
+           gDsTrafficStats.rxStats[pRxMetadata->staId][pRxMetadata->rateIndex].rxPacketsRcvd++;
+        }
+     }
+  }
+  return eWLAN_PAL_STATUS_SUCCESS;
 }
 
 
@@ -420,7 +752,7 @@ wpt_status WDTS_openTransport( void *pContext)
   pDTDriverContext = gTransportDriver.open(); 
   if( NULL == pDTDriverContext )
   {
-     DTI_TRACE( DTI_TRACE_LEVEL_ERROR, " %s fail from transport open", __FUNCTION__);
+     DTI_TRACE( DTI_TRACE_LEVEL_ERROR, " %s fail from transport open", __func__);
      return eWLAN_PAL_STATUS_E_FAILURE;
   }
   WDT_AssignTransportDriverContext(pContext, pDTDriverContext);
@@ -440,6 +772,8 @@ wpt_status WDTS_openTransport( void *pContext)
   if (WDI_STATUS_SUCCESS != sWdiStatus){
     return eWLAN_PAL_STATUS_E_NOMEM;
   }
+
+  wpalMemoryZero(&gDsTrafficStats, sizeof(gDsTrafficStats));
 
   return eWLAN_PAL_STATUS_SUCCESS;
 
@@ -485,10 +819,25 @@ wpt_status WDTS_TxPacket(void *pContext, wpt_packet *pFrame)
   // extract metadata from PAL packet
   pTxMetadata = WDI_DS_ExtractTxMetaData(pFrame);
 
+  //Log the TX Stats
+  if(gDsTrafficStats.running && pTxMetadata->staIdx < HAL_NUM_STA)
+  {
+     if(pTxMetadata->frmType & WDI_MAC_DATA_FRAME)
+     {
+        gDsTrafficStats.txStats[pTxMetadata->staIdx].txBytesPushed +=
+           pTxMetadata->fPktlen;
+        gDsTrafficStats.txStats[pTxMetadata->staIdx].txPacketsPushed += 1;
+      }
+  }
+
   // assign MDPU to correct channel??
   channel =  (pTxMetadata->frmType & WDI_MAC_DATA_FRAME)? 
-      WDTS_CHANNEL_TX_LOW_PRI : WDTS_CHANNEL_TX_HIGH_PRI;
-  
+    /* EAPOL frame uses TX_HIGH_PRIORITY DXE channel
+       To make sure EAPOL (for second session) is pushed even if TX_LO channel
+       already reached to low resource condition
+       This can happen especially in MCC, high data traffic TX in first session
+     */
+      ((pTxMetadata->isEapol) ? WDTS_CHANNEL_TX_HIGH_PRI : WDTS_CHANNEL_TX_LOW_PRI) : WDTS_CHANNEL_TX_HIGH_PRI;
   // Send packet to  Transport Driver. 
   status =  gTransportDriver.xmit(pDTDriverContext, pFrame, channel);
   return status;
@@ -566,16 +915,16 @@ wpt_status WDTS_SetPowerState(void *pContext, WDTS_PowerStateType  powerState,
  * User may request to display DXE channel snapshot
  * Or if host driver detects any abnormal stcuk may display
  * Parameters:
- *  displaySnapshot : Dispaly DXE snapshot option
+ *  displaySnapshot : Display DXE snapshot option
  *  enableStallDetect : Enable stall detect feature
                         This feature will take effect to data performance
                         Not integrate till fully verification
  * Return Value: NONE
  *
  */
-void WDTS_ChannelDebug(wpt_boolean dispalySnapshot, wpt_boolean toggleStallDetect)
+void WDTS_ChannelDebug(wpt_boolean displaySnapshot, wpt_boolean toggleStallDetect)
 {
-   gTransportDriver.channelDebug(dispalySnapshot, toggleStallDetect);
+   gTransportDriver.channelDebug(displaySnapshot, toggleStallDetect);
    return;
 }
 
@@ -593,6 +942,8 @@ wpt_status WDTS_Stop(void *pContext)
   wpt_status status = eWLAN_PAL_STATUS_SUCCESS;
 
   status =  gTransportDriver.stop(pDTDriverContext);
+
+  wpalMemoryZero(&gDsTrafficStats, sizeof(gDsTrafficStats));
 
   return status;
 }

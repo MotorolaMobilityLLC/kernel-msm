@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -175,6 +195,11 @@ extern void limInitWdsInfoParams(tpAniSirGlobal);
 /// Function that triggers STA context deletion
 extern void limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession psessionEntry);
 
+#ifdef FEATURE_WLAN_TDLS
+// Function that sends TDLS Del Sta indication to SME
+extern void limSendSmeTDLSDelStaInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession psessionEntry, tANI_U16 reasonCode);
+#endif
+
 /// Function that checks for change in AP's capabilties on STA
 extern void limDetectChangeInApCapabilities(tpAniSirGlobal,
                                              tpSirProbeRespBeacon,tpPESession);
@@ -189,7 +214,7 @@ extern void limSendDeltsReq (tpAniSirGlobal pMac, tANI_U16 staid, tANI_U8 tsid, 
 /// creates a SM Power State Mode update request action frame and sends it out to staid
 extern void limPostStartLearnModeMsgToSch(tpAniSirGlobal pMac);
 #ifdef WLAN_FEATURE_11AC
-extern ePhyChanBondState limGet11ACPhyCBState(tpAniSirGlobal pMac, tANI_U8 channel, tANI_U8 htSecondaryChannelOffset );
+extern ePhyChanBondState limGet11ACPhyCBState(tpAniSirGlobal pMac, tANI_U8 channel, tANI_U8 htSecondaryChannelOffset, tANI_U8 CenterChan,tpPESession );
 #endif
 tANI_U8 limIsSystemInActiveState(tpAniSirGlobal pMac);
 #if 0 /* Currently, this function is not used but keep it around for when we do need it */
@@ -217,11 +242,11 @@ extern void limSetBssid(tpAniSirGlobal pMac, tANI_U8 *bssId);
 extern void limGetBssid(tpAniSirGlobal pMac, tANI_U8 *bssId);
 extern void limGetMyMacAddr(tpAniSirGlobal pMac, tANI_U8 *mac);
 extern tSirRetStatus limCheckRxSeqNumber(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo);
-#define limGetQosMode(psessionEntry, pVal) *(pVal) = (psessionEntry)->limQosEnabled
-#define limGetWmeMode(psessionEntry, pVal) *(pVal) = (psessionEntry)->limWmeEnabled
-#define limGetWsmMode(psessionEntry, pVal) *(pVal) = (psessionEntry)->limWsmEnabled
-#define limGet11dMode(psessionEntry, pVal) *(pVal) = (psessionEntry)->lim11dEnabled
-#define limGetAckPolicy(pMac, pVal)         *(pVal) = pMac->lim.ackPolicy
+#define limGetQosMode(psessionEntry, pVal) (*(pVal) = (psessionEntry)->limQosEnabled)
+#define limGetWmeMode(psessionEntry, pVal) (*(pVal) = (psessionEntry)->limWmeEnabled)
+#define limGetWsmMode(psessionEntry, pVal) (*(pVal) = (psessionEntry)->limWsmEnabled)
+#define limGet11dMode(psessionEntry, pVal) (*(pVal) = (psessionEntry)->lim11dEnabled)
+#define limGetAckPolicy(pMac, pVal)         (*(pVal) = pMac->lim.ackPolicy)
 /* ----------------------------------------------------------------------- */
 static inline void limGetPhyMode(tpAniSirGlobal pMac, tANI_U32 *phyMode, tpPESession psessionEntry)
 {

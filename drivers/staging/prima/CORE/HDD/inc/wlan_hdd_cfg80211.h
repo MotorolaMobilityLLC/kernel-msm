@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -70,6 +90,26 @@
 #define BASIC_RATE_MASK   0x80
 #define RATE_MASK         0x7f
 
+#ifdef WLAN_ENABLE_AGEIE_ON_SCAN_RESULTS
+/* GPS application requirement */
+#define QCOM_VENDOR_IE_ID 221
+#define QCOM_OUI1         0x00
+#define QCOM_OUI2         0xA0
+#define QCOM_OUI3         0xC6
+#define QCOM_VENDOR_IE_AGE_TYPE  0x100
+#define QCOM_VENDOR_IE_AGE_LEN   4
+
+typedef struct {
+   u8 element_id;
+   u8 len;
+   u8 oui_1;
+   u8 oui_2;
+   u8 oui_3;
+   u32 type;
+   u32 age;
+}__attribute__((packed)) qcom_ie_age ;
+#endif
+
 struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_db( hdd_adapter_t *pAdapter,
                                       tCsrRoamInfo *pRoamInfo
                                       );
@@ -95,6 +135,14 @@ void wlan_hdd_cfg80211_post_voss_start(hdd_adapter_t* pAdapter);
 
 void wlan_hdd_cfg80211_pre_voss_stop(hdd_adapter_t* pAdapter);
 
+int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy, struct regulatory_request *request);
+int wlan_hdd_get_crda_regd_entry(struct wiphy *wiphy, hdd_config_t *pCfg);
+extern v_VOID_t hdd_connSetConnectionState( hdd_station_ctx_t *pHddStaCtx,
+                                        eConnectionState connState );
+#ifdef FEATURE_WLAN_TDLS
+int wlan_hdd_cfg80211_send_tdls_discover_req(struct wiphy *wiphy,
+                            struct net_device *dev, u8 *peer);
+#endif
 
 #endif // CONFIG_CFG80211
 

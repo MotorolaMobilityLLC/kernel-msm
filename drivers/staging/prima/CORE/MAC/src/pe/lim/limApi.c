@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -99,6 +119,9 @@ static void __limInitScanVars(tpAniSirGlobal pMac)
 
     pMac->lim.gLimCurrentScanChannelId = 0;
     pMac->lim.gpLimMlmScanReq = NULL;
+#ifdef WLAN_FEATURE_P2P
+    pMac->lim.gpLimSmeScanReq = NULL;
+#endif
     pMac->lim.gLimMlmScanResultLength = 0;
     pMac->lim.gLimSmeScanResultLength = 0;
 
@@ -189,7 +212,7 @@ static void __limInitStatsVars(tpAniSirGlobal pMac)
     pMac->lim.gLimNumDeferredMsgs = 0;
 
     /// Variable to keep track of number of currently associated STAs
-    pMac->lim.gLimNumOfCurrentSTAs = 0;
+    //pMac->lim.gLimNumOfCurrentSTAs = 0;
     pMac->lim.gLimNumOfAniSTAs = 0;      // count of ANI peers
 
     /// This indicates number of RXed Beacons during HB period
@@ -357,11 +380,18 @@ static void __limInitVars(tpAniSirGlobal pMac)
 
 static void __limInitAssocVars(tpAniSirGlobal pMac)
 {
+    tANI_U32 val;
+#if 0
     palZeroMemory(pMac->hHdd, pMac->lim.gpLimAIDpool,
                   sizeof(*pMac->lim.gpLimAIDpool) * (WNI_CFG_ASSOC_STA_LIMIT_STAMAX+1));
     pMac->lim.freeAidHead = 0;
     pMac->lim.freeAidTail = 0;
-    pMac->lim.gLimAssocStaLimit = WNI_CFG_ASSOC_STA_LIMIT_STADEF;
+#endif
+    if(wlan_cfgGetInt(pMac, WNI_CFG_ASSOC_STA_LIMIT, &val) != eSIR_SUCCESS)
+    {
+        limLog( pMac, LOGP, FL( "cfg get assoc sta limit failed" ));
+    }
+    pMac->lim.gLimAssocStaLimit = val;
 
     // Place holder for current authentication request
     // being handled
@@ -388,6 +418,11 @@ static void __limInitAssocVars(tpAniSirGlobal pMac)
     //One cache for each overlap and associated case.
     palZeroMemory(pMac->hHdd, pMac->lim.protStaOverlapCache, sizeof(tCacheParams) * LIM_PROT_STA_OVERLAP_CACHE_SIZE);
     palZeroMemory(pMac->hHdd, pMac->lim.protStaCache, sizeof(tCacheParams) * LIM_PROT_STA_CACHE_SIZE);
+
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    pMac->lim.pSessionEntry = NULL;
+    pMac->lim.reAssocRetryAttempt = 0;
+#endif
 
 }
 
@@ -890,6 +925,14 @@ limCleanup(tpAniSirGlobal pMac)
         pMac->lim.gpLimMlmRemoveKeyReq = NULL;
     }
 
+#ifdef WLAN_FEATURE_P2P
+    if (pMac->lim.gpLimSmeScanReq != NULL)
+    {
+        palFreeMemory(pMac->hHdd, pMac->lim.gpLimSmeScanReq);
+        pMac->lim.gpLimSmeScanReq = NULL;
+    }
+#endif
+
     if (pMac->lim.gpLimMlmScanReq != NULL)
     {
         palFreeMemory(pMac->hHdd, pMac->lim.gpLimMlmScanReq);
@@ -966,6 +1009,7 @@ tSirRetStatus peOpen(tpAniSirGlobal pMac, tMacOpenParameters *pMacOpenParam)
         return eSIR_FAILURE;
     }
 
+#if 0
     if (eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd,
               (void **) &pMac->lim.gpLimAIDpool, 
               sizeof(*pMac->lim.gpLimAIDpool) * (WNI_CFG_ASSOC_STA_LIMIT_STAMAX+1)))
@@ -973,7 +1017,7 @@ tSirRetStatus peOpen(tpAniSirGlobal pMac, tMacOpenParameters *pMacOpenParam)
         PELOGE(limLog(pMac, LOGE, FL("memory allocate failed!\n"));)
         return eSIR_FAILURE;
     }
-
+#endif
     if (eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd,
         (void **) &pMac->lim.gpSession, sizeof(tPESession)* pMac->lim.maxBssId))
     {
@@ -1037,7 +1081,11 @@ tSirRetStatus peOpen(tpAniSirGlobal pMac, tMacOpenParameters *pMacOpenParam)
 #ifdef WLAN_FEATURE_P2P
     pMac->lim.actionFrameSessionId = 0xff;
 #endif
-
+    if( !VOS_IS_STATUS_SUCCESS( vos_lock_init( &pMac->lim.lkPeGlobalLock ) ) )
+    {
+        PELOGE(limLog(pMac, LOGE, FL("pe lock init failed!\n"));)
+        return eSIR_FAILURE;
+    }
     return eSIR_SUCCESS;
 }
 
@@ -1064,8 +1112,10 @@ tSirRetStatus peClose(tpAniSirGlobal pMac)
     }
     palFreeMemory(pMac->hHdd, pMac->lim.limTimers.gpLimCnfWaitTimer);
     pMac->lim.limTimers.gpLimCnfWaitTimer = NULL;
+#if 0
     palFreeMemory(pMac->hHdd, pMac->lim.gpLimAIDpool);
     pMac->lim.gpLimAIDpool = NULL;
+#endif
     
     palFreeMemory(pMac->hHdd, pMac->lim.gpSession);
     pMac->lim.gpSession = NULL;
@@ -1087,7 +1137,10 @@ tSirRetStatus peClose(tpAniSirGlobal pMac)
     palFreeMemory(pMac->hHdd, pMac->pmm.gpPmmPSState);
     pMac->pmm.gpPmmPSState = NULL;
 #endif
-
+    if( !VOS_IS_STATUS_SUCCESS( vos_lock_destroy( &pMac->lim.lkPeGlobalLock ) ) )
+    {
+        return eSIR_FAILURE;
+    }
     return eSIR_SUCCESS;
 }
 
@@ -1210,6 +1263,7 @@ tANI_U8 limIsTimerAllowedInPowerSaveState(tpAniSirGlobal pMac, tSirMsgQ *pMsg)
              */
             case SIR_LIM_REASSOC_FAIL_TIMEOUT:
             case SIR_LIM_JOIN_FAIL_TIMEOUT:
+            case SIR_LIM_PERIODIC_JOIN_PROBE_REQ_TIMEOUT:
             case SIR_LIM_ASSOC_FAIL_TIMEOUT:
             case SIR_LIM_AUTH_FAIL_TIMEOUT:
             case SIR_LIM_ADDTS_RSP_TIMEOUT:
@@ -2107,6 +2161,24 @@ limDetectChangeInApCapabilities(tpAniSirGlobal pMac,
                           psessionEntry->currentOperChannel, newChannel);)
             return;
         }
+
+       /**
+        * When Cisco 1262 Enterprise APs are configured with WPA2-PSK with
+        * AES+TKIP Pairwise ciphers and WEP-40 Group cipher, they do not set
+        * the privacy bit in Beacons (wpa/rsnie is still present in beacons),
+        * the privacy bit is set in Probe and association responses.
+        * Due to this anomaly, we detect a change in
+        * AP capabilities when we receive a beacon after association and
+        * disconnect from the AP. The following check makes sure that we can
+        * connect to such APs
+        */
+        else if ((SIR_MAC_GET_PRIVACY(apNewCaps.capabilityInfo) == 0) &&
+                (pBeacon->rsnPresent || pBeacon->wpaPresent))
+        {
+            PELOGE(limLog(pMac, LOGE, FL("BSS Caps (Privacy) bit 0 in beacon,"
+                                         " but WPA or RSN IE present, Ignore Beacon!\n"));)
+            return;
+        }
         else
             apNewCaps.channelId = psessionEntry->currentOperChannel;
         palCopyMemory( pMac->hHdd, (tANI_U8 *) &apNewCaps.ssId,
@@ -2486,6 +2558,17 @@ void limHandleMissedBeaconInd(tpAniSirGlobal pMac)
         PELOG1(limLog(pMac, LOG1, FL("Sending EXIT_BMPS_IND to SME \n"));)
         limSendExitBmpsInd(pMac, eSME_MISSED_BEACON_IND_RCVD);
     }
+/* ACTIVE_MODE_HB_OFFLOAD */
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+    else if(((pMac->pmm.gPmmState == ePMM_STATE_READY) ||
+                     (pMac->pmm.gPmmState == ePMM_STATE_BMPS_WAKEUP)) &&
+                     (IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
+    {
+        pMac->pmm.inMissedBeaconScenario = TRUE;
+        PELOGE(limLog(pMac, LOGE, FL("Received Heart Beat Failure\n"));)
+        limMissedBeaconInActiveMode(pMac);
+    }
+#endif
     else
     {
         limLog(pMac, LOGE,
@@ -2569,7 +2652,7 @@ void limMicFailureInd(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
     mmhMsg.type = eWNI_SME_MIC_FAILURE_IND;
     mmhMsg.bodyptr = pSirSmeMicFailureInd;
     mmhMsg.bodyval = 0;
-    MTRACE(macTraceMsgTx(pMac, 0, mmhMsg.type));
+    MTRACE(macTraceMsgTx(pMac, sessionId, mmhMsg.type));
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
     return;
 }
@@ -2610,7 +2693,7 @@ tMgmtFrmDropReason limIsPktCandidateForDrop(tpAniSirGlobal pMac, tANI_U8 *pRxPac
     {
         if(pMac->pmm.inMissedBeaconScenario)
         {
-           PELOGE(limLog(pMac, LOGE, FL("Do not drop beacon and probe response - Missed beacon sceanrio"));)
+           PELOGE(limLog(pMac, LOGE, FL("Do not drop beacon and probe response - Missed beacon scenario"));)
            return eMGMT_DROP_NO_DROP;
         }
         if (limIsSystemInScanState(pMac))
@@ -2663,4 +2746,28 @@ tMgmtFrmDropReason limIsPktCandidateForDrop(tpAniSirGlobal pMac, tANI_U8 *pRxPac
     return eMGMT_DROP_NO_DROP;
 }
 
+eHalStatus pe_AcquireGlobalLock( tAniSirLim *psPe)
+{
+    eHalStatus status = eHAL_STATUS_INVALID_PARAMETER;
 
+    if(psPe)
+    {
+        if( VOS_IS_STATUS_SUCCESS( vos_lock_acquire( &psPe->lkPeGlobalLock) ) )
+        {
+            status = eHAL_STATUS_SUCCESS;
+        }
+    }
+    return (status);
+}
+eHalStatus pe_ReleaseGlobalLock( tAniSirLim *psPe)
+{
+    eHalStatus status = eHAL_STATUS_INVALID_PARAMETER;
+    if(psPe)
+    {
+        if( VOS_IS_STATUS_SUCCESS( vos_lock_release( &psPe->lkPeGlobalLock) ) )
+        {
+            status = eHAL_STATUS_SUCCESS;
+        }
+    }
+    return (status);
+}

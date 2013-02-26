@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -49,6 +69,9 @@ typedef enum
 #define LIM_STA_ID_MASK                        0x00FF
 #define LIM_AID_MASK                              0xC000
 #define LIM_SPECTRUM_MANAGEMENT_BIT_MASK          0x0100
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+#define LIM_MAX_REASSOC_RETRY_LIMIT            2
+#endif
 
 // classifier ID is coded as 0-3: tsid, 4-5:direction
 #define LIM_MAKE_CLSID(tsid, dir) (((tsid) & 0x0F) | (((dir) & 0x03) << 4))
@@ -78,7 +101,7 @@ typedef struct sAddBaCandidate
 }tAddBaCandidate, *tpAddBaCandidate;
 #endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
-// LIM utilility functions
+// LIM utility functions
 void limGetBssidFromPkt(tpAniSirGlobal, tANI_U8 *, tANI_U8 *, tANI_U32 *);
 char * limMlmStateStr(tLimMlmStates state);
 char * limSmeStateStr(tLimSmeStates state);
@@ -96,7 +119,7 @@ char* limBssTypeStr(tSirBssType bssType);
 extern tSirRetStatus limSendSetMaxTxPowerReq ( tpAniSirGlobal pMac, 
                                   tPowerdBm txPower, 
                                   tpPESession pSessionEntry );
-extern tANI_U8 limGetMaxTxPower(tPowerdBm regMax, tPowerdBm apTxPower, tPowerdBm iniTxPower);
+extern tANI_U8 limGetMaxTxPower(tPowerdBm regMax, tPowerdBm apTxPower, tANI_U8 iniTxPower);
 #endif
 
 tANI_U32            limPostMsgApiNoWait(tpAniSirGlobal, tSirMsgQ *);
@@ -107,8 +130,8 @@ tANI_U8           limIsGroupAddr(tSirMacAddr);
 tANI_U8 limActiveScanAllowed(tpAniSirGlobal, tANI_U8);
 
 // AID pool management functions
-void    limInitAIDpool(tpAniSirGlobal,tpPESession);
-tANI_U16     limAssignAID(tpAniSirGlobal);
+void    limInitPeerIdxpool(tpAniSirGlobal,tpPESession);
+tANI_U16     limAssignPeerIdx(tpAniSirGlobal,tpPESession);
 
 void limEnableOverlap11gProtection(tpAniSirGlobal pMac, tpUpdateBeaconParams pBeaconParams, tpSirMacMgmtHdr pMh,tpPESession psessionEntry);
 void limUpdateOverlapStaParam(tpAniSirGlobal pMac, tSirMacAddr bssId, tpLimProtStaParams pStaParams);
@@ -119,7 +142,7 @@ void limUpdateShortSlotTime(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tpUpda
  * The below 'product' check tobe removed if 'Association' is
  * allowed in IBSS.
  */
-void    limReleaseAID(tpAniSirGlobal, tANI_U16);
+void    limReleasePeerIdx(tpAniSirGlobal, tANI_U16, tpPESession);
 
 #if (WNI_POLARIS_FW_PRODUCT == AP)
 // LIM informs WSM that radar is detected
@@ -192,7 +215,6 @@ void limProcessWPSOverlapTimeout(tpAniSirGlobal pMac);
 #endif
 
 void limStartQuietTimer(tpAniSirGlobal pMac, tANI_U8 sessionId);
-void limUpdateQuietIEFromBeacon(tpAniSirGlobal, tDot11fIEQuiet *, tpPESession);
 void limSwitchPrimaryChannel(tpAniSirGlobal, tANI_U8,tpPESession);
 void limSwitchPrimarySecondaryChannel(tpAniSirGlobal, tpPESession, tANI_U8, ePhyChanBondState);
 tAniBool limTriggerBackgroundScanDuringQuietBss(tpAniSirGlobal);
@@ -392,10 +414,16 @@ v_U8_t limGetNoaAttrStreamInMultP2pIes(tpAniSirGlobal pMac,v_U8_t* noaStream,v_U
 v_U8_t limGetNoaAttrStream(tpAniSirGlobal pMac, v_U8_t*pNoaStream,tpPESession psessionEntry);
 
 v_U8_t limBuildP2pIe(tpAniSirGlobal pMac, tANI_U8 *ie, tANI_U8 *data, tANI_U8 ie_len);
+tANI_BOOLEAN limIsNOAInsertReqd(tpAniSirGlobal pMac);
 #endif
 v_U8_t* limGetVendorIEOuiPtr(tpAniSirGlobal pMac, tANI_U8 *oui, tANI_U8 oui_size, tANI_U8 *ie, tANI_U16 ie_len);
 tANI_BOOLEAN limIsconnectedOnDFSChannel(tANI_U8 currentChannel);
 tANI_U8 limGetCurrentOperatingChannel(tpAniSirGlobal pMac);
+
+#ifdef WLAN_FEATURE_11AC
+tANI_BOOLEAN limCheckVHTOpModeChange( tpAniSirGlobal pMac, 
+                                      tpPESession psessionEntry, tANI_U8 chanWidth, tANI_U8 staId);
+#endif
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT
 
@@ -477,5 +505,17 @@ void peSetResumeChannel(tpAniSirGlobal pMac, tANI_U16 channel, ePhyChanBondState
   
   --------------------------------------------------------------------------*/
 void peGetResumeChannel(tpAniSirGlobal pMac, tANI_U8* resumeChannel, ePhyChanBondState* resumePhyCbState);
+
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+tANI_U8 limTdlsFindLinkPeer(tpAniSirGlobal pMac, tSirMacAddr peerMac, tLimTdlsLinkSetupPeer  **setupPeer);
+void limTdlsDelLinkPeer(tpAniSirGlobal pMac, tSirMacAddr peerMac);
+void limStartTdlsTimer(tpAniSirGlobal pMac, tANI_U8 sessionId, TX_TIMER *timer, tANI_U32 timerId, 
+                                      tANI_U16 timerType, tANI_U32 timerMsg);
+#endif
+tANI_U8 limGetShortSlotFromPhyMode(tpAniSirGlobal pMac, tpPESession psessionEntry, tANI_U32 phyMode);
+
+void limCleanUpDisassocDeauthReq(tpAniSirGlobal pMac, tANI_U8 *staMac, tANI_BOOLEAN cleanRxPath);
+
+tANI_BOOLEAN limCheckDisassocDeauthAckPending(tpAniSirGlobal pMac, tANI_U8 *staMac);
 
 #endif /* __LIM_UTILS_H */

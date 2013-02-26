@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -142,7 +162,7 @@ void limStopTxAndSwitchChannel(tpAniSirGlobal pMac, tANI_U8 sessionId)
         }
         return;
     }
-    MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, NO_SESSION, eLIM_CHANNEL_SWITCH_TIMER));
+    MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, sessionId, eLIM_CHANNEL_SWITCH_TIMER));
 
 
     if (tx_timer_activate(&pMac->lim.limTimers.gLimChannelSwitchTimer) != TX_SUCCESS)
@@ -313,6 +333,14 @@ __limProcessChannelSwitchActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
         psessionEntry->gLimChannelSwitch.switchTimeoutValue = SYS_MS_TO_TICKS(beaconPeriod) *
                                                          psessionEntry->gLimChannelSwitch.switchCount;
         psessionEntry->gLimChannelSwitch.switchMode = pChannelSwitchFrame->ChanSwitchAnn.switchMode;
+#ifdef WLAN_FEATURE_11AC
+        if ( pChannelSwitchFrame->WiderBWChanSwitchAnn.present && psessionEntry->vhtCapability)
+        {
+            psessionEntry->gLimWiderBWChannelSwitch.newChanWidth = pChannelSwitchFrame->WiderBWChanSwitchAnn.newChanWidth;
+            psessionEntry->gLimWiderBWChannelSwitch.newCenterChanFreq0 = pChannelSwitchFrame->WiderBWChanSwitchAnn.newCenterChanFreq0;
+            psessionEntry->gLimWiderBWChannelSwitch.newCenterChanFreq1 = pChannelSwitchFrame->WiderBWChanSwitchAnn.newCenterChanFreq1;
+        }
+#endif
 
        PELOG3(limLog(pMac, LOG3, FL("Rcv Chnl Swtch Frame: Timeout in %d ticks\n"),
                              psessionEntry->gLimChannelSwitch.switchTimeoutValue);)
@@ -329,6 +357,25 @@ __limProcessChannelSwitchActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
                 psessionEntry->gLimChannelSwitch.state = eLIM_CHANNEL_SWITCH_PRIMARY_AND_SECONDARY;
                 psessionEntry->gLimChannelSwitch.secondarySubBand = pChannelSwitchFrame->ExtChanSwitchAnn.secondaryChannelOffset;
             }
+#ifdef WLAN_FEATURE_11AC
+            if(psessionEntry->vhtCapability && pChannelSwitchFrame->WiderBWChanSwitchAnn.present)
+            {
+                if (pChannelSwitchFrame->WiderBWChanSwitchAnn.newChanWidth == WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ)
+                {
+                    if (pChannelSwitchFrame->ExtChanSwitchAnn.present && ((pChannelSwitchFrame->ExtChanSwitchAnn.secondaryChannelOffset == PHY_DOUBLE_CHANNEL_LOW_PRIMARY) ||
+                        (pChannelSwitchFrame->ExtChanSwitchAnn.secondaryChannelOffset == PHY_DOUBLE_CHANNEL_HIGH_PRIMARY)))
+                    {
+                        psessionEntry->gLimChannelSwitch.state = eLIM_CHANNEL_SWITCH_PRIMARY_AND_SECONDARY;
+                        psessionEntry->gLimChannelSwitch.secondarySubBand =
+                           limGet11ACPhyCBState(pMac,
+                                                psessionEntry->gLimChannelSwitch.primaryChannel,
+                                                pChannelSwitchFrame->ExtChanSwitchAnn.secondaryChannelOffset,
+                                                pChannelSwitchFrame->WiderBWChanSwitchAnn.newCenterChanFreq0,
+                                                psessionEntry);
+                    }
+                }
+            }
+#endif
         }
 
     }
@@ -346,6 +393,95 @@ __limProcessChannelSwitchActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
     return;
 } /*** end limProcessChannelSwitchActionFrame() ***/
 
+
+#ifdef WLAN_FEATURE_11AC
+static void
+__limProcessOperatingModeActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession psessionEntry)
+{
+
+    tpSirMacMgmtHdr         pHdr;
+    tANI_U8                 *pBody;
+    tDot11fOperatingMode    *pOperatingModeframe;
+    tANI_U32                frameLen;
+    tANI_U32                nStatus;
+    eHalStatus              status;
+    tpDphHashNode           pSta;
+    tANI_U16                aid;
+    tANI_U8  operMode;
+
+    pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
+    pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
+    frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
+
+    PELOG3(limLog(pMac, LOG3, FL("Received Operating Mode action frame\n"));)
+    status = palAllocateMemory( pMac->hHdd, (void **)&pOperatingModeframe, sizeof(*pOperatingModeframe));
+    if (eHAL_STATUS_SUCCESS != status)
+    {
+        limLog(pMac, LOGE,
+            FL("palAllocateMemory failed, status = %d \n"), status);
+        return;
+    }
+
+    /* Unpack channel switch frame */
+    nStatus = dot11fUnpackOperatingMode(pMac, pBody, frameLen, pOperatingModeframe);
+
+    if( DOT11F_FAILED( nStatus ))
+    {
+        limLog( pMac, LOGE,
+            FL( "Failed to unpack and parse an 11h-CHANSW Request (0x%08x, %d bytes):\n"),
+            nStatus,
+            frameLen);
+        palFreeMemory(pMac->hHdd, pOperatingModeframe);
+        return;
+    }
+    else if(DOT11F_WARNED( nStatus ))
+    {
+        limLog( pMac, LOGW,
+            FL( "There were warnings while unpacking an 11h-CHANSW Request (0x%08x, %d bytes):\n"),
+            nStatus,
+            frameLen);
+    }
+    pSta = dphLookupHashEntry(pMac, pHdr->sa, &aid, &psessionEntry->dph.dphHashTable);
+    
+    operMode = pSta->vhtSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_80MHZ : pSta->htSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_40MHZ: eHT_CHANNEL_WIDTH_20MHZ;
+    if( operMode != pOperatingModeframe->OperatingMode.chanWidth)
+    {
+        limLog(pMac, LOGE, 
+            FL(" received Chanwidth %d, staIdx = %d\n"),
+            (pOperatingModeframe->OperatingMode.chanWidth ),
+            pSta->staIndex);
+
+        limLog(pMac, LOGE, 
+            FL(" MAC - %0x:%0x:%0x:%0x:%0x:%0x\n"),
+            pHdr->sa[0],
+            pHdr->sa[1],
+            pHdr->sa[2],
+            pHdr->sa[3],
+            pHdr->sa[4],
+            pHdr->sa[5]);
+
+        if(pOperatingModeframe->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_80MHZ)
+        {
+            pSta->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
+            pSta->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
+        } 
+        else if(pOperatingModeframe->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_40MHZ)
+        {
+            pSta->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
+            pSta->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
+        }
+        else if(pOperatingModeframe->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_20MHZ)
+        {
+            pSta->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
+            pSta->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_20MHZ;
+        }
+        limCheckVHTOpModeChange( pMac, psessionEntry, 
+                                 (pOperatingModeframe->OperatingMode.chanWidth), pSta->staIndex);\
+    }
+    palFreeMemory(pMac->hHdd, pOperatingModeframe);
+    return;
+}
+#endif
 
 static void
 __limProcessAddTsReq(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession psessionEntry)
@@ -1208,7 +1344,7 @@ __limProcessAddBAReq( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
     tpDphHashNode pSta;
     tSirMacStatusCodes status = eSIR_MAC_SUCCESS_STATUS;
     tANI_U16 aid;
-    tANI_U32 frameLen, nStatus;
+    tANI_U32 frameLen, nStatus,val;
     tANI_U8 *pBody;
     tANI_U8 delBAFlag =0;
 
@@ -1304,6 +1440,17 @@ __limProcessAddBAReq( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
   // Change the Block Ack state of this STA to wait for
   // ADDBA Rsp from HAL
   LIM_SET_STA_BA_STATE(pSta, frmAddBAReq.AddBAParameterSet.tid, eLIM_BA_STATE_WT_ADD_RSP);
+    
+  if (wlan_cfgGetInt(pMac, WNI_CFG_NUM_BUFF_ADVERT , &val) != eSIR_SUCCESS)
+    {
+        limLog(pMac, LOGP, FL("Unable to get WNI_CFG_NUM_BUFF_ADVERT  \n"));
+        return ;
+    }
+        
+        frmAddBAReq.AddBAParameterSet.bufferSize=
+            VOS_MIN(val,frmAddBAReq.AddBAParameterSet.bufferSize);
+        limLog( pMac, LOGE, FL( "ADDBAREQ NUMBUFF %d  \n" ),
+                        frmAddBAReq.AddBAParameterSet.bufferSize);
 
   if( eSIR_SUCCESS != limPostMsgAddBAReq( pMac,
         pSta,
@@ -2018,7 +2165,7 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                  // type is ACTION
                  limSendSmeMgmtFrameInd(pMac, pHdr->fc.subType, 
                     (tANI_U8*)pHdr, frameLen + sizeof(tSirMacMgmtHdr), 0, 
-                    WDA_GET_RX_CH( pRxPacketInfo ), psessionEntry);
+                    WDA_GET_RX_CH( pRxPacketInfo ), psessionEntry, 0);
               }
               else
               {
@@ -2027,6 +2174,29 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
               }
            }
             break;
+#ifdef FEATURE_WLAN_TDLS
+           case SIR_MAC_TDLS_DIS_RSP:
+           {
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+               //LIM_LOG_TDLS(printk("Public Action TDLS Discovery RSP ..\n")) ;
+               limProcessTdlsPublicActionFrame(pMac, (tANI_U32*)pRxPacketInfo, psessionEntry) ;
+#else
+               tpSirMacMgmtHdr     pHdr;
+               tANI_U32            frameLen;
+               tANI_S8             rssi;
+
+               pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
+               frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
+               rssi = WDA_GET_RX_RSSI_DB(pRxPacketInfo);
+               VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO, 
+                                    ("Public Action TDLS Discovery RSP ..\n")) ;
+               limSendSmeMgmtFrameInd(pMac, pHdr->fc.subType, 
+                  (tANI_U8*)pHdr, frameLen + sizeof(tSirMacMgmtHdr), 0, 
+                  WDA_GET_RX_CH( pRxPacketInfo ), psessionEntry, rssi);
+#endif
+           }
+               break;
+#endif
 
         default:
             PELOGE(limLog(pMac, LOGE, FL("Unhandled public action frame -- %x \n"), pActionHdr->actionID);)
@@ -2043,7 +2213,22 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
         break;
      }
 #endif
-
+#ifdef WLAN_FEATURE_11AC
+    case SIR_MAC_ACTION_VHT:
+    {
+        if (psessionEntry->vhtCapability)
+        {
+            switch (pActionHdr->actionID)
+            {
+                case  SIR_MAC_VHT_OPMODE_NOTIFICATION:
+                    __limProcessOperatingModeActionFrame(pMac,pRxPacketInfo,psessionEntry);                
+                break;
+                default:
+                break;
+            }
+        }
+    }
+#endif
     default:
        PELOGE(limLog(pMac, LOGE, FL("Action category %d not handled\n"), pActionHdr->category);)
        break;
@@ -2099,7 +2284,7 @@ limProcessActionFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd)
                   // type is ACTION
                   limSendSmeMgmtFrameInd(pMac, pHdr->fc.subType, 
                       (tANI_U8*)pHdr, frameLen + sizeof(tSirMacMgmtHdr), 0,
-                      WDA_GET_RX_CH( pBd ), NULL);
+                      WDA_GET_RX_CH( pBd ), NULL, 0);
                 }
                 else
                 {

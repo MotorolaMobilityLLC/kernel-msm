@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -44,6 +64,9 @@
 #ifdef WLAN_SOFTAP_FEATURE
 #include "csrApi.h"
 #include "sapApi.h"
+#endif
+#ifdef FEATURE_WLAN_TDLS
+#include "dot11f.h"
 #endif
 
 /// Maximum number of scan hash table entries
@@ -363,7 +386,6 @@ typedef struct sLimMlmScanReq
 
 #ifdef WLAN_FEATURE_P2P
     tANI_BOOLEAN   p2pSearch;
-    tANI_BOOLEAN   skipDfsChnlInP2pSearch;
 #endif
     tANI_U16           uIEFieldLen;
     tANI_U16           uIEFieldOffset;
@@ -399,10 +421,10 @@ struct tLimScanResultNode
 #ifdef FEATURE_OEM_DATA_SUPPORT
 
 #ifndef OEM_DATA_REQ_SIZE 
-#define OEM_DATA_REQ_SIZE 70
+#define OEM_DATA_REQ_SIZE 134
 #endif
 #ifndef OEM_DATA_RSP_SIZE
-#define OEM_DATA_RSP_SIZE 968
+#define OEM_DATA_RSP_SIZE 1968
 #endif
 
 // OEM Data related structure definitions
@@ -646,6 +668,23 @@ typedef struct sLimChannelSwitchInfo
     tANI_U8                  switchMode;
 } tLimChannelSwitchInfo, *tpLimChannelSwitchInfo;
 
+#ifdef WLAN_FEATURE_11AC
+typedef struct sLimOperatingModeInfo
+{
+    tANI_U8        present;
+    tANI_U8        chanWidth: 2;
+    tANI_U8         reserved: 2;
+    tANI_U8            rxNSS: 3;
+    tANI_U8        rxNSSType: 1;
+}tLimOperatingModeInfo, *tpLimOperatingModeInfo;
+
+typedef struct sLimWiderBWChannelSwitch
+{
+    tANI_U8      newChanWidth;
+    tANI_U8      newCenterChanFreq0;
+    tANI_U8      newCenterChanFreq1;
+}tLimWiderBWChannelSwitchInfo, *tpLimWiderBWChannelSwitchInfo;
+#endif
 // Enums used when stopping the Tx.
 typedef enum eLimQuietTxMode
 {
@@ -738,4 +777,58 @@ typedef struct sLimSpecMgmtInfo
     tANI_BOOLEAN       fRadarDetCurOperChan; /* Radar detected in cur oper chan on AP */
     tANI_BOOLEAN       fRadarIntrConfigured; /* Whether radar interrupt has been configured */
 }tLimSpecMgmtInfo, *tpLimSpecMgmtInfo;
+
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
+typedef struct sLimDisResultList
+{
+    struct sLimDisResultList *next ;
+    tSirTdlsPeerInfo tdlsDisPeerInfo ;
+}tLimDisResultList ;
+#endif
+
+#ifdef FEATURE_WLAN_TDLS
+/*
+ * Peer info needed for TDLS setup..
+ */
+typedef struct tLimTDLSPeerSta
+{
+    struct tLimTDLSPeerSta   *next;
+    tANI_U8                  dialog ;
+    tSirMacAddr              peerMac;
+    tSirMacCapabilityInfo    capabilityInfo;
+    tSirMacRateSet           supportedRates;
+    tSirMacRateSet           extendedRates;
+    tSirMacQosCapabilityStaIE qosCaps;
+    tSirMacEdcaParamSetIE    edcaParams;
+    tANI_U8                  mcsSet[SIZE_OF_SUPPORTED_MCS_SET];    
+    tANI_U8                  tdls_bIsResponder ;
+    /* HT Capabilties */
+    tDot11fIEHTCaps tdlsPeerHTCaps ;
+    tDot11fIEExtCap tdlsPeerExtCaps;
+    tANI_U8 tdls_flags ;
+    tANI_U8 tdls_link_state ;
+    tANI_U8 tdls_prev_link_state ;
+    tANI_U8 tdls_sessionId;
+    tANI_U8 ExtRatesPresent ;
+    TX_TIMER gLimTdlsLinkSetupRspTimeoutTimer ;
+    TX_TIMER gLimTdlsLinkSetupCnfTimeoutTimer ;
+}tLimTdlsLinkSetupPeer, *tpLimTdlsLinkSetupPeer ;
+
+typedef struct tLimTdlsLinkSetupInfo
+{
+    tLimTdlsLinkSetupPeer *tdlsLinkSetupList ;
+    tANI_U8 num_tdls_peers ;
+    tANI_U8 tdls_flags ;
+    tANI_U8 tdls_state ;
+    tANI_U8 tdls_prev_state ; 
+}tLimTdlsLinkSetupInfo, *tpLimTdlsLinkSetupInfo ;
+
+typedef enum tdlsLinkMode
+{
+    TDLS_LINK_MODE_BG,
+    TDLS_LINK_MODE_N,
+    TDLS_LINK_MODE_NONE
+} eLimTdlsLinkMode ;
+#endif  /* FEATURE_WLAN_TDLS */
+
 #endif

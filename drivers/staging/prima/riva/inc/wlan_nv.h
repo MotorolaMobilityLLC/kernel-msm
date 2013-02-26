@@ -1,23 +1,8 @@
 /*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
- *
- * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
- *
- *
- * Permission to use, copy, modify, and/or distribute this software for
- * any purpose with or without fee is hereby granted, provided that the
- * above copyright notice and this permission notice appear in all
- * copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
- * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
- * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
- * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */
+* Copyright (c) 2012 Qualcomm Atheros, Inc.
+* All Rights Reserved.
+* Qualcomm Atheros Confidential and Proprietary.
+*/
 
 /** ------------------------------------------------------------------------- *
     ------------------------------------------------------------------------- *
@@ -54,6 +39,8 @@ typedef enum
     NV_COMMON_MFG_SERIAL_NUMBER,        // 5
     NV_COMMON_WLAN_NV_REV_ID,           // 6
     NV_COMMON_COUPLER_TYPE,             // 7
+    NV_COMMON_NV_VERSION,               // 8
+    NV_COMMON_RESERVED,                 // 9
 
     NUM_NV_FIELDS,
     NV_MAX_FIELD = 0x7FFFFFFF  /* define as 4 bytes data */
@@ -73,54 +60,90 @@ typedef enum
     NUM_PRODUCT_BANDS_INVALID = 0x7FFFFFFF  /* define as 4 bytes data */
 }eNvProductBands;           //NV_COMMON_PRODUCT_BANDS
 
+#define EXTERNAL_PA         1
+#define INTERNAL_PA         0
+
+#define EXTERNAL_LNA        1
+#define INTERNAL_LNA        0
+
+#define EXTERNAL_COUPLER    1
+#define INTERNAL_COUPLER    0
+
+#define EXTERNAL_PDET       1
+#define INTERNAL_PDET       0
+
+#define DPD_ENABLED         1
+#define DPD_DISABLED        0
+
+#define TPC_MODE_OPEN_LOOP     0
+#define TPC_MODE_SCPC          1
+#define TPC_MODE_CLPC_MODE2    2
+#define TPC_MODE_CLPC_MODE3    3
+
+#define PA_POLARITY_TX_UNUSED   0
+#define PA_POLARITY_TX_POSITIVE 1
+#define PA_POLARITY_TX_NEGATIVE 2
+#define PA_POLARITY_RX_UNUSED   0
+#define PA_POLARITY_RX_POSITIVE 1
+#define PA_POLARITY_RX_NEGATIVE 2
+
+#define NV_VERSION_INVALID                 0xFF
+#define NV_VERSION_11N_11AC_COUPER_TYPE    0
+#define NV_VERSION_11N_11AC_FW_CONFIG      1
+#define NV_VERSION_LPDC_FW_CONFIG          2
+
+#ifdef WCN_PRONTO
+#define WLAN_NV_VERSION     NV_VERSION_LPDC_FW_CONFIG
+#else //WCN_PRONTO
+#define WLAN_NV_VERSION     NV_VERSION_11N_11AC_FW_CONFIG
+#endif //WCN_PRONTO
 
 typedef PACKED_PRE union PACKED_POST
 {
     //common NV fields
-    tANI_U16  productId;
-    tANI_U8   productBands;
-    tANI_U8   wlanNvRevId;
-    tANI_U8   numOfTxChains;
-    tANI_U8   numOfRxChains;
-    tANI_U8   macAddr[NV_FIELD_MAC_ADDR_SIZE];   /* Default, not change name for compatibility */
-    tANI_U8   macAddr2[NV_FIELD_MAC_ADDR_SIZE];
-    tANI_U8   macAddr3[NV_FIELD_MAC_ADDR_SIZE];
-    tANI_U8   macAddr4[NV_FIELD_MAC_ADDR_SIZE];
-    tANI_U8   mfgSN[NV_FIELD_MFG_SN_SIZE];
-    tANI_U8   couplerType;                       /* 0 : Internal coupler, 1 : External coupler */
-    tANI_U8   reserved;                          /* Make Byte alignment */
+    uint16  productId;
+    uint8   productBands;
+    uint8   wlanNvRevId;
+    uint8   numOfTxChains;
+    uint8   numOfRxChains;
+    uint8   macAddr[NV_FIELD_MAC_ADDR_SIZE];   /* Default, not change name for compatibility */
+    uint8   macAddr2[NV_FIELD_MAC_ADDR_SIZE];
+    uint8   macAddr3[NV_FIELD_MAC_ADDR_SIZE];
+    uint8   macAddr4[NV_FIELD_MAC_ADDR_SIZE];
+    uint8   mfgSN[NV_FIELD_MFG_SN_SIZE];
+    uint8   couplerType;
+    uint8   nvVersion;
 } uNvFields;
-
 
 
 //format of common part of nv
 typedef PACKED_PRE struct PACKED_POST
 {
     //always ensure fields are aligned to 32-bit boundaries
-    tANI_U16  productId;
-    tANI_U8   productBands;
-    tANI_U8   wlanNvRevId; //0: WCN1312, 1: WCN1314, 2: WCN3660
+    uint16  productId;
+    uint8   productBands;
+    uint8   wlanNvRevId; //0: WCN1312, 1: WCN1314, 2: WCN3660
 
-    tANI_U8   numOfTxChains;
-    tANI_U8   numOfRxChains;
-    tANI_U8   macAddr[NV_FIELD_MAC_ADDR_SIZE];   /* Default, not change name for compatibility */
-    tANI_U8   macAddr2[NV_FIELD_MAC_ADDR_SIZE];
-    tANI_U8   macAddr3[NV_FIELD_MAC_ADDR_SIZE];
-    tANI_U8   macAddr4[NV_FIELD_MAC_ADDR_SIZE];
-    tANI_U8   mfgSN[NV_FIELD_MFG_SN_SIZE];
-    tANI_U8   couplerType;                       /* 0 : Internal coupler, 1 : External coupler */
-    tANI_U8   reserved;                          /* Make Byte alignment */
+    uint8   numOfTxChains;
+    uint8   numOfRxChains;
+    uint8   macAddr[NV_FIELD_MAC_ADDR_SIZE];   /* Default, not change name for compatibility */
+    uint8   macAddr2[NV_FIELD_MAC_ADDR_SIZE];
+    uint8   macAddr3[NV_FIELD_MAC_ADDR_SIZE];
+    uint8   macAddr4[NV_FIELD_MAC_ADDR_SIZE];
+    uint8   mfgSN[NV_FIELD_MFG_SN_SIZE];
+    uint8   couplerType;
+    uint8   nvVersion;
 } sNvFields;
 
 
 //From wlanfw/inc/halPhyTypes.h
 
-typedef tANI_S8 tPowerdBm;   //power in signed 8-bit integer, no decimal places
+typedef int8 tPowerdBm;   //power in signed 8-bit integer, no decimal places
 
 typedef PACKED_PRE union PACKED_POST
 {
-    tANI_U32 measurement;      //measured values can be passed to pttApi, but are maintained to 2 decimal places internally
-    tANI_S16 reported;         //used internally only - reported values only maintain 2 decimals places
+    uint32 measurement;      //measured values can be passed to pttApi, but are maintained to 2 decimal places internally
+    int16  reported;         //used internally only - reported values only maintain 2 decimals places
 }uAbsPwrPrecision;
 
 typedef enum
@@ -306,7 +329,7 @@ enum
    NV_CHANNEL_DFS,
    NV_CHANNEL_INVALID
 };
-typedef tANI_U8 eNVChannelEnabledType;
+typedef uint8 eNVChannelEnabledType;
 
 typedef PACKED_PRE struct PACKED_POST
 {
@@ -324,14 +347,14 @@ typedef PACKED_PRE struct PACKED_POST
 
 typedef PACKED_PRE struct PACKED_POST
 {
-    tANI_S16 bRssiOffset[NUM_RF_CHANNELS];
-    tANI_S16 gnRssiOffset[NUM_RF_CHANNELS];
+    int16 bRssiOffset[NUM_RF_CHANNELS];
+    int16 gnRssiOffset[NUM_RF_CHANNELS];
 }ALIGN_4 sRssiChannelOffsets;
 
 typedef PACKED_PRE struct PACKED_POST
 {
-    tANI_U16 targetFreq;           //number in MHz
-    tANI_U16 channelNum;           //channel number as in the eRfChannels enumeration
+    uint16 targetFreq;           //number in MHz
+    uint16 channelNum;           //channel number as in the eRfChannels enumeration
     eRfSubBand band;               //band that this channel belongs to
 }tRfChannelProps;
 
@@ -344,89 +367,69 @@ typedef enum
     MODE_802_11_INVALID = 0x7FFFFFFF  /* define as 4 bytes data */
 } e80211Modes;
 
+#define HW_CAL_VALUES_VALID_BMAP_UNUSED                             0   //Value
+//Bit mask
+#define HW_VAL_VALUES_VALID_BMAP_SLEEP_TIME_OVERHEAD_2G_MASK        0x1
+#define HW_VAL_VALUES_VALID_BMAP_SLEEP_TIME_OVERHEAD_5G_MASK        0x2
+#define HW_VAL_VALUES_VALID_BMAP_SLEEP_TIME_OVERHEAD_xLNA_5G_MASK   0x4
+#define HW_VAL_VALUES_VALID_TXBBF_SEL_9MHZ_MASK                     0x8
+#define HW_VAL_VALUES_VALID_CUSTOM_TCXO_REG8_MASK                   0x10
+#define HW_VAL_VALUES_VALID_CUSTOM_TCXO_REG9_MASK                   0x20
+
+
+#define HAL_PWR_SAVE_FW_BMPS_SLEEP_TIME_OVERHEADS_US                1400  //(2.4Ghz operation)
+#define HAL_PWR_SAVE_FW_BMPS_SLEEP_TIME_OVERHEADS_5GHZ_US           1400 //(5Ghz operation)
+#define HAL_PWR_SAVE_FW_BMPS_SLEEP_TIME_OVERHEADS_XPA_US            1600  //(xLNA operation)
+
 
 //From wlanfw/inc/halPhyCalMemory.h
 typedef PACKED_PRE struct PACKED_POST
 {
-    tANI_U16    process_monitor;
-    tANI_U8     hdet_cal_code;
-    tANI_U8     rxfe_gm_2;
+    uint16    psSlpTimeOvrHd2G;
+    uint16    psSlpTimeOvrHd5G;
 
-    tANI_U8     tx_bbf_rtune;
-    tANI_U8     pa_rtune_reg;
-    tANI_U8     rt_code;
-    tANI_U8     bias_rtune;
-
-    tANI_U8     bb_bw1;
-    tANI_U8     bb_bw2;
-    tANI_U8     pa_ctune_reg;
-    tANI_U8     reserved1;
-
-    tANI_U8     bb_bw3;
-    tANI_U8     bb_bw4;
-    tANI_U8     bb_bw5;
-    tANI_U8     bb_bw6;
-
-    tANI_U16    rcMeasured;
-    tANI_U8     tx_bbf_ct;
-    tANI_U8     tx_bbf_ctr;
-
-    tANI_U8     csh_maxgain_reg;
-    tANI_U8     csh_0db_reg;
-    tANI_U8     csh_m3db_reg;
-    tANI_U8     csh_m6db_reg;
-
-    tANI_U8     cff_0db_reg;
-    tANI_U8     cff_m3db_reg;
-    tANI_U8     cff_m6db_reg;
-    tANI_U8     rxfe_gpio_ctl_1;
-
-    tANI_U8     mix_bal_cnt_2;
-    tANI_S8     rxfe_lna_highgain_bias_ctl_delta;
-    tANI_U8     rxfe_lna_load_ctune;
-    tANI_U8     rxfe_lna_ngm_rtune;
-
-    tANI_U8     rx_im2_spare0;
-    tANI_U8     rx_im2_spare1;
-    tANI_U16    hdet_dco;
-
-    tANI_U8     pll_vfc_reg3_b0;
-    tANI_U8     pll_vfc_reg3_b1;
-    tANI_U8     pll_vfc_reg3_b2;
-    tANI_U8     pll_vfc_reg3_b3;
-
-    tANI_U16    tempStart;
-    tANI_U16    roomTemp;
-
-    tANI_S16    ambientCalTemp;
-    tANI_U8     ambientCalTempValid;
-    tANI_U8     reserved2;
-
+    uint16    psSlpTimeOvrHdxLNA5G;
+    uint8     nv_TxBBFSel9MHz       : 1;
+    uint8     hwParam1              : 7;
+    uint8     hwParam2;
+    
+    uint16    custom_tcxo_reg8;
+    uint16    custom_tcxo_reg9;
+    
+    uint32    hwParam3;
+    uint32    hwParam4;
+    uint32    hwParam5;
+    uint32    hwParam6;
+    uint32    hwParam7;
+    uint32    hwParam8;
+    uint32    hwParam9;
+    uint32    hwParam10;
+    uint32    hwParam11;
 }sCalData;
 
 typedef PACKED_PRE struct PACKED_POST
 {
-    tANI_U32 calStatus;  //use eNvCalID
+    uint32 validBmap;  //use eNvCalID
     sCalData calData;
-}sRFCalValues;
+}sHwCalValues;
 
 typedef PACKED_PRE struct PACKED_POST
 {
-    tANI_U32 txFirFilterMode;
+    uint32 txFirFilterMode;
 }sTxBbFilterMode;
 
 typedef PACKED_PRE struct PACKED_POST
 {
-    tANI_S16 ofdmPwrOffset;
-    tANI_S16 rsvd;
+    int16 ofdmPwrOffset;
+    int16 rsvd;
 }sOfdmCmdPwrOffset;
 
 //From wlanfw/inc/halPhyCfg.h
-typedef tANI_U8 tTpcLutValue;
+typedef uint8 tTpcLutValue;
 
 #define MAX_TPC_CAL_POINTS      (8)
 
-typedef tANI_U8 tPowerDetect;        //7-bit power detect reading
+typedef uint8 tPowerDetect;        //7-bit power detect reading
 
 typedef PACKED_PRE struct PACKED_POST
 {
@@ -544,6 +547,9 @@ typedef enum
     HAL_PHY_RATE_VHT_20MHZ_MCS_1NSS_NGI_58_5_MBPS,
     HAL_PHY_RATE_VHT_20MHZ_MCS_1NSS_NGI_65_MBPS,
     HAL_PHY_RATE_VHT_20MHZ_MCS_1NSS_NGI_78_MBPS,
+#ifdef WCN_PRONTO
+    HAL_PHY_RATE_VHT_20MHZ_MCS_1NSS_NGI_86_5_MBPS,
+#endif
     
     /*11AC rate 20MHZ Shortl GI*/
     HAL_PHY_RATE_VHT_20MHZ_MCS_1NSS_SGI_7_2_MBPS,
@@ -555,6 +561,9 @@ typedef enum
     HAL_PHY_RATE_VHT_20MHZ_MCS_1NSS_SGI_65_MBPS,
     HAL_PHY_RATE_VHT_20MHZ_MCS_1NSS_SGI_72_2_MBPS,
     HAL_PHY_RATE_VHT_20MHZ_MCS_1NSS_SGI_86_6_MBPS,
+#ifdef WCN_PRONTO
+    HAL_PHY_RATE_VHT_20MHZ_MCS_1NSS_SGI_96_1_MBPS,
+#endif
     
     /*11AC rates 40MHZ normal GI*/
     HAL_PHY_RATE_VHT_40MHZ_MCS_1NSS_CB_NGI_13_5_MBPS ,
@@ -612,7 +621,6 @@ typedef enum
     HAL_PHY_RATE_INVALID_MAX_FIELD = 0x7FFFFFFF  /* define as 4 bytes data */
 }eHalPhyRates;
 
-
 #define NUM_RATE_POWER_GROUPS           NUM_HAL_PHY_RATES  //total number of rate power groups including the CB_RATE_POWER_OFFSET
 typedef uAbsPwrPrecision tRateGroupPwr[NUM_RATE_POWER_GROUPS];
 
@@ -620,46 +628,42 @@ typedef uAbsPwrPrecision tRateGroupPwr[NUM_RATE_POWER_GROUPS];
 #define NV_FIELD_COUNTRY_CODE_SIZE  3
 typedef PACKED_PRE struct PACKED_POST
 {
-    tANI_U8 regDomain;                                  //from eRegDomainId
-    tANI_U8 countryCode[NV_FIELD_COUNTRY_CODE_SIZE];    // string identifier
+    uint8 regDomain;                                  //from eRegDomainId
+    uint8 countryCode[NV_FIELD_COUNTRY_CODE_SIZE];    // string identifier
 }sDefaultCountry;
 
 typedef PACKED_PRE struct PACKED_POST
 {
-    tANI_U8     overall;
-    tANI_U8     fwInit;
-    tANI_U8     hdet_dco;
-    tANI_U8     rtuner;
+    uint8 skuID; 
+    uint8 tpcMode2G;
+    uint8 tpcMode5G;
+    uint8 reserved1;
 
-    tANI_U8     ctuner;
-    tANI_U8     insitu;
-    tANI_U8     process_monitor;
-    tANI_U8     pllVcoLinearity;
+    uint8 xPA2G;
+    uint8 xPA5G;
+    uint8 paPolarityTx;
+    uint8 paPolarityRx;
 
-    tANI_U8     txIQ;
-    tANI_U8     rxIQ;
-    tANI_U8     rxDco;
-    tANI_U8     txLo;
+    uint8 xLNA2G;
+    uint8 xLNA5G;
+    uint8 xCoupler2G;
+    uint8 xCoupler5G;
 
-    tANI_U8     lnaBias;
-    tANI_U8     lnaBandTuning;
-    tANI_U8     lnaGainAdjust;
-    tANI_U8     im2UsingNoisePwr;
+    uint8 xPdet2G;
+    uint8 xPdet5G;
+    uint8 enableDPD2G;
+    uint8 enableDPD5G;
 
-    tANI_U8     temperature;
-    tANI_U8     clpc;
-    tANI_U8     clpc_temp_adjust;
-    tANI_U8     txDpd;
+    uint8 pdadcSelect2G;
+    uint8 pdadcSelect5GLow;
+    uint8 pdadcSelect5GMid;
+    uint8 pdadcSelect5GHigh;
 
-    tANI_U8     channelTune;
-    tANI_U8     rxGmStageLinearity;
-    tANI_U8     im2UsingToneGen;
-    tANI_U8     rxBbfTuning; // rx baseband filert tuning
+    uint32 reserved2;
+    uint32 resreved3;
+    uint32 resreved4;
+}sFwConfig;
 
-    tANI_U8     txBbfTuning; // tx baseband filter tuning
-    tANI_U8     paCTuning;   // PA adjustments baed on C-tuner
-    tANI_U8     unused[6];
-}sCalStatus;
 
 #define NUM_RF_VR_RATE   13
 typedef uAbsPwrPrecision tRateGroupPwrVR[NUM_RF_VR_RATE];
@@ -670,14 +674,13 @@ typedef PACKED_PRE union PACKED_POST
     sRegulatoryDomains   regDomains[NUM_REG_DOMAINS];                         // NV_TABLE_REGULATORY_DOMAINS
     sDefaultCountry      defaultCountryTable;                                 // NV_TABLE_DEFAULT_COUNTRY
     tTpcPowerTable       plutCharacterized[NUM_RF_CHANNELS];                  // NV_TABLE_TPC_POWER_TABLE
-    tANI_S16             plutPdadcOffset[NUM_RF_CHANNELS];                    // NV_TABLE_TPC_PDADC_OFFSETS
+    int16             plutPdadcOffset[NUM_RF_CHANNELS];                       // NV_TABLE_TPC_PDADC_OFFSETS
     tRateGroupPwrVR      pwrOptimum_virtualRate[NUM_RF_SUBBANDS];             // NV_TABLE_VIRTUAL_RATE
-    //sCalFlashMemory    calFlashMemory;                                      // NV_TABLE_CAL_MEMORY
-    sCalStatus           calStatus;                                           // NV_TABLE_CAL_STATUS
+    sFwConfig            fwConfig;                                             // NV_TABLE_FW_CONFIG
     sRssiChannelOffsets  rssiChanOffsets[2];                                  // NV_TABLE_RSSI_CHANNEL_OFFSETS
-    sRFCalValues         rFCalValues;                                         // NV_TABLE_RF_CAL_VALUES
-    tANI_S16             antennaPathLoss[NUM_RF_CHANNELS];                    // NV_TABLE_ANTENNA_PATH_LOSS
-    tANI_S16             pktTypePwrLimits[NUM_802_11_MODES][NUM_RF_CHANNELS]; // NV_TABLE_PACKET_TYPE_POWER_LIMITS
+    sHwCalValues         hwCalValues;                                         // NV_TABLE_HW_CAL_VALUES
+    int16             antennaPathLoss[NUM_RF_CHANNELS];                    // NV_TABLE_ANTENNA_PATH_LOSS
+    int16             pktTypePwrLimits[NUM_802_11_MODES][NUM_RF_CHANNELS]; // NV_TABLE_PACKET_TYPE_POWER_LIMITS
     sOfdmCmdPwrOffset    ofdmCmdPwrOffset;                                    // NV_TABLE_OFDM_CMD_PWR_OFFSET
     sTxBbFilterMode      txbbFilterMode;                                      // NV_TABLE_TX_BB_FILTER_MODE
 }ALIGN_4 uNvTables;
@@ -687,7 +690,7 @@ typedef tPowerdBm tChannelPwrLimit;
 
 typedef PACKED_PRE struct PACKED_POST
 {
-    tANI_U8 chanId;
+    uint8 chanId;
     tChannelPwrLimit pwr;
 } ALIGN_4 tChannelListWithPower;
 
@@ -701,10 +704,10 @@ typedef enum
     NV_TABLE_DEFAULT_COUNTRY        = 4,
     NV_TABLE_TPC_POWER_TABLE        = 5,
     NV_TABLE_TPC_PDADC_OFFSETS      = 6,
-    NV_TABLE_RF_CAL_VALUES          = 7,
+    NV_TABLE_HW_CAL_VALUES          = 7,
     NV_TABLE_RSSI_CHANNEL_OFFSETS   = 9,
     NV_TABLE_CAL_MEMORY             = 10,    //cal memory structure from halPhyCalMemory.h preceded by status
-    NV_TABLE_CAL_STATUS             = 11,
+    NV_TABLE_FW_CONFIG              = 11,
     NV_TABLE_ANTENNA_PATH_LOSS          = 12,
     NV_TABLE_PACKET_TYPE_POWER_LIMITS   = 13,
     NV_TABLE_OFDM_CMD_PWR_OFFSET        = 14,
@@ -723,14 +726,13 @@ typedef PACKED_PRE struct PACKED_POST
     sRegulatoryDomains   regDomains[NUM_REG_DOMAINS];                         // NV_TABLE_REGULATORY_DOMAINS
     sDefaultCountry      defaultCountryTable;                                 // NV_TABLE_DEFAULT_COUNTRY
     tTpcPowerTable       plutCharacterized[NUM_RF_CHANNELS];                  // NV_TABLE_TPC_POWER_TABLE
-    tANI_S16             plutPdadcOffset[NUM_RF_CHANNELS];                    // NV_TABLE_TPC_PDADC_OFFSETS
+    int16             plutPdadcOffset[NUM_RF_CHANNELS];                    // NV_TABLE_TPC_PDADC_OFFSETS
     tRateGroupPwrVR      pwrOptimum_virtualRate[NUM_RF_SUBBANDS];             // NV_TABLE_VIRTUAL_RATE
-    //sCalFlashMemory    calFlashMemory;                                      // NV_TABLE_CAL_MEMORY
-    sCalStatus           calStatus;                                           // NV_TABLE_CAL_STATUS
+    sFwConfig           fwConfig;                                              // NV_TABLE_FW_CONFIG
     sRssiChannelOffsets  rssiChanOffsets[2];                                  // NV_TABLE_RSSI_CHANNEL_OFFSETS
-    sRFCalValues         rFCalValues;                                         // NV_TABLE_RF_CAL_VALUES
-    tANI_S16             antennaPathLoss[NUM_RF_CHANNELS];                    // NV_TABLE_ANTENNA_PATH_LOSS
-    tANI_S16             pktTypePwrLimits[NUM_802_11_MODES][NUM_RF_CHANNELS]; // NV_TABLE_PACKET_TYPE_POWER_LIMITS
+    sHwCalValues         hwCalValues;                                         // NV_TABLE_HW_CAL_VALUES
+    int16             antennaPathLoss[NUM_RF_CHANNELS];                    // NV_TABLE_ANTENNA_PATH_LOSS
+    int16             pktTypePwrLimits[NUM_802_11_MODES][NUM_RF_CHANNELS]; // NV_TABLE_PACKET_TYPE_POWER_LIMITS
     sOfdmCmdPwrOffset    ofdmCmdPwrOffset;                                    // NV_TABLE_OFDM_CMD_PWR_OFFSET
     sTxBbFilterMode      txbbFilterMode;                                      // NV_TABLE_TX_BB_FILTER_MODE
 }ALIGN_4 sNvTables;

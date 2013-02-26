@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -54,6 +74,11 @@
 #include "vos_memory.h"
 #include "vos_trace.h"
 
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+#include <linux/wcnss_wlan.h>
+#define WCNSS_PRE_ALLOC_GET_THRESHOLD (4*1024)
+#endif
+
 #ifdef MEMORY_DEBUG
 #include "wlan_hdd_dp_utils.h"
 
@@ -108,7 +133,7 @@ void vos_mem_clean()
        struct s_vos_mem_struct* memStruct;
  
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-             "%s: List is not Empty. listSize %d ", __FUNCTION__, (int)listSize);
+             "%s: List is not Empty. listSize %d ", __func__, (int)listSize);
 
        do
        {
@@ -142,13 +167,13 @@ v_VOID_t * vos_mem_malloc_debug( v_SIZE_t size, char* fileName, v_U32_t lineNum)
    if (size > (1024*1024))
    {
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-               "%s: called with arg > 1024K; passed in %d !!!", __FUNCTION__,size); 
+               "%s: called with arg > 1024K; passed in %d !!!", __func__,size); 
        return NULL;
    }
    if (in_interrupt())
    {
        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-               "%s is being called in interrupt context, using GPF_ATOMIC.", __FUNCTION__);
+               "%s is being called in interrupt context, using GPF_ATOMIC.", __func__);
        return kmalloc(size, GFP_ATOMIC);
       
    }
@@ -174,7 +199,7 @@ v_VOID_t * vos_mem_malloc_debug( v_SIZE_t size, char* fileName, v_U32_t lineNum)
       if(VOS_STATUS_SUCCESS != vosStatus)
       {
          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-             "%s: Unable to insert node into List vosStatus %d\n", __FUNCTION__, vosStatus);
+             "%s: Unable to insert node into List vosStatus %d\n", __func__, vosStatus);
       }
 
       memPtr = (v_VOID_t*)(memStruct + 1); 
@@ -212,7 +237,7 @@ v_VOID_t vos_mem_free( v_VOID_t *ptr )
         else
         {
             VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                      "%s: Unallocated memory (double free?)", __FUNCTION__);
+                      "%s: Unallocated memory (double free?)", __func__);
             VOS_ASSERT(0);
         }
     }
@@ -220,16 +245,27 @@ v_VOID_t vos_mem_free( v_VOID_t *ptr )
 #else
 v_VOID_t * vos_mem_malloc( v_SIZE_t size )
 {
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+    v_VOID_t* pmem;
+#endif    
    if (size > (1024*1024))
    {
-       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: called with arg > 1024K; passed in %d !!!", __FUNCTION__,size); 
+       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: called with arg > 1024K; passed in %d !!!", __func__,size); 
        return NULL;
    }
    if (in_interrupt())
    {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s cannot be called from interrupt context!!!", __FUNCTION__);
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s cannot be called from interrupt context!!!", __func__);
       return NULL;
    }
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+   if(size > WCNSS_PRE_ALLOC_GET_THRESHOLD)
+   {
+       pmem = wcnss_prealloc_get(size);
+       if(NULL != pmem) 
+           return pmem;
+   }
+#endif
    return kmalloc(size, GFP_KERNEL);
 }   
 
@@ -237,6 +273,17 @@ v_VOID_t vos_mem_free( v_VOID_t *ptr )
 {
     if (ptr == NULL)
       return;
+
+    if (in_interrupt())
+    {
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s cannot be called from interrupt context!!!", __func__);
+      return;
+    }
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+    if(wcnss_prealloc_put(ptr))
+        return;
+#endif
+
     kfree(ptr);
 }
 #endif
@@ -245,7 +292,7 @@ v_VOID_t vos_mem_set( v_VOID_t *ptr, v_SIZE_t numBytes, v_BYTE_t value )
 {
    if (ptr == NULL)
    {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s called with NULL parameter ptr", __FUNCTION__);
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s called with NULL parameter ptr", __func__);
       return;
    }
    memset(ptr, value, numBytes);
@@ -261,7 +308,7 @@ v_VOID_t vos_mem_zero( v_VOID_t *ptr, v_SIZE_t numBytes )
 
    if (ptr == NULL)
    {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s called with NULL parameter ptr", __FUNCTION__);
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s called with NULL parameter ptr", __func__);
       return;
    }
    memset(ptr, 0, numBytes);
@@ -285,7 +332,7 @@ v_VOID_t vos_mem_copy( v_VOID_t *pDst, const v_VOID_t *pSrc, v_SIZE_t numBytes )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                 "%s called with NULL parameter, source:%p destination:%p",
-                __FUNCTION__, pSrc, pDst);
+                __func__, pSrc, pDst);
       VOS_ASSERT(0);
       return;
    }
@@ -307,7 +354,7 @@ v_VOID_t vos_mem_move( v_VOID_t *pDst, const v_VOID_t *pSrc, v_SIZE_t numBytes )
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                 "%s called with NULL parameter, source:%p destination:%p",
-                __FUNCTION__, pSrc, pDst);
+                __func__, pSrc, pDst);
       VOS_ASSERT(0);
       return;
    }
@@ -326,7 +373,7 @@ v_BOOL_t vos_mem_compare( v_VOID_t *pMemory1, v_VOID_t *pMemory2, v_U32_t numByt
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
                 "%s called with NULL parameter, p1:%p p2:%p",
-                __FUNCTION__, pMemory1, pMemory2);
+                __func__, pMemory1, pMemory2);
       VOS_ASSERT(0);
       return VOS_FALSE;
    }
@@ -373,7 +420,7 @@ v_VOID_t * vos_mem_dma_malloc_debug( v_SIZE_t size, char* fileName, v_U32_t line
 
    if (in_interrupt())
    {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s cannot be called from interrupt context!!!", __FUNCTION__);
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s cannot be called from interrupt context!!!", __func__);
       return NULL;
    }
 
@@ -398,7 +445,7 @@ v_VOID_t * vos_mem_dma_malloc_debug( v_SIZE_t size, char* fileName, v_U32_t line
       if(VOS_STATUS_SUCCESS != vosStatus)
       {
          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-             "%s: Unable to insert node into List vosStatus %d\n", __FUNCTION__, vosStatus);
+             "%s: Unable to insert node into List vosStatus %d\n", __func__, vosStatus);
       }
 
       memPtr = (v_VOID_t*)(memStruct + 1); 
@@ -441,7 +488,7 @@ v_VOID_t* vos_mem_dma_malloc( v_SIZE_t size )
 {
    if (in_interrupt())
    {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s cannot be called from interrupt context!!!", __FUNCTION__);
+      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s cannot be called from interrupt context!!!", __func__);
       return NULL;
    }
    return kmalloc(size, GFP_KERNEL);

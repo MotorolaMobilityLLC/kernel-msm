@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -88,7 +108,12 @@ when        who    what, where, why
 /*In prima 12 HW stations are supported including BCAST STA(staId 0)
  and SELF STA(staId 1) so total ASSOC stations which can connect to Prima
  SoftAP = 12 - 1(Self STa) - 1(Bcast Sta) = 10 Stations. */
+ 
+#ifdef WLAN_SOFTAP_VSTA_FEATURE
+#define WDI_MAX_SUPPORTED_STAS    38 
+#else
 #define WDI_MAX_SUPPORTED_STAS    12 
+#endif
 #define WDI_MAX_SUPPORTED_BSS     5 
 
 /* Control transport channel size*/
@@ -411,10 +436,18 @@ typedef enum
   /* Send a capability exchange message to HAL */
   WDI_FEATURE_CAPS_EXCHANGE_REQ                 = 79,
 
+#ifdef WLAN_FEATURE_11AC
+  /* Send a capability exchange message to HAL */
+  WDI_UPDATE_VHT_OP_MODE_REQ                    = 80,
+#endif
+
   WDI_MAX_REQ,
 
   /*Send a suspend Indication down to HAL*/
   WDI_HOST_SUSPEND_IND          = WDI_MAX_REQ ,
+
+  /* Send a traffic stats indication to HAL */
+  WDI_TRAFFIC_STATS_IND,
 
   /*Keep adding the indications to the max request
     such that we keep them sepparate */
@@ -662,6 +695,10 @@ typedef enum
   /* FW sends its capability bitmap as a response */
   WDI_FEATURE_CAPS_EXCHANGE_RESP                = 78,
 
+#ifdef WLAN_FEATURE_11AC
+  WDI_UPDATE_VHT_OP_MODE_RESP                   = 79,
+#endif
+
   /*-------------------------------------------------------------------------
     Indications
      !! Keep these last in the enum if possible
@@ -705,7 +742,10 @@ typedef enum
 
   /* Tx PER Hit Indication */
   WDI_HAL_TX_PER_HIT_IND              = WDI_HAL_IND_MIN + 11,
-  
+
+  /* NOA Start Indication from FW to Host */
+  WDI_HAL_P2P_NOA_START_IND            = WDI_HAL_IND_MIN + 12,
+
   WDI_MAX_RESP
 }WDI_ResponseEnumType; 
 
@@ -1026,6 +1066,18 @@ typedef struct
 
   /*version of the PNO implementation in RIVA*/
   wpt_uint8                   wdiPNOVersion;
+
+  /*SSR timer*/
+  wpt_timer                   ssrTimer;
+
+  /*Version of the WLAN HAL API received on start resp*/
+  WDI_WlanVersionType wlanVersion;
+
+  /*timestamp when we start response timer*/
+  wpt_uint32                  uTimeStampRspTmrStart;
+
+  /*timestamp when we get response timer event*/
+  wpt_uint32                  uTimeStampRspTmrExp;
 }WDI_ControlBlockType; 
 
 
@@ -2599,6 +2651,21 @@ WDI_ProcessHostSuspendInd
 );
 
 
+/**
+ @brief Process Traffic Stats Indications function (called when Main FSM allows it)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessTrafficStatsInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
 /*========================================================================
           Main DAL Control Path Response Processing API 
 ========================================================================*/
@@ -3902,6 +3969,24 @@ WDI_ProcessTxCompleteInd
 
 #ifdef WLAN_FEATURE_P2P
 /**
+*@brief Process Noa Start Indication function (called when
+        an indication of this kind is being received over the
+        bus from HAL)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessP2pNoaStartInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
+/**
 *@brief Process Noa Attr Indication function (called when
         an indication of this kind is being received over the
         bus from HAL)
@@ -4055,7 +4140,7 @@ WDI_ProcessHALDumpCmdRsp
 
  @return Result of the function call
 */
-WPT_INLINE WDI_Status
+WDI_Status
 WDI_CleanCB
 (
   WDI_ControlBlockType*  pWDICtx
@@ -4071,7 +4156,7 @@ WDI_CleanCB
  @see
  @return Result of the function call
 */
-WPT_INLINE WDI_Status
+WDI_Status
 WDI_ProcessRequest
 (
   WDI_ControlBlockType*  pWDICtx,
@@ -4516,7 +4601,7 @@ WDI_FindAssocSessionByIdx
  @see
  @return 
 */
-WPT_INLINE void 
+void
 WDI_DS_AssignDatapathContext 
 (
   void *pContext, 
@@ -4532,7 +4617,7 @@ WDI_DS_AssignDatapathContext
  @see
  @return pointer to Datapath context
 */
-WPT_INLINE void * 
+void *
 WDI_DS_GetDatapathContext 
 (
   void *pContext
@@ -4548,7 +4633,7 @@ WDI_DS_GetDatapathContext
  @see
  @return void
 */
-WPT_INLINE void  
+void
 WDT_AssignTransportDriverContext 
 (
   void *pContext, 
@@ -4564,7 +4649,7 @@ WDT_AssignTransportDriverContext
  @see
  @return pointer to datapath context 
 */
-WPT_INLINE void * 
+void *
 WDT_GetTransportDriverContext 
 (
   void *pContext
@@ -4924,6 +5009,22 @@ WDI_ProcessFeatureCapsExchangeRsp
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
+
+#ifdef WLAN_FEATURE_11AC
+WDI_Status
+WDI_ProcessUpdateVHTOpModeReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+
+WDI_Status
+WDI_ProcessUpdateVHTOpModeRsp
+( 
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+#endif
 
 #endif /*WLAN_QCT_WDI_I_H*/
 

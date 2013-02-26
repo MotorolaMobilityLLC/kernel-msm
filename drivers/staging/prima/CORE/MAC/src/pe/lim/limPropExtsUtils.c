@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -106,7 +126,8 @@ limGetCurrentLearnChannel(tpAniSirGlobal pMac)
 void
 limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
                        tANI_U8 *qosCap, tANI_U16 *propCap, tANI_U8 *uapsd, 
-                       tPowerdBm *localConstraint
+                       tPowerdBm *localConstraint,
+                       tpPESession psessionEntry
                        )
 {
     tSirProbeRespBeacon *pBeaconStruct;
@@ -148,16 +169,18 @@ limExtractApCapability(tpAniSirGlobal pMac, tANI_U8 *pIE, tANI_U16 ieLen,
 #ifdef WLAN_FEATURE_11AC
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO_MED,
             "***beacon.VHTCaps.present*****=%d\n",pBeaconStruct->VHTCaps.present);
+        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO_MED,
+           "***beacon.SU Beamformer Capable*****=%d\n",pBeaconStruct->VHTCaps.suBeamFormerCap);
 
         if ( pBeaconStruct->VHTCaps.present && pBeaconStruct->VHTOperation.present)
         {
-            pMac->lim.vhtCapabilityPresentInBeacon = 1;
-            pMac->lim.apCenterChan = pBeaconStruct->VHTOperation.chanCenterFreqSeg1;
-            pMac->lim.apChanWidth = pBeaconStruct->VHTOperation.chanWidth;
+            psessionEntry->vhtCapabilityPresentInBeacon = 1;
+            psessionEntry->apCenterChan = pBeaconStruct->VHTOperation.chanCenterFreqSeg1;
+            psessionEntry->apChanWidth = pBeaconStruct->VHTOperation.chanWidth;
         }
         else
         {
-            pMac->lim.vhtCapabilityPresentInBeacon = 0;
+            psessionEntry->vhtCapabilityPresentInBeacon = 0;
         }
 #endif
         // Extract the UAPSD flag from WMM Parameter element

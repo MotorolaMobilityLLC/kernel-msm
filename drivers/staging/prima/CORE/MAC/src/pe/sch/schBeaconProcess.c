@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -353,6 +373,11 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
     tUpdateBeaconParams beaconParams;
     tANI_U8 sendProbeReq = FALSE;
     tpDphHashNode pStaDs = NULL;
+#ifdef WLAN_FEATURE_11AC
+    tpSirMacMgmtHdr    pMh = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
+    tANI_U16  aid;
+    tANI_U8  operMode;
+#endif
 
 
     beaconParams.paramChangeBitmap = 0;
@@ -481,17 +506,6 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
     if ( (psessionEntry->limSystemRole == eLIM_STA_ROLE) ||(psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE) ||
           (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE) )
     {
-        if(pBeacon->quietIEPresent)
-        {
-            limUpdateQuietIEFromBeacon(pMac, &(pBeacon->quietIE), psessionEntry);
-        }
-        else if ((psessionEntry->gLimSpecMgmt.quietState == eLIM_QUIET_BEGIN) ||
-             (psessionEntry->gLimSpecMgmt.quietState == eLIM_QUIET_RUNNING))
-        {
-            PELOG1(limLog(pMac, LOG1, FL("Received a beacon without Quiet IE\n"));)
-            limCancelDot11hQuiet(pMac, psessionEntry);
-        }
-
         /* Channel Switch information element updated */
         if(pBeacon->channelSwitchPresent || 
             pBeacon->propIEinfo.propChannelSwitchPresent)
@@ -502,6 +516,48 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         {
             limCancelDot11hChannelSwitch(pMac, psessionEntry);
         }   
+    }
+#endif
+
+#ifdef WLAN_FEATURE_11AC
+    if ( (psessionEntry->limSystemRole == eLIM_STA_ROLE) ||(psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE) || (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE) ) 
+    {
+        // check for VHT capability
+        if(psessionEntry->vhtCapability && pBeacon->OperatingMode.present)
+        {
+            pStaDs = dphLookupHashEntry(pMac, pMh->sa, &aid, &psessionEntry->dph.dphHashTable);
+            operMode = pStaDs->vhtSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_80MHZ : pStaDs->htSupportedChannelWidthSet ? eHT_CHANNEL_WIDTH_40MHZ: eHT_CHANNEL_WIDTH_20MHZ;
+            if( operMode != pBeacon->OperatingMode.chanWidth)
+            {
+                PELOG1(limLog(pMac, LOG1, FL(" received Chanwidth %d, staIdx = %d\n"),
+                                          pBeacon->OperatingMode.chanWidth, 
+                                          pStaDs->staIndex);)
+                PELOG1(limLog(pMac, LOG1, FL(" MAC - %0x:%0x:%0x:%0x:%0x:%0x\n"),
+                                          pMh->sa[0],
+                                          pMh->sa[1],
+                                          pMh->sa[2],
+                                          pMh->sa[3],
+                                          pMh->sa[4],
+                                          pMh->sa[5]);)
+                
+                if(pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_80MHZ)
+                {
+                    pStaDs->vhtSupportedChannelWidthSet =  WNI_CFG_VHT_CHANNEL_WIDTH_80MHZ;
+                    pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ ;
+                }
+                else if(pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_40MHZ)
+                {
+                    pStaDs->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
+                    pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_40MHZ;
+                }
+                else if(pBeacon->OperatingMode.chanWidth == eHT_CHANNEL_WIDTH_20MHZ)
+                {
+                    pStaDs->vhtSupportedChannelWidthSet = WNI_CFG_VHT_CHANNEL_WIDTH_20_40MHZ;
+                    pStaDs->htSupportedChannelWidthSet = eHT_CHANNEL_WIDTH_20MHZ;
+                }
+                limCheckVHTOpModeChange(pMac, psessionEntry, pBeacon->OperatingMode.chanWidth, pStaDs->staIndex); 
+            }
+        }
     }
 #endif
 

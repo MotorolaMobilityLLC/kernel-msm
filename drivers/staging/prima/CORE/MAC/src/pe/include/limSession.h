@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -92,8 +112,11 @@ typedef struct sPESession           // Added to Support BT-AMP
     tSirNwType              nwType;
     tpSirSmeStartBssReq     pLimStartBssReq;        //handle to smestart bss req
     tpSirSmeJoinReq         pLimJoinReq;            // handle to sme join req
-    tpSirSmeReassocReq      pLimReAssocReq;         //handle to sme reassoc req
+    tpSirSmeJoinReq         pLimReAssocReq;         //handle to sme reassoc req
     tpLimMlmJoinReq         pLimMlmJoinReq;         //handle to MLM join Req
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    void                    *pLimMlmReassocRetryReq; //keep reasoc req for retry
+#endif
     void                    *pLimMlmReassocReq;      //handle to MLM reassoc Req
     tANI_U16                channelChangeReasonCode;
     tANI_U8                 dot11mode;
@@ -277,6 +300,8 @@ typedef struct sPESession           // Added to Support BT-AMP
 #ifdef WLAN_FEATURE_P2P
     tSirNoAParam p2pNoA;
     tSirP2PNoaAttr p2pGoPsUpdate;
+    tANI_U32 defaultAuthFailureTimeout;
+    tSirP2PNoaStart p2pGoPsNoaStartInd;
 #endif
 
     /* EDCA QoS parameters
@@ -302,6 +327,12 @@ typedef struct sPESession           // Added to Support BT-AMP
 #ifdef WLAN_FEATURE_11AC
     tANI_U8 vhtCapability;
     tANI_U8 vhtTxChannelWidthSet;
+    tLimOperatingModeInfo  gLimOperatingMode;
+    tLimWiderBWChannelSwitchInfo  gLimWiderBWChannelSwitch;
+    tANI_U8    vhtCapabilityPresentInBeacon;
+    tANI_U8    apCenterChan;
+    tANI_U8    apChanWidth;
+    tANI_U8    txBFIniFeatureEnabled;
 #endif
     tANI_U8            spectrumMgtEnabled;
     /* *********************11H related*****************************/
@@ -314,6 +345,17 @@ typedef struct sPESession           // Added to Support BT-AMP
     /*Flag to Track Status/Indicate HBFailure on this session */
     tANI_BOOLEAN LimHBFailureStatus;
     tANI_U32           gLimPhyMode;
+
+    tANI_U8          txLdpcIniFeatureEnabled;
+    /**
+     * Following is the place holder for free peer index pool.
+     * A non-zero value indicates that peer index is available
+     * for assignment.
+     */
+    tANI_U8    *gpLimPeerIdxpool;
+    tANI_U8    freePeerIdxHead;
+    tANI_U8    freePeerIdxTail;
+    tANI_U16  gLimNumOfCurrentSTAs;
 
 }tPESession, *tpPESession;
 

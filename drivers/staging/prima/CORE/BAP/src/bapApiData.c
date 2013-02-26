@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -95,7 +115,7 @@
 #define WLANBAP_LLC_OUI_SIZE                   3
 
 /*Offset of the protocol type field inside the LLC/SNAP header*/
-#define WLANBAP_LLC_PROTO_TYPE_OFFSET  WLANBAP_LLC_OUI_OFFSET +  WLANBAP_LLC_OUI_SIZE
+#define WLANBAP_LLC_PROTO_TYPE_OFFSET  (WLANBAP_LLC_OUI_OFFSET +  WLANBAP_LLC_OUI_SIZE)
 
 /*Size of the protocol type field inside the LLC/SNAP header*/
 #define WLANBAP_LLC_PROTO_TYPE_SIZE            2
@@ -132,15 +152,13 @@ static v_U8_t WLANBAP_LLC_HEADER[] =  {0xAA, 0xAA, 0x03, 0x00, 0x00, 0x00 };
 //#define DBGLOG printf
 #define DUMPLOG_ON
 #ifdef DUMPLOG_ON
-#define DUMPLOG(n, name1, name2, aStr, size) \
-    if (1) \
-{\
-    int i;\
-    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,"%d. %s: %s = \n", n, name1, name2); \
-    for (i = 0; i < size; i++) \
-       VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,"%2.2x%s", ((unsigned char *)aStr)[i], i % 16 == 15 ? "\n" : " "); \
-    VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,"\n"); \
-}
+#define DUMPLOG(n, name1, name2, aStr, size) do {                       \
+        int i;                                                          \
+        VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,"%d. %s: %s = \n", n, name1, name2); \
+        for (i = 0; i < size; i++)                                      \
+            VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,"%2.2x%s", ((unsigned char *)aStr)[i], i % 16 == 15 ? "\n" : " "); \
+        VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,"\n");      \
+    } while (0)
 #else
 #define DUMPLOG(n, name1, name2, aStr, size)
 #endif
@@ -150,15 +168,13 @@ static v_U8_t WLANBAP_LLC_HEADER[] =  {0xAA, 0xAA, 0x03, 0x00, 0x00, 0x00 };
 #define DBGLOG printf
 #define DUMPLOG
 #if defined DUMPLOG
-#define DUMPLOG(n, name1, name2, aStr, size) \
-    if (1) \
-{\
-    int i;\
-    DBGLOG("%d. %s: %s = \n", n, name1, name2); \
-    for (i = 0; i < size; i++) \
-        DBGLOG("%2.2x%s", ((unsigned char *)aStr)[i], i % 16 == 15 ? "\n" : " "); \
-    DBGLOG("\n"); \
-}
+#define DUMPLOG(n, name1, name2, aStr, size) do {                       \
+        int i;                                                          \
+        DBGLOG("%d. %s: %s = \n", n, name1, name2);                     \
+        for (i = 0; i < size; i++)                                      \
+            DBGLOG("%2.2x%s", ((unsigned char *)aStr)[i], i % 16 == 15 ? "\n" : " "); \
+        DBGLOG("\n");                                                   \
+    } while (0)
 #else
 #define DUMPLOG(n, name1, name2, aStr, size)
 #endif
@@ -323,7 +339,7 @@ WLANBAP_XlateTxDataPkt
     if ( NULL == pBtampCtx) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "Invalid BAP handle value in %s", __FUNCTION__);
+                     "Invalid BAP handle value in %s", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -347,7 +363,7 @@ WLANBAP_XlateTxDataPkt
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
                 "WLAN BAP: phy_link_handle mismatch in %s phy_link_handle=%d hciACLHeader.phyLinkHandle=%d",
-                __FUNCTION__, phy_link_handle, hciACLHeader.phyLinkHandle);
+                __func__, phy_link_handle, hciACLHeader.phyLinkHandle);
         return VOS_STATUS_E_INVAL;
     }
 
@@ -362,7 +378,7 @@ WLANBAP_XlateTxDataPkt
     if ( VOS_STATUS_SUCCESS != vosStatus ) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO,
-                     "Unable to retrieve STA Id from BAP context and phy_link_handle in %s", __FUNCTION__);
+                     "Unable to retrieve STA Id from BAP context and phy_link_handle in %s", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -373,7 +389,7 @@ WLANBAP_XlateTxDataPkt
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR, 
                 "WLAN BAP: Invalid logical link handle (%d) in %s. Corrected.", 
                 hciACLHeader.logLinkHandle,
-                __FUNCTION__);
+                __func__);
 
         // JEZ090123: Insure that the logical link value is good
         hciACLHeader.logLinkHandle = 1;
@@ -391,7 +407,7 @@ WLANBAP_XlateTxDataPkt
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR, 
                 "WLAN BAP: Invalid logical link entry in %s",
-                __FUNCTION__);
+                __func__);
 
         return VOS_STATUS_E_INVAL;
     }
@@ -501,7 +517,7 @@ WLANBAP_GetAcFromTxDataPkt
     if (( NULL == btampHandle) || (NULL == pHciData) || (NULL == pucAC))
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "Invalid params in %s", __FUNCTION__);
+                     "Invalid params in %s", __func__);
         return VOS_STATUS_E_FAULT;
     }
     pBtampCtx = (ptBtampContext) btampHandle;
@@ -513,7 +529,7 @@ WLANBAP_GetAcFromTxDataPkt
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR, 
                 "WLAN BAP: Invalid logical link handle (%d) in %s", 
                 hciACLHeader.logLinkHandle,
-                __FUNCTION__);
+                __func__);
 
         return VOS_STATUS_E_INVAL;
     }
@@ -528,7 +544,7 @@ WLANBAP_GetAcFromTxDataPkt
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR, 
                 "WLAN BAP: Invalid logical link entry in %s",
-                __FUNCTION__);
+                __func__);
 
         return VOS_STATUS_E_INVAL;
     }
@@ -595,7 +611,7 @@ WLANBAP_XlateRxDataPkt
     if ( NULL == pBtampCtx) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "Invalid BAP handle value in %s", __FUNCTION__);
+                     "Invalid BAP handle value in %s", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -640,7 +656,7 @@ WLANBAP_XlateRxDataPkt
     {
 
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "Invalid LLC header for BT-AMP packet in %s", __FUNCTION__);
+                     "Invalid LLC header for BT-AMP packet in %s", __func__);
         return VOS_STATUS_E_FAULT;
     }
 #endif //BAP_DEBUG
@@ -657,7 +673,7 @@ WLANBAP_XlateRxDataPkt
     {
 
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "Invalid (non-data) frame type in %s", __FUNCTION__);
+                     "Invalid (non-data) frame type in %s", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
@@ -672,7 +688,7 @@ WLANBAP_XlateRxDataPkt
     {
 
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                     "MAC address mismatch in %s", __FUNCTION__);
+                     "MAC address mismatch in %s", __func__);
         return VOS_STATUS_E_FAULT;
     }
 #endif //BAP_DEBUG
@@ -874,7 +890,7 @@ WLANBAP_STARxCB
     protoType = vos_be16_to_cpu(protoType);
     
     VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
-            "%s: received : %d, => BAP",__FUNCTION__,
+            "%s: received : %d, => BAP",__func__,
                  protoType);
     
     if(WLANBAP_BT_AMP_TYPE_DATA == protoType)
@@ -903,7 +919,7 @@ WLANBAP_STARxCB
     {
           VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
                 "%s: link Supervision packet received over TL: %d, => BAP",
-                     __FUNCTION__,protoType);
+                     __func__,protoType);
           btampHandle = (ptBtampHandle)bapContext; 
           vosStatus = WLANBAP_RxProcLsPkt(
                         btampHandle,
@@ -981,14 +997,14 @@ WLANBAP_TxCompCB
     if ( NULL == vosDataBuff) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                "Invalid vosDataBuff value in %s", __FUNCTION__);
+                "Invalid vosDataBuff value in %s", __func__);
         return VOS_STATUS_E_FAULT;
     }
 
     if ( NULL == bapContext) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                "Invalid bapContext value in %s", __FUNCTION__);
+                "Invalid bapContext value in %s", __func__);
         vos_pkt_return_packet( vosDataBuff ); 
         return VOS_STATUS_E_FAULT;
     }
@@ -1013,7 +1029,7 @@ WLANBAP_TxCompCB
 #ifdef BAP_DEBUG
     /* Trace the bapContext referenced. */
     VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH,
-              "WLAN BAP Context Monitor: bapContext value = %p in %s:%d. vosDataBuff=%p", bapContext, __FUNCTION__, __LINE__, vosDataBuff );
+              "WLAN BAP Context Monitor: bapContext value = %p in %s:%d. vosDataBuff=%p", bapContext, __func__, __LINE__, vosDataBuff );
 #endif //BAP_DEBUG
 
     // Sanity check the log_link_handle value 
@@ -1028,7 +1044,7 @@ WLANBAP_TxCompCB
     } else 
     {
        VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-                   "In %s:%d: Invalid logical link handle: %d", __FUNCTION__, __LINE__, hciACLHeader.logLinkHandle);
+                   "In %s:%d: Invalid logical link handle: %d", __func__, __LINE__, hciACLHeader.logLinkHandle);
     }
 
     /* Invoke the callback that BSL registered with me */ 
@@ -1164,7 +1180,7 @@ WLANBAP_STAPktPending
 #ifdef BAP_DEBUG
     /* Trace the tBtampCtx being passed in. */
     VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH,
-              "WLAN BAP Context Monitor: pBtampCtx value = %p in %s:%d", pBtampCtx, __FUNCTION__, __LINE__ );
+              "WLAN BAP Context Monitor: pBtampCtx value = %p in %s:%d", pBtampCtx, __func__, __LINE__ );
 #endif //BAP_DEBUG
 
     /*------------------------------------------------------------------------

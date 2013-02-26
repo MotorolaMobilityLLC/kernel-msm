@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -68,12 +88,12 @@ static eHalStatus hdd_OemDataReqCallback(tHalHandle hHal,
     if(oemDataReqStatus == eOEM_DATA_REQ_FAILURE)
     {
         snprintf(buffer, IW_CUSTOM_MAX, "QCOM: OEM-DATA-REQ-FAILED");
-        hddLog(LOGW, "%s: oem data req %d failed\n", __FUNCTION__, oemDataReqID);
+        hddLog(LOGW, "%s: oem data req %d failed\n", __func__, oemDataReqID);
     }
     else if(oemDataReqStatus == eOEM_DATA_REQ_INVALID_MODE)
     {
         snprintf(buffer, IW_CUSTOM_MAX, "QCOM: OEM-DATA-REQ-INVALID-MODE");
-        hddLog(LOGW, "%s: oem data req %d failed because the driver is in invalid mode (IBSS|BTAMP|AP)\n", __FUNCTION__, oemDataReqID);
+        hddLog(LOGW, "%s: oem data req %d failed because the driver is in invalid mode (IBSS|BTAMP|AP)\n", __func__, oemDataReqID);
     }
     else
     {
@@ -123,7 +143,7 @@ int iw_get_oem_data_rsp(
         status = sme_getOemDataRsp(WLAN_HDD_GET_HAL_CTX(pAdapter), &pSmeOemDataRsp);
         if(status != eHAL_STATUS_SUCCESS)
         {
-            hddLog(LOGE, "%s: failed in sme_getOemDataRsp\n", __FUNCTION__);
+            hddLog(LOGE, "%s: failed in sme_getOemDataRsp\n", __func__);
             break;
         }
         else
@@ -135,7 +155,7 @@ int iw_get_oem_data_rsp(
             }
             else
             {
-                hddLog(LOGE, "%s: pSmeOemDataRsp = NULL\n", __FUNCTION__);
+                hddLog(LOGE, "%s: pSmeOemDataRsp = NULL\n", __func__);
                 status = eHAL_STATUS_FAILURE;
                 break;
             }
@@ -186,7 +206,7 @@ int iw_set_oem_data_req(
 
         if(pOemDataReq == NULL)
         {
-            hddLog(LOGE, "in %s oemDataReq == NULL\n", __FUNCTION__);
+            hddLog(LOGE, "in %s oemDataReq == NULL\n", __func__);
             status = eHAL_STATUS_FAILURE;
             break;
         }

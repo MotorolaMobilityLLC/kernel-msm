@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -26,9 +46,9 @@
 
 Contains definitions of all PHY related structures that aree needed by FTM/PTT
 
-Copyright (c) 2007 QUALCOMM Incorporated. 
-All Rights Reserved. 
-Qualcomm Confidential and Proprietary 
+Copyright (c) 2007 Qualcomm Technologies, Inc. All Rights Reserved. 
+Qualcomm Technologies Proprietary and Confidential
+
 ============================================================================*/
 #include <wlan_nv.h>
  
@@ -84,7 +104,11 @@ typedef enum {
    PHYDBG_PREAMBLE_GREENFIELD,
    PHYDBG_PREAMBLE_MIXED,
    PHYDBG_PREAMBLE_SHORTB,
-   PHYDBG_PREAMBLE_LONGB
+   PHYDBG_PREAMBLE_LONGB,
+
+   PHYDBG_LDPC_PREAMBLE_OFDM = 0x10,
+   PHYDBG_LDPC_PREAMBLE_GREENFIELD = 0x11,
+   PHYDBG_LDPC_PREAMBLE_MIXED = 0x12
 } ePhyDbgPreamble;
 
 
@@ -211,6 +235,8 @@ typedef tANI_U32 eGainSteps;
 //[RY] new for PRIMA
 #define DPD_RESPONSE_SIZE 128
 typedef PACKED_PRE struct PACKED_POST {
+    tANI_U8  dpdCalFailCnt;                     //Count for number of times DPD cal failed.
+    tANI_U8  dpdCalSuccessCnt;                  //Count for number of times DPD cal passed.
     tANI_S16 dpd_threshold[DPD_RESPONSE_SIZE];
     tANI_S16 dpd_aoffset[DPD_RESPONSE_SIZE];
     tANI_S16 dpd_again[DPD_RESPONSE_SIZE];
@@ -889,5 +915,15 @@ typedef enum
 
 #define MAX_TPC_GAIN_LUT_DBM_2DEC_PLACES    (MAX_TPC_GAIN_LUT_DBM * 100)
 #define MIN_TPC_GAIN_LUT_DBM_2DEC_PLACES    (MIN_TPC_GAIN_LUT_DBM * 100)
+
+typedef enum
+{
+    RF_BANDWIDTH_20MHZ = 20,
+    RF_BANDWIDTH_40MHZ = 40,
+    RF_BANDWIDTH_80MHZ = 80,
+    RF_MIN_BANDWIDTH = RF_BANDWIDTH_20MHZ,
+    RF_MAX_BANDWIDTH = RF_BANDWIDTH_80MHZ,
+    RF_BANDWIDTH_INVALID = 0x7FFFFFFF
+}eRfBandwidth;
 
 #endif /* WLAN_PHY_H */

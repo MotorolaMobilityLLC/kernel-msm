@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -2024,7 +2044,7 @@ eHalStatus pmcPrepareCommand( tpAniSirGlobal pMac, eSmeCommandType cmdType, void
                 if(!HAL_STATUS_SUCCESS(status))
                 {
                     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_FATAL, "%s fail to allocate memory for command (0x%X)",
-                        __FUNCTION__, cmdType);
+                        __func__, cmdType);
                     pCommand = NULL;
                     break;
                 }
@@ -2505,7 +2525,9 @@ eHalStatus pmcEnterBmpsCheck( tpAniSirGlobal pMac )
       return eHAL_STATUS_PMC_NOT_NOW;
    }
 
-    if(!IS_SLM_SESSIONIZATION_SUPPORTED_BY_FW)
+    //Remove this code once SLM_Sessionization is supported 
+    //BMPS_WORKAROUND_NOT_NEEDED
+    if(!IS_FEATURE_SUPPORTED_BY_FW(SLM_SESSIONIZATION))
     {
         smsLog(pMac, LOG1, FL("doBMPSWorkaround %u\n"), pMac->roam.configParam.doBMPSWorkaround);
         if (pMac->roam.configParam.doBMPSWorkaround)
@@ -2536,6 +2558,12 @@ tANI_BOOLEAN pmcShouldBmpsTimerRun( tpAniSirGlobal pMac )
         return eANI_BOOLEAN_FALSE;
     }
 
+    if(pMac->pmc.isHostPsEn && pMac->pmc.remainInPowerActiveTillDHCP)
+    {
+        smsLog(pMac, LOG1, FL("Host controlled ps enabled and host wants active mode, so dont allow BMPS"));
+        return eANI_BOOLEAN_FALSE;
+    }
+
     if ((vos_concurrent_sessions_running()) &&
         ((csrIsConcurrentInfraConnected( pMac ) ||
         (vos_get_concurrency_mode()& VOS_SAP) ||
@@ -2544,7 +2572,13 @@ tANI_BOOLEAN pmcShouldBmpsTimerRun( tpAniSirGlobal pMac )
         smsLog(pMac, LOG1, FL("Multiple Sessions/GO/SAP sessions . BMPS should not be started"));
         return eANI_BOOLEAN_FALSE;
     }
-
+#ifdef FEATURE_WLAN_TDLS
+    if( !csrTdlsPowerSaveCheck( pMac ) )
+    {
+        smsLog(pMac, LOGE, FL("TDLS peer(s) connected. Dont start BMPS timer\n"));
+        return eANI_BOOLEAN_FALSE;
+    }
+#endif
     /* Check if there is an Infra session. BMPS is possible only if there is
      * an Infra session */
     if (!csrIsInfraConnected(pMac))

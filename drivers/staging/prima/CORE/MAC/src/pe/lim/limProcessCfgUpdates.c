@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -570,16 +590,26 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
         {
             tANI_U16 sessionId;
             pMac->sys.gSysEnableLinkMonitorMode = 1;
+            PELOGE(limLog(pMac, LOGE, "Reactivating heartbeat link monitoring\n");)
             for(sessionId = 0; sessionId < pMac->lim.maxBssId; sessionId++)
             {
-                if( (pMac->lim.gpSession[sessionId].valid )&& 
+                if( (pMac->lim.gpSession[sessionId].valid )&&
                     (eLIM_MLM_LINK_ESTABLISHED_STATE == pMac->lim.gpSession[sessionId].limMlmState) &&
-                    ( pMac->pmm.gPmmState != ePMM_STATE_BMPS_SLEEP))
+                    ( pMac->pmm.gPmmState != ePMM_STATE_BMPS_SLEEP) &&
+                    (!IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE))
                 {
+                    PELOG2(limLog(pMac, LOG2, "HB link monitoring reactivated"
+                           " for session=%d", sessionId);)
                     limReactivateHeartBeatTimer(pMac, &pMac->lim.gpSession[sessionId]);
                 }
+                else if ( pMac->lim.gpSession[sessionId].valid )
+                {
+                    PELOG2(limLog(pMac, LOG2, "HB link monitoring not reactivated-"
+                           "session=%d, limMlmState=%d, gPmmState=%d", 
+                           sessionId, pMac->lim.gpSession[sessionId].limMlmState,
+                           pMac->pmm.gPmmState);)
+                }
             }
-            PELOGE(limLog(pMac, LOGE, "Reactivating heartbeat link monitoring\n");)
         }        
     case WNI_CFG_MAX_PS_POLL:
     case WNI_CFG_NUM_BEACON_PER_RSSI_AVERAGE:
@@ -692,36 +722,7 @@ limApplyConfiguration(tpAniSirGlobal pMac,tpPESession psessionEntry)
 
     limUpdateConfig(pMac,psessionEntry);
 
-    if (phyMode == WNI_CFG_PHY_MODE_11A)
-    {
-        // 11a mode always uses short slot
-        // Check this since some APs in 11a mode broadcast long slot in their beacons. As per standard, always use what PHY mandates.
-        psessionEntry->shortSlotTimeSupported = true;
-    }
-    else if (phyMode == WNI_CFG_PHY_MODE_11G)
-    {
-        if ((psessionEntry->pePersona == VOS_STA_SAP_MODE) ||
-           (psessionEntry->pePersona == VOS_P2P_GO_MODE))
-        {
-            val = 1;
-        }
-
-        // Program Polaris based on AP capability
-
-        if (psessionEntry->limMlmState == eLIM_MLM_WT_JOIN_BEACON_STATE)
-            // Joining BSS.
-            val = SIR_MAC_GET_SHORT_SLOT_TIME( psessionEntry->limCurrentBssCaps);
-        else if (psessionEntry->limMlmState == eLIM_MLM_WT_REASSOC_RSP_STATE)
-            // Reassociating with AP.
-            val = SIR_MAC_GET_SHORT_SLOT_TIME( psessionEntry->limReassocBssCaps);
-        psessionEntry->shortSlotTimeSupported = val;
-    }
-    else // if (phyMode == WNI_CFG_PHY_MODE_11B) - use this if another phymode is added later ON
-    {
-        // Will reach here in 11b case
-        psessionEntry->shortSlotTimeSupported = false;
-    }
-    //apply protection related config.
+    psessionEntry->shortSlotTimeSupported = limGetShortSlotFromPhyMode(pMac, psessionEntry, phyMode);
 
 #ifdef WLAN_SOFTAP_FEATURE
     limSetCfgProtection(pMac, psessionEntry);    
@@ -827,6 +828,15 @@ limUpdateConfig(tpAniSirGlobal pMac,tpPESession psessionEntry)
 
     if(wlan_cfgGetInt(pMac, WNI_CFG_ASSOC_STA_LIMIT, &val) != eSIR_SUCCESS) {
         limLog( pMac, LOGP, FL( "cfg get assoc sta limit failed" ));
+    }
+    if( (!WDI_getFwWlanFeatCaps(SAP32STA)) && (val >= WNI_CFG_ASSOC_STA_LIMIT_STAMAX))
+    {
+        if(ccmCfgSetInt(pMac, WNI_CFG_ASSOC_STA_LIMIT, WNI_CFG_ASSOC_STA_LIMIT_STADEF,
+            NULL, eANI_BOOLEAN_FALSE) != eHAL_STATUS_SUCCESS)
+        {
+           limLog( pMac, LOGP, FL( "cfg get assoc sta limit failed" )); 
+        }
+        val = WNI_CFG_ASSOC_STA_LIMIT_STADEF;
     }
     pMac->lim.gLimAssocStaLimit = (tANI_U16)val;
 

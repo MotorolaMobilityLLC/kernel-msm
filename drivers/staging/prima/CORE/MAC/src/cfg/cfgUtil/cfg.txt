@@ -1,3 +1,23 @@
+/*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
 * Copyright (c) 2012, The Linux Foundation. All rights reserved.
 *
 * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -475,7 +495,7 @@ LIM
 WNI_CFG_REASSOCIATION_FAILURE_TIMEOUT    I    4    7
 V    RW    NP
 NONE
-0    65535    2000
+0    65535    1000
 V    RW    NP
 NONE
 0    65535    3000
@@ -671,10 +691,10 @@ NONE
 *
 
 WNI_CFG_BSSID    S    6    7
-V    RO    NP RESTART
+V    RW    NP RESTART
 NONE
 6    0x22 0x22 0x11 0x11 0x33 0x33
-V    RO    NP RESTART
+V    RW    NP RESTART
 NONE
 6    0x22 0x22 0x11 0x11 0x33 0x33
 
@@ -1222,10 +1242,10 @@ NONE
 WNI_CFG_MAX_TX_POWER_5    S    128    8
 V    RW    NP
 NONE
-3 36 126 14
+3 36 126 20
 V    RW    NP
 NONE
-3 36 126 14
+3 36 126 20
 
 *
 * Cell size configurations. These are canned configurations for a specified
@@ -2813,22 +2833,22 @@ LIM
 WNI_CFG_VHT_SU_BEAMFORMEE_CAP  I    4    19
 V    RW    NP    
 LIM
-0    1    1
+0    1    0
 V    RW    NP    
 LIM
-0    1    1
+0    1    0
 
 *
 * Compressed Steering Number of Beamformer Antennas Supported
-* Riva/Pronto does not support, default set to 0
+* Riva does not support,Pronto supports, default set to 0
 *
 WNI_CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED  I    4    19
 V    RW    NP    
 LIM
-0    1    0
+0    3    0
 V    RW    NP    
 LIM
-0    1    0
+0    3    0
 
 *
 * Number of Sounding Dimensions indicates Number
@@ -2838,10 +2858,10 @@ LIM
 WNI_CFG_VHT_NUM_SOUNDING_DIMENSIONS  I    4    19
 V    RW    NP    
 LIM
-0    1    1
+0    3    0
 V    RW    NP    
 LIM
-0    1    1
+0    3    0
 
 *
 * MU Beamformer Capable
@@ -3029,10 +3049,10 @@ LIM
 WNI_CFG_VHT_BASIC_MCS_SET  I    4    19
 V    RW    NP    
 LIM
-0    3     0 
+0    0xFFFF    0xFFFE
 V    RW    NP    
 LIM
-0    3     0
+0    0xFFFF    0xFFFE
 
 *
 * MU-MIMO Capable STA Count
@@ -3125,6 +3145,17 @@ V    RW    NP    RESTART
 LIM
 0    7    0
 
+*
+* NUM BUFFERS ADVERTISED
+* Defines number of buffers advertised in ADDBA
+*
+WNI_CFG_NUM_BUFF_ADVERT  I    4    7
+V    RW    NP    
+LIM
+0    128    45
+V    RW    NP    
+LIM
+0    128    45
 
 *
 * Maximum Rx AMPDU Factor
@@ -3222,21 +3253,6 @@ LIM
 * the num_beacon_per_rssi_average.
 *
 WNI_CFG_RSSI_FILTER_PERIOD    I    4    5
-V    RW    NP
-LIM
-0    255    20
-NV    RW    NP
-LIM
-0    255    20
-
-*
-* Period for which Firmware will collect the 
-* RSSI stats. Its in units of beacon interval. 
-* Rssi Filter period should always be >=
-* the num_beacon_per_rssi_average.
-* This value is used ONLY for CCX and 11r Fasttransition
-*
-WNI_CFG_FT_RSSI_FILTER_PERIOD    I    4    5
 V    RW    NP
 LIM
 0    255    5
@@ -4294,10 +4310,10 @@ HAL
 WNI_CFG_ASSOC_STA_LIMIT    I   4   8
 V    RW    NP
 LIM
-1    10    10
+1    32    10
 V    RW    NP
 LIM
-1    10    10
+1    32    10
 
 *
 *  SAP channel select start channel number
@@ -4406,4 +4422,29 @@ HAL
 0    1     0
 V    RW    NP
 HAL
+0    1     0
+
+*
+* Low Power Image Transition will be enabled if value is set to 1
+* 
+*
+*
+WNI_CFG_ENABLE_LPWR_IMG_TRANSITION  I   4   0
+V    RW    NP
+NONE
+0    1     0
+V    RW    NP
+NONE
+
+*
+* MCC Adaptive Scheduler will be enabled if value is set to 1
+* 
+*
+*
+WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED  I   4   0
+V    RW    NP
+NONE
+0    1     0
+V    RW    NP
+NONE
 0    1     0

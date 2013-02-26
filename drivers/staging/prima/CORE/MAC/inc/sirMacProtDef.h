@@ -1,4 +1,24 @@
 /*
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ *
+ * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
+ *
+ *
+ * Permission to use, copy, modify, and/or distribute this software for
+ * any purpose with or without fee is hereby granted, provided that the
+ * above copyright notice and this permission notice appear in all
+ * copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
+ * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
+ * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
+ * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+/*
  * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
@@ -155,13 +175,17 @@
 #define SIR_MAC_ACTION_QOS_MGMT        1
 #define SIR_MAC_ACTION_DLP             2
 #define SIR_MAC_ACTION_BLKACK          3
+#define SIR_MAC_ACTION_PUBLIC_USAGE    4
 #if defined WLAN_FEATURE_VOWIFI
 #define SIR_MAC_ACTION_RRM             5
 #endif
 #define SIR_MAC_ACTION_HT              7
+#ifdef FEATURE_WLAN_TDLS
+#define SIR_MAC_ACTION_TDLS           12
+#endif
 #define SIR_MAC_ACTION_WME            17
-#if defined WLAN_FEATURE_P2P
-#define SIR_MAC_ACTION_PUBLIC_USAGE 4
+#ifdef WLAN_FEATURE_11AC
+#define SIR_MAC_ACTION_VHT            21
 #endif
 
 // QoS management action codes
@@ -215,6 +239,11 @@
 
 #endif
 
+//VHT Action Field 
+#ifdef WLAN_FEATURE_11AC
+#define SIR_MAC_VHT_OPMODE_NOTIFICATION        2
+#endif
+
 // HT Action Field Codes
 #define SIR_MAC_SM_POWER_SAVE       1
 
@@ -236,6 +265,19 @@
 #ifdef WLAN_FEATURE_11W
 //11w SA query request/response action frame category code
 #define SIR_MAC_ACTION_SA_QUERY               8 
+#endif
+
+#ifdef FEATURE_WLAN_TDLS
+#define SIR_MAC_TDLS_SETUP_REQ           0
+#define SIR_MAC_TDLS_SETUP_RSP           1
+#define SIR_MAC_TDLS_SETUP_CNF           2
+#define SIR_MAC_TDLS_TEARDOWN            3
+#define SIR_MAC_TDLS_PEER_TRAFFIC_IND    4
+#define SIR_MAC_TDLS_CH_SWITCH_REQ       5
+#define SIR_MAC_TDLS_CH_SWITCH_RSP       6
+#define SIR_MAC_TDLS_PEER_TRAFFIC_RSP    9
+#define SIR_MAC_TDLS_DIS_REQ             10
+#define SIR_MAC_TDLS_DIS_RSP             14
 #endif
 
 #define SIR_MAC_MAX_RANDOM_LENGTH   2306
@@ -371,6 +413,7 @@
 #define SIR_MAC_VHT_CAPABILITIES_EID   191
 #define SIR_MAC_VHT_OPERATION_EID      192
 #define SIR_MAC_VHT_EXT_BSS_LOAD_EID   193
+#define SIR_MAC_VHT_OPMODE_EID         199
 #endif
 #define SIR_MAC_MAX_SUPPORTED_MCS_SET    16
 
@@ -587,7 +630,7 @@
 
 // bitname must be one of the above, eg ESS, CF_POLLABLE, etc.
 #define SIR_MAC_CLEAR_CAPABILITY(u16value, bitname) \
-    (u16value) &= (~(SIR_MAC_SET_##bitname(0)))
+  ((u16value) &= (~(SIR_MAC_SET_##bitname(0))))
 
 /// Status Code (present in Management response frames) enum
 
@@ -707,7 +750,11 @@ typedef enum eSirMacReasonCodes
     eSIR_MAC_INVALID_RSN_CAPABILITIES_REASON         = 22, //Invalid RSN information element capabilities
     eSIR_MAC_1X_AUTH_FAILURE_REASON                  = 23, //IEEE 802.1X authentication failed
     eSIR_MAC_CIPHER_SUITE_REJECTED_REASON            = 24, //Cipher suite rejected because of the security policy
-    // reserved                                        25 - 31
+#ifdef FEATURE_WLAN_TDLS
+    eSIR_MAC_TDLS_TEARDOWN_PEER_UNREACHABLE          = 25, //TDLS direct link teardown due to TDLS peer STA unreachable via the TDLS direct link
+    eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON             = 26, //TDLS direct link teardown for unspecified reason
+#endif
+    // reserved                                        27 - 31
     eSIR_MAC_QOS_UNSPECIFIED_REASON                  = 32, //Disassociated for unspecified, QoS-related reason
     eSIR_MAC_QAP_NO_BANDWIDTH_REASON                 = 33, //Disassociated because QoS AP lacks sufficient bandwidth for this QoS STA
     eSIR_MAC_XS_UNACKED_FRAMES_REASON                = 34, //Disassociated because excessive number of frames need to be acknowledged, but are not
