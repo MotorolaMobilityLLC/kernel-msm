@@ -4820,20 +4820,20 @@ static int iw_set_dynamic_mcbc_filter(struct net_device *dev,
            __func__, pRequest->mcastBcastFilterSetting,
            pHddCtx->hdd_wlan_suspended);
 
-    wlanRxpFilterParam = vos_mem_malloc(sizeof(tSirWlanSetRxpFilters));
-    if(NULL == wlanRxpFilterParam)
-    {
-        hddLog(VOS_TRACE_LEVEL_FATAL,
-           "%s: vos_mem_alloc failed ", __func__);
-        return -EINVAL;
-    }
-
     pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting = 
                                pRequest->mcastBcastFilterSetting; 
     pHddCtx->dynamic_mcbc_filter.enableCfg = TRUE; 
 
     if(pHddCtx->hdd_wlan_suspended)
     {
+      wlanRxpFilterParam = vos_mem_malloc(sizeof(tSirWlanSetRxpFilters));
+      if(NULL == wlanRxpFilterParam)
+      {
+        hddLog(VOS_TRACE_LEVEL_FATAL,
+           "%s: vos_mem_alloc failed ", __func__);
+        return -EINVAL;
+      }
+
       wlanRxpFilterParam->configuredMcstBcstFilterSetting = 
                                pRequest->mcastBcastFilterSetting;
       wlanRxpFilterParam->setMcstBcstFilter = TRUE;
@@ -4872,17 +4872,17 @@ static int iw_set_dynamic_mcbc_filter(struct net_device *dev,
              wlanRxpFilterParam->configuredMcstBcstFilterSetting,
              wlanRxpFilterParam->setMcstBcstFilter);
 
+      pHddCtx->dynamic_mcbc_filter.mcBcFilterSuspend =
+                         wlanRxpFilterParam->configuredMcstBcstFilterSetting;
       if (eHAL_STATUS_SUCCESS != sme_ConfigureRxpFilter(WLAN_HDD_GET_HAL_CTX(pAdapter),
                                                    wlanRxpFilterParam))
       {
         hddLog(VOS_TRACE_LEVEL_ERROR, 
                "%s: Failure to execute set HW MC/BC Filter request\n",
                __func__);
+        vos_mem_free(wlanRxpFilterParam);
         return -EINVAL;
       }
-
-      pHddCtx->dynamic_mcbc_filter.mcBcFilterSuspend = 
-                         wlanRxpFilterParam->configuredMcstBcstFilterSetting;
     }
 
     return 0;
