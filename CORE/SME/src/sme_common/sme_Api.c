@@ -97,7 +97,6 @@ extern tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #endif
 
 #define READ_MEMORY_DUMP_CMD     9
-#define READ_REG_DUMP_CMD        7
 
 // TxMB Functions
 extern eHalStatus pmcPrepareCommand( tpAniSirGlobal pMac, eSmeCommandType cmdType, void *pvParam,
@@ -4376,11 +4375,6 @@ VOS_STATUS sme_DbgReadRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t *pRegVa
 #endif
    tPmcPowerState PowerState;
    tANI_U32  sessionId = 0;
-   tANI_U32 cmd  = READ_REG_DUMP_CMD;
-   tANI_U32 arg1 = regAddr;
-   tANI_U32 arg2 = 0;
-   tANI_U32 arg3 = 0;
-   tANI_U32 arg4 = 0;
 
    /* 1) To make Quarky work in FTM mode **************************************/
 
@@ -4389,7 +4383,7 @@ VOS_STATUS sme_DbgReadRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t *pRegVa
 #if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
       if (HAL_STATUS_SUCCESS(palReadRegister(hHdd, regAddr, pRegValue)))
 #elif defined(FEATURE_WLAN_INTEGRATED_SOC)
-      if (VOS_STATUS_SUCCESS == WDA_HALDumpCmdReq(pMac, cmd, arg1, arg2, arg3, arg4, (tANI_U8 *)pRegValue))
+      if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgReadRegister(regAddr, pRegValue))
 #endif
       {
          return VOS_STATUS_SUCCESS;
@@ -4413,7 +4407,7 @@ VOS_STATUS sme_DbgReadRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t *pRegVa
 #if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
          if (HAL_STATUS_SUCCESS(palReadRegister(hHdd, regAddr, pRegValue )))
 #elif defined(FEATURE_WLAN_INTEGRATED_SOC)
-         if (VOS_STATUS_SUCCESS == WDA_HALDumpCmdReq(pMac, cmd, arg1, arg2, arg3, arg4, (tANI_U8 *)pRegValue))
+         if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgReadRegister(regAddr, pRegValue))
 #endif
          {
             status = VOS_STATUS_SUCCESS;
