@@ -43,6 +43,7 @@
 #include <linux/power_supply.h>
 #include <linux/mhl_8334.h>
 #include <linux/slimport.h>
+#include <linux/reboot.h>
 
 #include <asm/mach-types.h>
 
@@ -3025,6 +3026,20 @@ static void msm_otg_set_vbus_state(int online)
 	else
 		queue_work(system_nrt_wq, &motg->sm_work);
 }
+static int factory_cable;
+static int msm_pmic_is_factory_cable(struct msm_otg *motg)
+{
+	int id_gnd = 0;
+	int id_flt = 0;
+	id_gnd = irq_read_line(motg->pdata->pmic_id_irq);
+	id_gnd ^= motg->pdata->pmic_id_irq_active_high;
+	id_flt = gpio_get_value(motg->pdata->pmic_id_flt_gpio);
+	id_flt ^= motg->pdata->pmic_id_flt_gpio_active_high;
+
+	if (!id_gnd && !id_flt)
+		return 1;
+	return 0;
+}
 
 static void msm_pmic_id_status_w(struct work_struct *w)
 {
@@ -3043,9 +3058,20 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 
 	pr_debug("PMIC: ID GND %d\n", id_gnd);
 	pr_debug("PMIC: ID FLT %d\n", id_flt);
+
+	if (!id_gnd && !id_flt) {
+		pr_info_once("Factory Cable Attached!\n");
+		factory_cable = 1;
+	} else
+		if (factory_cable) {
+			pr_info_once("Factory Cable Detached!"
+					" 2 sec to power off.\n");
+			local_irq_restore(flags);
+			kernel_halt();
+			return;
+		}
+
 	if (id_gnd || !id_flt) {
-		if (!id_flt)
-			pr_info_once("Factory Cable Attached!\n");
 		if (!test_and_set_bit(ID, &motg->inputs)) {
 			pr_debug("PMIC: ID set\n");
 			work = 1;
@@ -3868,6 +3894,8 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 		else
 			debug_bus_voting_enabled = true;
 	}
+
+	factory_cable = msm_pmic_is_factory_cable(motg);
 
 	return 0;
 
