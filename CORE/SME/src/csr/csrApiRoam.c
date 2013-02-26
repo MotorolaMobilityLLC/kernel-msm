@@ -4089,7 +4089,7 @@ eHalStatus csrRoamProcessCommand( tpAniSirGlobal pMac, tSmeCmd *pCommand )
        break;
 
     case eCsrPerformPreauth:
-        smsLog(pMac, LOGE, FL("Attempting FT PreAuth Req \n"));
+        smsLog(pMac, LOG1, FL("Attempting FT PreAuth Req"));
         status = csrRoamIssueFTPreauthReq(pMac, sessionId, 
                 pCommand->u.roamCmd.pLastRoamBss);
         break;
@@ -5728,7 +5728,7 @@ eHalStatus csrRoamDequeuePreauth(tpAniSirGlobal pMac)
         if ( (eSmeCommandRoam == pCommand->command) && 
                 (eCsrPerformPreauth == pCommand->u.roamCmd.roamReason))
         {             
-            smsLog( pMac, LOGE, FL("DQ-Command = %d, Reason = %d \n"), 
+            smsLog( pMac, LOG1, FL("DQ-Command = %d, Reason = %d"),
                     pCommand->command, pCommand->u.roamCmd.roamReason);
             if (csrLLRemoveEntry( &pMac->sme.smeCmdActiveList, pEntry, LL_ACCESS_LOCK )) {
                 csrReleaseCommandPreauth( pMac, pCommand );
@@ -6229,7 +6229,7 @@ eHalStatus csrRoamIssueDisassociateCmd( tpAniSirGlobal pMac, tANI_U32 sessionId,
         tANI_BOOLEAN fHighPriority = eANI_BOOLEAN_FALSE;
     do
     {
-        smsLog( pMac, LOGE, FL("  reason = %d\n"), reason );
+        smsLog( pMac, LOG1, FL("  reason = %d"), reason );
         pCommand = csrGetCommandBuffer( pMac );
         if ( !pCommand ) 
         {

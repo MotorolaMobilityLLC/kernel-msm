@@ -223,6 +223,7 @@ VOS_STATUS csrNeighborRoamCreateChanListFromNeighborReport(tpAniSirGlobal pMac);
 void csrNeighborRoamTranistionPreauthDoneToDisconnected(tpAniSirGlobal pMac);
 tANI_BOOLEAN csrNeighborRoamStatePreauthDone(tpAniSirGlobal pMac);
 tANI_BOOLEAN csrNeighborRoamScanRspPending(tHalHandle hHal);
+v_U8_t *csrNeighborRoamStateToString(v_U8_t state);
 
 
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */

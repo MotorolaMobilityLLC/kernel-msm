@@ -84,6 +84,7 @@ typedef enum
    VOS_TRACE_LEVEL_INFO_HIGH,
    VOS_TRACE_LEVEL_INFO_MED,
    VOS_TRACE_LEVEL_INFO_LOW,
+   VOS_TRACE_LEVEL_DEBUG,
 
    // ALL means all trace levels will be active.  This value is in place for the 
    // vos_trace_setlevel() to allow the user to turn ON all traces.

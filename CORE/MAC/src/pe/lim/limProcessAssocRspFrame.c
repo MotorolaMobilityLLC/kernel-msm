@@ -443,6 +443,12 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         return;
     }
    
+   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+             FL("Assoc Resp Frame Received: BSSID %02x:%02x:%02x:%02x:%02x:%02x (Rssi %d)"),
+             pHdr->bssId[0], pHdr->bssId[1], pHdr->bssId[2],
+             pHdr->bssId[3], pHdr->bssId[4], pHdr->bssId[5],
+             (uint)abs((tANI_S8)WDA_GET_RX_RSSI_DB(pRxPacketInfo)));
+
     // Get pointer to Re/Association Response frame body
     pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
 
@@ -688,7 +694,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
 
         if(!pStaDs)
         {
-            PELOGE(limLog(pMac, LOG1, FL("could not get hash entry at DPH for \n"));)
+            PELOGE(limLog(pMac, LOGE, FL("could not get hash entry at DPH for"));)
             limPrintMacAddr(pMac, pHdr->sa, LOGE);
             mlmAssocCnf.resultCode = eSIR_SME_INVALID_ASSOC_RSP_RXED;
             mlmAssocCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
@@ -704,7 +710,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         if (psessionEntry->limMlmState == eLIM_MLM_WT_FT_REASSOC_RSP_STATE)
         {
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-            PELOGE(limLog(pMac, LOGE, FL("Sending self sta\n"));)
+            PELOGE(limLog(pMac, LOG1, FL("Sending self sta"));)
 #endif
             pmmResetPmmState(pMac);
 
