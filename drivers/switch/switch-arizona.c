@@ -516,7 +516,6 @@ static irqreturn_t arizona_hpdet_irq(int irq, void *data)
 	struct arizona_extcon_info *info = data;
 	struct arizona *arizona = info->arizona;
 	int id_gpio = arizona->pdata.hpdet_id_gpio;
-	unsigned int val;
 	int ret, reading;
 	bool mic = false;
 
@@ -598,7 +597,6 @@ out:
 static void arizona_identify_headphone(struct arizona_extcon_info *info)
 {
 	struct arizona *arizona = info->arizona;
-	unsigned int val;
 	int ret;
 
 	if (info->hpdet_done)
