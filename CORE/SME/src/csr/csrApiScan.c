@@ -3508,7 +3508,6 @@ void csrSetOppositeBandChannelInfo( tpAniSirGlobal pMac )
         {
             // else, we found channel info in the 2.4 GHz band.  If the 5.0 band is empty
             // set the 5.0 band info from the 2.4 country code.
-            if ( !csrLLIsListEmpty( &pMac->scan.channelPowerInfoList5G, LL_ACCESS_LOCK ) ) break;
             fPopulate5GBand = TRUE;
         }
         csrSaveChannelPowerForBand( pMac, fPopulate5GBand );
@@ -3734,6 +3733,12 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
 
         // set the indicator of the channel where the country IE was found...
         pMac->scan.channelOf11dInfo = pSirBssDesc->channelId;
+        csrGetRegulatoryDomainForCountry(pMac, pIesLocal->Country.country, &domainId );
+        if ( domainId != pMac->scan.domainIdCurrent )
+        {
+            WDA_SetRegDomain(pMac, domainId);
+            csrGet5GChannels(pMac );
+        }
         // Populate both band channel lists based on what we found in the country information...
         csrSetOppositeBandChannelInfo( pMac );
         bMaxNumChn = WNI_CFG_VALID_CHANNEL_LIST_LEN;
