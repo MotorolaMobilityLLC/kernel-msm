@@ -107,16 +107,21 @@ void find_memory_hole(void);
 				memory_hole_align)
 
 #define __phys_to_virt(phys)				\
-	(unsigned long)\
-	((MEM_HOLE_END_PHYS_OFFSET && ((phys) >= MEM_HOLE_END_PHYS_OFFSET)) ? \
-	(phys) - MEM_HOLE_END_PHYS_OFFSET + MEM_HOLE_PAGE_OFFSET :	\
-	(phys) - PHYS_OFFSET + PAGE_OFFSET)
+({							\
+	unsigned long __phys = (unsigned long)phys;	\
+	((MEM_HOLE_END_PHYS_OFFSET &&			\
+			((__phys) >= MEM_HOLE_END_PHYS_OFFSET)) ?	\
+	(__phys) - MEM_HOLE_END_PHYS_OFFSET + MEM_HOLE_PAGE_OFFSET :	\
+	(__phys) - PHYS_OFFSET + PAGE_OFFSET);		\
+})
 
 #define __virt_to_phys(virt)				\
-	(unsigned long)\
-	((MEM_HOLE_END_PHYS_OFFSET && ((virt) >= MEM_HOLE_PAGE_OFFSET)) ? \
-	(virt) - MEM_HOLE_PAGE_OFFSET + MEM_HOLE_END_PHYS_OFFSET :	\
-	(virt) - PAGE_OFFSET + PHYS_OFFSET)
+({							\
+	unsigned long __virt = (unsigned long)virt;	\
+	((MEM_HOLE_END_PHYS_OFFSET && ((__virt) >= MEM_HOLE_PAGE_OFFSET)) ? \
+	(__virt) - MEM_HOLE_PAGE_OFFSET + MEM_HOLE_END_PHYS_OFFSET :	\
+	(__virt) - PAGE_OFFSET + PHYS_OFFSET);		\
+})
 #endif
 
 /*
