@@ -1554,7 +1554,6 @@ typedef enum
 #define CFG_TDLS_RSSI_HYSTERESIS_MAX                ( 100 )
 #define CFG_TDLS_RSSI_HYSTERESIS_DEFAULT            ( 100 )
 
-<<<<<<< HEAD:CORE/HDD/inc/wlan_hdd_cfg.h
 #define CFG_TDLS_RSSI_TRIGGER_THRESHOLD             "gTDLSRSSITriggerThreshold"
 #define CFG_TDLS_RSSI_TRIGGER_THRESHOLD_MIN         ( -120 )
 #define CFG_TDLS_RSSI_TRIGGER_THRESHOLD_MAX         ( 100 )
@@ -1564,13 +1563,12 @@ typedef enum
 #define CFG_TDLS_RSSI_TEARDOWN_THRESHOLD_MIN        ( -120 )
 #define CFG_TDLS_RSSI_TEARDOWN_THRESHOLD_MAX        ( 0 )
 #define CFG_TDLS_RSSI_TEARDOWN_THRESHOLD_DEFAULT    ( -75 )
-=======
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+
 #define CFG_ACTIVEMODE_OFFLOAD_ENABLE         "gEnableActiveModeOffload"
 #define CFG_ACTIVEMODE_OFFLOAD_ENABLE_MIN     ( 0 )
 #define CFG_ACTIVEMODE_OFFLOAD_ENABLE_MAX     ( 1 )
 #define CFG_ACTIVEMODE_OFFLOAD_ENABLE_DEFAULT ( 1 )
->>>>>>> 9d0a871... Update WCNSS_qcom_cfg.ini values for specific OEM:prima/CORE/HDD/inc/wlan_hdd_cfg.h
 #endif
 
 /* Enable/Disable LPWR Image(cMEM uBSP) Transition */
@@ -1579,13 +1577,6 @@ typedef enum
 #define CFG_ENABLE_LPWR_IMG_TRANSITION_MAX         ( 1 )
 #define CFG_ENABLE_LPWR_IMG_TRANSITION_DEFAULT     ( 0 )
 
-
-#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
-#define CFG_ACTIVEMODE_OFFLOAD_ENABLE         "gEnableActiveModeOffload"
-#define CFG_ACTIVEMODE_OFFLOAD_ENABLE_MIN     ( 0 )
-#define CFG_ACTIVEMODE_OFFLOAD_ENABLE_MAX     ( 1 )
-#define CFG_ACTIVEMODE_OFFLOAD_ENABLE_DEFAULT ( 0 )
-#endif
 
 /*
  * Scan Aging timeout value in seconds
