@@ -312,10 +312,8 @@ typedef struct _VosContextType
    /* HDD Module Context  */
    v_VOID_t           *pHDDContext;
 
-#ifdef WLAN_SOFTAP_FEATURE
    /* HDD SoftAP Module Context  */
    v_VOID_t           *pHDDSoftAPContext;
-#endif
 
    /* TL Module Context  */
    v_VOID_t           *pTLContext;
@@ -326,10 +324,8 @@ typedef struct _VosContextType
    /* BAP Context */
    v_VOID_t           *pBAPContext;
 
-#ifdef WLAN_SOFTAP_FEATURE   
    /* SAP Context */
    v_VOID_t           *pSAPContext;
-#endif
    
    /* VOS Packet Context */
    vos_pkt_context_t   vosPacket; 
