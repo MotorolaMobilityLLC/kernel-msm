@@ -287,6 +287,7 @@ void mmi_panel_notify(unsigned int state, void *data)
 static int panel_enable(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
+	u8 pwr_mode;
 	int ret = 0;
 
 	pr_info("%s is called\n", __func__);
@@ -324,8 +325,14 @@ static int panel_enable(struct platform_device *pdev)
 
 	mmi_panel_notify(MMI_PANEL_EVENT_POST_INIT, NULL);
 
-	pr_info("%s completed. Power_mode =0x%x\n",
-				__func__, mipi_mode_get_pwr_mode(mfd));
+	ret = mipi_mot_get_pwr_mode(mfd, &pwr_mode);
+	if (ret > 0)
+		pr_info("%s completed. Power_mode =0x%x\n", __func__, pwr_mode);
+	else {
+		pr_err("%s: Failed to get power_mode. Ret = %d\n",
+							__func__, ret);
+		goto err;
+	}
 
 	if (!mot_panel.panel_on)
 		atomic_set(&mot_panel.state, MOT_PANEL_ON);
@@ -356,7 +363,9 @@ static int panel_disable(struct platform_device *pdev)
 
 	if (!factory_run && mot_panel.esd_enabled &&
 				(mot_panel.esd_detection_run == true)) {
-		cancel_delayed_work(&mot_panel.esd_work);
+#ifndef MOT_PANEL_ESD_SELF_TRIGGER
+		cancel_delayed_work_sync(&mot_panel.esd_work);
+#endif
 		mot_panel.esd_detection_run = false;
 	}
 
@@ -649,14 +658,6 @@ err_device_put:
 	return ret;
 }
 
-/*
- * This is a work around for now. We need to make this call from board-mmi.c
- * but there is no way for this panel to make the call to this file. It has
- * to make the call to the msm_fb and from there, it will call to board-mmi.c
- * because we have to support the factory build which the ESD will not run
- * because there might be not have the panel
- */
-/* extern int mot_panel_is_factory_mode(void); */
 static int __init mipi_mot_lcd_init(void)
 {
 	mipi_dsi_buf_alloc(&mot_tx_buf, DSI_BUF_SIZE);
@@ -671,6 +672,7 @@ static int __init mipi_mot_lcd_init(void)
 	mot_panel.get_controller_ver = mipi_mot_get_controller_ver;
 	mot_panel.get_controller_drv_ver = mipi_mot_get_controller_drv_ver;
 	mot_panel.esd_run = mipi_mot_esd_work;
+	mot_panel.is_valid_power_mode = mipi_mot_is_valid_power_mode;
 
 	mot_panel.panel_on = mipi_mot_panel_on;
 	mot_panel.panel_off = NULL;
@@ -678,11 +680,10 @@ static int __init mipi_mot_lcd_init(void)
 	mot_panel.hide_img = mipi_mot_hide_img;
 	moto_panel_debug_init();
 
-/*
-	factory_run = mot_panel_is_factory_mode();
+	factory_run = mipi_dsi_panel_is_factory_mode();
 	if (factory_run)
 		pr_info("MIPI MOT PANEL: Factory mode\n");
-*/
+
 	return platform_driver_register(&this_driver);
 }
 

@@ -74,6 +74,22 @@ static int mipi_dsi_panel_power_en(int on)
 	return ret;
 }
 
+int mipi_dsi_panel_power_enable(int on)
+{
+	if (mipi_dsi_pdata && mipi_dsi_pdata->panel_power_save)
+		return mipi_dsi_pdata->panel_power_save(on);
+	else
+		return 0;
+}
+
+int mipi_dsi_panel_is_factory_mode(void)
+{
+	if (mipi_dsi_pdata && mipi_dsi_pdata->is_factory_mode)
+		return mipi_dsi_pdata->is_factory_mode();
+	else
+		return 0;
+}
+
 static int mipi_dsi_panel_on(struct platform_device *pdev)
 {
 	return panel_next_panel_on(pdev);

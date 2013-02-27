@@ -70,13 +70,6 @@ static int panel_disable(struct msm_fb_data_type *mfd)
 	return 0;
 }
 
-static int is_valid_power_mode(struct msm_fb_data_type *mfd)
-{
-	u8 pwr_mod;
-	pwr_mod = mipi_mode_get_pwr_mode(mfd);
-	/*Bit7: Booster on ;Bit4: Sleep Out ;Bit2: Display On*/
-	return (pwr_mod & 0x94) == 0x94;
-}
 static int __init mipi_mot_cmd_jdi_hd_430_init(void)
 {
 	int ret;
@@ -167,10 +160,7 @@ static int __init mipi_mot_cmd_jdi_hd_430_init(void)
 	mot_panel->enable_acl = enable_acl; */
 
 	/* For ESD detection information */
-	mot_panel->esd_enabled = false;
-	/*TODO
-	mot_panel->is_valid_manufacture_id = is_valid_manufacture_id; */
-	mot_panel->is_valid_power_mode = is_valid_power_mode;
+	mot_panel->esd_enabled = true;
 
 	ret = mipi_mot_device_register(pinfo, MIPI_DSI_PRIM, MIPI_DSI_PANEL_HD);
 	if (ret)
