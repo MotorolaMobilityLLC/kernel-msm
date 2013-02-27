@@ -1607,9 +1607,7 @@ typedef enum
     WDI_TX_ONLY,
     WDI_RX_ONLY,
     WDI_TX_RX,
-#ifdef WLAN_SOFTAP_FEATURE
     WDI_TX_DEFAULT,
-#endif
     WDI_DONOT_USE_KEY_DIRECTION
 } WDI_KeyDirectionType;
 
@@ -2541,10 +2539,8 @@ typedef struct {
    /* length of the template */
    wpt_uint32   beaconLength;
 
-#ifdef WLAN_SOFTAP_FEATURE
    /* TIM IE offset from the beginning of the template.*/
    wpt_uint32   timIeOffset; 
-#endif
 
 #ifdef WLAN_FEATURE_P2P
    /* P2P IE offset from the beginning of the template */
