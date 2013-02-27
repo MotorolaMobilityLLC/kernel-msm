@@ -130,31 +130,6 @@ typedef struct
 } tTCParams;
 
 
-typedef enum eRxpMode {
-    eRXP_IDLE_MODE        = 0x0,
-    eRXP_SCAN_MODE        = 0x1,
-    eRXP_PRE_ASSOC_MODE   = 0x2,
-    eRXP_POST_ASSOC_MODE  = 0x4,
-    eRXP_AP_MODE          = 0x8,
-    eRXP_PROMISCUOUS_MODE = 0x10,
-    eRXP_LEARN_MODE       = 0x20,
-    eRXP_POWER_SAVE_MODE  = 0x40,
-    eRXP_IBSS_MODE        = 0x80,
-    eRXP_BTAMP_PREASSOC_MODE    = 0x100,
-    eRXP_BTAMP_POSTASSOC_MODE   = 0x200,
-    eRXP_BTAMP_AP_MODE          = 0x400,
-    eRXP_BTAMP_STA_MODE         = 0x800,
-    eRXP_MULTI_BSS_MODE         = 0x1000
-#ifdef FEATURE_OEM_DATA_SUPPORT
-   ,eRXP_OEM_DATA_MODE             = 0x2000
-#endif
-#ifndef WLAN_FTM_STUB
-    ,eRXP_FTM_MODE         = 0x4000
-#endif
-   ,eRXP_LISTEN_MODE      = 0x8000
-} tRxpMode;
-
-
 typedef struct
 {
     // First two fields bssid and assocId are used to find staid for sta.

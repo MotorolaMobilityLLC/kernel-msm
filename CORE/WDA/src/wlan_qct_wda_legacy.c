@@ -230,11 +230,9 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb)
       pmmPostMessage(pMac, &msg);
       break;
 
-#if defined(ANI_MANF_DIAG) || defined(ANI_PHY_DEBUG)
    case SIR_PTT_MSG_TYPES_BEGIN:
       break;
 
-#endif
 
    default:
       WDALOGW( wdaLog(pMac, LOGW, FL("Unknown message type = "
