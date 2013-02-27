@@ -49,7 +49,6 @@
          Qualcomm Confidential and Proprietary.
   
   ==========================================================================*/
-#ifdef WLAN_SOFTAP_FEATURE
 
 /*--------------------------------------------------------------------------- 
   Include files
@@ -993,21 +992,6 @@ VOS_STATUS hdd_softap_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    }
  
 //xg: @@@@: temporarily disble these. will revisit later
-#ifndef WLAN_SOFTAP_FEATURE
-   if(pAdapter->conn_info.uIsAuthenticated == VOS_TRUE)
-      pPktMetaInfo->ucIsEapol = 0;       
-   else 
-      pPktMetaInfo->ucIsEapol = hdd_IsEAPOLPacket( pVosPacket ) ? 1 : 0;
-
-   if ((HDD_WMM_USER_MODE_NO_QOS == pAdapter->cfg_ini->WmmMode) ||
-       (!pAdapter->hddWmmStatus.wmmQap))
-   {
-      // either we don't want QoS or the AP doesn't support QoS
-      pPktMetaInfo->ucUP = 0;
-      pPktMetaInfo->ucTID = 0;
-   }
-   else
-#endif
    {
       pPktMetaInfo->ucUP = pktNode->userPriority;
       pPktMetaInfo->ucTID = pPktMetaInfo->ucUP;
@@ -1383,19 +1367,7 @@ VOS_STATUS hdd_softap_RegisterSTA( hdd_adapter_t *pAdapter,
 
    vosStatus = hdd_softap_init_tx_rx_sta(pAdapter, staId, &staDesc.vSTAMACAddress);
 
-#ifdef WLAN_SOFTAP_FEATURE
    staDesc.ucQosEnabled = fWmmEnabled;
-#else
-   // set the QoS field appropriately
-   if (hdd_wmm_is_active(pAdapter))
-   {
-      staDesc.ucQosEnabled = 1;
-   }
-   else
-   {
-      staDesc.ucQosEnabled = 0;
-   }
-#endif
    VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
               "HDD SOFTAP register TL QoS_enabled=%d",
               staDesc.ucQosEnabled );
@@ -1583,4 +1555,3 @@ VOS_STATUS hdd_softap_GetStaId(hdd_adapter_t *pAdapter, v_MACADDR_t *pMacAddress
     return VOS_STATUS_E_FAILURE;
 }
 
-#endif //WLAN_SOFTAP_FEATURE

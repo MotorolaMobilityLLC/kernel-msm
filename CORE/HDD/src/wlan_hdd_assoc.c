@@ -2353,12 +2353,9 @@ eCsrAuthType hdd_TranslateRSNToCsrAuthType( u_int8_t auth_suite[4])
     }
     return auth_type;
 } 
-#ifdef WLAN_SOFTAP_FEATURE
+
 eCsrAuthType 
 hdd_TranslateWPAToCsrAuthType(u_int8_t auth_suite[4]) 
-#else
-static eCsrAuthType hdd_TranslateWPAToCsrAuthType(u_int8_t auth_suite[4]) 
-#endif
 {
     eCsrAuthType auth_type;
     // is the auth type supported?
@@ -2382,12 +2379,9 @@ static eCsrAuthType hdd_TranslateWPAToCsrAuthType(u_int8_t auth_suite[4])
     hddLog(LOG1, FL("auth_type: %d"), auth_type);
     return auth_type;
 }
-#ifdef WLAN_SOFTAP_FEATURE
+
 eCsrEncryptionType 
 hdd_TranslateRSNToCsrEncryptionType(u_int8_t cipher_suite[4])
-#else
-static eCsrEncryptionType hdd_TranslateRSNToCsrEncryptionType(u_int8_t cipher_suite[4])                                    
-#endif
 {
     eCsrEncryptionType cipher_type;
     // is the cipher type supported?
@@ -2431,13 +2425,9 @@ static tANI_U8 hdd_IsMACAddrNULL (tANI_U8 *macAddr, tANI_U8 length)
     }
     return TRUE;
 } /****** end hdd_IsMACAddrNULL() ******/
-#ifdef WLAN_SOFTAP_FEATURE
+
 eCsrEncryptionType 
 hdd_TranslateWPAToCsrEncryptionType(u_int8_t cipher_suite[4])
-#else
-static eCsrEncryptionType 
-hdd_TranslateWPAToCsrEncryptionType(u_int8_t cipher_suite[4])                                    
-#endif
 {
     eCsrEncryptionType cipher_type;
     // is the cipher type supported?

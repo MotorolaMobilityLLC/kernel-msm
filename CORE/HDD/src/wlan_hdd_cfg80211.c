@@ -2559,7 +2559,6 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                 hdd_stop_adapter( pHddCtx, pAdapter );
                 hdd_deinit_adapter( pHddCtx, pAdapter );
                 memset(&pAdapter->sessionCtx, 0, sizeof(pAdapter->sessionCtx));
-#ifdef WLAN_SOFTAP_FEATURE
 #ifdef WLAN_FEATURE_P2P
                 pAdapter->device_mode = (type == NL80211_IFTYPE_AP) ?
                                    WLAN_HDD_SOFTAP : WLAN_HDD_P2P_GO;
@@ -2612,7 +2611,6 @@ int wlan_hdd_cfg80211_change_iface( struct wiphy *wiphy,
                 }
                 hdd_set_conparam(1);
 
-#endif
                 /*interface type changed update in wiphy structure*/
                 if(wdev)
                 {
