@@ -69,7 +69,25 @@
 #define VALID_PWR_MODE 0x90
 
 /* ESD spec require 10ms, select 8ms */
-#define MOT_PANEL_ESD_CHECK_PERIOD   msecs_to_jiffies(8000)
+/* MIPI_MOT_PANEL_ESD_TEST is used to run ESD detection/recovery stress test */
+/* #define MIPI_MOT_PANEL_ESD_TEST 1 */
+#define MIPI_MOT_PANEL_ESD_CNT_MAX      3
+
+/* ESD spec require 10s, select 8s */
+#ifdef MIPI_MOT_PANEL_ESD_TEST
+/*
+ * MOT_PANEL_ESD_SELF_TRIGGER is triggered ESD recovery depending how many
+ * times of MIPI_MOT_PANEL_ESD_CNT_MAX detection
+ */
+#define MOT_PANEL_ESD_SELF_TRIGGER  1
+
+#define MOT_PANEL_ESD_CHECK_PERIOD     msecs_to_jiffies(200)
+#define MOT_PANEL_ESD_WQ_TIME_MSEC     10000
+#else
+#define MOT_PANEL_ESD_CHECK_PERIOD     msecs_to_jiffies(8000)
+#define MOT_PANEL_ESD_WQ_TIME_MSEC     20000
+#endif
+
 #define MOT_PANEL_ESD_NUM_TRY_MAX    1
 
 #define MOT_PANEL_OFF     0x0
@@ -167,6 +185,7 @@ void mipi_mot_set_mot_panel(struct mipi_mot_panel *mot_panel_ptr);
 u16 mipi_mot_get_manufacture_id(struct msm_fb_data_type *mfd);
 u16 mipi_mot_get_controller_ver(struct msm_fb_data_type *mfd);
 u16 mipi_mot_get_controller_drv_ver(struct msm_fb_data_type *mfd);
+int mipi_mot_is_valid_power_mode(struct msm_fb_data_type *mfd);
 int mipi_mot_get_raw_mtp(struct msm_fb_data_type *mfd);
 void mipi_mot_dynamic_gamma_calc(uint32_t v0_val, uint8_t preamble_1,
 	uint8_t preamble_2, uint16_t in_gamma[NUM_VOLT_PTS][NUM_COLORS]);
@@ -175,9 +194,9 @@ u8 *mipi_mot_get_gamma_setting(struct msm_fb_data_type *mfd, int level);
 int mipi_mot_panel_on(struct msm_fb_data_type *mfd);
 int mipi_mot_panel_off(struct msm_fb_data_type *mfd);
 void mipi_mot_panel_exit_sleep(void);
-u8 mipi_mode_get_pwr_mode(struct msm_fb_data_type *mfd);
+int mipi_mot_get_pwr_mode(struct msm_fb_data_type *mfd, u8 *pwr_mode);
 void mipi_mot_esd_work(void);
-void mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt);
+int mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt);
 int mipi_mot_rx_cmd(struct dsi_cmd_desc *cmd, u8 *data, int rlen);
 int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide);
 void mipi_mot_panel_enter_normal_mode(void);

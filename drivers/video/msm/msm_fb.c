@@ -1076,6 +1076,7 @@ static void msm_fb_imageblit(struct fb_info *info, const struct fb_image *image)
 
 static int msm_fb_blank(int blank_mode, struct fb_info *info)
 {
+	int ret;
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 
 	if (blank_mode == FB_BLANK_POWERDOWN) {
@@ -1084,6 +1085,8 @@ static int msm_fb_blank(int blank_mode, struct fb_info *info)
 		event.data = &blank_mode;
 		fb_notifier_call_chain(FB_EVENT_BLANK, &event);
 	}
+
+	lock_panel_mutex(mfd);
 	msm_fb_pan_idle(mfd);
 	if (mfd->op_enable == 0) {
 		if (blank_mode == FB_BLANK_UNBLANK)
@@ -1091,7 +1094,10 @@ static int msm_fb_blank(int blank_mode, struct fb_info *info)
 		else
 			mfd->suspend.panel_power_on = FALSE;
 	}
-	return msm_fb_blank_sub(blank_mode, info, mfd->op_enable);
+	ret = msm_fb_blank_sub(blank_mode, info, mfd->op_enable);
+	unlock_panel_mutex(mfd);
+
+	return ret;
 }
 
 static int msm_fb_set_lut(struct fb_cmap *cmap, struct fb_info *info)
