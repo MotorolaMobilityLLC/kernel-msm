@@ -345,9 +345,7 @@ eHalStatus csrSendMBDeauthReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirM
 eHalStatus csrSendMBDisassocCnfMsg( tpAniSirGlobal pMac, tpSirSmeDisassocInd pDisassocInd );
 eHalStatus csrSendMBDeauthCnfMsg( tpAniSirGlobal pMac, tpSirSmeDeauthInd pDeauthInd );
 eHalStatus csrSendAssocCnfMsg( tpAniSirGlobal pMac, tpSirSmeAssocInd pAssocInd, eHalStatus status );
-#ifdef WLAN_SOFTAP_FEATURE
 eHalStatus csrSendAssocIndToUpperLayerCnfMsg( tpAniSirGlobal pMac, tpSirSmeAssocInd pAssocInd, eHalStatus Halstatus, tANI_U8 sessionId );
-#endif
 eHalStatus csrSendMBStartBssReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, eCsrRoamBssType bssType, 
                                     tCsrRoamStartBssParams *pParam, tSirBssDescription *pBssDesc );
 eHalStatus csrSendMBStopBssReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId );
@@ -379,11 +377,7 @@ void csrFullPowerCallback(void *pv, eHalStatus status);
 void csrReleaseProfile(tpAniSirGlobal pMac, tCsrRoamProfile *pProfile);
 //To free memory allocated inside scanFilter
 void csrFreeScanFilter(tpAniSirGlobal pMac, tCsrScanResultFilter *pScanFilter);
-#ifdef WLAN_SOFTAP_FEATURE
 eCsrCfgDot11Mode csrGetCfgDot11ModeFromCsrPhyMode(tCsrRoamProfile *pProfile, eCsrPhyMode phyMode, tANI_BOOLEAN fProprietary);
-#else
-eCsrCfgDot11Mode csrGetCfgDot11ModeFromCsrPhyMode(eCsrPhyMode phyMode, tANI_BOOLEAN fProprietary);
-#endif
 tANI_U32 csrTranslateToWNICfgDot11Mode(tpAniSirGlobal pMac, eCsrCfgDot11Mode csrDot11Mode);
 void csrSaveChannelPowerForBand( tpAniSirGlobal pMac, tANI_BOOLEAN fPopulate5GBand );
 void csrApplyChannelPowerCountryInfo( tpAniSirGlobal pMac, tCsrChannel *pChannelList, tANI_U8 *countryCode, tANI_BOOLEAN updateRiva);
@@ -866,7 +860,6 @@ eHalStatus csrRoamIssueStopBssCmd( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI
 void csrCallRoamingCompletionCallback(tpAniSirGlobal pMac, tCsrRoamSession *pSession, 
                                       tCsrRoamInfo *pRoamInfo, tANI_U32 roamId, eCsrRoamResult roamResult);
 
-#ifdef WLAN_SOFTAP_FEATURE
 /* ---------------------------------------------------------------------------
     \fn csrRoamIssueDisassociateStaCmd
     \brief csr function that HDD calls to disassociate a associated station
@@ -944,7 +937,6 @@ eHalStatus csrSendMBGetWPSPBCSessions( tpAniSirGlobal pMac, tANI_U32 sessionId,
 eHalStatus
 csrSendChngMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U32 sessionId);
 
-#endif
 #ifdef FEATURE_WLAN_BTAMP_UT_RF
 eHalStatus csrRoamStartJoinRetryTimer(tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32 interval);
 eHalStatus csrRoamStopJoinRetryTimer(tpAniSirGlobal pMac, tANI_U32 sessionId);
