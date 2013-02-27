@@ -277,6 +277,48 @@ int32_t ov660_set_sensor_mode(int readout)
 	return rc;
 }
 
+static int32_t ov660_set_focus_window(struct msm_focus_window_t window)
+{
+	int32_t rc = 0;
+
+	pr_debug("%s: setting focus window to: {%d,%d,%d,%d}\n",
+			__func__,
+			window.x,
+			window.y,
+			window.width,
+			window.height);
+	/* Set X */
+	rc = ov660_write_i2c(0x7984, (window.x >> 8) & 0x1F);
+	GOTO_EXIT_IF((rc < 0), 1);
+
+	rc = ov660_write_i2c(0x7985, window.x);
+	GOTO_EXIT_IF((rc < 0), 1);
+
+	/* Set Y */
+	rc = ov660_write_i2c(0x7986, (window.y >> 8) & 0x1F);
+	GOTO_EXIT_IF((rc < 0), 1);
+
+	rc = ov660_write_i2c(0x7987, window.y);
+	GOTO_EXIT_IF((rc < 0), 1);
+
+	/* Set width */
+	rc = ov660_write_i2c(0x7988, (window.width >> 8) & 0x1F);
+	GOTO_EXIT_IF((rc < 0), 1);
+
+	rc = ov660_write_i2c(0x7989, window.width);
+	GOTO_EXIT_IF((rc < 0), 1);
+
+	/* Set height */
+	rc = ov660_write_i2c(0x798A, (window.height >> 8) & 0x1F);
+	GOTO_EXIT_IF((rc < 0), 1);
+
+	rc = ov660_write_i2c(0x798B, window.height);
+	GOTO_EXIT_IF((rc < 0), 1);
+
+EXIT_1:
+	return rc;
+}
+
 int32_t ov660_set_i2c_bypass(int bypassOn)
 {
 	uint8_t data;
@@ -315,6 +357,8 @@ static long camera_dev_ioctl(struct file *file, unsigned int cmd,
 		unsigned long arg)
 {
 	long rc = 0;
+	void __user *argp = (void __user *)arg;
+	struct msm_focus_window_t window;
 
 	/* TODO: mutex_lock(); */
 	switch (cmd) {
@@ -323,6 +367,21 @@ static long camera_dev_ioctl(struct file *file, unsigned int cmd,
 			change_rgbc_output = true;
 		else
 			change_rgbc_output = false;
+		break;
+	case CAMERA_SET_FOCUS_WINDOW:
+		if (argp != NULL) {
+			if (copy_from_user(&window,
+					(void *)argp,
+					sizeof(struct msm_focus_window_t))) {
+				pr_err("%s: copy window from user failed\n",
+						__func__);
+				return -EFAULT;
+			}
+		} else {
+			pr_err("%s: user data is null\n", __func__);
+			return -EFAULT;
+		}
+		rc = ov660_set_focus_window(window);
 		break;
 	default:
 		break;

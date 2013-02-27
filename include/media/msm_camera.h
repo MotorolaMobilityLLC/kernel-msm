@@ -1755,6 +1755,13 @@ struct msm_actuator_i2c {
 	uint32_t wait_time;
 };
 
+struct msm_focus_window_t {
+	uint16_t x;
+	uint16_t y;
+	uint16_t width;
+	uint16_t height;
+};
+
 #define MSM_ACTUATOR_I2C_MAX_TABLE_SIZE (8)
 struct msm_actuator_i2c_table {
 	struct msm_actuator_i2c data[MSM_ACTUATOR_I2C_MAX_TABLE_SIZE];
