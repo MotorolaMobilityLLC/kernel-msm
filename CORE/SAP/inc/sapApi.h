@@ -277,12 +277,10 @@ typedef struct sap_StationAssocIndication_s {
     tANI_U32     assocReqLength;
     tANI_U8*     assocReqPtr;
     tANI_BOOLEAN fWmmEnabled;
-#if WLAN_SOFTAP_FEATURE
     eCsrAuthType negotiatedAuthType;
     eCsrEncryptionType negotiatedUCEncryptionType;
     eCsrEncryptionType negotiatedMCEncryptionType;
     tANI_BOOLEAN fAuthRequired;
-#endif
 } tSap_StationAssocIndication;
 
 typedef struct sap_StationAssocReassocCompleteEvent_s {
