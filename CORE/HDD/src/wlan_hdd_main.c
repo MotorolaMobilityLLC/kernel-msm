@@ -108,9 +108,7 @@
 #include "wlan_hdd_p2p.h"
 #endif
 #include <linux/rtnetlink.h>
-#ifdef ANI_MANF_DIAG
 int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
-#endif
 #include "sapApi.h"
 #include <linux/semaphore.h>
 #include <mach/subsystem_restart.h>
@@ -2326,7 +2324,6 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
 #endif
       }
          break;
-#ifdef ANI_MANF_DIAG
       case WLAN_HDD_FTM:
       {
          pAdapter = hdd_alloc_station_adapter( pHddCtx, macAddr, iface_name );
@@ -2340,7 +2337,6 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          status = hdd_register_interface( pAdapter, rtnl_held );
       }
          break;
-#endif
       default:
       {
          VOS_ASSERT(0);
@@ -3286,20 +3282,16 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
 
    ENTER();
 
-#ifdef ANI_MANF_DIAG
-      if (VOS_FTM_MODE != hdd_get_conparam())
-#endif /* ANI_MANF_DIAG */
-      {
-         // Unloading, restart logic is no more required.
-         wlan_hdd_restart_deinit(pHddCtx);
-      }
+   if (VOS_FTM_MODE != hdd_get_conparam())
+   {
+      // Unloading, restart logic is no more required.
+      wlan_hdd_restart_deinit(pHddCtx);
+   }
 
 #ifdef CONFIG_CFG80211
    if (VOS_STA_SAP_MODE != hdd_get_conparam())
    {
-#ifdef ANI_MANF_DIAG
       if (VOS_FTM_MODE != hdd_get_conparam())
-#endif /* ANI_MANF_DIAG */
       {
          hdd_adapter_t* pAdapter = hdd_get_adapter(pHddCtx,
                                       WLAN_HDD_INFRA_STATION);
@@ -3315,13 +3307,11 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    }
 #endif
 
-#ifdef ANI_MANF_DIAG
    if (VOS_FTM_MODE == hdd_get_conparam())
-  {
-    wlan_hdd_ftm_close(pHddCtx);
-    goto free_hdd_ctx;
-  }
-#endif  
+   {
+      wlan_hdd_ftm_close(pHddCtx);
+      goto free_hdd_ctx;
+   }
    //Stop the Interface TX queue.
    //netif_tx_disable(pWlanDev);
    //netif_carrier_off(pWlanDev);
@@ -3333,9 +3323,7 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    }
    else
    {
-#ifdef ANI_MANF_DIAG
       if (VOS_FTM_MODE != hdd_get_conparam())
-#endif /* ANI_MANF_DIAG */
       {
          pAdapter = hdd_get_adapter(pHddCtx,
                                     WLAN_HDD_INFRA_STATION);
@@ -3514,11 +3502,9 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
                                            __func__);
    }
 
-#ifdef ANI_MANF_DIAG
-free_hdd_ctx:   
-#endif
+free_hdd_ctx:
 #ifdef CONFIG_CFG80211
-   wiphy_unregister(wiphy) ; 
+   wiphy_unregister(wiphy) ;
    wiphy_free(wiphy) ;
 #else
    vos_mem_free( pHddCtx );
@@ -3955,9 +3941,8 @@ int hdd_wlan_startup(struct device *dev )
    hdd_wdi_trace_enable(eWLAN_MODULE_PAL,
                         pHddCtx->cfg_ini->wdiTraceEnablePAL);
 
-#ifdef ANI_MANF_DIAG 
-   if(VOS_FTM_MODE == hdd_get_conparam())
-  {
+   if (VOS_FTM_MODE == hdd_get_conparam())
+   {
       if ( VOS_STATUS_SUCCESS != wlan_hdd_ftm_open(pHddCtx) )
       {
           hddLog(VOS_TRACE_LEVEL_FATAL,"%s: wlan_hdd_ftm_open Failed",__func__);
@@ -3965,10 +3950,9 @@ int hdd_wlan_startup(struct device *dev )
       }
       hddLog(VOS_TRACE_LEVEL_FATAL,"%s: FTM driver loaded success fully",__func__);
       return VOS_STATUS_SUCCESS;
-  }
-#endif
+   }
 
-    //Open watchdog module
+   //Open watchdog module
    if(pHddCtx->cfg_ini->fIsLogpEnabled)
    {
       status = vos_watchdog_open(pVosContext,
