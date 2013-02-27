@@ -1295,14 +1295,10 @@ static iw_softap_disassoc_sta(struct net_device *dev,
     v_U8_t *peerMacAddr;    
     
     ENTER();
-    /* the comparison below is needed since if iwpriv tool is used for calling this ioctl
-     * data is passed in extra (less than 16 octets); however in android wifi framework
-     * data is placed in wrqu->data.pointer.
+    /* iwpriv tool or framework calls this ioctl with
+     * data passed in extra (less than 16 octets);
      */
-    if ((v_U8_t*)wrqu == (v_U8_t*)extra)
-        peerMacAddr = (v_U8_t *)(extra);
-    else
-        peerMacAddr = (v_U8_t *)(wrqu->data.pointer);
+    peerMacAddr = (v_U8_t *)(extra);
 
     hddLog(LOG1, "data %02x:%02x:%02x:%02x:%02x:%02x",
             peerMacAddr[0], peerMacAddr[1], peerMacAddr[2],
