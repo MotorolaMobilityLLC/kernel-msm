@@ -3670,7 +3670,6 @@ void WDA_UpdateBSSParams(tWDA_CbContext *pWDA,
          }
          else
          {
-#ifdef WLAN_SOFTAP_FEATURE
             for( keyIndex=0; keyIndex < SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS; 
                                                                   keyIndex++)
             {
@@ -3691,24 +3690,6 @@ void WDA_UpdateBSSParams(tWDA_CbContext *pWDA,
             }
             wdiBssParams->wdiExtSetKeyParam.ucNumKeys = 
                SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS;
-#else
-            wdiBssParams->wdiExtSetKeyParam.wdiKey[0].keyId =
-               wdaBssParams->extSetStaKeyParam.key.keyId;
-            wdiBssParams->wdiExtSetKeyParam.wdiKey[0].unicast = 
-               wdaBssParams->extSetStaKeyParam.key.unicast;
-            wdiBssParams->wdiExtSetKeyParam.wdiKey[0].keyDirection =
-               wdaBssParams->extSetStaKeyParam.key.keyDirection;
-            vos_mem_copy(wdiBssParams->wdiExtSetKeyParam.wdiKey[0].keyRsc, 
-                         wdaBssParams->extSetStaKeyParam.key.keyRsc, WLAN_MAX_KEY_RSC_LEN);
-            wdiBssParams->wdiExtSetKeyParam.wdiKey[0].paeRole =
-               wdaBssParams->extSetStaKeyParam.key.paeRole;
-            wdiBssParams->wdiExtSetKeyParam.wdiKey[0].keyLength =
-               wdaBssParams->extSetStaKeyParam.key.keyLength;
-            vos_mem_copy(wdiBssParams->wdiExtSetKeyParam.wdiKey[0].key, 
-                         wdaBssParams->extSetStaKeyParam.key[keyIndex].key, 
-                         SIR_MAC_MAX_KEY_LENGTH);
-            wdiBssParams->wdiExtSetKeyParam.ucNumKeys = 1;
-#endif
          }
       }
       wdiBssParams->wdiExtSetKeyParam.ucSingleTidRc = wdaBssParams->extSetStaKeyParam.singleTidRc;
@@ -4396,7 +4377,6 @@ VOS_STATUS WDA_ProcessSetStaKeyReq(tWDA_CbContext *pWDA,
       }
       else
       {
-#ifdef WLAN_SOFTAP_FEATURE
          for( keyIndex=0; keyIndex < SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS; 
                                                                   keyIndex++)
          {
@@ -4422,24 +4402,6 @@ VOS_STATUS WDA_ProcessSetStaKeyReq(tWDA_CbContext *pWDA,
          }
          wdiSetStaKeyParam->wdiKeyInfo.ucNumKeys = 
                                           SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS;
-#else
-         wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyId =
-                                                setStaKeyParams->key.keyId;
-         wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].unicast = 
-                                                setStaKeyParams->key.unicast;
-         wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyDirection =
-                                             setStaKeyParams->key.keyDirection;
-         vos_mem_copy(wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyRsc, 
-                           setStaKeyParams->key.keyRsc, WLAN_MAX_KEY_RSC_LEN);
-         wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].paeRole =
-                                            setStaKeyParams->key.paeRole;
-         wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyLength =
-                                             setStaKeyParams->key.keyLength;
-         vos_mem_copy(wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].key, 
-                          setStaKeyParams->key[keyIndex].key, 
-                                              SIR_MAC_MAX_KEY_LENGTH);
-         wdiSetStaKeyParam->wdiKeyInfo.ucNumKeys = 1;
-#endif
       }
    }
    wdiSetStaKeyParam->wdiKeyInfo.ucSingleTidRc = setStaKeyParams->singleTidRc;
@@ -4530,7 +4492,6 @@ VOS_STATUS WDA_ProcessSetBcastStaKeyReq(tWDA_CbContext *pWDA,
    wdiSetStaKeyParam->wdiKeyInfo.ucDefWEPIdx = setStaKeyParams->defWEPIdx;
    if(setStaKeyParams->encType != eSIR_ED_NONE)
    {
-#ifdef WLAN_SOFTAP_FEATURE
       for( keyIndex=0; keyIndex < SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS; 
                                                                keyIndex++)
       {
@@ -4551,24 +4512,6 @@ VOS_STATUS WDA_ProcessSetBcastStaKeyReq(tWDA_CbContext *pWDA,
       }
       wdiSetStaKeyParam->wdiKeyInfo.ucNumKeys = 
                                        SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS;
-#else
-      wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyId =
-                                             setStaKeyParams->key.keyId;
-      wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].unicast = 
-                                             setStaKeyParams->key.unicast;
-      wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyDirection =
-                                          setStaKeyParams->key.keyDirection;
-      vos_mem_copy(wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyRsc, 
-                        setStaKeyParams->key.keyRsc, WLAN_MAX_KEY_RSC_LEN);
-      wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].paeRole =
-                                         setStaKeyParams->key.paeRole;
-      wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyLength =
-                                          setStaKeyParams->key.keyLength;
-      vos_mem_copy(wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].key, 
-                       setStaKeyParams->key[keyIndex].key, 
-                                           SIR_MAC_MAX_KEY_LENGTH);
-      wdiSetStaKeyParam->wdiKeyInfo.ucNumKeys = 1;
-#endif
    }
    wdiSetStaKeyParam->wdiKeyInfo.ucSingleTidRc = setStaKeyParams->singleTidRc;
    /* Store set key pointer, as this will be used for response */
@@ -5858,10 +5801,8 @@ VOS_STATUS WDA_ProcessSendBeacon(tWDA_CbContext *pWDA,
                               pSendbeaconParams->bssId, sizeof(tSirMacAddr));
    wdiSendBeaconReqParam.wdiSendBeaconParamsInfo.beaconLength = 
                               pSendbeaconParams->beaconLength;
-#ifdef WLAN_SOFTAP_FEATURE
    wdiSendBeaconReqParam.wdiSendBeaconParamsInfo.timIeOffset = 
                               pSendbeaconParams->timIeOffset;
-#endif
 #ifdef WLAN_FEATURE_P2P
    wdiSendBeaconReqParam.wdiSendBeaconParamsInfo.usP2PIeOffset = 
                               pSendbeaconParams->p2pIeOffset;
