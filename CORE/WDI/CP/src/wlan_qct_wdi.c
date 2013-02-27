@@ -102,9 +102,7 @@
 
 #include "wlan_hal_msg.h"
 
-#ifdef ANI_MANF_DIAG
 #include "pttMsgApi.h"
-#endif /* ANI_MANF_DIAG */
 
 /*===========================================================================
    WLAN DAL Control Path Internal Data Definitions and Declarations
@@ -285,11 +283,7 @@ WDI_ReqProcFuncType  pfnReqProcTbl[WDI_MAX_UMAC_IND] =
 #endif /* WLAN_FEATURE_VOWIFI_11R */
   WDI_ProcessAddSTASelfReq,         /* WDI_ADD_STA_SELF_REQ */
   WDI_ProcessDelSTASelfReq,          /* WDI DEL STA SELF REQ */
-#ifdef ANI_MANF_DIAG
   WDI_ProcessFTMCommandReq,            /* WDI_FTM_CMD_REQ */
-#else
-  NULL,
-#endif /* ANI_MANF_DIAG */
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
   WDI_ProcessStartOemDataReq,     /*WDI_START_OEM_DATA_REQ*/
@@ -463,11 +457,7 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
   NULL,
 #endif
 
-#ifdef ANI_MANF_DIAG
   WDI_ProcessFTMCommandRsp,         /* WDI_FTM_CMD_RESP */
-#else
-  NULL,
-#endif /* ANI_MANF_DIAG */
 
   WDI_ProcessKeepAliveRsp,       /* WDI_KEEP_ALIVE_RESP  */
 
@@ -5258,7 +5248,6 @@ WDI_AggrAddTSReq
 
 #endif /* WLAN_FEATURE_VOWIFI_11R */
 
-#ifdef ANI_MANF_DIAG
 /**
  @brief WDI_FTMCommandReq
         Post FTM Command Event
@@ -5303,7 +5292,6 @@ WDI_FTMCommandReq
 
   return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
 }
-#endif /* ANI_MANF_DIAG */
 /**
  @brief WDI_HostResumeReq will be called
 
@@ -18966,7 +18954,6 @@ WDI_ProcessTxPerHitInd
   return WDI_STATUS_SUCCESS;
 }/*WDI_ProcessTxPerHitInd*/
 
-#ifdef ANI_MANF_DIAG
 /**
  @brief WDI_ProcessFTMCommandReq
         Process FTM Command, simply route to HAL
@@ -19070,7 +19057,6 @@ WDI_ProcessFTMCommandRsp
 
   return WDI_STATUS_SUCCESS;
 }
-#endif /* ANI_MANF_DIAG */
 /**
  @brief WDI_ProcessHalDumpCmdReq
         Process hal dump Command, simply route to HAL
@@ -21157,10 +21143,8 @@ WDI_2_HAL_REQ_TYPE
   case WDI_AGGR_ADD_TS_REQ:
      return WLAN_HAL_AGGR_ADD_TS_REQ;
 #endif /* WLAN_FEATURE_VOWIFI_11R */
-#ifdef ANI_MANF_DIAG
   case WDI_FTM_CMD_REQ:
     return WLAN_HAL_PROCESS_PTT_REQ;
-#endif /* ANI_MANF_DIAG */
   case WDI_ADD_STA_SELF_REQ:
     return WLAN_HAL_ADD_STA_SELF_REQ;
   case WDI_DEL_STA_SELF_REQ:
@@ -21377,10 +21361,8 @@ HAL_2_WDI_RSP_TYPE
     return WDI_FLUSH_AC_RESP;
   case WLAN_HAL_SIGNAL_BTAMP_EVENT_RSP:
     return WDI_BTAMP_EVENT_RESP;
-#ifdef ANI_MANF_DIAG
   case WLAN_HAL_PROCESS_PTT_RSP:
     return  WDI_FTM_CMD_RESP;
-#endif /* ANI_MANF_DIAG */
   case WLAN_HAL_ADD_STA_SELF_RSP:
     return WDI_ADD_STA_SELF_RESP;
 case WLAN_HAL_DEL_STA_SELF_RSP:
