@@ -380,11 +380,7 @@ typedef struct
     tAniEdType      encType;        // Encryption/Decryption type
     tAniWepType     wepType;        // valid only for WEP
     tANI_U8         defWEPIdx;      // Default WEP key, valid only for static WEP, must between 0 and 3
-#ifdef WLAN_SOFTAP_FEATURE
     tSirKeys        key[SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS];            // valid only for non-static WEP encyrptions
-#else
-    tSirKeys        key;
-#endif
     tANI_U8         singleTidRc;    // 1=Single TID based Replay Count, 0=Per TID based RC
     /*
      * Following parameter is for returning status
@@ -613,14 +609,12 @@ typedef struct {
 
 } tInitScanParams, * tpInitScanParams;
 
-#ifdef WLAN_SOFTAP_FEATURE
 typedef enum  eDelStaReasonCode{
    HAL_DEL_STA_REASON_CODE_KEEP_ALIVE = 0x1,
    HAL_DEL_STA_REASON_CODE_TIM_BASED  = 0x2,
    HAL_DEL_STA_REASON_CODE_RA_BASED   = 0x3,
    HAL_DEL_STA_REASON_CODE_UNKNOWN_A2 = 0x4
 }tDelStaReasonCode;
-#endif
 
 //
 // Msg header is used from tSirMsgQ
@@ -631,10 +625,8 @@ typedef struct {
     tANI_U16    staId;
     tSirMacAddr bssId; // TO SUPPORT BT-AMP    
                        // HAL copies bssid from the sta table.
-#ifdef WLAN_SOFTAP_FEATURE                       
     tSirMacAddr addr2;        //  
     tANI_U16    reasonCode;   // To unify the keepalive / unknown A2 / tim-based disa                                                                                                 
-#endif    
 } tDeleteStaContext, * tpDeleteStaContext;
 
 
@@ -778,22 +770,18 @@ typedef struct {
     tSirMacAddr bssId;
     tANI_U8 *beacon;     // Beacon data.
     tANI_U32 beaconLength; //length of the template.
-#ifdef WLAN_SOFTAP_FEATURE
     tANI_U32 timIeOffset; //TIM IE offset from the beginning of the template.
 #ifdef WLAN_FEATURE_P2P    
     tANI_U16 p2pIeOffset; //P2P IE offset from the begining of the template
 #endif    
-#endif
 } tSendbeaconParams, * tpSendbeaconParams;
 
-#ifdef WLAN_SOFTAP_FEATURE
 typedef struct sSendProbeRespParams {
     tSirMacAddr bssId;
     tANI_U8      *pProbeRespTemplate; 
     tANI_U32     probeRespTemplateLen;
     tANI_U32     ucProxyProbeReqValidIEBmap[8];
 } tSendProbeRespParams, * tpSendProbeRespParams;
-#endif
 
 /*
  * This is used by PE to create a set of WEP keys for a given BSS.

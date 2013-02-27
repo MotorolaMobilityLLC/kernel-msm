@@ -893,10 +893,8 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_TSM_STATS_REQ              SIR_HAL_TSM_STATS_REQ
 #define WDA_TSM_STATS_RSP              SIR_HAL_TSM_STATS_RSP
 #endif
-#ifdef WLAN_SOFTAP_FEATURE
 #define WDA_UPDATE_PROBE_RSP_IE_BITMAP_IND SIR_HAL_UPDATE_PROBE_RSP_IE_BITMAP_IND
 #define WDA_UPDATE_UAPSD_IND           SIR_HAL_UPDATE_UAPSD_IND
-#endif
 
 #define WDA_SET_MIMOPS_REQ                      SIR_HAL_SET_MIMOPS_REQ 
 #define WDA_SET_MIMOPS_RSP                      SIR_HAL_SET_MIMOPS_RSP
