@@ -530,9 +530,7 @@ static char *sendSmeDisAssocReq(tpAniSirGlobal pMac, char *p,tANI_U32 arg1 ,tANI
         sirCopyMacAddr(pDisAssocReq->peerMacAddr,psessionEntry->bssId);
     }
     if((psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE)
-#ifdef WLAN_SOFTAP_FEATURE
        || (psessionEntry->limSystemRole == eLIM_AP_ROLE)
-#endif
     )
     {
         sirCopyMacAddr(pDisAssocReq->peerMacAddr,pStaDs->staAddr);
@@ -1279,11 +1277,7 @@ static char *
 dump_lim_set_protection_control( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
 {
     dump_cfg_set(pMac, WNI_CFG_FORCE_POLICY_PROTECTION, arg1, arg2, arg3, p);
-#ifdef WLAN_SOFTAP_FEATURE
     limSetCfgProtection(pMac, NULL);
-#else
-    limSetCfgProtection(pMac);
-#endif
     return p;
 }
 

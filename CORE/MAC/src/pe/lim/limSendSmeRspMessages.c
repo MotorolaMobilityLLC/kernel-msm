@@ -615,11 +615,9 @@ limSendSmeStartBssRsp(tpAniSirGlobal pMac,
     pSirSmeRsp->sessionId       = smesessionId;
     pSirSmeRsp->transactionId   = smetransactionId;
     pSirSmeRsp->statusCode      = resultCode;
-#ifdef WLAN_SOFTAP_FEATURE
     if(psessionEntry != NULL )
     pSirSmeRsp->staId           = psessionEntry->staId; //else it will be always zero smeRsp StaID = 0 
       
-#endif
 
     mmhMsg.type = msgType;
     mmhMsg.bodyptr = pSirSmeRsp;
@@ -1308,9 +1306,7 @@ limSendSmeDisassocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs,tpPESession pses
     pSirSmeDisassocInd->aid =  pStaDs->assocId;
     limStatSerDes(pMac, &pMac->hal.halMac.macStats.pPerStaStats[pStaDs->assocId].staStat,(tANI_U8*)&pSirSmeDisassocInd-> perStaStats ); 
 #endif   
-#ifdef WLAN_SOFTAP_FEATURE
     pSirSmeDisassocInd->staId = pStaDs->staIndex;
-#endif  
  
     mmhMsg.type = eWNI_SME_DISASSOC_IND;
     mmhMsg.bodyptr = pSirSmeDisassocInd;
@@ -1341,9 +1337,6 @@ limSendSmeDisassocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs,tpPESession pses
 void
 limSendSmeDeauthInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession psessionEntry)                   
 {
-#ifndef WLAN_SOFTAP_FEATURE
-    tANI_U8  *pBuf;
-#endif
     tSirMsgQ  mmhMsg;
     tSirSmeDeauthInd  *pSirSmeDeauthInd;
 
@@ -1361,7 +1354,6 @@ limSendSmeDeauthInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession psess
     pSirSmeDeauthInd->length = sizeof(tSirSmeDeauthInd);
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
     pSirSmeDeauthInd->sessionId = psessionEntry->smeSessionId;
     pSirSmeDeauthInd->transactionId = psessionEntry->transactionId;
     if(eSIR_INFRA_AP_MODE == psessionEntry->bssType)
@@ -1378,36 +1370,13 @@ limSendSmeDeauthInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession psess
     //peerMacAddr
     palCopyMemory( pMac->hHdd, pSirSmeDeauthInd->peerMacAddr, pStaDs->staAddr, sizeof(tSirMacAddr));
     pSirSmeDeauthInd->reasonCode = pStaDs->mlmStaContext.disassocReason;
-#else
-
-    //sessionId
-    pBuf = (tANI_U8 *) &pSirSmeDeauthInd->sessionId;
-    *pBuf++ = psessionEntry->smeSessionId;
-
-    //transactionId
-    limCopyU16(pBuf, 0);
-    pBuf += sizeof(tANI_U16);
-
-    // status code
-    limCopyU32(pBuf, pStaDs->mlmStaContext.cleanupTrigger);
-    pBuf += sizeof(tSirResultCodes);
-    
-    //bssid
-    palCopyMemory( pMac->hHdd, pBuf, psessionEntry->bssId, sizeof(tSirMacAddr));
-    pBuf += sizeof(tSirMacAddr);
-
-    //peerMacAddr
-    palCopyMemory( pMac->hHdd, pBuf, pStaDs->staAddr, sizeof(tSirMacAddr));
-#endif  
 
 #if (WNI_POLARIS_FW_PRODUCT == AP)
     pBuf += sizeof(tSirMacAddr);
     limCopyU16(pBuf, pStaDs->staAddr);
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
     pSirSmeDeauthInd->staId = pStaDs->staIndex;
-#endif
 
     mmhMsg.type = eWNI_SME_DEAUTH_IND;
     mmhMsg.bodyptr = pSirSmeDeauthInd;

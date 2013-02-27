@@ -204,9 +204,7 @@ tSirRetStatus limSendBeaconParams(tpAniSirGlobal pMac,
                     FL("Posting  WDA_UPDATE_BEACON_IND to WDA failed, reason=%X\n"),
                     retCode );
     }
-#ifdef WLAN_SOFTAP_FEATURE
     limSendBeaconInd(pMac, psessionEntry);
-#endif
     return retCode;
 }
 

@@ -1473,7 +1473,6 @@ mlm_add_sta(
     if(IS_DOT11_MODE_HT(psessionEntry->dot11mode)) 
     {
         pSta->htCapable         = htCapable;
-#ifdef WLAN_SOFTAP_FEATURE
         pSta->greenFieldCapable = limGetHTCapability( pMac, eHT_GREENFIELD, psessionEntry);
         pSta->txChannelWidthSet = limGetHTCapability( pMac, eHT_SUPPORTED_CHANNEL_WIDTH_SET, psessionEntry );
         pSta->mimoPS            = (tSirMacHTMIMOPowerSaveState)limGetHTCapability( pMac, eHT_MIMO_POWER_SAVE, psessionEntry );
@@ -1485,20 +1484,6 @@ mlm_add_sta(
         pSta->fDsssCckMode40Mhz = limGetHTCapability( pMac, eHT_DSSS_CCK_MODE_40MHZ, psessionEntry);
         pSta->fShortGI20Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_20MHZ, psessionEntry);
         pSta->fShortGI40Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_40MHZ, psessionEntry);
-#else
-        pSta->greenFieldCapable = limGetHTCapability( pMac, eHT_GREENFIELD );
-        pSta->txChannelWidthSet = limGetHTCapability( pMac, eHT_SUPPORTED_CHANNEL_WIDTH_SET );
-        pSta->mimoPS            = (tSirMacHTMIMOPowerSaveState)limGetHTCapability( pMac, eHT_MIMO_POWER_SAVE );
-        pSta->rifsMode          = limGetHTCapability( pMac, eHT_RIFS_MODE );
-        pSta->lsigTxopProtection = limGetHTCapability( pMac, eHT_LSIG_TXOP_PROTECTION );
-        pSta->delBASupport      = limGetHTCapability( pMac, eHT_DELAYED_BA );
-        pSta->maxAmpduDensity   = limGetHTCapability( pMac, eHT_MPDU_DENSITY );
-        pSta->maxAmsduSize      = limGetHTCapability( pMac, eHT_MAX_AMSDU_LENGTH );
-        pSta->fDsssCckMode40Mhz = limGetHTCapability( pMac, eHT_DSSS_CCK_MODE_40MHZ);
-        pSta->fShortGI20Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_20MHZ);
-        pSta->fShortGI40Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_40MHZ);
-
-#endif
     }
 #ifdef WLAN_FEATURE_11AC
     if (psessionEntry->vhtCapability)
@@ -1575,17 +1560,11 @@ limMlmAddBss (
         (pMlmStartReq->bssType == eSIR_BTAMP_STA_MODE)) {
         pAddBssParams->operMode                 = BSS_OPERATIONAL_MODE_STA;
     }
-#ifdef WLAN_SOFTAP_FEATURE
     else if (pMlmStartReq->bssType == eSIR_INFRA_AP_MODE){
-#else
-    else{
-#endif
         pAddBssParams->operMode                 = BSS_OPERATIONAL_MODE_AP;
     }
 
-#ifdef WLAN_SOFTAP_FEATURE  
     pAddBssParams->shortSlotTimeSupported = psessionEntry->shortSlotTimeSupported;
-#endif
 
     pAddBssParams->beaconInterval               = pMlmStartReq->beaconPeriod;
     pAddBssParams->dtimPeriod                   = pMlmStartReq->dtimPeriod;
@@ -1620,14 +1599,12 @@ limMlmAddBss (
         pMlmStartReq->ssId.ssId,
         pMlmStartReq->ssId.length);
     pAddBssParams->ssId.length = pMlmStartReq->ssId.length;
-#ifdef WLAN_SOFTAP_FEATURE
     pAddBssParams->bHiddenSSIDEn = pMlmStartReq->ssidHidden;
     limLog( pMac, LOGE, FL( "TRYING TO HIDE SSID %d\n" ),pAddBssParams->bHiddenSSIDEn);
     // CR309183. Disable Proxy Probe Rsp.  Host handles Probe Requests.  Until FW fixed. 
     pAddBssParams->bProxyProbeRespEn = 0;
     pAddBssParams->obssProtEnabled = pMlmStartReq->obssProtEnabled;
 
-#endif
 #if defined WLAN_FEATURE_VOWIFI  
     pAddBssParams->maxTxPower = psessionEntry->maxTxPower;
 #endif
@@ -1772,7 +1749,6 @@ limProcessMlmStartReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         limLog(pMac, LOGP, FL("could not set WNI_CFG_CURRENT_TX_POWER_LEVEL at CFG\n"));
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
 #if 0 // Periodic timer for remove WPS PBC proble response entry in PE is disbaled now.
     if (psessionEntry->limSystemRole == eLIM_AP_ROLE)
     {
@@ -1799,7 +1775,6 @@ limProcessMlmStartReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
             }    
        }
     }
-#endif
 #endif
 
 
@@ -2309,16 +2284,10 @@ limProcessMlmAuthReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
           (psessionEntry->limMlmState == eLIM_MLM_BSS_STARTED_STATE))) &&
         (limIsGroupAddr(pMac->lim.gpLimMlmAuthReq->peerMacAddr)
                                                    == false) &&
-#ifdef WLAN_SOFTAP_FEATURE
         (limIsAuthAlgoSupported(
                         pMac,
                         pMac->lim.gpLimMlmAuthReq->authType,
                         psessionEntry) == true)
-#else
-        (limIsAuthAlgoSupported(
-                        pMac,
-                        pMac->lim.gpLimMlmAuthReq->authType) == true)
-#endif
         )        
     {
         /**
@@ -3416,13 +3385,8 @@ tpPESession        psessionEntry;
 
     pStaDs = dphLookupHashEntry( pMac, pMlmSetKeysReq->peerMacAddr, &aid , &psessionEntry->dph.dphHashTable);
 
-#ifdef WLAN_SOFTAP_FEATURE
     if ((pStaDs == NULL) ||
            ((pStaDs->mlmStaContext.mlmState != eLIM_MLM_LINK_ESTABLISHED_STATE) && (psessionEntry->limSystemRole != eLIM_AP_ROLE))) {
-#else
-    if ((pStaDs == NULL) ||
-           ((pStaDs->mlmStaContext.mlmState != eLIM_MLM_LINK_ESTABLISHED_STATE) )) {
-#endif
         /**
          * Received LIM_MLM_SETKEYS_REQ for STA
          * that does not have context or in some

@@ -95,13 +95,11 @@ tANI_U32 limGetNeighborBssInfo(tpAniSirGlobal, tpSirNeighborBssInfo, tANI_U8 *);
 
 tSirRetStatus limRemoveKeyReqSerDes(tpAniSirGlobal pMac, tpSirSmeRemoveKeyReq pRemoveKeyReq, tANI_U8 * pBuf);
 
-#ifdef WLAN_SOFTAP_FEATURE
 tANI_BOOLEAN    limIsSmeGetAssocSTAsReqValid(tpAniSirGlobal pMac, tpSirSmeGetAssocSTAsReq pGetAssocSTAsReq, tANI_U8 *pBuf);
 tSirRetStatus   limTkipCntrMeasReqSerDes(tpAniSirGlobal pMac, tpSirSmeTkipCntrMeasReq  ptkipCntrMeasReq, tANI_U8 *pBuf);
 
 tSirRetStatus limUpdateAPWPSIEsReqSerDes(tpAniSirGlobal pMac, tpSirUpdateAPWPSIEsReq pUpdateAPWPSIEsReq, tANI_U8 *pBuf);
 tSirRetStatus limUpdateAPWPARSNIEsReqSerDes(tpAniSirGlobal pMac, tpSirUpdateAPWPARSNIEsReq pUpdateAPWPARSNIEsReq, tANI_U8 *pBuf);
-#endif
 
 #if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
 tANI_BOOLEAN limIsSmeSwitchChannelReqValid(tpAniSirGlobal, tANI_U8 *, tpSirSmeSwitchChannelReq);

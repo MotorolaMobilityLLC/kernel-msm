@@ -416,28 +416,21 @@ typedef struct sSirMbMsgP2p
 #define SIR_HAL_TIMER_TRAFFIC_ACTIVITY_REQ (SIR_HAL_ITC_MSG_TYPES_BEGIN + 105)
 #define SIR_HAL_TIMER_ADC_RSSI_STATS       (SIR_HAL_ITC_MSG_TYPES_BEGIN + 106)
 #define SIR_HAL_MIC_FAILURE_IND            (SIR_HAL_ITC_MSG_TYPES_BEGIN + 107)
-
-#ifdef WLAN_SOFTAP_FEATURE
-//107 ... Slots is Free for use.
 #define SIR_HAL_UPDATE_UAPSD_IND           (SIR_HAL_ITC_MSG_TYPES_BEGIN + 108)
-#endif
-
-#define SIR_HAL_SET_MIMOPS_REQ                      (SIR_HAL_ITC_MSG_TYPES_BEGIN + 109)
-#define SIR_HAL_SET_MIMOPS_RSP                      (SIR_HAL_ITC_MSG_TYPES_BEGIN + 110)
-#define SIR_HAL_SYS_READY_IND                       (SIR_HAL_ITC_MSG_TYPES_BEGIN + 111)
-#define SIR_HAL_SET_TX_POWER_REQ                    (SIR_HAL_ITC_MSG_TYPES_BEGIN + 112)
-#define SIR_HAL_SET_TX_POWER_RSP                    (SIR_HAL_ITC_MSG_TYPES_BEGIN + 113)
-#define SIR_HAL_GET_TX_POWER_REQ                    (SIR_HAL_ITC_MSG_TYPES_BEGIN + 114)
-#define SIR_HAL_GET_TX_POWER_RSP                    (SIR_HAL_ITC_MSG_TYPES_BEGIN + 115)
-#define SIR_HAL_GET_NOISE_REQ                       (SIR_HAL_ITC_MSG_TYPES_BEGIN + 116)
-#define SIR_HAL_GET_NOISE_RSP                       (SIR_HAL_ITC_MSG_TYPES_BEGIN + 117)
+#define SIR_HAL_SET_MIMOPS_REQ             (SIR_HAL_ITC_MSG_TYPES_BEGIN + 109)
+#define SIR_HAL_SET_MIMOPS_RSP             (SIR_HAL_ITC_MSG_TYPES_BEGIN + 110)
+#define SIR_HAL_SYS_READY_IND              (SIR_HAL_ITC_MSG_TYPES_BEGIN + 111)
+#define SIR_HAL_SET_TX_POWER_REQ           (SIR_HAL_ITC_MSG_TYPES_BEGIN + 112)
+#define SIR_HAL_SET_TX_POWER_RSP           (SIR_HAL_ITC_MSG_TYPES_BEGIN + 113)
+#define SIR_HAL_GET_TX_POWER_REQ           (SIR_HAL_ITC_MSG_TYPES_BEGIN + 114)
+#define SIR_HAL_GET_TX_POWER_RSP           (SIR_HAL_ITC_MSG_TYPES_BEGIN + 115)
+#define SIR_HAL_GET_NOISE_REQ              (SIR_HAL_ITC_MSG_TYPES_BEGIN + 116)
+#define SIR_HAL_GET_NOISE_RSP              (SIR_HAL_ITC_MSG_TYPES_BEGIN + 117)
 
 /* Messages to support transmit_halt and transmit_resume */
-#define SIR_HAL_TRANSMISSION_CONTROL_IND            (SIR_HAL_ITC_MSG_TYPES_BEGIN + 118)
+#define SIR_HAL_TRANSMISSION_CONTROL_IND   (SIR_HAL_ITC_MSG_TYPES_BEGIN + 118)
 /* Indication from LIM to HAL to Initialize radar interrupt */
-#define SIR_HAL_INIT_RADAR_IND                      (SIR_HAL_ITC_MSG_TYPES_BEGIN + 119)
-/* Messages to support transmit_halt and transmit_resume */
-
+#define SIR_HAL_INIT_RADAR_IND             (SIR_HAL_ITC_MSG_TYPES_BEGIN + 119)
 
 #define SIR_HAL_BEACON_PRE_IND             (SIR_HAL_ITC_MSG_TYPES_BEGIN + 120)
 #define SIR_HAL_ENTER_UAPSD_REQ            (SIR_HAL_ITC_MSG_TYPES_BEGIN + 121)
@@ -654,9 +647,7 @@ typedef struct sSirMbMsgP2p
 #define SIR_LIM_QUIET_TIMEOUT            (SIR_LIM_TIMEOUT_MSG_START + 0x1B)
 #define SIR_LIM_QUIET_BSS_TIMEOUT        (SIR_LIM_TIMEOUT_MSG_START + 0x1C)
 
-#ifdef WLAN_SOFTAP_FEATURE
 #define SIR_LIM_WPS_OVERLAP_TIMEOUT      (SIR_LIM_TIMEOUT_MSG_START + 0x1D)
-#endif
 #ifdef WLAN_FEATURE_VOWIFI_11R
 #define SIR_LIM_FT_PREAUTH_RSP_TIMEOUT   (SIR_LIM_TIMEOUT_MSG_START + 0x1E)
 #endif

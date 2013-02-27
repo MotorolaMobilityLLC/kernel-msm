@@ -82,7 +82,7 @@ static void
 specialBeaconProcessing(tpAniSirGlobal pMac, tANI_U32 beaconSize);
 #endif
 
-#if defined(WLAN_SOFTAP_FEATURE) && defined(WLAN_FEATURE_P2P)
+#if defined(WLAN_FEATURE_P2P)
 tSirRetStatus schGetP2pIeOffset(tANI_U8 *pExtraIe, tANI_U32 extraIeLen, tANI_U16 *pP2pIeOffset)
 {
     tSirRetStatus status = eSIR_FAILURE;   
@@ -207,7 +207,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     tDot11fBeacon2 *pBcn2;
     tANI_U32        i, nStatus, nBytes;
     tANI_U32        wpsApEnable=0, tmp;
-#ifdef WLAN_SOFTAP_FEATURE
     tDot11fIEWscProbeRes      *pWscProbeRes;
 #ifdef WLAN_FEATURE_P2P
     tANI_U8  *pExtraIe = NULL;
@@ -215,7 +214,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     tANI_U16 extraIeOffset = 0;
     tANI_U16 p2pIeOffset = 0;
     tSirRetStatus status = eSIR_SUCCESS;
-#endif
 #endif
 
     status = palAllocateMemory(pMac->hHdd, (void **)&pBcn1, sizeof(tDot11fBeacon1));
@@ -233,7 +231,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
         return eSIR_FAILURE;
     }
 
-#ifdef WLAN_SOFTAP_FEATURE
     status = palAllocateMemory(pMac->hHdd, (void **)&pWscProbeRes, sizeof(tDot11fIEWscProbeRes));
     if(status != eSIR_SUCCESS)
     {
@@ -242,7 +239,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
         palFreeMemory(pMac->hHdd, pBcn2);
         return eSIR_FAILURE;
     }
-#endif
 
     PELOG1(schLog(pMac, LOG1, FL("Setting fixed beacon fields\n"));)
 
@@ -298,7 +294,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     offset = sizeof( tAniBeaconStruct );
     ptr    = pMac->sch.schObject.gSchBeaconFrameBegin + offset;
 
-#ifdef WLAN_SOFTAP_FEATURE
     if((psessionEntry->limSystemRole == eLIM_AP_ROLE) 
         && (psessionEntry->proxyProbeRspEn))
     {
@@ -312,7 +307,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
         limUpdateProbeRspTemplateIeBitmapBeacon1(pMac,pBcn1,&psessionEntry->DefProbeRspIeBitmap[0],
                                                 &psessionEntry->probeRespFrame);
     }
-#endif
 
     nStatus = dot11fPackBeacon1( pMac, pBcn1, ptr,
                                  SCH_MAX_BEACON_SIZE - offset,
@@ -323,9 +317,7 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
                              "8x.).\n"), nStatus );
       palFreeMemory(pMac->hHdd, pBcn1);
       palFreeMemory(pMac->hHdd, pBcn2);
-#ifdef WLAN_SOFTAP_FEATURE
       palFreeMemory(pMac->hHdd, pWscProbeRes);
-#endif
       return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( nStatus ) )
@@ -388,11 +380,7 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     if(psessionEntry->htCapability)
     {
         PopulateDot11fHTCaps( pMac,psessionEntry, &pBcn2->HTCaps );
-#ifdef WLAN_SOFTAP_FEATURE
         PopulateDot11fHTInfo( pMac, &pBcn2->HTInfo, psessionEntry );
-#else
-        PopulateDot11fHTInfo( pMac, &pBcn2->HTInfo );
-#endif
     }
 #ifdef WLAN_FEATURE_11AC
     if(psessionEntry->vhtCapability)
@@ -423,7 +411,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     {
         PopulateDot11fWMM( pMac, &pBcn2->WMMInfoAp, &pBcn2->WMMParams, &pBcn2->WMMCaps, psessionEntry);
     }
-#ifdef WLAN_SOFTAP_FEATURE
     if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
     {
         if(psessionEntry->wps_state != SAP_WPS_DISABLED)
@@ -433,33 +420,29 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     }
     else
     {
-#endif
-    if (wlan_cfgGetInt(pMac, (tANI_U16) WNI_CFG_WPS_ENABLE, &tmp) != eSIR_SUCCESS)
-        limLog(pMac, LOGP,"Failed to cfg get id %d\n", WNI_CFG_WPS_ENABLE );
-    
-    wpsApEnable = tmp & WNI_CFG_WPS_ENABLE_AP;
-    
-    if (wpsApEnable)
-    {
-        PopulateDot11fWsc(pMac, &pBcn2->WscBeacon);
+        if (wlan_cfgGetInt(pMac, (tANI_U16) WNI_CFG_WPS_ENABLE, &tmp) != eSIR_SUCCESS)
+            limLog(pMac, LOGP,"Failed to cfg get id %d\n", WNI_CFG_WPS_ENABLE );
+
+        wpsApEnable = tmp & WNI_CFG_WPS_ENABLE_AP;
+
+        if (wpsApEnable)
+        {
+            PopulateDot11fWsc(pMac, &pBcn2->WscBeacon);
+        }
+
+        if (pMac->lim.wscIeInfo.wscEnrollmentState == eLIM_WSC_ENROLL_BEGIN)
+        {
+            PopulateDot11fWscRegistrarInfo(pMac, &pBcn2->WscBeacon);
+            pMac->lim.wscIeInfo.wscEnrollmentState = eLIM_WSC_ENROLL_IN_PROGRESS;
+        }
+
+        if (pMac->lim.wscIeInfo.wscEnrollmentState == eLIM_WSC_ENROLL_END)
+        {
+            DePopulateDot11fWscRegistrarInfo(pMac, &pBcn2->WscBeacon);
+            pMac->lim.wscIeInfo.wscEnrollmentState = eLIM_WSC_ENROLL_NOOP;
+        }
     }
 
-    if (pMac->lim.wscIeInfo.wscEnrollmentState == eLIM_WSC_ENROLL_BEGIN)
-    {
-        PopulateDot11fWscRegistrarInfo(pMac, &pBcn2->WscBeacon);
-        pMac->lim.wscIeInfo.wscEnrollmentState = eLIM_WSC_ENROLL_IN_PROGRESS;
-    }
-
-    if (pMac->lim.wscIeInfo.wscEnrollmentState == eLIM_WSC_ENROLL_END)
-    {
-        DePopulateDot11fWscRegistrarInfo(pMac, &pBcn2->WscBeacon);
-        pMac->lim.wscIeInfo.wscEnrollmentState = eLIM_WSC_ENROLL_NOOP;
-    }
-#ifdef WLAN_SOFTAP_FEATURE    
-    }
-#endif
-
-#ifdef WLAN_SOFTAP_FEATURE
     if((psessionEntry->limSystemRole == eLIM_AP_ROLE) 
         && (psessionEntry->proxyProbeRspEn))
     {
@@ -490,7 +473,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
         }
 
     }
-#endif
 
     nStatus = dot11fPackBeacon2( pMac, pBcn2,
                                  pMac->sch.schObject.gSchBeaconFrameEnd,
@@ -501,9 +483,7 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
                              "8x.).\n"), nStatus );
       palFreeMemory(pMac->hHdd, pBcn1);
       palFreeMemory(pMac->hHdd, pBcn2);
-#ifdef WLAN_SOFTAP_FEATURE
       palFreeMemory(pMac->hHdd, pWscProbeRes);
-#endif
       return eSIR_FAILURE;
     }
     else if ( DOT11F_WARNED( nStatus ) )
@@ -512,7 +492,7 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
                              "t11fBeacon2 (0x%08x.).\n"), nStatus );
     }
 
-#if defined(WLAN_SOFTAP_FEATURE) && defined(WLAN_FEATURE_P2P)
+#if defined(WLAN_FEATURE_P2P)
     pExtraIe = pMac->sch.schObject.gSchBeaconFrameEnd + nBytes;
     extraIeOffset = nBytes;
 #endif
@@ -524,7 +504,7 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
 
     pMac->sch.schObject.gSchBeaconOffsetEnd = ( tANI_U16 )nBytes;
 
-#if defined(WLAN_SOFTAP_FEATURE) && defined(WLAN_FEATURE_P2P)
+#if defined(WLAN_FEATURE_P2P)
     extraIeLen = nBytes - extraIeOffset;
 
     //Get the p2p Ie Offset
@@ -549,13 +529,10 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     pMac->sch.schObject.fBeaconChanged = 1;
     palFreeMemory(pMac->hHdd, pBcn1);
     palFreeMemory(pMac->hHdd, pBcn2);
-#ifdef WLAN_SOFTAP_FEATURE
     palFreeMemory(pMac->hHdd, pWscProbeRes);
-#endif
     return eSIR_SUCCESS;
 }
 
-#ifdef WLAN_SOFTAP_FEATURE
 void limUpdateProbeRspTemplateIeBitmapBeacon1(tpAniSirGlobal pMac,
                                               tDot11fBeacon1* beacon1,
                                               tANI_U32* DefProbeRspIeBitmap,
@@ -760,7 +737,6 @@ void SetProbeRspIeBitmap(tANI_U32* IeBitmap,tANI_U32 pos)
     IeBitmap[index] = temp;
 }
 
-#endif
 
 #ifdef ANI_PRODUCT_TYPE_AP
 
@@ -933,7 +909,6 @@ schProcessPreBeaconInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
         PELOGE(schLog(pMac, LOGE, FL("can not send beacon for PEER session entry\n"));)
         break;
 
-#ifdef WLAN_SOFTAP_FEATURE
     case eLIM_AP_ROLE:{
          tANI_U8 *ptr = &pMac->sch.schObject.gSchBeaconFrameBegin[pMac->sch.schObject.gSchBeaconOffsetBegin];
          tANI_U16 timLength = 0;
@@ -946,7 +921,6 @@ schProcessPreBeaconInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
          PELOGE(schLog(pMac, LOGE, FL("can not send beacon for PEER session entry\n"));)
          }
      break;
-#endif
 
 #ifdef ANI_PRODUCT_TYPE_AP
     case eLIM_AP_ROLE: 

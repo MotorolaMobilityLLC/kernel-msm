@@ -929,23 +929,19 @@ cfgGetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 *pCap,tpPESession sessionEntr
     }
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
     if(systemRole == eLIM_AP_ROLE)
     {
         val = sessionEntry->privacy;
     }
     else
     {
-#endif
-    // PRIVACY bit
-    if (wlan_cfgGetInt(pMac, WNI_CFG_PRIVACY_ENABLED, &val) != eSIR_SUCCESS)
-    {
-        cfgLog(pMac, LOGP, FL("cfg get WNI_CFG_PRIVACY_ENABLED failed\n"));
-        return eSIR_FAILURE;
+        // PRIVACY bit
+        if (wlan_cfgGetInt(pMac, WNI_CFG_PRIVACY_ENABLED, &val) != eSIR_SUCCESS)
+        {
+            cfgLog(pMac, LOGP, FL("cfg get WNI_CFG_PRIVACY_ENABLED failed\n"));
+            return eSIR_FAILURE;
+        }
     }
-#ifdef WLAN_SOFTAP_FEATURE
-    }
-#endif
     if (val)
         pCapInfo->privacy = 1;
 

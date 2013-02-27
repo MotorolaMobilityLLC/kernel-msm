@@ -203,11 +203,9 @@ typedef struct sLimMlmStartReq
     tSirMacHTOperatingMode     htOperMode;
     tANI_U8                    dualCTSProtection;
     tANI_U8                    txChannelWidthSet;
-#ifdef WLAN_SOFTAP_FEATURE
     tANI_U8              ssidHidden;
     tANI_U8              wps_state;
     tANI_U8              obssProtEnabled;
-#endif
 } tLimMlmStartReq, *tpLimMlmStartReq;
 
 typedef struct sLimMlmStartCnf
@@ -268,9 +266,7 @@ typedef struct sLimMlmAssocInd
     tANI_U8                 sessionId;
 
 
-#ifdef WLAN_SOFTAP_FEATURE
     tAniBool               WmmStaInfoPresent;
-#endif
 
 #if (WNI_POLARIS_FW_PACKAGE == ADVANCED) 
     tANI_U16                  seqNum;
@@ -320,9 +316,7 @@ typedef struct sLimMlmReassocInd
     tSirMacPowerCapInfo     powerCap;
     tSirSupChnl             supportedChannels;
 
-#ifdef WLAN_SOFTAP_FEATURE
     tAniBool               WmmStaInfoPresent;
-#endif
 
 #if (WNI_POLARIS_FW_PACKAGE == ADVANCED) 
     tANI_U16                  seqNum;
@@ -670,11 +664,7 @@ void limHandleCFGparamUpdate(tpAniSirGlobal, tANI_U32);
 // Function to apply CFG parameters before join/reassoc/start BSS
 void limApplyConfiguration(tpAniSirGlobal,tpPESession);
 
-#ifdef WLAN_SOFTAP_FEATURE
 void limSetCfgProtection(tpAniSirGlobal pMac, tpPESession pesessionEntry);
-#else
-void limSetCfgProtection(tpAniSirGlobal pMac);
-#endif
 
 
 // Function to Initialize MLM state machine on STA
@@ -1076,7 +1066,6 @@ limGetIElenFromBssDescription(tpSirBssDescription pBssDescr)
                    sizeof(tANI_U32) - sizeof(tSirBssDescription)));
 } /*** end limGetIElenFromBssDescription() ***/
 
-#ifdef WLAN_SOFTAP_FEATURE
 /**
  * limSendBeaconInd()
  *
@@ -1093,9 +1082,7 @@ limGetIElenFromBssDescription(tpSirBssDescription pBssDescr)
 
 void 
 limSendBeaconInd(tpAniSirGlobal pMac, tpPESession psessionEntry);
-#endif
 
-#ifdef WLAN_SOFTAP_FEATURE
 
 void limGetWPSPBCSessions(tpAniSirGlobal pMac, tANI_U8 *addr, tANI_U8 *uuid_e, eWPSPBCOverlap *overlap, tpPESession psessionEntry);
 void limWPSPBCTimeout(tpAniSirGlobal pMac, tpPESession psessionEntry);
@@ -1107,7 +1094,6 @@ tSirRetStatus
 limIsSmeGetWPSPBCSessionsReqValid(tpAniSirGlobal pMac, tSirSmeGetWPSPBCSessionsReq *pGetWPSPBCSessionsReq, tANI_U8 *pBuf);
 
 #define LIM_WPS_OVERLAP_TIMER_MS                 10000
-#endif
 
 void
 limSuspendLink(tpAniSirGlobal pMac, tSirLinkTrafficCheck trafficCheck,  SUSPEND_RESUME_LINK_CALLBACK callback, tANI_U32 *data);
