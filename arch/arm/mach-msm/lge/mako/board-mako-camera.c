@@ -485,6 +485,7 @@ static struct msm_camera_sensor_board_info msm_camera_sensor_imx111_data = {
 	.gpio_conf = &apq8064_back_cam_gpio_conf,
 	.sensor_info = &imx111_sensor_info,
 	.sensor_init_params = &imx111_init_params,
+        .actuator_info = &msm_act_main_cam_0_info,
 };
 #endif
 
