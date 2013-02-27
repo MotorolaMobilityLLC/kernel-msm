@@ -114,14 +114,21 @@ void find_membank0_hole(void);
 #define MEMBANK1_PAGE_OFFSET (MEMBANK0_PAGE_OFFSET + (membank0_size))
 
 #define __phys_to_virt(phys)				\
-	((MEMBANK1_PHYS_OFFSET && ((phys) >= MEMBANK1_PHYS_OFFSET)) ?	\
-	(phys) - MEMBANK1_PHYS_OFFSET + MEMBANK1_PAGE_OFFSET :	\
-	(phys) - MEMBANK0_PHYS_OFFSET + MEMBANK0_PAGE_OFFSET)
+({							\
+	unsigned long __phys = (unsigned long)phys;	\
+	((MEMBANK1_PHYS_OFFSET && ((__phys) >= MEMBANK1_PHYS_OFFSET)) ?	\
+	(__phys) - MEMBANK1_PHYS_OFFSET + MEMBANK1_PAGE_OFFSET :	\
+	(__phys) - MEMBANK0_PHYS_OFFSET + MEMBANK0_PAGE_OFFSET);	\
+})
 
 #define __virt_to_phys(virt)				\
-	((MEMBANK1_PHYS_OFFSET && ((virt) >= MEMBANK1_PAGE_OFFSET)) ?	\
-	(virt) - MEMBANK1_PAGE_OFFSET + MEMBANK1_PHYS_OFFSET :	\
-	(virt) - MEMBANK0_PAGE_OFFSET + MEMBANK0_PHYS_OFFSET)
+({							\
+	unsigned long __virt = (unsigned long)virt;	\
+	((MEMBANK1_PHYS_OFFSET && ((__virt) >= MEMBANK1_PAGE_OFFSET)) ?	\
+	(__virt) - MEMBANK1_PAGE_OFFSET + MEMBANK1_PHYS_OFFSET :	\
+	(__virt) - MEMBANK0_PAGE_OFFSET + MEMBANK0_PHYS_OFFSET);	\
+})
+
 #endif
 
 /*
