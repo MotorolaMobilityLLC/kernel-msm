@@ -349,10 +349,8 @@ typedef struct
    /* driver mode, PRODUCTION or FTM */
    tDriverType          driverMode;
 
-#ifdef ANI_MANF_DIAG
    /* FTM Command Request tracking */
    v_PVOID_t            wdaFTMCmdReq;
-#endif /* ANI_MANF_DIAG */
 
    /* Event to wait for suspend data tx*/
    vos_event_t          suspendDataTxEvent;
@@ -986,11 +984,9 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_AGGR_QOS_RSP               SIR_HAL_AGGR_QOS_RSP
 #endif /* WLAN_FEATURE_VOWIFI_11R */
 
-#ifdef ANI_MANF_DIAG
 /* FTM CMD MSG */
 #define WDA_FTM_CMD_REQ        SIR_PTT_MSG_TYPES_BEGIN
 #define WDA_FTM_CMD_RSP        SIR_PTT_MSG_TYPES_END
-#endif /* ANI_MANF_DIAG */
 
 #ifdef FEATURE_WLAN_SCAN_PNO
 /*Requests sent to lower driver*/
