@@ -519,7 +519,11 @@ static void hci_conn_idle(unsigned long arg)
 	struct hci_conn *conn = (void *) arg;
 
 	BT_DBG("conn %p mode %d", conn, conn->mode);
-
+	if (conn->hdev &&
+		hci_conn_hash_lookup_ba(conn->hdev, SCO_LINK, &conn->dst)) {
+		BT_ERR("SCO Active : Do not allow SNIFF");
+		return;
+	}
 	hci_conn_enter_sniff_mode(conn);
 }
 
