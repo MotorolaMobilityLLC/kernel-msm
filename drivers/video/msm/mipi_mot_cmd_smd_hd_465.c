@@ -236,19 +236,6 @@ static void panel_set_backlight(struct msm_fb_data_type *mfd)
 	return;
 }
 
-static int is_valid_manufacture_id(struct msm_fb_data_type *mfd, u8 id)
-{
-	return 1;
-}
-
-static int is_valid_power_mode(struct msm_fb_data_type *mfd)
-{
-	u8 pwr_mod;
-	pwr_mod = mipi_mode_get_pwr_mode(mfd);
-	/*Bit7: Booster on ;Bit4: Sleep Out ;Bit2: Display On*/
-	return (pwr_mod & 0x94) == 0x94;
-}
-
 static void panel_en_from_partial(struct msm_fb_data_type *mfd)
 {
 	mipi_mot_exec_cmd_seq(mfd, smd_hd_465_en_from_partial_seq,
@@ -336,9 +323,7 @@ static int __init mipi_mot_cmd_smd_hd_465_init(void)
 	mot_panel->panel_en_from_partial = panel_en_from_partial;
 
 	/* For ESD detection information */
-	mot_panel->esd_enabled = false;
-	mot_panel->is_valid_manufacture_id = is_valid_manufacture_id;
-	mot_panel->is_valid_power_mode = is_valid_power_mode;
+	mot_panel->esd_enabled = true;
 
 	ret = mipi_mot_device_register(pinfo, MIPI_DSI_PRIM, MIPI_DSI_PANEL_HD);
 	if (ret)

@@ -356,6 +356,8 @@ int mipi_dsi_cmdlist_put(struct dcs_cmd_req *cmdreq);
 struct dcs_cmd_req *mipi_dsi_cmdlist_get(void);
 int mipi_dsi_cmdlist_commit(int from_mdp);
 void mipi_dsi_cmd_mdp_busy(void);
+int mipi_dsi_panel_power_enable(int on);
+int mipi_dsi_panel_is_factory_mode(void);
 void mipi_dsi_regs_dump(void);
 void mipi_dsi_clear_dump_flag(void);
 

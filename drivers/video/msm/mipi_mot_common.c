@@ -17,10 +17,6 @@
 #include "mipi_mot.h"
 #include "mdp4.h"
 
-/* MIPI_MOT_PANEL_ESD_TEST is used to run the ESD recovery stress test */
-/* #define MIPI_MOT_PANEL_ESD_TEST	1 */
-#define MIPI_MOT_PANEL_ESD_CNT_MAX	3
-
 static struct mipi_mot_panel *mot_panel;
 
 static char manufacture_id[2] = {DCS_CMD_READ_DA, 0x00}; /* DTYPE_DCS_READ */
@@ -119,9 +115,7 @@ int mipi_mot_panel_off(struct msm_fb_data_type *mfd)
 	return 0;
 }
 
-/* TODO: need to check for ERR return when read is failed */
-/*
- * This API is used to send the DSI MIPI command right away
+/* This API is used to send the DSI MIPI command right away
  * (flags = CMD_REQ_COMMIT) when DSI link is free.
 */
 int mipi_mot_rx_cmd(struct dsi_cmd_desc *cmd, u8 *data, int rlen)
@@ -158,14 +152,14 @@ void mipi_mot_set_mot_panel(struct mipi_mot_panel *mot_panel_ptr)
 	mot_panel = mot_panel_ptr;
 }
 
-/* TODO: need to check for ERR return*/
-/*
- * This API is used to send the DSI MIPI command right away
+/* This API is used to send the DSI MIPI command right away
  * (flags = CMD_REQ_COMMIT) when DSI link is free
 */
-void mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt)
+int mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt)
 {
 	struct dcs_cmd_req cmdreq;
+	struct dsi_cmd_desc *tx_cmds = cmds;
+	int ret;
 
 	cmdreq.cmds = cmds;
 	cmdreq.cmds_cnt = cnt;
@@ -173,10 +167,23 @@ void mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt)
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
 
-	mipi_dsi_cmdlist_put(&cmdreq);
-
-	pr_debug("%s: is called for list cmd ; size= %d\n",
+	ret = mipi_dsi_cmdlist_put(&cmdreq);
+	if (ret != cnt) {
+		tx_cmds += ret;
+		pr_err("%s: failed to tx cmd=0x%x\n", __func__,
+							tx_cmds->payload[0]);
+		ret = -1;
+	} else {
+		int i;
+		pr_debug("%s: done with tx command; size= %d cmd: ",
 						__func__, cmdreq.cmds_cnt);
+		for (i = 0; i < cnt; i++) {
+			pr_debug("0x%x ", tx_cmds->payload[0]);
+			tx_cmds++;
+		}
+	}
+
+	return ret;
 }
 
 int mipi_mot_exec_cmd_seq(struct msm_fb_data_type *mfd,
@@ -205,7 +212,13 @@ int mipi_mot_exec_cmd_seq(struct msm_fb_data_type *mfd,
 			pr_debug("%s: Item %d - TX MIPI cmd = 0x%02x, size = %d\n",
 				__func__, i, cur->cmd.payload[0],
 				cur->cmd.dlen);
-			mipi_mot_tx_cmds(&cur->cmd, 1);
+			sub_ret = mipi_mot_tx_cmds(&cur->cmd, 1);
+			if (sub_ret <= 0) {
+				pr_err("%s: Item %d - fail to call mot_tx_cmds\n",
+							__func__, i);
+				r = sub_ret;
+				break;
+			}
 		} else if (cur->type == MIPI_MOT_SEQ_EXEC_SUB_SEQ) {
 			pr_debug("%s: Item %d - Executing sub sequence with %d items\n",
 				__func__, i, cur->sub.count);
@@ -215,6 +228,7 @@ int mipi_mot_exec_cmd_seq(struct msm_fb_data_type *mfd,
 				pr_err("%s: Item %d - sub sequence failed, ret = %d\n",
 					__func__, i, sub_ret);
 				r = sub_ret;
+				break;
 			}
 		} else if (cur->type == MIPI_MOT_SEQ_TX_PWR_MODE_HS) {
 			pr_debug("%s: Item %d - Enabling HS mode\n",
@@ -226,19 +240,17 @@ int mipi_mot_exec_cmd_seq(struct msm_fb_data_type *mfd,
 	return r;
 }
 
-u8 mipi_mode_get_pwr_mode(struct msm_fb_data_type *mfd)
+int mipi_mot_get_pwr_mode(struct msm_fb_data_type *mfd, u8 *pwr_mode)
 {
 	int ret;
-	u8 power_mode;
 
-	ret = mipi_mot_rx_cmd(&mot_get_pwr_mode_cmd, &power_mode, 1);
-	if (ret < 0) {
+	ret = mipi_mot_rx_cmd(&mot_get_pwr_mode_cmd, pwr_mode, 1);
+	if (ret <= 0)
 		pr_err("%s: failed to read pwr_mode\n", __func__);
-		power_mode = 0;
-	}
 
-	pr_debug("%s: panel power mode = 0x%x\n", __func__, power_mode);
-	return power_mode;
+	pr_debug("%s: panel power mode = 0x%x\n", __func__, *pwr_mode);
+
+	return ret;
 }
 
 u16 mipi_mot_get_manufacture_id(struct msm_fb_data_type *mfd)
@@ -277,6 +289,26 @@ u16 mipi_mot_get_controller_ver(struct msm_fb_data_type *mfd)
 	}
 
 	return controller_ver;
+}
+
+
+int mipi_mot_is_valid_power_mode(struct msm_fb_data_type *mfd)
+{
+	u8 pwr_mode = 0;
+	int ret = 1;
+
+	ret = mipi_mot_get_pwr_mode(mfd, &pwr_mode);
+	if (ret <= 0) {
+		pr_err("%s: failed to get power mode. Ret = %d\n",
+						__func__, ret);
+		ret = 0;
+	/*Bit7: Booster on ;Bit4: Sleep Out ;Bit2: Display On*/
+	} else if ((pwr_mode & 0x94) != 0x94) {
+		pr_warning("%s: power state = 0x%x\n", __func__, pwr_mode);
+		ret = 0;
+	}
+
+	return ret;
 }
 
 
@@ -372,15 +404,24 @@ static int esd_recovery_start(struct msm_fb_data_type *mfd)
 
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
 
-	if (!mfd->panel_power_on)  /* panel is off, do nothing */
+	if (!mfd->panel_power_on) /* panel is off, do nothing */
 		goto end;
 
-	mfd->panel_power_on = FALSE;
-	pdata->off(mfd->pdev);
-	msleep(20);
-	pdata->on(mfd->pdev);
-	mfd->panel_power_on = TRUE;
-	mfd->dma_fnc(mfd);
+	if (mot_panel && atomic_read(&mot_panel->state) == MOT_PANEL_OFF)
+		goto end;
+
+	atomic_set(&mot_panel->state, MOT_PANEL_OFF);
+	if (mot_panel->panel_disable)
+		mot_panel->panel_disable(mfd);
+	mipi_dsi_panel_power_enable(0);
+	msleep(200);
+
+	mipi_dsi_panel_power_enable(1);
+	if (mot_panel->panel_enable)
+		mot_panel->panel_enable(mfd);
+	atomic_set(&mot_panel->state, MOT_PANEL_ON);
+	mdp4_dsi_cmd_pipe_commit(0, 1);
+	mipi_mot_panel_on(mfd);
 end:
 	pr_info("MIPI MOT: ESD recovering is done\n");
 
@@ -389,60 +430,58 @@ end:
 
 static int mipi_mot_esd_detection(struct msm_fb_data_type *mfd)
 {
-	/*
-	 * TODO.. This will need to redo in the different way in other
-	 * ESD patch
-	 */
-	return MOT_ESD_OK;
+#ifdef MOT_PANEL_ESD_SELF_TRIGGER
+	static int esd_count;
+	static int esd_trigger_cnt;
+#endif
+
+	pr_debug("%s is called\n", __func__);
+
+	if (atomic_read(&mot_panel->state) == MOT_PANEL_OFF) {
+		pr_debug("%s exit because of panel is off.\n", __func__);
+		return 0;
+	}
+
+	mutex_lock(&mfd->dma->ov_mutex);
+	if (mot_panel->is_valid_power_mode)
+		if (!mot_panel->is_valid_power_mode(mot_panel->mfd)) {
+			mutex_unlock(&mfd->dma->ov_mutex);
+			goto trigger_esd_recovery;
+		}
+	mutex_unlock(&mfd->dma->ov_mutex);
+
+#ifdef MOT_PANEL_ESD_SELF_TRIGGER
+	if (esd_count++ >= MIPI_MOT_PANEL_ESD_CNT_MAX) {
+		pr_info("%s(%d): start to ESD test\n", __func__,
+							esd_trigger_cnt++);
+		esd_count = 0;
+		goto trigger_esd_recovery;
+	}
+#endif
+
+	return 0;
+
+trigger_esd_recovery:
+	esd_recovery_start(mot_panel->mfd);
+
+	return 0;
 }
 
 void mipi_mot_esd_work(void)
 {
 	struct msm_fb_data_type *mfd;
-	int i;
-	int ret;
-#ifdef MIPI_MOT_PANEL_ESD_TEST
-	static int esd_count;
-	static int esd_trigger_cnt;
-#endif
+
+	mfd = mot_panel->mfd;
 
 	if (mot_panel == NULL) {
 		pr_err("%s: invalid mot_panel\n", __func__);
 		return;
 	}
 
-	mfd = mot_panel->mfd;
+	mutex_lock(&mfd->panel_info.mipi.panel_mutex);
+	mipi_mot_esd_detection(mfd);
+	mutex_unlock(&mfd->panel_info.mipi.panel_mutex);
 
-	/*
-	 * Try to run ESD detection on the panel MOT_PANEL_ESD_NUM_TRY_MAX
-	 * times, if the response data are incorrect then start to reset the
-	 * MDP and panel
-	 */
-
-	for (i = 0; i < MOT_PANEL_ESD_NUM_TRY_MAX; i++) {
-		if (i > 0)
-			msleep(100);
-
-		ret =  mipi_mot_esd_detection(mfd);
-		if (ret == MOT_ESD_OK)
-			break;
-		/* If the panel is off then just exit and not queue ESD work */
-		else if (ret == MOT_ESD_PANEL_OFF)
-			return;
-	}
-
-	if (i >= MOT_PANEL_ESD_NUM_TRY_MAX)
-		esd_recovery_start(mot_panel->mfd);
-
-#ifdef MIPI_MOT_PANEL_ESD_TEST
-	if (esd_count++ >= MIPI_MOT_PANEL_ESD_CNT_MAX) {
-		pr_info("%s(%d): start to ESD test\n", __func__,
-							esd_trigger_cnt++);
-		esd_count = 0;
-		esd_recovery_start(mot_panel->mfd);
-	} else
-		pr_info("%s(%d):is called.\n", __func__, esd_trigger_cnt++);
-#endif
 	queue_delayed_work(mot_panel->esd_wq, &mot_panel->esd_work,
 						MOT_PANEL_ESD_CHECK_PERIOD);
 }
