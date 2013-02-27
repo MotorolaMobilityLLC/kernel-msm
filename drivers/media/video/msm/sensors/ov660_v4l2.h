@@ -32,6 +32,7 @@
 /* MISC DEVICE COMMANDS */
 #define MAJOR_NUM 100
 #define CAMERA_SET_RGBC_OUTPUT _IOR(MAJOR_NUM, 0, long *)
+#define CAMERA_SET_FOCUS_WINDOW _IOR(MAJOR_NUM, 1, long *)
 
 struct ov660_reg_i2c_tbl {
 	uint16_t reg_addr;
