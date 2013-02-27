@@ -1550,8 +1550,10 @@ static void vfe32_start_common(struct vfe32_ctrl_type *vfe32_ctrl)
 	CDBG("VFE opertaion mode = 0x%x, output mode = 0x%x\n",
 		vfe32_ctrl->share_ctrl->operation_mode,
 		vfe32_ctrl->share_ctrl->outpath.output_mode);
-		msm_camera_io_w_mb(1, vfe32_ctrl->share_ctrl->vfebase +
-			VFE_CAMIF_COMMAND);
+	msm_camera_io_w_mb(1, vfe32_ctrl->share_ctrl->vfebase +
+		VFE_CAMIF_COMMAND);
+	msm_camera_io_w_mb(VFE_AXI_CFG_MASK,
+		vfe32_ctrl->share_ctrl->vfebase + VFE_AXI_CFG);
 }
 
 static int vfe32_start_recording(
