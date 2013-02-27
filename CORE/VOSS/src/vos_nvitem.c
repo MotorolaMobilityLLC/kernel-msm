@@ -1037,7 +1037,6 @@ VOS_STATUS vos_nv_readMultiMacAddress( v_U8_t *pMacAddress,
           VOS_STATUS_E_FAILURE - unknown error
   \sa
   -------------------------------------------------------------------------*/
-#ifndef WLAN_FTM_STUB
 
 VOS_STATUS vos_nv_setValidity( VNV_TYPE type, v_BOOL_t itemIsValid )
 {
@@ -1080,7 +1079,6 @@ VOS_STATUS vos_nv_setValidity( VNV_TYPE type, v_BOOL_t itemIsValid )
 
    return status;
 }
-#endif
 /**------------------------------------------------------------------------
   \brief vos_nv_getValidity() - get the validity of an NV item.
   The \a vos_nv_getValidity() indicates if an NV item is valid.  The
@@ -1348,7 +1346,6 @@ VOS_STATUS vos_nv_read( VNV_TYPE type, v_VOID_t *outputVoidBuffer,
    }
    return status;
 }
-#ifndef WLAN_FTM_STUB
 
 /**------------------------------------------------------------------------
   \brief vos_nv_write() - write to a NV item from an input buffer
@@ -1594,7 +1591,6 @@ VOS_STATUS vos_nv_write( VNV_TYPE type, v_VOID_t *inputVoidBuffer,
    }
    return status;
 }
-#endif
   
 /**------------------------------------------------------------------------
   \brief vos_nv_getChannelListWithPower() - function to return the list of
