@@ -1022,6 +1022,16 @@ static int msm_fb_detect_panel(const char *name)
 	return -ENODEV;
 }
 
+static int is_factory_mode(void)
+{
+	struct mmi_oem_data *mmi_data = msm8960_oem_funcs.oem_data;
+
+	if (mmi_data && mmi_data->is_factory)
+		return mmi_data->is_factory();
+	else
+		return 0;
+}
+
 
 static struct mipi_dsi_panel_platform_data mipi_dsi_mot_pdata = {
 };
@@ -1044,5 +1054,6 @@ void __init mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 	mipi_dsi_pdata->dsi_power_save = mipi_dsi_power;
 	mipi_dsi_pdata->panel_power_save = panel_power_ctrl;
 	mipi_dsi_pdata->panel_power_en = panel_power_ctrl_en;
+	mipi_dsi_pdata->is_factory_mode = is_factory_mode;
 	platform_device_register(&mipi_dsi_mot_panel_device);
 }
