@@ -170,12 +170,12 @@ limConvertSupportedChannels(tpAniSirGlobal pMac,
 /**---------------------------------------------------------------
 \fn     limProcessAssocReqFrame
 \brief  This function is called by limProcessMessageQueue()
-\       upon Re/Association Request frame reception in 
+\       upon Re/Association Request frame reception in
 \       BTAMP AP or Soft AP role.
 \
 \param pMac
 \param *pRxPacketInfo    - A pointer to Buffer descriptor + associated PDUs
-\param subType - Indicates whether it is Association Request(=0) 
+\param subType - Indicates whether it is Association Request(=0)
 \                or Reassociation Request(=1) frame
 \return None
 ------------------------------------------------------------------*/
@@ -195,11 +195,9 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
     tSirMacCapabilityInfo   localCapabilities;
     tpDphHashNode           pStaDs = NULL;
     tpSirAssocReq           pAssocReq;
-#ifdef WLAN_SOFTAP_FEATURE
     tLimMlmStates           mlmPrevState;
     tDot11fIERSN            Dot11fIERSN;
     tDot11fIEWPA            Dot11fIEWPA;
-#endif
     tANI_U32 phyMode;
     tHalBitVal qosMode;
     tHalBitVal wsmMode, wmeMode;
@@ -243,7 +241,7 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
 
     sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG2, (tANI_U8 *) pBody, framelen);
 
-    if( palEqualMemory( pMac->hHdd,  (tANI_U8* ) pHdr->sa, (tANI_U8 *) pHdr->da, 
+    if( palEqualMemory( pMac->hHdd,  (tANI_U8* ) pHdr->sa, (tANI_U8 *) pHdr->da,
                         (tANI_U8) (sizeof(tSirMacAddr))))
     {
         limSendAssocRspMgmtFrame(pMac,
@@ -255,7 +253,6 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
         return ;
     }
 
-#ifdef WLAN_SOFTAP_FEATURE
     // If TKIP counter measures active send Assoc Rsp frame to station with eSIR_MAC_MIC_FAILURE_REASON
     if ((psessionEntry->bTkipCntrMeasActive) && (psessionEntry->limSystemRole == eLIM_AP_ROLE))
     {
@@ -266,16 +263,15 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
                                     subType, 0, psessionEntry);
         return;
     }
-#endif
 
     // Allocate memory for the Assoc Request frame
-    if ( palAllocateMemory(pMac->hHdd, (void **)&pAssocReq, sizeof(*pAssocReq)) != eHAL_STATUS_SUCCESS) 
+    if ( palAllocateMemory(pMac->hHdd, (void **)&pAssocReq, sizeof(*pAssocReq)) != eHAL_STATUS_SUCCESS)
     {
         limLog(pMac, LOGP, FL("PAL Allocate Memory failed in AssocReq\n"));
         return;
     }
     palZeroMemory( pMac->hHdd, (void *)pAssocReq , sizeof(*pAssocReq));
-   
+
     // Parse Assoc Request frame
     if (subType == LIM_ASSOC)
         status = sirConvertAssocReqFrame2Struct(pMac, pBody, framelen, pAssocReq);
@@ -451,7 +447,6 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
         goto error;
     }
 
-#ifdef WLAN_SOFTAP_FEATURE
 
     if((psessionEntry->limSystemRole == eLIM_AP_ROLE ) &&
        (psessionEntry->dot11mode == WNI_CFG_DOT11_MODE_11G_ONLY) &&
@@ -474,7 +469,6 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
         goto error;
     }//end if PhyMode == 11N_only
 
-#endif
 
     /* Spectrum Management (11h) specific checks */
     if (localCapabilities.spectrumMgt)
@@ -685,7 +679,6 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
         }
     } // End if on HT caps turned on in lim.
 
-#ifdef WLAN_SOFTAP_FEATURE
     /* Clear the buffers so that frame parser knows that there isn't a previously decoded IE in these buffers */
     palZeroMemory( pMac->hHdd, ( tANI_U8* )&Dot11fIERSN, sizeof( Dot11fIERSN ) );
     palZeroMemory( pMac->hHdd, ( tANI_U8* )&Dot11fIEWPA, sizeof( Dot11fIEWPA ) );
@@ -812,7 +805,6 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
             && psessionEntry->pLimStartBssReq->rsnIE->length) */
 
     } /* end of     if( ! pAssocReq->wscInfo.present ) */
-#endif //WLAN_SOFTAP_FEATURE
 
     /**
      * Extract 'associated' context for STA, if any.
@@ -1208,7 +1200,6 @@ if (limPopulateMatchingRateSet(pMac,
         limGetWsmMode(psessionEntry, &wsmMode);
         /* WMM_APSD - WMM_SA related processing should be separate; WMM_SA and WMM_APSD
          can coexist */
-#ifdef WLAN_SOFTAP_FEATURE
         if( pAssocReq->WMMInfoStation.present)
         {
             /* check whether AP supports or not */
@@ -1243,7 +1234,6 @@ if (limPopulateMatchingRateSet(pMac,
                 pStaDs->qos.capability.qosInfo.maxSpLen = pAssocReq->WMMInfoStation.max_sp_length;
             }
         }
-#endif
         //if (assoc.wsmCapablePresent && pMac->dph.gDphWsmEnabled)
         if (pAssocReq->wsmCapablePresent && (wsmMode == eHAL_SET))
             pStaDs->wsmEnabled = eANI_BOOLEAN_TRUE;
@@ -1290,7 +1280,6 @@ if (limPopulateMatchingRateSet(pMac,
     {
         pStaDs->mlmStaContext.updateContext = 1;
 
-#ifdef WLAN_SOFTAP_FEATURE
         mlmPrevState = pStaDs->mlmStaContext.mlmState;
 
         /* As per the HAL/FW needs the reassoc req need not be calling limDelSta */
@@ -1325,7 +1314,6 @@ if (limPopulateMatchingRateSet(pMac,
             }
 
         }
-#endif
 
     }
 
@@ -1384,9 +1372,7 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
     tANI_U16                temp;
     tANI_U32                phyMode;
     tANI_U8                 subType;
-#ifdef WLAN_SOFTAP_FEATURE
     tANI_U8                 *wpsIe = NULL;
-#endif
     tANI_U32                tmp;
 //    tANI_U16                statusCode;    
     tANI_U16                i, j=0;
@@ -1404,11 +1390,7 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
         subType = LIM_REASSOC;
     else 
         subType = LIM_ASSOC;
-#ifdef WLAN_SOFTAP_FEATURE
     if (subType == LIM_ASSOC || subType == LIM_REASSOC)
-#else
-    if (subType == LIM_ASSOC )
-#endif
     {
         temp  = sizeof(tLimMlmAssocInd);
 #if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)        
@@ -1464,15 +1446,11 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
 
         // Fill in RSN IE information
         pMlmAssocInd->rsnIE.length = 0;
-#ifdef WLAN_SOFTAP_FEATURE
         // if WPS IE is present, ignore RSN IE
         if (pAssocReq->addIEPresent && pAssocReq->addIE.length ) {
             wpsIe = limGetWscIEPtr(pMac, pAssocReq->addIE.addIEdata, pAssocReq->addIE.length);
         }
         if (pAssocReq->rsnPresent && (NULL == wpsIe))
-#else
-        if (pAssocReq->rsnPresent)
-#endif
         {
             limLog(pMac, LOG2, FL("Assoc Req RSN IE len = %d\n"), pAssocReq->rsn.length);
             pMlmAssocInd->rsnIE.length = 2 + pAssocReq->rsn.length;
@@ -1496,12 +1474,8 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
             pMlmAssocInd->spectrumMgtIndicator = eSIR_FALSE;
 
 
-#ifdef WLAN_SOFTAP_FEATURE
         /* This check is to avoid extra Sec IEs present incase of WPS */
         if (pAssocReq->wpaPresent && (NULL == wpsIe))
-#else
-        if ((pAssocReq->wpaPresent) && (pMlmAssocInd->rsnIE.length < SIR_MAC_MAX_IE_LENGTH))
-#endif
         {
             if((pMlmAssocInd->rsnIE.length + pAssocReq->wpa.length) >= SIR_MAC_MAX_IE_LENGTH)
             {
@@ -1529,7 +1503,6 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
             pMlmAssocInd->addIE.length = pAssocReq->addIE.length;
        }
 
-#ifdef WLAN_SOFTAP_FEATURE
         if(pAssocReq->wmeInfoPresent)
         {
 
@@ -1548,7 +1521,6 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
             /* Note: we are not rejecting association here because IOT will fail */
 
         }
-#endif
 
         // Required for indicating the frames to upper layer
         pMlmAssocInd->assocReqLength = pAssocReq->assocReqFrameLength;
@@ -1622,14 +1594,10 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
         pMlmReassocInd->capabilityInfo = pAssocReq->capabilityInfo;
         pMlmReassocInd->rsnIE.length = 0;
 
-#ifdef WLAN_SOFTAP_FEATURE
         if (pAssocReq->addIEPresent && pAssocReq->addIE.length )
             wpsIe = limGetWscIEPtr(pMac, pAssocReq->addIE.addIEdata, pAssocReq->addIE.length);
 
         if (pAssocReq->rsnPresent && (NULL == wpsIe))
-#else
-        if (pAssocReq->rsnPresent)
-#endif
         {
             limLog(pMac, LOG2, FL("Assoc Req: RSN IE length = %d\n"), pAssocReq->rsn.length);
             pMlmReassocInd->rsnIE.length = 2 + pAssocReq->rsn.length;
@@ -1664,12 +1632,8 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
             pMlmReassocInd->spectrumMgtIndicator = eSIR_FALSE;
 
 
-#ifdef WLAN_SOFTAP_FEATURE
         /* This check is to avoid extra Sec IEs present incase of WPS */
         if (pAssocReq->wpaPresent && (NULL == wpsIe))
-#else
-        if (pAssocReq->wpaPresent)
-#endif
         {
             limLog(pMac, LOG2, FL("Received WPA IE length in Assoc Req is %d\n"), pAssocReq->wpa.length);
             pMlmReassocInd->rsnIE.rsnIEdata[pMlmReassocInd->rsnIE.length] = SIR_MAC_WPA_EID;
@@ -1692,7 +1656,6 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
             pMlmReassocInd->addIE.length = pAssocReq->addIE.length;
        }
 
-#ifdef WLAN_SOFTAP_FEATURE
         if(pAssocReq->wmeInfoPresent)
         {
 
@@ -1711,7 +1674,6 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
             /* Note: we are not rejecting Re-association here because IOT will fail */
 
         }
-#endif
 
         // Required for indicating the frames to upper layer
         pMlmReassocInd->assocReqLength = pAssocReq->assocReqFrameLength;

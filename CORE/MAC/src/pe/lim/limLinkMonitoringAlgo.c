@@ -185,13 +185,11 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
         return;
     }
 
-#ifdef WLAN_SOFTAP_FEATURE
     switch(pMsg->reasonCode)
     {
         case HAL_DEL_STA_REASON_CODE_KEEP_ALIVE:
         case HAL_DEL_STA_REASON_CODE_TIM_BASED:
              PELOGE(limLog(pMac, LOGE, FL(" Deleting station: staId = %d, reasonCode = %d\n"), pMsg->staId, pMsg->reasonCode);)
-#endif
              pStaDs = dphGetHashEntry(pMac, pMsg->assocId, &psessionEntry->dph.dphHashTable);
 
              if (!pStaDs)
@@ -254,7 +252,6 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
                  }
 #endif
              }
-#ifdef WLAN_SOFTAP_FEATURE
              break;        
 
         case HAL_DEL_STA_REASON_CODE_UNKNOWN_A2:
@@ -268,7 +265,6 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
              break;
 
     }
-#endif
     palFreeMemory(pMac->hHdd, pMsg);
     return;
 }
@@ -319,11 +315,7 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
     pBuf = (tANI_U8 *) &pSmeDeauthReq->messageType;
 
     //messageType
-#ifdef WLAN_SOFTAP_FEATURE
     limCopyU16((tANI_U8*)pBuf, eWNI_SME_DISASSOC_REQ);
-#else
-    limCopyU16((tANI_U8*)pBuf, eWNI_SME_DEAUTH_REQ);
-#endif
     pBuf += sizeof(tANI_U16);
     msgLength += sizeof(tANI_U16);
 
@@ -353,11 +345,7 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
     msgLength += sizeof(tSirMacAddr);
 
     //reasonCode 
-#ifdef WLAN_SOFTAP_FEATURE
     limCopyU16((tANI_U8*)pBuf, (tANI_U16)eLIM_LINK_MONITORING_DISASSOC);
-#else
-    limCopyU16((tANI_U8*)pBuf, (tANI_U16)eLIM_LINK_MONITORING_DEAUTH);
-#endif
     pBuf += sizeof(tANI_U16);
     msgLength += sizeof(tANI_U16);
 
@@ -379,11 +367,7 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
     //Fill in length
     limCopyU16((tANI_U8*)pLen, msgLength);
 
-#ifdef WLAN_SOFTAP_FEATURE
     limPostSmeMessage(pMac, eWNI_SME_DISASSOC_REQ, (tANI_U32 *) pSmeDeauthReq);
-#else
-    limPostSmeMessage(pMac, eWNI_SME_DEAUTH_REQ, (tANI_U32 *) pSmeDeauthReq);
-#endif
     palFreeMemory( pMac->hHdd, pSmeDeauthReq );
 
 } /*** end limTriggerSTAdeletion() ***/

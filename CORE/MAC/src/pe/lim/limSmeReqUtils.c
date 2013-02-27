@@ -50,7 +50,7 @@
  * Date           Modified by    Modification Information
  * --------------------------------------------------------------------
  * 05/26/10       js             WPA handling in (Re)Assoc frames
- * 
+ *
  */
 
 #include "wniApi.h"
@@ -250,7 +250,6 @@ limIsAddieValidInSmeReqMessage(tpAniSirGlobal pMac, tpSirAddie pAddie)
     return true;
 } /*** end limIsAddieValidInSmeReqMessage() ***/
 
-#ifdef WLAN_SOFTAP_FEATURE
 /**
  * limSetRSNieWPAiefromSmeStartBSSReqMessage()
  *
@@ -396,7 +395,6 @@ limSetRSNieWPAiefromSmeStartBSSReqMessage(tpAniSirGlobal pMac,
 
     return true;
 } /*** end limSetRSNieWPAiefromSmeStartBSSReqMessage() ***/
-#endif
 
 #if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
 /**
@@ -590,11 +588,9 @@ limIsSmeStartBssReqValid(tpAniSirGlobal pMac,
         case eSIR_BTAMP_AP_MODE:
             break;
 
-#ifdef WLAN_SOFTAP_FEATURE
         /* Added for SoftAP support */
         case eSIR_INFRA_AP_MODE:
             break;
-#endif
         
         default:
             /**

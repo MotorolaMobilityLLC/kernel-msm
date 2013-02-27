@@ -94,20 +94,14 @@
  *
  * @return true if passed authType is enabled else false
  */
-#ifdef WLAN_SOFTAP_FEATURE
 tANI_U8
 limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType, tpPESession psessionEntry)
-#else
-tANI_U8
-limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType)
-#endif
 {
     tANI_U32 algoEnable, privacyOptImp;
 
     if (authType == eSIR_OPEN_SYSTEM)
     {
 
-#ifdef WLAN_SOFTAP_FEATURE
         if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
         {
            if((psessionEntry->authType == eSIR_OPEN_SYSTEM) || (psessionEntry->authType == eSIR_AUTO_SWITCH))
@@ -115,7 +109,6 @@ limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType)
            else
               return false; 
         }
-#endif
 
         if (wlan_cfgGetInt(pMac, WNI_CFG_OPEN_SYSTEM_AUTH_ENABLE,
                       &algoEnable) != eSIR_SUCCESS)
@@ -135,7 +128,6 @@ limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType)
     else
     {
 
-#ifdef WLAN_SOFTAP_FEATURE
         if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
         {
             if((psessionEntry->authType == eSIR_SHARED_KEY) || (psessionEntry->authType == eSIR_AUTO_SWITCH))
@@ -145,7 +137,6 @@ limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType)
             
         }
         else
-#endif
 
         if (wlan_cfgGetInt(pMac, WNI_CFG_SHARED_KEY_AUTH_ENABLE,
                       &algoEnable) != eSIR_SUCCESS)
@@ -160,13 +151,11 @@ limIsAuthAlgoSupported(tpAniSirGlobal pMac, tAniAuthType authType)
             return false;
         }
 
-#ifdef WLAN_SOFTAP_FEATURE
         if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
         {
             privacyOptImp = psessionEntry->privacy;
         }
         else
-#endif
 
         if (wlan_cfgGetInt(pMac, WNI_CFG_PRIVACY_ENABLED,
                       &privacyOptImp) != eSIR_SUCCESS)
@@ -1249,7 +1238,6 @@ tANI_U32 val = 0;
   case eSIR_ED_WEP104:
       // FIXME! Is this OK?
       if( 0 == pMlmSetKeysReq->numKeys ) {
-#ifdef WLAN_SOFTAP_FEATURE
           tANI_U32 i;
 
           for(i=0; i < SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS ;i++)
@@ -1258,7 +1246,6 @@ tANI_U32 val = 0;
                              (tANI_U8 *) &pSetStaKeyParams->key[i],
                              (tANI_U8 *) &pMlmSetKeysReq->key[i], sizeof( tSirKeys ));
           }
-#endif
           pSetStaKeyParams->wepType = eSIR_WEP_STATIC;
           sessionEntry->limMlmState = eLIM_MLM_WT_SET_STA_KEY_STATE;
           MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, sessionEntry->peSessionId, sessionEntry->limMlmState));

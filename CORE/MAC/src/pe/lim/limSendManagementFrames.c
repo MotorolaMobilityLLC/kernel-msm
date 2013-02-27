@@ -537,26 +537,21 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     // Timestamp to be updated by TFP, below.
 
     // Beacon Interval:
-#ifdef WLAN_SOFTAP_FEATURE
     if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
     {
         pFrm->BeaconInterval.interval = pMac->sch.schObject.gSchBeaconInterval;        
     }
     else
     {
-#endif
-    nSirStatus = wlan_cfgGetInt( pMac, WNI_CFG_BEACON_INTERVAL, &cfg);
-    if (eSIR_SUCCESS != nSirStatus)
-    {
-        limLog( pMac, LOGP, FL("Failed to retrieve WNI_CFG_BEACON_INTERVAL from CFG (%d).\n"),
-                nSirStatus );
-        return;
+        nSirStatus = wlan_cfgGetInt( pMac, WNI_CFG_BEACON_INTERVAL, &cfg);
+        if (eSIR_SUCCESS != nSirStatus)
+        {
+            limLog( pMac, LOGP, FL("Failed to retrieve WNI_CFG_BEACON_INTERVAL from CFG (%d).\n"),
+                    nSirStatus );
+            return;
+        }
+        pFrm->BeaconInterval.interval = ( tANI_U16 ) cfg;
     }
-    pFrm->BeaconInterval.interval = ( tANI_U16 ) cfg;
-#ifdef WLAN_SOFTAP_FEATURE
-    }
-#endif
-
 
     PopulateDot11fCapabilities( pMac, &pFrm->Capabilities, psessionEntry );
     PopulateDot11fSSID( pMac, ( tSirMacSSid* )pSsid, &pFrm->SSID );
@@ -570,7 +565,6 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     PopulateDot11fCFParams( pMac, &pFrm->Capabilities, &pFrm->CFParams );
 #endif // AP Image
 
-#ifdef WLAN_SOFTAP_FEATURE
     if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
     {
         if(psessionEntry->wps_state != SAP_WPS_DISABLED)
@@ -580,31 +574,28 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     }
     else
     {
-#endif
-    if (wlan_cfgGetInt(pMac, (tANI_U16) WNI_CFG_WPS_ENABLE, &tmp) != eSIR_SUCCESS)
-        limLog(pMac, LOGP,"Failed to cfg get id %d\n", WNI_CFG_WPS_ENABLE );
-    
-    wpsApEnable = tmp & WNI_CFG_WPS_ENABLE_AP;
-    
-    if (wpsApEnable)
-    {
-        PopulateDot11fWscInProbeRes(pMac, &pFrm->WscProbeRes);
-    }
+        if (wlan_cfgGetInt(pMac, (tANI_U16) WNI_CFG_WPS_ENABLE, &tmp) != eSIR_SUCCESS)
+            limLog(pMac, LOGP,"Failed to cfg get id %d\n", WNI_CFG_WPS_ENABLE );
 
-    if (pMac->lim.wscIeInfo.probeRespWscEnrollmentState == eLIM_WSC_ENROLL_BEGIN)
-    {
-        PopulateDot11fWscRegistrarInfoInProbeRes(pMac, &pFrm->WscProbeRes);
-        pMac->lim.wscIeInfo.probeRespWscEnrollmentState = eLIM_WSC_ENROLL_IN_PROGRESS;
-    }
+        wpsApEnable = tmp & WNI_CFG_WPS_ENABLE_AP;
 
-    if (pMac->lim.wscIeInfo.wscEnrollmentState == eLIM_WSC_ENROLL_END)
-    {
-        DePopulateDot11fWscRegistrarInfoInProbeRes(pMac, &pFrm->WscProbeRes);
-        pMac->lim.wscIeInfo.probeRespWscEnrollmentState = eLIM_WSC_ENROLL_NOOP;
+        if (wpsApEnable)
+        {
+            PopulateDot11fWscInProbeRes(pMac, &pFrm->WscProbeRes);
+        }
+
+        if (pMac->lim.wscIeInfo.probeRespWscEnrollmentState == eLIM_WSC_ENROLL_BEGIN)
+        {
+            PopulateDot11fWscRegistrarInfoInProbeRes(pMac, &pFrm->WscProbeRes);
+            pMac->lim.wscIeInfo.probeRespWscEnrollmentState = eLIM_WSC_ENROLL_IN_PROGRESS;
+        }
+
+        if (pMac->lim.wscIeInfo.wscEnrollmentState == eLIM_WSC_ENROLL_END)
+        {
+            DePopulateDot11fWscRegistrarInfoInProbeRes(pMac, &pFrm->WscProbeRes);
+            pMac->lim.wscIeInfo.probeRespWscEnrollmentState = eLIM_WSC_ENROLL_NOOP;
+        }
     }
-#ifdef WLAN_SOFTAP_FEATURE
-    }
-#endif
 
     PopulateDot11fCountry( pMac, &pFrm->Country, psessionEntry);
     PopulateDot11fEDCAParamSet( pMac, &pFrm->EDCAParamSet, psessionEntry);
@@ -643,11 +634,7 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     if ( psessionEntry->htCapability )
     {
         PopulateDot11fHTCaps( pMac, psessionEntry, &pFrm->HTCaps );
-#ifdef WLAN_SOFTAP_FEATURE
         PopulateDot11fHTInfo( pMac, &pFrm->HTInfo, psessionEntry );
-#else
-        PopulateDot11fHTInfo( pMac, &pFrm->HTInfo );
-#endif
     }
 #ifdef WLAN_FEATURE_11AC
     if(psessionEntry->vhtCapability)
@@ -1526,7 +1513,6 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
                       pSta->supportedRates.llbRates, pSta->supportedRates.llaRates );
     }
 
-#ifdef WLAN_SOFTAP_FEATURE
     if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
     {
         if( pSta != NULL && eSIR_SUCCESS == statusCode )
@@ -1541,7 +1527,6 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
 #endif
         }
     }
-#endif
 
     if ( NULL != pSta )
     {
@@ -1572,11 +1557,7 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
             if ( ( ! pSta->aniPeer ) || ( ! PROP_CAPABILITY_GET( WME, pSta->propCapability ) ) )
             {
 
-#ifdef WLAN_SOFTAP_FEATURE
                 PopulateDot11fWMMParams( pMac, &frm.WMMParams, psessionEntry);
-#else
-                PopulateDot11fWMMParams( pMac, &frm.WMMParams );
-#endif
 
                 if ( pSta->wsmEnabled )
                 {
@@ -1599,11 +1580,7 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
              psessionEntry->htCapability )
         {
             PopulateDot11fHTCaps( pMac, psessionEntry, &frm.HTCaps );
-#ifdef WLAN_SOFTAP_FEATURE
             PopulateDot11fHTInfo( pMac, &frm.HTInfo, psessionEntry );
-#else
-            PopulateDot11fHTInfo( pMac, &frm.HTInfo );
-#endif
         }
 
 #ifdef WLAN_FEATURE_11AC
@@ -1622,12 +1599,10 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
 
    palZeroMemory( pMac->hHdd, ( tANI_U8* )&beaconParams, sizeof( tUpdateBeaconParams) );
 
-#ifdef WLAN_SOFTAP_FEATURE
     if( psessionEntry->limSystemRole == eLIM_AP_ROLE ){
         if(psessionEntry->gLimProtectionControl != WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE)
         limDecideApProtection(pMac, peerMacAddr, &beaconParams,psessionEntry);
     }
-#endif
 
     limUpdateShortPreamble(pMac, peerMacAddr, &beaconParams, psessionEntry);
     limUpdateShortSlotTime(pMac, peerMacAddr, &beaconParams, psessionEntry);

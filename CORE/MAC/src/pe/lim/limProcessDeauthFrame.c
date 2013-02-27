@@ -247,9 +247,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
     /* If received DeAuth from AP other than the one we're trying to join with
      * nor associated with, then ignore deauth and delete Pre-auth entry.
      */
-#ifdef WLAN_SOFTAP_FEATURE
     if(psessionEntry->limSystemRole != eLIM_AP_ROLE ){
-#endif
         if (!IS_CURRENT_BSSID(pMac, pHdr->bssId, psessionEntry))
         {
             PELOGE(limLog(pMac, LOGE, FL("received DeAuth from an AP other than we're trying to join. Ignore. \n"));)
@@ -260,9 +258,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
             }
             return;
         }
-#ifdef WLAN_SOFTAP_FEATURE
     }
-#endif
 
         pStaDs = dphLookupHashEntry(pMac, pHdr->sa, &aid, &psessionEntry->dph.dphHashTable);
 
@@ -396,10 +392,8 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
             case eLIM_STA_IN_IBSS_ROLE:
                 break;
 
-#ifdef WLAN_SOFTAP_FEATURE
             case eLIM_AP_ROLE:
                 break;
-#endif 
 
             default: // eLIM_AP_ROLE or eLIM_BT_AMP_AP_ROLE
 

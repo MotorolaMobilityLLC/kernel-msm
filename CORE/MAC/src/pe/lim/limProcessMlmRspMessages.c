@@ -410,12 +410,10 @@ limProcessMlmStartCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         {
              limLog(pMac, LOG1, FL("*** Started BSS in BT_AMP AP SIDE***\n"));
         }
-#ifdef WLAN_SOFTAP_FEATURE
         else if(psessionEntry->bssType == eSIR_INFRA_AP_MODE)
         {
              limLog(pMac, LOG1, FL("*** Started BSS in INFRA AP SIDE***\n"));
         }
-#endif
         else
             PELOG1(limLog(pMac, LOG1, FL("*** Started BSS ***\n"));)
     }
@@ -429,13 +427,11 @@ limProcessMlmStartCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     limSendSmeStartBssRsp(pMac, eWNI_SME_START_BSS_RSP,
                           ((tLimMlmStartCnf *) pMsgBuf)->resultCode,psessionEntry,
                           smesessionId,smetransactionId);
-#ifdef WLAN_SOFTAP_FEATURE
     if (((tLimMlmStartCnf *) pMsgBuf)->resultCode == eSIR_SME_SUCCESS)
     {
         //Configure beacon and send beacons to HAL
         limSendBeaconInd(pMac, psessionEntry);
     }
-#endif
 }
 
  /*** end limProcessMlmStartCnf() ***/
@@ -1168,10 +1164,8 @@ limFillAssocIndParams(tpAniSirGlobal pMac, tpLimMlmAssocInd pAssocInd,
                      (tANI_U8 *) &(pAssocInd->supportedChannels.channelList),
                      pAssocInd->supportedChannels.numChnl);
     }
-#ifdef WLAN_SOFTAP_FEATURE
     // Fill in WmmInfo
     pSirSmeAssocInd->wmmEnabledSta = pAssocInd->WmmStaInfoPresent;
-#endif
 } /*** end limAssocIndSerDes() ***/
 
 
@@ -1254,9 +1248,7 @@ limProcessMlmAssocInd(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         return;
     }
     pSirSmeAssocInd->staId = pStaDs->staIndex;
-#ifdef WLAN_SOFTAP_FEATURE
    pSirSmeAssocInd->reassocReq = pStaDs->mlmStaContext.subType;
-#endif
     MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
     limDiagEventReport(pMac, WLAN_PE_DIAG_ASSOC_IND_EVENT, psessionEntry, 0, 0);
@@ -1963,9 +1955,7 @@ void limProcessMlmAddStaRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession 
     //the deffered flag.
     SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
     if ((psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE)
-#ifdef WLAN_SOFTAP_FEATURE
     || (psessionEntry->limSystemRole == eLIM_AP_ROLE)
-#endif
     )
     {
         limProcessBtAmpApMlmAddStaRsp(pMac, limMsgQ,psessionEntry);
@@ -2073,9 +2063,7 @@ void limProcessMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession 
 
     if (((psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE)  ||
          (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE)
-#ifdef WLAN_SOFTAP_FEATURE
          || (psessionEntry->limSystemRole == eLIM_AP_ROLE)
-#endif
          ) &&
         (psessionEntry->statypeForBss == STA_ENTRY_SELF))
     {
@@ -2219,10 +2207,8 @@ void limProcessBtAmpApMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPES
 #endif
     dphHashTableClassInit(pMac, &psessionEntry->dph.dphHashTable);//TBD-RAJESH is it needed ?
     limDeletePreAuthList(pMac);
-#ifdef WLAN_SOFTAP_FEATURE
     //Initialize number of associated stations during cleanup
     psessionEntry->gLimNumOfCurrentSTAs = 0;
-#endif
     end:
     limSendSmeRsp(pMac, eWNI_SME_STOP_BSS_RSP, rc,  psessionEntry->smeSessionId,  psessionEntry->transactionId);
     peDeleteSession(pMac, psessionEntry);
@@ -2252,9 +2238,7 @@ void limProcessMlmDelStaRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
     }
 
     if ((psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE)
-#ifdef WLAN_SOFTAP_FEATURE
       || (psessionEntry->limSystemRole == eLIM_AP_ROLE)
-#endif
     )
     {
         limProcessBtAmpApMlmDelStaRsp(pMac,limMsgQ,psessionEntry);
@@ -2558,12 +2542,10 @@ limProcessApMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ)
         psessionEntry->limSystemRole = eLIM_STA_IN_IBSS_ROLE;
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
         if ( eSIR_INFRA_AP_MODE == pAddBssParams->bssType )
             psessionEntry->limSystemRole = eLIM_AP_ROLE;
         else
             psessionEntry->limSystemRole = eLIM_STA_IN_IBSS_ROLE;
-#endif
         schEdcaProfileUpdate(pMac, psessionEntry);
         limInitPreAuthList(pMac);
         limInitPeerIdxpool(pMac,psessionEntry);
@@ -2968,7 +2950,6 @@ void limSetLinkStateForPostAssocCallback(tpAniSirGlobal pMac, void *msgParam )
         else
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
         pAddStaParams->greenFieldCapable = limGetHTCapability( pMac, eHT_GREENFIELD, psessionEntry);
         pAddStaParams->txChannelWidthSet = limGetHTCapability( pMac, eHT_SUPPORTED_CHANNEL_WIDTH_SET, psessionEntry);
         pAddStaParams->mimoPS            = limGetHTCapability( pMac, eHT_MIMO_POWER_SAVE, psessionEntry );
@@ -2981,20 +2962,6 @@ void limSetLinkStateForPostAssocCallback(tpAniSirGlobal pMac, void *msgParam )
         pAddStaParams->fDsssCckMode40Mhz = limGetHTCapability( pMac, eHT_DSSS_CCK_MODE_40MHZ, psessionEntry);
         pAddStaParams->fShortGI20Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_20MHZ, psessionEntry);
         pAddStaParams->fShortGI40Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_40MHZ, psessionEntry);
-#else
-        pAddStaParams->greenFieldCapable = limGetHTCapability( pMac, eHT_GREENFIELD );
-        pAddStaParams->txChannelWidthSet = limGetHTCapability( pMac, eHT_SUPPORTED_CHANNEL_WIDTH_SET );
-        pAddStaParams->mimoPS            = limGetHTCapability( pMac, eHT_MIMO_POWER_SAVE );
-        pAddStaParams->rifsMode          = limGetHTCapability( pMac, eHT_RIFS_MODE );
-        pAddStaParams->lsigTxopProtection = limGetHTCapability( pMac, eHT_LSIG_TXOP_PROTECTION );
-        pAddStaParams->delBASupport      = limGetHTCapability( pMac, eHT_DELAYED_BA );
-        pAddStaParams->maxAmpduDensity   = limGetHTCapability( pMac, eHT_MPDU_DENSITY );
-        pAddStaParams->maxAmpduSize   = limGetHTCapability(pMac, eHT_MAX_RX_AMPDU_FACTOR);
-        pAddStaParams->maxAmsduSize      = limGetHTCapability( pMac, eHT_MAX_AMSDU_LENGTH );
-        pAddStaParams->fDsssCckMode40Mhz = limGetHTCapability( pMac, eHT_DSSS_CCK_MODE_40MHZ);
-        pAddStaParams->fShortGI20Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_20MHZ);
-        pAddStaParams->fShortGI40Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_40MHZ);
-#endif
     }
 
     if (wlan_cfgGetInt(pMac, WNI_CFG_LISTEN_INTERVAL, &listenInterval) != eSIR_SUCCESS)
@@ -5133,7 +5100,6 @@ end:
 } /*** end __limProcessSmeAssocCnfNew() ***/
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
 void
 limSendBeaconInd(tpAniSirGlobal pMac, tpPESession psessionEntry){
     tBeaconGenParams *pBeaconGenParams = NULL;
@@ -5159,4 +5125,3 @@ limSendBeaconInd(tpAniSirGlobal pMac, tpPESession psessionEntry){
     schProcessPreBeaconInd(pMac, &limMsg);
     return;
 }
-#endif

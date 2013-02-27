@@ -109,7 +109,7 @@ struct schMisc {
 
     /// Trailing portion of the beacon frame to be written to TFP
     tANI_U8 *gSchBeaconFrameEnd;
-    
+
     /// Size of the beginning portion
     tANI_U16 gSchBeaconOffsetBegin;
     /// Size of the trailing portion
@@ -156,7 +156,7 @@ struct schMisc {
     /// flag to indicate that beacon template has been updated
     tANI_U8   fBeaconChanged;
 
-#if defined(WLAN_SOFTAP_FEATURE) && defined(WLAN_FEATURE_P2P) 
+#if defined(WLAN_FEATURE_P2P)
     tANI_U16 p2pIeOffset;
 #endif
 

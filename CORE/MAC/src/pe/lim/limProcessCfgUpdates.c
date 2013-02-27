@@ -152,15 +152,10 @@ limSetDefaultKeyIdAndKeys(tpAniSirGlobal pMac)
 \param      tpAniSirGlobal    pMac
 \return      None
   -------------------------------------------------------------*/
-#ifdef WLAN_SOFTAP_FEATURE
 void limSetCfgProtection(tpAniSirGlobal pMac, tpPESession pesessionEntry)
-#else
-void limSetCfgProtection(tpAniSirGlobal pMac)
-#endif
 {
     tANI_U32 val = 0;
 
-#ifdef WLAN_SOFTAP_FEATURE
     if(( pesessionEntry != NULL ) && (pesessionEntry->limSystemRole == eLIM_AP_ROLE )){
         if (pesessionEntry->gLimProtectionControl == WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE )
             palZeroMemory( pMac->hHdd, (void *)&pesessionEntry->cfgProtection , sizeof(tCfgProtection));
@@ -179,7 +174,6 @@ void limSetCfgProtection(tpAniSirGlobal pMac)
         }
     }
     else{
-#endif
     if (wlan_cfgGetInt(pMac, WNI_CFG_FORCE_POLICY_PROTECTION, &val) != eSIR_SUCCESS)
     {
         limLog(pMac, LOGP, FL("reading WNI_CFG_FORCE_POLICY_PROTECTION cfg failed\n"));
@@ -221,9 +215,7 @@ void limSetCfgProtection(tpAniSirGlobal pMac)
             pMac->lim.cfgProtection.obss= (val >> WNI_CFG_PROTECTION_ENABLED_OBSS) & 1;
 
         }
-#ifdef WLAN_SOFTAP_FEATURE
-}
-#endif
+    }
 }
 
 
@@ -428,11 +420,7 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
         break;
 
     case WNI_CFG_PROTECTION_ENABLED:
-#ifdef WLAN_SOFTAP_FEATURE
         limSetCfgProtection(pMac, NULL);
-#else
-        limSetCfgProtection(pMac);
-#endif
         break;
     case WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG:
     {
@@ -721,11 +709,7 @@ limApplyConfiguration(tpAniSirGlobal pMac,tpPESession psessionEntry)
 
     psessionEntry->shortSlotTimeSupported = limGetShortSlotFromPhyMode(pMac, psessionEntry, phyMode);
 
-#ifdef WLAN_SOFTAP_FEATURE
     limSetCfgProtection(pMac, psessionEntry);    
-#else
-    limSetCfgProtection(pMac);    
-#endif
 
 
     /* Added for BT - AMP Support */

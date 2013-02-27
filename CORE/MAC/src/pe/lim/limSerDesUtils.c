@@ -1441,7 +1441,6 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
         return eSIR_FAILURE;
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
     // Extract privacy setting
     pStartBssReq->privacy = *pBuf++;
     len--;
@@ -1503,7 +1502,6 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
-#endif
     // Extract bssPersona
     pStartBssReq->bssPersona = *pBuf++;
     len--;
@@ -2284,11 +2282,9 @@ limAssocIndSerDes(tpAniSirGlobal pMac, tpLimMlmAssocInd pAssocInd, tANI_U8 *pBuf
         pBuf += pAssocInd->supportedChannels.numChnl;
         mLen += pAssocInd->supportedChannels.numChnl;
     }
-#ifdef WLAN_SOFTAP_FEATURE
     limCopyU32(pBuf, pAssocInd->WmmStaInfoPresent);
     pBuf += sizeof(tANI_U32);
     mLen += sizeof(tANI_U32);
-#endif
      // Fill in length of SME_ASSOC_IND message
     limCopyU16(pLen, mLen);
 
@@ -2851,11 +2847,9 @@ limReassocIndSerDes(tpAniSirGlobal pMac, tpLimMlmReassocInd pReassocInd, tANI_U8
         pBuf += pReassocInd->supportedChannels.numChnl;
         mLen += pReassocInd->supportedChannels.numChnl;
     }
-#ifdef WLAN_SOFTAP_FEATURE
     limCopyU32(pBuf, pReassocInd->WmmStaInfoPresent);
     pBuf += sizeof(tANI_U32);
     mLen += sizeof(tANI_U32);
-#endif
 
     // Fill in length of SME_REASSOC_IND message
     limCopyU16(pLen, mLen);
@@ -3897,7 +3891,6 @@ limIsSmeSwitchChannelReqValid(tpAniSirGlobal pMac,
 
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
 /**
  * limIsSmeGetAssocSTAsReqValid()
  *
@@ -4137,7 +4130,6 @@ limIsSmeGetWPSPBCSessionsReqValid(tpAniSirGlobal pMac, tSirSmeGetWPSPBCSessionsR
     return eSIR_SUCCESS;
 }
 
-#endif
 
 /**---------------------------------------------------------------
 \fn     limGetSessionInfo
@@ -4173,7 +4165,6 @@ limGetSessionInfo(tpAniSirGlobal pMac, tANI_U8 *pBuf, tANI_U8 *sessionId, tANI_U
     return;
 }
 
-#ifdef WLAN_SOFTAP_FEATURE
 
 /**
  * limUpdateAPWPSIEsReqSerDes()
@@ -4341,4 +4332,3 @@ limUpdateAPWPARSNIEsReqSerDes(tpAniSirGlobal pMac, tpSirUpdateAPWPARSNIEsReq pUp
     return eSIR_SUCCESS;
 } /*** end limUpdateAPWPARSNIEsReqSerDes() ***/
 
-#endif

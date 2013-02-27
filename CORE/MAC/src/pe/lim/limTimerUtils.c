@@ -623,7 +623,6 @@ limCreateTimers(tpAniSirGlobal pMac)
     PELOG1(limLog(pMac, LOG1, FL("alloc and init table for preAuth timers\n"));)
 
 
-#ifdef WLAN_SOFTAP_FEATURE
     {
         /**
          * Create OLBC cache aging timer
@@ -656,7 +655,6 @@ limCreateTimers(tpAniSirGlobal pMac)
             goto err_timer;
         }
     }
-#endif
 #ifdef WLAN_FEATURE_VOWIFI_11R
     // In future we need to use the auth timer, cause
     // the pre auth session will be introduced before sending
@@ -1000,7 +998,6 @@ limAssocFailureTimerHandler(void *pMacGlobal, tANI_U32 param)
  *
  * @return None
  */
-#ifdef WLAN_SOFTAP_FEATURE
 void
 limUpdateOlbcCacheTimerHandler(void *pMacGlobal, tANI_U32 param)
 {
@@ -1015,7 +1012,6 @@ limUpdateOlbcCacheTimerHandler(void *pMacGlobal, tANI_U32 param)
 
     limPostMsgApi(pMac, &msg);
 } /****** end limUpdateOlbcCacheTimerHandler() ******/
-#endif
 
 /**
  * limDeactivateAndChangeTimer()
@@ -1736,7 +1732,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             break;
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
 #if 0
         case eLIM_WPS_OVERLAP_TIMER:
             {
@@ -1769,7 +1764,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                   WPSOverlapTimer);
             }
             break;
-#endif
 #endif
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
@@ -2493,7 +2487,6 @@ limQuietBssTimerHandler(void *pMacGlobal, tANI_U32 param)
         FL("Post SIR_LIM_QUIET_BSS_TIMEOUT msg. \n"));)
     limPostMsgApi(pMac, &msg);
 }
-#ifdef WLAN_SOFTAP_FEATURE
 #if 0
 void
 limWPSOverlapTimerHandler(void *pMacGlobal, tANI_U32 param)
@@ -2508,7 +2501,6 @@ limWPSOverlapTimerHandler(void *pMacGlobal, tANI_U32 param)
         FL("Post SIR_LIM_WPS_OVERLAP_TIMEOUT msg. \n"));)
     limPostMsgApi(pMac, &msg);
 }
-#endif
 #endif
 
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
