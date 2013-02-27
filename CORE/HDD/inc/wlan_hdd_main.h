@@ -576,13 +576,11 @@ struct hdd_ap_ctx_s
    v_U8_t uBCStaId;
 
    v_U8_t uPrivacy;  // The privacy bits of configuration
-   
-#ifdef WLAN_SOFTAP_FEATURE   
+
    tSirWPSPBCProbeReq WPSPBCProbeReq;
-   
+
    tsap_Config_t sapConfig;
-#endif
-   
+
    struct semaphore semWpsPBCOverlapInd;
    
    v_BOOL_t apDisableIntraBssFwd;
@@ -1016,11 +1014,8 @@ tANI_U8* wlan_hdd_get_intf_addr(hdd_context_t* pHddCtx);
 void wlan_hdd_release_intf_addr(hdd_context_t* pHddCtx, tANI_U8* releaseAddr);
 v_U8_t hdd_get_operating_channel( hdd_context_t *pHddCtx, device_mode_t mode );
 
-
-#if defined(WLAN_SOFTAP_FEATURE) || defined(ANI_MANF_DIAG)
 void hdd_set_conparam ( v_UINT_t newParam );
 tVOS_CON_MODE hdd_get_conparam( void );
-#endif
 
 void wlan_hdd_enable_deepsleep(v_VOID_t * pVosContext);
 v_BOOL_t hdd_is_apps_power_collapse_allowed(hdd_context_t* pHddCtx);
