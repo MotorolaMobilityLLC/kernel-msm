@@ -13,7 +13,6 @@
  */
 
 #include <linux/ftrace.h>
-#include <linux/module.h>
 #include <linux/uaccess.h>
 
 #include <asm/cacheflush.h>
