@@ -40,20 +40,6 @@
 #include "mdp.h"
 #include "mdp4.h"
 
-/*
- * For vanquish video mode panel, after INTR_PRIMARY_VSYNC happened, only
- * have 5H(VSA+VBP) left for blanking period, might not have enough time to
- * complete read command. Waiting for 100us more (about 5H * 13us/line = 65us)
- * to push it out of current blanking peroid, will transmit the commands
- * when the controller is busy transmitting the data as the controller will
- * internally wait for the data to finish before transmitting the commands.
- * By doing this, make sure mdp will send out read command at the beginning
- * of next blanking period.
- *
- * The delay need to be configured for video mode panel based on VFP and VBP.
- */
-#define MOT_VIDEO_WAIT4VSYNC_DELAY 100 /*in usec*/
-
 static struct completion dsi_dma_comp;
 static struct completion dsi_mdp_comp;
 static struct completion dsi_video_comp;
@@ -1211,9 +1197,9 @@ int mipi_dsi_cmds_tx(struct dsi_buf *tp, struct dsi_cmd_desc *cmds, int cnt)
 		ctrl = dsi_ctrl | 0x04; /* CMD_MODE_EN */
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, ctrl);
 
-		/* VIDEO_MODE */
-		mdp4_dsi_video_wait4vsync(0);
-		udelay(MOT_VIDEO_WAIT4VSYNC_DELAY);
+		/* TODO: if we have cmd tx issues for video mode, please
+		 * add proper wait here to make sure the cmd send out at
+		 * the begining of a blanking period. */
 	}
 
 	cm = cmds;
@@ -1324,9 +1310,9 @@ int mipi_dsi_cmds_rx(struct msm_fb_data_type *mfd,
 		ctrl = dsi_ctrl | 0x04; /* CMD_MODE_EN */
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, ctrl);
 
-		/* VIDEO_MODE */
-		mdp4_dsi_video_wait4vsync(0);
-		udelay(MOT_VIDEO_WAIT4VSYNC_DELAY);
+		/* TODO: if we have cmd tx issues for video mode, please
+		 * add proper wait here to make sure the cmd send out at
+		 * the begining of a blanking period. */
 	}
 
 	if (!mfd->panel_info.mipi.no_max_pkt_size && send_max_pkt_size) {
@@ -1499,9 +1485,9 @@ int mipi_dsi_cmds_rx_new(struct dsi_buf *tp, struct dsi_buf *rp,
 		ctrl = dsi_ctrl | 0x04; /* CMD_MODE_EN */
 		MIPI_OUTP(MIPI_DSI_BASE + 0x0000, ctrl);
 
-		/* VIDEO_MODE */
-		mdp4_dsi_video_wait4vsync(0);
-		udelay(MOT_VIDEO_WAIT4VSYNC_DELAY);
+		/* TODO: if we have cmd tx issues for video mode, please
+		 * add proper wait here to make sure the cmd send out at
+		 * the begining of a blanking period. */
 	}
 
 	if (!(req->flags & CMD_REQ_NO_MAX_PKT_SIZE) && send_max_pkt_size) {
