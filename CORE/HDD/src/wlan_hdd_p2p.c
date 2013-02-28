@@ -668,7 +668,20 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
     }
 
     if( NULL != cfgState->buf )
-        return -EBUSY;
+    {
+        if ( !noack )
+        {
+            hddLog( LOGE, "(%s):Previous P2P Action frame packet pending",
+                          __func__);
+            hdd_cleanup_actionframe(pAdapter->pHddCtx, pAdapter);
+        }
+        else
+        {
+            hddLog( LOGE, "(%s):Pending Action frame packet return EBUSY",
+                          __func__);
+            return -EBUSY;
+        }
+    }
 
     hddLog( LOG1, "Action frame tx request");
 
