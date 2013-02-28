@@ -5330,6 +5330,9 @@ static int wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
                     &(WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter))->roamProfile;
     int status = 0;
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+#ifdef FEATURE_WLAN_TDLS
+    tANI_U8 staIdx;
+#endif
     
     ENTER();
     
@@ -5378,6 +5381,18 @@ static int wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
             (WLAN_HDD_GET_CTX(pAdapter))->isAmpAllowed = VOS_TRUE;
             INIT_COMPLETION(pAdapter->disconnect_comp_var);
 
+#ifdef FEATURE_WLAN_TDLS
+            /* First clean up the tdls peers if any */
+            for (staIdx = 1 ; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++)
+            {
+                if (pHddStaCtx->conn_info.staId[staIdx])
+                {
+                    sme_DeleteTdlsPeerSta(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                              pAdapter->sessionId,
+                              pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes);
+                }
+            }
+#endif
             /*issue disconnect*/
             status = sme_RoamDisconnect( WLAN_HDD_GET_HAL_CTX(pAdapter), 
                                          pAdapter->sessionId, reasonCode);

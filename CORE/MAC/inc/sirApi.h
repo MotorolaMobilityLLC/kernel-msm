@@ -4237,6 +4237,12 @@ typedef struct sSirTdlsDelStaInd
    tANI_U16               staId;
    tANI_U16               reasonCode;
 } tSirTdlsDelStaInd, *tpSirTdlsDelStaInd;
+typedef struct sSirTdlsDelAllPeerInd
+{
+   tANI_U16               messageType;
+   tANI_U16               length;
+   tANI_U8                sessionId;     // Session ID
+} tSirTdlsDelAllPeerInd, *tpSirTdlsDelAllPeerInd;
 #endif /* FEATURE_WLAN_TDLS */
 
 #ifdef FEATURE_WLAN_TDLS_INTERNAL

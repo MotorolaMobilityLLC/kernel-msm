@@ -1876,6 +1876,7 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
 {
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
     eHalStatus status = eHAL_STATUS_FAILURE ;
+    tANI_U8 staIdx;
 
 #ifdef WLAN_FEATURE_TDLS_DEBUG
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -1883,6 +1884,7 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
       roamResult == eCSR_ROAM_RESULT_ADD_TDLS_PEER ? "ADD_TDLS_PEER" :
       roamResult == eCSR_ROAM_RESULT_DELETE_TDLS_PEER ? "DEL_TDLS_PEER" :
       roamResult == eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND ? "DEL_TDLS_PEER_IND" :
+      roamResult == eCSR_ROAM_RESULT_DELETE_ALL_TDLS_PEER_IND? "DEL_ALL_TDLS_PEER_IND" :
       "UNKNOWN",
        pRoamInfo->staId,
        pRoamInfo->peerMac[0],
@@ -1896,8 +1898,6 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
     {
         case eCSR_ROAM_RESULT_ADD_TDLS_PEER:
         {
-            tANI_U8 staIdx = 0 ;
-
             if(eSIR_SME_SUCCESS != pRoamInfo->statusCode)
             {
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -1908,8 +1908,7 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
              * check if there is available index for this new TDLS STA
              * since TDLS is setup in BSS, we need to start from +1
              */
-            for ( staIdx = 0 ; 
-                             staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
+            for ( staIdx = 1; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
             {
                 if (0 == pHddStaCtx->conn_info.staId[staIdx] )
                 {
@@ -1949,33 +1948,29 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
             break ;
         }
         case eCSR_ROAM_RESULT_DELETE_TDLS_PEER:
-        {         
-            tANI_U8 staIdx = 0 ;
-            status = eHAL_STATUS_FAILURE ;
-
-            for ( staIdx = 0 ; 
-                             staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
+        {
+            /* 0 staIdx is assigned to AP we dont want to touch that */
+            for ( staIdx = 1; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
             {
                 if (pRoamInfo->staId == pHddStaCtx->conn_info.staId[staIdx] )
                 {
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                                   ("HDD: del STA IDX = %x"), pRoamInfo->staId) ;
+
+                    wlan_hdd_tdls_reset_peer(pRoamInfo->peerMac);
+                    hdd_roamDeregisterTDLSSTA ( pAdapter, pRoamInfo->staId );
+
+                    (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = NULL;
+
                     pHddStaCtx->conn_info.staId[staIdx] = 0 ;
                     vos_mem_zero(&pHddStaCtx->conn_info.peerMacAddress[staIdx],
                                                sizeof(v_MACADDR_t)) ;
                     status = eHAL_STATUS_SUCCESS ;
-
                     break ;
                 }
             }
-            if(eHAL_STATUS_SUCCESS == status)
-            {
-                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                               ("HDD: del STA IDX = %x\n"), pRoamInfo->staId) ;
-                wlan_hdd_tdls_reset_peer(pRoamInfo->peerMac);
-                hdd_roamDeregisterTDLSSTA ( pAdapter, pRoamInfo->staId );
-                (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = NULL;
-            }
-            break ; 
         }
+        break ;
         case eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND:
         {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -1989,6 +1984,36 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
                                        pRoamInfo->reasonCode,
                                        GFP_KERNEL);
 #endif
+            status = eHAL_STATUS_SUCCESS ;
+            break ;
+        }
+        case eCSR_ROAM_RESULT_DELETE_ALL_TDLS_PEER_IND:
+        {
+            /* 0 staIdx is assigned to AP we dont want to touch that */
+            for ( staIdx = 1; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
+            {
+                if (pHddStaCtx->conn_info.staId[staIdx])
+                {
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                              ("hdd_tdlsStatusUpdate: staIdx %d %02x:%02x:%02x:%02x:%02x:%02x"),
+                                pHddStaCtx->conn_info.staId[staIdx],
+                                pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes[0],
+                                pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes[1],
+                                pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes[2],
+                                pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes[3],
+                                pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes[4],
+                                pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes[5]) ;
+                    wlan_hdd_tdls_reset_peer(pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes);
+                    hdd_roamDeregisterTDLSSTA ( pAdapter,  pHddStaCtx->conn_info.staId[staIdx] );
+
+                    (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[staIdx] = NULL;
+                    vos_mem_zero(&pHddStaCtx->conn_info.peerMacAddress[staIdx],
+                                               sizeof(v_MACADDR_t)) ;
+                    pHddStaCtx->conn_info.staId[staIdx] = 0 ;
+
+                    status = eHAL_STATUS_SUCCESS ;
+                }
+            }
             break ;
         }
         default:

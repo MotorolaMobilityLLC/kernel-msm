@@ -1723,6 +1723,7 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
           case eWNI_SME_TDLS_ADD_STA_RSP:    
           case eWNI_SME_TDLS_DEL_STA_RSP:
           case eWNI_SME_TDLS_DEL_STA_IND:
+          case eWNI_SME_TDLS_DEL_ALL_PEER_IND:
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
           case eWNI_SME_TDLS_DISCOVERY_START_RSP:
           case eWNI_SME_TDLS_DISCOVERY_START_IND:

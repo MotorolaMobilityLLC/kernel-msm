@@ -90,14 +90,18 @@ static v_VOID_t wlan_hdd_tdls_discover_peer_cb( v_PVOID_t userData )
         list_for_each (pos, head) {
             curr_peer = list_entry (pos, hddTdlsPeer_t, node);
 
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                       "%d %02x:%02x:%02x:%02x:%02x:%02x", i,
+            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                       "%d %02x:%02x:%02x:%02x:%02x:%02x %d %d %d %d", i,
                        curr_peer->peerMac[0],
                        curr_peer->peerMac[1],
                        curr_peer->peerMac[2],
                        curr_peer->peerMac[3],
                        curr_peer->peerMac[4],
-                       curr_peer->peerMac[5]);
+                       curr_peer->peerMac[5],
+                       curr_peer->tdls_support,
+                       curr_peer->link_status,
+                       curr_peer->discovery_attempt,
+                       pHddTdlsCtx->threshold_config.discovery_tries_n);
 
             if ((eTDLS_CAP_UNKNOWN == curr_peer->tdls_support) &&
                 (eTDLS_LINK_NOT_CONNECTED == curr_peer->link_status) &&
@@ -705,7 +709,8 @@ u8 wlan_hdd_tdlsConnectedPeers(void)
     pAdapter = WLAN_HDD_GET_PRIV_PTR(pHddTdlsCtx->dev);
     pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
 
-    for (staIdx = 0 ; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++)
+    /* 0 staIdx is assigned to AP we dont want to touch that */
+    for (staIdx = 1 ; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++)
     {
         if (0 != pHddStaCtx->conn_info.staId[staIdx] )
             count++;
