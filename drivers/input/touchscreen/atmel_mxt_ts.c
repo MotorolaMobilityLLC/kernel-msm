@@ -2,6 +2,7 @@
  * Atmel maXTouch Touchscreen driver
  *
  * Copyright (C) 2010 Samsung Electronics Co.Ltd
+ * Copyright (C) 2011-2012 Atmel Corporation
  * Copyright (C) 2012 Google, Inc.
  *
  * Author: Joonyoung Shim <jy0922.shim@samsung.com>
@@ -261,6 +262,9 @@ struct mxt_data {
 
 	/* for fw update in bootloader */
 	struct completion bl_completion;
+
+	/* Enable reporting of input events */
+	bool enable_reporting;
 };
 
 static inline size_t mxt_obj_size(const struct mxt_object *obj)
@@ -568,6 +572,10 @@ static void mxt_input_button(struct mxt_data *data, struct mxt_message *message)
 	bool button;
 	int i;
 
+	/* do not report events if input device not yet registered */
+	if (!data->enable_reporting)
+		return;
+
 	/* Active-low switch */
 	for (i = 0; i < pdata->t19_num_keys; i++) {
 		if (pdata->t19_keymap[i] == KEY_RESERVED)
@@ -587,6 +595,10 @@ static void mxt_input_touchevent(struct mxt_data *data,
 	int y;
 	int area;
 	int pressure;
+
+	/* do not report events if input device not yet registered */
+	if (!data->enable_reporting)
+		return;
 
 	x = (message->message[1] << 4) | ((message->message[3] >> 4) & 0xf);
 	y = (message->message[2] << 4) | ((message->message[3] & 0xf));
@@ -667,7 +679,7 @@ static irqreturn_t mxt_process_messages_until_invalid(struct mxt_data *data)
 		}
 	} while (reportid != 0xff);
 
-	if (update_input) {
+	if (data->enable_reporting && update_input) {
 		input_mt_report_pointer_emulation(data->input_dev, false);
 		input_sync(data->input_dev);
 	}
@@ -684,6 +696,9 @@ static irqreturn_t mxt_interrupt(int irq, void *dev_id)
 		complete(&data->bl_completion);
 		return IRQ_HANDLED;
 	}
+
+	if (!data->object_table)
+		return IRQ_NONE;
 
 	return mxt_process_messages_until_invalid(data);
 }
@@ -742,6 +757,19 @@ static int mxt_make_highchg(struct mxt_data *data)
 		dev_err(dev, "CHG pin isn't cleared\n");
 		return -EBUSY;
 	}
+
+	return 0;
+}
+
+static int mxt_acquire_irq(struct mxt_data *data)
+{
+	int error;
+
+	enable_irq(data->irq);
+
+	error = mxt_make_highchg(data);
+	if (error)
+		return error;
 
 	return 0;
 }
@@ -819,6 +847,7 @@ static void mxt_free_object_table(struct mxt_data *data)
 {
 	kfree(data->object_table);
 	data->object_table = NULL;
+	data->enable_reporting = false;
 	data->T6_reportid = 0;
 	data->T9_reportid_min = 0;
 	data->T9_reportid_max = 0;
@@ -846,6 +875,10 @@ static int mxt_initialize(struct mxt_data *data)
 
 	/* Get object table information */
 	error = mxt_get_object_table(data);
+	if (error)
+		goto err_free_object_table;
+
+	error = mxt_acquire_irq(data);
 	if (error)
 		goto err_free_object_table;
 
@@ -885,6 +918,8 @@ static int mxt_initialize(struct mxt_data *data)
 			"Matrix X Size: %u Matrix Y Size: %u Object Num: %u\n",
 			info->matrix_xsize, info->matrix_ysize,
 			info->object_num);
+
+	data->enable_reporting = true;
 
 	return 0;
 
@@ -1087,11 +1122,7 @@ static ssize_t mxt_update_fw_store(struct device *dev,
 		dev_dbg(dev, "The firmware update succeeded\n");
 		mxt_free_object_table(data);
 
-		mxt_initialize(data);
-
-		enable_irq(data->irq);
-
-		error = mxt_make_highchg(data);
+		error = mxt_initialize(data);
 		if (error)
 			return error;
 	}
@@ -1187,9 +1218,19 @@ static int __devinit mxt_probe(struct i2c_client *client,
 
 	mxt_calc_resolution(data);
 
+	error = request_threaded_irq(client->irq, NULL, mxt_interrupt,
+				     pdata->irqflags | IRQF_ONESHOT,
+				     client->name, data);
+	if (error) {
+		dev_err(&client->dev, "Failed to register interrupt\n");
+		goto err_free_mem;
+	}
+
+	disable_irq(client->irq);
+
 	error = mxt_initialize(data);
 	if (error)
-		goto err_free_mem;
+		goto err_free_irq;
 
 	__set_bit(EV_ABS, input_dev->evbit);
 	__set_bit(EV_KEY, input_dev->evbit);
@@ -1251,7 +1292,7 @@ static int __devinit mxt_probe(struct i2c_client *client,
 
 	error = input_register_device(input_dev);
 	if (error)
-		goto err_free_irq;
+		goto err_free_object;
 
 	error = sysfs_create_group(&client->dev.kobj, &mxt_attr_group);
 	if (error)
@@ -1262,10 +1303,10 @@ static int __devinit mxt_probe(struct i2c_client *client,
 err_unregister_device:
 	input_unregister_device(input_dev);
 	input_dev = NULL;
-err_free_irq:
-	free_irq(client->irq, data);
 err_free_object:
 	kfree(data->object_table);
+err_free_irq:
+	free_irq(client->irq, data);
 err_free_mem:
 	input_free_device(input_dev);
 	kfree(data);
