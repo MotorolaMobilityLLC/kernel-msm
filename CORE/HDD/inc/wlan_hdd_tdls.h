@@ -46,13 +46,23 @@
 
 typedef struct
 {
+    tANI_U32    tdls;
     tANI_U32    tx_period_t;
     tANI_U32    tx_packet_n;
     tANI_U32    discovery_period_t;
     tANI_U32    discovery_tries_n;
-    tANI_U32    rx_timeout_t;
+    tANI_U32    idle_timeout_t;
+    tANI_U32    idle_packet_n;
     tANI_U32    rssi_hysteresis;
+    tANI_S32    rssi_trigger_threshold;
+    tANI_S32    rssi_teardown_threshold;
 } tdls_config_params_t;
+
+typedef enum {
+    eTDLS_SUPPORT_DISABLED = 0,
+    eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY,
+    eTDLS_SUPPORT_ENABLED,
+} eTDLSSupportMode;
 
 typedef enum {
     eTDLS_CAP_NOT_SUPPORTED = -1,
@@ -143,7 +153,7 @@ int wlan_hdd_tdls_get_responder(u8 *mac);
 
 int wlan_hdd_tdls_set_signature(u8 *mac, tANI_U8 uSignature);
 
-int wlan_hdd_tdls_set_params(tdls_config_params_t *config);
+int wlan_hdd_tdls_set_params(struct net_device *dev, tdls_config_params_t *config);
 
 int wlan_hdd_tdls_reset_peer(u8 *mac);
 
