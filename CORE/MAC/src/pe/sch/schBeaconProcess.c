@@ -52,7 +52,7 @@
  */
 
 #include "palTypes.h"
-#include "wniCfgAp.h"
+#include "wniCfgSta.h"
 
 #include "cfgApi.h"
 #include "pmmApi.h"
@@ -470,7 +470,6 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
         limUpdateStaRunTimeHTSwitchChnlParams( pMac, &pBeacon->HTInfo, bssIdx,psessionEntry);
     }
 
-#if defined(ANI_PRODUCT_TYPE_CLIENT) || defined(ANI_AP_CLIENT_SDK)
     if ( (psessionEntry->limSystemRole == eLIM_STA_ROLE) ||(psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE) ||
           (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE) )
     {
@@ -485,7 +484,6 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
             limCancelDot11hChannelSwitch(pMac, psessionEntry);
         }   
     }
-#endif
 
 #ifdef WLAN_FEATURE_11AC
     if ( (psessionEntry->limSystemRole == eLIM_STA_ROLE) ||(psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE) || (psessionEntry->limSystemRole == eLIM_STA_IN_IBSS_ROLE) ) 

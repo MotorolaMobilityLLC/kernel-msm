@@ -268,17 +268,6 @@ typedef struct sLimMlmAssocInd
 
     tAniBool               WmmStaInfoPresent;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) 
-    tANI_U16                  seqNum;
-    tAniBool             wniIndicator;
-    tAniBool             bpIndicator;
-    tSirBpIndicatorType  bpType;
-    tSirNwType           nwType;
-    tSirAssocType        assocType; // Indicates whether STA is LB'ed or not
-    tSirLoad             load; // Current load on the radio for LB
-    tANI_U32                  numBss; // List received from STA
-    tSirNeighborBssInfo  neighborList[1]; // List received from STA
-#endif
     // Required for indicating the frames to upper layer
     tANI_U32             beaconLength;
     tANI_U8*             beaconPtr;
@@ -318,17 +307,6 @@ typedef struct sLimMlmReassocInd
 
     tAniBool               WmmStaInfoPresent;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) 
-    tANI_U16                  seqNum;
-    tAniBool             wniIndicator;
-    tAniBool             bpIndicator;
-    tSirBpIndicatorType  bpType;
-    tSirNwType           nwType;
-    tSirAssocType        reassocType; // Indicates whether STA is LB'ed or not
-    tSirLoad             load; // Current load on the radio for LB
-    tANI_U32                  numBss; // List received from STA
-    tSirNeighborBssInfo  neighborList[1]; // List received from STA
-#endif
     // Required for indicating the frames to upper layer
     tANI_U32             beaconLength;
     tANI_U8*             beaconPtr;
@@ -477,9 +455,6 @@ typedef struct sLimMlmLinkTestStopReq
 {
     tSirMacAddr    peerMacAddr;
     tANI_U8       sessionId;
-#ifdef ANI_PRODUCT_TYPE_AP
-    tANI_U16             aid;
-#endif
 } tLimMlmLinkTestStopReq, *tpLimMlmLinkTestStopReq;
 
 
@@ -722,9 +697,6 @@ void limSendAddtsReqActionFrame(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr,
 void limSendAddtsRspActionFrame(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr,
                            tANI_U16 statusCode, tSirAddtsReqInfo *addts, tSirMacScheduleIE *pSchedule,tpPESession);
 
-#ifdef ANI_PRODUCT_TYPE_AP
-void limSendAssocRspMgmtFrame(tpAniSirGlobal, tANI_U16, tANI_U16, tSirMacAddr, tANI_U8, tpDphHashNode pSta,tpPESession);
-#endif
 void limSendAssocRspMgmtFrame(tpAniSirGlobal, tANI_U16, tANI_U16, tSirMacAddr, tANI_U8, tpDphHashNode pSta,tpPESession);
 
 void limSendNullDataFrame(tpAniSirGlobal, tpDphHashNode);
@@ -734,9 +706,7 @@ void limSendDeauthMgmtFrame(tpAniSirGlobal, tANI_U16, tSirMacAddr, tpPESession, 
 void limContinueChannelScan(tpAniSirGlobal);
 tSirResultCodes limMlmAddBss(tpAniSirGlobal, tLimMlmStartReq *,tpPESession psessionEntry);
 
-#if 1 //(WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
 tSirRetStatus limSendChannelSwitchMgmtFrame(tpAniSirGlobal, tSirMacAddr, tANI_U8, tANI_U8, tANI_U8, tpPESession);
-#endif
 
 #ifdef WLAN_FEATURE_11AC
 tSirRetStatus limSendVHTOpmodeNotificationFrame(tpAniSirGlobal pMac,tSirMacAddr peer,tANI_U8 nMode, tpPESession  psessionEntry );
@@ -795,19 +765,6 @@ void limHandleHeartBeatFailure(tpAniSirGlobal,tpPESession);
 /// Function that triggers link tear down with AP upon HB failure
 void limTearDownLinkWithAp(tpAniSirGlobal,tANI_U8, tSirMacReasonCodes);
 
-#ifdef ANI_PRODUCT_TYPE_AP
-/// Function that performs periodic release of AIDs
-void limReleaseAIDHandler(tpAniSirGlobal);
-
-/// Function that performs periodic cleanup of Pre-auth contexts
-void limPreAuthClnupHandler(tpAniSirGlobal);
-
-/// Function that processes CF-poll response message from SCH
-void limHandleCFpollRsp(tANI_U32);
-
-/// Function that processes PS-poll message from PMM
-void limHandlePSpoll(tANI_U32);
-#endif
 
 /// Function that sends keep alive message to peer(s)
 void limSendKeepAliveToPeer(tpAniSirGlobal);

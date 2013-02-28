@@ -53,11 +53,7 @@
  */
 
 #include "wniApi.h"
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-#include "wniCfgAp.h"
-#else
 #include "wniCfgSta.h"
-#endif
 #include "aniGlobal.h"
 #include "cfgApi.h"
 
@@ -242,7 +238,6 @@ void limUpdateAssocStaDatas(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpSirAsso
 
 }
 
-#if defined(ANI_PRODUCT_TYPE_CLIENT) || defined(ANI_AP_CLIENT_SDK)
 /**
  * @function : limUpdateReAssocGlobals
  *
@@ -290,7 +285,6 @@ void limUpdateReAssocGlobals(tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,tpPESe
 
     
 }
-#endif
 
 /**
  * @function : limProcessAssocRspFrame
@@ -325,9 +319,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     tpSirAssocRsp         pAssocRsp;
     tLimMlmAssocCnf       mlmAssocCnf;
     
-#ifdef ANI_PRODUCT_TYPE_CLIENT
     tSchBeaconStruct *pBeaconStruct;
-#endif
 
     //Initialize status code to success.
 
@@ -802,7 +794,6 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         limDeletePreAuthNode(pMac, pHdr->sa);
 
     limUpdateAssocStaDatas(pMac, pStaDs, pAssocRsp,psessionEntry);
-#ifdef ANI_PRODUCT_TYPE_CLIENT
     // Extract the AP capabilities from the beacon that was received earlier
     // TODO - Watch out for an error response!
     limExtractApCapabilities( pMac,
@@ -835,22 +826,6 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         mlmAssocCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
     }
 
-#elif defined(ANI_AP_CLIENT_SDK)
-    if( eSIR_SUCCESS == limStaSendAddBss( pMac, *pAssocRsp, 
-                            &psessionEntry->pLimJoinReq->neighborBssList.bssList[0], true))
-    {
-        palFreeMemory(pMac->hHdd, pAssocRsp);   
-        return;
-    }
-    else
-    {
-        mlmAssocCnf.resultCode = eSIR_SME_RESOURCES_UNAVAILABLE;
-        mlmAssocCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
-    }
-#else
-    palFreeMemory(pMac->hHdd, pAssocRsp);   
-    return;
-#endif
   
 
 assocReject:

@@ -141,10 +141,6 @@ void limUpdateShortSlotTime(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tpUpda
  */
 void    limReleasePeerIdx(tpAniSirGlobal, tANI_U16, tpPESession);
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-// LIM informs WSM that radar is detected
-void limDetectRadar(tpAniSirGlobal, tANI_U32 *);
-#endif
 
 void limDecideApProtection(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr,  tpUpdateBeaconParams pBeaconParams,tpPESession);
 void
@@ -185,9 +181,6 @@ tANI_U8 limIsNullSsid( tSirMacSSid *pSsid );
 void limProcessAddtsRspTimeout(tpAniSirGlobal pMac, tANI_U32 param);
 
 // 11h Support
-#ifdef ANI_PRODUCT_TYPE_AP
-tANI_U32 computeChannelSwitchCount(tpAniSirGlobal, tANI_U32);
-#endif
 void limStopTxAndSwitchChannel(tpAniSirGlobal pMac, tANI_U8 sessionId);
 void limProcessChannelSwitchTimeout(tpAniSirGlobal);
 tSirRetStatus limStartChannelSwitch(tpAniSirGlobal pMac, tpPESession psessionEntry);

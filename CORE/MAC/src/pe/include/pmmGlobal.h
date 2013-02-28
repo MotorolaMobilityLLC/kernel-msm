@@ -200,10 +200,6 @@ typedef struct sAniSirPmm
     /// Flag to track if we are in a missed beacon scenario
     tANI_U8 inMissedBeaconScenario;
 
-#ifdef ANI_PRODUCT_TYPE_AP
-    tPmmStaState *gpPmmStaState; // Used for HCF - PS Poll
-    tANI_U8 *gpPmmPSState;          // To Store the PS States in AP
-#endif
     tPmmTim gPmmTim;
 
 

@@ -153,19 +153,9 @@ limFillSupportedRatesInfo(
     tpSirSupportedRates   pRates,
     tpPESession           psessionEntry);
 
-#ifdef ANI_PRODUCT_TYPE_CLIENT
-//make non-conditional until the caller is #ifdefed
-tSirRetStatus limStaSendAddBss(tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp, 
+tSirRetStatus limStaSendAddBss(tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
                                     tpSchBeaconStruct pBeaconStruct, tpSirBssDescription bssDescription, tANI_U8 updateEntry, tpPESession psessionEntry);
 tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry, tpPESession psessionEntry);
-
-
-
-#elif defined(ANI_AP_CLIENT_SDK)
-tSirRetStatus limStaSendAddBss(tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp, 
-                                    tpSirNeighborBssInfo neighborBssInfo,tANI_U8 updateEntry, 
-                                    tpPESession psessionEntry);
-#endif
 
 void limPrepareAndSendDelStaCnf(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tSirResultCodes statusCode,tpPESession);
 tSirRetStatus limExtractApCapabilities(tpAniSirGlobal pMac, tANI_U8 * pIE, tANI_U16 ieLen, tpSirProbeRespBeacon beaconStruct);

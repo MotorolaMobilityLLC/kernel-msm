@@ -92,11 +92,7 @@
 //****************** MISC defs *********************************
 
 /// Maximum allowable size of a beacon frame
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-#define SCH_MAX_BEACON_SIZE    2048
-#else
 #define SCH_MAX_BEACON_SIZE    512
-#endif
 
 #define SCH_MAX_PROBE_RESP_SIZE 512
 
@@ -188,9 +184,6 @@ typedef struct sAniSirSch
     /// Whether scan request is received by SCH or not
     tANI_U8 gSchScanReqRcvd;
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U8 gSchRRRecd;
-#endif
 
     /// Debug flag to disable beacon generation
     tANI_U32 gSchGenBeacon;

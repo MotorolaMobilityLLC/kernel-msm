@@ -64,9 +64,6 @@ extern void schSendStartScanRsp(tpAniSirGlobal pMac);
 /// Set init time params
 extern void schSetInitParams(tpAniSirGlobal pMac);
 
-/// Set qos default params
-extern void schUpdateQosInfo(tpAniSirGlobal pMac);
-
 // update only the broadcast qos params
 extern void schQosUpdateBroadcast(tpAniSirGlobal pMac, tpPESession psessionEntry);
 
@@ -121,20 +118,6 @@ extern void schProcessPreBeaconInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg);
 /// Post a message to the scheduler message queue
 extern tSirRetStatus schPostMessage(tpAniSirGlobal pMac, tpSirMsgQ pMsg);
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-/// The scheduling interrupt handler
-extern void schSchedulingInterruptHandler(tpAniSirGlobal pMac);
-
-/// The scheduling end interrupt function
-extern void schSchedulingEndInterruptHandler(tpAniSirGlobal pMac);
-
-/// Function used by other Sirius modules to read CFPcount
-extern tANI_U8 schGetCFPCount(tpAniSirGlobal pMac);
-
-/// Function used by other Sirius modules to read CFPDuration remaining
-extern tANI_U16 schGetCFPDurRemaining(tpAniSirGlobal pMac);
-
-#endif
 
 extern void schBeaconProcess(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession psessionEntry);
 extern tSirRetStatus schBeaconEdcaProcess(tpAniSirGlobal pMac, tSirMacEdcaParamSetIE *edca, tpPESession psessionEntry);
