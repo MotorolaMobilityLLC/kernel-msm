@@ -176,7 +176,9 @@ static v_VOID_t wlan_hdd_tdls_discover_peer_cb( v_PVOID_t userData )
                     pHddTdlsCtx->discovery_peer_cnt--;
 
                     if ((eTDLS_CAP_UNKNOWN == curr_peer->tdls_support) &&
-                        (eTDLS_LINK_NOT_CONNECTED == curr_peer->link_status)) {
+                        (eTDLS_LINK_NOT_CONNECTED == curr_peer->link_status) &&
+                         (curr_peer->tx_pkt >=
+                             pHddTdlsCtx->threshold_config.tx_packet_n)) {
 
                         if (curr_peer->discovery_attempt <
                             pHddTdlsCtx->threshold_config.discovery_tries_n) {
@@ -297,7 +299,8 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                         else
                         {
                             VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                                      "%s: TDLS max peer already connected.", __func__);
+                                      "%s: Skip Tput trigger due to isTDLSInProgress %u or connected_peer_count %d",
+                                      __func__, curr_peer->isTDLSInProgress, wlan_hdd_tdlsConnectedPeers() );
                         }
                         goto next_peer;
                     }
@@ -385,16 +388,17 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                     if (curr_peer->tx_pkt >=
                             pHddTdlsCtx->threshold_config.tx_packet_n) {
                         hdd_adapter_t *pAdapter;
-                        hdd_context_t *pHddCtx;
 
                         pAdapter = WLAN_HDD_GET_PRIV_PTR(pHddTdlsCtx->dev);
-                        pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
 
                         if (++curr_peer->discovery_attempt <
                                  pHddTdlsCtx->threshold_config.discovery_tries_n) {
                             curr_peer->tdls_support = eTDLS_CAP_NOT_SUPPORTED;
-                            wlan_hdd_cfg80211_send_tdls_discover_req(pHddCtx->wiphy,
-                                            pHddTdlsCtx->dev, curr_peer->peerMac);
+                            sme_SendTdlsMgmtFrame(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                                  pAdapter->sessionId,
+                                                  curr_peer->peerMac,
+                                                  WLAN_TDLS_DISCOVERY_REQUEST,
+                                                  1, 0, NULL, 0, 0);
                         }
 
                         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
@@ -648,8 +652,6 @@ hddTdlsPeer_t *wlan_hdd_tdls_get_peer(u8 *mac)
 {
     struct list_head *head;
     hddTdlsPeer_t *peer;
-    hdd_adapter_t *pAdapter;
-    hdd_context_t *pHddCtx;
     u8 key;
 
     if (NULL == pHddTdlsCtx)
@@ -686,15 +688,6 @@ hddTdlsPeer_t *wlan_hdd_tdls_get_peer(u8 *mac)
                     VOS_TIMER_TYPE_SW,
                     wlan_hdd_tdls_idle_cb,
                     peer);
-
-    pAdapter = WLAN_HDD_GET_PRIV_PTR(pHddTdlsCtx->dev);
-    pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
-
-    if (++peer->discovery_attempt <
-             pHddTdlsCtx->threshold_config.discovery_tries_n) {
-        wlan_hdd_cfg80211_send_tdls_discover_req(pHddCtx->wiphy,
-                        pHddTdlsCtx->dev, peer->peerMac);
-    }
 
     list_add_tail(&peer->node, head);
     mutex_unlock(&tdls_lock);
