@@ -1593,6 +1593,12 @@ static eHalStatus hdd_RoamSetKeyCompleteHandler( hdd_adapter_t *pAdapter, tCsrRo
    // then go to 'authenticated'.  For all other authentication types (those that do 
    // not require upper layer authentication) we can put TL directly into 'authenticated'
    // state.
+#ifdef FEATURE_WLAN_TDLS
+   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
+              "%s: roamResult %d romInfo->fAuthRequired %d StaId %d staType %d", __func__,
+              roamStatus, pRoamInfo->fAuthRequired, pRoamInfo->staId, pRoamInfo->staType);
+#endif
+
    fConnected = hdd_connGetConnectedCipherAlgo( pHddStaCtx, &connectedCipherAlgo );
    if( fConnected )
    {
@@ -1775,28 +1781,32 @@ static eHalStatus roamRoamConnectStatusUpdateHandler( hdd_adapter_t *pAdapter, t
   Return: VOS_STATUS
   
   ===========================================================================*/
-static VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
-                                             tCsrRoamInfo *pRoamInfo,
-                                                v_U8_t tdlsEncryptionEnabled )
+VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
+                                    tANI_U8 *peerMac, tANI_U16 staId, tANI_U8 ucastSig)
 {
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;  
     VOS_STATUS vosStatus = VOS_STATUS_E_FAILURE;
     WLAN_STADescType staDesc = {0};
+    eCsrEncryptionType connectedCipherAlgo = eCSR_ENCRYPT_TYPE_UNKNOWN;
+    v_BOOL_t fConnected   = FALSE;
 
-    if (-1 == wlan_hdd_tdls_set_sta_id(pRoamInfo->peerMac, pRoamInfo->staId)) {
+    fConnected = hdd_connGetConnectedCipherAlgo( pHddStaCtx, &connectedCipherAlgo );
+    if (!fConnected) {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-                     "wlan_hdd_tdls_set_sta_id() failed");
+                     "%s not connected. ignored", __func__);
+        return VOS_FALSE;
     }
+
     /*
      * TDLS sta in BSS should be set as STA type TDLS and STA MAC should
      * be peer MAC, here we are wokrking on direct Link
      */
-    staDesc.ucSTAId = pRoamInfo->staId ;
+    staDesc.ucSTAId = staId ;
 
     staDesc.wSTAType = WLAN_STA_TDLS ;
       
-    vos_mem_copy( staDesc.vSTAMACAddress.bytes, pRoamInfo->peerMac,
+    vos_mem_copy( staDesc.vSTAMACAddress.bytes, peerMac,
                                          sizeof(tSirMacAddr) );
 
     vos_mem_copy(staDesc.vBSSIDforIBSS.bytes, pHddStaCtx->conn_info.bssId,6 );
@@ -1809,7 +1819,7 @@ static VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "HDD register \
                                 TL QoS_enabled=%d\n", staDesc.ucQosEnabled );
 
-    staDesc.ucProtectedFrame = tdlsEncryptionEnabled;
+    staDesc.ucProtectedFrame = (connectedCipherAlgo != eCSR_ENCRYPT_TYPE_NONE) ;
 
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
                "HDD register TL Sec_enabled= %d.\n", staDesc.ucProtectedFrame );
@@ -1822,7 +1832,7 @@ static VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
     staDesc.ucAddRmvLLC = 1;
 
     /* Initialize signatures and state */
-    staDesc.ucUcastSig  = pRoamInfo->ucastSig ;
+    staDesc.ucUcastSig  = ucastSig ;
 
     /* tdls Direct Link do not need bcastSig */
     staDesc.ucBcastSig  = 0 ;
@@ -1834,9 +1844,8 @@ static VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
         staDesc.ucIsReplayCheckValid = VOS_FALSE;
 #endif
 
-    staDesc.ucInitState = WLANTL_STA_CONNECTED ;
+    staDesc.ucInitState = WLANTL_STA_AUTHENTICATED ;
 
-   (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = pAdapter;
    /* Register the Station with TL...  */    
     vosStatus = WLANTL_RegisterSTAClient( pVosContext, 
                                           hdd_rx_packet_cbk, 
@@ -1908,50 +1917,59 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
             if(eSIR_SME_SUCCESS != pRoamInfo->statusCode)
             {
                 VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                     ("%s: Add Sta is failed."),__func__ );
-                break;
+                     ("%s: Add Sta is failed. %d"),__func__, pRoamInfo->statusCode);
             }
-            /*
-             * check if there is available index for this new TDLS STA
-             * since TDLS is setup in BSS, we need to start from +1
-             */
-            for ( staIdx = 1; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
+            else
             {
-                if (0 == pHddStaCtx->conn_info.staId[staIdx] )
+                /*
+                 * check if there is available index for this new TDLS STA
+                 * since TDLS is setup in BSS, we need to start from +1
+                 */
+                for ( staIdx = 1; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
                 {
-                    pHddStaCtx->conn_info.staId[staIdx] = pRoamInfo->staId;
+                    if (0 == pHddStaCtx->conn_info.staId[staIdx] )
+                    {
+                        pHddStaCtx->conn_info.staId[staIdx] = pRoamInfo->staId;
 
-                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                     ("TDLS: STA IDX at %d \
-                       and mac = %d: %02x,%02x, %02x, %02x, %02x, %02x\n"),
-                              staIdx, pHddStaCtx->conn_info.staId[staIdx], 
-                                                pRoamInfo->peerMac[0],
-                                                pRoamInfo->peerMac[1],   
-                                                pRoamInfo->peerMac[2],   
-                                                pRoamInfo->peerMac[3],   
-                                                pRoamInfo->peerMac[4],   
-                                                pRoamInfo->peerMac[5]) ;
-  
-                    vos_copy_macaddr(
-                              &pHddStaCtx->conn_info.peerMacAddress[staIdx],
-                                     (v_MACADDR_t *)pRoamInfo->peerMac) ;
-                    status = eHAL_STATUS_SUCCESS ;
-                    break ;
+                        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                         ("TDLS: STA IDX at %d is %d "
+                                  "of mac %02x:%02x:%02x:%02x:%02x:%02x"),
+                                  staIdx, pHddStaCtx->conn_info.staId[staIdx],
+                                                    pRoamInfo->peerMac[0],
+                                                    pRoamInfo->peerMac[1],
+                                                    pRoamInfo->peerMac[2],
+                                                    pRoamInfo->peerMac[3],
+                                                    pRoamInfo->peerMac[4],
+                                                    pRoamInfo->peerMac[5]) ;
+
+                        vos_copy_macaddr(
+                                  &pHddStaCtx->conn_info.peerMacAddress[staIdx],
+                                         (v_MACADDR_t *)pRoamInfo->peerMac) ;
+                        status = eHAL_STATUS_SUCCESS ;
+                        break ;
+                    }
+                }
+                if (staIdx < HDD_MAX_NUM_TDLS_STA)
+                {
+                    if (-1 == wlan_hdd_tdls_set_sta_id(pRoamInfo->peerMac, pRoamInfo->staId)) {
+                        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                                     "wlan_hdd_tdls_set_sta_id() failed");
+                        return VOS_FALSE;
+                    }
+
+                    (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = pAdapter;
+                    /* store the ucast signature which will be used later when
+                       registering to TL
+                     */
+                    wlan_hdd_tdls_set_signature( pRoamInfo->peerMac, pRoamInfo->ucastSig );
+                }
+                else
+                {
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    "no availalbe slot in conn_info. staId %d cannot be stored", pRoamInfo->staId);
                 }
             }
-            if(eHAL_STATUS_SUCCESS == status)
-            {
-                eCsrEncryptionType connectedCipherAlgo = eCSR_ENCRYPT_TYPE_UNKNOWN;
-                v_BOOL_t fConnected   = FALSE;
-
-                fConnected = hdd_connGetConnectedCipherAlgo( pHddStaCtx, &connectedCipherAlgo );
-                if( fConnected )
-                {
-                    /* start TDLS client registration with TL */
-                    status = hdd_roamRegisterTDLSSTA( pAdapter, pRoamInfo,
-                            ( connectedCipherAlgo != eCSR_ENCRYPT_TYPE_NONE )? 1 : 0 ) ;
-                }
-            }
+            complete(&pAdapter->tdls_add_station_comp);
             break ;
         }
         case eCSR_ROAM_RESULT_DELETE_TDLS_PEER:
