@@ -67,28 +67,6 @@
 #include "halLegacyPalTypes.h"
 
 #ifndef MK_IMAGE_HDR
-// values to check against for code that is Client/AP specific.  
-// the build will define one of the following: 
-// ANI_PRODUCT_TYPE_CLIENT 
-// ANI_PRODUCT_TYPE_AP
-// ANI_PRODUCT_TYPE_AP_SDK 
-//
-// Validate the Product type being built....
-//
-#if ( defined( ANI_PRODUCT_TYPE_CLIENT ) && ( defined( ANI_PRODUCT_TYPE_AP ) || defined( ANI_PRODUCT_TYPE_AP_SDK ) ) ) 
-#error "more than one ANI_PRODUCT_TYPE_xxx is defined for this build"
-
-#elif ( defined( ANI_PRODUCT_TYPE_AP ) && ( defined( ANI_PRODUCT_TYPE_CLIENT ) || defined( ANI_PRODUCT_TYPE_AP_SDK ) ) ) 
-#error "more than one ANI_PRODUCT_TYPE_xxx is defined for this build"
-
-#elif ( defined( ANI_PRODUCT_TYPE_AP_SDK ) && ( defined( ANI_PRODUCT_TYPE_CLIENT ) || defined( ANI_PRODUCT_TYPE_AP ) ) ) 
-#error "more than one ANI_PRODUCT_TYPE_xxx is defined for this build"
-
-#elif !( defined( ANI_PRODUCT_TYPE_CLIENT ) || defined( ANI_PRODUCT_TYPE_AP ) || defined( ANI_PRODUCT_TYPE_AP_SDK ) )
-#error "NONE of the ANI_PRODUCT_TYPE_xxxx are defined for this build"
-
-#endif
-
 
 //
 // Validate the Bus type being built....
