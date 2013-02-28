@@ -7539,15 +7539,9 @@ void csrRoamingStateMsgProcessor( tpAniSirGlobal pMac, void *pMsgBuf )
     smsLog( pMac, LOG2, "Message %d[0x%04X] received in substate %d\n",
                 pSmeRsp->messageType, pSmeRsp->messageType,
                 pMac->roam.curSubState[pSmeRsp->sessionId] );
-#if defined ANI_PRODUCT_TYPE_AP
-    pSmeRsp->messageType = pal_be16_to_cpu(pSmeRsp->messageType);
-    pSmeRsp->length = pal_be16_to_cpu(pSmeRsp->length);
-    pSmeRsp->statusCode = pal_be32_to_cpu(pSmeRsp->statusCode);
-#else
     pSmeRsp->messageType = (pSmeRsp->messageType);
     pSmeRsp->length = (pSmeRsp->length);
     pSmeRsp->statusCode = (pSmeRsp->statusCode);
-#endif
     switch (pSmeRsp->messageType) 
     {
         
@@ -8368,15 +8362,9 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
     tpSirSmeSwitchChannelInd pSwitchChnInd;
     tSmeMaxAssocInd *pSmeMaxAssocInd;
     tSmeCmd pCommand;
-#if defined ANI_PRODUCT_TYPE_AP
-    pSirMsg->messageType = pal_be16_to_cpu(pSirMsg->messageType);
-    pSirMsg->length = pal_be16_to_cpu(pSirMsg->length);
-    pSirMsg->statusCode = pal_be32_to_cpu(pSirMsg->statusCode);
-#else
     pSirMsg->messageType = (pSirMsg->messageType);
     pSirMsg->length = (pSirMsg->length);
     pSirMsg->statusCode = (pSirMsg->statusCode);
-#endif
     palZeroMemory(pMac->hHdd, &roamInfo, sizeof(roamInfo));
     switch( pSirMsg->messageType ) 
     {
@@ -11567,8 +11555,6 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
 
 
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-#endif /*(WNI_POLARIS_FW_PACKAGE == ADVANCED)*/
         status = csrGetRateSet(pMac, pProfile, (eCsrPhyMode)pProfile->phyMode, pBssDescription, pIes, &OpRateSet, &ExRateSet);
         if (HAL_STATUS_SUCCESS(status) )
         {
