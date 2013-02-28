@@ -400,32 +400,28 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
 #endif
 
 #if defined(CONFIG_CFG80211) && defined (KERNEL_SUPPORT_11R_CFG80211)
-    vos_mem_zero(ftIe, DOT11F_IE_FTINFO_MAX_LEN); 
-    vos_mem_zero(ricIe, DOT11F_IE_RICDESCRIPTOR_MAX_LEN); 
+    vos_mem_zero(ftIe, DOT11F_IE_FTINFO_MAX_LEN);
+    vos_mem_zero(ricIe, DOT11F_IE_RICDESCRIPTOR_MAX_LEN);
 
-    /* RIC TODO */
-    /*sme_GetRICIEs( pHddCtx->hHal, (u8 *)ricIe, 
+    sme_GetRICIEs( pHddCtx->hHal, (u8 *)ricIe,
                   DOT11F_IE_FTINFO_MAX_LEN, &ric_ies_length );
-    if (ric_ies_length == 0) 
+    if (ric_ies_length == 0)
     {
-        hddLog(LOGW, "%s: RIC IEs is of length 0 not sending RIC Information for now", __func__); 
+        hddLog(LOGW,
+              "%s: RIC IEs is of length 0 not sending RIC Information for now",
+              __func__);
     }
-    else
-    {
-        ftEvent.ric_ies = ricIe;
-        ftEvent.ric_ies_len = ric_ies_length;
-    }*/
 
     ftEvent.ric_ies = ricIe;
-    ftEvent.ric_ies_len = 0;
-    hddLog(LOG1, "%s: RIC IEs is of length %d", __func__, (int)ric_ies_length); 
+    ftEvent.ric_ies_len = ric_ies_length;
+    hddLog(LOG1, "%s: RIC IEs is of length %d", __func__, (int)ric_ies_length);
 
-    sme_GetFTPreAuthResponse(pHddCtx->hHal, (u8 *)ftIe, 
+    sme_GetFTPreAuthResponse(pHddCtx->hHal, (u8 *)ftIe,
                 DOT11F_IE_FTINFO_MAX_LEN, &auth_resp_len);
 
-    if (auth_resp_len == 0) 
+    if (auth_resp_len == 0)
     {
-        hddLog(LOGE, "%s: AuthRsp FTIES is of length 0", __func__); 
+        hddLog(LOGE, "%s: AuthRsp FTIES is of length 0", __func__);
         return;
     }
 
@@ -436,7 +432,7 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
 
     hddLog(LOG1, "%s ftEvent.ies_len %d",__FUNCTION__, ftEvent.ies_len);
     hddLog(LOG1, "%s ftEvent.ric_ies_len  %d",__FUNCTION__, ftEvent.ric_ies_len );
-    hddLog(LOG1, "%s ftEvent.target_ap %2x-%2x-%2x-%2x-%2x-%2x ", 
+    hddLog(LOG1, "%s ftEvent.target_ap %2x-%2x-%2x-%2x-%2x-%2x ",
             __FUNCTION__, ftEvent.target_ap[0], ftEvent.target_ap[1],
             ftEvent.target_ap[2], ftEvent.target_ap[3], ftEvent.target_ap[4],
             ftEvent.target_ap[5]);
@@ -444,22 +440,24 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
     (void)cfg80211_ft_event(dev, ftEvent);
 
 #else
-    // We need to send the IEs to the supplicant.
+    // We need to send the IEs to the supplicant
     buff = kmalloc(IW_CUSTOM_MAX, GFP_ATOMIC);
-    if (buff == NULL) 
+    if (buff == NULL)
     {
-        hddLog(LOGE, "%s: kmalloc unable to allocate memory", __func__); 
+        hddLog(LOGE, "%s: kmalloc unable to allocate memory", __func__);
         return;
     }
-    vos_mem_zero(buff, IW_CUSTOM_MAX); 
+    vos_mem_zero(buff, IW_CUSTOM_MAX);
 
     // Sme needs to send the RIC IEs first 
     str_len = strlcpy(buff, "RIC=", IW_CUSTOM_MAX);
-    sme_GetRICIEs( pHddCtx->hHal, (u8 *)&(buff[str_len]), 
+    sme_GetRICIEs( pHddCtx->hHal, (u8 *)&(buff[str_len]),
             (IW_CUSTOM_MAX - str_len), &ric_ies_length );
-    if (ric_ies_length == 0) 
+    if (ric_ies_length == 0)
     {
-        hddLog(LOGW, "%s: RIC IEs is of length 0 not sending RIC Information for now", __func__); 
+        hddLog(LOGW,
+               "%s: RIC IEs is of length 0 not sending RIC Information for now",
+               __func__);
     }
     else
     {
@@ -468,14 +466,14 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
     }
 
     // Sme needs to provide the Auth Resp
-    vos_mem_zero(buff, IW_CUSTOM_MAX); 
+    vos_mem_zero(buff, IW_CUSTOM_MAX);
     str_len = strlcpy(buff, "AUTH=", IW_CUSTOM_MAX);
-    sme_GetFTPreAuthResponse(pHddCtx->hHal, (u8 *)&buff[str_len], 
-                    (IW_CUSTOM_MAX - str_len),  &auth_resp_len);
+    sme_GetFTPreAuthResponse(pHddCtx->hHal, (u8 *)&buff[str_len],
+                    (IW_CUSTOM_MAX - str_len), &auth_resp_len);
 
-    if (auth_resp_len == 0) 
+    if (auth_resp_len == 0)
     {
-        hddLog(LOGE, "%s: AuthRsp FTIES is of length 0", __func__); 
+        hddLog(LOGE, "%s: AuthRsp FTIES is of length 0", __func__);
         return;
     }
 

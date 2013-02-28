@@ -3142,9 +3142,9 @@ static int iw_set_encodeext(struct net_device *dev,
 /* The supplicant may attempt to set the PTK once pre-authentication is done.
    Save the key in the UMAC and include it in the ADD BSS request */
     halStatus = sme_FTUpdateKey( WLAN_HDD_GET_HAL_CTX(pAdapter), &setKey);
-    if( halStatus == eHAL_STATUS_SUCCESS )
+    if( halStatus == eHAL_STATUS_FT_PREAUTH_KEY_WAIT )
     {
-       return halStatus;
+       return -EINVAL;
     }
 #endif /* WLAN_FEATURE_VOWIFI_11R */
 
