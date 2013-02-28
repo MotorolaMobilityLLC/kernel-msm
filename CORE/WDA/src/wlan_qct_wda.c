@@ -10074,10 +10074,22 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
       }
       case WDI_MISSED_BEACON_IND:
       {
+         tpSirSmeMissedBeaconInd pMissBeacInd =
+            (tpSirSmeMissedBeaconInd)vos_mem_malloc(sizeof(tSirSmeMissedBeaconInd));
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                      "Received WDI_MISSED_BEACON_IND from WDI ");
          /* send IND to PE */
-         WDA_SendMsg(pWDA, WDA_MISSED_BEACON_IND, NULL, 0) ;
+         if(NULL == pMissBeacInd)
+         {
+             VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                                 "%s: VOS MEM Alloc Failure", __func__);
+             break;
+         }
+         pMissBeacInd->messageType = WDA_MISSED_BEACON_IND;
+         pMissBeacInd->length = sizeof(tSirSmeMissedBeaconInd);
+         pMissBeacInd->bssIdx =
+             wdiLowLevelInd->wdiIndicationData.wdiMissedBeaconInd.bssIdx;
+         WDA_SendMsg(pWDA, WDA_MISSED_BEACON_IND, (void *)pMissBeacInd , 0) ;
          break ;
       }
       case WDI_UNKNOWN_ADDR2_FRAME_RX_IND:

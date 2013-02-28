@@ -2346,7 +2346,7 @@ limWPSOverlapTimerHandler(void *pMacGlobal, tANI_U32 param)
  * @return None
  */
 void
-limMissedBeaconInActiveMode(void *pMacGlobal)
+limMissedBeaconInActiveMode(void *pMacGlobal, tpPESession psessionEntry)
 {
     tANI_U32         statusCode;
     tSirMsgQ    msg;
@@ -2356,7 +2356,7 @@ limMissedBeaconInActiveMode(void *pMacGlobal)
     if(IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)
     {
        msg.type = (tANI_U16) SIR_LIM_HEART_BEAT_TIMEOUT;
-       msg.bodyptr = NULL;
+       msg.bodyptr = psessionEntry;
        msg.bodyval = 0;
        limLog(pMac, LOGE,
                  FL("Heartbeat failure from Riva\n"));

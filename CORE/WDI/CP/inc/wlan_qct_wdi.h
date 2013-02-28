@@ -572,6 +572,15 @@ typedef struct
 #endif // WLAN_WAKEUP_EVENTS
 
 /*---------------------------------------------------------------------------
+ WDI_MissedBeaconIndType
+-----------------------------------------------------------------------------*/
+typedef struct
+{
+    wpt_uint8       bssIdx;  /*bssidx on which beacon is missed*/
+} WDI_MissedBeaconIndType;
+
+
+/*---------------------------------------------------------------------------
   WDI_LowLevelIndType
     Inidcation type and information about the indication being carried
     over
@@ -619,6 +628,7 @@ typedef struct
 #ifdef WLAN_WAKEUP_EVENTS
     WDI_WakeReasonIndType        wdiWakeReasonInd;
 #endif // WLAN_WAKEUP_EVENTS
+    WDI_MissedBeaconIndType      wdiMissedBeaconInd;
   }  wdiIndicationData;
 }WDI_LowLevelIndType;
 

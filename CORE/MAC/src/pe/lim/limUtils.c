@@ -6965,6 +6965,45 @@ void limHandleHeartBeatTimeout(tpAniSirGlobal pMac )
     }
 }
 
+void limHandleHeartBeatTimeoutForSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
+{
+    if(psessionEntry->valid == TRUE )
+    {
+        if(psessionEntry->bssType == eSIR_IBSS_MODE)
+        {
+            limIbssHeartBeatHandle(pMac,psessionEntry);
+        }
+        if((psessionEntry->bssType == eSIR_INFRASTRUCTURE_MODE) &&
+             (psessionEntry->limSystemRole == eLIM_STA_ROLE))
+        {
+            limHandleHeartBeatFailure(pMac,psessionEntry);
+        }
+    }
+    /* In the function limHandleHeartBeatFailure things can change so check for the session entry  valid
+     and the other things again */
+    if(psessionEntry->valid == TRUE )
+    {
+        if((psessionEntry->bssType == eSIR_INFRASTRUCTURE_MODE) &&
+            (psessionEntry->limSystemRole == eLIM_STA_ROLE))
+        {
+            if(psessionEntry->LimHBFailureStatus == eANI_BOOLEAN_TRUE)
+            {
+                /* Activate Probe After HeartBeat Timer incase HB Failure detected */
+                PELOGW(limLog(pMac, LOGW,FL("Sending Probe for Session: %d"),
+                       psessionEntry->bssIdx);)
+                limDeactivateAndChangeTimer(pMac, eLIM_PROBE_AFTER_HB_TIMER);
+                MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, 0, eLIM_PROBE_AFTER_HB_TIMER));
+                if (tx_timer_activate(&pMac->lim.limTimers.gLimProbeAfterHBTimer) != TX_SUCCESS)
+                {
+                    limLog(pMac, LOGP, FL("Fail to re-activate Probe-after-heartbeat timer"));
+                    limReactivateHeartBeatTimer(pMac, psessionEntry);
+                }
+            }
+        }
+    }
+}
+
+
 tANI_U8 limGetCurrentOperatingChannel(tpAniSirGlobal pMac)
 {
     tANI_U8 i;

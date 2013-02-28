@@ -358,6 +358,8 @@ tANI_U8 limGetChannelFromBeacon(tpAniSirGlobal pMac, tpSchBeaconStruct pBeacon);
 tSirNwType limGetNwType(tpAniSirGlobal pMac, tANI_U8 channelNum, tANI_U32 type, tpSchBeaconStruct pBeacon);
 void limSetTspecUapsdMask(tpAniSirGlobal pMac, tSirMacTSInfo *pTsInfo, tANI_U32 action);
 void limHandleHeartBeatTimeout(tpAniSirGlobal pMac);
+void limHandleHeartBeatTimeoutForSession(tpAniSirGlobal pMac, tpPESession psessionEntry);
+
 //void limProcessBtampAddBssRsp(tpAniSirGlobal pMac,tpSirMsgQ pMsgQ,tpPESession peSession);
 void limProcessAddStaRsp(tpAniSirGlobal pMac,tpSirMsgQ pMsgQ);
 

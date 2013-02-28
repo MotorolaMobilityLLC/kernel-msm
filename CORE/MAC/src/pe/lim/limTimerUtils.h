@@ -153,6 +153,6 @@ v_UINT_t limActivateHearBeatTimer(tpAniSirGlobal pMac);
 void limWPSOverlapTimerHandler(void *pMacGlobal, tANI_U32 param);
 #endif
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
-void limMissedBeaconInActiveMode(void *pMacGlobal);
+void limMissedBeaconInActiveMode(void *pMacGlobal, tpPESession psessionEntry);
 #endif
 #endif /* __LIM_TIMER_UTILS_H */
