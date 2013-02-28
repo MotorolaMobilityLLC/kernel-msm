@@ -720,6 +720,71 @@ VOS_STATUS hdd_conf_hostarpoffload(hdd_adapter_t *pAdapter, v_BOOL_t fenable)
    }
 }
 
+/*
+ * This function is called before setting mcbc filters
+ * to modify filter value considering ARP
+*/
+void hdd_mcbc_filter_modification(hdd_context_t* pHddCtx, v_BOOL_t arpFlag,
+                                  tANI_U8 *pMcBcFilter)
+{
+    if (TRUE == arpFlag)
+    {
+        /*ARP offload is enabled, do not block bcast packets at RXP*/
+        if (pHddCtx->dynamic_mcbc_filter.enableCfg)
+        {
+            if ((HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
+                  pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting))
+            {
+                *pMcBcFilter = HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST;
+            }
+            else if ((HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST ==
+                  pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting))
+            {
+                *pMcBcFilter = HDD_MCASTBCASTFILTER_FILTER_NONE;
+            }
+            else
+            {
+                *pMcBcFilter = pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting;
+            }
+
+            pHddCtx->dynamic_mcbc_filter.enableSuspend = TRUE;
+            pHddCtx->dynamic_mcbc_filter.mcBcFilterSuspend = *pMcBcFilter;
+        }
+        else
+        {
+            if (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST ==
+                  pHddCtx->cfg_ini->mcastBcastFilterSetting)
+            {
+                *pMcBcFilter = HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST;
+            }
+            else if (HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST ==
+                  pHddCtx->cfg_ini->mcastBcastFilterSetting)
+            {
+                *pMcBcFilter = HDD_MCASTBCASTFILTER_FILTER_NONE;
+            }
+            else
+            {
+                *pMcBcFilter = pHddCtx->cfg_ini->mcastBcastFilterSetting;
+            }
+
+            pHddCtx->dynamic_mcbc_filter.enableSuspend = FALSE;
+        }
+    }
+    else
+    {
+        if (pHddCtx->dynamic_mcbc_filter.enableCfg)
+        {
+            *pMcBcFilter = pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting;
+            pHddCtx->dynamic_mcbc_filter.enableSuspend = TRUE;
+        }
+        else
+        {
+            pHddCtx->dynamic_mcbc_filter.enableSuspend = FALSE;
+            *pMcBcFilter = pHddCtx->cfg_ini->mcastBcastFilterSetting;
+        }
+    }
+}
+
 void hdd_conf_mcastbcast_filter(hdd_context_t* pHddCtx, v_BOOL_t setfilter)
 {
     eHalStatus halStatus = eHAL_STATUS_FAILURE;
@@ -747,9 +812,24 @@ void hdd_conf_mcastbcast_filter(hdd_context_t* pHddCtx, v_BOOL_t setfilter)
       hddLog(VOS_TRACE_LEVEL_FATAL, "%s: pMac is initialised to NULL",__func__ );
     }
 #else
+    if (TRUE == setfilter)
+    {
+        if (pHddCtx->cfg_ini->fhostArpOffload)
+        {
+            hdd_mcbc_filter_modification(pHddCtx, TRUE,
+                  &wlanRxpFilterParam->configuredMcstBcstFilterSetting);
+        }
+        else
+        {
+            hdd_mcbc_filter_modification(pHddCtx, FALSE,
+                  &wlanRxpFilterParam->configuredMcstBcstFilterSetting);
+        }
+    }
+    else
+        wlanRxpFilterParam->configuredMcstBcstFilterSetting =
+                              pHddCtx->cfg_ini->mcastBcastFilterSetting;
+
     wlanRxpFilterParam->setMcstBcstFilter = setfilter;
-    wlanRxpFilterParam->configuredMcstBcstFilterSetting = 
-                      pHddCtx->cfg_ini->mcastBcastFilterSetting;
     halStatus = sme_ConfigureRxpFilter(pHddCtx->hHal, wlanRxpFilterParam);
 #endif
     if(setfilter && (eHAL_STATUS_SUCCESS == halStatus))
@@ -784,86 +864,26 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
             vstatus = hdd_conf_hostarpoffload(pAdapter, TRUE);
             if (!VOS_IS_STATUS_SUCCESS(vstatus))
             {
-                if(pHddCtx->dynamic_mcbc_filter.enableCfg)
-                {
-                  wlanSuspendParam->configuredMcstBcstFilterSetting = 
-                          pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting;
-                  pHddCtx->dynamic_mcbc_filter.enableSuspend = TRUE;
-                }
-                else
-                {
-                  wlanSuspendParam->configuredMcstBcstFilterSetting = 
-                             pHddCtx->cfg_ini->mcastBcastFilterSetting;
-                }
+                hdd_mcbc_filter_modification(pHddCtx, FALSE,
+                      &wlanSuspendParam->configuredMcstBcstFilterSetting);
                 hddLog(VOS_TRACE_LEVEL_INFO,
                        "%s:Failed to enable ARPOFFLOAD Feature %d\n",
                        __func__, vstatus);
             }
             else
             {
-                if(pHddCtx->dynamic_mcbc_filter.enableCfg)
-                {
-                    if((HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST == 
-                         pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting))
-                   {
-                       wlanSuspendParam->configuredMcstBcstFilterSetting = 
-                                     HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST;
-                   }
-                   else if((HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST == 
-                         pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting))
-                   {
-                       wlanSuspendParam->configuredMcstBcstFilterSetting = 
-                                             HDD_MCASTBCASTFILTER_FILTER_NONE;
-                   }
-                   else
-                   {
-                       wlanSuspendParam->configuredMcstBcstFilterSetting = 
-                          pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting;
-                   }
-
-                   pHddCtx->dynamic_mcbc_filter.enableSuspend = TRUE;
-                   pHddCtx->dynamic_mcbc_filter.mcBcFilterSuspend = 
-                        wlanSuspendParam->configuredMcstBcstFilterSetting;
-                }
-                else
-                {
-                    if (HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST_BROADCAST == 
-                        pHddCtx->cfg_ini->mcastBcastFilterSetting)
-                    {
-                        wlanSuspendParam->configuredMcstBcstFilterSetting = 
-                                     HDD_MCASTBCASTFILTER_FILTER_ALL_MULTICAST;
-                    }
-                    else if(HDD_MCASTBCASTFILTER_FILTER_ALL_BROADCAST == 
-                            pHddCtx->cfg_ini->mcastBcastFilterSetting)
-                    {
-                        wlanSuspendParam->configuredMcstBcstFilterSetting = 
-                                             HDD_MCASTBCASTFILTER_FILTER_NONE;
-                    }
-                    else
-                    {
-                        wlanSuspendParam->configuredMcstBcstFilterSetting = 
-                                 pHddCtx->cfg_ini->mcastBcastFilterSetting;
-                    }
-
-                    pHddCtx->dynamic_mcbc_filter.enableSuspend = FALSE;
-                }
+                hdd_mcbc_filter_modification(pHddCtx, TRUE,
+                      &wlanSuspendParam->configuredMcstBcstFilterSetting);
             }
         }
         else
         {
+            hdd_mcbc_filter_modification(pHddCtx, FALSE,
+                      &wlanSuspendParam->configuredMcstBcstFilterSetting);
             if(pHddCtx->dynamic_mcbc_filter.enableCfg)
             {
-                wlanSuspendParam->configuredMcstBcstFilterSetting = 
-                      pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting;
-                pHddCtx->dynamic_mcbc_filter.enableSuspend = TRUE;
                 pHddCtx->dynamic_mcbc_filter.mcBcFilterSuspend = 
                         wlanSuspendParam->configuredMcstBcstFilterSetting;
-            }
-            else
-            {
-                pHddCtx->dynamic_mcbc_filter.enableSuspend = FALSE;
-                wlanSuspendParam->configuredMcstBcstFilterSetting = 
-                             pHddCtx->cfg_ini->mcastBcastFilterSetting;
             }
         }
 
