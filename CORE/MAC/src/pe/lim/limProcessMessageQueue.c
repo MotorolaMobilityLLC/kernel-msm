@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file lim ProcessMessageQueue.cc contains the code
@@ -263,17 +262,6 @@ limProcessMessageQueue(tpAniSirGlobal pMac)
     {
         return;
     }
-
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-    ULONG param;
-    while(get_timer_event(LIM_TIMER_EXPIRY_LIST,&param))
-    {
-        limMsg.type = (tANI_U16) param;
-        limMsg.bodyval = 0;
-        limMsg.bodyptr = NULL;
-        limMessageProcessor(pMac, &limMsg);
-    }
-#endif
 
     if (tx_queue_receive( &pMac->sys.gSirLimMsgQ, (void *) &limMsg, TX_WAIT_FOREVER)
             == TX_SUCCESS)
