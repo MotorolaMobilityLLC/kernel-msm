@@ -58,6 +58,10 @@
 #ifndef __RRM_API_H__
 #define __RRM_API_H__
 
+#define RRM_MIN_TX_PWR_CAP    13
+#define RRM_MAX_TX_PWR_CAP    19
+
+tANI_U8 rrmGetMinOfMaxTxPower(tPowerdBm regMax, tPowerdBm apTxPower);
 
 extern tSirRetStatus rrmInitialize(tpAniSirGlobal pMac);
 

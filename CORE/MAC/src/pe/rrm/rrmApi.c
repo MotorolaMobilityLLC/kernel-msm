@@ -71,6 +71,20 @@
 #include "rrmGlobal.h"
 #include "rrmApi.h"
 
+tANI_U8
+rrmGetMinOfMaxTxPower(tPowerdBm regMax, tPowerdBm apTxPower)
+{
+    tANI_U8 maxTxPower = 0;
+    tANI_U8 txPower = VOS_MIN( regMax , (apTxPower) );
+    if((txPower >= RRM_MIN_TX_PWR_CAP) && (txPower <= RRM_MAX_TX_PWR_CAP))
+        maxTxPower =  txPower;
+    else if (txPower < RRM_MIN_TX_PWR_CAP)
+        maxTxPower = RRM_MIN_TX_PWR_CAP;
+    else
+        maxTxPower = RRM_MAX_TX_PWR_CAP;
+
+    return maxTxPower;
+}
 
 // --------------------------------------------------------------------
 /**

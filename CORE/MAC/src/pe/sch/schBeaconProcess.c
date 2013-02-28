@@ -562,8 +562,9 @@ static void __schBeaconProcessForSession( tpAniSirGlobal      pMac,
            {
               localConstraint = 0;
            }
-           regMax = cfgGetRegulatoryMaxTransmitPower( pMac, psessionEntry->currentOperChannel ); 
-           maxTxPower = VOS_MIN( regMax , (regMax - localConstraint) );
+           regMax = cfgGetRegulatoryMaxTransmitPower( pMac, psessionEntry->currentOperChannel );
+           //Get the maxTxPower in the range of 13 to 19
+           maxTxPower = rrmGetMinOfMaxTxPower(regMax, (regMax - localConstraint));
            //If maxTxPower is increased or decreased
            if( maxTxPower != psessionEntry->maxTxPower )
            {
