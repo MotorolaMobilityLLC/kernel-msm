@@ -30,7 +30,9 @@
 
 #define MAX_NUM_TDLS_PEER           3
 
-#define TDLS_MAX_DISCOVER_ATTEMPT   2
+#define TDLS_SUB_DISCOVERY_PERIOD   100
+
+#define TDLS_MAX_DISCOVER_REQS_PER_TIMER 1
 
 #define TDLS_DISCOVERY_PERIOD       3600000
 
@@ -89,6 +91,7 @@ typedef struct {
     tANI_S8     tdls_support;
     tANI_S8     link_status;
     tANI_U8     is_responder;
+    tANI_U8     discovery_processed;
     tANI_U16    discovery_attempt;
     tANI_U16    tx_pkt;
     tANI_U16    rx_pkt;
@@ -103,6 +106,7 @@ typedef struct {
     vos_timer_t     peerDiscoverTimer;
     vos_timer_t     peerUpdateTimer;
     tdls_config_params_t threshold_config;
+    tANI_S32        discovery_peer_cnt;
     tANI_S8         ap_rssi;
 } tdlsCtx_t;
 
@@ -111,6 +115,8 @@ int wlan_hdd_tdls_init(struct net_device *dev);
 void wlan_hdd_tdls_exit(void);
 
 void wlan_hdd_tdls_timers_stop(void);
+
+void wlan_hdd_tdls_timers_destroy(void);
 
 void wlan_hdd_tdls_extract_da(struct sk_buff *skb, u8 *mac);
 
@@ -141,6 +147,10 @@ int wlan_hdd_tdls_reset_peer(u8 *mac);
 u8 wlan_hdd_tdlsConnectedPeers(void);
 
 int wlan_hdd_tdls_get_all_peers(char *buf, int buflen);
+
+void wlan_hdd_tdls_connection_callback(hdd_adapter_t *pAdapter);
+
+void wlan_hdd_tdls_disconnection_callback(hdd_adapter_t *pAdapter);
 
 
 #endif // __HDD_TDSL_H

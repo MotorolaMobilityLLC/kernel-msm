@@ -851,6 +851,10 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
     // Clear saved connection information in HDD
     hdd_connRemoveConnectInfo( pHddStaCtx );
 
+#ifdef FEATURE_WLAN_TDLS
+    wlan_hdd_tdls_disconnection_callback(pAdapter);
+#endif
+
     //Unblock anyone waiting for disconnect to complete
     complete(&pAdapter->disconnect_comp_var);
     return( status );
@@ -1159,6 +1163,9 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
 #endif
         pHddCtx->sta_to_adapter[pRoamInfo->staId] = pAdapter;
 
+#ifdef FEATURE_WLAN_TDLS
+        wlan_hdd_tdls_connection_callback(pAdapter);
+#endif
         //For reassoc, the station is already registered, all we need is to change the state
         //of the STA in TL.
         //If authentication is required (WPA/WPA2/DWEP), change TL to CONNECTED instead of AUTHENTICATED
