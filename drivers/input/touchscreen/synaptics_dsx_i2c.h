@@ -285,4 +285,53 @@ static inline void hstoba(unsigned char *dest, unsigned short src)
 	dest[1] = src / 0x100;
 }
 
+struct synaptics_rmi4_subpkt {
+	unsigned char present;
+	unsigned char expected;
+	unsigned int size;
+	void *data;
+};
+
+#define RMI4_SUBPKT(a)\
+	{.present = 0, .expected = 1, .size = sizeof(a), .data = &a}
+#define RMI4_SUBPKT_STATIC(a)\
+	{.present = 1, .expected = 1, .size = sizeof(a), .data = &a}
+
+struct synaptics_rmi4_packet_reg {
+	int offset;
+	int expected;
+	unsigned int size;
+	unsigned char nr_subpkts;
+	struct synaptics_rmi4_subpkt *subpkt;
+};
+
+#define RMI4_NO_REG() {\
+	.offset = -1, .expected = 0, .size = 0,\
+	.nr_subpkts = 0, .subpkt = NULL}
+#define RMI4_REG(r) {\
+	.offset = -1, .expected = 1, .size = 0,\
+	.nr_subpkts = ARRAY_SIZE(r), .subpkt = r}
+#define RMI4_REG_STATIC(r, offs, sz) {\
+	.offset = offs, .expected = 1, .size = sz,\
+	.nr_subpkts = ARRAY_SIZE(r), .subpkt = r}
+
+struct synaptics_rmi4_func_packet_regs {
+	unsigned short base_addr;
+	int nr_regs;
+	struct synaptics_rmi4_packet_reg *regs;
+};
+
+int synaptics_rmi4_scan_packet_reg_info(
+	struct synaptics_rmi4_data *rmi4_data,
+	unsigned short query_addr,
+	unsigned short regs_base_addr,
+	struct synaptics_rmi4_func_packet_regs *regs);
+
+int synaptics_rmi4_read_packet_reg(
+	struct synaptics_rmi4_data *rmi4_data,
+	struct synaptics_rmi4_func_packet_regs *regs, unsigned char r);
+
+int synaptics_rmi4_read_packet_regs(
+	struct synaptics_rmi4_data *rmi4_data,
+	struct synaptics_rmi4_func_packet_regs *regs);
 #endif

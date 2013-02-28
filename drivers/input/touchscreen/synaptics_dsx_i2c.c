@@ -75,6 +75,420 @@
 #define NO_SLEEP_ON (1 << 2)
 
 #define SYDBG(fmt, args...)	printk(KERN_ERR "%s: " fmt, __func__, ##args)
+#define SYDBG_REG(subpkt, fld) SYDBG(#subpkt "." #fld " = 0x%02X\n", subpkt.fld)
+
+/* F12 packet register description */
+
+struct {
+	unsigned char max_x_lsb;
+	unsigned char max_x_msb;
+	unsigned char max_y_lsb;
+	unsigned char max_y_msb;
+} f12_c08_0;
+
+struct {
+	unsigned char recv_pitch_lsb;
+	unsigned char recv_pitch_msb;
+	unsigned char trans_pitch_lsb;
+	unsigned char trans_pitch_msb;
+} f12_c08_1;
+
+struct {
+	unsigned char low_recv_clip;
+	unsigned char high_recv_clip;
+	unsigned char low_trans_clip;
+	unsigned char high_trans_clip;
+} f12_c08_2;
+
+struct {
+	unsigned char num_2d_recv;
+	unsigned char num_2d_trans;
+} f12_c08_3;
+
+struct {
+	unsigned char touch_threshold;
+	unsigned char lift_hysteresis;
+	unsigned char sm_z_scale_factor_lsb;
+	unsigned char sm_z_scale_factor_msb;
+	unsigned char lg_z_scale_factor_lsb;
+	unsigned char lg_z_scale_factor_msb;
+	unsigned char sm_lg_boundary;
+} f12_c09_0;
+
+struct {
+	unsigned char wx_scale;
+	unsigned char wx_offset;
+	unsigned char wy_scale;
+	unsigned char wy_offset;
+} f12_c09_1;
+
+struct {
+	unsigned char x_size_lsb;
+	unsigned char x_size_msb;
+	unsigned char y_size_lsb;
+	unsigned char y_size_msb;
+} f12_c09_2;
+
+struct {
+	unsigned char noise_floor;
+	unsigned char min_peak_amplitude;
+	unsigned char peak_merge_threshold;
+} f12_c10_0;
+
+struct {
+	unsigned char drumming_accel_threshold;
+	unsigned char drumming_min_distance;
+} f12_c10_1;
+
+struct {
+	unsigned char sm_corner;
+	unsigned char lg_corner;
+} f12_c11_0;
+
+struct {
+	unsigned char x_min_z;
+	unsigned char y_min_z;
+	unsigned char x_max_z;
+	unsigned char y_max_z;
+	unsigned char x_correction_amplitude;
+	unsigned char y_correction_amplitude;
+} f12_c12_0;
+
+struct {
+	unsigned char finger_amplitude_threshold;
+	unsigned char sm_finger_amplitude_threshold;
+	unsigned char sm_finger_border_size;
+	unsigned char negative_finger_amplitude_threshold;
+} f12_c15_0;
+
+struct {
+	unsigned char palm_amplitude_threshold;
+	unsigned char palm_area;
+} f12_c15_1;
+
+struct {
+	unsigned char x_suppression;
+	unsigned char y_suppression;
+} f12_c20_0;
+
+struct {
+	union {
+		struct {
+			unsigned char report_always:1;
+			unsigned char reserved:7;
+		} __packed;
+		unsigned char data[1];
+	};
+} f12_c20_1;
+
+struct {
+	union {
+		struct {
+			unsigned char palm_filter_mode:2;
+			unsigned char accept_stylus:1;
+			unsigned char reserved:5;
+		} __packed;
+		unsigned char data[1];
+	};
+} f12_c22_0;
+
+struct {
+	union {
+		struct {
+			unsigned char finger:1;
+			unsigned char stylus:1;
+			unsigned char palm:1;
+			unsigned char unclassified:1;
+			unsigned char reserved:4;
+		} __packed;
+		unsigned char data[1];
+	};
+} f12_c23_0;
+
+struct {
+	unsigned char max_num_reported_objects;
+} f12_c23_1;
+
+struct {
+	unsigned char reported_bytes_per_object;
+} f12_c28_0;
+
+struct synaptics_rmi4_subpkt f12_c08[] = {
+	RMI4_SUBPKT(f12_c08_0),
+	RMI4_SUBPKT(f12_c08_1),
+	RMI4_SUBPKT(f12_c08_2),
+	RMI4_SUBPKT(f12_c08_3),
+};
+
+struct synaptics_rmi4_subpkt f12_c09[] = {
+	RMI4_SUBPKT(f12_c09_0),
+	RMI4_SUBPKT(f12_c09_1),
+	RMI4_SUBPKT(f12_c09_2),
+};
+
+struct synaptics_rmi4_subpkt f12_c10[] = {
+	RMI4_SUBPKT(f12_c10_0),
+	RMI4_SUBPKT(f12_c10_1),
+};
+
+struct synaptics_rmi4_subpkt f12_c11[] = {
+	RMI4_SUBPKT(f12_c11_0),
+};
+
+struct synaptics_rmi4_subpkt f12_c12[] = {
+	RMI4_SUBPKT(f12_c12_0),
+};
+
+struct synaptics_rmi4_subpkt f12_c15[] = {
+	RMI4_SUBPKT(f12_c15_0),
+	RMI4_SUBPKT(f12_c15_1),
+};
+
+struct synaptics_rmi4_subpkt f12_c20[] = {
+	RMI4_SUBPKT(f12_c20_0),
+	RMI4_SUBPKT(f12_c20_1),
+};
+
+struct synaptics_rmi4_subpkt f12_c22[] = {
+	RMI4_SUBPKT(f12_c22_0),
+};
+
+struct synaptics_rmi4_subpkt f12_c23[] = {
+	RMI4_SUBPKT(f12_c23_0),
+	RMI4_SUBPKT(f12_c23_1),
+};
+
+struct synaptics_rmi4_subpkt f12_c28[] = {
+	RMI4_SUBPKT(f12_c28_0),
+};
+
+struct synaptics_rmi4_packet_reg f12_ctrl_reg_array[] = {
+	RMI4_NO_REG(),		/*00*/
+	RMI4_NO_REG(),		/*01*/
+	RMI4_NO_REG(),		/*02*/
+	RMI4_NO_REG(),		/*03*/
+	RMI4_NO_REG(),		/*04*/
+	RMI4_NO_REG(),		/*05*/
+	RMI4_NO_REG(),		/*06*/
+	RMI4_NO_REG(),		/*07*/
+	RMI4_REG(f12_c08),	/*08*/
+	RMI4_REG(f12_c09),	/*09*/
+	RMI4_REG(f12_c10),	/*10*/
+	RMI4_REG(f12_c11),	/*11*/
+	RMI4_REG(f12_c12),	/*12*/
+	RMI4_NO_REG(),		/*13*/
+	RMI4_NO_REG(),		/*14*/
+	RMI4_REG(f12_c15),	/*15*/
+	RMI4_NO_REG(),		/*16*/
+	RMI4_NO_REG(),		/*17*/
+	RMI4_NO_REG(),		/*18*/
+	RMI4_NO_REG(),		/*19*/
+	RMI4_REG(f12_c20),	/*20*/
+	RMI4_NO_REG(),		/*21*/
+	RMI4_REG(f12_c22),	/*22*/
+	RMI4_REG(f12_c23),	/*23*/
+	RMI4_NO_REG(),		/*24*/
+	RMI4_NO_REG(),		/*25*/
+	RMI4_NO_REG(),		/*26*/
+	RMI4_NO_REG(),		/*27*/
+	RMI4_REG(f12_c28),	/*28*/
+};
+
+static struct synaptics_rmi4_func_packet_regs f12_ctrl_regs = {
+	.base_addr = 0,
+	.nr_regs = ARRAY_SIZE(f12_ctrl_reg_array),
+	.regs = f12_ctrl_reg_array
+};
+
+#define LAST_SUBPACKET_ROW_IND_MASK 0x80
+#define NR_SUBPKT_PRESENCE_BITS 7
+
+int synaptics_rmi4_scan_packet_reg_info(
+	struct synaptics_rmi4_data *rmi4_data,
+	unsigned short query_addr,
+	unsigned short regs_base_addr,
+	struct synaptics_rmi4_func_packet_regs *regs)
+{
+	unsigned char sz, mask;
+	int ii, jj, r, s, retval;
+	unsigned short r_offset;
+	unsigned short addr = query_addr;
+	unsigned char data[255];
+
+	for (r = 0; r < regs->nr_regs; ++r) {
+		regs->regs[r].offset = -1;
+		regs->regs[r].size = 0;
+		for (s = 0; s < regs->regs[r].nr_subpkts; ++s) {
+			regs->regs[r].subpkt[s].present = 0;
+			if (regs->regs[r].subpkt[s].data &&
+					regs->regs[r].subpkt[s].size)
+				memset(regs->regs[r].subpkt[s].data, 0,
+					regs->regs[r].subpkt[s].size);
+		}
+	}
+
+	regs->base_addr = regs_base_addr;
+	retval = rmi4_data->i2c_read(rmi4_data, addr, &sz, 1);
+	pr_debug("size of reg presence = %d\n",	sz);
+	if (retval < 0)
+		return retval;
+	if (!sz)
+		return -EIO;
+	/* Scan register presence */
+	retval = rmi4_data->i2c_read(rmi4_data, ++addr, data, sz);
+	if (retval < 0)
+		return retval;
+	if (!data[0]) {
+		pr_err("packet register size greater 255 bytes"
+			" not supported\n");
+		return -ENOSYS;
+	}
+	ii = 1;
+	for (r = 0, r_offset = 0; ii < sz; ++ii) {
+		pr_debug("reg presence [%d] = 0x%02x\n", ii, data[ii]);
+		for (jj = 0, mask = 1; jj < 8; ++jj, ++r, mask <<= 1) {
+			struct synaptics_rmi4_packet_reg *reg = regs->regs + r;
+			int present = (data[ii] & mask) != 0;
+			int allocated = r < regs->nr_regs;
+			int expected = allocated && reg->expected;
+			if (!present || !expected) {
+				if (allocated && present)
+					reg->offset = r_offset++;
+				if (present != expected)
+					pr_err("touch register error: r%d"
+						" is%s present, but was%s"
+						" expected\n", r,
+						present ? "" : " NOT",
+						expected ? "" : " NOT");
+				continue;
+			}
+			pr_debug("  r%d offset = %d\n", r, r_offset);
+			reg->offset = r_offset++;
+		}
+	}
+
+	/* Scan register size and subpacket presence*/
+	sz = data[0];
+	pr_debug("subpacket presence sz = %d\n", sz);
+	retval = rmi4_data->i2c_read(rmi4_data, ++addr, data, sz);
+	if (retval < 0)
+		return retval;
+	for (r = 0, ii = 0; r < regs->nr_regs && ii < sz; ++r) {
+		unsigned int expected_reg_size;
+		struct synaptics_rmi4_packet_reg *reg = regs->regs + r;
+		if (reg->offset == -1)
+			continue;
+		reg->size = data[ii++];
+		pr_debug("r%d sz = %d\n", r, reg->size);
+		if (!reg->size) {
+			pr_err("packet register size greater 255 bytes"
+				" not supported\n");
+			return -ENOSYS;
+		}
+		expected_reg_size = 0;
+		for (s = 0; ii < sz;) {
+			pr_debug("  subpkt presence [%d] = 0x%02x\n",
+				ii, data[ii]);
+			for (jj = 0, mask = 1; jj < NR_SUBPKT_PRESENCE_BITS;
+					++jj, ++s, mask <<= 1) {
+				struct synaptics_rmi4_subpkt *subpkt =
+							reg->subpkt + s;
+				int present = (data[ii] & mask) != 0;
+				int expected = (s < reg->nr_subpkts) &&
+					subpkt->expected;
+				if (!present || !expected) {
+					if (present != expected)
+						pr_err("touch subpacket error:"
+							" r%d s%d is%s present,"
+							" but was%s expected\n",
+							r, s,
+							present ? "" : " NOT",
+							expected ? "" : " NOT");
+					continue;
+				}
+				pr_debug("    r%d.s%d is present\n", r, s);
+				subpkt->present = 1;
+				expected_reg_size += subpkt->size;
+			}
+			if ((data[ii++] & LAST_SUBPACKET_ROW_IND_MASK) == 0)
+				break;
+		}
+		if (reg->expected && reg->size != expected_reg_size) {
+			pr_err("touch register r%d size error:"
+				" expected %d actual is %d\n",
+				r, expected_reg_size, reg->size);
+		}
+	}
+	return 0;
+}
+
+int synaptics_rmi4_read_packet_reg(
+	struct synaptics_rmi4_data *rmi4_data,
+	struct synaptics_rmi4_func_packet_regs *regs, unsigned char r)
+{
+	int s, retval, offset;
+	static unsigned char data[255];
+	struct synaptics_rmi4_packet_reg *reg = regs->regs + r;
+
+	if (r >= regs->nr_regs || !reg->size)
+		return -EINVAL;
+
+	if (reg->offset == -1)
+		return -ENOENT;
+
+	retval = rmi4_data->i2c_read(
+			rmi4_data,
+			regs->base_addr + reg->offset,
+			data,
+			reg->size);
+
+	if (retval < 0)
+		return retval;
+
+	for (s = 0, offset = 0; s < reg->nr_subpkts; ++s) {
+		struct synaptics_rmi4_subpkt *subpkt = reg->subpkt + s;
+		if (!subpkt->present)
+			continue;
+
+		if ((reg->size - offset) < subpkt->size) {
+			pr_err("subpkt size error: expected %d bytes,"
+				" only %d present\n", subpkt->size,
+				(reg->size - offset));
+			break;
+		}
+
+		memcpy(subpkt->data, data+offset, subpkt->size);
+		offset += subpkt->size;
+#if defined(CONFIG_DYNAMIC_DEBUG) || defined(DEBUG)
+		{
+			int kk;
+			pr_debug("read r%d.s%d =\n", r, s);
+			for (kk = 0; kk < subpkt->size; ++kk)
+				pr_debug("%02x\n",
+					((unsigned char *)subpkt->data)[kk]);
+		}
+#endif
+	}
+	return retval;
+}
+
+int synaptics_rmi4_read_packet_regs(
+	struct synaptics_rmi4_data *rmi4_data,
+	struct synaptics_rmi4_func_packet_regs *regs)
+{
+	int r;
+	int retval = 0;
+
+	for (r = 0; r < regs->nr_regs; ++r) {
+		if (regs->regs[r].offset >= 0) {
+			retval = synaptics_rmi4_read_packet_reg(
+				rmi4_data, regs, r);
+			if (retval < 0)
+				break;
+		}
+	}
+	return retval;
+}
 
 static void synaptics_dsx_ic_reset(
 	const struct synaptics_dsx_platform_data *platform_data)
@@ -1366,26 +1780,37 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 {
 	int retval;
 	unsigned char ii;
-	unsigned char param[F12_STD_CTRL_LEN];
 	unsigned char intr_offset;
 
 	fhandler->fn_number = fd->fn_number;
 	fhandler->num_of_data_sources = (fd->intr_src_count  & MASK_3BIT);
 
-	/* Maximum number of fingers supported */
-	/* FIXME replace hard coded value with querying */
-	fhandler->num_of_data_points = 10;
-	rmi4_data->num_of_fingers = fhandler->num_of_data_points;
-
-	retval = synaptics_rmi4_i2c_read(rmi4_data,
-			fhandler->full_addr.ctrl_base,
-			param,
-			sizeof(param));
+	retval = synaptics_rmi4_scan_packet_reg_info(
+		rmi4_data,
+		fhandler->full_addr.query_base + 4,
+		fhandler->full_addr.ctrl_base,
+		&f12_ctrl_regs);
 	if (retval < 0)
 		return retval;
-	/* Maximum x and y */
-	rmi4_data->sensor_max_x = (param[1] << 8) | param[0];
-	rmi4_data->sensor_max_y = (param[3] << 8) | param[2];
+
+	retval = synaptics_rmi4_read_packet_regs(rmi4_data, &f12_ctrl_regs);
+	if (retval < 0)
+		return retval;
+	/* Maximum number of fingers supported */
+	if (f12_c23[1].present) {
+		fhandler->num_of_data_points =
+			f12_c23_1.max_num_reported_objects;
+		rmi4_data->num_of_fingers = f12_c23_1.max_num_reported_objects;
+	} else
+		return -ENOENT;
+
+	if (f12_c08[0].present) {
+		rmi4_data->sensor_max_x =
+			(f12_c08_0.max_x_msb << 8) | f12_c08_0.max_x_lsb;
+		rmi4_data->sensor_max_y =
+			(f12_c08_0.max_y_msb << 8) | f12_c08_0.max_y_lsb;
+	} else
+		return -ENOENT;
 
 	fhandler->intr_reg_num = (intr_count + 7) / 8;
 	if (fhandler->intr_reg_num != 0)
@@ -1400,8 +1825,13 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 			ii++)
 		fhandler->intr_mask |= 1 << ii;
 
-	/* FIXME replace hard coded value with querying */
-	fhandler->size_of_data_register_block = 8;
+	/* Data size per touch */
+	if (f12_c28[0].present) {
+		for (ii = 0; ii < 8; ii++)
+			if (f12_c28_0.reported_bytes_per_object & (1 << ii))
+				fhandler->size_of_data_register_block++;
+	} else
+		return -ENOENT;
 
 #ifdef INPUT_PROP_DIRECT
 	set_bit(INPUT_PROP_DIRECT, rmi4_data->input_dev->propbit);
@@ -1425,7 +1855,7 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 #endif
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_TRACKING_ID, 0,
-			9, 0, 0);
+			rmi4_data->num_of_fingers - 1, 0, 0);
 
 	/* FIXME replace hard coded value with querying */
 	input_set_events_per_packet(rmi4_data->input_dev, 180);
