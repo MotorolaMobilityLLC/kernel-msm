@@ -1265,6 +1265,7 @@ typedef struct sSirSmeJoinReq
     tANI_U8             txLdpcIniFeatureEnabled;
 #ifdef WLAN_FEATURE_11AC
     tANI_U8             txBFIniFeatureEnabled;
+    tANI_U8             txBFCsnValue;
 #endif
 
 #if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)

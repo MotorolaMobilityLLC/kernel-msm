@@ -1980,6 +1980,14 @@ REG_VARIABLE( CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE, WLAN_PARAM_Integer,
              CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE_DEFAULT,
              CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE_MIN,
              CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE_MAX ),
+
+REG_VARIABLE( CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED, WLAN_PARAM_Integer,
+             hdd_config_t, txBFCsnValue,
+             VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+             CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED_DEFAULT,
+             CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED_MIN,
+             CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED_MAX ),
+
 #endif
 
 REG_VARIABLE( CFG_SAP_ALLOW_ALL_CHANNEL_PARAM_NAME, WLAN_PARAM_Integer,
@@ -3534,6 +3542,7 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
 #ifdef WLAN_FEATURE_11AC
     smeConfig.csrConfig.nVhtChannelWidth = pConfig->vhtChannelWidth;
     smeConfig.csrConfig.enableTxBF = pConfig->enableTxBF;
+    smeConfig.csrConfig.txBFCsnValue = pConfig->txBFCsnValue;
 #endif
    smeConfig.csrConfig.AdHocChannel5G            = 44; 
    smeConfig.csrConfig.ProprietaryRatesEnabled   = 0;  
