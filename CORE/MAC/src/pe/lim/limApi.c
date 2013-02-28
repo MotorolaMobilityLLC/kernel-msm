@@ -1973,8 +1973,20 @@ void limHandleBmpsStatusInd(tpAniSirGlobal pMac)
   \return - none 
   \sa
   ----------------------------------------------------------------- */
-void limHandleMissedBeaconInd(tpAniSirGlobal pMac)
+void limHandleMissedBeaconInd(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 {
+#ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
+    tpSirSmeMissedBeaconInd  pSirMissedBeaconInd =
+                           (tpSirSmeMissedBeaconInd)pMsg->bodyptr;
+    tpPESession psessionEntry = peFindSessionByBssIdx(pMac,pSirMissedBeaconInd->bssIdx);
+    if (psessionEntry == NULL)
+    {
+         limLog(pMac, LOGE,
+               FL("session does not exist for given BSSIdx:%d"),
+               pSirMissedBeaconInd->bssIdx);
+         return;
+    }
+#endif
     if ( (pMac->pmm.gPmmState == ePMM_STATE_BMPS_SLEEP) ||
          (pMac->pmm.gPmmState == ePMM_STATE_UAPSD_SLEEP)||
          (pMac->pmm.gPmmState == ePMM_STATE_WOWLAN) )
@@ -1991,7 +2003,7 @@ void limHandleMissedBeaconInd(tpAniSirGlobal pMac)
     {
         pMac->pmm.inMissedBeaconScenario = TRUE;
         PELOGE(limLog(pMac, LOGE, FL("Received Heart Beat Failure\n"));)
-        limMissedBeaconInActiveMode(pMac);
+        limMissedBeaconInActiveMode(pMac, psessionEntry);
     }
 #endif
     else

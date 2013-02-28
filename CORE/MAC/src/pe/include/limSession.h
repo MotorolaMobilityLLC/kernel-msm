@@ -400,6 +400,21 @@ tpPESession peFindSessionByBssid(tpAniSirGlobal pMac,  tANI_U8*  bssid,    tANI_
 
 
 /*--------------------------------------------------------------------------
+  \brief peFindSessionByBssIdx() - looks up the PE session given the bssIdx.
+
+  This function returns the session context  if the session
+  corresponding to the given bssIdx is found in the PE session table.
+   \param pMac                   - pointer to global adapter context
+  \param bssIdx                   - bss index of the session
+  \return tpPESession          - pointer to the session context or NULL if session is not found.
+  \sa
+  --------------------------------------------------------------------------*/
+tpPESession peFindSessionByBssIdx(tpAniSirGlobal pMac,  tANI_U8 bssIdx);
+
+
+
+
+/*--------------------------------------------------------------------------
   \brief peFindSessionByPeerSta() - looks up the PE session given the Peer Station Address.
 
   This function returns the session context and the session ID if the session 
