@@ -42,7 +42,7 @@
 #if !defined( HDD_CONNECTION_H__ ) 
 #define HDD_CONNECTION_H__ 
 #include <wlan_hdd_mib.h>
-#define HDD_MAX_NUM_IBSS_STA ( 4 )
+#define HDD_MAX_NUM_IBSS_STA ( 9 )
 #ifdef FEATURE_WLAN_TDLS
 #define HDD_MAX_NUM_TDLS_STA ( HDD_MAX_NUM_IBSS_STA - 1 ) // up to 3 as 1 is assigned to AP
 #endif
