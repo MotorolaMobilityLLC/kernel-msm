@@ -633,7 +633,7 @@ void csrRoamStop(tpAniSirGlobal pMac, tANI_U32 sessionId)
 eHalStatus csrRoamGetConnectState(tpAniSirGlobal pMac, tANI_U32 sessionId, eCsrConnectState *pState)
 {
     eHalStatus status = eHAL_STATUS_INVALID_PARAMETER;
-    if( pState )
+    if ( CSR_IS_SESSION_VALID(pMac, sessionId) && (NULL != pState) )
     {
         status = eHAL_STATUS_SUCCESS;
         *pState = pMac->roam.roamSession[sessionId].connectState;
