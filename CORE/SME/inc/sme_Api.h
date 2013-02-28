@@ -1970,7 +1970,7 @@ eHalStatus sme_SetTxPerTracking (
     \param  pMulticastAddrs - Pointer to the Multicast Address List
     \return eHalStatus   
   ---------------------------------------------------------------------------*/
-eHalStatus sme_8023MulticastList(tHalHandle hHal, tpSirRcvFltMcAddrList pMulticastAddrs);
+eHalStatus sme_8023MulticastList(tHalHandle hHal, tANI_U8 sessionId, tpSirRcvFltMcAddrList pMulticastAddrs);
 
 /* ---------------------------------------------------------------------------
     \fn sme_ReceiveFilterSetFilter
