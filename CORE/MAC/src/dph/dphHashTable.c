@@ -299,10 +299,6 @@ tpDphHashNode dphInitStaState(tpAniSirGlobal pMac, tSirMacAddr staAddr,
     pStaDs->added = 1;
     pStaDs->encPolicy = HAL_ENC_POLICY_NULL;
 
-#if defined( PLM_WDS)&&defined(LX5280)
-    pStaDs->wdsIndex=pStaDs->wdsPeerBeaconSeen=0;
-#endif
-
 #ifdef WMM_APSD
     pStaDs->stopQueue = 0;
     pStaDs->spStatus = 0;
