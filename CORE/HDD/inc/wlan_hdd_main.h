@@ -966,7 +966,9 @@ struct hdd_context_s
         is invoked*/
    v_BOOL_t is_dynamic_channel_range_set;
 
+#ifdef WLAN_OPEN_SOURCE
    struct wake_lock sap_wake_lock;
+#endif
 
 #ifdef FEATURE_WLAN_TDLS
     eTDLSSupportMode tdls_mode;
