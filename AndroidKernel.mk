@@ -8,6 +8,8 @@ KERNEL_HEADERS_INSTALL := $(KERNEL_OUT)/usr
 KERNEL_MODULES_INSTALL := system
 KERNEL_MODULES_OUT := $(TARGET_OUT)/lib/modules
 KERNEL_IMG=$(KERNEL_OUT)/arch/arm/boot/Image
+# relative path from KERNEL_OUT to kernel source directory
+KERNEL_SOURCE_RELATIVE_PATH := ../../../../../../kernel
 
 ifeq ($(TARGET_USES_UNCOMPRESSED_KERNEL),true)
 $(info Using uncompressed kernel)
@@ -48,10 +50,10 @@ $(KERNEL_OUT)/piggy : $(TARGET_PREBUILT_INT_KERNEL)
 	$(hide) gunzip -c $(KERNEL_OUT)/arch/arm/boot/compressed/piggy.gzip > $(KERNEL_OUT)/piggy
 
 $(TARGET_PREBUILT_INT_KERNEL): $(KERNEL_OUT) $(KERNEL_CONFIG) $(KERNEL_HEADERS_INSTALL)
-	$(MAKE) -C kernel O=../$(KERNEL_OUT) ARCH=arm CROSS_COMPILE=arm-eabi-
-	$(MAKE) -C kernel O=../$(KERNEL_OUT) ARCH=arm CROSS_COMPILE=arm-eabi- dtbs
-	$(MAKE) -C kernel O=../$(KERNEL_OUT) ARCH=arm CROSS_COMPILE=arm-eabi- modules
-	$(MAKE) -C kernel O=../$(KERNEL_OUT) INSTALL_MOD_PATH=../../$(KERNEL_MODULES_INSTALL) INSTALL_MOD_STRIP=1 ARCH=arm CROSS_COMPILE=arm-eabi- modules_install
+	$(MAKE) -C kernel KBUILD_RELSRC=$(KERNEL_SOURCE_RELATIVE_PATH) O=../$(KERNEL_OUT) ARCH=arm CROSS_COMPILE=arm-eabi-
+	$(MAKE) -C kernel KBUILD_RELSRC=$(KERNEL_SOURCE_RELATIVE_PATH) O=../$(KERNEL_OUT) ARCH=arm CROSS_COMPILE=arm-eabi- dtbs
+	$(MAKE) -C kernel KBUILD_RELSRC=$(KERNEL_SOURCE_RELATIVE_PATH) O=../$(KERNEL_OUT) ARCH=arm CROSS_COMPILE=arm-eabi- modules
+	$(MAKE) -C kernel KBUILD_RELSRC=$(KERNEL_SOURCE_RELATIVE_PATH) O=../$(KERNEL_OUT) INSTALL_MOD_PATH=../../$(KERNEL_MODULES_INSTALL) INSTALL_MOD_STRIP="--strip-debug --remove-section=.note.gnu.build-id" ARCH=arm CROSS_COMPILE=arm-eabi- modules_install
 	$(mv-modules)
 	$(clean-module-folder)
 
