@@ -771,42 +771,6 @@ PopulateDot11fWMMTCLAS(tpAniSirGlobal     pMac,
                        tSirTclasInfo     *pOld,
                        tDot11fIEWMMTCLAS *pDot11f);
 
-#if ( WNI_POLARIS_FW_PRODUCT == AP )
-
-tSirRetStatus
-PopulateDot11fCFParams(tpAniSirGlobal         pMac,
-                       tDot11fFfCapabilities *pCaps,
-                       tDot11fIECFParams     *pDot11f);
-
-void
-PopulateDot11fQuiet(tpAniSirGlobal  pMac,
-                    tDot11fIEQuiet *pDot11f);
-
-tSirRetStatus
-PopulateDot11fAPName(tpAniSirGlobal   pMac,
-                     tANI_U32              capEnable,
-                     tDot11fIEAPName *pDot11f);
-
-void
-PopulateDot11fPropQuietBSS(tpAniSirGlobal         pMac,
-                           tANI_U32                    capsEnable,
-                           tDot11fIEPropQuietBSS *pDot11f);
-
-void
-PopulateDot11fTrigStaBkScan(tpAniSirGlobal             pMac,
-                            tANI_U32                        capsEnable,
-                            tDot11fIETriggerStaBgScan *pDot11f);
-
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-
-tSirRetStatus
-PopulateDot11fWDS(tpAniSirGlobal  pMac,
-                  tANI_U32             capEnable,
-                  tDot11fIEWDS   *pDot11f );
-
-#endif // WNI_POLARIS_FW_PACKAGE == ADVANCED
-
-#endif // WNI_POLARIS_FW_PRODUCT == AP
 
 tSirRetStatus PopulateDot11fWsc(tpAniSirGlobal pMac,
                                 tDot11fIEWscBeacon *pDot11f);

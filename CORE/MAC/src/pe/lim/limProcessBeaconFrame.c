@@ -52,15 +52,10 @@
  *
  */
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-#include "wniCfgAp.h"
-#else
 #include "wniCfgSta.h"
-#endif
 #include "aniGlobal.h"
 #include "cfgApi.h"
 #include "schApi.h"
-#include "wniCfgAp.h"
 #include "utilsApi.h"
 #include "limTypes.h"
 #include "limUtils.h"
@@ -165,17 +160,6 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
         }
         else if (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE)
         {
-#if (WNI_POLARIS_FW_PRODUCT == AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-            // STA/AP is in learn mode
-            /* Not sure whether the below 2 lines are needed for the station. TODO If yes, this should be 
-             * uncommented. Also when we tested enabling this, there is a crash as soon as the station
-             * comes up which needs to be fixed*/
-            //if (pMac->lim.gLimSystemRole == eLIM_STA_ROLE)
-              //  limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo, eANI_BOOLEAN_TRUE);
-            limCollectMeasurementData(pMac, pRxPacketInfo, pBeacon);
-           PELOG3(limLog(pMac, LOG3, FL("Parsed WDS info in Beacon frames: wdsLength=%d\n"),
-               pBeacon->propIEinfo.wdsLength);)
-#endif
         }
         else
         {
@@ -300,17 +284,6 @@ limProcessBeaconFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         }
         else if (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE)
         {
-#if (WNI_POLARIS_FW_PRODUCT == AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-            // STA/AP is in learn mode
-            /* Not sure whether the below 2 lines are needed for the station. TODO If yes, this should be 
-             * uncommented. Also when we tested enabling this, there is a crash as soon as the station
-             * comes up which needs to be fixed*/
-            //if (pMac->lim.gLimSystemRole == eLIM_STA_ROLE)
-              //  limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo, eANI_BOOLEAN_TRUE);
-            limCollectMeasurementData(pMac, pRxPacketInfo, pBeacon);
-            limLog(pMac, LOG3, FL("Parsed WDS info in Beacon frames: wdsLength=%d\n"),
-               pBeacon->propIEinfo.wdsLength);
-#endif
         }  // end of eLIM_MLM_LEARN_STATE)       
         palFreeMemory(pMac->hHdd, pBeacon);
     } // end of (eLIM_MLM_WT_PROBE_RESP_STATE) || (eLIM_MLM_PASSIVE_SCAN_STATE)

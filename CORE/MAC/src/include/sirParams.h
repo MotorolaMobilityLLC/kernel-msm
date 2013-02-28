@@ -57,8 +57,6 @@
 
 # include "sirTypes.h"
 
-#define SIR_SDK_OPT_MAX_NUM_PRE_AUTH    32
-
 // Firmware wide constants
 
 #define SIR_MAX_PACKET_SIZE     2048
@@ -71,7 +69,7 @@ typedef enum
     PHY_SINGLE_CHANNEL_CENTERED     = 0,        // 20MHz IF bandwidth centered on IF carrier
     PHY_DOUBLE_CHANNEL_LOW_PRIMARY  = 1,        // 40MHz IF bandwidth with lower 20MHz supporting the primary channel
     PHY_DOUBLE_CHANNEL_HIGH_PRIMARY = 3,        // 40MHz IF bandwidth with higher 20MHz supporting the primary channel
-#ifdef WLAN_FEATURE_11AC    
+#ifdef WLAN_FEATURE_11AC
     PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_CENTERED = 4, //20/40MHZ offset LOW 40/80MHZ offset CENTERED
     PHY_QUADRUPLE_CHANNEL_20MHZ_CENTERED_40MHZ_CENTERED = 5, //20/40MHZ offset CENTERED 40/80MHZ offset CENTERED
     PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_CENTERED = 6, //20/40MHZ offset HIGH 40/80MHZ offset CENTERED
@@ -166,7 +164,7 @@ typedef struct sSirMbMsg
 } tSirMbMsg, *tpSirMbMsg;
 
 #ifdef WLAN_FEATURE_P2P
-/// Mailbox Message Structure for P2P 
+/// Mailbox Message Structure for P2P
 typedef struct sSirMbMsgP2p
 {
     tANI_U16 type;
@@ -626,18 +624,10 @@ typedef struct sSirMbMsgP2p
 #define SIR_LIM_REASSOC_FAIL_TIMEOUT   (SIR_LIM_TIMEOUT_MSG_START + 6)
 #define SIR_LIM_HEART_BEAT_TIMEOUT     (SIR_LIM_TIMEOUT_MSG_START + 7)
 // currently unused                    SIR_LIM_TIMEOUT_MSG_START + 0x8
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-#define SIR_LIM_PREAUTH_CLNUP_TIMEOUT  (SIR_LIM_TIMEOUT_MSG_START + 0x9)
-#endif
 // Link Monitoring Messages
 #define SIR_LIM_CHANNEL_SCAN_TIMEOUT     (SIR_LIM_TIMEOUT_MSG_START + 0xA)
 #define SIR_LIM_PROBE_HB_FAILURE_TIMEOUT (SIR_LIM_TIMEOUT_MSG_START + 0xB)
 #define SIR_LIM_ADDTS_RSP_TIMEOUT        (SIR_LIM_TIMEOUT_MSG_START + 0xC)
-#if (WNI_POLARIS_FW_PRODUCT == AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-#define SIR_LIM_MEASUREMENT_IND_TIMEOUT  (SIR_LIM_TIMEOUT_MSG_START + 0x10)
-#define SIR_LIM_LEARN_INTERVAL_TIMEOUT   (SIR_LIM_TIMEOUT_MSG_START + 0x11)
-#define SIR_LIM_LEARN_DURATION_TIMEOUT   (SIR_LIM_TIMEOUT_MSG_START + 0x12)
-#endif
 #define SIR_LIM_LINK_TEST_DURATION_TIMEOUT (SIR_LIM_TIMEOUT_MSG_START + 0x13)
 #define SIR_LIM_HASH_MISS_THRES_TIMEOUT  (SIR_LIM_TIMEOUT_MSG_START + 0x16)
 #define SIR_LIM_CNF_WAIT_TIMEOUT         (SIR_LIM_TIMEOUT_MSG_START + 0x17)

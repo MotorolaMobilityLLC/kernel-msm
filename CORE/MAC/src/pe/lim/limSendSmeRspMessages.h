@@ -49,7 +49,7 @@
  * History:-
  * Date           Modified by    Modification Information
  * --------------------------------------------------------------------
- * 
+ *
  */
 #ifndef __LIM_SEND_SME_RSP_H
 #define __LIM_SEND_SME_RSP_H
@@ -81,9 +81,6 @@ void limSendSmeSetContextRsp(tpAniSirGlobal,
 void limSendSmePromiscuousModeRsp(tpAniSirGlobal pMac);
 void limSendSmeNeighborBssInd(tpAniSirGlobal,
                               tLimScanResultNode *);
-#if (WNI_POLARIS_FW_PRODUCT == AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-void limSendSmeMeasurementInd(tpAniSirGlobal);
-#endif
 void limHandleDeleteBssRsp(tpAniSirGlobal pMac,tpSirMsgQ MsgQ);
 
 #ifdef WLAN_FEATURE_VOWIFI_11R

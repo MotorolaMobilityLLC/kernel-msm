@@ -53,11 +53,7 @@
  */
 
 #include "wniApi.h"
-#ifdef ANI_PRODUCT_TYPE_AP
-#include "wniCfgAp.h"
-#else
 #include "wniCfgSta.h"
-#endif
 #include "aniGlobal.h"
 #include "schApi.h"
 #include "utilsApi.h"
@@ -129,10 +125,6 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
     pProbeRsp->ssId.length              = 0;
     pProbeRsp->wpa.length               = 0;
     pProbeRsp->propIEinfo.apName.length = 0;
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    pProbeRsp->propIEinfo.aniIndicator  = 0;
-    pProbeRsp->propIEinfo.wdsLength     = 0;
-#endif
 
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
@@ -203,18 +195,6 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                ((pMac->lim.gLimHalScanState == eLIM_HAL_SCANNING_STATE) ? eANI_BOOLEAN_TRUE : eANI_BOOLEAN_FALSE), eANI_BOOLEAN_TRUE);
         else if (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE)           //mlm state check should be global - 18th oct
         {
-#if defined(ANI_PRODUCT_TYPE_AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-            // STA/AP is in learn mode
-            /* Not sure whether the below 2 lines are needed for the station. TODO If yes, this should be 
-             * uncommented. Also when we tested enabling this, there is a crash as soon as the station
-             * comes up which needs to be fixed*/
-            //if (pMac->lim.gLimSystemRole == eLIM_STA_ROLE)
-              //  limCheckAndAddBssDescription(pMac, pProbeRsp, pRxPacketInfo, eANI_BOOLEAN_TRUE);
-            limCollectMeasurementData(pMac, pRxPacketInfo, pProbeRsp);
-           PELOG3(limLog(pMac, LOG3,
-               FL("Parsed WDS info in ProbeRsp frames: wdsLength=%d\n"),
-               pProbeRsp->propIEinfo.wdsLength);)
-#endif
         }
         else if (psessionEntry->limMlmState ==
                                      eLIM_MLM_WT_JOIN_BEACON_STATE)
@@ -280,7 +260,6 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                     limReceivedHBHandler(pMac, (tANI_U8)pProbeRsp->channelNumber, psessionEntry);
             }
 
-#if defined ANI_PRODUCT_TYPE_CLIENT || defined (ANI_AP_CLIENT_SDK)
             
             if (psessionEntry->limSystemRole == eLIM_STA_ROLE)
             {
@@ -295,7 +274,6 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                 }
             }
         
-#endif
             
             /**
             * Now Process EDCA Parameters, if EDCAParamSet count is different.
@@ -363,10 +341,6 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     pProbeRsp->ssId.length              = 0;
     pProbeRsp->wpa.length               = 0;
     pProbeRsp->propIEinfo.apName.length = 0;
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    pProbeRsp->propIEinfo.aniIndicator  = 0;
-    pProbeRsp->propIEinfo.wdsLength     = 0;
-#endif
 
 
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
@@ -420,18 +394,6 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
             limCheckAndAddBssDescription(pMac, pProbeRsp, pRxPacketInfo, eANI_BOOLEAN_TRUE, eANI_BOOLEAN_TRUE);
         else if (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE)
         {
-#if defined(ANI_PRODUCT_TYPE_AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-            // STA/AP is in learn mode
-            /* Not sure whether the below 2 lines are needed for the station. TODO If yes, this should be 
-             * uncommented. Also when we tested enabling this, there is a crash as soon as the station
-             * comes up which needs to be fixed*/
-            //if (pMac->lim.gLimSystemRole == eLIM_STA_ROLE)
-              //  limCheckAndAddBssDescription(pMac, pProbeRsp, pRxPacketInfo, eANI_BOOLEAN_TRUE);
-            limCollectMeasurementData(pMac, pRxPacketInfo, pProbeRsp);
-            limLog(pMac, LOG3,
-               FL("Parsed WDS info in ProbeRsp frames: wdsLength=%d\n"),
-               pProbeRsp->propIEinfo.wdsLength);
-#endif
         }
     } 
     palFreeMemory(pMac->hHdd, pProbeRsp);
