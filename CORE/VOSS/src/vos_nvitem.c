@@ -1909,8 +1909,6 @@ static int create_crda_regulatory_entry(struct wiphy *wiphy,
               // max_power is in mBm = 100 * d
               pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[k].pwrLimit =
                  (tANI_S8) (wiphy->bands[i]->channels[j].max_power);
-              pr_info("CH %d is enabled and DFS, max power %d dBm.\n", rfChannels[k].channelNum,
-                 pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[k].pwrLimit);
               if ((wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_NO_HT40) == 0)
               {
                  pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[n].enabled =
@@ -1918,8 +1916,6 @@ static int create_crda_regulatory_entry(struct wiphy *wiphy,
                  // 40MHz channel power is half of 20MHz (-3dB) ??
                  pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[n].pwrLimit =
                     (tANI_S8) ((wiphy->bands[i]->channels[j].max_power)-3);
-                 pr_info("    CH %d is enabled for 40MHz and DFS, max power %d dBm.\n", rfChannels[n].channelNum,
-                    pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[n].pwrLimit);
               }
            }
            else // Enable is only last flag we support
@@ -1929,8 +1925,6 @@ static int create_crda_regulatory_entry(struct wiphy *wiphy,
               // max_power is in dBm
               pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[k].pwrLimit =
                  (tANI_S8) (wiphy->bands[i]->channels[j].max_power);
-              pr_info("CH %d is enabled and no DFS, max power %d dBm.\n", rfChannels[k].channelNum,
-                 pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[k].pwrLimit);
               if ((wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_NO_HT40) == 0)
               {
                  pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[n].enabled =
@@ -1938,8 +1932,6 @@ static int create_crda_regulatory_entry(struct wiphy *wiphy,
                  // 40MHz channel power is half of 20MHz (-3dB) ??
                  pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[n].pwrLimit =
                     (tANI_S8) ((wiphy->bands[i]->channels[j].max_power)-3);
-                 pr_info("    CH %d is enabled for 40MHz and no DFS, max power %d dBm.\n", rfChannels[n].channelNum,
-                    pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[n].pwrLimit);
               }
            }
            /* ignore CRDA max_antenna_gain typical is 3dBi, nv.bin antennaGain is
