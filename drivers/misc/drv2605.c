@@ -298,6 +298,8 @@ static struct drv260x_platform_data *drv260x_of_init(struct i2c_client *client)
 	of_property_read_u32(np, "rated_voltage", &pdata->rated_voltage);
 	of_property_read_u32(np, "overdrive_voltage",
 				&pdata->overdrive_voltage);
+	of_property_read_u32(np, "effects_library", &pdata->effects_library);
+
 	return pdata;
 }
 #else
@@ -628,6 +630,10 @@ static int drv260x_probe(struct i2c_client *client,
 	else
 		drv260x->overdrive_voltage = ERM_OVERDRIVE_CLAMP_VOLTAGE;
 
+	if ((pdata->effects_library >= LIBRARY_A) ||
+		(pdata->effects_library <= LIBRARY_F))
+		g_effect_bank = pdata->effects_library;
+
 	INIT_WORK(&vibdata.work_probe, probe_work);
 	schedule_work(&vibdata.work_probe);
 	return 0;
@@ -662,6 +668,11 @@ static void probe_work(struct work_struct *work)
 					sizeof(LRA_init_sequence),
 					OVERDRIVE_CLAMP_VOLTAGE_REG,
 					drv260x->overdrive_voltage);
+
+	drv260x_update_init_sequence(ERM_autocal_sequence,
+					sizeof(ERM_autocal_sequence),
+					LIBRARY_SELECTION_REG,
+					g_effect_bank);
 	/* Wait 30 us */
 	udelay(30);
 
