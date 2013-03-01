@@ -1226,12 +1226,14 @@ void __init mmi_pm8921_init(struct mmi_oem_data *mmi_data, void *pdata)
 			mmi_data->is_factory();
 		pm8921_pdata->rtc_pdata->rtc_write_enable =
 			mmi_data->is_factory();
+		battery_timeout = mmi_data->is_factory();
 	}
 	if (mmi_data->is_meter_locked)
 		pm8921_pdata->charger_pdata->meter_lock =
 			mmi_data->is_meter_locked();
 
-	battery_timeout = mmi_data->is_factory();
+	if (mmi_data->is_no_eprom)
+		battery_timeout |= mmi_data->is_no_eprom();
 
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	pm8921_pdata->charger_pdata->hot_temp = get_hot_temp_dt();
