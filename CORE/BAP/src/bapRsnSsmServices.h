@@ -84,18 +84,6 @@
  */
 #define ANI_RSN_IE_MAX_LEN 257
 
-#ifndef ANI_AP_SDK
-#define ANI_AAG_CONF_FILE_NAME     ANI_STATIC_CONFIG_DIR"/ssm/1x.conf"
-#define ANI_AAG_AA_CFG_FILE_ORIG  ANI_STATIC_CONFIG_DIR"/ssm/1x.conf.orig"
-#else
-#define ANI_AAG_CONF_FILE_NAME      "/var/1x.conf"
-#define ANI_AAG_AA_CFG_FILE_ORIG    "/var/1x.conf.orig"
-#define ANI_WSM_DEFAULTS_FILE_NAME  "/var/wsmDefaults"
-#define ANI_WSM_DEFAULTS_FILE_ORIG  "/var/wsmDefaults.orig"
-#endif // !ANI_AP_SDK
-
-#define ANI_AAG_CONF_MAX_LINE 120
-
 /*
  * PMKSA ID data type
  * (PMKID is an HMAC-SHA1-128 value) 
