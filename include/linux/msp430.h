@@ -159,6 +159,7 @@ struct msp430_platform_data {
 #define M_FLATDOWN		0x0200
 #define M_STOWED		0x0400
 #define M_CAMERA_ACT		0x0800
+#define M_LOG_MSG		0x8000
 
 /* algo config mask */
 #define M_MMOVEME           0x0001
