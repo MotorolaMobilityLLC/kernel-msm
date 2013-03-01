@@ -4127,6 +4127,9 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			if (pdata && pdata->prepare_for_suspend)
 				ret = pdata->prepare_for_suspend(mfd,
 					mfd->suspend_cfg.partial);
+
+			pr_info("%s: MSMFB_PREPARE_FOR_SUSPEND(%d)\n",
+				__func__, mfd->suspend_cfg.partial);
 		}
 		break;
 
@@ -4147,6 +4150,11 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 					mfd->resume_cfg.partial,
 					mfd->resume_cfg.panel_state,
 					mfd->resume_cfg.gamma);
+
+			pr_info("%s: MSMFB_PREPARE_FOR_RESUME(%d, %d)\n",
+				__func__,
+				mfd->resume_cfg.partial,
+				mfd->resume_cfg.panel_state);
 		}
 		break;
 
