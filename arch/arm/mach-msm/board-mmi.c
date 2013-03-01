@@ -113,6 +113,11 @@ static int mmi_battery_data_is_meter_locked(void)
 	return !strncmp(battery_data, "meter_lock", BATTERY_DATA_MAX_LEN);
 }
 
+static int mmi_battery_data_is_no_eprom(void)
+{
+	return !strncmp(battery_data, "no_eprom", BATTERY_DATA_MAX_LEN);
+}
+
 static void __init mmi_gpiomux_init(struct msm8960_oem_init_ptrs *oem_ptr)
 {
 	struct device_node *node;
@@ -590,6 +595,7 @@ static void __init mmi_msm8960_init_early(void)
 	/* Custom OEM Platform Data */
 	mmi_data.is_factory = mmi_boot_mode_is_factory;
 	mmi_data.is_meter_locked = mmi_battery_data_is_meter_locked;
+	mmi_data.is_no_eprom = mmi_battery_data_is_no_eprom;
 	mmi_data.mmi_camera = true;
 	msm8960_oem_funcs.oem_data = &mmi_data;
 }
