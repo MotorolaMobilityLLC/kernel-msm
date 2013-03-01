@@ -202,6 +202,7 @@ struct synaptics_rmi4_data {
 	struct synaptics_rmi4_device_info rmi4_mod_info;
 	struct regulator *regulator;
 	struct mutex rmi4_io_ctrl_mutex;
+	struct mutex state_mutex;
 	struct delayed_work det_work;
 	struct workqueue_struct *det_workqueue;
 	struct early_suspend early_suspend;
@@ -209,7 +210,6 @@ struct synaptics_rmi4_data {
 	atomic_t panel_off_flag;
 	unsigned char current_page;
 	unsigned char button_0d_enabled;
-	unsigned char full_pm_cycle;
 	unsigned char num_of_rx;
 	unsigned char num_of_tx;
 	unsigned char num_of_fingers;
@@ -219,6 +219,7 @@ struct synaptics_rmi4_data {
 	unsigned short f01_cmd_base_addr;
 	unsigned short f01_ctrl_base_addr;
 	unsigned short f01_data_base_addr;
+	int state;
 	int irq;
 	int sensor_max_x;
 	int sensor_max_y;
@@ -226,7 +227,9 @@ struct synaptics_rmi4_data {
 	bool touch_stopped;
 	bool fingers_on_2d;
 	bool sensor_sleep;
-	bool panel_sync_en;
+	bool purge_enabled;
+	bool reset_on_resume;
+	bool shared_regulator;
 	wait_queue_head_t wait;
 	int (*i2c_read)(struct synaptics_rmi4_data *pdata, unsigned short addr,
 			unsigned char *data, unsigned short length);
