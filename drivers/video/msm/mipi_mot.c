@@ -344,6 +344,70 @@ void mmi_panel_notify(unsigned int state, void *data)
 	srcu_notifier_call_chain(&mot_panel.panel_notifier_list, state, data);
 }
 
+static void panel_enable_from_partial(struct msm_fb_data_type *mfd)
+{
+	int ret;
+	u8 pwr_mode = 0;
+	int mismatch = 0;
+	int force_full_enable = 0;
+	unsigned int panel_state;
+
+	panel_state = mfd->resume_cfg.panel_state;
+	ret = mipi_mot_get_pwr_mode(mfd, &pwr_mode);
+
+	if (ret <= 0) {
+		pr_err("%s: Failed reading power state, ret = %d, from partial panel state = %d\n",
+			__func__, ret, panel_state);
+	} else {
+		pr_info("%s: from partial panel state = %d, pwr_mode = 0x%02x\n",
+			__func__, panel_state, pwr_mode);
+
+		pwr_mode &= 0x14;
+		if ((pwr_mode == 0x14) &&
+			(panel_state !=
+				MSMFB_RESUME_CFG_STATE_DISP_ON_SLEEP_OUT)) {
+			mismatch = 1;
+			panel_state =
+				MSMFB_RESUME_CFG_STATE_DISP_ON_SLEEP_OUT;
+		} else if ((pwr_mode == 0x10) &&
+			(panel_state !=
+				MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_OUT)) {
+			mismatch = 1;
+			panel_state =
+				MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_OUT;
+		} else if ((pwr_mode == 0x0) &&
+			(panel_state !=
+				MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_IN)) {
+			mismatch = 1;
+			panel_state =
+				MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_IN;
+		} else if (pwr_mode == 0x04) {
+			mismatch = 1;
+			force_full_enable = 1;
+		}
+
+		if (mismatch) {
+			pr_err("%s: Mismatched state! From partial panel state = %d ( -> %d), pwr_mode = 0x%02x\n",
+				__func__, mfd->resume_cfg.panel_state,
+				panel_state, pwr_mode);
+			mfd->resume_cfg.panel_state = panel_state;
+		}
+	}
+
+	if (force_full_enable)
+		mot_panel.panel_enable(mfd);
+	else if (panel_state ==
+		MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_IN)
+		mipi_mot_panel_exit_sleep();
+	else
+		/* Display is on, turn it off for init sequence */
+		mipi_mot_panel_off(mfd);
+
+	mipi_mot_panel_enter_normal_mode();
+	if (mot_panel.panel_en_from_partial)
+		mot_panel.panel_en_from_partial(mfd);
+}
+
 static int panel_enable(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
@@ -363,18 +427,7 @@ static int panel_enable(struct platform_device *pdev)
 		ret = -ENODEV;
 		goto err;
 	} else if (mfd->resume_cfg.partial) {
-		pr_debug("%s: from partial panel state = %d\n",
-			__func__, mfd->resume_cfg.panel_state);
-		if (mfd->resume_cfg.panel_state ==
-			MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_IN) {
-			mipi_mot_panel_exit_sleep();
-		} else
-			/* Display is on, turn it off for init sequence */
-			mipi_mot_panel_off(mfd);
-
-		mipi_mot_panel_enter_normal_mode();
-		if (mot_panel.panel_en_from_partial)
-			mot_panel.panel_en_from_partial(mfd);
+		panel_enable_from_partial(mfd);
 	} else if (!mfd->resume_cfg.partial)
 		mot_panel.panel_enable(mfd);
 
