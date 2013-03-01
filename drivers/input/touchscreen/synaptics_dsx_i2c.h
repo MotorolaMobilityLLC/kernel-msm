@@ -62,6 +62,7 @@
 #define SYNAPTICS_RMI4_DATE_CODE_SIZE 3
 #define SYNAPTICS_RMI4_PRODUCT_ID_SIZE 10
 #define SYNAPTICS_RMI4_BUILD_ID_SIZE 3
+#define SYNAPTICS_RMI4_FILENAME_SIZE 80
 
 #define MAX_NUMBER_OF_FINGERS 10
 #define MAX_NUMBER_OF_BUTTONS 4
@@ -235,9 +236,24 @@ struct synaptics_rmi4_data {
 			unsigned char *data, unsigned short length);
 	int (*i2c_write)(struct synaptics_rmi4_data *pdata, unsigned short addr,
 			unsigned char *data, unsigned short length);
+	int (*set_state)(struct synaptics_rmi4_data *rmi4_data, int state);
+	int (*ready_state)(struct synaptics_rmi4_data *rmi4_data, bool standby);
 	int (*irq_enable)(struct synaptics_rmi4_data *rmi4_data, bool enable);
 	int (*reset_device)(struct synaptics_rmi4_data *rmi4_data);
 };
+
+#define SYNAPTICS_DSX_STATES { \
+	DSX(UNKNOWN), \
+	DSX(ACTIVE), \
+	DSX(STANDBY), \
+	DSX(SUSPEND), \
+	DSX(BL), \
+	DSX(FLASH), \
+	DSX(INVALID) }
+
+#define DSX(a)	STATE_##a
+enum SYNAPTICS_DSX_STATES;
+#undef DSX
 
 enum exp_fn {
 	RMI_DEV = 0,
