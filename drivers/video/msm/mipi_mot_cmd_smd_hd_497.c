@@ -59,6 +59,11 @@ static char brightness_ctrl[2] = {0x51, DEFAULT_BRIGHTNESS};
 static char disp_ctrl[2] = {0x53, 0x20};
 static char acl_default_setting[6] = {0xB5, 0x03, 0x6B, 0x45, 0x35, 0x26};
 static char acl_enable_disable_settings[2] = {0x55, 0x00};
+static char c7_reg[2] = {0xc7, 0x03};
+static char p3_off[2] = {0xb0, 0x02};
+static char p3_data[2] = {0xb1, 0x1a};
+
+
 
 #define DEFAULT_DELAY 1
 #define BL_SUPPORTED is_bl_supported
@@ -93,6 +98,9 @@ static struct mipi_mot_cmd_seq smd_hd_497_init_seq[] = {
 	MIPI_MOT_EXEC_SEQ(NULL, acl_enable_disable_seq),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, acl_enable_disable_settings),
+	MIPI_MOT_TX_DEF(BL_SUPPORTED, DTYPE_DCS_WRITE1, DEFAULT_DELAY, c7_reg),
+	MIPI_MOT_TX_DEF(BL_SUPPORTED, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_off),
+	MIPI_MOT_TX_DEF(BL_SUPPORTED, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_data),
 };
 
 static struct mipi_mot_cmd_seq smd_hd_497_disp_off_seq[] = {
