@@ -153,8 +153,7 @@
 
 #define CAMERA_DATA				0x01
 
-#define KDEBUG(format, s...)	if (g_debug) pr_info(format, ##s)
-static char g_debug;
+#define ESR_SIZE	32
 
 static unsigned int msp430_irq_disable;
 module_param_named(irq_disable, msp430_irq_disable, uint, 0644);
@@ -338,10 +337,10 @@ static int msp430_i2c_write_read(struct msp430_data *ps_msp430, u8 *buf,
 		return -EFAULT;
 
 	if (ps_msp430->mode == BOOTMODE) {
-		KDEBUG("MSP430 In msp430_i2c_write_read\n");
-		KDEBUG("MSP430 sending: ");
+		dev_dbg(&ps_msp430->client->dev, "msp430_i2c_write_read\n");
+		dev_dbg(&ps_msp430->client->dev, "Sending: ");
 		for (tries = 0; tries < writelen; tries++)
-			KDEBUG("MSP430 %02x", buf[tries]);
+			dev_dbg(&ps_msp430->client->dev, "%02x", buf[tries]);
 	}
 	tries = 0;
 	do {
@@ -350,20 +349,21 @@ static int msp430_i2c_write_read(struct msp430_data *ps_msp430, u8 *buf,
 			msleep_interruptible(I2C_RETRY_DELAY);
 	} while ((err != 2) && (++tries < I2C_RETRIES));
 	if (err != 2) {
-		dev_err(&ps_msp430->client->dev, "read transfer error\n");
+		dev_err(&ps_msp430->client->dev, "Read transfer error\n");
 		err = -EIO;
 	} else {
 		err = 0;
-		KDEBUG("MSP430 Read from MSP: ");
+		dev_dbg(&ps_msp430->client->dev, "Read from MSP: ");
 		for (tries = 0; tries < readlen; tries++)
-			KDEBUG("MSP430 %02x", buf[tries]);
+			dev_dbg(&ps_msp430->client->dev, "%02x", buf[tries]);
 
 		if (ps_msp430->mode == BOOTMODE) {
 			response = (struct msp_response *) buf;
 			if ((response->cmd == MSP430_RESPONSE_MSG &&
 				response->data != MSP430_RESPONSE_MSG_SUCCESS)
 				|| (response->cmd != MSP430_RESPONSE_MSG)) {
-					pr_err("i2c cmd returned failure\n");
+					dev_err(&ps_msp430->client->dev,
+						"i2c cmd returned failure\n");
 					err = -EIO;
 			}
 		}
@@ -390,9 +390,9 @@ static int msp430_i2c_read(struct msp430_data *ps_msp430, u8 *buf, int len)
 		dev_err(&ps_msp430->client->dev, "read transfer error\n");
 		err = -EIO;
 	} else {
-		KDEBUG("Read was successsful:\n");
+		dev_dbg(&ps_msp430->client->dev, "Read was successsful:\n");
 		for (tries = 0; tries < err ; tries++)
-			KDEBUG("MSP430 %02x", buf[tries]);
+			dev_dbg(&ps_msp430->client->dev, "%02x", buf[tries]);
 	}
 	return err;
 }
@@ -416,7 +416,8 @@ static int msp430_i2c_write(struct msp430_data *ps_msp430, u8 *buf, int len)
 		dev_err(&ps_msp430->client->dev, "msp430: write error\n");
 		err = -EIO;
 	} else {
-		KDEBUG("MSP430 msp430 i2c write successful\n");
+		dev_dbg(&ps_msp430->client->dev,
+			"msp430 i2c write successful\n");
 		err = 0;
 	}
 	return err;
@@ -425,14 +426,15 @@ static int msp430_i2c_write(struct msp430_data *ps_msp430, u8 *buf, int len)
 static int msp430_hw_init(struct msp430_data *ps_msp430)
 {
 	int err = 0;
-	KDEBUG("MSP430 in msp430_hw_init\n");
+	dev_dbg(&ps_msp430->client->dev, "msp430_hw_init\n");
 	ps_msp430->hw_initialized = 1;
 	return err;
 }
 
 static void msp430_device_power_off(struct msp430_data *ps_msp430)
 {
-	KDEBUG("MSP430 in msp430_device_power_off\n");
+	dev_dbg(&ps_msp430->client->dev,
+		"msp430_device_power_off\n");
 	if (ps_msp430->hw_initialized == 1) {
 		if (ps_msp430->pdata->power_off)
 			ps_msp430->pdata->power_off();
@@ -443,7 +445,7 @@ static void msp430_device_power_off(struct msp430_data *ps_msp430)
 static int msp430_device_power_on(struct msp430_data *ps_msp430)
 {
 	int err = 0;
-	KDEBUG("In msp430_device_power_on\n");
+	dev_dbg(&ps_msp430->client->dev, "msp430_device_power_on\n");
 	if (ps_msp430->pdata->power_on) {
 		err = ps_msp430->pdata->power_on();
 		if (err < 0) {
@@ -486,7 +488,7 @@ static int msp430_as_data_buffer_write(struct msp430_data *ps_msp430,
 	new_head = (ps_msp430->msp430_as_data_buffer_head + 1)
 		& MSP430_AS_DATA_QUEUE_MASK;
 	if (new_head == ps_msp430->msp430_as_data_buffer_tail) {
-		pr_err("MSP430 %s: data buffer full\n", __func__);
+		dev_err(&ps_msp430->client->dev, "Data buffer full\n");
 		wake_up(&ps_msp430->msp430_as_data_wq);
 		return 0;
 	}
@@ -536,7 +538,7 @@ static int msp430_ms_data_buffer_write(struct msp430_data *ps_msp430,
 	new_head = (ps_msp430->msp430_ms_data_buffer_head + 1)
 		& MSP430_ES_DATA_QUEUE_MASK;
 	if (new_head == ps_msp430->msp430_ms_data_buffer_tail) {
-		pr_err("MSP430 %s: data buffer full\n", __func__);
+		dev_err(&ps_msp430->client->dev, "Data buffer full\n");
 		wake_up(&ps_msp430->msp430_ms_data_wq);
 		return 0;
 	}
@@ -618,14 +620,15 @@ static void msp430_irq_work_func(struct work_struct *work)
 	if (ps_msp430->mode == BOOTMODE)
 		return;
 
-	KDEBUG("MSP430 In msp430_irq_work_func\n");
+	dev_dbg(&ps_msp430->client->dev, "msp430_irq_work_func\n");
 	mutex_lock(&ps_msp430->lock);
 
 	/* read interrupt mask register */
 	msp_cmdbuff[0] = INTERRUPT_STATUS;
 	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
 	if (err < 0) {
-		pr_err("MSP430 Reading from msp failed\n");
+		dev_err(&ps_msp430->client->dev,
+			"Reading from msp failed\n");
 		goto EXIT;
 	}
 	irq_status = (msp_cmdbuff[1] << 8) | msp_cmdbuff[0];
@@ -635,7 +638,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 		msp_cmdbuff[0] = ACCEL_X;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 6);
 		if (err < 0) {
-			pr_err("MSP430 Reading Accel from msp failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading Accel from msp failed\n");
 			goto EXIT;
 		}
 
@@ -644,7 +648,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
 		msp430_as_data_buffer_write(ps_msp430, DT_ACCEL, x, y, z, 0);
 
-		KDEBUG("MSP430 Sending acc(x,y,z)values:x=%d,y=%d,z=%d\n",
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending acc(x,y,z)values:x=%d,y=%d,z=%d\n",
 			x, y, z);
 	}
 	if (irq_status & M_LIN_ACCEL) {
@@ -652,7 +657,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 		msp_cmdbuff[0] = LIN_ACCEL_X;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 6);
 		if (err < 0) {
-			pr_err("MSP430 Reading Linear Accel from msp failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading Linear Accel from msp failed\n");
 			goto EXIT;
 		}
 
@@ -662,7 +668,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 		msp430_as_data_buffer_write(ps_msp430, DT_LIN_ACCEL,
 			x, y, z, 0);
 
-		KDEBUG("MSP430 Sending lin_acc(x,y,z)values:x=%d,y=%d,z=%d\n",
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending lin_acc(x,y,z)values:x=%d,y=%d,z=%d\n",
 			x, y, z);
 	}
 	if (irq_status & M_ECOMPASS) {
@@ -670,7 +677,7 @@ static void msp430_irq_work_func(struct work_struct *work)
 		msp_cmdbuff[0] = MAG_HX;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 13);
 		if (err < 0) {
-			pr_err("MSP430 Reading Ecompass failed\n");
+			dev_err(&ps_msp430->client->dev, "Reading Ecompass failed\n");
 			goto EXIT;
 		}
 
@@ -679,7 +686,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
 		msp430_as_data_buffer_write(ps_msp430, DT_MAG, x, y, z, 0);
 
-		KDEBUG("MSP430 Sending mag(x,y,z)values:x=%d,y=%d,z=%d\n",
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending mag(x,y,z)values:x=%d,y=%d,z=%d\n",
 			x, y, z);
 
 		x = (msp_cmdbuff[6] << 8) | msp_cmdbuff[7];
@@ -688,14 +696,16 @@ static void msp430_irq_work_func(struct work_struct *work)
 		msp430_as_data_buffer_write(ps_msp430, DT_ORIENT, x, y, z,
 			msp_cmdbuff[12]);
 
-		KDEBUG("MSP430 Sending orient(x,y,z)values:x=%d,y=%d,z=%d\n",
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending orient(x,y,z)values:x=%d,y=%d,z=%d\n",
 		       x, y, z);
 	}
 	if (irq_status & M_GYRO) {
 		msp_cmdbuff[0] = GYRO_X;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 6);
 		if (err < 0) {
-			pr_err("MSP430 Reading Gyroscope failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading Gyroscope failed\n");
 			goto EXIT;
 		}
 		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
@@ -703,47 +713,52 @@ static void msp430_irq_work_func(struct work_struct *work)
 		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
 		msp430_as_data_buffer_write(ps_msp430, DT_GYRO, x, y, z, 0);
 
-		KDEBUG("MSP430 Sending gyro(x,y,z)values:x=%d,y=%d,z=%d\n",
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending gyro(x,y,z)values:x=%d,y=%d,z=%d\n",
 			x, y, z);
 	}
 	if (irq_status & M_ALS) {
 		msp_cmdbuff[0] = ALS_LUX;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
 		if (err < 0) {
-			pr_err("MSP430 Reading ALS from msp failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading ALS from msp failed\n");
 			goto EXIT;
 		}
 		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
 		msp430_as_data_buffer_write(ps_msp430, DT_ALS, x, 0, 0, 0);
 
-		KDEBUG("Sending ALS %d\n", x);
+		dev_dbg(&ps_msp430->client->dev, "Sending ALS %d\n", x);
 	}
 	if (irq_status & M_TEMPERATURE) {
 		/*Read temperature value */
 		msp_cmdbuff[0] = TEMPERATURE_DATA;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
 		if (err < 0) {
-			pr_err("MSP430 Reading Temperature failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading Temperature failed\n");
 			goto EXIT;
 		}
 		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
 		msp430_as_data_buffer_write(ps_msp430, DT_TEMP, x, 0, 0, 0);
 
-		KDEBUG("MSP430 Sending temp(x)value: %d\n", x);
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending temp(x)value: %d\n", x);
 	}
 	if (irq_status & M_PRESSURE) {
 		/*Read pressure value */
 		msp_cmdbuff[0] = CURRENT_PRESSURE;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 4);
 		if (err < 0) {
-			pr_err("MSP430 Reading Pressure failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading Pressure failed\n");
 			goto EXIT;
 		}
 		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
 		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
 		msp430_as_data_buffer_write(ps_msp430, DT_PRESSURE, x, y, 0, 0);
 
-		KDEBUG("MSP430 Sending pressure %d\n",
+		dev_dbg(&ps_msp430->client->dev, "Sending pressure %d\n",
 			(x << 16) | (y & 0xFFFF));
 	}
 	if (irq_status & M_DISP_ROTATE) {
@@ -751,27 +766,31 @@ static void msp430_irq_work_func(struct work_struct *work)
 		msp_cmdbuff[0] = DISP_ROTATE_DATA;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
 		if (err < 0) {
-			pr_err("MSP430 Reading disp_rotate failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading disp_rotate failed\n");
 			goto EXIT;
 		}
 		x = msp_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430,
 			DT_DISP_ROTATE, x, 0, 0, 0);
 
-		KDEBUG("MSP430 Sending disp_rotate(x)value: %d\n", x);
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending disp_rotate(x)value: %d\n", x);
 	}
 	if (irq_status & M_DISP_BRIGHTNESS) {
 		msp_cmdbuff[0] = DISPLAY_BRIGHTNESS;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
 		if (err < 0) {
-			pr_err("MSP430 Reading Display Brightness failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading Display Brightness failed\n");
 			goto EXIT;
 		}
 		x = msp_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430, DT_DISP_BRIGHT,
 			x, 0, 0, 0);
 
-		KDEBUG("MSP430 Sending Display Brightness %d\n", x);
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending Display Brightness %d\n", x);
 	}
 
 EXIT:
@@ -784,20 +803,21 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 	int err;
 	unsigned short irq_status, irq2_status;
 	signed short x, y, z, q;
+	unsigned char stat_string[ESR_SIZE+1];
 	struct msp430_data *ps_msp430 = container_of(work,
 			struct msp430_data, irq_wake_work);
 
 	if (ps_msp430->mode == BOOTMODE)
 		return;
 
-	KDEBUG("MSP430 In msp430_irq_wake_work_func\n");
+	dev_dbg(&ps_msp430->client->dev, "msp430_irq_wake_work_func\n");
 	mutex_lock(&ps_msp430->lock);
 
 	/* read interrupt mask register */
 	msp_cmdbuff[0] = WAKESENSOR_STATUS;
 	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
 	if (err < 0) {
-		pr_err("MSP430 Reading from msp failed\n");
+		dev_err(&ps_msp430->client->dev, "Reading from msp failed\n");
 		goto EXIT;
 	}
 	irq_status = (msp_cmdbuff[1] << 8) | msp_cmdbuff[0];
@@ -806,7 +826,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 	msp_cmdbuff[0] = ALGO_INT_STATUS;
 	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
 	if (err < 0) {
-		pr_err("MSP430 Reading from msp failed\n");
+		dev_err(&ps_msp430->client->dev, "Reading from msp failed\n");
 		goto EXIT;
 	}
 	irq2_status = (msp_cmdbuff[1] << 8) | msp_cmdbuff[0];
@@ -815,7 +835,8 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		msp_cmdbuff[0] = DOCK_DATA;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
 		if (err < 0) {
-			pr_err("MSP430 Reading Dock state failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading Dock state failed\n");
 			goto EXIT;
 		}
 		x = msp_cmdbuff[0];
@@ -825,90 +846,113 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		if (ps_msp430->edsdev.dev != NULL)
 			switch_set_state(&ps_msp430->edsdev, x);
 
-		KDEBUG("MSP430 Dock status:%d\n", x);
+		dev_dbg(&ps_msp430->client->dev, "Dock status:%d\n", x);
 	}
 	if (irq_status & M_PROXIMITY) {
 		msp_cmdbuff[0] = PROXIMITY;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
 		if (err < 0) {
-			pr_err("MSP430 Reading prox from msp failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading prox from msp failed\n");
 			goto EXIT;
 		}
 		x = msp_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430, DT_PROX, x, 0, 0, 0);
 
-		KDEBUG("Sending Proximity distance %d\n", x);
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending Proximity distance %d\n", x);
 	}
 	if (irq_status & M_TOUCH) {
 		input_report_key(ps_msp430->input_dev, KEY_POWER, 1);
 		input_report_key(ps_msp430->input_dev, KEY_POWER, 0);
 		input_sync(ps_msp430->input_dev);
-		pr_info("%s: Report pwrkey toggle, touch event wake\n",
-			 __func__);
+		dev_info(&ps_msp430->client->dev,
+			"Report pwrkey toggle, touch event wake\n");
 	}
 	if (irq_status & M_FLATUP) {
 		msp_cmdbuff[0] = FLAT_DATA;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
 		if (err < 0) {
-			pr_err("MSP430 Reading flat data from msp failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading flat data from msp failed\n");
 			goto EXIT;
 		}
 		x = msp_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430, DT_FLAT_UP, x, 0, 0, 0);
 
-		KDEBUG("MSP430 Sending Flat up %d\n", x);
+		dev_dbg(&ps_msp430->client->dev, "Sending Flat up %d\n", x);
 	}
 	if (irq_status & M_FLATDOWN) {
 		msp_cmdbuff[0] = FLAT_DATA;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
 		if (err < 0) {
-			pr_err("MSP430 Reading flat data from msp failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading flat data from msp failed\n");
 			goto EXIT;
 		}
 		x = msp_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430,
 			DT_FLAT_DOWN, x, 0, 0, 0);
 
-		KDEBUG("MSP430 Sending Flat down %d\n", x);
+		dev_dbg(&ps_msp430->client->dev, "Sending Flat down %d\n", x);
 	}
 	if (irq_status & M_STOWED) {
 		msp_cmdbuff[0] = STOWED;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
 		if (err < 0) {
-			pr_err("MSP430 Reading stowed from msp failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading stowed from msp failed\n");
 			goto EXIT;
 		}
 		x = msp_cmdbuff[0];
 		msp430_as_data_buffer_write(ps_msp430, DT_STOWED, x, 0, 0, 0);
 
-		KDEBUG("Sending Stowed status %d\n", x);
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending Stowed status %d\n", x);
 	}
 	if (irq_status & M_CAMERA_ACT) {
 		x = CAMERA_DATA;
 		msp430_as_data_buffer_write(ps_msp430, DT_CAMERA_ACT,
 			x, 0, 0, 0);
 
-		KDEBUG("Sending Camera Gesture status %d\n", x);
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending Camera Gesture status %d\n", x);
+	}
+	if (irq_status & M_LOG_MSG) {
+		msp_cmdbuff[0] = ERROR_STATUS;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff,
+			1, ESR_SIZE);
+		if (err >= 0) {
+			strlcpy(stat_string, msp_cmdbuff, ESR_SIZE);
+			stat_string[ESR_SIZE] = 0;
+			dev_err(&ps_msp430->client->dev,
+				"MPS430 Error: %s\n", stat_string);
+		} else
+			dev_err(&ps_msp430->client->dev,
+				"Failed to read error message %d\n", err);
 	}
 	if (irq2_status & M_MMOVEME) {
 		/* Client recieving action will be upper 2 MSB of status */
 		x = (irq2_status & MSP430_CLIENT_MASK) | M_MMOVEME;
 		msp430_ms_data_buffer_write(ps_msp430, DT_MMMOVE, x, 0, 0, 0);
 
-		KDEBUG("MSP430 Sending meaningful movement event\n");
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending meaningful movement event\n");
 	}
 	if (irq2_status & M_NOMMOVE) {
 		/* Client recieving action will be upper 2 MSB of status */
 		x = (irq2_status & MSP430_CLIENT_MASK) | M_NOMMOVE;
 		msp430_ms_data_buffer_write(ps_msp430, DT_NOMOVE, x, 0, 0, 0);
 
-		KDEBUG("MSP430 Sending no meaningful movement event\n");
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending no meaningful movement event\n");
 	}
 	if (irq2_status & M_ALGO_MODALITY) {
 		msp_cmdbuff[0] = msp_algo_info[MSP_IDX_MODALITY].evt_register;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 7);
 		if (err < 0) {
-			pr_err("MSP430 reading modality event failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading modality event failed\n");
 			goto EXIT;
 		}
 		/* x (data1) msb: algo index, lsb: past, confidence */
@@ -920,13 +964,14 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		/* q (data4) time in state, in seconds */
 		q = (msp_cmdbuff[6] << 8) | msp_cmdbuff[5];
 		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, q);
-		KDEBUG("MSP430 sending modality event\n");
+		dev_dbg(&ps_msp430->client->dev, "Sending modality event\n");
 	}
 	if (irq2_status & M_ALGO_ACCUM_MVMT) {
 		msp_cmdbuff[0] = msp_algo_info[MSP_IDX_ACCUM_MVMT].evt_register;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 4);
 		if (err < 0) {
-			pr_err("MSP430 reading accum mvmt event failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading accum mvmt event failed\n");
 			goto EXIT;
 		}
 		/* x (data1) msb: algo index */
@@ -936,7 +981,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		/* z (data3) distance */
 		z = (msp_cmdbuff[3] << 8) | msp_cmdbuff[2];
 		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, 0);
-		KDEBUG("MSP430 sending accum mvmt event\n");
+		dev_dbg(&ps_msp430->client->dev, "Sending accum mvmt event\n");
 	}
 EXIT:
 	mutex_unlock(&ps_msp430->lock);
@@ -946,12 +991,13 @@ static int msp430_enable(struct msp430_data *ps_msp430)
 {
 	int err = 0;
 
-	KDEBUG("MSP430 msp430_enable\n");
+	dev_dbg(&ps_msp430->client->dev, "msp430_enable\n");
 	if (!atomic_cmpxchg(&ps_msp430->enabled, 0, 1)) {
 		err = msp430_device_power_on(ps_msp430);
 		if (err < 0) {
 			atomic_set(&ps_msp430->enabled, 0);
-			pr_err("msp430_enable returned with %d\n", err);
+			dev_err(&ps_msp430->client->dev,
+				"msp430_enable returned with %d\n", err);
 			return err;
 		}
 	}
@@ -962,7 +1008,7 @@ static int msp430_enable(struct msp430_data *ps_msp430)
 static int msp430_misc_open(struct inode *inode, struct file *file)
 {
 	int err = 0;
-	KDEBUG("MSP430 msp430_misc_open\n");
+	dev_dbg(&msp430_misc_data->client->dev, "msp430_misc_open\n");
 
 	err = nonseekable_open(inode, file);
 	if (err < 0)
@@ -1016,7 +1062,8 @@ void msp430_build_command(enum msp_commands cmd,
 		break;
 	case PROGRAM_CODE:
 		/*code length */
-		KDEBUG("MSP430 No of bytes got from user = %d", len);
+		dev_dbg(&msp430_misc_data->client->dev,
+			"No of bytes got from user = %d", len);
 		corecmdlen = len + MSP430_OPCODE_LENGTH + MSP430_ADDRESS_LENGTH;
 		msp_cmdbuff[index++] =
 			(unsigned char)(corecmdlen & 0xff); /* LSB len */
@@ -1034,7 +1081,8 @@ void msp430_build_command(enum msp_commands cmd,
 			(unsigned char)((ps_msp->current_addr >> 16) & 0xff);
 		/* copy data from user to kernel space */
 		if (copy_from_user(msp_cmdbuff+index, inbuff, len)) {
-			pr_err("MSP430 copy from user returned error\n");
+			dev_err(&msp430_misc_data->client->dev,
+				"Copy from user returned error\n");
 			index = 0;
 		} else {
 			index += len; /*increment index with data len*/
@@ -1067,7 +1115,8 @@ void msp430_build_command(enum msp_commands cmd,
 		msp_cmdbuff[index++] = 0xE6; /* CRC MSB */
 		break;
 	default:
-		pr_info("Invalid msp430 cmd\n");
+		dev_err(&msp430_misc_data->client->dev,
+			"Invalid msp430 cmd\n");
 		index = 0;
 		break;
 	}
@@ -1082,19 +1131,21 @@ static ssize_t msp430_misc_write(struct file *file, const char __user *buff,
 	struct msp430_data *ps_msp430;
 	unsigned int len = (unsigned int)count;
 
-	KDEBUG("MSP430 msp430_misc_write\n");
 	ps_msp430 = msp430_misc_data;
+	dev_dbg(&ps_msp430->client->dev, "msp430_misc_write\n");
 	if (len > MSP430_MAXDATA_LENGTH || len == 0) {
-		pr_err("packet size >MSP430_MAXDATA_LENGTH or 0\n");
+		dev_err(&ps_msp430->client->dev,
+			"Packet size >MSP430_MAXDATA_LENGTH or 0\n");
 		err = -EINVAL;
 		return err;
 	}
-	KDEBUG("MSP430 Leng = %d", len); /* debug */
+	dev_dbg(&ps_msp430->client->dev, "Leng = %d", len); /* debug */
 
 	mutex_lock(&ps_msp430->lock);
 
 	if (ps_msp430->mode == BOOTMODE) {
-		KDEBUG("MSP430  msp430_misc_write: boot mode\n");
+		dev_dbg(&ps_msp430->client->dev,
+			"msp430_misc_write: boot mode\n");
 		/* build the msp430 command to program code */
 		msp430_build_command(PROGRAM_CODE, buff, &len);
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff,
@@ -1106,9 +1157,11 @@ static ssize_t msp430_misc_write(struct file *file, const char __user *buff,
 			err = len;
 		}
 	} else {
-		KDEBUG("MSP430 msp430_misc_write: normal mode\n");
+		dev_dbg(&ps_msp430->client->dev,
+			"msp430_misc_write: normal mode\n");
 		if (copy_from_user(msp_cmdbuff, buff, count)) {
-			pr_err("MSP430 copy from user returned error\n");
+			dev_err(&ps_msp430->client->dev,
+				"Copy from user returned error\n");
 			err = -EINVAL;
 		}
 		if (err == 0)
@@ -1134,12 +1187,14 @@ int switch_msp430_mode(enum msp_mode mode)
 	if (mode == BOOTMODE) {
 		gpio_set_value(pdata->gpio_bslen,
 				(bslen_pin_active_value));
-		KDEBUG("MSP430 toggling to switch to boot mode\n");
+		dev_dbg(&msp430_misc_data->client->dev,
+			"Toggling to switch to boot mode\n");
 	} else {
 		/*normal mode */
 		gpio_set_value(pdata->gpio_bslen,
 				!(bslen_pin_active_value));
-		KDEBUG("MSP430 toggling to normal or factory mode\n");
+		dev_dbg(&msp430_misc_data->client->dev,
+			"Toggling to normal or factory mode\n");
 	}
 	msleep_interruptible(I2C_RETRY_DELAY);
 	gpio_set_value(pdata->gpio_reset, 0);
@@ -1176,16 +1231,18 @@ static int msp430_get_version(struct msp430_data *ps_msp430)
 {
 	int err = 0;
 	if (ps_msp430->mode == BOOTMODE) {
-		KDEBUG("MSP430 Switch to normal to get version\n");
+		dev_dbg(&ps_msp430->client->dev,
+			"Switch to normal to get version\n");
 		switch_msp430_mode(NORMALMODE);
 		msleep_interruptible(I2C_RETRY_DELAY);
 	}
-	KDEBUG("MSP430 MSP software version: ");
+	dev_dbg(&ps_msp430->client->dev, "MSP software version: ");
 	msp_cmdbuff[0] = REV_ID;
 	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
 	if (err >= 0) {
 		err = (int)msp_cmdbuff[0];
-		pr_err("MSP430 version %02x", msp_cmdbuff[0]);
+		dev_err(&ps_msp430->client->dev, "MSP430 version %02x",
+			msp_cmdbuff[0]);
 	}
 	return err;
 }
@@ -1195,10 +1252,10 @@ static int msp430_bootloadermode(struct msp430_data *ps_msp430)
 	int err = 0;
 	unsigned int cmdlen = 0;
 	/* switch MSP to bootloader mode */
-	KDEBUG("MSP430 Switching to bootloader mode\n");
+	dev_dbg(&ps_msp430->client->dev, "Switching to bootloader mode\n");
 	err = switch_msp430_mode(BOOTMODE);
 	/* send password reset command to unlock MSP	 */
-	KDEBUG("MSP430 Password reset for reset vector\n");
+	dev_dbg(&ps_msp430->client->dev, "Password reset for reset vector\n");
 	msp430_build_command(PASSWORD_RESET, NULL, &cmdlen);
 	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff,
 				cmdlen, I2C_RESPONSE_LENGTH);
@@ -1221,7 +1278,8 @@ static int msp430_test_write_read(struct msp430_data *ps_msp430,
 	unsigned int bytecount;
 	int i;
 	if (copy_from_user(&readwritebyte, argp, sizeof(unsigned short))) {
-		pr_err("copy from user returned error\n");
+		dev_err(&ps_msp430->client->dev,
+			"Copy from user returned error\n");
 		return -EFAULT;
 	}
 	bytecount = (readwritebyte >> 8) & 0xff;
@@ -1229,11 +1287,11 @@ static int msp430_test_write_read(struct msp430_data *ps_msp430,
 	msp_cmdbuff[0] = reg;
 	err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, bytecount);
 	if (err < -1)
-		pr_err("MSP430 Failed to write read\n");
+		dev_err(&ps_msp430->client->dev, "Failed to write read\n");
 	if (copy_to_user(argp, &bytecount, sizeof(unsigned short)))
 		return -EFAULT;
 	for (i = 0; i < bytecount; i++)
-		KDEBUG("%02x ", msp_cmdbuff[i]);
+		dev_dbg(&ps_msp430->client->dev, "%02x ", msp_cmdbuff[i]);
 	return err;
 }
 
@@ -1259,7 +1317,7 @@ static int msp430_load_brightness_table(struct msp430_data *ps_msp430)
 				= ps_msp430->pdata->brightness_table[index];
 	}
 	err = msp430_i2c_write(ps_msp430, msp_cmdbuff, LIGHTING_TABLE_SIZE + 1);
-	KDEBUG("MSP430 brightness tables loaded\n");
+	dev_dbg(&ps_msp430->client->dev, "Brightness tables loaded\n");
 	return err;
 }
 
@@ -1279,22 +1337,27 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 
 	mutex_lock(&ps_msp430->lock);
 
-	KDEBUG("MSP430 msp430_misc_ioctl = %d\n", cmd);
 	switch (cmd) {
 	case MSP430_IOCTL_BOOTLOADERMODE:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_BOOTLOADERMODE");
 		err = msp430_bootloadermode(ps_msp430);
 		break;
 	case MSP430_IOCTL_NORMALMODE:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_NORMALMODE");
 		err = switch_msp430_mode(NORMALMODE);
 		break;
 	case MSP430_IOCTL_MASSERASE:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_MASSERASE");
 		msp430_build_command(MASS_ERASE, NULL, &cmdlen);
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff,
 					cmdlen, I2C_RESPONSE_LENGTH);
 		break;
 	case MSP430_IOCTL_SETSTARTADDR:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_SETSTARTADDR");
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			pr_err("copy start address returned error\n");
+			dev_err(&ps_msp430->client->dev,
+				"Copy start address returned error\n");
 			err = -EFAULT;
 			break;
 		}
@@ -1303,28 +1366,34 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		err = 0;
 		break;
 	case MSP430_IOCTL_SET_FACTORY_MODE:
-		KDEBUG("MSP430 set factory mode\n");
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_SET_FACTORY_MODE");
 		err = switch_msp430_mode(FACTORYMODE);
 		break;
 	case MSP430_IOCTL_TEST_BOOTMODE:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_TEST_BOOTMODE");
 		/* switch MSP to bootloader mode */
 		err = switch_msp430_mode(BOOTMODE);
 		break;
 
 	case MSP430_IOCTL_SET_DEBUG:
-		/* enable or disble msp driver debug messages */
-		if (copy_from_user(&g_debug, argp, sizeof(g_debug))) {
-			KDEBUG("copy set debug state returned error\n");
-			err = -EFAULT;
-			break;
-		}
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_SET_DEBUG");
 		err = 0;
+		break;
+	case MSP430_IOCTL_GET_VERNAME:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_GET_VERNAME");
+		if (copy_to_user(argp, &(ps_msp430->pdata->fw_version),
+				FW_VERSION_SIZE))
+			err = -EFAULT;
+		else
+			err = 0;
 		break;
 	default:
 		/* The IOCTLs below in next switch should not be called
 		   when device is in boot mode */
 		if (ps_msp430->mode == BOOTMODE) {
-			pr_err("MSP430 Attempted normal mode ioctl in boot\n");
+			dev_err(&ps_msp430->client->dev,
+				"Attempted normal mode ioctl in boot\n");
 			mutex_unlock(&ps_msp430->lock);
 			return -EFAULT;
 		}
@@ -1332,12 +1401,15 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 
 	switch (cmd) {
 	case MSP430_IOCTL_GET_VERSION:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_GET_VERSION");
 		err = msp430_get_version(ps_msp430);
 		break;
 	case MSP430_IOCTL_SET_ACC_DELAY:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_SET_ACC_DELAY");
 		delay = 0;
 		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			KDEBUG("copy acc delay returned error\n");
+			dev_dbg(&ps_msp430->client->dev,
+				"Copy acc delay returned error\n");
 			err = -EFAULT;
 			break;
 		}
@@ -1347,9 +1419,11 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 
 	case MSP430_IOCTL_SET_MAG_DELAY:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_SET_MAG_DELAY");
 		delay = 0;
 		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			KDEBUG("copy mag delay returned error\n");
+			dev_dbg(&ps_msp430->client->dev,
+				"Copy mag delay returned error\n");
 			err = -EFAULT;
 		} else {
 			msp_cmdbuff[0] = MAG_UPDATE_RATE;
@@ -1358,9 +1432,12 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		break;
 	case MSP430_IOCTL_SET_GYRO_DELAY:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_SET_GYRO_DELAY");
 		delay = 0;
 		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			KDEBUG("copy gyro delay returned error\n");
+			dev_dbg(&ps_msp430->client->dev,
+				"Copy gyro delay returned error\n");
 			err = -EFAULT;
 			break;
 		}
@@ -1369,9 +1446,12 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 	case MSP430_IOCTL_SET_PRES_DELAY:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_SET_PRES_DELAY");
 		delay = 0;
 		if (copy_from_user(&delay, argp, sizeof(delay))) {
-			KDEBUG("copy pres delay returned error\n");
+			dev_dbg(&ps_msp430->client->dev,
+				"Copy pres delay returned error\n");
 			err = -EFAULT;
 			break;
 		}
@@ -1380,8 +1460,10 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 	case MSP430_IOCTL_SET_SENSORS:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_SET_SENSORS");
 		if (copy_from_user(bytes, argp, 2 * sizeof(unsigned char))) {
-			KDEBUG("copy set sensors returned error\n");
+			dev_dbg(&ps_msp430->client->dev,
+				"Copy set sensors returned error\n");
 			err = -EFAULT;
 			break;
 		}
@@ -1390,7 +1472,8 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 				&& (bytes[1] & (M_DISP_BRIGHTNESS >> 8))) {
 			err = msp430_load_brightness_table(ps_msp430);
 			if (err) {
-				pr_err("MSP430 Loading brightness failed\n");
+				dev_err(&ps_msp430->client->dev,
+					"Loading brightness failed\n");
 				break;
 			}
 			brightness_table_loaded = 1;
@@ -1404,10 +1487,12 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		g_nonwake_sensor_state = (msp_cmdbuff[2] << 8) | msp_cmdbuff[1];
 		break;
 	case MSP430_IOCTL_GET_SENSORS:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_GET_SENSORS");
 		msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
 		if (err < 0) {
-			pr_err("MSP430 Reading get sensors failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading get sensors failed\n");
 			break;
 		}
 		bytes[0] = msp_cmdbuff[0];
@@ -1416,8 +1501,11 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 		break;
 	case MSP430_IOCTL_SET_WAKESENSORS:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_SET_WAKESENSORS");
 		if (copy_from_user(bytes, argp, 2 * sizeof(unsigned char))) {
-			KDEBUG("copy set sensors returned error\n");
+			dev_dbg(&ps_msp430->client->dev,
+				"Copy set sensors returned error\n");
 			err = -EFAULT;
 			break;
 		}
@@ -1429,10 +1517,13 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		g_wake_sensor_state =  (msp_cmdbuff[2] << 8) | msp_cmdbuff[1];
 		break;
 	case MSP430_IOCTL_GET_WAKESENSORS:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_GET_WAKESENSORS");
 		msp_cmdbuff[0] = WAKESENSOR_CONFIG;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
 		if (err < 0) {
-			pr_err("MSP430 Reading get sensors failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading get sensors failed\n");
 			break;
 		}
 		bytes[0] = msp_cmdbuff[0];
@@ -1441,33 +1532,42 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 		break;
 	case MSP430_IOCTL_SET_ALGOS:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_SET_ALGOS");
 		if (copy_from_user(&bytes, argp, sizeof(bytes))) {
-			pr_err("copy set algos returned error\n");
+			dev_err(&ps_msp430->client->dev,
+				"Copy set algos returned error\n");
 			err = -EFAULT;
 			break;
 		}
-		KDEBUG("set algos config: 0x%x", (bytes[1] << 8) | bytes[0]);
+		dev_dbg(&ps_msp430->client->dev,
+			"Set algos config: 0x%x", (bytes[1] << 8) | bytes[0]);
 		msp_cmdbuff[0] = ALGO_CONFIG;
 		msp_cmdbuff[1] = bytes[0];
 		msp_cmdbuff[2] = bytes[1];
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
 		break;
 	case MSP430_IOCTL_GET_ALGOS:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_GET_ALGOS");
 		msp_cmdbuff[0] = ALGO_CONFIG;
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
 		if (err < 0) {
-			pr_err("MSP430 Reading get algos failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Reading get algos failed\n");
 			break;
 		}
 		bytes[0] = msp_cmdbuff[0];
 		bytes[1] = msp_cmdbuff[1];
-		pr_info("get algos config: 0x%x", (bytes[1] << 8) | bytes[0]);
+		dev_info(&ps_msp430->client->dev,
+			"Get algos config: 0x%x", (bytes[1] << 8) | bytes[0]);
 		if (copy_to_user(argp, bytes, sizeof(bytes)))
 			err = -EFAULT;
 		break;
 	case MSP430_IOCTL_SET_MOTION_DUR:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_SET_MOTION_DUR");
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			KDEBUG("copy set motion dur returned error\n");
+			dev_dbg(&ps_msp430->client->dev,
+				"Copy set motion dur returned error\n");
 			err = -EFAULT;
 			break;
 		}
@@ -1476,8 +1576,11 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 	case MSP430_IOCTL_SET_ZRMOTION_DUR:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_SET_ZRMOTION_DUR");
 		if (copy_from_user(&addr, argp, sizeof(addr))) {
-			KDEBUG("copy zmotion dur returned error\n");
+			dev_dbg(&ps_msp430->client->dev,
+				"Copy zmotion dur returned error\n");
 			err = -EFAULT;
 			break;
 		}
@@ -1486,39 +1589,42 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 	case MSP430_IOCTL_GET_DOCK_STATUS:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_GET_DOCK_STATUS");
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 1);
 		byte = msp_cmdbuff[0];
 		if (copy_to_user(argp, &byte, sizeof(byte)))
 			err = -EFAULT;
 		break;
 	case MSP430_IOCTL_TEST_READ:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_TEST_READ");
 		err = msp430_i2c_read(ps_msp430, &byte, 1);
 		/* msp430 will return num of bytes read or error */
 		if (err > 0)
 			err = byte;
 		break;
 	case MSP430_IOCTL_TEST_WRITE:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_TEST_WRITE");
 		if (copy_from_user(&byte, argp, sizeof(unsigned char))) {
-			pr_err("copy test write returned error\n");
+			dev_err(&ps_msp430->client->dev,
+				"Copy test write returned error\n");
 			err = -EFAULT;
 			break;
 		}
 		err = msp430_i2c_write(ps_msp430, &byte, 1);
 		break;
 	case MSP430_IOCTL_TEST_WRITE_READ:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_TEST_WRITE_READ");
 		err = msp430_test_write_read(ps_msp430, argp);
 		break;
-	case MSP430_IOCTL_GET_VERNAME:
-		if (copy_to_user(argp, &(ps_msp430->pdata->fw_version),
-				FW_VERSION_SIZE))
-			err = -EFAULT;
-		else
-			err = 0;
-		break;
 	case MSP430_IOCTL_SET_POSIX_TIME:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_SET_POSIX_TIME");
 		if (copy_from_user(&current_posix_time, argp,
 			 sizeof(current_posix_time))) {
-			pr_err("copy from user returned error\n");
+			dev_err(&ps_msp430->client->dev,
+				"Copy from user returned error\n");
 			err = -EFAULT;
 			break;
 		}
@@ -1532,10 +1638,13 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 5);
 		break;
 	case MSP430_IOCTL_SET_CONTROL_REG:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_SET_CONTROL_REG");
 		if (brightness_table_loaded == 0) {
 			err = msp430_load_brightness_table(ps_msp430);
 			if (err) {
-				pr_err("MSP430 Loading brightness failed\n");
+				dev_err(&ps_msp430->client->dev,
+					"Loading brightness failed\n");
 				break;
 			}
 			brightness_table_loaded = 1;
@@ -1543,7 +1652,8 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		msp_cmdbuff[0] = MSP_CONTROL_REG;
 		if (copy_from_user(&msp_cmdbuff[1], argp,
 			 MSP_CONTROL_REG_SIZE)) {
-			pr_err("copy from user returned error\n");
+			dev_err(&ps_msp430->client->dev,
+				"Copy from user returned error\n");
 			err = -EFAULT;
 			break;
 		}
@@ -1552,11 +1662,14 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			(MSP_CONTROL_REG_SIZE + 1));
 		break;
 	case MSP430_IOCTL_GET_STATUS_REG:
+		dev_dbg(&ps_msp430->client->dev,
+			"MSP430_IOCTL_GET_STATUS_REG");
 		msp_cmdbuff[0] = MSP_STATUS_REG;
 		err = msp430_i2c_write_read(ps_msp430,
 			 msp_cmdbuff, 1, MSP_STATUS_REG_SIZE);
 		if (err < 0) {
-			pr_err("MSP430 get status reg failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Get status reg failed\n");
 			break;
 		}
 
@@ -1564,11 +1677,13 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 		break;
 	case MSP430_IOCTL_GET_TOUCH_REG:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_GET_TOUCH_REG");
 		msp_cmdbuff[0] = MSP_TOUCH_REG;
 		err = msp430_i2c_write_read(ps_msp430,
 			 msp_cmdbuff, 1, MSP_TOUCH_REG_SIZE);
 		if (err < 0) {
-			pr_err("MSP430 get touch reg failed\n");
+			dev_err(&ps_msp430->client->dev,
+				"Get touch reg failed\n");
 			break;
 		}
 
@@ -1576,31 +1691,38 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 		break;
 	case MSP430_IOCTL_SET_ALGO_REQ:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_SET_ALGO_REQ");
 		/* copy algo index into bytes[2] */
 		if (copy_from_user(&bytes, argp, sizeof(bytes))) {
-			pr_err("set algo req copy bytes returned error\n");
+			dev_err(&ps_msp430->client->dev,
+				"Set algo req copy bytes returned error\n");
 			err = -EFAULT;
 			break;
 		}
 		addr = (bytes[1] << 8) | bytes[0];
 		/* copy len into byte */
 		if (copy_from_user(&byte, argp + sizeof(bytes), sizeof(byte))) {
-			pr_err("get algo req copy byte returned error\n");
+			dev_err(&ps_msp430->client->dev,
+				"Get algo req copy byte returned error\n");
 			err = -EFAULT;
 			break;
 		}
-		KDEBUG("set algo req, algo index: %d, len: %u\n", addr, byte);
+		dev_dbg(&ps_msp430->client->dev,
+			"Set algo req, algo index: %d, len: %u\n", addr, byte);
 		if (addr < MSP_NUM_ALGOS) {
 			msp_cmdbuff[0] = msp_algo_info[addr].req_register;
-			KDEBUG("register: 0x%x", msp_cmdbuff[0]);
+			dev_dbg(&ps_msp430->client->dev,
+				"Register: 0x%x", msp_cmdbuff[0]);
 		} else {
-			pr_err("set algo req invalid arg\n");
+			dev_err(&ps_msp430->client->dev,
+				"Set algo req invalid arg\n");
 			err = -EFAULT;
 			break;
 		}
 		if (copy_from_user(&msp_cmdbuff[1],
 			argp + sizeof(bytes) + sizeof(byte), byte)) {
-			pr_err("set algo req copy req info returned error\n");
+			dev_err(&ps_msp430->client->dev,
+				"Set algo req copy req info returned error\n");
 			err = -EFAULT;
 			break;
 		}
@@ -1619,7 +1741,7 @@ static int msp430_as_open(struct inode *inode, struct file *file)
 {
 	int err = 0;
 
-	KDEBUG("MSP430 msp430_as_open\n");
+	dev_dbg(&msp430_misc_data->client->dev, "msp430_as_open\n");
 
 	err = nonseekable_open(inode, file);
 	if (err < 0)
@@ -1642,7 +1764,7 @@ static ssize_t msp430_as_read(struct file *file, char __user *buffer,
 	ret = copy_to_user(buffer, &tmp_buff,
 		sizeof(struct msp430_android_sensor_data));
 	if (ret != 0) {
-		pr_err("%s: copy error\n", __func__);
+		dev_err(&ps_msp430->client->dev, "Copy error\n");
 		return 0;
 	}
 
@@ -1674,7 +1796,7 @@ static int msp430_ms_open(struct inode *inode, struct file *file)
 {
 	int err = 0;
 
-	KDEBUG("MSP430 msp430_ms_open\n");
+	dev_dbg(&msp430_misc_data->client->dev, "msp430_ms_open\n");
 
 	err = nonseekable_open(inode, file);
 	if (err < 0)
@@ -1695,7 +1817,7 @@ static ssize_t msp430_ms_read(struct file *file, char __user *buffer,
 	if (copy_to_user(buffer, &tmp_buff,
 		sizeof(struct msp430_moto_sensor_data))
 		!= 0) {
-		pr_err("%s: copy error\n", __func__);
+		dev_err(&ps_msp430->client->dev, "Copy error\n");
 		ret = 0;
 	}
 
@@ -1750,7 +1872,8 @@ msp430_of_init(struct i2c_client *client)
 
 	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
-		pr_err("%s : pdata allocation failure\n", __func__);
+		dev_err(&msp430_misc_data->client->dev,
+			"pdata allocation failure\n");
 		return NULL;
 	}
 
@@ -1762,7 +1885,8 @@ msp430_of_init(struct i2c_client *client)
 	pdata->gpio_mipi_busy = of_get_gpio(np, 5);
 
 	if (of_get_property(np, "lux_table", &len) == NULL) {
-		pr_err("%s: lux_table len access failure\n", __func__);
+		dev_err(&msp430_misc_data->client->dev,
+			"lux_table len access failure\n");
 		return NULL;
 	}
 	lsize = len / sizeof(u32);
@@ -1773,13 +1897,15 @@ msp430_of_init(struct i2c_client *client)
 		for (index = 0; index < lsize; index++)
 			pdata->lux_table[index] = ((u32 *)lux_table)[index];
 	} else {
-		pr_err("%s: Lux table is missing\n", __func__);
+		dev_err(&msp430_misc_data->client->dev,
+			"Lux table is missing\n");
 		return NULL;
 	}
 	pdata->lux_table[lsize] = 0xFFFF;
 
 	if (of_get_property(np, "brightness_table", &len) == NULL) {
-		pr_err("%s: brightness_table len access failure\n", __func__);
+		dev_err(&msp430_misc_data->client->dev,
+			"Brightness_table len access failure\n");
 		return NULL;
 	}
 	bsize = len / sizeof(u32);
@@ -1794,13 +1920,14 @@ msp430_of_init(struct i2c_client *client)
 				= ((u32 *)brightness_table)[index];
 		}
 	} else {
-		pr_err("%s: Brightness table is missing\n", __func__);
+		dev_err(&msp430_misc_data->client->dev,
+			"Brightness table is missing\n");
 		return NULL;
 	}
 
 	if ((lsize + 1) != bsize) {
-		pr_err("%s: Lux and Brightness table sizes don't match\n",
-			__func__);
+		dev_err(&msp430_misc_data->client->dev,
+			"Lux and Brightness table sizes don't match\n");
 		return NULL;
 	}
 
@@ -1811,7 +1938,8 @@ msp430_of_init(struct i2c_client *client)
 	if (!of_property_read_string(np, "msp430_fw_version", &name))
 		strlcpy(pdata->fw_version, name, FW_VERSION_SIZE);
 	else
-		pr_debug("%s: not use ms430_fw_version override\n", __func__);
+		dev_dbg(&msp430_misc_data->client->dev,
+			"Not useing ms430_fw_version override\n");
 
 	pdata->ct406_detect_threshold = 0x006E;
 	pdata->ct406_undetect_threshold = 0x0050;
@@ -1843,64 +1971,74 @@ static int msp430_gpio_init(struct msp430_platform_data *pdata,
 
 	err = gpio_request(pdata->gpio_int, "msp430 int");
 	if (err) {
-		pr_err("msp430 int gpio_request failed: %d\n", err);
+		dev_err(&msp430_misc_data->client->dev,
+			"msp430 int gpio_request failed: %d\n", err);
 		return err;
 	}
 	gpio_direction_input(pdata->gpio_int);
 	err = gpio_export(pdata->gpio_int, 0);
 	if (err) {
-		pr_err("msp430 int gpio_export failed: %d\n", err);
+		dev_err(&msp430_misc_data->client->dev,
+			"gpio_int gpio_export failed: %d\n", err);
 		goto free_int;
 	}
 	err = gpio_export_link(&pdev->dev, "gpio_irq", pdata->gpio_int);
 	if (err) {
-		pr_err("msp430 gpio irq link failed: %d\n", err);
+		dev_err(&msp430_misc_data->client->dev,
+			"gpio_irq gpio_export_link failed: %d\n", err);
 		goto free_int;
 	}
 
 	err = gpio_request(pdata->gpio_reset, "msp430 reset");
 	if (err) {
-		pr_err("msp430 reset gpio_request failed: %d\n", err);
+		dev_err(&msp430_misc_data->client->dev,
+			"msp430 reset gpio_request failed: %d\n", err);
 		goto free_int;
 	}
 	gpio_direction_output(pdata->gpio_reset, 1);
 	gpio_set_value(pdata->gpio_reset, 1);
 	err = gpio_export(pdata->gpio_reset, 0);
 	if (err) {
-		pr_err("msp430 reset gpio_export failed: %d\n", err);
+		dev_err(&msp430_misc_data->client->dev,
+			"reset gpio_export failed: %d\n", err);
 		goto free_reset;
 	}
 
 	err = gpio_request(pdata->gpio_bslen, "msp430 bslen");
 	if (err) {
-		pr_err("msp430 bslen gpio_request failed: %d\n", err);
+		dev_err(&msp430_misc_data->client->dev,
+			"bslen gpio_request failed: %d\n", err);
 		goto free_reset;
 	}
 	gpio_direction_output(pdata->gpio_bslen, 0);
 	gpio_set_value(pdata->gpio_bslen, 0);
 	err = gpio_export(pdata->gpio_bslen, 0);
 	if (err) {
-		pr_err("msp430 bslen gpio_export failed: %d\n", err);
+		dev_err(&msp430_misc_data->client->dev,
+			"bslen gpio_export failed: %d\n", err);
 		goto free_bslen;
 	}
 
 	if (gpio_is_valid(pdata->gpio_wakeirq)) {
 		err = gpio_request(pdata->gpio_wakeirq, "msp430 wakeirq");
 		if (err) {
-			pr_err("msp430 wakeirq gpio_request failed: %d\n", err);
+			dev_err(&msp430_misc_data->client->dev,
+				"wakeirq gpio_request failed: %d\n", err);
 			goto free_bslen;
 		}
 		gpio_direction_input(pdata->gpio_wakeirq);
 		err = gpio_export(pdata->gpio_wakeirq, 0);
 		if (err) {
-			pr_err("msp430 wakeirq gpio_export failed: %d\n", err);
+			dev_err(&msp430_misc_data->client->dev,
+				"wakeirq gpio_export failed: %d\n", err);
 			goto free_wakeirq;
 		}
 
 		err = gpio_export_link(&pdev->dev, "wakeirq",
 						pdata->gpio_wakeirq);
 		if (err) {
-			pr_err("msp430 wakeirq link failed: %d\n", err);
+			dev_err(&msp430_misc_data->client->dev,
+				"wakeirq link failed: %d\n", err);
 			goto free_wakeirq;
 		}
 	} else {
@@ -1910,13 +2048,15 @@ static int msp430_gpio_init(struct msp430_platform_data *pdata,
 	if (gpio_is_valid(pdata->gpio_mipi_req)) {
 		err = gpio_request(pdata->gpio_mipi_req, "mipi_d0_req");
 		if (err) {
-			pr_err(" mipi_req_gpio gpio_request failed: %d\n", err);
+			dev_err(&msp430_misc_data->client->dev,
+				"mipi_req_gpio gpio_request failed: %d\n", err);
 			goto free_wakeirq;
 		}
 		gpio_direction_output(pdata->gpio_mipi_req, 0);
 		err = gpio_export(pdata->gpio_mipi_req, 0);
 		if (err) {
-			pr_err(" mipi_req_gpio gpio_export failed: %d\n", err);
+			dev_err(&msp430_misc_data->client->dev,
+				"mipi_req_gpio gpio_export failed: %d\n", err);
 			goto free_mipi_req;
 		}
 	} else {
@@ -1926,13 +2066,15 @@ static int msp430_gpio_init(struct msp430_platform_data *pdata,
 	if (gpio_is_valid(pdata->gpio_mipi_busy)) {
 		err = gpio_request(pdata->gpio_mipi_busy, "mipi_d0_busy");
 		if (err) {
-			pr_err(" mipi_d0_busy gpio_request failed: %d\n", err);
+			dev_err(&msp430_misc_data->client->dev,
+				"mipi_d0_busy gpio_request failed: %d\n", err);
 			goto free_mipi_req;
 		}
 		gpio_direction_input(pdata->gpio_mipi_busy);
 		err = gpio_export(pdata->gpio_mipi_busy, 0);
 		if (err) {
-			pr_err(" mipi_d0_busy gpio_export failed: %d\n", err);
+			dev_err(&msp430_misc_data->client->dev,
+				"mipi_d0_busy gpio_export failed: %d\n", err);
 			goto free_mipi_busy;
 		}
 	} else {
@@ -1972,7 +2114,7 @@ static int msp430_probe(struct i2c_client *client,
 	struct msp430_platform_data *pdata;
 	struct msp430_data *ps_msp430;
 	int err = -1;
-	dev_info(&client->dev, "msp430 probe begun\n");
+	dev_info(&client->dev, "probe begun\n");
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "client not i2c capable\n");
@@ -2010,7 +2152,6 @@ static int msp430_probe(struct i2c_client *client,
 
 
 	/* Set to passive mode by default */
-	g_debug = 0;
 	g_nonwake_sensor_state = 0;
 	g_wake_sensor_state = 0;
 	/* clear the interrupt mask */
@@ -2064,14 +2205,16 @@ static int msp430_probe(struct i2c_client *client,
 
 	if (alloc_chrdev_region(&ps_msp430->msp430_dev_num, 0, 2, "msp430")
 		< 0)
-		pr_err("%s: alloc_chrdev_region failed\n", __func__);
+		dev_err(&ps_msp430->client->dev,
+			"alloc_chrdev_region failed\n");
 	ps_msp430->msp430_class = class_create(THIS_MODULE, "msp430");
 
 	cdev_init(&ps_msp430->as_cdev, &msp430_as_fops);
 	ps_msp430->as_cdev.owner = THIS_MODULE;
 	err = cdev_add(&ps_msp430->as_cdev, ps_msp430->msp430_dev_num, 1);
 	if (err)
-		pr_err("%s: cdev_add as failed: %d\n", __func__, err);
+		dev_err(&ps_msp430->client->dev,
+			"cdev_add as failed: %d\n", err);
 
 	device_create(ps_msp430->msp430_class, NULL,
 		MKDEV(MAJOR(ps_msp430->msp430_dev_num), 0),
@@ -2081,7 +2224,8 @@ static int msp430_probe(struct i2c_client *client,
 	ps_msp430->ms_cdev.owner = THIS_MODULE;
 	err = cdev_add(&ps_msp430->ms_cdev, ps_msp430->msp430_dev_num + 1, 1);
 	if (err)
-		pr_err("%s: cdev_add ms failed: %d\n", __func__, err);
+		dev_err(&ps_msp430->client->dev,
+			"cdev_add ms failed: %d\n", err);
 
 	device_create(ps_msp430->msp430_class, NULL,
 		MKDEV(MAJOR(ps_msp430->msp430_dev_num), 1),
@@ -2124,8 +2268,9 @@ static int msp430_probe(struct i2c_client *client,
 	ps_msp430->dsdev.print_name = dock_print_name;
 	err = switch_dev_register(&ps_msp430->dsdev);
 	if (err) {
-		pr_err("couldn't register switch (%s) rc=%d\n",
-					ps_msp430->dsdev.name, err);
+		dev_err(&ps_msp430->client->dev,
+			"Couldn't register switch (%s) rc=%d\n",
+			ps_msp430->dsdev.name, err);
 		ps_msp430->dsdev.dev = NULL;
 	}
 
@@ -2133,8 +2278,9 @@ static int msp430_probe(struct i2c_client *client,
 	ps_msp430->edsdev.print_name = dock_print_name;
 	err = switch_dev_register(&ps_msp430->edsdev);
 	if (err) {
-		pr_err("couldn't register switch (%s) rc=%d\n",
-					ps_msp430->edsdev.name, err);
+		dev_err(&ps_msp430->client->dev,
+			"Couldn't register switch (%s) rc=%d\n",
+			ps_msp430->edsdev.name, err);
 		ps_msp430->edsdev.dev = NULL;
 	}
 
@@ -2159,7 +2305,7 @@ static int msp430_probe(struct i2c_client *client,
 
 	mutex_unlock(&ps_msp430->lock);
 
-	dev_info(&client->dev, "msp430 probed\n");
+	dev_info(&client->dev, "probed finished\n");
 
 	return 0;
 
@@ -2190,7 +2336,7 @@ err_gpio_init:
 static int msp430_remove(struct i2c_client *client)
 {
 	struct msp430_data *ps_msp430 = i2c_get_clientdata(client);
-	pr_err("MSP430 msp430_remove\n");
+	dev_err(&ps_msp430->client->dev, "msp430_remove\n");
 	switch_dev_unregister(&ps_msp430->dsdev);
 	switch_dev_unregister(&ps_msp430->edsdev);
 	if (ps_msp430->irq_wake != -1)
@@ -2219,7 +2365,7 @@ static int msp430_remove(struct i2c_client *client)
 static int msp430_resume(struct i2c_client *client)
 {
 	struct msp430_data *ps_msp430 = i2c_get_clientdata(client);
-	KDEBUG("MSP430 msp430_resume\n");
+	dev_dbg(&msp430_misc_data->client->dev, "msp430_resume\n");
 	mutex_lock(&ps_msp430->lock);
 
 	if (ps_msp430->mode == NORMALMODE) {
@@ -2244,7 +2390,7 @@ static int msp430_resume(struct i2c_client *client)
 static int msp430_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct msp430_data *ps_msp430 = i2c_get_clientdata(client);
-	KDEBUG("MSP430 msp430_suspend\n");
+	dev_dbg(&ps_msp430->client->dev, "msp430_suspend\n");
 	mutex_lock(&ps_msp430->lock);
 
 	if ((ps_msp430->mode == NORMALMODE) && (g_nonwake_sensor_state != 0)) {
@@ -2309,13 +2455,11 @@ static struct i2c_driver msp430_driver = {
 
 static int __init msp430_init(void)
 {
-	pr_info(KERN_ERR "MSP430 msp430 sensor processor\n");
 	return i2c_add_driver(&msp430_driver);
 }
 
 static void __exit msp430_exit(void)
 {
-	pr_err("MSP430 msp430_exit\n");
 	i2c_del_driver(&msp430_driver);
 	return;
 }
