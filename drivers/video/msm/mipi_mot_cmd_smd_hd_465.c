@@ -51,6 +51,8 @@ static char enable_te[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
 
 static char acl_default_setting[6] = {0xB5, 0x03, 0x6B, 0x45, 0x35, 0x26};
 static char acl_enable_disable_settings[2] = {0x55, 0x00};
+static char p3_off[2] = {0xb0, 0x02};
+static char p3_data[2] = {0xb1, 0x1a};
 static char C8_offset[] = {0xB0, 0x00};
 static char C8_data[] = {0xC8,
 		0x01, 0x4B, 0x01, 0x49, 0x01, 0x80, 0xD1, 0xD1, 0xD1, 0xCC,
@@ -97,7 +99,9 @@ static struct mipi_mot_cmd_seq set_brightness_seq[] = {
 };
 
 static int is_controller_ver_1(struct msm_fb_data_type *);
+static int is_controller_ver_2(struct msm_fb_data_type *);
 #define VER_1		is_controller_ver_1
+#define VER_2		is_controller_ver_2
 
 static struct mipi_mot_cmd_seq smd_hd_465_init_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE, 120, exit_sleep),
@@ -120,6 +124,8 @@ static struct mipi_mot_cmd_seq smd_hd_465_init_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, disp_ctrl),
 	MIPI_MOT_EXEC_SEQ(NULL, set_brightness_seq),
 	MIPI_MOT_EXEC_SEQ(NULL, acl_enable_disable_seq),
+	MIPI_MOT_TX_DEF(VER_2, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_off),
+	MIPI_MOT_TX_DEF(VER_2, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_data),
 };
 
 static struct mipi_mot_cmd_seq smd_hd_465_disp_off_seq[] = {
@@ -158,6 +164,11 @@ static struct mipi_mot_cmd_seq smd_hd_465_en_from_partial_seq[] = {
 static int is_controller_ver_1(struct msm_fb_data_type *mfd)
 {
 	return (mipi_mot_get_controller_ver(mfd) < 2) ? 1 : 0;
+}
+
+static int is_controller_ver_2(struct msm_fb_data_type *mfd)
+{
+	return (mipi_mot_get_controller_ver(mfd) == 2) ? 1 : 0;
 }
 
 static void enable_acl(struct msm_fb_data_type *mfd)
