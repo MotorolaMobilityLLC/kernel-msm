@@ -22,6 +22,7 @@
 #include <mach/board.h>
 #include <mach/gpiomux.h>
 #include <mach/socinfo.h>
+#include <mach/board_asustek.h>
 #include "devices.h"
 #include "board-flo.h"
 
@@ -1308,14 +1309,14 @@ static struct gpiomux_setting gpio_keys_suspended_cfg = {
 };
 
 static struct msm_gpiomux_config asustek_gpio_keys_configs[] __initdata = {
-	{	.gpio = 53,
+	{	.gpio = 53,	/* Changed to GPIO#15 for HW_REV_B */
 		.settings = {
 			[GPIOMUX_ACTIVE] = &gpio_keys_active_cfg,
 			[GPIOMUX_SUSPENDED] = &gpio_keys_suspended_cfg,
 		},
 	},
 	{
-		.gpio = 54,
+		.gpio = 54,	/* Changed to GPIO#36 for HW_REV_B */
 		.settings = {
 			[GPIOMUX_ACTIVE] = &gpio_keys_active_cfg,
 			[GPIOMUX_SUSPENDED] = &gpio_keys_suspended_cfg,
@@ -1373,7 +1374,7 @@ static struct msm_gpiomux_config asustek_pcbid_pins_configs[] __initdata = {
 		},
 	},
 	{
-		.gpio = 15,
+		.gpio = 15,	/* Changed to GPIO#53 since HW_REV_B */
 		.settings = {
 			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
 			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
@@ -1611,7 +1612,10 @@ void __init apq8064_init_gpiomux(void)
 {
 	int rc;
 	int platform_version = socinfo_get_platform_version();
-
+#ifdef CONFIG_MACH_ASUSTEK
+	hw_rev revision = HW_REV_INVALID;
+	revision = asustek_get_hw_rev();
+#endif
 	rc = msm_gpiomux_init(NR_GPIO_IRQS);
 	if (rc) {
 		pr_err(KERN_ERR "msm_gpiomux_init failed %d\n", rc);
@@ -1643,6 +1647,18 @@ void __init apq8064_init_gpiomux(void)
 
 #ifdef CONFIG_MACH_ASUSTEK
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
+		if ((revision == HW_REV_B) || (revision == HW_REV_C) ||
+			(revision == HW_REV_D)) {
+			pr_info("Reconfigure asustek_pcbid of gpiomux\n");
+			asustek_pcbid_pins_configs[5].gpio = 53;
+		}
+
+		if (revision == HW_REV_B) {
+			pr_info("Reconfigure gpio_keys of gpiomux\n");
+			asustek_gpio_keys_configs[0].gpio = 15;
+			asustek_gpio_keys_configs[1].gpio = 36;
+		}
+
 		msm_gpiomux_install(asustek_gpio_keys_configs,
 			ARRAY_SIZE(asustek_gpio_keys_configs));
 		msm_gpiomux_install(asustek_pcbid_pins_configs,

@@ -29,6 +29,8 @@
 
 #define GPIO_KEY_VOLUMEUP	53
 #define GPIO_KEY_VOLUMEDOWN	54
+#define GPIO_KEY2_VOLUMEUP	15
+#define GPIO_KEY2_VOLUMEDOWN	36
 
 #define GPIO_KEY(_id, _iswake)		\
 	{					\
@@ -59,9 +61,22 @@ static struct platform_device asustek_keys_device = {
 	},
 };
 
+static void gpio_keys_remap(void)
+{
+	if (asustek_get_hw_rev() == HW_REV_B) {
+		pr_info(
+		"Reconfigure VOL_UP with GPIO#%d and VOL_DOWN with GPIO#%d\n",
+				GPIO_KEY2_VOLUMEUP, GPIO_KEY2_VOLUMEDOWN);
+		asustek_keys[0].gpio = GPIO_KEY2_VOLUMEUP;
+		asustek_keys[1].gpio = GPIO_KEY2_VOLUMEDOWN;
+	}
+}
+
 void __init asustek_add_keypad(void)
 {
 	pr_info("Registering gpio keys\n");
+
+	gpio_keys_remap();
 
 	platform_device_register(&asustek_keys_device);
 }
