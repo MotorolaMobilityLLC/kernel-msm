@@ -36,7 +36,9 @@
 		gpios = <&msmgpio 46 0>, /* IRQ */
 			<&msmgpio 63 0>; /* RESET */
 
-		synaptics,panel-sync-enabled = <1>;
+		synaptics,purge-enabled;
+		synaptics,reset-on-resume;
+		synaptics,shared-regulator;
 		synaptics,key-buttons = <59 60 61 0>; /* F1, F2, F3 */
 	};
 };
