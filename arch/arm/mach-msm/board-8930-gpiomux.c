@@ -842,6 +842,16 @@ static struct msm_gpiomux_config msm8930_sd_det_config[] __initdata = {
 	},
 };
 
+static struct msm_gpiomux_config msm8930_sd_det_config_evt[] __initdata = {
+	{
+		.gpio = 90,	/* SD Card Detect Line */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &sd_det_line,
+			[GPIOMUX_ACTIVE] = &sd_det_line,
+		},
+	},
+};
+
 static struct gpiomux_setting gyro_int_line = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_2MA,
@@ -997,6 +1007,9 @@ int __init sglte8930_init_gpiomux(void)
 
 	msm_gpiomux_install(msm8960_synaptic_rmi4_configs,
 			ARRAY_SIZE(msm8960_synaptic_rmi4_configs));
+
+	msm_gpiomux_install(msm8930_sd_det_config_evt,
+			ARRAY_SIZE(msm8930_sd_det_config_evt));
 
 	return 0;
 }
