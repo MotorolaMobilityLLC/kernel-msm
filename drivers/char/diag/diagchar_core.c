@@ -951,6 +951,11 @@ long diagchar_ioctl(struct file *filp,
 		mutex_unlock(&driver->diagchar_mutex);
 		pr_debug("diag: optimized_logging = %d\n", optimized_logging);
 		success = 1;
+	} else if (iocmd == DIAG_IOCTL_OPTIMIZED_LOGGING_FLUSH) {
+		struct diag_smd_info *smd_info = &driver->smd_cntl[MODEM_DATA];
+		pr_debug("diag: optimized logging flush BP buffer\n");
+		diag_send_diag_flush(smd_info);
+		success = 1;
 	} else
 		DIAGADDON_ioctl(&success, filp, iocmd, ioarg);
 	return success;
