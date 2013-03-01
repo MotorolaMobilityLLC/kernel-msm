@@ -16,21 +16,21 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+#define pr_fmt(fmt) "%s: " fmt, __func__
 
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#include <linux/gpio.h>
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/input.h>
 #include <linux/firmware.h>
+#include <linux/semaphore.h>
+#include <linux/wakelock.h>
 #include <linux/input/synaptics_dsx.h>
 #include "synaptics_dsx_i2c.h"
-
-#define DEBUG_FW_UPDATE
-#define SHOW_PROGRESS
-#define FW_IMAGE_NAME "synaptics_fw_E001.img"
 
 #define CHECKSUM_OFFSET 0x00
 #define BOOTLOADER_VERSION_OFFSET 0x07
@@ -40,22 +40,19 @@
 #define PRODUCT_INFO_OFFSET 0x1E
 #define FW_IMAGE_OFFSET 0x100
 #define PRODUCT_ID_SIZE 10
+#define BOOTLOADER_VERSION 0x06
 
 #define BOOTLOADER_ID_OFFSET 0
-#define FLASH_PROPERTIES_OFFSET 2
+#define FLASH_PROPERTIES_OFFSET 1
 #define BLOCK_SIZE_OFFSET 3
 #define FW_BLOCK_COUNT_OFFSET 5
-
-#define REG_MAP (1 << 0)
-#define UNLOCKED (1 << 1)
-#define HAS_CONFIG_ID (1 << 2)
-#define HAS_PERM_CONFIG (1 << 3)
-#define HAS_BL_CONFIG (1 << 4)
-#define HAS_DISP_CONFIG (1 << 5)
-#define HAS_CTRL1 (1 << 6)
+#define FW_VERSION_OFFSET 18
+#define INT_STATUS_OFFSET 1
 
 #define BLOCK_NUMBER_OFFSET 0
-#define BLOCK_DATA_OFFSET 2
+#define BLOCK_DATA_OFFSET 1
+#define FLASH_COMMAND_OFFSET 2
+#define FLASH_STATUS_OFFSET 3
 
 #define UI_CONFIG_AREA 0x00
 #define PERM_CONFIG_AREA 0x01
@@ -82,8 +79,8 @@ enum flash_command {
 #define WRITE_WAIT_MS (3 * 1000)
 #define ERASE_WAIT_MS (5 * 1000)
 
-#define MIN_SLEEP_TIME_US 50
-#define MAX_SLEEP_TIME_US 100
+#define MIN_SLEEP_TIME_US 500
+#define MAX_SLEEP_TIME_US 1000
 
 static ssize_t fwu_sysfs_show_image(struct file *data_file,
 		struct kobject *kobj, struct bin_attribute *attributes,
@@ -103,6 +100,9 @@ static ssize_t fwu_sysfs_read_config_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
 static ssize_t fwu_sysfs_config_area_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
+static ssize_t fwu_sysfs_force_reflash_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
 static ssize_t fwu_sysfs_image_size_store(struct device *dev,
@@ -127,6 +127,108 @@ static ssize_t fwu_sysfs_disp_config_block_count_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
 static int fwu_wait_for_idle(int timeout_ms);
+
+static int fwu_scan_pdt(void);
+
+/* F34 packet register description */
+
+struct {
+	unsigned char id_letter;
+	unsigned char id_digit;
+} f34_q0_0;
+
+struct {
+	unsigned char bl_minor;
+	unsigned char bl_major;
+} f34_q0_1;
+
+struct {
+	unsigned char fw_id_0_7;
+	unsigned char fw_id_8_15;
+	unsigned char fw_id_16_23;
+	unsigned char fw_id_24_31;
+} f34_q0_2;
+
+struct {
+	union {
+		struct {
+			unsigned char regmap:1;
+			unsigned char unlocked:1;
+			unsigned char has_configid:1;
+			unsigned char has_perm_config:1;
+			unsigned char has_bl_config:1;
+			unsigned char has_display_config:1;
+			unsigned char has_blob_config:1;
+			unsigned char reserved:1;
+		} __packed;
+		unsigned char data[1];
+	};
+} flash_properties;
+
+struct {
+	unsigned char blk_size_lsb;
+	unsigned char blk_size_msb;
+} f34_q2_0;
+
+struct f34_query3_0 {
+	unsigned char fw_blk_count_lsb;
+	unsigned char fw_blk_count_msb;
+} f34_q3_0;
+
+struct {
+	unsigned char ui_cfg_blk_count_lsb;
+	unsigned char ui_cfg_blk_count_msb;
+} f34_q3_1;
+
+struct {
+	unsigned char perm_cfg_blk_count_lsb;
+	unsigned char perm_cfg_blk_count_msb;
+} f34_q3_2;
+
+struct {
+	unsigned char bl_cfg_blk_count_lsb;
+	unsigned char bl_cfg_blk_count_msb;
+} f34_q3_3;
+
+struct {
+	unsigned char disp_cfg_blk_count_lsb;
+	unsigned char disp_cfg_blk_count_msb;
+} f34_q3_4;
+
+struct synaptics_rmi4_subpkt f34_query_0[] = {
+	RMI4_SUBPKT_STATIC(f34_q0_0),
+	RMI4_SUBPKT_STATIC(f34_q0_1),
+	RMI4_SUBPKT_STATIC(f34_q0_2),
+};
+
+struct synaptics_rmi4_subpkt f34_query_1[] = {
+	RMI4_SUBPKT_STATIC(flash_properties),
+};
+
+struct synaptics_rmi4_subpkt f34_query_2[] = {
+	RMI4_SUBPKT_STATIC(f34_q2_0),
+};
+
+struct synaptics_rmi4_subpkt f34_query_3[] = {
+	RMI4_SUBPKT_STATIC(f34_q3_0),
+	RMI4_SUBPKT_STATIC(f34_q3_1),
+	RMI4_SUBPKT_STATIC(f34_q3_2),
+	RMI4_SUBPKT_STATIC(f34_q3_3),
+	RMI4_SUBPKT_STATIC(f34_q3_4),
+};
+
+struct synaptics_rmi4_packet_reg f34_query_reg_array[] = {
+	RMI4_REG_STATIC(f34_query_0, 0, 8),
+	RMI4_REG_STATIC(f34_query_1, 1, 1),
+	RMI4_REG_STATIC(f34_query_2, 2, 2),
+	RMI4_REG_STATIC(f34_query_3, 3, 10),
+};
+
+struct synaptics_rmi4_func_packet_regs f34_query_regs = {
+	.base_addr = 0,
+	.nr_regs = ARRAY_SIZE(f34_query_reg_array),
+	.regs = f34_query_reg_array,
+};
 
 struct image_header {
 	unsigned int checksum;
@@ -175,28 +277,12 @@ struct f01_device_control {
 	};
 };
 
-struct f34_flash_control {
+struct f34_flash_status {
 	union {
 		struct {
-			unsigned char command:4;
-			unsigned char status:3;
-			unsigned char program_enabled:1;
-		} __packed;
-		unsigned char data[1];
-	};
-};
-
-struct f34_flash_properties {
-	union {
-		struct {
-			unsigned char regmap:1;
-			unsigned char unlocked:1;
-			unsigned char has_configid:1;
-			unsigned char has_perm_config:1;
-			unsigned char has_bl_config:1;
-			unsigned char has_display_config:1;
-			unsigned char has_blob_config:1;
+			unsigned char status:6;
 			unsigned char reserved:1;
+			unsigned char program_enabled:1;
 		} __packed;
 		unsigned char data[1];
 	};
@@ -204,7 +290,10 @@ struct f34_flash_properties {
 
 struct synaptics_rmi4_fwu_handle {
 	bool initialized;
+	bool irq_enabled;
 	char product_id[SYNAPTICS_RMI4_PRODUCT_ID_SIZE + 1];
+	char fw_filename[SYNAPTICS_RMI4_FILENAME_SIZE];
+	unsigned int firmware_id;
 	unsigned int image_size;
 	unsigned int data_pos;
 	unsigned char intr_mask;
@@ -223,14 +312,12 @@ struct synaptics_rmi4_fwu_handle {
 	unsigned short disp_config_block_count;
 	unsigned short config_size;
 	unsigned short config_area;
-	unsigned short addr_f34_flash_control;
-	unsigned short addr_f01_interrupt_register;
 	struct synaptics_rmi4_fn_desc f01_fd;
 	struct synaptics_rmi4_fn_desc f34_fd;
 	struct synaptics_rmi4_exp_fn_ptr *fn_ptr;
 	struct synaptics_rmi4_data *rmi4_data;
-	struct f34_flash_control flash_control;
-	struct f34_flash_properties flash_properties;
+	struct semaphore sema;
+	struct wake_lock flash_wake_lock;
 };
 
 static struct bin_attribute dev_attr_data = {
@@ -262,6 +349,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(blocksize, S_IRUGO,
 			fwu_sysfs_block_size_show,
 			synaptics_rmi4_store_error),
+	__ATTR(forcereflash, S_IWUSR,
+			synaptics_rmi4_show_error,
+			fwu_sysfs_force_reflash_store),
 	__ATTR(fwblockcount, S_IRUGO,
 			fwu_sysfs_firmware_block_count_show,
 			synaptics_rmi4_store_error),
@@ -280,7 +370,7 @@ static struct device_attribute attrs[] = {
 };
 
 static struct synaptics_rmi4_fwu_handle *fwu;
-
+static bool force_reflash;
 static struct completion remove_complete;
 
 static unsigned int extract_uint(const unsigned char *ptr)
@@ -304,54 +394,57 @@ static void parse_header(struct image_header *header,
 	memcpy(header->product_info, &fw_image[PRODUCT_INFO_OFFSET],
 			SYNAPTICS_RMI4_PRODUCT_INFO_SIZE);
 
-#ifdef DEBUG_FW_UPDATE
-	dev_info(&fwu->rmi4_data->i2c_client->dev,
+	dev_dbg(&fwu->rmi4_data->i2c_client->dev,
 		"Firwmare size %d, config size %d\n",
 		header->image_size,
 		header->config_size);
-#endif
+
 	return;
+}
+
+static unsigned int fwu_query_firmware_id(void)
+{
+	unsigned char firmware_id[4] = {0};
+	/* device firmware id */
+	fwu->fn_ptr->read(fwu->rmi4_data,
+			fwu->f01_fd.query_base_addr + FW_VERSION_OFFSET,
+			firmware_id,
+			sizeof(firmware_id));
+	firmware_id[3] = 0;
+	return extract_uint(firmware_id);
 }
 
 static int fwu_check_version(void)
 {
 	int retval;
-	unsigned char firmware_id[4];
+	unsigned int firmware_id;
 	unsigned char config_id[4];
 	struct i2c_client *i2c_client = fwu->rmi4_data->i2c_client;
 
-	/* device firmware id */
-	retval = fwu->fn_ptr->read(fwu->rmi4_data,
-				fwu->f01_fd.query_base_addr + 18,
-				firmware_id,
-				sizeof(firmware_id));
-	if (retval < 0) {
-		dev_err(&i2c_client->dev,
-			"Failed to read firmware ID (code %d).\n", retval);
-		return retval;
-	}
-	firmware_id[3] = 0;
+	firmware_id = fwu_query_firmware_id();
 
-	dev_info(&i2c_client->dev, "Device firmware ID%d\n",
-					extract_uint(firmware_id));
+	dev_dbg(&i2c_client->dev, "Device firmware ID %x\n", firmware_id);
 
-	/* device config id */
-	retval = fwu->fn_ptr->read(fwu->rmi4_data,
+	if (flash_properties.has_configid) {
+		/* device config id */
+		retval = fwu->fn_ptr->read(fwu->rmi4_data,
 				fwu->f34_fd.ctrl_base_addr,
 				config_id,
 				sizeof(config_id));
-	if (retval < 0) {
-		dev_err(&i2c_client->dev,
-			"Failed to read config ID (code %d).\n", retval);
-		return retval;
+		if (retval < 0) {
+			dev_err(&i2c_client->dev,
+				"Failed to read config ID (code %d).\n",
+				retval);
+			return retval;
+		}
+
+		dev_dbg(&i2c_client->dev,
+			"Device config ID 0x%02X, 0x%02X, 0x%02X, 0x%02X\n",
+			config_id[0], config_id[1], config_id[2], config_id[3]);
 	}
 
-	dev_info(&i2c_client->dev,
-		"Device config ID 0x%02X, 0x%02X, 0x%02X, 0x%02X\n",
-		config_id[0], config_id[1], config_id[2], config_id[3]);
-
 	/* .img config id */
-	dev_info(&i2c_client->dev,
+	dev_dbg(&i2c_client->dev,
 			".img config ID 0x%02X, 0x%02X, 0x%02X, 0x%02X\n",
 			fwu->config_data[0],
 			fwu->config_data[1],
@@ -362,28 +455,26 @@ static int fwu_check_version(void)
 
 static int fwu_read_f01_device_status(struct f01_device_status *status)
 {
-	int retval;
-
-	retval = fwu->fn_ptr->read(fwu->rmi4_data,
+	return fwu->fn_ptr->read(fwu->rmi4_data,
 			fwu->f01_fd.data_base_addr,
 			status->data,
 			sizeof(status->data));
-	if (retval < 0) {
-		dev_err(&fwu->rmi4_data->i2c_client->dev,
-				"%s: Failed to read F01 device status\n",
-				__func__);
-		return retval;
-	}
-
-	return 0;
 }
 
 static int fwu_read_f34_queries(void)
 {
 	int retval;
-	unsigned char count = 4;
-	unsigned char buf[10];
 	struct i2c_client *i2c_client = fwu->rmi4_data->i2c_client;
+
+	f34_query_regs.base_addr = fwu->f34_fd.query_base_addr;
+	retval = synaptics_rmi4_read_packet_regs(fwu->rmi4_data,
+						&f34_query_regs);
+	if (retval < 0) {
+		dev_err(&i2c_client->dev,
+				"%s: Failed to read bootloader ID\n",
+				__func__);
+		return retval;
+	}
 
 	retval = fwu->fn_ptr->read(fwu->rmi4_data,
 			fwu->f34_fd.query_base_addr + BOOTLOADER_ID_OFFSET,
@@ -398,8 +489,8 @@ static int fwu_read_f34_queries(void)
 
 	retval = fwu->fn_ptr->read(fwu->rmi4_data,
 			fwu->f34_fd.query_base_addr + FLASH_PROPERTIES_OFFSET,
-			fwu->flash_properties.data,
-			sizeof(fwu->flash_properties.data));
+			flash_properties.data,
+			sizeof(flash_properties.data));
 	if (retval < 0) {
 		dev_err(&i2c_client->dev,
 				"%s: Failed to read flash properties\n",
@@ -407,66 +498,20 @@ static int fwu_read_f34_queries(void)
 		return retval;
 	}
 
-	dev_info(&i2c_client->dev, "%s perm:%d, bl:%d, display:%d\n",
-				__func__,
-				fwu->flash_properties.has_perm_config,
-				fwu->flash_properties.has_bl_config,
-				fwu->flash_properties.has_display_config);
+	dev_dbg(&i2c_client->dev,
+		"%s perm:%d, bl:%d, display:%d\n",
+		__func__,
+		flash_properties.has_perm_config,
+		flash_properties.has_bl_config,
+		flash_properties.has_display_config);
 
-	if (fwu->flash_properties.has_perm_config)
-		count += 2;
+	batohs(&fwu->block_size, (unsigned char *)&f34_q2_0);
+	batohs(&fwu->fw_block_count, (unsigned char *)&f34_q3_0);
+	batohs(&fwu->config_block_count, (unsigned char *)&f34_q3_1);
+	batohs(&fwu->perm_config_block_count, (unsigned char *)&f34_q3_2);
+	batohs(&fwu->bl_config_block_count, (unsigned char *)&f34_q3_3);
+	batohs(&fwu->disp_config_block_count, (unsigned char *)&f34_q3_4);
 
-	if (fwu->flash_properties.has_bl_config)
-		count += 2;
-
-	if (fwu->flash_properties.has_display_config)
-		count += 2;
-
-	retval = fwu->fn_ptr->read(fwu->rmi4_data,
-			fwu->f34_fd.query_base_addr + BLOCK_SIZE_OFFSET,
-			buf,
-			2);
-	if (retval < 0) {
-		dev_err(&i2c_client->dev,
-				"%s: Failed to read block size info\n",
-				__func__);
-		return retval;
-	}
-
-	batohs(&fwu->block_size, &(buf[0]));
-
-	retval = fwu->fn_ptr->read(fwu->rmi4_data,
-			fwu->f34_fd.query_base_addr + FW_BLOCK_COUNT_OFFSET,
-			buf,
-			count);
-	if (retval < 0) {
-		dev_err(&i2c_client->dev,
-				"%s: Failed to read block count info\n",
-				__func__);
-		return retval;
-	}
-
-	batohs(&fwu->fw_block_count, &(buf[0]));
-	batohs(&fwu->config_block_count, &(buf[2]));
-
-	count = 4;
-
-	if (fwu->flash_properties.has_perm_config) {
-		batohs(&fwu->perm_config_block_count, &(buf[count]));
-		count += 2;
-	}
-
-	if (fwu->flash_properties.has_bl_config) {
-		batohs(&fwu->bl_config_block_count, &(buf[count]));
-		count += 2;
-	}
-
-	if (fwu->flash_properties.has_display_config)
-		batohs(&fwu->disp_config_block_count, &(buf[count]));
-
-	fwu->addr_f34_flash_control = fwu->f34_fd.data_base_addr +
-					BLOCK_DATA_OFFSET +
-					fwu->block_size;
 	return 0;
 }
 
@@ -475,7 +520,7 @@ static int fwu_read_interrupt_status(void)
 	int retval;
 	unsigned char interrupt_status;
 	retval = fwu->fn_ptr->read(fwu->rmi4_data,
-			fwu->addr_f01_interrupt_register,
+			fwu->f01_fd.data_base_addr + INT_STATUS_OFFSET,
 			&interrupt_status,
 			sizeof(interrupt_status));
 	if (retval < 0) {
@@ -487,13 +532,13 @@ static int fwu_read_interrupt_status(void)
 	return interrupt_status;
 }
 
-static int fwu_read_f34_flash_status(void)
+static int fwu_read_f34_flash_status(struct f34_flash_status *status)
 {
 	int retval;
 	retval = fwu->fn_ptr->read(fwu->rmi4_data,
-			fwu->addr_f34_flash_control,
-			fwu->flash_control.data,
-			sizeof(fwu->flash_control.data));
+			fwu->f34_fd.data_base_addr + FLASH_STATUS_OFFSET,
+			status->data,
+			sizeof(status->data));
 	if (retval < 0) {
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
 				"%s: Failed to read flash status\n",
@@ -506,33 +551,34 @@ static int fwu_read_f34_flash_status(void)
 static int fwu_reset_device(void)
 {
 	int retval;
-	unsigned char reset = 0x01;
 
-#ifdef DEBUG_FW_UPDATE
-	dev_info(&fwu->rmi4_data->i2c_client->dev, "Reset device\n");
-#endif
-
-	retval = fwu->fn_ptr->write(fwu->rmi4_data,
-			fwu->f01_fd.cmd_base_addr,
-			&reset,
-			sizeof(reset));
-	if (retval < 0) {
-		dev_err(&fwu->rmi4_data->i2c_client->dev,
-				"%s: Failed to reset device (addr : 0x%02x)\n",
-				__func__, fwu->f01_fd.cmd_base_addr);
-		return retval;
-	}
-
-	fwu_wait_for_idle(WRITE_WAIT_MS);
+	dev_dbg(&fwu->rmi4_data->i2c_client->dev, "Reset device\n");
 
 	retval = fwu->rmi4_data->reset_device(fwu->rmi4_data);
 	if (retval < 0) {
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
 				"%s: Failed to reset core driver after reflash\n",
 				__func__);
-		return retval;
+		goto exit;
 	}
-	return 0;
+
+	retval = fwu_scan_pdt();
+	if (retval < 0) {
+		dev_err(&fwu->rmi4_data->i2c_client->dev,
+				"%s: Failed to scan PDT after reflash\n",
+				__func__);
+		goto exit;
+	}
+
+	retval = fwu_read_f34_queries();
+	if (retval < 0) {
+		dev_err(&fwu->rmi4_data->i2c_client->dev,
+				"%s: Failed to query F34 after reflash\n",
+				__func__);
+		goto exit;
+	}
+exit:
+	return retval;
 }
 
 static int fwu_write_f34_command(unsigned char cmd)
@@ -540,7 +586,7 @@ static int fwu_write_f34_command(unsigned char cmd)
 	int retval;
 
 	retval = fwu->fn_ptr->write(fwu->rmi4_data,
-			fwu->addr_f34_flash_control,
+			fwu->f34_fd.data_base_addr + FLASH_COMMAND_OFFSET,
 			&cmd,
 			sizeof(cmd));
 	if (retval < 0) {
@@ -552,30 +598,25 @@ static int fwu_write_f34_command(unsigned char cmd)
 	return 0;
 }
 
-static unsigned char fwu_check_flash_status(void)
+static irqreturn_t fwu_irq(int irq, void *data)
 {
-	fwu_read_f34_flash_status();
-	return fwu->flash_control.status;
+	struct synaptics_rmi4_fwu_handle *fwu_ptr = data;
+	up(&fwu_ptr->sema);
+	return IRQ_HANDLED;
 }
 
 static int fwu_wait_for_idle(int timeout_ms)
 {
-	int count = 0;
-	int timeout_count = ((timeout_ms * 1000) / MAX_SLEEP_TIME_US) + 1;
+	int retval;
 
-	do {
-		if (fwu_read_interrupt_status() > 0)
-			return 0;
-
-		usleep_range(MIN_SLEEP_TIME_US, MAX_SLEEP_TIME_US);
-		count++;
-	} while (count < timeout_count);
-
-	dev_err(&fwu->rmi4_data->i2c_client->dev,
-			"%s: Timed out waiting for idle status\n",
-			__func__);
-
-	return -ETIMEDOUT;
+	retval = down_timeout(&fwu->sema, msecs_to_jiffies(timeout_ms));
+	if (retval) {
+		retval = -ETIMEDOUT;
+		dev_err(&fwu->rmi4_data->i2c_client->dev,
+				"timed out waiting for cmd to complete\n");
+	} else
+		retval = fwu_read_interrupt_status();
+	return retval;
 }
 
 static int fwu_scan_pdt(void)
@@ -590,9 +631,7 @@ static int fwu_scan_pdt(void)
 	bool f34found = false;
 	struct synaptics_rmi4_fn_desc rmi_fd;
 
-#ifdef DEBUG_FW_UPDATE
-	dev_info(&fwu->rmi4_data->i2c_client->dev, "Scan PDT\n");
-#endif
+	dev_dbg(&fwu->rmi4_data->i2c_client->dev, "Scan PDT\n");
 
 	for (addr = PDT_START; addr > PDT_END; addr -= PDT_ENTRY_SIZE) {
 		retval = fwu->fn_ptr->read(fwu->rmi4_data,
@@ -610,8 +649,6 @@ static int fwu_scan_pdt(void)
 			case SYNAPTICS_RMI4_F01:
 				f01found = true;
 				fwu->f01_fd = rmi_fd;
-				fwu->addr_f01_interrupt_register =
-					fwu->f01_fd.data_base_addr + 1;
 				break;
 			case SYNAPTICS_RMI4_F34:
 				f34found = true;
@@ -627,7 +664,13 @@ static int fwu_scan_pdt(void)
 				break;
 			}
 		} else
-		break;
+			break;
+
+		if (rmi_fd.intr_src_count & 0x60)
+			dev_dbg(&fwu->rmi4_data->i2c_client->dev,
+				"%s: F%02x alternative version!!!\n",
+				__func__,
+				rmi_fd.fn_number);
 
 		intr_count += (rmi_fd.intr_src_count & MASK_3BIT);
 	}
@@ -649,10 +692,10 @@ static int fwu_write_blocks(unsigned char *block_ptr, unsigned short block_cnt,
 	int retval;
 	unsigned char block_offset[] = {0, 0};
 	unsigned short block_num;
-#ifdef SHOW_PROGRESS
+	struct f34_flash_status f34_flash_status;
 	unsigned int progress = (command == CMD_WRITE_CONFIG_BLOCK) ?
 				10 : 100;
-#endif
+
 	retval = fwu->fn_ptr->write(fwu->rmi4_data,
 			fwu->f34_fd.data_base_addr + BLOCK_NUMBER_OFFSET,
 			block_offset,
@@ -665,16 +708,15 @@ static int fwu_write_blocks(unsigned char *block_ptr, unsigned short block_cnt,
 	}
 
 	for (block_num = 0; block_num < block_cnt; block_num++) {
-#ifdef SHOW_PROGRESS
 		if (block_num % progress == 0)
-			dev_info(&fwu->rmi4_data->i2c_client->dev,
+			dev_dbg(&fwu->rmi4_data->i2c_client->dev,
 				"%s: update %s %3d / %3d\n",
 				__func__,
 				command == CMD_WRITE_CONFIG_BLOCK ?
 				"config" : "firmware",
 				block_num,
 				block_cnt);
-#endif
+
 		retval = fwu->fn_ptr->write(fwu->rmi4_data,
 			fwu->f34_fd.data_base_addr + BLOCK_DATA_OFFSET,
 			block_ptr,
@@ -703,24 +745,26 @@ static int fwu_write_blocks(unsigned char *block_ptr, unsigned short block_cnt,
 			return retval;
 		}
 
-		retval = fwu_check_flash_status();
-		if (retval != 0) {
+		retval = fwu_read_f34_flash_status(&f34_flash_status);
+		if (f34_flash_status.status) {
 			dev_err(&fwu->rmi4_data->i2c_client->dev,
-					"%s: Flash block %d status %d\n",
-					__func__, block_num, retval);
-			return -1;
+				"%s: Flash block %d status %x\n",
+				__func__,
+				block_num,
+				f34_flash_status.data[0]);
+			return -EAGAIN;
 		}
 		block_ptr += fwu->block_size;
 	}
-#ifdef SHOW_PROGRESS
-	dev_info(&fwu->rmi4_data->i2c_client->dev,
+
+	dev_dbg(&fwu->rmi4_data->i2c_client->dev,
 		"%s: update %s %3d / %3d\n",
 		__func__,
 		command == CMD_WRITE_CONFIG_BLOCK ?
 		"config" : "firmware",
 		block_cnt,
 		block_cnt);
-#endif
+
 	return 0;
 }
 
@@ -740,9 +784,20 @@ static int fwu_write_bootloader_id(void)
 {
 	int retval;
 
-#ifdef DEBUG_FW_UPDATE
-	dev_info(&fwu->rmi4_data->i2c_client->dev, "Write bootloader ID\n");
-#endif
+	retval = fwu->fn_ptr->read(fwu->rmi4_data,
+			fwu->f34_fd.query_base_addr,
+			fwu->bootloader_id,
+			sizeof(fwu->bootloader_id));
+	if (retval < 0) {
+		dev_err(&fwu->rmi4_data->i2c_client->dev,
+				"%s: Failed to read bootloader ID\n",
+				__func__);
+		return retval;
+	}
+
+	dev_dbg(&fwu->rmi4_data->i2c_client->dev, "Write bootloader ID: %c%c\n",
+			fwu->bootloader_id[0], fwu->bootloader_id[1]);
+
 	retval = fwu->fn_ptr->write(fwu->rmi4_data,
 			fwu->f34_fd.data_base_addr + BLOCK_DATA_OFFSET,
 			fwu->bootloader_id,
@@ -757,15 +812,46 @@ static int fwu_write_bootloader_id(void)
 	return 0;
 }
 
+static void fwu_enable_irq(bool enable)
+{
+	int retval;
+
+	if (enable) {
+		if (fwu->irq_enabled)
+			return;
+
+		fwu_read_interrupt_status();
+		sema_init(&fwu->sema, 0);
+
+		retval = request_irq(fwu->rmi4_data->irq, fwu_irq,
+				IRQF_TRIGGER_FALLING, "fwu", fwu);
+		if (retval < 0) {
+			dev_err(&fwu->rmi4_data->i2c_client->dev,
+					"%s: Failed to request irq: %d\n",
+					__func__, retval);
+		}
+
+		dev_dbg(&fwu->rmi4_data->i2c_client->dev,
+					"enabling F34 IRQ handler\n");
+		fwu->irq_enabled = true;
+	} else {
+		if (!fwu->irq_enabled)
+			return;
+
+		dev_dbg(&fwu->rmi4_data->i2c_client->dev,
+					"disabling F34 IRQ handler\n");
+		disable_irq(fwu->rmi4_data->irq);
+		free_irq(fwu->rmi4_data->irq, fwu);
+		fwu->irq_enabled = false;
+	}
+}
+
 static int fwu_enter_flash_prog(void)
 {
 	int retval;
 	struct f01_device_status f01_device_status;
-	struct f01_device_control f01_device_control;
+	struct f34_flash_status f34_flash_status;
 
-#ifdef DEBUG_FW_UPDATE
-	dev_info(&fwu->rmi4_data->i2c_client->dev, "Enter bootloader mode\n");
-#endif
 	retval = fwu_read_f01_device_status(&f01_device_status);
 	if (retval < 0)
 		return retval;
@@ -775,7 +861,25 @@ static int fwu_enter_flash_prog(void)
 				"%s: Already in flash prog mode\n",
 				__func__);
 		return 0;
+	} else {
+		/* UI firmware ID is only available in UI mode */
+		if (fwu->firmware_id <= fwu_query_firmware_id()) {
+			/* do not allow downgrade firmware */
+			/* unless specifically instructed to */
+			if (!force_reflash)
+				return -EEXIST;
+
+			force_reflash = false;
+			pr_notice("%s: Reflash enforced\n", __func__);
+		}
+
+		dev_dbg(&fwu->rmi4_data->i2c_client->dev,
+			"%s: Firmware IDs: currently running-%x, in image-%x\n",
+			__func__,
+			fwu_query_firmware_id(), fwu->firmware_id);
 	}
+
+	dev_dbg(&fwu->rmi4_data->i2c_client->dev, "Enter bootloader mode\n");
 
 	retval = fwu_write_bootloader_id();
 	if (retval < 0)
@@ -786,23 +890,29 @@ static int fwu_enter_flash_prog(void)
 		return retval;
 
 	retval = fwu_wait_for_idle(ENABLE_WAIT_MS);
+
 	if (retval < 0)
 		return retval;
 
-	retval = fwu_read_f01_device_status(&f01_device_status);
-	if (retval < 0)
-		return retval;
-
-	if (!f01_device_status.flash_prog) {
+	retval = fwu_read_f34_flash_status(&f34_flash_status);
+	if (!f34_flash_status.program_enabled) {
 		dev_err(&fwu->rmi4_data->i2c_client->dev,
-				"%s: Program enabled bit not set\n",
-				__func__);
+			"%s: Program enabled bit not set\n",
+			__func__);
 		return -EINVAL;
 	}
 
 	retval = fwu_scan_pdt();
 	if (retval < 0)
 		return retval;
+
+	retval = fwu_read_f34_queries();
+	if (retval < 0)
+		return retval;
+
+	dev_info(&fwu->rmi4_data->i2c_client->dev,
+				"Device firmware ID %x\n",
+				fwu_query_firmware_id());
 
 	retval = fwu_read_f01_device_status(&f01_device_status);
 	if (retval < 0)
@@ -815,45 +925,68 @@ static int fwu_enter_flash_prog(void)
 		return -EINVAL;
 	}
 
-	retval = fwu_read_f34_queries();
-	if (retval < 0)
-		return retval;
-
-	retval = fwu->fn_ptr->read(fwu->rmi4_data,
-			fwu->f01_fd.ctrl_base_addr,
-			f01_device_control.data,
-			sizeof(f01_device_control.data));
-	if (retval < 0) {
-		dev_err(&fwu->rmi4_data->i2c_client->dev,
-				"%s: Failed to read F01 device control\n",
-				__func__);
-		return retval;
-	}
-
-	f01_device_control.nosleep = true;
-	f01_device_control.sleep_mode = SLEEP_MODE_NORMAL;
-
-	retval = fwu->fn_ptr->write(fwu->rmi4_data,
-			fwu->f01_fd.ctrl_base_addr,
-			f01_device_control.data,
-			sizeof(f01_device_control.data));
-	if (retval < 0) {
-		dev_err(&fwu->rmi4_data->i2c_client->dev,
-				"%s: Failed to write F01 device control\n",
-				__func__);
-		return retval;
-	}
-
 	return retval;
+}
+
+static int fwu_handle_reflash_error(void)
+{
+	int retval, count = 0;
+	int timeout_count = 1000;
+	const struct synaptics_dsx_platform_data *platform_data =
+				fwu->rmi4_data->board;
+	fwu_enable_irq(false);
+
+	do {
+		if (gpio_get_value(platform_data->irq_gpio))
+			break;
+
+		usleep_range(MIN_SLEEP_TIME_US, MAX_SLEEP_TIME_US);
+		count++;
+	} while (count < timeout_count);
+
+	if (count == timeout_count) {
+		dev_err(&fwu->rmi4_data->i2c_client->dev,
+			"%s: Timed out waiting for idle status\n",
+			__func__);
+		return -ETIMEDOUT;
+	}
+
+	fwu_read_interrupt_status();
+
+	retval = fwu_scan_pdt();
+	if (retval < 0) {
+		dev_err(&fwu->rmi4_data->i2c_client->dev,
+			"%s: Failed to scan PDT\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	retval = fwu_read_f34_queries();
+	if (retval < 0) {
+		dev_err(&fwu->rmi4_data->i2c_client->dev,
+			"%s: Failed to query F34\n",
+			__func__);
+		return -EINVAL;
+	}
+
+	fwu_enable_irq(true);
+
+	return 0;
 }
 
 static int fwu_do_reflash(void)
 {
 	int retval;
+	struct f34_flash_status f34_flash_status;
+
+	fwu_enable_irq(true);
 
 	retval = fwu_enter_flash_prog();
 	if (retval < 0)
-		return retval;
+		goto reflash_failed;
+
+retry:
+	fwu->rmi4_data->set_state(fwu->rmi4_data, STATE_BL);
 
 	dev_dbg(&fwu->rmi4_data->i2c_client->dev,
 			"%s: Entered flash prog mode\n",
@@ -861,7 +994,7 @@ static int fwu_do_reflash(void)
 
 	retval = fwu_write_bootloader_id();
 	if (retval < 0)
-		return retval;
+		goto reflash_failed;
 
 	dev_dbg(&fwu->rmi4_data->i2c_client->dev,
 			"%s: Bootloader ID written\n",
@@ -869,7 +1002,7 @@ static int fwu_do_reflash(void)
 
 	retval = fwu_write_f34_command(CMD_ERASE_ALL);
 	if (retval < 0)
-		return retval;
+		goto reflash_failed;
 
 	dev_dbg(&fwu->rmi4_data->i2c_client->dev,
 			"%s: Erase all command written\n",
@@ -877,32 +1010,184 @@ static int fwu_do_reflash(void)
 
 	retval = fwu_wait_for_idle(ERASE_WAIT_MS);
 	if (retval < 0)
-		return retval;
+		goto reflash_failed;
 
 	dev_dbg(&fwu->rmi4_data->i2c_client->dev,
 			"%s: Idle status detected\n",
 			__func__);
 
+	retval = fwu_read_f34_flash_status(&f34_flash_status);
+	if (!f34_flash_status.program_enabled) {
+		dev_err(&fwu->rmi4_data->i2c_client->dev,
+			"%s: Program enabled bit not set\n",
+			__func__);
+		retval = -EINVAL;
+		goto reflash_failed;
+	}
+
+	fwu->rmi4_data->set_state(fwu->rmi4_data, STATE_FLASH);
+
 	if (fwu->firmware_data) {
 		retval = fwu_write_firmware();
+		if (retval == -EAGAIN) {
+			retval = fwu_handle_reflash_error();
+			if (!retval) {
+				dev_dbg(&fwu->rmi4_data->i2c_client->dev,
+						"recovered from flash error\n");
+				goto retry;
+			}
+		}
 		if (retval < 0)
-			return retval;
+			goto reflash_failed;
 		pr_notice("%s: Firmware programmed\n", __func__);
 	}
 
 	if (fwu->config_data) {
 		retval = fwu_write_configuration();
+		if (retval == -EAGAIN) {
+			retval = fwu_handle_reflash_error();
+			if (!retval) {
+				dev_dbg(&fwu->rmi4_data->i2c_client->dev,
+						"recovered from flash error\n");
+				goto retry;
+			}
+		}
 		if (retval < 0)
-			return retval;
+			goto reflash_failed;
 		pr_notice("%s: Configuration programmed\n", __func__);
 	}
 
+
+reflash_failed:
+	fwu_enable_irq(false);
+
 	return retval;
+}
+
+static bool fwu_tdat_image_format(const unsigned char *fw_image)
+{
+	return fw_image[0] == 0x31;
+}
+
+static void fwu_tdat_config_set(const unsigned char *data, size_t size,
+		const unsigned char **image, size_t *image_size)
+{
+	unsigned short id;
+	size_t length, offset;
+
+	for (offset = 0; offset < size; offset += length+5) {
+		id = (data[offset+1] << 8) | data[offset];
+		length = (data[offset+4] << 8) | data[offset+3];
+		if (id == 0x0001) {
+			*image = &data[offset+5];
+			*image_size = length;
+		}
+	}
+}
+
+static void fwu_tdat_section_offset(
+		const unsigned char **image, size_t *image_size)
+{
+	size_t offset;
+	offset = (*image)[0] + 1;
+	*image_size -= offset;
+	*image = &(*image)[offset];
+}
+
+static int fwu_parse_tdat_image(struct image_header *header,
+		const unsigned char *fw_image, size_t fw_size)
+{
+	int ii;
+	unsigned int id;
+	size_t length, offset;
+	const unsigned char *section, *data = fw_image;
+
+	pr_notice("%s: Start TDAT image processing\n", __func__);
+
+	for (ii = 0, offset = 1; offset < fw_size; offset += length+4) {
+		length = (data[offset+3] << 16) |
+			 (data[offset+2] << 8) | data[offset+1];
+
+		dev_dbg(&fwu->rmi4_data->i2c_client->dev,
+				"Record[%d]: length %u, offset %u\n",
+				ii++, length, offset);
+
+		if ((offset+length+4) > fw_size) {
+			dev_err(&fwu->rmi4_data->i2c_client->dev,
+					"Data overflow at offset %u (%u)\n",
+					offset, data[offset]);
+			return -EINVAL;
+		}
+	}
+
+	if (offset != fw_size) {
+		dev_err(&fwu->rmi4_data->i2c_client->dev,
+				"Data is misaligned\n");
+		return -EINVAL;
+	}
+
+	for (offset = 1; offset < fw_size; offset += length+4) {
+		id = data[offset];
+		length = (data[offset+3] << 16) |
+			 (data[offset+2] << 8) | data[offset+1];
+		section = &data[offset+4];
+
+		switch (id) {
+		case 1: /* config */
+			dev_dbg(&fwu->rmi4_data->i2c_client->dev,
+				"%s: Config record %d, size %d\n",
+				__func__, id, length);
+
+			fwu_tdat_config_set(section, length,
+					&fwu->config_data,
+					&header->config_size);
+			fwu_tdat_section_offset(&fwu->config_data,
+						&header->config_size);
+			break;
+
+		case 2: /* firmware */
+			dev_dbg(&fwu->rmi4_data->i2c_client->dev,
+				"%s: Firmware record %d, size %d\n",
+				__func__,
+				id,
+				length);
+
+			fwu->firmware_id = (unsigned int)section[1] +
+				(unsigned int)section[2] * 0x100 +
+				(unsigned int)section[3] * 0x10000;
+
+			dev_dbg(&fwu->rmi4_data->i2c_client->dev,
+				"%s: Firmware build ID %x\n",
+				__func__,
+				fwu->firmware_id);
+
+			fwu->firmware_data = section;
+			header->image_size = length;
+			fwu_tdat_section_offset(&fwu->firmware_data,
+						&header->image_size);
+			break;
+		default:
+			dev_dbg(&fwu->rmi4_data->i2c_client->dev,
+				"%s: Don't care section id %d\n",
+				__func__,
+				id);
+			break;
+		}
+	}
+
+
+	dev_dbg(&fwu->rmi4_data->i2c_client->dev,
+		"%s: Firwmare size %d, config size %d\n",
+		__func__,
+		header->image_size,
+		header->config_size);
+	return 0;
 }
 
 static int fwu_start_reflash(void)
 {
 	int retval;
+	size_t fw_size = 0;
 	struct image_header header;
 	const unsigned char *fw_image;
 	const struct firmware *fw_entry = NULL;
@@ -915,14 +1200,14 @@ static int fwu_start_reflash(void)
 	else {
 		dev_dbg(&fwu->rmi4_data->i2c_client->dev,
 				"%s: Requesting firmware image %s\n",
-				__func__, FW_IMAGE_NAME);
+				__func__, fwu->fw_filename);
 
-		retval = request_firmware(&fw_entry, FW_IMAGE_NAME,
+		retval = request_firmware(&fw_entry, fwu->fw_filename,
 				&fwu->rmi4_data->i2c_client->dev);
 		if (retval != 0) {
 			dev_err(&fwu->rmi4_data->i2c_client->dev,
 					"%s: Firmware image %s not available\n",
-					__func__, FW_IMAGE_NAME);
+					__func__, fwu->fw_filename);
 			retval = -EINVAL;
 			goto exit;
 		}
@@ -932,54 +1217,69 @@ static int fwu_start_reflash(void)
 				__func__, fw_entry->size);
 
 		fw_image = fw_entry->data;
+		fw_size = fw_entry->size;
 	}
 
-	parse_header(&header, fw_image);
+	if (fwu_tdat_image_format(fw_image))
+		fwu_parse_tdat_image(&header, fw_image, fw_size);
+	else {
+		parse_header(&header, fw_image);
 
-	if (header.image_size)
-		fwu->firmware_data = fw_image + FW_IMAGE_OFFSET;
-	if (header.config_size) {
-		fwu->config_data = fw_image + FW_IMAGE_OFFSET +
-				header.image_size;
+		if (header.bootloader_version != BOOTLOADER_VERSION) {
+			dev_err(&fwu->rmi4_data->i2c_client->dev,
+				"%s: Image has invalid bootloader version %d\n",
+				__func__,
+				header.bootloader_version);
+			release_firmware(fw_entry);
+			retval = -EINVAL;
+			goto exit;
+		}
+
+		if (header.image_size)
+			fwu->firmware_data = fw_image + FW_IMAGE_OFFSET;
+		if (header.config_size)
+			fwu->config_data = fw_image + FW_IMAGE_OFFSET +
+					header.image_size;
 	}
 
-	fwu->fn_ptr->enable(fwu->rmi4_data, false);
+	wake_lock(&fwu->flash_wake_lock);
+	fwu->rmi4_data->irq_enable(fwu->rmi4_data, false);
 
-	fwu_check_version();
-
-	retval = fwu_do_reflash();
-	if (retval < 0) {
-		dev_err(&fwu->rmi4_data->i2c_client->dev,
+	retval = fwu_check_version();
+	if (!retval)
+		retval = fwu_do_reflash();
+	switch (retval) {
+	case 0:
+		break;
+	case -EEXIST:
+		dev_info(&fwu->rmi4_data->i2c_client->dev,
+			"%s: Current firmware is up to date\n",
+			__func__);
+		retval = 0;
+	default:
+		if (retval < 0)
+			dev_err(&fwu->rmi4_data->i2c_client->dev,
 				"%s: Failed to do reflash\n",
 				__func__);
+		fwu->rmi4_data->irq_enable(fwu->rmi4_data, true);
+		goto unlock;
 	}
 
+	fwu->rmi4_data->set_state(fwu->rmi4_data, STATE_UNKNOWN);
 	/* reset device */
 	fwu_reset_device();
+	fwu->rmi4_data->ready_state(fwu->rmi4_data, false);
 
+unlock:
 	/* check device status */
 	retval = fwu_read_f01_device_status(&f01_device_status);
-	if (retval < 0)
-		goto exit;
-
-	dev_info(&fwu->rmi4_data->i2c_client->dev, "Device is in %s mode\n",
-		f01_device_status.flash_prog == 1 ? "bootloader" : "UI");
-	if (f01_device_status.flash_prog)
-		dev_info(&fwu->rmi4_data->i2c_client->dev, "Flash status %d\n",
-				f01_device_status.status_code);
-
-	if (f01_device_status.flash_prog) {
+	if (!retval)
 		dev_info(&fwu->rmi4_data->i2c_client->dev,
-				"%s: Device is in flash prog mode 0x%02X\n",
-				__func__, f01_device_status.status_code);
-		retval = 0;
-		goto exit;
-	}
-	fwu->fn_ptr->enable(fwu->rmi4_data, true);
-	if (fw_entry)
-		release_firmware(fw_entry);
+			"Device is in %s mode\n",
+			f01_device_status.flash_prog ? "bootloader" : "UI");
 
-	pr_notice("%s: End of reflash process\n", __func__);
+	release_firmware(fw_entry);
+	wake_unlock(&fwu->flash_wake_lock);
 exit:
 	return retval;
 }
@@ -1056,15 +1356,15 @@ static int fwu_start_write_config(void)
 	case UI_CONFIG_AREA:
 		break;
 	case PERM_CONFIG_AREA:
-		if (!fwu->flash_properties.has_perm_config)
+		if (!flash_properties.has_perm_config)
 			return -EINVAL;
 		break;
 	case BL_CONFIG_AREA:
-		if (!fwu->flash_properties.has_bl_config)
+		if (!flash_properties.has_bl_config)
 			return -EINVAL;
 		break;
 	case DISP_CONFIG_AREA:
-		if (!fwu->flash_properties.has_display_config)
+		if (!flash_properties.has_display_config)
 			return -EINVAL;
 		break;
 	default:
@@ -1125,21 +1425,21 @@ static int fwu_do_read_config(void)
 		block_count = fwu->config_block_count;
 		break;
 	case PERM_CONFIG_AREA:
-		if (!fwu->flash_properties.has_perm_config) {
+		if (!flash_properties.has_perm_config) {
 			retval = -EINVAL;
 			goto exit;
 		}
 		block_count = fwu->perm_config_block_count;
 		break;
 	case BL_CONFIG_AREA:
-		if (!fwu->flash_properties.has_bl_config) {
+		if (!flash_properties.has_bl_config) {
 			retval = -EINVAL;
 			goto exit;
 		}
 		block_count = fwu->bl_config_block_count;
 		break;
 	case DISP_CONFIG_AREA:
-		if (!fwu->flash_properties.has_display_config) {
+		if (!flash_properties.has_display_config) {
 			retval = -EINVAL;
 			goto exit;
 		}
@@ -1259,18 +1559,32 @@ static ssize_t fwu_sysfs_do_reflash_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int retval;
-	unsigned int input;
+	char template[SYNAPTICS_RMI4_FILENAME_SIZE];
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 
-	if (sscanf(buf, "%u", &input) != 1) {
+	if (count > sizeof(fwu->fw_filename)) {
+		dev_err(&rmi4_data->i2c_client->dev,
+			"%s: FW filename is too long\n",
+			__func__);
 		retval = -EINVAL;
 		goto exit;
 	}
 
-	if (input != 1) {
+	snprintf(template, sizeof(template), "synaptics-%s-", fwu->product_id);
+	if (strncmp(buf, template, strnlen(template, sizeof(template)))) {
+		dev_err(&rmi4_data->i2c_client->dev,
+			"%s: FW does not belong to %s\n",
+			__func__,
+			fwu->product_id);
 		retval = -EINVAL;
 		goto exit;
 	}
+
+	strlcpy(fwu->fw_filename, buf, count);
+	dev_dbg(&rmi4_data->i2c_client->dev,
+			"%s: FW filename: %s\n",
+			__func__,
+			fwu->fw_filename);
 
 	retval = synaptics_fw_updater(fwu->ext_data_source);
 	if (retval < 0) {
@@ -1386,6 +1700,22 @@ static ssize_t fwu_sysfs_image_size_store(struct device *dev,
 	return count;
 }
 
+static ssize_t fwu_sysfs_force_reflash_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int input;
+
+	if (sscanf(buf, "%u", &input) != 1)
+		return -EINVAL;
+
+	if (input != 1)
+		return -EINVAL;
+
+	force_reflash = true;
+
+	return count;
+}
+
 static ssize_t fwu_sysfs_block_size_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -1425,8 +1755,9 @@ static ssize_t fwu_sysfs_disp_config_block_count_show(struct device *dev,
 static void synaptics_rmi4_fwu_attn(struct synaptics_rmi4_data *rmi4_data,
 		unsigned char intr_mask)
 {
+	struct f34_flash_status f34_flash_status;
 	if (fwu->intr_mask & intr_mask)
-		fwu_read_f34_flash_status();
+		fwu_read_f34_flash_status(&f34_flash_status);
 
 	return;
 }
@@ -1496,9 +1827,11 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 	if (retval < 0)
 		goto exit_free_mem;
 
+	wake_lock_init(&fwu->flash_wake_lock,
+				WAKE_LOCK_SUSPEND, "synaptics_fw_flash");
 	fwu->initialized = true;
 
-	retval = sysfs_create_bin_file(&rmi4_data->input_dev->dev.kobj,
+	retval = sysfs_create_bin_file(&rmi4_data->i2c_client->dev.kobj,
 			&dev_attr_data);
 	if (retval < 0) {
 		dev_err(&rmi4_data->i2c_client->dev,
@@ -1508,7 +1841,7 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 	}
 
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {
-		retval = sysfs_create_file(&rmi4_data->input_dev->dev.kobj,
+		retval = sysfs_create_file(&rmi4_data->i2c_client->dev.kobj,
 				&attrs[attr_count].attr);
 		if (retval < 0) {
 			dev_err(&rmi4_data->i2c_client->dev,
@@ -1523,11 +1856,11 @@ static int synaptics_rmi4_fwu_init(struct synaptics_rmi4_data *rmi4_data)
 
 exit_remove_attrs:
 for (attr_count--; attr_count >= 0; attr_count--) {
-	sysfs_remove_file(&rmi4_data->input_dev->dev.kobj,
+	sysfs_remove_file(&rmi4_data->i2c_client->dev.kobj,
 			&attrs[attr_count].attr);
 }
 
-sysfs_remove_bin_file(&rmi4_data->input_dev->dev.kobj, &dev_attr_data);
+sysfs_remove_bin_file(&rmi4_data->i2c_client->dev.kobj, &dev_attr_data);
 
 exit_free_mem:
 	kfree(fwu->fn_ptr);
@@ -1543,10 +1876,10 @@ static void synaptics_rmi4_fwu_remove(struct synaptics_rmi4_data *rmi4_data)
 {
 	unsigned char attr_count;
 
-	sysfs_remove_bin_file(&rmi4_data->input_dev->dev.kobj, &dev_attr_data);
+	sysfs_remove_bin_file(&rmi4_data->i2c_client->dev.kobj, &dev_attr_data);
 
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {
-		sysfs_remove_file(&rmi4_data->input_dev->dev.kobj,
+		sysfs_remove_file(&rmi4_data->i2c_client->dev.kobj,
 				&attrs[attr_count].attr);
 	}
 
