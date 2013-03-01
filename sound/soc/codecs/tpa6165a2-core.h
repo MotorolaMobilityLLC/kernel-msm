@@ -127,6 +127,9 @@
 #define TPA6165_STEREO_LINEOUT3  0x1C
 #define TPA6165_STEREO_LINEOUT4  0x1F
 
+/*Force acc type */
+#define TPA6165_FORCE_TYPE  (1<<7)
+
 /* amp states */
 #define TPA6165_AMP_DISABLED	0
 #define TPA6165_AMP_ENABLED		1
