@@ -16,6 +16,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+#define pr_fmt(fmt) "%s: " fmt, __func__
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -506,29 +507,8 @@ static void synaptics_dsx_ic_reset(
 		else
 			break;
 	}
-	pr_debug("Reset was %ssuccessful and took %ums\n",
+	pr_debug("reset was %ssuccessful and took %ums\n",
 		ii < 5000 ? "" : "un", jiffies_to_msecs(jiffies-start));
-}
-
-static int synaptics_dsx_panel_sync_cb(struct notifier_block *nb,
-		unsigned long event, void *ignore)
-{
-	int value = 0;
-	struct synaptics_rmi4_data *rmi4_data =
-		container_of(nb, struct synaptics_rmi4_data, panel_nb);
-	switch (event) {
-	case MMI_PANEL_EVENT_PWR_OFF:
-		value = 1; /* set flag */
-			break;
-	case MMI_PANEL_EVENT_POST_INIT:
-		value = 0; /* clear flag */
-			break;
-	case MMI_PANEL_EVENT_PWR_ON:
-			return 1; /* not interested at this time */
-	}
-	atomic_set(&rmi4_data->panel_off_flag, value);
-	pr_debug("panel_off %d\n", value);
-	return 0;
 }
 
 #ifdef CONFIG_OF
@@ -537,7 +517,6 @@ static struct synaptics_dsx_platform_data *
 				struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval;
-	unsigned panel_sync_enabled = 0;
 	unsigned key_codes[SYN_MAX_BUTTONS];
 	struct synaptics_dsx_platform_data *pdata;
 	struct device_node *np = client->dev.of_node;
@@ -587,9 +566,20 @@ static struct synaptics_dsx_platform_data *
 	pdata->irq_flags = IRQF_TRIGGER_LOW | IRQF_ONESHOT;
 	pdata->cap_button_map = button_map;
 
-	of_property_read_u32(np, "synaptics,panel-sync-enabled",
-			 &panel_sync_enabled);
-	rmi4_data->panel_sync_en = (bool)panel_sync_enabled;
+	if (of_property_read_bool(np, "synaptics,purge-enabled")) {
+		pr_notice("using purge\n");
+		rmi4_data->purge_enabled = true;
+	}
+
+	if (of_property_read_bool(np, "synaptics,shared-regulator")) {
+		pr_notice("using shared regulator\n");
+		rmi4_data->shared_regulator = true;
+	}
+
+	if (of_property_read_bool(np, "synaptics,reset-on-resume")) {
+		pr_notice("using hard reset on resume\n");
+		rmi4_data->reset_on_resume = true;
+	}
 
 	return pdata;
 }
@@ -611,13 +601,14 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 
 static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data);
 
+static void synaptics_rmi4_sensor_sleep(struct synaptics_rmi4_data *rmi4_data);
+
+static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data);
+
+static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
+		bool enable);
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
-static ssize_t synaptics_rmi4_full_pm_cycle_show(struct device *dev,
-		struct device_attribute *attr, char *buf);
-
-static ssize_t synaptics_rmi4_full_pm_cycle_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count);
-
 static void synaptics_rmi4_early_suspend(struct early_suspend *h);
 
 static void synaptics_rmi4_late_resume(struct early_suspend *h);
@@ -723,11 +714,6 @@ struct synaptics_rmi4_exp_fn {
 };
 
 static struct device_attribute attrs[] = {
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	__ATTR(full_pm_cycle, (S_IRUGO | S_IWUGO),
-			synaptics_rmi4_full_pm_cycle_show,
-			synaptics_rmi4_full_pm_cycle_store),
-#endif
 	__ATTR(reset, S_IWUGO,
 			synaptics_rmi4_show_error,
 			synaptics_rmi4_f01_reset_store),
@@ -749,30 +735,144 @@ static bool exp_fn_inited;
 static struct mutex exp_fn_list_mutex;
 static struct list_head exp_fn_list;
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static ssize_t synaptics_rmi4_full_pm_cycle_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+#define SYNAPTICS_DSX_STATES { \
+	DSX(UNKNOWN), \
+	DSX(READY), \
+	DSX(STANDBY), \
+	DSX(SUSPEND), \
+	DSX(BL), \
+	DSX(FLASH), \
+	DSX(INVALID) }
 
-	return snprintf(buf, PAGE_SIZE, "%u\n",
-			rmi4_data->full_pm_cycle);
+#define DSX(a)	STATE_##a
+enum SYNAPTICS_DSX_STATES;
+#undef DSX
+
+#define DSX(a)	(#a)
+static const char * const synaptics_state_names[] = SYNAPTICS_DSX_STATES;
+#undef DSX
+
+static const char *synaptics_dsx_state_name(int state)
+{
+	int index = state < 0 || state > STATE_INVALID ? STATE_INVALID : state;
+	return synaptics_state_names[index];
 }
 
-static ssize_t synaptics_rmi4_full_pm_cycle_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
+static int synaptics_dsx_get_state_safe(struct synaptics_rmi4_data *rmi4_data)
 {
-	unsigned int input;
-	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
-
-	if (sscanf(buf, "%u", &input) != 1)
-		return -EINVAL;
-
-	rmi4_data->full_pm_cycle = input > 0 ? 1 : 0;
-
-	return count;
+	int state;
+	mutex_lock(&(rmi4_data->state_mutex));
+	state = rmi4_data->state;
+	mutex_unlock(&(rmi4_data->state_mutex));
+	return state;
 }
-#endif
+
+static void synaptics_dsx_set_state_safe(struct synaptics_rmi4_data *rmi4_data,
+		int state)
+{
+	mutex_lock(&(rmi4_data->state_mutex));
+	rmi4_data->state = state;
+	mutex_unlock(&(rmi4_data->state_mutex));
+}
+
+static int synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
+		int state)
+{
+	if (synaptics_dsx_get_state_safe(rmi4_data) == state)
+		return 0;
+
+	switch (state) {
+	case STATE_UNKNOWN:
+	case STATE_FLASH:
+		/* no special handling for these states */
+			break;
+
+	case STATE_SUSPEND:
+		synaptics_rmi4_irq_enable(rmi4_data, false);
+		if (!rmi4_data->sensor_sleep) {
+			synaptics_rmi4_sensor_sleep(rmi4_data);
+			rmi4_data->touch_stopped = true;
+		}
+			break;
+
+	case STATE_READY:
+		if (rmi4_data->sensor_sleep) {
+			synaptics_rmi4_sensor_wake(rmi4_data);
+			rmi4_data->touch_stopped = false;
+		}
+		synaptics_rmi4_irq_enable(rmi4_data, true);
+			break;
+
+	case STATE_STANDBY:
+		synaptics_rmi4_irq_enable(rmi4_data, false);
+		if (!rmi4_data->sensor_sleep) {
+			synaptics_rmi4_sensor_sleep(rmi4_data);
+			rmi4_data->touch_stopped = true;
+		}
+			break;
+
+	case STATE_BL:
+		synaptics_rmi4_irq_enable(rmi4_data, false);
+		if (rmi4_data->sensor_sleep) {
+			synaptics_rmi4_sensor_wake(rmi4_data);
+			rmi4_data->touch_stopped = false;
+		}
+			break;
+	}
+
+	pr_debug("state change %s -> %s\n",
+			synaptics_dsx_state_name(rmi4_data->state),
+			synaptics_dsx_state_name(state));
+
+	synaptics_dsx_set_state_safe(rmi4_data, state);
+
+	return 0;
+}
+
+static const char * const panel_event_names[] = {
+	"PANEL PWR-OFF",
+	"PANEL PWR-ON",
+	"DISPLAY ON"
+};
+
+static const char *synaptics_dsx_get_panel_event(int event)
+{
+	return panel_event_names[event];
+}
+
+static int synaptics_dsx_panel_cb(struct notifier_block *nb,
+		unsigned long event, void *ignore)
+{
+	int value = -1;
+	struct synaptics_rmi4_data *rmi4_data =
+		container_of(nb, struct synaptics_rmi4_data, panel_nb);
+
+	switch (event) {
+	case MMI_PANEL_EVENT_PWR_OFF:
+		if (rmi4_data->shared_regulator)
+			synaptics_rmi4_early_suspend(&rmi4_data->early_suspend);
+		value = 1; /* set flag */
+			break;
+	case MMI_PANEL_EVENT_POST_INIT:
+		value = 0; /* clear flag */
+			break;
+	case MMI_PANEL_EVENT_PWR_ON:
+		if (rmi4_data->shared_regulator)
+			synaptics_rmi4_late_resume(&rmi4_data->early_suspend);
+			break;
+	default:
+			return -EINVAL;
+	}
+
+	pr_debug("%s\n", synaptics_dsx_get_panel_event(event));
+
+	if (rmi4_data->purge_enabled && value != -1) {
+		atomic_set(&rmi4_data->panel_off_flag, value);
+		pr_debug("touches purge is %s\n", value ? "ON" : "OFF");
+	}
+
+	return 0;
+}
 
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -997,8 +1097,8 @@ static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 
 	if (retry == SYN_I2C_RETRY_TIMES) {
 		dev_err(&rmi4_data->i2c_client->dev,
-				"%s: I2C read over retry limit\n",
-				__func__);
+				"%s: I2C read %db@x%x over retry limit\n",
+				__func__, length, addr);
 		retval = -EIO;
 	}
 
@@ -1055,8 +1155,8 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 
 	if (retry == SYN_I2C_RETRY_TIMES) {
 		dev_err(&rmi4_data->i2c_client->dev,
-				"%s: I2C write over retry limit\n",
-				__func__);
+				"%s: I2C write %db@x%x over retry limit\n",
+				__func__, length, addr);
 		retval = -EIO;
 	}
 
@@ -1785,13 +1885,17 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	fhandler->fn_number = fd->fn_number;
 	fhandler->num_of_data_sources = (fd->intr_src_count  & MASK_3BIT);
 
-	retval = synaptics_rmi4_scan_packet_reg_info(
-		rmi4_data,
-		fhandler->full_addr.query_base + 4,
-		fhandler->full_addr.ctrl_base,
-		&f12_ctrl_regs);
-	if (retval < 0)
-		return retval;
+	if (synaptics_dsx_get_state_safe(rmi4_data) == STATE_UNKNOWN) {
+		pr_debug("scan F12 ctrl registers\n");
+		retval = synaptics_rmi4_scan_packet_reg_info(
+			rmi4_data,
+			fhandler->full_addr.query_base + 4,
+			fhandler->full_addr.ctrl_base,
+			&f12_ctrl_regs);
+		if (retval < 0)
+			return retval;
+	} else
+		pr_debug("skip scanning F12 ctrl registers\n");
 
 	retval = synaptics_rmi4_read_packet_regs(rmi4_data, &f12_ctrl_regs);
 	if (retval < 0)
@@ -2029,7 +2133,8 @@ static int synaptics_rmi4_alloc_fh(struct synaptics_rmi4_fn **fhandler,
  * Function $01, and enables the interrupt sources from the valid Functions
  * with data inputs.
  */
-static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
+static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data,
+		bool *flash_mode)
 {
 	int retval;
 	unsigned char ii;
@@ -2100,11 +2205,13 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 					return retval;
 
 				if (status.flash_prog == 1) {
-					pr_notice("%s: In flash prog mode, status = 0x%02x\n",
-							__func__,
+					if (flash_mode)
+						*flash_mode = true;
+					pr_notice("in flash prog mode, status = 0x%02x\n",
 							status.status_code);
 					goto flash_prog_mode;
-				}
+				} else if (flash_mode)
+					*flash_mode = false;
 				break;
 
 			case SYNAPTICS_RMI4_F11:
@@ -2276,36 +2383,36 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 			rmi4_data->board;
 
 	rmi = &(rmi4_data->rmi4_mod_info);
-#if 0
-	retval = synaptics_rmi4_i2c_write(rmi4_data,
+
+	if (rmi4_data->reset_on_resume) {
+		list_for_each_entry_safe(fhandler, next_list_entry,
+					&rmi->support_fn_list, link) {
+			if (fhandler->fn_number == SYNAPTICS_RMI4_F1A)
+				synaptics_rmi4_f1a_kfree(fhandler);
+			else
+				kfree(fhandler->data);
+			list_del(&fhandler->link);
+			kfree(fhandler);
+		}
+
+		/* do hard reset instead of soft */
+		synaptics_dsx_ic_reset(platform_data);
+
+	} else {
+		retval = synaptics_rmi4_i2c_write(rmi4_data,
 			rmi4_data->f01_cmd_base_addr,
 			&command,
 			sizeof(command));
-	if (retval < 0) {
-		dev_err(&rmi4_data->i2c_client->dev,
+		if (retval < 0) {
+			dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Failed to issue reset command, error = %d\n",
 				__func__, retval);
-		return retval;
-	}
-	msleep(100);
-#else
-	command = command;
-#endif
-
-	list_for_each_entry_safe(fhandler, next_list_entry,
-					&rmi->support_fn_list, link) {
-		if (fhandler->fn_number == SYNAPTICS_RMI4_F1A)
-			synaptics_rmi4_f1a_kfree(fhandler);
-		else
-			kfree(fhandler->data);
-		list_del(&fhandler->link);
-		kfree(fhandler);
+			return retval;
+		}
+		msleep(100);
 	}
 
-	/* do hard reset instead of soft */
-	synaptics_dsx_ic_reset(platform_data);
-
-	retval = synaptics_rmi4_query_device(rmi4_data);
+	retval = synaptics_rmi4_query_device(rmi4_data, NULL);
 	if (retval < 0) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Failed to query device\n",
@@ -2390,8 +2497,7 @@ void synaptics_rmi4_new_function(enum exp_fn fn_type, bool insert,
 	if (insert) {
 		exp_fhandler = kzalloc(sizeof(*exp_fhandler), GFP_KERNEL);
 		if (!exp_fhandler) {
-			pr_err("%s: Failed to alloc mem for expansion function\n",
-					__func__);
+			pr_err("failed to alloc mem for expansion function\n");
 			goto exit;
 		}
 		exp_fhandler->fn_type = fn_type;
@@ -2436,6 +2542,7 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		const struct i2c_device_id *dev_id)
 {
 	int retval;
+	bool flash_mode;
 	unsigned char attr_count;
 	struct synaptics_rmi4_fn *fhandler, *next_list_entry;
 	struct synaptics_rmi4_data *rmi4_data;
@@ -2486,6 +2593,7 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->reset_device = synaptics_rmi4_reset_device;
 
 	mutex_init(&(rmi4_data->rmi4_io_ctrl_mutex));
+	mutex_init(&(rmi4_data->state_mutex));
 
 	if (platform_data->gpio_config) {
 		retval = platform_data->gpio_config(
@@ -2509,7 +2617,7 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		goto err_input_device;
 	}
 
-	retval = synaptics_rmi4_query_device(rmi4_data);
+	retval = synaptics_rmi4_query_device(rmi4_data, &flash_mode);
 	if (retval < 0) {
 		dev_err(&client->dev,
 				"%s: Failed to query device\n",
@@ -2556,7 +2664,8 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	rmi4_data->early_suspend.suspend = synaptics_rmi4_early_suspend;
 	rmi4_data->early_suspend.resume = synaptics_rmi4_late_resume;
-	register_early_suspend(&rmi4_data->early_suspend);
+	if (!rmi4_data->shared_regulator)
+		register_early_suspend(&rmi4_data->early_suspend);
 #endif
 
 	if (!exp_fn_inited) {
@@ -2575,14 +2684,6 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 
 	rmi4_data->irq = gpio_to_irq(platform_data->irq_gpio);
 
-	retval = synaptics_rmi4_irq_enable(rmi4_data, true);
-	if (retval < 0) {
-		dev_err(&client->dev,
-				"%s: Failed to enable attention interrupt\n",
-				__func__);
-		goto err_enable_irq;
-	}
-
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {
 		retval = sysfs_create_file(&rmi4_data->input_dev->dev.kobj,
 				&attrs[attr_count].attr);
@@ -2594,10 +2695,21 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		}
 	}
 
-	if (rmi4_data->panel_sync_en) {
-		rmi4_data->panel_nb.notifier_call = synaptics_dsx_panel_sync_cb;
+	if (rmi4_data->purge_enabled || rmi4_data->shared_regulator) {
+		rmi4_data->panel_nb.notifier_call = synaptics_dsx_panel_cb;
 		mmi_panel_register_notifier(&rmi4_data->panel_nb);
-		pr_info("%s: Register display notifier.\n", __func__);
+		pr_debug("register panel notifier\n");
+	}
+
+	if (flash_mode)
+		synaptics_dsx_sensor_state(rmi4_data, STATE_BL);
+	else {
+		pr_info("Product: %s, firmware id: %x\n",
+				rmi->product_id_string,
+				(unsigned int)rmi->build_id[0] +
+				(unsigned int)rmi->build_id[1] * 0x100 +
+				(unsigned int)rmi->build_id[2] * 0x10000);
+		synaptics_dsx_sensor_state(rmi4_data, STATE_STANDBY);
 	}
 
 	return retval;
@@ -2608,7 +2720,10 @@ err_sysfs:
 				&attrs[attr_count].attr);
 	}
 
-err_enable_irq:
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	if (!rmi4_data->shared_regulator)
+		unregister_early_suspend(&rmi4_data->early_suspend);
+#endif
 	input_unregister_device(rmi4_data->input_dev);
 
 err_register_input:
@@ -2697,7 +2812,6 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 	return 0;
 }
 
-#ifdef CONFIG_PM
  /**
  * synaptics_rmi4_sensor_sleep()
  *
@@ -2801,15 +2915,7 @@ static void synaptics_rmi4_early_suspend(struct early_suspend *h)
 	struct synaptics_rmi4_data *rmi4_data =
 			container_of(h, struct synaptics_rmi4_data,
 			early_suspend);
-
-	rmi4_data->touch_stopped = true;
-	wake_up(&rmi4_data->wait);
-	synaptics_rmi4_irq_enable(rmi4_data, false);
-	synaptics_rmi4_sensor_sleep(rmi4_data);
-
-	if (rmi4_data->full_pm_cycle)
-		synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
-
+	synaptics_rmi4_suspend(&(rmi4_data->input_dev->dev));
 	return;
 }
 
@@ -2827,19 +2933,7 @@ static void synaptics_rmi4_late_resume(struct early_suspend *h)
 	struct synaptics_rmi4_data *rmi4_data =
 			container_of(h, struct synaptics_rmi4_data,
 			early_suspend);
-
-	if (rmi4_data->full_pm_cycle)
-		synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
-
-	/* FIXME reset is only here to overcome IC misbehavior */
-	synaptics_rmi4_reset_device(rmi4_data);
-
-	if (rmi4_data->sensor_sleep == true) {
-		synaptics_rmi4_sensor_wake(rmi4_data);
-		rmi4_data->touch_stopped = false;
-		synaptics_rmi4_irq_enable(rmi4_data, true);
-	}
-
+	synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
 	return;
 }
 #endif
@@ -2860,12 +2954,7 @@ static int synaptics_rmi4_suspend(struct device *dev)
 	const struct synaptics_dsx_platform_data *platform_data =
 			rmi4_data->board;
 
-	if (!rmi4_data->sensor_sleep) {
-		rmi4_data->touch_stopped = true;
-		wake_up(&rmi4_data->wait);
-		synaptics_rmi4_irq_enable(rmi4_data, false);
-		synaptics_rmi4_sensor_sleep(rmi4_data);
-	}
+	synaptics_dsx_sensor_state(rmi4_data, STATE_SUSPEND);
 
 	if (platform_data->regulator_en)
 		regulator_disable(rmi4_data->regulator);
@@ -2892,12 +2981,9 @@ static int synaptics_rmi4_resume(struct device *dev)
 	if (platform_data->regulator_en)
 		regulator_enable(rmi4_data->regulator);
 
-	/* FIXME reset is only here to overcome IC misbehavior */
 	synaptics_rmi4_reset_device(rmi4_data);
 
-	synaptics_rmi4_sensor_wake(rmi4_data);
-	rmi4_data->touch_stopped = false;
-	synaptics_rmi4_irq_enable(rmi4_data, true);
+	synaptics_dsx_sensor_state(rmi4_data, STATE_READY);
 
 	return 0;
 }
@@ -2906,7 +2992,6 @@ static const struct dev_pm_ops synaptics_rmi4_dev_pm_ops = {
 	.suspend = synaptics_rmi4_suspend,
 	.resume  = synaptics_rmi4_resume,
 };
-#endif
 
 #ifdef CONFIG_OF
 static const struct of_device_id synaptics_rmi4_match_tbl[] = {
@@ -2926,7 +3011,7 @@ static struct i2c_driver synaptics_rmi4_driver = {
 	.driver = {
 		.name = DRIVER_NAME,
 		.owner = THIS_MODULE,
-#ifdef CONFIG_PM
+#if !defined(CONFIG_HAS_EARLYSUSPEND) && defined(CONFIG_PM)
 		.pm = &synaptics_rmi4_dev_pm_ops,
 #endif
 	},
