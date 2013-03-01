@@ -116,6 +116,7 @@
 
 		rated_voltage = <0x70>;
 		overdrive_voltage = <0xA0>;
+		effects_library = <0x04>; /* Library D */
 	};
 };
 
