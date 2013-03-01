@@ -23,14 +23,14 @@ Required properties:
         firmware filename to flash to the 3200 controller
  - synaptics,sy3400-tdat-filename:
         firmware filename to flash to the 3400 controller
- - synaptics,panel-sync-enabled:
-        flag to enable state changes notifications from panel driver
-
-        Those notifications include power on/off and display on and can be used
-        to control suspend/resume for in-cell touch solutions and/or to purge
-        touch events received before display is on.
+ - synaptics,purge-enabled:
+        flag to enable purging of touch events received before display is on
  - synaptics,key-buttons:
         key codes for the supported buttons
+ - synaptics,reset-on-resume:
+        flag to enable hard reset in oppose to soft reset when driver resumes
+ - synaptics,shared-regulator:
+        flag to enable panel driver driven suspend/resume
 
 Example:
 	i2c@16200000 {
@@ -62,7 +62,9 @@ Example:
 			gpios = <&msmgpio 46 0>, /* IRQ */
 				<&msmgpio 63 0>; /* RESET */
 
-			synaptics,panel-sync-enabled = <1>;
+			synaptics,purge-enabled;
+			synaptics,reset-on-resume;
+			synaptics,shared-regulator;
 			synaptics,key-buttons = <139 102 158 0>; /* KEY_MENU, KEY_HOME, KEY_BACK */
 		};
 	};
