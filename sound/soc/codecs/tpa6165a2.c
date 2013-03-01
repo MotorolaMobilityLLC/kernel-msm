@@ -541,9 +541,20 @@ static int tpa6165_get_hs_acc_type(struct tpa6165_data *tpa6165)
 	case TPA6165_STEREO_HEADPHONE2:
 	case TPA6165_STEREO_HEADPHONE3:
 	case TPA6165_STEREO_LINEOUT1:
+		tpa6165->special_hs = 0;
+		acc_type = SND_JACK_HEADPHONE;
+		break;
 	case TPA6165_STEREO_LINEOUT2:
 	case TPA6165_STEREO_LINEOUT3:
 	case TPA6165_STEREO_LINEOUT4:
+		/* For High Impedence lineout cases, need to force acc type
+		 * to lineout1 type for proper detection.
+		 */
+		tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+			TPA6165_STEREO_LINEOUT1, 0xff);
+		tpa6165_reg_write(tpa6165, TPA6165_ACC_STATE_REG,
+			TPA6165_FORCE_TYPE | TPA6165_STEREO_LINEOUT1,
+			0xff);
 		tpa6165->special_hs = 0;
 		acc_type = SND_JACK_HEADPHONE;
 		break;
