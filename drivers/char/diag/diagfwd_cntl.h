@@ -33,6 +33,9 @@
 /* custom diag mode command to send optimized logging parameters to BP */
 #define DIAG_CTRL_MSG_DIAGMODE_MDLOG 100
 
+/* custom diag mode command to flush BP buffer */
+#define DIAG_CTRL_MSG_DIAG_FLUSH     101
+
 /* user selection, indicating whether to use optimized logging */
 extern unsigned int optimized_logging;
 
@@ -97,6 +100,11 @@ struct diag_ctrl_msg_diagmode_mdlog {
 	uint32_t drain_interval_in_secs;
 } __packed;
 
+struct diag_ctrl_msg_diag_flush {
+	uint32_t ctrl_pkt_id;
+	uint32_t ctrl_pkt_data_len;
+} __packed;
+
 struct diag_ctrl_feature_mask {
 	uint32_t ctrl_pkt_id;
 	uint32_t ctrl_pkt_data_len;
@@ -112,4 +120,5 @@ int diag_process_smd_cntl_read_data(struct diag_smd_info *smd_info, void *buf,
 								int total_recd);
 void diag_send_diag_mode_update(struct diag_smd_info *smd_info,
 				unsigned int optimized);
+void diag_send_diag_flush(struct diag_smd_info *smd_info);
 #endif
