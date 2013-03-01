@@ -12,12 +12,12 @@
 
 /dts-v1/;
 
-/include/ "msm8960ab-ultra-common.dtsi"
+/include/ "msm8960ab-ghost-common.dtsi"
 
-/include/ "msm8960ab-ultra-p1-legacy.dtsi"
+/include/ "msm8960ab-ghost-p1-legacy.dtsi"
 
 / {
-	mmi,revision = "pf";
+	mmi,revision = "pc";
 };
 
 &i2c3 {
@@ -26,7 +26,6 @@
 		status = "disabled";
 	};
 
-	/* Set HW revision to PF to enable Synptics DSX driver */
 	synaptics_dsx_i2c@20 {
 		compatible = "synaptics,synaptics_dsx_i2c";
 		reg = <0x20>;
@@ -34,10 +33,5 @@
 		interrupts = <46 0>;
 		gpios = <&msmgpio 46 0>, /* IRQ */
 			<&msmgpio 63 0>; /* RESET */
-
-		synaptics,purge-enabled;
-		synaptics,reset-on-resume;
-		synaptics,shared-regulator;
-		synaptics,key-buttons = <59 60 61 0>; /* F1, F2, F3 */
 	};
 };
