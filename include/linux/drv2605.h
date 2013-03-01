@@ -339,5 +339,6 @@ struct drv260x_platform_data {
 	int default_effect;
 	int rated_voltage;
 	int overdrive_voltage;
+	int effects_library;
 };
 #endif				/* __KERNEL__ */
