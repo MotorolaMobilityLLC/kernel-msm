@@ -198,6 +198,11 @@ int mdp4_dtv_pipe_commit(int cndx, int wait)
 	undx =  vctrl->update_ndx;
 	vp = &vctrl->vlist[undx];
 	pipe = vctrl->base_pipe;
+	if (pipe == NULL) {
+		pr_err("%s: NO base pipe\n", __func__);
+		mutex_unlock(&vctrl->update_lock);
+		return 0;
+	}
 	mixer = pipe->mixer_num;
 	mdp4_overlay_iommu_unmap_freelist(mixer);
 
@@ -587,6 +592,8 @@ int mdp4_dtv_on(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
+	mutex_lock(&mfd->dma->ov_mutex);
+
 	vctrl->dev = mfd->fbi->dev;
 	vctrl->vsync_irq_enabled = 0;
 
@@ -601,6 +608,7 @@ int mdp4_dtv_on(struct platform_device *pdev)
 		if (mdp4_overlay_dtv_set(mfd, NULL)) {
 			pr_warn("%s: dtv_pipe is NULL, dtv_set failed\n",
 				__func__);
+			mutex_unlock(&mfd->dma->ov_mutex);
 			return -EINVAL;
 		}
 	}
@@ -610,6 +618,8 @@ int mdp4_dtv_on(struct platform_device *pdev)
 		pr_warn("%s: panel_next_on failed", __func__);
 
 	atomic_set(&vctrl->suspend, 0);
+
+	mutex_unlock(&mfd->dma->ov_mutex);
 
 	pr_info("%s:\n", __func__);
 
@@ -641,6 +651,8 @@ int mdp4_dtv_off(struct platform_device *pdev)
 	struct vsync_update *vp;
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
+
+	mutex_lock(&mfd->dma->ov_mutex);
 
 	vctrl = &vsync_ctrl_db[cndx];
 
@@ -690,6 +702,8 @@ int mdp4_dtv_off(struct platform_device *pdev)
 
 	/* Mdp clock disable */
 	mdp_clk_ctrl(0);
+
+	mutex_unlock(&mfd->dma->ov_mutex);
 
 	pr_info("%s:\n", __func__);
 	return ret;
