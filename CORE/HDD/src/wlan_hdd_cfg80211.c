@@ -6381,6 +6381,12 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
                 "Invalid arguments");
         return -EINVAL;
     }
+    if (pHddCtx->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EBUSY;
+    }
 
     if (FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport ||
         FALSE == sme_IsFeatureSupportedByFW(TDLS)) 
@@ -6608,6 +6614,13 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
         return -EINVAL;
     }
 
+    if (pHddCtx->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EBUSY;
+    }
+
     if (FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport ||
         FALSE == sme_IsFeatureSupportedByFW(TDLS)) 
     {
@@ -6718,6 +6731,13 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
                 "Invalid arguments");
         return -EINVAL;
+    }
+
+    if (pHddCtx->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EBUSY;
     }
 
 #ifdef WLAN_FEATURE_TDLS_DEBUG

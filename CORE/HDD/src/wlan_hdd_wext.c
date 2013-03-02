@@ -1662,6 +1662,12 @@ static int iw_set_rts_threshold(struct net_device *dev,
 
     ENTER();
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+            "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EAGAIN;
+    }
     if ( wrqu->rts.value < WNI_CFG_RTS_THRESHOLD_STAMIN || wrqu->rts.value > WNI_CFG_RTS_THRESHOLD_STAMAX )
     {
         return -EINVAL;
@@ -1698,6 +1704,12 @@ static int iw_set_frag_threshold(struct net_device *dev,
 
    ENTER();
 
+   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+   {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+       return -EBUSY;
+    }
     if ( wrqu->frag.value < WNI_CFG_FRAGMENTATION_THRESHOLD_STAMIN || wrqu->frag.value > WNI_CFG_FRAGMENTATION_THRESHOLD_STAMAX )
     {
         return -EINVAL;
@@ -1750,6 +1762,12 @@ static int iw_get_range(struct net_device *dev, struct iw_request_info *info,
    wrqu->data.length = sizeof(struct iw_range);
    memset(range, 0, sizeof(struct iw_range));
 
+   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+      return -EBUSY;
+   }
 
    /*Get the phy mode*/
    if (ccmCfgGetInt(hHal,
@@ -2175,6 +2193,13 @@ static int iw_get_linkspeed(struct net_device *dev,
    v_U16_t link_speed;
    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
    int rc;
+
+   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+      return -EBUSY;
+   }
 
    if (eConnectionState_Associated != pHddStaCtx->conn_info.connState)
    {
@@ -2926,6 +2951,13 @@ static int iw_get_encodeext(struct net_device *dev,
 
     ENTER();
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+              "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EBUSY;
+    }
+
     keyId = pRoamProfile->Keys.defaultIndex;
 
     if(keyId < 0 || keyId >= MAX_WEP_KEYS)
@@ -3187,6 +3219,13 @@ static int iw_set_retry(struct net_device *dev, struct iw_request_info *info,
 
    ENTER();
 
+   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s:LOGP in Progress. Ignore!!!", __func__);
+      return -EBUSY;
+   }
+
    if(wrqu->retry.value < WNI_CFG_LONG_RETRY_LIMIT_STAMIN ||
        wrqu->retry.value > WNI_CFG_LONG_RETRY_LIMIT_STAMAX) {
 
@@ -3233,6 +3272,13 @@ static int iw_get_retry(struct net_device *dev, struct iw_request_info *info,
    v_U32_t retry = 0;
 
    ENTER();
+
+   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+              "%s:LOGP in Progress. Ignore!!!", __func__);
+      return -EBUSY;
+   }
 
    if((wrqu->retry.flags & IW_RETRY_LONG))
    {
@@ -3347,6 +3393,13 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
     v_U8_t nEnableSuspendOld;
 #endif
     INIT_COMPLETION(pWextState->completion_var);
+
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EBUSY;
+    }
 
     switch(sub_cmd)
     {
@@ -3667,6 +3720,13 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Received length %d", __func__, wrqu->data.length);
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: Received data %s", __func__, (char*)wrqu->data.pointer);
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EBUSY;
+    }
+
     switch(sub_cmd)
     {
        case WE_WOWL_ADD_PTRN:
@@ -3740,6 +3800,12 @@ static int iw_setnone_getint(struct net_device *dev, struct iw_request_info *inf
     int *value = (int *)extra;
     int ret = 0; /* success */
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EBUSY;
+    }
 
     switch (value[0])
     {
@@ -3830,9 +3896,17 @@ static int iw_setnone_getint(struct net_device *dev, struct iw_request_info *inf
 int iw_set_three_ints_getnone(struct net_device *dev, struct iw_request_info *info,
                        union iwreq_data *wrqu, char *extra)
 {
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     int *value = (int *)extra;
     int sub_cmd = value[0];
     int ret = 0;
+
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EBUSY;
+    }
 
     switch(sub_cmd)
     {
@@ -3868,6 +3942,14 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     int sub_cmd = wrqu->data.flags;
+
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EBUSY;
+    }
+
     switch(sub_cmd)
     {
         case WE_WLAN_VERSION:
@@ -4080,6 +4162,13 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
     int sub_cmd = wrqu->data.flags;
     int ret = 0; /* success */
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EBUSY;
+    }
+
     switch (sub_cmd)
     {
         case WE_CLEAR_STATS:
@@ -4209,6 +4298,14 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
     int staId = 0;
 
     hddLog(LOG1, "%s: Received length %d", __func__, wrqu->data.length);
+
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EBUSY;
+    }
+
     if (num_args > MAX_VAR_ARGS)
     {
        num_args = MAX_VAR_ARGS;
@@ -4349,6 +4446,13 @@ static int iw_add_tspec(struct net_device *dev, struct iw_request_info *info,
       return -EPERM;
    }
 
+   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+      return -EBUSY;
+   }
+
    // we must be associated in order to add a tspec
    if (eConnectionState_Associated != pHddStaCtx->conn_info.connState)
    {
@@ -4471,6 +4575,13 @@ static int iw_del_tspec(struct net_device *dev, struct iw_request_info *info,
       return -EPERM;
    }
 
+   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+      return -EBUSY;
+   }
+
    // although we are defined to be a "get" ioctl, the params we require
    // will fit in the iwreq_data, therefore unlike iw_add_tspec() there
    // is no need to copy the params from user space
@@ -4510,6 +4621,13 @@ static int iw_get_tspec(struct net_device *dev, struct iw_request_info *info,
       return 0;
    }
 
+   if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+   {
+      VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+      return -EBUSY;
+   }
+
    *pStatus = hdd_wmm_checkts(pAdapter, handle);
    return 0;
 }
@@ -4531,6 +4649,12 @@ static int iw_qcom_set_wapi_mode(struct net_device *dev, struct iw_request_info 
     hddLog(LOG1, "%s: Received length %d", __func__, wrqu->data.length);
     hddLog(LOG1, "%s: Input Data (wreq) WAPI Mode:%02d", __func__, pWapiMode->wapiMode);
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+       return -EBUSY;
+    }
 
     if(WZC_ORIGINAL == pWapiMode->wapiMode) {
         hddLog(LOG1, "%s: WAPI Mode Set to OFF", __func__);
@@ -4561,6 +4685,12 @@ static int iw_qcom_get_wapi_mode(struct net_device *dev, struct iw_request_info 
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     WAPI_FUNCTION_MODE *pWapiMode = (WAPI_FUNCTION_MODE *)(extra);
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+       return -EBUSY;
+    }
     hddLog(LOG1, "The function iw_qcom_get_wapi_mode called");
 
     pWapiMode->wapiMode = pAdapter->wapi_info.nWapiMode;
@@ -4581,6 +4711,12 @@ static int iw_qcom_set_wapi_assoc_info(struct net_device *dev, struct iw_request
     hddLog(LOG1, "%s: Received data %s", __func__, (char*)wrqu->data.pointer);
     hddLog(LOG1, "%s: Received data %s", __func__, (char*)extra);
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+       return -EBUSY;
+    }
     VOS_ASSERT(pWapiAssocInfo);
 
     hddLog(LOG1, "%s: INPUT DATA:\nElement ID:0x%02x Length:0x%02x Version:0x%04x\n",__func__,pWapiAssocInfo->elementID,pWapiAssocInfo->length,pWapiAssocInfo->version);
@@ -4627,9 +4763,14 @@ static int iw_qcom_set_wapi_key(struct net_device *dev, struct iw_request_info *
     v_BOOL_t         isConnected = TRUE;
     tCsrRoamSetKey   setKey;
     int i = 0;
-
-//    WLAN_WAPI_KEY *pWapiKey = (WLAN_WAPI_KEY *)(wrqu->data.pointer);
     WLAN_WAPI_KEY *pWapiKey = (WLAN_WAPI_KEY *)(extra);
+
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+       return -EBUSY;
+    }
 
     hddLog(LOG1, "The function iw_qcom_set_wapi_key called ");
     hddLog(LOG1, "%s: Received length %d", __func__, wrqu->data.length);
@@ -4731,6 +4872,7 @@ static int iw_qcom_set_wapi_key(struct net_device *dev, struct iw_request_info *
 static int iw_qcom_set_wapi_bkid(struct net_device *dev, struct iw_request_info *info,
         union iwreq_data *wrqu, char *extra)
 {
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
 #ifdef WLAN_DEBUG
     int i = 0;
     WLAN_BKID_LIST  *pBkid       = ( WLAN_BKID_LIST *) (wrqu->data.pointer);
@@ -4745,6 +4887,14 @@ static int iw_qcom_set_wapi_bkid(struct net_device *dev, struct iw_request_info 
     hddLog(LOG1,"%s: BKID Cnt:0x%04lx",pBkid->BKIDCount);
 
     hddLog(LOG1,"BKID KEY LIST[0]:0x");
+
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+       return -EBUSY;
+    }
+
 #ifdef WLAN_DEBUG
     for(i =0 ; i < 16 ; i++)
         hddLog(LOG1,"%02x",pBkid->BKID[0].bkid[i]);
@@ -4777,6 +4927,12 @@ static int iw_set_fties(struct net_device *dev, struct iw_request_info *info,
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
     //v_CONTEXT_t pVosContext;
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+       return -EBUSY;
+    }
     if (!wrqu->data.length)
     {
         hddLog(LOGE, FL("%s called with 0 length IEs\n"));
@@ -4821,6 +4977,13 @@ static int iw_set_dynamic_mcbc_filter(struct net_device *dev,
     tpSirRcvFltMcAddrList mc_addr_list_ptr;
     int idx;
     eHalStatus ret_val;
+
+    if (pHddCtx->isLogpInProgress)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+       return -EBUSY;
+    }
 
     if (HDD_MULTICAST_FILTER_LIST == pRequest->mcastBcastFilterSetting) {
 
@@ -4954,6 +5117,13 @@ static int iw_set_host_offload(struct net_device *dev, struct iw_request_info *i
     tpHostOffloadRequest pRequest = (tpHostOffloadRequest)wrqu->data.pointer;
     tSirHostOffloadReq offloadRequest;
 
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+       return -EBUSY;
+    }
+
     /* Debug display of request components. */
     switch (pRequest->offloadType)
     {
@@ -5022,7 +5192,7 @@ static int iw_set_keepalive_params(struct net_device *dev, struct iw_request_inf
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
-                                  "%s:LOGP in Progress. Ignore!!!",__func__);
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
         return 0;
     }
 
@@ -5090,7 +5260,12 @@ int wlan_hdd_set_filter(hdd_context_t *pHddCtx, tpPacketFilterCfg pRequest,
                 __func__ );
         return 0;
     }
-
+    if (pHddCtx->isLogpInProgress)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+       return -EBUSY;
+    }
     /* Debug display of request components. */
     hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Packet Filter Request : FA %d params %d",
             __func__, pRequest->filterAction, pRequest->numParams);
@@ -5217,6 +5392,7 @@ static int iw_set_packet_filter_params(struct net_device *dev, struct iw_request
 {   
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tpPacketFilterCfg pRequest = (tpPacketFilterCfg)wrqu->data.pointer;
+
     return wlan_hdd_set_filter(WLAN_HDD_GET_CTX(pAdapter), pRequest, pAdapter->sessionId);
 }
 #endif
@@ -5716,9 +5892,18 @@ static int iw_set_pno_priv(struct net_device *dev,
                            struct iw_request_info *info,
                            union iwreq_data *wrqu, char *extra)
 {
-  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                 "Set PNO Private");
-  return iw_set_pno(dev,info,wrqu,extra,0);
+
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+       return -EBUSY;
+    }
+    return iw_set_pno(dev,info,wrqu,extra,0);
 }
 #endif /*FEATURE_WLAN_SCAN_PNO*/
 
@@ -5847,10 +6032,18 @@ static int iw_set_band_config(struct net_device *dev,
                            struct iw_request_info *info,
                            union iwreq_data *wrqu, char *extra)
 {
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     tANI_U8 *ptr = (tANI_U8*)wrqu->data.pointer;
     int ret = 0;
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,"%s: ", __func__);
+
+    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EBUSY;
+    }
 
     if (memcmp(ptr, "SETBAND ", 8) == 0)
     {
@@ -5888,6 +6081,13 @@ VOS_STATUS iw_set_power_params(struct net_device *dev, struct iw_request_info *i
             "Power Params data len %d data %s",
             wrqu->data.length,
             wrqu->data.pointer);
+
+  if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+  {
+    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                                  "%s:LOGP in Progress. Ignore!!!", __func__);
+    return -EBUSY;
+  }
 
   if (wrqu->data.length <= nOffset )
   {
