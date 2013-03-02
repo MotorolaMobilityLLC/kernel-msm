@@ -291,8 +291,6 @@ eHalStatus csrTdlsDelPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr pee
 eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac,tSmeCmd *pCommand );
 eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,v_U16_t msg_type,
                                                            void *pMsgBuf);
-eHalStatus csrTdlsOpen(tHalHandle hHal);
-tANI_BOOLEAN csrTdlsPowerSaveCheck( void* hHal );
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 eHalStatus csrTdlsDiscoveryReq(tHalHandle hHal, tANI_U8 sessionId,
                                           tCsrTdlsDisRequest *tdlsDisReq);

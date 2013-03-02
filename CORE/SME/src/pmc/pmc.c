@@ -2572,13 +2572,6 @@ tANI_BOOLEAN pmcShouldBmpsTimerRun( tpAniSirGlobal pMac )
         smsLog(pMac, LOG1, FL("Multiple Sessions/GO/SAP sessions . BMPS should not be started"));
         return eANI_BOOLEAN_FALSE;
     }
-#ifdef FEATURE_WLAN_TDLS
-    if( !csrTdlsPowerSaveCheck( pMac ) )
-    {
-        smsLog(pMac, LOGE, FL("TDLS peer(s) connected. Dont start BMPS timer\n"));
-        return eANI_BOOLEAN_FALSE;
-    }
-#endif
     /* Check if there is an Infra session. BMPS is possible only if there is
      * an Infra session */
     if (!csrIsInfraConnected(pMac))

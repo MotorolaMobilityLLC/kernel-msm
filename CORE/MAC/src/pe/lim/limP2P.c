@@ -563,7 +563,7 @@ void limRemainOnChnRsp(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data)
 
     /* If remain on channel timer expired and action frame is pending then 
      * indicaiton confirmation with status failure */
-    if (pMac->lim.actionFrameSessionId != 0xff)
+    if (pMac->lim.mgmtFrameSessionId != 0xff)
     {
        limP2PActionCnf(pMac, 0);
     }
@@ -678,14 +678,14 @@ void limSendSmeMgmtFrameInd(
 
 eHalStatus limP2PActionCnf(tpAniSirGlobal pMac, tANI_U32 txCompleteSuccess)
 {
-    if (pMac->lim.actionFrameSessionId != 0xff)
+    if (pMac->lim.mgmtFrameSessionId != 0xff)
     {
         /* The session entry might be invalid(0xff) action confirmation received after
          * remain on channel timer expired */
         limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF,
                 (txCompleteSuccess ? eSIR_SME_SUCCESS : eSIR_SME_SEND_ACTION_FAIL),
-                pMac->lim.actionFrameSessionId, 0);
-        pMac->lim.actionFrameSessionId = 0xff;
+                pMac->lim.mgmtFrameSessionId, 0);
+        pMac->lim.mgmtFrameSessionId = 0xff;
     }
 
     return eHAL_STATUS_SUCCESS;
@@ -1018,7 +1018,7 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
            limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF, 
                halstatus, pMbMsg->sessionId, 0);
         }
-        pMac->lim.actionFrameSessionId = 0xff;
+        pMac->lim.mgmtFrameSessionId = 0xff;
     }
     else
     {
@@ -1032,13 +1032,13 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
              limLog( pMac, LOGE, FL("could not send action frame!\n" ));
              limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF, halstatus, 
                 pMbMsg->sessionId, 0);
-             pMac->lim.actionFrameSessionId = 0xff;
+             pMac->lim.mgmtFrameSessionId = 0xff;
         }
         else
         {
-             pMac->lim.actionFrameSessionId = pMbMsg->sessionId;
+             pMac->lim.mgmtFrameSessionId = pMbMsg->sessionId;
              limLog( pMac, LOG2, FL("lim.actionFrameSessionId = %lu\n" ), 
-                     pMac->lim.actionFrameSessionId);
+                     pMac->lim.mgmtFrameSessionId);
 
         }
     }

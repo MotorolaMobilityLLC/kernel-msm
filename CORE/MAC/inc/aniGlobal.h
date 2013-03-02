@@ -958,8 +958,8 @@ tLimMlmOemDataRsp       *gpLimMlmOemDataRsp;
 #ifdef WLAN_FEATURE_P2P
     tSirRemainOnChnReq  *gpLimRemainOnChanReq; //hold remain on chan request in this buf
     vos_list_t  gLimMgmtFrameRegistratinQueue;
-    tANI_U32    actionFrameSessionId;
 #endif
+    tANI_U32    mgmtFrameSessionId;
     tSirBackgroundScanMode gLimBackgroundScanMode;
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
@@ -1096,7 +1096,7 @@ typedef struct sAniSirGlobal
 #ifdef FEATURE_OEM_DATA_SUPPORT
     tOemDataStruct oemData;
 #endif
-#ifdef FEATURE_WLAN_TDLS
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
     tCsrTdlsCtxStruct tdlsCtx ;
 #endif
 #ifdef ANI_PRODUCT_TYPE_CLIENT
