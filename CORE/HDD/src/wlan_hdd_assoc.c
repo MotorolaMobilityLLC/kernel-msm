@@ -819,6 +819,18 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
                        if((0 == pHddCtx->no_of_sessions[VOS_STA_SAP_MODE]) &&
                           (0 == pHddCtx->no_of_sessions[VOS_P2P_GO_MODE]))
                        {
+                          if (pHddCtx->hdd_wlan_suspended)
+                          {
+                             if(WLAN_HDD_INFRA_STATION == pAdapter->device_mode)
+                             {
+                                hdd_reset_pwrparams(pHddCtx);
+                             }
+                             else
+                             {
+                                hdd_set_pwrparams(pHddCtx);
+                             }
+                          }
+
                            hdd_enable_bmps_imps(pHddCtx);
                        }
                    }
@@ -1381,6 +1393,18 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                    if((0 == pHddCtx->no_of_sessions[VOS_STA_SAP_MODE]) &&
                       (0 == pHddCtx->no_of_sessions[VOS_P2P_GO_MODE]))
                    {
+                      if (pHddCtx->hdd_wlan_suspended)
+                      {
+                         if(WLAN_HDD_INFRA_STATION == pAdapter->device_mode)
+                         {
+                            hdd_reset_pwrparams(pHddCtx);
+                         }
+                         else
+                         {
+                            hdd_set_pwrparams(pHddCtx);
+                         }
+                      }
+
                        hdd_enable_bmps_imps(pHddCtx);
                    }
                }
