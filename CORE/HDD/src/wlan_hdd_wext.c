@@ -116,7 +116,6 @@
 
 #include "wlan_hdd_dev_pwr.h"
 #include "qc_sap_ioctl.h"
-#define WE_MAX_STR_LEN 1024
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 extern void hdd_suspend_wlan(struct early_suspend *wlan_suspend);
@@ -349,11 +348,6 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define TX_PER_TRACKING_DEFAULT_RATIO             5
 #define TX_PER_TRACKING_MAX_RATIO                10
 #define TX_PER_TRACKING_DEFAULT_WATERMARK         5
-
-#define WLAN_HDD_UI_BAND_AUTO                     0
-#define WLAN_HDD_UI_BAND_5_GHZ                    1
-#define WLAN_HDD_UI_BAND_2_4_GHZ                  2
-#define WLAN_HDD_UI_SET_BAND_VALUE_OFFSET         8
 
 /*MCC Configuration parameters */
 enum {
@@ -6014,6 +6008,9 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
 
         hdd_abort_mac_scan(pHddCtx);
         sme_ScanFlushResult(hHal, pAdapter->sessionId);
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+        sme_UpdateBgScanConfigIniChannelList(hHal, (eCsrBand) band);
+#endif
         if(eHAL_STATUS_SUCCESS != sme_SetFreqBand(hHal, (eCsrBand)band))
         {
              VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,

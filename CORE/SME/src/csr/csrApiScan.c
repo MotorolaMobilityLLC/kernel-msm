@@ -5503,8 +5503,7 @@ eHalStatus csrScanCopyRequest(tpAniSirGlobal pMac, tCsrScanRequest *pDstReq, tCs
                                       */
                                      || ((eCSR_SCAN_HO_BG_SCAN == pSrcReq->requestType) &&
                                          (pSrcReq->ChannelInfo.numOfChannels > 1) &&
-                                         (pSrcReq->ChannelInfo.ChannelList[index] > 48 &&
-                                          pSrcReq->ChannelInfo.ChannelList[index] < 149))
+                                         (CSR_IS_CHANNEL_DFS(pSrcReq->ChannelInfo.ChannelList[index])))
 #endif
                                   )
                                 {

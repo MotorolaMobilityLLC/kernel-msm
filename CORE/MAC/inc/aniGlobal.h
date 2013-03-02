@@ -165,6 +165,8 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 #endif //WLAN_FEATURE_CONCURRENT_P2P
 #endif //WLAN_FEATURE_P2P
 
+#define SPACE_ASCII_VALUE  32
+
 // -------------------------------------------------------------------
 // Change channel generic scheme
 typedef void (*CHANGE_CHANNEL_CALLBACK)(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data,

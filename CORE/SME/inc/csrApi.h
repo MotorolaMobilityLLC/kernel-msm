@@ -233,6 +233,14 @@ typedef struct tagCsrChannelInfo
     tANI_U8 *ChannelList;   //it will be an array of channels
 }tCsrChannelInfo, *tpCsrChannelInfo;
 
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+typedef struct tagCsrCountryChannelInfo
+{
+    tCsrChannelInfo countryValidChannelList;
+    tANI_U8         revision; /* KR 25, 25 is the country revision index
+                                 to the list of valid channels */
+}tCsrCountryChannelInfo, *tpCsrCountryChannelInfo;
+#endif
 typedef struct tagCsrSSIDInfo
 {
    tSirMacSSid     SSID;   
@@ -924,6 +932,7 @@ typedef struct tagCsrNeighborRoamConfigParams
     sCsrChannel    neighborScanChanList;
     tANI_U8        nMaxNeighborRetries;
     tANI_U16       nNeighborResultsRefreshPeriod;
+    tANI_U16       nEmptyScanRefreshPeriod;
 }tCsrNeighborRoamConfigParams;
 #endif
 

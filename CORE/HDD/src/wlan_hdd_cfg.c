@@ -82,8 +82,14 @@ static void cbNotifySetRoamPrefer5GHz(hdd_context_t *pHddCtx, unsigned long Noti
 
 static void cbNotifySetImmediateRoamRssiDiff(hdd_context_t *pHddCtx, unsigned long NotifyId)
 {
-    sme_UpdateImmediateRoamRssiDiff((tHalHandle)(pHddCtx->hHal), 
+    sme_UpdateImmediateRoamRssiDiff((tHalHandle)(pHddCtx->hHal),
                                     pHddCtx->cfg_ini->nImmediateRoamRssiDiff);
+}
+
+static void cbNotifySetRoamRssiDiff(hdd_context_t *pHddCtx, unsigned long NotifyId)
+{
+    sme_UpdateRoamRssiDiff((tHalHandle)(pHddCtx->hHal),
+                                    pHddCtx->cfg_ini->RoamRssiDiff);
 }
 
 static void cbNotifySetFastTransitionEnabled(hdd_context_t *pHddCtx, unsigned long NotifyId)
@@ -113,6 +119,26 @@ static void cbNotifySetFwRssiMonitoring(hdd_context_t *pHddCtx, unsigned long No
     // at the point this routine is called, the value in the cfg_ini table has already been updated
     sme_UpdateConfigFwRssiMonitoring((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->fEnableFwRssiMonitoring );
 }
+
+#ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
+static void cbNotifySetNeighborLookupRssiThreshold(hdd_context_t *pHddCtx, unsigned long NotifyId)
+{
+    // at the point this routine is called, the value in the cfg_ini table has already been updated
+    sme_setNeighborLookupRssiThreshold((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->nNeighborLookupRssiThreshold );
+}
+
+static void cbNotifySetNeighborResultsRefreshPeriod(hdd_context_t *pHddCtx, unsigned long NotifyId)
+{
+    // at the point this routine is called, the value in the cfg_ini table has already been updated
+    sme_setNeighborScanRefreshPeriod((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->nNeighborResultsRefreshPeriod );
+}
+
+static void cbNotifySetEmptyScanRefreshPeriod(hdd_context_t *pHddCtx, unsigned long NotifyId)
+{
+    // at the point this routine is called, the value in the cfg_ini table has already been updated
+    sme_UpdateEmptyScanRefreshPeriod((tHalHandle)(pHddCtx->hHal), pHddCtx->cfg_ini->nEmptyScanRefreshPeriod);
+}
+#endif
 
 REG_TABLE_ENTRY g_registry_table[] =
 {
@@ -941,20 +967,21 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_FAST_TRANSITION_ENABLED_NAME_MAX,
                  cbNotifySetFastTransitionEnabled, 0 ),
 
-   /* Variable to specify the delta/difference between the RSSI of current AP 
+   /* Variable to specify the delta/difference between the RSSI of current AP
     * and roamable AP while roaming */
-   REG_VARIABLE( CFG_ROAM_RSSI_DIFF_NAME, WLAN_PARAM_Integer,
-                 hdd_config_t, RoamRssiDiff, 
-                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
-                 CFG_ROAM_RSSI_DIFF_DEFAULT, 
-                 CFG_ROAM_RSSI_DIFF_MIN, 
-                 CFG_ROAM_RSSI_DIFF_MAX),
+   REG_DYNAMIC_VARIABLE( CFG_ROAM_RSSI_DIFF_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, RoamRssiDiff,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_ROAM_RSSI_DIFF_DEFAULT,
+                 CFG_ROAM_RSSI_DIFF_MIN,
+                 CFG_ROAM_RSSI_DIFF_MAX,
+                 cbNotifySetRoamRssiDiff, 0),
 
    REG_DYNAMIC_VARIABLE( CFG_IMMEDIATE_ROAM_RSSI_DIFF_NAME, WLAN_PARAM_Integer,
-                         hdd_config_t, nImmediateRoamRssiDiff, 
-                         VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
-                         CFG_IMMEDIATE_ROAM_RSSI_DIFF_DEFAULT, 
-                         CFG_IMMEDIATE_ROAM_RSSI_DIFF_MIN, 
+                         hdd_config_t, nImmediateRoamRssiDiff,
+                         VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                         CFG_IMMEDIATE_ROAM_RSSI_DIFF_DEFAULT,
+                         CFG_IMMEDIATE_ROAM_RSSI_DIFF_MIN,
                          CFG_IMMEDIATE_ROAM_RSSI_DIFF_MAX,
                          cbNotifySetImmediateRoamRssiDiff, 0),
 #endif
@@ -1349,12 +1376,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_NEIGHBOR_REASSOC_RSSI_THRESHOLD_MIN, 
                  CFG_NEIGHBOR_REASSOC_RSSI_THRESHOLD_MAX ),
 
-   REG_VARIABLE( CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_NAME, WLAN_PARAM_Integer,
+   REG_DYNAMIC_VARIABLE( CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, nNeighborLookupRssiThreshold, 
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
                  CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_DEFAULT, 
                  CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MIN, 
-                 CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MAX ),
+                 CFG_NEIGHBOR_LOOKUP_RSSI_THRESHOLD_MAX,
+                 cbNotifySetNeighborLookupRssiThreshold, 0 ),
 
    REG_VARIABLE_STRING( CFG_NEIGHBOR_SCAN_CHAN_LIST_NAME, WLAN_PARAM_String,
                         hdd_config_t, neighborScanChanList, 
@@ -1382,12 +1410,21 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_11R_NEIGHBOR_REQ_MAX_TRIES_MIN,
                  CFG_11R_NEIGHBOR_REQ_MAX_TRIES_MAX),
 
-   REG_VARIABLE( CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_NAME, WLAN_PARAM_Integer,
+   REG_DYNAMIC_VARIABLE( CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_NAME, WLAN_PARAM_Integer,
                  hdd_config_t, nNeighborResultsRefreshPeriod, 
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT, 
                  CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_DEFAULT, 
                  CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN, 
-                 CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX ),
+                 CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX,
+                 cbNotifySetNeighborResultsRefreshPeriod, 0 ),
+
+   REG_DYNAMIC_VARIABLE( CFG_EMPTY_SCAN_REFRESH_PERIOD_NAME, WLAN_PARAM_Integer,
+                         hdd_config_t, nEmptyScanRefreshPeriod,
+                         VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                         CFG_EMPTY_SCAN_REFRESH_PERIOD_DEFAULT,
+                         CFG_EMPTY_SCAN_REFRESH_PERIOD_MIN,
+                         CFG_EMPTY_SCAN_REFRESH_PERIOD_MAX,
+                         cbNotifySetEmptyScanRefreshPeriod, 0 ),
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */
 
    REG_VARIABLE( CFG_QOS_WMM_BURST_SIZE_DEFN_NAME , WLAN_PARAM_Integer,
@@ -2361,6 +2398,7 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [nMaxNeighborRetries] Value = [%lu] ",pHddCtx->cfg_ini->nMaxNeighborReqTries);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [nNeighborScanPeriod] Value = [%lu] ",pHddCtx->cfg_ini->nNeighborScanPeriod);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [nNeighborScanResultsRefreshPeriod] Value = [%lu] ",pHddCtx->cfg_ini->nNeighborResultsRefreshPeriod);
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [nEmptyScanRefreshPeriod] Value = [%lu] ",pHddCtx->cfg_ini->nEmptyScanRefreshPeriod);
 #endif
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [burstSizeDefinition] Value = [0x%x] ",pHddCtx->cfg_ini->burstSizeDefinition);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [tsInfoAckPolicy] Value = [0x%x] ",pHddCtx->cfg_ini->tsInfoAckPolicy);
@@ -3643,6 +3681,7 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig.csrConfig.neighborRoamConfig.nNeighborScanTimerPeriod = pConfig->nNeighborScanPeriod;
    smeConfig.csrConfig.neighborRoamConfig.nMaxNeighborRetries = pConfig->nMaxNeighborReqTries; 
    smeConfig.csrConfig.neighborRoamConfig.nNeighborResultsRefreshPeriod = pConfig->nNeighborResultsRefreshPeriod;
+   smeConfig.csrConfig.neighborRoamConfig.nEmptyScanRefreshPeriod = pConfig->nEmptyScanRefreshPeriod;
    hdd_string_to_u8_array( pConfig->neighborScanChanList, 
                                         smeConfig.csrConfig.neighborRoamConfig.neighborScanChanList.channelList, 
                                         &smeConfig.csrConfig.neighborRoamConfig.neighborScanChanList.numChannels, 
