@@ -131,9 +131,6 @@ extern struct notifier_block hdd_netdev_notifier;
 extern tVOS_CON_MODE hdd_get_conparam ( void );
 #endif
 
-#ifdef WLAN_FEATURE_PACKET_FILTERING
-extern void wlan_hdd_set_mc_addr_list(hdd_context_t *pHddCtx, v_U8_t set, v_U8_t sessionId);
-#endif
 static struct timer_list ssr_timer;
 static bool ssr_timer_started;
 
@@ -893,12 +890,12 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
            /*Multicast addr list filter is enabled during suspend*/
            if (((pAdapter->device_mode == WLAN_HDD_INFRA_STATION) || 
                     (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT))
-                 && pHddCtx->mc_addr_list.mc_cnt
+                 && pAdapter->mc_addr_list.mc_cnt
                  && (eConnectionState_Associated == 
                     (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState))
            {
               /*set the filter*/
-              wlan_hdd_set_mc_addr_list(pHddCtx, TRUE, pAdapter->sessionId);
+              wlan_hdd_set_mc_addr_list(pAdapter, TRUE);
            }
         }
 #endif
@@ -911,7 +908,7 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
     }
 }
 
-static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter, v_U8_t sessionId)
+static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter)
 {
     VOS_STATUS vstatus;
     hdd_context_t* pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
@@ -925,39 +922,43 @@ static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter, v_U8_t sessionId)
         return;
     }
 
-    hddLog(VOS_TRACE_LEVEL_INFO, 
+    hddLog(VOS_TRACE_LEVEL_INFO,
       "%s: send wlan resume indication", __func__);
 
-    if(pHddCtx->cfg_ini->fhostArpOffload)
+    if (pHddCtx->hdd_mcastbcast_filter_set == TRUE)
     {
-        vstatus = hdd_conf_hostarpoffload(pAdapter, FALSE);
-        if (!VOS_IS_STATUS_SUCCESS(vstatus))
+        if (pHddCtx->cfg_ini->fhostArpOffload)
         {
-            hddLog(VOS_TRACE_LEVEL_INFO, "%s:Failed to disable ARPOFFLOAD "
-                  "Feature %d\n", __func__, vstatus);
+            vstatus = hdd_conf_hostarpoffload(pAdapter, FALSE);
+            if (!VOS_IS_STATUS_SUCCESS(vstatus))
+            {
+                hddLog(VOS_TRACE_LEVEL_INFO, "%s:Failed to disable ARPOFFLOAD "
+                      "Feature %d\n", __func__, vstatus);
+            }
         }
+        if (pHddCtx->dynamic_mcbc_filter.enableSuspend)
+        {
+            wlanResumeParam->configuredMcstBcstFilterSetting =
+                                   pHddCtx->dynamic_mcbc_filter.mcBcFilterSuspend;
+        }
+        else
+        {
+            wlanResumeParam->configuredMcstBcstFilterSetting =
+                                        pHddCtx->cfg_ini->mcastBcastFilterSetting;
+        }
+        sme_ConfigureResumeReq(pHddCtx->hHal, wlanResumeParam);
+        pHddCtx->hdd_mcastbcast_filter_set = FALSE;
     }
-    if (pHddCtx->dynamic_mcbc_filter.enableSuspend)
-    {
-        wlanResumeParam->configuredMcstBcstFilterSetting = 
-                               pHddCtx->dynamic_mcbc_filter.mcBcFilterSuspend;
-    }
-    else
-    {
-        wlanResumeParam->configuredMcstBcstFilterSetting = 
-                                    pHddCtx->cfg_ini->mcastBcastFilterSetting;
-    }
-    sme_ConfigureResumeReq(pHddCtx->hHal, wlanResumeParam);
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING    
     if (pHddCtx->cfg_ini->isMcAddrListFilter)
     {
-       /*Mutlicast addr filtering is enabled*/
-       if(pHddCtx->mc_addr_list.isFilterApplied)
+       /*Multicast addr filtering is enabled*/
+       if (pAdapter->mc_addr_list.isFilterApplied)
        {
           /*Filter applied during suspend mode*/
           /*Clear it here*/
-          wlan_hdd_set_mc_addr_list(pHddCtx, FALSE, sessionId);
+          wlan_hdd_set_mc_addr_list(pAdapter, FALSE);
        }
     }
 #endif
@@ -1114,19 +1115,8 @@ void hdd_suspend_wlan(void)
       }
    }
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    /*Suspend notification sent down to driver*/
-      hdd_conf_suspend_ind(pHddCtx, pAdapter);
-#else
-      if(pHddCtx->cfg_ini->nEnableSuspend == WLAN_MAP_SUSPEND_TO_MCAST_BCAST_FILTER) {
-         if(eConnectionState_Associated == 
-            (WLAN_HDD_GET_STATION_CTX_PTR(pAdapter))->conn_info.connState) {
-            hdd_conf_mcastbcast_filter(pHddCtx, TRUE);
-            halPSAppsCpuWakeupState(vos_get_context(VOS_MODULE_ID_SME,
-                                  pHddCtx->pvosContext), FALSE);
-         }
-      } 
-#endif
+   hdd_conf_suspend_ind(pHddCtx, pAdapter);
    status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
    pAdapterNode = pNext;
   }
@@ -1347,17 +1337,7 @@ void hdd_resume_wlan(void)
          }
       }
 
-         if(pHddCtx->hdd_mcastbcast_filter_set == TRUE) {
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
-           hdd_conf_resume_ind(pAdapter, pAdapter->sessionId);
-#else
-                  hdd_conf_mcastbcast_filter(pHddCtx, FALSE);
-                              pHddCtx->hdd_mcastbcast_filter_set = FALSE;
-                  halPSAppsCpuWakeupState(vos_get_context(VOS_MODULE_ID_SME,
-                                          pHddCtx->pvosContext), TRUE);
-#endif
-           pHddCtx->hdd_mcastbcast_filter_set = FALSE;
-      }
+      hdd_conf_resume_ind(pAdapter);
       status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
       pAdapterNode = pNext;
    }

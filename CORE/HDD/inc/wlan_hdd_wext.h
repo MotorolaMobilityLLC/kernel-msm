@@ -423,5 +423,9 @@ VOS_STATUS wlan_hdd_get_roam_rssi(hdd_adapter_t *pAdapter, v_S7_t *rssi_value);
 VOS_STATUS iw_set_tdls_params(struct net_device *dev, struct iw_request_info *info, union iwreq_data *wrqu, char *extra, int nOffset);
 #endif
 
+#ifdef WLAN_FEATURE_PACKET_FILTERING
+void wlan_hdd_set_mc_addr_list(hdd_adapter_t *pAdapter, v_U8_t set);
+#endif
+
 #endif // __WEXT_IW_H__
 
