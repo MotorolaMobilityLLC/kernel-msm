@@ -134,7 +134,7 @@ static int msm_ext_top_spk_pamp;
 static int msm_slim_0_rx_ch = 1;
 static int msm_slim_0_tx_ch = 1;
 static int msm_hdmi_rx_ch = 8;
-
+static int hdmi_rate_variable;
 static struct clk *codec_clk;
 static int clk_users;
 
@@ -517,6 +517,7 @@ static const char *slim0_rx_ch_text[] = {"One", "Two"};
 static const char *slim0_tx_ch_text[] = {"One", "Two", "Three", "Four"};
 static const char * const hdmi_rx_ch_text[] = {"Two", "Three", "Four",
 					"Five", "Six", "Seven", "Eight"};
+static const char * const hdmi_rate[] = {"Default", "Variable"};
 
 
 static const struct soc_enum msm_enum[] = {
@@ -524,6 +525,7 @@ static const struct soc_enum msm_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, slim0_rx_ch_text),
 	SOC_ENUM_SINGLE_EXT(4, slim0_tx_ch_text),
 	SOC_ENUM_SINGLE_EXT(7, hdmi_rx_ch_text),
+	SOC_ENUM_SINGLE_EXT(2, hdmi_rate),
 
 };
 
@@ -585,6 +587,21 @@ static int msm_hdmi_rx_ch_put(struct snd_kcontrol *kcontrol,
 }
 
 
+static int msm_hdmi_rate_put(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	hdmi_rate_variable = ucontrol->value.integer.value[0];
+	pr_debug("%s: hdmi_rate_variable = %d\n", __func__, hdmi_rate_variable);
+	return 0;
+}
+
+static int msm_hdmi_rate_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = hdmi_rate_variable;
+	return 0;
+}
+
 static const struct snd_kcontrol_new tabla_msm_controls[] = {
 	SOC_ENUM_EXT("Speaker Function", msm_enum[0], msm_get_spk,
 		msm_set_spk),
@@ -594,7 +611,9 @@ static const struct snd_kcontrol_new tabla_msm_controls[] = {
 		msm_slim_0_tx_ch_get, msm_slim_0_tx_ch_put),
 	SOC_ENUM_EXT("HDMI_RX Channels", msm_enum[3],
 		msm_hdmi_rx_ch_get, msm_hdmi_rx_ch_put),
-
+	SOC_ENUM_EXT("HDMI RX Rate", msm_enum[4],
+					msm_hdmi_rate_get,
+					msm_hdmi_rate_put),
 };
 
 static void *def_tabla_mbhc_cal(void)
@@ -850,7 +869,9 @@ static int msm_hdmi_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	pr_debug("%s channels->min %u channels->max %u ()\n", __func__,
 			channels->min, channels->max);
 
-	rate->min = rate->max = 48000;
+	/*Configure the sample rate as 48000 KHz for the LPCM playback*/
+	if (!hdmi_rate_variable)
+		rate->min = rate->max = 48000;
 	channels->min =  channels->max = msm_hdmi_rx_ch;
 
 	return 0;
