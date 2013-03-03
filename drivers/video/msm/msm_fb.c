@@ -2037,7 +2037,7 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 
 	mdp_dma_pan_update(info);
 	msm_fb_signal_timeline(mfd);
-	if (mdp4_unmap_sec_resource())
+	if (mdp4_unmap_sec_resource(mfd))
 		pr_err("%s: unmap secure res failed\n", __func__);
 
 	up(&msm_fb_pan_sem);
