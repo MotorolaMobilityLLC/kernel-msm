@@ -524,6 +524,8 @@ int arizona_hp_ev(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMD:
 		val = 0;
 		break;
+	default:
+		return -EINVAL;
 	}
 
 	/* Store the desired state for the HP outputs */
