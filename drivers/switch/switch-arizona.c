@@ -67,6 +67,7 @@ struct arizona_extcon_info {
 	unsigned int spk_clamp;
 
 	struct delayed_work hpdet_work;
+	struct delayed_work micd_detect_work;
 	struct delayed_work micd_timeout_work;
 
 	bool hpdet_active;
@@ -720,9 +721,11 @@ static void arizona_micd_timeout_work(struct work_struct *work)
 	mutex_unlock(&info->lock);
 }
 
-static irqreturn_t arizona_micdet(int irq, void *data)
+static void arizona_micd_detect(struct work_struct *work)
 {
-	struct arizona_extcon_info *info = data;
+	struct arizona_extcon_info *info = container_of(work,
+							struct arizona_extcon_info,
+							micd_detect_work.work);
 	struct arizona *arizona = info->arizona;
 	unsigned int val = 0, lvl;
 	int ret, i, key;
@@ -736,7 +739,7 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 		if (ret != 0) {
 			dev_err(arizona->dev, "Failed to read MICDET: %d\n", ret);
 			mutex_unlock(&info->lock);
-			return IRQ_NONE;
+			return;
 		}
 
 		dev_dbg(arizona->dev, "MICDET: %x\n", val);
@@ -744,14 +747,14 @@ static irqreturn_t arizona_micdet(int irq, void *data)
 		if (!(val & ARIZONA_MICD_VALID)) {
 			dev_warn(arizona->dev, "Microphone detection state invalid\n");
 			mutex_unlock(&info->lock);
-			return IRQ_NONE;
+			return;
 		}
 	}
 
 	if (i == 10 && !(val & 0x7fc)) {
 		dev_err(arizona->dev, "Failed to get valid MICDET value\n");
 		mutex_unlock(&info->lock);
-		return IRQ_NONE;
+		return;
 	}
 
 	/* Due to jack detect this should never happen */
@@ -847,6 +850,27 @@ handled:
 
 	pm_runtime_mark_last_busy(info->dev);
 	mutex_unlock(&info->lock);
+}
+
+static irqreturn_t arizona_micdet(int irq, void *data)
+{
+	struct arizona_extcon_info *info = data;
+	struct arizona *arizona = info->arizona;
+	int debounce = arizona->pdata.micd_detect_debounce;
+
+	cancel_delayed_work_sync(&info->micd_detect_work);
+	cancel_delayed_work_sync(&info->micd_timeout_work);
+
+	mutex_lock(&info->lock);
+	if (!info->detecting)
+		debounce = 0;
+	mutex_unlock(&info->lock);
+
+	if (debounce)
+		schedule_delayed_work(&info->micd_detect_work,
+				      msecs_to_jiffies(debounce));
+	else
+		arizona_micd_detect(&info->micd_detect_work.work);
 
 	return IRQ_HANDLED;
 }
@@ -1030,6 +1054,7 @@ static int arizona_extcon_probe(struct platform_device *pdev)
 	info->dev = &pdev->dev;
 	info->last_jackdet = ~(ARIZONA_MICD_CLAMP_STS | ARIZONA_JD1_STS);
 	INIT_DELAYED_WORK(&info->hpdet_work, arizona_hpdet_work);
+	INIT_DELAYED_WORK(&info->micd_detect_work, arizona_micd_detect);
 	INIT_DELAYED_WORK(&info->micd_timeout_work, arizona_micd_timeout_work);
 	platform_set_drvdata(pdev, info);
 
