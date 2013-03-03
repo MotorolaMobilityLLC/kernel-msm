@@ -2950,6 +2950,67 @@ static int vfe32_proc_general(
 	    cmdp -= 1;
 		break;
 
+	case VFE_CMD_RGB_ALL_CFG: {
+		cmdp = kmalloc((cmd->length), GFP_ATOMIC);
+		if (!cmdp) {
+			rc = -ENOMEM;
+			goto proc_general_done;
+		}
+		if (copy_from_user(cmdp,
+			(void __user *)(cmd->value),
+			cmd->length)) {
+			rc = -EFAULT;
+			goto proc_general_done;
+		}
+		msm_camera_io_memcpy(
+			vfe32_ctrl->share_ctrl->vfebase + V32_RGB_G_OFF,
+			cmdp, 4);
+		cmdp += 1;
+
+		vfe32_write_gamma_cfg(RGBLUT_RAM_CH0_BANK0,
+			cmdp + VFE32_GAMMA_CH0_G_POS, vfe32_ctrl);
+		vfe32_write_gamma_cfg(RGBLUT_RAM_CH1_BANK0,
+			cmdp + VFE32_GAMMA_CH1_B_POS, vfe32_ctrl);
+		vfe32_write_gamma_cfg(RGBLUT_RAM_CH2_BANK0,
+			cmdp + VFE32_GAMMA_CH2_R_POS, vfe32_ctrl);
+		}
+	    cmdp -= 1;
+		break;
+
+	case VFE_CMD_RGB_ALL_UPDATE: {
+		cmdp = kmalloc((cmd->length), GFP_ATOMIC);
+		if (!cmdp) {
+			rc = -ENOMEM;
+			goto proc_general_done;
+		}
+		if (copy_from_user(cmdp, (void __user *)(cmd->value),
+			cmd->length)) {
+			rc = -EFAULT;
+			goto proc_general_done;
+		}
+		old_val = msm_camera_io_r(
+			vfe32_ctrl->share_ctrl->vfebase + V32_RGB_G_OFF);
+			cmdp += 1;
+		if (old_val != 0x0) {
+			vfe32_write_gamma_cfg(RGBLUT_RAM_CH0_BANK0,
+				cmdp + VFE32_GAMMA_CH0_G_POS, vfe32_ctrl);
+			vfe32_write_gamma_cfg(RGBLUT_RAM_CH1_BANK0,
+				cmdp + VFE32_GAMMA_CH1_B_POS, vfe32_ctrl);
+			vfe32_write_gamma_cfg(RGBLUT_RAM_CH2_BANK0,
+				cmdp + VFE32_GAMMA_CH2_R_POS, vfe32_ctrl);
+		} else {
+			vfe32_write_gamma_cfg(RGBLUT_RAM_CH0_BANK1,
+				cmdp + VFE32_GAMMA_CH0_G_POS, vfe32_ctrl);
+			vfe32_write_gamma_cfg(RGBLUT_RAM_CH1_BANK1,
+				cmdp + VFE32_GAMMA_CH1_B_POS, vfe32_ctrl);
+			vfe32_write_gamma_cfg(RGBLUT_RAM_CH2_BANK1,
+				cmdp + VFE32_GAMMA_CH2_R_POS, vfe32_ctrl);
+		}
+		}
+		vfe32_ctrl->update_gamma = TRUE;
+		cmdp -= 1;
+		break;
+
 	case VFE_CMD_RGB_G_UPDATE: {
 		cmdp = kmalloc(cmd->length, GFP_ATOMIC);
 		if (!cmdp) {
