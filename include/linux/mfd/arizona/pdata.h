@@ -141,6 +141,9 @@ struct arizona_pdata {
 	/** Callback notifying HPDET result */
 	void (*hpdet_cb)(unsigned int measurement);
 
+	/** Extra debounce timeout used during initial mic detection (ms) */
+	int micd_detect_debounce;
+
 	/** GPIO for mic detection polarity */
 	int micd_pol_gpio;
 
