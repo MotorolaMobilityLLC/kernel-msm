@@ -122,10 +122,11 @@ static int msm_fb_pan_idle(struct msm_fb_data_type *mfd);
 #define MSM_FB_MAX_DBGFS 1024
 #define MAX_BACKLIGHT_BRIGHTNESS 255
 
-/* 900 ms for fence time out */
-#define WAIT_FENCE_TIMEOUT 900
-/* 950 ms for display operation time out */
-#define WAIT_DISP_OP_TIMEOUT 950
+#define WAIT_FENCE_FIRST_TIMEOUT MSEC_PER_SEC
+#define WAIT_FENCE_FINAL_TIMEOUT 10 * MSEC_PER_SEC
+/* Display op timeout should be greater than total timeout */
+#define WAIT_DISP_OP_TIMEOUT (WAIT_FENCE_FIRST_TIMEOUT +\
+        WAIT_FENCE_FINAL_TIMEOUT) * MDP_MAX_FENCE_FD
 #define MAX_TIMELINE_NAME_LEN 16
 
 int msm_fb_debugfs_file_index;
@@ -1792,7 +1793,15 @@ void msm_fb_wait_for_fence(struct msm_fb_data_type *mfd)
 	int i, ret = 0;
 	/* buf sync */
 	for (i = 0; i < mfd->acq_fen_cnt; i++) {
-		ret = sync_fence_wait(mfd->acq_fen[i], WAIT_FENCE_TIMEOUT);
+		ret = sync_fence_wait(mfd->acq_fen[i],
+				WAIT_FENCE_FIRST_TIMEOUT);
+		if (ret == -ETIME) {
+			pr_warn("%s: sync_fence_wait timed out!"
+				"Waiting %ld more seconds\n",
+				__func__,WAIT_FENCE_FINAL_TIMEOUT/MSEC_PER_SEC);
+			ret = sync_fence_wait(mfd->acq_fen[i],
+					WAIT_FENCE_FINAL_TIMEOUT);
+		}
 		if (ret < 0) {
 			pr_err("%s: sync_fence_wait failed! ret = %x\n",
 				__func__, ret);
