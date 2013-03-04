@@ -40,6 +40,7 @@
 #include <linux/mfd/wcd9xxx/wcd9310_registers.h>
 #include "../../../arch/arm/mach-msm/board-8960.h"
 #include <asm/mach-types.h>
+#include <mach/board_asustek.h>
 
 MODULE_DESCRIPTION("Headset detection driver");
 MODULE_LICENSE("GPL");
@@ -86,6 +87,7 @@ extern struct snd_soc_codec *wcd9310_codec;
 static struct headset_data *hs_data;
 static struct workqueue_struct *g_detection_work_queue;
 static DECLARE_WORK(g_detection_work, detection_work);
+static hw_rev hw_revision = HW_REV_A;
 
 struct work_struct headset_work;
 struct work_struct lineout_work;
@@ -155,12 +157,12 @@ static ssize_t headset_state_show(struct switch_dev *sdev, char *buf)
 
 static void insert_headset(void)
 {
-//	if (gpio_get_value(DB_DET_GPIO) == 0) {
-//		printk("%s: debug board in\n", __func__);
-	if(gpio_get_value(HS_HOOK_DET)){ 
+	if ((hw_revision != HW_REV_A) && (gpio_get_value(DB_DET_GPIO) == 0)) {
+		printk("%s: debug board\n", __func__);
+	} else if (gpio_get_value(HS_HOOK_DET)) {
 		printk("%s: headphone\n", __func__);
 		switch_set_state(&hs_data->sdev, HEADSET_WITHOUT_MIC);
-	}else{
+	} else {
 		printk("%s: headset\n", __func__);
 		switch_set_state(&hs_data->sdev, HEADSET_WITH_MIC);
 	}
@@ -260,13 +262,15 @@ static int jack_config_gpio()
 {
 	int ret;
 
-	ret = gpio_request(DB_DET_GPIO, "DB_DET");
+	if (hw_revision != HW_REV_A) {
+		ret = gpio_request(DB_DET_GPIO, "DB_DET");
 
-	if (ret) {
-		pr_err("%s: Error requesting GPIO %d\n", __func__, DB_DET_GPIO);
-		gpio_free(DB_DET_GPIO);
-	} else
-		gpio_direction_input(DB_DET_GPIO);
+		if (ret) {
+			pr_err("%s: Error requesting GPIO %d\n", __func__, DB_DET_GPIO);
+			gpio_free(DB_DET_GPIO);
+		} else
+			gpio_direction_input(DB_DET_GPIO);
+	}
 
 	ret = gpio_request(JACK_GPIO, "JACK_IN_DET");
 	if (ret) {
@@ -323,6 +327,8 @@ static int __init headset_init(void)
 
 	printk(KERN_INFO "%s+ #####\n", __func__);
 
+	hw_revision = asustek_get_hw_rev();
+
 	hs_data = kzalloc(sizeof(struct headset_data), GFP_KERNEL);
 	if (!hs_data)
 		return -ENOMEM;
@@ -368,6 +374,8 @@ static void __exit headset_exit(void)
 	if (switch_get_state(&hs_data->sdev))
 		remove_headset();
 	gpio_free(JACK_GPIO);
+	if (hw_revision != HW_REV_A)
+	    gpio_free(DB_DET_GPIO);
 
 	free_irq(hs_data->hp_det_irq, 0);
 	destroy_workqueue(g_detection_work_queue);
