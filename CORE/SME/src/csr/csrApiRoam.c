@@ -944,6 +944,8 @@ static void initConfigParam(tpAniSirGlobal pMac)
     pMac->roam.configParam.nActiveMinChnTime = CSR_ACTIVE_MIN_CHANNEL_TIME;
     pMac->roam.configParam.nPassiveMaxChnTime = CSR_PASSIVE_MAX_CHANNEL_TIME;
     pMac->roam.configParam.nPassiveMinChnTime = CSR_PASSIVE_MIN_CHANNEL_TIME;
+    pMac->roam.configParam.nActiveMaxChnTimeBtc = CSR_ACTIVE_MAX_CHANNEL_TIME_BTC;
+    pMac->roam.configParam.nActiveMinChnTimeBtc = CSR_ACTIVE_MIN_CHANNEL_TIME_BTC;
 #ifdef WLAN_AP_STA_CONCURRENCY
     pMac->roam.configParam.nActiveMaxChnTimeConc = CSR_ACTIVE_MAX_CHANNEL_TIME_CONC;
     pMac->roam.configParam.nActiveMinChnTimeConc = CSR_ACTIVE_MIN_CHANNEL_TIME_CONC;
@@ -1390,50 +1392,58 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         pMac->roam.configParam.bgScanInterval = pParam->bgScanInterval;
         //if HDD passed down non zero values then only update,
         //otherwise keep using the defaults
-        if(pParam->nActiveMaxChnTime)
+        if (pParam->nActiveMaxChnTime)
         {
             pMac->roam.configParam.nActiveMaxChnTime = pParam->nActiveMaxChnTime;
         }
-        if(pParam->nActiveMinChnTime)
+        if (pParam->nActiveMinChnTime)
         {
             pMac->roam.configParam.nActiveMinChnTime = pParam->nActiveMinChnTime;
         }
-        if(pParam->nPassiveMaxChnTime)
+        if (pParam->nPassiveMaxChnTime)
         {
             pMac->roam.configParam.nPassiveMaxChnTime = pParam->nPassiveMaxChnTime;
         }
-        if(pParam->nPassiveMinChnTime)
+        if (pParam->nPassiveMinChnTime)
         {
             pMac->roam.configParam.nPassiveMinChnTime = pParam->nPassiveMinChnTime;
         }
+        if (pParam->nActiveMaxChnTimeBtc)
+        {
+            pMac->roam.configParam.nActiveMaxChnTimeBtc = pParam->nActiveMaxChnTimeBtc;
+        }
+        if (pParam->nActiveMinChnTimeBtc)
+        {
+            pMac->roam.configParam.nActiveMinChnTimeBtc = pParam->nActiveMinChnTimeBtc;
+        }
 #ifdef WLAN_AP_STA_CONCURRENCY
-        if(pParam->nActiveMaxChnTimeConc)
+        if (pParam->nActiveMaxChnTimeConc)
         {
             pMac->roam.configParam.nActiveMaxChnTimeConc = pParam->nActiveMaxChnTimeConc;
         }
-        if(pParam->nActiveMinChnTimeConc)
+        if (pParam->nActiveMinChnTimeConc)
         {
             pMac->roam.configParam.nActiveMinChnTimeConc = pParam->nActiveMinChnTimeConc;
         }
-        if(pParam->nPassiveMaxChnTimeConc)
+        if (pParam->nPassiveMaxChnTimeConc)
         {
             pMac->roam.configParam.nPassiveMaxChnTimeConc = pParam->nPassiveMaxChnTimeConc;
         }
-        if(pParam->nPassiveMinChnTimeConc)
+        if (pParam->nPassiveMinChnTimeConc)
         {
             pMac->roam.configParam.nPassiveMinChnTimeConc = pParam->nPassiveMinChnTimeConc;
         }
-        if(pParam->nRestTimeConc)
+        if (pParam->nRestTimeConc)
         {
             pMac->roam.configParam.nRestTimeConc = pParam->nRestTimeConc;
         }
-        if(pParam->nNumChanCombinedConc)
+        if (pParam->nNumChanCombinedConc)
         {
             pMac->roam.configParam.nNumChanCombinedConc = pParam->nNumChanCombinedConc;
         }
 #endif
         //if upper layer wants to disable idle scan altogether set it to 0
-        if(pParam->impsSleepTime)
+        if (pParam->impsSleepTime)
         {
             //Change the unit from second to microsecond
             tANI_U32 impsSleepTime = pParam->impsSleepTime * PAL_TIMER_TO_SEC_UNIT;
@@ -1460,7 +1470,7 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
 #endif
         //if HDD passed down non zero values for age params, then only update,
         //otherwise keep using the defaults
-        if(pParam->nScanResultAgeCount)
+        if (pParam->nScanResultAgeCount)
         {
             pMac->roam.configParam.agingCount = pParam->nScanResultAgeCount;
         }
