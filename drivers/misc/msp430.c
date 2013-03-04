@@ -246,17 +246,18 @@ struct msp_algo_info_t {
 	unsigned char cfg_register;
 	unsigned char req_register;
 	unsigned char evt_register;
+	unsigned short evt_size;
 };
 
 static const struct msp_algo_info_t msp_algo_info[MSP_NUM_ALGOS] = {
 	{ M_ALGO_MODALITY, ALGO_CFG_MODALITY, ALGO_REQ_MODALITY,
-	  ALGO_EVT_MODALITY },
+	  ALGO_EVT_MODALITY, MSP_EVT_SZ_TRANSITION },
 	{ M_ALGO_ORIENTATION, ALGO_CFG_ORIENTATION, ALGO_REQ_ORIENTATION,
-	  ALGO_EVT_ORIENTATION },
+	  ALGO_EVT_ORIENTATION, MSP_EVT_SZ_TRANSITION },
 	{ M_ALGO_STOWED, ALGO_CFG_STOWED, ALGO_REQ_STOWED,
-	  ALGO_EVT_STOWED },
+	  ALGO_EVT_STOWED, MSP_EVT_SZ_TRANSITION },
 	{ M_ALGO_ACCUM_MVMT, ALGO_CFG_ACCUM_MVMT, ALGO_REQ_ACCUM_MVMT,
-	  ALGO_EVT_ACCUM_MVMT }
+	  ALGO_EVT_ACCUM_MVMT, MSP_EVT_SZ_ACCUM_MVMT }
 };
 
 static const unsigned short crc_table[256] = {
@@ -1692,7 +1693,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case MSP430_IOCTL_SET_ALGO_REQ:
 		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_SET_ALGO_REQ");
-		/* copy algo index into bytes[2] */
+		/* copy algo into bytes[2] */
 		if (copy_from_user(&bytes, argp, sizeof(bytes))) {
 			dev_err(&ps_msp430->client->dev,
 				"Set algo req copy bytes returned error\n");
@@ -1703,12 +1704,13 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		/* copy len into byte */
 		if (copy_from_user(&byte, argp + sizeof(bytes), sizeof(byte))) {
 			dev_err(&ps_msp430->client->dev,
-				"Get algo req copy byte returned error\n");
+				"Set algo req copy byte returned error\n");
 			err = -EFAULT;
 			break;
 		}
+		/* algo req register */
 		dev_dbg(&ps_msp430->client->dev,
-			"Set algo req, algo index: %d, len: %u\n", addr, byte);
+			"Set algo req, algo idx: %d, len: %u\n", addr, byte);
 		if (addr < MSP_NUM_ALGOS) {
 			msp_cmdbuff[0] = msp_algo_info[addr].req_register;
 			dev_dbg(&ps_msp430->client->dev,
@@ -1727,6 +1729,40 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			break;
 		}
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 1 + byte);
+		break;
+	case MSP430_IOCTL_GET_ALGO_EVT:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_GET_ALGO_EVT");
+		/* copy algo into bytes[2] */
+		if (copy_from_user(&bytes, argp, sizeof(bytes))) {
+			dev_err(&ps_msp430->client->dev,
+				"Get algo evt copy bytes returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		addr = (bytes[1] << 8) | bytes[0];
+		/* algo evt register */
+		dev_dbg(&ps_msp430->client->dev,
+			"Get algo evt, algo idx: %d\n", addr);
+		if (addr < MSP_NUM_ALGOS) {
+			msp_cmdbuff[0] = msp_algo_info[addr].evt_register;
+			dev_dbg(&ps_msp430->client->dev,
+				"Register: 0x%x", msp_cmdbuff[0]);
+		} else {
+			dev_err(&ps_msp430->client->dev,
+				"Get algo evt invalid arg\n");
+			err = -EFAULT;
+			break;
+		}
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1,
+			msp_algo_info[addr].evt_size);
+		if (err < 0) {
+			dev_err(&ps_msp430->client->dev,
+				"Get algo evt failed\n");
+			break;
+		}
+		if (copy_to_user(argp + sizeof(bytes), msp_cmdbuff,
+			msp_algo_info[addr].evt_size))
+			err = -EFAULT;
 		break;
 
 	/* No default here since previous switch could have
