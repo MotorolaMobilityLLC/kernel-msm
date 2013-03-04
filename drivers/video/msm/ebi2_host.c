@@ -260,9 +260,10 @@ void mdp_dma_pan_update(struct fb_info *info)
 
 	iBuf = &mfd->ibuf;
 
-	invalidate_caches((unsigned long)fbi->screen_base,
-		(unsigned long)info->fix.smem_len,
-		(unsigned long)info->fix.smem_start);
+	if (fbi->screen_base)
+		invalidate_caches((unsigned long)fbi->screen_base,
+				  (unsigned long)info->fix.smem_len,
+				  (unsigned long)info->fix.smem_start);
 
 	pdata->set_rect(iBuf->dma_x, iBuf->dma_y, iBuf->dma_w,
 			iBuf->dma_h);
