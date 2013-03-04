@@ -1202,7 +1202,7 @@ static int arizona_extcon_probe(struct platform_device *pdev)
 
 	/* Set all the remaining keys to a maximum */
 	for (; i < ARIZONA_MAX_MICD_RANGE; i++)
-		arizona_micd_set_level(arizona, i, 0x37);
+		arizona_micd_set_level(arizona, i, 0x3f);
 
 	/*
 	 * If we have a clamp use it, activating in conjunction with
