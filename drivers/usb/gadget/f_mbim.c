@@ -19,7 +19,6 @@
 #include <linux/usb/cdc.h>
 
 #include <linux/usb/composite.h>
-#include <linux/usb/android_composite.h>
 #include <linux/platform_device.h>
 
 #include <linux/spinlock.h>
