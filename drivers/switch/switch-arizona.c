@@ -1013,7 +1013,7 @@ static void arizona_micd_set_level(struct arizona *arizona, int index,
 
 	reg = ARIZONA_MIC_DETECT_LEVEL_4 - (index / 2);
 
-	if (index % 2) {
+	if (!(index % 2)) {
 		mask = 0x3f00;
 		level <<= 8;
 	} else {
