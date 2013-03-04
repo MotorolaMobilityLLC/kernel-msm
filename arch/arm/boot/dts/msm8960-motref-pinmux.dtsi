@@ -528,6 +528,26 @@
 			};
 		};
 
+		pin@801490 {
+			reg = <0x801490 0x10>;
+			qcom,pin-num = <73>;
+			qcom,suspended@1 {
+				qcom,func = <2>;  /* gsbi10(1)              */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+			};
+		};
+
+		pin@8014a0 {
+			reg = <0x8014a0 0x10>;
+			qcom,pin-num = <74>;
+			qcom,suspended@1 {
+				qcom,func = <2>;  /* gsbi10(1)              */
+				qcom,pull = <0>;  /* none                   */
+				qcom,drv = <0>;   /* 2ma                    */
+			};
+		};
+
 		pin@8014d0 {
 			reg = <0x8014d0 0x10>;
 			qcom,pin-num = <77>;
