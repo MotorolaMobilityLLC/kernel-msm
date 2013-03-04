@@ -1511,12 +1511,8 @@ limSysProcessMmhMsgApi(tpAniSirGlobal pMac,
                     tANI_U8 qType)
 {
 // FIXME
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
    SysProcessMmhMsg(pMac, pMsg);
    return eSIR_SUCCESS;
-#else
-   return(halMmhPostMsgApi(pMac, pMsg, qType));
-#endif
 }
 
 char *limFrameStr(tANI_U32 type, tANI_U32 subType)
@@ -3469,15 +3465,7 @@ void limSwitchChannelCback(tpAniSirGlobal pMac, eHalStatus status,
    
    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, mmhMsg.type));
    
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
    SysProcessMmhMsg(pMac, &mmhMsg);
-#else
-   if(halMmhPostMsgApi(pMac, &mmhMsg, ePROT) != eSIR_SUCCESS)
-   {
-      palFreeMemory(pMac->hHdd, (void *)msg2Hdd);
-      limLog(pMac, LOGP, FL("Message posting to HAL failed\n"));
-   }
-#endif
 }
 
 /**

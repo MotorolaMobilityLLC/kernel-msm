@@ -50,9 +50,6 @@
 #include "sirApi.h"
 #include "aniGlobal.h"
 #include "sirMacProtDef.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halDataStruct.h"
-#endif
 #include "cfgApi.h"
 #include "utilsApi.h"
 #include "limTypes.h"

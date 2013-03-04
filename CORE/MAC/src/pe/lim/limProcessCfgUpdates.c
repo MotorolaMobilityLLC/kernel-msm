@@ -62,9 +62,6 @@
 #include "limTypes.h"
 #include "limUtils.h"
 #include "limPropExtsUtils.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halCommonApi.h"
-#endif
 #include "schApi.h"
 #include "pmmApi.h"
 #if defined WLAN_FEATURE_VOWIFI

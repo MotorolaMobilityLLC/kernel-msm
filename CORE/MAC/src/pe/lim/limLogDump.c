@@ -1406,11 +1406,6 @@ dump_lim_ba_timeout( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32
 {
 
 /* FIXME: NO HAL IN UMAC for PRIMA */
-#if !defined( FEATURE_WLAN_INTEGRATED_SOC ) 
-  // Call HAL API to trigger deletion of BA due to timeout
-  (void)halMsg_PostBADeleteInd( pMac, (tANI_U16) arg1, (tANI_U8) arg2, (tANI_U8) arg3,
-         HAL_BA_ERR_TIMEOUT );
-#endif
 
   p += log_sprintf( pMac, p,
       "\n%s: Attempted to trigger a BA Timeout Ind to STA Index %d, for TID %d, Direction %d\n",
@@ -2214,19 +2209,6 @@ dump_lim_unpack_rrm_action( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, t
       case 5:
          {
 // FIXME.
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-            tDot11fLinkMeasurementRequest frm;
-            tHalBufDesc Bd;
-            pBody[arg2][3] = (tANI_U8)arg3; //TxPower used
-            pBody[arg2][4] = (tANI_U8)arg4; //Max Tx power
-
-            Bd.phyStats0 = 0;
-            Bd.phyStats1 = 0;
-            if( (status = dot11fUnpackLinkMeasurementRequest( pMac, &pBody[arg2][0], size[arg2], &frm )) != 0 )
-               p += log_sprintf( pMac, p, "failed to unpack.....status = %x\n", status);
-            else
-               rrmProcessLinkMeasurementRequest( pMac, (tANI_U8*)&Bd, &frm, psessionEntry );
-#endif
          }
          break;
       case 6:
