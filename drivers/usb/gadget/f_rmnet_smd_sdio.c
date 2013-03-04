@@ -1672,6 +1672,7 @@ rmnet_mux_unbind(struct usb_configuration *c, struct usb_function *f)
 	smd_dev->smd_data.flags = 0;
 }
 
+struct dentry *dent_rmnet_mux;
 #if defined(CONFIG_DEBUG_FS)
 #define DEBUG_BUF_SIZE	1024
 static ssize_t rmnet_mux_read_stats(struct file *file, char __user *ubuf,
@@ -1753,8 +1754,6 @@ const struct file_operations rmnet_mux_svlte_debug_stats_ops = {
 	.read = rmnet_mux_read_stats,
 	.write = rmnet_mux_reset_stats,
 };
-
-struct dentry *dent_rmnet_mux;
 
 static void rmnet_mux_debugfs_init(struct rmnet_mux_dev *dev)
 {

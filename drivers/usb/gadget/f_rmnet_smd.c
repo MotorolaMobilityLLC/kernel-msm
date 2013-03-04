@@ -1171,6 +1171,7 @@ free_buf:
 	return ret;
 }
 
+struct dentry *dent_smd;
 #if defined(CONFIG_DEBUG_FS)
 static ssize_t rmnet_smd_debug_read_stats(struct file *file, char __user *ubuf,
 		size_t count, loff_t *ppos)
@@ -1268,7 +1269,6 @@ const struct file_operations rmnet_smd_debug_stats_ops = {
 	.write = rmnet_smd_debug_reset_stats,
 };
 
-struct dentry *dent_smd;
 struct dentry *dent_smd_status;
 
 static void rmnet_smd_debugfs_init(struct rmnet_smd_dev *dev)
