@@ -564,6 +564,7 @@ void mipi_mot_set_tear(struct msm_fb_data_type *mfd, int on)
 
 int __init moto_panel_debug_init(void)
 {
+#ifdef CONFIG_DEBUG_FS
 	struct dentry *panel_root;
 
 	panel_root = debugfs_create_dir("panel", NULL);
@@ -572,7 +573,7 @@ int __init moto_panel_debug_init(void)
 				NULL, &panel_gamma_debug_fops);
 	else
 		pr_err("Moto panel debugfs couldn't be created.\n");
-
+#endif
 	return 0;
 }
 
