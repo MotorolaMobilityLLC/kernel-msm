@@ -920,12 +920,8 @@ WLANTL_AMSDUProcess
    ------------------------------------------------------------------------*/
   ucAef =  (v_U8_t)WDA_GET_RX_AEF( pvBDHeader );
   ucFsf =  (v_U8_t)WDA_GET_RX_ESF( pvBDHeader );
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  MPDUDataOffset = (v_U16_t)WDA_GET_RX_MPDU_DATA_OFFSET(pvBDHeader) - WLANHAL_RX_BD_HEADER_SIZE;
-#else
   /* On Prima, MPDU data offset not includes BD header size */
   MPDUDataOffset = (v_U16_t)WDA_GET_RX_MPDU_DATA_OFFSET(pvBDHeader);
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
   if ( WLANHAL_RX_BD_AEF_SET == ucAef ) 
   {

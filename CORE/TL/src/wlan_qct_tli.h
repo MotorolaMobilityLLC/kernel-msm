@@ -884,9 +884,7 @@ WLANTL_GetFrames
   v_PVOID_t       pAdapter,
   vos_pkt_t     **ppFrameDataBuff,
   v_U32_t         uSize,
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   v_U8_t          uFlowMask,
-#endif
   v_BOOL_t*       pbUrgent
 );
 
