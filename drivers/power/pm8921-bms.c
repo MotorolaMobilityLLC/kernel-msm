@@ -3455,6 +3455,9 @@ static int pm8921_bms_resume(struct device *dev)
 	int rc;
 	unsigned long time_since_last_recalc;
 	unsigned long tm_now_sec;
+	int tm_to_recalc;
+
+	tm_to_recalc = the_chip->soc_calc_period / 1000;
 
 	rc = get_current_time(&tm_now_sec);
 	if (rc) {
@@ -3466,7 +3469,7 @@ static int pm8921_bms_resume(struct device *dev)
 				the_chip->last_recalc_time;
 		pr_debug("Time since last recalc: %lu\n",
 				time_since_last_recalc);
-		if (time_since_last_recalc >= the_chip->soc_calc_period) {
+		if (time_since_last_recalc >= tm_to_recalc) {
 			the_chip->last_recalc_time = tm_now_sec;
 			recalculate_soc(the_chip);
 		}
