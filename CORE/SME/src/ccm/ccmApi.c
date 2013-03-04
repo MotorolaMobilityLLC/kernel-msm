@@ -42,9 +42,6 @@
 #include "palTypes.h"
 #include "wniApi.h"     /* WNI_CFG_SET_REQ */
 #include "sirParams.h"  /* tSirMbMsg */
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halHddApis.h" /* palAllocateMemory */
-#endif
 #include "smsDebug.h"   /* smsLog */
 #include "cfgApi.h"
 #include "ccmApi.h"

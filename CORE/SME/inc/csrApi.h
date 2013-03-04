@@ -52,9 +52,6 @@
 
 #include "sirApi.h"
 #include "sirMacProtDef.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halRfTypes.h"
-#endif
 #include "csrLinkList.h"
 
 typedef enum 
