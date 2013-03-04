@@ -1103,10 +1103,10 @@ static int msm_cam_server_open_session(struct msm_cam_server_dev *ps,
 
 	/*
 	 * The number of camera instance should be controlled by the
-	 * resource manager. Currently supporting two active instances
+	 * resource manager. Currently supporting one active instance
 	 */
-	if (atomic_read(&ps->number_pcam_active) > 1) {
-		pr_err("%s Cannot have more than two active camera %d\n",
+	if (atomic_read(&ps->number_pcam_active) > 0) {
+		pr_err("%s Cannot have more than one active camera %d\n",
 			__func__, atomic_read(&ps->number_pcam_active));
 		return -EINVAL;
 	}
