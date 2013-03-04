@@ -573,7 +573,7 @@ static void mdp4_dsi_video_tg_off(struct vsycn_ctrl *vctrl)
 	mdp4_dsi_video_wait4vsync(0);
 }
 
-int mdp4_dsi_video_splash_done(void)
+int mdp4_dsi_video_splash_done(struct platform_device *pdev)
 {
 	struct vsycn_ctrl *vctrl;
 	int cndx = 0;
