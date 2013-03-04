@@ -326,7 +326,6 @@ struct pm8921_chg_chip {
 	signed char			hot_temp_pcb_offset_dc;
 	int				pcb_temp_dc;
 	int				pcb_temp_state;
-	enum power_supply_type 		usb_type;
 #endif
 };
 
@@ -1813,9 +1812,7 @@ static int pm_power_get_property_mains(struct power_supply *psy,
 			return 0;
 		}
 
-#ifdef CONFIG_PM8921_EXTENDED_INFO
 		type = the_chip->usb_type;
-#endif
 		if (type == POWER_SUPPLY_TYPE_USB_DCP ||
 			type == POWER_SUPPLY_TYPE_USB_ACA ||
 			type == POWER_SUPPLY_TYPE_USB_CDP)
@@ -2771,9 +2768,7 @@ int pm8921_set_usb_power_supply_type(enum power_supply_type type)
 	if (type < POWER_SUPPLY_TYPE_USB && type > POWER_SUPPLY_TYPE_BATTERY)
 		return -EINVAL;
 
-#ifdef CONFIG_PM8921_EXTENDED_INFO
 	the_chip->usb_type = type;
-#endif
 	power_supply_changed(&the_chip->usb_psy);
 	power_supply_changed(&the_chip->dc_psy);
 	return 0;
