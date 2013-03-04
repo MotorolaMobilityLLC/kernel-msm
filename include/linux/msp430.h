@@ -103,6 +103,8 @@
 		_IOR(MSP430_IOCTL_BASE, 42, char*)
 #define MSP430_IOCTL_SET_ALGO_REQ \
 		_IOR(MSP430_IOCTL_BASE, 43, char*)
+#define MSP430_IOCTL_GET_ALGO_EVT \
+		_IOR(MSP430_IOCTL_BASE, 44, char*)
 
 #define FW_VERSION_SIZE 8
 #define MSP_CONTROL_REG_SIZE 200
@@ -170,12 +172,15 @@ struct msp430_platform_data {
 #define M_ALGO_ACCUM_MVMT   0x0040
 
 /* algo index */
-#define MSP_IDX_MODALITY    0
-#define MSP_IDX_ORIENTATION 1
-#define MSP_IDX_STOWED      2
-#define MSP_IDX_ACCUM_MVMT  3
+#define MSP_IDX_MODALITY       0
+#define MSP_IDX_ORIENTATION    1
+#define MSP_IDX_STOWED         2
+#define MSP_IDX_ACCUM_MVMT     3
 
-#define MSP_NUM_ALGOS   4
+#define MSP_NUM_ALGOS          4
+
+#define MSP_EVT_SZ_TRANSITION  7
+#define MSP_EVT_SZ_ACCUM_MVMT  4
 
 struct msp430_android_sensor_data {
 	int64_t timestamp;
