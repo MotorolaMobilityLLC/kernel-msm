@@ -1069,8 +1069,6 @@ void mipi_dsi_op_mode_config(int mode)
 	wmb();
 }
 
-
-#if 0
 void mipi_dsi_wait4video_done(void)
 {
 	unsigned long flag;
@@ -1083,7 +1081,7 @@ void mipi_dsi_wait4video_done(void)
 	wait_for_completion_timeout(&dsi_video_comp,
 					msecs_to_jiffies(VSYNC_PERIOD * 4));
 }
-#endif
+
 void mipi_dsi_mdp_busy_wait(void)
 {
 	mutex_lock(&cmd_mutex);
