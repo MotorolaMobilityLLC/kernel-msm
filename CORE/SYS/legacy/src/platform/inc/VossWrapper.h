@@ -89,17 +89,12 @@ extern "C" {
 #include "sirTypes.h"
 #include "sirParams.h"
 #include "sysDef.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halDataStruct.h"
-#endif
 #include "aniDbgTest.h"
 #include "vos_timer.h"
 #include "palApi.h"
 #include "vos_types.h"
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include "vos_trace.h"
 #include "vos_memory.h"
-#endif
 
 /* Interlocked Compare Exchange related definitions */
 
