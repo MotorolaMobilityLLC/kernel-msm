@@ -68,7 +68,7 @@ struct tfa9890_priv {
 static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 {
 	.reg = TFA9890_BATT_CTL_REG,
-	.value = 0x5382,
+	.value = 0x53A2,
 },
 {
 	.reg = TFA9890_I2S_CTL_REG,
