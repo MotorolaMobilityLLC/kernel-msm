@@ -4474,3 +4474,14 @@ NONE
 V    RW    NP
 NONE
 0    1     0
+
+*
+* AP Link Monitor Timeout (TU)
+*
+WNI_CFG_AP_LINK_MONITOR_TIMEOUT    I    4    7
+V    RW    NP
+HAL
+1    255    3
+V    RW    NP
+HAL
+1    255    3

@@ -644,6 +644,13 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_GO_KEEP_ALIVE_PERIOD_MIN,
                  CFG_GO_KEEP_ALIVE_PERIOD_MAX),
 
+   REG_VARIABLE( CFG_AP_LINK_MONITOR_PERIOD_NAME, WLAN_PARAM_Integer,
+                 hdd_config_t, apLinkMonitorPeriod,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_AP_LINK_MONITOR_PERIOD_DEFAULT,
+                 CFG_AP_LINK_MONITOR_PERIOD_MIN,
+                 CFG_AP_LINK_MONITOR_PERIOD_MAX),
+
    REG_VARIABLE(CFG_DISABLE_PACKET_FILTER , WLAN_PARAM_Integer,
                  hdd_config_t, disablePacketFilter,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
@@ -3239,6 +3246,13 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
      {
         fStatus = FALSE;
         hddLog(LOGE, "Could not pass on WNI_CFG_GO_KEEP_ALIVE_TIMEOUT to CCM\n");
+     }
+
+     if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_AP_LINK_MONITOR_TIMEOUT, pConfig->apLinkMonitorPeriod,
+        NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
+     {
+        fStatus = FALSE;
+        hddLog(LOGE, "Could not pass on WNI_CFG_AP_LINK_MONITOR_TIMEOUT to CCM\n");
      }
 
 #if defined WLAN_FEATURE_VOWIFI
