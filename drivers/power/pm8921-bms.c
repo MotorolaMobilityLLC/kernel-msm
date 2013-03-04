@@ -2382,6 +2382,8 @@ int pm8921_bms_get_percent_charge(void)
 		return -EINVAL;
 	}
 
+	recalculate_soc(the_chip);
+
 	return report_state_of_charge(the_chip);
 }
 EXPORT_SYMBOL_GPL(pm8921_bms_get_percent_charge);
