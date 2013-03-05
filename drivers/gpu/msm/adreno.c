@@ -2133,57 +2133,61 @@ static unsigned int _get_context_id(struct kgsl_context *k_ctxt)
 static void adreno_next_event(struct kgsl_device *device,
 		struct kgsl_event *event)
 {
+	int status;
 	unsigned int ref_ts, enableflag;
 	unsigned int context_id = _get_context_id(event->context);
 	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
 
-	kgsl_sharedmem_readl(&device->memstore, &enableflag,
-		KGSL_MEMSTORE_OFFSET(context_id, ts_cmp_enable));
-	/*
-	 * Barrier is needed here to make sure the read from memstore
-	 * has posted
-	 */
-
-	mb();
-
-	if (enableflag) {
-		kgsl_sharedmem_readl(&device->memstore, &ref_ts,
-			KGSL_MEMSTORE_OFFSET(context_id,
-				ref_wait_ts));
-
-		/* Make sure the memstore read has posted */
-		mb();
-		if (timestamp_cmp(ref_ts, event->timestamp) >= 0) {
-			kgsl_sharedmem_writel(&device->memstore,
-			KGSL_MEMSTORE_OFFSET(context_id,
-				ref_wait_ts), event->timestamp);
-			/* Make sure the memstore write is posted */
-			wmb();
-		}
-	} else {
-		unsigned int cmds[2];
-		kgsl_sharedmem_writel(&device->memstore,
-			KGSL_MEMSTORE_OFFSET(context_id,
-				ref_wait_ts), event->timestamp);
-		enableflag = 1;
-		kgsl_sharedmem_writel(&device->memstore,
-			KGSL_MEMSTORE_OFFSET(context_id,
-				ts_cmp_enable), enableflag);
-
-		/* Make sure the memstore write gets posted */
-		wmb();
-
+	status = kgsl_check_timestamp(device, event->context, event->timestamp);
+	if (!status) {
+		kgsl_sharedmem_readl(&device->memstore, &enableflag,
+			KGSL_MEMSTORE_OFFSET(context_id, ts_cmp_enable));
 		/*
-		 * submit a dummy packet so that even if all
-		 * commands upto timestamp get executed we will still
-		 * get an interrupt
+		 * Barrier is needed here to make sure the read from memstore
+		 * has posted
 		 */
-		cmds[0] = cp_type3_packet(CP_NOP, 1);
-		cmds[1] = 0;
 
-		if (adreno_dev->drawctxt_active)
-			adreno_ringbuffer_issuecmds_intr(device,
-					event->context, &cmds[0], 2);
+		mb();
+
+		if (enableflag) {
+			kgsl_sharedmem_readl(&device->memstore, &ref_ts,
+				KGSL_MEMSTORE_OFFSET(context_id,
+					ref_wait_ts));
+
+			/* Make sure the memstore read has posted */
+			mb();
+			if (timestamp_cmp(ref_ts, event->timestamp) >= 0) {
+				kgsl_sharedmem_writel(&device->memstore,
+				KGSL_MEMSTORE_OFFSET(context_id,
+					ref_wait_ts), event->timestamp);
+				/* Make sure the memstore write is posted */
+				wmb();
+			}
+		} else {
+			unsigned int cmds[2];
+			kgsl_sharedmem_writel(&device->memstore,
+				KGSL_MEMSTORE_OFFSET(context_id,
+					ref_wait_ts), event->timestamp);
+			enableflag = 1;
+			kgsl_sharedmem_writel(&device->memstore,
+				KGSL_MEMSTORE_OFFSET(context_id,
+					ts_cmp_enable), enableflag);
+
+			/* Make sure the memstore write gets posted */
+			wmb();
+
+			/*
+			 * submit a dummy packet so that even if all
+			 * commands upto timestamp get executed we will still
+			 * get an interrupt
+			 */
+			cmds[0] = cp_type3_packet(CP_NOP, 1);
+			cmds[1] = 0;
+
+			if (adreno_dev->drawctxt_active)
+				adreno_ringbuffer_issuecmds_intr(device,
+						event->context, &cmds[0], 2);
+		}
 	}
 }
 
