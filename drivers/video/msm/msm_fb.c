@@ -1013,6 +1013,9 @@ static int msm_fb_blank_sub(int blank_mode, struct fb_info *info,
 			mfd->op_enable = TRUE;
 			mfd->suspend_cfg.partial = 0;
 			mfd->resume_cfg.partial = 0;
+			mfd->resume_cfg.keep_hidden = 0;
+			mfd->resume_cfg.panel_state =
+				MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_IN;
 		}
 		break;
 	}
@@ -4188,12 +4191,19 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 
 			if (copy_from_user(&hide,
 							(void __user *)arg,
-							sizeof(hide)))
+							sizeof(hide))) {
+				pr_err("%s: MSMFB_HIDE_IMG copy_from_user failed\n",
+					__func__);
 				return -EFAULT;
+			}
 			pdata = (struct msm_fb_panel_data *)
 				mfd->pdev->dev.platform_data;
-			if (pdata && pdata->hide_img)
+			if (pdata && pdata->hide_img) {
 				ret = pdata->hide_img(mfd, hide);
+				if (ret)
+					pr_err("%s: MSMFB_HIDE_IMG hide_img failed\n",
+						__func__);
+			}
 		}
 		break;
 
@@ -4201,18 +4211,17 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		if (msm_fb_pdata
 			&& msm_fb_pdata->is_partial_mode_supported
 			&& msm_fb_pdata->is_partial_mode_supported()) {
-			struct msm_fb_panel_data *pdata;
 
-			if (copy_from_user(&mfd->suspend_cfg,
-							(void __user *)arg,
-							sizeof(mfd->suspend_cfg)))
+			lock_panel_mutex(mfd);
+			ret = copy_from_user(&mfd->suspend_cfg,
+						(void __user *)arg,
+						sizeof(mfd->suspend_cfg));
+			unlock_panel_mutex(mfd);
+			if (ret) {
+				pr_err("%s: MSMFB_PREPARE_FOR_SUSPEND failed\n",
+					__func__);
 				return -EFAULT;
-			pdata = (struct msm_fb_panel_data *)
-				mfd->pdev->dev.platform_data;
-			if (pdata && pdata->prepare_for_suspend)
-				ret = pdata->prepare_for_suspend(mfd,
-					mfd->suspend_cfg.partial);
-
+			}
 			pr_info("%s: MSMFB_PREPARE_FOR_SUSPEND(%d)\n",
 				__func__, mfd->suspend_cfg.partial);
 		}
@@ -4222,24 +4231,22 @@ static int msm_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		if (msm_fb_pdata
 			&& msm_fb_pdata->is_partial_mode_supported
 			&& msm_fb_pdata->is_partial_mode_supported()) {
-			struct msm_fb_panel_data *pdata;
 
-			if (copy_from_user(&mfd->resume_cfg,
+			lock_panel_mutex(mfd);
+			ret = copy_from_user(&mfd->resume_cfg,
 						(void __user *)arg,
-						sizeof(mfd->resume_cfg)))
+						sizeof(mfd->resume_cfg));
+			unlock_panel_mutex(mfd);
+			if (ret) {
+				pr_err("%s: MSMFB_PREPARE_FOR_RESUME failed\n",
+					__func__);
 				return -EFAULT;
-			pdata = (struct msm_fb_panel_data *)
-				mfd->pdev->dev.platform_data;
-			if (pdata && pdata->prepare_for_resume)
-				ret = pdata->prepare_for_resume(mfd,
-					mfd->resume_cfg.partial,
-					mfd->resume_cfg.panel_state,
-					mfd->resume_cfg.gamma);
-
-			pr_info("%s: MSMFB_PREPARE_FOR_RESUME(%d, %d)\n",
+			}
+			pr_info("%s: MSMFB_PREPARE_FOR_RESUME(%d, %d, %d)\n",
 				__func__,
 				mfd->resume_cfg.partial,
-				mfd->resume_cfg.panel_state);
+				mfd->resume_cfg.panel_state,
+				mfd->resume_cfg.keep_hidden);
 		}
 		break;
 
