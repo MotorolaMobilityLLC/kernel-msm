@@ -46,8 +46,8 @@ extern int32_t ov660_set_i2c_bypass(int bypassOn);
 extern int32_t ov660_add_blc_firmware(uint16_t addr);
 extern int32_t ov660_use_work_around_blc(void);
 extern int32_t ov660_check_probe(void);
-extern int32_t ov660_intialize_8MP(void);
-extern int32_t ov660_intialize_10MP(void);
+extern int32_t ov660_initialize_8MP(void);
+extern int32_t ov660_initialize_10MP(void);
 
 #endif /* __OV660_V4L2_H__ */
 

@@ -160,8 +160,7 @@ struct msm_sensor_fn_t {
 			int32_t vision_mode_enable);
 	int (*sensor_set_vision_ae_control)(
 			struct msm_sensor_ctrl_t *s_ctrl, int ae_mode);
-	int32_t (*sensor_get_module_info)
-		(struct msm_sensor_ctrl_t *, struct otp_info_t *);
+	int32_t (*sensor_get_module_info)(struct msm_sensor_ctrl_t *);
 };
 
 struct msm_sensor_csi_info {
@@ -226,6 +225,7 @@ struct msm_sensor_ctrl_t {
 	/* delay (in ms) after power up sequence */
 	uint16_t power_seq_delay;
 	struct msm_sensor_eeprom_data eeprom_data;
+	struct otp_info_t sensor_otp;
 };
 
 struct msm_sensor_ctrl_t *get_sctrl(struct v4l2_subdev *sd);
