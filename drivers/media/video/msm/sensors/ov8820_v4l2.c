@@ -24,14 +24,13 @@
 #define OV8820_OTP_BANK_SIZE  0x20
 #define OV8820_OTP_BANK_COUNT 8
 #define OV8820_OTP_SIZE       (OV8820_OTP_BANK_COUNT * OV8820_OTP_BANK_SIZE)
-#if OV8820_OTP_SIZE > MAX_OTP_SIZE
-#error OV8820_OTP_SIZE must not be greater than MAX_OTP_SIZE
-#endif
+
+static uint8_t ov8820_otp[OV8820_OTP_SIZE];
+static struct otp_info_t ov8820_otp_info;
+static uint8_t is_ov8820_otp_read;
 
 DEFINE_MUTEX(ov8820_mut);
 static struct msm_sensor_ctrl_t ov8820_s_ctrl;
-
-static struct otp_info_t otp_info;
 
 static struct msm_cam_clk_info cam_mot_8960_clk_info[] = {
 	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
@@ -565,6 +564,9 @@ static int32_t ov8820_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 	int16_t i, j;
 	uint16_t readData;
 
+	if (is_ov8820_otp_read == 1)
+		return rc;
+
 	/* Start Stream to read OTP Data */
 	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 			0x0100, 0x01, MSM_CAMERA_I2C_BYTE_DATA);
@@ -610,7 +612,7 @@ static int32_t ov8820_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 					&readData,
 					MSM_CAMERA_I2C_BYTE_DATA);
 
-			otp_info.otp_info[(i*OV8820_OTP_BANK_SIZE)+j] =
+			ov8820_otp[(i*OV8820_OTP_BANK_SIZE)+j] =
 				(uint8_t)readData;
 
 			if (rc < 0)
@@ -634,6 +636,7 @@ static int32_t ov8820_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 		return rc;
 	}
 
+	is_ov8820_otp_read = 1;
 	return rc;
 }
 
@@ -823,18 +826,27 @@ static int32_t ov8820_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	rc = ov8820_read_otp(s_ctrl);
 	if (rc < 0) {
 		pr_err("%s: unable to read otp data\n", __func__);
-		return -ENODEV;
+		ov8820_otp_info.size = 0;
+	} else {
+		ov8820_otp_info.otp_info = (uint8_t *)ov8820_otp;
+		ov8820_otp_info.size = OV8820_OTP_SIZE;
 	}
 
 	pr_info("ov8820: match_id success\n");
 	return 0;
 }
 
-static int32_t ov8820_get_module_info(struct msm_sensor_ctrl_t *s_ctrl,
-		struct otp_info_t *module_info)
+static int32_t ov8820_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	*(module_info) = otp_info;
-	return 0;
+	if (ov8820_otp_info.size > 0) {
+		s_ctrl->sensor_otp.otp_info = ov8820_otp_info.otp_info;
+		s_ctrl->sensor_otp.size = ov8820_otp_info.size;
+		return 0;
+	} else {
+		pr_err("%s: Unable to get module info as otp failed!\n",
+				__func__);
+		return -EINVAL;
+	}
 }
 
 #if 0
