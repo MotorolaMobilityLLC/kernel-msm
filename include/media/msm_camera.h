@@ -1563,9 +1563,9 @@ struct ispif_cfg_data {
 	} cfg;
 };
 
-#define MAX_OTP_SIZE 512
 struct otp_info_t {
-	uint8_t otp_info[MAX_OTP_SIZE];
+	uint8_t *otp_info;
+	uint16_t size;
 };
 
 enum msm_camera_i2c_reg_addr_type {

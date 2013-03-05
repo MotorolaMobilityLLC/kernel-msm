@@ -579,7 +579,7 @@ static struct ov660_reg_i2c_tbl ov660_ov8835_init_settings[] = {
 
 static struct ov660_reg_i2c_tbl ov660_ov10820_init_settings[] = {
 	{0x6b00, 0x10},
-	{0x6101, 0x02},
+	{0x6101, 0x12},
 	{0x6103, 0x20},
 	{0x6010, 0xff},
 	{0x6011, 0xff},
@@ -697,7 +697,7 @@ static struct ov660_reg_i2c_tbl ov660_ov10820_init_settings[] = {
 
 static struct ov660_reg_i2c_tbl ov660_ov10820_blc_firmware[] = {
 	{0x6b00, 0x10},
-	{0x6101, 0x02},
+	{0x6101, 0x12},
 	{0x8000, 0x02},
 	{0x8001, 0x0c},
 	{0x8002, 0x5e},
@@ -5798,7 +5798,7 @@ static struct ov660_reg_i2c_tbl ov660_ov10820_lsc_settings[] = {
 	{0x72ff, 0x8c},
 };
 
-int32_t ov660_intialize_10MP(void)
+int32_t ov660_initialize_10MP(void)
 {
 	int32_t rc = 0;
 	pr_debug("%s: enter\n", __func__);
@@ -5876,7 +5876,7 @@ int32_t ov660_use_work_around_blc()
 	return rc;
 }
 
-int32_t ov660_intialize_8MP(void)
+int32_t ov660_initialize_8MP(void)
 {
 	int32_t rc = 0;
 	rc = ov660_write_i2c_tbl(ov660_ov8835_init_settings,
