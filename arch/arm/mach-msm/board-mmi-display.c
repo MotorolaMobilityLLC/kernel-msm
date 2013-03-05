@@ -952,7 +952,7 @@ static int panel_power_ctrl(int on)
 {
 	int rc = 0;
 
-	pr_debug("%s (%d) is called\n", __func__, on);
+	pr_info("%s (%d) is called\n", __func__, on);
 	if (on == MSM_DISP_POWER_ON_PARTIAL
 			&& !is_partial_mode_supported())
 		on = MSM_DISP_POWER_ON;
