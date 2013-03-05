@@ -1890,6 +1890,10 @@ static void update_power_supply(struct pm8921_bms_chip *chip)
 
 static int get_batt_temp(struct pm8921_bms_chip *chip, int *batt_temp)
 {
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+	*batt_temp = pm8921_batt_temperature();
+	return 0;
+#else
 	int rc;
 	struct pm8xxx_adc_chan_result result;
 
@@ -1903,6 +1907,7 @@ static int get_batt_temp(struct pm8921_bms_chip *chip, int *batt_temp)
 	pr_debug("batt_temp phy = %lld meas = 0x%llx\n", result.physical,
 						result.measurement);
 		return 0;
+#endif
 }
 
 #define MIN_DELTA_625_UV	1000
