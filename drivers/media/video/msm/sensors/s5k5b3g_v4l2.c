@@ -29,17 +29,16 @@ DEFINE_MUTEX(s5k5b3g_mut);
 #define S5K5B3G_OTP_BANK_SIZE  0x40
 #define S5K5B3G_OTP_BANK_COUNT 2
 #define S5K5B3G_OTP_SIZE       (S5K5B3G_OTP_BANK_COUNT * S5K5B3G_OTP_BANK_SIZE)
-#if S5K5B3G_OTP_SIZE > MAX_OTP_SIZE
-#error S5K5B3G_OTP_SIZE must not be greater than MAX_OTP_SIZE
-#endif
+
+static uint8_t s5k5b3g_otp[S5K5B3G_OTP_SIZE];
+static struct otp_info_t s5k5b3g_otp_info;
+static uint8_t is_s5k5b3g_otp_read;
 
 static struct msm_sensor_ctrl_t s5k5b3g_s_ctrl;
 
 static struct regulator *cam_vdig;
 static struct regulator *cam_vio;
 static struct regulator *cam_mipi_mux;
-
-static struct otp_info_t otp_info;
 
 static struct msm_cam_clk_info cam_mot_8960_clk_info[] = {
 	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
@@ -217,6 +216,9 @@ static int32_t s5k5b3g_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 	int16_t i, j;
 	uint16_t readData;
 
+	if (is_s5k5b3g_otp_read == 1)
+		return rc;
+
 	/* Stream on */
 	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 			0x0100, 0x01, MSM_CAMERA_I2C_BYTE_DATA);
@@ -253,7 +255,7 @@ static int32_t s5k5b3g_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 					&readData,
 					MSM_CAMERA_I2C_BYTE_DATA);
 
-			otp_info.otp_info[(i*S5K5B3G_OTP_BANK_SIZE)+j] =
+			s5k5b3g_otp[(i*S5K5B3G_OTP_BANK_SIZE)+j] =
 				(uint8_t)readData;
 
 			if (rc < 0)
@@ -265,19 +267,30 @@ static int32_t s5k5b3g_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 			S5K5B3G_OTP_LOAD, 0x00,
 			MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0)
+		return rc;
 
 	/* Stream off */
 	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 			0x0100, 0x00, MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0)
+		return rc;
 
+	is_s5k5b3g_otp_read = 1;
 	return rc;
 }
 
-static int32_t s5k5b3g_get_module_info(struct msm_sensor_ctrl_t *s_ctrl,
-		struct otp_info_t *module_info)
+static int32_t s5k5b3g_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
 {
-	*(module_info) = otp_info;
-	return 0;
+	if (s5k5b3g_otp_info.size > 0) {
+		s_ctrl->sensor_otp.otp_info = s5k5b3g_otp_info.otp_info;
+		s_ctrl->sensor_otp.size = s5k5b3g_otp_info.size;
+		return 0;
+	} else {
+		pr_err("%s: Unable to get module info as otp failed!\n",
+				__func__);
+		return -EINVAL;
+	}
 }
 
 static int32_t s5k5b3g_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
@@ -580,7 +593,10 @@ static int32_t s5k5b3g_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	rc = s5k5b3g_read_otp(s_ctrl);
 	if (rc < 0) {
 		pr_err("%s: unable to read otp data\n", __func__);
-		return -ENODEV;
+		s5k5b3g_otp_info.size = 0;
+	} else {
+		s5k5b3g_otp_info.otp_info = (uint8_t *)s5k5b3g_otp;
+		s5k5b3g_otp_info.size = S5K5B3G_OTP_SIZE;
 	}
 
 	pr_debug("s5k5b3g: match_id success\n");
