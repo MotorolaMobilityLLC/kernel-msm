@@ -151,21 +151,35 @@ void wcd9xxx_unlock_sleep(struct wcd9xxx *wcd9xxx)
 }
 EXPORT_SYMBOL_GPL(wcd9xxx_unlock_sleep);
 
+void wcd9xxx_nested_irq_lock(struct wcd9xxx *wcd9xxx)
+{
+	mutex_lock(&wcd9xxx->nested_irq_lock);
+}
+
+void wcd9xxx_nested_irq_unlock(struct wcd9xxx *wcd9xxx)
+{
+	mutex_unlock(&wcd9xxx->nested_irq_lock);
+}
+
 static void wcd9xxx_irq_dispatch(struct wcd9xxx *wcd9xxx, int irqbit)
 {
 	if ((irqbit <= TABLA_IRQ_MBHC_INSERTION) &&
 	    (irqbit >= TABLA_IRQ_MBHC_REMOVAL)) {
+                wcd9xxx_nested_irq_lock(wcd9xxx);
 		wcd9xxx_reg_write(wcd9xxx, TABLA_A_INTR_CLEAR0 +
 				  BIT_BYTE(irqbit), BYTE_BIT_MASK(irqbit));
 		if (wcd9xxx_get_intf_type() == WCD9XXX_INTERFACE_TYPE_I2C)
 			wcd9xxx_reg_write(wcd9xxx, TABLA_A_INTR_MODE, 0x02);
 		handle_nested_irq(wcd9xxx->irq_base + irqbit);
+		wcd9xxx_nested_irq_unlock(wcd9xxx);
 	} else {
+		wcd9xxx_nested_irq_lock(wcd9xxx);
 		handle_nested_irq(wcd9xxx->irq_base + irqbit);
 		wcd9xxx_reg_write(wcd9xxx, TABLA_A_INTR_CLEAR0 +
 				  BIT_BYTE(irqbit), BYTE_BIT_MASK(irqbit));
 		if (wcd9xxx_get_intf_type() == WCD9XXX_INTERFACE_TYPE_I2C)
 			wcd9xxx_reg_write(wcd9xxx, TABLA_A_INTR_MODE, 0x02);
+		wcd9xxx_nested_irq_unlock(wcd9xxx);
 	}
 }
 
@@ -223,6 +237,7 @@ int wcd9xxx_irq_init(struct wcd9xxx *wcd9xxx)
 	unsigned int i, cur_irq;
 
 	mutex_init(&wcd9xxx->irq_lock);
+	mutex_init(&wcd9xxx->nested_irq_lock);
 
 	if (!wcd9xxx->irq) {
 		dev_warn(wcd9xxx->dev,
@@ -235,6 +250,9 @@ int wcd9xxx_irq_init(struct wcd9xxx *wcd9xxx)
 		dev_err(wcd9xxx->dev,
 			"No interrupt base specified, no interrupts\n");
 		return 0;
+		mutex_destroy(&wcd9xxx->nested_irq_lock);
+		mutex_destroy(&wcd9xxx->irq_lock);
+		mutex_destroy(&wcd9xxx->nested_irq_lock);
 	}
 	/* Mask the individual interrupt sources */
 	for (i = 0, cur_irq = wcd9xxx->irq_base; i < TABLA_NUM_IRQS; i++,
@@ -296,6 +314,7 @@ int wcd9xxx_irq_init(struct wcd9xxx *wcd9xxx)
 
 	if (ret)
 		mutex_destroy(&wcd9xxx->irq_lock);
+		mutex_destroy(&wcd9xxx->nested_irq_lock);
 
 	return ret;
 }
@@ -308,4 +327,5 @@ void wcd9xxx_irq_exit(struct wcd9xxx *wcd9xxx)
 		device_init_wakeup(wcd9xxx->dev, 0);
 	}
 	mutex_destroy(&wcd9xxx->irq_lock);
+	mutex_destroy(&wcd9xxx->nested_irq_lock);
 }
