@@ -739,6 +739,9 @@ static int pm_chg_vinmin_set(struct pm8921_chg_chip *chip, int voltage)
 {
 	u8 temp;
 
+	if (chip->factory_mode)
+		return 0;
+
 	if (voltage < PM8921_CHG_VINMIN_USABLE_MIN
 			|| voltage > PM8921_CHG_VINMIN_USABLE_MAX) {
 		pr_err("bad mV=%d asked to set\n", voltage);
@@ -5894,6 +5897,78 @@ static DEVICE_ATTR(pcb_temp, 0664,
 		   pcb_temp_show,
 		   pcb_temp_store);
 
+static ssize_t force_chg_vinmin_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	unsigned long r;
+	unsigned long voltage;
+	u8 temp;
+
+	r = kstrtoul(buf, 0, &voltage);
+	if (r) {
+		pr_err("Invalid vinmin value = %lu\n", voltage);
+		r = -EINVAL;
+		return r;
+	}
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		r = -ENODEV;
+		return r;
+	}
+
+	if (!the_chip->factory_mode) {
+		pr_err("Only allowed in factory mode\n");
+		r = -EPERM;
+		return r;
+	}
+
+	if (voltage < PM8921_CHG_VINMIN_USABLE_MIN
+			|| voltage > PM8921_CHG_VINMIN_USABLE_MAX) {
+		pr_err("bad mV=%d asked to set\n", (int)voltage);
+		return -EINVAL;
+	}
+	temp = (voltage - PM8921_CHG_VINMIN_MIN_MV) / PM8921_CHG_VINMIN_STEP_MV;
+
+	r = pm_chg_masked_write(the_chip, CHG_VIN_MIN, PM8921_CHG_VINMIN_MASK,
+									temp);
+
+	return r ? r : count;
+}
+
+static ssize_t force_chg_vinmin_show(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	int state;
+	int ret;
+	u8 value;
+
+	if (!the_chip) {
+		pr_err("chip not valid\n");
+		state = -ENODEV;
+		goto end;
+	}
+
+	ret = pm8xxx_readb(the_chip->dev->parent, CHG_VIN_MIN, &value);
+	if (ret) {
+		pr_err("pm8xxx_readb CHG_VIN_MIN failed ret = %d\n", ret);
+		state = -EFAULT;
+		goto end;
+	}
+
+	state = ((value & PM8921_CHG_VINMIN_MASK) * PM8921_CHG_VINMIN_STEP_MV);
+	state += PM8921_CHG_VINMIN_MIN_MV;
+
+end:
+	return snprintf(buf, CHG_SHOW_MAX_SIZE, "%d\n", state);
+}
+
+static DEVICE_ATTR(force_chg_vinmin, 0664,
+		   force_chg_vinmin_show,
+		   force_chg_vinmin_store);
+
 static int pm8921_charger_suspend_noirq(struct device *dev)
 {
 	int rc;
@@ -6185,6 +6260,13 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 				&dev_attr_pcb_temp);
 	if (rc) {
 		pr_err("couldn't create pcb_temp\n");
+		goto free_chip;
+	}
+
+	rc = device_create_file(&pdev->dev,
+				&dev_attr_force_chg_vinmin);
+	if (rc) {
+		pr_err("couldn't create force_chg_vinmin\n");
 		goto free_chip;
 	}
 
