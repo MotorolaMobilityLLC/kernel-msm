@@ -26,6 +26,15 @@
 #define OV10820_DEFAULT_MCLK_RATE 24000000
 #define OV10820_SECONDARY_I2C_ADDRESS 0x20
 
+#define OV10820_OTP_ADDR 0x6000
+#define OV10820_OTP_BANK_SIZE  0x10
+#define OV10820_OTP_BANK_COUNT 96
+#define OV10820_OTP_SIZE       (OV10820_OTP_BANK_COUNT * OV10820_OTP_BANK_SIZE)
+
+static uint8_t ov10820_otp[OV10820_OTP_SIZE];
+static struct otp_info_t ov10820_otp_info;
+static uint8_t is_ov10820_otp_read;
+
 static struct regulator *cam_vdig;
 static struct regulator *cam_afvdd;
 static struct regulator *cam_dvdd;
@@ -690,6 +699,56 @@ static struct msm_camera_i2c_client ov10820_sensor_i2c_client = {
 	.addr_type = MSM_CAMERA_I2C_WORD_ADDR,
 };
 
+static int32_t ov10820_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+
+	if (is_ov10820_otp_read == 1)
+		return rc;
+
+
+	/* Start Stream to read OTP Data */
+	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			0x0100, 0x01, MSM_CAMERA_I2C_BYTE_DATA);
+
+	if (rc < 0) {
+		pr_err("%s: Unable to read otp\n", __func__);
+		return rc;
+	}
+
+	rc = msm_camera_i2c_read_seq(s_ctrl->sensor_i2c_client,
+			OV10820_OTP_ADDR, (uint8_t *)ov10820_otp,
+			OV10820_OTP_SIZE);
+	if (rc < 0) {
+		pr_err("%s: Unable to read i2c seq!\n", __func__);
+		goto exit;
+	}
+
+	is_ov10820_otp_read = 1;
+
+exit:
+	/* Stop Streaming */
+	rc = msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
+			0x0100, 0x00, MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0)
+		pr_err("%s: Unable to stop streaming of imager\n", __func__);
+
+	return rc;
+}
+
+static int32_t ov10820_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	if (ov10820_otp_info.size > 0) {
+		s_ctrl->sensor_otp.otp_info = ov10820_otp_info.otp_info;
+		s_ctrl->sensor_otp.size = ov10820_otp_info.size;
+		return 0;
+	} else {
+		pr_err("%s: Unable to get module info as otp failed!\n",
+				__func__);
+		return -EINVAL;
+	}
+}
+
 static int32_t ov10820_check_i2c_configuration(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0;
@@ -747,7 +806,7 @@ static int32_t ov10820_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	if (ov660_check_probe() >= 0)
 		ov660_exists = true;
 	if (ov660_exists) {
-		ov660_intialize_10MP();
+		ov660_initialize_10MP();
 		usleep(10000);
 	}
 
@@ -797,6 +856,15 @@ check_chipid:
 		return -ENODEV;
 	}
 
+	ov660_set_i2c_bypass(1);
+	rc = ov10820_read_otp(&ov10820_s_ctrl);
+	if (rc < 0) {
+		pr_err("%s: unable to read otp data!\n", __func__);
+		ov10820_otp_info.size = 0;
+	} else {
+		ov10820_otp_info.otp_info = (uint8_t *)ov10820_otp;
+		ov10820_otp_info.size = OV10820_OTP_SIZE;
+	}
 	return 0;
 }
 
@@ -837,6 +905,7 @@ static struct msm_sensor_fn_t ov10820_func_tbl = {
 	.sensor_power_down              = ov10820_power_down,
 	.sensor_match_id                = ov10820_match_id,
 	.sensor_get_csi_params          = msm_sensor_get_csi_params,
+	.sensor_get_module_info         = ov10820_get_module_info,
 };
 
 static struct msm_sensor_reg_t ov10820_regs = {
