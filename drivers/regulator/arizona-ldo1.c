@@ -29,7 +29,7 @@
 
 #define  MIN_UV 	900000
 #define  UV_STEP 	50000
-#define  HI_PWR_UV	18000000
+#define  HI_PWR_UV	1800000
 
 struct arizona_ldo1 {
 	struct regulator_dev *regulator;
