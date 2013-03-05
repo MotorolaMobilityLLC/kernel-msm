@@ -273,20 +273,20 @@ struct synaptics_rmi4_packet_reg f12_ctrl_reg_array[] = {
 	RMI4_NO_REG(),		/*06*/
 	RMI4_NO_REG(),		/*07*/
 	RMI4_REG(f12_c08),	/*08*/
-	RMI4_REG(f12_c09),	/*09*/
-	RMI4_REG(f12_c10),	/*10*/
-	RMI4_REG(f12_c11),	/*11*/
-	RMI4_REG(f12_c12),	/*12*/
+	RMI4_NO_REG(),		/*09*/
+	RMI4_NO_REG(),		/*10*/
+	RMI4_NO_REG(),		/*11*/
+	RMI4_NO_REG(),		/*12*/
 	RMI4_NO_REG(),		/*13*/
 	RMI4_NO_REG(),		/*14*/
-	RMI4_REG(f12_c15),	/*15*/
+	RMI4_NO_REG(),		/*15*/
 	RMI4_NO_REG(),		/*16*/
 	RMI4_NO_REG(),		/*17*/
 	RMI4_NO_REG(),		/*18*/
 	RMI4_NO_REG(),		/*19*/
-	RMI4_REG(f12_c20),	/*20*/
+	RMI4_NO_REG(),		/*20*/
 	RMI4_NO_REG(),		/*21*/
-	RMI4_REG(f12_c22),	/*22*/
+	RMI4_NO_REG(),		/*22*/
 	RMI4_REG(f12_c23),	/*23*/
 	RMI4_NO_REG(),		/*24*/
 	RMI4_NO_REG(),		/*25*/
@@ -356,7 +356,7 @@ int synaptics_rmi4_scan_packet_reg_info(
 				if (allocated && present)
 					reg->offset = r_offset++;
 				if (present != expected)
-					pr_err("touch register error: r%d"
+					pr_debug("  reg: r%d"
 						" is%s present, but was%s"
 						" expected\n", r,
 						present ? "" : " NOT",
@@ -399,7 +399,7 @@ int synaptics_rmi4_scan_packet_reg_info(
 					subpkt->expected;
 				if (!present || !expected) {
 					if (present != expected)
-						pr_err("touch subpacket error:"
+						pr_debug("    subpacket:"
 							" r%d s%d is%s present,"
 							" but was%s expected\n",
 							r, s,
@@ -415,7 +415,7 @@ int synaptics_rmi4_scan_packet_reg_info(
 				break;
 		}
 		if (reg->expected && reg->size != expected_reg_size) {
-			pr_err("touch register r%d size error:"
+			pr_debug("  r%d size error:"
 				" expected %d actual is %d\n",
 				r, expected_reg_size, reg->size);
 		}
@@ -434,8 +434,11 @@ int synaptics_rmi4_read_packet_reg(
 	if (r >= regs->nr_regs || !reg->size)
 		return -EINVAL;
 
-	if (reg->offset == -1)
+	if (reg->offset == -1) {
+		pr_err("touch register error: can't read r%d - not present\n",
+			r);
 		return -ENOENT;
+	}
 
 	retval = rmi4_data->i2c_read(
 			rmi4_data,
@@ -481,7 +484,7 @@ int synaptics_rmi4_read_packet_regs(
 	int retval = 0;
 
 	for (r = 0; r < regs->nr_regs; ++r) {
-		if (regs->regs[r].offset >= 0) {
+		if (regs->regs[r].expected && regs->regs[r].offset >= 0) {
 			retval = synaptics_rmi4_read_packet_reg(
 				rmi4_data, regs, r);
 			if (retval < 0)
