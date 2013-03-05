@@ -60,6 +60,10 @@ static struct dsi_cmd_desc mot_get_pwr_mode_cmd = {
 
 static struct dsi_cmd_desc mot_hide_img_cmd = {
 	DTYPE_DCS_WRITE, 1, 0, 0, 10, sizeof(display_off), display_off};
+
+static struct dsi_cmd_desc mot_unhide_img_cmd = {
+	DTYPE_DCS_WRITE, 1, 0, 0, 10, sizeof(display_on), display_on};
+
 static struct dsi_cmd_desc mot_get_raw_mtp_cmd = {
 	DTYPE_DCS_READ,  1, 0, 1, 0, sizeof(get_raw_mtp), get_raw_mtp};
 
@@ -519,13 +523,23 @@ end:
 
 int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide)
 {
-	pr_debug("%s(%d)\n", __func__, hide);
+	int ret = 0;
+	pr_info("%s(%d)\n", __func__, hide);
 	if ((mfd->op_enable != 0) && (mfd->panel_power_on != 0)) {
-		/* TODO: implement "unhide" */
+		int sent = 0;
+		mutex_lock(&mfd->dma->ov_mutex);
 		mipi_set_tx_power_mode(0);
-		mipi_mot_tx_cmds(&mot_hide_img_cmd, 1);
+		sent = mipi_mot_tx_cmds(
+			hide ? &mot_hide_img_cmd : &mot_unhide_img_cmd, 1
+		);
+		mutex_unlock(&mfd->dma->ov_mutex);
+		if (sent != 1) {
+			pr_err("%s(%d) error sending mipi cmd (%d)\n",
+				__func__, hide, sent);
+			ret = -1;
+		}
 	}
-	return 0;
+	return ret;
 }
 
 
