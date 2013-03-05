@@ -1073,7 +1073,7 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
                       "extract mac:%x %x %x %x %x %x",
                       mac[0], mac[1], mac[2], mac[3], mac[4], mac[5] );
 
-            wlan_hdd_tdls_increment_pkt_count(mac, 1);
+            wlan_hdd_tdls_increment_pkt_count(pAdapter, mac, 1);
         } else {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
                        "packet da is bssid, not adding to peer list");
@@ -1392,7 +1392,7 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
                       "rx extract mac:%x %x %x %x %x %x",
                       mac[0], mac[1], mac[2], mac[3], mac[4], mac[5] );
 
-            wlan_hdd_tdls_increment_pkt_count(mac, 0);
+            wlan_hdd_tdls_increment_pkt_count(pAdapter, mac, 0);
         } else {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
                        "rx packet sa is bssid, not adding to peer list");
