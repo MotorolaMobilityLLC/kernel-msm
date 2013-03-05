@@ -6725,7 +6725,7 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
     if (SIR_MAC_TDLS_TEARDOWN == action_code)
     {
        responder = wlan_hdd_tdls_get_responder(peerMac);
-       if(-1 == responder)
+       if (-1 == responder)
        {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                      "%s: %02x:%02x:%02x:%02x:%02x:%02x) peer doesn't exist dialog_token %d status %d, len = %d",
@@ -6735,7 +6735,7 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
        }
     }
 
-    if(ret == 0 && /* if failure, don't need to set the progress bit */
+    if (ret == 0 && /* if failure, don't need to set the progress bit */
        (WLAN_IS_TDLS_SETUP_ACTION(action_code)))
         wlan_hdd_tdls_set_connection_progress(peer, TRUE);
 
@@ -6758,17 +6758,20 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
     /* not block discovery request, as it is called from timer callback */
     if (SIR_MAC_TDLS_DIS_REQ !=  action_code)
     {
-        status = wait_for_completion_interruptible_timeout(&pAdapter->tdls_mgmt_comp,
+        long rc;
+
+        rc = wait_for_completion_interruptible_timeout(&pAdapter->tdls_mgmt_comp,
                                                             msecs_to_jiffies(WAIT_TIME_TDLS_MGMT));
 
-        if ((VOS_STATUS_SUCCESS != status) || (TRUE != pAdapter->mgmtTxCompletionStatus))
+        if ((rc <= 0) || (TRUE != pAdapter->mgmtTxCompletionStatus))
         {
-            if(ret == 0 && /* if failure, don't need to set the progress bit */
+            if (ret == 0 && /* if failure, don't need to set the progress bit */
                (WLAN_IS_TDLS_SETUP_ACTION(action_code)))
                 wlan_hdd_tdls_set_connection_progress(peer, FALSE);
 
             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                      "%s: Mgmt Tx Completion failed!", __func__);
+                      "%s: Mgmt Tx Completion failed status %ld TxCompletion %lu",
+                      __func__, rc, pAdapter->mgmtTxCompletionStatus);
             return -EPERM;
         }
     }
