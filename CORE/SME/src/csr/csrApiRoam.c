@@ -12018,9 +12018,9 @@ eHalStatus csrSendMBDisassocReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSi
         *( pBuf + 1 ) = 0;
         pBuf += sizeof(tANI_U16);
      
-        if ( (pSession->pCurRoamProfile != NULL ) && 
-             ( reasonCode == eSIR_MAC_UNSPEC_FAILURE_REASON ) && 
-             ((CSR_IS_INFRA_AP(pSession->pCurRoamProfile)) || (CSR_IS_WDS_AP(pSession->pCurRoamProfile))))
+        if ( (pSession->pCurRoamProfile != NULL) &&
+             ((CSR_IS_INFRA_AP(pSession->pCurRoamProfile)) ||
+              (CSR_IS_WDS_AP(pSession->pCurRoamProfile))) )
         {
             // Set the bssid address before sending the message to LIM
             status = palCopyMemory( pMac->hHdd, (tSirMacAddr *)pBuf, pSession->selfMacAddr, sizeof( tSirMacAddr ) );
