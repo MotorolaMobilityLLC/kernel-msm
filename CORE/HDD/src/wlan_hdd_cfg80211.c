@@ -6885,6 +6885,7 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                 {
                     sme_DeleteTdlsPeerSta( WLAN_HDD_GET_HAL_CTX(pAdapter),
                             pAdapter->sessionId, peer );
+                    wlan_hdd_tdls_set_link_status(curr_peer, eTDLS_LINK_IDLE);
                     curr_peer->isTDLSInProgress = FALSE;
                 }
                 else

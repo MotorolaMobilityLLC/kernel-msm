@@ -64,16 +64,18 @@ typedef enum {
     eTDLS_SUPPORT_ENABLED,
 } eTDLSSupportMode;
 
-typedef enum {
+typedef enum eTDLSCapType{
     eTDLS_CAP_NOT_SUPPORTED = -1,
     eTDLS_CAP_UNKNOWN = 0,
     eTDLS_CAP_SUPPORTED = 1,
-} eTDLSCapType;
+} tTDLSCapType;
 
-typedef enum {
-    eTDLS_LINK_NOT_CONNECTED = 0,
-    eTDLS_LINK_CONNECTED = 1,
-} eTDLSLinkStatus;
+typedef enum eTDLSLinkStatus {
+    eTDLS_LINK_IDLE = 0,
+    eTDLS_LINK_DISCOVERING,
+    eTDLS_LINK_CONNECTING,
+    eTDLS_LINK_CONNECTED,
+} tTDLSLinkStatus;
 
 typedef struct {
     tANI_U16    period;
@@ -98,8 +100,8 @@ typedef struct {
     tSirMacAddr peerMac;
     tANI_U16    staId ;
     tANI_S8     rssi;
-    tANI_S8     tdls_support;
-    tANI_S8     link_status;
+    tTDLSCapType     tdls_support;
+    tTDLSLinkStatus  link_status;
     tANI_U8     signature;
     tANI_U8     is_responder;
     tANI_U8     discovery_processed;
@@ -140,7 +142,7 @@ hddTdlsPeer_t *wlan_hdd_tdls_get_peer(u8 *mac);
 
 void wlan_hdd_tdls_set_link_status(hddTdlsPeer_t *curr_peer, int status);
 
-int wlan_hdd_tdls_set_cap(u8 *mac, int cap);
+int wlan_hdd_tdls_recv_discovery_resp(u8 *mac);
 
 int wlan_hdd_tdls_set_rssi(u8 *mac, tANI_S8 rxRssi);
 
