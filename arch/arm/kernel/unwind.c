@@ -98,6 +98,16 @@ static LIST_HEAD(unwind_tables);
 	(unsigned long)(ptr) + offset;			\
 })
 
+static bool valid_stack_addr(unsigned long sp, unsigned long *vsp)
+{
+	unsigned long low;
+	unsigned long high;
+
+	low = round_down(sp, THREAD_SIZE) + sizeof(struct thread_info);
+	high = ALIGN(sp, THREAD_SIZE);
+	return ((unsigned long)vsp >= low && (unsigned long)vsp < high);
+}
+
 /*
  * Binary search in the unwind index. The entries are
  * guaranteed to be sorted in ascending order by the linker.
@@ -241,6 +251,7 @@ static unsigned long unwind_get_byte(struct unwind_ctrl_block *ctrl)
 static int unwind_exec_insn(struct unwind_ctrl_block *ctrl)
 {
 	unsigned long insn = unwind_get_byte(ctrl);
+	unsigned long orig_sp = ctrl->vrs[SP];
 
 	pr_debug("%s: insn = %08lx\n", __func__, insn);
 
@@ -264,8 +275,11 @@ static int unwind_exec_insn(struct unwind_ctrl_block *ctrl)
 		/* pop R4-R15 according to mask */
 		load_sp = mask & (1 << (13 - 4));
 		while (mask) {
-			if (mask & 1)
+			if (mask & 1) {
+				if (!valid_stack_addr(orig_sp, vsp))
+					return -URC_FAILURE;
 				ctrl->vrs[reg] = *vsp++;
+			}
 			mask >>= 1;
 			reg++;
 		}
@@ -279,10 +293,16 @@ static int unwind_exec_insn(struct unwind_ctrl_block *ctrl)
 		int reg;
 
 		/* pop R4-R[4+bbb] */
-		for (reg = 4; reg <= 4 + (insn & 7); reg++)
+		for (reg = 4; reg <= 4 + (insn & 7); reg++) {
+			if (!valid_stack_addr(orig_sp, vsp))
+				return -URC_FAILURE;
 			ctrl->vrs[reg] = *vsp++;
-		if (insn & 0x80)
+		}
+		if (insn & 0x80) {
+			if (!valid_stack_addr(orig_sp, vsp))
+				return -URC_FAILURE;
 			ctrl->vrs[14] = *vsp++;
+		}
 		ctrl->vrs[SP] = (unsigned long)vsp;
 	} else if (insn == 0xb0) {
 		if (ctrl->vrs[PC] == 0)
@@ -302,8 +322,11 @@ static int unwind_exec_insn(struct unwind_ctrl_block *ctrl)
 
 		/* pop R0-R3 according to mask */
 		while (mask) {
-			if (mask & 1)
+			if (mask & 1) {
+				if (!valid_stack_addr(orig_sp, vsp))
+					return -URC_FAILURE;
 				ctrl->vrs[reg] = *vsp++;
+			}
 			mask >>= 1;
 			reg++;
 		}
