@@ -528,13 +528,20 @@ err:
 static int panel_on(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
-	int ret;
+	int ret, keep_hidden = 0;
 
 	mfd = platform_get_drvdata(pdev);
 
 	ret = valid_mfd_info(mfd);
 	if (ret != 0)
 		goto err;
+
+	keep_hidden = mfd->resume_cfg.keep_hidden;
+	mfd->resume_cfg.keep_hidden = 0;
+	if (keep_hidden) {
+		pr_info("%s: skipping display on\n", __func__);
+		goto done;
+	}
 
 	if (mot_panel.panel_on) {
 		mot_panel.panel_on(mfd);
@@ -554,6 +561,7 @@ static int panel_on(struct platform_device *pdev)
 						msecs_to_jiffies(20000));
 		mot_panel.esd_detection_run = true;
 	}
+done:
 	return 0;
 err:
 	return ret;
