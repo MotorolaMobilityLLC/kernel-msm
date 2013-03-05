@@ -199,6 +199,7 @@ struct msmfb_resume_cfg {
 	unsigned int partial;
 	unsigned int panel_state;
 	unsigned int gamma;
+	unsigned int keep_hidden;
 };
 
 struct mdp_rect {
