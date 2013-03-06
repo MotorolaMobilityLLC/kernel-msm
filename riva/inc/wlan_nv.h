@@ -377,11 +377,6 @@ typedef enum
 #define HW_VAL_VALUES_VALID_CUSTOM_TCXO_REG9_MASK                   0x20
 
 
-#define HAL_PWR_SAVE_FW_BMPS_SLEEP_TIME_OVERHEADS_US                1400  //(2.4Ghz operation)
-#define HAL_PWR_SAVE_FW_BMPS_SLEEP_TIME_OVERHEADS_5GHZ_US           1400 //(5Ghz operation)
-#define HAL_PWR_SAVE_FW_BMPS_SLEEP_TIME_OVERHEADS_XPA_US            1600  //(xLNA operation)
-
-
 //From wlanfw/inc/halPhyCalMemory.h
 typedef PACKED_PRE struct PACKED_POST
 {
