@@ -60,6 +60,7 @@ struct subsys_device {
 	struct work_struct work;
 	spinlock_t restart_lock;
 	int restart_count;
+	int subsys_restart_count;
 
 	void *notify;
 
@@ -79,6 +80,21 @@ static LIST_HEAD(subsystem_list);
 static DEFINE_MUTEX(subsystem_list_lock);
 static DEFINE_MUTEX(soc_order_reg_lock);
 static DEFINE_MUTEX(restart_log_mutex);
+
+static int subsys_restart_count_get(char *buffer, struct kernel_param *kp)
+{
+	struct subsys_device *dev;
+	int count = 0;
+	mutex_lock(&subsystem_list_lock);
+	list_for_each_entry(dev, &subsystem_list, list)
+		count += scnprintf(buffer+count, PAGE_SIZE-count, "%s %d\n",
+			dev->desc->name, dev->subsys_restart_count);
+	mutex_unlock(&subsystem_list_lock);
+	return count;
+}
+
+module_param_call(restart_count, NULL,
+	subsys_restart_count_get, NULL, S_IRUGO);
 
 /* SOC specific restart orders go here */
 
@@ -419,6 +435,7 @@ static void __subsystem_restart_dev(struct subsys_device *dev)
 	if (!dev->restart_count)
 		wake_lock(&dev->wake_lock);
 	dev->restart_count++;
+	dev->subsys_restart_count++;
 	spin_unlock_irqrestore(&dev->restart_lock, flags);
 
 	if (!queue_work(ssr_wq, &dev->work)) {
