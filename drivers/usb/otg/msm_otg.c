@@ -2174,7 +2174,7 @@ static void msm_chg_detect_work(struct work_struct *w)
 		 */
 		udelay(100);
 		msm_chg_enable_aca_intr(motg);
-		dev_dbg(phy->dev, "chg_type = %s\n",
+		dev_info(phy->dev, "chg_type = %s\n",
 			chg_to_string(motg->chg_type));
 		queue_work(system_nrt_wq, &motg->sm_work);
 		return;
@@ -2995,6 +2995,8 @@ static void msm_otg_set_vbus_state(int online)
 	static bool init;
 	struct msm_otg *motg = the_msm_otg;
 	struct usb_otg *otg = motg->phy.otg;
+
+	dev_info(motg->phy.dev, "Vbus state = %d\n", online);
 
 	/* In A Host Mode, ignore received BSV interrupts */
 	if (otg->phy->state >= OTG_STATE_A_IDLE)
