@@ -436,7 +436,7 @@ static struct i2c_board_info msm_act_main_cam_i2c_info = {
 
 static struct msm_actuator_info msm_act_main_cam_0_info = {
 	.board_info     = &msm_act_main_cam_i2c_info,
-	.cam_name   = MSM_ACTUATOR_MAIN_CAM_1,
+	.cam_name       = 0,
 	.bus_id         = APQ_8064_GSBI4_QUP_I2C_BUS_ID,
 	.vcm_pwd        = 0,
 	.vcm_enable     = 0,
@@ -459,7 +459,7 @@ static struct msm_sensor_info_t imx111_sensor_info = {
 	.subdev_id = {
 		[SUB_MODULE_SENSOR] = -1,
 		[SUB_MODULE_CHROMATIX] = -1,
-		[SUB_MODULE_ACTUATOR] = -1,
+		[SUB_MODULE_ACTUATOR] = 0,
 		[SUB_MODULE_EEPROM] = -1,
 		[SUB_MODULE_LED_FLASH] = -1,
 		[SUB_MODULE_STROBE_FLASH] = -1,
@@ -658,6 +658,11 @@ static struct i2c_board_info apq8064_camera_i2c_boardinfo[] = {
 		I2C_BOARD_INFO("imx111", I2C_SLAVE_ADDR_IMX111), /* 0x0D */
 		.platform_data = &msm_camera_sensor_imx111_data,
 	},
+	{
+		I2C_BOARD_INFO("msm_actuator", I2C_SLAVE_ADDR_SEKONIX_LENS_ACT),
+		.platform_data = &msm_act_main_cam_0_info,
+	},
+
 #endif
 #ifdef CONFIG_IMX091
 	{

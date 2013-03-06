@@ -389,55 +389,66 @@ static int32_t msm_actuator_init_default_step_table(struct msm_actuator_ctrl_t *
 }
 
 #ifdef CONFIG_SEKONIX_LENS_ACT
-int32_t msm_actuator_init_step_table_use_eeprom(struct msm_actuator_ctrl_t *a_ctrl,
-       struct msm_actuator_set_info_t *set_info)
+int32_t msm_actuator_init_step_table_use_eeprom(
+		struct msm_actuator_ctrl_t *a_ctrl,
+		struct msm_actuator_set_info_t *set_info)
 {
-       int32_t rc = 0;
-       int16_t cur_code = 0;
-       int16_t step_index = 0;
-       uint32_t max_code_size = 1;
-       uint16_t data_size = set_info->actuator_params.data_size;
-       uint16_t act_start = 0, act_macro = 0, move_range = 0;
-       CDBG("%s called\n", __func__);
-       if (set_info->af_tuning_params.total_steps < 1) {
-               pr_err("%s: total_steps is too small (%d)\n", __func__,
-                               set_info->af_tuning_params.total_steps);
-               return -EINVAL;
-       }
-       for (; data_size > 0; data_size--)
-               max_code_size *= 2;
-       if (a_ctrl->step_position_table) {
-               kfree(a_ctrl->step_position_table);
-               a_ctrl->step_position_table = NULL;
-       }
-       /*act_start = (uint16_t)(imx111_afcalib_data[1] << 8) |
-                       imx111_afcalib_data[0];
-       act_macro = ((uint16_t)(imx111_afcalib_data[3] << 8) |
-                       imx111_afcalib_data[2])+20;*/
-       act_start = 25;
-       act_macro = 200;
-       cur_code = set_info->af_tuning_params.initial_code;
-       a_ctrl->step_position_table[step_index++] = cur_code;
-       if ( act_start > ACT_POSTURE_MARGIN )
-               a_ctrl->step_position_table[1] = act_start - ACT_POSTURE_MARGIN;
-       else
-               a_ctrl->step_position_table[1] = act_start ;
-       move_range = act_macro - a_ctrl->step_position_table[1];
-       if (move_range < ACT_MIN_MOVE_RANGE)
-               goto act_cal_fail;
-       for (step_index = 2;step_index < set_info->af_tuning_params.total_steps;step_index++) {
-               a_ctrl->step_position_table[step_index]
-                       = ((step_index - 1) * move_range + ((set_info->af_tuning_params.total_steps - 1) >> 1))
-                       / (set_info->af_tuning_params.total_steps - 1) + a_ctrl->step_position_table[1];
-       }
-       for (step_index = 0; step_index < a_ctrl->total_steps; step_index++)
-               CDBG("step_position_table[%d]= %d\n",step_index,
-               a_ctrl->step_position_table[step_index]);
-       return rc;
+	int32_t rc = 0;
+	int16_t step_index = 0;
+	uint32_t total_steps = set_info->af_tuning_params.total_steps;
+	uint16_t act_start = 0, act_macro = 0, move_range = 0, step_diff = 0;
+
+	if (total_steps < 1) {
+		pr_err("%s: total_steps is too small (%d)\n", __func__,
+				total_steps);
+		return -EINVAL;
+	}
+
+	if (a_ctrl->step_position_table) {
+		kfree(a_ctrl->step_position_table);
+		a_ctrl->step_position_table = NULL;
+	}
+
+	a_ctrl->step_position_table = kmalloc(sizeof(uint16_t) *
+			(total_steps + 1), GFP_KERNEL);
+
+	if (a_ctrl->step_position_table == NULL) {
+		rc = -ENOMEM;
+		return rc;
+	}
+
+	/*act_start = (uint16_t)(imx111_afcalib_data[1] << 8) |
+			imx111_afcalib_data[0];
+	act_macro = ((uint16_t)(imx111_afcalib_data[3] << 8) |
+			imx111_afcalib_data[2])+20;*/
+	act_start = 25;
+	act_macro = 200;
+
+	a_ctrl->step_position_table[0] =
+			set_info->af_tuning_params.initial_code;
+	if ( act_start > ACT_POSTURE_MARGIN )
+		a_ctrl->step_position_table[1] = act_start - ACT_POSTURE_MARGIN;
+	else
+		a_ctrl->step_position_table[1] = act_start;
+
+	move_range = act_macro - a_ctrl->step_position_table[1];
+
+	if (move_range < ACT_MIN_MOVE_RANGE)
+		goto act_cal_fail;
+
+	step_diff = ((step_index - 1) * move_range + ((total_steps - 1) >> 1)) /
+				(total_steps - 1);
+
+	for (step_index = 2; step_index < total_steps; step_index++)
+		a_ctrl->step_position_table[step_index] = step_diff +
+				a_ctrl->step_position_table[1];
+
+	return rc;
 act_cal_fail:
-       pr_err("%s: calibration to default value not using eeprom data\n", __func__);
-       rc = msm_actuator_init_default_step_table(a_ctrl, set_info);
-       return rc;
+	pr_err("%s: calibration to default value not using eeprom data\n",
+			__func__);
+	rc = msm_actuator_init_default_step_table(a_ctrl, set_info);
+	return rc;
 }
 #else
 int32_t msm_actuator_i2c_read_b_eeprom(struct msm_camera_i2c_client *dev_client,
@@ -749,7 +760,7 @@ static int32_t msm_actuator_get_subdev_id(struct msm_actuator_ctrl_t *a_ctrl,
 		pr_err("failed\n");
 		return -EINVAL;
 	}
-	*subdev_id = a_ctrl->pdev->id;
+	*subdev_id = a_ctrl->cam_name;
 	CDBG("subdev_id %d\n", *subdev_id);
 	CDBG("Exit\n");
 	return 0;
@@ -824,6 +835,7 @@ static int32_t msm_actuator_i2c_probe(struct i2c_client *client,
 {
 	int rc = 0;
 	struct msm_actuator_ctrl_t *act_ctrl_t = NULL;
+	struct msm_actuator_info *act_info = NULL;
 	CDBG("Enter\n");
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
@@ -837,6 +849,13 @@ static int32_t msm_actuator_i2c_probe(struct i2c_client *client,
 	/* Set device type as I2C */
 	act_ctrl_t->act_device_type = MSM_CAMERA_I2C_DEVICE;
 	act_ctrl_t->i2c_client.i2c_func_tbl = &msm_sensor_qup_func_tbl;
+	act_info = (struct msm_actuator_info *)client->dev.platform_data;
+	if (!act_info) {
+		pr_err("%s:%d failed platform data NULL\n", __func__, __LINE__);
+		rc = -EINVAL;
+		goto probe_failure;
+	}
+	act_ctrl_t->cam_name = act_info->cam_name;
 
 	/* Assign name for sub device */
 	snprintf(act_ctrl_t->msm_sd.sd.name, sizeof(act_ctrl_t->msm_sd.sd.name),
