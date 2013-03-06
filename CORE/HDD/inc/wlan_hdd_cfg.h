@@ -582,7 +582,7 @@ typedef enum
 #define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_NAME       "gActiveMaxChannelTimeConc"
 #define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_MIN        ( 0 )
 #define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_MAX        ( 10000 )
-#define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_DEFAULT    ( 27 )
+#define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_DEFAULT    ( 40 )
 
 #define CFG_ACTIVE_MIN_CHANNEL_TIME_CONC_NAME       "gActiveMinChannelTimeConc"
 #define CFG_ACTIVE_MIN_CHANNEL_TIME_CONC_MIN        ( 0 )
