@@ -281,7 +281,6 @@ static int msm_compr_open(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct compr_audio *compr;
 	struct msm_audio *prtd;
-	int ret = 0;
 	struct asm_softpause_params softpause = {
 		.enable = SOFT_PAUSE_ENABLE,
 		.period = SOFT_PAUSE_PERIOD,
@@ -293,6 +292,7 @@ static int msm_compr_open(struct snd_pcm_substream *substream)
 		.step = SOFT_VOLUME_STEP,
 		.rampingcurve = SOFT_VOLUME_CURVE_LINEAR,
 	};
+	int ret = 0;
 
 	/* Capture path */
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
@@ -337,7 +337,7 @@ static int msm_compr_open(struct snd_pcm_substream *substream)
 	populate_codec_list(compr, runtime);
 	runtime->private_data = compr;
 	compressed_audio.prtd =  &compr->prtd;
-	ret = compressed_set_volume(compressed_audio.volume);
+	ret = compressed_set_volume(0);
 	if (ret < 0)
 		pr_err("%s : Set Volume failed : %d", __func__, ret);
 
