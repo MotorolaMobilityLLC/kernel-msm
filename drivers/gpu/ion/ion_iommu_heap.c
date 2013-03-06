@@ -75,9 +75,9 @@ static struct page_info *alloc_largest_available(unsigned long size,
 		if (max_order < orders[i])
 			continue;
 
-		page = alloc_pages(GFP_KERNEL | __GFP_HIGHMEM | __GFP_COMP |
-				(orders[i] ? __GFP_NOWARN : 0),
-				orders[i]);
+		page = alloc_pages(__GFP_IO | __GFP_FS | __GFP_HIGHMEM |
+			(orders[i] ? __GFP_NOWARN | __GFP_NORETRY | __GFP_COMP : __GFP_WAIT),
+			orders[i]);
 		if (!page)
 			continue;
 
