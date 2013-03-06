@@ -2209,6 +2209,7 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 		return -EBUSY;
 	}
 
+	pr_info("android_usb: Setting functions to %s\n", buff);
 	/* Clear previous enabled list */
 	list_for_each_entry(conf, &dev->configs, list_item) {
 		list_for_each_entry(f, &conf->enabled_functions, enabled_list)
@@ -2279,6 +2280,7 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	mutex_lock(&dev->mutex);
 
 	sscanf(buff, "%d", &enabled);
+	pr_info("android_usb: trying to %s\n", enabled ? "enable" : "disable");
 	if (enabled && !dev->enabled) {
 		/*
 		 * Update values in composite driver's copy of
