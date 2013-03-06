@@ -389,18 +389,14 @@ static int msm_isp_notify_vfe(struct msm_cam_media_controller *pmctl,
 		struct msm_stats_buf *stats_buf = NULL;
 
 		isp_event->isp_data.isp_msg.msg_id = MSG_ID_STATS_COMPOSITE;
-		stats->aec.buff = msm_pmem_stats_ptov_lookup(pmctl,
-					stats->aec.buff, &(stats->aec.fd));
-		stats->awb.buff = msm_pmem_stats_ptov_lookup(pmctl,
-					stats->awb.buff, &(stats->awb.fd));
-		stats->af.buff = msm_pmem_stats_ptov_lookup(pmctl,
-					stats->af.buff, &(stats->af.fd));
-		stats->ihist.buff = msm_pmem_stats_ptov_lookup(pmctl,
-					stats->ihist.buff, &(stats->ihist.fd));
-		stats->rs.buff = msm_pmem_stats_ptov_lookup(pmctl,
-					stats->rs.buff, &(stats->rs.fd));
-		stats->cs.buff = msm_pmem_stats_ptov_lookup(pmctl,
-					stats->cs.buff, &(stats->cs.fd));
+		CDBG("%s: aec (%d, %x) awb (%d, %x) af (%d, %x) ", __func__,
+			stats->aec.fd, (uint32_t)stats->aec.buff,
+			stats->awb.fd, (uint32_t)stats->awb.buff,
+			stats->af.fd, (uint32_t)stats->af.buff);
+		CDBG("%s: rs (%d, %x) cs(%d, %x) ihist(%d, %x)", __func__,
+			stats->rs.fd, (uint32_t)stats->rs.buff,
+			stats->cs.fd, (uint32_t)stats->cs.buff,
+			stats->ihist.fd, (uint32_t)stats->ihist.buff);
 
 		stats_buf = kmalloc(sizeof(struct msm_stats_buf), GFP_ATOMIC);
 		if (!stats_buf) {
