@@ -282,7 +282,8 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                     if (curr_peer->tx_pkt >=
                             pHddTdlsCtx->threshold_config.tx_packet_n) {
 
-                        if (HDD_MAX_NUM_TDLS_STA > wlan_hdd_tdlsConnectedPeers())
+                        if (HDD_MAX_NUM_TDLS_STA > wlan_hdd_tdlsConnectedPeers() &&
+                            (FALSE == curr_peer->isTDLSInProgress))
                         {
 
                             VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "-> Tput trigger TDLS SETUP");
@@ -305,9 +306,13 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                         VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "-> ignored.");
                     }
 #endif
-                    if (((tANI_S32)curr_peer->rssi >
+                    if ((((tANI_S32)curr_peer->rssi >
                             (tANI_S32)(pHddTdlsCtx->threshold_config.rssi_hysteresis +
-                                pHddTdlsCtx->ap_rssi))&&(HDD_MAX_NUM_TDLS_STA > wlan_hdd_tdlsConnectedPeers())) {
+                                pHddTdlsCtx->ap_rssi)) ||
+                         ((tANI_S32)(curr_peer->rssi >
+                            pHddTdlsCtx->threshold_config.rssi_trigger_threshold))) &&
+                         (HDD_MAX_NUM_TDLS_STA > wlan_hdd_tdlsConnectedPeers())
+                         && (FALSE == curr_peer->isTDLSInProgress)) {
 
                         VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
                                 "%s: RSSI (peer %d > ap %d + hysteresis %d) triggering to %02x:%02x:%02x:%02x:%02x:%02x ",
