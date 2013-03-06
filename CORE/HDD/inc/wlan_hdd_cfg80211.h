@@ -57,7 +57,6 @@
   
 /* $HEADER$ */
 
-#ifdef CONFIG_CFG80211
 
 //value for initial part of frames and number of bytes to be compared
 #define GAS_INITIAL_REQ "\x04\x0a"  
@@ -149,6 +148,5 @@ int wlan_hdd_cfg80211_send_tdls_discover_req(struct wiphy *wiphy,
                             struct net_device *dev, u8 *peer);
 #endif
 
-#endif // CONFIG_CFG80211
 
 #endif

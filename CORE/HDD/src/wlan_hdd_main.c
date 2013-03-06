@@ -101,12 +101,10 @@
 #include <bapInternal.h>
 #endif // WLAN_BTAMP_FEATURE
 
-#ifdef CONFIG_CFG80211
 #include <linux/wireless.h>
 #include <net/cfg80211.h>
 #include "wlan_hdd_cfg80211.h"
 #include "wlan_hdd_p2p.h"
-#endif
 #include <linux/rtnetlink.h>
 int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
 #include "sapApi.h"
@@ -204,10 +202,8 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
      )
       return NOTIFY_DONE;
 
-#ifdef CONFIG_CFG80211
    if (!dev->ieee80211_ptr)
        return NOTIFY_DONE;
-#endif
 
 
    if(NULL == pAdapter)
@@ -1632,7 +1628,6 @@ void wlan_hdd_release_intf_addr(hdd_context_t* pHddCtx, tANI_U8* releaseAddr)
 #endif //LINUX_VERSION_CODE
 #endif
  };
-#ifdef CONFIG_CFG80211   
  static struct net_device_ops wlan_mon_drv_ops = {
       .ndo_open = hdd_mon_open,
       .ndo_stop = hdd_stop,
@@ -1643,7 +1638,6 @@ void wlan_hdd_release_intf_addr(hdd_context_t* pHddCtx, tANI_U8* releaseAddr)
       .ndo_do_ioctl = hdd_ioctl,
       .ndo_set_mac_address = hdd_set_mac_address,
  };
-#endif
 
 #endif
 
@@ -1669,28 +1663,16 @@ static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMac
 {
    struct net_device *pWlanDev = NULL;
    hdd_adapter_t *pAdapter = NULL;
-#ifdef CONFIG_CFG80211
    /*
     * cfg80211 initialization and registration....
     */ 
    pWlanDev = alloc_netdev_mq(sizeof( hdd_adapter_t ), name, ether_setup, NUM_TX_QUEUES);
    
-#else      
-   //Allocate the net_device and private data (station ctx) 
-   pWlanDev = alloc_etherdev_mq(sizeof( hdd_adapter_t ), NUM_TX_QUEUES);
-
-#endif
-
    if(pWlanDev != NULL)
    {
 
       //Save the pointer to the net_device in the HDD adapter
       pAdapter = (hdd_adapter_t*) netdev_priv( pWlanDev );
-
-#ifndef CONFIG_CFG80211
-      //Init the net_device structure
-      ether_setup(pWlanDev);
-#endif
 
       vos_mem_zero( pAdapter, sizeof( hdd_adapter_t ) );
 
@@ -1707,9 +1689,7 @@ static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMac
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
       init_completion(&pAdapter->offchannel_tx_event);
 #endif
-#ifdef CONFIG_CFG80211
       init_completion(&pAdapter->tx_action_cnf_event);
-#endif
 #ifdef FEATURE_WLAN_TDLS
       init_completion(&pAdapter->tdls_add_station_comp);
       init_completion(&pAdapter->tdls_mgmt_comp);
@@ -1730,11 +1710,9 @@ static hdd_adapter_t* hdd_alloc_station_adapter( hdd_context_t *pHddCtx, tSirMac
       hdd_set_station_ops( pAdapter->dev );
 
       pWlanDev->destructor = free_netdev;
-#ifdef CONFIG_CFG80211
       pWlanDev->ieee80211_ptr = &pAdapter->wdev ;
       pAdapter->wdev.wiphy = pHddCtx->wiphy;  
       pAdapter->wdev.netdev =  pWlanDev;
-#endif  
       /* set pWlanDev's parent to underlying device */
       SET_NETDEV_DEV(pWlanDev, pHddCtx->parent_dev);
    }
@@ -1897,7 +1875,6 @@ error_sme_open:
    return status;
 }
 
-#ifdef CONFIG_CFG80211
 void hdd_cleanup_actionframe( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
 {
    hdd_cfg80211_state_t *cfgState;
@@ -1919,7 +1896,6 @@ void hdd_cleanup_actionframe( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
    }
    return;
 }
-#endif
 
 void hdd_deinit_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
 {
@@ -1942,9 +1918,7 @@ void hdd_deinit_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
             clear_bit(WMM_INIT_DONE, &pAdapter->event_flags);
          }
 
-#ifdef CONFIG_CFG80211
          hdd_cleanup_actionframe(pHddCtx, pAdapter);
-#endif
 
          break;
       }
@@ -1952,34 +1926,26 @@ void hdd_deinit_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
       case WLAN_HDD_SOFTAP:
       case WLAN_HDD_P2P_GO:
       {
-#ifdef CONFIG_CFG80211
          hdd_cleanup_actionframe(pHddCtx, pAdapter);
-#endif
 
          hdd_unregister_hostapd(pAdapter);
          hdd_set_conparam( 0 );
-#ifdef CONFIG_CFG80211
          wlan_hdd_set_monitor_tx_adapter( WLAN_HDD_GET_CTX(pAdapter), NULL );
-#endif
          break;
       }
 
       case WLAN_HDD_MONITOR:
       {
-#ifdef CONFIG_CFG80211
           hdd_adapter_t* pAdapterforTx = pAdapter->sessionCtx.monitor.pAdapterForTx;
-#endif
          if(test_bit(INIT_TX_RX_SUCCESS, &pAdapter->event_flags))
          {
             hdd_deinit_tx_rx( pAdapter );
             clear_bit(INIT_TX_RX_SUCCESS, &pAdapter->event_flags);
          }
-#ifdef CONFIG_CFG80211
          if(NULL != pAdapterforTx)
          {
             hdd_cleanup_actionframe(pHddCtx, pAdapterforTx);
          }
-#endif
          break;
       }
 
@@ -2225,11 +2191,9 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          if( NULL == pAdapter )
             return NULL;
 
-#ifdef CONFIG_CFG80211
          pAdapter->wdev.iftype = (session_type == WLAN_HDD_P2P_CLIENT) ?
                                   NL80211_IFTYPE_P2P_CLIENT:
                                   NL80211_IFTYPE_STATION;
-#endif
 
          pAdapter->device_mode = session_type;
 
@@ -2260,11 +2224,9 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          if( NULL == pAdapter )
             return NULL;
 
-#ifdef CONFIG_CFG80211
          pAdapter->wdev.iftype = (session_type == WLAN_HDD_SOFTAP) ?
                                   NL80211_IFTYPE_AP:
                                   NL80211_IFTYPE_P2P_GO;
-#endif
          pAdapter->device_mode = session_type;
 
          status = hdd_init_ap_mode(pAdapter);
@@ -2286,7 +2248,6 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
       }
       case WLAN_HDD_MONITOR:
       {
-#ifdef CONFIG_CFG80211   
          pAdapter = hdd_alloc_station_adapter( pHddCtx, macAddr, iface_name );
          if( NULL == pAdapter )
             return NULL;
@@ -2321,7 +2282,6 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
 
          INIT_WORK(&pAdapter->sessionCtx.monitor.pAdapterForTx->monTxWorkQueue,
                    hdd_mon_tx_work_queue);
-#endif
       }
          break;
       case WLAN_HDD_FTM:
@@ -2713,11 +2673,9 @@ VOS_STATUS hdd_start_all_adapters( hdd_context_t *pHddCtx )
                wireless_send_event(pAdapter->dev, SIOCGIWAP, &wrqu, NULL);
                pAdapter->sessionCtx.station.bSendDisconnect = VOS_FALSE;
 
-#ifdef CONFIG_CFG80211
                /* indicate disconnected event to nl80211 */
                cfg80211_disconnected(pAdapter->dev, WLAN_REASON_UNSPECIFIED,
                                      NULL, 0, GFP_KERNEL); 
-#endif
             }
             break;
 
@@ -2726,13 +2684,11 @@ VOS_STATUS hdd_start_all_adapters( hdd_context_t *pHddCtx )
             break;
 
          case WLAN_HDD_P2P_GO:
-#ifdef CONFIG_CFG80211
               hddLog(VOS_TRACE_LEVEL_ERROR, "%s [SSR] send restart supplicant",
                                                        __func__);
               /* event supplicant to restart */
               cfg80211_del_sta(pAdapter->dev,
                         (const u8 *)&bcastMac.bytes[0], GFP_KERNEL);
-#endif
             break;
 
          case WLAN_HDD_MONITOR:
@@ -2981,7 +2937,6 @@ hdd_adapter_t * hdd_get_mon_adapter( hdd_context_t *pHddCtx )
 
 } 
 
-#ifdef CONFIG_CFG80211
 /**---------------------------------------------------------------------------
   
   \brief hdd_set_monitor_tx_adapter() - 
@@ -3004,7 +2959,6 @@ void wlan_hdd_set_monitor_tx_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAd
       pMonAdapter->sessionCtx.monitor.pAdapterForTx = pAdapter;
    }
 }
-#endif
 /**---------------------------------------------------------------------------
   
   \brief hdd_select_queue() - 
@@ -3273,9 +3227,7 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    eHalStatus halStatus;
    v_CONTEXT_t pVosContext = pHddCtx->pvosContext;
    VOS_STATUS vosStatus;
-#ifdef CONFIG_CFG80211
-    struct wiphy *wiphy = pHddCtx->wiphy;
-#endif 
+   struct wiphy *wiphy = pHddCtx->wiphy;
    hdd_adapter_t* pAdapter;
    struct fullPowerContext powerContext;
    long lrc;
@@ -3288,7 +3240,6 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
       wlan_hdd_restart_deinit(pHddCtx);
    }
 
-#ifdef CONFIG_CFG80211
    if (VOS_STA_SAP_MODE != hdd_get_conparam())
    {
       if (VOS_FTM_MODE != hdd_get_conparam())
@@ -3305,7 +3256,6 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
          }
       }
    }
-#endif
 
    if (VOS_FTM_MODE == hdd_get_conparam())
    {
@@ -3503,12 +3453,8 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    }
 
 free_hdd_ctx:
-#ifdef CONFIG_CFG80211
    wiphy_unregister(wiphy) ;
    wiphy_free(wiphy) ;
-#else
-   vos_mem_free( pHddCtx );
-#endif
    if (hdd_is_ssr_required())
    {
        /* WDI timeout had happened during unload, so SSR is needed here */
@@ -3811,12 +3757,9 @@ int hdd_wlan_startup(struct device *dev )
    hdd_config_t *pConfig;
 #endif
    int ret;
-#ifdef CONFIG_CFG80211
    struct wiphy *wiphy;
-#endif
 
    ENTER();
-#ifdef CONFIG_CFG80211
    /*
     * cfg80211: wiphy allocation
     */
@@ -3830,22 +3773,10 @@ int hdd_wlan_startup(struct device *dev )
 
    pHddCtx = wiphy_priv(wiphy);
 
-#else      
-      
-   pHddCtx = vos_mem_malloc ( sizeof( hdd_context_t ) );
-   if(pHddCtx == NULL)
-   {
-      hddLog(VOS_TRACE_LEVEL_ERROR,"%s: cfg80211 init failed", __func__);
-      return -ENOMEM;
-   }
-
-#endif   
    //Initialize the adapter context to zeros.
    vos_mem_zero(pHddCtx, sizeof( hdd_context_t ));
 
-#ifdef CONFIG_CFG80211
    pHddCtx->wiphy = wiphy;
-#endif
    hdd_prevent_suspend();
    pHddCtx->isLoadUnloadInProgress = TRUE;
 
@@ -3895,7 +3826,6 @@ int hdd_wlan_startup(struct device *dev )
       goto err_config;
    }
 
-#ifdef CONFIG_CFG80211
    /*
     * cfg80211: Initialization and registration ...
     */
@@ -3905,7 +3835,6 @@ int hdd_wlan_startup(struct device *dev )
               "%s: wlan_hdd_cfg80211_register return failure", __func__);
       goto err_wiphy_reg;
    }
-#endif
 
    // Update VOS trace levels based upon the cfg.ini
    hdd_vos_trace_enable(VOS_MODULE_ID_BAP,
@@ -3961,11 +3890,7 @@ int hdd_wlan_startup(struct device *dev )
       if(!VOS_IS_STATUS_SUCCESS( status ))
       {
          hddLog(VOS_TRACE_LEVEL_FATAL,"%s: vos_watchdog_open failed",__func__);
-#ifdef CONFIG_CFG80211
          goto err_wiphy_reg;
-#else
-         goto err_config;
-#endif
       }
    }
 
@@ -4280,7 +4205,6 @@ int hdd_wlan_startup(struct device *dev )
 #endif
 
    hdd_register_mcast_bcast_filter(pHddCtx);
-#ifdef CONFIG_CFG80211
    if (VOS_STA_SAP_MODE != hdd_get_conparam())
    {
       /* Action frame registered in one adapter which will
@@ -4288,7 +4212,6 @@ int hdd_wlan_startup(struct device *dev )
        */
       wlan_hdd_cfg80211_post_voss_start(pAdapter);
    }
-#endif
 
    mutex_init(&pHddCtx->sap_lock);
 
@@ -4371,10 +4294,8 @@ err_wdclose:
    if(pHddCtx->cfg_ini->fIsLogpEnabled)
       vos_watchdog_close(pVosContext);
 
-#ifdef CONFIG_CFG80211
 err_wiphy_reg:
    wiphy_unregister(wiphy) ; 
-#endif
 
 err_config:
    kfree(pHddCtx->cfg_ini);
@@ -4382,12 +4303,8 @@ err_config:
 
 err_free_hdd_context:
    hdd_allow_suspend();
-#ifdef CONFIG_CFG80211
    wiphy_free(wiphy) ;
    //kfree(wdev) ;
-#else
-   vos_mem_free( pHddCtx );
-#endif
    VOS_BUG(1);
 
    if (hdd_is_ssr_required())

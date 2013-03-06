@@ -58,9 +58,7 @@
   
 #include <linux/netdevice.h>
 #include <linux/skbuff.h>
-#ifdef CONFIG_CFG80211
 #include <net/cfg80211.h>
-#endif
 #include <vos_list.h>
 #include <vos_types.h>
 #include "sirMacProtDef.h"
@@ -382,13 +380,11 @@ struct hdd_wapi_info_s
 typedef struct hdd_wapi_info_s hdd_wapi_info_t;
 #endif /* FEATURE_WLAN_WAPI */
 
-#ifdef CONFIG_CFG80211
 typedef struct beacon_data_s {
     u8 *head, *tail;
     int head_len, tail_len;
     int dtim_period;
 } beacon_data_t;
-#endif
 
 typedef enum device_mode
 {  /* MAINTAIN 1 - 1 CORRESPONDENCE WITH tVOS_CON_MODE*/
@@ -442,7 +438,6 @@ typedef struct
    struct netdev_queue *blockedQueue;
 } hdd_thermal_mitigation_info_t;
 
-#if defined CONFIG_CFG80211
 typedef struct hdd_remain_on_chan_ctx
 {
   struct net_device *dev;
@@ -483,7 +478,6 @@ typedef struct hdd_cfg80211_state_s
   eP2PActionFrameState actionFrmState;
 }hdd_cfg80211_state_t;
 
-#endif
 
 typedef enum{
     HDD_SSR_NOT_REQUIRED,
@@ -589,22 +583,18 @@ struct hdd_ap_ctx_s
 
    eCsrEncryptionType ucEncryptType;
    
-#ifdef CONFIG_CFG80211   
    //This will point to group key data, if it is received before start bss. 
    tCsrRoamSetKey groupKey; 
    // This will have WEP key data, if it is received before start bss
    tCsrRoamSetKey wepKey[CSR_MAX_NUM_KEY];
 
    beacon_data_t *beacon;
-#endif
 };
 
-#ifdef CONFIG_CFG80211   
 struct hdd_mon_ctx_s
 {
    hdd_adapter_t *pAdapterForTx;
 };
-#endif
 
 typedef struct hdd_scaninfo_s
 {
@@ -657,10 +647,8 @@ struct hdd_adapter_s
    struct net_device *dev;
     
    //TODO Move this to sta Ctx
-#ifdef CONFIG_CFG80211
    struct wireless_dev wdev ;
    struct cfg80211_scan_request *request ; 
-#endif
 
 #ifdef WLAN_FEATURE_P2P
    /** ops checks if Opportunistic Power Save is Enable or Not
@@ -703,7 +691,6 @@ struct hdd_adapter_s
    /* completion variable for Linkup Event */
    struct completion linkup_event_var;
 
-#ifdef CONFIG_CFG80211
    /* completion variable for cancel remain on channel Event */
    struct completion cancel_rem_on_chan_var;
 
@@ -715,7 +702,6 @@ struct hdd_adapter_s
    struct completion tx_action_cnf_event;
    /* Completion variable for remain on channel ready */
    struct completion rem_on_chan_ready_event;
-#endif
 
 #ifdef FEATURE_WLAN_TDLS
    struct completion tdls_add_station_comp;
@@ -761,22 +747,16 @@ struct hdd_adapter_s
 #endif
    
    v_S7_t rssi;
-#ifdef CONFIG_CFG80211
    struct work_struct  monTxWorkQueue;
    struct sk_buff *skb_to_tx;
-#endif
 
    union {
       hdd_station_ctx_t station;
       hdd_ap_ctx_t  ap;
-#ifdef CONFIG_CFG80211   
       hdd_mon_ctx_t monitor;
-#endif
    }sessionCtx;
 
-#ifdef CONFIG_CFG80211
    hdd_cfg80211_state_t cfg80211State;
-#endif
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
    t_multicast_add_list mc_addr_list;
@@ -826,9 +806,7 @@ struct hdd_context_s
    /** HAL handle...*/
    tHalHandle hHal;
 
-#ifdef CONFIG_CFG80211
    struct wiphy *wiphy ;
-#endif
    //TODO Remove this from here.
 
    hdd_list_t hddAdapters; //List of adapters
@@ -1015,11 +993,9 @@ void wlan_hdd_enable_deepsleep(v_VOID_t * pVosContext);
 v_BOOL_t hdd_is_apps_power_collapse_allowed(hdd_context_t* pHddCtx);
 v_BOOL_t hdd_is_suspend_notify_allowed(hdd_context_t* pHddCtx);
 void hdd_abort_mac_scan(hdd_context_t *pHddCtx);
-#ifdef CONFIG_CFG80211
 void wlan_hdd_set_monitor_tx_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
 void hdd_cleanup_actionframe( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter );
 v_BOOL_t is_crda_regulatory_entry_valid(void);
-#endif
 void wlan_hdd_set_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode);
 void wlan_hdd_clear_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode);
 void wlan_hdd_reset_prob_rspies(hdd_adapter_t* pHostapdAdapter);

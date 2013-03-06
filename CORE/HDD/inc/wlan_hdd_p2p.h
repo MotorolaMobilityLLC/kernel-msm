@@ -51,7 +51,6 @@
                Qualcomm Confidential and Proprietary.
 
 ==========================================================================*/
-#ifdef CONFIG_CFG80211
 #define ACTION_FRAME_TX_TIMEOUT 2000
 #define WAIT_CANCEL_REM_CHAN    1000
 #define WAIT_REM_CHAN_READY     1000
@@ -199,6 +198,5 @@ int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct wireless_dev *wdev );
 int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct net_device *dev );
 #endif
 
-#endif // CONFIG_CFG80211
 
 #endif // __P2P_H
