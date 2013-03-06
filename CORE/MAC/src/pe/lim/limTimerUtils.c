@@ -687,7 +687,6 @@ limCreateTimers(tpAniSirGlobal pMac)
     }
 #endif
 
-#ifdef WLAN_FEATURE_P2P
     cfgValue = 1000;
     cfgValue = SYS_MS_TO_TICKS(cfgValue);
     if (tx_timer_create(&pMac->lim.limTimers.gLimRemainOnChannelTimer,
@@ -702,7 +701,6 @@ limCreateTimers(tpAniSirGlobal pMac)
         goto err_timer;
     }
 
-#endif
 
     cfgValue = 1000;
     cfgValue = SYS_MS_TO_TICKS(cfgValue);
@@ -728,7 +726,6 @@ limCreateTimers(tpAniSirGlobal pMac)
         goto err_timer;
     }
 
-#ifdef WLAN_FEATURE_P2P
     cfgValue = LIM_INSERT_SINGLESHOTNOA_TIMEOUT_VALUE; // (> no of BI* no of TUs per BI * 1TU in msec + p2p start time offset*1 TU in msec = 2*100*1.024 + 5*1.024 = 204.8 + 5.12 = 209.20)
     cfgValue = SYS_MS_TO_TICKS(cfgValue);
     if (tx_timer_create(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer,
@@ -740,16 +737,13 @@ limCreateTimers(tpAniSirGlobal pMac)
         limLog(pMac, LOGP, FL("could not create Single Shot NOA Insert Timeout timer\n"));
         goto err_timer;
     }
-#endif
 
     return TX_SUCCESS;
 
     err_timer:
         tx_timer_delete(&pMac->lim.limTimers.gLimDeauthAckTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimDisassocAckTimer);
-#ifdef WLAN_FEATURE_P2P
         tx_timer_delete(&pMac->lim.limTimers.gLimRemainOnChannelTimer);
-#endif
     #ifdef FEATURE_WLAN_CCX
         tx_timer_delete(&pMac->lim.limTimers.gLimCcxTsmTimer);
     #endif
@@ -776,9 +770,7 @@ limCreateTimers(tpAniSirGlobal pMac)
         tx_timer_delete(&pMac->lim.limTimers.gLimMaxChannelTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimPeriodicProbeReqTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimMinChannelTimer);
-#ifdef WLAN_FEATURE_P2P
         tx_timer_delete(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer);
-#endif
 
         if(NULL != pMac->lim.gLimPreAuthTimerTable.pTable)
             palFreeMemory(pMac->hHdd, pMac->lim.gLimPreAuthTimerTable.pTable);
@@ -1655,7 +1647,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
              }
              break;
 #endif
-#ifdef WLAN_FEATURE_P2P
         case eLIM_REMAIN_CHN_TIMER:
             if (tx_timer_deactivate(&pMac->lim.limTimers.gLimRemainOnChannelTimer) != TX_SUCCESS)
             {
@@ -1679,7 +1670,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 return;
             }
             break;
-#endif
     case eLIM_DISASSOC_ACK_TIMER:
             if (tx_timer_deactivate(&pMac->lim.limTimers.gLimDisassocAckTimer) != TX_SUCCESS)
             {
@@ -1728,7 +1718,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             }
             break;
 
-#ifdef WLAN_FEATURE_P2P
     case eLIM_INSERT_SINGLESHOT_NOA_TIMER:
         if (tx_timer_deactivate(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer) != TX_SUCCESS)
         {
@@ -1752,7 +1741,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             return;
         }
         break;
-#endif
 
         default:
             // Invalid timerId. Log error

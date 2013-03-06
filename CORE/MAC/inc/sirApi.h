@@ -331,9 +331,7 @@ typedef enum eSirResultCodes
     eSIR_SME_FT_REASSOC_TIMEOUT_FAILURE,
     eSIR_SME_FT_REASSOC_FAILURE,
 #endif
-#ifdef WLAN_FEATURE_P2P
     eSIR_SME_SEND_ACTION_FAIL,
-#endif
 #ifdef WLAN_FEATURE_PACKET_FILTERING
     eSIR_SME_PC_FILTER_MATCH_COUNT_REQ_FAILED,
 #endif // WLAN_FEATURE_PACKET_FILTERING
@@ -440,7 +438,6 @@ typedef enum eBeaconForwarding
 } tBeaconForwarding;
 
 
-#ifdef WLAN_FEATURE_P2P
 typedef struct sSirRemainOnChnReq
 {
     tANI_U16 messageType;
@@ -463,7 +460,6 @@ typedef struct sSirRegisterMgmtFrame
     tANI_U16 matchLen;
     tANI_U8  matchData[1];
 }tSirRegisterMgmtFrame, *tpSirRegisterMgmtFrame;
-#endif
 
 //
 // Identifies the neighbor BSS' that was(were) detected
@@ -848,9 +844,7 @@ typedef struct sSirSmeScanReq
     /* This MUST be the last field of the structure */
     
  
-#ifdef WLAN_FEATURE_P2P
     tANI_BOOLEAN         p2pSearch;
-#endif
     tANI_U16             uIEFieldLen;
     tANI_U16             uIEFieldOffset;
 
@@ -2281,7 +2275,6 @@ typedef struct sSirRSSINotification
     
 }tSirRSSINotification, *tpSirRSSINotification;
 
-#ifdef WLAN_FEATURE_P2P
 
 typedef struct sSirP2PNoaStart
 {
@@ -2325,7 +2318,6 @@ typedef struct sSirP2PNoaAttr
    tANI_U32       uNoa2Interval;
    tANI_U32       uNoa2StartTime;
 } tSirP2PNoaAttr, *tpSirP2PNoaAttr;
-#endif
 
 typedef __ani_attr_pre_packed struct sSirTclasInfo
 {
@@ -3338,7 +3330,6 @@ typedef struct sSirSmeCoexInd
     tANI_U32        coexIndData[SIR_COEX_IND_DATA_SIZE];
 }tSirSmeCoexInd, *tpSirSmeCoexInd;
 
-#ifdef WLAN_FEATURE_P2P
 typedef struct sSirSmeMgmtFrameInd
 {
     tANI_U16        mesgType;
@@ -3349,7 +3340,6 @@ typedef struct sSirSmeMgmtFrameInd
     tANI_S8         rxRssi;
     tANI_U8  frameBuf[1]; //variable
 }tSirSmeMgmtFrameInd, *tpSirSmeMgmtFrameInd;
-#endif
 
 #define SIR_IS_FULL_POWER_REASON_DISCONNECTED(eReason) \
     ( ( eSME_LINK_DISCONNECTED_BY_HDD == (eReason) ) || \
@@ -3359,7 +3349,6 @@ typedef struct sSirSmeMgmtFrameInd
     ( ( eSME_LINK_DISCONNECTED_BY_HDD == (eReason) ) || ( eSME_FULL_PWR_NEEDED_BY_HDD == (eReason) ) )
 
 /* P2P Power Save Related */
-#ifdef WLAN_FEATURE_P2P
 typedef struct sSirNoAParam
 {
     tANI_U8 ctWindow:7;
@@ -3370,7 +3359,6 @@ typedef struct sSirNoAParam
     tANI_U32 singleNoADuration;
     tANI_U8   psSelection;
 }tSirNoAParam, *tpSirNoAParam;
-#endif
 
 typedef struct sSirWlanSuspendParam
 {

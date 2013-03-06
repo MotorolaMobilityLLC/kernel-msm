@@ -120,9 +120,7 @@ void __limProcessSmeAssocCnfNew(tpAniSirGlobal, tANI_U32, tANI_U32 *);
 extern void peRegisterTLHandle(tpAniSirGlobal pMac);
 #endif
 
-#ifdef WLAN_FEATURE_P2P
 extern int limProcessRemainOnChnlReq(tpAniSirGlobal pMac, tANI_U32 *pMsg);
-#endif
 
 #ifdef BACKGROUND_SCAN_ENABLED
 
@@ -178,12 +176,10 @@ __limFreshScanReqd(tpAniSirGlobal pMac, tANI_U8 returnFreshResults)
                            (pMac->lim.gpSession[i].limSystemRole == eLIM_BT_AMP_AP_ROLE)||
                            (pMac->lim.gpSession[i].limSystemRole == eLIM_BT_AMP_STA_ROLE) )&&
                        (pMac->lim.gpSession[i].limSmeState == eLIM_SME_NORMAL_STATE) )
-#ifdef WLAN_FEATURE_P2P
                ||  ( ( ( (pMac->lim.gpSession[i].bssType == eSIR_INFRA_AP_MODE) 
                       && ( pMac->lim.gpSession[i].pePersona == VOS_P2P_GO_MODE) )
                     || (pMac->lim.gpSession[i].limSystemRole == eLIM_AP_ROLE) )
                   && (pMac->lim.gpSession[i].limSmeState == eLIM_SME_NORMAL_STATE) )
-#endif
              ))
                 {
                 validState = FALSE;
@@ -1307,9 +1303,7 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         pMlmScanReq->minChannelTimeBtc = pScanReq->minChannelTimeBtc;
         pMlmScanReq->maxChannelTimeBtc = pScanReq->maxChannelTimeBtc;
         pMlmScanReq->dot11mode = pScanReq->dot11mode;
-#ifdef WLAN_FEATURE_P2P
         pMlmScanReq->p2pSearch = pScanReq->p2pSearch;
-#endif
 
         //Store the smeSessionID and transaction ID for later use.
         pMac->lim.gSmeSessionId = pScanReq->sessionId;
@@ -4395,7 +4389,6 @@ __limProcessSmeDelStaSelfReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 } /*** end __limProcessSmeDelStaSelfReq() ***/
 
 
-#ifdef WLAN_FEATURE_P2P
 /**
  * __limProcessSmeRegisterMgmtFrameReq()
  *
@@ -4594,7 +4587,6 @@ __limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
 }
 
-#endif
 
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 /*
@@ -4949,7 +4941,6 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             break;
 
         case eWNI_SME_SCAN_REQ:
-#ifdef WLAN_FEATURE_P2P
             /* If we are in P2P GO mode we need to insert NOA before actually starting a scan */
             if ((limIsNOAInsertReqd(pMac) == TRUE) && IS_FEATURE_SUPPORTED_BY_FW(P2P_GO_NOA_DECOUPLE_INIT_SCAN))
             {
@@ -4957,11 +4948,8 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             }
             else
             {
-#endif
                 __limProcessSmeScanReq(pMac, pMsgBuf);
-#ifdef WLAN_FEATURE_P2P
             }
-#endif
             break;
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
@@ -4970,7 +4958,6 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 
             break;
 #endif
-#ifdef WLAN_FEATURE_P2P
         case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
             bufConsumed = limProcessRemainOnChnlReq(pMac, pMsgBuf);
             break;
@@ -4978,7 +4965,6 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
         case eWNI_SME_UPDATE_NOA:
             __limProcessSmeNoAUpdate(pMac, pMsgBuf);
             break;
-#endif
         case eWNI_SME_JOIN_REQ:
             __limProcessSmeJoinReq(pMac, pMsgBuf);
 
@@ -5132,11 +5118,9 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             __limProcessSmeDelStaSelfReq( pMac, pMsgBuf );
             break;
 
-#ifdef WLAN_FEATURE_P2P
         case eWNI_SME_REGISTER_MGMT_FRAME_REQ:
             __limProcessSmeRegisterMgmtFrameReq( pMac, pMsgBuf );
             break;
-#endif        
 #ifdef FEATURE_WLAN_TDLS
         case eWNI_SME_TDLS_SEND_MGMT_REQ:
             limProcessSmeTdlsMgmtSendReq(pMac, pMsgBuf);

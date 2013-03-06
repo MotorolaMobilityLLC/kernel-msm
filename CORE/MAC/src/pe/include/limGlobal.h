@@ -112,12 +112,10 @@ typedef enum eLimSystemRole
     eLIM_STA_IN_IBSS_ROLE,
     eLIM_STA_ROLE,
     eLIM_BT_AMP_STA_ROLE,
-    eLIM_BT_AMP_AP_ROLE
-#ifdef WLAN_FEATURE_P2P
-    ,eLIM_P2P_DEVICE_ROLE
-    ,eLIM_P2P_DEVICE_GO
-    ,eLIM_P2P_DEVICE_CLINET
-#endif
+    eLIM_BT_AMP_AP_ROLE,
+    eLIM_P2P_DEVICE_ROLE,
+    eLIM_P2P_DEVICE_GO,
+    eLIM_P2P_DEVICE_CLINET
 } tLimSystemRole;
 
 /**
@@ -203,9 +201,7 @@ typedef enum eLimMlmStates
     eLIM_MLM_WT_ADD_BSS_RSP_FT_REASSOC_STATE,
     eLIM_MLM_WT_FT_REASSOC_RSP_STATE,
 #endif
-#ifdef WLAN_FEATURE_P2P
     eLIM_MLM_P2P_LISTEN_STATE,
-#endif
 } tLimMlmStates;
 
 // 11h channel quiet states
@@ -311,9 +307,7 @@ typedef struct sLimMlmScanReq
     /* Number of SSIDs to scan(send Probe request) */
     tANI_U8            numSsid;
 
-#ifdef WLAN_FEATURE_P2P
     tANI_BOOLEAN   p2pSearch;
-#endif
     tANI_U16           uIEFieldLen;
     tANI_U16           uIEFieldOffset;
 

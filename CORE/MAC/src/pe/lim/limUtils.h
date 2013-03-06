@@ -382,7 +382,6 @@ tANI_U8 limUnmapChannel(tANI_U8 mapChannel);
 #define limGetWscIEPtr(pMac, ie, ie_len) \
     limGetVendorIEOuiPtr(pMac, SIR_MAC_WSC_OUI, SIR_MAC_WSC_OUI_SIZE, ie, ie_len)
 
-#ifdef WLAN_FEATURE_P2P
 #define limGetP2pIEPtr(pMac, ie, ie_len) \
     limGetVendorIEOuiPtr(pMac, SIR_MAC_P2P_OUI, SIR_MAC_P2P_OUI_SIZE, ie, ie_len)
 
@@ -391,7 +390,6 @@ v_U8_t limGetNoaAttrStream(tpAniSirGlobal pMac, v_U8_t*pNoaStream,tpPESession ps
 
 v_U8_t limBuildP2pIe(tpAniSirGlobal pMac, tANI_U8 *ie, tANI_U8 *data, tANI_U8 ie_len);
 tANI_BOOLEAN limIsNOAInsertReqd(tpAniSirGlobal pMac);
-#endif
 v_U8_t* limGetVendorIEOuiPtr(tpAniSirGlobal pMac, tANI_U8 *oui, tANI_U8 oui_size, tANI_U8 *ie, tANI_U16 ie_len);
 tANI_BOOLEAN limIsconnectedOnDFSChannel(tANI_U8 currentChannel);
 tANI_U8 limGetCurrentOperatingChannel(tpAniSirGlobal pMac);

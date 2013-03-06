@@ -289,12 +289,10 @@ typedef struct sPESession           // Added to Support BT-AMP
 #ifdef FEATURE_WLAN_LFR
     tAniBool            isFastRoamIniFeatureEnabled;
 #endif
-#ifdef WLAN_FEATURE_P2P
     tSirNoAParam p2pNoA;
     tSirP2PNoaAttr p2pGoPsUpdate;
     tANI_U32 defaultAuthFailureTimeout;
     tSirP2PNoaStart p2pGoPsNoaStartInd;
-#endif
 
     /* EDCA QoS parameters
      * gLimEdcaParams - These EDCA parameters are used locally on AP or STA.
