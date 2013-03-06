@@ -232,12 +232,12 @@ static struct vfe32_cmd_type vfe32_cmd[] = {
 		{VFE_CMD_STATS_UNREGBUF},
 		{VFE_CMD_STATS_BG_START, V32_STATS_BG_LEN, V32_STATS_BG_OFF},
 		{VFE_CMD_STATS_BG_STOP},
-		{VFE_CMD_STATS_BF_START, V32_STATS_BF_LEN, V32_STATS_BF_OFF},
-/*145*/ {VFE_CMD_STATS_BF_STOP},
+/*145*/	{VFE_CMD_STATS_BF_START, V32_STATS_BF_LEN, V32_STATS_BF_OFF},
+		{VFE_CMD_STATS_BF_STOP},
 		{VFE_CMD_STATS_BHIST_START, V32_STATS_BHIST_LEN,
 			V32_STATS_BHIST_OFF},
 		{VFE_CMD_STATS_BHIST_STOP},
-/*148*/	{VFE_CMD_SELECT_RDI},
+/*149*/	{VFE_CMD_SELECT_RDI},
 };
 
 uint32_t vfe32_AXI_WM_CFG[] = {
@@ -364,7 +364,7 @@ static const char * const vfe32_general_cmd[] = {
 	"DEMOSAICV3_DBCC_UPDATE", /* 110 */
 	"DEMOSAICV3_DBPC_UPDATE",
 	"XBAR_CFG",
-	"EZTUNE_CFG",
+	"MODULE_CFG",
 	"V32_ZSL",
 	"LINEARIZATION_UPDATE", /*115*/
 	"DEMOSAICV3_ABF_UPDATE",
@@ -380,16 +380,16 @@ static const char * const vfe32_general_cmd[] = {
 	"GET_RGB_G_TABLE",
 	"GET_LA_TABLE",
 	"DEMOSAICV3_UPDATE",
-	"DUMMY_11",
-	"DUMMY_12", /*130*/
-	"DUMMY_13",
-	"DUMMY_14",
-	"DUMMY_15",
-	"DUMMY_16",
-	"DUMMY_17", /*135*/
-	"DUMMY_18",
-	"DUMMY_19",
-	"DUMMY_20",
+	"VFE_CMD_ACTIVE_REGION_CFG",
+	"VFE_CMD_COLOR_PROCESSING_CONFIG", /*130*/
+	"VFE_CMD_STATS_WB_AEC_CONFIG",
+	"VFE_CMD_STATS_WB_AEC_UPDATE",
+	"VFE_CMD_Y_GAMMA_CONFIG",
+	"VFE_CMD_SCALE_OUTPUT1_CONFIG",
+	"VFE_CMD_SCALE_OUTPUT2_CONFIG", /*135*/
+	"VFE_CMD_CAPTURE_RAW",
+	"VFE_CMD_STOP_LIVESHOT",
+	"VFE_CMD_RECONFIG_VFE",
 	"STATS_REQBUF",
 	"STATS_ENQUEUEBUF", /*140*/
 	"STATS_FLUSH_BUFQ",
@@ -400,7 +400,6 @@ static const char * const vfe32_general_cmd[] = {
 	"STATS_BF_STOP",
 	"STATS_BHIST_START",
 	"STATS_BHIST_STOP",
-	"RESET_2",
 	"RDI_SEL" /*150*/
 };
 
@@ -1550,8 +1549,10 @@ static void vfe32_start_common(struct vfe32_ctrl_type *vfe32_ctrl)
 	CDBG("VFE opertaion mode = 0x%x, output mode = 0x%x\n",
 		vfe32_ctrl->share_ctrl->operation_mode,
 		vfe32_ctrl->share_ctrl->outpath.output_mode);
-		msm_camera_io_w_mb(1, vfe32_ctrl->share_ctrl->vfebase +
-			VFE_CAMIF_COMMAND);
+	msm_camera_io_w_mb(1, vfe32_ctrl->share_ctrl->vfebase +
+		VFE_CAMIF_COMMAND);
+	msm_camera_io_w_mb(VFE_AXI_CFG_MASK,
+		vfe32_ctrl->share_ctrl->vfebase + VFE_AXI_CFG);
 }
 
 static int vfe32_start_recording(
@@ -2947,6 +2948,67 @@ static int vfe32_proc_general(
 		vfe32_write_gamma_cfg(RGBLUT_RAM_CH2_BANK0, cmdp, vfe32_ctrl);
 		}
 	    cmdp -= 1;
+		break;
+
+	case VFE_CMD_RGB_ALL_CFG: {
+		cmdp = kmalloc((cmd->length), GFP_ATOMIC);
+		if (!cmdp) {
+			rc = -ENOMEM;
+			goto proc_general_done;
+		}
+		if (copy_from_user(cmdp,
+			(void __user *)(cmd->value),
+			cmd->length)) {
+			rc = -EFAULT;
+			goto proc_general_done;
+		}
+		msm_camera_io_memcpy(
+			vfe32_ctrl->share_ctrl->vfebase + V32_RGB_G_OFF,
+			cmdp, 4);
+		cmdp += 1;
+
+		vfe32_write_gamma_cfg(RGBLUT_RAM_CH0_BANK0,
+			cmdp + VFE32_GAMMA_CH0_G_POS, vfe32_ctrl);
+		vfe32_write_gamma_cfg(RGBLUT_RAM_CH1_BANK0,
+			cmdp + VFE32_GAMMA_CH1_B_POS, vfe32_ctrl);
+		vfe32_write_gamma_cfg(RGBLUT_RAM_CH2_BANK0,
+			cmdp + VFE32_GAMMA_CH2_R_POS, vfe32_ctrl);
+		}
+	    cmdp -= 1;
+		break;
+
+	case VFE_CMD_RGB_ALL_UPDATE: {
+		cmdp = kmalloc((cmd->length), GFP_ATOMIC);
+		if (!cmdp) {
+			rc = -ENOMEM;
+			goto proc_general_done;
+		}
+		if (copy_from_user(cmdp, (void __user *)(cmd->value),
+			cmd->length)) {
+			rc = -EFAULT;
+			goto proc_general_done;
+		}
+		old_val = msm_camera_io_r(
+			vfe32_ctrl->share_ctrl->vfebase + V32_RGB_G_OFF);
+			cmdp += 1;
+		if (old_val != 0x0) {
+			vfe32_write_gamma_cfg(RGBLUT_RAM_CH0_BANK0,
+				cmdp + VFE32_GAMMA_CH0_G_POS, vfe32_ctrl);
+			vfe32_write_gamma_cfg(RGBLUT_RAM_CH1_BANK0,
+				cmdp + VFE32_GAMMA_CH1_B_POS, vfe32_ctrl);
+			vfe32_write_gamma_cfg(RGBLUT_RAM_CH2_BANK0,
+				cmdp + VFE32_GAMMA_CH2_R_POS, vfe32_ctrl);
+		} else {
+			vfe32_write_gamma_cfg(RGBLUT_RAM_CH0_BANK1,
+				cmdp + VFE32_GAMMA_CH0_G_POS, vfe32_ctrl);
+			vfe32_write_gamma_cfg(RGBLUT_RAM_CH1_BANK1,
+				cmdp + VFE32_GAMMA_CH1_B_POS, vfe32_ctrl);
+			vfe32_write_gamma_cfg(RGBLUT_RAM_CH2_BANK1,
+				cmdp + VFE32_GAMMA_CH2_R_POS, vfe32_ctrl);
+		}
+		}
+		vfe32_ctrl->update_gamma = TRUE;
+		cmdp -= 1;
 		break;
 
 	case VFE_CMD_RGB_G_UPDATE: {
