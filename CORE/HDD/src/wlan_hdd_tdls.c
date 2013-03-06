@@ -507,8 +507,6 @@ static int wlan_hdd_tdls_core_init(struct net_device *dev, tdls_config_params_t 
                 sizeof(tdls_config_params_t));
         }
 
-        mutex_init(&tdls_lock);
-
         for (i = 0; i < 256; i++)
         {
             INIT_LIST_HEAD(&pHddTdlsCtx->peer_list[i]);
@@ -542,6 +540,8 @@ int wlan_hdd_tdls_init(struct net_device *dev)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
+
+    mutex_init(&tdls_lock);
 
     if (FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport)
     {
@@ -1054,6 +1054,8 @@ int wlan_hdd_tdls_get_all_peers(char *buf, int buflen)
 
 void wlan_hdd_tdls_connection_callback(hdd_adapter_t *pAdapter)
 {
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
+
     if (NULL == pHddTdlsCtx) return;
 
     VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
@@ -1063,14 +1065,17 @@ void wlan_hdd_tdls_connection_callback(hdd_adapter_t *pAdapter)
 
     pHddTdlsCtx->connected_peer_count = 0;
 
-    wlan_hdd_tdls_peer_reset_discovery_processed();
+    if (eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode)
+    {
+       wlan_hdd_tdls_peer_reset_discovery_processed();
 
-    vos_timer_start(&pHddTdlsCtx->peerDiscoverTimer,
-                    pHddTdlsCtx->threshold_config.discovery_period_t);
+       vos_timer_start(&pHddTdlsCtx->peerDiscoverTimer,
+                       pHddTdlsCtx->threshold_config.discovery_period_t);
 
 
-    vos_timer_start(&pHddTdlsCtx->peerUpdateTimer,
-                    pHddTdlsCtx->threshold_config.tx_period_t);
+       vos_timer_start(&pHddTdlsCtx->peerUpdateTimer,
+                       pHddTdlsCtx->threshold_config.tx_period_t);
+    }
 
 }
 
