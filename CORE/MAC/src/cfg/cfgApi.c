@@ -874,13 +874,11 @@ cfgGetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 *pCap,tpPESession sessionEntr
     else if ( (systemRole == eLIM_AP_ROLE) ||(systemRole == eLIM_BT_AMP_AP_ROLE)||(systemRole == eLIM_BT_AMP_STA_ROLE) ||
              (systemRole == eLIM_STA_ROLE) )
         pCapInfo->ess = 1; // ESS bit
-#if defined WLAN_FEATURE_P2P
     else if (limGetSystemRole(sessionEntry) == eLIM_P2P_DEVICE_ROLE )
     {
         pCapInfo->ess = 0;
         pCapInfo->ibss = 0;
     }
-#endif
     else
         cfgLog(pMac, LOGP, FL("can't get capability, role is UNKNOWN!!\n"));
 

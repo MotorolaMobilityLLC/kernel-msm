@@ -324,9 +324,7 @@ tSirRetStatus schSendBeaconReq( tpAniSirGlobal pMac, tANI_U8 *beaconPayload, tAN
   palCopyMemory(pMac, beaconParams->bssId, psessionEntry->bssId, sizeof(psessionEntry->bssId));
 
   beaconParams->timIeOffset = pMac->sch.schObject.gSchBeaconOffsetBegin;
-#ifdef WLAN_FEATURE_P2P
   beaconParams->p2pIeOffset = pMac->sch.schObject.p2pIeOffset;
-#endif
 #ifdef WLAN_SOFTAP_FW_BEACON_TX_PRNT_LOG
   schLog(pMac, LOGE,FL("TimIeOffset:[%d]\n"),beaconParams->TimIeOffset );
 #endif

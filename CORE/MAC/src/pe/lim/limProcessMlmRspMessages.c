@@ -3670,7 +3670,6 @@ static void limProcessSwitchChannelJoinReq(tpAniSirGlobal pMac, tpPESession pses
         goto error;
     }
 
-#ifdef WLAN_FEATURE_P2P
     if( psessionEntry->pePersona == VOS_P2P_CLIENT_MODE )
     {
         // Activate Join Periodic Probe Req timer
@@ -3680,7 +3679,6 @@ static void limProcessSwitchChannelJoinReq(tpAniSirGlobal pMac, tpPESession pses
             goto error;
         }
     }
-#endif
 
     return;
 error:  

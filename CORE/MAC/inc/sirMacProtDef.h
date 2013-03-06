@@ -255,11 +255,9 @@
 #define SIR_MAC_BLKACK_ADD_REQ      0
 #define SIR_MAC_BLKACK_ADD_RSP      1
 #define SIR_MAC_BLKACK_DEL          2
-#if defined WLAN_FEATURE_P2P
 #define SIR_MAC_ACTION_VENDOR_SPECIFIC 9
 #define SIR_MAC_ACTION_VENDOR_SPECIFIC_CATEGORY     0x7F
 #define SIR_MAC_ACTION_P2P_SUBTYPE_PRESENCE_RSP     2
-#endif
 
 #ifdef WLAN_FEATURE_11W
 //11w SA query request/response action frame category code
@@ -449,14 +447,12 @@
 #define SIR_MAC_WSM_OUI             SIR_MAC_WME_OUI
 #define SIR_MAC_WSC_OUI             "\x00\x50\xf2\x04"
 #define SIR_MAC_WSC_OUI_SIZE        4
-#ifdef WLAN_FEATURE_P2P
 #define SIR_MAC_P2P_OUI             "\x50\x6f\x9a\x09"
 #define SIR_MAC_P2P_OUI_SIZE        4
 #define SIR_P2P_NOA_ATTR            12
 #define SIR_MAX_NOA_ATTR_LEN        31
 #define SIR_MAX_NOA_DESCR           2
 #define SIR_P2P_IE_HEADER_LEN       6
-#endif
 
 // min size of wme oui header: oui(3) + type + subtype + version
 #define SIR_MAC_OUI_WME_HDR_MIN       6
@@ -2207,7 +2203,6 @@ typedef __ani_attr_pre_packed struct sSirMacActionFrameHdr
     tANI_U8    actionID;
 } __ani_attr_packed tSirMacActionFrameHdr, *tpSirMacActionFrameHdr;
 
-#if defined WLAN_FEATURE_P2P
 typedef __ani_attr_pre_packed struct sSirMacVendorSpecificPublicActionFrameHdr
 {
     tANI_U8    category;
@@ -2226,7 +2221,6 @@ typedef __ani_attr_pre_packed struct sSirMacP2PActionFrameHdr
 } __ani_attr_packed tSirMacP2PActionFrameHdr, *tpSirMacP2PActionFrameHdr;
 
 
-#endif
 
 typedef  struct sSirMacMeasActionFrameHdr
 {

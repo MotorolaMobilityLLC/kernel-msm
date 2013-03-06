@@ -1075,11 +1075,9 @@ limCleanupMlm(tpAniSirGlobal pMac)
         tx_timer_delete(&pMac->lim.limTimers.gLimFTPreAuthRspTimer);
 #endif
 
-#ifdef WLAN_FEATURE_P2P
         // Deactivate and delete remain on channel timer
         tx_timer_deactivate(&pMac->lim.limTimers.gLimRemainOnChannelTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimRemainOnChannelTimer);
-#endif
 
 #ifdef FEATURE_WLAN_CCX
         // Deactivate and delete TSM
@@ -1093,10 +1091,8 @@ limCleanupMlm(tpAniSirGlobal pMac)
         tx_timer_deactivate(&pMac->lim.limTimers.gLimDeauthAckTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimDeauthAckTimer);
 
-#ifdef WLAN_FEATURE_P2P
         tx_timer_deactivate(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer);
-#endif
 
         pMac->lim.gLimTimersCreated = 0;
     }
@@ -7380,7 +7376,6 @@ v_U8_t* limGetVendorIEOuiPtr(tpAniSirGlobal pMac, tANI_U8 *oui, tANI_U8 oui_size
     return NULL;
 }
 
-#ifdef WLAN_FEATURE_P2P
 //Returns length of P2P stream and Pointer ie passed to this function is filled with noa stream
 
 v_U8_t limBuildP2pIe(tpAniSirGlobal pMac, tANI_U8 *ie, tANI_U8 *data, tANI_U8 ie_len)
@@ -7545,7 +7540,6 @@ tANI_BOOLEAN limIsNOAInsertReqd(tpAniSirGlobal pMac)
     return FALSE;
 }
 
-#endif
 
 tANI_BOOLEAN limIsconnectedOnDFSChannel(tANI_U8 currentChannel)
 {

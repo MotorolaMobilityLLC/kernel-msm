@@ -163,7 +163,6 @@ typedef struct sSirMbMsg
     tANI_U32 data[1];
 } tSirMbMsg, *tpSirMbMsg;
 
-#ifdef WLAN_FEATURE_P2P
 /// Mailbox Message Structure for P2P
 typedef struct sSirMbMsgP2p
 {
@@ -188,7 +187,6 @@ typedef struct sSirMbMsgP2p
      */
     tANI_U32 data[1];
 } tSirMbMsgP2p, *tpSirMbMsgP2p;
-#endif
 
 /// Message queue definitions
 //  msgtype(2bytes) reserved(2bytes) bodyptr(4bytes) bodyval(4bytes)
@@ -492,12 +490,10 @@ typedef struct sSirMbMsgP2p
 #define SIR_HAL_AGGR_QOS_RSP               (SIR_HAL_ITC_MSG_TYPES_BEGIN + 160)
 #endif /* WLAN_FEATURE_VOWIFI_11R */
 
-#ifdef WLAN_FEATURE_P2P
 /* P2P <-> HAL P2P msg */
 #define SIR_HAL_SET_P2P_GO_NOA_REQ         (SIR_HAL_ITC_MSG_TYPES_BEGIN + 161)
 #define SIR_HAL_P2P_NOA_ATTR_IND           (SIR_HAL_ITC_MSG_TYPES_BEGIN + 162)
 #define SIR_HAL_P2P_NOA_START_IND          (SIR_HAL_ITC_MSG_TYPES_BEGIN + 163)
-#endif
 
 #define SIR_HAL_SET_LINK_STATE_RSP             (SIR_HAL_ITC_MSG_TYPES_BEGIN + 165)
 
@@ -641,10 +637,8 @@ typedef struct sSirMbMsgP2p
 #ifdef WLAN_FEATURE_VOWIFI_11R
 #define SIR_LIM_FT_PREAUTH_RSP_TIMEOUT   (SIR_LIM_TIMEOUT_MSG_START + 0x1E)
 #endif
-#ifdef WLAN_FEATURE_P2P
 #define SIR_LIM_REMAIN_CHN_TIMEOUT       (SIR_LIM_TIMEOUT_MSG_START + 0x1F)
 #define SIR_LIM_INSERT_SINGLESHOT_NOA_TIMEOUT   (SIR_LIM_TIMEOUT_MSG_START + 0x20)
-#endif
 
 #ifdef WMM_APSD
 #define SIR_LIM_WMM_APSD_SP_START_MSG_TYPE (SIR_LIM_TIMEOUT_MSG_START + 0x21)

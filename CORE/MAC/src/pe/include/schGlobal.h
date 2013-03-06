@@ -152,9 +152,7 @@ struct schMisc {
     /// flag to indicate that beacon template has been updated
     tANI_U8   fBeaconChanged;
 
-#if defined(WLAN_FEATURE_P2P)
     tANI_U16 p2pIeOffset;
-#endif
 
 };
 
