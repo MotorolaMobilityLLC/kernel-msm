@@ -40,7 +40,6 @@
  */
 
 /*
- *
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file utilsParser.cc contains the code for parsing
  * 802.11 messages.
@@ -166,7 +165,6 @@ tSirRetStatus ConvertWscOpaque( tpAniSirGlobal      pMac,
     return eSIR_SUCCESS;
 }
 
-#ifdef WLAN_FEATURE_P2P
 tSirRetStatus ConvertP2POpaque( tpAniSirGlobal      pMac,
                                 tSirAddie           *pOld,
                                 tDot11fIEP2PIEOpaque *pNew )
@@ -186,7 +184,6 @@ tSirRetStatus ConvertP2POpaque( tpAniSirGlobal      pMac,
 
     return eSIR_SUCCESS;
 }
-#endif
 
 #ifdef WLAN_FEATURE_WFD
 tSirRetStatus ConvertWFDOpaque( tpAniSirGlobal      pMac,
