@@ -556,7 +556,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             sapCleanupChannelList();
 
             pHddApCtx->operatingChannel = 0; //Invalidate the channel info.
-            vos_event_set(&pHostapdState->vosEvent);
             goto stopbss;
         case eSAP_STA_SET_KEY_EVENT:
             //TODO: forward the message to hostapd once implementtation is done for now just print
@@ -862,6 +861,12 @@ stopbss :
 
         /* reclaim all resources allocated to the BSS */
         hdd_softap_stop_bss(pHostapdAdapter);
+
+        /* once the event is set, structure dev/pHostapdAdapter should
+         * not be touched since they are now subject to being deleted
+         * by another thread */
+        if (eSAP_STOP_BSS_EVENT == sapEvent)
+            vos_event_set(&pHostapdState->vosEvent);
 
         /* notify userspace that the BSS has stopped */
         memset(&we_custom_event, '\0', sizeof(we_custom_event));
