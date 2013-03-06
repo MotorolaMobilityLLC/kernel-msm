@@ -3455,16 +3455,25 @@ void csrSaveChannelPowerForBand( tpAniSirGlobal pMac, tANI_BOOLEAN fPopulate5GBa
     tANI_U32 Index, count=0;
     tSirMacChanInfo *pChanInfo;
     tSirMacChanInfo *pChanInfoStart;
+    tANI_S32 maxChannelIndex;
+
+    maxChannelIndex = ( pMac->scan.base20MHzChannels.numChannels < WNI_CFG_VALID_CHANNEL_LIST_LEN ) ?
+                      pMac->scan.base20MHzChannels.numChannels : WNI_CFG_VALID_CHANNEL_LIST_LEN ;
 
     if(HAL_STATUS_SUCCESS(palAllocateMemory(pMac->hHdd, (void **)&pChanInfo, sizeof(tSirMacChanInfo) * WNI_CFG_VALID_CHANNEL_LIST_LEN)))
     {
         palZeroMemory(pMac->hHdd, pChanInfo, sizeof(tSirMacChanInfo) * WNI_CFG_VALID_CHANNEL_LIST_LEN);
         pChanInfoStart = pChanInfo;
-        for (Index=0; Index < pMac->scan.base20MHzChannels.numChannels; Index++)
+        for (Index=0; Index < maxChannelIndex; Index++)
         {
             if ((fPopulate5GBand && (CSR_IS_CHANNEL_5GHZ(pMac->scan.defaultPowerTable[Index].chanId))) ||
                 (!fPopulate5GBand && (CSR_IS_CHANNEL_24GHZ(pMac->scan.defaultPowerTable[Index].chanId))) )
             {
+                if(count >= WNI_CFG_VALID_CHANNEL_LIST_LEN)
+                {
+                    smsLog( pMac, LOGW, FL(" csrSaveChannelPowerForBand, count exceeded, count =  %d"), count);
+                    break;
+                }
                 pChanInfo->firstChanNum = pMac->scan.defaultPowerTable[Index].chanId;
                 pChanInfo->numChannels  = 1;
                 pChanInfo->maxTxPower   = CSR_ROAM_MIN( pMac->scan.defaultPowerTable[Index].pwr, pMac->roam.configParam.nTxPowerCap );
