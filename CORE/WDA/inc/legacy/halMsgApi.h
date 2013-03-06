@@ -291,10 +291,8 @@ typedef struct
     tANI_U8     sessionId; //PE session id for PE<->HAL interface 
     // HAL just sends back what it receives.
 
-#ifdef WLAN_FEATURE_P2P
     /*if this is a P2P Capable Sta*/
     tANI_U8     p2pCapableSta;
-#endif
 
 #ifdef WLAN_FEATURE_11AC
     tANI_U8    vhtCapable;
@@ -554,9 +552,7 @@ typedef struct {
 
     tANI_U8 notifyBss;
 
-#ifdef WLAN_FEATURE_P2P
     tANI_U8 useNoA;
-#endif
 
     // If this flag is set HAL notifies PE when SMAC returns status.
     tANI_U8 notifyHost;
@@ -746,9 +742,7 @@ typedef struct {
     tANI_U8 *beacon;     // Beacon data.
     tANI_U32 beaconLength; //length of the template.
     tANI_U32 timIeOffset; //TIM IE offset from the beginning of the template.
-#ifdef WLAN_FEATURE_P2P    
     tANI_U16 p2pIeOffset; //P2P IE offset from the begining of the template
-#endif    
 } tSendbeaconParams, * tpSendbeaconParams;
 
 typedef struct sSendProbeRespParams {
@@ -1313,7 +1307,6 @@ typedef struct sDelStaSelfParams
    tANI_U32 status;
 }tDelStaSelfParams, *tpDelStaSelfParams;
 
-#ifdef WLAN_FEATURE_P2P
 typedef struct sP2pPsParams
 {
    tANI_U8   opp_ps;
@@ -1324,7 +1317,6 @@ typedef struct sP2pPsParams
    tANI_U32  single_noa_duration;
    tANI_U8   psSelection;
 }tP2pPsParams, *tpP2pPsParams;
-#endif
 
 static inline void halGetTxTSFtimer(tpAniSirGlobal pMac, 
                                                 tSirMacTimeStamp *pTime)
