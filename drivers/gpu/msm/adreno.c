@@ -73,7 +73,9 @@
 	 | (MMU_CONFIG << MH_MMU_CONFIG__PA_W_CLNT_BEHAVIOR__SHIFT))
 
 static const struct kgsl_functable adreno_functable;
-
+#ifndef CONFIG_DEBUG_FS
+unsigned int kgsl_cff_dump_enable;
+#endif
 static struct adreno_device device_3d0 = {
 	.dev = {
 		KGSL_DEVICE_COMMON_INIT(device_3d0.dev),
@@ -1174,8 +1176,9 @@ adreno_probe(struct platform_device *pdev)
 		goto error_close_rb;
 
 	adreno_postmortem_sysfs_init(device);
+#ifdef CONFIG_DEBUG_FS
 	adreno_debugfs_init(device);
-
+#endif
 	kgsl_pwrscale_init(device);
 	kgsl_pwrscale_attach_policy(device, ADRENO_DEFAULT_PWRSCALE_POLICY);
 
