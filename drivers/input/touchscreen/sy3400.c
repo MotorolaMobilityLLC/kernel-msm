@@ -611,9 +611,12 @@ static int sy3400_resume(struct i2c_client *client)
 
 	/* Perform hard reset of the IC. Seem to help on resume */
 	sy3400_hw_ic_reset(dd);
-	/* For the normal operation, the last bit must be 0 */
+	/*
+	For the normal operation, the last 3 bits of power register must be 101
+	*/
 	sleep = dd->icdat->pwr_dat;
-	sleep &= ~0x01;
+	sleep &= ~0x7;
+	sleep |= 0x05;
 	err = sy3400_i2c_write(dd, dd->icdat->pwr_addr,
 			&(sleep), 1);
 	sy3400_dbg(dd, SY3400_DBG3, "%s: Resume complete.\n", __func__);
