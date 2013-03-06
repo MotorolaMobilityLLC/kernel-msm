@@ -2339,7 +2339,7 @@ sendDisassoc:
         limSendSmeDisassocNtf(pMac, smeDisassocReq.peerMacAddr, 
                 retCode, 
                 disassocTrigger,
-                1, 0, 0, NULL);
+                1, smesessionId, smetransactionId, NULL);
 
 
 } /*** end __limProcessSmeDisassocReq() ***/
