@@ -113,7 +113,6 @@ typedef struct {
 
 typedef struct {
     struct list_head peer_list[256];
-    struct mutex lock;
     struct net_device *dev;
     vos_timer_t     peerDiscoverTimer;
     vos_timer_t     peerUpdateTimer;
@@ -126,10 +125,6 @@ typedef struct {
 int wlan_hdd_tdls_init(struct net_device *dev);
 
 void wlan_hdd_tdls_exit(void);
-
-void wlan_hdd_tdls_timers_stop(void);
-
-void wlan_hdd_tdls_timers_destroy(void);
 
 void wlan_hdd_tdls_extract_da(struct sk_buff *skb, u8 *mac);
 
