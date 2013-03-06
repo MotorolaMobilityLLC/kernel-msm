@@ -93,11 +93,8 @@
 #define MOT_PANEL_OFF     0x0
 #define MOT_PANEL_ON      0x1
 
-enum {
-	MOT_ESD_PANEL_OFF = 0,
-	MOT_ESD_ESD_DETECT,
-	MOT_ESD_OK,
-};
+#define MOT_ESD_OK         0
+#define MOT_ESD_PANEL_OFF  1
 
 struct mipi_mot_cmd_seq {
 	enum {

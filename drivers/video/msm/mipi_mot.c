@@ -464,7 +464,7 @@ err:
 static int panel_disable(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
-	int ret;
+	int ret, need_deinit = 0;
 
 	pr_info("%s is called\n", __func__);
 
@@ -474,14 +474,6 @@ static int panel_disable(struct platform_device *pdev)
 	if (ret != 0)
 		goto err;
 
-	if (!factory_run && mot_panel.esd_enabled &&
-				(mot_panel.esd_detection_run == true)) {
-#ifndef MOT_PANEL_ESD_SELF_TRIGGER
-		cancel_delayed_work_sync(&mot_panel.esd_work);
-#endif
-		mot_panel.esd_detection_run = false;
-	}
-
 	/*
 	 * The panel_state might be off because with the video_mode
 	 * panel, before phone suspends, it needs to call the panel_off
@@ -490,7 +482,23 @@ static int panel_disable(struct platform_device *pdev)
 	 */
 	if (atomic_read(&mot_panel.state) == MOT_PANEL_ON) {
 		atomic_set(&mot_panel.state, MOT_PANEL_OFF);
+		need_deinit = 1;
+	}
 
+	if (!factory_run && mot_panel.esd_enabled &&
+			(mot_panel.esd_detection_run == true)) {
+#ifndef MOT_PANEL_ESD_SELF_TRIGGER
+		ret = cancel_delayed_work(&mot_panel.esd_work);
+		if (ret)
+			pr_debug("%s : canceled ESD thread\n", __func__);
+		else
+			pr_debug("%s: cannot cancel the ESD thread\n",
+							__func__);
+#endif
+		mot_panel.esd_detection_run = false;
+	}
+
+	if (need_deinit) {
 		if (mot_panel.panel_disable) {
 			mot_panel.panel_disable(mfd);
 		} else {

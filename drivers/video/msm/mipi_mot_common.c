@@ -223,10 +223,10 @@ int mipi_mot_exec_cmd_seq(struct msm_fb_data_type *mfd,
 				__func__, i, cur->cmd.payload[0],
 				cur->cmd.dlen);
 			sub_ret = mipi_mot_tx_cmds(&cur->cmd, 1);
-			if (sub_ret <= 0) {
+			if (sub_ret < 0) {
 				pr_err("%s: Item %d - fail to call mot_tx_cmds\n",
 							__func__, i);
-				r = sub_ret;
+				r = -EIO;
 				break;
 			}
 		} else if (cur->type == MIPI_MOT_SEQ_EXEC_SUB_SEQ) {
@@ -409,16 +409,21 @@ static const struct file_operations panel_gamma_debug_fops = {
 static int esd_recovery_start(struct msm_fb_data_type *mfd)
 {
 	struct msm_fb_panel_data *pdata;
+	int ret;
 
 	pr_info("MIPI MOT: ESD recovering is started\n");
 
 	pdata = (struct msm_fb_panel_data *)mfd->pdev->dev.platform_data;
 
-	if (!mfd->panel_power_on) /* panel is off, do nothing */
+	if (!mfd->panel_power_on) { /* panel is off, do nothing */
+		ret = MOT_ESD_PANEL_OFF;
 		goto end;
+	}
 
-	if (mot_panel && atomic_read(&mot_panel->state) == MOT_PANEL_OFF)
+	if (mot_panel && atomic_read(&mot_panel->state) == MOT_PANEL_OFF) {
+		ret = MOT_ESD_PANEL_OFF;
 		goto end;
+	}
 
 	atomic_set(&mot_panel->state, MOT_PANEL_OFF);
 	if (mot_panel->panel_disable)
@@ -432,10 +437,11 @@ static int esd_recovery_start(struct msm_fb_data_type *mfd)
 	atomic_set(&mot_panel->state, MOT_PANEL_ON);
 	mdp4_dsi_cmd_pipe_commit(0, 1);
 	mipi_mot_panel_on(mfd);
+	ret = MOT_ESD_OK;
 end:
 	pr_info("MIPI MOT: ESD recovering is done\n");
 
-	return 0;
+	return ret;
 }
 
 static int mipi_mot_esd_detection(struct msm_fb_data_type *mfd)
@@ -444,12 +450,13 @@ static int mipi_mot_esd_detection(struct msm_fb_data_type *mfd)
 	static int esd_count;
 	static int esd_trigger_cnt;
 #endif
+	int ret;
 
 	pr_debug("%s is called\n", __func__);
 
 	if (atomic_read(&mot_panel->state) == MOT_PANEL_OFF) {
 		pr_debug("%s exit because of panel is off.\n", __func__);
-		return 0;
+		return MOT_ESD_PANEL_OFF;
 	}
 
 	mutex_lock(&mfd->dma->ov_mutex);
@@ -469,31 +476,45 @@ static int mipi_mot_esd_detection(struct msm_fb_data_type *mfd)
 	}
 #endif
 
-	return 0;
+	return MOT_ESD_OK;
 
 trigger_esd_recovery:
-	esd_recovery_start(mot_panel->mfd);
+	ret = esd_recovery_start(mot_panel->mfd);
 
-	return 0;
+	return ret;
 }
 
 void mipi_mot_esd_work(void)
 {
 	struct msm_fb_data_type *mfd;
+	int ret;
 
 	mfd = mot_panel->mfd;
 
 	if (mot_panel == NULL) {
 		pr_err("%s: invalid mot_panel\n", __func__);
-		return;
+		goto end;
+	}
+
+	if (atomic_read(&mot_panel->state) == MOT_PANEL_OFF) {
+		pr_debug("%s: panel is OFF.. exiting ESD thread\n",
+								__func__);
+		goto end;
 	}
 
 	mutex_lock(&mfd->panel_info.mipi.panel_mutex);
-	mipi_mot_esd_detection(mfd);
+	ret = mipi_mot_esd_detection(mfd);
 	mutex_unlock(&mfd->panel_info.mipi.panel_mutex);
 
-	queue_delayed_work(mot_panel->esd_wq, &mot_panel->esd_work,
+	if (ret == MOT_ESD_PANEL_OFF) {
+		mot_panel->esd_detection_run = false;
+		pr_debug("%s: panel is OFF.. don't queue ESD worker thread\n",
+								__func__);
+	} else
+		queue_delayed_work(mot_panel->esd_wq, &mot_panel->esd_work,
 						MOT_PANEL_ESD_CHECK_PERIOD);
+end:
+	return;
 }
 
 int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide)
