@@ -3936,7 +3936,8 @@ static void update_heartbeat(struct work_struct *work)
 	}
 
 	if ((percent_soc <= 5) &&
-	    (alarm_state == PM_BATT_ALARM_NORMAL)) {
+	    (alarm_state == PM_BATT_ALARM_NORMAL) &&
+	    (batt_mvolt < chip->lower_battery_threshold)) {
 		rc = update_batt_alarm_settings(
 			chip->min_voltage_mv,
 			(chip->lower_battery_threshold +
@@ -3945,7 +3946,9 @@ static void update_heartbeat(struct work_struct *work)
 		if (!rc)
 			alarm_state = PM_BATT_ALARM_WARNING;
 	} else if ((percent_soc > 5) &&
-		   (alarm_state == PM_BATT_ALARM_WARNING)) {
+		   (alarm_state == PM_BATT_ALARM_WARNING) &&
+		   (batt_mvolt > (chip->lower_battery_threshold +
+				  chip->batt_alarm_delta))) {
 		rc = update_batt_alarm_settings(
 			chip->lower_battery_threshold,
 			(chip->max_voltage_mv +
