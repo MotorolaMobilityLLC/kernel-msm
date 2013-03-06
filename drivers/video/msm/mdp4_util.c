@@ -201,13 +201,14 @@ void mdp4_sw_reset(ulong bits)
 
 	bits &= 0x1f;	/* 5 bits */
 	outpdw(MDP_BASE + 0x001c, bits);	/* MDP_SW_RESET */
+	wmb();
 
 	while (inpdw(MDP_BASE + 0x001c) & bits) /* self clear when complete */
 		;
 	/* MDP cmd block disable */
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
 
-	MSM_FB_DEBUG("mdp4_sw_reset: 0x%x\n", (int)bits);
+	pr_debug("mdp4_sw_reset: 0x%x\n", (int)bits);
 }
 
 void mdp4_overlay_cfg(int overlayer, int blt_mode, int refresh, int direct_out)
@@ -1390,6 +1391,14 @@ struct mdp_csc_cfg mdp_csc_convert[4] = {
 		{ 0x0, 0xff, 0x0, 0xff, 0x0, 0xff, },
 	},
 };
+
+void mdp4_vg_csc_restore(void)
+{
+        int i;
+
+        for (i = 0; i < CSC_MAX_BLOCKS; i++)
+                mdp4_csc_config(&csc_cfg_matrix[i]);
+}
 
 
 void mdp4_vg_csc_update(struct mdp_csc *p)
@@ -3091,14 +3100,11 @@ static int is_valid_calib_addr(void *addr)
 	int ret = 0;
 	unsigned int ptr;
 
-	if (addr == NULL)
-		goto end;
-
 	ptr = (unsigned int) addr;
 
 	if (mdp_rev >= MDP_REV_30 && mdp_rev < MDP_REV_40) {
 		/* if request is outside the MDP reg-map or is not aligned 4 */
-		if (ptr > 0xF0600 || ptr % 0x4)
+		if (ptr == 0x0 || ptr > 0xF0600 || ptr % 0x4)
 			goto end;
 
 		if (ptr >= 0x90000 && ptr < 0x94000) {
@@ -3123,7 +3129,8 @@ static int is_valid_calib_addr(void *addr)
 			goto end;
 
 		if (ptr < 0x90000) {
-			if (ptr == 0x4 || ptr == 0x28200 || ptr == 0x28204)
+			if (ptr == 0x0 || ptr == 0x4 || ptr == 0x28200 ||
+								ptr == 0x28204)
 				ret = 1;
 		} else if (ptr < 0x95000) {
 			if (ptr == 0x90000 || ptr == 0x90070)
