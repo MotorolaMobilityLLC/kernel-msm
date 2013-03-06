@@ -1504,12 +1504,8 @@ err_vosclose:
        kfree(pHddCtx->cfg_ini);
        pHddCtx->cfg_ini= NULL;
 
-#ifdef CONFIG_CFG80211
        wiphy_unregister(pHddCtx->wiphy);
        wiphy_free(pHddCtx->wiphy);
-#else
-       vos_mem_free(pHddCtx);
-#endif
    }
    vos_preClose(&pVosContext);
 

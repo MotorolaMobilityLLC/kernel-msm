@@ -50,7 +50,6 @@
   Qualcomm Confidential and Proprietary.
 
   ========================================================================*/
-#ifdef CONFIG_CFG80211
 
 #include <wlan_hdd_includes.h>
 #include <wlan_hdd_hostapd.h>
@@ -1656,4 +1655,3 @@ static void hdd_wlan_tx_complete( hdd_adapter_t* pAdapter,
     netif_tx_start_all_queues( pAdapter->dev ); 
 
 }
-#endif // CONFIG_CFG80211
