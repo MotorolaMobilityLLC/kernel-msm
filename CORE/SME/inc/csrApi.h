@@ -271,10 +271,8 @@ typedef struct tagCsrScanRequest
     tANI_U32 uIEFieldLen;
     tANI_U8 *pIEField;
     eCsrRequestType requestType;    //11d scan or full scan
-#ifdef WLAN_FEATURE_P2P
     tANI_BOOLEAN p2pSearch;
     tANI_BOOLEAN skipDfsChnlInP2pSearch;
-#endif
 }tCsrScanRequest;
 
 typedef struct tagCsrBGScanRequest
@@ -526,9 +524,7 @@ typedef enum
     // INFRA disassociated
     eCSR_ROAM_RESULT_INFRA_DISASSOCIATED,
     eCSR_ROAM_RESULT_WPS_PBC_PROBE_REQ_IND,
-#ifdef WLAN_FEATURE_P2P
     eCSR_ROAM_RESULT_SEND_ACTION_FAIL,
-#endif
     // peer rejected assoc because max assoc limit reached. callback gets pointer to peer
     eCSR_ROAM_RESULT_MAX_ASSOC_EXCEEDED,
     //Assoc rejected due to concurrent session running on a different channel
@@ -1127,10 +1123,8 @@ typedef struct tagCsrRoamInfo
 #ifdef FEATURE_WLAN_CCX
     tANI_BOOLEAN isCCXAssoc;
 #endif
-#ifdef WLAN_FEATURE_P2P
     void* pRemainCtx;
     tANI_U32 rxChan;
-#endif
 
 #ifdef FEATURE_WLAN_TDLS
     tANI_U8 staType;

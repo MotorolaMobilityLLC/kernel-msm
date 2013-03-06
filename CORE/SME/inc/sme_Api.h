@@ -1704,7 +1704,6 @@ eHalStatus sme_AbortMacScan(tHalHandle hHal);
 -------------------------------------------------------------------------------*/
 eHalStatus sme_GetOperationChannel(tHalHandle hHal, tANI_U32 *pChannel, tANI_U8 sessionId);
 
-#ifdef WLAN_FEATURE_P2P
 /* ---------------------------------------------------------------------------
 
     \fn sme_RegisterMgtFrame
@@ -1732,7 +1731,6 @@ eHalStatus sme_RegisterMgmtFrame(tHalHandle hHal, tANI_U8 sessionId,
   -------------------------------------------------------------------------------*/
 eHalStatus sme_DeregisterMgmtFrame(tHalHandle hHal, tANI_U8 sessionId, 
                      tANI_U16 frameType, tANI_U8* matchData, tANI_U16 matchLen);
-#endif
 
 /* ---------------------------------------------------------------------------
 
