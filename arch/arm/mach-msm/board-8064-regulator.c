@@ -33,6 +33,7 @@ VREG_CONSUMERS(L2) = {
 	REGULATOR_SUPPLY("mipi_csi_vdd",	"msm_csid.2"),
 	REGULATOR_SUPPLY("lvds_pll_vdda",	"lvds.0"),
 	REGULATOR_SUPPLY("dsi1_pll_vdda",	"mipi_dsi.1"),
+	REGULATOR_SUPPLY("dsi_pll_vdda",	"mdp.0"),
 };
 VREG_CONSUMERS(L3) = {
 	REGULATOR_SUPPLY("8921_l3",		NULL),
@@ -220,6 +221,7 @@ VREG_CONSUMERS(LVS7) = {
 	REGULATOR_SUPPLY("pll_vdd",		"pil_riva"),
 	REGULATOR_SUPPLY("lvds_vdda",		"lvds.0"),
 	REGULATOR_SUPPLY("dsi1_vddio",		"mipi_dsi.1"),
+	REGULATOR_SUPPLY("dsi_pll_vddio",	"mdp.0"),
 	REGULATOR_SUPPLY("hdmi_vdda",		"hdmi_msm.0"),
 };
 VREG_CONSUMERS(USB_OTG) = {
