@@ -133,7 +133,6 @@
 /* amp states */
 #define TPA6165_AMP_DISABLED	0
 #define TPA6165_AMP_ENABLED		1
-#define TPA6165_AMP_EN_PENDING	2
 
 /* power states */
 #define TPA6165_SPECIAL_SLEEP	2
