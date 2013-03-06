@@ -581,7 +581,7 @@ done:
 			   ARIZONA_ACCDET_MODE_MASK, ARIZONA_ACCDET_MODE_MIC);
 
 	/* If we have a mic then reenable MICDET */
-	if (mic)
+	if (mic || info->mic)
 		arizona_start_mic(info);
 	else
 		switch_set_state(&info->sdev, BIT_HEADSET_NO_MIC);
@@ -771,6 +771,7 @@ static void arizona_micd_detect(struct work_struct *work)
 		info->mic = true;
 
 		arizona_identify_headphone(info);
+		switch_set_state(&info->sdev, BIT_HEADSET);
 
 		info->detecting = false;
 
