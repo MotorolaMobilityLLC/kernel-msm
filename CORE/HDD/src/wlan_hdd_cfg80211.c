@@ -6746,9 +6746,6 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
     status = sme_SendTdlsMgmtFrame(WLAN_HDD_GET_HAL_CTX(pAdapter), pAdapter->sessionId,
             peerMac, action_code, dialog_token, status_code, (tANI_U8 *)buf, len, responder);
 
-    status = wait_for_completion_interruptible_timeout(&pAdapter->tdls_add_station_comp,
-                                                        msecs_to_jiffies(WAIT_TIME_TDLS_MGMT));
-
     if (VOS_STATUS_SUCCESS != status)
     {
         if(ret == 0 && /* if failure, don't need to set the progress bit */
@@ -6760,15 +6757,22 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
         return -EPERM;
     }
 
-    if (TRUE != pAdapter->mgmtTxCompletionStatus)
+    /* not block discovery request, as it is called from timer callback */
+    if (SIR_MAC_TDLS_DIS_REQ !=  action_code)
     {
-        if(ret == 0 && /* if failure, don't need to set the progress bit */
-           (WLAN_IS_TDLS_SETUP_ACTION(action_code)))
-            wlan_hdd_tdls_set_connection_progress(peer, FALSE);
+        status = wait_for_completion_interruptible_timeout(&pAdapter->tdls_mgmt_comp,
+                                                            msecs_to_jiffies(WAIT_TIME_TDLS_MGMT));
 
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                  "%s: Mgmt Tx Completion failed!", __func__);
-        return -EPERM;
+        if ((VOS_STATUS_SUCCESS != status) || (TRUE != pAdapter->mgmtTxCompletionStatus))
+        {
+            if(ret == 0 && /* if failure, don't need to set the progress bit */
+               (WLAN_IS_TDLS_SETUP_ACTION(action_code)))
+                wlan_hdd_tdls_set_connection_progress(peer, FALSE);
+
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: Mgmt Tx Completion failed!", __func__);
+            return -EPERM;
+        }
     }
 
     if (ret)
