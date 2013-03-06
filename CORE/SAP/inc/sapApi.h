@@ -91,9 +91,7 @@ when           who                what, where, why
 #include "vos_packet.h" 
 #include "vos_types.h"
 
-#ifdef WLAN_FEATURE_P2P
 #include "p2p_Api.h"
-#endif
 
 /*----------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
@@ -206,13 +204,11 @@ typedef enum {
     eSAP_ASSOC_STA_CALLBACK_EVENT,  /*Event sent when user called WLANSAP_GetAssocStations */
     eSAP_GET_WPSPBC_SESSION_EVENT,  /* Event send when user call  WLANSAP_getWpsSessionOverlap */  
     eSAP_WPS_PBC_PROBE_REQ_EVENT, /* Event send on WPS PBC probe request is received */
-#ifdef WLAN_FEATURE_P2P
     eSAP_INDICATE_MGMT_FRAME,
     eSAP_REMAIN_CHAN_READY,
     eSAP_SEND_ACTION_CNF,
     eSAP_DISCONNECT_ALL_P2P_CLIENT,
     eSAP_MAC_TRIG_STOP_BSS_EVENT,
-#endif
     eSAP_UNKNOWN_STA_JOIN, /* Event send when a STA in neither white list or black list tries to associate in softap mode */
     eSAP_MAX_ASSOC_EXCEEDED, /* Event send when a new STA is rejected association since softAP max assoc limit has reached */
 } eSapHddEvent;
@@ -360,7 +356,6 @@ typedef struct sap_WPSPBCProbeReqEvent_s {
     tSirWPSPBCProbeReq WPSPBCProbeReq;
 } tSap_WPSPBCProbeReqEvent; 
 
-#ifdef WLAN_FEATURE_P2P
 typedef struct sap_ManagementFrameInfo_s {
     tANI_U32 nFrameLength;
     tANI_U8  frameType;
@@ -373,7 +368,6 @@ typedef struct sap_ManagementFrameInfo_s {
 typedef struct sap_SendActionCnf_s {
     eSapStatus actionSendSuccess; 
 } tSap_SendActionCnf;
-#endif
 
 typedef struct sap_UnknownSTAJoinEvent_s {
     v_MACADDR_t    macaddr;  
@@ -403,10 +397,8 @@ typedef struct sap_Event_s {
         tSap_AssocStaListEvent                    sapAssocStaListEvent; /*SAP_ASSOC_STA_CALLBACK_EVENT */
         tSap_GetWPSPBCSessionEvent                sapGetWPSPBCSessionEvent; /*SAP_GET_WPSPBC_SESSION_EVENT */
         tSap_WPSPBCProbeReqEvent                  sapPBCProbeReqEvent; /*eSAP_WPS_PBC_PROBE_REQ_EVENT */
-#ifdef WLAN_FEATURE_P2P
         tSap_ManagementFrameInfo                  sapManagementFrameInfo; /*eSAP_INDICATE_MGMT_FRAME*/
         tSap_SendActionCnf                        sapActionCnf;  /* eSAP_SEND_ACTION_CNF */ 
-#endif
         tSap_UnknownSTAJoinEvent                  sapUnknownSTAJoin; /* eSAP_UNKNOWN_STA_JOIN */
         tSap_MaxAssocExceededEvent                sapMaxAssocExceeded; /* eSAP_MAX_ASSOC_EXCEEDED */
     } sapevt;
@@ -1385,7 +1377,6 @@ VOS_STATUS WLANSAP_Set_WPARSNIes(v_PVOID_t pvosGCtx, v_U8_t *pWPARSNIEs, v_U32_t
 ============================================================================*/
 VOS_STATUS WLANSAP_GetStatistics(v_PVOID_t pvosGCtx, tSap_SoftapStats *statBuf, v_BOOL_t bReset);
 
-#ifdef WLAN_FEATURE_P2P
 /*==========================================================================
 
   FUNCTION    WLANSAP_SendAction
@@ -1526,7 +1517,6 @@ VOS_STATUS WLANSAP_RegisterMgmtFrame( v_PVOID_t pvosGCtx, tANI_U16 frameType,
 ============================================================================*/
 VOS_STATUS WLANSAP_DeRegisterMgmtFrame( v_PVOID_t pvosGCtx, tANI_U16 frameType, 
                                       tANI_U8* matchData, tANI_U16 matchLen );
-#endif // WLAN_FEATURE_P2P
 
 
 #ifdef __cplusplus
