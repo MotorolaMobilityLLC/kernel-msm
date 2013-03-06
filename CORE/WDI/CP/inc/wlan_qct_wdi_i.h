@@ -2130,7 +2130,6 @@ WDI_Status WDI_ProcessSetMaxTxPowerReq
   WDI_EventInfoType*     pEventData
 );
 
-#ifdef WLAN_FEATURE_P2P
 /**
  @brief Process P2P Notice Of Absence Request function (called when Main FSM
         allows it)
@@ -2147,7 +2146,6 @@ WDI_ProcessP2PGONOAReq
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
-#endif
 
 /**
  @brief Process Enter IMPS Request function (called when 
@@ -3316,7 +3314,6 @@ WDI_ProcessNvDownloadRsp
   WDI_EventInfoType*     pEventData
 );
 
-#ifdef WLAN_FEATURE_P2P
 /**
  @brief Process P2P Group Owner Notice Of Absense Rsp function (called 
         when a response is being received over the bus from HAL)
@@ -3333,7 +3330,6 @@ WDI_ProcessP2PGONOARsp
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
-#endif
 
 /**
  @brief Process Enter IMPS Rsp function (called when a response 
@@ -3963,7 +3959,6 @@ WDI_ProcessTxCompleteInd
   WDI_EventInfoType*     pEventData
 );
 
-#ifdef WLAN_FEATURE_P2P
 /**
 *@brief Process Noa Start Indication function (called when
         an indication of this kind is being received over the
@@ -3999,7 +3994,6 @@ WDI_ProcessP2pNoaAttrInd
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
-#endif
 
 /**
 *@brief Process Tx Per Hit Indication function (called when
