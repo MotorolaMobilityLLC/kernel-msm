@@ -2388,6 +2388,7 @@ static int mdp_on(struct platform_device *pdev)
 
 		/* Clks are enabled in probe.
 		Disabling clocks now */
+		cont_splash_clk_ctrl(0);
 		mdp_clk_ctrl(0);
 		if (mfd->panel.type == MIPI_VIDEO_PANEL ||
                                     mfd->panel.type == LCDC_PANEL)
