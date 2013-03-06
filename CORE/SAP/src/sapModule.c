@@ -1982,7 +1982,6 @@ VOS_STATUS WLANSAP_GetStatistics(v_PVOID_t pvosGCtx, tSap_SoftapStats *statBuf, 
     return (WLANTL_GetSoftAPStatistics(pvosGCtx, statBuf, bReset));
 }
 
-#ifdef WLAN_FEATURE_P2P
 /*==========================================================================
 
   FUNCTION    WLANSAP_SendAction
@@ -2305,4 +2304,3 @@ VOS_STATUS WLANSAP_DeRegisterMgmtFrame( v_PVOID_t pvosGCtx, tANI_U16 frameType,
 
     return VOS_STATUS_E_FAULT;
 }
-#endif // WLAN_FEATURE_P2P

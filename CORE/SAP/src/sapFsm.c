@@ -661,7 +661,6 @@ sapSignalHDDevent
                           sizeof(tSirWPSPBCProbeReq));
             break;
 
-#ifdef WLAN_FEATURE_P2P
        case eSAP_INDICATE_MGMT_FRAME:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
                                  "In %s, SAP event callback event = %s",
@@ -707,7 +706,6 @@ sapSignalHDDevent
             sapApAppEvent.sapevt.sapActionCnf.actionSendSuccess = (eSapStatus)context;
             break;
 
-#endif
 
         case eSAP_UNKNOWN_STA_JOIN:
             VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
