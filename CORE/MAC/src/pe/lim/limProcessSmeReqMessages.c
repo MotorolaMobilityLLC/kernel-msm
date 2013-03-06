@@ -97,7 +97,10 @@
  * taking care of sending null data and receiving ACK to/from AP/Also SetChannel with calibration is taking
  * around 7ms .
  */
-#define SCAN_MESSAGING_OVERHEAD 10 // in msecs
+#define SCAN_MESSAGING_OVERHEAD             20      // in msecs
+#define JOIN_NOA_DURATION                   2000    // in msecs
+#define OEM_DATA_NOA_DURATION               60      // in msecs
+#define DEFAULT_PASSIVE_MAX_CHANNEL_TIME    110     // in msecs
 
 #define CONV_MS_TO_US 1024 //conversion factor from ms to us
 
@@ -105,7 +108,7 @@
 static void __limProcessSmeStartReq(tpAniSirGlobal, tANI_U32 *);
 static tANI_BOOLEAN __limProcessSmeSysReadyInd(tpAniSirGlobal, tANI_U32 *);
 static tANI_BOOLEAN __limProcessSmeStartBssReq(tpAniSirGlobal, tpSirMsgQ pMsg);
-void __limProcessSmeScanReq(tpAniSirGlobal, tANI_U32 *);
+static void __limProcessSmeScanReq(tpAniSirGlobal, tANI_U32 *);
 static void __limProcessSmeJoinReq(tpAniSirGlobal, tANI_U32 *);
 static void __limProcessSmeReassocReq(tpAniSirGlobal, tANI_U32 *);
 static void __limProcessSmeDisassocReq(tpAniSirGlobal, tANI_U32 *);
@@ -1076,7 +1079,7 @@ void limGetRandomBssid(tpAniSirGlobal pMac, tANI_U8 *data)
  * @return None
  */
 
-void
+static void
 __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 {
     tANI_U32            len;
@@ -4531,21 +4534,17 @@ __limProcessSmeRegisterMgmtFrameReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 } /*** end __limProcessSmeRegisterMgmtFrameReq() ***/
 
 static tANI_BOOLEAN
-__limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
+__limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 noaDuration)
 {
     tpP2pPsParams pMsgNoA;
     tSirMsgQ msg;
-    tpSirSmeScanReq     pScanReq;
-    tANI_U32 val = 0;
-    tANI_U8 i = 0;
 
-    pScanReq = (tpSirSmeScanReq) pMsgBuf;
     if( eHAL_STATUS_SUCCESS != palAllocateMemory(
                   pMac->hHdd, (void **) &pMsgNoA, sizeof( tP2pPsConfig )))
     {
         limLog( pMac, LOGP,
                      FL( "Unable to allocate memory during NoA Update\n" ));
-        return TRUE;
+        goto error;
     }
 
     palZeroMemory( pMac->hHdd, (tANI_U8 *)pMsgNoA, sizeof(tP2pPsConfig));
@@ -4556,51 +4555,14 @@ __limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     pMsgNoA->interval = 0;
     pMsgNoA->count = 0;
 
-    pMac->lim.gpLimSmeScanReq = pScanReq;
-
     /* Below params used for Single Shot NOA - so assign proper values */
     pMsgNoA->psSelection = P2P_SINGLE_NOA;
-
-    /* Calculate the total duration of scan for all the channels
-     * listed in the channel list */
-    pMsgNoA->single_noa_duration = 0;
-
-    if (wlan_cfgGetInt(pMac, WNI_CFG_PASSIVE_MAXIMUM_CHANNEL_TIME, &val) != eSIR_SUCCESS)
-    {
-        /*
-         * Could not get max channel value
-         * from CFG. Log error.
-         */
-        limLog(pMac, LOGP, FL("could not retrieve passive max channel value\n"));
-
-        /* use a default value of 110ms */
-        val = 110;
-    }
-
-    for (i = 0; i < pMac->lim.gpLimSmeScanReq->channelList.numChannels; i++) {
-        tANI_U8 channelNum = pMac->lim.gpLimSmeScanReq->channelList.channelNumber[i];
-
-        if (limActiveScanAllowed(pMac, channelNum)) {
-            /* Use min + max channel time to calculate the total duration of scan */
-            pMsgNoA->single_noa_duration += pMac->lim.gpLimSmeScanReq->minChannelTime + pMac->lim.gpLimSmeScanReq->maxChannelTime;
-        } else {
-            /* using the value from WNI_CFG_PASSIVE_MINIMUM_CHANNEL_TIME as is done in
-             * void limContinuePostChannelScan(tpAniSirGlobal pMac)
-             */
-            pMsgNoA->single_noa_duration += val;
-        }
-    }
-
-    /* Adding an overhead of 5ms to account for the scan messaging delays */
-    pMsgNoA->single_noa_duration += SCAN_MESSAGING_OVERHEAD;
-
-    /* Multiplying with 1024 since riva is expecting in micro Seconds */
-     pMsgNoA->single_noa_duration *= CONV_MS_TO_US;
+    pMsgNoA->single_noa_duration = noaDuration;
 
     /* Start Insert NOA timer
      * If insert NOA req fails or NOA rsp fails or start NOA indication doesn't come from FW due to GO session deletion
-     * or any other failure or reason, we still need to send probe response to SME with failure status. The insert NOA
-     * timer of 500 ms will ensure a response back to SME/HDD for the scan req
+     * or any other failure or reason, we still need to process the deferred SME req. The insert NOA
+     * timer of 500 ms will ensure the stored SME req always gets processed
      */
     if (tx_timer_activate(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer)
                                       == TX_TIMER_ERROR)
@@ -4611,8 +4573,10 @@ __limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
         // send the scan response back with status failure and do not even call insert NOA
         limSendSmeScanRsp(pMac, sizeof(tSirSmeScanRsp), eSIR_SME_SCAN_FAILED, pMac->lim.gSmeSessionId, pMac->lim.gTransactionId);
-        return TRUE;
+        goto error;
     }
+
+    MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, NO_SESSION, eLIM_INSERT_SINGLESHOT_NOA_TIMER));
 
     msg.type = WDA_SET_P2P_GO_NOA_REQ;
     msg.reserved = 0;
@@ -4623,13 +4587,143 @@ __limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     {
         /* In this failure case, timer is already started, so its expiration will take care of sending scan response */
         limLog(pMac, LOGP, FL("wdaPost Msg failed\n"));
-        return TRUE;
+        /* Deactivate the NOA timer in failure case */
+        limDeactivateAndChangeTimer(pMac, eLIM_INSERT_SINGLESHOT_NOA_TIMER);
+        goto error;
     }
+    return FALSE;
 
+error:
+    /* In any of the failure cases, just go ahead with the processing of registered deferred SME request without
+     * worrying about the NOA
+     */
+    limProcessRegdDefdSmeReqAfterNOAStart(pMac);
+    // msg buffer is consumed and freed in above function so return FALSE
     return FALSE;
 
 }
 
+static void __limRegisterDeferredSmeReqForNOAStart(tpAniSirGlobal pMac, tANI_U16 msgType, tANI_U32 *pMsgBuf)
+{
+    limLog(pMac, LOG1, FL("Reg msgType %d\n"), msgType) ;
+    pMac->lim.gDeferMsgTypeForNOA = msgType;
+    pMac->lim.gpDefdSmeMsgForNOA = pMsgBuf;
+}
+
+static void __limDeregisterDeferredSmeReqAfterNOAStart(tpAniSirGlobal pMac)
+{
+    limLog(pMac, LOG1, FL("Dereg msgType %d\n"), pMac->lim.gDeferMsgTypeForNOA) ;
+    pMac->lim.gDeferMsgTypeForNOA = 0;
+    if (pMac->lim.gpDefdSmeMsgForNOA != NULL)
+    {
+        /* __limProcessSmeScanReq consumed the buffer. We can free it. */
+        palFreeMemory( pMac->hHdd, (tANI_U32 *) pMac->lim.gpDefdSmeMsgForNOA);
+        pMac->lim.gpDefdSmeMsgForNOA = NULL;
+    }
+}
+
+static
+tANI_U32 limCalculateNOADuration(tpAniSirGlobal pMac, tANI_U16 msgType, tANI_U32 *pMsgBuf)
+{
+    tANI_U32 noaDuration = 0;
+
+    switch (msgType)
+    {
+        case eWNI_SME_SCAN_REQ:
+        {
+            tANI_U32 val;
+            tANI_U8 i;
+            tpSirSmeScanReq pScanReq = (tpSirSmeScanReq) pMsgBuf;
+            if (wlan_cfgGetInt(pMac, WNI_CFG_PASSIVE_MAXIMUM_CHANNEL_TIME, &val) != eSIR_SUCCESS)
+            {
+                /*
+                 * Could not get max channel value
+                 * from CFG. Log error.
+                 */
+                limLog(pMac, LOGP, FL("could not retrieve passive max channel value\n"));
+
+                /* use a default value of 110ms */
+                val = DEFAULT_PASSIVE_MAX_CHANNEL_TIME;
+            }
+
+            for (i = 0; i < pScanReq->channelList.numChannels; i++) {
+                tANI_U8 channelNum = pScanReq->channelList.channelNumber[i];
+
+                if (limActiveScanAllowed(pMac, channelNum)) {
+                    /* Use min + max channel time to calculate the total duration of scan */
+                    noaDuration += pScanReq->minChannelTime + pScanReq->maxChannelTime;
+                } else {
+                    /* using the value from WNI_CFG_PASSIVE_MINIMUM_CHANNEL_TIME as is done in
+                     * void limContinuePostChannelScan(tpAniSirGlobal pMac)
+                     */
+                    noaDuration += val;
+                }
+            }
+
+            /* Adding an overhead of 20ms to account for the scan messaging delays */
+            noaDuration += SCAN_MESSAGING_OVERHEAD;
+            noaDuration *= CONV_MS_TO_US;
+
+            break;
+        }
+
+        case eWNI_SME_OEM_DATA_REQ:
+            noaDuration = OEM_DATA_NOA_DURATION*CONV_MS_TO_US; // use 60 msec as default
+            break;
+
+        case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
+        {
+            tSirRemainOnChnReq *pRemainOnChnReq = (tSirRemainOnChnReq *) pMsgBuf;
+            noaDuration = (pRemainOnChnReq->duration)*CONV_MS_TO_US;
+            break;
+        }
+
+        case eWNI_SME_JOIN_REQ:
+            noaDuration = JOIN_NOA_DURATION*CONV_MS_TO_US;
+            break;
+
+        default:
+            noaDuration = 0;
+            break;
+
+    }
+    limLog(pMac, LOGW, FL("msgType %d noa %d\n"), msgType, noaDuration);
+    return noaDuration;
+}
+
+void limProcessRegdDefdSmeReqAfterNOAStart(tpAniSirGlobal pMac)
+{
+
+    limLog(pMac, LOG1, FL("Process defd sme req %d\n"), pMac->lim.gDeferMsgTypeForNOA);
+    if ( (pMac->lim.gDeferMsgTypeForNOA != 0) &&
+         (pMac->lim.gpDefdSmeMsgForNOA != NULL) )
+    {
+        switch (pMac->lim.gDeferMsgTypeForNOA)
+        {
+            case eWNI_SME_SCAN_REQ:
+                __limProcessSmeScanReq(pMac, pMac->lim.gpDefdSmeMsgForNOA);
+                break;
+            case eWNI_SME_OEM_DATA_REQ:
+                __limProcessSmeOemDataReq(pMac, pMac->lim.gpDefdSmeMsgForNOA);
+                break;
+            case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
+                limProcessRemainOnChnlReq(pMac, pMac->lim.gpDefdSmeMsgForNOA);
+                break;
+            case eWNI_SME_JOIN_REQ:
+                __limProcessSmeJoinReq(pMac, pMac->lim.gpDefdSmeMsgForNOA);
+                break;
+            default:
+                limLog(pMac, LOGE, FL("Unknown deferred msg type %d\n"), pMac->lim.gDeferMsgTypeForNOA);
+                break;
+        }
+        __limDeregisterDeferredSmeReqAfterNOAStart(pMac);
+    }
+    else
+    {
+        limLog( pMac, LOGW, FL("start received from FW when no sme deferred msg pending. Do nothing."
+            "It might happen sometime when NOA start ind and timeout happen at the same time\n"));
+    }
+}
 
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 /*
@@ -4992,6 +5086,28 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
          limSmeStateStr(pMac->lim.gLimSmeState), pMac->lim.gLimSmeState,
          limMlmStateStr(pMac->lim.gLimMlmState), pMac->lim.gLimMlmState );)
 
+    /* Special handling of some SME Req msgs where we have an existing GO session and
+     * want to insert NOA before processing those msgs. These msgs will be processed later when
+     * start event happens
+     */
+    switch (pMsg->type)
+    {
+        case eWNI_SME_SCAN_REQ:
+        case eWNI_SME_OEM_DATA_REQ:
+        case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
+        case eWNI_SME_JOIN_REQ:
+            /* If we have an existing P2P GO session we need to insert NOA before actually process this SME Req */
+            if ((limIsNOAInsertReqd(pMac) == TRUE) && IS_FEATURE_SUPPORTED_BY_FW(P2P_GO_NOA_DECOUPLE_INIT_SCAN))
+            {
+                tANI_U32 noaDuration;
+                __limRegisterDeferredSmeReqForNOAStart(pMac, pMsg->type, pMsgBuf);
+                noaDuration = limCalculateNOADuration(pMac, pMsg->type, pMsgBuf);
+                bufConsumed = __limInsertSingleShotNOAForScan(pMac, noaDuration);
+                return bufConsumed;
+            }
+    }
+    /* If no insert NOA required then execute the code below */
+
     switch (pMsg->type)
     {
         case eWNI_SME_START_REQ:
@@ -5002,27 +5118,17 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             bufConsumed = __limProcessSmeSysReadyInd(pMac, pMsgBuf);
             break;
 
-
         case eWNI_SME_START_BSS_REQ:
             bufConsumed = __limProcessSmeStartBssReq(pMac, pMsg);
             break;
 
         case eWNI_SME_SCAN_REQ:
-            /* If we are in P2P GO mode we need to insert NOA before actually starting a scan */
-            if ((limIsNOAInsertReqd(pMac) == TRUE) && IS_FEATURE_SUPPORTED_BY_FW(P2P_GO_NOA_DECOUPLE_INIT_SCAN))
-            {
-                bufConsumed = __limInsertSingleShotNOAForScan(pMac, pMsgBuf);
-            }
-            else
-            {
-                __limProcessSmeScanReq(pMac, pMsgBuf);
-            }
+            __limProcessSmeScanReq(pMac, pMsgBuf);
             break;
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
         case eWNI_SME_OEM_DATA_REQ:
             __limProcessSmeOemDataReq(pMac, pMsgBuf);
-
             break;
 #endif
         case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
@@ -5034,7 +5140,6 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             break;
         case eWNI_SME_JOIN_REQ:
             __limProcessSmeJoinReq(pMac, pMsgBuf);
-
             break;
 
         case eWNI_SME_AUTH_REQ:

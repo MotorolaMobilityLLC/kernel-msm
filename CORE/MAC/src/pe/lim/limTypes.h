@@ -1069,6 +1069,7 @@ void limProcessInsertSingleShotNOATimeout(tpAniSirGlobal pMac);
 void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg);
 void limAbortRemainOnChan(tpAniSirGlobal pMac);
 tSirRetStatus __limProcessSmeNoAUpdate(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf);
+void limProcessRegdDefdSmeReqAfterNOAStart(tpAniSirGlobal pMac);
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 void limProcessTdlsFrame(tpAniSirGlobal, tANI_U32 *);
 void limProcessTdlsPublicActionFrame(tpAniSirGlobal pMac, tANI_U32 *pBd, 

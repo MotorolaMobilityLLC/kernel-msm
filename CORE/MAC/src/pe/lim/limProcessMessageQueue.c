@@ -90,9 +90,6 @@
 #include "vos_packet.h"
 #include "vos_memory.h"
 
-/* In P2P GO case, we want to call scan on NOA start indication from limProcessMessages */
-extern void __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf);
-
 void limLogSessionStates(tpAniSirGlobal pMac);
 
 /** -------------------------------------------------------------
@@ -153,6 +150,7 @@ defMsgDecision(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         (limMsg->type != WDA_WOWL_EXIT_RSP) &&
         (limMsg->type != WDA_SWITCH_CHANNEL_RSP) &&
         (limMsg->type != WDA_P2P_NOA_ATTR_IND) &&
+        (limMsg->type != WDA_P2P_NOA_START_IND) &&
 #ifdef FEATURE_OEM_DATA_SUPPORT
         (limMsg->type != WDA_START_OEM_DATA_RSP) &&
 #endif
@@ -1362,36 +1360,43 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         {
             tpPESession psessionEntry = &pMac->lim.gpSession[0];
             tANI_U8  i;
+            tANI_U8 p2pGOExists = 0;
             
             limLog(pMac, LOG1, "LIM received NOA start %x\n", limMsg->type);
+
+            /* Since insert NOA is done and NOA start msg received, we should deactivate the Insert NOA timer */
+            limDeactivateAndChangeTimer(pMac, eLIM_INSERT_SINGLESHOT_NOA_TIMER);
+
             for(i=0; i < pMac->lim.maxBssId; i++)
             {
                 psessionEntry = &pMac->lim.gpSession[i];
                 if   ( (psessionEntry != NULL) && (psessionEntry->valid) &&
                     (psessionEntry->pePersona == VOS_P2P_GO_MODE))
                 { //Save P2P NOA start attributes for P2P Go persona
+                    p2pGOExists = 1;
                     palCopyMemory(pMac->hHdd, &psessionEntry->p2pGoPsNoaStartInd, limMsg->bodyptr, sizeof(tSirP2PNoaStart));
-                    
-                    if ((pMac->lim.gpLimSmeScanReq != NULL) && (psessionEntry->p2pGoPsNoaStartInd.status == eHAL_STATUS_SUCCESS))
+                    if (psessionEntry->p2pGoPsNoaStartInd.status != eHAL_STATUS_SUCCESS)
                     {
-                        /* We received the NOA start indication. Now we can send down the scan request */
-                        __limProcessSmeScanReq(pMac, (tANI_U32 *)pMac->lim.gpLimSmeScanReq);
-                        /* Since insert NOA is done and NOA start msg received, we should deactivate the Insert NOA timer */
-                        limDeactivateAndChangeTimer(pMac, eLIM_INSERT_SINGLESHOT_NOA_TIMER);
-                        /* __limProcessSmeScanReq consumed the buffer. We can free it. */
-                        palFreeMemory( pMac->hHdd, (tANI_U8 *) pMac->lim.gpLimSmeScanReq);
-                        pMac->lim.gpLimSmeScanReq = NULL;
+                        limLog(pMac, LOGW, FL("GO NOA start failure status %d reported by FW."
+                            " - still go ahead with deferred sme req. This is just info\n"),
+                            psessionEntry->p2pGoPsNoaStartInd.status);
                     }
-                    else
-                        limLog(pMac, LOGE, FL("GO NOA start failure reported by FW - don't do scan\n"));
                     break;
                 }
             }
-        }
+
+            if (p2pGOExists == 0)
+            {
+                limLog(pMac, LOGW, FL("By the time, we received NOA start, GO is already removed."
+                        " - still go ahead with deferred sme req. This is just info\n"));
+            }
+
+            /* We received the NOA start indication. Now we can send down the SME request which requires off-channel operation */
+            limProcessRegdDefdSmeReqAfterNOAStart(pMac);
             palFreeMemory(pMac->hHdd, (tANI_U8 *)limMsg->bodyptr);
             limMsg->bodyptr = NULL;
+         }
             break;
-            
 
         case SIR_HAL_P2P_NOA_ATTR_IND:
             {
