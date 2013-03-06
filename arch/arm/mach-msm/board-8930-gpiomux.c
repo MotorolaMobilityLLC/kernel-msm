@@ -43,6 +43,18 @@ static struct gpiomux_setting gsbi3_active_cfg = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+static struct gpiomux_setting gsbi9_active_cfg = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting gsbi9_suspended_cfg = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
 static struct gpiomux_setting gsbi5 = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
@@ -65,6 +77,21 @@ static struct gpiomux_setting gsbi12 = {
 	.func = GPIOMUX_FUNC_1,
 	.drv = GPIOMUX_DRV_8MA,
 	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting external_vfr[] = {
+	/* Suspended state */
+	{
+		.func = GPIOMUX_FUNC_3,
+		.drv = GPIOMUX_DRV_2MA,
+		.pull = GPIOMUX_PULL_KEEPER,
+	},
+	/* Active state */
+	{
+		.func = GPIOMUX_FUNC_3,
+		.drv = GPIOMUX_DRV_2MA,
+		.pull = GPIOMUX_PULL_KEEPER,
+	},
 };
 
 static struct gpiomux_setting cdc_mclk = {
@@ -279,6 +306,12 @@ static struct gpiomux_setting sitar_reset = {
 	.drv = GPIOMUX_DRV_6MA,
 	.pull = GPIOMUX_PULL_NONE,
 	.dir = GPIOMUX_OUT_LOW,
+};
+
+static struct gpiomux_setting usbsw_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_DOWN,
 };
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
@@ -720,6 +753,134 @@ static struct msm_gpiomux_config msm_sitar_config[] __initdata = {
 	}
 };
 
+static struct msm_gpiomux_config sglte_8930_configs[] __initdata = {
+	/* AP2MDM_STATUS */
+	{
+		.gpio = 77,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &ap2mdm_cfg,
+		}
+	},
+	/* MDM2AP_STATUS */
+	{
+		.gpio = 24,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &mdm2ap_status_cfg,
+		}
+	},
+	/* MDM2AP_ERRFATAL */
+	{
+		.gpio = 40,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &mdm2ap_errfatal_cfg,
+		}
+	},
+	/* AP2MDM_ERRFATAL */
+	{
+		.gpio = 80,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &ap2mdm_cfg,
+		}
+	},
+	/* AP2MDM_KPDPWR_N */
+	{
+		.gpio = 79,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &ap2mdm_kpdpwr_n_cfg,
+		}
+	},
+	/* AP2MDM_PMIC_PWR_EN */
+	{
+		.gpio = 22,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &ap2mdm_kpdpwr_n_cfg,
+		}
+	},
+	/* AP2MDM_SOFT_RESET */
+	{
+		.gpio = 78,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &ap2mdm_cfg,
+		}
+	},
+	/* USB_SW */
+	{
+		.gpio = 25,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &usbsw_cfg,
+		}
+	}
+};
+
+static struct msm_gpiomux_config msm8930_fusion_gsbi_configs[] = {
+	{
+		.gpio = 93,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi9_suspended_cfg,
+			[GPIOMUX_ACTIVE] = &gsbi9_active_cfg,
+		}
+	},
+	{
+		.gpio = 94,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi9_suspended_cfg,
+			[GPIOMUX_ACTIVE] = &gsbi9_active_cfg,
+		}
+	},
+	{
+		.gpio = 95,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi9_suspended_cfg,
+			[GPIOMUX_ACTIVE] = &gsbi9_active_cfg,
+		}
+	},
+	{
+		.gpio = 96,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi9_suspended_cfg,
+			[GPIOMUX_ACTIVE] = &gsbi9_active_cfg,
+		}
+	},
+};
+
+static struct msm_gpiomux_config msm8930_external_vfr_configs[] __initdata = {
+	{
+		.gpio      = 23,        /* EXTERNAL VFR */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &external_vfr[0],
+			[GPIOMUX_ACTIVE] = &external_vfr[1],
+		},
+	},
+};
+
+int __init sglte8930_init_gpiomux(void)
+{
+	/* For 8960 Fusion 2.2 Primary IPC */
+	msm_gpiomux_install(msm8930_fusion_gsbi_configs,
+			ARRAY_SIZE(msm8930_fusion_gsbi_configs));
+	/* For SGLTE 8960 Fusion External VFR */
+	msm_gpiomux_install(msm8930_external_vfr_configs,
+			ARRAY_SIZE(msm8930_external_vfr_configs));
+	msm_gpiomux_install(sglte_8930_configs,
+			ARRAY_SIZE(sglte_8930_configs));
+
+	msm_gpiomux_install(msm8960_slimbus_config,
+			ARRAY_SIZE(msm8960_slimbus_config));
+
+	msm_gpiomux_install(msm8960_audio_codec_configs,
+			ARRAY_SIZE(msm8960_audio_codec_configs));
+
+	msm_gpiomux_install(wcnss_5wire_interface,
+			ARRAY_SIZE(wcnss_5wire_interface));
+
+	msm_gpiomux_install(msm8960_mdp_vsync_configs,
+			ARRAY_SIZE(msm8960_mdp_vsync_configs));
+
+	msm_gpiomux_install(msm_sitar_config, ARRAY_SIZE(msm_sitar_config));
+
+	return 0;
+}
+
 int __init msm8930_init_gpiomux(void)
 {
 	int rc = msm_gpiomux_init(NR_GPIO_IRQS);
@@ -727,6 +888,9 @@ int __init msm8930_init_gpiomux(void)
 		pr_err(KERN_ERR "msm_gpiomux_init failed %d\n", rc);
 		return rc;
 	}
+
+	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)
+		return sglte8930_init_gpiomux();
 
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 	msm_gpiomux_install(msm8960_ethernet_configs,
