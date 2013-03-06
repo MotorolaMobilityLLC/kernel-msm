@@ -443,6 +443,11 @@ limTearDownLinkWithAp(tpAniSirGlobal pMac, tANI_U8 sessionId, tSirMacReasonCodes
     {
         tLimMlmDeauthInd  mlmDeauthInd;
 
+#ifdef FEATURE_WLAN_TDLS
+        /* Delete all TDLS peers connected before leaving BSS*/
+        limDeleteTDLSPeers(pMac, psessionEntry);
+#endif
+
         pStaDs->mlmStaContext.disassocReason = reasonCode;
         pStaDs->mlmStaContext.cleanupTrigger = eLIM_LINK_MONITORING_DEAUTH;
 

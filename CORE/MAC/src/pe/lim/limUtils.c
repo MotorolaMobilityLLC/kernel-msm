@@ -7420,10 +7420,6 @@ void limHandleHeartBeatFailureTimeout(tpAniSirGlobal pMac)
                     if (!LIM_IS_CONNECTION_ACTIVE(psessionEntry))
                     {
                         limLog(pMac, LOGE, FL("Probe_hb_failure: for session:%d \n" ),psessionEntry->peSessionId);
-#ifdef FEATURE_WLAN_TDLS
-                        /* Delete all TDLS peers connected before leaving BSS*/
-                        limDeleteTDLSPeers(pMac, psessionEntry);
-#endif
                         /* AP did not respond to Probe Request. Tear down link with it.*/
                         limTearDownLinkWithAp(pMac,
                                               psessionEntry->peSessionId,
