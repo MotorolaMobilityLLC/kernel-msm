@@ -1591,6 +1591,8 @@ int pm8921_bms_get_simultaneous_battery_voltage_and_current(int *ibat_ua,
 }
 EXPORT_SYMBOL(pm8921_bms_get_simultaneous_battery_voltage_and_current);
 
+#define SIGN(x) ((x) < 0 ? -1 : 1)
+
 static void find_ocv_for_soc(struct pm8921_bms_chip *chip,
 			int batt_temp,
 			int chargecycles,
@@ -1618,16 +1620,55 @@ static void find_ocv_for_soc(struct pm8921_bms_chip *chip,
 	new_pc = interpolate_pc(chip->pc_temp_ocv_lut, batt_temp_degc, ocv);
 	pr_debug("test revlookup pc = %d for ocv = %d\n", new_pc, ocv);
 
-	while (abs(new_pc - pc) > 1) {
+	if (abs(new_pc - pc) > 0) {
+		/* Maximum spins to make in while-loop when searching in
+		 * full resolution.
+		 */
+		const unsigned int max_spin_count =
+			chip->max_voltage_uv / 1000 - chip->v_cutoff + 1;
+		unsigned int count = 0;
 		int delta_mv = 5;
+		int diff = abs(new_pc - pc);
+		char sign = SIGN(new_pc - pc);
+		char old_sign;
+		int old_diff;
+		int old_ocv;
 
-		if (new_pc > pc)
-			delta_mv = -1 * delta_mv;
+		do {
+			count++;
+			old_ocv = ocv;
+			old_diff = diff;
+			old_sign = sign;
 
-		ocv = ocv + delta_mv;
-		new_pc = interpolate_pc(chip->pc_temp_ocv_lut,
-				batt_temp_degc, ocv);
-		pr_debug("test revlookup pc = %d for ocv = %d\n", new_pc, ocv);
+			if (new_pc > pc)
+				ocv -= delta_mv;
+			else
+				ocv += delta_mv;
+
+			new_pc = interpolate_pc(chip->pc_temp_ocv_lut,
+							batt_temp_degc, ocv);
+			pr_debug("test revlookup pc = %d for ocv = %d\n",
+				new_pc, ocv);
+			diff = abs(new_pc - pc);
+			sign = SIGN(new_pc - pc);
+
+			if (sign != old_sign) {
+				if (delta_mv == 5) {
+					/*
+					 * we crossed our desired PC probably
+					 * becuase we were overcorrecting
+					 */
+					delta_mv = 1;
+				} else {
+					/* we crossed our desired PC even with
+					 * 1mV steps, choose the best of two */
+					if (diff > old_diff)
+						ocv = old_ocv;
+
+					break;
+				}
+			}
+		} while (count <= max_spin_count && diff > 0);
 	}
 
 	*ocv_uv = ocv * 1000;
