@@ -64,6 +64,7 @@ struct tpa6165_data {
 	int inserted;
 	int button_pressed;
 	int amp_state;
+	int sleep_state;
 	int special_hs;
 	int alwayson_micb;
 	struct mutex lock;
@@ -421,41 +422,38 @@ static void tpa6165_sleep(struct tpa6165_data *tpa6165, int sleep_state)
 			~TPA6165_SLEEP_ENABLE, TPA6165_SLEEP_ENABLE);
 		break;
 	}
+	tpa6165->sleep_state = sleep_state;
 }
 
 static int tpa6165_hp_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *k, int event)
 {
 	struct tpa6165_data *tpa6165 = i2c_get_clientdata(tpa6165_client);
-	u8 vol_slew_stat = 0;
+	u8 en_reg2 = 0;
 
 	mutex_lock(&tpa6165->lock);
 	if (SND_SOC_DAPM_EVENT_ON(event)) {
-		/* check if vol slew is enabled */
-		tpa6165_reg_read(tpa6165, TPA6165_INT_MASK_REG1,
-			&(vol_slew_stat));
-		/* vol slew is happening dont take the IC out of sleep now
-		 * to avoid loud pops, set the flag to amp enable pending state.
-		 */
-		if (vol_slew_stat & TPA6165_VOL_SLEW_INT)
-			tpa6165->amp_state = TPA6165_AMP_EN_PENDING;
-		else {
-			tpa6165->amp_state = TPA6165_AMP_ENABLED;
-			tpa6165_sleep(tpa6165, TPA6165_WAKEUP);
-		}
+		tpa6165->amp_state = TPA6165_AMP_ENABLED;
+		tpa6165_sleep(tpa6165, TPA6165_WAKEUP);
 	} else {
 		tpa6165->amp_state = TPA6165_AMP_DISABLED;
+		tpa6165_reg_read(tpa6165, TPA6165_ENABLE_REG2,
+				&en_reg2);
 		/* enable vol slew interrupt and disable left/rigt channels.
 		 * IC will be put to sleep when vol slew complete interupt is
 		 * received, which should happen in 10/20 ms. This step is
 		 * needed to avoid loud pops when audio stops playing.
 		 */
-		tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG1,
-			TPA6165_VOL_SLEW_INT, TPA6165_VOL_SLEW_INT);
-		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
-			~TPA6165_AUTO_MODE, TPA6165_AUTO_MODE);
-		tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
-			(~TPA6165_LEFT_RIGHT_CH) & 0xff, TPA6165_LEFT_RIGHT_CH);
+		if (en_reg2 & TPA6165_LEFT_RIGHT_CH &&
+				tpa6165->sleep_state == TPA6165_WAKEUP) {
+			tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG1,
+				TPA6165_VOL_SLEW_INT, TPA6165_VOL_SLEW_INT);
+			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
+				~TPA6165_AUTO_MODE, TPA6165_AUTO_MODE);
+			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
+				(~TPA6165_LEFT_RIGHT_CH) & 0xff,
+				TPA6165_LEFT_RIGHT_CH);
+		}
 	}
 	mutex_unlock(&tpa6165->lock);
 
@@ -565,7 +563,17 @@ static int tpa6165_get_hs_acc_type(struct tpa6165_data *tpa6165)
 		break;
 	}
 
-	if (acc_type == SND_JACK_HEADSET && (tpa6165->alwayson_micb ||
+	if (acc_type != SND_JACK_UNSUPPORTED &&
+			tpa6165->amp_state != TPA6165_AMP_DISABLED)
+		/* wake up if amp state is still enabled, from ASOC point of
+		 * view. This might happen if the headset is pulled out and
+		 * inserted back in quickly before the DAPM event to disable.
+		 * if audio playback starts resumes immediatly IC will be wakeup
+		 * state to playout audio and put to sleep when disable event.
+		 * is received.
+		 */
+		tpa6165_sleep(tpa6165, TPA6165_WAKEUP);
+	else if (acc_type == SND_JACK_HEADSET && (tpa6165->alwayson_micb ||
 			tpa6165->special_hs))
 		/* need to call this here to trigger special sleep state
 		 * where all blocks are disabled but mic bias is enabled to
@@ -651,16 +659,14 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 	 * putting the device the sleep to minimize pops.
 	 */
 	if (tpa6165->dev_status_reg1 & TPA6165_VOL_SLEW_DONE) {
-
 		if (tpa6165->amp_state == TPA6165_AMP_DISABLED) {
 			/* put the IC in sleep mode */
-			if (tpa6165->alwayson_micb || tpa6165->special_hs)
+			if ((tpa6165->alwayson_micb || tpa6165->special_hs)
+				&& tpa6165->inserted)
 				tpa6165_sleep(tpa6165, TPA6165_SPECIAL_SLEEP);
 			else
 				tpa6165_sleep(tpa6165, TPA6165_SLEEP);
-		} else if (tpa6165->amp_state == TPA6165_AMP_EN_PENDING)
-			/* wake up IC */
-			tpa6165_sleep(tpa6165, TPA6165_WAKEUP);
+		}
 
 		/* clear vol slew interrupt mask */
 		tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG1,
