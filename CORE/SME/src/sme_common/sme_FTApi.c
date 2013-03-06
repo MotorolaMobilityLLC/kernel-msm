@@ -136,7 +136,7 @@ void sme_FTClose(tHalHandle hHal)
   This function is called in SME. This fucntion packages and sends
   the FT IEs to PE.
   ------------------------------------------------------------------------*/
-void sme_SetFTIEs( tHalHandle hHal, tANI_U8 sessionId, tANI_U8 *ft_ies, 
+void sme_SetFTIEs( tHalHandle hHal, tANI_U8 sessionId, const tANI_U8 *ft_ies,
         tANI_U16 ft_ies_length )
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
@@ -187,12 +187,6 @@ void sme_SetFTIEs( tHalHandle hHal, tANI_U8 sessionId, tANI_U8 *ft_ies,
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
             smsLog( pMac, LOG1, "ft_ies_length=%d", ft_ies_length);
-            /*
-            smsLog( pMac, LOGE, "%d: New Auth ft_ies_length=%02x%02x%02x",
-                current->pid, pMac->ft.ftSmeContext.auth_ft_ies[0],
-                pMac->ft.ftSmeContext.auth_ft_ies[1],
-                pMac->ft.ftSmeContext.auth_ft_ies[2]);
-                */
 #endif
             break;
 
