@@ -52,10 +52,8 @@
 #ifndef CSRINTERNAL_H__
 #define CSRINTERNAL_H__
 
-#if defined(VOSS_ENABLED)
 #include "vos_status.h"
 #include "vos_lock.h"
-#endif //#if defined(VOSS_ENABLED)
 
 #include "palTimer.h"
 #include "csrSupport.h"

@@ -248,9 +248,7 @@ tSirRetStatus macOpen(tHalHandle *pHalHandle, tHddHandle hHdd, tMacOpenParameter
 
 
         //Need to do it here in case halOpen fails later on.
-#if defined( VOSS_ENABLED )
         tx_voss_wrapper_init(pMac, hHdd);
-#endif
     }
 
 
