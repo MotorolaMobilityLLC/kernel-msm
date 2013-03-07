@@ -43,6 +43,23 @@ static const char * const rmnet_hsic_bridge_names[] = {
 	"rmnet_hsic_ctrl",
 };
 
+/*for xport : HSUSB*/
+static const char * const serial_hsusb_bridge_names[] = {
+	"serial_hsusb_data",
+	"serial_hsusb_ctrl",
+};
+
+static const char * const rmnet_hsusb_bridge_names[] = {
+	"rmnet_hsusb_data",
+	"rmnet_hsusb_ctrl",
+};
+
+/* since driver supports multiple instances, on smp systems
+ * probe might get called from multiple cores, hence use lock
+ * to identify unclaimed bridge device instance
+ */
+static DEFINE_MUTEX(brdg_claim_lock);
+
 static struct workqueue_struct	*bridge_wq;
 
 static unsigned int	fctrl_support = FLOW_CTRL_SUPPORT;
@@ -63,9 +80,10 @@ module_param(stop_submit_urb_limit, uint, S_IRUGO | S_IWUSR);
 static unsigned tx_urb_mult = 20;
 module_param(tx_urb_mult, uint, S_IRUGO|S_IWUSR);
 
-#define TX_HALT   BIT(0)
-#define RX_HALT   BIT(1)
-#define SUSPENDED BIT(2)
+#define TX_HALT   0
+#define RX_HALT   1
+#define SUSPENDED 2
+#define CLAIMED   3
 
 struct data_bridge {
 	struct usb_interface		*intf;
@@ -112,31 +130,29 @@ struct data_bridge {
 
 static struct data_bridge	*__dev[MAX_BRIDGE_DEVICES];
 
-/* counter used for indexing data bridge devices */
-static int	ch_id;
-
 static unsigned int get_timestamp(void);
 static void dbg_timestamp(char *, struct sk_buff *);
 static int submit_rx_urb(struct data_bridge *dev, struct urb *urb,
 		gfp_t flags);
-static void*	interface[MAX_BRIDGE_DEVICES];
 
-static inline int get_chid(struct usb_interface *iface)
+/* Find an unclaimed bridge device instance */
+static int get_bridge_dev_idx(void)
 {
-	int	i;
+	struct data_bridge	*dev;
+	int			i;
+
+	mutex_lock(&brdg_claim_lock);
 	for (i = 0; i < MAX_BRIDGE_DEVICES; i++) {
-		if (interface[i] == iface)
+		dev = __dev[i];
+		if (!test_bit(CLAIMED, &dev->flags)) {
+			set_bit(CLAIMED, &dev->flags);
+			mutex_unlock(&brdg_claim_lock);
 			return i;
+		}
 	}
+	mutex_unlock(&brdg_claim_lock);
 
-	return -1;
-}
-
-static inline void set_chid(struct usb_interface *iface, int chid)
-{
-	if (chid >= 0 && chid < MAX_BRIDGE_DEVICES) {
-		interface[chid] = iface;
-	}
+	return -ENODEV;
 }
 
 static int get_data_bridge_chid(char *xport_name)
@@ -720,7 +736,11 @@ static int data_bridge_probe(struct usb_interface *iface,
 		return -ENOMEM;
 	}
 
-	dev->flags = 0;
+	/*clear all bits except claimed bit*/
+	clear_bit(RX_HALT, &dev->flags);
+	clear_bit(TX_HALT, &dev->flags);
+	clear_bit(SUSPENDED, &dev->flags);
+
 	dev->id = id;
 	dev->name = name;
 	dev->udev = interface_to_usbdev(iface);
@@ -747,7 +767,7 @@ static int data_bridge_probe(struct usb_interface *iface,
 }
 
 #if defined(CONFIG_DEBUG_FS)
-#define DEBUG_BUF_SIZE	1024
+#define DEBUG_BUF_SIZE	4096
 
 static unsigned int	record_timestamp;
 module_param(record_timestamp, uint, S_IRUGO | S_IWUSR);
@@ -818,7 +838,7 @@ static ssize_t show_timestamp(struct file *file, char __user *ubuf,
 	if (!record_timestamp)
 		return 0;
 
-	buf = kzalloc(sizeof(char) * 4 * DEBUG_BUF_SIZE, GFP_KERNEL);
+	buf = kzalloc(sizeof(char) * DEBUG_BUF_SIZE, GFP_KERNEL);
 	if (!buf)
 		return -ENOMEM;
 
@@ -828,7 +848,7 @@ static ssize_t show_timestamp(struct file *file, char __user *ubuf,
 	for (dbg_inc(&i); i != dbg_data.idx; dbg_inc(&i)) {
 		if (!strnlen(dbg_data.buf[i], DBG_DATA_MSG))
 			continue;
-		j += scnprintf(buf + j, (4 * DEBUG_BUF_SIZE) - j,
+		j += scnprintf(buf + j, DEBUG_BUF_SIZE - j,
 			       "%s\n", dbg_data.buf[i]);
 	}
 
@@ -858,7 +878,7 @@ static ssize_t data_bridge_read_stats(struct file *file, char __user *ubuf,
 	if (!buf)
 		return -ENOMEM;
 
-	for (i = 0; i < ch_id; i++) {
+	for (i = 0; i < MAX_BRIDGE_DEVICES; i++) {
 		dev = __dev[i];
 		if (!dev)
 			continue;
@@ -878,7 +898,7 @@ static ssize_t data_bridge_read_stats(struct file *file, char __user *ubuf,
 				"suspended:          %d\n"
 				"TX_HALT:            %d\n"
 				"RX_HALT:            %d\n",
-				dev->pdev->name, dev,
+				dev->name, dev,
 				atomic_read(&dev->pending_txurbs),
 				dev->txurb_drp_cnt,
 				dev->to_host,
@@ -908,7 +928,7 @@ static ssize_t data_bridge_reset_stats(struct file *file,
 	struct data_bridge	*dev;
 	int			i;
 
-	for (i = 0; i < ch_id; i++) {
+	for (i = 0; i < MAX_BRIDGE_DEVICES; i++) {
 		dev = __dev[i];
 		if (!dev)
 			continue;
@@ -985,6 +1005,7 @@ bridge_probe(struct usb_interface *iface, const struct usb_device_id *id)
 	int				i;
 	int				status = 0;
 	int				numends;
+	int				ch_id;
 	char				**bname = (char **)id->driver_info;
 
 	if (iface->num_altsetting != 1) {
@@ -1020,6 +1041,12 @@ bridge_probe(struct usb_interface *iface, const struct usb_device_id *id)
 		goto out;
 	}
 
+	ch_id = get_bridge_dev_idx();
+	if (ch_id < 0) {
+		err("%s all bridge channels claimed. Probe failed\n", __func__);
+		return -ENODEV;
+	}
+
 	status = data_bridge_probe(iface, bulk_in, bulk_out,
 			bname[BRIDGE_DATA_IDX], ch_id);
 	if (status < 0) {
@@ -1033,10 +1060,6 @@ bridge_probe(struct usb_interface *iface, const struct usb_device_id *id)
 		dev_err(&iface->dev, "ctrl_bridge_probe failed %d\n", status);
 		goto error;
 	}
-
-	set_chid(iface, ch_id);
-
-	ch_id++;
 
 	return 0;
 
@@ -1053,23 +1076,18 @@ out:
 static void bridge_disconnect(struct usb_interface *intf)
 {
 	struct data_bridge	*dev = usb_get_intfdata(intf);
-	int			chid;
 
 	if (!dev) {
 		err("%s: data device not found\n", __func__);
 		return;
 	}
 
-	ch_id--;	/* leave it for now */
+	/*set device name to none to get correct channel id
+	 * at the time of bridge open
+	 */
+	dev->name = "none";
 
-	chid = get_chid(intf);
-
-	if (chid < 0) {
-		err("%s: invalid interface\n", __func__);
-		return;
-	}
-
-	ctrl_bridge_disconnect(chid);
+	ctrl_bridge_disconnect(dev->id);
 	platform_device_unregister(dev->pdev);
 	usb_set_intfdata(intf, NULL);
 
@@ -1077,7 +1095,7 @@ static void bridge_disconnect(struct usb_interface *intf)
 
 	usb_put_dev(dev->udev);
 
-	set_chid(NULL, chid);
+	clear_bit(CLAIMED, &dev->flags);
 }
 
 /*driver info stores data/ctrl bridge name used to match bridge xport name*/
@@ -1105,6 +1123,12 @@ static const struct usb_device_id bridge_ids[] = {
 	},
 	{ USB_DEVICE_INTERFACE_NUMBER(0x5c6, 0x904c, 5),
 	.driver_info = (unsigned long)rmnet_hsic_bridge_names,
+	},
+	{ USB_DEVICE_INTERFACE_NUMBER(0x5c6, 0x9079, 3),
+	.driver_info = (unsigned long)serial_hsusb_bridge_names,
+	},
+	{ USB_DEVICE_INTERFACE_NUMBER(0x5c6, 0x9079, 4),
+	.driver_info = (unsigned long)rmnet_hsusb_bridge_names,
 	},
 
 	{ } /* Terminating entry */
@@ -1150,7 +1174,7 @@ static int __init bridge_init(void)
 		dev->wq = bridge_wq;
 
 		/*transport name will be set during probe*/
-		dev->name = "";
+		dev->name = "none";
 
 		init_usb_anchor(&dev->tx_active);
 		init_usb_anchor(&dev->rx_active);
