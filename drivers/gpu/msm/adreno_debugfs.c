@@ -65,4 +65,38 @@ void adreno_debugfs_init(struct kgsl_device *device)
 	debugfs_create_u32("fast_hang_detect", 0644, device->d_debugfs,
 			   &adreno_dev->fast_hang_detect);
 
+	/* Top level switch to enable/disable userspace FT control */
+	adreno_dev->ft_user_control = 0;
+	debugfs_create_u32("ft_user_control", 0644, device->d_debugfs,
+			   &adreno_dev->ft_user_control);
+	/*
+	 * FT policy can be set to any of the options below.
+	 * KGSL_FT_DISABLE -> BIT(0) Set to disable FT
+	 * KGSL_FT_REPLAY  -> BIT(1) Set to enable replay
+	 * KGSL_FT_SKIPIB  -> BIT(2) Set to skip IB
+	 * KGSL_FT_SKIPFRAME -> BIT(3) Set to skip frame
+	 * by default set FT policy to KGSL_FT_DEFAULT_POLICY
+	 */
+	adreno_dev->ft_policy = KGSL_FT_DEFAULT_POLICY;
+	debugfs_create_u32("ft_policy", 0644, device->d_debugfs,
+			   &adreno_dev->ft_policy);
+
+	/* By default enable long IB detection */
+	adreno_dev->long_ib_detect = 1;
+	debugfs_create_u32("long_ib_detect", 0644, device->d_debugfs,
+			   &adreno_dev->long_ib_detect);
+
+	/*
+	 * FT pagefault policy can be set to any of the options below.
+	 * KGSL_FT_PAGEFAULT_INT_ENABLE -> BIT(0) set to enable pagefault INT
+	 * KGSL_FT_PAGEFAULT_GPUHALT_ENABLE  -> BIT(1) Set to enable GPU HALT on
+	 * pagefaults. This stalls the GPU on a pagefault on IOMMU v1 HW.
+	 * KGSL_FT_PAGEFAULT_LOG_ONE_PER_PAGE  -> BIT(2) Set to log only one
+	 * pagefault per page.
+	 * KGSL_FT_PAGEFAULT_LOG_ONE_PER_INT -> BIT(3) Set to log only one
+	 * pagefault per INT.
+	 */
+	adreno_dev->ft_pf_policy = KGSL_FT_PAGEFAULT_DEFAULT_POLICY;
+	debugfs_create_u32("ft_pagefault_policy", 0644, device->d_debugfs,
+			   &adreno_dev->ft_pf_policy);
 }
