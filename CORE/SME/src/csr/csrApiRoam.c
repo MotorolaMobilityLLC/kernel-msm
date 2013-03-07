@@ -8368,6 +8368,33 @@ static void csrRoamRssiIndHdlr(tpAniSirGlobal pMac, void* pMsg)
     return;
 }
 
+eHalStatus csrSendResetApCapsChanged(tpAniSirGlobal pMac, tSirMacAddr *bssId)
+{
+    tpSirResetAPCapsChange pMsg;
+    tANI_U16 len;
+    eHalStatus status   = eHAL_STATUS_SUCCESS;
+
+    /* Create the message and send to lim */
+    len = sizeof(tSirResetAPCapsChange);
+    status = palAllocateMemory( pMac->hHdd, (void **)&pMsg, len );
+    if (HAL_STATUS_SUCCESS(status))
+    {
+        palZeroMemory(pMac->hHdd, pMsg, sizeof(tSirResetAPCapsChange) );
+        pMsg->messageType     = eWNI_SME_RESET_AP_CAPS_CHANGED;
+        pMsg->length          = len;
+        palCopyMemory( pMac->hHdd, pMsg->bssId, bssId, sizeof(tSirMacAddr) );
+        smsLog( pMac, LOG1, FL("CSR reset caps change for Bssid= %02x-%02x-%02x-%02x-%02x-%02x"),
+                pMsg->bssId[ 0 ], pMsg->bssId[ 1 ], pMsg->bssId[ 2 ],
+                pMsg->bssId[ 3 ], pMsg->bssId[ 4 ], pMsg->bssId[ 5 ]);
+        status = palSendMBMessage(pMac->hHdd, pMsg);
+    }
+    else
+    {
+        smsLog( pMac, LOGE, FL("Memory allocation failed\n"));
+    }
+    return status;
+}
+
 void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
 {
     tSirSmeAssocInd *pAssocInd;
@@ -8857,13 +8884,13 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
                     {
                         if ((eCSR_ROAMING_STATE_JOINED == pMac->roam.curState[sessionId]) &&
                                 ((eCSR_ROAM_SUBSTATE_JOINED_REALTIME_TRAFFIC == pMac->roam.curSubState[sessionId]) ||
+                                 (eCSR_ROAM_SUBSTATE_NONE == pMac->roam.curSubState[sessionId]) ||
                                  (eCSR_ROAM_SUBSTATE_JOINED_NON_REALTIME_TRAFFIC == pMac->roam.curSubState[sessionId]) ||
                                  (eCSR_ROAM_SUBSTATE_JOINED_NO_TRAFFIC == pMac->roam.curSubState[sessionId]))
                            )
                         {
-                            csrScanForCapabilityChange( pMac, pApNewCaps );
-                            result = eCSR_ROAM_RESULT_CAP_CHANGED;
-                            roamStatus = eCSR_ROAM_GEN_INFO;
+                            smsLog(pMac, LOGW, "Calling csrRoamDisconnectInternal");
+                            csrRoamDisconnectInternal(pMac, sessionId, eCSR_DISCONNECT_REASON_UNSPECIFIED);
                         }
                         else
                         {
@@ -8872,10 +8899,15 @@ void csrRoamCheckForLinkStatusChange( tpAniSirGlobal pMac, tSirSmeRsp *pSirMsg )
                                     "CSR is in state %d and sub-state %d",
                                     pMac->roam.curState[sessionId],
                                     pMac->roam.curSubState[sessionId]);
+                            /* We ignore the caps change event if CSR is not in full connected state.
+                             * Send one event to PE to reset limSentCapsChangeNtf
+                             * Once limSentCapsChangeNtf set 0, lim can send sub sequent CAPS change event
+                             * otherwise lim cannot send any CAPS change events to SME */
+                            csrSendResetApCapsChanged(pMac, &pApNewCaps->bssId);
                         }
                     }
                     break;
-            
+
                 default:
                     roamStatus = eCSR_ROAM_FAILED;
                     result = eCSR_ROAM_RESULT_NONE;

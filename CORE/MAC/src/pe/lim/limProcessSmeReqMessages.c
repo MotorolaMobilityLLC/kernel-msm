@@ -4936,6 +4936,30 @@ lim_tdls_teardown_req_error:
 
 #endif
 
+static void
+__limProcessSmeResetApCapsChange(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
+{
+    tpSirResetAPCapsChange pResetCapsChange;
+    tpPESession             psessionEntry;
+    tANI_U8  sessionId = 0;
+    if (pMsgBuf == NULL)
+    {
+        limLog(pMac, LOGE,FL("Buffer is Pointing to NULL\n"));
+        return;
+    }
+
+    pResetCapsChange = (tpSirResetAPCapsChange)pMsgBuf;
+    psessionEntry = peFindSessionByBssid(pMac, pResetCapsChange->bssId, &sessionId);
+    if (psessionEntry == NULL)
+    {
+        limLog(pMac, LOGE, FL("Session does not exist for given BSSID\n"));
+        return;
+    }
+
+    psessionEntry->limSentCapsChangeNtf = false;
+    return;
+}
+
 /**
  * limProcessSmeReqMessages()
  *
@@ -5193,6 +5217,9 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             limProcessSmeTeardownReq(pMac,  pMsgBuf);
             break ;
 #endif
+        case eWNI_SME_RESET_AP_CAPS_CHANGED:
+            __limProcessSmeResetApCapsChange(pMac, pMsgBuf);
+            break;
 
         default:
             vos_mem_free((v_VOID_t*)pMsg->bodyptr);
