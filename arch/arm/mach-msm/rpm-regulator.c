@@ -1625,8 +1625,15 @@ rpm_vreg_of_init(struct rpm_regulator_init_data *pdata, struct vreg *vreg)
 		return NULL;
 
 	for_each_child_of_node(np, reg)
-		if (of_node_cmp(reg->name, name) == 0)
+		if (of_node_cmp(reg->name, name) == 0) {
+			int a_on = -1;
+			if (of_property_read_u32(reg, "always_on", &a_on) == 0) {
+				pr_debug("Set %s always_on = %d\n",
+					reg->name, a_on);
+				pdata->init_data.constraints.always_on = a_on;
+			}
 			break;
+		}
 
 	of_node_put(np);
 
