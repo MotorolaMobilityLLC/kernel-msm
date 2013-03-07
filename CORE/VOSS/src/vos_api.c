@@ -45,15 +45,6 @@
   \file  vos_api.c
 
   \brief Stub file for all virtual Operating System Services (vOSS) APIs
-<<<<<<< HEAD:CORE/VOSS/src/vos_api.c
-               
-   Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
-=======
-
-   Copyright 2008 (c) Qualcomm Technologies, Inc.  All Rights Reserved.
->>>>>>> f7413b6... wlan: voss: remove obsolete "INTEGRATED_SOC" featurization:prima/CORE/VOSS/src/vos_api.c
-   
-   Qualcomm Confidential and Proprietary.
   
   ========================================================================*/
  /*=========================================================================== 
