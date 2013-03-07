@@ -113,7 +113,7 @@ tSirRetStatus   limPopulateMatchingRateSet(tpAniSirGlobal,
 
 
 #endif
-tSirRetStatus   limAddSta(tpAniSirGlobal, tpDphHashNode,tpPESession);
+tSirRetStatus   limAddSta(tpAniSirGlobal, tpDphHashNode, tANI_U8, tpPESession);
 tSirRetStatus   limDelBss(tpAniSirGlobal, tpDphHashNode, tANI_U16, tpPESession);
 tSirRetStatus   limDelSta(tpAniSirGlobal, tpDphHashNode, tANI_BOOLEAN, tpPESession);
 #ifdef WLAN_FEATURE_VOWIFI_11R

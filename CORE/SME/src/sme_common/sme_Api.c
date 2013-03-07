@@ -7406,6 +7406,32 @@ VOS_STATUS sme_SendTdlsMgmtFrame(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr
 
 }
 /* ---------------------------------------------------------------------------
+    \fn sme_ChangeTdlsPeerSta
+    \brief  API to Update TDLS peer sta parameters.
+
+    \param  peerMac - peer's Mac Adress.
+    \param  staParams - Peer Station Parameters
+    \- return VOS_STATUS_SUCCES
+    -------------------------------------------------------------------------*/
+VOS_STATUS sme_ChangeTdlsPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac,
+                                 tCsrStaParams *pstaParams)
+{
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+    tpAniSirGlobal      pMac      = PMAC_STRUCT(hHal);
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        status = csrTdlsChangePeerSta(hHal, sessionId, peerMac,pstaParams);
+
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+
+}
+
+/* ---------------------------------------------------------------------------
     \fn sme_AddTdlsPeerSta
     \brief  API to Add TDLS peer sta entry.
             

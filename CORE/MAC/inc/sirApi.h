@@ -3722,6 +3722,14 @@ typedef struct sSirTdlsSendMgmtReq
     tSirMacAddr         peerMac;
     tANI_U8             addIe[1];      //Variable lenght. Dont add any field after this.
 } tSirTdlsSendMgmtReq, *tpSirSmeTdlsSendMgmtReq ;
+
+typedef enum TdlsAddOper
+{
+    TDLS_OPER_NONE,
+    TDLS_OPER_ADD,
+    TDLS_OPER_UPDATE
+} eTdlsAddOper;
+
 /* TDLS Request struct SME-->PE */
 typedef struct sSirTdlsAddStaReq
 {
@@ -3730,8 +3738,18 @@ typedef struct sSirTdlsAddStaReq
     tANI_U8             sessionId;     // Session ID
     tANI_U16            transactionId; // Transaction ID for cmd
     tSirMacAddr         bssid;         // For multi-session, for PE to locate peSession ID
+    eTdlsAddOper        tdlsAddOper;
     tSirMacAddr         peerMac;
+    tANI_U16            capability;
+    tANI_U8             extn_capability[SIR_MAC_MAX_EXTN_CAP];
+    tANI_U8             supported_rates_length;
+    tANI_U8             supported_rates[SIR_MAC_MAX_SUPP_RATES];
+    tSirHTCap           htCap;
+    tSirVHTCap          vhtCap;
+    tANI_U8             uapsd_queues;
+    tANI_U8             max_sp;
 } tSirTdlsAddStaReq, *tpSirSmeTdlsAddStaReq ;
+
 /* TDLS Response struct PE-->SME */
 typedef struct sSirTdlsAddStaRsp
 {
@@ -3744,6 +3762,7 @@ typedef struct sSirTdlsAddStaRsp
     tANI_U16               staType ;
     tANI_U8                ucastSig;
     tANI_U8                bcastSig;
+    eTdlsAddOper           tdlsAddOper;
 } tSirTdlsAddStaRsp ;
 /* TDLS Request struct SME-->PE */
 typedef struct sSirTdlsDelStaReq

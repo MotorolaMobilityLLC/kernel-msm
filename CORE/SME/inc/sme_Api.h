@@ -2494,6 +2494,16 @@ tANI_U8 sme_IsFeatureSupportedByFW(tANI_U8 featEnumValue);
 VOS_STATUS sme_SendTdlsMgmtFrame(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac,
       tANI_U8 frame_type, tANI_U8 dialog, tANI_U16 status, tANI_U8 *buf, tANI_U8 len, tANI_U8 responder);
 /* ---------------------------------------------------------------------------
+    \fn sme_ChangeTdlsPeerSta
+    \brief  API to Update TDLS peer sta parameters.
+
+    \param  peerMac - peer's Mac Adress.
+    \param  staParams - Peer Station Parameters.
+    \- return VOS_STATUS_SUCCES
+    -------------------------------------------------------------------------*/
+VOS_STATUS sme_ChangeTdlsPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac,
+                                 tCsrStaParams *pstaParams);
+/* ---------------------------------------------------------------------------
     \fn sme_AddTdlsPeerSta
     \brief  API to Add TDLS peer sta entry.
             
