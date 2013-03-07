@@ -2430,12 +2430,18 @@ static int mdp_on(struct platform_device *pdev)
 		atomic_set(&vsync_cntrl.suspend, 1);
 	}
 
+	if (ret)
+		pr_err("%s: ret = %d\n", __func__, ret);
+
 	mdp_histogram_ctrl_all(TRUE);
 
 	if (ret == 0)
 		ret = panel_next_late_init(pdev);
 
 	pr_debug("%s:-\n", __func__);
+
+	if (ret)
+		pr_err("%s: returning ret = %d\n", __func__, ret);
 
 	return ret;
 }
