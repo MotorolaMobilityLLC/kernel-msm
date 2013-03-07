@@ -1272,12 +1272,10 @@ typedef enum
 #define CFG_LINK_SPEED_RSSI_LOW_MAX                (  0 )
 #define CFG_LINK_SPEED_RSSI_LOW_DEFAULT            ( -80 )
 
-#ifdef WLAN_FEATURE_P2P
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_NAME                "isP2pDeviceAddrAdministrated"
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_MIN                 ( 0 )
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_MAX                 ( 1 )
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_DEFAULT             ( 0 )
-#endif
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 #define CFG_MC_ADDR_LIST_FILTER_NAME               "isMcAddrListFilter"
@@ -1956,9 +1954,7 @@ typedef struct
    v_S31_t                     linkSpeedRssiLow;
    v_U8_t                      enableMCC;
    v_U8_t                      allowMCCGODiffBI;
-#ifdef WLAN_FEATURE_P2P
    v_BOOL_t                    isP2pDeviceAddrAdministrated;
-#endif
    v_U8_t                      thermalMitigationEnable;
 #ifdef WLAN_FEATURE_PACKET_FILTERING
    v_BOOL_t                    isMcAddrListFilter;

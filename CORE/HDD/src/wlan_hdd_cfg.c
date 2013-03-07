@@ -1791,14 +1791,12 @@ REG_TABLE_ENTRY g_registry_table[] =
                        cbNotifySetRoamPrefer5GHz, 0 ),
 #endif
 
-#ifdef WLAN_FEATURE_P2P
  REG_VARIABLE( CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_NAME, WLAN_PARAM_Integer,
               hdd_config_t, isP2pDeviceAddrAdministrated,
               VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
               CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_DEFAULT,
               CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_MIN,
               CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_MAX ),
-#endif
 
 REG_VARIABLE( CFG_ENABLE_MCC_ENABLED_NAME, WLAN_PARAM_Integer,
              hdd_config_t, enableMCC,
