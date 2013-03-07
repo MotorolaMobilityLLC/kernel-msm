@@ -285,29 +285,17 @@ tANI_U32
 limDeferMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg)
 {
     tANI_U32 retCode = TX_SUCCESS;
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-   PELOG3(limLog(pMac, LOG3, FL("Deferring message %X in Learn mode\n"),
-           pMsg->type);
-    limPrintMsgName(pMac, LOG3, pMsg->type);)
-    retCode = tx_queue_send(&pMac->sys.gSirLimDeferredMsgQ,
-                            pMsg,
-                            TX_NO_WAIT);
+
+    retCode = limWriteDeferredMsgQ(pMac, pMsg);
+
     if (retCode == TX_SUCCESS)
-        pMac->lim.gLimNumDeferredMsgs++;
-#else
-
-        retCode = limWriteDeferredMsgQ(pMac, pMsg);
-
-#endif
-    if(retCode == TX_SUCCESS)
-        {
-            MTRACE(macTraceMsgRx(pMac, NO_SESSION, LIM_TRACE_MAKE_RXMSG(pMsg->type, LIM_MSG_DEFERRED));)
-        }
+    {
+        MTRACE(macTraceMsgRx(pMac, NO_SESSION, LIM_TRACE_MAKE_RXMSG(pMsg->type, LIM_MSG_DEFERRED));)
+    }
     else
-        {
-            MTRACE(macTraceMsgRx(pMac, NO_SESSION, LIM_TRACE_MAKE_RXMSG(pMsg->type, LIM_MSG_DROPPED));)
-        }
-
+    {
+        MTRACE(macTraceMsgRx(pMac, NO_SESSION, LIM_TRACE_MAKE_RXMSG(pMsg->type, LIM_MSG_DROPPED));)
+    }
 
     return retCode;
 } /*** end limDeferMsg() ***/
@@ -2009,18 +1997,6 @@ limProcessDeferredMessageQueue(tpAniSirGlobal pMac)
 {
     tSirMsgQ  limMsg = { 0, 0, 0 };
 
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-    while (TX_SUCCESS == tx_queue_receive(&pMac->sys.gSirLimDeferredMsgQ, (void *) &limMsg, TX_NO_WAIT))
-    {
-        PELOG3(limLog(pMac, LOG3, FL("Processing deferred message %X\n"), limMsg.type);)
-        limPrintMsgName(pMac, LOG3, limMsg.type);
-        pMac->lim.gLimNumDeferredMsgs--;
-        limProcessMessages(pMac, &limMsg);
-
-        if(true != GET_LIM_PROCESS_DEFD_MESGS(pMac))
-            break;
-    }
-#else
     tSirMsgQ *readMsg;
     tANI_U16  size;
 
@@ -2042,7 +2018,6 @@ limProcessDeferredMessageQueue(tpAniSirGlobal pMac)
                 break;
         }
     }
-#endif
 } /*** end limProcessDeferredMessageQueue() ***/
 
 

@@ -174,13 +174,7 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
             pMac->sch.gSchBBXportRcvCnt++;
 
 
-#if defined (ANI_OS_TYPE_LINUX) || defined (ANI_OS_TYPE_OSX)
-            {
-                palGetPacketDataPtr( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, pSchMsg->bodyptr, (void **) &(pBD) );
-            }
-#else
             pBD = (tANI_U32 *) pSchMsg->bodyptr;
-#endif
 
 
             mh = SIR_MAC_BD_TO_MPDUHEADER( pBD );
@@ -194,11 +188,6 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
                        mh->fc.type, mh->fc.subType);
                 pMac->sch.gSchUnknownRcvCnt++;
             }
-#if defined (ANI_OS_TYPE_LINUX) || defined (ANI_OS_TYPE_OSX)
-        // Free up allocated SK BUF
-        //for Windows, this is freed up by palHandleRxFrames
-        palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, pBD, (void *) pSchMsg->bodyptr) ;
-#endif
             break;
 #endif
 

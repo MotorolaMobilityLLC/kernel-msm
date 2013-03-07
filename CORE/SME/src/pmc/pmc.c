@@ -469,22 +469,8 @@ eHalStatus pmcEnterImpsState (tHalHandle hHal)
     if (pMac->pmc.requestFullPowerPending)
     {
 
-#if defined(ANI_OS_TYPE_WINDOWS) && !defined(GEN6_ONWARDS)
-        /* In Windows we cannot do this now since we are in DPC context and the message to the
-           SoftMAC to put the device into IMPS will be sent at the end of DPC processing.  Instead
-           we set a short timer and start the IMPS exit sequence when the timer fires. */
-        if (palTimerStart(pMac->hHdd, pMac->pmc.hExitPowerSaveTimer, 1000, FALSE) != eHAL_STATUS_SUCCESS)
-        {
-            smsLog(pMac, LOGE, FL("Cannot start exit power save mode timer\n"));
-            PMC_ABORT;
-            return eHAL_STATUS_FAILURE;
-        }
-        return eHAL_STATUS_SUCCESS;
-
-#else
         /* Start exit IMPS sequence now. */
         return pmcEnterRequestFullPowerState(hHal, pMac->pmc.requestFullPowerReason);
-#endif
     }
 
     /* Set timer to come out of IMPS.only if impsPeriod is non-Zero*/
@@ -622,26 +608,12 @@ eHalStatus pmcEnterBmpsState (tHalHandle hHal)
     if (pMac->pmc.requestFullPowerPending)
     {
 
-#if defined(ANI_OS_TYPE_WINDOWS) && !defined(GEN6_ONWARDS)
-        /* In Windows, we cannot do this now since we are in DPC context and the message to the
-           SoftMAC to put the device into BMPS will be sent at the end of DPC processing.  Instead
-           we set a short timer and start the BMPS exit sequence when the timer fires. */
-        if (palTimerStart(pMac->hHdd, pMac->pmc.hExitPowerSaveTimer, 1000, FALSE) != eHAL_STATUS_SUCCESS)
-        {
-            smsLog(pMac, LOGE, FL("Cannot start exit power save mode timer\n"));
-            PMC_ABORT;
-            return eHAL_STATUS_FAILURE;
-        }
-        return eHAL_STATUS_SUCCESS;
-
-#else
         /* Start exit BMPS sequence now. */
         smsLog(pMac, LOGW, FL("Pending Full Power request found on entering BMPS mode. "
                   "Start exit BMPS exit sequence\n"));
         //Note: Reason must have been set when requestFullPowerPending flag was set.
         pmcEnterRequestFullPowerState(hHal, pMac->pmc.requestFullPowerReason);
         return eHAL_STATUS_SUCCESS;
-#endif
     }
 
     /*This should never happen ideally. WOWL and UAPSD not supported at the same time */

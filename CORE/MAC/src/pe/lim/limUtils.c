@@ -62,7 +62,7 @@
 #include "dot11f.h"
 #include "wmmApsd.h"
 #include "limTrace.h"
-#ifdef FEATURE_WLAN_DIAG_SUPPORT 
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
 #include "vos_diag_core_event.h"
 #endif //FEATURE_WLAN_DIAG_SUPPORT
 #include "limIbssPeerMgmt.h"
@@ -859,22 +859,12 @@ limPrintMsgName(tpAniSirGlobal pMac, tANI_U16 logLevel, tANI_U32 msgType)
 void
 limPrintMsgInfo(tpAniSirGlobal pMac, tANI_U16 logLevel, tSirMsgQ *msg)
 {
-    //tSirMacFrameCtl  fc; // FIXME_GEN4 - ASAP!!
-#if defined (ANI_OS_TYPE_LINUX) || defined (ANI_OS_TYPE_OSX)
-    tANI_U32              *pRxPacketInfo;
-#endif
     if (logLevel <= pMac->utils.gLogDbgLevel[SIR_LIM_MODULE_ID - LOG_FIRST_MODULE_ID])
     {
         switch (msg->type)
         {
             case SIR_BB_XPORT_MGMT_MSG:
-#if defined (ANI_OS_TYPE_LINUX) || defined (ANI_OS_TYPE_OSX)
-#ifndef GEN6_ONWARDS //PAL does not provide this API GEN6 onwards.
-                palGetPacketDataPtr( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, (void *) msg->bodyptr, (void **) &pRxPacketInfo );
-#endif //GEN6_ONWARDS
-#else
                 limPrintMsgName(pMac, logLevel,msg->type);
-#endif
                 break;
             default:
                 limPrintMsgName(pMac, logLevel,msg->type);
@@ -1230,26 +1220,8 @@ limIsGroupAddr(tSirMacAddr macAddr)
 tANI_U32
 limPostMsgApiNoWait(tpAniSirGlobal pMac, tSirMsgQ *pMsg)
 {
-#ifdef ANI_OS_TYPE_WINDOWS
-    tANI_U32 retCode;
-
-    if ((retCode = tx_queue_send(&pMac->sys.gSirLimMsgQ, pMsg, TX_NO_WAIT))
-        != TX_SUCCESS)
-    {
-        // Failure in sending DFS duration timeout indication
-        // to LIM thread
-
-        // Log error
-        limLog(pMac, LOGP,
-               FL("could not post a message %X to LIM msgq, status=%d\n"),
-               pMsg->type, retCode);
-    }
-
-    return retCode;
-#else
     limProcessMessages(pMac, pMsg);
     return TX_SUCCESS;
-#endif
 } /*** end limPostMsgApiNoWait() ***/
 
 
@@ -6351,10 +6323,6 @@ void limPktFree (
     void            *pBody)
 {
     (void) pMac; (void) frmType; (void) pRxPacketInfo; (void) pBody;
-#if defined ANI_OS_TYPE_LINUX || defined ANI_OS_TYPE_OSX
-    // Free up allocated SK BUF
-    palPktFree( pMac->hHdd, frmType, pRxPacketInfo, pBody) ;
-#endif
 }
 
 /**
@@ -6382,13 +6350,7 @@ void limPktFree (
 void
 limGetBDfromRxPacket(tpAniSirGlobal pMac, void *body, tANI_U32 **pRxPacketInfo)
 {
-#if defined (ANI_OS_TYPE_LINUX) || defined (ANI_OS_TYPE_OSX)
-#ifndef GEN6_ONWARDS
-    palGetPacketDataPtr( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, (void *) body, (void **) pRxPacketInfo );
-#endif //GEN6_ONWARDS
-#else
     *pRxPacketInfo = (tANI_U32 *) body;
-#endif
 } /*** end limGetBDfromRxPacket() ***/
 
 

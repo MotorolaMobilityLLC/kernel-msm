@@ -107,19 +107,11 @@ cfgProcessMbMsg(tpAniSirGlobal pMac, tSirMbMsg *pMsg)
     tANI_U32   *pParam;
 
     // Use type[7:0] as index to function table
-#if defined(ANI_OS_TYPE_LINUX)
-    index = CFG_GET_FUNC_INDX(sirReadU16N((tANI_U8*)pMsg));
-#else
     index = CFG_GET_FUNC_INDX(pMsg->type);
-#endif
 
     if (index >= (sizeof(gCfgFunc) / sizeof(gCfgFunc[0])))
         return;
-#if defined(ANI_OS_TYPE_LINUX)
-    len    = sirReadU16N((tANI_U8*)pMsg+2) - WNI_CFG_MB_HDR_LEN;
-#else
     len    = pMsg->msgLen - WNI_CFG_MB_HDR_LEN;
-#endif
     pParam = ((tANI_U32*)pMsg) + 1;
 
     // Call processing function
@@ -188,18 +180,8 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     }
 
     // Parse the Cfg header
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-    tCfgBinHdr hdr;
-
-    hdr.hdrInfo     = sirReadU32N((tANI_U8*)pParam); pParam++;
-    hdr.controlSize = sirReadU32N((tANI_U8*)pParam); pParam++;
-    hdr.iBufSize    = sirReadU32N((tANI_U8*)pParam); pParam++;
-    hdr.sBufSize    = sirReadU32N((tANI_U8*)pParam); pParam++;
-    pHdr=&hdr;
-#else
     pHdr = (tpCfgBinHdr) pParam;
     pParam += (sizeof(tCfgBinHdr) >> 2);
-#endif
     PELOGW(cfgLog(pMac, LOGW, FL("CFG hdr totParams %d intParams %d strBufSize %d/%d\n"),
            pHdr->controlSize, pHdr->iBufSize, pHdr->sBufSize, pMac->cfg.gCfgMaxSBufSize);)
 
@@ -235,24 +217,14 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     pSrc = pParam;
     while (pDst < pDstEnd)
     {
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-        *pDst++ = sirReadU32N((tANI_U8*)pSrc);
-        pSrc++;
-#else
         *pDst++ = *pSrc++;
-#endif
     }
     // Copy default values
     pDst = pMac->cfg.gCfgIBuf;
     pDstEnd = pDst + pMac->cfg.gCfgMaxIBufSize;
     while (pDst < pDstEnd)
     {
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-        *pDst++ = sirReadU32N((tANI_U8*)pSrc);
-        pSrc++;
-#else
         *pDst++ = *pSrc++;
-#endif
     }
 
     // Copy min values
@@ -260,12 +232,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     pDstEnd = pDst + pMac->cfg.gCfgMaxIBufSize;
     while (pDst < pDstEnd)
     {
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-        *pDst++ = sirReadU32N((tANI_U8*)pSrc);
-        pSrc++;
-#else
         *pDst++ = *pSrc++;
-#endif
     }
 
     // Copy max values
@@ -273,12 +240,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     pDstEnd = pDst + pMac->cfg.gCfgMaxIBufSize;
     while (pDst < pDstEnd)
     {
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-        *pDst++ = sirReadU32N((tANI_U8*)pSrc);
-        pSrc++;
-#else
         *pDst++ = *pSrc++;
-#endif
     }
 
     for (i=0; i<pMac->cfg.gCfgMaxIBufSize; i++)
@@ -322,13 +284,8 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
             retVal = WNI_CFG_INVALID_LEN;
             goto end;
         }
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-        paramId = sirReadU32N((tANI_U8*)pSrc) >> 16;
-        paramLen = sirReadU32N((tANI_U8*)pSrc) & 0xff;
-#else
         paramId = *pSrc >> 16;
         paramLen = *pSrc & 0xff;
-#endif
         pSrc++;
         strSize -= 4;
 
@@ -342,17 +299,10 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
         }
         for (j=0; j < paramLenCeil4; j++)
         {
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-            pStr[4*j]   = (tANI_U8) ((sirReadU32N((tANI_U8*)pSrc) >> 24) & 0xff);
-            pStr[4*j+1] = (tANI_U8) ((sirReadU32N((tANI_U8*)pSrc) >> 16) & 0xff);
-            pStr[4*j+2] = (tANI_U8) ((sirReadU32N((tANI_U8*)pSrc) >> 8) & 0xff);
-            pStr[4*j+3] = (tANI_U8) (sirReadU32N((tANI_U8*)pSrc) & 0xff);
-#else
             pStr[4*j] = (tANI_U8) (*pSrc >> 24) & 0xff;
             pStr[4*j+1] = (tANI_U8) (*pSrc >> 16) & 0xff;
             pStr[4*j+2] = (tANI_U8) (*pSrc >> 8) & 0xff;
             pStr[4*j+3] = (tANI_U8) (*pSrc) & 0xff;
-#endif
 
             pSrc++;
             strSize -= 4;
@@ -371,11 +321,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     // Set the default log level based on config
     wlan_cfgGetInt(pMac, WNI_CFG_LOG_LEVEL, &logLevel);
     for (i = 0; i < LOG_ENTRY_NUM; i++)
-#if defined(ANI_OS_TYPE_WINCE)
-        pMac->utils.gLogEvtLevel[i] = pMac->utils.gLogDbgLevel[i] = LOGE;
-#else //#if defined(ANI_OS_TYPE_WINCE)
         pMac->utils.gLogEvtLevel[i] = pMac->utils.gLogDbgLevel[i] = logLevel;
-#endif //#if defined(ANI_OS_TYPE_WINCE)
 
     // Set status to READY
     pMac->cfg.gCfgStatus = CFG_SUCCESS;
@@ -388,11 +334,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
         pMac->cfg.gCfgStatus = CFG_FAILURE;
 
     // Send response message to host
-#if defined(ANI_OS_TYPE_LINUX)
-    sirStoreU32N((tANI_U8 *) &(pMac->cfg.gParamList[WNI_CFG_DNLD_CNF_RES]),  retVal);
-#else
     pMac->cfg.gParamList[WNI_CFG_DNLD_CNF_RES] = retVal;
-#endif
     cfgSendHostMsg(pMac, WNI_CFG_DNLD_CNF, WNI_CFG_DNLD_CNF_LEN,
                    WNI_CFG_DNLD_CNF_NUM, pMac->cfg.gParamList, 0, 0);
 
@@ -445,18 +387,9 @@ ProcGetReq(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     {
         cfgId = (tANI_U16)sirReadU32N((tANI_U8*)pParam);
         PELOGE(cfgLog(pMac, LOGE, FL("CFG not ready, param %d\n"), cfgId);)
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-        sirStoreU32N((tANI_U8 *) &(pMac->cfg.gParamList[WNI_CFG_GET_RSP_RES]),
-                     WNI_CFG_NOT_READY);
-        sirStoreU32N((tANI_U8 *) &(pMac->cfg.gParamList[WNI_CFG_GET_RSP_PID]),
-                     cfgId);
-        sirStoreU32N((tANI_U8 *) &(pMac->cfg.gParamList[WNI_CFG_GET_RSP_PLEN]),
-                     0);
-#else
         pMac->cfg.gParamList[WNI_CFG_GET_RSP_RES]  = WNI_CFG_NOT_READY;
         pMac->cfg.gParamList[WNI_CFG_GET_RSP_PID]  = cfgId;
         pMac->cfg.gParamList[WNI_CFG_GET_RSP_PLEN] = 0;
-#endif
         cfgSendHostMsg(pMac, WNI_CFG_GET_RSP, WNI_CFG_GET_RSP_PARTIAL_LEN,
                        WNI_CFG_GET_RSP_NUM, pMac->cfg.gParamList, 0, 0);
     }
@@ -465,11 +398,7 @@ ProcGetReq(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
         // Process all parameter ID's on the list
         while (length >= sizeof(tANI_U32))
         {
-#if defined(ANI_OS_TYPE_LINUX)
-            cfgId = (tANI_U16)sirReadU32N((tANI_U8*) pParam); pParam++;
-#else
             cfgId = (tANI_U16)*pParam++;
-#endif
             pValue   = 0;
             valueLen = 0;
 
@@ -503,18 +432,9 @@ ProcGetReq(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
             }
 
             // Send response message to host
-#if defined(ANI_OS_TYPE_LINUX)
-            sirStoreU32N((tANI_U8 *) &(pMac->cfg.gParamList[WNI_CFG_GET_RSP_RES]),
-                         result);
-            sirStoreU32N((tANI_U8 *) &(pMac->cfg.gParamList[WNI_CFG_GET_RSP_PID]),
-                         cfgId);
-            sirStoreU32N((tANI_U8 *) &(pMac->cfg.gParamList[WNI_CFG_GET_RSP_PLEN]),
-                         valueLen);
-#else
             pMac->cfg.gParamList[WNI_CFG_GET_RSP_RES]  = result;
             pMac->cfg.gParamList[WNI_CFG_GET_RSP_PID]  = cfgId;
             pMac->cfg.gParamList[WNI_CFG_GET_RSP_PLEN] = valueLen;
-#endif
 
             // We need to round up buffer length to word-increment
             valueLen = (((valueLen + 3) >> 2) << 2);
@@ -568,15 +488,8 @@ ProcSetReqInternal(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam, tANI_
     {
         cfgId = (tANI_U16)sirReadU32N((tANI_U8*)pParam);
         PELOG1(cfgLog(pMac, LOG1, FL("CFG not ready, param %d"), cfgId);)
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-        sirStoreU32N((tANI_U8 *) &(pMac->cfg.gParamList[WNI_CFG_SET_CNF_RES]),
-                     WNI_CFG_NOT_READY);
-        sirStoreU32N((tANI_U8 *) &(pMac->cfg.gParamList[WNI_CFG_SET_CNF_PID]),
-                     cfgId);
-#else
         pMac->cfg.gParamList[WNI_CFG_SET_CNF_RES] = WNI_CFG_NOT_READY;
         pMac->cfg.gParamList[WNI_CFG_SET_CNF_PID] = cfgId;
-#endif
         if( fRsp )
         {
            cfgSendHostMsg(pMac, WNI_CFG_SET_CNF, WNI_CFG_SET_CNF_LEN,
@@ -588,14 +501,8 @@ ProcSetReqInternal(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam, tANI_
         // Process all TLVs in buffer
         while (length >= (sizeof(tANI_U32) * 2))
         {
-#if defined(ANI_OS_TYPE_LINUX)
-            // Get TYPE (cfgID) and LENGTH (length)
-            cfgId = (tANI_U16)sirReadU32N((tANI_U8*)pParam);pParam++;
-            valueLen = (tANI_U16)sirReadU32N((tANI_U8*)pParam);pParam++;
-#else
             cfgId    = (tANI_U16) *pParam++;
             valueLen = (tANI_U16) *pParam++;
-#endif
             length -= (sizeof(tANI_U32) * 2);
             // value length rounded up to a 4 byte multiple
             valueLenRoundedUp4 = (((valueLen + 3) >> 2) << 2);
@@ -616,11 +523,7 @@ ProcSetReqInternal(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam, tANI_
                     }
                     else
                     {
-#if defined(ANI_OS_TYPE_LINUX)
-                        value = sirReadU32N((tANI_U8*) pParam);
-#else
                         value = *pParam;
-#endif
                         PELOG1(cfgLog(pMac, LOGW, FL("Cfg set int %d len %d(%d) val %d\n"),
                                cfgId, valueLen, valueLenRoundedUp4, value);)
                         result = (cfgSetInt(pMac, cfgId, value) == eSIR_SUCCESS ?
@@ -677,15 +580,8 @@ ProcSetReqInternal(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam, tANI_
             }
 
             // Send confirm message to host
-#if defined(ANI_OS_TYPE_LINUX)
-            sirStoreU32N((tANI_U8 *) &(pMac->cfg.gParamList[WNI_CFG_SET_CNF_RES]),
-                         result);
-            sirStoreU32N((tANI_U8 *) &(pMac->cfg.gParamList[WNI_CFG_SET_CNF_PID]),
-                         cfgId);
-#else
             pMac->cfg.gParamList[WNI_CFG_SET_CNF_RES] = result;
             pMac->cfg.gParamList[WNI_CFG_SET_CNF_PID] = cfgId;
-#endif
             if( fRsp )
             {
                 cfgSendHostMsg(pMac, WNI_CFG_SET_CNF, WNI_CFG_SET_CNF_LEN,

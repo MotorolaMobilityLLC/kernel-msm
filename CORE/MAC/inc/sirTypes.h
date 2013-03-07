@@ -40,8 +40,6 @@
  */
 
 /*
- *
- * Airgo Networks, Inc proprietary. All rights reserved.
  * This file sirTypes.h contains the common types
  *
  * Author:    V. K. Kandarpa
@@ -55,24 +53,6 @@
 #define __SIR_TYPES_H
 
 #include "halTypes.h"
-/*
- typedef unsigned char  tANI_U8;
- typedef unsigned short tANI_U16;
- typedef unsigned long  tANI_U32;
- typedef signed char    tANI_S8;
- typedef signed short   tANI_S16;
- typedef signed long    tANI_S32;
-
- #ifndef tANI_BOOLEAN
- #define tANI_BOOLEAN tANI_U8
- #endif
-*/
-
-
-#if defined( ANI_OS_TYPE_WINDOWS )
-#define inline __inline
-#endif
-
 
 /* ********************************************** *
  *                                                *

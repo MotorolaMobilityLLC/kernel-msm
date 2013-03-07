@@ -100,55 +100,21 @@
 // Validate the OS Type being built...
 //
 
-#if defined( ANI_OS_TYPE_WINDOWS )    // WINDOWS
+#if defined(ANI_OS_TYPE_ANDROID) // ANDROID
 
-#if ( defined( ANI_OS_TYPE_LINUX ) || defined(ANI_OS_TYPE_OSX) || defined(ANI_OS_TYPE_AMSS) || \
-      defined( ANI_OS_TYPE_ANDROID ) || defined(ANI_OS_TYPE_QNX) )
-#error "more than one ANI_OS_TYPE_xxx is defined for this build"
-#endif
-
-
-#elif defined( ANI_OS_TYPE_LINUX )    // LINUX
-
-#if ( defined( ANI_OS_TYPE_WINDOWS ) || defined(ANI_OS_TYPE_OSX) || defined(ANI_OS_TYPE_AMSS) || \
-      defined( ANI_OS_TYPE_ANDROID ) || defined(ANI_OS_TYPE_QNX) )
-#error "more than one ANI_OS_TYPE_xxx is defined for this build"
-#endif
-
-
-#elif defined( ANI_OS_TYPE_OSX )      // OSX
-
-#if ( defined( ANI_OS_TYPE_WINDOWS ) || defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_AMSS) || \
-      defined( ANI_OS_TYPE_ANDROID ) || defined(ANI_OS_TYPE_QNX) )
-#error "more than one ANI_OS_TYPE_xxx is defined for this build"
-#endif
-
-#elif defined( ANI_OS_TYPE_AMSS )    // AMSS
-
-#if ( defined( ANI_OS_TYPE_WINDOWS ) || defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX) || \
-      defined( ANI_OS_TYPE_ANDROID ) || defined(ANI_OS_TYPE_QNX) )
-#error "more than one ANI_OS_TYPE_xxx is defined for this build"
-#endif
-
-#elif defined( ANI_OS_TYPE_ANDROID ) // ANDROID
-
-#if ( defined( ANI_OS_TYPE_WINDOWS ) || defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX) || \
-      defined( ANI_OS_TYPE_AMSS ) || defined(ANI_OS_TYPE_QNX) )
+#if defined(ANI_OS_TYPE_QNX)
 #error "more than one ANI_OS_TYPE_xxx is defined for this build"
 #endif
 
 #elif defined( ANI_OS_TYPE_QNX )    // QNX
 
-#if ( defined( ANI_OS_TYPE_WINDOWS ) || defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX) || \
-      defined( ANI_OS_TYPE_AMSS ) || defined(ANI_OS_TYPE_ANDROID) )
+#if defined(ANI_OS_TYPE_ANDROID)
 #error "more than one ANI_OS_TYPE_xxx is defined for this build"
 #endif
 
 
-#elif !( defined( ANI_OS_TYPE_WINDOWS ) || defined( ANI_OS_TYPE_LINUX ) || defined(ANI_OS_TYPE_OSX) || defined(ANI_OS_TYPE_AMSS) \
-         || defined (ANI_OS_TYPE_ANDROID) || defined(ANI_OS_TYPE_QNX) ) // NONE
+#elif !defined(ANI_OS_TYPE_ANDROID) && !defined(ANI_OS_TYPE_QNX)  // NONE
 #error "NONE of the ANI_OS_TYPE_xxx are defined for this build"
-
 #endif
 
 
@@ -191,15 +157,7 @@
 // Common type definitions...
 
 
-#if defined( ANI_OS_TYPE_WINDOWS )
-#if defined(_WIN64)
- typedef unsigned __int64 tANI_U32_OR_PTR;
-#else
- typedef unsigned long tANI_U32_OR_PTR;
-#endif
-#else
 typedef tANI_U32     tANI_U32_OR_PTR;
-#endif
 
 // Buffer address; could be virt or phys; could be 32- or 64-bit depending on compile option
 typedef tANI_U32_OR_PTR    tANI_BUFFER_ADDR;
@@ -256,13 +214,6 @@ typedef void *tHddHandle;
 #define PAL_PKT_FLD_DSCP_MASK     PAL_BIT_MASK(PAL_PKT_FLD_DSCP_OFFSET)
 #define PAL_PKT_FLD_8021P_MASK    PAL_BIT_MASK(PAL_PKT_FLD_8021P_OFFSET)
 
-#if defined( ANI_OS_TYPE_WINDOWS ) || defined (ANI_OS_TYPE_OSX)
-    #define PAL_PKT_FLD_8021P_BIT_OFFSET 0
-#elif defined( ANI_OS_TYPE_LINUX )
-    #define PAL_PKT_FLD_8021P_BIT_OFFSET 5
-#elif defined( ANI_OS_TYPE_AMSS )
-    #define PAL_PKT_FLD_8021P_BIT_OFFSET 0
-#endif
 
 
 /*

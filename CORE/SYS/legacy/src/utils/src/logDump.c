@@ -68,48 +68,9 @@ logDump.c
 #ifdef ANI_LOGDUMP
 
 #define MAX_OVERFLOW_MSG    400
-#if defined(ANI_OS_TYPE_WINDOWS)
 #define MAX_LOGDUMP_SIZE    ((4*1024) - MAX_OVERFLOW_MSG)
-#else
-#define MAX_LOGDUMP_SIZE    ((4*1024) - MAX_OVERFLOW_MSG)
-#endif
 
-#if defined (ANI_OS_TYPE_LINUX)
-
-#include <sysDebug.h>
-
-#elif defined(ANI_OS_TYPE_WINDOWS)
-
-#include "stdarg.h"
-#include "sirTypes.h"
-
-
-#ifdef ANI_DVT_DEBUG
-#include "dvtModuleApi.h"
-#endif
-
-#include "pmmApi.h"
-#include "csrApi.h"
-
-#elif defined(ANI_OS_TYPE_OSX)
-
-#include "stdarg.h"
-
-#elif defined(ANI_OS_TYPE_AMSS)
-
-#include "comdef.h"
-#include "string.h"
-
-#include "AEEstd.h"
-
-#include "sirTypes.h"
-#include "halInterrupts.h"
-
-#include "pmmApi.h"
-#include "halInternal.h"
-#include "csrApi.h"
-
-#elif defined(ANI_OS_TYPE_ANDROID)
+#if   defined(ANI_OS_TYPE_ANDROID)
 
 #include <linux/kernel.h>
 
@@ -175,38 +136,17 @@ int log_sprintf(tpAniSirGlobal pMac, char *pBuf, char *fmt, ...)
     tANI_S32 ret = 0;
 #ifdef WLAN_DEBUG
 
-#if defined(ANI_OS_TYPE_AMSS)
-    AEEVaList args;
-    AEEVA_START(args, fmt);
-#else
     va_list args;
     va_start(args, fmt);
-#endif
 
     if (pMac->gCurrentLogSize >= MAX_LOGDUMP_SIZE)
         return 0;
 
-#if defined (ANI_OS_TYPE_WINDOWS)
-    ret = _vsnprintf(pBuf, (MAX_LOGDUMP_SIZE - pMac->gCurrentLogSize), fmt, args);
-#elif (defined (ANI_OS_TYPE_LINUX) || defined (ANI_OS_TYPE_ANDROID))
+#if    defined (ANI_OS_TYPE_ANDROID)
     ret = vsnprintf(pBuf, (MAX_LOGDUMP_SIZE - pMac->gCurrentLogSize), fmt, args);
-#elif defined (ANI_OS_TYPE_OSX)
-    ret = vsnprintf(pBuf, (MAX_LOGDUMP_SIZE - pMac->gCurrentLogSize), fmt, args);
-    /* BSD kernel has a bug that vsnprintf() always return 0.
-     * See bsd/kern/subr_prf.c 
-     * Need to verify ...
-     */
-    if (ret >= 0)
-        ret = strlen(pBuf);
-#elif defined (ANI_OS_TYPE_AMSS)
-    ret = std_vstrlprintf(pBuf, (MAX_LOGDUMP_SIZE - pMac->gCurrentLogSize), fmt, args);
 #endif
 
-#if defined(ANI_OS_TYPE_AMSS)
-    AEEVA_END(args);
-#else
     va_end(args);
-#endif
 
     /* If an output error is encountered, a negative value is returned by vsnprintf */
     if (ret < 0)
@@ -217,22 +157,7 @@ int log_sprintf(tpAniSirGlobal pMac, char *pBuf, char *fmt, ...)
         pBuf += (MAX_LOGDUMP_SIZE - pMac->gCurrentLogSize);
         pMac->gCurrentLogSize = MAX_LOGDUMP_SIZE;
 
-#if defined (ANI_OS_TYPE_WINDOWS)
-        ret = _snprintf(pBuf, MAX_OVERFLOW_MSG, "\n-> ***********"
-                "\nOutput Exceeded the Buffer Size, message truncated!!\n<- ***********\n");
-#elif (defined (ANI_OS_TYPE_LINUX) || defined (ANI_OS_TYPE_ANDROID))
-        ret = snprintf(pBuf, MAX_OVERFLOW_MSG, "\n-> ***********"
-                "\nOutput Exceeded the Buffer Size, message truncated!!\n<- ***********\n");
-#elif defined (ANI_OS_TYPE_OSX)
-        ret = snprintf(pBuf, MAX_OVERFLOW_MSG, "\n-> ***********"
-                "\nOutput Exceeded the Buffer Size, message truncated!!\n<- ***********\n");
-        /* BSD kernel has a bug that snprintf() always return 0.
-         * See bsd/kern/subr_prf.c 
-         * but NEED TO VERIFY ...
-         */
-        if (ret >= 0)
-            ret = strlen(pBuf);
-#elif defined (ANI_OS_TYPE_AMSS)
+#if    defined (ANI_OS_TYPE_ANDROID)
         ret = snprintf(pBuf, MAX_OVERFLOW_MSG, "\n-> ***********"
                 "\nOutput Exceeded the Buffer Size, message truncated!!\n<- ***********\n");
 #endif
@@ -247,10 +172,6 @@ int log_sprintf(tpAniSirGlobal pMac, char *pBuf, char *fmt, ...)
     pMac->gCurrentLogSize += ret;
 
 
-#if defined (ANI_OS_TYPE_WINDOWS)
-    //DbgPrint("%s", pBuf);
-    sysLog(pMac, LOGE, FL("%s"), pBuf);
-#endif
 #endif //for #ifdef WLAN_DEBUG
     return ret;
 }
