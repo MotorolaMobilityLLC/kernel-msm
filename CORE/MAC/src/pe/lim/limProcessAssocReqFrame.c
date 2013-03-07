@@ -214,8 +214,8 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
 
    if (psessionEntry->limSystemRole == eLIM_STA_ROLE || psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE )
    {
-        limLog(pMac, LOGE, FL("received unexpected ASSOC REQ subType=%d for role=%d, radioId=%d from \n"),
-                                            subType, psessionEntry->limSystemRole, pMac->sys.gSirRadioId);
+        limLog(pMac, LOGE, FL("received unexpected ASSOC REQ subType=%d for role=%d"),
+               subType, psessionEntry->limSystemRole);
         limPrintMacAddr(pMac, pHdr->sa, LOGE);
         sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG3,
         WDA_GET_RX_MPDU_DATA(pRxPacketInfo), framelen);

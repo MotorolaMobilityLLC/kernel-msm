@@ -111,36 +111,6 @@ void schSetBeaconInterval(tpAniSirGlobal pMac,tpPESession psessionEntry)
 
 // --------------------------------------------------------------------
 /**
- * schSetInitParams
- *
- * FUNCTION:
- * Initialize parameters from CFG which do not depend on any other config
- *
- * LOGIC:
- *
- * ASSUMPTIONS:
- *
- * NOTE:
- *
- * @param None
- * @return None
- */
-
-#if 0 /* This function is not used anywhere */
-void
-schSetInitParams(tpAniSirGlobal pMac)
-{
-    pMac->sch.schObject.gSchDTIMCount = 0;
-    pMac->sch.schObject.gSchCFPCount = 0;
-
-    schQosUpdateLocal(pMac);
-
-    PELOG1(schLog(pMac, LOG1, FL("Finished init of SCH params\n"));)
-}
-#endif
-
-// --------------------------------------------------------------------
-/**
  * schProcessMessage
  *
  * FUNCTION:
@@ -197,7 +167,6 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
             break;
 
         case SIR_SCH_START_SCAN_REQ:
-            SIR_SCHED_LOCK();
             pMac->sch.gSchScanReqRcvd = true;
             if (pMac->sch.gSchHcfEnabled)
             {
@@ -217,7 +186,6 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
                 // In eDCF mode, send the response right away
                 schSendStartScanRsp(pMac);
             }
-            SIR_SCHED_UNLOCK();
             break;
 
         case SIR_SCH_END_SCAN_NTF:
@@ -290,38 +258,6 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
                    pSchMsg->type);
     }
 
-}
-
-
-// --------------------------------------------------------------------
-/**
- * schProcessMessageQueue
- *
- * FUNCTION:
- *
- * LOGIC:
- *
- * ASSUMPTIONS:
- *
- * NOTE:
- *
- * @param None
- * @return None
- */
-
-void schProcessMessageQueue(tpAniSirGlobal pMac)
-{
-    tSirMsgQ schMsg;
-
-    memset(&schMsg, 0, sizeof(tSirMsgQ));
-    while (1)
-    {
-        if (tx_queue_receive(&pMac->sys.gSirSchMsgQ, (void *) &schMsg, TX_WAIT_FOREVER)
-            != TX_SUCCESS)
-            break;
-
-        schProcessMessage(pMac, &schMsg);
-    }
 }
 
 
