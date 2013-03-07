@@ -64,9 +64,7 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 #include "halTypes.h"
 #include "sirCommon.h"
 #include "aniSystemDefs.h"
-#ifndef ANI_OS_TYPE_OSX
 #include "sysDef.h"
-#endif
 #include "dphGlobal.h"
 #include "limGlobal.h"
 #include "pmmGlobal.h"
@@ -974,9 +972,6 @@ typedef struct sAniSirGlobal
 
 {
     tDriverType  gDriverType;
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-    struct rtLibApp * rt;
-#endif
 
     // we should be able to save this hddHandle in here and deprecate
     // the pAdapter.  For now, compiles are a problem because there

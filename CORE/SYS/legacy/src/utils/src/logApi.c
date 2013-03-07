@@ -73,11 +73,9 @@
 //This is not right here. Need to find a better place.
 //_vsnprintf is a function in Windows
 //Temporary workaround.
-#ifndef ANI_OS_TYPE_WINDOWS
 #ifndef _vsnprintf
 #define _vsnprintf vsnprintf
 #endif
-#endif // not Windows
 
 #define dbgTraceInfo(_Mask, _InParams)                 \
   {                                                      \
@@ -155,15 +153,6 @@ logDeinit(tpAniSirGlobal pMac)
  * @return None
  */
 
-#if defined(ANI_OS_TYPE_OSX)
-#if defined ANI_FIREWIRE_LOG
-#include <IOKit/firewire/FireLog.h>
-#define printk          FireLog
-#else
-#define printk          printf
-#endif
-#define tx_time_get()   (0)
-#endif
 
 void logDbg(tpAniSirGlobal pMac, tANI_U8 modId, tANI_U32 debugLevel, const char *pStr,...)
 {
