@@ -130,7 +130,6 @@ typedef struct sHalPdu {
 //} __ani_attr_packed __ani_attr_aligned_4 tHalPdu, *tpHalPdu;
 } tHalPdu, *tpHalPdu;
 
-#ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
 /* UAPSD parameters passed per AC to HAL from TL */
 typedef struct sUapsdInfo {
     tANI_U8  staidx;        // STA index
@@ -140,7 +139,6 @@ typedef struct sUapsdInfo {
     tANI_U32 susInterval;   // Suspend Interval
     tANI_U32 delayInterval; // Delay Interval
 } tUapsdInfo, tpUapsdInfo;
-#endif
 
 #define HAL_TXBD_BDRATE_DEFAULT 0
 #define HAL_TXBD_BDRATE_FIRST   1
@@ -348,9 +346,7 @@ tANI_U8 WLANHAL_RxBD_GetFrameTypeSubType(v_PVOID_t _pvBDHeader, tANI_U16 usFrmCt
 #define HAL_WAPI_STA_MASK            0x8  //bit 3. If set, this frame is for WAPI station
 #endif
 
-#ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
 #define HAL_TRIGGER_ENABLED_AC_MASK         0x10 //bit 4 for data frames belonging to trigger enabled AC
-#endif
 #define HAL_USE_NO_ACK_REQUESTED_MASK       0x20
 
 #define HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME 0x40 // Bit 6 will be used to control BD rate for Management frames
@@ -418,10 +414,8 @@ void WLANHAL_RxAmsduBdFix(void *pVosGCtx,v_PVOID_t _pvBDHeader);
 tANI_U32 WLANHAL_TxBdFastFwd(void *pAdapter, tANI_U8 *pDestMac, tANI_U8 tid, tANI_U8 unicastDst,  void *pTxBd, tANI_U16);
 #endif
 
-#ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
 VOS_STATUS WLANHAL_EnableUapsdAcParams(void* pVosGCtx, tANI_U8 staIdx, tUapsdInfo *pUapsdInfo);
 VOS_STATUS WLANHAL_DisableUapsdAcParams(void* pVosGCtx, tANI_U8 staIdx, tANI_U8 ac);
-#endif
 
 VOS_STATUS WLANHAL_EnableIdleBdPduInterrupt(void* pVosGCtx, tANI_U8 idleBdPduThreshold);
 
