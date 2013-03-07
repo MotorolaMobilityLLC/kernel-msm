@@ -2233,8 +2233,30 @@ static int get_prop_charge_type(struct pm8921_chg_chip *chip)
 
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 #define MAX_TOLERABLE_BATT_TEMP_DDC	800
+
+static int batt_hotspot_threshold = MAX_TOLERABLE_BATT_TEMP_DDC;
+static int batt_hotspot_temperature;
+module_param(batt_hotspot_threshold, int, 0644);
+module_param(batt_hotspot_temperature, int, 0644);
+
+static int adjust_batt_temp(struct pm8921_chg_chip *chip, int batt_therm)
+{
+	if ((batt_therm > chip->cool_temp_dc) &&
+	    (batt_hotspot_temperature > batt_therm) &&
+	    (batt_hotspot_temperature >= batt_hotspot_threshold)) {
+		pr_debug("Using batt_hotspot_temperature:%d, threshold=%d\n",
+			 batt_hotspot_temperature, batt_hotspot_threshold);
+		batt_therm = batt_hotspot_temperature;
+	}
+	return batt_therm;
+}
 #else
 #define MAX_TOLERABLE_BATT_TEMP_DDC	680
+
+static inline int adjust_batt_temp(struct pm8921_chg_chip *chip, int batt_therm)
+{
+	return batt_therm;
+}
 #endif
 #define BATT_THERM_ON  BIT(7)
 static int get_prop_batt_temp(struct pm8921_chg_chip *chip)
@@ -2260,6 +2282,8 @@ static int get_prop_batt_temp(struct pm8921_chg_chip *chip)
 	}
 	pr_debug("batt_temp phy = %lld meas = 0x%llx\n", result.physical,
 		 result.measurement);
+
+	result.physical = adjust_batt_temp(chip, result.physical);
 
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	if (chip->hot_temp_dc > chip->warm_temp_dc) {
