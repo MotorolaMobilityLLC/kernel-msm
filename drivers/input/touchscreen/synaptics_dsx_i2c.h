@@ -78,6 +78,23 @@
 #define MASK_2BIT 0x03
 #define MASK_1BIT 0x01
 
+#define MAX_NUMBER_TRACKED_RESUMES 10
+/*
+ * struct synaptics_rmi4_resume_info - information about a resume
+ * @start: time when resume started
+ * @finish: time when resume finished
+ * @isr: time of the first isr after resume
+ * @send_touch: time of the first send touch event after resume
+ * @purge_off: time when events are no longer ignored after resume
+ */
+struct synaptics_rmi4_resume_info {
+	struct timespec start;
+	struct timespec finish;
+	struct timespec isr;
+	struct timespec send_touch;
+	struct timespec purge_off;
+	int    ignored_events;
+};
 /*
  * struct synaptics_rmi4_fn_desc - function descriptor fields in PDT
  * @query_base_addr: base address for query registers
@@ -192,6 +209,9 @@ struct synaptics_rmi4_device_info {
  * @fingers_on_2d: flag to indicate presence of fingers in 2d area
  * @sensor_sleep: flag to indicate sleep state of sensor
  * @wait: wait queue for touch data polling in interrupt thread
+ * @number_resumes: total number of remembered resumes
+ * @last_resume: last resume's number (index of the location of resume)
+ * @resume_info:  information about last few resumes
  * @i2c_read: pointer to i2c read function
  * @i2c_write: pointer to i2c write function
  * @irq_enable: pointer to irq enable function
@@ -240,6 +260,9 @@ struct synaptics_rmi4_data {
 	int (*ready_state)(struct synaptics_rmi4_data *rmi4_data, bool standby);
 	int (*irq_enable)(struct synaptics_rmi4_data *rmi4_data, bool enable);
 	int (*reset_device)(struct synaptics_rmi4_data *rmi4_data);
+	int number_resumes;
+	int last_resume;
+	struct synaptics_rmi4_resume_info *resume_info;
 };
 
 #define SYNAPTICS_DSX_STATES { \
