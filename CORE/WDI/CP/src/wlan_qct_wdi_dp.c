@@ -135,10 +135,8 @@ WDI_DP_UtilsInit
 {
   WDI_RxBdType*  pAmsduRxBdFixMask; 
 
-#ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
     // WQ to be used for filling the TxBD
   pWDICtx->ucDpuRF = BMUWQ_BTQM_TX_MGMT; 
-#endif //FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
 
 #ifdef WLAN_PERF
   pWDICtx->uBdSigSerialNum = 0;
@@ -456,13 +454,11 @@ WDI_FillTxBd
      -----------------------------------------------------------------------*/
     pBd->bdt   = HWBD_TYPE_GENERIC; 
 
-#ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
     // Route all trigger enabled frames to FW WQ, for FW to suspend trigger frame generation 
     // when no traffic is exists on trigger enabled ACs
     if(ucTxFlag & WDI_TRIGGER_ENABLED_AC_MASK) {
         pBd->dpuRF = pWDICtx->ucDpuRF; 
     } else 
-#endif //FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
     {
         pBd->dpuRF = BMUWQ_BTQM_TX_MGMT; 
     }

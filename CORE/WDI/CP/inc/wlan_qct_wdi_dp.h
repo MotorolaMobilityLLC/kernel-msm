@@ -124,9 +124,7 @@ when        who    what, where, why
 #define WDI_WAPI_STA_MASK            0x8  //bit 3. If set, this frame is for WAPI station
 #endif
 
-#ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
 #define WDI_TRIGGER_ENABLED_AC_MASK         0x10 //bit 4 for data frames belonging to trigger enabled AC
-#endif
 #define WDI_USE_NO_ACK_REQUESTED_MASK       0x20
 
 #define WDI_USE_BD_RATE2_FOR_MANAGEMENT_FRAME 0x40 // Bit 6 will be used to control BD rate for Management frames

@@ -4995,7 +4995,6 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                 acm_mask = sme_QosGetACMMask(pMac, pSirBssDesc, NULL);
 #endif /* WLAN_MDM_CODE_REDUCTION_OPT*/
                 pSession->connectedProfile.acm_mask = acm_mask;
-#ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
                 //start UAPSD if uapsd_mask is not 0 because HDD will configure for trigger frame
                 //It may be better to let QoS do this????
                 if( pSession->connectedProfile.modifyProfileFields.uapsd_mask )
@@ -5004,7 +5003,6 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                         pSession->connectedProfile.modifyProfileFields.uapsd_mask);
                     pmcStartUapsd( pMac, NULL, NULL );
                 }
-#endif
                 roamInfo.u.pConnectedProfile = &pSession->connectedProfile;
                 if( pSession->bRefAssocStartCnt > 0 )
                 {
