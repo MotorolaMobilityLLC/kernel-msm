@@ -643,6 +643,9 @@ static ssize_t synaptics_rmi4_0dbutton_show(struct device *dev,
 static ssize_t synaptics_rmi4_0dbutton_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
 
+static ssize_t synaptics_rmi4_resume_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
 struct synaptics_rmi4_f01_device_status {
 	union {
 		struct {
@@ -736,6 +739,9 @@ static struct device_attribute attrs[] = {
 	__ATTR(0dbutton, (S_IRUGO | S_IWUGO),
 			synaptics_rmi4_0dbutton_show,
 			synaptics_rmi4_0dbutton_store),
+	__ATTR(resumeinfo, S_IRUGO,
+			synaptics_rmi4_resume_show,
+			synaptics_rmi4_store_error),
 };
 
 static bool exp_fn_inited;
@@ -987,6 +993,49 @@ static ssize_t synaptics_rmi4_f01_buildid_show(struct device *dev,
 
 	return snprintf(buf, PAGE_SIZE, "%x\n",
 			build_id);
+}
+
+static ssize_t synaptics_rmi4_resume_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	int i;
+	int c_res;
+	int offset = 0;
+
+	c_res = rmi4_data->last_resume;
+	/* Resume buffer not allocated or there were no resumes yet */
+	if (rmi4_data->number_resumes <= 0 || c_res < 0)
+		return scnprintf(buf, PAGE_SIZE,
+				"No resume information found.\n");
+
+	offset += scnprintf(buf + offset, PAGE_SIZE - offset,
+		"Count\tStart\t\tFinish\t# no-events\t"
+		"ISR\t\tpurge off\tsendevent\n");
+
+	for (i = 0; i < rmi4_data->number_resumes; i++) {
+		offset += scnprintf(buf + offset, PAGE_SIZE - offset,
+			"%d\t%4ld.%03ld\t%4ld.%03ld\t%d\t%4ld.%03ld\t"
+			"%4ld.%03ld\t%4ld.%03ld\n",
+		i+1,
+		rmi4_data->resume_info[c_res].start.tv_sec%1000,
+		rmi4_data->resume_info[c_res].start.tv_nsec/1000000,
+		rmi4_data->resume_info[c_res].finish.tv_sec%1000,
+		rmi4_data->resume_info[c_res].finish.tv_nsec/1000000,
+		rmi4_data->resume_info[c_res].ignored_events,
+		rmi4_data->resume_info[c_res].isr.tv_sec%1000,
+		rmi4_data->resume_info[c_res].isr.tv_nsec/1000000,
+		rmi4_data->resume_info[c_res].purge_off.tv_sec%1000,
+		rmi4_data->resume_info[c_res].purge_off.tv_nsec/1000000,
+		rmi4_data->resume_info[c_res].send_touch.tv_sec%1000,
+		rmi4_data->resume_info[c_res].send_touch.tv_nsec/1000000);
+
+		if (c_res <= 0)
+			c_res = rmi4_data->number_resumes-1;
+		else
+			c_res--;
+	}
+	return offset;
 }
 
 static ssize_t synaptics_rmi4_f01_flashprog_show(struct device *dev,
@@ -1244,6 +1293,7 @@ exit:
 static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		struct synaptics_rmi4_fn *fhandler)
 {
+	struct synaptics_rmi4_resume_info *tmp_resume_i = NULL;
 	int retval;
 	unsigned char touch_count = 0; /* number of touch points */
 	unsigned char index = 0;
@@ -1269,8 +1319,21 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	if (retval < 0)
 		return 0;
 
-	if (atomic_read(&rmi4_data->panel_off_flag))
-		return 0;
+	if (rmi4_data->number_resumes > 0) {
+		tmp_resume_i =
+			&(rmi4_data->resume_info[rmi4_data->last_resume]);
+
+		if (atomic_read(&rmi4_data->panel_off_flag)) {
+			tmp_resume_i->ignored_events++;
+			return 0;
+		}
+		if (tmp_resume_i->purge_off.tv_sec == 0)
+			getnstimeofday(&(tmp_resume_i->purge_off));
+	} else {
+		if (atomic_read(&rmi4_data->panel_off_flag)) {
+			return 0;
+		}
+	}
 
 	for (finger = 0; finger < fingers_supported; finger++,
 			 index += fhandler->size_of_data_register_block) {
@@ -1309,6 +1372,10 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 					ABS_MT_TRACKING_ID, id);
 		input_mt_sync(rmi4_data->input_dev);
 		touch_count++;
+
+		if (rmi4_data->number_resumes > 0 &&
+			tmp_resume_i->send_touch.tv_sec == 0)
+			getnstimeofday(&(tmp_resume_i->send_touch));
 	}
 
 	if (!touch_count)
@@ -1719,6 +1786,14 @@ static int synaptics_rmi4_sensor_report(struct synaptics_rmi4_data *rmi4_data)
 static irqreturn_t synaptics_rmi4_irq(int irq, void *data)
 {
 	struct synaptics_rmi4_data *rmi4_data = data;
+	struct synaptics_rmi4_resume_info *tmp_resume_i;
+
+	if (rmi4_data->number_resumes > 0) {
+		tmp_resume_i =
+			&(rmi4_data->resume_info[rmi4_data->last_resume]);
+		if (tmp_resume_i->isr.tv_sec == 0)
+			getnstimeofday(&(tmp_resume_i->isr));
+	}
 
 	synaptics_rmi4_sensor_report(rmi4_data);
 
@@ -2662,6 +2737,19 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	rmi4_data->irq_enable = synaptics_rmi4_irq_enable;
 	rmi4_data->reset_device = synaptics_rmi4_reset_device;
 
+	/* Initialize some resume debug information */
+	rmi4_data->resume_info = kzalloc(
+		sizeof(struct synaptics_rmi4_resume_info) *
+			 MAX_NUMBER_TRACKED_RESUMES,
+		GFP_KERNEL);
+	if (!rmi4_data->resume_info) {
+		dev_err(&client->dev,
+		"%s: Failed to allocate memory for resume information\n",
+				__func__);
+		rmi4_data->number_resumes = 0;
+	} else
+		rmi4_data->number_resumes = MAX_NUMBER_TRACKED_RESUMES;
+	rmi4_data->last_resume = -1;
 	mutex_init(&(rmi4_data->rmi4_io_ctrl_mutex));
 	mutex_init(&(rmi4_data->state_mutex));
 
@@ -2998,7 +3086,26 @@ static void synaptics_rmi4_late_resume(struct early_suspend *h)
 	struct synaptics_rmi4_data *rmi4_data =
 			container_of(h, struct synaptics_rmi4_data,
 			early_suspend);
-	synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
+
+	struct synaptics_rmi4_resume_info *tmp_resume_i;
+
+	if (rmi4_data->number_resumes > 0) {
+		rmi4_data->last_resume++;
+		if (rmi4_data->last_resume >= rmi4_data->number_resumes)
+			rmi4_data->last_resume = 0;
+		tmp_resume_i =
+			&(rmi4_data->resume_info[rmi4_data->last_resume]);
+		getnstimeofday(&(tmp_resume_i->start));
+		tmp_resume_i->ignored_events = 0;
+		tmp_resume_i->isr.tv_sec = 0;
+		tmp_resume_i->send_touch.tv_sec = 0;
+		tmp_resume_i->purge_off.tv_sec = 0;
+
+		synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
+
+		getnstimeofday(&(tmp_resume_i->finish));
+	} else
+		synaptics_rmi4_resume(&(rmi4_data->input_dev->dev));
 	return;
 }
 #endif
