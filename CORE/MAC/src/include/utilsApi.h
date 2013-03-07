@@ -59,13 +59,6 @@
 #include "utilsGlobal.h"
 #include "VossWrapper.h"
 
-
-
-#define SIR_DECLARE_FLAGS
-#define SIR_SCHED_LOCK()    TX_DISABLE_INTR;
-#define SIR_SCHED_UNLOCK()  TX_ENABLE_INTR;
-
-
 #define LOG_INDEX_FOR_MODULE( modId ) ( ( modId ) - LOG_FIRST_MODULE_ID )
 #define GET_MIN_VALUE(__val1, __val2) ((__val1 < __val2) ? __val1 : __val2)
 

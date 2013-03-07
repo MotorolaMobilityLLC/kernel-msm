@@ -97,20 +97,8 @@ sysInitGlobals(tpAniSirGlobal pMac)
 
     palZeroMemory(pMac->hHdd, (tANI_U8 *) &pMac->sys, sizeof(pMac->sys));
 
-#if defined(ANI_DEBUG)
-    //FIXME : right now we want the reset to happen even in diag debug build.
-    // later on we need to set this to true.
-    //pMac->sys.debugOnReset = true;
-    pMac->sys.debugOnReset = false;
-#else
-    pMac->sys.debugOnReset = false;
-#endif
-
     pMac->sys.gSysEnableScanMode        = 1;
     pMac->sys.gSysEnableLinkMonitorMode = 0;
-    pMac->sys.fTestRadar                = false;
-    pMac->sys.radarDetected             = false;
-    pMac->sys.gSysdropLimPkts           = false;
     schInitGlobals(pMac);
 
     return eSIR_SUCCESS;

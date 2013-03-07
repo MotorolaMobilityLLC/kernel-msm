@@ -329,7 +329,6 @@ SYS_OBJS :=	$(SYS_COMMON_SRC_DIR)/wlan_qct_sys.o \
 		$(SYS_LEGACY_SRC_DIR)/platform/src/VossWrapper.o \
 		$(SYS_LEGACY_SRC_DIR)/system/src/macInitApi.o \
 		$(SYS_LEGACY_SRC_DIR)/system/src/sysEntryFunc.o \
-		$(SYS_LEGACY_SRC_DIR)/system/src/sysWinStartup.o \
 		$(SYS_LEGACY_SRC_DIR)/utils/src/dot11f.o \
 		$(SYS_LEGACY_SRC_DIR)/utils/src/logApi.o \
 		$(SYS_LEGACY_SRC_DIR)/utils/src/logDump.o \

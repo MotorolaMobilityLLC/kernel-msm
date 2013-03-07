@@ -92,44 +92,6 @@
 #define TIMER_NAME "N/A"
 #endif
 
-// Routine used to retrieve the Winwrapper context pointer from the pMac structure
-extern tpAniSirTxWrapper sysGetTxWrapperContext(v_PVOID_t pMac);
-
-
- 
- /**---------------------------------------------------------------------
- * tx_voss_wrapper_init() 
- *
- * FUNCTION:  Initialize the VOSS wrapper 
- *
- * LOGIC:
- *       - Just allocate the spinlock used for critical section implementation.
- *
- * ASSUMPTIONS:
- *        - None.
- *
- * NOTE:
- *
- * @param  None.
- *
- * @return None.
- *
- */
-v_VOID_t tx_voss_wrapper_init(v_PVOID_t pMacGlobal, v_PVOID_t pAdapter)
-{
-    tpAniSirTxWrapper pTxWrapper = sysGetTxWrapperContext(pMacGlobal);
-
-    // if already allocated, then don't allcoate again...
-    if ( !pTxWrapper->pAdapter )
-    {
-        // Store the pointer to the MAC globals structure, in the Tx wrapper context
-        pTxWrapper->pAdapter = pAdapter;
-
-    }
-}
-
-
-
 /**---------------------------------------------------------------------
  * tx_time_get() 
  *

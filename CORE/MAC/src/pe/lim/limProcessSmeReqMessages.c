@@ -3178,7 +3178,6 @@ __limCounterMeasures(tpAniSirGlobal pMac, tpPESession psessionEntry)
          
         limSendDisassocMgmtFrame(pMac, eSIR_MAC_MIC_FAILURE_REASON, mac, psessionEntry, FALSE);
 
-    tx_thread_sleep(10);
 };
 
 

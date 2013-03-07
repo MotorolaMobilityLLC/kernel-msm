@@ -1190,38 +1190,6 @@ void pmmExitBmpsIndicationHandler(tpAniSirGlobal pMac, tANI_U8 mode, eHalStatus 
 
 // --------------------------------------------------------------------
 /**
- * pmmProcessMessageQueue
- *
- * FUNCTION:
- *
- * LOGIC:
- *
- * ASSUMPTIONS:
- *
- * NOTE:
- *
- * @param None
- * @return None
- */
-
-void pmmProcessMessageQueue(tpAniSirGlobal pMac)
-{
-#if 0
-    tSirMsgQ msg;
-
-    while (1)
-    {
-        if (tx_queue_receive(&pMac->sys.gSirPmmMsgQ, (void *) &msg, TX_WAIT_FOREVER)
-            != TX_SUCCESS)
-            break;
-
-        pmmProcessMessage(pMac, &msg);
-    }
-#endif
-}
-
-// --------------------------------------------------------------------
-/**
  * pmmProcessMessage
  *
  * FUNCTION:  Processes the next received Power Management message

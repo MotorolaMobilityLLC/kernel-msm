@@ -989,9 +989,6 @@ typedef struct sAniSirGlobal
     tAniSirSch   sch;
     tAniSirSys   sys;
     tAniSirUtils utils;
-
-
-    tAniSirTxWrapper txWrapper;
     // PAL/HDD handle
     tHddHandle hHdd;
 

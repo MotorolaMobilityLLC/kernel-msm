@@ -219,48 +219,6 @@ __limHandleBeacon(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tpPESession psessionEntry
 void limProcessNormalHddMsg(tpAniSirGlobal pMac, tSirMsgQ *pLimMsg, tANI_U8 fRspReqd);
 
 /**
- * limProcessMessageQueue
- *
- *FUNCTION:
- * This function is called by LIM thread entry function. This
- * function fetches messages posted to the message queue
- * limMsgQ.
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  pMac - Pointer to Global MAC structure
- * @return None
- */
-
-void
-limProcessMessageQueue(tpAniSirGlobal pMac)
-{
-    tSirMsgQ  limMsg = { 0, 0, 0 };
-
-    if(pMac->gDriverType == eDRIVER_TYPE_MFG)
-    {
-        return;
-    }
-
-    if (tx_queue_receive( &pMac->sys.gSirLimMsgQ, (void *) &limMsg, TX_WAIT_FOREVER)
-            == TX_SUCCESS)
-    {
-        PELOG3(limLog(pMac, LOG3, FL("LIM Received message %s\n"), limMsgStr(limMsg.type));)
-        limPrintMsgInfo(pMac, LOG3, &limMsg);
-        limMessageProcessor(pMac, &limMsg);
-    } // if (tx_queue_receive)
-    
-} /*** end limProcessMessageQueue() ***/
-
-
-
-/**
  * limDeferMsg()
  *
  *FUNCTION:
