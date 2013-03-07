@@ -1192,9 +1192,7 @@ int hdd_stop (struct net_device *dev)
       making sure same here. */
    if ( (WLAN_HDD_SOFTAP == pAdapter->device_mode )
                  || (WLAN_HDD_MONITOR == pAdapter->device_mode )
-#ifdef WLAN_FEATURE_P2P
                  || (WLAN_HDD_P2P_GO == pAdapter->device_mode )
-#endif
       )
    {
       /* SoftAP mode, so return from here */
@@ -2060,10 +2058,8 @@ VOS_STATUS hdd_disable_bmps_imps(hdd_context_t *pHddCtx, tANI_U8 session_type)
    {
        case WLAN_HDD_INFRA_STATION:
        case WLAN_HDD_SOFTAP:
-#ifdef WLAN_FEATURE_P2P
        case WLAN_HDD_P2P_CLIENT:
        case WLAN_HDD_P2P_GO:
-#endif
           //Exit BMPS -> Is Sta/P2P Client is already connected
           pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_INFRA_STATION);
           if((NULL != pAdapter)&&
@@ -2181,10 +2177,8 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
    switch(session_type)
    {
       case WLAN_HDD_INFRA_STATION:
-#ifdef WLAN_FEATURE_P2P
       case WLAN_HDD_P2P_CLIENT:
       case WLAN_HDD_P2P_DEVICE:
-#endif
       {
          pAdapter = hdd_alloc_station_adapter( pHddCtx, macAddr, iface_name );
 
@@ -2215,9 +2209,7 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          break;
       }
 
-#ifdef WLAN_FEATURE_P2P
       case WLAN_HDD_P2P_GO:
-#endif
       case WLAN_HDD_SOFTAP:
       {
          pAdapter = hdd_wlan_create_ap_dev( pHddCtx, macAddr, (tANI_U8 *)iface_name );
@@ -2266,13 +2258,11 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          //Set adapter to be used for data tx. It will use either GO or softap.
          pAdapter->sessionCtx.monitor.pAdapterForTx = 
                            hdd_get_adapter(pAdapter->pHddCtx, WLAN_HDD_SOFTAP);
-#ifdef WLAN_FEATURE_P2P
          if (NULL == pAdapter->sessionCtx.monitor.pAdapterForTx)
          {
             pAdapter->sessionCtx.monitor.pAdapterForTx = 
                            hdd_get_adapter(pAdapter->pHddCtx, WLAN_HDD_P2P_GO);
          }
-#endif
          /* This workqueue will be used to transmit management packet over
           * monitor interface. */
          if (NULL == pAdapter->sessionCtx.monitor.pAdapterForTx) {
@@ -4061,7 +4051,6 @@ int hdd_wlan_startup(struct device *dev )
          wlan_hdd_get_intf_addr(pHddCtx), FALSE );
      if (pAdapter != NULL)
      {
-#ifdef WLAN_FEATURE_P2P
          if ( pHddCtx->cfg_ini->isP2pDeviceAddrAdministrated )
          {
                vos_mem_copy( pHddCtx->p2pDeviceAddress.bytes,
@@ -4099,7 +4088,6 @@ int hdd_wlan_startup(struct device *dev )
                 __func__);
              goto err_close_adapter;
          }
-#endif
      }
    }
 
@@ -4834,10 +4822,8 @@ void wlan_hdd_set_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode)
    switch(mode)
    {
        case WLAN_HDD_INFRA_STATION:
-#ifdef WLAN_FEATURE_P2P
        case WLAN_HDD_P2P_CLIENT:
        case WLAN_HDD_P2P_GO:
-#endif
        case WLAN_HDD_SOFTAP:
             pHddCtx->concurrency_mode |= (1 << mode);
             pHddCtx->no_of_sessions[mode]++;
@@ -4856,10 +4842,8 @@ void wlan_hdd_clear_concurrency_mode(hdd_context_t *pHddCtx, tVOS_CON_MODE mode)
    switch(mode)
    {
        case WLAN_HDD_INFRA_STATION:
-#ifdef WLAN_FEATURE_P2P
        case WLAN_HDD_P2P_CLIENT:
        case WLAN_HDD_P2P_GO:
-#endif
        case WLAN_HDD_SOFTAP:
     pHddCtx->no_of_sessions[mode]--;
     if (!(pHddCtx->no_of_sessions[mode]))

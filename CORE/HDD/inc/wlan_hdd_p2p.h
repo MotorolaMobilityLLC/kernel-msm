@@ -71,7 +71,6 @@ enum hdd_rx_flags {
 };
 
 
-#ifdef WLAN_FEATURE_P2P
 #define P2P_POWER_SAVE_TYPE_OPPORTUNISTIC        (1 << 0)
 #define P2P_POWER_SAVE_TYPE_PERIODIC_NOA         (1 << 1)
 #define P2P_POWER_SAVE_TYPE_SINGLE_NOA           (1 << 2)
@@ -171,7 +170,6 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
                      const u8 *buf, size_t len, u64 *cookie );
 #endif
 
-#endif // WLAN_FEATURE_P2P
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0))
 struct wireless_dev* wlan_hdd_add_virtual_intf(

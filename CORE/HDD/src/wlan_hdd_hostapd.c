@@ -255,7 +255,6 @@ int hdd_hostapd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
            "***HOSTAPD*** : Received %s cmd from Wi-Fi GUI***", command);
 
-#ifdef WLAN_FEATURE_P2P
         if(strncmp(command, "P2P_SET_NOA", 11) == 0 )   
         {
             hdd_setP2pNoa(dev, command);
@@ -264,7 +263,6 @@ int hdd_hostapd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
         {
             hdd_setP2pOpps(dev, command);
         }
-#endif
 
         /*
            command should be a string having format
@@ -762,7 +760,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             }
             vos_mem_free(pSapEvent->sapevt.sapAssocStaListEvent.pAssocStas);// Release caller allocated memory here
             return VOS_STATUS_SUCCESS;
-#ifdef WLAN_FEATURE_P2P
         case eSAP_INDICATE_MGMT_FRAME:
            hdd_indicateMgmtFrame( pHostapdAdapter, 
                                  pSapEvent->sapevt.sapManagementFrameInfo.nFrameLength,
@@ -779,7 +776,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                                 pSapEvent->sapevt.sapActionCnf.actionSendSuccess ) ? 
                                 TRUE : FALSE );
            return VOS_STATUS_SUCCESS;
-#endif
         case eSAP_UNKNOWN_STA_JOIN:
             snprintf(unknownSTAEvent, IW_CUSTOM_MAX, "JOIN_UNKNOWN_STA-%02x:%02x:%02x:%02x:%02x:%02x",
                 pSapEvent->sapevt.sapUnknownSTAJoin.macaddr.bytes[0],
@@ -2733,12 +2729,10 @@ static const struct iw_priv_args hostapd_private_args[] = {
        IW_PRIV_TYPE_INT | MAX_VAR_ARGS,
        0, 
        "dump" },
-#ifdef WLAN_FEATURE_P2P
    {   WE_P2P_NOA_CMD,
        IW_PRIV_TYPE_INT | MAX_VAR_ARGS,
        0, 
        "SetP2pPs" },
-#endif
      /* handlers for sub ioctl */
     {
         WE_MCC_CONFIG_CREDENTIAL,

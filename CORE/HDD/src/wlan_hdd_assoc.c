@@ -2271,7 +2271,6 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
            break;
 #endif
 
-#ifdef WLAN_FEATURE_P2P
         case eCSR_ROAM_INDICATE_MGMT_FRAME:
             hdd_indicateMgmtFrame( pAdapter,
                                   pRoamInfo->nFrameLength,
@@ -2287,7 +2286,6 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
             hdd_sendActionCnf( pAdapter,
                (roamResult == eCSR_ROAM_RESULT_NONE) ? TRUE : FALSE );
             break;
-#endif
 #ifdef FEATURE_WLAN_TDLS
         case eCSR_ROAM_TDLS_STATUS_UPDATE:
             halStatus = hdd_RoamTdlsStatusUpdateHandler( pAdapter, pRoamInfo,
