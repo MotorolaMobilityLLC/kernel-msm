@@ -2600,9 +2600,7 @@ eHalStatus csrRoamPrepareBssConfig(tpAniSirGlobal pMac, tCsrRoamProfile *pProfil
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     eCsrCfgDot11Mode cfgDot11Mode;
-#if defined(VOSS_ENABLED)
     VOS_ASSERT( pIes != NULL );
-#endif
 
     do
     {
@@ -3114,9 +3112,7 @@ static eHalStatus csrGetRateSet( tpAniSirGlobal pMac,  tCsrRoamProfile *pProfile
     tANI_U8 *pDstRate;
     palZeroMemory(pMac->hHdd, pOpRateSet, sizeof(tSirMacRateSet));
     palZeroMemory(pMac->hHdd, pExRateSet, sizeof(tSirMacRateSet));
-#if defined(VOSS_ENABLED)
     VOS_ASSERT( pIes != NULL );
-#endif
     
     if( NULL != pIes )
     {
@@ -3187,9 +3183,7 @@ static void csrSetCfgRateSet( tpAniSirGlobal pMac, eCsrPhyMode phyMode, tCsrRoam
     tANI_U32 PropRatesEnable = 0;
     tANI_U8 MCSRateIdxSet[ SIZE_OF_SUPPORTED_MCS_SET ];
     tANI_U32 MCSRateLength = 0;
-#if defined(VOSS_ENABLED)
     VOS_ASSERT( pIes != NULL );
-#endif
     if( NULL != pIes )
     {
         csrIsPhyModeMatch( pMac, phyMode, pBssDesc, pProfile, &cfgDot11Mode, pIes );
@@ -5318,9 +5312,7 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
             roamInfo.pbFrames = pSession->connectedInfo.pbFrames;
             roamInfo.staId = pSession->connectedInfo.staId;
             roamInfo.u.pConnectedProfile = &pSession->connectedProfile;
-#if defined(VOSS_ENABLED)
             VOS_ASSERT( roamInfo.staId != 0 );
-#endif
             pSession->bRefAssocStartCnt--;
             csrRoamCallCallback(pMac, sessionId, &roamInfo, pCommand->u.roamCmd.roamId, 
                                         eCSR_ROAM_ASSOCIATION_COMPLETION, eCSR_ROAM_RESULT_ASSOCIATED);
@@ -9630,9 +9622,7 @@ void csrRoamCompletion(tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamInfo *pR
     if(pCommand)
     {
         roamId = pCommand->u.roamCmd.roamId;
-#if defined(VOSS_ENABLED)
         VOS_ASSERT( sessionId == pCommand->sessionId );
-#endif
     }
     if(eCSR_ROAM_ROAMING_COMPLETION == roamStatus)
     {
@@ -11415,13 +11405,11 @@ static eHalStatus csrRoamStartWds( tpAniSirGlobal pMac, tANI_U32 sessionId, tCsr
     }
     else
     {
-#if defined(VOSS_ENABLED)
         //We don't expect Bt-AMP HDD not to disconnect the last connection first at this time. 
         //Otherwise we need to add code to handle the
         //situation just like IBSS. Though for WDS station, we need to send disassoc to PE first then 
         //send stop_bss to PE, before we can continue.
         VOS_ASSERT( !csrIsConnStateWds( pMac, sessionId ) );
-#endif
         palZeroMemory(pMac->hHdd, &bssConfig, sizeof(tBssConfigParam));
         /* Assume HDD provide bssid in profile */
         palCopyMemory( pMac->hHdd, &pSession->bssParams.bssid, pProfile->BSSIDs.bssid[0], sizeof(tCsrBssid) );

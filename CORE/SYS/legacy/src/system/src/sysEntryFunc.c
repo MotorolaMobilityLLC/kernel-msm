@@ -71,10 +71,8 @@
 tSirRetStatus
 postPTTMsgApi(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 
-#ifdef VOSS_ENABLED
 #include "vos_types.h"
 #include "vos_packet.h"
-#endif
 
 // ---------------------------------------------------------------------------
 /**

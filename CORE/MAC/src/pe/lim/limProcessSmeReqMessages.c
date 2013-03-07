@@ -116,9 +116,7 @@ static tANI_BOOLEAN __limProcessSmeStopBssReq(tpAniSirGlobal, tpSirMsgQ pMsg);
 
 void __limProcessSmeAssocCnfNew(tpAniSirGlobal, tANI_U32, tANI_U32 *);
 
-#ifdef VOSS_ENABLED
 extern void peRegisterTLHandle(tpAniSirGlobal pMac);
-#endif
 
 extern int limProcessRemainOnChnlReq(tpAniSirGlobal pMac, tANI_U32 *pMsg);
 
@@ -431,16 +429,14 @@ __limProcessSmeSysReadyInd(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     msg.bodyptr =  pMsgBuf;
     msg.bodyval = 0;
 
-#ifdef VOSS_ENABLED
-    if(pMac->gDriverType != eDRIVER_TYPE_MFG)
+    if (pMac->gDriverType != eDRIVER_TYPE_MFG)
     {
-    peRegisterTLHandle(pMac);
+        peRegisterTLHandle(pMac);
     }
-#endif
     PELOGW(limLog(pMac, LOGW, FL("sending WDA_SYS_READY_IND msg to HAL\n"));)
     MTRACE(macTraceMsgTx(pMac, NO_SESSION, msg.type));
 
-    if(eSIR_SUCCESS != wdaPostCtrlMsg(pMac, &msg))
+    if (eSIR_SUCCESS != wdaPostCtrlMsg(pMac, &msg))
     {
         limLog(pMac, LOGP, FL("wdaPostCtrlMsg failed\n"));
         return eANI_BOOLEAN_TRUE;
