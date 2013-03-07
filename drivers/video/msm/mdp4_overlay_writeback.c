@@ -108,11 +108,15 @@ int mdp4_overlay_writeback_on(struct platform_device *pdev)
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 
-	if (!mfd)
+	if (!mfd) {
+		pr_err("%s: !mfd\n", __func__);
 		return -ENODEV;
+	}
 
-	if (mfd->key != MFD_KEY)
+	if (mfd->key != MFD_KEY) {
+		pr_err("%s: mfd->key != MFD_KEY\n", __func__);
 		return -EINVAL;
+	}
 
 	vctrl = &vsync_ctrl_db[cndx];
 	vctrl->mfd = mfd;
