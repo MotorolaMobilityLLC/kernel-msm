@@ -223,6 +223,7 @@ struct msm_otg_platform_data {
 	bool core_clk_always_on_workaround;
 	struct msm_bus_scale_pdata *bus_scale_table;
 	const char *mhl_dev_name;
+	bool factory_kill_handler_disable;
 };
 
 /* Timeout (in msec) values (min - max) associated with OTG timers */

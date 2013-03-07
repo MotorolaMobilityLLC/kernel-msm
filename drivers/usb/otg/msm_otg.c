@@ -3066,11 +3066,13 @@ static void msm_pmic_id_status_w(struct work_struct *w)
 		factory_cable = 1;
 	} else
 		if (factory_cable) {
-			pr_info_once("Factory Cable Detached!"
-					" 2 sec to power off.\n");
-			local_irq_restore(flags);
-			kernel_halt();
-			return;
+			pr_info_once("Factory Cable Detached!\n");
+			if (!motg->pdata->factory_kill_handler_disable) {
+				pr_info_once("2 sec to power off.\n");
+				local_irq_restore(flags);
+				kernel_halt();
+				return;
+			}
 		}
 
 	if (id_gnd || !id_flt) {
