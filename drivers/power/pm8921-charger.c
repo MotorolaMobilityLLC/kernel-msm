@@ -4845,6 +4845,7 @@ static void detect_battery_removal(struct pm8921_chg_chip *chip)
 	pm8xxx_readb(chip->dev->parent, CHG_CNTRL, &temp);
 	pr_debug("upon restart CHG_CNTRL = 0x%x\n",  temp);
 
+#ifndef CONFIG_PM8921_EXTENDED_INFO
 	if (!(temp & VREF_BATT_THERM_FORCE_ON))
 		/*
 		 * batt therm force on bit is battery backed and is default 0
@@ -4852,6 +4853,7 @@ static void detect_battery_removal(struct pm8921_chg_chip *chip)
 		 * 0 that means the battery was removed. Tell the bms about it
 		 */
 		pm8921_bms_invalidate_shutdown_soc();
+#endif
 }
 
 #define ENUM_TIMER_STOP_BIT	BIT(1)
