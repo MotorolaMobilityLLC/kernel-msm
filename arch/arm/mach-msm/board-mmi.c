@@ -34,6 +34,7 @@
 #include <mach/mpm.h>
 #include <mach/msm_smsm.h>
 #include <mach/restart.h>
+#include <mach/socinfo.h>
 
 #include "board-8960.h"
 #include "board-mmi.h"
@@ -384,6 +385,8 @@ static void __init mmi_otg_init(struct msm8960_oem_init_ptrs *oem_ptr,
 
 put_node:
 	of_node_put(chosen);
+	otg_pdata->factory_kill_handler_disable = cpu_is_msm8960() ||
+					mmi_boot_mode_is_factory();
 	return;
 }
 
