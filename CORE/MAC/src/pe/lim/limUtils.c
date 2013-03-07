@@ -5523,16 +5523,18 @@ limProcessAddBaInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     tpBaActivityInd     pBaActivityInd;
     tpPESession         psessionEntry;
     tANI_U8             sessionId;
-
+#ifdef FEATURE_WLAN_TDLS
+    boolean             htCapable = FALSE;
+#endif
     
 
-    if(limMsg->bodyptr == NULL)
+    if (limMsg->bodyptr == NULL)
         return;
     
     pBaActivityInd = (tpBaActivityInd)limMsg->bodyptr;
     baCandidateCnt = pBaActivityInd->baCandidateCnt;
 
-    if((psessionEntry = peFindSessionByBssid(pMac,pBaActivityInd->bssId,&sessionId))== NULL)
+    if ((psessionEntry = peFindSessionByBssid(pMac,pBaActivityInd->bssId,&sessionId))== NULL)
     {
         limLog(pMac, LOGE,FL("session does not exist for given BSSId\n"));
         palFreeMemory(pMac->hHdd, limMsg->bodyptr);
@@ -5540,28 +5542,58 @@ limProcessAddBaInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     }
        
     //if we are not HT capable we don't need to handle BA timeout indication from HAL.
-    if( (baCandidateCnt  > pMac->lim.maxStation) || !psessionEntry->htCapability )
+#ifdef FEATURE_WLAN_TDLS
+    if ((baCandidateCnt  > pMac->lim.maxStation))
+#else
+    if ((baCandidateCnt  > pMac->lim.maxStation) || !psessionEntry->htCapability )
+#endif
     {
         palFreeMemory(pMac->hHdd, limMsg->bodyptr);
         return;
     }
+
+#ifdef FEATURE_WLAN_TDLS
+    //if we have TDLS peers, we should look at peers HT capability, which can be different than
+    //AP capability
+    pBaCandidate =  (tpAddBaCandidate) (((tANI_U8*)pBaActivityInd) + sizeof(tBaActivityInd));
+
+    for (i=0; i<baCandidateCnt; i++, pBaCandidate++)
+    {
+       pSta = dphLookupHashEntry(pMac, pBaCandidate->staAddr, &assocId, &psessionEntry->dph.dphHashTable);
+       if ((NULL == pSta) || (!pSta->valid))
+           continue;
+
+       if (STA_ENTRY_TDLS_PEER == pSta->staType)
+           htCapable = pSta->mlmStaContext.htCapability;
+       else
+           htCapable = psessionEntry->htCapability;
+
+       if (htCapable)
+           break;
+    }
+    if (!htCapable)
+    {
+        palFreeMemory(pMac->hHdd, limMsg->bodyptr);
+        return;
+    }
+#endif
   
     //delete the complete dialoguetoken linked list
     limDeleteDialogueTokenList(pMac);
     pBaCandidate =  (tpAddBaCandidate) (((tANI_U8*)pBaActivityInd) + sizeof(tBaActivityInd));
 
-    for(i=0; i<baCandidateCnt; i++, pBaCandidate++) 
+    for (i=0; i<baCandidateCnt; i++, pBaCandidate++)
     {
        pSta = dphLookupHashEntry(pMac, pBaCandidate->staAddr, &assocId, &psessionEntry->dph.dphHashTable);
-       if( (NULL == pSta) || (!pSta->valid))
-        continue;
+       if ((NULL == pSta) || (!pSta->valid))
+           continue;
 
         for (tid=0; tid<STACFG_MAX_TC; tid++)
         {
-            if( (eBA_DISABLE == pSta->tcCfg[tid].fUseBATx) && 
+            if((eBA_DISABLE == pSta->tcCfg[tid].fUseBATx) &&
                  (pBaCandidate->baInfo[tid].fBaEnable))
             {
-               PELOG2(limLog(pMac, LOG2, FL("BA setup for staId = %d, TID: %d, SSN:%d.\n"),
+               PELOG2(limLog(pMac, LOG2, FL("BA setup for staId = %d, TID: %d, SSN: %d"),
                         pSta->staIndex, tid, pBaCandidate->baInfo[tid].startingSeqNum);)
                 limPostMlmAddBAReq(pMac, pSta, tid, pBaCandidate->baInfo[tid].startingSeqNum,psessionEntry);  
             }

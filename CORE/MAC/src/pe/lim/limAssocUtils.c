@@ -1522,8 +1522,11 @@ tSirRetStatus limPopulateVhtMcsSet(tpAniSirGlobal pMac,
                                   tpPESession psessionEntry)
 {
     tANI_U32 val;
+    tANI_U32 selfStaDot11Mode=0;
+    wlan_cfgGetInt(pMac,WNI_CFG_DOT11_MODE,&selfStaDot11Mode);
 
-    if(IS_DOT11_MODE_VHT(psessionEntry->dot11mode))
+//    if(IS_DOT11_MODE_VHT(psessionEntry->dot11mode))
+    if (IS_DOT11_MODE_VHT(selfStaDot11Mode))
     {
         if ( wlan_cfgGetInt( pMac,WNI_CFG_VHT_RX_MCS_MAP,&val) != 
             eSIR_SUCCESS )
@@ -1627,8 +1630,10 @@ limPopulateOwnRateSet(tpAniSirGlobal pMac,
     tANI_U32                     i,j,val,min,isArate;
     tANI_U32 phyMode = 0;
 
+    tANI_U32 selfStaDot11Mode=0;
     isArate = 0;
 
+    wlan_cfgGetInt(pMac, WNI_CFG_DOT11_MODE, &selfStaDot11Mode);
     limGetPhyMode(pMac, &phyMode, psessionEntry);
 
     // Get own rate set
@@ -1740,7 +1745,8 @@ limPopulateOwnRateSet(tpAniSirGlobal pMac,
     }
 
 
-    if(IS_DOT11_MODE_HT(psessionEntry->dot11mode))
+    //if(IS_DOT11_MODE_HT(psessionEntry->dot11mode))
+    if (IS_DOT11_MODE_HT(selfStaDot11Mode))
     {
         val = SIZE_OF_SUPPORTED_MCS_SET;
         if (wlan_cfgGetStr(pMac, WNI_CFG_SUPPORTED_MCS_SET,
@@ -2090,7 +2096,7 @@ limPopulateMatchingRateSet(tpAniSirGlobal pMac,
 tSirRetStatus
 limAddSta(
     tpAniSirGlobal  pMac,
-    tpDphHashNode   pStaDs,tpPESession psessionEntry)
+    tpDphHashNode   pStaDs, tANI_U8 updateEntry, tpPESession psessionEntry)
 {
     tpAddStaParams pAddStaParams = NULL;
     tSirMsgQ msgQ;
@@ -2157,6 +2163,8 @@ limAddSta(
   // This will indicate HAL to "allocate" a new STA index
     pAddStaParams->staIdx = HAL_STA_INVALID_IDX;
     pAddStaParams->staType = pStaDs->staType;
+
+    pAddStaParams->updateSta = updateEntry;
 
     pAddStaParams->status = eHAL_STATUS_SUCCESS;
     pAddStaParams->respReqd = 1;
@@ -2517,6 +2525,19 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
     tSirRetStatus     retCode = eSIR_SUCCESS;
     tSirMacAddr staMac;
     tANI_U32 listenInterval = WNI_CFG_LISTEN_INTERVAL_STADEF;
+    /*This self Sta dot 11 mode comes from the cfg and the expectation here is
+     * that cfg carries the systemwide capability that device under
+     * consideration can support. This capability gets plumbed into the cfg
+     * cache at system initialization time via the .dat and .ini file override
+     * mechanisms and will not change. If it does change, it is the
+     * responsibility of SME to evict the selfSta and reissue a new AddStaSelf
+     * command.*/
+    tANI_U32 selfStaDot11Mode=0, selfTxWidth=0;
+    wlan_cfgGetInt(pMac,WNI_CFG_DOT11_MODE,&selfStaDot11Mode);
+    limLog( pMac, LOG1, FL("cfgDot11Mode %d"),(int)selfStaDot11Mode);
+    wlan_cfgGetInt(pMac,WNI_CFG_HT_CAP_INFO_SUPPORTED_CHAN_WIDTH_SET,&selfTxWidth);
+    limLog( pMac, LOG1, FL("SGI 20 %d"),(int)selfTxWidth);
+    limLog( pMac, LOG1, FL("Roam Channel Bonding Mode %d"),(int)pMac->roam.configParam.uCfgDot11Mode);
 
     #if 0
     retCode =wlan_cfgGetStr(pMac, WNI_CFG_STA_ID, staMac, &cfg);
@@ -2563,9 +2584,12 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
 #else
     limPopulateOwnRateSet(pMac, &pAddStaParams->supportedRates, NULL, false,psessionEntry);
 #endif
-    if( psessionEntry->htCapability)
+//    if( psessionEntry->htCapability)---> old check
+    /*We used to check if the session is htCapable before setting the htCapable
+     * flag. The check limited us from operating  */
+    if ( IS_DOT11_MODE_HT(selfStaDot11Mode) )
     {
-        pAddStaParams->htCapable = psessionEntry->htCapability;
+        pAddStaParams->htCapable = TRUE ;
 #ifdef DISABLE_GF_FOR_INTEROP
         /*
          * To resolve the interop problem with Broadcom AP, 
@@ -2580,23 +2604,32 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
         }
         else
 #endif
-
-        pAddStaParams->greenFieldCapable = limGetHTCapability( pMac, eHT_GREENFIELD, psessionEntry);
-        pAddStaParams->txChannelWidthSet = limGetHTCapability( pMac, eHT_SUPPORTED_CHANNEL_WIDTH_SET, psessionEntry);
-        pAddStaParams->mimoPS            = limGetHTCapability( pMac, eHT_MIMO_POWER_SAVE, psessionEntry );
-        pAddStaParams->rifsMode          = limGetHTCapability( pMac, eHT_RIFS_MODE, psessionEntry );
-        pAddStaParams->lsigTxopProtection = limGetHTCapability( pMac, eHT_LSIG_TXOP_PROTECTION, psessionEntry );
-        pAddStaParams->delBASupport      = limGetHTCapability( pMac, eHT_DELAYED_BA, psessionEntry );
-        pAddStaParams->maxAmpduDensity   = limGetHTCapability( pMac, eHT_MPDU_DENSITY, psessionEntry );
-        pAddStaParams->maxAmpduSize   = limGetHTCapability(pMac, eHT_MAX_RX_AMPDU_FACTOR, psessionEntry);
-        pAddStaParams->maxAmsduSize      = limGetHTCapability( pMac, eHT_MAX_AMSDU_LENGTH, psessionEntry );
-        pAddStaParams->fDsssCckMode40Mhz = limGetHTCapability( pMac, eHT_DSSS_CCK_MODE_40MHZ, psessionEntry);
-        pAddStaParams->fShortGI20Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_20MHZ, psessionEntry);
-        pAddStaParams->fShortGI40Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_40MHZ, psessionEntry);
+        {
+            pAddStaParams->greenFieldCapable = limGetHTCapability( pMac, eHT_GREENFIELD, psessionEntry);
+            pAddStaParams->txChannelWidthSet =
+                  pMac->roam.configParam.channelBondingMode5GHz;
+            // pAddStaParams->txChannelWidthSet = limGetHTCapability( pMac, eHT_SUPPORTED_CHANNEL_WIDTH_SET, psessionEntry);
+            pAddStaParams->mimoPS             = limGetHTCapability( pMac, eHT_MIMO_POWER_SAVE, psessionEntry );
+            pAddStaParams->rifsMode           = limGetHTCapability( pMac, eHT_RIFS_MODE, psessionEntry );
+            pAddStaParams->lsigTxopProtection = limGetHTCapability( pMac, eHT_LSIG_TXOP_PROTECTION, psessionEntry );
+            pAddStaParams->delBASupport       = limGetHTCapability( pMac, eHT_DELAYED_BA, psessionEntry );
+            pAddStaParams->maxAmpduDensity    = limGetHTCapability( pMac, eHT_MPDU_DENSITY, psessionEntry );
+            pAddStaParams->maxAmpduSize       = limGetHTCapability(pMac, eHT_MAX_RX_AMPDU_FACTOR, psessionEntry);
+            pAddStaParams->maxAmsduSize       = limGetHTCapability( pMac, eHT_MAX_AMSDU_LENGTH, psessionEntry );
+            pAddStaParams->fDsssCckMode40Mhz  = limGetHTCapability( pMac, eHT_DSSS_CCK_MODE_40MHZ, psessionEntry);
+            pAddStaParams->fShortGI20Mhz      = WNI_CFG_SHORT_GI_20MHZ_STAMAX;
+            // pAddStaParams->fShortGI20Mhz   = limGetHTCapability( pMac, eHT_SHORT_GI_20MHZ, psessionEntry);
+            pAddStaParams->fShortGI40Mhz      = WNI_CFG_SHORT_GI_40MHZ_STAMAX;
+            // pAddStaParams->fShortGI40Mhz   = limGetHTCapability( pMac, eHT_SHORT_GI_40MHZ, psessionEntry);
+       }
     }
 #ifdef WLAN_FEATURE_11AC
-    pAddStaParams->vhtCapable = psessionEntry->vhtCapability;
-    pAddStaParams->vhtTxChannelWidthSet = psessionEntry->apChanWidth;
+    pAddStaParams->vhtCapable = IS_DOT11_MODE_VHT(selfStaDot11Mode);
+    if (pAddStaParams->vhtCapable){
+        pAddStaParams->vhtTxChannelWidthSet =
+            pMac->roam.configParam.nVhtChannelWidth;
+        limLog( pMac, LOG1, FL("VHT WIDTH SET %d"),pAddStaParams->vhtTxChannelWidthSet);
+    }
     pAddStaParams->vhtTxBFCapable = psessionEntry->txBFIniFeatureEnabled;
 #endif
 
@@ -2615,7 +2648,8 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
         pAddStaParams->p2pCapableSta = 1;       
     }
 
-    limFillSupportedRatesInfo(pMac, NULL, &pAddStaParams->supportedRates,psessionEntry);
+    //limFillSupportedRatesInfo(pMac, NULL, &pAddStaParams->supportedRates,psessionEntry);
+     pAddStaParams->supportedRates.opRateMode = limGetStaRateMode((tANI_U8)selfStaDot11Mode);
 
     msgQ.type = WDA_ADD_STA_REQ;
   //

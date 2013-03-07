@@ -175,6 +175,64 @@ eHalStatus csrTdlsSendMgmtReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsSendMg
 /*
  * TDLS request API, called from HDD to add a TDLS peer 
  */
+eHalStatus csrTdlsChangePeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac,
+                                tCsrStaParams *pstaParams)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    tSmeCmd *tdlsAddStaCmd ;
+    eHalStatus status = eHAL_STATUS_FAILURE ;
+
+    //If connected and in Infra. Only then allow this
+    if (CSR_IS_SESSION_VALID( pMac, sessionId ) &&
+        csrIsConnStateConnectedInfra( pMac, sessionId ) &&
+        (NULL != peerMac)){
+
+        tdlsAddStaCmd = csrGetCommandBuffer(pMac) ;
+
+        if (tdlsAddStaCmd)
+        {
+            tTdlsAddStaCmdInfo *tdlsAddStaCmdInfo =
+                         &tdlsAddStaCmd->u.tdlsCmd.u.tdlsAddStaCmdInfo ;
+
+            tdlsAddStaCmdInfo->tdlsAddOper = TDLS_OPER_UPDATE;
+
+            tdlsAddStaCmd->sessionId = sessionId;
+
+            palCopyMemory(pMac->hHdd, tdlsAddStaCmdInfo->peerMac,
+                          peerMac, sizeof(tSirMacAddr)) ;
+            tdlsAddStaCmdInfo->capability = pstaParams->capability;
+            tdlsAddStaCmdInfo->uapsdQueues = pstaParams->uapsd_queues;
+            tdlsAddStaCmdInfo->maxSp = pstaParams->max_sp;
+            palCopyMemory(pMac->hHdd, tdlsAddStaCmdInfo->extnCapability,
+                          pstaParams->extn_capability,
+                          sizeof(pstaParams->extn_capability));
+
+            palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->HTCap,
+                          &pstaParams->HTCap, sizeof(pstaParams->HTCap));
+
+            palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->VHTCap,
+                          &pstaParams->VHTCap, sizeof(pstaParams->VHTCap));
+
+			tdlsAddStaCmdInfo->supportedRatesLen = pstaParams->supported_rates_len;
+
+            if (0 != pstaParams->supported_rates_len)
+                palCopyMemory(pMac->hHdd, &tdlsAddStaCmdInfo->supportedRates,
+                              pstaParams->supported_rates,
+                              pstaParams->supported_rates_len);
+
+            tdlsAddStaCmd->command = eSmeCommandTdlsAddPeer;
+            tdlsAddStaCmd->u.tdlsCmd.size = sizeof(tTdlsAddStaCmdInfo) ;
+            smePushCommand(pMac, tdlsAddStaCmd, FALSE) ;
+            status = eHAL_STATUS_SUCCESS ;
+        }
+    }
+
+    return status ;
+}
+
+/*
+ * TDLS request API, called from HDD to add a TDLS peer
+ */
 eHalStatus csrTdlsAddPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
@@ -194,6 +252,7 @@ eHalStatus csrTdlsAddPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr pee
                 &tdlsAddStaCmd->u.tdlsCmd.u.tdlsAddStaCmdInfo ;
 
             tdlsAddStaCmd->sessionId = sessionId;
+            tdlsAddStaCmdInfo->tdlsAddOper = TDLS_OPER_ADD;
 
             palCopyMemory(pMac->hHdd, tdlsAddStaCmdInfo->peerMac, 
                     peerMac, sizeof(tSirMacAddr)) ; 
@@ -209,7 +268,7 @@ eHalStatus csrTdlsAddPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr pee
 }
 
 /*
- * TDLS request API, called from HDD to delete a TDLS peer 
+ * TDLS request API, called from HDD to delete a TDLS peer
  */
 eHalStatus csrTdlsDelPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr peerMac)
 {
@@ -447,6 +506,7 @@ eHalStatus csrTdlsProcessAddSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
         return status ;
     }
     tdlsAddStaReq->sessionId = cmd->sessionId;
+    tdlsAddStaReq->tdlsAddOper = tdlsAddStaCmdInfo->tdlsAddOper;
     //Using dialog as transactionId. This can be used to match response with request
     tdlsAddStaReq->transactionId = 0;
 
@@ -463,6 +523,21 @@ eHalStatus csrTdlsProcessAddSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
 
     palCopyMemory(pMac->hHdd, tdlsAddStaReq->peerMac, 
             tdlsAddStaCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
+
+    tdlsAddStaReq->capability = tdlsAddStaCmdInfo->capability;
+    tdlsAddStaReq->uapsd_queues = tdlsAddStaCmdInfo->uapsdQueues;
+    tdlsAddStaReq->max_sp = tdlsAddStaCmdInfo->maxSp;
+
+    palCopyMemory(pMac->hHdd, tdlsAddStaReq->extn_capability,
+                              tdlsAddStaCmdInfo->extnCapability,
+                              SIR_MAC_MAX_EXTN_CAP);
+    palCopyMemory(pMac->hHdd, &tdlsAddStaReq->htCap,
+                  &tdlsAddStaCmdInfo->HTCap, sizeof(tdlsAddStaCmdInfo->HTCap));
+    palCopyMemory(pMac->hHdd, &tdlsAddStaReq->vhtCap,
+                  &tdlsAddStaCmdInfo->VHTCap, sizeof(tdlsAddStaCmdInfo->VHTCap));
+    tdlsAddStaReq->supported_rates_length = tdlsAddStaCmdInfo->supportedRatesLen;
+    palCopyMemory(pMac->hHdd, &tdlsAddStaReq->supported_rates,
+                  tdlsAddStaCmdInfo->supportedRates, tdlsAddStaCmdInfo->supportedRatesLen);
 
     // Send the request to PE.
     smsLog( pMac, LOGE, "sending TDLS Add Sta req to PE \n" );
@@ -823,6 +898,7 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
         case eWNI_SME_TDLS_ADD_STA_RSP:
         {
             tSirTdlsAddStaRsp *addStaRsp = (tSirTdlsAddStaRsp *) pMsgBuf ;
+            eCsrRoamResult roamResult ;
             tCsrRoamInfo roamInfo = {0} ;
             palCopyMemory(pMac->hHdd, &roamInfo.peerMac, addStaRsp->peerMac, 
                                          sizeof(tSirMacAddr)) ;
@@ -834,9 +910,13 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
              * register peer with TL, we have to go through HDD as this is
              * the only way to register any STA with TL.
              */
+            if (addStaRsp->tdlsAddOper == TDLS_OPER_ADD)
+                roamResult = eCSR_ROAM_RESULT_ADD_TDLS_PEER;
+            else if (addStaRsp->tdlsAddOper == TDLS_OPER_UPDATE)
+                roamResult = eCSR_ROAM_RESULT_UPDATE_TDLS_PEER;
             csrRoamCallCallback(pMac, addStaRsp->sessionId, &roamInfo, 0, 
                          eCSR_ROAM_TDLS_STATUS_UPDATE, 
-                               eCSR_ROAM_RESULT_ADD_TDLS_PEER);
+                               roamResult);
  
             /* remove pending eSmeCommandTdlsDiscovery command */
             csrTdlsRemoveSmeCmd(pMac, eSmeCommandTdlsAddPeer) ;

@@ -2168,7 +2168,7 @@ void limProcessBtAmpApMlmDelStaRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPES
        if(eLIM_MLM_WT_ASSOC_DEL_STA_RSP_STATE == pStaDs->mlmStaContext.mlmState)
        {
             palFreeMemory( pMac->hHdd, (void *) pDelStaParams );
-            if (limAddSta(pMac, pStaDs,psessionEntry) != eSIR_SUCCESS)
+            if (limAddSta(pMac, pStaDs, false, psessionEntry) != eSIR_SUCCESS)
             {
                 PELOGE(limLog(pMac, LOGE,
                        FL("could not Add STA with assocId=%d\n"),

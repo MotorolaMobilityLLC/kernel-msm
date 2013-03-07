@@ -3032,6 +3032,31 @@ tANI_U32 dot11fGetPackedIEWMMTSPEC(tpAniSirGlobal, tDot11fIEWMMTSPEC*, tANI_U32*
 #ifdef __cplusplus
 }; /* End extern "C". */
 #endif /* C++ */
+// EID 197 (0xc5)
+typedef struct sDot11fIEAID {
+    tANI_U8      present;
+    tANI_U16     assocId;
+} tDot11fIEAID;
+
+#define DOT11F_EID_AID ( 197 )
+
+// N.B. These #defines do *not* include the EID & length
+#define DOT11F_IE_AID_MIN_LEN ( 2 )
+
+#define DOT11F_IE_AID_MAX_LEN ( 2 )
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* C++ */
+tANI_U32 dot11fUnpackIeAID(tpAniSirGlobal, tANI_U8*,tANI_U8, tDot11fIEAID*);
+
+tANI_U32 dot11fPackIeAID(tpAniSirGlobal, tDot11fIEAID*, tANI_U8*, tANI_U32, tANI_U32*);
+
+tANI_U32 dot11fGetPackedIEAID(tpAniSirGlobal, tDot11fIEAID*, tANI_U32*);
+
+#ifdef __cplusplus
+}; /* End extern "C". */
+#endif /* C++ */
 // EID 221 (0xdd) {OUI 0x00, 0x0a, 0xf5}
 typedef struct sDot11fIEAirgo {
     tANI_U8                     present;
@@ -7244,6 +7269,7 @@ typedef struct sDot11fTDLSDisRsp{
     tDot11fIERICData           RICData;
     tDot11fIEHTCaps            HTCaps;
     tDot11fIELinkIdentifier    LinkIdentifier;
+    tDot11fIEVHTCaps           VHTCaps;
 } tDot11fTDLSDisRsp;
 
 #define DOT11F_TDLSDISRSP ( 45 )
@@ -7316,6 +7342,7 @@ typedef struct sDot11fTDLSSetupCnf{
     tDot11fIEHTInfo            HTInfo;
     tDot11fIELinkIdentifier    LinkIdentifier;
     tDot11fIEWMMInfoStation    WMMInfoStation;
+    tDot11fIEVHTOperation      VHTOperation;
 } tDot11fTDLSSetupCnf;
 
 #define DOT11F_TDLSSETUPCNF ( 48 )
@@ -7350,6 +7377,8 @@ typedef struct sDot11fTDLSSetupReq{
     tDot11fIEHTCaps            HTCaps;
     tDot11fIELinkIdentifier    LinkIdentifier;
     tDot11fIEWMMInfoStation    WMMInfoStation;
+    tDot11fIEAID               AID;
+    tDot11fIEVHTCaps           VHTCaps;
 } tDot11fTDLSSetupReq;
 
 #define DOT11F_TDLSSETUPREQ ( 49 )
@@ -7385,6 +7414,8 @@ typedef struct sDot11fTDLSSetupRsp{
     tDot11fIEHTCaps            HTCaps;
     tDot11fIELinkIdentifier    LinkIdentifier;
     tDot11fIEWMMInfoStation    WMMInfoStation;
+    tDot11fIEAID               AID;
+    tDot11fIEVHTCaps           VHTCaps;
 } tDot11fTDLSSetupRsp;
 
 #define DOT11F_TDLSSETUPRSP ( 50 )

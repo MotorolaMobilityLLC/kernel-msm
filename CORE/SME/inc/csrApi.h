@@ -255,6 +255,17 @@ typedef struct tagCsrBSSIDs
     tCsrBssid *bssid;
 }tCsrBSSIDs;
 
+typedef struct tagCsrStaParams
+{
+    tANI_U16   capability;
+    tANI_U8    extn_capability[SIR_MAC_MAX_EXTN_CAP];
+    tANI_U8    supported_rates_len;
+    tANI_U8    supported_rates[SIR_MAC_MAX_SUPP_RATES];
+    tSirHTCap  HTCap;
+    tSirVHTCap VHTCap;
+    tANI_U8    uapsd_queues;
+    tANI_U8    max_sp;
+}tCsrStaParams;
 
 typedef struct tagCsrScanRequest
 {
@@ -531,6 +542,7 @@ typedef enum
     eCSR_ROAM_RESULT_ASSOC_FAIL_CON_CHANNEL,
 #ifdef FEATURE_WLAN_TDLS
     eCSR_ROAM_RESULT_ADD_TDLS_PEER,
+    eCSR_ROAM_RESULT_UPDATE_TDLS_PEER,
     eCSR_ROAM_RESULT_DELETE_TDLS_PEER,
     eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND,
     eCSR_ROAM_RESULT_DELETE_ALL_TDLS_PEER_IND,
