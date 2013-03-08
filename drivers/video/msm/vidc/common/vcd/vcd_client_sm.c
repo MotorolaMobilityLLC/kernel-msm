@@ -1745,7 +1745,7 @@ static const struct vcd_clnt_state_table vcd_clnt_table_flushing = {
 	 vcd_get_buffer_requirements_cmn,
 	 NULL,
 	 NULL,
-	 NULL,
+	 vcd_free_buffer_cmn,
 	 vcd_fill_output_buffer_cmn,
 	 vcd_clnt_cb_in_flushing,
 	 },

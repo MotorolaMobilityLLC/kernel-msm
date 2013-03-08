@@ -155,6 +155,8 @@ int adreno_drawctxt_create(struct kgsl_device *device,
 	if (drawctxt == NULL)
 		return -ENOMEM;
 
+	drawctxt->pid = task_pid_nr(current);
+	strlcpy(drawctxt->pid_name, current->comm, TASK_COMM_LEN);
 	drawctxt->pagetable = pagetable;
 	drawctxt->bin_base_offset = 0;
 	drawctxt->id = context->id;
@@ -176,6 +178,9 @@ int adreno_drawctxt_create(struct kgsl_device *device,
 		}
 		drawctxt->flags |= CTXT_FLAGS_USER_GENERATED_TS;
 	}
+
+	if (flags & KGSL_CONTEXT_NO_FAULT_TOLERANCE)
+		drawctxt->flags |= CTXT_FLAGS_NO_FAULT_TOLERANCE;
 
 	ret = adreno_dev->gpudev->ctxt_create(adreno_dev, drawctxt);
 	if (ret)

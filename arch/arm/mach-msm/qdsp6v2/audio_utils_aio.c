@@ -1,6 +1,6 @@
 /* Copyright (C) 2008 Google, Inc.
  * Copyright (C) 2008 HTC Corporation
- * Copyright (c) 2009-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -468,7 +468,6 @@ int audio_aio_release(struct inode *inode, struct file *file)
 	audio->wflush = 0;
 	audio->drv_ops.out_flush(audio);
 	audio->drv_ops.in_flush(audio);
-	audio_aio_unmap_ion_region(audio);
 	audio_aio_disable(audio);
 	audio_aio_unmap_ion_region(audio);
 	audio_aio_reset_ion_region(audio);
@@ -803,6 +802,11 @@ static void audio_aio_async_write(struct q6audio_aio *audio,
 	struct audio_client *ac;
 	struct audio_aio_write_param param;
 
+        if (!audio || !buf_node) {
+                pr_err("%s: NULL pointer audio=[0x%p], buf_node=[0x%p]\n",
+                        __func__, audio, buf_node);
+                return;
+        }
 	pr_debug("%s[%p]: Send write buff %p phy %lx len %d meta_enable = %d\n",
 		__func__, audio, buf_node, buf_node->paddr,
 		buf_node->buf.data_len,
@@ -829,8 +833,7 @@ static void audio_aio_async_write(struct q6audio_aio *audio,
 	else
 		param.flags = 0xFF00;
 
-	if ((buf_node != NULL) &&
-		(buf_node->meta_info.meta_in.nflags & AUDIO_DEC_EOF_SET))
+	if (buf_node->meta_info.meta_in.nflags & AUDIO_DEC_EOF_SET)
 		param.flags |= AUDIO_DEC_EOF_SET;
 
 	param.uid = param.paddr;
@@ -1078,9 +1081,6 @@ int audio_aio_open(struct q6audio_aio *audio, struct file *file)
 	pr_debug("Ion client create in audio_aio_open %p", audio->client);
 	return 0;
 fail:
-	q6asm_audio_client_free(audio->ac);
-	kfree(audio->codec_cfg);
-	kfree(audio);
 	return rc;
 }
 

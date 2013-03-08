@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -101,6 +101,31 @@ int panel_next_off(struct platform_device *pdev)
 	return ret;
 }
 
+int panel_next_fps_level_change(struct platform_device *pdev,
+					 u32 fps_level)
+{
+	int ret = 0;
+	struct msm_fb_panel_data *pdata;
+	struct msm_fb_panel_data *next_pdata;
+	struct platform_device *next_pdev;
+
+	pdata = (struct msm_fb_panel_data *)pdev->dev.platform_data;
+
+	if (pdata) {
+		next_pdev = pdata->next;
+		if (next_pdev) {
+			next_pdata =
+			    (struct msm_fb_panel_data *)next_pdev->dev.
+			    platform_data;
+			if ((next_pdata) && (next_pdata->fps_level_change))
+				ret = next_pdata->fps_level_change(next_pdev,
+							 fps_level);
+		}
+	}
+
+	return ret;
+}
+
 int panel_next_late_init(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -117,6 +142,28 @@ int panel_next_late_init(struct platform_device *pdev)
 					next_pdev->dev.platform_data;
 			if ((next_pdata) && (next_pdata->late_init))
 				ret = next_pdata->late_init(next_pdev);
+		}
+	}
+
+	return ret;
+}
+
+int panel_next_early_off(struct platform_device *pdev)
+{
+	int ret = 0;
+	struct msm_fb_panel_data *pdata;
+	struct msm_fb_panel_data *next_pdata;
+	struct platform_device *next_pdev;
+
+	pdata = (struct msm_fb_panel_data *)pdev->dev.platform_data;
+
+	if (pdata) {
+		next_pdev = pdata->next;
+		if (next_pdev) {
+			next_pdata = (struct msm_fb_panel_data *)
+					next_pdev->dev.platform_data;
+			if ((next_pdata) && (next_pdata->early_off))
+				ret = next_pdata->early_off(next_pdev);
 		}
 	}
 
