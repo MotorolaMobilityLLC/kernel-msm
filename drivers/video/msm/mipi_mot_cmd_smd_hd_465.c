@@ -45,6 +45,7 @@ static char unlock_lvl_mtp[3] = {0xf1, 0x5a, 0x5a};
 static char unlock_lvl_3[3] = {0xfc, 0x5a, 0x5a};
 static char switch_pwr_to_mem_1[3] = {0xfd, 0x10, 0xfc};
 static char switch_pwr_to_mem_2[3] = {0xc4, 0x07, 0x01};
+static char enable_te[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
 
 #define DEFAULT_DELAY 1
 
@@ -103,6 +104,7 @@ static struct mipi_mot_cmd_seq smd_hd_465_init_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_2),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_mtp),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_3),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, enable_te),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, switch_pwr_to_mem_1),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
