@@ -16,6 +16,7 @@
 #include "mipi_dsi.h"
 #include "mipi_mot.h"
 #include "mdp4.h"
+#include <mach/mmi_panel_notifier.h>
 
 static struct mipi_mot_panel *mot_panel;
 
@@ -439,6 +440,7 @@ static int esd_recovery_start(struct msm_fb_data_type *mfd)
 	if (mot_panel->panel_enable)
 		mot_panel->panel_enable(mfd);
 	atomic_set(&mot_panel->state, MOT_PANEL_ON);
+	mmi_panel_notify(MMI_PANEL_EVENT_POST_INIT, NULL);
 	mdp4_dsi_cmd_pipe_commit(0, 1);
 	mipi_mot_panel_on(mfd);
 	ret = MOT_ESD_OK;
@@ -506,6 +508,7 @@ void mipi_mot_esd_work(void)
 		goto end;
 	}
 
+	pr_debug("%s: is called\n", __func__);
 	mutex_lock(&mfd->panel_info.mipi.panel_mutex);
 	ret = mipi_mot_esd_detection(mfd);
 	mutex_unlock(&mfd->panel_info.mipi.panel_mutex);
