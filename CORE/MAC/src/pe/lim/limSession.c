@@ -446,6 +446,25 @@ void peDeleteSession(tpAniSirGlobal pMac, tpPESession psessionEntry)
         palFreeMemory(pMac->hHdd, (void *)psessionEntry->parsedAssocReq);
         psessionEntry->parsedAssocReq = NULL;
     }
+    if (NULL != psessionEntry->limAssocResponseData)
+    {
+        palFreeMemory( pMac->hHdd, psessionEntry->limAssocResponseData);
+        psessionEntry->limAssocResponseData = NULL;
+    }
+
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+    if (NULL != psessionEntry->pLimMlmReassocRetryReq)
+    {
+        palFreeMemory( pMac->hHdd, psessionEntry->pLimMlmReassocRetryReq);
+        psessionEntry->pLimMlmReassocRetryReq = NULL;
+    }
+#endif
+
+    if (NULL != psessionEntry->pLimMlmReassocReq)
+    {
+        palFreeMemory( pMac->hHdd, psessionEntry->pLimMlmReassocReq);
+        psessionEntry->pLimMlmReassocReq = NULL;
+    }
 
 #ifdef FEATURE_WLAN_CCX
     limCleanupCcxCtxt(pMac, psessionEntry); 
