@@ -31,6 +31,8 @@ Required properties:
         flag to enable hard reset in oppose to soft reset when driver resumes
  - synaptics,shared-regulator:
         flag to enable panel driver driven suspend/resume
+ - synaptics,one-touch-enabled:
+        flag to enable configuring one touch on entering to suspend
 
 Example:
 	i2c@16200000 {
@@ -65,6 +67,7 @@ Example:
 			synaptics,purge-enabled;
 			synaptics,reset-on-resume;
 			synaptics,shared-regulator;
+			synaptics,one-touch-enabled;
 			synaptics,key-buttons = <139 102 158 0>; /* KEY_MENU, KEY_HOME, KEY_BACK */
 		};
 	};
