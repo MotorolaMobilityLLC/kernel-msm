@@ -269,6 +269,8 @@ module_param_cb(bms_meter_offset, &bms_ro_param_ops, &bms_meter_offset, 0644);
 
 static int bms_aged_capacity;
 module_param(bms_aged_capacity, int, 0644);
+static int bms_aged_capacity_temp;
+module_param(bms_aged_capacity_temp, int, 0644);
 
 static int timestamp;
 module_param(timestamp, int, 0644);
