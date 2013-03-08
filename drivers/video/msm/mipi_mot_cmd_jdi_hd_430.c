@@ -39,6 +39,7 @@ static char exit_sleep[2] = {DCS_CMD_EXIT_SLEEP_MODE, 0x00};
 static char display_off[2] = {DCS_CMD_SET_DISPLAY_OFF, 0x00};
 static char led_pwm1[2] = {DCS_CMD_SET_CTRL_DISP, 0x2C};
 static char led_pwm2[2] = {DCS_CMD_SET_CABC, 0x03};
+static char enable_te[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
 
 /* Set scan line to 2/3 of the screen */
 /* TODO
@@ -47,6 +48,7 @@ static char set_scanline[3] = {DCS_CMD_SET_SCAN_LINE, 0x03, 0x55};
 
 static struct dsi_cmd_desc mot_cmd_on_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 120, sizeof(exit_sleep), exit_sleep},
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(enable_te), enable_te},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm1), led_pwm1},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm2), led_pwm2},
 };

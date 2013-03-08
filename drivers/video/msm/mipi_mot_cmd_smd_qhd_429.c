@@ -52,6 +52,7 @@ static struct dsi_cmd_desc display_off_cmds[] = {
 };
 
 static char exit_sleep[2] = {DCS_CMD_EXIT_SLEEP_MODE, 0x00};
+static char enable_te[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
 
 /* Dyanmic Gamma data */
 #define V0 4500000
@@ -161,7 +162,8 @@ static struct dsi_cmd_desc smd_qhd_429_cmds_4[] = {
 };
 static struct dsi_cmd_desc smd_qhd_429_cmds_5[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
-			sizeof(exit_sleep), exit_sleep}
+			sizeof(exit_sleep), exit_sleep},
+	{DTYPE_DCS_WRITE, 1, 0, 0, 1, sizeof(enable_te), enable_te}
 };
 
 /* win size = 540 * 960 */
