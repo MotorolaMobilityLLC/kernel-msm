@@ -22602,6 +22602,20 @@ WDI_ExtractRequestCBFromEvent
   case WDI_SET_TX_PER_TRACKING_REQ:
     *ppfnReqCB   =  ((WDI_SetTxPerTrackingReqParamsType*)pEvent->pEventData)->wdiReqStatusCB;
     *ppUserData  =  ((WDI_SetTxPerTrackingReqParamsType*)pEvent->pEventData)->pUserData;
+    break;
+  case WDI_RECEIVE_FILTER_SET_FILTER_REQ:
+    *ppfnReqCB   =  ((WDI_SetRcvPktFilterReqParamsType*)pEvent->pEventData)->wdiReqStatusCB;
+    *ppUserData  =  ((WDI_SetRcvPktFilterReqParamsType*)pEvent->pEventData)->pUserData;
+    break;
+  case WDI_PACKET_COALESCING_FILTER_MATCH_COUNT_REQ:
+    *ppfnReqCB   =  ((WDI_RcvFltPktMatchCntReqParamsType*)pEvent->pEventData)->wdiReqStatusCB;
+    *ppUserData  =  ((WDI_RcvFltPktMatchCntReqParamsType*)pEvent->pEventData)->pUserData;
+    break;
+  case WDI_RECEIVE_FILTER_CLEAR_FILTER_REQ:
+    *ppfnReqCB   =  ((WDI_RcvFltPktClearReqParamsType*)pEvent->pEventData)->wdiReqStatusCB;
+    *ppUserData  =  ((WDI_RcvFltPktClearReqParamsType*)pEvent->pEventData)->pUserData;
+    break;
+
   default:
     *ppfnReqCB   =  NULL;
     *ppUserData  =  NULL;
