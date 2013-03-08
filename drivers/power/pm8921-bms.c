@@ -919,6 +919,9 @@ static int calculate_fcc_uah(struct pm8921_bms_chip *chip, int batt_temp,
 {
 	int initfcc, result, scalefactor = 0;
 #ifdef CONFIG_PM8921_FLOAT_CHARGE
+	int agedfcc = 0;
+	int agedcap = bms_aged_capacity;
+	int agedtemp = bms_aged_capacity_temp;
 	chip->adjusted_fcc_temp_lut = NULL;
 #endif
 	if (chip->adjusted_fcc_temp_lut == NULL) {
@@ -928,13 +931,30 @@ static int calculate_fcc_uah(struct pm8921_bms_chip *chip, int batt_temp,
 				chargecycles);
 
 #ifdef CONFIG_PM8921_FLOAT_CHARGE
-		if (bms_aged_capacity <= 50) {
-			if (bms_aged_capacity != 0)
-				scalefactor = 50;
-		} else if (bms_aged_capacity >= 100) {
-			scalefactor = 100;
-		} else {
-			scalefactor = bms_aged_capacity;
+		/* bms_aged_capcity is based on Eprom FCC */
+		/* scale by the Eprom FCC and Aged Capacity Temperature */
+		if (bms_aged_capacity != 0) {
+			if ((bms_aged_capacity_temp <= 800) &&
+			    (bms_aged_capacity_temp >= -400)) {
+				agedfcc = interpolate_fcc(chip->fcc_temp_lut,
+							  agedtemp);
+			} else {
+				pr_err("ERR aged_capacity_temp = %d\n",
+				       bms_aged_capacity_temp);
+				agedfcc = initfcc;
+			}
+
+			if (bms_aged_capacity <= 50)
+				agedcap = 50;
+			else if (bms_aged_capacity >= 120)
+				agedcap = 120;
+
+			scalefactor = (agedcap * 10 * chip->fcc) / agedfcc;
+
+			/* Round scalefactor */
+			if ((scalefactor % 10) >= 5)
+				scalefactor += 10;
+			scalefactor /= 10;
 		}
 #endif
 		/* Multiply the initial FCC value by the scale factor. */
