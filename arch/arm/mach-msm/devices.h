@@ -456,3 +456,6 @@ extern struct platform_device msm_gpio_device;
 
 extern struct platform_device amdm_8064_device;
 extern struct platform_device bmdm_8064_device;
+
+extern struct platform_device sglte_mdm_8064_device;
+extern struct platform_device sglte2_qsc_8064_device;
