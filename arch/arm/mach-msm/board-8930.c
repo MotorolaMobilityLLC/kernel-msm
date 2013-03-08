@@ -43,6 +43,7 @@
 #include <linux/memory.h>
 #include <linux/memblock.h>
 #include <linux/msm_thermal.h>
+#include <linux/input/synaptics_dsx.h>
 
 #include <linux/slimbus/slimbus.h>
 #include <linux/mfd/wcd9xxx/core.h>
@@ -2045,6 +2046,37 @@ static struct i2c_board_info mxt_device_info_8930[] __initdata = {
 	},
 };
 
+/*»     Synaptics Thin Driver»  */
+
+#define CLEARPAD3202_ADDR 0x20
+#define CLEARPAD3202_ATTEN_GPIO (11)
+#define CLEARPAD3202_RESET_GPIO (52)
+
+static unsigned char synaptic_rmi4_button_codes[] = {KEY_MENU, KEY_HOME,
+							KEY_BACK};
+
+static struct synaptics_rmi4_capacitance_button_map synaptic_rmi4_button_map = {
+	.nbuttons = ARRAY_SIZE(synaptic_rmi4_button_codes),
+	.map = synaptic_rmi4_button_codes,
+};
+
+static struct synaptics_rmi4_platform_data rmi4_platformdata = {
+	.irq_flags = IRQF_TRIGGER_FALLING,
+	.irq_gpio = CLEARPAD3202_ATTEN_GPIO,
+	.reset_gpio = CLEARPAD3202_RESET_GPIO,
+	.regulator_en = true,
+	.i2c_pull_up = true,
+	.capacitance_button_map = &synaptic_rmi4_button_map,
+};
+
+static struct i2c_board_info rmi4_i2c_devices[] = {
+	{
+		I2C_BOARD_INFO("synaptics_rmi4_i2c",
+		CLEARPAD3202_ADDR),
+		.platform_data = &rmi4_platformdata,
+	},
+};
+
 #define MHL_POWER_GPIO_PM8038	PM8038_GPIO_PM_TO_SYS(MHL_GPIO_PWR_EN)
 #define MHL_POWER_GPIO_PM8917	PM8917_GPIO_PM_TO_SYS(25)
 static struct msm_mhl_platform_data mhl_platform_data = {
@@ -2736,6 +2768,12 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 		ARRAY_SIZE(mxt_device_info_8930),
 	},
 	{
+		I2C_EVT,
+		MSM_8930_GSBI3_QUP_I2C_BUS_ID,
+		rmi4_i2c_devices,
+		ARRAY_SIZE(rmi4_i2c_devices),
+	},
+	{
 		I2C_SURF | I2C_FFA | I2C_LIQUID | I2C_FLUID,
 		MSM_8930_GSBI9_QUP_I2C_BUS_ID,
 		sii_device_info,
@@ -3027,7 +3065,8 @@ static void __init msm8930_cdp_init(void)
 	msm8930_init_cam();
 #endif
 	msm8930_init_mmc();
-	mxt_init_vkeys_8930();
+	if (!machine_is_msm8930_evt())
+		mxt_init_vkeys_8930();
 	register_i2c_devices();
 	msm8930_init_fb();
 	slim_register_board_info(msm_slim_devices,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -68,6 +68,7 @@ VREG_CONSUMERS(L9) = {
 	REGULATOR_SUPPLY("8038_l9",		NULL),
 	REGULATOR_SUPPLY("vdd_ana",		"3-004a"),
 	REGULATOR_SUPPLY("vdd",			"3-0024"),
+	REGULATOR_SUPPLY("vdd",			"3-0020"),
 	REGULATOR_SUPPLY("cam_vana",		"4-001a"),
 	REGULATOR_SUPPLY("cam_vana",		"4-006c"),
 	REGULATOR_SUPPLY("cam_vana",		"4-0048"),
@@ -208,6 +209,7 @@ VREG_CONSUMERS(LVS2) = {
 	REGULATOR_SUPPLY("8038_lvs2",		NULL),
 	REGULATOR_SUPPLY("vcc_i2c",		"3-004a"),
 	REGULATOR_SUPPLY("vcc_i2c",		"3-0024"),
+	REGULATOR_SUPPLY("vcc_i2c",		"3-0020"),
 	REGULATOR_SUPPLY("vcc_i2c",		"0-0048"),
 	REGULATOR_SUPPLY("vddio",		"12-0018"),
 	REGULATOR_SUPPLY("vlogic",		"12-0068"),
