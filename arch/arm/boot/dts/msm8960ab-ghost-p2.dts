@@ -20,10 +20,3 @@
 / {
 	mmi,revision = "p2";
 };
-
-&i2c3 {
-    sy3400@20 {
-        /* P2 uses -r1 firmware */
-        synaptics,sy3400-tdat-filename = "sy3400-r1.tdat";
-    };
-};
