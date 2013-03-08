@@ -83,17 +83,20 @@
 };
 
 &i2c3 {
-	/* FRONT TOUCH */
-	sy3400@20 {
-		compatible = "synaptics,sy3400";
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
 		reg = <0x20>;
 		interrupt-parent = <&msmgpio>;
 		interrupts = <46 0>;
 		gpios = <&msmgpio 46 0>, /* IRQ */
 			<&msmgpio 63 0>; /* RESET */
+		touch_vdd-supply = <&rpm_8921_l11>;
 
-		always_on_capable = <1>;
-		synaptics,sy3400-tdat-filename = "sy3400-r0.tdat";
+		synaptics,purge-enabled;
+		synaptics,reset-on-resume;
+		synaptics,shared-regulator;
+		synaptics,one-touch-enabled;
+		synaptics,key-buttons = <59 60 61 0>; /* F1, F2, F3 */
 	};
 };
 
