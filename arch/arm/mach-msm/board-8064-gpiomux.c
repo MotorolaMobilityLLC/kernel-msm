@@ -1383,6 +1383,49 @@ static struct msm_gpiomux_config sglte2_qsc_configs[] __initdata = {
 	},
 };
 
+static struct gpiomux_setting gsbi4_uartdm_active = {
+	.func = GPIOMUX_FUNC_1,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting gsbi4_uartdm_suspended = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config apq8064_uartdm_gsbi4_configs[] __initdata = {
+	{
+		.gpio      = 11,        /* GSBI4 UARTDM RX */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gsbi4_uartdm_active,
+			[GPIOMUX_SUSPENDED] = &gsbi4_uartdm_suspended,
+		},
+	},
+	{
+		.gpio      = 10,       /* GSBI4 UARTDM TX */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gsbi4_uartdm_active,
+			[GPIOMUX_SUSPENDED] = &gsbi4_uartdm_suspended,
+		},
+	},
+	{
+		.gpio      = 13,        /* GSBI4 UARTDM RFR */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gsbi4_uartdm_active,
+			[GPIOMUX_SUSPENDED] = &gsbi4_uartdm_suspended,
+		},
+	},
+	{
+		.gpio      = 12,        /* GSBI4 UARTDM CTS */
+		.settings = {
+			[GPIOMUX_ACTIVE] = &gsbi4_uartdm_active,
+			[GPIOMUX_SUSPENDED] = &gsbi4_uartdm_suspended,
+		},
+	},
+};
+
 void __init apq8064_init_gpiomux(void)
 {
 	int rc;
@@ -1453,6 +1496,10 @@ void __init apq8064_init_gpiomux(void)
 					ARRAY_SIZE(mdm_configs));
 			msm_gpiomux_install(sglte2_qsc_configs,
 					ARRAY_SIZE(sglte2_qsc_configs));
+
+			/* GSBI4 UART GPIOs for Primary IPC */
+			msm_gpiomux_install(apq8064_uartdm_gsbi4_configs,
+				ARRAY_SIZE(apq8064_uartdm_gsbi4_configs));
 		} else if (SOCINFO_VERSION_MINOR(platform_version) == 1) {
 			msm_gpiomux_install(mdm_i2s_configs,
 					ARRAY_SIZE(mdm_i2s_configs));
