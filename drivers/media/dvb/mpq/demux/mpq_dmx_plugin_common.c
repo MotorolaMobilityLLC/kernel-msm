@@ -18,12 +18,16 @@
 #include "mpq_dmx_plugin_common.h"
 #include "mpq_sdmx.h"
 
+#define SDMX_MAJOR_VERSION_MATCH	(2)
+
 #define TS_PACKET_HEADER_LENGTH (4)
 
 /* Length of mandatory fields that must exist in header of video PES */
 #define PES_MANDATORY_FIELDS_LEN			9
 
 #define MAX_PES_LENGTH	(SZ_64K)
+
+#define MAX_TS_PACKETS_FOR_SDMX_PROCESS	(500)
 
 /*
  * PES header length field is 8 bits so PES header length after this field
@@ -86,6 +90,11 @@ module_param(mpq_sdmx_scramble_odd, int, S_IRUGO | S_IWUSR);
 /* Whether to use secure demux or bypass it. Use for debugging */
 static int mpq_bypass_sdmx = 1;
 module_param(mpq_bypass_sdmx, int, S_IRUGO | S_IWUSR);
+
+/* Max number of TS packets allowed as input for a single sdmx process */
+static int mpq_sdmx_proc_limit = MAX_TS_PACKETS_FOR_SDMX_PROCESS;
+module_param(mpq_sdmx_proc_limit, int, S_IRUGO | S_IWUSR);
+
 
 /**
  * Maximum allowed framing pattern size
@@ -769,6 +778,7 @@ EXPORT_SYMBOL(mpq_dmx_update_hw_statistics);
 static void mpq_sdmx_check_app_loaded(void)
 {
 	int session;
+	u32 version;
 	int ret;
 
 	ret = sdmx_open_session(&session);
@@ -778,6 +788,24 @@ static void mpq_sdmx_check_app_loaded(void)
 			__func__, ret);
 		mpq_dmx_info.secure_demux_app_loaded = 0;
 		return;
+	}
+
+	/* Check proper sdmx major version */
+	ret = sdmx_get_version(session, &version);
+	if (ret != SDMX_SUCCESS) {
+		MPQ_DVB_ERR_PRINT(
+			"%s: Could not get sdmx version. ret = %d\n",
+			__func__, ret);
+	} else {
+		if ((version >> 8) != SDMX_MAJOR_VERSION_MATCH)
+			MPQ_DVB_ERR_PRINT(
+				"%s: sdmx major version does not match. expected=%d, actual=%d\n",
+				__func__, SDMX_MAJOR_VERSION_MATCH,
+				(version >> 8));
+		else
+			MPQ_DVB_DBG_PRINT(
+				"%s: sdmx major version is ok = %d\n",
+				__func__, SDMX_MAJOR_VERSION_MATCH);
 	}
 
 	mpq_dmx_info.secure_demux_app_loaded = 1;
@@ -819,7 +847,7 @@ int mpq_dmx_plugin_init(mpq_dmx_init dmx_init_func)
 	mpq_dmx_info.devices = NULL;
 	mpq_dmx_info.ion_client = NULL;
 
-	mpq_sdmx_check_app_loaded();
+	mpq_dmx_info.secure_demux_app_loaded = 0;
 
 	/*
 	 * TODO: the following should be set based on the decoder:
@@ -4386,7 +4414,7 @@ static void mpq_sdmx_process_results(struct mpq_demux *mpq_demux)
 	}
 }
 
-int mpq_sdmx_process(struct mpq_demux *mpq_demux,
+static int mpq_sdmx_process_buffer(struct mpq_demux *mpq_demux,
 	struct sdmx_buff_descr *input,
 	u32 fill_count,
 	u32 read_offset)
@@ -4482,6 +4510,41 @@ int mpq_sdmx_process(struct mpq_demux *mpq_demux,
 
 	return bytes_read;
 }
+
+int mpq_sdmx_process(struct mpq_demux *mpq_demux,
+	struct sdmx_buff_descr *input,
+	u32 fill_count,
+	u32 read_offset)
+{
+	int ret;
+	int todo;
+	int total_bytes_read = 0;
+	int limit = mpq_sdmx_proc_limit * mpq_demux->demux.ts_packet_size;
+
+	do {
+		todo = fill_count > limit ? limit : fill_count;
+		ret = mpq_sdmx_process_buffer(mpq_demux, input, todo,
+			read_offset);
+		if (ret > 0) {
+			total_bytes_read += ret;
+			fill_count -= ret;
+			read_offset += ret;
+			if (read_offset >= input->size)
+				read_offset -= input->size;
+		} else if (ret == 0) {
+			/* Not enough data to read (less than 1 TS packet) */
+			break;
+		} else {
+			/* Some error occurred */
+			MPQ_DVB_ERR_PRINT(
+				"%s: mpq_sdmx_process_buffer failed, returned %d\n",
+				__func__, ret);
+			break;
+		}
+	} while (fill_count > 0);
+
+	return total_bytes_read;
+}
 EXPORT_SYMBOL(mpq_sdmx_process);
 
 static int mpq_sdmx_write(struct mpq_demux *mpq_demux,
@@ -4547,6 +4610,16 @@ EXPORT_SYMBOL(mpq_dmx_write);
 
 int mpq_sdmx_is_loaded(void)
 {
-	return mpq_bypass_sdmx ? 0 : mpq_dmx_info.secure_demux_app_loaded;
+	static int sdmx_load_checked;
+
+	if (mpq_bypass_sdmx)
+		return 0;
+
+	if (!sdmx_load_checked) {
+		mpq_sdmx_check_app_loaded();
+		sdmx_load_checked = 1;
+	}
+
+	return mpq_dmx_info.secure_demux_app_loaded;
 }
 EXPORT_SYMBOL(mpq_sdmx_is_loaded);

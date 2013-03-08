@@ -98,7 +98,7 @@ static int has_device_tree(void)
 
 int chk_config_get_id(void)
 {
-	/* For all Fusion targets, Modem will always be present */
+	/* For all Fusion targets,  Modem will always be present */
 	if (machine_is_msm8x60_fusion() || machine_is_msm8x60_fusn_ffa())
 		return 0;
 
@@ -351,12 +351,32 @@ void diag_read_smd_work_fn(struct work_struct *work)
 	diag_smd_send_req(smd_info);
 }
 
+#ifdef CONFIG_DIAGFWD_BRIDGE_CODE
+static void diag_mem_dev_mode_ready_update(int index, int hsic_updated)
+{
+	if (hsic_updated) {
+		unsigned long flags;
+		spin_lock_irqsave(&driver->hsic_ready_spinlock, flags);
+		driver->data_ready[index] |= USER_SPACE_DATA_TYPE;
+		spin_unlock_irqrestore(&driver->hsic_ready_spinlock, flags);
+	} else {
+		driver->data_ready[index] |= USER_SPACE_DATA_TYPE;
+	}
+}
+#else
+static void diag_mem_dev_mode_ready_update(int index, int hsic_updated)
+{
+	(void) hsic_updated;
+	driver->data_ready[index] |= USER_SPACE_DATA_TYPE;
+}
+#endif
 int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 {
 	int i, err = 0, index;
 	index = 0;
 
 	if (driver->logging_mode == MEMORY_DEVICE_MODE) {
+		int hsic_updated = 0;
 		if (data_type == APPS_DATA) {
 			for (i = 0; i < driver->poolsize_write_struct; i++)
 				if (driver->buf_tbl[i].length == 0) {
@@ -377,6 +397,7 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 		else if (data_type == HSIC_DATA || data_type == HSIC_2_DATA) {
 			unsigned long flags;
 			int foundIndex = -1;
+			hsic_updated = 1;
 			index = data_type - HSIC_DATA;
 			spin_lock_irqsave(&diag_hsic[index].hsic_spinlock,
 									flags);
@@ -409,7 +430,7 @@ int diag_device_write(void *buf, int data_type, struct diag_request *write_ptr)
 						 driver->logging_process_id)
 				break;
 		if (i < driver->num_clients) {
-			driver->data_ready[i] |= USER_SPACE_DATA_TYPE;
+			diag_mem_dev_mode_ready_update(i, hsic_updated);
 			pr_debug("diag: wake up logging process\n");
 			wake_up_interruptible(&driver->wait_q);
 		} else
@@ -611,13 +632,15 @@ static int diag_process_apps_pkt(unsigned char *buf, int len)
 	int packet_type = 1, i, cmd_code;
 	unsigned char *temp = buf;
 	int data_type;
+	int mask_ret;
 #if defined(CONFIG_DIAG_OVER_USB)
 	unsigned char *ptr;
 #endif
 
 	/* Check if the command is a supported mask command */
-	if (diag_process_apps_masks(buf, len) == 0)
-		return 0;
+	mask_ret = diag_process_apps_masks(buf, len);
+	if (mask_ret <= 0)
+		return mask_ret;
 
 	/* Check for registered clients and forward packet to apropriate proc */
 	cmd_code = (int)(*(char *)buf);
@@ -991,10 +1014,16 @@ void diag_process_hdlc(void *data, unsigned len)
 
 	ret = diag_hdlc_decode(&hdlc);
 
-	if (ret)
+	if (hdlc.dest_idx < 3) {
+		pr_err("diag: Integer underflow in hdlc processing\n");
+		return;
+	}
+	if (ret) {
 		type = diag_process_apps_pkt(driver->hdlc_buf,
 							  hdlc.dest_idx - 3);
-	else if (driver->debug_flag) {
+		if (type < 0)
+			return;
+	} else if (driver->debug_flag) {
 		printk(KERN_ERR "Packet dropped due to bad HDLC coding/CRC"
 				" errors or partial packet received, packet"
 				" length = %d\n", len);
