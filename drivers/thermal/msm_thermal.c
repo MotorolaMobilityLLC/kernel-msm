@@ -1332,9 +1332,7 @@ failed:
 }
 
 static int virtual_sensor0 = -EINVAL;
-static int virtual_sensor1 = -EINVAL;
 module_param(virtual_sensor0, int, 0644);
-module_param(virtual_sensor1, int, 0644);
 
 int __devinit msm_thermal_init(struct msm_thermal_data *pdata)
 {
