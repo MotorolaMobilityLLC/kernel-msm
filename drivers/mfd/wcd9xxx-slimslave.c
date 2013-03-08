@@ -299,7 +299,30 @@ int wcd9xxx_cfg_slim_sch_rx(struct wcd9xxx *wcd9xxx, unsigned int *ch_num,
 
 	/* Configure slave interface device */
 	pr_debug("%s: ch_cnt[%d] rate=%d\n", __func__, ch_cnt, rate);
-
+	/* Calculate the payload for shared channels */
+	for (i = 0; i < ch_cnt; i++) {
+		slave_port_id = (ch_num[i] - BASE_CH_NUM - sh_ch.rx_port_start_offset);
+		if ((slave_port_id > sh_ch.num_rx_slave_port)) {
+			pr_err("Slimbus: invalid slave port id: %d",
+			       slave_port_id);
+			ret = -EINVAL;
+			goto err;
+		}
+		slave_port_id += sh_ch.rx_port_start_offset;
+		/* look for the valid port range and calculate the
+		 * payload accordingly
+		 */
+		if ((slave_port_id > sh_ch.pgd_tx_port_ch_1_end_port_id) &&
+		    (slave_port_id <= sh_ch.port_ch_0_end_port_id)) {
+			payload_rx = payload_rx |
+				(1 << (slave_port_id -
+				      sh_ch.port_ch_0_start_port_id));
+		} else {
+			ret = -EINVAL;
+			goto err;
+		}
+	}
+	/* Set Payload and Watermark for channels */
 	for (i = 0; i < ch_cnt; i++) {
 		idx = (ch_num[i] - BASE_CH_NUM - sh_ch.rx_port_start_offset);
 		ch_h[i] = rx[idx].ch_h;
@@ -315,26 +338,13 @@ int wcd9xxx_cfg_slim_sch_rx(struct wcd9xxx *wcd9xxx, unsigned int *ch_num,
 		}
 		slave_port_id += sh_ch.rx_port_start_offset;
 		pr_debug("%s: slave_port_id %d\n", __func__, slave_port_id);
-		/* look for the valid port range and chose the
-		 * payload accordingly
-		 */
-		if ((slave_port_id > sh_ch.pgd_tx_port_ch_1_end_port_id) &&
-		    (slave_port_id <= sh_ch.port_ch_0_end_port_id)) {
-			payload_rx = payload_rx |
-				(1 << (slave_port_id -
-				      sh_ch.port_ch_0_start_port_id));
-		} else {
-			ret = -EINVAL;
-			goto err;
-		}
 
 		multi_chan_cfg_reg_addr =
 		    SB_PGD_RX_PORT_MULTI_CHANNEL_0(sh_ch.rx_port_ch_reg_base,
 						   idx);
-		pr_debug("%s: multi_chan_cfg_reg_addr 0x%x\n", __func__,
-			 multi_chan_cfg_reg_addr);
-
-		/* write to interface device */
+		pr_debug("%s: multi_chan_cfg_reg_addr 0x%x\t payload 0x%x\n",
+			 __func__, multi_chan_cfg_reg_addr, payload_rx);
+		/* write payload to interface device */
 		ret = wcd9xxx_interface_reg_write(wcd9xxx,
 						  multi_chan_cfg_reg_addr,
 						  payload_rx);
@@ -418,21 +428,17 @@ int wcd9xxx_cfg_slim_sch_tx(struct wcd9xxx *wcd9xxx, unsigned int *ch_num,
 	struct slim_ch prop;
 
 	pr_debug("%s: ch_cnt[%d] rate[%d]\n", __func__, ch_cnt, rate);
+	/* Calculate the payload for shared channels */
 	for (i = 0; i < ch_cnt; i++) {
-		idx = (ch_num[i] - BASE_CH_NUM);
-		ch_h[i] = tx[idx].ch_h;
-		sph[i] = tx[idx].sph;
-		slave_port_id = idx;
-		pr_debug("%s: idx %d, ch_h %d, sph %d, slave_port_id %d\n",
-			 __func__, idx, ch_h[i], sph[i], slave_port_id);
+		slave_port_id = (ch_num[i] - BASE_CH_NUM);
 		if (slave_port_id > sh_ch.number_of_tx_slave_dev_ports) {
 			pr_err("SLIMbus: invalid slave port id: %d",
 			       slave_port_id);
 			ret = -EINVAL;
 			goto err;
 		}
-		/* look for the valid port range and chose the
-		 *  payload accordingly
+		/* look for the valid port range and calculate the
+		 * payload accordingly
 		 */
 		if (slave_port_id <=
 		    SB_PGD_TX_PORT_MULTI_CHANNEL_0_END_PORT_ID) {
@@ -448,11 +454,26 @@ int wcd9xxx_cfg_slim_sch_tx(struct wcd9xxx *wcd9xxx, unsigned int *ch_num,
 			ret = -EINVAL;
 			goto err;
 		}
+	}
+	/* Set Payload and Watermark for channels */
+	for (i = 0; i < ch_cnt; i++) {
+		idx = (ch_num[i] - BASE_CH_NUM);
+		ch_h[i] = tx[idx].ch_h;
+		sph[i] = tx[idx].sph;
+		slave_port_id = idx;
+		pr_debug("%s: idx %d, ch_h %d, sph %d, slave_port_id %d\n",
+			 __func__, idx, ch_h[i], sph[i], slave_port_id);
+		if (slave_port_id > sh_ch.number_of_tx_slave_dev_ports) {
+			pr_err("SLIMbus: invalid slave port id: %d",
+			       slave_port_id);
+			ret = -EINVAL;
+			goto err;
+		}
 		multi_chan_cfg_reg_addr =
 		    SB_PGD_TX_PORT_MULTI_CHANNEL_0(slave_port_id);
-		pr_debug("%s: multi_chan_cfg_reg_addr 0x%x\n", __func__,
-			 multi_chan_cfg_reg_addr);
-		/* write to interface device */
+		pr_debug("%s: multi_chan_cfg_reg_addr 0x%x\t payload 0x%x\n",
+			 __func__, multi_chan_cfg_reg_addr, payload_tx_0);
+		/* write payload to interface device */
 		ret = wcd9xxx_interface_reg_write(wcd9xxx,
 				multi_chan_cfg_reg_addr,
 				payload_tx_0);
@@ -464,6 +485,8 @@ int wcd9xxx_cfg_slim_sch_tx(struct wcd9xxx *wcd9xxx, unsigned int *ch_num,
 		}
 		multi_chan_cfg_reg_addr =
 		    SB_PGD_TX_PORT_MULTI_CHANNEL_1(slave_port_id);
+		pr_debug("%s: multi_chan_cfg_reg_addr 0x%x\t payload 0x%x\n",
+			 __func__, multi_chan_cfg_reg_addr, payload_tx_1);
 		/* ports 8,9 */
 		ret = wcd9xxx_interface_reg_write(wcd9xxx,
 						  multi_chan_cfg_reg_addr,

@@ -70,14 +70,19 @@ static struct page_info *alloc_largest_available(unsigned long size,
 	int i;
 
 	for (i = 0; i < num_orders; i++) {
+		gfp_t gfp;
 		if (size < order_to_size(orders[i]))
 			continue;
 		if (max_order < orders[i])
 			continue;
 
-		page = alloc_pages(__GFP_IO | __GFP_FS | __GFP_HIGHMEM |
-			(orders[i] ? __GFP_NOWARN | __GFP_NORETRY | __GFP_COMP : __GFP_WAIT),
-			orders[i]);
+		gfp = __GFP_IO | __GFP_FS | __GFP_HIGHMEM;
+		if (orders[i])
+			gfp |=  __GFP_NOWARN | __GFP_NORETRY | __GFP_COMP;
+		else
+			gfp |=  __GFP_WAIT;
+
+		page = alloc_pages(gfp, orders[i]);
 		if (!page)
 			continue;
 
