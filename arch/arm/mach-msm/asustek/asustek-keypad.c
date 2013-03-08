@@ -26,11 +26,14 @@
 #include <linux/gpio_keys.h>
 
 #include <mach/board_asustek.h>
+#include "board-8064.h"
 
 #define GPIO_KEY_VOLUMEUP	53
 #define GPIO_KEY_VOLUMEDOWN	54
 #define GPIO_KEY2_VOLUMEUP	15
 #define GPIO_KEY2_VOLUMEDOWN	36
+#define GPIO_PM8921_KEY_VOLUME_UP	PM8921_GPIO_PM_TO_SYS(35)
+#define GPIO_PM8921_KEY_VOLUME_DOWN	PM8921_GPIO_PM_TO_SYS(38)
 
 #define GPIO_KEY(_id, _iswake)		\
 	{					\
@@ -63,12 +66,29 @@ static struct platform_device asustek_keys_device = {
 
 static void gpio_keys_remap(void)
 {
-	if (asustek_get_hw_rev() == HW_REV_B) {
+	hw_rev ret = HW_REV_INVALID;
+
+	ret = asustek_get_hw_rev();
+	switch (ret) {
+	case HW_REV_B:
 		pr_info(
 		"Reconfigure VOL_UP with GPIO#%d and VOL_DOWN with GPIO#%d\n",
 				GPIO_KEY2_VOLUMEUP, GPIO_KEY2_VOLUMEDOWN);
 		asustek_keys[0].gpio = GPIO_KEY2_VOLUMEUP;
 		asustek_keys[1].gpio = GPIO_KEY2_VOLUMEDOWN;
+		break;
+
+	case HW_REV_C:
+	case HW_REV_D:
+		pr_info(
+		"Reconfigure VOL_UP and VOL_DOWN with PMIC8921\n");
+		asustek_keys[0].gpio = GPIO_PM8921_KEY_VOLUME_UP;
+		asustek_keys[1].gpio = GPIO_PM8921_KEY_VOLUME_DOWN;
+		break;
+
+	case HW_REV_A:
+	default:
+		break;
 	}
 }
 
