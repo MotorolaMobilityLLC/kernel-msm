@@ -846,7 +846,7 @@ static const struct snd_kcontrol_new tabla_msm_controls[] = {
 		msm_slim_3_rx_ch_get, msm_slim_3_rx_ch_put),
 	SOC_ENUM_EXT("HDMI_RX Channels", msm_enum[3],
 		msm_hdmi_rx_ch_get, msm_hdmi_rx_ch_put),
-	SOC_ENUM_EXT("HDMI RX Rate", msm_enum[1],
+	SOC_ENUM_EXT("HDMI RX Rate", msm_enum[4],
 					msm_hdmi_rate_get,
 					msm_hdmi_rate_put),
 };
@@ -1426,11 +1426,11 @@ static int msm_hdmi_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	pr_debug("%s channels->min %u channels->max %u ()\n", __func__,
 			channels->min, channels->max);
 
-	if (channels->max < 2)
-		channels->min = channels->max = 2;
 	if (!hdmi_rate_variable)
 		rate->min = rate->max = 48000;
 	channels->min = channels->max = msm_hdmi_rx_ch;
+	if (channels->max < 2)
+		channels->min = channels->max = 2;
 
 	return 0;
 }
