@@ -1,4 +1,4 @@
-/* Copyright (c) 2002,2007-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2002,2007-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,7 +27,7 @@
 
 struct kgsl_device;
 struct kgsl_device_private;
-struct adreno_recovery_data;
+struct adreno_ft_data;
 
 #define GSL_RB_MEMPTRS_SCRATCH_COUNT	 8
 struct kgsl_rbmemptrs {
@@ -110,17 +110,12 @@ unsigned int adreno_ringbuffer_issuecmds(struct kgsl_device *device,
 					unsigned int *cmdaddr,
 					int sizedwords);
 
-void adreno_ringbuffer_issuecmds_intr(struct kgsl_device *device,
-					struct kgsl_context *k_ctxt,
-					unsigned int *cmdaddr,
-					int sizedwords);
-
 void adreno_ringbuffer_submit(struct adreno_ringbuffer *rb);
 
 void kgsl_cp_intrcallback(struct kgsl_device *device);
 
-int adreno_ringbuffer_extract(struct adreno_ringbuffer *rb,
-				struct adreno_recovery_data *rec_data);
+void adreno_ringbuffer_extract(struct adreno_ringbuffer *rb,
+				struct adreno_ft_data *ft_data);
 
 void
 adreno_ringbuffer_restore(struct adreno_ringbuffer *rb, unsigned int *rb_buff,
