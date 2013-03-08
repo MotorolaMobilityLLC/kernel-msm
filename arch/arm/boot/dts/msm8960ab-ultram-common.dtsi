@@ -88,6 +88,23 @@
 	};
 };
 
+&i2c3 {
+	synaptics_dsx_i2c@20 {
+		compatible = "synaptics,synaptics_dsx_i2c";
+		reg = <0x20>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <46 0>;
+		gpios = <&msmgpio 46 0>, /* IRQ */
+			<&msmgpio 63 0>; /* RESET */
+		touch_vdd-supply = <&rpm_8921_l11>;
+
+		synaptics,purge-enabled;
+		synaptics,reset-on-resume;
+		synaptics,shared-regulator;
+		synaptics,key-buttons = <59 60 61 0>; /* F1, F2, F3 */
+	};
+};
+
 &i2c10 {
 	tps65132@3e {
 		compatible = "ti,tps65132";
