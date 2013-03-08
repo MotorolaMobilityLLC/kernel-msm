@@ -393,8 +393,16 @@ eHalStatus csrTdlsProcessSendMgmt( tpAniSirGlobal pMac, tSmeCmd *cmd )
     tdlsSendMgmtReq->dialog =  tdlsSendMgmtCmdInfo->dialog ;
     tdlsSendMgmtReq->statusCode =  tdlsSendMgmtCmdInfo->statusCode ;
     tdlsSendMgmtReq->responder =  tdlsSendMgmtCmdInfo->responder;
-    palCopyMemory(pMac->hHdd, tdlsSendMgmtReq->bssid, pSession->pConnectBssDesc->bssId, 
-            sizeof (tSirMacAddr));
+    if (pSession->pConnectBssDesc)
+    {
+        palCopyMemory(pMac->hHdd, tdlsSendMgmtReq->bssid, pSession->pConnectBssDesc->bssId,
+                sizeof (tSirMacAddr));
+    }
+    else
+    {
+        smsLog( pMac, LOGE, FL("%s: BSS Description is not present\n"), __func__);
+        return eHAL_STATUS_FAILURE;
+    }
     palCopyMemory(pMac->hHdd, tdlsSendMgmtReq->peerMac, 
             tdlsSendMgmtCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
 
@@ -441,8 +449,18 @@ eHalStatus csrTdlsProcessAddSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
     tdlsAddStaReq->sessionId = cmd->sessionId;
     //Using dialog as transactionId. This can be used to match response with request
     tdlsAddStaReq->transactionId = 0;
-    palCopyMemory(pMac->hHdd, tdlsAddStaReq->bssid, pSession->pConnectBssDesc->bssId, 
-            sizeof (tSirMacAddr));
+
+    if (pSession->pConnectBssDesc)
+    {
+        palCopyMemory(pMac->hHdd, tdlsAddStaReq->bssid, pSession->pConnectBssDesc->bssId,
+                sizeof (tSirMacAddr));
+    }
+    else
+    {
+        smsLog( pMac, LOGE, FL("%s: BSS description is not present\n"), __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
     palCopyMemory(pMac->hHdd, tdlsAddStaReq->peerMac, 
             tdlsAddStaCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
 
@@ -476,8 +494,16 @@ eHalStatus csrTdlsProcessDelSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
     tdlsDelStaReq->sessionId = cmd->sessionId;
     //Using dialog as transactionId. This can be used to match response with request
     tdlsDelStaReq->transactionId = 0;
-    palCopyMemory(pMac->hHdd, tdlsDelStaReq->bssid, pSession->pConnectBssDesc->bssId, 
-            sizeof (tSirMacAddr));
+    if (pSession->pConnectBssDesc)
+    {
+        palCopyMemory(pMac->hHdd, tdlsDelStaReq->bssid, pSession->pConnectBssDesc->bssId,
+                sizeof (tSirMacAddr));
+    }
+    else
+    {
+        smsLog( pMac, LOGE, FL("%s: BSS description is not present\n"), __func__);
+        return eHAL_STATUS_FAILURE;
+    }
     palCopyMemory(pMac->hHdd, tdlsDelStaReq->peerMac, 
             tdlsDelStaCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
 
