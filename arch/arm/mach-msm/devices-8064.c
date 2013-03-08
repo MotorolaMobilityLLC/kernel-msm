@@ -336,6 +336,50 @@ struct platform_device apq8064_device_uart_gsbi4 = {
 	.resource = resources_uart_gsbi4,
 };
 
+/* GSBI 4 used into UARTDM Mode for 8064 SGLTE */
+static struct resource msm_uart_dm4_resources[] = {
+	{
+		.start  = MSM_UART4DM_PHYS,
+		.end    = MSM_UART4DM_PHYS + PAGE_SIZE - 1,
+		.name   = "uartdm_resource",
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.start  = GSBI4_UARTDM_IRQ,
+		.end    = GSBI4_UARTDM_IRQ,
+		.flags  = IORESOURCE_IRQ,
+	},
+	{
+		.start  = MSM_GSBI4_PHYS,
+		.end    = MSM_GSBI4_PHYS + 4 - 1,
+		.name   = "gsbi_resource",
+		.flags  = IORESOURCE_MEM,
+	},
+	{
+		.start  = DMOV_APQ8064_HSUART_GSBI4_TX_CHAN,
+		.end    = DMOV_APQ8064_HSUART_GSBI4_RX_CHAN,
+		.name   = "uartdm_channels",
+		.flags  = IORESOURCE_DMA,
+	},
+	{
+		.start  = DMOV_APQ8064_HSUART_GSBI4_TX_CRCI,
+		.end    = DMOV_APQ8064_HSUART_GSBI4_RX_CRCI,
+		.name   = "uartdm_crci",
+		.flags  = IORESOURCE_DMA,
+	},
+};
+static u64 msm_uart_dm4_dma_mask = DMA_BIT_MASK(32);
+struct platform_device apq8064_device_uartdm_gsbi4 = {
+	.name   = "msm_serial_hs",
+	.id     = 1,
+	.num_resources  = ARRAY_SIZE(msm_uart_dm4_resources),
+	.resource       = msm_uart_dm4_resources,
+	.dev    = {
+		.dma_mask		= &msm_uart_dm4_dma_mask,
+		.coherent_dma_mask	= DMA_BIT_MASK(32),
+	},
+};
+
 static struct resource resources_qup_i2c_gsbi4[] = {
 	{
 		.name	= "gsbi_qup_i2c_addr",
