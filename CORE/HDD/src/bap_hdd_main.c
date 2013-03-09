@@ -95,9 +95,7 @@
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h>
 
-#ifdef WLAN_SOFTAP_FEATURE
 #include <wlan_hdd_misc.h>
-#endif
 /*----------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
  * -------------------------------------------------------------------------*/
@@ -3722,7 +3720,6 @@ int BSL_Init ( v_PVOID_t  pvosGCtx )
         return 0;
     }
 
-#ifdef WLAN_SOFTAP_FEATURE
     if (VOS_STA_SAP_MODE == hdd_get_conparam())
     {
         status = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
@@ -3739,7 +3736,6 @@ int BSL_Init ( v_PVOID_t  pvosGCtx )
         }
      }
     else
-#endif
         pAdapter = hdd_get_adapter(pHddCtx, WLAN_HDD_INFRA_STATION);
 
 

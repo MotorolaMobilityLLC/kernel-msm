@@ -77,10 +77,8 @@
 #include <wlan_nlink_srv.h>
 #include <wlan_hdd_misc.h>
 
-#ifdef WLAN_SOFTAP_FEATURE
 #include <linux/semaphore.h>
 #include <wlan_hdd_hostapd.h>
-#endif
 #include "cfgApi.h"
 
 #ifdef WLAN_BTAMP_FEATURE
@@ -119,9 +117,7 @@ extern VOS_STATUS vos_chipExitDeepSleepVREGHandler(
 extern void hdd_wlan_initial_scan(hdd_context_t *pHddCtx);
 
 extern struct notifier_block hdd_netdev_notifier;
-#ifdef WLAN_SOFTAP_FEATURE
 extern tVOS_CON_MODE hdd_get_conparam ( void );
-#endif
 
 static struct timer_list ssr_timer;
 static bool ssr_timer_started;

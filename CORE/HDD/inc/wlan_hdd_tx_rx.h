@@ -43,27 +43,32 @@
 #define WLAN_HDD_TX_RX_H
 
 /**===========================================================================
-  
+
   \file  wlan_hdd_tx_rx.h
-  
+
   \brief Linux HDD Tx/RX APIs
          Copyright 2008 (c) Qualcomm, Incorporated.
          All Rights Reserved.
+<<<<<<< HEAD:CORE/HDD/inc/wlan_hdd_tx_rx.h
          Qualcomm Confidential and Proprietary.
   
+=======
+         Qualcomm Technologies Confidential and Proprietary.
+
+>>>>>>> 009551c... wlan: hdd: remove obsolete "WLAN_SOFTAP_FEATURE" featurization:prima/CORE/HDD/inc/wlan_hdd_tx_rx.h
   ==========================================================================*/
-  
-/*--------------------------------------------------------------------------- 
+
+/*---------------------------------------------------------------------------
   Include files
-  -------------------------------------------------------------------------*/ 
+  -------------------------------------------------------------------------*/
 #include <wlan_hdd_includes.h>
 #include <vos_api.h>
 #include <linux/skbuff.h>
 #include <wlan_qct_tl.h>
 
-/*--------------------------------------------------------------------------- 
+/*---------------------------------------------------------------------------
   Preprocessor definitions and constants
-  -------------------------------------------------------------------------*/ 
+  -------------------------------------------------------------------------*/
 #define HDD_ETHERTYPE_802_1_X              ( 0x888E )
 #define HDD_ETHERTYPE_802_1_X_FRAME_OFFSET ( 12 )
 #define HDD_ETHERTYPE_802_1_X_SIZE         ( 2 )
@@ -226,7 +231,6 @@ extern VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
                                      v_U8_t staId,
                                      WLANTL_RxMetaInfoType* pRxMetaInfo );
 
-#ifdef WLAN_SOFTAP_FEATURE
 
 /**============================================================================
   @brief hdd_IsEAPOLPacket() - Checks the packet is EAPOL or not.
@@ -236,7 +240,6 @@ extern VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
                   : VOS_FALSE otherwise
   ===========================================================================*/
 extern v_BOOL_t hdd_IsEAPOLPacket( vos_pkt_t *pVosPacket );
-#endif
 
 #ifdef CONFIG_CFG80211
 /**============================================================================
