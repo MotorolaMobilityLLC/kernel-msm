@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*
  *
  * Airgo Networks, Inc proprietary. All rights reserved.
@@ -61,10 +60,8 @@
 #include "sirCommon.h"
 #include "sirDebug.h"
 #include "wniCfgAp.h"
-#ifdef WLAN_SOFTAP_FEATURE
 #include "csrApi.h"
 #include "sapApi.h"
-#endif
 #ifdef FEATURE_WLAN_TDLS
 #include "dot11f.h"
 #endif
@@ -554,13 +551,8 @@ typedef struct sCacheParams
 #define LIM_PROT_STA_OVERLAP_CACHE_SIZE     10
 #define LIM_PROT_STA_CACHE_SIZE 256
 #else
-#ifdef WLAN_SOFTAP_FEATURE
 #define LIM_PROT_STA_OVERLAP_CACHE_SIZE    HAL_NUM_ASSOC_STA
 #define LIM_PROT_STA_CACHE_SIZE            HAL_NUM_ASSOC_STA
-#else
-#define LIM_PROT_STA_OVERLAP_CACHE_SIZE    5
-#define LIM_PROT_STA_CACHE_SIZE            5
-#endif
 #endif
 
 typedef struct sLimProtStaParams

@@ -227,7 +227,6 @@ void pmmHandleTimBasedDisassociation (tpAniSirGlobal pMac, tpPESession psessionE
 
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
 /**
  * pmmGenerateTIM
  *
@@ -280,7 +279,6 @@ void pmmGenerateTIM(tpAniSirGlobal pMac, tANI_U8 **pPtr, tANI_U16 *timLength, tA
     *pPtr = ptr;
 }
 
-#endif
 #ifdef ANI_PRODUCT_TYPE_AP
 /**
  * pmmUpdateTIM

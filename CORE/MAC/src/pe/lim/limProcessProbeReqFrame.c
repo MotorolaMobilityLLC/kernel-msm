@@ -71,7 +71,6 @@
 void limSendP2PProbeResponse(tpAniSirGlobal pMac, tANI_U8 *pBd, 
                       tpPESession psessionEntry);
 #endif
-#ifdef WLAN_SOFTAP_FEATURE
 void
 
 limSendSmeProbeReqInd(tpAniSirGlobal pMac,
@@ -368,7 +367,6 @@ void limWPSPBCClose(tpAniSirGlobal pMac, tpPESession psessionEntry)
     limRemoveTimeoutPBCsessions(pMac, psessionEntry->pAPWPSPBCSession);
 
 }
-#endif
 
 /**
  * limCheck11bRates
@@ -521,7 +519,6 @@ limProcessProbeReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                     }
                 }
 #endif
-#ifdef WLAN_SOFTAP_FEATURE
                 if ((psessionEntry->limSystemRole == eLIM_AP_ROLE))
                 {
                   
@@ -548,7 +545,6 @@ limProcessProbeReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                 }
                 else
                 {
-#endif
                     if (wlan_cfgGetInt(pMac, (tANI_U16) WNI_CFG_WPS_ENABLE, &tmp) != eSIR_SUCCESS)
                         limLog(pMac, LOGP,"Failed to cfg get id %d\n", WNI_CFG_WPS_ENABLE );
 
@@ -585,9 +581,7 @@ limProcessProbeReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                             PELOG3(limLog(pMac, LOG3, FL("couldnt send the probe req to wsm "));)
                         }
                     }
-#ifdef WLAN_SOFTAP_FEATURE
                 }
-#endif
             }
 
             ssId.length = psessionEntry->ssId.length;
@@ -660,14 +654,12 @@ limProcessProbeReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                 {
                     // Broadcast SSID in the Probe Request.
                     // Reply with SSID we're configured with.
-#ifdef WLAN_SOFTAP_FEATURE
                     //Turn off the SSID length to 0 if hidden SSID feature is present
                     if(psessionEntry->ssidHidden)
                       /*We are returning from here as probe request contains the broadcast SSID.
                         So no need to send the probe resp*/
                         //ssId.length = 0;
                            return;
-#endif
                     limSendProbeRspMgmtFrame(pMac, pHdr->sa, &ssId, DPH_USE_MGMT_STAID,
                                              DPH_NON_KEEPALIVE_FRAME, psessionEntry,
                                              probeReq.p2pIePresent);
@@ -839,7 +831,6 @@ limProcessProbeReqFrame_multiple_BSS(tpAniSirGlobal pMac, tANI_U8 *pBd,  tpPESes
 
 } /*** end limProcessProbeReqFrame_multiple_BSS() ***/
 
-#ifdef WLAN_SOFTAP_FEATURE
 /**
  * limSendSmeProbeReqInd()
  *
@@ -904,7 +895,6 @@ limSendSmeProbeReqInd(tpAniSirGlobal pMac,
     } 
         
 } /*** end limSendSmeProbeReqInd() ***/
-#endif
 #ifdef WLAN_FEATURE_P2P_INTERNAL
 void limSendP2PProbeResponse(tpAniSirGlobal pMac, tANI_U8 *pBd, 
                       tpPESession psessionEntry)
