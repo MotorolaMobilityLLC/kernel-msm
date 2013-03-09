@@ -535,7 +535,7 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	unsigned int total_sizedwords = sizedwords;
 	unsigned int i;
 	unsigned int rcmd_gpu;
-	unsigned int context_id = KGSL_MEMSTORE_GLOBAL;
+	unsigned int context_id;
 	unsigned int gpuaddr = rb->device->memstore.gpuaddr;
 	unsigned int timestamp;
 
@@ -547,6 +547,8 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	if (context && context->flags & CTXT_FLAGS_PER_CONTEXT_TS &&
 			!(flags & KGSL_CMD_FLAGS_INTERNAL_ISSUE))
 		context_id = context->id;
+	else
+		context_id = KGSL_MEMSTORE_GLOBAL;
 
 	/* reserve space to temporarily turn off protected mode
 	*  error checking if needed
@@ -661,14 +663,12 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 		KGSL_MEMSTORE_OFFSET(context_id, eoptimestamp)));
 	GSL_RB_WRITE(ringcmds, rcmd_gpu, timestamp);
 
-	if (context && context->flags & CTXT_FLAGS_PER_CONTEXT_TS
-			&& !(flags & KGSL_CMD_FLAGS_INTERNAL_ISSUE)) {
-
+	if (KGSL_MEMSTORE_GLOBAL != context_id) {
 		GSL_RB_WRITE(ringcmds, rcmd_gpu,
 			cp_type3_packet(CP_MEM_WRITE, 2));
 		GSL_RB_WRITE(ringcmds, rcmd_gpu, (gpuaddr +
-			KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL,
-				eoptimestamp)));
+		KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL,
+			eoptimestamp)));
 		GSL_RB_WRITE(ringcmds, rcmd_gpu, rb->global_ts);
 	}
 	if (context) {
