@@ -110,7 +110,7 @@
 
 
 /// Start of Sirius/Host message types
-#define WNI_HOST_MSG_START             0x1100
+#define WNI_HOST_MSG_START             0x1400
 
 enum eWniMsgTypes
 {
