@@ -43,17 +43,25 @@
 #define __VOS_MQ_H
 
 /**=========================================================================
-  
+
   \file  vos_mq.h
-  
+
   \brief virtual Operating System Services (vOSS) message queue APIs
-               
+
    Message Queue Definitions and API
+<<<<<<< HEAD:CORE/VOSS/inc/vos_mq.h
   
    Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
    
    Qualcomm Confidential and Proprietary.
   
+=======
+
+   Copyright 2008 (c) Qualcomm Technologies, Inc.  All Rights Reserved.
+
+   Qualcomm Technologies Confidential and Proprietary.
+
+>>>>>>> f7413b6... wlan: voss: remove obsolete "INTEGRATED_SOC" featurization:prima/CORE/VOSS/inc/vos_mq.h
   ========================================================================*/
 
 /* $Header$ */
@@ -102,46 +110,31 @@ typedef struct vos_msg_s
 } vos_msg_t;
 
 
-/*------------------------------------------------------------------------- 
+/*-------------------------------------------------------------------------
   Function declarations and documenation
   ------------------------------------------------------------------------*/
-  
-/// Message Queue IDs  
+
+/// Message Queue IDs
 typedef enum
 {
   /// Message Queue ID for messages bound for SME
   VOS_MQ_ID_SME = VOS_MODULE_ID_SME,
-  
+
   /// Message Queue ID for messages bound for PE
-  VOS_MQ_ID_PE = VOS_MODULE_ID_PE, 
-  
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  /// Message Queue ID for messages bound for HAL
-  VOS_MQ_ID_HAL = VOS_MODULE_ID_HAL,
-#else
+  VOS_MQ_ID_PE = VOS_MODULE_ID_PE,
+
   /// Message Queue ID for messages bound for WDA
   VOS_MQ_ID_WDA = VOS_MODULE_ID_WDA,
-#endif
 
   /// Message Queue ID for messages bound for TL
   VOS_MQ_ID_TL = VOS_MODULE_ID_TL,
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  /// Message Queue ID for messages bound for SSC
-  VOS_MQ_ID_SSC = VOS_MODULE_ID_SSC,
-#endif
-  
   /// Message Queue ID for messages bound for the SYS module
   VOS_MQ_ID_SYS = VOS_MODULE_ID_SYS,
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  /// Message Queue ID for SDIO Interrupt Handle in SAL
-  VOS_MQ_ID_SAL = VOS_MODULE_ID_SAL
-#else
-  /// Message Queue ID for messages bound for WDA
+  /// Message Queue ID for messages bound for WDI
   VOS_MQ_ID_WDI = VOS_MODULE_ID_WDI,
-#endif
-  
+
 } VOS_MQ_ID;
 
 
@@ -223,7 +216,6 @@ VOS_STATUS vos_mq_post_message( VOS_MQ_ID msgQueueId, vos_msg_t *message );
   --------------------------------------------------------------------------*/
 VOS_STATUS vos_tx_mq_serialize( VOS_MQ_ID msgQueueId, vos_msg_t *message );
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /**---------------------------------------------------------------------------
 
   \brief vos_rx_mq_serialize() - serialize a message to the Rx execution flow
@@ -261,6 +253,5 @@ VOS_STATUS vos_tx_mq_serialize( VOS_MQ_ID msgQueueId, vos_msg_t *message );
   --------------------------------------------------------------------------*/
 VOS_STATUS vos_rx_mq_serialize( VOS_MQ_ID msgQueueId, vos_msg_t *message );
 
-#endif
 
 #endif // if !defined __VOS_MQ_H

@@ -1363,50 +1363,6 @@ VOS_STATUS vos_chipVoteXOCore
   v_BOOL_t              force_enable
 )
 {
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-    static v_BOOL_t is_vote_on;
-
-#if defined(MSM_PLATFORM_8660) || defined(MSM_PLATFORM_7x30)
-    int rc;
-#endif
-
-   /* The expectation is the is_vote_on should always have value 1 or 0.  This funcn should
-    * be called alternately with 1 and 0 passed to it.
-    */
-   if ((force_enable && is_vote_on) || (!force_enable && !is_vote_on)) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "Force XO Core %s called when already %s - directly return success %d", 
-         force_enable ? "enable" : "disable", is_vote_on ? "enable" : "disable", 
-         is_vote_on);
-      goto success;
-   }    
-
-#ifdef MSM_PLATFORM_7x30
-   rc = pmic_xo_core_force_enable(force_enable);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-         "%s: pmic_xo_core_force_enable %s failed (%d)",__func__, 
-         force_enable ? "enable" : "disable",rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-#endif
-
-#ifdef MSM_PLATFORM_8660
-   rc = qcomwlan_pmic_xo_core_force_enable(force_enable);
-   if (rc) {
-      VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-         "%s: pmic_xo_core_force_enable %s failed (%d)",__func__, 
-         force_enable ? "enable" : "disable",rc);
-      return VOS_STATUS_E_FAILURE;
-   }
-#endif
-    is_vote_on=force_enable;
-
-success:
-   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_WARN, "XO CORE ON vote %s successfully!",
-                force_enable ? "enable" : "disable");
-
-#endif /* FEATURE_WLAN_NON_INTEGRATED_SOC */
 
    return VOS_STATUS_SUCCESS;
 }
