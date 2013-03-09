@@ -281,8 +281,7 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                     if (curr_peer->tx_pkt >=
                             pHddTdlsCtx->threshold_config.tx_packet_n) {
 
-                        if (HDD_MAX_NUM_TDLS_STA > wlan_hdd_tdlsConnectedPeers(pHddTdlsCtx->pAdapter) &&
-                            (FALSE == curr_peer->isTDLSInProgress))
+                        if (HDD_MAX_NUM_TDLS_STA > wlan_hdd_tdlsConnectedPeers(pHddTdlsCtx->pAdapter))
                         {
 
                             VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "-> Tput trigger TDLS SETUP");
@@ -299,8 +298,8 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                         else
                         {
                             VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                                      "%s: Skip Tput trigger due to isTDLSInProgress %u or connected_peer_count %d",
-                                      __func__, curr_peer->isTDLSInProgress, wlan_hdd_tdlsConnectedPeers(pHddTdlsCtx->pAdapter) );
+                                      "%s: Maximum peer connected already! %d",
+                                      __func__, wlan_hdd_tdlsConnectedPeers(pHddTdlsCtx->pAdapter) );
                         }
                         goto next_peer;
                     }
@@ -314,8 +313,7 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                                 pHddTdlsCtx->ap_rssi)) ||
                          ((tANI_S32)(curr_peer->rssi >
                             pHddTdlsCtx->threshold_config.rssi_trigger_threshold))) &&
-                         (HDD_MAX_NUM_TDLS_STA > wlan_hdd_tdlsConnectedPeers(pHddTdlsCtx->pAdapter))
-                         && (FALSE == curr_peer->isTDLSInProgress)) {
+                         (HDD_MAX_NUM_TDLS_STA > wlan_hdd_tdlsConnectedPeers(pHddTdlsCtx->pAdapter))){
 
                         VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
                                 "%s: RSSI (peer %d > ap %d + hysteresis %d) triggering to %02x:%02x:%02x:%02x:%02x:%02x ",
@@ -398,7 +396,10 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                                                   1, 0, NULL, 0, 0);
                         }
                         else
+                        {
                             curr_peer->tdls_support = eTDLS_CAP_NOT_SUPPORTED;
+                            curr_peer->link_status  = eTDLS_LINK_IDLE;
+                        }
 
                         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                                 "Tput triggering TDLS discovery: " MAC_ADDRESS_STR "!",
@@ -713,16 +714,31 @@ hddTdlsPeer_t *wlan_hdd_tdls_get_peer(hdd_adapter_t *pAdapter, u8 *mac)
     return peer;
 }
 
-void wlan_hdd_tdls_set_link_status(hddTdlsPeer_t *curr_peer, int status)
+void wlan_hdd_tdls_set_peer_link_status(hddTdlsPeer_t *curr_peer, tTDLSLinkStatus status)
 {
     if (curr_peer == NULL)
         return;
 
-    hddLog(VOS_TRACE_LEVEL_WARN, "tdls set peer " MAC_ADDRESS_STR " link status to %d",
+    hddLog(VOS_TRACE_LEVEL_WARN, "tdls set peer " MAC_ADDRESS_STR " link status to %u",
             MAC_ADDR_ARRAY(curr_peer->peerMac), status);
 
     curr_peer->link_status = status;
 
+}
+
+void wlan_hdd_tdls_set_link_status(hdd_adapter_t *pAdapter,
+                                   u8* mac,
+                                   tTDLSLinkStatus linkStatus)
+{
+    hddTdlsPeer_t *curr_peer;
+
+    curr_peer = wlan_hdd_tdls_find_peer(pAdapter, mac);
+    if (curr_peer == NULL)
+        return;
+
+    curr_peer->link_status= linkStatus;
+
+    return;
 }
 
 int wlan_hdd_tdls_recv_discovery_resp(hdd_adapter_t *pAdapter, u8 *mac)
@@ -735,7 +751,7 @@ int wlan_hdd_tdls_recv_discovery_resp(hdd_adapter_t *pAdapter, u8 *mac)
     VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
                "Discovery Response from : " MAC_ADDRESS_STR "link_status -> %d",
                MAC_ADDR_ARRAY(curr_peer->peerMac), curr_peer->link_status);
-    if (curr_peer->link_status == eTDLS_LINK_DISCOVERING)
+    if (eTDLS_LINK_DISCOVERING == curr_peer->link_status)
     {
         cfg80211_tdls_oper_request(pAdapter->dev,
                                    curr_peer->peerMac,
@@ -1209,7 +1225,7 @@ u8 wlan_hdd_tdls_is_progress(hdd_adapter_t *pAdapter, u8 *mac, u8 skip_self)
             }
             else
             {
-                if (curr_peer->isTDLSInProgress)
+                if (eTDLS_LINK_CONNECTING == curr_peer->link_status)
                 {
                   mutex_unlock(&tdls_lock);
                   return TRUE;
@@ -1220,17 +1236,4 @@ u8 wlan_hdd_tdls_is_progress(hdd_adapter_t *pAdapter, u8 *mac, u8 skip_self)
 
     mutex_unlock(&tdls_lock);
     return FALSE;
-}
-
-void wlan_hdd_tdls_set_connection_progress(hdd_adapter_t *pAdapter, u8* mac, u8 isProgress)
-{
-    hddTdlsPeer_t *curr_peer;
-
-    curr_peer = wlan_hdd_tdls_find_peer(pAdapter, mac);
-    if (curr_peer == NULL)
-        return;
-
-    curr_peer->isTDLSInProgress = isProgress;
-
-    return;
 }
