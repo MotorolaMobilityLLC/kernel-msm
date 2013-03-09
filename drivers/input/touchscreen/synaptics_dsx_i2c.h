@@ -251,6 +251,7 @@ struct synaptics_rmi4_data {
 	bool purge_enabled;
 	bool reset_on_resume;
 	bool shared_regulator;
+	bool one_touch_enabled;
 	wait_queue_head_t wait;
 	int (*i2c_read)(struct synaptics_rmi4_data *pdata, unsigned short addr,
 			unsigned char *data, unsigned short length);
