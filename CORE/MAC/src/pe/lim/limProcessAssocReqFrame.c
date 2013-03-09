@@ -53,7 +53,7 @@
  */
 #include "palTypes.h"
 #include "aniGlobal.h"
-#include "wniCfgAp.h"
+#include "wniCfgSta.h"
 #include "sirApi.h"
 #include "cfgApi.h"
 
@@ -301,11 +301,7 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
         limLog(pMac, LOGP, FL("could not retrieve Capabilities\n"));
         goto error;
     }
-#if defined(ANI_PRODUCT_TYPE_AP) && defined(ANI_LITTLE_BYTE_ENDIAN)
-    *(tANI_U16*)&localCapabilities=(tANI_U16)(temp);
-#else
     limCopyU16((tANI_U8 *) &localCapabilities, temp);
-#endif
 
     if (limCompareCapabilities(pMac,
                                pAssocReq,
@@ -339,45 +335,6 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
 
     updateContext = false;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    // Check if multiple SSID feature is not enabled
-    if (psessionEntry->pLimStartBssReq->ssId.length)
-    {
-        if (limCmpSSid(pMac, &pAssocReq->ssId, psessionEntry) == false)
-        {
-            /*Temp hack for UPF35 - skip SSID check in order to be able to interop 
-             with Marvel - they send their own SSID instead of ours*/
-            if ( 0 != vos_get_skip_ssid_check())
-            {
-                limLog(pMac, LOG1, FL("Received unmatched SSID but cfg to suppress - continuing\n"));
-            }
-            else
-            {
-              /**
-              * Received Re/Association Request with either
-              * Broadcast SSID OR with SSID that does not
-              * match with local one.
-              * Respond with unspecified status code.
-              */
-              limSendAssocRspMgmtFrame(pMac,
-                               eSIR_MAC_UNSPEC_FAILURE_STATUS,
-                               1,
-                               pHdr->sa,
-                               subType, 0,psessionEntry);
-  
-              // Log error
-              if (subType == LIM_ASSOC)
-                  limLog(pMac, LOGW, FL("received Assoc req with unmatched SSID from \n"));
-              else
-                  limLog(pMac, LOGW, FL("received ReAssoc req with unmatched SSID from \n"));
-              limPrintMacAddr(pMac, pHdr->sa, LOGW);
-              goto error;
-          }
-      }
-    }
-    else
-        limLog(pMac, LOG1, FL("Suppressed SSID, App is going to check SSID\n"));
-#else
     if (limCmpSSid(pMac, &pAssocReq->ssId, psessionEntry) == false)
     {
         /**
@@ -402,7 +359,6 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
         limPrintMacAddr(pMac, pHdr->sa, LOGW);
         goto error;
     }
-#endif
 
     /***************************************************************
       ** Verify if the requested rates are available in supported rate
@@ -1393,9 +1349,6 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
     if (subType == LIM_ASSOC || subType == LIM_REASSOC)
     {
         temp  = sizeof(tLimMlmAssocInd);
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)        
-        temp += pAssocReq->propIEinfo.numBss * sizeof(tSirNeighborBssInfo);
-#endif        
 
         if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pMlmAssocInd, temp))
         {
@@ -1412,36 +1365,6 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
         pMlmAssocInd->sessionId = psessionEntry->peSessionId;
         pMlmAssocInd->authType =  pStaDs->mlmStaContext.authType;
  
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-        // Note for BTAMP: no need to fill in pMlmAssocInd->seqNum
-        pMlmAssocInd->wniIndicator = (tAniBool) pAssocReq->propIEinfo.aniIndicator;
-        pMlmAssocInd->bpIndicator  = (tAniBool) pAssocReq->propIEinfo.bpIndicator;
-        pMlmAssocInd->bpType       = (tSirBpIndicatorType) pAssocReq->propIEinfo.bpType;
-        if (pAssocReq->extendedRatesPresent)
-        {
-            pMlmAssocInd->nwType = eSIR_11G_NW_TYPE;
-            limSetStaHashErpMode(pMac, pStaDs->assocId, eHAL_SET);
-        }
-        else
-        {
-            if (phyMode == WNI_CFG_PHY_MODE_11A)
-                pMlmAssocInd->nwType = eSIR_11A_NW_TYPE;
-            else
-            {
-                pMlmAssocInd->nwType = eSIR_11B_NW_TYPE;
-                limSetStaHashErpMode(pMac, pStaDs->assocId, eHAL_CLEAR);
-            }
-        }
-        pMlmAssocInd->assocType = (tSirAssocType)pAssocReq->propIEinfo.assocType;
-        pMlmAssocInd->load.numStas = psessionEntry->gLimNumOfCurrentSTAs;
-        pMlmAssocInd->load.channelUtilization =(pMac->lim.gpLimMeasData) ? pMac->lim.gpLimMeasData->avgChannelUtilization : 0;
-        pMlmAssocInd->numBss = (tANI_U32) pAssocReq->propIEinfo.numBss;
-        if (pAssocReq->propIEinfo.numBss)
-        {
-            palCopyMemory( pMac->hHdd,(tANI_U8 *) pMlmAssocInd->neighborList,(tANI_U8 *)pAssocReq->propIEinfo.pBssList,
-                           (sizeof(tSirNeighborBssInfo) * pAssocReq->propIEinfo.numBss));
-        } 
-#endif
         pMlmAssocInd->capabilityInfo = pAssocReq->capabilityInfo;
 
         // Fill in RSN IE information
@@ -1537,9 +1460,6 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
         // If its of Reassociation Request, then post LIM_MLM_REASSOC_IND 
         temp  = sizeof(tLimMlmReassocInd);
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-        temp += pAssocReq->propIEinfo.numBss * sizeof(tSirNeighborBssInfo);
-#endif
         if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pMlmReassocInd, temp))
         {
             limLog(pMac, LOGP, FL("call to palAllocateMemory failed for pMlmReassocInd\n"));
@@ -1554,40 +1474,6 @@ void limSendMlmAssocInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
         pMlmReassocInd->authType = pStaDs->mlmStaContext.authType;
         palCopyMemory( pMac->hHdd,(tANI_U8 *)&pMlmReassocInd->ssId, (tANI_U8 *)&(pAssocReq->ssId), pAssocReq->ssId.length + 1);
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-        // Note for BTAMP: no need to fill in pMlmAssocInd->seqNum
-        pMlmReassocInd->wniIndicator = (tAniBool) pAssocReq->propIEinfo.aniIndicator;
-        pMlmReassocInd->bpIndicator  = (tAniBool) pAssocReq->propIEinfo.bpIndicator;
-        pMlmReassocInd->bpType       = (tSirBpIndicatorType) pAssocReq->propIEinfo.bpType;
-        if (pAssocReq->extendedRatesPresent)
-        {
-            pMlmReassocInd->nwType = eSIR_11G_NW_TYPE;
-            limSetStaHashErpMode(pMac, pStaDs->assocId, eHAL_SET);
-        }
-        else
-        {
-            if (phyMode == WNI_CFG_PHY_MODE_11A)
-                pMlmReassocInd->nwType = eSIR_11A_NW_TYPE;
-            else
-            {
-                pMlmReassocInd->nwType = eSIR_11B_NW_TYPE;
-                limSetStaHashErpMode(pMac, pStaDs->assocId, eHAL_CLEAR);
-            }
-        }
-
-        pMlmReassocInd->reassocType  = (tSirAssocType)pAssocReq->propIEinfo.assocType;
-        pMlmReassocInd->load.numStas = psessionEntry->gLimNumOfCurrentSTAs;
-        pMlmReassocInd->load.channelUtilization = (pMac->lim.gpLimMeasData) ?
-                                                  pMac->lim.gpLimMeasData->avgChannelUtilization : 0;
-        pMlmReassocInd->numBss = (tANI_U32) pAssocReq->propIEinfo.numBss;
-        if (pAssocReq->propIEinfo.numBss)
-        {
-            palCopyMemory( pMac->hHdd, 
-                           (tANI_U8 *) pMlmReassocInd->neighborList,
-                           (tANI_U8 *) pAssocReq->propIEinfo.pBssList,
-                           (sizeof(tSirNeighborBssInfo) * pAssocReq->propIEinfo.numBss));
-        }
-#endif
         if (pAssocReq->propIEinfo.aniIndicator)
             pStaDs->aniPeer = 1;
 

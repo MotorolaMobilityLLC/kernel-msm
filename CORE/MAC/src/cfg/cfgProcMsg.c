@@ -152,9 +152,6 @@ static void
 ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
 {
     tANI_S32    i;
-  #if defined(ANI_PRODUCT_TYPE_AP)
-    tANI_U32 ap;
-  #endif
 
     tANI_U32    expLen, retVal, bufStart, bufEnd;
     tANI_U32    *pSrc, *pDst, *pDstEnd;
@@ -169,27 +166,8 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
            length, sirReadU32N((tANI_U8*)pParam) );)
 
     // if the string is not correct, return failure
-#if defined(ANI_PRODUCT_TYPE_AP)
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-    if (sirReadU32N((tANI_U8*)pParam) == CFG_AP_MAGIC_DWORD)
-#else
-    if (*pParam == CFG_AP_MAGIC_DWORD)
-#endif
-        ap = 1;
-    else
-
-
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-        if (sirReadU32N((tANI_U8*)pParam) == CFG_STA_MAGIC_DWORD)
-#else
-        if (*pParam == CFG_STA_MAGIC_DWORD)
-#endif
-
-        ap = 0;
-#else /* ANI_PRODUCT_TYPE_AP*/
         if (*pParam == CFG_STA_MAGIC_DWORD) {}
 
-#endif/* ANI_PRODUCT_TYPE_AP*/
 
 
 
@@ -204,14 +182,6 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     length -= 4;
 
     // Verify message length
-#ifdef ANI_PRODUCT_TYPE_AP
-    if (ap)
-    {
-        pMac->cfg.gCfgMaxIBufSize = CFG_AP_IBUF_MAX_SIZE;
-        pMac->cfg.gCfgMaxSBufSize = CFG_AP_SBUF_MAX_SIZE;
-    }
-    else
-#endif /* (WNI_POLARIS_FW_PRODUCT == AP) */
     {
         pMac->cfg.gCfgMaxIBufSize = CFG_STA_IBUF_MAX_SIZE;
         pMac->cfg.gCfgMaxSBufSize = CFG_STA_SBUF_MAX_SIZE;
