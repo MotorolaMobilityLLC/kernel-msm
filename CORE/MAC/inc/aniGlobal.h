@@ -1064,8 +1064,6 @@ typedef struct sAniSirGlobal
     tAniSirSys   sys;
     tAniSirUtils utils;
 
-#ifndef WLAN_FTM_STUB 
-#endif
 
     tAniSirTxWrapper txWrapper;
     // PAL/HDD handle
