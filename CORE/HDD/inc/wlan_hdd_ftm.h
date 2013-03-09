@@ -171,14 +171,12 @@ typedef struct wlan_hdd_ftm_status_s
     v_BOOL_t  IsCmdPending;
     v_BOOL_t  cmd_iwpriv;
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
     /** Large size of NV Table Handle **/
     eNvTable  processingNVTable;
     v_U32_t   targetNVTableSize;
     v_U8_t   *targetNVTablePointer;
     v_U32_t   processedNVTableSize;
     v_U8_t   *tempNVTableBuffer;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 } wlan_hdd_ftm_status_t;
 typedef struct ftm_msg_s

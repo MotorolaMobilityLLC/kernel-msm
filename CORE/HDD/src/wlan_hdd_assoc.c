@@ -966,20 +966,8 @@ static VOS_STATUS hdd_roamRegisterSTA( hdd_adapter_t *pAdapter,
    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
                  "HDD register TL Sec_enabled= %d.", staDesc.ucProtectedFrame );
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    // UMA is Not ready yet, Xlation will be done by TL
    staDesc.ucSwFrameTXXlation = 1;
-#else
-   /* Enable UMA for TX translation only when there is no concurrent session active */
-   if (vos_concurrent_sessions_running())
-   {
-      staDesc.ucSwFrameTXXlation = 1;
-   }
-   else
-   {
-      staDesc.ucSwFrameTXXlation = 0;
-   }
-#endif
    staDesc.ucSwFrameRXXlation = 1;
    staDesc.ucAddRmvLLC = 1;
    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "HDD register TL QoS_enabled=%d", 
@@ -2130,11 +2118,6 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
             halStatus = hdd_DisConnectHandler( pAdapter, pRoamInfo, roamId, roamStatus, roamResult );
             /* Check if Mcast/Bcast Filters are set, if yes clear the filters here */
             if ((WLAN_HDD_GET_CTX(pAdapter))->hdd_mcastbcast_filter_set == TRUE) {
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#ifdef MSM_PLATFORM
-                    hdd_conf_mcastbcast_filter((WLAN_HDD_GET_CTX(pAdapter)), FALSE);
-#endif
-#endif
                     (WLAN_HDD_GET_CTX(pAdapter))->hdd_mcastbcast_filter_set = FALSE;
             }
             pHddStaCtx->ft_carrier_on = FALSE;
