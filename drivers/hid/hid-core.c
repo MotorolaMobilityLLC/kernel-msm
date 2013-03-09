@@ -1235,7 +1235,8 @@ int hid_connect(struct hid_device *hdev, unsigned int connect_mask)
 	if ((connect_mask & HID_CONNECT_HIDINPUT) && !hidinput_connect(hdev,
 				connect_mask & HID_CONNECT_HIDINPUT_FORCE))
 		hdev->claimed |= HID_CLAIMED_INPUT;
-	if (hdev->quirks & HID_QUIRK_MULTITOUCH) {
+	if (hdev->quirks & HID_QUIRK_MULTITOUCH &&
+			(!(hdev->quirks & HID_QUIRK_MULTITOUCH_MOTOROLA))) {
 		/* this device should be handled by hid-multitouch, skip it */
 		return -ENODEV;
 	}
