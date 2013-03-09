@@ -73,9 +73,7 @@
 #ifdef WLAN_OPEN_SOURCE
 #include <linux/wakelock.h>
 #endif
-#ifdef ANI_MANF_DIAG
 #include <wlan_hdd_ftm.h>
-#endif
 #ifdef FEATURE_WLAN_TDLS
 #include "wlan_hdd_tdls.h"
 #endif
@@ -398,10 +396,8 @@ typedef enum device_mode
    WLAN_HDD_SOFTAP,
    WLAN_HDD_P2P_CLIENT,
    WLAN_HDD_P2P_GO,
-   WLAN_HDD_MONITOR
-#ifdef ANI_MANF_DIAG
-   ,WLAN_HDD_FTM,
-#endif
+   WLAN_HDD_MONITOR,
+   WLAN_HDD_FTM,
    WLAN_HDD_P2P_DEVICE
 }device_mode_t;
 
@@ -856,9 +852,7 @@ struct hdd_context_s
 
    /** Config values read from qcom_cfg.ini file */ 
    hdd_config_t *cfg_ini;
-  #ifdef ANI_MANF_DIAG
    wlan_hdd_ftm_status_t ftm; 
-  #endif
    /** completion variable for full power callback */
    struct completion full_pwr_comp_var;
    /** completion variable for Request BMPS callback */
