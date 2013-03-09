@@ -142,14 +142,12 @@ VOS_STATUS vos_get_binary_blob( VOS_BINARY_ID binaryId,
 }
 
 
-#ifdef WLAN_SOFTAP_FEATURE
 tVOS_CON_MODE vos_get_conparam( void )
 {
     tVOS_CON_MODE con_mode;
     con_mode = hdd_get_conparam ( );
     return con_mode;
 }
-#endif
 tVOS_CONCURRENCY_MODE vos_get_concurrency_mode( void )
 {
     tVOS_CONCURRENCY_MODE con_mode;

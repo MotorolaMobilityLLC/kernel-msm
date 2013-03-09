@@ -62,9 +62,7 @@
 #include <i_vos_packet.h>
 #include <vos_timer.h>
 #include <vos_trace.h>
-#ifdef WLAN_SOFTAP_FEATURE
 #include <wlan_hdd_main.h>   
-#endif
 
 /*--------------------------------------------------------------------------
   Preprocessor definitions and constants
@@ -447,9 +445,7 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
             break;
          }
          list_add_tail(&pPkt->node, pFreeList);
-#ifdef WLAN_SOFTAP_FEATURE
          pVosPacketContext->uctxDataFreeListCount++;
-#endif
       }
 
       // exit if any problems so far
@@ -548,9 +544,7 @@ VOS_STATUS vos_packet_close( v_PVOID_t pVosContext )
 
    mutex_unlock(&gpVosPacketContext->mlock);
 
-#ifdef WLAN_SOFTAP_FEATURE
    gpVosPacketContext->uctxDataFreeListCount = 0;
-#endif
 
    return VOS_STATUS_SUCCESS;
 }
@@ -924,9 +918,7 @@ VOS_STATUS vos_pkt_wrap_data_packet( vos_pkt_t **ppPacket,
    // remove the first record from the free pool
    pVosPacket = list_first_entry(pPktFreeList, struct vos_pkt_t, node);
    list_del(&pVosPacket->node);
-#ifdef WLAN_SOFTAP_FEATURE
    gpVosPacketContext->uctxDataFreeListCount --;
-#endif
 
    // clear out the User Data pointers in the voss packet..
    memset(&pVosPacket->pvUserData, 0, sizeof(pVosPacket->pvUserData));
@@ -1344,9 +1336,7 @@ VOS_STATUS vos_pkt_return_packet( vos_pkt_t *pPacket )
       case VOS_PKT_TYPE_TX_802_3_DATA:
          pPktFreeList = &gpVosPacketContext->txDataFreeList;
          pLowResourceInfo = &gpVosPacketContext->txDataLowResourceInfo;
-#ifdef WLAN_SOFTAP_FEATURE
          gpVosPacketContext->uctxDataFreeListCount ++;
-#endif
          break;
 
       default:
@@ -2926,14 +2916,12 @@ VOS_STATUS vos_pkt_get_available_buffer_pool (VOS_PKT_TYPE  pktType,
 
    case VOS_PKT_TYPE_TX_802_11_DATA:
    case VOS_PKT_TYPE_TX_802_3_DATA:
-#ifdef WLAN_SOFTAP_FEATURE
       if (VOS_STA_SAP_MODE == hdd_get_conparam())
       {
          *vosFreeBuffer = gpVosPacketContext->uctxDataFreeListCount;  
           return VOS_STATUS_SUCCESS;
       }
       else
-#endif
       pList = &gpVosPacketContext->txDataFreeList;
       break;
 

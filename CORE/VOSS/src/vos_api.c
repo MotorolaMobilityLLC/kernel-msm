@@ -100,9 +100,7 @@
 #include <linux/vmalloc.h>
 #include "wlan_hdd_cfg80211.h"
 
-#ifdef WLAN_SOFTAP_FEATURE
 #include "sapApi.h"
-#endif
 
 
 
@@ -1017,7 +1015,6 @@ v_VOID_t* vos_get_context( VOS_MODULE_ID moduleId,
     }    
 #endif //WLAN_BTAMP_FEATURE
 
-#ifdef WLAN_SOFTAP_FEATURE
     case VOS_MODULE_ID_SAP:
     {
       pModContext = gpVosContext->pSAPContext;
@@ -1029,7 +1026,6 @@ v_VOID_t* vos_get_context( VOS_MODULE_ID moduleId,
       pModContext = gpVosContext->pHDDSoftAPContext;
       break;
     }
-#endif
 
     case VOS_MODULE_ID_HDD:
     {
@@ -1231,13 +1227,11 @@ VOS_STATUS vos_alloc_context( v_VOID_t *pVosContext, VOS_MODULE_ID moduleID,
     }    
 #endif //WLAN_BTAMP_FEATURE
 
-#ifdef WLAN_SOFTAP_FEATURE
     case VOS_MODULE_ID_SAP:
     {
       pGpModContext = &(gpVosContext->pSAPContext);
       break;
     }
-#endif
 
     case VOS_MODULE_ID_WDA:
     {
@@ -1247,9 +1241,7 @@ VOS_STATUS vos_alloc_context( v_VOID_t *pVosContext, VOS_MODULE_ID moduleID,
     case VOS_MODULE_ID_SME:
     case VOS_MODULE_ID_PE:
     case VOS_MODULE_ID_HDD:
-#ifdef WLAN_SOFTAP_FEATURE
     case VOS_MODULE_ID_HDD_SOFTAP:
-#endif
     default:
     {     
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: Module ID %i "
@@ -1359,13 +1351,11 @@ VOS_STATUS vos_free_context( v_VOID_t *pVosContext, VOS_MODULE_ID moduleID,
     }
 #endif //WLAN_BTAMP_FEATURE
  
-#ifdef WLAN_SOFTAP_FEATURE
     case VOS_MODULE_ID_SAP:
     {
       pGpModContext = &(gpVosContext->pSAPContext); 
       break;
     }
-#endif
 
     case VOS_MODULE_ID_WDA:
     {
@@ -1375,9 +1365,7 @@ VOS_STATUS vos_free_context( v_VOID_t *pVosContext, VOS_MODULE_ID moduleID,
     case VOS_MODULE_ID_HDD:
     case VOS_MODULE_ID_SME:
     case VOS_MODULE_ID_PE:
-#ifdef WLAN_SOFTAP_FEATURE
     case VOS_MODULE_ID_HDD_SOFTAP:
-#endif
     default:
     {     
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: Module ID %i "
@@ -1888,9 +1876,7 @@ vos_fetch_tl_cfg_parms
   pTLConfig->ucAcWeights[2] = pConfig->WfqViWeight;
   pTLConfig->ucAcWeights[3] = pConfig->WfqVoWeight;
   pTLConfig->uDelayedTriggerFrmInt = pConfig->DelayedTriggerFrmInt;
-#ifdef WLAN_SOFTAP_FEATURE
   pTLConfig->uMinFramesProcThres = pConfig->MinFramesProcThres;
-#endif
 
 }
 
