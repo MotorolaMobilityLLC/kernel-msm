@@ -120,7 +120,6 @@ typedef struct {
     tANI_U16    tx_pkt;
     tANI_U16    rx_pkt;
     vos_timer_t     peerIdleTimer;
-    tANI_U8         isTDLSInProgress;
 } hddTdlsPeer_t;
 
 typedef struct {
@@ -148,7 +147,9 @@ hddTdlsPeer_t *wlan_hdd_tdls_find_peer(hdd_adapter_t *pAdapter, u8 *mac);
 
 hddTdlsPeer_t *wlan_hdd_tdls_get_peer(hdd_adapter_t *pAdapter, u8 *mac);
 
-void wlan_hdd_tdls_set_link_status(hddTdlsPeer_t *curr_peer, int status);
+void wlan_hdd_tdls_set_peer_link_status(hddTdlsPeer_t *curr_peer, tTDLSLinkStatus status);
+
+void wlan_hdd_tdls_set_link_status(hdd_adapter_t *pAdapter, u8* mac, tTDLSLinkStatus status);
 
 int wlan_hdd_tdls_recv_discovery_resp(hdd_adapter_t *pAdapter, u8 *mac);
 
@@ -179,8 +180,6 @@ void wlan_hdd_tdls_increment_peer_count(hdd_adapter_t *pAdapter);
 void wlan_hdd_tdls_decrement_peer_count(hdd_adapter_t *pAdapter);
 
 void wlan_hdd_tdls_check_bmps(hdd_adapter_t *pAdapter);
-
-void wlan_hdd_tdls_set_connection_progress(hdd_adapter_t *pAdapter, u8* mac, u8 isProgress);
 
 u8 wlan_hdd_tdls_is_progress(hdd_adapter_t *pAdapter, u8* mac, u8 skip_self);
 
