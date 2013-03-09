@@ -1062,13 +1062,13 @@ static void vfe32_set_default_reg_values(
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_HIST_UB_CFG);
 	} else {
-		msm_camera_io_w(0x350001F,
+		msm_camera_io_w(0x316001F,
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_HIST_UB_CFG);
-		msm_camera_io_w(0x370002F,
+		msm_camera_io_w(0x336005C,
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_AEC_BG_UB_CFG);
-		msm_camera_io_w(0x3A0002F,
+		msm_camera_io_w(0x393003C,
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_AF_BF_UB_CFG);
 		msm_camera_io_w(0x3D00007,
