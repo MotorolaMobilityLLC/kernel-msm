@@ -32,6 +32,7 @@
 #include <linux/persistent_ram.h>
 #include <linux/apanic_mmc.h>
 #include <linux/io.h>
+#include <linux/rslib.h>
 
 /*
  * EMIT_BOOTINFO and EMIT_BOOTINFO_STR are used to emit the bootinfo
@@ -267,7 +268,19 @@ static void convert_to_upper(char *str)
 	}
 }
 
-#define BOOTINFO_BCK_BUF_ALIGN	512
+/* symbolsize is 8 (bits) */
+#define ECC_SYMSIZE	8
+/* primitive polynomial is x^8+x^4+x^3+x^2+1 */
+#define ECC_POLY	285
+/* first consecutive root is 0 */
+#define ECC_FCR		0
+/* primitive element to generate roots = 1 */
+#define ECC_ELEM	1
+/* generator polynomial degree (number of roots) = 16 */
+#define ECC_SIZE	16
+#define ECC_BLOCK_SIZE	128
+
+#define BOOTINFO_BCK_BUF_ALIGN	ECC_BLOCK_SIZE
 #define BOOTINFO_BCK_MAGIC	0x626f6f74696e666f	/* bootinfo */
 #define BOOTINFO_LKMSG(fmt, args...) do {		\
 	persistent_ram_ext_oldbuf_print(fmt, ##args);	\
@@ -279,12 +292,17 @@ struct bootinfo_bck {
 	char linux_banner[512];
 } __aligned(BOOTINFO_BCK_BUF_ALIGN);
 
+struct bootinfo_bck_buf {
+	struct bootinfo_bck bck;
+	u8 ecc[(sizeof(struct bootinfo_bck) / ECC_BLOCK_SIZE) * ECC_SIZE];
+} __aligned(BOOTINFO_BCK_BUF_ALIGN);
+
 static int bootinfo_bck_buf_reserved;
 
 int __init bootinfo_bck_size(void)
 {
-	pr_debug("%s size %d\n", __func__, sizeof(struct bootinfo_bck));
-	return sizeof(struct bootinfo_bck);
+	pr_debug("%s size %d\n", __func__, sizeof(struct bootinfo_bck_buf));
+	return sizeof(struct bootinfo_bck_buf);
 }
 
 void __init bootinfo_bck_buf_set_reserved(void)
@@ -315,9 +333,90 @@ static void __init bootinfo_apanic_annotate_bl(struct bl_build_sig *bl)
 	}
 }
 
+static void __init bootinfo_bck_update_ecc(struct rs_control *rs,
+				struct bootinfo_bck_buf *buf)
+{
+	u8 *payload, *ecc;
+	int i;
+	u16 par[ECC_SIZE];
+
+	for (payload = (u8 *)&buf->bck, ecc = (u8 *)&buf->ecc;
+			payload < (u8 *)&buf->ecc;
+			payload += ECC_BLOCK_SIZE, ecc += ECC_SIZE) {
+		memset(par, 0, sizeof(par));
+		encode_rs8(rs, payload, ECC_BLOCK_SIZE, par, 0);
+		for (i = 0; i < ECC_SIZE; i++)
+			ecc[i] = par[i];
+	}
+}
+
+static int __init bootinfo_bck_ecc(struct rs_control *rs,
+				struct bootinfo_bck_buf *buf)
+{
+	u8 *payload, *ecc;
+	int i, bad_blocks = 0, corrected = 0, numerr;
+	u16 par[ECC_SIZE];
+
+	for (payload = (u8 *)&buf->bck, ecc = (u8 *)&buf->ecc;
+			payload < (u8 *)&buf->ecc;
+			payload += ECC_BLOCK_SIZE, ecc += ECC_SIZE) {
+		for (i = 0; i < ECC_SIZE; i++)
+			par[i] = ecc[i];
+		numerr = decode_rs8(rs, payload, par, ECC_BLOCK_SIZE,
+				NULL, 0, NULL, 0, NULL);
+		if (numerr > 0)
+			corrected += numerr;
+		else if (numerr < 0)
+			bad_blocks++;
+	}
+	if (corrected)
+		BOOTINFO_LKMSG("\n%s: corrected %d bytes\n", __func__,
+					corrected);
+	if (bad_blocks)
+		BOOTINFO_LKMSG("\n%s: %d bad blocks\n", __func__, bad_blocks);
+
+	return bad_blocks;
+}
+
+static int __init bootinfo_bck_buf_check(struct rs_control *rs,
+				struct bootinfo_bck_buf *buf)
+{
+	struct bootinfo_bck *bck = &buf->bck;
+
+	if (bootinfo_bck_ecc(rs, buf))
+		return -EINVAL;
+	if (bck->magic != BOOTINFO_BCK_MAGIC)
+		return -EINVAL;
+	return 0;
+}
+
+static int __init bootinfo_blsig_comp(struct bl_build_sig *prev,
+					struct bl_build_sig *this)
+{
+	int i, j;
+	if (!prev || !this || (bl_build_sig_count > MAX_BL_BUILD_SIG))
+		return -EINVAL;
+	for (i = 0; i < bl_build_sig_count; i++) {
+		for (j = 0; j < bl_build_sig_count; j++) {
+			if (memcmp(prev[i].item, this[j].item,
+					MAX_BLD_SIG_ITEM))
+				continue;
+			if (memcmp(prev[i].value, this[j].value,
+					MAX_BLD_SIG_VALUE))
+				return -EINVAL;
+			else
+				break;
+		}
+		if (j >= bl_build_sig_count)
+			return -EINVAL;
+	}
+	return 0;
+}
+
 static void __init bootinfo_emit_to_last_kmsg(void)
 {
-	struct bootinfo_bck *bck_buf;
+	struct bootinfo_bck_buf *buf;
+	struct rs_control *rs;
 
 	if (!bootinfo_bck_buf_reserved) {
 		pr_err("%s bck buf is not reserved\n", __func__);
@@ -325,40 +424,53 @@ static void __init bootinfo_emit_to_last_kmsg(void)
 		goto print_this;
 	}
 
-	bck_buf = (struct bootinfo_bck *)allocate_contiguous_ebi(
+	rs = init_rs(ECC_SYMSIZE, ECC_POLY, ECC_FCR, ECC_ELEM, ECC_SIZE);
+	if (!rs) {
+		pr_err("%s init_rs failed\n", __func__);
+		BOOTINFO_LKMSG("\nTHIS\n");
+		goto print_this;
+	}
+
+	buf = (struct bootinfo_bck_buf *)allocate_contiguous_ebi(
 			bootinfo_bck_size(), BOOTINFO_BCK_BUF_ALIGN, 1);
-	if (!bck_buf) {
+	if (!buf) {
+		free_rs(rs);
 		pr_err("%s can't get bck buf (size %d)\n", __func__,
 				bootinfo_bck_size());
 		BOOTINFO_LKMSG("\nTHIS\n");
 		goto print_this;
 	}
 
-	if (bck_buf->magic == BOOTINFO_BCK_MAGIC) {
+	if (!bootinfo_bck_buf_check(rs, buf)) {
 		int changed = 0;
-		if (memcmp(bl_build_sigs, bck_buf->bl, sizeof(bl_build_sigs)))
+		if (bootinfo_blsig_comp(buf->bck.bl, bl_build_sigs))
 			changed |= 1;
-		if (strncmp(linux_banner, bck_buf->linux_banner,
-			sizeof(bck_buf->linux_banner)))
+		if (strncmp(linux_banner, buf->bck.linux_banner,
+			sizeof(buf->bck.linux_banner)))
 			changed |= 2;
 		if (changed) {
 			BOOTINFO_LKMSG("\nPREV\n");
 			if (changed & 1)
-				bootinfo_lkmsg_bl(bck_buf->bl);
-			if (changed & 2)
-				BOOTINFO_LKMSG(bck_buf->linux_banner);
+				bootinfo_lkmsg_bl(buf->bck.bl);
+			if (changed & 2) {
+				buf->bck.linux_banner[
+					sizeof(buf->bck.linux_banner) - 1] = 0;
+				BOOTINFO_LKMSG(buf->bck.linux_banner);
+			}
 			BOOTINFO_LKMSG("\nTHIS\n");
 		}
 	} else {
 		BOOTINFO_LKMSG("\nTHIS\n");
 	}
 
-	memset(bck_buf, 0, sizeof(struct bootinfo_bck));
-	bck_buf->magic = BOOTINFO_BCK_MAGIC;
-	memcpy(bck_buf->bl, bl_build_sigs, sizeof(bl_build_sigs));
-	strlcpy(bck_buf->linux_banner, linux_banner,
-			sizeof(bck_buf->linux_banner));
-	iounmap(bck_buf);
+	memset(buf, 0, sizeof(struct bootinfo_bck_buf));
+	buf->bck.magic = BOOTINFO_BCK_MAGIC;
+	memcpy(buf->bck.bl, bl_build_sigs, sizeof(bl_build_sigs));
+	strlcpy(buf->bck.linux_banner, linux_banner,
+			sizeof(buf->bck.linux_banner));
+	bootinfo_bck_update_ecc(rs, buf);
+	iounmap(buf);
+	free_rs(rs);
 print_this:
 	bootinfo_lkmsg_bl(bl_build_sigs);
 	BOOTINFO_LKMSG(linux_banner);
