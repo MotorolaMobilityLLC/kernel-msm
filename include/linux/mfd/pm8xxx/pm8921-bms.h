@@ -41,6 +41,9 @@ struct pm8xxx_bms_core_data {
  *				voltage higher than cutoff voltage
  * @low_voltage_calc_ms:	The period of soc calculation in ms when battery
  *				voltage is near cutoff voltage
+ * @disable_flat_portion_ocv:	feature to disable ocv updates while in sleep
+ * @ocv_dis_high_soc:		the high soc percent when ocv should be disabled
+ * @ocv_dis_low_soc:		the low soc percent when ocv should be enabled
  */
 struct pm8921_bms_platform_data {
 	struct pm8xxx_bms_core_data	bms_cdata;
@@ -50,6 +53,8 @@ struct pm8921_bms_platform_data {
 	unsigned int			v_cutoff;
 	unsigned int			max_voltage_uv;
 	unsigned int			rconn_mohm;
+	unsigned int			alarm_low_mv;
+	unsigned int			alarm_high_mv;
 	int				enable_fcc_learning;
 	int				shutdown_soc_valid_limit;
 	int				ignore_shutdown_soc;
@@ -57,6 +62,9 @@ struct pm8921_bms_platform_data {
 	int				chg_term_ua;
 	int				normal_voltage_calc_ms;
 	int				low_voltage_calc_ms;
+	int				disable_flat_portion_ocv;
+	int				ocv_dis_high_soc;
+	int				ocv_dis_low_soc;
 };
 
 #if defined(CONFIG_PM8921_BMS) || defined(CONFIG_PM8921_BMS_MODULE)
