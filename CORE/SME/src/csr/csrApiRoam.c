@@ -9628,7 +9628,10 @@ eHalStatus csrRoamLostLink( tpAniSirGlobal pMac, tANI_U32 sessionId, tANI_U32 ty
         /* Convert into proper reason code */
         pSession->joinFailStatusCode.reasonCode =
                 (pDeauthIndMsg->reasonCode == eSIR_BEACON_MISSED) ?
-                 eSIR_MAC_DISASSOC_LEAVING_BSS_REASON : pDeauthIndMsg->reasonCode;
+                0 : pDeauthIndMsg->reasonCode;
+       /* cfg layer expects 0 as reason code if
+          the driver dosent know the reason code
+          eSIR_BEACON_MISSED is defined as locally */
     }
     else
     {
