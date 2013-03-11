@@ -1035,6 +1035,12 @@ static int smp_distribute_keys(struct l2cap_conn *conn, __u8 force)
 	return 0;
 }
 
+void smp_conn_security_fail(struct l2cap_conn *conn, u8 code, u8 reason)
+{
+	BT_DBG("smp: %d %d ", code, reason);
+	smp_send_cmd(conn, SMP_CMD_PAIRING_FAIL, sizeof(reason), &reason);
+}
+
 int smp_link_encrypt_cmplt(struct l2cap_conn *conn, u8 status, u8 encrypt)
 {
 	struct hci_conn *hcon = conn->hcon;
