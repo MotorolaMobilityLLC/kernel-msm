@@ -1815,7 +1815,10 @@ static int pm_power_get_property_mains(struct power_supply *psy,
 			type == POWER_SUPPLY_TYPE_USB_ACA ||
 			type == POWER_SUPPLY_TYPE_USB_CDP)
 			val->intval = is_usb_chg_plugged_in(the_chip);
-
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+		if (the_chip->usb_type != POWER_SUPPLY_TYPE_USB_DCP)
+			val->intval = 0;
+#endif
 		break;
 	default:
 		return -EINVAL;
@@ -1945,7 +1948,11 @@ static int pm_power_get_property_usb(struct power_supply *psy,
 
 		if (the_chip->usb_type == POWER_SUPPLY_TYPE_USB)
 			val->intval = is_usb_chg_plugged_in(the_chip);
-
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+		if (the_chip->usb_type == POWER_SUPPLY_TYPE_USB_ACA ||
+		    the_chip->usb_type == POWER_SUPPLY_TYPE_USB_CDP)
+			val->intval = is_usb_chg_plugged_in(the_chip);
+#endif
 		break;
 
 	case POWER_SUPPLY_PROP_SCOPE:
