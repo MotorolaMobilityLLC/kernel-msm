@@ -1100,6 +1100,44 @@ WLANTL_ChangeSTAState
 
 /*===========================================================================
 
+  FUNCTION    WLANTL_STAPtkInstalled
+
+  DESCRIPTION
+
+    HDD will make this notification whenever PTK is installed for the STA
+
+  DEPENDENCIES
+
+    A station must have been registered before the change state can be
+    called.
+
+  PARAMETERS
+
+   pvosGCtx:        pointer to the global vos context; a handle to TL's
+                    control block can be extracted from its context
+   ucSTAId:         identifier for the STA for which Pairwise key is
+                    installed
+
+  RETURN VALUE
+
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_FAULT:  Station ID is outside array boundaries or pointer to
+                         TL cb is NULL ; access would cause a page fault
+    VOS_STATUS_E_EXISTS: Station was not registered
+    VOS_STATUS_SUCCESS:  Everything is good :)
+
+  SIDE EFFECTS
+
+============================================================================*/
+VOS_STATUS
+WLANTL_STAPtkInstalled
+(
+  v_PVOID_t             pvosGCtx,
+  v_U8_t                ucSTAId
+);
+/*===========================================================================
+
   FUNCTION    WLANTL_GetSTAState
 
   DESCRIPTION

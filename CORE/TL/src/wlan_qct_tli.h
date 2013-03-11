@@ -633,6 +633,10 @@ typedef struct
   v_U32_t       ulTotalReplayPacketsDetected;
 #endif
 
+ /* Set when pairwise key is installed, if ptkInstalled is
+    1 then we have to encrypt the data irrespective of TL
+    state (CONNECTED/AUTHENTICATED) */
+  v_U8_t ptkInstalled;
 }WLANTL_STAClientType;
 
 /*---------------------------------------------------------------------------
