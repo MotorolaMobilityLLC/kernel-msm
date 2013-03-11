@@ -2576,26 +2576,7 @@ static void a3xx_cp_callback(struct adreno_device *adreno_dev, int irq)
 {
 	struct kgsl_device *device = &adreno_dev->dev;
 
-	if (irq == A3XX_INT_CP_RB_INT) {
-		unsigned int context_id;
-		kgsl_sharedmem_readl(&device->memstore, &context_id,
-				KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL,
-					current_context));
-		if (context_id < KGSL_MEMSTORE_MAX) {
-			/* reset per context ts_cmp_enable */
-			kgsl_sharedmem_writel(&device->memstore,
-					KGSL_MEMSTORE_OFFSET(context_id,
-						ts_cmp_enable), 0);
-			/* Always reset global timestamp ts_cmp_enable */
-			kgsl_sharedmem_writel(&device->memstore,
-					KGSL_MEMSTORE_OFFSET(
-						KGSL_MEMSTORE_GLOBAL,
-						ts_cmp_enable), 0);
-			wmb();
-		}
-		KGSL_CMD_WARN(device, "ringbuffer rb interrupt\n");
-	}
-
+	/* Wake up everybody waiting for the interrupt */
 	wake_up_interruptible_all(&device->wait_queue);
 
 	/* Schedule work to free mem and issue ibs */
@@ -2692,6 +2673,15 @@ static void a3xx_irq_control(struct adreno_device *adreno_dev, int state)
 		adreno_regwrite(device, A3XX_RBBM_INT_0_MASK, A3XX_INT_MASK);
 	else
 		adreno_regwrite(device, A3XX_RBBM_INT_0_MASK, 0);
+}
+
+static unsigned int a3xx_irq_pending(struct adreno_device *adreno_dev)
+{
+	unsigned int status;
+
+	adreno_regread(&adreno_dev->dev, A3XX_RBBM_INT_0_STATUS, &status);
+
+	return (status & A3XX_INT_MASK) ? 1 : 0;
 }
 
 static unsigned int a3xx_busy_cycles(struct adreno_device *adreno_dev)
@@ -2888,6 +2878,7 @@ struct adreno_gpudev adreno_a3xx_gpudev = {
 	.rb_init = a3xx_rb_init,
 	.irq_control = a3xx_irq_control,
 	.irq_handler = a3xx_irq_handler,
+	.irq_pending = a3xx_irq_pending,
 	.busy_cycles = a3xx_busy_cycles,
 	.start = a3xx_start,
 	.snapshot = a3xx_snapshot,
