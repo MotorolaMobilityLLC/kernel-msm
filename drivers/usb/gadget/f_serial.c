@@ -952,7 +952,8 @@ int gser_bind_config(struct usb_configuration *c, u8 port_num)
 				return status;
 			gser_string_defs[STRING_INTERFACE].id = status;
 		}
-		gser_interface_desc.iInterface = status;
+		gser_interface_desc.iInterface =
+			gser_string_defs[STRING_INTERFACE].id;
 		gser->port.func.strings = gser_strings;
 		gser->port.func.name = "modem";
 	} else if (port_num == 1) {
@@ -962,7 +963,8 @@ int gser_bind_config(struct usb_configuration *c, u8 port_num)
 				return status;
 			nmea_string_defs[STRING_INTERFACE].id = status;
 		}
-		gser_interface_desc.iInterface = status;
+		gser_interface_desc.iInterface =
+			nmea_string_defs[STRING_INTERFACE].id;
 		gser->port.func.strings = nmea_strings;
 		gser->port.func.name = "nmea";
 	} else {
@@ -972,7 +974,8 @@ int gser_bind_config(struct usb_configuration *c, u8 port_num)
 				return status;
 			modem2_string_defs[STRING_INTERFACE].id = status;
 		}
-		gser_interface_desc.iInterface = status;
+		gser_interface_desc.iInterface =
+			modem2_string_defs[STRING_INTERFACE].id;
 		gser->port.func.strings = modem2_strings;
 		gser->port.func.name = "modem2";
 	}
