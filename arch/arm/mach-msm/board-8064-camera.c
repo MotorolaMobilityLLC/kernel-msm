@@ -19,6 +19,7 @@
 #include <mach/camera.h>
 #include <mach/msm_bus_board.h>
 #include <mach/gpiomux.h>
+#include <mach/socinfo.h>
 
 #include "devices.h"
 #include "board-8064.h"
@@ -695,8 +696,12 @@ static struct platform_device msm_camera_server = {
 
 void __init apq8064_init_cam(void)
 {
-	msm_gpiomux_install(apq8064_cam_common_configs,
+	/* for SGLTE2 platform, do not configure i2c/gpiomux gsbi4 is used for
+	 * some other purpose */
+	if (socinfo_get_platform_subtype() != PLATFORM_SUBTYPE_SGLTE2) {
+		msm_gpiomux_install(apq8064_cam_common_configs,
 			ARRAY_SIZE(apq8064_cam_common_configs));
+	}
 
 	if (machine_is_apq8064_cdp()) {
 		sensor_board_info_imx074.mount_angle = 0;
@@ -705,7 +710,8 @@ void __init apq8064_init_cam(void)
 		sensor_board_info_imx074.mount_angle = 180;
 
 	platform_device_register(&msm_camera_server);
-	platform_device_register(&msm8960_device_i2c_mux_gsbi4);
+	if (socinfo_get_platform_subtype() != PLATFORM_SUBTYPE_SGLTE2)
+		platform_device_register(&msm8960_device_i2c_mux_gsbi4);
 	platform_device_register(&msm8960_device_csiphy0);
 	platform_device_register(&msm8960_device_csiphy1);
 	platform_device_register(&msm8960_device_csid0);
