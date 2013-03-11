@@ -4847,7 +4847,9 @@ static void vfe_send_comp_stats_msg(
 	struct vfe32_ctrl_type *vfe32_ctrl, uint32_t status_bits)
 {
 	struct msm_stats_buf msgStats;
-	uint32_t temp;
+	uint32_t stats_type;
+	int rc = 0;
+	void *vaddr = NULL;
 
 	msgStats.frame_id = vfe32_ctrl->share_ctrl->vfeFrameId;
 	if (vfe32_ctrl->simultaneous_sof_stat)
@@ -4855,21 +4857,102 @@ static void vfe_send_comp_stats_msg(
 
 	msgStats.status_bits = status_bits;
 
-	msgStats.aec.buff = vfe32_ctrl->aecbgStatsControl.bufToRender;
-	msgStats.awb.buff = vfe32_ctrl->awbStatsControl.bufToRender;
-	msgStats.af.buff = vfe32_ctrl->afbfStatsControl.bufToRender;
+	if (status_bits & VFE_IRQ_STATUS0_STATS_AEC_BG) {
+		stats_type = (!vfe32_use_bayer_stats(vfe32_ctrl)) ?
+			MSM_STATS_TYPE_AEC : MSM_STATS_TYPE_BG;
+		rc = vfe32_ctrl->stats_ops.dispatch(
+			vfe32_ctrl->stats_ops.stats_ctrl, stats_type,
+			vfe32_ctrl->aecbgStatsControl.bufToRender,
+			&msgStats.buf_idx, &vaddr, &msgStats.aec.fd,
+			vfe32_ctrl->stats_ops.client);
+		if (rc == 0)
+			msgStats.aec.buff = (uint32_t)vaddr;
+		else
+			CDBG("%s: Could not dispatch AEC/BG stats buffer %d",
+				__func__, stats_type);
+	} else {
+		msgStats.aec.buff = 0;
+	}
 
-	msgStats.ihist.buff = vfe32_ctrl->ihistStatsControl.bufToRender;
-	msgStats.rs.buff = vfe32_ctrl->rsStatsControl.bufToRender;
-	msgStats.cs.buff = vfe32_ctrl->csStatsControl.bufToRender;
+	if (status_bits & VFE_IRQ_STATUS0_STATS_AWB) {
+		rc = vfe32_ctrl->stats_ops.dispatch(
+			vfe32_ctrl->stats_ops.stats_ctrl, MSM_STATS_TYPE_AWB,
+			vfe32_ctrl->awbStatsControl.bufToRender,
+			&msgStats.buf_idx, &vaddr, &msgStats.awb.fd,
+			vfe32_ctrl->stats_ops.client);
+		if (rc == 0)
+			msgStats.awb.buff = (uint32_t)vaddr;
+		else
+			CDBG("%s: Could not dispatch AWB stats buffer",
+				__func__);
+	} else {
+		msgStats.awb.buff = 0;
+	}
 
-	temp = msm_camera_io_r(
-		vfe32_ctrl->share_ctrl->vfebase + VFE_STATS_AWB_SGW_CFG);
-	msgStats.awb_ymin = (0xFF00 & temp) >> 8;
+	if (status_bits & VFE_IRQ_STATUS0_STATS_AF_BF) {
+		stats_type = (!vfe32_use_bayer_stats(vfe32_ctrl)) ?
+			MSM_STATS_TYPE_AF : MSM_STATS_TYPE_BF;
+		rc = vfe32_ctrl->stats_ops.dispatch(
+			vfe32_ctrl->stats_ops.stats_ctrl, stats_type,
+			vfe32_ctrl->afbfStatsControl.bufToRender,
+			&msgStats.buf_idx, &vaddr, &msgStats.af.fd,
+			vfe32_ctrl->stats_ops.client);
+		if (rc == 0)
+			msgStats.af.buff = (uint32_t)vaddr;
+		else
+			CDBG("%s: Could not dispatch AF/BF stats buffer %d",
+				__func__, stats_type);
+	} else {
+		msgStats.af.buff = 0;
+	}
+
+	if (status_bits & VFE_IRQ_STATUS0_STATS_IHIST) {
+		rc = vfe32_ctrl->stats_ops.dispatch(
+			vfe32_ctrl->stats_ops.stats_ctrl, MSM_STATS_TYPE_IHIST,
+			vfe32_ctrl->ihistStatsControl.bufToRender,
+			&msgStats.buf_idx, &vaddr, &msgStats.ihist.fd,
+			vfe32_ctrl->stats_ops.client);
+		if (rc == 0)
+			msgStats.ihist.buff = (uint32_t)vaddr;
+		else
+			CDBG("%s: Could not dispatch IHIST stats buffer",
+				__func__);
+	} else {
+		msgStats.ihist.buff = 0;
+	}
+
+	if (status_bits & VFE_IRQ_STATUS0_STATS_RS) {
+		rc = vfe32_ctrl->stats_ops.dispatch(
+			vfe32_ctrl->stats_ops.stats_ctrl, MSM_STATS_TYPE_RS,
+			vfe32_ctrl->rsStatsControl.bufToRender,
+			&msgStats.buf_idx, &vaddr, &msgStats.rs.fd,
+			vfe32_ctrl->stats_ops.client);
+		if (rc == 0)
+			msgStats.rs.buff = (uint32_t)vaddr;
+		else
+			CDBG("%s: Could not dispatch RS stats buffer",
+				__func__);
+	} else {
+		msgStats.rs.buff = 0;
+	}
+
+	if (status_bits & VFE_IRQ_STATUS0_STATS_CS) {
+		rc = vfe32_ctrl->stats_ops.dispatch(
+			vfe32_ctrl->stats_ops.stats_ctrl, MSM_STATS_TYPE_CS,
+			vfe32_ctrl->csStatsControl.bufToRender,
+			&msgStats.buf_idx, &vaddr, &msgStats.cs.fd,
+			vfe32_ctrl->stats_ops.client);
+		if (rc == 0)
+			msgStats.cs.buff = (uint32_t)vaddr;
+		else
+			CDBG("%s: Could not dispatch CS stats buffer",
+				__func__);
+	} else {
+		msgStats.cs.buff = 0;
+	}
 
 	v4l2_subdev_notify(&vfe32_ctrl->subdev,
-				NOTIFY_VFE_MSG_COMP_STATS,
-				&msgStats);
+		NOTIFY_VFE_MSG_COMP_STATS, &msgStats);
 }
 
 static void vfe32_process_stats_ae_bg_irq(struct vfe32_ctrl_type *vfe32_ctrl)
@@ -5158,6 +5241,7 @@ static void vfe32_process_stats_irq(
 	struct vfe32_ctrl_type *vfe32_ctrl, uint32_t irqstatus)
 {
 	uint32_t status_bits = VFE_COM_STATUS & irqstatus;
+
 	if ((vfe32_ctrl->hfr_mode != HFR_MODE_OFF) &&
 		(vfe32_ctrl->share_ctrl->vfeFrameId %
 		 vfe32_ctrl->hfr_mode != 0)) {
