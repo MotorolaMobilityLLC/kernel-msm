@@ -172,11 +172,12 @@
 #define QWLAN_HAL_CFG_MAX_ASSOC_LIMIT                    98
 #define QWLAN_HAL_CFG_ENABLE_LPWR_IMG_TRANSITION         99
 #define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER     100
-#define QWLAN_HAL_CFG_MAX_PARAMS                        101
+#define QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT           102
+#define QWLAN_HAL_CFG_MAX_PARAMS                        103
 
 
 /* Total number of Integer CFGs. This is used while allocating the memory for TLV */
-#define QWLAN_HAL_CFG_INTEGER_PARAM                      97
+#define QWLAN_HAL_CFG_INTEGER_PARAM                      98
 
 
 /*-------------------------------------------------------------------------
@@ -754,6 +755,11 @@
 #define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER_MIN    0
 #define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER_MAX    1
 #define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER_DEF    0
+
+/* QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT */
+#define QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT_MIN  1
+#define QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT_MAX  255
+#define QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT_DEF  3
 
 #endif //__WLAN_HAL_CFG_H__
 
