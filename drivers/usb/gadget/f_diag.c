@@ -745,8 +745,13 @@ int diag_function_add(struct usb_configuration *c, const char *name,
 	int status;
 
 	DBG(c->cdev, "diag_function_add\n");
-	status = usb_string_id(c->cdev);
-	if (status >= 0) {
+	if (diag_string_defs[STRING_INTERFACE].id == 0) {
+		status = usb_string_id(c->cdev);
+		if (status < 0) {
+			pr_err("%s: failed to get string id, err:%d\n",
+					__func__, status);
+			return status;
+		}
 		diag_string_defs[STRING_INTERFACE].id = status;
 		intf_desc.iInterface = status;
 	}

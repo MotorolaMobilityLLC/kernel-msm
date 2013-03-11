@@ -672,10 +672,19 @@ static void do_set_config(struct usb_function *f, u16 new_config)
 		}
 
 	} else {/* Disable Endpoints */
-		if (context->bulk_in)
+		if (context->bulk_in) {
 			usb_ep_disable(context->bulk_in);
-		if (context->bulk_out)
+			context->bulk_in->driver_data = NULL;
+		}
+		if (context->bulk_out) {
 			usb_ep_disable(context->bulk_out);
+			context->bulk_out->driver_data = NULL;
+		}
+		if (context->intr_out) {
+			usb_ep_disable(context->intr_out);
+			context->intr_out->driver_data = NULL;
+		}
+
 		context->ip_addr = 0;
 		context->subnet_mask = 0;
 		context->router_ip = 0;
@@ -773,8 +782,13 @@ int usbnet_bind_config(struct usbnet_device *dev, struct usb_configuration *c)
 
 	pr_debug("usbnet_bind_config\n");
 
-	status = usb_string_id(c->cdev);
-	if (status >= 0) {
+	if (usbnet_string_defs[STRING_INTERFACE].id == 0) {
+		status = usb_string_id(c->cdev);
+		if (status < 0) {
+			pr_err("%s: failed to get string id, err:%d\n",
+					__func__, status);
+			return status;
+		}
 		usbnet_string_defs[STRING_INTERFACE].id = status;
 		usbnet_intf_desc.iInterface = status;
 	}
