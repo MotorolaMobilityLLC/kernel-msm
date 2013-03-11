@@ -1039,25 +1039,25 @@ static const struct soc_enum cf_dec10_enum =
 	SOC_ENUM_SINGLE(TABLA_A_CDC_TX10_MUX_CTL, 4, 3, cf_text);
 
 static const struct soc_enum cf_rxmix1_enum =
-	SOC_ENUM_SINGLE(TABLA_A_CDC_RX1_B4_CTL, 1, 3, cf_text);
+	SOC_ENUM_SINGLE(TABLA_A_CDC_RX1_B4_CTL, 0, 3, cf_text);
 
 static const struct soc_enum cf_rxmix2_enum =
-	SOC_ENUM_SINGLE(TABLA_A_CDC_RX2_B4_CTL, 1, 3, cf_text);
+	SOC_ENUM_SINGLE(TABLA_A_CDC_RX2_B4_CTL, 0, 3, cf_text);
 
 static const struct soc_enum cf_rxmix3_enum =
-	SOC_ENUM_SINGLE(TABLA_A_CDC_RX3_B4_CTL, 1, 3, cf_text);
+	SOC_ENUM_SINGLE(TABLA_A_CDC_RX3_B4_CTL, 0, 3, cf_text);
 
 static const struct soc_enum cf_rxmix4_enum =
-	SOC_ENUM_SINGLE(TABLA_A_CDC_RX4_B4_CTL, 1, 3, cf_text);
+	SOC_ENUM_SINGLE(TABLA_A_CDC_RX4_B4_CTL, 0, 3, cf_text);
 
 static const struct soc_enum cf_rxmix5_enum =
-	SOC_ENUM_SINGLE(TABLA_A_CDC_RX5_B4_CTL, 1, 3, cf_text)
+	SOC_ENUM_SINGLE(TABLA_A_CDC_RX5_B4_CTL, 0, 3, cf_text)
 ;
 static const struct soc_enum cf_rxmix6_enum =
-	SOC_ENUM_SINGLE(TABLA_A_CDC_RX6_B4_CTL, 1, 3, cf_text);
+	SOC_ENUM_SINGLE(TABLA_A_CDC_RX6_B4_CTL, 0, 3, cf_text);
 
 static const struct soc_enum cf_rxmix7_enum =
-	SOC_ENUM_SINGLE(TABLA_A_CDC_RX7_B4_CTL, 1, 3, cf_text);
+	SOC_ENUM_SINGLE(TABLA_A_CDC_RX7_B4_CTL, 0, 3, cf_text);
 
 static const struct snd_kcontrol_new tabla_snd_controls[] = {
 
