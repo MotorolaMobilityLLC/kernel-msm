@@ -74,6 +74,7 @@
 #include <mach/msm_bus_board.h>
 #include <mach/msm_memtypes.h>
 #include <mach/dma.h>
+#include <mach/msm_serial_hs.h>
 #include <mach/msm_xo.h>
 #include <mach/restart.h>
 
@@ -2850,6 +2851,39 @@ static void __init msm8930ab_update_retention_spm(void)
 	}
 }
 
+#ifdef CONFIG_SERIAL_MSM_HS
+static int configure_uart_gpios(int on)
+{
+	int ret = 0, i;
+	int uart_gpios[] = {93, 94, 95, 96};
+
+	for (i = 0; i < ARRAY_SIZE(uart_gpios); i++) {
+		if (on) {
+			ret = gpio_request(uart_gpios[i], NULL);
+			if (ret) {
+				pr_err("%s: unable to request uart gpio[%d]\n",
+					__func__, uart_gpios[i]);
+				break;
+			}
+		} else {
+			gpio_free(uart_gpios[i]);
+		}
+	}
+
+	if (ret && on && i)
+		for (; i >= 0; i--)
+			gpio_free(uart_gpios[i]);
+	return ret;
+}
+
+static struct msm_serial_hs_platform_data msm_uart_dm9_pdata = {
+	.gpio_config	= configure_uart_gpios,
+};
+#else
+static struct msm_serial_hs_platform_data msm_uart_dm9_pdata;
+#endif
+
+
 static void __init msm8930_cdp_init(void)
 {
 	if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917)
@@ -2895,6 +2929,15 @@ static void __init msm8930_cdp_init(void)
 	} else {
 		msm_otg_pdata.pmic_id_irq =
 				PM8038_USB_ID_IN_IRQ(PM8038_IRQ_BASE);
+	}
+
+	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE &&
+						machine_is_msm8930_evt()) {
+#ifdef CONFIG_SERIAL_MSM_HS
+		msm_uart_dm9_pdata.wakeup_irq = gpio_to_irq(94); /* GSBI9(2) */
+		msm_device_uart_dm9.dev.platform_data = &msm_uart_dm9_pdata;
+#endif
+		platform_device_register(&msm_device_uart_dm9);
 	}
 
 	msm_otg_pdata.phy_init_seq = hsusb_phy_init_seq;
