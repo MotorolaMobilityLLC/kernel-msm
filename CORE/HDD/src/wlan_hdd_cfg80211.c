@@ -1426,9 +1426,18 @@ static int wlan_hdd_cfg80211_set_channel( struct wiphy *wiphy, struct net_device
         ||   (pAdapter->device_mode == WLAN_HDD_P2P_GO)
             )
     {
-        (WLAN_HDD_GET_AP_CTX_PTR(pAdapter))->sapConfig.channel = channel;
-
-        if ( WLAN_HDD_SOFTAP == pAdapter->device_mode )
+        if (WLAN_HDD_P2P_GO == pAdapter->device_mode)
+        {
+            if(VOS_STATUS_SUCCESS !=
+                       wlan_hdd_validate_operation_channel(pAdapter,channel))
+            {
+               hddLog(VOS_TRACE_LEVEL_ERROR,
+                      "%s: Invalid Channel [%d] \n", __func__, channel);
+               return -EINVAL;
+            }
+            (WLAN_HDD_GET_AP_CTX_PTR(pAdapter))->sapConfig.channel = channel;
+        }
+        else if ( WLAN_HDD_SOFTAP == pAdapter->device_mode )
         {
             hdd_config_t *cfg_param = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
 
@@ -1437,11 +1446,22 @@ static int wlan_hdd_cfg80211_set_channel( struct wiphy *wiphy, struct net_device
             */
             if ( cfg_param->apAutoChannelSelection )
             {
-                (WLAN_HDD_GET_AP_CTX_PTR(pAdapter))->sapConfig.channel = AUTO_CHANNEL_SELECT;
-
+                (WLAN_HDD_GET_AP_CTX_PTR(pAdapter))->sapConfig.channel =
+                                                          AUTO_CHANNEL_SELECT;
                 hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
                        "%s: set channel to auto channel (0) for device mode =%d",
                        __func__, pAdapter->device_mode);
+            }
+            else
+            {
+                if(VOS_STATUS_SUCCESS !=
+                         wlan_hdd_validate_operation_channel(pAdapter,channel))
+                {
+                   hddLog(VOS_TRACE_LEVEL_ERROR,
+                          "%s: Invalid Channel [%d] \n", __func__, channel);
+                   return -EINVAL;
+                }
+                (WLAN_HDD_GET_AP_CTX_PTR(pAdapter))->sapConfig.channel = channel;
             }
         }
     }
