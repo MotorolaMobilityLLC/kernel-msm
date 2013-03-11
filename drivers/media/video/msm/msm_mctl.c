@@ -560,17 +560,18 @@ static int msm_mctl_open(struct msm_cam_media_controller *p_mctl,
 				 const char *const apps_id)
 {
 	int rc = 0;
-	struct msm_sensor_ctrl_t *s_ctrl = get_sctrl(p_mctl->sensor_sdev);
-	struct msm_camera_sensor_info *sinfo =
-		(struct msm_camera_sensor_info *) s_ctrl->sensordata;
-	struct msm_camera_device_platform_data *camdev = sinfo->pdata;
+	struct msm_sensor_ctrl_t *s_ctrl;
+	struct msm_camera_sensor_info *sinfo;
+	struct msm_camera_device_platform_data *camdev;
 	uint8_t csid_core;
 	D("%s\n", __func__);
 	if (!p_mctl) {
 		pr_err("%s: param is NULL", __func__);
 		return -EINVAL;
 	}
-
+	s_ctrl = get_sctrl(p_mctl->sensor_sdev);
+	sinfo = (struct msm_camera_sensor_info *) s_ctrl->sensordata;
+	camdev = sinfo->pdata;
 	mutex_lock(&p_mctl->lock);
 	/* open sub devices - once only*/
 	if (!p_mctl->opencnt) {
