@@ -1226,6 +1226,7 @@ WLANTL_RegisterSTAClient
   pClientSTA->tlState  = WLANTL_STA_INIT;
   pClientSTA->tlPri    = WLANTL_STA_PRI_NORMAL;
   pClientSTA->wSTADesc.ucSTAId  = pwSTADescType->ucSTAId;
+  pClientSTA->ptkInstalled = 0;
 
   TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
              "WLAN TL:Registering STA Client ID: %d with UC %d and BC %d", 
@@ -1616,6 +1617,89 @@ WLANTL_ChangeSTAState
 
   return VOS_STATUS_SUCCESS;
 }/* WLANTL_ChangeSTAState */
+
+/*===========================================================================
+
+  FUNCTION    WLANTL_STAPtkInstalled
+
+  DESCRIPTION
+
+    HDD will make this notification whenever PTK is installed for the STA
+
+  DEPENDENCIES
+
+    A station must have been registered before the change state can be
+    called.
+
+  PARAMETERS
+
+   pvosGCtx:        pointer to the global vos context; a handle to TL's
+                    control block can be extracted from its context
+   ucSTAId:         identifier for the STA for which Pairwise key is
+                    installed
+
+  RETURN VALUE
+
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_FAULT:  Station ID is outside array boundaries or pointer to
+                         TL cb is NULL ; access would cause a page fault
+    VOS_STATUS_E_EXISTS: Station was not registered
+    VOS_STATUS_SUCCESS:  Everything is good :)
+
+  SIDE EFFECTS
+
+============================================================================*/
+VOS_STATUS
+WLANTL_STAPtkInstalled
+(
+  v_PVOID_t             pvosGCtx,
+  v_U8_t                ucSTAId
+)
+{
+  WLANTL_CbType*  pTLCb = NULL;
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+  /*------------------------------------------------------------------------
+    Sanity check
+   ------------------------------------------------------------------------*/
+
+  if ( WLANTL_STA_ID_INVALID( ucSTAId ) )
+  {
+    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+             "WLAN TL:Invalid station id requested on WLANTL_ChangeSTAState"));
+    return VOS_STATUS_E_FAULT;
+  }
+
+  /*------------------------------------------------------------------------
+    Extract TL control block and check existance
+   ------------------------------------------------------------------------*/
+  pTLCb = VOS_GET_TL_CB(pvosGCtx);
+  if ( NULL == pTLCb )
+  {
+    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+         FL("WLAN TL:Invalid TL pointer from pvosGCtx")));
+    return VOS_STATUS_E_FAULT;
+  }
+
+  if ( NULL == pTLCb->atlSTAClients[ucSTAId] )
+  {
+      TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+          FL("WLAN TL:Client Memory was not allocated")));
+      return VOS_STATUS_E_FAILURE;
+  }
+
+  if ( 0 == pTLCb->atlSTAClients[ucSTAId]->ucExists )
+  {
+    TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+     FL("WLAN TL:Station was not previously registered")));
+    return VOS_STATUS_E_EXISTS;
+  }
+
+  pTLCb->atlSTAClients[ucSTAId]->ptkInstalled = 1;
+
+  return VOS_STATUS_SUCCESS;
+}/* WLANTL_STAPtkInstalled */
 
 /*===========================================================================
 
@@ -6065,6 +6149,7 @@ WLANTL_STATxConn
    v_U8_t               extraHeadSpace = 0;
    v_U8_t               ucWDSEnabled = 0;
    v_U8_t               ucAC, ucACMask, i; 
+   v_U8_t               txFlag = HAL_TX_NO_ENCRYPTION_MASK;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
   /*------------------------------------------------------------------------
@@ -6322,13 +6407,32 @@ WLANTL_STATxConn
     ucTypeSubtype |= (WLANTL_80211_DATA_QOS_SUBTYPE);
   }
 
+#ifdef FEATURE_WLAN_WAPI
+  /* TL State does not transition to AUTHENTICATED till GTK is installed, So in
+   * case of WPA where GTK handshake is done after the 4 way handshake, the
+   * unicast 2/2 EAPOL packet from the STA->AP has to be encrypted even before
+   * the TL is in authenticated state. Since the PTK has been installed
+   * already (after the 4 way handshake) we make sure that all traffic
+   * is encrypted henceforth.(Note: TL is still not in AUTHENTICATED state so
+   * we will only allow EAPOL data or WAI in case of WAPI)
+   */
+  if (tlMetaInfo.ucIsEapol && pClientSTA->ptkInstalled)
+  {
+    txFlag = 0;
+  }
+#else
+  if (pClientSTA->ptkInstalled)
+  {
+    txFlag = 0;
+  }
+#endif
 
   vosStatus = (VOS_STATUS)WDA_DS_BuildTxPacketInfo( pvosGCtx, vosDataBuff , &vDestMacAddr,
                           tlMetaInfo.ucDisableFrmXtl, &usPktLen,
                           pClientSTA->wSTADesc.ucQosEnabled, ucWDSEnabled,
                           extraHeadSpace,
                           ucTypeSubtype, &pClientSTA->wSTADesc.vSelfMACAddress,
-                          ucTid, HAL_TX_NO_ENCRYPTION_MASK,
+                          ucTid, txFlag,
                           tlMetaInfo.usTimeStamp, tlMetaInfo.ucIsEapol || tlMetaInfo.ucIsWai, tlMetaInfo.ucUP );
 
   if ( VOS_STATUS_SUCCESS != vosStatus )
@@ -8607,9 +8711,11 @@ WLANTL_Translate8023To80211Header
 
 
 #ifdef FEATURE_WLAN_WAPI
-  if ( WLANTL_STA_AUTHENTICATED == pClientSTA->tlState && gUcIsWai != 1 )
+  if (( WLANTL_STA_AUTHENTICATED == pClientSTA->tlState ||
+        pClientSTA->ptkInstalled ) && gUcIsWai != 1)
 #else
-  if ( WLANTL_STA_AUTHENTICATED == pClientSTA->tlState )
+  if ( WLANTL_STA_AUTHENTICATED == pClientSTA->tlState ||
+       pClientSTA->ptkInstalled )
 #endif
   {
     pw80211Header->wFrmCtrl.wep =

@@ -1614,6 +1614,11 @@ static eHalStatus hdd_RoamSetKeyCompleteHandler( hdd_adapter_t *pAdapter, tCsrRo
  
          pHddStaCtx->conn_info.uIsAuthenticated = VOS_TRUE;
       }
+      else
+      {
+         vosStatus = WLANTL_STAPtkInstalled( pHddCtx->pvosContext,
+                                             pHddStaCtx->conn_info.staId[ 0 ]);
+      }
       
       pHddStaCtx->roam_info.roamingState = HDD_ROAM_STATE_NONE;
    }
