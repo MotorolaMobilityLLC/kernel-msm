@@ -484,7 +484,7 @@ static ssize_t logger_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	struct timespec now;
 	ssize_t ret = 0;
 
-	now = current_kernel_time();
+	getnstimeofday(&now);
 
 	header.pid = current->tgid;
 	header.tid = current->pid;
@@ -901,7 +901,7 @@ static void flush_to_bottom_log(struct logger_log *log,
 	struct timespec now;
 	unsigned long flags;
 
-	now = current_kernel_time();
+	getnstimeofday(&now);
 
 	header.pid = current->tgid;
 	header.tid = task_pid_nr(current);
