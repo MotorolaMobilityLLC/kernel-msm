@@ -685,8 +685,13 @@ static int adb_bind_config(struct usb_configuration *c)
 
 	pr_debug("adb_bind_config\n");
 
-	status = usb_string_id(c->cdev);
-	if (status >= 0) {
+	if (adb_string_defs[STRING_INTERFACE].id == 0) {
+		status = usb_string_id(c->cdev);
+		if (status < 0) {
+			pr_err("%s: failed to get string id, err:%d\n",
+					__func__, status);
+			return status;
+		}
 		adb_string_defs[STRING_INTERFACE].id = status;
 		adb_interface_desc.iInterface = status;
 	}
