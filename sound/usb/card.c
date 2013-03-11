@@ -422,13 +422,7 @@ static int snd_usb_audio_create(struct usb_device *dev, int idx,
 
 	snd_usb_audio_create_proc(chip);
 
-	/*
-	 * Enable to detect multiple USB audio device when connected
-	 * Increment the device switch count by 1 for every USB device
-	 * connected
-	 */
 
-	switch_set_state(usbaudiosdev, (switch_get_state(usbaudiosdev) + 1));
 
 	*rchip = chip;
 	return 0;
@@ -538,6 +532,13 @@ snd_usb_audio_probe(struct usb_device *dev,
 	chip->num_interfaces++;
 	chip->probing = 0;
 	mutex_unlock(&register_mutex);
+
+	/*
+	 * Enable to detect multiple USB audio device when connected
+	 * Increment the device switch count by 1 for every USB device
+	 * connected
+	 */
+	switch_set_state(usbaudiosdev, (switch_get_state(usbaudiosdev) + 1));
 	return chip;
 
  __error:
