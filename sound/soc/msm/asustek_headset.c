@@ -176,9 +176,9 @@ static void insert_headset(void)
 
 static void remove_headset(void)
 {
-	printk("%s +++++++++++++++++\n", __func__);
 	switch_set_state(&hs_data->sdev, NO_DEVICE);
 	hs_data->debouncing_time = ktime_set(0, 100000000);  /* 100 ms */
+	set_hs_micbias(OFF);
 }
 
 static void detection_work(struct work_struct *work)
