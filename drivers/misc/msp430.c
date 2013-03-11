@@ -106,7 +106,8 @@
 #define INTERRUPT_STATUS		0x3A
 
 #define ACCEL_X				0x3B
-#define LIN_ACCEL_X         0x3C
+#define LIN_ACCEL_X			0x3C
+#define GRAVITY_X			0x3D
 
 #define DOCK_DATA			0x3F
 
@@ -158,9 +159,22 @@
 static unsigned int msp430_irq_disable;
 module_param_named(irq_disable, msp430_irq_disable, uint, 0644);
 
-/* to hold sensor state so that it can be restored on resume */
+/* Remember the sensor state */
+static unsigned short g_acc_delay;
+static unsigned short g_mag_delay;
+static unsigned short g_gyro_delay;
+static unsigned short g_baro_delay;
 static unsigned short g_nonwake_sensor_state;
 static unsigned short g_wake_sensor_state;
+static unsigned short g_algo_state;
+static unsigned char g_motion_dur;
+static unsigned char g_zmotion_dur;
+static unsigned char g_control_reg;
+struct algo_requst_t {
+	char size;
+	char data[28];
+};
+static struct algo_requst_t g_algo_requst[MSP_NUM_ALGOS];
 
 static unsigned char msp_cmdbuff[MSP430_HEADER_LENGTH + MSP430_CMDLENGTH_BYTES +
 			MSP430_CORECOMMAND_LENGTH + MSP430_CRC_LENGTH];
@@ -762,6 +776,26 @@ static void msp430_irq_work_func(struct work_struct *work)
 		dev_dbg(&ps_msp430->client->dev, "Sending pressure %d\n",
 			(x << 16) | (y & 0xFFFF));
 	}
+	if (irq_status & M_GRAVITY) {
+		/* read gravity values from MSP */
+		msp_cmdbuff[0] = GRAVITY_X;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 6);
+		if (err < 0) {
+			dev_err(&ps_msp430->client->dev,
+				"Reading Gravity from msp failed\n");
+			goto EXIT;
+		}
+
+		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
+		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
+		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
+		msp430_as_data_buffer_write(ps_msp430, DT_GRAVITY,
+			x, y, z, 0);
+
+		dev_dbg(&ps_msp430->client->dev,
+			"Sending gravity(x,y,z)values:x=%d,y=%d,z=%d\n",
+			x, y, z);
+	}
 	if (irq_status & M_DISP_ROTATE) {
 		/*Read Display Rotate value */
 		msp_cmdbuff[0] = DISP_ROTATE_DATA;
@@ -1174,6 +1208,8 @@ static ssize_t msp430_misc_write(struct file *file, const char __user *buff,
 	return err;
 }
 
+static int msp430_load_brightness_table(struct msp430_data *ps_msp430);
+
 /* gpio toggling to switch modes(boot mode,normal mode)on MSP430 */
 int switch_msp430_mode(enum msp_mode mode)
 {
@@ -1181,6 +1217,7 @@ int switch_msp430_mode(enum msp_mode mode)
 	struct msp430_platform_data *pdata;
 	unsigned int bslen_pin_active_value =
 		msp430_misc_data->pdata->bslen_pin_active_value;
+	unsigned int i;
 
 	pdata = msp430_misc_data->pdata;
 
@@ -1205,6 +1242,61 @@ int switch_msp430_mode(enum msp_mode mode)
 	msp430_misc_data->mode = mode;
 
 	if (mode == NORMALMODE) {
+		msp_cmdbuff[0] = ACCEL_UPDATE_RATE;
+		msp_cmdbuff[1] = g_acc_delay;
+		err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 2);
+
+		msp_cmdbuff[0] = MAG_UPDATE_RATE;
+		msp_cmdbuff[1] = g_mag_delay;
+		err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 2);
+
+		msp_cmdbuff[0] = GYRO_UPDATE_RATE;
+		msp_cmdbuff[1] = g_gyro_delay;
+		err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 2);
+
+		msp_cmdbuff[0] = PRESSURE_UPDATE_RATE;
+		msp_cmdbuff[1] = g_baro_delay;
+		err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 2);
+
+		msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
+		msp_cmdbuff[1] = g_nonwake_sensor_state & 0xFF;
+		msp_cmdbuff[2] = g_nonwake_sensor_state >> 8;
+		err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 3);
+
+		msp_cmdbuff[0] = WAKESENSOR_CONFIG;
+		msp_cmdbuff[1] = g_wake_sensor_state & 0xFF;
+		msp_cmdbuff[2] = g_wake_sensor_state >> 8;
+		err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 3);
+
+		msp_cmdbuff[0] = ALGO_CONFIG;
+		msp_cmdbuff[1] = g_algo_state & 0xFF;
+		msp_cmdbuff[2] = g_algo_state >> 8;
+		err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 3);
+
+		msp_cmdbuff[0] = MOTION_DUR;
+		msp_cmdbuff[1] = g_motion_dur;
+		err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 2);
+
+		msp_cmdbuff[0] = ZRMOTION_DUR;
+		msp_cmdbuff[1] = g_zmotion_dur;
+		err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 2);
+
+		msp_cmdbuff[0] = MSP_CONTROL_REG;
+		msp_cmdbuff[1] = g_control_reg;
+		err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 2);
+
+		for (i = 0; i < MSP_NUM_ALGOS; i++) {
+			if (g_algo_requst[i].size > 0) {
+				msp_cmdbuff[0] = msp_algo_info[i].req_register;
+				memcpy(&msp_cmdbuff[1],
+					g_algo_requst[i].data,
+					g_algo_requst[i].size);
+				err = msp430_i2c_write(msp430_misc_data,
+					msp_cmdbuff,
+					g_algo_requst[i].size + 1);
+			}
+		}
+
 		msp_cmdbuff[0] = PROX_SETTINGS;
 		msp_cmdbuff[1]
 			= (pdata->ct406_detect_threshold >> 8) & 0xff;
@@ -1223,6 +1315,8 @@ int switch_msp430_mode(enum msp_mode mode)
 		else
 			dev_err(&msp430_misc_data->client->dev,
 				"wrote proximity settings\n");
+
+		err = msp430_load_brightness_table(msp430_misc_data);
 	}
 
 	return 0;
@@ -1416,6 +1510,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		msp_cmdbuff[0] = ACCEL_UPDATE_RATE;
 		msp_cmdbuff[1] = delay;
+		g_acc_delay = delay;
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 
@@ -1426,11 +1521,12 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			dev_dbg(&ps_msp430->client->dev,
 				"Copy mag delay returned error\n");
 			err = -EFAULT;
-		} else {
-			msp_cmdbuff[0] = MAG_UPDATE_RATE;
-			msp_cmdbuff[1] = delay;
-			err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
+			break;
 		}
+		msp_cmdbuff[0] = MAG_UPDATE_RATE;
+		msp_cmdbuff[1] = delay;
+		g_mag_delay = delay;
+		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 	case MSP430_IOCTL_SET_GYRO_DELAY:
 		dev_dbg(&ps_msp430->client->dev,
@@ -1444,6 +1540,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		msp_cmdbuff[0] = GYRO_UPDATE_RATE;
 		msp_cmdbuff[1] = delay;
+		g_gyro_delay = delay;
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 	case MSP430_IOCTL_SET_PRES_DELAY:
@@ -1458,6 +1555,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		msp_cmdbuff[0] = PRESSURE_UPDATE_RATE;
 		msp_cmdbuff[1] = delay;
+		g_baro_delay = delay;
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 	case MSP430_IOCTL_SET_SENSORS:
@@ -1483,9 +1581,10 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
 		msp_cmdbuff[1] = bytes[0];
 		msp_cmdbuff[2] = bytes[1];
-		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
-		/* save sensor state any time this changes */
 		g_nonwake_sensor_state = (msp_cmdbuff[2] << 8) | msp_cmdbuff[1];
+		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
+		dev_dbg(&ps_msp430->client->dev, "Sensor enable = 0x%02X\n",
+			g_nonwake_sensor_state);
 		break;
 	case MSP430_IOCTL_GET_SENSORS:
 		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_GET_SENSORS");
@@ -1513,9 +1612,10 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		msp_cmdbuff[0] = WAKESENSOR_CONFIG;
 		msp_cmdbuff[1] = bytes[0];
 		msp_cmdbuff[2] = bytes[1];
-		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
-		/* save sensor state any time this changes */
 		g_wake_sensor_state =  (msp_cmdbuff[2] << 8) | msp_cmdbuff[1];
+		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
+		dev_dbg(&ps_msp430->client->dev, "Sensor enable = 0x%02X\n",
+			g_wake_sensor_state);
 		break;
 	case MSP430_IOCTL_GET_WAKESENSORS:
 		dev_dbg(&ps_msp430->client->dev,
@@ -1545,6 +1645,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		msp_cmdbuff[0] = ALGO_CONFIG;
 		msp_cmdbuff[1] = bytes[0];
 		msp_cmdbuff[2] = bytes[1];
+		g_algo_state = (msp_cmdbuff[2] << 8) | msp_cmdbuff[1];
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
 		break;
 	case MSP430_IOCTL_GET_ALGOS:
@@ -1574,6 +1675,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		msp_cmdbuff[0] = MOTION_DUR;
 		msp_cmdbuff[1] = addr & 0xFF;
+		g_motion_dur =  msp_cmdbuff[1];
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 	case MSP430_IOCTL_SET_ZRMOTION_DUR:
@@ -1587,6 +1689,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 		}
 		msp_cmdbuff[0] = ZRMOTION_DUR;
 		msp_cmdbuff[1] = addr & 0xFF;
+		g_zmotion_dur =  msp_cmdbuff[1];
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 2);
 		break;
 	case MSP430_IOCTL_GET_DOCK_STATUS:
@@ -1658,6 +1761,7 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 			break;
 		}
+		g_control_reg =  msp_cmdbuff[1];
 
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff,
 			(MSP_CONTROL_REG_SIZE + 1));
@@ -1728,6 +1832,8 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			err = -EFAULT;
 			break;
 		}
+		g_algo_requst[addr].size = byte;
+		memcpy(g_algo_requst[addr].data , &msp_cmdbuff[1], byte);
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff, 1 + byte);
 		break;
 	case MSP430_IOCTL_GET_ALGO_EVT:
@@ -2409,14 +2515,6 @@ static int msp430_resume(struct i2c_client *client)
 			any interrupt during suspend state */
 		msp_cmdbuff[0] = INTERRUPT_STATUS;
 		msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
-
-		if (g_nonwake_sensor_state != 0) {
-			/* restore traditional sensor data */
-			msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
-			msp_cmdbuff[1] = g_nonwake_sensor_state & 0xFF;
-			msp_cmdbuff[2] = g_nonwake_sensor_state >> 8;
-			msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
-		}
 	}
 
 	mutex_unlock(&ps_msp430->lock);
@@ -2429,13 +2527,8 @@ static int msp430_suspend(struct i2c_client *client, pm_message_t mesg)
 	dev_dbg(&ps_msp430->client->dev, "msp430_suspend\n");
 	mutex_lock(&ps_msp430->lock);
 
-	if ((ps_msp430->mode == NORMALMODE) && (g_nonwake_sensor_state != 0)) {
-		/* turn off traditional sensor data */
-		msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
-		msp_cmdbuff[1] = 0;
-		msp_cmdbuff[2] = 0;
-		msp430_i2c_write(ps_msp430, msp_cmdbuff, 3);
-	}
+	/* This function isn't doing anything now, but will be */
+	/* needed for a new feature to be added soon */
 
 	mutex_unlock(&ps_msp430->lock);
 	return 0;
