@@ -424,6 +424,78 @@ static struct msm_gpiomux_config msm8960_gsbi_configs[] __initdata = {
 	},
 };
 
+static struct msm_gpiomux_config msm8930_sglte_gsbi_configs[] __initdata = {
+	/* Add the I2C/SPI GPIOs Here */
+	{
+		.gpio      = 6,		/* GSBI1 TX */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &spi_suspended_config,
+			[GPIOMUX_ACTIVE] = &spi_active,
+		},
+	},
+	{
+		.gpio      = 7,		/* GSBI1 RX */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &spi_suspended_config,
+			[GPIOMUX_ACTIVE] = &spi_active,
+		},
+	},
+	{
+		.gpio      = 8,		/* GSBI1 CTS_N */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &spi_suspended_config,
+			[GPIOMUX_ACTIVE] = &spi_active,
+		},
+	},
+	{
+		.gpio      = 9,		/* GSBI1 RFR_N */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &spi_suspended_config,
+			[GPIOMUX_ACTIVE] = &spi_active,
+		},
+	},
+	{
+		.gpio      = 16,	/* GSBI3 I2C QUP SDA */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi3_suspended_cfg,
+			[GPIOMUX_ACTIVE] = &gsbi3_active_cfg,
+		},
+	},
+	{
+		.gpio      = 17,	/* GSBI3 I2C QUP SCL */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi3_suspended_cfg,
+			[GPIOMUX_ACTIVE] = &gsbi3_active_cfg,
+		},
+	},
+	{
+		.gpio      = 44,	/* GSBI12 I2C QUP SDA */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi12,
+		},
+	},
+	{
+		.gpio      = 45,	/* GSBI12 I2C QUP SCL */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi12,
+		},
+	},
+	{
+		.gpio      = 73,	/* GSBI10 I2C QUP SDA */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi10,
+		},
+	},
+	{
+		.gpio      = 74,	/* GSBI10 I2C QUP SCL */
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &gsbi10,
+		},
+	},
+
+};
+
+
 static struct msm_gpiomux_config msm8960_slimbus_config[] __initdata = {
 	{
 		.gpio	= 60,		/* slimbus data */
@@ -863,6 +935,9 @@ int __init sglte8930_init_gpiomux(void)
 			ARRAY_SIZE(msm8930_external_vfr_configs));
 	msm_gpiomux_install(sglte_8930_configs,
 			ARRAY_SIZE(sglte_8930_configs));
+
+	msm_gpiomux_install(msm8930_sglte_gsbi_configs,
+			ARRAY_SIZE(msm8930_sglte_gsbi_configs));
 
 	msm_gpiomux_install(msm8960_slimbus_config,
 			ARRAY_SIZE(msm8960_slimbus_config));
