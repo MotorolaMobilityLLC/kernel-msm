@@ -1794,6 +1794,10 @@ static void msm_cam_server_subdev_notify(struct v4l2_subdev *sd,
 	case NOTIFY_VFE_MSG_COMP_STATS:
 	case NOTIFY_VFE_BUF_EVT:
 		p_mctl = msm_cam_server_get_mctl(mctl_handle);
+		if (p_mctl == NULL) {
+			pr_err("%s: Not find p_mctl instance!\n", __func__);
+			return;
+		}
 		if (p_mctl && p_mctl->isp_notify && p_mctl->vfe_sdev)
 			rc = p_mctl->isp_notify(p_mctl,
 				p_mctl->vfe_sdev, notification, arg);
