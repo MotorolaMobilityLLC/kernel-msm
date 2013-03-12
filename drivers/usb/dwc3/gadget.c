@@ -1094,7 +1094,10 @@ static int __dwc3_gadget_ep_queue(struct dwc3_ep *dep, struct dwc3_request *req)
 		 * notion of current microframe.
 		 */
 		if (usb_endpoint_xfer_isoc(dep->endpoint.desc)) {
-			dwc3_stop_active_transfer(dwc, dep->number);
+			if (list_empty(&dep->req_queued)) {
+				dwc3_stop_active_transfer(dwc, dep->number);
+				dep->flags = DWC3_EP_ENABLED;
+			}
 			return 0;
 		}
 
@@ -1118,16 +1121,6 @@ static int __dwc3_gadget_ep_queue(struct dwc3_ep *dep, struct dwc3_request *req)
 		if (ret && ret != -EBUSY)
 			dev_dbg(dwc->dev, "%s: failed to kick transfers\n",
 					dep->name);
-	}
-
-	/*
-	 * 3. Missed ISOC Handling. We need to start isoc transfer on the saved
-	 * uframe number.
-	 */
-	if (usb_endpoint_xfer_isoc(dep->endpoint.desc) &&
-		(dep->flags & DWC3_EP_MISSED_ISOC)) {
-			__dwc3_gadget_start_isoc(dwc, dep, dep->current_uf);
-			dep->flags &= ~DWC3_EP_MISSED_ISOC;
 	}
 
 	return 0;
@@ -1847,14 +1840,29 @@ static int dwc3_cleanup_done_reqs(struct dwc3 *dwc, struct dwc3_ep *dep,
 				if (trb_status == DWC3_TRBSTS_MISSED_ISOC) {
 					dev_dbg(dwc->dev, "incomplete IN transfer %s\n",
 							dep->name);
-					dep->current_uf = event->parameters &
-						~(dep->interval - 1);
+					/*
+					 * If missed isoc occurred and there is
+					 * no request queued then issue END
+					 * TRANSFER, so that core generates
+					 * next xfernotready and we will issue
+					 * a fresh START TRANSFER.
+					 * If there are still queued request
+					 * then wait, do not issue either END
+					 * or UPDATE TRANSFER, just attach next
+					 * request in request_list during
+					 * giveback.If any future queued request
+					 * is successfully transferred then we
+					 * will issue UPDATE TRANSFER for all
+					 * request in the request_list.
+					 */
 					dep->flags |= DWC3_EP_MISSED_ISOC;
 				} else {
 					dev_err(dwc->dev, "incomplete IN transfer %s\n",
 							dep->name);
 					status = -ECONNRESET;
 				}
+			} else {
+				dep->flags &= ~DWC3_EP_MISSED_ISOC;
 			}
 		} else {
 			if (count && (event->status & DEPEVT_STATUS_SHORT))
@@ -1880,6 +1888,23 @@ static int dwc3_cleanup_done_reqs(struct dwc3 *dwc, struct dwc3_ep *dep,
 				(trb->ctrl & DWC3_TRB_CTRL_IOC))
 			break;
 	} while (1);
+
+	if (usb_endpoint_xfer_isoc(dep->endpoint.desc) &&
+			list_empty(&dep->req_queued)) {
+		if (list_empty(&dep->request_list)) {
+			/*
+			 * If there is no entry in request list then do
+			 * not issue END TRANSFER now. Just set PENDING
+			 * flag, so that END TRANSFER is issued when an
+			 * entry is added into request list.
+			 */
+			dep->flags = DWC3_EP_PENDING_REQUEST;
+		} else {
+			dwc3_stop_active_transfer(dwc, dep->number);
+			dep->flags = DWC3_EP_ENABLED;
+		}
+		return 1;
+	}
 
 	if ((event->status & DEPEVT_STATUS_IOC) &&
 			(trb->ctrl & DWC3_TRB_CTRL_IOC))
