@@ -703,6 +703,15 @@ static ssize_t synaptics_rmi4_0dbutton_store(struct device *dev,
 static ssize_t synaptics_rmi4_resume_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
+static ssize_t synaptics_rmi4_drv_irq_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
+static ssize_t synaptics_rmi4_drv_irq_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count);
+
+static ssize_t synaptics_rmi4_hw_irqstat_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
 struct synaptics_rmi4_f01_device_status {
 	union {
 		struct {
@@ -798,6 +807,12 @@ static struct device_attribute attrs[] = {
 			synaptics_rmi4_0dbutton_store),
 	__ATTR(resumeinfo, S_IRUGO,
 			synaptics_rmi4_resume_show,
+			synaptics_rmi4_store_error),
+	__ATTR(drv_irq, (S_IRUGO | S_IWUGO),
+			synaptics_rmi4_drv_irq_show,
+			synaptics_rmi4_drv_irq_store),
+	__ATTR(hw_irqstat, S_IRUGO,
+			synaptics_rmi4_hw_irqstat_show,
 			synaptics_rmi4_store_error),
 };
 
@@ -1123,6 +1138,62 @@ static ssize_t synaptics_rmi4_f01_flashprog_show(struct device *dev,
 
 	return snprintf(buf, PAGE_SIZE, "%u\n",
 			device_status.flash_prog);
+}
+
+static ssize_t synaptics_rmi4_hw_irqstat_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+
+	switch (gpio_get_value(rmi4_data->board->irq_gpio)) {
+	case 0:
+		return scnprintf(buf, PAGE_SIZE, "Low\n");
+	case 1:
+		return scnprintf(buf, PAGE_SIZE, "High\n");
+	default:
+		printk(KERN_ERR "%s: Failed to get GPIO for irq %d.\n",
+				__func__,
+				rmi4_data->irq);
+		return scnprintf(buf, PAGE_SIZE, "Unknown\n");
+	}
+}
+
+static ssize_t synaptics_rmi4_drv_irq_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
+			rmi4_data->irq_enabled ? "ENABLED" : "DISABLED");
+}
+
+static ssize_t synaptics_rmi4_drv_irq_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	unsigned long value = 0;
+	int err = 0;
+
+	err = kstrtoul(buf, 10, &value);
+	if (err < 0) {
+		printk(KERN_ERR "%s: Failed to convert value.\n", __func__);
+		return -EINVAL;
+	}
+
+	switch (value) {
+	case 0:
+		/* Disable irq */
+		synaptics_rmi4_irq_enable(rmi4_data, false);
+		break;
+	case 1:
+		/* Enable irq */
+		synaptics_rmi4_irq_enable(rmi4_data, true);
+		break;
+	default:
+		printk(KERN_ERR "%s: Invalid value\n", __func__);
+		return -EINVAL;
+	}
+	return count;
 }
 
 static ssize_t synaptics_rmi4_0dbutton_show(struct device *dev,
