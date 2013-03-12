@@ -3143,7 +3143,8 @@ static void id_pin_irq_work_function(struct work_struct *work)
 	if (slimport_is_connected())
 		pr_info("%s: slimport_is_connected\n", __func__);
 	else {
-		if (gpio == 0) {
+		pr_debug("%s: gpio_get_value(APQ_OTG_ID_PIN) = %d\n", __func__, gpio_get_value(APQ_OTG_ID_PIN));
+		if (gpio == 0 && otg_host_on == 0) {
 			pr_info("%s: APQ_OTG_ID_PIN is low : Host mode\n", __func__);
 			set_bit(A_BUS_REQ, &motg->inputs);
 			clear_bit(ID, &motg->inputs);
