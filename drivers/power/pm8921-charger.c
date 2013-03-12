@@ -90,8 +90,6 @@
 #define UNPLUG_CHECK_WAIT_PERIOD_MS 200
 #define UNPLUG_CHECK_RAMP_MS 25
 #define USB_TRIM_ENTRIES 16
-/* wait for 1s to complete the chg gone handling */
-#define CHG_GONE_WAIT_TIMEOUT 1000
 
 enum chg_fsm_state {
 	FSM_STATE_OFF_0 = 0,
@@ -280,7 +278,6 @@ struct pm8921_chg_chip {
 	struct delayed_work		vin_collapse_check_work;
 	struct delayed_work		btc_override_work;
 	struct wake_lock		eoc_wake_lock;
-	struct wake_lock		chg_gone_wake_lock;
 	enum pm8921_chg_cold_thr	cold_thr;
 	enum pm8921_chg_hot_thr		hot_thr;
 	int				rconn_mohm;
@@ -3243,9 +3240,6 @@ static irqreturn_t chg_gone_irq_handler(int irq, void *data)
 	struct pm8921_chg_chip *chip = data;
 	int chg_gone, usb_chg_plugged_in;
 
-	wake_lock_timeout(&chip->chg_gone_wake_lock,
-			msecs_to_jiffies(CHG_GONE_WAIT_TIMEOUT));
-
 	usb_chg_plugged_in = is_usb_chg_plugged_in(chip);
 	chg_gone = pm_chg_get_rt_status(chip, CHG_GONE_IRQ);
 
@@ -4968,9 +4962,6 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 	the_chip = chip;
 
 	wake_lock_init(&chip->eoc_wake_lock, WAKE_LOCK_SUSPEND, "pm8921_eoc");
-	wake_lock_init(&chip->chg_gone_wake_lock,
-			WAKE_LOCK_SUSPEND, "pm8921_chg_gone");
-
 	INIT_DELAYED_WORK(&chip->eoc_work, eoc_worker);
 	INIT_DELAYED_WORK(&chip->vin_collapse_check_work,
 						vin_collapse_check_worker);
@@ -5021,7 +5012,6 @@ static int __devexit pm8921_charger_remove(struct platform_device *pdev)
 	struct pm8921_chg_chip *chip = platform_get_drvdata(pdev);
 
 	regulator_put(chip->vreg_xoadc);
-	wake_lock_destroy(&chip->chg_gone_wake_lock);
 	free_irqs(chip);
 	platform_set_drvdata(pdev, NULL);
 	the_chip = NULL;
