@@ -399,14 +399,16 @@ ion_phys_addr_t ion_cp_allocate(struct ion_heap *heap,
 		return ION_CP_ALLOCATE_FAIL;
 	}
 
-	if (secure_allocation &&
-	    (cp_heap->umap_count > 0 || cp_heap->kmap_cached_count > 0)) {
-		mutex_unlock(&cp_heap->lock);
-		pr_err("ION cannot allocate secure memory from heap with "
-			"outstanding mappings: User space: %lu, kernel space "
-			"(cached): %lu\n", cp_heap->umap_count,
-					   cp_heap->kmap_cached_count);
-		return ION_CP_ALLOCATE_FAIL;
+	/*
+	 * The check above already checked for non-secure allocations when the
+	 * heap is protected. HEAP_PROTECTED implies that this must be a secure
+	 * allocation. If the heap is protected and there are userspace or
+	 * cached kernel mappings, something has gone wrong in the security
+	 * model.
+	 */
+	if (cp_heap->heap_protected == HEAP_PROTECTED) {
+		BUG_ON(cp_heap->umap_count != 0);
+		BUG_ON(cp_heap->kmap_cached_count != 0);
 	}
 
 	/*
@@ -569,17 +571,10 @@ struct sg_table *ion_cp_heap_create_sg_table(struct ion_buffer *buffer)
 	if (!table)
 		return ERR_PTR(-ENOMEM);
 
-	if (buf->is_secure) {
+	if (buf->is_secure && IS_ALIGNED(buffer->size, SZ_1M)) {
 		int n_chunks;
 		int i;
 		struct scatterlist *sg;
-
-		if (!IS_ALIGNED(buffer->size, SZ_1M)) {
-			pr_err("%s: buffer is marked as secure but buffer size %x is not aligned to 1MB\n",
-				__func__, buffer->size);
-
-			return ERR_PTR(-EINVAL);
-		}
 
 		/* Count number of 1MB chunks. Alignment is already checked. */
 		n_chunks = buffer->size >> 20;
