@@ -144,6 +144,7 @@ struct mipi_mot_panel {
 	atomic_t state;
 	bool esd_enabled;
 	bool esd_detection_run;
+	u8 esd_expected_pwr_mode;
 	struct workqueue_struct *esd_wq;
 	struct delayed_work esd_work;
 

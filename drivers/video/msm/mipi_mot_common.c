@@ -108,9 +108,17 @@ void mipi_mot_panel_enter_normal_mode(void)
 
 int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
 {
-	pr_debug("%s: sending display on\n", __func__);
-	mipi_mot_tx_cmds(&mot_display_on_cmds[0],
+	int keep_hidden = mfd->resume_cfg.keep_hidden;
+	mfd->resume_cfg.keep_hidden = 0;
+	if (keep_hidden) {
+		pr_info("%s: skipping display on\n", __func__);
+		mot_panel->esd_expected_pwr_mode = 0x90;
+	} else {
+		pr_info("%s: sending display on\n", __func__);
+		mipi_mot_tx_cmds(&mot_display_on_cmds[0],
 			ARRAY_SIZE(mot_display_on_cmds));
+		mot_panel->esd_expected_pwr_mode = 0x94;
+	}
 
 	return 0;
 }
@@ -318,8 +326,12 @@ int mipi_mot_is_valid_power_mode(struct msm_fb_data_type *mfd)
 						__func__, ret);
 		ret = 0;
 	/*Bit7: Booster on ;Bit4: Sleep Out ;Bit2: Display On*/
-	} else if ((pwr_mode & 0x94) != 0x94) {
-		pr_warning("%s: power state = 0x%x\n", __func__, pwr_mode);
+	} else if ((pwr_mode & mot_panel->esd_expected_pwr_mode) !=
+		mot_panel->esd_expected_pwr_mode) {
+		pr_warning("%s: power state = 0x%x while 0x%x expected\n",
+			__func__,
+			(u32)pwr_mode,
+			(u32)mot_panel->esd_expected_pwr_mode);
 		ret = 0;
 	}
 
@@ -529,18 +541,17 @@ int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide)
 	int ret = 0;
 	pr_info("%s(%d)\n", __func__, hide);
 	if ((mfd->op_enable != 0) && (mfd->panel_power_on != 0)) {
-		int sent = 0;
 		mutex_lock(&mfd->dma->ov_mutex);
 		mipi_set_tx_power_mode(0);
-		sent = mipi_mot_tx_cmds(
-			hide ? &mot_hide_img_cmd : &mot_unhide_img_cmd, 1
-		);
-		mutex_unlock(&mfd->dma->ov_mutex);
-		if (sent != 1) {
-			pr_err("%s(%d) error sending mipi cmd (%d)\n",
-				__func__, hide, sent);
+		if (mipi_mot_tx_cmds(
+			hide ? &mot_hide_img_cmd : &mot_unhide_img_cmd, 1) == 1)
+			mot_panel->esd_expected_pwr_mode = hide ? 0x90 : 0x94;
+		else {
+			pr_err("%s(%d) error sending mipi cmd\n",
+				__func__, hide);
 			ret = -1;
 		}
+		mutex_unlock(&mfd->dma->ov_mutex);
 	}
 	return ret;
 }
