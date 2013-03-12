@@ -2603,6 +2603,13 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 	const struct synaptics_dsx_platform_data *platform_data =
 			rmi4_data->board;
 
+	/*
+	 * Enforce touch release event report to work-around such event
+	 * missing while touch IC is off.
+	 */
+	input_mt_sync(rmi4_data->input_dev);
+	input_sync(rmi4_data->input_dev);
+
 	current_state = synaptics_dsx_get_state_safe(rmi4_data);
 
 	if (rmi4_data->reset_on_resume) {
