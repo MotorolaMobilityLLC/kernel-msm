@@ -40,6 +40,8 @@
 #include <linux/earlysuspend.h>
 #endif
 
+#define FAMILY_ID 0x82
+
 static int atmxt_probe(struct i2c_client *client,
 		const struct i2c_device_id *id);
 static int atmxt_remove(struct i2c_client *client);
@@ -180,6 +182,45 @@ atmxt_of_init(struct i2c_client *client)
 }
 #endif
 
+static int atmxt_probe_ic(struct atmxt_driver_data *dd)
+{
+	uint8_t infoblk[7];
+	int err = 0;
+	bool irq_low = false;
+
+	atmxt_dbg(dd, ATMXT_DBG2, "%s: Probing touch IC...\n", __func__);
+	gpio_set_value(dd->pdata->gpio_reset, 0);
+	udelay(ATMXT_IC_RESET_HOLD_TIME);
+	gpio_set_value(dd->pdata->gpio_reset, 1);
+	irq_low = atmxt_wait4irq(dd);
+	if (!irq_low) {
+		printk(KERN_ERR "%s: Timeout waiting for interrupt.\n",
+			__func__);
+		return -ETIME;
+	}
+
+	err = atmxt_i2c_write(dd, 0x00, 0x00, NULL, 0);
+	if (err < 0) {
+		printk(KERN_ERR "%s: failed to set addr\n", __func__);
+		return err;
+	}
+
+	err = atmxt_i2c_read(dd, infoblk, sizeof(infoblk));
+	if (err < 0) {
+		printk(KERN_ERR "%s: failed to read\n",	__func__);
+		return err;
+	}
+
+	if (infoblk[0] != FAMILY_ID) {
+		printk(KERN_ERR "%s: Family ID mismatch:"
+			" expected 0x%02x actual is 0x%02x\n",
+			__func__, FAMILY_ID, infoblk[0]);
+		return -EIO;
+	}
+
+	return 0;
+}
+
 static int atmxt_probe(struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
@@ -264,9 +305,13 @@ static int atmxt_probe(struct i2c_client *client,
 	if (err < 0)
 		goto atmxt_unreg_suspend;
 
+	err = atmxt_probe_ic(dd);
+	if (err < 0)
+		goto atmxt_free_irq;
+
 	err = atmxt_request_tdat(dd);
 	if (err < 0)
-		goto atmxt_unreg_suspend;
+		goto atmxt_free_irq;
 
 	err = atmxt_create_sysfs_files(dd);
 	if (err < 0) {
@@ -278,8 +323,14 @@ static int atmxt_probe(struct i2c_client *client,
 
 	goto atmxt_probe_pass;
 
+atmxt_free_irq:
+	free_irq(dd->client->irq, dd);
 atmxt_unreg_suspend:
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&dd->es);
+#endif
+	gpio_free(dd->pdata->gpio_reset);
+	gpio_free(dd->pdata->gpio_interrupt);
 atmxt_probe_fail:
 	atmxt_free(dd);
 	printk(KERN_ERR "%s: Probe failed with error code %d.\n",
