@@ -4347,12 +4347,14 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
 
         case WE_ENABLE_DXE_STALL_DETECT:
         {
-            sme_transportDebug(VOS_FALSE, VOS_TRUE);
+            tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+            sme_transportDebug(hHal, VOS_FALSE, VOS_TRUE);
             break;
         }
         case WE_DISPLAY_DXE_SNAP_SHOT:
         {
-            sme_transportDebug(VOS_TRUE, VOS_FALSE);
+            tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+            sme_transportDebug(hHal, VOS_TRUE, VOS_FALSE);
             break;
         }
         case  WE_SET_REASSOC_TRIGGER:
