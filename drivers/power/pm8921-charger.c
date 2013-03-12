@@ -340,65 +340,38 @@ static int pm_chg_write(struct pm8921_chg_chip *chip, u16 addr, u8 reg)
 {
 	int rc;
 	unsigned long flags = 0;
-	u8 temp;
 
 	/* Disable LPM */
 	if (chip->lockup_lpm_wrkarnd) {
 		spin_lock_irqsave(&lpm_lock, flags);
 
 		/*
-		 * This delay is to prevent exit out of 32khz mode within
-		 * 200uS. It could be that chg was removed just few uS before
-		 * this gets called.
+		 * This write could have initiated right after a previous write.
+		 * Allow time to settle to go in to lpm from the previous write
 		 */
 		udelay(200);
-		/* no clks */
-		temp = 0xD1;
-		rc = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
-		if (rc) {
-			pr_err("Error %d writing %d to CHG_TEST\n", rc, temp);
-			goto release_lpm_lock;
-		}
-
-		/* force 19.2Mhz before reading */
-		temp = 0xD3;
-		rc = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
-		if (rc) {
-			pr_err("Error %d writing %d to CHG_TEST\n", rc, temp);
-			goto release_lpm_lock;
-		}
-
-		rc = pm8xxx_writeb(chip->dev->parent, addr, reg);
-		if (rc) {
-			pr_err("failed: addr=%03X, rc=%d\n", addr, rc);
-			goto release_lpm_lock;
-		}
-
-		/* no clks */
-		temp = 0xD1;
-		rc = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
-		if (rc) {
-			pr_err("Error %d writing %d to CHG_TEST\n", rc, temp);
-			goto release_lpm_lock;
-		}
-
-		/* switch to hw clk selection */
-		temp = 0xD0;
-		rc = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
-		if (rc) {
-			pr_err("Error %d writing %d to CHG_TEST\n", rc, temp);
-			goto release_lpm_lock;
-		}
-
-		udelay(200);
-
-release_lpm_lock:
-		spin_unlock_irqrestore(&lpm_lock, flags);
-	} else {
-		rc = pm8xxx_writeb(chip->dev->parent, addr, reg);
+		rc = pm8921_chg_set_lpm(chip, 0);
 		if (rc)
-			pr_err("failed: addr=%03X, rc=%d\n", addr, rc);
+			goto lpm_err;
+
+		/* Wait to come out of LPM */
+		udelay(200);
 	}
+
+	rc = pm8xxx_writeb(chip->dev->parent, addr, reg);
+	if (rc) {
+		pr_err("pm_chg_write failed: addr=%03X, rc=%d\n", addr, rc);
+		goto lpm_err;
+	}
+
+	/* Enable LPM */
+	if (chip->lockup_lpm_wrkarnd)
+		rc = pm8921_chg_set_lpm(chip, 1);
+
+lpm_err:
+	if (chip->lockup_lpm_wrkarnd)
+		spin_unlock_irqrestore(&lpm_lock, flags);
+
 	return rc;
 }
 
@@ -468,175 +441,68 @@ static int is_batfet_closed(struct pm8921_chg_chip *chip)
 static int pm_chg_get_fsm_state(struct pm8921_chg_chip *chip)
 {
 	u8 temp;
-	unsigned long flags = 0;
-	int err = 0, ret = 0;
-
-	if (chip->lockup_lpm_wrkarnd) {
-		spin_lock_irqsave(&lpm_lock, flags);
-
-		/*
-		 * This delay is to prevent exit out of 32khz mode within
-		 * 200uS. It could be that chg was removed just few uS before
-		 * this gets called.
-		 */
-		udelay(200);
-		/* no clks */
-		temp = 0xD1;
-		err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
-		if (err) {
-			pr_err("Error %d writing %d to CHG_TEST\n", err, temp);
-			goto err_out;
-		}
-
-		/* force 19.2Mhz before reading */
-		temp = 0xD3;
-		err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
-		if (err) {
-			pr_err("Error %d writing %d to CHG_TEST\n", err, temp);
-			goto err_out;
-		}
-	}
+	int err, ret = 0;
 
 	temp = CAPTURE_FSM_STATE_CMD;
-	err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
+	err = pm_chg_write(chip, CHG_TEST, temp);
 	if (err) {
 		pr_err("Error %d writing %d to addr %d\n", err, temp, CHG_TEST);
-		goto err_out;
+		return err;
 	}
 
 	temp = READ_BANK_7;
-	err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
+	err = pm_chg_write(chip, CHG_TEST, temp);
 	if (err) {
 		pr_err("Error %d writing %d to addr %d\n", err, temp, CHG_TEST);
-		goto err_out;
+		return err;
 	}
 
 	err = pm8xxx_readb(chip->dev->parent, CHG_TEST, &temp);
 	if (err) {
 		pr_err("pm8xxx_readb fail: addr=%03X, rc=%d\n", CHG_TEST, err);
-		goto err_out;
+		return err;
 	}
 	/* get the lower 4 bits */
 	ret = temp & 0xF;
 
 	temp = READ_BANK_4;
-	err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
+	err = pm_chg_write(chip, CHG_TEST, temp);
 	if (err) {
 		pr_err("Error %d writing %d to addr %d\n", err, temp, CHG_TEST);
-		goto err_out;
+		return err;
 	}
 
 	err = pm8xxx_readb(chip->dev->parent, CHG_TEST, &temp);
 	if (err) {
 		pr_err("pm8xxx_readb fail: addr=%03X, rc=%d\n", CHG_TEST, err);
-		goto err_out;
+		return err;
 	}
 	/* get the upper 1 bit */
 	ret |= (temp & 0x1) << 4;
-
-	if (chip->lockup_lpm_wrkarnd) {
-		/* no clks */
-		temp = 0xD1;
-		err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
-		if (err) {
-			pr_err("Error %d writing %d to CHG_TEST\n", err, temp);
-			goto err_out;
-		}
-
-		/* switch to hw clk selection */
-		temp = 0xD0;
-		err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
-		if (err) {
-			pr_err("Error %d writing %d to CHG_TEST\n", err, temp);
-			goto err_out;
-		}
-
-		udelay(200);
-	}
-
-err_out:
-	if (chip->lockup_lpm_wrkarnd)
-		spin_unlock_irqrestore(&lpm_lock, flags);
-	if (err)
-		return err;
-
 	return  ret;
 }
 
 #define READ_BANK_6		0x60
 static int pm_chg_get_regulation_loop(struct pm8921_chg_chip *chip)
 {
-	u8 temp, data;
-	unsigned long flags = 0;
-	int err = 0;
-
-	if (chip->lockup_lpm_wrkarnd) {
-		spin_lock_irqsave(&lpm_lock, flags);
-
-		/*
-		 * This delay is to prevent exit out of 32khz mode within
-		 * 200uS. It could be that chg was removed just few uS before
-		 * this gets called.
-		 */
-		udelay(200);
-		/* no clks */
-		temp = 0xD1;
-		err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
-		if (err) {
-			pr_err("Error %d writing %d to CHG_TEST\n", err, temp);
-			goto err_out;
-		}
-
-		/* force 19.2Mhz before reading */
-		temp = 0xD3;
-		err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
-		if (err) {
-			pr_err("Error %d writing %d to CHG_TEST\n", err, temp);
-			goto err_out;
-		}
-	}
+	u8 temp;
+	int err;
 
 	temp = READ_BANK_6;
-	err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
+	err = pm_chg_write(chip, CHG_TEST, temp);
 	if (err) {
 		pr_err("Error %d writing %d to addr %d\n", err, temp, CHG_TEST);
-		goto err_out;
+		return err;
 	}
 
-	err = pm8xxx_readb(chip->dev->parent, CHG_TEST, &data);
+	err = pm8xxx_readb(chip->dev->parent, CHG_TEST, &temp);
 	if (err) {
 		pr_err("pm8xxx_readb fail: addr=%03X, rc=%d\n", CHG_TEST, err);
-		goto err_out;
-	}
-
-	if (chip->lockup_lpm_wrkarnd) {
-		/* no clks */
-		temp = 0xD1;
-		err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
-		if (err) {
-			pr_err("Error %d writing %d to CHG_TEST\n", err, temp);
-			goto err_out;
-		}
-
-		/* switch to hw clk selection */
-		temp = 0xD0;
-		err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
-		if (err) {
-			pr_err("Error %d writing %d to CHG_TEST\n", err, temp);
-			goto err_out;
-		}
-
-		udelay(200);
-	}
-
-err_out:
-	if (chip->lockup_lpm_wrkarnd)
-		spin_unlock_irqrestore(&lpm_lock, flags);
-	if (err)
 		return err;
+	}
 
 	/* return the lower 4 bits */
-	return data & CHG_ALL_LOOPS;
+	return temp & CHG_ALL_LOOPS;
 }
 
 #define CHG_USB_SUSPEND_BIT  BIT(2)
