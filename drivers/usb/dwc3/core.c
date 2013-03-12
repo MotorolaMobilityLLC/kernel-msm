@@ -148,6 +148,8 @@ static void dwc3_core_soft_reset(struct dwc3 *dwc)
 	reg &= ~DWC3_GUSB2PHYCFG_PHYSOFTRST;
 	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
 
+	mdelay(100);
+
 	/* After PHYs are stable we can take Core out of reset state */
 	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
 	reg &= ~DWC3_GCTL_CORESOFTRESET;
@@ -333,8 +335,6 @@ static int __devinit dwc3_core_init(struct dwc3 *dwc)
 	}
 	dwc->revision = reg;
 
-	dwc3_core_soft_reset(dwc);
-
 	/* issue device SoftReset too */
 	timeout = jiffies + msecs_to_jiffies(500);
 	dwc3_writel(dwc->regs, DWC3_DCTL, DWC3_DCTL_CSFTRST);
@@ -351,6 +351,8 @@ static int __devinit dwc3_core_init(struct dwc3 *dwc)
 
 		cpu_relax();
 	} while (true);
+
+	dwc3_core_soft_reset(dwc);
 
 	dwc3_cache_hwparams(dwc);
 

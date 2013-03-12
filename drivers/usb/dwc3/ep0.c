@@ -113,7 +113,7 @@ static int dwc3_ep0_start_trans(struct dwc3 *dwc, u8 epnum, dma_addr_t buf_dma,
 	}
 
 	dep->flags |= DWC3_EP_BUSY;
-	dep->res_trans_idx = dwc3_gadget_ep_get_transfer_index(dwc,
+	dep->resource_index = dwc3_gadget_ep_get_transfer_index(dwc,
 			dep->number);
 
 	dwc->ep0_next_event = DWC3_EP0_COMPLETE;
@@ -223,6 +223,16 @@ static void dwc3_ep0_stall_and_restart(struct dwc3 *dwc)
 
 	dwc->ep0state = EP0_SETUP_PHASE;
 	dwc3_ep0_out_start(dwc);
+}
+
+int dwc3_gadget_ep0_set_halt(struct usb_ep *ep, int value)
+{
+	struct dwc3_ep			*dep = to_dwc3_ep(ep);
+	struct dwc3			*dwc = dep->dwc;
+
+	dwc3_ep0_stall_and_restart(dwc);
+
+	return 0;
 }
 
 void dwc3_ep0_out_start(struct dwc3 *dwc)
@@ -515,8 +525,8 @@ static void dwc3_ep0_set_sel_cmpl(struct usb_ep *ep, struct usb_request *req)
 
 	dwc->u1sel = timing.u1sel;
 	dwc->u1pel = timing.u1pel;
-	dwc->u2sel = timing.u2sel;
-	dwc->u2pel = timing.u2pel;
+	dwc->u2sel = le16_to_cpu(timing.u2sel);
+	dwc->u2pel = le16_to_cpu(timing.u2pel);
 
 	reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 	if (reg & DWC3_DCTL_INITU2ENA)
@@ -641,11 +651,11 @@ static void dwc3_ep0_inspect_setup(struct dwc3 *dwc,
 		const struct dwc3_event_depevt *event)
 {
 	struct usb_ctrlrequest *ctrl = dwc->ctrl_req;
-	int ret;
+	int ret = -EINVAL;
 	u32 len;
 
 	if (!dwc->gadget_driver)
-		goto err;
+		goto out;
 
 	len = le16_to_cpu(ctrl->wLength);
 	if (!len) {
@@ -666,11 +676,9 @@ static void dwc3_ep0_inspect_setup(struct dwc3 *dwc,
 	if (ret == USB_GADGET_DELAYED_STATUS)
 		dwc->delayed_status = true;
 
-	if (ret >= 0)
-		return;
-
-err:
-	dwc3_ep0_stall_and_restart(dwc);
+out:
+	if (ret < 0)
+		dwc3_ep0_stall_and_restart(dwc);
 }
 
 static void dwc3_ep0_complete_data(struct dwc3 *dwc,
@@ -724,7 +732,7 @@ static void dwc3_ep0_complete_data(struct dwc3 *dwc,
 	}
 }
 
-static void dwc3_ep0_complete_req(struct dwc3 *dwc,
+static void dwc3_ep0_complete_status(struct dwc3 *dwc,
 		const struct dwc3_event_depevt *event)
 {
 	struct dwc3_request	*r;
@@ -746,6 +754,7 @@ static void dwc3_ep0_complete_req(struct dwc3 *dwc,
 			dev_dbg(dwc->dev, "Invalid Test #%d\n",
 					dwc->test_mode_nr);
 			dwc3_ep0_stall_and_restart(dwc);
+			return;
 		}
 	}
 
@@ -759,7 +768,7 @@ static void dwc3_ep0_xfer_complete(struct dwc3 *dwc,
 	struct dwc3_ep		*dep = dwc->eps[event->endpoint_number];
 
 	dep->flags &= ~DWC3_EP_BUSY;
-	dep->res_trans_idx = 0;
+	dep->resource_index = 0;
 	dwc->setup_packet_pending = false;
 
 	switch (dwc->ep0state) {
@@ -775,7 +784,7 @@ static void dwc3_ep0_xfer_complete(struct dwc3 *dwc,
 
 	case EP0_STATUS_PHASE:
 		dev_vdbg(dwc->dev, "Status Phase\n");
-		dwc3_ep0_complete_req(dwc, event);
+		dwc3_ep0_complete_status(dwc, event);
 		break;
 	default:
 		WARN(true, "UNKNOWN ep0state %d\n", dwc->ep0state);
