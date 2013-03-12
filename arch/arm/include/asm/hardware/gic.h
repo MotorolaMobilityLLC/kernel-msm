@@ -22,6 +22,7 @@
 
 #define GIC_DIST_CTRL			0x000
 #define GIC_DIST_CTR			0x004
+#define GIC_DIST_ISR			0x080
 #define GIC_DIST_ENABLE_SET		0x100
 #define GIC_DIST_ENABLE_CLEAR		0x180
 #define GIC_DIST_PENDING_SET		0x200
@@ -45,13 +46,25 @@ void gic_secondary_init(unsigned int);
 void gic_handle_irq(struct pt_regs *regs);
 void gic_cascade_irq(unsigned int gic_nr, unsigned int irq);
 void gic_raise_softirq(const struct cpumask *mask, unsigned int irq);
-
+#ifdef CONFIG_ARM_GIC
+void gic_set_irq_secure(unsigned int irq);
+#else
+static inline void gic_set_irq_secure(unsigned int irq) { }
+#endif
 static inline void gic_init(unsigned int nr, int start,
 			    void __iomem *dist , void __iomem *cpu)
 {
 	gic_init_bases(nr, start, dist, cpu, 0, NULL);
 }
 
+bool gic_is_spi_pending(unsigned int irq);
+void gic_clear_spi_pending(unsigned int irq);
+#endif
+
+#ifdef CONFIG_ARCH_MSM8625
+void msm_gic_save(bool modem_wake, int from_idle);
+void msm_gic_restore(void);
+void core1_gic_configure_and_raise(void);
 #endif
 
 #endif
