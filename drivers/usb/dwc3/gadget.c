@@ -101,6 +101,23 @@ int dwc3_gadget_set_link_state(struct dwc3 *dwc, enum dwc3_link_state state)
 	int		retries = 10000;
 	u32		reg;
 
+	/*
+	 * Wait until device controller is ready. Only applies to 1.94a and
+	 * later RTL.
+	 */
+	if (dwc->revision >= DWC3_REVISION_194A) {
+		while (--retries) {
+			reg = dwc3_readl(dwc->regs, DWC3_DSTS);
+			if (reg & DWC3_DSTS_DCNRD)
+				udelay(5);
+			else
+				break;
+		}
+
+		if (retries <= 0)
+			return -ETIMEDOUT;
+	}
+
 	reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 	reg &= ~DWC3_DCTL_ULSTCHNGREQ_MASK;
 
@@ -108,7 +125,15 @@ int dwc3_gadget_set_link_state(struct dwc3 *dwc, enum dwc3_link_state state)
 	reg |= DWC3_DCTL_ULSTCHNGREQ(state);
 	dwc3_writel(dwc->regs, DWC3_DCTL, reg);
 
+	/*
+	 * The following code is racy when called from dwc3_gadget_wakeup,
+	 * and is not needed, at least on newer versions
+	 */
+	if (dwc->revision >= DWC3_REVISION_194A)
+		return 0;
+
 	/* wait for a change in DSTS */
+	retries = 10000;
 	while (--retries) {
 		reg = dwc3_readl(dwc->regs, DWC3_DSTS);
 
@@ -266,8 +291,8 @@ static const char *dwc3_gadget_ep_cmd_string(u8 cmd)
 		return "Clear Stall";
 	case DWC3_DEPCMD_SETSTALL:
 		return "Set Stall";
-	case DWC3_DEPCMD_GETSEQNUMBER:
-		return "Get Data Sequence Number";
+	case DWC3_DEPCMD_GETEPSTATE:
+		return "Get Endpoint State";
 	case DWC3_DEPCMD_SETTRANSFRESOURCE:
 		return "Set Endpoint Transfer Resource";
 	case DWC3_DEPCMD_SETEPCONFIG:
@@ -1283,9 +1308,13 @@ static int dwc3_gadget_wakeup(struct usb_gadget *g)
 		goto out;
 	}
 
-	/* write zeroes to Link Change Request */
-	reg &= ~DWC3_DCTL_ULSTCHNGREQ_MASK;
-	dwc3_writel(dwc->regs, DWC3_DCTL, reg);
+	/* Recent versions do this automatically */
+	if (dwc->revision < DWC3_REVISION_194A) {
+		/* write zeroes to Link Change Request */
+		reg = dwc3_readl(dwc->regs, DWC3_DCTL);
+		reg &= ~DWC3_DCTL_ULSTCHNGREQ_MASK;
+		dwc3_writel(dwc->regs, DWC3_DCTL, reg);
+	}
 
 	/* poll until Link State changes to ON */
 	timeout = jiffies + msecs_to_jiffies(100);
@@ -1329,9 +1358,14 @@ static void dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on)
 
 	reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 	if (is_on) {
-		reg &= ~DWC3_DCTL_TRGTULST_MASK;
-		reg |= (DWC3_DCTL_RUN_STOP
-				| DWC3_DCTL_TRGTULST_RX_DET);
+		if (dwc->revision <= DWC3_REVISION_187A) {
+			reg &= ~DWC3_DCTL_TRGTULST_MASK;
+			reg |= DWC3_DCTL_TRGTULST_RX_DET;
+		}
+
+		if (dwc->revision >= DWC3_REVISION_194A)
+			reg &= ~DWC3_DCTL_KEEP_CONNECT;
+		reg |= DWC3_DCTL_RUN_STOP;
 	} else {
 		reg &= ~DWC3_DCTL_RUN_STOP;
 	}
@@ -1523,6 +1557,7 @@ static int dwc3_gadget_stop(struct usb_gadget *g,
 
 	return 0;
 }
+
 static const struct usb_gadget_ops dwc3_gadget_ops = {
 	.get_frame		= dwc3_gadget_get_frame,
 	.wakeup			= dwc3_gadget_wakeup,
@@ -1928,11 +1963,9 @@ static void dwc3_clear_stall_all_ep(struct dwc3 *dwc)
 
 static void dwc3_gadget_disconnect_interrupt(struct dwc3 *dwc)
 {
+	int			reg;
+
 	dev_vdbg(dwc->dev, "%s\n", __func__);
-#if 0
-	XXX
-	U1/U2 is powersave optimization. Skip it for now. Anyway we need to
-	enable it before we can disable it.
 
 	reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 	reg &= ~DWC3_DCTL_INITU1ENA;
@@ -1940,7 +1973,6 @@ static void dwc3_gadget_disconnect_interrupt(struct dwc3 *dwc)
 
 	reg &= ~DWC3_DCTL_INITU2ENA;
 	dwc3_writel(dwc->regs, DWC3_DCTL, reg);
-#endif
 
 	dwc3_stop_active_transfers(dwc);
 	dwc3_disconnect_gadget(dwc);
@@ -1950,30 +1982,30 @@ static void dwc3_gadget_disconnect_interrupt(struct dwc3 *dwc)
 	dwc->setup_packet_pending = false;
 }
 
-static void dwc3_gadget_usb3_phy_power(struct dwc3 *dwc, int on)
+static void dwc3_gadget_usb3_phy_suspend(struct dwc3 *dwc, int suspend)
 {
 	u32			reg;
 
 	reg = dwc3_readl(dwc->regs, DWC3_GUSB3PIPECTL(0));
 
-	if (on)
-		reg &= ~DWC3_GUSB3PIPECTL_SUSPHY;
-	else
+	if (suspend)
 		reg |= DWC3_GUSB3PIPECTL_SUSPHY;
+	else
+		reg &= ~DWC3_GUSB3PIPECTL_SUSPHY;
 
 	dwc3_writel(dwc->regs, DWC3_GUSB3PIPECTL(0), reg);
 }
 
-static void dwc3_gadget_usb2_phy_power(struct dwc3 *dwc, int on)
+static void dwc3_gadget_usb2_phy_suspend(struct dwc3 *dwc, int suspend)
 {
 	u32			reg;
 
 	reg = dwc3_readl(dwc->regs, DWC3_GUSB2PHYCFG(0));
 
-	if (on)
-		reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
-	else
+	if (suspend)
 		reg |= DWC3_GUSB2PHYCFG_SUSPHY;
+	else
+		reg &= ~DWC3_GUSB2PHYCFG_SUSPHY;
 
 	dwc3_writel(dwc->regs, DWC3_GUSB2PHYCFG(0), reg);
 }
@@ -2018,9 +2050,12 @@ static void dwc3_gadget_reset_interrupt(struct dwc3 *dwc)
 	/* after reset -> Default State */
 	dwc->dev_state = DWC3_DEFAULT_STATE;
 
-	/* Enable PHYs */
-	dwc3_gadget_usb2_phy_power(dwc, true);
-	dwc3_gadget_usb3_phy_power(dwc, true);
+	/* Recent versions support automatic phy suspend and don't need this */
+	if (dwc->revision < DWC3_REVISION_194A) {
+		/* Resume PHYs */
+		dwc3_gadget_usb2_phy_suspend(dwc, false);
+		dwc3_gadget_usb3_phy_suspend(dwc, false);
+	}
 
 	if (dwc->gadget.speed != USB_SPEED_UNKNOWN)
 		dwc3_disconnect_gadget(dwc);
@@ -2066,16 +2101,16 @@ static void dwc3_update_ram_clk_sel(struct dwc3 *dwc, u32 speed)
 	dwc3_writel(dwc->regs, DWC3_GCTL, reg);
 }
 
-static void dwc3_gadget_disable_phy(struct dwc3 *dwc, u8 speed)
+static void dwc3_gadget_phy_suspend(struct dwc3 *dwc, u8 speed)
 {
 	switch (speed) {
 	case USB_SPEED_SUPER:
-		dwc3_gadget_usb2_phy_power(dwc, false);
+		dwc3_gadget_usb2_phy_suspend(dwc, true);
 		break;
 	case USB_SPEED_HIGH:
 	case USB_SPEED_FULL:
 	case USB_SPEED_LOW:
-		dwc3_gadget_usb3_phy_power(dwc, false);
+		dwc3_gadget_usb3_phy_suspend(dwc, true);
 		break;
 	}
 }
@@ -2138,8 +2173,11 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 		break;
 	}
 
-	/* Disable unneded PHY */
-	dwc3_gadget_disable_phy(dwc, dwc->gadget.speed);
+	/* Recent versions support automatic phy suspend and don't need this */
+	if (dwc->revision < DWC3_REVISION_194A) {
+		/* Suspend unneeded PHY */
+		dwc3_gadget_phy_suspend(dwc, dwc->gadget.speed);
+	}
 
 	dep = dwc->eps[0];
 	ret = __dwc3_gadget_ep_enable(dep, &dwc3_gadget_ep0_desc, NULL);
@@ -2470,6 +2508,24 @@ int __devinit dwc3_gadget_init(struct dwc3 *dwc)
 			DWC3_DEVTEN_USBRSTEN |
 			DWC3_DEVTEN_DISCONNEVTEN);
 	dwc3_writel(dwc->regs, DWC3_DEVTEN, reg);
+
+	/* Enable USB2 LPM and automatic phy suspend only on recent versions */
+	if (dwc->revision >= DWC3_REVISION_194A) {
+		reg = dwc3_readl(dwc->regs, DWC3_DCFG);
+		reg |= DWC3_DCFG_LPM_CAP;
+		dwc3_writel(dwc->regs, DWC3_DCFG, reg);
+
+		reg = dwc3_readl(dwc->regs, DWC3_DCTL);
+		reg &= ~(DWC3_DCTL_HIRD_THRES_MASK | DWC3_DCTL_L1_HIBER_EN);
+
+		/* TODO: This should be configurable */
+		reg |= DWC3_DCTL_HIRD_THRES(31);
+
+		dwc3_writel(dwc->regs, DWC3_DCTL, reg);
+
+		dwc3_gadget_usb2_phy_suspend(dwc, true);
+		dwc3_gadget_usb3_phy_suspend(dwc, true);
+	}
 
 	ret = device_register(&dwc->gadget.dev);
 	if (ret) {
