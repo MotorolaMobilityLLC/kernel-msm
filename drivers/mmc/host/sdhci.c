@@ -895,8 +895,13 @@ static void sdhci_set_transfer_mode(struct sdhci_host *host,
 		}
 	}
 
-	if (data->flags & MMC_DATA_READ)
+	if (data->flags & MMC_DATA_READ) {
 		mode |= SDHCI_TRNS_READ;
+		if (host->ops->toggle_cdr)
+			host->ops->toggle_cdr(host, true);
+	}
+	if (host->ops->toggle_cdr && (data->flags & MMC_DATA_WRITE))
+		host->ops->toggle_cdr(host, false);
 	if (host->flags & SDHCI_REQ_USE_DMA)
 		mode |= SDHCI_TRNS_DMA;
 
@@ -1713,7 +1718,7 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 {
 	struct sdhci_host *host;
 	u16 ctrl;
-	u32 ier;
+	u32 ier = 0;
 	int tuning_loop_counter = MAX_TUNING_LOOP;
 	unsigned long timeout;
 	int err = 0;
@@ -1734,9 +1739,9 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	 * If the Host Controller supports the HS200 mode then the
 	 * tuning function has to be executed.
 	 */
-	if (((ctrl & SDHCI_CTRL_UHS_MASK) == SDHCI_CTRL_UHS_SDR50) &&
-	    (host->flags & SDHCI_SDR50_NEEDS_TUNING ||
-	     host->flags & SDHCI_HS200_NEEDS_TUNING))
+	if ((((ctrl & SDHCI_CTRL_UHS_MASK) == SDHCI_CTRL_UHS_SDR50) &&
+	    (host->flags & SDHCI_SDR50_NEEDS_TUNING)) ||
+	     (host->flags & SDHCI_HS200_NEEDS_TUNING))
 		requires_tuning_nonuhs = true;
 
 	if (((ctrl & SDHCI_CTRL_UHS_MASK) == SDHCI_CTRL_UHS_SDR104) ||
@@ -1749,6 +1754,14 @@ static int sdhci_execute_tuning(struct mmc_host *mmc, u32 opcode)
 		return 0;
 	}
 
+	if (host->ops->execute_tuning) {
+		spin_unlock(&host->lock);
+		enable_irq(host->irq);
+		host->ops->execute_tuning(host, opcode);
+		disable_irq(host->irq);
+		spin_lock(&host->lock);
+		goto out;
+	}
 	sdhci_writew(host, ctrl, SDHCI_HOST_CONTROL2);
 
 	/*
