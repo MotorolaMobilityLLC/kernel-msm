@@ -500,7 +500,12 @@ static int panel_disable(struct platform_device *pdev)
 
 	if (need_deinit) {
 		if (mot_panel.panel_disable) {
-			mot_panel.panel_disable(mfd);
+			if (mfd->suspend_cfg.partial) {
+				pr_info("%s: skipping full panel_disable\n",
+					__func__);
+				mipi_mot_panel_off(mfd);
+			} else
+				mot_panel.panel_disable(mfd);
 		} else {
 			pr_err("%s: no panel support\n", __func__);
 			ret = -ENODEV;
@@ -528,20 +533,13 @@ err:
 static int panel_on(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
-	int ret, keep_hidden = 0;
+	int ret;
 
 	mfd = platform_get_drvdata(pdev);
 
 	ret = valid_mfd_info(mfd);
 	if (ret != 0)
 		goto err;
-
-	keep_hidden = mfd->resume_cfg.keep_hidden;
-	mfd->resume_cfg.keep_hidden = 0;
-	if (keep_hidden) {
-		pr_info("%s: skipping display on\n", __func__);
-		goto done;
-	}
 
 	if (mot_panel.panel_on) {
 		mot_panel.panel_on(mfd);
@@ -561,7 +559,6 @@ static int panel_on(struct platform_device *pdev)
 						msecs_to_jiffies(20000));
 		mot_panel.esd_detection_run = true;
 	}
-done:
 	return 0;
 err:
 	return ret;
@@ -820,6 +817,7 @@ static int __init mipi_mot_lcd_init(void)
 	mot_panel.get_controller_drv_ver = mipi_mot_get_controller_drv_ver;
 	mot_panel.esd_run = mipi_mot_esd_work;
 	mot_panel.is_valid_power_mode = mipi_mot_is_valid_power_mode;
+	mot_panel.esd_expected_pwr_mode = 0x94;
 
 	mot_panel.panel_on = mipi_mot_panel_on;
 	mot_panel.panel_off = NULL;
