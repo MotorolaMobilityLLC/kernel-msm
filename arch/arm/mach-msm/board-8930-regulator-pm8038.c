@@ -76,6 +76,19 @@ VREG_CONSUMERS(L9) = {
 	REGULATOR_SUPPLY("cam_vaf",		"4-0048"),
 	REGULATOR_SUPPLY("cam_vana",            "4-0020"),
 	REGULATOR_SUPPLY("cam_vaf",             "4-0020"),
+/* Regulators for 8930 QRD SGLTE EVT */
+	REGULATOR_SUPPLY("cam_vana",		"8-001a"),
+	REGULATOR_SUPPLY("cam_vana",		"8-006c"),
+	REGULATOR_SUPPLY("cam_vana",		"8-0048"),
+	REGULATOR_SUPPLY("cam_vana",		"8-0020"),
+	REGULATOR_SUPPLY("cam_vana",		"8-0036"),
+	REGULATOR_SUPPLY("cam_vana",		"8-0010"),
+	REGULATOR_SUPPLY("cam_vaf",		"8-001a"),
+	REGULATOR_SUPPLY("cam_vaf",		"8-006c"),
+	REGULATOR_SUPPLY("cam_vaf",		"8-0048"),
+	REGULATOR_SUPPLY("cam_vaf",		"8-0020"),
+	REGULATOR_SUPPLY("cam_vaf",		"8-0036"),
+	REGULATOR_SUPPLY("cam_vaf",		"8-0010"),
 	REGULATOR_SUPPLY("vdd",			"12-0018"),
 	REGULATOR_SUPPLY("vdd",			"12-0068"),
 };
@@ -103,7 +116,14 @@ VREG_CONSUMERS(L12) = {
 	REGULATOR_SUPPLY("cam_vdig",		"4-001a"),
 	REGULATOR_SUPPLY("cam_vdig",		"4-006c"),
 	REGULATOR_SUPPLY("cam_vdig",		"4-0048"),
-	REGULATOR_SUPPLY("cam_vdig",            "4-0020"),
+	REGULATOR_SUPPLY("cam_vdig",		"4-0020"),
+/* Regulators for 8930 QRD SGLTE EVT */
+	REGULATOR_SUPPLY("cam_vdig",		"8-001a"),
+	REGULATOR_SUPPLY("cam_vdig",		"8-006c"),
+	REGULATOR_SUPPLY("cam_vdig",		"8-0048"),
+	REGULATOR_SUPPLY("cam_vdig",		"8-0020"),
+	REGULATOR_SUPPLY("cam_vdig",		"8-0036"),
+	REGULATOR_SUPPLY("cam_vdig",		"8-0010"),
 };
 VREG_CONSUMERS(L13) = {
 	REGULATOR_SUPPLY("8038_l13",		NULL),
@@ -202,7 +222,14 @@ VREG_CONSUMERS(LVS1) = {
 	REGULATOR_SUPPLY("cam_vio",		"4-001a"),
 	REGULATOR_SUPPLY("cam_vio",		"4-006c"),
 	REGULATOR_SUPPLY("cam_vio",		"4-0048"),
-	REGULATOR_SUPPLY("cam_vio",             "4-0020"),
+	REGULATOR_SUPPLY("cam_vio",		"4-0020"),
+/* Regulators for 8930 QRD SGLTE EVT */
+	REGULATOR_SUPPLY("cam_vio",		"8-001a"),
+	REGULATOR_SUPPLY("cam_vio",		"8-006c"),
+	REGULATOR_SUPPLY("cam_vio",		"8-0048"),
+	REGULATOR_SUPPLY("cam_vio",		"8-0020"),
+	REGULATOR_SUPPLY("cam_vio",		"8-0036"),
+	REGULATOR_SUPPLY("cam_vio",		"8-0010"),
 };
 VREG_CONSUMERS(LVS2) = {
 	REGULATOR_SUPPLY("8038_lvs2",		NULL),
@@ -506,7 +533,7 @@ msm8930_rpm_regulator_init_data[] __devinitdata = {
 	RPM_LDO(L9,	 0, 1, 0, 2850000, 2850000, NULL,      0, 0),
 	RPM_LDO(L10,	 0, 1, 0, 2900000, 2900000, NULL,      0, 0),
 	RPM_LDO(L11,	 1, 1, 0, 1800000, 1800000, "8038_s4", 10000, 10000),
-	RPM_LDO(L12,	 0, 1, 0, 1200000, 1200000, "8038_s2", 0, 0),
+	RPM_LDO(L12,	 0, 1, 0, 1200000, 1500000, "8038_s2", 0, 0),
 	RPM_LDO(L13,	 0, 0, 0, 2220000, 2220000, NULL,      0, 0),
 	RPM_LDO(L14,	 0, 1, 0, 1800000, 1800000, NULL,      0, 0),
 	RPM_LDO(L15,	 0, 1, 0, 1800000, 2950000, NULL,      0, 0),

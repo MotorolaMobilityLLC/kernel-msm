@@ -217,6 +217,15 @@ config IMX135
 	  support.
 	  Say Y if the platform uses IMX135 sensor.
 
+config OV9724
+	bool "Sensor ov9724 (Omnivision 1.3M)"
+	depends on MSM_CAMERA
+	---help---
+	  Support for OV9724 sensor driver.
+	  It is a Bayer 1.3MP sensor with auto focus and it supports
+	  two mipi lanes, required for msm8625 platform.
+	  Say Y here if this is msm8625 variant platform.
+
 config VB6801
 	bool "Sensor vb6801"
 	depends on MSM_CAMERA && !ARCH_MSM8X60 && !MSM_CAMERA_V4L2
