@@ -9512,7 +9512,7 @@ VOS_STATUS WDA_TxPacket(tWDA_CbContext *pWDA,
                                 after the packet gets completed(packet freed once)*/
 
       /* TX MGMT fail with COMP timeout, try to detect DXE stall */
-      WDA_TransportChannelDebug(1, 0);
+      WDA_TransportChannelDebug(pMac, 1, 0);
 
       /*Tag Frame as timed out for later deletion*/
       vos_pkt_set_user_data_ptr( (vos_pkt_t *)pFrmBuf, VOS_PKT_USER_DATA_ID_WDA, 
@@ -12324,6 +12324,7 @@ VOS_STATUS WDA_ProcessUpdateOpMode(tWDA_CbContext *pWDA,
     Or if host driver detects any abnormal stcuk may display
 
   PARAMETERS
+    pMac : upper MAC context pointer
     displaySnapshot : Display DXE snapshot option
     enableStallDetect : Enable stall detect feature
                         This feature will take effect to data performance
@@ -12335,10 +12336,18 @@ VOS_STATUS WDA_ProcessUpdateOpMode(tWDA_CbContext *pWDA,
 ===========================================================================*/
 void WDA_TransportChannelDebug
 (
-   v_BOOL_t   displaySnapshot,
-   v_BOOL_t   toggleStallDetect
+  tpAniSirGlobal pMac,
+  v_BOOL_t       displaySnapshot,
+  v_BOOL_t       toggleStallDetect
 )
 {
+   if (NULL != pMac)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_WARN,
+                 "HAL BMU DUMP Request" );
+      /* 17 is BMU dump opcode */
+      WDA_HALDumpCmdReq(pMac, 17, 0, 0, 0, 0, NULL);
+   }
    WDI_TransportChannelDebug(displaySnapshot, toggleStallDetect);
    return;
 }

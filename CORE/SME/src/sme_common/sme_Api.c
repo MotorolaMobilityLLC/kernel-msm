@@ -6763,19 +6763,24 @@ eHalStatus sme_GetCurrentCountryCode(tHalHandle hHal, tANI_U8 *pCountry)
     \fn sme_transportDebug
     \brief  Dynamically monitoring Transport channels
             Private IOCTL will querry transport channel status if driver loaded
+    \param  hHal Upper MAC context
     \param  displaySnapshot Display transport channel snapshot option
     \param  toggleStallDetect Enable stall detect feature
                               This feature will take effect to data performance
                               Not integrate till fully verification
     \- return NONE
     -------------------------------------------------------------------------*/
-void sme_transportDebug
-(
-   v_BOOL_t  displaySnapshot,
-   v_BOOL_t  toggleStallDetect
-)
+void sme_transportDebug(tHalHandle hHal, v_BOOL_t displaySnapshot, v_BOOL_t toggleStallDetect)
 {
-   WDA_TransportChannelDebug(displaySnapshot, toggleStallDetect);
+   tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+
+   if (NULL == pMac)
+   {
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                "%s: invalid context", __func__);
+      return;
+   }
+   WDA_TransportChannelDebug(pMac, displaySnapshot, toggleStallDetect);
 }
 
 /* ---------------------------------------------------------------------------
