@@ -1204,17 +1204,35 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
 
     /* Include HT Capability IE */
     PopulateDot11fHTCaps( pMac, NULL, &tdlsSetupReq.HTCaps );
-    if (tdlsSetupReq.HTCaps.present)
+    if (psessionEntry->currentOperChannel <= SIR_11B_CHANNEL_END)
     {
-        tdlsSetupReq.HTCaps.supportedChannelWidthSet = 1; // pVhtCaps->supportedChannelWidthSet;
+        tdlsSetupReq.HTCaps.present = 1;
+        tdlsSetupReq.HTCaps.supportedChannelWidthSet = 0;
+    }
+    else
+    {
+        if (tdlsSetupReq.HTCaps.present)
+        {
+            tdlsSetupReq.HTCaps.supportedChannelWidthSet = 1; // pVhtCaps->supportedChannelWidthSet;
+        }
     }
     /* Include VHT Capability IE */
     PopulateDot11fVHTCaps( pMac, &tdlsSetupReq.VHTCaps );
-    if (tdlsSetupReq.VHTCaps.present)
+    if (psessionEntry->currentOperChannel <= SIR_11B_CHANNEL_END)
     {
-        tdlsSetupReq.VHTCaps.supportedChannelWidthSet = 1; // pVhtCaps->supportedChannelWidthSet;
-        tdlsSetupReq.VHTCaps.ldpcCodingCap = 1; // pVhtCaps->ldpcCodingCap
-        tdlsSetupReq.VHTCaps.suBeamFormerCap = 1; // pVhtCaps->suBeamFormerCap
+        tdlsSetupReq.VHTCaps.present = 0;
+        tdlsSetupReq.VHTCaps.supportedChannelWidthSet = 0;
+        tdlsSetupReq.VHTCaps.ldpcCodingCap = 0;
+        tdlsSetupReq.VHTCaps.suBeamFormerCap = 0;
+    }
+    else
+    {
+        if (tdlsSetupReq.VHTCaps.present)
+        {
+            tdlsSetupReq.VHTCaps.supportedChannelWidthSet = 1; // pVhtCaps->supportedChannelWidthSet;
+            tdlsSetupReq.VHTCaps.ldpcCodingCap = 1; // pVhtCaps->ldpcCodingCap
+            tdlsSetupReq.VHTCaps.suBeamFormerCap = 1; // pVhtCaps->suBeamFormerCap
+        }
     }
     /* 
      * now we pack it.  First, how much space are we going to need?
@@ -1608,18 +1626,35 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
     tdlsSetupRsp.QOSCapsStation.acvo_uapsd = 1;
 
     PopulateDot11fHTCaps( pMac, NULL, &tdlsSetupRsp.HTCaps );
-    if (tdlsSetupRsp.HTCaps.present)
+    if (psessionEntry->currentOperChannel <= SIR_11B_CHANNEL_END)
     {
-        tdlsSetupRsp.HTCaps.supportedChannelWidthSet = 1; // pVhtCaps->supportedChannelWidthSet;
+        tdlsSetupRsp.HTCaps.present = 1;
+        tdlsSetupRsp.HTCaps.supportedChannelWidthSet = 0;
     }
-
+    else
+    {
+        if (tdlsSetupRsp.HTCaps.present)
+        {
+            tdlsSetupRsp.HTCaps.supportedChannelWidthSet = 1; // pVhtCaps->supportedChannelWidthSet;
+        }
+    }
     /* Include VHT Capability IE */
     PopulateDot11fVHTCaps( pMac, &tdlsSetupRsp.VHTCaps );
-    if (tdlsSetupRsp.VHTCaps.present)
+    if (psessionEntry->currentOperChannel <= SIR_11B_CHANNEL_END)
     {
-        tdlsSetupRsp.VHTCaps.supportedChannelWidthSet = 1; // pVhtCaps->supportedChannelWidthSet;
-        tdlsSetupRsp.VHTCaps.ldpcCodingCap = 1; // pVhtCaps->ldpcCodingCap
-        tdlsSetupRsp.VHTCaps.suBeamFormerCap = 1; // pVhtCaps->suBeamFormerCap
+        tdlsSetupRsp.VHTCaps.present = 0;
+        tdlsSetupRsp.VHTCaps.supportedChannelWidthSet = 0;
+        tdlsSetupRsp.VHTCaps.ldpcCodingCap = 0;
+        tdlsSetupRsp.VHTCaps.suBeamFormerCap = 0;
+    }
+    else
+    {
+        if (tdlsSetupRsp.VHTCaps.present)
+        {
+            tdlsSetupRsp.VHTCaps.supportedChannelWidthSet = 1; // pVhtCaps->supportedChannelWidthSet;
+            tdlsSetupRsp.VHTCaps.ldpcCodingCap = 1; // pVhtCaps->ldpcCodingCap
+            tdlsSetupRsp.VHTCaps.suBeamFormerCap = 1; // pVhtCaps->suBeamFormerCap
+        }
     }
     tdlsSetupRsp.Status.status = setupStatus ;
 
