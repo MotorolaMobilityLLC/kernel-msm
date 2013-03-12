@@ -758,6 +758,11 @@ void __meminit __free_pages_bootmem(struct page *page, unsigned int order)
 }
 
 #ifdef CONFIG_CMA
+bool is_cma_pageblock(struct page *page)
+{
+	return get_pageblock_migratetype(page) == MIGRATE_CMA;
+}
+
 /* Free whole pageblock and set it's migration type to MIGRATE_CMA. */
 void __init init_cma_reserved_pageblock(struct page *page)
 {
@@ -5701,7 +5706,7 @@ static int __alloc_contig_migrate_range(unsigned long start, unsigned long end)
 
 		ret = migrate_pages(&cc.migratepages,
 				    __alloc_contig_migrate_alloc,
-				    0, false, true);
+				    0, false, MIGRATE_SYNC);
 	}
 
 	putback_lru_pages(&cc.migratepages);
