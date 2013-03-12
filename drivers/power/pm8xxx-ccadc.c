@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,15 +17,12 @@
 #include <linux/platform_device.h>
 #include <linux/errno.h>
 #include <linux/mfd/pm8xxx/core.h>
-#include <linux/mfd/pm8xxx/pm8xxx-adc.h>
 #include <linux/mfd/pm8xxx/ccadc.h>
 #include <linux/interrupt.h>
-#include <linux/irq.h>
 #include <linux/ioport.h>
 #include <linux/debugfs.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
-#include <linux/rtc.h>
 
 #define CCADC_ANA_PARAM		0x240
 #define CCADC_DIG_PARAM		0x241
@@ -70,17 +67,13 @@
 struct pm8xxx_ccadc_chip {
 	struct device		*dev;
 	struct dentry		*dent;
-	unsigned int		batt_temp_channel;
 	u16			ccadc_offset;
 	int			ccadc_gain_uv;
 	unsigned int		revision;
 	unsigned int		calib_delay_ms;
-	unsigned long		last_calib_time;
-	int			last_calib_temp;
 	int			eoc_irq;
-	int			r_sense_uohm;
+	int			r_sense;
 	struct delayed_work	calib_ccadc_work;
-	struct mutex		calib_mutex;
 };
 
 static struct pm8xxx_ccadc_chip *the_chip;
@@ -319,54 +312,6 @@ static int calib_ccadc_program_trim(struct pm8xxx_ccadc_chip *chip,
 	return 0;
 }
 
-static int get_batt_temp(struct pm8xxx_ccadc_chip *chip, int *batt_temp)
-{
-	int rc;
-	struct pm8xxx_adc_chan_result result;
-
-	rc = pm8xxx_adc_read(chip->batt_temp_channel, &result);
-	if (rc) {
-		pr_err("error reading batt_temp_channel = %d, rc = %d\n",
-					chip->batt_temp_channel, rc);
-		return rc;
-	}
-	*batt_temp = result.physical;
-	pr_debug("batt_temp phy = %lld meas = 0x%llx\n", result.physical,
-						result.measurement);
-	return 0;
-}
-
-static int get_current_time(unsigned long *now_tm_sec)
-{
-	struct rtc_time tm;
-	struct rtc_device *rtc;
-	int rc;
-
-	rtc = rtc_class_open(CONFIG_RTC_HCTOSYS_DEVICE);
-	if (rtc == NULL) {
-		pr_err("%s: unable to open rtc device (%s)\n",
-			__FILE__, CONFIG_RTC_HCTOSYS_DEVICE);
-		return -EINVAL;
-	}
-
-	rc = rtc_read_time(rtc, &tm);
-	if (rc) {
-		pr_err("Error reading rtc device (%s) : %d\n",
-			CONFIG_RTC_HCTOSYS_DEVICE, rc);
-		return rc;
-	}
-
-	rc = rtc_valid_tm(&tm);
-	if (rc) {
-		pr_err("Invalid RTC time (%s): %d\n",
-			CONFIG_RTC_HCTOSYS_DEVICE, rc);
-		return rc;
-	}
-	rtc_tm_to_time(&tm, now_tm_sec);
-
-	return 0;
-}
-
 void pm8xxx_calib_ccadc(void)
 {
 	u8 data_msb, data_lsb, sec_cntrl;
@@ -379,12 +324,11 @@ void pm8xxx_calib_ccadc(void)
 		return;
 	}
 
-	mutex_lock(&the_chip->calib_mutex);
 	rc = pm8xxx_readb(the_chip->dev->parent,
 					ADC_ARB_SECP_CNTRL, &sec_cntrl);
 	if (rc < 0) {
 		pr_err("error = %d reading ADC_ARB_SECP_CNTRL\n", rc);
-		goto calibration_unlock;
+		return;
 	}
 
 	rc = calib_ccadc_enable_arbiter(the_chip);
@@ -516,8 +460,6 @@ void pm8xxx_calib_ccadc(void)
 		pr_debug("error = %d programming gain trim\n", rc);
 bail:
 	pm8xxx_writeb(the_chip->dev->parent, ADC_ARB_SECP_CNTRL, sec_cntrl);
-calibration_unlock:
-	mutex_unlock(&the_chip->calib_mutex);
 }
 EXPORT_SYMBOL(pm8xxx_calib_ccadc);
 
@@ -538,9 +480,6 @@ static irqreturn_t pm8921_bms_ccadc_eoc_handler(int irq, void *data)
 	struct pm8xxx_ccadc_chip *chip = data;
 	int rc;
 
-	if (!the_chip)
-		goto out;
-
 	pr_debug("irq = %d triggered\n", irq);
 	data_msb = chip->ccadc_offset >> 8;
 	data_lsb = chip->ccadc_offset;
@@ -549,7 +488,6 @@ static irqreturn_t pm8921_bms_ccadc_eoc_handler(int irq, void *data)
 						data_msb, data_lsb, 0);
 	disable_irq_nosync(chip->eoc_irq);
 
-out:
 	return IRQ_HANDLED;
 }
 
@@ -620,8 +558,7 @@ int pm8xxx_ccadc_get_battery_current(int *bat_current_ua)
 		return rc;
 	}
 
-	*bat_current_ua = div_s64((s64)voltage_uv * 1000000LL,
-						the_chip->r_sense_uohm);
+	*bat_current_ua = voltage_uv * 1000/the_chip->r_sense;
 	/*
 	 * ccadc reads +ve current when the battery is charging
 	 * We need to return -ve if the battery is charging
@@ -734,15 +671,12 @@ static int __devinit pm8xxx_ccadc_probe(struct platform_device *pdev)
 	chip->dev = &pdev->dev;
 	chip->revision = pm8xxx_get_revision(chip->dev->parent);
 	chip->eoc_irq = res->start;
-	chip->r_sense_uohm = pdata->r_sense_uohm;
+	chip->r_sense = pdata->r_sense;
 	chip->calib_delay_ms = pdata->calib_delay_ms;
-	chip->batt_temp_channel = pdata->ccadc_cdata.batt_temp_channel;
-	mutex_init(&chip->calib_mutex);
 
 	calib_ccadc_read_offset_and_gain(chip,
 					&chip->ccadc_gain_uv,
 					&chip->ccadc_offset);
-	irq_set_status_flags(chip->eoc_irq, IRQ_NOAUTOEN);
 	rc = request_irq(chip->eoc_irq,
 			pm8921_bms_ccadc_eoc_handler, IRQF_TRIGGER_RISING,
 			"bms_eoc_ccadc", chip);
@@ -750,6 +684,9 @@ static int __devinit pm8xxx_ccadc_probe(struct platform_device *pdev)
 		pr_err("failed to request %d irq rc= %d\n", chip->eoc_irq, rc);
 		goto free_chip;
 	}
+
+
+	disable_irq_nosync(chip->eoc_irq);
 
 	platform_set_drvdata(pdev, chip);
 	the_chip = chip;
@@ -761,7 +698,6 @@ static int __devinit pm8xxx_ccadc_probe(struct platform_device *pdev)
 	return 0;
 
 free_chip:
-	mutex_destroy(&chip->calib_mutex);
 	kfree(chip);
 	return rc;
 }
@@ -776,50 +712,12 @@ static int __devexit pm8xxx_ccadc_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#define CCADC_CALIB_TEMP_THRESH 20
-static int pm8xxx_ccadc_resume(struct device *dev)
-{
-	int rc, batt_temp, delta_temp;
-	unsigned long current_time_sec;
-	unsigned long time_since_last_calib;
-
-	rc = get_batt_temp(the_chip, &batt_temp);
-	if (rc) {
-		pr_err("unable to get batt_temp: %d\n", rc);
-		return 0;
-	}
-	rc = get_current_time(&current_time_sec);
-	if (rc) {
-		pr_err("unable to get current time: %d\n", rc);
-		return 0;
-	}
-	if (current_time_sec > the_chip->last_calib_time) {
-		time_since_last_calib = current_time_sec -
-					the_chip->last_calib_time;
-		delta_temp = abs(batt_temp - the_chip->last_calib_temp);
-		pr_debug("time since last calib: %lu, delta_temp = %d\n",
-					time_since_last_calib, delta_temp);
-		if (time_since_last_calib >= the_chip->calib_delay_ms/1000
-				|| delta_temp > CCADC_CALIB_TEMP_THRESH) {
-			the_chip->last_calib_time = current_time_sec;
-			the_chip->last_calib_temp = batt_temp;
-			pm8xxx_calib_ccadc();
-		}
-	}
-	return 0;
-}
-
-static const struct dev_pm_ops pm8xxx_ccadc_pm_ops = {
-	.resume		= pm8xxx_ccadc_resume,
-};
-
 static struct platform_driver pm8xxx_ccadc_driver = {
 	.probe	= pm8xxx_ccadc_probe,
 	.remove	= __devexit_p(pm8xxx_ccadc_remove),
 	.driver	= {
 		.name	= PM8XXX_CCADC_DEV_NAME,
 		.owner	= THIS_MODULE,
-		.pm	= &pm8xxx_ccadc_pm_ops,
 	},
 };
 
