@@ -5,6 +5,7 @@
 
 #include <linux/mm_types.h>
 #include <linux/scatterlist.h>
+#include <linux/dma-attrs.h>
 #include <linux/dma-debug.h>
 
 #include <asm-generic/dma-coherent.h>
@@ -85,62 +86,6 @@ static inline dma_addr_t virt_to_dma(struct device *dev, void *addr)
 #endif
 
 /*
- * The DMA API is built upon the notion of "buffer ownership".  A buffer
- * is either exclusively owned by the CPU (and therefore may be accessed
- * by it) or exclusively owned by the DMA device.  These helper functions
- * represent the transitions between these two ownership states.
- *
- * Note, however, that on later ARMs, this notion does not work due to
- * speculative prefetches.  We model our approach on the assumption that
- * the CPU does do speculative prefetches, which means we clean caches
- * before transfers and delay cache invalidation until transfer completion.
- *
- * Private support functions: these are not part of the API and are
- * liable to change.  Drivers must not use these.
- */
-static inline void __dma_single_cpu_to_dev(const void *kaddr, size_t size,
-	enum dma_data_direction dir)
-{
-	extern void ___dma_single_cpu_to_dev(const void *, size_t,
-		enum dma_data_direction);
-
-	if (!arch_is_coherent())
-		___dma_single_cpu_to_dev(kaddr, size, dir);
-}
-
-static inline void __dma_single_dev_to_cpu(const void *kaddr, size_t size,
-	enum dma_data_direction dir)
-{
-	extern void ___dma_single_dev_to_cpu(const void *, size_t,
-		enum dma_data_direction);
-
-	if (!arch_is_coherent())
-		___dma_single_dev_to_cpu(kaddr, size, dir);
-}
-
-static inline void __dma_page_cpu_to_dev(struct page *page, unsigned long off,
-	size_t size, enum dma_data_direction dir)
-{
-	extern void ___dma_page_cpu_to_dev(struct page *, unsigned long,
-		size_t, enum dma_data_direction);
-
-	if (!arch_is_coherent())
-		___dma_page_cpu_to_dev(page, off, size, dir);
-}
-
-static inline void __dma_page_dev_to_cpu(struct page *page, unsigned long off,
-	size_t size, enum dma_data_direction dir)
-{
-	extern void ___dma_page_dev_to_cpu(struct page *, unsigned long,
-		size_t, enum dma_data_direction);
-
-	if (!arch_is_coherent())
-		___dma_page_dev_to_cpu(page, off, size, dir);
-}
-
-extern int dma_supported(struct device *, u64);
-extern int dma_set_mask(struct device *, u64);
-/*
  * DMA errors are defined by all-bits-set in the DMA address.
  */
 static inline int dma_mapping_error(struct device *dev, dma_addr_t dma_addr)
@@ -203,69 +148,118 @@ static inline void dma_coherent_post_ops(void)
 #endif
 }
 
+extern int dma_supported(struct device *dev, u64 mask);
+
 /**
- * dma_alloc_coherent - allocate consistent memory for DMA
+ * arm_dma_alloc - allocate consistent memory for DMA
  * @dev: valid struct device pointer, or NULL for ISA and EISA-like devices
  * @size: required memory size
  * @handle: bus-specific DMA address
+ * @attrs: optinal attributes that specific mapping properties
  *
- * Allocate some uncached, unbuffered memory for a device for
- * performing DMA.  This function allocates pages, and will
- * return the CPU-viewed address, and sets @handle to be the
- * device-viewed address.
+ * Allocate some memory for a device for performing DMA.  This function
+ * allocates pages, and will return the CPU-viewed address, and sets @handle
+ * to be the device-viewed address.
  */
-extern void *dma_alloc_coherent(struct device *, size_t, dma_addr_t *, gfp_t);
+extern void *arm_dma_alloc(struct device *dev, size_t size, dma_addr_t *handle,
+			   gfp_t gfp, struct dma_attrs *attrs);
+
+#define dma_alloc_coherent(d, s, h, f) dma_alloc_attrs(d, s, h, f, NULL)
+
+static inline void *dma_alloc_attrs(struct device *dev, size_t size,
+				       dma_addr_t *dma_handle, gfp_t flag,
+				       struct dma_attrs *attrs)
+{
+	struct dma_map_ops *ops = get_dma_ops(dev);
+	void *cpu_addr;
+	BUG_ON(!ops);
+
+	cpu_addr = ops->alloc(dev, size, dma_handle, flag, attrs);
+	debug_dma_alloc_coherent(dev, size, *dma_handle, cpu_addr);
+	return cpu_addr;
+}
 
 /**
- * dma_free_coherent - free memory allocated by dma_alloc_coherent
+ * arm_dma_free - free memory allocated by arm_dma_alloc
  * @dev: valid struct device pointer, or NULL for ISA and EISA-like devices
  * @size: size of memory originally requested in dma_alloc_coherent
  * @cpu_addr: CPU-view address returned from dma_alloc_coherent
  * @handle: device-view address returned from dma_alloc_coherent
+ * @attrs: optinal attributes that specific mapping properties
  *
  * Free (and unmap) a DMA buffer previously allocated by
- * dma_alloc_coherent().
+ * arm_dma_alloc().
  *
  * References to memory and mappings associated with cpu_addr/handle
  * during and after this call executing are illegal.
  */
-extern void dma_free_coherent(struct device *, size_t, void *, dma_addr_t);
+extern void arm_dma_free(struct device *dev, size_t size, void *cpu_addr,
+			 dma_addr_t handle, struct dma_attrs *attrs);
+
+#define dma_free_coherent(d, s, c, h) dma_free_attrs(d, s, c, h, NULL)
+
+static inline void dma_free_attrs(struct device *dev, size_t size,
+				     void *cpu_addr, dma_addr_t dma_handle,
+				     struct dma_attrs *attrs)
+{
+	struct dma_map_ops *ops = get_dma_ops(dev);
+	BUG_ON(!ops);
+
+	debug_dma_free_coherent(dev, size, cpu_addr, dma_handle);
+	ops->free(dev, size, cpu_addr, dma_handle, attrs);
+}
 
 /**
- * dma_mmap_coherent - map a coherent DMA allocation into user space
+ * arm_dma_mmap - map a coherent DMA allocation into user space
  * @dev: valid struct device pointer, or NULL for ISA and EISA-like devices
  * @vma: vm_area_struct describing requested user mapping
  * @cpu_addr: kernel CPU-view address returned from dma_alloc_coherent
  * @handle: device-view address returned from dma_alloc_coherent
  * @size: size of memory originally requested in dma_alloc_coherent
+ * @attrs: optinal attributes that specific mapping properties
  *
  * Map a coherent DMA buffer previously allocated by dma_alloc_coherent
  * into user space.  The coherent DMA buffer must not be freed by the
  * driver until the user space mapping has been released.
  */
-int dma_mmap_coherent(struct device *, struct vm_area_struct *,
-		void *, dma_addr_t, size_t);
+extern int arm_dma_mmap(struct device *dev, struct vm_area_struct *vma,
+			void *cpu_addr, dma_addr_t dma_addr, size_t size,
+			struct dma_attrs *attrs);
 
+#define dma_mmap_coherent(d, v, c, h, s) dma_mmap_attrs(d, v, c, h, s, NULL)
 
-/**
- * dma_alloc_writecombine - allocate writecombining memory for DMA
- * @dev: valid struct device pointer, or NULL for ISA and EISA-like devices
- * @size: required memory size
- * @handle: bus-specific DMA address
- *
- * Allocate some uncached, buffered memory for a device for
- * performing DMA.  This function allocates pages, and will
- * return the CPU-viewed address, and sets @handle to be the
- * device-viewed address.
- */
-extern void *dma_alloc_writecombine(struct device *, size_t, dma_addr_t *,
-		gfp_t);
+static inline int dma_mmap_attrs(struct device *dev, struct vm_area_struct *vma,
+				  void *cpu_addr, dma_addr_t dma_addr,
+				  size_t size, struct dma_attrs *attrs)
+{
+	struct dma_map_ops *ops = get_dma_ops(dev);
+	BUG_ON(!ops);
+	return ops->mmap(dev, vma, cpu_addr, dma_addr, size, attrs);
+}
 
-#define dma_free_writecombine(dev,size,cpu_addr,handle) \
-	dma_free_coherent(dev,size,cpu_addr,handle)
+static inline void *dma_alloc_writecombine(struct device *dev, size_t size,
+				       dma_addr_t *dma_handle, gfp_t flag)
+{
+	DEFINE_DMA_ATTRS(attrs);
+	dma_set_attr(DMA_ATTR_WRITE_COMBINE, &attrs);
+	return dma_alloc_attrs(dev, size, dma_handle, flag, &attrs);
+}
 
-int dma_mmap_writecombine(struct device *, struct vm_area_struct *,
-		void *, dma_addr_t, size_t);
+static inline void dma_free_writecombine(struct device *dev, size_t size,
+				     void *cpu_addr, dma_addr_t dma_handle)
+{
+	DEFINE_DMA_ATTRS(attrs);
+	dma_set_attr(DMA_ATTR_WRITE_COMBINE, &attrs);
+	return dma_free_attrs(dev, size, cpu_addr, dma_handle, &attrs);
+}
+
+static inline int dma_mmap_writecombine(struct device *dev, struct vm_area_struct *vma,
+		      void *cpu_addr, dma_addr_t dma_addr, size_t size)
+{
+	DEFINE_DMA_ATTRS(attrs);
+	dma_set_attr(DMA_ATTR_WRITE_COMBINE, &attrs);
+	return dma_mmap_attrs(dev, vma, cpu_addr, dma_addr, size, &attrs);
+}
 
 /*
  * This can be called during boot to increase the size of the consistent
@@ -274,8 +268,6 @@ int dma_mmap_writecombine(struct device *, struct vm_area_struct *,
  */
 extern void __init init_consistent_dma_size(unsigned long size);
 
-
-#ifdef CONFIG_DMABOUNCE
 /*
  * For SA-1111, IXP425, and ADI systems  the dma-mapping functions are "magic"
  * and utilize bounce buffers as needed to work around limited DMA windows.
@@ -315,47 +307,7 @@ extern int dmabounce_register_dev(struct device *, unsigned long,
  */
 extern void dmabounce_unregister_dev(struct device *);
 
-/*
- * The DMA API, implemented by dmabounce.c.  See below for descriptions.
- */
-extern dma_addr_t __dma_map_page(struct device *, struct page *,
-		unsigned long, size_t, enum dma_data_direction);
-extern void __dma_unmap_page(struct device *, dma_addr_t, size_t,
-		enum dma_data_direction);
 
-/*
- * Private functions
- */
-int dmabounce_sync_for_cpu(struct device *, dma_addr_t, size_t, enum dma_data_direction);
-int dmabounce_sync_for_device(struct device *, dma_addr_t, size_t, enum dma_data_direction);
-#else
-static inline int dmabounce_sync_for_cpu(struct device *d, dma_addr_t addr,
-	size_t size, enum dma_data_direction dir)
-{
-	return 1;
-}
-
-static inline int dmabounce_sync_for_device(struct device *d, dma_addr_t addr,
-	size_t size, enum dma_data_direction dir)
-{
-	return 1;
-}
-
-
-static inline dma_addr_t __dma_map_page(struct device *dev, struct page *page,
-	     unsigned long offset, size_t size, enum dma_data_direction dir)
-{
-	__dma_page_cpu_to_dev(page, offset, size, dir);
-	return pfn_to_dma(dev, page_to_pfn(page)) + offset;
-}
-
-static inline void __dma_unmap_page(struct device *dev, dma_addr_t handle,
-		size_t size, enum dma_data_direction dir)
-{
-	__dma_page_dev_to_cpu(pfn_to_page(dma_to_pfn(dev, handle)),
-		handle & ~PAGE_MASK, size, dir);
-}
-#endif /* CONFIG_DMABOUNCE */
 
 /**
  * dma_cache_pre_ops - clean or invalidate cache before dma transfer is
