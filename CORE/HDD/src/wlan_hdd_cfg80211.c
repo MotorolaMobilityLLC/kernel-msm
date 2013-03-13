@@ -2778,9 +2778,11 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
     VOS_STATUS status = VOS_STATUS_SUCCESS;
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( dev );
     v_MACADDR_t STAMacAddress;
+#ifdef FEATURE_WLAN_TDLS
     tCsrStaParams StaParams = {0};
     u32 set;
     tANI_U8 isBufSta = 0;
+#endif
     ENTER();
 
     if ( (WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress )
@@ -2792,6 +2794,7 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
 
     vos_mem_copy(STAMacAddress.bytes, mac, sizeof(v_MACADDR_t));
 
+#ifdef FEATURE_WLAN_TDLS
     StaParams.capability = params->capability;
     StaParams.uapsd_queues = params->uapsd_queues;
     StaParams.max_sp = params->max_sp;
@@ -2831,6 +2834,7 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
         vos_mem_copy(&StaParams.VHTCap, params->vht_capa, sizeof(tSirVHTCap));
 
     set = params->sta_flags_set;
+#endif
 
     if ((pAdapter->device_mode == WLAN_HDD_SOFTAP)
       || (pAdapter->device_mode == WLAN_HDD_P2P_GO))
@@ -2845,6 +2849,7 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
             return -EINVAL;
         }
     }
+#ifdef FEATURE_WLAN_TDLS
     else if (pAdapter->device_mode == WLAN_HDD_INFRA_STATION ) {
         if (set & BIT(NL80211_STA_FLAG_TDLS_PEER)) {
             if (0 != params->ext_capab_len ) {
@@ -2906,6 +2911,7 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
             }
         }
     }
+#endif
     
     EXIT();
     return status;
