@@ -24,6 +24,8 @@ Optional property:
 		      desired I2C bus frequency. If this value is not
 		      provided, the source clock is assumed to be running
 		      at 19.2 MHz.
+ - gpios : Define the GPIOs for SCL/SDA to be used for I2c bus recovery
+
 Example:
 	i2c@f9966000 {
 		cell-index = <0>;
@@ -34,4 +36,6 @@ Example:
 		interrupt-names = "qup_err_intr";
 		qcom,i2c-bus-freq = <100000>;
 		qcom,i2c-src-freq = <24000000>;
+		gpios = <&msmgpio 45 0>,            /* CLK */
+			<&msmgpio 44 0>;            /* DAT */
 	};
