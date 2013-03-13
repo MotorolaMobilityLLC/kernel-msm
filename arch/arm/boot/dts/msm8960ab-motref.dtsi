@@ -80,6 +80,9 @@
 		qcom,i2c-bus-freq = <400000>;
 		qcom,i2c-src-freq = <24000000>;
 
+		gpios = <&msmgpio 45 0>,            /* CLK */
+			<&msmgpio 44 0>;            /* DAT */
+
 		msp430@48 {
 			compatible = "ti,msp430";
 			reg = <0x48>;
