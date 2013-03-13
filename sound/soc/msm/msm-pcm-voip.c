@@ -230,6 +230,27 @@ static int msm_voip_dtx_mode_get(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
+static int msm_voip_fens_put(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	int fens_enable = ucontrol->value.integer.value[0];
+
+	pr_debug("%s: FENS_VOIP enable=%d\n", __func__, fens_enable);
+
+	voc_set_pp_enable(voc_get_session_id(VOIP_SESSION_NAME),
+				MODULE_ID_VOICE_MODULE_FENS, fens_enable);
+
+	return 0;
+}
+
+static int msm_voip_fens_get(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] =
+			voc_get_pp_enable(voc_get_session_id(VOIP_SESSION_NAME),
+				 MODULE_ID_VOICE_MODULE_FENS);
+	return 0;
+}
 
 static struct snd_kcontrol_new msm_voip_controls[] = {
 	SOC_SINGLE_EXT("Voip Tx Mute", SND_SOC_NOPM, 0, 1, 0,
@@ -241,6 +262,8 @@ static struct snd_kcontrol_new msm_voip_controls[] = {
 				msm_voip_mode_rate_config_put),
 	SOC_SINGLE_EXT("Voip Dtx Mode", SND_SOC_NOPM, 0, 1, 0,
 				msm_voip_dtx_mode_get, msm_voip_dtx_mode_put),
+	SOC_SINGLE_EXT("FENS_VOIP Enable", SND_SOC_NOPM, 0, 1, 0,
+			   msm_voip_fens_get, msm_voip_fens_put),
 };
 
 static int msm_pcm_voip_probe(struct snd_soc_platform *platform)
