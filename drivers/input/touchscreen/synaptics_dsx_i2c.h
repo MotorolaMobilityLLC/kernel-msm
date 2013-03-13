@@ -59,10 +59,16 @@
 #define SYNAPTICS_RMI4_F55 (0x55)
 
 #define SYNAPTICS_RMI4_PRODUCT_INFO_SIZE 2
-#define SYNAPTICS_RMI4_DATE_CODE_SIZE 3
 #define SYNAPTICS_RMI4_PRODUCT_ID_SIZE 10
 #define SYNAPTICS_RMI4_BUILD_ID_SIZE 3
+#define SYNAPTICS_RMI4_SERIAL_SIZE 7
+#define SYNAPTICS_RMI4_CONFIG_ID_SIZE 4
+#define SYNAPTICS_RMI4_PACKAGE_ID_SIZE 4
 #define SYNAPTICS_RMI4_FILENAME_SIZE 80
+
+#define PACKAGE_ID_OFFSET 17
+#define FW_VERSION_OFFSET 18
+#define F34_PROPERTIES_OFFSET 1
 
 #define MAX_NUMBER_OF_FINGERS 10
 #define MAX_NUMBER_OF_BUTTONS 4
@@ -174,11 +180,11 @@ struct synaptics_rmi4_device_info {
 	unsigned char manufacturer_id;
 	unsigned char product_props;
 	unsigned char product_info[SYNAPTICS_RMI4_PRODUCT_INFO_SIZE];
-	unsigned char date_code[SYNAPTICS_RMI4_DATE_CODE_SIZE];
-	unsigned short tester_id;
-	unsigned short serial_number;
+	unsigned char serial[SYNAPTICS_RMI4_SERIAL_SIZE];
+	unsigned char package_id[SYNAPTICS_RMI4_PACKAGE_ID_SIZE];
 	unsigned char product_id_string[SYNAPTICS_RMI4_PRODUCT_ID_SIZE + 1];
 	unsigned char build_id[SYNAPTICS_RMI4_BUILD_ID_SIZE];
+	unsigned char config_id[SYNAPTICS_RMI4_CONFIG_ID_SIZE];
 	struct list_head support_fn_list;
 };
 
@@ -266,6 +272,22 @@ struct synaptics_rmi4_data {
 	struct synaptics_rmi4_resume_info *resume_info;
 };
 
+struct f34_properties {
+	union {
+		struct {
+			unsigned char regmap:1;
+			unsigned char unlocked:1;
+			unsigned char has_config_id:1;
+			unsigned char has_perm_config:1;
+			unsigned char has_bl_config:1;
+			unsigned char has_display_config:1;
+			unsigned char has_blob_config:1;
+			unsigned char reserved:1;
+		} __packed;
+		unsigned char data[1];
+	};
+};
+
 #define SYNAPTICS_DSX_STATES { \
 	DSX(UNKNOWN), \
 	DSX(ACTIVE), \
@@ -326,6 +348,13 @@ static inline void hstoba(unsigned char *dest, unsigned short src)
 {
 	dest[0] = src % 0x100;
 	dest[1] = src / 0x100;
+}
+
+static inline void batohui(unsigned int *dest, unsigned char *src, size_t size)
+{
+	*dest = src[0] + src[1] * 0x100 + src[2] * 0x10000;
+	if (size == 4)
+		*dest += src[3] * 0x1000000;
 }
 
 struct synaptics_rmi4_subpkt {
