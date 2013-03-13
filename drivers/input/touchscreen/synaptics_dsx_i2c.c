@@ -712,6 +712,9 @@ static ssize_t synaptics_rmi4_drv_irq_store(struct device *dev,
 static ssize_t synaptics_rmi4_hw_irqstat_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
+static ssize_t synaptics_rmi4_ic_ver_show(struct device *dev,
+		struct device_attribute *attr, char *buf);
+
 struct synaptics_rmi4_f01_device_status {
 	union {
 		struct {
@@ -813,6 +816,9 @@ static struct device_attribute attrs[] = {
 			synaptics_rmi4_drv_irq_store),
 	__ATTR(hw_irqstat, S_IRUGO,
 			synaptics_rmi4_hw_irqstat_show,
+			synaptics_rmi4_store_error),
+	__ATTR(ic_ver, S_IRUGO,
+			synaptics_rmi4_ic_ver_show,
 			synaptics_rmi4_store_error),
 };
 
@@ -1054,25 +1060,19 @@ static ssize_t synaptics_rmi4_f01_productinfo_show(struct device *dev,
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
-	return snprintf(buf, PAGE_SIZE, "%s\n",
+	return scnprintf(buf, PAGE_SIZE, "%s\n",
 			rmi4_data->rmi4_mod_info.product_id_string);
 }
 
 static ssize_t synaptics_rmi4_f01_buildid_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	unsigned int build_id;
+	unsigned int firmware_id;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	struct synaptics_rmi4_device_info *rmi;
-
 	rmi = &(rmi4_data->rmi4_mod_info);
-
-	build_id = (unsigned int)rmi->build_id[0] +
-			(unsigned int)rmi->build_id[1] * 0x100 +
-			(unsigned int)rmi->build_id[2] * 0x10000;
-
-	return snprintf(buf, PAGE_SIZE, "%x\n",
-			build_id);
+	batohui(&firmware_id, rmi->build_id, sizeof(rmi->build_id));
+	return scnprintf(buf, PAGE_SIZE, "%x\n", firmware_id);
 }
 
 static ssize_t synaptics_rmi4_resume_show(struct device *dev,
@@ -1136,7 +1136,7 @@ static ssize_t synaptics_rmi4_f01_flashprog_show(struct device *dev,
 		return retval;
 	}
 
-	return snprintf(buf, PAGE_SIZE, "%u\n",
+	return scnprintf(buf, PAGE_SIZE, "%u\n",
 			device_status.flash_prog);
 }
 
@@ -1201,7 +1201,7 @@ static ssize_t synaptics_rmi4_0dbutton_show(struct device *dev,
 {
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 
-	return snprintf(buf, PAGE_SIZE, "%u\n",
+	return scnprintf(buf, PAGE_SIZE, "%u\n",
 			rmi4_data->button_0d_enabled);
 }
 
@@ -1254,6 +1254,22 @@ static ssize_t synaptics_rmi4_0dbutton_store(struct device *dev,
 	rmi4_data->button_0d_enabled = input;
 
 	return count;
+}
+
+static ssize_t synaptics_rmi4_ic_ver_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned int firmware_id;
+	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
+	struct synaptics_rmi4_device_info *rmi;
+	rmi = &(rmi4_data->rmi4_mod_info);
+	batohui(&firmware_id, rmi->build_id, sizeof(rmi->build_id));
+	return scnprintf(buf, PAGE_SIZE,
+			"%s%s\n%s0x%X\n%s0x%02X%02X%02X%02X\n",
+			"Product ID: ", rmi->product_id_string,
+			"Build ID: ", firmware_id,
+			"Config ID: ", rmi->config_id[3], rmi->config_id[2],
+			rmi->config_id[1], rmi->config_id[0]);
 }
 
  /**
@@ -2348,38 +2364,6 @@ error_exit:
 	return retval;
 }
 
-static int synaptics_rmi4_f01_init(struct synaptics_rmi4_data *rmi4_data,
-		struct synaptics_rmi4_fn *fhandler,
-		struct synaptics_rmi4_fn_desc *fd,
-		unsigned int intr_count)
-{
-	unsigned char ii;
-	unsigned short intr_offset;
-
-	fhandler->fn_number = fd->fn_number;
-	fhandler->num_of_data_sources = (fd->intr_src_count  & MASK_3BIT);
-
-	fhandler->intr_reg_num = (intr_count + 7) / 8;
-	if (fhandler->intr_reg_num != 0)
-		fhandler->intr_reg_num -= 1;
-
-	/* Set an enable bit for each data source */
-	intr_offset = intr_count % 8;
-	fhandler->intr_mask = 0;
-	for (ii = intr_offset;
-			ii < ((fd->intr_src_count & MASK_3BIT) +
-			intr_offset);
-			ii++)
-		fhandler->intr_mask |= 1 << ii;
-
-	rmi4_data->f01_query_base_addr = fd->query_base_addr;
-	rmi4_data->f01_ctrl_base_addr = fd->ctrl_base_addr;
-	rmi4_data->f01_data_base_addr = fd->data_base_addr;
-	rmi4_data->f01_cmd_base_addr = fd->cmd_base_addr;
-
-	return 0;
-}
-
 static int synaptics_rmi4_alloc_fh(struct synaptics_rmi4_fn **fhandler,
 		struct synaptics_rmi4_fn_desc *rmi_fd, int page_number)
 {
@@ -2419,7 +2403,6 @@ static int synaptics_rmi4_alloc_fh(struct synaptics_rmi4_fn **fhandler,
 static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval;
-	bool is_in_bootloader = false;
 	unsigned char ii;
 	unsigned char page_number;
 	unsigned char intr_count = 0;
@@ -2430,6 +2413,7 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 	struct synaptics_rmi4_fn_desc rmi_fd;
 	struct synaptics_rmi4_fn *fhandler;
 	struct synaptics_rmi4_device_info *rmi;
+	struct f34_properties f34_query;
 
 	rmi = &(rmi4_data->rmi4_mod_info);
 
@@ -2463,31 +2447,35 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 					page_number);
 
 			switch (rmi_fd.fn_number) {
+			case SYNAPTICS_RMI4_F34:
+				retval = synaptics_rmi4_i2c_read(rmi4_data,
+						rmi_fd.query_base_addr +
+							F34_PROPERTIES_OFFSET,
+						&f34_query.data[0],
+						sizeof(f34_query));
+				if (retval < 0)
+					return retval;
+
+				if (f34_query.has_config_id) {
+					retval = synaptics_rmi4_i2c_read(
+							rmi4_data,
+							rmi_fd.ctrl_base_addr,
+							rmi->config_id,
+							sizeof(rmi->config_id));
+					if (retval < 0)
+						return retval;
+				}
+				break;
+
 			case SYNAPTICS_RMI4_F01:
-				retval = synaptics_rmi4_alloc_fh(&fhandler,
-						&rmi_fd, page_number);
-				if (retval < 0) {
-					dev_err(&rmi4_data->i2c_client->dev,
-							"%s: Failed to alloc for F%d\n",
-							__func__,
-							rmi_fd.fn_number);
-					return retval;
-				}
-
-				retval = synaptics_rmi4_f01_init(rmi4_data,
-						fhandler, &rmi_fd, intr_count);
-				if (retval < 0)
-					return retval;
-
-				retval = sensor_is_in_bootloader(
-						rmi4_data, &is_in_bootloader);
-				if (retval < 0)
-					return retval;
-
-				if (is_in_bootloader) {
-					pr_debug("in flash prog mode\n");
-					goto flash_prog_mode;
-				}
+				rmi4_data->f01_query_base_addr =
+						rmi_fd.query_base_addr;
+				rmi4_data->f01_ctrl_base_addr =
+						rmi_fd.ctrl_base_addr;
+				rmi4_data->f01_data_base_addr =
+						rmi_fd.data_base_addr;
+				rmi4_data->f01_cmd_base_addr =
+						rmi_fd.cmd_base_addr;
 				break;
 
 			case SYNAPTICS_RMI4_F11:
@@ -2570,7 +2558,6 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 		}
 	}
 
-flash_prog_mode:
 	rmi4_data->num_of_intr_regs = (intr_count + 7) / 8;
 	dev_dbg(&rmi4_data->i2c_client->dev,
 			"%s: Number of interrupt registers = %d\n",
@@ -2589,29 +2576,31 @@ flash_prog_mode:
 
 	rmi->manufacturer_id = f01_query[0];
 	rmi->product_props = f01_query[1];
-	rmi->product_info[0] = f01_query[2] & MASK_7BIT;
-	rmi->product_info[1] = f01_query[3] & MASK_7BIT;
-	rmi->date_code[0] = f01_query[4] & MASK_5BIT;
-	rmi->date_code[1] = f01_query[5] & MASK_4BIT;
-	rmi->date_code[2] = f01_query[6] & MASK_5BIT;
-	rmi->tester_id = ((f01_query[7] & MASK_7BIT) << 8) |
-			(f01_query[8] & MASK_7BIT);
-	rmi->serial_number = ((f01_query[9] & MASK_7BIT) << 8) |
-			(f01_query[10] & MASK_7BIT);
-	memcpy(rmi->product_id_string, &f01_query[11], 10);
+	memcpy(&rmi->product_info[0], &f01_query[2],
+					SYNAPTICS_RMI4_PRODUCT_INFO_SIZE);
+	memcpy(rmi->serial, &f01_query[4], SYNAPTICS_RMI4_SERIAL_SIZE);
+	memcpy(rmi->product_id_string, &f01_query[11],
+					SYNAPTICS_RMI4_PRODUCT_ID_SIZE);
+
+	retval = synaptics_rmi4_i2c_read(rmi4_data,
+			rmi4_data->f01_query_base_addr+PACKAGE_ID_OFFSET,
+			rmi->package_id,
+			sizeof(rmi->package_id));
+	if (retval < 0)
+		return retval;
+
+	retval = synaptics_rmi4_i2c_read(rmi4_data,
+			rmi4_data->f01_query_base_addr+FW_VERSION_OFFSET,
+			rmi->build_id,
+			sizeof(rmi->build_id));
+	if (retval < 0)
+		return retval;
 
 	if (rmi->manufacturer_id != 1) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Non-Synaptics device found, manufacturer ID = %d\n",
 				__func__, rmi->manufacturer_id);
 	}
-
-	retval = synaptics_rmi4_i2c_read(rmi4_data,
-			rmi4_data->f01_query_base_addr + F01_BUID_ID_OFFSET,
-			rmi->build_id,
-			sizeof(rmi->build_id));
-	if (retval < 0)
-		return retval;
 
 	memset(rmi4_data->intr_mask, 0x00, sizeof(rmi4_data->intr_mask));
 
@@ -2840,6 +2829,7 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		const struct i2c_device_id *dev_id)
 {
 	int retval;
+	unsigned int config_id, firmware_id;
 	unsigned char attr_count;
 	struct synaptics_rmi4_data *rmi4_data;
 	struct synaptics_rmi4_device_info *rmi;
@@ -3007,11 +2997,10 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	mmi_panel_register_notifier(&rmi4_data->panel_nb);
 	pr_debug("register panel notifier\n");
 
-	pr_info("Product: %s, firmware id: %x\n",
-				rmi->product_id_string,
-				(unsigned int)rmi->build_id[0] +
-				(unsigned int)rmi->build_id[1] * 0x100 +
-				(unsigned int)rmi->build_id[2] * 0x10000);
+	batohui(&firmware_id, rmi->build_id, sizeof(rmi->build_id));
+	batohui(&config_id, rmi->config_id, sizeof(config_id));
+	pr_info("Product: %s, firmware id: %x, config id: %08x\n",
+			rmi->product_id_string, firmware_id, config_id);
 
 	synaptics_dsx_sensor_ready_state(rmi4_data, true);
 
