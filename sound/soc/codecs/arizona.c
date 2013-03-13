@@ -121,6 +121,42 @@ static int arizona_spk_ev(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static irqreturn_t arizona_thermal_warn(int irq, void *data)
+{
+	struct arizona *arizona = data;
+	unsigned int val;
+	int ret;
+
+	ret = regmap_read(arizona->regmap, ARIZONA_INTERRUPT_RAW_STATUS_3,
+			  &val);
+	if (ret != 0) {
+		dev_err(arizona->dev, "Failed to read thermal status: %d\n",
+			ret);
+	} else if (val & ARIZONA_SPK_SHUTDOWN_WARN_STS) {
+		dev_crit(arizona->dev, "Thermal warning\n");
+	}
+
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t arizona_thermal_shutdown(int irq, void *data)
+{
+	struct arizona *arizona = data;
+	unsigned int val;
+	int ret;
+
+	ret = regmap_read(arizona->regmap, ARIZONA_INTERRUPT_RAW_STATUS_3,
+			  &val);
+	if (ret != 0) {
+		dev_err(arizona->dev, "Failed to read thermal status: %d\n",
+			ret);
+	} else if (val & ARIZONA_SPK_SHUTDOWN_STS) {
+		dev_crit(arizona->dev, "Thermal shutdown\n");
+	}
+
+	return IRQ_HANDLED;
+}
+
 static const struct snd_soc_dapm_widget arizona_spkl =
 	SND_SOC_DAPM_PGA_E("OUT4L", ARIZONA_OUTPUT_ENABLES_1,
 			   ARIZONA_OUT4L_ENA_SHIFT, 0, NULL, 0, arizona_spk_ev,
@@ -177,6 +213,22 @@ int arizona_init_spk(struct snd_soc_codec *codec)
 
 	if (ret != 0)
 		return ret;
+
+	ret = arizona_request_irq(arizona, ARIZONA_IRQ_SPK_SHUTDOWN_WARN,
+				  "Thermal warning", arizona_thermal_warn,
+				  arizona);
+	if (ret != 0)
+		dev_err(arizona->dev,
+			"Failed to get thermal warning IRQ: %d\n",
+			ret);
+
+	ret = arizona_request_irq(arizona, ARIZONA_IRQ_SPK_SHUTDOWN,
+				  "Thermal shutdown", arizona_thermal_shutdown,
+				  arizona);
+	if (ret != 0)
+		dev_err(arizona->dev,
+			"Failed to get thermal shutdown IRQ: %d\n",
+			ret);
 
 	return 0;
 }
