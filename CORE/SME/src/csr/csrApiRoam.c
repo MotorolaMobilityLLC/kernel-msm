@@ -1871,49 +1871,6 @@ eHalStatus csrIsValidChannel(tpAniSirGlobal pMac, tANI_U8 chnNum)
     }
     return status;
 }
-
-eHalStatus csrGet5GChannels(tpAniSirGlobal pMac)
-{
-    eHalStatus status = eHAL_STATUS_SUCCESS;
-    tANI_U8 num20MHzChannelsFound = 0;
-    VOS_STATUS vosStatus;
-    tANI_U8 num40MHzChannelsFound = 0;
-    tANI_U8 Index = 0;
-
-    vosStatus = vos_nv_get5GChannelListWithPower( pMac->scan.defaultPowerTable, &num20MHzChannelsFound,
-                                                  NULL, &num40MHzChannelsFound);
-    if ( (VOS_STATUS_SUCCESS != vosStatus) || (num20MHzChannelsFound == 0) )
-    {
-        smsLog( pMac, LOGE, FL("failed to get channels"));
-        status = eHAL_STATUS_FAILURE;
-    }
-    else
-    {
-        if ( num20MHzChannelsFound > WNI_CFG_VALID_CHANNEL_LIST_LEN )
-        {
-            num20MHzChannelsFound = WNI_CFG_VALID_CHANNEL_LIST_LEN;
-        }
-        pMac->scan.numChannelsDefault = num20MHzChannelsFound;
-        // Move the channel list to the global data
-        // structure -- this will be used as the scan list
-        for ( Index = 0; Index < num20MHzChannelsFound; Index++)
-        {
-           pMac->scan.base20MHzChannels.channelList[ Index ] = pMac->scan.defaultPowerTable[ Index ].chanId;
-        }
-        pMac->scan.base20MHzChannels.numChannels = num20MHzChannelsFound;
-        if ( num40MHzChannelsFound > WNI_CFG_VALID_CHANNEL_LIST_LEN )
-        {
-            num40MHzChannelsFound = WNI_CFG_VALID_CHANNEL_LIST_LEN;
-        }
-        for ( Index = 0; Index < num40MHzChannelsFound; Index++)
-        {
-            pMac->scan.base40MHzChannels.channelList[ Index ] = pMac->scan.defaultPowerTable40MHz[ Index ].chanId;
-        }
-        pMac->scan.base40MHzChannels.numChannels = num40MHzChannelsFound;
-    }
-    return status;
-}
-
 eHalStatus csrInitGetChannels(tpAniSirGlobal pMac)
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
