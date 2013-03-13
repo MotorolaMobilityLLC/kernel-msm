@@ -181,12 +181,6 @@
 
 #define MXT_FWRESET_TIME	175	/* msec */
 
-/* MXT_SPT_GPIOPWM_T19 field */
-#define MXT_GPIO0_MASK		0x04
-#define MXT_GPIO1_MASK		0x08
-#define MXT_GPIO2_MASK		0x10
-#define MXT_GPIO3_MASK		0x20
-
 /* Command to unlock bootloader */
 #define MXT_UNLOCK_CMD_MSB	0xaa
 #define MXT_UNLOCK_CMD_LSB	0xdc
@@ -251,7 +245,6 @@ struct mxt_data {
 	const struct mxt_platform_data *pdata;
 	struct mxt_object *object_table;
 	struct mxt_info info;
-	bool is_tp;
 
 	unsigned int irq;
 	unsigned int max_x;
@@ -516,15 +509,16 @@ static int mxt_write_object(struct mxt_data *data,
 static void mxt_input_button(struct mxt_data *data, struct mxt_message *message)
 {
 	struct input_dev *input = data->input_dev;
+	const struct mxt_platform_data *pdata = data->pdata;
 	bool button;
 	int i;
 
 	/* Active-low switch */
-	for (i = 0; i < MXT_NUM_GPIO; i++) {
-		if (data->pdata->key_map[i] == KEY_RESERVED)
+	for (i = 0; i < pdata->t19_num_keys; i++) {
+		if (pdata->t19_keymap[i] == KEY_RESERVED)
 			continue;
-		button = !(message->message[0] & MXT_GPIO0_MASK << i);
-		input_report_key(input, data->pdata->key_map[i], button);
+		button = !(message->message[0] & (1 << i));
+		input_report_key(input, pdata->t19_keymap[i], button);
 	}
 }
 
@@ -1085,6 +1079,7 @@ static int __devinit mxt_probe(struct i2c_client *client,
 	struct input_dev *input_dev;
 	int error;
 	unsigned int num_mt_slots;
+	int i;
 
 	if (!pdata)
 		return -EINVAL;
@@ -1097,10 +1092,7 @@ static int __devinit mxt_probe(struct i2c_client *client,
 		goto err_free_mem;
 	}
 
-	data->is_tp = pdata && pdata->is_tp;
-
-	input_dev->name = (data->is_tp) ? "Atmel maXTouch Touchpad" :
-					  "Atmel maXTouch Touchscreen";
+	input_dev->name = "Atmel maXTouch Touchscreen";
 	snprintf(data->phys, sizeof(data->phys), "i2c-%u-%04x/input0",
 		 client->adapter->nr, client->addr);
 
@@ -1126,20 +1118,13 @@ static int __devinit mxt_probe(struct i2c_client *client,
 	__set_bit(EV_KEY, input_dev->evbit);
 	__set_bit(BTN_TOUCH, input_dev->keybit);
 
-	if (data->is_tp) {
-		int i;
-		__set_bit(INPUT_PROP_POINTER, input_dev->propbit);
+	if (pdata->t19_num_keys) {
 		__set_bit(INPUT_PROP_BUTTONPAD, input_dev->propbit);
 
-		for (i = 0; i < MXT_NUM_GPIO; i++)
-			if (pdata->key_map[i] != KEY_RESERVED)
-				__set_bit(pdata->key_map[i], input_dev->keybit);
-
-		__set_bit(BTN_TOOL_FINGER, input_dev->keybit);
-		__set_bit(BTN_TOOL_DOUBLETAP, input_dev->keybit);
-		__set_bit(BTN_TOOL_TRIPLETAP, input_dev->keybit);
-		__set_bit(BTN_TOOL_QUADTAP, input_dev->keybit);
-		__set_bit(BTN_TOOL_QUINTTAP, input_dev->keybit);
+		for (i = 0; i < pdata->t19_num_keys; i++)
+			if (pdata->t19_keymap[i] != KEY_RESERVED)
+				input_set_capability(input_dev, EV_KEY,
+						     pdata->t19_keymap[i]);
 
 		input_abs_set_res(input_dev, ABS_X, MXT_PIXELS_PER_MM);
 		input_abs_set_res(input_dev, ABS_Y, MXT_PIXELS_PER_MM);
@@ -1147,6 +1132,8 @@ static int __devinit mxt_probe(struct i2c_client *client,
 				  MXT_PIXELS_PER_MM);
 		input_abs_set_res(input_dev, ABS_MT_POSITION_Y,
 				  MXT_PIXELS_PER_MM);
+
+		input_dev->name = "Atmel maXTouch Touchpad";
 	}
 
 	/* For single touch */
