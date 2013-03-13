@@ -57,6 +57,7 @@ struct ov660_data_t {
 };
 static struct ov660_data_t *ov660_data;
 bool allow_asic_control;
+static bool change_rgbc_output;
 
 static struct ov660_reg_i2c_tbl ov660_ov10820_full_settings[] = {
 	{0x6020, 0x62},
@@ -270,6 +271,9 @@ int32_t ov660_set_sensor_mode(int readout)
 	if (rc < 0)
 		pr_err("%s: unable to write res: %d\n", __func__, readout);
 
+	if (change_rgbc_output)
+		ov660_set_rgbc_output(1);
+
 	return rc;
 }
 
@@ -315,7 +319,10 @@ static long camera_dev_ioctl(struct file *file, unsigned int cmd,
 	/* TODO: mutex_lock(); */
 	switch (cmd) {
 	case CAMERA_SET_RGBC_OUTPUT:
-		ov660_set_rgbc_output((int)arg);
+		if ((int)arg == 1)
+			change_rgbc_output = true;
+		else
+			change_rgbc_output = false;
 		break;
 	default:
 		break;
