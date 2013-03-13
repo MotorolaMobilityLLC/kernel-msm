@@ -2464,6 +2464,8 @@ static void __pm8921_charger_vbus_draw(unsigned int mA)
 		rc = pm_chg_usb_suspend_enable(the_chip, 1);
 		if (rc)
 			pr_err("fail to set suspend bit rc=%d\n", rc);
+		/* USB Suspended ensure FULL is cleared */
+		the_chip->bms_notify.is_battery_full = 0;
 	} else {
 		rc = pm_chg_usb_suspend_enable(the_chip, 0);
 		if (rc)
