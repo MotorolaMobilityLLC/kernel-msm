@@ -22,6 +22,7 @@
 #include <linux/err.h>
 #include <linux/init.h>
 #include <linux/i2c.h>
+#include <linux/of_gpio.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/delay.h>
@@ -1103,14 +1104,14 @@ qup_i2c_probe(struct platform_device *pdev)
 	struct resource		*in_irq, *out_irq, *err_irq;
 	struct clk         *clk, *pclk;
 	int ret = 0;
-	int i;
+	int i, gpio = -1;
 	struct msm_i2c_platform_data *pdata;
+	struct device_node *node = pdev->dev.of_node;
 
 	gsbi_mem = NULL;
 	dev_dbg(&pdev->dev, "qup_i2c_probe\n");
 
-	if (pdev->dev.of_node) {
-		struct device_node *node = pdev->dev.of_node;
+	if (node) {
 		pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
 		if (!pdata)
 			return -ENOMEM;
@@ -1243,9 +1244,17 @@ blsp_core_init:
 	}
 
 	for (i = 0; i < ARRAY_SIZE(i2c_rsrcs); ++i) {
-		res = platform_get_resource_byname(pdev, IORESOURCE_IO,
-						   i2c_rsrcs[i]);
-		dev->i2c_gpios[i] = res ? res->start : -1;
+		if (node) {
+			gpio = of_get_gpio(node, i);
+			if (!gpio_is_valid(gpio))
+				dev->i2c_gpios[i] = -1;
+			else
+				dev->i2c_gpios[i] = gpio;
+		} else {
+			res = platform_get_resource_byname(pdev, IORESOURCE_IO,
+							   i2c_rsrcs[i]);
+			dev->i2c_gpios[i] = res ? res->start : -1;
+		}
 	}
 
 	platform_set_drvdata(pdev, dev);
