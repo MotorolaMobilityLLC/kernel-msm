@@ -73,22 +73,24 @@ static int arizona_spk_ev(struct snd_soc_dapm_widget *w,
 	struct snd_soc_codec *codec = w->codec;
 	struct arizona *arizona = dev_get_drvdata(codec->dev->parent);
 	struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
+	bool manual_ena;
 
 	switch (arizona->type) {
 	case WM5102:
 		switch (arizona->rev) {
 		case 0:
-			return 0;
+			break;
 		default:
+			manual_ena = true;
 			break;
 		}
 	default:
-		return 0;
+		break;
 	}
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		if (!priv->spk_ena) {
+		if (!priv->spk_ena && manual_ena) {
 			snd_soc_write(codec, 0x4f5, 0x25a);
 			priv->spk_ena_pending = true;
 		}
@@ -102,13 +104,17 @@ static int arizona_spk_ev(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
-		priv->spk_ena--;
-		if (!priv->spk_ena)
-			snd_soc_write(codec, 0x4f5, 0x25a);
+		if (manual_ena) {
+			priv->spk_ena--;
+			if (!priv->spk_ena)
+				snd_soc_write(codec, 0x4f5, 0x25a);
+		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		if (!priv->spk_ena)
-			snd_soc_write(codec, 0x4f5, 0x0da);
+		if (manual_ena) {
+			if (!priv->spk_ena)
+				snd_soc_write(codec, 0x4f5, 0x0da);
+		}
 		break;
 	}
 
