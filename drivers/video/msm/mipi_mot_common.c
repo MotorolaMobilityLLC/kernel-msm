@@ -125,15 +125,8 @@ int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
 
 int mipi_mot_panel_off(struct msm_fb_data_type *mfd)
 {
-	struct dcs_cmd_req cmdreq;
-
-	cmdreq.cmds = &mot_display_off_cmd;
-	cmdreq.cmds_cnt = 1;
-	cmdreq.flags = CMD_REQ_TX | CMD_REQ_COMMIT;
-	cmdreq.rlen = 0;
-	cmdreq.cb = NULL;
-
-	mipi_dsi_cmdlist_put(&cmdreq);
+	pr_debug("%s: sending display off\n", __func__);
+	mipi_mot_tx_cmds(&mot_display_off_cmd, 1);
 
 	return 0;
 }
@@ -147,6 +140,10 @@ int mipi_mot_rx_cmd(struct dsi_cmd_desc *cmd, u8 *data, int rlen)
 	struct dcs_cmd_req cmdreq;
 
 	pr_debug("%s is called\n", __func__);
+	/* if there is no display, then do nothing */
+	if (mot_panel && mot_panel->is_no_disp)
+		return rlen;
+
 	cmdreq.cmds = cmd;
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
@@ -183,6 +180,10 @@ int mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt)
 	struct dcs_cmd_req cmdreq;
 	struct dsi_cmd_desc *tx_cmds = cmds;
 	int ret;
+
+	/* if there is no display, then do nothing */
+	if (mot_panel && mot_panel->is_no_disp)
+		return cnt;
 
 	cmdreq.cmds = cmds;
 	cmdreq.cmds_cnt = cnt;
