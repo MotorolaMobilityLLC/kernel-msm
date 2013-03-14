@@ -1018,7 +1018,7 @@ static int msm_fb_detect_panel(const char *name)
 	return -ENODEV;
 }
 
-static int is_factory_mode(void)
+static int __init is_factory_mode(void)
 {
 	struct mmi_oem_data *mmi_data = msm8960_oem_funcs.oem_data;
 
@@ -1040,16 +1040,42 @@ static struct platform_device mipi_dsi_mot_panel_device = {
 	}
 };
 
+static int __init no_disp_detection(void)
+{
+	struct mmi_oem_data *mmi_data = msm8960_oem_funcs.oem_data;
+	int no_disp = 0, is_bareboard = 0;
+
+	if (mmi_data && mmi_data->is_bareboard)
+		is_bareboard = mmi_data->is_bareboard();
+
+	if (is_factory_mode() && is_bareboard) {
+		strlcpy(panel_name, "mipi_mot_video_hd_dummy",
+							PANEL_NAME_MAX_LEN);
+		pr_warning("%s: No Display, and overwrite panel name =%s\n",
+							__func__, panel_name);
+		no_disp = 1;
+	} else
+		pr_debug("%s: is_bareboard=%d is_factory_mode=%d\n",
+				__func__, is_bareboard, is_factory_mode());
+	return no_disp;
+}
+
 void __init mmi_display_init(struct msm_fb_platform_data *msm_fb_pdata,
 				struct mipi_dsi_platform_data *mipi_dsi_pdata)
 {
+	int no_disp;
+
 	mmi_load_panel_from_dt();
+	no_disp = no_disp_detection();
 	msm_fb_pdata->is_partial_mode_supported = is_partial_mode_supported;
 	msm_fb_pdata->detect_client = msm_fb_detect_panel;
 	mipi_dsi_pdata->vsync_gpio = 0;
 	mipi_dsi_pdata->dsi_power_save = mipi_dsi_power;
 	mipi_dsi_pdata->panel_power_save = panel_power_ctrl;
 	mipi_dsi_pdata->panel_power_en = panel_power_ctrl_en;
-	mipi_dsi_pdata->is_factory_mode = is_factory_mode;
+
+	if (no_disp && mipi_dsi_pdata->disable_splash)
+		mipi_dsi_pdata->disable_splash();
+
 	platform_device_register(&mipi_dsi_mot_panel_device);
 }
