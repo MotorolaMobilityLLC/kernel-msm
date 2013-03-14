@@ -510,7 +510,6 @@ static int mot_probe(struct hid_device *hdev, const struct hid_device_id *id)
 	}
 
 	sc->quirks = quirks;
-	hdev->quirks |= HID_QUIRK_MULTITOUCH_MOTOROLA;
 	hid_set_drvdata(hdev, sc);
 	sc->mt_dev_allocated = false;
 	sc->isMultitouchDev = false;
