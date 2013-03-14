@@ -1063,24 +1063,15 @@ static void vfe32_set_default_reg_values(
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_HIST_UB_CFG);
 	} else {
-		msm_camera_io_w(0x350001F,
+		msm_camera_io_w(0x30C001F,
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_HIST_UB_CFG);
-		msm_camera_io_w(0x370002F,
+		msm_camera_io_w(0x32C0096,
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_AEC_BG_UB_CFG);
-		msm_camera_io_w(0x3A0002F,
+		msm_camera_io_w(0x3C3003C,
 			vfe32_ctrl->share_ctrl->vfebase +
 				VFE_BUS_STATS_AF_BF_UB_CFG);
-		msm_camera_io_w(0x3D00007,
-			vfe32_ctrl->share_ctrl->vfebase +
-				VFE_BUS_STATS_RS_UB_CFG);
-		msm_camera_io_w(0x3D8001F,
-			vfe32_ctrl->share_ctrl->vfebase +
-				VFE_BUS_STATS_CS_UB_CFG);
-		msm_camera_io_w(0x3F80007,
-			vfe32_ctrl->share_ctrl->vfebase +
-				VFE_BUS_STATS_SKIN_BHIST_UB_CFG);
 	}
 	vfe32_reset_dmi_tables(vfe32_ctrl);
 }
