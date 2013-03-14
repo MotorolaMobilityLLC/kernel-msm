@@ -63,7 +63,6 @@ static int hidp_sock_ioctl(struct socket *sock, unsigned int cmd, unsigned long 
 	struct hidp_conninfo ci;
 	struct socket *csock;
 	struct socket *isock;
-	struct socket *asock;
 	int err;
 
 	BT_DBG("cmd %x arg %lx", cmd, arg);
@@ -77,51 +76,29 @@ static int hidp_sock_ioctl(struct socket *sock, unsigned int cmd, unsigned long 
 			return -EFAULT;
 
 		csock = sockfd_lookup(ca.ctrl_sock, &err);
+		if (!csock)
+			return err;
+
 		isock = sockfd_lookup(ca.intr_sock, &err);
-		asock = sockfd_lookup(ca.att_sock, &err);
-		if (csock && isock) {
+		if (!isock) {
+			sockfd_put(csock);
+			return err;
+		}
 
-			BT_DBG("HID connection for BR/EDR");
-
-			if (csock->sk->sk_state != BT_CONNECTED ||
-					isock->sk->sk_state != BT_CONNECTED) {
-				sockfd_put(csock);
-				sockfd_put(isock);
-				return -EBADFD;
-			}
-
-			err = hidp_add_connection(&ca, csock, isock);
-			if (!err) {
-				if (copy_to_user(argp, &ca, sizeof(ca)))
-					err = -EFAULT;
-			} else {
-				sockfd_put(csock);
-				sockfd_put(isock);
-			}
-
-		} else if (asock) {
-
-			BT_DBG("HID connection for LE");
-
-			if (asock->sk->sk_state != BT_CONNECTED) {
-				sockfd_put(asock);
-				return -EBADFD;
-			}
-
-			err = hidp_add_le_connection(&ca, asock);
-			if (!err) {
-				if (copy_to_user(argp, &ca, sizeof(ca)))
-					err = -EFAULT;
-			} else {
-				sockfd_put(asock);
-			}
-
-		} else {
-			BT_ERR("invalid arguments");
+		if (csock->sk->sk_state != BT_CONNECTED ||
+				isock->sk->sk_state != BT_CONNECTED) {
 			sockfd_put(csock);
 			sockfd_put(isock);
-			sockfd_put(asock);
-			return err;
+			return -EBADFD;
+		}
+
+		err = hidp_add_connection(&ca, csock, isock);
+		if (!err) {
+			if (copy_to_user(argp, &ca, sizeof(ca)))
+				err = -EFAULT;
+		} else {
+			sockfd_put(csock);
+			sockfd_put(isock);
 		}
 
 		return err;
