@@ -2724,8 +2724,10 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
 
     if (wlan_hdd_tdls_is_progress(pAdapter, mac, TRUE))
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-            "%s: TDLS setup is ongoing. Request declined.",__func__);
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: " MAC_ADDRESS_STR
+                   " TDLS setup is ongoing. Request declined.",
+                   __func__, MAC_ADDR_ARRAY(mac));
         return -EPERM;
     }
 
@@ -2734,9 +2736,10 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
        but need to check if any other errno fit into this category.*/
     if (HDD_MAX_NUM_TDLS_STA <= wlan_hdd_tdlsConnectedPeers(pAdapter))
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                "%s: TDLS Max peer already connected. Request declined. \n",
-                __func__);
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: " MAC_ADDRESS_STR
+                   " TDLS Max peer already connected. Request declined.",
+                    __func__, MAC_ADDR_ARRAY(mac));
         return -EPERM;
     }
     else
@@ -2745,9 +2748,9 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
         pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, mac);
         if (pTdlsPeer && (eTDLS_LINK_CONNECTED == pTdlsPeer->link_status))
         {
-            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                    "%s: %02x:%02x:%02x:%02x:%02x:%02x already connected. Request declined.",
-                    __func__, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                       "%s: " MAC_ADDRESS_STR " already connected. Request declined.",
+                       __func__, MAC_ADDR_ARRAY(mac));
             return -EPERM;
         }
     }
@@ -2772,7 +2775,7 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
 
     if (!status)
     {
-        VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s: timeout waiting for tdls add station indication",
                 __func__);
         wlan_hdd_tdls_set_link_status(pAdapter, mac, eTDLS_LINK_IDLE);
@@ -2780,7 +2783,7 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
     }
     if ( eHAL_STATUS_SUCCESS != pAdapter->tdlsAddStaStatus)
     {
-        VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s: Add Station is unsucessful", __func__);
         wlan_hdd_tdls_set_link_status(pAdapter, mac, eTDLS_LINK_IDLE);
         return -EPERM;
@@ -5553,9 +5556,9 @@ static int wlan_hdd_cfg80211_disconnect( struct wiphy *wiphy,
                     uint8 *mac;
                     mac = pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes;
                     VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                            "%s: call sme_DeleteTdlsPeerSta staId %d sessionId %d %02x:%02x:%02x:%02x:%02x:%02x",
+                            "%s: call sme_DeleteTdlsPeerSta staId %d sessionId %d " MAC_ADDRESS_STR,
                             __func__, pHddCtx->tdlsConnInfo[staIdx].staId, pAdapter->sessionId,
-                            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5] );
+                            MAC_ADDR_ARRAY(mac));
                     sme_DeleteTdlsPeerSta(WLAN_HDD_GET_HAL_CTX(pAdapter),
                                           pAdapter->sessionId,
                                           mac);
@@ -6538,8 +6541,11 @@ static int wlan_hdd_cfg80211_add_station(struct wiphy *wiphy,
 
     set = params->sta_flags_set;
 
-    VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-            "%s: mask 0x%x set 0x%x\n",__func__, mask, set);
+#ifdef WLAN_FEATURE_TDLS_DEBUG
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: mask 0x%x set 0x%x " MAC_ADDRESS_STR,
+               __func__, mask, set, MAC_ADDR_ARRAY(mac));
+#endif
 
     if (mask & BIT(NL80211_STA_FLAG_TDLS_PEER)) {
         if (set & BIT(NL80211_STA_FLAG_TDLS_PEER)) {
@@ -6736,7 +6742,9 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
         if (wlan_hdd_tdls_is_progress(pAdapter, peer, TRUE))
         {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                       "%s: TDLS setup is ongoing. Request declined.", __func__);
+                       "%s: " MAC_ADDRESS_STR
+                       " TDLS setup is ongoing. Request declined.",
+                       __func__, MAC_ADDR_ARRAY(peer));
             return -EPERM;
         }
     }
@@ -6752,9 +6760,10 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
                Anyway, there is no hard to double-check. */
             if (SIR_MAC_TDLS_SETUP_REQ == action_code)
             {
-                VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                        "%s: TDLS Max peer already connected. Request declined. \n",
-                        __func__);
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                           "%s: " MAC_ADDRESS_STR
+                           " TDLS Max peer already connected. Request declined.",
+                           __func__, MAC_ADDR_ARRAY(peer));
                 return -EPERM;
             }
             else
@@ -6762,9 +6771,10 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
                 /* maximum reached. tweak to send error code to peer and return
                    error code to supplicant */
                 status_code = eSIR_MAC_UNSPEC_FAILURE_STATUS;
-                VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                        "%s: TDLS Max peer already connected send response status %d \n",
-                        __func__,status_code);
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                           "%s: " MAC_ADDRESS_STR
+                           " TDLS Max peer already connected send response status %d",
+                           __func__, MAC_ADDR_ARRAY(peer), status_code);
                 ret = -EPERM;
                 /* fall through to send setup resp with failure status
                 code */
@@ -6776,9 +6786,9 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
             pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, peer);
             if (pTdlsPeer && (eTDLS_LINK_CONNECTED == pTdlsPeer->link_status))
             {
-                VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                        "%s: %02x:%02x:%02x:%02x:%02x:%02x already connected. Request declined.",
-                        __func__, peer[0], peer[1], peer[2], peer[3], peer[4], peer[5]);
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                        "%s:" MAC_ADDRESS_STR " already connected. Request declined.",
+                        __func__, MAC_ADDR_ARRAY(peer));
                 return -EPERM;
             }
         }
@@ -6787,9 +6797,9 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
 
 #ifdef WLAN_FEATURE_TDLS_DEBUG
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                     "%s: %02x:%02x:%02x:%02x:%02x:%02x) action %d, dialog_token %d status %d, len = %d",
-                     "tdls_mgmt", peer[0], peer[1], peer[2], peer[3], peer[4], peer[5],
-                      action_code, dialog_token, status_code, len);
+               "%s: " MAC_ADDRESS_STR " action %d, dialog_token %d status %d, len = %d",
+               "tdls_mgmt", MAC_ADDR_ARRAY(peer),
+               action_code, dialog_token, status_code, len);
 #endif
 
     /*Except teardown responder will not be used so just make 0*/
@@ -6800,8 +6810,8 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
        if(-1 == responder)
        {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                     "%s: %02x:%02x:%02x:%02x:%02x:%02x) peer doesn't exist dialog_token %d status %d, len = %d",
-                     "tdls_mgmt", peer[0], peer[1], peer[2], peer[3], peer[4], peer[5],
+                     "%s: " MAC_ADDRESS_STR " peer doesn't exist dialog_token %d status %d, len = %d",
+                     "tdls_mgmt", MAC_ADDR_ARRAY(peer),
                       dialog_token, status_code, len);
             return -EPERM;
        }
@@ -6897,9 +6907,9 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
         oper = 5;
 
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-            "%s: %02x:%02x:%02x:%02x:%02x:%02x: %d (%s) ", "tdls_oper",
-            peer[0], peer[1], peer[2], peer[3], peer[4], peer[5], (int)oper,
-            tdls_oper_str[(int)oper]);
+               "%s: " MAC_ADDRESS_STR " %d (%s) ", "tdls_oper",
+               MAC_ADDR_ARRAY(peer), (int)oper,
+               tdls_oper_str[(int)oper]);
 #endif
 
     if( FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport ||
@@ -6917,35 +6927,28 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                 hddTdlsPeer_t *pTdlsPeer;
                 VOS_STATUS status;
 
-                if (peer) {
-                    pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, peer);
+                pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, peer);
 
-                    hddLog(VOS_TRACE_LEVEL_INFO_HIGH, 
-                            "%s: TDLS_LINK_ENABLE %2x:%2x:%2x:%2x:%2x:%2x",
-                            __func__, peer[0], peer[1], 
-                            peer[2], peer[3], 
-                            peer[4], peer[5] );
+                hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
+                       "%s: TDLS_LINK_ENABLE " MAC_ADDRESS_STR,
+                       __func__, MAC_ADDR_ARRAY(peer));
 
-                    if ( NULL == pTdlsPeer ) {
-                        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: wlan_hdd_tdls_find_peer %2x:%2x:%2x:%2x:%2x:%2x failed",
-                            __func__, peer[0], peer[1],
-                            peer[2], peer[3],
-                            peer[4], peer[5] );
-                        return -EINVAL;
-                    }
-
-                    if (eTDLS_LINK_CONNECTED != pTdlsPeer->link_status)
-                    {
-                        /* start TDLS client registration with TL */
-                        status = hdd_roamRegisterTDLSSTA( pAdapter, peer, pTdlsPeer->staId, pTdlsPeer->signature);
-                        wlan_hdd_tdls_increment_peer_count(pAdapter);
-                        wlan_hdd_tdls_set_peer_link_status(pTdlsPeer, eTDLS_LINK_CONNECTED);
-                        wlan_hdd_tdls_check_bmps(pAdapter);
-                    }
-
-                } else {
-                    hddLog(VOS_TRACE_LEVEL_WARN, "wlan_hdd_cfg80211_add_key: peer NULL" );
+                if ( NULL == pTdlsPeer ) {
+                    hddLog(VOS_TRACE_LEVEL_ERROR, "%s: wlan_hdd_tdls_find_peer "
+                           MAC_ADDRESS_STR " failed",
+                           __func__, MAC_ADDR_ARRAY(peer));
+                    return -EINVAL;
                 }
+
+                if (eTDLS_LINK_CONNECTED != pTdlsPeer->link_status)
+                {
+                    /* start TDLS client registration with TL */
+                    status = hdd_roamRegisterTDLSSTA( pAdapter, peer, pTdlsPeer->staId, pTdlsPeer->signature);
+                    wlan_hdd_tdls_increment_peer_count(pAdapter);
+                    wlan_hdd_tdls_set_peer_link_status(pTdlsPeer, eTDLS_LINK_CONNECTED);
+                    wlan_hdd_tdls_check_bmps(pAdapter);
+                }
+
             }
             break;
         case NL80211_TDLS_DISABLE_LINK:
@@ -6960,11 +6963,11 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                 }
                 else
                 {
-                    VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                    "%s: TDLS Peer Station doesn't exist \n",__func__);
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                              "%s: TDLS Peer Station doesn't exist.", __func__);
                 }
-                return 0;
             }
+            break;
         case NL80211_TDLS_TEARDOWN:
         case NL80211_TDLS_SETUP:
         case NL80211_TDLS_DISCOVERY_REQ:

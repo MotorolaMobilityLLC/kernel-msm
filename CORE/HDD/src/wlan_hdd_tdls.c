@@ -1227,6 +1227,9 @@ u8 wlan_hdd_tdls_is_progress(hdd_adapter_t *pAdapter, u8 *mac, u8 skip_self)
             {
                 if (eTDLS_LINK_CONNECTING == curr_peer->link_status)
                 {
+                  VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                            "%s:" MAC_ADDRESS_STR "is in eTDLS_LINK_CONNECTING",
+                            __func__, MAC_ADDR_ARRAY(curr_peer->peerMac));
                   mutex_unlock(&tdls_lock);
                   return TRUE;
                 }
