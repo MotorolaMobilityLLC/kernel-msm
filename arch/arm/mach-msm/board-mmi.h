@@ -22,6 +22,7 @@ struct mmi_oem_data {
 	int (*is_factory)(void);
 	int (*is_meter_locked)(void);
 	int (*is_no_eprom)(void);
+	int (*is_bareboard)(void);
 	bool mmi_camera;
 };
 
