@@ -363,6 +363,7 @@ static int mot_input_mapping(struct hid_device *hdev,
 {
 	struct hid_report *rep = field->report;
 	struct motorola_sc *sc = hid_get_drvdata(hdev);
+	int result;
 
 	/* Perform mapping only for a Multitouch device as necessary */
 	if ((sc->quirks) & MOT_MULTITOUCH) {
@@ -388,12 +389,18 @@ static int mot_input_mapping(struct hid_device *hdev,
 					dev_err(&hdev->dev, "Unable to allocate MT dev\n");
 					sc->input = hi->input;
 				} else {
-					/* Set up the MT input device here.
-					It will be registered in mot_probe after
-					the configuration via input_mapping routine */
-					sc->mt_dev_allocated = true;
 					mot_mt_setup_mt_dev(sc->input,
 							 hi->input, hdev);
+					result = input_register_device(
+								sc->input);
+					if (result) {
+						dev_err(&hdev->dev,
+						 "input device reg failed\n");
+						input_free_device(sc->input);
+						sc->input = hi->input;
+					} else {
+						sc->mt_dev_allocated = true;
+					}
 				}
 			}
 			switch (usage->hid & HID_USAGE_PAGE) {
@@ -484,7 +491,6 @@ static int mot_probe(struct hid_device *hdev, const struct hid_device_id *id)
 	/* Multitouch specific feature report */
 	__u8 feature[] = { MT_MODE_FEATURE_REPORT_ID, 0x01 };
 	struct hid_report *report;
-	int result;
 
 	dbg_hid("%s %d\n", __func__, __LINE__);
 
@@ -519,18 +525,6 @@ static int mot_probe(struct hid_device *hdev, const struct hid_device_id *id)
 	if (ret) {
 		dev_err(&hdev->dev, "hw start failed\n");
 		goto err_free_cancel;
-	}
-
-	/* Register the Multiotuch input device allocated after configuring */
-	if (sc->mt_dev_allocated == true) {
-		result = input_register_device(sc->input);
-		if (result) {
-			dev_err(&hdev->dev,
-				"Multitouch input device reg failed\n");
-			input_free_device(sc->input);
-			sc->input = sc->rel_input;
-			sc->mt_dev_allocated = false;
-		}
 	}
 
 	if (sc->isMultitouchDev == true) {
