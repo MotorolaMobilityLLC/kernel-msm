@@ -276,6 +276,7 @@ struct synaptics_rmi4_fwu_handle {
 	bool irq_enabled;
 	char fw_filename[SYNAPTICS_RMI4_FILENAME_SIZE];
 	unsigned int firmware_id;
+	unsigned int config_id;
 	unsigned int image_size;
 	unsigned int data_pos;
 	unsigned char intr_mask;
@@ -815,8 +816,15 @@ static int fwu_enter_flash_prog(void)
 				__func__);
 		return 0;
 	} else {
-		/* UI firmware ID is only available in UI mode */
-		if (fwu->firmware_id <= fwu_firmware_id()) {
+		unsigned int config_id;
+		struct synaptics_rmi4_device_info *rmi;
+
+		rmi = &(fwu->rmi4_data->rmi4_mod_info);
+		batohui(&config_id, rmi->config_id, sizeof(rmi->config_id));
+
+		/* Firmware ID stops changing at some point, thus  */
+		/* config ID is the only id that guaranteed to grow */
+		if (fwu->config_id <= config_id) {
 			/* do not allow downgrade firmware */
 			/* unless specifically instructed to */
 			if (!force_reflash)
@@ -830,6 +838,11 @@ static int fwu_enter_flash_prog(void)
 			"%s: Firmware IDs: currently running-%x, in image-%x\n",
 			__func__,
 			fwu_firmware_id(), fwu->firmware_id);
+
+		dev_dbg(&fwu->rmi4_data->i2c_client->dev,
+			"%s: Config IDs: currently running-%x, in image-%x\n",
+			__func__,
+			config_id, fwu->config_id);
 	}
 
 	dev_dbg(&fwu->rmi4_data->i2c_client->dev, "Enter bootloader mode\n");
@@ -1096,6 +1109,9 @@ static int fwu_parse_tdat_image(struct image_header *header,
 					&header->config_size);
 			fwu_tdat_section_offset(&fwu->config_data,
 						&header->config_size);
+			batohui(&fwu->config_id,
+					(unsigned char *)fwu->config_data,
+					SYNAPTICS_RMI4_CONFIG_ID_SIZE);
 			break;
 
 		case 2: /* firmware */
@@ -1105,9 +1121,9 @@ static int fwu_parse_tdat_image(struct image_header *header,
 				id,
 				length);
 
-			fwu->firmware_id = (unsigned int)section[1] +
-				(unsigned int)section[2] * 0x100 +
-				(unsigned int)section[3] * 0x10000;
+			batohui(&fwu->firmware_id,
+					(unsigned char *)&section[1],
+					SYNAPTICS_RMI4_BUILD_ID_SIZE);
 
 			dev_dbg(&fwu->rmi4_data->i2c_client->dev,
 				"%s: Firmware build ID %x\n",
@@ -1545,8 +1561,8 @@ static ssize_t fwu_sysfs_do_reflash_store(struct device *dev,
 		goto exit;
 	}
 
-	scnprintf(template, sizeof(template), "synaptics-%s-",
-					rmi->product_id_string);
+	snprintf(template, sizeof(template), "synaptics-%s-",
+						rmi->product_id_string);
 	if (strncmp(buf, template, strnlen(template, sizeof(template)))) {
 		dev_err(&rmi4_data->i2c_client->dev,
 			"%s: FW does not belong to %s\n",
