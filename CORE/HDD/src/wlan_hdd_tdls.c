@@ -757,7 +757,7 @@ int wlan_hdd_tdls_recv_discovery_resp(hdd_adapter_t *pAdapter, u8 *mac)
                                    curr_peer->peerMac,
                                    NL80211_TDLS_SETUP, FALSE,
                                    GFP_KERNEL);
-        curr_peer->link_status = eTDLS_LINK_CONNECTING;
+        curr_peer->link_status = eTDLS_LINK_DISCOVERED;
     }
     VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
                "Peer with MAC : " MAC_ADDRESS_STR " transitioned to %d",
