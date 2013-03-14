@@ -33,7 +33,6 @@
 static struct mipi_dsi_panel_platform_data *mipi_mot_pdata;
 
 static struct mipi_mot_panel mot_panel;
-static bool factory_run;
 
 static struct dsi_buf mot_tx_buf;
 static struct dsi_buf mot_rx_buf;
@@ -46,6 +45,11 @@ static int get_manufacture_id(struct msm_fb_data_type *mfd)
 {
 	static int manufacture_id = INVALID_VALUE;
 	display_hw_rev_txt_manufacturer = 0;
+
+	if (mot_panel.is_no_disp) {
+		manufacture_id = 0xff;
+		goto end;
+	}
 
 	if (manufacture_id == INVALID_VALUE) {
 		if (!mot_panel.get_manufacture_id) {
@@ -76,6 +80,11 @@ static int get_controller_ver(struct msm_fb_data_type *mfd)
 	static int controller_ver = INVALID_VALUE;
 	display_hw_rev_txt_controller = 0;
 
+	if (mot_panel.is_no_disp) {
+		controller_ver = 0xff;
+		goto end;
+	}
+
 	if (controller_ver == INVALID_VALUE) {
 		if (!mot_panel.get_controller_ver) {
 			pr_err("%s: can not locate get_controller_ver()\n",
@@ -103,6 +112,11 @@ static int get_controller_drv_ver(struct msm_fb_data_type *mfd)
 {
 	static int controller_drv_ver = INVALID_VALUE;
 	display_hw_rev_txt_controller_drv = 0;
+
+	if (mot_panel.is_no_disp) {
+		controller_drv_ver = 0xff;
+		goto end;
+	}
 
 	if (controller_drv_ver == INVALID_VALUE) {
 		if (mot_panel.get_controller_drv_ver)
@@ -485,8 +499,7 @@ static int panel_disable(struct platform_device *pdev)
 		need_deinit = 1;
 	}
 
-	if (!factory_run && mot_panel.esd_enabled &&
-			(mot_panel.esd_detection_run == true)) {
+	if (mot_panel.esd_enabled && (mot_panel.esd_detection_run == true)) {
 #ifndef MOT_PANEL_ESD_SELF_TRIGGER
 		ret = cancel_delayed_work(&mot_panel.esd_work);
 		if (ret)
@@ -518,8 +531,7 @@ static int panel_disable(struct platform_device *pdev)
 	return 0;
 err1:
 	atomic_set(&mot_panel.state, MOT_PANEL_ON);
-	if (!factory_run && mot_panel.esd_enabled &&
-				(mot_panel.esd_detection_run == false)) {
+	if (mot_panel.esd_enabled && (mot_panel.esd_detection_run == false)) {
 		queue_delayed_work(mot_panel.esd_wq, &mot_panel.esd_work,
 						MOT_PANEL_ESD_CHECK_PERIOD);
 		mot_panel.esd_detection_run = true;
@@ -547,8 +559,7 @@ static int panel_on(struct platform_device *pdev)
 	}
 
 	atomic_set(&mot_panel.state, MOT_PANEL_ON);
-	if (!factory_run && mot_panel.esd_enabled &&
-				(mot_panel.esd_detection_run == false)) {
+	if (mot_panel.esd_enabled && (mot_panel.esd_detection_run == false)) {
 		if (mot_panel.is_valid_power_mode &&
 				!mot_panel.is_valid_power_mode(mfd))
 			queue_delayed_work(mot_panel.esd_wq,
@@ -779,7 +790,7 @@ int mipi_mot_device_register(struct msm_panel_info *pinfo,
 		goto err_device_put;
 	}
 
-	if (!factory_run && mot_panel.esd_enabled) {
+	if (mot_panel.esd_enabled) {
 		mot_panel.esd_wq =
 				create_singlethread_workqueue("mot_panel_esd");
 		if (mot_panel.esd_wq == NULL) {
@@ -791,7 +802,7 @@ int mipi_mot_device_register(struct msm_panel_info *pinfo,
 		INIT_DELAYED_WORK_DEFERRABLE(&mot_panel.esd_work,
 							mot_panel_esd_work);
 	} else
-		pr_info("MIPI MOT PANEL ESD detection is disable\n");
+		pr_info("MIPI MOT PANEL: ESD detection is disable\n");
 
 	atomic_set(&mot_panel.state, MOT_PANEL_OFF);
 
@@ -821,13 +832,10 @@ static int __init mipi_mot_lcd_init(void)
 
 	mot_panel.panel_on = mipi_mot_panel_on;
 	mot_panel.panel_off = NULL;
+	mot_panel.is_no_disp = false;
 
 	mot_panel.hide_img = mipi_mot_hide_img;
 	moto_panel_debug_init();
-
-	factory_run = mipi_dsi_panel_is_factory_mode();
-	if (factory_run)
-		pr_info("MIPI MOT PANEL: Factory mode\n");
 
 	return platform_driver_register(&this_driver);
 }

@@ -147,6 +147,7 @@ struct mipi_mot_panel {
 	u8 esd_expected_pwr_mode;
 	struct workqueue_struct *esd_wq;
 	struct delayed_work esd_work;
+	bool is_no_disp;
 
 	/* reboot notifier for panel flash when power down or unplug charger */
 	struct notifier_block reboot_notifier;
