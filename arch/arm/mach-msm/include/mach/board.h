@@ -454,6 +454,7 @@ struct mipi_dsi_platform_data {
 	int (*dsi_client_reset)(void);
 	int (*get_lane_config)(void);
 	char (*splash_is_enabled)(void);
+	void (*disable_splash)(void);
 	int (*is_factory_mode)(void);
 	int target_type;
 };
