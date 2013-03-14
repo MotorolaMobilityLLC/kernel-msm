@@ -469,6 +469,7 @@ static int mipi_dsi_cdp_panel_power(int on)
 }
 
 static char mipi_dsi_splash_is_enabled(void);
+static void mipi_dsi_disable_splash(void);
 static int mipi_dsi_panel_power(int on)
 {
 	int ret;
@@ -487,6 +488,7 @@ static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 	.vsync_gpio = MDP_VSYNC_GPIO,
 	.dsi_power_save = mipi_dsi_panel_power,
 	.splash_is_enabled = mipi_dsi_splash_is_enabled,
+	.disable_splash = mipi_dsi_disable_splash,
 };
 
 #ifdef CONFIG_MSM_BUS_SCALING
@@ -607,6 +609,12 @@ static char mipi_dsi_splash_is_enabled(void)
 {
 	return mdp_pdata.cont_splash_enabled;
 }
+
+static void mipi_dsi_disable_splash(void)
+{
+	mdp_pdata.cont_splash_enabled = 0;
+}
+
 
 #define LPM_CHANNEL0 0
 static int toshiba_gpio[] = {LPM_CHANNEL0};
