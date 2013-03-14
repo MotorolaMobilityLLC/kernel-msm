@@ -118,10 +118,9 @@ static int hidp_sock_ioctl(struct socket *sock, unsigned int cmd, unsigned long 
 
 		} else {
 			BT_ERR("invalid arguments");
-			if (csock)
-				sockfd_put(csock);
-			if (isock)
-				sockfd_put(isock);
+			sockfd_put(csock);
+			sockfd_put(isock);
+			sockfd_put(asock);
 			return err;
 		}
 
