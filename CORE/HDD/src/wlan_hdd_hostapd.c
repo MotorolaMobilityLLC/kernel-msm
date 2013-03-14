@@ -1184,35 +1184,58 @@ static iw_softap_getchannel(struct net_device *dev,
 }
 
 int
-static iw_softap_set_tx_power(struct net_device *dev,
+static iw_softap_set_max_tx_power(struct net_device *dev,
                         struct iw_request_info *info,
                         union iwreq_data *wrqu, char *extra)
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
-    int cmd_len = wrqu->data.length;
-    int *value = (int *) kmalloc(cmd_len+1, GFP_KERNEL);
+    int *value = (int *)extra;
     int set_value;
     tSirMacAddr bssid = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
     tSirMacAddr selfMac = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
-    if(value == NULL)
+    if (NULL == value)
         return -ENOMEM;
 
-    if(copy_from_user((char *) value, (char*)(wrqu->data.pointer), cmd_len)) {
-        hddLog(VOS_TRACE_LEVEL_FATAL, "%s -- copy_from_user --data pointer failed! bailing",
+    set_value = value[0];
+    if (eHAL_STATUS_SUCCESS != sme_SetMaxTxPower(hHal, bssid, selfMac, set_value))
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Setting maximum tx power failed",
                 __func__);
-        kfree(value);
-        return -EFAULT;
+        return -EIO;
+    }
+
+    return 0;
+}
+
+int
+static iw_softap_set_tx_power(struct net_device *dev,
+                        struct iw_request_info *info,
+                        union iwreq_data *wrqu, char *extra)
+{
+    hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
+    v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext;
+    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
+    int *value = (int *)extra;
+    int set_value;
+    ptSapContext  pSapCtx = NULL;
+
+    if (NULL == value)
+        return -ENOMEM;
+
+    pSapCtx = VOS_GET_SAP_CB(pVosContext);
+    if (NULL == pSapCtx)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                   "%s: Invalid SAP pointer from pvosGCtx", __func__);
+        return VOS_STATUS_E_FAULT;
     }
 
     set_value = value[0];
-    kfree(value);
-
-    if( sme_SetMaxTxPower(hHal, bssid, selfMac, set_value) !=
-            eHAL_STATUS_SUCCESS )
+    if (eHAL_STATUS_SUCCESS != sme_SetTxPower(hHal, pSapCtx->sessionId, set_value))
     {
-        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Setting maximum tx power failed",
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Setting tx power failed",
                 __func__);
         return -EIO;
     }
@@ -2764,6 +2787,12 @@ static const struct iw_priv_args hostapd_private_args[] = {
         IW_PRIV_TYPE_INT| IW_PRIV_SIZE_FIXED | 1,
         0,
         "setTxPower" },
+
+    /* handlers for main ioctl */
+    {   QCSAP_IOCTL_SET_MAX_TX_POWER,
+        IW_PRIV_TYPE_INT| IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "setTxMaxPower" },
 };
 
 static const iw_handler hostapd_private[] = {
@@ -2788,6 +2817,7 @@ static const iw_handler hostapd_private[] = {
    [QCSAP_IOCTL_GET_STA_INFO - SIOCIWFIRSTPRIV] = iw_softap_get_sta_info,
    [QCSAP_IOCTL_PRIV_GET_SOFTAP_LINK_SPEED - SIOCIWFIRSTPRIV]     = iw_get_softap_linkspeed,
    [QCSAP_IOCTL_SET_TX_POWER - SIOCIWFIRSTPRIV]   = iw_softap_set_tx_power,
+   [QCSAP_IOCTL_SET_MAX_TX_POWER - SIOCIWFIRSTPRIV]   = iw_softap_set_max_tx_power,
 };
 const struct iw_handler_def hostapd_handler_def = {
    .num_standard     = sizeof(hostapd_handler) / sizeof(hostapd_handler[0]),

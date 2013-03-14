@@ -2126,6 +2126,21 @@ eHalStatus sme_SetMaxTxPower(tHalHandle hHal, tSirMacAddr pBssid,
 
 /* ---------------------------------------------------------------------------
 
+    \fn sme_SetTxPower
+
+    \brief Set Transmit Power dynamically. Note: this setting will
+    not persist over reboots.
+
+    \param  hHal
+    \param sessionId  Target Session ID
+    \param mW  power to set in mW
+    \- return eHalStatus
+
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_SetTxPower(tHalHandle hHal, v_U8_t sessionId, v_U8_t mW);
+
+/* ---------------------------------------------------------------------------
+
     \fn sme_HideSSID
 
     \brief Enable/Disables hidden SSID dynamically. Note: this setting will
