@@ -359,7 +359,6 @@ void mipi_dsi_cmd_mdp_busy(void);
 void mipi_dsi_configure_fb_divider(u32 fps_level);
 void mipi_dsi_wait4video_done(void);
 int mipi_dsi_panel_power_enable(int on);
-int mipi_dsi_panel_is_factory_mode(void);
 void mipi_dsi_regs_dump(void);
 void mipi_dsi_clear_dump_flag(void);
 
