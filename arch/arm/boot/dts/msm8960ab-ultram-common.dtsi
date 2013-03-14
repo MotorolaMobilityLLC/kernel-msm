@@ -118,10 +118,6 @@
 
 		ti,lp8556-initial-brightness = <0x3a>;
 		ti,lp8556-dev-ctrl-config = <0x84>;
-		ti,lp8556-eeprom-settings = <0x9e 0x02
-					     0xa5 0x3c
-					     0xa6 0x40
-					     0xa7 0xfc>;
 	};
 
 	/* TI drv2605 */

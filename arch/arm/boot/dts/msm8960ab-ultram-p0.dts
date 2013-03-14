@@ -54,6 +54,14 @@
 	tfa9890@34 {
 		status = "disabled";
 	};
+
+	lp8556@2c {
+		ti,lp8556-eeprom-settings = <0x9e 0x02
+					     0xa5 0x3c
+					     0xa6 0x40
+					     0xa7 0xfc>;
+	};
+
 };
 
 /* GSBI12 - I2C */
