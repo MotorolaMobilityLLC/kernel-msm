@@ -145,7 +145,6 @@ static void mot_mt_cleanup(struct motorola_sc *sc)
 {
 	int i;
 	bool data_sent = false;
-	bool btn_data_sent = false;
 	for (i = 0; i < MT_MAX_TOUCHES; i++) {
 		if (sc->touches[i].active == true) {
 			sc->touches[i].active = false;
@@ -160,8 +159,8 @@ static void mot_mt_cleanup(struct motorola_sc *sc)
 		}
 	}
 	if (data_sent == true) {
-		input_sync(sc->input);
 		input_report_key(sc->input, BTN_TOUCH, 0);
+		input_sync(sc->input);
 	}
 
 	if (sc->prev_btn_state) {
@@ -171,11 +170,8 @@ static void mot_mt_cleanup(struct motorola_sc *sc)
 			input_report_key(sc->input, BTN_RIGHT, 0);
 		if (sc->prev_btn_state & MT_MID_MASK)
 			input_report_key(sc->input, BTN_MIDDLE, 0);
-		btn_data_sent = true;
-	}
-
-	if ((data_sent == true) || (btn_data_sent == true))
 		input_sync(sc->input);
+	}
 
 	sc->prev_btn_state = MT_NO_BUTTON;
 }
@@ -184,7 +180,7 @@ static void mot_mt_cleanup(struct motorola_sc *sc)
  * from the trackpad and convey it across to the Framework layer in
  * Honeycomb or later releases.
  */
-static bool mot_mt_process_touch_input(struct motorola_sc *sc, u8 *data)
+static void mot_mt_process_touch_input(struct motorola_sc *sc, u8 *data)
 {
 	int contact_id, i, offset;
 	bool data_sent = false;
@@ -220,20 +216,17 @@ static bool mot_mt_process_touch_input(struct motorola_sc *sc, u8 *data)
 		data_sent = true;
 	}
 	if (data_sent == true) {
-		if (sc->active_touches == 0)
-			input_sync(sc->input);
 		input_report_key(sc->input, BTN_TOUCH,
 					(sc->active_touches > 0));
-		return true;
+		input_sync(sc->input);
 	}
-	return false;
 }
 
 /* mot_mt_process_btn_input : Function to process the button input
  * from the trackpad and convey it across to the Framework layer in
  * Honeycomb or later releases.
  */
-static bool mot_mt_process_btn_input(struct motorola_sc *sc, u8 *data)
+static void mot_mt_process_btn_input(struct motorola_sc *sc, u8 *data)
 {
 	int sent_btn_input = false;
 
@@ -255,9 +248,7 @@ static bool mot_mt_process_btn_input(struct motorola_sc *sc, u8 *data)
 	sc->prev_btn_state = data[1] & MT_ANY_BUTTON_MASK;
 
 	if (sent_btn_input == true)
-		return true;
-	else
-		return false;
+		input_sync(sc->input);
 }
 
 /* mot_rawevent : Function to handle the input from the HID device
@@ -281,7 +272,6 @@ static int mot_rawevent(struct hid_device *hdev, struct hid_report *report,
 		     u8 *data, int size)
 {
 	struct motorola_sc *sc = hid_get_drvdata(hdev);
-	bool touch_data_sent = false, btn_data_sent = false;
 
 	dbg_hid("%s\n", __func__);
 	if (DEBUG_MT)
@@ -321,13 +311,8 @@ static int mot_rawevent(struct hid_device *hdev, struct hid_report *report,
 			} else {
 				sc->ntouches =
 				   (size - MT_HDR_SIZE) / MT_TOUCH_SIZE;
-				touch_data_sent =
 				mot_mt_process_touch_input(sc, data);
-				btn_data_sent =
 				mot_mt_process_btn_input(sc, data);
-				if ((touch_data_sent == true) ||
-					(btn_data_sent == true))
-					input_sync(sc->input);
 				break;
 			}
 			break;
