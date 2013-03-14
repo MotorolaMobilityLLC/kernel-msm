@@ -1068,11 +1068,16 @@ static ssize_t synaptics_rmi4_f01_buildid_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	unsigned int firmware_id;
+	unsigned int config_id;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	struct synaptics_rmi4_device_info *rmi;
+
 	rmi = &(rmi4_data->rmi4_mod_info);
+
 	batohui(&firmware_id, rmi->build_id, sizeof(rmi->build_id));
-	return scnprintf(buf, PAGE_SIZE, "%x\n", firmware_id);
+	batohui(&config_id, rmi->config_id, sizeof(rmi->config_id));
+
+	return scnprintf(buf, PAGE_SIZE, "%x-%08x\n", firmware_id, config_id);
 }
 
 static ssize_t synaptics_rmi4_resume_show(struct device *dev,
