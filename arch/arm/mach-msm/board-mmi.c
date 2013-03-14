@@ -228,6 +228,19 @@ int __init board_baseband_init(char *s)
 }
 __setup("androidboot.baseband=", board_baseband_init);
 
+static int bare_board;
+int __init board_bareboard_init(char *s)
+{
+	if (!strcmp(s, "1"))
+		bare_board = 1;
+	else
+		bare_board = 0;
+
+	return 1;
+}
+__setup("bare_board=", board_bareboard_init);
+
+
 static char extended_baseband[BASEBAND_MAX_LEN+1] = "\0";
 static int __init mot_parse_atag_baseband(const struct tag *tag)
 {
@@ -238,6 +251,11 @@ static int __init mot_parse_atag_baseband(const struct tag *tag)
 	return 0;
 }
 __tagtable(ATAG_BASEBAND, mot_parse_atag_baseband);
+
+static int mmi_unit_is_bareboard(void)
+{
+	return bare_board;
+}
 
 static void __init mmi_unit_info_init(void){
 	struct mmi_unit_info *mui;
@@ -600,6 +618,7 @@ static void __init mmi_msm8960_init_early(void)
 	mmi_data.is_meter_locked = mmi_battery_data_is_meter_locked;
 	mmi_data.is_no_eprom = mmi_battery_data_is_no_eprom;
 	mmi_data.mmi_camera = true;
+	mmi_data.is_bareboard = mmi_unit_is_bareboard;
 	msm8960_oem_funcs.oem_data = &mmi_data;
 }
 
