@@ -6119,6 +6119,104 @@ void WDA_SetMaxTxPowerCallBack(WDI_SetMaxTxPowerRspMsg * pwdiSetMaxTxPowerRsp,
    
 }
 #endif
+
+/*
+ * FUNCTION: WDA_SetTxPowerCallBack
+ * send the response to PE with power value received from WDI
+ */
+void WDA_SetTxPowerCallBack(WDI_SetTxPowerRspMsg * pwdiSetMaxTxPowerRsp,
+                                             void* pUserData)
+{
+   tWDA_ReqParams    *pWdaParams = (tWDA_ReqParams *)pUserData;
+   tWDA_CbContext    *pWDA = NULL;
+   tSirSetTxPowerReq *pTxPowerParams = NULL;
+
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                                          "<------ %s ", __func__);
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0) ;
+      return ;
+   }
+   pWDA = (tWDA_CbContext *)pWdaParams->pWdaContext;
+   pTxPowerParams = (tSirSetTxPowerReq *)pWdaParams->wdaMsgParam;
+   if(NULL == pTxPowerParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                                          "%s: pTxPowerParams received NULL " ,__func__);
+      VOS_ASSERT(0);
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+      vos_mem_free(pWdaParams);
+      return ;
+   }
+
+  /*need to free memory for the pointers used in the
+    WDA Process.Set Max Tx Power Req function*/
+   vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
+   vos_mem_free(pWdaParams);
+
+  /* send response to UMAC*/
+   WDA_SendMsg(pWDA, WDA_SET_TX_POWER_RSP, pTxPowerParams , 0) ;
+   return;
+}
+
+/*
+ * FUNCTION: WDA_ProcessSetTxPowerReq
+ * Request to WDI to send set Tx Power Request
+ */
+ VOS_STATUS WDA_ProcessSetTxPowerReq(tWDA_CbContext *pWDA,
+                                          tSirSetTxPowerReq  *txPowerParams)
+{
+   WDI_Status status = WDI_STATUS_SUCCESS;
+   WDI_SetTxPowerParamsType *wdiSetTxPowerParams = NULL;
+   tWDA_ReqParams *pWdaParams = NULL;
+
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                                          "------> %s ", __func__);
+
+   wdiSetTxPowerParams = (WDI_SetTxPowerParamsType *)vos_mem_malloc(
+                                 sizeof(WDI_SetTxPowerParamsType));
+   if(NULL == wdiSetTxPowerParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __func__);
+      VOS_ASSERT(0);
+      return VOS_STATUS_E_NOMEM;
+   }
+   pWdaParams = (tWDA_ReqParams *)vos_mem_malloc(sizeof(tWDA_ReqParams)) ;
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                           "%s: VOS MEM Alloc Failure", __func__);
+      vos_mem_free(wdiSetTxPowerParams);
+      VOS_ASSERT(0);
+      return VOS_STATUS_E_NOMEM;
+   }
+   wdiSetTxPowerParams->wdiTxPowerInfo.bssIdx =
+                                              txPowerParams->bssIdx;
+   wdiSetTxPowerParams->wdiTxPowerInfo.ucPower =
+                                              txPowerParams->mwPower;
+   wdiSetTxPowerParams->wdiReqStatusCB = NULL ;
+   pWdaParams->pWdaContext = pWDA;
+   pWdaParams->wdaMsgParam = (void *)txPowerParams ;
+   /* store Params pass it to WDI */
+   pWdaParams->wdaWdiApiMsgParam = (void *)wdiSetTxPowerParams ;
+   status = WDI_SetTxPowerReq(wdiSetTxPowerParams,
+                       (WDA_SetTxPowerRspCb)WDA_SetTxPowerCallBack, pWdaParams);
+   if(IS_WDI_STATUS_FAILURE(status))
+   {
+      VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                "Failure in SET TX Power REQ Params WDI API, free all the memory ");
+      vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
+      vos_mem_free(pWdaParams);
+      /* send response to UMAC*/
+      WDA_SendMsg(pWDA, WDA_SET_TX_POWER_RSP, txPowerParams , 0) ;
+   }
+   return CONVERT_WDI2VOS_STATUS(status);
+}
+
 /*
  * FUNCTION: WDA_SetP2PGONOAReqParamsCallback
  *  Free the memory. No need to send any response to PE in this case
@@ -9991,6 +10089,12 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          break;
       }
 #endif
+      case WDA_SET_TX_POWER_REQ:
+      {
+         WDA_ProcessSetTxPowerReq(pWDA,
+                                       (tSirSetTxPowerReq *)pMsg->bodyptr);
+         break;
+      }
       case WDA_SET_P2P_GO_NOA_REQ:
       {
          WDA_ProcessSetP2PGONOAReq(pWDA,

@@ -576,27 +576,50 @@ state,tSirMacAddr bssId, tSirMacAddr selfMacAddr, int ft, tpPESession psessionEn
 \param   tpSirSetTxPowerReq  request message
 \return  None
   -----------------------------------------------------------*/
-tSirRetStatus limSendSetTxPowerReq(tpAniSirGlobal pMac,  tpSirSetTxPowerReq pTxPowerReq)
+tSirRetStatus limSendSetTxPowerReq(tpAniSirGlobal pMac,  tANI_U32 *pMsgBuf)
 {
-    tSirRetStatus  retCode = eSIR_SUCCESS;
-    tSirMsgQ       msgQ;
-    if (NULL == pTxPowerReq)
-        return retCode;
+    tSirSetTxPowerReq   *txPowerReq;
+    tSirRetStatus        retCode = eSIR_SUCCESS;
+    tSirMsgQ             msgQ;
+    tpPESession          psessionEntry;
+    tANI_U8              sessionId = 0;
+
+    if (NULL == pMsgBuf)
+        return eSIR_FAILURE;
+
+    palAllocateMemory(pMac->hHdd, (void **)&txPowerReq, sizeof(tSirSetTxPowerReq));
+    if (NULL == txPowerReq)
+    {
+        return eSIR_FAILURE;
+    }
+    palCopyMemory(pMac->hHdd, txPowerReq, (tSirSetTxPowerReq *)pMsgBuf, sizeof(tSirSetTxPowerReq));
+
+    /* Found corresponding seesion to find BSS IDX */
+    psessionEntry = peFindSessionByBssid(pMac, txPowerReq->bssId, &sessionId);
+    if (NULL == psessionEntry)
+    {
+        palFreeMemory(pMac->hHdd, (tANI_U8 *) txPowerReq);
+        limLog(pMac, LOGE, FL("Session does not exist for given BSSID"));
+        return eSIR_FAILURE;
+    }
+
+    /* FW API requests BSS IDX */
+    txPowerReq->bssIdx = psessionEntry->bssIdx;
+
     msgQ.type = WDA_SET_TX_POWER_REQ;
     msgQ.reserved = 0;
-    msgQ.bodyptr = pTxPowerReq;
+    msgQ.bodyptr = txPowerReq;
     msgQ.bodyval = 0;
-    PELOGW(limLog(pMac, LOGW, FL( "Sending WDA_SET_TX_POWER_REQ to WDA"));)
+    PELOGW(limLog(pMac, LOGW, FL("Sending WDA_SET_TX_POWER_REQ to WDA"));)
     MTRACE(macTraceMsgTx(pMac, NO_SESSION, msgQ.type));
-    if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
+    retCode = wdaPostCtrlMsg(pMac, &msgQ);
+    if (eSIR_SUCCESS != retCode)
     {
-        limLog( pMac, LOGP, FL("Posting WDA_SET_TX_POWER_REQ to WDA failed, reason=%X"), retCode );
-        if (NULL != pTxPowerReq)
-        {
-            palFreeMemory( pMac->hHdd, (tANI_U8 *) pTxPowerReq);
-        }
+        limLog(pMac, LOGP, FL("Posting WDA_SET_TX_POWER_REQ to WDA failed, reason=%X"), retCode);
+        palFreeMemory(pMac->hHdd, (tANI_U8 *) txPowerReq);
         return retCode;
     }
+
     return retCode;
 }
 /** ---------------------------------------------------------
