@@ -110,9 +110,9 @@ when        who    what, where, why
  SoftAP = 12 - 1(Self STa) - 1(Bcast Sta) = 10 Stations. */
  
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
-#define WDI_MAX_SUPPORTED_STAS    38 
+#define WDI_MAX_SUPPORTED_STAS   41
 #else
-#define WDI_MAX_SUPPORTED_STAS    12 
+#define WDI_MAX_SUPPORTED_STAS   12
 #endif
 #define WDI_MAX_SUPPORTED_BSS     5 
 

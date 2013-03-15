@@ -308,7 +308,7 @@ typedef struct
    TX_TIMER trafficStatsTimer ;
 }tWdaTimers ;
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
-#define WDA_MAX_STA    (38)
+#define WDA_MAX_STA    (41)
 #else
 #define WDA_MAX_STA    (16)
 #endif
