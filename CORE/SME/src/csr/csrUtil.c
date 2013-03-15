@@ -3003,7 +3003,8 @@ eHalStatus csrValidateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
                                                          pMac->roam.roamSession[sessionId].bssParams.beaconInterval);
                                smsLog(pMac, LOG1, FL(" Peer AP BI : %d, new Beacon Interval: %d\n"),*beaconInterval,new_beaconInterval );
                                //Update the becon Interval
-                               if(*beaconInterval != new_beaconInterval )
+                               if( new_beaconInterval !=
+                                     pMac->roam.roamSession[sessionId].bssParams.beaconInterval )
                                {
                                    //Update the beaconInterval now
                                    smsLog(pMac, LOG1, FL(" Beacon Interval got changed\n"));
