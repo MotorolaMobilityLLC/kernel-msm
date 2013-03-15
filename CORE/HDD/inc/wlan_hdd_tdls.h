@@ -59,9 +59,10 @@ typedef struct
 } tdls_config_params_t;
 
 typedef enum {
-    eTDLS_SUPPORT_DISABLED = 0,
-    eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY,
-    eTDLS_SUPPORT_ENABLED,
+    eTDLS_SUPPORT_NOT_ENABLED = 0,
+    eTDLS_SUPPORT_DISABLED, /* suppress implicit trigger and not respond to the peer */
+    eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY, /* suppress implicit trigger, but respond to the peer */
+    eTDLS_SUPPORT_ENABLED, /* implicit trigger */
 } eTDLSSupportMode;
 
 typedef enum eTDLSCapType{
@@ -148,6 +149,8 @@ hddTdlsPeer_t *wlan_hdd_tdls_find_peer(hdd_adapter_t *pAdapter, u8 *mac);
 
 hddTdlsPeer_t *wlan_hdd_tdls_get_peer(hdd_adapter_t *pAdapter, u8 *mac);
 
+void wlan_hdd_tdls_set_cap(hdd_adapter_t *pAdapter, u8* mac, tTDLSCapType cap);
+
 void wlan_hdd_tdls_set_peer_link_status(hddTdlsPeer_t *curr_peer, tTDLSLinkStatus status);
 
 void wlan_hdd_tdls_set_link_status(hdd_adapter_t *pAdapter, u8* mac, tTDLSLinkStatus status);
@@ -183,5 +186,7 @@ void wlan_hdd_tdls_decrement_peer_count(hdd_adapter_t *pAdapter);
 void wlan_hdd_tdls_check_bmps(hdd_adapter_t *pAdapter);
 
 u8 wlan_hdd_tdls_is_progress(hdd_adapter_t *pAdapter, u8* mac, u8 skip_self);
+
+void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx, eTDLSSupportMode tdls_mode);
 
 #endif // __HDD_TDSL_H

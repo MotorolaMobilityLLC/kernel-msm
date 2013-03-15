@@ -943,6 +943,7 @@ struct hdd_context_s
 
 #ifdef FEATURE_WLAN_TDLS
     eTDLSSupportMode tdls_mode;
+    eTDLSSupportMode tdls_mode_last;
     tdlsConnInfo_t tdlsConnInfo[HDD_MAX_NUM_TDLS_STA];
     /* TDLS peer connected count */
     tANI_U16 connected_peer_count;
