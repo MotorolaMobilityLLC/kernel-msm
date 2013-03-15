@@ -3675,11 +3675,12 @@ tANI_BOOLEAN csrGetRSNInformation( tHalHandle hHal, tCsrAuthList *pAuthType, eCs
         }
         if ( Capabilities )
         {
-            Capabilities->PreAuthSupported = pRSNIe->preauth;
-            Capabilities->NoPairwise = pRSNIe->no_pwise;
-            Capabilities->PTKSAReplayCounter = pRSNIe->PTKSA_replay_counter;
-            Capabilities->GTKSAReplayCounter = pRSNIe->GTKSA_replay_counter;
-            Capabilities->Reserved = pRSNIe->reserved;
+            Capabilities->PreAuthSupported = (pRSNIe->RSN_Cap[0] >> 0) & 0x1 ; // Bit 0 PreAuthentication
+            Capabilities->NoPairwise = (pRSNIe->RSN_Cap[0] >> 1) & 0x1 ; // Bit 1 No Pairwise
+            Capabilities->PTKSAReplayCounter = (pRSNIe->RSN_Cap[0] >> 2) & 0x3 ; // Bit 2, 3 PTKSA Replay Counter
+            Capabilities->GTKSAReplayCounter = (pRSNIe->RSN_Cap[0] >> 4) & 0x3 ; // Bit 4,5 GTKSA Replay Counter
+            Capabilities->Reserved = (pRSNIe->RSN_Cap[0] >> 6) & 0x3 ; // remaining reserved
+            Capabilities->Reserved = (Capabilities->Reserved >> 2) | (pRSNIe->RSN_Cap[1]  & 0xff) ; // remaining reserved
         }
     }
     return( fAcceptableCyphers );
