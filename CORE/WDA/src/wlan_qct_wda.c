@@ -9065,7 +9065,7 @@ void WDA_GTKOffloadReqCallback( WDI_GtkOffloadRspParams  *pwdiGtkOffloadRsparams
 VOS_STATUS WDA_ProcessGTKOffloadReq(tWDA_CbContext *pWDA, 
                                     tpSirGtkOffloadParams pGtkOffloadParams)
 {
-   VOS_STATUS status = VOS_STATUS_SUCCESS;
+   WDI_Status status = WDI_STATUS_E_FAILURE;
    WDI_GtkOffloadReqMsg *wdiGtkOffloadReqMsg = 
       (WDI_GtkOffloadReqMsg *)vos_mem_malloc(
          sizeof(WDI_GtkOffloadReqMsg)) ;
@@ -9097,7 +9097,7 @@ VOS_STATUS WDA_ProcessGTKOffloadReq(tWDA_CbContext *pWDA,
    //
 
    vos_mem_copy(wdiGtkOffloadReqMsg->gtkOffloadReqParams.bssId,
-             pGtkOffloadParams->bssId, sizeof(wpt_macAddr))
+             pGtkOffloadParams->bssId, sizeof (wpt_macAddr));
 
    wdiGtkOffloadReqMsg->gtkOffloadReqParams.ulFlags = pGtkOffloadParams->ulFlags;
    // Copy KCK
@@ -9110,8 +9110,6 @@ VOS_STATUS WDA_ProcessGTKOffloadReq(tWDA_CbContext *pWDA,
 
    wdiGtkOffloadReqMsg->wdiReqStatusCB = NULL;
 
-   VOS_ASSERT((NULL == pWDA->wdaMsgParam) && 
-              (NULL == pWDA->wdaWdiApiMsgParam));
 
    /* Store Params pass it to WDI */
    pWdaParams->wdaWdiApiMsgParam = (void *)wdiGtkOffloadReqMsg;
@@ -9144,7 +9142,6 @@ void WDA_GtkOffloadGetInfoCallback( WDI_GtkOffloadGetInfoRspParams *pwdiGtkOfflo
    tWDA_CbContext *pWDA;
    tpSirGtkOffloadGetInfoRspParams pGtkOffloadGetInfoReq;
    tpSirGtkOffloadGetInfoRspParams pGtkOffloadGetInfoRsp = vos_mem_malloc(sizeof(tpSirGtkOffloadGetInfoRspParams)) ;
-   tANI_U8 i;
    vos_msg_t vosMsg;
 
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
@@ -9167,8 +9164,10 @@ void WDA_GtkOffloadGetInfoCallback( WDI_GtkOffloadGetInfoRspParams *pwdiGtkOfflo
    pGtkOffloadGetInfoRsp->ulTotalRekeyCount   = pwdiGtkOffloadGetInfoRsparams->ulTotalRekeyCount;
    pGtkOffloadGetInfoRsp->ulGTKRekeyCount     = pwdiGtkOffloadGetInfoRsparams->ulGTKRekeyCount;
    pGtkOffloadGetInfoRsp->ulIGTKRekeyCount    = pwdiGtkOffloadGetInfoRsparams->ulIGTKRekeyCount;
-   pGtkOffloadGetInfoRsp->bssIdx              = pwdiGtkOffloadGetInfoRsparams->bssIdx;
 
+   vos_mem_copy( pGtkOffloadGetInfoRsp->bssId,
+                       pwdiGtkOffloadGetInfoRsparams->bssId,
+                       sizeof (wpt_macAddr));
    /* VOS message wrapper */
    vosMsg.type = eWNI_PMC_GTK_OFFLOAD_GETINFO_RSP;
    vosMsg.bodyptr = (void *)pGtkOffloadGetInfoRsp;
@@ -9356,7 +9355,7 @@ VOS_STATUS WDA_HALDumpCmdReq(tpAniSirGlobal   pMac, tANI_U32  cmd,
 VOS_STATUS WDA_ProcessGTKOffloadGetInfoReq(tWDA_CbContext *pWDA, 
                                            tpSirGtkOffloadGetInfoRspParams pGtkOffloadGetInfoRsp)
 {
-   VOS_STATUS status = VOS_STATUS_SUCCESS;
+   WDI_Status status = WDI_STATUS_E_FAILURE;
    WDI_GtkOffloadGetInfoReqMsg *pwdiGtkOffloadGetInfoReqMsg = 
       (WDI_GtkOffloadGetInfoReqMsg *)vos_mem_malloc(sizeof(WDI_GtkOffloadGetInfoReqMsg));
    tWDA_ReqParams *pWdaParams ;
@@ -9381,9 +9380,6 @@ VOS_STATUS WDA_ProcessGTKOffloadGetInfoReq(tWDA_CbContext *pWDA,
 
    pwdiGtkOffloadGetInfoReqMsg->wdiReqStatusCB = NULL;
 
-   VOS_ASSERT((NULL == pWDA->wdaMsgParam) && 
-              (NULL == pWDA->wdaWdiApiMsgParam));
-
    /* Store Params pass it to WDI */
    pWdaParams->wdaWdiApiMsgParam = (void *)pwdiGtkOffloadGetInfoReqMsg;
    pWdaParams->pWdaContext = pWDA;
@@ -9391,7 +9387,7 @@ VOS_STATUS WDA_ProcessGTKOffloadGetInfoReq(tWDA_CbContext *pWDA,
    pWdaParams->wdaMsgParam = pGtkOffloadGetInfoRsp;
 
    vos_mem_copy(pwdiGtkOffloadGetInfoReqMsg->WDI_GtkOffloadGetInfoReqParams.bssId,
-             pGtkOffloadGetInfoRsp->bssId, sizeof(wpt_macAddr))
+             pGtkOffloadGetInfoRsp->bssId, sizeof (wpt_macAddr));
 
    status = WDI_GTKOffloadGetInfoReq(pwdiGtkOffloadGetInfoReqMsg, (WDI_GtkOffloadGetInfoCb)WDA_GtkOffloadGetInfoCallback, pWdaParams);
 

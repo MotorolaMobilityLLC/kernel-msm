@@ -25339,7 +25339,7 @@ WDI_GTKOffloadReq
   void*                      pUserData
 )
 {
-   WDI_EventInfoType      wdiEventData = {0};
+   WDI_EventInfoType      wdiEventData;
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
    /*------------------------------------------------------------------------
@@ -25400,7 +25400,7 @@ WDI_GTKOffloadGetInfoReq
   void*                          pUserData
 )
 {
-   WDI_EventInfoType      wdiEventData = {0};
+   WDI_EventInfoType      wdiEventData;
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
    /*------------------------------------------------------------------------
@@ -25572,7 +25572,7 @@ WDI_ProcessGTKOffloadGetInfoReq
    if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx, WDI_GTK_OFFLOAD_GETINFO_REQ, 
                          sizeof(halGtkOffloadGetInfoReqParams),
                          &pSendBuffer, &usDataOffset, &usSendSize))||
-       ( usSendSize < ( usDataOffset + sizeof(halGtkOffloadGetInfoReqParams)))
+       ( usSendSize < ( usDataOffset + sizeof(halGtkOffloadGetInfoReqParams))))
    {
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
                   "Unable to get send buffer in WDI_ProcessGTKOffloadGetInfoReq() %x %x %x",
@@ -25662,7 +25662,7 @@ WDI_ProcessGtkOffloadRsp
                    sizeof(halGtkOffloadRspParams));
 
        wdiGtkOffloadRsparams.ulStatus =   
-                       WDI_HAL_2_WDI_STATUS(halGtkOffloadRspParams.status);
+                       WDI_HAL_2_WDI_STATUS(halGtkOffloadRspParams.ulStatus);
        wdiGtkOffloadRsparams.bssIdx =   
                        halGtkOffloadRspParams.bssIdx;
    }
@@ -25698,6 +25698,7 @@ WDI_ProcessGTKOffloadGetInfoRsp
    WDI_GtkOffloadGetInfoCb   wdiGtkOffloadGetInfoCb = NULL;
    tHalGtkOffloadGetInfoRspParams halGtkOffloadGetInfoRspParams;
    WDI_GtkOffloadGetInfoRspParams wdiGtkOffloadGetInfoRsparams;
+   WDI_BSSSessionType*              pBSSSes = NULL;
 
    /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
@@ -25725,7 +25726,7 @@ WDI_ProcessGTKOffloadGetInfoRsp
                    sizeof(halGtkOffloadGetInfoRspParams));
 
        wdiGtkOffloadGetInfoRsparams.ulStatus =   
-                       WDI_HAL_2_WDI_STATUS(halGtkOffloadGetInfoRspParams.status);
+                       WDI_HAL_2_WDI_STATUS(halGtkOffloadGetInfoRspParams.ulStatus);
        wdiGtkOffloadGetInfoRsparams.ullKeyReplayCounter = 
                        halGtkOffloadGetInfoRspParams.ullKeyReplayCounter;
        wdiGtkOffloadGetInfoRsparams.ulTotalRekeyCount = 
@@ -25734,8 +25735,23 @@ WDI_ProcessGTKOffloadGetInfoRsp
                        halGtkOffloadGetInfoRspParams.ulGTKRekeyCount;
        wdiGtkOffloadGetInfoRsparams.ulIGTKRekeyCount = 
                        halGtkOffloadGetInfoRspParams.ulIGTKRekeyCount;
-       wdiGtkOffloadGetInfoRsparams.bssIdx =   
-                      halGtkOffloadGetInfoRspParams.bssIdx;
+
+       wpalMutexAcquire(&pWDICtx->wptMutex);
+       WDI_FindAssocSessionByBSSIdx(pWDICtx, halGtkOffloadGetInfoRspParams.bssIdx,
+                       &pBSSSes);
+
+       if ( NULL == pBSSSes )
+       {
+           WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                    "Association sequence for this BSS does not exist or "
+                    "association no longer in progress - mysterious HAL response");
+           wpalMutexRelease(&pWDICtx->wptMutex);
+           return WDI_STATUS_E_NOT_ALLOWED;
+       }
+
+       wpalMemoryCopy(wdiGtkOffloadGetInfoRsparams.bssId, pBSSSes->macBSSID,
+                       sizeof (wpt_macAddr));
+       wpalMutexRelease(&pWDICtx->wptMutex);
     }
    else
     {

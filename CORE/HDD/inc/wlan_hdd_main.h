@@ -177,6 +177,11 @@
 /* Maximum number of interfaces allowed(STA, P2P Device, P2P Interface) */
 #define WLAN_MAX_INTERFACES 3
 
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+#define GTK_OFFLOAD_ENABLE  0
+#define GTK_OFFLOAD_DISABLE 1
+#endif
+
 typedef struct hdd_tx_rx_stats_s
 {
    // start_xmit stats
@@ -496,6 +501,13 @@ typedef enum{
     HDD_SSR_DISABLED,
 }e_hdd_ssr_required;
 
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+typedef struct
+{
+   v_BOOL_t requested;
+   tSirGtkOffloadParams gtkOffloadReqParams;
+}hddGtkOffloadParams;
+#endif
 
 struct hdd_station_ctx
 {
@@ -516,6 +528,10 @@ struct hdd_station_ctx
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
    int     ft_carrier_on;
+#endif
+
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+   hddGtkOffloadParams gtkOffloadRequestParams;
 #endif
 };
 
