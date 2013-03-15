@@ -114,9 +114,7 @@ static void __limInitScanVars(tpAniSirGlobal pMac)
 
     pMac->lim.gLimCurrentScanChannelId = 0;
     pMac->lim.gpLimMlmScanReq = NULL;
-#ifdef WLAN_FEATURE_P2P
     pMac->lim.gpLimSmeScanReq = NULL;
-#endif
     pMac->lim.gLimMlmScanResultLength = 0;
     pMac->lim.gLimSmeScanResultLength = 0;
 
@@ -721,9 +719,7 @@ limInitialize(tpAniSirGlobal pMac)
     limFTOpen(pMac);
 #endif
 
-#ifdef WLAN_FEATURE_P2P
     vos_list_init(&pMac->lim.gLimMgmtFrameRegistratinQueue);
-#endif    
 
 #if 0
 
@@ -802,7 +798,6 @@ limCleanup(tpAniSirGlobal pMac)
     VOS_STATUS retStatus;
 #endif
 
-#ifdef WLAN_FEATURE_P2P
 //Before destroying the list making sure all the nodes have been deleted.
 //Which should be the normal case, but a memory leak has been reported.
 
@@ -818,7 +813,6 @@ limCleanup(tpAniSirGlobal pMac)
     }
 
     vos_list_destroy(&pMac->lim.gLimMgmtFrameRegistratinQueue);
-#endif
 
     limCleanupMlm(pMac);
     limCleanupLmm(pMac);
@@ -892,13 +886,11 @@ limCleanup(tpAniSirGlobal pMac)
         pMac->lim.gpLimMlmRemoveKeyReq = NULL;
     }
 
-#ifdef WLAN_FEATURE_P2P
     if (pMac->lim.gpLimSmeScanReq != NULL)
     {
         palFreeMemory(pMac->hHdd, pMac->lim.gpLimSmeScanReq);
         pMac->lim.gpLimSmeScanReq = NULL;
     }
-#endif
 
     if (pMac->lim.gpLimMlmScanReq != NULL)
     {

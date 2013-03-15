@@ -2097,10 +2097,8 @@ limAddSta(
     tSirRetStatus     retCode = eSIR_SUCCESS;
     tSirMacAddr     staMac, *pStaAddr;
     tANI_U8 i;
-#ifdef WLAN_FEATURE_P2P
     tpSirAssocReq   pAssocReq;
     tANI_U8  *p2pIe = NULL;
-#endif
     #if 0
     retCode = wlan_cfgGetStr(pMac, WNI_CFG_STA_ID, staMac, &cfg);
     if (retCode != eSIR_SUCCESS)
@@ -2250,14 +2248,12 @@ limAddSta(
 
     if (psessionEntry->parsedAssocReq != NULL)
     {
-#ifdef WLAN_FEATURE_P2P
     // Get a copy of the already parsed Assoc Request
        pAssocReq = (tpSirAssocReq) psessionEntry->parsedAssocReq[pStaDs->assocId];
        if ( pAssocReq && pAssocReq->addIEPresent && pAssocReq->addIE.length ) {
            p2pIe = limGetP2pIEPtr(pMac, pAssocReq->addIE.addIEdata, pAssocReq->addIE.length);
        }
        pAddStaParams->p2pCapableSta = (p2pIe != NULL);
-#endif
     }
 
     //Disable BA. It will be set as part of ADDBA negotiation.
@@ -2614,12 +2610,10 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
        limLog(pMac, LOGP, FL("Couldn't get LISTEN_INTERVAL\n"));
     pAddStaParams->listenInterval = (tANI_U16)listenInterval;
 
-#ifdef WLAN_FEATURE_P2P
     if (VOS_P2P_CLIENT_MODE == psessionEntry->pePersona)
     {
         pAddStaParams->p2pCapableSta = 1;       
     }
-#endif
 
     limFillSupportedRatesInfo(pMac, NULL, &pAddStaParams->supportedRates,psessionEntry);
 
@@ -2847,13 +2841,11 @@ limCheckAndAnnounceJoinSuccess(tpAniSirGlobal pMac,
 {
     tSirMacSSid          currentSSID;
     tLimMlmJoinCnf       mlmJoinCnf;
-#ifdef WLAN_FEATURE_P2P
     tANI_U32             val = 0;
     tANI_U32             *noa1DurationFromBcn = NULL;
     tANI_U32             *noa2DurationFromBcn = NULL;
     tANI_U32             noa;
     tANI_U32             TotalNum_NoADesc = 0;
-#endif
 
     palCopyMemory( pMac->hHdd, currentSSID.ssId,
                        psessionEntry->ssId.ssId,
@@ -2891,7 +2883,6 @@ limCheckAndAnnounceJoinSuccess(tpAniSirGlobal pMac,
         // Deactivate Periodic Join timer
         limDeactivateAndChangeTimer(pMac, eLIM_PERIODIC_JOIN_PROBE_REQ_TIMER);
 
-#ifdef WLAN_FEATURE_P2P
     if (VOS_P2P_CLIENT_MODE == psessionEntry->pePersona &&
                                    pBPR->P2PProbeRes.NoticeOfAbsence.present)
     {
@@ -2925,7 +2916,6 @@ limCheckAndAnnounceJoinSuccess(tpAniSirGlobal pMac,
     {
         psessionEntry->defaultAuthFailureTimeout = 0;
     }
-#endif
 
         // Update Beacon Interval at CFG database
 
@@ -3346,12 +3336,10 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
 
     pAddBssParams->halPersona = (tANI_U8)psessionEntry->pePersona; //update persona
 
-#ifdef WLAN_FEATURE_P2P
     if (VOS_P2P_CLIENT_MODE == psessionEntry->pePersona)
     {
         pAddBssParams->staContext.p2pCapableSta = 1;       
     }
-#endif
 
     pAddBssParams->bSpectrumMgtEnabled = psessionEntry->spectrumMgtEnabled || 
         limIsconnectedOnDFSChannel(bssDescription->channelId);

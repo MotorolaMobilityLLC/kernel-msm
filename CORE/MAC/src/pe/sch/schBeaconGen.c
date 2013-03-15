@@ -77,7 +77,6 @@
 const tANI_U8 P2pOui[] = {0x50, 0x6F, 0x9A, 0x9};
 
 
-#if defined(WLAN_FEATURE_P2P)
 tSirRetStatus schGetP2pIeOffset(tANI_U8 *pExtraIe, tANI_U32 extraIeLen, tANI_U16 *pP2pIeOffset)
 {
     tSirRetStatus status = eSIR_FAILURE;   
@@ -107,7 +106,6 @@ tSirRetStatus schGetP2pIeOffset(tANI_U8 *pExtraIe, tANI_U32 extraIeLen, tANI_U16
 
      return status;
 }
-#endif
 
 tSirRetStatus schAppendAddnIE(tpAniSirGlobal pMac, tpPESession psessionEntry,
                                      tANI_U8 *pFrame, tANI_U32 maxBeaconSize,
@@ -141,7 +139,6 @@ tSirRetStatus schAppendAddnIE(tpAniSirGlobal pMac, tpPESession psessionEntry,
                           WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA, &addIE[0], &len))
                           == eSIR_SUCCESS)
             {
-#ifdef WLAN_FEATURE_P2P
                 tANI_U8* pP2pIe = limGetP2pIEPtr(pMac, &addIE[0], len);
                 if(pP2pIe != NULL)
                 {
@@ -165,7 +162,6 @@ tSirRetStatus schAppendAddnIE(tpAniSirGlobal pMac, tpPESession psessionEntry,
                         }
                     }
                 }
-#endif
                 vos_mem_copy(pFrame, &addIE[0], len);
                 *nBytes = *nBytes + len;
             }
@@ -203,13 +199,11 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     tANI_U32        i, nStatus, nBytes;
     tANI_U32        wpsApEnable=0, tmp;
     tDot11fIEWscProbeRes      *pWscProbeRes;
-#ifdef WLAN_FEATURE_P2P
     tANI_U8  *pExtraIe = NULL;
     tANI_U32 extraIeLen =0;
     tANI_U16 extraIeOffset = 0;
     tANI_U16 p2pIeOffset = 0;
     tSirRetStatus status = eSIR_SUCCESS;
-#endif
 
     status = palAllocateMemory(pMac->hHdd, (void **)&pBcn1, sizeof(tDot11fBeacon1));
     if(status != eSIR_SUCCESS)
@@ -461,10 +455,8 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
                              "t11fBeacon2 (0x%08x.).\n"), nStatus );
     }
 
-#if defined(WLAN_FEATURE_P2P)
     pExtraIe = pMac->sch.schObject.gSchBeaconFrameEnd + nBytes;
     extraIeOffset = nBytes;
-#endif
 
     //TODO: Append additional IE here.
     schAppendAddnIE(pMac, psessionEntry, 
@@ -473,7 +465,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
 
     pMac->sch.schObject.gSchBeaconOffsetEnd = ( tANI_U16 )nBytes;
 
-#if defined(WLAN_FEATURE_P2P)
     extraIeLen = nBytes - extraIeOffset;
 
     //Get the p2p Ie Offset
@@ -490,7 +481,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     {
        pMac->sch.schObject.p2pIeOffset = 0;
     }
-#endif
 
     schLog( pMac, LOG1, FL("Initialized beacon end, offset %d\n"),
             pMac->sch.schObject.gSchBeaconOffsetEnd );
