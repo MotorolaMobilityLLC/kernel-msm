@@ -3961,4 +3961,23 @@ tANI_BOOLEAN csrNeighborRoamScanRspPending (tHalHandle hHal)
     return (pMac->roam.neighborRoamInfo.scanRspPending);
 }
 
+/* ---------------------------------------------------------------------------
+    \brief  This function returns TRUE if STA is in the middle of roaming states
+
+    \param  halHandle - The handle from HDD context.
+
+    \return boolean
+
+---------------------------------------------------------------------------*/
+tANI_BOOLEAN csrNeighborMiddleOfRoaming (tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+    tANI_BOOLEAN val = (eCSR_NEIGHBOR_ROAM_STATE_REASSOCIATING == pMac->roam.neighborRoamInfo.neighborRoamState) ||
+                       (eCSR_NEIGHBOR_ROAM_STATE_PREAUTHENTICATING == pMac->roam.neighborRoamInfo.neighborRoamState) ||
+                       (eCSR_NEIGHBOR_ROAM_STATE_PREAUTH_DONE == pMac->roam.neighborRoamInfo.neighborRoamState) ||
+                       (eCSR_NEIGHBOR_ROAM_STATE_REPORT_SCAN == pMac->roam.neighborRoamInfo.neighborRoamState) ||
+                       (eCSR_NEIGHBOR_ROAM_STATE_CFG_CHAN_LIST_SCAN == pMac->roam.neighborRoamInfo.neighborRoamState);
+    return (val);
+}
+
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */
