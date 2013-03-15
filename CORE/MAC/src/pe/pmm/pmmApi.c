@@ -437,6 +437,14 @@ void pmmInitBmpsPwrSave(tpAniSirGlobal pMac)
     {
         pmmLog(pMac, LOGE, FL("Fail to send Beacon Filter Info \n"));
     }
+#else
+    if(!IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)
+    {
+        if (limSendBeaconFilterInfo(pMac, psessionEntry) != eSIR_SUCCESS)
+        {
+            pmmLog(pMac, LOGE, FL("Fail to send Beacon Filter Info \n"));
+        }
+    }
 #endif
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT 
