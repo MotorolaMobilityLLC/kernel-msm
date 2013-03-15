@@ -68,7 +68,7 @@ static ssize_t concat(synaptics_rmi4_f54, _##propname##_show)(\
 		char *buf);\
 \
 struct device_attribute dev_attr_##propname =\
-		__ATTR(propname, S_IRUGO,\
+		__ATTR(propname, S_IRUSR | S_IRGRP,\
 		concat(synaptics_rmi4_f54, _##propname##_show),\
 		synaptics_rmi4_store_error);
 
@@ -79,7 +79,7 @@ static ssize_t concat(synaptics_rmi4_f54, _##propname##_store)(\
 		const char *buf, size_t count);\
 \
 struct device_attribute dev_attr_##propname =\
-		__ATTR(propname, S_IWUGO,\
+		__ATTR(propname, S_IWUSR | S_IWGRP,\
 		synaptics_rmi4_show_error,\
 		concat(synaptics_rmi4_f54, _##propname##_store));
 
@@ -95,7 +95,7 @@ static ssize_t concat(synaptics_rmi4_f54, _##propname##_store)(\
 		const char *buf, size_t count);\
 \
 struct device_attribute dev_attr_##propname =\
-		__ATTR(propname, (S_IRUGO | S_IWUGO),\
+		__ATTR(propname, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),\
 		concat(synaptics_rmi4_f54, _##propname##_show),\
 		concat(synaptics_rmi4_f54, _##propname##_store));
 
@@ -2022,7 +2022,7 @@ static int synaptics_rmi4_f54_set_sysfs(void)
 	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
 
 	f54->attr_dir = kobject_create_and_add("f54",
-			&rmi4_data->input_dev->dev.kobj);
+			&rmi4_data->i2c_client->dev.kobj);
 	if (!f54->attr_dir) {
 		dev_err(&rmi4_data->i2c_client->dev,
 			"%s: Failed to create sysfs directory\n",
