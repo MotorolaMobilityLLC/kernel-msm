@@ -87,19 +87,19 @@ static struct bin_attribute attr_data = {
 };
 
 static struct device_attribute attrs[] = {
-	__ATTR(open, S_IWUGO,
+	__ATTR(open, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			rmidev_sysfs_open_store),
-	__ATTR(release, S_IWUGO,
+	__ATTR(release, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			rmidev_sysfs_release_store),
-	__ATTR(address, S_IWUGO,
+	__ATTR(address, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			rmidev_sysfs_address_store),
-	__ATTR(length, S_IWUGO,
+	__ATTR(length, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			rmidev_sysfs_length_store),
-	__ATTR(attn_state, S_IRUGO,
+	__ATTR(attn_state, S_IRUSR | S_IRGRP,
 			rmidev_sysfs_attn_state_show,
 			synaptics_rmi4_store_error),
 };
@@ -620,21 +620,21 @@ static int rmidev_init_device(struct synaptics_rmi4_data *rmi4_data)
 				"%s: Failed to export attention gpio\n",
 				__func__);
 	} else {
-		retval = gpio_export_link(&(rmi4_data->input_dev->dev),
+		retval = gpio_export_link(&(rmi4_data->i2c_client->dev),
 				"attn", rmi4_data->board->irq_gpio);
 		if (retval < 0) {
-			dev_err(&rmi4_data->input_dev->dev,
+			dev_err(&rmi4_data->i2c_client->dev,
 					"%s Failed to create gpio symlink\n",
 					__func__);
 		} else {
-			dev_dbg(&rmi4_data->input_dev->dev,
+			dev_dbg(&rmi4_data->i2c_client->dev,
 					"%s: Exported attention gpio %d\n",
 					__func__, rmi4_data->board->irq_gpio);
 		}
 	}
 
 	rmidev->sysfs_dir = kobject_create_and_add("rmidev",
-			&rmi4_data->input_dev->dev.kobj);
+			&rmi4_data->i2c_client->dev.kobj);
 	if (!rmidev->sysfs_dir) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Failed to create sysfs directory\n",
@@ -655,7 +655,7 @@ static int rmidev_init_device(struct synaptics_rmi4_data *rmi4_data)
 		retval = sysfs_create_file(rmidev->sysfs_dir,
 				&attrs[attr_count].attr);
 		if (retval < 0) {
-			dev_err(&rmi4_data->input_dev->dev,
+			dev_err(&rmi4_data->i2c_client->dev,
 					"%s: Failed to create sysfs attributes\n",
 					__func__);
 			retval = -ENODEV;
