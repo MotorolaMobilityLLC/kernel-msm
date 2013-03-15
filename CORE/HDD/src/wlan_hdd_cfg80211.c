@@ -71,7 +71,6 @@
               Ganesh K       
   ==========================================================================*/
 
-#ifdef CONFIG_CFG80211
 
 #include <linux/version.h>
 #include <linux/module.h>
@@ -2176,9 +2175,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
         if (!old)
             return -ENOENT;
 
-#ifdef CONFIG_CFG80211
         hdd_cleanup_actionframe(pHddCtx, pAdapter);
-#endif
 
         mutex_lock(&pHddCtx->sap_lock);
         if(test_bit(SOFTAP_BSS_STARTED, &pAdapter->event_flags))
@@ -6977,4 +6974,3 @@ static struct cfg80211_ops wlan_hdd_cfg80211_ops =
 #endif
 };
 
-#endif // CONFIG_CFG80211

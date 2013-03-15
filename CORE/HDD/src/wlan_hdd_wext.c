@@ -103,10 +103,8 @@
 #include "wlan_hdd_packet_filtering.h"
 #endif
 
-#ifdef CONFIG_CFG80211
 #include <linux/wireless.h>
 #include <net/cfg80211.h>
-#endif
 #include "wlan_qct_pal_trace.h"
 
 #include "wlan_hdd_misc.h"
@@ -918,9 +916,7 @@ static int iw_set_mode(struct net_device *dev,
     eCsrRoamBssType          LastBSSType;
     eMib_dot11DesiredBssType connectedBssType;
     hdd_config_t             *pConfig;
-#ifdef CONFIG_CFG80211
     struct wireless_dev      *wdev;
-#endif
 
     ENTER();
 
@@ -943,9 +939,7 @@ static int iw_set_mode(struct net_device *dev,
         return -EINVAL;
     }
 
-#ifdef CONFIG_CFG80211
     wdev = dev->ieee80211_ptr;
-#endif
     pRoamProfile = &pWextState->roamProfile;
     LastBSSType = pRoamProfile->BSSType;
 
@@ -959,16 +953,12 @@ static int iw_set_mode(struct net_device *dev,
         // Set the phymode correctly for IBSS.
         pConfig  = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini;
         pWextState->roamProfile.phyMode = hdd_cfg_xlate_to_csr_phy_mode(pConfig->dot11Mode);
-#ifdef CONFIG_CFG80211
         wdev->iftype = NL80211_IFTYPE_ADHOC;
-#endif
         break;
     case IW_MODE_INFRA:
         hddLog( LOG1, "%s Setting AP Mode as IW_MODE_INFRA", __func__);
         pRoamProfile->BSSType = eCSR_BSS_TYPE_INFRASTRUCTURE;
-#ifdef CONFIG_CFG80211
         wdev->iftype = NL80211_IFTYPE_STATION;
-#endif
         break;
     case IW_MODE_AUTO:
         hddLog(LOG1,"%s Setting AP Mode as IW_MODE_AUTO", __func__);
@@ -5993,9 +5983,7 @@ int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr)
                         __func__, band);
              return -EINVAL;
         }
-#ifdef CONFIG_CFG80211
         wlan_hdd_cfg80211_update_band(pHddCtx->wiphy, (eCsrBand)band);
-#endif
     }
     return 0;
 }
