@@ -707,6 +707,9 @@ struct hdd_adapter_s
    /* Completion variable for remain on channel ready */
    struct completion rem_on_chan_ready_event;
 
+   /* Completion variable for Upper Layer Authentication */
+   struct completion ula_complete;
+
 #ifdef FEATURE_WLAN_TDLS
    struct completion tdls_add_station_comp;
    struct completion tdls_mgmt_comp;
