@@ -3159,7 +3159,6 @@ eHalStatus pmcSetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pGtkOffload,
 {
     tpSirGtkOffloadParams pRequestBuf;
     vos_msg_t msg;
-    int i;
     tpAniSirGlobal   pMac = PMAC_STRUCT(hHal);
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
 
@@ -3226,7 +3225,8 @@ eHalStatus pmcGetGTKOffload(tHalHandle hHal, GTKOffloadGetInfoCallback callbackR
         return eHAL_STATUS_FAILURE;
     }
 
-    pRequestBuf = (tpSirGtkOffloadParams)vos_mem_malloc(sizeof(tSirGtkOffloadParams));
+    pRequestBuf = (tpSirGtkOffloadGetInfoRspParams)
+                        vos_mem_malloc(sizeof (tSirGtkOffloadGetInfoRspParams));
     if (NULL == pRequestBuf)
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to allocate "

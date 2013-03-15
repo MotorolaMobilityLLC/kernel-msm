@@ -4878,6 +4878,16 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
             }
         }
 #endif /* FEATURE_WLAN_WAPI */
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+        /* Initializing gtkOffloadRequestParams */
+        if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+            (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
+        {
+            pHddStaCtx->gtkOffloadRequestParams.requested = FALSE;
+            memset(&pHddStaCtx->gtkOffloadRequestParams.gtkOffloadReqParams,
+                 0, sizeof (tSirGtkOffloadParams));
+        }
+#endif
         pRoamProfile->csrPersona = pAdapter->device_mode;
 
         if( operatingChannel )
@@ -7216,6 +7226,140 @@ int wlan_hdd_cfg80211_send_tdls_discover_req(struct wiphy *wiphy,
 }
 #endif
 
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+/*
+ * FUNCTION: wlan_hdd_cfg80211_update_replayCounterCallback
+ * Callback rountine called upon receiving response for
+ * get offload info
+ */
+void wlan_hdd_cfg80211_update_replayCounterCallback(void *callbackContext,
+                            tpSirGtkOffloadGetInfoRspParams pGtkOffloadGetInfoRsp)
+{
+
+    hdd_adapter_t *pAdapter = (hdd_adapter_t *)callbackContext;
+
+    ENTER();
+
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s: HDD adapter is Null", __func__);
+        return ;
+    }
+
+    if (NULL == pGtkOffloadGetInfoRsp)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: pGtkOffloadGetInfoRsp is Null", __func__);
+        return ;
+    }
+
+    if (VOS_STATUS_SUCCESS != pGtkOffloadGetInfoRsp->ulStatus)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: wlan Failed to get replay counter value",
+                __func__);
+        return ;
+    }
+
+    /* Update replay counter to NL */
+    cfg80211_gtk_rekey_notify(pAdapter->dev, pGtkOffloadGetInfoRsp->bssId,
+          (tANI_U8 *)&pGtkOffloadGetInfoRsp->ullKeyReplayCounter, GFP_KERNEL);
+}
+
+/*
+ * FUNCTION: wlan_hdd_cfg80211_set_rekey_data
+ * This function is used to offload GTK rekeying job to the firmware.
+ */
+int wlan_hdd_cfg80211_set_rekey_data(struct wiphy *wiphy, struct net_device *dev,
+                                     struct cfg80211_gtk_rekey_data *data)
+{
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+    hdd_context_t *pHddCtx = wiphy_priv(wiphy);
+    hdd_station_ctx_t *pHddStaCtx;
+    tHalHandle hHal;
+    tpSirGtkOffloadParams pGtkOffloadReqParams;
+    eHalStatus status = eHAL_STATUS_FAILURE;
+
+    ENTER();
+
+    if (NULL == pAdapter)
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                   "%s: HDD adapter is Null", __func__);
+        return -ENODEV;
+    }
+
+    if (NULL == pHddCtx)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: HDD context is Null!!!", __func__);
+        return -ENODEV;
+    }
+
+    if (pHddCtx->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                "%s: LOGP in Progress. Ignore!!!", __func__);
+        return -EAGAIN;
+    }
+
+    if (pHddCtx->isLoadUnloadInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
+                  "%s: Unloading/Loading in Progress. Ignore!!!", __func__);
+        return -EAGAIN;
+    }
+
+    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+    if (NULL == hHal)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s: HAL context  is Null!!!", __func__);
+        return -EAGAIN;
+    }
+
+    pGtkOffloadReqParams =
+          &pHddStaCtx->gtkOffloadRequestParams.gtkOffloadReqParams;
+
+    pGtkOffloadReqParams->ulFlags = GTK_OFFLOAD_ENABLE;
+    memcpy(pGtkOffloadReqParams->aKCK, data->kck, NL80211_KCK_LEN);
+    memcpy(pGtkOffloadReqParams->aKEK, data->kek, NL80211_KEK_LEN);
+    memcpy(pGtkOffloadReqParams->bssId, &pHddStaCtx->conn_info.bssId,
+          WNI_CFG_BSSID_LEN);
+    memcpy(&pGtkOffloadReqParams->ullKeyReplayCounter, &data->replay_ctr,
+          sizeof (tANI_U64));
+
+    if (TRUE == pHddCtx->hdd_wlan_suspended)
+    {
+        /* if wlan is suspended, enable GTK offload directly from here */
+        status = sme_SetGTKOffload(hHal, pGtkOffloadReqParams,
+                       pAdapter->sessionId);
+
+        if (eHAL_STATUS_SUCCESS != status)
+        {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    "%s: sme_SetGTKOffload failed, returned %d",
+                    __func__, status);
+            return status;
+        }
+        pHddStaCtx->gtkOffloadRequestParams.requested = FALSE;
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                "%s: sme_SetGTKOffload successfull", __func__);
+    }
+    else
+    {
+        pHddStaCtx->gtkOffloadRequestParams.requested = TRUE;
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                "%s: wlan not suspended GTKOffload request is stored",
+                __func__);
+        return eHAL_STATUS_SUCCESS;
+    }
+    return status;
+}
+#endif /*WLAN_FEATURE_GTK_OFFLOAD*/
+
 /* cfg80211_ops */
 static struct cfg80211_ops wlan_hdd_cfg80211_ops = 
 {
@@ -7272,5 +7416,8 @@ static struct cfg80211_ops wlan_hdd_cfg80211_ops =
      .tdls_mgmt = wlan_hdd_cfg80211_tdls_mgmt,
      .tdls_oper = wlan_hdd_cfg80211_tdls_oper,
 #endif
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+     .set_rekey_data = wlan_hdd_cfg80211_set_rekey_data,
+#endif /* WLAN_FEATURE_GTK_OFFLOAD */
 };
 

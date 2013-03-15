@@ -159,6 +159,10 @@ extern v_VOID_t hdd_connSetConnectionState( hdd_station_ctx_t *pHddStaCtx,
 int wlan_hdd_cfg80211_send_tdls_discover_req(struct wiphy *wiphy,
                             struct net_device *dev, u8 *peer);
 #endif
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+extern void wlan_hdd_cfg80211_update_replayCounterCallback(void *callbackContext,
+                            tpSirGtkOffloadGetInfoRspParams pGtkOffloadGetInfoRsp);
+#endif
 
 
 #endif
