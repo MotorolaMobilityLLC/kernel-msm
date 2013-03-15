@@ -224,10 +224,8 @@ typedef enum
 #define WPS_OUI_TYPE   "\x00\x50\xf2\x04"
 #define WPS_OUI_TYPE_SIZE  4
  
-#ifdef WLAN_FEATURE_P2P
 #define P2P_OUI_TYPE   "\x50\x6f\x9a\x09"
 #define P2P_OUI_TYPE_SIZE  4
-#endif
 
 #define HS20_OUI_TYPE   "\x50\x6f\x9a\x10"
 #define HS20_OUI_TYPE_SIZE  4
@@ -322,10 +320,8 @@ typedef struct ccp_freq_chan_map_s{
 #define wlan_hdd_get_wps_ie_ptr(ie, ie_len) \
     wlan_hdd_get_vendor_oui_ie_ptr(WPS_OUI_TYPE, WPS_OUI_TYPE_SIZE, ie, ie_len)
 
-#ifdef WLAN_FEATURE_P2P
 #define wlan_hdd_get_p2p_ie_ptr(ie, ie_len) \
     wlan_hdd_get_vendor_oui_ie_ptr(P2P_OUI_TYPE, P2P_OUI_TYPE_SIZE, ie, ie_len)
-#endif
 
 #ifdef WLAN_FEATURE_WFD
 #define wlan_hdd_get_wfd_ie_ptr(ie, ie_len) \

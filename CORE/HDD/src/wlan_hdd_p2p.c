@@ -118,7 +118,6 @@ static void hdd_sendMgmtFrameOverMonitorIface( hdd_adapter_t *pMonAdapter,
                                                tANI_U8* pbFrames,
                                                tANI_U8 frameType );
 
-#ifdef WLAN_FEATURE_P2P
 eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
                                                 eHalStatus status )
 {
@@ -1113,7 +1112,6 @@ int hdd_setP2pPs( struct net_device *dev, void *msgData )
     sme_p2pSetPs(hHal, &NoA);
     return status;
 }
-#endif
 
 static tANI_U8 wlan_hdd_get_session_type( enum nl80211_iftype type )
 {
