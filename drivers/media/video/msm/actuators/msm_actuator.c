@@ -13,10 +13,10 @@
 #include <linux/module.h>
 #include "msm_actuator.h"
 
+#define ACT_STOP_POS            10
 
 #ifdef CONFIG_SEKONIX_LENS_ACT
 #define CHECK_ACT_WRITE_COUNT
-#define ACT_STOP_POS            10
 #define ACT_MIN_MOVE_RANGE      200
 #define ACT_POSTURE_MARGIN      100
 extern uint8_t imx111_afcalib_data[4];
