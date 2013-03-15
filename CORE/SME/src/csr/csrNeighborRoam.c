@@ -2990,6 +2990,10 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
     /* We are about to start a fresh scan cycle, 
      * purge non-P2P results from the past */
     csrScanFlushSelectiveResult(pMac, VOS_FALSE);
+
+    /* We are about to start a fresh scan cycle,
+     * purge failed pre-auth results from the past */
+    csrNeighborRoamPurgePreauthFailedList(pMac);
     
     /* Transition to CFG_CHAN_LIST_SCAN_STATE */
     CSR_NEIGHBOR_ROAM_STATE_TRANSITION(eCSR_NEIGHBOR_ROAM_STATE_CFG_CHAN_LIST_SCAN)
