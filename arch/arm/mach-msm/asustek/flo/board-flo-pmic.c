@@ -399,47 +399,61 @@ static int apq8064_pm8921_therm_mitigation[] = {
 
 #define MAX_VOLTAGE_MV          4200
 #define CHG_TERM_MA		100
+#define MAX_BATT_CHG_I_MA	900
+#define WARM_BATT_CHG_I_MA	400
+#define VBATDET_DELTA_MV	50
+#define EOC_CHECK_SOC	1
+
 static struct pm8921_charger_platform_data
 apq8064_pm8921_chg_pdata __devinitdata = {
-	.update_time		= 60000,
-	.max_voltage		= MAX_VOLTAGE_MV,
-	.min_voltage		= 3200,
-	.uvd_thresh_voltage	= 4050,
-	.alarm_low_mv		= 3400,
-	.alarm_high_mv		= 4000,
-	.resume_voltage_delta	= 60,
-	.resume_charge_percent	= 99,
-	.term_current		= CHG_TERM_MA,
-	.cool_temp		= 10,
-	.warm_temp		= 45,
-	.temp_check_period	= 1,
-	.max_bat_chg_current	= 1100,
-	.cool_bat_chg_current	= 350,
-	.warm_bat_chg_current	= 350,
-	.cool_bat_voltage	= 4100,
-	.warm_bat_voltage	= 4100,
-	.thermal_mitigation	= apq8064_pm8921_therm_mitigation,
-	.thermal_levels		= ARRAY_SIZE(apq8064_pm8921_therm_mitigation),
+	.safety_time  = 512,
+	.update_time  = 60000,
+	.max_voltage  = MAX_VOLTAGE_MV,
+	.min_voltage  = 3200,
+	.alarm_voltage  = 3500,
+	.resume_voltage_delta  = VBATDET_DELTA_MV,
+	.term_current  = CHG_TERM_MA,
+
+	.cool_temp  = INT_MIN,
+	.warm_temp  = INT_MIN,
+	.cool_bat_chg_current  = 350,
+	.warm_bat_chg_current  = WARM_BATT_CHG_I_MA,
+	.cold_thr  = 1,
+	.hot_thr  = 0,
+	.ext_batt_temp_monitor  = 1,
+	.temp_check_period  = 1,
+	.max_bat_chg_current  = MAX_BATT_CHG_I_MA,
+	.cool_bat_voltage  = 4100,
+	.warm_bat_voltage  = 4100,
+	.thermal_mitigation  = apq8064_pm8921_therm_mitigation,
+	.thermal_levels  = ARRAY_SIZE(apq8064_pm8921_therm_mitigation),
+	.led_src_config  = LED_SRC_5V,
+	.rconn_mohm	 = 37,
+	.eoc_check_soc  = EOC_CHECK_SOC,
 };
+
 
 static struct pm8xxx_ccadc_platform_data
 apq8064_pm8xxx_ccadc_pdata = {
-	.r_sense_uohm		= 10000,
+	.r_sense		= 10,
 	.calib_delay_ms		= 600000,
 };
 
 static struct pm8921_bms_platform_data
 apq8064_pm8921_bms_pdata __devinitdata = {
 	.battery_type			= BATT_UNKNOWN,
-	.r_sense_uohm			= 10000,
+	.r_sense			= 10,
 	.v_cutoff			= 3400,
 	.max_voltage_uv			= MAX_VOLTAGE_MV * 1000,
 	.rconn_mohm			= 18,
 	.shutdown_soc_valid_limit	= 20,
 	.adjust_soc_low_threshold	= 25,
 	.chg_term_ua			= CHG_TERM_MA * 1000,
-	.normal_voltage_calc_ms 	= 20000,
-	.low_voltage_calc_ms		= 1000,
+	.eoc_check_soc			= EOC_CHECK_SOC,
+	.bms_support_wlc		= 1,
+	.wlc_term_ua			= CHG_TERM_MA * 1000,
+	.wlc_max_voltage_uv		= 4290000,
+	.first_fixed_iavg_ma		= 500,
 };
 
 static struct pm8921_platform_data
@@ -519,6 +533,4 @@ void __init apq8064_init_pmic(void)
 	} else if (machine_is_apq8064_cdp()) {
 		apq8064_pm8921_chg_pdata.has_dc_supply = true;
 	}
-
-	apq8064_pm8921_chg_pdata.battery_less_hardware = 1;
 }
