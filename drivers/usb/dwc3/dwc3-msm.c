@@ -2516,6 +2516,18 @@ static int __devinit dwc3_msm_probe(struct platform_device *pdev)
 		goto put_pdev;
 	}
 
+	if (!of_property_read_u32(node, "qcom,dwc-usb3-msm-adc-low-threshold",
+					&adc_low_threshold)) {
+		dev_info(&pdev->dev,
+			"Read platform data for adc low threshold\n");
+	}
+
+	if (!of_property_read_u32(node, "qcom,dwc-usb3-msm-adc-high-threshold",
+					&adc_high_threshold)) {
+		dev_info(&pdev->dev,
+			"Read platform data for adc high threshold\n");
+	}
+
 	msm->usb_psy.name = "usb";
 	msm->usb_psy.type = POWER_SUPPLY_TYPE_USB;
 	msm->usb_psy.supplied_to = dwc3_msm_pm_power_supplied_to;
