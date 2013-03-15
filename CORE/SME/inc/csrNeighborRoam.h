@@ -246,8 +246,6 @@ VOS_STATUS csrNeighborRoamChannelsFilterByCurrentBand(
                       int*      pMergedOutputNumOfChannels
                       );
 
-
-
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */
 
 #endif /* CSR_NEIGHBOR_ROAM_H */
