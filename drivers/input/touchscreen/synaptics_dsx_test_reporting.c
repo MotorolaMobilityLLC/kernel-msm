@@ -1994,25 +1994,22 @@ static ssize_t synaptics_rmi4_f54_data_read(struct file *data_file,
 
 	mutex_lock(&f54->data_mutex);
 
-	if (count < f54->report_size) {
-		dev_err(&rmi4_data->i2c_client->dev,
-				"%s: Report type %d data size (%d) too large\n",
-				__func__, f54->report_type, f54->report_size);
-		mutex_unlock(&f54->data_mutex);
-		return -EINVAL;
-	}
-
-	if (f54->report_data) {
-		memcpy(buf, f54->report_data, f54->report_size);
-		mutex_unlock(&f54->data_mutex);
-		return f54->report_size;
-	} else {
+	if (!f54->report_data || !f54->report_size) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Report type %d data not available\n",
 				__func__, f54->report_type);
 		mutex_unlock(&f54->data_mutex);
 		return -EINVAL;
 	}
+	if (pos > f54->report_size || pos < 0) {
+		mutex_unlock(&f54->data_mutex);
+		return 0;
+	}
+
+	count = min_t(loff_t, count, f54->report_size - pos);
+	memcpy(buf, f54->report_data + pos, count);
+	mutex_unlock(&f54->data_mutex);
+	return count;
 }
 
 static int synaptics_rmi4_f54_set_sysfs(void)
