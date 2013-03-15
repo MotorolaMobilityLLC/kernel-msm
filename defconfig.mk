@@ -3,9 +3,17 @@ LJAPDEFCONFIGSRC		:= ${DEFCONFIGSRC}/ext_config
 PRODUCT_SPECIFIC_DEFCONFIGS	:= $(DEFCONFIGSRC)/$(KERNEL_DEFCONFIG)
 TARGET_DEFCONFIG		:= $(KERNEL_OUT)/mapphone_defconfig
 
+ifneq ($(KERNEL_EXTRA_CONFIG),)
+PRODUCT_SPECIFIC_DEFCONFIGS += $(LJAPDEFCONFIGSRC)/$(KERNEL_EXTRA_CONFIG).config
+endif
+
 # build eng kernel for eng and userdebug Android variants
 ifneq ($(TARGET_BUILD_VARIANT), user)
 PRODUCT_SPECIFIC_DEFCONFIGS += ${LJAPDEFCONFIGSRC}/eng_bld.config
+
+ifneq ($(KERNEL_EXTRA_CONFIG),)
+PRODUCT_SPECIFIC_DEFCONFIGS += $(LJAPDEFCONFIGSRC)/eng_bld-$(KERNEL_EXTRA_CONFIG).config
+endif
 endif
 
 define do-make-defconfig
