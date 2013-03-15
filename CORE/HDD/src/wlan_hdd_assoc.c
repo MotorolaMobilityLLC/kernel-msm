@@ -1589,11 +1589,6 @@ static eHalStatus hdd_RoamSetKeyCompleteHandler( hdd_adapter_t *pAdapter, tCsrRo
    // then go to 'authenticated'.  For all other authentication types (those that do 
    // not require upper layer authentication) we can put TL directly into 'authenticated'
    // state.
-#ifdef FEATURE_WLAN_TDLS
-   VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
-              "%s: roamResult %d romInfo->fAuthRequired %d StaId %d staType %d", __func__,
-              roamStatus, pRoamInfo->fAuthRequired, pRoamInfo->staId, pRoamInfo->staType);
-#endif
 
    fConnected = hdd_connGetConnectedCipherAlgo( pHddStaCtx, &connectedCipherAlgo );
    if( fConnected )
