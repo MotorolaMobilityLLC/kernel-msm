@@ -629,6 +629,9 @@
 #define SIR_MAC_CLEAR_CAPABILITY(u16value, bitname) \
   ((u16value) &= (~(SIR_MAC_SET_##bitname(0))))
 
+#define IS_WES_MODE_ENABLED(x) \
+                    ((x)->roam.configParam.isWESModeEnabled)
+
 /// Status Code (present in Management response frames) enum
 
 typedef enum eSirMacStatusCodes
@@ -2327,6 +2330,14 @@ typedef __ani_attr_pre_packed struct sSirMacActionFrameHdr
     tANI_U8    category;
     tANI_U8    actionID;
 } __ani_attr_packed tSirMacActionFrameHdr, *tpSirMacActionFrameHdr;
+
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+typedef __ani_attr_pre_packed struct sSirMacVendorSpecificFrameHdr
+{
+    tANI_U8    category;
+    tANI_U8    Oui[4];
+} __ani_attr_packed tSirMacVendorSpecificFrameHdr, *tpSirMacVendorSpecificFrameHdr;
+#endif
 
 typedef __ani_attr_pre_packed struct sSirMacVendorSpecificPublicActionFrameHdr
 {

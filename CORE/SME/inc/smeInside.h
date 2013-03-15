@@ -308,9 +308,10 @@ eHalStatus csrTdlsTeardownReq(tHalHandle hHal, tANI_U8 sessionId,
 #endif /* FEATURE_WLAN_TDLS */
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
-eHalStatus csrFlushAndCreateBgScanRoamChannelList(tpAniSirGlobal pMac,
-                                                  const tANI_U8 *pChannelList,
-                                                  const tANI_U8 numChannels);
+eHalStatus csrFlushBgScanRoamChannelList(tpAniSirGlobal pMac);
+eHalStatus csrCreateBgScanRoamChannelList(tpAniSirGlobal pMac,
+                                            const tANI_U8 *pChannelList,
+                                            const tANI_U8 numChannels);
 eHalStatus csrUpdateBgScanConfigIniChannelList(tpAniSirGlobal pMac, eCsrBand eBand);
 eHalStatus csrInitCountryValidChannelList(tpAniSirGlobal pMac, tANI_U8 revision);
 void csr_SetRevision(tpAniSirGlobal pMac, tANI_U8 revision);
