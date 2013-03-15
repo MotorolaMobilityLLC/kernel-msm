@@ -1591,7 +1591,48 @@ VOS_STATUS vos_nv_write( VNV_TYPE type, v_VOID_t *inputVoidBuffer,
    }
    return status;
 }
-  
+
+VOS_STATUS vos_nv_get5GChannelListWithPower(tChannelListWithPower *channels20MHz /*[NUM_LEGIT_RF_CHANNELS] */,
+                                          tANI_U8 *num20MHzChannelsFound,
+                                          tChannelListWithPower *channels40MHz /*[NUM_CHAN_BOND_CHANNELS] */,
+                                          tANI_U8 *num40MHzChannelsFound
+                                          )
+{
+    VOS_STATUS status = VOS_STATUS_SUCCESS;
+    int i, count;
+
+
+    if ( channels20MHz && num20MHzChannelsFound )
+    {
+        count = 0;
+        for ( i = RF_CHAN_36; i <= RF_CHAN_165; i++ )
+        {
+            if ( regChannels[i].enabled )
+            {
+                channels20MHz[count].chanId = rfChannels[i].channelNum;
+                channels20MHz[count++].pwr  = regChannels[i].pwrLimit;
+            }
+        }
+        *num20MHzChannelsFound = (tANI_U8)count;
+    }
+
+    if ( channels40MHz && num40MHzChannelsFound )
+    {
+        count = 0;
+        //center channels for 5 Ghz 40 MHz channels
+        for ( i = RF_CHAN_BOND_38; i <= RF_CHAN_BOND_163; i++ )
+        {
+            if ( regChannels[i].enabled )
+            {
+                channels40MHz[count].chanId = rfChannels[i].channelNum;
+                channels40MHz[count++].pwr  = regChannels[i].pwrLimit;
+            }
+        }
+        *num40MHzChannelsFound = (tANI_U8)count;
+    }
+    return status;
+}
+
 /**------------------------------------------------------------------------
   \brief vos_nv_getChannelListWithPower() - function to return the list of
           supported channels with the power limit info too.
