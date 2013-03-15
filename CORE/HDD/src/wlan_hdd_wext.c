@@ -942,20 +942,27 @@ void hdd_clearRoamProfileIe( hdd_adapter_t *pAdapter)
 void wlan_hdd_ula_done_cb(v_VOID_t *callbackContext)
 {
     hdd_adapter_t *pAdapter = (hdd_adapter_t*)callbackContext;
-    hdd_wext_state_t *pWextState= WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
 
-    complete(&pWextState->completion_var);
+    if (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Invalid pAdapter magic", __func__);
+    }
+    else
+    {
+        complete(&pAdapter->ula_complete);
+    }
 }
 
 VOS_STATUS wlan_hdd_check_ula_done(hdd_adapter_t *pAdapter)
 {
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
-    hdd_wext_state_t  *pWextState =  WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
     VOS_STATUS vos_status;
+    unsigned long rc;
 
     if (VOS_FALSE == pHddStaCtx->conn_info.uIsAuthenticated)
     {
-        INIT_COMPLETION(pWextState->completion_var);
+        INIT_COMPLETION(pAdapter->ula_complete);
 
         /*To avoid race condition between the set key and the last EAPOL
           packet, notify TL to finish upper layer authentication incase if the
@@ -971,8 +978,16 @@ VOS_STATUS wlan_hdd_check_ula_done(hdd_adapter_t *pAdapter)
 
         }
 
-        wait_for_completion_timeout(&pWextState->completion_var,
+        rc = wait_for_completion_timeout(&pAdapter->ula_complete,
                                     msecs_to_jiffies(HDD_FINISH_ULA_TIME_OUT));
+        if (0 == rc)
+        {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                      "%s: Timeout waiting for ULA to complete", __func__);
+            /* we'll still fall through and return success since the
+             * connection may still get established but is just taking
+             * too long for us to wait */
+        }
     }
     return VOS_STATUS_SUCCESS;
 }
