@@ -18,6 +18,14 @@
 
 	mmi,product = "mmi,msm8960ab-ultram";
 
+	rpm_regulators: qcom,rpm-regulators {
+		compatible = "qcom,msm-rpm-regulators";
+
+		rpm_8921_l11: 8921_l11 {
+			always_on = <0>;
+		};
+	};
+
 	/* GSBI3 - I2C Touch Bus */
 	i2c@16200000 {
 		status = "okay";
@@ -44,7 +52,6 @@
 			/* Display's regulators and regulator gpio en  */
 			num_disp_reg = <4>;
 
-			/* Display's VCI reg which shared same gpio_en as VDDIO */
 			reg_id_1 = "disp_vci";
 			reg_name_1 = "TOUCH_VDD";
 			reg_min_mv_1 = <3100000>;
@@ -62,9 +69,8 @@
 			reg_gpio_en_init_state_2 = <1>;
 			reg_gpio_en_state_2 = <1>;
 			reg_gpio_en_delay_2 = <0>;
-			reg_gpio_dis_delay_2 =<0>;
+			reg_gpio_dis_delay_2 =<6>; /* min 5ms */
 
-			/* Display's VCI reg which shared same gpio_en as VDDIO */
 			reg_id_3 = "";
 			reg_name_3 = "DISP_VSP";
 			reg_gpio_en_3 = <13>;
