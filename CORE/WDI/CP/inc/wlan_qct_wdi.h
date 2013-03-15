@@ -387,10 +387,8 @@ typedef enum
   /* Tx PER Tracking Indication */
   WDI_TX_PER_HIT_IND,
 
-#ifdef WLAN_FEATURE_P2P
   /* P2P_NOA_Start_Indication */
   WDI_P2P_NOA_START_IND,
-#endif
 
   WDI_MAX_IND
 }WDI_LowLevelIndEnumType;
@@ -518,7 +516,6 @@ typedef struct
 } WDI_PrefNetworkFoundInd;
 #endif // FEATURE_WLAN_SCAN_PNO
 
-#ifdef WLAN_FEATURE_P2P
 /*---------------------------------------------------------------------------
  *WDI_P2pNoaAttrIndType
  *-------------------------------------------------------------------------*/
@@ -552,7 +549,6 @@ typedef struct
   wpt_uint32      bssIdx;
 }WDI_P2pNoaStartIndType;
 
-#endif
 
 #ifdef WLAN_WAKEUP_EVENTS
 /*---------------------------------------------------------------------------
@@ -614,11 +610,9 @@ typedef struct
     /* Tx Complete Indication */
     wpt_uint32                  tx_complete_status;
 
-#ifdef WLAN_FEATURE_P2P
     /* P2P NOA ATTR Indication */
     WDI_P2pNoaAttrIndType        wdiP2pNoaAttrInfo;
     WDI_P2pNoaStartIndType       wdiP2pNoaStartInfo;
-#endif
 
 
 #ifdef FEATURE_WLAN_SCAN_PNO
@@ -2552,10 +2546,8 @@ typedef struct {
    /* TIM IE offset from the beginning of the template.*/
    wpt_uint32   timIeOffset; 
 
-#ifdef WLAN_FEATURE_P2P
    /* P2P IE offset from the beginning of the template */
    wpt_uint16   usP2PIeOffset;
-#endif
 } WDI_SendBeaconParamsInfoType;
 
 /*---------------------------------------------------------------------------
@@ -2599,9 +2591,7 @@ typedef enum
     WDI_LINK_FINISH_SCAN_STATE       = 11,
     WDI_LINK_INIT_CAL_STATE          = 12,
     WDI_LINK_FINISH_CAL_STATE        = 13,
-#ifdef WLAN_FEATURE_P2P
     WDI_LINK_LISTEN_STATE            = 14,
-#endif
     WDI_LINK_MAX                     = 0x7FFFFFFF
 } WDI_LinkStateType;
 
@@ -2935,7 +2925,6 @@ typedef struct
  
 }WDI_SetMaxTxPowerRspMsg;
 
-#ifdef WLAN_FEATURE_P2P
 typedef struct
 {
   wpt_uint8   ucOpp_ps;
@@ -2964,7 +2953,6 @@ typedef struct
     function pointer will be called */
   void*             pUserData;
 }WDI_SetP2PGONOAReqParamsType;
-#endif
 
 
 /*---------------------------------------------------------------------------
@@ -5455,7 +5443,6 @@ typedef void (*WDA_SetMaxTxPowerRspCb)(WDI_SetMaxTxPowerRspMsg *wdiSetMaxTxPower
 typedef void  (*WDI_UpdateProbeRspTemplateRspCb)(WDI_Status   wdiStatus,
                                                void*        pUserData);
 
-#ifdef WLAN_FEATURE_P2P
 /*---------------------------------------------------------------------------
    WDI_SetP2PGONOAReqParamsRspCb
  
@@ -5477,7 +5464,6 @@ typedef void  (*WDI_UpdateProbeRspTemplateRspCb)(WDI_Status   wdiStatus,
 ---------------------------------------------------------------------------*/
 typedef void  (*WDI_SetP2PGONOAReqParamsRspCb)(WDI_Status   wdiStatus,
                                 void*        pUserData);
-#endif
 
 
 /*---------------------------------------------------------------------------
@@ -7455,7 +7441,6 @@ WDI_UpdateProbeRspTemplateReq
   void*                                  pUserData
 );
 
-#ifdef WLAN_FEATURE_P2P
 /**
  @brief WDI_SetP2PGONOAReq will be called when the 
         upper MAC wants to send Notice of Absence
@@ -7487,7 +7472,6 @@ WDI_SetP2PGONOAReq
   WDI_SetP2PGONOAReqParamsRspCb    wdiP2PGONOAReqParamsRspCb,
   void*                            pUserData
 );
-#endif
 
 
 /*======================================================================== 
