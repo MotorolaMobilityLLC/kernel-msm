@@ -3391,6 +3391,13 @@ int mdp4_overlay_wait4vsync(struct fb_info *info)
 int mdp4_overlay_vsync_ctrl(struct fb_info *info, int enable)
 {
 	int cmd;
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+
+	if (mfd == NULL)
+		return -ENODEV;
+
+	if (!mfd->panel_power_on)
+		return -EINVAL;
 
 	if (enable)
 		cmd = 1;
