@@ -1854,6 +1854,7 @@ static struct mdm_platform_data sglte2_qsc_platform_data = {
 	.no_powerdown_after_ramdumps = 1,
 	.image_upgrade_supported = 1,
 	.no_a2m_errfatal_on_ssr = 1,
+	.no_reset_on_first_powerup = 1,
 };
 
 static struct tsens_platform_data apq_tsens_pdata  = {
