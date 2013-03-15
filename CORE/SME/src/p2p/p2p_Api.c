@@ -39,13 +39,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * Copyright (c) 2008 QUALCOMM Incorporated. All Rights Reserved.
- * Qualcomm Confidential and Proprietary 
- */
-
-#if defined WLAN_FEATURE_P2P
-
 #include "sme_Api.h"
 #include "smsDebug.h"
 #include "csrInsideApi.h"
@@ -2271,4 +2264,3 @@ eHalStatus p2pProcessNoAReq(tpAniSirGlobal pMac, tSmeCmd *pNoACmd)
 
 
 
-#endif //WLAN_FEATURE_P2P
