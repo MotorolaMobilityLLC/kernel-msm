@@ -59,6 +59,8 @@
 
 struct touch_platform_data {
 	u32             max_id;
+	u32             max_major;
+	u32             max_pres;
 	u32             x_max;
 	u32             y_max;
 	u32             lcd_x;
@@ -90,10 +92,12 @@ struct synaptics_ts_fw_info {
 };
 
 struct t_data {
-	u16             id;
+	u16             state;
 	u16             x_position;
 	u16             y_position;
-	u8              status;
+	u16             width_major;
+        u16             width_minor;
+	u16             pressure;
 };
 
 struct finger_data {
@@ -110,7 +114,6 @@ struct touch_data {
 	u8              state;
 	u8              palm;
 	struct t_data   curr_data[MAX_FINGER];
-	struct t_data   prev_data[MAX_FINGER];
 };
 
 struct touch_device_driver {
@@ -190,9 +193,17 @@ enum{
 	UNDER_DOWNLOADING,
 };
 
-enum{
-	FINGER_RELEASED	= 0,
-	FINGER_PRESSED	= 1,
+enum {
+	DO_NOT_ANYTHING = 0,
+	ABS_PRESS,
+	ABS_RELEASE,
+};
+
+enum {
+	FINGER_STATE_NO_PRESENT = 0,
+	FINGER_STATE_PRESENT_VALID,
+	FINGER_STATE_PRESENT_NOVALID,
+	FINGER_STATE_RESERVED
 };
 
 enum{
@@ -225,7 +236,7 @@ enum{
 };
 
 enum{
-	WORK_POST_COMPLATE = 0,
+	WORK_POST_COMPLETE = 0,
 	WORK_POST_OUT,
 	WORK_POST_ERR_RETRY,
 	WORK_POST_ERR_CIRTICAL,

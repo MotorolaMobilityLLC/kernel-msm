@@ -151,28 +151,15 @@ static struct workqueue_struct *synaptics_wq;
 	(((u16)(((_high_reg) << 4) & 0x0FF0) | (u16)((_low_reg) & 0x0F)))
 #define TS_SNTS_GET_Y_POSITION(_high_reg, _low_reg) \
 	(((u16)(((_high_reg) << 4) & 0x0FF0) | (u16)(((_low_reg) >> 4) & 0x0F)))
-#define TS_POS(_high, _low) \
-	(((u16)(((_high) << 8) & 0xFF00) | (u16)((_low ) & 0xFF)))
-
-/* GET_BIT_MASK & GET_INDEX_FROM_MASK
- *
- * For easily checking the user input.
- * Usually, User use only one or two fingers.
- * However, we should always check all finger-status-register
- * because we can't know the total number of fingers.
- * These Macro will prevent it.
- */
-#define GET_BIT_MASK(_f_status)	\
-	(((_f_status[2] & 0x04)<<7) | ((_f_status[2] & 0x01)<<8) | \
-	((_f_status[1] & 0x40)<<1) | ((_f_status[1] & 0x10)<<2) | \
-	((_f_status[1] & 0x04)<<3) | ((_f_status[1] & 0x01)<<4) | \
-	((_f_status[0] & 0x40)>>3) | ((_f_status[0] & 0x10)>>2) | \
-	((_f_status[0] & 0x04)>>1) | (_f_status[0] & 0x01))
-
-#define IS_FIRST_PRESS(__p) (__p.curr_data[id].status == FINGER_PRESSED && \
-			__p.prev_data[id].status == FINGER_RELEASED)
-#define IS_RELEASE(__p) (__p.curr_data[id].status == FINGER_RELEASED && \
-			__p.prev_data[id].status == FINGER_PRESSED)
+#define TS_SNTS_GET_WIDTH_MAJOR(_width) \
+	((((((_width) & 0xF0) >> 4) - ((_width) & 0x0F)) > 0) ? \
+		((_width) & 0xF0) >> 4 : (_width) & 0x0F)
+#define TS_SNTS_GET_WIDTH_MINOR(_width) \
+	((((((_width) & 0xF0) >> 4) - ((_width) & 0x0F)) > 0) ? \
+		(_width) & 0x0F : ((_width) & 0xF0) >> 4)
+#define TS_SNTS_GET_ORIENTATION(_width) \
+	((((((_width) & 0xF0) >> 4) - ((_width) & 0x0F)) >= 0) ? 0 : 1)
+#define TS_SNTS_GET_PRESSURE(_pressure) (_pressure)
 
 #define BOOTING_DELAY                   400
 #define RESET_DELAY                     20
@@ -244,14 +231,13 @@ int synaptics_t1320_power_on(struct i2c_client *client, int on)
 u32 touch_debug_mask = DEBUG_BASE_INFO;
 module_param_named(debug_mask, touch_debug_mask, int, S_IRUGO|S_IWUSR|S_IWGRP);
 
-static void check_log_finger_changed(struct synaptics_ts_data *ts, u8 total_num);
 irqreturn_t touch_irq_handler(int irq, void *dev_id);
 int touch_power_cntl(struct synaptics_ts_data *ts, int onoff);
 int touch_ic_init(struct synaptics_ts_data *ts);
 void touch_init_func(struct work_struct *work_init);
 static void safety_reset(struct synaptics_ts_data *ts);
 static void release_all_ts_event(struct synaptics_ts_data *ts);
-int synaptics_ts_get_data(struct i2c_client *client, struct touch_data* data);
+int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data);
 int synaptics_ts_power(struct i2c_client *client, int power_ctrl);
 int synaptics_init_panel(struct i2c_client *client, struct synaptics_ts_fw_info *fw_info);
 int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info *fw_info);
@@ -260,50 +246,36 @@ int get_ic_info(struct synaptics_ts_data *ts, struct synaptics_ts_fw_info *fw_in
  *
  * finger status report
  */
-int touch_asb_input_report(struct synaptics_ts_data *ts, int status)
+void touch_abs_input_report(struct synaptics_ts_data *ts)
 {
-	u16 id = 0;
-	u8 total = 0;
+	int	id;
 
-	if (status == FINGER_PRESSED) {
-		for (id = 0; id < ts->pdata->max_id; id++) {
-			if (ts->ts_data.curr_data[id].status == FINGER_PRESSED) {
-				input_report_abs(ts->input_dev,
-					ABS_MT_POSITION_X,
+	for (id = 0; id < ts->pdata->max_id; id++) {
+		if (!ts->ts_data.curr_data[id].state)
+			continue;
+
+		input_mt_slot(ts->input_dev, id);
+		input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER,
+				ts->ts_data.curr_data[id].state != ABS_RELEASE);
+
+		if (ts->ts_data.curr_data[id].state == ABS_PRESS) {
+			input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
 					ts->ts_data.curr_data[id].x_position);
-
-				input_report_abs(ts->input_dev,
-					ABS_MT_POSITION_Y,
+			input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
 					ts->ts_data.curr_data[id].y_position);
+			input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
+					ts->ts_data.curr_data[id].pressure);
 
-				TOUCH_DEBUG_MSG("finger pressed report: <%d> x[%4d] y[%4d]\n",
-					id,
-					ts->ts_data.curr_data[id].x_position,
-					ts->ts_data.curr_data[id].y_position);
-
-				total++;
-
-				if (unlikely(touch_debug_mask & DEBUG_ABS))
-					TOUCH_DEBUG_MSG("pos[%4d,%4d]\n",
-						ts->ts_data.curr_data[id].x_position,
-						ts->ts_data.curr_data[id].y_position);
-
-				input_mt_sync(ts->input_dev);
-			}
+			/* Only support circle region */
+			input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,
+					ts->ts_data.curr_data[id].width_major);
 		}
-		input_sync(ts->input_dev);
-
-	} else if (status == FINGER_RELEASED) {
-		for (id = 0; id < ts->pdata->max_id; id++) {
-			if (ts->ts_data.prev_data[id].status == FINGER_PRESSED) {
-				input_mt_sync(ts->input_dev);
-				TOUCH_DEBUG_MSG("finger released[%d]\n", id);
-			}
+		else {
+			ts->ts_data.curr_data[id].state = 0;
 		}
-		input_sync(ts->input_dev);
 	}
 
-	return total;
+	input_sync(ts->input_dev);
 }
 
 /* touch_work_pre_proc
@@ -313,7 +285,6 @@ int touch_asb_input_report(struct synaptics_ts_data *ts, int status)
 int touch_work_pre_proc(struct synaptics_ts_data *ts)
 {
 	atomic_dec(&ts->next_work);
-	ts->ts_data.total_num = 0;
 	ts->int_pin_state = 0;
 
 	if (unlikely(ts->work_sync_err_cnt >= MAX_RETRY_COUNT)) {
@@ -321,10 +292,14 @@ int touch_work_pre_proc(struct synaptics_ts_data *ts)
 		return -EIO;
 	}
 
+	if (gpio_get_value(ts->pdata->irq_gpio) != 0) {
+		TOUCH_ERR_MSG("INT STATE HIGH\n");
+		return -EIO;
+	}
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
 
-	if (synaptics_ts_get_data(ts->client, &ts->ts_data) < 0) {
+	if (synaptics_ts_get_data(ts->client, ts->ts_data.curr_data) < 0) {
 		TOUCH_ERR_MSG("get data fail\n");
 		return -EIO;
 	}
@@ -358,29 +333,29 @@ void touch_work_post_proc(struct synaptics_ts_data *ts, int post_proc)
 		}
 
 		ts->work_sync_err_cnt = 0;
-		post_proc = WORK_POST_COMPLATE;
+		post_proc = WORK_POST_COMPLETE;
 		break;
 
 	case WORK_POST_ERR_RETRY:
 		ts->work_sync_err_cnt++;
 		atomic_inc(&ts->next_work);
 		queue_work(synaptics_wq, &ts->work);
-		post_proc = WORK_POST_COMPLATE;
+		post_proc = WORK_POST_COMPLETE;
 		break;
 
 	case WORK_POST_ERR_CIRTICAL:
 		ts->work_sync_err_cnt = 0;
 		safety_reset(ts);
 		touch_ic_init(ts);
-		post_proc = WORK_POST_COMPLATE;
+		post_proc = WORK_POST_COMPLETE;
 		break;
 
 	default:
-		post_proc = WORK_POST_COMPLATE;
+		post_proc = WORK_POST_COMPLETE;
 		break;
 	}
 
-	if (post_proc != WORK_POST_COMPLATE)
+	if (post_proc != WORK_POST_COMPLETE)
 		touch_work_post_proc(ts, post_proc);
 }
 
@@ -388,44 +363,19 @@ static void synaptics_ts_work_func(struct work_struct *work)
 {
 	struct synaptics_ts_data *ts =
 			container_of(work, struct synaptics_ts_data, work);
-	u8 report_enable = 0;
 	int ret = 0;
 
 	ret = touch_work_pre_proc(ts);
-	if (ret == -EIO)
-		goto err_out_critical;
-	else if (ret == -EAGAIN)
-		goto out;
-
-	if (!ts->ts_data.total_num) {
-		touch_asb_input_report(ts, FINGER_RELEASED);
-		report_enable = 1;
-		ts->ts_data.prev_total_num = 0;
-	} else if (ts->ts_data.total_num <= ts->pdata->max_id) {
-		if (likely(touch_debug_mask & (DEBUG_BASE_INFO | DEBUG_ABS)))
-			check_log_finger_changed(ts, ts->ts_data.total_num);
-
-		ts->ts_data.prev_total_num = ts->ts_data.total_num;
-
-		touch_asb_input_report(ts, FINGER_PRESSED);
-		report_enable = 1;
-
-		memcpy(ts->ts_data.prev_data, ts->ts_data.curr_data,
-				sizeof(ts->ts_data.curr_data));
+	if (ret == 0) {
+		touch_abs_input_report(ts);
+	}
+	else if (ret == -EIO) {
+		touch_work_post_proc(ts, WORK_POST_ERR_CIRTICAL);
+		return;
 	}
 
-	/* Reset finger position data */
-	memset(&ts->ts_data.curr_data, 0x0, sizeof(ts->ts_data.curr_data));
-
-	if (report_enable)
-		input_sync(ts->input_dev);
-
-out:
 	touch_work_post_proc(ts, WORK_POST_OUT);
-	return;
 
-err_out_critical:
-	touch_work_post_proc(ts, WORK_POST_ERR_CIRTICAL);
 	return;
 }
 
@@ -688,51 +638,6 @@ static void release_all_ts_event(struct synaptics_ts_data *ts)
 	input_sync(ts->input_dev);
 }
 
-/* check_log_finger_changed
- *
- * Check finger state change for Debug
- */
-static void check_log_finger_changed(struct synaptics_ts_data *ts, u8 total_num)
-{
-	u16 tmp_p = 0;
-	u16 tmp_r = 0;
-	u16 id = 0;
-
-	if (ts->ts_data.prev_total_num != total_num) {
-		/* Finger added */
-		if (ts->ts_data.prev_total_num <= total_num) {
-			for (id = 0; id < ts->pdata->max_id; id++) {
-				if (IS_FIRST_PRESS(ts->ts_data))
-					break;
-			}
-			TOUCH_DEBUG_MSG("%d finger pressed\n", total_num);
-		} else {
-		/* Finger subtracted */
-			TOUCH_DEBUG_MSG("%d finger pressed\n", total_num);
-		}
-	}
-	if (ts->ts_data.prev_total_num == total_num && total_num == 1) {
-		/* Finger changed at one finger status - IC bug check */
-		for (id = 0, tmp_p = 0; id < ts->pdata->max_id; id++) {
-			/* find pressed */
-			if (IS_FIRST_PRESS(ts->ts_data))
-				tmp_p = id;
-
-			/* find released */
-			if (IS_RELEASE(ts->ts_data))
-				tmp_r = id;
-		}
-
-		if (tmp_p != tmp_r && (ts->ts_data.curr_data[tmp_p].status
-				!= ts->ts_data.prev_data[tmp_p].status)) {
-			TOUCH_DEBUG_MSG("%d finger changed : <%d -> %d> x[%4d] y[%4d]\n",
-					total_num, tmp_r, tmp_p,
-					ts->ts_data.curr_data[id].x_position,
-					ts->ts_data.curr_data[id].y_position);
-		}
-	}
-}
-
 /* touch_irq_handler
  */
 irqreturn_t touch_irq_handler(int irq, void *dev_id)
@@ -906,16 +811,26 @@ int synaptics_ts_page_data_write_byte(struct i2c_client *client, u8 page, u8 reg
 	return 0;
 }
 
-int synaptics_ts_get_data(struct i2c_client *client, struct touch_data* data)
+static inline int get_highest_id(u32 fs)
+{
+	int id = 10;
+	int tmp = 0x000C0000;
+
+	while (!(fs & tmp)) {
+		id--;
+		tmp >>= 2;
+	}
+
+	return id;
+}
+
+int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 {
 	struct synaptics_ts_data *ts =
 			(struct synaptics_ts_data *)get_touch_handle(client);
-	u8 f_index = 0;
-	u8 index = 0;
-	u8 buf = 0;
-	u16 touch_finger_bit_mask = 0;
-
-	data->total_num = 0;
+	int id;
+	u8 buf;
+	u32 finger_status = 0;
 
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
@@ -951,8 +866,8 @@ int synaptics_ts_get_data(struct i2c_client *client, struct touch_data* data)
 
 	/* IC bug Exception handling - Interrupt status reg is 0 when interrupt occur */
 	if (ts->ts_data.interrupt_status_reg == 0) {
-		TOUCH_ERR_MSG("Interrupt_status reg is 0. Something is wrong in IC\n");
-		goto err_synaptics_device_damage;
+		TOUCH_ERR_MSG("Interrupt_status reg is 0. -> ignore\n");
+		goto err_synaptics_getdata;
 	}
 
 	/* Because of ESD damage... */
@@ -970,8 +885,10 @@ int synaptics_ts_get_data(struct i2c_client *client, struct touch_data* data)
 			goto err_synaptics_getdata;
 		}
 
-		touch_finger_bit_mask =
-			GET_BIT_MASK(ts->ts_data.finger.finger_status_reg);
+		finger_status = ts->ts_data.finger.finger_status_reg[0] |
+			ts->ts_data.finger.finger_status_reg[1] << 8 |
+			(ts->ts_data.finger.finger_status_reg[2] & 0xF) << 16;
+
 		if (unlikely(touch_debug_mask & DEBUG_GET_DATA)) {
 			TOUCH_DEBUG_MSG("Finger_status : 0x%x, 0x%x, 0x%x\n",
 				ts->ts_data.finger.finger_status_reg[0],
@@ -980,40 +897,50 @@ int synaptics_ts_get_data(struct i2c_client *client, struct touch_data* data)
 			TOUCH_DEBUG_MSG("Touch_bit_mask: 0x%x\n", touch_finger_bit_mask);
 		}
 
-		while (touch_finger_bit_mask) {
-
-			for ( ;!((touch_finger_bit_mask >> f_index) & 0x01) && f_index <= MAX_NUM_OF_FINGERS; f_index++)
-				;
-
-			if (f_index <= MAX_NUM_OF_FINGERS)
-				touch_finger_bit_mask &=
-					~(touch_finger_bit_mask & (1<<(f_index))) ;
+		if (finger_status) {
+			int max_id = get_highest_id(finger_status);
 			if (unlikely(touch_i2c_read(ts->client,
-					FINGER_DATA_REG_START + (NUM_OF_EACH_FINGER_DATA_REG * f_index),
-					NUM_OF_EACH_FINGER_DATA_REG,
-					ts->ts_data.finger.finger_reg[f_index]) < 0)) {
-				TOUCH_ERR_MSG("FINGER_DATA_REG read fail\n");
+					FINGER_DATA_REG_START,
+					NUM_OF_EACH_FINGER_DATA_REG * max_id,
+					ts->ts_data.finger.finger_reg[0]) < 0)) {
+				TOUCH_ERR_MSG("FINGER_STATE_REG read fail\n");
 				goto err_synaptics_getdata;
 			}
-
-			data->curr_data[f_index].id = f_index;
-			data->curr_data[f_index].x_position =
-				TS_SNTS_GET_X_POSITION(ts->ts_data.finger.finger_reg[f_index][REG_X_POSITION], ts->ts_data.finger.finger_reg[f_index][REG_YX_POSITION]);
-			data->curr_data[f_index].y_position =
-				TS_SNTS_GET_Y_POSITION(ts->ts_data.finger.finger_reg[f_index][REG_Y_POSITION], ts->ts_data.finger.finger_reg[f_index][REG_YX_POSITION]);
-			data->curr_data[f_index].status = FINGER_PRESSED;
-
-			if (unlikely(touch_debug_mask & DEBUG_GET_DATA))
-				TOUCH_DEBUG_MSG("<%d> pos(%4d,%4d) \n",
-					f_index,
-					data->curr_data[f_index].x_position,
-					data->curr_data[f_index].y_position);
-
-			index++;
 		}
-		data->total_num = index;
-		if (unlikely(touch_debug_mask & DEBUG_GET_DATA))
-			TOUCH_DEBUG_MSG("Total_num: %d\n", data->total_num);
+
+		for (id = 0; id < ts->pdata->max_id; id++) {
+			switch (((finger_status >> (id*2)) & 0x3)) {
+			case FINGER_STATE_PRESENT_VALID:
+				data[id].state = ABS_PRESS;
+				data[id].x_position = TS_SNTS_GET_X_POSITION(
+					ts->ts_data.finger.finger_reg[id][REG_X_POSITION],
+					ts->ts_data.finger.finger_reg[id][REG_YX_POSITION]);
+				data[id].y_position = TS_SNTS_GET_Y_POSITION(ts->ts_data.finger.finger_reg[id][REG_Y_POSITION], ts->ts_data.finger.finger_reg[id][REG_YX_POSITION]);
+				data[id].width_major = TS_SNTS_GET_WIDTH_MAJOR(ts->ts_data.finger.finger_reg[id][REG_WY_WX]);
+				data[id].width_minor = TS_SNTS_GET_WIDTH_MINOR(ts->ts_data.finger.finger_reg[id][REG_WY_WX]);
+				data[id].pressure = TS_SNTS_GET_PRESSURE(ts->ts_data.finger.finger_reg[id][REG_Z]);
+
+				if (unlikely(touch_debug_mask & DEBUG_GET_DATA))
+					TOUCH_INFO_MSG("[%d] pos(%4d,%4d) w_m[%2d] w_n[%2d] p[%2d]\n",
+						id,
+						data[id].x_position,
+						data[id].y_position,
+						data[id].width_major,
+						data[id].width_minor,
+						data[id].pressure);
+				break;
+
+			case FINGER_STATE_NO_PRESENT:
+				if (data[id].state == ABS_PRESS)
+					data[id].state = ABS_RELEASE;
+				break;
+
+			default:
+				/* Do nothing including inacurate data */
+				break;
+			}
+
+		}
 	}
 
 	/* Palm check */
@@ -1021,7 +948,7 @@ int synaptics_ts_get_data(struct i2c_client *client, struct touch_data* data)
 	       TOUCH_ERR_MSG("TWO_D_EXTEND_STATUS read fail\n");
 	       goto err_synaptics_getdata;
 	}
-	data->palm = buf & 0x2;
+	ts->ts_data.palm = buf & 0x2;
 
 	return 0;
 
@@ -1611,6 +1538,22 @@ static int synaptics_parse_dt(struct device *dev, struct touch_platform_data *pd
 		pdata->max_id = temp_val;
 	}
 
+	rc = of_property_read_u32(np, "synaptics,max_major", &temp_val);
+	if (rc) {
+		dev_err(dev, "Unable to read max_id\n");
+		return rc;
+	} else {
+		pdata->max_major = temp_val;
+	}
+
+	rc = of_property_read_u32(np, "synaptics,max_pres", &temp_val);
+	if (rc) {
+		dev_err(dev, "Unable to read max_id\n");
+		return rc;
+	} else {
+		pdata->max_pres = temp_val;
+	}
+
 	/* reset, irq gpio info */
 	pdata->reset_gpio = of_get_named_gpio_flags(np, "synaptics,reset-gpio",
 				0, &pdata->reset_gpio_flags);
@@ -1708,12 +1651,15 @@ static int synaptics_ts_probe(
 	set_bit(INPUT_PROP_DIRECT, ts->input_dev->propbit);
 #endif
 
+	input_mt_init_slots(ts->input_dev, ts->pdata->max_id);
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, 0,
-						ts->pdata->x_max, 0, 0);
+						ts->pdata->x_max-1, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, 0,
-						ts->pdata->y_max, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_TRACKING_ID, 0,
-						ts->pdata->max_id, 0, 0);
+						ts->pdata->y_max-1, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_PRESSURE, 0,
+						ts->pdata->max_pres, 0, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0,
+						ts->pdata->max_major, 0, 0);
 
 	ret = input_register_device(ts->input_dev);
 	if (ret < 0) {
