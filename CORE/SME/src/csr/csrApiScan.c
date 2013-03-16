@@ -3504,14 +3504,12 @@ void csrSetOppositeBandChannelInfo( tpAniSirGlobal pMac )
         if ( CSR_IS_CHANNEL_5GHZ( pMac->scan.channelOf11dInfo ) )
         {
             // and the 2.4 band is empty, then populate the 2.4 channel info
-            if ( !csrLLIsListEmpty( &pMac->scan.channelPowerInfoList24, LL_ACCESS_LOCK ) ) break;
             fPopulate5GBand = FALSE;
         }
         else
         {
             // else, we found channel info in the 2.4 GHz band.  If the 5.0 band is empty
             // set the 5.0 band info from the 2.4 country code.
-            if ( !csrLLIsListEmpty( &pMac->scan.channelPowerInfoList5G, LL_ACCESS_LOCK ) ) break;
             fPopulate5GBand = TRUE;
         }
         csrSaveChannelPowerForBand( pMac, fPopulate5GBand );
@@ -3737,6 +3735,24 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
 
         // set the indicator of the channel where the country IE was found...
         pMac->scan.channelOf11dInfo = pSirBssDesc->channelId;
+        csrGetRegulatoryDomainForCountry(pMac, pIesLocal->Country.country, &domainId );
+        // Checking for Domain Id change
+        if ( domainId != pMac->scan.domainIdCurrent )
+        {
+            tSirMacChanInfo* pMacChnSet = (tSirMacChanInfo *)(&pIesLocal->Country.triplets[0]);
+            WDA_SetRegDomain(pMac, domainId);
+            // Check weather AP provided the 2.4GHZ list or 5GHZ list
+            if(CSR_IS_CHANNEL_24GHZ(pMacChnSet[0].firstChanNum))
+            {
+                // AP Provided the 2.4 Channels, Update the 5GHz channels from nv.bin
+                csrGet5GChannels(pMac );
+            }
+            else
+            {
+                // AP Provided the 5G Channels, Update the 2.4GHZ channel list from nv.bin
+                csrGet24GChannels(pMac );
+            }
+        }
         // Populate both band channel lists based on what we found in the country information...
         csrSetOppositeBandChannelInfo( pMac );
         bMaxNumChn = WNI_CFG_VALID_CHANNEL_LIST_LEN;
