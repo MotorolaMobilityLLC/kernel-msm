@@ -952,7 +952,7 @@ static int fwu_do_reflash(void)
 		goto reflash_failed;
 
 retry:
-	fwu->rmi4_data->set_state(fwu->rmi4_data, STATE_BL);
+	fwu->rmi4_data->set_state(fwu->rmi4_data, STATE_INIT);
 
 	dev_dbg(&fwu->rmi4_data->i2c_client->dev,
 			"%s: Entered flash prog mode\n",
