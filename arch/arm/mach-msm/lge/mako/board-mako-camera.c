@@ -15,6 +15,7 @@
 #include <linux/i2c.h>
 #include <linux/gpio.h>
 #include <linux/platform_data/flash_lm3559.h>
+#include <media/msm_camera.h>
 #include <asm/mach-types.h>
 #include <mach/board.h>
 #include <mach/msm_bus_board.h>
