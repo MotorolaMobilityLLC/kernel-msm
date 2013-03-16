@@ -411,6 +411,16 @@ struct msm_panel_common_pdata {
 	struct msm_bus_scale_pdata *mdp_bus_scale_table;
 #endif
 	int mdp_rev;
+	void *power_on_set_1;
+	void *power_on_set_2;
+	void *power_on_set_3;
+	ssize_t power_on_set_size_1;
+	ssize_t power_on_set_size_2;
+	ssize_t power_on_set_size_3;
+	void *power_off_set_1;
+	void *power_off_set_2;
+	ssize_t power_off_set_size_1;
+	ssize_t power_off_set_size_2;
 	u32 ov0_wb_size;  /* overlay0 writeback size */
 	u32 ov1_wb_size;  /* overlay1 writeback size */
 	u32 mem_hid;
@@ -418,6 +428,8 @@ struct msm_panel_common_pdata {
 	u32 splash_screen_addr;
 	u32 splash_screen_size;
 	char mdp_iommu_split_domain;
+	void (*bl_pwm_disable)(void);
+	int (*bl_on_status)(void);
 };
 
 
@@ -496,6 +508,7 @@ struct msm_fb_platform_data {
 	int (*allow_set_offset)(void);
 	char prim_panel_name[PANEL_NAME_MAX_LEN];
 	char ext_panel_name[PANEL_NAME_MAX_LEN];
+	int (*update_lcdc_lut)(void);
 };
 
 struct msm_hdmi_platform_data {
