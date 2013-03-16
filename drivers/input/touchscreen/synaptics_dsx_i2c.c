@@ -853,29 +853,22 @@ static void synaptics_dsx_set_state_safe(struct synaptics_rmi4_data *rmi4_data,
 	mutex_unlock(&(rmi4_data->state_mutex));
 }
 
-static int synaptics_dsx_out_of_state(struct synaptics_rmi4_data *rmi4_data,
-		int state)
+static int synaptics_dsx_wait_for_idle(struct synaptics_rmi4_data *rmi4_data)
 {
+	unsigned long start_wait_jiffies = jiffies;
+
 	do {
 		int current_state;
 
 		current_state = synaptics_dsx_get_state_safe(rmi4_data);
-		if (current_state != state)
+		if (!(current_state == STATE_INIT ||
+			current_state == STATE_FLASH ||
+			current_state == STATE_UNKNOWN))
 			break;
 
 		usleep_range(1000, 1000);
 
 	} while (1);
-
-	return 0;
-}
-
-static int synaptics_dsx_wait_for_idle(struct synaptics_rmi4_data *rmi4_data)
-{
-	unsigned long start_wait_jiffies = jiffies;
-
-	synaptics_dsx_out_of_state(rmi4_data, STATE_FLASH);
-	synaptics_dsx_out_of_state(rmi4_data, STATE_UNKNOWN);
 
 	if ((jiffies - start_wait_jiffies))
 		pr_info("entering suspend delayed for %ums\n",
@@ -909,11 +902,16 @@ static int synaptics_dsx_sensor_ready_state(
 
 	retval = sensor_is_in_bootloader(rmi4_data, &is_in_bootloader);
 	if (retval > 0) {
-		int state = STATE_ACTIVE;
-		if (is_in_bootloader)
-			state = STATE_BL;
-		else if (standby)
-			state = STATE_STANDBY;
+		int state = synaptics_dsx_get_state_safe(rmi4_data);
+		if (is_in_bootloader) {
+			if (!(state == STATE_INIT || state == STATE_FLASH))
+				state = STATE_BL;
+		} else {
+			if (standby)
+				state = STATE_STANDBY;
+			else
+				state = STATE_ACTIVE;
+		}
 		synaptics_dsx_sensor_state(rmi4_data, state);
 		retval = state;
 	} else
@@ -968,6 +966,7 @@ static int synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 			break;
 
 	case STATE_BL:
+	case STATE_INIT:
 		synaptics_rmi4_irq_enable(rmi4_data, false);
 		if (rmi4_data->sensor_sleep) {
 			synaptics_rmi4_sensor_wake(rmi4_data);

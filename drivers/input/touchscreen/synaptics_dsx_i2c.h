@@ -294,6 +294,7 @@ struct f34_properties {
 	DSX(STANDBY), \
 	DSX(SUSPEND), \
 	DSX(BL), \
+	DSX(INIT), \
 	DSX(FLASH), \
 	DSX(INVALID) }
 
