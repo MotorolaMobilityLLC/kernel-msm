@@ -93,7 +93,9 @@ static v_VOID_t wlan_hdd_tdls_start_peer_discover_timer(tdlsCtx_t *pHddTdlsCtx,
     pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pHddTdlsCtx->pAdapter);
     if (hdd_connIsConnected( pHddStaCtx ))
     {
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
         vos_timer_start(&pHddTdlsCtx->peerDiscoverTimer, discoveryExpiry);
+#endif
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "beacon rssi: %d",
                    pHddTdlsCtx->ap_rssi);
     }
@@ -286,13 +288,7 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
 
                             VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "-> Tput trigger TDLS SETUP");
 #ifdef CONFIG_TDLS_IMPLICIT
-
-                            curr_peer->link_status = eTDLS_LINK_DISCOVERING;
-                            sme_SendTdlsMgmtFrame(WLAN_HDD_GET_HAL_CTX(pHddTdlsCtx->pAdapter),
-                                                  pHddTdlsCtx->pAdapter->sessionId,
-                                                  curr_peer->peerMac,
-                                                  WLAN_TDLS_DISCOVERY_REQUEST,
-                                                  1, 0, NULL, 0, 0);
+                            wlan_hdd_tdls_pre_setup(pHddTdlsCtx, curr_peer);
 #endif
                         }
                         else
@@ -444,6 +440,20 @@ static v_VOID_t wlan_hdd_tdls_idle_cb( v_PVOID_t userData )
 #endif
 }
 
+static v_VOID_t wlan_hdd_tdls_discovery_timeout_peer_cb(v_PVOID_t userData)
+{
+    tdlsCtx_t *pHddTdlsCtx;
+
+    pHddTdlsCtx = (tdlsCtx_t *)userData;
+    if (NULL == pHddTdlsCtx)
+        return;
+
+    pHddTdlsCtx->discovery_sent_cnt = 0;
+    wlan_hdd_tdls_check_bmps(pHddTdlsCtx->pAdapter);
+
+    return;
+}
+
 static void wlan_hdd_tdls_free_list(tdlsCtx_t *pHddTdlsCtx)
 {
     int i;
@@ -524,6 +534,10 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
             VOS_TIMER_TYPE_SW,
             wlan_hdd_tdls_update_peer_cb,
             pHddTdlsCtx);
+    vos_timer_init(&pHddTdlsCtx->peerDiscoveryTimeoutTimer,
+            VOS_TIMER_TYPE_SW,
+            wlan_hdd_tdls_discovery_timeout_peer_cb,
+            pHddTdlsCtx);
 
     /* remember configuration even if it is not used right now. it could be used later */
     pHddTdlsCtx->threshold_config.tx_period_t = pHddCtx->cfg_ini->fTDLSTxStatsPeriod;
@@ -544,8 +558,10 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
     else
     {
         pHddCtx->tdls_mode = eTDLS_SUPPORT_ENABLED;
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
         vos_timer_start( &pHddTdlsCtx->peerDiscoverTimer,
                    pHddTdlsCtx->threshold_config.discovery_period_t );
+#endif
 
         vos_timer_start( &pHddTdlsCtx->peerUpdateTimer,
                             pHddTdlsCtx->threshold_config.tx_period_t );
@@ -593,7 +609,7 @@ static void wlan_hdd_tdls_timers_stop(tdlsCtx_t *pHddTdlsCtx)
 
     vos_timer_stop(&pHddTdlsCtx->peerDiscoverTimer);
     vos_timer_stop(&pHddTdlsCtx->peerUpdateTimer);
-
+    vos_timer_stop(&pHddTdlsCtx->peerDiscoveryTimeoutTimer);
 
     for (i = 0; i < 256; i++)
     {
@@ -623,6 +639,8 @@ static void wlan_hdd_tdls_timers_destroy(tdlsCtx_t *pHddTdlsCtx)
     vos_timer_destroy(&pHddTdlsCtx->peerDiscoverTimer);
     vos_timer_stop(&pHddTdlsCtx->peerUpdateTimer);
     vos_timer_destroy(&pHddTdlsCtx->peerUpdateTimer);
+    vos_timer_stop(&pHddTdlsCtx->peerDiscoveryTimeoutTimer);
+    vos_timer_destroy(&pHddTdlsCtx->peerDiscoveryTimeoutTimer);
 
     for (i = 0; i < 256; i++)
     {
@@ -743,27 +761,37 @@ void wlan_hdd_tdls_set_link_status(hdd_adapter_t *pAdapter,
 int wlan_hdd_tdls_recv_discovery_resp(hdd_adapter_t *pAdapter, u8 *mac)
 {
     hddTdlsPeer_t *curr_peer;
+    tdlsCtx_t *pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
 
     curr_peer = wlan_hdd_tdls_get_peer(pAdapter, mac);
-    if (curr_peer == NULL)
+
+    if (NULL == curr_peer)
         return -1;
+
+    if (pHddTdlsCtx->discovery_sent_cnt)
+        pHddTdlsCtx->discovery_sent_cnt--;
+
+    if (0 == pHddTdlsCtx->discovery_sent_cnt)
+        vos_timer_stop(&pHddTdlsCtx->peerDiscoveryTimeoutTimer);
+    wlan_hdd_tdls_check_bmps(pAdapter);
+
     VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-               "Discovery Response from : " MAC_ADDRESS_STR "link_status -> %d",
-               MAC_ADDR_ARRAY(curr_peer->peerMac), curr_peer->link_status);
+               "Discovery(%lu) Response from " MAC_ADDRESS_STR " link_status %d",
+               pHddTdlsCtx->discovery_sent_cnt, MAC_ADDR_ARRAY(curr_peer->peerMac),
+               curr_peer->link_status);
+
     if (eTDLS_LINK_DISCOVERING == curr_peer->link_status)
     {
+        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                   "Indicating Set-Up to supplicant");
         cfg80211_tdls_oper_request(pAdapter->dev,
                                    curr_peer->peerMac,
                                    NL80211_TDLS_SETUP, FALSE,
                                    GFP_KERNEL);
         curr_peer->link_status = eTDLS_LINK_DISCOVERED;
     }
-    VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-               "Peer with MAC : " MAC_ADDRESS_STR " transitioned to %d",
-               MAC_ADDR_ARRAY(curr_peer->peerMac), curr_peer->link_status);
 
     curr_peer->tdls_support = eTDLS_CAP_SUPPORTED;
-
     return 0;
 }
 
@@ -1218,11 +1246,12 @@ void wlan_hdd_tdls_connection_callback(hdd_adapter_t *pAdapter)
     if (eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode)
     {
        wlan_hdd_tdls_peer_reset_discovery_processed(pHddTdlsCtx);
+       pHddTdlsCtx->discovery_sent_cnt = 0;
 
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
        vos_timer_start(&pHddTdlsCtx->peerDiscoverTimer,
                        pHddTdlsCtx->threshold_config.discovery_period_t);
-
-
+#endif
        vos_timer_start(&pHddTdlsCtx->peerUpdateTimer,
                        pHddTdlsCtx->threshold_config.tx_period_t);
     }
@@ -1283,18 +1312,27 @@ void wlan_hdd_tdls_decrement_peer_count(hdd_adapter_t *pAdapter)
 void wlan_hdd_tdls_check_bmps(hdd_adapter_t *pAdapter)
 {
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+    tdlsCtx_t *pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
 
     if (NULL == pHddCtx) return;
 
-    if (0 == pHddCtx->connected_peer_count)
+    if ((0 == pHddCtx->connected_peer_count) &&
+        (0 == pHddTdlsCtx->discovery_sent_cnt))
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,"No TDLS peer connected so Enable BMPS");
-        hdd_enable_bmps_imps(pHddCtx);
+        if (FALSE == sme_IsPmcBmps(WLAN_HDD_GET_HAL_CTX(pAdapter)))
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                       "No TDLS peer connected/discovery sent. Enable BMPS");
+            hdd_enable_bmps_imps(pHddCtx);
+        }
     }
-    else if (1 == pHddCtx->connected_peer_count)
+    else
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,"TDLS peer connected so Disable BMPS");
-        hdd_disable_bmps_imps(pHddCtx, WLAN_HDD_INFRA_STATION);
+        if (TRUE == sme_IsPmcBmps(WLAN_HDD_GET_HAL_CTX(pAdapter)))
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,"TDLS peer connected. Disable BMPS");
+            hdd_disable_bmps_imps(pHddCtx, WLAN_HDD_INFRA_STATION);
+        }
     }
     return;
 }
@@ -1367,10 +1405,13 @@ static void wlan_hdd_tdls_implicit_disable(tdlsCtx_t *pHddTdlsCtx)
 static void wlan_hdd_tdls_implicit_enable(tdlsCtx_t *pHddTdlsCtx)
 {
     wlan_hdd_tdls_peer_reset_discovery_processed(pHddTdlsCtx);
+    pHddTdlsCtx->discovery_sent_cnt = 0;
     wlan_tdd_tdls_reset_tx_rx(pHddTdlsCtx);
 
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
     vos_timer_start(&pHddTdlsCtx->peerDiscoverTimer,
                     pHddTdlsCtx->threshold_config.discovery_period_t);
+#endif
 
     vos_timer_start(&pHddTdlsCtx->peerUpdateTimer,
                     pHddTdlsCtx->threshold_config.tx_period_t);
@@ -1404,4 +1445,28 @@ void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx, eTDLSSupportMode tdls_mode)
     }
     pHddCtx->tdls_mode_last = pHddCtx->tdls_mode;
     pHddCtx->tdls_mode = tdls_mode;
+}
+
+void wlan_hdd_tdls_pre_setup(tdlsCtx_t *pHddTdlsCtx,
+                             hddTdlsPeer_t *curr_peer)
+{
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pHddTdlsCtx->pAdapter);
+
+    if (TRUE == sme_IsPmcBmps(WLAN_HDD_GET_HAL_CTX(pHddTdlsCtx->pAdapter)))
+    {
+        hdd_disable_bmps_imps(pHddCtx, WLAN_HDD_INFRA_STATION);
+    }
+    curr_peer->link_status = eTDLS_LINK_DISCOVERING;
+    sme_SendTdlsMgmtFrame(WLAN_HDD_GET_HAL_CTX(pHddTdlsCtx->pAdapter),
+                          pHddTdlsCtx->pAdapter->sessionId,
+                          curr_peer->peerMac,
+                          WLAN_TDLS_DISCOVERY_REQUEST,
+                          1, 0, NULL, 0, 0);
+    pHddTdlsCtx->discovery_sent_cnt++;
+    VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "%s: discovery count %lu",
+               __func__, pHddTdlsCtx->discovery_sent_cnt);
+    vos_timer_stop(&pHddTdlsCtx->peerDiscoveryTimeoutTimer);
+    vos_timer_start(&pHddTdlsCtx->peerDiscoveryTimeoutTimer, TDLS_DISCOVERY_TIMEOUT);
+
+    return;
 }
