@@ -156,6 +156,10 @@
 
 #define ESR_SIZE	32
 
+#define MSP_BUSY_SLEEP_USEC	10000
+#define MSP_BUSY_RESUME_COUNT	14
+#define MSP_BUSY_SUSPEND_COUNT	6
+
 static unsigned int msp430_irq_disable;
 module_param_named(irq_disable, msp430_irq_disable, uint, 0644);
 
@@ -226,6 +230,7 @@ struct msp430_data {
 	int msp430_ms_data_buffer_head;
 	int msp430_ms_data_buffer_tail;
 	wait_queue_head_t msp430_ms_data_wq;
+	bool ap_msp_handoff_ctrl;
 };
 
 enum msp_commands {
@@ -2201,7 +2206,9 @@ static int msp430_gpio_init(struct msp430_platform_data *pdata,
 				"mipi_req_gpio gpio_export failed: %d\n", err);
 			goto free_mipi_req;
 		}
+		msp430_misc_data->ap_msp_handoff_ctrl = true;
 	} else {
+		msp430_misc_data->ap_msp_handoff_ctrl = false;
 		pr_warn("%s: gpio mipi req not specified\n", __func__);
 	}
 
@@ -2220,6 +2227,7 @@ static int msp430_gpio_init(struct msp430_platform_data *pdata,
 			goto free_mipi_busy;
 		}
 	} else {
+		msp430_misc_data->ap_msp_handoff_ctrl = false;
 		pr_warn("%s: gpio mipi busy not specified\n", __func__);
 	}
 
@@ -2279,6 +2287,7 @@ static int msp430_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
+	msp430_misc_data = ps_msp430;
 	err = msp430_gpio_init(pdata, client);
 	if (err) {
 		dev_err(&client->dev, "msp430 gpio init failed\n");
@@ -2338,7 +2347,6 @@ static int msp430_probe(struct i2c_client *client,
 		enable_irq_wake(ps_msp430->irq_wake);
 	atomic_set(&ps_msp430->enabled, 1);
 
-	msp430_misc_data = ps_msp430;
 	err = misc_register(&msp430_misc_device);
 	if (err < 0) {
 		dev_err(&client->dev, "misc register failed: %d\n", err);
@@ -2397,7 +2405,7 @@ static int msp430_probe(struct i2c_client *client,
 	}
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
-	ps_msp430->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
+	ps_msp430->early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 1;
 	ps_msp430->early_suspend.suspend = msp430_early_suspend;
 	ps_msp430->early_suspend.resume = msp430_late_resume;
 	register_early_suspend(&ps_msp430->early_suspend);
@@ -2507,14 +2515,36 @@ static int msp430_remove(struct i2c_client *client)
 static int msp430_resume(struct i2c_client *client)
 {
 	struct msp430_data *ps_msp430 = i2c_get_clientdata(client);
+	int count = 0, level = 0;
+	int msp_req = ps_msp430->pdata->gpio_mipi_req;
+	int msp_busy = ps_msp430->pdata->gpio_mipi_busy;
 	dev_dbg(&msp430_misc_data->client->dev, "msp430_resume\n");
 	mutex_lock(&ps_msp430->lock);
 
 	if (ps_msp430->mode == NORMALMODE) {
+		if (ps_msp430->ap_msp_handoff_ctrl) {
+			gpio_set_value(msp_req, 0);
+			dev_dbg(&ps_msp430->client->dev, "MSP REQ is set %d\n",
+				 gpio_get_value(msp_req));
+		}
+
 		/* read interrupt mask register to clear
 			any interrupt during suspend state */
 		msp_cmdbuff[0] = INTERRUPT_STATUS;
 		msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
+
+		if (ps_msp430->ap_msp_handoff_ctrl) {
+			do {
+				usleep_range(MSP_BUSY_SLEEP_USEC,
+						 MSP_BUSY_SLEEP_USEC);
+				level = gpio_get_value(msp_busy);
+				count++;
+			} while ((level) && (count < MSP_BUSY_RESUME_COUNT));
+
+			if (count == MSP_BUSY_RESUME_COUNT)
+				dev_err(&ps_msp430->client->dev,
+					"timedout while waiting for MSP BUSY LOW\n");
+		}
 	}
 
 	mutex_unlock(&ps_msp430->lock);
@@ -2524,11 +2554,29 @@ static int msp430_resume(struct i2c_client *client)
 static int msp430_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct msp430_data *ps_msp430 = i2c_get_clientdata(client);
+	int count = 0, level = 0;
+	int msp_req = ps_msp430->pdata->gpio_mipi_req;
+	int msp_busy = ps_msp430->pdata->gpio_mipi_busy;
 	dev_dbg(&ps_msp430->client->dev, "msp430_suspend\n");
 	mutex_lock(&ps_msp430->lock);
 
-	/* This function isn't doing anything now, but will be */
-	/* needed for a new feature to be added soon */
+	if ((ps_msp430->mode == NORMALMODE)
+		 && (ps_msp430->ap_msp_handoff_ctrl)) {
+
+		gpio_set_value(msp_req, 1);
+		dev_dbg(&ps_msp430->client->dev, "MSP REQ is set %d\n",
+			 gpio_get_value(msp_req));
+
+		do {
+			usleep_range(MSP_BUSY_SLEEP_USEC, MSP_BUSY_SLEEP_USEC);
+			level = gpio_get_value(msp_busy);
+			count++;
+		} while ((!level) && (count < MSP_BUSY_SUSPEND_COUNT));
+
+		if (count == MSP_BUSY_SUSPEND_COUNT)
+			dev_err(&ps_msp430->client->dev,
+				"timedout while waiting for MSP BUSY HIGH\n");
+	}
 
 	mutex_unlock(&ps_msp430->lock);
 	return 0;
