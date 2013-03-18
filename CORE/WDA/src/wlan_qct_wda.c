@@ -3642,6 +3642,8 @@ void WDA_UpdateBSSParams(tWDA_CbContext *pWDA,
    wdiBssParams->ucCurrentExtChannel = wdaBssParams->currentExtChannel ;
    wdiBssParams->bHiddenSSIDEn = wdaBssParams->bHiddenSSIDEn ;
 
+   wdiBssParams->ucRMFEnabled = wdaBssParams->rmfEnabled;
+
    /* copy SSID into WDI structure */
    wdiBssParams->wdiSSID.ucLength = wdaBssParams->ssId.length ;
    vos_mem_copy(wdiBssParams->wdiSSID.sSSID,
@@ -7425,6 +7427,42 @@ VOS_STATUS WDA_ProcessWlanSuspendInd(tWDA_CbContext *pWDA,
    return CONVERT_WDI2VOS_STATUS(wdiStatus) ;
 }
 
+#ifdef WLAN_FEATURE_11W
+/*
+ * FUNCTION: WDA_ProcessExcludeUnecryptInd
+ *
+ */
+VOS_STATUS WDA_ProcessExcludeUnecryptInd(tWDA_CbContext *pWDA,
+                              tSirWlanExcludeUnencryptParam *pExclUnencryptParam)
+{
+   WDI_Status wdiStatus;
+   WDI_ExcludeUnencryptIndType wdiExclUnencryptParams;
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+                                          "------> %s ", __func__);
+
+   wdiExclUnencryptParams.bExcludeUnencrypt = pExclUnencryptParam->excludeUnencrypt;
+   vos_mem_copy(wdiExclUnencryptParams.bssid, pExclUnencryptParam->bssId,
+                sizeof(tSirMacAddr));
+
+   wdiExclUnencryptParams.wdiReqStatusCB = NULL;
+   wdiExclUnencryptParams.pUserData = pWDA;
+
+   wdiStatus = WDI_ExcludeUnencryptedInd(&wdiExclUnencryptParams);
+   if(WDI_STATUS_PENDING == wdiStatus)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+              "Pending received for %s:%d ", __func__, __LINE__ );
+   }
+   else if( WDI_STATUS_SUCCESS_SYNC != wdiStatus )
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "Failure in %s:%d ", __func__, __LINE__ );
+   }
+   vos_mem_free(pExclUnencryptParam);
+   return CONVERT_WDI2VOS_STATUS(wdiStatus) ;
+}
+#endif
+
 /*
  * FUNCTION: WDA_ProcessWlanResumeCallback
  * 
@@ -10265,6 +10303,13 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
                    VOS_TRACE(VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
                                             " 11AC Feature is Not Supported \n");
           break;
+      }
+#endif
+#ifdef WLAN_FEATURE_11W
+      case WDA_EXCLUDE_UNENCRYPTED_IND:
+      {
+         WDA_ProcessExcludeUnecryptInd(pWDA, (tSirWlanExcludeUnencryptParam *)pMsg->bodyptr);
+         break;
       }
 #endif
       default:

@@ -3382,6 +3382,14 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
     pAddBssParams->extSetStaKeyParamValid = 0;
 #endif
 
+#ifdef WLAN_FEATURE_11W
+    if (psessionEntry->limRmfEnabled)
+    {
+        pAddBssParams->rmfEnabled = 1;
+        pAddBssParams->staContext.rmfEnabled = 1;
+    }
+#endif
+
     // Set a new state for MLME
     if( eLIM_MLM_WT_ASSOC_RSP_STATE == psessionEntry->limMlmState )
         psessionEntry->limMlmState = eLIM_MLM_WT_ADD_BSS_RSP_ASSOC_STATE;
@@ -3666,6 +3674,14 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
     pAddBssParams->extSetStaKeyParamValid = 0;
 #endif
 
+#ifdef WLAN_FEATURE_11W
+    if (psessionEntry->limRmfEnabled)
+    {
+        pAddBssParams->rmfEnabled = 1;
+        pAddBssParams->staContext.rmfEnabled = 1;
+    }
+#endif
+
     // Set a new state for MLME
 
     //pMac->lim.gLimMlmState = eLIM_MLM_WT_ADD_BSS_RSP_PREASSOC_STATE;
@@ -3946,3 +3962,49 @@ void limFillRxHighestSupportedRate(tpAniSirGlobal pMac, tANI_U16 *rxHighestRate,
 
     return;
 }
+
+#ifdef WLAN_FEATURE_11W
+/** -------------------------------------------------------------
+\fn     limSendSmeUnprotectedMgmtFrameInd
+\brief  Forwards the unprotected management frame to SME.
+\param  tpAniSirGlobal    pMac
+\param  frameType - 802.11 frame type
+\param  frame - frame buffer
+\param  sessionId - id for the current session
+\param  psessionEntry - PE session context
+\return none
+  -------------------------------------------------------------*/
+void limSendSmeUnprotectedMgmtFrameInd(
+                        tpAniSirGlobal pMac, tANI_U8 frameType,
+                        tANI_U8  *frame, tANI_U32 frameLen, tANI_U16 sessionId,
+                        tpPESession psessionEntry)
+{
+    tSirMsgQ mmhMsg;
+    tSirSmeUnprotMgmtFrameInd * pSirSmeMgmtFrame = NULL;
+    tANI_U16 length;
+
+    length = sizeof(tSirSmeUnprotMgmtFrameInd) + frameLen;
+
+    if (eHAL_STATUS_SUCCESS !=
+         palAllocateMemory(pMac->hHdd, (void **)&pSirSmeMgmtFrame, length))
+    {
+        limLog(pMac, LOGP,
+               FL("palAllocateMemory failed for tSirSmeUnprotectedMgmtFrameInd"));
+        return;
+    }
+    palZeroMemory(pMac->hHdd, (void*)pSirSmeMgmtFrame, length);
+
+    pSirSmeMgmtFrame->sessionId = sessionId;
+    pSirSmeMgmtFrame->frameType = frameType;
+
+    vos_mem_copy(pSirSmeMgmtFrame->frameBuf, frame, frameLen);
+    pSirSmeMgmtFrame->frameLen = frameLen;
+
+    mmhMsg.type = eWNI_SME_UNPROT_MGMT_FRM_IND;
+    mmhMsg.bodyptr = pSirSmeMgmtFrame;
+    mmhMsg.bodyval = 0;
+
+    limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+    return;
+}
+#endif

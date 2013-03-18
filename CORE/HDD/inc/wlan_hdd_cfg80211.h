@@ -77,6 +77,12 @@
 #define P2P_ACTION_FRAME "\x7f\x50\x6f\x9a\x09"
 #define P2P_ACTION_FRAME_SIZE 5
 
+#define SA_QUERY_FRAME_REQ "\x08\x00"
+#define SA_QUERY_FRAME_REQ_SIZE 2
+
+#define SA_QUERY_FRAME_RSP "\x08\x01"
+#define SA_QUERY_FRAME_RSP_SIZE 2
+
 #define HDD_P2P_WILDCARD_SSID "DIRECT-" //TODO Put it in proper place;
 #define HDD_P2P_WILDCARD_SSID_LEN 7
 

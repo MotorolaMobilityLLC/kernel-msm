@@ -1957,6 +1957,18 @@ void limProcessMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession 
    {
       WDA_TrafficStatsTimerActivate(FALSE);
    }
+
+#ifdef WLAN_FEATURE_11W
+    if (psessionEntry->limRmfEnabled)
+    {
+        if ( eSIR_SUCCESS != limSendExcludeUnencryptInd(pMac, TRUE, psessionEntry) )
+        {
+            limLog( pMac, LOGE,
+                    FL( "Could not send down Exclude Unencrypted Indication!" ),
+                    psessionEntry->limMlmState );
+        }
+    }
+#endif
 }
 
 void limProcessStaMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession psessionEntry)
@@ -3183,6 +3195,18 @@ void limProcessMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
     {
        WDA_TrafficStatsTimerActivate(TRUE);
     }
+
+#ifdef WLAN_FEATURE_11W
+    if (psessionEntry->limRmfEnabled)
+    {
+        if ( eSIR_SUCCESS != limSendExcludeUnencryptInd(pMac, FALSE, psessionEntry) )
+        {
+            limLog( pMac, LOGE,
+                    FL( "Could not send down Exclude Unencrypted Indication!" ),
+                    psessionEntry->limMlmState );
+        }
+    }
+#endif
 }
 /**
  * limProcessMlmSetKeyRsp()

@@ -261,7 +261,9 @@
 
 #ifdef WLAN_FEATURE_11W
 //11w SA query request/response action frame category code
-#define SIR_MAC_ACTION_SA_QUERY               8 
+#define SIR_MAC_ACTION_SA_QUERY          8
+#define SIR_MAC_SA_QUERY_REQ             0
+#define SIR_MAC_SA_QUERY_RSP             1
 #endif
 
 #ifdef FEATURE_WLAN_TDLS

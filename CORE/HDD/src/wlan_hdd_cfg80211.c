@@ -164,6 +164,9 @@ static const u32 hdd_cipher_suites[] =
 #ifdef FEATURE_WLAN_WAPI
     WLAN_CIPHER_SUITE_SMS4,
 #endif
+#ifdef WLAN_FEATURE_11W
+    WLAN_CIPHER_SUITE_AES_CMAC,
+#endif
 };
 
 static inline int is_broadcast_ether_addr(const u8 *addr)
@@ -704,6 +707,13 @@ void wlan_hdd_cfg80211_post_voss_start(hdd_adapter_t* pAdapter)
     sme_RegisterMgmtFrame(hHal, pAdapter->sessionId, type,
                          (v_U8_t*)P2P_ACTION_FRAME,
                                   P2P_ACTION_FRAME_SIZE );
+
+#ifdef WLAN_FEATURE_11W
+    /* SA Query Response Action Frame */
+    sme_RegisterMgmtFrame(hHal, pAdapter->sessionId, type,
+                         (v_U8_t*)SA_QUERY_FRAME_RSP,
+                                  SA_QUERY_FRAME_RSP_SIZE );
+#endif /* WLAN_FEATURE_11W */
 }
 
 void wlan_hdd_cfg80211_pre_voss_stop(hdd_adapter_t* pAdapter)
@@ -743,6 +753,13 @@ void wlan_hdd_cfg80211_pre_voss_stop(hdd_adapter_t* pAdapter)
     sme_DeregisterMgmtFrame(hHal, pAdapter->sessionId, type,
                          (v_U8_t*)P2P_ACTION_FRAME,
                                   P2P_ACTION_FRAME_SIZE );
+
+#ifdef WLAN_FEATURE_11W
+    /* SA Query Response Action Frame */
+    sme_DeregisterMgmtFrame(hHal, pAdapter->sessionId, type,
+                         (v_U8_t*)SA_QUERY_FRAME_RSP,
+                                  SA_QUERY_FRAME_RSP_SIZE );
+#endif /* WLAN_FEATURE_11W */
 }
 
 #ifdef FEATURE_WLAN_WAPI
@@ -3111,11 +3128,23 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
                 return 0;
             }
 #endif
+
 #ifdef FEATURE_WLAN_CCX
         case WLAN_CIPHER_SUITE_KRK:
             setKey.encType = eCSR_ENCRYPT_TYPE_KRK;
             break;
 #endif
+
+#ifdef WLAN_FEATURE_11W
+        case WLAN_CIPHER_SUITE_AES_CMAC:
+            setKey.encType = eCSR_ENCRYPT_TYPE_AES_CMAC;
+            /* Temporarily we will ignore the setting of the IGTK.  Once the Riva
+               firmware is modified to handle the IGTK, then we will proceeed normally.
+               For now, we just return success. */
+            return 0;
+            /* break; */
+#endif
+
         default:
             hddLog(VOS_TRACE_LEVEL_ERROR, "%s: unsupported cipher type %lu",
                     __func__, params->cipher);
@@ -4811,6 +4840,11 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
            pRoamProfile->ChannelInfo.ChannelList = &operatingChannel;
            pRoamProfile->ChannelInfo.numOfChannels = 1;
         }
+        else
+        {
+            pRoamProfile->ChannelInfo.ChannelList = NULL;
+            pRoamProfile->ChannelInfo.numOfChannels = 0;
+        }
 
         /* change conn_state to connecting before sme_RoamConnect(), because sme_RoamConnect()
          * has a direct path to call hdd_smeRoamCallback(), which will change the conn_state
@@ -5364,6 +5398,10 @@ int wlan_hdd_cfg80211_set_privacy( hdd_adapter_t *pAdapter,
                 __func__);
         return status;
     }
+
+#ifdef WLAN_FEATURE_11W
+    pWextState->roamProfile.MFPEnabled = (req->mfp == NL80211_MFP_REQUIRED);
+#endif
 
     /*parse WPA/RSN IE, and set the correspoing fileds in Roam profile*/
     if (req->ie_len)

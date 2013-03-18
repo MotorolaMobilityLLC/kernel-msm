@@ -869,7 +869,7 @@ void limProcessLearnIntervalTimeout(tpAniSirGlobal pMac);
 #ifdef WLAN_FEATURE_11W
 //11w SA query request action frame handler
 tSirRetStatus limSendSaQueryResponseFrame( tpAniSirGlobal pMac, 
-                   tANI_U16 transId, tSirMacAddr peer,tpPESession psessionEntry);
+                   tANI_U8 *transId, tSirMacAddr peer,tpPESession psessionEntry);
 #endif
 // Inline functions
 

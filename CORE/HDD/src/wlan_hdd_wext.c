@@ -208,6 +208,9 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #ifdef FEATURE_WLAN_TDLS
 #define WE_GET_TDLS_PEERS    8
 #endif
+#ifdef WLAN_FEATURE_11W
+#define WE_GET_11W_INFO      9
+#endif
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_NONE_GET_NONE   (SIOCIWFIRSTPRIV + 6)
@@ -533,6 +536,9 @@ hdd_IsAuthTypeRSN( tHalHandle halHandle, eCsrAuthType authType)
         case eCSR_AUTH_TYPE_FT_RSN_PSK:
 #endif
         case eCSR_AUTH_TYPE_RSN_PSK:
+#ifdef WLAN_FEATURE_11W
+        case eCSR_AUTH_TYPE_RSN_PSK_SHA256:
+#endif
             rsnType = eANI_BOOLEAN_TRUE;
             break;
         //case eCSR_AUTH_TYPE_FAILED:
@@ -904,6 +910,11 @@ void hdd_clearRoamProfileIe( hdd_adapter_t *pAdapter)
    pWextState->roamProfile.nRSNReqIELength = 0;
    pWextState->roamProfile.pRSNReqIE = (tANI_U8 *)NULL;
 
+#ifdef FEATURE_WLAN_WAPI
+   pWextState->roamProfile.nWAPIReqIELength = 0;
+   pWextState->roamProfile.pWAPIReqIE = (tANI_U8 *)NULL;
+#endif
+
    pWextState->roamProfile.bWPSAssociation = VOS_FALSE;
    pWextState->roamProfile.pAddIEScan = (tANI_U8 *)NULL;
    pWextState->roamProfile.nAddIEScanLength = 0;
@@ -920,6 +931,12 @@ void hdd_clearRoamProfileIe( hdd_adapter_t *pAdapter)
 
    pWextState->roamProfile.AuthType.numEntries = 1;
    pWextState->roamProfile.AuthType.authType[0] = eCSR_AUTH_TYPE_OPEN_SYSTEM;
+
+#ifdef WLAN_FEATURE_11W
+   pWextState->roamProfile.MFPEnabled = eANI_BOOLEAN_FALSE;
+   pWextState->roamProfile.MFPRequired = 0;
+   pWextState->roamProfile.MFPCapable = 0;
+#endif
 
    pWextState->authKeyMgmt = 0;
 
@@ -4043,6 +4060,9 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     int sub_cmd = wrqu->data.flags;
+#ifdef WLAN_FEATURE_11W
+    hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+#endif
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
     {
@@ -4254,6 +4274,25 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
             wrqu->data.length = wlan_hdd_tdls_get_all_peers(pAdapter, extra, WE_MAX_STR_LEN)+1;
             break;
         }
+#endif
+#ifdef WLAN_FEATURE_11W
+       case WE_GET_11W_INFO:
+       {
+           hddLog(LOGE, "WE_GET_11W_ENABLED = %d",  pWextState->roamProfile.MFPEnabled );
+
+           snprintf(extra, WE_MAX_STR_LEN,
+                    "\n BSSID %02X:%02X:%02X:%02X:%02X:%02X, Is PMF Assoc? %d"
+                    "\n Number of Unprotected Disassocs %d"
+                    "\n Number of Unprotected Deauths %d",
+                    (*pWextState->roamProfile.BSSIDs.bssid)[0], (*pWextState->roamProfile.BSSIDs.bssid)[1],
+                    (*pWextState->roamProfile.BSSIDs.bssid)[2], (*pWextState->roamProfile.BSSIDs.bssid)[3],
+                    (*pWextState->roamProfile.BSSIDs.bssid)[4], (*pWextState->roamProfile.BSSIDs.bssid)[5],
+                    pWextState->roamProfile.MFPEnabled, pAdapter->hdd_stats.hddPmfStats.numUnprotDisassocRx,
+                    pAdapter->hdd_stats.hddPmfStats.numUnprotDeauthRx);
+
+           wrqu->data.length = strlen(extra)+1;
+           break;
+       }
 #endif
         default:  
         {
@@ -6622,6 +6661,13 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
         "getTdlsPeers" },
+#endif
+#ifdef WLAN_FEATURE_11W
+    {
+        WE_GET_11W_INFO,
+        0,
+        IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
+        "getPMFInfo" },
 #endif
     /* handlers for main ioctl */
     {   WLAN_PRIV_SET_NONE_GET_NONE,

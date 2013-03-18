@@ -368,6 +368,9 @@ enum eWniMsgTypes
 #endif
     eWNI_SME_SET_BCN_FILTER_REQ,
     eWNI_SME_RESET_AP_CAPS_CHANGED,
+#ifdef WLAN_FEATURE_11W
+    eWNI_SME_UNPROT_MGMT_FRM_IND,
+#endif
     eWNI_SME_MSG_TYPES_END
 };
 

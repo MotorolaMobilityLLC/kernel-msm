@@ -4081,6 +4081,23 @@ typedef struct
   void*             pUserData;  
 }WDI_TrafficStatsIndType;
 
+#ifdef WLAN_FEATURE_11W
+typedef struct
+{
+
+    wpt_boolean   bExcludeUnencrypt;
+    wpt_macAddr   bssid;
+   /*Request status callback offered by UMAC - it is called if the current
+    req has returned PENDING as status; it delivers the status of sending
+    the message over the BUS */
+    WDI_ReqStatusCb wdiReqStatusCB;
+
+  /*The user data passed in by UMAC, it will be sent back when the above
+    function pointer will be called */
+    void*         pUserData;
+}WDI_ExcludeUnencryptIndType;
+#endif
+
 /*---------------------------------------------------------------------------
   WDI_WlanResumeInfoType
 ---------------------------------------------------------------------------*/
@@ -8891,6 +8908,24 @@ WDI_TrafficStatsInd
 (
   WDI_TrafficStatsIndType *pWdiTrafficStatsIndParams
 );
+
+#ifdef WLAN_FEATURE_11W
+/**
+ @brief WDI_ExcludeUnencryptedInd
+       Register with HAL to receive/drop unencrypted frames
+
+ @param WDI_ExcludeUnencryptIndType
+
+ @see
+
+ @return Status of the request
+*/
+WDI_Status
+WDI_ExcludeUnencryptedInd
+(
+  WDI_ExcludeUnencryptIndType *pWdiExcUnencParams
+);
+#endif
 
 #ifdef FEATURE_WLAN_SCAN_PNO
 /**
