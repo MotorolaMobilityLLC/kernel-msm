@@ -105,8 +105,8 @@
 			<&msmgpio 79 0>; /* Trigger */
 
 		external_trigger = <1>;
-		default_effect = <22>;      /* Medium Click 2 80% */
-		rated_voltage = <0x70>;
-		overdrive_voltage = <0xA0>;
+		default_effect = <21>;      /* Medium Click 1 100% */
+		rated_voltage = <0x70>;     /* 2.4v */
+		overdrive_voltage = <0x89>; /* 3.0v */
 	};
 };
