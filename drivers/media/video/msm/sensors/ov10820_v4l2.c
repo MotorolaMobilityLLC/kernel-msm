@@ -1229,6 +1229,8 @@ static int32_t ov10820_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
 		return rc;
 	}
 
+	usleep_range(1000, 2000);
+
 	rc = msm_camera_i2c_read_seq(s_ctrl->sensor_i2c_client,
 			OV10820_OTP_ADDR, (uint8_t *)ov10820_otp,
 			OV10820_OTP_SIZE);
