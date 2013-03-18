@@ -13,6 +13,7 @@
 #include <linux/device.h>
 #include <linux/mmc/core.h>
 #include <linux/mod_devicetable.h>
+#include <linux/reboot.h>
 
 struct mmc_cid {
 	unsigned int		manfid;
@@ -348,6 +349,8 @@ struct mmc_card {
 	struct mmc_wr_pack_stats wr_pack_stats; /* packed commands stats*/
 
 	struct mmc_bkops_info	bkops_info;
+
+	struct notifier_block reboot_notify;
 };
 
 /*
