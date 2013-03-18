@@ -2096,6 +2096,27 @@ out:
 	return ret;
 }
 
+static int mmc_blk_reboot_notify(struct notifier_block *notify_block,
+					unsigned long mode, void *unused)
+{
+	struct mmc_card *card = container_of(
+		notify_block, struct mmc_card, reboot_notify);
+	struct mmc_blk_data *part_md;
+	struct mmc_blk_data *md = mmc_get_drvdata(card);
+
+	pr_warn("%s: reboot notification received\n", mmc_hostname(card->host));
+	if (md) {
+		mmc_queue_suspend(&md->queue);
+		list_for_each_entry(part_md, &md->part, part) {
+			mmc_queue_suspend(&part_md->queue);
+		}
+	}
+
+	mmc_emergency_shutdown(card->host);
+
+	return NOTIFY_DONE;
+}
+
 static inline int mmc_blk_readonly(struct mmc_card *card)
 {
 	return mmc_card_readonly(card) ||
@@ -2193,6 +2214,8 @@ static struct mmc_blk_data *mmc_blk_alloc_req(struct mmc_card *card,
 	card->bkops_info.size_percentage_to_queue_delayed_work = percentage;
 	card->bkops_info.min_sectors_to_queue_delayed_work =
 		((unsigned int)size * percentage) / 100;
+
+	card->reboot_notify.notifier_call = mmc_blk_reboot_notify;
 
 	if (mmc_host_cmd23(card->host)) {
 		if (mmc_card_mmc(card) ||
@@ -2487,6 +2510,8 @@ static int mmc_blk_probe(struct mmc_card *card)
 #ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
 	mmc_set_bus_resume_policy(card->host, 1);
 #endif
+	register_reboot_notifier(&card->reboot_notify);
+
 	if (mmc_add_disk(md))
 		goto out;
 
@@ -2506,6 +2531,7 @@ static void mmc_blk_remove(struct mmc_card *card)
 {
 	struct mmc_blk_data *md = mmc_get_drvdata(card);
 
+	unregister_reboot_notifier(&card->reboot_notify);
 	mmc_blk_remove_parts(card, md);
 	mmc_claim_host(card->host);
 	mmc_blk_part_switch(card, md);

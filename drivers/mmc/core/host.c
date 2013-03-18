@@ -20,7 +20,6 @@
 #include <linux/leds.h>
 #include <linux/slab.h>
 #include <linux/suspend.h>
-#include <linux/reboot.h>
 
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
@@ -340,7 +339,6 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 #ifdef CONFIG_PM
 	host->pm_notify.notifier_call = mmc_pm_notify;
 #endif
-	host->reboot_notify.notifier_call = mmc_reboot_notify;
 	/*
 	 * By default, hosts do not support SGIO or large requests.
 	 * They have to set these according to their abilities.
@@ -456,8 +454,6 @@ int mmc_add_host(struct mmc_host *host)
 	if (!(host->pm_flags & MMC_PM_IGNORE_PM_NOTIFY))
 		register_pm_notifier(&host->pm_notify);
 
-	register_reboot_notifier(&host->reboot_notify);
-
 	return 0;
 }
 
@@ -475,7 +471,6 @@ void mmc_remove_host(struct mmc_host *host)
 {
 	if (!(host->pm_flags & MMC_PM_IGNORE_PM_NOTIFY))
 		unregister_pm_notifier(&host->pm_notify);
-	unregister_reboot_notifier(&host->reboot_notify);
 	mmc_stop_host(host);
 
 #ifdef CONFIG_DEBUG_FS
