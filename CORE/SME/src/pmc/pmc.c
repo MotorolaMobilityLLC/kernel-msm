@@ -458,11 +458,21 @@ eHalStatus pmcEnterImpsState (tHalHandle hHal)
     {
         if (palTimerStart(pMac->hHdd, pMac->pmc.hImpsTimer, pMac->pmc.impsPeriod * 1000, FALSE) != eHAL_STATUS_SUCCESS)
         {
-            smsLog(pMac, LOGE, FL("Cannot start IMPS timer"));
             PMC_ABORT;
+            pMac->pmc.ImpsReqTimerFailed = VOS_TRUE;
+            if (!(pMac->pmc.ImpsReqTimerfailCnt & 0xF))
+            {
+                pMac->pmc.ImpsReqTimerfailCnt++;
+                smsLog(pMac, LOGE, FL("Cannot start IMPS timer, FailCnt - %d"), pMac->pmc.ImpsReqTimerfailCnt);
+            }
             pmcEnterRequestFullPowerState(hHal, eSME_REASON_OTHER);
             return eHAL_STATUS_FAILURE;
         }
+        if (pMac->pmc.ImpsReqTimerfailCnt)
+        {
+           smsLog(pMac, LOGE, FL("Start IMPS timer was failed %d times before success"), pMac->pmc.ImpsReqTimerfailCnt);
+        }
+        pMac->pmc.ImpsReqTimerfailCnt = 0;
     }
 
     //Vote off RF supplies. Note RF supllies are not voted off if there is a
