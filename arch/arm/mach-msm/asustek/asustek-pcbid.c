@@ -20,6 +20,7 @@
 #include <linux/gpio.h>
 #include <linux/string.h>
 #include <mach/board_asustek.h>
+#include <asm/mach-types.h>
 
 #define PCBID_VALUE_INVALID 0x4E2F4100 /* N/A */
 
@@ -247,6 +248,16 @@ static int __init pcbid_driver_probe(struct platform_device *pdev)
 		if (debug_mask & DEBUG_VERBOSE)
 			pr_info("ASUSTek: Requesting gpio%d for %s\n",
 					res->start, res->name);
+
+		if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
+			if ((asustek_hw_rev == HW_REV_C) ||
+				(asustek_hw_rev == HW_REV_D)) {
+				if (i == 3) {
+					pr_info("ASUSTek: Bypassing PCB_ID3\n");
+					continue;
+				}
+			}
+		}
 
 		ret = gpio_request(res->start, res->name);
 		if (ret) {
