@@ -3896,6 +3896,7 @@ static void pm_batt_external_power_changed(struct power_supply *psy)
 
 #define PM8921_CHG_STEP_HYST 100
 #define PM8921_DCIN_VINMIN 4700
+#define PM8921_DEFAULT_VINMIN 4300
 /**
  * update_heartbeat - internal function to update userspace
  *		per update_time minutes
@@ -3923,7 +3924,6 @@ static void update_heartbeat(struct work_struct *work)
 	int percent_soc;
 	int fcc;
 	int seconds = 0;
-	int vinmin_lvl = 0;
 #endif
 
 	get_wl_psy();
@@ -3995,22 +3995,22 @@ static void update_heartbeat(struct work_struct *work)
 		    chip->step_charge_voltage) {
 			pr_debug("Step Rate used Batt V = %d\n",
 				batt_mvolt);
-			vinmin_lvl = chip->step_charge_vinmin;
+			chip->vin_min = chip->step_charge_vinmin;
 			pm_chg_ibatmax_set(chip, chip->step_charge_current);
 		} else if (batt_mvolt <= (chip->step_charge_voltage -
 					PM8921_CHG_STEP_HYST)) {
 			pr_debug("Step Rate NOT used Batt V = %d\n",
 				batt_mvolt);
 			pm_chg_ibatmax_set(chip, chip->max_bat_chg_current);
-			vinmin_lvl = chip->vin_min;
+			chip->vin_min = PM8921_DEFAULT_VINMIN;
 		}
 	}
 
 	if (!is_usb_chg_plugged_in(chip) && is_dc_chg_plugged_in(chip))
-		vinmin_lvl = PM8921_DCIN_VINMIN;
+		chip->vin_min = PM8921_DCIN_VINMIN;
 
-	if (vinmin_lvl)
-		pm_chg_vinmin_set(chip, vinmin_lvl);
+	if (chip->vin_min)
+		pm_chg_vinmin_set(chip, chip->vin_min);
 #endif
 
 	power_supply_changed(&chip->batt_psy);
