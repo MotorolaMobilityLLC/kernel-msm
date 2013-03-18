@@ -1202,7 +1202,7 @@ static struct pm8921_bms_platform_data pm8921_bms_pdata __devinitdata = {
 	.i_test			= 0,
 	.v_cutoff		= 3200,
 	.max_voltage_uv		= MAX_VOLTAGE_MV * 1000,
-	.shutdown_soc_valid_limit = 20,
+	.shutdown_soc_valid_limit = 100,
 	.adjust_soc_low_threshold = -1,
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	.get_batt_info=		read_mmi_battery_bms,
