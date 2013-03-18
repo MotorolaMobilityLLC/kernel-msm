@@ -518,8 +518,10 @@ static ssize_t camera_dev_read(struct file *file, char __user *buf, size_t size,
 	uint8_t data[AF_STATISTICS_DATA];
 	uint8_t *data_ptr = data;
 	int i;
-
-	for (i = 0; i < AF_STATISTICS_DATA; i++) {
+	/* TODO: New function is needed to read all bytes at once. */
+	for (i = AF_USEFUL_STATISTICS_ADDR;
+			i < AF_USEFUL_STATISTICS_ADDR + 10;
+			i++) {
 		rc = ov660_read_i2c((AF_STATISTICS_ADDR + i),
 				(data_ptr + i), 1);
 		GOTO_EXIT_IF((rc < 0), 1);
