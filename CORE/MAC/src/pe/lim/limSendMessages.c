@@ -870,3 +870,53 @@ tSirRetStatus limSendTdlsLinkTeardown(tpAniSirGlobal pMac, tANI_U16 staId)
 
 #endif
 
+#ifdef WLAN_FEATURE_11W
+/** ---------------------------------------------------------
+\fn      limSendExcludeUnencryptInd
+\brief   LIM sends a message to HAL to indicate whether to
+         ignore or indicate the unprotected packet error
+\param   tpAniSirGlobal  pMac
+\param   tANI_BOOLEAN excludeUnenc - true: ignore, false:
+         indicate
+\param   tpPESession  psessionEntry - session context
+\return  status
+  -----------------------------------------------------------*/
+tSirRetStatus limSendExcludeUnencryptInd(tpAniSirGlobal pMac,
+                                         tANI_BOOLEAN excludeUnenc,
+                                         tpPESession  psessionEntry)
+{
+    tSirRetStatus   retCode = eSIR_SUCCESS;
+    tSirMsgQ msgQ;
+    tSirWlanExcludeUnencryptParam * pExcludeUnencryptParam;
+
+    if (eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd,
+                                                  (void **) &pExcludeUnencryptParam,
+                                                  sizeof(tSirWlanExcludeUnencryptParam)))
+    {
+        limLog(pMac, LOGP,
+            FL( "Unable to PAL allocate memory during limSendExcludeUnencryptInd"));
+        return eSIR_MEM_ALLOC_FAILED;
+    }
+
+    pExcludeUnencryptParam->excludeUnencrypt = excludeUnenc;
+    sirCopyMacAddr(pExcludeUnencryptParam->bssId, psessionEntry->bssId);
+
+    msgQ.type =  WDA_EXCLUDE_UNENCRYPTED_IND;
+    msgQ.reserved = 0;
+    msgQ.bodyptr = pExcludeUnencryptParam;
+    msgQ.bodyval = 0;
+    PELOG3(limLog(pMac, LOG3,
+                FL("Sending WDA_EXCLUDE_UNENCRYPTED_IND"));)
+    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
+    if (eSIR_SUCCESS != (retCode = wdaPostCtrlMsg(pMac, &msgQ)))
+    {
+        palFreeMemory(pMac->hHdd, pExcludeUnencryptParam);
+        limLog(pMac, LOGP,
+               FL("Posting  WDA_EXCLUDE_UNENCRYPTED_IND to WDA failed, reason=%X"),
+               retCode);
+    }
+
+    return retCode;
+}
+#endif
+

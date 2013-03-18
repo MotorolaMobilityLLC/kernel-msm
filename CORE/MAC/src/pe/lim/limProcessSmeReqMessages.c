@@ -1585,6 +1585,18 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         psessionEntry->htRecommendedTxWidthSet = psessionEntry->htSupportedChannelWidthSet;
         psessionEntry->htSecondaryChannelOffset = pSmeJoinReq->cbMode;
 
+        /* Record if management frames need to be protected */
+#ifdef WLAN_FEATURE_11W
+        if(eSIR_ED_AES_128_CMAC == pSmeJoinReq->MgmtEncryptionType)
+        {
+            psessionEntry->limRmfEnabled = 1;
+        }
+        else
+        {
+            psessionEntry->limRmfEnabled = 0;
+        }
+#endif
+
         /*Store Persona */
         psessionEntry->pePersona = pSmeJoinReq->staPersona;
         VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,

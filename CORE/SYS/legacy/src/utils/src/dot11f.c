@@ -949,6 +949,16 @@ void dot11fUnpackFfTimeStamp(tpAniSirGlobal pCtx,
 
 #define SigFfTimeStamp ( 0x001f )
 
+void dot11fUnpackFfTransactionId(tpAniSirGlobal pCtx,
+                                 tANI_U8 *pBuf,
+                                 tDot11fFfTransactionId *pDst)
+{
+    DOT11F_MEMCPY(pCtx, pDst->transId, pBuf, 2);
+    (void)pCtx;
+} /* End dot11fUnpackFfTransactionId. */
+
+#define SigFfTransactionId ( 0x0020 )
+
 void dot11fUnpackFfTxAntennaId(tpAniSirGlobal pCtx,
                                tANI_U8 *pBuf,
                                tDot11fFfTxAntennaId *pDst)
@@ -957,7 +967,7 @@ void dot11fUnpackFfTxAntennaId(tpAniSirGlobal pCtx,
     (void)pCtx;
 } /* End dot11fUnpackFfTxAntennaId. */
 
-#define SigFfTxAntennaId ( 0x0020 )
+#define SigFfTxAntennaId ( 0x0021 )
 
 void dot11fUnpackFfTxPower(tpAniSirGlobal pCtx,
                            tANI_U8 *pBuf,
@@ -967,7 +977,7 @@ void dot11fUnpackFfTxPower(tpAniSirGlobal pCtx,
     (void)pCtx;
 } /* End dot11fUnpackFfTxPower. */
 
-#define SigFfTxPower ( 0x0021 )
+#define SigFfTxPower ( 0x0022 )
 
 tANI_U32 dot11fUnpackTlvAuthorizedMACs(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U16 tlvlen, tDot11fTLVAuthorizedMACs *pDst)
 {
@@ -17764,6 +17774,41 @@ tANI_U32 dot11fUnpackSMPowerSave(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nB
 
 } /* End dot11fUnpackSMPowerSave. */
 
+    static const tFFDefn FFS_SaQueryRsp[] = {
+        { "Category", offsetof(tDot11fSaQueryRsp, Category), SigFfCategory , DOT11F_FF_CATEGORY_LEN, },
+        { "Action", offsetof(tDot11fSaQueryRsp, Action), SigFfAction , DOT11F_FF_ACTION_LEN, },
+        { "TransactionId", offsetof(tDot11fSaQueryRsp, TransactionId), SigFfTransactionId , DOT11F_FF_TRANSACTIONID_LEN, },
+    { NULL, 0, 0, 0,},
+    };
+
+    static const tIEDefn IES_SaQueryRsp[] = {
+    {0, 0, 0, NULL, 0, 0, 0, 0, {0, 0, 0, 0, 0}, 0, 0xff, 0, },    };
+
+tANI_U32 dot11fUnpackSaQueryRsp(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, tDot11fSaQueryRsp *pFrm)
+{
+    tANI_U32 i = 0;
+    tANI_U32 status = 0;
+    status = UnpackCore(pCtx, pBuf, nBuf, FFS_SaQueryRsp, IES_SaQueryRsp, ( tANI_U8* )pFrm, sizeof(*pFrm));
+
+    (void)i;
+#   ifdef DOT11F_DUMP_FRAMES
+    if (!DOT11F_FAILED(status))
+    {
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), FRFL("Unpacked the SaQueryRsp:\n"));
+        FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), pBuf, nBuf);
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), FRFL("to:\n"));
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), FRFL("Category:\n"));
+        FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), ( tANI_U8* )&pFrm->Category.category, 1);
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), FRFL("Action:\n"));
+        FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), ( tANI_U8* )&pFrm->Action.action, 1);
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), FRFL("TransactionId:\n"));
+        FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), ( tANI_U8* )&pFrm->TransactionId.transId, 2);
+    }
+#   endif // DOT11F_DUMP_FRAMES
+    return status;
+
+} /* End dot11fUnpackSaQueryRsp. */
+
     static const tFFDefn FFS_TDLSDisReq[] = {
         { "Category", offsetof(tDot11fTDLSDisReq, Category), SigFfCategory , DOT11F_FF_CATEGORY_LEN, },
         { "Action", offsetof(tDot11fTDLSDisReq, Action), SigFfAction , DOT11F_FF_ACTION_LEN, },
@@ -19861,6 +19906,9 @@ static tANI_U32 UnpackCore(tpAniSirGlobal pCtx,
         case SigFfTimeStamp:
             dot11fUnpackFfTimeStamp(pCtx, pBufRemaining, ( tDot11fFfTimeStamp* )(pFrm + pFf->offset ));
             break;
+        case SigFfTransactionId:
+            dot11fUnpackFfTransactionId(pCtx, pBufRemaining, ( tDot11fFfTransactionId* )(pFrm + pFf->offset ));
+            break;
         case SigFfTxAntennaId:
             dot11fUnpackFfTxAntennaId(pCtx, pBufRemaining, ( tDot11fFfTxAntennaId* )(pFrm + pFf->offset ));
             break;
@@ -21840,6 +21888,14 @@ tANI_U32 dot11fGetPackedSMPowerSaveSize(tpAniSirGlobal pCtx, tDot11fSMPowerSave 
     return status;
 } /* End dot11fGetPackedSMPowerSaveSize. */
 
+tANI_U32 dot11fGetPackedSaQueryRspSize(tpAniSirGlobal pCtx, tDot11fSaQueryRsp *pFrm, tANI_U32 *pnNeeded)
+{
+    tANI_U32 status = 0;
+    *pnNeeded = 4;
+    status = GetPackedSizeCore(pCtx, ( tANI_U8* )pFrm, pnNeeded, IES_SaQueryRsp);
+    return status;
+} /* End dot11fGetPackedSaQueryRspSize. */
+
 tANI_U32 dot11fGetPackedTDLSDisReqSize(tpAniSirGlobal pCtx, tDot11fTDLSDisReq *pFrm, tANI_U32 *pnNeeded)
 {
     tANI_U32 status = 0;
@@ -23157,6 +23213,14 @@ void dot11fPackFfTimeStamp(tpAniSirGlobal pCtx,
     frameshtonq(pCtx, pBuf, pSrc->timestamp, 0);
     (void)pCtx;
 } /* End dot11fPackFfTimeStamp. */
+
+void dot11fPackFfTransactionId(tpAniSirGlobal pCtx,
+                               tDot11fFfTransactionId *pSrc,
+                               tANI_U8 *pBuf)
+{
+    DOT11F_MEMCPY(pCtx, pBuf, pSrc->transId, 2);
+    (void)pCtx;
+} /* End dot11fPackFfTransactionId. */
 
 void dot11fPackFfTxAntennaId(tpAniSirGlobal pCtx,
                              tDot11fFfTxAntennaId *pSrc,
@@ -42387,6 +42451,32 @@ tANI_U32 dot11fPackSMPowerSave(tpAniSirGlobal pCtx, tDot11fSMPowerSave *pFrm, tA
 
 } /* End dot11fUnpackSMPowerSave. */
 
+tANI_U32 dot11fPackSaQueryRsp(tpAniSirGlobal pCtx, tDot11fSaQueryRsp *pFrm, tANI_U8 *pBuf, tANI_U32 nBuf, tANI_U32 *pnConsumed)
+{
+    tANI_U32 i = 0;
+    tANI_U32 status = 0;
+    (void)i;
+    *pnConsumed = 0U;
+    status = PackCore(pCtx, (tANI_U8*)pFrm, pBuf, nBuf, pnConsumed, FFS_SaQueryRsp, IES_SaQueryRsp);
+
+#   ifdef DOT11F_DUMP_FRAMES
+    if (!DOT11F_FAILED(status))
+    {
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), FRFL("Packed the SaQueryRsp:\n"));
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), FRFL("Category:\n"));
+        FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), ( tANI_U8* )&pFrm->Category.category, 1);
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), FRFL("Action:\n"));
+        FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), ( tANI_U8* )&pFrm->Action.action, 1);
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), FRFL("TransactionId:\n"));
+        FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), ( tANI_U8* )&pFrm->TransactionId.transId, 2);
+        FRAMES_LOG0(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), FRFL("to:\n"));
+        FRAMES_DUMP(pCtx, FRAMES_SEV_FOR_FRAME(pCtx, DOT11F_SAQUERYRSP), pBuf, nBuf);
+    }
+#   endif // DOT11F_DUMP_FRAMES
+    return status;
+
+} /* End dot11fUnpackSaQueryRsp. */
+
 tANI_U32 dot11fPackTDLSDisReq(tpAniSirGlobal pCtx, tDot11fTDLSDisReq *pFrm, tANI_U8 *pBuf, tANI_U32 nBuf, tANI_U32 *pnConsumed)
 {
     tANI_U32 i = 0;
@@ -44280,6 +44370,9 @@ static tANI_U32 PackCore(tpAniSirGlobal pCtx,
                 break;
             case SigFfTimeStamp:
                 dot11fPackFfTimeStamp(pCtx, (tDot11fFfTimeStamp* )(pSrc + pFf->offset), pBufRemaining);
+                break;
+            case SigFfTransactionId:
+                dot11fPackFfTransactionId(pCtx, (tDot11fFfTransactionId* )(pSrc + pFf->offset), pBufRemaining);
                 break;
             case SigFfTxAntennaId:
                 dot11fPackFfTxAntennaId(pCtx, (tDot11fFfTxAntennaId* )(pSrc + pFf->offset), pBufRemaining);

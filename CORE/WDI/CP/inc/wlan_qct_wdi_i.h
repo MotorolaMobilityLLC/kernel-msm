@@ -453,6 +453,9 @@ typedef enum
   /* Send a traffic stats indication to HAL */
   WDI_TRAFFIC_STATS_IND,
 
+  /* Drop/Receive unencrypted frames indication to HAL */
+  WDI_EXCLUDE_UNENCRYPTED_IND,
+
   /*Keep adding the indications to the max request
     such that we keep them sepparate */
 
@@ -2726,6 +2729,26 @@ WDI_ProcessTrafficStatsInd
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
+
+#ifdef WLAN_FEATURE_11W
+/**
+ @brief Process Exclude Unencrypted Indications function (called
+        when Main FSM allows it)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+              pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessExcludeUnencryptInd
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+);
+#endif
+
 /*========================================================================
           Main DAL Control Path Response Processing API 
 ========================================================================*/

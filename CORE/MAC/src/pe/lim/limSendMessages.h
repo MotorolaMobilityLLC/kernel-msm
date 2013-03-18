@@ -109,5 +109,9 @@ tSirRetStatus limSendTdlsLinkEstablish(tpAniSirGlobal pMac, tANI_U8 bIsPeerRespo
                 tANI_U8 ptiBufStatusOffset, tANI_U8 ptiFrameLen, tANI_U8 *ptiFrame, tANI_U8 *extCapability);
 tSirRetStatus limSendTdlsLinkTeardown(tpAniSirGlobal pMac, tANI_U16 staId);
 #endif
-
+#ifdef WLAN_FEATURE_11W
+tSirRetStatus limSendExcludeUnencryptInd(tpAniSirGlobal pMac,
+                                         tANI_BOOLEAN excludeUnenc,
+                                         tpPESession  psessionEntry );
+#endif
 #endif

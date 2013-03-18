@@ -1007,6 +1007,11 @@ typedef struct sSirSmeJoinReq
     tAniEdType          UCEncryptionType;
 
     tAniEdType          MCEncryptionType;
+
+#ifdef WLAN_FEATURE_11W
+    tAniEdType          MgmtEncryptionType;
+#endif
+
 #ifdef WLAN_FEATURE_VOWIFI_11R
     tAniBool            is11Rconnection;
 #endif
@@ -3340,6 +3345,16 @@ typedef struct sSirSmeMgmtFrameInd
     tANI_U8  frameBuf[1]; //variable
 }tSirSmeMgmtFrameInd, *tpSirSmeMgmtFrameInd;
 
+#ifdef WLAN_FEATURE_11W
+typedef struct sSirSmeUnprotMgmtFrameInd
+{
+    tANI_U8         sessionId;
+    tANI_U8         frameType;
+    tANI_U8         frameLen;
+    tANI_U8         frameBuf[1]; //variable
+}tSirSmeUnprotMgmtFrameInd, *tpSirSmeUnprotMgmtFrameInd;
+#endif
+
 #define SIR_IS_FULL_POWER_REASON_DISCONNECTED(eReason) \
     ( ( eSME_LINK_DISCONNECTED_BY_HDD == (eReason) ) || \
       ( eSME_LINK_DISCONNECTED_BY_OTHER == (eReason) ) || \
@@ -3983,5 +3998,13 @@ typedef struct sSirResetAPCapsChange
     tANI_U16       length;
     tSirMacAddr    bssId;
 } tSirResetAPCapsChange, *tpSirResetAPCapsChange;
+
+#ifdef WLAN_FEATURE_11W
+typedef struct sSirWlanExcludeUnencryptParam
+{
+    tANI_BOOLEAN    excludeUnencrypt;
+    tSirMacAddr     bssId;
+}tSirWlanExcludeUnencryptParam,*tpSirWlanExcludeUnencryptParam;
+#endif
 
 #endif /* __SIR_API_H */

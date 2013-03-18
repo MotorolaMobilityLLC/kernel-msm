@@ -1765,7 +1765,7 @@ __limProcessNeighborReport( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo ,tpPESes
 
 #ifdef WLAN_FEATURE_11W
 /**
- * limProcessActionFrame
+ * limProcessSAQueryRequestActionFrame
  *
  *FUNCTION:
  * This function is called by limProcessActionFrame() upon
@@ -1778,14 +1778,16 @@ __limProcessNeighborReport( tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo ,tpPESes
  *NOTE:
  *
  * @param  pMac - Pointer to Global MAC structure
- * @param  *pBd - A pointer to Buffer descriptor + associated PDUs
+ * @param  *pRxPacketInfo - Handle to the Rx packet info
+ * @param  psessionEntry - PE session entry
+ *
  * @return None
  */
-static void __limProcessSAQueryRequestActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession psessionEntry)
+static void __limProcessSAQueryRequestActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession psessionEntry)
 {
     tpSirMacMgmtHdr     pHdr;
     tANI_U8             *pBody;
-    tANI_U16            transId = 0;           
+    tANI_U8             transId[2];
 
     /* Prima  --- Below Macro not available in prima 
        pHdr = SIR_MAC_BD_TO_MPDUHEADER(pBd);
@@ -1794,25 +1796,60 @@ static void __limProcessSAQueryRequestActionFrame(tpAniSirGlobal pMac, tANI_U8 *
     pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
     pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
 
+    /* If this is an unprotected SA Query Request, then ignore it. */
+    if (pHdr->fc.wep == 0)
+        return;
+
     /*Extract 11w trsansId from SA query request action frame
       In SA query response action frame we will send same transId
       In SA query request action frame:
       Category       : 1 byte
       Action         : 1 byte
-      Transaction ID : 2 bbytes */
+      Transaction ID : 2 bytes */
+    vos_mem_copy( &transId[0], &pBody[2], 2 );
 
-    transId = pBody[2];
-    transId = transId << 8;
-    transId |= pBody[3];
-    
     //Send 11w SA query response action frame
     if (limSendSaQueryResponseFrame(pMac,
                               transId,
                               pHdr->sa,psessionEntry) != eSIR_SUCCESS)
     {
-        PELOGE(limLog(pMac, LOGE, FL("fail to send SA query response action frame. \n"));)
+        PELOGE(limLog(pMac, LOGE, FL("fail to send SA query response action frame."));)
         return;
     }
+}
+
+/**
+ * __limProcessSAQueryResponseActionFrame
+ *
+ *FUNCTION:
+ * This function is called by limProcessActionFrame() upon
+ * SA query response Action frame reception.
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ *
+ *NOTE:
+ *
+ * @param  pMac - Pointer to Global MAC structure
+ * @param  *pRxPacketInfo - Handle to the Rx packet info
+ * @param  psessionEntry - PE session entry
+ * @return None
+ */
+static void __limProcessSAQueryResponseActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession psessionEntry)
+{
+    tpSirMacMgmtHdr     pHdr;
+    tANI_U32            frameLen;
+
+    pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
+    frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
+    VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
+                         ("SA Query Response received...")) ;
+    /* Forward to the SME to HDD to wpa_supplicant */
+    // type is ACTION
+    limSendSmeMgmtFrameInd(pMac, pHdr->fc.subType,
+       (tANI_U8*)pHdr, frameLen + sizeof(tSirMacMgmtHdr), 0,
+       WDA_GET_RX_CH( pRxPacketInfo ), psessionEntry, 0);
 }
 
 #endif
@@ -1840,11 +1877,21 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
 {
     tANI_U8 *pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
     tpSirMacActionFrameHdr pActionHdr = (tpSirMacActionFrameHdr) pBody;
+#ifdef WLAN_FEATURE_11W
+    tpSirMacMgmtHdr pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
+#endif
 
-   
     switch (pActionHdr->category)
     {
         case SIR_MAC_ACTION_QOS_MGMT:
+#ifdef WLAN_FEATURE_11W
+            if ((psessionEntry->limRmfEnabled) && (pHdr->fc.wep == 0))
+            {
+                PELOGE(limLog(pMac, LOGE, FL("Dropping unprotected Action category %d frame "
+                                             "since RMF is enabled."), pActionHdr->category);)
+                break;
+            }
+#endif
             if (psessionEntry->limQosEnabled)
             {
                 switch (pActionHdr->actionID)
@@ -1862,7 +1909,7 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                         break;
 
                     default:
-                        PELOGE(limLog(pMac, LOGE, FL("Qos action %d not handled\n"), pActionHdr->actionID);)
+                        PELOGE(limLog(pMac, LOGE, FL("Qos action %d not handled."), pActionHdr->actionID);)
                         break;
                 }
                 break ;
@@ -1871,6 +1918,14 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
            break;
 
         case SIR_MAC_ACTION_SPECTRUM_MGMT:
+#ifdef WLAN_FEATURE_11W
+            if ((psessionEntry->limRmfEnabled) && (pHdr->fc.wep == 0))
+            {
+                PELOGE(limLog(pMac, LOGE, FL("Dropping unprotected Action category %d frame "
+                                             "since RMF is enabled."), pActionHdr->category);)
+                break;
+            }
+#endif
             switch (pActionHdr->actionID)
             {
 #ifdef ANI_SUPPORT_11H
@@ -1900,7 +1955,7 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                     }
                     break;
                 default:
-                    PELOGE(limLog(pMac, LOGE, FL("Spectrum mgmt action id %d not handled\n"), pActionHdr->actionID);)
+                    PELOGE(limLog(pMac, LOGE, FL("Spectrum mgmt action id %d not handled."), pActionHdr->actionID);)
                     break;
             }
             break;
@@ -1908,7 +1963,7 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
         case SIR_MAC_ACTION_WME:
             if (! psessionEntry->limWmeEnabled)
             {
-                limLog(pMac, LOGW, FL("WME mode disabled - dropping action frame %d\n"),
+                limLog(pMac, LOGW, FL("WME mode disabled - dropping action frame %d."),
                        pActionHdr->actionID);
                 break;
             }
@@ -1927,13 +1982,21 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                     break;
 
                 default:
-                    PELOGE(limLog(pMac, LOGE, FL("WME action %d not handled\n"), pActionHdr->actionID);)
+                    PELOGE(limLog(pMac, LOGE, FL("WME action %d not handled."), pActionHdr->actionID);)
                     break;
             }
             break;
 
         case SIR_MAC_ACTION_BLKACK:
             // Determine the "type" of BA Action Frame
+#ifdef WLAN_FEATURE_11W
+            if ((psessionEntry->limRmfEnabled) && (pHdr->fc.wep == 0))
+            {
+                PELOGE(limLog(pMac, LOGE, FL("Dropping unprotected Action category %d frame "
+                                             "since RMF is enabled."), pActionHdr->category);)
+                break;
+            }
+#endif
             switch(pActionHdr->actionID)
             {
               case SIR_MAC_BLKACK_ADD_REQ:
@@ -1960,13 +2023,21 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
             __limProcessSMPowerSaveUpdate(pMac, (tANI_U8 *) pRxPacketInfo,psessionEntry);
             break;
         default:
-            PELOGE(limLog(pMac, LOGE, FL("Action ID %d not handled in HT Action category\n"), pActionHdr->actionID);)
+            PELOGE(limLog(pMac, LOGE, FL("Action ID %d not handled in HT Action category."), pActionHdr->actionID);)
             break;
         }
         break;
 
 #if defined WLAN_FEATURE_VOWIFI
     case SIR_MAC_ACTION_RRM:
+#ifdef WLAN_FEATURE_11W
+            if ((psessionEntry->limRmfEnabled) && (pHdr->fc.wep == 0))
+            {
+                PELOGE(limLog(pMac, LOGE, FL("Dropping unprotected Action category %d frame "
+                                             "since RMF is enabled."), pActionHdr->category);)
+                break;
+            }
+#endif
         if( pMac->rrm.rrmPEContext.rrmEnable )
         {
             switch(pActionHdr->actionID) {
@@ -1980,7 +2051,7 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                     __limProcessNeighborReport( pMac, (tANI_U8*) pRxPacketInfo, psessionEntry );
                     break;
                 default:
-                    PELOGE( limLog( pMac, LOGE, FL("Action ID %d not handled in RRM\n"), pActionHdr->actionID);)
+                    PELOGE( limLog( pMac, LOGE, FL("Action ID %d not handled in RRM."), pActionHdr->actionID);)
                     break;
 
             }
@@ -1988,7 +2059,7 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
         else
         {
             // Else we will just ignore the RRM messages.
-            PELOGE( limLog( pMac, LOGE, FL("RRM Action frame ignored as RRM is disabled in cfg\n"));)
+            PELOGE( limLog( pMac, LOGE, FL("RRM Action frame ignored as RRM is disabled in cfg."));)
         }
         break;
 #endif
@@ -2053,8 +2124,22 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
 #ifdef WLAN_FEATURE_11W
     case SIR_MAC_ACTION_SA_QUERY:
     {
-        /**11w SA query request action frame received**/
-        __limProcessSAQueryRequestActionFrame(pMac,(tANI_U8*) pRxPacketInfo, psessionEntry );
+        PELOGE(limLog(pMac, LOG1, FL("SA Query Action category %d action %d."), pActionHdr->category, pActionHdr->actionID);)
+        switch (pActionHdr->actionID)
+        {
+            case  SIR_MAC_SA_QUERY_REQ:
+                /**11w SA query request action frame received**/
+                /* Respond directly to the incoming request in LIM */
+                __limProcessSAQueryRequestActionFrame(pMac,(tANI_U8*) pRxPacketInfo, psessionEntry );
+                break;
+            case  SIR_MAC_SA_QUERY_RSP:
+                /**11w SA query response action frame received**/
+                /* Forward to the SME to HDD to wpa_supplicant */
+                __limProcessSAQueryResponseActionFrame(pMac,(tANI_U8*) pRxPacketInfo, psessionEntry );
+                break;
+            default:
+                break;
+        }
         break;
      }
 #endif
@@ -2072,6 +2157,7 @@ limProcessActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
                 break;
             }
         }
+        break;
     }
 #endif
     default:

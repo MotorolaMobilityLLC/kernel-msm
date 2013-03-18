@@ -840,7 +840,25 @@ WDI_FillTxBd
                 if(!ucUnicastDst)
                     pBd->dpuDescIdx = pSta->bcastMgmtDpuIndex; /* IGTK */
                 else
-                    pBd->dpuDescIdx = pSta->dpuIndex; /* PTK */
+                {
+                    wpt_uint8 peerStaId;
+
+                    //We need to find the peer's station's DPU index to send this
+                    //frame using PTK
+                    wdiStatus = WDI_STATableFindStaidByAddr( pWDICtx,
+                                        *(wpt_macAddr*)pDestMacAddr, &peerStaId );
+                    if (WDI_STATUS_SUCCESS != wdiStatus)
+                    {
+                        WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                           "%s failed to find peer sta %02X-%02X-%02X-%02X-%02X-%02X",
+                           __FUNCTION__, ((wpt_uint8 *)pDestMacAddr)[0],
+                           ((wpt_uint8 *)pDestMacAddr)[1], ((wpt_uint8 *)pDestMacAddr)[5],
+                           ((wpt_uint8 *)pDestMacAddr)[3], ((wpt_uint8 *)pDestMacAddr)[4],
+                           ((wpt_uint8 *)pDestMacAddr)[5]);
+                        return WDI_STATUS_E_FAILURE;
+                    }
+                    pBd->dpuDescIdx = ((WDI_StaStruct*)pWDICtx->staTable)[peerStaId].dpuIndex; /* PTK */
+                }
             }
             else
             {
