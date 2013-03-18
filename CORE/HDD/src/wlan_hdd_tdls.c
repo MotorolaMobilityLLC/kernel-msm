@@ -1314,7 +1314,7 @@ void wlan_hdd_tdls_check_bmps(hdd_adapter_t *pAdapter)
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     tdlsCtx_t *pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
 
-    if (NULL == pHddCtx) return;
+    if ((NULL == pHddCtx) || (NULL == pHddTdlsCtx)) return;
 
     if ((0 == pHddCtx->connected_peer_count) &&
         (0 == pHddTdlsCtx->discovery_sent_cnt))
