@@ -154,6 +154,7 @@ WLANSAP_ScanCallback
     tScanResultHandle pResult = NULL;
     eHalStatus scanGetResultStatus = eHAL_STATUS_FAILURE;
     ptSapContext psapContext = (ptSapContext)pContext;
+    void *pTempHddCtx;
     tWLAN_SAPEvent sapEvent; /* State machine event */
     v_U8_t operChannel = 0;
     VOS_STATUS sapstatus;
@@ -162,6 +163,15 @@ WLANSAP_ScanCallback
 #endif
 
     /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
+
+    pTempHddCtx = vos_get_context( VOS_MODULE_ID_HDD,
+                                     psapContext->pvosGCtx);
+    if (NULL == pTempHddCtx)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL,
+                   "HDD context is NULL");
+        return eHAL_STATUS_FAILURE;
+    }
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, before switch on scanStatus = %d", __func__, scanStatus);
 
@@ -217,8 +227,9 @@ WLANSAP_ScanCallback
     {
       psapContext->channel = operChannel;
     }
-    
-    wlan_sap_select_cbmode(vos_get_context( VOS_MODULE_ID_HDD, psapContext->pvosGCtx),psapContext->csrRoamProfile.phyMode, psapContext->channel);
+
+    wlan_sap_select_cbmode(pTempHddCtx, psapContext->csrRoamProfile.phyMode,
+                           psapContext->channel);
 #ifdef SOFTAP_CHANNEL_RANGE
     if(psapContext->channelList != NULL)
     {
