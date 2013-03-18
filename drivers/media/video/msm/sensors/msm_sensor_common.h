@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -135,9 +135,9 @@ struct msm_sensor_fn_t {
 	int32_t (*sensor_set_fps) (struct msm_sensor_ctrl_t *,
 			struct fps_cfg *);
 	int32_t (*sensor_write_exp_gain) (struct msm_sensor_ctrl_t *,
-			uint16_t, uint32_t);
+			uint16_t, uint32_t, int32_t, uint16_t);
 	int32_t (*sensor_write_snapshot_exp_gain) (struct msm_sensor_ctrl_t *,
-			uint16_t, uint32_t);
+			uint16_t, uint32_t, int32_t, uint16_t);
 	int32_t (*sensor_setting) (struct msm_sensor_ctrl_t *,
 			int update_type, int rt);
 	int32_t (*sensor_csi_setting) (struct msm_sensor_ctrl_t *,
@@ -160,6 +160,9 @@ struct msm_sensor_fn_t {
 			int32_t vision_mode_enable);
 	int (*sensor_set_vision_ae_control)(
 			struct msm_sensor_ctrl_t *s_ctrl, int ae_mode);
+	int32_t (*sensor_read_eeprom)(struct msm_sensor_ctrl_t *);
+	int32_t (*sensor_hdr_update)(struct msm_sensor_ctrl_t *,
+		 struct sensor_hdr_update_parm_t *);
 };
 
 struct msm_sensor_csi_info {
