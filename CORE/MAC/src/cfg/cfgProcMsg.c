@@ -154,7 +154,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     tSirMsgQ    mmhMsg;
 
     // First Dword must contain the AP or STA magic dword
-    PELOGW(cfgLog(pMac, LOGW, FL("CFG size %d bytes MAGIC dword is 0x%x\n"),
+    PELOGW(cfgLog(pMac, LOGW, FL("CFG size %d bytes MAGIC dword is 0x%x"),
            length, sirReadU32N((tANI_U8*)pParam) );)
 
     // if the string is not correct, return failure
@@ -165,7 +165,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
 
     else
     {
-        PELOGE(cfgLog(pMac, LOGE, FL("Invalid magic dword 0x%x\n"),sirReadU32N((tANI_U8*)pParam) );)
+        PELOGE(cfgLog(pMac, LOGE, FL("Invalid magic dword 0x%x"),sirReadU32N((tANI_U8*)pParam) );)
         retVal = WNI_CFG_INVALID_LEN;
         goto end;
     }
@@ -182,7 +182,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     // Parse the Cfg header
     pHdr = (tpCfgBinHdr) pParam;
     pParam += (sizeof(tCfgBinHdr) >> 2);
-    PELOGW(cfgLog(pMac, LOGW, FL("CFG hdr totParams %d intParams %d strBufSize %d/%d\n"),
+    PELOGW(cfgLog(pMac, LOGW, FL("CFG hdr totParams %d intParams %d strBufSize %d/%d"),
            pHdr->controlSize, pHdr->iBufSize, pHdr->sBufSize, pMac->cfg.gCfgMaxSBufSize);)
 
     expLen = ((CFG_PARAM_MAX_NUM + 3 * pMac->cfg.gCfgMaxIBufSize) << 2) +
@@ -190,7 +190,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
 
     if (length != expLen)
     {
-        PELOGE(cfgLog(pMac, LOGE, FL("<CFG> DNLD_RSP invalid length %d (exp %d)\n"),
+        PELOGE(cfgLog(pMac, LOGE, FL("<CFG> DNLD_RSP invalid length %d (exp %d)"),
                length, expLen);)
         retVal = WNI_CFG_INVALID_LEN;
         goto end;
@@ -199,14 +199,14 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
 
     if (pHdr->controlSize != CFG_PARAM_MAX_NUM)
     {
-        PELOGE(cfgLog(pMac, LOGE, FL("<CFG> Total parameter count mismatch\n"));)
+        PELOGE(cfgLog(pMac, LOGE, FL("<CFG> Total parameter count mismatch"));)
         retVal = WNI_CFG_INVALID_LEN;
         goto end;
     }
 
     if (pHdr->iBufSize != pMac->cfg.gCfgMaxIBufSize)
     {
-        PELOGE(cfgLog(pMac, LOGE, FL("<CFG> Integer parameter count mismatch\n"));)
+        PELOGE(cfgLog(pMac, LOGE, FL("<CFG> Integer parameter count mismatch"));)
         retVal = WNI_CFG_INVALID_LEN;
         goto end;
     }
@@ -248,7 +248,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
             pMac->cfg.gCfgIBuf[i] > pMac->cfg.gCfgIBufMax[i])
         {
             PELOGE(cfgLog(pMac, LOGE, FL("cfg id %d Invalid def value %d "
-                            "min %d max %d\n"),
+                            "min %d max %d"),
                    i, pMac->cfg.gCfgIBuf[i], pMac->cfg.gCfgIBufMin[i],
                    pMac->cfg.gCfgIBufMax[i]);)
         }
@@ -266,7 +266,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
         bufStart = pMac->cfg.gCfgEntry[i].control & CFG_BUF_INDX_MASK;
         pMac->cfg.gCfgSBuf[bufStart] = (tANI_U8)(bufEnd - bufStart - 2);
 
-       PELOG1(cfgLog(pMac, LOG1, FL("id %d max %d bufStart %d bufEnd %d\n"),
+       PELOG1(cfgLog(pMac, LOG1, FL("id %d max %d bufStart %d bufEnd %d"),
                i, pMac->cfg.gCfgSBuf[bufStart], bufStart, bufEnd);)
 
         bufEnd = bufStart;
@@ -280,7 +280,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
 
         if (strSize < 4)
         {
-            PELOGE(cfgLog(pMac, LOGE, FL("Error parsing str defaults, rem %d bytes\n"), strSize);)
+            PELOGE(cfgLog(pMac, LOGE, FL("Error parsing str defaults, rem %d bytes"), strSize);)
             retVal = WNI_CFG_INVALID_LEN;
             goto end;
         }
@@ -292,8 +292,8 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
         paramLenCeil4 = ((paramLen + 3) >> 2);
         if (strSize < paramLenCeil4 << 2)
         {
-            PELOGE(cfgLog(pMac, LOGE, FL("Error parsing str defaults, rem %d bytes\n"), strSize);)
-            PELOGE(cfgLog(pMac, LOGE, FL("param id %d len %d bytes\n"), paramId, paramLen);)
+            PELOGE(cfgLog(pMac, LOGE, FL("Error parsing str defaults, rem %d bytes"), strSize);)
+            PELOGE(cfgLog(pMac, LOGE, FL("param id %d len %d bytes"), paramId, paramLen);)
             retVal = WNI_CFG_INVALID_LEN;
             goto end;
         }
@@ -308,11 +308,11 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
             strSize -= 4;
         }
 
-        PELOG1(cfgLog(pMac, LOG1, FL("set str id %d len %d\n"), paramId, paramLen);)
+        PELOG1(cfgLog(pMac, LOG1, FL("set str id %d len %d"), paramId, paramLen);)
 
         if (cfgSetStr(pMac, (tANI_U16) paramId, pStr, paramLen) != eSIR_SUCCESS)
         {
-            PELOGE(cfgLog(pMac, LOGE, FL("Error setting str default param %d len %d\n"), paramId, paramLen);)
+            PELOGE(cfgLog(pMac, LOGE, FL("Error setting str default param %d len %d"), paramId, paramLen);)
             retVal = WNI_CFG_INVALID_LEN;
             goto end;
         }
@@ -326,7 +326,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     // Set status to READY
     pMac->cfg.gCfgStatus = CFG_SUCCESS;
     retVal = WNI_CFG_SUCCESS;
-    PELOG1(cfgLog(pMac, LOG1, "<CFG> Completed successfully\n");)
+    PELOG1(cfgLog(pMac, LOG1, "<CFG> Completed successfully");)
 
     end:
 
@@ -346,7 +346,7 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
     if (wdaPostCtrlMsg(pMac, &mmhMsg) != eSIR_SUCCESS)
     {
-        PELOGE(cfgLog(pMac, LOGE, FL("WDAPostMsgApi failed!\n"));)
+        PELOGE(cfgLog(pMac, LOGE, FL("WDAPostMsgApi failed!"));)
     }
 
 } /*** end procDnldRsp() ***/
@@ -379,14 +379,14 @@ ProcGetReq(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     tANI_U32    value, valueLen, result;
     tANI_U32    *pValue;
 
-    PELOG1(cfgLog(pMac, LOG1, FL("Rcvd cfg get request %d bytes\n"), length);)
+    PELOG1(cfgLog(pMac, LOG1, FL("Rcvd cfg get request %d bytes"), length);)
     for (i=0; i<length/4; i++)
-        PELOG2(cfgLog(pMac, LOG2, FL("[%2d] 0x%08x\n"), i, pParam[i]);)
+        PELOG2(cfgLog(pMac, LOG2, FL("[%2d] 0x%08x"), i, pParam[i]);)
 
     if (!pMac->cfg.gCfgStatus)
     {
         cfgId = (tANI_U16)sirReadU32N((tANI_U8*)pParam);
-        PELOGE(cfgLog(pMac, LOGE, FL("CFG not ready, param %d\n"), cfgId);)
+        PELOGE(cfgLog(pMac, LOGE, FL("CFG not ready, param %d"), cfgId);)
         pMac->cfg.gParamList[WNI_CFG_GET_RSP_RES]  = WNI_CFG_NOT_READY;
         pMac->cfg.gParamList[WNI_CFG_GET_RSP_PID]  = cfgId;
         pMac->cfg.gParamList[WNI_CFG_GET_RSP_PLEN] = 0;
@@ -402,7 +402,7 @@ ProcGetReq(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
             pValue   = 0;
             valueLen = 0;
 
-            PELOG1(cfgLog(pMac, LOG1, FL("Cfg get param %d\n"), cfgId);)
+            PELOG1(cfgLog(pMac, LOG1, FL("Cfg get param %d"), cfgId);)
 
             // Check for valid parameter ID, etc...
             if (CheckParam(pMac, cfgId, CFG_CTL_RE, WNI_CFG_WO_PARAM, &result))
@@ -427,7 +427,7 @@ ProcGetReq(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
             }
             else
             {
-                PELOGE(cfgLog(pMac, LOGE, FL("Check param failed, param %d\n"), cfgId);)
+                PELOGE(cfgLog(pMac, LOGE, FL("Check param failed, param %d"), cfgId);)
                 result = WNI_CFG_INVALID_LEN;
             }
 
@@ -480,9 +480,9 @@ ProcSetReqInternal(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam, tANI_
     tANI_U16    cfgId, valueLen, valueLenRoundedUp4;
     tANI_U32    value, result;
 
-    PELOG1(cfgLog(pMac, LOGW, FL("Rcvd cfg set request %d bytes\n"), length);)
+    PELOG1(cfgLog(pMac, LOGW, FL("Rcvd cfg set request %d bytes"), length);)
     //for (i=0; i<length/4; i++)
-      //  PELOG2(cfgLog(pMac, LOG2, FL("[%2d] 0x%08x\n"), i, pParam[i]);)
+      //  PELOG2(cfgLog(pMac, LOG2, FL("[%2d] 0x%08x"), i, pParam[i]);)
 
     if (!pMac->cfg.gCfgStatus)
     {
@@ -517,14 +517,14 @@ ProcSetReqInternal(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam, tANI_
                     // Set VALUE
                     if (valueLen != sizeof(tANI_U32))
                     {
-                        PELOGE(cfgLog(pMac, LOGE, FL("Invalid value length %d in set param %d (tot %d)\n"),
+                        PELOGE(cfgLog(pMac, LOGE, FL("Invalid value length %d in set param %d (tot %d)"),
                                valueLen, cfgId, length);)
                         result = WNI_CFG_INVALID_LEN;
                     }
                     else
                     {
                         value = *pParam;
-                        PELOG1(cfgLog(pMac, LOGW, FL("Cfg set int %d len %d(%d) val %d\n"),
+                        PELOG1(cfgLog(pMac, LOGW, FL("Cfg set int %d len %d(%d) val %d"),
                                cfgId, valueLen, valueLenRoundedUp4, value);)
                         result = (cfgSetInt(pMac, cfgId, value) == eSIR_SUCCESS ?
                                   WNI_CFG_SUCCESS : WNI_CFG_OTHER_ERROR);
@@ -547,14 +547,14 @@ ProcSetReqInternal(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam, tANI_
                 {
                     if (valueLenRoundedUp4 > length)
                     {
-                        PELOGE(cfgLog(pMac, LOGE, FL("Invalid string length %d in set param %d (tot %d)\n"),
+                        PELOGE(cfgLog(pMac, LOGE, FL("Invalid string length %d in set param %d (tot %d)"),
                                valueLen, cfgId, length);)
                         result = WNI_CFG_INVALID_LEN;
                     }
                     else
                     {
                         GetStrValue((tANI_U8*)pParam, pMac->cfg.gSBuffer, valueLen);
-                        PELOG1(cfgLog(pMac, LOGW, FL("Cfg set str %d len %d(%d) bytes\n"),
+                        PELOG1(cfgLog(pMac, LOGW, FL("Cfg set str %d len %d(%d) bytes"),
                                cfgId, valueLen, valueLenRoundedUp4);)
                         result = (cfgSetStr(pMac, cfgId, pMac->cfg.gSBuffer, valueLen) == eSIR_SUCCESS ?
                                   WNI_CFG_SUCCESS : WNI_CFG_OTHER_ERROR);
@@ -575,7 +575,7 @@ ProcSetReqInternal(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam, tANI_
             }
             else
             {
-                PELOGE(cfgLog(pMac, LOGE, FL("Check param failed, param %d\n"), cfgId);)
+                PELOGE(cfgLog(pMac, LOGE, FL("Check param failed, param %d"), cfgId);)
                 result = WNI_CFG_INVALID_LEN;
             }
 
@@ -589,7 +589,7 @@ ProcSetReqInternal(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam, tANI_
             }
             else
             {
-                PELOGW(cfgLog( pMac, LOG2, "  CFGID %d no rsp\n", cfgId);)
+                PELOGW(cfgLog( pMac, LOG2, "  CFGID %d no rsp", cfgId);)
             }
 
             if (valueLenRoundedUp4 > length)
@@ -650,7 +650,7 @@ CheckParam(tpAniSirGlobal pMac, tANI_U16 cfgId, tANI_U32 flag, tANI_U32 failedRe
     // Check if parameter ID is out of bound
     if (cfgId >= CFG_PARAM_MAX_NUM)
     {
-        PELOGE(cfgLog(pMac, LOGE, FL("Invalid param id %d\n"), cfgId);)
+        PELOGE(cfgLog(pMac, LOGE, FL("Invalid param id %d"), cfgId);)
         *pResult = WNI_CFG_INVALID_PID;
     }
     else
@@ -658,7 +658,7 @@ CheckParam(tpAniSirGlobal pMac, tANI_U16 cfgId, tANI_U32 flag, tANI_U32 failedRe
         // Check if parameter is valid
         if ((pMac->cfg.gCfgEntry[cfgId].control & CFG_CTL_VALID) == 0)
         {
-            PELOGE(cfgLog(pMac, LOGE, FL("Param id %d not valid\n"), cfgId);)
+            PELOGE(cfgLog(pMac, LOGE, FL("Param id %d not valid"), cfgId);)
             *pResult = WNI_CFG_INVALID_PID;
         }
         else
@@ -666,7 +666,7 @@ CheckParam(tpAniSirGlobal pMac, tANI_U16 cfgId, tANI_U32 flag, tANI_U32 failedRe
             // Check control field against flag
             if ((pMac->cfg.gCfgEntry[cfgId].control & flag) == 0)
             {
-                PELOGE(cfgLog(pMac, LOGE, FL("Param id %d wrong permissions %x\n"),
+                PELOGE(cfgLog(pMac, LOGE, FL("Param id %d wrong permissions %x"),
                        cfgId, pMac->cfg.gCfgEntry[cfgId].control);)
                 *pResult = failedResult;
             }
@@ -743,13 +743,13 @@ processCfgDownloadReq(tpAniSirGlobal pMac, tANI_U16 length,
     tANI_U32    logLevel;
 
     // First Dword must contain the AP or STA magic dword
-    PELOGW(cfgLog(pMac, LOGW, FL("CFG size %d bytes MAGIC dword is 0x%x\n"),
+    PELOGW(cfgLog(pMac, LOGW, FL("CFG size %d bytes MAGIC dword is 0x%x"),
            length, sirReadU32N((tANI_U8*)pConfig) );)
 
     // if the string is not correct, return failure
     if (CFG_STA_MAGIC_DWORD != *pConfig)
     {
-        PELOGE(cfgLog(pMac, LOGE, FL("Invalid magic dword 0x%x\n"),
+        PELOGE(cfgLog(pMac, LOGE, FL("Invalid magic dword 0x%x"),
                                              sirReadU32N((tANI_U8*)pConfig) );)
         retVal = WNI_CFG_INVALID_LEN;
         goto end;
@@ -766,7 +766,7 @@ processCfgDownloadReq(tpAniSirGlobal pMac, tANI_U16 length,
     pHdr = (tpCfgBinHdr) pConfig;
     pConfig += (sizeof(tCfgBinHdr) >> 2);
 
-    PELOGW(cfgLog(pMac, LOGW, FL("CFG hdr totParams %d intParams %d strBufSize %d/%d\n"),
+    PELOGW(cfgLog(pMac, LOGW, FL("CFG hdr totParams %d intParams %d strBufSize %d/%d"),
                            pHdr->controlSize,pHdr->iBufSize,
                          pHdr->sBufSize, pMac->cfg.gCfgMaxSBufSize);)
 
@@ -775,7 +775,7 @@ processCfgDownloadReq(tpAniSirGlobal pMac, tANI_U16 length,
 
     if (length != expLen)
     {
-        PELOGE(cfgLog(pMac, LOGE, FL("<CFG> DNLD_RSP invalid length %d (exp %d)\n"),
+        PELOGE(cfgLog(pMac, LOGE, FL("<CFG> DNLD_RSP invalid length %d (exp %d)"),
                length, expLen);)
         retVal = WNI_CFG_INVALID_LEN;
         goto end;
@@ -784,14 +784,14 @@ processCfgDownloadReq(tpAniSirGlobal pMac, tANI_U16 length,
 
     if (CFG_PARAM_MAX_NUM != pHdr->controlSize )
     {
-        PELOGE(cfgLog(pMac, LOGE, FL("<CFG> Total parameter count mismatch\n"));)
+        PELOGE(cfgLog(pMac, LOGE, FL("<CFG> Total parameter count mismatch"));)
         retVal = WNI_CFG_INVALID_LEN;
         goto end;
     }
 
     if (pHdr->iBufSize != pMac->cfg.gCfgMaxIBufSize)
     {
-        PELOGE(cfgLog(pMac, LOGE, FL("<CFG> Integer parameter count mismatch\n"));)
+        PELOGE(cfgLog(pMac, LOGE, FL("<CFG> Integer parameter count mismatch"));)
         retVal = WNI_CFG_INVALID_LEN;
         goto end;
     }
@@ -835,7 +835,7 @@ processCfgDownloadReq(tpAniSirGlobal pMac, tANI_U16 length,
             pMac->cfg.gCfgIBuf[i] > pMac->cfg.gCfgIBufMax[i])
         {
             PELOGE(cfgLog(pMac, LOGE, FL("cfg id %d Invalid def value %d "
-                             "min %d max %d\n"),
+                             "min %d max %d"),
                              i, pMac->cfg.gCfgIBuf[i], pMac->cfg.gCfgIBufMin[i],
                              pMac->cfg.gCfgIBufMax[i]);)
         }
@@ -854,7 +854,7 @@ processCfgDownloadReq(tpAniSirGlobal pMac, tANI_U16 length,
         bufStart = pMac->cfg.gCfgEntry[i].control & CFG_BUF_INDX_MASK;
         pMac->cfg.gCfgSBuf[bufStart] = (tANI_U8)(bufEnd - bufStart - 2);
 
-        PELOG1(cfgLog(pMac, LOG1, FL("id %d max %d bufStart %d bufEnd %d\n"),
+        PELOG1(cfgLog(pMac, LOG1, FL("id %d max %d bufStart %d bufEnd %d"),
                i, pMac->cfg.gCfgSBuf[bufStart], bufStart, bufEnd);)
 
         bufEnd = bufStart;
@@ -868,7 +868,7 @@ processCfgDownloadReq(tpAniSirGlobal pMac, tANI_U16 length,
 
         if (strSize < 4)
         {
-            PELOGE(cfgLog(pMac, LOGE, FL("Error parsing str defaults, rem %d bytes\n"),
+            PELOGE(cfgLog(pMac, LOGE, FL("Error parsing str defaults, rem %d bytes"),
                                                                       strSize);)
             retVal = WNI_CFG_INVALID_LEN;
             goto end;
@@ -883,8 +883,8 @@ processCfgDownloadReq(tpAniSirGlobal pMac, tANI_U16 length,
         if (strSize < paramLenCeil4 << 2)
         {
             PELOGE(cfgLog(pMac, LOGE, FL("Error parsing str defaults, rem %d"
-                                                            "bytes\n"), strSize);)
-            PELOGE(cfgLog(pMac, LOGE, FL("param id %d len %d bytes\n"),
+                                                            "bytes"), strSize);)
+            PELOGE(cfgLog(pMac, LOGE, FL("param id %d len %d bytes"),
                                                             paramId, paramLen);)
             retVal = WNI_CFG_INVALID_LEN;
             goto end;
@@ -901,12 +901,12 @@ processCfgDownloadReq(tpAniSirGlobal pMac, tANI_U16 length,
             strSize -= 4;
         }
 
-        PELOG1(cfgLog(pMac, LOG1, FL("set str id %d len %d\n"), paramId, paramLen);)
+        PELOG1(cfgLog(pMac, LOG1, FL("set str id %d len %d"), paramId, paramLen);)
 
         if (cfgSetStrNotify(pMac, (tANI_U16)paramId, pStr, paramLen, FALSE) != eSIR_SUCCESS)
         {
             PELOGE(cfgLog(pMac, LOGE, FL("Error setting str default param %d "
-                                                "len %d\n"), paramId, paramLen);)
+                                                "len %d"), paramId, paramLen);)
             retVal = WNI_CFG_INVALID_LEN;
             goto end;
         }
@@ -920,7 +920,7 @@ processCfgDownloadReq(tpAniSirGlobal pMac, tANI_U16 length,
     // Set status to READY
     pMac->cfg.gCfgStatus = CFG_SUCCESS;
     retVal = WNI_CFG_SUCCESS;
-    PELOG1(cfgLog(pMac, LOG1, "<CFG> Completed successfully\n");)
+    PELOG1(cfgLog(pMac, LOG1, "<CFG> Completed successfully");)
 
 end:
 
