@@ -359,7 +359,8 @@ extern eHalStatus pmcRegisterPowerSaveCheck (tHalHandle hHal, tANI_BOOLEAN (*che
 extern eHalStatus pmcDeregisterPowerSaveCheck (tHalHandle hHal, tANI_BOOLEAN (*checkRoutine) (void *checkContext));
 
 extern void pmcMessageProcessor (tHalHandle hHal, tSirSmeRsp *pMsg);
-
+extern void pmcResetImpsFailStatus (tHalHandle hHal);
+extern v_BOOL_t IsPmcImpsReqFailed (tHalHandle hHal);
 
 extern eHalStatus pmcRequestBmps (
 
