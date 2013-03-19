@@ -1818,6 +1818,8 @@ struct sk_buff *l2cap_create_iframe_pdu(struct sock *sk,
 		skb = bt_skb_alloc(count + hlen + reserve, GFP_ATOMIC);
 		if (skb)
 			skb_set_owner_w(skb, sk);
+		else
+			err = -ENOMEM;
 	} else {
 		skb = bt_skb_send_alloc(sk, count + hlen + reserve,
 					msg->msg_flags & MSG_DONTWAIT, &err);
