@@ -207,7 +207,11 @@ int arizona_irq_init(struct arizona *arizona)
 	/* Disable all wake sources by default */
 	regmap_write(arizona->regmap, ARIZONA_WAKE_CONTROL, 0);
 
-	if (arizona->pdata.irq_active_high) {
+	if (!arizona->pdata.irq_flags)
+		arizona->pdata.irq_flags = IRQF_TRIGGER_LOW;
+
+	if (arizona->pdata.irq_flags & (IRQF_TRIGGER_HIGH |
+					IRQF_TRIGGER_RISING)) {
 		ret = regmap_update_bits(arizona->regmap, ARIZONA_IRQ_CTRL_1,
 					 ARIZONA_IRQ_POL, 0);
 		if (ret != 0) {
@@ -215,12 +219,9 @@ int arizona_irq_init(struct arizona *arizona)
 				ret);
 			goto err;
 		}
-
-		flags |= IRQF_TRIGGER_HIGH;
-	} else {
-		flags |= IRQF_TRIGGER_LOW;
 	}
 
+	flags |= arizona->pdata.irq_flags;
 
         /* set up virtual IRQs */
 	irq_base = irq_alloc_descs(arizona->pdata.irq_base, 0,
