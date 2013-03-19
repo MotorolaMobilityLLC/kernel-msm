@@ -112,8 +112,14 @@ static void diag_set_msg_mask(int rt_mask)
 {
 	int first_ssid, last_ssid, i;
 	uint8_t *parse_ptr, *ptr = driver->msg_masks;
+	struct diag_smd_info *smd_info = &driver->smd_cntl[MODEM_DATA];
 
 	mutex_lock(&driver->diagchar_mutex);
+	if (driver->logging_mode == MEMORY_DEVICE_MODE) {
+		pr_debug("diag: In %s, send optimized logging parameters\n",
+			__func__);
+		diag_send_diag_mode_update(smd_info, optimized_logging);
+	}
 	while (*(uint32_t *)(ptr + 4)) {
 		first_ssid = *(uint32_t *)ptr;
 		ptr += 8; /* increment by 8 to skip 'last' */
@@ -313,13 +319,6 @@ void diag_mask_update_fn(struct work_struct *work)
 	diag_send_log_mask_update(smd_info->ch, ALL_EQUIP_ID);
 	diag_send_event_mask_update(smd_info->ch, diag_event_num_bytes);
 	diag_send_feature_mask_update(smd_info->ch, smd_info->peripheral);
-
-	if (smd_info->notify_context == SMD_EVENT_OPEN &&
-		driver->logging_mode == MEMORY_DEVICE_MODE) {
-		pr_debug("diag: In %s, send optimized logging parameters\n",
-			__func__);
-		diag_send_diag_mode_update(smd_info, optimized_logging);
-	}
 
 	smd_info->notify_context = 0;
 }
