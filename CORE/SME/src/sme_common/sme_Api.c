@@ -7522,6 +7522,19 @@ v_BOOL_t sme_IsPmcBmps(tHalHandle hHal)
 {
     return (BMPS == pmcGetPmcState(hHal));
 }
+/* ---------------------------------------------------------------------------
+    \fn sme_SetTdlsPowerSaveProhibited
+    \API to set/reset the isTdlsPowerSaveProhibited.
+
+    \- return void
+    -------------------------------------------------------------------------*/
+void sme_SetTdlsPowerSaveProhibited(tHalHandle hHal, v_BOOL_t val)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+
+    pMac->isTdlsPowerSaveProhibited = val;
+    return;
+}
 #endif
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 /*

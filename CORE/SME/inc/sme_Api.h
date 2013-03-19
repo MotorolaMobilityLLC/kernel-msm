@@ -2530,6 +2530,13 @@ VOS_STATUS sme_DeleteTdlsPeerSta(tHalHandle hHal, tANI_U8 sessionId, tSirMacAddr
     \- return v_BOOL_t
     -------------------------------------------------------------------------*/
 v_BOOL_t sme_IsPmcBmps(tHalHandle hHal);
+/* ---------------------------------------------------------------------------
+    \fn sme_SetTdlsPowerSaveProhibited
+    \API to set/reset the isTdlsPowerSaveProhibited.
+
+    \- return void
+    -------------------------------------------------------------------------*/
+void sme_SetTdlsPowerSaveProhibited(tHalHandle hHal, v_BOOL_t val);
 #endif
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 typedef struct smeTdlsDisResult

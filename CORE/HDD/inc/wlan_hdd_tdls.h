@@ -44,7 +44,9 @@
 
 #define TDLS_RSSI_TRIGGER_HYSTERESIS 50
 
-#define TDLS_DISCOVERY_TIMEOUT       1000
+/* before UpdateTimer expires, we want to timeout discovery response.
+should not be more than 2000 */
+#define TDLS_DISCOVERY_TIMEOUT_BEFORE_UPDATE     1000
 
 typedef struct
 {
@@ -194,5 +196,9 @@ u8 wlan_hdd_tdls_is_progress(hdd_adapter_t *pAdapter, u8* mac, u8 skip_self);
 void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx, eTDLSSupportMode tdls_mode);
 
 void wlan_hdd_tdls_pre_setup(tdlsCtx_t *pHddTdlsCtx, hddTdlsPeer_t *curr_peer);
+
+tANI_U32 wlan_hdd_tdls_discovery_sent_cnt(hdd_context_t *pHddCtx);
+
+void wlan_hdd_tdls_set_power_save_prohibited(hdd_adapter_t *pAdapter);
 
 #endif // __HDD_TDSL_H
