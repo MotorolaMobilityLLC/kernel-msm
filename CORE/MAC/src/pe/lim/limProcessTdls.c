@@ -205,7 +205,7 @@ typedef enum tdlsLinkSetupStatus
 
 /* TODO, Move this parameters to configuration */
 #define PEER_PSM_SUPPORT          (0)
-#define PEER_BUFFER_STA_SUPPORT   (1)
+#define PEER_BUFFER_STA_SUPPORT   (0)
 #define CH_SWITCH_SUPPORT         (0)
 #define TDLS_SUPPORT              (1)
 #define TDLS_PROHIBITED           (0)
