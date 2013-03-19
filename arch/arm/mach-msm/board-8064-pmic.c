@@ -186,7 +186,7 @@ static struct pm8xxx_mpp_init pm8xxx_mpps[] __initdata = {
 };
 
 static struct pm8xxx_gpio_init pm8921_sglte2_gpios[] __initdata = {
-	PM8921_GPIO_OUTPUT(23, 0, HIGH),		/* PM2QSC_SOFT_RESET */
+	PM8921_GPIO_OUTPUT(23, 1, HIGH),		/* PM2QSC_SOFT_RESET */
 	PM8921_GPIO_OUTPUT(21, 0, HIGH),		/* PM2QSC_KEYPADPWR */
 
 };
