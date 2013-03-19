@@ -4189,6 +4189,10 @@ allow_suspend:
      * to process the connect request to AP */
     hdd_allow_suspend_timeout(100);
 
+#ifdef FEATURE_WLAN_TDLS
+    wlan_hdd_tdls_scan_done_callback(pAdapter);
+#endif
+
     EXIT();
     return 0;
 }
@@ -4350,27 +4354,20 @@ int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
         return -EBUSY;
     }
 #ifdef FEATURE_WLAN_TDLS
-    if (wlan_hdd_tdlsConnectedPeers(pAdapter))
-    {
-        tANI_U8 staIdx;
-
-        for (staIdx = 0; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++)
-        {
-            if (pHddCtx->tdlsConnInfo[staIdx].staId)
-            {
-                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                               ("scan: indicate TDLS teadown (staId %d)"), pHddCtx->tdlsConnInfo[staIdx].staId) ;
-
-#ifdef CONFIG_TDLS_IMPLICIT
-                cfg80211_tdls_oper_request(pAdapter->dev,
-                                           pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes,
-                                           NL80211_TDLS_TEARDOWN,
-                                           eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON,
-                                           GFP_KERNEL);
+    /* if tdls disagree scan right now, return immediately.
+       tdls will schedule the scan when scan is allowed. (return SUCCESS)
+       or will reject the scan if any TDLS is in progress. (return -EBUSY)
+    */
+    status = wlan_hdd_tdls_scan_callback (pAdapter,
+                                         wiphy,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
+                                         dev,
 #endif
-            }
-        }
-        return -EBUSY;
+                                         request);
+    if(status <= 0)
+    {
+        hddLog(VOS_TRACE_LEVEL_INFO, "%s: TDLS Pending %d", __func__, status);
+        return status;
     }
 #endif
 
