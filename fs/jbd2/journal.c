@@ -1098,7 +1098,7 @@ journal_t * jbd2_journal_init_inode (struct inode *inode)
 	char *p;
 	int err;
 	int n;
-	unsigned long long blocknr;
+	unsigned long long blocknr = 0;
 
 	if (!journal)
 		return NULL;
