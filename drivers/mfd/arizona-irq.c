@@ -221,15 +221,19 @@ int arizona_irq_init(struct arizona *arizona)
 		flags |= IRQF_TRIGGER_LOW;
 	}
 
-        /* set virtual IRQs */
-	if (arizona->pdata.irq_base > 0) {
-	        arizona->virq[0] = arizona->pdata.irq_base;
-	        arizona->virq[1] = arizona->pdata.irq_base + 1;
-		irq_base = arizona->pdata.irq_base + 2;
-	} else {
-		dev_err(arizona->dev, "No irq_base specified\n");
-		return -EINVAL;
+
+        /* set up virtual IRQs */
+	irq_base = irq_alloc_descs(arizona->pdata.irq_base, 0,
+				   ARRAY_SIZE(arizona->virq), 0);
+	if (irq_base < 0) {
+		dev_warn(arizona->dev, "Failed to allocate IRQs: %d\n",
+			 irq_base);
+		return irq_base;
 	}
+
+	arizona->virq[0] = irq_base;
+	arizona->virq[1] = irq_base + 1;
+	irq_base += 2;
 
 	for (i = 0; i < ARRAY_SIZE(arizona->virq); i++) {
 		irq_set_chip_and_handler(arizona->virq[i], &arizona_irq_chip,
