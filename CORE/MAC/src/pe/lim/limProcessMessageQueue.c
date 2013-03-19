@@ -337,93 +337,6 @@ limHandleFramesInScanState(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pRxPa
 \ -------------------------------------------------------------- */
 static void limHandleUnknownA2IndexFrames(tpAniSirGlobal pMac, void *pRxPacketInfo,tpPESession psessionEntry)
 {
-#ifndef ANI_CHIPSET_VOLANS
-    tpSirMacDataHdr3a pMacHdr;
-
-    /** This prevents from disassoc/deauth being sent in a burst,
-        and gLimDisassocFrameCredit is reset for every 10 seconds.*/
-    if (pMac->lim.gLimDisassocFrameCredit > pMac->lim.gLimDisassocFrameThreshold)
-        return;
-
-    pMac->lim.gLimDisassocFrameCredit++;
-
-    pMacHdr = WDA_GET_RX_MPDUHEADER3A(pRxPacketInfo);
-
-    if (limIsGroupAddr(pMacHdr->addr2))
-    {
-        PELOG2(limLog(pMac, LOG2, FL("Ignoring A2 Invalid Packet received for MC/BC:\n"));
-        limPrintMacAddr(pMac, pMacHdr->addr2, LOG2);)
-
-        return;
-    }
-
-    if (((psessionEntry->limSystemRole == eLIM_AP_ROLE) || (psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE) )&&
-        (psessionEntry->limMlmState == eLIM_MLM_BSS_STARTED_STATE))
-    {
-        switch (pMacHdr->fc.type)
-        {
-            case SIR_MAC_MGMT_FRAME:
-                switch (pMacHdr->fc.subType)
-                {
-                    case SIR_MAC_MGMT_ACTION:
-                        // Send Disassociation frame to
-                        // sender if role is AP
-                        PELOG1(limLog(pMac, LOG1, FL("Send Disassoc Frame due to Invalid Addr2 packet"));
-                        limPrintMacAddr(pMac, pMacHdr->addr2, LOG1);)
-                        limSendDisassocMgmtFrame(pMac,
-                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2, psessionEntry, FALSE);
-                        break;
-
-                    default:
-                        break;
-
-                }
-                break;
-
-            case SIR_MAC_CTRL_FRAME:
-                switch (pMacHdr->fc.subType)
-                {
-                    case SIR_MAC_CTRL_PS_POLL:
-                    case SIR_MAC_CTRL_BAR:
-                        // Send Disassociation frame to
-                        // sender if role is AP
-                        PELOG1(limLog(pMac, LOG1, FL("Send Disassoc Frame due to Invalid Addr2 packet"));
-                        limPrintMacAddr(pMac, pMacHdr->addr2, LOG1);)
-                        limSendDisassocMgmtFrame(pMac,
-                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2, psessionEntry, FALSE);
-                        break;
-
-                    default:
-                        break;
-                }
-                break;
-
-            case SIR_MAC_DATA_FRAME:
-                switch (pMacHdr->fc.subType)
-                {
-                    case SIR_MAC_DATA_NULL:
-                    case SIR_MAC_DATA_QOS_NULL:
-                        // Send Disassociation frame to
-                        // sender if role is AP
-                        PELOG1(limLog(pMac, LOG1, FL("Send Disassoc Frame due to Invalid Addr2 packet"));
-                        limPrintMacAddr(pMac, pMacHdr->addr2, LOG1);)
-                        limSendDisassocMgmtFrame(pMac,
-                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2, psessionEntry, FALSE);
-                        break;
-
-                    default:
-                        // Send Deauthentication frame to
-                        // sender if role is AP
-                        PELOG1(limLog(pMac, LOG1, FL("Sending Deauth frame due to Invalid Addr2 packet"));
-                        limPrintMacAddr(pMac, pMacHdr->addr2, LOG1);)
-                        limSendDeauthMgmtFrame(pMac,
-                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2,psessionEntry);
-                        break;
-                }
-                break;
-        }
-    }
-#else
       /* addr2 mismatch interrupt occurred this means previous 
        disassociation was not successful
        In Volans pRxPacketInfo only contains pointer 48-bit address2 field */
@@ -480,7 +393,6 @@ static void limHandleUnknownA2IndexFrames(tpAniSirGlobal pMac, void *pRxPacketIn
     }
 #endif
 
-#endif
 
     return;
 }
@@ -1852,7 +1764,6 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
             }
             break;
 
-#ifdef ANI_CHIPSET_VOLANS
        case SIR_LIM_ADDR2_MISS_IND:
        {
            limLog(pMac, LOGE,
@@ -1867,7 +1778,6 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
            vos_mem_free((v_VOID_t *)(limMsg->bodyptr));
            break;
        }
-#endif
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
     case WDA_AGGR_QOS_RSP:

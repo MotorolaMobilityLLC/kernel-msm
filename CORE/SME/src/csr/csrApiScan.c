@@ -39,15 +39,15 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/** ------------------------------------------------------------------------- * 
-    ------------------------------------------------------------------------- *  
+/** ------------------------------------------------------------------------- *
+    ------------------------------------------------------------------------- *
 
-  
+
     \file csrApiScan.c
-  
+
     Implementation for the Common Scan interfaces.
-  
-    Copyright (C) 2006 Airgo Networks, Incorporated 
+
+    Copyright (C) 2006 Airgo Networks, Incorporated
    ========================================================================== */
 
 #include "aniGlobal.h"
@@ -65,7 +65,7 @@
 
 #include "vos_nvitem.h"
 #include "wlan_qct_wda.h"
-                                                                     
+
 #define CSR_VALIDATE_LIST  //This portion of code need to be removed once the issue is resolved.
 
 #ifdef CSR_VALIDATE_LIST
@@ -4975,31 +4975,22 @@ eHalStatus csrSendMBScanReq( tpAniSirGlobal pMac, tANI_U16 sessionId,
                                                         SIR_SCAN_MAX_NUM_SSID;
             if((pScanReq->SSIDs.numOfSSIDs != 0) && ( eSIR_PASSIVE_SCAN != scanType ))
             {
-            for (i = 0; i < pMsg->numSsid; i++)
-            {
-                palCopyMemory(pMac->hHdd, &pMsg->ssId[i], &pScanReq->SSIDs.SSIDList[i].SSID, sizeof(tSirMacSSid));
-            }
+                for (i = 0; i < pMsg->numSsid; i++)
+                {
+                    palCopyMemory(pMac->hHdd, &pMsg->ssId[i], &pScanReq->SSIDs.SSIDList[i].SSID, sizeof(tSirMacSSid));
+                }
             }
             else
             {
                 //Otherwise we scan all SSID and let the result filter later
-            for (i = 0; i < SIR_SCAN_MAX_NUM_SSID; i++)
-            {
-                pMsg->ssId[i].length = 0;
-            }
+                for (i = 0; i < SIR_SCAN_MAX_NUM_SSID; i++)
+                {
+                    pMsg->ssId[i].length = 0;
+                }
             }
 
-//TODO: This preprocessor macro should be removed from CSR for production driver
-//This is a temperarory fix for scanning on FPGA.
-#if defined (ANI_CHIPSET_VIRGO) || defined (LIBRA_FPGA)|| defined (VOLANS_FPGA)
-            pMsg->minChannelTime = pal_cpu_to_be32(minChnTime * 8);
-            pMsg->maxChannelTime = pal_cpu_to_be32(maxChnTime * 8);
-#elif defined (ANI_CHIPSET_TAURUS) || defined(ANI_CHIPSET_LIBRA) || defined(ANI_CHIPSET_VOLANS)
             pMsg->minChannelTime = pal_cpu_to_be32(minChnTime);
             pMsg->maxChannelTime = pal_cpu_to_be32(maxChnTime);
-#else
-#error unknown chipset
-#endif
             pMsg->minChannelTimeBtc = pMac->roam.configParam.nActiveMinChnTimeBtc;
             pMsg->maxChannelTimeBtc = pMac->roam.configParam.nActiveMaxChnTimeBtc;
             //hidden SSID option
