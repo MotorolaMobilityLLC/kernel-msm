@@ -2370,7 +2370,7 @@ EXPORT_SYMBOL(pm8921_bms_get_vsense_avg);
 
 int pm8921_bms_get_battery_current(int *result_ua)
 {
-	int vsense_uv;
+	int vsense_uv = 0;
 	int rc = 0;
 
 	*result_ua = 0;
