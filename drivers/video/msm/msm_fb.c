@@ -1832,8 +1832,7 @@ void msm_fb_wait_for_fence(struct msm_fb_data_type *mfd)
 		if (ret == -ETIME) {
 			pr_warn("%s: sync_fence_wait timed out!"
 				"Waiting %ld more seconds\n",
-				__func__,
-				WAIT_FENCE_FINAL_TIMEOUT/MSEC_PER_SEC);
+				__func__,WAIT_FENCE_FINAL_TIMEOUT/MSEC_PER_SEC);
 			ret = sync_fence_wait(mfd->acq_fen[i],
 					WAIT_FENCE_FINAL_TIMEOUT);
 		}
@@ -2075,7 +2074,7 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 	unlock_panel_mutex(mfd);
 	msm_fb_signal_timeline(mfd);
 
-	if (mdp4_unmap_sec_resource())
+	if (mdp4_unmap_sec_resource(mfd))
 		pr_err("%s: unmap secure res failed\n", __func__);
 
 	up(&msm_fb_pan_sem);
