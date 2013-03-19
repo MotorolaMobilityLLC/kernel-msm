@@ -81,18 +81,18 @@
 
 #define SESSION_MAX	0x08
 
-#define SOFT_PAUSE_PERIOD       30   /* ramp up/down for 30ms    */
+#define SOFT_PAUSE_PERIOD       30   /* ramp up/down for 30ms */
 #define SOFT_PAUSE_STEP_LINEAR  0    /* Step value 0ms or 0us */
-#define SOFT_PAUSE_STEP         2000 /* Step value 2000ms or 2000us */
+#define SOFT_PAUSE_STEP         0    /* Step value 0ms or 0us */
 enum {
 	SOFT_PAUSE_CURVE_LINEAR = 0,
 	SOFT_PAUSE_CURVE_EXP,
 	SOFT_PAUSE_CURVE_LOG,
 };
 
-#define SOFT_VOLUME_PERIOD       30   /* ramp up/down for 30ms    */
+#define SOFT_VOLUME_PERIOD       30   /* ramp up/down for 30ms */
 #define SOFT_VOLUME_STEP_LINEAR  0    /* Step value 0ms or 0us */
-#define SOFT_VOLUME_STEP         2000 /* Step value 2000ms or 2000us */
+#define SOFT_VOLUME_STEP         0    /* Step value 0ms or 0us */
 enum {
 	SOFT_VOLUME_CURVE_LINEAR = 0,
 	SOFT_VOLUME_CURVE_EXP,
@@ -261,6 +261,8 @@ int q6asm_enable_sbrps(struct audio_client *ac,
 
 int q6asm_cfg_dual_mono_aac(struct audio_client *ac,
 			uint16_t sce_left, uint16_t sce_right);
+
+int q6asm_cfg_aac_sel_mix_coef(struct audio_client *ac, uint32_t mix_coeff);
 
 int q6asm_set_encdec_chan_map(struct audio_client *ac,
 			uint32_t num_channels);
