@@ -65,7 +65,8 @@ void connect_bridge(int process_cable, int index)
 		driver->in_busy_smux = 0;
 		diagfwd_connect_smux();
 	} else {
-		if (diag_hsic[index].hsic_device_enabled) {
+		if (index < MAX_HSIC_CH &&
+					diag_hsic[index].hsic_device_enabled) {
 			diag_hsic[index].in_busy_hsic_read_on_device = 0;
 			diag_hsic[index].in_busy_hsic_write = 0;
 			/* If the HSIC (diag_bridge) platform
@@ -242,7 +243,8 @@ static void diagfwd_bridge_notifier(void *priv, unsigned event,
 		index = (int)(d_req->context);
 		if (index == SMUX && driver->diag_smux_enabled)
 			diagfwd_write_complete_smux();
-		else if (diag_hsic[index].hsic_device_enabled)
+		else if (index < MAX_HSIC_CH &&
+					diag_hsic[index].hsic_device_enabled)
 			diagfwd_write_complete_hsic(d_req, index);
 		break;
 	default:
