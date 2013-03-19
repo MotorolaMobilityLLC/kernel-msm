@@ -40,6 +40,8 @@ struct mdm_platform_data {
 	int sysmon_subsys_id_valid;
 	enum subsys_id sysmon_subsys_id;
 	int no_a2m_errfatal_on_ssr;
+	int no_reset_on_first_powerup;
+	int kpd_not_inverted;
 };
 
 #endif
