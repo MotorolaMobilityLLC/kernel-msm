@@ -2101,8 +2101,10 @@ int copy_mount_string(const void __user *data, char **where)
 	}
 
 	tmp = strndup_user(data, PAGE_SIZE);
-	if (IS_ERR(tmp))
+	if (IS_ERR(tmp)) {
+		*where = NULL;
 		return PTR_ERR(tmp);
+	}
 
 	*where = tmp;
 	return 0;
