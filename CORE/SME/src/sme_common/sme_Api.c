@@ -921,6 +921,10 @@ eHalStatus sme_Open(tHalHandle hHal)
          break;
       }
 
+#ifdef FEATURE_WLAN_TDLS
+      pMac->isTdlsPowerSaveProhibited = 0;
+#endif
+
 #ifndef WLAN_MDM_CODE_REDUCTION_OPT
       status = sme_QosOpen(pMac);
       if ( ! HAL_STATUS_SUCCESS( status ) ) {
