@@ -213,7 +213,7 @@ static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 
 	half_bitclk_rate = rate * 4;
 
-	pll_divcfg1 = (VCO_CLK / half_bitclk_rate) - 2;
+	pll_divcfg1 = 0;
 
 	/* Configuring the VCO to 424 Mhz */
 	/* Configuring the half rate Bit clk to 212 Mhz */
