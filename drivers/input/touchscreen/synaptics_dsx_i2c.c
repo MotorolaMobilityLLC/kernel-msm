@@ -29,6 +29,7 @@
 #include <linux/input.h>
 #include <linux/gpio.h>
 #include <linux/jiffies.h>
+#include <linux/semaphore.h>
 #include <linux/regulator/consumer.h>
 #include <linux/input/synaptics_dsx.h>
 #include "synaptics_dsx_i2c.h"
@@ -544,27 +545,6 @@ out:
 	return retval;
 }
 
-static void synaptics_dsx_ic_reset(
-	const struct synaptics_dsx_platform_data *platform_data)
-{
-	int ii;
-	unsigned long start = jiffies;
-	gpio_set_value(platform_data->reset_gpio, 0);
-	udelay(1000);
-	gpio_set_value(platform_data->reset_gpio, 1);
-	msleep(20);
-	/* wait to ensure IC is up */
-	for (ii = 0; ii < 5000; ii++) {
-		if (gpio_get_value(platform_data->irq_gpio) != 0)
-			usleep_range(1000, 1000);
-		else
-			break;
-	}
-	f12_ctrl_regs.base_addr = 0;
-	pr_debug("reset was %ssuccessful and took %ums\n",
-		ii < 5000 ? "" : "un", jiffies_to_msecs(jiffies-start));
-}
-
 #ifdef CONFIG_OF
 static struct synaptics_dsx_platform_data *
 		synaptics_dsx_of_init(struct i2c_client *client,
@@ -825,6 +805,51 @@ static struct device_attribute attrs[] = {
 static bool exp_fn_inited;
 static struct mutex exp_fn_list_mutex;
 static struct list_head exp_fn_list;
+static struct semaphore reset_semaphore;
+
+static irqreturn_t synaptics_dsx_reset_irq(int irq, void *data)
+{
+	struct semaphore *sema = data;
+	up(sema);
+	return IRQ_HANDLED;
+}
+
+static int synaptics_dsx_ic_reset(struct synaptics_rmi4_data *rmi4_data)
+{
+	int retval;
+	unsigned long start = jiffies;
+	const struct synaptics_dsx_platform_data *platform_data =
+			rmi4_data->board;
+
+	sema_init(&reset_semaphore, 0);
+	retval = request_irq(rmi4_data->irq, synaptics_dsx_reset_irq,
+			IRQF_TRIGGER_RISING, "synaptics_reset",
+			&reset_semaphore);
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Failed to request irq: %d\n",
+				__func__, retval);
+		return retval;
+	}
+
+	gpio_set_value(platform_data->reset_gpio, 0);
+	udelay(1000);
+	gpio_set_value(platform_data->reset_gpio, 1);
+
+	retval = down_timeout(&reset_semaphore, msecs_to_jiffies(50));
+	free_irq(rmi4_data->irq, &reset_semaphore);
+
+	if (retval) {
+		dev_err(&rmi4_data->i2c_client->dev,
+				"timed out waiting for reset to complete\n");
+		return -ETIMEDOUT;
+	}
+
+	f12_ctrl_regs.base_addr = 0;
+	pr_debug("successful reset took %ums\n",
+				jiffies_to_msecs(jiffies-start));
+	return 0;
+}
 
 #define DSX(a)	(#a)
 static const char * const synaptics_state_names[] = SYNAPTICS_DSX_STATES;
@@ -2664,9 +2689,6 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 {
 	int current_state, retval;
 	unsigned char command = 0x01;
-	const struct synaptics_dsx_platform_data *platform_data =
-			rmi4_data->board;
-
 	/*
 	 * Enforce touch release event report to work-around such event
 	 * missing while touch IC is off.
@@ -2681,7 +2703,7 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 			synaptics_rmi4_cleanup(rmi4_data);
 
 		/* do hard reset instead of soft */
-		synaptics_dsx_ic_reset(platform_data);
+		synaptics_dsx_ic_reset(rmi4_data);
 
 	} else {
 		retval = synaptics_rmi4_i2c_write(rmi4_data,
@@ -2911,7 +2933,7 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		}
 	}
 
-	synaptics_dsx_ic_reset(platform_data);
+	synaptics_dsx_ic_reset(rmi4_data);
 
 	rmi4_data->input_dev = input_allocate_device();
 	if (rmi4_data->input_dev == NULL) {
