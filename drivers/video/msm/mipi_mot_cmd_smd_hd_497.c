@@ -45,6 +45,7 @@ static struct mipi_dsi_phy_ctrl dsi_cmd_mode_phy_db = {
 static char enter_sleep[2] = {DCS_CMD_ENTER_SLEEP_MODE, 0x00};
 static char display_off[2] = {DCS_CMD_SET_DISPLAY_OFF, 0x00};
 static char enable_te[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
+static char normal_mode_on[2] = {DCS_CMD_SET_NORMAL_MODE_ON, 0x00};
 static char set_column[5] = {DCS_CMD_SET_COLUMN_ADDRESS,
 			     0x00, 0x00, 0x02, 0xcf};
 static char set_addr[5] = {DCS_CMD_SET_PAGE_ADDRESS,
@@ -64,6 +65,17 @@ static char c7_reg[2] = {0xc7, 0x03};
 static char p3_off[2] = {0xb0, 0x02};
 static char p3_data[2] = {0xb1, 0x1a};
 
+static char p4_select[2] = {0xb0, 0x03};
+static char refresh_rate[2] = {0xbb, 0x80};
+static char p22_select[2] = {0xb0, 0x15};
+static char ltps_set[6] = {0xcb, 0x87, 0x41, 0x87, 0x41, 0x87};
+static struct mipi_mot_cmd_seq refresh_rate_seq[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, 0, p4_select),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, 0, refresh_rate),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, 0, p22_select),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, ltps_set),
+};
+
 #define DEFAULT_DELAY 1
 
 static struct mipi_mot_cmd_seq acl_enable_disable_seq[] = {
@@ -82,8 +94,26 @@ static struct mipi_mot_cmd_seq aid_workaround_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_data)
 };
 
-static struct mipi_mot_cmd_seq smd_hd_497_init_seq[] = {
-	MIPI_MOT_TX_EXIT_SLEEP(NULL),
+static char undo_partial_rows[] = {0x30, 0x00, 0x00, 0x04, 0xff};
+
+/* Settings for correct 2Ch shift issue */
+static char small_col[] = {0x2a, 0x02, 0xc8, 0x02, 0xcf};
+static char small_row[] = {0x2b, 0x04, 0xfe, 0x04, 0xff};
+static char frame[] = {
+	0x2c,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+static struct mipi_mot_cmd_seq correct_shift_seq[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, small_col),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, small_row),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, frame),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, set_column),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, set_addr),
+};
+
+static struct mipi_mot_cmd_seq smd_hd_497_cfg_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_2),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_mtp),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_3),
@@ -96,6 +126,11 @@ static struct mipi_mot_cmd_seq smd_hd_497_init_seq[] = {
 			DEFAULT_DELAY, switch_pwr_to_mem_2),
 	MIPI_MOT_TX_DEF(is_pre_es2, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, acl_default_setting),
+	/* exit partial mode */
+	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_WRITE, 0, normal_mode_on),
+	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_LWRITE, 0,
+		undo_partial_rows),
+	MIPI_MOT_EXEC_SEQ(AOD_SUPPORTED, correct_shift_seq),
 	MIPI_MOT_TX_DEF(is_bl_supported, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, disp_ctrl),
 	MIPI_MOT_EXEC_SEQ(is_bl_supported, set_brightness_seq),
@@ -103,6 +138,12 @@ static struct mipi_mot_cmd_seq smd_hd_497_init_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, acl_enable_disable_settings),
 	MIPI_MOT_EXEC_SEQ(is_aid_workaround_needed, aid_workaround_seq),
+	MIPI_MOT_EXEC_SEQ(AOD_SUPPORTED, refresh_rate_seq),
+};
+
+static struct mipi_mot_cmd_seq smd_hd_497_init_seq[] = {
+	MIPI_MOT_TX_EXIT_SLEEP(NULL),
+	MIPI_MOT_EXEC_SEQ(NULL, smd_hd_497_cfg_seq),
 };
 
 static struct mipi_mot_cmd_seq smd_hd_497_disp_off_seq[] = {
@@ -118,30 +159,8 @@ static struct dsi_cmd_desc set_mtp_read_off[] = {
 static struct dsi_cmd_desc mtp_read_cmd = {
 	DTYPE_DCS_READ, 1, 0, 1, 0, sizeof(mtp_read), mtp_read};
 
-/* Settings for correct 2Ch shift issue */
-static char small_col[] = {0x2a, 0x02, 0xc8, 0x02, 0xcf};
-static char small_row[] = {0x2b, 0x04, 0xfe, 0x04, 0xff};
-static char frame[] = {
-	0x2c,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
-static struct mipi_mot_cmd_seq correct_shift_seq[] = {
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, small_col),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, small_row),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, frame),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, set_column),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, set_addr),
-};
-
-static char undo_partial_rows[] = {0x30, 0x00, 0x00, 0x04, 0xff};
-
 static struct mipi_mot_cmd_seq smd_hd_497_en_from_partial_seq[] = {
-	{MIPI_MOT_SEQ_TX_PWR_MODE_HS, NULL},
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, undo_partial_rows),
-	/* TODO: Remove on displays which have shift issue fixed */
-	MIPI_MOT_EXEC_SEQ(NULL, correct_shift_seq),
+	MIPI_MOT_EXEC_SEQ(NULL, smd_hd_497_cfg_seq),
 };
 
 static void enable_acl(struct msm_fb_data_type *mfd)

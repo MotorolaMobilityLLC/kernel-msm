@@ -24,7 +24,6 @@ static char manufacture_id[2] = {DCS_CMD_READ_DA, 0x00}; /* DTYPE_DCS_READ */
 static char controller_ver[2] = {DCS_CMD_READ_DB, 0x00};
 static char controller_drv_ver[2] = {DCS_CMD_READ_DC, 0x00};
 static char display_on[2] = {DCS_CMD_SET_DISPLAY_ON, 0x00};
-static char normal_mode_on[2] = {DCS_CMD_SET_NORMAL_MODE_ON, 0x00};
 static char display_off[2] = {DCS_CMD_SET_DISPLAY_OFF, 0x00};
 static char get_power_mode[2] = {DCS_CMD_GET_POWER_MODE, 0x00};
 static char get_raw_mtp[2] = {DCS_CMD_READ_RAW_MTP, 0x00};
@@ -47,10 +46,6 @@ static struct dsi_cmd_desc mot_controller_drv_ver_cmd = {
 
 static struct dsi_cmd_desc mot_display_on_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 5, sizeof(display_on), display_on}
-};
-
-static struct dsi_cmd_desc mot_display_normal_mode_cmds[] = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, 0, sizeof(normal_mode_on), normal_mode_on},
 };
 
 static struct dsi_cmd_desc mot_display_off_cmd = {
@@ -128,13 +123,6 @@ void mipi_mot_panel_exit_sleep(void)
 					mot_panel->exit_sleep_panel_on_wait -
 					mot_panel->exit_sleep_wait));
 	}
-}
-
-void mipi_mot_panel_enter_normal_mode(void)
-{
-	pr_debug("%s: sending normal mode on\n", __func__);
-	mipi_mot_tx_cmds(&mot_display_normal_mode_cmds[0],
-			ARRAY_SIZE(mot_display_normal_mode_cmds));
 }
 
 int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
@@ -640,3 +628,8 @@ int __init moto_panel_debug_init(void)
 	return 0;
 }
 
+int is_aod_supported(struct msm_fb_data_type *mfd)
+{
+	return mfd && mfd->is_partial_mode_supported &&
+		mfd->is_partial_mode_supported();
+}
