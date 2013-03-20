@@ -73,7 +73,7 @@ static int arizona_spk_ev(struct snd_soc_dapm_widget *w,
 	struct snd_soc_codec *codec = w->codec;
 	struct arizona *arizona = dev_get_drvdata(codec->dev->parent);
 	struct arizona_priv *priv = snd_soc_codec_get_drvdata(codec);
-	bool manual_ena;
+	bool manual_ena = false;
 	int val;
 
 	switch (arizona->type) {
