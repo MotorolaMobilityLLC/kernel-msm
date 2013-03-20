@@ -92,6 +92,8 @@
 #include "wlan_qct_pal_trace.h"
 
 #include "wlan_qct_dev_defs.h"
+#define MAC_ADDR_ARRAY(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
+#define MAC_ADDRESS_STR "%02x:%02x:%02x:%02x:%02x:%02x"
 
 extern uint8 WDA_IsWcnssWlanCompiledVersionGreaterThanOrEqual(uint8 major, uint8 minor, uint8 version, uint8 revision);
 extern uint8 WDA_IsWcnssWlanReportedVersionGreaterThanOrEqual(uint8 major, uint8 minor, uint8 version, uint8 revision);
@@ -675,6 +677,8 @@ WDI_FillTxBd
            if (WDI_STATUS_SUCCESS != wdiStatus) 
            {
                 WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR, "WDI_STATableFindStaidByAddr failed");
+                WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR, "STA ID = %d " MAC_ADDRESS_STR,
+                                        ucStaId, MAC_ADDR_ARRAY(*(wpt_macAddr*)pAddr2));
                 return WDI_STATUS_E_NOT_ALLOWED;
            }
 #else
