@@ -2223,24 +2223,28 @@ static int msm_fb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	return 0;
 }
 
-int msm_fb_check_frame_rate(struct msm_fb_data_type *mfd
-						, struct fb_info *info)
+int msm_fb_get_frame_rate(struct fb_var_screeninfo *var)
 {
-	int panel_height, panel_width, var_frame_rate, fps_mod;
-	struct fb_var_screeninfo *var = &info->var;
-	fps_mod = 0;
-	if ((mfd->panel_info.type == DTV_PANEL) ||
-		(mfd->panel_info.type == HDMI_PANEL)) {
-		panel_height = var->yres + var->upper_margin +
+	int panel_height, panel_width;
+
+	panel_height = var->yres + var->upper_margin +
 			var->vsync_len + var->lower_margin;
-		panel_width = var->xres + var->right_margin +
+	panel_width  = var->xres + var->right_margin +
 			var->hsync_len + var->left_margin;
-		var_frame_rate = ((var->pixclock)/(panel_height * panel_width));
-		if (mfd->var_frame_rate != var_frame_rate) {
+	return (var->pixclock)/(panel_height * panel_width);
+}
+
+int msm_fb_check_frame_rate(struct msm_fb_data_type *mfd, struct fb_info *info)
+{
+	int fps_mod = 0;
+	struct fb_var_screeninfo *var = &info->var;
+
+	if ((mfd->panel_info.type == DTV_PANEL) ||
+	    (mfd->panel_info.type == HDMI_PANEL)) {
+		if (mfd->var_frame_rate != msm_fb_get_frame_rate(var))
 			fps_mod = 1;
-			mfd->var_frame_rate = var_frame_rate;
-		}
 	}
+
 	return fps_mod;
 }
 
@@ -2282,21 +2286,23 @@ static int msm_fb_set_par(struct fb_info *info)
 	}
 
 	if ((mfd->var_pixclock != var->pixclock) ||
-		(mfd->hw_refresh && ((mfd->fb_imgType != old_imgType) ||
-				(mfd->var_pixclock != var->pixclock) ||
-				(mfd->var_xres != var->xres) ||
-				(mfd->var_yres != var->yres) ||
-				(msm_fb_check_frame_rate(mfd, info))))) {
+		(mfd->hw_refresh &&
+			((mfd->fb_imgType != old_imgType) ||
+			 (mfd->var_xres   != var->xres) ||
+			 (mfd->var_yres   != var->yres) ||
+			 (msm_fb_check_frame_rate(mfd, info))))) {
 		mfd->var_xres = var->xres;
 		mfd->var_yres = var->yres;
-		mfd->var_pixclock = var->pixclock;
+		mfd->var_pixclock   = var->pixclock;
+		mfd->var_frame_rate = msm_fb_get_frame_rate(var);
+
+		if (mfd->update_panel_info)
+			mfd->update_panel_info(mfd);
+
 		blank = 1;
 	}
 	mfd->fbi->fix.line_length = msm_fb_line_length(mfd->index, var->xres,
 						       var->bits_per_pixel/8);
-
-	if (mfd->update_panel_info)
-		mfd->update_panel_info(mfd);
 
 	if ((mfd->panel_info.type == DTV_PANEL) && !mfd->panel_power_on) {
 		msm_fb_blank_sub(FB_BLANK_UNBLANK, info, mfd->op_enable);
