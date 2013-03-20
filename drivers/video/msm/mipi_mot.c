@@ -426,7 +426,6 @@ static void panel_enable_from_partial(struct msm_fb_data_type *mfd)
 		/* Display is on, turn it off for init sequence */
 		mipi_mot_panel_off(mfd);
 
-	mipi_mot_panel_enter_normal_mode();
 	if (mot_panel.panel_en_from_partial)
 		mot_panel.panel_en_from_partial(mfd);
 }
