@@ -57,6 +57,7 @@ extern struct platform_device msm_device_smd;
 extern struct platform_device msm_device_gpio;
 extern struct platform_device msm_device_vidc;
 extern struct platform_device apq8064_msm_device_vidc;
+extern struct platform_device adsp_loader_device;
 
 extern struct platform_device msm_charm_modem;
 extern struct platform_device msm_device_tz_log;
