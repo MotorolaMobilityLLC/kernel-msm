@@ -633,6 +633,12 @@ void cont_splash_clk_ctrl(int enable)
 {
 	static int cont_splash_clks_enabled;
 	if (enable && !cont_splash_clks_enabled) {
+		if (clk_set_rate(dsi_byte_div_clk, 1) < 0)      /* divided by 1 */
+			pr_err("%s: dsi_byte_div_clk - "
+				"clk_set_rate failed\n", __func__);
+		if (clk_set_rate(dsi_esc_clk, esc_byte_ratio) < 0) /* divided by esc */
+			pr_err("%s: dsi_esc_clk - "                      /* clk ratio */
+				"clk_set_rate failed\n", __func__);
 			clk_prepare_enable(dsi_byte_div_clk);
 			clk_prepare_enable(dsi_esc_clk);
 			cont_splash_clks_enabled = 1;
@@ -648,8 +654,6 @@ void mipi_dsi_prepare_clocks(void)
 	clk_prepare(amp_pclk);
 	clk_prepare(dsi_m_pclk);
 	clk_prepare(dsi_s_pclk);
-	clk_prepare(dsi_byte_div_clk);
-	clk_prepare(dsi_esc_clk);
 }
 
 void mipi_dsi_unprepare_clocks(void)
@@ -697,16 +701,16 @@ void mipi_dsi_clk_enable(void)
 	MIPI_OUTP(MIPI_DSI_BASE + 0x0200, pll_ctrl | 0x01);
 	mipi_dsi_phy_rdy_poll();
 
-	if (clk_set_rate(dsi_byte_div_clk, 1) < 0)	/* divided by 1 */
+	if (clk_set_rate(dsi_byte_div_clk, 1) < 0)      /* divided by 1 */
 		pr_err("%s: dsi_byte_div_clk - "
 			"clk_set_rate failed\n", __func__);
 	if (clk_set_rate(dsi_esc_clk, esc_byte_ratio) < 0) /* divided by esc */
-		pr_err("%s: dsi_esc_clk - "			 /* clk ratio */
+		pr_err("%s: dsi_esc_clk - "                      /* clk ratio */
 			"clk_set_rate failed\n", __func__);
 	mipi_dsi_pclk_ctrl(&dsi_pclk, 1);
 	mipi_dsi_clk_ctrl(&dsicore_clk, 1);
-	clk_enable(dsi_byte_div_clk);
-	clk_enable(dsi_esc_clk);
+	clk_prepare_enable(dsi_byte_div_clk);
+	clk_prepare_enable(dsi_esc_clk);
 	mipi_dsi_clk_on = 1;
 	mdp4_stat.dsi_clk_on++;
 }
