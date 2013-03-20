@@ -1587,6 +1587,9 @@ static int msm_fb_register(struct msm_fb_data_type *mfd)
 	mfd->op_enable = TRUE;
 	mfd->panel_power_on = FALSE;
 
+	mfd->is_partial_mode_supported =
+		msm_fb_pdata->is_partial_mode_supported;
+
 	/* cursor memory allocation */
 	if (mfd->cursor_update) {
 		unsigned long cursor_buf_iommu = 0;
