@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2013, Motorola Mobility LLC. All rights reserved.
+/* Copyright (c) 2013, Motorola Mobility LLC. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -10,16 +10,14 @@
  * GNU General Public License for more details.
  */
 
-/dts-v1/;
+/*
+ * The devices called P1 are actually assigned HW GPIO IDs for P1, P2, P3, and
+ * P5.
+ */
 
-/include/ "msm8960ab-ghost-common.dtsi"
-
-/* Note, this is common with P2 */
-/include/ "msm8960ab-ghost-p1-legacy.dtsi"
-
-/* The devices called P1 actually carry HW GPIO IDs for P1, P2, P3, and P5. */
-/ {
-	mmi,revision = "p1";
+/* GSBI12 - I2C */
+&i2c12 {
+        msp430@48 {
+                msp430_fw_version = "_p1";
+        };
 };
-
-/include/ "msm8960ab-ghost-p1-common.dtsi"
