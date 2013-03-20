@@ -190,6 +190,7 @@ enum {
 #define MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_OUT 0
 #define MSMFB_RESUME_CFG_STATE_DISP_ON_SLEEP_OUT  1
 #define MSMFB_RESUME_CFG_STATE_DISP_OFF_SLEEP_IN  2
+#define MSMFB_RESUME_CFG_STATE_INVALID            3
 
 struct msmfb_suspend_cfg {
 	unsigned int partial;
