@@ -173,6 +173,10 @@ struct platform_device apq8064_device_dmov = {
 		.platform_data = &msm_dmov_pdata,
 	},
 };
+struct platform_device adsp_loader_device = {
+	.name	= "adsp-loader",
+	.id	= -1,
+};
 
 static struct resource resources_uart_gsbi1[] = {
 	{
