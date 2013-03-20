@@ -76,8 +76,13 @@
 #define NO_SLEEP_OFF (0 << 2)
 #define NO_SLEEP_ON (1 << 2)
 
-#define X_SUPRESSION 0x32
-#define Y_SUPRESSION 0x32
+#define ONE_TOUCH_SUPPRESSION 0x32
+#define MULTI_TOUCH_SUPPRESSION 1
+
+#define X_1T_SUPPRESSION ONE_TOUCH_SUPPRESSION
+#define Y_1T_SUPPRESSION ONE_TOUCH_SUPPRESSION
+#define X_MT_SUPPRESSION MULTI_TOUCH_SUPPRESSION
+#define Y_MT_SUPPRESSION MULTI_TOUCH_SUPPRESSION
 
 #define TYPE_FINGER (1 << 0)
 #define TYPE_STYLUS (1 << 1)
@@ -307,6 +312,10 @@ static struct synaptics_rmi4_func_packet_regs f12_ctrl_regs = {
 	.nr_regs = ARRAY_SIZE(f12_ctrl_reg_array),
 	.regs = f12_ctrl_reg_array
 };
+
+static struct f12_c20_0_type f12_c20_0_store;
+static struct f12_c23_0_type f12_c23_0_store;
+static struct f12_c23_1_type f12_c23_1_store;
 
 #define LAST_SUBPACKET_ROW_IND_MASK 0x80
 #define NR_SUBPKT_PRESENCE_BITS 7
@@ -646,6 +655,8 @@ static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data);
 static void synaptics_rmi4_sensor_one_touch(
 		struct synaptics_rmi4_data *rmi4_data, bool enable);
 
+static void synaptics_rmi4_sensor_multi_touch(void);
+
 static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 		bool enable);
 
@@ -845,7 +856,6 @@ static int synaptics_dsx_ic_reset(struct synaptics_rmi4_data *rmi4_data)
 		return -ETIMEDOUT;
 	}
 
-	f12_ctrl_regs.base_addr = 0;
 	pr_debug("successful reset took %ums\n",
 				jiffies_to_msecs(jiffies-start));
 	return 0;
@@ -2211,23 +2221,21 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 	fhandler->fn_number = fd->fn_number;
 	fhandler->num_of_data_sources = (fd->intr_src_count  & MASK_3BIT);
 
-	if (synaptics_dsx_get_state_safe(rmi4_data) == STATE_UNKNOWN) {
-		pr_debug("scan F12 ctrl registers\n");
-		retval = synaptics_rmi4_scan_packet_reg_info(
+	pr_debug("scan F12 ctrl registers\n");
+	retval = synaptics_rmi4_scan_packet_reg_info(
 			rmi4_data,
 			fhandler->full_addr.query_base + 4,
 			fhandler->full_addr.ctrl_base,
 			&f12_ctrl_regs);
-		if (retval < 0)
-			return retval;
-	} else {
-		f12_ctrl_regs.base_addr = fhandler->full_addr.ctrl_base;
-		pr_debug("skip scanning F12 ctrl registers\n");
-	}
+	if (retval < 0)
+		return retval;
 
 	retval = synaptics_rmi4_read_packet_regs(rmi4_data, &f12_ctrl_regs);
 	if (retval < 0)
 		return retval;
+
+	synaptics_rmi4_sensor_multi_touch();
+
 	/* Maximum number of fingers supported */
 	if (f12_c23[1].present) {
 		fhandler->num_of_data_points =
@@ -2933,6 +2941,9 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		}
 	}
 
+	/* get irq number initialized before calling reset */
+	rmi4_data->irq = gpio_to_irq(platform_data->irq_gpio);
+
 	synaptics_dsx_ic_reset(rmi4_data);
 
 	rmi4_data->input_dev = input_allocate_device();
@@ -3005,8 +3016,6 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	queue_delayed_work(rmi4_data->det_workqueue,
 			&rmi4_data->det_work,
 			msecs_to_jiffies(EXP_FN_DET_INTERVAL));
-
-	rmi4_data->irq = gpio_to_irq(platform_data->irq_gpio);
 
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {
 		retval = sysfs_create_file(&rmi4_data->i2c_client->dev.kobj,
@@ -3110,6 +3119,20 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 	return 0;
 }
 
+static void synaptics_rmi4_sensor_multi_touch(void)
+{
+	/* Store multitouch config registers */
+	f12_c20_0_store = f12_c20_0;
+	f12_c23_0_store = f12_c23_0;
+	f12_c23_1_store = f12_c23_1;
+
+	if (!f12_c20_0_store.x_suppression)
+		f12_c20_0_store.x_suppression = X_MT_SUPPRESSION;
+
+	if (!f12_c20_0_store.y_suppression)
+		f12_c20_0_store.y_suppression = Y_MT_SUPPRESSION;
+}
+
  /**
  * synaptics_rmi4_sensor_one_touch()
  *
@@ -3120,25 +3143,12 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 static void synaptics_rmi4_sensor_one_touch(
 		struct synaptics_rmi4_data *rmi4_data, bool enable)
 {
-	static bool stored;
-	static struct f12_c20_0_type f12_c20_0_store;
-	static struct f12_c23_0_type f12_c23_0_store;
-	static struct f12_c23_1_type f12_c23_1_store;
-
 	if (enable) {
-		if (!stored) {
-			f12_c20_0_store = f12_c20_0;
-			f12_c23_0_store = f12_c23_0;
-			f12_c23_1_store = f12_c23_1;
-			stored = true;
-		}
-		f12_c20_0.x_suppression = X_SUPRESSION;
-		f12_c20_0.y_suppression = Y_SUPRESSION;
+		f12_c20_0.x_suppression = X_1T_SUPPRESSION;
+		f12_c20_0.y_suppression = Y_1T_SUPPRESSION;
 		f12_c23_0.data[0] = TYPE_FINGER | TYPE_STYLUS;
 		f12_c23_1.max_num_reported_objects = 1;
 	} else {
-		if (!stored)
-			return;
 		f12_c20_0 = f12_c20_0_store;
 		f12_c23_0 = f12_c23_0_store;
 		f12_c23_1 = f12_c23_1_store;
@@ -3146,8 +3156,6 @@ static void synaptics_rmi4_sensor_one_touch(
 
 	synaptics_rmi4_write_packet_reg(rmi4_data, &f12_ctrl_regs, 20);
 	synaptics_rmi4_write_packet_reg(rmi4_data, &f12_ctrl_regs, 23);
-
-	return;
 }
 
  /**
