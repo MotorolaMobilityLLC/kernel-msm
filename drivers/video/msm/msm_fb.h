@@ -223,6 +223,7 @@ struct msm_fb_data_type {
 	unsigned char *copy_splash_phys;
 	uint32 sec_mapped;
 	uint32 sec_active;
+	bool (*is_partial_mode_supported)(void);
 };
 struct msm_fb_backup_type {
 	struct fb_info info;

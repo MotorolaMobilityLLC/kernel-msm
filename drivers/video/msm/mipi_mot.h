@@ -204,9 +204,10 @@ void mipi_mot_esd_work(void);
 int mipi_mot_tx_cmds(struct dsi_cmd_desc *cmds, int cnt);
 int mipi_mot_rx_cmd(struct dsi_cmd_desc *cmd, u8 *data, int rlen);
 int mipi_mot_hide_img(struct msm_fb_data_type *mfd, int hide);
-void mipi_mot_panel_enter_normal_mode(void);
 void mipi_mot_set_tear(struct msm_fb_data_type *mfd, int on);
 int __init moto_panel_debug_init(void);
 int mipi_mot_exec_cmd_seq(struct msm_fb_data_type *mfd,
 			struct mipi_mot_cmd_seq *seq, int cnt);
+int is_aod_supported(struct msm_fb_data_type *mfd);
+#define AOD_SUPPORTED is_aod_supported
 #endif /* MIPI_MOT_PANEL_H */

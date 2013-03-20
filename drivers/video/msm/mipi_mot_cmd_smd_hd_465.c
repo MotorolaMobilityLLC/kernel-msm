@@ -45,6 +45,7 @@ static char unlock_lvl_3[3] = {0xfc, 0x5a, 0x5a};
 static char switch_pwr_to_mem_1[3] = {0xfd, 0x10, 0xfc};
 static char switch_pwr_to_mem_2[3] = {0xc4, 0x07, 0x01};
 static char enable_te[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
+static char normal_mode_on[2] = {DCS_CMD_SET_NORMAL_MODE_ON, 0x00};
 
 #define DEFAULT_DELAY 1
 
@@ -87,6 +88,17 @@ static char C7_reg[2] = {0xC7, 0x07};
 static char disp_ctrl[2] = {0x53, 0x20};
 /* default 150 nits */
 static char brightness_ctrl[2] = {0x51, 0x7f};
+
+static char p4_select[2] = {0xb0, 0x03};
+static char refresh_rate[2] = {0xbb, 0x80};
+static char p22_select[2] = {0xb0, 0x15};
+static char ltps_set[6] = {0xcb, 0x87, 0x41, 0x87, 0x41, 0x87};
+static struct mipi_mot_cmd_seq refresh_rate_seq[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, 0, p4_select),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, 0, refresh_rate),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, 0, p22_select),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, ltps_set),
+};
 
 static char normal_col[] = {0x2a, 0x00, 0x00, 0x02, 0xcf};
 static char normal_row[] = {0x2b, 0x00, 0x00, 0x04, 0xff};
@@ -132,32 +144,6 @@ static struct mipi_mot_cmd_seq aid_wa_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_data),
 };
 
-static int is_evt0_sample(struct msm_fb_data_type *mfd);
-static int is_es1_evt0_sample(struct msm_fb_data_type *);
-static int is_acl_default_setting_needed(struct msm_fb_data_type *);
-
-static struct mipi_mot_cmd_seq smd_hd_465_init_seq[] = {
-	MIPI_MOT_TX_EXIT_SLEEP(NULL),
-	MIPI_MOT_EXEC_SEQ(is_evt0_sample, unlock_mtp_seq),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, enable_te),
-	MIPI_MOT_EXEC_SEQ(is_evt0_sample, image_retention_wa_seq),
-	MIPI_MOT_TX_DEF(is_acl_default_setting_needed, DTYPE_DCS_LWRITE,
-			DEFAULT_DELAY, acl_default_setting),
-	/* C8, C9, C7 sequence only for non-mtped panels */
-	MIPI_MOT_EXEC_SEQ(is_es1_evt0_sample, brightness_wa_seq),
-	MIPI_MOT_TX_DEF(is_evt0_sample, DTYPE_DCS_LWRITE,
-			DEFAULT_DELAY, disp_ctrl),
-	MIPI_MOT_EXEC_SEQ(NULL, set_brightness_seq),
-	MIPI_MOT_EXEC_SEQ(NULL, acl_enable_disable_seq),
-	MIPI_MOT_EXEC_SEQ(is_es1_evt0_sample, aid_wa_seq),
-	MIPI_MOT_EXEC_SEQ(is_evt0_sample, set_window_size),
-};
-
-static struct mipi_mot_cmd_seq smd_hd_465_disp_off_seq[] = {
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE, DEFAULT_DELAY, display_off),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE, 120, enter_sleep),
-};
-
 static char undo_partial_rows[] = {0x30, 0x00, 0x00, 0x04, 0xff};
 
 /* Settings for correct 2Ch shift issue */
@@ -177,11 +163,46 @@ static struct mipi_mot_cmd_seq correct_shift_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, normal_row),
 };
 
+static int is_evt0_sample(struct msm_fb_data_type *mfd);
+static int is_es1_evt0_sample(struct msm_fb_data_type *);
+static int is_acl_default_setting_needed(struct msm_fb_data_type *);
+static int is_correct_shift_for_aod_needed(struct msm_fb_data_type *);
+
+static struct mipi_mot_cmd_seq smd_hd_465_cfg_seq[] = {
+	MIPI_MOT_EXEC_SEQ(NULL, unlock_mtp_seq),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, enable_te),
+	MIPI_MOT_EXEC_SEQ(is_evt0_sample, image_retention_wa_seq),
+	MIPI_MOT_TX_DEF(is_acl_default_setting_needed, DTYPE_DCS_LWRITE,
+			DEFAULT_DELAY, acl_default_setting),
+	/* exit partial mode */
+	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_WRITE, 0, normal_mode_on),
+	MIPI_MOT_TX_DEF(AOD_SUPPORTED, DTYPE_DCS_LWRITE, 0,
+		undo_partial_rows),
+	MIPI_MOT_EXEC_SEQ(is_correct_shift_for_aod_needed,
+		correct_shift_seq),
+	/* C8, C9, C7 sequence only for non-mtped panels */
+	MIPI_MOT_EXEC_SEQ(is_es1_evt0_sample, brightness_wa_seq),
+	MIPI_MOT_TX_DEF(is_evt0_sample, DTYPE_DCS_LWRITE,
+			DEFAULT_DELAY, disp_ctrl),
+	MIPI_MOT_EXEC_SEQ(NULL, set_brightness_seq),
+	MIPI_MOT_EXEC_SEQ(NULL, acl_enable_disable_seq),
+	MIPI_MOT_EXEC_SEQ(is_es1_evt0_sample, aid_wa_seq),
+	MIPI_MOT_EXEC_SEQ(NULL, set_window_size),
+	MIPI_MOT_EXEC_SEQ(AOD_SUPPORTED, refresh_rate_seq),
+};
+
+static struct mipi_mot_cmd_seq smd_hd_465_init_seq[] = {
+	MIPI_MOT_TX_EXIT_SLEEP(NULL),
+	MIPI_MOT_EXEC_SEQ(NULL, smd_hd_465_cfg_seq),
+};
+
+static struct mipi_mot_cmd_seq smd_hd_465_disp_off_seq[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE, DEFAULT_DELAY, display_off),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE, 120, enter_sleep),
+};
+
 static struct mipi_mot_cmd_seq smd_hd_465_en_from_partial_seq[] = {
-	{MIPI_MOT_SEQ_TX_PWR_MODE_HS, NULL},
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, undo_partial_rows),
-	/* TODO: Remove on displays which have shift issue fixed */
-	MIPI_MOT_EXEC_SEQ(NULL, correct_shift_seq),
+	MIPI_MOT_EXEC_SEQ(NULL, smd_hd_465_cfg_seq),
 };
 
 static int is_evt0_sample(struct msm_fb_data_type *mfd)
@@ -209,6 +230,11 @@ static int is_acl_default_setting_needed(struct msm_fb_data_type *mfd)
 		return 1;
 	else
 		return 0;
+}
+
+static int is_correct_shift_for_aod_needed(struct msm_fb_data_type *mfd)
+{
+	return is_aod_supported(mfd) && is_evt0_sample(mfd);
 }
 
 static void enable_acl(struct msm_fb_data_type *mfd)
