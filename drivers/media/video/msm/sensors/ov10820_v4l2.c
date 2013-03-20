@@ -881,22 +881,9 @@ static int32_t ov10820_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		goto abort2;
 	}
 
-	if (info->oem_data->sensor_using_separate_dvdd) {
-		rc = ov10820_regulator_on(&cam_dvdd, dev, "cam_dvdd", 0);
-		if (rc < 0) {
-			pr_err("%s: cam_dvdd was unable to be turned on (%d)\n",
-					__func__, rc);
-			goto abort2;
-		}
-	} else {
-		rc = ov10820_regulator_on(&cam_vdig, dev, "cam_vdig", 1200000);
-		if (rc < 0)
-			goto abort2;
-
-		/* Set PWDN to low for power up */
-		gpio_direction_output(info->sensor_pwd, 0);
-		usleep(500);
-	}
+	/* Set PWDN to low for power up */
+	gpio_direction_output(info->sensor_pwd, 0);
+	usleep(500);
 
 	/* Enable AF supply */
 	rc = ov10820_regulator_on(&cam_afvdd, dev, "cam_afvdd", 2800000);
@@ -920,6 +907,23 @@ static int32_t ov10820_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	/* Set PWDN to high for normal operation */
 	gpio_direction_output(info->sensor_pwd, 1);
 	usleep(500);
+
+	if (info->oem_data->sensor_using_separate_dvdd) {
+		rc = ov10820_regulator_on(&cam_dvdd, dev, "cam_dvdd", 0);
+		if (rc < 0) {
+			pr_err("%s: cam_dvdd was unable to be turned on (%d)\n",
+					__func__, rc);
+			goto abort2;
+		}
+	} else {
+		rc = ov10820_regulator_on(&cam_vdig, dev, "cam_vdig", 1200000);
+		if (rc < 0)
+			goto abort2;
+
+	}
+
+	/* Wait for DVDD to rise */
+	usleep_range(1000, 2000);
 
 	/* Set reset high */
 	gpio_direction_output(info->sensor_reset, 1);
