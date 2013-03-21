@@ -42,6 +42,7 @@ static struct regulator *cam_dvdd;
 DEFINE_MUTEX(ov10820_mut);
 static struct msm_sensor_ctrl_t ov10820_s_ctrl;
 static bool ov660_exists;
+static uint16_t revision;
 
 static struct msm_cam_clk_info cam_mot_8960_clk_info[] = {
 	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
@@ -64,7 +65,7 @@ static struct msm_camera_i2c_reg_conf ov10820_groupoff_settings[] = {
 	{0x3208, 0xA0},
 };
 
-static struct msm_camera_i2c_reg_conf ov10820_full_settings[] = {
+static struct msm_camera_i2c_reg_conf ov10820_full_settings_rev_a1[] = {
 	{0x3720, 0x30},
 	{0x372a, 0x00},
 	{0x370a, 0x21},
@@ -85,7 +86,29 @@ static struct msm_camera_i2c_reg_conf ov10820_full_settings[] = {
 	{0x402e, 0x1c},
 };
 
-static struct msm_camera_i2c_reg_conf ov10820_qtr_settings[] = {
+static struct msm_camera_i2c_reg_conf ov10820_full_settings_rev_b1[] = {
+	{0x3720, 0x60},
+	{0x372a, 0x08},
+	{0x370a, 0x21},
+	{0x380a, 0x09},
+	{0x380b, 0x80},
+	{0x380e, 0x09},
+	{0x380f, 0xe0},
+	{0x3811, 0x11},
+	{0x3813, 0x10},
+	{0x3815, 0x11},
+	{0x3820, 0x00},
+	{0x3501, 0x9c},
+	{0x3502, 0x00},
+	{0x4001, 0x08},
+	{0x4003, 0x30},
+	{0x402a, 0x0c},
+	{0x402b, 0x08},
+	{0x402e, 0x1c},
+
+};
+
+static struct msm_camera_i2c_reg_conf ov10820_qtr_settings_rev_a1[] = {
 	{0x3720, 0x60},
 	{0x372a, 0x08},
 	{0x370a, 0x23},
@@ -99,6 +122,27 @@ static struct msm_camera_i2c_reg_conf ov10820_qtr_settings[] = {
 	{0x3820, 0x02},
 	{0x3501, 0x4f},
 	{0x3502, 0xc0},
+	{0x4001, 0x00},
+	{0x4003, 0x1c},
+	{0x402a, 0x0a},
+	{0x402b, 0x06},
+	{0x402e, 0x14},
+};
+
+static struct msm_camera_i2c_reg_conf ov10820_qtr_settings_rev_b1[] = {
+	{0x3720, 0x60},
+	{0x372a, 0x08},
+	{0x370a, 0x23},
+	{0x380a, 0x04},
+	{0x380b, 0xc0},
+	{0x380e, 0x04},
+	{0x380f, 0xf0},
+	{0x3811, 0x10},
+	{0x3813, 0x04},
+	{0x3815, 0x22},
+	{0x3820, 0x02},
+	{0x3501, 0x4d},
+	{0x3502, 0x00},
 	{0x4001, 0x00},
 	{0x4003, 0x1c},
 	{0x402a, 0x0a},
@@ -121,7 +165,7 @@ static struct msm_camera_i2c_reg_conf ov10820_BLC_work_around_settings[] = {
 	{0x3509, 0x0a},
 };
 
-static struct msm_camera_i2c_reg_conf ov10820_recommend_settings[] = {
+static struct msm_camera_i2c_reg_conf ov10820_recommend_settings_rev_a1[] = {
 	{0x3080, 0x04},
 	{0x3082, 0x7e},
 	{0x3083, 0x00},
@@ -327,6 +371,234 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings[] = {
 	{0x4837, 0x10},
 };
 
+static struct msm_camera_i2c_reg_conf ov10820_recommend_settings_rev_b1[] = {
+	{0x3080, 0x04},
+	{0x3082, 0x7e},
+	{0x3083, 0x00},
+	{0x3084, 0x03},
+	{0x308b, 0x05},
+	{0x308d, 0xae},
+	{0x308e, 0x02},
+	{0x308f, 0x09},
+	{0x3092, 0x07},
+	{0x3002, 0x80},
+	{0x3009, 0x06},
+	{0x300f, 0x11},
+	{0x3011, 0xe0},
+	{0x3012, 0x41},
+	{0x301e, 0x00},
+	{0x3031, 0x0c},
+	{0x3032, 0x00},
+	{0x3033, 0x22},
+	{0x3034, 0x88},
+	{0x3035, 0x2f},
+	{0x3036, 0x95},
+	{0x3037, 0x2f},
+	{0x3038, 0x95},
+	{0x3106, 0x04},
+	{0x3610, 0x01},
+	{0x3305, 0x41},
+	{0x3306, 0x30},
+	{0x3307, 0x00},
+	{0x3308, 0x00},
+	{0x3309, 0xc8},
+	{0x330a, 0x01},
+	{0x330b, 0x90},
+	{0x330c, 0x02},
+	{0x330d, 0x58},
+	{0x330e, 0x03},
+	{0x330f, 0x20},
+	{0x3300, 0x00},
+	{0x3503, 0x07},
+	{0x3506, 0x00},
+	{0x3507, 0x02},
+	{0x3508, 0x00},
+	{0x350a, 0x00},
+	{0x3603, 0x04},
+	{0x3604, 0x00},
+	{0x3641, 0x83},
+	{0x3642, 0x33},
+	{0x3643, 0x02},
+	{0x3645, 0x41},
+	{0x3646, 0x83},
+	{0x3648, 0x0d},
+	{0x3649, 0x86},
+	{0x3656, 0x88},
+	{0x3658, 0x88},
+	{0x3659, 0x77},
+	{0x365c, 0x5a},
+	{0x3660, 0x83},
+	{0x3663, 0x01},
+	{0x3664, 0x00},
+	{0x3708, 0x84},
+	{0x3709, 0x50},
+	{0x370b, 0x40},
+	{0x370c, 0xf0},
+	{0x370d, 0x03},
+	{0x370e, 0x0f},
+	{0x370f, 0x45},
+	{0x3710, 0x30},
+	{0x3714, 0x42},
+	{0x3718, 0x00},
+	{0x371b, 0x30},
+	{0x371e, 0x01},
+	{0x371f, 0x20},
+	{0x3720, 0x30},
+	{0x3721, 0xf0},
+	{0x3723, 0x38},
+	{0x372a, 0x08},
+	{0x371c, 0x40},
+	{0x372c, 0x11},
+	{0x3730, 0x03},
+	{0x3731, 0xd0},
+	{0x3732, 0x04},
+	{0x3733, 0x0e},
+	{0x3738, 0x04},
+	{0x3739, 0xde},
+	{0x373a, 0x03},
+	{0x373b, 0xd0},
+	{0x373c, 0x00},
+	{0x373d, 0x00},
+	{0x373e, 0x00},
+	{0x373f, 0x00},
+	{0x3740, 0x03},
+	{0x3741, 0xc0},
+	{0x3742, 0x04},
+	{0x3743, 0x01},
+	{0x3748, 0x00},
+	{0x3749, 0x93},
+	{0x374a, 0x00},
+	{0x374c, 0x48},
+	{0x37c5, 0x00},
+	{0x37c6, 0x00},
+	{0x37c7, 0x08},
+	{0x37c9, 0x00},
+	{0x37ca, 0x06},
+	{0x37cb, 0x00},
+	{0x37cc, 0x00},
+	{0x37cd, 0x44},
+	{0x37ce, 0x1f},
+	{0x37cf, 0x40},
+	{0x37d0, 0x00},
+	{0x37d1, 0x01},
+	{0x37d2, 0x00},
+	{0x37de, 0x00},
+	{0x37df, 0x04},
+	{0x3810, 0x00},
+	{0x3812, 0x00},
+	{0x3814, 0x11},
+	{0x3817, 0x00},
+	{0x3821, 0x06},
+	{0x3826, 0x00},
+	{0x3829, 0x00},
+	{0x382b, 0x16},
+	{0x382e, 0x04},
+	{0x3830, 0x00},
+	{0x3835, 0x00},
+	{0x3900, 0x00},
+	{0x3901, 0x80},
+	{0x3902, 0xc6},
+	{0x3b00, 0x00},
+	{0x3b02, 0x00},
+	{0x3b03, 0x00},
+	{0x3b05, 0x00},
+	{0x4000, 0x71},
+	{0x4001, 0x08},
+	{0x4003, 0x30},
+	{0x4004, 0x00},
+	{0x4005, 0x20},
+	{0x4011, 0x00},
+	{0x4012, 0x00},
+	{0x4013, 0x00},
+	{0x401f, 0x00},
+	{0x4020, 0x01},
+	{0x4021, 0x90},
+	{0x4022, 0x03},
+	{0x4023, 0x0f},
+	{0x4024, 0x0e},
+	{0x4025, 0x10},
+	{0x4026, 0x0f},
+	{0x4027, 0x9f},
+	{0x4028, 0x00},
+	{0x4029, 0x04},
+	{0x402a, 0x0c},
+	{0x402b, 0x08},
+	{0x402c, 0x04},
+	{0x402d, 0x04},
+	{0x402e, 0x1c},
+	{0x402f, 0x08},
+	{0x4308, 0x00},
+	{0x430b, 0xff},
+	{0x430c, 0x00},
+	{0x430d, 0xf0},
+	{0x4501, 0x00},
+	{0x4602, 0x02},
+	{0x481b, 0x35},
+	{0x4823, 0x35},
+	{0x4837, 0x08},
+	{0x4d00, 0x04},
+	{0x4d01, 0x71},
+	{0x4d02, 0xfd},
+	{0x4d03, 0xf5},
+	{0x4d04, 0x0c},
+	{0x4d05, 0xcc},
+	{0x4d0a, 0x00},
+	{0x4d0b, 0x01},
+	{0x5001, 0x05},
+	{0x5002, 0x08},
+	{0x5056, 0x04},
+	{0x5057, 0x00},
+	{0x5058, 0x04},
+	{0x5059, 0x00},
+	{0x505a, 0x04},
+	{0x505b, 0x00},
+	{0x505c, 0x04},
+	{0x505d, 0x00},
+	{0x5a04, 0x00},
+	{0x5a05, 0x80},
+	{0x5a06, 0x00},
+	{0x5a07, 0xf0},
+	{0x5a08, 0x00},
+	{0x5b01, 0x10},
+	{0x5b05, 0xef},
+	{0x5b09, 0x02},
+	{0x5e01, 0x41},
+	{0x3106, 0x00},
+	{0x370a, 0x21},
+	{0x3800, 0x00},
+	{0x3801, 0x00},
+	{0x3802, 0x00},
+	{0x3803, 0x00},
+	{0x3804, 0x10},
+	{0x3805, 0xff},
+	{0x3806, 0x09},
+	{0x3807, 0x9f},
+	{0x3808, 0x10},
+	{0x3809, 0xe0},
+	{0x380a, 0x09},
+	{0x380b, 0x80},
+	{0x380c, 0x15},
+	{0x380d, 0x80},
+	{0x380e, 0x09},
+	{0x380f, 0xe0},
+	{0x3811, 0x11},
+	{0x3813, 0x10},
+	{0x3815, 0x11},
+	{0x3820, 0x00},
+	{0x3834, 0x00},
+	{0x4837, 0x08},
+	/* Exposure Gain */
+	{0x3500, 0x00},
+	{0x3501, 0xa1},
+	{0x3502, 0x80},
+	{0x350b, 0x40},
+	{0x3083, 0x01},
+	{0x308e, 0x02},
+	{0x3092, 0x07},
+	{0x4837, 0x10},
+	{0x5b04, 0xa2},
+};
+
 static struct v4l2_subdev_info ov10820_subdev_info[] = {
 	{
 		.code   = V4L2_MBUS_FMT_SBGGR10_1X10,
@@ -337,24 +609,44 @@ static struct v4l2_subdev_info ov10820_subdev_info[] = {
 	/* more can be supported, to be added later */
 };
 
-static struct msm_camera_i2c_conf_array ov10820_init_conf[] = {
+static struct msm_camera_i2c_conf_array ov10820_init_conf_rev_a1[] = {
 	{&ov10820_reset_settings[0],
 		ARRAY_SIZE(ov10820_reset_settings), 50,
 		MSM_CAMERA_I2C_BYTE_DATA},
-	{&ov10820_recommend_settings[0],
-		ARRAY_SIZE(ov10820_recommend_settings), 0,
+	{&ov10820_recommend_settings_rev_a1[0],
+		ARRAY_SIZE(ov10820_recommend_settings_rev_a1), 0,
 		MSM_CAMERA_I2C_BYTE_DATA}
 };
 
-static struct msm_camera_i2c_conf_array ov10820_confs[] = {
-	{&ov10820_full_settings[0],
-		ARRAY_SIZE(ov10820_full_settings), 0, MSM_CAMERA_I2C_BYTE_DATA},
-	{&ov10820_qtr_settings[0],
-		ARRAY_SIZE(ov10820_qtr_settings), 0, MSM_CAMERA_I2C_BYTE_DATA},
+static struct msm_camera_i2c_conf_array ov10820_init_conf_rev_b1[] = {
+	{&ov10820_reset_settings[0],
+		ARRAY_SIZE(ov10820_reset_settings), 50,
+		MSM_CAMERA_I2C_BYTE_DATA},
+	{&ov10820_recommend_settings_rev_b1[0],
+		ARRAY_SIZE(ov10820_recommend_settings_rev_b1), 0,
+		MSM_CAMERA_I2C_BYTE_DATA}
+};
+
+static struct msm_camera_i2c_conf_array ov10820_confs_rev_a1[] = {
+	{&ov10820_full_settings_rev_a1[0],
+		ARRAY_SIZE(ov10820_full_settings_rev_a1), 0,
+		MSM_CAMERA_I2C_BYTE_DATA},
+	{&ov10820_qtr_settings_rev_a1[0],
+		ARRAY_SIZE(ov10820_qtr_settings_rev_a1), 0,
+		MSM_CAMERA_I2C_BYTE_DATA},
+};
+
+static struct msm_camera_i2c_conf_array ov10820_confs_rev_b1[] = {
+	{&ov10820_full_settings_rev_b1[0],
+		ARRAY_SIZE(ov10820_full_settings_rev_b1), 0,
+		MSM_CAMERA_I2C_BYTE_DATA},
+	{&ov10820_qtr_settings_rev_b1[0],
+		ARRAY_SIZE(ov10820_qtr_settings_rev_b1), 0,
+		MSM_CAMERA_I2C_BYTE_DATA},
 };
 
 /* vt_pixel_clk==pll sys clk, op_pixel_clk==mipi clk */
-static struct msm_sensor_output_info_t ov10820_dimensions[] = {
+static struct msm_sensor_output_info_t ov10820_r1a_dimensions[] = {
 	{
 		.x_output = 0x10E0,/*4320*/
 		.y_output = 0x0980,/*2432*/
@@ -369,6 +661,28 @@ static struct msm_sensor_output_info_t ov10820_dimensions[] = {
 		.y_output = 0x4c0,/*1216*/
 		.line_length_pclk = 0x1506,/*5382*/
 		.frame_length_lines = 0x51c, /*1308*/
+		.vt_pixel_clk = 63000000,
+		.op_pixel_clk = 264000000,
+		.binning_factor = 2,
+	},
+};
+
+/* vt_pixel_clk==pll sys clk, op_pixel_clk==mipi clk */
+static struct msm_sensor_output_info_t ov10820_r1b_dimensions[] = {
+	{
+		.x_output = 0x10E0,/*4320*/
+		.y_output = 0x0980,/*2432*/
+		.line_length_pclk = 0x1580, /*5504*/
+		.frame_length_lines = 0x9e0,/*2528*/
+		.vt_pixel_clk = 200000000,
+		.op_pixel_clk = 320000000,
+		.binning_factor = 1,
+	},
+	{
+		.x_output = 0x870,/*2160*/
+		.y_output = 0x4c0,/*1216*/
+		.line_length_pclk = 0x1580, /*5504*/
+		.frame_length_lines = 0x9e0,/*2528*/
 		.vt_pixel_clk = 63000000,
 		.op_pixel_clk = 264000000,
 		.binning_factor = 2,
@@ -754,6 +1068,23 @@ static int32_t ov10820_check_i2c_configuration(struct msm_sensor_ctrl_t *s_ctrl)
 	int32_t rc = 0;
 	uint16_t chipid = 0;
 
+	ov660_set_i2c_bypass(1);
+
+	rc = msm_camera_i2c_read(
+			s_ctrl->sensor_i2c_client,
+			0x302A, &revision, MSM_CAMERA_I2C_BYTE_DATA);
+	if (rc < 0) {
+		pr_err("%s: unable to read revision (%d)\n", __func__, rc);
+	} else {
+		pr_info("%s: revision is 0x%x\n", __func__, revision);
+		if (revision == 0xB1) {
+			pr_info("%s: new revision, using no BLC fix\n",
+					__func__);
+			allow_asic_control = false;
+			return 0;
+		}
+	}
+
 	ov660_set_i2c_bypass(0);
 
 	rc = msm_camera_i2c_read(
@@ -789,6 +1120,24 @@ static int32_t ov10820_check_i2c_configuration(struct msm_sensor_ctrl_t *s_ctrl)
 
 	ov660_set_i2c_bypass(1);
 	return 0;
+}
+
+static void ov10820_init_confs(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	struct msm_sensor_reg_t *r = s_ctrl->msm_sensor_reg;
+	if (revision == 0xB1) {
+		r->init_settings = &ov10820_init_conf_rev_b1[0];
+		r->init_size     = ARRAY_SIZE(ov10820_init_conf_rev_b1);
+		r->mode_settings = &ov10820_confs_rev_b1[0];
+		r->num_conf      = ARRAY_SIZE(ov10820_confs_rev_b1);
+		r->output_settings = &ov10820_r1b_dimensions[0];
+	} else {
+		r->init_settings = &ov10820_init_conf_rev_a1[0];
+		r->init_size     = ARRAY_SIZE(ov10820_init_conf_rev_a1);
+		r->mode_settings = &ov10820_confs_rev_a1[0];
+		r->num_conf      = ARRAY_SIZE(ov10820_confs_rev_a1);
+		r->output_settings = &ov10820_r1a_dimensions[0];
+	}
 }
 
 static int32_t ov10820_match_id(struct msm_sensor_ctrl_t *s_ctrl)
@@ -849,6 +1198,9 @@ check_chipid:
 
 	pr_debug("%s: success and using i2c address of: %x\n", __func__,
 			s_ctrl->sensor_i2c_client->client->addr);
+
+	ov10820_init_confs(s_ctrl);
+
 	if ((!ov660_exists) &&
 			(info->oem_data->sensor_allow_asic_bypass != 1)) {
 		pr_err("%s: detected 10mp, but asic not working!\n",
@@ -865,6 +1217,7 @@ check_chipid:
 		ov10820_otp_info.otp_info = (uint8_t *)ov10820_otp;
 		ov10820_otp_info.size = OV10820_OTP_SIZE;
 	}
+
 	return 0;
 }
 
@@ -918,11 +1271,11 @@ static struct msm_sensor_reg_t ov10820_regs = {
 	.group_hold_on_conf_size  = ARRAY_SIZE(ov10820_groupon_settings),
 	.group_hold_off_conf      = ov10820_groupoff_settings,
 	.group_hold_off_conf_size = ARRAY_SIZE(ov10820_groupoff_settings),
-	.init_settings            = &ov10820_init_conf[0],
-	.init_size                = ARRAY_SIZE(ov10820_init_conf),
-	.mode_settings            = &ov10820_confs[0],
-	.output_settings          = &ov10820_dimensions[0],
-	.num_conf                 = ARRAY_SIZE(ov10820_confs),
+	.init_settings            = NULL, /*populated by ov10820_init_confs()*/
+	.init_size                = 0,    /*populated by ov10820_init_confs()*/
+	.mode_settings            = NULL, /*populated by ov10820_init_confs()*/
+	.num_conf                 = 0,    /*populated by ov10820_init_confs()*/
+	.output_settings          = NULL, /*populated by ov10820_init_confs()*/
 };
 
 static struct msm_sensor_ctrl_t ov10820_s_ctrl = {
