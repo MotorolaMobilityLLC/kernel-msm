@@ -41,6 +41,12 @@
 
 #if !defined( __SAP_CH_SELECT_H )
 #define __SAP_CH_SELECT_H
+
+/*
+* Copyright (c) 2012-2013 Qualcomm Atheros, Inc.
+* All Rights Reserved.
+* Qualcomm Atheros Confidential and Proprietary.
+*/
 /*===========================================================================
 
                       s a p C h S e l e c t . h
@@ -132,8 +138,6 @@ typedef enum
 * Structure holding information of each channel in the spectrum, 
 * it contains the channel number, the computed weight
 */
-
-#define SPACE_ASCII_VALUE  32
 
 typedef struct sSapChannelListInfo{
     v_U8_t numChannel;

@@ -401,15 +401,11 @@ ProcDnldRsp(tpAniSirGlobal pMac, tANI_U16 length, tANI_U32 *pParam)
     // Set the default log level based on config
     wlan_cfgGetInt(pMac, WNI_CFG_LOG_LEVEL, &logLevel);
     for (i = 0; i < LOG_ENTRY_NUM; i++)
-#ifdef LX5280
-        pMac->utils.gLogEvtLevel[i] = pMac->utils.gLogDbgLevel[i] = LOGE;
-#else
 #if defined(ANI_OS_TYPE_WINCE)
         pMac->utils.gLogEvtLevel[i] = pMac->utils.gLogDbgLevel[i] = LOGE;
 #else //#if defined(ANI_OS_TYPE_WINCE)
         pMac->utils.gLogEvtLevel[i] = pMac->utils.gLogDbgLevel[i] = logLevel;
 #endif //#if defined(ANI_OS_TYPE_WINCE)
-#endif
 
     // Set status to READY
     pMac->cfg.gCfgStatus = CFG_SUCCESS;

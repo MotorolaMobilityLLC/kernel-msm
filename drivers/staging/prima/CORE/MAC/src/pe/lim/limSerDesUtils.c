@@ -2043,6 +2043,12 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
+    //txBFCsnValue
+    pJoinReq->txBFCsnValue= *pBuf++;
+    len--;
+    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
+        return eSIR_FAILURE;
+
 #if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
     // Extract BP Indicator
     pJoinReq->bpIndicator = (tAniBool) limGetU32(pBuf);

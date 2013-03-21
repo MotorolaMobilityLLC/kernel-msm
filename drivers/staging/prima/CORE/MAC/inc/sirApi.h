@@ -1022,6 +1022,8 @@ typedef struct sSirSmeScanReq
      * Values of 0xC0, 0x80 & 0x40 are to be used by
      * Roaming/application when 11d is enabled.
      */
+    tANI_U32 minChannelTimeBtc;    //in units of milliseconds
+    tANI_U32 maxChannelTimeBtc;    //in units of milliseconds
     tANI_U8              returnAfterFirstMatch;
 
     /**
@@ -1184,7 +1186,6 @@ typedef enum eSirBpIndicatorType
 
 #endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /// Definition for Join/Reassoc info - Reshmi: need to check if this is a def which moved from elsehwere.
 typedef struct sJoinReassocInfo
 {
@@ -1193,7 +1194,6 @@ typedef struct sJoinReassocInfo
     tSirMacPowerCapInfo powerCap;
     tSirSupChnl         supportedChannels;
 } tJoinReassocInfo, *tpJoinReassocInfo;
-#endif
 
 /// Definition for join request
 /// ---> MAC
@@ -1265,6 +1265,7 @@ typedef struct sSirSmeJoinReq
     tANI_U8             txLdpcIniFeatureEnabled;
 #ifdef WLAN_FEATURE_11AC
     tANI_U8             txBFIniFeatureEnabled;
+    tANI_U8             txBFCsnValue;
 #endif
 
 #if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
@@ -3777,6 +3778,8 @@ typedef struct sSirSmeDelStaSelfRsp
 #define SIR_COEX_IND_DATA_SIZE (4)
 #define SIR_COEX_IND_TYPE_DISABLE_HB_MONITOR (0)
 #define SIR_COEX_IND_TYPE_ENABLE_HB_MONITOR (1)
+#define SIR_COEX_IND_TYPE_SCAN_COMPROMISED (2)
+#define SIR_COEX_IND_TYPE_SCAN_NOT_COMPROMISED (3)
 
 typedef struct sSirSmeCoexInd
 {
@@ -3820,7 +3823,6 @@ typedef struct sSirNoAParam
 }tSirNoAParam, *tpSirNoAParam;
 #endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 typedef struct sSirWlanSuspendParam
 {
     tANI_U8 configuredMcstBcstFilterSetting;
@@ -3836,7 +3838,6 @@ typedef struct sSirWlanSetRxpFilters
     tANI_U8 configuredMcstBcstFilterSetting;
     tANI_U8 setMcstBcstFilter;
 }tSirWlanSetRxpFilters,*tpSirWlanSetRxpFilters;
-#endif
 
 
 #ifdef FEATURE_WLAN_SCAN_PNO
@@ -4237,6 +4238,19 @@ typedef struct sSirTdlsDelStaInd
    tANI_U16               staId;
    tANI_U16               reasonCode;
 } tSirTdlsDelStaInd, *tpSirTdlsDelStaInd;
+typedef struct sSirTdlsDelAllPeerInd
+{
+   tANI_U16               messageType;
+   tANI_U16               length;
+   tANI_U8                sessionId;     // Session ID
+} tSirTdlsDelAllPeerInd, *tpSirTdlsDelAllPeerInd;
+typedef struct sSirMgmtTxCompletionInd
+{
+   tANI_U16               messageType;
+   tANI_U16               length;
+   tANI_U8                sessionId;     // Session ID
+   tANI_U32               txCompleteStatus;
+} tSirMgmtTxCompletionInd, *tpSirMgmtTxCompletionInd;
 #endif /* FEATURE_WLAN_TDLS */
 
 #ifdef FEATURE_WLAN_TDLS_INTERNAL

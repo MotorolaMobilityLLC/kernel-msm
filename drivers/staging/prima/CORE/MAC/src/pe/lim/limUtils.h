@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file limUtils.h contains the utility definitions
@@ -86,7 +85,6 @@ typedef enum
     *pCurVal = (tLimBAState)(((pSta->baState >> tid*2) & 0x3));\
 }
 
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
 typedef struct sAddBaInfo
 {
     tANI_U16 fBaEnable : 1;
@@ -99,7 +97,6 @@ typedef struct sAddBaCandidate
     tSirMacAddr staAddr;
     tAddBaInfo baInfo[STACFG_MAX_TC];
 }tAddBaCandidate, *tpAddBaCandidate;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 // LIM utility functions
 void limGetBssidFromPkt(tpAniSirGlobal, tANI_U8 *, tANI_U8 *, tANI_U32 *);

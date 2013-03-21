@@ -82,30 +82,6 @@ eHalStatus csrTdlsInitPeerList(tpAniSirGlobal pMac )
 }
 #endif
 
-tANI_BOOLEAN csrTdlsPowerSaveCheck( void *hHal )
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    
-    //Avoid entering into BMPS if any TDLS peer is connected
-    return ((pMac->tdlsCtx.tdlsPeerCount > 0) ? FALSE : TRUE) ;
-}
-/*
- * open TDLS context for SME
- */
-eHalStatus csrTdlsOpen(tHalHandle hHal)
-{
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-#ifdef FEATURE_WLAN_TDLS_INTERNAL
-    csrTdlsInitPeerList(pMac) ;
-#endif
-    pMac->tdlsCtx.tdlsPeerCount = 0;
-    if( eHAL_STATUS_SUCCESS != pmcRegisterPowerSaveCheck (pMac, csrTdlsPowerSaveCheck, pMac) )
-    {
-        smsLog( pMac, LOGE, FL("Register power save check failed\n") );
-    }
-    return eHAL_STATUS_SUCCESS ;
-}
-
 /*
  * common routine to remove TDLS cmd from SME command list..
  * commands are removed after getting reponse from PE.
@@ -828,7 +804,6 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
             roamInfo.ucastSig = addStaRsp->ucastSig ;
             roamInfo.bcastSig = addStaRsp->bcastSig ;
             roamInfo.statusCode = addStaRsp->statusCode ;
-            pMac->tdlsCtx.tdlsPeerCount++;
             /*
              * register peer with TL, we have to go through HDD as this is
              * the only way to register any STA with TL.
@@ -858,13 +833,6 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
                          eCSR_ROAM_TDLS_STATUS_UPDATE, 
                                eCSR_ROAM_RESULT_DELETE_TDLS_PEER);
 
-            pMac->tdlsCtx.tdlsPeerCount--;
-            //If all tdls connection is teared down, start bmps timer again.
-            if( pMac->tdlsCtx.tdlsPeerCount == 0 )
-            {
-                pmcStartAutoBmpsTimer(pMac);
-            }
-            /* remove pending eSmeCommandTdlsDiscovery command */
             csrTdlsRemoveSmeCmd(pMac, eSmeCommandTdlsDelPeer) ;
         }
         break;
@@ -882,6 +850,26 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
                          eCSR_ROAM_TDLS_STATUS_UPDATE,
                                eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND);
             break ;
+        }
+        case eWNI_SME_TDLS_DEL_ALL_PEER_IND:
+        {
+            tpSirTdlsDelAllPeerInd pSirTdlsDelAllPeerInd = (tpSirTdlsDelAllPeerInd) pMsgBuf ;
+            tCsrRoamInfo roamInfo = {0} ;
+
+            /* Sending the TEARDOWN indication to HDD. */
+            csrRoamCallCallback(pMac, pSirTdlsDelAllPeerInd->sessionId, &roamInfo, 0,
+                                eCSR_ROAM_TDLS_STATUS_UPDATE,
+                                eCSR_ROAM_RESULT_DELETE_ALL_TDLS_PEER_IND);
+            break ;
+        }
+        case eWNI_SME_MGMT_FRM_TX_COMPLETION_IND:
+        {
+            tpSirMgmtTxCompletionInd pSirTdlsDelAllPeerInd = (tpSirMgmtTxCompletionInd) pMsgBuf ;
+            tCsrRoamInfo roamInfo = {0} ;
+            roamInfo.reasonCode = pSirTdlsDelAllPeerInd->txCompleteStatus;
+
+            csrRoamCallCallback(pMac, pSirTdlsDelAllPeerInd->sessionId, &roamInfo,
+                                0, eCSR_ROAM_RESULT_MGMT_TX_COMPLETE_IND, 0);
         }
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
         case eWNI_SME_TDLS_DISCOVERY_START_RSP:

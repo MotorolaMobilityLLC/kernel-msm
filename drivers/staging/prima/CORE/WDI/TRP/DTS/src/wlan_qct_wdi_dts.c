@@ -405,7 +405,17 @@ wpt_status WDTS_TxPacketComplete(void *pContext, wpt_packet *pFrame, wpt_status 
     /* note that EAPOL frame hasn't incremented ReserveCount. see
        WDI_DS_TxPacket() in wlan_qct_wdi_ds.c
     */
+#ifdef FEATURE_WLAN_TDLS
+    /* I utilizes TDLS mgmt frame always sent at BD_RATE2. (See limProcessTdls.c)
+       Assumption here is data frame sent by WDA_TxPacket() <- HalTxFrame/HalTxFrameWithComplete()
+       should take managment path. As of today, only TDLS feature has special data frame
+       which needs to be treated as mgmt.
+    */
+    if((!pTxMetadata->isEapol) &&
+       ((pTxMetadata->txFlags & WDI_USE_BD_RATE2_FOR_MANAGEMENT_FRAME) != WDI_USE_BD_RATE2_FOR_MANAGEMENT_FRAME))
+#else
     if(!pTxMetadata->isEapol)
+#endif
     {
       /* SWAP BD header to get STA index for completed frame */
       WDI_SwapTxBd(pvBDHeader);
@@ -568,9 +578,18 @@ wpt_status WDTS_RxPacket (void *pContext, wpt_packet *pFrame, WDTS_ChannelType c
         wpalPacketFree(pFrame);
         return eWLAN_PAL_STATUS_SUCCESS;
       }
-      wpalPacketSetRxLength(pFrame, usMPDULen+ucMPDUHOffset);
-      wpalPacketRawTrimHead(pFrame, ucMPDUHOffset);
-
+      if(eWLAN_PAL_STATUS_SUCCESS != wpalPacketSetRxLength(pFrame, usMPDULen+ucMPDUHOffset))
+      {
+          DTI_TRACE( DTI_TRACE_LEVEL_ERROR, "Invalid Frame Length, Frame dropped..");
+          wpalPacketFree(pFrame);
+          return eWLAN_PAL_STATUS_SUCCESS;
+      }
+      if(eWLAN_PAL_STATUS_SUCCESS != wpalPacketRawTrimHead(pFrame, ucMPDUHOffset))
+      {
+          DTI_TRACE( DTI_TRACE_LEVEL_ERROR, "Failed to trim Raw Packet Head, Frame dropped..");
+          wpalPacketFree(pFrame);
+          return eWLAN_PAL_STATUS_SUCCESS;
+      }
      
 
       pRxMetadata = WDI_DS_ExtractRxMetaData(pFrame);
@@ -837,7 +856,16 @@ wpt_status WDTS_TxPacket(void *pContext, wpt_packet *pFrame)
        already reached to low resource condition
        This can happen especially in MCC, high data traffic TX in first session
      */
+#ifdef FEATURE_WLAN_TDLS
+     /* I utilizes TDLS mgmt frame always sent at BD_RATE2. (See limProcessTdls.c)
+        Assumption here is data frame sent by WDA_TxPacket() <- HalTxFrame/HalTxFrameWithComplete()
+        should take managment path. As of today, only TDLS feature has special data frame
+        which needs to be treated as mgmt.
+      */
+      (((pTxMetadata->isEapol) || (pTxMetadata->txFlags & WDI_USE_BD_RATE2_FOR_MANAGEMENT_FRAME))? WDTS_CHANNEL_TX_HIGH_PRI : WDTS_CHANNEL_TX_LOW_PRI) : WDTS_CHANNEL_TX_HIGH_PRI;
+#else
       ((pTxMetadata->isEapol) ? WDTS_CHANNEL_TX_HIGH_PRI : WDTS_CHANNEL_TX_LOW_PRI) : WDTS_CHANNEL_TX_HIGH_PRI;
+#endif
   // Send packet to  Transport Driver. 
   status =  gTransportDriver.xmit(pDTDriverContext, pFrame, channel);
   return status;

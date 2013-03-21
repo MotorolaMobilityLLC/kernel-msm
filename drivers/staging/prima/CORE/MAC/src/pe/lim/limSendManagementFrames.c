@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /**
  * \file limSendManagementFrames.c
  *
@@ -51,9 +50,6 @@
 #include "sirApi.h"
 #include "aniGlobal.h"
 #include "sirMacProtDef.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halDataStruct.h"
-#endif
 #include "cfgApi.h"
 #include "utilsApi.h"
 #include "limTypes.h"
@@ -397,6 +393,11 @@ limSendProbeReqMgmtFrame(tpAniSirGlobal pMac,
 #ifdef WLAN_FEATURE_P2P
       || (( pMac->lim.gpLimMlmScanReq != NULL) &&
           pMac->lim.gpLimMlmScanReq->p2pSearch )
+      /* For unicast probe req mgmt from Join function
+         we don't set above variables. So we need to add
+         one more check whether it is pePersona is P2P_CLIENT or not */
+      || ( ( psessionEntry != NULL ) &&
+           ( VOS_P2P_CLIENT_MODE == psessionEntry->pePersona ) )
 #endif
       ) 
     {
@@ -2685,8 +2686,8 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
     }
     nAddIELen = psessionEntry->pLimReAssocReq->addIEAssoc.length; 
     pAddIE = psessionEntry->pLimReAssocReq->addIEAssoc.addIEdata;
-    limLog( pMac, LOGE, FL("limSendReassocReqWithFTIEsMgmtFrame received in " 
-                           "state (%d).\n"), psessionEntry->limMlmState);
+    limLog( pMac, LOG1, FL("limSendReassocReqWithFTIEsMgmtFrame received in "
+                           "state (%d)."), psessionEntry->limMlmState);
 
     palZeroMemory( pMac->hHdd, ( tANI_U8* )&frm, sizeof( frm ) );
 
@@ -2896,7 +2897,7 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
     nBytes = nPayload + sizeof( tSirMacMgmtHdr ) + nAddIELen;
 
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-    limLog( pMac, LOGE, FL("FT IE Reassoc Req (%d).\n"), 
+    limLog( pMac, LOG1, FL("FT IE Reassoc Req (%d)."),
             pMac->ft.ftSmeContext.reassoc_ft_ies_length);
 #endif
 
@@ -2923,7 +2924,7 @@ limSendReassocReqWithFTIEsMgmtFrame(tpAniSirGlobal     pMac,
     palZeroMemory( pMac->hHdd, pFrame, nBytes + ft_ies_length);
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
-    limPrintMacAddr(pMac, psessionEntry->limReAssocbssId, LOGE);
+    limPrintMacAddr(pMac, psessionEntry->limReAssocbssId, LOG1);
 #endif
     // Next, we fill out the buffer descriptor:
     nSirStatus = limPopulateMacHeader( pMac, pFrame, SIR_MAC_MGMT_FRAME,
@@ -4118,6 +4119,11 @@ limSendDeauthMgmtFrame(tpAniSirGlobal pMac,
     eHalStatus       halstatus;
     tANI_U8          txFlag = 0;
     tANI_U32         val = 0;
+#ifdef FEATURE_WLAN_TDLS
+    tANI_U16          aid;
+    tpDphHashNode     pStaDs;
+#endif
+
     if(NULL == psessionEntry)
     {
         return;
@@ -4215,6 +4221,10 @@ limSendDeauthMgmtFrame(tpAniSirGlobal pMac,
     }
 #endif
 
+#ifdef FEATURE_WLAN_TDLS
+    pStaDs = dphLookupHashEntry(pMac, peer, &aid, &psessionEntry->dph.dphHashTable);
+#endif
+
     if (waitForAck)
     {
         // Queue Disassociation frame in high priority WQ
@@ -4258,12 +4268,28 @@ limSendDeauthMgmtFrame(tpAniSirGlobal pMac,
     }
     else
     {
-        // Queue Disassociation frame in high priority WQ
-        halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
+#ifdef FEATURE_WLAN_TDLS
+        if ((NULL != pStaDs) && (STA_ENTRY_TDLS_PEER == pStaDs->staType))
+        {
+            // Queue Disassociation frame in high priority WQ
+            halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
                 HAL_TXRX_FRM_802_11_MGMT,
-                ANI_TXDIR_TODS,
+                ANI_TXDIR_IBSS,
                 7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
                 limTxComplete, pFrame, txFlag );
+        }
+        else
+        {
+#endif
+            // Queue Disassociation frame in high priority WQ
+            halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
+                    HAL_TXRX_FRM_802_11_MGMT,
+                    ANI_TXDIR_TODS,
+                    7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
+                    limTxComplete, pFrame, txFlag );
+#ifdef FEATURE_WLAN_TDLS
+        }
+#endif
         if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
         {
             limLog( pMac, LOGE, FL("Failed to send De-Authentication "
@@ -6074,6 +6100,8 @@ limSendRadioMeasureReportActionFrame(tpAniSirGlobal        pMac,
             frm->MeasurementReport[i].present = 1;
             break;
          default:
+            frm->MeasurementReport[i].incapable = pRRMReport[i].incapable;
+            frm->MeasurementReport[i].refused = pRRMReport[i].refused;
             frm->MeasurementReport[i].present = 1;
             break;
       }

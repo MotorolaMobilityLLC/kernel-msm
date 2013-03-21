@@ -58,13 +58,8 @@
 #include "dphGlobal.h"
 #include "limDebug.h"
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halCommonApi.h"
-#endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include "halMsgApi.h" 
-#endif
 
 // ---------------------------------------------------------------------
 /**
@@ -298,10 +293,6 @@ tpDphHashNode dphInitStaState(tpAniSirGlobal pMac, tSirMacAddr staAddr,
 
     pStaDs->added = 1;
     pStaDs->encPolicy = HAL_ENC_POLICY_NULL;
-
-#if defined( PLM_WDS)&&defined(LX5280)
-    pStaDs->wdsIndex=pStaDs->wdsPeerBeaconSeen=0;
-#endif
 
 #ifdef WMM_APSD
     pStaDs->stopQueue = 0;

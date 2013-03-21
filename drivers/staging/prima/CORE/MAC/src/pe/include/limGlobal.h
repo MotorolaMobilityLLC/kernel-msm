@@ -379,6 +379,8 @@ typedef struct sLimMlmScanReq
     tSirScanType       scanType;
     tANI_U32           minChannelTime;
     tANI_U32           maxChannelTime;
+    tANI_U32           minChannelTimeBtc;
+    tANI_U32           maxChannelTimeBtc;
     tSirBackgroundScanMode  backgroundScanMode;
     tANI_U32 dot11mode;
     /* Number of SSIDs to scan(send Probe request) */
@@ -827,6 +829,7 @@ typedef enum tdlsLinkMode
 {
     TDLS_LINK_MODE_BG,
     TDLS_LINK_MODE_N,
+    TDLS_LINK_MODE_AC,
     TDLS_LINK_MODE_NONE
 } eLimTdlsLinkMode ;
 #endif  /* FEATURE_WLAN_TDLS */

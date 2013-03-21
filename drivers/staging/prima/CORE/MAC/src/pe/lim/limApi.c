@@ -269,19 +269,10 @@ static void __limInitStates(tpAniSirGlobal pMac)
     pMac->lim.gLimHalScanState = eLIM_HAL_IDLE_SCAN_STATE;
 #endif // GEN4_SCAN
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
     /**
      * Initialize state to eLIM_SME_OFFLINE_STATE
      */
     pMac->lim.gLimSmeState     = eLIM_SME_OFFLINE_STATE;
-#else
-    /**
-     * Initialize state to suspended state and wait for
-     * HAL to send LIM_RESUME_ACTIVITY_NTF message.
-     */
-    MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, NO_SESSION, pMac->lim.gLimSmeState));
-    pMac->lim.gLimSmeState     = eLIM_SME_SUSPEND_STATE;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
     /**
      * By default assume 'unknown' role. This will be updated
@@ -469,7 +460,6 @@ static void __limInitHTVars(tpAniSirGlobal pMac)
     pMac->lim.gAddBA_Declined = 0;               // Flag to Decline the BAR if the particular bit (0-7) is being set   
 }
 
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
 static tSirRetStatus __limInitConfig( tpAniSirGlobal pMac )
 {
    tANI_U32 val1, val2, val3;
@@ -644,10 +634,14 @@ static tSirRetStatus __limInitConfig( tpAniSirGlobal pMac )
    /* This was initially done after resume notification from HAL. Now, DAL is
       started before PE so this can be done here */
    handleHTCapabilityandHTInfo(pMac, NULL);
+   if(wlan_cfgGetInt(pMac, WNI_CFG_DISABLE_LDPC_WITH_TXBF_AP,(tANI_U32 *) &pMac->lim.disableLDPCWithTxbfAP) != eSIR_SUCCESS)
+   {
+      limLog(pMac, LOGP, FL("cfg get disableLDPCWithTxbfAP failed\n"));
+      return eSIR_FAILURE;
+   }
 
    return eSIR_SUCCESS;
 }
-#endif  /* FEATURE_WLAN_INTEGRATED_SOC */
 
 /*
    limStart
@@ -724,13 +718,11 @@ limInitialize(tpAniSirGlobal pMac)
     __limInitHTVars(pMac);
     __limInitTitanVars(pMac);
 
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
     status = limStart(pMac);
     if(eSIR_SUCCESS != status)
     {
         return status;
     }
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
     /*
      * MLM will be intitalized when 'START' request comes from SME.
@@ -785,7 +777,6 @@ limInitialize(tpAniSirGlobal pMac)
 #endif
     MTRACE(limTraceInit(pMac));
 
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
     //Initialize the configurations needed by PE
     if( eSIR_FAILURE == __limInitConfig(pMac))
     {
@@ -799,7 +790,6 @@ limInitialize(tpAniSirGlobal pMac)
    //Now, DAL is started before PE so this can be done here
    limAdmitControlInit(pMac);
    limRegisterHalIndCallBack(pMac);
-#endif /*FEATURE_WLAN_INTEGRATED_SOC*/
 
    return status;
             
@@ -1077,10 +1067,8 @@ tSirRetStatus peOpen(tpAniSirGlobal pMac, tMacOpenParameters *pMacOpenParam)
         return eSIR_FAILURE;
     }
 #endif
+    pMac->lim.mgmtFrameSessionId = 0xff;
 
-#ifdef WLAN_FEATURE_P2P
-    pMac->lim.actionFrameSessionId = 0xff;
-#endif
     if( !VOS_IS_STATUS_SUCCESS( vos_lock_init( &pMac->lim.lkPeGlobalLock ) ) )
     {
         PELOGE(limLog(pMac, LOGE, FL("pe lock init failed!\n"));)

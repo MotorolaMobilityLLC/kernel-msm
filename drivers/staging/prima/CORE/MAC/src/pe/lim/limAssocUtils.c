@@ -676,7 +676,6 @@ limCleanupRxPath(tpAniSirGlobal pMac, tpDphHashNode pStaDs,tpPESession psessionE
     {
         MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, eLIM_MLM_WT_DEL_STA_RSP_STATE));
         psessionEntry->limMlmState = eLIM_MLM_WT_DEL_STA_RSP_STATE;
-        MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, eLIM_MLM_WT_DEL_STA_RSP_STATE));
         /* Deactivating probe after heart beat timer */
         limDeactivateAndChangeTimer(pMac, eLIM_PROBE_AFTER_HB_TIMER);
         limHeartBeatDeactivateAndChangeTimer(pMac, psessionEntry);
@@ -2013,14 +2012,6 @@ limPopulateMatchingRateSet(tpAniSirGlobal pMac,
                 if ((tempRateSet2.rate[i] & 0x7F) ==
                     (tempRateSet.rate[j] & 0x7F))
                 { 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-                    if ((bRateIndex > HAL_NUM_11B_RATES) || (aRateIndex > HAL_NUM_11A_RATES))
-                    {
-                        limLog(pMac, LOGE, FL("Invalid number of rates (11b->%d, 11a->%d)\n"),
-                                            bRateIndex, aRateIndex);
-                            return eSIR_FAILURE;
-                    }
-#endif
                     if (sirIsArate(tempRateSet2.rate[i] & 0x7f))
                     {
                         isArate=1;
@@ -2208,7 +2199,12 @@ limAddSta(
 #ifdef FEATURE_WLAN_TDLS
     /* SystemRole shouldn't be matter if staType is TDLS peer */
     else if(STA_ENTRY_TDLS_PEER == pStaDs->staType)
+    {
         pAddStaParams->htCapable = pStaDs->mlmStaContext.htCapability;
+#ifdef WLAN_FEATURE_11AC
+        pAddStaParams->vhtCapable = pStaDs->mlmStaContext.vhtCapability;
+#endif
+    }
 #endif
     else
     {
@@ -2235,8 +2231,13 @@ limAddSta(
     {
         pAddStaParams->vhtTxChannelWidthSet = pStaDs->vhtSupportedChannelWidthSet;
         pAddStaParams->vhtTxBFCapable =
+#ifdef FEATURE_WLAN_TDLS
+        (( STA_ENTRY_PEER == pStaDs->staType ) || (STA_ENTRY_TDLS_PEER == pStaDs->staType)) ?
+                pStaDs->vhtBeamFormerCapable : psessionEntry->txBFIniFeatureEnabled ;
+#else
         ( STA_ENTRY_PEER == pStaDs->staType ) ? pStaDs->vhtBeamFormerCapable :
                                 psessionEntry->txBFIniFeatureEnabled ;
+#endif
     }
 #endif
 
@@ -2249,8 +2250,16 @@ limAddSta(
     {
         /* peer STA get the LDPC capability from pStaDs, which populated from 
          * HT/VHT capability*/
-        pAddStaParams->htLdpcCapable = pStaDs->htLdpcCapable;
-        pAddStaParams->vhtLdpcCapable = pStaDs->vhtLdpcCapable;
+        if(pAddStaParams->vhtTxBFCapable && pMac->lim.disableLDPCWithTxbfAP)
+        {
+            pAddStaParams->htLdpcCapable = 0;
+            pAddStaParams->vhtLdpcCapable = 0;
+        }
+        else
+        {
+            pAddStaParams->htLdpcCapable = pStaDs->htLdpcCapable;
+            pAddStaParams->vhtLdpcCapable = pStaDs->vhtLdpcCapable;
+        }
     }
     else if( STA_ENTRY_SELF == pStaDs->staType)
     {
@@ -2495,6 +2504,7 @@ tSirRetStatus limAddFTStaSelf(tpAniSirGlobal pMac, tANI_U16 assocId, tpPESession
     MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
 
     psessionEntry->limPrevMlmState = psessionEntry->limMlmState;
+    MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, eLIM_MLM_WT_ADD_STA_RSP_STATE));
     psessionEntry->limMlmState = eLIM_MLM_WT_ADD_STA_RSP_STATE;
     if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
     {
@@ -3338,8 +3348,16 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
             pAddBssParams->staContext.fShortGI20Mhz = (tANI_U8)pAssocRsp->HTCaps.shortGI20MHz;
             pAddBssParams->staContext.fShortGI40Mhz = (tANI_U8)pAssocRsp->HTCaps.shortGI40MHz;
             pAddBssParams->staContext.maxAmpduSize= pAssocRsp->HTCaps.maxRxAMPDUFactor;
-            pAddBssParams->staContext.htLdpcCapable = (tANI_U8)pAssocRsp->HTCaps.advCodingCap;
-            pAddBssParams->staContext.vhtLdpcCapable = (tANI_U8)pAssocRsp->VHTCaps.ldpcCodingCap;
+            if( pAddBssParams->staContext.vhtTxBFCapable && pMac->lim.disableLDPCWithTxbfAP )
+            {
+                pAddBssParams->staContext.htLdpcCapable = 0;
+                pAddBssParams->staContext.vhtLdpcCapable = 0;
+            }
+            else
+            {
+                pAddBssParams->staContext.htLdpcCapable = (tANI_U8)pAssocRsp->HTCaps.advCodingCap;
+                pAddBssParams->staContext.vhtLdpcCapable = (tANI_U8)pAssocRsp->VHTCaps.ldpcCodingCap;
+            }
 
             if( pBeaconStruct->HTInfo.present )
                 pAddBssParams->staContext.rifsMode = pAssocRsp->HTInfo.rifsMode;
@@ -3623,8 +3641,16 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
             pAddBssParams->staContext.fShortGI20Mhz = (tANI_U8)pBeaconStruct->HTCaps.shortGI20MHz;
             pAddBssParams->staContext.fShortGI40Mhz = (tANI_U8)pBeaconStruct->HTCaps.shortGI40MHz;
             pAddBssParams->staContext.maxAmpduSize= pBeaconStruct->HTCaps.maxRxAMPDUFactor;
-            pAddBssParams->staContext.htLdpcCapable = (tANI_U8)pBeaconStruct->HTCaps.advCodingCap;
-            pAddBssParams->staContext.vhtLdpcCapable = (tANI_U8)pBeaconStruct->VHTCaps.ldpcCodingCap;
+            if( pAddBssParams->staContext.vhtTxBFCapable && pMac->lim.disableLDPCWithTxbfAP )
+            {
+                pAddBssParams->staContext.htLdpcCapable = 0;
+                pAddBssParams->staContext.vhtLdpcCapable = 0;
+            }
+            else
+            {
+                pAddBssParams->staContext.htLdpcCapable = (tANI_U8)pBeaconStruct->HTCaps.advCodingCap;
+                pAddBssParams->staContext.vhtLdpcCapable = (tANI_U8)pBeaconStruct->VHTCaps.ldpcCodingCap;
+            }
             
             if( pBeaconStruct->HTInfo.present )
                 pAddBssParams->staContext.rifsMode = pBeaconStruct->HTInfo.rifsMode;

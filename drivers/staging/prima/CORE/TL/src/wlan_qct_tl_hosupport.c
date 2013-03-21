@@ -655,10 +655,8 @@ VOS_STATUS WLANTL_StatHandleTXFrame
    v_PVOID_t        pAdapter,
    v_U8_t           STAid,
    vos_pkt_t       *dataBuffer,
-   v_PVOID_t        pBDHeader
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
-  ,WLANTL_MetaInfoType *txMetaInfo
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
+   v_PVOID_t        pBDHeader,
+   WLANTL_MetaInfoType *txMetaInfo
 )
 {
    WLANTL_CbType            *tlCtxt = VOS_GET_TL_CB(pAdapter);
@@ -688,39 +686,23 @@ VOS_STATUS WLANTL_StatHandleTXFrame
    /* TODO : BC/MC/UC have to be determined by MAC address */
    statistics = &tlCtxt->atlSTAClients[STAid]->trafficStatistics;
    vos_pkt_get_packet_length(dataBuffer, &packetSize);
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    if(txMetaInfo->ucBcast)
-#else
-   if(WLANTL_STA_ID_BCAST == STAid)
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
    {
       TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"This TX is BC frame"));
       statistics->txBCFcnt++;
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
       statistics->txBCBcnt += packetSize;
-#else
-      statistics->txBCBcnt += (packetSize - WLANHAL_TX_BD_HEADER_SIZE);
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
    }
    else if(txMetaInfo->ucMcast)
    {
       TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"This TX is MC frame"));
       statistics->txMCFcnt++;
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
       statistics->txMCBcnt += packetSize;
-#else
-      statistics->txMCBcnt += (packetSize - WLANHAL_RX_BD_HEADER_SIZE);
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
    }
    else
    {
       TLLOG1(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO,"This is TX UC frame"));
       statistics->txUCFcnt++;
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
       statistics->txUCBcnt += packetSize;
-#else
-      statistics->txUCBcnt += (packetSize - WLANHAL_RX_BD_HEADER_SIZE);
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
    }
 
 #ifdef WLANTL_HO_DEBUG_MSG
@@ -1360,9 +1342,6 @@ VOS_STATUS WLANTL_HSHandleTXFrame
       return VOS_STATUS_SUCCESS;
    }
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-   WLANTL_StatHandleTXFrame(pAdapter, STAid, dataBuffer, bdHeader);
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
    /* Only Voice traffic is handled as real time traffic */
    if(WLANTL_AC_VO == ac)

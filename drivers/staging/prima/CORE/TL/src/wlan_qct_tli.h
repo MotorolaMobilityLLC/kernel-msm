@@ -578,13 +578,6 @@ typedef struct
   /*Begining of the cached packets chain*/
   vos_pkt_t*                 vosEndCachedFrame;
 
-  /* ULA notfication is pending */
-  v_U8_t                ucULANotificationPending;
-
-  void (*callbackRoutine) (void *callbackContext);
-
-  void                 *callbackContext;
-
 #ifdef WLAN_SOFTAP_FEATURE
 
   /* LWM related fields */
@@ -891,9 +884,7 @@ WLANTL_GetFrames
   v_PVOID_t       pAdapter,
   vos_pkt_t     **ppFrameDataBuff,
   v_U32_t         uSize,
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
   v_U8_t          uFlowMask,
-#endif
   v_BOOL_t*       pbUrgent
 );
 

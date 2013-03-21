@@ -30,7 +30,9 @@
 
 #define MAX_NUM_TDLS_PEER           3
 
-#define TDLS_MAX_DISCOVER_ATTEMPT   2
+#define TDLS_SUB_DISCOVERY_PERIOD   100
+
+#define TDLS_MAX_DISCOVER_REQS_PER_TIMER 1
 
 #define TDLS_DISCOVERY_PERIOD       3600000
 
@@ -44,13 +46,23 @@
 
 typedef struct
 {
+    tANI_U32    tdls;
     tANI_U32    tx_period_t;
     tANI_U32    tx_packet_n;
     tANI_U32    discovery_period_t;
     tANI_U32    discovery_tries_n;
-    tANI_U32    rx_timeout_t;
+    tANI_U32    idle_timeout_t;
+    tANI_U32    idle_packet_n;
     tANI_U32    rssi_hysteresis;
+    tANI_S32    rssi_trigger_threshold;
+    tANI_S32    rssi_teardown_threshold;
 } tdls_config_params_t;
+
+typedef enum {
+    eTDLS_SUPPORT_DISABLED = 0,
+    eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY,
+    eTDLS_SUPPORT_ENABLED,
+} eTDLSSupportMode;
 
 typedef enum {
     eTDLS_CAP_NOT_SUPPORTED = -1,
@@ -88,21 +100,25 @@ typedef struct {
     tANI_S8     rssi;
     tANI_S8     tdls_support;
     tANI_S8     link_status;
+    tANI_U8     signature;
     tANI_U8     is_responder;
+    tANI_U8     discovery_processed;
     tANI_U16    discovery_attempt;
     tANI_U16    tx_pkt;
     tANI_U16    rx_pkt;
     vos_timer_t     peerIdleTimer;
+    tANI_U8         isTDLSInProgress;
 } hddTdlsPeer_t;
 
 
 typedef struct {
     struct list_head peer_list[256];
-    struct mutex lock;
     struct net_device *dev;
     vos_timer_t     peerDiscoverTimer;
     vos_timer_t     peerUpdateTimer;
     tdls_config_params_t threshold_config;
+    tANI_S32        discovery_peer_cnt;
+    tANI_U16        connected_peer_count;
     tANI_S8         ap_rssi;
 } tdlsCtx_t;
 
@@ -132,15 +148,30 @@ int wlan_hdd_tdls_set_responder(u8 *mac, tANI_U8 responder);
 
 int wlan_hdd_tdls_get_responder(u8 *mac);
 
-int wlan_hdd_tdls_set_params(tdls_config_params_t *config);
+int wlan_hdd_tdls_set_signature(u8 *mac, tANI_U8 uSignature);
+
+int wlan_hdd_tdls_set_params(struct net_device *dev, tdls_config_params_t *config);
 
 int wlan_hdd_tdls_reset_peer(u8 *mac);
 
-void wlan_hdd_tdls_free_list(void);
-
-u8 wlan_hdd_tdlsConnectedPeers(void);
+tANI_U16 wlan_hdd_tdlsConnectedPeers(void);
 
 int wlan_hdd_tdls_get_all_peers(char *buf, int buflen);
 
+void wlan_hdd_tdls_connection_callback(hdd_adapter_t *pAdapter);
+
+void wlan_hdd_tdls_disconnection_callback(hdd_adapter_t *pAdapter);
+
+void wlan_hdd_tdls_mgmt_completion_callback(hdd_adapter_t *pAdapter, tANI_U32 statusCode);
+
+void wlan_hdd_tdls_increment_peer_count(void);
+
+void wlan_hdd_tdls_decrement_peer_count(void);
+
+void wlan_hdd_tdls_check_bmps(hdd_context_t *pHddCtx);
+
+void wlan_hdd_tdls_set_connection_progress(u8* mac, u8 isProgress);
+
+u8 wlan_hdd_tdls_is_progress(u8* mac, u8 skip_self);
 
 #endif // __HDD_TDSL_H

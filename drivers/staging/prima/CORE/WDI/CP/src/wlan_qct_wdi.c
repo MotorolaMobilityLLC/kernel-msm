@@ -6526,7 +6526,7 @@ WDI_ProcessStopReq
      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                  "%s: Invalid parameters", __func__);
      WDI_ASSERT(0);
-     return WDI_STATUS_E_FAILURE;
+     goto failRequest;
   }
 
   /*-----------------------------------------------------------------------
@@ -6541,7 +6541,7 @@ WDI_ProcessStopReq
               "Unable to get send buffer in stop req %x %x %x",
                 pEventData, pwdiStopParams, wdiStopRspCb);
      WDI_ASSERT(0);
-     return WDI_STATUS_E_FAILURE;
+     goto failRequest;
   }
 
   /*-----------------------------------------------------------------------
@@ -6572,7 +6572,7 @@ WDI_ProcessStopReq
                   "WDI Init failed to reset power state event");
 
         WDI_ASSERT(0);
-        return VOS_STATUS_E_FAILURE;
+        goto fail;
      }
      /* Stop Transport Driver, DXE */
      status = WDTS_SetPowerState(pWDICtx, WDTS_POWER_STATE_DOWN, WDI_SetPowerStateCb);
@@ -6581,7 +6581,7 @@ WDI_ProcessStopReq
         WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
                 "WDTS_SetPowerState returned with status %d when trying to notify DTS that host is entering Power Down state\n", status);
         WDI_ASSERT(0);
-        return WDI_STATUS_E_FAILURE;
+        goto fail;
      }
      /*
       * Wait for the event to be set once the ACK comes back from DXE
@@ -6594,7 +6594,7 @@ WDI_ProcessStopReq
                   "WDI Init failed to wait on an event");
 
         WDI_ASSERT(0);
-        return VOS_STATUS_E_FAILURE;
+        goto fail;
       }
   }
 
@@ -6603,6 +6603,14 @@ WDI_ProcessStopReq
   -------------------------------------------------------------------------*/
   return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
                        wdiStopRspCb, pEventData->pUserData, WDI_STOP_RESP);
+
+fail:
+   // Release the message buffer so we don't leak
+   wpalMemoryFree(pSendBuffer);
+
+failRequest:
+   //WDA should have failure check to avoid the memory leak
+   return WDI_STATUS_E_FAILURE;
 
 }/*WDI_ProcessStopReq*/
 
@@ -7912,6 +7920,7 @@ WDI_ProcessPostAssocReq
     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
              "This station does not exist in the WDI Station Table %d");
     wpalMutexRelease(&pWDICtx->wptMutex);
+    wpalMemoryFree(pSendBuffer);
     return WDI_STATUS_E_FAILURE;
   }
 
@@ -11882,7 +11891,7 @@ WDI_ProcessEnterImpsReq
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                   "%s: Invalid parameters", __func__);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE;
+      goto failRequest;
    }
 
    /*-----------------------------------------------------------------------
@@ -11898,7 +11907,7 @@ WDI_ProcessEnterImpsReq
                "Unable to get send buffer in Enter IMPS req %x %x",
                  pEventData, wdiEnterImpsRspCb);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE;
+      goto failRequest;
    }
 
    /* Reset the event to be not signalled */
@@ -11909,7 +11918,7 @@ WDI_ProcessEnterImpsReq
                 "WDI Init failed to reset an event");
 
       WDI_ASSERT(0);
-      return VOS_STATUS_E_FAILURE;
+      goto fail;
    }
 
    // notify DTS that we are entering IMPS
@@ -11918,7 +11927,7 @@ WDI_ProcessEnterImpsReq
         WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
                 "WDTS_SetPowerState returned with status %d when trying to notify DTS that host is entering IMPS\n", wptStatus);
         WDI_ASSERT(0);
-        return WDI_STATUS_E_FAILURE;
+        goto fail;
     }
 
    /*
@@ -11932,7 +11941,7 @@ WDI_ProcessEnterImpsReq
                 "WDI Init failed to wait on an event");
 
       WDI_ASSERT(0);
-      return VOS_STATUS_E_FAILURE;
+      goto fail;
    }
 
    /*-------------------------------------------------------------------------
@@ -11940,6 +11949,14 @@ WDI_ProcessEnterImpsReq
    -------------------------------------------------------------------------*/
    return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
                         wdiEnterImpsRspCb, pEventData->pUserData, WDI_ENTER_IMPS_RESP);
+
+fail:
+   // Release the message buffer so we don't leak
+   wpalMemoryFree(pSendBuffer);
+
+failRequest:
+   //WDA should have failure check to avoid the memory leak
+   return WDI_STATUS_E_FAILURE;
 }/*WDI_ProcessEnterImpsReq*/
 
 /**
@@ -12037,7 +12054,7 @@ WDI_ProcessEnterBmpsReq
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                   "%s: Invalid parameters", __func__);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE;
+      goto failRequest;
    }
 
    /*-----------------------------------------------------------------------
@@ -12053,7 +12070,7 @@ WDI_ProcessEnterBmpsReq
                "Unable to get send buffer in Enter BMPS req %x %x %x",
                  pEventData, pwdiEnterBmpsReqParams, wdiEnterBmpsRspCb);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE;
+      goto failRequest;
    }
 
    /* Reset the event to be not signalled */
@@ -12064,7 +12081,7 @@ WDI_ProcessEnterBmpsReq
                 "WDI Init failed to reset an event");
 
       WDI_ASSERT(0);
-      return VOS_STATUS_E_FAILURE;
+      goto fail;
    }
 
    // notify DTS that we are entering BMPS
@@ -12074,7 +12091,7 @@ WDI_ProcessEnterBmpsReq
         WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_FATAL,
                 "WDTS_SetPowerState returned with status %d when trying to notify DTS that we are entering BMPS\n", wptStatus);
         WDI_ASSERT(0);
-        return WDI_STATUS_E_FAILURE;
+        goto fail;
     }
 
 /*
@@ -12088,7 +12105,7 @@ WDI_ProcessEnterBmpsReq
                 "WDI Init failed to wait on an event");
 
       WDI_ASSERT(0);
-      return VOS_STATUS_E_FAILURE; 
+      goto fail;
    }
 
    pWDICtx->bInBmps = eWLAN_PAL_TRUE;
@@ -12115,6 +12132,14 @@ WDI_ProcessEnterBmpsReq
    -------------------------------------------------------------------------*/
    return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
                         wdiEnterBmpsRspCb, pEventData->pUserData, WDI_ENTER_BMPS_RESP);
+
+fail:
+   // Release the message buffer so we don't leak
+   wpalMemoryFree(pSendBuffer);
+
+failRequest:
+   //WDA should have failure check to avoid the memory leak
+   return WDI_STATUS_E_FAILURE;
 }/*WDI_ProcessEnterBmpsReq*/
 
 /**
@@ -12829,7 +12854,7 @@ WDI_ProcessHostOffloadReq
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                   "%s: Invalid parameters", __func__);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE;
+      goto failRequest;
    }
 
    /*-----------------------------------------------------------------------
@@ -12845,7 +12870,7 @@ WDI_ProcessHostOffloadReq
                   "Unable to get send buffer in host offload req %x %x %x",
                   pEventData, pwdiHostOffloadParams, wdiHostOffloadCb);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE;
+      goto failRequest;
    }
 
    ucCurrentBSSSesIdx = WDI_FindAssocSession( pWDICtx, 
@@ -12855,7 +12880,7 @@ WDI_ProcessHostOffloadReq
    {
        WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                  " %s : Association for this BSSID does not exist",__func__);
-       return WDI_STATUS_E_FAILURE; 
+       goto fail;
    }
 
    hostOffloadParams.offloadType = pwdiHostOffloadParams->wdiHostOffloadInfo.ucOffloadType;
@@ -12934,6 +12959,14 @@ WDI_ProcessHostOffloadReq
    -------------------------------------------------------------------------*/
    return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
                         wdiHostOffloadCb, pEventData->pUserData, WDI_HOST_OFFLOAD_RESP);
+
+fail:
+   // Release the message buffer so we don't leak
+   wpalMemoryFree(pSendBuffer);
+
+failRequest:
+   //WDA should have failure check to avoid the memory leak
+   return WDI_STATUS_E_FAILURE;
 }/*WDI_ProcessHostOffloadReq*/
 
 /**
@@ -12974,7 +13007,7 @@ WDI_ProcessKeepAliveReq
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR,
                "Invalid parameters in Keep Alive req");
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE;
+      goto failRequest;
    }
 
    /*-----------------------------------------------------------------------
@@ -12990,7 +13023,7 @@ WDI_ProcessKeepAliveReq
                   "Unable to get send buffer in keep alive req %x %x %x",
                   pEventData, pwdiKeepAliveParams, wdiKeepAliveCb);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE;
+      goto failRequest;
    }
 
    ucCurrentBSSSesIdx = WDI_FindAssocSession( pWDICtx, 
@@ -13000,7 +13033,7 @@ WDI_ProcessKeepAliveReq
    {
        WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                  " %s : Association for this BSSID does not exist",__func__);
-       return WDI_STATUS_E_FAILURE; 
+       goto fail;
    }
 
    keepAliveReq.packetType = pwdiKeepAliveParams->wdiKeepAliveInfo.ucPacketType;
@@ -13042,6 +13075,14 @@ WDI_ProcessKeepAliveReq
    -------------------------------------------------------------------------*/
    return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
                         wdiKeepAliveCb, pEventData->pUserData, WDI_KEEP_ALIVE_RESP);
+
+fail:
+   // Release the message buffer so we don't leak
+   wpalMemoryFree(pSendBuffer);
+
+failRequest:
+   //WDA should have failure check to avoid the memory leak
+   return WDI_STATUS_E_FAILURE;
 }/*WDI_ProcessKeepAliveReq*/
 
 
@@ -13083,7 +13124,7 @@ WDI_ProcessWowlAddBcPtrnReq
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                   "%s: Invalid parameters", __func__);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE;
+      goto failRequest;
    }
 
    /*-----------------------------------------------------------------------
@@ -13099,7 +13140,7 @@ WDI_ProcessWowlAddBcPtrnReq
                   "Unable to get send buffer in Wowl add bc ptrn req %x %x %x",
                   pEventData, pwdiWowlAddBcPtrnParams, wdiWowlAddBcPtrnCb);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE;
+      goto failRequest;
    }
 
    ucCurrentBSSSesIdx = WDI_FindAssocSession( pWDICtx, 
@@ -13109,7 +13150,7 @@ WDI_ProcessWowlAddBcPtrnReq
    {
        WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                  " %s : Association for this BSSID does not exist",__func__);
-       return WDI_STATUS_E_FAILURE; 
+       goto fail;
    }
 
    wowlAddBcPtrnReq.ucPatternId =
@@ -13161,6 +13202,13 @@ WDI_ProcessWowlAddBcPtrnReq
    -------------------------------------------------------------------------*/
    return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
                         wdiWowlAddBcPtrnCb, pEventData->pUserData, WDI_WOWL_ADD_BC_PTRN_RESP);
+fail:
+   // Release the message buffer so we don't leak
+   wpalMemoryFree(pSendBuffer);
+
+failRequest:
+   //WDA should have failure check to avoid the memory leak
+   return WDI_STATUS_E_FAILURE;
 }/*WDI_ProcessWowlAddBcPtrnReq*/
 
 /**
@@ -13200,7 +13248,7 @@ WDI_ProcessWowlDelBcPtrnReq
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                   "%s: Invalid parameters", __func__);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE;
+      goto failRequest;
    }
 
    /*-----------------------------------------------------------------------
@@ -13216,7 +13264,7 @@ WDI_ProcessWowlDelBcPtrnReq
                   "Unable to get send buffer in Wowl del bc ptrn req %x %x %x",
                   pEventData, pwdiWowlDelBcPtrnParams, wdiWowlDelBcPtrnCb);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE;
+      goto failRequest;
    }
 
     ucCurrentBSSSesIdx = WDI_FindAssocSession( pWDICtx, 
@@ -13226,7 +13274,7 @@ WDI_ProcessWowlDelBcPtrnReq
    {
        WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                     " %s : Association for this BSSID does not exist",__func__);
-       return WDI_STATUS_E_FAILURE; 
+       goto fail;
    }
 
    wowlDelBcPtrnReq.ucPatternId =
@@ -13246,6 +13294,14 @@ WDI_ProcessWowlDelBcPtrnReq
    -------------------------------------------------------------------------*/
    return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
                         wdiWowlDelBcPtrnCb, pEventData->pUserData, WDI_WOWL_DEL_BC_PTRN_RESP);
+
+fail:
+   // Release the message buffer so we don't leak
+   wpalMemoryFree(pSendBuffer);
+
+failRequest:
+   //WDA should have failure check to avoid the memory leak
+   return WDI_STATUS_E_FAILURE;
 }/*WDI_ProcessWowlDelBcPtrnReq*/
 
 /**
@@ -23062,7 +23118,7 @@ WDI_PackUpdateScanParamsReq
    tUpdateScanParams             updateScanParams = {0};
 
 
-   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_FATAL,
+   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_INFO,
                "Begin WDI Update Scan Parameters Old Style Params");
    /*-----------------------------------------------------------------------
      Get message buffer
@@ -23110,7 +23166,7 @@ WDI_PackUpdateScanParamsReq
    pWDICtx->wdiReqStatusCB     = pwdiUpdateScanParams->wdiReqStatusCB;
    pWDICtx->pReqStatusUserData = pwdiUpdateScanParams->pUserData;
 
-   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR,
+   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_INFO,
                "End Update Scan Parameters Old Style");
 
    /*Set the output values*/
@@ -23144,7 +23200,7 @@ WDI_PackUpdateScanParamsReqEx
    tUpdateScanParamsEx           updateScanParams = {0};
 
 
-   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_FATAL,
+   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_INFO,
                "Begin WDI Update Scan Parameters New Style Params");
    /*-----------------------------------------------------------------------
      Get message buffer
@@ -23192,7 +23248,7 @@ WDI_PackUpdateScanParamsReqEx
    pWDICtx->wdiReqStatusCB     = pwdiUpdateScanParams->wdiReqStatusCB;
    pWDICtx->pReqStatusUserData = pwdiUpdateScanParams->pUserData;
 
-   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR,
+   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_INFO,
                "End Update Scan Parameters New Style");
 
    /*Set the output values*/
@@ -24881,7 +24937,7 @@ WDI_ProcessGTKOffloadReq
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                   "%s: Invalid parameters", __func__);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE; 
+      goto failRequest;
    }
 
    /*-----------------------------------------------------------------------
@@ -24896,7 +24952,7 @@ WDI_ProcessGTKOffloadReq
                   "Unable to get send buffer in GTK offload req %x %x %x",
                   pEventData, pwdiGtkOffloadReqMsg, wdiGtkOffloadCb);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE; 
+      goto failRequest;
    }
 
    //
@@ -24909,7 +24965,7 @@ WDI_ProcessGTKOffloadReq
    {
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                     " %s : Association for this BSSID does not exist", __func__);
-      return WDI_STATUS_E_FAILURE; 
+      goto fail;
    }
 
    gtkOffloadReqParams.bssIdx = pBSSSes->ucBSSIdx;
@@ -24934,6 +24990,14 @@ WDI_ProcessGTKOffloadReq
    -------------------------------------------------------------------------*/
    return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize, 
                         wdiGtkOffloadCb, pEventData->pUserData, WDI_GTK_OFFLOAD_RESP); 
+
+fail:
+   // Release the message buffer so we don't leak
+   wpalMemoryFree(pSendBuffer);
+
+failRequest:
+   //WDA should have failure check to avoid the memory leak
+   return WDI_STATUS_E_FAILURE;
 }
 
 
@@ -24972,7 +25036,7 @@ WDI_ProcessGTKOffloadGetInfoReq
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
                   "%s: Invalid parameters", __func__);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE; 
+      goto failRequest;
    }
 
    /*-----------------------------------------------------------------------
@@ -24987,7 +25051,7 @@ WDI_ProcessGTKOffloadGetInfoReq
                   "Unable to get send buffer in WDI_ProcessGTKOffloadGetInfoReq() %x %x %x",
                   pEventData, pwdiGtkOffloadGetInfoReqMsg, wdiGtkOffloadGetInfoCb);
       WDI_ASSERT(0);
-      return WDI_STATUS_E_FAILURE; 
+      goto failRequest;
    }
    ucCurrentSessionId = WDI_FindAssocSession( pWDICtx, 
                                pwdiGtkOffloadGetInfoReqMsg->WDI_GtkOffloadGetInfoReqParams.bssId, 
@@ -24996,7 +25060,7 @@ WDI_ProcessGTKOffloadGetInfoReq
    {
       WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
                     " %s : Association for this BSSID does not exist",__func__);
-          return WDI_STATUS_E_FAILURE; 
+      goto fail;
    }
    halGtkOffloadGetInfoReqParams.bssIdx = pBSSSes->ucBSSIdx;
 
@@ -25015,6 +25079,13 @@ WDI_ProcessGTKOffloadGetInfoReq
    -------------------------------------------------------------------------*/
    return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize, 
                         wdiGtkOffloadGetInfoCb, pEventData->pUserData, WDI_GTK_OFFLOAD_GETINFO_RESP); 
+fail:
+   // Release the message buffer so we don't leak
+   wpalMemoryFree(pSendBuffer);
+
+failRequest:
+   //WDA should have failure check to avoid the memory leak
+   return WDI_STATUS_E_FAILURE;
 }
 
 /**

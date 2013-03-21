@@ -233,6 +233,7 @@ static void vos_pkti_replenish_raw_pool(void)
 
       // add it to the Rx Raw Free Pool
       list_add_tail(&pVosPacket->node, &gpVosPacketContext->rxRawFreeList);
+      gpVosPacketContext->rxRawFreeListCount++;
 
       didOne = VOS_TRUE;
 
@@ -251,6 +252,7 @@ static void vos_pkti_replenish_raw_pool(void)
       pVosPacket = list_first_entry(&gpVosPacketContext->rxRawFreeList,
                                     struct vos_pkt_t, node);
       list_del(&pVosPacket->node);
+      gpVosPacketContext->rxRawFreeListCount--;
 
       // clear out the User Data pointers in the voss packet..
       memset(&pVosPacket->pvUserData, 0, sizeof(pVosPacket->pvUserData));
@@ -397,6 +399,7 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
 
       // initialize the rxRaw free list pool
       pFreeList = &pVosPacketContext->rxRawFreeList;
+      pVosPacketContext->rxRawFreeListCount = 0;
       INIT_LIST_HEAD(pFreeList);
 
       // fill the rxRaw free list
@@ -419,6 +422,7 @@ VOS_STATUS vos_packet_open( v_VOID_t *pVosContext,
             break;
          }
          list_add_tail(&pPkt->node, pFreeList);
+         pVosPacketContext->rxRawFreeListCount++;
       }
 
       // exit if any problems so far
@@ -545,6 +549,11 @@ VOS_STATUS vos_packet_close( v_PVOID_t pVosContext )
    (void) vos_pkti_list_destroy(&gpVosPacketContext->txDataFreeList);
    (void) vos_pkti_list_destroy(&gpVosPacketContext->rxRawFreeList);
    (void) vos_pkti_list_destroy(&gpVosPacketContext->rxReplenishList);
+
+   gpVosPacketContext->rxRawFreeListCount    = 0;
+   gpVosPacketContext->rxReplenishListCount  = 0;
+   gpVosPacketContext->uctxDataFreeListCount = 0;
+
    mutex_unlock(&gpVosPacketContext->mlock);
 
 #ifdef WLAN_SOFTAP_FEATURE
@@ -643,6 +652,7 @@ VOS_STATUS vos_pkt_get_packet( vos_pkt_t **ppPacket,
    struct list_head *pPktFreeList;
    vos_pkt_low_resource_info *pLowResourceInfo;
    struct vos_pkt_t *pVosPacket;
+   v_SIZE_t *pCount = NULL;
    // Validate the return parameter pointer
    if (unlikely(NULL == ppPacket))
    {
@@ -679,6 +689,7 @@ VOS_STATUS vos_pkt_get_packet( vos_pkt_t **ppPacket,
 
       // see if we need to replenish the Rx Raw pool
       vos_pkti_replenish_raw_pool();
+      pCount = &gpVosPacketContext->rxRawFreeListCount;
 
       break;
 
@@ -736,6 +747,10 @@ VOS_STATUS vos_pkt_get_packet( vos_pkt_t **ppPacket,
    // remove the first record from the free pool
    pVosPacket = list_first_entry(pPktFreeList, struct vos_pkt_t, node);
    list_del(&pVosPacket->node);
+   if (NULL != pCount)
+   {
+      (*pCount)--;
+   }
    mutex_unlock(&gpVosPacketContext->mlock);
 
    // clear out the User Data pointers in the voss packet..
@@ -1316,6 +1331,7 @@ VOS_STATUS vos_pkt_return_packet( vos_pkt_t *pPacket )
          {
             pPktFreeList = &gpVosPacketContext->rxRawFreeList;
             pLowResourceInfo = &gpVosPacketContext->rxRawLowResourceInfo;
+            pCount = &gpVosPacketContext->rxRawFreeListCount;
          }
          else
          {
@@ -2934,7 +2950,9 @@ VOS_STATUS vos_pkt_get_available_buffer_pool (VOS_PKT_TYPE  pktType,
       // then he probably wants as many packets to be available as
       // possible so replenish the raw pool
       vos_pkti_replenish_raw_pool();
-      pList = &gpVosPacketContext->rxRawFreeList;
+      // Return the pre-calculated count 'rxRawFreeListCount'
+      *vosFreeBuffer = gpVosPacketContext->rxRawFreeListCount;
+      return VOS_STATUS_SUCCESS;
       break;
 
    default:

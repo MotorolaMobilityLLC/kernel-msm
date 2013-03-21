@@ -70,9 +70,14 @@
 #include <wlan_hdd_wmm.h>
 #include <wlan_hdd_cfg.h>
 #include <linux/spinlock.h>
+#ifdef WLAN_OPEN_SOURCE
 #include <linux/wakelock.h>
+#endif
 #ifdef ANI_MANF_DIAG
 #include <wlan_hdd_ftm.h>
+#endif
+#ifdef FEATURE_WLAN_TDLS
+#include "wlan_hdd_tdls.h"
 #endif
 /*--------------------------------------------------------------------------- 
   Preprocessor definitions and constants
@@ -117,6 +122,12 @@
    a response from WCNSS */
 #define WLAN_WAIT_TIME_SESSIONOPENCLOSE  15000
 #define WLAN_WAIT_TIME_ABORTSCAN  2000
+
+/** Maximum time(ms) to wait for tdls add sta to complete **/
+#define WAIT_TIME_TDLS_ADD_STA      1500
+
+/** Maximum time(ms) to wait for tdls mgmt to complete **/
+#define WAIT_TIME_TDLS_MGMT         2000
 
 /* Maximum time to get crda entry settings */
 #define CRDA_WAIT_TIME 300
@@ -630,6 +641,17 @@ typedef struct hdd_scaninfo_s
 
 }hdd_scaninfo_t;
 
+#define WLAN_HDD_MAX_MC_ADDR_LIST 10
+
+#ifdef WLAN_FEATURE_PACKET_FILTERING
+typedef struct multicast_addr_list
+{
+   v_U8_t isFilterApplied;
+   v_U8_t mc_cnt;
+   v_U8_t addr[WLAN_HDD_MAX_MC_ADDR_LIST][ETH_ALEN];
+} t_multicast_add_list;
+#endif
+
 #define WLAN_HDD_ADAPTER_MAGIC 0x574c414e //ASCII "WLAN"
 struct hdd_adapter_s
 {
@@ -701,8 +723,16 @@ struct hdd_adapter_s
    struct completion rem_on_chan_ready_event;
 #endif
 
+#ifdef FEATURE_WLAN_TDLS
+   struct completion tdls_add_station_comp;
+   struct completion tdls_mgmt_comp;
+   eHalStatus tdlsAddStaStatus;
+#endif
    /* Track whether the linkup handling is needed  */
    v_BOOL_t isLinkUpSvcNeeded;
+
+   /* Mgmt Frames TX completion status code */
+   tANI_U32 mgmtTxCompletionStatus;
 
 /*************************************************************
  *  Tx Queues
@@ -754,6 +784,10 @@ struct hdd_adapter_s
    hdd_cfg80211_state_t cfg80211State;
 #endif
 
+#ifdef WLAN_FEATURE_PACKET_FILTERING
+   t_multicast_add_list mc_addr_list;
+#endif
+
    //Magic cookie for adapter sanity verification
    v_U32_t magic;
    v_BOOL_t higherDtimTransition;
@@ -774,7 +808,6 @@ typedef struct hdd_dynamic_mcbcfilter_s
 #define WLAN_HDD_GET_HAL_CTX(pAdapter)  (((hdd_context_t*)(pAdapter->pHddCtx))->hHal)
 #define WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter) (&(pAdapter)->sessionCtx.ap.HostapdState)
 #define WLAN_HDD_GET_CFG_STATE_PTR(pAdapter)  (&(pAdapter)->cfg80211State)
-#define WLAN_HDD_MAX_MC_ADDR_LIST 10
 
 typedef struct hdd_adapter_list_node
 {
@@ -788,15 +821,6 @@ typedef struct hdd_priv_data_s
    int used_len;
    int total_len;
 }hdd_priv_data_t;
-
-#ifdef WLAN_FEATURE_PACKET_FILTERING
-typedef struct multicast_addr_list
-{
-   v_U8_t isFilterApplied;
-   v_U8_t mc_cnt;
-   v_U8_t addr[WLAN_HDD_MAX_MC_ADDR_LIST][ETH_ALEN];
-} t_multicast_add_list;
-#endif
 
 /** Adapter stucture definition */
 
@@ -918,12 +942,11 @@ struct hdd_context_s
 
    /* Thermal mitigation information */
    hdd_thermal_mitigation_info_t tmInfo;
-#ifdef WLAN_FEATURE_PACKET_FILTERING
-   t_multicast_add_list mc_addr_list;
-#endif
 
+#ifdef WLAN_OPEN_SOURCE
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
    struct wake_lock rx_wake_lock;
+#endif
 #endif
 
    /* 
@@ -943,7 +966,13 @@ struct hdd_context_s
         is invoked*/
    v_BOOL_t is_dynamic_channel_range_set;
 
+#ifdef WLAN_OPEN_SOURCE
    struct wake_lock sap_wake_lock;
+#endif
+
+#ifdef FEATURE_WLAN_TDLS
+    eTDLSSupportMode tdls_mode;
+#endif
 };
 
 
@@ -1021,4 +1050,6 @@ VOS_STATUS hdd_disable_bmps_imps(hdd_context_t *pHddCtx, tANI_U8 session_type);
 eHalStatus hdd_smeCloseSessionCallback(void *pContext);
 VOS_STATUS wlan_hdd_restart_driver(hdd_context_t *pHddCtx);
 void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx);
+void hdd_set_pwrparams(hdd_context_t *pHddCtx);
+void hdd_reset_pwrparams(hdd_context_t *pHddCtx);
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )

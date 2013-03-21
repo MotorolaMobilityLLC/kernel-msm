@@ -277,7 +277,7 @@ int hdd_hostapd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                        " Received Command to Set Preferred Channels for SAP in %s", __func__);
 
-            ret = sapSetPreferredChannel(dev,command);
+            ret = sapSetPreferredChannel(command);
         }
     }
 exit:
@@ -644,11 +644,13 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                 if (!VOS_IS_STATUS_SUCCESS(vos_status))
                    hddLog(LOGE, FL("Failed to start AP inactivity timer\n"));
             }
+#ifdef WLAN_OPEN_SOURCE
             if (wake_lock_active(&pHddCtx->sap_wake_lock))
             {
                wake_unlock(&pHddCtx->sap_wake_lock);
             }
             wake_lock_timeout(&pHddCtx->sap_wake_lock, HDD_SAP_WAKE_LOCK_DURATION);
+#endif
 #ifdef CONFIG_CFG80211
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
             {
@@ -2419,20 +2421,14 @@ static int iw_softap_stopbss(struct net_device *dev,
 
 static int iw_softap_version(struct net_device *dev,
         struct iw_request_info *info,
-        union iwreq_data *wrqu, 
+        union iwreq_data *wrqu,
         char *extra)
 {
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
-    VOS_STATUS status;
+
     ENTER();
-    status = hdd_wlan_get_version(pHostapdAdapter, wrqu, extra);
-    if ( !VOS_IS_STATUS_SUCCESS( status ) ) {
-       hddLog(VOS_TRACE_LEVEL_ERROR, "%s Failed!!!\n",__func__);
-       return -EINVAL;
-    }
+    hdd_wlan_get_version(pHostapdAdapter, wrqu, extra);
     EXIT();
-#endif//TODO need to handle in prima
     return 0;
 }
 

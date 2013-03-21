@@ -484,7 +484,7 @@ void limContinuePostChannelScan(tpAniSirGlobal pMac)
             pMac->lim.limTimers.gLimMinChannelTimer.sessionId = sessionId;
 #endif            
             
-            MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, pMac->lim.limTimers.gLimMinChannelTimer.sessionId, eLIM_MIN_CHANNEL_TIMER));
+            MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, NO_SESSION, eLIM_MIN_CHANNEL_TIMER));
 
             if (tx_timer_activate(&pMac->lim.limTimers.gLimMinChannelTimer) != TX_SUCCESS)
             {
@@ -503,6 +503,7 @@ void limContinuePostChannelScan(tpAniSirGlobal pMac)
 #endif
               //No Need to start Min channel timer. Start Max Channel timer.
               limDeactivateAndChangeTimer(pMac, eLIM_MAX_CHANNEL_TIMER);
+              MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, pMac->lim.limTimers.gLimMaxChannelTimer.sessionId, eLIM_MAX_CHANNEL_TIMER));
               if (tx_timer_activate(&pMac->lim.limTimers.gLimMaxChannelTimer)
                     == TX_TIMER_ERROR)
               {
@@ -525,6 +526,7 @@ void limContinuePostChannelScan(tpAniSirGlobal pMac)
              return;
         }
         periodicScanTimer->sessionId = channelNum;
+        MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, periodicScanTimer->sessionId, eLIM_PERIODIC_PROBE_REQ_TIMER));
     }
     else
     {
@@ -532,7 +534,7 @@ void limContinuePostChannelScan(tpAniSirGlobal pMac)
         PELOG2(limLog(pMac, LOG2, FL("START PASSIVE Scan chan %d\n"), channelNum);)
 
         /// Passive Scanning. Activate maxChannelTimer
-        MTRACE(macTrace(pMac, TRACE_CODE_TIMER_DEACTIVATE, pMac->lim.limTimers.gLimMaxChannelTimer.sessionId, eLIM_MAX_CHANNEL_TIMER));
+        MTRACE(macTrace(pMac, TRACE_CODE_TIMER_DEACTIVATE, NO_SESSION, eLIM_MAX_CHANNEL_TIMER));
         if (tx_timer_deactivate(&pMac->lim.limTimers.gLimMaxChannelTimer)
                                       != TX_SUCCESS)
         {
@@ -580,7 +582,7 @@ void limContinuePostChannelScan(tpAniSirGlobal pMac)
 #endif
                 //Pick the longer stay time
                 val = (val > val1) ? val : val1;
-                MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, pMac->lim.limTimers.gLimMaxChannelTimer.sessionId, eLIM_MAX_CHANNEL_TIMER));
+                MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, NO_SESSION, eLIM_MAX_CHANNEL_TIMER));
                 if (tx_timer_change(&pMac->lim.limTimers.gLimMaxChannelTimer,
                                 val, 0) != TX_SUCCESS)
                 {
@@ -1325,6 +1327,7 @@ void limSendHalOemDataReq(tpAniSirGlobal pMac)
 
 error:
     pMac->lim.gLimMlmState = pMac->lim.gLimPrevMlmState;
+    MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, NO_SESSION, pMac->lim.gLimMlmState));
 
     if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, (void**)(&pMlmOemDataRsp), sizeof(tLimMlmOemDataRsp)))
     {
@@ -1365,6 +1368,7 @@ void limSetOemDataReqModeFailed(tpAniSirGlobal pMac, eHalStatus status, tANI_U32
     tpLimMlmOemDataRsp pMlmOemDataRsp;
 
     pMac->lim.gLimMlmState = pMac->lim.gLimPrevMlmState;
+    MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, NO_SESSION, pMac->lim.gLimMlmState));
 
     if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, (void**)(&pMlmOemDataRsp), sizeof(tLimMlmOemDataRsp)))
     {
@@ -3850,6 +3854,7 @@ limProcessPeriodicProbeReqTimer(tpAniSirGlobal pMac)
         } while (i < pLimMlmScanReq->numSsid);
 
         /* Activate timer again */
+        MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, pPeriodicProbeReqTimer->sessionId, eLIM_PERIODIC_PROBE_REQ_TIMER));
         if (tx_timer_activate(pPeriodicProbeReqTimer) != TX_SUCCESS)
         {
              limLog(pMac, LOGP, FL("could not start periodic probe"

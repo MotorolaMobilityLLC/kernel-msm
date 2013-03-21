@@ -11059,37 +11059,6 @@ void WDA_UpdateScanParamsCallback(WDI_Status status, void* pUserData)
    return ;
 }
 /*
- * FUNCTION: WDA_SetPowerParamsCallback
- * 
- */ 
-void WDA_SetPowerParamsCallback(WDI_Status status, void* pUserData)
-{
-   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
-
-     VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
-                                          "<------ %s " ,__func__);
-    if(NULL == pWdaParams)
-   {
-      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
-              "%s: pWdaParams received NULL", __func__);
-      VOS_ASSERT(0) ;
-      return ;
-   }
-   if( pWdaParams != NULL )
-   {
-      if( pWdaParams->wdaWdiApiMsgParam != NULL )
-      {
-         vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
-      }
-      if( pWdaParams->wdaMsgParam != NULL)
-      {
-         vos_mem_free(pWdaParams->wdaMsgParam);
-      }
-      vos_mem_free(pWdaParams) ;
-   }
-   return ;
-}
-/*
  * FUNCTION: WDA_ProcessSetPreferredNetworkList
  * Request to WDI to set Preferred Network List.Offload
  */ 
@@ -11346,6 +11315,39 @@ VOS_STATUS WDA_ProcessUpdateScanParams(tWDA_CbContext *pWDA,
    return CONVERT_WDI2VOS_STATUS(status) ;
 }
 #endif // FEATURE_WLAN_SCAN_PNO
+/*
+ * FUNCTION: WDA_SetPowerParamsCallback
+ *
+ */
+void WDA_SetPowerParamsCallback(WDI_Status status, void* pUserData)
+{
+   tWDA_ReqParams *pWdaParams = (tWDA_ReqParams *)pUserData;
+
+   VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
+         "<------ %s " ,__func__);
+
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+            "%s: pWdaParams received NULL", __func__);
+      VOS_ASSERT(0);
+      return;
+   }
+   if( pWdaParams != NULL )
+   {
+      if( pWdaParams->wdaWdiApiMsgParam != NULL )
+      {
+         vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
+      }
+      if( pWdaParams->wdaMsgParam != NULL)
+      {
+         vos_mem_free(pWdaParams->wdaMsgParam);
+      }
+      vos_mem_free(pWdaParams);
+   }
+   return;
+}
+
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 /*
  * FUNCTION: WDA_8023MulticastListReqCallback

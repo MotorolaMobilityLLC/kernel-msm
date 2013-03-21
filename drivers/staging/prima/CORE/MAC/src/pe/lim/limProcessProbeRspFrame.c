@@ -59,9 +59,6 @@
 #include "wniCfgSta.h"
 #endif
 #include "aniGlobal.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halCommonApi.h"
-#endif
 #include "schApi.h"
 #include "utilsApi.h"
 #include "limApi.h"
@@ -73,6 +70,19 @@
 #include "limSendMessages.h"
 
 #include "parserApi.h"
+
+tSirRetStatus
+limValidateIEInformationInProbeRspFrame (tANI_U8 *pRxPacketInfo)
+{
+   tSirRetStatus       status = eSIR_SUCCESS;
+
+   if (WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo) < (SIR_MAC_B_PR_SSID_OFFSET + SIR_MAC_MIN_IE_LEN))
+   {
+      status = eSIR_FAILURE;
+   }
+
+   return status;
+}
 
 /**
  * limProcessProbeRspFrame
@@ -138,7 +148,14 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
        palFreeMemory(pMac->hHdd, pProbeRsp);    
        return;
    }
-
+   // Validate IE information before processing Probe Response Frame
+   if (limValidateIEInformationInProbeRspFrame(pRxPacketInfo) != eSIR_SUCCESS)
+   {
+       PELOG1(limLog(pMac, LOG1,
+                 FL("Parse error ProbeResponse, length=%d"), frameLen);)
+       palFreeMemory(pMac->hHdd, pProbeRsp);
+       return;
+   }
 
     /**
      * Expect Probe Response only when
@@ -170,11 +187,11 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
         // Get pointer to Probe Response frame body
         pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
 
-        if (sirConvertProbeFrame2Struct(pMac, pBody, frameLen, pProbeRsp)
-                          ==eSIR_FAILURE)
+        if (sirConvertProbeFrame2Struct(pMac, pBody, frameLen, pProbeRsp) == eSIR_FAILURE ||
+            !pProbeRsp->ssidPresent) // Enforce Mandatory IEs
         {
             PELOG1(limLog(pMac, LOG1,
-               FL("PArse error ProbeResponse, length=%d\n"),
+               FL("Parse error ProbeResponse, length=%d"),
                frameLen);)
             palFreeMemory(pMac->hHdd, pProbeRsp);
             return;
@@ -365,7 +382,14 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         palFreeMemory(pMac->hHdd, pProbeRsp);
         return;
     }
-
+     // Validate IE information before processing Probe Response Frame
+    if (limValidateIEInformationInProbeRspFrame(pRxPacketInfo) != eSIR_SUCCESS)
+    {
+       PELOG1(limLog(pMac, LOG1,FL("Parse error ProbeResponse, length=%d"),
+              frameLen);)
+       palFreeMemory(pMac->hHdd, pProbeRsp);
+       return;
+    }
     /*  Since there is no psessionEntry, PE cannot be in the following states:
      *   - eLIM_MLM_WT_JOIN_BEACON_STATE
      *   - eLIM_MLM_LINK_ESTABLISHED_STATE

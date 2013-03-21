@@ -61,9 +61,6 @@
 #include "cfgApi.h"
 #include "schApi.h"
 #include "wniCfgAp.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halCommonApi.h"
-#endif
 #include "utilsApi.h"
 #include "limTypes.h"
 #include "limUtils.h"

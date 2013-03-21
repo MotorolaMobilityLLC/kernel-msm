@@ -42,9 +42,9 @@
 #if !defined( HDD_CONNECTION_H__ ) 
 #define HDD_CONNECTION_H__ 
 #include <wlan_hdd_mib.h>
-#define HDD_MAX_NUM_IBSS_STA ( 4 )
+#define HDD_MAX_NUM_IBSS_STA ( 9 )
 #ifdef FEATURE_WLAN_TDLS
-#define HDD_MAX_NUM_TDLS_STA ( 4 )
+#define HDD_MAX_NUM_TDLS_STA ( HDD_MAX_NUM_IBSS_STA - 1 ) // up to 3 as 1 is assigned to AP
 #endif
 #define TKIP_COUNTER_MEASURE_STARTED 1
 #define TKIP_COUNTER_MEASURE_STOPED  0 
@@ -134,4 +134,7 @@ v_BOOL_t hdd_connGetConnectedBssType( hdd_station_ctx_t *pHddCtx,
 int hdd_SetGENIEToCsr( hdd_adapter_t *pAdapter, eCsrAuthType *RSNAuthType );
 
 int hdd_set_csr_auth_type( hdd_adapter_t *pAdapter, eCsrAuthType RSNAuthType );
+VOS_STATUS hdd_roamRegisterTDLSSTA( hdd_adapter_t *pAdapter,
+                                    tANI_U8 *peerMac, tANI_U16 staId, tANI_U8 ucastSig);
+
 #endif

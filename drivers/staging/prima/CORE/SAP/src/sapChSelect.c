@@ -83,6 +83,9 @@
 #include "sme_Api.h"
 #include "sapChSelect.h"
 #include "sapInternal.h"
+#ifdef ANI_OS_TYPE_QNX
+#include "stdio.h"
+#endif
 
 /*--------------------------------------------------------------------------
   Function definitions
@@ -92,7 +95,6 @@
   Defines
 --------------------------------------------------------------------------*/
 #define SAP_DEBUG
-
 
 /*==========================================================================
   FUNCTION    sapCleanupChannelList
@@ -139,13 +141,12 @@ void sapCleanupChannelList(void)
 
     IN
     *ptr: pointer having the command followed by the arguments in string format
-    *dev: not used.
    
   RETURN VALUE
     int:  return 0 when success else returns error code.
 ============================================================================*/
 
-int sapSetPreferredChannel(struct net_device *dev, tANI_U8* ptr)
+int sapSetPreferredChannel(tANI_U8* ptr)
 {
 
     v_PVOID_t pvosGCtx = vos_get_global_context(VOS_MODULE_ID_SAP, NULL);
@@ -162,17 +163,17 @@ int sapSetPreferredChannel(struct net_device *dev, tANI_U8* ptr)
         sapCleanupChannelList();
     }
 
-    param = strnchr(ptr, strlen(ptr), ' ');
+    param = strchr(ptr, ' ');
     /*no argument after the command*/
-    if (NULL == param)  
+    if (NULL == param)
     {
-        return -EINVAL;   
+       return -EINVAL;
     }
 
     /*no space after the command*/
-    else if (SPACE_ASCII_VALUE != *param)  
+    else if (SPACE_ASCII_VALUE != *param)
     {
-        return -EINVAL;   
+        return -EINVAL;
     }
 
     param++;

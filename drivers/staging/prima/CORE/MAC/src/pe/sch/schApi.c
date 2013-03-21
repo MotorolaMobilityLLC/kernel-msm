@@ -61,10 +61,6 @@
 #include "sirMacPropExts.h"
 #include "sirCommon.h"
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halDataStruct.h"
-#include "halCommonApi.h"
-#endif
 
 #include "cfgApi.h"
 #include "pmmApi.h"

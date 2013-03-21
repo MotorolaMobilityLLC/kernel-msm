@@ -200,6 +200,9 @@ typedef struct vos_pkt_context_s
    // We keep a separate count of the number of RX_RAW packets
    // waiting to be replenished
    v_SIZE_t rxReplenishListCount;
+   //Existing list_size opearation traverse the list. Too slow for data path.
+   //Add the field for a faster rx path
+   v_SIZE_t rxRawFreeListCount;
 
    // These are the structs to keep low-resource callback information.
    // There are separate low-resource callback information blocks for

@@ -40,7 +40,6 @@
  */
 
 /*
- *
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file limProcessLmmMessages.cc contains the code
  * for processing SME/LMM messages related to ANI feature set.
@@ -198,12 +197,6 @@ limInitMeasResources(tpAniSirGlobal pMac)
         pMac->lim.gLimMeasParams.isMeasIndTimerActive = 0;
        PELOG3(limLog(pMac, LOG3, FL("MeasurementIndication timer initialized, period = %d\n"), 
                                                     pMac->lim.gpLimMeasReq->measIndPeriod);)
-
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-    tx_timer_set_expiry_list(
-             &pMac->lim.gLimMeasParams.measurementIndTimer,
-             LIM_TIMER_EXPIRY_LIST);
-#endif
     }
 
     tANI_U32 learnInterval =
@@ -224,12 +217,6 @@ limInitMeasResources(tpAniSirGlobal pMac)
         return eSIR_SYS_TX_TIMER_CREATE_FAILED;
     }
 
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-    tx_timer_set_expiry_list(
-             &pMac->lim.gLimMeasParams.learnIntervalTimer,
-             LIM_TIMER_EXPIRY_LIST);
-#endif
-
     val = SYS_MS_TO_TICKS(pMac->lim.gpLimMeasReq->measDuration.shortChannelScanDuration);
     if (tx_timer_create(
           &pMac->lim.gLimMeasParams.learnDurationTimer,
@@ -248,48 +235,29 @@ limInitMeasResources(tpAniSirGlobal pMac)
         return eSIR_SYS_TX_TIMER_CREATE_FAILED;
     }
 
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-    tx_timer_set_expiry_list(
-             &pMac->lim.gLimMeasParams.learnDurationTimer,
-             LIM_TIMER_EXPIRY_LIST);
-#endif
-
-    #if 0
-    if (wlan_cfgGetInt(pMac, WNI_CFG_BEACON_INTERVAL, &beaconInterval) != eSIR_SUCCESS)
-    {
-        limLog(pMac, LOGP, FL("Can't read beacon interval\n"));
-        return eSIR_FAILURE;
-    }
-    #endif // TO SUPPORT BT-AMP
-
-     /* Copy the beacon interval from the sessio Id */
-     beaconInterval = psessionEntry->beaconParams.beaconInterval;
+    /* Copy the beacon interval from the session Id */
+    beaconInterval = psessionEntry->beaconParams.beaconInterval;
    
     if ((learnInterval > ( 2 * beaconInterval)) &&
             (pMac->lim.gLimSystemRole == eLIM_AP_ROLE))
     { 
         //learinterval should be  > 2 * beaconinterval
         val = SYS_MS_TO_TICKS(learnInterval - (2 * beaconInterval));
-    // Create Quiet BSS Timer
-    if( TX_SUCCESS !=
-        tx_timer_create( &pMac->lim.limTimers.gLimQuietBssTimer,
-          "QUIET BSS TIMER",
-          limQuietBssTimerHandler,
-          SIR_LIM_QUIET_BSS_TIMEOUT,
-            val, // initial_ticks
-          0, // reschedule_ticks
-          TX_NO_ACTIVATE ))
-    {
-      limLog( pMac, LOGP,
-          FL( "Failed to create gLimQuietBssTimer!\n" ));
-      return eSIR_SYS_TX_TIMER_CREATE_FAILED;
-    }
+        // Create Quiet BSS Timer
+        if ( TX_SUCCESS !=
+            tx_timer_create( &pMac->lim.limTimers.gLimQuietBssTimer,
+                             "QUIET BSS TIMER",
+                             limQuietBssTimerHandler,
+                             SIR_LIM_QUIET_BSS_TIMEOUT,
+                             val, // initial_ticks
+                             0, // reschedule_ticks
+                             TX_NO_ACTIVATE ))
+        {
+            limLog( pMac, LOGP,
+                    FL( "Failed to create gLimQuietBssTimer!" ));
+            return eSIR_SYS_TX_TIMER_CREATE_FAILED;
+        }
 
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-    tx_timer_set_expiry_list(
-        &pMac->lim.limTimers.gLimQuietBssTimer,
-        LIM_TIMER_EXPIRY_LIST );
-#endif
         pMac->lim.gLimSpecMgmt.fQuietEnabled = eANI_BOOLEAN_TRUE;
     }
 

@@ -186,7 +186,7 @@ void sme_SetFTIEs( tHalHandle hHal, tANI_U8 sessionId, tANI_U8 *ft_ies,
             pMac->ft.ftSmeContext.FTState = eFT_AUTH_REQ_READY;
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-            smsLog( pMac, LOGE, "ft_ies_length=%d\n", ft_ies_length);
+            smsLog( pMac, LOG1, "ft_ies_length=%d", ft_ies_length);
             /*
             smsLog( pMac, LOGE, "%d: New Auth ft_ies_length=%02x%02x%02x\n", 
                 current->pid, pMac->ft.ftSmeContext.auth_ft_ies[0],
@@ -245,14 +245,8 @@ void sme_SetFTIEs( tHalHandle hHal, tANI_U8 sessionId, tANI_U8 *ft_ies,
                 
             pMac->ft.ftSmeContext.FTState = eFT_SET_KEY_WAIT;
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-            smsLog( pMac, LOGE, "ft_ies_length=%d state=%d\n", ft_ies_length,
+            smsLog( pMac, LOG1, "ft_ies_length=%d state=%d", ft_ies_length,
                 pMac->ft.ftSmeContext.FTState);
-            /*
-            smsLog( pMac, LOGE, "%d: New Auth ft_ies_length=%02x%02x%02x\n", 
-                current->pid, pMac->ft.ftSmeContext.reassoc_ft_ies[0],
-                pMac->ft.ftSmeContext.reassoc_ft_ies[1],
-                pMac->ft.ftSmeContext.reassoc_ft_ies[2]);
-                */
 #endif
             
             break;
@@ -368,15 +362,15 @@ eHalStatus sme_FTUpdateKey( tHalHandle hHal, tCsrRoamSetKey * pFTKeyInfo )
        return eHAL_STATUS_FAILURE;
     }
 
-    if (pFTKeyInfo == NULL) 
+    if (pFTKeyInfo == NULL)
     {
         smsLog( pMac, LOGE, "%s: pFTKeyInfo is NULL\n", __func__);
         sme_ReleaseGlobalLock( &pMac->sme );
-        return eHAL_STATUS_FAILURE; 
+        return eHAL_STATUS_FAILURE;
     }
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    smsLog( pMac, LOG1, "sme_FTUpdateKey is received in state %d", 
+    smsLog( pMac, LOG1, "sme_FTUpdateKey is received in state %d",
         pMac->ft.ftSmeContext.FTState);
 #endif
 
@@ -384,9 +378,12 @@ eHalStatus sme_FTUpdateKey( tHalHandle hHal, tCsrRoamSetKey * pFTKeyInfo )
     switch(pMac->ft.ftSmeContext.FTState)
     {
     case eFT_SET_KEY_WAIT:
-       status = eHAL_STATUS_SUCCESS;
-       //status = sme_FTSendUpdateKeyInd( hHal, pFTKeyInfo );
+       status = eHAL_STATUS_FT_PREAUTH_KEY_WAIT;
        pMac->ft.ftSmeContext.FTState = eFT_START_READY;
+#ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
+       smsLog( pMac, LOG1, "%s: state changed to %d", __func__,
+               pMac->ft.ftSmeContext.FTState);
+#endif
        break;
           
     default:

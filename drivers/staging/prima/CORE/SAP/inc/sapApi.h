@@ -587,7 +587,7 @@ typedef struct sap_SoftapStats_s {
 } tSap_SoftapStats, *tpSap_SoftapStats;
 
 
-int sapSetPreferredChannel(struct net_device *dev, tANI_U8* ptr);
+int sapSetPreferredChannel(tANI_U8* ptr);
 void sapCleanupChannelList(void);
 
 /*==========================================================================

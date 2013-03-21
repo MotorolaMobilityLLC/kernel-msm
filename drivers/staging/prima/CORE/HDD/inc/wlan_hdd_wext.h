@@ -75,6 +75,12 @@
 
 #define MHZ 6
 
+#define WE_MAX_STR_LEN                                 1024
+#define WLAN_HDD_UI_BAND_AUTO                          0
+#define WLAN_HDD_UI_BAND_5_GHZ                         1
+#define WLAN_HDD_UI_BAND_2_4_GHZ                       2
+#define WLAN_HDD_UI_SET_BAND_VALUE_OFFSET              8
+
 typedef enum
 {
    HDD_WLAN_WMM_DIRECTION_UPSTREAM      = 0,
@@ -335,10 +341,8 @@ extern int hdd_wlan_get_rts_threshold(hdd_adapter_t *pAdapter,
                                       union iwreq_data *wrqu);
 extern int hdd_wlan_get_frag_threshold(hdd_adapter_t *pAdapter,
                                       union iwreq_data *wrqu);
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-extern int hdd_wlan_get_version(hdd_adapter_t *pAdapter,
-                                union iwreq_data *wrqu, char *extra);
-#endif
+extern void hdd_wlan_get_version(hdd_adapter_t *pAdapter,
+                                 union iwreq_data *wrqu, char *extra);
 
 extern int iw_get_scan(struct net_device *dev, 
                        struct iw_request_info *info,
@@ -417,6 +421,10 @@ VOS_STATUS wlan_hdd_get_roam_rssi(hdd_adapter_t *pAdapter, v_S7_t *rssi_value);
 
 #ifdef FEATURE_WLAN_TDLS
 VOS_STATUS iw_set_tdls_params(struct net_device *dev, struct iw_request_info *info, union iwreq_data *wrqu, char *extra, int nOffset);
+#endif
+
+#ifdef WLAN_FEATURE_PACKET_FILTERING
+void wlan_hdd_set_mc_addr_list(hdd_adapter_t *pAdapter, v_U8_t set);
 #endif
 
 #endif // __WEXT_IW_H__

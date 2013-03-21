@@ -270,8 +270,8 @@ void vos_trace_msg( VOS_MODULE_ID module, VOS_TRACE_LEVEL level, char *strFormat
       // as the trace levels are defined in the enum (see VOS_TRACE_LEVEL) so we
       // can index into this array with the level and get the right string.  The
       // vos trace levels are...
-      // none, Fata, Error, Warning, Info, InfoHigh, InfoMed, InfoLow
-      static const char * TRACE_LEVEL_STR[] = { "  ", "F ", "E ", "W ", "I ", "IH", "IM", "IL" };
+      // none, Fatal, Error, Warning, Info, InfoHigh, InfoMed, InfoLow, Debug
+      static const char * TRACE_LEVEL_STR[] = { "  ", "F ", "E ", "W ", "I ", "IH", "IM", "IL", "D" };
       va_list val;
       va_start(val, strFormat);
 
@@ -292,10 +292,10 @@ void vos_trace_display(void)
 {
    VOS_MODULE_ID moduleId;
 
-   pr_err("     1)FATAL  2)ERROR  3)WARN  4)INFO  5)INFO_H  6)INFO_M  7)INFO_L\n");
+   pr_err("     1)FATAL  2)ERROR  3)WARN  4)INFO  5)INFO_H  6)INFO_M  7)INFO_L 8)DEBUG\n");
    for (moduleId = 0; moduleId < VOS_MODULE_ID_MAX; ++moduleId)
    {
-      pr_err("%2d)%s    %s        %s       %s       %s        %s         %s         %s\n",
+      pr_err("%2d)%s    %s        %s       %s       %s        %s         %s         %s        %s\n",
              (int)moduleId,
              gVosTraceInfo[moduleId].moduleNameStr,
              (gVosTraceInfo[moduleId].moduleTraceLevel & (1 << VOS_TRACE_LEVEL_FATAL)) ? "X":" ",
@@ -304,7 +304,8 @@ void vos_trace_display(void)
              (gVosTraceInfo[moduleId].moduleTraceLevel & (1 << VOS_TRACE_LEVEL_INFO)) ? "X":" ",
              (gVosTraceInfo[moduleId].moduleTraceLevel & (1 << VOS_TRACE_LEVEL_INFO_HIGH)) ? "X":" ",
              (gVosTraceInfo[moduleId].moduleTraceLevel & (1 << VOS_TRACE_LEVEL_INFO_MED)) ? "X":" ",
-             (gVosTraceInfo[moduleId].moduleTraceLevel & (1 << VOS_TRACE_LEVEL_INFO_LOW)) ? "X":" "
+             (gVosTraceInfo[moduleId].moduleTraceLevel & (1 << VOS_TRACE_LEVEL_INFO_LOW)) ? "X":" ",
+             (gVosTraceInfo[moduleId].moduleTraceLevel & (1 << VOS_TRACE_LEVEL_DEBUG)) ? "X":" "
          );
    }
 }

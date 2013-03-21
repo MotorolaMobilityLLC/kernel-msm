@@ -2182,6 +2182,8 @@ void limProcessBtAmpApMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPES
         goto end;
     }
     pMac->lim.gLimMlmState = eLIM_MLM_IDLE_STATE;
+    MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, NO_SESSION, pMac->lim.gLimMlmState));
+
     if( eLIM_MLM_WT_DEL_BSS_RSP_STATE != psessionEntry->limMlmState)
     {
             limLog( pMac, LOGE,
@@ -2895,6 +2897,7 @@ void limSetLinkStateForPostAssocCallback(tpAniSirGlobal pMac, void *msgParam )
 
     psessionEntry->limPrevMlmState = psessionEntry->limMlmState;
     psessionEntry->limMlmState = eLIM_MLM_WT_FT_REASSOC_RSP_STATE;
+    MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, eLIM_MLM_WT_FT_REASSOC_RSP_STATE));
     PELOGE(limLog(pMac, LOG1,  FL("Set the mlm state to %d session=%d"),
         psessionEntry->limMlmState, psessionEntry->peSessionId);)
 
@@ -3897,12 +3900,6 @@ static void limProcessSwitchChannelJoinReq(tpAniSirGlobal pMac, tpPESession pses
     {
         if (limSetLinkState(pMac, eSIR_LINK_BTAMP_PREASSOC_STATE, psessionEntry->bssId,
              psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS )
-            goto error;
-    }
-    else
-    {
-        if(limSetLinkState(pMac, eSIR_LINK_PREASSOC_STATE, psessionEntry->bssId,
-            psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS)
             goto error;
     }
 
@@ -5010,7 +5007,10 @@ limHandleAddBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPES
             psessionEntry->limSmeState = eLIM_SME_WT_REASSOC_STATE;
             limDeleteDphHashEntry(pMac, pStaDs->staAddr, pStaDs->assocId, psessionEntry);
             if(psessionEntry->limSystemRole == eLIM_STA_ROLE)
+            {
               psessionEntry->limMlmState = eLIM_MLM_IDLE_STATE;
+               MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
+            }
 
             limPostSmeMessage(pMac, LIM_MLM_REASSOC_CNF, (tANI_U32 *) &mlmReassocCnf);
         }

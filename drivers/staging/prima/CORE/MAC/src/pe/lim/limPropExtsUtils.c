@@ -63,9 +63,6 @@
 #include "sirDebug.h"
 #include "utilsApi.h"
 #include "cfgApi.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halCommonApi.h"
-#endif
 #include "limApi.h"
 #include "limTypes.h"
 #include "limUtils.h"
