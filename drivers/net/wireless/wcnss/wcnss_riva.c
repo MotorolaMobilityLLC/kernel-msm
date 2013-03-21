@@ -99,8 +99,15 @@ static int configure_iris_xo(struct device *dev, bool use_48mhz_xo, int on)
 			goto fail;
 		}
 
-		/* power on thru SSR should not set NV bit,
-		 * during SSR, NV bin is downloaded by WLAN driver
+		/* Enable IRIS XO */
+		rc = clk_prepare_enable(cxo);
+		if (rc) {
+			pr_err("cxo enable failed\n");
+			goto fail;
+		}
+		/* NV bit is set to indicate that platform driver is capable
+		 * of doing NV download. SSR should not set NV bit; during
+		 * SSR NV bin is downloaded by WLAN drive.
 		 */
 		if (!wcnss_cold_boot_done()) {
 			pr_debug("wcnss: Indicate NV bin download\n");
@@ -109,12 +116,6 @@ static int configure_iris_xo(struct device *dev, bool use_48mhz_xo, int on)
 			writel_relaxed(reg, RIVA_SPARE_OUT);
 		}
 
-		/* Enable IRIS XO */
-		rc = clk_prepare_enable(cxo);
-		if (rc) {
-			pr_err("cxo enable failed\n");
-			goto fail;
-		}
 		writel_relaxed(0, RIVA_PMU_CFG);
 		reg = readl_relaxed(RIVA_PMU_CFG);
 		reg |= RIVA_PMU_CFG_GC_BUS_MUX_SEL_TOP |
