@@ -16,6 +16,8 @@
 #include <linux/module.h>
 #include <kgsl_device.h>
 
+#include "kgsl_trace.h"
+
 static void _add_event_to_list(struct list_head *head, struct kgsl_event *event)
 {
 	struct list_head *n;
@@ -71,6 +73,7 @@ int kgsl_add_event(struct kgsl_device *device, u32 id, u32 ts,
 	 */
 
 	if (timestamp_cmp(cur_ts, ts) >= 0) {
+		trace_kgsl_fire_event(id, ts, 0);
 		cb(device, priv, id, ts);
 		return 0;
 	}
@@ -84,6 +87,9 @@ int kgsl_add_event(struct kgsl_device *device, u32 id, u32 ts,
 	event->priv = priv;
 	event->func = cb;
 	event->owner = owner;
+	event->created = jiffies;
+
+	trace_kgsl_register_event(id, ts);
 
 	/* inc refcount to avoid race conditions in cleanup */
 	if (context)
@@ -105,6 +111,13 @@ int kgsl_add_event(struct kgsl_device *device, u32 id, u32 ts,
 
 	} else
 		_add_event_to_list(&device->events, event);
+
+	/*
+	 * Increase the active count on the device to avoid going into power
+	 * saving modes while events are pending
+	 */
+
+	device->active_cnt++;
 
 	queue_work(device->work_queue, &device->ts_expired_ws);
 	return 0;
@@ -136,13 +149,17 @@ void kgsl_cancel_events_ctxt(struct kgsl_device *device,
 		 * Send the current timestamp so the event knows how far the
 		 * system got before the event was canceled
 		 */
+		list_del(&event->list);
+
+		trace_kgsl_fire_event(id, cur, jiffies - event->created);
 
 		if (event->func)
 			event->func(device, event->priv, id, cur);
 
 		kgsl_context_put(context);
-		list_del(&event->list);
 		kfree(event);
+
+		kgsl_active_count_put(device);
 	}
 
 	/* Remove ourselves from the master pending list */
@@ -175,15 +192,20 @@ void kgsl_cancel_events(struct kgsl_device *device,
 		 * the callback knows how far the GPU made it before things went
 		 * explosion
 		 */
+		list_del(&event->list);
+
+		trace_kgsl_fire_event(KGSL_MEMSTORE_GLOBAL, cur,
+			jiffies - event->created);
+
 		if (event->func)
 			event->func(device, event->priv, KGSL_MEMSTORE_GLOBAL,
 				cur);
 
 		if (event->context)
 			kgsl_context_put(event->context);
-
-		list_del(&event->list);
 		kfree(event);
+
+		kgsl_active_count_put(device);
 	}
 }
 EXPORT_SYMBOL(kgsl_cancel_events);
@@ -206,15 +228,19 @@ static void _process_event_list(struct kgsl_device *device,
 		 * confused if they don't bother comparing the current timetamp
 		 * to the timestamp they wanted
 		 */
+		list_del(&event->list);
+
+		trace_kgsl_fire_event(id, event->timestamp,
+			jiffies - event->created);
 
 		if (event->func)
 			event->func(device, event->priv, id, event->timestamp);
 
 		if (event->context)
 			kgsl_context_put(event->context);
-
-		list_del(&event->list);
 		kfree(event);
+
+		kgsl_active_count_put(device);
 	}
 }
 
