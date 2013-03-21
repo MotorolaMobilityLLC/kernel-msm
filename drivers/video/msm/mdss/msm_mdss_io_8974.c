@@ -297,6 +297,7 @@ void mdss_dsi_phy_init(struct mdss_panel_data *pdata)
 	pd = ((ctrl_pdata->panel_data).panel_info.mipi).dsi_phy_db;
 
 	/* Strength ctrl 0 */
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0484, 0x07);
 	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0484, pd->strength[0]);
 
 	/* phy regulator ctrl settings. Both the DSI controller
@@ -306,11 +307,8 @@ void mdss_dsi_phy_init(struct mdss_panel_data *pdata)
 	else
 		off = 0x0580 - 0x600;
 
-	/* Regulator ctrl 0 */
-	MIPI_OUTP((ctrl_pdata->ctrl_base) + off + (4 * 0), 0x0);
-	/* Regulator ctrl - CAL_PWR_CFG */
+	/* Regulator ctrl - CAL_PWD_CFG */
 	MIPI_OUTP((ctrl_pdata->ctrl_base) + off + (4 * 6), pd->regulator[6]);
-
 	/* Regulator ctrl - TEST */
 	MIPI_OUTP((ctrl_pdata->ctrl_base) + off + (4 * 5), pd->regulator[5]);
 	/* Regulator ctrl 3 */
@@ -323,12 +321,6 @@ void mdss_dsi_phy_init(struct mdss_panel_data *pdata)
 	MIPI_OUTP((ctrl_pdata->ctrl_base) + off + (4 * 0), pd->regulator[0]);
 	/* Regulator ctrl 4 */
 	MIPI_OUTP((ctrl_pdata->ctrl_base) + off + (4 * 4), pd->regulator[4]);
-
-	/* LDO ctrl 0 */
-	if ((ctrl_pdata->panel_data).panel_info.pdest == DISPLAY_1)
-		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x4dc, 0x00);
-	else
-		MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x4dc, 0x00);
 
 	off = 0x0440;	/* phy timing ctrl 0 - 11 */
 	for (i = 0; i < 12; i++) {
@@ -361,7 +353,7 @@ void mdss_dsi_phy_init(struct mdss_panel_data *pdata)
 	}
 
 	/* MMSS_DSI_0_PHY_DSIPHY_CTRL_0 */
-	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0470, 0x5f);
+	MIPI_OUTP((ctrl_pdata->ctrl_base) + 0x0470, 0x7f);
 	wmb();
 
 	/* DSI_0_PHY_DSIPHY_GLBL_TEST_CTRL */

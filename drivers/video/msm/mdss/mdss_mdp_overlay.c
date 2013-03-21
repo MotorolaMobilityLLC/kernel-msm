@@ -599,7 +599,7 @@ int mdss_mdp_reconfigure_splash_done(struct mdss_mdp_ctl *ctl)
 	ret = mdss_mdp_ctl_intf_event(ctl, MDSS_EVENT_CONT_SPLASH_FINISH,
 			NULL);
 	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF, false);
-	mdss_mdp_footswitch_ctrl_splash(0);
+	mdss_mdp_footswitch_ctrl_splash(ctl->mdata, 0);
 	return ret;
 }
 

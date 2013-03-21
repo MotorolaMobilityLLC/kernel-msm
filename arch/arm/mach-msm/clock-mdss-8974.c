@@ -233,22 +233,24 @@ static int __mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 	REG_W(0x05, mdss_dsi_base + 0x0228); /* postDiv3 */
 
 	REG_W(0x2b, mdss_dsi_base + 0x0278); /* Cal CFG3 */
-	REG_W(0x66, mdss_dsi_base + 0x027c); /* Cal CFG4 */
+	REG_W(0x06, mdss_dsi_base + 0x027c); /* Cal CFG4 */
 	REG_W(0x05, mdss_dsi_base + 0x0264); /* LKDET CFG2 */
 
 	REG_W(0x0a, mdss_dsi_base + 0x023c); /* SDM CFG1 */
 	REG_W(0xab, mdss_dsi_base + 0x0240); /* SDM CFG2 */
-	REG_W(0x0a, mdss_dsi_base + 0x0244); /* SDM CFG3 */
+	REG_W(0xb4, mdss_dsi_base + 0x0244); /* SDM CFG3 */
 	REG_W(0x00, mdss_dsi_base + 0x0248); /* SDM CFG4 */
+
+	udelay(10);
 
 	REG_W(0x01, mdss_dsi_base + 0x0200); /* REFCLK CFG */
 	REG_W(0x00, mdss_dsi_base + 0x0214); /* PWRGEN CFG */
-	REG_W(0x71, mdss_dsi_base + 0x020c); /* VCOLPF CFG */
-	REG_W(0x02, mdss_dsi_base + 0x0210); /* VREG CFG */
+	REG_W(0x01, mdss_dsi_base + 0x020c); /* VCOLPF CFG */
+	REG_W(0x0, mdss_dsi_base + 0x0210); /* VREG CFG */
 	REG_W(0x00, mdss_dsi_base + 0x0238); /* SDM CFG0 */
 
-	REG_W(0x5f, mdss_dsi_base + 0x028c); /* CAL CFG8 */
-	REG_W(0xa8, mdss_dsi_base + 0x0294); /* CAL CFG10 */
+	REG_W(0x60, mdss_dsi_base + 0x028c); /* CAL CFG8 */
+	REG_W(0xc2, mdss_dsi_base + 0x0294); /* CAL CFG10 */
 	REG_W(0x01, mdss_dsi_base + 0x0298); /* CAL CFG11 */
 	REG_W(0x0a, mdss_dsi_base + 0x026c); /* CAL CFG0 */
 	REG_W(0x30, mdss_dsi_base + 0x0284); /* CAL CFG6 */
@@ -276,22 +278,6 @@ static int mdss_dsi_pll_byte_set_rate(struct clk *c, unsigned long rate)
 	return ret;
 }
 
-static void mdss_dsi_uniphy_pll_lock_detect_setting(void)
-{
-	REG_W(0x04, mdss_dsi_base + 0x0264); /* LKDetect CFG2 */
-	udelay(100);
-	REG_W(0x05, mdss_dsi_base + 0x0264); /* LKDetect CFG2 */
-	udelay(500);
-}
-
-static void mdss_dsi_uniphy_pll_sw_reset(void)
-{
-	REG_W(0x01, mdss_dsi_base + 0x0268); /* PLL TEST CFG */
-	udelay(1);
-	REG_W(0x00, mdss_dsi_base + 0x0268); /* PLL TEST CFG */
-	udelay(1);
-}
-
 static int __mdss_dsi_pll_enable(struct clk *c)
 {
 	u32 status;
@@ -306,23 +292,17 @@ static int __mdss_dsi_pll_enable(struct clk *c)
 						__func__);
 	}
 
-	mdss_dsi_uniphy_pll_sw_reset();
 	/* PLL power up */
-	/* Add HW recommended delay between
-	   register writes for the update to propagate */
-	REG_W(0x01, mdss_dsi_base + 0x0220); /* GLB CFG */
-	udelay(1000);
-	REG_W(0x05, mdss_dsi_base + 0x0220); /* GLB CFG */
-	udelay(1000);
-	REG_W(0x07, mdss_dsi_base + 0x0220); /* GLB CFG */
-	udelay(1000);
-	REG_W(0x0f, mdss_dsi_base + 0x0220); /* GLB CFG */
-	udelay(1000);
-
 	for (i = 0; i < 3; i++) {
-		mdss_dsi_uniphy_pll_lock_detect_setting();
+		REG_W(0x01, mdss_dsi_base + 0x0220); /* GLB CFG */
+		REG_W(0x05, mdss_dsi_base + 0x0220); /* GLB CFG */
+		udelay(20);
+		REG_W(0x07, mdss_dsi_base + 0x0220); /* GLB CFG */
+		udelay(20);
+		REG_W(0x0f, mdss_dsi_base + 0x0220); /* GLB CFG */
+
 		/* poll for PLL ready status */
-		max_reads = 5;
+		max_reads = 20;
 		timeout_us = 100;
 		if (readl_poll_timeout_noirq((mdss_dsi_base + 0x02c0),
 				   status,
@@ -334,24 +314,6 @@ static int __mdss_dsi_pll_enable(struct clk *c)
 			       __func__);
 		} else
 			break;
-
-		mdss_dsi_uniphy_pll_sw_reset();
-		udelay(1000);
-		/* Add HW recommended delay between
-		   register writes for the update to propagate */
-		REG_W(0x01, mdss_dsi_base + 0x0220); /* GLB CFG */
-		udelay(1000);
-		REG_W(0x05, mdss_dsi_base + 0x0220); /* GLB CFG */
-		udelay(1000);
-		REG_W(0x07, mdss_dsi_base + 0x0220); /* GLB CFG */
-		udelay(1000);
-		REG_W(0x05, mdss_dsi_base + 0x0220); /* GLB CFG */
-		udelay(1000);
-		REG_W(0x07, mdss_dsi_base + 0x0220); /* GLB CFG */
-		udelay(1000);
-		REG_W(0x0f, mdss_dsi_base + 0x0220); /* GLB CFG */
-		udelay(2000);
-
 	}
 
 	if ((status & 0x01) != 1) {
@@ -409,10 +371,10 @@ out:
 static enum handoff mdss_dsi_pll_byte_handoff(struct clk *c)
 {
 	if (mdss_gdsc_enabled() && mdss_dsi_check_pll_lock()) {
-		c->rate = 53000000;
-		dsi_pll_rate = 53000000;
-		pll_byte_clk_rate = 53000000;
-		pll_pclk_rate = 105000000;
+		c->rate = 112375000;
+		dsi_pll_rate = 112375000;
+		pll_byte_clk_rate = 112375000;
+		pll_pclk_rate = 150000000;
 		dsipll_refcount++;
 		return HANDOFF_ENABLED_CLK;
 	}
@@ -423,7 +385,7 @@ static enum handoff mdss_dsi_pll_byte_handoff(struct clk *c)
 static enum handoff mdss_dsi_pll_pixel_handoff(struct clk *c)
 {
 	if (mdss_gdsc_enabled() && mdss_dsi_check_pll_lock()) {
-		c->rate = 105000000;
+		c->rate = 150000000;
 		dsipll_refcount++;
 		return HANDOFF_ENABLED_CLK;
 	}
