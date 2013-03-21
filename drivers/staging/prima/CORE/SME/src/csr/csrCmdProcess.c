@@ -41,22 +41,13 @@
 
 /** ------------------------------------------------------------------------- * 
     ------------------------------------------------------------------------- *  
-    \file csrCmdProcess.c
-  
-    Implementation for processing various commands.
-  
-   Copyright (C) 2006 Airgo Networks, Incorporated
  
-   ========================================================================== */
+    Copyright (C) 2006 Airgo Networks, Incorporated
 
+   ---------------------------------------------------------------------------*
+*/
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halInternal.h" //Check if the below include of aniGobal.h is sufficient for Volans too.
-#endif
-
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include "aniGlobal.h"
-#endif
 
 #include "palApi.h"
 #include "csrInsideApi.h"

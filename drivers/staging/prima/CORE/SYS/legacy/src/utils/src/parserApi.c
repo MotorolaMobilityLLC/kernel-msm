@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file parserApi.cc contains the code for parsing
@@ -388,12 +387,9 @@ PopulateDot11fDSParams(tpAniSirGlobal     pMac,
     // Get PHY mode and based on that add DS Parameter Set IE
     limGetPhyMode(pMac, &nPhyMode, psessionEntry);
 
-    if ( WNI_CFG_PHY_MODE_11A != nPhyMode )
+    if ( (WNI_CFG_PHY_MODE_11A != nPhyMode) || pMac->rrm.rrmPEContext.rrmEnable )
     {
         // .11b/g mode PHY => Include the DS Parameter Set IE:
-        #if 0
-        CFG_GET_INT( nSirStatus, pMac, WNI_CFG_CURRENT_CHANNEL, cfg );
-        #endif //TO SUPPORT BT-AMP
         pDot11f->curr_channel = channel;
         pDot11f->present = 1;
     }

@@ -72,9 +72,6 @@
   Include Files
   ------------------------------------------------------------------------*/
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halInternal.h"
-#endif
 
 #include "smsDebug.h"
 #include "sme_Api.h"
@@ -90,14 +87,11 @@
 
 
 
-#if !defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
 extern tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 
 #include <wlan_qct_pal_api.h>
-#endif
 
 #define READ_MEMORY_DUMP_CMD     9
-#define READ_REG_DUMP_CMD        7
 
 // TxMB Functions
 extern eHalStatus pmcPrepareCommand( tpAniSirGlobal pMac, eSmeCommandType cmdType, void *pvParam,
@@ -893,7 +887,7 @@ tANI_BOOLEAN smeCommandPending(tpAniSirGlobal pMac)
 
   smeOpen must be called before any other SME APIs can be involved.
   smeOpen must be called after macOpen.
-  This is a synchronuous call
+  This is a synchronous call
   \param hHal - The handle returned by macOpen.
 
   \return eHAL_STATUS_SUCCESS - SME is successfully initialized.
@@ -996,16 +990,6 @@ eHalStatus sme_Open(tHalHandle hHal)
 #if defined WLAN_FEATURE_P2P
       sme_p2pOpen(pMac);
 #endif
-#ifdef FEATURE_WLAN_TDLS
-      status = csrTdlsOpen(pMac) ;
-      if ( ! HAL_STATUS_SUCCESS( status ) )
-      {
-          smsLog( pMac, LOGE, "Tdlspen open failed during initialization with \
-                  status=%d\n", status );
-          break;
-      }
-#endif
-
 
    }while (0);
 
@@ -1019,7 +1003,7 @@ eHalStatus sme_Open(tHalHandle hHal)
    and there power using information from nvRAM
    This function is called only for AP.
 
-  This is a synchronuous call
+  This is a synchronous call
 
   \param hHal - The handle returned by macOpen.
   \Param pSmeConfigParams - a pointer to a caller allocated object of
@@ -1054,7 +1038,7 @@ eHalStatus sme_set11dinfo(tHalHandle hHal,  tpSmeConfigParams pSmeConfigParams)
 
   \brief sme_getSoftApDomain() - Get the current regulatory domain of softAp.
 
-  This is a synchronuous call
+  This is a synchronous call
 
   \param hHal - The handle returned by HostapdAdapter.
   \Param v_REGDOMAIN_t - The current Regulatory Domain requested for SoftAp.
@@ -1109,7 +1093,7 @@ eHalStatus sme_setRegInfo(tHalHandle hHal,  tANI_U8 *apCntryCode)
   It is used at driver start up to inform RIVA of the default channel 
   configuration. 
 
-  This is a synchronuous call
+  This is a synchronous call
 
   \param hHal - The handle returned by macOpen.
   
@@ -1138,7 +1122,7 @@ eHalStatus sme_UpdateChannelConfig(tHalHandle hHal)
 
   Modules inside SME apply the new configuration at the next transaction.
 
-  This is a synchronuous call
+  This is a synchronous call
 
   \param hHal - The handle returned by macOpen.
   \Param pSmeConfigParams - a pointer to a caller allocated object of
@@ -1186,11 +1170,6 @@ eHalStatus sme_UpdateConfig(tHalHandle hHal, tpSmeConfigParams pSmeConfigParams)
    //For SOC, CFG is set before start
    //We don't want to apply global CFG in connect state because that may cause some side affect
    if(
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-      //For the new init sequence, CFGs need to apply before vos_start is call
-      //No need to wait for ready state.
-      SME_IS_READY(pMac) && 
-#endif
       csrIsAllSessionDisconnected( pMac) )
    {
        csrSetGlobalCfgs(pMac);
@@ -1209,7 +1188,7 @@ eHalStatus sme_UpdateConfig(tHalHandle hHal, tpSmeConfigParams pSmeConfigParams)
     API provides info regarding 11d only at reset but we can extend this for
     other params (PMC, QoS) which needs to be initialized again at reset.
 
-    This is a synchronuous call
+    This is a synchronous call
 
     \param hHal - The handle returned by macOpen.
 
@@ -1252,7 +1231,7 @@ eHalStatus sme_ChangeConfigParams(tHalHandle hHal,
   The function is called by HDD at the end of initialization stage so PE/HAL can
   enable the NIC to running state.
 
-  This is a synchronuous call
+  This is a synchronous call
   \param hHal - The handle returned by macOpen.
 
   \return eHAL_STATUS_SUCCESS - eWNI_SME_SYS_READY_IND is sent to PE
@@ -1273,9 +1252,6 @@ eHalStatus sme_HDDReadyInd(tHalHandle hHal)
 
    do
    {
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-      csrSetGlobalCfgs( pMac );
-#endif
 
       Msg.messageType = eWNI_SME_SYS_READY_IND;
       Msg.length      = sizeof( tSirSmeReadyReq );
@@ -1345,7 +1321,7 @@ eHalStatus sme_HDDReadyInd(tHalHandle hHal)
 
   The function starts each module in SME, PMC, CCM, CSR, etc. . Upon
   successfully return, all modules are ready to run.
-  This is a synchronuous call
+  This is a synchronous call
   \param hHal - The handle returned by macOpen.
 
   \return eHAL_STATUS_SUCCESS - SME is ready.
@@ -1361,9 +1337,6 @@ eHalStatus sme_Start(tHalHandle hHal)
 
    do
    {
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC 
-      ccmStart(hHal);
-#endif
       status = csrStart(pMac);
       if ( ! HAL_STATUS_SUCCESS( status ) ) {
          smsLog( pMac, LOGE, "csrStart failed during smeStart with status=%d\n",
@@ -1448,7 +1421,7 @@ eHalStatus sme_PCFilterMatchCountResponseHandler(tHalHandle hHal, void* pMsg)
   The function is called by a message dispatcher when to process a message
   targeted for SME.
 
-  This is a synchronuous call
+  This is a synchronous call
   \param hHal - The handle returned by macOpen.
   \param pMsg - A pointer to a caller allocated object of tSirMsgQ.
 
@@ -1724,6 +1697,8 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
           case eWNI_SME_TDLS_ADD_STA_RSP:    
           case eWNI_SME_TDLS_DEL_STA_RSP:
           case eWNI_SME_TDLS_DEL_STA_IND:
+          case eWNI_SME_TDLS_DEL_ALL_PEER_IND:
+          case eWNI_SME_MGMT_FRM_TX_COMPLETION_IND:
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
           case eWNI_SME_TDLS_DISCOVERY_START_RSP:
           case eWNI_SME_TDLS_DISCOVERY_START_IND:
@@ -1821,7 +1796,7 @@ v_VOID_t sme_FreeMsg( tHalHandle hHal, vos_msg_t* pMsg )
   The function stops each module in SME, PMC, CCM, CSR, etc. . Upon
   return, all modules are at idle state ready to start.
 
-  This is a synchronuous call
+  This is a synchronous call
   \param hHal - The handle returned by macOpen
 
   \return eHAL_STATUS_SUCCESS - SME is stopped.
@@ -1887,7 +1862,7 @@ eHalStatus sme_Stop(tHalHandle hHal, tANI_BOOLEAN pmcFlag)
 
   No SME APIs can be involved after smeClose except smeOpen.
   smeClose must be called before macClose.
-  This is a synchronuous call
+  This is a synchronous call
   \param hHal - The handle returned by macOpen
 
   \return eHAL_STATUS_SUCCESS - SME is successfully close.
@@ -2013,7 +1988,7 @@ tANI_BOOLEAN csrIsScanAllowed(tpAniSirGlobal pMac)
 /* ---------------------------------------------------------------------------
     \fn sme_ScanRequest
     \brief a wrapper function to Request a 11d or full scan from CSR.
-    This is an asynchronuous call
+    This is an asynchronous call
     \param pScanRequestID - pointer to an object to get back the request ID
     \param callback - a callback function that scan calls upon finish, will not
                       be called if csrScanRequest returns error
@@ -2076,7 +2051,7 @@ eHalStatus sme_ScanRequest(tHalHandle hHal, tANI_U8 sessionId, tCsrScanRequest *
 /* ---------------------------------------------------------------------------
     \fn sme_ScanGetResult
     \brief a wrapper function to request scan results from CSR.
-    This is a synchronuous call
+    This is a synchronous call
     \param pFilter - If pFilter is NULL, all cached results are returned
     \param phResult - an object for the result.
     \return eHalStatus
@@ -2103,7 +2078,7 @@ eHalStatus sme_ScanGetResult(tHalHandle hHal, tANI_U8 sessionId, tCsrScanResultF
 /* ---------------------------------------------------------------------------
     \fn sme_ScanFlushResult
     \brief a wrapper function to request CSR to clear scan results.
-    This is a synchronuous call
+    This is a synchronous call
     \return eHalStatus
   ---------------------------------------------------------------------------*/
 eHalStatus sme_ScanFlushResult(tHalHandle hHal, tANI_U8 sessionId)
@@ -2140,7 +2115,7 @@ eHalStatus sme_ScanFlushP2PResult(tHalHandle hHal, tANI_U8 sessionId)
     \fn sme_ScanResultGetFirst
     \brief a wrapper function to request CSR to returns the first element of
            scan result.
-    This is a synchronuous call
+    This is a synchronous call
     \param hScanResult - returned from csrScanGetResult
     \return tCsrScanResultInfo * - NULL if no result
   ---------------------------------------------------------------------------*/
@@ -2167,7 +2142,7 @@ tCsrScanResultInfo *sme_ScanResultGetFirst(tHalHandle hHal,
     \brief a wrapper function to request CSR to returns the next element of
            scan result. It can be called without calling csrScanResultGetFirst
            first
-    This is a synchronuous call
+    This is a synchronous call
     \param hScanResult - returned from csrScanGetResult
     \return Null if no result or reach the end
   ---------------------------------------------------------------------------*/
@@ -2192,7 +2167,7 @@ tCsrScanResultInfo *sme_ScanResultGetNext(tHalHandle hHal,
 /* ---------------------------------------------------------------------------
     \fn sme_ScanSetBGScanparams
     \brief a wrapper function to request CSR to set BG scan params in PE
-    This is a synchronuous call
+    This is a synchronous call
     \param pScanReq - BG scan request structure
     \return eHalStatus
   ---------------------------------------------------------------------------*/
@@ -2219,7 +2194,7 @@ eHalStatus sme_ScanSetBGScanparams(tHalHandle hHal, tANI_U8 sessionId, tCsrBGSca
     \fn sme_ScanResultPurge
     \brief a wrapper function to request CSR to remove all items(tCsrScanResult)
            in the list and free memory for each item
-    This is a synchronuous call
+    This is a synchronous call
     \param hScanResult - returned from csrScanGetResult. hScanResult is
                          considered gone by
     calling this function and even before this function reutrns.
@@ -2243,7 +2218,7 @@ eHalStatus sme_ScanResultPurge(tHalHandle hHal, tScanResultHandle hScanResult)
 /* ---------------------------------------------------------------------------
     \fn sme_ScanGetPMKIDCandidateList
     \brief a wrapper function to return the PMKID candidate list
-    This is a synchronuous call
+    This is a synchronous call
     \param pPmkidList - caller allocated buffer point to an array of
                         tPmkidCandidateInfo
     \param pNumItems - pointer to a variable that has the number of
@@ -2323,7 +2298,7 @@ eCsrPhyMode sme_GetPhyMode(tHalHandle hHal)
 /* ---------------------------------------------------------------------------
     \fn sme_RoamConnect
     \brief a wrapper function to request CSR to inititiate an association
-    This is an asynchronuous call.
+    This is an asynchronous call.
     \param sessionId - the sessionId returned by sme_OpenSession.
     \param pProfile - description of the network to which to connect
     \param hBssListIn - a list of BSS descriptor to roam to. It is returned
@@ -2413,7 +2388,7 @@ eHalStatus sme_RoamReassoc(tHalHandle hHal, tANI_U8 sessionId, tCsrRoamProfile *
     \fn sme_RoamConnectToLastProfile
     \brief a wrapper function to request CSR to disconnect and reconnect with
            the same profile
-    This is an asynchronuous call.
+    This is an asynchronous call.
     \return eHalStatus. It returns fail if currently connected
   ---------------------------------------------------------------------------*/
 eHalStatus sme_RoamConnectToLastProfile(tHalHandle hHal, tANI_U8 sessionId)
@@ -2441,7 +2416,7 @@ eHalStatus sme_RoamConnectToLastProfile(tHalHandle hHal, tANI_U8 sessionId)
 /* ---------------------------------------------------------------------------
     \fn sme_RoamDisconnect
     \brief a wrapper function to request CSR to disconnect from a network
-    This is an asynchronuous call.
+    This is an asynchronous call.
     \param reason -- To indicate the reason for disconnecting. Currently, only
                      eCSR_DISCONNECT_REASON_MIC_ERROR is meanful.
     \return eHalStatus
@@ -2488,7 +2463,7 @@ eHalStatus sme_RoamStopBss(tHalHandle hHal, tANI_U8 sessionId)
    {
       if( CSR_IS_SESSION_VALID( pMac, sessionId ) )
       {
-         status = csrRoamIssueStopBssCmd( pMac, sessionId, eANI_BOOLEAN_TRUE );
+         status = csrRoamIssueStopBssCmd( pMac, sessionId, eANI_BOOLEAN_FALSE );
       }
       else
       {
@@ -2700,7 +2675,7 @@ eHalStatus sme_RoamGetWpsSessionOverlap(tHalHandle hHal, tANI_U8 sessionId,
     \fn sme_RoamGetConnectState
     \brief a wrapper function to request CSR to return the current connect state
            of Roaming
-    This is a synchronuous call.
+    This is a synchronous call.
     \return eHalStatus
   ---------------------------------------------------------------------------*/
 eHalStatus sme_RoamGetConnectState(tHalHandle hHal, tANI_U8 sessionId, eCsrConnectState *pState)
@@ -2730,7 +2705,7 @@ eHalStatus sme_RoamGetConnectState(tHalHandle hHal, tANI_U8 sessionId, eCsrConne
     \brief a wrapper function to request CSR to return the current connect
            profile. Caller must call csrRoamFreeConnectProfile after it is done
            and before reuse for another csrRoamGetConnectProfile call.
-    This is a synchronuous call.
+    This is a synchronous call.
     \param pProfile - pointer to a caller allocated structure
                       tCsrRoamConnectedProfile
     \return eHalStatus. Failure if not connected
@@ -2762,7 +2737,7 @@ eHalStatus sme_RoamGetConnectProfile(tHalHandle hHal, tANI_U8 sessionId,
     \fn sme_RoamFreeConnectProfile
     \brief a wrapper function to request CSR to free and reinitialize the
            profile returned previously by csrRoamGetConnectProfile.
-    This is a synchronuous call.
+    This is a synchronous call.
     \param pProfile - pointer to a caller allocated structure
                       tCsrRoamConnectedProfile
     \return eHalStatus.
@@ -2786,7 +2761,7 @@ eHalStatus sme_RoamFreeConnectProfile(tHalHandle hHal,
 /* ---------------------------------------------------------------------------
     \fn sme_RoamSetPMKIDCache
     \brief a wrapper function to request CSR to return the PMKID candidate list
-    This is a synchronuous call.
+    This is a synchronous call.
     \param pPMKIDCache - caller allocated buffer point to an array of
                          tPmkidCacheInfo
     \param numItems - a variable that has the number of tPmkidCacheInfo
@@ -2825,7 +2800,7 @@ eHalStatus sme_RoamSetPMKIDCache( tHalHandle hHal, tANI_U8 sessionId, tPmkidCach
     \fn sme_RoamGetSecurityReqIE
     \brief a wrapper function to request CSR to return the WPA or RSN or WAPI IE CSR
            passes to PE to JOIN request or START_BSS request
-    This is a synchronuous call.
+    This is a synchronous call.
     \param pLen - caller allocated memory that has the length of pBuf as input.
                   Upon returned, *pLen has the needed or IE length in pBuf.
     \param pBuf - Caller allocated memory that contain the IE field, if any,
@@ -2861,7 +2836,7 @@ eHalStatus sme_RoamGetSecurityReqIE(tHalHandle hHal, tANI_U8 sessionId, tANI_U32
     \fn sme_RoamGetSecurityRspIE
     \brief a wrapper function to request CSR to return the WPA or RSN or WAPI IE from
            the beacon or probe rsp if connected
-    This is a synchronuous call.
+    This is a synchronous call.
     \param pLen - caller allocated memory that has the length of pBuf as input.
                   Upon returned, *pLen has the needed or IE length in pBuf.
     \param pBuf - Caller allocated memory that contain the IE field, if any,
@@ -2899,7 +2874,7 @@ eHalStatus sme_RoamGetSecurityRspIE(tHalHandle hHal, tANI_U8 sessionId, tANI_U32
     \fn sme_RoamGetNumPMKIDCache
     \brief a wrapper function to request CSR to return number of PMKID cache
            entries
-    This is a synchronuous call.
+    This is a synchronous call.
     \return tANI_U32 - the number of PMKID cache entries
   ---------------------------------------------------------------------------*/
 tANI_U32 sme_RoamGetNumPMKIDCache(tHalHandle hHal, tANI_U8 sessionId)
@@ -2929,7 +2904,7 @@ tANI_U32 sme_RoamGetNumPMKIDCache(tHalHandle hHal, tANI_U8 sessionId)
 /* ---------------------------------------------------------------------------
     \fn sme_RoamGetPMKIDCache
     \brief a wrapper function to request CSR to return PMKID cache from CSR
-    This is a synchronuous call.
+    This is a synchronous call.
     \param pNum - caller allocated memory that has the space of the number of
                   pBuf tPmkidCacheInfo as input. Upon returned, *pNum has the
                   needed or actually number in tPmkidCacheInfo.
@@ -2966,7 +2941,7 @@ eHalStatus sme_RoamGetPMKIDCache(tHalHandle hHal, tANI_U8 sessionId, tANI_U32 *p
     \fn sme_GetConfigParam
     \brief a wrapper function that HDD calls to get the global settings
            currently maintained by CSR.
-    This is a synchronuous call.
+    This is a synchronous call.
     \param pParam - caller allocated memory
     \return eHalStatus
   ---------------------------------------------------------------------------*/
@@ -3003,7 +2978,7 @@ eHalStatus sme_GetConfigParam(tHalHandle hHal, tSmeConfigParams *pParam)
 /* ---------------------------------------------------------------------------
     \fn sme_CfgSetInt
     \brief a wrapper function that HDD calls to set parameters in CFG.
-    This is a synchronuous call.
+    This is a synchronous call.
     \param cfgId - Configuration Parameter ID (type) for STA.
     \param ccmValue - The information related to Configuration Parameter ID
                       which needs to be saved in CFG
@@ -3022,7 +2997,7 @@ eHalStatus sme_CfgSetInt(tHalHandle hHal, tANI_U32 cfgId, tANI_U32 ccmValue,
 /* ---------------------------------------------------------------------------
     \fn sme_CfgSetStr
     \brief a wrapper function that HDD calls to set parameters in CFG.
-    This is a synchronuous call.
+    This is a synchronous call.
     \param cfgId - Configuration Parameter ID (type) for STA.
     \param pStr - Pointer to the byte array which carries the information needs
                   to be saved in CFG
@@ -4371,26 +4346,14 @@ VOS_STATUS sme_DbgReadRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t *pRegVa
 {
    VOS_STATUS   status = VOS_STATUS_E_FAILURE;
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-   tHddHandle     hHdd = pMac->hHdd;
-#endif
    tPmcPowerState PowerState;
    tANI_U32  sessionId = 0;
-   tANI_U32 cmd  = READ_REG_DUMP_CMD;
-   tANI_U32 arg1 = regAddr;
-   tANI_U32 arg2 = 0;
-   tANI_U32 arg3 = 0;
-   tANI_U32 arg4 = 0;
 
    /* 1) To make Quarky work in FTM mode **************************************/
 
    if(eDRIVER_TYPE_MFG == pMac->gDriverType)
    {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-      if (HAL_STATUS_SUCCESS(palReadRegister(hHdd, regAddr, pRegValue)))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
-      if (VOS_STATUS_SUCCESS == WDA_HALDumpCmdReq(pMac, cmd, arg1, arg2, arg3, arg4, (tANI_U8 *)pRegValue))
-#endif
+      if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgReadRegister(regAddr, pRegValue))
       {
          return VOS_STATUS_SUCCESS;
       }
@@ -4410,11 +4373,7 @@ VOS_STATUS sme_DbgReadRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t *pRegVa
       /* Are we not in IMPS mode? Or are we in connected? Then we're safe*/
       if(!csrIsConnStateDisconnected(pMac, sessionId) || (ePMC_LOW_POWER != PowerState))
       {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-         if (HAL_STATUS_SUCCESS(palReadRegister(hHdd, regAddr, pRegValue )))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
-         if (VOS_STATUS_SUCCESS == WDA_HALDumpCmdReq(pMac, cmd, arg1, arg2, arg3, arg4, (tANI_U8 *)pRegValue))
-#endif
+         if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgReadRegister(regAddr, pRegValue))
          {
             status = VOS_STATUS_SUCCESS;
          }
@@ -4450,9 +4409,6 @@ VOS_STATUS sme_DbgWriteRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t regVal
 {
    VOS_STATUS    status = VOS_STATUS_E_FAILURE;
    tpAniSirGlobal  pMac = PMAC_STRUCT(hHal);
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-   tHddHandle      hHdd = pMac->hHdd;
-#endif
    tPmcPowerState PowerState;
    tANI_U32   sessionId = 0;
 
@@ -4460,11 +4416,7 @@ VOS_STATUS sme_DbgWriteRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t regVal
 
    if(eDRIVER_TYPE_MFG == pMac->gDriverType)
    {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-      if (HAL_STATUS_SUCCESS(palWriteRegister(hHdd, regAddr, regValue)))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
       if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgWriteRegister(regAddr, regValue))
-#endif
       {
          return VOS_STATUS_SUCCESS;
       }
@@ -4484,11 +4436,7 @@ VOS_STATUS sme_DbgWriteRegister(tHalHandle hHal, v_U32_t regAddr, v_U32_t regVal
       /* Are we not in IMPS mode? Or are we in connected? Then we're safe*/
       if(!csrIsConnStateDisconnected(pMac, sessionId) || (ePMC_LOW_POWER != PowerState))
       {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-         if (HAL_STATUS_SUCCESS(palWriteRegister(hHdd, regAddr, regValue)))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
          if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgWriteRegister(regAddr, regValue))
-#endif
          {
             status = VOS_STATUS_SUCCESS;
          }
@@ -4518,10 +4466,6 @@ VOS_STATUS sme_DbgReadMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_U
 {
    VOS_STATUS  status  = VOS_STATUS_E_FAILURE;
    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-   v_PVOID_t  pvosGCTx = vos_get_global_context(VOS_MODULE_ID_PE, (v_VOID_t *)hHal);
-   tHddHandle     hHdd = pMac->hHdd;
-#endif
    tPmcPowerState PowerState;
    tANI_U32 sessionId  = 0;
    tANI_U32 cmd = READ_MEMORY_DUMP_CMD;
@@ -4533,11 +4477,7 @@ VOS_STATUS sme_DbgReadMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_U
 
    if(eDRIVER_TYPE_MFG == pMac->gDriverType)
    {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-      if (HAL_STATUS_SUCCESS(palReadDeviceMemory(hHdd, memAddr, (void *)pBuf, nLen)))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
       if (VOS_STATUS_SUCCESS == WDA_HALDumpCmdReq(pMac, cmd, arg1, arg2, arg3, arg4, (tANI_U8*)pBuf))
-#endif
       {
          return VOS_STATUS_SUCCESS;
       }
@@ -4557,11 +4497,7 @@ VOS_STATUS sme_DbgReadMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_U
       /* Are we not in IMPS mode? Or are we in connected? Then we're safe*/
       if(!csrIsConnStateDisconnected(pMac, sessionId) || (ePMC_LOW_POWER != PowerState))
       {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-         if (HAL_STATUS_SUCCESS(palReadDeviceMemory(pvosGCTx, memAddr, (void *)pBuf, nLen)))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
          if (VOS_STATUS_SUCCESS == WDA_HALDumpCmdReq(pMac, cmd, arg1, arg2, arg3, arg4, (tANI_U8 *)pBuf))
-#endif
          {
             status = VOS_STATUS_SUCCESS;
          }
@@ -4598,9 +4534,6 @@ VOS_STATUS sme_DbgWriteMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_
 {
    VOS_STATUS    status = VOS_STATUS_E_FAILURE;
    tpAniSirGlobal  pMac = PMAC_STRUCT(hHal);
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-   tHddHandle      hHdd = pMac->hHdd;
-#endif
    tPmcPowerState PowerState;
    tANI_U32   sessionId = 0;
 
@@ -4608,11 +4541,6 @@ VOS_STATUS sme_DbgWriteMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_
 
    if(eDRIVER_TYPE_MFG == pMac->gDriverType)
    {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-      if (HAL_STATUS_SUCCESS(palWriteDeviceMemory(hHdd, memAddr, (void *)pBuf, nLen)))
-#elif defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-      if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgWriteMemory( memAddr, (void *)pBuf, nLen))
-#endif
       {
          return VOS_STATUS_SUCCESS;
       }
@@ -4632,11 +4560,7 @@ VOS_STATUS sme_DbgWriteMemory(tHalHandle hHal, v_U32_t memAddr, v_U8_t *pBuf, v_
       /* Are we not in IMPS mode? Or are we in connected? Then we're safe*/
       if(!csrIsConnStateDisconnected(pMac, sessionId) || (ePMC_LOW_POWER != PowerState))
       {
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-         if (HAL_STATUS_SUCCESS(palWriteDeviceMemory(hHdd, memAddr, (void *)pBuf, nLen)))
-#elif defined(FEATURE_WLAN_INTEGRATED_SOC)
          if (eWLAN_PAL_STATUS_SUCCESS == wpalDbgWriteMemory(memAddr, (void *)pBuf, nLen))
-#endif
          {
             status = VOS_STATUS_SUCCESS;
          }
@@ -4676,37 +4600,7 @@ void smsLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString,...)
     }
 #endif
 }
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC  
-/* ---------------------------------------------------------------------------
-    \fn sme_GetFwVersion
-    \brief  This API returns the firmware version.
-    \param  hHal - The handle returned by macOpen.
-    \param  version - Points to the FwVersionInfo structure.
-    \return VOS_STATUS
-            VOS_STATUS_E_INVAL - failure
-            VOS_STATUS_SUCCESS  success
-  ---------------------------------------------------------------------------*/
-VOS_STATUS sme_GetFwVersion (tHalHandle hHal,FwVersionInfo *pVersion)
-{
-    VOS_STATUS status = VOS_STATUS_SUCCESS;
-    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
 
-    if ( eHAL_STATUS_SUCCESS == sme_AcquireGlobalLock( &pMac->sme ) )
-    {
-        if( pVersion != NULL ) {
-            vos_mem_copy((v_VOID_t*)pVersion,(v_VOID_t*)&pMac->hal.FwParam.fwVersion, sizeof(FwVersionInfo));
-        }
-        else {
-            status = VOS_STATUS_E_INVAL;
-        }
-        sme_ReleaseGlobalLock( &pMac->sme );
-    }
-
-    return (status);
-}
-#endif
-
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /* ---------------------------------------------------------------------------
     \fn sme_GetWcnssWlanCompiledVersion
     \brief  This API returns the version of the WCNSS WLAN API with
@@ -4845,7 +4739,7 @@ VOS_STATUS sme_GetWcnssHardwareVersion(tHalHandle hHal,
 
     return (status);
 }
-#endif
+
 
 #ifdef FEATURE_WLAN_WAPI
 /* ---------------------------------------------------------------------------
@@ -5417,14 +5311,14 @@ eHalStatus sme_SetRSSIFilter(tHalHandle hHal, v_U8_t rssiThreshold)
 
 #endif // FEATURE_WLAN_SCAN_PNO
 
-eHalStatus sme_SetPowerParams(tHalHandle hHal, tSirSetPowerParamsReq* pwParams)
+eHalStatus sme_SetPowerParams(tHalHandle hHal, tSirSetPowerParamsReq* pwParams, tANI_BOOLEAN forced)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     eHalStatus status;
 
     if ( eHAL_STATUS_SUCCESS == ( status = sme_AcquireGlobalLock( &pMac->sme ) ) )
     {
-        pmcSetPowerParams(hHal, pwParams);
+        pmcSetPowerParams(hHal, pwParams, forced);
         sme_ReleaseGlobalLock( &pMac->sme );
     }
 
@@ -5819,7 +5713,6 @@ eHalStatus sme_ConfigureRxpFilter( tHalHandle hHal,
     return(status);
 }
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /* ---------------------------------------------------------------------------
 
   \fn    sme_ConfigureSuspendInd
@@ -5904,7 +5797,6 @@ eHalStatus sme_ConfigureResumeReq( tHalHandle hHal,
     return(status);
 }
 
-#endif
 /* ---------------------------------------------------------------------------
 
     \fn sme_GetInfraSessionId
@@ -6245,12 +6137,11 @@ eHalStatus sme_HandleChangeCountryCode(tpAniSirGlobal pMac,  void *pMsgBuf)
 }
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
-eHalStatus sme_8023MulticastList (tHalHandle hHal, tpSirRcvFltMcAddrList pMulticastAddrs)
+eHalStatus sme_8023MulticastList (tHalHandle hHal, tANI_U8 sessionId, tpSirRcvFltMcAddrList pMulticastAddrs)
 {
     tpSirRcvFltMcAddrList   pRequestBuf;
     vos_msg_t               msg;
     tpAniSirGlobal          pMac = PMAC_STRUCT(hHal);
-    tANI_U8                 sessionId = 0;
     tCsrRoamSession         *pSession = NULL;
 
     VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s: "
@@ -6260,15 +6151,12 @@ eHalStatus sme_8023MulticastList (tHalHandle hHal, tpSirRcvFltMcAddrList pMultic
 
     /*
      *Find the connected Infra / P2P_client connected session
-     */
-     for( sessionId = 0; sessionId < CSR_ROAM_SESSION_MAX; sessionId++ )
-     {
-         if( CSR_IS_SESSION_VALID( pMac, sessionId ) && 
-           ( csrIsConnStateInfra( pMac, sessionId )) )
-         {
-            pSession = CSR_GET_SESSION( pMac, sessionId );
-         }
-     }
+    */
+    if (CSR_IS_SESSION_VALID(pMac, sessionId) &&
+        csrIsConnStateInfra(pMac, sessionId))
+    {
+        pSession = CSR_GET_SESSION( pMac, sessionId );
+    }
 
     if(pSession == NULL )
     {
@@ -6276,7 +6164,7 @@ eHalStatus sme_8023MulticastList (tHalHandle hHal, tpSirRcvFltMcAddrList pMultic
             "the right session", __func__);
         return eHAL_STATUS_FAILURE;
     }
-    
+
     pRequestBuf = vos_mem_malloc(sizeof(tSirRcvFltMcAddrList));
     if (NULL == pRequestBuf)
     {
@@ -6284,7 +6172,7 @@ eHalStatus sme_8023MulticastList (tHalHandle hHal, tpSirRcvFltMcAddrList pMultic
             "allocate memory for 8023 Multicast List request", __func__);
         return eHAL_STATUS_FAILED_ALLOC;
     }
-    
+
     if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Ignoring the "
@@ -6292,6 +6180,7 @@ eHalStatus sme_8023MulticastList (tHalHandle hHal, tpSirRcvFltMcAddrList pMultic
         vos_mem_free(pRequestBuf);
         return eHAL_STATUS_FAILURE;
     }
+
     vos_mem_copy(pRequestBuf, pMulticastAddrs, sizeof(tSirRcvFltMcAddrList));
 
     vos_mem_copy(pRequestBuf->selfMacAddr, pSession->selfMacAddr, sizeof(tSirMacAddr));
@@ -6340,14 +6229,6 @@ eHalStatus sme_ReceiveFilterSetFilter(tHalHandle hHal, tpSirRcvPktFilterCfgType 
     if( NULL == pSession )
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Session Not found ", __func__);
-        vos_mem_free(pRequestBuf);
-        return eHAL_STATUS_FAILURE;
-    }
-
-    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Ignoring the "
-                       "indication as we are not connected", __func__);
         vos_mem_free(pRequestBuf);
         return eHAL_STATUS_FAILURE;
     }
@@ -6458,14 +6339,6 @@ eHalStatus sme_ReceiveFilterClearFilter(tHalHandle hHal, tpSirRcvFltPktClearPara
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
             "%s: Session Not find ", __func__);
-        vos_mem_free(pRequestBuf);
-        return eHAL_STATUS_FAILURE;
-    }
-
-    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Ignoring the "
-                       "indication as we are not connected", __func__);
         vos_mem_free(pRequestBuf);
         return eHAL_STATUS_FAILURE;
     }
@@ -6933,8 +6806,20 @@ void sme_ResetPowerValuesFor5G (tHalHandle hHal)
 eHalStatus sme_UpdateRoamPrefer5GHz(tHalHandle hHal, v_BOOL_t nRoamPrefer5GHz)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    pMac->roam.configParam.nRoamPrefer5GHz = nRoamPrefer5GHz;
-    return(eHAL_STATUS_SUCCESS);
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                     "%s: gRoamPrefer5GHz is changed from %d to %d", __func__,
+                      pMac->roam.configParam.nRoamPrefer5GHz,
+                      nRoamPrefer5GHz);
+        pMac->roam.configParam.nRoamPrefer5GHz = nRoamPrefer5GHz;
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
 }
 
 /* ---------------------------------------------------------------------------
@@ -6952,15 +6837,60 @@ eHalStatus sme_UpdateRoamPrefer5GHz(tHalHandle hHal, v_BOOL_t nRoamPrefer5GHz)
 eHalStatus sme_UpdateImmediateRoamRssiDiff(tHalHandle hHal, v_U8_t nImmediateRoamRssiDiff)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    pMac->roam.configParam.nImmediateRoamRssiDiff = nImmediateRoamRssiDiff;
-    return(eHAL_STATUS_SUCCESS);
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                     "LFR runtime successfully set immediate roam rssi diff to %d - old value is %d - roam state is %d",
+                     nImmediateRoamRssiDiff,
+                     pMac->roam.configParam.nImmediateRoamRssiDiff,
+                     pMac->roam.neighborRoamInfo.neighborRoamState);
+        pMac->roam.configParam.nImmediateRoamRssiDiff = nImmediateRoamRssiDiff;
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_UpdateRoamRssiDiff
+    \brief  Update RoamRssiDiff
+            This function is called through dynamic setConfig callback function
+            to configure RoamRssiDiff
+            Usage: adb shell iwpriv wlan0 setConfig RoamRssiDiff=[0 .. 125]
+    \param  hHal - HAL handle for device
+    \param  RoamRssiDiff - minimum rssi difference between potential
+            candidate and current AP.
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+
+eHalStatus sme_UpdateRoamRssiDiff(tHalHandle hHal, v_U8_t RoamRssiDiff)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                     "LFR runtime successfully set roam rssi diff to %d - old value is %d - roam state is %d",
+                     RoamRssiDiff,
+                     pMac->roam.configParam.RoamRssiDiff,
+                     pMac->roam.neighborRoamInfo.neighborRoamState);
+        pMac->roam.configParam.RoamRssiDiff = RoamRssiDiff;
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
 }
 
 /*--------------------------------------------------------------------------
   \brief sme_UpdateFastTransitionEnabled() - enable/disable Fast Transition support at runtime
   It is used at in the REG_DYNAMIC_VARIABLE macro definition of 
   isFastTransitionEnabled.
-  This is a synchronuous call
+  This is a synchronous call
   \param hHal - The handle returned by macOpen.
   \return eHAL_STATUS_SUCCESS - SME update isFastTransitionEnabled config successfully.
           Other status means SME is failed to update isFastTransitionEnabled.
@@ -6970,9 +6900,20 @@ eHalStatus sme_UpdateFastTransitionEnabled(tHalHandle hHal,
         v_BOOL_t isFastTransitionEnabled)
 {
   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
 
-  pMac->roam.configParam.isFastTransitionEnabled = isFastTransitionEnabled;
-  return eHAL_STATUS_SUCCESS;
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                     "%s: FastTransitionEnabled is changed from %d to %d", __func__,
+                      pMac->roam.configParam.isFastTransitionEnabled,
+                      isFastTransitionEnabled);
+        pMac->roam.configParam.isFastTransitionEnabled = isFastTransitionEnabled;
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
 }
 #endif /* (WLAN_FEATURE_VOWIFI_11R) || (FEATURE_WLAN_CCX) || (FEATURE_WLAN_LFR) */
 
@@ -6981,7 +6922,7 @@ eHalStatus sme_UpdateFastTransitionEnabled(tHalHandle hHal,
   \brief sme_UpdateIsFastRoamIniFeatureEnabled() - enable/disable LFR support at runtime
   It is used at in the REG_DYNAMIC_VARIABLE macro definition of 
   isFastRoamIniFeatureEnabled.
-  This is a synchronuous call
+  This is a synchronous call
   \param hHal - The handle returned by macOpen.
   \return eHAL_STATUS_SUCCESS - SME update isFastRoamIniFeatureEnabled config successfully.
           Other status means SME is failed to update isFastRoamIniFeatureEnabled.
@@ -6992,24 +6933,26 @@ eHalStatus sme_UpdateIsFastRoamIniFeatureEnabled(tHalHandle hHal,
 {
   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
 
+  VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                     "%s: FastRoamEnabled is changed from %d to %d", __func__,
+                      pMac->roam.configParam.isFastRoamIniFeatureEnabled,
+                      isFastRoamIniFeatureEnabled);
   pMac->roam.configParam.isFastRoamIniFeatureEnabled = isFastRoamIniFeatureEnabled;
 
   if(TRUE == isFastRoamIniFeatureEnabled)
   {
-      sme_UpdateFastTransitionEnabled(hHal, TRUE);
       sme_UpdateConfigFwRssiMonitoring(hHal, TRUE);
   }
   else
   {
-      /* CCX also depend on FW Monitoring/FastTransition.
-         Hence Disabling LFR should check for CCX enable before disabling FW Monitoring and Fast Transition */
+      /* CCX also depend on FW Monitoring.
+         Hence Disabling LFR should check for CCX enable before disabling FW Monitoring */
 #ifdef FEATURE_WLAN_CCX
       if(FALSE == pMac->roam.configParam.isCcxIniFeatureEnabled)
 #endif
       {
           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                     "%s: Turn off FW Monitoring/Fast Transition", __func__);
-          sme_UpdateFastTransitionEnabled(hHal, FALSE);
+                     "%s: Turn off FW Monitoring", __func__);
           sme_UpdateConfigFwRssiMonitoring(hHal, FALSE);
       }
   }
@@ -7023,7 +6966,7 @@ eHalStatus sme_UpdateIsFastRoamIniFeatureEnabled(tHalHandle hHal,
   \brief sme_UpdateIsCcxFeatureEnabled() - enable/disable CCX support at runtime
   It is used at in the REG_DYNAMIC_VARIABLE macro definition of
   isCcxIniFeatureEnabled.
-  This is a synchronuous call
+  This is a synchronous call
   \param hHal - The handle returned by macOpen.
   \return eHAL_STATUS_SUCCESS - SME update isCcxIniFeatureEnabled config successfully.
           Other status means SME is failed to update isCcxIniFeatureEnabled.
@@ -7035,6 +6978,10 @@ eHalStatus sme_UpdateIsCcxFeatureEnabled(tHalHandle hHal,
 {
   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
 
+  VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                     "%s: CcxEnabled is changed from %d to %d", __func__,
+                      pMac->roam.configParam.isCcxIniFeatureEnabled,
+                      isCcxIniFeatureEnabled);
   pMac->roam.configParam.isCcxIniFeatureEnabled = isCcxIniFeatureEnabled;
 
   if(TRUE == isCcxIniFeatureEnabled)
@@ -7044,7 +6991,7 @@ eHalStatus sme_UpdateIsCcxFeatureEnabled(tHalHandle hHal,
   }
   else
   {
-      /* LFR also depend on FW Monitoring/FastTransition.
+      /* LFR also depend on FW Monitoring.
          Hence Disabling CCX should check for LFR enable before disabling FW Monitoring and Fast Transition */
 #ifdef FEATURE_WLAN_LFR
       if(FALSE == pMac->roam.configParam.isFastRoamIniFeatureEnabled)
@@ -7064,7 +7011,7 @@ eHalStatus sme_UpdateIsCcxFeatureEnabled(tHalHandle hHal,
   \brief sme_UpdateConfigFwRssiMonitoring() - enable/disable firmware RSSI Monitoring at runtime
   It is used at in the REG_DYNAMIC_VARIABLE macro definition of
   fEnableFwRssiMonitoring.
-  This is a synchronuous call
+  This is a synchronous call
   \param hHal - The handle returned by macOpen.
   \return eHAL_STATUS_SUCCESS - SME update fEnableFwRssiMonitoring. config successfully.
           Other status means SME is failed to update fEnableFwRssiMonitoring.
@@ -7076,7 +7023,6 @@ eHalStatus sme_UpdateConfigFwRssiMonitoring(tHalHandle hHal,
 {
     eHalStatus halStatus = eHAL_STATUS_SUCCESS;
 
-
     if (ccmCfgSetInt(hHal, WNI_CFG_PS_ENABLE_RSSI_MONITOR, fEnableFwRssiMonitoring,
                     NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
     {
@@ -7086,6 +7032,355 @@ eHalStatus sme_UpdateConfigFwRssiMonitoring(tHalHandle hHal,
     }
 
     return (halStatus);
+}
+
+/*--------------------------------------------------------------------------
+  \brief sme_setNeighborLookupRssiThreshold() - update neighbor lookup rssi threshold
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_setNeighborLookupRssiThreshold(tHalHandle hHal,
+               v_U8_t neighborLookupRssiThreshold)
+{
+    tpAniSirGlobal pMac    = PMAC_STRUCT( hHal );
+    eHalStatus     status  = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        status = csrNeighborRoamSetLookupRssiThreshold(pMac, neighborLookupRssiThreshold);
+        if (HAL_STATUS_SUCCESS(status))
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                     "LFR runtime successfully set Lookup threshold to %d - old value is %d - roam state is %d",
+                     neighborLookupRssiThreshold,
+                     pMac->roam.configParam.neighborRoamConfig.nNeighborLookupRssiThreshold,
+                     pMac->roam.neighborRoamInfo.neighborRoamState);
+            pMac->roam.configParam.neighborRoamConfig.nNeighborLookupRssiThreshold =
+                                            neighborLookupRssiThreshold;
+        }
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status;
+}
+
+/*--------------------------------------------------------------------------
+  \brief sme_setNeighborReassocRssiThreshold() - update neighbor reassoc rssi threshold
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_setNeighborReassocRssiThreshold(tHalHandle hHal,
+        v_U8_t neighborReassocRssiThreshold)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                     "LFR runtime successfully set Reassoc threshold to %d - old value is %d - roam state is %d",
+                     neighborReassocRssiThreshold,
+                     pMac->roam.configParam.neighborRoamConfig.nNeighborReassocRssiThreshold,
+                     pMac->roam.neighborRoamInfo.neighborRoamState);
+        pMac->roam.configParam.neighborRoamConfig.nNeighborReassocRssiThreshold =
+                                      neighborReassocRssiThreshold;
+        pMac->roam.neighborRoamInfo.cfgParams.neighborReassocThreshold =
+                                      neighborReassocRssiThreshold;
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+}
+
+
+/*--------------------------------------------------------------------------
+  \brief sme_getNeighborLookupRssiThreshold() - get neighbor lookup rssi threshold
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+v_U8_t sme_getNeighborLookupRssiThreshold(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    return pMac->roam.configParam.neighborRoamConfig.nNeighborLookupRssiThreshold;
+}
+
+/*--------------------------------------------------------------------------
+  \brief sme_setNeighborScanRefreshPeriod() - set neighbor scan results refresh period
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_setNeighborScanRefreshPeriod(tHalHandle hHal,
+                 v_U16_t neighborScanResultsRefreshPeriod)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                     "LFR runtime successfully set roam scan refresh period to %d - old value is %d - roam state is %d",
+                     neighborScanResultsRefreshPeriod,
+                     pMac->roam.configParam.neighborRoamConfig.nNeighborResultsRefreshPeriod,
+                     pMac->roam.neighborRoamInfo.neighborRoamState);
+        pMac->roam.configParam.neighborRoamConfig.nNeighborResultsRefreshPeriod =
+                                  neighborScanResultsRefreshPeriod;
+        pMac->roam.neighborRoamInfo.cfgParams.neighborResultsRefreshPeriod =
+                                  neighborScanResultsRefreshPeriod;
+
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+}
+
+/*--------------------------------------------------------------------------
+  \brief sme_getNeighborScanRefreshPeriod() - get neighbor scan results refresh period
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return v_U16_t - Neighbor scan results refresh period value
+  \sa
+  --------------------------------------------------------------------------*/
+v_U16_t sme_getNeighborScanRefreshPeriod(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    return pMac->roam.configParam.neighborRoamConfig.nNeighborResultsRefreshPeriod;
+}
+
+/*--------------------------------------------------------------------------
+  \brief sme_getEmptyScanRefreshPeriod() - get empty scan refresh period
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+v_U16_t sme_getEmptyScanRefreshPeriod(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    return pMac->roam.configParam.neighborRoamConfig.nEmptyScanRefreshPeriod;
+}
+
+#if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+/*--------------------------------------------------------------------------
+  \brief sme_getRoamRssiDiff() - get Roam rssi diff
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return v_U16_t - Rssi diff value
+  \sa
+  --------------------------------------------------------------------------*/
+v_U8_t sme_getRoamRssiDiff(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    return pMac->roam.configParam.RoamRssiDiff;
+}
+
+/*--------------------------------------------------------------------------
+  \brief sme_ChangeRoamScanChannelList() - Change roam scan channel list
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_ChangeRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
+                                         tANI_U8 numChannels)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    tANI_U8 oldChannelList[128] = {0};
+    tANI_U8 newChannelList[128] = {0};
+    tANI_U8 i = 0, j = 0;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        if (NULL != pNeighborRoamInfo->cfgParams.channelInfo.ChannelList)
+        {
+            for (i = 0; i < pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels; i++)
+            {
+                j += snprintf(oldChannelList + j, sizeof(oldChannelList) - j," %d",
+                pNeighborRoamInfo->cfgParams.channelInfo.ChannelList[i]);
+            }
+        }
+        csrFlushAndCreateBgScanRoamChannelList(pMac, pChannelList, numChannels);
+        status = csrUpdateBgScanConfigIniChannelList(pMac, csrGetCurrentBand(hHal));
+
+        if (NULL != pNeighborRoamInfo->cfgParams.channelInfo.ChannelList)
+        {
+            j = 0;
+            for (i = 0; i < pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels; i++)
+            {
+                j += snprintf(newChannelList + j, sizeof(newChannelList) - j," %d",
+                pNeighborRoamInfo->cfgParams.channelInfo.ChannelList[i]);
+            }
+        }
+
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                     "LFR runtime successfully set roam scan channels to %s - old value is %s - roam state is %d",
+                     newChannelList, oldChannelList,
+                     pMac->roam.neighborRoamInfo.neighborRoamState);
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+}
+
+/*--------------------------------------------------------------------------
+  \brief sme_ChangeCountryValidChannelListByRevision() - Change Korea valid channel list
+  based on country revision number
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_ChangeCountryValidChannelListByRevision(tHalHandle hHal,
+                                         tANI_U8 Revision)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                     "LFR runtime successfully set country/revision to %s/%d - old value is %s/%d - roam state is %d",
+                     "KR", Revision, "KR",
+                     pMac->roam.neighborRoamInfo.cfgParams.countryChannelInfo.revision,
+                     pMac->roam.neighborRoamInfo.neighborRoamState);
+        csr_SetRevision(pMac, Revision);
+        csrInitCountryValidChannelList(pMac, Revision);
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+}
+
+
+/*--------------------------------------------------------------------------
+  \brief csrUpdateBgScanConfigIniChannelList() - Update bgscan roam cache
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_UpdateBgScanConfigIniChannelList(tHalHandle hHal,
+                                               eCsrBand eBand)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    return csrUpdateBgScanConfigIniChannelList(pMac, eBand);
+}
+
+/*--------------------------------------------------------------------------
+  \brief sme_getRoamScanChannelList() - get roam scan channel list
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_getRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
+                                         tANI_U8 *pNumChannels)
+{
+    int i  = 0;
+    tANI_U8 *pOutPtr = pChannelList;
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        if (NULL == pNeighborRoamInfo->cfgParams.channelInfo.ChannelList)
+        {
+            VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN,
+                     "Roam Scan channel list is NOT yet initialized");
+            sme_ReleaseGlobalLock( &pMac->sme );
+            return eHAL_STATUS_NOT_INITIALIZED;
+        }
+
+        *pNumChannels = pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels;
+        for (i = 0; i < (*pNumChannels); i++)
+        {
+            pOutPtr[i] = pNeighborRoamInfo->cfgParams.channelInfo.ChannelList[i];
+        }
+        pOutPtr[i] = '\0';
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+}
+
+/*--------------------------------------------------------------------------
+  \brief sme_GetCountryRevision() - get Country revision index
+  This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return eHAL_STATUS_SUCCESS - SME update config successful.
+          Other status means SME is failed to update
+  \sa
+  --------------------------------------------------------------------------*/
+eHalStatus sme_GetCountryRevision(tHalHandle hHal, tANI_U8 *pRevision)
+{
+    /* this is valid for Country KR only now */
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    *pRevision = pNeighborRoamInfo->cfgParams.countryChannelInfo.revision;
+
+    return status;
+}
+
+#endif
+
+/* ---------------------------------------------------------------------------
+    \fn sme_UpdateEmptyScanRefreshPeriod
+    \brief  Update nEmptyScanRefreshPeriod
+            This function is called through dynamic setConfig callback function
+            to configure nEmptyScanRefreshPeriod
+            Usage: adb shell iwpriv wlan0 setConfig nEmptyScanRefreshPeriod=[0 .. 60]
+    \param  hHal - HAL handle for device
+    \param  nEmptyScanRefreshPeriod - scan period following empty scan results.
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+
+eHalStatus sme_UpdateEmptyScanRefreshPeriod(tHalHandle hHal, v_U16_t nEmptyScanRefreshPeriod)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                     "LFR runtime successfully set roam scan period to %d - old value is %d - roam state is %d",
+                     nEmptyScanRefreshPeriod,
+                     pMac->roam.configParam.neighborRoamConfig.nEmptyScanRefreshPeriod,
+                     pMac->roam.neighborRoamInfo.neighborRoamState);
+        pMac->roam.configParam.neighborRoamConfig.nEmptyScanRefreshPeriod = nEmptyScanRefreshPeriod;
+        pMac->roam.neighborRoamInfo.cfgParams.emptyScanRefreshPeriod = nEmptyScanRefreshPeriod;
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+
 }
 
 

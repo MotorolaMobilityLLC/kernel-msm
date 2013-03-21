@@ -56,10 +56,6 @@
 #include "wniCfgAp.h"
 #include "cfgApi.h"
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halDataStruct.h"
-#include "halCommonApi.h"
-#endif
 
 #include "schApi.h"
 #include "pmmApi.h"
@@ -446,6 +442,11 @@ limTearDownLinkWithAp(tpAniSirGlobal pMac, tANI_U8 sessionId, tSirMacReasonCodes
     if (pStaDs != NULL)
     {
         tLimMlmDeauthInd  mlmDeauthInd;
+
+#ifdef FEATURE_WLAN_TDLS
+        /* Delete all TDLS peers connected before leaving BSS*/
+        limDeleteTDLSPeers(pMac, psessionEntry);
+#endif
 
         pStaDs->mlmStaContext.disassocReason = reasonCode;
         pStaDs->mlmStaContext.cleanupTrigger = eLIM_LINK_MONITORING_DEAUTH;

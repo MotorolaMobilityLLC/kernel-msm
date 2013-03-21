@@ -39,8 +39,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * */
 #if !defined( PALTYPES_H__ )
 #define PALTYPES_H__
 
@@ -99,35 +97,23 @@
 //
 #if defined(ANI_BUS_TYPE_PCI)
 
-#if defined( ANI_BUS_TYPE_PCIe ) || defined( ANI_BUS_TYPE_USB ) || defined(ANI_BUS_TYPE_SDIO) || defined( ANI_BUS_TYPE_PLATFORM )
+#if defined( ANI_BUS_TYPE_PCIe ) || defined( ANI_BUS_TYPE_PLATFORM )
 #error "more than one ANI_BUS_TYPE_xxx is defined for this build"
 #endif //
 
 #elif defined( ANI_BUS_TYPE_PCIe )
 
-#if defined( ANI_BUS_TYPE_PCI ) || defined( ANI_BUS_TYPE_USB ) || defined(ANI_BUS_TYPE_SDIO) || defined( ANI_BUS_TYPE_PLATFORM )
-#error "more than one ANI_BUS_TYPE_xxx is defined for this build"
-#endif
-
-#elif defined( ANI_BUS_TYPE_USB )
-
-#if defined( ANI_BUS_TYPE_PCIe ) || defined( ANI_BUS_TYPE_PCI ) || defined(ANI_BUS_TYPE_SDIO) || defined( ANI_BUS_TYPE_PLATFORM )
-#error "more than one ANI_BUS_TYPE_xxx is defined for this build"
-#endif
-
-#elif defined( ANI_BUS_TYPE_SDIO )
-
-#if defined( ANI_BUS_TYPE_PCIe ) || defined( ANI_BUS_TYPE_USB ) || defined(ANI_BUS_TYPE_PCI) || defined( ANI_BUS_TYPE_PLATFORM )
+#if defined( ANI_BUS_TYPE_PCI ) || defined( ANI_BUS_TYPE_PLATFORM )
 #error "more than one ANI_BUS_TYPE_xxx is defined for this build"
 #endif
 
 #elif defined( ANI_BUS_TYPE_PLATFORM )
 
-#if defined( ANI_BUS_TYPE_PCIe ) || defined( ANI_BUS_TYPE_USB ) || defined(ANI_BUS_TYPE_PCI) || defined( ANI_BUS_TYPE_SDIO )
+#if defined( ANI_BUS_TYPE_PCIe ) || defined(ANI_BUS_TYPE_PCI)
 #error "more than one ANI_BUS_TYPE_xxx is defined for this build"
 #endif
 
-#elif !( defined( ANI_BUS_TYPE_PCIe ) || defined( ANI_BUS_TYPE_USB ) || defined(ANI_BUS_TYPE_PCI) || defined(ANI_BUS_TYPE_SDIO) || defined( ANI_BUS_TYPE_PLATFORM ) )
+#elif !( defined( ANI_BUS_TYPE_PCIe ) || defined(ANI_BUS_TYPE_PCI) || defined( ANI_BUS_TYPE_PLATFORM ) )
 
 #error "NONE of the ANI_BUS_TYPE_xxx are defined for this build"
 
@@ -137,12 +123,54 @@
 //
 // Validate the OS Type being built...
 //
-#if ( defined( ANI_OS_TYPE_WINDOWS ) && defined( ANI_OS_TYPE_LINUX ) && defined(ANI_OS_TYPE_OSX) && defined(ANI_OS_TYPE_AMSS) && \
-      defined( ANI_OS_TYPE_ANDROID ) )
+
+#if defined( ANI_OS_TYPE_WINDOWS )    // WINDOWS
+
+#if ( defined( ANI_OS_TYPE_LINUX ) || defined(ANI_OS_TYPE_OSX) || defined(ANI_OS_TYPE_AMSS) || \
+      defined( ANI_OS_TYPE_ANDROID ) || defined(ANI_OS_TYPE_QNX) )
 #error "more than one ANI_OS_TYPE_xxx is defined for this build"
+#endif
+
+
+#elif defined( ANI_OS_TYPE_LINUX )    // LINUX
+
+#if ( defined( ANI_OS_TYPE_WINDOWS ) || defined(ANI_OS_TYPE_OSX) || defined(ANI_OS_TYPE_AMSS) || \
+      defined( ANI_OS_TYPE_ANDROID ) || defined(ANI_OS_TYPE_QNX) )
+#error "more than one ANI_OS_TYPE_xxx is defined for this build"
+#endif
+
+
+#elif defined( ANI_OS_TYPE_OSX )      // OSX
+
+#if ( defined( ANI_OS_TYPE_WINDOWS ) || defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_AMSS) || \
+      defined( ANI_OS_TYPE_ANDROID ) || defined(ANI_OS_TYPE_QNX) )
+#error "more than one ANI_OS_TYPE_xxx is defined for this build"
+#endif
+
+#elif defined( ANI_OS_TYPE_AMSS )    // AMSS
+
+#if ( defined( ANI_OS_TYPE_WINDOWS ) || defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX) || \
+      defined( ANI_OS_TYPE_ANDROID ) || defined(ANI_OS_TYPE_QNX) )
+#error "more than one ANI_OS_TYPE_xxx is defined for this build"
+#endif
+
+#elif defined( ANI_OS_TYPE_ANDROID ) // ANDROID
+
+#if ( defined( ANI_OS_TYPE_WINDOWS ) || defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX) || \
+      defined( ANI_OS_TYPE_AMSS ) || defined(ANI_OS_TYPE_QNX) )
+#error "more than one ANI_OS_TYPE_xxx is defined for this build"
+#endif
+
+#elif defined( ANI_OS_TYPE_QNX )    // QNX
+
+#if ( defined( ANI_OS_TYPE_WINDOWS ) || defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX) || \
+      defined( ANI_OS_TYPE_AMSS ) || defined(ANI_OS_TYPE_ANDROID) )
+#error "more than one ANI_OS_TYPE_xxx is defined for this build"
+#endif
+
 
 #elif !( defined( ANI_OS_TYPE_WINDOWS ) || defined( ANI_OS_TYPE_LINUX ) || defined(ANI_OS_TYPE_OSX) || defined(ANI_OS_TYPE_AMSS) \
-         || defined (ANI_OS_TYPE_ANDROID) )
+         || defined (ANI_OS_TYPE_ANDROID) || defined(ANI_OS_TYPE_QNX) ) // NONE
 #error "NONE of the ANI_OS_TYPE_xxx are defined for this build"
 
 #endif

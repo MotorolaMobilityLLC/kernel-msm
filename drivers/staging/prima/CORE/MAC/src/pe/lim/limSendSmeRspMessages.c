@@ -64,10 +64,6 @@
 #include "sysDef.h"
 #include "cfgApi.h"
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halDataStruct.h"
-#include "halCommonApi.h"
-#endif
 
 #include "schApi.h"
 #include "utilsApi.h"
@@ -628,8 +624,14 @@ limSendSmeStartBssRsp(tpAniSirGlobal pMac,
     mmhMsg.type = msgType;
     mmhMsg.bodyptr = pSirSmeRsp;
     mmhMsg.bodyval = 0;
-    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, mmhMsg.type));
-
+    if(psessionEntry == NULL)
+    {
+        MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+    }
+    else
+    {
+        MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, mmhMsg.type));
+    }
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT 
     limDiagEventReport(pMac, WLAN_PE_DIAG_START_BSS_RSP_EVENT, psessionEntry, (tANI_U16)resultCode, 0);
 #endif //FEATURE_WLAN_DIAG_SUPPORT
@@ -1476,6 +1478,103 @@ limSendSmeTDLSDelStaInd(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession p
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
     return;
 }/*** end limSendSmeTDLSDelStaInd() ***/
+
+/**
+ * limSendSmeTDLSDeleteAllPeerInd()
+ *
+ *FUNCTION:
+ * This function is called to send the eWNI_SME_TDLS_DEL_ALL_PEER_IND
+ * message to SME.
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ *
+ *NOTE:
+ * NA
+ *
+ * @param  pMac   - Pointer to global MAC structure
+ * @param  psessionEntry - Pointer to the session entry
+ * @return None
+ */
+void
+limSendSmeTDLSDeleteAllPeerInd(tpAniSirGlobal pMac, tpPESession psessionEntry)
+{
+    tSirMsgQ  mmhMsg;
+    tSirTdlsDelAllPeerInd  *pSirTdlsDelAllPeerInd;
+
+    if ( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pSirTdlsDelAllPeerInd, sizeof(tSirTdlsDelAllPeerInd)))
+    {
+        limLog(pMac, LOGP, FL("palAllocateMemory failed for eWNI_SME_TDLS_DEL_ALL_PEER_IND"));
+        return;
+    }
+
+    //messageType
+    pSirTdlsDelAllPeerInd->messageType = eWNI_SME_TDLS_DEL_ALL_PEER_IND;
+    pSirTdlsDelAllPeerInd->length = sizeof(tSirTdlsDelAllPeerInd);
+
+    //sessionId
+    pSirTdlsDelAllPeerInd->sessionId = psessionEntry->smeSessionId;
+
+    mmhMsg.type = eWNI_SME_TDLS_DEL_ALL_PEER_IND;
+    mmhMsg.bodyptr = pSirTdlsDelAllPeerInd;
+    mmhMsg.bodyval = 0;
+
+
+    limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+    return;
+}/*** end limSendSmeTDLSDeleteAllPeerInd() ***/
+
+/**
+ * limSendSmeMgmtTXCompletion()
+ *
+ *FUNCTION:
+ * This function is called to send the eWNI_SME_MGMT_FRM_TX_COMPLETION_IND
+ * message to SME.
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ *
+ *NOTE:
+ * NA
+ *
+ * @param  pMac   - Pointer to global MAC structure
+ * @param  psessionEntry - Pointer to the session entry
+ * @param  txCompleteStatus - TX Complete Status of Mgmt Frames
+ * @return None
+ */
+void
+limSendSmeMgmtTXCompletion(tpAniSirGlobal pMac,
+                           tpPESession psessionEntry,
+                           tANI_U32 txCompleteStatus)
+{
+    tSirMsgQ  mmhMsg;
+    tSirMgmtTxCompletionInd  *pSirMgmtTxCompletionInd;
+
+    if ( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pSirMgmtTxCompletionInd, sizeof(tSirMgmtTxCompletionInd)))
+    {
+        limLog(pMac, LOGP, FL("palAllocateMemory failed for eWNI_SME_MGMT_FRM_TX_COMPLETION_IND"));
+        return;
+    }
+
+    //messageType
+    pSirMgmtTxCompletionInd->messageType = eWNI_SME_MGMT_FRM_TX_COMPLETION_IND;
+    pSirMgmtTxCompletionInd->length = sizeof(tSirMgmtTxCompletionInd);
+
+    //sessionId
+    pSirMgmtTxCompletionInd->sessionId = psessionEntry->smeSessionId;
+
+    pSirMgmtTxCompletionInd->txCompleteStatus = txCompleteStatus;
+
+    mmhMsg.type = eWNI_SME_MGMT_FRM_TX_COMPLETION_IND;
+    mmhMsg.bodyptr = pSirMgmtTxCompletionInd;
+    mmhMsg.bodyval = 0;
+
+
+    limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+    return;
+}/*** end limSendSmeTDLSDeleteAllPeerInd() ***/
 #endif
 
 
@@ -1861,7 +1960,14 @@ limSendSmeSetContextRsp(tpAniSirGlobal pMac,
     mmhMsg.type = eWNI_SME_SETCONTEXT_RSP;
     mmhMsg.bodyptr = pSirSmeSetContextRsp;
     mmhMsg.bodyval = 0;
-    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, mmhMsg.type));
+    if(NULL == psessionEntry)
+    {
+        MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+    }
+    else
+    {
+        MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, mmhMsg.type));
+    }
 
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT 
     limDiagEventReport(pMac, WLAN_PE_DIAG_SETCONTEXT_RSP_EVENT, psessionEntry, (tANI_U16)resultCode, 0);
@@ -1944,7 +2050,14 @@ limSendSmeRemoveKeyRsp(tpAniSirGlobal pMac,
     mmhMsg.type = eWNI_SME_REMOVEKEY_RSP;
     mmhMsg.bodyptr = pSirSmeRemoveKeyRsp;
     mmhMsg.bodyval = 0;
-    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, mmhMsg.type));
+    if(NULL == psessionEntry)
+    {
+        MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+    }
+    else
+    {
+        MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, mmhMsg.type));
+    }
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
 } /*** end limSendSmeSetContextRsp() ***/
 
@@ -2129,7 +2242,14 @@ limSendSmeAddtsRsp(tpAniSirGlobal pMac, tANI_U8 rspReqd, tANI_U32 status, tpPESe
     mmhMsg.type = eWNI_SME_ADDTS_RSP;
     mmhMsg.bodyptr = rsp;
     mmhMsg.bodyval = 0;
-    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, mmhMsg.type));
+    if(NULL == psessionEntry)
+    {
+        MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+    }
+    else
+    {
+        MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, mmhMsg.type));
+    }
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT 
     limDiagEventReport(pMac, WLAN_PE_DIAG_ADDTS_RSP_EVENT, psessionEntry, 0, 0);
 #endif //FEATURE_WLAN_DIAG_SUPPORT
@@ -2209,7 +2329,14 @@ limSendSmeDeltsRsp(tpAniSirGlobal pMac, tpSirDeltsReq delts, tANI_U32 status,tpP
     mmhMsg.type = eWNI_SME_DELTS_RSP;
     mmhMsg.bodyptr = rsp;
     mmhMsg.bodyval = 0;
-    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, mmhMsg.type));
+    if(NULL == psessionEntry)
+    {
+        MTRACE(macTraceMsgTx(pMac, NO_SESSION, mmhMsg.type));
+    }
+    else
+    {
+        MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, mmhMsg.type));
+    }
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT 
     limDiagEventReport(pMac, WLAN_PE_DIAG_DELTS_RSP_EVENT, psessionEntry, (tANI_U16)status, 0);
 #endif //FEATURE_WLAN_DIAG_SUPPORT

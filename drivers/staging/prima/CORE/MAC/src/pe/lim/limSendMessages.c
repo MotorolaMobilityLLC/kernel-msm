@@ -189,7 +189,14 @@ tSirRetStatus limSendBeaconParams(tpAniSirGlobal pMac,
     PELOG3(limLog( pMac, LOG3,
                 FL( "Sending WDA_UPDATE_BEACON_IND, paramChangeBitmap in hex = %x" ),
                     pUpdatedBcnParams->paramChangeBitmap);)
-    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
+    if(NULL == psessionEntry)
+    {
+        MTRACE(macTraceMsgTx(pMac, NO_SESSION, msgQ.type));
+    }
+    else
+    {
+        MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
+    }
     if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
     {
         palFreeMemory(pMac->hHdd, pBcnParams);
@@ -545,8 +552,14 @@ state,tSirMacAddr bssId, tSirMacAddr selfMacAddr, int ft, tpPESession psessionEn
     msgQ.reserved = 0;
     msgQ.bodyptr = pLinkStateParams;
     msgQ.bodyval = 0;
-    
-    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
+    if(NULL == psessionEntry)
+    {
+        MTRACE(macTraceMsgTx(pMac, NO_SESSION, msgQ.type));
+    }
+    else
+    {
+        MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
+    }
 
     retCode = (tANI_U32)wdaPostCtrlMsg(pMac, &msgQ);
     if (retCode != eSIR_SUCCESS)
@@ -713,7 +726,14 @@ tSirRetStatus limSendModeUpdate(tpAniSirGlobal pMac,
     msgQ.bodyval = 0;
     PELOG3(limLog( pMac, LOG3,
                 FL( "Sending WDA_UPDATE_OP_MODE" ));)
-    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
+    if(NULL == psessionEntry)
+    {
+        MTRACE(macTraceMsgTx(pMac, NO_SESSION, msgQ.type));
+    }
+    else
+    {
+        MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
+    }
     if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
     {
         palFreeMemory(pMac->hHdd, pVhtOpMode);

@@ -270,10 +270,6 @@ static void ptt_proc_quarky_msg(tAniNlHdr *wnl, tAniHdr *wmsg, int radio)
             arg4 = *(unsigned int *) ((char *)wmsg + 24);
             PTT_TRACE(VOS_TRACE_LEVEL_INFO, "%s: PTT_MSG_LOG_DUMP_DBG %d arg1 %d arg2 %d arg3 %d arg4 %d\n",
                __func__, cmd, arg1, arg2, arg3, arg4);
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-            // FIXME_PRIMA -- need logDump() replacement
-            logPrintf(pAdapterHandle->hHal, cmd, arg1, arg2, arg3, arg4);
-#endif //FEATURE_WLAN_NON_INTEGRATED_SOC
             //send message to the app
             ptt_sock_send_msg_to_app(wmsg, 0, ANI_NL_MSG_PUMAC, wnl->nlh.nlmsg_pid);
             break;

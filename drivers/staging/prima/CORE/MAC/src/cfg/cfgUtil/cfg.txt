@@ -3152,10 +3152,10 @@ LIM
 WNI_CFG_NUM_BUFF_ADVERT  I    4    7
 V    RW    NP    
 LIM
-0    128    45
+0    128    64
 V    RW    NP    
 LIM
-0    128    45
+0    128    64
 
 *
 * Maximum Rx AMPDU Factor
@@ -4425,6 +4425,19 @@ HAL
 0    1     0
 
 *
+* UC Filter will be enabled if value is set to 1
+*
+*
+*
+WNI_CFG_ENABLE_UC_FILTER  I   4   0
+V    RW    NP
+HAL
+0    1     0
+V    RW    NP
+HAL
+0    1     0
+
+*
 * Low Power Image Transition will be enabled if value is set to 1
 * 
 *
@@ -4435,6 +4448,7 @@ NONE
 0    1     0
 V    RW    NP
 NONE
+0    1     0
 
 *
 * MCC Adaptive Scheduler will be enabled if value is set to 1
@@ -4442,6 +4456,18 @@ NONE
 *
 *
 WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED  I   4   0
+V    RW    NP
+NONE
+0    1     0
+V    RW    NP
+NONE
+0    1     0
+*
+*Disable LDPC in STA mode when AP is TXBF capable
+*
+*
+*
+WNI_CFG_DISABLE_LDPC_WITH_TXBF_AP  I   4   0
 V    RW    NP
 NONE
 0    1     0

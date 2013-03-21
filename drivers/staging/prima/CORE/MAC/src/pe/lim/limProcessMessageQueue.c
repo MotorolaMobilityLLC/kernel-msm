@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file lim ProcessMessageQueue.cc contains the code
@@ -52,14 +51,9 @@
  */
 #include "palTypes.h"
 #include "wniApi.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halDataStruct.h"
-#include "halCommonApi.h"
-#elif defined FEATURE_WLAN_INTEGRATED_SOC
 #include "wlan_qct_wdi_ds.h"
 #include "wlan_qct_pal_packet.h"
 #include "wlan_qct_wda.h"
-#endif
 
 #ifdef ANI_PRODUCT_TYPE_AP
 #include "wniCfgAp.h"
@@ -263,17 +257,6 @@ limProcessMessageQueue(tpAniSirGlobal pMac)
     {
         return;
     }
-
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-    ULONG param;
-    while(get_timer_event(LIM_TIMER_EXPIRY_LIST,&param))
-    {
-        limMsg.type = (tANI_U16) param;
-        limMsg.bodyval = 0;
-        limMsg.bodyptr = NULL;
-        limMessageProcessor(pMac, &limMsg);
-    }
-#endif
 
     if (tx_queue_receive( &pMac->sys.gSirLimMsgQ, (void *) &limMsg, TX_WAIT_FOREVER)
             == TX_SUCCESS)
@@ -830,9 +813,9 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
         if (fc.subType == SIR_MAC_MGMT_AUTH) 
         {
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-            limLog( pMac, LOGE, FL("ProtVersion %d, Type %d, Subtype %d rateIndex=%d\n"),
+            limLog( pMac, LOG1, FL("ProtVersion %d, Type %d, Subtype %d rateIndex=%d"),
                     fc.protVer, fc.type, fc.subType, WDA_GET_RX_MAC_RATE_IDX(pRxPacketInfo));
-            limPrintMacAddr(pMac, pHdr->bssId, LOGE);
+            limPrintMacAddr(pMac, pHdr->bssId, LOG1);
 #endif
             if (limProcessAuthFrameNoSession(pMac, pRxPacketInfo, limMsg->bodyptr) == eSIR_SUCCESS)
             {

@@ -45,7 +45,6 @@
   \brief implementation for lim Session Utility  APIs
   \author Sunit Bhatia
   
-  Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
   ========================================================================*/
 
 
@@ -448,4 +447,33 @@ tANI_U8 peGetCurrentSTAsCount(tpAniSirGlobal pMac)
     }
     return staCount;
 }
+
+#ifdef FEATURE_WLAN_LFR
+/*--------------------------------------------------------------------------
+  \brief limIsFastRoamEnabled() - Check LFR is enabled or not
+
+  This function returns the TRUE if LFR is enabled
+
+  \param pMac        - pointer to global adapter context
+  \param sessionId   - session ID is returned here, if session is found.
+
+  \return int        - TRUE if enabled or else FALSE
+
+  \sa
+  --------------------------------------------------------------------------*/
+
+tANI_U8 limIsFastRoamEnabled(tpAniSirGlobal pMac, tANI_U8 sessionId)
+{
+    if(TRUE == pMac->lim.gpSession[sessionId].valid)
+    {
+        if((eSIR_INFRASTRUCTURE_MODE == pMac->lim.gpSession[sessionId].bssType) &&
+           (pMac->lim.gpSession[sessionId].isFastRoamIniFeatureEnabled))
+        {
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+#endif
 

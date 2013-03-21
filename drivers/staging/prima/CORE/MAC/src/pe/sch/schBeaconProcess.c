@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file schBeaconProcess.cc contains beacon processing related
@@ -62,9 +61,6 @@
 #include "schDebug.h"
 #include "schApi.h"
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halCommonApi.h"
-#endif
 
 #include "limUtils.h"
 #include "limSendMessages.h"

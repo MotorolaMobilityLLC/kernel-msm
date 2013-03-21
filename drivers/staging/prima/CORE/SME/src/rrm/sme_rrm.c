@@ -39,8 +39,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * */
 /**=========================================================================
   
   \file  sme_Rrm.c
@@ -59,9 +57,6 @@
 /*--------------------------------------------------------------------------
   Include Files
   ------------------------------------------------------------------------*/
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halInternal.h"
-#endif
 #include "aniGlobal.h"
 #include "smeInside.h"
 #include "sme_Api.h"

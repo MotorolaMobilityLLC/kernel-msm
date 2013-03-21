@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file limTimerUtils.cc contains the utility functions
@@ -123,11 +122,6 @@ limCreateTimers(tpAniSirGlobal pMac)
         limLog(pMac, LOGP, FL("could not create MIN channel timer\n"));
         return TX_TIMER_ERROR;
     }
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-    tx_timer_set_expiry_list(
-             &pMac->lim.limTimers.gLimMinChannelTimer, LIM_TIMER_EXPIRY_LIST);
-#endif
-
     PELOG2(limLog(pMac, LOG2, FL("Created MinChannelTimer\n"));)
 
     /* Periodic probe request timer value is half of the Min channel
@@ -177,12 +171,6 @@ limCreateTimers(tpAniSirGlobal pMac)
 
         goto err_timer;
     }
-
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-    tx_timer_set_expiry_list(
-             &pMac->lim.limTimers.gLimMaxChannelTimer, LIM_TIMER_EXPIRY_LIST);
-#endif
-
     PELOG2(limLog(pMac, LOG2, FL("Created MaxChannelTimer\n"));)
 
     if (pMac->lim.gLimSystemRole != eLIM_AP_ROLE)
@@ -274,10 +262,6 @@ limCreateTimers(tpAniSirGlobal pMac)
             limLog(pMac, LOGP, FL("could not create Periodic Join Probe Request timer\n"));
             goto err_timer;
         }
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-        tx_timer_set_expiry_list(&pMac->lim.limTimers.gLimJoinFailureTimer,
-                                 LIM_TIMER_EXPIRY_LIST);
-#endif
 
         if (wlan_cfgGetInt(pMac, WNI_CFG_ASSOCIATION_FAILURE_TIMEOUT,
                       &cfgValue) != eSIR_SUCCESS)
@@ -378,10 +362,7 @@ limCreateTimers(tpAniSirGlobal pMac)
 
             goto err_timer;
         }
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-        tx_timer_set_expiry_list(&pMac->lim.limTimers.gLimAuthFailureTimer,
-                                 LIM_TIMER_EXPIRY_LIST);
-#endif
+
         if (wlan_cfgGetInt(pMac, WNI_CFG_BEACON_INTERVAL,
                       &cfgValue) != eSIR_SUCCESS)
         {
@@ -437,11 +418,6 @@ limCreateTimers(tpAniSirGlobal pMac)
                    FL("unable to create ProbeAfterHBTimer\n"));
             goto err_timer;
         }
-
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-        tx_timer_set_expiry_list(&pMac->lim.limTimers.gLimProbeAfterHBTimer,
-                                 LIM_TIMER_EXPIRY_LIST);
-#endif
 
 #if defined(ANI_PRODUCT_TYPE_CLIENT) || defined(ANI_AP_CLIENT_SDK)
         if (wlan_cfgGetInt(pMac, WNI_CFG_BACKGROUND_SCAN_PERIOD,
@@ -539,11 +515,6 @@ limCreateTimers(tpAniSirGlobal pMac)
                FL("create Disassociate throttle timer failed\n"));
         goto err_timer;
     }
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-    tx_timer_set_expiry_list(
-             &pMac->lim.limTimers.gLimSendDisassocFrameThresholdTimer,
-             LIM_TIMER_EXPIRY_LIST);
-#endif
     PELOG1(limLog(pMac, LOG1,
            FL("Created Disassociate throttle timer \n"));)
 
@@ -1116,6 +1087,18 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 if(pMac->lim.gpLimMlmScanReq)
                 {
                     val = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->minChannelTime);
+                    if (pMac->btc.btcScanCompromise)
+                    {
+                        if (pMac->lim.gpLimMlmScanReq->minChannelTimeBtc)
+                        {
+                            val = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->minChannelTimeBtc);
+                            limLog(pMac, LOG1, FL("Using BTC Min Active Scan time"));
+                        }
+                        else
+                        {
+                            limLog(pMac, LOGE, FL("BTC Active Scan Min Time is Not Set"));
+                        }
+                    }
                 }
                 else
                 {
@@ -1148,6 +1131,17 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             }
 
             val = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->minChannelTime)/2;
+            if (pMac->btc.btcScanCompromise)
+            {
+               if (pMac->lim.gpLimMlmScanReq->minChannelTimeBtc)
+               {
+                   val = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->minChannelTimeBtc)/2;
+               }
+               else
+               {
+                   limLog(pMac, LOGE, FL("BTC Active Scan Min Time is Not Set"));
+               }
+            }
             if (tx_timer_change(&pMac->lim.limTimers.gLimPeriodicProbeReqTimer,
                                 val, 0) != TX_SUCCESS)
             {
@@ -1190,6 +1184,18 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                     if(pMac->lim.gpLimMlmScanReq)
                     {
                         val = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->maxChannelTime);
+                        if (pMac->btc.btcScanCompromise)
+                        {
+                            if (pMac->lim.gpLimMlmScanReq->maxChannelTimeBtc)
+                            {
+                                val = SYS_MS_TO_TICKS(pMac->lim.gpLimMlmScanReq->maxChannelTimeBtc);
+                                limLog(pMac, LOG1, FL("Using BTC Max Active Scan time"));
+                            }
+                            else
+                            {
+                                limLog(pMac, LOGE, FL("BTC Active Scan Max Time is Not Set"));
+                            }
+                        }
                     }
                     else
                     {

@@ -920,12 +920,8 @@ WLANTL_AMSDUProcess
    ------------------------------------------------------------------------*/
   ucAef =  (v_U8_t)WDA_GET_RX_AEF( pvBDHeader );
   ucFsf =  (v_U8_t)WDA_GET_RX_ESF( pvBDHeader );
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  MPDUDataOffset = (v_U16_t)WDA_GET_RX_MPDU_DATA_OFFSET(pvBDHeader) - WLANHAL_RX_BD_HEADER_SIZE;
-#else
   /* On Prima, MPDU data offset not includes BD header size */
   MPDUDataOffset = (v_U16_t)WDA_GET_RX_MPDU_DATA_OFFSET(pvBDHeader);
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
   if ( WLANHAL_RX_BD_AEF_SET == ucAef ) 
   {
@@ -944,6 +940,15 @@ WLANTL_AMSDUProcess
      * AMSDU Header should be removed
      * MPDU header should be stored into context to recover next frames
      */
+    /* Assumed here Address4 is never part of AMSDU received at TL */
+    if (ucMPDUHLen > WLANTL_MPDU_HEADER_LEN)
+    {
+      TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"MPDU Header length (%d) is greater",ucMPDUHLen));
+      vos_pkt_return_packet(vosDataBuff);
+      *ppVosDataBuff = NULL;
+      return VOS_STATUS_SUCCESS; /*Not a transport error*/
+    }
+
     vStatus = vos_pkt_pop_head(vosDataBuff, MPDUHeaderAMSDUHeader, ucMPDUHLen + TL_AMSDU_SUBFRM_HEADER_LEN);
     if(!VOS_IS_STATUS_SUCCESS(vStatus))
     {

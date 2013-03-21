@@ -99,6 +99,11 @@
 #define QCOM_VENDOR_IE_AGE_TYPE  0x100
 #define QCOM_VENDOR_IE_AGE_LEN   4
 
+#ifdef FEATURE_WLAN_TDLS
+#define WLAN_IS_TDLS_SETUP_ACTION(action) \
+         ((SIR_MAC_TDLS_SETUP_REQ <= action) && (SIR_MAC_TDLS_SETUP_CNF >= action))
+#endif
+
 typedef struct {
    u8 element_id;
    u8 len;

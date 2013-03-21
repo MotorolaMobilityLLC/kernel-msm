@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*
  * Airgo Networks, Inc proprietary. All rights reserved
  * aniGlobal.h: MAC Modules Adapter Definitions.
@@ -77,16 +76,8 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 #include "utilsGlobal.h"
 #include "sirApi.h"
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halGlobal.h"
-#include "halDataStruct.h"
-#include "phyGlobal.h"
-#include "pttModule.h"
-#endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include "wlan_qct_hal.h"
-#endif 
 
 #ifdef ANI_PRODUCT_TYPE_CLIENT
 #include "pmc.h"
@@ -130,11 +121,9 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 // New HAL API interface defs.
 #include "logDump.h"
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 //Check if this definition can actually move here from halInternal.h even for Volans. In that case
 //this featurization can be removed.
 #define PMAC_STRUCT( _hHal )  (  (tpAniSirGlobal)_hHal )
-#endif
 
 #define ANI_DRIVER_TYPE(pMac)     (((tpAniSirGlobal)(pMac))->gDriverType)
 // -------------------------------------------------------------------
@@ -166,6 +155,8 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 #define MAX_NO_OF_P2P_SESSIONS  5
 #endif //WLAN_FEATURE_CONCURRENT_P2P
 #endif //WLAN_FEATURE_P2P
+
+#define SPACE_ASCII_VALUE  32
 
 // -------------------------------------------------------------------
 // Change channel generic scheme
@@ -715,6 +706,7 @@ typedef struct sAniSirLim
     // admission control policy information
     tLimAdmitPolicyInfo admitPolicyInfo;
     vos_lock_t lkPeGlobalLock;
+    tANI_U8 disableLDPCWithTxbfAP;
 
 
 
@@ -957,8 +949,8 @@ tLimMlmOemDataRsp       *gpLimMlmOemDataRsp;
 #ifdef WLAN_FEATURE_P2P
     tSirRemainOnChnReq  *gpLimRemainOnChanReq; //hold remain on chan request in this buf
     vos_list_t  gLimMgmtFrameRegistratinQueue;
-    tANI_U32    actionFrameSessionId;
 #endif
+    tANI_U32    mgmtFrameSessionId;
     tSirBackgroundScanMode gLimBackgroundScanMode;
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
@@ -995,7 +987,6 @@ typedef struct sFTContext
 } tftContext, *tpFTContext;
 #endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 //Check if this definition can actually move here even for Volans. In that case
 //this featurization can be removed.
 /** ------------------------------------------------------------------------- * 
@@ -1045,7 +1036,6 @@ typedef struct sHalMacStartParameters
     tDriverType  driverType;
 
 } tHalMacStartParameters;
-#endif 
 
 // -------------------------------------------------------------------
 /// MAC Sirius parameter structure
@@ -1069,20 +1059,12 @@ typedef struct sAniSirGlobal
     tSirMbMsg*   pResetMsg;
     tAniSirCfg   cfg;
     tAniSirLim   lim;
-    //tAniSirDph   dph;
     tAniSirPmm   pmm;
     tAniSirSch   sch;
     tAniSirSys   sys;
     tAniSirUtils utils;
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-    tAniSirHal   hal;
-    tAniSirPhy   hphy;
-#endif 
 
 #ifndef WLAN_FTM_STUB 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-    tPttModuleVariables ptt;
-#endif
 #endif
 
     tAniSirTxWrapper txWrapper;
@@ -1100,7 +1082,7 @@ typedef struct sAniSirGlobal
 #ifdef FEATURE_OEM_DATA_SUPPORT
     tOemDataStruct oemData;
 #endif
-#ifdef FEATURE_WLAN_TDLS
+#ifdef FEATURE_WLAN_TDLS_INTERNAL
     tCsrTdlsCtxStruct tdlsCtx ;
 #endif
 #ifdef ANI_PRODUCT_TYPE_CLIENT

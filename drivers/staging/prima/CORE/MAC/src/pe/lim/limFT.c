@@ -263,7 +263,7 @@ int limProcessFTPreAuthReq(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
     pMac->ft.ftPEContext.pFTPreAuthReq = (tpSirFTPreAuthReq)pMsg->bodyptr;
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    PELOGE(limLog( pMac, LOGE, "%s: PE Auth ft_ies_length=%02x%02x%02x\n", __func__,
+    PELOGE(limLog( pMac, LOG1, "%s: PE Auth ft_ies_length=%02x%02x%02x", __func__,
         pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies[0],
         pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies[1],
         pMac->ft.ftPEContext.pFTPreAuthReq->ft_ies[2]);)
@@ -360,9 +360,10 @@ void limPerformFTPreAuth(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data,
         PELOGE(limLog( pMac, LOGE, "%s: FT Auth Rsp Timer Start Failed\n", __func__);)
 #endif
     }
+MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, psessionEntry->peSessionId, eLIM_FT_PREAUTH_RSP_TIMER));
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    PELOGE(limLog( pMac, LOGE, "%s: FT Auth Rsp Timer Started\n", __func__);)
+    PELOGE(limLog( pMac, LOG1, "%s: FT Auth Rsp Timer Started", __func__);)
 #endif
 
     limSendAuthMgmtFrame(pMac, &authFrame,
@@ -577,13 +578,13 @@ tSirRetStatus limFTPrepareAddBssReq( tpAniSirGlobal pMac,
     // Set a new state for MLME
 
     pftSessionEntry->limMlmState = eLIM_MLM_WT_ADD_BSS_RSP_FT_REASSOC_STATE;
-
+    MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, pftSessionEntry->peSessionId, eLIM_MLM_WT_ADD_BSS_RSP_FT_REASSOC_STATE));
     pAddBssParams->halPersona=(tANI_U8)pftSessionEntry->pePersona; //pass on the session persona to hal
     
     pMac->ft.ftPEContext.pAddBssReq = pAddBssParams;
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    limLog( pMac, LOGE, FL( "Saving SIR_HAL_ADD_BSS_REQ for pre-auth ap..." ));
+    limLog( pMac, LOG1, FL( "Saving SIR_HAL_ADD_BSS_REQ for pre-auth ap..." ));
 #endif
 
     palFreeMemory(pMac->hHdd, pBeaconStruct);
@@ -714,7 +715,7 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
 #endif
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    limLog( pMac, LOGE, "%s: Regulatory max = %d, local power constraint = %d, ini tx power = %d, max tx = %d",
+    limLog( pMac, LOG1, "%s: Regulatory max = %d, local power constraint = %d, ini tx power = %d, max tx = %d",
         __func__, regMax, localPowerConstraint, pMac->roam.configParam.nTxPowerCap, pftSessionEntry->maxTxPower );
 #endif
 
@@ -722,6 +723,7 @@ tpPESession limFillFTSession(tpAniSirGlobal pMac,
 
     pftSessionEntry->limPrevSmeState = pftSessionEntry->limSmeState;
     pftSessionEntry->limSmeState = eLIM_SME_WT_REASSOC_STATE;
+    MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, pftSessionEntry->peSessionId, pftSessionEntry->limSmeState));
 
     pftSessionEntry->encryptType = psessionEntry->encryptType;
 
@@ -891,7 +893,7 @@ tSirRetStatus limFTFillRICBlockAckInfo(tpAniSirGlobal pMac, tANI_U8 *ric_ies, tA
  *  Will post pre auth response to SME.
  *
  *------------------------------------------------------------------*/
-void limPostFTPreAuthRsp(tpAniSirGlobal pMac, eHalStatus status,
+void limPostFTPreAuthRsp(tpAniSirGlobal pMac, tSirRetStatus status,
     tANI_U8 *auth_rsp, tANI_U16  auth_rsp_length,
     tpPESession psessionEntry)
 {
@@ -910,7 +912,7 @@ void limPostFTPreAuthRsp(tpAniSirGlobal pMac, eHalStatus status,
     }
     vos_mem_zero( pFTPreAuthRsp, rspLen);
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    PELOGE(limLog( pMac, LOGE, "%s: Auth Rsp = %p\n", pFTPreAuthRsp);)
+    PELOGE(limLog( pMac, LOG1, "%s: Auth Rsp = %p", pFTPreAuthRsp);)
 #endif
          
     palZeroMemory(pMac, (tANI_U8*)pFTPreAuthRsp, rspLen);
@@ -954,9 +956,8 @@ void limPostFTPreAuthRsp(tpAniSirGlobal pMac, eHalStatus status,
     mmhMsg.bodyval = 0;
 
 #if defined WLAN_FEATURE_VOWIFI_11R_DEBUG
-    PELOGE(limLog( pMac, LOGE, "Posted Auth Rsp to SME\n");)
+    PELOGE(limLog( pMac, LOGE, "Posted Auth Rsp to SME with status of 0x%x", status);)
 #endif
-    PELOGE(limLog( pMac, LOGE, "Posted Auth Rsp to SME with status of %d\n", status);)
     limSysProcessMmhMsgApi(pMac, &mmhMsg,  ePROT);
 }
 
@@ -969,7 +970,7 @@ void limPostFTPreAuthRsp(tpAniSirGlobal pMac, eHalStatus status,
  * FTIEs which will be required for Reassoc Req.
  *
  *------------------------------------------------------------------*/
-void limHandleFTPreAuthRsp(tpAniSirGlobal pMac, eHalStatus status,
+void limHandleFTPreAuthRsp(tpAniSirGlobal pMac, tSirRetStatus status,
     tANI_U8 *auth_rsp, tANI_U16  auth_rsp_length,
     tpPESession psessionEntry)
 {

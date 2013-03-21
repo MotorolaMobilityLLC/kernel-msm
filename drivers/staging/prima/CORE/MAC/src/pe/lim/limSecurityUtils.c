@@ -61,10 +61,6 @@
 #endif
 #include "cfgApi.h"
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halDataStruct.h"
-#include "halCommonApi.h"
-#endif
 
 #include "utilsApi.h"
 #include "limUtils.h"
@@ -248,11 +244,6 @@ limInitPreAuthList(tpAniSirGlobal pMac)
 
             return;
         }
-
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-        tx_timer_set_expiry_list(&pMac->lim.limTimers.gLimPreAuthClnupTimer,
-                                 LIM_TIMER_EXPIRY_LIST);
-#endif
         PELOG1(limLog(pMac, LOG1,
                FL("Created pre-auth cleanup timer\n"));)
 

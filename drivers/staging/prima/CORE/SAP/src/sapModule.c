@@ -90,9 +90,6 @@
 // SAP API header file
 
 #include "sapInternal.h"
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-#include "halInternal.h"
-#endif
 #include "smeInside.h"
 
 /*----------------------------------------------------------------------------

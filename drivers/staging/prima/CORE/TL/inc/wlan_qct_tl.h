@@ -2521,7 +2521,7 @@ void WLANTL_PostResNeeded(v_PVOID_t pvosGCtx);
 ============================================================================*/
 
 VOS_STATUS WLANTL_Finish_ULA( void (*callbackRoutine) (void *callbackContext),
-                              void *callbackContext, uint8 staId);
+                              void *callbackContext);
 
 /*===============================================================================
   FUNCTION       WLANTL_UpdateRssiBmps

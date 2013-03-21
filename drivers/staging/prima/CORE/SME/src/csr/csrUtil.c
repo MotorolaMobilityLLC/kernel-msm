@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /** ------------------------------------------------------------------------- *
     ------------------------------------------------------------------------- *
 
@@ -51,13 +50,8 @@
     Copyright (C) 2006 Airgo Networks, Incorporated
    ========================================================================== */
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halInternal.h" //Check if the below include of aniGobal.h is sufficient for Volans too.
-#endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include "aniGlobal.h"
-#endif
 
 #include "palApi.h"
 #include "csrSupport.h"
@@ -2823,15 +2817,17 @@ csrIsconcurrentsessionValid(tpAniSirGlobal pMac,tANI_U32 cursessionId,
                     break;
 
                 case VOS_STA_SAP_MODE:
-                    if(pMac->roam.roamSession[sessionId].bssParams.bssPersona
-                                      == VOS_STA_SAP_MODE)
+                    if((pMac->roam.roamSession[sessionId].bssParams.bssPersona
+                                      == VOS_STA_SAP_MODE)&&
+                    (pMac->roam.roamSession[sessionId].connectState != eCSR_ASSOC_STATE_TYPE_NOT_CONNECTED))
                     {
                         smsLog(pMac, LOGE, FL(" ****SoftAP mode already exists ****\n"));
                         return eHAL_STATUS_FAILURE;
                     }
                     
-                    else if(pMac->roam.roamSession[sessionId].bssParams.bssPersona
-                                      == VOS_P2P_GO_MODE)
+                    else if((pMac->roam.roamSession[sessionId].bssParams.bssPersona
+                                      == VOS_P2P_GO_MODE) &&
+                    (pMac->roam.roamSession[sessionId].connectState != eCSR_ASSOC_STATE_TYPE_NOT_CONNECTED))
                     {
                         smsLog(pMac, LOGE, FL(" ****Cannot start Multiple Beaconing Role ****\n"));
                         return eHAL_STATUS_FAILURE;
@@ -2849,14 +2845,16 @@ csrIsconcurrentsessionValid(tpAniSirGlobal pMac,tANI_U32 cursessionId,
                     break;
 
                 case VOS_P2P_GO_MODE:
-                    if(pMac->roam.roamSession[sessionId].bssParams.bssPersona
-                                      == VOS_P2P_GO_MODE)
+                    if((pMac->roam.roamSession[sessionId].bssParams.bssPersona
+                                      == VOS_P2P_GO_MODE) &&
+                    (pMac->roam.roamSession[sessionId].connectState != eCSR_ASSOC_STATE_TYPE_NOT_CONNECTED))
                     {
                         smsLog(pMac, LOGE, FL(" ****P2P GO mode already exists ****\n"));
                         return eHAL_STATUS_FAILURE;
                     }
-                    else if(pMac->roam.roamSession[sessionId].bssParams.bssPersona
-                                      == VOS_STA_SAP_MODE)
+                    else if((pMac->roam.roamSession[sessionId].bssParams.bssPersona
+                                      == VOS_STA_SAP_MODE) &&
+                    (pMac->roam.roamSession[sessionId].connectState != eCSR_ASSOC_STATE_TYPE_NOT_CONNECTED))
                     {
                         smsLog(pMac, LOGE, FL(" ****Cannot start Multiple Beaconing Role ****\n"));
                         return eHAL_STATUS_FAILURE;

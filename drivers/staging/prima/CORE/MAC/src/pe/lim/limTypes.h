@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file limTypes.h contains the definitions used by all
@@ -59,12 +58,7 @@
 #include "sirMacProtDef.h"
 #include "utilsApi.h"
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halCommonApi.h"
-#endif 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include "wlan_qct_wdi_ds.h"
-#endif
 
 #include "limApi.h"
 #include "limDebug.h"
@@ -704,7 +698,7 @@ void limProcessProbeReqFrame_multiple_BSS(tpAniSirGlobal, tANI_U8 *,tpPESession)
 // Process Auth frame when we have a session in progress.
 void limProcessAuthFrame(tpAniSirGlobal, tANI_U8 *,tpPESession);
 #ifdef WLAN_FEATURE_VOWIFI_11R
-int limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *, void *body);
+tSirRetStatus limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *, void *body);
 #endif
 
 void limProcessAssocReqFrame(tpAniSirGlobal, tANI_U8 *, tANI_U8, tpPESession);
@@ -789,6 +783,11 @@ tSirRetStatus limProcessSmeTdlsAddStaReq(tpAniSirGlobal pMac,
                                                            tANI_U32 *pMsgBuf);
 tSirRetStatus limProcessSmeTdlsDelStaReq(tpAniSirGlobal pMac, 
                                                            tANI_U32 *pMsgBuf);
+void limSendSmeTDLSDeleteAllPeerInd(tpAniSirGlobal pMac, tpPESession psessionEntry);
+void limSendSmeMgmtTXCompletion(tpAniSirGlobal pMac,
+                                tpPESession psessionEntry,
+                                tANI_U32 txCompleteStatus);
+tSirRetStatus limDeleteTDLSPeers(tpAniSirGlobal pMac, tpPESession psessionEntry);
 eHalStatus limProcessTdlsAddStaRsp(tpAniSirGlobal pMac, void *msg, tpPESession);
 tSirRetStatus limSendTdlsTeardownFrame(tpAniSirGlobal pMac,
            tSirMacAddr peerMac, tANI_U16 reason, tANI_U8 responder, tpPESession psessionEntry,

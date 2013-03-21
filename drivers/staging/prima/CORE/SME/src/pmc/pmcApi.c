@@ -2170,11 +2170,6 @@ eHalStatus pmcWowlAddBcastPattern (
     if( pMac->pmc.pmcState == IMPS || pMac->pmc.pmcState == REQUEST_IMPS )
     {
         eHalStatus status;
-        if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-        {
-            smsLog(pMac, LOGE, FL("Ignoring the indication as we are not connected\n"));
-            return eHAL_STATUS_FAILURE;
-        }
         vos_mem_copy(pattern->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
         //Wake up the chip first
         status = pmcDeferMsg( pMac, eWNI_PMC_WOWL_ADD_BCAST_PTRN, 
@@ -2257,11 +2252,6 @@ eHalStatus pmcWowlDelBcastPattern (
     if( pMac->pmc.pmcState == IMPS || pMac->pmc.pmcState == REQUEST_IMPS )
     {
         eHalStatus status;
-        if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-        {
-            smsLog(pMac, LOGE, FL("Ignoring the indication as we are not connected\n"));
-            return eHAL_STATUS_FAILURE;
-        }
 
         vos_mem_copy(pattern->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
         //Wake up the chip first
@@ -2366,12 +2356,6 @@ eHalStatus pmcEnterWowl (
    if( NULL == pSession )
    {
        smsLog(pMac, LOGE, FL("Session not found \n"));
-       return eHAL_STATUS_FAILURE;
-   }
-
-   if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-   {
-       smsLog(pMac, LOGE, FL("Ignoring the indication as we are not connected\n"));
        return eHAL_STATUS_FAILURE;
    }
 
@@ -2519,12 +2503,6 @@ eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest,
         return eHAL_STATUS_FAILURE;
     }
 
-    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-    {
-        smsLog(pMac, LOGE, FL("Ignoring the indication as we are not connected\n"));
-        return eHAL_STATUS_FAILURE;
-    }
-
     vos_mem_copy(pRequest->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
 
     vos_mem_copy(pRequestBuf, pRequest, sizeof(tSirHostOffloadReq));
@@ -2577,13 +2555,6 @@ eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest, tANI_U8
         return eHAL_STATUS_FAILURE;
     }
 
-    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-    {
-        smsLog(pMac, LOGE, FL("Ignoring the indication as we are not connected\n"));
-        vos_mem_free(pRequestBuf);
-        return eHAL_STATUS_FAILURE;
-    }
-
     vos_mem_copy(pRequest->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
     vos_mem_copy(pRequestBuf, pRequest, sizeof(tSirKeepAliveReq));
 
@@ -2632,11 +2603,6 @@ eHalStatus pmcSetNSOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest,
         return eHAL_STATUS_FAILURE;
     }
 
-    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-    {
-        smsLog(pMac, LOGE, FL("Ignoring the indication as we are not connected\n"));
-        return eHAL_STATUS_FAILURE;
-    }
     vos_mem_copy(pRequest->bssId, pSession->connectedProfile.bssid, 
                 sizeof(tSirMacAddr));
 
@@ -3076,14 +3042,15 @@ eHalStatus pmcUpdateScanParams(tHalHandle hHal, tCsrConfig *pRequest, tCsrChanne
 }
 #endif // FEATURE_WLAN_SCAN_PNO
 
-eHalStatus pmcSetPowerParams(tHalHandle hHal,   tSirSetPowerParamsReq*  pwParams)
+eHalStatus pmcSetPowerParams(tHalHandle hHal,   tSirSetPowerParamsReq*  pwParams, tANI_BOOLEAN forced)
 {
     tSirSetPowerParamsReq* pRequestBuf;
     vos_msg_t msg;
     tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
     tpPESession     psessionEntry;
 
-    if((psessionEntry = peGetValidPowerSaveSession(pMac))== NULL)
+    psessionEntry = peGetValidPowerSaveSession(pMac);
+    if (!forced && (psessionEntry == NULL))
     {
         return eHAL_STATUS_NOT_INITIALIZED;
     }
@@ -3142,12 +3109,6 @@ eHalStatus pmcGetFilterMatchCount
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
                   "%s: Session not found ", __func__);
-        return eHAL_STATUS_FAILURE;
-    }
-
-    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-    {
-        smsLog(pMac, LOGE, FL("Ignoring the indication as we are not connected\n"));
         return eHAL_STATUS_FAILURE;
     }
 
@@ -3218,12 +3179,6 @@ eHalStatus pmcSetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pGtkOffload,
         return eHAL_STATUS_FAILURE;
     }
 
-    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-    {
-        smsLog(pMac, LOGE, FL("Ignoring the indication as we are not connected\n"));
-        return eHAL_STATUS_FAILURE;
-    }
-
     vos_mem_copy(pGtkOffload->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr)); 
 
     vos_mem_copy(pRequestBuf, pGtkOffload, sizeof(tSirGtkOffloadParams));
@@ -3277,11 +3232,6 @@ eHalStatus pmcGetGTKOffload(tHalHandle hHal, GTKOffloadGetInfoCallback callbackR
         return eHAL_STATUS_FAILURE;
     }
 
-    if( !csrIsConnStateConnectedInfra (pMac, sessionId ))
-    {
-        smsLog(pMac, LOGE, FL("Ignoring the indication as we are not connected\n"));
-        return eHAL_STATUS_FAILURE;
-    }
     vos_mem_copy(pRequestBuf->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr)); 
 
     msg.type = WDA_GTK_OFFLOAD_GETINFO_REQ;

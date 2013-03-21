@@ -55,9 +55,6 @@
 #include "wniApi.h"
 #include "sirApi.h"
 #include "aniGlobal.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halDataStruct.h"
-#endif
 #if (WNI_POLARIS_FW_PRODUCT == AP)
 #include "wniCfgAp.h"
 #else

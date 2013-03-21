@@ -55,13 +55,8 @@
   Include Files
   ------------------------------------------------------------------------*/
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halInternal.h" //Check if the below include of aniGobal.h is sufficient for Volans too.
-#endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include "aniGlobal.h"
-#endif
 
 #include "smeInside.h"
 #include "vos_diag_core_event.h"
@@ -4620,7 +4615,7 @@ eHalStatus sme_QosProcessHandoffAssocReqEv(tpAniSirGlobal pMac, v_U8_t sessionId
 #ifdef WLAN_FEATURE_VOWIFI_11R
             if(pSession->ftHandoffInProgress)
             {
-               VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
+               VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
                          "%s: %d: SME_QOS_CSR_HANDOFF_ASSOC_REQ received in "
                          "SME_QOS_HANDOFF state with FT in progress"
                          , __func__, __LINE__); 

@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*
  * Airgo Networks, Inc proprietary. All rights reserved.
  * This file schMessage.cc contains the message handler
@@ -55,9 +54,6 @@
 
 #include "wniCfgAp.h"
 #include "aniGlobal.h"
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "halCommonApi.h"
-#endif
 #include "cfgApi.h"
 #include "limApi.h"
 #include "pmmApi.h"

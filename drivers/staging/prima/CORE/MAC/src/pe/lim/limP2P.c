@@ -38,7 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
 /*===========================================================================
                         L I M _ P 2 P . C
 
@@ -564,7 +563,7 @@ void limRemainOnChnRsp(tpAniSirGlobal pMac, eHalStatus status, tANI_U32 *data)
 
     /* If remain on channel timer expired and action frame is pending then 
      * indicaiton confirmation with status failure */
-    if (pMac->lim.actionFrameSessionId != 0xff)
+    if (pMac->lim.mgmtFrameSessionId != 0xff)
     {
        limP2PActionCnf(pMac, 0);
     }
@@ -605,20 +604,31 @@ void limSendSmeMgmtFrameInd(
     pSirSmeMgmtFrame->frameType = frameType;
     pSirSmeMgmtFrame->rxRssi = rxRssi;
 
-    /* work around for 5Ghz channel is not correct since rxhannel 
-     * is 4 bits. So we don't indicate more than 16 channels 
+    /*
+     *  Work around to address LIM sending wrong channel to HDD for p2p action
+     *  frames(In case of auto GO) recieved on 5GHz channel.
+     *  As RXP has only 4bits to store the channel, we need some mechanism to
+     *  to distinguish between 2.4Ghz/5GHz channel. if gLimRemainOnChannelTImer
+     *  is not running and if we get a frame then pass the Go session
+     *  operating channel to HDD. Some vendors create separate p2p interface
+     *  after group formation. In that case LIM session entry will be NULL for
+     *  p2p device address. So search for p2p go session and pass it's
+     *  operating channel.
+     *  Need to revisit this path in case of GO+CLIENT concurrency.
      */
-    if( (VOS_FALSE == 
-        tx_timer_running(&pMac->lim.limTimers.gLimRemainOnChannelTimer)) &&
-        (psessionEntry != NULL) && 
-        (SIR_BAND_5_GHZ == limGetRFBand(psessionEntry->currentOperChannel)) ) 
+    if( VOS_FALSE ==
+        tx_timer_running(&pMac->lim.limTimers.gLimRemainOnChannelTimer) )
     {
-        pSirSmeMgmtFrame->rxChan = psessionEntry->currentOperChannel;
+        tpPESession pTempSessionEntry = psessionEntry;
+        if( ( (NULL != pTempSessionEntry) ||
+              (pTempSessionEntry = limIsApSessionActive(pMac)) ) &&
+            (SIR_BAND_5_GHZ == limGetRFBand(pTempSessionEntry->currentOperChannel)) )
+        {
+            rxChannel = pTempSessionEntry->currentOperChannel;
+        }
     }
-    else
-    {
-        pSirSmeMgmtFrame->rxChan = rxChannel;
-    }
+
+    pSirSmeMgmtFrame->rxChan = rxChannel;
 
     vos_mem_zero(pSirSmeMgmtFrame->frameBuf,frameLen);
     vos_mem_copy(pSirSmeMgmtFrame->frameBuf,frame,frameLen);
@@ -668,14 +678,14 @@ void limSendSmeMgmtFrameInd(
 
 eHalStatus limP2PActionCnf(tpAniSirGlobal pMac, tANI_U32 txCompleteSuccess)
 {
-    if (pMac->lim.actionFrameSessionId != 0xff)
+    if (pMac->lim.mgmtFrameSessionId != 0xff)
     {
         /* The session entry might be invalid(0xff) action confirmation received after
          * remain on channel timer expired */
         limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF,
                 (txCompleteSuccess ? eSIR_SME_SUCCESS : eSIR_SME_SEND_ACTION_FAIL),
-                pMac->lim.actionFrameSessionId, 0);
-        pMac->lim.actionFrameSessionId = 0xff;
+                pMac->lim.mgmtFrameSessionId, 0);
+        pMac->lim.mgmtFrameSessionId = 0xff;
     }
 
     return eHAL_STATUS_SUCCESS;
@@ -1008,7 +1018,7 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
            limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF, 
                halstatus, pMbMsg->sessionId, 0);
         }
-        pMac->lim.actionFrameSessionId = 0xff;
+        pMac->lim.mgmtFrameSessionId = 0xff;
     }
     else
     {
@@ -1022,13 +1032,13 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
              limLog( pMac, LOGE, FL("could not send action frame!\n" ));
              limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF, halstatus, 
                 pMbMsg->sessionId, 0);
-             pMac->lim.actionFrameSessionId = 0xff;
+             pMac->lim.mgmtFrameSessionId = 0xff;
         }
         else
         {
-             pMac->lim.actionFrameSessionId = pMbMsg->sessionId;
+             pMac->lim.mgmtFrameSessionId = pMbMsg->sessionId;
              limLog( pMac, LOG2, FL("lim.actionFrameSessionId = %lu\n" ), 
-                     pMac->lim.actionFrameSessionId);
+                     pMac->lim.mgmtFrameSessionId);
 
         }
     }
