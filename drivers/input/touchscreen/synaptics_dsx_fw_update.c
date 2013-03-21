@@ -1561,15 +1561,18 @@ static ssize_t fwu_sysfs_do_reflash_store(struct device *dev,
 		goto exit;
 	}
 
-	snprintf(template, sizeof(template), "synaptics-%s-",
+	if (!force_reflash) {
+		snprintf(template, sizeof(template), "synaptics-%s-",
 						rmi->product_id_string);
-	if (strncmp(buf, template, strnlen(template, sizeof(template)))) {
-		dev_err(&rmi4_data->i2c_client->dev,
-			"%s: FW does not belong to %s\n",
-			__func__,
-			rmi->product_id_string);
-		retval = -EINVAL;
-		goto exit;
+		if (strncmp(buf, template,
+			strnlen(template, sizeof(template)))) {
+			dev_err(&rmi4_data->i2c_client->dev,
+				"%s: FW does not belong to %s\n",
+				__func__,
+				rmi->product_id_string);
+			retval = -EINVAL;
+			goto exit;
+		}
 	}
 
 	strlcpy(fwu->fw_filename, buf, count);
