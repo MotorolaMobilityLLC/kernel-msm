@@ -828,6 +828,13 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
                pHddCtx = vos_get_context(VOS_MODULE_ID_HDD, pVosContext);
            else
                return VOS_STATUS_E_EXISTS;
+           if (NULL == pHddCtx)
+           {
+              VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                    ("Invalid pHddCtx pointer\r\n") );
+              return VOS_STATUS_E_FAULT;
+           }
+
            wiphy = pHddCtx->wiphy;
            init_completion(&pHddCtx->driver_crda_req);
            regulatory_hint(wiphy, countryCode);
@@ -1295,7 +1302,7 @@ VOS_STATUS vos_nv_read( VNV_TYPE type, v_VOID_t *outputVoidBuffer,
                status = VOS_STATUS_E_INVAL;
            }
            else {
-               memcpy(outputVoidBuffer,&gnvEFSTable->halnv.tables.pktTypePwrLimits[0][0],bufferSize);
+               memcpy(outputVoidBuffer,gnvEFSTable->halnv.tables.pktTypePwrLimits,bufferSize);
            }
            break;
        case VNV_OFDM_CMD_PWR_OFFSET:
@@ -1523,7 +1530,7 @@ VOS_STATUS vos_nv_write( VNV_TYPE type, v_VOID_t *inputVoidBuffer,
                 status = VOS_STATUS_E_INVAL;
             }
             else {
-                memcpy(&gnvEFSTable->halnv.tables.pktTypePwrLimits[0][0],inputVoidBuffer,bufferSize);
+                memcpy(gnvEFSTable->halnv.tables.pktTypePwrLimits,inputVoidBuffer,bufferSize);
             }
             break;
 
