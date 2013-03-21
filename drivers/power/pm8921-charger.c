@@ -309,7 +309,6 @@ struct pm8921_chg_chip {
 	char				*wl_name;
 	struct work_struct		chg_src_work;
 	struct wake_lock		chg_wake_lock;
-	struct msm_xo_voter             *xo_write;
 #ifdef CONFIG_PM8921_EXTENDED_INFO
 	unsigned int			step_charge_current;
 	unsigned int			step_charge_voltage;
@@ -6184,20 +6183,6 @@ static int pm8921_charger_suspend_noirq(struct device *dev)
 	int rc;
 	struct pm8921_chg_chip *chip = dev_get_drvdata(dev);
 
-	if (!chip->factory_mode) {
-		if (!the_chip->xo_write) {
-			the_chip->xo_write = msm_xo_get(MSM_XO_TCXO_D0,
-							"8921_write");
-			if (IS_ERR(the_chip->xo_write))
-				pr_err("Failed to get XO CORE voter (%ld)\n",
-				       PTR_ERR(the_chip->xo_write));
-		}
-
-		rc = msm_xo_mode_vote(the_chip->xo_write, MSM_XO_MODE_OFF);
-		if (rc < 0)
-			pr_err("XO_D0 Core enable failed (%d)\n", rc);
-	}
-
 	if (chip->lockup_lpm_wrkarnd) {
 		rc = regulator_disable(chip->vreg_xoadc);
 		if (rc)
@@ -6218,19 +6203,6 @@ static int pm8921_charger_resume_noirq(struct device *dev)
 {
 	int rc;
 	struct pm8921_chg_chip *chip = dev_get_drvdata(dev);
-
-	udelay(200);
-	if (!the_chip->xo_write) {
-		the_chip->xo_write = msm_xo_get(MSM_XO_TCXO_D0, "8921_write");
-		if (IS_ERR(the_chip->xo_write))
-			pr_err("Failed to get XO CORE voter (%ld)\n",
-			       PTR_ERR(the_chip->xo_write));
-	}
-
-	rc = msm_xo_mode_vote(the_chip->xo_write, MSM_XO_MODE_ON);
-	if (rc < 0)
-		pr_err("XO_D0 Core disable failed (%d)\n", rc);
-	udelay(200);
 
 	if (chip->lockup_lpm_wrkarnd) {
 		rc = regulator_enable(chip->vreg_xoadc);
@@ -6395,20 +6367,6 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 				goto free_chip;
 			}
 		}
-	} else {
-		udelay(200);
-		if (!chip->xo_write) {
-			chip->xo_write = msm_xo_get(MSM_XO_TCXO_D0,
-						    "8921_write");
-			if (IS_ERR(chip->xo_write))
-				pr_err("Failed to get XO CORE voter (%ld)\n",
-				       PTR_ERR(chip->xo_write));
-		}
-
-		rc = msm_xo_mode_vote(chip->xo_write, MSM_XO_MODE_ON);
-		if (rc < 0)
-			pr_err("XO_D0 Core disable failed (%d)\n", rc);
-		udelay(200);
 	}
 
 	rc = device_create_file(&pdev->dev,
