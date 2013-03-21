@@ -72,7 +72,7 @@ static int kgsl_sync_pt_compare(struct sync_pt *a, struct sync_pt *b)
 
 struct kgsl_fence_event_priv {
 	struct kgsl_context *context;
-	uint32_t timestamp;
+	unsigned int timestamp;
 };
 
 /**
