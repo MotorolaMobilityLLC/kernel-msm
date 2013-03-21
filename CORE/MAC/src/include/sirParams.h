@@ -93,8 +93,8 @@ typedef enum {
    SAP32STA = 5,
    TDLS = 6,
    P2P_GO_NOA_DECOUPLE_INIT_SCAN = 7,
-   WLANACTIVE_OFFLOAD = 8,
-   MAX_FEATURE_SUPPORTED = 128,
+   WLANACTIVE_OFFLOAD = 8
+   //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
 
 typedef enum eSriLinkState {

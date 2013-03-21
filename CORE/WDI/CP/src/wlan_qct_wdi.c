@@ -7697,9 +7697,18 @@ WDI_ProcessConfigBSSReq
                   uMsgSize);
   }else
 #endif
-  wpalMemoryCopy( pSendBuffer+usDataOffset,
-                  &halConfigBssReqMsg.uBssParams.configBssParams,
-                  uMsgSize);
+  {
+    if ( uMsgSize <= sizeof(tConfigBssParams) )
+    {
+       wpalMemoryCopy( pSendBuffer+usDataOffset,
+                      &halConfigBssReqMsg.uBssParams.configBssParams,
+                      uMsgSize);
+    }
+    else
+    {
+      return WDI_STATUS_E_FAILURE;
+    }
+  }
 
   pWDICtx->wdiReqStatusCB     = pwdiConfigBSSParams->wdiReqStatusCB;
   pWDICtx->pReqStatusUserData = pwdiConfigBSSParams->pUserData;
