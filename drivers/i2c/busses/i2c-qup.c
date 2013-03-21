@@ -129,6 +129,7 @@ enum {
 };
 
 #define QUP_MAX_CLK_STATE_RETRIES	300
+#define DEFAULT_CLK_RATE		(19200000)
 #define I2C_STATUS_CLK_STATE		13
 #define QUP_OUT_FIFO_NOT_EMPTY		0x10
 
@@ -408,12 +409,13 @@ static int qup_i2c_poll_clock_ready(struct qup_i2c_dev *dev)
 				clk_state, op_flgs);
 			return 0;
 		}
+
 		/* 1-bit delay before we check again */
 		udelay(dev->one_bit_t);
 	}
 
-	dev_err(dev->dev, "Error waiting for clk ready clk_state:"
-			" 0x%x op_flgs: 0x%x\n", clk_state, op_flgs);
+	dev_err(dev->dev, "Error waiting for clk ready clk_state: 0x%x op_flgs: 0x%x\n",
+		clk_state, op_flgs);
 	return -ETIMEDOUT;
 }
 
