@@ -2247,8 +2247,26 @@ void sme_ResetPowerValuesFor5G (tHalHandle hHal);
     \param  nRoamPrefer5GHz Enable/Disable Roam prefer 5G runtime option
     \- return Success or failure
     -------------------------------------------------------------------------*/
-
 eHalStatus sme_UpdateRoamPrefer5GHz(tHalHandle hHal, v_BOOL_t nRoamPrefer5GHz);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_setRoamIntraBand
+    \brief  enable/disable Intra band roaming
+            This function is called through dynamic setConfig callback function
+            to configure the intra band roaming
+    \param  hHal - HAL handle for device
+    \param  nRoamIntraBand Enable/Disable Intra band roaming
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_setRoamIntraBand(tHalHandle hHal, const v_BOOL_t nRoamIntraBand);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_getRoamIntraBand
+    \brief  get Intra band roaming
+    \param  hHal - HAL handle for device
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+v_BOOL_t sme_getRoamIntraBand(tHalHandle hHal);
 
 /* ---------------------------------------------------------------------------
     \fn sme_UpdateImmediateRoamRssiDiff
@@ -2306,7 +2324,7 @@ eHalStatus sme_UpdateFastTransitionEnabled(tHalHandle hHal,
   --------------------------------------------------------------------------*/
 
 eHalStatus sme_UpdateIsFastRoamIniFeatureEnabled(tHalHandle hHal,
-        v_BOOL_t isFastRoamIniFeatureEnabled);
+        const v_BOOL_t isFastRoamIniFeatureEnabled);
 #endif /* FEATURE_WLAN_LFR */
 
 #ifdef FEATURE_WLAN_CCX
@@ -2322,7 +2340,7 @@ eHalStatus sme_UpdateIsFastRoamIniFeatureEnabled(tHalHandle hHal,
   --------------------------------------------------------------------------*/
 
 eHalStatus sme_UpdateIsCcxFeatureEnabled(tHalHandle hHal,
-        v_BOOL_t isCcxIniFeatureEnabled);
+        const v_BOOL_t isCcxIniFeatureEnabled);
 
 #endif /* FEATURE_WLAN_CCX */
 
@@ -2340,6 +2358,7 @@ eHalStatus sme_UpdateIsCcxFeatureEnabled(tHalHandle hHal,
 eHalStatus sme_UpdateConfigFwRssiMonitoring(tHalHandle hHal,
         v_BOOL_t fEnableFwRssiMonitoring);
 
+#ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
 /*--------------------------------------------------------------------------
   \brief sme_setNeighborLookupRssiThreshold() - update neighbor lookup rssi threshold
   This is a synchronuous call
@@ -2403,6 +2422,79 @@ v_U16_t sme_getNeighborScanRefreshPeriod(tHalHandle hHal);
   --------------------------------------------------------------------------*/
 v_U16_t sme_getEmptyScanRefreshPeriod(tHalHandle hHal);
 
+/* ---------------------------------------------------------------------------
+    \fn sme_UpdateEmptyScanRefreshPeriod
+    \brief  Update nEmptyScanRefreshPeriod
+            This function is called through dynamic setConfig callback function
+            to configure nEmptyScanRefreshPeriod
+            Usage: adb shell iwpriv wlan0 setConfig nEmptyScanRefreshPeriod=[0 .. 60]
+    \param  hHal - HAL handle for device
+    \param  nEmptyScanRefreshPeriod - scan period following empty scan results.
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_UpdateEmptyScanRefreshPeriod(tHalHandle hHal, v_U16_t nEmptyScanRefreshPeriod);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_setNeighborScanMinChanTime
+    \brief  Update nNeighborScanMinChanTime
+            This function is called through dynamic setConfig callback function
+            to configure gNeighborScanChannelMinTime
+            Usage: adb shell iwpriv wlan0 setConfig gNeighborScanChannelMinTime=[0 .. 60]
+    \param  hHal - HAL handle for device
+    \param  nNeighborScanMinChanTime - Channel minimum dwell time
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_setNeighborScanMinChanTime(tHalHandle hHal, const v_U16_t nNeighborScanMinChanTime);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_setNeighborScanMaxChanTime
+    \brief  Update nNeighborScanMaxChanTime
+            This function is called through dynamic setConfig callback function
+            to configure gNeighborScanChannelMaxTime
+            Usage: adb shell iwpriv wlan0 setConfig gNeighborScanChannelMaxTime=[0 .. 60]
+    \param  hHal - HAL handle for device
+    \param  nNeighborScanMinChanTime - Channel maximum dwell time
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_setNeighborScanMaxChanTime(tHalHandle hHal, const v_U16_t nNeighborScanMaxChanTime);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_getNeighborScanMinChanTime
+    \brief  get neighbor scan min channel time
+    \param hHal - The handle returned by macOpen.
+    \return v_U16_t - channel min time value
+    -------------------------------------------------------------------------*/
+v_U16_t sme_getNeighborScanMinChanTime(tHalHandle hHal);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_getNeighborScanMaxChanTime
+    \brief  get neighbor scan max channel time
+    \param hHal - The handle returned by macOpen.
+    \return v_U16_t - channel max time value
+    -------------------------------------------------------------------------*/
+v_U16_t sme_getNeighborScanMaxChanTime(tHalHandle hHal);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_setNeighborScanPeriod
+    \brief  Update nNeighborScanPeriod
+            This function is called through dynamic setConfig callback function
+            to configure nNeighborScanPeriod
+            Usage: adb shell iwpriv wlan0 setConfig nNeighborScanPeriod=[0 .. 60]
+    \param  hHal - HAL handle for device
+    \param  nNeighborScanPeriod - neighbor scan period
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_setNeighborScanPeriod(tHalHandle hHal, const v_U16_t nNeighborScanPeriod);
+
+/* ---------------------------------------------------------------------------
+    \fn sme_getNeighborScanPeriod
+    \brief  get neighbor scan period
+    \param hHal - The handle returned by macOpen.
+    \return v_U16_t - neighbor scan period
+    -------------------------------------------------------------------------*/
+v_U16_t sme_getNeighborScanPeriod(tHalHandle hHal);
+
+#endif
 
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
 /*--------------------------------------------------------------------------
@@ -2471,20 +2563,37 @@ eHalStatus sme_getRoamScanChannelList(tHalHandle hHal, tANI_U8 *pChannelList,
   --------------------------------------------------------------------------*/
 eHalStatus sme_GetCountryRevision(tHalHandle hHal, tANI_U8 *pRevision);
 
+/*--------------------------------------------------------------------------
+  \brief sme_getIsCcxFeatureEnabled() - get CCX feature enabled or not
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return TRUE (1) - if the CCX feature is enabled
+          FALSE (0) - if feature is disabled (compile or runtime)
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_BOOLEAN sme_getIsCcxFeatureEnabled(tHalHandle hHal);
+
+/*--------------------------------------------------------------------------
+  \brief sme_getIsLfrFeatureEnabled() - get LFR feature enabled or not
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return TRUE (1) - if the feature is enabled
+          FALSE (0) - if feature is disabled (compile or runtime)
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_BOOLEAN sme_getIsLfrFeatureEnabled(tHalHandle hHal);
+
+/*--------------------------------------------------------------------------
+  \brief sme_getIsFtFeatureEnabled() - get FT feature enabled or not
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return TRUE (1) - if the feature is enabled
+          FALSE (0) - if feature is disabled (compile or runtime)
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_BOOLEAN sme_getIsFtFeatureEnabled(tHalHandle hHal);
+
 #endif
-
-/* ---------------------------------------------------------------------------
-    \fn sme_UpdateEmptyScanRefreshPeriod
-    \brief  Update nnEmptyScanRefreshPeriod
-            This function is called through dynamic setConfig callback function
-            to configure nnEmptyScanRefreshPeriod
-            Usage: adb shell iwpriv wlan0 setConfig nEmptyScanRefreshPeriod=[0 .. 60]
-    \param  hHal - HAL handle for device
-    \param  nEmptyScanRefreshPeriod - scan period following empty scan results.
-    \- return Success or failure
-    -------------------------------------------------------------------------*/
-
-eHalStatus sme_UpdateEmptyScanRefreshPeriod(tHalHandle hHal, v_U16_t nEmptyScanRefreshPeriod);
 
 /* ---------------------------------------------------------------------------
     \fn sme_IsFeatureSupportedByFW
