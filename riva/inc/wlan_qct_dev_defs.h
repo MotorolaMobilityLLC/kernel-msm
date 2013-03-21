@@ -60,14 +60,17 @@
 #ifdef WCN_PRONTO
 
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
-#define HAL_NUM_ASSOC_STA           16 // HAL_NUM_STA - No of GP STAs - 2 (1 self Sta + 1 Bcast Sta)
-#define HAL_NUM_STA                 20
-#define HAL_NUM_HW_STA              10
-#define HAL_NUM_GPSTA               2
+//supports both V1 and V2
+#define HAL_NUM_ASSOC_STA           32 // HAL_NUM_STA - No of GP STAs - 2 (1 self Sta + 1 Bcast Sta)
+#define HAL_NUM_STA                 41
+#define HAL_NUM_HW_STA              16
+
+#define HAL_NUM_GPSTA               4
 #define HAL_NUM_UMA_DESC_ENTRIES    HAL_NUM_HW_STA // or HAL_NUM_STA
 
 #define HAL_NUM_BSSID               2
-#define HAL_NUM_STA_WITHOUT_VSTA    9
+#define HAL_NUM_STA_WITHOUT_VSTA    12
+#define HAL_NUM_STA_INCLUDING_VSTA  32
 
 #define HAL_NUM_VSTA                (HAL_NUM_STA - HAL_NUM_HW_STA)
 #define QWLANFW_MAX_NUM_VSTA        (HAL_NUM_VSTA)
@@ -75,6 +78,9 @@
 #define QWLAN_VSTA_MIN_IDX          (HAL_NUM_HW_STA)
 #define QWLANFW_NUM_GPSTA           (HAL_NUM_GPSTA)
 
+// For Pronto
+#define HAL_NUM_STA_WITHOUT_VSTA_PRONTO_V1 9
+#define HAL_NUM_STA_WITHOUT_VSTA_PRONTO_V2 (HAL_NUM_STA_WITHOUT_VSTA
 
 #define IS_VSTA_VALID_IDX(__x) \
                           ((__x) != QWLANFW_VSTA_INVALID_IDX)
@@ -142,10 +148,16 @@
  *    1 "Self" STA (hard)
  *    4 General Purpose Stations to support Virtual STAs (hard)
  *   32 Soft AP Stations (10 hard/22 virtual)
+ *
+ * To support concurrency with Vsta, number of stations are increased to 41 (from 38).
+ *    1 for the second interface.
+ *    1 for reserving an infra peer STA index (hard) for the other interface.
+ *    1 for P2P device role.
  */
+
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
 #define HAL_NUM_ASSOC_STA           32
-#define HAL_NUM_STA                 38
+#define HAL_NUM_STA                 41
 #define HAL_NUM_HW_STA              16
 #define HAL_NUM_GPSTA               4
 #define HAL_NUM_VSTA                (HAL_NUM_STA - HAL_NUM_HW_STA)
@@ -307,6 +319,8 @@ typedef enum sBmuWqId {
     //BMUWQ_FW_DXECH2_0 = 15,  /* BD/PDU<->MEM conversion using DxE CH2.  Not in use by FW */
     BMUWQ_FW_DXECH2_1 = 16,  /* BD/PDU<->MEM conversion using DxE CH2.  Not in use by FW */
 
+    /* NDPA Addr3 workaround */
+    BMUWQ_RXP_DEFAULT_PUSH_WQ = 17,
 /*  These WQs are not supported in Volans
     BMUWQ_BMU_WQ17 = 17,
     BMUWQ_BMU_WQ18 = 18,
