@@ -99,6 +99,10 @@
 ( \
    (((pMac)->roam.configParam.nRoamPrefer5GHz)?eANI_BOOLEAN_TRUE:eANI_BOOLEAN_FALSE) \
 )
+#define CSR_IS_ROAM_INTRA_BAND_ENABLED( pMac ) \
+( \
+   (((pMac)->roam.configParam.nRoamIntraBand)?eANI_BOOLEAN_TRUE:eANI_BOOLEAN_FALSE) \
+)
 #endif
 
 //Support for "Fast roaming" (i.e., CCX, LFR, or 802.11r.)
@@ -596,6 +600,7 @@ typedef struct tagCsrConfig
     tANI_U8   RoamRssiDiff;
     tANI_U8   nImmediateRoamRssiDiff;
     tANI_BOOLEAN nRoamPrefer5GHz;
+    tANI_BOOLEAN nRoamIntraBand;
 #endif
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
