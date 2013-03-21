@@ -1010,6 +1010,33 @@ static void wlan_hdd_set_sapHwmode(hdd_adapter_t *pHostapdAdapter)
     }
 }
 
+static int wlan_hdd_add_ie(hdd_adapter_t* pHostapdAdapter, v_U8_t *genie,
+                              v_U8_t *total_ielen, v_U8_t *oui, v_U8_t oui_size)
+{
+    v_U8_t ielen = 0;
+    v_U8_t *pIe = NULL;
+    beacon_data_t *pBeacon = pHostapdAdapter->sessionCtx.ap.beacon;
+
+    pIe = wlan_hdd_get_vendor_oui_ie_ptr(oui, oui_size,
+                                          pBeacon->tail, pBeacon->tail_len);
+
+    if (pIe)
+    {
+        ielen = pIe[1] + 2;
+        if ((*total_ielen + ielen) <= MAX_GENIE_LEN)
+        {
+            vos_mem_copy(&genie[*total_ielen], pIe, ielen);
+        }
+        else
+        {
+            hddLog( VOS_TRACE_LEVEL_ERROR, "**Ie Length is too big***");
+            return -EINVAL;
+        }
+        *total_ielen += ielen;
+    }
+    return 0;
+}
+
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,0))
 static int wlan_hdd_cfg80211_update_apies(hdd_adapter_t* pHostapdAdapter,
                             struct beacon_parameters *params)
@@ -1019,10 +1046,8 @@ static int wlan_hdd_cfg80211_update_apies(hdd_adapter_t* pHostapdAdapter,
 #endif
 {
     v_U8_t *genie;
-    v_U8_t total_ielen = 0, ielen = 0;
-    v_U8_t *pIe = NULL;
+    v_U8_t total_ielen = 0;
     v_U8_t addIE[1] = {0};
-    beacon_data_t *pBeacon = pHostapdAdapter->sessionCtx.ap.beacon;
     int ret = 0;
 
     genie = vos_mem_malloc(MAX_GENIE_LEN);
@@ -1032,60 +1057,37 @@ static int wlan_hdd_cfg80211_update_apies(hdd_adapter_t* pHostapdAdapter,
         return -ENOMEM;
     }
 
-    pIe = wlan_hdd_get_wps_ie_ptr(pBeacon->tail, pBeacon->tail_len);
-
-    if(pIe)
+    if (0 != wlan_hdd_add_ie(pHostapdAdapter, genie,
+                              &total_ielen, WPS_OUI_TYPE, WPS_OUI_TYPE_SIZE))
     {
-        /*Copy the wps IE*/
-        ielen = pIe[1] + 2;
-        if( ielen <=MAX_GENIE_LEN)
-        {
-            vos_mem_copy(genie, pIe, ielen);
-        }
-        else 
-        {
-            hddLog( VOS_TRACE_LEVEL_ERROR, "**Wps Ie Length is too big***\n");
-            ret = -EINVAL;
-            goto done;
-        }
-        total_ielen = ielen;
+         ret = -EINVAL;
+         goto done;
     }
 
 #ifdef WLAN_FEATURE_WFD
-    pIe = wlan_hdd_get_wfd_ie_ptr(pBeacon->tail,pBeacon->tail_len);
-
-    if(pIe) 
-    { 
-        ielen = pIe[1] + 2;
-        if(total_ielen + ielen <= MAX_GENIE_LEN) {
-            vos_mem_copy(&genie[total_ielen],pIe,(pIe[1] + 2));
-        }
-        else {
-           hddLog( VOS_TRACE_LEVEL_ERROR, "**Wps Ie + P2p Ie + Wfd Ie Length is too big***\n");
-           ret = -EINVAL;
-           goto done;
-        }
-        total_ielen += ielen; 
+    if (0 != wlan_hdd_add_ie(pHostapdAdapter, genie,
+                              &total_ielen, WFD_OUI_TYPE, WFD_OUI_TYPE_SIZE))
+    {
+         ret = -EINVAL;
+         goto done;
     }
 #endif
 
-    pIe = wlan_hdd_get_p2p_ie_ptr(pBeacon->tail,pBeacon->tail_len);
-
-    if(pIe)
+    if (0 != wlan_hdd_add_ie(pHostapdAdapter, genie,
+                              &total_ielen, P2P_OUI_TYPE, P2P_OUI_TYPE_SIZE))
     {
-        ielen = pIe[1] + 2;
-        if(total_ielen + ielen <= MAX_GENIE_LEN)
+         ret = -EINVAL;
+         goto done;
+    }
+
+    if (WLAN_HDD_SOFTAP == pHostapdAdapter->device_mode)
+    {
+        if (0 != wlan_hdd_add_ie(pHostapdAdapter, genie,
+                                  &total_ielen, SS_OUI_TYPE, SS_OUI_TYPE_SIZE))
         {
-            vos_mem_copy(&genie[total_ielen], pIe, (pIe[1] + 2));
+             ret = -EINVAL;
+             goto done;
         }
-        else
-        {
-            hddLog( VOS_TRACE_LEVEL_ERROR, 
-                    "**Wps Ie+ P2pIE Length is too big***\n");
-            ret = -EINVAL;
-            goto done;
-        }
-        total_ielen += ielen;
     }
 
     if (ccmCfgSetStr((WLAN_HDD_GET_CTX(pHostapdAdapter))->hHal,
@@ -1272,7 +1274,7 @@ static int wlan_hdd_cfg80211_update_apies(hdd_adapter_t* pHostapdAdapter,
 
 done:
     vos_mem_free(genie);
-    return 0;
+    return ret;
 }
 
 /* 
