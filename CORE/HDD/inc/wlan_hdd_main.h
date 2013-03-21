@@ -987,6 +987,7 @@ VOS_STATUS hdd_stop_all_adapters( hdd_context_t *pHddCtx );
 VOS_STATUS hdd_reset_all_adapters( hdd_context_t *pHddCtx );
 VOS_STATUS hdd_start_all_adapters( hdd_context_t *pHddCtx );
 VOS_STATUS hdd_reconnect_all_adapters( hdd_context_t *pHddCtx );
+void hdd_dump_concurrency_info(hdd_context_t *pHddCtx);
 hdd_adapter_t * hdd_get_adapter_by_name( hdd_context_t *pHddCtx, tANI_U8 *name );
 hdd_adapter_t * hdd_get_adapter_by_macaddr( hdd_context_t *pHddCtx, tSirMacAddr macAddr );
 hdd_adapter_t * hdd_get_mon_adapter( hdd_context_t *pHddCtx );

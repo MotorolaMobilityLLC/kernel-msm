@@ -2785,6 +2785,82 @@ VOS_STATUS hdd_reconnect_all_adapters( hdd_context_t *pHddCtx )
    return VOS_STATUS_SUCCESS;
 }
 
+void hdd_dump_concurrency_info(hdd_context_t *pHddCtx)
+{
+   hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
+   VOS_STATUS status;
+   hdd_adapter_t *pAdapter;
+   hdd_station_ctx_t *pHddStaCtx;
+   hdd_ap_ctx_t *pHddApCtx;
+   hdd_hostapd_state_t * pHostapdState;
+   tCsrBssid staBssid = { 0 }, p2pBssid = { 0 }, apBssid = { 0 };
+   v_U8_t staChannel = 0, p2pChannel = 0, apChannel = 0;
+   const char *p2pMode = "DEV";
+   const char *ccMode = "Standalone";
+   int n;
+
+   status =  hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
+   while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == status )
+   {
+      pAdapter = pAdapterNode->pAdapter;
+      switch (pAdapter->device_mode) {
+      case WLAN_HDD_INFRA_STATION:
+          pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+          if (eConnectionState_Associated == pHddStaCtx->conn_info.connState) {
+              staChannel = pHddStaCtx->conn_info.operationChannel;
+              memcpy(staBssid, pHddStaCtx->conn_info.bssId, sizeof(staBssid));
+          }
+          break;
+      case WLAN_HDD_P2P_CLIENT:
+          pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+          if (eConnectionState_Associated == pHddStaCtx->conn_info.connState) {
+              p2pChannel = pHddStaCtx->conn_info.operationChannel;
+              memcpy(p2pBssid, pHddStaCtx->conn_info.bssId, sizeof(p2pBssid));
+              p2pMode = "CLI";
+          }
+          break;
+      case WLAN_HDD_P2P_GO:
+          pHddApCtx = WLAN_HDD_GET_AP_CTX_PTR(pAdapter);
+          pHostapdState = WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter);
+          if (pHostapdState->bssState == BSS_START && pHostapdState->vosStatus==VOS_STATUS_SUCCESS) {
+              p2pChannel = pHddApCtx->operatingChannel;
+              memcpy(p2pBssid, pAdapter->macAddressCurrent.bytes, sizeof(p2pBssid));
+          }
+          p2pMode = "GO";
+          break;
+      case WLAN_HDD_SOFTAP:
+          pHddApCtx = WLAN_HDD_GET_AP_CTX_PTR(pAdapter);
+          pHostapdState = WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter);
+          if (pHostapdState->bssState == BSS_START && pHostapdState->vosStatus==VOS_STATUS_SUCCESS) {
+              apChannel = pHddApCtx->operatingChannel;
+              memcpy(apBssid, pAdapter->macAddressCurrent.bytes, sizeof(apBssid));
+          }
+          break;
+      default:
+          break;
+      }
+      status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
+      pAdapterNode = pNext;
+   }
+   if (staChannel > 0 && (apChannel > 0 || p2pChannel > 0)) {
+       ccMode = (p2pChannel==staChannel||apChannel==staChannel) ? "SCC" : "MCC";
+   }
+   n = pr_info("wlan(%d) " MAC_ADDRESS_STR " %s",
+                staChannel, MAC_ADDR_ARRAY(staBssid), ccMode);
+   if (p2pChannel > 0) {
+       n +=  pr_info("p2p-%s(%d) " MAC_ADDRESS_STR,
+                     p2pMode, p2pChannel, MAC_ADDR_ARRAY(p2pBssid));
+   }
+   if (apChannel > 0) {
+       n += pr_info("AP(%d) " MAC_ADDRESS_STR,
+                     apChannel, MAC_ADDR_ARRAY(apBssid));
+   }
+
+   if (p2pChannel > 0 && apChannel > 0) {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "Error concurrent SAP %d and P2P %d which is not support", apChannel, p2pChannel);
+   }
+}
+
 bool hdd_is_ssr_required( void)
 {
     return (isSsrRequired == HDD_SSR_REQUIRED);
