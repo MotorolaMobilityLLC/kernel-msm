@@ -298,6 +298,8 @@ struct mdp4_overlay_pipe {
 	uint32 src_format;
 	uint32 src_width;	/* source img width */
 	uint32 src_height;	/* source img height */
+	uint32 prev_src_width;	/* source img width */
+	uint32 prev_src_height;	/* source img height */
 	uint32 is_3d;
 	uint32 src_width_3d;	/* source img width */
 	uint32 src_height_3d;	/* source img height */
@@ -978,9 +980,9 @@ void mdp4_wfd_init(int cndx);
 int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd, int cndx, int wait);
 #endif
 #ifdef CONFIG_FB_MSM_OVERLAY
-int mdp4_unmap_sec_resource(void);
+int mdp4_unmap_sec_resource(struct msm_fb_data_type *mfd);
 #else
-static inline void mdp4_unmap_sec_resource(void);
+static inline void mdp4_unmap_sec_resource(struct msm_fb_data_type *mfd);
 {
 	/* empty */
 	return 0;
