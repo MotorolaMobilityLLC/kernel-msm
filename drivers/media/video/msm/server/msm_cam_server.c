@@ -1098,11 +1098,16 @@ int msm_server_v4l2_unsubscribe_event(struct v4l2_fh *fh,
 		isp_event = (struct msm_isp_event_ctrl *)
 			(*((uint32_t *)ev.u.data));
 		if (isp_event) {
-			if (isp_event->isp_data.isp_msg.len != 0 &&
-				isp_event->isp_data.isp_msg.data != NULL) {
-				kfree(isp_event->isp_data.isp_msg.data);
-				isp_event->isp_data.isp_msg.len = 0;
-				isp_event->isp_data.isp_msg.data = NULL;
+			if (ev.type != (V4L2_EVENT_PRIVATE_START +
+					MSM_CAM_RESP_DIV_FRAME_EVT_MSG) &&
+					ev.type != (V4L2_EVENT_PRIVATE_START +
+					MSM_CAM_RESP_MCTL_PP_EVENT)) {
+				if (isp_event->isp_data.isp_msg.len > 0 &&
+					isp_event->isp_data.isp_msg.data) {
+					kfree(isp_event->isp_data.isp_msg.data);
+					isp_event->isp_data.isp_msg.len = 0;
+					isp_event->isp_data.isp_msg.data = NULL;
+				}
 			}
 			kfree(isp_event);
 			*((uint32_t *)ev.u.data) = 0;
