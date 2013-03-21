@@ -152,6 +152,7 @@ WDI_Status WDI_DS_TxPacket(void *pContext,
   WDI_DS_BdMemPoolType *pMemPool;
   wpt_uint8      ucBdPoolType;
   wpt_uint8      staId;
+  WDI_Status wdiStatus;
 
   // Do Sanity checks
   if (NULL == pContext)
@@ -216,11 +217,13 @@ WDI_Status WDI_DS_TxPacket(void *pContext,
   alignment = 0;
   WDI_DS_PrepareBDHeader(pFrame, ucSwFrameTXXlation, alignment);
 
-  if(WDI_STATUS_SUCCESS != 
-      WDI_FillTxBd( pContext, ucTypeSubtype, pSTAMACAddress, pAddr2MACAddress, 
-        &ucUP, 1, pvBDHeader, ucTxFlag /* No ACK */, 0, &staId)){
+  wdiStatus = WDI_FillTxBd(pContext, ucTypeSubtype, pSTAMACAddress, pAddr2MACAddress,
+    &ucUP, 1, pvBDHeader, ucTxFlag /* No ACK */, 0, &staId);
+
+  if(WDI_STATUS_SUCCESS != wdiStatus)
+  {
     WDI_DS_MemPoolFree(pMemPool, pvBDHeader, physBDHeader);
-    return WDI_STATUS_E_FAILURE;
+    return wdiStatus;
   }
 
   pTxMetadata->staIdx = staId;
