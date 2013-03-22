@@ -908,7 +908,8 @@ tSirRetStatus limSendExcludeUnencryptInd(tpAniSirGlobal pMac,
     PELOG3(limLog(pMac, LOG3,
                 FL("Sending WDA_EXCLUDE_UNENCRYPTED_IND"));)
     MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
-    if (eSIR_SUCCESS != (retCode = wdaPostCtrlMsg(pMac, &msgQ)))
+    retCode = wdaPostCtrlMsg(pMac, &msgQ);
+    if (eSIR_SUCCESS != retCode)
     {
         palFreeMemory(pMac->hHdd, pExcludeUnencryptParam);
         limLog(pMac, LOGP,
