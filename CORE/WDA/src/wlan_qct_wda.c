@@ -5945,6 +5945,16 @@ VOS_STATUS WDA_ProcessSendBeacon(tWDA_CbContext *pWDA,
                               pSendbeaconParams->beaconLength;
    wdiSendBeaconReqParam.wdiSendBeaconParamsInfo.timIeOffset = 
                               pSendbeaconParams->timIeOffset;
+   /* p2pIeOffset should be atleast greater than timIeOffset */
+   if ((pSendbeaconParams->p2pIeOffset != 0) &&
+           (pSendbeaconParams->p2pIeOffset <
+            pSendbeaconParams->timIeOffset))
+   {
+       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+               "Invalid p2pIeOffset = %hu ", pSendbeaconParams->p2pIeOffset);
+       VOS_ASSERT( 0 );
+       return WDI_STATUS_E_FAILURE;
+   }
    wdiSendBeaconReqParam.wdiSendBeaconParamsInfo.usP2PIeOffset = 
                               pSendbeaconParams->p2pIeOffset;
    /* Copy the beacon template to local buffer */
