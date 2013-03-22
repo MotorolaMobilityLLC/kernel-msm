@@ -1039,15 +1039,33 @@ u32 ddl_check_reconfig(struct ddl_client_context *ddl)
 				 decoder->client_frame_size.height);
 		}
 	} else {
+		u32 min_count = decoder->actual_output_buf_req.min_count;
+		u32 actual_count = decoder->actual_output_buf_req.actual_count;
+
+		if ((decoder->frame_size.width >= 1920) &&
+			(decoder->frame_size.height >= 1080)) {
+			if (min_count <
+				decoder->client_output_buf_req.min_count) {
+				min_count =
+				decoder->client_output_buf_req.min_count;
+			}
+
+			if (actual_count <
+				decoder->client_output_buf_req.actual_count) {
+				actual_count =
+				decoder->client_output_buf_req.actual_count;
+			}
+		}
+
 		if ((decoder->frame_size.width ==
 			decoder->client_frame_size.width) &&
 			(decoder->frame_size.height ==
 			decoder->client_frame_size.height) &&
 			(decoder->actual_output_buf_req.sz <=
 			decoder->client_output_buf_req.sz) &&
-			(decoder->actual_output_buf_req.min_count ==
+			(min_count ==
 			decoder->client_output_buf_req.min_count) &&
-			(decoder->actual_output_buf_req.actual_count ==
+			(actual_count ==
 			decoder->client_output_buf_req.actual_count) &&
 			(decoder->frame_size.scan_lines ==
 			decoder->client_frame_size.scan_lines) &&
