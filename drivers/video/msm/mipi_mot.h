@@ -102,6 +102,7 @@ struct mipi_mot_cmd_seq {
 		MIPI_MOT_SEQ_EXEC_SUB_SEQ,
 		/* TODO: Add LP power mode when needed */
 		MIPI_MOT_SEQ_TX_PWR_MODE_HS,
+		MIPI_MOT_SEQ_EXIT_SLEEP,
 	} type;
 	int (*cond_func)(struct msm_fb_data_type *);
 	union {
@@ -120,7 +121,7 @@ struct mipi_mot_cmd_seq {
 #define MIPI_MOT_EXEC_SEQ(cond, data) \
 	{MIPI_MOT_SEQ_EXEC_SUB_SEQ, (cond), .sub.seq = data,\
 			.sub.count = ARRAY_SIZE(data)}
-
+#define MIPI_MOT_TX_EXIT_SLEEP(cond) {MIPI_MOT_SEQ_EXIT_SLEEP, (cond)}
 
 struct mipi_mot_panel {
 
@@ -158,6 +159,9 @@ struct mipi_mot_panel {
 	int (*panel_on)(struct msm_fb_data_type *mfd);
 	int (*panel_off)(struct msm_fb_data_type *mfd);
 	void (*panel_en_from_partial) (struct msm_fb_data_type *mfd);
+	unsigned int exit_sleep_wait;
+	unsigned int exit_sleep_panel_on_wait;
+	struct timer_list exit_sleep_panel_on_timer;
 	void (*esd_run) (void);
 	void (*set_backlight)(struct msm_fb_data_type *mfd);
 	void (*set_backlight_curve)(struct msm_fb_data_type *mfd);

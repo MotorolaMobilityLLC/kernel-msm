@@ -92,11 +92,42 @@ static struct dsi_cmd_desc mot_display_set_tear_off_cmds[] = {
 static u8 panel_raw_mtp[RAW_MTP_SIZE];
 static u8 gamma_settings[NUM_NIT_LVLS][RAW_GAMMA_SIZE];
 
+
+static DECLARE_COMPLETION(panel_on_delay_completion);
+void mipi_mot_panel_on_timer_expire(unsigned long timeout)
+{
+	complete_all(&panel_on_delay_completion);
+}
+
 void mipi_mot_panel_exit_sleep(void)
 {
-	pr_debug("%s: exiting sleep mode\n", __func__);
+	pr_debug("%s: exiting sleep mode [wait: %d ms][deferred: %d ms]\n",
+					__func__, mot_panel->exit_sleep_wait,
+					mot_panel->exit_sleep_panel_on_wait);
+	mot_display_exit_sleep_cmds[0].wait =
+					mot_panel->exit_sleep_wait;
+
 	mipi_mot_tx_cmds(&mot_display_exit_sleep_cmds[0],
 			ARRAY_SIZE(mot_display_exit_sleep_cmds));
+
+	if (mot_panel->exit_sleep_panel_on_wait > 0) {
+		pr_info("%s: start deferred wait [%d ms]\n", __func__,
+				mot_panel->exit_sleep_panel_on_wait -
+				mot_panel->exit_sleep_wait);
+		INIT_COMPLETION(panel_on_delay_completion);
+		mot_panel->exit_sleep_panel_on_timer.function =
+						mipi_mot_panel_on_timer_expire;
+		/* set the timer to fire ~(exit_sleep_panel_on_wait -
+		   exit_sleep_wait) milliseconds in the future. We add a single
+		   jiffy to this timer to ensure that the timer doesn't fire
+		   early due to the restriction that jiffies have an accuracy
+		   of 10ms.  This ensures that if our timer is set for 94ms in
+		   the future it doesn't fire at 90ms, but instead at 100ms */
+		mod_timer(&mot_panel->exit_sleep_panel_on_timer, jiffies + 1 +
+				msecs_to_jiffies(
+					mot_panel->exit_sleep_panel_on_wait -
+					mot_panel->exit_sleep_wait));
+	}
 }
 
 void mipi_mot_panel_enter_normal_mode(void)
@@ -108,13 +139,32 @@ void mipi_mot_panel_enter_normal_mode(void)
 
 int mipi_mot_panel_on(struct msm_fb_data_type *mfd)
 {
+	u8 pwr_mode;
+	int ret = 0;
 	int keep_hidden = mfd->resume_cfg.keep_hidden;
 	mfd->resume_cfg.keep_hidden = 0;
 	if (keep_hidden) {
 		pr_info("%s: skipping display on\n", __func__);
 		mot_panel->esd_expected_pwr_mode = 0x90;
 	} else {
+		if (mot_panel->exit_sleep_panel_on_wait > 0) {
+			pr_debug("%s: wait for exit_sleep deferred timer\n",
+								__func__);
+			wait_for_completion_timeout(&panel_on_delay_completion,
+				msecs_to_jiffies(
+				mot_panel->exit_sleep_panel_on_wait) + 1);
+		}
+
+		ret = mipi_mot_get_pwr_mode(mfd, &pwr_mode);
+		if (ret > 0)
+			pr_info("%s: Power_mode =0x%x\n", __func__, pwr_mode);
+		else
+			pr_err("%s: Failed to get power_mode. Ret = %d\n",
+			       __func__, ret);
+
+		mmi_panel_notify(MMI_PANEL_EVENT_POST_INIT, NULL);
 		pr_info("%s: sending display on\n", __func__);
+
 		mipi_mot_tx_cmds(&mot_display_on_cmds[0],
 			ARRAY_SIZE(mot_display_on_cmds));
 		mot_panel->esd_expected_pwr_mode = 0x94;
@@ -258,6 +308,8 @@ int mipi_mot_exec_cmd_seq(struct msm_fb_data_type *mfd,
 			pr_debug("%s: Item %d - Enabling HS mode\n",
 				__func__, i);
 			mipi_set_tx_power_mode(0);
+		} else if (cur->type == MIPI_MOT_SEQ_EXIT_SLEEP) {
+			mipi_mot_panel_exit_sleep();
 		}
 	}
 
