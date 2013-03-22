@@ -425,7 +425,6 @@ static void panel_enable_from_partial(struct msm_fb_data_type *mfd)
 static int panel_enable(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
-	u8 pwr_mode;
 	int ret = 0;
 
 	pr_info("%s is called\n", __func__);
@@ -449,17 +448,6 @@ static int panel_enable(struct platform_device *pdev)
 	get_manufacture_id(mfd);
 	get_controller_ver(mfd);
 	get_controller_drv_ver(mfd);
-
-	mmi_panel_notify(MMI_PANEL_EVENT_POST_INIT, NULL);
-
-	ret = mipi_mot_get_pwr_mode(mfd, &pwr_mode);
-	if (ret > 0)
-		pr_info("%s completed. Power_mode =0x%x\n", __func__, pwr_mode);
-	else {
-		pr_err("%s: Failed to get power_mode. Ret = %d\n",
-							__func__, ret);
-		goto err;
-	}
 
 	if (!mot_panel.panel_on)
 		atomic_set(&mot_panel.state, MOT_PANEL_ON);
@@ -833,6 +821,11 @@ static int __init mipi_mot_lcd_init(void)
 	mot_panel.panel_on = mipi_mot_panel_on;
 	mot_panel.panel_off = NULL;
 	mot_panel.is_no_disp = false;
+	/* set default values for exit_sleep command */
+	mot_panel.exit_sleep_wait = 10;
+	mot_panel.exit_sleep_panel_on_wait = 120;
+
+	init_timer(&mot_panel.exit_sleep_panel_on_timer);
 
 	mot_panel.hide_img = mipi_mot_hide_img;
 	moto_panel_debug_init();

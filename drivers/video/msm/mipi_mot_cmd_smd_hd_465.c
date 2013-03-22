@@ -38,7 +38,6 @@ static struct mipi_dsi_phy_ctrl dsi_cmd_mode_phy_db = {
 };
 
 static char enter_sleep[2] = {DCS_CMD_ENTER_SLEEP_MODE, 0x00};
-static char exit_sleep[2] = {DCS_CMD_EXIT_SLEEP_MODE, 0x00};
 static char display_off[2] = {DCS_CMD_SET_DISPLAY_OFF, 0x00};
 static char unlock_lvl_2[3] = {0xf0, 0x5a, 0x5a};
 static char unlock_lvl_mtp[3] = {0xf1, 0x5a, 0x5a};
@@ -104,7 +103,7 @@ static int is_controller_ver_2(struct msm_fb_data_type *);
 #define VER_2		is_controller_ver_2
 
 static struct mipi_mot_cmd_seq smd_hd_465_init_seq[] = {
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE, 120, exit_sleep),
+	MIPI_MOT_TX_EXIT_SLEEP(NULL),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_2),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_mtp),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_3),
