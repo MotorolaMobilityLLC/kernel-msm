@@ -20,3 +20,11 @@ config FB_MSM_MDSS_HDMI_MHL_SII8334
 	  Support the HDMI to MHL conversion.
 	  MHL (Mobile High-Definition Link) technology
 	  uses USB connector to output HDMI content
+
+config FB_MSM_MDSS_UD_FLIP
+	depends on FB_MSM_MDSS
+	bool 'Use MDSS flip for Upside down flipped LCD'
+	default n
+	---help---
+	  Support upside down flipped LCD
+	  MDSS pipe flip operation mode is used
