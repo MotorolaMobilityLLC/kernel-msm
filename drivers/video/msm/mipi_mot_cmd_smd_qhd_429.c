@@ -51,7 +51,6 @@ static struct dsi_cmd_desc display_off_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 120, sizeof(enter_sleep), enter_sleep},
 };
 
-static char exit_sleep[2] = {DCS_CMD_EXIT_SLEEP_MODE, 0x00};
 static char enable_te[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
 
 /* Dyanmic Gamma data */
@@ -161,8 +160,6 @@ static struct dsi_cmd_desc smd_qhd_429_cmds_4[] = {
 			sizeof(etc_condition_set2_C), etc_condition_set2_C},
 };
 static struct dsi_cmd_desc smd_qhd_429_cmds_5[] = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
-			sizeof(exit_sleep), exit_sleep},
 	{DTYPE_DCS_WRITE, 1, 0, 0, 1, sizeof(enable_te), enable_te}
 };
 
@@ -344,6 +341,7 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 			elvss_output_set[i] = elvss_value + 0xF;
 
 	mipi_mot_tx_cmds(&elvss_set_cmd[0], ARRAY_SIZE(elvss_set_cmd));
+	mipi_mot_panel_exit_sleep();
 	mipi_mot_tx_cmds(&smd_qhd_429_cmds_5[0],
 					ARRAY_SIZE(smd_qhd_429_cmds_5));
 	mipi_mot_tx_cmds(&smd_qhd_429_cmds_6[0],
@@ -496,6 +494,7 @@ static int __init mipi_cmd_mot_smd_qhd_429_init(void)
 
 	mot_panel->panel_enable = panel_enable;
 	mot_panel->panel_disable = panel_disable;
+	mot_panel->exit_sleep_wait = 20;
 	mot_panel->set_backlight = panel_set_backlight;
 	mot_panel->set_backlight_curve = panel_set_backlight_curve;
 	mot_panel->enable_acl = enable_acl;
