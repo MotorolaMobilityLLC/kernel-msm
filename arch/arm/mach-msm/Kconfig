@@ -178,6 +178,7 @@ config ARCH_MSM8960
 	select MSM_KRAIT_WFE_FIXUP
 	select MSM_IOMMU_GPU_SYNC
 	select MSM_CPU_PWRCTL
+	select HAS_MACH_MEMUTILS
 
 config ARCH_MSM8930
 	bool "MSM8930"
@@ -2645,4 +2646,11 @@ config MMI_ACPU_INFO
 	bool "Motorola Mobility ACPU Info"
 	help
 	Provide mechanism to access ACPU binning info via procfs.
+
+config HAS_MACH_MEMUTILS
+	default n
+	bool "Motorola MSM memcpy enhancements"
+	help
+	Faster memcpy performance for Krait
+
 endif
