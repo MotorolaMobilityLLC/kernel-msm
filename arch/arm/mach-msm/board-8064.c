@@ -3223,6 +3223,16 @@ static void __init apq8064_common_init(void)
 	if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917)
 		apq8064_pm8917_pdata_fixup();
 	platform_device_register(&msm_gpio_device);
+	if (cpu_is_apq8064ab())
+		apq8064ab_update_krait_spm();
+	if (cpu_is_krait_v3()) {
+		msm_pm_set_tz_retention_flag(0);
+		apq8064ab_update_retention_spm();
+	} else {
+		msm_pm_set_tz_retention_flag(1);
+	}
+	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
+	msm_spm_l2_init(msm_spm_l2_data);
 	msm_tsens_early_init(&apq_tsens_pdata);
 	msm_thermal_init(&msm_thermal_pdata);
 	if (socinfo_init() < 0)
@@ -3329,16 +3339,6 @@ static void __init apq8064_common_init(void)
 		apq8064_init_dsps();
 		platform_device_register(&msm_8960_riva);
 	}
-	if (cpu_is_apq8064ab())
-		apq8064ab_update_krait_spm();
-	if (cpu_is_krait_v3()) {
-		msm_pm_set_tz_retention_flag(0);
-		apq8064ab_update_retention_spm();
-	} else {
-		msm_pm_set_tz_retention_flag(1);
-	}
-	msm_spm_init(msm_spm_data, ARRAY_SIZE(msm_spm_data));
-	msm_spm_l2_init(msm_spm_l2_data);
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
 	apq8064_epm_adc_init();
 }
