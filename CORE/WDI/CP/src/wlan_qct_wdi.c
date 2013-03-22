@@ -11661,6 +11661,18 @@ WDI_ProcessSendBeaconParamsReq
                   pwdiSendBeaconParams->wdiSendBeaconParamsInfo.beaconLength);
   halSendBeaconReq.sendBeaconParam.timIeOffset =
                   pwdiSendBeaconParams->wdiSendBeaconParamsInfo.timIeOffset;
+  /* usP2PIeOffset should be atleast greater than timIeOffset */
+  if ((pwdiSendBeaconParams->wdiSendBeaconParamsInfo.usP2PIeOffset != 0 ) &&
+          (pwdiSendBeaconParams->wdiSendBeaconParamsInfo.usP2PIeOffset <
+           pwdiSendBeaconParams->wdiSendBeaconParamsInfo.timIeOffset))
+  {
+      WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
+              "Invalid usP2PIeOffset %hu",
+              pwdiSendBeaconParams->wdiSendBeaconParamsInfo.usP2PIeOffset);
+      WDI_ASSERT(0);
+      return WDI_STATUS_E_FAILURE;
+  }
+
   halSendBeaconReq.sendBeaconParam.p2pIeOffset =
                   pwdiSendBeaconParams->wdiSendBeaconParamsInfo.usP2PIeOffset;
 

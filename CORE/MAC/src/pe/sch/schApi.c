@@ -316,6 +316,16 @@ tSirRetStatus schSendBeaconReq( tpAniSirGlobal pMac, tANI_U8 *beaconPayload, tAN
   palCopyMemory(pMac, beaconParams->bssId, psessionEntry->bssId, sizeof(psessionEntry->bssId));
 
   beaconParams->timIeOffset = pMac->sch.schObject.gSchBeaconOffsetBegin;
+  /* p2pIeOffset should be atleast greater than timIeOffset */
+  if ((pMac->sch.schObject.p2pIeOffset != 0) &&
+          (pMac->sch.schObject.p2pIeOffset <
+           pMac->sch.schObject.gSchBeaconOffsetBegin))
+  {
+      schLog(pMac, LOGE,FL("Invalid p2pIeOffset:[%d]"),
+              pMac->sch.schObject.p2pIeOffset);
+      VOS_ASSERT( 0 );
+      return eSIR_FAILURE;
+  }
   beaconParams->p2pIeOffset = pMac->sch.schObject.p2pIeOffset;
 #ifdef WLAN_SOFTAP_FW_BEACON_TX_PRNT_LOG
   schLog(pMac, LOGE,FL("TimIeOffset:[%d]"),beaconParams->TimIeOffset );
