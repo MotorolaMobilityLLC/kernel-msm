@@ -45,10 +45,8 @@ static struct mipi_dsi_phy_ctrl dsi_video_mode_phy_db = {
 };
 
 static char enter_sleep[2] = {DCS_CMD_ENTER_SLEEP_MODE, 0x00};
-static char exit_sleep[2] = {DCS_CMD_EXIT_SLEEP_MODE, 0x00};
 
 static char display_off[2] = {DCS_CMD_SET_DISPLAY_OFF, 0x00};
-static char display_on[2] = {DCS_CMD_SET_DISPLAY_ON, 0x00};
 
 static char MTP_key_enable_1[3] = {0xf0, 0x5a, 0x5a};
 static char MTP_key_enable_2[3] = {0xf1, 0x5a, 0x5a};
@@ -234,8 +232,6 @@ static struct dsi_cmd_desc mot_video_on_cmds1[] = {
 			sizeof(MTP_key_enable_1), MTP_key_enable_1},
 	{DTYPE_DCS_WRITE, 1, 0, 0, DEFAULT_DELAY,
 			sizeof(MTP_key_enable_2), MTP_key_enable_2},
-	{DTYPE_DCS_WRITE, 1, 0, 0, DEFAULT_DELAY,
-			sizeof(exit_sleep), exit_sleep},
 };
 
 static struct dsi_cmd_desc mot_acl_enable_disable[] = {
@@ -295,11 +291,6 @@ static struct dsi_cmd_desc mot_video_on_cmds2_acl[] = {
 					ACL_enable_disable_settings},
 };
 
-static struct dsi_cmd_desc mot_video_on_cmds3[] = {
-	{DTYPE_DCS_WRITE, 1, 0, 0, DEFAULT_DELAY,
-		sizeof(display_on), display_on},
-};
-
 static struct dsi_cmd_desc mot_display_off_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 10,
 		sizeof(display_off), display_off},
@@ -327,7 +318,7 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 	int idx, retry_cnt, ret;
 
 	mipi_mot_tx_cmds(mot_video_on_cmds1, ARRAY_SIZE(mot_video_on_cmds1));
-	mdelay(20);
+	mipi_mot_panel_exit_sleep();
 
 	/*
 	 * TODO: this is a software workaround for IKHSS7-35239.
@@ -419,10 +410,6 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 
 	mipi_mot_tx_cmds(&mot_video_on_cmds2_acl[0],
 				ARRAY_SIZE(mot_video_on_cmds2_acl));
-	mdelay(120);
-	mipi_mot_tx_cmds(&mot_video_on_cmds3[0],
-				ARRAY_SIZE(mot_video_on_cmds3));
-	mdelay(5);
 
 	return 0;
 }
@@ -563,12 +550,8 @@ static int __init mipi_video_mot_hd_pt_init(void)
 	mot_panel->panel_enable = panel_enable;
 	mot_panel->panel_disable = panel_disable;
 	mot_panel->set_backlight = panel_set_backlight;
-	/*
-	 * panel's state need to set to on because mot_panel->panel_on is NULL
-	 * and disp_on (0x28) be a part of init seq
-	 */
-	mot_panel->panel_on = NULL;
 	mot_panel->panel_off = panel_disable;
+	mot_panel->exit_sleep_wait = 20;
 
 	atomic_set(&mot_panel->state, MOT_PANEL_ON);
 
