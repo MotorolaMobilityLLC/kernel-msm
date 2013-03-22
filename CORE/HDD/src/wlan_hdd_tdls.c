@@ -210,9 +210,9 @@ exit_loop:
     }
     discover_expiry = pHddTdlsCtx->threshold_config.discovery_period_t;
 
-    mutex_unlock(&tdls_lock);
-
     wlan_hdd_tdls_peer_reset_discovery_processed(pHddTdlsCtx);
+
+    mutex_unlock(&tdls_lock);
 
     /* Commenting out the following function as it was introducing
      * a race condition when pHddTdlsCtx is deleted. Also , this
@@ -580,13 +580,6 @@ int wlan_hdd_tdls_init(hdd_adapter_t *pAdapter)
     else
     {
         pHddCtx->tdls_mode = eTDLS_SUPPORT_ENABLED;
-#ifdef FEATURE_WLAN_TDLS_INTERNAL
-        vos_timer_start( &pHddTdlsCtx->peerDiscoverTimer,
-                   pHddTdlsCtx->threshold_config.discovery_period_t );
-#endif
-
-        vos_timer_start( &pHddTdlsCtx->peerUpdateTimer,
-                            pHddTdlsCtx->threshold_config.tx_period_t );
     }
 
     return 0;
@@ -1117,24 +1110,13 @@ int wlan_hdd_tdls_reset_peer(hdd_adapter_t *pAdapter, u8 *mac)
     return 0;
 }
 
+/* Caller has to take the lock before calling this function */
 static void wlan_tdd_tdls_reset_tx_rx(tdlsCtx_t *pHddTdlsCtx)
 {
     int i;
     struct list_head *head;
     hddTdlsPeer_t *tmp;
     struct list_head *pos, *q;
-
-    if (mutex_lock_interruptible(&tdls_lock))
-    {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-        "%s: unable to lock list", __func__);
-        return ;
-    }
-    if ( NULL == pHddTdlsCtx )
-    {
-        mutex_unlock(&tdls_lock);
-        return ;
-    }
 
     for (i = 0; i < 256; i++) {
         head = &pHddTdlsCtx->peer_list[i];
@@ -1144,29 +1126,17 @@ static void wlan_tdd_tdls_reset_tx_rx(tdlsCtx_t *pHddTdlsCtx)
             tmp->rx_pkt = 0;
         }
     }
-    mutex_unlock(&tdls_lock);
 
     return ;
 }
 
+/* Caller has to take the lock before calling this function */
 static tANI_S32 wlan_hdd_tdls_peer_reset_discovery_processed(tdlsCtx_t *pHddTdlsCtx)
 {
     int i;
     struct list_head *head;
     hddTdlsPeer_t *tmp;
     struct list_head *pos, *q;
-
-    if (mutex_lock_interruptible(&tdls_lock))
-    {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-        "%s: unable to lock list", __func__);
-        return -1;
-    }
-    if ( NULL == pHddTdlsCtx )
-    {
-        mutex_unlock(&tdls_lock);
-        return -1;
-    }
 
     pHddTdlsCtx->discovery_peer_cnt = 0;
 
@@ -1177,7 +1147,6 @@ static tANI_S32 wlan_hdd_tdls_peer_reset_discovery_processed(tdlsCtx_t *pHddTdls
             tmp->discovery_processed = 0;
         }
     }
-    mutex_unlock(&tdls_lock);
 
     return 0;
 }
@@ -1276,7 +1245,18 @@ void wlan_hdd_tdls_connection_callback(hdd_adapter_t *pAdapter)
     hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
     tdlsCtx_t *pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
 
-    if (NULL == pHddTdlsCtx) return;
+    if (mutex_lock_interruptible(&tdls_lock))
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: unable to lock list", __func__);
+       return;
+    }
+
+    if (NULL == pHddCtx || NULL == pHddTdlsCtx)
+    {
+        mutex_unlock(&tdls_lock);
+        return;
+    }
 
     VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
     "%s, update %d discover %d", __func__,
@@ -1296,6 +1276,7 @@ void wlan_hdd_tdls_connection_callback(hdd_adapter_t *pAdapter)
        vos_timer_start(&pHddTdlsCtx->peerUpdateTimer,
                        pHddTdlsCtx->threshold_config.tx_period_t);
     }
+    mutex_unlock(&tdls_lock);
 
 }
 
@@ -1456,16 +1437,7 @@ u8 wlan_hdd_tdls_is_progress(hdd_adapter_t *pAdapter, u8 *mac, u8 skip_self)
 
 static void wlan_hdd_tdls_implicit_disable(tdlsCtx_t *pHddTdlsCtx)
 {
-    if (mutex_lock_interruptible(&tdls_lock))
-    {
-       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                 "%s: unable to lock list", __func__);
-       return;
-    }
-
     wlan_hdd_tdls_timers_stop(pHddTdlsCtx);
-
-    mutex_unlock(&tdls_lock);
 }
 
 static void wlan_hdd_tdls_implicit_enable(tdlsCtx_t *pHddTdlsCtx)
@@ -1494,11 +1466,23 @@ void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx, eTDLSSupportMode tdls_mode)
 
     VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,"%s mode %d", __func__, (int)tdls_mode);
 
-    if (NULL == pHddCtx) return;
+    if (mutex_lock_interruptible(&tdls_lock))
+    {
+       VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: unable to lock list", __func__);
+       return;
+    }
+
+    if (NULL == pHddCtx)
+    {
+        mutex_unlock(&tdls_lock);
+        return;
+    }
 
     if (pHddCtx->tdls_mode == tdls_mode)
     {
         hddLog(VOS_TRACE_LEVEL_ERROR, "%s already in mode %d", __func__, (int)tdls_mode);
+        mutex_unlock(&tdls_lock);
         return;
     }
 
@@ -1507,20 +1491,25 @@ void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx, eTDLSSupportMode tdls_mode)
     while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == status )
     {
        pAdapter = pAdapterNode->pAdapter;
-       pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
-       if (NULL != pHddTdlsCtx)
+       if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+           (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
        {
-           if(eTDLS_SUPPORT_ENABLED == tdls_mode)
-                wlan_hdd_tdls_implicit_enable(pHddTdlsCtx);
-           else if((eTDLS_SUPPORT_DISABLED == tdls_mode) ||
-                   (eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY == tdls_mode))
-                wlan_hdd_tdls_implicit_disable(pHddTdlsCtx);
+           pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
+           if (NULL != pHddTdlsCtx)
+           {
+               if(eTDLS_SUPPORT_ENABLED == tdls_mode)
+                   wlan_hdd_tdls_implicit_enable(pHddTdlsCtx);
+               else if((eTDLS_SUPPORT_DISABLED == tdls_mode) ||
+                       (eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY == tdls_mode))
+                   wlan_hdd_tdls_implicit_disable(pHddTdlsCtx);
+           }
        }
        status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
        pAdapterNode = pNext;
     }
     pHddCtx->tdls_mode_last = pHddCtx->tdls_mode;
     pHddCtx->tdls_mode = tdls_mode;
+    mutex_unlock(&tdls_lock);
 }
 
 void wlan_hdd_tdls_pre_setup(tdlsCtx_t *pHddTdlsCtx,
