@@ -1790,6 +1790,11 @@ static void msm_cam_server_subdev_notify(struct v4l2_subdev *sd,
 	case NOTIFY_VFE_MSG_COMP_STATS:
 	case NOTIFY_VFE_BUF_EVT:
 		p_mctl = msm_cam_server_get_mctl(mctl_handle);
+		if (!p_mctl) {
+			pr_err("%s: invalid mctl controller %d\n",
+				__func__, notification);
+			break;
+		}
 		if (p_mctl->isp_notify && p_mctl->vfe_sdev)
 			rc = p_mctl->isp_notify(p_mctl,
 				p_mctl->vfe_sdev, notification, arg);
@@ -1809,18 +1814,30 @@ static void msm_cam_server_subdev_notify(struct v4l2_subdev *sd,
 		break;
 	case NOTIFY_AXI_RDI_SOF_COUNT:
 		p_mctl = msm_cam_server_get_mctl(mctl_handle);
+                if (!p_mctl) {
+                        pr_err("%s: invalid mctl controller %d\n",
+                                __func__, __LINE__);
+                        break;
+                }
 		if (p_mctl->axi_sdev)
 			rc = v4l2_subdev_call(p_mctl->axi_sdev, core, ioctl,
 				VIDIOC_MSM_AXI_RDI_COUNT_UPDATE, arg);
 		break;
 	case NOTIFY_PCLK_CHANGE:
 		p_mctl = v4l2_get_subdev_hostdata(sd);
+                if (!p_mctl) {
+                        pr_err("%s: invalid mctl controller %d\n",
+                                __func__, __LINE__);
+                        break;
+                }
 		if (p_mctl->axi_sdev)
 			rc = v4l2_subdev_call(p_mctl->axi_sdev, video,
 			s_crystal_freq, *(uint32_t *)arg, 0);
-		else
+		else if (p_mctl->vfe_sdev)
 			rc = v4l2_subdev_call(p_mctl->vfe_sdev, video,
 			s_crystal_freq, *(uint32_t *)arg, 0);
+		else
+			pr_err("%s: invalid AXI/VFE sub dev\n", __func__);
 		break;
 	case NOTIFY_GESTURE_EVT:
 		rc = v4l2_subdev_call(g_server_dev.gesture_device,
@@ -1832,6 +1849,11 @@ static void msm_cam_server_subdev_notify(struct v4l2_subdev *sd,
 		break;
 	case NOTIFY_VFE_CAMIF_ERROR: {
 		p_mctl = msm_cam_server_get_mctl(mctl_handle);
+                if (!p_mctl) {
+                        pr_err("%s: invalid mctl controller %d\n",
+                                __func__, __LINE__);
+                        break;
+                }
 		msm_cam_server_send_error_evt(p_mctl, V4L2_EVENT_PRIVATE_START
 			+ MSM_CAM_APP_NOTIFY_ERROR_EVENT);
 		break;
