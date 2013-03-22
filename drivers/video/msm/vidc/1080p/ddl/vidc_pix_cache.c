@@ -15,8 +15,6 @@
 #include "vidc_hwio.h"
 #include "vidc_pix_cache.h"
 
-
-#define VIDC_1080P_MAX_DEC_DPB 19
 #define VIDC_TILE_MULTIPLY_FACTOR 8192
 
 void vidc_pix_cache_sw_reset(void)
