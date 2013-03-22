@@ -37,6 +37,8 @@
 #include <linux/poll.h>
 #include <linux/version.h>
 #include <linux/regulator/consumer.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/nfc/bcm2079x.h>
 
 /* do not change below */
@@ -326,6 +328,33 @@ static const struct file_operations bcm2079x_dev_fops = {
 	.unlocked_ioctl = bcm2079x_dev_unlocked_ioctl
 };
 
+#ifdef CONFIG_OF
+static struct bcm2079x_platform_data *
+bcm2079x_of_init(struct i2c_client *client)
+{
+	struct bcm2079x_platform_data *pdata;
+	struct device_node *np = client->dev.of_node;
+
+	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		dev_err(&client->dev, "pdata allocation failure\n");
+		return NULL;
+	}
+
+	pdata->wake_gpio = of_get_gpio(np, 0);
+	pdata->irq_gpio = of_get_gpio(np, 1);
+	pdata->en_gpio = of_get_gpio(np, 2);
+
+	return pdata;
+}
+#else
+static inline struct bcm2079x_platform_data *
+bcm2079x_of_init(struct i2c_client *client)
+{
+	return NULL;
+}
+#endif
+
 static int bcm2079x_probe(struct i2c_client *client,
 			   const struct i2c_device_id *id)
 {
@@ -333,7 +362,10 @@ static int bcm2079x_probe(struct i2c_client *client,
 	struct bcm2079x_platform_data *platform_data;
 	struct bcm2079x_dev *bcm2079x_dev;
 
-	platform_data = client->dev.platform_data;
+	if (client->dev.of_node)
+			platform_data = bcm2079x_of_init(client);
+	else
+			platform_data = client->dev.platform_data;
 
 	dev_info(&client->dev, "%s, probing bcm2079x driver flags = %x\n", __func__, client->flags);
 	if (platform_data == NULL) {
@@ -460,6 +492,14 @@ static int bcm2079x_remove(struct i2c_client *client)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id bcm2079x_match_tbl[] = {
+	{ .compatible = "brcm,bcm2079x" },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, bcm2079x_match_tbl);
+#endif
+
 static const struct i2c_device_id bcm2079x_id[] = {
 	{"bcm2079x-i2c", 0},
 	{}
@@ -472,6 +512,7 @@ static struct i2c_driver bcm2079x_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = "bcm2079x-i2c",
+		.of_match_table = of_match_ptr(bcm2079x_match_tbl),
 	},
 };
 
