@@ -3011,3 +3011,15 @@ MACHINE_START(MSM8627_MTP, "QCT MSM8627 MTP")
 	.init_very_early = msm8930_early_memory,
 	.restart = msm_restart,
 MACHINE_END
+
+MACHINE_START(MSM8930_EVT, "QRD8930 SGLTE EVT")
+	.map_io = msm8930_map_io,
+	.reserve = msm8930_reserve,
+	.init_irq = msm8930_init_irq,
+	.handle_irq = gic_handle_irq,
+	.timer = &msm_timer,
+	.init_machine = msm8930_cdp_init,
+	.init_early = msm8930_allocate_memory_regions,
+	.init_very_early = msm8930_early_memory,
+	.restart = msm_restart,
+MACHINE_END
