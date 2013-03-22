@@ -6026,12 +6026,12 @@ tSirMacAddr peer,tpPESession psessionEntry)
    palZeroMemory( pMac->hHdd, pFrame, nBytes );
 
    // Copy necessary info to BD
-   if ( eSIR_SUCCESS !=
-         (nSirStatus = limPopulateMacHeader( pMac,
+   nSirStatus = limPopulateMacHeader( pMac,
                                       pFrame,
                                       SIR_MAC_MGMT_FRAME,
                                       SIR_MAC_MGMT_ACTION,
-                                      peer, psessionEntry->selfMacAddr)))
+                                      peer, psessionEntry->selfMacAddr );
+   if ( eSIR_SUCCESS != nSirStatus )
       goto returnAfterError;
 
    // Update A3 with the BSSID
@@ -6073,25 +6073,25 @@ tSirMacAddr peer,tpPESession psessionEntry)
          FL( "Sending a SA Query Response to " ));
    limPrintMacAddr( pMac, peer, LOGW );
 
-    if ( ( SIR_BAND_5_GHZ == limGetRFBand(psessionEntry->currentOperChannel))
+   if ( ( SIR_BAND_5_GHZ == limGetRFBand( psessionEntry->currentOperChannel ) )
 #ifdef WLAN_FEATURE_P2P
-       || ( psessionEntry->pePersona == VOS_P2P_CLIENT_MODE ) ||
-         ( psessionEntry->pePersona == VOS_P2P_GO_MODE)
+        || ( psessionEntry->pePersona == VOS_P2P_CLIENT_MODE ) ||
+        ( psessionEntry->pePersona == VOS_P2P_GO_MODE )
 #endif
-         )
-    {
-        txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
-    }
+      )
+   {
+      txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
+   }
 
-   if ( eHAL_STATUS_SUCCESS !=
-         (halstatus = halTxFrame( pMac,
-                                  pPacket,
-                                  (tANI_U16) nBytes,
-                                  HAL_TXRX_FRM_802_11_MGMT,
-                                  ANI_TXDIR_TODS,
-                                  7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
-                                  limTxComplete,
-                                  pFrame, txFlag )))
+   halstatus = halTxFrame( pMac,
+                           pPacket,
+                           (tANI_U16) nBytes,
+                           HAL_TXRX_FRM_802_11_MGMT,
+                           ANI_TXDIR_TODS,
+                           7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
+                           limTxComplete,
+                           pFrame, txFlag );
+   if ( eHAL_STATUS_SUCCESS != halstatus )
    {
       PELOGE(limLog( pMac, LOGE, FL( "halTxFrame FAILED! Status [%d]" ), halstatus );)
       nSirStatus = eSIR_FAILURE;

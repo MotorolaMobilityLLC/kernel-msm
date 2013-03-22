@@ -3435,7 +3435,7 @@ static tANI_BOOLEAN csrIsAuthRSNPskSha256( tpAniSirGlobal pMac, tANI_U8 AllSuite
                                       tANI_U8 cAllSuites,
                                       tANI_U8 Oui[] )
 {
-    return( csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[06], Oui ) );
+    return csrIsOuiMatch( pMac, AllSuites, cAllSuites, csrRSNOui[06], Oui );
 }
 #endif
 
