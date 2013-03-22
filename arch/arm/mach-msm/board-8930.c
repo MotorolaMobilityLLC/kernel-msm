@@ -1294,6 +1294,16 @@ static struct platform_device mdm_device = {
 	},
 };
 
+static struct mdm_platform_data sglte_platform_data = {
+	.mdm_version = "4.0",
+	.ramdump_delay_ms = 1000,
+	.soft_reset_inverted = 1,
+	.peripheral_platform_device = NULL,
+	.ramdump_timeout_ms = 600000,
+	.no_powerdown_after_ramdumps = 1,
+	.image_upgrade_supported = 1,
+};
+
 static struct platform_device *mdm_devices[] __initdata = {
 	&mdm_device,
 };
@@ -2602,6 +2612,7 @@ static struct msm_pm_boot_platform_data msm_pm_boot_pdata __initdata = {
 #define I2C_SIM  (1 << 3)
 #define I2C_FLUID (1 << 4)
 #define I2C_LIQUID (1 << 5)
+#define I2C_EVT (1 << 6)
 
 struct i2c_registry {
 	u8                     machs;
@@ -2756,6 +2767,8 @@ static void __init register_i2c_devices(void)
 		mach_mask = I2C_FLUID;
 	else if (machine_is_msm8930_mtp() || machine_is_msm8627_mtp())
 		mach_mask = I2C_FFA;
+	else if (machine_is_msm8930_evt())
+		mach_mask = I2C_EVT;
 	else
 		pr_err("unmatched machine ID in register_i2c_devices\n");
 
@@ -2947,6 +2960,11 @@ static void __init msm8930_cdp_init(void)
 	slim_register_board_info(msm_slim_devices,
 		ARRAY_SIZE(msm_slim_devices));
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
+
+	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
+		mdm_sglte_device.dev.platform_data = &sglte_platform_data;
+		platform_device_register(&mdm_sglte_device);
+	}
 
 	if (PLATFORM_IS_CHARM25())
 		platform_add_devices(mdm_devices, ARRAY_SIZE(mdm_devices));
