@@ -41,7 +41,6 @@ static struct mipi_dsi_phy_ctrl dsi_cmd_mode_phy_db = {
 };
 
 static char enter_sleep[2] = {DCS_CMD_ENTER_SLEEP_MODE, 0x00};
-static char exit_sleep[2] = {DCS_CMD_EXIT_SLEEP_MODE, 0x00};
 static char display_off[2] = {DCS_CMD_SET_DISPLAY_OFF, 0x00};
 static char enable_te[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
 static char set_column[5] = {DCS_CMD_SET_COLUMN_ADDRESS,
@@ -79,7 +78,7 @@ static struct mipi_mot_cmd_seq set_brightness_seq[] = {
 };
 
 static struct mipi_mot_cmd_seq smd_hd_497_init_seq[] = {
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE, 120, exit_sleep),
+	MIPI_MOT_TX_EXIT_SLEEP(NULL),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_2),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_mtp),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_3),
