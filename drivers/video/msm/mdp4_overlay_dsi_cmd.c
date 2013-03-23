@@ -410,7 +410,7 @@ int mdp4_dsi_cmd_pipe_commit(int cndx, int wait)
 	pr_debug("%s: kickoff, pid=%d\n", __func__, current->pid);
 	/* kickoff overlay engine */
 	mdp4_stat.kickoff_ov0++;
-	outpdw(MDP_BASE + 0x0004, 0);
+	mdp_pipe_kickoff_simplified(MDP_OVERLAY0_TERM);
 	mb(); /* make sure kickoff ececuted */
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
