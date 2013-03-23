@@ -1327,7 +1327,14 @@ tANI_U8 limWriteDeferredMsgQ(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
          **/
     if (pMac->lim.gLimDeferredMsgQ.size >= MAX_DEFERRED_QUEUE_LEN)
     {
-        PELOGE(limLog(pMac, LOGE, FL("Deferred Message Queue is full. Msg: %d\n"), limMsg->type);)
+        if(!(pMac->lim.deferredMsgCnt & 0xF))
+        {
+            PELOGE(limLog(pMac, LOGE, FL("Deferred Message Queue is full. Msg:%d Messages Failed:%d\n"), limMsg->type, ++pMac->lim.deferredMsgCnt);)
+        }
+        else
+        {
+            pMac->lim.deferredMsgCnt++;
+        }
         return TX_QUEUE_FULL;
     }
 
@@ -1371,6 +1378,12 @@ tANI_U8 limWriteDeferredMsgQ(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     }
 
     ++pMac->lim.gLimDeferredMsgQ.size;
+
+    /* reset the count here since we are able to defer the message */
+    if(pMac->lim.deferredMsgCnt != 0)
+    {
+        pMac->lim.deferredMsgCnt = 0;
+    }
 
     /*
     ** if the write pointer hits the end of the queue, rewind it
