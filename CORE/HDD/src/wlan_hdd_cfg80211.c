@@ -2706,21 +2706,23 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
                 "Invalid arguments");
         return -EINVAL;
     }
+
+    if ((eTDLS_SUPPORT_NOT_ENABLED == pHddCtx->tdls_mode) ||
+        (eTDLS_SUPPORT_DISABLED == pHddCtx->tdls_mode))
+    {
+         VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                    "%s: TDLS mode is disabled OR not enabled in FW."
+                    MAC_ADDRESS_STR " Request declined.",
+                    __func__, MAC_ADDR_ARRAY(mac));
+        return -ENOTSUPP;
+    }
+
     if (pHddCtx->isLogpInProgress)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s:LOGP in Progress. Ignore!!!", __func__);
         wlan_hdd_tdls_set_link_status(pAdapter, mac, eTDLS_LINK_IDLE);
         return -EBUSY;
-    }
-
-    if (FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport ||
-        FALSE == sme_IsFeatureSupportedByFW(TDLS))
-    {
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "TDLS Disabled in INI OR not enabled in FW.\
-                Cannot process TDLS commands \n");
-        return -ENOTSUPP;
     }
 
     if (wlan_hdd_tdls_is_progress(pAdapter, mac, TRUE))
@@ -6733,13 +6735,34 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
         return -EBUSY;
     }
 
-    if (FALSE == pHddCtx->cfg_ini->fEnableTDLSSupport ||
-        FALSE == sme_IsFeatureSupportedByFW(TDLS)) 
+    if (eTDLS_SUPPORT_NOT_ENABLED == pHddCtx->tdls_mode)
     {
-        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-                "TDLS Disabled in INI OR not enabled in FW.\
-                Cannot process TDLS commands \n");
+         VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                    "%s: TDLS mode is disabled OR not enabled in FW."
+                    MAC_ADDRESS_STR " action %d declined.",
+                    __func__, MAC_ADDR_ARRAY(peer), action_code);
         return -ENOTSUPP;
+    }
+
+    if ((SIR_MAC_TDLS_SETUP_RSP == action_code) ||
+        (SIR_MAC_TDLS_DIS_RSP == action_code))
+    {
+        wlan_hdd_tdls_set_cap (pAdapter, peerMac, eTDLS_CAP_SUPPORTED);
+    }
+
+    /* other than teardown frame, other mgmt frames are not sent if disabled */
+    if (SIR_MAC_TDLS_TEARDOWN != action_code)
+    {
+       /* if tdls_mode is disabled to respond to peer's request */
+        if (eTDLS_SUPPORT_DISABLED == pHddCtx->tdls_mode)
+        {
+             VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                        "%s: " MAC_ADDRESS_STR
+                        " TDLS mode is disabled. Request declined.",
+                        __func__, MAC_ADDR_ARRAY(peer));
+
+        return -ENOTSUPP;
+        }
     }
 
     if (WLAN_IS_TDLS_SETUP_ACTION(action_code))
