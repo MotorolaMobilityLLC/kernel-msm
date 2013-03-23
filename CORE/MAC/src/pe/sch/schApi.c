@@ -228,14 +228,7 @@ schInitGlobals(tpAniSirGlobal pMac)
 tSirRetStatus
 schPostMessage(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 {
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-   PELOG3(schLog(pMac, LOG3, FL("Going to post message (%x) to SCH message queue\n"),
-           pMsg->type);)
-    if (tx_queue_send(&pMac->sys.gSirSchMsgQ, pMsg, TX_NO_WAIT) != TX_SUCCESS)
-        return eSIR_FAILURE;
-#else
     schProcessMessage(pMac, pMsg);
-#endif 
 
     return eSIR_SUCCESS;
 }

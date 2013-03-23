@@ -2798,24 +2798,6 @@ typedef struct sSmeMaxAssocInd
 #define SIR_BOOT_DNLD_RSP_SIZE             2
 #define SIR_BOOT_DNLD_RSP_LEN              ((SIR_BOOT_DNLD_RSP_SIZE+1)<<2)
 
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-// RTAI WRAPPER definition - Buffer block control entry
-// the new block Control entry is initialized by HDD
-// memory buffers (blkPool) are allocated by HDD
-// The table resides in plmac_rtai.c
-#define BLOCK_ALLOCATED_BY_HDD 1
-#define RED_ZONE               16 // 16 bytes between buffers
-#define NUM_POOL               16 // NUM_POOL defined here for now, not
-                                  // so good
-typedef struct
-{
-    tANI_U16              blkSize;
-    tANI_U16              blkNum;
-    void             *blkPool; // pointer to memory buffer
-
-} t_mac_block_table;
-
-#endif
 
 // board capabilities fields are defined here.
 typedef __ani_attr_pre_packed struct sSirBoardCapabilities
