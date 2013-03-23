@@ -1390,7 +1390,6 @@ void pmmProcessMessage(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 tSirRetStatus
 pmmPostMessage(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 {
-#if defined(VOSS_ENABLED)
     VOS_STATUS vosStatus;
     vosStatus = vos_mq_post_message(VOS_MQ_ID_PE, (vos_msg_t *) pMsg);
     if(!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -1398,13 +1397,6 @@ pmmPostMessage(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
         pmmLog(pMac, LOGP, FL("vos_mq_post_message failed with status code %d\n"), vosStatus);
         return eSIR_FAILURE;
     }
-#elif defined(ANI_OS_TYPE_WINDOWS)
-    pmmProcessMessage(pMac, pMsg);
-#else
-    if (tx_queue_send(&pMac->sys.gSirPmmMsgQ, pMsg, TX_NO_WAIT) != TX_SUCCESS)
-        return eSIR_FAILURE;
-
-#endif // VOSS_ENABLED
 
     return eSIR_SUCCESS;
 }

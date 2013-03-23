@@ -183,7 +183,6 @@ void logDbg(tpAniSirGlobal pMac, tANI_U8 modId, tANI_U32 debugLevel, const char 
 #endif
 }
 
-#ifdef VOSS_ENABLED
 static inline VOS_TRACE_LEVEL getVosDebugLevel(tANI_U32 debugLevel)
 {
     switch(debugLevel)
@@ -234,7 +233,6 @@ static inline VOS_MODULE_ID getVosModuleId(tANI_U8 modId)
             return VOS_MODULE_ID_SYS;
     }
 }
-#endif // VOSS_ENABLED
 
 #define LOG_SIZE 256
 void logDebug(tpAniSirGlobal pMac, tANI_U8 modId, tANI_U32 debugLevel, const char *pStr, va_list marker)

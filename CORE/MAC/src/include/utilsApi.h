@@ -41,7 +41,6 @@
 
 /*
  *
- *
  * Airgo Networks, Inc proprietary. All rights reserved.
  * Author:              Kevin Nguyen
  * Date:                02/27/02
@@ -58,13 +57,7 @@
 #include <sirCommon.h>
 #include "aniGlobal.h"
 #include "utilsGlobal.h"
-#if defined VOSS_ENABLED
 #include "VossWrapper.h"
-#elif defined ANI_OS_TYPE_LINUX
-#include "rtaiWrapper.h"
-#elif defined ANI_OS_TYPE_OSX
-#include "palApiPci.h"
-#endif
 
 
 #if defined ANI_OS_TYPE_LINUX
@@ -728,28 +721,10 @@ static inline tANI_U8 convertCW(tANI_U16 cw)
 #define WLAN_UP_TO_AC_MAP            0x33220110
 #define upToAc(up)                ((WLAN_UP_TO_AC_MAP >> ((up) << 2)) & 0x03)
 
-#if defined VOSS_ENABLED
 
 #define sirBusyWait(microsecond)   vos_busy_wait(microsecond / 1000)
 #define sirSleepWait(duration)  vos_sleep_us(duration)
 
-#elif defined ANI_OS_TYPE_LINUX
-    //rt_busy_sleep(duration)
-
-#define sirBusyWait(duration)   tx_busy_wait(duration)
-
-#define sirSleepWait(duration)  sirSleepWaitIntern(duration)
-
-#elif defined ANI_OS_TYPE_WINDOWS
-
-#define sirBusyWait(duration)   sirBusyWaitIntern(pMac, duration)
-
-#define sirSleepWait(duration)  sirSleepWaitIntern(pMac, duration)
-
-#elif defined ANI_OS_TYPE_OSX
-#define sirBusyWait(duration) palBusyWait(duration)
-#define sirSleepWait(duration) palSleepWait(duration)
-#endif
 
 
 
@@ -868,7 +843,7 @@ halRoundS32(tANI_S32 p)
 void ConverttoBigEndian(void *ptr, tANI_U16 size);
 void CreateScanCtsFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr, tSirMacAddr selfMac);
 void CreateScanDataNullFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr,
-                             tANI_U8 pwrMgmt, tSirMacAddr bssid, 
+                             tANI_U8 pwrMgmt, tSirMacAddr bssid,
                              tSirMacAddr selfMacAddr);
 void CreateInitScanRawFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr, tBssSystemRole role);
 void CreateFinishScanRawFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr, tBssSystemRole role);
