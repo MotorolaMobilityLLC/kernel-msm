@@ -1095,7 +1095,7 @@ limIbssStaAdd(
 
             ibss_sta_info_update(pMac, pStaDs, pPeerNode,psessionEntry);
             PELOGW(limLog(pMac, LOGW, FL("initiating ADD STA for the IBSS peer.\n"));)
-            retCode = limAddSta(pMac, pStaDs,psessionEntry);
+            retCode = limAddSta(pMac, pStaDs, false, psessionEntry);
             if(retCode != eSIR_SUCCESS)
             {
                 PELOGE(limLog(pMac, LOGE, FL("ibss-sta-add failed (reason %x)\n"), retCode);)

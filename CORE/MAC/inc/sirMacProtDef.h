@@ -1585,6 +1585,129 @@ typedef  struct sSirMacRpiReportIE
     tSirMacRpiReport     rpiReport;
 } tSirMacRpiReportIE, *tpSirMacRpiReportIE;
 
+#define SIR_MAC_MAX_SUPP_RATES            32
+
+#define SIR_MAC_MAX_EXTN_CAP               8
+
+// VHT Capabilities Info
+typedef __ani_attr_pre_packed struct sSirMacVHTCapabilityInfo
+{
+#ifndef ANI_LITTLE_BIT_ENDIAN
+    tANI_U32        reserved1: 2;
+    tANI_U32     txAntPattern: 1;
+    tANI_U32     rxAntPattern: 1;
+    tANI_U32  vhtLinkAdaptCap: 2;
+    tANI_U32   maxAMPDULenExp: 3;
+    tANI_U32        htcVHTCap: 1;
+    tANI_U32        vhtTXOPPS: 1;
+    tANI_U32  muBeamformeeCap: 1;
+    tANI_U32  muBeamformerCap: 1;
+    tANI_U32   numSoundingDim: 3;
+    tANI_U32 csnofBeamformerAntSup: 3;
+    tANI_U32  suBeamformeeCap: 1;
+    tANI_U32  suBeamFormerCap: 1;
+    tANI_U32           rxSTBC: 3;
+    tANI_U32           txSTBC: 1;
+    tANI_U32 shortGI160and80plus80MHz: 1;
+    tANI_U32     shortGI80MHz: 1;
+    tANI_U32    ldpcCodingCap: 1;
+    tANI_U32 supportedChannelWidthSet: 2;
+    tANI_U32       maxMPDULen: 2;
+#else
+    tANI_U32       maxMPDULen: 2;
+    tANI_U32 supportedChannelWidthSet: 2;
+    tANI_U32    ldpcCodingCap: 1;
+    tANI_U32     shortGI80MHz: 1;
+    tANI_U32 shortGI160and80plus80MHz: 1;
+    tANI_U32           txSTBC: 1;
+    tANI_U32           rxSTBC: 3;
+    tANI_U32  suBeamFormerCap: 1;
+    tANI_U32  suBeamformeeCap: 1;
+    tANI_U32 csnofBeamformerAntSup: 3;
+    tANI_U32   numSoundingDim: 3;
+    tANI_U32  muBeamformerCap: 1;
+    tANI_U32  muBeamformeeCap: 1;
+    tANI_U32        vhtTXOPPS: 1;
+    tANI_U32        htcVHTCap: 1;
+    tANI_U32   maxAMPDULenExp: 3;
+    tANI_U32  vhtLinkAdaptCap: 2;
+    tANI_U32     rxAntPattern: 1;
+    tANI_U32     txAntPattern: 1;
+    tANI_U32        reserved1: 2;
+#endif
+} __ani_attr_packed tSirMacVHTCapabilityInfo;
+
+typedef __ani_attr_pre_packed struct sSirMacVHTTxSupDataRateInfo
+{
+#ifndef ANI_LITTLE_BIT_ENDIAN
+    tANI_U16 reserved: 3;
+    tANI_U16 txSupDataRate: 13;
+#else
+    tANI_U16 txSupDataRate: 13;
+    tANI_U16 reserved: 3;
+#endif
+}__ani_attr_packed tSirMacVHTTxSupDataRateInfo;
+
+typedef __ani_attr_pre_packed struct sSirMacVHTRxSupDataRateInfo
+{
+#ifndef ANI_LITTLE_BIT_ENDIAN
+    tANI_U16 reserved: 3;
+    tANI_U16 rxSupDataRate: 13;
+#else
+    tANI_U16 rxSupDataRate: 13;
+    tANI_U16 reserved: 3;
+#endif
+}__ani_attr_packed tSirMacVHTRxSupDataRateInfo;
+
+/**
+ * struct sSirVhtMcsInfo - VHT MCS information
+ * @rx_mcs_map: RX MCS map 2 bits for each stream, total 8 streams
+ * @rx_highest: Indicates highest long GI VHT PPDU data rate
+ *      STA can receive. Rate expressed in units of 1 Mbps.
+ *      If this field is 0 this value should not be used to
+ *      consider the highest RX data rate supported.
+ * @tx_mcs_map: TX MCS map 2 bits for each stream, total 8 streams
+ * @tx_highest: Indicates highest long GI VHT PPDU data rate
+ *      STA can transmit. Rate expressed in units of 1 Mbps.
+ *      If this field is 0 this value should not be used to
+ *      consider the highest TX data rate supported.
+ */
+typedef struct sSirVhtMcsInfo {
+    tANI_U16 rxMcsMap;
+    tANI_U16 rxHighest;
+    tANI_U16 txMcsMap;
+    tANI_U16 txHighest;
+}tSirVhtMcsInfo;
+
+/**
+ * struct sSirVHtCap - VHT capabilities
+ *
+ * This structure is the "VHT capabilities element" as
+ * described in 802.11ac D3.0 8.4.2.160
+ * @vht_cap_info: VHT capability info
+ * @supp_mcs: VHT MCS supported rates
+ */
+typedef struct sSirVHtCap {
+    tANI_U32       vhtCapInfo;
+    tSirVhtMcsInfo suppMcs;
+}tSirVHTCap;
+
+/**
+ * struct sSirHtCap - HT capabilities
+ *
+ * This structure refers to "HT capabilities element" as
+ * described in 802.11n draft section 7.3.2.52
+ */
+
+
+typedef struct sSirHtCap {
+    tANI_U16 capInfo;
+    tANI_U8  ampduParamsInfo;
+    tANI_U8  suppMcsSet[16];
+    tANI_U16 extendedHtCapInfo;
+    tANI_U32 txBFCapInfo;
+    tANI_U8  antennaSelectionInfo;
+}tSirHTCap;
 
 // HT Cap and HT IE Size defines
 #define HT_CAPABILITY_IE_SIZE                       28

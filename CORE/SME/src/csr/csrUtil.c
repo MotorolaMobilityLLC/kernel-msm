@@ -2214,7 +2214,7 @@ tANI_U32 csrTranslateToWNICfgDot11Mode(tpAniSirGlobal pMac, eCsrCfgDot11Mode csr
         }
         else
         {
-            ret = WNI_CFG_DOT11_MODE_11N;
+            ret = WNI_CFG_DOT11_MODE_11AC;
         }
         break;
     case eCSR_CFG_DOT11_MODE_TAURUS:
@@ -6006,7 +6006,7 @@ eCsrCfgDot11Mode csrGetCfgDot11ModeFromCsrPhyMode(tCsrRoamProfile *pProfile, eCs
         }
         else
         {
-            cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
+            cfgDot11Mode = eCSR_CFG_DOT11_MODE_11AC;
         }
         break;
     case eCSR_DOT11_MODE_11ac_ONLY:

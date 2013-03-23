@@ -1895,6 +1895,7 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
       roamResult == eCSR_ROAM_RESULT_DELETE_TDLS_PEER ? "DEL_TDLS_PEER" :
       roamResult == eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND ? "DEL_TDLS_PEER_IND" :
       roamResult == eCSR_ROAM_RESULT_DELETE_ALL_TDLS_PEER_IND? "DEL_ALL_TDLS_PEER_IND" :
+      roamResult == eCSR_ROAM_RESULT_UPDATE_TDLS_PEER? "UPDATE_TDLS_PEER" :
       "UNKNOWN",
        pRoamInfo->staId,
        pRoamInfo->peerMac[0],
@@ -1965,6 +1966,20 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
             }
             complete(&pAdapter->tdls_add_station_comp);
             break ;
+        }
+        case eCSR_ROAM_RESULT_UPDATE_TDLS_PEER:
+        {
+            if (eSIR_SME_SUCCESS != pRoamInfo->statusCode)
+            {
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                     "%s: Add Sta is failed. %d", __func__, pRoamInfo->statusCode);
+            }
+            /* store the ucast signature which will be used later when
+             * registering to TL
+             */
+            pAdapter->tdlsAddStaStatus = pRoamInfo->statusCode;
+            complete(&pAdapter->tdls_add_station_comp);
+            break;
         }
         case eCSR_ROAM_RESULT_DELETE_TDLS_PEER:
         {
