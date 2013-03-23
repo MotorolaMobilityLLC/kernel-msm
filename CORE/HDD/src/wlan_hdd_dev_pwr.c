@@ -500,7 +500,8 @@ void hddDevTmLevelChangedHandler(struct device *dev, int changedTmLevel)
       return;
    }
 
-   sme_SetTmLevel(pHddCtx->hHal, changedTmLevel, 0);
+   if(changedTmLevel != WLAN_HDD_TM_LEVEL_4)
+      sme_SetTmLevel(pHddCtx->hHal, changedTmLevel, 0);
 
    if(mutex_lock_interruptible(&pHddCtx->tmInfo.tmOperationLock))
    {
