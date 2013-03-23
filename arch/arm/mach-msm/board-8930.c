@@ -2182,6 +2182,11 @@ static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi3_pdata = {
 	.src_clk_rate = 24000000,
 };
 
+
+static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi8_pdata = {
+	.clk_freq = 100000,
+	.src_clk_rate = 24000000,
+};
 static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi9_pdata = {
 	.clk_freq = 100000,
 	.src_clk_rate = 24000000,
@@ -2345,6 +2350,15 @@ static struct platform_device *pmic_pm8917_devices[] __initdata = {
 	&msm8960_device_ssbi_pmic,
 };
 
+static struct platform_device *i2c_qup_devices[] __initdata = {
+	&msm8960_device_qup_i2c_gsbi4,
+	&msm8960_device_qup_i2c_gsbi9,
+};
+
+static struct platform_device *i2c_qup_sglte_devices[] __initdata = {
+	&msm8960_device_qup_i2c_gsbi8,
+};
+
 static struct platform_device *common_devices[] __initdata = {
 	&msm_8960_q6_lpass,
 	&msm_8960_q6_mss_fw,
@@ -2354,8 +2368,6 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm_pil_vidc,
 	&msm8960_device_qup_spi_gsbi1,
 	&msm8960_device_qup_i2c_gsbi3,
-	&msm8960_device_qup_i2c_gsbi4,
-	&msm8960_device_qup_i2c_gsbi9,
 	&msm8960_device_qup_i2c_gsbi10,
 	&msm8960_device_qup_i2c_gsbi12,
 	&msm_slim_ctrl,
@@ -2471,8 +2483,11 @@ static void __init msm8930_i2c_init(void)
 
 	msm8960_device_qup_i2c_gsbi3.dev.platform_data =
 					&msm8960_i2c_qup_gsbi3_pdata;
-
-	msm8960_device_qup_i2c_gsbi9.dev.platform_data =
+	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)
+		msm8960_device_qup_i2c_gsbi8.dev.platform_data =
+					&msm8960_i2c_qup_gsbi8_pdata;
+	else
+		msm8960_device_qup_i2c_gsbi9.dev.platform_data =
 					&msm8960_i2c_qup_gsbi9_pdata;
 
 	msm8960_device_qup_i2c_gsbi10.dev.platform_data =
@@ -2693,7 +2708,7 @@ static struct i2c_board_info __initdata bmp18x_i2c_boardinfo[] = {
 static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 #ifdef CONFIG_ISL9519_CHARGER
 	{
-		I2C_LIQUID,
+		I2C_LIQUID | I2C_EVT,
 		MSM_8930_GSBI10_QUP_I2C_BUS_ID,
 		isl_charger_i2c_info,
 		ARRAY_SIZE(isl_charger_i2c_info),
@@ -2701,7 +2716,7 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 #endif /* CONFIG_ISL9519_CHARGER */
 #ifdef CONFIG_INPUT_MPU3050
 	{
-		I2C_FFA | I2C_FLUID,
+		I2C_FFA | I2C_FLUID | I2C_EVT,
 		MSM_8930_GSBI12_QUP_I2C_BUS_ID,
 		mpu3050_i2c_boardinfo,
 		ARRAY_SIZE(mpu3050_i2c_boardinfo),
@@ -2714,7 +2729,7 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 		ARRAY_SIZE(msm_isa1200_board_info),
 	},
 	{
-		I2C_SURF | I2C_FFA | I2C_FLUID,
+		I2C_SURF | I2C_FFA | I2C_FLUID | I2C_EVT,
 		MSM_8930_GSBI3_QUP_I2C_BUS_ID,
 		mxt_device_info_8930,
 		ARRAY_SIZE(mxt_device_info_8930),
@@ -2727,7 +2742,7 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 	},
 #ifdef CONFIG_STM_LIS3DH
 	{
-		I2C_FFA | I2C_FLUID,
+		I2C_FFA | I2C_FLUID | I2C_EVT,
 		MSM_8930_GSBI12_QUP_I2C_BUS_ID,
 		lis3dh_i2c_boardinfo,
 		ARRAY_SIZE(lis3dh_i2c_boardinfo),
@@ -2735,7 +2750,7 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 #endif
 #ifdef CONFIG_BMP18X_I2C
 	{
-		I2C_FFA | I2C_FLUID,
+		I2C_FFA | I2C_FLUID | I2C_EVT,
 		MSM_8930_GSBI12_QUP_I2C_BUS_ID,
 		bmp18x_i2c_boardinfo,
 		ARRAY_SIZE(bmp18x_i2c_boardinfo),
@@ -2758,6 +2773,11 @@ static void __init register_i2c_devices(void)
 		msm8930_camera_board_info.board_info,
 		msm8930_camera_board_info.num_i2c_board_info,
 	};
+	if (machine_is_msm8930_evt() &&
+		(socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)) {
+		msm8930_camera_i2c_devices.machs |= I2C_EVT;
+		msm8930_camera_i2c_devices.bus = MSM_8930_GSBI8_QUP_I2C_BUS_ID;
+	}
 #endif
 
 	/* Build the matching 'supported_machs' bitmask */
@@ -2935,6 +2955,16 @@ static void __init msm8930_cdp_init(void)
 		platform_add_devices(pmic_pm8917_devices,
 					ARRAY_SIZE(pmic_pm8917_devices));
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
+	if (machine_is_msm8930_evt() &&
+		(socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)) {
+		/* Removing GSBI4 and GSBI9 and initializing GSBI8
+		 * as per SGLTE platform requirement */
+		platform_add_devices(i2c_qup_sglte_devices,
+					ARRAY_SIZE(i2c_qup_sglte_devices));
+	} else {
+		platform_add_devices(i2c_qup_devices,
+					ARRAY_SIZE(i2c_qup_devices));
+	}
 	msm8930_add_vidc_device();
 	/*
 	 * TODO: When physical 8930/PM8038 hardware becomes
