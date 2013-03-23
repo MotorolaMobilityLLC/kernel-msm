@@ -108,6 +108,7 @@
 #define WMM_INIT_DONE          (1<<3)
 #define SOFTAP_BSS_STARTED     (1<<4)
 #define DEVICE_IFACE_OPENED    (1<<5)
+#define TDLS_INIT_DONE         (1<<6)
 
 /** Maximum time(ms)to wait for disconnect to complete **/
 #define WLAN_WAIT_TIME_DISCONNECT  500
@@ -491,6 +492,11 @@ struct hdd_station_ctx
   /** Handle to the Wireless Extension State */
    hdd_wext_state_t WextState;
 
+#ifdef FEATURE_WLAN_TDLS
+   tdlsCtx_t *pHddTdlsCtx;
+#endif
+
+
    /**Connection information*/
    connection_info_t conn_info;
 
@@ -780,6 +786,9 @@ typedef struct hdd_dynamic_mcbcfilter_s
 #define WLAN_HDD_GET_HAL_CTX(pAdapter)  (((hdd_context_t*)(pAdapter->pHddCtx))->hHal)
 #define WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter) (&(pAdapter)->sessionCtx.ap.HostapdState)
 #define WLAN_HDD_GET_CFG_STATE_PTR(pAdapter)  (&(pAdapter)->cfg80211State)
+#ifdef FEATURE_WLAN_TDLS
+#define WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter) ((tdlsCtx_t*)(pAdapter)->sessionCtx.station.pHddTdlsCtx)
+#endif
 
 typedef struct hdd_adapter_list_node
 {
@@ -934,6 +943,9 @@ struct hdd_context_s
 
 #ifdef FEATURE_WLAN_TDLS
     eTDLSSupportMode tdls_mode;
+    tdlsConnInfo_t tdlsConnInfo[HDD_MAX_NUM_TDLS_STA];
+    /* TDLS peer connected count */
+    tANI_U16 connected_peer_count;
 #endif
 };
 

@@ -1884,7 +1884,7 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
                                                 eRoamCmdStatus roamStatus, 
                                                   eCsrRoamResult roamResult)
 {
-    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+    hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     eHalStatus status = eHAL_STATUS_FAILURE ;
     tANI_U8 staIdx;
 
@@ -1915,37 +1915,35 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
             }
             else
             {
-                /*
-                 * check if there is available index for this new TDLS STA
-                 * since TDLS is setup in BSS, we need to start from +1
-                 */
-                for ( staIdx = 1; staIdx <= HDD_MAX_NUM_TDLS_STA; staIdx++ )
-                {
-                    if (0 == pHddStaCtx->conn_info.staId[staIdx] )
-                    {
-                        pHddStaCtx->conn_info.staId[staIdx] = pRoamInfo->staId;
 
-                        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                /* check if there is available index for this new TDLS STA */
+                for ( staIdx = 0; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
+                {
+                    if (0 == pHddCtx->tdlsConnInfo[staIdx].staId )
+                    {
+                        pHddCtx->tdlsConnInfo[staIdx].sessionId = pRoamInfo->sessionId;
+                        pHddCtx->tdlsConnInfo[staIdx].staId = pRoamInfo->staId;
+
+                        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                          ("TDLS: STA IDX at %d is %d "
                                   "of mac %02x:%02x:%02x:%02x:%02x:%02x"),
-                                  staIdx, pHddStaCtx->conn_info.staId[staIdx],
-                                                    pRoamInfo->peerMac[0],
-                                                    pRoamInfo->peerMac[1],
-                                                    pRoamInfo->peerMac[2],
-                                                    pRoamInfo->peerMac[3],
-                                                    pRoamInfo->peerMac[4],
-                                                    pRoamInfo->peerMac[5]) ;
+                                  staIdx, pHddCtx->tdlsConnInfo[staIdx].staId,
+                                          pRoamInfo->peerMac[0],
+                                          pRoamInfo->peerMac[1],
+                                          pRoamInfo->peerMac[2],
+                                          pRoamInfo->peerMac[3],
+                                          pRoamInfo->peerMac[4],
+                                          pRoamInfo->peerMac[5]) ;
 
-                        vos_copy_macaddr(
-                                  &pHddStaCtx->conn_info.peerMacAddress[staIdx],
+                        vos_copy_macaddr(&pHddCtx->tdlsConnInfo[staIdx].peerMac,
                                          (v_MACADDR_t *)pRoamInfo->peerMac) ;
                         status = eHAL_STATUS_SUCCESS ;
                         break ;
                     }
                 }
-                if (staIdx <= HDD_MAX_NUM_TDLS_STA)
+                if (staIdx < HDD_MAX_NUM_TDLS_STA)
                 {
-                    if (-1 == wlan_hdd_tdls_set_sta_id(pRoamInfo->peerMac, pRoamInfo->staId)) {
+                    if (-1 == wlan_hdd_tdls_set_sta_id(pAdapter, pRoamInfo->peerMac, pRoamInfo->staId)) {
                         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                                      "wlan_hdd_tdls_set_sta_id() failed");
                         return VOS_FALSE;
@@ -1955,7 +1953,7 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
                     /* store the ucast signature which will be used later when
                        registering to TL
                      */
-                    wlan_hdd_tdls_set_signature( pRoamInfo->peerMac, pRoamInfo->ucastSig );
+                    wlan_hdd_tdls_set_signature( pAdapter, pRoamInfo->peerMac, pRoamInfo->ucastSig );
                 }
                 else
                 {
@@ -1970,24 +1968,25 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
         }
         case eCSR_ROAM_RESULT_DELETE_TDLS_PEER:
         {
-            /* 0 staIdx is assigned to AP we dont want to touch that */
-            for ( staIdx = 1; staIdx <= HDD_MAX_NUM_TDLS_STA; staIdx++ )
+            for ( staIdx = 0; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
             {
-                if (pRoamInfo->staId == pHddStaCtx->conn_info.staId[staIdx] )
+                if ((pHddCtx->tdlsConnInfo[staIdx].sessionId == pRoamInfo->sessionId) &&
+                    pRoamInfo->staId == pHddCtx->tdlsConnInfo[staIdx].staId)
                 {
-                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                                    ("HDD: del STA IDX = %x"), pRoamInfo->staId) ;
 
-                    wlan_hdd_tdls_reset_peer(pRoamInfo->peerMac);
+                    wlan_hdd_tdls_reset_peer(pAdapter, pRoamInfo->peerMac);
                     hdd_roamDeregisterTDLSSTA ( pAdapter, pRoamInfo->staId );
-                    wlan_hdd_tdls_decrement_peer_count();
+                    wlan_hdd_tdls_decrement_peer_count(pAdapter);
 
                     (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = NULL;
 
-                    pHddStaCtx->conn_info.staId[staIdx] = 0 ;
-                    vos_mem_zero(&pHddStaCtx->conn_info.peerMacAddress[staIdx],
+                    pHddCtx->tdlsConnInfo[staIdx].staId = 0 ;
+                    pHddCtx->tdlsConnInfo[staIdx].sessionId = 255;
+                    vos_mem_zero(&pHddCtx->tdlsConnInfo[staIdx].peerMac,
                                                sizeof(v_MACADDR_t)) ;
-                    wlan_hdd_tdls_check_bmps(WLAN_HDD_GET_CTX( pAdapter ));
+                    wlan_hdd_tdls_check_bmps(pAdapter);
                     status = eHAL_STATUS_SUCCESS ;
                     break ;
                 }
@@ -2013,31 +2012,33 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
         case eCSR_ROAM_RESULT_DELETE_ALL_TDLS_PEER_IND:
         {
             /* 0 staIdx is assigned to AP we dont want to touch that */
-            for ( staIdx = 1; staIdx <= HDD_MAX_NUM_TDLS_STA; staIdx++ )
+            for ( staIdx = 0; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
             {
-                if (pHddStaCtx->conn_info.staId[staIdx])
+                if ((pHddCtx->tdlsConnInfo[staIdx].sessionId == pRoamInfo->sessionId) &&
+                    pHddCtx->tdlsConnInfo[staIdx].staId)
                 {
-                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                               ("hdd_tdlsStatusUpdate: staIdx %d %02x:%02x:%02x:%02x:%02x:%02x"),
-                                pHddStaCtx->conn_info.staId[staIdx],
-                                pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes[0],
-                                pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes[1],
-                                pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes[2],
-                                pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes[3],
-                                pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes[4],
-                                pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes[5]) ;
-                    wlan_hdd_tdls_reset_peer(pHddStaCtx->conn_info.peerMacAddress[staIdx].bytes);
-                    hdd_roamDeregisterTDLSSTA ( pAdapter,  pHddStaCtx->conn_info.staId[staIdx] );
-                    wlan_hdd_tdls_decrement_peer_count();
+                                pHddCtx->tdlsConnInfo[staIdx].staId,
+                                pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes[0],
+                                pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes[1],
+                                pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes[2],
+                                pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes[3],
+                                pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes[4],
+                                pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes[5]) ;
+                    wlan_hdd_tdls_reset_peer(pAdapter, pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes);
+                    hdd_roamDeregisterTDLSSTA ( pAdapter,  pHddCtx->tdlsConnInfo[staIdx].staId );
+                    wlan_hdd_tdls_decrement_peer_count(pAdapter);
 
                     (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[staIdx] = NULL;
-                    vos_mem_zero(&pHddStaCtx->conn_info.peerMacAddress[staIdx],
+                    vos_mem_zero(&pHddCtx->tdlsConnInfo[staIdx].peerMac,
                                                sizeof(v_MACADDR_t)) ;
-                    pHddStaCtx->conn_info.staId[staIdx] = 0 ;
+                    pHddCtx->tdlsConnInfo[staIdx].staId = 0 ;
+                    pHddCtx->tdlsConnInfo[staIdx].sessionId = 255;
 
                     status = eHAL_STATUS_SUCCESS ;
                 }
-                wlan_hdd_tdls_check_bmps(WLAN_HDD_GET_CTX( pAdapter ));
+                wlan_hdd_tdls_check_bmps(pAdapter);
             }
             break ;
         }

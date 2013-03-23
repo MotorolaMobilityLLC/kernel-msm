@@ -4097,7 +4097,7 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
 #ifdef FEATURE_WLAN_TDLS
         case WE_GET_TDLS_PEERS:
         {
-            wrqu->data.length = wlan_hdd_tdls_get_all_peers(extra, WE_MAX_STR_LEN)+1;
+            wrqu->data.length = wlan_hdd_tdls_get_all_peers(pAdapter, extra, WE_MAX_STR_LEN)+1;
             break;
         }
 #endif
