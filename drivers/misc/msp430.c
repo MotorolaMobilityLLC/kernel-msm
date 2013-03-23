@@ -121,6 +121,10 @@
 #define DISP_ROTATE_DATA		0x4A
 #define FLAT_DATA			0x4B
 
+#define ALGO_CFG_ACCUM_MODALITY  0x5D
+#define ALGO_REQ_ACCUM_MODALITY  0x60
+#define ALGO_EVT_ACCUM_MODALITY  0x63
+
 #define CURRENT_PRESSURE		0x66
 
 #define ALS_LUX				0x6A
@@ -131,22 +135,22 @@
 
 #define STOWED				0x6D
 
-#define ALGO_CFG_MODALITY       0x6E
-#define ALGO_CFG_ORIENTATION    0x6F
-#define ALGO_CFG_STOWED         0x70
-#define ALGO_CFG_ACCUM_MVMT     0x71
+#define ALGO_CFG_MODALITY        0x6E
+#define ALGO_CFG_ORIENTATION     0x6F
+#define ALGO_CFG_STOWED          0x70
+#define ALGO_CFG_ACCUM_MVMT      0x71
 
-#define ALGO_REQ_MODALITY       0x72
-#define ALGO_REQ_ORIENTATION    0x73
-#define ALGO_REQ_STOWED         0x74
-#define ALGO_REQ_ACCUM_MVMT     0x75
+#define ALGO_REQ_MODALITY        0x72
+#define ALGO_REQ_ORIENTATION     0x73
+#define ALGO_REQ_STOWED          0x74
+#define ALGO_REQ_ACCUM_MVMT      0x75
 
-#define ALGO_EVT_MODALITY       0x76
-#define ALGO_EVT_ORIENTATION    0x77
-#define ALGO_EVT_STOWED         0x78
-#define ALGO_EVT_ACCUM_MVMT     0x79
+#define ALGO_EVT_MODALITY        0x76
+#define ALGO_EVT_ORIENTATION     0x77
+#define ALGO_EVT_STOWED          0x78
+#define ALGO_EVT_ACCUM_MVMT      0x79
 
-#define RESET                   0x7F
+#define RESET                    0x7F
 
 #define MSP430_AS_DATA_QUEUE_SIZE	0x20
 #define MSP430_AS_DATA_QUEUE_MASK	0x1F
@@ -283,6 +287,9 @@ static const struct msp_algo_info_t msp_algo_info[MSP_NUM_ALGOS] = {
 	  ALGO_EVT_ORIENTATION, MSP_EVT_SZ_TRANSITION },
 	{ M_ALGO_STOWED, ALGO_CFG_STOWED, ALGO_REQ_STOWED,
 	  ALGO_EVT_STOWED, MSP_EVT_SZ_TRANSITION },
+	{ M_ALGO_ACCUM_MODALITY, ALGO_CFG_ACCUM_MODALITY,
+	   ALGO_REQ_ACCUM_MODALITY, ALGO_EVT_ACCUM_MODALITY,
+	   MSP_EVT_SZ_ACCUM_STATE },
 	{ M_ALGO_ACCUM_MVMT, ALGO_CFG_ACCUM_MVMT, ALGO_REQ_ACCUM_MVMT,
 	  ALGO_EVT_ACCUM_MVMT, MSP_EVT_SZ_ACCUM_MVMT }
 };
@@ -1209,7 +1216,8 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 	}
 	if (irq2_status & M_ALGO_MODALITY) {
 		msp_cmdbuff[0] = msp_algo_info[MSP_IDX_MODALITY].evt_register;
-		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 7);
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1,
+			MSP_EVT_SZ_TRANSITION);
 		if (err < 0) {
 			dev_err(&ps_msp430->client->dev,
 				"Reading modality event failed\n");
@@ -1226,9 +1234,27 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, q);
 		dev_dbg(&ps_msp430->client->dev, "Sending modality event\n");
 	}
+	if (irq2_status & M_ALGO_ACCUM_MODALITY) {
+		msp_cmdbuff[0] =
+			msp_algo_info[MSP_IDX_ACCUM_MODALITY].evt_register;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1,
+			MSP_EVT_SZ_ACCUM_STATE);
+		if (err < 0) {
+			dev_err(&ps_msp430->client->dev,
+				"Reading accum modality event failed\n");
+			goto EXIT;
+		}
+		/* x (data1) msb: algo index */
+		x = MSP_IDX_ACCUM_MODALITY << 8;
+		/* y (data2) id */
+		y = (msp_cmdbuff[1] << 8) | msp_cmdbuff[0];
+		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, 0, 0);
+		dev_dbg(&ps_msp430->client->dev, "Sending accum modality event\n");
+	}
 	if (irq2_status & M_ALGO_ACCUM_MVMT) {
 		msp_cmdbuff[0] = msp_algo_info[MSP_IDX_ACCUM_MVMT].evt_register;
-		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 4);
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1,
+			MSP_EVT_SZ_ACCUM_MVMT);
 		if (err < 0) {
 			dev_err(&ps_msp430->client->dev,
 				"Reading accum mvmt event failed\n");
