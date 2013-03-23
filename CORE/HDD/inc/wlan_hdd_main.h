@@ -124,7 +124,7 @@
 #define WAIT_TIME_TDLS_ADD_STA      1500
 
 /** Maximum time(ms) to wait for tdls mgmt to complete **/
-#define WAIT_TIME_TDLS_MGMT         2000
+#define WAIT_TIME_TDLS_MGMT         11000
 
 /* Maximum time to get crda entry settings */
 #define CRDA_WAIT_TIME 300
