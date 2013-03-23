@@ -62,7 +62,7 @@ eHalStatus csrMsgProcessor( tpAniSirGlobal pMac,  void *pMsgBuf )
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tSirSmeRsp *pSmeRsp = (tSirSmeRsp *)pMsgBuf;
 
-    smsLog( pMac, LOG2, "  Message %d[0x%04X] received in curState %d and substate %d\n",
+    smsLog( pMac, LOG2, "  Message %d[0x%04X] received in curState %d and substate %d",
                 pSmeRsp->messageType, pSmeRsp->messageType, 
                 pMac->roam.curState[pSmeRsp->sessionId],
                 pMac->roam.curSubState[pSmeRsp->sessionId] );
@@ -112,12 +112,12 @@ eHalStatus csrMsgProcessor( tpAniSirGlobal pMac,  void *pMsgBuf )
             if( (eWNI_SME_SETCONTEXT_RSP == pSmeRsp->messageType) ||
                 (eWNI_SME_REMOVEKEY_RSP == pSmeRsp->messageType) )
             {
-                smsLog(pMac, LOGW, FL(" handling msg 0x%X CSR state is %d\n"), pSmeRsp->messageType, pMac->roam.curState[pSmeRsp->sessionId]);
+                smsLog(pMac, LOGW, FL(" handling msg 0x%X CSR state is %d"), pSmeRsp->messageType, pMac->roam.curState[pSmeRsp->sessionId]);
                 csrRoamCheckForLinkStatusChange(pMac, pSmeRsp);
             }
             else
             {
-                smsLog(pMac, LOGW, "  Message 0x%04X is not handled by CSR. CSR state is %d \n", pSmeRsp->messageType, pMac->roam.curState[pSmeRsp->sessionId]);
+                smsLog(pMac, LOGW, "  Message 0x%04X is not handled by CSR. CSR state is %d ", pSmeRsp->messageType, pMac->roam.curState[pSmeRsp->sessionId]);
             }
             break;
         }

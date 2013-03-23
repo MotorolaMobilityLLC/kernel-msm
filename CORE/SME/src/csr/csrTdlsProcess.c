@@ -152,7 +152,7 @@ eHalStatus csrTdlsSendMgmtReq(tHalHandle hHal, tANI_U8 sessionId, tCsrTdlsSendMg
                         tdlsSendMgmt->len );
                 if(!HAL_STATUS_SUCCESS( status ) )
                 {
-                    smsLog( pMac, LOGE, FL("Alloc Failed\n") );
+                    smsLog( pMac, LOGE, FL("Alloc Failed") );
                     VOS_ASSERT(0) ;
                     return status ;
                 }
@@ -422,11 +422,11 @@ eHalStatus tdlsSendMessage(tpAniSirGlobal pMac, tANI_U16 msg_type,
     pMsg->msgLen = (tANI_U16) (msg_size) ;
 
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                              ("sending msg = %d\n"), pMsg->type) ;
+                              ("sending msg = %d"), pMsg->type) ;
       /* Send message. */
     if (palSendMBMessage(pMac->hHdd, pMsg) != eHAL_STATUS_SUCCESS)
     {
-        smsLog(pMac, LOGE, FL("Cannot send message\n"));
+        smsLog(pMac, LOGE, FL("Cannot send message"));
         return eHAL_STATUS_FAILURE;
     }
 
@@ -445,7 +445,7 @@ eHalStatus csrTdlsProcessSendMgmt( tpAniSirGlobal pMac, tSmeCmd *cmd )
 
     if(!HAL_STATUS_SUCCESS( status ) )
     {
-        smsLog( pMac, LOGE, FL("alloc failed \n") );
+        smsLog( pMac, LOGE, FL("alloc failed ") );
         VOS_ASSERT(0) ;
         return status ;
     }
@@ -476,12 +476,12 @@ eHalStatus csrTdlsProcessSendMgmt( tpAniSirGlobal pMac, tSmeCmd *cmd )
 
     }
     // Send the request to PE.
-    smsLog( pMac, LOG1, "sending TDLS Mgmt Frame req to PE \n" );
+    smsLog( pMac, LOG1, "sending TDLS Mgmt Frame req to PE " );
     status = tdlsSendMessage(pMac, eWNI_SME_TDLS_SEND_MGMT_REQ, 
             (void *)tdlsSendMgmtReq , sizeof(tSirTdlsSendMgmtReq)+tdlsSendMgmtCmdInfo->len) ;
     if(!HAL_STATUS_SUCCESS( status ) )
     {
-        smsLog( pMac, LOGE, FL("Failed to send request to MAC\n"));
+        smsLog( pMac, LOGE, FL("Failed to send request to MAC"));
     }
     if(tdlsSendMgmtCmdInfo->len && tdlsSendMgmtCmdInfo->buf)
     {
@@ -505,7 +505,7 @@ eHalStatus csrTdlsProcessAddSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
 
     if(!HAL_STATUS_SUCCESS( status ) )
     {
-        smsLog( pMac, LOGE, FL("alloc failed \n") );
+        smsLog( pMac, LOGE, FL("alloc failed ") );
         VOS_ASSERT(0) ;
         return status ;
     }
@@ -544,12 +544,12 @@ eHalStatus csrTdlsProcessAddSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
                   tdlsAddStaCmdInfo->supportedRates, tdlsAddStaCmdInfo->supportedRatesLen);
 
     // Send the request to PE.
-    smsLog( pMac, LOGE, "sending TDLS Add Sta req to PE \n" );
+    smsLog( pMac, LOGE, "sending TDLS Add Sta req to PE " );
     status = tdlsSendMessage(pMac, eWNI_SME_TDLS_ADD_STA_REQ, 
             (void *)tdlsAddStaReq , sizeof(tSirTdlsAddStaReq)) ;
     if(!HAL_STATUS_SUCCESS( status ) )
     {
-        smsLog( pMac, LOGE, FL("Failed to send request to MAC\n"));
+        smsLog( pMac, LOGE, FL("Failed to send request to MAC"));
     }
     return status;
 }
@@ -566,7 +566,7 @@ eHalStatus csrTdlsProcessDelSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
 
     if(!HAL_STATUS_SUCCESS( status ) )
     {
-        smsLog( pMac, LOGE, FL("alloc failed \n") );
+        smsLog( pMac, LOGE, FL("alloc failed ") );
         VOS_ASSERT(0) ;
         return status ;
     }
@@ -592,14 +592,14 @@ eHalStatus csrTdlsProcessDelSta( tpAniSirGlobal pMac, tSmeCmd *cmd )
 #else
     smsLog( pMac, LOG1,
 #endif
-        "sending TDLS Del Sta %02x:%02x:%02x:%02x:%02x:%02x req to PE\n",
+        "sending TDLS Del Sta %02x:%02x:%02x:%02x:%02x:%02x req to PE",
         tdlsDelStaCmdInfo->peerMac[0], tdlsDelStaCmdInfo->peerMac[1], tdlsDelStaCmdInfo->peerMac[2],
         tdlsDelStaCmdInfo->peerMac[3], tdlsDelStaCmdInfo->peerMac[4], tdlsDelStaCmdInfo->peerMac[5]);
     status = tdlsSendMessage(pMac, eWNI_SME_TDLS_DEL_STA_REQ, 
             (void *)tdlsDelStaReq , sizeof(tSirTdlsDelStaReq)) ;
     if(!HAL_STATUS_SUCCESS( status ) )
     {
-        smsLog( pMac, LOGE, FL("Failed to send request to MAC\n"));
+        smsLog( pMac, LOGE, FL("Failed to send request to MAC"));
     }
     return status;
 }
@@ -654,7 +654,7 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
 
             if(!HAL_STATUS_SUCCESS( status ) )
             {
-                smsLog( pMac, LOGE, "dis Req alloc failed \n" );
+                smsLog( pMac, LOGE, "dis Req alloc failed " );
                 VOS_ASSERT(0) ;
                 break ;
             }
@@ -665,7 +665,7 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
                                  sizeof (tSirMacAddr));
             palCopyMemory(pMac->hHdd, disReq->peerMac, 
                                  disReqCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
-            smsLog( pMac, LOGE, "sending TDLS discovery to PE \n" );
+            smsLog( pMac, LOGE, "sending TDLS discovery to PE " );
             status = tdlsSendMessage(pMac, eWNI_SME_TDLS_DISCOVERY_START_REQ, 
                           (void *)disReq , sizeof(tSirTdlsDisReq)) ;
             if(HAL_STATUS_SUCCESS( status ) )
@@ -688,7 +688,7 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
 
             if(!HAL_STATUS_SUCCESS( status ) )
             {
-                smsLog( pMac, LOGE, "dis Req alloc failed \n" );
+                smsLog( pMac, LOGE, "dis Req alloc failed " );
                 VOS_ASSERT(0) ;
                 break ;
             }
@@ -701,7 +701,7 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
                            linkSetupReqCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
     
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-                             ("sending TDLS link setup to PE \n"));
+                             ("sending TDLS link setup to PE "));
             status = tdlsSendMessage(pMac, eWNI_SME_TDLS_LINK_START_REQ,    
                           (void *)setupReq , sizeof(tSirTdlsSetupReq) ) ;
 
@@ -723,7 +723,7 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
                                                 sizeof(tSirTdlsTeardownReq));
             if(!HAL_STATUS_SUCCESS( status ) )
             {
-                smsLog( pMac, LOGE, "teardown Req alloc failed \n" );
+                smsLog( pMac, LOGE, "teardown Req alloc failed " );
                 VOS_ASSERT(0) ;
                 break ;
             }
@@ -735,7 +735,7 @@ eHalStatus csrTdlsProcessCmd(tpAniSirGlobal pMac, tSmeCmd *cmd)
             palCopyMemory(pMac->hHdd, &teardownReq->peerMac, 
                            linkTeardownCmdInfo->peerMac, sizeof(tSirMacAddr)) ;
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-                                                ("teardown request..\n")) ;
+                                                ("teardown request..")) ;
             status = tdlsSendMessage(pMac, eWNI_SME_TDLS_TEARDOWN_REQ,
                           (void *)teardownReq , sizeof(tSirTdlsTeardownReq)) ;
 
@@ -829,7 +829,7 @@ static eHalStatus tdlsUpdateTdlsPeerState(tpAniSirGlobal pMac,
     {
         /* TODO: update this peer found in link setup in peer list */
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-                       ("This TDLS client is not in discovery list \n") );
+                       ("This TDLS client is not in discovery list ") );
         status = eHAL_STATUS_SUCCESS ;
     }
 
@@ -1000,12 +1000,12 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
                 tANI_U8 i = 0 ;
   
                 VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-                ("DIS START RSP/IND recieved sta count = %d\n"), disStaCount) ;     
+                ("DIS START RSP/IND recieved sta count = %d"), disStaCount) ;
                 for( ; i < disStaCount ; i++)
                 {
                     tSirTdlsPeerInfo *peerInfo = &disRsp->tdlsDisPeerInfo[i] ;
                     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-                                                   ("SME, peer MAC:\n")) ;
+                                                   ("SME, peer MAC:")) ;
                     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
                                     (" %02x,%02x,%02x,%02x,%02x,%02x"), 
                                           peerInfo->peerMac[0], 
@@ -1059,7 +1059,7 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
             if(eSIR_SME_SUCCESS == linkSetupRsp->statusCode)
             {
                 VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-                      ("Link setup for Peer %02x,%02x,%02x,%02x,%02x,%02x\n"),
+                      ("Link setup for Peer %02x,%02x,%02x,%02x,%02x,%02x"),
                                  linkSetupRsp->peerMac[0],       
                                  linkSetupRsp->peerMac[1],       
                                  linkSetupRsp->peerMac[2],       
@@ -1080,7 +1080,7 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
         case eWNI_SME_TDLS_TEARDOWN_RSP:
         {
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-                                          ("TEARDOWN RSP from PE \n")) ;
+                                          ("TEARDOWN RSP from PE ")) ;
             /* remove pending eSmeCommandTdlsLinkTear command */
             csrTdlsRemoveSmeCmd(pMac, eSmeCommandTdlsLinkTear) ;
         }
@@ -1093,7 +1093,7 @@ eHalStatus tdlsMsgProcessor(tpAniSirGlobal pMac,  v_U16_t msgType,
             {
             
                 VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-                 ("Teardown peer MAC = %02x,%02x,%02x,%02x,%02x,%02x\n"),
+                 ("Teardown peer MAC = %02x,%02x,%02x,%02x,%02x,%02x"),
                             linkTearRsp->peerMac[0],  
                             linkTearRsp->peerMac[1],  
                             linkTearRsp->peerMac[2],  
