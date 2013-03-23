@@ -161,27 +161,30 @@ struct msp430_platform_data {
 #define M_FLATUP		0x0100
 #define M_FLATDOWN		0x0200
 #define M_STOWED		0x0400
-#define M_CAMERA_ACT		0x0800
+#define M_CAMERA_ACT	0x0800
 #define M_LOG_MSG		0x8000
 
 /* algo config mask */
-#define M_MMOVEME           0x0001
-#define M_NOMMOVE		    0x0002
-#define M_ALGO_MODALITY     0x0008
-#define M_ALGO_ORIENTATION  0x0010
-#define M_ALGO_STOWED       0x0020
-#define M_ALGO_ACCUM_MVMT   0x0040
+#define M_MMOVEME               0x0001
+#define M_NOMMOVE               0x0002
+#define M_ALGO_MODALITY         0x0008
+#define M_ALGO_ORIENTATION      0x0010
+#define M_ALGO_STOWED           0x0020
+#define M_ALGO_ACCUM_MODALITY   0x0040
+#define M_ALGO_ACCUM_MVMT       0x0080
 
 /* algo index */
-#define MSP_IDX_MODALITY       0
-#define MSP_IDX_ORIENTATION    1
-#define MSP_IDX_STOWED         2
-#define MSP_IDX_ACCUM_MVMT     3
+#define MSP_IDX_MODALITY        0
+#define MSP_IDX_ORIENTATION     1
+#define MSP_IDX_STOWED          2
+#define MSP_IDX_ACCUM_MODALITY  3
+#define MSP_IDX_ACCUM_MVMT      4
 
-#define MSP_NUM_ALGOS          4
+#define MSP_NUM_ALGOS           5
 
-#define MSP_EVT_SZ_TRANSITION  7
-#define MSP_EVT_SZ_ACCUM_MVMT  4
+#define MSP_EVT_SZ_TRANSITION   7
+#define MSP_EVT_SZ_ACCUM_STATE  2
+#define MSP_EVT_SZ_ACCUM_MVMT   4
 
 struct msp430_android_sensor_data {
 	int64_t timestamp;
