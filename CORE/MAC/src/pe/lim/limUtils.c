@@ -560,6 +560,12 @@ char *limMsgStr(tANI_U32 msgType)
             return "eWNI_SME_DELTS_RSP\n";
         case eWNI_SME_DELTS_IND:
             return "eWNI_SME_DELTS_IND\n";
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+        case eWNI_SME_GET_ROAM_RSSI_REQ:
+            return "eWNI_SME_GET_ROAM_RSSI_REQ\n";
+        case eWNI_SME_GET_ROAM_RSSI_RSP:
+            return "eWNI_SME_GET_ROAM_RSSI_RSP\n";
+#endif
 
         case WDA_SUSPEND_ACTIVITY_RSP:
             return "WDA_SUSPEND_ACTIVITY_RSP\n";

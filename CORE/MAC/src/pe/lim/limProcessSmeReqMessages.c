@@ -3950,6 +3950,54 @@ __limProcessSmeGetStatisticsRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 }
 
 
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+/**
+ * __limProcessSmeGetRoamRssiRequest()
+ *
+ *FUNCTION:
+ *
+ *
+ *NOTE:
+ *
+ * @param  pMac      Pointer to Global MAC structure
+ * @param  *pMsgBuf  A pointer to the SME message buffer
+ * @return None
+ */
+static void
+__limProcessSmeGetRoamRssiRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
+{
+    tpAniGetRssiReq    pPEGetRoamRssiReq = NULL;
+    tSirMsgQ msgQ;
+
+    pPEGetRoamRssiReq = (tpAniGetRssiReq) pMsgBuf;
+    msgQ.type = WDA_GET_ROAM_RSSI_REQ;
+
+    if ( !pMac->lim.gLimRspReqd )
+    {
+        palFreeMemory( pMac, pMsgBuf );
+        return;
+    }
+    else
+    {
+        pMac->lim.gLimRspReqd = FALSE;
+    }
+
+    msgQ.reserved = 0;
+    msgQ.bodyptr = pMsgBuf;
+    msgQ.bodyval = 0;
+    MTRACE(macTraceMsgTx(pMac, NO_SESSION, msgQ.type));
+
+    if( eSIR_SUCCESS != (wdaPostCtrlMsg( pMac, &msgQ ))){
+        palFreeMemory( pMac, pMsgBuf );
+        limLog(pMac, LOGP, "Unable to forward request\n");
+        return;
+    }
+
+    return;
+}
+#endif
+
+
 static void
 __limProcessSmeUpdateAPWPSIEs(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 {
@@ -3965,19 +4013,19 @@ __limProcessSmeUpdateAPWPSIEs(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         limLog(pMac, LOGE,FL("Buffer is Pointing to NULL\n"));
         return;
     }
-    
+
     if( palAllocateMemory( pMac->hHdd, (void **)&pUpdateAPWPSIEsReq, sizeof(tSirUpdateAPWPSIEsReq)))
     {
         limLog(pMac, LOGP, FL("call to palAllocateMemory failed for pUpdateAPWPSIEsReq\n"));
         return;
     }
 
-    if ((limUpdateAPWPSIEsReqSerDes(pMac, pUpdateAPWPSIEsReq, (tANI_U8 *) pMsgBuf) == eSIR_FAILURE)) 
+    if ((limUpdateAPWPSIEsReqSerDes(pMac, pUpdateAPWPSIEsReq, (tANI_U8 *) pMsgBuf) == eSIR_FAILURE))
     {
-        limLog(pMac, LOGW, FL("received invalid SME_SETCONTEXT_REQ message\n")); 
+        limLog(pMac, LOGW, FL("received invalid SME_SETCONTEXT_REQ message\n"));
         goto end;
     }
-    
+
     if((psessionEntry = peFindSessionByBssid(pMac, pUpdateAPWPSIEsReq->bssId, &sessionId)) == NULL)
     {
         limLog(pMac, LOGW, FL("Session does not exist for given BSSID\n"));
@@ -3985,9 +4033,9 @@ __limProcessSmeUpdateAPWPSIEs(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     }
 
     palCopyMemory(pMac->hHdd, &psessionEntry->APWPSIEs, &pUpdateAPWPSIEsReq->APWPSIEs, sizeof(tSirAPWPSIEs));
-    
+
     schSetFixedBeaconFields(pMac, psessionEntry);
-    limSendBeaconInd(pMac, psessionEntry); 
+    limSendBeaconInd(pMac, psessionEntry);
 
 end:
     palFreeMemory( pMac->hHdd, pUpdateAPWPSIEsReq);
@@ -5054,6 +5102,13 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             //HAL consumes pMsgBuf. It will be freed there. Set bufConsumed to false.
             bufConsumed = FALSE;
             break;              
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+        case eWNI_SME_GET_ROAM_RSSI_REQ:
+            __limProcessSmeGetRoamRssiRequest( pMac, pMsgBuf);
+            //HAL consumes pMsgBuf. It will be freed there. Set bufConsumed to false.
+            bufConsumed = FALSE;
+            break;
+#endif
         case eWNI_SME_DEL_BA_PEER_IND:
             limProcessSmeDelBaPeerInd(pMac, pMsgBuf);
             break;
