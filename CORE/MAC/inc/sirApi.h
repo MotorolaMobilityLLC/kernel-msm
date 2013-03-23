@@ -3974,6 +3974,12 @@ typedef struct sSirActiveModeSetBcnFilterReq
    tANI_U8                seesionId;
 } tSirSetActiveModeSetBncFilterReq, *tpSirSetActiveModeSetBncFilterReq;
 
-
+//Reset AP Caps Changed
+typedef struct sSirResetAPCapsChange
+{
+    tANI_U16       messageType;
+    tANI_U16       length;
+    tSirMacAddr    bssId;
+} tSirResetAPCapsChange, *tpSirResetAPCapsChange;
 
 #endif /* __SIR_API_H */
