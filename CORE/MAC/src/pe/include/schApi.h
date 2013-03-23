@@ -61,9 +61,6 @@
 /// Send start scan response message
 extern void schSendStartScanRsp(tpAniSirGlobal pMac);
 
-/// Set init time params
-extern void schSetInitParams(tpAniSirGlobal pMac);
-
 // update only the broadcast qos params
 extern void schQosUpdateBroadcast(tpAniSirGlobal pMac, tpPESession psessionEntry);
 
@@ -75,9 +72,6 @@ extern void schQosUpdateLocal(tpAniSirGlobal pMac, tpPESession psessionEntry);
 
 // update the edca profile parameters
 extern void schEdcaProfileUpdate(tpAniSirGlobal pMac, tpPESession psessionEntry);
-
-/// Check for RR timer expiry
-extern void schCheckRRTimerExpiry(tpAniSirGlobal pMac);
 
 /// Set the fixed fields in a beacon frame
 extern tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEntry);
@@ -94,23 +88,8 @@ extern void schInitializeCfPollTemplate(tpAniSirGlobal pMac);
 /// Initialize CF End template
 extern void schInitializeCfEndTemplate(tpAniSirGlobal pMac);
 
-/// Process the transmit activity queue
-extern void schProcessTxActivityQueue(tpAniSirGlobal pMac);
-
-/// Add to the DPH activity queue
-extern void schAddDphActivityQueue(tpAniSirGlobal pMac, tANI_U16, tANI_U8);
-
-/// Add to the TX IN (DPH) activity queue
-extern void schAddTxInActivityQueue(tpAniSirGlobal pMac, void *ptr);
-
-/// Process the scheduler message queue
-extern void schProcessMessageQueue(tpAniSirGlobal pMac);
-
 /// Process the scheduler messages
 extern void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg);
-
-/// Process the DPH activity queue
-extern void schProcessDphActivityQueue(tpAniSirGlobal pMac);
 
 /// The beacon Indication handler function
 extern void schProcessPreBeaconInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg);

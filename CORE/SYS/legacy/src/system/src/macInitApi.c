@@ -245,10 +245,6 @@ tSirRetStatus macOpen(tHalHandle *pHalHandle, tHddHandle hHdd, tMacOpenParameter
             return eSIR_FAILURE;
 
         sysInitGlobals(pMac);
-
-
-        //Need to do it here in case halOpen fails later on.
-        tx_voss_wrapper_init(pMac, hHdd);
     }
 
 

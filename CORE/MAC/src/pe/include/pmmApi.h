@@ -70,9 +70,6 @@ extern void pmmResetStats(void *pvMac);
 /// Process the next PM message
 extern void pmmProcessMessage(tpAniSirGlobal, tpSirMsgQ);
 
-/// Process the PM message queue
-extern void pmmProcessMessageQueue(tpAniSirGlobal pMac);
-
 extern void pmmProcessPSPoll(tpAniSirGlobal, tANI_U8 *);
 extern void pmmUpdatePSPollState(tpAniSirGlobal);
 extern void pmmProcessRxActivity(tpAniSirGlobal, tANI_U16, tANI_U8);

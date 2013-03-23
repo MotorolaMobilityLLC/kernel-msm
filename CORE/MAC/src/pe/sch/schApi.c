@@ -53,7 +53,6 @@
  *
  */
 #include "palTypes.h"
-#include "sirWrapper.h"
 #include "aniGlobal.h"
 #include "wniCfgSta.h"
 
