@@ -2710,6 +2710,7 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s:LOGP in Progress. Ignore!!!", __func__);
+        wlan_hdd_tdls_set_link_status(pAdapter, mac, eTDLS_LINK_IDLE);
         return -EBUSY;
     }
 
@@ -2728,7 +2729,7 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
                    "%s: " MAC_ADDRESS_STR
                    " TDLS setup is ongoing. Request declined.",
                    __func__, MAC_ADDR_ARRAY(mac));
-        return -EPERM;
+        goto error;
     }
 
     /* first to check if we reached to maximum supported TDLS peer.
@@ -2740,7 +2741,7 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
                    "%s: " MAC_ADDRESS_STR
                    " TDLS Max peer already connected. Request declined.",
                     __func__, MAC_ADDR_ARRAY(mac));
-        return -EPERM;
+        goto error;
     }
     else
     {
@@ -2778,18 +2779,21 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s: timeout waiting for tdls add station indication",
                 __func__);
-        wlan_hdd_tdls_set_link_status(pAdapter, mac, eTDLS_LINK_IDLE);
-        return -EPERM;
+        goto error;
     }
     if ( eHAL_STATUS_SUCCESS != pAdapter->tdlsAddStaStatus)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s: Add Station is unsucessful", __func__);
-        wlan_hdd_tdls_set_link_status(pAdapter, mac, eTDLS_LINK_IDLE);
-        return -EPERM;
+        goto error;
     }
 
     return 0;
+
+error:
+    wlan_hdd_tdls_set_link_status(pAdapter, mac, eTDLS_LINK_IDLE);
+    return -EPERM;
+
 }
 #endif
 
@@ -6711,7 +6715,7 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
     hdd_context_t *pHddCtx = wiphy_priv(wiphy);
     u8 peerMac[6];
     VOS_STATUS status;
-    int ret = 0;
+    int max_sta_failed = 0;
     int responder;
 
     if (NULL == pHddCtx || NULL == pHddCtx->cfg_ini)
@@ -6725,6 +6729,7 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s:LOGP in Progress. Ignore!!!", __func__);
+        wlan_hdd_tdls_set_link_status(pAdapter, peer, eTDLS_LINK_IDLE);
         return -EBUSY;
     }
 
@@ -6745,7 +6750,7 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
                        "%s: " MAC_ADDRESS_STR
                        " TDLS setup is ongoing. Request declined.",
                        __func__, MAC_ADDR_ARRAY(peer));
-            return -EPERM;
+            goto error;
         }
     }
 
@@ -6764,7 +6769,7 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
                            "%s: " MAC_ADDRESS_STR
                            " TDLS Max peer already connected. Request declined.",
                            __func__, MAC_ADDR_ARRAY(peer));
-                return -EPERM;
+                goto error;
             }
             else
             {
@@ -6775,7 +6780,7 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
                            "%s: " MAC_ADDRESS_STR
                            " TDLS Max peer already connected send response status %d",
                            __func__, MAC_ADDR_ARRAY(peer), status_code);
-                ret = -EPERM;
+                max_sta_failed = -EPERM;
                 /* fall through to send setup resp with failure status
                 code */
             }
@@ -6817,7 +6822,12 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
        }
     }
 
-    if (ret == 0 && /* if failure, don't need to set the progress bit */
+    /* max_sta_failed ; we didn't set to CONNECTING for this case,
+       because we already know that this transaction will be failed,
+       but we weren't sure if supplicant call DISABLE_LINK or not. So,
+       to be safe, do not change the state mahine.
+    */
+    if (max_sta_failed == 0 &&
        (WLAN_IS_TDLS_SETUP_ACTION(action_code)))
         wlan_hdd_tdls_set_link_status(pAdapter, peerMac, eTDLS_LINK_CONNECTING);
 
@@ -6828,13 +6838,9 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
 
     if (VOS_STATUS_SUCCESS != status)
     {
-        if(ret == 0 && /* if failure, don't need to set the progress bit */
-           (WLAN_IS_TDLS_SETUP_ACTION(action_code)))
-            wlan_hdd_tdls_set_link_status(pAdapter, peerMac, eTDLS_LINK_IDLE);
-
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                 "%s: sme_SendTdlsMgmtFrame failed!", __func__);
-        return -EPERM;
+        goto error;
     }
 
     /* not block discovery request, as it is called from timer callback */
@@ -6847,19 +6853,15 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
 
         if ((rc <= 0) || (TRUE != pAdapter->mgmtTxCompletionStatus))
         {
-            if (ret == 0 && /* if failure, don't need to set the progress bit */
-               (WLAN_IS_TDLS_SETUP_ACTION(action_code)))
-                wlan_hdd_tdls_set_link_status(pAdapter, peerMac, eTDLS_LINK_IDLE);
-
             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                       "%s: Mgmt Tx Completion failed status %ld TxCompletion %lu",
                       __func__, rc, pAdapter->mgmtTxCompletionStatus);
-            return -EPERM;
+            goto error;
         }
     }
 
-    if (ret)
-      return ret;
+    if (max_sta_failed)
+      return max_sta_failed;
 
     if (SIR_MAC_TDLS_SETUP_RSP == action_code)
     {
@@ -6871,6 +6873,16 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
     }
 
     return 0;
+error:
+    /* max_sta_failed ; we didn't set to CONNECTING for this case,
+       because we already know that this transaction will be failed,
+       but we weren't sure if supplicant call DISABLE_LINK or not. So,
+       to be safe, do not change the state mahine.
+    */
+    if(max_sta_failed == 0 &&
+           (WLAN_IS_TDLS_SETUP_ACTION(action_code)))
+            wlan_hdd_tdls_set_link_status(pAdapter, peerMac, eTDLS_LINK_IDLE);
+    return -EPERM;
 }
 
 static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *dev,
