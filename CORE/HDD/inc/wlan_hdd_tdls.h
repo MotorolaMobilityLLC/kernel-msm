@@ -238,4 +238,8 @@ int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
 
 void wlan_hdd_tdls_scan_done_callback(hdd_adapter_t *pAdapter);
 
+void wlan_hdd_tdls_timer_restart(hdd_adapter_t *pAdapter,
+                                 vos_timer_t *timer,
+                                 v_U32_t expirationTime);
+
 #endif // __HDD_TDSL_H
