@@ -1028,7 +1028,7 @@ int wlan_hdd_tdls_set_params(struct net_device *dev, tdls_config_params_t *confi
             config->rssi_trigger_threshold,
             config->rssi_teardown_threshold);
 
-    wlan_hdd_tdls_set_mode(pHddCtx, req_tdls_mode);
+    wlan_hdd_tdls_set_mode(pHddCtx, req_tdls_mode, TRUE);
 
     return 0;
 }
@@ -1461,7 +1461,9 @@ static void wlan_hdd_tdls_implicit_enable(tdlsCtx_t *pHddTdlsCtx)
                                 pHddTdlsCtx->threshold_config.tx_period_t);
 }
 
-void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx, eTDLSSupportMode tdls_mode)
+void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx,
+                            eTDLSSupportMode tdls_mode,
+                            v_BOOL_t bUpdateLast)
 {
     hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
     VOS_STATUS status;
@@ -1511,8 +1513,16 @@ void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx, eTDLSSupportMode tdls_mode)
        status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
        pAdapterNode = pNext;
     }
-    pHddCtx->tdls_mode_last = pHddCtx->tdls_mode;
+    if(bUpdateLast)
+    {
+        pHddCtx->tdls_mode_last = tdls_mode;
+    }
+    else
+    {
+        pHddCtx->tdls_mode_last = pHddCtx->tdls_mode;
+    }
     pHddCtx->tdls_mode = tdls_mode;
+
     mutex_unlock(&tdls_lock);
 }
 
@@ -1735,7 +1745,7 @@ int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
         eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY == pHddCtx->tdls_mode)
     {
         /* disable implicit trigger logic & tdls operatoin */
-        wlan_hdd_tdls_set_mode(pHddCtx, eTDLS_SUPPORT_DISABLED);
+        wlan_hdd_tdls_set_mode(pHddCtx, eTDLS_SUPPORT_DISABLED, FALSE);
         /* indicate the teardown all connected to peer */
         connectedTdlsPeers = wlan_hdd_tdlsConnectedPeers(pAdapter);
         if (connectedTdlsPeers)
@@ -1800,7 +1810,7 @@ void wlan_hdd_tdls_scan_done_callback(hdd_adapter_t *pAdapter)
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                        ("%s: revert tdls mode %d"), __func__, pHddCtx->tdls_mode_last);
 
-        wlan_hdd_tdls_set_mode(pHddCtx, pHddCtx->tdls_mode_last);
+        wlan_hdd_tdls_set_mode(pHddCtx, pHddCtx->tdls_mode_last, FALSE);
     }
     wlan_hdd_tdls_check_bmps(pAdapter);
 }
