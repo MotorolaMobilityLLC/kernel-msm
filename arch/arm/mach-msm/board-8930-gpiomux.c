@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -188,6 +188,31 @@ static struct gpiomux_setting atmel_int_sus_cfg = {
 	.drv = GPIOMUX_DRV_2MA,
 	.pull = GPIOMUX_PULL_DOWN,
 };
+
+static struct gpiomux_setting synaptic_rmi4_resout_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_6MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting synaptic_rmi4_resout_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_6MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct gpiomux_setting synaptic_rmi4_attn_act_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct gpiomux_setting synaptic_rmi4_attn_sus_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_DOWN,
+};
+
 #ifdef MSM8930_PHASE_2
 static struct gpiomux_setting hsusb_sus_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
@@ -632,6 +657,23 @@ static struct msm_gpiomux_config msm8960_atmel_configs[] __initdata = {
 	},
 };
 
+static struct msm_gpiomux_config msm8960_synaptic_rmi4_configs[] __initdata = {
+	{       /* TS INTERRUPT */
+		.gpio = 11,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &synaptic_rmi4_attn_act_cfg,
+			[GPIOMUX_SUSPENDED] = &synaptic_rmi4_attn_sus_cfg,
+		},
+	},
+	{       /* TS RESOUT */
+		.gpio = 52,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &synaptic_rmi4_resout_act_cfg,
+			[GPIOMUX_SUSPENDED] = &synaptic_rmi4_resout_sus_cfg,
+		},
+	},
+};
+
 static struct msm_gpiomux_config hap_lvl_shft_config[] __initdata = {
 	{
 		.gpio = 47,
@@ -952,6 +994,9 @@ int __init sglte8930_init_gpiomux(void)
 			ARRAY_SIZE(msm8960_mdp_vsync_configs));
 
 	msm_gpiomux_install(msm_sitar_config, ARRAY_SIZE(msm_sitar_config));
+
+	msm_gpiomux_install(msm8960_synaptic_rmi4_configs,
+			ARRAY_SIZE(msm8960_synaptic_rmi4_configs));
 
 	return 0;
 }
