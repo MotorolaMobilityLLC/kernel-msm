@@ -2367,8 +2367,6 @@ static int mdp_off(struct platform_device *pdev)
 #ifdef CONFIG_MSM_BUS_SCALING
 	mdp_bus_scale_update_request(0, 0);
 #endif
-	if (mdp_rev >= MDP_REV_41 && mfd->panel.type == MIPI_CMD_PANEL)
-		mdp_dsi_cmd_overlay_suspend(mfd);
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }
