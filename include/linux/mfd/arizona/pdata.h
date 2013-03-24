@@ -207,6 +207,9 @@ struct arizona_pdata {
 
 	/** Callback run at the end of mfd probe() */
 	void (*init_done)(void);
+
+	/** GPIO for primary IRQ (used for edge triggered emulation) */
+	int irq_gpio;
 };
 
 #endif
