@@ -645,7 +645,7 @@ int arizona_hp_ev(struct snd_soc_dapm_widget *w,
 
 	snd_soc_update_bits(w->codec, ARIZONA_OUTPUT_ENABLES_1, mask, val);
 
-	return 0;
+	return arizona_out_ev(w, kcontrol, event);
 }
 EXPORT_SYMBOL_GPL(arizona_hp_ev);
 
