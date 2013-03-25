@@ -191,6 +191,14 @@ config TOUCHSCREEN_CYTTSP_SPI
 	  To compile this driver as a module, choose M here: the
 	  module will be called cyttsp_spi.
 
+config TOUCHSCREEN_CYTTSP3
+	tristate "Cypress TrueTouch Generation 3 Touchscreen Driver"
+	depends on I2C
+	help
+	  Say Y here if you have a Cypress TrueTouch Generation 3 Touchscreen
+
+	  If unsure, say N.
+
 config TOUCHSCREEN_DA9034
 	tristate "Touchscreen support for Dialog Semiconductor DA9034"
 	depends on PMIC_DA903X
