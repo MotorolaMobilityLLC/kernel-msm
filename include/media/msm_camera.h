@@ -1552,6 +1552,7 @@ struct ispif_cfg_data {
 struct otp_info_t {
 	uint8_t *otp_info;
 	uint16_t size;
+	uint8_t hw_rev;
 };
 
 enum msm_camera_i2c_reg_addr_type {
