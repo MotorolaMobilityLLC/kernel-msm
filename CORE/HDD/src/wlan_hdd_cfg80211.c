@@ -6867,15 +6867,6 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
        }
     }
 
-    /* max_sta_failed ; we didn't set to CONNECTING for this case,
-       because we already know that this transaction will be failed,
-       but we weren't sure if supplicant call DISABLE_LINK or not. So,
-       to be safe, do not change the state mahine.
-    */
-    if (max_sta_failed == 0 &&
-       (WLAN_IS_TDLS_SETUP_ACTION(action_code)))
-        wlan_hdd_tdls_set_link_status(pAdapter, peerMac, eTDLS_LINK_CONNECTING);
-
     INIT_COMPLETION(pAdapter->tdls_mgmt_comp);
 
     status = sme_SendTdlsMgmtFrame(WLAN_HDD_GET_HAL_CTX(pAdapter), pAdapter->sessionId,
