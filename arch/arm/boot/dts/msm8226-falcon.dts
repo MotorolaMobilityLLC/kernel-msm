@@ -12,7 +12,7 @@
 
 /dts-v1/;
 /include/ "msm8226.dtsi"
-/include/ "dsi-panel-nt35590-720p-video.dtsi"
+/include/ "dsi-panel-mot-auo-720p-video.dtsi"
 
 / {
 	model = "Qualcomm MSM 8226 MTP";
@@ -23,7 +23,7 @@
 		status = "ok";
 	};
 
-	qcom,mdss_dsi_nt35590_720p_video {
+	qcom,mdss_dsi_mot_auo_720p_video {
 		status = "ok";
 	};
 
