@@ -1352,7 +1352,7 @@ static int wlan_hdd_cfg80211_set_channel( struct wiphy *wiphy, struct net_device
                                  )
 {
     v_U32_t num_ch = 0;
-    u32 channel = 0;
+    int channel = 0;
     hdd_adapter_t *pAdapter = NULL;
     int freq = chan->center_freq; /* freq is in MHZ */
 
@@ -1790,6 +1790,11 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
         }
     }
 
+    if (pConfig->RSNWPAReqIELength > sizeof wpaRsnIEdata) {
+        hddLog( VOS_TRACE_LEVEL_ERROR, "**RSNWPAReqIELength is too large***");
+        return -EINVAL;
+    }
+
     pConfig->SSIDinfo.ssidHidden = VOS_FALSE;
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3,4,0))
@@ -2095,19 +2100,19 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
                    "%s: HDD adapter context is Null", __func__);
         return -ENODEV;
     }
-    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
-    {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "%s:LOGP in Progress. Ignore!!!", __func__);
-        return -EAGAIN;
-    }
 
-    pHddCtx  =  (hdd_context_t*)pAdapter->pHddCtx;
+    pHddCtx  =  WLAN_HDD_GET_CTX(pAdapter);
     if (NULL == pHddCtx)
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
                 "%s: HDD context is Null", __func__);
         return -ENODEV;
+    }
+    if (pHddCtx->isLogpInProgress)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                "%s:LOGP in Progress. Ignore!!!", __func__);
+        return -EAGAIN;
     }
 
     staAdapter = hdd_get_adapter(pAdapter->pHddCtx, WLAN_HDD_INFRA_STATION);
@@ -2124,7 +2129,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
 
     pScanInfo =  &pHddCtx->scan_info;
 
-    if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress)
+    if (pHddCtx->isLogpInProgress)
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:LOGP in Progress. Ignore!!!",__func__);
         return -EAGAIN;
@@ -2168,7 +2173,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
         mutex_lock(&pHddCtx->sap_lock);
         if(test_bit(SOFTAP_BSS_STARTED, &pAdapter->event_flags))
         {
-            if ( VOS_STATUS_SUCCESS == (status = WLANSAP_StopBss((WLAN_HDD_GET_CTX(pAdapter))->pvosContext) ) )
+            if ( VOS_STATUS_SUCCESS == (status = WLANSAP_StopBss(pHddCtx->pvosContext) ) )
             {
                 hdd_hostapd_state_t *pHostapdState = WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter);
 
@@ -2192,7 +2197,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
             return -EINVAL;
         }
 
-        if (ccmCfgSetInt((WLAN_HDD_GET_CTX(pAdapter))->hHal,
+        if (ccmCfgSetInt(pHddCtx->hHal,
             WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG, 0,NULL, eANI_BOOLEAN_FALSE)
                                                     ==eHAL_STATUS_FAILURE)
         {
@@ -2200,7 +2205,7 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
                "Could not pass on WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG to CCM\n");
         }
 
-        if ( eHAL_STATUS_FAILURE == ccmCfgSetInt((WLAN_HDD_GET_CTX(pAdapter))->hHal,
+        if ( eHAL_STATUS_FAILURE == ccmCfgSetInt(pHddCtx->hHal,
                             WNI_CFG_ASSOC_RSP_ADDNIE_FLAG, 0, NULL,
                             eANI_BOOLEAN_FALSE) )
         {

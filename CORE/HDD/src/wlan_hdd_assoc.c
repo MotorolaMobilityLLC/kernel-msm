@@ -650,7 +650,7 @@ static void hdd_SendAssociationEvent(struct net_device *dev,tCsrRoamInfo *pCsrRo
     }
     else if (eConnectionState_IbssConnected == pHddStaCtx->conn_info.connState) // IBss Associated
     {
-        memcpy(wrqu.ap_addr.sa_data, pHddStaCtx->conn_info.bssId, sizeof(wrqu.ap_addr.sa_data));
+        memcpy(wrqu.ap_addr.sa_data, pHddStaCtx->conn_info.bssId, ETH_ALEN);
         type = WLAN_STA_ASSOC_DONE_IND;
         pr_info("wlan: new IBSS connection to %02x:%02x:%02x:%02x:%02x:%02x",
                       pHddStaCtx->conn_info.bssId[0],
@@ -3340,7 +3340,7 @@ int iw_get_ap_address(struct net_device *dev,
     if ((pHddStaCtx->conn_info.connState == eConnectionState_Associated) ||
         (eConnectionState_IbssConnected == pHddStaCtx->conn_info.connState))
     {
-        memcpy(wrqu->ap_addr.sa_data,pHddStaCtx->conn_info.bssId,sizeof(wrqu->ap_addr.sa_data));
+        memcpy(wrqu->ap_addr.sa_data,pHddStaCtx->conn_info.bssId,ETH_ALEN);
     }
     else
     {
