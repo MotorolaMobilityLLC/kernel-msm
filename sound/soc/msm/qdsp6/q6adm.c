@@ -687,8 +687,8 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology)
 				rate = 16000;
 		}
 
-		if (open.topology_id  == 0)
-			open.topology_id = topology;
+        if ((open.topology_id  == 0) || (port_id == VOICE_RECORD_RX) || (port_id == VOICE_RECORD_TX))
+          open.topology_id = topology;
 
 		open.channel_config = channel_mode & 0x00FF;
 		open.rate  = rate;
@@ -842,8 +842,8 @@ int adm_multi_ch_copp_open(int port_id, int path, int rate, int channel_mode,
 				rate = 16000;
 		}
 
-		if (open.topology_id  == 0)
-			open.topology_id = topology;
+        if ((open.topology_id  == 0) || (port_id == VOICE_RECORD_RX) || (port_id == VOICE_RECORD_TX))
+          open.topology_id = topology;
 
 		open.channel_config = channel_mode & 0x00FF;
 		open.rate  = rate;
