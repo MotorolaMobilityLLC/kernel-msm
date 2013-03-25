@@ -232,6 +232,7 @@ struct msp430_data {
 	int msp430_ms_data_buffer_tail;
 	wait_queue_head_t msp430_ms_data_wq;
 	bool ap_msp_handoff_ctrl;
+	bool ap_msp_handoff_enable;
 };
 
 enum msp_commands {
@@ -1853,6 +1854,12 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 
 		err = msp430_i2c_write(ps_msp430, msp_cmdbuff,
 			(MSP_CONTROL_REG_SIZE + 1));
+		if (err < 0)
+			dev_err(&msp430_misc_data->client->dev,
+				"unable to write control reg %d\n", err);
+		else
+			ps_msp430->ap_msp_handoff_enable = true;
+
 		break;
 	case MSP430_IOCTL_GET_STATUS_REG:
 		dev_dbg(&ps_msp430->client->dev,
@@ -2383,6 +2390,7 @@ static int msp430_probe(struct i2c_client *client,
 
 	ps_msp430->client = client;
 	ps_msp430->mode = UNINITIALIZED;
+	ps_msp430->ap_msp_handoff_enable = false;
 
 
 	/* Set to passive mode by default */
@@ -2605,7 +2613,8 @@ static int msp430_resume(struct i2c_client *client)
 	mutex_lock(&ps_msp430->lock);
 
 	if (ps_msp430->mode == NORMALMODE) {
-		if (ps_msp430->ap_msp_handoff_ctrl) {
+		if ((ps_msp430->ap_msp_handoff_enable)
+			&& (ps_msp430->ap_msp_handoff_ctrl)) {
 			gpio_set_value(msp_req, 0);
 			dev_dbg(&ps_msp430->client->dev, "MSP REQ is set %d\n",
 				 gpio_get_value(msp_req));
@@ -2616,7 +2625,8 @@ static int msp430_resume(struct i2c_client *client)
 		msp_cmdbuff[0] = INTERRUPT_STATUS;
 		msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2);
 
-		if (ps_msp430->ap_msp_handoff_ctrl) {
+		if ((ps_msp430->ap_msp_handoff_enable)
+			&& (ps_msp430->ap_msp_handoff_ctrl)) {
 			do {
 				usleep_range(MSP_BUSY_SLEEP_USEC,
 						 MSP_BUSY_SLEEP_USEC);
@@ -2628,6 +2638,7 @@ static int msp430_resume(struct i2c_client *client)
 				dev_err(&ps_msp430->client->dev,
 					"timedout while waiting for MSP BUSY LOW\n");
 		}
+		ps_msp430->ap_msp_handoff_enable = false;
 	}
 
 	mutex_unlock(&ps_msp430->lock);
@@ -2644,6 +2655,7 @@ static int msp430_suspend(struct i2c_client *client, pm_message_t mesg)
 	mutex_lock(&ps_msp430->lock);
 
 	if ((ps_msp430->mode == NORMALMODE)
+		 && (ps_msp430->ap_msp_handoff_enable)
 		 && (ps_msp430->ap_msp_handoff_ctrl)) {
 
 		gpio_set_value(msp_req, 1);
