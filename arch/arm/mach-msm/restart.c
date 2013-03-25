@@ -224,7 +224,8 @@ static irqreturn_t resout_irq_handler(int irq, void *dev_id)
 	pr_warn("%s External HW Initiated reboot\n", __func__);
 	set_restart_reason(REBOOT_HARD_RESET);
 	pr_warn("%s 2 sec to reboot.Halt the kernel.\n", __func__);
-
+	pet_watchdog();
+	set_dload_mode(0);
 	schedule_work(&msm_resout_work);
 
 	return IRQ_HANDLED;
