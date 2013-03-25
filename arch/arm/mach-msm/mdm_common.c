@@ -772,12 +772,18 @@ static void mdm_modem_initialize_data(struct platform_device *pdev,
 
 	memset((void *)&mdev->mdm_subsys, 0,
 		   sizeof(struct subsys_desc));
-	if (mdev->mdm_data.device_id <= 0)
-		snprintf(mdev->subsys_name, sizeof(mdev->subsys_name),
-			 "%s",  EXTERNAL_MODEM);
-	else
-		snprintf(mdev->subsys_name, sizeof(mdev->subsys_name),
-			 "%s.%d",  EXTERNAL_MODEM, mdev->mdm_data.device_id);
+	if (mdm_drv->pdata->subsys_name) {
+		strlcpy(mdev->subsys_name, mdm_drv->pdata->subsys_name,
+				sizeof(mdev->subsys_name));
+	} else {
+		if (mdev->mdm_data.device_id <= 0)
+			snprintf(mdev->subsys_name, sizeof(mdev->subsys_name),
+				"%s",  EXTERNAL_MODEM);
+		else
+			snprintf(mdev->subsys_name, sizeof(mdev->subsys_name),
+				"%s.%d",  EXTERNAL_MODEM,
+				mdev->mdm_data.device_id);
+	}
 	mdev->mdm_subsys.shutdown = mdm_subsys_shutdown;
 	mdev->mdm_subsys.ramdump = mdm_subsys_ramdumps;
 	mdev->mdm_subsys.powerup = mdm_subsys_powerup;
