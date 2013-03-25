@@ -59,7 +59,7 @@ int kgsl_add_event(struct kgsl_device *device, u32 id, u32 ts,
 		return -EINVAL;
 
 	if (id != KGSL_MEMSTORE_GLOBAL) {
-		context = idr_find(&device->context_idr, id);
+		context = kgsl_context_get(device, id);
 		if (context == NULL)
 			return -EINVAL;
 	}
@@ -75,12 +75,15 @@ int kgsl_add_event(struct kgsl_device *device, u32 id, u32 ts,
 	if (timestamp_cmp(cur_ts, ts) >= 0) {
 		trace_kgsl_fire_event(id, ts, 0);
 		cb(device, priv, id, ts);
+		kgsl_context_put(context);
 		return 0;
 	}
 
 	event = kzalloc(sizeof(*event), GFP_KERNEL);
-	if (event == NULL)
+	if (event == NULL) {
+		kgsl_context_put(context);
 		return -ENOMEM;
+	}
 
 	event->context = context;
 	event->timestamp = ts;
@@ -90,10 +93,6 @@ int kgsl_add_event(struct kgsl_device *device, u32 id, u32 ts,
 	event->created = jiffies;
 
 	trace_kgsl_register_event(id, ts);
-
-	/* inc refcount to avoid race conditions in cleanup */
-	if (context)
-		kgsl_context_get(context);
 
 	/* Add the event to either the owning context or the global list */
 
