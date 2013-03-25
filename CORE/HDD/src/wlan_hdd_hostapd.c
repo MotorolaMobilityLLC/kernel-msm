@@ -98,8 +98,11 @@
     (IS_UP((_ic)->ic_dev) && (_ic)->ic_roaming == IEEE80211_ROAMING_AUTO)
 #define WE_WLAN_VERSION     1
 #define STATS_CONTEXT_MAGIC 0x53544154
-#define WE_GET_STA_INFO_SIZE 50
-#define WE_SAP_MAX_STA_INFO (WE_GET_STA_INFO_SIZE * WLAN_MAX_STA_COUNT)
+#define WE_GET_STA_INFO_SIZE 30
+/* WEXT limition: MAX allowed buf len for any *
+ * IW_PRIV_TYPE_CHAR is 2Kbytes *
+ */
+#define WE_SAP_MAX_STA_INFO 0x7FF
 
 struct statsContext
 {
@@ -2439,15 +2442,22 @@ static int iw_softap_version(struct net_device *dev,
     return 0;
 }
 
-VOS_STATUS hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf)
+VOS_STATUS hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf, int buf_len)
 {
     v_U8_t i;
+    int len = 0;
+    const char sta_info_header[] = "staId staAddress\n";
+
+    len = snprintf(pBuf, buf_len, sta_info_header);
+    pBuf += len;
+    buf_len -= len;
 
     for (i = 0; i < WLAN_MAX_STA_COUNT; i++)
     {
         if(pAdapter->aStaInfo[i].isUsed)
         {
-            pBuf += snprintf(pBuf, WE_GET_STA_INFO_SIZE, "staIndex = %d staAddress =.%02x:%02x:%02x:%02x:%02x:%02x\n",
+            len = snprintf(pBuf, buf_len, "%*d .%02x:%02x:%02x:%02x:%02x:%02x\n",
+                                       strlen("staId"),
                                        pAdapter->aStaInfo[i].ucSTAId,
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[0],
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[1],
@@ -2455,6 +2465,12 @@ VOS_STATUS hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf)
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[3],
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[4],
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[5]);
+            pBuf += len;
+            buf_len -= len;
+        }
+        if(WE_GET_STA_INFO_SIZE > buf_len)
+        {
+            break;
         }
     }
     return VOS_STATUS_SUCCESS;
@@ -2468,7 +2484,7 @@ static int iw_softap_get_sta_info(struct net_device *dev,
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     VOS_STATUS status;
     ENTER();
-    status = hdd_softap_get_sta_info(pHostapdAdapter, extra);
+    status = hdd_softap_get_sta_info(pHostapdAdapter, extra, wrqu->data.length);
     if ( !VOS_IS_STATUS_SUCCESS( status ) ) {
        hddLog(VOS_TRACE_LEVEL_ERROR, "%s Failed!!!\n",__func__);
        return -EINVAL;
