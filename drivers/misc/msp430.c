@@ -161,6 +161,8 @@
 #define MSP_BUSY_RESUME_COUNT	14
 #define MSP_BUSY_SUSPEND_COUNT	6
 
+#define AOD_WAKEUP_REASON_ESD		4
+
 static long time_delta;
 static unsigned int msp430_irq_disable;
 module_param_named(irq_disable, msp430_irq_disable, uint, 0644);
@@ -1110,11 +1112,35 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 			"Sending Proximity distance %d\n", x);
 	}
 	if (irq_status & M_TOUCH) {
-		input_report_key(ps_msp430->input_dev, KEY_POWER, 1);
-		input_report_key(ps_msp430->input_dev, KEY_POWER, 0);
-		input_sync(ps_msp430->input_dev);
-		dev_info(&ps_msp430->client->dev,
-			"Report pwrkey toggle, touch event wake\n");
+		u8 aod_wake_up_reason;
+		msp_cmdbuff[0] = MSP_STATUS_REG;
+		if (msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1, 2) < 0) {
+			dev_err(&ps_msp430->client->dev,
+				"Get status reg failed\n");
+			goto EXIT;
+		}
+		aod_wake_up_reason = (msp_cmdbuff[1] >> 4) & 0xf;
+		if (aod_wake_up_reason == AOD_WAKEUP_REASON_ESD) {
+			char *envp[2];
+			envp[0] = "MSP430WAKE=ESD";
+			envp[1] = NULL;
+			if (kobject_uevent_env(&ps_msp430->client->dev.kobj,
+				KOBJ_CHANGE, envp)) {
+				dev_err(&ps_msp430->client->dev,
+					"Failed to create uevent\n");
+				goto EXIT;
+			}
+			sysfs_notify(&ps_msp430->client->dev.kobj,
+				NULL, "msp430_esd");
+			dev_info(&ps_msp430->client->dev,
+				"Sent uevent, MSP430 ESD wake\n");
+		} else {
+			input_report_key(ps_msp430->input_dev, KEY_POWER, 1);
+			input_report_key(ps_msp430->input_dev, KEY_POWER, 0);
+			input_sync(ps_msp430->input_dev);
+			dev_info(&ps_msp430->client->dev,
+				"Report pwrkey toggle, touch event wake\n");
+		}
 	}
 	if (irq_status & M_FLATUP) {
 		msp_cmdbuff[0] = FLAT_DATA;
