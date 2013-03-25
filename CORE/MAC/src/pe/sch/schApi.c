@@ -392,6 +392,7 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
     tANI_U32             addnIEPresent;
     tANI_U32             addnIELen=0;
     tSirRetStatus        nSirStatus;
+    tANI_U8              *addIE = NULL;
 
     nStatus = dot11fGetPackedProbeResponseSize( pMac, &psessionEntry->probeRespFrame, &nPayload );
     if ( DOT11F_FAILED( nStatus ) )
@@ -410,50 +411,59 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
     }
 
     nBytes = nPayload + sizeof( tSirMacMgmtHdr );
-    
-    //Check if probe response IE is set first before checking beacon/probe rsp IE
-    if(wlan_cfgGetInt(pMac, WNI_CFG_PROBE_RSP_ADDNIE_FLAG, &addnIEPresent) != eSIR_SUCCESS)
+
+    //Check if probe response IE is present or not
+    if (wlan_cfgGetInt(pMac, WNI_CFG_PROBE_RSP_ADDNIE_FLAG, &addnIEPresent) != eSIR_SUCCESS)
     {
-        schLog(pMac, LOGE, FL("Unable to get WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG"));
+        schLog(pMac, LOGE, FL("Unable to get WNI_CFG_PROBE_RSP_ADDNIE_FLAG"));
         return retCode;
     }
 
-    if(!addnIEPresent)
+    if (addnIEPresent)
     {
-        //TODO: If additional IE needs to be added. Add then alloc required buffer.
-        if(wlan_cfgGetInt(pMac, WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG, &addnIEPresent) != eSIR_SUCCESS)
+        //Probe rsp IE available
+        if ( (palAllocateMemory(pMac->hHdd, (void**)&addIE,
+             WNI_CFG_PROBE_RSP_ADDNIE_DATA1_LEN )) != eHAL_STATUS_SUCCESS)
         {
-            schLog(pMac, LOGE, FL("Unable to get WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG"));
+             schLog(pMac, LOGE,
+                 FL("Unable to get WNI_CFG_PROBE_RSP_ADDNIE_DATA1 length"));
+             return retCode;
+        }
+
+        if (wlan_cfgGetStrLen(pMac, WNI_CFG_PROBE_RSP_ADDNIE_DATA1,
+                                               &addnIELen) != eSIR_SUCCESS)
+        {
+            schLog(pMac, LOGE,
+                FL("Unable to get WNI_CFG_PROBE_RSP_ADDNIE_DATA1 length"));
+
+            palFreeMemory(pMac->hHdd, addIE);
             return retCode;
         }
-    
-        if(addnIEPresent)
+
+        if (addnIELen <= WNI_CFG_PROBE_RSP_ADDNIE_DATA1_LEN && addnIELen &&
+                                 (nBytes + addnIELen) <= SIR_MAX_PACKET_SIZE)
         {
-            if(wlan_cfgGetStrLen(pMac, WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA, &addnIELen) != eSIR_SUCCESS)
+            if ( eSIR_SUCCESS != wlan_cfgGetStr(pMac,
+                                    WNI_CFG_PROBE_RSP_ADDNIE_DATA1, &addIE[0],
+                                    &addnIELen) )
             {
-                schLog(pMac, LOGE, FL("Unable to get WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA length"));
-                return retCode;
+               schLog(pMac, LOGE,
+                   FL("Unable to get WNI_CFG_PROBE_RSP_ADDNIE_DATA1 String"));
+
+               palFreeMemory(pMac->hHdd, addIE);
+               return retCode;
             }
         }
     }
-    else
+
+    if (addnIEPresent)
     {
-        //Probe rsp IE available
-        if(wlan_cfgGetStrLen(pMac, WNI_CFG_PROBE_RSP_ADDNIE_DATA1, &addnIELen) != eSIR_SUCCESS)
-        {
-            limLog(pMac, LOGP, FL("Unable to get WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA length"));
-            return retCode;
-        }
+        if ((nBytes + addnIELen) <= SIR_MAX_PACKET_SIZE )
+            nBytes += addnIELen;
+        else
+            addnIEPresent = false; //Dont include the IE.
     }
 
-    if(addnIEPresent)
-    {
-        if((nBytes + addnIELen) <= SIR_MAX_PACKET_SIZE ) 
-            nBytes += addnIELen;
-        else 
-            addnIEPresent = false; //Dont include the IE.     
-    }
-       
     // Paranoia:
     palZeroMemory( pMac->hHdd, pFrame2Hal, nBytes );
 
@@ -466,13 +476,15 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
         schLog( pMac, LOGE, FL("Failed to populate the buffer descrip"
                                "tor for a Probe Response (%d)."),
                 nSirStatus );
+
+        palFreeMemory(pMac->hHdd, addIE);
         return retCode;
     }
 
     pMacHdr = ( tpSirMacMgmtHdr ) pFrame2Hal;
-  
+
     sirCopyMacAddr(pMacHdr->bssId,psessionEntry->bssId);
-    
+
     // That done, pack the Probe Response:
     nStatus = dot11fPackProbeResponse( pMac, &psessionEntry->probeRespFrame, pFrame2Hal + sizeof(tSirMacMgmtHdr),
                                        nPayload, &nPayload );
@@ -481,6 +493,8 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
     {
         schLog( pMac, LOGE, FL("Failed to pack a Probe Response (0x%08x)."),
                 nStatus );
+
+        palFreeMemory(pMac->hHdd, addIE);
         return retCode;                 // allocated!
     }
     else if ( DOT11F_WARNED( nStatus ) )
@@ -488,6 +502,22 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
         schLog( pMac, LOGE, FL("There were warnings while packing a P"
                                "robe Response (0x%08x).") );
     }
+
+    if (addnIEPresent)
+    {
+        if (palCopyMemory ( pMac->hHdd, &pFrame2Hal[nBytes - addnIELen],
+                             &addIE[0], addnIELen) != eHAL_STATUS_SUCCESS)
+        {
+            schLog( pMac, LOGE,
+                FL("Additional Probe Rsp IE request failed while Appending "));
+
+            palFreeMemory(pMac->hHdd, addIE);
+            return retCode;
+        }
+    }
+
+    /* free the allocated Memory */
+    palFreeMemory(pMac->hHdd, addIE);
 
     if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
                                                 (void **) &pprobeRespParams,
@@ -508,7 +538,7 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
         pprobeRespParams->probeRespTemplateLen = nBytes;
         palCopyMemory(pMac,pprobeRespParams->ucProxyProbeReqValidIEBmap,IeBitmap,
                             (sizeof(tANI_U32) * 8));
-        msgQ.type     = WDA_UPDATE_PROBE_RSP_TEMPLATE_IND; 
+        msgQ.type     = WDA_UPDATE_PROBE_RSP_TEMPLATE_IND;
         msgQ.reserved = 0;
         msgQ.bodyptr  = pprobeRespParams;
         msgQ.bodyval  = 0;
