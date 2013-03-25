@@ -4124,6 +4124,22 @@ pMlmAddBACnf = (tpLimMlmAddBACnf) pMsgBuf;
       pSta->tcCfg[pMlmAddBACnf->baTID].fRxBApolicy = pMlmAddBACnf->baPolicy;
       pSta->tcCfg[pMlmAddBACnf->baTID].rxBufSize = pMlmAddBACnf->baBufferSize;
       pSta->tcCfg[pMlmAddBACnf->baTID].tuRxBAWaitTimeout = pMlmAddBACnf->baTimeout;
+      // Package LIM_MLM_ADDBA_RSP to MLME, with proper
+      // status code. MLME will then send an ADDBA RSP
+      // over the air to the peer MAC entity
+      if( eSIR_SUCCESS != limPostMlmAddBARsp( pMac,
+            pMlmAddBACnf->peerMacAddr,
+            pMlmAddBACnf->addBAResultCode,
+            pMlmAddBACnf->baDialogToken,
+            (tANI_U8) pMlmAddBACnf->baTID,
+            (tANI_U8) pMlmAddBACnf->baPolicy,
+            pMlmAddBACnf->baBufferSize,
+            pMlmAddBACnf->baTimeout,psessionEntry))
+      {
+        PELOGW(limLog( pMac, LOGW,
+            FL( "Failed to post LIM_MLM_ADDBA_RSP to " ));
+        limPrintMacAddr( pMac, pMlmAddBACnf->peerMacAddr, LOGW );)
+      }
     }
     else
     {
@@ -4132,27 +4148,6 @@ pMlmAddBACnf = (tpLimMlmAddBACnf) pMsgBuf;
       pSta->tcCfg[pMlmAddBACnf->baTID].fTxBApolicy = pMlmAddBACnf->baPolicy;
       pSta->tcCfg[pMlmAddBACnf->baTID].txBufSize = pMlmAddBACnf->baBufferSize;
       pSta->tcCfg[pMlmAddBACnf->baTID].tuTxBAWaitTimeout = pMlmAddBACnf->baTimeout;
-    }
-  }
-  if( eBA_RECIPIENT == pMlmAddBACnf->baDirection )
-  {
-    //
-    // Package LIM_MLM_ADDBA_RSP to MLME, with proper
-    // status code. MLME will then send an ADDBA RSP
-    // over the air to the peer MAC entity
-    //
-    if( eSIR_SUCCESS != limPostMlmAddBARsp( pMac,
-          pMlmAddBACnf->peerMacAddr,
-          pMlmAddBACnf->addBAResultCode,
-          pMlmAddBACnf->baDialogToken,
-          (tANI_U8) pMlmAddBACnf->baTID,
-          (tANI_U8) pMlmAddBACnf->baPolicy,
-          pMlmAddBACnf->baBufferSize,
-          pMlmAddBACnf->baTimeout,psessionEntry))
-    {
-      PELOGW(limLog( pMac, LOGW,
-          FL( "Failed to post LIM_MLM_ADDBA_RSP to " ));
-      limPrintMacAddr( pMac, pMlmAddBACnf->peerMacAddr, LOGW );)
     }
   }
   // Free the memory allocated for LIM_MLM_ADDBA_CNF
