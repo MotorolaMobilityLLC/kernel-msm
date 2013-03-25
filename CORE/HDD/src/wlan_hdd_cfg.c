@@ -2183,7 +2183,7 @@ VOS_STATUS hdd_parse_config_ini(hdd_context_t* pHddCtx)
    int status, i=0;
    /** Pointer for firmware image data */
    const struct firmware *fw = NULL;
-   char *buffer, *line,*pTemp;
+   char *buffer, *line, *pTemp = NULL;
    size_t size;
    char *name, *value;
    /* cfgIniTable is static to avoid excess stack usage */
@@ -2197,13 +2197,15 @@ VOS_STATUS hdd_parse_config_ini(hdd_context_t* pHddCtx)
    if(status)
    {
       hddLog(VOS_TRACE_LEVEL_FATAL, "%s: request_firmware failed %d\n",__func__, status);
-      return VOS_STATUS_E_FAILURE;
+      vos_status = VOS_STATUS_E_FAILURE;
+      goto config_exit;
    }
    if(!fw || !fw->data || !fw->size)
    {
       hddLog(VOS_TRACE_LEVEL_FATAL, "%s: %s download failed\n",
              __func__, WLAN_INI_FILE);
-      return VOS_STATUS_E_FAILURE;
+      vos_status = VOS_STATUS_E_FAILURE;
+      goto config_exit;
    }
 
    hddLog(LOG1, "%s: qcom_cfg.ini Size %d\n",__func__, fw->size);
@@ -2266,6 +2268,7 @@ VOS_STATUS hdd_parse_config_ini(hdd_context_t* pHddCtx)
    //Loop through the registry table and apply all these configs
    vos_status = hdd_apply_cfg_ini(pHddCtx, cfgIniTable, i);
 
+config_exit:
    release_firmware(fw);
    vos_mem_free(pTemp);
    return vos_status;
