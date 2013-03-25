@@ -367,7 +367,7 @@ limProcessAssocReqFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,
       ***************************************************************/
     basicRates.numRates = 0;
 
-    for(i = 0; i < pAssocReq->supportedRates.numRates; i++)
+    for(i = 0; i < pAssocReq->supportedRates.numRates && (i < SIR_MAC_RATESET_EID_MAX); i++)
     {
         basicRates.rate[i] = pAssocReq->supportedRates.rate[i];
         basicRates.numRates++;

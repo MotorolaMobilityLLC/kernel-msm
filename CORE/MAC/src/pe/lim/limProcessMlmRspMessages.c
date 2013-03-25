@@ -2884,7 +2884,7 @@ end:
 
     mlmReassocCnf.resultCode = eSIR_SME_FT_REASSOC_FAILURE;
     mlmReassocCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
-    /* Update PE sessio Id*/
+    /* Update PE session Id*/
     if (psessionEntry != NULL)
         mlmReassocCnf.sessionId = psessionEntry->peSessionId;
     else
