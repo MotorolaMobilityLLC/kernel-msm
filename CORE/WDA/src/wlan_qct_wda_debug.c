@@ -61,7 +61,6 @@
   Qualcomm Confidential and Proprietary
 ===========================================================================*/
 
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
 
 #include "palTypes.h"
 #include "wlan_qct_wda_debug.h"
@@ -79,4 +78,3 @@ void wdaLog(tpAniSirGlobal pMac, tANI_U32 loglevel, const char *pString,...) {
     va_end( marker );              /* Reset variable arguments.      */
 }
 
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
