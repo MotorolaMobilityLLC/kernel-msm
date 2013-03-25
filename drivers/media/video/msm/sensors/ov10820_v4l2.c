@@ -73,7 +73,7 @@ static struct msm_camera_i2c_reg_conf ov10820_full_settings_rev_a1[] = {
 	{0x380b, 0x80},
 	{0x380e, 0x0a},
 	{0x380f, 0x38},
-	{0x3811, 0x11},
+	{0x3811, 0x10},
 	{0x3813, 0x10},
 	{0x3815, 0x11},
 	{0x3820, 0x00},
@@ -94,7 +94,7 @@ static struct msm_camera_i2c_reg_conf ov10820_full_settings_rev_b1[] = {
 	{0x380b, 0x80},
 	{0x380e, 0x09},
 	{0x380f, 0xe0},
-	{0x3811, 0x11},
+	{0x3811, 0x10},
 	{0x3813, 0x10},
 	{0x3815, 0x11},
 	{0x3820, 0x00},
@@ -354,7 +354,7 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings_rev_a1[] = {
 	{0x380d, 0x50},
 	{0x380e, 0x0a},
 	{0x380f, 0x38},
-	{0x3811, 0x11},
+	{0x3811, 0x10},
 	{0x3813, 0x10},
 	{0x3815, 0x11},
 	{0x3820, 0x00},
@@ -433,7 +433,7 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings_rev_b1[] = {
 	{0x3708, 0x84},
 	{0x3709, 0x50},
 	{0x370b, 0x40},
-	{0x370c, 0xf0},
+	{0x370c, 0xe5},
 	{0x370d, 0x03},
 	{0x370e, 0x0f},
 	{0x370f, 0x45},
@@ -443,7 +443,7 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings_rev_b1[] = {
 	{0x371b, 0x30},
 	{0x371e, 0x01},
 	{0x371f, 0x20},
-	{0x3720, 0x30},
+	{0x3720, 0x60},
 	{0x3721, 0xf0},
 	{0x3723, 0x38},
 	{0x372a, 0x08},
@@ -454,7 +454,7 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings_rev_b1[] = {
 	{0x3732, 0x04},
 	{0x3733, 0x0e},
 	{0x3738, 0x04},
-	{0x3739, 0xde},
+	{0x3739, 0x0e},
 	{0x373a, 0x03},
 	{0x373b, 0xd0},
 	{0x373c, 0x00},
@@ -466,7 +466,7 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings_rev_b1[] = {
 	{0x3742, 0x04},
 	{0x3743, 0x01},
 	{0x3748, 0x00},
-	{0x3749, 0x93},
+	{0x3749, 0x00},
 	{0x374a, 0x00},
 	{0x374c, 0x48},
 	{0x37c5, 0x00},
@@ -502,7 +502,7 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings_rev_b1[] = {
 	{0x3b02, 0x00},
 	{0x3b03, 0x00},
 	{0x3b05, 0x00},
-	{0x4000, 0x71},
+	{0x4000, 0xf1},
 	{0x4001, 0x08},
 	{0x4003, 0x30},
 	{0x4004, 0x00},
@@ -581,11 +581,13 @@ static struct msm_camera_i2c_reg_conf ov10820_recommend_settings_rev_b1[] = {
 	{0x380d, 0x80},
 	{0x380e, 0x09},
 	{0x380f, 0xe0},
-	{0x3811, 0x11},
+	{0x3811, 0x10},
 	{0x3813, 0x10},
 	{0x3815, 0x11},
 	{0x3820, 0x00},
 	{0x3834, 0x00},
+	{0x300d, 0x25},
+	{0x400d, 0x10},
 	{0x4837, 0x08},
 	/* Exposure Gain */
 	{0x3500, 0x00},
@@ -674,7 +676,7 @@ static struct msm_sensor_output_info_t ov10820_r1b_dimensions[] = {
 		.y_output = 0x0980,/*2432*/
 		.line_length_pclk = 0x1580, /*5504*/
 		.frame_length_lines = 0x9e0,/*2528*/
-		.vt_pixel_clk = 200000000,
+		.vt_pixel_clk = 201600000,
 		.op_pixel_clk = 320000000,
 		.binning_factor = 1,
 	},
@@ -703,7 +705,7 @@ static struct msm_sensor_id_info_t ov10820_id_info = {
 };
 
 static struct msm_sensor_exp_gain_info_t ov10820_exp_gain_info = {
-	.coarse_int_time_addr = 0x3501,
+	.coarse_int_time_addr = 0x3500,
 	.global_gain_addr = 0x350A,
 	.vert_offset = 6,
 };
@@ -739,7 +741,7 @@ static int32_t ov10820_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 		s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);
 		msm_camera_i2c_write_seq(s_ctrl->sensor_i2c_client,
 				s_ctrl->sensor_exp_gain_info->
-				coarse_int_time_addr-1, &int_time[0], 3);
+				coarse_int_time_addr, &int_time[0], 3);
 		msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 				s_ctrl->sensor_exp_gain_info->
 				global_gain_addr, gain,
@@ -1059,6 +1061,7 @@ static int32_t ov10820_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
 	if (ov10820_otp_info.size > 0) {
 		s_ctrl->sensor_otp.otp_info = ov10820_otp_info.otp_info;
 		s_ctrl->sensor_otp.size = ov10820_otp_info.size;
+		s_ctrl->sensor_otp.hw_rev = revision;
 		return 0;
 	} else {
 		pr_err("%s: Unable to get module info as otp failed!\n",
