@@ -1,0 +1,71 @@
+Cypress Gen3 touch controller
+
+Required properties:
+
+ - compatible	: should be "cyttsp3,i2c"
+ - reg			: i2c slave address of the device
+ - interrupt-parent	: parent of interrupt
+ - interrupts		: touch sample interrupt to indicate presense or release
+				of fingers on the panel.
+ - vdd_ana-supply	: Analog power supply needed to power device
+ - vdd_i2c-supply	: Power supply need to power i2c bus
+ - cyttsp3,reset-gpio	: reset gpio
+ - cyttsp3,flags	: flags to enable debugging, etc.
+ - cyttsp3,abs		: abs parameters, containing info such as panel and display sizes
+ - cyttsp3,tsett-list	: tsett list
+ - cyttsp3,tsett1	: tsett1 parameter
+ - cyttsp3,tsett1-tag	: tsett1 tag
+ - cyttsp3,tsett2	: tsett2 parameter
+ - cyttsp3,tsett2-tag	: tsett2 tag
+ - cyttsp3,tsett3	: tsett3 parameter
+
+Required for firmware update only:
+ - cyttsp3,fw-version	: firmware version
+ - cyttsp3,fw-name	: firmware name to use for flashing firmware
+
+Optional property:
+ - cyttsp3,enable-vkeys	: enable/disable virtual keys
+ - cyttsp3,vkey-map	: virtual key mapping in display coordinates
+
+Example:
+	i2c@f9966000 {
+		cell-index = <3>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9966000 0x1000>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 104 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <24000000>;
+
+		cyttsp3_i2c@3b {
+			compatible = "cyttsp3,i2c";
+			reg = <0x3b>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <48 0x0>;
+			vdd_ana-supply = <&pm8941_l18>;
+			vcc_i2c-supply = <&pm8941_lvs1>;
+			cyttsp3,reset-gpio = <&msmgpio 24 0>;
+			cyttsp3,flags = <0x03>;
+			cyttsp3,abs = <
+				0x35 14 1009 0 0
+				0x36 10  944 0 0
+				0x3A  0  255 0 0
+				0x32  0   20 0 0
+				0x39  0    4 0 0 >;
+			cyttsp3,enable-vkeys = <1>;
+			cyttsp3,vkey-map = <
+				107 1345 104 103
+				276 1345 104 103
+				444 1345 104 103
+				613 1345 104 103 >;
+			cyttsp3,tsett-list = <1 2 3>;
+			cyttsp3,tsett1 = <0 0 0 0>;
+			cyttsp3,tsett1-tag = <3>;
+			cyttsp3,tsett2 = <0 0 0 0 0 0x01 0x00 0xff 0x00>;
+			cyttsp3,tsett2-tag = <6>;
+			cyttsp3,tsett3 = <0 1 2 3 4 5 6 7>;
+			cyttsp3,fw-version = <0x16 0xa4 0x00 0x00 0x18 0x0b 0x14 0x0c 0x00>;
+			cyttsp3,fw-name = "cyttsp3.bin";
+		}
+	};
