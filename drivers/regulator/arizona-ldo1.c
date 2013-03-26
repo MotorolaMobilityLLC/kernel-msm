@@ -66,7 +66,7 @@ static int arizona_ldo_reg_get_voltage_sel(struct regulator_dev *rdev)
 	if (ret != 0)
 		return ret;
 
-	if (val&ARIZONA_LDO1_HI_PWR)
+	if (val & ARIZONA_LDO1_HI_PWR)
 		return rdev->desc->n_voltages - 1;
 
 	ret = regmap_read(ldo1->arizona->regmap,
