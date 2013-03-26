@@ -2887,7 +2887,8 @@ end:
     mlmReassocCnf.resultCode = eSIR_SME_FT_REASSOC_FAILURE;
     mlmReassocCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
     /* Update PE sessio Id*/
-    mlmReassocCnf.sessionId = psessionEntry->peSessionId;
+    if (psessionEntry != NULL)
+        mlmReassocCnf.sessionId = psessionEntry->peSessionId;
 
     limPostSmeMessage(pMac, LIM_MLM_REASSOC_CNF, (tANI_U32 *) &mlmReassocCnf);
 }
