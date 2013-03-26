@@ -156,6 +156,7 @@ struct msp430_platform_data {
 #define M_DOCK			0x0001
 #define M_PROXIMITY		0x0002
 #define M_TOUCH			0x0004
+#define M_HUB_RESET		0x0080
 
 #define M_FLATUP		0x0100
 #define M_FLATDOWN		0x0200
