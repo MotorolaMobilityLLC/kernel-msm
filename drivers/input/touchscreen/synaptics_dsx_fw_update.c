@@ -304,7 +304,7 @@ struct synaptics_rmi4_fwu_handle {
 static struct bin_attribute dev_attr_data = {
 	.attr = {
 		.name = "data",
-		.mode = (S_IRUGO | S_IWUGO),
+		.mode = (S_IRUGO | S_IWUSR | S_IWGRP),
 	},
 	.size = 0,
 	.read = fwu_sysfs_show_image,
