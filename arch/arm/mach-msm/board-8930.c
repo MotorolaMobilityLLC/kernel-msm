@@ -43,6 +43,7 @@
 #include <linux/memory.h>
 #include <linux/memblock.h>
 #include <linux/msm_thermal.h>
+#include <linux/input/synaptics_dsx.h>
 
 #include <linux/slimbus/slimbus.h>
 #include <linux/mfd/wcd9xxx/core.h>
@@ -74,6 +75,7 @@
 #include <mach/msm_bus_board.h>
 #include <mach/msm_memtypes.h>
 #include <mach/dma.h>
+#include <mach/msm_serial_hs.h>
 #include <mach/msm_xo.h>
 #include <mach/restart.h>
 
@@ -1294,6 +1296,16 @@ static struct platform_device mdm_device = {
 	},
 };
 
+static struct mdm_platform_data sglte_platform_data = {
+	.mdm_version = "4.0",
+	.ramdump_delay_ms = 1000,
+	.soft_reset_inverted = 1,
+	.peripheral_platform_device = NULL,
+	.ramdump_timeout_ms = 600000,
+	.no_powerdown_after_ramdumps = 1,
+	.image_upgrade_supported = 1,
+};
+
 static struct platform_device *mdm_devices[] __initdata = {
 	&mdm_device,
 };
@@ -2034,6 +2046,37 @@ static struct i2c_board_info mxt_device_info_8930[] __initdata = {
 	},
 };
 
+/*»     Synaptics Thin Driver»  */
+
+#define CLEARPAD3202_ADDR 0x20
+#define CLEARPAD3202_ATTEN_GPIO (11)
+#define CLEARPAD3202_RESET_GPIO (52)
+
+static unsigned char synaptic_rmi4_button_codes[] = {KEY_MENU, KEY_HOME,
+							KEY_BACK};
+
+static struct synaptics_rmi4_capacitance_button_map synaptic_rmi4_button_map = {
+	.nbuttons = ARRAY_SIZE(synaptic_rmi4_button_codes),
+	.map = synaptic_rmi4_button_codes,
+};
+
+static struct synaptics_rmi4_platform_data rmi4_platformdata = {
+	.irq_flags = IRQF_TRIGGER_FALLING,
+	.irq_gpio = CLEARPAD3202_ATTEN_GPIO,
+	.reset_gpio = CLEARPAD3202_RESET_GPIO,
+	.regulator_en = true,
+	.i2c_pull_up = true,
+	.capacitance_button_map = &synaptic_rmi4_button_map,
+};
+
+static struct i2c_board_info rmi4_i2c_devices[] = {
+	{
+		I2C_BOARD_INFO("synaptics_rmi4_i2c",
+		CLEARPAD3202_ADDR),
+		.platform_data = &rmi4_platformdata,
+	},
+};
+
 #define MHL_POWER_GPIO_PM8038	PM8038_GPIO_PM_TO_SYS(MHL_GPIO_PWR_EN)
 #define MHL_POWER_GPIO_PM8917	PM8917_GPIO_PM_TO_SYS(25)
 static struct msm_mhl_platform_data mhl_platform_data = {
@@ -2172,6 +2215,11 @@ static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi3_pdata = {
 	.src_clk_rate = 24000000,
 };
 
+
+static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi8_pdata = {
+	.clk_freq = 100000,
+	.src_clk_rate = 24000000,
+};
 static struct msm_i2c_platform_data msm8960_i2c_qup_gsbi9_pdata = {
 	.clk_freq = 100000,
 	.src_clk_rate = 24000000,
@@ -2335,6 +2383,15 @@ static struct platform_device *pmic_pm8917_devices[] __initdata = {
 	&msm8960_device_ssbi_pmic,
 };
 
+static struct platform_device *i2c_qup_devices[] __initdata = {
+	&msm8960_device_qup_i2c_gsbi4,
+	&msm8960_device_qup_i2c_gsbi9,
+};
+
+static struct platform_device *i2c_qup_sglte_devices[] __initdata = {
+	&msm8960_device_qup_i2c_gsbi8,
+};
+
 static struct platform_device *common_devices[] __initdata = {
 	&msm_8960_q6_lpass,
 	&msm_8960_q6_mss_fw,
@@ -2344,8 +2401,6 @@ static struct platform_device *common_devices[] __initdata = {
 	&msm_pil_vidc,
 	&msm8960_device_qup_spi_gsbi1,
 	&msm8960_device_qup_i2c_gsbi3,
-	&msm8960_device_qup_i2c_gsbi4,
-	&msm8960_device_qup_i2c_gsbi9,
 	&msm8960_device_qup_i2c_gsbi10,
 	&msm8960_device_qup_i2c_gsbi12,
 	&msm_slim_ctrl,
@@ -2461,8 +2516,11 @@ static void __init msm8930_i2c_init(void)
 
 	msm8960_device_qup_i2c_gsbi3.dev.platform_data =
 					&msm8960_i2c_qup_gsbi3_pdata;
-
-	msm8960_device_qup_i2c_gsbi9.dev.platform_data =
+	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)
+		msm8960_device_qup_i2c_gsbi8.dev.platform_data =
+					&msm8960_i2c_qup_gsbi8_pdata;
+	else
+		msm8960_device_qup_i2c_gsbi9.dev.platform_data =
 					&msm8960_i2c_qup_gsbi9_pdata;
 
 	msm8960_device_qup_i2c_gsbi10.dev.platform_data =
@@ -2602,6 +2660,7 @@ static struct msm_pm_boot_platform_data msm_pm_boot_pdata __initdata = {
 #define I2C_SIM  (1 << 3)
 #define I2C_FLUID (1 << 4)
 #define I2C_LIQUID (1 << 5)
+#define I2C_EVT (1 << 6)
 
 struct i2c_registry {
 	u8                     machs;
@@ -2682,7 +2741,7 @@ static struct i2c_board_info __initdata bmp18x_i2c_boardinfo[] = {
 static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 #ifdef CONFIG_ISL9519_CHARGER
 	{
-		I2C_LIQUID,
+		I2C_LIQUID | I2C_EVT,
 		MSM_8930_GSBI10_QUP_I2C_BUS_ID,
 		isl_charger_i2c_info,
 		ARRAY_SIZE(isl_charger_i2c_info),
@@ -2690,7 +2749,7 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 #endif /* CONFIG_ISL9519_CHARGER */
 #ifdef CONFIG_INPUT_MPU3050
 	{
-		I2C_FFA | I2C_FLUID,
+		I2C_FFA | I2C_FLUID | I2C_EVT,
 		MSM_8930_GSBI12_QUP_I2C_BUS_ID,
 		mpu3050_i2c_boardinfo,
 		ARRAY_SIZE(mpu3050_i2c_boardinfo),
@@ -2703,10 +2762,16 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 		ARRAY_SIZE(msm_isa1200_board_info),
 	},
 	{
-		I2C_SURF | I2C_FFA | I2C_FLUID,
+		I2C_SURF | I2C_FFA | I2C_FLUID | I2C_EVT,
 		MSM_8930_GSBI3_QUP_I2C_BUS_ID,
 		mxt_device_info_8930,
 		ARRAY_SIZE(mxt_device_info_8930),
+	},
+	{
+		I2C_EVT,
+		MSM_8930_GSBI3_QUP_I2C_BUS_ID,
+		rmi4_i2c_devices,
+		ARRAY_SIZE(rmi4_i2c_devices),
 	},
 	{
 		I2C_SURF | I2C_FFA | I2C_LIQUID | I2C_FLUID,
@@ -2716,7 +2781,7 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 	},
 #ifdef CONFIG_STM_LIS3DH
 	{
-		I2C_FFA | I2C_FLUID,
+		I2C_FFA | I2C_FLUID | I2C_EVT,
 		MSM_8930_GSBI12_QUP_I2C_BUS_ID,
 		lis3dh_i2c_boardinfo,
 		ARRAY_SIZE(lis3dh_i2c_boardinfo),
@@ -2724,7 +2789,7 @@ static struct i2c_registry msm8960_i2c_devices[] __initdata = {
 #endif
 #ifdef CONFIG_BMP18X_I2C
 	{
-		I2C_FFA | I2C_FLUID,
+		I2C_FFA | I2C_FLUID | I2C_EVT,
 		MSM_8930_GSBI12_QUP_I2C_BUS_ID,
 		bmp18x_i2c_boardinfo,
 		ARRAY_SIZE(bmp18x_i2c_boardinfo),
@@ -2742,11 +2807,17 @@ static void __init register_i2c_devices(void)
 	int i;
 #ifdef CONFIG_MSM_CAMERA
 	struct i2c_registry msm8930_camera_i2c_devices = {
-		I2C_SURF | I2C_FFA | I2C_FLUID | I2C_LIQUID | I2C_RUMI,
+		I2C_SURF | I2C_FFA | I2C_FLUID | I2C_LIQUID | I2C_RUMI
+			| I2C_EVT,
 		MSM_8930_GSBI4_QUP_I2C_BUS_ID,
 		msm8930_camera_board_info.board_info,
 		msm8930_camera_board_info.num_i2c_board_info,
 	};
+	if (machine_is_msm8930_evt() &&
+		(socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)) {
+		msm8930_camera_i2c_devices.machs |= I2C_EVT;
+		msm8930_camera_i2c_devices.bus = MSM_8930_GSBI8_QUP_I2C_BUS_ID;
+	}
 #endif
 
 	/* Build the matching 'supported_machs' bitmask */
@@ -2756,6 +2827,8 @@ static void __init register_i2c_devices(void)
 		mach_mask = I2C_FLUID;
 	else if (machine_is_msm8930_mtp() || machine_is_msm8627_mtp())
 		mach_mask = I2C_FFA;
+	else if (machine_is_msm8930_evt())
+		mach_mask = I2C_EVT;
 	else
 		pr_err("unmatched machine ID in register_i2c_devices\n");
 
@@ -2817,6 +2890,39 @@ static void __init msm8930ab_update_retention_spm(void)
 	}
 }
 
+#ifdef CONFIG_SERIAL_MSM_HS
+static int configure_uart_gpios(int on)
+{
+	int ret = 0, i;
+	int uart_gpios[] = {93, 94, 95, 96};
+
+	for (i = 0; i < ARRAY_SIZE(uart_gpios); i++) {
+		if (on) {
+			ret = gpio_request(uart_gpios[i], NULL);
+			if (ret) {
+				pr_err("%s: unable to request uart gpio[%d]\n",
+					__func__, uart_gpios[i]);
+				break;
+			}
+		} else {
+			gpio_free(uart_gpios[i]);
+		}
+	}
+
+	if (ret && on && i)
+		for (; i >= 0; i--)
+			gpio_free(uart_gpios[i]);
+	return ret;
+}
+
+static struct msm_serial_hs_platform_data msm_uart_dm9_pdata = {
+	.gpio_config	= configure_uart_gpios,
+};
+#else
+static struct msm_serial_hs_platform_data msm_uart_dm9_pdata;
+#endif
+
+
 static void __init msm8930_cdp_init(void)
 {
 	if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917)
@@ -2862,6 +2968,15 @@ static void __init msm8930_cdp_init(void)
 	} else {
 		msm_otg_pdata.pmic_id_irq =
 				PM8038_USB_ID_IN_IRQ(PM8038_IRQ_BASE);
+	}
+
+	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE &&
+						machine_is_msm8930_evt()) {
+#ifdef CONFIG_SERIAL_MSM_HS
+		msm_uart_dm9_pdata.wakeup_irq = gpio_to_irq(94); /* GSBI9(2) */
+		msm_device_uart_dm9.dev.platform_data = &msm_uart_dm9_pdata;
+#endif
+		platform_device_register(&msm_device_uart_dm9);
 	}
 
 	msm_otg_pdata.phy_init_seq = hsusb_phy_init_seq;
@@ -2922,6 +3037,16 @@ static void __init msm8930_cdp_init(void)
 		platform_add_devices(pmic_pm8917_devices,
 					ARRAY_SIZE(pmic_pm8917_devices));
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
+	if (machine_is_msm8930_evt() &&
+		(socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)) {
+		/* Removing GSBI4 and GSBI9 and initializing GSBI8
+		 * as per SGLTE platform requirement */
+		platform_add_devices(i2c_qup_sglte_devices,
+					ARRAY_SIZE(i2c_qup_sglte_devices));
+	} else {
+		platform_add_devices(i2c_qup_devices,
+					ARRAY_SIZE(i2c_qup_devices));
+	}
 	msm8930_add_vidc_device();
 	/*
 	 * TODO: When physical 8930/PM8038 hardware becomes
@@ -2941,12 +3066,18 @@ static void __init msm8930_cdp_init(void)
 	msm8930_init_cam();
 #endif
 	msm8930_init_mmc();
-	mxt_init_vkeys_8930();
+	if (!machine_is_msm8930_evt())
+		mxt_init_vkeys_8930();
 	register_i2c_devices();
 	msm8930_init_fb();
 	slim_register_board_info(msm_slim_devices,
 		ARRAY_SIZE(msm_slim_devices));
 	BUG_ON(msm_pm_boot_init(&msm_pm_boot_pdata));
+
+	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
+		mdm_sglte_device.dev.platform_data = &sglte_platform_data;
+		platform_device_register(&mdm_sglte_device);
+	}
 
 	if (PLATFORM_IS_CHARM25())
 		platform_add_devices(mdm_devices, ARRAY_SIZE(mdm_devices));
@@ -3001,6 +3132,18 @@ MACHINE_START(MSM8627_CDP, "QCT MSM8627 CDP")
 MACHINE_END
 
 MACHINE_START(MSM8627_MTP, "QCT MSM8627 MTP")
+	.map_io = msm8930_map_io,
+	.reserve = msm8930_reserve,
+	.init_irq = msm8930_init_irq,
+	.handle_irq = gic_handle_irq,
+	.timer = &msm_timer,
+	.init_machine = msm8930_cdp_init,
+	.init_early = msm8930_allocate_memory_regions,
+	.init_very_early = msm8930_early_memory,
+	.restart = msm_restart,
+MACHINE_END
+
+MACHINE_START(MSM8930_EVT, "QRD8930 SGLTE EVT")
 	.map_io = msm8930_map_io,
 	.reserve = msm8930_reserve,
 	.init_irq = msm8930_init_irq,
