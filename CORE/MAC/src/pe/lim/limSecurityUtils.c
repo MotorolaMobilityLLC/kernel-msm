@@ -682,8 +682,8 @@ limRC4(tANI_U8 *pDest, tANI_U8 *pSrc, tANI_U8 *seed, tANI_U32 keyLength, tANI_U1
         for (i=0; i<256; i++)
         {
             tANI_U8 temp;
-
-            j = (tANI_U8)(j + ctx.sbox[i] + seed[k]);
+            if ( k < LIM_SEED_LENGTH )
+                j = (tANI_U8)(j + ctx.sbox[i] + seed[k]);
             temp = ctx.sbox[i];
             ctx.sbox[i] = ctx.sbox[j];
             ctx.sbox[j] = temp;
