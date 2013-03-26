@@ -3899,6 +3899,27 @@ static void csrRoamAssignDefaultParam( tpAniSirGlobal pMac, tSmeCmd *pCommand )
     pCommand->u.roamCmd.roamProfile.EncryptionType.encryptionType[0];
 }
 
+
+static void csrSetAbortRoamingCommand(tpAniSirGlobal pMac, tSmeCmd *pCommand)
+{
+   switch(pCommand->u.roamCmd.roamReason)
+   {
+   case eCsrLostLink1:
+      pCommand->u.roamCmd.roamReason = eCsrLostLink1Abort;
+      break;
+   case eCsrLostLink2:
+      pCommand->u.roamCmd.roamReason = eCsrLostLink2Abort;
+      break;
+   case eCsrLostLink3:
+      pCommand->u.roamCmd.roamReason = eCsrLostLink3Abort;
+      break;
+   default:
+      smsLog(pMac, LOGE, FL(" aborting roaming reason %d not recognized"),
+         pCommand->u.roamCmd.roamReason);
+      break;
+   }
+}
+
 static eCsrJoinState csrRoamJoinNextBss( tpAniSirGlobal pMac, tSmeCmd *pCommand, tANI_BOOLEAN fUseSameBss )
 {
     eHalStatus status;
@@ -4019,11 +4040,24 @@ static eCsrJoinState csrRoamJoinNextBss( tpAniSirGlobal pMac, tSmeCmd *pCommand,
         {
             if(pRoamInfo)
             {
-                pSession->bRefAssocStartCnt--;
-                //Complete the last association attemp because a new one is about to be tried
-                csrRoamCallCallback(pMac, sessionId, pRoamInfo, pCommand->u.roamCmd.roamId, 
-                                        eCSR_ROAM_ASSOCIATION_COMPLETION, 
+                if(pSession->bRefAssocStartCnt)
+                {
+                    pSession->bRefAssocStartCnt--;
+                    //Complete the last association attemp because a new one is about to be tried
+                    csrRoamCallCallback(pMac, sessionId, pRoamInfo, pCommand->u.roamCmd.roamId,
+                                        eCSR_ROAM_ASSOCIATION_COMPLETION,
                                         eCSR_ROAM_RESULT_NOT_ASSOCIATED);
+                }
+            }
+            /* If the roaming has stopped, not to continue the roaming command*/
+            if ( !CSR_IS_ROAMING(pSession) && CSR_IS_ROAMING_COMMAND(pCommand) )
+            {
+                //No need to complete roaming here as it already completes
+                smsLog(pMac, LOGW, FL("  Roam command (reason %d) aborted due to roaming completed"),
+                        pCommand->u.roamCmd.roamReason);
+                eRoamState = eCsrStopRoaming;
+                csrSetAbortRoamingCommand(pMac, pCommand);
+                break;
             }
             palZeroMemory(pMac->hHdd, &roamInfo, sizeof(roamInfo));
             if(pScanResult)
@@ -7100,6 +7134,15 @@ static void csrRoamingStateConfigCnfProcessor( tpAniSirGlobal pMac, tANI_U32 res
         //the roaming is cancelled. Simply complete the command
         smsLog(pMac, LOGW, FL("  Roam command cancelled"));
         csrRoamComplete(pMac, eCsrNothingToJoin, NULL); 
+    }
+    /* If the roaming has stopped, not to continue the roaming command*/
+    else if ( !CSR_IS_ROAMING(pSession) && CSR_IS_ROAMING_COMMAND(pCommand) )
+    {
+        //No need to complete roaming here as it already completes
+        smsLog(pMac, LOGW, FL("  Roam command (reason %d) aborted due to roaming completed\n"),
+           pCommand->u.roamCmd.roamReason);
+        csrSetAbortRoamingCommand( pMac, pCommand );
+        csrRoamComplete(pMac, eCsrNothingToJoin, NULL);
     }
     else
     {
