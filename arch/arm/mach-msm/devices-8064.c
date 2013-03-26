@@ -2617,7 +2617,7 @@ struct msm_mpm_device_data apq8064_mpm_dev_data __initdata = {
 
 #define SGLTE2_QSC2AP_STATUS	51
 #define SGLTE2_QSC2AP_ERRFATAL	52
-#define SGLTE2_PM2QSC_SOFT_RESET	PM8921_GPIO_PM_TO_SYS(2)
+#define SGLTE2_PM2QSC_SOFT_RESET	PM8921_GPIO_PM_TO_SYS(23)
 #define SGLTE2_PM2QSC_KEYPADPWR		PM8921_GPIO_PM_TO_SYS(21)
 
 static struct resource mdm_resources[] = {
