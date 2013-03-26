@@ -508,6 +508,9 @@ typedef struct
   /* Value of the averaged RSSI for this station in BMPS */
   v_S7_t                        rssiAvgBmps;
 
+  /* Value of the Alpha to calculate RSSI average */
+  v_S7_t                        rssiAlpha;
+
   /* Value of the averaged RSSI for this station */
   v_U32_t                       uLinkQualityAvg;
 

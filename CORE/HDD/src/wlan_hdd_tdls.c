@@ -298,28 +298,6 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                         }
                         goto next_peer;
                     }
-                    if ((((tANI_S32)curr_peer->rssi >
-                            (tANI_S32)(pHddTdlsCtx->threshold_config.rssi_hysteresis +
-                                pHddTdlsCtx->ap_rssi)) ||
-                         ((tANI_S32)(curr_peer->rssi >
-                            pHddTdlsCtx->threshold_config.rssi_trigger_threshold))) &&
-                         (HDD_MAX_NUM_TDLS_STA > wlan_hdd_tdlsConnectedPeers(pHddTdlsCtx->pAdapter))){
-
-                        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                                "%s: RSSI (peer %d > ap %d + hysteresis %d) triggering to %02x:%02x:%02x:%02x:%02x:%02x ",
-                                __func__, (tANI_S32)curr_peer->rssi,
-                                pHddTdlsCtx->ap_rssi,
-                                (tANI_S32)(pHddTdlsCtx->threshold_config.rssi_hysteresis),
-                                curr_peer->peerMac[0], curr_peer->peerMac[1], curr_peer->peerMac[2],
-                                curr_peer->peerMac[3], curr_peer->peerMac[4], curr_peer->peerMac[5]);
-
-#ifdef CONFIG_TDLS_IMPLICIT
-                        cfg80211_tdls_oper_request(pHddTdlsCtx->pAdapter->dev,
-                                                   curr_peer->peerMac,
-                                                   NL80211_TDLS_SETUP, FALSE,
-                                                   GFP_KERNEL);
-#endif
-                    }
                 } else {
                     if ((tANI_S32)curr_peer->rssi <
                         (tANI_S32)pHddTdlsCtx->threshold_config.rssi_teardown_threshold) {
@@ -811,14 +789,25 @@ int wlan_hdd_tdls_recv_discovery_resp(hdd_adapter_t *pAdapter, u8 *mac)
 
     if (eTDLS_LINK_DISCOVERING == curr_peer->link_status)
     {
-        curr_peer->link_status = eTDLS_LINK_DISCOVERED;
-
-        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                   "Indicating Set-Up to supplicant");
-        cfg80211_tdls_oper_request(pAdapter->dev,
-                                   curr_peer->peerMac,
-                                   NL80211_TDLS_SETUP, FALSE,
-                                   GFP_KERNEL);
+        /* Since we are here, it means Throughput threshold is alredy met. Make sure RSSI
+           threshold is also met before setting up TDLS link*/
+        if ((tANI_S32) curr_peer->rssi > (tANI_S32) pHddTdlsCtx->threshold_config.rssi_trigger_threshold)
+        {
+            curr_peer->link_status = eTDLS_LINK_DISCOVERED;
+            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+            "Rssi Threshold met: "MAC_ADDRESS_STR" rssi = %d threshold= %d" ,
+             MAC_ADDR_ARRAY(curr_peer->peerMac), curr_peer->rssi,
+             pHddTdlsCtx->threshold_config.rssi_trigger_threshold);
+            cfg80211_tdls_oper_request(pAdapter->dev, curr_peer->peerMac, NL80211_TDLS_SETUP, FALSE, GFP_KERNEL);
+        }
+        else
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, 
+            "Rssi Threshold not met: "MAC_ADDRESS_STR" rssi = %d threshold = %d ",
+            MAC_ADDR_ARRAY(curr_peer->peerMac), curr_peer->rssi,
+            pHddTdlsCtx->threshold_config.rssi_trigger_threshold);
+            curr_peer->link_status = eTDLS_LINK_IDLE;
+        }
     }
     else
     {
@@ -833,7 +822,7 @@ int wlan_hdd_tdls_set_rssi(hdd_adapter_t *pAdapter, u8 *mac, tANI_S8 rxRssi)
 {
     hddTdlsPeer_t *curr_peer;
 
-    curr_peer = wlan_hdd_tdls_get_peer(pAdapter, mac);
+    curr_peer = wlan_hdd_tdls_find_peer(pAdapter, mac);
     if (curr_peer == NULL)
         return -1;
 
