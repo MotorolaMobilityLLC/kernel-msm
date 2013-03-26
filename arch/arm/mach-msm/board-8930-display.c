@@ -58,6 +58,7 @@
 #define MIPI_VIDEO_CHIMEI_WXGA_PANEL_NAME	"mipi_video_chimei_wxga"
 #define MIPI_VIDEO_SIMULATOR_VGA_PANEL_NAME	"mipi_video_simulator_vga"
 #define MIPI_CMD_RENESAS_FWVGA_PANEL_NAME	"mipi_cmd_renesas_fwvga"
+#define MIPI_VIDEO_NT_HD_PANEL_NAME		"mipi_video_nt35590_720p"
 #define HDMI_PANEL_NAME	"hdmi_msm"
 #define TVOUT_PANEL_NAME	"tvout_msm"
 
@@ -69,10 +70,17 @@ static struct resource msm_fb_resources[] = {
 
 static int msm_fb_detect_panel(const char *name)
 {
-	if (!strncmp(name, MIPI_CMD_NOVATEK_QHD_PANEL_NAME,
+	if (machine_is_msm8930_evt()) {
+		if (!strncmp(name, MIPI_VIDEO_NT_HD_PANEL_NAME,
+			strnlen(MIPI_VIDEO_NT_HD_PANEL_NAME,
+				PANEL_NAME_MAX_LEN)))
+			return 0;
+	} else {
+		if (!strncmp(name, MIPI_CMD_NOVATEK_QHD_PANEL_NAME,
 			strnlen(MIPI_CMD_NOVATEK_QHD_PANEL_NAME,
 				PANEL_NAME_MAX_LEN)))
-		return 0;
+			return 0;
+	}
 
 #if !defined(CONFIG_FB_MSM_LVDS_MIPI_PANEL_DETECT) && \
 	!defined(CONFIG_FB_MSM_MIPI_PANEL_DETECT)
@@ -195,18 +203,29 @@ static int mipi_dsi_cdp_panel_power(int on)
 			gpio_free(DISP_RST_GPIO);
 			return -ENODEV;
 		}
-		rc = gpio_request(DISP_3D_2D_MODE, "disp_3d_2d");
-		if (rc) {
-			pr_err("request gpio DISP_3D_2D_MODE failed, rc=%d\n",
-				 rc);
-			gpio_free(DISP_3D_2D_MODE);
-			return -ENODEV;
+		if (machine_is_msm8930_evt()) {
+			rc = gpio_direction_output(DISP_RST_GPIO, 1);
+			if (rc) {
+				pr_err("gpio_direction_output failed for %d gpio rc=%d\n",
+						DISP_RST_GPIO, rc);
+				return -ENODEV;
+			}
 		}
-		rc = gpio_direction_output(DISP_3D_2D_MODE, 0);
-		if (rc) {
-			pr_err("gpio_direction_output failed for %d gpio rc=%d\n",
-			DISP_3D_2D_MODE, rc);
-			return -ENODEV;
+
+		if (!machine_is_msm8930_evt()) {
+			rc = gpio_request(DISP_3D_2D_MODE, "disp_3d_2d");
+			if (rc) {
+				pr_err("request gpio DISP_3D_2D_MODE failed, rc=%d\n",
+				 rc);
+				gpio_free(DISP_3D_2D_MODE);
+				return -ENODEV;
+			}
+			rc = gpio_direction_output(DISP_3D_2D_MODE, 0);
+			if (rc) {
+				pr_err("gpio_direction_output failed for %d gpio rc=%d\n",
+						DISP_3D_2D_MODE, rc);
+				return -ENODEV;
+			}
 		}
 		if (socinfo_get_pmic_model() == PMIC_MODEL_PM8917) {
 			rc = gpio_request(gpio24, "disp_bl");
@@ -259,7 +278,8 @@ static int mipi_dsi_cdp_panel_power(int on)
 		gpio_set_value(DISP_RST_GPIO, 0);
 		usleep(20);
 		gpio_set_value(DISP_RST_GPIO, 1);
-		gpio_set_value(DISP_3D_2D_MODE, 1);
+		if (!machine_is_msm8930_evt())
+			gpio_set_value(DISP_3D_2D_MODE, 1);
 		usleep(20);
 	} else {
 
@@ -295,7 +315,8 @@ static int mipi_dsi_cdp_panel_power(int on)
 			pr_err("set_optimum_mode l2 failed, rc=%d\n", rc);
 			return -EINVAL;
 		}
-		gpio_set_value(DISP_3D_2D_MODE, 0);
+		if (!machine_is_msm8930_evt())
+			gpio_set_value(DISP_3D_2D_MODE, 0);
 		usleep(20);
 	}
 	return 0;
@@ -476,6 +497,12 @@ static struct platform_device mipi_dsi_toshiba_panel_device = {
 	.dev = {
 		.platform_data = &toshiba_pdata,
 	}
+};
+
+static struct platform_device mipi_dsi_NT35590_panel_device = {
+	.name = "mipi_NT35590",
+	.id = 0,
+	/* todo: add any platform data */
 };
 
 #define FPGA_3D_GPIO_CONFIG_ADDR	0xB5
@@ -812,6 +839,7 @@ void __init msm8930_init_fb(void)
 {
 	platform_device_register(&msm_fb_device);
 
+	platform_device_register(&mipi_dsi_NT35590_panel_device);
 #ifdef CONFIG_FB_MSM_WRITEBACK_MSM_PANEL
 	platform_device_register(&wfd_panel_device);
 	platform_device_register(&wfd_device);

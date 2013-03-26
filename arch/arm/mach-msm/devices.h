@@ -62,6 +62,7 @@ extern struct platform_device msm8960_device_uart_gsbi8;
 extern struct platform_device msm8960_device_ssbi_pmic;
 extern struct platform_device msm8960_device_qup_i2c_gsbi3;
 extern struct platform_device msm8960_device_qup_i2c_gsbi4;
+extern struct platform_device msm8960_device_qup_i2c_gsbi8;
 extern struct platform_device msm8960_device_qup_i2c_gsbi9;
 extern struct platform_device msm8960_device_qup_i2c_gsbi10;
 extern struct platform_device msm8960_device_qup_i2c_gsbi12;
