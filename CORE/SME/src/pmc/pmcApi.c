@@ -3136,6 +3136,7 @@ eHalStatus pmcGetFilterMatchCount
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
             "%s: Not able to post WDA_PACKET_COALESCING_FILTER_MATCH_COUNT_REQ "
             "message to WDA", __func__);
+        vos_mem_free(pRequestBuf);
         return eHAL_STATUS_FAILURE;
     }
 

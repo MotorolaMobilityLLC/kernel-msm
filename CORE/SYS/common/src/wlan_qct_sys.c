@@ -95,7 +95,6 @@ VOS_STATUS WLANFTM_McProcessMsg (v_VOID_t *message);
 // Cookie for SYS messages.  Note that anyone posting a SYS Message has to
 // write the COOKIE in the reserved field of the message.  The SYS Module
 // relies on this COOKIE
-#define SYS_MSG_ID_FTM_RSP      11
 #define FTM_SYS_MSG_COOKIE      0xFACE
 
 #define SYS_MSG_COOKIE ( 0xFACE )
@@ -614,7 +613,14 @@ SysProcessMmhMsg
   ** It is up to the callee to free it
   */
 
-  VOS_ASSERT(NULL != pMsg);
+
+  if (NULL == pMsg)
+  {
+      VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
+                 "NULL Message Pointer");
+      VOS_ASSERT(0);
+      return;
+  }
 
 
   switch (pMsg->type)

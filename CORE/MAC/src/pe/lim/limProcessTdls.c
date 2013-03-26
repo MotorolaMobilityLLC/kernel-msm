@@ -4174,8 +4174,8 @@ static tSirRetStatus limTdlsSetupAddSta(tpAniSirGlobal pMac,
         {
             VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
                         (" add hash entry failed\n")) ;
-            status = eSIR_FAILURE ;
             VOS_ASSERT(0) ;
+            return eSIR_FAILURE;
         }
     }
 
