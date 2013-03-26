@@ -749,6 +749,47 @@ static struct platform_device msm_camera_server = {
 	.id = 0,
 };
 
+#ifdef CONFIG_I2C
+struct i2c_board_info msm8930_camera_i2c_boardinfo[] = {
+	{
+	I2C_BOARD_INFO("imx074", 0x1A),
+	.platform_data = &msm_camera_sensor_imx074_data,
+	},
+	{
+	I2C_BOARD_INFO("ov2720", 0x6C),
+	.platform_data = &msm_camera_sensor_ov2720_data,
+	},
+	{
+	I2C_BOARD_INFO("mt9m114", 0x48),
+	.platform_data = &msm_camera_sensor_mt9m114_data,
+	},
+	{
+	I2C_BOARD_INFO("s5k3l1yx", 0x20),
+	.platform_data = &msm_camera_sensor_s5k3l1yx_data,
+	},
+	{
+	I2C_BOARD_INFO("tps61310", 0x66),
+	},
+};
+
+/* 8930 SGLTE device */
+struct i2c_board_info msm8930_evt_camera_i2c_boardinfo[] = {
+	{
+	I2C_BOARD_INFO("ov8825", 0x6c>>1),
+	.platform_data = &msm_camera_sensor_ov8825_data,
+	},
+	{
+	I2C_BOARD_INFO("ov9724", 0x20>>1),
+	.platform_data = &msm_camera_sensor_ov9724_data,
+	},
+};
+
+struct msm_camera_board_info msm8930_camera_board_info = {
+	.board_info = msm8930_camera_i2c_boardinfo,
+	.num_i2c_board_info = ARRAY_SIZE(msm8930_camera_i2c_boardinfo),
+};
+#endif
+
 void __init msm8930_init_cam(void)
 {
 	msm_gpiomux_install(msm8930_cam_common_configs,
@@ -759,6 +800,12 @@ void __init msm8930_init_cam(void)
 			 PLATFORM_SUBTYPE_SGLTE)) {
 		msm_gpiomux_install(msm8930_evt_cam_configs,
 				ARRAY_SIZE(msm8930_evt_cam_configs));
+
+		/* Load ov8825 & ov9724 only for SGLTE device */
+		msm8930_camera_board_info.board_info =
+			msm8930_evt_camera_i2c_boardinfo;
+		msm8930_camera_board_info.num_i2c_board_info =
+			ARRAY_SIZE(msm8930_evt_camera_i2c_boardinfo);
 	}
 
 	if (machine_is_msm8930_cdp()) {
@@ -786,41 +833,4 @@ void __init msm8930_init_cam(void)
 	platform_device_register(&msm8960_device_vfe);
 	platform_device_register(&msm8960_device_vpe);
 }
-
-#ifdef CONFIG_I2C
-struct i2c_board_info msm8930_camera_i2c_boardinfo[] = {
-	{
-	I2C_BOARD_INFO("imx074", 0x1A),
-	.platform_data = &msm_camera_sensor_imx074_data,
-	},
-	{
-	I2C_BOARD_INFO("ov2720", 0x6C),
-	.platform_data = &msm_camera_sensor_ov2720_data,
-	},
-	{
-	I2C_BOARD_INFO("mt9m114", 0x48),
-	.platform_data = &msm_camera_sensor_mt9m114_data,
-	},
-	{
-	I2C_BOARD_INFO("s5k3l1yx", 0x20),
-	.platform_data = &msm_camera_sensor_s5k3l1yx_data,
-	},
-	{
-	I2C_BOARD_INFO("tps61310", 0x66),
-	},
-	{
-	I2C_BOARD_INFO("ov8825", 0x6c>>1),
-	.platform_data = &msm_camera_sensor_ov8825_data,
-	},
-	{
-	I2C_BOARD_INFO("ov9724", 0x20>>1),
-	.platform_data = &msm_camera_sensor_ov9724_data,
-	},
-};
-
-struct msm_camera_board_info msm8930_camera_board_info = {
-	.board_info = msm8930_camera_i2c_boardinfo,
-	.num_i2c_board_info = ARRAY_SIZE(msm8930_camera_i2c_boardinfo),
-};
-#endif
 #endif
