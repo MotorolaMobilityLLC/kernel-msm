@@ -821,8 +821,10 @@ static int msm8930_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	codec_clk = clk_get(cpu_dai->dev, "osr_clk");
 
 	mbhc_cfg.gpio = 37;
-	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)
+	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
 		mbhc_cfg.gpio = GPIO_HS_DET;
+		mbhc_cfg.gpio_level_insert = 0;
+	}
 
 	mbhc_cfg.gpio_irq = gpio_to_irq(mbhc_cfg.gpio);
 	sitar_hs_detect(codec, &mbhc_cfg);
