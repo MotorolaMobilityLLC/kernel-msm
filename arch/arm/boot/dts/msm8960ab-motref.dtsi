@@ -5,6 +5,14 @@
 
 /include/ "msm8960-motref-pinmux.dtsi"
 
+&rpm_8921_l9 {
+	always_on = <0>;
+};
+
+&rpm_8921_lvs4 {
+	always_on = <0>;
+};
+
 / {
 	/* GSBI3 - I2C */
 	i2c3: i2c@16200000 {
