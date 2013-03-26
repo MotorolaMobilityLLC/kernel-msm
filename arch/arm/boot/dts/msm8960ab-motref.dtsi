@@ -99,6 +99,8 @@
 			ct406_undetect_threshold = <0x0050>;
 			ct406_recalibrate_threshold = <0x0064>;
 			ct406_pulse_count = <0x04>;
+			vio-supply = <&rpm_8921_lvs4>;
+			vcc-supply = <&rpm_8921_l9>;
 		};
 	};
 
