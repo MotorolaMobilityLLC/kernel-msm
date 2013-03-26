@@ -589,7 +589,7 @@ static int epm_adc_blocking_conversion(struct epm_adc_drv *epm_adc,
 {
 	struct epm_adc_platform_data *pdata = epm_adc->pdev->dev.platform_data;
 	int32_t channel_num = 0, mux_chan_idx = 0;
-	char adc_data[3];
+	char adc_data[3] = { 0 };
 	int rc = 0;
 
 	mutex_lock(&epm_adc->conv_lock);
