@@ -387,6 +387,17 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 		goto err_early;
 	}
 
+	if (arizona->pdata.reset) {
+		/* Start out with /RESET low to put the chip into reset */
+		ret = gpio_request_one(arizona->pdata.reset,
+				       GPIOF_DIR_OUT | GPIOF_INIT_LOW,
+				       "arizona /RESET");
+		if (ret != 0) {
+			dev_err(dev, "Failed to request /RESET: %d\n", ret);
+			goto err_early;
+		}
+	}
+
 	ret = regulator_bulk_enable(arizona->num_core_supplies,
 				    arizona->core_supplies);
 	if (ret != 0) {
@@ -404,18 +415,8 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 	if (arizona->pdata.control_init_time)
 		msleep(arizona->pdata.control_init_time);
 
-	if (arizona->pdata.reset) {
-		/* Start out with /RESET low to put the chip into reset */
-		ret = gpio_request_one(arizona->pdata.reset,
-				       GPIOF_DIR_OUT | GPIOF_INIT_LOW,
-				       "arizona /RESET");
-		if (ret != 0) {
-			dev_err(dev, "Failed to request /RESET: %d\n", ret);
-			goto err_dcvdd;
-		}
-
+	if (arizona->pdata.reset)
 		gpio_set_value_cansleep(arizona->pdata.reset, 1);
-	}
 
 	regcache_cache_only(arizona->regmap, false);
 
@@ -659,10 +660,9 @@ err_irq:
 	arizona_irq_exit(arizona);
 err_reset:
 	if (arizona->pdata.reset) {
-		gpio_set_value_cansleep(arizona->pdata.reset, 1);
+		gpio_set_value_cansleep(arizona->pdata.reset, 0);
 		gpio_free(arizona->pdata.reset);
 	}
-err_dcvdd:
 	regulator_disable(arizona->dcvdd);
 err_enable:
 	regulator_bulk_disable(arizona->num_core_supplies,
