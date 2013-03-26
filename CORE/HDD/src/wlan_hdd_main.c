@@ -177,6 +177,7 @@ static void hdd_set_multicast_list(struct net_device *dev);
 #endif
 
 void hdd_wlan_initial_scan(hdd_adapter_t *pAdapter);
+int isWDresetInProgress(void);
 
 extern int hdd_setBand_helper(struct net_device *dev, tANI_U8* ptr);
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
@@ -198,7 +199,10 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
 
    //Make sure that this callback corresponds to our device.
    if ((strncmp(dev->name, "wlan", 4)) &&
-       (strncmp(dev->name, "p2p", 3)))
+      (strncmp(dev->name, "p2p", 3)))
+      return NOTIFY_DONE;
+
+   if (isWDresetInProgress())
       return NOTIFY_DONE;
 
    if (!dev->ieee80211_ptr)
@@ -297,7 +301,6 @@ struct notifier_block hdd_netdev_notifier = {
 /*---------------------------------------------------------------------------
  *   Function definitions
  *-------------------------------------------------------------------------*/
-int isWDresetInProgress(void);
 void hdd_unregister_mcast_bcast_filter(hdd_context_t *pHddCtx);
 void hdd_register_mcast_bcast_filter(hdd_context_t *pHddCtx);
 //variable to hold the insmod parameters
