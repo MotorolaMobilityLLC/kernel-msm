@@ -443,6 +443,7 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 			arizona->type = WM5102;
 		}
 		apply_patch = wm5102_patch;
+		arizona->rev &= 0x7;
 		break;
 #endif
 #ifdef CONFIG_MFD_WM5110
