@@ -17,6 +17,7 @@
 #include <linux/errno.h>
 #include <linux/mutex.h>
 
+#include "mdss_fb.h"
 #include "mdss_mdp.h"
 
 #define SMP_MB_SIZE		(mdss_res->smp_mb_size)
@@ -412,8 +413,10 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe)
 	src_xy = (pipe->src.y << 16) | pipe->src.x;
 	dst_size = (pipe->dst.h << 16) | pipe->dst.w;
 #ifdef CONFIG_FB_MSM_MDSS_UD_FLIP
-	if(pipe->mixer->height > pipe->mixer->width) /* LCD mixer case */
-		dst_xy = ((pipe->mixer->height - (pipe->dst.y + pipe->dst.h)) << 16) | pipe->dst.x;
+	if (pipe->mfd && pipe->mfd->panel_info &&
+		pipe->mfd->panel_info->pdest == DISPLAY_1)
+		dst_xy = ((pipe->mixer->height - (pipe->dst.y + pipe->dst.h)) << 16) |
+			pipe->dst.x;
 	else
 		dst_xy = (pipe->dst.y << 16) | pipe->dst.x;
 #else
@@ -496,7 +499,9 @@ static int mdss_mdp_format_setup(struct mdss_mdp_pipe *pipe)
 	}
 
 #ifdef CONFIG_FB_MSM_MDSS_UD_FLIP
-	opmode |= MDSS_MDP_OP_FLIP_UD;
+	if (pipe->mfd && pipe->mfd->panel_info &&
+		pipe->mfd->panel_info->pdest == DISPLAY_1)
+		opmode |= MDSS_MDP_OP_FLIP_UD;
 #endif
 	mdss_mdp_pipe_sspp_setup(pipe, &opmode);
 
