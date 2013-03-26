@@ -157,6 +157,10 @@ when        who    what, where, why
 
 
 #define WLANTL_MAX_TID                        15
+/* Default RSSI average Alpha */
+#define WLANTL_HO_DEFAULT_ALPHA               5
+#define WLANTL_HO_TDLS_ALPHA                  7
+
 /*--------------------------------------------------------------------------
   Access category enum used by TL
   - order must be kept as these values are used to setup the AC mask
@@ -436,6 +440,8 @@ typedef struct
   v_U8_t    ucUP;
   /* Address 3 Index of the received packet */
   v_U16_t   ucDesSTAId;
+ /*Rssi based on the received packet */
+  v_S7_t    rssiAvg;
 }WLANTL_RxMetaInfoType;
 
 
