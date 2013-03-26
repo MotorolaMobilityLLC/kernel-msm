@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -429,7 +429,7 @@ void ov5647_sensor_reset_stream(struct msm_sensor_ctrl_t *s_ctrl)
 }
 
 static int32_t ov5647_write_pict_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
-		uint16_t gain, uint32_t line)
+		uint16_t gain, uint32_t line, int32_t luma_avg, uint16_t fgain)
 {
 
 	static uint16_t max_line = 1964;
@@ -538,7 +538,10 @@ static int32_t ov5647_write_pict_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 
 
 static int32_t ov5647_write_prev_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
-						uint16_t gain, uint32_t line)
+						uint16_t gain,
+						uint32_t line,
+						int32_t luma_avg,
+						uint16_t fgain)
 {
 	u8 intg_time_hsb, intg_time_msb, intg_time_lsb;
 	uint8_t gain_lsb, gain_hsb;

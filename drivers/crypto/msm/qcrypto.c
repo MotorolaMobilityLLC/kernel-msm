@@ -1151,6 +1151,8 @@ static int _qcrypto_process_ahash(struct crypto_priv *cp,
 		sreq.authklen = SHA_HMAC_KEY_SIZE;
 		break;
 	default:
+		pr_err("Algorithm %d not supported, exiting", sha_ctx->alg);
+		ret = -1;
 		break;
 	};
 	ret =  qce_process_sha_req(cp->qce, &sreq);
@@ -1213,6 +1215,12 @@ static int _qcrypto_process_aead(struct crypto_priv *cp,
 			rctx->orig_dst = req->dst;
 			rctx->data = kzalloc((req->cryptlen + qreq.assoclen +
 					qreq.authsize + 64*2), GFP_KERNEL);
+			if (rctx->data == NULL) {
+				pr_err("Mem Alloc fail rctx->data, err %ld\n",
+							PTR_ERR(rctx->data));
+				kzfree(qreq.assoc);
+				return -ENOMEM;
+			}
 
 			memcpy((char *)rctx->data, qreq.assoc, qreq.assoclen);
 
