@@ -108,7 +108,7 @@
 
 #define FW_VERSION_SIZE 12
 #define MSP_CONTROL_REG_SIZE 200
-#define MSP_STATUS_REG_SIZE 4
+#define MSP_STATUS_REG_SIZE 8
 #define MSP_TOUCH_REG_SIZE  8
 
 #ifdef __KERNEL__
