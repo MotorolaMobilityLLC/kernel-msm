@@ -79,7 +79,7 @@ struct rmidev_data {
 static struct bin_attribute attr_data = {
 	.attr = {
 		.name = "data",
-		.mode = (S_IRUGO | S_IWUGO),
+		.mode = (S_IRUGO | S_IWUSR | S_IWGRP),
 	},
 	.size = 0,
 	.read = rmidev_sysfs_data_show,
@@ -501,7 +501,7 @@ static char *rmi_char_devnode(struct device *dev, mode_t *mode)
 	if (!mode)
 		return NULL;
 
-	*mode = (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+	*mode = (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
 
 	return kasprintf(GFP_KERNEL, "rmi/%s", dev_name(dev));
 }
