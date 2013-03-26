@@ -438,6 +438,11 @@ eHalStatus csrQueueScanRequest( tpAniSirGlobal pMac, tSmeCmd *pScanCmd )
     tSmeCmd *pQueueScanCmd=NULL;
     tSmeCmd *pSendScanCmd=NULL;
 
+    if (NULL == pScanCmd)
+    {
+        smsLog (pMac, LOGE, FL("Scan Req cmd is NULL"));
+        return eHAL_STATUS_FAILURE;
+    }
     /* split scan if any one of the following:
      * - STA session is connected and the scan is not a P2P search
      * - any P2P session is connected

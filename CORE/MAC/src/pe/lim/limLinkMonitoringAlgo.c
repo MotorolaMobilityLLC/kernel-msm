@@ -304,7 +304,7 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
 
   
     //Fill in length
-    limCopyU16((tANI_U8*)pLen, msgLength);
+    limCopyU16((tANI_U8*)pLen , msgLength);
 
     limPostSmeMessage(pMac, eWNI_SME_DISASSOC_REQ, (tANI_U32 *) pSmeDeauthReq);
     palFreeMemory( pMac->hHdd, pSmeDeauthReq );

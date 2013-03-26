@@ -682,9 +682,9 @@ typedef struct tagCsrScanStruct
     tDblLinkList channelPowerInfoList5G;
     tANI_U32 nLastAgeTimeOut;
     tANI_U32 nAgingCountDown;
-    tANI_U8 countryCodeDefault[WNI_CFG_COUNTRY_CODE_LEN+1];     //The country code from NV
-    tANI_U8 countryCodeCurrent[WNI_CFG_COUNTRY_CODE_LEN+1];
-    tANI_U8 countryCode11d[WNI_CFG_COUNTRY_CODE_LEN+1];
+    tANI_U8 countryCodeDefault[WNI_CFG_COUNTRY_CODE_LEN];     //The country code from NV
+    tANI_U8 countryCodeCurrent[WNI_CFG_COUNTRY_CODE_LEN];
+    tANI_U8 countryCode11d[WNI_CFG_COUNTRY_CODE_LEN];
     v_REGDOMAIN_t domainIdDefault;  //default regulatory domain
     v_REGDOMAIN_t domainIdCurrent;  //current regulatory domain
     tANI_BOOLEAN f11dInfoApplied;
