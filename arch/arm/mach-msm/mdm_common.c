@@ -471,6 +471,7 @@ static long mdm_modem_ioctl(struct file *filp, unsigned int cmd,
 		if (ret)
 			pr_err("%s:Graceful shutdown of mdm failed, ret = %d\n",
 			   __func__, ret);
+		put_user(ret, (unsigned long __user *) arg);
 		break;
 	default:
 		pr_err("%s: invalid ioctl cmd = %d\n", __func__, _IOC_NR(cmd));
