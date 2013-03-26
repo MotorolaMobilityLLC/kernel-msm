@@ -35,10 +35,11 @@
 #include <linux/module.h>
 #include <linux/msp430.h>
 #include <linux/poll.h>
-#include <linux/uaccess.h>
+#include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/switch.h>
 #include <linux/time.h>
+#include <linux/uaccess.h>
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
 
@@ -233,6 +234,9 @@ struct msp430_data {
 	wait_queue_head_t msp430_ms_data_wq;
 	bool ap_msp_handoff_ctrl;
 	bool ap_msp_handoff_enable;
+
+	struct regulator *vio_regulator;
+	struct regulator *vcc_regulator;
 };
 
 enum msp_commands {
@@ -2377,6 +2381,36 @@ static int msp430_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
+	/* initialize regulators */
+	/* vio must be high before vcc is turned on */
+	ps_msp430->vio_regulator = regulator_get(&client->dev, "vio");
+	if (IS_ERR(ps_msp430->vio_regulator)) {
+		dev_err(&client->dev, "Failed to get VIO regulator\n");
+		goto err_regulator;
+	}
+
+	ps_msp430->vcc_regulator = regulator_get(&client->dev, "vcc");
+	if (IS_ERR(ps_msp430->vcc_regulator)) {
+		dev_err(&client->dev, "Failed to get VCC regulator\n");
+		regulator_put(ps_msp430->vio_regulator);
+		goto err_regulator;
+	}
+
+	if (regulator_enable(ps_msp430->vio_regulator)) {
+		dev_err(&client->dev, "Failed to enable VIO regulator\n");
+		regulator_put(ps_msp430->vcc_regulator);
+		regulator_put(ps_msp430->vio_regulator);
+		goto err_regulator;
+	}
+
+	if (regulator_enable(ps_msp430->vcc_regulator)) {
+		dev_err(&client->dev, "Failed to enable VCC regulator\n");
+		regulator_disable(ps_msp430->vio_regulator);
+		regulator_put(ps_msp430->vcc_regulator);
+		regulator_put(ps_msp430->vio_regulator);
+		goto err_regulator;
+	}
+
 	msp430_misc_data = ps_msp430;
 	err = msp430_gpio_init(pdata, client);
 	if (err) {
@@ -2570,6 +2604,11 @@ err1:
 	wake_lock_destroy(&ps_msp430->wakelock);
 	msp430_gpio_free(pdata);
 err_gpio_init:
+	regulator_disable(ps_msp430->vcc_regulator);
+	regulator_disable(ps_msp430->vio_regulator);
+	regulator_put(ps_msp430->vcc_regulator);
+	regulator_put(ps_msp430->vio_regulator);
+err_regulator:
 	kfree(ps_msp430);
 	return err;
 }
@@ -2598,6 +2637,10 @@ static int msp430_remove(struct i2c_client *client)
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	unregister_early_suspend(&ps_msp430->early_suspend);
 #endif
+	regulator_disable(ps_msp430->vcc_regulator);
+	regulator_disable(ps_msp430->vio_regulator);
+	regulator_put(ps_msp430->vcc_regulator);
+	regulator_put(ps_msp430->vio_regulator);
 	kfree(ps_msp430);
 
 	return 0;
