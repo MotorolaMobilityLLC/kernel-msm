@@ -2153,7 +2153,10 @@ typedef enum eTxRateInfo
    eHAL_TX_RATE_HT20   = 0x2,    /* HT20 rates */
    eHAL_TX_RATE_HT40   = 0x4,    /* HT40 rates */
    eHAL_TX_RATE_SGI    = 0x8,    /* Rate with Short guard interval */
-   eHAL_TX_RATE_LGI    = 0x10    /* Rate with Long guard interval */
+   eHAL_TX_RATE_LGI    = 0x10,   /* Rate with Long guard interval */
+   eHAL_TX_RATE_VHT20  = 0x20,   /* VHT 20 rates */
+   eHAL_TX_RATE_VHT40  = 0x40,   /* VHT 40 rates */
+   eHAL_TX_RATE_VHT80  = 0x80    /* VHT 80 rates */
 } tTxrateinfoflags;
 
 typedef struct sAniGlobalClassAStatsInfo
