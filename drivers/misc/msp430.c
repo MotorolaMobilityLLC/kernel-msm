@@ -531,10 +531,14 @@ int msp430_reset_and_init(void)
 
 	pdata = msp430_misc_data->pdata;
 
-	msp_req_gpio = pdata->gpio_mipi_req;
-	msp_req_value = gpio_get_value(msp_req_gpio);
-	if (msp_req_value)
-		gpio_set_value(msp_req_gpio, 0);
+	if (msp430_misc_data->ap_msp_handoff_ctrl) {
+		msp_req_gpio = pdata->gpio_mipi_req;
+		msp_req_value = gpio_get_value(msp_req_gpio);
+		if (msp_req_value)
+			gpio_set_value(msp_req_gpio, 0);
+	} else {
+		msp_req_value = 0;
+	}
 
 	msp430_reset(pdata);
 
