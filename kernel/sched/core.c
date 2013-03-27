@@ -4550,6 +4550,15 @@ long sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 	if (!check_same_owner(p) && !ns_capable(task_user_ns(p), CAP_SYS_NICE))
 		goto out_unlock;
 
+#ifdef CONFIG_HOTPLUG_CPU
+	if (!ns_capable(task_user_ns(p), CAP_SYS_NICE)) {
+		/* Silent fail.  No scenario for affinity makes sense
+		 * for unpriviledged users with hotplugged CPU's.
+		 */
+		retval = 0;
+		goto out_unlock;
+	}
+#endif
 	retval = security_task_setscheduler(p);
 	if (retval)
 		goto out_unlock;
