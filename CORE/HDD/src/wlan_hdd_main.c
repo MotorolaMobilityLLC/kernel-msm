@@ -190,30 +190,37 @@ static int hdd_netdev_notifier_call(struct notifier_block * nb,
 {
    struct net_device *dev = ndev;
    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-   hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX( pAdapter );
+   hdd_context_t *pHddCtx;
 #ifdef WLAN_BTAMP_FEATURE
    VOS_STATUS status;
    hdd_context_t *pHddCtx;
 #endif
 
    //Make sure that this callback corresponds to our device.
-   if((strncmp( dev->name, "wlan", 4 )) && 
-      (strncmp( dev->name, "p2p", 3))
-     )
+   if ((strncmp(dev->name, "wlan", 4)) &&
+       (strncmp(dev->name, "p2p", 3)))
       return NOTIFY_DONE;
 
    if (!dev->ieee80211_ptr)
-       return NOTIFY_DONE;
+      return NOTIFY_DONE;
 
-
-   if(NULL == pAdapter)
+   if (NULL == pAdapter)
    {
       hddLog(VOS_TRACE_LEVEL_FATAL,"%s: HDD Adapter Null Pointer", __func__);
       VOS_ASSERT(0);
       return NOTIFY_DONE;
    }
 
-   hddLog(VOS_TRACE_LEVEL_INFO,"%s: New Net Device State = %lu", __func__, state);
+   pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
+   if (NULL == pHddCtx)
+   {
+      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: HDD Context Null Pointer", __func__);
+      VOS_ASSERT(0);
+      return NOTIFY_DONE;
+   }
+
+   hddLog(VOS_TRACE_LEVEL_INFO, "%s: %s New Net Device State = %lu",
+          __func__, dev->name, state);
 
    switch (state) {
    case NETDEV_REGISTER:
