@@ -58,6 +58,7 @@ static const struct reg_default wm5102_reva_patch[] = {
 };
 
 static const struct reg_default wm5102_revb_patch[] = {
+	{ 0x19, 0x0001 },
 	{ 0x80, 0x0003 },
 	{ 0x081, 0xE022 },
 	{ 0x410, 0x6080 },
