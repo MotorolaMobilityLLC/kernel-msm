@@ -51,24 +51,24 @@
 
   ========================================================================*/
 
-/**========================================================================= 
+/**=========================================================================
 
-  EDIT HISTORY FOR FILE 
-
-
-  This section contains comments describing changes made to the module. 
-  Notice that changes are listed in reverse chronological order. 
+  EDIT HISTORY FOR FILE
 
 
-  $Header:$   $DateTime: $ $Author: $ 
+  This section contains comments describing changes made to the module.
+  Notice that changes are listed in reverse chronological order.
 
 
-  when        who            what, where, why 
+  $Header:$   $DateTime: $ $Author: $
+
+
+  when        who            what, where, why
   --------    ---            --------------------------------------------------------
- 21/12/09     Ashwani        Created module.  
+ 21/12/09     Ashwani        Created module.
 
  07/06/10     Kumar Deepak   Implemented cfg80211 callbacks for ANDROID
-              Ganesh K       
+              Ganesh K
   ==========================================================================*/
 
 
@@ -3016,26 +3016,26 @@ static u8 wlan_hdd_cfg80211_get_ibss_peer_staidx(hdd_adapter_t* pAdapter)
  * This function is used to initialize the key information
  */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
-static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy, 
+static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
                                       struct net_device *ndev,
                                       u8 key_index, bool pairwise,
                                       const u8 *mac_addr,
                                       struct key_params *params
                                       )
 #else
-static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy, 
+static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
                                       struct net_device *ndev,
                                       u8 key_index, const u8 *mac_addr,
                                       struct key_params *params
                                       )
 #endif
 {
-    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( ndev ); 
+    hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR( ndev );
     tCsrRoamSetKey  setKey;
     u8 groupmacaddr[WNI_CFG_BSSID_LEN] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
     int status = 0;
-    v_U32_t roamId= 0xFF; 
-    v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;  
+    v_U32_t roamId= 0xFF;
+    v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
     hdd_hostapd_state_t *pHostapdState;
     VOS_STATUS vos_status;
     eHalStatus halStatus;
@@ -3049,20 +3049,28 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
         return -EAGAIN;
     }
 
-    hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d\n",
-            __func__,pAdapter->device_mode);
+    hddLog(VOS_TRACE_LEVEL_INFO, "%s: device_mode = %d",
+            __func__, pAdapter->device_mode);
 
     if (CSR_MAX_NUM_KEY <= key_index)
     {
-        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Invalid key index %d", __func__, 
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Invalid key index %d", __func__,
                 key_index);
 
         return -EINVAL;
     }
 
-    hddLog(VOS_TRACE_LEVEL_INFO, 
-            "%s: called with key index = %d & key length %d",
-            __func__, key_index, params->key_len);
+    if (CSR_MAX_KEY_LEN < params->key_len)
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Invalid key length %d", __func__,
+                params->key_len);
+
+        return -EINVAL;
+    }
+
+    hddLog(VOS_TRACE_LEVEL_INFO,
+           "%s: called with key index = %d & key length %d",
+           __func__, key_index, params->key_len);
 
     /*extract key idx, key len and key*/
     vos_mem_zero(&setKey,sizeof(tCsrRoamSetKey));
@@ -3070,7 +3078,7 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
     setKey.keyLength = params->key_len;
     vos_mem_copy(&setKey.Key[0],params->key, params->key_len);
 
-    switch (params->cipher) 
+    switch (params->cipher)
     {
         case WLAN_CIPHER_SUITE_WEP40:
             setKey.encType = eCSR_ENCRYPT_TYPE_WEP40_STATICKEY;
@@ -3087,10 +3095,10 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
 
                 vos_mem_zero(pKey, CSR_MAX_KEY_LEN);
 
-                /*Supplicant sends the 32bytes key in this order 
+                /*Supplicant sends the 32bytes key in this order
 
                   |--------------|----------|----------|
-                  |   Tk1        |TX-MIC    |  RX Mic  | 
+                  |   Tk1        |TX-MIC    |  RX Mic  |
                   |--------------|----------|----------|
                   <---16bytes---><--8bytes--><--8bytes-->
 
@@ -3098,18 +3106,18 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
                 /*Sme expects the 32 bytes key to be in the below order
 
                   |--------------|----------|----------|
-                  |   Tk1        |RX-MIC    |  TX Mic  | 
+                  |   Tk1        |RX-MIC    |  TX Mic  |
                   |--------------|----------|----------|
                   <---16bytes---><--8bytes--><--8bytes-->
                   */
                 /* Copy the Temporal Key 1 (TK1) */
-                vos_mem_copy(pKey, params->key,16);
+                vos_mem_copy(pKey, params->key, 16);
 
                 /*Copy the rx mic first*/
-                vos_mem_copy(&pKey[16],&params->key[24],8); 
+                vos_mem_copy(&pKey[16], &params->key[24], 8);
 
                 /*Copy the tx mic */
-                vos_mem_copy(&pKey[24],&params->key[16],8); 
+                vos_mem_copy(&pKey[24], &params->key[16], 8);
 
 
                 break;
@@ -3162,11 +3170,11 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
     {
 
 
-        if ( 
+        if (
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
                 (!pairwise)
 #else
-                (!mac_addr || is_broadcast_ether_addr(mac_addr)) 
+                (!mac_addr || is_broadcast_ether_addr(mac_addr))
 #endif
            )
         {
@@ -3188,8 +3196,8 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
         }
 
         pHostapdState = WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter);
-        if( pHostapdState->bssState == BSS_START ) 
-        { 
+        if( pHostapdState->bssState == BSS_START )
+        {
             status = WLANSAP_SetKeySta( pVosContext, &setKey);
 
             if ( status != eHAL_STATUS_SUCCESS )
@@ -3211,13 +3219,12 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
         else
         {
             //Save the key in ap context. Issue setkey after the BSS is started.
-            hdd_ap_ctx_t *pAPCtx = WLAN_HDD_GET_AP_CTX_PTR(pAdapter); 
+            hdd_ap_ctx_t *pAPCtx = WLAN_HDD_GET_AP_CTX_PTR(pAdapter);
             vos_mem_copy(&pAPCtx->groupKey, &setKey, sizeof(tCsrRoamSetKey));
         }
     }
-    else if ( (pAdapter->device_mode == WLAN_HDD_INFRA_STATION) 
-            || (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)
-            )
+    else if ( (pAdapter->device_mode == WLAN_HDD_INFRA_STATION) ||
+              (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT) )
     {
         hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
         hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
@@ -3227,7 +3234,7 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
         pWextState->roamProfile.Keys.defaultIndex = key_index;
 
 
-        vos_mem_copy(&pWextState->roamProfile.Keys.KeyMaterial[key_index][0], 
+        vos_mem_copy(&pWextState->roamProfile.Keys.KeyMaterial[key_index][0],
                 params->key, params->key_len);
 
         pHddStaCtx->roam_info.roamingState = HDD_ROAM_STATE_SETTING_KEY;
