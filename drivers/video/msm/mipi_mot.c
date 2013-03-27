@@ -611,6 +611,8 @@ static int mot_panel_off_reboot(struct notifier_block *nb,
 		if (mot_panel->panel_disable)
 			mot_panel->panel_disable(mfd);
 
+		mipi_dsi_panel_power_enable(0);
+
 		mutex_unlock(&mfd->dma->ov_mutex);
 	}
 	return NOTIFY_DONE;
