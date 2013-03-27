@@ -582,7 +582,6 @@ int touch_ic_init(struct synaptics_ts_data *ts)
 	}
 
 	memset(&ts->ts_data, 0, sizeof(ts->ts_data));
-	memset(&ts->fw_info.fw_upgrade, 0, sizeof(ts->fw_info.fw_upgrade));
 	ts->ic_init_err_cnt = 0;
 	return 0;
 
