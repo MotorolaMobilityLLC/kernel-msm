@@ -340,11 +340,6 @@ static int arizona_runtime_resume(struct device *dev)
 
 	regcache_cache_only(arizona->regmap, false);
 
-	ret = arizona_wait_for_boot(arizona);
-	if (ret != 0) {
-		goto err;
-	}
-
 	switch (arizona->type) {
 	case WM5102:
 		ret = wm5102_patch(arizona);
@@ -363,6 +358,11 @@ static int arizona_runtime_resume(struct device *dev)
 		}
 		break;
 	default:
+		ret = arizona_wait_for_boot(arizona);
+		if (ret != 0) {
+			goto err;
+		}
+
 		break;
 	}
 
