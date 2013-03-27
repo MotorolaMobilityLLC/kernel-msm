@@ -910,7 +910,7 @@ static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 	/* TE enabled */
 	mdp4_mipi_vsync_enable(mfd, pipe, 0);
 
-	MDP_OUTP(MDP_BASE + 0x021c, mfd->fbi->var.yres); /* read pointer */
+	MDP_OUTP(MDP_BASE + 0x021c, mfd->fbi->var.yres + 1); /* read pointer */
 
 	/*
 	 * configure dsi stream id
