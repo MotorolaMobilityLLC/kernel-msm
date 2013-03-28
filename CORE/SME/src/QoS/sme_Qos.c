@@ -3550,9 +3550,15 @@ eHalStatus sme_QosProcessFTRICResponse(tpAniSirGlobal pMac, v_U8_t sessionId, tD
     //Process Delay element
     if (pRicDataDesc->TSDelay.present)
         ConvertTSDelay(pMac, &pAddtsRsp->rsp.delay, &pRicDataDesc->TSDelay);
+
+    //Need to call for WMMTSPEC
+    if (pRicDataDesc->WMMTSPEC.present)
+    {
+        ConvertWMMTSPEC(pMac, &pAddtsRsp->rsp.tspec, &pRicDataDesc->WMMTSPEC);
+    }
     //return sme_QosProcessAddTsRsp(pMac, &addtsRsp);
     return eHAL_STATUS_SUCCESS;
-   }
+}
 eHalStatus sme_QosProcessAggrQosRsp(tpAniSirGlobal pMac, void *pMsgBuf)
 {
     tpSirAggrQosRsp pAggrRsp = (tpSirAggrQosRsp)pMsgBuf;
@@ -3628,8 +3634,9 @@ eHalStatus sme_QosProcessFTReassocRspEv(tpAniSirGlobal pMac, v_U8_t sessionId, v
 
     pSession = &sme_QosCb.sessionInfo[sessionId];
 
-    pRicDataDesc = (tDot11fIERICDataDesc *)pCsrConnectedInfo->pbFrames + pCsrConnectedInfo->nBeaconLength +
-        pCsrConnectedInfo->nAssocReqLength + pCsrConnectedInfo->nAssocRspLength;
+    pRicDataDesc = (tDot11fIERICDataDesc *)((pCsrConnectedInfo->pbFrames) +
+        (pCsrConnectedInfo->nBeaconLength + pCsrConnectedInfo->nAssocReqLength +
+        pCsrConnectedInfo->nAssocRspLength));
 
     for(ac = SME_QOS_EDCA_AC_BE; ac < SME_QOS_EDCA_AC_MAX; ac++)
     {
@@ -4345,7 +4352,8 @@ eHalStatus sme_QosProcessReassocReqEv(tpAniSirGlobal pMac, v_U8_t sessionId, voi
   --------------------------------------------------------------------------*/
 eHalStatus sme_QosProcessReassocSuccessEv(tpAniSirGlobal pMac, v_U8_t sessionId, void * pEvent_info)
 {
-   tpSirSmeJoinRsp pSmeJoinRsp = (tpSirSmeJoinRsp) pEvent_info;
+
+   tCsrRoamSession *pCsrRoamSession = CSR_GET_SESSION( pMac, sessionId );
    sme_QosSessionInfo *pSession;
    sme_QosACInfo *pACInfo;
    sme_QosEdcaAcType ac, ac_index;
@@ -4400,7 +4408,7 @@ eHalStatus sme_QosProcessReassocSuccessEv(tpAniSirGlobal pMac, v_U8_t sessionId,
    if (pSession->ftHandoffInProgress)
    {
        if (csrRoamIs11rAssoc(pMac)) {
-           if (pSmeJoinRsp->parsedRicRspLen) {
+           if (pCsrRoamSession->connectedInfo.nRICRspLength) {
                status = sme_QosProcessFTReassocRspEv(pMac, sessionId, pEvent_info);
            }
        }
