@@ -975,6 +975,11 @@ VOS_STATUS hdd_parse_countryrev(tANI_U8 *pValue, tANI_U8 *pCountryCode, tANI_U8 
 
   This function parses the channel list passed in the format
   SETROAMSCANCHANNELS<space><Number of channels><space>Channel 1<space>Channel 2<space>Channel N
+  if the Number of channels (N) does not match with the actual number of channels passed
+  then take the minimum of N and count of (Ch1, Ch2, ...Ch M)
+  For example, if SETROAMSCANCHANNELS 3 36 40 44 48, only 36, 40 and 44 shall be taken.
+  If SETROAMSCANCHANNELS 5 36 40 44 48, ignore 5 and take 36, 40, 44 and 48.
+  This function does not take care of removing duplicate channels from the list
 
   \param  - pValue Pointer to input channel list
   \param  - ChannelList Pointer to local output array to record channel list
@@ -1016,7 +1021,7 @@ VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8
     /*getting the first argument ie the number of channels*/
     sscanf(inPtr, "%s ", buf);
     v = kstrtos32(buf, 10, &tempInt);
-    if ( v < 0) return -EINVAL;
+    if ((v < 0) || (tempInt <= 0)) return -EINVAL;
 
     *pNumChannels = tempInt;
 
@@ -1030,7 +1035,15 @@ VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8
         /*no channel list after the number of channels argument*/
         if (NULL == inPtr)
         {
-            return -EINVAL;
+            if (0 != j)
+            {
+                *pNumChannels = j;
+                return VOS_STATUS_SUCCESS;
+            }
+            else
+            {
+                return -EINVAL;
+            }
         }
 
         /*removing empty space*/
@@ -1039,12 +1052,20 @@ VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8
         /*no channel list after the number of channels argument and spaces*/
         if ( '\0' == *inPtr )
         {
-            return -EINVAL;
+            if (0 != j)
+            {
+                *pNumChannels = j;
+                return VOS_STATUS_SUCCESS;
+            }
+            else
+            {
+                return -EINVAL;
+            }
         }
 
         sscanf(inPtr, "%s ", buf);
         v = kstrtos32(buf, 10, &tempInt);
-        if ( v < 0) return -EINVAL;
+        if ((v < 0) || (tempInt <= 0)) return -EINVAL;
         pChannelList[j] = tempInt;
 
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
@@ -1052,8 +1073,6 @@ VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8
                    pChannelList[j] );
     }
 
-    /* if the actual number of channels passed are more than
-       pNumChannels then ignore the rest; take only pNumChannels */
     return VOS_STATUS_SUCCESS;
 }
 
