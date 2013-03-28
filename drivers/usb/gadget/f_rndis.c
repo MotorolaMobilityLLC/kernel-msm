@@ -420,21 +420,20 @@ static void rndis_response_complete(struct usb_ep *ep, struct usb_request *req)
 	struct usb_composite_dev	*cdev;
 	int				status = req->status;
 
+	if (WARN_ON(!rndis))
+		return;
+
 	if (!rndis->port.func.config || !rndis->port.func.config->cdev)
 		return;
 	else
 		cdev = rndis->port.func.config->cdev;
 
 	/* after TX:
-	 *  - USB_CDC_GET_ENCAPSULATED_RESPONSE (ep0/control)
 	 *  - RNDIS_RESPONSE_AVAILABLE (status/irq)
 	 */
 	switch (status) {
 	case -ECONNRESET:
 	case -ESHUTDOWN:
-                if(WARN_ON(!rndis))
-                        return;
-
 		/* connection gone */
 		atomic_set(&rndis->notify_count, 0);
 		break;
@@ -444,9 +443,6 @@ static void rndis_response_complete(struct usb_ep *ep, struct usb_request *req)
 			req->actual, req->length);
 		/* FALLTHROUGH */
 	case 0:
-		if (ep != rndis->notify)
-			break;
-
 		/* handle multiple pending RNDIS_RESPONSE_AVAILABLE
 		 * notifications by resending until we're done
 		 */
@@ -539,8 +535,6 @@ rndis_setup(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
 			buf = rndis_get_next_response(rndis->config, &n);
 			if (buf) {
 				memcpy(req->buf, buf, n);
-				req->complete = rndis_response_complete;
-				req->context = rndis;
 				rndis_free_response(rndis->config, buf);
 				value = n;
 			}
