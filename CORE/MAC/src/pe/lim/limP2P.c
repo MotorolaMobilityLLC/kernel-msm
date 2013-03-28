@@ -78,9 +78,6 @@
 #define   BSSID_OFFSET           16
 #define   ADDR2_OFFSET           10
 #define   ACTION_OFFSET          24
-#define   LIM_MIN_REM_TIME_FOR_TX_ACTION_FRAME                     50
-#define   LIM_MIN_REM_TIME_EXT_FOR_TX_ACTION_FRAME                 60
-
 
 
 void limRemainOnChnlSuspendLinkHdlr(tpAniSirGlobal pMac, eHalStatus status,
@@ -634,17 +631,14 @@ void limSendSmeMgmtFrameInd(
             ( (psessionEntry != NULL) && (psessionEntry->pePersona != VOS_P2P_GO_MODE)) &&
             (frameType == SIR_MAC_MGMT_ACTION))
     {
-        tANI_U32 curTime = vos_timer_get_system_time();
-        if((curTime - pMac->lim.p2pRemOnChanTimeStamp) > (pMac->lim.gTotalScanDuration - LIM_MIN_REM_TIME_FOR_TX_ACTION_FRAME))
-        {
             unsigned int chanWaitTime, vStatus ;
 
-            limLog( pMac, LOG1, FL("Rx: Extend the gLimRemainOnChannelTimer"));
+            limLog( pMac, LOG1, FL("Rx: Extend the gLimRemainOnChannelTimer = %d "),
+                                                              pMac->lim.gTotalScanDuration);
 
             pMac->lim.p2pRemOnChanTimeStamp = vos_timer_get_system_time();
-            pMac->lim.gTotalScanDuration = LIM_MIN_REM_TIME_EXT_FOR_TX_ACTION_FRAME;
 
-            chanWaitTime = SYS_MS_TO_TICKS(LIM_MIN_REM_TIME_EXT_FOR_TX_ACTION_FRAME);
+            chanWaitTime = SYS_MS_TO_TICKS(pMac->lim.gTotalScanDuration);
             vStatus = tx_timer_deactivate(&pMac->lim.limTimers.gLimRemainOnChannelTimer);
 
             if (VOS_STATUS_SUCCESS != vStatus)
@@ -661,7 +655,6 @@ void limSendSmeMgmtFrameInd(
             {
                 limLog( pMac, LOGE, FL("Unable to active the gLimRemainOnChannelTimer"));
             } 
-        } 
     }
 
     limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
@@ -955,6 +948,8 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             }
             else
             {
+                limLog(pMac, LOGE,
+                            FL("Failed to Send Action frame \n"));
                 limSendSmeRsp(pMac, eWNI_SME_ACTION_FRAME_SEND_CNF, 
                         eHAL_STATUS_FAILURE, pMbMsg->sessionId, 0);
                 return;
@@ -1015,6 +1010,7 @@ void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
     }
     else
     {
+        pMac->lim.mgmtFrameSessionId = 0xff;
         halstatus = halTxFrameWithTxComplete( pMac, pPacket, (tANI_U16)nBytes,
                         HAL_TXRX_FRM_802_11_MGMT, ANI_TXDIR_TODS,
                         7,/*SMAC_SWBD_TX_TID_MGMT_HIGH */ limTxComplete, pFrame,

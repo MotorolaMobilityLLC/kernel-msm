@@ -700,7 +700,13 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
                limPktFree(pMac, HAL_TXRX_FRM_802_11_MGMT, pRxPacketInfo, limMsg->bodyptr);
                return;
             }
-        } 
+        }
+        //  For p2p resp frames search for valid session with DA as
+        //  BSSID will be SA and session will be present with DA only
+        if(fc.subType == SIR_MAC_MGMT_ACTION )
+        {
+           psessionEntry = peFindSessionByBssid(pMac,pHdr->da,&sessionId);
+        }
     }
 
 
