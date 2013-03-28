@@ -41,14 +41,14 @@ struct ov660_reg_i2c_tbl {
 
 extern bool allow_asic_control;
 
-extern int32_t ov660_set_sensor_mode(int mode);
+extern int32_t ov660_set_sensor_mode(int mode, uint16_t revision);
 extern int32_t ov660_set_exposure_gain(uint16_t gain, uint32_t line);
 extern int32_t ov660_set_i2c_bypass(int bypassOn);
 extern int32_t ov660_add_blc_firmware(uint16_t addr);
 extern int32_t ov660_use_work_around_blc(void);
 extern int32_t ov660_check_probe(void);
 extern int32_t ov660_initialize_8MP(void);
-extern int32_t ov660_initialize_10MP(void);
+extern int32_t ov660_initialize_10MP(uint16_t revision);
 
 #endif /* __OV660_V4L2_H__ */
 
