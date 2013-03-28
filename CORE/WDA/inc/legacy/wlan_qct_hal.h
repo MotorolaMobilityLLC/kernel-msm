@@ -286,12 +286,6 @@ typedef struct sUapsdInfo {
 #define WLANHAL_RX_BD_GET_TYPE_SUBTYPE(_pvBDHeader)            (((tpHalRxBd)_pvBDHeader)->frameTypeSubtype)
 #define WLANHAL_RX_BD_SET_TYPE_SUBTYPE( _bd, _typeSubtype )        (((tpHalRxBd)_bd)->frameTypeSubtype = _typeSubtype)
 
-#ifdef  WLAN_HAL_VOLANS 
-/*Macros to extract 48-bit replay counter when replay check is done at host in volans*/
-#define WLANHAL_RX_BD_GET_PMICMD_20TO23(_pvBDHeader)      ((((tpHalRxBd)_pvBDHeader)->pmiCmd4to23[4])) 
-#define WLANHAL_RX_BD_GET_UC_BC( _pvBDHeader )            (((tpHalRxBd)_pvBDHeader)->ub)
-#define WLANHAL_RX_BD_GET_PMICMD_24TO25(_pvBDHeader)      ((((tpHalRxBd)_pvBDHeader)->pmiCmd24to25))
-#endif
 
 #define WLANHAL_RX_BD_ASF_SET                1 /*The value of the field when set and pkt is AMSDU*/
 
