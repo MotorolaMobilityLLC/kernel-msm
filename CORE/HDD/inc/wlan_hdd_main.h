@@ -950,6 +950,7 @@ struct hdd_context_s
     tdlsConnInfo_t tdlsConnInfo[HDD_MAX_NUM_TDLS_STA];
     /* TDLS peer connected count */
     tANI_U16 connected_peer_count;
+    tdls_scan_context_t tdls_scan_ctxt;
 #endif
 };
 

@@ -48,6 +48,11 @@
 should not be more than 2000 */
 #define TDLS_DISCOVERY_TIMEOUT_BEFORE_UPDATE     1000
 
+#define TDLS_CTX_MAGIC 0x54444c53    // "TDLS"
+
+#define TDLS_MAX_SCAN_SCHEDULE          10
+#define TDLS_DELAY_SCAN_PER_CONNECTION 100
+
 typedef struct
 {
     tANI_U32    tdls;
@@ -61,6 +66,18 @@ typedef struct
     tANI_S32    rssi_trigger_threshold;
     tANI_S32    rssi_teardown_threshold;
 } tdls_config_params_t;
+
+typedef struct
+{
+    struct wiphy *wiphy;
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
+    struct net_device *dev;
+#endif
+    struct cfg80211_scan_request *scan_request;
+    int magic;
+    int attempt;
+    struct delayed_work tdls_scan_work;
+} tdls_scan_context_t;
 
 typedef enum {
     eTDLS_SUPPORT_NOT_ENABLED = 0,
@@ -202,5 +219,23 @@ void wlan_hdd_tdls_pre_setup(tdlsCtx_t *pHddTdlsCtx, hddTdlsPeer_t *curr_peer);
 tANI_U32 wlan_hdd_tdls_discovery_sent_cnt(hdd_context_t *pHddCtx);
 
 void wlan_hdd_tdls_check_power_save_prohibited(hdd_adapter_t *pAdapter);
+
+void wlan_hdd_tdls_free_scan_request (tdls_scan_context_t *tdls_scan_ctx);
+
+int wlan_hdd_tdls_copy_scan_context(hdd_context_t *pHddCtx,
+                            struct wiphy *wiphy,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
+                            struct net_device *dev,
+#endif
+                            struct cfg80211_scan_request *request);
+
+int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
+                                struct wiphy *wiphy,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
+                                struct net_device *dev,
+#endif
+                                struct cfg80211_scan_request *request);
+
+void wlan_hdd_tdls_scan_done_callback(hdd_adapter_t *pAdapter);
 
 #endif // __HDD_TDSL_H

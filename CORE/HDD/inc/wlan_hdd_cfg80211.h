@@ -130,6 +130,12 @@ void wlan_hdd_cfg80211_set_key_wapi(hdd_adapter_t* pAdapter,
 #endif
 struct wiphy *wlan_hdd_cfg80211_init(int priv_size);
 
+int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
+                            struct net_device *dev,
+#endif
+                            struct cfg80211_scan_request *request);
+
 int wlan_hdd_cfg80211_register(struct device *dev,
                                struct wiphy *wiphy,
                                hdd_config_t *pCfg
