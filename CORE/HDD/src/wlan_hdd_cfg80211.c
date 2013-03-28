@@ -144,6 +144,11 @@
 #define TDLS_LOG_LEVEL VOS_TRACE_LEVEL_ERROR
 #endif
 
+#ifdef WLAN_FEATURE_VOWIFI_11R
+#define WLAN_AKM_SUITE_FT_8021X         0x000FAC03
+#define WLAN_AKM_SUITE_FT_PSK           0x000FAC04
+#endif
+
 static const u32 hdd_cipher_suites[] = 
 {
     WLAN_CIPHER_SUITE_WEP40,
@@ -4909,13 +4914,19 @@ static int wlan_hdd_set_akm_suite( hdd_adapter_t *pAdapter,
     switch(key_mgmt)
     {
         case WLAN_AKM_SUITE_PSK:
-            hddLog(VOS_TRACE_LEVEL_INFO, "%s: setting key mgmt type to PSK", 
+#ifdef WLAN_FEATURE_VOWIFI_11R
+        case WLAN_AKM_SUITE_FT_PSK:
+#endif
+            hddLog(VOS_TRACE_LEVEL_INFO, "%s: setting key mgmt type to PSK",
                     __func__);
             pWextState->authKeyMgmt |= IW_AUTH_KEY_MGMT_PSK;
             break;
 
         case WLAN_AKM_SUITE_8021X:
-            hddLog(VOS_TRACE_LEVEL_INFO, "%s: setting key mgmt type to 8021x", 
+#ifdef WLAN_FEATURE_VOWIFI_11R
+        case WLAN_AKM_SUITE_FT_8021X:
+#endif
+            hddLog(VOS_TRACE_LEVEL_INFO, "%s: setting key mgmt type to 8021x",
                     __func__);
             pWextState->authKeyMgmt |= IW_AUTH_KEY_MGMT_802_1X;
             break;
@@ -6712,7 +6723,8 @@ static int wlan_hdd_cfg80211_update_ft_ies(struct wiphy *wiphy,
 #endif
 
     // Pass the received FT IEs to SME
-    sme_SetFTIEs( WLAN_HDD_GET_HAL_CTX(pAdapter), pAdapter->sessionId, ftie->ie, 
+    sme_SetFTIEs( WLAN_HDD_GET_HAL_CTX(pAdapter), pAdapter->sessionId,
+                  (const u8 *)ftie->ie,
                   ftie->ie_len);
     return 0;
 }

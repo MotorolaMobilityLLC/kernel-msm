@@ -384,6 +384,7 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
     struct cfg80211_ft_event_params ftEvent;
     v_U8_t ftIe[DOT11F_IE_FTINFO_MAX_LEN];
     v_U8_t ricIe[DOT11F_IE_RICDESCRIPTOR_MAX_LEN];
+    v_U8_t target_ap[SIR_MAC_ADDR_LENGTH];
     struct net_device *dev = pAdapter->dev;
 #else
     char *buff;
@@ -417,7 +418,9 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
         return;
     }
 
-    vos_mem_copy(ftEvent.target_ap, ftIe, SIR_MAC_ADDR_LENGTH );
+    vos_mem_copy(target_ap, ftIe, SIR_MAC_ADDR_LENGTH);
+
+    ftEvent.target_ap = target_ap;
 
     ftEvent.ies = (u8 *)(ftIe + SIR_MAC_ADDR_LENGTH);
     ftEvent.ies_len = auth_resp_len - SIR_MAC_ADDR_LENGTH;
@@ -429,7 +432,7 @@ void hdd_SendFTEvent(hdd_adapter_t *pAdapter)
             ftEvent.target_ap[2], ftEvent.target_ap[3], ftEvent.target_ap[4],
             ftEvent.target_ap[5]);
 
-    (void)cfg80211_ft_event(dev, ftEvent);
+    (void)cfg80211_ft_event(dev, &ftEvent);
 
 #else
     // We need to send the IEs to the supplicant
