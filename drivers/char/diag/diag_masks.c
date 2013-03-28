@@ -22,6 +22,9 @@
 int diag_event_config;
 int diag_event_num_bytes;
 
+static uint8_t optimized_cmd_cached;
+static uint8_t smd_opened;
+
 #define ALL_EQUIP_ID		100
 #define ALL_SSID		-1
 #define MAX_SSID_PER_RANGE	100
@@ -112,14 +115,19 @@ static void diag_set_msg_mask(int rt_mask)
 {
 	int first_ssid, last_ssid, i;
 	uint8_t *parse_ptr, *ptr = driver->msg_masks;
-	struct diag_smd_info *smd_info = &driver->smd_cntl[MODEM_DATA];
+
+	pr_debug("diag: mode:%d,smd_opened:%d, optimized:%d\n",
+		driver->logging_mode, smd_opened, optimized_logging);
+	if ((driver->logging_mode == MEMORY_DEVICE_MODE)
+	    && smd_opened) {
+		pr_debug("diag: diag_set_msg_mask, send optimized cmd\n");
+		diag_send_diag_mode_update(optimized_logging);
+	} else if (!smd_opened && optimized_logging) {
+		pr_debug("diag: diag_set_msg_mask, cache optimized cmd\n");
+		optimized_cmd_cached = 1;
+	}
 
 	mutex_lock(&driver->diagchar_mutex);
-	if (driver->logging_mode == MEMORY_DEVICE_MODE) {
-		pr_debug("diag: In %s, send optimized logging parameters\n",
-			__func__);
-		diag_send_diag_mode_update(smd_info, optimized_logging);
-	}
 	while (*(uint32_t *)(ptr + 4)) {
 		first_ssid = *(uint32_t *)ptr;
 		ptr += 8; /* increment by 8 to skip 'last' */
@@ -319,6 +327,20 @@ void diag_mask_update_fn(struct work_struct *work)
 	diag_send_log_mask_update(smd_info->ch, ALL_EQUIP_ID);
 	diag_send_event_mask_update(smd_info->ch, diag_event_num_bytes);
 	diag_send_feature_mask_update(smd_info->ch, smd_info->peripheral);
+
+	if (smd_info->notify_context == SMD_EVENT_OPEN) {
+		/* we have to set non-optimized before setting optimized,
+		 * otherwise optimized won't work as expected.
+		 */
+		diag_send_diag_mode_update_by_smd(smd_info,
+			DIAG_NON_OPTIMIZED_MODE);
+
+		/* optimized */
+		if (optimized_logging && optimized_cmd_cached)
+			diag_send_diag_mode_update_by_smd(smd_info,
+			DIAG_OPTIMIZED_MODE);
+		smd_opened = 1;
+	}
 
 	smd_info->notify_context = 0;
 }
