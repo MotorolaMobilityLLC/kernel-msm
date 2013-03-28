@@ -38,9 +38,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-
-/*
- * */
 /*============================================================================
   FILE:         vos_utils.c
 
@@ -406,7 +403,7 @@ int hmac_md5(v_U8_t *key, v_U8_t ksize, char *plaintext, v_U8_t psize,
     struct crypto_ahash *tfm;
     struct scatterlist sg;
     struct ahash_request *req;
-    struct hmac_md5_result tresult;
+    struct hmac_md5_result tresult = {.err = 0};
     void *hash_buff = NULL;
 
     unsigned char hash_result[64];
