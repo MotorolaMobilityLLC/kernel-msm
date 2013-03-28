@@ -399,19 +399,13 @@ error1:
  *------------------------------------------------------------------*/
 void limProcessInsertSingleShotNOATimeout(tpAniSirGlobal pMac)
 {
-    /* timeout means start NOA did not arrive; we need to restart the timer and
-     * send the scan response from here
+    /* timeout means start NOA did not arrive; we need to deactivate and change the timer for
+     * future activations
      */
     limDeactivateAndChangeTimer(pMac, eLIM_INSERT_SINGLESHOT_NOA_TIMER);
-    
-    // send the scan response back and do not even call insert NOA
-    limSendSmeScanRsp(pMac, sizeof(tSirSmeScanRsp), eSIR_SME_SCAN_FAILED, pMac->lim.gSmeSessionId, pMac->lim.gTransactionId);
 
-    if(pMac->lim.gpLimSmeScanReq != NULL)
-    {
-        palFreeMemory( pMac->hHdd, (tANI_U8 *) pMac->lim.gpLimSmeScanReq);
-        pMac->lim.gpLimSmeScanReq = NULL;
-    }
+    /* Even if insert NOA timedout, go ahead and process/send stored SME request */
+    limProcessRegdDefdSmeReqAfterNOAStart(pMac);
 
     return;
 }
