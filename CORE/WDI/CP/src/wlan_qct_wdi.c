@@ -112,7 +112,7 @@
 #define MAC_ADDR_ARRAY(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MAC_ADDRESS_STR "%02x:%02x:%02x:%02x:%02x:%02x"
 
-#define FEATURE_NOT_SUPPORTED 128
+#define FEATURE_NOT_SUPPORTED 127
 
 #ifdef FEATURE_WLAN_SCAN_PNO
 #define WDI_PNO_VERSION_MASK 0x8000
@@ -22062,8 +22062,8 @@ WDI_2_HAL_STOP_REASON
   {
   case WDI_STOP_TYPE_SYS_RESET:
     return HAL_STOP_TYPE_SYS_RESET;
-  case WDI_DRIVER_TYPE_MFG:
-    return WDI_STOP_TYPE_SYS_DEEP_SLEEP;
+  case WDI_STOP_TYPE_SYS_DEEP_SLEEP:
+    return HAL_STOP_TYPE_SYS_DEEP_SLEEP;
   case WDI_STOP_TYPE_RF_KILL:
     return HAL_STOP_TYPE_RF_KILL;
   }
@@ -24319,6 +24319,7 @@ WDI_Process8023MulticastListReq
                   "WDI_Process8023MulticastListReq() %x %x %x",
                   pEventData, pwdiFltPktSetMcListReqParamsType,
                   wdi8023MulticastListCb);
+      wpalMemoryFree(pRcvFltMcAddrListType);
       WDI_ASSERT(0);
       return WDI_STATUS_E_FAILURE;
    }

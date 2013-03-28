@@ -1485,7 +1485,7 @@ VOS_STATUS WLANTL_MSDUReorder
     * Route all the Qed frames upper layer
     * Otherwise, RX thread could be stall */
    vos_pkt_get_available_buffer_pool(VOS_PKT_TYPE_RX_RAW, &rxFree);
-   if(WLANTL_BA_MIN_FREE_RX_VOS_BUFFER > rxFree)
+   if(WLANTL_BA_MIN_FREE_RX_VOS_BUFFER >= rxFree)
    {
       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"RX Free", rxFree));
       TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"RX free buffer count is too low, Pending frame count is %d",
