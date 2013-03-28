@@ -1054,8 +1054,8 @@ static int calculate_fcc_uah(struct pm8921_bms_chip *chip, int batt_temp,
 
 			if (bms_aged_capacity <= 50)
 				agedcap = 50;
-			else if (bms_aged_capacity >= 120)
-				agedcap = 120;
+			else if (bms_aged_capacity >= 103)
+				agedcap = 103;
 
 			scalefactor = (agedcap * 10 * chip->fcc) / agedfcc;
 
