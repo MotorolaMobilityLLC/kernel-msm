@@ -536,6 +536,7 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
         {
             limLog( pMac, LOGP, FL("Failed to retrieve WNI_CFG_BEACON_INTERVAL from CFG (%d).\n"),
                     nSirStatus );
+            palFreeMemory(pMac->hHdd, pFrm);
             return;
         }
         pFrm->BeaconInterval.interval = ( tANI_U16 ) cfg;
