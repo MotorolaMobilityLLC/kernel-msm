@@ -1306,6 +1306,10 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
         tdlsSetupReq.LinkIdentifier.bssid[5]);
     }
 #endif
+    limLog( pMac, LOGW, FL("%s: SupportedChnlWidth %x rxMCSMap %x rxMCSMap %x txSupDataRate %x"),
+            __func__, tdlsSetupReq.VHTCaps.supportedChannelWidthSet, tdlsSetupReq.VHTCaps.rxMCSMap,
+            tdlsSetupReq.VHTCaps.txMCSMap, tdlsSetupReq.VHTCaps.txSupDataRate );
+
     status = dot11fPackTDLSSetupReq( pMac, &tdlsSetupReq, pFrame 
                                + header_offset, nPayload, &nPayload );
 
@@ -1731,6 +1735,9 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
         tdlsSetupRsp.LinkIdentifier.bssid[5]);
     }
 #endif
+    limLog( pMac, LOGW, FL("%s: SupportedChnlWidth %x rxMCSMap %x rxMCSMap %x txSupDataRate %x"),
+            __func__, tdlsSetupRsp.VHTCaps.supportedChannelWidthSet, tdlsSetupRsp.VHTCaps.rxMCSMap,
+            tdlsSetupRsp.VHTCaps.txMCSMap, tdlsSetupRsp.VHTCaps.txSupDataRate );
     status = dot11fPackTDLSSetupRsp( pMac, &tdlsSetupRsp, pFrame 
                                + header_offset, nPayload, &nPayload );
 

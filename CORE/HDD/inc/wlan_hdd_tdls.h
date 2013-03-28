@@ -53,6 +53,9 @@ should not be more than 2000 */
 #define TDLS_MAX_SCAN_SCHEDULE          10
 #define TDLS_DELAY_SCAN_PER_CONNECTION 100
 
+#define TDLS_IS_CONNECTED(peer)  \
+        ((eTDLS_LINK_CONNECTED == (peer)->link_status) || \
+         (eTDLS_LINK_TEARING == (peer)->link_status))
 typedef struct
 {
     tANI_U32    tdls;
@@ -98,6 +101,7 @@ typedef enum eTDLSLinkStatus {
     eTDLS_LINK_DISCOVERED,
     eTDLS_LINK_CONNECTING,
     eTDLS_LINK_CONNECTED,
+    eTDLS_LINK_TEARING,
 } tTDLSLinkStatus;
 
 typedef struct {
@@ -243,5 +247,9 @@ void wlan_hdd_tdls_scan_done_callback(hdd_adapter_t *pAdapter);
 void wlan_hdd_tdls_timer_restart(hdd_adapter_t *pAdapter,
                                  vos_timer_t *timer,
                                  v_U32_t expirationTime);
+void wlan_hdd_tdls_indicate_teardown(hdd_adapter_t *pAdapter,
+                                           hddTdlsPeer_t *curr_peer,
+                                           tANI_U16 reason);
+
 
 #endif // __HDD_TDSL_H

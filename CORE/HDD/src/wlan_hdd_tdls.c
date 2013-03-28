@@ -303,10 +303,9 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                                            "Tear down - low RSSI: " MAC_ADDRESS_STR "!",
                                            MAC_ADDR_ARRAY(curr_peer->peerMac));
 #ifdef CONFIG_TDLS_IMPLICIT
-                        cfg80211_tdls_oper_request(pHddTdlsCtx->pAdapter->dev,
-                                                   curr_peer->peerMac,
-                                                   NL80211_TDLS_TEARDOWN, FALSE,
-                                                   GFP_KERNEL);
+                        wlan_hdd_tdls_indicate_teardown(pHddTdlsCtx->pAdapter,
+                                                        curr_peer,
+                                                        eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
 #endif
                         goto next_peer;
                     }
@@ -347,7 +346,7 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
 //                    }
                 }
             } else if (eTDLS_CAP_UNKNOWN == curr_peer->tdls_support) {
-                if (eTDLS_LINK_CONNECTED != curr_peer->link_status) {
+                if (!TDLS_IS_CONNECTED(curr_peer)) {
                     if (curr_peer->tx_pkt >=
                             pHddTdlsCtx->threshold_config.tx_packet_n) {
 
@@ -393,11 +392,9 @@ static v_VOID_t wlan_hdd_tdls_idle_cb( v_PVOID_t userData )
        return;
     }
 
-    cfg80211_tdls_oper_request(curr_peer->pHddTdlsCtx->pAdapter->dev,
-                               curr_peer->peerMac,
-                               NL80211_TDLS_TEARDOWN,
-                               eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON,
-                               GFP_KERNEL);
+    wlan_hdd_tdls_indicate_teardown(curr_peer->pHddTdlsCtx->pAdapter,
+                                    curr_peer,
+                                    eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
     mutex_unlock(&tdls_lock);
 #endif
 }
@@ -688,7 +685,7 @@ hddTdlsPeer_t *wlan_hdd_tdls_get_peer(hdd_adapter_t *pAdapter, u8 *mac)
     if (mutex_lock_interruptible(&tdls_lock))
     {
        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                 "%s: unabile to lock list", __func__);
+                 "%s: unable to lock list", __func__);
        vos_mem_free(peer);
        return NULL;
     }
@@ -1216,7 +1213,7 @@ int wlan_hdd_tdls_get_all_peers(hdd_adapter_t *pAdapter, char *buf, int buflen)
                 MAC_ADDR_ARRAY(curr_peer->peerMac),
                 curr_peer->staId,
                 (curr_peer->tdls_support == eTDLS_CAP_SUPPORTED) ? "Y":"N",
-                (curr_peer->link_status == eTDLS_LINK_CONNECTED) ? "Y":"N",
+                TDLS_IS_CONNECTED(curr_peer) ? "Y":"N",
                 curr_peer->rssi);
             buf += len;
             buflen -= len;
@@ -1736,6 +1733,7 @@ int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
         if (connectedTdlsPeers)
         {
             tANI_U8 staIdx;
+            hddTdlsPeer_t *curr_peer;
 
             for (staIdx = 0; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++)
             {
@@ -1745,11 +1743,8 @@ int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
                                    ("%s: indicate TDLS teadown (staId %d)"), __func__, pHddCtx->tdlsConnInfo[staIdx].staId) ;
 
 #ifdef CONFIG_TDLS_IMPLICIT
-                    cfg80211_tdls_oper_request(pAdapter->dev,
-                                               pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes,
-                                               NL80211_TDLS_TEARDOWN,
-                                               eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON,
-                                               GFP_KERNEL);
+                    curr_peer = wlan_hdd_tdls_find_peer(pAdapter,pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes);
+                    wlan_hdd_tdls_indicate_teardown(pAdapter, curr_peer, eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
 #endif
                 }
             }
@@ -1822,4 +1817,21 @@ void wlan_hdd_tdls_timer_restart(hdd_adapter_t *pAdapter,
         vos_timer_stop(timer);
         vos_timer_start(timer, expirationTime);
     }
+}
+void wlan_hdd_tdls_indicate_teardown(hdd_adapter_t *pAdapter,
+                                           hddTdlsPeer_t *curr_peer,
+                                           tANI_U16 reason)
+{
+    if (NULL == pAdapter || NULL == curr_peer)
+        return;
+
+    if (eTDLS_LINK_CONNECTED != curr_peer->link_status)
+        return;
+
+    wlan_hdd_tdls_set_peer_link_status(curr_peer, eTDLS_LINK_TEARING);
+    cfg80211_tdls_oper_request(pAdapter->dev,
+                               curr_peer->peerMac,
+                               NL80211_TDLS_TEARDOWN,
+                               reason,
+                               GFP_KERNEL);
 }

@@ -2005,6 +2005,7 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
         }
         case eCSR_ROAM_RESULT_DELETE_TDLS_PEER:
         {
+            hddTdlsPeer_t *curr_peer;
             for ( staIdx = 0; staIdx < HDD_MAX_NUM_TDLS_STA; staIdx++ )
             {
                 if ((pHddCtx->tdlsConnInfo[staIdx].sessionId == pRoamInfo->sessionId) &&
@@ -2013,10 +2014,13 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
                     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
                                    ("HDD: del STA IDX = %x"), pRoamInfo->staId) ;
 
+                    curr_peer = wlan_hdd_tdls_find_peer(pAdapter, pRoamInfo->peerMac);
+                    if (NULL != curr_peer && TDLS_IS_CONNECTED(curr_peer))
+                    {
+                        hdd_roamDeregisterTDLSSTA ( pAdapter, pRoamInfo->staId );
+                        wlan_hdd_tdls_decrement_peer_count(pAdapter);
+                    }
                     wlan_hdd_tdls_reset_peer(pAdapter, pRoamInfo->peerMac);
-                    hdd_roamDeregisterTDLSSTA ( pAdapter, pRoamInfo->staId );
-                    wlan_hdd_tdls_decrement_peer_count(pAdapter);
-
                     (WLAN_HDD_GET_CTX(pAdapter))->sta_to_adapter[pRoamInfo->staId] = NULL;
 
                     pHddCtx->tdlsConnInfo[staIdx].staId = 0 ;
@@ -2028,20 +2032,19 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
                     break ;
                 }
             }
+            complete(&pAdapter->tdls_del_station_comp);
         }
         break ;
         case eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND:
         {
+            hddTdlsPeer_t *curr_peer;
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                        "%s: Sending teardown to supplicant with reason code %u",
                        __func__, pRoamInfo->reasonCode);
 
 #ifdef CONFIG_TDLS_IMPLICIT
-            cfg80211_tdls_oper_request(pAdapter->dev,
-                                       pRoamInfo->peerMac,
-                                       NL80211_TDLS_TEARDOWN,
-                                       pRoamInfo->reasonCode,
-                                       GFP_KERNEL);
+            curr_peer = wlan_hdd_tdls_find_peer(pAdapter, pRoamInfo->peerMac);
+            wlan_hdd_tdls_indicate_teardown(pAdapter, curr_peer, pRoamInfo->reasonCode);
 #endif
             status = eHAL_STATUS_SUCCESS ;
             break ;
