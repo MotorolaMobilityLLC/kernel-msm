@@ -3729,7 +3729,9 @@ typedef PACKED_PRE struct PACKED_POST
 #define HAL_OFFLOAD_DISABLE                         0
 #define HAL_OFFLOAD_ENABLE                          1
 #define HAL_OFFLOAD_BCAST_FILTER_ENABLE             0x2
+#define HAL_OFFLOAD_MCAST_FILTER_ENABLE             0x4
 #define HAL_OFFLOAD_ARP_AND_BCAST_FILTER_ENABLE     (HAL_OFFLOAD_ENABLE|HAL_OFFLOAD_BCAST_FILTER_ENABLE)
+#define HAL_OFFLOAD_IPV6NS_AND_MCAST_FILTER_ENABLE  (HAL_OFFLOAD_ENABLE|HAL_OFFLOAD_MCAST_FILTER_ENABLE)
 
 typedef PACKED_PRE struct PACKED_POST _tHalNSOffloadParams
 {
@@ -3744,8 +3746,8 @@ typedef PACKED_PRE struct PACKED_POST _tHalNSOffloadParams
    tANI_U8 targetIPv6Addr2Valid : 1;
    tANI_U8 reserved1 : 5;
    tANI_U8 reserved2;   //make it DWORD aligned
-   tANI_U32 slotIndex; // slot index for this offload
    tANI_U8 bssIdx;
+   tANI_U32 slotIndex; // slot index for this offload
 } tHalNSOffloadParams;
 
 typedef PACKED_PRE struct PACKED_POST
@@ -4737,6 +4739,8 @@ typedef PACKED_PRE struct PACKED_POST
 #define WLAN_COEX_IND_DATA_SIZE (4)
 #define WLAN_COEX_IND_TYPE_DISABLE_HB_MONITOR (0)
 #define WLAN_COEX_IND_TYPE_ENABLE_HB_MONITOR (1)
+#define WLAN_COEX_IND_TYPE_SCANS_ARE_COMPROMISED_BY_COEX (2)
+#define WLAN_COEX_IND_TYPE_SCANS_ARE_NOT_COMPROMISED_BY_COEX (3)
 
 typedef PACKED_PRE struct PACKED_POST
 {
