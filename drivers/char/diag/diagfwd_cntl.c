@@ -137,54 +137,6 @@ int diag_process_smd_cntl_read_data(struct diag_smd_info *smd_info, void *buf,
 	return flag;
 }
 
-void diag_send_diag_mode_update(struct diag_smd_info *smd_info,
-				unsigned int optimized)
-{
-	struct diag_ctrl_msg_diagmode_mdlog diagmode;
-
-	/* For now only allow the modem to receive the message */
-	if (!smd_info || smd_info->peripheral != MODEM_DATA ||
-		smd_info->type != SMD_CNTL_TYPE) {
-		pr_err("diag: returning early smd_info->peripheral: %d,"
-			" smd_info->type: %d\n",
-			smd_info->peripheral, smd_info->type);
-		return;
-	}
-
-	pr_debug("diag: In %s,  sending diag_mode_message(%d)\n",
-		__func__, optimized);
-
-	mutex_lock(&driver->diag_cntl_mutex);
-	diagmode.ctrl_pkt_id = DIAG_CTRL_MSG_DIAGMODE_MDLOG;
-	diagmode.ctrl_pkt_data_len = 32;
-	diagmode.version = 1;
-
-	/* user option */
-	diagmode.optimized = optimized;
-
-	/* the following parameters are hard-coded for now.
-	   they could be modified by trial user through somehow
-	   in futrue enhancement */
-	/* commit threshold 128k */
-	diagmode.commit_threshold = 1024*128;
-	/* drain timer ticks in 60 seconds */
-	diagmode.drain_timer_val = 1000*60;
-	/* event stale timer ticks in 60 seconds */
-	diagmode.event_stale_timer_val = 1000*60;
-	/* don't drain if less than 1k total in buffer */
-	diagmode.drain_low_threshold = 1024;
-	/* drain if buffer in use exceed this */
-	diagmode.drain_high_threshold = 1024*128;
-	/* drain in 60 sec even if buf usage is < drain_high_threshold */
-	diagmode.drain_interval_in_secs = 60;
-
-	diag_send_ctrl_msg(smd_info, &diagmode, sizeof(diagmode));
-
-	mutex_unlock(&driver->diag_cntl_mutex);
-	pr_debug("diag: Exiting %s\n", __func__);
-}
-
-
 void diag_send_diag_flush(struct diag_smd_info *smd_info)
 {
 	struct diag_ctrl_msg_diag_flush diag_flush;
@@ -362,4 +314,51 @@ void diagfwd_cntl_exit(void)
 
 	platform_driver_unregister(&msm_smd_ch1_cntl_driver);
 	platform_driver_unregister(&diag_smd_lite_cntl_driver);
+}
+
+void diag_send_diag_mode_update(int optimized)
+{
+	int i;
+
+	pr_debug("diag: diag_send_diag_mode_update, optimized:%d", optimized);
+	for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++)
+		diag_send_diag_mode_update_by_smd(&driver->smd_cntl[i],
+							optimized);
+}
+
+void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
+							int optimized)
+{
+	struct diag_ctrl_msg_diagmode diagmode;
+	int real_time;
+
+	/* Send command to control channel only */
+	if (!smd_info || smd_info->type != SMD_CNTL_TYPE)
+		return;
+
+	real_time = (optimized == 1) ? 0 : 1;
+
+	mutex_lock(&driver->diag_cntl_mutex);
+	diagmode.ctrl_pkt_id = DIAG_CTRL_MSG_DIAGMODE;
+	diagmode.ctrl_pkt_data_len = 36;
+	diagmode.version = 1;
+	diagmode.sleep_vote = real_time;
+	/*
+	 * 0 - Disables real-time logging (to prevent
+	 *     frequent APPS wake-ups, etc.).
+	 * 1 - Enable real-time logging
+	 */
+	diagmode.real_time = real_time;
+	diagmode.use_nrt_values = 0;
+	diagmode.commit_threshold = 0;
+	diagmode.sleep_threshold = 0;
+	diagmode.sleep_time = 0;
+	diagmode.drain_timer_val = 0;
+	diagmode.event_stale_timer_val = 0;
+	pr_debug("diag: diag_send_diag_mode_update_by_smd, real_time:%d",
+		real_time);
+
+	diag_send_ctrl_msg(smd_info, &diagmode, sizeof(diagmode));
+
+	mutex_unlock(&driver->diag_cntl_mutex);
 }

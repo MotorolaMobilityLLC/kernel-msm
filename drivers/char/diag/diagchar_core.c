@@ -296,6 +296,8 @@ static int diagchar_close(struct inode *inode, struct file *file)
 	/* If the SD logging process exits, change logging to USB mode */
 	if (driver->logging_process_id == current->tgid) {
 		driver->logging_mode = USB_MODE;
+		/* set to non-optimized mode */
+		diag_send_diag_mode_update(DIAG_NON_OPTIMIZED_MODE);
 		diagfwd_connect();
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 		diag_clear_hsic_tbl();
