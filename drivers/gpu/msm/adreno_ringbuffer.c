@@ -581,6 +581,9 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 		total_sizedwords += 3; /* global timestamp without cache
 					* flush for non-zero context */
 
+	if (flags & KGSL_CMD_FLAGS_EOF)
+		total_sizedwords += 2;
+
 	ringcmds = adreno_ringbuffer_allocspace(rb, context, total_sizedwords);
 	if (!ringcmds)
 		return -ENOSPC;
