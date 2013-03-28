@@ -6599,6 +6599,35 @@ eHalStatus sme_SetMaxTxPower(tHalHandle hHal, tSirMacAddr pBssid,
 
 /* ---------------------------------------------------------------------------
 
+    \fn sme_SetTxPower
+
+    \brief Set Transmit Power dynamically. Note: this setting will
+    not persist over reboots.
+
+    \param  hHal
+    \param sessionId  Target Session ID
+    \param mW  power to set in mW
+    \- return eHalStatus
+
+  -------------------------------------------------------------------------------*/
+eHalStatus sme_SetTxPower(tHalHandle hHal, v_U8_t sessionId, v_U8_t mW)
+{
+
+   eHalStatus status = eHAL_STATUS_FAILURE;
+   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+   smsLog(pMac, LOG1, FL("set tx power %dmW"), mW);
+   status = sme_AcquireGlobalLock(&pMac->sme);
+   if (HAL_STATUS_SUCCESS(status))
+   {
+      status = csrSetTxPower(pMac, sessionId, mW);
+      sme_ReleaseGlobalLock(&pMac->sme);
+   }
+   return status;
+}
+
+/* ---------------------------------------------------------------------------
+
     \fn sme_HideSSID
 
     \brief hide/show SSID dynamically. Note: this setting will

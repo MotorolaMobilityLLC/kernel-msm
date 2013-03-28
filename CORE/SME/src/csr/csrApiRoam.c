@@ -15277,3 +15277,36 @@ eHalStatus csrGetCurrentCountryCode(tpAniSirGlobal pMac, tANI_U8 *pCountry)
          WNI_CFG_COUNTRY_CODE_LEN );
    return eHAL_STATUS_SUCCESS;
 }
+
+eHalStatus csrSetTxPower(tpAniSirGlobal pMac, v_U8_t sessionId, v_U8_t mW)
+{
+   tSirSetTxPowerReq *pMsg = NULL;
+   eHalStatus status = eHAL_STATUS_SUCCESS;
+   tCsrRoamSession *pSession = CSR_GET_SESSION(pMac, sessionId);
+
+   if (!pSession)
+   {
+       smsLog(pMac, LOGE, FL("  session %d not found "), sessionId);
+       return eHAL_STATUS_FAILURE;
+   }
+
+   status = palAllocateMemory(pMac->hHdd, (void **)&pMsg, sizeof(tSirSetTxPowerReq));
+   if (HAL_STATUS_SUCCESS(status))
+   {
+       palZeroMemory(pMac->hHdd, (void *)pMsg, sizeof(tSirSetTxPowerReq));
+       pMsg->messageType     = eWNI_SME_SET_TX_POWER_REQ;
+       pMsg->length          = sizeof(tSirSetTxPowerReq);
+       pMsg->mwPower         = mW;
+       palCopyMemory( pMac->hHdd,
+             (tSirMacAddr *)pMsg->bssId,
+             &pSession->selfMacAddr,
+             sizeof(tSirMacAddr) );
+       status = palSendMBMessage(pMac->hHdd, pMsg);
+       if (!HAL_STATUS_SUCCESS(status))
+       {
+           smsLog(pMac, LOGE, FL(" csr set TX Power Post MSG Fail %d "), status);
+           palFreeMemory(pMac->hHdd, pMsg);
+       }
+   }
+   return status;
+}

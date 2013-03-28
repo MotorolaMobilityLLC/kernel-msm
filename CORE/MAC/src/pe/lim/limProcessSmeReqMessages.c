@@ -5326,6 +5326,10 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             __limProcessSmeResetApCapsChange(pMac, pMsgBuf);
             break;
 
+        case eWNI_SME_SET_TX_POWER_REQ:
+            limSendSetTxPowerReq(pMac,  pMsgBuf);
+            break ;
+
         default:
             vos_mem_free((v_VOID_t*)pMsg->bodyptr);
             pMsg->bodyptr = NULL;

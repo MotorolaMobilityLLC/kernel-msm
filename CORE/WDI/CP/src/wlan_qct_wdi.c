@@ -343,14 +343,15 @@ WDI_ReqProcFuncType  pfnReqProcTbl[WDI_MAX_UMAC_IND] =
 #else
   NULL,
 #endif
-  /*-------------------------------------------------------------------------
-    Indications
-  -------------------------------------------------------------------------*/
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
   WDI_ProcessGetRoamRssiReq,            /* WDI_GET_ROAM_RSSI_REQ  */
 #else
- NULL,
+  NULL,
 #endif
+  WDI_ProcessSetTxPowerReq,             /* WDI_SET_TX_POWER_REQ*/
+  /*-------------------------------------------------------------------------
+    Indications
+  -------------------------------------------------------------------------*/
   WDI_ProcessHostSuspendInd,            /* WDI_HOST_SUSPEND_IND*/
   WDI_ProcessTrafficStatsInd,           /* WDI_TRAFFIC_STATS_IND*/
 };
@@ -512,12 +513,15 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
   WDI_ProcessFeatureCapsExchangeRsp,    /* WDI_FEATURE_CAPS_EXCHANGE_RESP */
 #ifdef WLAN_FEATURE_11AC
   WDI_ProcessUpdateVHTOpModeRsp,        /* WDI_UPDATE_VHT_OP_MODE_RESP */
+#else
+   NULL,
 #endif
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
   WDI_ProcessGetRoamRssiRsp,            /* WDI_GET_ROAM_RSSI_RESP  */
 #else
   NULL,
 #endif
+  WDI_ProcessSetTxPowerRsp,             /* WDI_SET_TX_POWER_RESP */
 
   /*---------------------------------------------------------------------
     Indications
@@ -2690,6 +2694,57 @@ WDI_SetMaxTxPowerReq
   wdiEventData.wdiRequest      = WDI_SET_MAX_TX_POWER_REQ;
   wdiEventData.pEventData      = pwdiSetMaxTxPowerParams;
   wdiEventData.uEventDataSize  = sizeof(*pwdiSetMaxTxPowerParams);
+  wdiEventData.pCBfnc          = wdiReqStatusCb;
+  wdiEventData.pUserData       = pUserData;
+
+  return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
+}
+
+/**
+ @brief WDI_SetTxPowerReq will be called when the upper
+        MAC wants to set Tx Power to HW.
+        In state BUSY this request will be queued. Request won't
+        be allowed in any other state.
+
+
+ @param pwdiSetTxPowerParams: set TS Power parameters
+           BSSID and target TX Power with dbm included
+
+        wdiReqStatusCb: callback for passing back the response
+
+        pUserData: user data will be passed back with the
+        callback
+
+ @return Result of the function call
+*/
+WDI_Status
+WDI_SetTxPowerReq
+(
+  WDI_SetTxPowerParamsType*   pwdiSetTxPowerParams,
+  WDA_SetTxPowerRspCb         wdiReqStatusCb,
+  void*                       pUserData
+)
+{
+  WDI_EventInfoType      wdiEventData;
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  /*------------------------------------------------------------------------
+    Sanity Check
+  ------------------------------------------------------------------------*/
+  if ( eWLAN_PAL_FALSE == gWDIInitialized )
+  {
+    WPAL_TRACE(eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+              "WDI API call before module is initialized - Fail request");
+
+    return WDI_STATUS_E_NOT_ALLOWED;
+  }
+
+  /*------------------------------------------------------------------------
+    Fill in Event data and post to the Main FSM
+  ------------------------------------------------------------------------*/
+  wdiEventData.wdiRequest      = WDI_SET_TX_POWER_REQ;
+  wdiEventData.pEventData      = pwdiSetTxPowerParams;
+  wdiEventData.uEventDataSize  = sizeof(*pwdiSetTxPowerParams);
   wdiEventData.pCBfnc          = wdiReqStatusCb;
   wdiEventData.pUserData       = pUserData;
 
@@ -11840,6 +11895,80 @@ if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx, WDI_SET_MAX_TX_POWER_
 
 }
 
+/**
+ @brief Process Set Tx Power Request function (called when Main
+        FSM allows it)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status WDI_ProcessSetTxPowerReq
+(
+  WDI_ControlBlockType*  pWDICtx,
+  WDI_EventInfoType*     pEventData
+)
+{
+  WDI_SetTxPowerParamsType*      pwdiSetTxPowerParams = NULL;
+  WDA_SetTxPowerRspCb            wdiSetTxPowerRspCb;
+  wpt_uint8*                     pSendBuffer          = NULL;
+  wpt_uint16                     usDataOffset         = 0;
+  wpt_uint16                     usSendSize           = 0;
+  tSetTxPwrReqMsg                *halSetTxPower       = NULL;;
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  /*-------------------------------------------------------------------------
+    Sanity check
+  -------------------------------------------------------------------------*/
+  if (( NULL == pEventData ) ||
+      ( NULL == pEventData->pEventData ) ||
+      ( NULL == pEventData->pCBfnc ))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  pwdiSetTxPowerParams =
+    (WDI_SetTxPowerParamsType*)pEventData->pEventData;
+  wdiSetTxPowerRspCb =
+    (WDA_SetTxPowerRspCb)pEventData->pCBfnc;
+
+  /*-----------------------------------------------------------------------
+    Get message buffer
+  -----------------------------------------------------------------------*/
+  if (( WDI_STATUS_SUCCESS != WDI_GetMessageBuffer( pWDICtx, WDI_SET_TX_POWER_REQ,
+                        sizeof(tSetTxPwrReqParams),
+                        &pSendBuffer, &usDataOffset, &usSendSize))||
+      ( usSendSize < (usDataOffset + sizeof(tSetTxPwrReqParams)
+  )))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR,
+                 "Unable to get Set Max Tx Power req %x %x %x",
+                 pEventData, pwdiSetTxPowerParams, wdiSetTxPowerRspCb);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  halSetTxPower = (tSetTxPwrReqMsg *)(pSendBuffer+usDataOffset);
+  halSetTxPower->setTxPwrReqParams.txPower =
+                  pwdiSetTxPowerParams->wdiTxPowerInfo.ucPower;
+  halSetTxPower->setTxPwrReqParams.bssIdx =
+                  pwdiSetTxPowerParams->wdiTxPowerInfo.bssIdx;
+
+  pWDICtx->wdiReqStatusCB     = pwdiSetTxPowerParams->wdiReqStatusCB;
+  pWDICtx->pReqStatusUserData = pwdiSetTxPowerParams->pUserData;
+
+  /*-------------------------------------------------------------------------
+    Send Set Tx Power Request to HAL
+  -------------------------------------------------------------------------*/
+  return  WDI_SendMsg( pWDICtx, pSendBuffer, usSendSize,
+                       wdiSetTxPowerRspCb, pEventData->pUserData,
+                       WDI_SET_TX_POWER_RESP);
+}
 
 /**
  @brief Process P2P Notice Of Absence Request function (called when Main FSM
@@ -17128,6 +17257,66 @@ WDI_ProcessSetMaxTxPowerRsp
   return WDI_STATUS_SUCCESS;
 }
 
+  /**
+ @brief Process Set Tx Power Rsp function (called when a response
+        is being received over the bus from HAL)
+
+ @param  pWDICtx:         pointer to the WLAN DAL context
+         pEventData:      pointer to the event information structure
+
+ @see
+ @return Result of the function call
+*/
+WDI_Status
+WDI_ProcessSetTxPowerRsp
+(
+  WDI_ControlBlockType*          pWDICtx,
+  WDI_EventInfoType*             pEventData
+)
+{
+  tSetTxPwrRspMsg             halTxpowerrsp;
+  WDI_SetTxPowerRspMsg        wdiSetTxPowerRspMsg;
+  WDA_SetTxPowerRspCb         wdiReqStatusCb;
+  /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  /*-------------------------------------------------------------------------
+    Sanity check
+  -------------------------------------------------------------------------*/
+  if (( NULL == pWDICtx ) || ( NULL == pEventData ) ||
+      ( NULL == pEventData->pEventData))
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL, eWLAN_PAL_TRACE_LEVEL_WARN,
+                 "%s: Invalid parameters", __func__);
+     WDI_ASSERT(0);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  wdiReqStatusCb = (WDA_SetTxPowerRspCb)pWDICtx->pfncRspCB;
+
+  /*-------------------------------------------------------------------------
+    Extract response and send it to UMAC
+  -------------------------------------------------------------------------*/
+  wpalMemoryCopy(&halTxpowerrsp.setTxPwrRspParams,
+                 pEventData->pEventData,
+                 sizeof(halTxpowerrsp.setTxPwrRspParams));
+
+  if (eHAL_STATUS_SUCCESS != halTxpowerrsp.setTxPwrRspParams.status)
+  {
+     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_ERROR,
+                 "Error status returned in Set Tx Power Response ");
+     WDI_DetectedDeviceError(pWDICtx, WDI_ERR_BASIC_OP_FAILURE);
+     return WDI_STATUS_E_FAILURE;
+  }
+
+  wdiSetTxPowerRspMsg.wdiStatus =
+         WDI_HAL_2_WDI_STATUS(halTxpowerrsp.setTxPwrRspParams.status);
+
+  /*Notify UMAC*/
+  wdiReqStatusCb(&wdiSetTxPowerRspMsg, pWDICtx->pRspCBUserData);
+
+  return WDI_STATUS_SUCCESS;
+}
+
 /**
  @brief Process P2P Group Owner Notice Of Absense Rsp function (called
         when a response is being received over the bus from HAL)
@@ -21326,6 +21515,8 @@ WDI_2_HAL_REQ_TYPE
     return WLAN_HAL_UPDATE_PROBE_RSP_TEMPLATE_REQ;
    case WDI_SET_MAX_TX_POWER_REQ:
     return WLAN_HAL_SET_MAX_TX_POWER_REQ;
+   case WDI_SET_TX_POWER_REQ:
+    return WLAN_HAL_SET_TX_POWER_REQ;
   case WDI_P2P_GO_NOTICE_OF_ABSENCE_REQ:
     return WLAN_HAL_SET_P2P_GONOA_REQ;
   case WDI_ENTER_IMPS_REQ:
@@ -21546,6 +21737,8 @@ HAL_2_WDI_RSP_TYPE
     return WDI_HAL_TX_PER_HIT_IND;
   case WLAN_HAL_SET_MAX_TX_POWER_RSP:
     return WDI_SET_MAX_TX_POWER_RESP;
+  case WLAN_HAL_SET_TX_POWER_RSP:
+    return WDI_SET_TX_POWER_RESP;
   case WLAN_HAL_SET_P2P_GONOA_RSP:
     return WDI_P2P_GO_NOTICE_OF_ABSENCE_RESP;
   case WLAN_HAL_ENTER_IMPS_RSP:
