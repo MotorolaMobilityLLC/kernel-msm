@@ -117,12 +117,27 @@
 void sapCleanupChannelList(void)
 {
     v_PVOID_t pvosGCtx = vos_get_global_context(VOS_MODULE_ID_SAP, NULL);
-    ptSapContext pSapCtx = VOS_GET_SAP_CB(pvosGCtx);
+    ptSapContext pSapCtx;
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO, 
                "Cleaning up the channel list structure");
 
-    pSapCtx->SapChnlList.numChannel =0;
+    if (NULL == pvosGCtx)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL,
+                   "SAP Global Context is NULL");
+        return ;
+    }
+
+    pSapCtx = VOS_GET_SAP_CB(pvosGCtx);
+    if (NULL == pSapCtx)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL,
+                   "SAP Context is NULL");
+        return ;
+    }
+
+    pSapCtx->SapChnlList.numChannel = 0;
     vos_mem_free(pSapCtx->SapChnlList.channelList);
     pSapCtx->SapChnlList.channelList = NULL;
 }
@@ -150,13 +165,28 @@ int sapSetPreferredChannel(tANI_U8* ptr)
 {
 
     v_PVOID_t pvosGCtx = vos_get_global_context(VOS_MODULE_ID_SAP, NULL);
-    ptSapContext pSapCtx = VOS_GET_SAP_CB(pvosGCtx); 
+    ptSapContext pSapCtx;
     tANI_U8* param;
     int tempInt;
     int j;
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
                "Enter: %s", __func__);
+
+    if (NULL == pvosGCtx)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL,
+                   "SAP Global Context is NULL");
+        return -EINVAL;
+    }
+
+    pSapCtx = VOS_GET_SAP_CB(pvosGCtx);
+    if (NULL == pSapCtx)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_FATAL,
+                   "SAP Context is NULL");
+        return -EINVAL;
+    }
 
     if (NULL != pSapCtx->SapChnlList.channelList)
     {
@@ -189,16 +219,21 @@ int sapSetPreferredChannel(tANI_U8* ptr)
 
     /*getting the first argument ie the number of channels*/
     sscanf(param, "%d ", &tempInt);
-    pSapCtx->SapChnlList.numChannel = tempInt;
 
     VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, 
-               "Number of channel added are: %d", 
-               pSapCtx->SapChnlList.numChannel);
+               "Number of channel added are: %d", tempInt);
 
     /*allocating space for the desired number of channels*/
-    pSapCtx->SapChnlList.channelList = 
-        (v_U8_t *)vos_mem_malloc(pSapCtx->SapChnlList.numChannel);
+    pSapCtx->SapChnlList.channelList = (v_U8_t *)vos_mem_malloc(tempInt);
 
+    if (NULL ==  pSapCtx->SapChnlList.channelList)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                   "In %s, VOS_MALLOC_ERR", __func__);
+        return -EINVAL;
+    }
+
+    pSapCtx->SapChnlList.numChannel = tempInt;
     for(j=0;j<pSapCtx->SapChnlList.numChannel;j++)
     {
 
@@ -1117,7 +1152,7 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
 #ifdef SOFTAP_CHANNEL_RANGE
     v_U32_t startChannelNum;
     v_U32_t endChannelNum;
-    v_U32_t operatingBand;
+    v_U32_t operatingBand = 0;
     v_U8_t  count = 0;
 #endif    
     VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH, "In %s, Running SAP Ch Select", __func__);
@@ -1134,10 +1169,6 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
     // Compute the weight of the entire spectrum in the operating band
     sapComputeSpectWeight( pSpectInfoParams, halHandle, pScanResult);
 
-    // Caluculating the Non overlapping Channel Availability */
-    if(operatingBand == RF_SUBBAND_2_4_GHZ)
-        nonOverlap = sapComputeNonOverlapChannel(pSpectInfoParams);
-
     // Sort the 20M channel list as per the computed weights, lesser weight first.
     sapSortChlWeight(pSpectInfoParams);
 
@@ -1145,6 +1176,10 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
     ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_START_CHANNEL, &startChannelNum);
     ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_END_CHANNEL, &endChannelNum);
     ccmCfgGetInt( halHandle, WNI_CFG_SAP_CHANNEL_SELECT_OPERATING_BAND, &operatingBand);
+
+    // Calculating the Non overlapping Channel Availability */
+    if(operatingBand == RF_SUBBAND_2_4_GHZ)
+        nonOverlap = sapComputeNonOverlapChannel(pSpectInfoParams);
 
     /*Loop till get the best channel in the given range */
     for(count=0; count < pSpectInfoParams->numSpectChans ; count++)
