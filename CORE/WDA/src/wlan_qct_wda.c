@@ -10817,6 +10817,14 @@ void WDA_TrafficStatsTimerActivate(wpt_boolean activate)
    tWDA_CbContext *pWDA =  vos_get_context(VOS_MODULE_ID_WDA, pVosContext);
    tpAniSirGlobal pMac = (tpAniSirGlobal )VOS_GET_MAC_CTXT(pVosContext);
    
+   if (NULL == pMac )
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: Invoked with invalid MAC context ", __func__ );
+      VOS_ASSERT(0);
+      return;
+   }
+
    if(wlan_cfgGetInt(pMac, WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, &enabled) 
                                                       != eSIR_SUCCESS)
    {
@@ -10874,6 +10882,14 @@ void WDA_TimerTrafficStatsInd(tWDA_CbContext *pWDA)
    WDI_TrafficStatsIndType trafficStatsIndParams;
    wpt_uint32 length, enabled;
    tpAniSirGlobal pMac = (tpAniSirGlobal )VOS_GET_MAC_CTXT(pWDA->pVosContext);
+
+   if (NULL == pMac )
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                 "%s: Invoked with invalid MAC context ", __func__ );
+      VOS_ASSERT(0);
+      return;
+   }
 
    if(wlan_cfgGetInt(pMac, WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, &enabled) 
                                                       != eSIR_SUCCESS)
@@ -11396,8 +11412,13 @@ void WDA_RssiFilterCallback(WDI_Status status, void* pUserData)
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "<------ %s " ,__func__);
 
-   VOS_ASSERT(NULL != pWdaParams);
-   
+   if(NULL == pWdaParams)
+   {
+      VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+              "%s: pWdaParams is NULL", __func__);
+      VOS_ASSERT(0);
+      return ;
+   }
    vos_mem_free(pWdaParams->wdaMsgParam) ;
    vos_mem_free(pWdaParams->wdaWdiApiMsgParam);
    vos_mem_free(pWdaParams) ;
