@@ -18,6 +18,8 @@
 
 	mmi,product = "mmi,msm8960ab-ultra";
 
+	mmi,dt_revision = <2>;
+
 	System@0 {
 		Display@0 {
 			/* Name of display driver  */
