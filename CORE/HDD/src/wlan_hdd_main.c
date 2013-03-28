@@ -5650,15 +5650,9 @@ VOS_STATUS wlan_hdd_restart_driver(hdd_context_t *pHddCtx)
 
       return VOS_STATUS_E_ALREADY;
    }
-   /* when WLAN driver is statically linked, then invoke SSR by sending 
-    * the reset interrupt. If it is DLKM, then use restart API
-    */
-#ifdef MODULE
-   status = wlan_hdd_framework_restart(pHddCtx);
-#else
+   /* Send reset FIQ to WCNSS to invoke SSR. */
 #ifdef HAVE_WCNSS_RESET_INTR
    wcnss_reset_intr();
-#endif
 #endif
  
    return status;
