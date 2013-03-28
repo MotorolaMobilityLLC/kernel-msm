@@ -18,6 +18,8 @@
 
 	mmi,product = "mmi,msm8960ab-ultram";
 
+	mmi,dt_revision = <2>;
+
 	rpm_regulators: qcom,rpm-regulators {
 		compatible = "qcom,msm-rpm-regulators";
 
