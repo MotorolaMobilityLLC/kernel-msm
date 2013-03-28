@@ -7264,6 +7264,13 @@ WLANTL_FwdPktToHDD
     return VOS_STATUS_E_FAULT;
   }
 
+  if(WLANTL_STA_ID_INVALID(ucSTAId))
+  {
+     TLLOGE(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,"ucSTAId %d is not valid",
+                 ucSTAId));
+     return VOS_STATUS_E_INVAL;
+  }
+
   pClientSTA = pTLCb->atlSTAClients[ucSTAId];
 
   if ( NULL == pClientSTA )
@@ -7890,7 +7897,13 @@ WLANTL_McProcessMsg
     // Extract the message from the message body
     FlushACRspPtr = (tpFlushACRsp)(message->bodyptr);
     // Make sure the call back function is not null.
-    VOS_ASSERT(pTLCb->tlBAPClient.pfnFlushOpCompleteCb != NULL);
+    if ( NULL == pTLCb->tlBAPClient.pfnFlushOpCompleteCb )
+    {
+      VOS_ASSERT(0);
+      TLLOGE(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_ERROR,
+       "WLAN TL:Invalid TL pointer pfnFlushOpCompleteCb"));
+      return VOS_STATUS_E_FAULT;
+    }
 
     TLLOG2(VOS_TRACE(VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
             "Received message:  Flush complete received by TL"));
@@ -9773,10 +9786,13 @@ WLAN_TLGetNextTxIds
                "STA ID: %d on WLAN_TLGetNextTxIds", *pucSTAId));
         pTLCb->ucCurrentSTA = ucNextSTA;
         break;
-      } else
+      }
+      else
+      {
         TLLOG2(VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_INFO_HIGH,
                "%s Sta %d is not in auth state, skipping this sta.",
                __func__, ucNextSTA));
+      }
     }
   }
 

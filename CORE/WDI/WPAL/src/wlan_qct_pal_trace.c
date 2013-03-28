@@ -284,8 +284,11 @@ void wpalTrace( wpt_moduleid module, wpt_tracelevel level, char *strFormat, ... 
 
       // print the formatted log message after the prefix string.
       // note we reserve space for the terminating NUL
-      vsnprintf(strBuffer + n, WPAL_TRACE_BUFFER_SIZE - n - 1, strFormat, val);
-      wpalOutput(level, strBuffer);
+      if (n < WPAL_TRACE_BUFFER_SIZE)
+      {
+         vsnprintf(strBuffer + n, WPAL_TRACE_BUFFER_SIZE - n - 1, strFormat, val);
+         wpalOutput(level, strBuffer);
+      }
       va_end(val);
    }
 }

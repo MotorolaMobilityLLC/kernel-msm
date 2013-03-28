@@ -18,6 +18,7 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+
 /*==========================================================================
  *
  *  @file:     wlan_hal_msg.h
@@ -26,7 +27,7 @@
  *
  *  @author:   Kumar Anand
  *
- *             Copyright (C) 2010, Qualcomm, Inc. 
+ *             Copyright (C) 2010, Qualcomm Technologies, Inc. 
  *             All rights reserved.
  *
  *=========================================================================*/
@@ -356,7 +357,7 @@ typedef enum
 
    WLAN_HAL_GET_ROAM_RSSI_REQ               = 185,
    WLAN_HAL_GET_ROAM_RSSI_RSP               = 186,
-
+   
    WLAN_HAL_CLASS_B_STATS_IND               = 187,
    WLAN_HAL_DEL_BA_IND                      = 188,
    WLAN_HAL_DHCP_START_IND                  = 189,
@@ -5559,8 +5560,8 @@ typedef enum {
     BCN_FILTER         = 19,
     RTT                = 20,
     RATECTRL           = 21,
-    WOW                = 22,
-    MAX_FEATURE_SUPPORTED = 128,
+    WOW                = 22
+    //MAX_FEATURE_SUPPORTED = 128
 } placeHolderInCapBitmap;
 
 typedef PACKED_PRE struct PACKED_POST{
