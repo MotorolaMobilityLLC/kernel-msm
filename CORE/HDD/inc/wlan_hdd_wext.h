@@ -220,10 +220,13 @@ typedef enum
 #define HDD_WPS_ELEM_REGISTRA_CONF_METHODS  0x1053
 
 
- 
+
 #define WPS_OUI_TYPE   "\x00\x50\xf2\x04"
 #define WPS_OUI_TYPE_SIZE  4
- 
+
+#define SS_OUI_TYPE    "\x00\x16\x32"
+#define SS_OUI_TYPE_SIZE   3
+
 #define P2P_OUI_TYPE   "\x50\x6f\x9a\x09"
 #define P2P_OUI_TYPE_SIZE  4
 
