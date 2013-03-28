@@ -59,16 +59,81 @@ static struct ov660_data_t *ov660_data;
 bool allow_asic_control;
 static bool change_rgbc_output;
 
-static struct ov660_reg_i2c_tbl ov660_ov10820_full_settings[] = {
-	{0x6020, 0x62},
-	{0x6021, 0x7a},
-	{0x6026, 0x56},
-	{0x60a0, 0x15},
-	{0x6813, 0x03},
+static struct ov660_reg_i2c_tbl ov660_ov10820r1a_full_24fps_settings[] = {
+	{0x6020, 0x60},
+	{0x6021, 0x60},
+	{0x6026, 0x58},
+	{0x60a0, 0x05},
+	{0x6814, 0x0a},
+	{0x6813, 0x00},
 	{0x6312, 0x09},
 	{0x6313, 0x80},
 	{0x6316, 0x09},
 	{0x6317, 0x80},
+	{0x6400, 0x88},
+	{0x6401, 0x80},
+	{0x6300, 0x10},
+	{0x6301, 0xe0},
+	{0x6302, 0x09},
+	{0x6303, 0x80},
+	{0x6819, 0x10},
+	{0x681a, 0xe0},
+	{0x681b, 0x09},
+	{0x681c, 0x80},
+	{0x6401, 0x80},
+	{0x7020, 0x09},
+	{0x7021, 0x7f},
+	{0x7001, 0xe9},
+	{0x7002, 0x15},
+	{0x7003, 0x10},
+	{0x7006, 0x03},
+	{0x704f, 0x10},
+	{0x7184, 0x05},
+	{0x7185, 0x0d},
+	{0x7188, 0x05},
+	{0x7189, 0x0d},
+};
+
+static struct ov660_reg_i2c_tbl ov660_ov10820r1b_full_24fps_settings[] = {
+	{0x6312, 0x09},
+	{0x6313, 0x80},
+	{0x6316, 0x09},
+	{0x6317, 0x80},
+	{0x6401, 0xfe},
+	{0x6300, 0x10},
+	{0x6301, 0xe0},
+	{0x6302, 0x09},
+	{0x6303, 0x80},
+	{0x6819, 0x10},
+	{0x681a, 0xe0},
+	{0x681b, 0x09},
+	{0x681c, 0x80},
+	{0x7020, 0x09},
+	{0x7021, 0x7f},
+	{0x7001, 0xe9},
+	{0x7002, 0x15},
+	{0x7003, 0x10},
+	{0x7004, 0x21},
+	{0x7006, 0x03},
+	{0x704f, 0x10},
+	{0x7184, 0x05},
+	{0x7185, 0x0d},
+	{0x7188, 0x05},
+	{0x7189, 0x0d},
+};
+
+static struct ov660_reg_i2c_tbl ov660_ov10820_full_15fps_settings[] = {
+	{0x6020, 0x62},
+	{0x6021, 0x7a},
+	{0x6026, 0x56},
+	{0x60a0, 0x15},
+	{0x6814, 0x0f},
+	{0x6813, 0x03},
+	{0x6312, 0x09},
+	{0x6316, 0x09},
+	{0x6317, 0x80},
+	{0x6400, 0x88},
+	{0x6401, 0x80},
 	{0x6300, 0x10},
 	{0x6301, 0xe0},
 	{0x6302, 0x09},
@@ -90,11 +155,13 @@ static struct ov660_reg_i2c_tbl ov660_ov10820_full_settings[] = {
 	{0x7189, 0x0d},
 };
 
-static struct ov660_reg_i2c_tbl ov660_ov10820_qtr_settings[] = {
+
+static struct ov660_reg_i2c_tbl ov660_ov10820r1a_qtr_settings[] = {
 	{0x6020, 0x60},
 	{0x6021, 0x3e},
 	{0x6026, 0x58},
 	{0x60a0, 0x05},
+	{0x6814, 0x0f},
 	{0x6813, 0x01},
 	{0x6312, 0x04},
 	{0x6313, 0xc0},
@@ -108,6 +175,7 @@ static struct ov660_reg_i2c_tbl ov660_ov10820_qtr_settings[] = {
 	{0x681a, 0x70},
 	{0x681b, 0x04},
 	{0x681c, 0xc0},
+	{0x6401, 0x40},
 	{0x7020, 0x04},
 	{0x7021, 0xbf},
 	{0x7001, 0xc8},
@@ -121,6 +189,33 @@ static struct ov660_reg_i2c_tbl ov660_ov10820_qtr_settings[] = {
 	{0x7189, 0x1a},
 };
 
+static struct ov660_reg_i2c_tbl ov660_ov10820r1b_qtr_settings[] = {
+	{0x6312, 0x04},
+	{0x6313, 0xc0},
+	{0x6316, 0x04},
+	{0x6317, 0xc0},
+	{0x6401, 0x3c},
+	{0x6300, 0x08},
+	{0x6301, 0x70},
+	{0x6302, 0x04},
+	{0x6303, 0xc0},
+	{0x6819, 0x08},
+	{0x681a, 0x70},
+	{0x681b, 0x04},
+	{0x681c, 0xc0},
+	{0x7020, 0x04},
+	{0x7021, 0xbf},
+	{0x7001, 0xc8},
+	{0x7002, 0x75},
+	{0x7003, 0x01},
+	{0x7004, 0x20},
+	{0x7006, 0x05},
+	{0x704f, 0x30},
+	{0x7184, 0x0a},
+	{0x7185, 0x1a},
+	{0x7188, 0x0a},
+	{0x7189, 0x1a},
+};
 
 static int ov660_write_i2c(uint16_t addr, uint8_t data)
 {
@@ -131,6 +226,8 @@ static int ov660_write_i2c(uint16_t addr, uint8_t data)
 		.flags = 0,
 		.buf = buf,
 		.len = 3, };
+
+	/*trace_printk("%x %x %x\n", 0x6a, addr, data);*/
 
 	buf[0] = addr >> 8;
 	buf[1] = (addr & 0x00FF);
@@ -249,19 +346,42 @@ EXIT_1:
 	return rc;
 }
 
-int32_t ov660_set_sensor_mode(int readout)
+int32_t ov660_set_sensor_mode(int readout, uint16_t revision)
 {
 	int32_t rc = 0;
 
 	pr_info("%s: select readout %d\n", __func__, readout);
 	switch (readout) {
 	case MSM_SENSOR_RES_FULL:
-		rc = ov660_write_i2c_tbl(ov660_ov10820_full_settings,
-				ARRAY_SIZE(ov660_ov10820_full_settings));
+		if (revision <= 0xb0) {
+			rc = ov660_write_i2c_tbl(
+					ov660_ov10820r1a_full_24fps_settings,
+					ARRAY_SIZE(
+					ov660_ov10820r1a_full_24fps_settings));
+		} else {
+			rc = ov660_write_i2c_tbl(
+					ov660_ov10820r1b_full_24fps_settings,
+					ARRAY_SIZE(
+					ov660_ov10820r1b_full_24fps_settings));
+		}
+
 		break;
 	case MSM_SENSOR_RES_QTR:
-		rc = ov660_write_i2c_tbl(ov660_ov10820_qtr_settings,
-				ARRAY_SIZE(ov660_ov10820_qtr_settings));
+		if (revision <= 0xb0) {
+			rc = ov660_write_i2c_tbl(
+					ov660_ov10820r1a_qtr_settings,
+					ARRAY_SIZE(
+					ov660_ov10820r1a_qtr_settings));
+		} else {
+			rc = ov660_write_i2c_tbl(
+					ov660_ov10820r1b_qtr_settings,
+					ARRAY_SIZE(
+					ov660_ov10820r1b_qtr_settings));
+		}
+		break;
+	case MSM_SENSOR_RES_2:
+		rc = ov660_write_i2c_tbl(ov660_ov10820_full_15fps_settings,
+				ARRAY_SIZE(ov660_ov10820_full_15fps_settings));
 		break;
 	default:
 		pr_err("%s: resolution doesn't exist %d\n", __func__, readout);
@@ -597,7 +717,7 @@ static struct ov660_reg_i2c_tbl ov660_ov10820_af_coefs[] = {
 	{0x79B3, 0x00},
 };
 
-static struct ov660_reg_i2c_tbl ov660_ov10820_init_settings[] = {
+static struct ov660_reg_i2c_tbl ov660_ov10820r1a_init_pll_settings[] = {
 	{0x6b00, 0x10},
 	{0x6101, 0x12},
 	{0x6103, 0x20},
@@ -618,6 +738,32 @@ static struct ov660_reg_i2c_tbl ov660_ov10820_init_settings[] = {
 	{0x60a0, 0x15},
 	{0x6814, 0x0f},
 	{0x6813, 0x03},
+};
+
+static struct ov660_reg_i2c_tbl ov660_ov10820r1b_init_pll_settings[] = {
+	{0x6b00, 0x10},
+	{0x6103, 0x20},
+	{0x6010, 0xff},
+	{0x6011, 0xff},
+	{0x6012, 0xff},
+	{0x6013, 0xff},
+	{0x6014, 0xff},
+	{0x6008, 0x00},
+	{0x6009, 0x00},
+	{0x600a, 0x00},
+	{0x600b, 0x00},
+	{0x600c, 0x00},
+	{0x600d, 0x00},
+	{0x600e, 0x00},
+	{0x6020, 0x60},
+	{0x6021, 0x60},
+	{0x6026, 0x58},
+	{0x60a0, 0x05},
+	{0x6814, 0x0a},
+	{0x6813, 0x00},
+};
+
+static struct ov660_reg_i2c_tbl ov660_ov10820_init_settings[] = {
 	{0x6805, 0x08},
 	{0x680c, 0x0c},
 	{0x6822, 0x4f},
@@ -652,7 +798,7 @@ static struct ov660_reg_i2c_tbl ov660_ov10820_init_settings[] = {
 	{0x628f, 0xab},
 	{0x6204, 0x0c},
 	{0x6402, 0x02},
-	{0x6400, 0x88},
+	{0x6400, 0xc0},
 	{0x6404, 0xa4},
 	{0x601b, 0x01},
 	{0x6823, 0x0f},
@@ -685,9 +831,9 @@ static struct ov660_reg_i2c_tbl ov660_ov10820_init_settings[] = {
 	{0x7110, 0x40},
 	{0x7111, 0x20},
 	{0x7cf6, 0x7b},
-	{0x7cf7, 0xed},
+	{0x7cf7, 0xde},
 	{0x7cf8, 0x37},
-	{0x7cf9, 0xdc},
+	{0x7cf9, 0xcd},
 	{0x7d1e, 0x01},
 	{0x7cfa, 0x00},
 	{0x7cfb, 0x43},
@@ -5817,10 +5963,19 @@ static struct ov660_reg_i2c_tbl ov660_ov10820_lsc_settings[] = {
 	{0x72ff, 0x9e},
 };
 
-int32_t ov660_initialize_10MP()
+int32_t ov660_initialize_10MP(uint16_t revision)
 {
 	int32_t rc = 0;
 	pr_debug("%s: enter\n", __func__);
+
+	if (revision <= 0xb0) {
+		rc = ov660_write_i2c_tbl(ov660_ov10820r1a_init_pll_settings,
+				ARRAY_SIZE(ov660_ov10820r1a_init_pll_settings));
+	} else {
+		rc = ov660_write_i2c_tbl(ov660_ov10820r1b_init_pll_settings,
+				ARRAY_SIZE(ov660_ov10820r1b_init_pll_settings));
+	}
+
 	rc = ov660_write_i2c_tbl(ov660_ov10820_init_settings,
 			ARRAY_SIZE(ov660_ov10820_init_settings));
 
