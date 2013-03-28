@@ -26,6 +26,7 @@
 #include <linux/input.h>
 #include <linux/ctype.h>
 #include <linux/hrtimer.h>
+#include <linux/wakelock.h>
 #include <linux/input/synaptics_rmi_dsx.h>
 #include "synaptics_dsx_i2c.h"
 
@@ -61,16 +62,19 @@
 
 #define attrify(propname) (&dev_attr_##propname.attr)
 
-#define show_prototype(propname)\
+#define show_prototype_ext(propname, perm)\
 static ssize_t concat(synaptics_rmi4_f54, _##propname##_show)(\
 		struct device *dev,\
 		struct device_attribute *attr,\
 		char *buf);\
 \
 struct device_attribute dev_attr_##propname =\
-		__ATTR(propname, S_IRUSR | S_IRGRP,\
+		__ATTR(propname, (perm),\
 		concat(synaptics_rmi4_f54, _##propname##_show),\
 		synaptics_rmi4_store_error);
+
+#define show_prototype(propname)\
+	show_prototype_ext(propname, S_IRUSR | S_IRGRP)
 
 #define store_prototype(propname)\
 static ssize_t concat(synaptics_rmi4_f54, _##propname##_store)(\
@@ -83,7 +87,7 @@ struct device_attribute dev_attr_##propname =\
 		synaptics_rmi4_show_error,\
 		concat(synaptics_rmi4_f54, _##propname##_store));
 
-#define show_store_prototype(propname)\
+#define show_store_prototype_ext(propname, perm)\
 static ssize_t concat(synaptics_rmi4_f54, _##propname##_show)(\
 		struct device *dev,\
 		struct device_attribute *attr,\
@@ -95,9 +99,13 @@ static ssize_t concat(synaptics_rmi4_f54, _##propname##_store)(\
 		const char *buf, size_t count);\
 \
 struct device_attribute dev_attr_##propname =\
-		__ATTR(propname, (S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP),\
+		__ATTR(propname, (perm),\
 		concat(synaptics_rmi4_f54, _##propname##_show),\
 		concat(synaptics_rmi4_f54, _##propname##_store));
+
+#define show_store_prototype(propname)\
+	show_store_prototype_ext(propname, \
+		S_IRUSR | S_IRGRP | S_IWUSR | S_IWGRP)
 
 #define simple_show_func(rtype, propname, fmt)\
 static ssize_t concat(synaptics_rmi4_f54, _##propname##_show)(\
@@ -882,7 +890,7 @@ struct synaptics_rmi4_fn55_desc {
 
 struct synaptics_rmi4_f54_handle {
 	bool no_auto_cal;
-	unsigned char status;
+	int status;
 	unsigned char intr_mask;
 	unsigned char intr_reg_num;
 	unsigned char *report_data;
@@ -894,6 +902,8 @@ struct synaptics_rmi4_f54_handle {
 	unsigned int report_size;
 	unsigned int data_buffer_size;
 	enum f54_report_types report_type;
+	enum f54_report_types user_report_type1;
+	enum f54_report_types user_report_type2;
 	struct mutex status_mutex;
 	struct mutex data_mutex;
 	struct mutex control_mutex;
@@ -907,20 +917,25 @@ struct synaptics_rmi4_f54_handle {
 	struct synaptics_rmi4_exp_fn_ptr *fn_ptr;
 	struct synaptics_rmi4_data *rmi4_data;
 	struct synaptics_rmi4_fn55_desc *fn55;
+	struct wake_lock test_wake_lock;
 };
 
 store_prototype(reset)
-show_prototype(status)
-show_prototype(report_size)
-show_prototype(num_of_mapped_rx)
-show_prototype(num_of_mapped_tx)
+show_prototype_ext(status, S_IRUGO)
+show_prototype_ext(report_size, S_IRUGO)
+show_prototype_ext(num_of_mapped_rx, S_IRUGO)
+show_prototype_ext(num_of_mapped_tx, S_IRUGO)
 show_store_prototype(no_auto_cal)
-show_store_prototype(report_type)
+show_store_prototype_ext(report_type, S_IRUGO | S_IWUSR | S_IWGRP)
+show_store_prototype_ext(user_report_type1, S_IRUGO | S_IWUSR | S_IWGRP)
+show_store_prototype_ext(user_report_type2, S_IRUGO | S_IWUSR | S_IWGRP)
+show_prototype_ext(user_get_report1, S_IRUGO)
+show_prototype_ext(user_get_report2, S_IRUGO)
 show_store_prototype(fifoindex)
 store_prototype(get_report)
 store_prototype(force_cal)
-show_prototype(num_of_rx_electrodes)
-show_prototype(num_of_tx_electrodes)
+show_prototype_ext(num_of_rx_electrodes, S_IRUGO)
+show_prototype_ext(num_of_tx_electrodes, S_IRUGO)
 show_prototype(has_image16)
 show_prototype(has_image8)
 show_prototype(has_baseline)
@@ -1004,6 +1019,10 @@ static struct attribute *attrs[] = {
 	attrify(num_of_mapped_tx),
 	attrify(no_auto_cal),
 	attrify(report_type),
+	attrify(user_report_type1),
+	attrify(user_report_type2),
+	attrify(user_get_report1),
+	attrify(user_get_report2),
 	attrify(fifoindex),
 	attrify(get_report),
 	attrify(force_cal),
@@ -1247,10 +1266,46 @@ static bool is_report_type_valid(enum f54_report_types report_type)
 		return true;
 		break;
 	default:
-		f54->report_type = INVALID_REPORT_TYPE;
-		f54->report_size = 0;
 		return false;
 	}
+}
+
+static int set_user_report_type(enum f54_report_types *user_report_type,
+	const char *buf, size_t count)
+{
+	unsigned int report_type;
+	int retval = 0;
+	retval = kstrtouint(buf, 10, &report_type);
+	if (retval)
+		goto out;
+
+	if (!is_report_type_valid((enum f54_report_types)report_type)) {
+		dev_err(&f54->rmi4_data->i2c_client->dev,
+				"%s: Report type not supported by driver\n",
+				__func__);
+		retval = -EINVAL;
+	}
+
+out:
+	if (retval == 0) {
+		*user_report_type = report_type;
+		retval = count;
+	} else
+		*user_report_type = INVALID_REPORT_TYPE;
+
+	return retval;
+}
+
+static ssize_t synaptics_rmi4_f54_user_report_type1_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	return set_user_report_type(&f54->user_report_type1, buf, count);
+}
+
+static ssize_t synaptics_rmi4_f54_user_report_type2_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	return set_user_report_type(&f54->user_report_type2, buf, count);
 }
 
 static void set_report_size(void)
@@ -1379,23 +1434,22 @@ static void timeout_set_status(struct work_struct *work)
 				sizeof(command));
 		if (retval < 0) {
 			dev_err(&rmi4_data->i2c_client->dev,
-					"%s: Failed to read command register\n",
+				"%s: Failed to read command register\n",
 					__func__);
-			f54->status = -ETIMEDOUT;
 		} else if (command & COMMAND_GET_REPORT) {
-				dev_err(&rmi4_data->i2c_client->dev,
-					"%s: Report type not supported by FW\n",
-						__func__);
-			f54->status = -ETIMEDOUT;
-			} else {
-			queue_delayed_work(f54->status_workqueue,
-					&f54->status_work,
-					0);
-			mutex_unlock(&f54->status_mutex);
-			return;
-			}
+			dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Report type not supported by FW\n",
+					__func__);
+		} else {
+			dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Get report not detected\n",
+					__func__);
+		}
+		f54->status = -ETIMEDOUT;
 		f54->report_type = INVALID_REPORT_TYPE;
 		f54->report_size = 0;
+		set_interrupt(false);
+		wake_unlock(&f54->test_wake_lock);
 	}
 	mutex_unlock(&f54->status_mutex);
 
@@ -1543,25 +1597,22 @@ static void remove_sysfs(void)
 	return;
 }
 
-static ssize_t synaptics_rmi4_f54_reset_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
+static int synaptics_rmi4_f54_reset(void)
 {
 	int retval;
-	unsigned int reset;
 	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
-
-	if (sscanf(buf, "%u", &reset) != 1)
-		return -EINVAL;
-
-	if (reset != 1)
-		return -EINVAL;
 
 	mutex_lock(&f54->status_mutex);
 
+	rmi4_data->irq_enable(rmi4_data, false);
+
 	retval = rmi4_data->reset_device(rmi4_data);
+
+	rmi4_data->irq_enable(rmi4_data, true);
+
 	if (retval < 0) {
 		dev_err(&rmi4_data->i2c_client->dev,
-				"%s: Failed to issue reset command, error = %d\n",
+			"%s: Failed to issue reset command, error = %d\n",
 				__func__, retval);
 		return retval;
 	}
@@ -1570,13 +1621,32 @@ static ssize_t synaptics_rmi4_f54_reset_store(struct device *dev,
 
 	mutex_unlock(&f54->status_mutex);
 
+	return 0;
+}
+
+static ssize_t synaptics_rmi4_f54_reset_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int retval;
+	unsigned int reset;
+
+	if (sscanf(buf, "%u", &reset) != 1)
+		return -EINVAL;
+
+	if (reset != 1)
+		return -EINVAL;
+
+	retval = synaptics_rmi4_f54_reset();
+	if (retval < 0)
+		return retval;
+
 	return count;
 }
 
 static ssize_t synaptics_rmi4_f54_status_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%u\n", f54->status);
+	return snprintf(buf, PAGE_SIZE, "%d\n", f54->status);
 }
 
 static ssize_t synaptics_rmi4_f54_report_size_show(struct device *dev,
@@ -1653,14 +1723,43 @@ static ssize_t synaptics_rmi4_f54_no_auto_cal_store(struct device *dev,
 static ssize_t synaptics_rmi4_f54_report_type_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%u\n", f54->report_type);
+	return snprintf(buf, PAGE_SIZE, "%d\n", f54->report_type);
+}
+
+static int synaptics_rmi4_f54_report_type_set(enum f54_report_types report_type)
+{
+	int retval = -EINVAL;
+	unsigned char data;
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+	int report_type_valid = is_report_type_valid(report_type);
+
+	if (!report_type_valid)
+		dev_err(&rmi4_data->i2c_client->dev,
+			"%s: Report type not supported by driver\n", __func__);
+
+	if (report_type_valid) {
+		mutex_lock(&f54->status_mutex);
+		f54->report_type = report_type;
+		data = (unsigned char)report_type;
+		retval = f54->fn_ptr->write(rmi4_data,
+				f54->data_base_addr,
+				&data,
+				sizeof(data));
+		mutex_unlock(&f54->status_mutex);
+	} else
+		f54->report_type = INVALID_REPORT_TYPE;
+
+	if (retval < 0)
+		dev_err(&rmi4_data->i2c_client->dev,
+			"%s: Failed to write data register\n", __func__);
+
+	return retval;
 }
 
 static ssize_t synaptics_rmi4_f54_report_type_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int retval;
-	unsigned char data;
 	unsigned long setting;
 	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
 
@@ -1668,37 +1767,32 @@ static ssize_t synaptics_rmi4_f54_report_type_store(struct device *dev,
 	if (retval)
 		return retval;
 
-	if (!is_report_type_valid((enum f54_report_types)setting)) {
-		dev_err(&rmi4_data->i2c_client->dev,
-				"%s: Report type not supported by driver\n",
-				__func__);
-		return -EINVAL;
-	}
-
-	mutex_lock(&f54->status_mutex);
-
 	if (f54->status != STATUS_BUSY) {
-		f54->report_type = (enum f54_report_types)setting;
-		data = (unsigned char)setting;
-		retval = f54->fn_ptr->write(rmi4_data,
-				f54->data_base_addr,
-				&data,
-				sizeof(data));
-		mutex_unlock(&f54->status_mutex);
-		if (retval < 0) {
-			dev_err(&rmi4_data->i2c_client->dev,
-					"%s: Failed to write data register\n",
-					__func__);
+		retval = synaptics_rmi4_f54_report_type_set(
+			(enum f54_report_types)setting);
+
+		if (retval < 0)
 			return retval;
-		}
+
 		return count;
 	} else {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Previous get report still ongoing\n",
 				__func__);
-		mutex_unlock(&f54->status_mutex);
 		return -EINVAL;
 	}
+}
+
+static ssize_t synaptics_rmi4_f54_user_report_type1_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%u\n", f54->user_report_type1);
+}
+
+static ssize_t synaptics_rmi4_f54_user_report_type2_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%u\n", f54->user_report_type2);
 }
 
 static ssize_t synaptics_rmi4_f54_fifoindex_show(struct device *dev,
@@ -1753,11 +1847,67 @@ static ssize_t synaptics_rmi4_f54_fifoindex_store(struct device *dev,
 	return count;
 }
 
+ssize_t send_get_report_command(void)
+{
+	int retval;
+	unsigned char command = (unsigned char)COMMAND_GET_REPORT;
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+	mutex_lock(&f54->status_mutex);
+
+	if (f54->status != STATUS_IDLE) {
+		if (f54->status != STATUS_BUSY) {
+			dev_err(&rmi4_data->i2c_client->dev,
+					"%s: Invalid status (%d)\n",
+					__func__, f54->status);
+		} else {
+			dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Previous get report still ongoing\n",
+					__func__);
+		}
+		mutex_unlock(&f54->status_mutex);
+		return -EBUSY;
+	}
+
+	wake_lock(&f54->test_wake_lock);
+	set_interrupt(true);
+	f54->status = STATUS_BUSY;
+
+	retval = f54->fn_ptr->write(rmi4_data,
+			f54->command_base_addr,
+			&command,
+			sizeof(command));
+
+	mutex_unlock(&f54->status_mutex);
+
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Failed to write get report command\n",
+				__func__);
+		goto error_exit;
+	}
+
+#ifdef WATCHDOG_HRTIMER
+	hrtimer_start(&f54->watchdog,
+			ktime_set(WATCHDOG_TIMEOUT_S, 0),
+			HRTIMER_MODE_REL);
+#endif
+out:
+	return retval;
+
+error_exit:
+	mutex_lock(&f54->status_mutex);
+	set_interrupt(false);
+	wake_unlock(&f54->test_wake_lock);
+	f54->status = retval;
+	mutex_unlock(&f54->status_mutex);
+
+	goto out;
+}
+
 static ssize_t synaptics_rmi4_f54_get_report_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int retval;
-	unsigned char command;
 	unsigned long setting;
 	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
 
@@ -1768,8 +1918,6 @@ static ssize_t synaptics_rmi4_f54_get_report_store(struct device *dev,
 	if (setting != 1)
 		return -EINVAL;
 
-	command = (unsigned char)COMMAND_GET_REPORT;
-
 	if (!is_report_type_valid(f54->report_type)) {
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Invalid report type\n",
@@ -1777,43 +1925,9 @@ static ssize_t synaptics_rmi4_f54_get_report_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	mutex_lock(&f54->status_mutex);
-
-	if (f54->status != STATUS_IDLE) {
-		if (f54->status != STATUS_BUSY) {
-			dev_err(&rmi4_data->i2c_client->dev,
-					"%s: Invalid status (%d)\n",
-					__func__, f54->status);
-		} else {
-			dev_err(&rmi4_data->i2c_client->dev,
-					"%s: Previous get report still ongoing\n",
-					__func__);
-		}
-		mutex_unlock(&f54->status_mutex);
-		return -EBUSY;
-	}
-
-	set_interrupt(true);
-
-	f54->status = STATUS_BUSY;
-
-	retval = f54->fn_ptr->write(rmi4_data,
-			f54->command_base_addr,
-			&command,
-			sizeof(command));
-	mutex_unlock(&f54->status_mutex);
-	if (retval < 0) {
-		dev_err(&rmi4_data->i2c_client->dev,
-				"%s: Failed to write get report command\n",
-				__func__);
+	retval = send_get_report_command();
+	if (retval < 0)
 		return retval;
-	}
-
-#ifdef WATCHDOG_HRTIMER
-	hrtimer_start(&f54->watchdog,
-			ktime_set(WATCHDOG_TIMEOUT_S, 0),
-			HRTIMER_MODE_REL);
-#endif
 
 	return count;
 }
@@ -1986,6 +2100,51 @@ static ssize_t synaptics_rmi4_f54_burst_count_show(struct device *dev,
 	return size + retval;
 }
 
+static ssize_t synaptics_rmi4_f54_user_get_report_show(
+	char *buf, enum f54_report_types report_type)
+{
+	int retval;
+	struct synaptics_rmi4_data *rmi4_data = f54->rmi4_data;
+
+	if (f54->status != STATUS_IDLE) {
+		if (f54->status == STATUS_BUSY)
+			dev_err(&rmi4_data->i2c_client->dev,
+				"%s: WARNING: Resetting in busy state\n",
+				__func__);
+
+		retval = synaptics_rmi4_f54_reset();
+		if (retval < 0)
+			goto out;
+	}
+
+	retval = synaptics_rmi4_f54_report_type_set(report_type);
+	if (retval < 0) {
+		dev_err(&rmi4_data->i2c_client->dev,
+			"%s: Failed to set report type\n", __func__);
+		goto out;
+	}
+
+	retval = send_get_report_command();
+
+out:
+	retval = scnprintf(buf, PAGE_SIZE, "%d\n", retval);
+	return retval;
+}
+
+static ssize_t synaptics_rmi4_f54_user_get_report1_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return synaptics_rmi4_f54_user_get_report_show(
+		buf, f54->user_report_type1);
+}
+
+static ssize_t synaptics_rmi4_f54_user_get_report2_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return synaptics_rmi4_f54_user_get_report_show(
+		buf, f54->user_report_type2);
+}
+
 static ssize_t synaptics_rmi4_f54_data_read(struct file *data_file,
 		struct kobject *kobj, struct bin_attribute *attributes,
 		char *buf, loff_t pos, size_t count)
@@ -2059,10 +2218,10 @@ static int synaptics_rmi4_f54_set_sysfs(void)
 	return 0;
 
 exit_4:
-	sysfs_remove_group(f54->attr_dir, &attr_group);
-
 	for (reg_num--; reg_num >= 0; reg_num--)
 		sysfs_remove_group(f54->attr_dir, &attrs_ctrl_regs[reg_num]);
+
+	sysfs_remove_group(f54->attr_dir, &attr_group);
 
 exit_3:
 	sysfs_remove_bin_file(f54->attr_dir, &dev_report_data);
@@ -2650,6 +2809,7 @@ static void synaptics_rmi4_f54_status_work(struct work_struct *work)
 error_exit:
 	mutex_lock(&f54->status_mutex);
 	set_interrupt(false);
+	wake_unlock(&f54->test_wake_lock);
 	f54->status = retval;
 	mutex_unlock(&f54->status_mutex);
 
@@ -2802,6 +2962,12 @@ found:
 			create_singlethread_workqueue("f54_status_workqueue");
 	INIT_DELAYED_WORK(&f54->status_work,
 			synaptics_rmi4_f54_status_work);
+
+	f54->user_report_type1 = F54_16BIT_IMAGE;
+	f54->user_report_type2 = F54_RAW_16BIT_IMAGE;
+
+	wake_lock_init(&f54->test_wake_lock, WAKE_LOCK_SUSPEND,
+		"synaptics_test_report");
 
 #ifdef WATCHDOG_HRTIMER
 	/* Watchdog timer to catch unanswered get report commands */
