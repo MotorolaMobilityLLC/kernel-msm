@@ -577,9 +577,7 @@ static int panel_off(struct platform_device *pdev)
 
 	if (mot_panel.panel_off) {
 		atomic_set(&mot_panel.state, MOT_PANEL_OFF);
-		mutex_lock(&mfd->dma->ov_mutex);
 		mot_panel.panel_off(mfd);
-		mutex_unlock(&mfd->dma->ov_mutex);
 		pr_debug("MIPI MOT Panel OFF\n");
 	}
 	return 0;
