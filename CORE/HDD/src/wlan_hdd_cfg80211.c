@@ -2725,7 +2725,7 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
         return -EBUSY;
     }
 
-    if (wlan_hdd_tdls_is_progress(pAdapter, mac, TRUE))
+    if ((0 == update) && wlan_hdd_tdls_is_progress(pAdapter, mac, FALSE))
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                    "%s: " MAC_ADDRESS_STR
@@ -6977,10 +6977,13 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
 
                 if (eTDLS_LINK_CONNECTED != pTdlsPeer->link_status)
                 {
+                    wlan_hdd_tdls_set_peer_link_status(pTdlsPeer, eTDLS_LINK_CONNECTED);
                     /* start TDLS client registration with TL */
                     status = hdd_roamRegisterTDLSSTA( pAdapter, peer, pTdlsPeer->staId, pTdlsPeer->signature);
-                    wlan_hdd_tdls_increment_peer_count(pAdapter);
-                    wlan_hdd_tdls_set_peer_link_status(pTdlsPeer, eTDLS_LINK_CONNECTED);
+                    if (VOS_STATUS_SUCCESS == status)
+                    {
+                        wlan_hdd_tdls_increment_peer_count(pAdapter);
+                    }
                     wlan_hdd_tdls_check_bmps(pAdapter);
                 }
 
