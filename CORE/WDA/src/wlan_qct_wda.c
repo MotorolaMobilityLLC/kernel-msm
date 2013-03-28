@@ -3733,7 +3733,8 @@ void WDA_UpdateSTAParams(tWDA_CbContext *pWDA,
                                             sizeof(tSirMacAddr)) ;
    wdiStaParams->usAssocId = wdaStaParams->assocId;
    wdiStaParams->wdiSTAType = wdaStaParams->staType;
-   
+   wdiStaParams->staIdx = wdaStaParams->staIdx;
+
    wdiStaParams->ucShortPreambleSupported = 
                                         wdaStaParams->shortPreambleSupported;
    vos_mem_copy(wdiStaParams->macSTA, wdaStaParams->staMac, 
