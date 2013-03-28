@@ -258,11 +258,11 @@ schSendStartScanRsp(tpAniSirGlobal pMac)
     tSirMsgQ        msgQ;
     tANI_U32        retCode;
 
-    PELOG1(schLog(pMac, LOG1, FL("Sending LIM message to go into scan\n"));)
+    PELOG1(schLog(pMac, LOG1, FL("Sending LIM message to go into scan"));)
     msgQ.type = SIR_SCH_START_SCAN_RSP;
     if ((retCode = limPostMsgApi(pMac, &msgQ)) != eSIR_SUCCESS)
         schLog(pMac, LOGE,
-               FL("Posting START_SCAN_RSP to LIM failed, reason=%X\n"), retCode);
+               FL("Posting START_SCAN_RSP to LIM failed, reason=%X"), retCode);
 }
 
 /**
@@ -297,7 +297,7 @@ tSirRetStatus schSendBeaconReq( tpAniSirGlobal pMac, tANI_U8 *beaconPayload, tAN
     tSirRetStatus retCode;
 
   schLog( pMac, LOG2,
-      FL( "Indicating HAL to copy the beacon template [%d bytes] to memory\n" ),
+      FL( "Indicating HAL to copy the beacon template [%d bytes] to memory" ),
       size );
 
   if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
@@ -318,7 +318,7 @@ tSirRetStatus schSendBeaconReq( tpAniSirGlobal pMac, tANI_U8 *beaconPayload, tAN
   beaconParams->timIeOffset = pMac->sch.schObject.gSchBeaconOffsetBegin;
   beaconParams->p2pIeOffset = pMac->sch.schObject.p2pIeOffset;
 #ifdef WLAN_SOFTAP_FW_BEACON_TX_PRNT_LOG
-  schLog(pMac, LOGE,FL("TimIeOffset:[%d]\n"),beaconParams->TimIeOffset );
+  schLog(pMac, LOGE,FL("TimIeOffset:[%d]"),beaconParams->TimIeOffset );
 #endif
 
   beaconParams->beacon = beaconPayload;
@@ -347,12 +347,12 @@ tSirRetStatus schSendBeaconReq( tpAniSirGlobal pMac, tANI_U8 *beaconPayload, tAN
   if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
   {
     schLog( pMac, LOGE,
-        FL("Posting SEND_BEACON_REQ to HAL failed, reason=%X\n"),
+        FL("Posting SEND_BEACON_REQ to HAL failed, reason=%X"),
         retCode );
   } else
   {
     schLog( pMac, LOG2,
-        FL("Successfully posted WDA_SEND_BEACON_REQ to HAL\n"));
+        FL("Successfully posted WDA_SEND_BEACON_REQ to HAL"));
 
     if( (psessionEntry->limSystemRole == eLIM_AP_ROLE ) 
         && (psessionEntry->proxyProbeRspEn)
@@ -362,7 +362,7 @@ tSirRetStatus schSendBeaconReq( tpAniSirGlobal pMac, tANI_U8 *beaconPayload, tAN
                                     &psessionEntry->DefProbeRspIeBitmap[0])))
         {
             /* check whether we have to free any memory */
-            schLog(pMac, LOGE, FL("FAILED to send probe response template with retCode %d\n"), retCode);
+            schLog(pMac, LOGE, FL("FAILED to send probe response template with retCode %d"), retCode);
         }
     }
   }
@@ -387,7 +387,7 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
     if ( DOT11F_FAILED( nStatus ) )
     {
         schLog( pMac, LOGE, FL("Failed to calculate the packed size f"
-                               "or a Probe Response (0x%08x).\n"),
+                               "or a Probe Response (0x%08x)."),
                 nStatus );
         // We'll fall back on the worst case scenario:
         nPayload = sizeof( tDot11fProbeResponse );
@@ -396,7 +396,7 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
     {
         schLog( pMac, LOGE, FL("There were warnings while calculating"
                                "the packed size for a Probe Response "
-                               "(0x%08x).\n"), nStatus );
+                               "(0x%08x)."), nStatus );
     }
 
     nBytes = nPayload + sizeof( tSirMacMgmtHdr );
@@ -404,7 +404,7 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
     //Check if probe response IE is set first before checking beacon/probe rsp IE
     if(wlan_cfgGetInt(pMac, WNI_CFG_PROBE_RSP_ADDNIE_FLAG, &addnIEPresent) != eSIR_SUCCESS)
     {
-        schLog(pMac, LOGE, FL("Unable to get WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG\n"));
+        schLog(pMac, LOGE, FL("Unable to get WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG"));
         return retCode;
     }
 
@@ -413,7 +413,7 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
         //TODO: If additional IE needs to be added. Add then alloc required buffer.
         if(wlan_cfgGetInt(pMac, WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG, &addnIEPresent) != eSIR_SUCCESS)
         {
-            schLog(pMac, LOGE, FL("Unable to get WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG\n"));
+            schLog(pMac, LOGE, FL("Unable to get WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG"));
             return retCode;
         }
     
@@ -454,7 +454,7 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
     if ( eSIR_SUCCESS != nSirStatus )
     {
         schLog( pMac, LOGE, FL("Failed to populate the buffer descrip"
-                               "tor for a Probe Response (%d).\n"),
+                               "tor for a Probe Response (%d)."),
                 nSirStatus );
         return retCode;
     }
@@ -469,21 +469,21 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
 
     if ( DOT11F_FAILED( nStatus ) )
     {
-        schLog( pMac, LOGE, FL("Failed to pack a Probe Response (0x%08x).\n"),
+        schLog( pMac, LOGE, FL("Failed to pack a Probe Response (0x%08x)."),
                 nStatus );
         return retCode;                 // allocated!
     }
     else if ( DOT11F_WARNED( nStatus ) )
     {
         schLog( pMac, LOGE, FL("There were warnings while packing a P"
-                               "robe Response (0x%08x).\n") );
+                               "robe Response (0x%08x).") );
     }
 
     if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd,
                                                 (void **) &pprobeRespParams,
                                                 sizeof( tSendProbeRespParams )))
     {
-        schLog( pMac, LOGE, FL("limSendProbeRspTemplateToHal: HAL probe response params malloc failed for bytes %d\n"), nBytes );
+        schLog( pMac, LOGE, FL("limSendProbeRspTemplateToHal: HAL probe response params malloc failed for bytes %d"), nBytes );
     }
     else
     {
@@ -506,7 +506,7 @@ tANI_U32 limSendProbeRspTemplateToHal(tpAniSirGlobal pMac,tpPESession psessionEn
         if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
         {
             /* free the allocated Memory */
-            schLog( pMac,LOGE, FL("limSendProbeRspTemplateToHal: FAIL bytes %d retcode[%X]\n"), nBytes , retCode );
+            schLog( pMac,LOGE, FL("limSendProbeRspTemplateToHal: FAIL bytes %d retcode[%X]"), nBytes , retCode );
             palFreeMemory(pMac->hHdd,pprobeRespParams);
         }
         else

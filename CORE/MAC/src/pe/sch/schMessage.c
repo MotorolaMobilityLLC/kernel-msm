@@ -100,7 +100,7 @@ void schSetBeaconInterval(tpAniSirGlobal pMac,tpPESession psessionEntry)
 
     if (bi < SCH_BEACON_INTERVAL_MIN || bi > SCH_BEACON_INTERVAL_MAX)
     {
-        schLog(pMac, LOGE, FL("Invalid beacon interval %d (should be [%d,%d]\n"),
+        schLog(pMac, LOGE, FL("Invalid beacon interval %d (should be [%d,%d]"),
                bi, SCH_BEACON_INTERVAL_MIN, SCH_BEACON_INTERVAL_MAX);
         return;
     }
@@ -135,7 +135,7 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
     tANI_U32            val;
 
     tpPESession psessionEntry = &pMac->lim.gpSession[0];  //TBD-RAJESH HOW TO GET sessionEntry?????
-    PELOG3(schLog(pMac, LOG3, FL("Received message (%x) \n"), pSchMsg->type);)
+    PELOG3(schLog(pMac, LOG3, FL("Received message (%x) "), pSchMsg->type);)
 
     switch (pSchMsg->type)
     {
@@ -154,7 +154,7 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
                 schBeaconProcess(pMac, pBD);
             else
             {
-                schLog(pMac, LOGE, FL("Unexpected message (%d,%d) rcvd\n"),
+                schLog(pMac, LOGE, FL("Unexpected message (%d,%d) rcvd"),
                        mh->fc.type, mh->fc.subType);
                 pMac->sch.gSchUnknownRcvCnt++;
             }
@@ -163,7 +163,7 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
 
         case SIR_SCH_CHANNEL_SWITCH_REQUEST:
             schLog(pMac, LOGE,
-                   FL("Channel switch request not handled\n"));
+                   FL("Channel switch request not handled"));
             break;
 
         case SIR_SCH_START_SCAN_REQ:
@@ -176,7 +176,7 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
                 {
                    PELOG1(schLog(pMac, LOG1,
                            FL("Waiting for TFP to halt before sending "
-                              "start scan response\n"));)
+                              "start scan response"));)
                 }
                 else
                     schSendStartScanRsp(pMac);
@@ -190,14 +190,14 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
 
         case SIR_SCH_END_SCAN_NTF:
            PELOG3(schLog(pMac, LOG3,
-                   FL("Received STOP_SCAN_NTF from LIM\n"));)
+                   FL("Received STOP_SCAN_NTF from LIM"));)
             pMac->sch.gSchScanReqRcvd = false;
             break;
 
         case SIR_CFG_PARAM_UPDATE_IND:
 
             if (wlan_cfgGetInt(pMac, (tANI_U16) pSchMsg->bodyval, &val) != eSIR_SUCCESS)
-                schLog(pMac, LOGP, FL("failed to cfg get id %d\n"), pSchMsg->bodyval);
+                schLog(pMac, LOGP, FL("failed to cfg get id %d"), pSchMsg->bodyval);
 
             switch (pSchMsg->bodyval)
             {
@@ -248,13 +248,13 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
                     break;
 
                 default:
-                    schLog(pMac, LOGE, FL("Cfg param %d indication not handled\n"),
+                    schLog(pMac, LOGE, FL("Cfg param %d indication not handled"),
                            pSchMsg->bodyval);
             }
             break;
 
         default:
-            schLog(pMac, LOGE, FL("Unknown message in schMsgQ type %d\n"),
+            schLog(pMac, LOGE, FL("Unknown message in schMsgQ type %d"),
                    pSchMsg->type);
     }
 
@@ -288,19 +288,19 @@ schGetParams(
 
     if (wlan_cfgGetInt(pMac, WNI_CFG_EDCA_PROFILE, &val) != eSIR_SUCCESS)
     {
-        schLog(pMac, LOGP, FL("failed to cfg get EDCA_PROFILE id %d\n"),
+        schLog(pMac, LOGP, FL("failed to cfg get EDCA_PROFILE id %d"),
                WNI_CFG_EDCA_PROFILE);
         return eSIR_FAILURE;
     }
 
     if (val >= WNI_CFG_EDCA_PROFILE_MAX)
     {
-        schLog(pMac, LOGE, FL("Invalid EDCA_PROFILE %d, using %d instead\n"),
+        schLog(pMac, LOGE, FL("Invalid EDCA_PROFILE %d, using %d instead"),
                val, WNI_CFG_EDCA_PROFILE_ANI);
         val = WNI_CFG_EDCA_PROFILE_ANI;
     }
 
-    schLog(pMac, LOGW, FL("EdcaProfile: Using %d (%s)\n"),  val,
+    schLog(pMac, LOGW, FL("EdcaProfile: Using %d (%s)"),  val,
            ((val == WNI_CFG_EDCA_PROFILE_WMM) ? "WMM"
            : ( (val == WNI_CFG_EDCA_PROFILE_TIT_DEMO) ? "Titan" : "HiPerf")));
 
@@ -343,19 +343,19 @@ schGetParams(
         tANI_U32 len = WNI_CFG_EDCA_ANI_ACBK_LOCAL_LEN;
         if (wlan_cfgGetStr(pMac, (tANI_U16) prf[i], (tANI_U8 *) &data[0], &len) != eSIR_SUCCESS)
         {
-            schLog(pMac, LOGP, FL("cfgGet failed for %d\n"), prf[i]);
+            schLog(pMac, LOGP, FL("cfgGet failed for %d"), prf[i]);
             return eSIR_FAILURE;
         }
         if (len > WNI_CFG_EDCA_ANI_ACBK_LOCAL_LEN)
         {
-            schLog(pMac, LOGE, FL("cfgGet for %d: length is %d instead of %d\n"),
+            schLog(pMac, LOGE, FL("cfgGet for %d: length is %d instead of %d"),
                    prf[i], len, WNI_CFG_EDCA_ANI_ACBK_LOCAL_LEN);
             return eSIR_FAILURE;
         }
         for (idx=0; idx < len; idx++)
             params[i][idx] = (tANI_U32) data[idx];
     }
-    PELOG1(schLog(pMac, LOG1, FL("GetParams: local=%d, profile = %d Done\n"), local, val);)
+    PELOG1(schLog(pMac, LOG1, FL("GetParams: local=%d, profile = %d Done"), local, val);)
     return eSIR_SUCCESS;
 }
 
@@ -382,7 +382,7 @@ static void broadcastWMMOfConcurrentSTASession(tpAniSirGlobal pMac, tpPESession 
                 psessionEntry->gLimEdcaParamsBC[j].cw.max =  pConcurrentStaSessionEntry->gLimEdcaParams[j].cw.max;
                 psessionEntry->gLimEdcaParamsBC[j].txoplimit=  pConcurrentStaSessionEntry->gLimEdcaParams[j].txoplimit;
 
-               PELOG1(schLog(pMac, LOG1, "QoSUpdateBCast changed again due to concurrent INFRA STA session: AC :%d: AIFSN: %d, ACM %d, CWmin %d, CWmax %d, TxOp %d\n",
+               PELOG1(schLog(pMac, LOG1, "QoSUpdateBCast changed again due to concurrent INFRA STA session: AC :%d: AIFSN: %d, ACM %d, CWmin %d, CWmax %d, TxOp %d",
                         j,
                         psessionEntry->gLimEdcaParamsBC[j].aci.aifsn,
                         psessionEntry->gLimEdcaParamsBC[j].aci.acm,
@@ -407,12 +407,12 @@ schQosUpdateBroadcast(tpAniSirGlobal pMac, tpPESession psessionEntry)
 
     if (schGetParams(pMac, params, false) != eSIR_SUCCESS)
     {
-        PELOGE(schLog(pMac, LOGE, FL("QosUpdateBroadcast: failed\n"));)
+        PELOGE(schLog(pMac, LOGE, FL("QosUpdateBroadcast: failed"));)
         return;
     }
     limGetPhyMode(pMac, &phyMode, psessionEntry);
 
-    PELOG1(schLog(pMac, LOG1, "QosUpdBcast: mode %d\n", phyMode);)
+    PELOG1(schLog(pMac, LOG1, "QosUpdBcast: mode %d", phyMode);)
 
     if (phyMode == WNI_CFG_PHY_MODE_11G)
     {
@@ -442,7 +442,7 @@ schQosUpdateBroadcast(tpAniSirGlobal pMac, tpPESession psessionEntry)
         psessionEntry->gLimEdcaParamsBC[i].cw.max =  convertCW(GET_CW(&params[i][cwmaxidx]));
         psessionEntry->gLimEdcaParamsBC[i].txoplimit=  (tANI_U16) params[i][txopidx];
 
-       PELOG1(schLog(pMac, LOG1, "QoSUpdateBCast: AC :%d: AIFSN: %d, ACM %d, CWmin %d, CWmax %d, TxOp %d\n", i,
+       PELOG1(schLog(pMac, LOG1, "QoSUpdateBCast: AC :%d: AIFSN: %d, ACM %d, CWmin %d, CWmax %d, TxOp %d", i,
                 psessionEntry->gLimEdcaParamsBC[i].aci.aifsn,
                 psessionEntry->gLimEdcaParamsBC[i].aci.acm,
                 psessionEntry->gLimEdcaParamsBC[i].cw.min,
@@ -455,7 +455,7 @@ schQosUpdateBroadcast(tpAniSirGlobal pMac, tpPESession psessionEntry)
     broadcastWMMOfConcurrentSTASession(pMac, psessionEntry);
 
     if (schSetFixedBeaconFields(pMac,psessionEntry) != eSIR_SUCCESS)
-        PELOGE(schLog(pMac, LOGE, "Unable to set beacon fields!\n");)
+        PELOGE(schLog(pMac, LOGE, "Unable to set beacon fields!");)
 }
 
 void
@@ -467,7 +467,7 @@ schQosUpdateLocal(tpAniSirGlobal pMac, tpPESession psessionEntry)
 
     if (schGetParams(pMac, params, true /*local*/) != eSIR_SUCCESS)
     {
-        PELOGE(schLog(pMac, LOGE, FL("schGetParams(local) failed\n"));)
+        PELOGE(schLog(pMac, LOGE, FL("schGetParams(local) failed"));)
         return;
     }
 
@@ -503,7 +503,7 @@ schSetDefaultEdcaParams(tpAniSirGlobal pMac, tpPESession psessionEntry)
 
     if (getWmmLocalParams(pMac, params) != eSIR_SUCCESS)
     {
-        PELOGE(schLog(pMac, LOGE, FL("getWmmLocalParams() failed\n"));)
+        PELOGE(schLog(pMac, LOGE, FL("getWmmLocalParams() failed"));)
         return;
     }
 
@@ -528,7 +528,7 @@ setSchEdcaParams(tpAniSirGlobal pMac, tANI_U32 params[][WNI_CFG_EDCA_ANI_ACBK_LO
 
     limGetPhyMode(pMac, &phyMode, psessionEntry);
 
-    PELOG1(schLog(pMac, LOG1, FL("limGetPhyMode() = %d\n"), phyMode);)
+    PELOG1(schLog(pMac, LOG1, FL("limGetPhyMode() = %d"), phyMode);)
 
     //if (pMac->lim.gLimPhyMode == WNI_CFG_PHY_MODE_11G)
     if (phyMode == WNI_CFG_PHY_MODE_11G)
@@ -559,7 +559,7 @@ setSchEdcaParams(tpAniSirGlobal pMac, tANI_U32 params[][WNI_CFG_EDCA_ANI_ACBK_LO
         psessionEntry->gLimEdcaParams[i].cw.max =  convertCW(GET_CW(&params[i][cwmaxidx]));
         psessionEntry->gLimEdcaParams[i].txoplimit=  (tANI_U16) params[i][txopidx];
 
-       PELOG1(schLog(pMac, LOG1, FL("AC :%d: AIFSN: %d, ACM %d, CWmin %d, CWmax %d, TxOp %d\n"), i,
+       PELOG1(schLog(pMac, LOG1, FL("AC :%d: AIFSN: %d, ACM %d, CWmin %d, CWmax %d, TxOp %d"), i,
                 psessionEntry->gLimEdcaParams[i].aci.aifsn,
                 psessionEntry->gLimEdcaParams[i].aci.acm,
                 psessionEntry->gLimEdcaParams[i].cw.min,
@@ -592,12 +592,12 @@ getWmmLocalParams(tpAniSirGlobal  pMac,  tANI_U32 params[][WNI_CFG_EDCA_ANI_ACBK
         tANI_U32 len = WNI_CFG_EDCA_ANI_ACBK_LOCAL_LEN;
         if (wlan_cfgGetStr(pMac, (tANI_U16) prf[i], (tANI_U8 *) &data[0], &len) != eSIR_SUCCESS)
         {
-            schLog(pMac, LOGP, FL("cfgGet failed for %d\n"), prf[i]);
+            schLog(pMac, LOGP, FL("cfgGet failed for %d"), prf[i]);
             return eSIR_FAILURE;
         }
         if (len > WNI_CFG_EDCA_ANI_ACBK_LOCAL_LEN)
         {
-            schLog(pMac, LOGE, FL("cfgGet for %d: length is %d instead of %d\n"),
+            schLog(pMac, LOGE, FL("cfgGet for %d: length is %d instead of %d"),
                    prf[i], len, WNI_CFG_EDCA_ANI_ACBK_LOCAL_LEN);
             return eSIR_FAILURE;
         }
