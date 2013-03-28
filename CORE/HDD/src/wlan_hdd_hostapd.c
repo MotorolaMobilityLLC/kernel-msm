@@ -539,7 +539,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             wrqu.data.length = strlen(startBssEvent);
             we_event = IWEVCUSTOM;
             we_custom_event_generic = we_custom_start_event;
-
+            hdd_dump_concurrency_info(pHddCtx);
             break; //Event will be sent after Switch-Case stmt 
 
         case eSAP_STOP_BSS_EVENT:
@@ -862,6 +862,7 @@ stopbss :
         we_event = IWEVCUSTOM;
         we_custom_event_generic = we_custom_event;
         wireless_send_event(dev, we_event, &wrqu, (char *)we_custom_event_generic);
+        hdd_dump_concurrency_info(pHddCtx);
     }
     return VOS_STATUS_SUCCESS;
 }

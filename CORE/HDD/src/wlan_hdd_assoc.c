@@ -666,6 +666,7 @@ static void hdd_SendAssociationEvent(struct net_device *dev,tCsrRoamInfo *pCsrRo
         type = WLAN_STA_DISASSOC_DONE_IND;
         memset(wrqu.ap_addr.sa_data,'\0',ETH_ALEN);
     }
+    hdd_dump_concurrency_info(pHddCtx);
 
     msg = NULL;
     /*During the WLAN uninitialization,supplicant is stopped before the
