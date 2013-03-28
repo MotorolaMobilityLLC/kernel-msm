@@ -27,7 +27,7 @@
 
 #define MAX_SINGLE_LUT_COLS	20
 
-#define START_METER_OFFSET_SOC 5
+#define START_METER_OFFSET_SOC 4
 
 struct single_row_lut {
 	int x[MAX_SINGLE_LUT_COLS];
