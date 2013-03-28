@@ -619,12 +619,12 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
        else if (strncmp(command, "SETROAMSCANPERIOD", 17) == 0)
        {
            tANI_U8 *value = command;
-           tANI_U16 neighborScanRefreshPeriod = CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_DEFAULT;
+           tANI_U16 emptyScanRefreshPeriod = CFG_EMPTY_SCAN_REFRESH_PERIOD_DEFAULT;
            /* input refresh period is in terms of seconds */
            /* Move pointer to ahead of SETROAMSCANPERIOD<delimiter> */
            value = value + 18;
            /* Convert the value from ascii to integer */
-           ret = kstrtou16(value, 10, &neighborScanRefreshPeriod);
+           ret = kstrtou16(value, 10, &emptyScanRefreshPeriod);
            if (ret < 0)
            {
                /* If the input value is greater than max value of datatype, then also
@@ -633,31 +633,31 @@ int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
                       "%s: kstrtou16 failed ",
                       "Input value may be out of range[%d - %d]",
                       __func__,
-                      (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN/1000),
-                      (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX/1000));
+                      (CFG_EMPTY_SCAN_REFRESH_PERIOD_MIN/1000),
+                      (CFG_EMPTY_SCAN_REFRESH_PERIOD_MAX/1000));
                ret = -EINVAL;
                goto exit;
            }
 
-           neighborScanRefreshPeriod = neighborScanRefreshPeriod * 1000;
-           if ((neighborScanRefreshPeriod < CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN) ||
-               (neighborScanRefreshPeriod > CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX))
+           emptyScanRefreshPeriod = emptyScanRefreshPeriod * 1000;
+           if ((emptyScanRefreshPeriod < CFG_EMPTY_SCAN_REFRESH_PERIOD_MIN) ||
+               (emptyScanRefreshPeriod > CFG_EMPTY_SCAN_REFRESH_PERIOD_MAX))
            {
                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                      "Neighbor scan results refresh period value %d is out of range"
-                      " (Min: %d Max: %d)", neighborScanRefreshPeriod,
-                      (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MIN/1000),
-                      (CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_MAX/1000));
+                      "Empty scan refresh period value %d is out of range"
+                      " (Min: %d Max: %d)", emptyScanRefreshPeriod/1000,
+                      (CFG_EMPTY_SCAN_REFRESH_PERIOD_MIN/1000),
+                      (CFG_EMPTY_SCAN_REFRESH_PERIOD_MAX/1000));
                ret = -EINVAL;
                goto exit;
            }
 
            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                       "%s: Received Command to Set roam scan period"
-                      " (Neighbor Scan refresh period) = %d", __func__, neighborScanRefreshPeriod);
+                      " (Empty Scan refresh period) = %d", __func__, emptyScanRefreshPeriod/1000);
 
-           pHddCtx->cfg_ini->nEmptyScanRefreshPeriod = neighborScanRefreshPeriod;
-           sme_UpdateEmptyScanRefreshPeriod((tHalHandle)(pHddCtx->hHal), neighborScanRefreshPeriod);
+           pHddCtx->cfg_ini->nEmptyScanRefreshPeriod = emptyScanRefreshPeriod;
+           sme_UpdateEmptyScanRefreshPeriod((tHalHandle)(pHddCtx->hHal), emptyScanRefreshPeriod);
        }
        else if (strncmp(command, "GETROAMSCANPERIOD", 17) == 0)
        {
