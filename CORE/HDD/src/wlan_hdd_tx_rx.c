@@ -679,7 +679,16 @@ void hdd_tx_timeout(struct net_device *dev)
    //do possible recovery here
 
    //testing underlying data path stall
-   sme_transportDebug(hHal, 0, 1);
+   //FTM mode, data path is not initiated
+   if (VOS_FTM_MODE == hdd_get_conparam())
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+         "%s: FTM mode, how initiated TX?", __func__);
+   }
+   else
+   {
+      sme_transportDebug(hHal, 0, 1);
+   }
 } 
 
 
