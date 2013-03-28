@@ -1255,6 +1255,47 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, q);
 		dev_dbg(&ps_msp430->client->dev, "Sending modality event\n");
 	}
+	if (irq2_status & M_ALGO_ORIENTATION) {
+		msp_cmdbuff[0] =
+			msp_algo_info[MSP_IDX_ORIENTATION].evt_register;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1,
+			MSP_EVT_SZ_TRANSITION);
+		if (err < 0) {
+			dev_err(&ps_msp430->client->dev,
+				"Reading orientation event failed\n");
+			goto EXIT;
+		}
+		/* x (data1) msb: algo index, lsb: past, confidence */
+		x = (MSP_IDX_ORIENTATION << 8) | msp_cmdbuff[0];
+		/* y (data2) old state */
+		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[1];
+		/* z (data3) new state */
+		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[3];
+		/* q (data4) time in state, in seconds */
+		q = (msp_cmdbuff[6] << 8) | msp_cmdbuff[5];
+		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, q);
+		dev_dbg(&ps_msp430->client->dev, "Sending orientation event\n");
+	}
+	if (irq2_status & M_ALGO_STOWED) {
+		msp_cmdbuff[0] = msp_algo_info[MSP_IDX_STOWED].evt_register;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1,
+			MSP_EVT_SZ_TRANSITION);
+		if (err < 0) {
+			dev_err(&ps_msp430->client->dev,
+				"Reading stowed event failed\n");
+			goto EXIT;
+		}
+		/* x (data1) msb: algo index, lsb: past, confidence */
+		x = (MSP_IDX_STOWED << 8) | msp_cmdbuff[0];
+		/* y (data2) old state */
+		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[1];
+		/* z (data3) new state */
+		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[3];
+		/* q (data4) time in state, in seconds */
+		q = (msp_cmdbuff[6] << 8) | msp_cmdbuff[5];
+		msp430_ms_data_buffer_write(ps_msp430, DT_ALGO_EVT, x, y, z, q);
+		dev_dbg(&ps_msp430->client->dev, "Sending stowed event\n");
+	}
 	if (irq2_status & M_ALGO_ACCUM_MODALITY) {
 		msp_cmdbuff[0] =
 			msp_algo_info[MSP_IDX_ACCUM_MODALITY].evt_register;
