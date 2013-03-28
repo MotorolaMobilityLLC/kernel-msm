@@ -2561,6 +2561,8 @@ eHalStatus csrRoamPrepareBssConfig(tpAniSirGlobal pMac, tCsrRoamProfile *pProfil
     eHalStatus status = eHAL_STATUS_SUCCESS;
     eCsrCfgDot11Mode cfgDot11Mode;
     VOS_ASSERT( pIes != NULL );
+    if (pIes == NULL)
+        return eHAL_STATUS_FAILURE;
 
     do
     {
@@ -12553,8 +12555,8 @@ eHalStatus csrSendMBSetContextReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId ,
     eHalStatus status = eHAL_STATUS_FAILURE;
     tAniEdType tmpEdType;
     tAniKeyDirection tmpDirection;
-    tANI_U8 *pBuf;
-    tANI_U8 *p;
+    tANI_U8 *pBuf = NULL;
+    tANI_U8 *p = NULL;
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
     do {
         if( ( 1 != numKeys ) && ( 0 != numKeys ) ) break;
