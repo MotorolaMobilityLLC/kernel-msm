@@ -408,6 +408,10 @@ static u32 ddl_decoder_seq_done_callback(struct ddl_context *ddl_context,
 						seq_hdr_info.dec_frm_size);
 				}
 			}
+			DDL_MSG_INFO("profile %u level %u progressive %u",
+					decoder->profile.profile,
+					decoder->level.level,
+					decoder->progressive_only);
 			if (need_reconfig) {
 				struct ddl_frame_data_tag *payload =
 					&ddl->input_frame;
