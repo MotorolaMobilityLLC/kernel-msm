@@ -17,12 +17,8 @@
 /* Note, this is common with p1 */
 /include/ "msm8960ab-ghost-p1-legacy.dtsi"
 
-/*
- * The devices called P2 actually carry HW GPIO IDs for P4. Note that devices
- * with HE GPIO ID P5 are called P1B4. Thanks product team!
- */
 / {
-	mmi,revision = "p4";
+	mmi,revision = "p2";
 
 	System@0 {
 		I2C@4 {

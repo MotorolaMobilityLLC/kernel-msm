@@ -18,6 +18,8 @@
 
 	mmi,product = "mmi,msm8960ab-ghost";
 
+	mmi,dt_revision = <2>;
+
 	System@0 {
 		Display@0 {
 			panel_name = "mipi_mot_cmd_smd_hd_465";
