@@ -23989,8 +23989,8 @@ WDI_ReceiveFilterSetFilterReq
    wdiEventData.wdiRequest      = WDI_RECEIVE_FILTER_SET_FILTER_REQ;
    wdiEventData.pEventData      = pwdiSetRcvPktFilterReqInfo;
    wdiEventData.uEventDataSize  = sizeof(*pwdiSetRcvPktFilterReqInfo) +
-                                  (pwdiSetRcvPktFilterReqInfo->wdiPktFilterCfg.numFieldParams
-                                  * sizeof(WDI_RcvPktFilterFieldParams) - 1);
+                                  (pwdiSetRcvPktFilterReqInfo->wdiPktFilterCfg.numFieldParams - 1)
+                                  * sizeof(WDI_RcvPktFilterFieldParams);
    wdiEventData.pCBfnc          = wdiReceiveFilterSetFilterCallback;
    wdiEventData.pUserData       = pUserData;
 
