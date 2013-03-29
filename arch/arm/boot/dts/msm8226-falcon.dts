@@ -268,6 +268,17 @@
 
 &i2c_3 {
 	status = "ok";
+
+	tpa6165xx@40 {
+		compatible = "ti,tpa6165";
+		reg = <0x40>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <4 0x2>;
+		gpios = <&msmgpio 4 0x0>;
+		hs_det_vdd-supply = <&pm8226_l6>;
+		hs_det_micvdd-supply = <&pm8226_l21>;
+	};
+
 	bcm2079x@77 {
 		compatible = "brcm,bcm2079x";
 		reg = <0x77>;
