@@ -21,6 +21,7 @@
 
 struct tfa9890_pdata {
 	int reset_gpio;
+	int max_vol_steps;
 };
 
 #endif
