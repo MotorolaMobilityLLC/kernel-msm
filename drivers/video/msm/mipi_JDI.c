@@ -34,9 +34,13 @@
 #define gpio_LCD_BL_EN_SR2 PM8921_GPIO_PM_TO_SYS(36)
 #define gpio_LCM_XRES_SR1 36	/* JDI reset pin */
 #define gpio_LCM_XRES_SR2 54	/* JDI reset pin */
+#define gpio_PWM PM8921_GPIO_PM_TO_SYS(26)
 
 static int gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR2;
 static int gpio_LCM_XRES = gpio_LCM_XRES_SR2;
+static bool first = true;
+static unsigned gpio;
+static struct pm_gpio config;
 
 static struct mipi_dsi_panel_platform_data *mipi_JDI_pdata;
 static struct pwm_device *bl_lpm;
@@ -103,6 +107,9 @@ static int mipi_JDI_lcd_on(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
+	if (first)	/* change first in setbacklight */
+		return 0;
+
 	msleep(20);
 
 	pr_info("%s, JDI display on command+\n", __func__);
@@ -158,6 +165,14 @@ static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 		/* sleep only when suspend or resume, init value is 0 */
 
 	pr_debug("%s: back light level %d\n", __func__, mfd->bl_level);
+
+	if (first) {
+		ret = pm8xxx_gpio_config(gpio, &config);
+		if (ret)
+			pr_err("%s: pm8xxx_gpio_config failed: ret=%d\n",
+				 __func__, ret);
+		first = false;
+	}
 
 	if (bl_lpm) {
 		if (mfd->bl_level) {
@@ -293,6 +308,18 @@ static int __devinit mipi_JDI_lcd_probe(struct platform_device *pdev)
 		gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR1;
 		gpio_LCM_XRES = gpio_LCM_XRES_SR1;
 	}
+
+	/* set PWM config */
+	gpio = gpio_PWM;
+	config.direction = PM_GPIO_DIR_OUT;
+	config.output_buffer = PM_GPIO_OUT_BUF_CMOS;
+	config.output_value = 0;
+	config.pull = PM_GPIO_PULL_NO;
+	config.vin_sel = PM_GPIO_VIN_L17;
+	config.out_strength = PM_GPIO_STRENGTH_HIGH;
+	config.function = PM_GPIO_FUNC_2;
+	config.inv_int_pol = 0;
+	config.disable_pin = 0;
 
 	pr_info("%s-\n", __func__);
 	return 0;
