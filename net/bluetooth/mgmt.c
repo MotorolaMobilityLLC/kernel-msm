@@ -2060,7 +2060,71 @@ failed:
 
 	return err;
 }
+static int read_tx_power_level(struct sock *sk, u16 index,
+						unsigned char *data, u16 len)
+{
+	struct hci_dev *hdev;
+	struct mgmt_cp_read_tx_power_level *cp = (void *) data;
+	struct hci_cp_read_tx_power hci_cp;
+	struct pending_cmd *cmd;
+	struct hci_conn *conn;
+	int err;
 
+	BT_DBG("hci%u", index);
+
+	if (len != sizeof(*cp))
+		return cmd_status(sk, index,
+				MGMT_OP_READ_TX_POWER_LEVEL, EINVAL);
+
+	hdev = hci_dev_get(index);
+	if (!hdev)
+		return cmd_status(sk, index,
+				MGMT_OP_READ_TX_POWER_LEVEL, ENODEV);
+
+	hci_dev_lock_bh(hdev);
+
+	if (!test_bit(HCI_UP, &hdev->flags)) {
+		err = cmd_status(sk, index,
+				MGMT_OP_READ_TX_POWER_LEVEL, ENETDOWN);
+		goto unlock;
+	}
+
+	if (mgmt_pending_find(MGMT_OP_READ_TX_POWER_LEVEL, index)) {
+		err = cmd_status(sk, index,
+				MGMT_OP_READ_TX_POWER_LEVEL, EBUSY);
+		goto unlock;
+	}
+
+	cmd = mgmt_pending_add(sk, MGMT_OP_READ_TX_POWER_LEVEL,
+				index, data, len);
+	if (!cmd) {
+		err = -ENOMEM;
+		goto unlock;
+	}
+
+	conn = hci_conn_hash_lookup_ba(hdev, ACL_LINK, &cp->bdaddr);
+	if (!conn)
+		conn = hci_conn_hash_lookup_ba(hdev, LE_LINK, &cp->bdaddr);
+
+	if (!conn) {
+		err = cmd_status(sk, index,
+				MGMT_OP_READ_TX_POWER_LEVEL, ENOTCONN);
+		mgmt_pending_remove(cmd);
+		goto unlock;
+	}
+
+	put_unaligned_le16(conn->handle, &hci_cp.handle);
+	put_unaligned_le16(cp->type, &hci_cp.type);
+	err = hci_send_cmd(hdev, HCI_OP_READ_TX_POWER, sizeof(hci_cp), &hci_cp);
+	if (err < 0)
+		mgmt_pending_remove(cmd);
+
+unlock:
+	hci_dev_unlock_bh(hdev);
+	hci_dev_put(hdev);
+
+	return err;
+}
 static int set_rssi_reporter(struct sock *sk, u16 index,
 				unsigned char *data, u16 len)
 {
@@ -2774,6 +2838,9 @@ int mgmt_control(struct sock *sk, struct msghdr *msg, size_t msglen)
 	case MGMT_OP_LE_CANCEL_CREATE_CONN:
 		err = le_cancel_create_conn(sk, index, buf + sizeof(*hdr), len);
 		break;
+	case MGMT_OP_READ_TX_POWER_LEVEL:
+		err = read_tx_power_level(sk, index, buf + sizeof(*hdr), len);
+		break;
 	default:
 		BT_DBG("Unknown op %u", opcode);
 		err = cmd_status(sk, index, opcode, 0x01);
@@ -3316,6 +3383,44 @@ void mgmt_read_rssi_complete(u16 index, s8 rssi, bdaddr_t *bdaddr,
 	}
 }
 
+int mgmt_read_tx_power_failed(u16 index)
+{
+	struct pending_cmd *cmd;
+	int err;
+
+	cmd = mgmt_pending_find(MGMT_OP_READ_TX_POWER_LEVEL, index);
+	if (!cmd)
+		return -ENOENT;
+
+	err = cmd_status(cmd->sk, index, MGMT_OP_READ_TX_POWER_LEVEL, EIO);
+
+	mgmt_pending_remove(cmd);
+
+	return err;
+}
+
+int mgmt_read_tx_power_complete(u16 index, bdaddr_t *bdaddr, s8 level,
+								u8 status)
+{
+	struct pending_cmd *cmd;
+	struct mgmt_rp_read_tx_power_level rp;
+	int err;
+
+	cmd = mgmt_pending_find(MGMT_OP_READ_TX_POWER_LEVEL, index);
+	if (!cmd)
+		return -ENOENT;
+
+	bacpy(&rp.bdaddr, bdaddr);
+	rp.status = status;
+	rp.level = level;
+
+	err = cmd_complete(cmd->sk, index, MGMT_OP_READ_TX_POWER_LEVEL, &rp,
+						sizeof(rp));
+
+	mgmt_pending_remove(cmd);
+
+	return err;
+}
 
 int mgmt_device_found(u16 index, bdaddr_t *bdaddr, u8 link_type, u8 addr_type,
 			u8 le, u8 *dev_class, s8 rssi, u8 eir_len, u8 *eir)
