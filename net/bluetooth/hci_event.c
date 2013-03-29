@@ -902,7 +902,25 @@ static void hci_cc_pin_code_reply(struct hci_dev *hdev, struct sk_buff *skb)
 unlock:
 	hci_dev_unlock(hdev);
 }
+static void hci_cc_read_tx_power(struct hci_dev *hdev, struct sk_buff *skb)
+{
+	struct hci_rp_read_tx_power *rp = (void *) skb->data;
+	struct hci_conn *conn;
 
+	BT_DBG("%s status 0x%x", hdev->name, rp->status);
+
+	if (!test_bit(HCI_MGMT, &hdev->flags))
+		return;
+
+	conn = hci_conn_hash_lookup_handle(hdev, __le16_to_cpu(rp->handle));
+	if (!conn) {
+		mgmt_read_tx_power_failed(hdev->id);
+		return;
+	}
+
+	mgmt_read_tx_power_complete(hdev->id, &conn->dst, rp->level,
+								rp->status);
+}
 static void hci_cc_pin_code_neg_reply(struct hci_dev *hdev, struct sk_buff *skb)
 {
 	struct hci_rp_pin_code_neg_reply *rp = (void *) skb->data;
@@ -2336,6 +2354,10 @@ static inline void hci_cmd_complete_evt(struct hci_dev *hdev, struct sk_buff *sk
 
 	case HCI_OP_LE_SET_SCAN_ENABLE:
 		hci_cc_le_set_scan_enable(hdev, skb);
+		break;
+
+	case HCI_OP_READ_TX_POWER:
+		hci_cc_read_tx_power(hdev, skb);
 		break;
 
 	default:

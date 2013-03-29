@@ -711,6 +711,18 @@ struct hci_cp_write_automatic_flush_timeout {
 	__le16   timeout;
 } __packed;
 
+#define HCI_OP_READ_TX_POWER	0x0c2d
+struct hci_cp_read_tx_power {
+	__le16   handle;
+	__u8     type;
+} __packed;
+
+struct hci_rp_read_tx_power {
+	__u8     status;
+	__le16   handle;
+	__s8     level;
+} __packed;
+
 #define HCI_OP_HOST_BUFFER_SIZE		0x0c33
 struct hci_cp_host_buffer_size {
 	__le16   acl_mtu;
