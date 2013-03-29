@@ -66,6 +66,13 @@ enum {
 	MSM_IPC_ROUTER_WRITE_DONE,
 };
 
+enum {
+	CLIENT_PORT,
+	SERVER_PORT,
+	CONTROL_PORT,
+	IRSC_PORT,
+};
+
 union rr_control_msg {
 	uint32_t cmd;
 	struct {
