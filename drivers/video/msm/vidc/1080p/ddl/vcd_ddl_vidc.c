@@ -776,7 +776,8 @@ void ddl_vidc_encode_frame_run(struct ddl_client_context *ddl)
 	struct vcd_frame_data *stream = &(ddl->output_frame.vcd_frm);
 	struct vcd_frame_data *input_vcd_frm =
 		&(ddl->input_frame.vcd_frm);
-	u32 dpb_addr_y[4], dpb_addr_c[4];
+	u32 dpb_addr_y[VIDC_1080P_MAX_DEC_DPB];
+	u32 dpb_addr_c[VIDC_1080P_MAX_DEC_DPB];
 	u32 index, y_addr, c_addr;
 
 	DDL_MSG_LOW("%s\n", __func__);
@@ -884,7 +885,8 @@ void ddl_vidc_encode_slice_batch_run(struct ddl_client_context *ddl)
 	struct ddl_enc_buffers *enc_buffers = &(encoder->hw_bufs);
 	struct vcd_frame_data *input_vcd_frm =
 		&(ddl->input_frame.vcd_frm);
-	u32 dpb_addr_y[4], dpb_addr_c[4];
+	u32 dpb_addr_y[VIDC_1080P_MAX_DEC_DPB];
+	u32 dpb_addr_c[VIDC_1080P_MAX_DEC_DPB];
 	u32 index, y_addr, c_addr;
 	u32 bitstream_size;
 	struct vidc_1080p_enc_slice_batch_in_param *slice_batch_in =
