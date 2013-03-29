@@ -78,6 +78,7 @@ obj-$(CONFIG_FB_MSM_MIPI_DSI) += msm_mipi.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_TOSHIBA) += mipi_toshiba.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_NOVATEK) += mipi_novatek.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_LG) += mipi_lg.o
+obj-$(CONFIG_FB_MSM_MIPI_DSI_JDI) += mipi_JDI.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_ORISE) += mipi_orise.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_RENESAS) += mipi_renesas.o
 obj-$(CONFIG_FB_MSM_MIPI_DSI_TRULY) += mipi_truly.o
@@ -150,6 +151,7 @@ obj-$(CONFIG_FB_MSM_MIPI_CHIMEI_WXGA) += mipi_chimei_wxga_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_CHIMEI_WUXGA) += mipi_chimei_wuxga.o
 obj-$(CONFIG_FB_MSM_MIPI_NOVATEK_1080_HD_PT) += mipi_novatek_1080P_pt.o
 obj-$(CONFIG_FB_MSM_MIPI_LG_1080_HD_PT) += mipi_lg_1080P_pt.o
+obj-$(CONFIG_FB_MSM_MIPI_JDI_1080_HD_PT) += mipi_JDI_1080P_pt.o
 endif
 
 obj-$(CONFIG_FB_MSM_LCDC_PANEL) += lcdc_panel.o

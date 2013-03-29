@@ -208,6 +208,11 @@ config FB_MSM_MIPI_DSI_LG
 	select FB_MSM_MIPI_DSI
 	default n
 
+config FB_MSM_MIPI_DSI_JDI
+	bool
+	select FB_MSM_MIPI_DSI
+	default n
+
 config FB_MSM_MIPI_DSI_NT35510
 	bool
 	select FB_MSM_MIPI_DSI
@@ -357,6 +362,11 @@ config FB_MSM_MIPI_LG_1080_HD_PT
 	select FB_MSM_MIPI_DSI_LG
 	default n
 
+config FB_MSM_MIPI_JDI_1080_HD_PT
+	bool
+	select FB_MSM_MIPI_DSI_JDI
+	default n
+
 config FB_MSM_MIPI_ORISE_VIDEO_720P_PT
 	bool
 	select FB_MSM_MIPI_DSI_ORISE
@@ -454,9 +464,6 @@ config FB_MSM_WRITEBACK_MSM_PANEL
 	  Support for MDP4 OVERLAY write back mode
 
 # need to config multiple mipi panels simultaneously in ASUS project
-config FB_MSM_MIPI_NOVATEK_CMD_MODE
-	bool "MIPI NOVATEK 1080P HD PT Panel"
-	select FB_MSM_MIPI_NOVATEK_1080_HD_PT
 
 config FB_MSM_MIPI_NOVATEK_VIDEO_MODE
 	bool "MIPI NOVATEK 1080P HD PT Panel"

@@ -74,6 +74,9 @@ static struct resource msm_fb_resources[] = {
 #define gpio_LCD_BL_PWM PM8921_GPIO_PM_TO_SYS(26)	//backlight pwm
 #define gpio_display_ID1 12
 #define gpio_display_ID2 1
+#define gpio_LCM_XRES 36 /* JDI reset pin */
+#define gpio_LCM_TE 0	/* JDI te pin,
+	default requested and config in mipi_dsi.c */
 
 #ifdef CONFIG_FB_MSM_HDMI_AS_PRIMARY
 static unsigned char hdmi_is_primary = 1;
@@ -349,11 +352,19 @@ static struct platform_device wfd_device = {
 #define HDMI_DDC_DATA_GPIO	71
 #define HDMI_HPD_GPIO		72
 
+static uint32_t display_gpio_table[] = {
+	/* LCM_XRES */
+	GPIO_CFG(gpio_LCM_XRES, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
+		GPIO_CFG_8MA),
+};
+
 static bool dsi_power_on;
 static int mipi_dsi_panel_power(int on)
 {
-	static struct regulator *reg_lvs7, *reg_l2, *reg_l11, *reg_l17;
-	int rc;
+	static struct regulator *reg_lvs7, *reg_l2, *reg_l11, *reg_l17,
+		*reg_lvs5;
+	int rc, n;
+	lcd_type type = asustek_get_lcd_type();
 
 	printk("%s+, on=%d\n", __func__, on);
 
@@ -398,6 +409,32 @@ static int mipi_dsi_panel_power(int on)
 			pr_err("could not get 8921_l17, rc = %ld\n",
 				PTR_ERR(reg_l17));
 			return -ENODEV;
+		}
+
+		if (type == 0) {	/* only for JDI panel */
+			reg_lvs5 = regulator_get(NULL, "JDI_IOVCC");
+			if (IS_ERR_OR_NULL(reg_lvs5)) {
+				pr_err("could not get 8921_lvs5, rc = %ld\n",
+					PTR_ERR(reg_lvs5));
+				return -ENODEV;
+			}
+			/* LCM_XRES */
+			rc = gpio_request(gpio_LCM_XRES, "LCM_XRES");
+			if (rc) {
+				pr_err("request gpio 36 failed, rc=%d\n", rc);
+				return -ENODEV;
+			}
+			/* config LCM_XRES and LCM_TE for JDI panel */
+			for (n = 0; n < ARRAY_SIZE(display_gpio_table); n++) {
+				rc = gpio_tlmm_config(display_gpio_table[n],
+					GPIO_CFG_ENABLE);
+				if (rc) {
+					pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
+						__func__, display_gpio_table[n],
+						rc);
+					break;
+				}
+			}
 		}
 
 		//EN_VDD_BL
@@ -457,16 +494,41 @@ static int mipi_dsi_panel_power(int on)
 			return -ENODEV;
 		}
 
-		gpio_set_value_cansleep(gpio_EN_VDD_BL, 1);
-		msleep(210);
-		gpio_set_value_cansleep(gpio_LCD_BL_EN, 1);
-		msleep(20);
+		if (type == 0) {
+			rc = regulator_enable(reg_lvs5);
+			if (rc) {
+				pr_err("enable lvs5 failed, rc=%d\n", rc);
+				return -ENODEV;
+			}
+			msleep(20);
+			gpio_set_value_cansleep(gpio_EN_VDD_BL, 1);
+			msleep(20);
+			gpio_set_value_cansleep(gpio_LCM_XRES, 1);
+			msleep(20);
+		} else {
+			gpio_set_value_cansleep(gpio_EN_VDD_BL, 1);
+			msleep(210);
+			gpio_set_value_cansleep(gpio_LCD_BL_EN, 1);
+			msleep(20);
+		}
 	} else {
-
-		msleep(20);
-		gpio_set_value_cansleep(gpio_LCD_BL_EN, 0);
-		msleep(210);
-		gpio_set_value_cansleep(gpio_EN_VDD_BL, 0);
+		if (type == 0) {
+			msleep(20);
+			gpio_set_value_cansleep(gpio_EN_VDD_BL, 0);
+			msleep(20);
+			gpio_set_value_cansleep(gpio_LCM_XRES, 0);
+			msleep(20);
+			rc = regulator_disable(reg_lvs5);
+			if (rc) {
+				pr_err("disable reg_lvs5 failed, rc=%d\n", rc);
+				return -ENODEV;
+			}
+		} else {
+			msleep(20);
+			gpio_set_value_cansleep(gpio_LCD_BL_EN, 0);
+			msleep(210);
+			gpio_set_value_cansleep(gpio_EN_VDD_BL, 0);
+		}
 
 		rc = regulator_disable(reg_l17);
 		if (rc) {
@@ -688,6 +750,19 @@ static struct platform_device mipi_lg_panel_device = {
 	}
 };
 
+static int mipi_JDI_gpio[] = {LPM_CHANNEL};
+
+static struct mipi_dsi_panel_platform_data mipi_JDI_pdata = {
+	.gpio = mipi_JDI_gpio,
+};
+
+static struct platform_device mipi_JDI_panel_device = {
+	.name = "mipi_JDI",
+	.id = 0,
+	.dev = {
+		.platform_data = &mipi_JDI_pdata,
+	}
+};
 #if 0
 #define FRC_GPIO_UPDATE	(SX150X_EXP4_GPIO_BASE + 8)
 #define FRC_GPIO_RESET	(SX150X_EXP4_GPIO_BASE + 9)
@@ -1046,6 +1121,9 @@ void __init apq8064_init_fb(void)
 	if (type==3) {
 		printk("%s: register mipi_lg_panel_device\n", __func__);
 		platform_device_register(&mipi_lg_panel_device);
+	} else if (type == 0) {
+		pr_info("%s: register mipi_JDI_panel_device\n", __func__);
+		platform_device_register(&mipi_JDI_panel_device);
 	} else {
 		printk("%s: register mipi_novatek_panel_device\n", __func__);
 		platform_device_register(&mipi_novatek_panel_device);
