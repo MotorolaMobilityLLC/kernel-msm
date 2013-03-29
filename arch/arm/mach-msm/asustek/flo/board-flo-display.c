@@ -902,42 +902,8 @@ static int hdmi_panel_power(int on)
 
 static int hdmi_enable_5v(int on)
 {
-	/* TBD: PM8921 regulator instead of 8901 */
-	static struct regulator *reg_8921_hdmi_mvs;	/* HDMI_5V */
-	static int prev_on;
-	int rc;
-
-	if (on == prev_on)
-		return 0;
-
-	if (!reg_8921_hdmi_mvs) {
-		reg_8921_hdmi_mvs = regulator_get(&hdmi_msm_device.dev,
-			"hdmi_mvs");
-		if (IS_ERR(reg_8921_hdmi_mvs)) {
-			pr_err("could not get reg_8921_hdmi_mvs, rc = %ld\n",
-				PTR_ERR(reg_8921_hdmi_mvs));
-			reg_8921_hdmi_mvs = NULL;
-			return -ENODEV;
-		}
-	}
-
-	if (on) {
-		rc = regulator_enable(reg_8921_hdmi_mvs);
-		if (rc) {
-			pr_err("'%s' regulator enable failed, rc=%d\n",
-				"8921_hdmi_mvs", rc);
-			return rc;
-		}
-		pr_debug("%s(on): success\n", __func__);
-	} else {
-		rc = regulator_disable(reg_8921_hdmi_mvs);
-		if (rc)
-			pr_warning("'%s' regulator disable failed, rc=%d\n",
-				"8921_hdmi_mvs", rc);
-		pr_debug("%s(off): success\n", __func__);
-	}
-
-	prev_on = on;
+	/* flo and deb use slimport as HDMI output */
+	/* remove 5V power control to avoid current leakage */
 
 	return 0;
 }
