@@ -20,6 +20,7 @@
 #include <linux/pwm.h>
 #include <linux/mfd/pm8xxx/pm8921.h>
 #include <linux/gpio.h>
+#include <mach/board_asustek.h>
 
 #define PWM_FREQ_HZ 300
 #define PWM_PERIOD_USEC (USEC_PER_SEC / PWM_FREQ_HZ)
@@ -28,7 +29,10 @@
 	(PWM_PERIOD_USEC / PWM_LEVEL)
 
 #define gpio_EN_VDD_BL PM8921_GPIO_PM_TO_SYS(23)
-#define gpio_LCD_BL_EN PM8921_GPIO_PM_TO_SYS(30)
+#define gpio_LCD_BL_EN_SR1 PM8921_GPIO_PM_TO_SYS(30)
+#define gpio_LCD_BL_EN_SR2 PM8921_GPIO_PM_TO_SYS(36)
+
+static int gpio_LCD_BL_EN;
 
 static struct mipi_dsi_panel_platform_data *mipi_JDI_pdata;
 static struct pwm_device *bl_lpm;
@@ -203,6 +207,7 @@ static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 
 static int __devinit mipi_JDI_lcd_probe(struct platform_device *pdev)
 {
+	hw_rev hw_revision = asustek_get_hw_rev();
 	pr_info("%s+\n", __func__);
 
 	if (pdev->id == 0) {
@@ -226,6 +231,11 @@ static int __devinit mipi_JDI_lcd_probe(struct platform_device *pdev)
 		mipi_JDI_pdata->gpio[0]);
 
 	msm_fb_add_device(pdev);
+
+	if (hw_revision == 0)
+		gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR1;
+	else
+		gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR2;
 
 	pr_info("%s-\n", __func__);
 	return 0;

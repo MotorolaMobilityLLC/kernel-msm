@@ -33,8 +33,6 @@
 	(PWM_PERIOD_USEC / PWM_LEVEL)
 
 #define gpio_EN_VDD_BL PM8921_GPIO_PM_TO_SYS(23)
-#define gpio_LCD_BL_EN PM8921_GPIO_PM_TO_SYS(30)
-
 
 static struct mipi_dsi_panel_platform_data *mipi_novatek_pdata;
 static struct pwm_device *bl_lpm;

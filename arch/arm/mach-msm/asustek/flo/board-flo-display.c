@@ -70,13 +70,19 @@ static struct resource msm_fb_resources[] = {
 #define LVDS_PIXEL_MAP_PATTERN_2	2
 
 #define gpio_EN_VDD_BL PM8921_GPIO_PM_TO_SYS(23)	//panel VCC
-#define gpio_LCD_BL_EN PM8921_GPIO_PM_TO_SYS(30)	//panel enable and backlight enable
+/*panel enable and backlight enable */
+#define gpio_LCD_BL_EN_SR1 PM8921_GPIO_PM_TO_SYS(30)
+#define gpio_LCD_BL_EN_SR2 PM8921_GPIO_PM_TO_SYS(36)
 #define gpio_LCD_BL_PWM PM8921_GPIO_PM_TO_SYS(26)	//backlight pwm
 #define gpio_display_ID1 12
 #define gpio_display_ID2 1
-#define gpio_LCM_XRES 36 /* JDI reset pin */
+#define gpio_LCM_XRES_SR1 36 /* JDI reset pin */
+#define gpio_LCM_XRES_SR2 54 /* JDI reset pin */
 #define gpio_LCM_TE 0	/* JDI te pin,
 	default requested and config in mipi_dsi.c */
+
+static int gpio_LCD_BL_EN;
+static int gpio_LCM_XRES;
 
 #ifdef CONFIG_FB_MSM_HDMI_AS_PRIMARY
 static unsigned char hdmi_is_primary = 1;
@@ -352,10 +358,16 @@ static struct platform_device wfd_device = {
 #define HDMI_DDC_DATA_GPIO	71
 #define HDMI_HPD_GPIO		72
 
-static uint32_t display_gpio_table[] = {
+static uint32_t gpio_SR1[] = {
 	/* LCM_XRES */
-	GPIO_CFG(gpio_LCM_XRES, 0, GPIO_CFG_OUTPUT, GPIO_CFG_NO_PULL,
-		GPIO_CFG_8MA),
+	GPIO_CFG(gpio_LCM_XRES_SR1, 0, GPIO_CFG_OUTPUT,
+		GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
+};
+
+static uint32_t gpio_SR2[] = {
+	/* LCM_XRES */
+	GPIO_CFG(gpio_LCM_XRES_SR2, 0, GPIO_CFG_OUTPUT,
+		GPIO_CFG_NO_PULL, GPIO_CFG_8MA),
 };
 
 static bool dsi_power_on;
@@ -365,8 +377,10 @@ static int mipi_dsi_panel_power(int on)
 		*reg_lvs5;
 	int rc, n;
 	lcd_type type = asustek_get_lcd_type();
+	hw_rev hw_revision = asustek_get_hw_rev();
 
 	printk("%s+, on=%d\n", __func__, on);
+	pr_info("%s: HW version=%d\n", __func__, hw_revision);
 
 	if (!dsi_power_on) {
 		reg_lvs7 = regulator_get(&msm_mipi_dsi1_device.dev,
@@ -412,6 +426,11 @@ static int mipi_dsi_panel_power(int on)
 		}
 
 		if (type == 0) {	/* only for JDI panel */
+			if (hw_revision == 0)
+				gpio_LCM_XRES = gpio_LCM_XRES_SR1;
+			else
+				gpio_LCM_XRES = gpio_LCM_XRES_SR2;
+
 			reg_lvs5 = regulator_get(NULL, "JDI_IOVCC");
 			if (IS_ERR_OR_NULL(reg_lvs5)) {
 				pr_err("could not get 8921_lvs5, rc = %ld\n",
@@ -421,19 +440,34 @@ static int mipi_dsi_panel_power(int on)
 			/* LCM_XRES */
 			rc = gpio_request(gpio_LCM_XRES, "LCM_XRES");
 			if (rc) {
-				pr_err("request gpio 36 failed, rc=%d\n", rc);
+				pr_err("request gpio %d failed, rc=%d\n",
+					gpio_LCM_XRES, rc);
 				return -ENODEV;
 			}
 			/* config LCM_XRES and LCM_TE for JDI panel */
-			for (n = 0; n < ARRAY_SIZE(display_gpio_table); n++) {
-				rc = gpio_tlmm_config(display_gpio_table[n],
-					GPIO_CFG_ENABLE);
-				if (rc) {
-					pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
-						__func__, display_gpio_table[n],
-						rc);
-					break;
+			if (hw_revision == 0) {
+				for (n = 0; n < ARRAY_SIZE(gpio_SR1); n++) {
+					rc = gpio_tlmm_config(gpio_SR1[n],
+						GPIO_CFG_ENABLE);
+					if (rc) {
+						pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
+							__func__, gpio_SR1[n],
+							rc);
+						break;
+					}
 				}
+			} else {
+				for (n = 0; n < ARRAY_SIZE(gpio_SR2); n++) {
+					rc = gpio_tlmm_config(gpio_SR2[n],
+						GPIO_CFG_ENABLE);
+					if (rc) {
+						pr_err("%s: gpio_tlmm_config(%#x)=%d\n",
+							__func__, gpio_SR2[n],
+							rc);
+						break;
+					}
+				}
+
 			}
 		}
 
@@ -450,6 +484,11 @@ static int mipi_dsi_panel_power(int on)
 			return -ENODEV;
 		}
 		//LCD_BL_EN
+		if (hw_revision == 0)
+			gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR1;
+		else
+			gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR2;
+
 		rc = gpio_request(gpio_LCD_BL_EN, "LCD_BL_EN");
 		if (rc) {
 			pr_err("request gpio 30 failed, rc=%d\n", rc);
