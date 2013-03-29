@@ -13,6 +13,8 @@ Required properties:
 			- RESET GPIO
  - tfa_vd-supply:
 		specify the regulator it uses.
+ - tfa_max-vol-steps:
+		specify the max vol steps used on the platform
 
 Example:
 		tfa9890@34 {
@@ -20,4 +22,5 @@ Example:
 			reg = <0x34>;
 			gpios = <&pm8921_gpio 18 0>;     /* RESET */
 			tfa_vdd-supply = <&rpm_8921_s4>;
+			nxp,tfa_max-vol-steps = <15>;
 		};
