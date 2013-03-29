@@ -91,6 +91,7 @@ static int __init mipi_novatek_1080p_pt_init(void)
 	pinfo.lcdc.border_clr = 0;	/* blk */
 	pinfo.lcdc.underflow_clr = 0xff;	/* blue */
 	pinfo.lcdc.hsync_skew = 0;
+	pinfo.lcd.blt_ctrl = 1;
 	pinfo.bl_max = 255;
 	pinfo.bl_min = 1;
 	pinfo.fb_num = 2;

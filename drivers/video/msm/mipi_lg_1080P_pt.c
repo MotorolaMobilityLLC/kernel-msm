@@ -67,6 +67,7 @@ static int __init mipi_lg_1080P_pt_init(void)
 	pinfo.lcdc.hsync_skew = 0;
 	pinfo.lcdc.xres_pad = 0;
 	pinfo.lcdc.yres_pad = 3;	//add this specifically for LG panel
+	pinfo.lcd.blt_ctrl = 1;
 	pinfo.bl_max = 255;
 	pinfo.bl_min = 1;
 	pinfo.fb_num = 2;
