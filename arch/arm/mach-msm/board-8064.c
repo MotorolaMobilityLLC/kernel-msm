@@ -1853,6 +1853,7 @@ static struct mdm_platform_data sglte2_mdm_platform_data = {
 	.sysmon_subsys_id_valid = 1,
 	.sysmon_subsys_id = SYSMON_SS_EXT_MODEM,
 	.no_a2m_errfatal_on_ssr = 1,
+	.subsys_name = "external_modem_mdm",
 };
 
 static struct mdm_platform_data sglte2_qsc_platform_data = {
@@ -1864,6 +1865,7 @@ static struct mdm_platform_data sglte2_qsc_platform_data = {
 	.no_a2m_errfatal_on_ssr = 1,
 	.no_reset_on_first_powerup = 1,
 	.kpd_not_inverted = 1,
+	.subsys_name = "external_modem",
 };
 
 static struct tsens_platform_data apq_tsens_pdata  = {
