@@ -2490,17 +2490,17 @@ eHalStatus pmcSetHostOffload (tHalHandle hHal, tpSirHostOffloadReq pRequest,
         pRequest->params.hostIpv4Addr[0], pRequest->params.hostIpv4Addr[1],
         pRequest->params.hostIpv4Addr[2], pRequest->params.hostIpv4Addr[3]);
 
+    if(NULL == pSession )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: SESSION not Found\n", __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
     pRequestBuf = vos_mem_malloc(sizeof(tSirHostOffloadReq));
     if (NULL == pRequestBuf)
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to allocate memory for host offload request", __func__);
         return eHAL_STATUS_FAILED_ALLOC;
-    }
-
-    if(NULL == pSession )
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: SESSION not Found", __func__);
-        return eHAL_STATUS_FAILURE;
     }
 
     vos_mem_copy(pRequest->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
@@ -2539,6 +2539,12 @@ eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest, tANI_U8
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_LOW, "%s: "
                   "WDA_SET_KEEP_ALIVE message", __func__);
 
+    if(pSession == NULL )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: "
+           " Session not Found", __func__);
+        return eHAL_STATUS_FAILURE;
+    }
     pRequestBuf = vos_mem_malloc(sizeof(tSirKeepAliveReq));
     if (NULL == pRequestBuf)
     {
@@ -2546,13 +2552,6 @@ eHalStatus pmcSetKeepAlive (tHalHandle hHal, tpSirKeepAliveReq pRequest, tANI_U8
                   "Not able to allocate memory for keep alive request",
                   __func__);
         return eHAL_STATUS_FAILED_ALLOC;
-    }
-    if(pSession == NULL )
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: "
-           " Session not Found", __func__);
-        vos_mem_free(pRequestBuf);
-        return eHAL_STATUS_FAILURE;
     }
 
     vos_mem_copy(pRequest->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr));
@@ -3097,19 +3096,20 @@ eHalStatus pmcGetFilterMatchCount
     VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
         "%s: filterId = %d", __func__);
 
+    if(NULL == pSession )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Session not found ", __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
     pRequestBuf = vos_mem_malloc(sizeof(tSirRcvFltPktMatchRsp));
     if (NULL == pRequestBuf)
     {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
                   "%s: Not able to allocate "
                   "memory for Get PC Filter Match Count request", __func__);
         return eHAL_STATUS_FAILED_ALLOC;
-    }
-    if(NULL == pSession )
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-                  "%s: Session not found ", __func__);
-        return eHAL_STATUS_FAILURE;
     }
 
     vos_mem_copy(pRequestBuf->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr)); 
@@ -3165,18 +3165,19 @@ eHalStatus pmcSetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pGtkOffload,
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, "%s: KeyReplayCounter: %d", 
                 __func__, pGtkOffload->ullKeyReplayCounter);
 
+    if(NULL == pSession )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Session not found ", __func__);
+        return eHAL_STATUS_FAILURE;
+    }
+
     pRequestBuf = (tpSirGtkOffloadParams)vos_mem_malloc(sizeof(tSirGtkOffloadParams));
     if (NULL == pRequestBuf)
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to allocate "
                   "memory for GTK offload request", __func__);
         return eHAL_STATUS_FAILED_ALLOC;
-    }
-    if(NULL == pSession )
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-                  "%s: Session not found ", __func__);
-        return eHAL_STATUS_FAILURE;
     }
 
     vos_mem_copy(pGtkOffload->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr)); 
@@ -3217,19 +3218,19 @@ eHalStatus pmcGetGTKOffload(tHalHandle hHal, GTKOffloadGetInfoCallback callbackR
     VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, "%s: filterId = %d", 
                 __func__);
 
-    pRequestBuf = vos_mem_malloc(sizeof(tSirGtkOffloadGetInfoRspParams));
-    if (NULL == pRequestBuf)
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to allocate "
-                  "memory for Get GTK Offload request", __func__);
-        return eHAL_STATUS_FAILED_ALLOC;
-    }
-
     if(NULL == pSession )
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
                   "%s: Session not found ", __func__);
         return eHAL_STATUS_FAILURE;
+    }
+
+    pRequestBuf = (tpSirGtkOffloadParams)vos_mem_malloc(sizeof(tSirGtkOffloadParams));
+    if (NULL == pRequestBuf)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Not able to allocate "
+                  "memory for Get GTK offload request", __func__);
+        return eHAL_STATUS_FAILED_ALLOC;
     }
 
     vos_mem_copy(pRequestBuf->bssId, pSession->connectedProfile.bssid, sizeof(tSirMacAddr)); 
