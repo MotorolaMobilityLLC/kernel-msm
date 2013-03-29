@@ -21,6 +21,7 @@
 #include <linux/mfd/pm8xxx/pm8921.h>
 #include <linux/gpio.h>
 #include <mach/board_asustek.h>
+#include <linux/syscore_ops.h>
 
 #define PWM_FREQ_HZ 300
 #define PWM_PERIOD_USEC (USEC_PER_SEC / PWM_FREQ_HZ)
@@ -31,8 +32,11 @@
 #define gpio_EN_VDD_BL PM8921_GPIO_PM_TO_SYS(23)
 #define gpio_LCD_BL_EN_SR1 PM8921_GPIO_PM_TO_SYS(30)
 #define gpio_LCD_BL_EN_SR2 PM8921_GPIO_PM_TO_SYS(36)
+#define gpio_LCM_XRES_SR1 36	/* JDI reset pin */
+#define gpio_LCM_XRES_SR2 54	/* JDI reset pin */
 
-static int gpio_LCD_BL_EN;
+static int gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR2;
+static int gpio_LCM_XRES = gpio_LCM_XRES_SR2;
 
 static struct mipi_dsi_panel_platform_data *mipi_JDI_pdata;
 static struct pwm_device *bl_lpm;
@@ -205,6 +209,46 @@ static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 	}
 }
 
+static void mipi_JDI_lcd_shutdown(void)
+{
+	int ret;
+
+	pr_info("%s+\n", __func__);
+
+	gpio_set_value_cansleep(gpio_LCD_BL_EN, 0);
+	msleep(20);
+
+	pr_info("%s: backlight off\n", __func__);
+	if (bl_lpm) {
+		ret = pwm_config(bl_lpm, 0, PWM_PERIOD_USEC);
+		if (ret)
+			pr_err("pwm_config on lpm failed %d\n", ret);
+		pwm_disable(bl_lpm);
+	}
+
+	pr_info("%s, JDI display off command+\n", __func__);
+	cmdreq_JDI.cmds = JDI_display_off_cmds;
+	cmdreq_JDI.cmds_cnt = ARRAY_SIZE(JDI_display_off_cmds);
+	cmdreq_JDI.flags = CMD_REQ_COMMIT;
+	cmdreq_JDI.rlen = 0;
+	cmdreq_JDI.cb = NULL;
+	mipi_dsi_cmdlist_put(&cmdreq_JDI);
+	pr_info("%s, JDI display off command-\n", __func__);
+
+	pr_info("%s: power gpio off\n", __func__);
+	msleep(20);
+	gpio_set_value_cansleep(gpio_EN_VDD_BL, 0);
+	msleep(20);
+	gpio_set_value_cansleep(gpio_LCM_XRES, 0);
+	msleep(20);
+
+	pr_info("%s-\n", __func__);
+}
+
+struct syscore_ops panel_syscore_ops = {
+	.shutdown = mipi_JDI_lcd_shutdown,
+};
+
 static int __devinit mipi_JDI_lcd_probe(struct platform_device *pdev)
 {
 	hw_rev hw_revision = asustek_get_hw_rev();
@@ -232,10 +276,12 @@ static int __devinit mipi_JDI_lcd_probe(struct platform_device *pdev)
 
 	msm_fb_add_device(pdev);
 
-	if (hw_revision == 0)
+	register_syscore_ops(&panel_syscore_ops);
+
+	if (hw_revision == 0) {
 		gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR1;
-	else
-		gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR2;
+		gpio_LCM_XRES = gpio_LCM_XRES_SR1;
+	}
 
 	pr_info("%s-\n", __func__);
 	return 0;
