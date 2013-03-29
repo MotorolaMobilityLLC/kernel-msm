@@ -136,7 +136,6 @@ static int __init mipi_video_mot_hd_pt_init(void)
 	pinfo->mipi.stream = 0; /* dma_p */
 	pinfo->mipi.mdp_trigger = DSI_CMD_TRIGGER_SW;
 	pinfo->mipi.dma_trigger = DSI_CMD_TRIGGER_SW;
-	pinfo->mipi.frame_rate = 60;
 	pinfo->mipi.dsi_phy_db = &dsi_video_mode_phy_db;
 	pinfo->mipi.esc_byte_ratio = 4;
 
