@@ -1188,10 +1188,15 @@ int synaptics_init_panel(struct i2c_client *client, struct synaptics_ts_fw_info 
 		return -EIO;
 	}
 
+	if (unlikely(touch_i2c_read(client, TWO_D_REPORTING_MODE, 1, &buf) < 0)) {
+		TOUCH_ERR_MSG("TWO_D_REEPORTING_MODE read fail\n");
+		return -EIO;
+	}
+
 	if (unlikely(touch_i2c_write_byte(client, TWO_D_REPORTING_MODE,
-				REPORT_MODE_CONTINUOUS) < 0)) {
-			TOUCH_ERR_MSG("TWO_D_REPORTING_MODE write fail\n");
-			return -EIO;
+			(buf & ~7) | REPORT_MODE_REDUCED) < 0)) {
+		TOUCH_ERR_MSG("TWO_D_REPORTING_MODE write fail\n");
+		return -EIO;
 	}
 
 	if (unlikely(touch_i2c_read(client, INTERRUPT_STATUS_REG, 1, &buf) < 0)) {
