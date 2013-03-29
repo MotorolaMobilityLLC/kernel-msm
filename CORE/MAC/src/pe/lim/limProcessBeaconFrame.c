@@ -139,6 +139,16 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
             return;
         }
 
+        /*during scanning, when any session is active, and beacon/Pr belongs to
+          one of the session, fill up the following, TBD - HB couter */
+        if ((!psessionEntry->lastBeaconDtimPeriod) &&
+            (sirCompareMacAddr( psessionEntry->bssId, pBeacon->bssid)))
+        {
+            palCopyMemory( pMac->hHdd, ( tANI_U8* )&psessionEntry->lastBeaconTimeStamp, ( tANI_U8* )pBeacon->timeStamp, sizeof(tANI_U64) );
+            psessionEntry->lastBeaconDtimCount = pBeacon->tim.dtimCount;
+            psessionEntry->lastBeaconDtimPeriod= pBeacon->tim.dtimPeriod;
+            psessionEntry->currentBssBeaconCnt++;
+        }
 
         MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT_TSF, 0, pBeacon->timeStamp[0]);)
         MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT_TSF, 0, pBeacon->timeStamp[1]);)
