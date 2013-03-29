@@ -262,6 +262,17 @@ struct mgmt_cp_cancel_resolve_name {
 	bdaddr_t bdaddr;
 } __packed;
 
+#define MGMT_OP_READ_TX_POWER_LEVEL	0x0025
+struct mgmt_cp_read_tx_power_level {
+	bdaddr_t bdaddr;
+	__u8 type;
+} __packed;
+struct mgmt_rp_read_tx_power_level {
+	bdaddr_t bdaddr;
+	__u8 status;
+	__s8 level;
+} __packed;
+
 #define MGMT_OP_LE_READ_WHITE_LIST_SIZE	0xE000
 
 #define MGMT_OP_LE_CLEAR_WHITE_LIST	0xE001
