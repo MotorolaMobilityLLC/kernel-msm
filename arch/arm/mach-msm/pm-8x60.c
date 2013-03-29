@@ -32,6 +32,7 @@
 #include <mach/scm.h>
 #include <mach/socinfo.h>
 #include <mach/msm-krait-l2-accessors.h>
+#include <asm/system_misc.h>
 #include <asm/cacheflush.h>
 #include <asm/hardware/gic.h>
 #include <asm/pgtable.h>
@@ -1072,7 +1073,20 @@ enter_exit:
 	return 0;
 }
 
+static int msm_pm_begin(suspend_state_t state)
+{
+	disable_hlt();
+	return 0;
+}
+
+static void msm_pm_end(void)
+{
+	enable_hlt();
+}
+
 static struct platform_suspend_ops msm_pm_ops = {
+	.begin = msm_pm_begin,
+	.end   = msm_pm_end,
 	.enter = msm_pm_enter,
 	.valid = suspend_valid_only_mem,
 };
