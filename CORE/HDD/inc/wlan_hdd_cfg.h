@@ -1664,7 +1664,7 @@ typedef enum
 #define CFG_DISABLE_LDPC_WITH_TXBF_AP             "gDisableLDPCWithTxbfAP"
 #define CFG_DISABLE_LDPC_WITH_TXBF_AP_MIN         ( 0 )
 #define CFG_DISABLE_LDPC_WITH_TXBF_AP_MAX         ( 1 )
-#define CFG_DISABLE_LDPC_WITH_TXBF_AP_DEFAULT     ( 1 )
+#define CFG_DISABLE_LDPC_WITH_TXBF_AP_DEFAULT     ( 0 )
 #endif
 /*--------------------------------------------------------------------------- 
   Type declarations
