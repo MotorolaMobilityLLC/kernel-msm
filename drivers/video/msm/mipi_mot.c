@@ -825,6 +825,8 @@ static int __init mipi_mot_lcd_init(void)
 	mot_panel.exit_sleep_wait = 10;
 	mot_panel.exit_sleep_panel_on_wait = 120;
 
+	mot_panel.pinfo.mipi.frame_rate = 60;
+
 	init_timer(&mot_panel.exit_sleep_panel_on_timer);
 
 	mot_panel.hide_img = mipi_mot_hide_img;
