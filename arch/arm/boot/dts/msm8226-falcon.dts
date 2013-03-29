@@ -244,4 +244,14 @@
 
 &i2c_3 {
 	status = "ok";
+	bcm2079x@77 {
+		compatible = "brcm,bcm2079x";
+		reg = <0x77>;
+		interrupt-parent = <&msmgpio>;
+		interrupts = <21 0x2>;
+		gpios = <&msmgpio 20 0x0>, /* WAKE */
+			<&msmgpio 21 0x0>, /* IRQ */
+			<&msmgpio 22 0x0>; /* EN */
+		nfc_vddswp-supply = <&pm8226_l22>;
+	};
 };
