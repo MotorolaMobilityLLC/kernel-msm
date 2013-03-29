@@ -3982,7 +3982,8 @@ static int is_charging_finished(struct pm8921_chg_chip *chip,
 #endif
 		pr_debug("vddmax = %d vbat_batt_terminal_uv=%d\n",
 			 vbat_programmed, vbat_batt_terminal_uv);
-		if (vbat_batt_terminal_uv < vbat_programmed - VBAT_TOLERANCE_MV)
+		if ((vbat_batt_terminal_uv / 1000)
+		    < (vbat_programmed - VBAT_TOLERANCE_MV))
 			return CHG_IN_PROGRESS;
 
 		if (last_vbat_programmed == -EINVAL)
