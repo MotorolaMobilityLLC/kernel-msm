@@ -632,7 +632,16 @@ static void safety_reset(struct synaptics_ts_data *ts)
  */
 static void release_all_ts_event(struct synaptics_ts_data *ts)
 {
-	ts->ts_data.prev_total_num = 0;
+	int id;
+
+	for (id = 0; id < ts->pdata->max_id; id++) {
+		if (!ts->ts_data.curr_data[id].state)
+			continue;
+
+		input_mt_slot(ts->input_dev, id);
+		input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER, 0);
+		ts->ts_data.curr_data[id].state = 0;
+	}
 
 	input_sync(ts->input_dev);
 }
