@@ -294,7 +294,7 @@ int touch_work_pre_proc(struct synaptics_ts_data *ts)
 
 	if (gpio_get_value(ts->pdata->irq_gpio) != 0) {
 		TOUCH_ERR_MSG("INT STATE HIGH\n");
-		return -EIO;
+		return -EINTR;
 	}
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
@@ -371,6 +371,9 @@ static void synaptics_ts_work_func(struct work_struct *work)
 	}
 	else if (ret == -EIO) {
 		touch_work_post_proc(ts, WORK_POST_ERR_CIRTICAL);
+		return;
+	}
+	else if (ret == -EINTR) {
 		return;
 	}
 
