@@ -486,6 +486,7 @@ struct mipi_dsi_panel_platform_data {
 	int fpga_ctrl_mode;
 	int fpga_3d_config_addr;
 	int *gpio;
+	int recovery_backlight;
 	struct mipi_dsi_phy_ctrl *phy_ctrl_settings;
 	char dlane_swap;
 	void (*dsi_pwm_cfg)(void);

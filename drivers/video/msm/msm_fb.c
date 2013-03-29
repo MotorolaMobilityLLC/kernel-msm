@@ -2059,6 +2059,15 @@ static int msm_fb_pan_display_sub(struct fb_var_screeninfo *var,
 		}
 	}
 
+	/* set backlight in recovery mode */
+	pdata = (struct msm_fb_panel_data *)mfd->pdev->
+		dev.platform_data;
+	if ((pdata) && (pdata->set_recovery_backlight)) {
+		down(&mfd->sem);
+		pdata->set_recovery_backlight(mfd);
+		up(&mfd->sem);
+	}
+
 	++mfd->panel_info.frame_count;
 	return 0;
 }
@@ -2069,6 +2078,7 @@ static void msm_fb_commit_wq_handler(struct work_struct *work)
 	struct fb_var_screeninfo *var;
 	struct fb_info *info;
 	struct msm_fb_backup_type *fb_backup;
+	struct msm_fb_panel_data *pdata;
 
 	mfd = container_of(work, struct msm_fb_data_type, commit_work);
 	fb_backup = (struct msm_fb_backup_type *)mfd->msm_fb_backup;
@@ -2084,6 +2094,21 @@ static void msm_fb_commit_wq_handler(struct work_struct *work)
 	mfd->is_committing = 0;
 	complete_all(&mfd->commit_comp);
 	mutex_unlock(&mfd->sync_mutex);
+
+	if (unset_bl_level && !bl_updated) {
+		pdata = (struct msm_fb_panel_data *)mfd->pdev->
+			dev.platform_data;
+		if ((pdata) && (pdata->set_backlight)) {
+			/* add delay to make sure the fb sending completed */
+			msleep(20);
+			down(&mfd->sem);
+			mfd->bl_level = unset_bl_level;
+			pdata->set_backlight(mfd);
+			bl_level_old = unset_bl_level;
+			up(&mfd->sem);
+			bl_updated = 1;
+		}
+	}
 
 }
 
@@ -3222,7 +3247,6 @@ static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 	int	ret;
 	struct msmfb_overlay_data req;
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
-	struct msm_fb_panel_data *pdata;
 
 	if (mfd->overlay_play_enable == 0)	/* nothing to do */
 		return 0;
@@ -3255,19 +3279,6 @@ static int msmfb_overlay_play(struct fb_info *info, unsigned long *argp)
 	mutex_unlock(&msm_fb_notify_update_sem);
 
 	ret = mdp4_overlay_play(info, &req);
-
-	if (unset_bl_level && !bl_updated) {
-		pdata = (struct msm_fb_panel_data *)mfd->pdev->
-			dev.platform_data;
-		if ((pdata) && (pdata->set_backlight)) {
-			down(&mfd->sem);
-			mfd->bl_level = unset_bl_level;
-			pdata->set_backlight(mfd);
-			bl_level_old = unset_bl_level;
-			up(&mfd->sem);
-			bl_updated = 1;
-		}
-	}
 
 	return ret;
 }

@@ -94,7 +94,6 @@ struct dcs_cmd_req cmdreq_JDI;
 static int mipi_JDI_lcd_on(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd;
-	int ret;
 
 	pr_info("%s+\n", __func__);
 
@@ -116,20 +115,7 @@ static int mipi_JDI_lcd_on(struct platform_device *pdev)
 
 	pr_info("%s, JDI display on command-\n", __func__);
 
-	msleep(210);
-
-	if (bl_lpm) {
-		ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL * 40,
-			PWM_PERIOD_USEC);
-		if (ret)
-			pr_err("pwm_config on lpm failed %d\n", ret);
-		ret = pwm_enable(bl_lpm);
-		if (ret)
-			pr_err("pwm enable on lpm failed\n");
-	}
-
 	msleep(20);
-	gpio_set_value_cansleep(gpio_LCD_BL_EN, 1);
 
 	pr_info("%s-\n", __func__);
 	return 0;
@@ -148,7 +134,7 @@ static int mipi_JDI_lcd_off(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
-	msleep(210);
+	msleep(20);
 
 	pr_info("%s, JDI display off command+\n", __func__);
 	cmdreq_JDI.cmds = JDI_display_off_cmds;
@@ -209,6 +195,31 @@ static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 	}
 }
 
+static void mipi_JDI_set_recovery_backlight(struct msm_fb_data_type *mfd)
+{
+	int ret;
+	int recovery_backlight = 100;
+
+	if (mipi_JDI_pdata->recovery_backlight)
+		recovery_backlight = mipi_JDI_pdata->recovery_backlight;
+
+	pr_info("%s: backlight level %d\n", __func__, recovery_backlight);
+
+	if (bl_lpm) {
+		ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL *
+			recovery_backlight, PWM_PERIOD_USEC);
+		if (ret) {
+			pr_err("pwm_config on lpm failed %d\n", ret);
+			return;
+		}
+		ret = pwm_enable(bl_lpm);
+		if (ret)
+			pr_err("pwm enable on lpm failed, bl=%d\n",
+				recovery_backlight);
+		msleep(20);
+		gpio_set_value_cansleep(gpio_LCD_BL_EN, 1);
+	}
+}
 static void mipi_JDI_lcd_shutdown(void)
 {
 	int ret;
@@ -298,6 +309,7 @@ static struct msm_fb_panel_data JDI_panel_data = {
 	.on		= mipi_JDI_lcd_on,
 	.off		= mipi_JDI_lcd_off,
 	.set_backlight = mipi_JDI_set_backlight,
+	.set_recovery_backlight = mipi_JDI_set_recovery_backlight,
 };
 
 static int ch_used[3];

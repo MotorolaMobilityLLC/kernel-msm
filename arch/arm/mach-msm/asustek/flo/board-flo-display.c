@@ -793,6 +793,7 @@ static int mipi_JDI_gpio[] = {LPM_CHANNEL};
 
 static struct mipi_dsi_panel_platform_data mipi_JDI_pdata = {
 	.gpio = mipi_JDI_gpio,
+	.recovery_backlight = 40, /* 1~255 */
 };
 
 static struct platform_device mipi_JDI_panel_device = {
