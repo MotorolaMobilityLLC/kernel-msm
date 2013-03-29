@@ -802,9 +802,14 @@ static long msm_ispif_cmd(struct v4l2_subdev *sd, void *arg)
 static long msm_ispif_subdev_ioctl(struct v4l2_subdev *sd, unsigned int cmd,
 								void *arg)
 {
+	struct ispif_device *ispif;
 	switch (cmd) {
 	case VIDIOC_MSM_ISPIF_CFG:
 		return msm_ispif_cmd(sd, arg);
+	case VIDIOC_MSM_ISPIF_REL:
+		ispif =	(struct ispif_device *)v4l2_get_subdevdata(sd);
+		msm_ispif_release(ispif);
+		return 0;
 	default:
 		return -ENOIOCTLCMD;
 	}
