@@ -1828,6 +1828,8 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
                   limLog(pMac, LOGE, FL("Fail to send Beacon Filter Info \n"));
                }
             }
+            vos_mem_free((v_VOID_t *)(limMsg->bodyptr));
+            limMsg->bodyptr = NULL;
 #endif
         }
         break;
