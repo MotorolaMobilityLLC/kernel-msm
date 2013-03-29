@@ -1520,7 +1520,7 @@ static int synaptics_parse_dt(struct device *dev, struct touch_platform_data *pd
 	struct device_node *np = dev->of_node;
 
 	rc = synaptics_get_dt_coords(dev, "synaptics,panel-coords",
-					&pdata->x_max, &pdata->y_max);
+					&pdata->max_x, &pdata->max_y);
 	if (rc)
 		return rc;
 
@@ -1652,9 +1652,9 @@ static int synaptics_ts_probe(
 
 	input_mt_init_slots(ts->input_dev, ts->pdata->max_id);
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, 0,
-						ts->pdata->x_max-1, 0, 0);
+						ts->pdata->max_x-1, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y, 0,
-						ts->pdata->y_max-1, 0, 0);
+						ts->pdata->max_y-1, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_PRESSURE, 0,
 						ts->pdata->max_pres, 0, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0,

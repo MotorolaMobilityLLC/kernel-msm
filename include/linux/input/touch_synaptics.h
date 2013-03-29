@@ -61,8 +61,8 @@ struct touch_platform_data {
 	u32             max_id;
 	u32             max_major;
 	u32             max_pres;
-	u32             x_max;
-	u32             y_max;
+	u32             max_x;
+	u32             max_y;
 	u32             lcd_x;
 	u32             lcd_y;
 	int             reset_gpio;
@@ -96,7 +96,7 @@ struct t_data {
 	u16             x_position;
 	u16             y_position;
 	u16             width_major;
-        u16             width_minor;
+	u16             width_minor;
 	u16             pressure;
 };
 
