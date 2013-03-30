@@ -69,6 +69,22 @@ static struct gpiomux_setting taiko_int = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+#if defined(CONFIG_BACKLIGHT_LM3630)
+static struct gpiomux_setting lcd_bl_en_active_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_8MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_OUT_HIGH,
+};
+
+static struct gpiomux_setting lcd_bl_en_suspend_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_IN,
+};
+#endif
+
 static struct gpiomux_setting touch_id_act_cfg = {
 	.func = GPIOMUX_FUNC_GPIO,
 	.drv = GPIOMUX_DRV_6MA,
@@ -174,6 +190,15 @@ static struct msm_gpiomux_config msm_display_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &lcd_en_sus_cfg,
 		},
 	},
+#if defined(CONFIG_BACKLIGHT_LM3630)
+	{
+		.gpio = 91, /* LCD_BL_EN */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &lcd_bl_en_active_cfg,
+			[GPIOMUX_SUSPENDED] = &lcd_bl_en_suspend_cfg,
+		},
+	},
+#endif
 };
 
 static struct msm_gpiomux_config msm_hdmi_configs[] __initdata = {
