@@ -2031,7 +2031,7 @@ static void dwc3_msm_external_power_changed(struct power_supply *psy)
 
 
 static char *dwc3_msm_pm_power_supplied_to[] = {
-	"battery",
+	"ac",
 };
 
 static enum power_supply_property dwc3_msm_pm_power_props_usb[] = {

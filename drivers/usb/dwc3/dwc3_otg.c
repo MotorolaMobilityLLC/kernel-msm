@@ -475,6 +475,7 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 {
 	static int power_supply_type;
 	struct dwc3_otg *dotg = container_of(phy->otg, struct dwc3_otg, otg);
+	struct power_supply *usb_psy = NULL;
 
 
 	if (!dotg->psy || !dotg->charger) {
@@ -505,6 +506,14 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 
 	dev_info(phy->dev, "Avail curr from USB = %u\n", mA);
 
+	if (dotg->charger->chg_type == DWC3_DCP_CHARGER) {
+		pr_info("%s: overide dotg->psy to ac->psy\n", __func__);
+		usb_psy = dotg->psy;
+		dotg->psy = power_supply_get_by_name("ac");
+	}
+	pr_info("dotg->charger->max_power = %d "\
+			"ma = %d\n", dotg->charger->max_power, mA);
+
 	if (dotg->charger->max_power <= 2 && mA > 2) {
 		/* Enable charging */
 		if (power_supply_set_online(dotg->psy, true))
@@ -519,6 +528,9 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 		if (power_supply_set_current_limit(dotg->psy, 0))
 			goto psy_error;
 	}
+
+	if (usb_psy)
+		dotg->psy = usb_psy;
 
 	power_supply_changed(dotg->psy);
 	dotg->charger->max_power = mA;
