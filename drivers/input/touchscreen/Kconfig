@@ -490,6 +490,17 @@ config SYNA_MULTI_TOUCH
 	depends on TOUCHSCREEN_SYNAPTICS_RMI4_I2C
 	default y
 
+
+config TOUCHSCREEN_SYNAPTICS_I2C_RMI4
+	tristate "Synaptics RMI4 protocol based I2C interface Touchscreen Driver"
+	help
+	  This enables support for Synaptics RMI4 protocol I2C interface Touchscreens.
+
+config TOUCHSCREEN_SYNAPTICS_7020S
+	tristate "Synaptics 7020S chip"
+	help
+	  This enables support for Synaptics 7020S chip for Touch Dirver.
+
 config TOUCHSCREEN_TOUCHRIGHT
 	tristate "Touchright serial touchscreen"
 	select SERIO
