@@ -12,6 +12,7 @@
 
 #include <linux/io.h>
 #include <linux/types.h>
+#include <linux/slimport.h>
 #include <mach/board.h>
 #include "mdss_hdmi_edid.h"
 
@@ -355,15 +356,12 @@ static struct attribute_group hdmi_edid_fs_attrs_group = {
 	.attrs = hdmi_edid_fs_attrs,
 };
 
-static int hdmi_edid_read_block(struct hdmi_edid_ctrl *edid_ctrl, int block,
+static int _hdmi_edid_read_block(struct hdmi_edid_ctrl *edid_ctrl, int block,
 	u8 *edid_buf)
 {
-	const u8 *b = NULL;
-	u32 ndx, check_sum, print_len;
-	int block_size = 0x80;
-	int i, status;
 	struct hdmi_tx_ddc_data ddc_data;
-	b = edid_buf;
+	int block_size = 0x80;
+	int i, status = 0;
 
 	if (!edid_ctrl) {
 		DEV_ERR("%s: invalid input\n", __func__);
@@ -399,6 +397,23 @@ static int hdmi_edid_read_block(struct hdmi_edid_ctrl *edid_ctrl, int block,
 
 		block_size /= 2;
 	} while (status && (block_size >= 16));
+
+	return status;
+} /* _hdmi_edid_read_block */
+
+static int hdmi_edid_read_block(struct hdmi_edid_ctrl *edid_ctrl, int block,
+	u8 *edid_buf)
+{
+	const u8 *b = NULL;
+	u32 ndx, check_sum, print_len;
+	int status;
+
+	b = edid_buf;
+
+	/* add bridge function which can offer edid info from slimport device */
+	status = slimport_read_edid_block(block, edid_buf);
+	if (status == -ENOSYS)
+		status = _hdmi_edid_read_block(edid_ctrl, block, edid_buf);
 
 	if (status)
 		goto error;
