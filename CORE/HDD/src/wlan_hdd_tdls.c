@@ -350,7 +350,7 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                     if (curr_peer->tx_pkt >=
                             pHddTdlsCtx->threshold_config.tx_packet_n) {
 
-                        if (++curr_peer->discovery_attempt <
+                        if (curr_peer->discovery_attempt++ <
                                  pHddTdlsCtx->threshold_config.discovery_tries_n) {
                             VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "TDLS UNKNOWN discover ");
                             wlan_hdd_tdls_pre_setup(pHddTdlsCtx, curr_peer);
