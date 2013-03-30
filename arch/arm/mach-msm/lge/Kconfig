@@ -1,0 +1,17 @@
+config MACH_LGE
+	bool
+
+menu "LGE Board Selection"
+
+config MACH_MSM8974_HAMMERHEAD
+	depends on ARCH_MSM8974
+	select MACH_LGE
+	bool "MSM8974 HAMMERHEAD"
+	help
+	  Support for the LGE MSM8974 HAMMERHEAD.
+
+endmenu
+
+menu "LGE Specific Patches"
+
+endmenu

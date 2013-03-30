@@ -1,0 +1,130 @@
+/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License version 2 and
+* only version 2 as published by the Free Software Foundation.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*/
+
+
+/ {
+	i2c@f9923000 {
+		cell-index = <84>;
+		compatible = "qcom,i2c-qup";
+		reg = <0xf9923000 0x1000>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		interrupts = <0 95 0>;
+		interrupt-names = "qup_err_intr";
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <50000000>;
+
+		max17048@36 {
+			compatible = "maxim,max17048";
+			status = "disabled";
+			interrupt-parent = <&msmgpio>;
+			interrupts = <9 0x0>;
+			reg = <0x36>;
+			max17048,alert_gpio = <&msmgpio 9 0x00>;
+			max17048,rcomp = <77>;
+			max17048,alert_threshold = <2>;
+		};
+
+		smb349@2d {
+			compatible = "summit,smb349-charger";
+			reg = <0x2d>; /* 0x5A/0x5B */
+			status = "disabled";
+			interrupt-parent = <&pm8941_gpios>;
+			interrupts = <30 0x2>;
+			summit,stat-gpio = <&pm8941_gpios 30 0x02>;
+			summit,chg-current-ma = <1200>;
+			summit,term-current-ma = <100>;
+		};
+	};
+};
+
+&spmi_bus {
+	qcom,pm8941@0 {
+		pm8941_chg: qcom,charger {
+			status = "disabled";
+
+			qcom,chg-vddmax-mv = <4350>;
+			qcom,chg-vddsafe-mv = <4350>;
+			qcom,chg-vinmin-mv = <4350>;
+			qcom,chg-vbatdet-mv = <4100>;
+			qcom,chg-ibatmax-ma = <1500>;
+			qcom,chg-ibatterm-ma = <200>;
+			qcom,chg-ibatsafe-ma = <1500>;
+
+			/* Cable type definition.
+			* Each cable type has 3 values
+			* that we can configure the threshold of ADC value and TA/USB IUSB max current value.
+			* ex)
+			*    cable type = <adc_threshold, TA_MA, USB_MA>.
+			*/
+
+			lge,no-init-cable = <0 0 0>;
+			lge,cable-mhl-1k = <5000 500 500>;
+			lge,cable-u-28p7k = <5500 500 500>;
+			lge,cable-28p7k = <6000 500 500>;
+			lge,cable-56k = <200000 1500 1500>;
+			lge,cable-100k = <239000 500 500>;
+			lge,cable-130k = <340000 1500 1500>;
+			lge,cable-180k = <400000 700 500>;
+			lge,cable-200k = <410000 700 500>;
+			lge,cable-220k = <485000 900 500>;
+			lge,cable-270k = <560000 900 500>;
+			lge,cable-330k = <735000 500 500>;
+			lge,cable-620k = <955000 500 500>;
+			lge,cable-910k = <1140000 1500 1500>;
+			lge,cable-none = <1900000 900  500>;
+
+			qcom,chg-chgr@1000 {
+				status = "disabled";
+			};
+
+			qcom,chg-buck@1100 {
+				status = "disabled";
+			};
+
+			qcom,chg-bat-if@1200 {
+				status = "disabled";
+			};
+
+			qcom,chg-usb-chgpth@1300 {
+				status = "disabled";
+			};
+
+			qcom,chg-dc-chgpth@1400 {
+				status = "disabled";
+			};
+
+			qcom,chg-boost@1500 {
+				status = "disabled";
+			};
+
+			qcom,chg-misc@1600 {
+				status = "disabled";
+			};
+
+		};
+
+		vadc@3100 {
+			chan@39 {
+				label = "usb_id_lv";
+				reg = <0x39>;
+				qcom,decimation = <0>;
+				qcom,pre-div-channel-scaling = <0>;
+				qcom,calibration-type = "absolute";
+				qcom,scale-function = <0>;
+				qcom,hw-settle-time = <0>;
+				qcom,fast-avg-setup = <0>;
+			};
+		};
+	};
+};

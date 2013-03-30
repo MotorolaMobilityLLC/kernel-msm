@@ -1,0 +1,135 @@
+/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	i2c@f9924000 {
+		synaptics_s7020@20 {
+			compatible = "synaptics,s7020";
+			status = "disable";
+			reg = <0x20>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <5 0x2>;
+			vdd_ana-supply = <&pm8941_l22>;
+			vcc_i2c-supply = <&pm8941_lvs3>;
+			synaptics,reset-gpio = <&msmgpio 8 0x00>;
+			synaptics,irq-gpio = <&msmgpio 5 0x00>;
+			synaptics,max_id = <10>;
+			synaptics,max_major = <15>;
+			synaptics,max_pres = <255>;
+			synaptics,panel-coords = <0  0 2160 3840>;
+			synaptics,display-coords = <0 0 1080 1920>;
+			synaptics,i2c-pull-up = <1>;
+		};
+
+		melfas_mms136@48 {
+			compatible = "melfas,mms136";
+			status = "disable";
+			reg = <0x48>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <5 0x2>;
+			vdd_ana-supply = <&pm8941_l22>;
+			vcc_i2c-supply = <&pm8941_lvs3>;
+			melfas,reset-gpio = <&msmgpio 60 0x00>;
+			melfas,irq-gpio = <&msmgpio 5 0x00>;
+			melfas,panel-coords = <0  0 480 800>;
+			melfas,display-coords = <0 0 1080 1920>;
+			melfas,i2c-pull-up = <1>;
+			melfas,cfg_1 {
+				melfas,family-id = <0x82>;
+				melfas,variant-id = <0x19>;
+				melfas,version = <0x10>;
+				melfas,build = <0xaa>;
+				melfas,config = [
+					/* Object 6, Instance = 0 */
+					00 00 00 00 00 00
+					/* Object 38, Instance = 0 */
+					15 00 02 10 08 0C 00 00
+					/* Object 7, Instance = 0 */
+					FF FF 32 03
+					/* Object 8, Instance = 0 */
+					0F 00 0A 0A 00 00 0A 00 00 00
+					/* Object 9, Instance = 0 */
+					83 00 00 18 0E 00 70 32 02 01
+					00 03 01 01 05 0A 0A 0A 90 05
+					F8 02 00 00 0F 0F 00 00 48 2D
+					07 0C 00 00 00 00
+					/* Object 15, Instance = 0 */
+					00 00 00 00 00 00 00 00 00 00
+					00
+					/* Object 18, Instance = 0 */
+					00 00
+					/* Object 19, Instance = 0 */
+					00 00 00 00 00 00
+					/* Object 23, Instance = 0 */
+					00 00 00 00 00 00 00 00 00 00
+					00 00 00 00 00
+					/* Object 25, Instance = 0 */
+					00 00 00 00 00 00 00 00 00 00
+					00 00 00 00 00
+					/* Object 40, Instance = 0 */
+					00 00 00 00 00
+					/* Object 42, Instance = 0 */
+					00 00 00 00 00 00 00 00 00 00
+					/* Object 46, Instance = 0 */
+					00 00 10 10 00 00 03 00 00 01
+					/* Object 47, Instance = 0 */
+					08 0A 28 0A 02 0A 00 8C 00 20
+					00 00 00
+					/* Object 55, Instance = 0 */
+					00 00 00 00 00 00
+					/* Object 56, Instance = 0 */
+					03 00 01 18 05 05 05 05 05 05
+					05 05 05 05 05 05 05 05 05 05
+					05 05 05 05 05 05 05 05 00 00
+					00 00 00 00 00 00 00 00 00 00
+					00 00
+					/* Object 57, Instance = 0 */
+					00 00 00
+					/* Object 61, Instance = 0 */
+					00 00 00 00 00
+					/* Object 61, Instance = 1 */
+					00 00 00 00 00
+					/* Object 62, Instance = 0 */
+					7F 03 00 16 00 00 00 00 00 00
+					04 08 10 18 05 00 0A 05 05 50
+					14 19 34 1A 64 00 00 04 40 00
+					00 00 00 00 30 32 02 00 01 00
+					05 00 00 00 00 00 00 00 00 00
+					00 00 0C 00
+					];
+			};
+		};
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+
+		vol_down {
+			label = "volume_down";
+			gpios = <&pm8941_gpios 3 0x1>;
+			linux,input-type = <1>;
+			linux,code = <114>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+
+		vol_up {
+			label = "volume_up";
+			gpios = <&pm8941_gpios 2 0x1>;
+			linux,input-type = <1>;
+			linux,code = <115>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+};

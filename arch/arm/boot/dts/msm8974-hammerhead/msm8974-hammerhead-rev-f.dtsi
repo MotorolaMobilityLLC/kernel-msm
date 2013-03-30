@@ -1,0 +1,661 @@
+/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/include/ "msm8974-hammerhead-panel.dtsi"
+/include/ "msm8974-hammerhead-input.dtsi"
+/include/ "msm8974-hammerhead-hdmi.dtsi"
+/include/ "msm8974-hammerhead-usb.dtsi"
+/include/ "msm8974-hammerhead-misc.dtsi"
+/include/ "msm8974-hammerhead-pm.dtsi"
+/include/ "msm8974-hammerhead-camera.dtsi"
+/include/ "msm8974-hammerhead-rtc.dtsi"
+
+/ {
+	serial@f991d000 {
+		status = "ok";
+	};
+
+	qcom,mdss_mdp@fd900000 {
+		qcom,mdss_fb_primary {
+			qcom,memory-reservation-size = <0x1000000>;
+		};
+	};
+
+	qcom,mdss_dsi@fd922800 {
+		lge,mdss-dsi-use-vdd-supply = <0>;
+		lge,mdss-dsi-byte-clk-rate = <112375000>;
+		lge,mdss-dsi-pixel-clk-rate = <150000000>;
+	};
+
+	qcom,mdss_dsi_lgit_video{
+		status = "ok";
+		qcom,cont-splash-enabled;
+	};
+
+	qcom,mdss_dsi_lgit_cmd{
+		status = "disable";
+	};
+
+	qcom,hdmi_tx@fd922100 {
+		status = "ok";
+	};
+
+	i2c@f9924000 {
+
+		synaptics_s7020@20 {
+			status = "ok";
+		};
+
+		melfas_mms136@48 {
+			status = "disable";
+		};
+	};
+
+	i2c@f9967000 {
+		analogix_anx7808@72 {
+			status = "ok";
+		};
+	};
+/* BLSP#1 is connected to I2c device, Gauge IC.
+	spi@f9923000 {
+		ethernet-switch@2 {
+			compatible = "micrel,ks8851";
+			reg = <2>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <94 0>;
+			spi-max-frequency = <4800000>;
+			rst-gpio = <&pm8941_mpps 6 0>;
+			vdd-io-supply = <&spi_eth_vreg>;
+			vdd-phy-supply = <&spi_eth_vreg>;
+		};
+	};
+*/
+	serial@f9962000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0xf9962000 0x100>;
+		interrupts = <0 118 0>;
+	};
+
+	i2c@f9923000 {
+		max17048@36 {
+			status =  "ok";
+		};
+
+		smb349@2d {
+			status = "ok";
+		};
+	};
+
+	sound {
+		compatible = "qcom,msm8974-audio-taiko";
+		qcom,model = "msm8974-taiko-mtp-snd-card";
+		lge,debounce-time-ms = <500>;
+
+		qcom,hdmi-audio-rx;
+
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"LDO_H", "MCLK",
+			"AMIC1", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Handset Mic",
+			"AMIC2", "MIC BIAS2 External",
+			"MIC BIAS2 External", "Headset Mic",
+			"AMIC3", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Handset SubMic",
+			"AMIC4", "MIC BIAS4 External",
+			"MIC BIAS4 External", "3rd Mic",
+			"AMIC5", "MIC BIAS4 External",
+			"MIC BIAS4 External", "4th Mic",
+			"DMIC1", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic1",
+			"DMIC2", "MIC BIAS1 External",
+			"MIC BIAS1 External", "Digital Mic2",
+			"DMIC3", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic3",
+			"DMIC4", "MIC BIAS3 External",
+			"MIC BIAS3 External", "Digital Mic4",
+			"DMIC5", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Digital Mic5",
+			"DMIC6", "MIC BIAS4 External",
+			"MIC BIAS4 External", "Digital Mic6";
+
+		qcom,cdc-mclk-gpios = <&pm8941_gpios 15 0>;
+		taiko-mclk-clk = <&pm8941_clkdiv1>;
+		qcom,taiko-mclk-clk-freq = <9600000>;
+	};
+};
+
+&spmi_bus {
+	qcom,pm8941@0 {
+		pm8941_chg: qcom,charger {
+			status = "ok";
+
+			qcom,chg-chgr@1000 {
+				status = "ok";
+			};
+
+			qcom,chg-buck@1100 {
+				status = "ok";
+			};
+
+			qcom,chg-bat-if@1200 {
+				status = "ok";
+			};
+
+			qcom,chg-usb-chgpth@1300 {
+				status = "ok";
+			};
+
+			qcom,chg-dc-chgpth@1400 {
+				status = "ok";
+			};
+
+			qcom,chg-boost@1500 {
+				status = "ok";
+			};
+
+			qcom,chg-misc@1600 {
+				status = "ok";
+			};
+
+		};
+	};
+
+	qcom,pm8941@1 {
+		qcom,leds@d000 {
+			status = "okay";
+			qcom,rgb_0 {
+				label = "rgb";
+				linux,name = "red";
+				qcom,mode = <1>;
+				qcom,pwm-channel = <6>;
+				qcom,pwm-us = <5000>;
+				qcom,duty-ms = <70>;
+				qcom,start-idx = <0>;
+				qcom,idx-len = <63>;
+				qcom,duty-pcts = [
+					 00 09 09 00 00
+					 00 00 00 15 2A
+					 3F 2A 15 00 00
+					 00 00 00 00 00
+					 00 00 2C 57 5E
+					 64 63 63 63 62
+					 60 5F 5D 5A 58
+					 53 4F 4A 41 37
+					 2D 17 00 00 00
+					 22 43 2C 16 00
+					 00 00 00 00 00
+					 09 10 21 31 21
+					 10 09 00
+					 ];
+				qcom,max-current = <12>;
+				qcom,default-state = "off";
+				qcom,id = <3>;
+				linux,default-trigger = "none";
+			};
+
+			qcom,rgb_1 {
+				label = "rgb";
+				linux,name = "green";
+				qcom,mode = <1>;
+				qcom,pwm-channel = <5>;
+				qcom,pwm-us = <5000>;
+				qcom,duty-ms = <70>;
+				qcom,start-idx = <0>;
+				qcom,idx-len = <63>;
+				qcom,duty-pcts = [
+					 00 09 09 00 00
+					 00 00 00 15 2A
+					 3F 2A 15 00 00
+					 00 00 00 00 00
+					 00 00 2C 57 5E
+					 64 63 63 63 62
+					 60 5F 5D 5A 58
+					 53 4F 4A 41 37
+					 2D 17 00 00 00
+					 22 43 2C 16 00
+					 00 00 00 00 00
+					 09 10 21 31 21
+					 10 09 00
+					 ];
+				qcom,max-current = <12>;
+				qcom,default-state = "off";
+				qcom,id = <4>;
+				linux,default-trigger = "none";
+			};
+
+			qcom,rgb_2 {
+				label = "rgb";
+				linux,name = "blue";
+				qcom,mode = <1>;
+				qcom,pwm-channel = <4>;
+				qcom,pwm-us = <5000>;
+				qcom,duty-ms = <70>;
+				qcom,start-idx = <0>;
+				qcom,idx-len = <63>;
+				qcom,duty-pcts = [
+					 00 09 09 00 00
+					 00 00 00 15 2A
+					 3F 2A 15 00 00
+					 00 00 00 00 00
+					 00 00 2C 57 5E
+					 64 63 63 63 62
+					 60 5F 5D 5A 58
+					 53 4F 4A 41 37
+					 2D 17 00 00 00
+					 22 43 2C 16 00
+					 00 00 00 00 00
+					 09 10 21 31 21
+					 10 09 00
+					 ];
+				qcom,max-current = <12>;
+				qcom,default-state = "off";
+				qcom,id = <5>;
+				linux,default-trigger = "none";
+			};
+		};
+
+		qcom,leds@d800 {
+			status = "disable";
+			qcom,wled_0 {
+				label = "wled";
+				linux,name = "wled:backlight";
+				linux,default-trigger = "bkl-trigger";
+				qcom,cs-out-en;
+				qcom,op-fdbck;
+				qcom,default-state = "off";
+				qcom,max-current = <25>;
+				qcom,ctrl-delay-us = <0>;
+				qcom,boost-curr-lim = <3>;
+				qcom,cp-sel = <0>;
+				qcom,switch-freq = <2>;
+				qcom,ovp-val = <2>;
+				qcom,num-strings = <1>;
+				qcom,id = <0>;
+			};
+		};
+
+		qcom,leds@d900 {
+			status = "disabled";
+		};
+
+		qcom,leds@da00 {
+			status = "disabled";
+		};
+
+		qcom,leds@db00 {
+			status = "disabled";
+		};
+
+		qcom,leds@dc00 {
+			status = "disabled";
+		};
+
+		qcom,leds@dd00 {
+			status = "disabled";
+		};
+
+		qcom,leds@de00 {
+			status = "disabled";
+		};
+
+		qcom,leds@df00 {
+			status = "disabled";
+		};
+
+		qcom,leds@e000 {
+			status = "disabled";
+		};
+
+		qcom,leds@e100 {
+			status = "disabled";
+		};
+	};
+};
+&sdcc1 {
+     qcom,clk-rates = <400000 20000000 25000000 50000000 100000000>;
+     qcom,bus-speed-mode = "DDR_1p8v";
+     qcom,msm-bus,num-cases = <7>;
+     /* XXX: No 200 MB/s */
+     qcom,msm-bus,vectors-KBps = <78 512 0 0>, /* No vote */
+             <78 512 1600 3200>,    /* 400 KB/s*/
+             <78 512 80000 160000>, /* 20 MB/s */
+             <78 512 100000 200000>, /* 25 MB/s */
+             <78 512 200000 400000>, /* 50 MB/s */
+             <78 512 400000 800000>, /* 100 MB/s */
+             <78 512 2048000 4096000>; /* Max. bandwidth */
+     qcom,bus-bw-vectors-bps = <0 400000 20000000 25000000 50000000 100000000 4294967295>;
+};
+&sdcc2 {
+	#address-cells = <0>;
+	interrupt-parent = <&sdcc2>;
+	interrupts = <0 1 2>;
+	#interrupt-cells = <1>;
+	interrupt-map-mask = <0xffffffff>;
+	interrupt-map = <0 &intc 0 125 0
+		1 &intc 0 220 0
+		2 &msmgpio 35 0x3>;
+	interrupt-names = "core_irq", "bam_irq", "wlan_oob_irq";
+	qcom,bus-width = <4>;
+
+	vdd-supply = <&pm8941_l11>;
+	qcom,sdcc-sup-voltages = <1800 2950>;
+	qcom,sdcc-nonremovable = <1>;
+	qcom,sup-voltages = <1800 2950>;
+        qcom,nonremovable;
+
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <6 22000>;
+
+};
+
+&usb_otg {
+	qcom,hsusb-otg-otg-control = <2>;
+};
+
+&usb3 {
+	qcom,otg-capability;
+};
+
+&pm8941_bms {
+	status = "disable";
+};
+
+&pm8941_gpios {
+	gpio@c000 { /* GPIO 1 */
+		status = "ok";
+		qcom,mode = <0>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <2>;
+		qcom,src-select = <0>;
+		qcom,master-en = <1>;
+	};
+
+	gpio@c100 { /* GPIO 2 */
+	};
+
+	gpio@c200 { /* GPIO 3 */
+		qcom,mode = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+	};
+
+	gpio@c300 { /* GPIO 4 */
+		qcom,mode = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+	};
+
+	gpio@c400 { /* GPIO 5 */
+		qcom,mode = <0>;
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;
+		qcom,src-sel = <0>;
+	};
+
+	gpio@c500 { /* GPIO 6 */
+	};
+
+	gpio@c600 { /* GPIO 7 */
+		status = "ok";
+		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <4>;		/* QPNP_PIN_PULL_DN */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,src-select = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
+	};
+
+	gpio@c700 { /* GPIO 8 */
+		status = "ok";
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,out-strength = <2>;	/* QPNP_PIN_OUT_STRENGTH_MED */
+		qcom,src-select = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
+	};
+
+	gpio@c800 { /* GPIO 9 */
+	};
+
+	gpio@c900 { /* GPIO 10 */
+		status = "ok";
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,out-strength = <2>;	/* QPNP_PIN_OUT_STRENGTH_MED */
+		qcom,src-select = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
+	};
+
+	gpio@ca00 { /* GPIO 11 */
+	};
+
+	gpio@cb00 { /* GPIO 12 */
+	};
+
+	gpio@cc00 { /* GPIO 13 */ /* LGE_CHANGE, SlimPort Cable Det IRQ */
+		status = "ok";
+		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <4>;		/* QPNP_PIN_PULL_DN */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
+	};
+
+	gpio@cd00 { /* GPIO 14 */ /* LGE_CHANGE, SlimPort PWR Ctl Pin Setting */
+		status = "ok";
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,out-strength = <2>;	/* QPNP_PIN_OUT_STRENGTH_MED */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
+	};
+
+	gpio@ce00 { /* GPIO 15 */
+		qcom,mode = <1>;
+		qcom,output-type = <0>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <2>;
+		qcom,out-strength = <3>;
+		qcom,src-sel = <2>;
+		qcom,master-en = <1>;
+	};
+
+	gpio@cf00 { /* GPIO 16 */
+	};
+
+	gpio@d000 { /* GPIO 17 */
+	};
+
+	gpio@d100 { /* GPIO 18 */
+		qcom,mode = <1>;
+		qcom,output-type = <0>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <2>;
+		qcom,out-strength = <3>;
+		qcom,src-sel = <3>;
+		qcom,master-en = <1>;
+	};
+
+	gpio@d200 { /* GPIO 19 */
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,out-strength = <2>;	/* QPNP_PIN_OUT_STRENGTH_MED */
+		qcom,src-sel = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
+	};
+
+	gpio@d300 { /* GPIO 20 */
+	};
+
+	gpio@d400 { /* GPIO 21 */
+	};
+
+	gpio@d500 { /* GPIO 22 */
+	};
+
+	gpio@d600 { /* GPIO 23 */
+	};
+
+	gpio@d700 { /* GPIO 24 */
+	};
+
+	gpio@d800 { /* GPIO 25 */
+	};
+
+	gpio@d900 { /* GPIO 26 */
+		status = "ok";
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,vin-sel = <2>;		/* QPNP_PIN_VIN2 */
+		qcom,out-strength = <2>;	/* QPNP_PIN_OUT_STRENGTH_MED */
+		qcom,src-select = <0>;		/* QPNP_PIN_SEL_FUNC_CONSTANT */
+		qcom,master-en = <1>;
+	};
+
+	gpio@da00 { /* GPIO 27 */
+	};
+
+	gpio@db00 { /* GPIO 28 */
+	};
+
+	gpio@dc00 { /* GPIO 29 */
+		qcom,pull = <0>; /* set to default pull */
+		qcom,master-en = <1>;
+		qcom,vin-sel = <2>; /* select 1.8 V source */
+	};
+
+	gpio@dd00 { /* GPIO 30 */
+	};
+
+	gpio@de00 { /* GPIO 31 */
+	};
+
+	gpio@df00 { /* GPIO 32 */
+	};
+
+	gpio@e000 { /* GPIO 33 */
+	};
+
+	gpio@e100 { /* GPIO 34 */
+	};
+
+	gpio@e200 { /* GPIO 35 */
+	};
+
+	gpio@e300 { /* GPIO 36 */
+		status = "ok";
+		qcom,mode = <1>;
+		qcom,output-type = <0>;
+		qcom,pull = <5>;
+		qcom,vin-sel = <0>;
+		qcom,out-strength = <1>;
+		qcom,src-select = <0>;
+		qcom,master-en = <1>;
+	};
+};
+
+&pm8941_mpps {
+
+	mpp@a000 { /* MPP 1 */
+	};
+
+	mpp@a100 { /* MPP 2 */
+	};
+
+	mpp@a200 { /* MPP 3 */
+	};
+
+	mpp@a300 { /* MPP 4 */
+	};
+
+	mpp@a400 { /* MPP 5 */
+		/* SPI_ETH config */
+		qcom,mode = <1>; /* DIG_OUT */
+		qcom,output-type = <0>; /* CMOS */
+		qcom,vin-sel = <2>; /* PM8941_S3 1.8V > 1.6V */
+		qcom,src-sel = <0>; /* CONSTANT */
+		qcom,master-en = <1>; /* ENABLE MPP */
+	};
+
+	mpp@a500 { /* MPP 6 */
+	};
+
+	mpp@a600 { /* MPP 7 */
+	};
+
+	mpp@a700 { /* MPP 8 */
+	};
+};
+
+&pm8841_mpps {
+
+	mpp@a000 { /* MPP 1 */
+	};
+
+	mpp@a100 { /* MPP 2 */
+	};
+
+	mpp@a200 { /* MPP 3 */
+	};
+
+	mpp@a300 { /* MPP 4 */
+	};
+};
+
+&slim_msm {
+	taiko_codec {
+		qcom,cdc-micbias-cfilt2-mv = <2800>;
+		qcom,cdc-micbias2-no-ext-cap;
+		qcom,cdc-micbias3-cfilt-sel = <0x0>;
+		qcom,cdc-micbias4-cfilt-sel = <0x0>;
+	};
+};
+
+&spi_epm {
+	epm-adc@0 {
+		compatible = "cy,epm-adc-cy8c5568lti-114";
+		reg = <0>;
+		interrupt-parent = <&msmgpio>;
+		spi-max-frequency = <960000>;
+		qcom,channels = <31>;
+		qcom,gain = <100 100 100 50 100 100 1 100 1 50
+			1 100 1 100 50 50 50 50 50 50
+			100 50 100 50 50 50 50 50 50 50
+			50>;
+		qcom,rsense = <2 2 2 200 20 2 1 2 1 30
+			1 10 1 30 50 30 500 30 100 30
+			100 500 20 200 1000 20 1000 1000 70 200
+			50>;
+		qcom,channel-type = <0x1540>;
+	};
+};
+
+&rpm_bus {
+	rpm-regulator-ldoa22 {
+		pm8941_l22: regulator-l22 {
+			regulator-min-microvolt = <3000000>;
+			regulator-max-microvolt = <3300000>;
+			qcom,init-voltage = <3300000>;
+		};
+	};
+};
