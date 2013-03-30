@@ -1396,32 +1396,43 @@ store_fw_upgrade(struct device *dev, struct device_attribute *attr, const char *
 static ssize_t
 ic_register_ctrl(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-	unsigned char string[6];
-	int reg = 0;
-	int value = 0;
+	unsigned char string[7];
+	char reg_s[11];
+	char value_s[11];
+	int reg;
+	int value;
 	int ret = 0;
-	u32 write_data;
+	u8 data;
 	struct synaptics_ts_data *ts = dev_get_drvdata(dev);
 
-	sscanf(buf, "%s %d %d", string, &reg, &value);
+	sscanf(buf, "%6s %10s %10s", string, reg_s, value_s);
+
+	if (kstrtoint(reg_s, 0, &reg) != 0) {
+		TOUCH_ERR_MSG("Invalid parameter\n");
+		return count;
+	}
+
+	if (kstrtoint(value_s, 0, &value) != 0) {
+		value = 0;
+	}
 
 	if (ts->curr_pwr_state == POWER_ON || ts->curr_pwr_state == POWER_WAKE) {
 		if (!strncmp(string, "read", 4)) {
 			do {
-				ret = synaptics_ts_ic_ctrl(ts->client,
-							IC_CTRL_READ, reg);
-				if (ret >= 0)
-					TOUCH_INFO_MSG("register[0x%x] = 0x%x\n", reg, ret);
+				ret = synaptics_ts_page_data_read(ts->client,
+						reg >> 8, reg & 0xFF, 1, &data);
+				if (!ret)
+					TOUCH_INFO_MSG("register[0x%x] = 0x%x\n", reg, data);
 				else
 					TOUCH_ERR_MSG("cannot read register[0x%x]\n", reg);
 				reg++;
 			} while (--value > 0);
 		} else if (!strncmp(string, "write", 4)) {
-			write_data = ((0xFF & reg) << 8) | (0xFF & value);
-			ret = synaptics_ts_ic_ctrl(ts->client,
-						IC_CTRL_WRITE, write_data);
-			if (ret >= 0)
-				TOUCH_INFO_MSG("register[0x%x] is set to 0x%x\n", reg, value);
+			data = value;
+			ret = synaptics_ts_page_data_write(ts->client,
+					reg >> 8, reg & 0xFF, 1, &data);
+			if (!ret)
+				TOUCH_INFO_MSG("register[0x%x] is set to 0x%x\n", reg, data);
 			else
 				TOUCH_ERR_MSG("cannot write register[0x%x]\n", reg);
 		} else {
