@@ -361,6 +361,12 @@ config BACKLIGHT_PANDORA
 	  If you have a Pandora console, say Y to enable the
 	  backlight driver.
 
+config BACKLIGHT_LM3630
+	tristate "Backlight Driver for LM3630 using WLED"
+	depends on BACKLIGHT_CLASS_DEVICE && I2C
+	help
+	  If you have a LM3630 backlight on the device, enable this feature
+
 endif # BACKLIGHT_CLASS_DEVICE
 
 endif # BACKLIGHT_LCD_SUPPORT
