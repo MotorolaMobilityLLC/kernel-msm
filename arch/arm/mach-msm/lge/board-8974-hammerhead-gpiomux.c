@@ -504,6 +504,43 @@ static struct msm_gpiomux_config slimport_configs[] __initdata = {
 
 };
 
+#if defined(CONFIG_MSM8974_PWM_VIBRATOR)
+static struct gpiomux_setting vibrator_suspend_cfg = {
+       .func = GPIOMUX_FUNC_GPIO,
+       .drv = GPIOMUX_DRV_2MA,
+       .pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct gpiomux_setting vibrator_active_cfg_gpio27 = {
+       .func = GPIOMUX_FUNC_6,
+       .drv = GPIOMUX_DRV_2MA,
+       .pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting vibrator_active_cfg_gpio60 = {
+       .func = GPIOMUX_FUNC_GPIO,
+       .drv = GPIOMUX_DRV_2MA,
+       .pull = GPIOMUX_PULL_NONE,
+};
+
+static struct msm_gpiomux_config vibrator_configs[] = {
+	{
+		.gpio = 27,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &vibrator_active_cfg_gpio27,
+			[GPIOMUX_SUSPENDED] = &vibrator_suspend_cfg,
+		},
+	},
+	{
+		.gpio = 60,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &vibrator_active_cfg_gpio60,
+			[GPIOMUX_SUSPENDED] = &vibrator_suspend_cfg,
+		},
+	},
+};
+#endif
+
 #ifdef CONFIG_MMC_MSM_SDC3_SUPPORT
 static struct gpiomux_setting sdc3_clk_actv_cfg = {
 	.func = GPIOMUX_FUNC_2,
@@ -708,4 +745,7 @@ void __init msm_8974_init_gpiomux(void)
 
 	msm_gpiomux_install_nowrite(msm_display_configs,
 			ARRAY_SIZE(msm_display_configs));
+#if defined(CONFIG_MSM8974_PWM_VIBRATOR)
+	msm_gpiomux_install(vibrator_configs, ARRAY_SIZE(vibrator_configs));
+#endif
 }
