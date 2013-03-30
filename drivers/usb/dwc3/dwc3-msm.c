@@ -1994,7 +1994,6 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		mdwc->current_max = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
-		psy->type = val->intval;
 		break;
 	default:
 		return -EINVAL;
