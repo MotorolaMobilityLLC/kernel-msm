@@ -47,6 +47,13 @@
 #define I2C_RETRY_DELAY		5 /* ms */
 #define I2C_RETRIES		5
 
+#define TPA6165A2_JACK_MASK (SND_JACK_HEADSET | SND_JACK_HEADPHONE| \
+				SND_JACK_UNSUPPORTED)
+#define TPA6165A2_JACK_BUTTON_MASK (SND_JACK_BTN_0)
+
+static struct snd_soc_jack hs_jack;
+static struct snd_soc_jack button_jack;
+
 static struct i2c_client *tpa6165_client;
 
 struct tpa6165_data {
@@ -746,27 +753,44 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 	return 0;
 }
 
-int tpa6165_hs_detect(struct snd_soc_jack *hs_jack,
-					struct snd_soc_jack *button_jack)
+int tpa6165_hs_detect(struct snd_soc_codec *codec)
 {
+	int ret = -EINVAL;
 	if (tpa6165_client) {
 		struct tpa6165_data *tpa6165 =
 					i2c_get_clientdata(tpa6165_client);
 
 		if (tpa6165 == NULL)
-			return -EINVAL;
+			return ret;
 
 		pr_debug("%s: hs and button jack", __func__);
-		tpa6165->hs_jack = hs_jack;
-		tpa6165->button_jack = button_jack;
+		if (tpa6165->hs_jack == NULL) {
+			ret = snd_soc_jack_new(codec, "Headset Jack", TPA6165A2_JACK_MASK,
+					       &hs_jack);
+			if (ret) {
+				pr_err("%s: Failed to create new jack\n", __func__);
+				return ret;
+			}
+		}
+		tpa6165->hs_jack = &hs_jack;
+
+		if (tpa6165->button_jack == NULL) {
+			ret = snd_soc_jack_new(codec, "Button Jack",
+					       TPA6165A2_JACK_BUTTON_MASK,
+					       &button_jack);
+			if (ret) {
+				pr_err("Failed to create new jack\n");
+				return ret;
+			}
+		}
+		tpa6165->button_jack = &button_jack;
 
 		/* check device status registers for boot time detection */
 		tpa6165_update_device_status(tpa6165);
-		tpa6165_report_hs(tpa6165);
-	} else
-		return -EINVAL;
+		ret = tpa6165_report_hs(tpa6165);
+	}
 
-	return 0;
+	return ret;
 }
 EXPORT_SYMBOL_GPL(tpa6165_hs_detect);
 
