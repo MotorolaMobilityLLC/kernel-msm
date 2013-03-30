@@ -121,14 +121,19 @@ void mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	pr_debug("%s: enable = %d\n", __func__, enable);
 
 	if (enable) {
+		msleep(100);
+		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
+			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+		wmb();
+		msleep(40);
+
 		gpio_set_value((ctrl_pdata->rst_gpio), 1);
 		msleep(20);
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
 		udelay(200);
 		gpio_set_value((ctrl_pdata->rst_gpio), 1);
 		msleep(20);
-		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-			gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+		wmb();
 	} else {
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
 		if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
@@ -221,6 +226,9 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	mdss_dsi_cmds_tx(pdata, &dsi_panel_tx_buf,
 			&dsi_tear_off_cmd, 1);
+
+	if (!gpio_get_value(ctrl_pdata->disp_en_gpio))
+		return 0;
 
 	if (ctrl->off_cmds->size)
 		mdss_dsi_cmds_tx(pdata, &dsi_panel_tx_buf,
