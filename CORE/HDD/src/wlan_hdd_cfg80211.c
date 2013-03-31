@@ -3184,11 +3184,7 @@ static int wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
 #ifdef WLAN_FEATURE_11W
         case WLAN_CIPHER_SUITE_AES_CMAC:
             setKey.encType = eCSR_ENCRYPT_TYPE_AES_CMAC;
-            /* Temporarily we will ignore the setting of the IGTK.  Once the Riva
-               firmware is modified to handle the IGTK, then we will proceeed normally.
-               For now, we just return success. */
-            return 0;
-            /* break; */
+            break;
 #endif
 
         default:
