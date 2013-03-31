@@ -155,18 +155,21 @@ static unsigned int get_max_cost(struct f2fs_sb_info *sbi,
 static unsigned int check_bg_victims(struct f2fs_sb_info *sbi)
 {
 	struct dirty_seglist_info *dirty_i = DIRTY_I(sbi);
-	unsigned int segno;
+	unsigned int hint = 0;
+	unsigned int secno;
 
 	/*
 	 * If the gc_type is FG_GC, we can select victim segments
 	 * selected by background GC before.
 	 * Those segments guarantee they have small valid blocks.
 	 */
-	segno = find_next_bit(dirty_i->victim_segmap[BG_GC],
-						TOTAL_SEGS(sbi), 0);
-	if (segno < TOTAL_SEGS(sbi)) {
-		clear_bit(segno, dirty_i->victim_segmap[BG_GC]);
-		return segno;
+next:
+	secno = find_next_bit(dirty_i->victim_secmap, TOTAL_SECS(sbi), hint++);
+	if (secno < TOTAL_SECS(sbi)) {
+		if (sec_usage_check(sbi, secno))
+			goto next;
+		clear_bit(secno, dirty_i->victim_secmap);
+		return secno * sbi->segs_per_sec;
 	}
 	return NULL_SEGNO;
 }
@@ -229,7 +232,7 @@ static int get_victim_by_default(struct f2fs_sb_info *sbi,
 {
 	struct dirty_seglist_info *dirty_i = DIRTY_I(sbi);
 	struct victim_sel_policy p;
-	unsigned int segno;
+	unsigned int secno;
 	int nsearched = 0;
 
 	p.alloc_mode = alloc_mode;
@@ -248,6 +251,7 @@ static int get_victim_by_default(struct f2fs_sb_info *sbi,
 
 	while (1) {
 		unsigned long cost;
+		unsigned int segno;
 
 		segno = find_next_bit(p.dirty_segmap,
 						TOTAL_SEGS(sbi), p.offset);
@@ -260,13 +264,11 @@ static int get_victim_by_default(struct f2fs_sb_info *sbi,
 			break;
 		}
 		p.offset = ((segno / p.ofs_unit) * p.ofs_unit) + p.ofs_unit;
+		secno = GET_SECNO(sbi, segno);
 
-		if (test_bit(segno, dirty_i->victim_segmap[FG_GC]))
+		if (sec_usage_check(sbi, secno))
 			continue;
-		if (gc_type == BG_GC &&
-				test_bit(segno, dirty_i->victim_segmap[BG_GC]))
-			continue;
-		if (IS_CURSEC(sbi, GET_SECNO(sbi, segno)))
+		if (gc_type == BG_GC && test_bit(secno, dirty_i->victim_secmap))
 			continue;
 
 		cost = get_gc_cost(sbi, segno, &p);
@@ -286,13 +288,14 @@ static int get_victim_by_default(struct f2fs_sb_info *sbi,
 	}
 got_it:
 	if (p.min_segno != NULL_SEGNO) {
-		*result = (p.min_segno / p.ofs_unit) * p.ofs_unit;
 		if (p.alloc_mode == LFS) {
-			int i;
-			for (i = 0; i < p.ofs_unit; i++)
-				set_bit(*result + i,
-					dirty_i->victim_segmap[gc_type]);
+			secno = GET_SECNO(sbi, p.min_segno);
+			if (gc_type == FG_GC)
+				sbi->cur_victim_sec = secno;
+			else
+				set_bit(secno, dirty_i->victim_secmap);
 		}
+		*result = (p.min_segno / p.ofs_unit) * p.ofs_unit;
 	}
 	mutex_unlock(&dirty_i->seglist_lock);
 
@@ -657,9 +660,11 @@ gc_more:
 	for (i = 0; i < sbi->segs_per_sec; i++)
 		do_garbage_collect(sbi, segno + i, &ilist, gc_type);
 
-	if (gc_type == FG_GC &&
-			get_valid_blocks(sbi, segno, sbi->segs_per_sec) == 0)
+	if (gc_type == FG_GC) {
+		sbi->cur_victim_sec = NULL_SEGNO;
 		nfree++;
+		WARN_ON(get_valid_blocks(sbi, segno, sbi->segs_per_sec));
+	}
 
 	if (has_not_enough_free_secs(sbi, nfree))
 		goto gc_more;
