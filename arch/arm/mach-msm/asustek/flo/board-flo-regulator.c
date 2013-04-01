@@ -227,10 +227,6 @@ VREG_CONSUMERS(LVS7) = {
 	REGULATOR_SUPPLY("dsi1_vddio",		"mipi_dsi.1"),
 	REGULATOR_SUPPLY("hdmi_vdda",		"hdmi_msm.0"),
 };
-VREG_CONSUMERS(USB_OTG) = {
-	REGULATOR_SUPPLY("8921_usb_otg",	NULL),
-	REGULATOR_SUPPLY("vbus_otg",		"msm_otg"),
-};
 VREG_CONSUMERS(8821_S0) = {
 	REGULATOR_SUPPLY("8821_s0",		NULL),
 	REGULATOR_SUPPLY("krait2",		"acpuclk-8064"),
@@ -280,18 +276,9 @@ VREG_CONSUMERS(LVS2) = {
 	REGULATOR_SUPPLY("8921_lvs2",		NULL),
 	REGULATOR_SUPPLY("iris_vdddig",		"wcnss_wlan.0"),
 };
-VREG_CONSUMERS(HDMI_MVS) = {
-	REGULATOR_SUPPLY("8921_hdmi_mvs",	NULL),
-	REGULATOR_SUPPLY("hdmi_mvs",		"hdmi_msm.0"),
-};
 VREG_CONSUMERS(NCP) = {
 	REGULATOR_SUPPLY("8921_ncp",		NULL),
 };
-VREG_CONSUMERS(EXT_5V) = {
-	REGULATOR_SUPPLY("ext_5v",		NULL),
-	REGULATOR_SUPPLY("vbus",		"msm_ehci_host.0"),
-};
-
 /* Regulators that are only present when using PM8917 */
 VREG_CONSUMERS(8917_S1) = {
 	REGULATOR_SUPPLY("8921_s1",		NULL),
@@ -554,7 +541,6 @@ VREG_CONSUMERS(BOOST) = {
 struct gpio_regulator_platform_data
 apq8064_gpio_regulator_pdata[] __devinitdata = {
 	/*        ID      vreg_name gpio_label   gpio                  supply */
-	GPIO_VREG(EXT_5V, "ext_5v", "ext_5v_en", PM8921_MPP_PM_TO_SYS(7), NULL),
 /*	GPIO_VREG(EXT_3P3V, "ext_3p3v", "ext_3p3v_en",
 		  APQ8064_EXT_3P3V_REG_EN_GPIO, NULL),
 	GPIO_VREG(EXT_TS_SW, "ext_ts_sw", "ext_ts_sw_en",
@@ -596,10 +582,6 @@ msm8064_pm8921_regulator_pdata[] __devinitdata = {
 	 */
 	PM8XXX_NLDO1200(L26, "8921_l26", 0, 1, 375000, 1050000, 200, "8921_s7",
 		0, 1),
-
-	/*           ID        name     always_on pd       en_t supply reg_ID */
-	PM8XXX_VS300(USB_OTG,  "8921_usb_otg",  0, 0,         0, "ext_5v", 2),
-	PM8XXX_VS300(HDMI_MVS, "8921_hdmi_mvs", 0, 1,         0, "ext_5v", 3),
 };
 
 /* PM8917 regulator constraints */
@@ -630,9 +612,6 @@ msm8064_pm8917_regulator_pdata[] __devinitdata = {
 	 *           ID     name   always_on  min_uV   max_uV en_t supply reg_ID
 	 */
 	PM8XXX_BOOST(BOOST, "8917_boost", 0,  5000000, 5000000, 500, NULL, 9),
-
-	/*	     ID        name      always_on pd en_t supply    reg_ID */
-	PM8XXX_VS300(USB_OTG,  "8921_usb_otg",  0, 1, 0,   "8917_boost", 10),
 };
 
 static struct rpm_regulator_init_data
