@@ -254,6 +254,8 @@ struct synaptics_rmi4_data {
 	bool touch_stopped;
 	bool fingers_on_2d;
 	bool sensor_sleep;
+	bool input_registered;
+	bool in_bootloader;
 	bool purge_enabled;
 	bool reset_on_resume;
 	bool shared_regulator;
@@ -263,7 +265,7 @@ struct synaptics_rmi4_data {
 			unsigned char *data, unsigned short length);
 	int (*i2c_write)(struct synaptics_rmi4_data *pdata, unsigned short addr,
 			unsigned char *data, unsigned short length);
-	int (*set_state)(struct synaptics_rmi4_data *rmi4_data, int state);
+	void (*set_state)(struct synaptics_rmi4_data *rmi4_data, int state);
 	int (*ready_state)(struct synaptics_rmi4_data *rmi4_data, bool standby);
 	int (*irq_enable)(struct synaptics_rmi4_data *rmi4_data, bool enable);
 	int (*reset_device)(struct synaptics_rmi4_data *rmi4_data);
