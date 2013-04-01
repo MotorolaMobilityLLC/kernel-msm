@@ -43,6 +43,7 @@
 
 /* Filter-level status indicators */
 #define SDMX_FILTER_STATUS_EOS                    BIT(0)
+#define SDMX_FILTER_STATUS_WR_PTR_CHANGED         BIT(1)
 
 /* Filter-level flags */
 #define SDMX_FILTER_FLAG_VERIFY_SECTION_CRC	BIT(0)
@@ -51,7 +52,8 @@
 #define SDMX_INVALID_FILTER_HANDLE		(-1)
 
 /* Input flags */
-#define SDMX_INPUT_FLAG_EOS BIT(0)
+#define SDMX_INPUT_FLAG_EOS		BIT(0)
+#define SDMX_INPUT_FLAG_DBG_ENABLE	BIT(1)
 
 
 enum sdmx_buf_mode {
@@ -91,10 +93,9 @@ enum sdmx_status {
 	SDMX_STATUS_SINGLE_PID_RAW_FILTER = -11,
 	SDMX_STATUS_INP_BUF_INVALID_PARAMS = -12,
 	SDMX_STATUS_INVALID_FILTER_CFG = -13,
-	SDMX_STATUS_ILLEGAL_WR_PTR_CHANGE = -14,
-	SDMX_STATUS_STALLED_IN_PULL_MODE = -15,
-	SDMX_STATUS_SECURITY_FAULT = -16,
-	SDMX_STATUS_NS_BUFFER_ERROR = -17,
+	SDMX_STATUS_STALLED_IN_PULL_MODE = -14,
+	SDMX_STATUS_SECURITY_FAULT = -15,
+	SDMX_STATUS_NS_BUFFER_ERROR = -16,
 };
 
 enum sdmx_filter {
@@ -177,9 +178,7 @@ struct sdmx_metadata_header {
 	/* Payload length */
 	u32 payload_length;
 
-	/* Total metadata length (including this header, plus optional
-	 * additional metadata.
-	 */
+	/* Number of meta data bytes immediately following this header */
 	u32 metadata_length;
 };
 

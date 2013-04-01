@@ -361,7 +361,6 @@ struct msmsdcc_host {
 
 	unsigned int		clk_rate;	/* Current clock rate */
 	unsigned int		pclk_rate;
-	unsigned int		ddr_doubled_clk_rate;
 
 	u32			pwr;
 	struct mmc_platform_data *plat;
@@ -415,6 +414,7 @@ struct msmsdcc_host {
 	struct device_attribute	max_bus_bw;
 	struct device_attribute	polling;
 	struct device_attribute idle_timeout;
+	int saved_tuning_phase;
 };
 
 #define MSMSDCC_VERSION_STEP_MASK	0x0000FFFF
