@@ -26,7 +26,7 @@
 #include <linux/input.h>
 #include <linux/ctype.h>
 #include <linux/hrtimer.h>
-#include <linux/input/synaptics_dsx.h>
+#include <linux/input/synaptics_rmi_dsx.h>
 #include "synaptics_dsx_i2c.h"
 
 #define WATCHDOG_HRTIMER

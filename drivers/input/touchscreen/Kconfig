@@ -561,12 +561,12 @@ config TOUCHSCREEN_SYNAPTICS_DSX_TEST_REPORTING
 	  This enables support for test reporting for Synaptics DSX
 	  touchscreens.
 
-config TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE
-	tristate "Synaptics DSX touchscreen firmware update"
+config TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE_MMI
+	tristate "Synaptics DSX touchscreen firmware update (MMI)"
 	depends on TOUCHSCREEN_SYNAPTICS_DSX_I2C
 	help
 	  This enables support for firmware update for Synaptics DSX
-	  touchscreens.
+	  touchscreens via the MMI design.
 
 config TOUCHSCREEN_TOUCHRIGHT
 	tristate "Touchright serial touchscreen"
