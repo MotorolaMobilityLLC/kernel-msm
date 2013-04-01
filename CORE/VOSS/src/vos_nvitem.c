@@ -1759,6 +1759,12 @@ VOS_STATUS vos_nv_getNVBuffer(v_VOID_t **pNvBuffer,v_SIZE_t *pSize)
   -------------------------------------------------------------------------*/
 VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId)
 {
+    v_CONTEXT_t pVosContext = NULL;
+    hdd_context_t *pHddCtx = NULL;
+    struct wiphy *wiphy = NULL;
+    v_U8_t nBandCapability;
+    int i, j, k, m;
+
    /* Client Context Argumant not used for PRIMA */
    if(regId >= REGDOMAIN_COUNT)
    {
@@ -1769,6 +1775,76 @@ VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId)
 
    /* Set correct channel information based on REG Domain */
    regChannels = pnvEFSTable->halnv.tables.regDomains[regId].channels;
+
+   pVosContext = vos_get_global_context(VOS_MODULE_ID_SYS, NULL);
+   if (NULL != pVosContext)
+       pHddCtx = vos_get_context(VOS_MODULE_ID_HDD, pVosContext);
+   else
+       return VOS_STATUS_E_EXISTS;
+
+   if (NULL == pHddCtx)
+       return VOS_STATUS_E_EXISTS;
+
+   wiphy = pHddCtx->wiphy;
+   nBandCapability = pHddCtx->cfg_ini->nBandCapability;
+
+   for (i = 0, m = 0; i < IEEE80211_NUM_BANDS; i++)
+   {
+
+       if (NULL == wiphy->bands[i])
+       {
+          VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                    "error: wiphy->bands[i] is NULL, i = %d", i);
+          continue;
+       }
+
+       // internal channels[] is one continous array for both 2G and 5G bands
+       // m is internal starting channel index for each band
+       if (0 == i)
+           m = 0;
+       else
+           m = wiphy->bands[i-1]?wiphy->bands[i-1]->n_channels + m:m;
+
+       for (j = 0; j < wiphy->bands[i]->n_channels; j++)
+       {
+           struct ieee80211_supported_band *band = wiphy->bands[i];
+
+           // k = (m + j) is internal current channel index for 20MHz channel
+           // n is internal channel index for corresponding 40MHz channel
+           k = m + j;
+           if (IEEE80211_BAND_2GHZ == i && eCSR_BAND_5G == nBandCapability) // 5G only
+           {
+               // Enable social channels for P2P
+               if (WLAN_HDD_IS_SOCIAL_CHANNEL(band->channels[j].center_freq) &&
+                   NV_CHANNEL_ENABLE == regChannels[k].enabled)
+                   band->channels[j].flags &= ~IEEE80211_CHAN_DISABLED;
+               else
+                   band->channels[j].flags |= IEEE80211_CHAN_DISABLED;
+               continue;
+           }
+           else if (IEEE80211_BAND_5GHZ == i && eCSR_BAND_24 == nBandCapability) // 2G only
+           {
+               band->channels[j].flags |= IEEE80211_CHAN_DISABLED;
+               continue;
+           }
+
+           if (NV_CHANNEL_DISABLE == regChannels[k].enabled ||
+               NV_CHANNEL_INVALID == regChannels[k].enabled)
+           {
+               band->channels[j].flags |= IEEE80211_CHAN_DISABLED;
+           }
+           else if (NV_CHANNEL_DFS == regChannels[k].enabled)
+           {
+               band->channels[j].flags &= ~IEEE80211_CHAN_DISABLED;
+               band->channels[j].flags |= IEEE80211_CHAN_RADAR;
+           }
+           else
+           {
+               band->channels[j].flags &= ~(IEEE80211_CHAN_DISABLED
+                                            |IEEE80211_CHAN_RADAR);
+           }
+       }
+    }
 
    return VOS_STATUS_SUCCESS;
 }
