@@ -118,7 +118,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
     if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
                                                 (void **)&pProbeRsp, sizeof(tSirProbeRespBeacon)))
     {
-        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessProbeRspFrame\n") );
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessProbeRspFrame") );
         return;
     }
 
@@ -238,7 +238,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                           &cfg) != eSIR_SUCCESS)
             {
                 /// Could not get BSSID from CFG. Log error.
-                limLog(pMac, LOGP, FL("could not retrieve BSSID\n"));
+                limLog(pMac, LOGP, FL("could not retrieve BSSID"));
             }
             #endif //TO SUPPORT BT-AMP
             sirCopyMacAddr(currentBssId,psessionEntry->bssId);
@@ -252,7 +252,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
             if (!LIM_IS_CONNECTION_ACTIVE(psessionEntry))
             {
                 limLog(pMac, LOGW,
-                    FL("Received Probe Resp from AP. So it is alive!!\n"));
+                    FL("Received Probe Resp from AP. So it is alive!!"));
 
                 if (pProbeRsp->HTInfo.present)
                     limReceivedHBHandler(pMac, (tANI_U8)pProbeRsp->HTInfo.primaryChannel, psessionEntry);
@@ -288,7 +288,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
             limGetQosMode(psessionEntry, &qosEnabled);
             limGetWmeMode(psessionEntry, &wmeEnabled);
            PELOG2(limLog(pMac, LOG2,
-                    FL("wmeEdcaPresent: %d wmeEnabled: %d, edcaPresent: %d, qosEnabled: %d,  edcaParams.qosInfo.count: %d schObject.gLimEdcaParamSetCount: %d\n"),
+                    FL("wmeEdcaPresent: %d wmeEnabled: %d, edcaPresent: %d, qosEnabled: %d,  edcaParams.qosInfo.count: %d schObject.gLimEdcaParamSetCount: %d"),
                           pProbeRsp->wmeEdcaPresent, wmeEnabled, pProbeRsp->edcaPresent, qosEnabled,
                           pProbeRsp->edcaParams.qosInfo.count, psessionEntry->gLimEdcaParamSetCount);)
             if (((pProbeRsp->wmeEdcaPresent && wmeEnabled) ||
@@ -296,7 +296,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                 (pProbeRsp->edcaParams.qosInfo.count != psessionEntry->gLimEdcaParamSetCount))
             {
                 if (schBeaconEdcaProcess(pMac, &pProbeRsp->edcaParams, psessionEntry) != eSIR_SUCCESS)
-                    PELOGE(limLog(pMac, LOGE, FL("EDCA parameter processing error\n"));)
+                    PELOGE(limLog(pMac, LOGE, FL("EDCA parameter processing error"));)
                 else if (pStaDs != NULL)
                 {
                     // If needed, downgrade the EDCA parameters
@@ -308,7 +308,7 @@ limProcessProbeRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession 
                         limSendEdcaParams(pMac, psessionEntry->gLimEdcaParamsActive, pStaDs->bssId, eANI_BOOLEAN_FALSE);
                 }
                 else
-                    PELOGE(limLog(pMac, LOGE, FL("Self Entry missing in Hash Table\n"));)
+                    PELOGE(limLog(pMac, LOGE, FL("Self Entry missing in Hash Table"));)
 
             }
         }
@@ -334,7 +334,7 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
     if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
                                                 (void **)&pProbeRsp, sizeof(tSirProbeRespBeacon)))
     {
-        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessProbeRspFrameNoSession\n") );
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessProbeRspFrameNoSession") );
         return;
     }
 
@@ -384,7 +384,7 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
 
         if (sirConvertProbeFrame2Struct(pMac, pBody, frameLen, pProbeRsp) == eSIR_FAILURE)
         {
-            limLog(pMac, LOG1, FL("Parse error ProbeResponse, length=%d\n"), frameLen);
+            limLog(pMac, LOG1, FL("Parse error ProbeResponse, length=%d"), frameLen);
             palFreeMemory(pMac->hHdd, pProbeRsp);
             return;
         }
