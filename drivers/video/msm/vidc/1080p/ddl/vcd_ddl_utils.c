@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -113,6 +113,11 @@ void *ddl_pmem_alloc(struct ddl_buf_addr *addr, size_t sz, u32 alignment)
 				goto unmap_ion_alloc;
 			}
 			addr->alloced_phys_addr = (phys_addr_t) iova;
+
+			msm_ion_do_cache_op(ddl_context->video_ion_client,
+					addr->alloc_handle,
+					addr->virtual_base_addr,
+					sz, ION_IOC_CLEAN_INV_CACHES);
 		}
 		if (!addr->alloced_phys_addr) {
 			DDL_MSG_ERROR("%s():DDL ION client physical failed\n",
