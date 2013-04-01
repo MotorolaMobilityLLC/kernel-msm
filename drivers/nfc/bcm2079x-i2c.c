@@ -36,7 +36,7 @@
 #include <linux/spinlock.h>
 #include <linux/poll.h>
 #include <linux/version.h>
-
+#include <linux/regulator/consumer.h>
 #include <linux/nfc/bcm2079x.h>
 
 /* do not change below */
@@ -54,6 +54,7 @@ struct bcm2079x_dev {
 	struct mutex read_mutex;
 	struct i2c_client *client;
 	struct miscdevice bcm2079x_device;
+	struct regulator *vdd_swp;
 	unsigned int wake_gpio;
 	unsigned int en_gpio;
 	unsigned int irq_gpio;
@@ -371,6 +372,22 @@ static int bcm2079x_probe(struct i2c_client *client,
 	bcm2079x_dev->en_gpio = platform_data->en_gpio;
 	bcm2079x_dev->client = client;
 
+
+	bcm2079x_dev->vdd_swp = regulator_get(&client->dev, "nfc_vddswp");
+	if (IS_ERR(bcm2079x_dev->vdd_swp)) {
+		dev_info(&client->dev, "vddswp regulator control absent\n");
+		bcm2079x_dev->vdd_swp = NULL;
+	}
+
+	if (bcm2079x_dev->vdd_swp != NULL) {
+		regulator_set_voltage(bcm2079x_dev->vdd_swp, 2950000, 2950000);
+		ret = regulator_enable(bcm2079x_dev->vdd_swp);
+		if (ret < 0) {
+			dev_err(&client->dev, "Error enabling vddswp regulator\n");
+			goto err_en_regulator_swp;
+		}
+	}
+
 	/* init mutex and queues */
 	init_waitqueue_head(&bcm2079x_dev->read_wq);
 	mutex_init(&bcm2079x_dev->read_mutex);
@@ -409,6 +426,11 @@ err_request_irq_failed:
 err_misc_register:
 	mutex_destroy(&bcm2079x_dev->read_mutex);
 	kfree(bcm2079x_dev);
+	if (bcm2079x_dev->vdd_swp != NULL)
+		regulator_disable(bcm2079x_dev->vdd_swp);
+err_en_regulator_swp:
+	if (bcm2079x_dev->vdd_swp != NULL)
+		regulator_put(bcm2079x_dev->vdd_swp);
 err_exit:
 	gpio_free(platform_data->wake_gpio);
 err_firm:
@@ -426,6 +448,10 @@ static int bcm2079x_remove(struct i2c_client *client)
 	free_irq(client->irq, bcm2079x_dev);
 	misc_deregister(&bcm2079x_dev->bcm2079x_device);
 	mutex_destroy(&bcm2079x_dev->read_mutex);
+	if (bcm2079x_dev->vdd_swp != NULL) {
+		regulator_disable(bcm2079x_dev->vdd_swp);
+		regulator_put(bcm2079x_dev->vdd_swp);
+	}
 	gpio_free(bcm2079x_dev->irq_gpio);
 	gpio_free(bcm2079x_dev->en_gpio);
 	gpio_free(bcm2079x_dev->wake_gpio);
