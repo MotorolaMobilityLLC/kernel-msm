@@ -1456,6 +1456,12 @@ static iw_softap_commit(struct net_device *dev,
                          pConfig->RSNEncryptType, pConfig->mcRSNEncryptType);
     }
 
+    if (pConfig->RSNWPAReqIELength > QCSAP_MAX_OPT_IE) {
+        hddLog(LOGE, FL("RSNWPAReqIELength: %d too large"), pConfig->RSNWPAReqIELength);
+        kfree(pConfig);
+        return -EIO;
+    }
+
     pConfig->SSIDinfo.ssidHidden = pCommitConfig->SSIDinfo.ssidHidden; 
     pConfig->SSIDinfo.ssid.length = pCommitConfig->SSIDinfo.ssid.length;
     vos_mem_copy(pConfig->SSIDinfo.ssid.ssId, pCommitConfig->SSIDinfo.ssid.ssId, pConfig->SSIDinfo.ssid.length);

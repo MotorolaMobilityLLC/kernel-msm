@@ -285,8 +285,6 @@ typedef struct roaming_info_s
 #define MAX_NUM_AKM_SUITES    16
 #define MAX_NUM_UNI_SUITES    16
 #define MAX_NUM_BKIDS         16
-#define HDD_PAIRWISE_WAPI_KEY 0
-#define HDD_GROUP_WAPI_KEY    1
 
 /** WAPI AUTH mode definition */
 enum _WAPIAuthMode
