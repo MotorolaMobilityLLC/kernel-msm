@@ -660,7 +660,7 @@ static void synaptics_rmi4_sensor_multi_touch(void);
 static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 		bool enable);
 
-static int synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
+static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 		int state);
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -911,55 +911,41 @@ static int synaptics_dsx_wait_for_idle(struct synaptics_rmi4_data *rmi4_data)
 	return 0;
 }
 
-static int sensor_is_in_bootloader(
-		struct synaptics_rmi4_data *rmi4_data, bool *is_in_bootloader)
+static int synaptics_dsx_sensor_ready_state(
+		struct synaptics_rmi4_data *rmi4_data, bool standby)
 {
+	bool ui_mode;
+	int retval, state;
 	struct synaptics_rmi4_f01_device_status status;
-	int retval;
 
-	*is_in_bootloader = false;
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 				rmi4_data->f01_data_base_addr,
 				status.data,
 				sizeof(status.data));
-	if (retval > 0) {
-		*is_in_bootloader = status.flash_prog == 1;
-		pr_debug("%s\n", *is_in_bootloader ? "true" : "false");
-	}
-	return retval;
+	if (retval < 0)
+		return retval;
+
+	state = synaptics_dsx_get_state_safe(rmi4_data);
+
+	ui_mode = status.flash_prog == 0;
+	pr_debug("UI mode: %s\n", ui_mode ? "true" : "false");
+
+	if (ui_mode)
+		state = standby ? STATE_STANDBY : STATE_ACTIVE;
+	else
+		if (!(state == STATE_INIT || state == STATE_FLASH))
+			state = STATE_BL;
+
+	synaptics_dsx_sensor_state(rmi4_data, state);
+
+	return 0;
 }
 
-static int synaptics_dsx_sensor_ready_state(
-		struct synaptics_rmi4_data *rmi4_data, bool standby)
-{
-	bool is_in_bootloader;
-	int retval;
-
-	retval = sensor_is_in_bootloader(rmi4_data, &is_in_bootloader);
-	if (retval > 0) {
-		int state = synaptics_dsx_get_state_safe(rmi4_data);
-		if (is_in_bootloader) {
-			if (!(state == STATE_INIT || state == STATE_FLASH))
-				state = STATE_BL;
-		} else {
-			if (standby)
-				state = STATE_STANDBY;
-			else
-				state = STATE_ACTIVE;
-		}
-		synaptics_dsx_sensor_state(rmi4_data, state);
-		retval = state;
-	} else
-		pr_err("unable to determine if sensor is in BL: %d\n", retval);
-
-	return retval;
-}
-
-static int synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
+static void synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 		int state)
 {
 	if (synaptics_dsx_get_state_safe(rmi4_data) == state)
-		return 0;
+		return;
 
 	switch (state) {
 	case STATE_UNKNOWN:
@@ -1015,8 +1001,6 @@ static int synaptics_dsx_sensor_state(struct synaptics_rmi4_data *rmi4_data,
 			synaptics_dsx_state_name(state));
 
 	synaptics_dsx_set_state_safe(rmi4_data, state);
-
-	return 0;
 }
 
 static const char * const panel_event_names[] = {
@@ -2129,6 +2113,7 @@ static int synaptics_rmi4_f11_init(struct synaptics_rmi4_data *rmi4_data,
 #ifdef INPUT_PROP_DIRECT
 	set_bit(INPUT_PROP_DIRECT, rmi4_data->input_dev->propbit);
 #endif
+	set_bit(EV_ABS, rmi4_data->input_dev->evbit);
 
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_POSITION_X, 0,
@@ -2276,6 +2261,7 @@ static int synaptics_rmi4_f12_init(struct synaptics_rmi4_data *rmi4_data,
 #ifdef INPUT_PROP_DIRECT
 	set_bit(INPUT_PROP_DIRECT, rmi4_data->input_dev->propbit);
 #endif
+	set_bit(EV_ABS, rmi4_data->input_dev->evbit);
 
 	input_set_abs_params(rmi4_data->input_dev,
 			ABS_MT_POSITION_X, 0,
@@ -2330,6 +2316,8 @@ static int synaptics_rmi4_cap_button_map(
 		} else {
 			f1a->valid_button_count = f1a->button_count;
 		}
+
+		set_bit(EV_KEY, rmi4_data->input_dev->evbit);
 
 		for (ii = 0; ii < f1a->valid_button_count; ii++) {
 			f1a->button_map[ii] =
@@ -2451,6 +2439,7 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 	struct synaptics_rmi4_fn *fhandler;
 	struct synaptics_rmi4_device_info *rmi;
 	struct f34_properties f34_query;
+	struct synaptics_rmi4_f01_device_status status;
 
 	rmi = &(rmi4_data->rmi4_mod_info);
 
@@ -2513,6 +2502,16 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 						rmi_fd.data_base_addr;
 				rmi4_data->f01_cmd_base_addr =
 						rmi_fd.cmd_base_addr;
+
+				retval = synaptics_rmi4_i2c_read(rmi4_data,
+						rmi4_data->f01_data_base_addr,
+						status.data,
+						sizeof(status.data));
+				if (retval < 0)
+					return retval;
+
+				rmi4_data->in_bootloader =
+						status.flash_prog == 1;
 				break;
 
 			case SYNAPTICS_RMI4_F11:
@@ -2637,6 +2636,17 @@ static int synaptics_rmi4_query_device(struct synaptics_rmi4_data *rmi4_data)
 		dev_err(&rmi4_data->i2c_client->dev,
 				"%s: Non-Synaptics device found, manufacturer ID = %d\n",
 				__func__, rmi->manufacturer_id);
+	}
+
+	if (!rmi4_data->in_bootloader && !rmi4_data->input_registered) {
+		retval = input_register_device(rmi4_data->input_dev);
+		if (retval < 0) {
+			dev_err(&rmi4_data->i2c_client->dev,
+				"%s: Failed to register input device\n",
+				__func__);
+			return retval;
+		}
+		rmi4_data->input_registered = true;
 	}
 
 	memset(rmi4_data->intr_mask, 0x00, sizeof(rmi4_data->intr_mask));
@@ -2863,7 +2873,6 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		const struct i2c_device_id *dev_id)
 {
 	int retval;
-	unsigned int config_id, firmware_id;
 	unsigned char attr_count;
 	struct synaptics_rmi4_data *rmi4_data;
 	struct synaptics_rmi4_device_info *rmi;
@@ -2955,6 +2964,14 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 		goto err_input_device;
 	}
 
+	i2c_set_clientdata(client, rmi4_data);
+
+	rmi4_data->input_dev->name = DRIVER_NAME;
+	rmi4_data->input_dev->phys = INPUT_PHYS_NAME;
+	rmi4_data->input_dev->id.bustype = BUS_I2C;
+	rmi4_data->input_dev->dev.parent = &client->dev;
+	input_set_drvdata(rmi4_data->input_dev, rmi4_data);
+
 	retval = synaptics_rmi4_query_device(rmi4_data);
 	if (retval < 0) {
 		dev_err(&client->dev,
@@ -2962,6 +2979,8 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 				__func__);
 		goto err_query_device;
 	}
+
+	set_bit(EV_SYN, rmi4_data->input_dev->evbit);
 
 	rmi4_data->regulator = regulator_get(&client->dev, "touch_vdd");
 	if (IS_ERR(rmi4_data->regulator)) {
@@ -2974,26 +2993,6 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	}
 
 	init_waitqueue_head(&rmi4_data->wait);
-
-	i2c_set_clientdata(client, rmi4_data);
-
-	rmi4_data->input_dev->name = DRIVER_NAME;
-	rmi4_data->input_dev->phys = INPUT_PHYS_NAME;
-	rmi4_data->input_dev->id.bustype = BUS_I2C;
-	rmi4_data->input_dev->dev.parent = &client->dev;
-	input_set_drvdata(rmi4_data->input_dev, rmi4_data);
-
-	set_bit(EV_SYN, rmi4_data->input_dev->evbit);
-	set_bit(EV_KEY, rmi4_data->input_dev->evbit);
-	set_bit(EV_ABS, rmi4_data->input_dev->evbit);
-
-	retval = input_register_device(rmi4_data->input_dev);
-	if (retval) {
-		dev_err(&client->dev,
-				"%s: Failed to register input device\n",
-				__func__);
-		goto err_register_input;
-	}
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	rmi4_data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
@@ -3032,10 +3031,17 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	mmi_panel_register_notifier(&rmi4_data->panel_nb);
 	pr_debug("register panel notifier\n");
 
-	batohui(&firmware_id, rmi->build_id, sizeof(rmi->build_id));
-	batohui(&config_id, rmi->config_id, sizeof(config_id));
-	pr_info("Product: %s, firmware id: %x, config id: %08x\n",
+	if (rmi4_data->in_bootloader)
+		pr_info("Product: %s is in bootloader mode\n",
+			rmi->product_id_string);
+	else {
+		unsigned int config_id, firmware_id;
+
+		batohui(&firmware_id, rmi->build_id, sizeof(rmi->build_id));
+		batohui(&config_id, rmi->config_id, sizeof(config_id));
+		pr_info("Product: %s, firmware id: %x, config id: %08x\n",
 			rmi->product_id_string, firmware_id, config_id);
+	}
 
 	synaptics_dsx_sensor_ready_state(rmi4_data, true);
 
@@ -3051,10 +3057,13 @@ err_sysfs:
 	if (!rmi4_data->shared_regulator)
 		unregister_early_suspend(&rmi4_data->early_suspend);
 #endif
-	input_unregister_device(rmi4_data->input_dev);
 
-err_register_input:
 err_query_device:
+	if (rmi4_data->input_registered) {
+		input_unregister_device(rmi4_data->input_dev);
+		rmi4_data->input_dev = NULL;
+	}
+
 	if (platform_data->regulator_en) {
 		regulator_disable(rmi4_data->regulator);
 		regulator_put(rmi4_data->regulator);
@@ -3062,7 +3071,6 @@ err_query_device:
 
 	synaptics_rmi4_cleanup(rmi4_data);
 	input_free_device(rmi4_data->input_dev);
-	rmi4_data->input_dev = NULL;
 
 err_input_device:
 	kfree(rmi4_data);
@@ -3104,7 +3112,10 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 				&attrs[attr_count].attr);
 	}
 
-	input_unregister_device(rmi4_data->input_dev);
+	if (rmi4_data->input_registered) {
+		input_unregister_device(rmi4_data->input_dev);
+		rmi4_data->input_dev = NULL;
+	}
 
 	if (platform_data->regulator_en) {
 		regulator_disable(rmi4_data->regulator);
@@ -3112,8 +3123,6 @@ static int __devexit synaptics_rmi4_remove(struct i2c_client *client)
 	}
 
 	synaptics_rmi4_cleanup(rmi4_data);
-	input_free_device(rmi4_data->input_dev);
-
 	kfree(rmi4_data);
 
 	return 0;
