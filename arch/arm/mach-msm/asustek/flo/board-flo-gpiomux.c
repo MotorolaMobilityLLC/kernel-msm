@@ -1400,6 +1400,27 @@ static struct msm_gpiomux_config asustek_pcbid_pins_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
 		},
 	},
+	{
+		.gpio = 37,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
+			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
+		},
+	},
+	{
+		.gpio = 13,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
+			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
+		},
+	},
+	{
+		.gpio = 2,
+		.settings = {
+			[GPIOMUX_ACTIVE] = &pcbid_pins_active_cfg,
+			[GPIOMUX_SUSPENDED] = &pcbid_pins_suspended_cfg,
+		},
+	},
 };
 #endif
 
