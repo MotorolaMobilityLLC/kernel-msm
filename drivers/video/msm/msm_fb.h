@@ -84,6 +84,7 @@ struct msm_fb_data_type {
 
 	struct device *dev;
 	boolean op_enable;
+	struct delayed_work backlight_worker;
 	uint32 fb_imgType;
 	boolean sw_currently_refreshing;
 	boolean sw_refreshing_enable;
