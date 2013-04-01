@@ -26,7 +26,7 @@
 #include <linux/gpio.h>
 #include <linux/uaccess.h>
 #include <linux/cdev.h>
-#include <linux/input/synaptics_dsx.h>
+#include <linux/input/synaptics_rmi_dsx.h>
 #include "synaptics_dsx_i2c.h"
 
 #define CHAR_DEVICE_NAME "rmi"
