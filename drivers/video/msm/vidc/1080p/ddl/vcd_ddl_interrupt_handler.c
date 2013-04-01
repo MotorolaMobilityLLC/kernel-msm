@@ -377,12 +377,12 @@ static u32 ddl_decoder_seq_done_callback(struct ddl_context *ddl_context,
 				input_vcd_frm->data_len <=
 				seq_hdr_info.dec_frm_size) {
 				seq_hdr_only_frame = true;
-				input_vcd_frm->offset +=
-					seq_hdr_info.dec_frm_size;
-				input_vcd_frm->data_len = 0;
 				eos_present =
 				input_vcd_frm->flags & VCD_FRAME_FLAG_EOS;
 				if (!eos_present) {
+					input_vcd_frm->data_len = 0;
+					input_vcd_frm->offset +=
+						seq_hdr_info.dec_frm_size;
 					input_vcd_frm->flags |=
 						VCD_FRAME_FLAG_CODECCONFIG;
 					ddl->input_frame.frm_trans_end =
