@@ -31,7 +31,7 @@
 #include <linux/jiffies.h>
 #include <linux/semaphore.h>
 #include <linux/regulator/consumer.h>
-#include <linux/input/synaptics_dsx.h>
+#include <linux/input/synaptics_rmi_dsx.h>
 #include "synaptics_dsx_i2c.h"
 #ifdef KERNEL_ABOVE_2_6_38
 #include <linux/input/mt.h>
