@@ -157,6 +157,8 @@ struct msm_sensor_fn_t {
 			(struct msm_sensor_ctrl_t *, int);
 	int32_t (*sensor_set_ev)
 			(struct msm_sensor_ctrl_t *, int);
+	void (*sensor_get_af_calib)(struct msm_sensor_ctrl_t *s_ctrl,
+			struct msm_calib_af *);
 };
 
 struct msm_sensor_csi_info {

@@ -32,6 +32,7 @@
 #define OTP_BANK_START  0x3D00
 
 static struct msm_sensor_ctrl_t ov5693_s_ctrl;
+static struct msm_calib_af ov5693_af_position;
 
 DEFINE_MUTEX(ov5693_mut);
 
@@ -160,6 +161,56 @@ static int32_t ov5693_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 
 	return 0;
 }
+
+static void ov5693_read_afcal(struct msm_sensor_ctrl_t *s_ctrl,
+	struct msm_calib_af *af_pos)
+{
+	uint8_t data[2];
+	uint16_t address;
+
+	/* select otp bank 1 */
+	msm_camera_i2c_write(s_ctrl->sensor_i2c_client, OTP_BANK_SELECT, 0xc1,
+		MSM_CAMERA_I2C_BYTE_DATA);
+
+	/* load otp */
+	msm_camera_i2c_write(s_ctrl->sensor_i2c_client, OTP_LOAD_DUMP, 0x01,
+		MSM_CAMERA_I2C_BYTE_DATA);
+
+	/* read inf */
+	address = OTP_BANK_START;
+	msm_camera_i2c_read_seq(s_ctrl->sensor_i2c_client, address, data, 2);
+
+	af_pos->inf_dac = data[0] << 8 | data[1];
+
+	/* read 1m */
+	address += 2;
+/*	msm_camera_i2c_read_seq(s_ctrl->sensor_i2c_client, address, data, 2); */
+
+	/* read mac */
+	address += 2;
+	msm_camera_i2c_read_seq(s_ctrl->sensor_i2c_client, address, data, 2);
+
+	af_pos->macro_dac = data[0] << 8 | data[1];
+
+	/* read start position */
+	address += 2;
+	msm_camera_i2c_read_seq(s_ctrl->sensor_i2c_client, address, data, 2);
+
+	af_pos->start_dac = data[0] << 8 | data[1];
+
+	pr_info("* inf = 0x%x * mac = 0x%x * start = 0x%x",
+		af_pos->inf_dac, af_pos->macro_dac, af_pos->start_dac);
+
+	CDBG("OTP inf = 0x%x", af_pos->inf_dac);
+	CDBG("OTP mac = 0x%x", af_pos->macro_dac);
+	CDBG("OTP start = 0x%x", af_pos->start_dac);
+}
+
+static void ov5693_read_otp(struct msm_sensor_ctrl_t *s_ctrl)
+{
+	ov5693_read_afcal(s_ctrl, &ov5693_af_position);
+}
+
 int32_t ov5693_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 	int update_type, int res)
 {
@@ -170,6 +221,13 @@ int32_t ov5693_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 	if (update_type == MSM_SENSOR_REG_INIT) {
 		s_ctrl->curr_csi_params = NULL;
 		msm_sensor_write_init_settings(s_ctrl);
+
+		msm_camera_i2c_write(s_ctrl->sensor_i2c_client, 0x100, 0x1,
+			MSM_CAMERA_I2C_BYTE_DATA);
+		ov5693_read_otp(s_ctrl);
+		msm_camera_i2c_write(s_ctrl->sensor_i2c_client, 0x100, 0x0,
+		  MSM_CAMERA_I2C_BYTE_DATA);
+
 	} else if (update_type == MSM_SENSOR_UPDATE_PERIODIC) {
 		msm_sensor_write_res_settings(s_ctrl, res);
 
@@ -200,6 +258,19 @@ int32_t ov5693_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 	}
 	return rc;
 }
+
+void ov5693_get_af_calib(struct msm_sensor_ctrl_t *s_ctrl,
+	struct msm_calib_af *af)
+{
+	af->inf_dac = ov5693_af_position.inf_dac;
+	af->macro_dac = ov5693_af_position.macro_dac;
+	af->start_dac = ov5693_af_position.start_dac;
+
+	CDBG("* inf = 0x%x", af->inf_dac);
+	CDBG("* mac = 0x%x", af->macro_dac);
+	CDBG("* start = 0x%x", af->start_dac);
+}
+
 static const struct i2c_device_id ov5693_i2c_id[] = {
 	{SENSOR_NAME, (kernel_ulong_t)&ov5693_s_ctrl},
 	{ }
@@ -700,6 +771,7 @@ static struct msm_sensor_fn_t ov5693_func_tbl = {
 	.sensor_power_up = ov5693_sensor_power_up,
 	.sensor_power_down = ov5693_sensor_power_down,
 	.sensor_get_csi_params = msm_sensor_get_csi_params,
+	.sensor_get_af_calib = ov5693_get_af_calib,
 };
 
 static struct msm_sensor_reg_t ov5693_regs = {

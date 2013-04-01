@@ -617,6 +617,18 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 					cdata.cfg.exp_compensation);
 			break;
 
+		case CFG_GET_AF_CALIB:
+			if (s_ctrl->func_tbl->sensor_get_af_calib)
+					s_ctrl->func_tbl->sensor_get_af_calib(s_ctrl,
+					&cdata.cfg.sensor_otp_afcalib);
+			else
+				rc = -EIO;
+
+			if (copy_to_user((void *)argp,
+					&cdata,
+					sizeof(cdata)))
+				rc = -EFAULT;
+			break;
 		default:
 			rc = -EFAULT;
 			break;

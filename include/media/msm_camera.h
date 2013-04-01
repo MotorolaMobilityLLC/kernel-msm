@@ -910,7 +910,8 @@ struct msm_snapshot_pp_status {
 #define CFG_START_STREAM              44
 #define CFG_STOP_STREAM               45
 #define CFG_GET_CSI_PARAMS            46
-#define CFG_MAX			47
+#define CFG_GET_AF_CALIB              47
+#define CFG_MAX			48
 
 #define MOVE_NEAR	0
 #define MOVE_FAR	1
@@ -1360,6 +1361,12 @@ struct ispif_cfg_data {
 	} cfg;
 };
 
+struct msm_calib_af {
+	uint16_t macro_dac;
+	uint16_t inf_dac;
+	uint16_t start_dac;
+};
+
 struct sensor_cfg_data {
 	int cfgtype;
 	int mode;
@@ -1387,6 +1394,7 @@ struct sensor_cfg_data {
 		struct sensor_output_info_t output_info;
 		struct msm_eeprom_data_t eeprom_data;
 		struct csi_lane_params_t csi_lane_params;
+		struct msm_calib_af sensor_otp_afcalib;
 		/* QRD */
 		uint16_t antibanding;
 		uint8_t contrast;
@@ -1531,12 +1539,6 @@ struct msm_calib_wb {
 	uint16_t r_over_g;
 	uint16_t b_over_g;
 	uint16_t gr_over_gb;
-};
-
-struct msm_calib_af {
-	uint16_t macro_dac;
-	uint16_t inf_dac;
-	uint16_t start_dac;
 };
 
 struct msm_calib_lsc {
