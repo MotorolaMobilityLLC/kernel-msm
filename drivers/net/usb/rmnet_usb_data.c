@@ -169,6 +169,15 @@ static int rmnet_usb_suspend(struct usb_interface *iface, pm_message_t message)
 
 		set_bit(EVENT_DEV_ASLEEP, &unet->flags);
 		spin_unlock_irq(&unet->txq.lock);
+
+		usb_kill_anchored_urbs(&dev->rx_submitted);
+		if (work_busy(&dev->get_encap_work)) {
+			spin_lock_irq(&unet->txq.lock);
+			clear_bit(EVENT_DEV_ASLEEP, &unet->flags);
+			spin_unlock_irq(&unet->txq.lock);
+			retval = -EBUSY;
+			goto abort_suspend;
+		}
 	}
 
 	for (n = 0; n < rdev_cnt; n++) {
@@ -177,7 +186,6 @@ static int rmnet_usb_suspend(struct usb_interface *iface, pm_message_t message)
 		unet->data[4] ? unet_list[unet_id] : usb_get_intfdata(iface);
 
 		dev = (struct rmnet_ctrl_dev *)unet->data[1];
-		usb_kill_anchored_urbs(&dev->rx_submitted);
 		netif_device_detach(unet->net);
 		usbnet_terminate_urbs(unet);
 		netif_device_attach(unet->net);
@@ -190,6 +198,9 @@ abort_suspend:
 		unet_id = i + unet->driver_info->data * no_rmnet_insts_per_dev;
 		unet =
 		unet->data[4] ? unet_list[unet_id] : usb_get_intfdata(iface);
+
+		dev = (struct rmnet_ctrl_dev *)unet->data[1];
+		rmnet_usb_ctrl_start_rx(dev);
 		spin_lock_irq(&unet->txq.lock);
 		clear_bit(EVENT_DEV_ASLEEP, &unet->flags);
 		spin_unlock_irq(&unet->txq.lock);
@@ -307,6 +318,7 @@ static int rmnet_usb_data_dmux(struct sk_buff *skb,  struct urb *rx_urb)
 	}
 
 	skb->data = (unsigned char *)(hdr + 1);
+	skb_reset_tail_pointer(skb);
 	rx_urb->actual_length = total_len - pad_len;
 
 	return mux_id - 1;
@@ -889,18 +901,16 @@ static int rmnet_data_start(void)
 		return -EINVAL;
 	}
 
-	retval = usb_register(&rmnet_usb);
-	if (retval) {
-		err("usb_register failed: %d", retval);
-		return retval;
-	}
-
 	/* initialize ctrl devices */
 	retval = rmnet_usb_ctrl_init(no_rmnet_devs, no_rmnet_insts_per_dev);
 	if (retval) {
-		rmnet_usb_ctrl_exit(no_rmnet_devs, no_rmnet_insts_per_dev);
-		usb_deregister(&rmnet_usb);
 		err("rmnet_usb_cmux_init failed: %d", retval);
+		return retval;
+	}
+
+	retval = usb_register(&rmnet_usb);
+	if (retval) {
+		err("usb_register failed: %d", retval);
 		return retval;
 	}
 
