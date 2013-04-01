@@ -294,7 +294,7 @@ static int32_t s5k5b3g_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
 }
 
 static int32_t s5k5b3g_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
-		uint16_t gain, uint32_t line)
+		uint16_t gain, uint32_t line, int32_t luma_avg, uint16_t fgain)
 {
 	uint32_t fl_lines, offset;
 	int32_t rc = 0;

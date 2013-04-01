@@ -236,7 +236,7 @@ static struct msm_sensor_exp_gain_info_t ar0834_exp_gain_info = {
 };
 
 static int32_t ar0834_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
-		uint16_t gain, uint32_t line)
+		uint16_t gain, uint32_t line, int32_t luma_avg, uint16_t fgain)
 {
 #ifdef STUB_GAINS
 	return 0; /* FIXME: stub until user code is working */
@@ -258,7 +258,7 @@ static int32_t ar0834_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 }
 
 static int32_t ar0834_write_exp_snapshot_gain(struct msm_sensor_ctrl_t *s_ctrl,
-		uint16_t gain, uint32_t line)
+		uint16_t gain, uint32_t line, int32_t luma_avg, uint16_t fgain)
 {
 #ifdef STUB_GAINS
 	return 0; /* FIXME: stub until user code is working */
