@@ -11922,7 +11922,8 @@ eHalStatus csrSendJoinReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirBssDe
         pProfile->MDID.mdiePresent = pBssDescription->mdiePresent;
         if (csrIsProfile11r( pProfile )
 #ifdef FEATURE_WLAN_CCX
-           && !((pIes->CCXVersion.present) && (pMac->roam.configParam.isCcxIniFeatureEnabled))
+           && !((pProfile->negotiatedAuthType == eCSR_AUTH_TYPE_OPEN_SYSTEM) &&
+                (pIes->CCXVersion.present) && (pMac->roam.configParam.isCcxIniFeatureEnabled))
 #endif
         )
         {
