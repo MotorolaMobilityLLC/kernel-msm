@@ -640,6 +640,8 @@ void hdd_conf_mcastbcast_filter(hdd_context_t* pHddCtx, v_BOOL_t setfilter)
 
     wlanRxpFilterParam->setMcstBcstFilter = setfilter;
     halStatus = sme_ConfigureRxpFilter(pHddCtx->hHal, wlanRxpFilterParam);
+    if (eHAL_STATUS_SUCCESS != halStatus)
+        vos_mem_free(wlanRxpFilterParam);
     if(setfilter && (eHAL_STATUS_SUCCESS == halStatus))
        pHddCtx->hdd_mcastbcast_filter_set = TRUE;
 }
@@ -715,28 +717,32 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
     if(eHAL_STATUS_SUCCESS == halStatus)
     {
         pHddCtx->hdd_mcastbcast_filter_set = TRUE;
+    } else {
+        vos_mem_free(wlanSuspendParam);
     }
 }
 
 static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter)
 {
+    eHalStatus halStatus = eHAL_STATUS_FAILURE;
     VOS_STATUS vstatus;
     hdd_context_t* pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
-    tpSirWlanResumeParam wlanResumeParam =
-      vos_mem_malloc(sizeof(tSirWlanResumeParam));
-
-    if(NULL == wlanResumeParam)
-    {
-        hddLog(VOS_TRACE_LEVEL_FATAL,
-           "%s: vos_mem_alloc failed ", __func__);
-        return;
-    }
+    tpSirWlanResumeParam wlanResumeParam;
 
     hddLog(VOS_TRACE_LEVEL_INFO,
       "%s: send wlan resume indication", __func__);
 
     if (pHddCtx->hdd_mcastbcast_filter_set == TRUE)
     {
+        wlanResumeParam = vos_mem_malloc(sizeof(tSirWlanResumeParam));
+
+        if(NULL == wlanResumeParam)
+        {
+            hddLog(VOS_TRACE_LEVEL_FATAL,
+               "%s: vos_mem_alloc failed ", __func__);
+            return;
+        }
+
         if (pHddCtx->cfg_ini->fhostArpOffload)
         {
             vstatus = hdd_conf_hostarpoffload(pAdapter, FALSE);
@@ -756,9 +762,12 @@ static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter)
             wlanResumeParam->configuredMcstBcstFilterSetting =
                                         pHddCtx->cfg_ini->mcastBcastFilterSetting;
         }
-        sme_ConfigureResumeReq(pHddCtx->hHal, wlanResumeParam);
+        halStatus = sme_ConfigureResumeReq(pHddCtx->hHal, wlanResumeParam);
+        if (eHAL_STATUS_SUCCESS != halStatus)
+            vos_mem_free(wlanResumeParam);
         pHddCtx->hdd_mcastbcast_filter_set = FALSE;
     }
+
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING    
     if (pHddCtx->cfg_ini->isMcAddrListFilter)

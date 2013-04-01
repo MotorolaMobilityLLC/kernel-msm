@@ -4957,13 +4957,13 @@ static int iw_qcom_set_wapi_key(struct net_device *dev, struct iw_request_info *
 
     switch ( pWapiKey->keyType )
     {
-        case HDD_PAIRWISE_WAPI_KEY:
+        case PAIRWISE_KEY:
         {
             isConnected = hdd_connIsConnected(pHddStaCtx);
             vos_mem_copy(setKey.peerMac,&pHddStaCtx->conn_info.bssId,WNI_CFG_BSSID_LEN);
             break;
         }
-        case HDD_GROUP_WAPI_KEY:
+        case GROUP_KEY:
         {
             vos_set_macaddr_broadcast( (v_MACADDR_t *)setKey.peerMac );
             break;
@@ -5125,6 +5125,7 @@ static int iw_set_dynamic_mcbc_filter(struct net_device *dev,
     tpSirRcvFltMcAddrList mc_addr_list_ptr;
     int idx;
     eHalStatus ret_val;
+    tANI_U8 mcastBcastFilterSetting;
 
     if (pHddCtx->isLogpInProgress)
     {
@@ -5227,17 +5228,20 @@ static int iw_set_dynamic_mcbc_filter(struct net_device *dev,
                    wlanRxpFilterParam->configuredMcstBcstFilterSetting,
                    wlanRxpFilterParam->setMcstBcstFilter);
 
+            mcastBcastFilterSetting = wlanRxpFilterParam->configuredMcstBcstFilterSetting;
+
             if (eHAL_STATUS_SUCCESS != sme_ConfigureRxpFilter(WLAN_HDD_GET_HAL_CTX(pAdapter),
                                                               wlanRxpFilterParam))
             {
                 hddLog(VOS_TRACE_LEVEL_ERROR,
                        "%s: Failure to execute set HW MC/BC Filter request",
                        __func__);
+                vos_mem_free(wlanRxpFilterParam);
                 return -EINVAL;
             }
 
             pHddCtx->dynamic_mcbc_filter.mcBcFilterSuspend =
-                wlanRxpFilterParam->configuredMcstBcstFilterSetting;
+                mcastBcastFilterSetting;
         }
     }
 

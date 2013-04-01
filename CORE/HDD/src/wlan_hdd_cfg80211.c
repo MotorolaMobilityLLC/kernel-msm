@@ -3951,6 +3951,7 @@ wlan_hdd_cfg80211_inform_bss_frame( hdd_adapter_t *pAdapter,
     if(chan == NULL)
     {
        hddLog(VOS_TRACE_LEVEL_INFO, "%s chan pointer is NULL", __func__);
+       kfree(mgmt);
        return NULL;
     }
     /*To keep the rssi icon of the connected AP in the scan window
@@ -7106,10 +7107,10 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
         "NL80211_TDLS_UNKONW_OPER"};
 #endif
 
-    if( NULL == pHddCtx || NULL == pHddCtx->cfg_ini )
+    if ( NULL == pHddCtx || NULL == pHddCtx->cfg_ini || NULL == peer )
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "Invalid arguments");
+                   "%s: Invalid arguments", __func__);
         return -EINVAL;
     }
 
@@ -7134,8 +7135,8 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
         FALSE == sme_IsFeatureSupportedByFW(TDLS))
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                "TDLS Disabled in INI OR not enabled in FW.\
-                Cannot process TDLS commands \n");
+                "TDLS Disabled in INI OR not enabled in FW. "
+                "Cannot process TDLS commands");
         return -ENOTSUPP;
     }
 
