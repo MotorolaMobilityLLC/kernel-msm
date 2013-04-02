@@ -136,6 +136,7 @@ static enum power_supply_property bq27541_properties[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_TEMP,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
 };
 
 void bq27541_check_cabe_type(void)
@@ -325,6 +326,24 @@ static struct attribute *battery_smbus_attributes[] = {
 static const struct attribute_group battery_smbus_group = {
 	.attrs = battery_smbus_attributes,
 };
+
+static int bq27541_battery_current(void)
+{
+	int ret;
+	int curr = 0;
+
+	ret = bq27541_read_i2c(bq27541_data[REG_CURRENT].addr, &curr, 0);
+	if (ret) {
+		BAT_ERR("error reading current ret = %x\n", ret);
+		return 0;
+	}
+
+	if (curr >= bq27541_data[REG_CURRENT].min_value &&
+		curr <= bq27541_data[REG_CURRENT].max_value) {
+		return curr;
+	} else
+		return 0;
+}
 
 static void battery_status_poll(struct work_struct *work)
 {
@@ -531,6 +550,11 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,
 		}
 		bq27541_device->old_temperature = val->intval = ret;
 		BAT_NOTICE("temperature= %u (0.1¢XC)\n", val->intval);
+	}
+	if (psp == POWER_SUPPLY_PROP_CURRENT_NOW) {
+		val->intval = bq27541_device->bat_current
+			= bq27541_battery_current();
+		BAT_NOTICE("current = %d mA\n", val->intval);
 	}
 	return 0;
 }
