@@ -1393,20 +1393,25 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
            }
         }
 
-        /* inform association failure event to nl80211 */
-        if(eCSR_ROAM_RESULT_ASSOC_FAIL_CON_CHANNEL == roamResult)
+        /* CR465478: Only send up a connection failure result when CSR has
+         * completed operation - with a ASSOCIATION_FAILURE status. */
+        if ( eCSR_ROAM_ASSOCIATION_FAILURE == roamStatus )
         {
-           cfg80211_connect_result(dev, pWextState->req_bssId,
-                NULL, 0, NULL, 0,
-                WLAN_STATUS_ASSOC_DENIED_UNSPEC, 
-                GFP_KERNEL);
-        }
-        else
-        {
-           cfg80211_connect_result(dev, pWextState->req_bssId,
-                NULL, 0, NULL, 0,
-                WLAN_STATUS_UNSPECIFIED_FAILURE, 
-                GFP_KERNEL);
+            /* inform association failure event to nl80211 */
+            if ( eCSR_ROAM_RESULT_ASSOC_FAIL_CON_CHANNEL == roamResult )
+            {
+               cfg80211_connect_result ( dev, pWextState->req_bssId,
+                    NULL, 0, NULL, 0,
+                    WLAN_STATUS_ASSOC_DENIED_UNSPEC,
+                    GFP_KERNEL );
+            }
+            else
+            {
+               cfg80211_connect_result ( dev, pWextState->req_bssId,
+                    NULL, 0, NULL, 0,
+                    WLAN_STATUS_UNSPECIFIED_FAILURE,
+                    GFP_KERNEL );
+            }
         }
 
         /*Clear the roam profile*/
