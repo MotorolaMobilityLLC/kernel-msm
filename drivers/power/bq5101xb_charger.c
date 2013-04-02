@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Motorola Mobility LLC
+ * Copyright (C) 2012-2013 Motorola Mobility LLC
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -109,6 +109,7 @@ static void bq5101xb_worker(struct work_struct *work)
 	int batt_temp;
 	int batt_volt;
 	int batt_soc;
+	int batt_status;
 	int powered = 0;
 	int wired = 0;
 	int i;
@@ -177,6 +178,12 @@ static void bq5101xb_worker(struct work_struct *work)
 			dev_err(chip->dev, "Error Reading Capacity\n");
 			return;
 		}
+		if (bq5101xb_get_batt_info(chip->batt_psy,
+					   POWER_SUPPLY_PROP_STATUS,
+					   &batt_status)) {
+			dev_err(chip->dev, "Error Reading Status\n");
+			return;
+		}
 	} else {
 		pr_err_once("batt_psy not found\n");
 		schedule_delayed_work(&chip->bq5101xb_work,
@@ -211,7 +218,8 @@ static void bq5101xb_worker(struct work_struct *work)
 			   (batt_temp <= pdata->cold_temp)) {
 			bq5101xb_set_pins(pdata, 0, 0, 1, 1);
 			chip->state = BQ5101XB_OUT_OF_TEMP;
-		} else if (batt_soc >= BQ5101XB_CHRG_CMPLT_SOC) {
+		} else if ((batt_soc >= BQ5101XB_CHRG_CMPLT_SOC) &&
+			   (batt_status == POWER_SUPPLY_STATUS_FULL)) {
 			bq5101xb_set_pins(pdata, 1, 1, 0, 0);
 			chip->state = BQ5101XB_CHRG_CMPLT;
 		}
@@ -224,7 +232,8 @@ static void bq5101xb_worker(struct work_struct *work)
 					 BQ5101XB_TEMP_HYS)) ||
 			   (batt_temp > (pdata->cold_temp +
 					 BQ5101XB_TEMP_HYS))) {
-			if (batt_soc >= BQ5101XB_CHRG_CMPLT_SOC) {
+			if ((batt_soc >= BQ5101XB_CHRG_CMPLT_SOC) &&
+			    (batt_status == POWER_SUPPLY_STATUS_FULL)) {
 				bq5101xb_set_pins(pdata, 1, 1, 0, 0);
 				chip->state = BQ5101XB_CHRG_CMPLT;
 			} else {
