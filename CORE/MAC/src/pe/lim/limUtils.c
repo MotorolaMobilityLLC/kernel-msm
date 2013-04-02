@@ -849,13 +849,6 @@ limPrintMsgName(tpAniSirGlobal pMac, tANI_U16 logLevel, tANI_U32 msgType)
     limLog(pMac, logLevel, limMsgStr(msgType));
 }
 
-
-#if defined(ANI_MIPS) || defined(ANI_ARM)
-#define LINK 0
-#else
-#define LINK 1
-#endif
-
 void
 limPrintMsgInfo(tpAniSirGlobal pMac, tANI_U16 logLevel, tSirMsgQ *msg)
 {
