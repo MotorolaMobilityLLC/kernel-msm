@@ -768,7 +768,7 @@ static struct msm_camera_sensor_flash_data flash_mi1040 = {
 };
 
 static struct msm_camera_sensor_platform_info sensor_board_info_mi1040 = {
-	.mount_angle	= 90,
+	.mount_angle	= 270,
 	.cam_vreg = apq_8064_mi1040_vreg,
 	.num_vreg = ARRAY_SIZE(apq_8064_mi1040_vreg),
 	.gpio_conf = &apq8064_front_cam_gpio_conf,
