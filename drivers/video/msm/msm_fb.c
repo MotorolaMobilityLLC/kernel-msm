@@ -1148,6 +1148,7 @@ static int msm_fb_blank(int blank_mode, struct fb_info *info)
 			do not unblank but send SUCCESS to hwc, so that hwc
 			keeps pushing frames and display comes up as soon
 			 as system is resumed */
+			unlock_panel_mutex(mfd);
 			return 0;
 		}
 		else
