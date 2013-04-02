@@ -235,7 +235,12 @@ void limUpdateAssocStaDatas(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpSirAsso
            pStaDs->wmeEnabled = 1;
        }
 
-
+#ifdef WLAN_FEATURE_11W
+       if(psessionEntry->limRmfEnabled)
+       {
+           pStaDs->rmfEnabled = 1;
+       }
+#endif
 }
 
 /**

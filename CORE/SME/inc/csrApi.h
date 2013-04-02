@@ -81,6 +81,9 @@ typedef enum
     eCSR_AUTH_TYPE_CCKM_WPA,
     eCSR_AUTH_TYPE_CCKM_RSN,
 #endif /* FEATURE_WLAN_CCX */
+#ifdef WLAN_FEATURE_11W
+    eCSR_AUTH_TYPE_RSN_PSK_SHA256,
+#endif
     eCSR_NUM_OF_SUPPORT_AUTH_TYPE,
     eCSR_AUTH_TYPE_FAILED = 0xff,
     eCSR_AUTH_TYPE_UNKNOWN = eCSR_AUTH_TYPE_FAILED,
@@ -459,6 +462,9 @@ typedef enum
     eCSR_ROAM_DISCONNECT_ALL_P2P_CLIENTS, //Disaconnect all the clients
     eCSR_ROAM_SEND_P2P_STOP_BSS, //Stopbss triggered from SME due to different
                                  // beacon interval
+#ifdef WLAN_FEATURE_11W
+    eCSR_ROAM_UNPROT_MGMT_FRAME_IND,
+#endif
 
 }eRoamCmdStatus;
 
@@ -704,7 +710,8 @@ typedef enum
 
 }eCsrWEPStaticKeyID;
 
-#define CSR_MAX_NUM_KEY     (eCSR_SECURITY_WEP_STATIC_KEY_ID_MAX + 1)
+// Two extra key indicies are used for the IGTK (which is used by BIP)
+#define CSR_MAX_NUM_KEY     (eCSR_SECURITY_WEP_STATIC_KEY_ID_MAX + 2 + 1)
 
 typedef enum
 {
@@ -824,6 +831,13 @@ typedef struct tagCsrRoamProfile
     tCsrEncryptionList mcEncryptionType;
     //This field is for output only, not for input
     eCsrEncryptionType negotiatedMCEncryptionType;
+
+#ifdef WLAN_FEATURE_11W
+    // Management Frame Protection
+    tANI_BOOLEAN MFPEnabled;
+    tANI_U8 MFPRequired;
+    tANI_U8 MFPCapable;
+#endif
 
     tCsrKeys Keys;
     eCsrCBChoice CBMode; //up, down or auto

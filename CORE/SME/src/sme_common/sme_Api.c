@@ -118,6 +118,11 @@ eHalStatus sme_HandlePostChannelSwitchInd(tHalHandle hHal);
 tANI_BOOLEAN csrIsScanAllowed(tpAniSirGlobal pMac);
 #endif
 
+#ifdef WLAN_FEATURE_11W
+eHalStatus sme_UnprotectedMgmtFrmInd( tHalHandle hHal,
+                                      tpSirSmeUnprotMgmtFrameInd pSmeMgmtFrm );
+#endif
+
 //Internal SME APIs
 eHalStatus sme_AcquireGlobalLock( tSmeStruct *psSme)
 {
@@ -1400,6 +1405,34 @@ eHalStatus sme_PCFilterMatchCountResponseHandler(tHalHandle hHal, void* pMsg)
 #endif // WLAN_FEATURE_PACKET_FILTERING
 
 
+#ifdef WLAN_FEATURE_11W
+/*------------------------------------------------------------------
+ *
+ * Handle the unprotected management frame indication from LIM and
+ * forward it to HDD.
+ *
+ *------------------------------------------------------------------*/
+
+eHalStatus sme_UnprotectedMgmtFrmInd( tHalHandle hHal,
+                                      tpSirSmeUnprotMgmtFrameInd pSmeMgmtFrm)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus  status = eHAL_STATUS_SUCCESS;
+    tCsrRoamInfo pRoamInfo = {0};
+    tANI_U32 SessionId = pSmeMgmtFrm->sessionId;
+
+    pRoamInfo.nFrameLength = pSmeMgmtFrm->frameLen;
+    pRoamInfo.pbFrames = pSmeMgmtFrm->frameBuf;
+    pRoamInfo.frameType = pSmeMgmtFrm->frameType;
+
+    /* forward the mgmt frame to HDD */
+    csrRoamCallCallback(pMac, SessionId, &pRoamInfo, 0, eCSR_ROAM_UNPROT_MGMT_FRAME_IND, 0);
+
+    return status;
+}
+#endif
+
+
 /*--------------------------------------------------------------------------
 
   \brief sme_ProcessMsg() - The main message processor for SME.
@@ -1706,6 +1739,20 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
                     }
                     break;
                 }
+#endif
+
+#ifdef WLAN_FEATURE_11W
+           case eWNI_SME_UNPROT_MGMT_FRM_IND:
+                if (pMsg->bodyptr)
+                {
+                    sme_UnprotectedMgmtFrmInd(pMac, pMsg->bodyptr);
+                    vos_mem_free(pMsg->bodyptr);
+                }
+                else
+                {
+                    smsLog(pMac, LOGE, "Empty rsp message for meas (eWNI_SME_UNPROT_MGMT_FRM_IND), nothing to process");
+                }
+                break;
 #endif
 
           default:

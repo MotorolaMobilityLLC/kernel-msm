@@ -159,6 +159,10 @@
 #define WLAN_HDD_P2P_SOCIAL_CHANNELS 3
 #define WLAN_HDD_P2P_SINGLE_CHANNEL_SCAN 1
 
+#ifdef WLAN_FEATURE_11W
+#define WLAN_HDD_SA_QUERY_ACTION_FRAME 8
+#endif
+
 #define WLAN_HDD_PUBLIC_ACTION_TDLS_DISC_RESP 14
 #define WLAN_HDD_TDLS_ACTION_FRAME 12
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
@@ -214,6 +218,14 @@ typedef struct hdd_chip_reset_stats_s
    __u32    totalUnknownExceptions;
 } hdd_chip_reset_stats_t;
 
+#ifdef WLAN_FEATURE_11W
+typedef struct hdd_pmf_stats_s
+{
+   uint8    numUnprotDeauthRx;
+   uint8    numUnprotDisassocRx;
+} hdd_pmf_stats_t;
+#endif
+
 typedef struct hdd_stats_s
 {
    tCsrSummaryStatsInfo       summary_stat;
@@ -224,6 +236,9 @@ typedef struct hdd_stats_s
    tCsrPerStaStatsInfo        perStaStats;
    hdd_tx_rx_stats_t          hddTxRxStats;
    hdd_chip_reset_stats_t     hddChipResetStats;
+#ifdef WLAN_FEATURE_11W
+   hdd_pmf_stats_t            hddPmfStats;
+#endif
 } hdd_stats_t;
 
 typedef enum

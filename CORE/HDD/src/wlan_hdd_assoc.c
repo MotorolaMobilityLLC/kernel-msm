@@ -109,6 +109,9 @@ v_U8_t ccpRSNOui05[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x0F, 0xAC, 0x05 }; // WEP-104
 #ifdef FEATURE_WLAN_CCX
 v_U8_t ccpRSNOui06[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x40, 0x96, 0x00 }; // CCKM
 #endif /* FEATURE_WLAN_CCX */
+#ifdef WLAN_FEATURE_11W
+v_U8_t ccpRSNOui07[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x0F, 0xAC, 0x06 }; // RSN-PSK-SHA256
+#endif
 
 #if defined(WLAN_FEATURE_VOWIFI_11R) 
 // Offset where the EID-Len-IE, start.
@@ -119,6 +122,13 @@ v_U8_t ccpRSNOui06[ HDD_RSN_OUI_SIZE ] = { 0x00, 0x40, 0x96, 0x00 }; // CCKM
 #define BEACON_FRAME_IES_OFFSET 12
 
 void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter);
+
+#ifdef WLAN_FEATURE_11W
+void hdd_indicateUnprotMgmtFrame(hdd_adapter_t *pAdapter,
+                            tANI_U32 nFrameLength,
+                            tANI_U8* pbFrames,
+                            tANI_U8 frameType );
+#endif
 
 v_VOID_t hdd_connSetConnectionState( hdd_station_ctx_t *pHddStaCtx,
                                         eConnectionState connState )
@@ -1329,7 +1339,10 @@ static eHalStatus hdd_AssociationCompletionHandler( hdd_adapter_t *pAdapter, tCs
                     "Cannot register STA with TL.  Failed with vosStatus = %d [%08lX]",
                     vosStatus, vosStatus );
         }
-
+#ifdef WLAN_FEATURE_11W
+        vos_mem_zero( &pAdapter->hdd_stats.hddPmfStats,
+                      sizeof(pAdapter->hdd_stats.hddPmfStats) );
+#endif
         // Start the Queue
         netif_tx_wake_all_queues(dev);
     }  
@@ -2320,6 +2333,13 @@ eHalStatus hdd_smeRoamCallback( void *pContext, tCsrRoamInfo *pRoamInfo, tANI_U3
             wlan_hdd_tdls_mgmt_completion_callback(pAdapter, pRoamInfo->reasonCode);
             break;
 #endif
+#ifdef WLAN_FEATURE_11W
+       case eCSR_ROAM_UNPROT_MGMT_FRAME_IND:
+            hdd_indicateUnprotMgmtFrame(pAdapter, pRoamInfo->nFrameLength,
+                                         pRoamInfo->pbFrames,
+                                         pRoamInfo->frameType);
+            break;
+#endif
         default:
             break;
     }
@@ -2355,6 +2375,12 @@ eCsrAuthType hdd_TranslateRSNToCsrAuthType( u_int8_t auth_suite[4])
         auth_type = eCSR_AUTH_TYPE_CCKM_RSN;
     } else
 #endif /* FEATURE_WLAN_CCX */
+#ifdef WLAN_FEATURE_11W
+    if (memcmp(auth_suite , ccpRSNOui07, 4) == 0)
+    {
+        auth_type = eCSR_AUTH_TYPE_RSN_PSK_SHA256;
+    } else
+#endif
     { 
         auth_type = eCSR_AUTH_TYPE_UNKNOWN;
     }
@@ -2470,6 +2496,10 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
                 eCsrEncryptionType *pEncryptType, 
                 eCsrEncryptionType *mcEncryptType, 
                 eCsrAuthType *pAuthType, 
+#ifdef WLAN_FEATURE_11W
+                u_int8_t *pMfpRequired,
+                u_int8_t *pMfpCapable,
+#endif
                 u_int16_t gen_ie_len, 
                 u_int8_t *gen_ie) 
 {
@@ -2522,6 +2552,10 @@ static tANI_S32 hdd_ProcessGENIE(hdd_adapter_t *pAdapter,
         *pEncryptType = hdd_TranslateRSNToCsrEncryptionType(dot11RSNIE.pwise_cipher_suites[0]);                     
         //dot11RSNIE.gp_cipher_suite_count 
         *mcEncryptType = hdd_TranslateRSNToCsrEncryptionType(dot11RSNIE.gp_cipher_suite);                     
+#ifdef WLAN_FEATURE_11W
+        *pMfpRequired = (dot11RSNIE.RSN_Cap[0] >> 6) & 0x1 ;
+        *pMfpCapable = (dot11RSNIE.RSN_Cap[0] >> 7) & 0x1 ;
+#endif
         // Set the PMKSA ID Cache for this interface
         for (i=0; i<dot11RSNIE.pmkid_count; i++) 
         {
@@ -2590,6 +2624,10 @@ int hdd_SetGENIEToCsr( hdd_adapter_t *pAdapter, eCsrAuthType *RSNAuthType)
     v_U32_t status = 0;
     eCsrEncryptionType RSNEncryptType;
     eCsrEncryptionType mcRSNEncryptType;
+#ifdef WLAN_FEATURE_11W
+    u_int8_t RSNMfpRequired;
+    u_int8_t RSNMfpCapable;
+#endif
     struct ether_addr   bSsid;   // MAC address of assoc peer
     // MAC address of assoc peer
     // But, this routine is only called when we are NOT associated.
@@ -2611,6 +2649,10 @@ int hdd_SetGENIEToCsr( hdd_adapter_t *pAdapter, eCsrAuthType *RSNAuthType)
             &RSNEncryptType,
             &mcRSNEncryptType,
             RSNAuthType,
+#ifdef WLAN_FEATURE_11W
+            &RSNMfpRequired,
+            &RSNMfpCapable,
+#endif
             pWextState->WPARSNIE[1]+2,
             pWextState->WPARSNIE);
     if (status == 0)
@@ -2621,6 +2663,11 @@ int hdd_SetGENIEToCsr( hdd_adapter_t *pAdapter, eCsrAuthType *RSNAuthType)
         
         pWextState->roamProfile.EncryptionType.encryptionType[0] = RSNEncryptType; // Use the cipher type in the RSN IE
         pWextState->roamProfile.mcEncryptionType.encryptionType[0] = mcRSNEncryptType;
+
+#ifdef WLAN_FEATURE_11W
+        pWextState->roamProfile.MFPRequired = RSNMfpRequired;
+        pWextState->roamProfile.MFPCapable = RSNMfpCapable;
+#endif
         hddLog( LOG1, "%s: CSR AuthType = %d, EncryptionType = %d mcEncryptionType = %d", __func__, *RSNAuthType, RSNEncryptType, mcRSNEncryptType);
     }
     return 0;
@@ -2695,6 +2742,12 @@ int hdd_set_csr_auth_type ( hdd_adapter_t  *pAdapter, eCsrAuthType RSNAuthType)
                 ((pWextState->authKeyMgmt & IW_AUTH_KEY_MGMT_PSK)
                  == IW_AUTH_KEY_MGMT_PSK)) {
                pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_FT_RSN_PSK;   
+            } else
+#endif
+
+#ifdef WLAN_FEATURE_11W
+            if (RSNAuthType == eCSR_AUTH_TYPE_RSN_PSK_SHA256) {
+                pRoamProfile->AuthType.authType[0] = eCSR_AUTH_TYPE_RSN_PSK_SHA256;
             } else
 #endif
 
@@ -3222,6 +3275,9 @@ int iw_get_auth(struct net_device *dev,struct iw_request_info *info,
          case eCSR_AUTH_TYPE_FT_RSN_PSK:
 #endif
          case eCSR_AUTH_TYPE_RSN_PSK:
+#ifdef WLAN_FEATURE_11W
+         case eCSR_AUTH_TYPE_RSN_PSK_SHA256:
+#endif
              hddLog(LOG1,"%s called with unknown auth type", __func__);
              wrqu->param.value = IW_AUTH_ALG_OPEN_SYSTEM;
              return -EIO;
@@ -3415,3 +3471,77 @@ void hdd_ResetCountryCodeAfterDisAssoc(hdd_adapter_t *pAdapter)
     }
 }
 
+#ifdef WLAN_FEATURE_11W
+/**---------------------------------------------------------------------------
+
+  \brief hdd_indicateUnprotMgmtFrame -
+  This function forwards the unprotected management frame to the supplicant
+  \param  - pAdapter - Pointer to HDD adapter
+          - nFrameLength - Length of the unprotected frame being passed
+          - pbFrames - Pointer to the frame buffer
+          - frameType - 802.11 frame type
+  \return - nothing
+
+  --------------------------------------------------------------------------*/
+void hdd_indicateUnprotMgmtFrame( hdd_adapter_t *pAdapter,
+                            tANI_U32 nFrameLength,
+                            tANI_U8* pbFrames,
+                            tANI_U8 frameType )
+{
+    tANI_U8 type = 0;
+    tANI_U8 subType = 0;
+
+    hddLog(VOS_TRACE_LEVEL_INFO, "%s: Frame Type = %d Frame Length = %d",
+            __func__, frameType, nFrameLength);
+
+    /* Sanity Checks */
+    if (NULL == pAdapter)
+    {
+        hddLog( LOGE, FL("pAdapter is NULL"));
+        return;
+    }
+
+    if (NULL == pAdapter->dev)
+    {
+        hddLog( LOGE, FL("pAdapter->dev is NULL"));
+        return;
+    }
+
+    if (WLAN_HDD_ADAPTER_MAGIC != pAdapter->magic)
+    {
+        hddLog( LOGE, FL("pAdapter has invalid magic"));
+        return;
+    }
+
+    if( !nFrameLength )
+    {
+        hddLog( LOGE, FL("Frame Length is Invalid ZERO"));
+        return;
+    }
+
+    if (NULL == pbFrames) {
+        hddLog( LOGE, FL("pbFrames is NULL"));
+        return;
+    }
+
+    type = WLAN_HDD_GET_TYPE_FRM_FC(pbFrames[0]);
+    subType = WLAN_HDD_GET_SUBTYPE_FRM_FC(pbFrames[0]);
+
+    /* Get pAdapter from Destination mac address of the frame */
+    if (type == SIR_MAC_MGMT_FRAME && subType == SIR_MAC_MGMT_DISASSOC)
+    {
+        cfg80211_send_unprot_disassoc(pAdapter->dev, pbFrames, nFrameLength);
+        pAdapter->hdd_stats.hddPmfStats.numUnprotDisassocRx++;
+    }
+    else if (type == SIR_MAC_MGMT_FRAME && subType == SIR_MAC_MGMT_DEAUTH)
+    {
+        cfg80211_send_unprot_deauth(pAdapter->dev, pbFrames, nFrameLength);
+        pAdapter->hdd_stats.hddPmfStats.numUnprotDeauthRx++;
+    }
+    else
+    {
+        hddLog( LOGE, FL("Frame type %d and subtype %d are not valid"), type, subType);
+        return;
+    }
+}
+#endif

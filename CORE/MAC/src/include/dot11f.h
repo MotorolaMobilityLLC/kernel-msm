@@ -549,6 +549,16 @@ void dot11fUnpackFfTimeStamp(tpAniSirGlobal, tANI_U8*, tDot11fFfTimeStamp*);
 
 void dot11fPackFfTimeStamp(tpAniSirGlobal, tDot11fFfTimeStamp*, tANI_U8*);
 
+typedef struct sDot11fFfTransactionId {
+    tANI_U8 transId[2];
+} tDot11fFfTransactionId;
+
+#define DOT11F_FF_TRANSACTIONID_LEN ( 2 )
+
+void dot11fUnpackFfTransactionId(tpAniSirGlobal, tANI_U8*, tDot11fFfTransactionId*);
+
+void dot11fPackFfTransactionId(tpAniSirGlobal, tDot11fFfTransactionId*, tANI_U8*);
+
 typedef struct sDot11fFfTxAntennaId {
     tANI_U8 antennaId;
 } tDot11fFfTxAntennaId;
@@ -7233,6 +7243,26 @@ tANI_U32 dot11fGetPackedSMPowerSaveSize(tpAniSirGlobal pCtx, tDot11fSMPowerSave 
 } /* End extern "C". */
 #endif /* C++ */
 
+typedef struct sDot11fSaQueryRsp{
+    tDot11fFfCategory      Category;
+    tDot11fFfAction        Action;
+    tDot11fFfTransactionId TransactionId;
+} tDot11fSaQueryRsp;
+
+#define DOT11F_SAQUERYRSP ( 44 )
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* C++ */
+
+tANI_U32 dot11fUnpackSaQueryRsp(tpAniSirGlobal pCtx, tANI_U8 *pBuf, tANI_U32 nBuf, tDot11fSaQueryRsp *pFrm);
+tANI_U32 dot11fPackSaQueryRsp(tpAniSirGlobal pCtx, tDot11fSaQueryRsp *pFrm, tANI_U8 *pBuf, tANI_U32 nBuf, tANI_U32 *pnConsumed);
+tANI_U32 dot11fGetPackedSaQueryRspSize(tpAniSirGlobal pCtx, tDot11fSaQueryRsp *pFrm, tANI_U32 *pnNeeded);
+
+#ifdef __cplusplus
+} /* End extern "C". */
+#endif /* C++ */
+
 typedef struct sDot11fTDLSDisReq{
     tDot11fFfCategory       Category;
     tDot11fFfAction         Action;
@@ -7240,7 +7270,7 @@ typedef struct sDot11fTDLSDisReq{
     tDot11fIELinkIdentifier LinkIdentifier;
 } tDot11fTDLSDisReq;
 
-#define DOT11F_TDLSDISREQ ( 44 )
+#define DOT11F_TDLSDISREQ ( 45 )
 
 #ifdef __cplusplus
 extern "C" {
@@ -7272,7 +7302,7 @@ typedef struct sDot11fTDLSDisRsp{
     tDot11fIEVHTCaps           VHTCaps;
 } tDot11fTDLSDisRsp;
 
-#define DOT11F_TDLSDISRSP ( 45 )
+#define DOT11F_TDLSDISRSP ( 46 )
 
 #ifdef __cplusplus
 extern "C" {
@@ -7295,7 +7325,7 @@ typedef struct sDot11fTDLSPeerTrafficInd{
     tDot11fIEPUBufferStatus PUBufferStatus;
 } tDot11fTDLSPeerTrafficInd;
 
-#define DOT11F_TDLSPEERTRAFFICIND ( 46 )
+#define DOT11F_TDLSPEERTRAFFICIND ( 47 )
 
 #ifdef __cplusplus
 extern "C" {
@@ -7316,7 +7346,7 @@ typedef struct sDot11fTDLSPeerTrafficRsp{
     tDot11fIELinkIdentifier LinkIdentifier;
 } tDot11fTDLSPeerTrafficRsp;
 
-#define DOT11F_TDLSPEERTRAFFICRSP ( 47 )
+#define DOT11F_TDLSPEERTRAFFICRSP ( 48 )
 
 #ifdef __cplusplus
 extern "C" {
@@ -7345,7 +7375,7 @@ typedef struct sDot11fTDLSSetupCnf{
     tDot11fIEVHTOperation      VHTOperation;
 } tDot11fTDLSSetupCnf;
 
-#define DOT11F_TDLSSETUPCNF ( 48 )
+#define DOT11F_TDLSSETUPCNF ( 49 )
 
 #ifdef __cplusplus
 extern "C" {
@@ -7381,7 +7411,7 @@ typedef struct sDot11fTDLSSetupReq{
     tDot11fIEVHTCaps           VHTCaps;
 } tDot11fTDLSSetupReq;
 
-#define DOT11F_TDLSSETUPREQ ( 49 )
+#define DOT11F_TDLSSETUPREQ ( 50 )
 
 #ifdef __cplusplus
 extern "C" {
@@ -7418,7 +7448,7 @@ typedef struct sDot11fTDLSSetupRsp{
     tDot11fIEVHTCaps           VHTCaps;
 } tDot11fTDLSSetupRsp;
 
-#define DOT11F_TDLSSETUPRSP ( 50 )
+#define DOT11F_TDLSSETUPRSP ( 51 )
 
 #ifdef __cplusplus
 extern "C" {
@@ -7440,7 +7470,7 @@ typedef struct sDot11fTDLSTeardown{
     tDot11fIELinkIdentifier LinkIdentifier;
 } tDot11fTDLSTeardown;
 
-#define DOT11F_TDLSTEARDOWN ( 51 )
+#define DOT11F_TDLSTEARDOWN ( 52 )
 
 #ifdef __cplusplus
 extern "C" {
@@ -7461,7 +7491,7 @@ typedef struct sDot11fTPCReport{
     tDot11fIETPCReport   TPCReport;
 } tDot11fTPCReport;
 
-#define DOT11F_TPCREPORT ( 52 )
+#define DOT11F_TPCREPORT ( 53 )
 
 #ifdef __cplusplus
 extern "C" {
@@ -7482,7 +7512,7 @@ typedef struct sDot11fTPCRequest{
     tDot11fIETPCRequest  TPCRequest;
 } tDot11fTPCRequest;
 
-#define DOT11F_TPCREQUEST ( 53 )
+#define DOT11F_TPCREQUEST ( 54 )
 
 #ifdef __cplusplus
 extern "C" {
@@ -7505,7 +7535,7 @@ typedef struct sDot11fWMMAddTSRequest{
     tDot11fIECCXTrafStrmRateSet CCXTrafStrmRateSet;
 } tDot11fWMMAddTSRequest;
 
-#define DOT11F_WMMADDTSREQUEST ( 54 )
+#define DOT11F_WMMADDTSREQUEST ( 55 )
 
 #ifdef __cplusplus
 extern "C" {
@@ -7528,7 +7558,7 @@ typedef struct sDot11fWMMAddTSResponse{
     tDot11fIECCXTrafStrmMet CCXTrafStrmMet;
 } tDot11fWMMAddTSResponse;
 
-#define DOT11F_WMMADDTSRESPONSE ( 55 )
+#define DOT11F_WMMADDTSRESPONSE ( 56 )
 
 #ifdef __cplusplus
 extern "C" {
@@ -7550,7 +7580,7 @@ typedef struct sDot11fWMMDelTS{
     tDot11fIEWMMTSPEC    WMMTSPEC;
 } tDot11fWMMDelTS;
 
-#define DOT11F_WMMDELTS ( 56 )
+#define DOT11F_WMMDELTS ( 57 )
 
 #ifdef __cplusplus
 extern "C" {
