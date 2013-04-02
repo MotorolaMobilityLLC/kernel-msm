@@ -74,7 +74,7 @@ static struct clk *cam_gp1_clk;
 static int vibrator_ic_enable_set(int enable,
 		struct timed_vibrator_data *vib_data)
 {
-	pr_info("%s: enable %d\n", __func__, enable);
+	pr_debug("%s: enable %d\n", __func__, enable);
 
 	if (enable)
 		gpio_direction_output(vib_data->haptic_en_gpio, 1);
@@ -88,7 +88,7 @@ static int vibrator_pwm_set(int enable, int amp, int n_value)
 {
 	uint d_val;
 
-	pr_info("%s: amp %d, value %d\n", __func__, amp, n_value);
+	pr_debug("%s: amp %d, value %d\n", __func__, amp, n_value);
 
 	d_val = ((MMSS_CC_N_DEFAULT * amp) >> 7);
 	virt_bases_v = ioremap(MMSS_CC_PWM_SET, MMSS_CC_PWM_SIZE);
