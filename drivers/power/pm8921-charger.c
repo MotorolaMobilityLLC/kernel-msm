@@ -1977,7 +1977,7 @@ static int get_prop_batt_current_max(struct pm8921_chg_chip *chip, int *curr)
 	*curr = 0;
 	*curr = pm8921_bms_get_current_max();
 	if (*curr == -EINVAL)
-		return -EINVAL;
+		return -ENODATA;
 
 	return 0;
 }
@@ -3697,14 +3697,14 @@ static void update_heartbeat(struct work_struct *work)
 	rc = get_prop_batt_current(chip, &batt_mcurr);
 	if (rc) {
 		pr_err("%s: error getting battery current\n", __func__);
-		return;
+		goto reschedule;
 	}
 	batt_mcurr = batt_mcurr / 1000;
 
 	rc = get_prop_batt_temp(chip, &batt_temp);
 	if (rc) {
 		pr_err("%s: error getting battery temp\n", __func__);
-		return;
+		goto reschedule;
 	}
 	batt_temp = batt_temp / 10;
 
@@ -3806,6 +3806,9 @@ static void update_heartbeat(struct work_struct *work)
 	err = pm8xxx_writeb(chip->dev->parent, CHG_TEST, temp);
 	if (err) {
 		pr_err("Error %d writing %d to addr %d\n", err, temp, CHG_TEST);
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+		wake_unlock(&chip->heartbeat_wake_lock);
+#endif
 		return;
 	} else {
 		/*
@@ -3818,6 +3821,9 @@ static void update_heartbeat(struct work_struct *work)
 		if (err) {
 			pr_err("Error %d writing %d to addr %d\n",
 			       err, temp, CHG_TEST);
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+			wake_unlock(&chip->heartbeat_wake_lock);
+#endif
 			return;
 		}
 	}
@@ -3827,6 +3833,14 @@ static void update_heartbeat(struct work_struct *work)
 		 (int)(ktime_to_timespec(alarm_get_elapsed_realtime()).tv_sec));
 	seconds = calculate_suspend_time(chip, fcc, percent_soc, batt_temp);
 	pm8921_chg_program_alarm(chip, seconds);
+	wake_unlock(&chip->heartbeat_wake_lock);
+#endif
+	return;
+
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+reschedule:
+	schedule_delayed_work(&chip->update_heartbeat_work,
+		round_jiffies_relative(msecs_to_jiffies(100)));
 	wake_unlock(&chip->heartbeat_wake_lock);
 #endif
 }
