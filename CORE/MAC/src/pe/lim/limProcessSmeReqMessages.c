@@ -4710,6 +4710,7 @@ tANI_U32 limCalculateNOADuration(tpAniSirGlobal pMac, tANI_U16 msgType, tANI_U32
 
 void limProcessRegdDefdSmeReqAfterNOAStart(tpAniSirGlobal pMac)
 {
+    tANI_BOOLEAN bufConsumed = TRUE;
 
     limLog(pMac, LOG1, FL("Process defd sme req %d\n"), pMac->lim.gDeferMsgTypeForNOA);
     if ( (pMac->lim.gDeferMsgTypeForNOA != 0) &&
@@ -4724,7 +4725,14 @@ void limProcessRegdDefdSmeReqAfterNOAStart(tpAniSirGlobal pMac)
                 __limProcessSmeOemDataReq(pMac, pMac->lim.gpDefdSmeMsgForNOA);
                 break;
             case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
-                limProcessRemainOnChnlReq(pMac, pMac->lim.gpDefdSmeMsgForNOA);
+                bufConsumed = limProcessRemainOnChnlReq(pMac, pMac->lim.gpDefdSmeMsgForNOA);
+                /* limProcessRemainOnChnlReq doesnt want us to free the buffer since
+                 * it is freed in limRemainOnChnRsp. this change is to avoid "double free"
+                 */
+                if (FALSE == bufConsumed)
+                {
+                    pMac->lim.gpDefdSmeMsgForNOA = NULL;
+                }
                 break;
             case eWNI_SME_JOIN_REQ:
                 __limProcessSmeJoinReq(pMac, pMac->lim.gpDefdSmeMsgForNOA);
