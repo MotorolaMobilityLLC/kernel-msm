@@ -75,6 +75,7 @@ extern bool otg_on;
 static unsigned int 	battery_current;
 static unsigned int  battery_remaining_capacity;
 struct workqueue_struct *bq27541_battery_work_queue = NULL;
+static unsigned int battery_check_interval = BATTERY_POLLING_RATE;
 static char *status_text[] = {"Unknown", "Charging", "Discharging", "Not charging", "Full"};
 
 /* Functions declaration */
@@ -256,6 +257,7 @@ static struct bq27541_device_info {
 	int bat_vol;
 	int bat_current;
 	int bat_capacity;
+	int bat_capacity_zero_count;
 	unsigned int old_capacity;
 	unsigned int cap_err;
 	int old_temperature;
@@ -385,7 +387,8 @@ static void battery_status_poll(struct work_struct *work)
 	}
 
 	/* Schedule next polling */
-	queue_delayed_work(bq27541_battery_work_queue, &batt_dev->status_poll_work, BATTERY_POLLING_RATE*HZ);
+	queue_delayed_work(bq27541_battery_work_queue,
+		&batt_dev->status_poll_work, battery_check_interval*HZ);
 }
 
 static void low_low_battery_check(struct work_struct *work)
@@ -649,6 +652,32 @@ static int bq27541_get_capacity(union power_supply_propval *val)
 	temp_capacity = ((temp_capacity <0) ? 0 : temp_capacity);
 	val->intval = temp_capacity;
 
+	if ((temp_capacity == 0) &&
+		(bq27541_battery_cable_status || wireless_on)) {
+		bq27541_device->bat_capacity_zero_count++;
+		if (bq27541_device->bat_capacity_zero_count >= 6) {
+			bq27541_device->bat_capacity_zero_count = 0;
+			BAT_NOTICE("pretend no charging type to shutdown\n");
+			bq27541_battery_callback(0);
+			wireless_on = 0;
+			bq27541_wireless_callback(0);
+		} else
+			BAT_NOTICE("bat_capacity_zero_count = %d",
+				bq27541_device->bat_capacity_zero_count);
+	} else
+		bq27541_device->bat_capacity_zero_count = 0;
+
+	if (temp_capacity < 5 && battery_check_interval != 10) {
+		battery_check_interval = 10;
+		BAT_NOTICE("battery_check_interval = %d\n",
+			battery_check_interval);
+	} else if (temp_capacity >= 5 &&
+		battery_check_interval != BATTERY_POLLING_RATE) {
+		battery_check_interval = BATTERY_POLLING_RATE;
+		BAT_NOTICE("battery_check_interval = %d\n",
+			battery_check_interval);
+	}
+
 	bq27541_device->old_capacity = val->intval;
 	bq27541_device->cap_err=0;
 
@@ -725,6 +754,7 @@ static int bq27541_probe(struct i2c_client *client,
 	bq27541_device->old_capacity = 0xFF;
 	bq27541_device->old_temperature = 0xFF;
 	bq27541_device->gpio_low_battery_detect = GPIOPIN_LOW_BATTERY_DETECT;
+	bq27541_device->bat_capacity_zero_count = 0;
 
 	for (i = 0; i < ARRAY_SIZE(bq27541_supply); i++) {
 		ret = power_supply_register(&client->dev, &bq27541_supply[i]);
