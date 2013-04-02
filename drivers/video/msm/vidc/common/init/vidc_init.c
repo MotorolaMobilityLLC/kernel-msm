@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -677,8 +677,7 @@ u32 vidc_insert_addr_table(struct video_client_ctx *client_ctx,
 						length,
 						(unsigned long *) &iova,
 						(unsigned long *) &buffer_size,
-						0,
-						ION_IOMMU_UNMAP_DELAYED);
+						0, 0);
 				if (ret || !iova) {
 					ERR(
 					"%s():ION iommu map fail, ret = %d, iova = 0x%lx\n",
