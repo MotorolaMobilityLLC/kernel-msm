@@ -36,8 +36,10 @@ struct anx7808_platform_data
 
 #ifdef CONFIG_SLIMPORT_ANX7808
 int slimport_read_edid_block(int block, uint8_t *edid_buf);
+bool slimport_is_connected(void);
 #else
 static inline int slimport_read_edid_block(int block, uint8_t *edid_buf) { return -ENOSYS; }
+static inline bool slimport_is_connected(void) { return false; }
 #endif
 
 #endif
