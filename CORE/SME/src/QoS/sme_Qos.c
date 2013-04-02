@@ -4415,7 +4415,7 @@ eHalStatus sme_QosProcessReassocSuccessEv(tpAniSirGlobal pMac, v_U8_t sessionId,
 #ifdef FEATURE_WLAN_CCX
        // If CCX association check for TSPEC IEs in the reassoc rsp frame
        if (csrRoamIsCCXAssoc(pMac)) {
-           if (pSmeJoinRsp->tspecIeLen) {
+           if (pCsrRoamSession->connectedInfo.nTspecIeLength) {
                status = sme_QosCCXProcessReassocTspecRsp(pMac, sessionId, pEvent_info);
            }
        }
