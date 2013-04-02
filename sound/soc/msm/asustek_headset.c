@@ -38,6 +38,7 @@
 #include <asm/string.h>
 #include <sound/soc.h>
 #include <linux/mfd/wcd9xxx/wcd9310_registers.h>
+#include "../codecs/wcd9310.h"
 #include "../../../arch/arm/mach-msm/board-8960.h"
 #include <asm/mach-types.h>
 #include <mach/board_asustek.h>
@@ -119,9 +120,13 @@ static void set_hs_micbias(int status)
                                 0xC0, 0x00);
 		snd_soc_update_bits(wcd9310_codec, TABLA_A_LDO_H_MODE_1,
 				0xff, 0x65);
-		/* Disable Bandgap Reference */
-		snd_soc_update_bits(wcd9310_codec, TABLA_A_BIAS_CENTRAL_BG_CTL,
-                                0x0F, 0x00);
+		if (tabla_check_bandgap_status(wcd9310_codec) == 0) {
+			/* Disable Bandgap Reference power */
+			printk("%s badgap status: OFF power down bandgap\n",
+				__func__);
+			snd_soc_write(wcd9310_codec,
+				TABLA_A_BIAS_CENTRAL_BG_CTL, 0x50);
+		}
 	}
 
 	return;
