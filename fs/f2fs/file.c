@@ -347,11 +347,31 @@ int f2fs_setattr(struct dentry *dentry, struct iattr *attr)
 {
 	struct inode *inode = dentry->d_inode;
 	struct f2fs_inode_info *fi = F2FS_I(inode);
+	struct f2fs_inode_info *pfi = F2FS_I(dentry->d_parent->d_inode);
+	struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
 	int err;
 
 	err = inode_change_ok(inode, attr);
 	if (err)
 		return err;
+
+	if (test_opt(sbi, ANDROID_EMU) &&
+			(fi->i_advise & FADVISE_ANDROID_EMU ||
+			 pfi->i_advise & FADVISE_ANDROID_EMU)) {
+		F2FS_I(inode)->i_advise |= FADVISE_ANDROID_EMU;
+		attr->ia_uid = sbi->android_emu_uid;
+		attr->ia_gid = sbi->android_emu_gid;
+		attr->ia_mode = (attr->ia_mode & ~S_IRWXUGO) |
+				sbi->android_emu_mode;
+		if (S_ISDIR(attr->ia_mode)) {
+			if (attr->ia_mode & S_IRUSR)
+				attr->ia_mode |= S_IXUSR;
+			if (attr->ia_mode & S_IRGRP)
+				attr->ia_mode |= S_IXGRP;
+			if (attr->ia_mode & S_IROTH)
+				attr->ia_mode |= S_IXOTH;
+		}
+	}
 
 	if ((attr->ia_valid & ATTR_SIZE) &&
 			attr->ia_size != i_size_read(inode)) {
