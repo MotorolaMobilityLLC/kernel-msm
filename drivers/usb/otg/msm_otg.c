@@ -3197,6 +3197,10 @@ static void msm_otg_acok_init(struct msm_otg *motg)
 	unsigned gpio = APQ_AP_ACOK;
 	unsigned irq_num = gpio_to_irq(gpio);
 
+	msm_otg_acok_wq = create_singlethread_workqueue("msm_otg_acok_wq");
+	INIT_DELAYED_WORK_DEFERRABLE(&motg->acok_irq_work,
+						acok_irq_work_function);
+
 	err = gpio_request(gpio, "msm_otg_ap_acok");
 	if (err) {
 		printk("gpio %d request failed \n", gpio);
@@ -3231,6 +3235,10 @@ static void msm_otg_id_pin_init(struct msm_otg *motg)
 	int err = 0 ;
 	unsigned gpio = APQ_OTG_ID_PIN;
 	unsigned irq_num = gpio_to_irq(gpio);
+
+	msm_otg_id_pin_wq = create_singlethread_workqueue("msm_otg_id_pin_wq");
+	INIT_DELAYED_WORK_DEFERRABLE(&motg->id_pin_irq_work,
+						id_pin_irq_work_function);
 
 	err = gpio_request(gpio, "msm_otg_id_pin");
 	if (err) {
@@ -4015,12 +4023,7 @@ static int __init msm_otg_probe(struct platform_device *pdev)
 	motg->mA_port = IUNIT;
 
 	msm_otg_acok_init(motg);
-	msm_otg_acok_wq = create_singlethread_workqueue("msm_otg_acok_wq");
-	INIT_DELAYED_WORK_DEFERRABLE(&motg->acok_irq_work, acok_irq_work_function);
-
 	msm_otg_id_pin_init(motg);
-	msm_otg_id_pin_wq = create_singlethread_workqueue("msm_otg_id_pin_wq");
-	INIT_DELAYED_WORK_DEFERRABLE(&motg->id_pin_irq_work, id_pin_irq_work_function);
 
 	ret = msm_otg_debugfs_init(motg);
 	if (ret)
