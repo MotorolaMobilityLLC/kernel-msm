@@ -4066,6 +4066,13 @@ static void tabla_shutdown(struct snd_pcm_substream *substream,
 	}
 }
 
+int tabla_check_bandgap_status(struct snd_soc_codec *codec)
+{
+	struct tabla_priv *tabla = snd_soc_codec_get_drvdata(codec);
+
+	return tabla->bandgap_type;
+}
+
 int tabla_mclk_enable(struct snd_soc_codec *codec, int mclk_enable, bool dapm)
 {
 	struct tabla_priv *tabla = snd_soc_codec_get_drvdata(codec);
