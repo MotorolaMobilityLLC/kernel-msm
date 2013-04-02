@@ -28,9 +28,9 @@
 #define PM8921_GPIO_PM_TO_SYS(pm_gpio)	(pm_gpio - 1 + PM8921_GPIO_BASE)
 #define SENSOR_MAX_RETRIES      3 /* max counter for retry I2C access */
 #define CAM_RST PM8921_GPIO_PM_TO_SYS(43)
-#define CAM_VENDOR_1 PM8921_GPIO_PM_TO_SYS(19)
-#define CAM_VENDOR_0 PM8921_GPIO_PM_TO_SYS(20)
-#define CAM_LENS PM8921_GPIO_PM_TO_SYS(21)
+#define CAM_VENDOR_1 PM8921_GPIO_PM_TO_SYS(11)
+#define CAM_VENDOR_0 PM8921_GPIO_PM_TO_SYS(10)
+#define CAM_LENS PM8921_GPIO_PM_TO_SYS(24)
 
 static struct msm_sensor_ctrl_t mi1040_s_ctrl;
 static int effect_value = 0;
@@ -403,15 +403,18 @@ reg_put_dvdd:
 	return rc;
 }
 
-int32_t mi1040_sensor_read_vendor_id(struct msm_sensor_ctrl_t *s_ctrl){
+int32_t mi1040_sensor_read_vendor_id(struct msm_sensor_ctrl_t *s_ctrl)
+{
 	int32_t rc = 0, vendor = 0;
 	rc = gpio_request(CAM_VENDOR_1, "mi1040_v1");
-	pr_info("PMIC gpio 19 CAM_VENDOR_1(%d)\n", gpio_get_value(CAM_VENDOR_1));
+	pr_info("PMIC gpio 11 CAM_VENDOR_1(%d)\n",
+		gpio_get_value(CAM_VENDOR_1));
 	rc = gpio_request(CAM_VENDOR_0, "mi1040_v0");
-	pr_info("PMIC gpio 20 CAM_VENDOR_0(%d)\n", gpio_get_value(CAM_VENDOR_0));
+	pr_info("PMIC gpio 10 CAM_VENDOR_0(%d)\n",
+		gpio_get_value(CAM_VENDOR_0));
 	rc = gpio_request(CAM_LENS, "mi1040_lens");
 	vendor = gpio_get_value(CAM_LENS);
-	pr_info("PMIC gpio 21 CAM_LENS(%d)\n", gpio_get_value(CAM_LENS));
+	pr_info("PMIC gpio 24 CAM_LENS(%d)\n", gpio_get_value(CAM_LENS));
 
 	gpio_free(CAM_VENDOR_1);
 	gpio_free(CAM_VENDOR_0);
@@ -425,7 +428,8 @@ int32_t mi1040_sensor_read_vendor_id(struct msm_sensor_ctrl_t *s_ctrl){
 		case 1:
 			vendor_id = B;
 			snprintf(s_ctrl->sensordata->vendor_name,
-				sizeof(s_ctrl->sensor_v4l2_subdev.name), "%s", "B");
+				sizeof(s_ctrl->sensor_v4l2_subdev.name),
+				"%s", "B");
 			pr_info("Vendor is B\n");
 			break;
 		default:
