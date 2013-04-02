@@ -903,7 +903,7 @@ limPostSmeMessage(tpAniSirGlobal pMac, tANI_U32 msgType, tANI_U32 *pMsgBuf)
     
     if(pMsgBuf == NULL)
     {
-        limLog(pMac, LOGE,FL("Buffer is Pointing to NULL\n"));
+        limLog(pMac, LOGE,FL("Buffer is Pointing to NULL"));
            return;
     }
       
@@ -948,7 +948,7 @@ limPostMlmMessage(tpAniSirGlobal pMac, tANI_U32 msgType, tANI_U32 *pMsgBuf)
     tSirMsgQ msg;
     if(pMsgBuf == NULL)
     {
-        limLog(pMac, LOGE,FL("Buffer is Pointing to NULL\n"));
+        limLog(pMac, LOGE,FL("Buffer is Pointing to NULL"));
            return;
     }
     msg.type = (tANI_U16) msgType;
