@@ -4974,7 +4974,7 @@ eHalStatus sme_QosProcessPreauthSuccessInd(tpAniSirGlobal pMac, v_U8_t sessionId
         for(ac = SME_QOS_EDCA_AC_BE; ac < SME_QOS_EDCA_AC_MAX; ac++)
         {
             volatile v_U8_t   tspec_index = 0;
-
+            ricIELength = 0;
             pACInfo = &pSession->ac_info[ac];
             tspec_pending_status = pACInfo->tspec_pending;
             tspec_mask_status = pACInfo->tspec_mask_status;
