@@ -986,6 +986,7 @@ static int msm_open(struct file *f)
 		msm_queue_init(&pcam->eventData_q, "eventData");
 	}
 	pcam_inst->vbqueue_initialized = 0;
+	pcam_inst->sequence = 0;
 	rc = 0;
 
 	f->private_data = &pcam_inst->eventHandle;
