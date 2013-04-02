@@ -1608,6 +1608,24 @@ static struct msm_gpiomux_config gpio_bat_low_configs[] __initdata = {
 	},
 };
 
+#ifdef CONFIG_INPUT_LID
+static struct gpiomux_setting asustek_hall_sensor_cfg = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_UP,
+};
+
+static struct msm_gpiomux_config asustek_hall_sensor_configs[] __initdata = {
+	{
+		.gpio      = 36,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &asustek_hall_sensor_cfg,
+			[GPIOMUX_ACTIVE] = &asustek_hall_sensor_cfg,
+		},
+	},
+};
+#endif
+
 void __init apq8064_init_gpiomux(void)
 {
 	int rc;
@@ -1766,5 +1784,14 @@ void __init apq8064_init_gpiomux(void)
 
 	msm_gpiomux_install(asustek_camera_configs,
 			ARRAY_SIZE(asustek_camera_configs));
+
+#ifdef CONFIG_INPUT_LID
+	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
+		if ((revision == HW_REV_C) || (revision == HW_REV_D)) {
+			msm_gpiomux_install(asustek_hall_sensor_configs,
+			ARRAY_SIZE(asustek_hall_sensor_configs));
+		}
+	}
+#endif
 
 }

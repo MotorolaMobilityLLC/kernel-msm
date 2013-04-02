@@ -3300,6 +3300,31 @@ static void __init apq8064_common_init(void)
 #endif
 }
 
+#ifdef CONFIG_INPUT_LID
+static struct platform_device asustek_lid_device = {
+	.name		= "asustek_lid",
+	.id		= -1,
+};
+
+void __init asustek_add_lid(void)
+{
+	hw_rev revision = HW_REV_INVALID;
+	revision = asustek_get_hw_rev();
+
+	switch (revision) {
+	case HW_REV_C:
+	case HW_REV_D:
+		platform_device_register(&asustek_lid_device);
+		break;
+	case HW_REV_A:
+	case HW_REV_B:
+	default:
+		/* not support yet */
+		break;
+	}
+}
+#endif
+
 static void __init apq8064_allocate_memory_regions(void)
 {
 	apq8064_allocate_fb_region();
@@ -3339,6 +3364,10 @@ static void __init apq8064_cdp_init(void)
 
 #ifdef CONFIG_MACH_ASUSTEK
 	asustek_add_keypad();
+#endif
+
+#ifdef CONFIG_INPUT_LID
+	asustek_add_lid();
 #endif
 
 	change_memory_power = &apq8064_change_memory_power;
