@@ -31,9 +31,9 @@
 	};
 
 	qcom,mdss_dsi@fd922800 {
-		lge,mdss-dsi-use-vdd-supply = <0>;
-		lge,mdss-dsi-byte-clk-rate = <112375000>;
-		lge,mdss-dsi-pixel-clk-rate = <150000000>;
+		qcom,mdss-dsi-use-vdd-supply = <0>;
+		qcom,mdss-dsi-byte-clk-rate = <112375000>;
+		qcom,mdss-dsi-pixel-clk-rate = <150000000>;
 	};
 
 	qcom,mdss_dsi_lgit_video{
