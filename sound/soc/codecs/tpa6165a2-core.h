@@ -134,6 +134,10 @@
 #define TPA6165_AMP_DISABLED	0
 #define TPA6165_AMP_ENABLED		1
 
+/* mic states */
+#define TPA6165_MIC_DISABLED	0
+#define TPA6165_MIC_ENABLED		1
+
 /* power states */
 #define TPA6165_SPECIAL_SLEEP	2
 #define TPA6165_SLEEP			1
@@ -144,7 +148,9 @@ struct tpa6165_regs {
 	u8 value;
 };
 
-extern int tpa6165_hs_detect(struct snd_soc_codec *codec,
-				struct snd_soc_jack *hs_jack,
+extern int tpa6165_hs_detect(struct snd_soc_jack *hs_jack,
 				struct snd_soc_jack *button_jack);
+
+extern void tpa6165_hp_event(int event);
+extern void tpa6165_mic_event(int event);
 #endif  /* __TPA6165_CORE_H__ */
