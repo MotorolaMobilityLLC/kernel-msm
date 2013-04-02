@@ -70,7 +70,6 @@
 /*---------------------------------------------------------------------------
  * Include Files
  * ------------------------------------------------------------------------*/
-
 #include "vos_memory.h"
 #include "vos_trace.h"
 
@@ -149,6 +148,10 @@ void vos_mem_clean()
              kfree((v_VOID_t*)memStruct);
           }
        }while(vosStatus == VOS_STATUS_SUCCESS);
+
+#ifdef CONFIG_HALT_KMEMLEAK
+       BUG_ON(0);
+#endif
     }
 }
 
