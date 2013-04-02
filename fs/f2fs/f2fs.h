@@ -28,6 +28,7 @@
 #define F2FS_MOUNT_XATTR_USER		0x00000010
 #define F2FS_MOUNT_POSIX_ACL		0x00000020
 #define F2FS_MOUNT_DISABLE_EXT_IDENTIFY	0x00000040
+#define F2FS_MOUNT_ANDROID_EMU		0x00001000
 
 #define clear_opt(sbi, option)	(sbi->mount_opt.opt &= ~F2FS_MOUNT_##option)
 #define set_opt(sbi, option)	(sbi->mount_opt.opt |= F2FS_MOUNT_##option)
@@ -144,6 +145,7 @@ struct extent_info {
  * i_advise uses FADVISE_XXX_BIT. We can add additional hints later.
  */
 #define FADVISE_COLD_BIT	0x01
+#define FADVISE_ANDROID_EMU	0x10
 
 struct f2fs_inode_info {
 	struct inode vfs_inode;		/* serve a vfs inode */
@@ -342,6 +344,11 @@ enum page_type {
 	META_FLUSH,
 };
 
+/*
+ * Android sdcard emulation flags
+ */
+#define F2FS_ANDROID_EMU_NOCASE		0x00000001
+
 struct f2fs_sb_info {
 	struct super_block *sb;			/* pointer to VFS super block */
 	struct buffer_head *raw_super_buf;	/* buffer head of raw sb */
@@ -418,6 +425,10 @@ struct f2fs_sb_info {
 	int total_hit_ext, read_hit_ext;	/* extent cache hit ratio */
 	int bg_gc;				/* background gc calls */
 	spinlock_t stat_lock;			/* lock for stat operations */
+	u32 android_emu_uid;
+	u32 android_emu_gid;
+	umode_t android_emu_mode;
+	int android_emu_flags;
 };
 
 /*
