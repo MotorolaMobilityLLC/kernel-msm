@@ -1500,13 +1500,17 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
 #ifdef FEATURE_WLAN_TDLS
             else if(pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+1] == WLAN_HDD_PUBLIC_ACTION_TDLS_DISC_RESP)
             {
-                wlan_hdd_tdls_recv_discovery_resp(pAdapter, &pbFrames[WLAN_HDD_80211_FRM_DA_OFFSET+6]);
-                wlan_hdd_tdls_set_rssi(pAdapter, &pbFrames[WLAN_HDD_80211_FRM_DA_OFFSET+6], rxRssi);
-                hddLog(VOS_TRACE_LEVEL_ERROR,"[TDLS] TDLS Discovery Response <--- OTA");
+                u8 *mac = &pbFrames[WLAN_HDD_80211_FRM_DA_OFFSET+6];
+#ifdef WLAN_FEATURE_TDLS_DEBUG
+                hddLog(VOS_TRACE_LEVEL_ERROR,"[TDLS] TDLS Discovery Response," MAC_ADDRESS_STR " RSSI[%d] <--- OTA",
+                 MAC_ADDR_ARRAY(mac),rxRssi);
+#endif
+                wlan_hdd_tdls_set_rssi(pAdapter, mac, rxRssi);
+                wlan_hdd_tdls_recv_discovery_resp(pAdapter, mac);
             }
 #endif
         }
-#ifdef FEATURE_WLAN_TDLS
+#ifdef WLAN_FEATURE_TDLS_DEBUG
         if(pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_TDLS_ACTION_FRAME)
         {
             actionFrmType = pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+1];
