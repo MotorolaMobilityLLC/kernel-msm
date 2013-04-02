@@ -89,7 +89,8 @@ static bool early_match_name(const char *name, size_t namelen,
 
 static struct f2fs_dir_entry *find_in_block(struct page *dentry_page,
 			const char *name, size_t namelen, int *max_slots,
-			f2fs_hash_t namehash, struct page **res_page)
+			f2fs_hash_t namehash, struct page **res_page,
+			bool nocase)
 {
 	struct f2fs_dir_entry *de;
 	unsigned long bit_pos, end_pos, next_pos;
@@ -102,7 +103,13 @@ static struct f2fs_dir_entry *find_in_block(struct page *dentry_page,
 		de = &dentry_blk->dentry[bit_pos];
 		slots = GET_DENTRY_SLOTS(le16_to_cpu(de->name_len));
 
-		if (early_match_name(name, namelen, namehash, de)) {
+		if (nocase) {
+			if (!strncasecmp(dentry_blk->filename[bit_pos],
+				name, namelen)) {
+				*res_page = dentry_page;
+				goto found;
+			}
+		} else if (early_match_name(name, namelen, namehash, de)) {
 			if (!memcmp(dentry_blk->filename[bit_pos],
 							name, namelen)) {
 				*res_page = dentry_page;
@@ -135,6 +142,7 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 	unsigned int bidx, end_block;
 	struct page *dentry_page;
 	struct f2fs_dir_entry *de = NULL;
+	struct f2fs_sb_info *sbi = F2FS_SB(dir->i_sb);
 	bool room = false;
 	int max_slots = 0;
 
@@ -147,6 +155,8 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 	end_block = bidx + nblock;
 
 	for (; bidx < end_block; bidx++) {
+		bool nocase = false;
+
 		/* no need to allocate new dentry pages to all the indices */
 		dentry_page = find_data_page(dir, bidx);
 		if (IS_ERR(dentry_page)) {
@@ -154,8 +164,14 @@ static struct f2fs_dir_entry *find_in_level(struct inode *dir,
 			continue;
 		}
 
+		if (test_opt(sbi, ANDROID_EMU) &&
+		    (sbi->android_emu_flags & F2FS_ANDROID_EMU_NOCASE) &&
+		    F2FS_I(dir)->i_advise & FADVISE_ANDROID_EMU)
+			nocase = true;
+
 		de = find_in_block(dentry_page, name, namelen,
-					&max_slots, namehash, res_page);
+					&max_slots, namehash, res_page,
+					nocase);
 		if (de)
 			break;
 
