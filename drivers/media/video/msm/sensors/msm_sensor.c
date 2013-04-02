@@ -122,7 +122,7 @@ int32_t msm_sensor_write_res_settings(struct msm_sensor_ctrl_t *s_ctrl,
 int32_t msm_sensor_write_output_settings(struct msm_sensor_ctrl_t *s_ctrl,
 	uint16_t res)
 {
-	int32_t rc = -EFAULT;
+	int32_t rc = -EIO;
 	struct msm_camera_i2c_reg_conf dim_settings[] = {
 		{s_ctrl->sensor_output_reg_addr->x_output,
 			s_ctrl->msm_sensor_reg->
@@ -457,7 +457,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		case CFG_SET_PICT_FPS:
 			if (s_ctrl->func_tbl->
 			sensor_set_fps == NULL) {
-				rc = -EFAULT;
+				rc = -EIO;
 				break;
 			}
 			rc = s_ctrl->func_tbl->
@@ -469,7 +469,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		case CFG_SET_EXP_GAIN:
 			if (s_ctrl->func_tbl->
 			sensor_write_exp_gain == NULL) {
-				rc = -EFAULT;
+				rc = -EIO;
 				break;
 			}
 			rc =
@@ -485,7 +485,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		case CFG_SET_PICT_EXP_GAIN:
 			if (s_ctrl->func_tbl->
 			sensor_write_snapshot_exp_gain == NULL) {
-				rc = -EFAULT;
+				rc = -EIO;
 				break;
 			}
 			rc =
@@ -499,7 +499,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		case CFG_SET_MODE:
 			if (s_ctrl->func_tbl->
 			sensor_set_sensor_mode == NULL) {
-				rc = -EFAULT;
+				rc = -EIO;
 				break;
 			}
 			rc = s_ctrl->func_tbl->
@@ -512,7 +512,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		case CFG_SET_EFFECT:
 			if (s_ctrl->func_tbl->
 			sensor_set_effect == NULL) {
-				rc = -EFAULT;
+				rc = -EIO;
 				break;
 			}
 			rc = s_ctrl->func_tbl->
@@ -524,7 +524,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		case CFG_SENSOR_INIT:
 			if (s_ctrl->func_tbl->
 			sensor_mode_init == NULL) {
-				rc = -EFAULT;
+				rc = -EIO;
 				break;
 			}
 			rc = s_ctrl->func_tbl->
@@ -537,7 +537,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		case CFG_GET_OUTPUT_INFO:
 			if (s_ctrl->func_tbl->
 			sensor_get_output_info == NULL) {
-				rc = -EFAULT;
+				rc = -EIO;
 				break;
 			}
 			rc = s_ctrl->func_tbl->
@@ -553,7 +553,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 
 		case CFG_START_STREAM:
 			if (s_ctrl->func_tbl->sensor_start_stream == NULL) {
-				rc = -EFAULT;
+				rc = -EIO;
 				break;
 			}
 			s_ctrl->func_tbl->sensor_start_stream(s_ctrl);
@@ -561,7 +561,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 
 		case CFG_STOP_STREAM:
 			if (s_ctrl->func_tbl->sensor_stop_stream == NULL) {
-				rc = -EFAULT;
+				rc = -EIO;
 				break;
 			}
 			s_ctrl->func_tbl->sensor_stop_stream(s_ctrl);
@@ -569,7 +569,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 
 		case CFG_GET_CSI_PARAMS:
 			if (s_ctrl->func_tbl->sensor_get_csi_params == NULL) {
-				rc = -EFAULT;
+				rc = -EIO;
 				break;
 			}
 			rc = s_ctrl->func_tbl->sensor_get_csi_params(
@@ -584,7 +584,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 
 		case CFG_GET_CALIB_DATA:
 			if (s_ctrl->func_tbl->sensor_get_eeprom_data == NULL) {
-				rc = -EFAULT;
+				rc = -EIO;
 				break;
 			}
 			rc = s_ctrl->func_tbl->sensor_get_eeprom_data(s_ctrl, &cdata);
@@ -596,7 +596,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		case CFG_SET_WB:
 			if (s_ctrl->func_tbl->
 			sensor_set_wb == NULL) {
-				rc = -EFAULT;
+				rc = -EIO;
 				break;
 			}
 			rc = s_ctrl->func_tbl->
@@ -608,7 +608,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 		case CFG_SET_EXPOSURE_COMPENSATION:
 			if (s_ctrl->func_tbl->
 			sensor_set_ev == NULL) {
-				rc = -EFAULT;
+				rc = -EIO;
 				break;
 			}
 			rc = s_ctrl->func_tbl->
@@ -630,7 +630,7 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 				rc = -EFAULT;
 			break;
 		default:
-			rc = -EFAULT;
+			rc = -EINVAL;
 			break;
 		}
 
@@ -1606,7 +1606,7 @@ int32_t msm_sensor_i2c_probe(struct i2c_client *client,
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		pr_err("%s %s i2c_check_functionality failed\n",
 			__func__, client->name);
-		rc = -EFAULT;
+		rc = -EIO;
 		return rc;
 	}
 
@@ -1619,14 +1619,14 @@ int32_t msm_sensor_i2c_probe(struct i2c_client *client,
 	} else {
 		pr_err("%s %s sensor_i2c_client NULL\n",
 			__func__, client->name);
-		rc = -EFAULT;
+		rc = -EIO;
 		return rc;
 	}
 
 	s_ctrl->sensordata = client->dev.platform_data;
 	if (s_ctrl->sensordata == NULL) {
 		pr_err("%s %s NULL sensor data\n", __func__, client->name);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	rc = s_ctrl->func_tbl->sensor_power_up(s_ctrl);

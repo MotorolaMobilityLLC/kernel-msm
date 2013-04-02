@@ -594,7 +594,7 @@ int32_t ov5693_sensor_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	if(rdata == ov5693_id_info.sensor_id)
 		rc = 0;
 	else
-		rc = -EFAULT;
+		rc = -EIO;
 
 	pr_info("Sensor id: 0x%x\n", rdata);
 	return rc;
@@ -674,14 +674,14 @@ int32_t ov5693_sensor_i2c_probe(struct i2c_client *client,
 			s_ctrl->sensor_i2c_client->client->addr =
 				s_ctrl->sensor_i2c_addr;
 	} else {
-		rc = -EFAULT;
+		rc = -EIO;
 		pr_err("%s ---\n", __func__);
 		return rc;
 	}
 
 	if (client->dev.platform_data == NULL) {
 		pr_err("%s: NULL sensor data\n", __func__);
-		return -EFAULT;
+		return -EIO;
 	}
 
 	s_ctrl->sensordata = client->dev.platform_data;
