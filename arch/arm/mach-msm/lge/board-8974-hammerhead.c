@@ -109,6 +109,7 @@ void __init msm8974_add_drivers(void)
 	else
 		msm_clock_init(&msm8974_clock_init_data);
 	msm_thermal_device_init();
+	lge_add_persistent_device();
 }
 
 static struct of_dev_auxdata msm8974_auxdata_lookup[] __initdata = {

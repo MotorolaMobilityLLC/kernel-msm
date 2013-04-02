@@ -56,5 +56,6 @@ extern unsigned int lge_get_uart_mode(void);
 extern void lge_set_uart_mode(unsigned int um);
 
 void __init lge_reserve(void);
+void __init lge_add_persistent_device(void);
 
 #endif
