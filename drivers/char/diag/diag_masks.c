@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2008-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -313,6 +313,9 @@ void diag_mask_update_fn(struct work_struct *work)
 	diag_send_log_mask_update(smd_info->ch, ALL_EQUIP_ID);
 	diag_send_event_mask_update(smd_info->ch, diag_event_num_bytes);
 	diag_send_feature_mask_update(smd_info->ch, smd_info->peripheral);
+
+	if (smd_info->notify_context == SMD_EVENT_OPEN)
+		diag_send_diag_mode_update_by_smd(smd_info, MODE_REALTIME);
 
 	smd_info->notify_context = 0;
 }
@@ -734,8 +737,8 @@ int diag_process_apps_masks(unsigned char *buf, int len)
 					(driver->log_on_demand_support)) {
 			driver->apps_rsp_buf[0] = 0x78;
 			/* Copy log code received */
-			*(uint16_t *)(driver->apps_rsp_buf+1) =
-							 *(uint16_t *)buf;
+			*(uint16_t *)(driver->apps_rsp_buf + 1) =
+							*(uint16_t *)(buf + 1);
 			driver->apps_rsp_buf[3] = 0x1;/* Unknown */
 			encode_rsp_and_send(3);
 		}
