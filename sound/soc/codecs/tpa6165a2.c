@@ -64,6 +64,7 @@ struct tpa6165_data {
 	int inserted;
 	int button_pressed;
 	int amp_state;
+	int mic_state;
 	int sleep_state;
 	int special_hs;
 	int alwayson_micb;
@@ -425,16 +426,25 @@ static void tpa6165_sleep(struct tpa6165_data *tpa6165, int sleep_state)
 	tpa6165->sleep_state = sleep_state;
 }
 
-static int tpa6165_hp_event(struct snd_soc_dapm_widget *w,
-	struct snd_kcontrol *k, int event)
+void tpa6165_hp_event(int event)
 {
-	struct tpa6165_data *tpa6165 = i2c_get_clientdata(tpa6165_client);
+	struct tpa6165_data *tpa6165;
 	u8 en_reg2 = 0;
+	/* make sure tpa6165 is probed */
+	if (tpa6165_client == NULL)
+		return;
+	else {
+		tpa6165 = i2c_get_clientdata(tpa6165_client);
+		if (tpa6165 == NULL)
+			return;
+	}
 
 	mutex_lock(&tpa6165->lock);
-	if (SND_SOC_DAPM_EVENT_ON(event)) {
-		tpa6165->amp_state = TPA6165_AMP_ENABLED;
-		tpa6165_sleep(tpa6165, TPA6165_WAKEUP);
+	if (event) {
+		if (tpa6165->inserted) {
+			tpa6165->amp_state = TPA6165_AMP_ENABLED;
+			tpa6165_sleep(tpa6165, TPA6165_WAKEUP);
+		}
 	} else {
 		tpa6165->amp_state = TPA6165_AMP_DISABLED;
 		tpa6165_reg_read(tpa6165, TPA6165_ENABLE_REG2,
@@ -445,7 +455,8 @@ static int tpa6165_hp_event(struct snd_soc_dapm_widget *w,
 		 * needed to avoid loud pops when audio stops playing.
 		 */
 		if (en_reg2 & TPA6165_LEFT_RIGHT_CH &&
-				tpa6165->sleep_state == TPA6165_WAKEUP) {
+				tpa6165->sleep_state == TPA6165_WAKEUP &&
+				tpa6165->mic_state == TPA6165_MIC_DISABLED) {
 			tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG1,
 				TPA6165_VOL_SLEW_INT, TPA6165_VOL_SLEW_INT);
 			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
@@ -457,16 +468,61 @@ static int tpa6165_hp_event(struct snd_soc_dapm_widget *w,
 	}
 	mutex_unlock(&tpa6165->lock);
 
-	return 0;
+	return;
 }
+EXPORT_SYMBOL_GPL(tpa6165_hp_event);
 
-static const struct snd_soc_dapm_widget tpa6165_hp_widget[] = {
-	SND_SOC_DAPM_HP("Headset jack", tpa6165_hp_event),
-};
+void tpa6165_mic_event(int event)
+{
+	struct tpa6165_data *tpa6165;
+	u8 en_reg2 = 0;
 
-static const struct snd_soc_dapm_route tpa6165_audio_map[] = {
-	{"Headset jack", NULL, "HEADPHONE"},
-};
+	if (tpa6165_client == NULL)
+		return;
+	else {
+		tpa6165 = i2c_get_clientdata(tpa6165_client);
+		if (tpa6165 == NULL)
+			return;
+	}
+
+	mutex_lock(&tpa6165->lock);
+	if (tpa6165->alwayson_micb || tpa6165->special_hs) {
+		mutex_unlock(&tpa6165->lock);
+		/* mic bias always on in this case nothing to do */
+		return;
+	}
+
+	if (event) {
+		if (tpa6165->inserted) {
+			tpa6165->mic_state = TPA6165_MIC_ENABLED;
+			tpa6165_sleep(tpa6165, TPA6165_WAKEUP);
+		}
+	} else {
+		tpa6165->mic_state = TPA6165_MIC_DISABLED;
+		tpa6165_reg_read(tpa6165, TPA6165_ENABLE_REG2,
+				&en_reg2);
+		/* enable vol slew interrupt and disable left/rigt channels.
+		 * IC will be put to sleep when vol slew complete interupt is
+		 * received, which should happen in 10/20 ms. This step is
+		 * needed to avoid loud pops when audio stops playing.
+		 */
+		if (en_reg2 & TPA6165_LEFT_RIGHT_CH &&
+				tpa6165->sleep_state == TPA6165_WAKEUP &&
+				tpa6165->amp_state == TPA6165_AMP_DISABLED) {
+			tpa6165_reg_write(tpa6165, TPA6165_INT_MASK_REG1,
+				TPA6165_VOL_SLEW_INT, TPA6165_VOL_SLEW_INT);
+			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
+				~TPA6165_AUTO_MODE, TPA6165_AUTO_MODE);
+			tpa6165_reg_write(tpa6165, TPA6165_ENABLE_REG2,
+				(~TPA6165_LEFT_RIGHT_CH) & 0xff,
+				TPA6165_LEFT_RIGHT_CH);
+		}
+	}
+	mutex_unlock(&tpa6165->lock);
+
+	return;
+}
+EXPORT_SYMBOL_GPL(tpa6165_mic_event);
 
 static int tpa6165_update_device_status(struct tpa6165_data *tpa6165)
 {
@@ -617,11 +673,9 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 			snd_soc_jack_report_no_dapm(tpa6165->button_jack,
 				0, tpa6165->button_jack->jack->type);
 		}
-		if (tpa6165->special_hs || tpa6165->alwayson_micb) {
-			/* clear flag and put the IC in regular sleep mode */
-			tpa6165->special_hs = 0;
-			tpa6165_sleep(tpa6165, TPA6165_SLEEP);
-		}
+		/* clear flag and put the IC in regular sleep mode */
+		tpa6165->special_hs = 0;
+		tpa6165_sleep(tpa6165, TPA6165_SLEEP);
 	} else if ((tpa6165->dev_status_reg1 & TPA6165_JACK_DETECT) &&
 			tpa6165->inserted) {
 		/* no change in jack detect state, check for Button press */
@@ -659,7 +713,8 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 	 * putting the device the sleep to minimize pops.
 	 */
 	if (tpa6165->dev_status_reg1 & TPA6165_VOL_SLEW_DONE) {
-		if (tpa6165->amp_state == TPA6165_AMP_DISABLED) {
+		if (tpa6165->amp_state == TPA6165_AMP_DISABLED &&
+				tpa6165->mic_state == TPA6165_MIC_DISABLED) {
 			/* put the IC in sleep mode */
 			if ((tpa6165->alwayson_micb || tpa6165->special_hs)
 				&& tpa6165->inserted)
@@ -677,8 +732,7 @@ static int tpa6165_report_hs(struct tpa6165_data *tpa6165)
 	return 0;
 }
 
-int tpa6165_hs_detect(struct snd_soc_codec *codec,
-					struct snd_soc_jack *hs_jack,
+int tpa6165_hs_detect(struct snd_soc_jack *hs_jack,
 					struct snd_soc_jack *button_jack)
 {
 	if (tpa6165_client) {
@@ -691,14 +745,6 @@ int tpa6165_hs_detect(struct snd_soc_codec *codec,
 		pr_debug("%s: hs and button jack", __func__);
 		tpa6165->hs_jack = hs_jack;
 		tpa6165->button_jack = button_jack;
-		/* add DAPM controls to receive Audio playback
-		 * start/stop events */
-		snd_soc_dapm_new_controls(&codec->dapm, tpa6165_hp_widget,
-				ARRAY_SIZE(tpa6165_hp_widget));
-		snd_soc_dapm_add_routes(&codec->dapm, tpa6165_audio_map,
-		ARRAY_SIZE(tpa6165_audio_map));
-		snd_soc_dapm_enable_pin(&codec->dapm, "Headset jack");
-		snd_soc_dapm_sync(&codec->dapm);
 
 		/* check device status registers for boot time detection */
 		tpa6165_update_device_status(tpa6165);
