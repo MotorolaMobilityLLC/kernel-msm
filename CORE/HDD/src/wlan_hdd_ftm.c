@@ -2965,80 +2965,6 @@ done:
 }
 
 
-static VOS_STATUS wlan_ftm_priv_set_rssi_offset(hdd_adapter_t *pAdapter,v_S15_t *phyRxChains)
-{
-#ifndef ANI_CHIPSET_VOLANS
-    tPttMsgbuffer *pMsgBuf;
-    uPttMsgs *pMsgBody;
-    VOS_STATUS status;
-    hdd_context_t *pHddCtx = (hdd_context_t *)pAdapter->pHddCtx;
-
-    if(pHddCtx->ftm.ftm_state != WLAN_FTM_STARTED)
-    {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:Ftm has not started. Please start the ftm. ",__func__);
-        return VOS_STATUS_E_FAILURE;
-    }
-
-    pMsgBuf = (tPttMsgbuffer *)vos_mem_malloc(sizeof(tPttMsgbuffer));
-
-    init_completion(&pHddCtx->ftm.ftm_comp_var);
-    pMsgBuf->msgId = PTT_MSG_SET_NV_TABLE;
-    pMsgBuf->msgBodyLength = sizeof(tMsgPttSetNvTable) + PTT_HEADER_LENGTH;
-    pMsgBody = &pMsgBuf->msgBody;
-    pMsgBody->SetNvTable.nvTable= NV_TABLE_RSSI_OFFSETS;
-    memcpy(&pMsgBody->SetNvTable.tableData.rssiOffset[0], phyRxChains,sizeof(tANI_S16) * PHY_MAX_RX_CHAINS);
-
-    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "rssiOffset[0]= %d rssiOffset[1]= %d\n",
-                                                            pMsgBody->SetNvTable.tableData.rssiOffset[0],
-                                                            pMsgBody->SetNvTable.tableData.rssiOffset[1]);
-
-    status = wlan_ftm_postmsg((v_U8_t*)pMsgBuf,pMsgBuf->msgBodyLength);
-    if(status != VOS_STATUS_SUCCESS)
-    {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:wlan_ftm_postmsg failed",__func__);
-        status = VOS_STATUS_E_FAILURE;
-        goto done;
-    }
-
-    wait_for_completion_interruptible_timeout(&pHddCtx->ftm.ftm_comp_var, msecs_to_jiffies(WLAN_FTM_COMMAND_TIME_OUT));
-    if(pMsgBuf->msgResponse != PTT_STATUS_SUCCESS)
-    {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:Ptt response status failed",__func__);
-        status = VOS_STATUS_E_FAILURE;
-        goto done;
-    }
-
-    init_completion(&pHddCtx->ftm.ftm_comp_var);
-    pMsgBuf->msgId = PTT_MSG_STORE_NV_TABLE;
-    pMsgBuf->msgBodyLength = sizeof(tMsgPttStoreNvTable) + PTT_HEADER_LENGTH;
-    pMsgBody = &pMsgBuf->msgBody;
-    pMsgBody->StoreNvTable.nvTable= NV_TABLE_RSSI_OFFSETS;
-
-    status = wlan_ftm_postmsg((v_U8_t*)pMsgBuf,pMsgBuf->msgBodyLength);
-    if(status != VOS_STATUS_SUCCESS)
-    {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:wlan_ftm_postmsg failed",__func__);
-        status = VOS_STATUS_E_FAILURE;
-        goto done;
-    }
-
-    wait_for_completion_interruptible_timeout(&pHddCtx->ftm.ftm_comp_var, msecs_to_jiffies(WLAN_FTM_COMMAND_TIME_OUT));
-    if(pMsgBuf->msgResponse != PTT_STATUS_SUCCESS)
-    {
-        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL, "%s:Ptt response status failed",__func__);
-        status = VOS_STATUS_E_FAILURE;
-        goto done;
-    }
-done:
-    vos_mem_free((v_VOID_t * )pMsgBuf);
-
-    return status;
-#else
-    return VOS_STATUS_E_FAILURE;
-#endif
-}
-
-
 /**---------------------------------------------------------------------------
 
   \brief wlan_ftm_rx_mode() -
@@ -4255,41 +4181,6 @@ static int iw_ftm_setnone_getnone(struct net_device *dev, struct iw_request_info
     return ret;
 }
 
-static int iw_ftm_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info,
-        union iwreq_data *wrqu, char *extra)
-{
-
-    hdd_adapter_t *pAdapter = (netdev_priv(dev));
-    int sub_cmd = wrqu->data.flags;
-    int *value = (int*)wrqu->data.pointer;
-    v_S15_t phyRxChains[MAX_FTM_VAR_ARGS] = {0};
-
-    if(wrqu->data.length != 2)
-    {
-        hddLog(LOGE, "Invalid number of Arguments  %d  \n",  wrqu->data.length);
-        return -EINVAL;
-    }
-    switch (sub_cmd)
-    {
-        case WE_SET_RSSI_OFFSET:
-        {
-            phyRxChains[0] = *(v_S15_t*) value++;
-            phyRxChains[1] = *(v_S15_t*) value;
-            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,"PhyRxchain0=%d PhyRxChain1=%d\n",phyRxChains[0],phyRxChains[1]);
-            wlan_ftm_priv_set_rssi_offset(pAdapter, &phyRxChains[0]);
-        }
-        break;
-
-        default:
-        {
-            hddLog(LOGE, "Invalid IOCTL command %d  \n",  sub_cmd );
-            break;
-        }
-    }
-
-    return 0;
-}
-
 static const iw_handler we_ftm_private[] = {
 
    [WLAN_FTM_PRIV_SET_INT_GET_NONE      - SIOCIWFIRSTPRIV]   = iw_ftm_setint_getnone,  //set priv ioctl
@@ -4297,7 +4188,6 @@ static const iw_handler we_ftm_private[] = {
    [WLAN_FTM_PRIV_SET_CHAR_GET_NONE     - SIOCIWFIRSTPRIV]   = iw_ftm_setchar_getnone, //get priv ioctl
    [WLAN_FTM_PRIV_GET_CHAR_SET_NONE     - SIOCIWFIRSTPRIV]   = iw_ftm_get_char_setnone,
    [WLAN_FTM_PRIV_SET_NONE_GET_NONE     - SIOCIWFIRSTPRIV]   = iw_ftm_setnone_getnone, //action priv ioctl
-   [WLAN_FTM_PRIV_SET_VAR_INT_GET_NONE  - SIOCIWFIRSTPRIV]   = iw_ftm_set_var_ints_getnone,
 };
 
 /*Maximum command length can be only 15 */
@@ -4426,16 +4316,6 @@ static const struct iw_priv_args we_ftm_private_args[] = {
         0,
         IW_PRIV_TYPE_CHAR| WE_FTM_MAX_STR_LEN,
         "get_rx_rssi" },
-
-    {   WLAN_FTM_PRIV_SET_VAR_INT_GET_NONE,
-        IW_PRIV_TYPE_INT | MAX_FTM_VAR_ARGS,
-        0,
-        "" },
-
-    {   WE_SET_RSSI_OFFSET,
-        IW_PRIV_TYPE_INT| MAX_FTM_VAR_ARGS,
-        0,
-        "set_rssi_offset" },
 
     /* handlers for main ioctl */
     {   WLAN_FTM_PRIV_SET_NONE_GET_NONE,
