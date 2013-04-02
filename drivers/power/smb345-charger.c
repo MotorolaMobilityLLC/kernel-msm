@@ -99,6 +99,7 @@
 
 /* Functions declaration */
 extern int  bq27541_battery_callback(unsigned usb_cable_state);
+extern void touch_callback(unsigned cable_status);
 static ssize_t smb345_reg_show(struct device *dev, struct device_attribute *attr, char *buf);
 
 /* Global variables */
@@ -537,12 +538,14 @@ int usb_cable_type_detect(unsigned int chgr_type)
 	if (gpio_get_value(ac_ok) && (chgr_type == CHARGER_NONE)) {
 		SMB_NOTICE("INOK=H\n");
 		success =  bq27541_battery_callback(non_cable);
+		touch_callback(non_cable);
 	} else {
 		SMB_NOTICE("INOK=L\n");
 
 		if (chgr_type == CHARGER_SDP) {
 			SMB_NOTICE("Cable: SDP\n");
 			success =  bq27541_battery_callback(usb_cable);
+			touch_callback(usb_cable);
 		} else {
 			if (chgr_type == CHARGER_CDP) {
 				SMB_NOTICE("Cable: CDP\n");
@@ -557,6 +560,7 @@ int usb_cable_type_detect(unsigned int chgr_type)
 			}
 			smb345_set_InputCurrentlimit(client, 2000);
 			success =  bq27541_battery_callback(ac_cable);
+			touch_callback(ac_cable);
 		}
 	}
 
