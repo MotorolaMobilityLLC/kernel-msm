@@ -101,7 +101,7 @@ limDeactivateMinChannelTimerDuringScan(tpAniSirGlobal pMac)
         {
             /// Could not activate max channel timer.
             // Log error
-            limLog(pMac,LOGP, FL("could not activate max channel timer\n"));
+            limLog(pMac,LOGP, FL("could not activate max channel timer"));
 
             limCompleteMlmScan(pMac, eSIR_SME_RESOURCES_UNAVAILABLE);
             return TX_TIMER_ERROR;
@@ -277,7 +277,7 @@ limCollectBssDescription(tpAniSirGlobal pMac,
 
     //sirDumpBuf( pMac, SIR_LIM_MODULE_ID, LOGW, (tANI_U8 *) pBssDescr, pBssDescr->length + 2 );
     limLog( pMac, LOG3,
-        FL("Collected BSS Description for Channel(%1d), length(%u), aniIndicator(%d), IE Fields(%u)\n"),
+        FL("Collected BSS Description for Channel(%1d), length(%u), aniIndicator(%d), IE Fields(%u)"),
         pBssDescr->channelId,
         pBssDescr->length,
         pBssDescr->aniIndicator,
@@ -440,7 +440,7 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
              if(WDA_IS_RX_BCAST(pRxPacketInfo))
              {
                 limLog(pMac, LOG3, FL("Beacon/Probe Rsp dropped. Channel in BD %d. "
-                                      "Channel in beacon" " %d\n"),
+                                      "Channel in beacon" " %d"),
                        WDA_GET_RX_CH(pRxPacketInfo),limGetChannelFromBeacon(pMac, pBPR));
                 return;
              }
@@ -467,9 +467,9 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
     ieLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
     if (ieLen <= SIR_MAC_B_PR_SSID_OFFSET)
     {
-               limLog(pMac, LOGP,
-                   FL("RX packet has invalid length %d\n"), ieLen);
-                  return;
+        limLog(pMac, LOGP,
+               FL("RX packet has invalid length %d"), ieLen);
+        return;
     }
 
     ieLen -= SIR_MAC_B_PR_SSID_OFFSET;
@@ -480,7 +480,7 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
     {
         // Log error
         limLog(pMac, LOGP,
-           FL("call for palAllocateMemory failed for storing BSS description\n"));
+           FL("call for palAllocateMemory failed for storing BSS description"));
 
         return;
     }
@@ -536,7 +536,7 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
              */
             limLog(pMac,
                    LOGW,
-                   FL("Completed scan: 24Band11dScan = %d, 50Band11dScan = %d BSS id\n"),
+                   FL("Completed scan: 24Band11dScan = %d, 50Band11dScan = %d BSS id"),
                    pMac->lim.gLim24Band11dScanDone,
                    pMac->lim.gLim50Band11dScanDone);
 
@@ -770,7 +770,7 @@ limLookupNaddHashEntry(tpAniSirGlobal pMac,
     pMac->lim.gLimMlmScanResultLength +=
         pBssDescr->bssDescription.length + sizeof(tANI_U16);
 
-    PELOG2(limLog(pMac, LOG2, FL("Added new BSS description size %d TOT %d BSS id\n"),
+    PELOG2(limLog(pMac, LOG2, FL("Added new BSS description size %d TOT %d BSS id"),
            pBssDescr->bssDescription.length,
            pMac->lim.gLimMlmScanResultLength);
     limPrintMacAddr(pMac, pBssDescr->bssDescription.bssId, LOG2);)
