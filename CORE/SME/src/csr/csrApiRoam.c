@@ -7997,11 +7997,12 @@ static eHalStatus csrRoamIssueSetKeyCommand( tpAniSirGlobal pMac, tANI_U32 sessi
     } while (0);
     // Free the command if there has been a failure, or it is a 
     // "local" operation like the set CCX CCKM KRK key.
-    if( (!HAL_STATUS_SUCCESS( status ) && ( NULL != pCommand )) 
+    if ( ( NULL != pCommand ) &&
+         ( (!HAL_STATUS_SUCCESS( status ) )
 #ifdef FEATURE_WLAN_CCX
             || ( eCSR_ENCRYPT_TYPE_KRK == pSetKey->encType ) 
 #endif /* FEATURE_WLAN_CCX */
-            )
+           ) )
     {
         csrReleaseCommandSetKey( pMac, pCommand );
     }
