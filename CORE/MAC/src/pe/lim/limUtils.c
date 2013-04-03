@@ -5764,10 +5764,10 @@ tSirRetStatus limPostMlmAddBAReq( tpAniSirGlobal pMac,
     tANI_U8 tid, tANI_U16 startingSeqNum,tpPESession psessionEntry)
 {
     tSirRetStatus status = eSIR_SUCCESS;
-    tpLimMlmAddBAReq pMlmAddBAReq;
+    tpLimMlmAddBAReq pMlmAddBAReq = NULL;
     tpDialogueToken dialogueTokenNode;
     tANI_U32        val = 0;
-  
+
   // Check if the peer is a 11n capable STA
   // FIXME - Need a 11n peer indication in DPH.
   // For now, using the taurusPeer attribute
@@ -5812,8 +5812,7 @@ tSirRetStatus limPostMlmAddBAReq( tpAniSirGlobal pMac,
       tid );
 
   // BA Timeout
-  // pMlmAddBAReq->baTimeout = pMac->hal.halMac.baTimeout; // In TU's
-  if (wlan_cfgGetInt(pMac, WNI_CFG_BA_TIMEOUT, &val) != eSIR_SUCCESS) 
+  if (wlan_cfgGetInt(pMac, WNI_CFG_BA_TIMEOUT, &val) != eSIR_SUCCESS)
   {
      limLog(pMac, LOGE, FL("could not retrieve BA TIME OUT Param CFG\n"));
      status = eSIR_FAILURE;
@@ -5822,7 +5821,7 @@ tSirRetStatus limPostMlmAddBAReq( tpAniSirGlobal pMac,
   pMlmAddBAReq->baTimeout = val; // In TU's
 
   // ADDBA Failure Timeout
-  // FIXME_AMPDU - Need to retrieve this from CFG. 
+  // FIXME_AMPDU - Need to retrieve this from CFG.
   //right now we are not checking for response timeout. so this field is dummy just to be compliant with the spec.
   pMlmAddBAReq->addBAFailureTimeout = 2000; // In TU's
 
@@ -5834,20 +5833,26 @@ tSirRetStatus limPostMlmAddBAReq( tpAniSirGlobal pMac,
 
   LIM_SET_STA_BA_STATE(pStaDs, tid, eLIM_BA_STATE_WT_ADD_RSP);
 
-  if( NULL == (dialogueTokenNode =  limAssignDialogueToken(pMac)))
-      goto returnFailure;
-  
+  dialogueTokenNode = limAssignDialogueToken(pMac);
+  if (NULL == dialogueTokenNode)
+  {
+     limLog(pMac, LOGE, FL("could not assign dialogue token"));
+     status = eSIR_FAILURE;
+     goto returnFailure;
+  }
+
   pMlmAddBAReq->baDialogToken = dialogueTokenNode->token;
-  //set assocId and tid information in the lim linked list 
+  //set assocId and tid information in the lim linked list
   dialogueTokenNode->assocId = pStaDs->assocId;
   dialogueTokenNode->tid = tid;
   // Send ADDBA Req to MLME
   limPostMlmMessage( pMac,
       LIM_MLM_ADDBA_REQ,
       (tANI_U32 *) pMlmAddBAReq );
+  return eSIR_SUCCESS;
 
 returnFailure:
-
+  palFreeMemory(pMac->hHdd, pMlmAddBAReq);
   return status;
 }
 
