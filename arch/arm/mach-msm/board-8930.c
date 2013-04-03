@@ -3017,6 +3017,8 @@ static void __init msm8930_cdp_init(void)
 	else
 		platform_add_devices(pmic_pm8917_devices,
 					ARRAY_SIZE(pmic_pm8917_devices));
+	if(machine_is_msm8930_evt())
+                qcom_wcnss_pdata.has_48mhz_xo = 0;
 	platform_add_devices(common_devices, ARRAY_SIZE(common_devices));
 	if (machine_is_msm8930_evt() &&
 		(socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)) {
