@@ -37,6 +37,9 @@
 #include "msm_watchdog.h"
 #include "timer.h"
 #include "wdog_debug.h"
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#include <mach/lge_handle_panic.h>
+#endif
 
 #define WDT0_RST	0x38
 #define WDT0_EN		0x40
@@ -201,9 +204,11 @@ static void msm_restart_prepare(const char *cmd)
 	/* Write download mode flags if we're panic'ing */
 	set_dload_mode(in_panic);
 
+#ifndef CONFIG_LGE_HANDLE_PANIC
 	/* Write download mode flags if restart_mode says so */
 	if (restart_mode == RESTART_DLOAD)
 		set_dload_mode(1);
+#endif
 
 	/* Kill download mode if master-kill switch is set */
 	if (!download_mode)
@@ -226,7 +231,17 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	else {
+		__raw_writel(0x77665503, restart_reason);
+	}
 
+	if (restart_mode == RESTART_DLOAD)
+		lge_set_restart_reason(LAF_DLOAD_MODE);
+
+	if (in_panic)
+		lge_set_panic_reason();
+#endif
 	flush_cache_all();
 	outer_flush_all();
 }
@@ -295,6 +310,11 @@ static int __init msm_restart_init(void)
 	restart_reason = MSM_IMEM_BASE + RESTART_REASON_ADDR;
 	pm_power_off = msm_power_off;
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	/* Set default restart_reason to TZ crash.
+	 * If can't be set explicit, it causes by TZ */
+	__raw_writel(LGE_RB_MAGIC | LGE_ERR_TZ, restart_reason);
+#endif
 	return 0;
 }
 early_initcall(msm_restart_init);

@@ -22,6 +22,9 @@
 #include <asm/setup.h>
 #include <asm/system_info.h>
 #include <mach/board_lge.h>
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#include <mach/lge_handle_panic.h>
+#endif
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
 #define LGE_RAM_CONSOLE_SIZE (128 * SZ_1K * 2)
@@ -95,6 +98,11 @@ void __init lge_add_persistent_device(void)
 {
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
 	platform_device_register(&ram_console_device);
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	/* write ram console addr to imem */
+	lge_set_ram_console_addr(persist_ram.start,
+			LGE_RAM_CONSOLE_SIZE);
+#endif
 #endif
 #ifdef CONFIG_PERSISTENT_TRACER
 	platform_device_register(&persistent_trace_device);
