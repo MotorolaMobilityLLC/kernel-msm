@@ -139,8 +139,6 @@ static struct pm8xxx_gpio_init pm8921_gpios[] __initdata = {
 	PM8921_GPIO_OUTPUT_FUNC(44, 0, PM_GPIO_FUNC_2),
 	PM8921_GPIO_OUTPUT(33, 0, HIGH),
 	PM8921_GPIO_OUTPUT(20, 0, HIGH),
-	PM8921_GPIO_INPUT(35, PM_GPIO_PULL_UP_30),
-	PM8921_GPIO_INPUT(38, PM_GPIO_PULL_UP_30),
 	/* TABLA CODEC RESET */
 	PM8921_GPIO_OUTPUT(34, 0, MED),
 	PM8921_GPIO_OUTPUT(13, 0, HIGH),               /* PCIE_CLK_PWR_EN */
@@ -154,9 +152,14 @@ static struct pm8xxx_gpio_init pm8921_gpios_display_SR2[] __initdata = {
 	PM8921_GPIO_OUTPUT_L17(36, 1, LOW),	/* BL_EN */
 };
 
-static struct pm8xxx_gpio_init pm8921_mtp_kp_gpios[] __initdata = {
-	PM8921_GPIO_INPUT(3, PM_GPIO_PULL_UP_30),
-	PM8921_GPIO_INPUT(4, PM_GPIO_PULL_UP_30),
+static struct pm8xxx_gpio_init pm8921_flo_kp_gpios[] __initdata = {
+	PM8921_GPIO_INPUT(35, PM_GPIO_PULL_UP_30),	/* VOL_UP */
+	PM8921_GPIO_INPUT(38, PM_GPIO_PULL_UP_30),	/* VOL_DOWN */
+};
+
+static struct pm8xxx_gpio_init pm8921_flo_kp2_gpios[] __initdata = {
+	PM8921_GPIO_INPUT(4, PM_GPIO_PULL_UP_30),	/* VOL_UP */
+	PM8921_GPIO_INPUT(38, PM_GPIO_PULL_UP_30),	/* VOL_DOWN */
 };
 
 static struct pm8xxx_gpio_init pm8921_cdp_kp_gpios[] __initdata = {
@@ -245,9 +248,17 @@ void __init apq8064_pm8xxx_gpio_mpp_init(void)
 					ARRAY_SIZE(pm8917_cdp_kp_gpios));
 	}
 
-	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
-		apq8064_configure_gpios(pm8921_mtp_kp_gpios,
-					ARRAY_SIZE(pm8921_mtp_kp_gpios));
+#ifdef CONFIG_ASUSTEK_KEYPAD
+	if (machine_is_apq8064_flo() || machine_is_apq8064_deb()) {
+		if (hw_revision == HW_REV_C) {
+			apq8064_configure_gpios(pm8921_flo_kp_gpios,
+					ARRAY_SIZE(pm8921_flo_kp_gpios));
+		} else if (hw_revision == HW_REV_D) {
+			apq8064_configure_gpios(pm8921_flo_kp2_gpios,
+					ARRAY_SIZE(pm8921_flo_kp2_gpios));
+		}
+	}
+#endif
 
 	if (machine_is_mpq8064_cdp() || machine_is_mpq8064_hrd()
 	    || machine_is_mpq8064_dtv())
