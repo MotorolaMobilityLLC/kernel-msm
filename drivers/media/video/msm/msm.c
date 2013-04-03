@@ -1106,6 +1106,7 @@ void msm_release_ion_client(struct kref *ref)
 		struct msm_cam_media_controller, refcount);
 	pr_err("%s Calling ion_client_destroy\n", __func__);
 	ion_client_destroy(mctl->client);
+	mctl->client = NULL;
 }
 
 static int msm_close(struct file *f)
