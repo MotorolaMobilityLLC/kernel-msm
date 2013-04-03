@@ -2186,6 +2186,7 @@ int mipi_reg_read(struct msm_fb_data_type *mfd, __u16 address,
 	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
 	cmdreq.rlen = size;
 	cmdreq.cb = NULL;
+	cmdreq.rdata = NULL;
 
 	if (!mfd->panel_power_on) {
 		pr_err("%s panel is off. Fail to read.\n", __func__);
@@ -2213,8 +2214,8 @@ int mipi_reg_read(struct msm_fb_data_type *mfd, __u16 address,
 	} else if (ret != size)
 		pr_warning("%s: read cmd=0x%x returns data(%d) != rlen(%d)\n",
 			__func__, reg_read_cmd.payload[0], size, ret);
-
-	memcpy(buf, cmdreq.rdata, size);
+	else if (cmdreq.rdata != NULL)
+		memcpy(buf, cmdreq.rdata, size);
 end:
 	if (old_tx_mode != new_tx_mode) {
 		pr_debug("%s restoring old tx mode %d\n", __func__,
