@@ -525,8 +525,10 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 	if (arizona->pdata.control_init_time)
 		msleep(arizona->pdata.control_init_time);
 
-	if (arizona->pdata.reset)
+	if (arizona->pdata.reset) {
 		gpio_set_value_cansleep(arizona->pdata.reset, 1);
+		msleep(1);
+	}
 
 	regcache_cache_only(arizona->regmap, false);
 
@@ -582,6 +584,7 @@ int __devinit arizona_dev_init(struct arizona *arizona)
 			dev_err(dev, "Failed to reset device: %d\n", ret);
 			goto err_reset;
 		}
+		msleep(1);
 	}
 
 	ret = arizona_wait_for_boot(arizona);
