@@ -1269,7 +1269,8 @@ int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct net_device *dev )
 }
 
 void hdd_sendMgmtFrameOverMonitorIface( hdd_adapter_t *pMonAdapter,
-                                        tANI_U32 nFrameLength, tANI_U8* pbFrames,
+                                        tANI_U32 nFrameLength,
+                                        tANI_U8* pbFrames,
                                         tANI_U8 frameType )  
 {
     //Indicate a Frame over Monitor Intf.
@@ -1285,7 +1286,11 @@ void hdd_sendMgmtFrameOverMonitorIface( hdd_adapter_t *pMonAdapter,
 #endif
     hddLog( LOG1, FL("Indicate Frame over Monitor Intf"));
 
-    VOS_ASSERT( (pbFrames != NULL) );
+    if (NULL == pbFrames)
+    {
+        hddLog(LOGE, FL("NULL frame pointer"));
+        return;
+    }
 
     /* room for the radiotap header based on driver features
      * 1 Byte for RADIO TAP Flag, 1 Byte padding and 2 Byte for
@@ -1359,7 +1364,19 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
 
     if (NULL == pAdapter)
     {
-        hddLog( LOGE, FL("pAdapter is NULL"));
+        hddLog(LOGE, FL("pAdapter is NULL"));
+        return;
+    }
+
+    if (0 == nFrameLength)
+    {
+        hddLog(LOGE, FL("Frame Length is Invalid ZERO"));
+        return;
+    }
+
+    if (NULL == pbFrames)
+    {
+        hddLog(LOGE, FL("pbFrames is NULL"));
         return;
     }
 
@@ -1386,6 +1403,7 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
          }
     }
 
+
     if (NULL == pAdapter->dev)
     {
         hddLog( LOGE, FL("pAdapter->dev is NULL"));
@@ -1398,26 +1416,13 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
         return;
     }
 
-    if( !nFrameLength )
-    {
-        hddLog( LOGE, FL("Frame Length is Invalid ZERO"));
-        return;
-    }
-
-    if (NULL == pbFrames) {
-        hddLog( LOGE, FL("pbFrames is NULL"));
-        return;
-    }
-
-
-    if( ( WLAN_HDD_SOFTAP == pAdapter->device_mode ) 
-            || ( WLAN_HDD_P2P_GO == pAdapter->device_mode )
-      )
+    if ((WLAN_HDD_SOFTAP == pAdapter->device_mode) ||
+        (WLAN_HDD_P2P_GO == pAdapter->device_mode ))
     {
         hdd_adapter_t *pMonAdapter =
             hdd_get_mon_adapter( WLAN_HDD_GET_CTX(pAdapter) );
 
-        if( NULL != pMonAdapter )
+        if (NULL != pMonAdapter)
         {
             hddLog( LOG1, FL("Indicate Frame over Monitor Interface"));
             hdd_sendMgmtFrameOverMonitorIface( pMonAdapter, nFrameLength,
