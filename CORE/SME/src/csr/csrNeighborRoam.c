@@ -670,6 +670,8 @@ static eHalStatus csrNeighborRoamBssIdScanFilter(tpAniSirGlobal pMac, tCsrScanRe
     tANI_U8 i = 0;
 
     VOS_ASSERT(pScanFilter != NULL);
+    if (pScanFilter == NULL)
+        return eHAL_STATUS_FAILURE;
     vos_mem_zero(pScanFilter, sizeof(tCsrScanResultFilter));
 
     pScanFilter->BSSIDs.numOfBSSIDs = pNeighborRoamInfo->FTRoamInfo.numBssFromNeighborReport;
@@ -1017,6 +1019,8 @@ eHalStatus csrNeighborRoamPrepareScanProfileFilter(tpAniSirGlobal pMac, tCsrScan
     tANI_U8 i = 0;
     
     VOS_ASSERT(pScanFilter != NULL);
+    if (pScanFilter == NULL)
+        return eHAL_STATUS_FAILURE;
 
     vos_mem_zero(pScanFilter, sizeof(tCsrScanResultFilter));
 
