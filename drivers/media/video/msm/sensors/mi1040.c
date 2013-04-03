@@ -1101,13 +1101,13 @@ static int __init qualcomm_i2c_debuginit(void)
 {
 	struct dentry *dent = debugfs_create_dir("mi1040", NULL);
 
-	(void) debugfs_create_file("i2c_open_camera", 0666,
+	(void) debugfs_create_file("i2c_open_camera", S_IRUGO | S_IWUSR,
 			dent, NULL, &i2c_open_camera);
-	(void) debugfs_create_file("i2c_read", 0666,
+	(void) debugfs_create_file("i2c_read", S_IRUGO | S_IWUSR,
 			dent, NULL, &i2c_read_register);
-	(void) debugfs_create_file("i2c_write", 0666,
+	(void) debugfs_create_file("i2c_write", S_IRUGO | S_IWUSR,
 			dent, NULL, &i2c_write_register);
-	(void) debugfs_create_file("read_register_value", 0666,
+	(void) debugfs_create_file("read_register_value", S_IRUGO | S_IWUSR,
 			dent, NULL, &read_register_value);
 
 	return 0;
