@@ -3759,6 +3759,12 @@ eHalStatus sme_RoamSetKey(tHalHandle hHal, tANI_U8 sessionId, tCsrRoamSetKey *pS
    tANI_U32 i;
    tCsrRoamSession *pSession = NULL;
 
+   if (pSetKey->keyLength > CSR_MAX_KEY_LEN)
+   {
+      smsLog(pMac, LOGE, FL("Invalid key length %d"), pSetKey->keyLength);
+      return eHAL_STATUS_FAILURE;
+   }
+
    status = sme_AcquireGlobalLock( &pMac->sme );
    if ( HAL_STATUS_SUCCESS( status ) )
    {
@@ -3768,7 +3774,7 @@ eHalStatus sme_RoamSetKey(tHalHandle hHal, tANI_U8 sessionId, tCsrRoamSetKey *pS
          *pRoamId = roamId;
       }
 
-      smsLog(pMac, LOG2, FL("keyLength"), pSetKey->keyLength);
+      smsLog(pMac, LOG2, FL("keyLength %d"), pSetKey->keyLength);
 
       for(i=0; i<pSetKey->keyLength; i++)
           smsLog(pMac, LOG2, FL("%02x"), pSetKey->Key[i]);
