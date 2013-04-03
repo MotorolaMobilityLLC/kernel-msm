@@ -1267,7 +1267,7 @@ tSirRetStatus      retCode;
         mlmRemoveKeyCnf.resultCode = eSIR_SME_INVALID_PARAMETERS;
         goto end;
   }
- 
+
   // Update the WDA_REMOVEKEY_REQ parameters
   pRemoveStaKeyParams->staIdx = staIdx;
   pRemoveStaKeyParams->encType = pMlmRemoveKeyReq->edType;
@@ -1278,7 +1278,7 @@ tSirRetStatus      retCode;
   pRemoveStaKeyParams->sessionId = psessionEntry->peSessionId;
 
   SET_LIM_PROCESS_DEFD_MESGS(pMac, false);
-  
+
   msgQ.type = WDA_REMOVE_STAKEY_REQ;
   //
   // FIXME_GEN4
@@ -1292,17 +1292,19 @@ tSirRetStatus      retCode;
   limLog( pMac, LOGW,
       FL( "Sending WDA_REMOVE_STAKEY_REQ...\n" ));
   MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
-  if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
+  retCode = wdaPostCtrlMsg( pMac, &msgQ );
+  if (eSIR_SUCCESS != retCode)
   {
     limLog( pMac, LOGE,
-        FL("Posting REMOVE_STAKEY to HAL failed, reason=%X\n"),
+        FL("Posting REMOVE_STAKEY to HAL failed, reason=%X"),
         retCode );
+    palFreeMemory(pMac->hHdd, pRemoveStaKeyParams);
 
     // Respond to SME with LIM_MLM_REMOVEKEY_CNF
     mlmRemoveKeyCnf.resultCode = eSIR_SME_HAL_SEND_MESSAGE_FAIL;
   }
   else
-    return; 
+    return;
 
 end:
   limPostSmeRemoveKeyCnf( pMac,
