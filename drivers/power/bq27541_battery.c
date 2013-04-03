@@ -338,6 +338,8 @@ static int bq27541_battery_current(void)
 		return 0;
 	}
 
+	curr = (s16)curr;
+
 	if (curr >= bq27541_data[REG_CURRENT].min_value &&
 		curr <= bq27541_data[REG_CURRENT].max_value) {
 		return curr;
