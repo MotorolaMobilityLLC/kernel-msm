@@ -6436,14 +6436,15 @@ static int __devinit pm8921_charger_probe(struct platform_device *pdev)
 
 destroy_wakelock:
 	wake_lock_destroy(&chip->chg_wake_lock);
-unregister_batt:
 	wake_lock_destroy(&chip->eoc_wake_lock);
+unregister_batt:
 	power_supply_unregister(&chip->batt_psy);
 unregister_dc:
 	power_supply_unregister(&chip->dc_psy);
 unregister_usb:
 	power_supply_unregister(&chip->usb_psy);
 free_chip:
+	the_chip = NULL;
 	kfree(chip);
 	return rc;
 }
@@ -6462,7 +6463,9 @@ static int __devexit pm8921_charger_remove(struct platform_device *pdev)
 	the_chip = NULL;
 	wake_lock_destroy(&chip->chg_wake_lock);
 	wake_lock_destroy(&chip->eoc_wake_lock);
+#ifdef CONFIG_PM8921_EXTENDED_INFO
 	wake_lock_destroy(&chip->heartbeat_wake_lock);
+#endif
 	kfree(chip);
 	return 0;
 }
