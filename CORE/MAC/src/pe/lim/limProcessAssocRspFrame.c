@@ -644,8 +644,10 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
             if (limSetLinkState(pMac, eSIR_LINK_POSTASSOC_STATE, psessionEntry->bssId,
                                 psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS)
             {
-                    PELOGE(limLog(pMac, LOGE, FL("Set link state to POSTASSOC failed\n"));)
-                            return;
+                PELOGE(limLog(pMac, LOGE, FL("Set link state to POSTASSOC failed\n"));)
+                palFreeMemory(pMac->hHdd, pBeaconStruct);
+                palFreeMemory(pMac->hHdd, pAssocRsp);
+                return;
             }
     }
     if (subType == LIM_REASSOC)

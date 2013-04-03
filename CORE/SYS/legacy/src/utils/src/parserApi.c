@@ -2263,7 +2263,7 @@ sirConvertAssocReqFrame2Struct(tpAniSirGlobal pMac,
     }
     if ( ar->OperatingMode.present )
     {
-        palCopyMemory( pMac, &pAssocReq->operMode, &ar->OperatingMode, sizeof( tDot11fIEVHTCaps ) );
+        palCopyMemory( pMac, &pAssocReq->operMode, &ar->OperatingMode, sizeof (tDot11fIEOperatingMode));
         limLog( pMac, LOGW, FL("Received Assoc Req with Operating Mode IE\n"));
         limLogOperatingMode( pMac, &pAssocReq->operMode);
     }

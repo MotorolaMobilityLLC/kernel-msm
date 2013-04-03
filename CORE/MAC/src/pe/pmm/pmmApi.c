@@ -563,6 +563,7 @@ tSirRetStatus pmmSendChangePowerSaveMsg(tpAniSirGlobal pMac)
     if((psessionEntry = peGetValidPowerSaveSession(pMac)) == NULL )
     {
         retStatus = eSIR_FAILURE;
+        palFreeMemory(pMac->hHdd, (tANI_U8*)pExitBmpsParams);
         return retStatus;
     }
 
@@ -2359,7 +2360,7 @@ void pmmExitWowlanRequestHandler(tpAniSirGlobal pMac)
     tSirRetStatus retStatus = eSIR_SUCCESS;
     tSirResultCodes smeRspCode = eSIR_SME_SUCCESS;
     tpPESession pSessionEntry;
-    tpSirHalWowlExitParams  pHalWowlMsg;
+    tpSirHalWowlExitParams  pHalWowlMsg = NULL;
     tANI_U8            PowersavesessionId = 0;
 
     PowersavesessionId = pMac->pmm.sessionId;
