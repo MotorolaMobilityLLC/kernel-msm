@@ -1354,8 +1354,30 @@ show_fw_ver(struct device *dev, struct device_attribute *attr, char *buf)
 	return sprintf(buf, "%s\n", ts->fw_info.config_id);
 }
 
-static ssize_t
-store_fw_upgrade(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+/* show_fw_info
+ *
+ * show only the firmware information
+ */
+static ssize_t show_fw_info(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	struct synaptics_ts_data *ts = dev_get_drvdata(dev);
+	int ret = 0;
+
+	ret = sprintf(buf, "====== Firmware Info ======\n");
+	ret += sprintf(buf+ret, "manufacturer_id  = %d\n",
+			ts->fw_info.manufacturer_id);
+	ret += sprintf(buf+ret, "product_id       = %s\n",
+			ts->fw_info.product_id);
+	ret += sprintf(buf+ret, "fw_version       = %s\n",
+			ts->fw_info.config_id);
+	ret += sprintf(buf+ret, "fw_image_version = %s\n",
+			ts->fw_info.image_config_id);
+	return ret;
+}
+
+static ssize_t store_fw_upgrade(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int value = 0;
 	int repeat = 0;
@@ -1502,7 +1524,7 @@ store_ts_reset(struct device *dev, struct device_attribute *attr, const char *bu
 }
 
 static struct device_attribute synaptics_device_attrs[] = {
-	__ATTR(firmware, S_IRUGO | S_IWUSR, NULL, store_fw_upgrade),
+	__ATTR(firmware, S_IRUGO | S_IWUSR, show_fw_info, store_fw_upgrade),
 	__ATTR(reg_control, S_IRUGO | S_IWUSR, NULL, ic_register_ctrl),
 	__ATTR(power_control, S_IRUGO | S_IWUSR, NULL, store_ts_reset),
 	__ATTR(version, S_IRUGO | S_IWUSR, show_fw_ver, NULL),
