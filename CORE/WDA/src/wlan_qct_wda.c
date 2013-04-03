@@ -1868,8 +1868,8 @@ VOS_STATUS WDA_WniCfgDnld(tWDA_CbContext *pWDA)
    v_SIZE_t cbFileImageSize = 0;
    v_VOID_t *pCfgBinary = NULL;
    v_SIZE_t cbCfgBinarySize = 0;
-   
    v_BOOL_t bStatus = VOS_FALSE;
+
    if (NULL == pMac )
    {
       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
@@ -1926,16 +1926,12 @@ VOS_STATUS WDA_WniCfgDnld(tWDA_CbContext *pWDA)
     * for now calling the existing cfg download API 
     */
    processCfgDownloadReq(pMac,cbCfgBinarySize,pCfgBinary);
-   if( pFileImage != NULL )
-   {
-      vos_mem_free( pFileImage );
-   }
-   return vosStatus;
+   vosStatus = VOS_STATUS_SUCCESS;
+
+   /* fall through to clean up and return success */
    
 fail:
-   if(pCfgBinary != NULL)
-      vos_mem_free( pFileImage );
-   
+   vos_mem_free( pFileImage );
    return vosStatus;
 }
 /* -----------------------------------------------------------------
