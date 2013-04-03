@@ -64,3 +64,4 @@ obj-$(CONFIG_QPNP_CHARGER)	+= qpnp-charger.o
 obj-$(CONFIG_LTC4088_CHARGER)	+= ltc4088-charger.o
 obj-$(CONFIG_CHARGER_SMB347)	+= smb347-charger.o
 obj-$(CONFIG_BATTERY_BCL)	+= battery_current_limit.o
+obj-$(CONFIG_MAX17048_FUELGAUGE)+= max17048_battery.o

@@ -495,4 +495,14 @@ config QPNP_BMS
 	  Say Y here to enable support for QPNP chip bms device.
 	  It registers a fuelgauge bms power supply to report
 	  State of Charge.
+
+config MAX17048_FUELGAUGE
+	tristate "Maxim MAX17048 fuel gauging external driver"
+	depends on I2C
+	default n
+	help
+	  MAX17048 is fuel-gauge systems for lithium-ion (Li+) batteries
+	  in handheld and portable equipment. The MAX17048 is configured
+	  to operate with a single lithium cell
+
 endif # POWER_SUPPLY
