@@ -6913,6 +6913,47 @@ eHalStatus sme_UpdateRoamPrefer5GHz(tHalHandle hHal, v_BOOL_t nRoamPrefer5GHz)
 }
 
 /* ---------------------------------------------------------------------------
+    \fn sme_setRoamIntraBand
+    \brief  enable/disable Intra band roaming
+            This function is called through dynamic setConfig callback function
+            to configure the intra band roaming
+    \param  hHal - HAL handle for device
+    \param  nRoamIntraBand Enable/Disable Intra band roaming
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_setRoamIntraBand(tHalHandle hHal, const v_BOOL_t nRoamIntraBand)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                     "%s: gRoamIntraBand is changed from %d to %d", __func__,
+                      pMac->roam.configParam.nRoamIntraBand,
+                      nRoamIntraBand);
+        pMac->roam.configParam.nRoamIntraBand = nRoamIntraBand;
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_getRoamIntraBand
+    \brief  get Intra band roaming
+    \param  hHal - HAL handle for device
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+v_BOOL_t sme_getRoamIntraBand(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    return pMac->roam.configParam.nRoamIntraBand;
+}
+
+
+/* ---------------------------------------------------------------------------
     \fn sme_UpdateImmediateRoamRssiDiff
     \brief  Update nImmediateRoamRssiDiff
             This function is called through dynamic setConfig callback function
@@ -7019,15 +7060,25 @@ eHalStatus sme_UpdateFastTransitionEnabled(tHalHandle hHal,
   \sa
   --------------------------------------------------------------------------*/
 eHalStatus sme_UpdateIsFastRoamIniFeatureEnabled(tHalHandle hHal, 
-        v_BOOL_t isFastRoamIniFeatureEnabled)
+        const v_BOOL_t isFastRoamIniFeatureEnabled)
 {
   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+  if (pMac->roam.configParam.isFastRoamIniFeatureEnabled == isFastRoamIniFeatureEnabled)
+  {
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                     "%s: FastRoam is already enabled or disabled, nothing to do (returning) old(%d) new(%d)", __func__,
+                      pMac->roam.configParam.isFastRoamIniFeatureEnabled,
+                      isFastRoamIniFeatureEnabled);
+      return eHAL_STATUS_SUCCESS;
+  }
 
   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
                      "%s: FastRoamEnabled is changed from %d to %d", __func__,
                       pMac->roam.configParam.isFastRoamIniFeatureEnabled,
                       isFastRoamIniFeatureEnabled);
   pMac->roam.configParam.isFastRoamIniFeatureEnabled = isFastRoamIniFeatureEnabled;
+  csrNeighborRoamUpdateFastRoamingEnabled(pMac, isFastRoamIniFeatureEnabled);
 
   if(TRUE == isFastRoamIniFeatureEnabled)
   {
@@ -7064,15 +7115,25 @@ eHalStatus sme_UpdateIsFastRoamIniFeatureEnabled(tHalHandle hHal,
   --------------------------------------------------------------------------*/
 
 eHalStatus sme_UpdateIsCcxFeatureEnabled(tHalHandle hHal,
-        v_BOOL_t isCcxIniFeatureEnabled)
+                const v_BOOL_t isCcxIniFeatureEnabled)
 {
   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+
+  if (pMac->roam.configParam.isCcxIniFeatureEnabled == isCcxIniFeatureEnabled)
+  {
+      VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                     "%s: CCX Mode is already enabled or disabled, nothing to do (returning) old(%d) new(%d)", __func__,
+                      pMac->roam.configParam.isCcxIniFeatureEnabled,
+                      isCcxIniFeatureEnabled);
+      return eHAL_STATUS_SUCCESS;
+  }
 
   VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
                      "%s: CcxEnabled is changed from %d to %d", __func__,
                       pMac->roam.configParam.isCcxIniFeatureEnabled,
                       isCcxIniFeatureEnabled);
   pMac->roam.configParam.isCcxIniFeatureEnabled = isCcxIniFeatureEnabled;
+  csrNeighborRoamUpdateCcxModeEnabled(pMac, isCcxIniFeatureEnabled);
 
   if(TRUE == isCcxIniFeatureEnabled)
   {
@@ -7124,6 +7185,7 @@ eHalStatus sme_UpdateConfigFwRssiMonitoring(tHalHandle hHal,
     return (halStatus);
 }
 
+#ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
 /*--------------------------------------------------------------------------
   \brief sme_setNeighborLookupRssiThreshold() - update neighbor lookup rssi threshold
   This is a synchronous call
@@ -7265,7 +7327,171 @@ v_U16_t sme_getEmptyScanRefreshPeriod(tHalHandle hHal)
     return pMac->roam.configParam.neighborRoamConfig.nEmptyScanRefreshPeriod;
 }
 
+/* ---------------------------------------------------------------------------
+    \fn sme_UpdateEmptyScanRefreshPeriod
+    \brief  Update nEmptyScanRefreshPeriod
+            This function is called through dynamic setConfig callback function
+            to configure nEmptyScanRefreshPeriod
+            Usage: adb shell iwpriv wlan0 setConfig nEmptyScanRefreshPeriod=[0 .. 60]
+    \param  hHal - HAL handle for device
+    \param  nEmptyScanRefreshPeriod - scan period following empty scan results.
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+
+eHalStatus sme_UpdateEmptyScanRefreshPeriod(tHalHandle hHal, v_U16_t nEmptyScanRefreshPeriod)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                     "LFR runtime successfully set roam scan period to %d - old value is %d - roam state is %d",
+                     nEmptyScanRefreshPeriod,
+                     pMac->roam.configParam.neighborRoamConfig.nEmptyScanRefreshPeriod,
+                     pMac->roam.neighborRoamInfo.neighborRoamState);
+        pMac->roam.configParam.neighborRoamConfig.nEmptyScanRefreshPeriod = nEmptyScanRefreshPeriod;
+        pMac->roam.neighborRoamInfo.cfgParams.emptyScanRefreshPeriod = nEmptyScanRefreshPeriod;
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_setNeighborScanMinChanTime
+    \brief  Update nNeighborScanMinChanTime
+            This function is called through dynamic setConfig callback function
+            to configure gNeighborScanChannelMinTime
+            Usage: adb shell iwpriv wlan0 setConfig gNeighborScanChannelMinTime=[0 .. 60]
+    \param  hHal - HAL handle for device
+    \param  nNeighborScanMinChanTime - Channel minimum dwell time
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_setNeighborScanMinChanTime(tHalHandle hHal, const v_U16_t nNeighborScanMinChanTime)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                     "LFR runtime successfully set channel min dwell time to %d - old value is %d - roam state is %d",
+                     nNeighborScanMinChanTime,
+                     pMac->roam.configParam.neighborRoamConfig.nNeighborScanMinChanTime,
+                     pMac->roam.neighborRoamInfo.neighborRoamState);
+        pMac->roam.configParam.neighborRoamConfig.nNeighborScanMinChanTime = nNeighborScanMinChanTime;
+        pMac->roam.neighborRoamInfo.cfgParams.minChannelScanTime = nNeighborScanMinChanTime;
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_setNeighborScanMaxChanTime
+    \brief  Update nNeighborScanMaxChanTime
+            This function is called through dynamic setConfig callback function
+            to configure gNeighborScanChannelMaxTime
+            Usage: adb shell iwpriv wlan0 setConfig gNeighborScanChannelMaxTime=[0 .. 60]
+    \param  hHal - HAL handle for device
+    \param  nNeighborScanMinChanTime - Channel maximum dwell time
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_setNeighborScanMaxChanTime(tHalHandle hHal, const v_U16_t nNeighborScanMaxChanTime)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                     "LFR runtime successfully set channel max dwell time to %d - old value is %d - roam state is %d",
+                     nNeighborScanMaxChanTime,
+                     pMac->roam.configParam.neighborRoamConfig.nNeighborScanMaxChanTime,
+                     pMac->roam.neighborRoamInfo.neighborRoamState);
+        pMac->roam.configParam.neighborRoamConfig.nNeighborScanMaxChanTime = nNeighborScanMaxChanTime;
+        pMac->roam.neighborRoamInfo.cfgParams.maxChannelScanTime = nNeighborScanMaxChanTime;
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_getNeighborScanMinChanTime
+    \brief  get neighbor scan min channel time
+    \param hHal - The handle returned by macOpen.
+    \return v_U16_t - channel min time value
+    -------------------------------------------------------------------------*/
+v_U16_t sme_getNeighborScanMinChanTime(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    return pMac->roam.neighborRoamInfo.cfgParams.minChannelScanTime;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_getNeighborScanMaxChanTime
+    \brief  get neighbor scan max channel time
+    \param hHal - The handle returned by macOpen.
+    \return v_U16_t - channel max time value
+    -------------------------------------------------------------------------*/
+v_U16_t sme_getNeighborScanMaxChanTime(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    return pMac->roam.neighborRoamInfo.cfgParams.maxChannelScanTime;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_setNeighborScanPeriod
+    \brief  Update nNeighborScanPeriod
+            This function is called through dynamic setConfig callback function
+            to configure nNeighborScanPeriod
+            Usage: adb shell iwpriv wlan0 setConfig nNeighborScanPeriod=[0 .. 60]
+    \param  hHal - HAL handle for device
+    \param  nNeighborScanPeriod - neighbor scan period
+    \- return Success or failure
+    -------------------------------------------------------------------------*/
+eHalStatus sme_setNeighborScanPeriod(tHalHandle hHal, const v_U16_t nNeighborScanPeriod)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+
+    status = sme_AcquireGlobalLock( &pMac->sme );
+    if ( HAL_STATUS_SUCCESS( status ) )
+    {
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
+                     "LFR runtime successfully set neighbor scan period to %d - old value is %d - roam state is %d",
+                     nNeighborScanPeriod,
+                     pMac->roam.configParam.neighborRoamConfig.nNeighborScanTimerPeriod,
+                     pMac->roam.neighborRoamInfo.neighborRoamState);
+        pMac->roam.configParam.neighborRoamConfig.nNeighborScanTimerPeriod = nNeighborScanPeriod;
+        pMac->roam.neighborRoamInfo.cfgParams.neighborScanPeriod = nNeighborScanPeriod;
+        sme_ReleaseGlobalLock( &pMac->sme );
+    }
+
+    return status ;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_getNeighborScanPeriod
+    \brief  get neighbor scan period
+    \param hHal - The handle returned by macOpen.
+    \return v_U16_t - neighbor scan period
+    -------------------------------------------------------------------------*/
+v_U16_t sme_getNeighborScanPeriod(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    return pMac->roam.neighborRoamInfo.cfgParams.neighborScanPeriod;
+}
+
+#endif
+
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
+
 /*--------------------------------------------------------------------------
   \brief sme_getRoamRssiDiff() - get Roam rssi diff
   This is a synchronous call
@@ -7438,42 +7664,61 @@ eHalStatus sme_GetCountryRevision(tHalHandle hHal, tANI_U8 *pRevision)
     return status;
 }
 
-#endif
-
-/* ---------------------------------------------------------------------------
-    \fn sme_UpdateEmptyScanRefreshPeriod
-    \brief  Update nEmptyScanRefreshPeriod
-            This function is called through dynamic setConfig callback function
-            to configure nEmptyScanRefreshPeriod
-            Usage: adb shell iwpriv wlan0 setConfig nEmptyScanRefreshPeriod=[0 .. 60]
-    \param  hHal - HAL handle for device
-    \param  nEmptyScanRefreshPeriod - scan period following empty scan results.
-    \- return Success or failure
-    -------------------------------------------------------------------------*/
-
-eHalStatus sme_UpdateEmptyScanRefreshPeriod(tHalHandle hHal, v_U16_t nEmptyScanRefreshPeriod)
+/*--------------------------------------------------------------------------
+  \brief sme_getIsCcxFeatureEnabled() - get CCX feature enabled or not
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return TRUE (1) - if the CCX feature is enabled
+          FALSE (0) - if feature is disabled (compile or runtime)
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_BOOLEAN sme_getIsCcxFeatureEnabled(tHalHandle hHal)
 {
+#ifdef FEATURE_WLAN_CCX
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-    eHalStatus          status    = eHAL_STATUS_SUCCESS;
-
-    status = sme_AcquireGlobalLock( &pMac->sme );
-    if ( HAL_STATUS_SUCCESS( status ) )
-    {
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
-                     "LFR runtime successfully set roam scan period to %d - old value is %d - roam state is %d",
-                     nEmptyScanRefreshPeriod,
-                     pMac->roam.configParam.neighborRoamConfig.nEmptyScanRefreshPeriod,
-                     pMac->roam.neighborRoamInfo.neighborRoamState);
-        pMac->roam.configParam.neighborRoamConfig.nEmptyScanRefreshPeriod = nEmptyScanRefreshPeriod;
-        pMac->roam.neighborRoamInfo.cfgParams.emptyScanRefreshPeriod = nEmptyScanRefreshPeriod;
-        sme_ReleaseGlobalLock( &pMac->sme );
-    }
-
-    return status ;
-
+    return pMac->roam.configParam.isCcxIniFeatureEnabled;
+#else
+    return eANI_BOOLEAN_FALSE;
+#endif
 }
 
+/*--------------------------------------------------------------------------
+  \brief sme_getIsLfrFeatureEnabled() - get LFR feature enabled or not
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return TRUE (1) - if the feature is enabled
+          FALSE (0) - if feature is disabled (compile or runtime)
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_BOOLEAN sme_getIsLfrFeatureEnabled(tHalHandle hHal)
+{
+#ifdef FEATURE_WLAN_LFR
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    return pMac->roam.configParam.isFastRoamIniFeatureEnabled;
+#else
+    return eANI_BOOLEAN_FALSE;
+#endif
+}
 
+/*--------------------------------------------------------------------------
+  \brief sme_getIsFtFeatureEnabled() - get FT feature enabled or not
+  This is a synchronuous call
+  \param hHal - The handle returned by macOpen.
+  \return TRUE (1) - if the feature is enabled
+          FALSE (0) - if feature is disabled (compile or runtime)
+  \sa
+  --------------------------------------------------------------------------*/
+tANI_BOOLEAN sme_getIsFtFeatureEnabled(tHalHandle hHal)
+{
+#ifdef WLAN_FEATURE_VOWIFI_11R
+    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
+    return pMac->roam.configParam.isFastTransitionEnabled;
+#else
+    return eANI_BOOLEAN_FALSE;
+#endif
+}
+
+#endif
 
 /* ---------------------------------------------------------------------------
     \fn sme_IsFeatureSupportedByFW

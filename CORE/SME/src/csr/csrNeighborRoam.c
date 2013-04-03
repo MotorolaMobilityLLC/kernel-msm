@@ -328,6 +328,94 @@ static void csrNeighborRoamTriggerHandoff(tpAniSirGlobal pMac,
             }
 }
 
+VOS_STATUS csrNeighborRoamUpdateFastRoamingEnabled(tpAniSirGlobal pMac, const v_BOOL_t fastRoamEnabled)
+{
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
+
+    if (eCSR_NEIGHBOR_ROAM_STATE_CONNECTED == pNeighborRoamInfo->neighborRoamState)
+    {
+        if (VOS_TRUE == fastRoamEnabled)
+        {
+            NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Registering neighbor lookup DOWN event with TL, RSSI = %d"),
+                                    pNeighborRoamInfo->currentNeighborLookupThreshold);
+            /* Register Neighbor Lookup threshold callback with TL for DOWN event only */
+            vosStatus = WLANTL_RegRSSIIndicationCB(pMac->roam.gVosContext, (v_S7_t)pNeighborRoamInfo->currentNeighborLookupThreshold * (-1),
+                                                WLANTL_HO_THRESHOLD_DOWN,
+                                                csrNeighborRoamNeighborLookupDOWNCallback,
+                                                VOS_MODULE_ID_SME, pMac);
+            if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+            {
+                //err msg
+                smsLog(pMac, LOGW, FL(" Couldn't register csrNeighborRoamNeighborLookupDOWNCallback with TL: Status = %d"), vosStatus);
+                vosStatus = VOS_STATUS_E_FAILURE;
+            }
+        }
+        else if (VOS_FALSE == fastRoamEnabled)
+        {
+            NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Currently in CONNECTED state, so deregister all events"));
+            /* De-register existing lookup UP/DOWN, Rssi indications */
+            csrNeighborRoamDeregAllRssiIndication(pMac);
+        }
+    }
+    else if (eCSR_NEIGHBOR_ROAM_STATE_INIT == pNeighborRoamInfo->neighborRoamState)
+    {
+        NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Currently in INIT state, Nothing to do"));
+    }
+    else
+    {
+        NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Unexpected state %d, returning failure"), pNeighborRoamInfo->neighborRoamState);
+        vosStatus = VOS_STATUS_E_FAILURE;
+    }
+    return vosStatus;
+}
+
+#ifdef FEATURE_WLAN_CCX
+VOS_STATUS csrNeighborRoamUpdateCcxModeEnabled(tpAniSirGlobal pMac, const v_BOOL_t ccxMode)
+{
+    tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
+    VOS_STATUS vosStatus = VOS_STATUS_SUCCESS;
+
+    if (eCSR_NEIGHBOR_ROAM_STATE_CONNECTED == pNeighborRoamInfo->neighborRoamState)
+    {
+        if (VOS_TRUE == ccxMode)
+        {
+            NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Registering neighbor lookup DOWN event with TL, RSSI = %d"),
+                                    pNeighborRoamInfo->currentNeighborLookupThreshold);
+            /* Register Neighbor Lookup threshold callback with TL for DOWN event only */
+            vosStatus = WLANTL_RegRSSIIndicationCB(pMac->roam.gVosContext, (v_S7_t)pNeighborRoamInfo->currentNeighborLookupThreshold * (-1),
+                                                WLANTL_HO_THRESHOLD_DOWN,
+                                                csrNeighborRoamNeighborLookupDOWNCallback,
+                                                VOS_MODULE_ID_SME, pMac);
+            if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+            {
+                //err msg
+                smsLog(pMac, LOGW, FL(" Couldn't register csrNeighborRoamNeighborLookupDOWNCallback with TL: Status = %d"), vosStatus);
+                vosStatus = VOS_STATUS_E_FAILURE;
+            }
+        }
+        else if (VOS_FALSE == ccxMode)
+        {
+            NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Currently in CONNECTED state, so deregister all events"));
+            /* De-register existing lookup UP/DOWN, Rssi indications */
+            csrNeighborRoamDeregAllRssiIndication(pMac);
+        }
+    }
+    else if (eCSR_NEIGHBOR_ROAM_STATE_INIT == pNeighborRoamInfo->neighborRoamState)
+    {
+        NEIGHBOR_ROAM_DEBUG(pMac, LOG2, FL("Currently in INIT state, Nothing to do"));
+    }
+    else
+    {
+        NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Unexpected state %d, returning failure"), pNeighborRoamInfo->neighborRoamState);
+        vosStatus = VOS_STATUS_E_FAILURE;
+    }
+    return vosStatus;
+}
+
+#endif
+
+
 VOS_STATUS csrNeighborRoamSetLookupRssiThreshold(tpAniSirGlobal pMac, v_U8_t neighborLookupRssiThreshold)
 {
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
@@ -2064,6 +2152,7 @@ eHalStatus csrNeighborRoamPerformContiguousBgScan(tpAniSirGlobal pMac)
     int numOfChannels = 0, i = 0;
     tANI_U8   *channelList = NULL;
     tANI_U8   *pInChannelList = NULL;
+    tANI_U8   tmpChannelList[WNI_CFG_VALID_CHANNEL_LIST_LEN];
 
     palZeroMemory(pMac->hHdd, &bgScanParams, sizeof(tCsrBGScanRequest));
 
@@ -2089,6 +2178,18 @@ eHalStatus csrNeighborRoamPerformContiguousBgScan(tpAniSirGlobal pMac)
         }
         pInChannelList = pMac->roam.validChannelList;
     }
+
+    if (CSR_IS_ROAM_INTRA_BAND_ENABLED(pMac))
+    {
+        csrNeighborRoamChannelsFilterByCurrentBand(
+                             pMac,
+                             pInChannelList,
+                             numOfChannels,
+                             tmpChannelList,
+                             &numOfChannels);
+        pInChannelList = tmpChannelList;
+    }
+
     channelList = vos_mem_malloc( numOfChannels );
     if( NULL == channelList )
     {
@@ -2316,6 +2417,56 @@ VOS_STATUS csrNeighborRoamIssueNeighborRptRequest(tpAniSirGlobal pMac)
 
 /* ---------------------------------------------------------------------------
 
+    \fn csrNeighborRoamChannelsFilterByCurrentBand
+
+    \brief  This function is used to filter out the channels
+            based on the currently associated AP channel
+
+    \param  pMac - The handle returned by macOpen.
+    \param  pInputChannelList - The input channel list
+    \param  inputNumOfChannels - The number of channels in input channel list
+    \param  pOutputChannelList - The output channel list
+    \param  outputNumOfChannels - The number of channels in output channel list
+    \param  pMergedOutputNumOfChannels - The final number of channels in the output channel list.
+
+    \return VOS_STATUS_SUCCESS on success, corresponding error code otherwise
+
+---------------------------------------------------------------------------*/
+
+VOS_STATUS csrNeighborRoamChannelsFilterByCurrentBand(
+                      tpAniSirGlobal pMac,
+                      tANI_U8*  pInputChannelList,
+                      int       inputNumOfChannels,
+                      tANI_U8*  pOutputChannelList,
+                      int*      pMergedOutputNumOfChannels
+                      )
+{
+    int i = 0;
+    int numChannels = 0;
+    tANI_U8   currAPoperationChannel = pMac->roam.neighborRoamInfo.currAPoperationChannel;
+    // Check for NULL pointer
+    if (!pInputChannelList) return eHAL_STATUS_E_NULL_VALUE;
+
+    // Check for NULL pointer
+    if (!pOutputChannelList) return eHAL_STATUS_E_NULL_VALUE;
+
+    for (i = 0; i < inputNumOfChannels; i++)
+    {
+        if (GetRFBand(currAPoperationChannel) == GetRFBand(pInputChannelList[i]))
+        {
+            pOutputChannelList[numChannels] = pInputChannelList[i];
+            numChannels++;
+        }
+    }
+
+    // Return final number of channels
+    *pMergedOutputNumOfChannels = numChannels;
+
+    return eHAL_STATUS_SUCCESS;
+}
+
+/* ---------------------------------------------------------------------------
+
     \fn csrNeighborRoamMergeChannelLists 
 
     \brief  This function is used to merge two channel list.
@@ -2434,11 +2585,27 @@ VOS_STATUS csrNeighborRoamCreateChanListFromNeighborReport(tpAniSirGlobal pMac)
         {
             if (pNeighborBssDesc->pNeighborBssDescription->channel)
             {
-                        VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-                                "%s: [INFOLOG] Adding %d to Neighbor channel list", __func__,
-                                pNeighborBssDesc->pNeighborBssDescription->channel);
+                if (CSR_IS_ROAM_INTRA_BAND_ENABLED(pMac))
+                {
+                    // Make sure to add only if its the same band
+                    if (GetRFBand(pNeighborRoamInfo->currAPoperationChannel) ==
+                        GetRFBand(pNeighborBssDesc->pNeighborBssDescription->channel))
+                    {
+                        VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                                   "%s: [INFOLOG] Adding %d to Neighbor channel list (Same band)\n", __func__,
+                                    pNeighborBssDesc->pNeighborBssDescription->channel);
                         channelList[numChannels] = pNeighborBssDesc->pNeighborBssDescription->channel;
                         numChannels++;
+                    }
+                }
+                else
+                {
+                    VOS_TRACE (VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
+                                "%s: [INFOLOG] Adding %d to Neighbor channel list\n", __func__,
+                                pNeighborBssDesc->pNeighborBssDescription->channel);
+                    channelList[numChannels] = pNeighborBssDesc->pNeighborBssDescription->channel;
+                    numChannels++;
+                }
             }
         }
             
@@ -2831,15 +2998,25 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
                     0, //NB: If 0, simply copy the input channel list to the output list.
                     &numOfChannels );
 
-             currChannelListInfo->ChannelList =
-                vos_mem_malloc(numOfChannels*sizeof(tANI_U8));
-             if (NULL == currChannelListInfo->ChannelList)
-             {
-                 smsLog(pMac, LOGE, FL("Memory allocation for Channel list failed"));
-                 return VOS_STATUS_E_RESOURCES;
-             }
+            if (CSR_IS_ROAM_INTRA_BAND_ENABLED(pMac))
+            {
+                csrNeighborRoamChannelsFilterByCurrentBand(
+                             pMac,
+                             pNeighborRoamInfo->cfgParams.channelInfo.ChannelList,
+                             pNeighborRoamInfo->cfgParams.channelInfo.numOfChannels,
+                             channelList,
+                             &numOfChannels);
+            }
 
-              vos_mem_copy(currChannelListInfo->ChannelList,
+            currChannelListInfo->ChannelList =
+                vos_mem_malloc(numOfChannels*sizeof(tANI_U8));
+            if (NULL == currChannelListInfo->ChannelList)
+            {
+                smsLog(pMac, LOGE, FL("Memory allocation for Channel list failed"));
+                return VOS_STATUS_E_RESOURCES;
+            }
+
+            vos_mem_copy(currChannelListInfo->ChannelList,
                   channelList, numOfChannels * sizeof(tANI_U8));
         } 
 #ifdef FEATURE_WLAN_LFR
@@ -2896,8 +3073,24 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
                     pNeighborRoamInfo->uEmptyScanCount
 #endif
                  );
+                if (CSR_IS_ROAM_INTRA_BAND_ENABLED(pMac))
+                {
+                    csrNeighborRoamChannelsFilterByCurrentBand(
+                                 pMac,
+                                 pMac->scan.occupiedChannels.channelList,
+                                 numOfChannels,
+                                 channelList,
+                                 &numOfChannels);
+                }
+                else
+                {
+                    vos_mem_copy(channelList,
+                            pMac->scan.occupiedChannels.channelList,
+                            numOfChannels * sizeof(tANI_U8));
+                }
+
                 VOS_ASSERT(currChannelListInfo->ChannelList == NULL);
-                currChannelListInfo->ChannelList = vos_mem_malloc(numOfChannels);
+                currChannelListInfo->ChannelList = vos_mem_malloc(numOfChannels * sizeof(tANI_U8));
 
                 if (NULL == currChannelListInfo->ChannelList)
                 {
@@ -2905,7 +3098,7 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
                     return VOS_STATUS_E_RESOURCES;
                 }
                 vos_mem_copy(currChannelListInfo->ChannelList,
-                        pMac->scan.occupiedChannels.channelList,
+                        channelList,
                         numOfChannels * sizeof(tANI_U8));
             }
             else
@@ -2946,6 +3139,17 @@ VOS_STATUS csrNeighborRoamTransitToCFGChanScan(tpAniSirGlobal pMac)
                 smsLog(pMac, LOGE, FL("Could not get valid channel list"));
                 return VOS_STATUS_E_FAILURE;
             }
+
+            if (CSR_IS_ROAM_INTRA_BAND_ENABLED(pMac))
+            {
+                csrNeighborRoamChannelsFilterByCurrentBand(
+                             pMac,
+                             (tANI_U8 *)pMac->roam.validChannelList,
+                             numOfChannels,
+                             channelList,
+                             &numOfChannels);
+            }
+
             currChannelListInfo->ChannelList =
                 vos_mem_malloc(numOfChannels*sizeof(tANI_U8));
 

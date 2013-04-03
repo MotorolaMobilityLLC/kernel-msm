@@ -4138,6 +4138,7 @@ int wlan_hdd_cfg80211_pmksa_candidate_notify(
 {
 #ifdef FEATURE_WLAN_OKC
     struct net_device *dev = pAdapter->dev;
+    hdd_context_t *pHddCtx = (hdd_context_t*)pAdapter->pHddCtx;
 
     ENTER();
     hddLog(VOS_TRACE_LEVEL_INFO, "%s is going to notify supplicant of:", __func__);
@@ -4148,9 +4149,12 @@ int wlan_hdd_cfg80211_pmksa_candidate_notify(
         return -EINVAL;
     }
 
-    dump_bssid(pRoamInfo->bssid);
-    cfg80211_pmksa_candidate_notify(dev, index,
+    if (eANI_BOOLEAN_TRUE == hdd_is_okc_mode_enabled(pHddCtx))
+    {
+        dump_bssid(pRoamInfo->bssid);
+        cfg80211_pmksa_candidate_notify(dev, index,
                                     pRoamInfo->bssid, preauth, GFP_KERNEL);
+    }
 #endif  /* FEATURE_WLAN_OKC */
     return 0; 
 }

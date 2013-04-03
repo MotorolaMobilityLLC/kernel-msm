@@ -363,6 +363,11 @@ typedef enum
 #define CFG_ROAM_PREFER_5GHZ_MIN              ( 0 )  
 #define CFG_ROAM_PREFER_5GHZ_MAX              ( 1 )  
 #define CFG_ROAM_PREFER_5GHZ_DEFAULT          ( 1 )
+
+#define CFG_ROAM_INTRA_BAND                   "gRoamIntraBand"
+#define CFG_ROAM_INTRA_BAND_MIN               ( 0 )
+#define CFG_ROAM_INTRA_BAND_MAX               ( 1 )
+#define CFG_ROAM_INTRA_BAND_DEFAULT           ( 0 )
 #endif
 
 #define CFG_STAT_TIMER_INTERVAL_NAME           "gStatTimerInterval"
@@ -790,7 +795,15 @@ typedef enum
 #define CFG_IMMEDIATE_ROAM_RSSI_DIFF_MIN                    (0)
 #define CFG_IMMEDIATE_ROAM_RSSI_DIFF_MAX                    (125)
 #define CFG_IMMEDIATE_ROAM_RSSI_DIFF_DEFAULT                (3)
+
 #endif /* (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR) */
+
+#ifdef FEATURE_WLAN_OKC
+#define CFG_OKC_FEATURE_ENABLED_NAME                       "OkcEnabled"
+#define CFG_OKC_FEATURE_ENABLED_MIN                        (0)
+#define CFG_OKC_FEATURE_ENABLED_MAX                        (1)
+#define CFG_OKC_FEATURE_ENABLED_DEFAULT                    (1)
+#endif
 
 #define CFG_QOS_WMM_PKT_CLASSIFY_BASIS_NAME                "PktClassificationBasis" // DSCP or 802.1Q
 #define CFG_QOS_WMM_PKT_CLASSIFY_BASIS_MIN                  (0)
@@ -1846,7 +1859,9 @@ typedef struct
    v_U8_t                       RoamRssiDiff;
    v_U8_t                       nImmediateRoamRssiDiff;
 #endif
-
+#ifdef FEATURE_WLAN_OKC
+   v_BOOL_t                     isOkcIniFeatureEnabled;
+#endif
    hdd_wmm_classification_t     PktClassificationBasis; // DSCP or 802.1Q
    v_BOOL_t                     bImplicitQosEnabled;
 
@@ -1949,6 +1964,7 @@ typedef struct
    v_S31_t                     linkSpeedRssiHigh;
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
    v_BOOL_t                    nRoamPrefer5GHz;
+   v_BOOL_t                    nRoamIntraBand;
 #endif
    v_S31_t                     linkSpeedRssiMid;
    v_S31_t                     linkSpeedRssiLow;
@@ -2011,6 +2027,7 @@ v_BOOL_t hdd_update_config_dat ( hdd_context_t *pHddCtx );
 VOS_STATUS hdd_cfg_get_config(hdd_context_t *pHddCtx, char *pBuf, int buflen);
 eCsrPhyMode hdd_cfg_xlate_to_csr_phy_mode( eHddDot11Mode dot11Mode );
 VOS_STATUS hdd_execute_config_command(hdd_context_t *pHddCtx, char *command);
+tANI_BOOLEAN hdd_is_okc_mode_enabled(hdd_context_t *pHddCtx);
 
 #define FIELD_OFFSET(__type, __field) ((unsigned int)(&((__type *)0)->__field))
 #define VAR_OFFSET( _Struct, _Var ) ( (unsigned int) FIELD_OFFSET(_Struct, _Var ) )
