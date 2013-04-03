@@ -74,8 +74,6 @@ bool slimport_is_connected(void)
 	if (!pdata)
 		return false;
 
-	spin_lock(&pdata->lock);
-
 	if (gpio_get_value_cansleep(pdata->gpio_cbl_det)) {
 		mdelay(10);
 		if (gpio_get_value_cansleep(pdata->gpio_cbl_det)) {
@@ -84,7 +82,6 @@ bool slimport_is_connected(void)
 			result = true;
 		}
 	}
-	spin_unlock(&pdata->lock);
 
 	return result;
 }

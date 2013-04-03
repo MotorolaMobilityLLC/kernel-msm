@@ -15,7 +15,6 @@
 #ifndef __SLIMPORT_H
 #define __SLIMPORT_H
 
-#include <linux/spinlock_types.h>
 #include <linux/err.h>
 
 struct anx7808_platform_data
@@ -31,7 +30,6 @@ struct anx7808_platform_data
 	int (* dvdd_power) (unsigned int onoff);
 	struct regulator *avdd_10;
 	struct regulator *dvdd_10;
-	spinlock_t lock;
 };
 
 #ifdef CONFIG_SLIMPORT_ANX7808
