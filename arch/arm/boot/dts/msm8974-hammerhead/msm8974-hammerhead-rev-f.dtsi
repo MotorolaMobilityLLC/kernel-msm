@@ -137,34 +137,34 @@
 &spmi_bus {
 	qcom,pm8941@0 {
 		pm8941_chg: qcom,charger {
-			status = "ok";
+			status = "disabled";
 
 			qcom,chg-chgr@1000 {
-				status = "ok";
+				status = "disabled";
 			};
 
 			qcom,chg-buck@1100 {
-				status = "ok";
+				status = "disabled";
 			};
 
 			qcom,chg-bat-if@1200 {
-				status = "ok";
+				status = "disabled";
 			};
 
 			qcom,chg-usb-chgpth@1300 {
-				status = "ok";
+				status = "disabled";
 			};
 
 			qcom,chg-dc-chgpth@1400 {
-				status = "ok";
+				status = "disabled";
 			};
 
 			qcom,chg-boost@1500 {
-				status = "ok";
+				status = "disabled";
 			};
 
 			qcom,chg-misc@1600 {
-				status = "ok";
+				status = "disabled";
 			};
 
 		};
