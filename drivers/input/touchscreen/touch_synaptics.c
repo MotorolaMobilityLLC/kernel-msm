@@ -231,7 +231,6 @@ int synaptics_t1320_power_on(struct i2c_client *client, int on)
 u32 touch_debug_mask = DEBUG_BASE_INFO;
 module_param_named(debug_mask, touch_debug_mask, int, S_IRUGO|S_IWUSR|S_IWGRP);
 
-irqreturn_t touch_irq_handler(int irq, void *dev_id);
 int touch_power_cntl(struct synaptics_ts_data *ts, int onoff);
 int touch_ic_init(struct synaptics_ts_data *ts);
 void touch_init_func(struct work_struct *work_init);
@@ -258,7 +257,7 @@ void touch_abs_input_report(struct synaptics_ts_data *ts)
 		input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER,
 				ts->ts_data.curr_data[id].state != ABS_RELEASE);
 
-		if (ts->ts_data.curr_data[id].state == ABS_PRESS) {
+		if (ts->ts_data.curr_data[id].state != ABS_RELEASE) {
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
 					ts->ts_data.curr_data[id].x_position);
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
@@ -286,9 +285,6 @@ int touch_work_pre_proc(struct synaptics_ts_data *ts)
 {
 	int	ret;
 
-	atomic_dec(&ts->next_work);
-	ts->int_pin_state = 0;
-
 	if (unlikely(ts->work_sync_err_cnt >= MAX_RETRY_COUNT)) {
 		TOUCH_ERR_MSG("Work Sync Failed: Irq-pin has some unknown problems\n");
 		return -EIO;
@@ -308,10 +304,6 @@ int touch_work_pre_proc(struct synaptics_ts_data *ts)
 		return ret;
 	}
 
-	ts->int_pin_state = gpio_get_value(ts->pdata->irq_gpio);
-
-	TOUCH_DEBUG_MSG("[Touch] touch_work_pre_proc int_pin %d", ts->int_pin_state);
-
 	return 0;
 }
 
@@ -321,29 +313,17 @@ int touch_work_pre_proc(struct synaptics_ts_data *ts)
  */
 void touch_work_post_proc(struct synaptics_ts_data *ts, int post_proc)
 {
-	int next_work = 0;
-
 	if (post_proc >= WORK_POST_MAX)
 		return;
 
 	switch (post_proc) {
 	case WORK_POST_OUT:
-		next_work = atomic_read(&ts->next_work);
-
-		if (unlikely(ts->int_pin_state != 1 && next_work <= 0)) {
-			TOUCH_ERR_MSG("WARN: Interrupt pin is low - next_work: %d, try_count: %d]\n", next_work, ts->work_sync_err_cnt);
-			post_proc = WORK_POST_ERR_RETRY;
-			break;
-		}
-
 		ts->work_sync_err_cnt = 0;
 		post_proc = WORK_POST_COMPLETE;
 		break;
 
 	case WORK_POST_ERR_RETRY:
 		ts->work_sync_err_cnt++;
-		atomic_inc(&ts->next_work);
-		queue_work(synaptics_wq, &ts->work);
 		post_proc = WORK_POST_COMPLETE;
 		break;
 
@@ -363,10 +343,9 @@ void touch_work_post_proc(struct synaptics_ts_data *ts, int post_proc)
 		touch_work_post_proc(ts, post_proc);
 }
 
-static void synaptics_ts_work_func(struct work_struct *work)
+static irqreturn_t touch_irq_handler(int irq, void *dev_id)
 {
-	struct synaptics_ts_data *ts =
-			container_of(work, struct synaptics_ts_data, work);
+	struct synaptics_ts_data *ts = (struct synaptics_ts_data *)dev_id;
 	int ret = 0;
 
 	ret = touch_work_pre_proc(ts);
@@ -375,15 +354,15 @@ static void synaptics_ts_work_func(struct work_struct *work)
 	}
 	else if (ret == -EIO) {
 		touch_work_post_proc(ts, WORK_POST_ERR_CIRTICAL);
-		return;
+		return IRQ_HANDLED;
 	}
 	else if (ret == -EINTR) {
-		return;
+		return IRQ_HANDLED;
 	}
 
 	touch_work_post_proc(ts, WORK_POST_OUT);
 
-	return;
+	return IRQ_HANDLED;
 }
 
 /* touch_power_cntl
@@ -503,9 +482,7 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 
 	if (synaptics_ts_fw_upgrade(ts->client, &ts->fw_info) < 0) {
 		TOUCH_ERR_MSG("Firmware upgrade was failed\n");
-		if (ts->curr_resume_state)
-			enable_irq(ts->client->irq);
-		goto err_out;
+		safety_reset(ts);
 	}
 
 	if (!ts->curr_resume_state) {
@@ -522,12 +499,6 @@ static void touch_fw_upgrade_func(struct work_struct *work_fw_upgrade)
 
 	if (likely(touch_debug_mask & (DEBUG_FW_UPGRADE | DEBUG_BASE_INFO)))
 		TOUCH_INFO_MSG("F/W upgrade - Finish\n");
-
-	goto out;
-
-err_out:
-	safety_reset(ts);
-	touch_ic_init(ts);
 
 out:
 	memset(&ts->fw_info.fw_upgrade, 0, sizeof(ts->fw_info.fw_upgrade));
@@ -549,6 +520,8 @@ void touch_init_func(struct work_struct *work_init)
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
 
+	enable_irq(ts->client->irq);
+
 	/* Specific device initialization */
 	touch_ic_init(ts);
 }
@@ -559,15 +532,15 @@ void touch_init_func(struct work_struct *work_init)
  */
 int touch_ic_init(struct synaptics_ts_data *ts)
 {
-	int next_work = 0;
 	ts->int_pin_state = 0;
+
+	memset(&ts->ts_data, 0, sizeof(ts->ts_data));
 
 	if (unlikely(ts->ic_init_err_cnt >= MAX_RETRY_COUNT)) {
 		TOUCH_ERR_MSG("Init Failed: Irq-pin has some unknown problems\n");
 		goto err_out_critical;
 	}
 
-	atomic_set(&ts->next_work, 0);
 	atomic_set(&ts->device_init, 1);
 	if (synaptics_init_panel(ts->client, &ts->fw_info) < 0) {
 		TOUCH_ERR_MSG("specific device initialization fail\n");
@@ -580,20 +553,18 @@ int touch_ic_init(struct synaptics_ts_data *ts)
 
 	TOUCH_DEBUG_MSG("[Touch] touch_ic_init int_pin %d", ts->int_pin_state);
 
-	next_work = atomic_read(&ts->next_work);
-
-	if (unlikely(ts->int_pin_state != 1 && next_work <= 0)) {
-		TOUCH_ERR_MSG("WARN: Interrupt pin is low - next_work: %d, try_count: %d]\n",
-			next_work, ts->ic_init_err_cnt);
+	if (unlikely(ts->int_pin_state != 1)) {
+		TOUCH_ERR_MSG("WARN: Interrupt pin is low - try_count: %d]\n",
+						ts->ic_init_err_cnt);
 		goto err_out_retry;
 	}
 
-	memset(&ts->ts_data, 0, sizeof(ts->ts_data));
 	ts->ic_init_err_cnt = 0;
 	return 0;
 
 err_out_retry:
 	ts->ic_init_err_cnt++;
+	disable_irq_nosync(ts->client->irq);
 	safety_reset(ts);
 	queue_delayed_work(synaptics_wq, &ts->work_init, msecs_to_jiffies(10));
 
@@ -607,26 +578,21 @@ err_out_critical:
 
 /* safety_reset
  *
- * 1. disable irq/timer.
- * 2. turn off the power.
- * 3. turn on the power.
- * 4. sleep (booting_delay)ms, usually 400ms(synaptics).
- * 5. enable irq/timer.
+ * 1. turn off the power.
+ * 2. turn on the power.
+ * 3. sleep (booting_delay)ms, usually 400ms(synaptics).
  *
- * After 'safety_reset', we should call 'touch_init'.
+ * Caller should take care of enable/disable irq
  */
 static void safety_reset(struct synaptics_ts_data *ts)
 {
 	TOUCH_INFO_MSG(">>>safety_reset\n");
-	disable_irq(ts->client->irq);
 
 	release_all_ts_event(ts);
 
 	touch_power_cntl(ts, POWER_OFF);
 	touch_power_cntl(ts, POWER_ON);
 	msleep(BOOTING_DELAY);
-
-	enable_irq(ts->client->irq);
 
 	TOUCH_INFO_MSG("<<safety_reset\n");
 	return;
@@ -651,22 +617,6 @@ static void release_all_ts_event(struct synaptics_ts_data *ts)
 	}
 
 	input_sync(ts->input_dev);
-}
-
-/* touch_irq_handler
- */
-irqreturn_t touch_irq_handler(int irq, void *dev_id)
-{
-	struct synaptics_ts_data *ts = (struct synaptics_ts_data *)dev_id;
-
-	if (unlikely(atomic_read(&ts->device_init) != 1))
-		return IRQ_HANDLED;
-
-	atomic_inc(&ts->next_work);
-
-	queue_work(synaptics_wq, &ts->work);
-
-	return IRQ_HANDLED;
 }
 
 /* set_touch_handle / get_touch_handle
@@ -1432,8 +1382,8 @@ static ssize_t store_fw_upgrade(struct device *dev,
 	return count;
 }
 
-static ssize_t
-ic_register_ctrl(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t ic_register_ctrl(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	unsigned char string[7];
 	char reg_s[11];
@@ -1487,8 +1437,8 @@ ic_register_ctrl(struct device *dev, struct device_attribute *attr, const char *
 	return count;
 }
 
-static ssize_t
-store_ts_reset(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t store_ts_reset(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct synaptics_ts_data *ts = dev_get_drvdata(dev);
 	unsigned char string[5];
@@ -1499,7 +1449,6 @@ store_ts_reset(struct device *dev, struct device_attribute *attr, const char *bu
 
 	disable_irq_nosync(ts->client->irq);
 
-	cancel_work_sync(&ts->work);
 	cancel_delayed_work_sync(&ts->work_init);
 
 	release_all_ts_event(ts);
@@ -1697,7 +1646,6 @@ static int synaptics_ts_probe(
 	msleep(BOOTING_DELAY);
 
 	/* init work_queue */
-	INIT_WORK(&ts->work, synaptics_ts_work_func);
 	INIT_DELAYED_WORK(&ts->work_init, touch_init_func);
 	INIT_WORK(&ts->work_fw_upgrade, touch_fw_upgrade_func);
 
@@ -1742,8 +1690,7 @@ static int synaptics_ts_probe(
 	}
 	gpio_direction_input(ts->pdata->irq_gpio);
 
-	ret = request_threaded_irq(client->irq, touch_irq_handler,
-			NULL,
+	ret = request_threaded_irq(client->irq, NULL, touch_irq_handler,
 			IRQF_TRIGGER_FALLING | IRQF_ONESHOT, client->name, ts);
 
 	if (ret < 0) {
@@ -1839,7 +1786,6 @@ static void touch_early_suspend(struct early_suspend *h)
 	}
 
 	disable_irq(ts->client->irq);
-	cancel_work_sync(&ts->work);
 	cancel_delayed_work_sync(&ts->work_init);
 	release_all_ts_event(ts);
 	touch_power_cntl(ts, POWER_OFF);
@@ -1861,7 +1807,7 @@ static void touch_late_resume(struct early_suspend *h)
 	}
 
 	touch_power_cntl(ts, POWER_ON);
-	enable_irq(ts->client->irq);
+
 	queue_delayed_work(synaptics_wq, &ts->work_init, msecs_to_jiffies(BOOTING_DELAY));
 }
 #endif

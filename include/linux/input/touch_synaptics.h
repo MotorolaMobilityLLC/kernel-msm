@@ -155,7 +155,6 @@ struct synaptics_ts_data {
 	struct synaptics_ts_fw_info	fw_info;
 
 	void *h_touch;
-	atomic_t                next_work;
 	atomic_t                device_init;
 	u8                      work_sync_err_cnt;
 	u8                      ic_init_err_cnt;
@@ -163,7 +162,6 @@ struct synaptics_ts_data {
 	int                     curr_resume_state;
 	int                     int_pin_state;
 	struct input_dev        *input_dev;
-	struct work_struct      work;
 	struct delayed_work     work_init;
 	struct work_struct      work_fw_upgrade;
 	struct early_suspend    early_suspend;
