@@ -10858,7 +10858,7 @@ WDI_ProcessConfigStaReq
   {
   /* Need to fill in the STA Index to invalid, since at this point we have not
      yet received it from HAL */
-    halConfigStaReqMsg.uStaParams.configStaParams.staIdx = WDI_STA_INVALID_IDX;
+    halConfigStaReqMsg.uStaParams.configStaParams.staIdx = pwdiConfigSTAParams->wdiReqInfo.staIdx;
   }
 
   /* Need to fill in the BSS index */

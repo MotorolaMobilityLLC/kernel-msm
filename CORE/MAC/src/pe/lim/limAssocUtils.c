@@ -2174,8 +2174,19 @@ limAddSta(
     pStaDs->valid                  = 0;
     pStaDs->mlmStaContext.mlmState = eLIM_MLM_WT_ADD_STA_RSP_STATE;
 
-  // This will indicate HAL to "allocate" a new STA index
-    pAddStaParams->staIdx = HAL_STA_INVALID_IDX;
+    // This will indicate HAL to "allocate" a new STA index
+#ifdef FEATURE_WLAN_TDLS
+    /* As there is corner case in-between add_sta and change_sta,if del_sta for other staIdx happened,
+     * firmware return wrong staIdx (recently removed staIdx). Until we get a confirmation from the
+     * firmware team it is now return correct staIdx for same sta_mac_addr for update case, we want
+     * to get around it by passing valid staIdx given by add_sta time.
+     */
+    if((STA_ENTRY_TDLS_PEER == pStaDs->staType) &&
+      (true == updateEntry))
+        pAddStaParams->staIdx = pStaDs->staIndex;
+    else
+#endif
+        pAddStaParams->staIdx = HAL_STA_INVALID_IDX;
     pAddStaParams->staType = pStaDs->staType;
 
     pAddStaParams->updateSta = updateEntry;

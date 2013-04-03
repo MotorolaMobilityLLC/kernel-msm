@@ -2808,6 +2808,15 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
                    __func__, MAC_ADDR_ARRAY(mac));
         return -EPERM;
     }
+    /* when self is not on-ongoing, we don't want to allow change_station */
+    if ((1 == update) && !wlan_hdd_tdls_is_peer_progress(pAdapter, mac))
+    {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   "%s: " MAC_ADDRESS_STR
+                   " TDLS is not connecting. change station declined.",
+                   __func__, MAC_ADDR_ARRAY(mac));
+        return -EPERM;
+    }
 
     /* when others are on-going, we want to change link_status to idle */
     if (wlan_hdd_tdls_is_progress(pAdapter, mac, TRUE))
@@ -2834,7 +2843,7 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
     {
         hddTdlsPeer_t *pTdlsPeer;
         pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, mac);
-        if (pTdlsPeer && (eTDLS_LINK_CONNECTED == pTdlsPeer->link_status))
+        if (pTdlsPeer && TDLS_IS_CONNECTED(pTdlsPeer))
         {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                        "%s: " MAC_ADDRESS_STR " already connected. Request declined.",
@@ -2842,8 +2851,34 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
             return -EPERM;
         }
     }
+    if (0 == update)
+        wlan_hdd_tdls_set_link_status(pAdapter, mac, eTDLS_LINK_CONNECTING);
 
-    wlan_hdd_tdls_set_link_status(pAdapter, mac, eTDLS_LINK_CONNECTING);
+    if (NULL != StaParams)
+    {
+        VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                  "%s: TDLS Peer Parameters.", __func__);
+        VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                  "ht_capa->cap_info: %0x", StaParams->HTCap.capInfo);
+        VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                  "ht_capa->extended_capabilities: %0x",
+                  StaParams->HTCap.extendedHtCapInfo);
+        VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                  "params->capability: %0x",StaParams->capability);
+        VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                  "params->ext_capab_len: %0x",StaParams->extn_capability);
+        VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                  "rxMcsMap %x rxHighest %x txMcsMap %x txHighest %x",
+                  StaParams->VHTCap.suppMcs.rxMcsMap, StaParams->VHTCap.suppMcs.rxHighest,
+                  StaParams->VHTCap.suppMcs.txMcsMap, StaParams->VHTCap.suppMcs.txHighest);
+        {
+            int i = 0;
+            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "Supported rates:");
+            for (i = 0; i < sizeof(StaParams->supported_rates); i++)
+               VOS_TRACE(VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                          "[%d]: %x ", i, StaParams->supported_rates[i]);
+        }
+    }
 
     INIT_COMPLETION(pAdapter->tdls_add_station_comp);
 
@@ -2894,7 +2929,6 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
     v_MACADDR_t STAMacAddress;
 #ifdef FEATURE_WLAN_TDLS
     tCsrStaParams StaParams = {0};
-    u32 set;
     tANI_U8 isBufSta = 0;
 #endif
     ENTER();
@@ -2907,48 +2941,6 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
     }
 
     vos_mem_copy(STAMacAddress.bytes, mac, sizeof(v_MACADDR_t));
-
-#ifdef FEATURE_WLAN_TDLS
-    StaParams.capability = params->capability;
-    StaParams.uapsd_queues = params->uapsd_queues;
-    StaParams.max_sp = params->max_sp;
-
-    if (0 != params->ext_capab_len)
-        vos_mem_copy(StaParams.extn_capability, params->ext_capab,
-                     sizeof(StaParams.extn_capability));
-
-    if (NULL != params->ht_capa)
-        vos_mem_copy(&StaParams.HTCap, params->ht_capa, sizeof(tSirHTCap));
-
-    StaParams.supported_rates_len = params->supported_rates_len;
-
-    /* Note : The Maximum sizeof supported_rates sent by the Supplicant is 32.
-     * The supported_rates array , for all the structures propogating till Add Sta
-     * to the firmware has to be modified , if the supplicant (ieee80211) is
-     * modified to send more rates.
-     */
-
-    /* To avoid Data Currption , set to max length to SIR_MAC_MAX_SUPP_RATES
-     */
-    if (StaParams.supported_rates_len > SIR_MAC_MAX_SUPP_RATES)
-        StaParams.supported_rates_len = SIR_MAC_MAX_SUPP_RATES;
-
-    if (0 != StaParams.supported_rates_len) {
-        int i = 0;
-        vos_mem_copy(StaParams.supported_rates, params->supported_rates,
-                     StaParams.supported_rates_len);
-        VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                   "Supported Rates with Length %d", StaParams.supported_rates_len);
-        for (i=0; i < StaParams.supported_rates_len; i++)
-            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                       "[%d]: %0x", i, StaParams.supported_rates[i]);
-    }
-
-    if (NULL != params->vht_capa)
-        vos_mem_copy(&StaParams.VHTCap, params->vht_capa, sizeof(tSirVHTCap));
-
-    set = params->sta_flags_set;
-#endif
 
     if ((pAdapter->device_mode == WLAN_HDD_SOFTAP)
       || (pAdapter->device_mode == WLAN_HDD_P2P_GO))
@@ -2965,57 +2957,58 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
     }
 #ifdef FEATURE_WLAN_TDLS
     else if (pAdapter->device_mode == WLAN_HDD_INFRA_STATION ) {
-        if (set & BIT(NL80211_STA_FLAG_TDLS_PEER)) {
+        if (params->sta_flags_set & BIT(NL80211_STA_FLAG_TDLS_PEER)) {
+            StaParams.capability = params->capability;
+            StaParams.uapsd_queues = params->uapsd_queues;
+            StaParams.max_sp = params->max_sp;
+
+            if (0 != params->ext_capab_len)
+                vos_mem_copy(StaParams.extn_capability, params->ext_capab,
+                             sizeof(StaParams.extn_capability));
+
+            if (NULL != params->ht_capa)
+                vos_mem_copy(&StaParams.HTCap, params->ht_capa, sizeof(tSirHTCap));
+
+            StaParams.supported_rates_len = params->supported_rates_len;
+
+            /* Note : The Maximum sizeof supported_rates sent by the Supplicant is 32.
+             * The supported_rates array , for all the structures propogating till Add Sta
+             * to the firmware has to be modified , if the supplicant (ieee80211) is
+             * modified to send more rates.
+             */
+
+            /* To avoid Data Currption , set to max length to SIR_MAC_MAX_SUPP_RATES
+             */
+            if (StaParams.supported_rates_len > SIR_MAC_MAX_SUPP_RATES)
+                StaParams.supported_rates_len = SIR_MAC_MAX_SUPP_RATES;
+
+            if (0 != StaParams.supported_rates_len) {
+                int i = 0;
+                vos_mem_copy(StaParams.supported_rates, params->supported_rates,
+                             StaParams.supported_rates_len);
+                VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                           "Supported Rates with Length %d", StaParams.supported_rates_len);
+                for (i=0; i < StaParams.supported_rates_len; i++)
+                    VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                               "[%d]: %0x", i, StaParams.supported_rates[i]);
+            }
+
+            if (NULL != params->vht_capa)
+                vos_mem_copy(&StaParams.VHTCap, params->vht_capa, sizeof(tSirVHTCap));
+
             if (0 != params->ext_capab_len ) {
                 /*Define A Macro : TODO Sunil*/
                 if ((1<<4) & StaParams.extn_capability[3]) {
                     isBufSta = 1;
                 }
             }
-            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                       "%s: TDLS Peer Parameters.", __func__);
-            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                       "uapsd_queues: %0x\n", params->uapsd_queues);
-            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                       "max_sp: %0x\n", params->max_sp);
-            if (params->ht_capa) {
-                VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                           "ht_capa->cap_info: %0x\n", params->ht_capa->cap_info);
-                VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                           "ht_capa->ampdu_params_info: %0x\n",
-                           params->ht_capa->ampdu_params_info);
-                VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                           "ht_capa->extended_capabilities: %0x\n",
-                           params->ht_capa->extended_ht_cap_info);
-                VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                           "ht_capa->tx_BF_cap_info: %0x\n",
-                           params->ht_capa->tx_BF_cap_info);
-                VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                           "ht_capa->antenna_selection_info: %0x\n",
-                           params->ht_capa->antenna_selection_info);
-            }
-            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                       "params->capability: %0x\n",params->capability);
-            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                       "params->ext_capab_len: %0x\n",params->ext_capab_len);
-            if (0 != params->ext_capab_len )
-            {
-                int i =0;
-                VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                           "Extended capabilities:");
-                for (i=0; i < params->ext_capab_len; i++)
-                    VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                           "[%d]: %0x", i, params->ext_capab[i]);
-            }
             //status = wlan_hdd_tdls_set_peer_caps( mac, params->uapsd_queues,
             //                                      params->max_sp, isBufSta);
-            if (VOS_STATUS_SUCCESS != status) {
-                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                          "%s: wlan_hdd_tdls_set_peer_caps failed!", __func__);
-                return -EINVAL;
-            }
-            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
-                   "ht_capa->cap_info: %0x\n", StaParams.HTCap.capInfo);
+            //if (VOS_STATUS_SUCCESS != status) {
+            //    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+            //              "%s: wlan_hdd_tdls_set_peer_caps failed!", __func__);
+            //    return -EINVAL;
+            //}
             status = wlan_hdd_tdls_add_station(wiphy, dev, mac, 1, &StaParams);
 
             if (VOS_STATUS_SUCCESS != status) {
@@ -6936,7 +6929,7 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
     if ((SIR_MAC_TDLS_SETUP_RSP == action_code) ||
         (SIR_MAC_TDLS_DIS_RSP == action_code))
     {
-        wlan_hdd_tdls_set_cap (pAdapter, peerMac, eTDLS_CAP_SUPPORTED);
+        wlan_hdd_tdls_set_cap (pAdapter, peer, eTDLS_CAP_SUPPORTED);
     }
 
     /* other than teardown frame, other mgmt frames are not sent if disabled */
@@ -7001,7 +6994,7 @@ static int wlan_hdd_cfg80211_tdls_mgmt(struct wiphy *wiphy, struct net_device *d
         {
             hddTdlsPeer_t *pTdlsPeer;
             pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, peer);
-            if (pTdlsPeer && (eTDLS_LINK_CONNECTED == pTdlsPeer->link_status))
+            if (pTdlsPeer && TDLS_IS_CONNECTED(pTdlsPeer))
             {
                 VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                         "%s:" MAC_ADDRESS_STR " already connected. action %d declined.",
@@ -7155,7 +7148,7 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                     return -EINVAL;
                 }
 
-                if (eTDLS_LINK_CONNECTED != pTdlsPeer->link_status)
+                if (eTDLS_LINK_CONNECTING == pTdlsPeer->link_status)
                 {
                     wlan_hdd_tdls_set_peer_link_status(pTdlsPeer, eTDLS_LINK_CONNECTED);
                     /* start TDLS client registration with TL */
@@ -7175,8 +7168,23 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
 
                 if(NULL != curr_peer)
                 {
+                    long status;
+
+                    INIT_COMPLETION(pAdapter->tdls_del_station_comp);
+
                     sme_DeleteTdlsPeerSta( WLAN_HDD_GET_HAL_CTX(pAdapter),
                             pAdapter->sessionId, peer );
+
+                    status = wait_for_completion_interruptible_timeout(&pAdapter->tdls_del_station_comp,
+                              msecs_to_jiffies(WAIT_TIME_TDLS_DEL_STA));
+                    if (status <= 0)
+                    {
+                        wlan_hdd_tdls_set_peer_link_status(curr_peer, eTDLS_LINK_IDLE);
+                        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                                  "%s: Del station failed status %ld",
+                                  __func__, status);
+                        return -EPERM;
+                    }
                     wlan_hdd_tdls_set_peer_link_status(curr_peer, eTDLS_LINK_IDLE);
                 }
                 else
