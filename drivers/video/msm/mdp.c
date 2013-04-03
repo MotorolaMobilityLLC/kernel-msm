@@ -2862,8 +2862,6 @@ static int mdp_probe(struct platform_device *pdev)
 			  size*/
 			mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
 
-			mdp_clk_ctrl(1);
-
 			mdp_pdata->splash_screen_size =
 				inpdw(MDP_BASE + 0x90004);
 			mdp_pdata->splash_screen_size =
