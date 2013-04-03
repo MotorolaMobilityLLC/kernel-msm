@@ -1688,6 +1688,7 @@ int mipi_dsi_cmd_dma_tx(struct dsi_buf *tp)
 
 	tp->dmap = dma_map_single(&dsi_dev, tp->data, tp->len, DMA_TO_DEVICE);
 	if (dma_mapping_error(&dsi_dev, tp->dmap)) {
+		spin_unlock_irqrestore(&dsi_mdp_lock, flags);
 		pr_err("%s: dmap mapp failed\n", __func__);
 		ret = -1;
 		goto end;
