@@ -2617,34 +2617,14 @@ static int rf4ce_gpio_init(void)
 late_initcall(rf4ce_gpio_init);
 
 #ifdef CONFIG_SERIAL_MSM_HS
-static int configure_uart_gpios(int on)
-{
-	int ret = 0, i;
-	int uart_gpios[] = {14, 15, 16, 17};
-
-	for (i = 0; i < ARRAY_SIZE(uart_gpios); i++) {
-		if (on) {
-			ret = gpio_request(uart_gpios[i], NULL);
-			if (ret) {
-				pr_err("%s:unable to request uart gpio[%d]\n",
-						__func__, uart_gpios[i]);
-				break;
-			}
-		} else {
-			gpio_free(uart_gpios[i]);
-		}
-	}
-
-	if (ret && on && i)
-		for (; i >= 0; i--)
-			gpio_free(uart_gpios[i]);
-	return ret;
-}
-
 static struct msm_serial_hs_platform_data mpq8064_gsbi6_uartdm_pdata = {
+	.config_gpio		= 4,
+	.uart_tx_gpio		= 14,
+	.uart_rx_gpio		= 15,
+	.uart_cts_gpio		= 16,
+	.uart_rfr_gpio		= 17,
 	.inject_rx_on_wakeup	= 1,
 	.rx_to_inject		= 0xFD,
-	.gpio_config		= configure_uart_gpios,
 };
 #else
 static struct msm_serial_hs_platform_data msm_uart_dm9_pdata;
@@ -3214,32 +3194,12 @@ static void __init apq8064_pm8917_pdata_fixup(void)
 }
 
 #ifdef CONFIG_SERIAL_MSM_HS
-static int configure_uartdm_gsbi4_gpios(int on)
-{
-	int ret = 0, i;
-	int uart_gpios[] = {10, 11, 12, 13};
-
-	for (i = 0; i < ARRAY_SIZE(uart_gpios); i++) {
-		if (on) {
-			ret = gpio_request(uart_gpios[i], NULL);
-			if (ret) {
-				pr_err("%s: unable to request uart gpio[%d]\n",
-						__func__, uart_gpios[i]);
-				break;
-			}
-		} else {
-			gpio_free(uart_gpios[i]);
-		}
-	}
-
-	if (ret && on && i)
-		for (; i >= 0; i--)
-			gpio_free(uart_gpios[i]);
-	return ret;
-}
-
 static struct msm_serial_hs_platform_data apq8064_uartdm_gsbi4_pdata = {
-	.gpio_config	= configure_uartdm_gsbi4_gpios,
+	.config_gpio	= 4,
+	.uart_tx_gpio	= 10,
+	.uart_rx_gpio	= 11,
+	.uart_cts_gpio	= 12,
+	.uart_rfr_gpio	= 13,
 };
 #else
 static struct msm_serial_hs_platform_data apq8064_uartdm_gsbi4_pdata;
