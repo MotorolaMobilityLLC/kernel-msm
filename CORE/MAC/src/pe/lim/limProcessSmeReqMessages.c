@@ -4181,7 +4181,7 @@ __limProcessSmeChangeBI(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
         //Set change in beacon Interval
         beaconParams.beaconInterval = pChangeBIParams->beaconInterval;
-        beaconParams.paramChangeBitmap |= PARAM_BCN_INTERVAL_CHANGED;
+        beaconParams.paramChangeBitmap = PARAM_BCN_INTERVAL_CHANGED;
         limSendBeaconParams(pMac, &beaconParams, psessionEntry);
     }
 
