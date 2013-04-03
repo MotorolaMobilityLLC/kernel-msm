@@ -33,6 +33,10 @@
 			max17048,alert_gpio = <&msmgpio 9 0x00>;
 			max17048,rcomp = <77>;
 			max17048,alert_threshold = <2>;
+			max17048,max-mvolt = <4350>;
+			max17048,min-mvolt = <3200>;
+			max17048,batt-tech = <2>;
+			max17048,fcc-mah = <2300>;
 		};
 
 		smb349@2d {
