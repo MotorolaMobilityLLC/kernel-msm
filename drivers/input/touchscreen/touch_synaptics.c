@@ -284,6 +284,8 @@ void touch_abs_input_report(struct synaptics_ts_data *ts)
  */
 int touch_work_pre_proc(struct synaptics_ts_data *ts)
 {
+	int	ret;
+
 	atomic_dec(&ts->next_work);
 	ts->int_pin_state = 0;
 
@@ -296,12 +298,14 @@ int touch_work_pre_proc(struct synaptics_ts_data *ts)
 		TOUCH_ERR_MSG("INT STATE HIGH\n");
 		return -EINTR;
 	}
+
 	if (unlikely(touch_debug_mask & DEBUG_TRACE))
 		TOUCH_DEBUG_MSG("\n");
 
-	if (synaptics_ts_get_data(ts->client, ts->ts_data.curr_data) < 0) {
+	ret = synaptics_ts_get_data(ts->client, ts->ts_data.curr_data);
+	if (ret != 0) {
 		TOUCH_ERR_MSG("get data fail\n");
-		return -EIO;
+		return ret;
 	}
 
 	ts->int_pin_state = gpio_get_value(ts->pdata->irq_gpio);
@@ -876,9 +880,9 @@ int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 		TOUCH_DEBUG_MSG("Interrupt_status : 0x%x\n", ts->ts_data.interrupt_status_reg);
 
 	/* IC bug Exception handling - Interrupt status reg is 0 when interrupt occur */
-	if (ts->ts_data.interrupt_status_reg == 0) {
+	if (ts->ts_data.interrupt_status_reg == 0 || unlikely(atomic_read(&ts->device_init) != 1)) {
 		TOUCH_ERR_MSG("Interrupt_status reg is 0. -> ignore\n");
-		goto err_synaptics_getdata;
+		goto err_synaptics_ignore;
 	}
 
 	/* Because of ESD damage... */
@@ -962,6 +966,9 @@ int synaptics_ts_get_data(struct i2c_client *client, struct t_data* data)
 	ts->ts_data.palm = buf & 0x2;
 
 	return 0;
+
+err_synaptics_ignore:
+	return -EINTR;
 
 err_synaptics_device_damage:
 err_synaptics_getdata:
