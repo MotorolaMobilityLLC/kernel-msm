@@ -43,7 +43,7 @@ obj-$(CONFIG_USB_DWC3_MSM)	+= dwc3-msm.o
 # for HAVE_CLK should be removed.
 ##
 ifneq ($(CONFIG_HAVE_CLK),)
-	obj-$(CONFIG_USB_DWC3)		+= dwc3-exynos.o
+	obj-$(CONFIG_USB_DWC3_EXYNOS)		+= dwc3-exynos.o
 endif
 
 ifneq ($(CONFIG_PCI),)
