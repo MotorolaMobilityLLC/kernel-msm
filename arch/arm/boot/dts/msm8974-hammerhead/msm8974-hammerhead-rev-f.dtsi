@@ -18,6 +18,7 @@
 /include/ "msm8974-hammerhead-pm.dtsi"
 /include/ "msm8974-hammerhead-camera.dtsi"
 /include/ "msm8974-hammerhead-rtc.dtsi"
+/include/ "msm8974-hammerhead-nfc.dtsi"
 
 / {
 	serial@f991d000 {
@@ -131,6 +132,12 @@
 		qcom,cdc-mclk-gpios = <&pm8941_gpios 15 0>;
 		taiko-mclk-clk = <&pm8941_clkdiv1>;
 		qcom,taiko-mclk-clk-freq = <9600000>;
+	};
+
+	i2c@f9967000 {
+		bcm2079x@77 {
+			status = "ok";
+		};
 	};
 };
 
@@ -548,6 +555,11 @@
 	};
 
 	gpio@de00 { /* GPIO 31 */
+		status = "ok";
+		qcom,mode = <0>;		/* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
+		qcom,master-en = <1>;		/* Enable Module */
+		qcom,vin-sel = <2>;		/* Select 1.8V Source */
 	};
 
 	gpio@df00 { /* GPIO 32 */
