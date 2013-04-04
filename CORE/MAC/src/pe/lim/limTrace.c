@@ -259,6 +259,10 @@ void limTraceDump(tpAniSirGlobal pMac, tpTraceRecord pRecord, tANI_U16 recIndex)
                                             "Timer DeActvtd", __limTraceGetTimerString((tANI_U16)pRecord->data), pRecord->data );
             break;
 
+        case TRACE_CODE_INFO_LOG:
+            limLog(pMac, LOGE, "%04d    %012u  S%d    %-14s  %-30s(0x%x) \n", recIndex, pRecord->time, pRecord->session,
+                                            "INFORMATION_LOG", macTraceGetInfoLogString((tANI_U16)pRecord->data), pRecord->data );
+            break;
         default :
             limLog(pMac, LOGE, "%04d    %012u  S%d    %-14s(%d) (0x%x) \n", recIndex, pRecord->time, pRecord->session,
                                              "Unknown Code", pRecord->code, pRecord->data );
