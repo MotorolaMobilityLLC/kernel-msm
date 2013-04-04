@@ -786,6 +786,7 @@ void mdp4_mipi_vsync_enable(struct msm_fb_data_type *mfd,
 	mdp_clk_ctrl(1);
 	if ((mfd->use_mdp_vsync) && (mfd->ibuf.vsync_enable) &&
 		(mfd->panel_info.lcd.vsync_enable)) {
+		u32 temp;
 
 		if (vsync_start_y_adjust <= pipe->dst_y)
 			start_y = pipe->dst_y - vsync_start_y_adjust;
@@ -796,6 +797,10 @@ void mdp4_mipi_vsync_enable(struct msm_fb_data_type *mfd,
 			MDP_OUTP(MDP_BASE + 0x210, start_y);	/* primary */
 		else
 			MDP_OUTP(MDP_BASE + 0x214, start_y);	/* secondary */
+
+		temp = inpdw(MDP_BASE + 0x100);
+		temp |= (0x7ff << MDP_SYNCFG_HGT_LOC);
+		MDP_OUTP(MDP_BASE + 0x100, temp);
 
 		data = inpdw(MDP_BASE + 0x20c);
 		data |= tear_en;
