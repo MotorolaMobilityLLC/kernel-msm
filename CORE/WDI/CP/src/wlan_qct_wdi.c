@@ -12063,7 +12063,7 @@ WDI_Status WDI_ProcessSetTxPowerReq
   wpt_uint8*                     pSendBuffer          = NULL;
   wpt_uint16                     usDataOffset         = 0;
   wpt_uint16                     usSendSize           = 0;
-  tSetTxPwrReqMsg                *halSetTxPower       = NULL;;
+  tSetTxPwrReqParams            *halSetTxPower       = NULL;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
   /*-------------------------------------------------------------------------
@@ -12100,11 +12100,9 @@ WDI_Status WDI_ProcessSetTxPowerReq
      return WDI_STATUS_E_FAILURE;
   }
 
-  halSetTxPower = (tSetTxPwrReqMsg *)(pSendBuffer+usDataOffset);
-  halSetTxPower->setTxPwrReqParams.txPower =
-                  pwdiSetTxPowerParams->wdiTxPowerInfo.ucPower;
-  halSetTxPower->setTxPwrReqParams.bssIdx =
-                  pwdiSetTxPowerParams->wdiTxPowerInfo.bssIdx;
+  halSetTxPower = (tSetTxPwrReqParams *)(pSendBuffer + usDataOffset);
+  halSetTxPower->txPower = pwdiSetTxPowerParams->wdiTxPowerInfo.ucPower;
+  halSetTxPower->bssIdx  = pwdiSetTxPowerParams->wdiTxPowerInfo.bssIdx;
 
   pWDICtx->wdiReqStatusCB     = pwdiSetTxPowerParams->wdiReqStatusCB;
   pWDICtx->pReqStatusUserData = pwdiSetTxPowerParams->pUserData;
