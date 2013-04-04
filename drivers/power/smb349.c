@@ -141,7 +141,9 @@ struct smb349_struct {
 	struct power_supply ac_psy;
 	struct power_supply *usb_psy;
 	struct power_supply *batt_psy;
+	struct power_supply *wlc_psy;
 	struct wake_lock uevent_wake_lock;
+	int wlc_support;
 };
 
 static struct smb349_struct *the_smb349_chg;
@@ -344,16 +346,24 @@ static void smb349_irq_worker(struct work_struct *work)
 {
 	struct smb349_struct *smb349_chg =
 		container_of(work, struct smb349_struct, irq_work.work);
-	int ret = 0;
+	union power_supply_propval ret = {0,};
+	int rc = 0;
 	bool ext_pwr;
+	int wlc_pwr = 0;
 
-	ret = smb349_clear_irq(smb349_chg);
+	rc = smb349_clear_irq(smb349_chg);
 	ext_pwr = smb349_is_charger_present(smb349_chg);
+	if (smb349_chg->wlc_psy) {
+		smb349_chg->wlc_psy->get_property(smb349_chg->wlc_psy,
+					POWER_SUPPLY_PROP_ONLINE, &ret);
+		wlc_pwr = ret.intval;
+		pr_info("wireless charger is = %d\n", wlc_pwr);
+	}
 
-	if (smb349_chg->ext_pwr ^ ext_pwr) {
+	if ((smb349_chg->ext_pwr ^ ext_pwr) && !wlc_pwr) {
 		wake_lock_timeout(&smb349_chg->uevent_wake_lock, HZ*2);
 		smb349_chg->ext_pwr = ext_pwr;
-		pr_debug("notify vbus to usb otg ext_pwr = %d\n", ext_pwr);
+		pr_info("notify vbus to usb otg ext_pwr = %d\n", ext_pwr);
 		power_supply_set_present(smb349_chg->usb_psy,
 			smb349_chg->ext_pwr);
 	}
@@ -777,10 +787,24 @@ static void pm_external_power_changed(struct power_supply *psy)
 	struct smb349_struct *smb349_chg = container_of(psy,
 					struct smb349_struct, ac_psy);
 	union power_supply_propval ret = {0,};
+	int wlc_online = 0;
+	int wlc_chg_current_ma = 0;
 
 	smb349_chg->usb_psy->get_property(smb349_chg->usb_psy,
 			  POWER_SUPPLY_PROP_ONLINE, &ret);
 	smb349_chg->usb_online = ret.intval;
+
+	if(smb349_chg->wlc_support) {
+		smb349_chg->wlc_psy->get_property(smb349_chg->wlc_psy,
+				  POWER_SUPPLY_PROP_ONLINE, &ret);
+		wlc_online = ret.intval;
+
+		smb349_chg->wlc_psy->get_property(smb349_chg->wlc_psy,
+				  POWER_SUPPLY_PROP_CURRENT_MAX, &ret);
+		wlc_chg_current_ma = ret.intval / 1000;
+		pr_info(" wlc_online = %d current = %d\n", wlc_online,
+						wlc_chg_current_ma);
+	}
 
 	if (smb349_chg->usb_online &&
 			smb349_is_charger_present(smb349_chg)) {
@@ -803,6 +827,13 @@ static void pm_external_power_changed(struct power_supply *psy)
 
 		pr_info("ac is online! i_limit = %d\n",
 				smb349_chg->chg_current_ma);
+	} else if (wlc_online && smb349_is_charger_present(smb349_chg)) {
+		smb349_usb_hc_mode(smb349_chg, USB_HC_MODE_BIT);
+		smb349_set_fast_charge(smb349_chg, FAST_CHARGE_SET_BIT);
+		smb349_input_current_limit_set(smb349_chg,
+					wlc_chg_current_ma);
+		smb349_chg_current_set(smb349_chg);
+		pr_info("wlc is online! i_limit = %d\n", wlc_chg_current_ma);
 	}
 
 	smb349_chg->usb_psy->get_property(smb349_chg->usb_psy,
@@ -974,7 +1005,7 @@ static int pm_power_get_property(struct power_supply *psy,
 		val->intval = POWER_SUPPLY_HEALTH_UNKNOWN; //FIXME
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		val->intval = smb349_chg->chg_current_ma;
+		val->intval = smb349_chg->chg_current_ma * 1000;
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 	case POWER_SUPPLY_PROP_ONLINE:
@@ -1175,10 +1206,13 @@ static int smb349_parse_dt(struct device_node *dev_node,
 		goto  out;
 	}
 
-	pr_info("stat_gpio = %d chg_i_ma = %d term_i_ma = %d\n",
-			smb349_chg->stat_gpio,
+	smb349_chg->wlc_support =
+			of_property_read_bool(dev_node, "summit,wlc-support");
+
+	pr_info("chg_i_ma = %d term_i_ma = %d wlc_support = %d\n",
 			smb349_chg->chg_current_ma,
-			smb349_chg->term_current_ma);
+			smb349_chg->term_current_ma,
+			smb349_chg->wlc_support);
 out:
 	return ret;
 }
@@ -1230,6 +1264,16 @@ static int smb349_probe(struct i2c_client *client,
 		smb349_chg->stat_gpio = pdata->stat_gpio;
 		smb349_chg->chg_current_ma = pdata->chg_current_ma;
 		smb349_chg->term_current_ma = pdata->term_current_ma;
+		smb349_chg->wlc_support = pdata->wlc_support;
+	}
+
+	if (smb349_chg->wlc_support) {
+		smb349_chg->wlc_psy = power_supply_get_by_name("wireless");
+		if (!smb349_chg->wlc_psy) {
+			pr_err("wireless supply not found deferring probe\n");
+			ret = -EPROBE_DEFER;
+			goto err_stat_gpio;
+		}
 	}
 
 	if (smb349_chg->stat_gpio) {

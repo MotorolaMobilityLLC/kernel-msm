@@ -25,6 +25,7 @@
  * @stat_gpio:          STAT pin, active low, '0' when charging.
  * @term_current_ma:    charging termination current in milliamps.
  *                      valid values are 100/200/300/400/500/600/700.
+ * @wlc_support:        wireless power supply support
  */
 struct smb349_platform_data {
 	int en_n_gpio;
@@ -32,6 +33,7 @@ struct smb349_platform_data {
 	int chg_current_ma;
 	int stat_gpio;
 	int term_current_ma;
+	int wlc_support;
 };
 
 #endif
