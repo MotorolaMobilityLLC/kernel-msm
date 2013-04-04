@@ -99,6 +99,7 @@ static struct ov660_reg_i2c_tbl ov660_ov10820r1b_full_24fps_settings[] = {
 	{0x6313, 0x80},
 	{0x6316, 0x09},
 	{0x6317, 0x80},
+	{0x6400, 0xc0},
 	{0x6401, 0xfe},
 	{0x6300, 0x10},
 	{0x6301, 0xe0},
@@ -175,6 +176,7 @@ static struct ov660_reg_i2c_tbl ov660_ov10820r1a_qtr_settings[] = {
 	{0x681a, 0x70},
 	{0x681b, 0x04},
 	{0x681c, 0xc0},
+	{0x6400, 0x88},
 	{0x6401, 0x40},
 	{0x7020, 0x04},
 	{0x7021, 0xbf},
@@ -194,6 +196,7 @@ static struct ov660_reg_i2c_tbl ov660_ov10820r1b_qtr_settings[] = {
 	{0x6313, 0xc0},
 	{0x6316, 0x04},
 	{0x6317, 0xc0},
+	{0x6400, 0x88},
 	{0x6401, 0x3c},
 	{0x6300, 0x08},
 	{0x6301, 0x70},
@@ -367,6 +370,7 @@ int32_t ov660_set_sensor_mode(int readout, uint16_t revision)
 
 		break;
 	case MSM_SENSOR_RES_QTR:
+	case MSM_SENSOR_RES_3:
 		if (revision <= 0xb0) {
 			rc = ov660_write_i2c_tbl(
 					ov660_ov10820r1a_qtr_settings,
