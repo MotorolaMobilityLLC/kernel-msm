@@ -759,6 +759,185 @@ static void msm_gpiomux_sdc4_install(void)
 static void msm_gpiomux_sdc4_install(void) {}
 #endif /* CONFIG_MMC_MSM_SDC4_SUPPORT */
 
+#ifdef CONFIG_LGE_BLUETOOTH
+static struct gpiomux_setting bt_gpio_uart_active_config = {
+	.func = GPIOMUX_FUNC_2,
+	.drv = GPIOMUX_DRV_8MA, /* Drive Strength */
+	.pull = GPIOMUX_PULL_NONE, /* Should be PULL NONE */
+};
+
+static struct gpiomux_setting bt_gpio_uart_suspend_config = {
+	.func = GPIOMUX_FUNC_GPIO, /* SUSPEND Configuration */
+	.drv = GPIOMUX_DRV_2MA, /* Drive Strength */
+	.pull = GPIOMUX_PULL_NONE, /* PULL Configuration */
+};
+
+static struct gpiomux_setting bt_rfkill_active_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_6MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting bt_rfkill_suspend_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv  = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting bt_host_wakeup_active_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting bt_host_wakeup_suspend_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+	.dir = GPIOMUX_IN,
+};
+
+static struct gpiomux_setting bt_wakeup_active_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting bt_wakeup_suspend_config = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting bt_pcm_active_config = {
+    .func = GPIOMUX_FUNC_1,
+    .drv = GPIOMUX_DRV_2MA,
+    .pull = GPIOMUX_PULL_NONE,
+};
+
+static struct gpiomux_setting bt_pcm_suspend_config = {
+    .func = GPIOMUX_FUNC_GPIO,
+    .drv = GPIOMUX_DRV_2MA,
+    .pull = GPIOMUX_PULL_DOWN,
+};
+
+static struct msm_gpiomux_config bt_msm_blsp_configs[]__initdata = {
+    {
+        .gpio = 53, /* BLSP10 UART TX */
+        .settings = {
+            [GPIOMUX_ACTIVE] = &bt_gpio_uart_active_config ,
+            [GPIOMUX_SUSPENDED] = &bt_gpio_uart_suspend_config ,
+        },
+    },
+    {
+        .gpio = 54, /* BLSP10 UART RX */
+        .settings = {
+            [GPIOMUX_ACTIVE] = &bt_gpio_uart_active_config ,
+            [GPIOMUX_SUSPENDED] = &bt_gpio_uart_suspend_config ,
+        },
+    },
+    {
+        .gpio = 55, /* BLSP10 UART CTS */
+        .settings = {
+            [GPIOMUX_ACTIVE] = &bt_gpio_uart_active_config ,
+            [GPIOMUX_SUSPENDED] = &bt_gpio_uart_suspend_config ,
+        },
+    },
+    {
+        .gpio = 56, /* BLSP10 UART RFR */
+        .settings = {
+            [GPIOMUX_ACTIVE] = &bt_gpio_uart_active_config ,
+            [GPIOMUX_SUSPENDED] = &bt_gpio_uart_suspend_config ,
+        },
+    },
+};
+
+static struct msm_gpiomux_config bt_rfkill_configs[] = {
+	{
+		.gpio = 41,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &bt_rfkill_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_rfkill_suspend_config,
+		},
+	},
+};
+
+static struct msm_gpiomux_config bt_host_wakeup_configs[] __initdata = {
+	{
+		.gpio = 42,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &bt_host_wakeup_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_host_wakeup_suspend_config,
+		},
+	},
+};
+
+static struct msm_gpiomux_config bt_wakeup_configs[] __initdata = {
+	{
+		.gpio = 62,
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &bt_wakeup_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_wakeup_suspend_config,
+		},
+	},
+};
+
+static struct msm_gpiomux_config bt_pcm_configs[] __initdata = {
+	{
+		.gpio	   = 79,	/* BT_PCM_CLK */
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &bt_pcm_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_pcm_suspend_config,
+		},
+	},
+	{
+		.gpio	   = 80,	/* BT_PCM_SYNC */
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &bt_pcm_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_pcm_suspend_config,
+		},
+	},
+	{
+		.gpio	   = 81,	/* BT_PCM_DIN */
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &bt_pcm_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_pcm_suspend_config,
+		},
+	},
+	{
+		.gpio	   = 82,	/* BT_PCM_DOUT */
+		.settings = {
+			[GPIOMUX_ACTIVE]	= &bt_pcm_active_config,
+			[GPIOMUX_SUSPENDED] = &bt_pcm_suspend_config,
+		},
+	}
+};
+
+static void bluetooth_msm_gpiomux_install(void)
+{
+	/* UART */
+	msm_gpiomux_install(bt_msm_blsp_configs,
+			ARRAY_SIZE(bt_msm_blsp_configs));
+
+	/* RFKILL */
+	msm_gpiomux_install(bt_rfkill_configs,
+			ARRAY_SIZE(bt_rfkill_configs));
+
+	/* HOST WAKE-UP */
+	msm_gpiomux_install(bt_host_wakeup_configs,
+			ARRAY_SIZE(bt_host_wakeup_configs));
+
+	/* BT WAKE-UP */
+	msm_gpiomux_install(bt_wakeup_configs,
+			ARRAY_SIZE(bt_wakeup_configs));
+
+	/* PCM I/F */
+	msm_gpiomux_install(bt_pcm_configs,
+			ARRAY_SIZE(bt_pcm_configs));
+}
+#endif /* CONFIG_LGE_BLUETOOTH */
+
 static struct gpiomux_setting nfc_bcm2079x_sda_cfg = {
 	.func = GPIOMUX_FUNC_3,
 	.drv = GPIOMUX_DRV_8MA,
@@ -878,6 +1057,9 @@ void __init msm_8974_init_gpiomux(void)
 #if defined(CONFIG_MSM8974_PWM_VIBRATOR)
 	msm_gpiomux_install(vibrator_configs, ARRAY_SIZE(vibrator_configs));
 #endif
+#ifdef CONFIG_LGE_BLUETOOTH
+	bluetooth_msm_gpiomux_install();
+#endif /* CONFIG_LGE_BLUETOOTH */
 	msm_gpiomux_install(msm8974_nfc_configs,
 			ARRAY_SIZE(msm8974_nfc_configs));
 }

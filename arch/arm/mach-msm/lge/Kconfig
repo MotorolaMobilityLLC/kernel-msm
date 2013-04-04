@@ -20,4 +20,9 @@ config LGE_HANDLE_PANIC
 	help
 	  Support for the LGE Crash Handler
 
+config LGE_BLUETOOTH
+	bool "Support LGE Bluetooth"
+	depends on BT
+	help
+	  Support for the LGE Bluetooth
 endmenu

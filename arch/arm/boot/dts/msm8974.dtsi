@@ -1306,6 +1306,25 @@
 				<84 512 500 800>;
 	};
 
+	uart10: uart@f9960000 { /*BLSP #2, UART #10 config disable here */
+		cell-index = <0>;
+		compatible = "qcom,msm-hsuart-v14";
+		status = "disabled";
+		reg = <0xf9960000 0x1000>,
+			<0xf9944000 0x19000>; //Size from 0x5000 to 0x19000
+		reg-names = "core_mem", "bam_mem";
+		interrupts = <0 116 0>, <0 239 0>;
+		interrupt-names = "core_irq", "bam_irq";
+
+		qcom,tx-gpio = <&msmgpio 53 0x00>;
+		qcom,rx-gpio = <&msmgpio 54 0x00>;
+		qcom,cts-gpio = <&msmgpio 55 0x00>;
+		qcom,rfr-gpio = <&msmgpio 56 0x00>;
+
+		qcom,bam-tx-ep-pipe-index = <6>;
+		qcom,bam-rx-ep-pipe-index = <7>;
+	};
+
 	qcom,smem@fa00000 {
 		compatible = "qcom,smem";
 		reg = <0xfa00000 0x200000>,

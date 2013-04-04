@@ -27,6 +27,34 @@
 		interrupts = <0 107 0>;
 		status = "disabled";
 	};
+	uart10: uart@f9960000 { /*BLSP2, UART10 For A1 Bluetooth*/
+		compatible = "qcom,msm-hsuart-v14";
+		status = "ok";
+		reg = <0xf9960000 0x1000>,
+			<0xf9944000 0x19000>;
+		reg-names = "core_mem", "bam_mem";
+		interrupts = <0 116 0>, <0 239 0>;
+		interrupt-names = "core_irq", "bam_irq";
+
+		qcom,tx-gpio = <&msmgpio 53 0x00>;
+		qcom,rx-gpio = <&msmgpio 54 0x00>;
+		qcom,cts-gpio = <&msmgpio 55 0x00>;
+		qcom,rfr-gpio = <&msmgpio 56 0x00>;
+
+		qcom,bam-tx-ep-pipe-index = <6>;
+		qcom,bam-rx-ep-pipe-index = <7>;
+
+		qcom,msm-bus,name = "uart10";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,active-only = <0>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<84 512 0 0>,
+				<84 512 500 800>;
+	    };
+        aliases{
+               uart99 = &uart10;
+        };
 };
 
 &spmi_bus {
