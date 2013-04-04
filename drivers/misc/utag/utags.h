@@ -216,6 +216,21 @@ struct frozen_utag {
 #define UTAG_DATE  0xCAFE001A
 
 /*
+ * Device Name
+ */
+#define UTAG_DEVICE 0xCAFE001B
+
+/*
+ * Customization MD5 checksum, e.g. 64ce3caf02cd4c9881e43b613be2354a
+ */
+#define UTAG_CUST_MD5  0xCAFE001C
+
+/*
+ * The ICCID (Integrated Circuit Card Identifier)
+ */
+#define UTAG_ICCID 0xCAFE001D
+
+/*
  * tags to store android properties
  */
 #define UTAG_BUILD_DATE           0xCAFE1000
