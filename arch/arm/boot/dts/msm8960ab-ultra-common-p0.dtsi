@@ -30,6 +30,12 @@
 			qcom,msm8960-codec-name = "tlv320aic3253_codec";
 		};
 	};
+
+	System@0 {
+		Display@0 {
+			prevent_pwr_off = <1>;
+		};
+	};
 };
 
 /* GSBI10 - I2C */

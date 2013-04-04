@@ -17,6 +17,11 @@
 / {
 	mmi,revision = "p1";
 
+	System@0 {
+		Display@0 {
+			prevent_pwr_off = <1>;
+		};
+	};
 };
 
 /* GSBI12 - I2C */
