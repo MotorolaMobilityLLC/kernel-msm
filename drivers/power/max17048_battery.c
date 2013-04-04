@@ -800,8 +800,8 @@ err_request_wakeup_irq_failed:
 err_request_irq_failed:
 	gpio_free(chip->alert_gpio);
 err_gpio_request_failed:
-error:
 	power_supply_unregister(&chip->batt_psy);
+error:
 	kfree(chip);
 	return ret;
 }
