@@ -48,7 +48,19 @@
 			summit,stat-gpio = <&pm8941_gpios 30 0x02>;
 			summit,chg-current-ma = <1200>;
 			summit,term-current-ma = <100>;
+			summit,wlc-support;
 		};
+	};
+
+	bq51013b_wlc {
+		compatible = "ti,bq51013b";
+		status = "ok";
+		interrupt-parent = <&pm8941_gpios>;
+		interrupts = <34 0x3>;
+		ti,chg-ctrl-gpio = <&pm8941_gpios 23 0x0>;
+		ti,wlc-int-gpio = <&pm8941_gpios 34 0x2>;
+		ti,otg-en = <&pm8941_gpios 35 0x0>;
+		ti,chg-current-ma = <800>;
 	};
 };
 

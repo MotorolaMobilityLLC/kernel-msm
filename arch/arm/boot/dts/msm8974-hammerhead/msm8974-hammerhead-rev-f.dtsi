@@ -569,9 +569,17 @@
 	};
 
 	gpio@e100 { /* GPIO 34 */
+		status = "ok";			 /* wlc_int_gpio for WLC */
+		qcom,mode = <0>;		 /* QPNP_PIN_MODE_DIG_IN */
+		qcom,pull = <3>;		 /* QPNP_PIN_GPIO_PULL_UP_1P5_30 */
+		qcom,master-en = <1>;
 	};
 
 	gpio@e200 { /* GPIO 35 */
+		status = "ok";			/* otg_en gpio */
+		qcom,mode = <1>;		/* QPNP_PIN_MODE_DIG_OUT */
+		qcom,output-type = <0>;		/* QPNP_PIN_OUT_BUF_CMOS */
+		qcom,pull = <5>;		/* QPNP_PIN_PULL_NO */
 	};
 
 	gpio@e300 { /* GPIO 36 */
