@@ -302,7 +302,7 @@ static int __init mipi_mot_cmd_smd_hd_497_init(void)
 	pinfo->lcd.v_back_porch = 2; /* TODO: Need to check */
 	pinfo->lcd.v_front_porch = 2; /* TODO: Need to check */
 	pinfo->lcd.v_pulse_width = 2; /* TODO: Need to check */
-	pinfo->lcd.refx100 = 5800; /* adjust refx100 to prevent tearing */
+	pinfo->lcd.refx100 = 6000;
 
 	pinfo->mipi.mode = DSI_CMD_MODE;
 	pinfo->mipi.dst_format = DSI_CMD_DST_FORMAT_RGB888;
