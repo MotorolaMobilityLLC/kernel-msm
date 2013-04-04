@@ -733,6 +733,7 @@ extern struct mdp_hist_mgmt *mdp_hist_mgmt_array[];
 
 void mdp_hw_init(void);
 int mdp_ppp_pipe_wait(void);
+void mdp_pipe_kickoff_simplified(uint32 term);
 void mdp_pipe_kickoff(uint32 term, struct msm_fb_data_type *mfd);
 void mdp_clk_ctrl(int on);
 void mdp_pipe_ctrl(MDP_BLOCK_TYPE block, MDP_BLOCK_POWER_STATE state,

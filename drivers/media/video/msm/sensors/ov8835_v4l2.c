@@ -594,7 +594,7 @@ static int32_t ov8835_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
 
 /* TBD: Need to revisit*/
 static int32_t ov8835_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
-		uint16_t gain, uint32_t line)
+		uint16_t gain, uint32_t line, int32_t luma_avg, uint16_t fgain)
 {
 	uint32_t fl_lines, offset;
 	uint8_t int_time[3];
