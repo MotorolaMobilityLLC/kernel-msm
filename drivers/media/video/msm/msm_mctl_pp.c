@@ -108,7 +108,8 @@ int msm_mctl_check_pp(struct msm_cam_media_controller *p_mctl,
 			*pp_type = OUTPUT_TYPE_R;
 		break;
 	case MSM_V4L2_EXT_CAPTURE_MODE_RDI2:
-		*pp_divert_type = OUTPUT_TYPE_R2;
+		if (p_mctl->pp_info.pp_key & PP_RDI)
+			*pp_divert_type = OUTPUT_TYPE_R2;
 		break;
 	default:
 		break;
@@ -577,6 +578,8 @@ int msm_mctl_pp_release_free_frame(
 			__func__);
 		return -EINVAL;
 	}
+	memset(&p_mctl->pp_info.div_frame[image_mode],
+		   0, sizeof(struct msm_free_buf));
 
 	rc = msm_mctl_release_free_buf(p_mctl, pcam_inst, &free_buf);
 	D("%s: release free buf, rc = %d, phy = 0x%x",

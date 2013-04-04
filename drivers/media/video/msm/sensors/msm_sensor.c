@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -210,7 +210,7 @@ int32_t msm_sensor_set_fps(struct msm_sensor_ctrl_t *s_ctrl,
 }
 
 int32_t msm_sensor_write_exp_gain1(struct msm_sensor_ctrl_t *s_ctrl,
-		uint16_t gain, uint32_t line)
+		uint16_t gain, uint32_t line, int32_t luma_avg, uint16_t fgain)
 {
 	uint32_t fl_lines;
 	uint8_t offset;
@@ -235,7 +235,7 @@ int32_t msm_sensor_write_exp_gain1(struct msm_sensor_ctrl_t *s_ctrl,
 }
 
 int32_t msm_sensor_write_exp_gain2(struct msm_sensor_ctrl_t *s_ctrl,
-		uint16_t gain, uint32_t line)
+		uint16_t gain, uint32_t line, int32_t luma_avg, uint16_t fgain)
 {
 	uint32_t fl_lines, ll_pclk, ll_ratio;
 	uint8_t offset;
@@ -289,7 +289,6 @@ int32_t msm_sensor_setting(struct msm_sensor_ctrl_t *s_ctrl,
 			int update_type, int res)
 {
 	int32_t rc = 0;
-
 	if (update_type == MSM_SENSOR_REG_INIT) {
 		s_ctrl->func_tbl->sensor_stop_stream(s_ctrl);
 		msm_sensor_write_init_settings(s_ctrl);
@@ -457,7 +456,9 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 				sensor_write_exp_gain(
 					s_ctrl,
 					cdata.cfg.exp_gain.gain,
-					cdata.cfg.exp_gain.line);
+					cdata.cfg.exp_gain.line,
+					cdata.cfg.exp_gain.luma_avg,
+					cdata.cfg.exp_gain.fgain);
 			break;
 
 		case CFG_SET_PICT_EXP_GAIN:
@@ -474,7 +475,9 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 				sensor_write_snapshot_exp_gain(
 					s_ctrl,
 					cdata.cfg.exp_gain.gain,
-					cdata.cfg.exp_gain.line);
+					cdata.cfg.exp_gain.line,
+					cdata.cfg.exp_gain.luma_avg,
+					cdata.cfg.exp_gain.fgain);
 			break;
 
 		case CFG_SET_MODE:
@@ -491,6 +494,18 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 			break;
 
 		case CFG_SET_EFFECT:
+			break;
+
+		case CFG_HDR_UPDATE:
+			if (s_ctrl->func_tbl->
+			sensor_hdr_update == NULL) {
+				rc = -EFAULT;
+				break;
+			}
+			rc = s_ctrl->func_tbl->
+					sensor_hdr_update(
+					   s_ctrl,
+					   &(cdata.cfg.hdr_update_parm));
 			break;
 
 		case CFG_SENSOR_INIT:

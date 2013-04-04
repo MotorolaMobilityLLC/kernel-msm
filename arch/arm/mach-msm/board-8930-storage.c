@@ -1,4 +1,4 @@
-/* Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -319,6 +319,11 @@ void __init msm8930_init_mmc(void)
 	if (!machine_is_msm8930_cdp()) {
 		msm8960_sdc3_data.wpswitch_gpio = 0;
 		msm8960_sdc3_data.is_wpswitch_active_low = false;
+	}
+
+	if (machine_is_msm8930_evt()) {
+		msm8960_sdc3_data.status_gpio = 90;
+		msm8960_sdc3_data.status_irq = MSM_GPIO_TO_INT(90);
 	}
 
 	msm_add_sdcc(3, &msm8960_sdc3_data);
