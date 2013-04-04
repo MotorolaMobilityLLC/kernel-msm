@@ -82,16 +82,18 @@ int load_565rle_image(char *filename, bool bf_supported)
 		       __func__, __LINE__, info->node);
 		goto err_logo_free_data;
 	}
-	bits = (unsigned short *)(info->screen_base);
-	while (count > 3) {
-		unsigned n = ptr[0];
-		if (n > max)
-			break;
-		memset16(bits, ptr[1], n << 1);
-		bits += n;
-		max -= n;
-		ptr += 2;
-		count -= 4;
+	if (info->screen_base) {
+		bits = (unsigned short *)(info->screen_base);
+		while (count > 3) {
+			unsigned n = ptr[0];
+			if (n > max)
+				break;
+			memset16(bits, ptr[1], n << 1);
+			bits += n;
+			max -= n;
+			ptr += 2;
+			count -= 4;
+		}
 	}
 
 err_logo_free_data:
