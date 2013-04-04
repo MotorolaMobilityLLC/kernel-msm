@@ -2087,8 +2087,8 @@ eHalStatus hdd_RoamTdlsStatusUpdateHandler(hdd_adapter_t *pAdapter,
 
                     status = eHAL_STATUS_SUCCESS ;
                 }
-                wlan_hdd_tdls_check_bmps(pAdapter);
             }
+            wlan_hdd_tdls_check_bmps(pAdapter);
             break ;
         }
         default:
