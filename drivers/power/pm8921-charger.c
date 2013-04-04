@@ -1941,6 +1941,7 @@ static int get_prop_batt_capacity(struct pm8921_chg_chip *chip)
 		pr_warn_ratelimited("low battery charge = %d%%\n",
 						percent_soc);
 
+#ifndef CONFIG_PM8921_FLOAT_CHARGE
 	if (percent_soc <= chip->resume_charge_percent
 		&& get_prop_batt_status(chip) == POWER_SUPPLY_STATUS_FULL) {
 		pr_debug("soc fell below %d. charging enabled.\n",
@@ -1956,7 +1957,7 @@ static int get_prop_batt_capacity(struct pm8921_chg_chip *chip)
 		else
 			pm_chg_vbatdet_set(the_chip, PM8921_CHG_VBATDET_MAX);
 	}
-
+#endif
 	chip->recent_reported_soc = percent_soc;
 	return percent_soc;
 }
@@ -3827,6 +3828,9 @@ static void adjust_vdd_max_for_fastchg(struct pm8921_chg_chip *chip,
 
 static void set_appropriate_vbatdet(struct pm8921_chg_chip *chip)
 {
+#ifdef CONFIG_PM8921_FLOAT_CHARGE
+	return;
+#endif
 	if (chip->is_bat_cool)
 		pm_chg_vbatdet_set(the_chip,
 			the_chip->cool_bat_voltage
