@@ -193,7 +193,7 @@ limCompareCapabilities(tpAniSirGlobal pMac,
          pLocalCapabs->shortPreamble))
     {
         PELOG1(limLog(pMac, LOG1,
-           FL("Allowing a STA requesting short preamble while AP does not support it\n"));)
+           FL("Allowing a STA requesting short preamble while AP does not support it"));)
 #if 0
         // AP does not support short preamable
         return false;
@@ -201,7 +201,7 @@ limCompareCapabilities(tpAniSirGlobal pMac,
     }
 
 
-    limLog(pMac, LOGW, "QoS in AssocReq: %d, local ShortP: %d\n", 
+    limLog(pMac, LOGW, "QoS in AssocReq: %d, local ShortP: %d",
               pAssocReq->capabilityInfo.qos,
               pLocalCapabs->qos);
 
@@ -213,7 +213,7 @@ limCompareCapabilities(tpAniSirGlobal pMac,
           CSR - proper fix needs to be put in place*/
         if ( 0 != vos_get_skip_11e_check())
         {
-             limLog(pMac, LOG1, FL("Received unmatched QOS but cfg to suppress - continuing\n"));
+             limLog(pMac, LOG1, FL("Received unmatched QOS but cfg to suppress - continuing"));
         }
         else
         {
@@ -234,7 +234,7 @@ limCompareCapabilities(tpAniSirGlobal pMac,
     {
         if (wlan_cfgGetInt(pMac, WNI_CFG_ACCEPT_SHORT_SLOT_ASSOC_ONLY, &val) != eSIR_SUCCESS)
         {
-            limLog(pMac, LOGP, FL("error getting WNI_CFG_FORCE_SHORT_SLOT_ASSOC_ONLY \n"));
+            limLog(pMac, LOGP, FL("error getting WNI_CFG_FORCE_SHORT_SLOT_ASSOC_ONLY "));
             return false;
         }
         if(val)
@@ -280,7 +280,7 @@ limCheckRxBasicRates(tpAniSirGlobal pMac, tSirMacRateSet rxRateSet,tpPESession p
     if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pRateSet, sizeof(tSirMacRateSet)))
     {
         // Log error
-        limLog(pMac, LOGP, FL("call to palAllocateMemory failed for RATESET\n"));
+        limLog(pMac, LOGP, FL("call to palAllocateMemory failed for RATESET"));
 
         return false;
     }
@@ -292,7 +292,7 @@ limCheckRxBasicRates(tpAniSirGlobal pMac, tSirMacRateSet rxRateSet,tpPESession p
                   (tANI_U32 *) &cfgLen) != eSIR_SUCCESS)
     {
         /// Could not get Operational rateset from CFG. Log error.
-        limLog(pMac, LOGP, FL("could not retrieve Operational rateset\n"));
+        limLog(pMac, LOGP, FL("could not retrieve Operational rateset"));
 
         // Free up memory allocated for rateset
         palFreeMemory( pMac->hHdd, (tANI_U8 *) pRateSet);
@@ -384,7 +384,7 @@ limCheckMCSSet(tpAniSirGlobal pMac, tANI_U8* supportedMCSSet)
                   (tANI_U32 *) &cfgLen) != eSIR_SUCCESS)
     {
         /// Could not get Basic MCS rateset from CFG. Log error.
-        limLog(pMac, LOGP, FL("could not retrieve Basic MCS rateset\n"));
+        limLog(pMac, LOGP, FL("could not retrieve Basic MCS rateset"));
         return false;
     }
 
@@ -742,7 +742,7 @@ limSendDelStaCnf(tpAniSirGlobal pMac, tSirMacAddr staDsAddr,
                       sizeof(tSirMacAddr)) != eSIR_SUCCESS)
         {
             /// Could not update BSSID at CFG. Log error.
-            limLog(pMac, LOGP, FL("could not update BSSID at CFG\n"));
+            limLog(pMac, LOGP, FL("could not update BSSID at CFG"));
 
             return;
         }
@@ -774,7 +774,7 @@ limSendDelStaCnf(tpAniSirGlobal pMac, tSirMacAddr staDsAddr,
          * Host or LMM driven Disassociation.
          * Issue Disassoc Confirm to SME.
          */
-           limLog( pMac, LOGW, FL("Lim Posting DISASSOC_CNF to Sme. Trigger: %X\n"), mlmStaContext.cleanupTrigger);
+           limLog( pMac, LOGW, FL("Lim Posting DISASSOC_CNF to Sme. Trigger: %X"), mlmStaContext.cleanupTrigger);
 
 
         palCopyMemory( pMac->hHdd,
@@ -800,7 +800,7 @@ limSendDelStaCnf(tpAniSirGlobal pMac, tSirMacAddr staDsAddr,
          * Host or LMM driven Deauthentication.
          * Issue Deauth Confirm to SME.
          */
-        limLog( pMac, LOGW, FL("Lim Posting DEAUTH_CNF to Sme. Trigger: %X\n"), mlmStaContext.cleanupTrigger);
+        limLog( pMac, LOGW, FL("Lim Posting DEAUTH_CNF to Sme. Trigger: %X"), mlmStaContext.cleanupTrigger);
         palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDeauthCnf.peerMacAddr,
                       (tANI_U8 *) staDsAddr,
                       sizeof(tSirMacAddr));
@@ -823,7 +823,7 @@ limSendDelStaCnf(tpAniSirGlobal pMac, tSirMacAddr staDsAddr,
          * Received Disassociation/Deauthentication from peer.
          * Issue Purge Ind to SME.
          */
-        limLog( pMac, LOGW, FL("Lim Posting PURGE_STA_IND to Sme. Trigger: %X\n"), mlmStaContext.cleanupTrigger) ;
+        limLog( pMac, LOGW, FL("Lim Posting PURGE_STA_IND to Sme. Trigger: %X"), mlmStaContext.cleanupTrigger) ;
         palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmPurgeStaInd.peerMacAddr,
                       (tANI_U8 *) staDsAddr,
                       sizeof(tSirMacAddr));
@@ -955,7 +955,7 @@ limRejectAssociation(tpAniSirGlobal pMac, tSirMacAddr peerAddr, tANI_U8 subType,
         if (pStaDs == NULL)
         {
             limLog(pMac, LOGW,
-                   FL("No STA context, yet rejecting Association\n"));
+                   FL("No STA context, yet rejecting Association"));
 
             return;
         }
@@ -998,7 +998,7 @@ limRejectAssociation(tpAniSirGlobal pMac, tSirMacAddr peerAddr, tANI_U8 subType,
                                  subType, 0,psessionEntry);
         // Log error
         limLog(pMac, LOGW,
-           FL("received Re/Assoc req when max associated STAs reached from \n"));
+           FL("received Re/Assoc req when max associated STAs reached from "));
         limPrintMacAddr(pMac, peerAddr, LOGW);
         limSendSmeMaxAssocExceededNtf(pMac, peerAddr, psessionEntry->smeSessionId);
     }
@@ -1137,7 +1137,7 @@ limDecideApProtectionOnDelete(tpAniSirGlobal pMac,
             if (psessionEntry->gLim11bParams.numSta == 0)
             {
                 // disable protection
-                PELOG1(limLog(pMac, LOG1, FL("No 11B STA exists\n"));)
+                PELOG1(limLog(pMac, LOG1, FL("No 11B STA exists"));)
                 limEnable11gProtection(pMac, false, false, pBeaconParams,psessionEntry);
             }
         }
@@ -1289,11 +1289,11 @@ void limDecideShortPreamble(tpAniSirGlobal pMac,
       if (psessionEntry->gLimNoShortParams.numNonShortPreambleSta == 0)
       {
          // enable short preamble
-         PELOG1(limLog(pMac, LOG1, FL("All associated STAs have short preamble support now.\n"));)
+         PELOG1(limLog(pMac, LOG1, FL("All associated STAs have short preamble support now."));)
          //reset the cache
          palZeroMemory( pMac->hHdd, (tANI_U8 *)&psessionEntry->gLimNoShortParams , sizeof(tLimNoShortParams));
          if (limEnableShortPreamble(pMac, true, pBeaconParams, psessionEntry) != eSIR_SUCCESS)
-             PELOGE(limLog(pMac, LOGE, FL("Cannot enable short preamble\n"));)
+             PELOGE(limLog(pMac, LOGE, FL("Cannot enable short preamble"));)
       }
    }
 }
@@ -1360,7 +1360,7 @@ limDecideShortSlot(tpAniSirGlobal pMac, tpDphHashNode pStaDs,
          (val && psessionEntry->gLimNoShortSlotParams.numNonShortSlotSta == 0))
       {
          // enable short slot time
-         PELOG1(limLog(pMac, LOG1, FL("All associated STAs have short slot time support now.\n"));)
+         PELOG1(limLog(pMac, LOG1, FL("All associated STAs have short slot time support now."));)
          //reset the cache
          palZeroMemory( pMac->hHdd, (tANI_U8 *)&psessionEntry->gLimNoShortSlotParams , sizeof(tLimNoShortSlotParams));
          // in case of AP set SHORT_SLOT_TIME to enable
@@ -1376,7 +1376,7 @@ limDecideShortSlot(tpAniSirGlobal pMac, tpDphHashNode pStaDs,
          if (val && pMac->lim.gLimNoShortSlotParams.numNonShortSlotSta == 0)
          {
             // enable short slot time
-            PELOG1(limLog(pMac, LOG1, FL("All associated STAs have short slot time support now.\n"));)
+            PELOG1(limLog(pMac, LOG1, FL("All associated STAs have short slot time support now."));)
             //reset the cache
             palZeroMemory( pMac->hHdd, (tANI_U8 *)&pMac->lim.gLimNoShortSlotParams , sizeof(tLimNoShortSlotParams));
             // in case of AP set SHORT_SLOT_TIME to enable
@@ -1456,7 +1456,7 @@ limRestorePreReassocState(tpAniSirGlobal pMac,
                   sizeof(tSirMacAddr)) != eSIR_SUCCESS)
     {
         /// Could not update BSSID at CFG. Log error.
-        limLog(pMac, LOGP, FL("could not update BSSID at CFG\n"));
+        limLog(pMac, LOGP, FL("could not update BSSID at CFG"));
         return;
     }
     #endif
@@ -1531,7 +1531,7 @@ tSirRetStatus limPopulateVhtMcsSet(tpAniSirGlobal pMac,
         if ( wlan_cfgGetInt( pMac,WNI_CFG_VHT_RX_MCS_MAP,&val) != 
             eSIR_SUCCESS )
         {
-            PELOGE(limLog(pMac, LOGE, FL("could not retrieve VHT RX MCS MAP\n"));)
+            PELOGE(limLog(pMac, LOGE, FL("could not retrieve VHT RX MCS MAP"));)
             goto error;
         }
         pRates->vhtRxMCSMap = (tANI_U16)val;
@@ -1539,7 +1539,7 @@ tSirRetStatus limPopulateVhtMcsSet(tpAniSirGlobal pMac,
         if ( wlan_cfgGetInt( pMac,WNI_CFG_VHT_TX_MCS_MAP,&val ) != 
             eSIR_SUCCESS )
         {
-            PELOGE(limLog(pMac, LOGE, FL("could not retrieve VHT TX MCS MAP\n"));)
+            PELOGE(limLog(pMac, LOGE, FL("could not retrieve VHT TX MCS MAP"));)
             goto error;
         }
         pRates->vhtTxMCSMap = (tANI_U16)val;
@@ -1547,7 +1547,7 @@ tSirRetStatus limPopulateVhtMcsSet(tpAniSirGlobal pMac,
         if ( wlan_cfgGetInt( pMac,WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE,&val ) != 
             eSIR_SUCCESS )
         {
-            PELOGE(limLog(pMac, LOGE, FL("could not retrieve VHT RX Supported data rate MAP\n"));)
+            PELOGE(limLog(pMac, LOGE, FL("could not retrieve VHT RX Supported data rate MAP"));)
             goto error;
         }
         pRates->vhtRxHighestDataRate = (tANI_U16)val;
@@ -1555,7 +1555,7 @@ tSirRetStatus limPopulateVhtMcsSet(tpAniSirGlobal pMac,
         if ( wlan_cfgGetInt( pMac,WNI_CFG_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE,&val ) != 
             eSIR_SUCCESS )
         {
-            PELOGE(limLog(pMac, LOGE, FL("could not retrieve VHT RX Supported data rate MAP\n"));)
+            PELOGE(limLog(pMac, LOGE, FL("could not retrieve VHT RX Supported data rate MAP"));)
             goto error;
         }
         pRates->vhtTxHighestDataRate = (tANI_U16)val;
@@ -1644,7 +1644,7 @@ limPopulateOwnRateSet(tpAniSirGlobal pMac,
                   &val) != eSIR_SUCCESS)
     {
         /// Could not get rateset from CFG. Log error.
-        limLog(pMac, LOGP, FL("could not retrieve rateset\n"));
+        limLog(pMac, LOGP, FL("could not retrieve rateset"));
     }
     #endif // TO SUPPORT BT-AMP
     
@@ -1671,7 +1671,7 @@ limPopulateOwnRateSet(tpAniSirGlobal pMac,
                       &val) != eSIR_SUCCESS)
         {
             /// Could not get extended rateset from CFG. Log error.
-            limLog(pMac, LOGP, FL("could not retrieve extended rateset\n"));
+            limLog(pMac, LOGP, FL("could not retrieve extended rateset"));
         }
         tempRateSet2.numRates = (tANI_U8) val;
         #endif
@@ -1693,7 +1693,7 @@ limPopulateOwnRateSet(tpAniSirGlobal pMac,
     if ((tempRateSet.numRates + tempRateSet2.numRates) > 12)
     {
         //we are in big trouble
-        limLog(pMac, LOGP, FL("more than 12 rates in CFG\n"));
+        limLog(pMac, LOGP, FL("more than 12 rates in CFG"));
         //panic
         goto error;
     }
@@ -1768,7 +1768,7 @@ limPopulateOwnRateSet(tpAniSirGlobal pMac,
                       &val) != eSIR_SUCCESS)
         {
             /// Could not get rateset from CFG. Log error.
-            PELOGE(limLog(pMac, LOGE, FL("could not retrieve supportedMCSSet\n"));)
+            PELOGE(limLog(pMac, LOGE, FL("could not retrieve supportedMCSSet"));)
             goto error;
         }
 
@@ -1783,7 +1783,7 @@ limPopulateOwnRateSet(tpAniSirGlobal pMac,
 
         }
 
-        PELOG2(limLog(pMac, LOG2, FL("MCS Rate Set Bitmap: \n"));)
+        PELOG2(limLog(pMac, LOG2, FL("MCS Rate Set Bitmap: "));)
         for(i=0; i<SIR_MAC_MAX_SUPPORTED_MCS_SET; i++)
             PELOGW(limLog(pMac, LOG2,FL("%x ") , pRates->supportedMCSSet[i]);)
     }
@@ -1869,7 +1869,7 @@ limPopulateMatchingRateSet(tpAniSirGlobal pMac,
                   &val) != eSIR_SUCCESS)
     {
         /// Could not get rateset from CFG. Log error.
-        limLog(pMac, LOGP, FL("could not retrieve rateset\n"));
+        limLog(pMac, LOGP, FL("could not retrieve rateset"));
     }
 
     #endif // TO SUPPORT BT-AMP
@@ -1896,7 +1896,7 @@ limPopulateMatchingRateSet(tpAniSirGlobal pMac,
 
     if ((tempRateSet.numRates + tempRateSet2.numRates) > 12)
     {
-        PELOGE(limLog(pMac, LOGE, FL("more than 12 rates in CFG\n"));)
+        PELOGE(limLog(pMac, LOGE, FL("more than 12 rates in CFG"));)
         goto error;
     }
 
@@ -2026,7 +2026,7 @@ limPopulateMatchingRateSet(tpAniSirGlobal pMac,
         val = 0;
         if(wlan_cfgGetInt(pMac, WNI_CFG_PROPRIETARY_RATES_ENABLED, &val) != eSIR_SUCCESS)
         {
-            limLog(pMac, LOGP, FL("could not retrieve prop rate enabled flag from CFG\n"));
+            limLog(pMac, LOGP, FL("could not retrieve prop rate enabled flag from CFG"));
         }
         else if(val)
         {
@@ -2051,14 +2051,14 @@ limPopulateMatchingRateSet(tpAniSirGlobal pMac,
                       &val) != eSIR_SUCCESS)
         {
             /// Could not get rateset from CFG. Log error.
-            limLog(pMac, LOGP, FL("could not retrieve supportedMCSSet\n"));
+            limLog(pMac, LOGP, FL("could not retrieve supportedMCSSet"));
             goto error;
         }
 
         for(i=0; i<val; i++)
            pStaDs->supportedRates.supportedMCSSet[i] = mcsSet[i] & pSupportedMCSSet[i];
 
-        PELOG2(limLog(pMac, LOG2, FL("limPopulateMatchingRateSet: MCS Rate Set Bitmap from  CFG and DPH : \n"));)
+        PELOG2(limLog(pMac, LOG2, FL("limPopulateMatchingRateSet: MCS Rate Set Bitmap from  CFG and DPH : "));)
         for(i=0; i<SIR_MAC_MAX_SUPPORTED_MCS_SET; i++)
         {
             PELOG2(limLog(pMac, LOG2,FL("%x %x "), mcsSet[i], pStaDs->supportedRates.supportedMCSSet[i]);)
@@ -2122,7 +2122,7 @@ limAddSta(
     #if 0
     retCode = wlan_cfgGetStr(pMac, WNI_CFG_STA_ID, staMac, &cfg);
     if (retCode != eSIR_SUCCESS)
-            limLog(pMac, LOGP, FL("could not retrieve STA MAC\n"));
+            limLog(pMac, LOGP, FL("could not retrieve STA MAC"));
     #endif //To SUPPORT BT-AMP
 
     
@@ -2131,7 +2131,7 @@ limAddSta(
     if( eHAL_STATUS_SUCCESS !=
         palAllocateMemory( pMac->hHdd, (void **) &pAddStaParams, sizeof( tAddStaParams )))
       {
-        limLog( pMac, LOGP, FL( "Unable to allocate memory during ADD_STA\n" ));
+        limLog( pMac, LOGP, FL( "Unable to allocate memory during ADD_STA" ));
         return eSIR_MEM_ALLOC_FAILED;
       }
     palZeroMemory( pMac->hHdd, (tANI_U8 *) pAddStaParams, sizeof(tAddStaParams));
@@ -2331,7 +2331,7 @@ limAddSta(
     msgQ.bodyptr = pAddStaParams;
     msgQ.bodyval = 0;
 
-    limLog( pMac, LOG1, FL( "Sending SIR_HAL_ADD_STA_REQ for assocId %d\n" ),
+    limLog( pMac, LOG1, FL( "Sending SIR_HAL_ADD_STA_REQ for assocId %d" ),
             pStaDs->assocId);
     MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
 
@@ -2340,7 +2340,7 @@ limAddSta(
     {
        if (pAddStaParams->respReqd)
           SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
-        limLog( pMac, LOGE, FL("ADD_STA_REQ for aId %d failed (reason %X)\n"),
+        limLog( pMac, LOGE, FL("ADD_STA_REQ for aId %d failed (reason %X)"),
                             pStaDs->assocId, retCode );
         palFreeMemory(pMac->hHdd, (void*)pAddStaParams);
     }
@@ -2385,7 +2385,7 @@ limDelSta(
 
     if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **) &pDelStaParams, sizeof( tDeleteStaParams )))
     {
-        limLog( pMac, LOGP, FL( "Unable to PAL allocate memory during ADD_STA\n" ));
+        limLog( pMac, LOGP, FL( "Unable to PAL allocate memory during ADD_STA" ));
         return eSIR_MEM_ALLOC_FAILED;
     }
 
@@ -2463,7 +2463,7 @@ limDelSta(
     {
         if(fRespReqd)
            SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
-        limLog( pMac, LOGE, FL("Posting DELETE_STA_REQ to HAL failed, reason=%X\n"),
+        limLog( pMac, LOGE, FL("Posting DELETE_STA_REQ to HAL failed, reason=%X"),
                         retCode );
         palFreeMemory(pMac->hHdd, (void*)pDelStaParams);
     }
@@ -2510,7 +2510,7 @@ tSirRetStatus limAddFTStaSelf(tpAniSirGlobal pMac, tANI_U16 assocId, tpPESession
     psessionEntry->limMlmState = eLIM_MLM_WT_ADD_STA_RSP_STATE;
     if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
     {
-        limLog( pMac, LOGE, FL("Posting ADD_STA_REQ to HAL failed, reason=%X\n"), retCode );
+        limLog( pMac, LOGE, FL("Posting ADD_STA_REQ to HAL failed, reason=%X"), retCode );
         palFreeMemory(pMac->hHdd, (void*)pAddStaParams);
     }
     //
@@ -2569,7 +2569,7 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
     if (retCode != eSIR_SUCCESS)
         {
             /// Could not get BSSID from CFG. Log error.
-            limLog(pMac, LOGP, FL("could not retrieve STA MAC\n"));
+            limLog(pMac, LOGP, FL("could not retrieve STA MAC"));
         return retCode;
         }
     #endif //TO SUPPORT BT-AMP
@@ -2578,7 +2578,7 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
     if( eHAL_STATUS_SUCCESS !=
         palAllocateMemory( pMac->hHdd, (void **) &pAddStaParams, sizeof( tAddStaParams )))
     {
-        limLog( pMac, LOGP, FL( "Unable to PAL allocate memory during ADD_STA\n" ));
+        limLog( pMac, LOGP, FL( "Unable to PAL allocate memory during ADD_STA" ));
         return eSIR_MEM_ALLOC_FAILED;
     }
     palZeroMemory( pMac->hHdd, (tANI_U8 *) pAddStaParams, sizeof(tAddStaParams));
@@ -2665,7 +2665,7 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
                       ((psessionEntry->txLdpcIniFeatureEnabled >> 1)& 0x01);
 
     if(wlan_cfgGetInt(pMac, WNI_CFG_LISTEN_INTERVAL, &listenInterval) != eSIR_SUCCESS)
-       limLog(pMac, LOGP, FL("Couldn't get LISTEN_INTERVAL\n"));
+       limLog(pMac, LOGP, FL("Couldn't get LISTEN_INTERVAL"));
     pAddStaParams->listenInterval = (tANI_U16)listenInterval;
 
     if (VOS_P2P_CLIENT_MODE == psessionEntry->pePersona)
@@ -2692,7 +2692,7 @@ limAddStaSelf(tpAniSirGlobal pMac,tANI_U16 staIdx, tANI_U8 updateSta, tpPESessio
 
   if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
     {
-        limLog( pMac, LOGE, FL("Posting ADD_STA_REQ to HAL failed, reason=%X\n"), retCode );
+        limLog( pMac, LOGE, FL("Posting ADD_STA_REQ to HAL failed, reason=%X"), retCode );
         palFreeMemory(pMac->hHdd, (void*)pAddStaParams);
     }
       return retCode;
@@ -2757,7 +2757,7 @@ void limHandleCnfWaitTimeout(tpAniSirGlobal pMac, tANI_U16 staId)
 
     if((psessionEntry = peFindSessionBySessionId(pMac, pMac->lim.limTimers.gpLimCnfWaitTimer[staId].sessionId))== NULL) 
     {
-        limLog(pMac, LOGP,FL("Session Does not exist for given sessionID\n"));
+        limLog(pMac, LOGP,FL("Session Does not exist for given sessionID"));
         return;
     }
     systemRole = limGetSystemRole(psessionEntry);
@@ -2765,13 +2765,13 @@ void limHandleCnfWaitTimeout(tpAniSirGlobal pMac, tANI_U16 staId)
 
     if (pStaDs == NULL)
     {
-        PELOGW(limLog(pMac, LOGW, FL("No STA context in SIR_LIM_CNF_WAIT_TIMEOUT.\n"));)
+        PELOGW(limLog(pMac, LOGW, FL("No STA context in SIR_LIM_CNF_WAIT_TIMEOUT."));)
         return;
     }
 
     switch (pStaDs->mlmStaContext.mlmState) {
         case eLIM_MLM_WT_ASSOC_CNF_STATE:
-            PELOGW(limLog(pMac, LOGW, FL("Did not receive Assoc Cnf in eLIM_MLM_WT_ASSOC_CNF_STATE sta Assoc id %d\n"), pStaDs->assocId);)
+            PELOGW(limLog(pMac, LOGW, FL("Did not receive Assoc Cnf in eLIM_MLM_WT_ASSOC_CNF_STATE sta Assoc id %d"), pStaDs->assocId);)
             limPrintMacAddr(pMac, pStaDs->staAddr, LOGW);
 
             if ( (systemRole == eLIM_AP_ROLE)|| (systemRole == eLIM_BT_AMP_AP_ROLE) )
@@ -2790,7 +2790,7 @@ void limHandleCnfWaitTimeout(tpAniSirGlobal pMac, tANI_U16 staId)
             break;
 
         default:
-            limLog(pMac, LOGW, FL("Received CNF_WAIT_TIMEOUT in state %d\n"),
+            limLog(pMac, LOGW, FL("Received CNF_WAIT_TIMEOUT in state %d"),
                    pStaDs->mlmStaContext.mlmState);
     }
 }
@@ -2855,7 +2855,7 @@ limDeleteDphHashEntry(tpAniSirGlobal pMac, tSirMacAddr staAddr, tANI_U16 staId,t
             limDecideShortSlot(pMac, pStaDs, &beaconParams, psessionEntry);
 
             //Send message to HAL about beacon parameter change.
-            PELOGW(limLog(pMac, LOGW, FL("param bitmap = %d \n"), beaconParams.paramChangeBitmap);)
+            PELOGW(limLog(pMac, LOGW, FL("param bitmap = %d "), beaconParams.paramChangeBitmap);)
             if(beaconParams.paramChangeBitmap)
             {
                 schSetFixedBeaconFields(pMac,psessionEntry);    
@@ -2863,7 +2863,7 @@ limDeleteDphHashEntry(tpAniSirGlobal pMac, tSirMacAddr staAddr, tANI_U16 staId,t
             }
         }
         if (dphDeleteHashEntry(pMac, staAddr, staId, &psessionEntry->dph.dphHashTable) != eSIR_SUCCESS)
-           limLog(pMac, LOGP, FL("error deleting hash entry\n"));
+           limLog(pMac, LOGP, FL("error deleting hash entry"));
     }
 }
 
@@ -2926,7 +2926,7 @@ limCheckAndAnnounceJoinSuccess(tpAniSirGlobal pMac,
          * Received SSID does not match with the one we've.
          * Ignore received Beacon frame
          */
-        PELOG1(limLog(pMac, LOG1, FL("SSID received in Beacon does not match\n"));)
+        PELOG1(limLog(pMac, LOG1, FL("SSID received in Beacon does not match"));)
 #ifdef WLAN_DEBUG            
         pMac->lim.gLimBcnSSIDMismatchCnt++;
 #endif
@@ -2935,7 +2935,7 @@ limCheckAndAnnounceJoinSuccess(tpAniSirGlobal pMac,
 
     if( (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE)||(psessionEntry->limSystemRole == eLIM_STA_ROLE))
     {
-        PELOG1(limLog(pMac, LOG1, FL("Received Beacon/PR with matching BSSID\n"));)
+        PELOG1(limLog(pMac, LOG1, FL("Received Beacon/PR with matching BSSID"));)
 
         // Deactivate Join Failure timer
         limDeactivateAndChangeTimer(pMac, eLIM_JOIN_FAIL_TIMER);
@@ -3030,14 +3030,14 @@ tSirRetStatus limExtractApCapabilities( tpAniSirGlobal pMac,
   palZeroMemory( pMac->hHdd, (tANI_U8 *) beaconStruct, sizeof( tSirProbeRespBeacon ));
 
   PELOG3(limLog( pMac, LOG3,
-      FL( "In limExtractApCapabilities: The IE's being received are:\n" ));
+      FL( "In limExtractApCapabilities: The IE's being received are:" ));
   sirDumpBuf( pMac, SIR_LIM_MODULE_ID, LOG3, pIE, ieLen );)
 
   // Parse the Beacon IE's, Don't try to parse if we dont have anything in IE
   if (ieLen > 0) {
   if( eSIR_SUCCESS != sirParseBeaconIE( pMac, beaconStruct, pIE, (tANI_U32)ieLen ))
   {
-    limLog( pMac, LOGE, FL("APCapExtract: Beacon parsing error!\n"));
+    limLog( pMac, LOGE, FL("APCapExtract: Beacon parsing error!"));
     return eSIR_FAILURE;
   }
   }
@@ -3077,7 +3077,7 @@ limDelBss(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tANI_U16 bssIdx,tpPESession
      if( eHAL_STATUS_SUCCESS !=
         palAllocateMemory( pMac->hHdd, (void **) &pDelBssParams, sizeof( tDeleteBssParams )))
      {
-        limLog( pMac, LOGP, FL( "Unable to PAL allocate memory during ADD_BSS\n" ));
+        limLog( pMac, LOGP, FL( "Unable to PAL allocate memory during ADD_BSS" ));
         return eSIR_MEM_ALLOC_FAILED;
      }
      palZeroMemory( pMac->hHdd, (tANI_U8 *) pDelBssParams, sizeof(tDeleteBssParams));
@@ -3100,7 +3100,7 @@ limDelBss(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tANI_U16 bssIdx,tpPESession
 
     pDelBssParams->status= eHAL_STATUS_SUCCESS;
     pDelBssParams->respReqd = 1;
-   PELOGW(limLog( pMac, LOGW, FL("Sending HAL_DELETE_BSS_REQ for BSSID: %X\n"),
+   PELOGW(limLog( pMac, LOGW, FL("Sending HAL_DELETE_BSS_REQ for BSSID: %X"),
           pDelBssParams->bssIdx);)
 
     //we need to defer the message until we get the response back from HAL.
@@ -3116,7 +3116,7 @@ limDelBss(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tANI_U16 bssIdx,tpPESession
     if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
     {
         SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
-        limLog( pMac, LOGE, FL("Posting DELETE_BSS_REQ to HAL failed, reason=%X\n"), retCode );
+        limLog( pMac, LOGE, FL("Posting DELETE_BSS_REQ to HAL failed, reason=%X"), retCode );
         palFreeMemory(pMac->hHdd, (void*)pDelBssParams);
     }
 
@@ -3169,7 +3169,7 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
                                                   sizeof( tAddBssParams )))
     {
         limLog( pMac, LOGP,
-                FL( "Unable to PAL allocate memory during ADD_BSS\n" ));
+                FL( "Unable to PAL allocate memory during ADD_BSS" ));
         retCode = eSIR_MEM_ALLOC_FAILED;
         goto returnFailure;
     }
@@ -3371,7 +3371,7 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
                                                 sizeof(tSirSupportedRates));
         }
         else
-            PELOGE(limLog(pMac, LOGE, FL("could not Update the supported rates.\n"));)
+            PELOGE(limLog(pMac, LOGE, FL("could not Update the supported rates."));)
 
     }
 
@@ -3439,7 +3439,7 @@ tSirRetStatus limStaSendAddBss( tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
     {
         SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
         palFreeMemory(pMac->hHdd, pAddBssParams);
-        limLog( pMac, LOGE, FL("Posting ADD_BSS_REQ to HAL failed, reason=%X\n"),
+        limLog( pMac, LOGE, FL("Posting ADD_BSS_REQ to HAL failed, reason=%X"),
                 retCode );
         goto returnFailure;
 
@@ -3468,7 +3468,7 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
     if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
                                                 (void **)&pBeaconStruct, sizeof(tSchBeaconStruct)))
     {
-        limLog(pMac, LOGE, FL("Unable to PAL allocate memory during ADD_BSS\n") );
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory during ADD_BSS") );
         return eSIR_MEM_ALLOC_FAILED;
     }
 
@@ -3479,7 +3479,7 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
                                                   sizeof( tAddBssParams )))
     {
         limLog( pMac, LOGP,
-                FL( "Unable to PAL allocate memory during ADD_BSS\n" ));
+                FL( "Unable to PAL allocate memory during ADD_BSS" ));
         retCode = eSIR_MEM_ALLOC_FAILED;
         goto returnFailure;
     }
@@ -3731,7 +3731,7 @@ tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry
     {
         SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
         palFreeMemory(pMac->hHdd, pAddBssParams);
-        limLog( pMac, LOGE, FL("Posting ADD_BSS_REQ to HAL failed, reason=%X\n"),
+        limLog( pMac, LOGE, FL("Posting ADD_BSS_REQ to HAL failed, reason=%X"),
                 retCode );
         goto returnFailure;
 
@@ -3773,7 +3773,7 @@ limPrepareAndSendDelStaCnf(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tSirResult
 
     if(pStaDs == NULL)
     {
-      PELOGW(limLog(pMac, LOGW, FL("pStaDs is NULL\n"));)
+      PELOGW(limLog(pMac, LOGW, FL("pStaDs is NULL"));)
       return;
     }
     staDsAssocId = pStaDs->assocId;
@@ -3854,7 +3854,7 @@ void limInitPreAuthTimerTable(tpAniSirGlobal pMac, tpLimPreAuthTable pPreAuthTim
         ** from CFG. Log error.
         **/
         limLog(pMac, LOGP,
-               FL("could not retrieve AUTH_RSP timeout value\n"));
+               FL("could not retrieve AUTH_RSP timeout value"));
         return;
     }
 
@@ -3870,7 +3870,7 @@ void limInitPreAuthTimerTable(tpAniSirGlobal pMac, tpLimPreAuthTable pPreAuthTim
                         TX_NO_ACTIVATE) != TX_SUCCESS)
         {
             // Cannot create timer.  Log error.
-            limLog(pMac, LOGP, FL("Cannot create Auth Rsp timer of Index :%d.\n"), authNodeIdx);
+            limLog(pMac, LOGP, FL("Cannot create Auth Rsp timer of Index :%d."), authNodeIdx);
             return;
         }
         pAuthNode->authNodeIdx = (tANI_U8)authNodeIdx;
@@ -3915,7 +3915,7 @@ tLimPreAuthNode * limGetPreAuthNodeFromIndex(tpAniSirGlobal pMac,
 {
     if ((authNodeIdx >= pAuthTable->numEntry) || (pAuthTable->pTable == NULL))
     {
-        limLog(pMac, LOGE, FL("Invalid Auth Timer Index : %d NumEntry : %d\n"), 
+        limLog(pMac, LOGE, FL("Invalid Auth Timer Index : %d NumEntry : %d"),
                   authNodeIdx, pAuthTable->numEntry);
         return NULL;
     }
@@ -3945,7 +3945,7 @@ tSirRetStatus limIsDot11hPowerCapabilitiesInRange(tpAniSirGlobal pMac, tSirAssoc
     localMaxTxPower = cfgGetRegulatoryMaxTransmitPower(pMac, psessionEntry->currentOperChannel);
 
     if(wlan_cfgGetInt(pMac, WNI_CFG_LOCAL_POWER_CONSTRAINT, &localPwrConstraint) != eSIR_SUCCESS) {
-        limLog( pMac, LOGP, FL( "Unable to get Local Power Constraint from cfg\n" ));
+        limLog( pMac, LOGP, FL( "Unable to get Local Power Constraint from cfg" ));
         return eSIR_FAILURE;
     }
     localMaxTxPower -= (tPowerdBm)localPwrConstraint;
@@ -3956,7 +3956,7 @@ tSirRetStatus limIsDot11hPowerCapabilitiesInRange(tpAniSirGlobal pMac, tSirAssoc
          */
     if(assoc->powerCapability.minTxPower > localMaxTxPower)
     {
-        limLog(pMac, LOGW, FL("minTxPower (STA) = %d, localMaxTxPower (AP) = %d\n"),
+        limLog(pMac, LOGW, FL("minTxPower (STA) = %d, localMaxTxPower (AP) = %d"),
                        assoc->powerCapability.minTxPower, localMaxTxPower);
         return (eSIR_FAILURE);
     }
