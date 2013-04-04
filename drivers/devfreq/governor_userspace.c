@@ -14,6 +14,7 @@
 #include <linux/devfreq.h>
 #include <linux/pm.h>
 #include <linux/mutex.h>
+#include <linux/module.h>
 #include "governor.h"
 
 struct userspace_data {
@@ -135,7 +136,7 @@ static int devfreq_userspace_handler(struct devfreq *devfreq,
 	return ret;
 }
 
-const struct devfreq_governor devfreq_userspace = {
+static struct devfreq_governor devfreq_userspace = {
 	.name = "userspace",
 	.get_target_freq = devfreq_userspace_func,
 	.event_handler = devfreq_userspace_handler,
@@ -158,3 +159,4 @@ static void __exit devfreq_userspace_exit(void)
 	return;
 }
 module_exit(devfreq_userspace_exit);
+MODULE_LICENSE("GPL");

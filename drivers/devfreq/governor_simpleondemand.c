@@ -10,6 +10,7 @@
  */
 
 #include <linux/errno.h>
+#include <linux/module.h>
 #include <linux/devfreq.h>
 #include <linux/math64.h>
 #include "governor.h"
@@ -120,7 +121,7 @@ static int devfreq_simple_ondemand_handler(struct devfreq *devfreq,
 	return 0;
 }
 
-const struct devfreq_governor devfreq_simple_ondemand = {
+static struct devfreq_governor devfreq_simple_ondemand = {
 	.name = "simple_ondemand",
 	.get_target_freq = devfreq_simple_ondemand_func,
 	.event_handler = devfreq_simple_ondemand_handler,
@@ -143,3 +144,4 @@ static void __exit devfreq_simple_ondemand_exit(void)
 	return;
 }
 module_exit(devfreq_simple_ondemand_exit);
+MODULE_LICENSE("GPL");
