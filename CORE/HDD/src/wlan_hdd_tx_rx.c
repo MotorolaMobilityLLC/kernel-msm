@@ -671,27 +671,12 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
   ===========================================================================*/
 void hdd_tx_timeout(struct net_device *dev)
 {
-   hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-   tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
-
    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
       "%s: Transmission timeout occurred", __func__);
    //Getting here implies we disabled the TX queues for too long. Queues are 
    //disabled either because of disassociation or low resource scenarios. In
    //case of disassociation it is ok to ignore this. But if associated, we have
    //do possible recovery here
-
-   //testing underlying data path stall
-   //FTM mode, data path is not initiated
-   if (VOS_FTM_MODE == hdd_get_conparam())
-   {
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-         "%s: FTM mode, how initiated TX?", __func__);
-   }
-   else
-   {
-      sme_transportDebug(hHal, 0, 1);
-   }
 } 
 
 
