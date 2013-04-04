@@ -1907,6 +1907,14 @@ void mmc_power_off(struct mmc_host *host)
 	mmc_host_clk_release(host);
 }
 
+void mmc_power_cycle(struct mmc_host *host)
+{
+	mmc_power_off(host);
+	/* Wait at least 1 ms according to SD spec */
+	mmc_delay(1);
+	mmc_power_up(host);
+}
+
 /*
  * Cleanup when the last reference to the bus operator is dropped.
  */
@@ -2571,7 +2579,7 @@ static int mmc_do_hw_reset(struct mmc_host *host, int check)
 	if (!host->bus_ops->power_restore)
 		return -EOPNOTSUPP;
 
-	if (!(host->caps & MMC_CAP_HW_RESET) || !host->ops->hw_reset)
+	if (!(host->caps & MMC_CAP_HW_RESET))
 		return -EOPNOTSUPP;
 
 	if (!card)
@@ -2583,7 +2591,10 @@ static int mmc_do_hw_reset(struct mmc_host *host, int check)
 	mmc_host_clk_hold(host);
 	mmc_set_clock(host, host->f_init);
 
-	host->ops->hw_reset(host);
+	if (mmc_card_sd(card))
+		mmc_power_cycle(host);
+	else if (host->ops->hw_reset)
+		host->ops->hw_reset(host);
 
 	/* If the reset has happened, then a status command will fail */
 	if (check) {
