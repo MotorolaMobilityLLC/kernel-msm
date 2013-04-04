@@ -57,6 +57,9 @@ static struct utag_node utag_tab[] = {
 	{UTAG_IMEI, "imei", NULL, NULL, NULL, NULL},
 	{UTAG_SKU, "sku", NULL, NULL, NULL, NULL},
 	{UTAG_DATE, "date", NULL, NULL, NULL, NULL},
+	{UTAG_DEVICE, "device_name", NULL, NULL, NULL, NULL},
+	{UTAG_CUST_MD5, "customization_checksum", NULL, NULL, NULL, NULL},
+	{UTAG_ICCID, "iccid", NULL, NULL, NULL, NULL},
 	{UTAG_END, "all", NULL, NULL, NULL, NULL},
 	{0, "", NULL, NULL, NULL, NULL},
 };
