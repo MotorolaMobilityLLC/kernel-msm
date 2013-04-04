@@ -27,4 +27,8 @@ config PRIMA_WLAN_11AC_HIGH_TP
 	bool "Enable the Prima WLAN 802.11ac High Throughput option (depends upon kernel support)"
 	default n
 
+config WLAN_FEATURE_11W
+	bool "Enable the WLAN 802.11w Protected Management Frames feature"
+	default n
+
 endif # PRIMA_WLAN
