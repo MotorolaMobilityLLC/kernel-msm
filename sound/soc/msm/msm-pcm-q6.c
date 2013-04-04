@@ -41,7 +41,8 @@ struct snd_msm {
 
 #define PLAYBACK_NUM_PERIODS	8
 #define PLAYBACK_PERIOD_SIZE	2048
-#define CAPTURE_NUM_PERIODS	2
+#define CAPTURE_MIN_NUM_PERIODS 2
+#define CAPTURE_MAX_NUM_PERIODS 16
 #define CAPTURE_MAX_PERIOD_SIZE 4096
 #define CAPTURE_MIN_PERIOD_SIZE 320
 
@@ -57,11 +58,12 @@ static struct snd_pcm_hardware msm_pcm_hardware_capture = {
 	.rate_max =             48000,
 	.channels_min =         1,
 	.channels_max =         4,
-	.buffer_bytes_max =     CAPTURE_NUM_PERIODS * CAPTURE_MAX_PERIOD_SIZE,
+	.buffer_bytes_max =     CAPTURE_MAX_NUM_PERIODS *
+				CAPTURE_MAX_PERIOD_SIZE,
 	.period_bytes_min =	CAPTURE_MIN_PERIOD_SIZE,
 	.period_bytes_max =     CAPTURE_MAX_PERIOD_SIZE,
-	.periods_min =          CAPTURE_NUM_PERIODS,
-	.periods_max =          CAPTURE_NUM_PERIODS,
+	.periods_min =          CAPTURE_MIN_NUM_PERIODS,
+	.periods_max =          CAPTURE_MAX_NUM_PERIODS,
 	.fifo_size =            0,
 };
 
@@ -90,7 +92,7 @@ static unsigned int supported_sample_rates[] = {
 	8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000
 };
 
-static uint32_t in_frame_info[CAPTURE_NUM_PERIODS][2];
+static uint32_t in_frame_info[CAPTURE_MAX_NUM_PERIODS][2];
 
 static struct snd_pcm_hw_constraint_list constraints_sample_rates = {
 	.count = ARRAY_SIZE(supported_sample_rates),
@@ -365,8 +367,8 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		ret = snd_pcm_hw_constraint_minmax(runtime,
 			SNDRV_PCM_HW_PARAM_BUFFER_BYTES,
-			CAPTURE_NUM_PERIODS * CAPTURE_MIN_PERIOD_SIZE,
-			CAPTURE_NUM_PERIODS * CAPTURE_MAX_PERIOD_SIZE);
+			CAPTURE_MIN_NUM_PERIODS * CAPTURE_MIN_PERIOD_SIZE,
+			CAPTURE_MAX_NUM_PERIODS * CAPTURE_MAX_PERIOD_SIZE);
 		if (ret < 0) {
 			pr_err("constraint for buffer bytes min max ret = %d\n",
 									ret);
@@ -673,6 +675,10 @@ static int msm_pcm_hw_params(struct snd_pcm_substream *substream,
 			prtd->audio_client,
 			(params_buffer_bytes(params) / params_periods(params)),
 				params_periods(params));
+		pr_debug("buff bytes = %d, period size = %d,\
+			period count = %d\n", params_buffer_bytes(params),
+			params_periods(params),
+			params_buffer_bytes(params) / params_periods(params));
 	} else {
 		ret = q6asm_audio_client_buf_alloc_contiguous(dir,
 			prtd->audio_client,
