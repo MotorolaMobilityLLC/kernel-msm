@@ -815,7 +815,10 @@ typedef struct hdd_dynamic_mcbcfilter_s
 #define WLAN_HDD_GET_HOSTAP_STATE_PTR(pAdapter) (&(pAdapter)->sessionCtx.ap.HostapdState)
 #define WLAN_HDD_GET_CFG_STATE_PTR(pAdapter)  (&(pAdapter)->cfg80211State)
 #ifdef FEATURE_WLAN_TDLS
-#define WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter) ((tdlsCtx_t*)(pAdapter)->sessionCtx.station.pHddTdlsCtx)
+#define WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter) \
+        (((WLAN_HDD_INFRA_STATION != pAdapter->device_mode) && \
+        (WLAN_HDD_P2P_CLIENT != pAdapter->device_mode)) ? NULL : \
+        (tdlsCtx_t*)(pAdapter)->sessionCtx.station.pHddTdlsCtx)
 #endif
 
 typedef struct hdd_adapter_list_node
