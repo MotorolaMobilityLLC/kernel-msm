@@ -505,4 +505,13 @@ config MAX17048_FUELGAUGE
 	  in handheld and portable equipment. The MAX17048 is configured
 	  to operate with a single lithium cell
 
+config BQ51013B_CHARGER
+	tristate "TI BQ51013B wireless charger driver"
+	default n
+	help
+	  The BQ51013B is an devices for wireless power transfer in portable
+	  applications. The BQ51013B provide the AC/DC power conversion while
+	  intergrating the digital control required to comply with Qi v1.1
+	  protocol.
+
 endif # POWER_SUPPLY
