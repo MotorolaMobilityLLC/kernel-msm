@@ -106,6 +106,7 @@ struct mmi_disp_data {
 	struct mmi_disp_gpio_config mipi_mux_select;
 	struct mmi_disp_reg_lst reg_lst;
 	bool partial_mode_supported;
+	bool prevent_pwr_off;
 };
 
 static struct mmi_disp_data mmi_disp_info;
@@ -526,6 +527,11 @@ static void __init mmi_load_panel_from_dt(void)
 			pr_err("%s: failed to export mipi_d0_sel\n", __func__);
 	}
 
+	mmi_disp_info.prevent_pwr_off =
+		ZERO_IF_NEG(load_disp_value(node, "prevent_pwr_off"));
+	pr_debug("%s: prevent_pwr_off %d\n", __func__,
+		mmi_disp_info.prevent_pwr_off);
+
 	print_mmi_disp_data();
 
 	of_node_put(node);
@@ -795,10 +801,7 @@ static int panel_power_ctrl_en(int on)
 			goto end;
 	}
 
-	/* Hack for Ultra bring-up, will remove once we can handle
-	   shared display / touch power rails */
-	if (!strncmp(panel_name, "mipi_mot_cmd_smd_hd_497",
-			strlen(panel_name)) && !on)
+	if (mmi_disp_info.prevent_pwr_off && !on)
 		pr_info("%s skipping panel power off\n", __func__);
 	else {
 		rc = panel_power_output(on, reg_lst);
@@ -986,10 +989,7 @@ static int panel_power_ctrl(int on)
 			if (rc)
 				goto end;
 
-			/* Hack for Ultra bring-up, will remove once we can
-			   handle shared display / touch power rails */
-			if (!strncmp(panel_name, "mipi_mot_cmd_smd_hd_497",
-					strlen(panel_name)))
+			if (mmi_disp_info.prevent_pwr_off)
 				pr_info("%s skipping panel power off\n",
 					__func__);
 			else {
