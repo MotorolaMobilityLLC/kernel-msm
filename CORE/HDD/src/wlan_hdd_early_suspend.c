@@ -90,6 +90,7 @@
 #include <linux/wcnss_wlan.h>
 #include <linux/inetdevice.h>
 #include <wlan_hdd_cfg.h>
+#include <wlan_hdd_cfg80211.h>
 /**-----------------------------------------------------------------------------
 *   Preprocessor definitions and constants
 * ----------------------------------------------------------------------------*/
@@ -894,6 +895,33 @@ void hdd_suspend_wlan(void)
 
    /*Suspend notification sent down to driver*/
    hdd_conf_suspend_ind(pHddCtx, pAdapter);
+
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+       if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+           (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
+       {
+           eHalStatus ret;
+           hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+           if ((eConnectionState_Associated == pHddStaCtx->conn_info.connState) &&
+                    (TRUE == pHddStaCtx->gtkOffloadRequestParams.requested))
+           {
+               ret = sme_SetGTKOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                              &pHddStaCtx->gtkOffloadRequestParams.gtkOffloadReqParams,
+                              pAdapter->sessionId);
+               if (eHAL_STATUS_SUCCESS != ret)
+               {
+                   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                           "%s: sme_SetGTKOffload failed, returned %d",
+                           __func__, ret);
+               }
+               pHddStaCtx->gtkOffloadRequestParams.requested = FALSE;
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                       "%s: sme_SetGTKOffload successfull",
+                       __func__);
+           }
+       }
+#endif
+
    status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
    pAdapterNode = pNext;
   }
@@ -989,6 +1017,52 @@ void hdd_unregister_mcast_bcast_filter(hdd_context_t *pHddCtx)
       pmcDeregisterDeviceStateUpdateInd(smeContext, hdd_PowerStateChangedCB);
    }
 }
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+void  wlan_hdd_update_and_dissable_gtk_offload(hdd_adapter_t *pAdapter)
+{
+    eHalStatus ret;
+    tpSirGtkOffloadParams pGtkOffloadReqParams;
+    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+
+    pGtkOffloadReqParams =
+                 &pHddStaCtx->gtkOffloadRequestParams.gtkOffloadReqParams;
+
+    if ((eConnectionState_Associated == pHddStaCtx->conn_info.connState) &&
+        (0 !=  memcmp(&pGtkOffloadReqParams->bssId,
+                     &pHddStaCtx->conn_info.bssId, WNI_CFG_BSSID_LEN)) &&
+        (FALSE == pHddStaCtx->gtkOffloadRequestParams.requested))
+    {
+        /* Host driver has previously  offloaded GTK rekey  */
+        ret = sme_GetGTKOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                wlan_hdd_cfg80211_update_replayCounterCallback,
+                                pAdapter, pAdapter->sessionId);
+        if (eHAL_STATUS_SUCCESS != ret)
+        {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    "%s: sme_GetGTKOffload failed, returned %d",
+                    __func__, ret);
+        }
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                "%s: sme_GetGTKOffload successfull", __func__);
+
+        /* Sending GTK offload dissable */
+        pGtkOffloadReqParams->ulFlags = GTK_OFFLOAD_DISABLE;
+        ret = sme_SetGTKOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                pGtkOffloadReqParams, pAdapter->sessionId);
+
+        if (eHAL_STATUS_SUCCESS != ret)
+        {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    "%s: failed to dissable GTK offload, returned %d",
+                    __func__, ret);
+        }
+        pHddStaCtx->gtkOffloadRequestParams.requested = FALSE;
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                "%s: successfully dissabled GTK offload request to HAL",
+                __func__);
+    }
+}
+#endif /*WLAN_FEATURE_GTK_OFFLOAD*/
 
 void hdd_resume_wlan(void)
 {
@@ -1036,6 +1110,15 @@ void hdd_resume_wlan(void)
             pAdapterNode = pNext;
             continue;
        }
+
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+       if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+           (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
+       {
+           wlan_hdd_update_and_dissable_gtk_offload(pAdapter);
+       }
+#endif
+
 #ifdef SUPPORT_EARLY_SUSPEND_STANDBY_DEEPSLEEP   
        if(pHddCtx->hdd_ps_state == eHDD_SUSPEND_DEEP_SLEEP) 
        {

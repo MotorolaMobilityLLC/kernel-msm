@@ -497,7 +497,9 @@ extern eHalStatus pmcSetGTKOffload (tHalHandle hHal, tpSirGtkOffloadParams pGtkO
             eHAL_STATUS_FAILURE  Cannot set the offload.
             eHAL_STATUS_SUCCESS  Request accepted. 
   ---------------------------------------------------------------------------*/
-extern eHalStatus pmcGetGTKOffload (tHalHandle hHal, GTKOffloadGetInfoCallback callbackRoutine, void *callbackContext);
+extern eHalStatus pmcGetGTKOffload(tHalHandle hHal,
+                                   GTKOffloadGetInfoCallback callbackRoutine,
+                                   void *callbackContext, tANI_U8 sessionId);
 #endif // WLAN_FEATURE_GTK_OFFLOAD
 
 #endif

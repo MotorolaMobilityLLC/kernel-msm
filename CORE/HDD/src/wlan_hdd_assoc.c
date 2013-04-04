@@ -864,6 +864,15 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
     pHddCtx->sta_to_adapter[pHddStaCtx->conn_info.staId[0]] = NULL;
     // Clear saved connection information in HDD
     hdd_connRemoveConnectInfo( pHddStaCtx );
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+    if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+        (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
+    {
+        pHddStaCtx->gtkOffloadRequestParams.requested = FALSE;
+        memset(&pHddStaCtx->gtkOffloadRequestParams.gtkOffloadReqParams,
+              0, sizeof (tSirGtkOffloadParams));
+    }
+#endif
 
 #ifdef FEATURE_WLAN_TDLS
     wlan_hdd_tdls_disconnection_callback(pAdapter);
