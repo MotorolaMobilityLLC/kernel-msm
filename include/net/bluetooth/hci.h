@@ -119,6 +119,7 @@ enum {
 #define HCIINQUIRY	_IOR('H', 240, int)
 
 /* HCI timeouts */
+#define HCI_DISCONN_AUTH_FAILED_TIMEOUT	(10)	/* 10 ms */
 #define HCI_CONNECT_TIMEOUT	(40000)	/* 40 seconds */
 #define HCI_DISCONN_TIMEOUT	(2000)	/* 2 seconds */
 #define HCI_PAIRING_TIMEOUT	(60000)	/* 60 seconds */
