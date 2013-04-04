@@ -1028,9 +1028,12 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
                 // Defer processsing this message
                 if (limDeferMsg(pMac, limMsg) != TX_SUCCESS)
                 {
+                    if(!(pMac->lim.deferredMsgCnt & 0xF))
+                    {
                     PELOGE(limLog(pMac, LOGE, FL("Unable to Defer message(0x%X) limSmeState %d (prev sme state %d) sysRole %d mlm state %d (prev mlm state %d)\n"),
                         limMsg->type, pMac->lim.gLimSmeState,  pMac->lim.gLimPrevSmeState,
                         pMac->lim.gLimSystemRole,  pMac->lim.gLimMlmState,  pMac->lim.gLimPrevMlmState);)
+                    }
                     limLogSessionStates(pMac);
                     limPrintMsgName(pMac, LOGE, limMsg->type);
                 }
