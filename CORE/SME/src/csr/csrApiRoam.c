@@ -14235,8 +14235,8 @@ eHalStatus csrGetRoamRssi(tpAniSirGlobal pMac,
    status = palSendMBMessage(pMac->hHdd, pMsg );
    if(!HAL_STATUS_SUCCESS(status))
    {
-      smsLog(pMac, LOG1, " csrGetRoamRssi: failed to send down the stats req");
-      palFreeMemory(pMac->hHdd, (void *)pMsg);
+      smsLog(pMac, LOG1, " csrGetRoamRssi: failed to send down the rssi req");
+      //pMsg is freed by palSendMBMessage
       status = eHAL_STATUS_FAILURE;
    }
    return status;
@@ -15504,7 +15504,7 @@ eHalStatus csrSetTxPower(tpAniSirGlobal pMac, v_U8_t sessionId, v_U8_t mW)
        if (!HAL_STATUS_SUCCESS(status))
        {
            smsLog(pMac, LOGE, FL(" csr set TX Power Post MSG Fail %d "), status);
-           palFreeMemory(pMac->hHdd, pMsg);
+           //pMsg is freed by palSendMBMessage
        }
    }
    return status;
