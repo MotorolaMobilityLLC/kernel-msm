@@ -30,6 +30,7 @@ struct wm_adsp_alg_region {
 	unsigned int alg;
 	int type;
 	unsigned int base;
+	size_t len;
 };
 
 struct wm_adsp {
@@ -52,6 +53,8 @@ struct wm_adsp {
 	bool running;
 
 	struct regulator *dvfs;
+
+	struct wm_coeff *wm_coeff;
 };
 
 #define WM_ADSP1(wname, num) \
