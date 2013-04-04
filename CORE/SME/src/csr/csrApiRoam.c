@@ -12856,8 +12856,8 @@ eHalStatus csrSendMBStartBssReqMsg( tpAniSirGlobal pMac, tANI_U32 sessionId, eCs
         {
             wTmp = pal_cpu_to_be16( WNI_CFG_BEACON_INTERVAL_STADEF );
         }
-        if(csrIsconcurrentsessionValid (pMac, sessionId, 
-                                   pParam->bssPersona) 
+        if(csrIsconcurrentsessionValid (pMac, sessionId,
+                                   pParam->bssPersona)
                                    == eHAL_STATUS_SUCCESS )
         {    
            csrValidateMCCBeaconInterval(pMac, pParam->operationChn, &wTmp, sessionId,
