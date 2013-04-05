@@ -528,8 +528,8 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     tANI_U32                val = 0;
     tSirRetStatus           retStatus;
     tSirMacChanNum          channelNumber;
-    tLimMlmStartReq         *pMlmStartReq;
-    tpSirSmeStartBssReq     pSmeStartBssReq;                //Local variable for Start BSS Req.. Added For BT-AMP Support 
+    tLimMlmStartReq         *pMlmStartReq = NULL;
+    tpSirSmeStartBssReq     pSmeStartBssReq = NULL;
     tSirResultCodes         retCode = eSIR_SME_SUCCESS;
     tANI_U32                autoGenBssId = FALSE;           //Flag Used in case of IBSS to Auto generate BSSID.
     tANI_U8                 sessionId;
@@ -983,8 +983,13 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     } // if (pMac->lim.gLimSmeState == eLIM_SME_OFFLINE_STATE)
 
 free:
-    palFreeMemory( pMac->hHdd, pSmeStartBssReq);
-    pSmeStartBssReq = NULL;
+    if ((psessionEntry != NULL) &&
+        (psessionEntry->pLimStartBssReq == pSmeStartBssReq))
+    {
+        psessionEntry->pLimStartBssReq = NULL;
+    }
+    palFreeMemory(pMac->hHdd, pSmeStartBssReq);
+    palFreeMemory(pMac->hHdd, pMlmStartReq);
 
 end:
 
