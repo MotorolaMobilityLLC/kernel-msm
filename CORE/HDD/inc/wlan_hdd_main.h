@@ -101,14 +101,15 @@
 #endif
 /** Hdd Default MTU */
 #define HDD_DEFAULT_MTU         (1500)
+
 /**event flags registered net device*/
-#define NET_DEVICE_REGISTERED  (1<<0)
-#define SME_SESSION_OPENED     (1<<1)
-#define INIT_TX_RX_SUCCESS     (1<<2)
-#define WMM_INIT_DONE          (1<<3)
-#define SOFTAP_BSS_STARTED     (1<<4)
-#define DEVICE_IFACE_OPENED    (1<<5)
-#define TDLS_INIT_DONE         (1<<6)
+#define NET_DEVICE_REGISTERED  (0)
+#define SME_SESSION_OPENED     (1)
+#define INIT_TX_RX_SUCCESS     (2)
+#define WMM_INIT_DONE          (3)
+#define SOFTAP_BSS_STARTED     (4)
+#define DEVICE_IFACE_OPENED    (5)
+#define TDLS_INIT_DONE         (6)
 
 /** Maximum time(ms)to wait for disconnect to complete **/
 #define WLAN_WAIT_TIME_DISCONNECT  500
