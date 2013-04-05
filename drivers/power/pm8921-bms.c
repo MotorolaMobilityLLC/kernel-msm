@@ -2783,6 +2783,10 @@ void pm8921_bms_charging_full(void)
 
 	the_chip->last_ocv_uv = the_chip->max_voltage_uv;
 	raw.last_good_ocv_uv = the_chip->max_voltage_uv;
+	raw.cc = 0;
+	/* reset the cc in h/w */
+	reset_cc(the_chip);
+	the_chip->last_ocv_temp_decidegc = batt_temp;
 	/*
 	 * since we are treating this as an ocv event
 	 * forget the old cc value
