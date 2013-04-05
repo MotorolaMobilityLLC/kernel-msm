@@ -527,6 +527,7 @@ static int msp430_load_brightness_table(struct msp430_data *ps_msp430)
 
 void msp430_reset(struct msp430_platform_data *pdata)
 {
+	dev_err(&msp430_misc_data->client->dev, "msp430_reset\n");
 	msleep_interruptible(I2C_RETRY_DELAY);
 	gpio_set_value(pdata->gpio_reset, 0);
 	msleep_interruptible(I2C_RETRY_DELAY);
@@ -696,11 +697,15 @@ static int msp430_as_data_buffer_write(struct msp430_data *ps_msp430,
 {
 	int new_head;
 	struct timespec ts;
+	static bool error_reported;
 
 	new_head = (ps_msp430->msp430_as_data_buffer_head + 1)
 		& MSP430_AS_DATA_QUEUE_MASK;
 	if (new_head == ps_msp430->msp430_as_data_buffer_tail) {
-		dev_err(&ps_msp430->client->dev, "Data buffer full\n");
+		if (!error_reported) {
+			dev_err(&ps_msp430->client->dev, "as data buffer full\n");
+			error_reported = true;
+		}
 		wake_up(&ps_msp430->msp430_as_data_wq);
 		return 0;
 	}
@@ -718,6 +723,7 @@ static int msp430_as_data_buffer_write(struct msp430_data *ps_msp430,
 	ps_msp430->msp430_as_data_buffer_head = new_head;
 	wake_up(&ps_msp430->msp430_as_data_wq);
 
+	error_reported = false;
 	return 1;
 }
 
@@ -746,11 +752,15 @@ static int msp430_ms_data_buffer_write(struct msp430_data *ps_msp430,
 {
 	int new_head;
 	struct timespec ts;
+	static bool error_reported;
 
 	new_head = (ps_msp430->msp430_ms_data_buffer_head + 1)
 		& MSP430_ES_DATA_QUEUE_MASK;
 	if (new_head == ps_msp430->msp430_ms_data_buffer_tail) {
-		dev_err(&ps_msp430->client->dev, "Data buffer full\n");
+		if (!error_reported) {
+			dev_err(&ps_msp430->client->dev, "ms data buffer full\n");
+			error_reported = true;
+		}
 		wake_up(&ps_msp430->msp430_ms_data_wq);
 		return 0;
 	}
@@ -768,6 +778,7 @@ static int msp430_ms_data_buffer_write(struct msp430_data *ps_msp430,
 	ps_msp430->msp430_ms_data_buffer_head = new_head;
 	wake_up(&ps_msp430->msp430_ms_data_wq);
 
+	error_reported = false;
 	return 1;
 }
 
@@ -1073,7 +1084,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 				ARRAY_SIZE(stat_string));
 			stat_string[ESR_SIZE] = 0;
 			dev_err(&ps_msp430->client->dev,
-				"MPS430 Error: %s\n", stat_string);
+				"MSP430 Error: %s\n", stat_string);
 		} else
 			dev_err(&ps_msp430->client->dev,
 				"Failed to read error message %d\n", err);
