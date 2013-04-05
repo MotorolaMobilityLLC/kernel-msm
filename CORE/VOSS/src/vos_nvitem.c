@@ -1849,6 +1849,68 @@ static int bw20_ch_index_to_bw40_ch_index(int k)
 return m;
 }
 
+void crda_regulatory_entry_default(v_U8_t *countryCode, int domain_id)
+{
+   int k;
+   pr_info("Country %c%c domain_id %d\n enable ch 1 - 11.\n",
+       countryCode[0], countryCode[1], domain_id);
+   for (k = RF_CHAN_1; k <= RF_CHAN_11; k++) {
+       pnvEFSTable->halnv.tables.regDomains[domain_id].channels[k].enabled =
+           NV_CHANNEL_ENABLE;
+       /* Max Tx Power 20dBm */
+       pnvEFSTable->halnv.tables.regDomains[domain_id].channels[k].pwrLimit = 20;
+   }
+   /* enable ch 12 to ch 14 passive scan */
+   pr_info(" enable ch 12 - 14 to scan passively by setting DFS flag.\n");
+   for (k = RF_CHAN_12; k <= MAX_2_4GHZ_CHANNEL; k++) {
+       pnvEFSTable->halnv.tables.regDomains[domain_id].channels[k].enabled =
+           NV_CHANNEL_DFS;
+       pnvEFSTable->halnv.tables.regDomains[domain_id].channels[k].pwrLimit = 0;
+   }
+   pr_info(" enable 5GHz to scan passively by setting DFS flag.\n");
+   for (k = MIN_5GHZ_CHANNEL; k <= MAX_5GHZ_CHANNEL; k++) {
+       pnvEFSTable->halnv.tables.regDomains[domain_id].channels[k].enabled =
+           NV_CHANNEL_DFS;
+       pnvEFSTable->halnv.tables.regDomains[domain_id].channels[k].pwrLimit = 0;
+   }
+#ifdef PASSIVE_SCAN_4_9GHZ
+   pr_info(" enable 4.9 GHz to scan passively by setting DFS flag.\n");
+   for (k = RF_CHAN_240; k <= RF_CHAN_216; k++) {
+       pnvEFSTable->halnv.tables.regDomains[domain_id].channels[k].enabled =
+           NV_CHANNEL_DFS;
+       pnvEFSTable->halnv.tables.regDomains[domain_id].channels[k].pwrLimit = 0;
+   }
+#endif
+  if (domain_id == NUM_REG_DOMAINS-1)
+  { /* init time */
+     crda_alpha2[0] = countryCode[0];
+     crda_alpha2[1] = countryCode[1];
+     crda_regulatory_entry_valid = VOS_TRUE;
+     pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[0] = countryCode[0];
+     pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[1] = countryCode[1];
+     pnvEFSTable->halnv.tables.defaultCountryTable.countryCode[2] = 'I';
+     pnvEFSTable->halnv.tables.defaultCountryTable.regDomain = NUM_REG_DOMAINS-1;
+  }
+  if (domain_id == NUM_REG_DOMAINS-2)
+  { /* none-default country */
+     run_time_alpha2[0] = countryCode[0];
+     run_time_alpha2[1] = countryCode[1];
+     crda_regulatory_run_time_entry_valid = VOS_TRUE;
+  }
+}
+
+static int crda_regulatory_entry_post_processing(struct wiphy *wiphy,
+                struct regulatory_request *request,
+                v_U8_t nBandCapability,
+                int domain_id)
+{
+   if (request->alpha2[0] == '0' && request->alpha2[1] == '0') {
+        pr_info("Country 00 special handling to enable passive scan.\n");
+        crda_regulatory_entry_default(request->alpha2, domain_id);
+   }
+   return 0;
+}
+
 /* create_crda_regulatory_entry should be called from user command or 11d country IE */
 static int create_crda_regulatory_entry(struct wiphy *wiphy,
                 struct regulatory_request *request,
@@ -1908,16 +1970,16 @@ static int create_crda_regulatory_entry(struct wiphy *wiphy,
            {
               pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[k].enabled =
                  NV_CHANNEL_DFS;
-              // max_power is in mBm = 100 * d
+              // max_power is in mBm = 100 * dBm
               pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[k].pwrLimit =
-                 (tANI_S8) (wiphy->bands[i]->channels[j].max_power);
+                 (tANI_S8) ((wiphy->bands[i]->channels[j].max_power)/100);
               if ((wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_NO_HT40) == 0)
               {
                  pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[n].enabled =
                     NV_CHANNEL_DFS;
                  // 40MHz channel power is half of 20MHz (-3dB) ??
                  pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[n].pwrLimit =
-                    (tANI_S8) ((wiphy->bands[i]->channels[j].max_power)-3);
+                    (tANI_S8) (((wiphy->bands[i]->channels[j].max_power)/100)-3);
               }
            }
            else // Enable is only last flag we support
@@ -1926,14 +1988,14 @@ static int create_crda_regulatory_entry(struct wiphy *wiphy,
                  NV_CHANNEL_ENABLE;
               // max_power is in dBm
               pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[k].pwrLimit =
-                 (tANI_S8) (wiphy->bands[i]->channels[j].max_power);
+                 (tANI_S8) ((wiphy->bands[i]->channels[j].max_power)/100);
               if ((wiphy->bands[i]->channels[j].flags & IEEE80211_CHAN_NO_HT40) == 0)
               {
                  pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[n].enabled =
                     NV_CHANNEL_ENABLE;
                  // 40MHz channel power is half of 20MHz (-3dB) ??
                  pnvEFSTable->halnv.tables.regDomains[NUM_REG_DOMAINS-2].channels[n].pwrLimit =
-                    (tANI_S8) ((wiphy->bands[i]->channels[j].max_power)-3);
+                    (tANI_S8) (((wiphy->bands[i]->channels[j].max_power)/100)-3);
               }
            }
            /* ignore CRDA max_antenna_gain typical is 3dBi, nv.bin antennaGain is
@@ -1945,6 +2007,7 @@ static int create_crda_regulatory_entry(struct wiphy *wiphy,
    run_time_alpha2[0] = request->alpha2[0];
    run_time_alpha2[1] = request->alpha2[1];
    crda_regulatory_run_time_entry_valid = VOS_TRUE;
+   crda_regulatory_entry_post_processing(wiphy, request, nBandCapability, NUM_REG_DOMAINS-2);
 return 0;
 }
 v_BOOL_t is_crda_regulatory_entry_valid(void)
@@ -2212,6 +2275,7 @@ static int create_crda_regulatory_entry_from_regd(struct wiphy *wiphy,
      run_time_alpha2[1] = request->alpha2[1];
      crda_regulatory_run_time_entry_valid = VOS_TRUE;
   }
+  crda_regulatory_entry_post_processing(wiphy, request, nBandCapability, domain_id);
   return 0;
 }
 
