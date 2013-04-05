@@ -44,7 +44,7 @@ static int dummy_arg;
 
 static int subsys_crash_magic = 0x0;
 
-static int enable = 1;
+static int enable = 0;
 module_param_named(enable, enable, int, S_IWUSR | S_IRUGO);
 
 int lge_is_handle_panic_enable(void)
