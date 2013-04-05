@@ -230,12 +230,10 @@ static void msm_restart_prepare(const char *cmd)
 		} else {
 			__raw_writel(0x77665501, restart_reason);
 		}
+	} else {
+		__raw_writel(0x77665501, restart_reason);
 	}
 #ifdef CONFIG_LGE_HANDLE_PANIC
-	else {
-		__raw_writel(0x77665503, restart_reason);
-	}
-
 	if (restart_mode == RESTART_DLOAD)
 		lge_set_restart_reason(LAF_DLOAD_MODE);
 
