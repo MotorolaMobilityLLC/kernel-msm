@@ -2269,10 +2269,6 @@ static int calculate_state_of_charge(struct pm8921_bms_chip *chip,
 	soc = soc - chip->meter_offset;
 #endif
 
-	/* Round up soc to account for remainder */
-	if ((soc > 0) && (soc <= 99))
-		soc += 1;
-
 	if (soc > 100) {
 		soc = 100;
 		if (chip->start_percent == -EINVAL)
