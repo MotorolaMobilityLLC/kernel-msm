@@ -39,6 +39,7 @@
 
 #define LAF_DLOAD_MODE   0x6C616664 /* lafd */
 
+int lge_is_handle_panic_enable(void);
 int lge_set_magic_subsystem(const char *name, int type);
 void lge_skip_dload_by_sbl(int on);
 void lge_set_ram_console_addr(unsigned int addr, unsigned int size);
