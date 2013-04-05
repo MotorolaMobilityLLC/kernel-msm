@@ -708,6 +708,10 @@ int wlan_hdd_get_crda_regd_entry(struct wiphy *wiphy, hdd_config_t *pCfg)
       regulatory_hint(wiphy, pCfg->crdaDefaultCountryCode);
       wait_for_completion_interruptible_timeout(&pHddCtx->driver_crda_req,
         CRDA_WAIT_TIME);
+      /* if the country is not found from current regulatory.bin,
+         fall back to world domain */
+      if (is_crda_regulatory_entry_valid() == VOS_FALSE)
+         crda_regulatory_entry_default(pCfg->crdaDefaultCountryCode, NUM_REG_DOMAINS-1);
    }
    return 0;
 }
