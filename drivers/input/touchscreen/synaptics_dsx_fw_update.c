@@ -29,7 +29,7 @@
 #include <linux/firmware.h>
 #include <linux/semaphore.h>
 #include <linux/wakelock.h>
-#include <linux/input/synaptics_dsx.h>
+#include <linux/input/synaptics_rmi_dsx.h>
 #include "synaptics_dsx_i2c.h"
 
 #define CHECKSUM_OFFSET 0x00
