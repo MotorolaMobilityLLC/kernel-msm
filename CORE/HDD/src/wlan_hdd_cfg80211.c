@@ -2956,7 +2956,8 @@ static int wlan_hdd_change_station(struct wiphy *wiphy,
         }
     }
 #ifdef FEATURE_WLAN_TDLS
-    else if (pAdapter->device_mode == WLAN_HDD_INFRA_STATION ) {
+    else if ((pAdapter->device_mode == WLAN_HDD_INFRA_STATION)
+          || (pAdapter->device_mode == WLAN_HDD_P2P_CLIENT)) {
         if (params->sta_flags_set & BIT(NL80211_STA_FLAG_TDLS_PEER)) {
             StaParams.capability = params->capability;
             StaParams.uapsd_queues = params->uapsd_queues;

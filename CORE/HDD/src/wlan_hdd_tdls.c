@@ -1073,6 +1073,33 @@ hddTdlsPeer_t *wlan_hdd_tdls_find_peer(hdd_adapter_t *pAdapter, u8 *mac)
     return NULL;
 }
 
+hddTdlsPeer_t *wlan_hdd_tdls_find_all_peer(hdd_context_t *pHddCtx, u8 *mac)
+{
+    hdd_adapter_list_node_t *pAdapterNode = NULL, *pNext = NULL;
+    hdd_adapter_t *pAdapter = NULL;
+    tdlsCtx_t *pHddTdlsCtx = NULL;
+    hddTdlsPeer_t *curr_peer= NULL;
+    VOS_STATUS status = 0;
+
+    status = hdd_get_front_adapter ( pHddCtx, &pAdapterNode );
+    while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == status )
+    {
+        pAdapter = pAdapterNode->pAdapter;
+
+        pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
+        if (NULL != pHddTdlsCtx)
+        {
+            curr_peer = wlan_hdd_tdls_find_peer(pAdapter, mac);
+            if (curr_peer)
+                return curr_peer;
+        }
+        status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
+        pAdapterNode = pNext;
+    }
+    return curr_peer;
+}
+
+
 int wlan_hdd_tdls_reset_peer(hdd_adapter_t *pAdapter, u8 *mac)
 {
     hdd_context_t *pHddCtx;
@@ -1479,18 +1506,14 @@ void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx,
     while ( NULL != pAdapterNode && VOS_STATUS_SUCCESS == status )
     {
        pAdapter = pAdapterNode->pAdapter;
-       if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
-           (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
+       pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
+       if (NULL != pHddTdlsCtx)
        {
-           pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
-           if (NULL != pHddTdlsCtx)
-           {
-               if(eTDLS_SUPPORT_ENABLED == tdls_mode)
-                   wlan_hdd_tdls_implicit_enable(pHddTdlsCtx);
-               else if((eTDLS_SUPPORT_DISABLED == tdls_mode) ||
-                       (eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY == tdls_mode))
-                   wlan_hdd_tdls_implicit_disable(pHddTdlsCtx);
-           }
+           if(eTDLS_SUPPORT_ENABLED == tdls_mode)
+               wlan_hdd_tdls_implicit_enable(pHddTdlsCtx);
+           else if((eTDLS_SUPPORT_DISABLED == tdls_mode) ||
+                   (eTDLS_SUPPORT_EXPLICIT_TRIGGER_ONLY == tdls_mode))
+               wlan_hdd_tdls_implicit_disable(pHddTdlsCtx);
        }
        status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
        pAdapterNode = pNext;
@@ -1553,14 +1576,10 @@ tANI_U32 wlan_hdd_tdls_discovery_sent_cnt(hdd_context_t *pHddCtx)
     {
         pAdapter = pAdapterNode->pAdapter;
 
-        if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
-            (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
+        pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
+        if (NULL != pHddTdlsCtx)
         {
-            pHddTdlsCtx = WLAN_HDD_GET_TDLS_CTX_PTR(pAdapter);
-            if (NULL != pHddTdlsCtx)
-            {
-                count = count + pHddTdlsCtx->discovery_sent_cnt;
-            }
+            count = count + pHddTdlsCtx->discovery_sent_cnt;
         }
         status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
         pAdapterNode = pNext;
@@ -1743,8 +1762,9 @@ int wlan_hdd_tdls_scan_callback (hdd_adapter_t *pAdapter,
                                    ("%s: indicate TDLS teadown (staId %d)"), __func__, pHddCtx->tdlsConnInfo[staIdx].staId) ;
 
 #ifdef CONFIG_TDLS_IMPLICIT
-                    curr_peer = wlan_hdd_tdls_find_peer(pAdapter,pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes);
-                    wlan_hdd_tdls_indicate_teardown(pAdapter, curr_peer, eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
+                    curr_peer = wlan_hdd_tdls_find_all_peer(pHddCtx, pHddCtx->tdlsConnInfo[staIdx].peerMac.bytes);
+                    if(curr_peer)
+                        wlan_hdd_tdls_indicate_teardown(curr_peer->pHddTdlsCtx->pAdapter, curr_peer, eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
 #endif
                 }
             }
