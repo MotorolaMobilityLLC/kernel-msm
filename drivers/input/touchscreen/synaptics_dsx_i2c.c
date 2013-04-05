@@ -1282,17 +1282,17 @@ static ssize_t synaptics_rmi4_0dbutton_store(struct device *dev,
 static ssize_t synaptics_rmi4_ic_ver_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	unsigned int firmware_id;
+	unsigned int build_id, config_id;
 	struct synaptics_rmi4_data *rmi4_data = dev_get_drvdata(dev);
 	struct synaptics_rmi4_device_info *rmi;
 	rmi = &(rmi4_data->rmi4_mod_info);
-	batohui(&firmware_id, rmi->build_id, sizeof(rmi->build_id));
+	batohui(&build_id, rmi->build_id, sizeof(rmi->build_id));
+	batohui(&config_id, rmi->config_id, sizeof(rmi->config_id));
 	return scnprintf(buf, PAGE_SIZE,
-			"%s%s\n%s0x%X\n%s0x%02X%02X%02X%02X\n",
+			"%s%s\n%s%x\n%s%x\n",
 			"Product ID: ", rmi->product_id_string,
-			"Build ID: ", firmware_id,
-			"Config ID: ", rmi->config_id[3], rmi->config_id[2],
-			rmi->config_id[1], rmi->config_id[0]);
+			"Build ID: ", build_id,
+			"Config ID: ", config_id);
 }
 
  /**
