@@ -2535,7 +2535,6 @@ static int iris_search(struct iris_device *radio, int on, int dir)
 		case SCAN_FOR_WEAK:
 			radio->srch_st_list.srch_list_dir = dir;
 			radio->srch_st_list.srch_list_mode = srch;
-			radio->srch_st_list.srch_list_max = 0;
 			retval = hci_fm_search_station_list(
 				&radio->srch_st_list, radio->fm_hdev);
 			break;
@@ -3170,6 +3169,7 @@ static int iris_vidioc_s_ctrl(struct file *file, void *priv,
 		radio->srch_rds.srch_pi = ctrl->value;
 		break;
 	case V4L2_CID_PRIVATE_IRIS_SRCH_CNT:
+		radio->srch_st_list.srch_list_max = ctrl->value;
 		break;
 	case V4L2_CID_PRIVATE_IRIS_SPACING:
 		if (radio->mode == FM_RECV) {
@@ -3744,6 +3744,31 @@ static int iris_vidioc_s_frequency(struct file *file, void *priv,
 	return retval;
 }
 
+static int iris_fops_release(struct file *file)
+{
+	struct iris_device *radio = video_get_drvdata(video_devdata(file));
+	int retval = 0;
+
+	FMDBG("Enter %s ", __func__);
+	if (radio == NULL)
+		return -EINVAL;
+
+	if (radio->mode == FM_OFF)
+		return 0;
+
+	if (radio->mode == FM_RECV)
+		retval = hci_cmd(HCI_FM_DISABLE_RECV_CMD,
+						radio->fm_hdev);
+	else if (radio->mode == FM_TRANS)
+		retval = hci_cmd(HCI_FM_DISABLE_TRANS_CMD,
+					radio->fm_hdev);
+	if (retval < 0)
+		FMDERR("Err on disable FM %d\n", retval);
+
+	radio->mode = FM_OFF;
+	return retval;
+}
+
 static int iris_vidioc_dqbuf(struct file *file, void *priv,
 				struct v4l2_buffer *buffer)
 {
@@ -3838,6 +3863,7 @@ static const struct v4l2_ioctl_ops iris_ioctl_ops = {
 static const struct v4l2_file_operations iris_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = video_ioctl2,
+	.release        = iris_fops_release,
 };
 
 static struct video_device iris_viddev_template = {
