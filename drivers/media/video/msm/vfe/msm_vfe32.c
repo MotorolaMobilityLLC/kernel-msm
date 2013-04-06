@@ -4951,6 +4951,20 @@ static void vfe_send_comp_stats_msg(
 		msgStats.cs.buff = 0;
 	}
 
+	if (status_bits & VFE_IRQ_STATUS0_STATS_SK_BHIST) {
+		rc = vfe32_ctrl->stats_ops.dispatch(
+			vfe32_ctrl->stats_ops.stats_ctrl, MSM_STATS_TYPE_BHIST,
+			vfe32_ctrl->bhistStatsControl.bufToRender,
+			&msgStats.buf_idx, &vaddr, &msgStats.skin.fd,
+			vfe32_ctrl->stats_ops.client);
+		if (rc == 0)
+			msgStats.skin.buff = (uint32_t)vaddr;
+		else
+			CDBG("%s: Could not dispatch BHIST stats buffer",
+				__func__);
+	} else {
+	  msgStats.skin.buff = 0;
+	}
 	v4l2_subdev_notify(&vfe32_ctrl->subdev,
 		NOTIFY_VFE_MSG_COMP_STATS, &msgStats);
 }
@@ -5230,6 +5244,24 @@ static void vfe32_process_stats(struct vfe32_ctrl_type *vfe32_ctrl,
 	} else {
 		vfe32_ctrl->csStatsControl.bufToRender = 0;
 	}
+
+	if (status_bits & VFE_IRQ_STATUS0_STATS_SK_BHIST) {
+		addr = (uint32_t)vfe32_stats_dqbuf(vfe32_ctrl,
+				MSM_STATS_TYPE_BHIST);
+		if (addr) {
+			vfe32_ctrl->bhistStatsControl.bufToRender =
+				vfe32_process_stats_irq_common(
+				vfe32_ctrl,	statsSkinNum,
+				addr);
+			process_stats = true;
+		} else {
+			vfe32_ctrl->bhistStatsControl.droppedStatsFrameCount++;
+			vfe32_ctrl->bhistStatsControl.bufToRender = 0;
+		}
+	} else {
+		vfe32_ctrl->bhistStatsControl.bufToRender = 0;
+	}
+
 	spin_unlock_irqrestore(&vfe32_ctrl->stats_bufq_lock, flags);
 	if (process_stats)
 		vfe_send_comp_stats_msg(vfe32_ctrl, status_bits);
