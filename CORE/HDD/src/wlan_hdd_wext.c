@@ -5178,20 +5178,20 @@ static int iw_set_dynamic_mcbc_filter(struct net_device *dev,
                __func__, pRequest->mcastBcastFilterSetting,
                pHddCtx->hdd_wlan_suspended);
 
-        wlanRxpFilterParam = vos_mem_malloc(sizeof(tSirWlanSetRxpFilters));
-        if (NULL == wlanRxpFilterParam)
-        {
-            hddLog(VOS_TRACE_LEVEL_FATAL,
-                   "%s: vos_mem_alloc failed", __func__);
-            return -EINVAL;
-        }
-
         pHddCtx->dynamic_mcbc_filter.mcastBcastFilterSetting =
             pRequest->mcastBcastFilterSetting;
         pHddCtx->dynamic_mcbc_filter.enableCfg = TRUE;
 
         if (pHddCtx->hdd_wlan_suspended)
         {
+            wlanRxpFilterParam = vos_mem_malloc(sizeof(tSirWlanSetRxpFilters));
+            if (NULL == wlanRxpFilterParam)
+            {
+                hddLog(VOS_TRACE_LEVEL_FATAL,
+                       "%s: vos_mem_alloc failed", __func__);
+                return -EINVAL;
+            }
+
             wlanRxpFilterParam->configuredMcstBcstFilterSetting =
                 pRequest->mcastBcastFilterSetting;
             wlanRxpFilterParam->setMcstBcstFilter = TRUE;
