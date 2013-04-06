@@ -36,17 +36,14 @@ static struct mipi_dsi_phy_ctrl dsi_cmd_mode_phy_db = {
 
 static char enter_sleep[2] = {DCS_CMD_ENTER_SLEEP_MODE, 0x00};
 static char display_off[2] = {DCS_CMD_SET_DISPLAY_OFF, 0x00};
+static char set_brightness[2] = {DCS_CMD_SET_BRIGHTNESS, 0xff};
 static char led_pwm1[2] = {DCS_CMD_SET_CTRL_DISP, 0x2C};
-static char led_pwm2[2] = {DCS_CMD_SET_CABC, 0x03};
+static char led_pwm2[2] = {DCS_CMD_SET_CABC, 0x02};
 static char enable_te[2] = {DCS_CMD_SET_TEAR_ON, 0x00};
-
-/* Set scan line to 2/3 of the screen */
-/* TODO
-static char set_scanline[3] = {DCS_CMD_SET_SCAN_LINE, 0x03, 0x55};
-*/
 
 static struct dsi_cmd_desc mot_cmd_on_cmds[] = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(enable_te), enable_te},
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(set_brightness), set_brightness},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm1), led_pwm1},
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm2), led_pwm2},
 };
@@ -58,8 +55,17 @@ static struct dsi_cmd_desc mot_display_off_cmds[] = {
 
 static int panel_enable(struct msm_fb_data_type *mfd)
 {
+	static int controller_ver = INVALID_VALUE;
+
 	/* leverage the optimized exit_sleep mechanism */
 	mipi_mot_panel_exit_sleep();
+
+	controller_ver = mipi_mot_get_controller_ver(mfd);
+	if (controller_ver >= 5)
+		led_pwm2[1] = 0x92;	/* enable CE & CABC for ES5+ */
+	else if (controller_ver == 4)
+		led_pwm2[1] = 0x90;	/* enable CE for ES4 */
+
 	mipi_mot_tx_cmds(&mot_cmd_on_cmds[0],
 		ARRAY_SIZE(mot_cmd_on_cmds));
 	return 0;
@@ -97,7 +103,6 @@ static int __init mipi_mot_cmd_jdi_hd_430_init(void)
 	pinfo->wait_cycle = 0;
 	pinfo->bpp = 24;
 
-	/*TODO: check*/
 	pinfo->lcdc.h_back_porch = 50;
 	pinfo->lcdc.h_front_porch = 50;
 	pinfo->lcdc.h_pulse_width = 20;
@@ -133,7 +138,7 @@ static int __init mipi_mot_cmd_jdi_hd_430_init(void)
 	pinfo->mipi.data_lane1 = TRUE;
 	pinfo->mipi.data_lane2 = TRUE;
 	pinfo->mipi.data_lane3 = TRUE;
-	/*TODO*/
+
 	pinfo->mipi.t_clk_post = 0x19;
 	pinfo->mipi.t_clk_pre = 0x2f;
 	pinfo->mipi.stream = 0; /* dma_p */
@@ -160,8 +165,6 @@ static int __init mipi_mot_cmd_jdi_hd_430_init(void)
 	mot_panel->exit_sleep_wait = 5;
 
 	atomic_set(&mot_panel->state, MOT_PANEL_ON);
-	/* TODO
-	mot_panel->enable_acl = enable_acl; */
 
 	/* For ESD detection information */
 	mot_panel->esd_enabled = true;
