@@ -1,0 +1,5 @@
+config ESD_FS
+	tristate "Emulated 'SD card' file system for Android (EXPERIMENTAL)"
+	help
+	  Esdfs is a wrapfs-based file system, designed to implement the
+	  Android "sdcard" FUSE-backed file system from within the kernel.
