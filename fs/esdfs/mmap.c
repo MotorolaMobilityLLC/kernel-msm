@@ -9,9 +9,9 @@
  * published by the Free Software Foundation.
  */
 
-#include "wrapfs.h"
+#include "esdfs.h"
 
-static int wrapfs_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+static int esdfs_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 {
 	int err;
 	struct file *file, *lower_file;
@@ -20,14 +20,14 @@ static int wrapfs_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 
 	memcpy(&lower_vma, vma, sizeof(struct vm_area_struct));
 	file = lower_vma.vm_file;
-	lower_vm_ops = WRAPFS_F(file)->lower_vm_ops;
+	lower_vm_ops = ESDFS_F(file)->lower_vm_ops;
 	BUG_ON(!lower_vm_ops);
 
-	lower_file = wrapfs_lower_file(file);
+	lower_file = esdfs_lower_file(file);
 	/*
 	 * XXX: vm_ops->fault may be called in parallel.  Because we have to
 	 * resort to temporarily changing the vma->vm_file to point to the
-	 * lower file, a concurrent invocation of wrapfs_fault could see a
+	 * lower file, a concurrent invocation of esdfs_fault could see a
 	 * different value.  In this workaround, we keep a different copy of
 	 * the vma structure in our stack, so we never expose a different
 	 * value of the vma->vm_file called to us, even temporarily.  A
@@ -40,14 +40,14 @@ static int wrapfs_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 }
 
 /*
- * XXX: the default address_space_ops for wrapfs is empty.  We cannot set
+ * XXX: the default address_space_ops for esdfs is empty.  We cannot set
  * our inode->i_mapping->a_ops to NULL because too many code paths expect
  * the a_ops vector to be non-NULL.
  */
-const struct address_space_operations wrapfs_aops = {
+const struct address_space_operations esdfs_aops = {
 	/* empty on purpose */
 };
 
-const struct vm_operations_struct wrapfs_vm_ops = {
-	.fault		= wrapfs_fault,
+const struct vm_operations_struct esdfs_vm_ops = {
+	.fault		= esdfs_fault,
 };
