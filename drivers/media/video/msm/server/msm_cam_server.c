@@ -376,6 +376,11 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 	struct msm_isp_event_ctrl *isp_event;
 	void *ctrlcmd_data;
 
+	struct msm_ctrl_cmd *u_ctrlCmd;
+	uint16_t u_type;
+	uint8_t *data_ptr = (uint8_t *)out->value;
+	u_ctrlCmd = (struct msm_ctrl_cmd *)data_ptr;
+
 	event_qcmd = kzalloc(sizeof(struct msm_queue_cmd), GFP_KERNEL);
 	if (!event_qcmd) {
 		pr_err("%s Insufficient memory. return", __func__);
@@ -428,6 +433,10 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 	v4l2_event_queue(server_dev->server_command_queue.pvdev,
 					  &v4l2_evt);
 	D("%s v4l2_event_queue: type = 0x%x\n", __func__, v4l2_evt.type);
+	if (u_ctrlCmd) {
+	  u_type = u_ctrlCmd->type;
+	} else
+	  u_type = 0;
 	mutex_unlock(&server_dev->server_queue_lock);
 
 	/* wait for config return status */
@@ -450,6 +459,7 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 	if (list_empty_careful(&queue->list)) {
 		if (!rc) {
 			rc = -ETIMEDOUT;
+			pr_err("%s: type : %d", __func__, u_type);
 			msm_drain_eventq(
 			&server_dev->server_queue[out->queue_idx].eventData_q);
 		}
