@@ -456,6 +456,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
     char *startBssEvent; 
     hdd_context_t *pHddCtx;
     hdd_scaninfo_t *pScanInfo  = NULL;
+    struct iw_michaelmicfailure msg;
 
     dev = (struct net_device *)usrDataForCallback;
     pHostapdAdapter = netdev_priv(dev);
@@ -565,7 +566,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
            return VOS_STATUS_SUCCESS;
         case eSAP_STA_MIC_FAILURE_EVENT:
         {
-            struct iw_michaelmicfailure msg;
             memset(&msg, '\0', sizeof(msg));
             msg.src_addr.sa_family = ARPHRD_ETHER;
             memcpy(msg.src_addr.sa_data, &pSapEvent->sapevt.sapStationMICFailureEvent.staMac, sizeof(v_MACADDR_t));
