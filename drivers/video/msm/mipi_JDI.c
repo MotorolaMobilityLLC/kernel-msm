@@ -107,8 +107,10 @@ static int mipi_JDI_lcd_on(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
-	if (first)	/* change first in setbacklight */
+	if (first)	{/* change first in setbacklight */
+		pr_info("%s-, booting\n", __func__);
 		return 0;
+	}
 
 	msleep(20);
 
@@ -219,6 +221,14 @@ static void mipi_JDI_set_recovery_backlight(struct msm_fb_data_type *mfd)
 		recovery_backlight = mipi_JDI_pdata->recovery_backlight;
 
 	pr_info("%s: backlight level %d\n", __func__, recovery_backlight);
+
+	if (first) {
+		ret = pm8xxx_gpio_config(gpio, &config);
+		if (ret)
+			pr_err("%s: pm8xxx_gpio_config failed: ret=%d\n",
+				 __func__, ret);
+		first = false;
+	}
 
 	if (bl_lpm) {
 		ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL *
