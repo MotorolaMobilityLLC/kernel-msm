@@ -4339,21 +4339,18 @@ limSendSetMaxTxPowerReq ( tpAniSirGlobal pMac, tPowerdBm txPower, tpPESession pS
    palCopyMemory( pMac->hHdd, pMaxTxParams->bssId, pSessionEntry->bssId, sizeof(tSirMacAddr) );
    palCopyMemory( pMac->hHdd, pMaxTxParams->selfStaMacAddr, pSessionEntry->selfMacAddr, sizeof(tSirMacAddr) );
 
-    msgQ.type = WDA_SET_MAX_TX_POWER_REQ;
-    msgQ.bodyptr = pMaxTxParams;
-    msgQ.bodyval = 0;
-    PELOGW(limLog(pMac, LOG1, FL("Posting WDA_SET_MAX_TX_POWER_REQ to WDA"));)
-    MTRACE(macTraceMsgTx(pMac, pSessionEntry->peSessionId, msgQ.type));
-    if(eSIR_SUCCESS != (retCode = wdaPostCtrlMsg(pMac, &msgQ)))
-    {
-       PELOGW(limLog(pMac, LOGW, FL("wdaPostCtrlMsg() failed"));)
-       if (NULL != pMaxTxParams)
-       {
-          palFreeMemory(pMac->hHdd, (tANI_U8*)pMaxTxParams);
-       }
-       return retCode;
-    }
-    return retCode;
+   msgQ.type = WDA_SET_MAX_TX_POWER_REQ;
+   msgQ.bodyptr = pMaxTxParams;
+   msgQ.bodyval = 0;
+   PELOG1(limLog(pMac, LOG1, FL("Posting WDA_SET_MAX_TX_POWER_REQ to WDA"));)
+   MTRACE(macTraceMsgTx(pMac, pSessionEntry->peSessionId, msgQ.type));
+   retCode = wdaPostCtrlMsg(pMac, &msgQ);
+   if (eSIR_SUCCESS != retCode)
+   {
+      PELOGE(limLog(pMac, LOGE, FL("wdaPostCtrlMsg() failed"));)
+      palFreeMemory(pMac->hHdd, pMaxTxParams);
+   }
+   return retCode;
 }
 #endif
 
