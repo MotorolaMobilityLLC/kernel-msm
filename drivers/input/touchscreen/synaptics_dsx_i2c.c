@@ -87,6 +87,8 @@
 #define TYPE_FINGER (1 << 0)
 #define TYPE_STYLUS (1 << 1)
 
+#define RESET_GPIO_NAME "touch_reset"
+
 #define SYDBG(fmt, args...)	printk(KERN_ERR "%s: " fmt, __func__, ##args)
 #define SYDBG_REG(subpkt, fld) SYDBG(#subpkt "." #fld " = 0x%02X\n", subpkt.fld)
 
@@ -573,6 +575,9 @@ static struct synaptics_dsx_platform_data *
 
 	pdata->irq_gpio = of_get_gpio(np, 0);
 	pdata->reset_gpio = of_get_gpio(np, 1);
+
+	if (gpio_request(pdata->reset_gpio, RESET_GPIO_NAME) < 0)
+		pr_err("failed to request reset gpio\n");
 
 	memset(key_codes, 0, sizeof(key_codes));
 	retval = of_property_read_u32_array(np, "synaptics,key-buttons",
@@ -3333,6 +3338,8 @@ static int synaptics_rmi4_suspend(struct device *dev)
 	if (platform_data->regulator_en)
 		regulator_disable(rmi4_data->regulator);
 
+	gpio_free(platform_data->reset_gpio);
+
 	return 0;
 }
 
@@ -3354,6 +3361,9 @@ static int synaptics_rmi4_resume(struct device *dev)
 
 	if (platform_data->regulator_en)
 		regulator_enable(rmi4_data->regulator);
+
+	if (gpio_request(platform_data->reset_gpio, RESET_GPIO_NAME) < 0)
+		pr_err("failed to request reset gpio\n");
 
 	synaptics_rmi4_reset_device(rmi4_data);
 
