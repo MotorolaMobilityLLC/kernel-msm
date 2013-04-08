@@ -454,8 +454,10 @@ static int msm_camera_v4l2_streamoff(struct file *f, void *pctx,
 	if (msm_server_get_usecount() > 0)
 		rc = msm_server_streamoff(pcam, pcam_inst->my_index);
 
-	if (rc < 0)
+	if (rc < 0) {
 		pr_err("%s: hw failed to stop streaming\n", __func__);
+		BUG_ON(1);
+	}
 
 	/* stop buffer streaming */
 	rc = vb2_streamoff(&pcam_inst->vid_bufq, buf_type);
