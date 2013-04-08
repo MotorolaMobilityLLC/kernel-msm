@@ -71,9 +71,7 @@
 #define PTT_MSG_READ_MEMORY         0x3044
 #define PTT_MSG_WRITE_MEMORY        0x3045
 #define PTT_MSG_LOG_DUMP_DBG        0x32A1
-#ifdef ANI_MANF_DIAG
 #define PTT_MSG_FTM_CMDS_TYPE           0x4040
-#endif
 #define ANI_DRIVER_MSG_START         0x0001
 #define ANI_MSG_APP_REG_REQ         (ANI_DRIVER_MSG_START + 0)
 #define ANI_MSG_APP_REG_RSP         (ANI_DRIVER_MSG_START + 1)

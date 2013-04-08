@@ -107,9 +107,7 @@
 #include <linux/wireless.h>
 #include <net/cfg80211.h>
 #endif
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include "wlan_qct_pal_trace.h"
-#endif // FEATURE_WLAN_INTEGRATED_SOC
 
 #include "wlan_hdd_misc.h"
 #include "bap_hdd_misc.h"
@@ -3539,9 +3537,6 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
                  break;
               case  8: //Request Standby
 #ifdef CONFIG_HAS_EARLYSUSPEND
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-                 (void)hdd_enter_standby(pAdapter->pHddCtx);
-#endif
 #endif
                  break;
               case  9: //Start Auto Bmps Timer
@@ -3555,9 +3550,6 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
 #ifdef CONFIG_HAS_EARLYSUSPEND
                  nEnableSuspendOld = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->nEnableSuspend;
                  (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->nEnableSuspend = 1;
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-                 hdd_suspend_wlan(NULL);
-#endif
                  (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->nEnableSuspend = nEnableSuspendOld;
 #endif
                  break;
@@ -3565,17 +3557,11 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
 #ifdef CONFIG_HAS_EARLYSUSPEND
                  nEnableSuspendOld = (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->nEnableSuspend;
                  (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->nEnableSuspend = 2;
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-                 hdd_suspend_wlan(NULL);
-#endif
                  (WLAN_HDD_GET_CTX(pAdapter))->cfg_ini->nEnableSuspend = nEnableSuspendOld;
 #endif
                  break;
               case  13://resume from suspend
 #ifdef CONFIG_HAS_EARLYSUSPEND
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-                 hdd_resume_wlan(NULL);
-#endif
 #endif
                  break;
 #endif
@@ -3853,14 +3839,12 @@ static int iw_setnone_getint(struct net_device *dev, struct iw_request_info *inf
             break;
         }
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
         case WE_GET_WDI_DBG:
         {
            wpalTraceDisplay();
            *value = 0;
            break;
         }
-#endif // FEATURE_WLAN_INTEGRATED_SOC
 
         case WE_GET_SAP_AUTO_CHANNEL_SELECTION:
         {
@@ -3908,13 +3892,11 @@ int iw_set_three_ints_getnone(struct net_device *dev, struct iw_request_info *in
             vos_trace_setValue( value[1], value[2], value[3]);
             break;
         }
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
         case WE_SET_WDI_DBG:
         {
             wpalTraceSetLevel( value[1], value[2], value[3]);
             break;
         }
-#endif // FEATURE_WLAN_INTEGRATED_SOC
         case WE_SET_SAP_CHANNELS:
         {
             ret = iw_softap_set_channel_range( dev, value[1], value[2], value[3]);
@@ -4171,7 +4153,6 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
             memset(&pAdapter->hdd_stats, 0, sizeof(pAdapter->hdd_stats));
             break;
         }
-#ifdef WLAN_SOFTAP_FEATURE
         case WE_INIT_AP:
         {
           pr_info("Init AP trigger\n");
@@ -4209,7 +4190,6 @@ static int iw_setnone_getnone(struct net_device *dev, struct iw_request_info *in
 
            break;
         }
-#endif
 #ifdef WLAN_BTAMP_FEATURE
         case WE_ENABLE_AMP:
         {
@@ -6391,12 +6371,10 @@ static const struct iw_priv_args we_private_args[] = {
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
         "getMaxAssoc" },
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
     {   WE_GET_WDI_DBG,
         0,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
         "getwdidbg" },
-#endif // FEATURE_WLAN_INTEGRATED_SOC
 
     {   WE_GET_SAP_AUTO_CHANNEL_SELECTION,
         0,
@@ -6454,12 +6432,10 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         "setwlandbg" },
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
     {   WE_SET_WDI_DBG,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 3,
         0,
         "setwdidbg" },
-#endif // FEATURE_WLAN_INTEGRATED_SOC
 
     {   WE_SET_SAP_CHANNELS,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 3,

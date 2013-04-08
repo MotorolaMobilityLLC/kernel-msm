@@ -230,7 +230,6 @@ WLANSAP_Start
     v_PVOID_t  pvosGCtx
 )
 {
-#ifdef WLAN_SOFTAP_FEATURE
     ptSapContext  pSapCtx = NULL;
 
     /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
@@ -279,7 +278,6 @@ WLANSAP_Start
     }
 
 
-#endif
 
     return VOS_STATUS_SUCCESS;
 }/* WLANSAP_Start */
@@ -317,7 +315,6 @@ WLANSAP_Stop
 )
 {
 
-#ifdef WLAN_SOFTAP_FEATURE
     ptSapContext  pSapCtx = NULL;
 
     /*------------------------------------------------------------------------
@@ -346,7 +343,6 @@ WLANSAP_Stop
     /*------------------------------------------------------------------------
         Stop SAP (de-register RSN handler!?)
     ------------------------------------------------------------------------*/
-#endif
 
     return VOS_STATUS_SUCCESS;
 }/* WLANSAP_Stop */
@@ -381,7 +377,6 @@ WLANSAP_Close
     v_PVOID_t  pvosGCtx
 )
 {
-#ifdef WLAN_SOFTAP_FEATURE
     ptSapContext  pSapCtx = NULL;
     /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -*/
 
@@ -411,7 +406,6 @@ WLANSAP_Close
     ------------------------------------------------------------------------*/
     vos_free_context(pvosGCtx, VOS_MODULE_ID_SAP, pSapCtx);
 
-#endif
     return VOS_STATUS_SUCCESS;
 }/* WLANSAP_Close */
 
@@ -450,7 +444,6 @@ WLANSAP_CleanCB
     v_U32_t freeFlag // 0 /*do not empty*/);
 )
 {
-#ifdef WLAN_SOFTAP_FEATURE
     /*------------------------------------------------------------------------
         Sanity check SAP control block
     ------------------------------------------------------------------------*/
@@ -478,7 +471,6 @@ WLANSAP_CleanCB
     pSapCtx->sessionId = 0;
     pSapCtx->channel = 0;
 
-#endif
     return VOS_STATUS_SUCCESS;
 }// WLANSAP_CleanCB
 
@@ -1201,7 +1193,6 @@ WLANSAP_DisassocSta
     return VOS_STATUS_SUCCESS;
 }
 
-#ifdef WLAN_SOFTAP_FEATURE
 /*==========================================================================
   FUNCTION    WLANSAP_DeauthSta
 
@@ -1296,22 +1287,22 @@ WLANSAP_SetChannelRange(tHalHandle hHal,v_U8_t startChannel, v_U8_t endChannel,
     /*------------------------------------------------------------------------
       Sanity check
       ------------------------------------------------------------------------*/
-    if (( WNI_CFG_SAP_CHANNEL_SELECT_OPERATING_BAND_APMIN > operatingBand)||
-          (WNI_CFG_SAP_CHANNEL_SELECT_OPERATING_BAND_APMAX < operatingBand))
+    if (( WNI_CFG_SAP_CHANNEL_SELECT_OPERATING_BAND_STAMIN > operatingBand) ||
+          (WNI_CFG_SAP_CHANNEL_SELECT_OPERATING_BAND_STAMAX < operatingBand))
     {
          VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                      "Invalid operatingBand on WLANSAP_SetChannelRange");
         return VOS_STATUS_E_FAULT;
     }
-    if (( WNI_CFG_SAP_CHANNEL_SELECT_START_CHANNEL_APMIN > startChannel)||
-         (WNI_CFG_SAP_CHANNEL_SELECT_START_CHANNEL_APMAX < startChannel))
+    if (( WNI_CFG_SAP_CHANNEL_SELECT_START_CHANNEL_STAMIN > startChannel) ||
+         (WNI_CFG_SAP_CHANNEL_SELECT_START_CHANNEL_STAMAX < startChannel))
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                     "Invalid startChannel value on WLANSAP_SetChannelRange");
         return VOS_STATUS_E_FAULT;
     }
-    if (( WNI_CFG_SAP_CHANNEL_SELECT_END_CHANNEL_APMIN > endChannel)||
-         (WNI_CFG_SAP_CHANNEL_SELECT_END_CHANNEL_APMAX < endChannel))
+    if (( WNI_CFG_SAP_CHANNEL_SELECT_END_CHANNEL_STAMIN > endChannel) ||
+         (WNI_CFG_SAP_CHANNEL_SELECT_END_CHANNEL_STAMAX < endChannel))
     {
         VOS_TRACE( VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
                       "Invalid endChannel value on WLANSAP_SetChannelRange");
@@ -1426,7 +1417,6 @@ WLANSAP_SetChannelRange(tHalHandle hHal,v_U8_t startChannel, v_U8_t endChannel,
     }
     return VOS_STATUS_SUCCESS;
 }
-#endif
 
 /*==========================================================================
   FUNCTION    WLANSAP_SetCounterMeasure

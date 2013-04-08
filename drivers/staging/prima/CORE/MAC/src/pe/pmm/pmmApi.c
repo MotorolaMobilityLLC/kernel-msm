@@ -104,10 +104,6 @@ tSirRetStatus
 pmmInitialize(tpAniSirGlobal pMac)
 {
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    pMac->pmm.gPmmNextSta = 0;
-    pMac->pmm.gPmmNumSta = 0;
-#endif
 
     pmmResetStats(pMac);
 
@@ -115,20 +111,6 @@ pmmInitialize(tpAniSirGlobal pMac)
     pMac->pmm.gPmmState = ePMM_STATE_READY;
 
 
-#ifdef ANI_PRODUCT_TYPE_AP
-
-    palZeroMemory(pMac->hHdd,
-                    pMac->pmm.gPmmTim.pTim, sizeof(tANI_U8)*pMac->lim.maxStation);
-
-    palZeroMemory(pMac->hHdd,
-                     pMac->pmm.gPmmTim.pStaInfo, sizeof(*pMac->pmm.gPmmTim.pStaInfo)*pMac->lim.maxStation);
-
-    palZeroMemory(pMac->hHdd,
-                    pMac->pmm.gpPmmStaState, sizeof(tPmmStaState)*pMac->lim.maxStation);
-
-    palZeroMemory(pMac->hHdd,
-                    pMac->pmm.gpPmmPSState, sizeof(tANI_U8)*pMac->lim.maxStation);
-#endif
 
     pMac->pmm.inMissedBeaconScenario = FALSE;
 

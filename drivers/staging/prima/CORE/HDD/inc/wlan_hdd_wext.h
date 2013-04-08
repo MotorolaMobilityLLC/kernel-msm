@@ -201,7 +201,6 @@ typedef enum
 
 #define HDD_WPA_ELEM_VENDOR_EXTENSION       0x1049
 
-#ifdef WLAN_SOFTAP_FEATURE
 #define HDD_WPS_MANUFACTURER_LEN            64
 #define HDD_WPS_MODEL_NAME_LEN              32
 #define HDD_WPS_MODEL_NUM_LEN               32
@@ -219,7 +218,6 @@ typedef enum
 #define HDD_WPS_ELEM_SERIAL_NUM             0x1042 
 #define HDD_WPS_ELEM_DEVICE_NAME            0x1011
 #define HDD_WPS_ELEM_REGISTRA_CONF_METHODS  0x1053
-#endif
 
 
  

@@ -1370,13 +1370,11 @@ tANI_BOOLEAN csrIsConnStateConnectedWds( tpAniSirGlobal pMac, tANI_U32 sessionId
     return( eCSR_ASSOC_STATE_TYPE_WDS_CONNECTED == pMac->roam.roamSession[sessionId].connectState );
 }
 
-#ifdef WLAN_SOFTAP_FEATURE
 tANI_BOOLEAN csrIsConnStateConnectedInfraAp( tpAniSirGlobal pMac, tANI_U32 sessionId )
 {
     return( (eCSR_ASSOC_STATE_TYPE_INFRA_CONNECTED == pMac->roam.roamSession[sessionId].connectState) ||
         (eCSR_ASSOC_STATE_TYPE_INFRA_DISCONNECTED == pMac->roam.roamSession[sessionId].connectState ) );
 }
-#endif
 
 tANI_BOOLEAN csrIsConnStateDisconnectedWds( tpAniSirGlobal pMac, tANI_U32 sessionId )
 {
@@ -2240,14 +2238,12 @@ tANI_U32 csrTranslateToWNICfgDot11Mode(tpAniSirGlobal pMac, eCsrCfgDot11Mode csr
     case eCSR_CFG_DOT11_MODE_TITAN:
         ret = WNI_CFG_DOT11_MODE_TITAN;
         break;
-#ifdef WLAN_SOFTAP_FEATURE
     case eCSR_CFG_DOT11_MODE_11G_ONLY:
        ret = WNI_CFG_DOT11_MODE_11G_ONLY;
        break;
     case eCSR_CFG_DOT11_MODE_11N_ONLY:
        ret = WNI_CFG_DOT11_MODE_11N_ONLY;
        break;
-#endif
 
 #ifdef WLAN_FEATURE_11AC
      case eCSR_CFG_DOT11_MODE_11AC_ONLY:
@@ -3007,7 +3003,8 @@ eHalStatus csrValidateMCCBeaconInterval(tpAniSirGlobal pMac, tANI_U8 channelId,
                                                          pMac->roam.roamSession[sessionId].bssParams.beaconInterval);
                                smsLog(pMac, LOG1, FL(" Peer AP BI : %d, new Beacon Interval: %d\n"),*beaconInterval,new_beaconInterval );
                                //Update the becon Interval
-                               if(*beaconInterval != new_beaconInterval )
+                               if( new_beaconInterval !=
+                                     pMac->roam.roamSession[sessionId].bssParams.beaconInterval )
                                {
                                    //Update the beaconInterval now
                                    smsLog(pMac, LOG1, FL(" Beacon Interval got changed\n"));
@@ -3678,11 +3675,12 @@ tANI_BOOLEAN csrGetRSNInformation( tHalHandle hHal, tCsrAuthList *pAuthType, eCs
         }
         if ( Capabilities )
         {
-            Capabilities->PreAuthSupported = pRSNIe->preauth;
-            Capabilities->NoPairwise = pRSNIe->no_pwise;
-            Capabilities->PTKSAReplayCounter = pRSNIe->PTKSA_replay_counter;
-            Capabilities->GTKSAReplayCounter = pRSNIe->GTKSA_replay_counter;
-            Capabilities->Reserved = pRSNIe->reserved;
+            Capabilities->PreAuthSupported = (pRSNIe->RSN_Cap[0] >> 0) & 0x1 ; // Bit 0 PreAuthentication
+            Capabilities->NoPairwise = (pRSNIe->RSN_Cap[0] >> 1) & 0x1 ; // Bit 1 No Pairwise
+            Capabilities->PTKSAReplayCounter = (pRSNIe->RSN_Cap[0] >> 2) & 0x3 ; // Bit 2, 3 PTKSA Replay Counter
+            Capabilities->GTKSAReplayCounter = (pRSNIe->RSN_Cap[0] >> 4) & 0x3 ; // Bit 4,5 GTKSA Replay Counter
+            Capabilities->Reserved = (pRSNIe->RSN_Cap[0] >> 6) & 0x3 ; // remaining reserved
+            Capabilities->Reserved = (Capabilities->Reserved >> 2) | (pRSNIe->RSN_Cap[1]  & 0xff) ; // remaining reserved
         }
     }
     return( fAcceptableCyphers );
@@ -5937,11 +5935,9 @@ tSirBssType csrTranslateBsstypeToMacType(eCsrRoamBssType csrtype)
     case eCSR_BSS_TYPE_WDS_STA:
         ret = eSIR_BTAMP_STA_MODE;
         break;
-#ifdef WLAN_SOFTAP_FEATURE
     case eCSR_BSS_TYPE_INFRA_AP:
         ret = eSIR_INFRA_AP_MODE;
         break;
-#endif
     case eCSR_BSS_TYPE_ANY:
     default:
         ret = eSIR_AUTO_MODE;
@@ -5955,11 +5951,7 @@ tSirBssType csrTranslateBsstypeToMacType(eCsrRoamBssType csrtype)
 //This function use the parameters to decide the CFG value.
 //CSR never sets WNI_CFG_DOT11_MODE_ALL to the CFG
 //So PE should not see WNI_CFG_DOT11_MODE_ALL when it gets the CFG value
-#ifdef WLAN_SOFTAP_FEATURE
 eCsrCfgDot11Mode csrGetCfgDot11ModeFromCsrPhyMode(tCsrRoamProfile *pProfile, eCsrPhyMode phyMode, tANI_BOOLEAN fProprietary)
-#else
-eCsrCfgDot11Mode csrGetCfgDot11ModeFromCsrPhyMode(eCsrPhyMode phyMode, tANI_BOOLEAN fProprietary)
-#endif
 {
     tANI_U32 cfgDot11Mode = eCSR_CFG_DOT11_MODE_ABG;
 
@@ -5975,11 +5967,9 @@ eCsrCfgDot11Mode csrGetCfgDot11ModeFromCsrPhyMode(eCsrPhyMode phyMode, tANI_BOOL
         break;
     case eCSR_DOT11_MODE_11g:
     case eCSR_DOT11_MODE_11g_ONLY:
-#ifdef WLAN_SOFTAP_FEATURE
         if(pProfile && (CSR_IS_INFRA_AP(pProfile)) && (phyMode == eCSR_DOT11_MODE_11g_ONLY))
             cfgDot11Mode = eCSR_CFG_DOT11_MODE_11G_ONLY;
         else
-#endif
         cfgDot11Mode = eCSR_CFG_DOT11_MODE_11G;
         break;
     case eCSR_DOT11_MODE_11n:
@@ -5993,11 +5983,9 @@ eCsrCfgDot11Mode csrGetCfgDot11ModeFromCsrPhyMode(eCsrPhyMode phyMode, tANI_BOOL
         }
         break;
     case eCSR_DOT11_MODE_11n_ONLY:
-#ifdef WLAN_SOFTAP_FEATURE
        if(pProfile && CSR_IS_INFRA_AP(pProfile))
            cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N_ONLY;
        else
-#endif
        cfgDot11Mode = eCSR_CFG_DOT11_MODE_11N;
        break;
     case eCSR_DOT11_MODE_TAURUS:
@@ -6436,7 +6424,6 @@ eHalStatus csrScanGetBaseChannels( tpAniSirGlobal pMac, tCsrChannelInfo * pChann
 tANI_BOOLEAN csrIsSetKeyAllowed(tpAniSirGlobal pMac, tANI_U32 sessionId)
 {
     tANI_BOOLEAN fRet = eANI_BOOLEAN_TRUE;
-#ifdef WLAN_SOFTAP_FEATURE
     tCsrRoamSession *pSession;
 
     pSession =CSR_GET_SESSION(pMac, sessionId);
@@ -6457,9 +6444,6 @@ tANI_BOOLEAN csrIsSetKeyAllowed(tpAniSirGlobal pMac, tANI_U32 sessionId)
     {
         fRet = eANI_BOOLEAN_FALSE;
     }
-#else
-    fRet = !( csrIsConnStateDisconnected( pMac, sessionId ) );
-#endif
 
     return ( fRet );
 }

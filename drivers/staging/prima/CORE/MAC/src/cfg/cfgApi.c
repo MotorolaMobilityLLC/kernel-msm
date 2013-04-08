@@ -119,7 +119,6 @@ wlan_cfgInit(tpAniSirGlobal pMac)
 
 
 //---------------------------------------------------------------------
-#if (WNI_POLARIS_FW_PRODUCT != AP)
 tSirRetStatus cfgInit(tpAniSirGlobal pMac)
 {
    pMac->cfg.gCfgIBufMin  = __gCfgIBufMin;
@@ -144,7 +143,6 @@ void cfgDeInit(tpAniSirGlobal pMac)
    pMac->cfg.gCfgEntry    = NULL;
    pMac->cfg.gParamList   = NULL;
 }
-#endif
 
 // ---------------------------------------------------------------------
 /**
@@ -190,11 +188,7 @@ cfgSetInt(tpAniSirGlobal pMac, tANI_U16 cfgId, tANI_U32 value)
     index    = control & CFG_BUF_INDX_MASK;
     retVal   = eSIR_SUCCESS;
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    if (index >= CFG_AP_IBUF_MAX_SIZE)
-#else
     if (index >= CFG_STA_IBUF_MAX_SIZE)
-#endif
     {
         PELOGE(cfgLog(pMac, LOGE, FL("cfg index out of bounds %d\n"), index);)
         retVal = eSIR_CFG_INVALID_ID;
@@ -316,11 +310,7 @@ wlan_cfgGetInt(tpAniSirGlobal pMac, tANI_U16 cfgId, tANI_U32 *pValue)
     index   = control & CFG_BUF_INDX_MASK;
     retVal  = eSIR_SUCCESS;
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    if (index >= CFG_AP_IBUF_MAX_SIZE)
-#else
     if (index >= CFG_STA_IBUF_MAX_SIZE)
-#endif
     {
         PELOGE(cfgLog(pMac, LOGE, FL("cfg index out of bounds %d\n"), index);)
         retVal = eSIR_CFG_INVALID_ID;
@@ -335,7 +325,7 @@ wlan_cfgGetInt(tpAniSirGlobal pMac, tANI_U16 cfgId, tANI_U32 *pValue)
     }
     else {
         // Get integer value
-        if(index < CFG_AP_IBUF_MAX_SIZE)
+        if (index < CFG_STA_IBUF_MAX_SIZE)
             *pValue = pMac->cfg.gCfgIBuf[index];
     }
 
@@ -580,11 +570,7 @@ wlan_cfgGetStr(tpAniSirGlobal pMac, tANI_U16 cfgId, tANI_U8 *pBuf, tANI_U32 *pLe
     index    = control & CFG_BUF_INDX_MASK;
     retVal   = eSIR_SUCCESS;
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    if (index >= CFG_AP_SBUF_MAX_SIZE)
-#else
     if (index >= CFG_STA_SBUF_MAX_SIZE)
-#endif
     {
         PELOGE(cfgLog(pMac, LOGE, FL("cfg index out of bounds %d\n"), index);)
         retVal = eSIR_CFG_INVALID_ID;
@@ -660,11 +646,7 @@ wlan_cfgGetStrMaxLen(tpAniSirGlobal pMac, tANI_U16 cfgId, tANI_U32 *pLength)
     index    = control & CFG_BUF_INDX_MASK;
     retVal   = eSIR_SUCCESS;
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    if (index >= CFG_AP_SBUF_MAX_SIZE)
-#else
     if (index >= CFG_STA_SBUF_MAX_SIZE)
-#endif
     {
         PELOGE(cfgLog(pMac, LOGE, FL("cfg index out of bounds %d\n"), index);)
         retVal = eSIR_CFG_INVALID_ID;
@@ -725,11 +707,7 @@ wlan_cfgGetStrLen(tpAniSirGlobal pMac, tANI_U16 cfgId, tANI_U32 *pLength)
     index    = control & CFG_BUF_INDX_MASK;
     retVal   = eSIR_SUCCESS;
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    if (index >= CFG_AP_SBUF_MAX_SIZE-1)
-#else
     if (index >= CFG_STA_SBUF_MAX_SIZE-1)
-#endif
     {
         PELOGE(cfgLog(pMac, LOGE, FL("cfg index out of bounds %d\n"), index);)
         retVal = eSIR_CFG_INVALID_ID;
@@ -906,46 +884,20 @@ cfgGetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 *pCap,tpPESession sessionEntr
     else
         cfgLog(pMac, LOGP, FL("can't get capability, role is UNKNOWN!!\n"));
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    if( (systemRole == eLIM_AP_ROLE) )
-    {
-        // CF-pollable bit
-        if (wlan_cfgGetInt(pMac, WNI_CFG_CF_POLLABLE, &val) != eSIR_SUCCESS)
-        {
-            cfgLog(pMac, LOGP, FL("cfg get WNI_CFG_CF_POLLABLE failed\n"));
-            return eSIR_FAILURE;
-        }
-        if (val)
-            pCapInfo->cfPollable = 1;
 
-        // CF-poll request bit
-        if (wlan_cfgGetInt(pMac, WNI_CFG_CF_POLL_REQUEST, &val) != eSIR_SUCCESS)
-        {
-            cfgLog(pMac, LOGP, FL("cfg get WNI_CFG_CF_POLL_REQUEST failed\n"));
-            return eSIR_FAILURE;
-        }
-        if (val)
-            pCapInfo->cfPollReq = 1;
-    }
-#endif
-
-#ifdef WLAN_SOFTAP_FEATURE
     if(systemRole == eLIM_AP_ROLE)
     {
         val = sessionEntry->privacy;
     }
     else
     {
-#endif
-    // PRIVACY bit
-    if (wlan_cfgGetInt(pMac, WNI_CFG_PRIVACY_ENABLED, &val) != eSIR_SUCCESS)
-    {
-        cfgLog(pMac, LOGP, FL("cfg get WNI_CFG_PRIVACY_ENABLED failed\n"));
-        return eSIR_FAILURE;
+        // PRIVACY bit
+        if (wlan_cfgGetInt(pMac, WNI_CFG_PRIVACY_ENABLED, &val) != eSIR_SUCCESS)
+        {
+            cfgLog(pMac, LOGP, FL("cfg get WNI_CFG_PRIVACY_ENABLED failed\n"));
+            return eSIR_FAILURE;
+        }
     }
-#ifdef WLAN_SOFTAP_FEATURE
-    }
-#endif
     if (val)
         pCapInfo->privacy = 1;
 
@@ -1079,32 +1031,6 @@ cfgGetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 *pCap,tpPESession sessionEntr
 void
 cfgSetCapabilityInfo(tpAniSirGlobal pMac, tANI_U16 caps)
 {
-#if (defined(ANI_PRODUCT_TYPE_AP))
-
-    if (cfgSetInt(pMac, WNI_CFG_PRIVACY_ENABLED,
-                  SIR_MAC_GET_PRIVACY(caps)) != eSIR_SUCCESS)
-        cfgLog(pMac, LOGP, FL("could not set privacy at CFG\n"));
-
-    if (cfgSetInt(pMac, WNI_CFG_SHORT_PREAMBLE,
-                  SIR_MAC_GET_SHORT_PREAMBLE(caps)) != eSIR_SUCCESS)
-        cfgLog(pMac, LOGP, FL("could not set short preamble at CFG\n"));
-
-    if (cfgSetInt(pMac, WNI_CFG_QOS_ENABLED,
-                  SIR_MAC_GET_QOS(caps)) != eSIR_SUCCESS)
-        cfgLog(pMac, LOGP, FL("could not set qos at CFG\n"));
-
-    if (cfgSetInt(pMac, WNI_CFG_11G_SHORT_SLOT_TIME_ENABLED,
-                  SIR_MAC_GET_SHORT_SLOT_TIME(caps)) != eSIR_SUCCESS)
-        cfgLog(pMac, LOGP, FL("could not set short slot time at CFG\n"));
-
-    if (cfgSetInt(pMac, WNI_CFG_APSD_ENABLED,
-                  SIR_MAC_GET_APSD(caps)) != eSIR_SUCCESS)
-        cfgLog(pMac, LOGP, FL("could not set apsd at CFG\n"));
-
-    if (cfgSetInt(pMac, WNI_CFG_BLOCK_ACK_ENABLED,
-                  SIR_MAC_GET_BLOCK_ACK(caps)) != eSIR_SUCCESS)
-        cfgLog(pMac, LOGP, FL("could not set BlockAck at CFG\n"));
-#endif
 }
 
 

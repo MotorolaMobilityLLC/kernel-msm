@@ -52,11 +52,7 @@
  *
  */
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-#include "wniCfgAp.h"
-#else
 #include "wniCfgSta.h"
-#endif
 #include "cfgApi.h"
 #include "limTypes.h"
 #include "limTimerUtils.h"
@@ -64,7 +60,6 @@
 
 
 
-#if (WNI_POLARIS_FW_PRODUCT == WLAN_STA) || defined(ANI_AP_CLIENT_SDK)
 /** ----------------------------------------------------------------------
 \fn      limSelectsBackgroundScanMode() 
 \brief   This function is called by limIsBackgroundScanAllowed(). 
@@ -337,4 +332,3 @@ void limAbortBackgroundScan(tpAniSirGlobal pMac)
     return;
 }
 
-#endif

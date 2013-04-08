@@ -43,20 +43,25 @@
 #define WLAN_HDD_HOSTAPD_H
 
 /**===========================================================================
-  
+
   \file  WLAN_HDD_HOSTAPD_H.h
-  
+
   \brief Linux HDD HOSTAPD include file
          Copyright 2008-2013 (c) Qualcomm, Incorporated.
          All Rights Reserved.
+<<<<<<< HEAD:CORE/HDD/inc/wlan_hdd_hostapd.h
          Qualcomm Confidential and Proprietary.
   
+=======
+         Qualcomm Technologies Confidential and Proprietary.
+
+>>>>>>> 009551c... wlan: hdd: remove obsolete "WLAN_SOFTAP_FEATURE" featurization:prima/CORE/HDD/inc/wlan_hdd_hostapd.h
   ==========================================================================*/
-  
-/*--------------------------------------------------------------------------- 
+
+/*---------------------------------------------------------------------------
   Include files
-  -------------------------------------------------------------------------*/ 
-  
+  -------------------------------------------------------------------------*/
+
 #include <linux/netdevice.h>
 #include <linux/skbuff.h>
 #include <vos_list.h>
@@ -65,9 +70,9 @@
 #include <wlan_qct_tl.h>
 #include <wlan_hdd_main.h>
 
-/*--------------------------------------------------------------------------- 
+/*---------------------------------------------------------------------------
   Preprocessor definitions and constants
-  -------------------------------------------------------------------------*/ 
+  -------------------------------------------------------------------------*/
 
 hdd_adapter_t* hdd_wlan_create_ap_dev( hdd_context_t *pHddCtx, tSirMacAddr macAddr, tANI_U8 *name);
 
@@ -100,10 +105,8 @@ int hdd_softap_unpackIE( tHalHandle halHandle,
                 u_int16_t gen_ie_len, 
                 u_int8_t *gen_ie );
 
-#ifdef WLAN_SOFTAP_FEATURE
 VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCallback);
 VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter );
 void hdd_set_ap_ops( struct net_device *pWlanHostapdDev );
-#endif
 
 #endif    // end #if !defined( WLAN_HDD_HOSTAPD_H )

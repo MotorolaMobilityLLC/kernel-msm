@@ -48,7 +48,7 @@
  * Date           Modified by    Modification Information
  * --------------------------------------------------------------------
  * 05/26/10       js             WPA handling in (Re)Assoc frames
- * 
+ *
  */
 #ifndef __LIM_ASSOC_UTILS_H
 #define __LIM_ASSOC_UTILS_H
@@ -65,10 +65,8 @@ tANI_U8         limCompareCapabilities(tpAniSirGlobal,
                                        tSirAssocReq *,
                                        tSirMacCapabilityInfo *,tpPESession);
 tANI_U8         limCheckRxBasicRates(tpAniSirGlobal, tSirMacRateSet,tpPESession);
-#ifdef WLAN_SOFTAP_FEATURE
 tANI_U8         limCheckRxRSNIeMatch(tpAniSirGlobal, tDot11fIERSN, tpPESession, tANI_U8);
 tANI_U8         limCheckRxWPAIeMatch(tpAniSirGlobal, tDot11fIEWPA, tpPESession, tANI_U8);
-#endif
 tANI_U8         limCheckMCSSet(tpAniSirGlobal pMac, tANI_U8* supportedMCSSet);
 void            limPostDummyToTmRing(tpAniSirGlobal, tpDphHashNode);
 void            limPostPacketToTdRing(tpAniSirGlobal,
@@ -119,7 +117,7 @@ tSirRetStatus   limAddSta(tpAniSirGlobal, tpDphHashNode,tpPESession);
 tSirRetStatus   limDelBss(tpAniSirGlobal, tpDphHashNode, tANI_U16, tpPESession);
 tSirRetStatus   limDelSta(tpAniSirGlobal, tpDphHashNode, tANI_BOOLEAN, tpPESession);
 #ifdef WLAN_FEATURE_VOWIFI_11R
-tSirRetStatus   limAddFTStaSelf(tpAniSirGlobal pMac, tANI_U16 assocId, 
+tSirRetStatus   limAddFTStaSelf(tpAniSirGlobal pMac, tANI_U16 assocId,
                     tpPESession psessionEntry);
 #endif /* WLAN_FEATURE_VOWIFI_11R */
 tSirRetStatus   limAddStaSelf(tpAniSirGlobal, tANI_U16, tANI_U8, tpPESession);
@@ -155,19 +153,9 @@ limFillSupportedRatesInfo(
     tpSirSupportedRates   pRates,
     tpPESession           psessionEntry);
 
-#ifdef ANI_PRODUCT_TYPE_CLIENT
-//make non-conditional until the caller is #ifdefed
-tSirRetStatus limStaSendAddBss(tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp, 
+tSirRetStatus limStaSendAddBss(tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp,
                                     tpSchBeaconStruct pBeaconStruct, tpSirBssDescription bssDescription, tANI_U8 updateEntry, tpPESession psessionEntry);
 tSirRetStatus limStaSendAddBssPreAssoc( tpAniSirGlobal pMac, tANI_U8 updateEntry, tpPESession psessionEntry);
-
-
-
-#elif defined(ANI_AP_CLIENT_SDK)
-tSirRetStatus limStaSendAddBss(tpAniSirGlobal pMac, tpSirAssocRsp pAssocRsp, 
-                                    tpSirNeighborBssInfo neighborBssInfo,tANI_U8 updateEntry, 
-                                    tpPESession psessionEntry);
-#endif
 
 void limPrepareAndSendDelStaCnf(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tSirResultCodes statusCode,tpPESession);
 tSirRetStatus limExtractApCapabilities(tpAniSirGlobal pMac, tANI_U8 * pIE, tANI_U16 ieLen, tpSirProbeRespBeacon beaconStruct);

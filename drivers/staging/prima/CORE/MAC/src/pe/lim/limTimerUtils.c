@@ -250,7 +250,7 @@ limCreateTimers(tpAniSirGlobal pMac)
             goto err_timer;
         }
 
-        //Send unicast probe req frame every 200 ms 
+        //Send unicast probe req frame every 200 ms
         if ((tx_timer_create(&pMac->lim.limTimers.gLimPeriodicJoinProbeReqTimer,
                         "Periodic Join Probe Request Timer",
                         limTimerHandler, SIR_LIM_PERIODIC_JOIN_PROBE_REQ_TIMEOUT,
@@ -419,7 +419,6 @@ limCreateTimers(tpAniSirGlobal pMac)
             goto err_timer;
         }
 
-#if defined(ANI_PRODUCT_TYPE_CLIENT) || defined(ANI_AP_CLIENT_SDK)
         if (wlan_cfgGetInt(pMac, WNI_CFG_BACKGROUND_SCAN_PERIOD,
                       &cfgValue) != eSIR_SUCCESS)
         {
@@ -461,12 +460,11 @@ limCreateTimers(tpAniSirGlobal pMac)
                FL("call to create background scan timer failed\n"));
             goto err_timer;
         }
-#endif
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
-        /* 
+        /*
          * create TDLS timers..
          * a) TDLS discovery response timer.
-         */        
+         */
 
         if (wlan_cfgGetInt(pMac, WNI_CFG_ASSOCIATION_FAILURE_TIMEOUT,
                                             &cfgValue) != eSIR_SUCCESS)
@@ -480,7 +478,7 @@ limCreateTimers(tpAniSirGlobal pMac)
         }
         cfgValue = SYS_MS_TO_TICKS(cfgValue);
 
-        /* 
+        /*
          * create TDLS discovery response wait timer and activate it later
          */
         if (tx_timer_create(&pMac->lim.limTimers.gLimTdlsDisRspWaitTimer,
@@ -607,10 +605,6 @@ limCreateTimers(tpAniSirGlobal pMac)
         limLog(pMac, LOGP,
                FL("could not retrieve mac preauth value\n"));
     }
-#ifdef ANI_AP_SDK_OPT
-    if(cfgValue > SIR_SDK_OPT_MAX_NUM_PRE_AUTH)
-        cfgValue = SIR_SDK_OPT_MAX_NUM_PRE_AUTH;
-#endif // ANI_AP_SDK_OPT
     pMac->lim.gLimPreAuthTimerTable.numEntry = cfgValue;
     if (palAllocateMemory(pMac->hHdd, (void **) &pMac->lim.gLimPreAuthTimerTable.pTable,
           cfgValue*sizeof(tLimPreAuthNode)) != eHAL_STATUS_SUCCESS)
@@ -623,7 +617,6 @@ limCreateTimers(tpAniSirGlobal pMac)
     PELOG1(limLog(pMac, LOG1, FL("alloc and init table for preAuth timers\n"));)
 
 
-#ifdef WLAN_SOFTAP_FEATURE
     {
         /**
          * Create OLBC cache aging timer
@@ -656,7 +649,6 @@ limCreateTimers(tpAniSirGlobal pMac)
             goto err_timer;
         }
     }
-#endif
 #ifdef WLAN_FEATURE_VOWIFI_11R
     // In future we need to use the auth timer, cause
     // the pre auth session will be introduced before sending
@@ -776,7 +768,7 @@ limCreateTimers(tpAniSirGlobal pMac)
         tx_timer_delete(&pMac->lim.limTimers.gLimAddtsRspTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimReassocFailureTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimAssocFailureTimer);
-        tx_timer_delete(&pMac->lim.limTimers.gLimJoinFailureTimer); 
+        tx_timer_delete(&pMac->lim.limTimers.gLimJoinFailureTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimPeriodicJoinProbeReqTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimQuietBssTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimQuietTimer);
@@ -1000,7 +992,6 @@ limAssocFailureTimerHandler(void *pMacGlobal, tANI_U32 param)
  *
  * @return None
  */
-#ifdef WLAN_SOFTAP_FEATURE
 void
 limUpdateOlbcCacheTimerHandler(void *pMacGlobal, tANI_U32 param)
 {
@@ -1015,7 +1006,6 @@ limUpdateOlbcCacheTimerHandler(void *pMacGlobal, tANI_U32 param)
 
     limPostMsgApi(pMac, &msg);
 } /****** end limUpdateOlbcCacheTimerHandler() ******/
-#endif
 
 /**
  * limDeactivateAndChangeTimer()
@@ -1162,7 +1152,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                        FL("Unable to deactivate max channel timer\n"));
             }
 
-#if defined(ANI_PRODUCT_TYPE_CLIENT) || defined(ANI_AP_CLIENT_SDK)
             // If a background was triggered via Quiet BSS,
             // then we need to adjust the MIN and MAX channel
             // timer's accordingly to the Quiet duration that
@@ -1207,23 +1196,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 }
 #endif
             }
-#endif
-#if defined(ANI_PRODUCT_TYPE_AP)
-            if (pMac->lim.gLimSystemRole == eLIM_AP_ROLE)
-            {
-                if (wlan_cfgGetInt(pMac, WNI_CFG_ACTIVE_MAXIMUM_CHANNEL_TIME,
-                          &val) != eSIR_SUCCESS)
-                {
-                    /**
-                    * Could not get max channel value
-                    * from CFG. Log error.
-                    */
-                    limLog(pMac, LOGP,
-                   FL("could not retrieve max channel value\n"));
-                }
-                val = SYS_MS_TO_TICKS(val);
-            }
-#endif
 
             if (tx_timer_change(&pMac->lim.limTimers.gLimMaxChannelTimer,
                                 val, 0) != TX_SUCCESS)
@@ -1290,7 +1262,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 // Log error
                 limLog(pMac, LOGP, FL("Unable to change periodic join request timer\n"));
             }
- 
+
             break;
 
         case eLIM_AUTH_FAIL_TIMER:
@@ -1514,7 +1486,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
 
             break;
 
-#if defined(ANI_PRODUCT_TYPE_CLIENT) || defined(ANI_AP_CLIENT_SDK)
         case eLIM_BACKGROUND_SCAN_TIMER:
             if (tx_timer_deactivate(&pMac->lim.limTimers.gLimBackgroundScanTimer)
                             != TX_SUCCESS)
@@ -1556,77 +1527,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             }
 
             break;
-#endif
 
-#ifdef ANI_PRODUCT_TYPE_AP
-        case eLIM_PRE_AUTH_CLEANUP_TIMER:
-            if (tx_timer_deactivate(&pMac->lim.limTimers.gLimPreAuthClnupTimer) !=
-                                    TX_SUCCESS)
-            {
-                // Could not deactivate Pre-auth cleanup timer.
-                // Log error
-                limLog(pMac, LOGP,
-                   FL("unable to deactivate Pre-auth cleanup timer\n"));
-            }
-
-            // Change timer to reactivate it in future
-            if (wlan_cfgGetInt(pMac, WNI_CFG_PREAUTH_CLNUP_TIMEOUT,
-                          &val) != eSIR_SUCCESS)
-            {
-                /**
-                 * Could not get pre-auth cleanup value
-                 * from CFG. Log error.
-                 */
-                limLog(pMac, LOGP,
-                   FL("could not retrieve pre-auth cleanup value\n"));
-            }
-            val = SYS_MS_TO_TICKS(val);
-
-            if (tx_timer_change(&pMac->lim.limTimers.gLimPreAuthClnupTimer,
-                                val, val) != TX_SUCCESS)
-            {
-                // Could not change pre-auth cleanup timer.
-                // Log error
-                limLog(pMac, LOGP,
-                   FL("unable to change pre-auth cleanup timer\n"));
-            }
-
-            break;
-
-        case eLIM_LEARN_INTERVAL_TIMER:
-            {
-            // Restart Learn Interval timer
-            tANI_U32 learnInterval =
-              pMac->lim.gpLimMeasReq->measDuration.shortTermPeriod /
-              pMac->lim.gpLimMeasReq->channelList.numChannels;
-
-              if (tx_timer_deactivate(
-                     &pMac->lim.gLimMeasParams.learnIntervalTimer) != TX_SUCCESS)
-              {
-                  // Could not deactivate Learn Interval timer.
-                  // Log error
-                  limLog(pMac, LOGP,
-                         FL("Unable to deactivate Learn Interval timer\n"));
-              }
-
-              if (tx_timer_change(
-                         &pMac->lim.gLimMeasParams.learnIntervalTimer,
-                         SYS_MS_TO_TICKS(learnInterval), 0) != TX_SUCCESS)
-              {
-                  // Could not change Learn Interval timer.
-                  // Log error
-                  limLog(pMac, LOGP, FL("Unable to change Learn Interval timer\n"));
-
-                  return;
-              }
-
-              limLog( pMac, LOG3,
-                  FL("Setting the Learn Interval TIMER to %d ticks\n"),
-                  SYS_MS_TO_TICKS(learnInterval));
-            }
-            break;
-
-#endif
 #if 0
         case eLIM_CHANNEL_SWITCH_TIMER:
             if (tx_timer_deactivate(&pMac->lim.limTimers.gLimChannelSwitchTimer) != eSIR_SUCCESS)
@@ -1646,56 +1547,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
 #endif
 
         case eLIM_LEARN_DURATION_TIMER:
-#ifdef ANI_PRODUCT_TYPE_AP
-            if (tx_timer_deactivate(&pMac->lim.gLimMeasParams.learnDurationTimer) != TX_SUCCESS)
-            {
-                limLog(pMac, LOGP, FL("Could not deactivate learn duration timer\n"));
-                return;
-            }
-
-            if (pMac->lim.gpLimMeasReq->measControl.longChannelScanPeriodicity &&
-                                 (pMac->lim.gLimMeasParams.shortDurationCount ==
-                                  pMac->lim.gpLimMeasReq->measControl.longChannelScanPeriodicity))
-            {
-#ifdef ANI_AP_SDK
-                val = pMac->lim.gLimScanDurationConvert.longChannelScanDuration_tick;
-#else
-                val = SYS_MS_TO_TICKS(pMac->lim.gpLimMeasReq->measDuration.longChannelScanDuration
-                                                                    + SYS_TICK_DUR_MS - 1);
-                if(val > 1)
-                    val--;
-#endif /* ANI_AP_SDK */
-                // Time to perform measurements for longer term
-                if (tx_timer_change(&pMac->lim.gLimMeasParams.learnDurationTimer,
-                                                   val, 0) != TX_SUCCESS)
-                {
-                    // Could not change Learn duration timer.
-                    // Log error
-                    limLog(pMac, LOGP, FL("Unable to change Learn duration timer\n"));
-                    return;
-                }
-                pMac->lim.gLimMeasParams.shortDurationCount = 0;
-            }
-            else
-            {
-#ifdef ANI_AP_SDK
-                val = pMac->lim.gLimScanDurationConvert.shortChannelScanDuration_tick;
-#else
-                val = SYS_MS_TO_TICKS(pMac->lim.gpLimMeasReq->measDuration.shortChannelScanDuration
-                                                               + SYS_TICK_DUR_MS - 1);
-                if(val > 1)
-                    val--;
-#endif /* ANI_AP_SDK */
-                if (tx_timer_change(&pMac->lim.gLimMeasParams.learnDurationTimer,
-                                                       val, 0) != TX_SUCCESS)
-                {
-                    // Could not change Learn duration timer.
-                    // Log error
-                    limLog(pMac, LOGP, FL("Unable to change Learn duration timer\n"));
-                }
-            }
-            pMac->lim.gpLimMeasData->duration = val * SYS_TICK_DUR_MS;
-#endif
             break;
 
 #if 0
@@ -1736,7 +1587,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             break;
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
 #if 0
         case eLIM_WPS_OVERLAP_TIMER:
             {
@@ -1769,7 +1619,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                   WPSOverlapTimer);
             }
             break;
-#endif
 #endif
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
@@ -1904,7 +1753,7 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
         }
         break;
 #endif
-            
+
         default:
             // Invalid timerId. Log error
             break;
@@ -2236,40 +2085,6 @@ limDeactivateAndChangePerStaIdTimer(tpAniSirGlobal pMac, tANI_U32 timerId, tANI_
         }
             break;
 
-#if (defined(ANI_PRODUCT_TYPE_AP) ||defined(ANI_PRODUCT_TYPE_AP_SDK))
-        case eLIM_LEARN_INTERVAL_TIMER:
-            {
-            // Restart Learn Interval timer
-            tANI_U32 learnInterval =
-                    pMac->lim.gpLimMeasReq->measDuration.shortTermPeriod /
-                    pMac->lim.gpLimMeasReq->channelList.numChannels;
-
-            if (tx_timer_deactivate(
-                   &pMac->lim.gLimMeasParams.learnIntervalTimer) != TX_SUCCESS)
-            {
-                // Could not deactivate Learn Interval timer.
-                // Log error
-                limLog(pMac, LOGP,
-                       FL("Unable to deactivate Learn Interval timer\n"));
-            }
-
-            if (tx_timer_change(
-                       &pMac->lim.gLimMeasParams.learnIntervalTimer,
-                       SYS_MS_TO_TICKS(learnInterval), 0) != TX_SUCCESS)
-            {
-                // Could not change Learn Interval timer.
-                // Log error
-                limLog(pMac, LOGP, FL("Unable to change Learn Interval timer\n"));
-
-                return;
-            }
-
-            limLog( pMac, LOG3,
-                FL("Setting the Learn Interval TIMER to %d ticks\n"),
-                SYS_MS_TO_TICKS(learnInterval) );
-            }
-            break;
-#endif //#if (defined(ANI_PRODUCT_TYPE_AP) ||defined(ANI_PRODUCT_TYPE_AP_SDK))
 
         default:
             // Invalid timerId. Log error
@@ -2493,7 +2308,6 @@ limQuietBssTimerHandler(void *pMacGlobal, tANI_U32 param)
         FL("Post SIR_LIM_QUIET_BSS_TIMEOUT msg. \n"));)
     limPostMsgApi(pMac, &msg);
 }
-#ifdef WLAN_SOFTAP_FEATURE
 #if 0
 void
 limWPSOverlapTimerHandler(void *pMacGlobal, tANI_U32 param)
@@ -2508,7 +2322,6 @@ limWPSOverlapTimerHandler(void *pMacGlobal, tANI_U32 param)
         FL("Post SIR_LIM_WPS_OVERLAP_TIMEOUT msg. \n"));)
     limPostMsgApi(pMac, &msg);
 }
-#endif
 #endif
 
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
@@ -2533,7 +2346,7 @@ limWPSOverlapTimerHandler(void *pMacGlobal, tANI_U32 param)
  * @return None
  */
 void
-limMissedBeaconInActiveMode(void *pMacGlobal)
+limMissedBeaconInActiveMode(void *pMacGlobal, tpPESession psessionEntry)
 {
     tANI_U32         statusCode;
     tSirMsgQ    msg;
@@ -2541,9 +2354,9 @@ limMissedBeaconInActiveMode(void *pMacGlobal)
 
     // Prepare and post message to LIM Message Queue
     if(IS_ACTIVEMODE_OFFLOAD_FEATURE_ENABLE)
-    { 
+    {
        msg.type = (tANI_U16) SIR_LIM_HEART_BEAT_TIMEOUT;
-       msg.bodyptr = NULL;
+       msg.bodyptr = psessionEntry;
        msg.bodyval = 0;
        limLog(pMac, LOGE,
                  FL("Heartbeat failure from Riva\n"));

@@ -110,7 +110,7 @@
 
 
 /// Start of Sirius/Host message types
-#define WNI_HOST_MSG_START             0x1100
+#define WNI_HOST_MSG_START             0x1400
 
 enum eWniMsgTypes
 {
@@ -224,7 +224,6 @@ enum eWniMsgTypes
     eWNI_SME_GET_STATISTICS_REQ,
     eWNI_SME_GET_STATISTICS_RSP,
     eWNI_SME_GET_RSSI_REQ,
-#ifdef WLAN_SOFTAP_FEATURE
     eWNI_SME_GET_ASSOC_STAS_REQ,
     eWNI_SME_TKIP_CNTR_MEAS_REQ,
     eWNI_SME_UPDATE_APWPSIE_REQ,
@@ -234,7 +233,6 @@ enum eWniMsgTypes
     eWNI_SME_UPPER_LAYER_ASSOC_CNF,
     eWNI_SME_HIDE_SSID_REQ,
     eWNI_SME_CHNG_MCC_BEACON_INTERVAL,
-#endif
 #ifdef WLAN_FEATURE_P2P
     eWNI_SME_REMAIN_ON_CHANNEL_REQ,
     eWNI_SME_REMAIN_ON_CHN_IND,

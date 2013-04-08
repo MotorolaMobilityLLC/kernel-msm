@@ -99,10 +99,8 @@ when        who    what, where, why
 #include "vos_api.h" 
 #include "vos_packet.h" 
 #include "sirApi.h"
-#ifdef WLAN_SOFTAP_FEATURE
 #include "csrApi.h"
 #include "sapApi.h"
-#endif
 
 /*----------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
@@ -130,7 +128,6 @@ when        who    what, where, why
 /*Maximum number of ACs */
 #define WLANTL_MAX_AC                         4
 
-#ifdef WLAN_SOFTAP_FEATURE
 
 /* Bit Mask to represent All Stations */
 #define WLAN_ALL_STA                         0xFF
@@ -152,7 +149,6 @@ when        who    what, where, why
    the broadcast client or allocate station strcuture to keep per-station info.*/
 //#define WLANTL_BC_STA_ID  0x00
 
-#endif
 
 #ifdef ANI_CHIPSET_VOLANS
 #define WLANTL_MAX_TID                        15
@@ -183,7 +179,6 @@ typedef enum
   /* BT-AMP link*/
   WLAN_STA_BT_AMP,
 
-#ifdef WLAN_SOFTAP_FEATURE
   /* SoftAP station */
   WLAN_STA_SOFTAP,
 
@@ -192,13 +187,6 @@ typedef enum
   WLAN_STA_TDLS,    /* 4 */
 #endif
 
-#else   /* !defined WLAN_SOFTAP_FEATURE */
-#ifdef FEATURE_WLAN_TDLS
-  /* TDLS direct link */
-  WLAN_STA_TDLS,    /* 3 */
-#endif
-
-#endif/* WLAN_SOFTAP_FEATURE */
 
   /* Invalid link*/
   WLAN_STA_MAX
@@ -230,14 +218,12 @@ typedef enum
 
 } WLANTL_BAPFrameEnumType;
 
-#ifdef WLAN_SOFTAP_FEATURE
 /* Type used to specify LWM threshold unit */
 typedef enum  {
     WLAN_LWM_THRESHOLD_BYTE = 0,
 
     WLAN_LWM_THRESHOLD_PACKET
 } WLAN_LWM_Threshold_Type;
-#endif
 
 /*---------------------------------------------------------------------------
   TL States
@@ -330,10 +316,8 @@ typedef struct
     often when it has established that the App is suspended*/
   v_U32_t  uDelayedTriggerFrmInt;  
 
-#ifdef WLAN_SOFTAP_FEATURE
   /* Min Threshold for Processing Frames in TL */
   v_U8_t   uMinFramesProcThres;
-#endif
 }WLANTL_ConfigInfoType;
 
 /*---------------------------------------------------------------------------
@@ -505,39 +489,7 @@ typedef struct
    WLANTL_HO_NRT_TRAFFIC_STATUS_TYPE  nrtTrafficStatus;
 } WLANTL_HO_TRAFFIC_STATUS_TYPE;
 
-#ifdef WLAN_SOFTAP_FEATURE
 typedef tSap_SoftapStats WLANTL_TRANSFER_STA_TYPE;
-#else
-
-#ifdef WLANTL_DEBUG
-#define MAX_RATE_INDEX      136
-#define MAX_NUM_RSSI        100
-#define MAX_RSSI_INTERVAL     5
-#endif
-
-typedef struct
-{
-   v_U32_t txUCFcnt;
-   v_U32_t txMCFcnt;
-   v_U32_t txBCFcnt;
-   v_U32_t txUCBcnt;
-   v_U32_t txMCBcnt;
-   v_U32_t txBCBcnt;
-   v_U32_t rxUCFcnt;
-   v_U32_t rxMCFcnt;
-   v_U32_t rxBCFcnt;
-   v_U32_t rxUCBcnt;
-   v_U32_t rxMCBcnt;
-   v_U32_t rxBCBcnt;
-   v_U32_t rxBcnt;
-   v_U32_t rxBcntCRCok;
-   v_U32_t rxRate;
-#ifdef WLANTL_DEBUG
-   v_U32_t pktCounterRateIdx[MAX_RATE_INDEX];
-   v_U32_t pktCounterRssi[MAX_NUM_RSSI];
-#endif
-}WLANTL_TRANSFER_STA_TYPE;
-#endif
 
 /* Under here not public items, just use for internal */
 /* 3 SME 1 HDD */
@@ -2414,7 +2366,6 @@ WLANTL_SetACWeights
   v_U8_t*               pACWeights
 );
 
-#ifdef WLAN_SOFTAP_FEATURE
 /*==========================================================================
   FUNCTION      WLANTL_GetSoftAPStatistics
 
@@ -2432,7 +2383,6 @@ WLANTL_SetACWeights
 
 ============================================================================*/
 VOS_STATUS WLANTL_GetSoftAPStatistics(v_PVOID_t pAdapter, WLANTL_TRANSFER_STA_TYPE *statsSum, v_BOOL_t bReset);
-#endif
 
 #ifdef __cplusplus
  }

@@ -589,7 +589,7 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
    spin_unlock(&pAdapter->wmm_tx_queue[ac].lock);      
    if (VOS_TRUE == txSuspended)
    {
-       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN, 
+       VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                   "%s: TX queue full for AC=%d Disable OS TX queue", 
                   __func__, ac );
       return NETDEV_TX_BUSY;   
@@ -1166,7 +1166,7 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    {
       ++pAdapter->hdd_stats.hddTxRxStats.txFetchDePressured;
       ++pAdapter->hdd_stats.hddTxRxStats.txFetchDePressuredAC[ac];
-      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                  "%s: TX queue[%d] re-enabled", __func__, ac);
       pAdapter->isTxSuspended[ac] = VOS_FALSE;      
       netif_tx_wake_queue(netdev_get_tx_queue(pAdapter->dev, 

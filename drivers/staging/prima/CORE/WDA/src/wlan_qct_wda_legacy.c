@@ -39,7 +39,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-
 /*===========================================================================
 
                        wlan_qct_wda_legacy.c
@@ -151,69 +150,6 @@ wdaPostCfgMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg)
    return rc;
 } // halMntPostMsg()
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-#if defined(ANI_MANF_DIAG) || defined(ANI_PHY_DEBUG)
-#include "pttModuleApi.h"
-// -------------------------------------------------------------
-/**
- * halNimPTTPostMsgApi
- *
- * FUNCTION:
- *     Posts NIM messages to gNIM thread
- *
- * LOGIC:
- *
- * ASSUMPTIONS:pl
- *
- *
- * NOTE:
- *
- * @param tpAniSirGlobal MAC parameters structure
- * @param pMsg pointer with message
- * @return Success or Failure
- */
-
-tSirRetStatus
-halNimPTTPostMsgApi(tpAniSirGlobal pMac, tSirMsgQ *pMsg)
-{
-   tSirRetStatus rc = eSIR_SUCCESS;
-
-   do
-   {
-#ifdef ANI_OS_TYPE_RTAI_LINUX
-
-      // Posts message to the queue
-      if (tx_queue_send(&pMac->sys.gSirNimRDMsgQ, pMsg,
-                       TX_NO_WAIT) != TX_SUCCESS)
-      {
-         rc = eSIR_FAILURE;
-         wdaLog(pMac, LOGP,
-                FL("Posting a Msg to nimMsgQ failed!\n"));
-         break;
-      }
-#else
-      // For Windows based MAC, instead of posting message to different
-      // queues, we will call the handler routines directly
-      wdaLog(pMac, LOGE, "ERROR: Received PTT message in obsolete code path.\n");
-      wdaLog(pMac, LOGP, "This indicates that the wrong OID is being used - clean registry and previous inf files.\n");
-      /*
-      tPttMsgbuffer *msgPtr = (tPttMsgbuffer *)(pMsg->body);  //for some reason, body is actually being used as if it were a void *
-      pttProcessMsg(pMac, msgPtr);
-      */
-
-      //TODO: the resonse is now packaged in ((tPttMsgbuffer *)&pMsg->body)->msgResponse and needs to be sent back to the application
-
-      rc = eSIR_SUCCESS;
-#endif
-   }
-   while (0);
-
-   return rc;
-} // halNimPTTPostMsgApi()
-
-
-#endif  //ANI_MANF_DIAG
-#endif  //FEATURE_WLAN_INTEGRATED_SOC
 
 // -------------------------------------------------------------
 /**
@@ -294,14 +230,9 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb)
       pmmPostMessage(pMac, &msg);
       break;
 
-#if defined(ANI_MANF_DIAG) || defined(ANI_PHY_DEBUG)
    case SIR_PTT_MSG_TYPES_BEGIN:
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-      halNimPTTPostMsgApi(pMac, &msg); // Posts a message to the NIM PTT MsgQ
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
       break;
 
-#endif
 
    default:
       WDALOGW( wdaLog(pMac, LOGW, FL("Unknown message type = "

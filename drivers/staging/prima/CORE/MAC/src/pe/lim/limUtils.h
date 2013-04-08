@@ -141,19 +141,11 @@ void limUpdateShortSlotTime(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr, tpUpda
  */
 void    limReleasePeerIdx(tpAniSirGlobal, tANI_U16, tpPESession);
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-// LIM informs WSM that radar is detected
-void limDetectRadar(tpAniSirGlobal, tANI_U32 *);
-#endif
 
-#ifdef WLAN_SOFTAP_FEATURE
 void limDecideApProtection(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr,  tpUpdateBeaconParams pBeaconParams,tpPESession);
 void
 limDecideApProtectionOnDelete(tpAniSirGlobal pMac, 
                               tpDphHashNode pStaDs, tpUpdateBeaconParams pBeaconParams, tpPESession psessionEntry);
-#else
-void limDecideApProtection(tpAniSirGlobal pMac, tSirMacAddr peerMacAddr,  tpUpdateBeaconParams pBeaconParams);
-#endif
 
 extern tSirRetStatus limEnable11aProtection(tpAniSirGlobal pMac, tANI_U8 enable, tANI_U8 overlap, tpUpdateBeaconParams pBeaconParams,tpPESession);
 extern tSirRetStatus limEnable11gProtection(tpAniSirGlobal pMac, tANI_U8 enable, tANI_U8 overlap, tpUpdateBeaconParams pBeaconParams,tpPESession psessionEntry);
@@ -162,11 +154,7 @@ extern tSirRetStatus limEnableHT20Protection(tpAniSirGlobal pMac, tANI_U8 enable
 extern tSirRetStatus limEnableHTNonGfProtection(tpAniSirGlobal pMac, tANI_U8 enable, tANI_U8 overlap, tpUpdateBeaconParams pBeaconParams,tpPESession);
 extern tSirRetStatus limEnableHtRifsProtection(tpAniSirGlobal pMac, tANI_U8 enable, tANI_U8 overlap, tpUpdateBeaconParams pBeaconParams,tpPESession psessionEntry);
 extern tSirRetStatus limEnableHTLsigTxopProtection(tpAniSirGlobal pMac, tANI_U8 enable, tANI_U8 overlap, tpUpdateBeaconParams pBeaconParams,tpPESession);
-#ifdef WLAN_SOFTAP_FEATURE
 extern tSirRetStatus limEnableShortPreamble(tpAniSirGlobal pMac, tANI_U8 enable, tpUpdateBeaconParams pBeaconParams, tpPESession psessionEntry);
-#else
-extern tSirRetStatus limEnableShortPreamble(tpAniSirGlobal pMac, tANI_U8 enable, tpUpdateBeaconParams pBeaconParams);
-#endif
 extern tSirRetStatus limEnableHtOBSSProtection (tpAniSirGlobal pMac, tANI_U8 enable,  tANI_U8 overlap, tpUpdateBeaconParams pBeaconParams, tpPESession);
 void limDecideStaProtection(tpAniSirGlobal pMac, tpSchBeaconStruct pBeaconStruct, tpUpdateBeaconParams pBeaconParams, tpPESession psessionEntry);
 void limDecideStaProtectionOnAssoc(tpAniSirGlobal pMac, tpSchBeaconStruct pBeaconStruct, tpPESession psessionEntry);
@@ -186,18 +174,13 @@ void limResetDeferredMsgQ(tpAniSirGlobal pMac);
 
 tSirRetStatus limSysProcessMmhMsgApi(tpAniSirGlobal, tSirMsgQ*, tANI_U8);
 
-#ifdef WLAN_SOFTAP_FEATURE
 void limHandleUpdateOlbcCache(tpAniSirGlobal pMac);
-#endif
 
 tANI_U8 limIsNullSsid( tSirMacSSid *pSsid );
 
 void limProcessAddtsRspTimeout(tpAniSirGlobal pMac, tANI_U32 param);
 
 // 11h Support
-#ifdef ANI_PRODUCT_TYPE_AP
-tANI_U32 computeChannelSwitchCount(tpAniSirGlobal, tANI_U32);
-#endif
 void limStopTxAndSwitchChannel(tpAniSirGlobal pMac, tANI_U8 sessionId);
 void limProcessChannelSwitchTimeout(tpAniSirGlobal);
 tSirRetStatus limStartChannelSwitch(tpAniSirGlobal pMac, tpPESession psessionEntry);
@@ -205,10 +188,8 @@ void limUpdateChannelSwitch(tpAniSirGlobal, tpSirProbeRespBeacon, tpPESession ps
 void limProcessQuietTimeout(tpAniSirGlobal);
 void limProcessQuietBssTimeout(tpAniSirGlobal);
 
-#ifdef WLAN_SOFTAP_FEATURE
 #if 0
 void limProcessWPSOverlapTimeout(tpAniSirGlobal pMac);
-#endif
 #endif
 
 void limStartQuietTimer(tpAniSirGlobal pMac, tANI_U8 sessionId);
@@ -277,11 +258,7 @@ static inline tANI_U8
 void limUtilCountStaAdd(tpAniSirGlobal pMac, tpDphHashNode pSta, tpPESession psessionEntry);
 void limUtilCountStaDel(tpAniSirGlobal pMac, tpDphHashNode pSta, tpPESession psessionEntry);
 
-#ifdef WLAN_SOFTAP_FEATURE
 tANI_U8 limGetHTCapability( tpAniSirGlobal, tANI_U32, tpPESession);
-#else
-tANI_U8 limGetHTCapability( tpAniSirGlobal, tANI_U32 );
-#endif
 void limTxComplete( tHalHandle hHal, void *pData );
 
 /**********Admit Control***************************************/
@@ -381,6 +358,8 @@ tANI_U8 limGetChannelFromBeacon(tpAniSirGlobal pMac, tpSchBeaconStruct pBeacon);
 tSirNwType limGetNwType(tpAniSirGlobal pMac, tANI_U8 channelNum, tANI_U32 type, tpSchBeaconStruct pBeacon);
 void limSetTspecUapsdMask(tpAniSirGlobal pMac, tSirMacTSInfo *pTsInfo, tANI_U32 action);
 void limHandleHeartBeatTimeout(tpAniSirGlobal pMac);
+void limHandleHeartBeatTimeoutForSession(tpAniSirGlobal pMac, tpPESession psessionEntry);
+
 //void limProcessBtampAddBssRsp(tpAniSirGlobal pMac,tpSirMsgQ pMsgQ,tpPESession peSession);
 void limProcessAddStaRsp(tpAniSirGlobal pMac,tpSirMsgQ pMsgQ);
 

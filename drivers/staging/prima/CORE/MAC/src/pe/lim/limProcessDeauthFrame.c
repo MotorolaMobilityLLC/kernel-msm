@@ -247,9 +247,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
     /* If received DeAuth from AP other than the one we're trying to join with
      * nor associated with, then ignore deauth and delete Pre-auth entry.
      */
-#ifdef WLAN_SOFTAP_FEATURE
     if(psessionEntry->limSystemRole != eLIM_AP_ROLE ){
-#endif
         if (!IS_CURRENT_BSSID(pMac, pHdr->bssId, psessionEntry))
         {
             PELOGE(limLog(pMac, LOGE, FL("received DeAuth from an AP other than we're trying to join. Ignore. \n"));)
@@ -260,9 +258,7 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
             }
             return;
         }
-#ifdef WLAN_SOFTAP_FEATURE
     }
-#endif
 
         pStaDs = dphLookupHashEntry(pMac, pHdr->sa, &aid, &psessionEntry->dph.dphHashTable);
 
@@ -396,44 +392,11 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
             case eLIM_STA_IN_IBSS_ROLE:
                 break;
 
-#ifdef WLAN_SOFTAP_FEATURE
             case eLIM_AP_ROLE:
                 break;
-#endif 
 
             default: // eLIM_AP_ROLE or eLIM_BT_AMP_AP_ROLE
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-                /// Check if there exists pre-auth context for this STA
-                if (limSearchPreAuthList(pMac, pHdr->sa) == NULL)
-                {
-                    /**
-                     * Received Deauthentication from a STA that is neither
-                     * Associated nor Pre-authenticated. Log error,
-                     * and ignore Deauthentication frame.
-                     */
-                    PELOG1(limLog(pMac, LOG1,
-                       FL("received Deauth frame from peer that does not have context, addr "));
-                    limPrintMacAddr(pMac, pHdr->sa, LOG1);)
-                }
-                else
-                {
-                    /// Delete STA from pre-auth STA list
-                    limDeletePreAuthNode(pMac,
-                                         pHdr->sa);
-
-                    palCopyMemory( pMac->hHdd,
-                           (tANI_U8 *) &mlmDeauthInd.peerMacAddr,
-                           pHdr->sa,
-                           sizeof(tSirMacAddr));
-                    mlmDeauthInd.reasonCode = reasonCode;
-                    mlmDeauthInd.aid        = 0;
-
-                    limPostSmeMessage(pMac,
-                                      LIM_MLM_DEAUTH_IND,
-                                      (tANI_U32 *) &mlmDeauthInd);
-                }
-#endif
 
                 return;
         } // end switch (pMac->lim.gLimSystemRole)
@@ -468,9 +431,6 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
     palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDeauthInd.peerMacAddr,
                   pStaDs->staAddr,
                   sizeof(tSirMacAddr));
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    mlmDeauthInd.aid           = pStaDs->assocId;
-#endif
     mlmDeauthInd.reasonCode    = (tANI_U8) pStaDs->mlmStaContext.disassocReason;
     mlmDeauthInd.deauthTrigger = eLIM_PEER_ENTITY_DEAUTH;
 

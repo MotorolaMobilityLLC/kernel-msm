@@ -52,11 +52,7 @@
 #include "palTypes.h"
 #include "aniGlobal.h"
 #include "sirCommon.h"
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-#include "wniCfgAp.h"
-#else
 #include "wniCfgSta.h"
-#endif
 #include "limUtils.h"
 #include "limAssocUtils.h"
 #include "limStaHashApi.h"
@@ -1253,15 +1249,12 @@ void limIbssAddBssRspWhenCoalescing(tpAniSirGlobal  pMac, void *msg, tpPESession
     limSendSmeWmStatusChangeNtf(pMac, eSIR_SME_JOINED_NEW_BSS,
                                 (tANI_U32 *) &newBssInfo,
                                 infoLen,pSessionEntry->smeSessionId);
-#ifdef WLAN_SOFTAP_FEATURE
     {
         //Configure beacon and send beacons to HAL
         limSendBeaconInd(pMac, pSessionEntry);
     }
-#endif
-    
 
-    end:
+ end:
     ibss_coalesce_free(pMac);
 }
 

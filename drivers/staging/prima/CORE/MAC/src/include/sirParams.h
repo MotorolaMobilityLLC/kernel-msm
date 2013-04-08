@@ -57,8 +57,6 @@
 
 # include "sirTypes.h"
 
-#define SIR_SDK_OPT_MAX_NUM_PRE_AUTH    32
-
 // Firmware wide constants
 
 #define SIR_MAX_PACKET_SIZE     2048
@@ -71,7 +69,7 @@ typedef enum
     PHY_SINGLE_CHANNEL_CENTERED     = 0,        // 20MHz IF bandwidth centered on IF carrier
     PHY_DOUBLE_CHANNEL_LOW_PRIMARY  = 1,        // 40MHz IF bandwidth with lower 20MHz supporting the primary channel
     PHY_DOUBLE_CHANNEL_HIGH_PRIMARY = 3,        // 40MHz IF bandwidth with higher 20MHz supporting the primary channel
-#ifdef WLAN_FEATURE_11AC    
+#ifdef WLAN_FEATURE_11AC
     PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_CENTERED = 4, //20/40MHZ offset LOW 40/80MHZ offset CENTERED
     PHY_QUADRUPLE_CHANNEL_20MHZ_CENTERED_40MHZ_CENTERED = 5, //20/40MHZ offset CENTERED 40/80MHZ offset CENTERED
     PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_CENTERED = 6, //20/40MHZ offset HIGH 40/80MHZ offset CENTERED
@@ -166,7 +164,7 @@ typedef struct sSirMbMsg
 } tSirMbMsg, *tpSirMbMsg;
 
 #ifdef WLAN_FEATURE_P2P
-/// Mailbox Message Structure for P2P 
+/// Mailbox Message Structure for P2P
 typedef struct sSirMbMsgP2p
 {
     tANI_U16 type;
@@ -416,28 +414,21 @@ typedef struct sSirMbMsgP2p
 #define SIR_HAL_TIMER_TRAFFIC_ACTIVITY_REQ (SIR_HAL_ITC_MSG_TYPES_BEGIN + 105)
 #define SIR_HAL_TIMER_ADC_RSSI_STATS       (SIR_HAL_ITC_MSG_TYPES_BEGIN + 106)
 #define SIR_HAL_MIC_FAILURE_IND            (SIR_HAL_ITC_MSG_TYPES_BEGIN + 107)
-
-#ifdef WLAN_SOFTAP_FEATURE
-//107 ... Slots is Free for use.
 #define SIR_HAL_UPDATE_UAPSD_IND           (SIR_HAL_ITC_MSG_TYPES_BEGIN + 108)
-#endif
-
-#define SIR_HAL_SET_MIMOPS_REQ                      (SIR_HAL_ITC_MSG_TYPES_BEGIN + 109)
-#define SIR_HAL_SET_MIMOPS_RSP                      (SIR_HAL_ITC_MSG_TYPES_BEGIN + 110)
-#define SIR_HAL_SYS_READY_IND                       (SIR_HAL_ITC_MSG_TYPES_BEGIN + 111)
-#define SIR_HAL_SET_TX_POWER_REQ                    (SIR_HAL_ITC_MSG_TYPES_BEGIN + 112)
-#define SIR_HAL_SET_TX_POWER_RSP                    (SIR_HAL_ITC_MSG_TYPES_BEGIN + 113)
-#define SIR_HAL_GET_TX_POWER_REQ                    (SIR_HAL_ITC_MSG_TYPES_BEGIN + 114)
-#define SIR_HAL_GET_TX_POWER_RSP                    (SIR_HAL_ITC_MSG_TYPES_BEGIN + 115)
-#define SIR_HAL_GET_NOISE_REQ                       (SIR_HAL_ITC_MSG_TYPES_BEGIN + 116)
-#define SIR_HAL_GET_NOISE_RSP                       (SIR_HAL_ITC_MSG_TYPES_BEGIN + 117)
+#define SIR_HAL_SET_MIMOPS_REQ             (SIR_HAL_ITC_MSG_TYPES_BEGIN + 109)
+#define SIR_HAL_SET_MIMOPS_RSP             (SIR_HAL_ITC_MSG_TYPES_BEGIN + 110)
+#define SIR_HAL_SYS_READY_IND              (SIR_HAL_ITC_MSG_TYPES_BEGIN + 111)
+#define SIR_HAL_SET_TX_POWER_REQ           (SIR_HAL_ITC_MSG_TYPES_BEGIN + 112)
+#define SIR_HAL_SET_TX_POWER_RSP           (SIR_HAL_ITC_MSG_TYPES_BEGIN + 113)
+#define SIR_HAL_GET_TX_POWER_REQ           (SIR_HAL_ITC_MSG_TYPES_BEGIN + 114)
+#define SIR_HAL_GET_TX_POWER_RSP           (SIR_HAL_ITC_MSG_TYPES_BEGIN + 115)
+#define SIR_HAL_GET_NOISE_REQ              (SIR_HAL_ITC_MSG_TYPES_BEGIN + 116)
+#define SIR_HAL_GET_NOISE_RSP              (SIR_HAL_ITC_MSG_TYPES_BEGIN + 117)
 
 /* Messages to support transmit_halt and transmit_resume */
-#define SIR_HAL_TRANSMISSION_CONTROL_IND            (SIR_HAL_ITC_MSG_TYPES_BEGIN + 118)
+#define SIR_HAL_TRANSMISSION_CONTROL_IND   (SIR_HAL_ITC_MSG_TYPES_BEGIN + 118)
 /* Indication from LIM to HAL to Initialize radar interrupt */
-#define SIR_HAL_INIT_RADAR_IND                      (SIR_HAL_ITC_MSG_TYPES_BEGIN + 119)
-/* Messages to support transmit_halt and transmit_resume */
-
+#define SIR_HAL_INIT_RADAR_IND             (SIR_HAL_ITC_MSG_TYPES_BEGIN + 119)
 
 #define SIR_HAL_BEACON_PRE_IND             (SIR_HAL_ITC_MSG_TYPES_BEGIN + 120)
 #define SIR_HAL_ENTER_UAPSD_REQ            (SIR_HAL_ITC_MSG_TYPES_BEGIN + 121)
@@ -633,18 +624,10 @@ typedef struct sSirMbMsgP2p
 #define SIR_LIM_REASSOC_FAIL_TIMEOUT   (SIR_LIM_TIMEOUT_MSG_START + 6)
 #define SIR_LIM_HEART_BEAT_TIMEOUT     (SIR_LIM_TIMEOUT_MSG_START + 7)
 // currently unused                    SIR_LIM_TIMEOUT_MSG_START + 0x8
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-#define SIR_LIM_PREAUTH_CLNUP_TIMEOUT  (SIR_LIM_TIMEOUT_MSG_START + 0x9)
-#endif
 // Link Monitoring Messages
 #define SIR_LIM_CHANNEL_SCAN_TIMEOUT     (SIR_LIM_TIMEOUT_MSG_START + 0xA)
 #define SIR_LIM_PROBE_HB_FAILURE_TIMEOUT (SIR_LIM_TIMEOUT_MSG_START + 0xB)
 #define SIR_LIM_ADDTS_RSP_TIMEOUT        (SIR_LIM_TIMEOUT_MSG_START + 0xC)
-#if (WNI_POLARIS_FW_PRODUCT == AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-#define SIR_LIM_MEASUREMENT_IND_TIMEOUT  (SIR_LIM_TIMEOUT_MSG_START + 0x10)
-#define SIR_LIM_LEARN_INTERVAL_TIMEOUT   (SIR_LIM_TIMEOUT_MSG_START + 0x11)
-#define SIR_LIM_LEARN_DURATION_TIMEOUT   (SIR_LIM_TIMEOUT_MSG_START + 0x12)
-#endif
 #define SIR_LIM_LINK_TEST_DURATION_TIMEOUT (SIR_LIM_TIMEOUT_MSG_START + 0x13)
 #define SIR_LIM_HASH_MISS_THRES_TIMEOUT  (SIR_LIM_TIMEOUT_MSG_START + 0x16)
 #define SIR_LIM_CNF_WAIT_TIMEOUT         (SIR_LIM_TIMEOUT_MSG_START + 0x17)
@@ -654,9 +637,7 @@ typedef struct sSirMbMsgP2p
 #define SIR_LIM_QUIET_TIMEOUT            (SIR_LIM_TIMEOUT_MSG_START + 0x1B)
 #define SIR_LIM_QUIET_BSS_TIMEOUT        (SIR_LIM_TIMEOUT_MSG_START + 0x1C)
 
-#ifdef WLAN_SOFTAP_FEATURE
 #define SIR_LIM_WPS_OVERLAP_TIMEOUT      (SIR_LIM_TIMEOUT_MSG_START + 0x1D)
-#endif
 #ifdef WLAN_FEATURE_VOWIFI_11R
 #define SIR_LIM_FT_PREAUTH_RSP_TIMEOUT   (SIR_LIM_TIMEOUT_MSG_START + 0x1E)
 #endif

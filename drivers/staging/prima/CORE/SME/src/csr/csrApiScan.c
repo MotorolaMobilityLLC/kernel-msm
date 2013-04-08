@@ -2376,7 +2376,6 @@ eHalStatus csrScanningStateMsgProcessor( tpAniSirGlobal pMac, void *pMsgBuf )
     }
     else
     {
-#ifdef WLAN_SOFTAP_FEATURE
         if(pMsg->type == eWNI_SME_UPPER_LAYER_ASSOC_CNF) 
         {
             tCsrRoamSession  *pSession;
@@ -2423,7 +2422,6 @@ eHalStatus csrScanningStateMsgProcessor( tpAniSirGlobal pMac, void *pMsgBuf )
 
         }
         else
-#endif
         {
 
             if( csrIsAnySessionInConnectState( pMac ) )
@@ -2578,7 +2576,7 @@ eHalStatus csrAddPMKIDCandidateList( tpAniSirGlobal pMac, tANI_U32 sessionId,
             
                 if( HAL_STATUS_SUCCESS( status ) )
                 {
-                    if ( pIes->RSN.preauth )
+                    if ( (pIes->RSN.RSN_Cap[0] >> 0) & 0x1 ) // Bit 0 offirst byte - PreAuthentication Capability
                     {
                         pSession->PmkidCandidateInfo[pSession->NumPmkidCandidate].preAuthSupported = eANI_BOOLEAN_TRUE;
                     }
@@ -3510,7 +3508,6 @@ void csrSetOppositeBandChannelInfo( tpAniSirGlobal pMac )
         {
             // else, we found channel info in the 2.4 GHz band.  If the 5.0 band is empty
             // set the 5.0 band info from the 2.4 country code.
-            if ( !csrLLIsListEmpty( &pMac->scan.channelPowerInfoList5G, LL_ACCESS_LOCK ) ) break;
             fPopulate5GBand = TRUE;
         }
         csrSaveChannelPowerForBand( pMac, fPopulate5GBand );
@@ -3611,10 +3608,8 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
     v_REGDOMAIN_t domainId;
     tDot11fBeaconIEs *pIesLocal = pIes;
 
-#ifdef WLAN_SOFTAP_FEATURE
     if (VOS_STA_SAP_MODE == vos_get_conparam ())
         return eHAL_STATUS_SUCCESS;
-#endif
 
     do
     {
@@ -3738,6 +3733,12 @@ tANI_BOOLEAN csrLearnCountryInformation( tpAniSirGlobal pMac, tSirBssDescription
 
         // set the indicator of the channel where the country IE was found...
         pMac->scan.channelOf11dInfo = pSirBssDesc->channelId;
+        csrGetRegulatoryDomainForCountry(pMac, pIesLocal->Country.country, &domainId );
+        if ( domainId != pMac->scan.domainIdCurrent )
+        {
+            WDA_SetRegDomain(pMac, domainId);
+            csrGet5GChannels(pMac );
+        }
         // Populate both band channel lists based on what we found in the country information...
         csrSetOppositeBandChannelInfo( pMac );
         bMaxNumChn = WNI_CFG_VALID_CHANNEL_LIST_LEN;
@@ -6202,11 +6203,9 @@ void csrScanCancelIdleScan(tpAniSirGlobal pMac)
 {
     if(eANI_BOOLEAN_FALSE == pMac->scan.fCancelIdleScan)
     {
-#ifdef WLAN_SOFTAP_FEATURE
         if (vos_concurrent_sessions_running()) {
             return;
         }
-#endif
         smsLog(pMac, LOG1, "  csrScanCancelIdleScan\n");
         pMac->scan.fCancelIdleScan = eANI_BOOLEAN_TRUE;
         //Set the restart flag in case later on it is uncancelled
@@ -6857,11 +6856,7 @@ void csrSaveTxPowerToCfg( tpAniSirGlobal pMac, tDblLinkList *pList, tANI_U32 cfg
                     pChannelPowerSet->firstChanNum = (tSirMacChanNum)(pChannelSet->firstChannel + ( idx * pChannelSet->interChannelOffset ));
                     smsLog(pMac, LOG3, " Setting Channel Number %d\n", pChannelPowerSet->firstChanNum);
                     pChannelPowerSet->numChannels  = 1;
-#ifdef WLAN_SOFTAP_FEATURE
                     pChannelPowerSet->maxTxPower = CSR_ROAM_MIN( pChannelSet->txPower, pMac->roam.configParam.nTxPowerCap );
-#else
-                    pChannelPowerSet->maxTxPower = pChannelSet->txPower;
-#endif
                     smsLog(pMac, LOG3, " Setting Max Transmit Power %d\n", pChannelPowerSet->maxTxPower);
                     cbLen += sizeof( tSirMacChanInfo );
                     pChannelPowerSet++;
@@ -6883,11 +6878,7 @@ void csrSaveTxPowerToCfg( tpAniSirGlobal pMac, tDblLinkList *pList, tANI_U32 cfg
                 pChannelPowerSet->firstChanNum = pChannelSet->firstChannel;
                 smsLog(pMac, LOG3, " Setting Channel Number %d\n", pChannelPowerSet->firstChanNum);
                 pChannelPowerSet->numChannels = pChannelSet->numChannels;
-#ifdef WLAN_SOFTAP_FEATURE
                 pChannelPowerSet->maxTxPower = CSR_ROAM_MIN( pChannelSet->txPower, pMac->roam.configParam.nTxPowerCap );
-#else
-                pChannelPowerSet->maxTxPower = pChannelSet->txPower;
-#endif
                 smsLog(pMac, LOG3, " Setting Max Transmit Power %d, nTxPower %d\n", pChannelPowerSet->maxTxPower,pMac->roam.configParam.nTxPowerCap );
 
 

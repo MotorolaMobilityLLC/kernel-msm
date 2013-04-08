@@ -77,10 +77,8 @@
 #include <wlan_nlink_srv.h>
 #include <wlan_hdd_misc.h>
 
-#ifdef WLAN_SOFTAP_FEATURE
 #include <linux/semaphore.h>
 #include <wlan_hdd_hostapd.h>
-#endif
 #include "cfgApi.h"
 
 #ifdef WLAN_BTAMP_FEATURE
@@ -119,9 +117,7 @@ extern VOS_STATUS vos_chipExitDeepSleepVREGHandler(
 extern void hdd_wlan_initial_scan(hdd_context_t *pHddCtx);
 
 extern struct notifier_block hdd_netdev_notifier;
-#ifdef WLAN_SOFTAP_FEATURE
 extern tVOS_CON_MODE hdd_get_conparam ( void );
-#endif
 
 static struct timer_list ssr_timer;
 static bool ssr_timer_started;
@@ -614,9 +610,6 @@ void hdd_mcbc_filter_modification(hdd_context_t* pHddCtx, v_BOOL_t arpFlag,
 void hdd_conf_mcastbcast_filter(hdd_context_t* pHddCtx, v_BOOL_t setfilter)
 {
     eHalStatus halStatus = eHAL_STATUS_FAILURE;
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-    tpAniSirGlobal pMac = (tpAniSirGlobal) vos_get_context(VOS_MODULE_ID_SME, pHddCtx->pvosContext);
-#else
     tpSirWlanSetRxpFilters wlanRxpFilterParam =
                      vos_mem_malloc(sizeof(tSirWlanSetRxpFilters));
     if(NULL == wlanRxpFilterParam)
@@ -625,19 +618,8 @@ void hdd_conf_mcastbcast_filter(hdd_context_t* pHddCtx, v_BOOL_t setfilter)
            "%s: vos_mem_alloc failed ", __func__);
         return;
     }
-#endif
     hddLog(VOS_TRACE_LEVEL_INFO,
         "%s: Configuring Mcast/Bcast Filter Setting. setfilter %d", __func__, setfilter);
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-    if ( pMac ) 
-    {
-      halStatus = halRxp_configureRxpFilterMcstBcst( pMac, setfilter);
-    }
-    else
-    {
-      hddLog(VOS_TRACE_LEVEL_FATAL, "%s: pMac is initialised to NULL",__func__ );
-    }
-#else
     if (TRUE == setfilter)
     {
         if (pHddCtx->cfg_ini->fhostArpOffload)
@@ -657,12 +639,10 @@ void hdd_conf_mcastbcast_filter(hdd_context_t* pHddCtx, v_BOOL_t setfilter)
 
     wlanRxpFilterParam->setMcstBcstFilter = setfilter;
     halStatus = sme_ConfigureRxpFilter(pHddCtx->hHal, wlanRxpFilterParam);
-#endif
     if(setfilter && (eHAL_STATUS_SUCCESS == halStatus))
        pHddCtx->hdd_mcastbcast_filter_set = TRUE;
 }
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
                                  hdd_adapter_t *pAdapter)
 {
@@ -792,7 +772,6 @@ static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter)
     }
 #endif
 }
-#endif
 
 //Suspend routine registered with Android OS
 void hdd_suspend_wlan(void)
@@ -951,9 +930,6 @@ static void hdd_PowerStateChangedCB
           && (pHddCtx->hdd_mcastbcast_filter_set != TRUE)) {
       spin_unlock(&pHddCtx->filter_lock);
       hdd_conf_mcastbcast_filter(pHddCtx, TRUE);
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-      halPSAppsCpuWakeupState(vos_get_context(VOS_MODULE_ID_SME, pHddCtx->pvosContext), FALSE);
-#endif
       if(pHddCtx->hdd_mcastbcast_filter_set != TRUE)
          hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Not able to set mcast/bcast filter ", __func__);
    }

@@ -68,23 +68,14 @@
 #include <halTypes.h>
 #include <limApi.h>
 #include <sme_Api.h>
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-#include <wlan_qct_ssc.h>
-#endif
 #include <wlan_qct_sys.h>
 #include <wlan_qct_tl.h>
 #include "vos_sched.h"
 #include <wlan_hdd_power.h>
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include "wlan_qct_wda.h"
 #include "wlan_qct_pal_msg.h"
-#endif
 #include <linux/spinlock.h>
 #include <linux/kthread.h>
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-#include <libra_sdioif.h>
-#include <wlan_sal_misc.h>
-#endif
 /*---------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
  * ------------------------------------------------------------------------*/
@@ -101,18 +92,11 @@ static pVosWatchdogContext gpVosWatchdogContext;
 /*---------------------------------------------------------------------------
  * Forward declaration
  * ------------------------------------------------------------------------*/
-static int VosMCThread(void * Arg);
-static int VosWDThread(void * Arg);
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
-/* Integrated SOC will have single BIN for FTM driver and Production Driver
- * So, anycase this must be compiled
- * None integrated SOC will compile this part only for FTM Driver */
-static int VosTXThread(void * Arg);
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
-static int VosRXThread(void* Arg);
+static int VosMCThread(void *Arg);
+static int VosWDThread(void *Arg);
+static int VosTXThread(void *Arg);
+static int VosRXThread(void *Arg);
 void vos_sched_flush_rx_mqs(pVosSchedContext SchedContext);
-#endif
-#endif
 extern v_VOID_t vos_core_return_msg(v_PVOID_t pVContext, pVosMsgWrapper pMsgWrapper);
 /*---------------------------------------------------------------------------
  * External Function implementation
@@ -177,19 +161,13 @@ vos_sched_open
   // Initialize the helper events and event queues
   init_completion(&pSchedContext->McStartEvent);
   init_completion(&pSchedContext->TxStartEvent);
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   init_completion(&pSchedContext->RxStartEvent);
-#endif
   init_completion(&pSchedContext->McShutdown);
   init_completion(&pSchedContext->TxShutdown);
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   init_completion(&pSchedContext->RxShutdown);
-#endif
   init_completion(&pSchedContext->ResumeMcEvent);
   init_completion(&pSchedContext->ResumeTxEvent);
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   init_completion(&pSchedContext->ResumeRxEvent);
-#endif
 
   spin_lock_init(&pSchedContext->McThreadLock);
   spin_lock_init(&pSchedContext->TxThreadLock);
@@ -199,12 +177,10 @@ vos_sched_open
   pSchedContext->mcEventFlag = 0;
   init_waitqueue_head(&pSchedContext->txWaitQueue);
   pSchedContext->txEventFlag= 0;
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   init_waitqueue_head(&pSchedContext->rxWaitQueue);
   pSchedContext->rxEventFlag= 0;
-#endif
   /*
-  ** This initialization is critical as the threads will latter access the
+  ** This initialization is critical as the threads will later access the
   ** global contexts normally,
   **
   ** I shall put some memory barrier here after the next piece of code but
@@ -225,7 +201,6 @@ vos_sched_open
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s: VOSS Main Controller thread Created",__func__);
 
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
   pSchedContext->TxThread = kthread_create(VosTXThread, pSchedContext,
                                            "VosTXThread");
   if (IS_ERR(pSchedContext->TxThread)) 
@@ -238,7 +213,6 @@ vos_sched_open
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
              ("VOSS TX thread Created\n"));
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   pSchedContext->RxThread = kthread_create(VosRXThread, pSchedContext,
                                            "VosRXThread");
   if (IS_ERR(pSchedContext->RxThread)) 
@@ -252,8 +226,6 @@ vos_sched_open
   wake_up_process(pSchedContext->RxThread);
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
              ("VOSS RX thread Created\n"));
-#endif
-#endif
 
   /*
   ** Now make sure all threads have started before we exit.
@@ -262,27 +234,21 @@ vos_sched_open
   wait_for_completion_interruptible(&pSchedContext->McStartEvent);
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
                "%s: VOSS MC Thread has started",__func__);
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
   wait_for_completion_interruptible(&pSchedContext->TxStartEvent);
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
                "%s: VOSS Tx Thread has started",__func__);
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   wait_for_completion_interruptible(&pSchedContext->RxStartEvent);
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
                "%s: VOSS Rx Thread has started",__func__);
-#endif
 
   /*
   ** We're good now: Let's get the ball rolling!!!
   */
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s: VOSS Scheduler successfully Opened",__func__);
- #endif
   return VOS_STATUS_SUCCESS;
 
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 RX_THREAD_START_FAILURE:
     //Try and force the Tx thread controller to exit
     set_bit(MC_SHUTDOWN_EVENT_MASK, &pSchedContext->txEventFlag);
@@ -290,7 +256,6 @@ RX_THREAD_START_FAILURE:
     wake_up_interruptible(&pSchedContext->txWaitQueue);
      //Wait for TX to exit
     wait_for_completion_interruptible(&pSchedContext->TxShutdown);
-#endif
 
 TX_THREAD_START_FAILURE:
     //Try and force the Main thread controller to exit
@@ -300,7 +265,6 @@ TX_THREAD_START_FAILURE:
     //Wait for MC to exit
     wait_for_completion_interruptible(&pSchedContext->McShutdown);
 
-#endif
 MC_THREAD_START_FAILURE:
   //De-initialize all the message queues
   vos_sched_deinit_mqs(pSchedContext);
@@ -452,7 +416,6 @@ VosMCThread
         }
         break;
       }
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
       /*
       ** Check the WDI queue
       ** Service it till the entire queue is empty
@@ -496,7 +459,6 @@ VosMCThread
         continue;
       }
 
-#endif
       // Check the SYS queue first
       if (!vos_is_mq_empty(&pSchedContext->sysMcMq))
       {
@@ -522,7 +484,6 @@ VosMCThread
         vos_core_return_msg(pSchedContext->pVContext, pMsgWrapper);
         continue;
       }
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
       // Check the WDA queue
       if (!vos_is_mq_empty(&pSchedContext->wdaMcMq))
       {
@@ -547,46 +508,6 @@ VosMCThread
         vos_core_return_msg(pSchedContext->pVContext, pMsgWrapper);
         continue;
       }
-#else
-
-      // Check the HAL queue
-      if (!vos_is_mq_empty(&pSchedContext->halMcMq))
-      {
-        /* Need some optimization*/
-        pMacContext = vos_get_context(VOS_MODULE_ID_HAL, pSchedContext->pVContext);
-
-        if(pMacContext == NULL)
-        {
-           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-              "%s: pMacContext is NULL", __func__);
-           VOS_ASSERT(0);
-           break;
-        }
-
-        // Service the HAL message queue
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                 "%s: Servicing the VOS HAL MC Message queue",__func__);
-        pMsgWrapper = vos_mq_get(&pSchedContext->halMcMq);
-        if (pMsgWrapper == NULL)
-        {
-           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-              "%s: pMsgWrapper is NULL", __func__);
-           VOS_ASSERT(0);
-           break;
-        }
-
-        macStatus = halProcessMsg( pMacContext, (tSirMsgQ*)pMsgWrapper->pVosMsg);
-        if (eSIR_SUCCESS != macStatus)
-        {
-           VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                     "%s: Issue Processing HAL message",__func__);
-        }
-        // return message to the Core
-        vos_core_return_msg(pSchedContext->pVContext, pMsgWrapper);
-        continue;
-      }
-#endif
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
       // Check the PE queue
       if (!vos_is_mq_empty(&pSchedContext->peMcMq))
       {
@@ -697,7 +618,6 @@ VosMCThread
         /* Wait foe Resume Indication */
         wait_for_completion_interruptible(&pSchedContext->ResumeMcEvent);
       }
-#endif /* ANI_MANF_DIAG */
       break; //All queues are empty now
     } // while message loop processing
   } // while TRUE
@@ -710,7 +630,6 @@ int isWDresetInProgress(void)
 {
    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
                 "%s: Reset is in Progress...",__func__);
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
    if(gpVosWatchdogContext!=NULL)
    {
       return gpVosWatchdogContext->resetInProgress;
@@ -719,9 +638,6 @@ int isWDresetInProgress(void)
    {
       return 0;
    }
-#else
-   return 0;
-#endif
 }
 /*---------------------------------------------------------------------------
   \brief VosWdThread() - The VOSS Watchdog thread
@@ -857,7 +773,6 @@ err_reset:
   \return Thread exit code
   \sa VosTxThread()
   -------------------------------------------------------------------------*/
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
 static int VosTXThread ( void * Arg )
 {
   pVosSchedContext pSchedContext = (pVosSchedContext)Arg;
@@ -987,7 +902,6 @@ static int VosTXThread ( void * Arg )
         vos_core_return_msg(pSchedContext->pVContext, pMsgWrapper);
         continue;
       }
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
       // Check the WDI queue
       if (!vos_is_mq_empty(&pSchedContext->wdiTxMq))
       {
@@ -1022,34 +936,6 @@ static int VosTXThread ( void * Arg )
 
         continue;
       }
-#else
-      // Check the SSC queue
-      if (!vos_is_mq_empty(&pSchedContext->sscTxMq))
-      {
-        // Service the PE message queue
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-                  "%s: Servicing the VOS TX SSC Message queue",__func__);
-        pMsgWrapper = vos_mq_get(&pSchedContext->sscTxMq);
-        if (pMsgWrapper == NULL)
-        {
-           VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-               "%s: pMsgWrapper is NULL", __func__);
-           VOS_ASSERT(0);
-           break;
-        }
-        vStatus = WLANSSC_ProcessMsg( pSchedContext->pVContext,
-                                      pMsgWrapper->pVosMsg);
-        if (!VOS_IS_STATUS_SUCCESS(vStatus))
-        {
-          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                     "%s: Issue Processing TX TL message",__func__);
-        }
-        // return message to the Core
-        vos_core_return_msg(pSchedContext->pVContext, pMsgWrapper);
-        continue;
-      }
-
-#endif
       /* Check for any Suspend Indication */
       if(test_bit(TX_SUSPEND_EVENT_MASK, &pSchedContext->txEventFlag))
       {
@@ -1075,7 +961,6 @@ static int VosTXThread ( void * Arg )
   complete_and_exit(&pSchedContext->TxShutdown, 0);
 } /* VosTxThread() */
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /*---------------------------------------------------------------------------
   \brief VosRXThread() - The VOSS Main Rx thread
   The \a VosRxThread() is the VOSS Rx controller thread:
@@ -1251,9 +1136,7 @@ static int VosRXThread ( void * Arg )
       "%s: RX Thread exiting!!!!", __func__);
   complete_and_exit(&pSchedContext->RxShutdown, 0);
 } /* VosRxThread() */
-#endif
 
-#endif
 /*---------------------------------------------------------------------------
   \brief vos_sched_close() - Close the vOSS Scheduler
   The \a vos_sched_closes() function closes the vOSS Scheduler
@@ -1289,7 +1172,6 @@ VOS_STATUS vos_sched_close ( v_PVOID_t pVosContext )
     wait_for_completion_interruptible(&gpVosSchedContext->McShutdown);
     gpVosSchedContext->McThread = 0;
 
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
     // shut down TX Thread
     set_bit(TX_SHUTDOWN_EVENT_MASK, &gpVosSchedContext->txEventFlag);
     set_bit(TX_POST_EVENT_MASK, &gpVosSchedContext->txEventFlag);
@@ -1298,7 +1180,6 @@ VOS_STATUS vos_sched_close ( v_PVOID_t pVosContext )
     wait_for_completion_interruptible(&gpVosSchedContext->TxShutdown);
     gpVosSchedContext->TxThread = 0;
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
     // shut down RX Thread
     set_bit(RX_SHUTDOWN_EVENT_MASK, &gpVosSchedContext->rxEventFlag);
     set_bit(RX_POST_EVENT_MASK, &gpVosSchedContext->rxEventFlag);
@@ -1306,17 +1187,11 @@ VOS_STATUS vos_sched_close ( v_PVOID_t pVosContext )
     //Wait for RX to exit
     wait_for_completion_interruptible(&gpVosSchedContext->RxShutdown);
     gpVosSchedContext->RxThread = 0;
-#endif // FEATURE_WLAN_INTEGRATED_SOC
-#endif // !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
 
     //Clean up message queues of TX and MC thread
     vos_sched_flush_mc_mqs(gpVosSchedContext);
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
     vos_sched_flush_tx_mqs(gpVosSchedContext);
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
     vos_sched_flush_rx_mqs(gpVosSchedContext);
-#endif // FEATURE_WLAN_INTEGRATED_SOC
-#endif // !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
 
     //Deinit all the queues
     vos_sched_deinit_mqs(gpVosSchedContext);
@@ -1344,120 +1219,6 @@ VOS_STATUS vos_watchdog_close ( v_PVOID_t pVosContext )
 
 VOS_STATUS vos_watchdog_chip_reset ( vos_chip_reset_reason_type  reason )
 {
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-    v_CONTEXT_t pVosContext = NULL;
-    hdd_context_t *pHddCtx = NULL;
-    hdd_chip_reset_stats_t *pResetStats;
-    struct sdio_func *sdio_func_dev = NULL;
-    
-    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-        "%s: vos_watchdog resetting WLAN", __func__);
-    if (gpVosWatchdogContext == NULL)
-    {
-       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-           "%s: Watchdog not enabled. LOGP ignored.",__func__);
-       return VOS_STATUS_E_FAILURE;
-    }
-
-    pVosContext = vos_get_global_context(VOS_MODULE_ID_HDD, NULL);
-    pHddCtx = (hdd_context_t *)vos_get_context(VOS_MODULE_ID_HDD, pVosContext );
-
-    hdd_reset_all_adapters(pHddCtx);
-
-    sdio_func_dev = libra_getsdio_funcdev();
-
-    if(sdio_func_dev == NULL)
-    {
-         /* Our card got removed before LOGP. Continue with reset anyways */
-         hddLog(VOS_TRACE_LEVEL_FATAL, "%s: sdio_func_dev is NULL!",__func__);
-         return VOS_STATUS_SUCCESS;
-    }
-
-    sd_claim_host(sdio_func_dev);
-    
-    /* Disable SDIO IRQ since we are in LOGP state */
-    libra_disable_sdio_irq_capability(sdio_func_dev, 1);
-    libra_enable_sdio_irq(sdio_func_dev, 0);
-
-    sd_release_host(sdio_func_dev);
-
-    /* Take the lock here */
-    spin_lock(&gpVosWatchdogContext->wdLock);
-
-    if (gpVosWatchdogContext->resetInProgress)
-    {
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-            "%s: Reset already in Progress. Ignoring signaling Watchdog",
-                                                           __func__);
-        /* Release the lock here */
-        spin_unlock(&gpVosWatchdogContext->wdLock);
-        return VOS_STATUS_E_FAILURE;
-    } 
-    else if (pHddCtx->isLogpInProgress)
-    {
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-            "%s: LOGP already in Progress. Ignoring signaling Watchdog",
-                                                           __func__);
-        /* Release the lock here */
-        spin_unlock(&gpVosWatchdogContext->wdLock);
-        return VOS_STATUS_E_FAILURE;
-    }
-
-    VOS_ASSERT(0);
-    
-    pVosContext = vos_get_global_context(VOS_MODULE_ID_HDD, NULL);
-    pAdapter = (hdd_adapter_t *)vos_get_context(VOS_MODULE_ID_HDD,pVosContext);
-
-    /* Set the flags so that all future CMD53 and Wext commands get blocked right away */
-    vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
-    pHddCtx->isLogpInProgress = TRUE;
-
-    /* Release the lock here */
-    spin_unlock(&gpVosWatchdogContext->wdLock);
-
-    if (pHddCtx->isLoadUnloadInProgress)
-    {
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-            "%s: Load/unload in Progress. Ignoring signaling Watchdog",
-                                                          __func__);
-        return VOS_STATUS_E_FAILURE;    
-    }
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-    if(VOS_STATUS_SUCCESS != hdd_wlan_reset_initialization())
-    {
-       /* This can fail if card got removed by SDCC during resume */
-       VOS_ASSERT(0);
-    }
-#endif
-
-    /* Update Reset Statistics */
-    pResetStats = &pHddCtx->hddChipResetStats;
-    pResetStats->totalLogpResets++;
-
-    switch (reason)
-    {
-     case VOS_CHIP_RESET_CMD53_FAILURE:
-        pResetStats->totalCMD53Failures++;
-        break;
-     case VOS_CHIP_RESET_FW_EXCEPTION:
-        pResetStats->totalFWHearbeatFailures++;
-        break;
-     case VOS_CHIP_RESET_MUTEX_READ_FAILURE:
-        pResetStats->totalMutexReadFailures++;
-        break;
-     case VOS_CHIP_RESET_MIF_EXCEPTION:
-        pResetStats->totalMIFErrorFailures++;
-        break;
-     default:
-        pResetStats->totalUnknownExceptions++;
-        break;
-    }
-
-    set_bit(WD_CHIP_RESET_EVENT_MASK, &gpVosWatchdogContext->wdEventFlag);
-    set_bit(WD_POST_EVENT_MASK, &gpVosWatchdogContext->wdEventFlag);
-    wake_up_interruptible(&gpVosWatchdogContext->wdWaitQueue);
-#endif
     return VOS_STATUS_SUCCESS;
 } /* vos_watchdog_chip_reset() */
 
@@ -1477,7 +1238,6 @@ VOS_STATUS vos_sched_init_mqs ( pVosSchedContext pSchedContext )
 {
   VOS_STATUS vStatus = VOS_STATUS_SUCCESS;
   // Now intialize all the message queues
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s: Initializing the WDA MC Message queue",__func__);
   vStatus = vos_mq_init(&pSchedContext->wdaMcMq);
@@ -1488,19 +1248,6 @@ VOS_STATUS vos_sched_init_mqs ( pVosSchedContext pSchedContext )
     VOS_ASSERT(0);
     return vStatus;
   }
-#else
-  VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
-            "%s: Initializing the HAL MC Message queue",__func__);
-  vStatus = vos_mq_init(&pSchedContext->halMcMq);
-  if (! VOS_IS_STATUS_SUCCESS(vStatus))
-  {
-    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-            "%s: Failed to init HAL MC Message queue",__func__);
-    VOS_ASSERT(0);
-    return vStatus;
-  }
-#endif
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s: Initializing the PE MC Message queue",__func__);
   vStatus = vos_mq_init(&pSchedContext->peMcMq);
@@ -1531,7 +1278,6 @@ VOS_STATUS vos_sched_init_mqs ( pVosSchedContext pSchedContext )
     VOS_ASSERT(0);
     return vStatus;
   }
-#endif
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s: Initializing the SYS MC Message queue",__func__);
   vStatus = vos_mq_init(&pSchedContext->sysMcMq);
@@ -1542,7 +1288,6 @@ VOS_STATUS vos_sched_init_mqs ( pVosSchedContext pSchedContext )
     VOS_ASSERT(0);
     return vStatus;
   }
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s: Initializing the WDI MC Message queue",__func__);
 
@@ -1554,9 +1299,7 @@ VOS_STATUS vos_sched_init_mqs ( pVosSchedContext pSchedContext )
     VOS_ASSERT(0);
     return vStatus;
   }
-#endif
 
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s: Initializing the TL Tx Message queue",__func__);
   vStatus = vos_mq_init(&pSchedContext->tlTxMq);
@@ -1567,18 +1310,6 @@ VOS_STATUS vos_sched_init_mqs ( pVosSchedContext pSchedContext )
     VOS_ASSERT(0);
     return vStatus;
   }
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
-            "%s: Initializing the SSC Tx Message queue",__func__);
-  vStatus = vos_mq_init(&pSchedContext->sscTxMq);
-  if (! VOS_IS_STATUS_SUCCESS(vStatus))
-  {
-    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-            "%s: Failed to init SSC TX Message queue",__func__);
-    VOS_ASSERT(0);
-    return vStatus;
-  }
-#else
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s: Initializing the WDI Tx Message queue",__func__);
   vStatus = vos_mq_init(&pSchedContext->wdiTxMq);
@@ -1602,7 +1333,6 @@ VOS_STATUS vos_sched_init_mqs ( pVosSchedContext pSchedContext )
     return vStatus;
   }
 
-#endif
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s: Initializing the SYS Tx Message queue",__func__);
   vStatus = vos_mq_init(&pSchedContext->sysTxMq);
@@ -1622,7 +1352,6 @@ VOS_STATUS vos_sched_init_mqs ( pVosSchedContext pSchedContext )
     VOS_ASSERT(0);
     return vStatus;
   }
-#endif
   return VOS_STATUS_SUCCESS;
 } /* vos_sched_init_mqs() */
 
@@ -1637,18 +1366,10 @@ VOS_STATUS vos_sched_init_mqs ( pVosSchedContext pSchedContext )
 void vos_sched_deinit_mqs ( pVosSchedContext pSchedContext )
 {
   // Now de-intialize all message queues
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  // MC HAL
-  VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
-            "%s De-Initializing the HAL MC Message queue",__func__);
-  vos_mq_deinit(&pSchedContext->halMcMq);
-#else
  // MC WDA
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s De-Initializing the WDA MC Message queue",__func__);
   vos_mq_deinit(&pSchedContext->wdaMcMq);
-#endif
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
   //MC PE
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s De-Initializing the PE MC Message queue",__func__);
@@ -1661,30 +1382,19 @@ void vos_sched_deinit_mqs ( pVosSchedContext pSchedContext )
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s De-Initializing the TL MC Message queue",__func__);
   vos_mq_deinit(&pSchedContext->tlMcMq);
-#endif
   //MC SYS
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s De-Initializing the SYS MC Message queue",__func__);
   vos_mq_deinit(&pSchedContext->sysMcMq);
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   // MC WDI
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s De-Initializing the WDI MC Message queue",__func__);
   vos_mq_deinit(&pSchedContext->wdiMcMq);
-#endif
 
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
   //Tx TL
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s De-Initializing the TL Tx Message queue",__func__);
   vos_mq_deinit(&pSchedContext->tlTxMq);
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  //Tx SSC
-  VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
-            "%s: DeInitializing the SSC Tx Message queue",__func__);
-  vos_mq_deinit(&pSchedContext->sscTxMq);
-
-#else
   //Tx WDI
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s: DeInitializing the WDI Tx Message queue",__func__);
@@ -1695,7 +1405,6 @@ void vos_sched_deinit_mqs ( pVosSchedContext pSchedContext )
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
             "%s: DeInitializing the WDI Rx Message queue",__func__);
   vos_mq_deinit(&pSchedContext->wdiRxMq);
-#endif
 
   //Tx SYS
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO_HIGH,
@@ -1707,7 +1416,6 @@ void vos_sched_deinit_mqs ( pVosSchedContext pSchedContext )
             "%s: DeInitializing the SYS Rx Message queue",__func__);
   vos_mq_deinit(&pSchedContext->sysRxMq);
 
-#endif
 } /* vos_sched_deinit_mqs() */
 
 /*-------------------------------------------------------------------------
@@ -1752,18 +1460,6 @@ void vos_sched_flush_mc_mqs ( pVosSchedContext pSchedContext )
     sysMcFreeMsg(pSchedContext->pVContext, pMsgWrapper->pVosMsg);
     vos_core_return_msg(pSchedContext->pVContext, pMsgWrapper);
   }
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  /* Flush the HAL Mq */
-  while( NULL != (pMsgWrapper = vos_mq_get(&pSchedContext->halMcMq) ))
-  {
-    VOS_TRACE( VOS_MODULE_ID_VOSS,
-               VOS_TRACE_LEVEL_INFO,
-               "%s: Freeing MC HAL MSG message type %d",__func__,
-               pMsgWrapper->pVosMsg->type );
-    halFreeMsg(vosCtx->pMACContext, (tSirMsgQ*)pMsgWrapper->pVosMsg);
-    vos_core_return_msg(pSchedContext->pVContext, pMsgWrapper);
-  }
-#else
   /* Flush the WDA Mq */
   while( NULL != (pMsgWrapper = vos_mq_get(&pSchedContext->wdaMcMq) ))
   {
@@ -1802,8 +1498,6 @@ void vos_sched_flush_mc_mqs ( pVosSchedContext pSchedContext )
     vos_core_return_msg(pSchedContext->pVContext, pMsgWrapper);
   }
 
-#endif
-#if !defined(ANI_MANF_DIAG) || defined(FEATURE_WLAN_INTEGRATED_SOC)
   /* Flush the PE Mq */
   while( NULL != (pMsgWrapper = vos_mq_get(&pSchedContext->peMcMq) ))
   {
@@ -1834,7 +1528,6 @@ void vos_sched_flush_mc_mqs ( pVosSchedContext pSchedContext )
     WLANTL_McFreeMsg(pSchedContext->pVContext, pMsgWrapper->pVosMsg);
     vos_core_return_msg(pSchedContext->pVContext, pMsgWrapper);
   }
-#endif
 } /* vos_sched_flush_mc_mqs() */
 
 /*-------------------------------------------------------------------------
@@ -1879,18 +1572,6 @@ void vos_sched_flush_tx_mqs ( pVosSchedContext pSchedContext )
     WLANTL_TxFreeMsg(pSchedContext->pVContext, pMsgWrapper->pVosMsg);
     vos_core_return_msg(pSchedContext->pVContext, pMsgWrapper);
   }
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  /* Flush the SSC Mq */
-  while( NULL != (pMsgWrapper = vos_mq_get(&pSchedContext->sscTxMq) ))
-  {
-    VOS_TRACE( VOS_MODULE_ID_VOSS,
-               VOS_TRACE_LEVEL_INFO,
-               "%s: Freeing TX SSC MSG message type %d",__func__,
-               pMsgWrapper->pVosMsg->type );
-    WLANSSC_FreeMsg(pSchedContext->pVContext, pMsgWrapper->pVosMsg);
-    vos_core_return_msg(pSchedContext->pVContext, pMsgWrapper);
-  }
-#else
   /* Flush the WDI Mq */
   while( NULL != (pMsgWrapper = vos_mq_get(&pSchedContext->wdiTxMq) ))
   {
@@ -1901,9 +1582,7 @@ void vos_sched_flush_tx_mqs ( pVosSchedContext pSchedContext )
     sysTxFreeMsg(pSchedContext->pVContext, pMsgWrapper->pVosMsg);
     vos_core_return_msg(pSchedContext->pVContext, pMsgWrapper);
   }
- #endif
 } /* vos_sched_flush_tx_mqs() */
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /*-------------------------------------------------------------------------
  This helper function flushes all the RX message queues
  ------------------------------------------------------------------------*/
@@ -1945,7 +1624,6 @@ void vos_sched_flush_rx_mqs ( pVosSchedContext pSchedContext )
   }
 
 }/* vos_sched_flush_rx_mqs() */
-#endif
 
 /*-------------------------------------------------------------------------
  This helper function helps determine if thread id is of TX thread
@@ -1962,7 +1640,6 @@ int vos_sched_is_tx_thread(int threadID)
    }
    return ((gpVosSchedContext->TxThread) && (threadID == gpVosSchedContext->TxThread->pid));
 }
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /*-------------------------------------------------------------------------
  This helper function helps determine if thread id is of RX thread
  ------------------------------------------------------------------------*/
@@ -1978,7 +1655,6 @@ int vos_sched_is_rx_thread(int threadID)
    }
    return ((gpVosSchedContext->RxThread) && (threadID == gpVosSchedContext->RxThread->pid));
 }
-#endif
 /*-------------------------------------------------------------------------
  Helper function to get the scheduler context
  ------------------------------------------------------------------------*/

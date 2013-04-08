@@ -537,26 +537,21 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     // Timestamp to be updated by TFP, below.
 
     // Beacon Interval:
-#ifdef WLAN_SOFTAP_FEATURE
     if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
     {
         pFrm->BeaconInterval.interval = pMac->sch.schObject.gSchBeaconInterval;        
     }
     else
     {
-#endif
-    nSirStatus = wlan_cfgGetInt( pMac, WNI_CFG_BEACON_INTERVAL, &cfg);
-    if (eSIR_SUCCESS != nSirStatus)
-    {
-        limLog( pMac, LOGP, FL("Failed to retrieve WNI_CFG_BEACON_INTERVAL from CFG (%d).\n"),
-                nSirStatus );
-        return;
+        nSirStatus = wlan_cfgGetInt( pMac, WNI_CFG_BEACON_INTERVAL, &cfg);
+        if (eSIR_SUCCESS != nSirStatus)
+        {
+            limLog( pMac, LOGP, FL("Failed to retrieve WNI_CFG_BEACON_INTERVAL from CFG (%d).\n"),
+                    nSirStatus );
+            return;
+        }
+        pFrm->BeaconInterval.interval = ( tANI_U16 ) cfg;
     }
-    pFrm->BeaconInterval.interval = ( tANI_U16 ) cfg;
-#ifdef WLAN_SOFTAP_FEATURE
-    }
-#endif
-
 
     PopulateDot11fCapabilities( pMac, &pFrm->Capabilities, psessionEntry );
     PopulateDot11fSSID( pMac, ( tSirMacSSid* )pSsid, &pFrm->SSID );
@@ -566,11 +561,7 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     PopulateDot11fDSParams( pMac, &pFrm->DSParams, psessionEntry->currentOperChannel,psessionEntry);
     PopulateDot11fIBSSParams( pMac, &pFrm->IBSSParams, psessionEntry );
 
-#ifdef ANI_PRODUCT_TYPE_AP
-    PopulateDot11fCFParams( pMac, &pFrm->Capabilities, &pFrm->CFParams );
-#endif // AP Image
 
-#ifdef WLAN_SOFTAP_FEATURE
     if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
     {
         if(psessionEntry->wps_state != SAP_WPS_DISABLED)
@@ -580,55 +571,32 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     }
     else
     {
-#endif
-    if (wlan_cfgGetInt(pMac, (tANI_U16) WNI_CFG_WPS_ENABLE, &tmp) != eSIR_SUCCESS)
-        limLog(pMac, LOGP,"Failed to cfg get id %d\n", WNI_CFG_WPS_ENABLE );
-    
-    wpsApEnable = tmp & WNI_CFG_WPS_ENABLE_AP;
-    
-    if (wpsApEnable)
-    {
-        PopulateDot11fWscInProbeRes(pMac, &pFrm->WscProbeRes);
-    }
+        if (wlan_cfgGetInt(pMac, (tANI_U16) WNI_CFG_WPS_ENABLE, &tmp) != eSIR_SUCCESS)
+            limLog(pMac, LOGP,"Failed to cfg get id %d\n", WNI_CFG_WPS_ENABLE );
 
-    if (pMac->lim.wscIeInfo.probeRespWscEnrollmentState == eLIM_WSC_ENROLL_BEGIN)
-    {
-        PopulateDot11fWscRegistrarInfoInProbeRes(pMac, &pFrm->WscProbeRes);
-        pMac->lim.wscIeInfo.probeRespWscEnrollmentState = eLIM_WSC_ENROLL_IN_PROGRESS;
-    }
+        wpsApEnable = tmp & WNI_CFG_WPS_ENABLE_AP;
 
-    if (pMac->lim.wscIeInfo.wscEnrollmentState == eLIM_WSC_ENROLL_END)
-    {
-        DePopulateDot11fWscRegistrarInfoInProbeRes(pMac, &pFrm->WscProbeRes);
-        pMac->lim.wscIeInfo.probeRespWscEnrollmentState = eLIM_WSC_ENROLL_NOOP;
+        if (wpsApEnable)
+        {
+            PopulateDot11fWscInProbeRes(pMac, &pFrm->WscProbeRes);
+        }
+
+        if (pMac->lim.wscIeInfo.probeRespWscEnrollmentState == eLIM_WSC_ENROLL_BEGIN)
+        {
+            PopulateDot11fWscRegistrarInfoInProbeRes(pMac, &pFrm->WscProbeRes);
+            pMac->lim.wscIeInfo.probeRespWscEnrollmentState = eLIM_WSC_ENROLL_IN_PROGRESS;
+        }
+
+        if (pMac->lim.wscIeInfo.wscEnrollmentState == eLIM_WSC_ENROLL_END)
+        {
+            DePopulateDot11fWscRegistrarInfoInProbeRes(pMac, &pFrm->WscProbeRes);
+            pMac->lim.wscIeInfo.probeRespWscEnrollmentState = eLIM_WSC_ENROLL_NOOP;
+        }
     }
-#ifdef WLAN_SOFTAP_FEATURE
-    }
-#endif
 
     PopulateDot11fCountry( pMac, &pFrm->Country, psessionEntry);
     PopulateDot11fEDCAParamSet( pMac, &pFrm->EDCAParamSet, psessionEntry);
 
-#ifdef ANI_PRODUCT_TYPE_AP
-    if( pSessionEntry->lim11hEnable )
-    {
-        PopulateDot11fPowerConstraints( pMac, &pFrm->PowerConstraints );
-        PopulateDot11fTPCReport( pMac, &pFrm->TPCReport, psessionEntry);
-
-        // If .11h isenabled & channel switching is not already started and
-        // we're in either PRIMARY_ONLY or PRIMARY_AND_SECONDARY state, then
-        // populate 802.11h channel switch IE
-        if (( pMac->lim.gLimChannelSwitch.switchCount != 0 ) &&
-             ( pMac->lim.gLimChannelSwitch.state ==
-               eLIM_CHANNEL_SWITCH_PRIMARY_ONLY ||
-               pMac->lim.gLimChannelSwitch.state ==
-               eLIM_CHANNEL_SWITCH_PRIMARY_AND_SECONDARY ) )
-        {
-            PopulateDot11fChanSwitchAnn( pMac, &pFrm->ChanSwitchAnn, psessionEntry );
-            PopulateDot11fExtChanSwitchAnn(pMac, &pFrm->ExtChanSwitchAnn, psessionEntry );
-        }
-    }
-#endif
 
     if (psessionEntry->dot11mode != WNI_CFG_DOT11_MODE_11B)
         PopulateDot11fERPInfo( pMac, &pFrm->ERPInfo, psessionEntry);
@@ -643,11 +611,7 @@ limSendProbeRspMgmtFrame(tpAniSirGlobal pMac,
     if ( psessionEntry->htCapability )
     {
         PopulateDot11fHTCaps( pMac, psessionEntry, &pFrm->HTCaps );
-#ifdef WLAN_SOFTAP_FEATURE
         PopulateDot11fHTInfo( pMac, &pFrm->HTInfo, psessionEntry );
-#else
-        PopulateDot11fHTInfo( pMac, &pFrm->HTInfo );
-#endif
     }
 #ifdef WLAN_FEATURE_11AC
     if(psessionEntry->vhtCapability)
@@ -1221,254 +1185,6 @@ limSendAddtsReqActionFrame(tpAniSirGlobal    pMac,
 
 } // End limSendAddtsReqActionFrame.
 
-/* Added ANI_PRODUCT_TYPE_CLIENT for BT-AMP Support */
-#ifdef ANI_PRODUCT_TYPE_AP
-
-void
-limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
-                         tANI_U16       statusCode,
-                         tANI_U16       aid,
-                         tSirMacAddr    peerMacAddr,
-                         tANI_U8        subType,
-                         tpDphHashNode  pSta,
-                         tpPESession psessionEntry)
-{
-    tDot11fAssocResponse frm;
-    tANI_U8             *pFrame, *macAddr;
-    tpSirMacMgmtHdr      pMacHdr;
-    tSirRetStatus        nSirStatus;
-    tANI_U8              lleMode = 0, fAddTS, edcaInclude = 0;
-    tHalBitVal           qosMode, wmeMode;
-    tANI_U32             nPayload, nBytes, nStatus, cfgLen;
-    void                *pPacket;
-    eHalStatus           halstatus;
-    tUpdateBeaconParams beaconParams;
-    tANI_U32             wpsApEnable=0, tmp;
-    tANI_U8              txFlag = 0;
-
-    palZeroMemory( pMac->hHdd, ( tANI_U8* )&frm, sizeof( frm ) );
-
-    limGetQosMode(pMac, &qosMode);
-    limGetWmeMode(pMac, &wmeMode);
-
-    // An Add TS IE is added only if the AP supports it and the requesting
-    // STA sent a traffic spec.
-    fAddTS = ( qosMode && pSta && pSta->qos.addtsPresent ) ? 1 : 0;
-
-    PopulateDot11fCapabilities( pMac, &frm.Capabilities, psessionEntry);
-
-    frm.Status.status = statusCode;
-
-    frm.AID.associd = aid | LIM_AID_MASK;
-
-    PopulateDot11fSuppRates( pMac, POPULATE_DOT11F_RATES_OPERATIONAL, &frm.SuppRates );
-
-    if (wlan_cfgGetInt(pMac, (tANI_U16) WNI_CFG_WPS_ENABLE, &tmp) != eSIR_SUCCESS)
-        limLog(pMac, LOGP,"Failed to cfg get id %d\n", WNI_CFG_WPS_ENABLE );
-    
-    wpsApEnable = tmp & WNI_CFG_WPS_ENABLE_AP;
-
-    if (wpsApEnable)
-    {
-        PopulateDot11fWscInAssocRes(pMac, &frm.WscAssocRes);
-    }
-
-    PopulateDot11fExtSuppRates( pMac, POPULATE_DOT11F_RATES_OPERATIONAL,
-                                &frm.ExtSuppRates, psessionEntry );
-
-    if ( NULL != pSta )
-    {
-        if ( eHAL_SET == qosMode )
-        {
-            if ( pSta->lleEnabled )
-            {
-                lleMode = 1;
-                if ( ( ! pSta->aniPeer ) || ( ! PROP_CAPABILITY_GET( 11EQOS, pSta->propCapability ) ) )
-                {
-                    PopulateDot11fEDCAParamSet( pMac, &frm.EDCAParamSet, psessionEntry);
-
-//                     FramesToDo:...
-//                     if ( fAddTS )
-//                     {
-//                         tANI_U8 *pAf = pBody;
-//                         *pAf++ = SIR_MAC_QOS_ACTION_EID;
-//                         tANI_U32 tlen;
-//                         status = sirAddtsRspFill(pMac, pAf, statusCode, &pSta->qos.addts, NULL,
-//                                                  &tlen, bufLen - frameLen);
-//                     } // End if on Add TS.
-                }
-            } // End if on .11e enabled in 'pSta'.
-        } // End if on QOS Mode on.
-
-        if ( ( ! lleMode ) && ( eHAL_SET == wmeMode ) && pSta->wmeEnabled )
-        {
-            if ( ( ! pSta->aniPeer ) || ( ! PROP_CAPABILITY_GET( WME, pSta->propCapability ) ) )
-            {
-                PopulateDot11fWMMParams( pMac, &frm.WMMParams );
-
-                if ( pSta->wsmEnabled )
-                {
-                    PopulateDot11fWMMCaps(&frm.WMMCaps );
-                }
-            }
-        }
-
-        if ( pSta->aniPeer )
-        {
-            if ( ( lleMode && PROP_CAPABILITY_GET( 11EQOS, pSta->propCapability ) ) ||
-                 ( pSta->wmeEnabled && PROP_CAPABILITY_GET( WME, pSta->propCapability ) ) )
-            {
-                edcaInclude = 1;
-            }
-
-        } // End if on Airgo peer.
-
-        if ( pSta->mlmStaContext.htCapability  && 
-             psessionEntry->htCapability )
-        {
-            PopulateDot11fHTCaps( pMac, psessionEntry, &frm.HTCaps );
-            PopulateDot11fHTInfo( pMac, &frm.HTInfo, psessionEntry);
-        }
-    } // End if on non-NULL 'pSta'.
-
-
-    if(pMac->lim.gLimProtectionControl != WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE)
-        limDecideApProtection(pMac, peerMacAddr, &beaconParams);
-    limUpdateShortPreamble(pMac, peerMacAddr, &beaconParams);
-    limUpdateShortSlotTime(pMac, peerMacAddr, &beaconParams);
-
-    //Send message to HAL about beacon parameter change.
-    if(beaconParams.paramChangeBitmap)
-    {
-        schSetFixedBeaconFields(pMac,psessionEntry);
-        limSendBeaconParams(pMac, &beaconParams, psessionEntry );
-    }
-
-    // Allocate a buffer for this frame:
-    nStatus = dot11fGetPackedAssocResponseSize( pMac, &frm, &nPayload );
-    if ( DOT11F_FAILED( nStatus ) )
-    {
-        limLog( pMac, LOGE, FL("Failed to calculate the packed size f"
-                               "or an Association Response (0x%08x).\n"),
-                nStatus );
-        return;
-    }
-    else if ( DOT11F_WARNED( nStatus ) )
-    {
-        limLog( pMac, LOGW, FL("There were warnings while calculating"
-                               "the packed size for an Association Re"
-                               "sponse (0x%08x).\n"), nStatus );
-    }
-
-    nBytes = sizeof( tSirMacMgmtHdr ) + nPayload;
-
-    halstatus = palPktAlloc( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
-                             ( tANI_U16 )nBytes, ( void** ) &pFrame,
-                             ( void** ) &pPacket );
-    if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
-    {
-        limLog(pMac, LOGP, FL("Call to bufAlloc failed for RE/ASSOC RSP.\n"));
-        return;
-    }
-
-    // Paranoia:
-    palZeroMemory( pMac->hHdd, pFrame, nBytes );
-
-    // Next, we fill out the buffer descriptor:
-    nSirStatus = limPopulateMacHeader( pMac,
-                                pFrame,
-                                SIR_MAC_MGMT_FRAME,
-                                ( LIM_ASSOC == subType ) ?
-                                    SIR_MAC_MGMT_ASSOC_RSP :
-                                    SIR_MAC_MGMT_REASSOC_RSP,
-                                    peerMacAddr);
-    if ( eSIR_SUCCESS != nSirStatus )
-    {
-        limLog( pMac, LOGE, FL("Failed to populate the buffer descrip"
-                               "tor for an Association Response (%d).\n"),
-                nSirStatus );
-        palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
-                    ( void* ) pFrame, ( void* ) pPacket );
-        return;
-    }
-
-    pMacHdr = ( tpSirMacMgmtHdr ) pFrame;
-
-   
-    cfgLen = SIR_MAC_ADDR_LENGTH;
-    if ( eSIR_SUCCESS != wlan_cfgGetStr( pMac, WNI_CFG_BSSID,
-                                    ( tANI_U8* )pMacHdr->bssId, &cfgLen ) )
-    {
-        limLog( pMac, LOGP, FL("Failed to retrieve WNI_CFG_BSSID whil"
-                               "e sending an Association Response.\n") );
-        palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, ( void* ) pFrame, ( void* ) pPacket );
-        return;                 // allocated!
-    }
-  
-    nStatus = dot11fPackAssocResponse( pMac, &frm,
-                                       pFrame + sizeof( tSirMacMgmtHdr ),
-                                       nPayload, &nPayload );
-    if ( DOT11F_FAILED( nStatus ) )
-    {
-        limLog( pMac, LOGE, FL("Failed to pack an Association Response (0x%08x).\n"),
-                nStatus );
-        palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
-                    ( void* ) pFrame, ( void* ) pPacket );
-        return;                 // allocated!
-    }
-    else if ( DOT11F_WARNED( nStatus ) )
-    {
-        limLog( pMac, LOGW, FL("There were warnings while packing an "
-                               "Association Response (0x%08x).\n") );
-    }
-
-    macAddr = pMacHdr->da;
-
-    if (subType == LIM_ASSOC)
-        limLog(pMac, LOG1,
-               FL("*** Sending Assoc Resp status %d aid %d to "),
-               statusCode, aid);
-    else
-        limLog(pMac, LOG1,
-               FL("*** Sending ReAssoc Resp status %d aid %d to "),
-               statusCode, aid);
-    limPrintMacAddr(pMac, pMacHdr->da, LOG1);
-
-    if( ( SIR_BAND_5_GHZ == limGetRFBand(psessionEntry->currentOperChannel))
-#ifdef WLAN_FEATURE_P2P
-       || ( psessionEntry->pePersona == VOS_P2P_CLIENT_MODE ) ||
-         ( psessionEntry->pePersona == VOS_P2P_GO_MODE)
-#endif
-         )
-    {
-        txFlag |= HAL_USE_BD_RATE2_FOR_MANAGEMENT_FRAME;
-    }
-
-    /// Queue Association Response frame in high priority WQ
-    halstatus = halTxFrame( pMac, pPacket, ( tANI_U16 ) nBytes,
-                            HAL_TXRX_FRM_802_11_MGMT,
-                            ANI_TXDIR_TODS,
-                            7,//SMAC_SWBD_TX_TID_MGMT_HIGH,
-                            limTxComplete, pFrame, txFlag );
-    if ( ! HAL_STATUS_SUCCESS ( halstatus ) )
-    {
-        limLog(pMac, LOGE,
-               FL("*** Could not Send Re/AssocRsp, retCode=%X ***\n"),
-               nSirStatus);
-
-        palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT,
-                  (void *) pFrame, (void *) pPacket );
-    }
-
-    // update the ANI peer station count
-    //FIXME_PROTECTION : take care of different type of station
-    // counter inside this function.
-    limUtilCountStaAdd(pMac, pSta, psessionEntry);
-
-} // End limSendAssocRspMgmtFrame.
-
-
-#endif  // ANI_PRODUCT_TYPE_AP
 
 
 void
@@ -1526,7 +1242,6 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
                       pSta->supportedRates.llbRates, pSta->supportedRates.llaRates );
     }
 
-#ifdef WLAN_SOFTAP_FEATURE
     if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
     {
         if( pSta != NULL && eSIR_SUCCESS == statusCode )
@@ -1541,7 +1256,6 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
 #endif
         }
     }
-#endif
 
     if ( NULL != pSta )
     {
@@ -1572,11 +1286,7 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
             if ( ( ! pSta->aniPeer ) || ( ! PROP_CAPABILITY_GET( WME, pSta->propCapability ) ) )
             {
 
-#ifdef WLAN_SOFTAP_FEATURE
                 PopulateDot11fWMMParams( pMac, &frm.WMMParams, psessionEntry);
-#else
-                PopulateDot11fWMMParams( pMac, &frm.WMMParams );
-#endif
 
                 if ( pSta->wsmEnabled )
                 {
@@ -1599,11 +1309,7 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
              psessionEntry->htCapability )
         {
             PopulateDot11fHTCaps( pMac, psessionEntry, &frm.HTCaps );
-#ifdef WLAN_SOFTAP_FEATURE
             PopulateDot11fHTInfo( pMac, &frm.HTInfo, psessionEntry );
-#else
-            PopulateDot11fHTInfo( pMac, &frm.HTInfo );
-#endif
         }
 
 #ifdef WLAN_FEATURE_11AC
@@ -1622,12 +1328,10 @@ limSendAssocRspMgmtFrame(tpAniSirGlobal pMac,
 
    palZeroMemory( pMac->hHdd, ( tANI_U8* )&beaconParams, sizeof( tUpdateBeaconParams) );
 
-#ifdef WLAN_SOFTAP_FEATURE
     if( psessionEntry->limSystemRole == eLIM_AP_ROLE ){
         if(psessionEntry->gLimProtectionControl != WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE)
         limDecideApProtection(pMac, peerMacAddr, &beaconParams,psessionEntry);
     }
-#endif
 
     limUpdateShortPreamble(pMac, peerMacAddr, &beaconParams, psessionEntry);
     limUpdateShortSlotTime(pMac, peerMacAddr, &beaconParams, psessionEntry);
@@ -4699,7 +4403,6 @@ limSendTpcReportFrame(tpAniSirGlobal            pMac,
 #endif  //ANI_SUPPORT_11H
 
 
-#if 1//def ANI_PRODUCT_TYPE_AP
 /**
  * \brief Send a Channel Switch Announcement
  *
@@ -4848,7 +4551,6 @@ limSendChannelSwitchMgmtFrame(tpAniSirGlobal pMac,
 
 } // End limSendChannelSwitchMgmtFrame.
 
-#endif // (ANI_PRODUCT_TYPE_AP)
 
 
 #ifdef WLAN_FEATURE_11AC    

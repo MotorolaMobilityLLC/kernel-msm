@@ -541,7 +541,6 @@ REG_TABLE_ENTRY g_registry_table[] =
                         VAR_FLAGS_OPTIONAL,
                         (void *)CFG_CRDA_DEFAULT_COUNTRY_CODE_DEFAULT ),
 
-#ifdef WLAN_SOFTAP_FEATURE
    REG_VARIABLE( CFG_AP_QOS_UAPSD_MODE_NAME , WLAN_PARAM_Integer,
                  hdd_config_t, apUapsdEnabled,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
@@ -645,7 +644,6 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_GO_KEEP_ALIVE_PERIOD_MIN,
                  CFG_GO_KEEP_ALIVE_PERIOD_MAX),
 
-#endif
    REG_VARIABLE(CFG_DISABLE_PACKET_FILTER , WLAN_PARAM_Integer,
                  hdd_config_t, disablePacketFilter,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
@@ -1313,7 +1311,6 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_BTC_DHCP_PROT_ON_SCO_MIN,
                  CFG_BTC_DHCP_PROT_ON_SCO_MAX ),
 
-#ifdef WLAN_SOFTAP_FEATURE
    REG_VARIABLE( CFG_AP_LISTEN_MODE_NAME , WLAN_PARAM_Integer,
                  hdd_config_t, nEnableListenMode,
                  VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
@@ -1327,7 +1324,6 @@ REG_TABLE_ENTRY g_registry_table[] =
                  CFG_AP_AUTO_SHUT_OFF_DEFAULT,
                  CFG_AP_AUTO_SHUT_OFF_MIN,
                  CFG_AP_AUTO_SHUT_OFF_MAX ),
-#endif
 
 #if defined WLAN_FEATURE_VOWIFI
    REG_VARIABLE( CFG_RRM_ENABLE_NAME, WLAN_PARAM_Integer,
@@ -1618,7 +1614,6 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_VOS_TRACE_ENABLE_MIN,
                 CFG_VOS_TRACE_ENABLE_MAX ),
 
-#ifdef WLAN_SOFTAP_FEATURE
    REG_VARIABLE( CFG_VOS_TRACE_ENABLE_SAP_NAME, WLAN_PARAM_Integer,
                 hdd_config_t, vosTraceEnableSAP,
                 VAR_FLAGS_OPTIONAL,
@@ -1632,9 +1627,7 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_VOS_TRACE_ENABLE_DEFAULT,
                 CFG_VOS_TRACE_ENABLE_MIN,
                 CFG_VOS_TRACE_ENABLE_MAX ),
-#endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    /* note that since the default value is out of range we cannot
       enable range check, otherwise we get a system log message */
    REG_VARIABLE( CFG_WDI_TRACE_ENABLE_DAL_NAME, WLAN_PARAM_Integer,
@@ -1664,7 +1657,6 @@ REG_TABLE_ENTRY g_registry_table[] =
                 CFG_WDI_TRACE_ENABLE_DEFAULT,
                 CFG_WDI_TRACE_ENABLE_MIN,
                 CFG_WDI_TRACE_ENABLE_MAX ),
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
   REG_VARIABLE( CFG_TELE_BCN_TRANS_LI_NAME, WLAN_PARAM_Integer,
                hdd_config_t, nTeleBcnTransListenInterval,
@@ -2327,7 +2319,6 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
                                   pHddCtx->cfg_ini->intfMacAddr[3].bytes[4],
                                   pHddCtx->cfg_ini->intfMacAddr[3].bytes[5]);
 
-#ifdef WLAN_SOFTAP_FEATURE
 
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gApEnableUapsd] value = [%u]\n",pHddCtx->cfg_ini->apUapsdEnabled);
 
@@ -2341,7 +2332,6 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gApProtection] value = [%u]\n",pHddCtx->cfg_ini->apProtection);
   VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gEnableApOBSSProt] value = [%u]\n",pHddCtx->cfg_ini->apOBSSProtEnabled);
   VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [gApAutoChannelSelection] value = [%u]\n",pHddCtx->cfg_ini->apAutoChannelSelection);
-#endif
 
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [ChannelBondingMode] Value = [%lu]",pHddCtx->cfg_ini->nChannelBondingMode24GHz);
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH, "Name = [ChannelBondingMode] Value = [%lu]",pHddCtx->cfg_ini->nChannelBondingMode5GHz);
@@ -3223,7 +3213,6 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
       hddLog(LOGE,"Failure: Could not pass on WNI_CFG_NTH_BEACON_FILTER configuration info to CCM\n");
    }
 
-#ifdef WLAN_SOFTAP_FEATURE
      if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_ENABLE_LTE_COEX, pConfig->enableLTECoex,
         NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
      {
@@ -3251,7 +3240,6 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
         fStatus = FALSE;
         hddLog(LOGE, "Could not pass on WNI_CFG_GO_KEEP_ALIVE_TIMEOUT to CCM\n");
      }
-#endif
 
 #if defined WLAN_FEATURE_VOWIFI
     if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_RRM_ENABLED, pConfig->fRrmEnable,
@@ -3348,13 +3336,12 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
        hddLog(LOGE,"Failure: Could not pass on WNI_CFG_PS_NULLDATA_DELAY_TIMEOUT configuration info to CCM\n"  );
     }
 
-   if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_AP_DATA_AVAIL_POLL_PERIOD, pConfig->apDataAvailPollPeriodInMs,
+    if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_AP_DATA_AVAIL_POLL_PERIOD, pConfig->apDataAvailPollPeriodInMs,
                NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
-   {
-       fStatus = FALSE;
-       hddLog(LOGE,"Failure: Could not pass on WNI_CFG_AP_DATA_AVAIL_POLL_PERIOD configuration info to CCM\n"  );
-   }
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
+    {
+        fStatus = FALSE;
+        hddLog(LOGE,"Failure: Could not pass on WNI_CFG_AP_DATA_AVAIL_POLL_PERIOD configuration info to CCM\n"  );
+    }
     if(ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_FRAGMENTATION_THRESHOLD, pConfig->FragmentationThreshold,
                    NULL, eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
     {
@@ -3381,7 +3368,6 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
         hddLog(LOGE,"Failure: Could not pass on WNI_CFG_HEART_BEAT_THRESHOLD configuration info to CCM\n"  );
     }
 
-#endif
    if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_AP_DATA_AVAIL_POLL_PERIOD, pConfig->apDataAvailPollPeriodInMs,
                NULL, eANI_BOOLEAN_FALSE)==eHAL_STATUS_FAILURE)
    {
@@ -3649,27 +3635,24 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig.csrConfig.fFirstScanOnly2GChnl      = pConfig->enableFirstScan2GOnly;
 
    //FIXME 11d config is hardcoded
-#ifdef WLAN_SOFTAP_FEATURE
-   if ( VOS_STA_SAP_MODE != hdd_get_conparam()){
-#endif
-   smeConfig.csrConfig.Csr11dinfo.Channels.numChannels = 0;
+   if ( VOS_STA_SAP_MODE != hdd_get_conparam())
+   {
+      smeConfig.csrConfig.Csr11dinfo.Channels.numChannels = 0;
 
-   //if there is a requirement that HDD will control the default channel list &
-   //country code (say from .ini file) we need to add some logic here. Otherwise
-   //the default 11d info should come from NV as per our current implementation
-
-#ifdef WLAN_SOFTAP_FEATURE
+      /* if there is a requirement that HDD will control the default
+       * channel list & country code (say from .ini file) we need to
+       * add some logic here. Otherwise the default 11d info should
+       * come from NV as per our current implementation */
    }
-   else{
+   else
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "AP country Code %s", pConfig->apCntryCode);
 
-    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-               "AP country Code %s", pConfig->apCntryCode);
-
-    if (memcmp(pConfig->apCntryCode, CFG_AP_COUNTRY_CODE_DEFAULT, 3) != 0)
-       sme_setRegInfo(pHddCtx->hHal, pConfig->apCntryCode);
-       sme_set11dinfo(pHddCtx->hHal, &smeConfig);
-    }
-#endif
+      if (memcmp(pConfig->apCntryCode, CFG_AP_COUNTRY_CODE_DEFAULT, 3) != 0)
+         sme_setRegInfo(pHddCtx->hHal, pConfig->apCntryCode);
+      sme_set11dinfo(pHddCtx->hHal, &smeConfig);
+   }
    hdd_set_power_save_config(pHddCtx, &smeConfig);
    hdd_set_btc_config(pHddCtx);
 

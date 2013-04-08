@@ -108,26 +108,18 @@
 #include "wlan_hdd_p2p.h"
 #endif
 #include <linux/rtnetlink.h>
-#ifdef ANI_MANF_DIAG
 int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
-#endif
-#ifdef WLAN_SOFTAP_FEATURE
 #include "sapApi.h"
 #include <linux/semaphore.h>
 #include <mach/subsystem_restart.h>
 #include <wlan_hdd_hostapd.h>
 #include <wlan_hdd_softap_tx_rx.h>
-#endif
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include "cfgApi.h"
-#endif
 #include "wlan_hdd_dev_pwr.h"
 #ifdef WLAN_BTAMP_FEATURE
 #include "bap_hdd_misc.h"
 #endif
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include "wlan_qct_pal_trace.h"
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 #include "qwlan_version.h"
 #include "wlan_qct_wda.h"
 #ifdef FEATURE_WLAN_TDLS
@@ -360,7 +352,6 @@ static void hdd_vos_trace_enable(VOS_MODULE_ID moduleId, v_U32_t bitmask)
 }
 
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /**---------------------------------------------------------------------------
 
   \brief hdd_wdi_trace_enable() - Configure initial WDI Trace enable
@@ -401,7 +392,6 @@ static void hdd_wdi_trace_enable(wpt_moduleid moduleId, v_U32_t bitmask)
       bitmask >>= 1;
    }
 }
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 int hdd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 {
@@ -1558,30 +1548,6 @@ VOS_STATUS hdd_read_cfg_file(v_VOID_t *pCtx, char *pFileName,
 
 /**---------------------------------------------------------------------------
 
-  \brief hdd_set_mac_addr_cb() -
-
-   This function is the call back function for setting the station
-   mac adrress called by ccm module to indicate the
-   success/failure result.
-
-  \param  - hHal - Pointer to the hal module.
-              - result - returns the result of the set mac address.
-
-  \return - void
-
-  --------------------------------------------------------------------------*/
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-static void hdd_set_mac_addr_cb( tHalHandle hHal, tANI_S32 result )
-{
-  // ignore the STA_ID response for now.
-
-  VOS_ASSERT( CCM_IS_RESULT_SUCCESS( result ) );
-}
-#endif
-
-
-/**---------------------------------------------------------------------------
-
   \brief hdd_set_mac_address() -
 
    This function sets the user specified mac address using
@@ -1985,7 +1951,6 @@ void hdd_deinit_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
 
       case WLAN_HDD_SOFTAP:
       case WLAN_HDD_P2P_GO:
-#ifdef WLAN_SOFTAP_FEATURE
       {
 #ifdef CONFIG_CFG80211
          hdd_cleanup_actionframe(pHddCtx, pAdapter);
@@ -2015,7 +1980,6 @@ void hdd_deinit_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter )
             hdd_cleanup_actionframe(pHddCtx, pAdapterforTx);
          }
 #endif
-#endif //WLAN_SOFTAP_FEATURE
          break;
       }
 
@@ -2360,7 +2324,6 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
 #endif
       }
          break;
-#ifdef ANI_MANF_DIAG
       case WLAN_HDD_FTM:
       {
          pAdapter = hdd_alloc_station_adapter( pHddCtx, macAddr, iface_name );
@@ -2374,7 +2337,6 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
          status = hdd_register_interface( pAdapter, rtnl_held );
       }
          break;
-#endif
       default:
       {
          VOS_ASSERT(0);
@@ -2418,16 +2380,6 @@ hdd_adapter_t* hdd_open_adapter( hdd_context_t *pHddCtx, tANI_U8 session_type,
    {
       wlan_hdd_set_concurrency_mode(pHddCtx, session_type);
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-      /* If there are concurrent session enable SW frame translation 
-            * for all registered STA
-            * This is not required in case of PRIMA as HW frame translation
-            * is disabled in PRIMA*/ 
-      if (vos_concurrent_sessions_running())
-      {
-         WLANTL_ConfigureSwFrameTXXlationForAll(pHddCtx->pvosContext, TRUE);
-      }
-#endif
       //Initialize the WoWL service
       if(!hdd_init_wowl(pAdapter))
       {
@@ -2477,16 +2429,6 @@ VOS_STATUS hdd_close_adapter( hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
       hdd_remove_adapter( pHddCtx, pAdapterNode );
       vos_mem_free( pAdapterNode );
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-      /* If there is no concurrent session disable SW frame translation 
-       * for all registered STA */ 
-      /* This is not required in case of PRIMA as HW frame translation
-       * is disabled in PRIMA*/
-      if (!vos_concurrent_sessions_running())
-      {
-         WLANTL_ConfigureSwFrameTXXlationForAll(pHddCtx->pvosContext, FALSE);
-      }
-#endif
 
       /* If there is a single session of STA/P2P client, re-enable BMPS */
       if ((!vos_concurrent_sessions_running()) && 
@@ -3334,30 +3276,22 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
 #ifdef CONFIG_CFG80211
     struct wiphy *wiphy = pHddCtx->wiphy;
 #endif 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    hdd_adapter_t* pAdapter;
-#endif
    struct fullPowerContext powerContext;
    long lrc;
 
    ENTER();
 
-#ifdef ANI_MANF_DIAG
-      if (VOS_FTM_MODE != hdd_get_conparam())
-#endif /* ANI_MANF_DIAG */
-      {
-         // Unloading, restart logic is no more required.
-         wlan_hdd_restart_deinit(pHddCtx);
-      }
+   if (VOS_FTM_MODE != hdd_get_conparam())
+   {
+      // Unloading, restart logic is no more required.
+      wlan_hdd_restart_deinit(pHddCtx);
+   }
 
 #ifdef CONFIG_CFG80211
-#ifdef WLAN_SOFTAP_FEATURE
    if (VOS_STA_SAP_MODE != hdd_get_conparam())
-#endif
    {
-#ifdef ANI_MANF_DIAG
       if (VOS_FTM_MODE != hdd_get_conparam())
-#endif /* ANI_MANF_DIAG */
       {
          hdd_adapter_t* pAdapter = hdd_get_adapter(pHddCtx,
                                       WLAN_HDD_INFRA_STATION);
@@ -3373,19 +3307,15 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    }
 #endif
 
-#ifdef ANI_MANF_DIAG
    if (VOS_FTM_MODE == hdd_get_conparam())
-  {
-    wlan_hdd_ftm_close(pHddCtx);
-    goto free_hdd_ctx;
-  }
-#endif  
+   {
+      wlan_hdd_ftm_close(pHddCtx);
+      goto free_hdd_ctx;
+   }
    //Stop the Interface TX queue.
    //netif_tx_disable(pWlanDev);
    //netif_carrier_off(pWlanDev);
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
-#ifdef WLAN_SOFTAP_FEATURE
    if (VOS_STA_SAP_MODE == hdd_get_conparam())
    {
       pAdapter = hdd_get_adapter(pHddCtx,
@@ -3393,17 +3323,12 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    }
    else
    {
-#endif
-#ifdef ANI_MANF_DIAG
       if (VOS_FTM_MODE != hdd_get_conparam())
-#endif /* ANI_MANF_DIAG */
       {
          pAdapter = hdd_get_adapter(pHddCtx,
                                     WLAN_HDD_INFRA_STATION);
       }
-#ifdef WLAN_SOFTAP_FEATURE
    }
-#endif
    /* DeRegister with platform driver as client for Suspend/Resume */
    vosStatus = hddDeregisterPmOps(pHddCtx);
    if ( !VOS_IS_STATUS_SUCCESS( vosStatus ) )
@@ -3417,7 +3342,6 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
    {
       hddLog(VOS_TRACE_LEVEL_FATAL,"%s: hddDevTmUnregisterNotifyCallback failed",__func__);
    }
-#endif //FEATURE_WLAN_INTEGRATED_SOC
 
 #ifdef FEATURE_WLAN_TDLS
     wlan_hdd_tdls_exit();
@@ -3578,11 +3502,9 @@ void hdd_wlan_exit(hdd_context_t *pHddCtx)
                                            __func__);
    }
 
-#ifdef ANI_MANF_DIAG
-free_hdd_ctx:   
-#endif
+free_hdd_ctx:
 #ifdef CONFIG_CFG80211
-   wiphy_unregister(wiphy) ; 
+   wiphy_unregister(wiphy) ;
    wiphy_free(wiphy) ;
 #else
    vos_mem_free( pHddCtx );
@@ -3609,11 +3531,6 @@ free_hdd_ctx:
   --------------------------------------------------------------------------*/
 static VOS_STATUS hdd_update_config_from_nv(hdd_context_t* pHddCtx)
 {
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-   eHalStatus halStatus;
-#endif
-
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    v_BOOL_t itemIsValid = VOS_FALSE;
    VOS_STATUS status;
    v_MACADDR_t macFromNV[VOS_MAX_CONCURRENCY_PERSONA];
@@ -3671,25 +3588,7 @@ static VOS_STATUS hdd_update_config_from_nv(hdd_context_t* pHddCtx)
       hddLog(VOS_TRACE_LEVEL_ERROR, "NV ITEM, MAC Not valid");
       return VOS_STATUS_E_FAILURE;
    }
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-#if 1 /* need to fix for concurrency */
-   // Set the MAC Address
-   // Currently this is used by HAL to add self sta. Remove this once self sta is added as part of session open.
-   halStatus = ccmCfgSetStr( pHddCtx->hHal, WNI_CFG_STA_ID,
-                             (v_U8_t *)&pHddCtx->cfg_ini->intfMacAddr[0],
-                             sizeof( pHddCtx->cfg_ini->intfMacAddr[0]),
-                             hdd_set_mac_addr_cb, VOS_FALSE );
-
-   if (!HAL_STATUS_SUCCESS( halStatus ))
-   {
-      hddLog(VOS_TRACE_LEVEL_ERROR,"%s: Failed to set MAC Address. "
-          "HALStatus is %08d [x%08x]",__func__, halStatus, halStatus );
-      return VOS_STATUS_E_FAILURE;
-   }
-#endif
-#endif
 
    return VOS_STATUS_SUCCESS;
 }
@@ -3708,26 +3607,6 @@ VOS_STATUS hdd_post_voss_start_config(hdd_context_t* pHddCtx)
    eHalStatus halStatus;
    v_U32_t listenInterval;
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-   /* In the non-integrated architecture we update the configuration from
-      the INI file and from NV after vOSS has been started
-   */
-
-   // Apply the cfg.ini to cfg.dat
-   if (FALSE == hdd_update_config_dat(pHddCtx))
-   {
-      hddLog(VOS_TRACE_LEVEL_FATAL,"%s: config update failed",__func__ );
-      return VOS_STATUS_E_FAILURE;
-   }
-
-   // Apply the NV to cfg.dat
-   if (VOS_STATUS_SUCCESS != hdd_update_config_from_nv(pHddCtx))
-   {
-      hddLog(VOS_TRACE_LEVEL_FATAL,
-             "%s: config update from NV failed", __func__ );
-      return VOS_STATUS_E_FAILURE;
-   }
-#endif // FEATURE_WLAN_NON_INTEGRATED_SOC
 
    // Send ready indication to the HDD.  This will kick off the MAC
    // into a 'running' state and should kick off an initial scan.
@@ -4047,14 +3926,11 @@ int hdd_wlan_startup(struct device *dev )
                         pHddCtx->cfg_ini->vosTraceEnableSYS);
    hdd_vos_trace_enable(VOS_MODULE_ID_VOSS,
                         pHddCtx->cfg_ini->vosTraceEnableVOSS);
-#ifdef WLAN_SOFTAP_FEATURE
    hdd_vos_trace_enable(VOS_MODULE_ID_SAP,
                         pHddCtx->cfg_ini->vosTraceEnableSAP);
    hdd_vos_trace_enable(VOS_MODULE_ID_HDD_SOFTAP,
                         pHddCtx->cfg_ini->vosTraceEnableHDDSAP);
-#endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    // Update WDI trace levels based upon the cfg.ini
    hdd_wdi_trace_enable(eWLAN_MODULE_DAL,
                         pHddCtx->cfg_ini->wdiTraceEnableDAL);
@@ -4064,11 +3940,9 @@ int hdd_wlan_startup(struct device *dev )
                         pHddCtx->cfg_ini->wdiTraceEnableDAT);
    hdd_wdi_trace_enable(eWLAN_MODULE_PAL,
                         pHddCtx->cfg_ini->wdiTraceEnablePAL);
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
-#ifdef ANI_MANF_DIAG 
-   if(VOS_FTM_MODE == hdd_get_conparam())
-  {
+   if (VOS_FTM_MODE == hdd_get_conparam())
+   {
       if ( VOS_STATUS_SUCCESS != wlan_hdd_ftm_open(pHddCtx) )
       {
           hddLog(VOS_TRACE_LEVEL_FATAL,"%s: wlan_hdd_ftm_open Failed",__func__);
@@ -4076,10 +3950,9 @@ int hdd_wlan_startup(struct device *dev )
       }
       hddLog(VOS_TRACE_LEVEL_FATAL,"%s: FTM driver loaded success fully",__func__);
       return VOS_STATUS_SUCCESS;
-  }
-#endif
+   }
 
-    //Open watchdog module
+   //Open watchdog module
    if(pHddCtx->cfg_ini->fIsLogpEnabled)
    {
       status = vos_watchdog_open(pVosContext,
@@ -4147,7 +4020,6 @@ int hdd_wlan_startup(struct device *dev )
       goto err_vosclose;
    }
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    /* In the integrated architecture we update the configuration from
       the INI file and from NV before vOSS has been started so that
       the final contents are available to send down to the cCPU   */
@@ -4232,7 +4104,6 @@ int hdd_wlan_startup(struct device *dev )
          goto err_vosclose;
       }
    }
-#endif // FEATURE_WLAN_INTEGRATED_SOC
 
    /*Start VOSS which starts up the SME/MAC/HAL modules and everything else
      Note: Firmware image will be read and downloaded inside vos_start API */
@@ -4254,7 +4125,6 @@ int hdd_wlan_startup(struct device *dev )
       goto err_vosstop;
    }
 
-#ifdef WLAN_SOFTAP_FEATURE
    if (VOS_STA_SAP_MODE == hdd_get_conparam())
    {
      pAdapter = hdd_open_adapter( pHddCtx, WLAN_HDD_SOFTAP, "softap.%d", 
@@ -4262,7 +4132,6 @@ int hdd_wlan_startup(struct device *dev )
    }
    else
    {
-#endif
      pAdapter = hdd_open_adapter( pHddCtx, WLAN_HDD_INFRA_STATION, "wlan%d",
          wlan_hdd_get_intf_addr(pHddCtx), FALSE );
      if (pAdapter != NULL)
@@ -4307,9 +4176,7 @@ int hdd_wlan_startup(struct device *dev )
          }
 #endif
      }
-#ifdef WLAN_SOFTAP_FEATURE
    }
-#endif
 
    if( pAdapter == NULL )
    {
@@ -4352,7 +4219,6 @@ int hdd_wlan_startup(struct device *dev )
    sme_UpdateChannelConfig(pHddCtx->hHal); 
 #endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    /* Register with platform driver as client for Suspend/Resume */
    status = hddRegisterPmOps(pHddCtx);
    if ( !VOS_IS_STATUS_SUCCESS( status ) )
@@ -4372,7 +4238,6 @@ int hdd_wlan_startup(struct device *dev )
       hddLog(VOS_TRACE_LEVEL_FATAL,"%s: hddDevTmRegisterNotifyCallback failed",__func__);
       goto err_unregister_pmops;
    }
-#endif
 
    /* register for riva power on lock to platform driver */
    if (req_riva_power_on_lock("wlan"))
@@ -4416,9 +4281,7 @@ int hdd_wlan_startup(struct device *dev )
 
    hdd_register_mcast_bcast_filter(pHddCtx);
 #ifdef CONFIG_CFG80211
-#ifdef WLAN_SOFTAP_FEATURE
    if (VOS_STA_SAP_MODE != hdd_get_conparam())
-#endif
    {
       /* Action frame registered in one adapter which will
        * applicable to all interfaces 
@@ -4998,10 +4861,8 @@ v_BOOL_t hdd_is_apps_power_collapse_allowed(hdd_context_t* pHddCtx)
     VOS_STATUS status;
     tVOS_CONCURRENCY_MODE concurrent_state = 0;
 
-#ifdef WLAN_SOFTAP_FEATURE
     if (VOS_STA_SAP_MODE == hdd_get_conparam())
         return TRUE;
-#endif
 
     concurrent_state = hdd_get_concurrency_mode();
 

@@ -60,20 +60,14 @@
 #ifdef WCN_PRONTO
 
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
-#define HAL_NUM_ASSOC_STA           16
-#define HAL_NUM_STA                 18
+#define HAL_NUM_ASSOC_STA           16 // HAL_NUM_STA - No of GP STAs - 2 (1 self Sta + 1 Bcast Sta)
+#define HAL_NUM_STA                 20
 #define HAL_NUM_HW_STA              10
 #define HAL_NUM_GPSTA               2
 #define HAL_NUM_UMA_DESC_ENTRIES    HAL_NUM_HW_STA // or HAL_NUM_STA
 
-#ifdef WCN_PRONTO_V1
 #define HAL_NUM_BSSID               2
 #define HAL_NUM_STA_WITHOUT_VSTA    9
-#else /* WCN_PRONTO_V1 */
-#define HAL_NUM_BSSID               4
-#define HAL_NUM_STA_WITHOUT_VSTA    14
-#endif
-
 
 #define HAL_NUM_VSTA                (HAL_NUM_STA - HAL_NUM_HW_STA)
 #define QWLANFW_MAX_NUM_VSTA        (HAL_NUM_VSTA)

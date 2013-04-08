@@ -99,15 +99,6 @@ static char *getRole( tLimSystemRole role )
   }
 }
 
-#if (defined(ANI_PRODUCT_TYPE_AP) || defined(ANI_PRODUCT_TYPE_AP_SDK))
-static char *
-dumpMacAddr(tpAniSirGlobal pMac, char *p, tANI_U8 *addr)
-{
-    p += log_sprintf( pMac,p, "%2x:%2x:%2x:%2x:%2x:%2x",
-                    addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
-    return p;
-}
-#endif
 
 
 char *dumpLim( tpAniSirGlobal pMac, char *p, tANI_U32 sessionId)
@@ -235,7 +226,6 @@ char *dumpLim( tpAniSirGlobal pMac, char *p, tANI_U32 sessionId)
   p += log_sprintf( pMac,p, "\nProbe response disable          = %d\n",
                   pMac->lim.gLimProbeRespDisableFlag);
 
-#if (WNI_POLARIS_FW_PRODUCT == WLAN_STA)
   p += log_sprintf( pMac,p, "Scan mode enable                = %d\n",
                   pMac->sys.gSysEnableScanMode);
   p += log_sprintf( pMac,p, "BackgroundScanDisable           = %d\n",
@@ -280,12 +270,6 @@ char *dumpLim( tpAniSirGlobal pMac, char *p, tANI_U32 sessionId)
           }
       }
   }
-#else
-  p += log_sprintf( pMac,p, "Measurements enabled            = %d\n",
-                  pMac->sys.gSysEnableLearnMode);
-  p += log_sprintf( pMac,p, "Scan Mode for Learn Mode enable = %d\n",
-                  pMac->lim.gLimUseScanModeForLearnMode);
-#endif
   p += log_sprintf( pMac,p, "System Scan/Learn Mode bit      = %d\n",
                   pMac->lim.gLimSystemInScanLearnMode);
   p += log_sprintf( pMac,p, "Scan override                   = %d\n",
@@ -308,70 +292,6 @@ char *dumpLim( tpAniSirGlobal pMac, char *p, tANI_U32 sessionId)
   p += log_sprintf( pMac,p, "Protection %s\n", pMac->lim.gLimProtectionControl ? "Enabled" : "Disabled");
 
   p += log_sprintf( pMac,p, "OBSS MODE = %d\n", pMac->lim.gHTObssMode);
-#if (defined(ANI_PRODUCT_TYPE_AP) || defined(ANI_PRODUCT_TYPE_AP_SDK))
-
-    p += log_sprintf( pMac,p, "\nNumber of active OLBC detected = %d\n",
-                    pMac->lim.gLimOlbcParams.numSta);
-    if (pMac->lim.gLimOlbcParams.protectionEnabled)
-        p += log_sprintf( pMac,p, "Protection due to OLBC is ON\n");
-    else
-        p += log_sprintf( pMac,p, "Protection due to OLBC is OFF\n");
-
-    p += log_sprintf( pMac,p, "Content of OLBC cache: \n");
-    for (i=0; i<LIM_PROT_STA_OVERLAP_CACHE_SIZE; i++)
-    {
-        if (pMac->lim.protStaOverlapCache[i].active)
-        {
-            p = dumpMacAddr(pMac, p, pMac->lim.protStaOverlapCache[i].addr);
-            p += log_sprintf( pMac,p, "\n");
-        }
-    }
-
-    p += log_sprintf( pMac,p, "Content of Protection cache: \n");
-    for (i=0; i<LIM_PROT_STA_CACHE_SIZE; i++)
-    {
-        if (pMac->lim.protStaCache[i].active)
-        {
-            p = dumpMacAddr(pMac, p, pMac->lim.protStaCache[i].addr);
-            if(pMac->lim.protStaCache[i].protStaCacheType == eLIM_PROT_STA_CACHE_TYPE_HT20)
-                p += log_sprintf( pMac,p, " Type: HT20\n");
-            else if(pMac->lim.protStaCache[i].protStaCacheType == eLIM_PROT_STA_CACHE_TYPE_llB)
-                p += log_sprintf( pMac,p, " Type: 11B\n");
-             else if(pMac->lim.protStaCache[i].protStaCacheType == eLIM_PROT_STA_CACHE_TYPE_llG)
-                p += log_sprintf( pMac,p, " Type: 11G\n");
-
-            p += log_sprintf( pMac,p, "\n");
-        }
-    }
-    p += log_sprintf( pMac,p, "Count of different type sta associated\n");
-    p += log_sprintf( pMac,p, "11B         = %d, Protection: %d\n", pMac->lim.gLim11bParams.numSta, pMac->lim.gLim11bParams.protectionEnabled);
-    p += log_sprintf( pMac,p, "11G         = %d, Protection: %d\n", pMac->lim.gLim11gParams.numSta, pMac->lim.gLim11gParams.protectionEnabled);
-    p += log_sprintf( pMac,p, "nonGF      = %d, Protection: %d\n", pMac->lim.gLimNonGfParams.numSta, pMac->lim.gLimNonGfParams.protectionEnabled);
-    p += log_sprintf( pMac,p, "!LsigTxop = %d, Protection: %d\n", pMac->lim.gLimLsigTxopParams.numSta, pMac->lim.gLimLsigTxopParams.protectionEnabled);
-    p += log_sprintf( pMac,p, "ht20         = %d Protection:  %d\n", pMac->lim.gLimHt20Params.numSta, pMac->lim.gLimHt20Params.protectionEnabled);
-
-    p += log_sprintf( pMac,p, "\nNumber of STA do not support short preamble = %d\n",
-                  pMac->lim.gLimNoShortParams.numNonShortPreambleSta);
-    for (i=0; i<LIM_PROT_STA_CACHE_SIZE; i++)
-    {
-        if (pMac->lim.gLimNoShortParams.staNoShortCache[i].active)
-        {
-            p = dumpMacAddr(pMac, p, pMac->lim.gLimNoShortParams.staNoShortCache[i].addr);
-            p += log_sprintf( pMac,p, "\n");
-        }
-    }
-
-    p += log_sprintf( pMac,p, "\nNumber of STA do not support short slot time = %d\n",
-                    pMac->lim.gLimNoShortSlotParams.numNonShortSlotSta);
-    for (i=0; i<LIM_PROT_STA_CACHE_SIZE; i++)
-    {
-        if (pMac->lim.gLimNoShortSlotParams.staNoShortSlotCache[i].active)
-        {
-            p = dumpMacAddr(pMac, p, pMac->lim.gLimNoShortSlotParams.staNoShortSlotCache[i].addr);
-            p += log_sprintf( pMac,p, "\n");
-        }
-    }
-#endif
     p += log_sprintf( pMac, p, "HT operating Mode = %d, llbCoexist = %d, llgCoexist = %d, ht20Coexist = %d, nonGfPresent = %d, RifsMode = %d, lsigTxop = %d\n",
                       pMac->lim.gHTOperMode, pMac->lim.llbCoexist, pMac->lim.llgCoexist,
                       pMac->lim.ht20MhzCoexist, pMac->lim.gHTNonGFDevicesPresent,
@@ -530,9 +450,7 @@ static char *sendSmeDisAssocReq(tpAniSirGlobal pMac, char *p,tANI_U32 arg1 ,tANI
         sirCopyMacAddr(pDisAssocReq->peerMacAddr,psessionEntry->bssId);
     }
     if((psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE)
-#ifdef WLAN_SOFTAP_FEATURE
        || (psessionEntry->limSystemRole == eLIM_AP_ROLE)
-#endif
     )
     {
         sirCopyMacAddr(pDisAssocReq->peerMacAddr,pStaDs->staAddr);
@@ -1210,9 +1128,6 @@ dump_lim_del_sta( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 ar
     palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmDisassocInd.peerMacAddr,
                                 (tANI_U8 *) pStaDs->staAddr, sizeof(tSirMacAddr));
     mlmDisassocInd.reasonCode = reasonCode;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    mlmDisassocInd.aid        = pStaDs->assocId;
-#endif
     mlmDisassocInd.disassocTrigger = eLIM_PEER_ENTITY_DISASSOC;
 
     mlmDisassocInd.sessionId = psessionEntry->peSessionId;
@@ -1279,11 +1194,7 @@ static char *
 dump_lim_set_protection_control( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
 {
     dump_cfg_set(pMac, WNI_CFG_FORCE_POLICY_PROTECTION, arg1, arg2, arg3, p);
-#ifdef WLAN_SOFTAP_FEATURE
     limSetCfgProtection(pMac, NULL);
-#else
-    limSetCfgProtection(pMac);
-#endif
     return p;
 }
 
@@ -1738,37 +1649,6 @@ dump_lim_dot11h_stats( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U
 
     p += log_sprintf(pMac, p, "11h Enabled = %s\n", pMac->lim.gLim11hEnable? "TRUE": "FALSE");
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-    p += log_sprintf(pMac, p, "Measurement request issued by WSM = %s\n",
-                              (pMac->lim.gpLimMeasReq != NULL)? "ISSUED": "NOT ISSUED");
-    p += log_sprintf(pMac, p, "Measurement request details...\n");
-    if (pMac->lim.gpLimMeasReq != NULL)
-    {
-        p += log_sprintf(pMac, p, "numChannels = %d, periodicMeasEnabled = %d, measIndPeriod = %d,"
-            "shortTermPeriod = %d, averagingPeriod = %d, shortChannelScanDuration = %d,"
-            "longChannelScanDuration = %d, SYS_TICK_DUR_MS = %d\n",
-            pMac->lim.gpLimMeasReq->channelList.numChannels, pMac->lim.gpLimMeasReq->measControl.periodicMeasEnabled,
-            pMac->lim.gpLimMeasReq->measIndPeriod, pMac->lim.gpLimMeasReq->measDuration.shortTermPeriod,
-            pMac->lim.gpLimMeasReq->measDuration.averagingPeriod,
-            pMac->lim.gpLimMeasReq->measDuration.shortChannelScanDuration,
-            pMac->lim.gpLimMeasReq->measDuration.longChannelScanDuration, SYS_TICK_DUR_MS );
-
-        p += log_sprintf(pMac, p, "Measurement channels...\n");
-        for (i = 0; i < pMac->lim.gpLimMeasReq->channelList.numChannels; i++)
-        {
-            p += log_sprintf(pMac, p, "%d ", pMac->lim.gpLimMeasReq->channelList.channelNumber[i]);
-        }
-        p += log_sprintf(pMac, p, "\n");
-        p += log_sprintf(pMac, p, "Total Number of BSS learned = %d\n", pMac->lim.gpLimMeasData->numBssWds);
-        p += log_sprintf(pMac, p, "Total Number of Channels learned = %d\n", pMac->lim.gpLimMeasData->numMatrixNodes);
-        p += log_sprintf(pMac, p, "Duration of learning = %d\n", pMac->lim.gpLimMeasData->duration);
-        p += log_sprintf(pMac, p, "Is measurement Indication timer active = %s\n",
-                                  (pMac->lim.gLimMeasParams.isMeasIndTimerActive)?"YES": "NO");
-        p += log_sprintf(pMac, p, "Next learn channel Id = %d\n", pMac->lim.gLimMeasParams.nextLearnChannelId);
-    }
-    p += log_sprintf(pMac, p, "Measurement running = %s\n",
-                              pMac->sys.gSysEnableLearnMode?"TRUE": "FALSE");
-#endif
     p += log_sprintf(pMac, p, "Is system in learn mode = %s\n",
                               pMac->lim.gLimSystemInScanLearnMode?"YES": "NO");
     

@@ -53,7 +53,7 @@
  */
 
 #include "aniGlobal.h"
-#include "wniCfgAp.h"
+#include "wniCfgSta.h"
 #include "cfgApi.h"
 
 
@@ -93,65 +93,6 @@ void
 limSendKeepAliveToPeer(tpAniSirGlobal pMac)
 {
 
-#ifdef ANI_PRODUCT_TYPE_AP   //oct 3rd review
-
-    tpDphHashNode   pStaDs;
-    //fetch the sessionEntry based on the sessionId
-    tpPESession psessionEntry;
-
-    if((psessionEntry = peFindSessionBySessionId(pMac, pMac->lim.limTimers.gLimKeepaliveTimer.sessionId))== NULL)
-    {
-        limLog(pMac, LOGP,FL("Session Does not exist for given sessionID\n"));
-        return;
-    }
-
-    // If keep live has been disabled, exit
-    if (pMac->sch.keepAlive == 0)
-        return;
-
-    if ( (limIsSystemInScanState(pMac) == false) &&
-          (psessionEntry->limSystemRole == eLIM_AP_ROLE))
-    {
-        tANI_U16 i;
-        tANI_U32        len = SIR_MAC_MAX_SSID_LENGTH;
-        tAniSSID   ssId;
-
-        /*
-        ** send keepalive NULL data frame for each
-        ** associated STA;
-        */
-
-        for (i=2; i<pMac->lim.maxStation; i++)
-        {
-            pStaDs = dphGetHashEntry(pMac, i, &psessionEntry->dph.dphHashTable);
-
-            if (pStaDs && pStaDs->added &&
-                (pStaDs->mlmStaContext.mlmState == eLIM_MLM_LINK_ESTABLISHED_STATE))
-            {
-                // SP-Tx hangs at times when a zero-lenght packet is transmitted
-                // To avoid any interoperability issue with third party clinet
-                // instead of sending a non-zero data-null packet, AP sends a
-                // probe response as a keep alive packet.
-                if (wlan_cfgGetStr(pMac, WNI_CFG_SSID,
-                                (tANI_U8 *) &ssId.ssId,
-                                (tANI_U32 *) &len) != eSIR_SUCCESS)
-                {
-                        /// Could not get SSID from CFG. Log error.
-                    limLog(pMac, LOGP, FL("could not retrieve SSID\n"));
-                }
-                ssId.length = (tANI_U8) len;
-
-                PELOG2(limLog(pMac, LOG2,  FL("Sending keepalive Probe Rsp Msg to "));
-                limPrintMacAddr(pMac, pStaDs->staAddr, LOG2);)
-                limSendProbeRspMgmtFrame(pMac,
-                                         pStaDs->staAddr,
-                                         &ssId,
-                                         i,
-                                         DPH_KEEPALIVE_FRAME, 0);
-            }
-        }
-    }
-    #endif
 } /*** limSendKeepAliveToPeer() ***/
 
 
@@ -185,13 +126,11 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
         return;
     }
 
-#ifdef WLAN_SOFTAP_FEATURE
     switch(pMsg->reasonCode)
     {
         case HAL_DEL_STA_REASON_CODE_KEEP_ALIVE:
         case HAL_DEL_STA_REASON_CODE_TIM_BASED:
              PELOGE(limLog(pMac, LOGE, FL(" Deleting station: staId = %d, reasonCode = %d\n"), pMsg->staId, pMsg->reasonCode);)
-#endif
              pStaDs = dphGetHashEntry(pMac, pMsg->assocId, &psessionEntry->dph.dphHashTable);
 
              if (!pStaDs)
@@ -247,6 +186,10 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
                     mlmDeauthInd.reasonCode    = (tANI_U8) pStaDs->mlmStaContext.disassocReason;
                     mlmDeauthInd.deauthTrigger =  pStaDs->mlmStaContext.cleanupTrigger;
 
+#ifdef FEATURE_WLAN_TDLS
+                    /* Delete all TDLS peers connected before leaving BSS*/
+                    limDeleteTDLSPeers(pMac, psessionEntry);
+#endif
                     limPostSmeMessage(pMac, LIM_MLM_DEAUTH_IND, (tANI_U32 *) &mlmDeauthInd);
 
                     limSendSmeDeauthInd(pMac, pStaDs, psessionEntry);
@@ -254,7 +197,6 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
                  }
 #endif
              }
-#ifdef WLAN_SOFTAP_FEATURE
              break;        
 
         case HAL_DEL_STA_REASON_CODE_UNKNOWN_A2:
@@ -268,7 +210,6 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
              break;
 
     }
-#endif
     palFreeMemory(pMac->hHdd, pMsg);
     return;
 }
@@ -319,11 +260,7 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
     pBuf = (tANI_U8 *) &pSmeDeauthReq->messageType;
 
     //messageType
-#ifdef WLAN_SOFTAP_FEATURE
     limCopyU16((tANI_U8*)pBuf, eWNI_SME_DISASSOC_REQ);
-#else
-    limCopyU16((tANI_U8*)pBuf, eWNI_SME_DEAUTH_REQ);
-#endif
     pBuf += sizeof(tANI_U16);
     msgLength += sizeof(tANI_U16);
 
@@ -353,11 +290,7 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
     msgLength += sizeof(tSirMacAddr);
 
     //reasonCode 
-#ifdef WLAN_SOFTAP_FEATURE
     limCopyU16((tANI_U8*)pBuf, (tANI_U16)eLIM_LINK_MONITORING_DISASSOC);
-#else
-    limCopyU16((tANI_U8*)pBuf, (tANI_U16)eLIM_LINK_MONITORING_DEAUTH);
-#endif
     pBuf += sizeof(tANI_U16);
     msgLength += sizeof(tANI_U16);
 
@@ -369,21 +302,11 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
     msgLength += sizeof(tANI_U8);
 
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    //aid
-    limCopyU16((tANI_U8*)pBuf, pStaDs->assocId);
-    pBuf += sizeof(tANI_U16);
-    msgLength += sizeof(tANI_U16);
-#endif
   
     //Fill in length
     limCopyU16((tANI_U8*)pLen, msgLength);
 
-#ifdef WLAN_SOFTAP_FEATURE
     limPostSmeMessage(pMac, eWNI_SME_DISASSOC_REQ, (tANI_U32 *) pSmeDeauthReq);
-#else
-    limPostSmeMessage(pMac, eWNI_SME_DEAUTH_REQ, (tANI_U32 *) pSmeDeauthReq);
-#endif
     palFreeMemory( pMac->hHdd, pSmeDeauthReq );
 
 } /*** end limTriggerSTAdeletion() ***/

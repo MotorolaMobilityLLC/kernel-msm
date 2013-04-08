@@ -52,11 +52,7 @@
 
 #include "aniGlobal.h"
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-#include "wniCfgAp.h"
-#else
 #include "wniCfgSta.h"
-#endif
 #include "sirMacProtDef.h"
 #include "cfgApi.h"
 #include "limTypes.h"
@@ -152,15 +148,10 @@ limSetDefaultKeyIdAndKeys(tpAniSirGlobal pMac)
 \param      tpAniSirGlobal    pMac
 \return      None
   -------------------------------------------------------------*/
-#ifdef WLAN_SOFTAP_FEATURE
 void limSetCfgProtection(tpAniSirGlobal pMac, tpPESession pesessionEntry)
-#else
-void limSetCfgProtection(tpAniSirGlobal pMac)
-#endif
 {
     tANI_U32 val = 0;
 
-#ifdef WLAN_SOFTAP_FEATURE
     if(( pesessionEntry != NULL ) && (pesessionEntry->limSystemRole == eLIM_AP_ROLE )){
         if (pesessionEntry->gLimProtectionControl == WNI_CFG_FORCE_POLICY_PROTECTION_DISABLE )
             palZeroMemory( pMac->hHdd, (void *)&pesessionEntry->cfgProtection , sizeof(tCfgProtection));
@@ -179,7 +170,6 @@ void limSetCfgProtection(tpAniSirGlobal pMac)
         }
     }
     else{
-#endif
     if (wlan_cfgGetInt(pMac, WNI_CFG_FORCE_POLICY_PROTECTION, &val) != eSIR_SUCCESS)
     {
         limLog(pMac, LOGP, FL("reading WNI_CFG_FORCE_POLICY_PROTECTION cfg failed\n"));
@@ -198,19 +188,6 @@ void limSetCfgProtection(tpAniSirGlobal pMac)
         palZeroMemory( pMac->hHdd, (void *)&pMac->lim.cfgProtection , sizeof(tCfgProtection));
     else
         {
-#if (defined(ANI_PRODUCT_TYPE_AP) || defined(ANI_PRODUCT_TYPE_AP_SDK))
-            {
-                pMac->lim.cfgProtection.overlapFromlla = (val >> WNI_CFG_PROTECTION_ENABLED_OLBC_FROM_llA) & 1;
-                pMac->lim.cfgProtection.overlapFromllb = (val >> WNI_CFG_PROTECTION_ENABLED_OLBC_FROM_llB) & 1;
-                pMac->lim.cfgProtection.overlapFromllg = (val >> WNI_CFG_PROTECTION_ENABLED_OLBC_FROM_llG) & 1;
-                pMac->lim.cfgProtection.overlapHt20 = (val >> WNI_CFG_PROTECTION_ENABLED_OLBC_HT20) & 1;
-                pMac->lim.cfgProtection.overlapNonGf = (val >> WNI_CFG_PROTECTION_ENABLED_OLBC_NON_GF) & 1;
-                pMac->lim.cfgProtection.overlapLsigTxop = (val >> WNI_CFG_PROTECTION_ENABLED_OLBC_LSIG_TXOP) & 1;
-                pMac->lim.cfgProtection.overlapRifs = (val >> WNI_CFG_PROTECTION_ENABLED_OLBC_RIFS) & 1;
-                pMac->lim.cfgProtection.overlapOBSS = (val>> WNI_CFG_PROTECTION_ENABLED_OLBC_OBSS )&1;
-
-            }
-            #endif
             pMac->lim.cfgProtection.fromlla = (val >> WNI_CFG_PROTECTION_ENABLED_FROM_llA) & 1;
             pMac->lim.cfgProtection.fromllb = (val >> WNI_CFG_PROTECTION_ENABLED_FROM_llB) & 1;
             pMac->lim.cfgProtection.fromllg = (val >> WNI_CFG_PROTECTION_ENABLED_FROM_llG) & 1;
@@ -221,9 +198,7 @@ void limSetCfgProtection(tpAniSirGlobal pMac)
             pMac->lim.cfgProtection.obss= (val >> WNI_CFG_PROTECTION_ENABLED_OBSS) & 1;
 
         }
-#ifdef WLAN_SOFTAP_FEATURE
-}
-#endif
+    }
 }
 
 
@@ -335,7 +310,6 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
 
             break;
 
-#if (WNI_POLARIS_FW_PRODUCT == WLAN_STA) || defined(ANI_AP_CLIENT_SDK)
         case WNI_CFG_BACKGROUND_SCAN_PERIOD:
 
 
@@ -378,44 +352,11 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
             }
             
             break;
-#endif
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-        case WNI_CFG_PREAUTH_CLNUP_TIMEOUT:
-            if (pMac->lim.gLimSystemRole == eLIM_AP_ROLE)
-            {
-                limDeactivateAndChangeTimer(pMac,
-                                           eLIM_PRE_AUTH_CLEANUP_TIMER);
-
-#ifdef GEN6_TODO
-                /* revisit this piece of code to assign the appropriate sessionId below
-                 * priority - MEDIUM
-                 */
-                pMac->lim.limTimers.gLimPreAuthClnupTimer.sessionId = sessionId;
-#endif
-                // Reactivate pre-auth cleanup timer
-                MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, NO_SESSION, eLIM_PRE_AUTH_CLEANUP_TIMER));
-                if (tx_timer_activate(&pMac->lim.limTimers.gLimPreAuthClnupTimer)
-                                                       != TX_SUCCESS)
-                {
-                    /// Could not activate pre-auth cleanup timer.
-                    // Log error
-                    limLog(pMac, LOGP,
-                      FL("could not activate preauth cleanup timer\n"));
-                }
-               PELOG3(limLog(pMac, LOG3,
-                       FL("Updated pre-auth cleanup timeout\n"));)
-            }
-
-            break;
-
-#endif
 
         case WNI_CFG_BG_SCAN_CHANNEL_LIST:
-#if (WNI_POLARIS_FW_PRODUCT == WLAN_STA) || defined(ANI_AP_CLIENT_SDK)
             PELOG1(limLog(pMac, LOG1,
                FL("VALID_CHANNEL_LIST has changed, reset next bg scan channel\n"));)
             pMac->lim.gLimBackgroundScanChannelId = 0;
-#endif
 
             break;
 
@@ -428,11 +369,7 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
         break;
 
     case WNI_CFG_PROTECTION_ENABLED:
-#ifdef WLAN_SOFTAP_FEATURE
         limSetCfgProtection(pMac, NULL);
-#else
-        limSetCfgProtection(pMac);
-#endif
         break;
     case WNI_CFG_PROBE_RSP_BCN_ADDNIE_FLAG:
     {
@@ -705,9 +642,6 @@ limApplyConfiguration(tpAniSirGlobal pMac,tpPESession psessionEntry)
 
     PELOG2(limLog(pMac, LOG2, FL("Applying config\n"));)
 
-#if (defined(ANI_PRODUCT_TYPE_AP) || defined(ANI_PRODUCT_TYPE_AP_SDK))
-    limCleanupMeasResources(pMac);
-#endif
     limInitWdsInfoParams(pMac);
 
     psessionEntry->limSentCapsChangeNtf = false;
@@ -721,11 +655,7 @@ limApplyConfiguration(tpAniSirGlobal pMac,tpPESession psessionEntry)
 
     psessionEntry->shortSlotTimeSupported = limGetShortSlotFromPhyMode(pMac, psessionEntry, phyMode);
 
-#ifdef WLAN_SOFTAP_FEATURE
     limSetCfgProtection(pMac, psessionEntry);    
-#else
-    limSetCfgProtection(pMac);    
-#endif
 
 
     /* Added for BT - AMP Support */
