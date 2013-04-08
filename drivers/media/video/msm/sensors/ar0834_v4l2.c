@@ -340,6 +340,7 @@ static int32_t ar0834_regulator_off(struct regulator **reg, char *regname)
 	}
 
 	regulator_put(*reg);
+	*reg = NULL;
 
 reg_off_done:
 	return rc;
