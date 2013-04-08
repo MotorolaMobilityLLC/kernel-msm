@@ -839,6 +839,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 	long err = -EINVAL;
 	int i;
 
+	f2fs_msg(sb, KERN_INFO, "mounting..");
 	/* allocate memory for f2fs-specific super block info */
 	sbi = kzalloc(sizeof(struct f2fs_sb_info), GFP_KERNEL);
 	if (!sbi)
@@ -1032,6 +1033,7 @@ static int f2fs_fill_super(struct super_block *sb, void *data, int silent)
 		if (err)
 			goto free_kobj;
 	}
+	f2fs_msg(sb, KERN_INFO, "mounted filesystem");
 	return 0;
 
 free_kobj:
@@ -1060,6 +1062,7 @@ free_sb_buf:
 	brelse(raw_super_buf);
 free_sbi:
 	kfree(sbi);
+	f2fs_msg(sb, KERN_ERR, "mount failed");
 	return err;
 }
 
