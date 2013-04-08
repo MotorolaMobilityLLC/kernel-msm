@@ -26,6 +26,19 @@
 		};
 	};
 
+	qcom,msm8960-pinmux@0x801000 {
+		pin@8013f0 {
+			reg = <0x8013f0 0x10>;
+			qcom,pin-num = <63>;      /* TOUCH_RESET */
+			qcom,suspended@1 {
+				qcom,func = <0>;  /* gpio_in_out(63)        */
+				qcom,pull = <1>;  /* down                   */
+				qcom,drv = <0>;   /* 2ma                    */
+				qcom,dir = <0>;   /* in                     */
+			};
+		};
+	};
+
 	/* GSBI3 - I2C Touch Bus */
 	i2c@16200000 {
 		status = "okay";
