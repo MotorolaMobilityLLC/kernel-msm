@@ -689,7 +689,7 @@ static eHalStatus hdd_wmm_sme_callback (tHalHandle hHal,
 
 #ifdef FEATURE_WLAN_CCX
       // Check if the inactivity interval is specified
-      if (pCurrentQosInfo->inactivity_interval) {
+      if (pCurrentQosInfo && pCurrentQosInfo->inactivity_interval) {
          VOS_TRACE(VOS_MODULE_ID_HDD, WMM_TRACE_LEVEL_INFO,
                  "%s: Inactivity timer value = %d for AC=%d\n",
                  __func__, pCurrentQosInfo->inactivity_interval, acType);
