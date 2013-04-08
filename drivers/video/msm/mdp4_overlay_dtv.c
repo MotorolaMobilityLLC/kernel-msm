@@ -114,6 +114,27 @@ static void vsync_irq_disable(int intr, int term)
 	pr_debug("%s: IRQ-dis done, term=%x\n", __func__, term);
 }
 
+void mdp4_dtv_free_base_pipe(struct msm_fb_data_type *mfd)
+{
+	struct vsycn_ctrl *vctrl;
+	struct mdp4_overlay_pipe *pipe;
+
+	vctrl = &vsync_ctrl_db[0];
+	pipe = vctrl->base_pipe;
+
+	if (pipe == NULL)
+		return ;
+
+	if (hdmi_prim_display) {
+		/* adb stop */
+		if (pipe->pipe_type == OVERLAY_TYPE_BF)
+			mdp4_overlay_borderfill_stage_down(pipe);
+
+		/* pipe == rgb2 */
+		vctrl->base_pipe = NULL;
+	}
+}
+
 void mdp4_overlay_dtv_start(void)
 {
 	if (!dtv_enabled) {
