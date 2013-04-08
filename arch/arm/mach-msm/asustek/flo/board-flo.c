@@ -101,6 +101,31 @@
 #define NFC_GPIO_IRQ 32
 #define CAP1106_GPIO_IRQ 52
 
+static int config_nfc_gpio(void)
+{
+	int ret;
+
+	struct pm_gpio nfc_param = {
+		.direction = PM_GPIO_DIR_OUT,
+		.output_buffer = PM_GPIO_OUT_BUF_CMOS,
+		.output_value = 0,
+		.pull = PM_GPIO_PULL_NO,
+		.vin_sel = PM_GPIO_VIN_S4,
+		.out_strength = PM_GPIO_STRENGTH_MED,
+		.function = PM_GPIO_FUNC_NORMAL,
+	};
+
+	ret = pm8xxx_gpio_config(NFC_GPIO_VEN, &nfc_param);
+	if (ret) {
+		pr_err("%s: Failed to configure NFC_GPIO_VEN\n", __func__);
+		return ret;
+	}
+	ret = pm8xxx_gpio_config(NFC_GPIO_WAKE, &nfc_param);
+	if (ret)
+		pr_err("%s: Failed to configure NFC_GPIO_WAKE\n", __func__);
+	return ret;
+}
+
 static struct bcm2079x_platform_data bcm2079x_pdata = {
 	.irq_gpio = NFC_GPIO_IRQ,
 	.wake_gpio  = NFC_GPIO_WAKE,
@@ -116,9 +141,10 @@ static struct i2c_board_info i2c_bcm2079x[] __initdata = {
 };
 
 static void nfc_init(void) {
-	i2c_register_board_info(APQ_8064_GSBI1_QUP_I2C_BUS_ID,
-		i2c_bcm2079x,
-		ARRAY_SIZE(i2c_bcm2079x));
+	if (!config_nfc_gpio())
+		i2c_register_board_info(APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+			i2c_bcm2079x,
+			ARRAY_SIZE(i2c_bcm2079x));
 }
 
 static struct i2c_board_info i2c_cap1106[] __initdata = {
