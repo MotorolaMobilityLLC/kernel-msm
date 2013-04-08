@@ -100,7 +100,7 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 },
 {
 	.reg = TFA9890_SYS_CTL2_REG,
-	.value = 0x38E5,
+	.value = 0x38D2,
 },
 {
 	.reg = TFA9890_RESERVED_REG,
