@@ -122,11 +122,9 @@ VOS_STATUS vos_preOpen ( v_CONTEXT_t *pVosContext );
 
 VOS_STATUS vos_preClose( v_CONTEXT_t *pVosContext );
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 
 VOS_STATUS vos_preStart( v_CONTEXT_t vosContext );
 
-#endif
 
 VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize );
 

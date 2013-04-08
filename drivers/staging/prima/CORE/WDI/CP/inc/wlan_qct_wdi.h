@@ -572,6 +572,15 @@ typedef struct
 #endif // WLAN_WAKEUP_EVENTS
 
 /*---------------------------------------------------------------------------
+ WDI_MissedBeaconIndType
+-----------------------------------------------------------------------------*/
+typedef struct
+{
+    wpt_uint8       bssIdx;  /*bssidx on which beacon is missed*/
+} WDI_MissedBeaconIndType;
+
+
+/*---------------------------------------------------------------------------
   WDI_LowLevelIndType
     Inidcation type and information about the indication being carried
     over
@@ -619,6 +628,7 @@ typedef struct
 #ifdef WLAN_WAKEUP_EVENTS
     WDI_WakeReasonIndType        wdiWakeReasonInd;
 #endif // WLAN_WAKEUP_EVENTS
+    WDI_MissedBeaconIndType      wdiMissedBeaconInd;
   }  wdiIndicationData;
 }WDI_LowLevelIndType;
 
@@ -1607,9 +1617,7 @@ typedef enum
     WDI_TX_ONLY,
     WDI_RX_ONLY,
     WDI_TX_RX,
-#ifdef WLAN_SOFTAP_FEATURE
     WDI_TX_DEFAULT,
-#endif
     WDI_DONOT_USE_KEY_DIRECTION
 } WDI_KeyDirectionType;
 
@@ -2541,10 +2549,8 @@ typedef struct {
    /* length of the template */
    wpt_uint32   beaconLength;
 
-#ifdef WLAN_SOFTAP_FEATURE
    /* TIM IE offset from the beginning of the template.*/
    wpt_uint32   timIeOffset; 
-#endif
 
 #ifdef WLAN_FEATURE_P2P
    /* P2P IE offset from the beginning of the template */
@@ -3924,7 +3930,6 @@ typedef struct
 
 #endif /* WLAN_FEATURE_VOWIFI_11R */
 
-#ifdef ANI_MANF_DIAG
 /*---------------------------------------------------------------------------
   WDI_FTMCommandReqType
 ---------------------------------------------------------------------------*/
@@ -3935,7 +3940,6 @@ typedef struct
    /* Actual FTM Command body */
    void        *FTMCommandBody;
 }WDI_FTMCommandReqType;
-#endif /* ANI_MANF_DIAG */
 
 /*---------------------------------------------------------------------------
   WDI_WlanSuspendInfoType
@@ -6051,7 +6055,6 @@ typedef void  (*WDI_AggrAddTsRspCb)(WDI_Status   wdiStatus,
                                     void*        pUserData);
 #endif /* WLAN_FEATURE_VOWIFI_11R */
 
-#ifdef ANI_MANF_DIAG
 /*---------------------------------------------------------------------------
    WDI_FTMCommandRspCb
  
@@ -6071,7 +6074,6 @@ typedef void  (*WDI_AggrAddTsRspCb)(WDI_Status   wdiStatus,
 ---------------------------------------------------------------------------*/
 typedef void (*WDI_FTMCommandRspCb)(void *ftmCMDRspdata,
                                     void *pUserData);
-#endif /* ANI_MANF_DIAG */
 
 /*---------------------------------------------------------------------------
    WDI_AddSTASelfParamsRspCb 
@@ -8567,7 +8569,6 @@ WDI_Status WDI_StubRunTest
    wpt_uint8   ucTestNo
 );
 
-#ifdef ANI_MANF_DIAG
 /**
  @brief WDI_FTMCommandReq -  
         Route FTMRequest Command to HAL
@@ -8584,7 +8585,6 @@ WDI_Status WDI_FTMCommandReq
   WDI_FTMCommandRspCb    ftmCommandRspCb,
   void                  *pUserData
 );
-#endif /* ANI_MANF_DIAG */
 
 /**
  @brief WDI_HostResumeReq will be called 

@@ -94,8 +94,6 @@ limCheckRemainingLength(tpAniSirGlobal pMac, tANI_S16 len)
     }
 } /*** end limCheckRemainingLength(pMac, ) ***/
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-#else
 /**
  * limGetBssDescription()
  *
@@ -314,7 +312,6 @@ limGetBssDescription( tpAniSirGlobal pMac, tSirBssDescription *pBssDescription,
 
     return eSIR_SUCCESS;
 } /*** end limGetBssDescription() ***/
-#endif
 
 
 
@@ -404,809 +401,6 @@ limCopyBssDescription(tpAniSirGlobal pMac, tANI_U8 *pBuf, tSirBssDescription *pB
 
 
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-/**
- * limCopyLoad()
- *
- *fUNCTION:
- * This function is called by various LIM functions to copy
- * load information into a tANI_U8* buffer pointer
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param *pBuf     Pointer to the destination buffer
- * @param load      load to be copied to destination buffer
- *
- * @return None
- */
-
-static void
-limCopyLoad(tANI_U8 *pBuf, tSirLoad load)
-{
-    limCopyU16(pBuf, load.numStas);
-    pBuf += sizeof(tANI_U16);
-
-    limCopyU16(pBuf, load.channelUtilization);
-    pBuf += sizeof(tANI_U16);
-} /*** end limCopyLoad() ***/
-
-
-
-/**
- * limGetLoad()
- *
- *FUNCTION:
- * This function is called by various LIM functions to copy
- * load information into a tANI_U8* buffer pointer
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param *pLoad    Pointer to load being copied to
- * @param *pBuf     Pointer to the source buffer
- *
- * @return None
- */
-
-static void
-limGetLoad(tSirLoad *pLoad, tANI_U8 *pBuf)
-{
-    pLoad->numStas = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-
-    pLoad->channelUtilization = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-} /*** end limGetLoad() ***/
-
-
-
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-/**
- * limCopyWdsInfo()
- *
- *FUNCTION:
- * This function is called by various LIM functions to copy
- * WdsInfo information into a tANI_U8* buffer pointer
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  *pBuf     Pointer to the destination buffer
- * @param  wdsInfo   WdsInfo to be copied to destination buffer
- *
- * @return Length of WDS info copied
- */
-
-static tANI_U16
-limCopyWdsInfo(tpAniSirGlobal pMac, tANI_U8 *pBuf, tpSirWdsInfo pWdsInfo)
-{
-    limCopyU16(pBuf, pWdsInfo->wdsLength);
-    pBuf += sizeof(tANI_U16);
-
-    palCopyMemory( pMac->hHdd, pBuf, (tANI_U8 *) pWdsInfo->wdsBytes, pWdsInfo->wdsLength);
-    pBuf += pWdsInfo->wdsLength;
-
-    return ((tANI_U16) (sizeof(tANI_U16) + pWdsInfo->wdsLength));
-} /*** end limCopyWdsInfo() ***/
-
-
-
-/**
- * limGetWdsInfo()
- *
- *FUNCTION:
- * This function is called by various LIM functions to copy
- * WdsInfo information from a tANI_U8* buffer pointer to tSirWdsInfo
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param wdsInfo   Pointer to the WdsInfo to be copied
- * @param *pBuf     Pointer to the source buffer
- *
- * @return true when WDS info extracted successfully else false
- */
-
-static tANI_U8
-limGetWdsInfo(tpAniSirGlobal pMac, tpSirWdsInfo pWdsInfo, tANI_U8 *pBuf)
-{
-    pWdsInfo->wdsLength = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-
-    if (pWdsInfo->wdsLength > ANI_WDS_INFO_MAX_LENGTH)
-        return false;
-
-    palCopyMemory( pMac->hHdd, pWdsInfo->wdsBytes, pBuf, pWdsInfo->wdsLength);
-
-    return true;
-} /*** end limGetWdsInfo() ***/
-
-
-
-/**
- * limGetAlternateRadioList()
- *
- *FUNCTION:
- * This function is called by various LIM functions to copy
- * alternateRadio information from a tANI_U8* buffer pointer to
- * tSirAlternateRadioList
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  pRadioList   Pointer to the radioList to be copied
- * @param  *pBuf        Pointer to the source buffer
- *
- * @return len          Length of copied alternateRadioList
- */
-
-static tANI_U16
-limGetAlternateRadioList(tpAniSirGlobal pMac, tpSirMultipleAlternateRadioInfo pRadioList,
-                         tANI_U8 *pBuf)
-{
-    tANI_U8 i;
-    tANI_U16                        len = sizeof(tANI_U8);
-    tpSirAlternateRadioInfo    pRadioInfo;
-
-    pRadioList->numBss = *pBuf++;
-
-    if (pRadioList->numBss > SIR_MAX_NUM_ALTERNATE_RADIOS)
-        pRadioList->numBss = SIR_MAX_NUM_ALTERNATE_RADIOS;
-
-    pRadioInfo = pRadioList->alternateRadio;
-    for (i = 0; i < pRadioList->numBss; i++)
-    {
-        palCopyMemory( pMac->hHdd, pRadioInfo->bssId, pBuf, sizeof(tSirMacAddr));
-        pBuf += sizeof(tSirMacAddr);
-        pRadioInfo->channelId = *pBuf++;
-       PELOG3(limLog(pMac, LOG3, FL("Alternate radio[%d] channelId=%d, BssId is \n"),
-               i, pRadioInfo->channelId);
-        limPrintMacAddr(pMac, pRadioInfo->bssId, LOG3);)
-
-        pRadioInfo++;
-        len += sizeof(tSirMacAddr) + sizeof(tANI_U8);
-    }
-
-    return len;
-} /*** end limGetAlternateRadioList() ***/
-#endif
-
-
-
-/**
- * limCopyNeighborBssInfo()
- *
- *FUNCTION:
- * This function is called by various LIM functions to copy
- * Neighbor BSS info into a tANI_U8* buffer pointer
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  *pBuf       Pointer to the destination buffer
- * @param  pBssInfo    Pointer to neighbor BSS info be copied
- *                     to destination buffer
- *
- * @return bssInfoLen  Length of bssInfo copied
- */
-
-tANI_U32
-limCopyNeighborBssInfo(tpAniSirGlobal pMac, tANI_U8 *pBuf, tpSirNeighborBssInfo pBssInfo)
-{
-    tANI_U32 bssInfoLen = 0;
-
-    palCopyMemory( pMac->hHdd, pBuf,
-                  (tANI_U8 *) pBssInfo->bssId,
-                  sizeof(tSirMacAddr));
-    pBuf       += sizeof(tSirMacAddr);
-    bssInfoLen += sizeof(tSirMacAddr);
-   PELOG3(limLog(pMac, LOG3,
-       FL("Copying new NeighborWds node:channel is %d, wniIndicator is %d, bssType is %d, bssId is "),
-       pBssInfo->channelId, pBssInfo->wniIndicator, pBssInfo->bssType);
-    limPrintMacAddr(pMac, pBssInfo->bssId, LOG3);)
-
-    *pBuf++ = pBssInfo->channelId;
-    bssInfoLen++;
-
-    limCopyU32(pBuf, pBssInfo->wniIndicator);
-    pBuf       += sizeof(tANI_U32);
-    bssInfoLen += sizeof(tANI_U32);
-
-    limCopyU32(pBuf, pBssInfo->bssType);
-    pBuf       += sizeof(tANI_U32);
-    bssInfoLen += sizeof(tANI_U32);
-
-    *pBuf++ = pBssInfo->sinr;
-    bssInfoLen++;
-    *pBuf++ = pBssInfo->rssi;
-    bssInfoLen++;
-
-    limCopyLoad(pBuf, pBssInfo->load);
-    pBuf       += sizeof(tSirLoad);
-    bssInfoLen += sizeof(tSirLoad);
-
-    palCopyMemory( pMac->hHdd, pBuf, (tANI_U8 *) &(pBssInfo->ssId),
-                  pBssInfo->ssId.length + 1);
-
-    bssInfoLen += pBssInfo->ssId.length + 1;
-    pBuf       += pBssInfo->ssId.length + 1;
-
-    palCopyMemory( pMac->hHdd, pBuf, (tANI_U8 *) &(pBssInfo->apName),
-                  pBssInfo->apName.length + 1);
-
-    bssInfoLen += pBssInfo->apName.length + 1;
-    pBuf       += pBssInfo->apName.length + 1;
-
-    limCopyU16(pBuf, pBssInfo->rsnIE.length);
-    pBuf       += sizeof(tANI_U16);
-    bssInfoLen += sizeof(tANI_U16);
-    palCopyMemory( pMac->hHdd, pBuf, (tANI_U8 *) &(pBssInfo->rsnIE.rsnIEdata),
-                  pBssInfo->rsnIE.length);
-
-    bssInfoLen += pBssInfo->rsnIE.length;
-    pBuf       += pBssInfo->rsnIE.length;
-
-    limCopyU32(pBuf, pBssInfo->nwType);
-    pBuf       += sizeof(tANI_U32);
-    bssInfoLen += sizeof(tANI_U32);
-
-    // not sure we need to do a sirSwapU16ifNeeded ???
-    limCopyU16(pBuf, pBssInfo->capabilityInfo);
-    pBuf       += sizeof(tANI_U16);
-    bssInfoLen += sizeof(tANI_U16);
-
-    palCopyMemory( pMac->hHdd, pBuf, (tANI_U8 *) &(pBssInfo->operationalRateSet),
-                  pBssInfo->operationalRateSet.numRates + 1);
-    bssInfoLen += pBssInfo->operationalRateSet.numRates + 1;
-    pBuf       += pBssInfo->operationalRateSet.numRates + 1;
-
-    palCopyMemory( pMac->hHdd, pBuf, (tANI_U8 *) &(pBssInfo->extendedRateSet),
-                  pBssInfo->extendedRateSet.numRates + 1);
-    bssInfoLen += pBssInfo->extendedRateSet.numRates + 1;
-    pBuf       += pBssInfo->extendedRateSet.numRates + 1;
-
-    limCopyU16(pBuf, pBssInfo->beaconInterval);
-    pBuf += sizeof(tANI_U16);
-    bssInfoLen += sizeof(tANI_U16);
-   
-    *pBuf++ = pBssInfo->dtimPeriod;
-    bssInfoLen++;
-    *pBuf++ = pBssInfo->HTCapsPresent;
-    bssInfoLen++;
-    *pBuf++ = pBssInfo->HTInfoPresent;
-    bssInfoLen++;
-    *pBuf++ = pBssInfo->wmeInfoPresent;
-    bssInfoLen++;
-    *pBuf++ = pBssInfo->wmeEdcaPresent;
-    bssInfoLen++;
-    *pBuf++ = pBssInfo->wsmCapablePresent;
-    bssInfoLen++;
-    *pBuf++ = pBssInfo->hcfEnabled;
-    bssInfoLen++;
-    
-    limCopyU16(pBuf, pBssInfo->propIECapability);
-    pBuf += sizeof(tANI_U16);
-    bssInfoLen += sizeof(tANI_U16);
-    
-    limCopyU32(pBuf, pBssInfo->localPowerConstraints);
-    pBuf += sizeof(tANI_S32);
-    bssInfoLen += sizeof(tANI_S32);
-    
-    limCopyU32(pBuf, pBssInfo->aggrRssi);
-    pBuf += sizeof(tANI_S32);
-    bssInfoLen += sizeof(tANI_S32);
-    
-    limCopyU32(pBuf, pBssInfo->dataCount);
-    pBuf += sizeof(tANI_U32);
-    bssInfoLen += sizeof(tANI_U32);
-    
-    limCopyU32(pBuf, pBssInfo->totalPackets);
-    pBuf += sizeof(tANI_U32);
-    bssInfoLen += sizeof(tANI_U32);
-    
-    return bssInfoLen;
-} /*** end limCopyNeighborBssInfo() ***/
-
-
-/**
- * limCopyNeighborList()
- *
- *FUNCTION:
- * This function is called by various LIM functions to copy
- * Neighbor BSS list into a tANI_U8* buffer pointer
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param *pBuf           Pointer to the destination buffer
- * @param neighborList    Neighbor BSS list be copied to
- *                        destination buffer
- * @param numBss          Number of Neighbor BSS list be copied
- *
- * @return listLen        Length of Neighbor BSS list
- */
-
-static tANI_U32
-limCopyNeighborList(tpAniSirGlobal pMac, tANI_U8 *pBuf, tpSirNeighborBssInfo pBssInfo, tANI_U32 numBss)
-{
-    tANI_U32  bssInfoLen = 0, listLen = 0;
-    tANI_U8  i;
-    tANI_U8  *pTemp = (tANI_U8 *) pBssInfo;
-
-    PELOG3(limLog(pMac, LOG3, FL("Going to copy BssInfoList:\n"));)
-    PELOG3(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG3,
-               pTemp, numBss*sizeof(tSirNeighborBssInfo));)
-
-    for (i = 0; i < numBss; i++, bssInfoLen = 0)
-    {
-        bssInfoLen = limCopyNeighborBssInfo(pMac,
-                                   pBuf,
-                                   (tpSirNeighborBssInfo) &pBssInfo[i]);
-
-        pBuf     += bssInfoLen;
-        listLen  += bssInfoLen;
-    }
-
-    return listLen;
-} /*** end limCopyNeighborList(pMac, ) ***/
-
-
-/**
- * limGetNeighborBssInfo()
- *
- *FUNCTION:
- * This function is called by various LIM functions to get
- * Neighbor BSS info from a tANI_U8* buffer pointer
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  pBssInfo    Pointer to neighbor BSS info being copied
- * @param  *pBuf       Pointer to the source buffer
- *
- * @return Size of NeighborBssInfo that is extracted
- */
-
-tANI_U32
-limGetNeighborBssInfo(tpAniSirGlobal pMac, tpSirNeighborBssInfo pBssInfo, tANI_U8 *pBuf)
-{
-    tANI_U32 len = 0;
-
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) pBssInfo->bssId,
-                  pBuf, sizeof(tSirMacAddr));
-    pBuf += sizeof(tSirMacAddr);
-    len  += sizeof(tSirMacAddr);
-
-    pBssInfo->channelId = *pBuf++;
-    len++;
-
-    pBssInfo->wniIndicator = (tAniBool) limGetU32(pBuf);
-    pBuf += sizeof(tAniBool);
-    len  += sizeof(tAniBool);
-
-    pBssInfo->bssType = (tSirBssType) limGetU32(pBuf);
-    pBuf += sizeof(tSirBssType);
-    len  += sizeof(tSirBssType);
-
-    pBssInfo->sinr = *pBuf++;
-    len++;
-    pBssInfo->rssi = *pBuf++;
-    len++;
-
-    limGetLoad(&pBssInfo->load, pBuf);
-    pBuf += sizeof(tSirLoad);
-    len  += sizeof(tSirLoad);
-
-    pBssInfo->ssId.length = *pBuf++;
-    palCopyMemory( pMac->hHdd, pBssInfo->ssId.ssId, pBuf, pBssInfo->ssId.length);
-    pBuf += pBssInfo->ssId.length;
-    len  += pBssInfo->ssId.length + 1;
-    
-    pBssInfo->apName.length = *pBuf++;
-    palCopyMemory( pMac->hHdd, pBssInfo->apName.name, pBuf, pBssInfo->apName.length);
-    pBuf += pBssInfo->apName.length;
-    len  += pBssInfo->apName.length + 1;
-    
-    pBssInfo->rsnIE.length = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-    palCopyMemory( pMac->hHdd, pBssInfo->rsnIE.rsnIEdata, pBuf,
-                  pBssInfo->rsnIE.length);
-    pBuf += pBssInfo->rsnIE.length;
-    len  += pBssInfo->rsnIE.length + 2;
-
-   PELOG2(limLog(pMac, LOG2, FL("BSS type %d channel %d wniInd %d RSN len %d\n"),
-           pBssInfo->bssType, pBssInfo->channelId, pBssInfo->wniIndicator,
-           pBssInfo->rsnIE.length);
-    limPrintMacAddr(pMac, pBssInfo->bssId, LOG2);)
-
-
-    pBssInfo->nwType = (tSirNwType) limGetU32(pBuf);
-    pBuf += sizeof(tSirNwType);
-    len  += sizeof(tSirNwType);
-    
-    pBssInfo->capabilityInfo = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-    len  += sizeof(tANI_U16);
-
-    pBssInfo->operationalRateSet.numRates = *pBuf++;
-    palCopyMemory( pMac->hHdd, pBssInfo->operationalRateSet.rate, pBuf,
-                  pBssInfo->operationalRateSet.numRates);
-    pBuf += pBssInfo->operationalRateSet.numRates;
-    len  += pBssInfo->operationalRateSet.numRates + 1;
-
-    pBssInfo->extendedRateSet.numRates = *pBuf++;
-    palCopyMemory( pMac->hHdd, pBssInfo->extendedRateSet.rate, pBuf,
-                  pBssInfo->extendedRateSet.numRates);
-    pBuf += pBssInfo->extendedRateSet.numRates;
-    len  += pBssInfo->extendedRateSet.numRates + 1;
-
-    pBssInfo->beaconInterval = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-    len  += sizeof(tANI_U16);
-
-    pBssInfo->dtimPeriod = *pBuf++;
-    pBssInfo->HTCapsPresent = *pBuf++;
-    pBssInfo->HTInfoPresent = *pBuf++;
-    pBssInfo->wmeInfoPresent = *pBuf++;
-    pBssInfo->wmeEdcaPresent = *pBuf++;
-    pBssInfo->wsmCapablePresent = *pBuf++;
-    pBssInfo->hcfEnabled = *pBuf++;
-    pBssInfo->propIECapability = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-    pBssInfo->localPowerConstraints = limGetU32(pBuf);
-    pBuf += sizeof(tANI_U32);
-    len += 13;
-    
-   PELOG2(limLog(pMac, LOG2, FL("rsnIELen %d operRateLen %d extendRateLen %d total %d\n"),
-        pBssInfo->rsnIE.length, pBssInfo->operationalRateSet.numRates,
-        pBssInfo->extendedRateSet.numRates, len);)
-    
-    
-    return len;
-} /*** end limGetNeighborBssInfo() ***/
-
-
-
-#if defined(ANI_PRODUCT_TYPE_AP)
-/**
- * limGetNeighborBssList()
- *
- *FUNCTION:
- * This function is called by various LIM functions to get
- * Neighbor BSS list from a tANI_U8* buffer pointer
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  *pNeighborList   Pointer to neighbor BSS list being copied to
- * @param  *pBuf            Pointer to the source buffer
- * @param  rLen             Remaining message length being extracted
- * @return retCode          Indicates whether message is successfully
- *                          de-serialized (eSIR_SUCCESS) or
- *                          failure (eSIR_FAILURE).
- */
-
-static tSirRetStatus
-limGetNeighborBssList(tpAniSirGlobal pMac,
-                      tSirNeighborBssList *pNeighborList,
-                      tANI_S16 rLen, tANI_S16 *lenUsed, tANI_U8 *pBuf)
-{
-    tANI_U8     *pBssInfo = (tANI_U8 *) pNeighborList->bssList;
-    tANI_U32    i, bssInfoLen = 0, len = 0, numBss, numBssList;
-
-    numBssList = numBss = limGetU32(pBuf);
-
-    if (!numBss)
-    {
-        PELOG1(limLog(pMac, LOG1, FL("No Neighbor BSS present in Neighbor list\n"));)
-
-        return eSIR_FAILURE;
-    }
-   PELOG2(limLog(pMac, LOG2,
-           FL("Num of Neighbor BSS present in Neighbor list is %d\n"),
-           numBss);)
-
-    pBuf += sizeof(tANI_U32);
-    len  += sizeof(tANI_U32);
-    rLen -= sizeof(tANI_U32);
-    if (limCheckRemainingLength(pMac, rLen) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    // First neighborInfo is the one we're attempting to join/reassoc
-    bssInfoLen = limGetNeighborBssInfo(pMac, (tSirNeighborBssInfo *) pBssInfo,
-                                       pBuf);
-    PELOG1(limLog(pMac, LOG1,
-           FL("BSSinfo len to be joined is %d rem %d, numBss = %d\n"),
-           bssInfoLen, rLen, numBss - 1);)
-    pBuf  += bssInfoLen;
-    len   += bssInfoLen;
-    rLen  -= (tANI_S16) bssInfoLen;
-    numBss--;
-    numBssList--;
-
-    if (numBss > 0)
-    {
-        // Store remaining neighbor BSS info
-        if (numBss > SIR_MAX_NUM_NEIGHBOR_BSS)
-        {
-            // Store only MAX number of Neighbor BSS
-          PELOG2(limLog(pMac, LOG2,
-                  FL("Pruning number of neighbors to %d from %d\n"),
-                  SIR_MAX_NUM_NEIGHBOR_BSS, numBss);)
-            numBss = SIR_MAX_NUM_NEIGHBOR_BSS;
-        }
-
-        pBssInfo = (tANI_U8 *) pMac->lim.gLimNeighborBssList.bssList;
-        for (i = numBss; i > 0; i--)
-        {
-            PELOG3(limLog(pMac, LOG3, FL("pMac = %p, pBssInfo = %p, pBuf = %p\n"), pMac, pBssInfo, pBuf);)
-            bssInfoLen = limGetNeighborBssInfo(pMac,
-                                   (tSirNeighborBssInfo *) pBssInfo,
-                                   pBuf);
-
-            pBssInfo += sizeof(tSirNeighborBssInfo);
-            pBuf     += bssInfoLen;
-            len      += bssInfoLen;
-            rLen     -= (tANI_S16) bssInfoLen;
-            numBssList--;
-
-            PELOG1(limLog(pMac, LOG1, FL("BSS info[%d] len %d rem %d\n"),
-                   i, bssInfoLen, rLen);)
-        }
-
-        while (numBssList > 0)
-        {
-            tSirNeighborBssInfo pTemp;
-            bssInfoLen = limGetNeighborBssInfo(pMac, &pTemp, pBuf);
-            pBuf     += bssInfoLen;
-            len      += bssInfoLen;
-            rLen     -= (tANI_S16) bssInfoLen;
-            numBssList--;
-            PELOG1(limLog(pMac, LOG1, FL("BSS info[%d] len %d rem %d\n"),
-                   numBssList, bssInfoLen, rLen);)
-        }
-    }
-    *lenUsed = len;
-
-    pMac->lim.gLimNeighborBssList.numBss = pNeighborList->numBss
-                                         = numBss;
-
-    return eSIR_SUCCESS;
-} /*** end limGetNeighborBssList(pMac, ) ***/
-
-
-
-/**
- * limCopyNeighborWdsInfo()
- *
- *FUNCTION:
- * This function is called by various LIM functions to copy
- * detected neighborBssWds info to a tANI_U8 buffer
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param *pBuf           Pointer to the destination buffer
- * @param *pInfo          Pointer to the NeighborWdsInfo being copied
- * @return Length of Matrix information copied
- */
-
-static tANI_U16
-limCopyNeighborWdsInfo(tpAniSirGlobal pMac, tANI_U8 *pBuf, tpSirNeighborBssWdsInfo pInfo)
-{
-    tANI_U16    len = 0;
-
-    len   = (tANI_U16) limCopyNeighborBssInfo(pMac, pBuf, &pInfo->neighborBssInfo);
-    pBuf += len;
-    len  += limCopyWdsInfo(pMac, pBuf, &pInfo->wdsInfo);
-
-    return len;
-} /*** end limCopyNeighborWdsInfo() ***/
-
-
-
-/**
- * limCopyMeasMatrixInfo()
- *
- *FUNCTION:
- * This function is called by various LIM functions to copy
- * collected Measurement matrix info to a tANI_U8 buffer
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param *pBuf           Pointer to the destination buffer
- * @param *pInfo          Pointer to the matrix info being copied
- * @return Length of Matrix information copied
- */
-
-static tANI_U16
-limCopyMeasMatrixInfo(tANI_U8 *pBuf, tpLimMeasMatrixNode pInfo)
-{
-    tANI_U16 len = 0;
-    
-    *pBuf++ = pInfo->matrix.channelNumber;
-    len++;
-    *pBuf++ = pInfo->matrix.compositeRssi;
-    len++;
-    limCopyU32(pBuf, pInfo->matrix.aggrRssi);
-    pBuf += sizeof(tANI_S32);
-    len += sizeof(tANI_S32);
-    limCopyU32(pBuf, pInfo->matrix.totalPackets);
-    len += sizeof(tANI_U32);
-
-    return len;
-} /*** end limCopyMeasMatrixInfo() ***/
-
-
-
-/**
- * limCopyMeasMatrixList()
- *
- *FUNCTION:
- * This function is called by various LIM functions to copy
- * collected Measurement matrix List to a tANI_U8 buffer
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  pMac  - Pointer to Global MAC structure
- * @param  *pBuf - Pointer to the destination buffer
- * @return Length of matrix list copied
- */
-
-static tANI_U16
-limCopyMeasMatrixList(tpAniSirGlobal pMac, tANI_U8 *pBuf)
-{
-    tANI_U16    len = 0, nodeLen = 0;
-    tANI_U8     numNodes = pMac->lim.gpLimMeasData->numMatrixNodes;
-
-    *pBuf++ = numNodes;
-    len++;
-
-    if (numNodes)
-    {
-        tpLimMeasMatrixNode pInfo =
-                         pMac->lim.gpLimMeasData->pMeasMatrixInfo;
-        while (numNodes-- && pInfo) //Safety measure, checking both
-        {
-            nodeLen = limCopyMeasMatrixInfo(pBuf, pInfo);
-            pBuf   += nodeLen;
-            len    += nodeLen;
-
-            if (pInfo->next)
-                pInfo = pInfo->next;
-            else
-                break;
-        }
-
-        return len;
-    }
-    else
-    {
-        *pBuf = 0;
-        return 1;
-    }
-} /*** end limCopyMeasMatrixList() ***/
-
-
-
-/**
- * limCopyNeighborWdsList()
- *
- *FUNCTION:
- * This function is called by various LIM functions to copy
- * detected neighborBssWds List to a tANI_U8 buffer
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  pMac  Pointer to Global MAC structure
- * @param  *pBuf Pointer to the destination buffer
- * @return Length of matrix list copied
- */
-
-static tANI_U16
-limCopyNeighborWdsList(tpAniSirGlobal pMac, tANI_U8 *pBuf)
-{
-    tANI_U16    len = 0, nodeLen = 0;
-
-    if (pMac->lim.gpLimMeasData->numBssWds)
-    {
-        limCopyU32(pBuf, pMac->lim.gpLimMeasData->numBssWds);
-        pBuf += sizeof(tANI_U32);
-        len  += sizeof(tANI_U32);
-
-        tpLimNeighborBssWdsNode pInfo =
-                        pMac->lim.gpLimMeasData->pNeighborWdsInfo;
-        while (pInfo)
-        {
-            nodeLen = limCopyNeighborWdsInfo(pMac, pBuf, &pInfo->info);
-            pBuf   += nodeLen;
-            len    += nodeLen;
-
-            if (pInfo->next)
-                pInfo = pInfo->next;
-            else
-                break;
-        }
-
-        return len;
-    }
-    else
-    {
-        limCopyU32(pBuf, 0);
-        return (sizeof(tANI_U32));
-    }
-} /*** end limCopyNeighborWdsList() ***/
-#endif
-#endif
 
 
 /**
@@ -1296,9 +490,6 @@ tSirRetStatus
 limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI_U8 *pBuf)
 {
     tANI_S16 len = 0;
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-    tANI_U8 i;
-#endif
 
 #ifdef PE_DEBUG_LOG1
     tANI_U8  *pTemp = pBuf;
@@ -1408,40 +599,7 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-    tANI_U16 paramLen = 0;
 
-    // Extract alternateRadioList
-    pStartBssReq->alternateRadioList.numBss = *pBuf;
-    paramLen = limGetAlternateRadioList(pMac,
-                              &pMac->lim.gLimAlternateRadioList,
-                              pBuf);
-    pBuf += paramLen;
-    len  -= paramLen;
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    // Extract powerLevel
-    pStartBssReq->powerLevel = *pBuf++;
-    len--;
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    // Extract wdsInfo
-    if (limGetWdsInfo(pMac, &pStartBssReq->wdsInfo, pBuf) == false)
-    {
-        limLog(pMac, LOGW, FL("Invalid WDS length %d in SME_START_BSS_REQ\n"),
-               pStartBssReq->wdsInfo.wdsLength);
-        return eSIR_FAILURE;
-    }
-
-    pBuf += sizeof(tANI_U16) + pStartBssReq->wdsInfo.wdsLength;
-    len  -= (sizeof(tANI_U16) + pStartBssReq->wdsInfo.wdsLength);
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-#endif
-
-#ifdef WLAN_SOFTAP_FEATURE
     // Extract privacy setting
     pStartBssReq->privacy = *pBuf++;
     len--;
@@ -1503,7 +661,6 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
-#endif
     // Extract bssPersona
     pStartBssReq->bssPersona = *pBuf++;
     len--;
@@ -1580,56 +737,6 @@ limStartBssReqSerDes(tpAniSirGlobal pMac, tpSirSmeStartBssReq pStartBssReq, tANI
         len  -= pStartBssReq->extendedRateSet.numRates;
     }
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-        limLog(pMac,
-               LOGW,
-               FL("Going to parse numSSID  in the START_BSS_REQ, len=%d\n"), len);
-    if (len < 2)
-    {
-        // No numSSID parameter in the START_BSS_REQ
-        limLog(pMac,
-               LOGW,
-               FL("No numSSID  in the START_BSS_REQ, len=%d\n"), len);
-        return eSIR_FAILURE;
-    }
-
-    // Extract numSSID
-    pStartBssReq->numSSID = *pBuf++;
-    len--;
-
-    // Extract ssIdList[]
-    for (i = 0; (i < pStartBssReq->numSSID) && len; i++)
-    {
-        pStartBssReq->ssIdList[i].length = *pBuf++;
-        len--;
-        if (len < pStartBssReq->ssIdList[i].length)
-        {
-            limLog(pMac, LOGW,
-               FL("SSID length[%d] is more than the rem length[%d]\n"),
-               pStartBssReq->ssIdList[i].length, len);
-            return eSIR_FAILURE;
-        }
-
-        if (pStartBssReq->ssIdList[i].length > SIR_MAC_MAX_SSID_LENGTH)
-        {
-            // SSID length is more than max allowed 32 bytes
-            limLog(pMac,
-                   LOGW,
-                   FL("Invalid SSID length in the list, len=%d\n"),
-                   pStartBssReq->ssIdList[i].length);
-            return eSIR_FAILURE;
-        }
-
-        palCopyMemory( pMac->hHdd, (tANI_U8 *) pStartBssReq->ssIdList[i].ssId,
-                      pBuf,
-                      pStartBssReq->ssIdList[i].length);
-        pBuf += pStartBssReq->ssIdList[i].length;
-        len  -= pStartBssReq->ssIdList[i].length;
-    }
-#endif
 
     if (len)
     {
@@ -1844,14 +951,6 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    // Extract assocType
-    pJoinReq->assocType = (tSirAssocType) limGetU32(pBuf);
-    pBuf += sizeof(tSirAssocType);
-    len  -= sizeof(tSirAssocType); 
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-#endif
 
     // Extract operationalRateSet
     pJoinReq->operationalRateSet.numRates= *pBuf++;
@@ -2049,34 +1148,6 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-    // Extract BP Indicator
-    pJoinReq->bpIndicator = (tAniBool) limGetU32(pBuf);
-    pBuf += sizeof(tAniBool);
-    len  -= sizeof(tAniBool); 
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    // Extract BP Type
-    pJoinReq->bpType = (tSirBpIndicatorType) limGetU32(pBuf);
-    pBuf += sizeof(tSirBpIndicatorType);
-    len  -= sizeof(tSirBpIndicatorType); 
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    // Extract Neighbor BSS List
-    if (limGetNeighborBssList(pMac, &pJoinReq->neighborBssList,
-                              len, &lenUsed, pBuf) == eSIR_FAILURE)
-    {
-        PELOGE(limLog(pMac, LOGE, FL("get neighbor bss list failed\n"));)
-        return eSIR_FAILURE;
-    }
-    pBuf += lenUsed;
-    len -= lenUsed;
-    PELOG1(limLog(pMac, LOG1, FL("Assoc Type %d RSN len %d bp %d type %d bss RSN len %d\n"),
-           pJoinReq->assocType, pJoinReq->rsnIE.length, pJoinReq->bpIndicator,
-           pJoinReq->bpType, pJoinReq->neighborBssList.bssList->rsnIE.length);)
-#endif
 
     // Extract Titan CB Neighbor BSS info
     pJoinReq->cbNeighbors.cbBssFoundPri = *pBuf;
@@ -2116,7 +1187,6 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
-#if (WNI_POLARIS_FW_PRODUCT == WLAN_STA)
     //
     // NOTE - tSirBssDescription is now moved to the end
     // of tSirSmeJoinReq structure. This is to accomodate
@@ -2131,7 +1201,6 @@ limJoinReqSerDes(tpAniSirGlobal pMac, tpSirSmeJoinReq pJoinReq, tANI_U8 *pBuf)
     PELOG3(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG3, (tANI_U8 *) &(pJoinReq->bssDescription), pJoinReq->bssDescription.length + 2);)
     pBuf += lenUsed;
     len -= lenUsed;
-#endif
 
     return eSIR_SUCCESS;
 } /*** end limJoinReqSerDes() ***/
@@ -2160,9 +1229,6 @@ limAssocIndSerDes(tpAniSirGlobal pMac, tpLimMlmAssocInd pAssocInd, tANI_U8 *pBuf
     tANI_U8  *pTemp = pBuf;
 #endif
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    tANI_U32 len = 0;
-#endif
 
     mLen   = sizeof(tANI_U32);
     mLen   += sizeof(tANI_U8);
@@ -2209,56 +1275,6 @@ limAssocIndSerDes(tpAniSirGlobal pMac, tpLimMlmAssocInd pAssocInd, tANI_U8 *pBuf
     pBuf += pAssocInd->rsnIE.length;
     mLen += pAssocInd->rsnIE.length;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-
-    limCopyU16(pBuf, pAssocInd->seqNum);
-    pBuf += sizeof(tANI_U16);
-    mLen += sizeof(tANI_U16);
-
-    limCopyU32(pBuf, pAssocInd->wniIndicator);
-    pBuf += sizeof(tAniBool);
-    mLen += sizeof(tAniBool);
-
-    limCopyU32(pBuf, pAssocInd->bpIndicator);
-    pBuf += sizeof(tAniBool);
-    mLen += sizeof(tAniBool);
-
-    limCopyU32(pBuf, pAssocInd->bpType);
-    pBuf += sizeof(tSirBpIndicatorType);
-    mLen += sizeof(tSirBpIndicatorType);
-
-    limCopyU32(pBuf, pAssocInd->assocType);
-    pBuf += sizeof(tANI_U32);
-    mLen += sizeof(tANI_U32);
-
-    limCopyLoad(pBuf, pAssocInd->load);
-    pBuf += sizeof(tSirLoad);
-    mLen += sizeof(tSirLoad);
-
-    limCopyU32(pBuf, pAssocInd->numBss);
-    pBuf += sizeof(tANI_U32);
-    mLen += sizeof(tANI_U32);
-
-    if (pAssocInd->numBss)
-    {
-        len   = limCopyNeighborList(pMac,
-                           pBuf,
-                           pAssocInd->neighborList, pAssocInd->numBss);
-        pBuf += len;
-        mLen += (tANI_U16) len;
-    }
-
-    // place holder to capability and nwType
-
-    limCopyU16(pBuf, *(tANI_U16 *)&pAssocInd->capabilityInfo);
-    pBuf += sizeof(tANI_U16); // capabilityInfo
-    mLen += sizeof(tANI_U16);
-
-    limCopyU32(pBuf, *(tANI_U32 *)&pAssocInd->nwType);
-    pBuf += sizeof(tANI_U32); // nwType
-    mLen += sizeof(tANI_U32);
-
-#endif
 
     limCopyU32(pBuf, pAssocInd->spectrumMgtIndicator);
     pBuf += sizeof(tAniBool);
@@ -2284,11 +1300,9 @@ limAssocIndSerDes(tpAniSirGlobal pMac, tpLimMlmAssocInd pAssocInd, tANI_U8 *pBuf
         pBuf += pAssocInd->supportedChannels.numChnl;
         mLen += pAssocInd->supportedChannels.numChnl;
     }
-#ifdef WLAN_SOFTAP_FEATURE
     limCopyU32(pBuf, pAssocInd->WmmStaInfoPresent);
     pBuf += sizeof(tANI_U32);
     mLen += sizeof(tANI_U32);
-#endif
      // Fill in length of SME_ASSOC_IND message
     limCopyU16(pLen, mLen);
 
@@ -2426,271 +1440,15 @@ limDisassocCnfSerDes(tpAniSirGlobal pMac, tpSirSmeDisassocCnf pDisassocCnf, tANI
 
     palCopyMemory( pMac->hHdd, pDisassocCnf->bssId, pBuf, sizeof(tSirMacAddr));
     pBuf += sizeof(tSirMacAddr);
- 
+
     palCopyMemory( pMac->hHdd, pDisassocCnf->peerMacAddr, pBuf, sizeof(tSirMacAddr));
 
-#if defined(ANI_PRODUCT_TYPE_AP)
-    pBuf += sizeof(tSirMacAddr);
-    pDisassocCnf->aid = limGetU16(pBuf);
-#endif
-    
+
     return eSIR_SUCCESS;
 } /*** end limDisassocCnfSerDes() ***/
 
 
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-/**
- * limMeasurementReqSerDes()
- *
- *FUNCTION:
- * This function is called by limProcessLmmMessages() when
- * SME_MEASUREMENT_REQ message is received from upper layer software.
- *
- *PARAMS:
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  pMeasReq  Pointer to tSirSmeMeasurement being
- *                   extracted into
- * @param  pBuf      Pointer to serialized buffer
- * @return retCode   Indicates whether message is successfully
- *                   de-serialized (eSIR_SUCCESS) or
- *                   not (eSIR_FAILURE)
- */
-
-tSirRetStatus
-limMeasurementReqSerDes(tpAniSirGlobal pMac, tpSirSmeMeasurementReq pMeasReq, tANI_U8 *pBuf)
-{
-    tANI_S16 len = 0;
-    PELOG3(tANI_U8  *pTemp = pBuf;)
-
-    if (!pMeasReq || !pBuf)
-        return eSIR_FAILURE;
-
-    pMeasReq->messageType = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-
-    len = pMeasReq->length = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-
-    PELOG3(limLog(pMac, LOG3, FL("SME_MEASUREMENT_REQ length %d bytes is:\n"), len);
-    sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG3, pTemp, len);)
-
-    if (len < (tANI_S16) sizeof(tANI_U32))
-        return eSIR_FAILURE;
-
-    len -= sizeof(tANI_U32); // skip message header
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    pMeasReq->measControl.periodicMeasEnabled = (tAniBool)
-                                                limGetU32(pBuf);
-
-    pBuf += sizeof(tAniBool);
-    len  -= sizeof(tAniBool);
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    pMeasReq->measControl.involveSTAs = (tAniBool)
-                                        limGetU32(pBuf);
-    pBuf += sizeof(tAniBool);
-    len  -= sizeof(tAniBool);
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    pMeasReq->measControl.metricsType = *pBuf++;
-    len--;
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    pMeasReq->measControl.scanType = (tSirScanType)
-                                     limGetU32(pBuf);
-    pBuf += sizeof(tSirScanType);
-    len  -= sizeof(tSirScanType);
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    pMeasReq->measControl.longChannelScanPeriodicity = *pBuf++;
-    len--;
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    pMeasReq->measControl.cb11hEnabled = (tAniBool)limGetU32(pBuf);
-    pBuf += sizeof(tAniBool);
-    len  -= sizeof(tAniBool);
-
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    pMeasReq->measDuration.shortTermPeriod = limGetU32(pBuf);
-    pBuf += sizeof(tANI_U32);
-
-    pMeasReq->measDuration.averagingPeriod = limGetU32(pBuf);
-    pBuf += sizeof(tANI_U32);
-
-    pMeasReq->measDuration.shortChannelScanDuration = limGetU32(pBuf);
-    pBuf += sizeof(tANI_U32);
-
-    pMeasReq->measDuration.longChannelScanDuration = limGetU32(pBuf);
-    pBuf += sizeof(tANI_U32);
-
-    len  -= sizeof(tSirMeasDuration);
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    pMeasReq->measIndPeriod = limGetU32(pBuf);
-
-    pBuf += sizeof(tANI_U32);
-    len  -= sizeof(tANI_U32);
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    pMeasReq->channelList.numChannels = *pBuf++;
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) pMeasReq->channelList.channelNumber,
-                  pBuf, pMeasReq->channelList.numChannels);
-
-    return eSIR_SUCCESS;
-} /*** end limMeasurementReqSerDes() ***/
-
-
-/**
- * limWdsReqSerDes()
- *
- *FUNCTION:
- * This function is called by limProcessLmmMessages() when
- * SME_SET_WDS_INFO_REQ message is received from upper layer software.
- *
- *PARAMS:
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  pWdsInfo  Pointer to tSirWdsInfo being extracted into
- * @param  pBuf      Pointer to serialized buffer
- * @return retCode   Indicates whether message is successfully
- *                   de-serialized (eSIR_SUCCESS) or
- *                   not (eSIR_FAILURE)
- */
-
-tSirRetStatus
-limWdsReqSerDes(tpAniSirGlobal pMac, tpSirSmeSetWdsInfoReq pWdsInfoReq, tANI_U8 *pBuf)
-{
-    tANI_S16 len = 0;
-    PELOG1(tANI_U8  *pTemp = pBuf;)
-
-    if (!pWdsInfoReq || !pBuf)
-        return eSIR_FAILURE;
-
-    // Extract messageType
-    pWdsInfoReq->messageType = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-
-    // Extract length
-    len = pWdsInfoReq->length = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-
-    PELOG1(limLog(pMac, LOG1, FL("SME_SET_WDS_INFO_REQ length %d bytes is:\n"), len);)
-    PELOG1(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG1, pTemp, len);)
-
-    if (len < (tANI_S16) sizeof(tANI_U32))
-        return eSIR_FAILURE;
-
-    len -= sizeof(tANI_U32); // skip message header
-
-    // Extract transactionId
-    pWdsInfoReq->transactionId = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-    len -= sizeof(tANI_U16);
-
-    // Extract wdsInfo
-    pWdsInfoReq->wdsInfo.wdsLength = limGetU16(pBuf);
-    len -= sizeof(tANI_U16);
-    pBuf += sizeof(tANI_U16);
-
-    if (pWdsInfoReq->wdsInfo.wdsLength > ANI_WDS_INFO_MAX_LENGTH)
-        return eSIR_FAILURE;
-
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-    palCopyMemory( pMac->hHdd, (tANI_U8 *) pWdsInfoReq->wdsInfo.wdsBytes,
-        pBuf,
-        pWdsInfoReq->wdsInfo.wdsLength);
-
-    return eSIR_SUCCESS;
-
-} /*** end limWdsReqSerDes() ***/
-
-
-/**
- * limMeasurementIndSerDes()
- *
- *FUNCTION:
- * This function is called by limSendMeasurementInd() while
- * sending SME_MEASUREMENT_IND message to WSM.
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- *
- *NOTE:
- *
- * @param  pMac     - Pointer to Global MAC structure
- * @param  pMeasInd - Pointer to prepared MEASUREMENT_IND message
- * @return None
- */
-
-void
-limMeasurementIndSerDes(tpAniSirGlobal pMac, tANI_U8 *pBuf)
-{
-    tANI_U8          *pLen;
-    tANI_U16         len = 0, infoLen = 0;
-    tSirLoad    load;
-    PELOG3(tANI_U8  *pTemp = pBuf;)
-
-    limCopyU16(pBuf, eWNI_SME_MEASUREMENT_IND);
-    pBuf += sizeof(tANI_U16);
-
-    pLen  = pBuf;
-    pBuf += sizeof(tANI_U16);
-
-    limCopyU32(pBuf, pMac->lim.gpLimMeasData->duration);
-    pBuf += sizeof(tANI_U32);
-    len += sizeof(tANI_U32);
-
-    load.numStas            = peGetCurrentSTAsCount(pMac);
-    load.channelUtilization =
-                        pMac->lim.gpLimMeasData->avgChannelUtilization;
-    limCopyLoad(pBuf, load);
-    pBuf += sizeof(tSirLoad);
-    len  += sizeof(tSirLoad);
-
-    infoLen = limCopyMeasMatrixList(pMac, pBuf);
-    pBuf   += infoLen;
-    len    += infoLen;
-
-    infoLen = limCopyNeighborWdsList(pMac, pBuf);
-    pBuf   += infoLen;
-    len    += infoLen;
-
-    limCopyU16(pLen, len+4);
-
-    PELOG3(limLog(pMac, LOG3, FL("Sending MEAS_IND length %d bytes:\n"), len);
-    sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG3, pTemp, len);)
-} /*** end limMeasurementIndSerDes() ***/
-#endif
 
 
 /**---------------------------------------------------------------
@@ -2716,9 +1474,6 @@ limReassocIndSerDes(tpAniSirGlobal pMac, tpLimMlmReassocInd pReassocInd, tANI_U8
     tANI_U8  *pTemp = pBuf;
 #endif
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    tANI_U32 len = 0;
-#endif
 
     mLen   = sizeof(tANI_U32);
     pBuf  += sizeof(tANI_U16);
@@ -2779,54 +1534,6 @@ limReassocIndSerDes(tpAniSirGlobal pMac, tpLimMlmReassocInd pReassocInd, tANI_U8
     pBuf += pReassocInd->addIE.length;
     mLen += pReassocInd->addIE.length;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-
-    limCopyU16(pBuf, pReassocInd->seqNum);
-    pBuf += sizeof(tANI_U16);
-    mLen += sizeof(tANI_U16);
-
-    limCopyU32(pBuf, pReassocInd->wniIndicator);
-    pBuf += sizeof(tAniBool);
-    mLen += sizeof(tAniBool);
-
-    limCopyU32(pBuf, pReassocInd->bpIndicator);
-    pBuf += sizeof(tAniBool);
-    mLen += sizeof(tAniBool);
-
-    limCopyU32(pBuf, pReassocInd->bpType);
-    pBuf += sizeof(tSirBpIndicatorType);
-    mLen += sizeof(tSirBpIndicatorType);
-
-    limCopyU32(pBuf, pReassocInd->reassocType);
-    pBuf += sizeof(tSirAssocType);
-    mLen += sizeof(tSirAssocType);
-
-    limCopyLoad(pBuf, pReassocInd->load);
-    pBuf += sizeof(tSirLoad);
-    mLen += sizeof(tSirLoad);
-
-    limCopyU32(pBuf, pReassocInd->numBss);
-    pBuf += sizeof(tANI_U32);
-    mLen += sizeof(tANI_U32);
-
-    if (pReassocInd->numBss)
-    {
-        len   = limCopyNeighborList(pMac,
-                       pBuf,
-                       pReassocInd->neighborList, pReassocInd->numBss);
-        pBuf += len;
-        mLen += (tANI_U16) len;
-    }
-
-    // place holder to capability and nwType
-    limCopyU16(pBuf, *(tANI_U16 *)&pReassocInd->capabilityInfo);
-    pBuf += sizeof(tANI_U16); // capabilityInfo
-    mLen += sizeof(tANI_U16);
-
-    limCopyU32(pBuf, *(tANI_U32 *)&pReassocInd->nwType);
-    pBuf += sizeof(tANI_U32); // nwType
-    mLen += sizeof(tANI_U32);
-#endif
 
     limCopyU32(pBuf, pReassocInd->spectrumMgtIndicator);
     pBuf += sizeof(tAniBool);
@@ -2851,11 +1558,9 @@ limReassocIndSerDes(tpAniSirGlobal pMac, tpLimMlmReassocInd pReassocInd, tANI_U8
         pBuf += pReassocInd->supportedChannels.numChnl;
         mLen += pReassocInd->supportedChannels.numChnl;
     }
-#ifdef WLAN_SOFTAP_FEATURE
     limCopyU32(pBuf, pReassocInd->WmmStaInfoPresent);
     pBuf += sizeof(tANI_U32);
     mLen += sizeof(tANI_U32);
-#endif
 
     // Fill in length of SME_REASSOC_IND message
     limCopyU16(pLen, mLen);
@@ -3004,13 +1709,6 @@ limSetContextReqSerDes(tpAniSirGlobal pMac, tpSirSmeSetContextReq pSetContextReq
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
-#if defined(ANI_PRODUCT_TYPE_AP)
-    pSetContextReq->aid = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-    len  -= sizeof(tANI_U16);
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-#endif
 
 //    pSetContextReq->qosInfoPresent = limGetU32(pBuf);
 //    pBuf += sizeof(tAniBool);
@@ -3127,13 +1825,6 @@ limRemoveKeyReqSerDes(tpAniSirGlobal pMac, tpSirSmeRemoveKeyReq pRemoveKeyReq, t
     if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
         return eSIR_FAILURE;
 
-#if defined(ANI_PRODUCT_TYPE_AP)
-    pRemoveKeyReq->aid = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-    len  -= sizeof(tANI_U16);
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-#endif
 
     pRemoveKeyReq->edType = *pBuf;
     pBuf += sizeof(tANI_U8);
@@ -3276,17 +1967,6 @@ limDisassocReqSerDes(tpAniSirGlobal pMac, tSirSmeDisassocReq *pDisassocReq, tANI
     pBuf += sizeof(tANI_U8);
     len -= sizeof(tANI_U8);
 
-#if defined(ANI_PRODUCT_TYPE_AP)
-    pDisassocReq->aid = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);
-    len  -= sizeof(tANI_U16);
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    pDisassocReq->seqNum = limGetU16(pBuf);
-#endif
-#endif
 
     return eSIR_SUCCESS;
 } /*** end limDisassocReqSerDes() ***/
@@ -3377,11 +2057,6 @@ limDeauthReqSerDes(tpAniSirGlobal pMac, tSirSmeDeauthReq *pDeauthReq, tANI_U8 *p
     pBuf += sizeof(tANI_U16);
     len  -= sizeof(tANI_U16);
 
-#if defined(ANI_PRODUCT_TYPE_AP)
-    if (limCheckRemainingLength(pMac, len) == eSIR_FAILURE)
-        return eSIR_FAILURE;
-    pDeauthReq->aid = limGetU16(pBuf);
-#endif
     
     return eSIR_SUCCESS;
 } /*** end limDisassocReqSerDes() ***/
@@ -3389,109 +2064,6 @@ limDeauthReqSerDes(tpAniSirGlobal pMac, tSirSmeDeauthReq *pDeauthReq, tANI_U8 *p
 
 
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-/**
- * limCopyNeighborInfoToCfg()
- *
- *FUNCTION:
- * This function is called by limProcessSmeMessages() upon receiving
- * SME_JOIN_REQ/SME_REASSOC_REQ from WSM to convert neighborBssInfo
- * that is being joined to bssDescription used by MLM
- *
- *PARAMS:
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  neighborBssInfo  Neighbor BSS info to be converted
- *
- * @return None
- */
-
-void
-limCopyNeighborInfoToCfg(tpAniSirGlobal pMac, tSirNeighborBssInfo neighborBssInfo, tpPESession psessionEntry)
-{
-    tANI_U32    localPowerConstraints = 0;
-    tANI_U16    caps;
-    tANI_U8     qosCap = 0;
-
-    if(psessionEntry)
-    {
-        psessionEntry->gLimPhyMode = neighborBssInfo.nwType;
-    }
-    else
-    {
-        pMac->lim.gLimPhyMode = neighborBssInfo.nwType;
-    }
-
-    cfgSetCapabilityInfo(pMac, neighborBssInfo.capabilityInfo);
-
-    if (cfgSetStr(pMac, WNI_CFG_SSID, (tANI_U8 *) &neighborBssInfo.ssId.ssId,
-                  neighborBssInfo.ssId.length) != eSIR_SUCCESS)
-    {
-        /// Could not update SSID at CFG. Log error.
-        limLog(pMac, LOGP, FL("could not update SSID at CFG\n"));
-    }
-
-    #if 0
-    if (cfgSetStr(
-           pMac, WNI_CFG_OPERATIONAL_RATE_SET,
-           (tANI_U8 *) &neighborBssInfo.operationalRateSet.rate,
-           neighborBssInfo.operationalRateSet.numRates) != eSIR_SUCCESS)
-    {
-        /// Could not update Operational Rateset at CFG. Log error.
-        limLog(pMac, LOGP,
-               FL("could not update Operational Rateset at CFG\n"));
-    }
-    #endif // TO SUPPORT BT-AMP
-
-    if (neighborBssInfo.nwType == WNI_CFG_PHY_MODE_11G)
-    {
-        if (cfgSetStr(
-            pMac, WNI_CFG_EXTENDED_OPERATIONAL_RATE_SET,
-            (tANI_U8 *) &neighborBssInfo.extendedRateSet.rate,
-            neighborBssInfo.extendedRateSet.numRates) != eSIR_SUCCESS)
-        {
-            /// Could not update Extended Rateset at CFG. Log error.
-            limLog(pMac, LOGP,
-                   FL("could not update Extended Rateset at CFG\n"));
-        }
-    }
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    if (neighborBssInfo.hcfEnabled)
-        LIM_BSS_CAPS_SET(HCF, qosCap);
-#endif
-    if (neighborBssInfo.wmeInfoPresent || neighborBssInfo.wmeEdcaPresent)
-        LIM_BSS_CAPS_SET(WME, qosCap);
-    if (LIM_BSS_CAPS_GET(WME, qosCap) && neighborBssInfo.wsmCapablePresent)
-        LIM_BSS_CAPS_SET(WSM, qosCap);
-    
-    pMac->lim.gLimCurrentBssQosCaps = qosCap;
-    
-    if (neighborBssInfo.wniIndicator)
-        pMac->lim.gLimCurrentBssPropCap = neighborBssInfo.propIECapability;
-    else
-        pMac->lim.gLimCurrentBssPropCap = 0;
-
-    if (neighborBssInfo.HTCapsPresent)
-        pMac->lim.htCapabilityPresentInBeacon = 1;
-    else
-        pMac->lim.htCapabilityPresentInBeacon = 0;
-    if (neighborBssInfo.localPowerConstraints && pSessionEntry->lim11hEnable)
-    {
-        localPowerConstraints = neighborBssInfo.localPowerConstraints;
-    }
-    if (cfgSetInt(pMac, WNI_CFG_LOCAL_POWER_CONSTRAINT, localPowerConstraints) != eSIR_SUCCESS)
-    {
-        limLog(pMac, LOGP, FL("Could not update local power constraint to cfg.\n"));
-    }
-} /*** end limCopyNeighborInfoToCfg() ***/
-#endif
 
 
 /**
@@ -3605,119 +2177,6 @@ limStatSerDes(tpAniSirGlobal pMac, tpAniStaStatStruct pStat, tANI_U8 *pBuf)
 } /*** end limStatSerDes() ***/
 
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-/**
- * limSmeWmStatusChangeNtfSerDes()
- *
- *FUNCTION:
- * This function is called by limSendSmeWmStatusChangeNtf()
- * to serialize the header fields of SME WM Status Change
- * Notification
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  statusChangeCode     Status Change code
- * @param  pBuf                 Pointer to serialized buffer
- * @param  len                  Pointer to length actually used
- * @param  buflen               Buffer length remaining
- * @return retCode              Indicates whether message is successfully
- *                              serialized (eSIR_SUCCESS) or not (eSIR_FAILURE)
- */
-
-tSirRetStatus
-limSmeWmStatusChangeHeaderSerDes(tpAniSirGlobal pMac,
-                                 tSirSmeStatusChangeCode statusChangeCode,
-                                 tANI_U8 *pBuf,
-                                 tANI_U16 *len,
-                                 tANI_U32 buflen,
-                                 tANI_U8 sessionId)
-{
-    if (buflen < ((sizeof(tANI_U16) * 2) + sizeof(tANI_U32)))
-    {
-        limLog(pMac, LOGE,
-               FL("limSmeWmStatusChangeHeaderSerDes: no enough space (buf %d) \n"), buflen);
-        return eSIR_FAILURE;
-    }
-
-    *len = 0;
-
-    limCopyU16(pBuf, eWNI_SME_WM_STATUS_CHANGE_NTF);
-    pBuf += sizeof(tANI_U16);
-    *len += sizeof(tANI_U16);
-
-    // Actual length value shall be filled later
-    pBuf += sizeof(tANI_U16);
-    *len += sizeof(tANI_U16);
-    
-    *pBuf++ = sessionId;
-    *len += sizeof(tANI_U8);
-
-    limCopyU32(pBuf, statusChangeCode);
-    pBuf += sizeof(tANI_U32);
-    *len += sizeof(tANI_U32);
-
-    return eSIR_SUCCESS;
-} /*** end limSmeWmStatusChangeHeaderSerDes() ***/
-
-
-
-/**
- * limRadioInfoSerDes()
- *
- *FUNCTION:
- * This function is called by limSendSmeWmStatusChangeNtf()
- * to serialize the radarInfo message
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  pRadarInfo    Pointer to tSirRadarInfo
- * @param  pBuf          Pointer to serialized buffer
- * @param  len           Pointer to length actually used by tSirRadarInfo
- * @param  buflen        Length remaining
- *
- * @return retCode       Indicates whether message is successfully
- *                       serialized (eSIR_SUCCESS) or not (eSIR_FAILURE)
- */
-
-tSirRetStatus
-limRadioInfoSerDes(tpAniSirGlobal pMac, tpSirRadarInfo pRadarInfo,
-                              tANI_U8 *pBuf, tANI_U16 *len, tANI_U32 buflen)
-{
-
-    if (buflen < sizeof(tSirRadarInfo))
-    {
-        limLog(pMac, LOGE,
-               FL("no enough space (buf %d) \n"), buflen);
-        return eSIR_FAILURE;
-    }
-
-    *pBuf = pRadarInfo->channelNumber;
-    pBuf += sizeof(tANI_U8);
-    *len += sizeof(tANI_U8);
-
-    limCopyU16(pBuf, pRadarInfo->radarPulseWidth);
-    pBuf += sizeof(tANI_U16);
-    *len += sizeof(tANI_U16);
-
-    limCopyU16(pBuf, pRadarInfo->numRadarPulse);
-    pBuf += sizeof(tANI_U16);
-    *len += sizeof(tANI_U16);
-
-    return eSIR_SUCCESS;
-} /*** end limRadioInfoSerDes() ***/
-#endif
 
 
 /**
@@ -3740,19 +2199,6 @@ limPackBkgndScanFailNotify(tpAniSirGlobal pMac,
                     sizeof(tSirSmeStatusChangeCode) +
                     sizeof(tSirBackgroundScanInfo);
 
-#if defined (ANI_PRODUCT_TYPE_AP) && defined(ANI_LITTLE_BYTE_ENDIAN)
-        sirStoreU16N((tANI_U8*)&pSmeNtf->messageType, eWNI_SME_WM_STATUS_CHANGE_NTF );
-        sirStoreU16N((tANI_U8*)&pSmeNtf->length, length);
-        pSmeNtf->sessionId = sessionId;
-        sirStoreU32N((tANI_U8*)&pSmeNtf->statusChangeCode, statusChangeCode);
-
-        sirStoreU32N((tANI_U8*)&pSmeNtf->statusChangeInfo.bkgndScanInfo.numOfScanSuccess,
-                     pScanInfo->numOfScanSuccess);
-        sirStoreU32N((tANI_U8*)&pSmeNtf->statusChangeInfo.bkgndScanInfo.numOfScanFailure,
-                     pScanInfo->numOfScanFailure);
-        sirStoreU32N((tANI_U8*)&pSmeNtf->statusChangeInfo.bkgndScanInfo.reserved,
-                     pScanInfo->reserved);
-#else
         pSmeNtf->messageType = eWNI_SME_WM_STATUS_CHANGE_NTF;
         pSmeNtf->statusChangeCode = statusChangeCode;
         pSmeNtf->length = length;
@@ -3760,144 +2206,9 @@ limPackBkgndScanFailNotify(tpAniSirGlobal pMac,
         pSmeNtf->statusChangeInfo.bkgndScanInfo.numOfScanSuccess = pScanInfo->numOfScanSuccess;
         pSmeNtf->statusChangeInfo.bkgndScanInfo.numOfScanFailure = pScanInfo->numOfScanFailure;
         pSmeNtf->statusChangeInfo.bkgndScanInfo.reserved = pScanInfo->reserved;
-#endif
 }
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
 
-/**
- * nonTitanBssFoundSerDes()
- *
- *FUNCTION:
- * This function is called by limSendSmeWmStatusChangeNtf()
- * to serialize the following message
- * Mesg = eWNI_SME_WM_STATUS_CHANGE_NTF
- * Change code = eSIR_SME_CB_LEGACY_BSS_FOUND_BY_AP
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  pMac         Pointer to the global pMAC structure
- * @param  pNewBssInfo  Pointer to tpSirNeighborBssWdsInfo
- * @param  pBuf         Send data buffer
- * @param  len          Length of message
- * @param  buflen       Length remaining
- *
- * @return retCode      Indicates whether message is successfully
- *                      serialized (eSIR_SUCCESS) or not (eSIR_FAILURE)
- */
-
-tSirRetStatus nonTitanBssFoundSerDes( tpAniSirGlobal pMac,
-    tpSirNeighborBssWdsInfo pNewBssInfo,
-    tANI_U8 *pBuf,
-    tANI_U16 *len,
-    tANI_U8 sessionId )
-{
-tANI_U8 *pTemp = pBuf;
-tANI_U16 length = 0;
-tANI_U32 bufLen = sizeof( tSirSmeWmStatusChangeNtf );
-
-  // Serialize the header (length to be filled later)
-  if( eSIR_SUCCESS != limSmeWmStatusChangeHeaderSerDes(
-        pMac,
-        eSIR_SME_CB_LEGACY_BSS_FOUND_BY_AP,
-        pBuf,
-        &length,
-        bufLen,
-        sessionId))
-  {
-    limLog( pMac, LOGE,
-        FL("Header SerDes failed \n"));
-    return eSIR_FAILURE;
-  }
-  pBuf += length;
-  bufLen -= length;
-
-  // Serialize tSirNeighborBssWdsInfo
-  length = limCopyNeighborWdsInfo( pMac,
-      pBuf,
-      pNewBssInfo );
-  pBuf += length;
-  bufLen -= length;
-
-  // Update tSirSmeWmStatusChangeNtf.length
-  pBuf = pTemp;
-  pBuf += sizeof(tANI_U16);
-  limCopyU16(pBuf, length);
-
-  // Update the total length to be returned
-  *len = length;
-
-  return eSIR_SUCCESS;
-} /*** end nonTitanBssFoundSerDes() ***/
-
-/**
- * limIsSmeSwitchChannelReqValid()
- *
- *FUNCTION:
- * This function is called by limProcessSmeReqMessages() upon
- * receiving SME_SWITCH_CHL_REQ message from application.
- *
- *LOGIC:
- * Message validity checks are performed in this function
- *
- *ASSUMPTIONS:
- *
- *NOTE:
- *
- * @param  pBuf    - Pointer to a serialized SME_SWITCH_CHL_REQ message
- * @param  pSmeMsg - Pointer to a tSirsmeSwitchChannelReq structure
- * @return true if SME_SWITCH_CHL_REQ message is formatted correctly
- *                false otherwise
- */
-
-tANI_BOOLEAN
-limIsSmeSwitchChannelReqValid(tpAniSirGlobal pMac, 
-                              tANI_U8 *pBuf, 
-                              tpSirSmeSwitchChannelReq pSmeMsg)
-{
-    pSmeMsg->messageType = limGetU16(pBuf);
-    pBuf += sizeof(tANI_U16);  
-
-    pSmeMsg->length = limGetU16(pBuf); 
-    pBuf += sizeof(tANI_U16);
-
-    pSmeMsg->transactionId = limGetU16(pBuf); 
-    pBuf += sizeof(tANI_U16);
-
-    pSmeMsg->channelId = *pBuf;
-    pBuf++;
-  
-    pSmeMsg->cbMode = limGetU32(pBuf);
-    pBuf += sizeof(tANI_U32);
-
-    pSmeMsg->dtimFactor = limGetU32(pBuf);
-    pBuf += sizeof(tANI_U32);
-
-    if (pSmeMsg->length != SIR_SME_CHANNEL_SWITCH_SIZE)
-    {
-        PELOGE(limLog(pMac, LOGE, FL("Invalid length %d \n"), pSmeMsg->length);)
-        return eANI_BOOLEAN_FALSE;
-    }
-
-    // dtimFactor should not be too large
-    if (pSmeMsg->dtimFactor > SIR_MAX_DTIM_FACTOR)
-    {
-        PELOGE(limLog(pMac, LOGE, FL("Invalid dtimFactor %d \n"), pSmeMsg->dtimFactor);)
-        return eANI_BOOLEAN_FALSE;
-    }
-
-    return eANI_BOOLEAN_TRUE;
-}
-
-#endif
-
-#ifdef WLAN_SOFTAP_FEATURE
 /**
  * limIsSmeGetAssocSTAsReqValid()
  *
@@ -4137,7 +2448,6 @@ limIsSmeGetWPSPBCSessionsReqValid(tpAniSirGlobal pMac, tSirSmeGetWPSPBCSessionsR
     return eSIR_SUCCESS;
 }
 
-#endif
 
 /**---------------------------------------------------------------
 \fn     limGetSessionInfo
@@ -4173,7 +2483,6 @@ limGetSessionInfo(tpAniSirGlobal pMac, tANI_U8 *pBuf, tANI_U8 *sessionId, tANI_U
     return;
 }
 
-#ifdef WLAN_SOFTAP_FEATURE
 
 /**
  * limUpdateAPWPSIEsReqSerDes()
@@ -4341,4 +2650,3 @@ limUpdateAPWPARSNIEsReqSerDes(tpAniSirGlobal pMac, tpSirUpdateAPWPARSNIEsReq pUp
     return eSIR_SUCCESS;
 } /*** end limUpdateAPWPARSNIEsReqSerDes() ***/
 
-#endif

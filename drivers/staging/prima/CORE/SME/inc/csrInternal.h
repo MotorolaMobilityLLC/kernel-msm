@@ -120,10 +120,8 @@ typedef enum
 #ifdef WLAN_FEATURE_11AC
     eCSR_CFG_DOT11_MODE_11AC,
 #endif
-#ifdef WLAN_SOFTAP_FEATURE
     eCSR_CFG_DOT11_MODE_11G_ONLY,
     eCSR_CFG_DOT11_MODE_11N_ONLY,
-#endif
 #ifdef WLAN_FEATURE_11AC
     eCSR_CFG_DOT11_MODE_11AC_ONLY,
 #endif
@@ -356,7 +354,6 @@ typedef struct tagCsrRoamStartBssParams
     tSirMacRateSet      extendedRateSet;
     tANI_U8             operationChn;
     eCsrCfgDot11Mode    uCfgDot11Mode;
-#ifdef WLAN_SOFTAP_FEATURE
     tANI_U8             privacy;
     tANI_BOOLEAN        fwdWPSPBCProbeReq;
     tANI_BOOLEAN        protEnabled;
@@ -368,7 +365,6 @@ typedef struct tagCsrRoamStartBssParams
     tANI_U8             ApUapsdEnable;
     tANI_U8             ssidHidden;
     tANI_U8             wps_state;
-#endif
     tVOS_CON_MODE       bssPersona;
     tANI_U16            nRSNIELength;  //The byte count in the pRSNIE, if 0, pRSNIE is ignored.
     tANI_U8             *pRSNIE;     //If not null, it has the IE byte stream for RSN
@@ -582,10 +578,8 @@ typedef struct tagCsrConfig
     tANI_U8 nTxPowerCap;
     tANI_U32  statsReqPeriodicity;  //stats request frequency from PE while in full power
     tANI_U32  statsReqPeriodicityInPS;//stats request frequency from PE while in power save
-#ifdef WLAN_SOFTAP_FEATURE
     tANI_U32 dtimPeriod;
     tANI_BOOLEAN    ssidHidden;
-#endif
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
     tCsr11rConfig csr11rConfig;
@@ -1084,6 +1078,8 @@ void csrScanSuspendIMPS( tpAniSirGlobal pMac );
 void csrScanResumeIMPS( tpAniSirGlobal pMac );
 
 eHalStatus csrInitGetChannels(tpAniSirGlobal pMac);
+// Getting the 5GHz Channel list
+eHalStatus csrGet5GChannels(tpAniSirGlobal pMac) ;
 
 eHalStatus csrSetModifyProfileFields(tpAniSirGlobal pMac, tANI_U32 sessionId,
                                      tCsrRoamModifyProfileFields *pModifyProfileFields);
@@ -1128,9 +1124,7 @@ tANI_BOOLEAN csrIsBTAMP( tpAniSirGlobal pMac, tANI_U32 sessionId );
 eHalStatus csrIsBTAMPAllowed( tpAniSirGlobal pMac, tANI_U32 chnId );
 tANI_BOOLEAN csrIsValidMcConcurrentSession(tpAniSirGlobal pMac, tANI_U32 sessionId,
                                                   tSirBssDescription *pBssDesc);
-#ifdef WLAN_SOFTAP_FEATURE
 tANI_BOOLEAN csrIsConnStateConnectedInfraAp( tpAniSirGlobal pMac, tANI_U32 sessionId );
-#endif
 /*----------------------------------------------------------------------------
   \fn csrRoamRegisterLinkQualityIndCallback
 
@@ -1269,10 +1263,8 @@ tANI_U8 csrConstructWapiIe( tpAniSirGlobal pMac, tANI_U32 sessionId, tCsrRoamPro
                             tSirBssDescription *pSirBssDesc, tDot11fBeaconIEs *pIes, tCsrWapiIe *pWapiIe );
 #endif /* FEATURE_WLAN_WAPI */
 
-#ifdef WLAN_SOFTAP_FEATURE
 eHalStatus csrRoamUpdateAPWPSIE( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirAPWPSIEs *pAPWPSIES );
 eHalStatus csrRoamUpdateWPARSNIEs( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirRSNie * pAPSirRSNie);
-#endif
 void csrSetCfgPrivacy( tpAniSirGlobal pMac, tCsrRoamProfile *pProfile, tANI_BOOLEAN fPrivacy );
 tANI_S8 csrGetInfraSessionId( tpAniSirGlobal pMac );
 tANI_U8 csrGetInfraOperationChannel( tpAniSirGlobal pMac, tANI_U8 sessionId);

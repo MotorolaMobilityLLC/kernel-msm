@@ -57,9 +57,6 @@
 #include "sirApi.h"
 #include "aniGlobal.h"
 #include "sirMacProtDef.h"
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-#include "sirMacPropExts.h"
-#endif
 #include "sirCommon.h"
 #include "sirDebug.h"
 #include "schGlobal.h"
@@ -155,18 +152,6 @@ extern void limProcessMessages(tpAniSirGlobal, tpSirMsgQ); // DT test alt deferr
  * Function to check the LIM state if system is in Scan/Learn state.
  */
 extern tANI_U8 limIsSystemInScanState(tpAniSirGlobal);
-#if (defined(ANI_PRODUCT_TYPE_AP) || defined(ANI_PRODUCT_TYPE_AP_SDK))
-/**
- * Function to setup Polaris into Learn mode.
- * This is also called by SCH upon receiving SCH_START_LEARN_MODE
- * message from LIM.
- */
-extern void limSetLearnMode(tpAniSirGlobal);
-/**
- * Function to re-enable Learn mode measurements
- */
-extern void limReEnableLearnMode(tpAniSirGlobal);
-#endif //#if (defined(ANI_PRODUCT_TYPE_AP) || defined(ANI_PRODUCT_TYPE_AP_SDK))
 /**
  * Function to handle IBSS coalescing.
  * Beacon Processing module to call this.
@@ -217,19 +202,9 @@ tANI_U8 limIsSystemInActiveState(tpAniSirGlobal pMac);
 tSirRetStatus limUpdateGlobalChannelBonding(tpAniSirGlobal pMac, tHalBitVal cbBit);
 #endif /* 0 */
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
-extern void setupQuietBss( tpAniSirGlobal pMac, tANI_U32 learnInterval );
-extern tANI_BOOLEAN limUpdateQuietIEInBeacons( tpAniSirGlobal pMac );
-#endif
-#ifdef ANI_AP_SDK
-extern void limConvertScanDuration(tpAniSirGlobal pMac);
-#endif /* ANI_AP_SDK */
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-tSirRetStatus limProcessCcaMonitorModeChangeNotification(tpAniSirGlobal pMac, tANI_U32 ccaCbMode);
-#endif /* WNI_POLARIS_FW_PRODUCT == AP */
 void limHandleLowRssiInd(tpAniSirGlobal pMac);
 void limHandleBmpsStatusInd(tpAniSirGlobal pMac);
-void limHandleMissedBeaconInd(tpAniSirGlobal pMac);
+void limHandleMissedBeaconInd(tpAniSirGlobal pMac, tpSirMsgQ pMsg);
 tMgmtFrmDropReason limIsPktCandidateForDrop(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U32 subType);
 void limMicFailureInd(tpAniSirGlobal pMac, tpSirMsgQ pMsg);
 /* ----------------------------------------------------------------------- */

@@ -73,9 +73,7 @@
 #ifdef WLAN_OPEN_SOURCE
 #include <linux/wakelock.h>
 #endif
-#ifdef ANI_MANF_DIAG
 #include <wlan_hdd_ftm.h>
-#endif
 #ifdef FEATURE_WLAN_TDLS
 #include "wlan_hdd_tdls.h"
 #endif
@@ -398,10 +396,8 @@ typedef enum device_mode
    WLAN_HDD_SOFTAP,
    WLAN_HDD_P2P_CLIENT,
    WLAN_HDD_P2P_GO,
-   WLAN_HDD_MONITOR
-#ifdef ANI_MANF_DIAG
-   ,WLAN_HDD_FTM,
-#endif
+   WLAN_HDD_MONITOR,
+   WLAN_HDD_FTM,
    WLAN_HDD_P2P_DEVICE
 }device_mode_t;
 
@@ -576,13 +572,11 @@ struct hdd_ap_ctx_s
    v_U8_t uBCStaId;
 
    v_U8_t uPrivacy;  // The privacy bits of configuration
-   
-#ifdef WLAN_SOFTAP_FEATURE   
+
    tSirWPSPBCProbeReq WPSPBCProbeReq;
-   
+
    tsap_Config_t sapConfig;
-#endif
-   
+
    struct semaphore semWpsPBCOverlapInd;
    
    v_BOOL_t apDisableIntraBssFwd;
@@ -858,9 +852,7 @@ struct hdd_context_s
 
    /** Config values read from qcom_cfg.ini file */ 
    hdd_config_t *cfg_ini;
-  #ifdef ANI_MANF_DIAG
    wlan_hdd_ftm_status_t ftm; 
-  #endif
    /** completion variable for full power callback */
    struct completion full_pwr_comp_var;
    /** completion variable for Request BMPS callback */
@@ -869,10 +861,8 @@ struct hdd_context_s
    /** completion variable for standby callback */
    struct completion standby_comp_var;
    
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    /* Completion  variable to indicate Rx Thread Suspended */
    struct completion rx_sus_event_var;
-#endif // FEATURE_WLAN_INTEGRATED_SOC
 
    /* Completion  variable to indicate Tx Thread Suspended */
    struct completion tx_sus_event_var;
@@ -889,9 +879,7 @@ struct hdd_context_s
 
    v_BOOL_t isMcThreadSuspended;
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    v_BOOL_t isRxThreadSuspended;
-#endif
 
    volatile v_BOOL_t isLogpInProgress;
 
@@ -1020,11 +1008,8 @@ tANI_U8* wlan_hdd_get_intf_addr(hdd_context_t* pHddCtx);
 void wlan_hdd_release_intf_addr(hdd_context_t* pHddCtx, tANI_U8* releaseAddr);
 v_U8_t hdd_get_operating_channel( hdd_context_t *pHddCtx, device_mode_t mode );
 
-
-#if defined(WLAN_SOFTAP_FEATURE) || defined(ANI_MANF_DIAG)
 void hdd_set_conparam ( v_UINT_t newParam );
 tVOS_CON_MODE hdd_get_conparam( void );
-#endif
 
 void wlan_hdd_enable_deepsleep(v_VOID_t * pVosContext);
 v_BOOL_t hdd_is_apps_power_collapse_allowed(hdd_context_t* pHddCtx);

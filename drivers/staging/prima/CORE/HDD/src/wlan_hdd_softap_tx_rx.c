@@ -49,7 +49,6 @@
          Qualcomm Confidential and Proprietary.
   
   ==========================================================================*/
-#ifdef WLAN_SOFTAP_FEATURE
 
 /*--------------------------------------------------------------------------- 
   Include files
@@ -66,9 +65,6 @@
 #include <vos_types.h>
 #include <aniGlobal.h>
 #include <halTypes.h>
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include <halHddApis.h>
-#endif
 #include <net/ieee80211_radiotap.h>
 
 
@@ -996,21 +992,6 @@ VOS_STATUS hdd_softap_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    }
  
 //xg: @@@@: temporarily disble these. will revisit later
-#ifndef WLAN_SOFTAP_FEATURE
-   if(pAdapter->conn_info.uIsAuthenticated == VOS_TRUE)
-      pPktMetaInfo->ucIsEapol = 0;       
-   else 
-      pPktMetaInfo->ucIsEapol = hdd_IsEAPOLPacket( pVosPacket ) ? 1 : 0;
-
-   if ((HDD_WMM_USER_MODE_NO_QOS == pAdapter->cfg_ini->WmmMode) ||
-       (!pAdapter->hddWmmStatus.wmmQap))
-   {
-      // either we don't want QoS or the AP doesn't support QoS
-      pPktMetaInfo->ucUP = 0;
-      pPktMetaInfo->ucTID = 0;
-   }
-   else
-#endif
    {
       pPktMetaInfo->ucUP = pktNode->userPriority;
       pPktMetaInfo->ucTID = pPktMetaInfo->ucUP;
@@ -1386,19 +1367,7 @@ VOS_STATUS hdd_softap_RegisterSTA( hdd_adapter_t *pAdapter,
 
    vosStatus = hdd_softap_init_tx_rx_sta(pAdapter, staId, &staDesc.vSTAMACAddress);
 
-#ifdef WLAN_SOFTAP_FEATURE
    staDesc.ucQosEnabled = fWmmEnabled;
-#else
-   // set the QoS field appropriately
-   if (hdd_wmm_is_active(pAdapter))
-   {
-      staDesc.ucQosEnabled = 1;
-   }
-   else
-   {
-      staDesc.ucQosEnabled = 0;
-   }
-#endif
    VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
               "HDD SOFTAP register TL QoS_enabled=%d",
               staDesc.ucQosEnabled );
@@ -1406,26 +1375,9 @@ VOS_STATUS hdd_softap_RegisterSTA( hdd_adapter_t *pAdapter,
    staDesc.ucProtectedFrame = (v_U8_t)fPrivacyBit ;
 
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-   /* Enable UMA for TX translation only when there is no concurrent session active */
-   if (vos_concurrent_sessions_running())
-   {
-      staDesc.ucSwFrameTXXlation = 1;
-   }
-   else
-   {
-      staDesc.ucSwFrameTXXlation = 0;
-   }
-
-   // Enable frame translation in software for AMSDU 
-   // reception ONLY. The remaining rx is still 
-   // translated in HW.
-   staDesc.ucSwFrameRXXlation = 1;
-#else
    // For PRIMA UMA frame translation is not enable yet.
    staDesc.ucSwFrameTXXlation = 1;
    staDesc.ucSwFrameRXXlation = 1;
-#endif
    staDesc.ucAddRmvLLC = 1;
 
    // Initialize signatures and state
@@ -1552,36 +1504,16 @@ VOS_STATUS hdd_softap_change_STA_state( hdd_adapter_t *pAdapter, v_MACADDR_t *pD
     v_U8_t ucSTAId = WLAN_MAX_STA_COUNT;
     VOS_STATUS vosStatus = eHAL_STATUS_SUCCESS;
     v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pAdapter))->pvosContext;
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-    tHalHandle hHalHandle = (tHalHandle ) vos_get_context(VOS_MODULE_ID_HAL, pVosContext);
-#endif //FEATURE_WLAN_NON_INTEGRATED_SOC
 
     VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_INFO,
                "%s: enter", __func__);
 
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-    if(!hHalHandle )
-    {
-      VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_FATAL,
-                 "%s: The hHalHandle is  NULL ptr value");
-      VOS_ASSERT( 0 );
-      return VOS_STATUS_E_FAILURE;
-    }    
-
-    if (eHAL_STATUS_SUCCESS != halTable_FindStaidByAddr(hHalHandle, (tANI_U8 *)pDestMacAddress, &ucSTAId))
-    {
-        VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Failed to find right station", __func__);
-        return VOS_STATUS_E_FAILURE;
-    }
-#else
     if (VOS_STATUS_SUCCESS != hdd_softap_GetStaId(pAdapter, pDestMacAddress, &ucSTAId))
     {
         VOS_TRACE( VOS_MODULE_ID_HDD_SOFTAP, VOS_TRACE_LEVEL_ERROR,
                     "%s: Failed to find right station", __func__);
         return VOS_STATUS_E_FAILURE;
     }
-#endif //FEATURE_WLAN_NON_INTEGRATED_SOC
 
     if (FALSE == vos_is_macaddr_equal(&pAdapter->aStaInfo[ucSTAId].macAddrSTA, pDestMacAddress))
     {
@@ -1623,4 +1555,3 @@ VOS_STATUS hdd_softap_GetStaId(hdd_adapter_t *pAdapter, v_MACADDR_t *pMacAddress
     return VOS_STATUS_E_FAILURE;
 }
 
-#endif //WLAN_SOFTAP_FEATURE

@@ -122,9 +122,7 @@ when        who    what, where, why
 /*Invalid BSS index ! TO DO: Must come from the HAL header file*/
 #define WDI_BSS_INVALID_IDX 0xFF
 
-#ifdef ANI_MANF_DIAG
 #define WDI_FTM_MAX_RECEIVE_BUFFER   6500
-#endif /* ANI_MANF_DIAG */
 
 /*---------------------------------------------------------------------------
   DAL Control Path Main States
@@ -1056,10 +1054,8 @@ typedef struct
   /* Driver Type */
   tDriverType                 driverMode;  
 
-#ifdef ANI_MANF_DIAG
   /* Statically allocated FTM Response Buffer */
   wpt_uint8                   ucFTMCommandRspBuffer[WDI_FTM_MAX_RECEIVE_BUFFER];
-#endif /* ANI_MANF_DIAG */
 
   /*Driver in BMPS state*/
   wpt_boolean                 bInBmps;
@@ -4060,7 +4056,6 @@ WDI_ProcessAggrAddTSpecRsp
 
 #endif /* WLAN_FEATURE_VOWIFI_11R */
 
-#ifdef ANI_MANF_DIAG
 /**
  @brief WDI_ProcessFTMCommandReq
         Process FTM Command, simply route to HAL
@@ -4094,7 +4089,6 @@ WDI_ProcessFTMCommandRsp
   WDI_ControlBlockType*  pWDICtx,
   WDI_EventInfoType*     pEventData
 );
-#endif /* ANI_MANF_DIAG */
 /**
  @brief WDI_ProcessHALDumpCmdReq
         Process Hal Dump Command, simply route to HAL

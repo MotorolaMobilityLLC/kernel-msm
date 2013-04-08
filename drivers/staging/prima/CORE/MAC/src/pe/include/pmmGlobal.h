@@ -92,7 +92,7 @@ typedef enum ePmmState
     //UAPSD
     ePMM_STATE_UAPSD_WT_SLEEP_RSP,
     ePMM_STATE_UAPSD_SLEEP,
-    ePMM_STATE_UAPSD_WT_WAKEUP_RSP, 
+    ePMM_STATE_UAPSD_WT_WAKEUP_RSP,
 
     //WOWLAN
     ePMM_STATE_WOWLAN,
@@ -104,7 +104,7 @@ typedef enum ePmmState
 typedef struct sPmmStaInfo
 {
     tANI_U16 assocId;
-    tANI_U32 staTxAckCnt;   
+    tANI_U32 staTxAckCnt;
 }tPmmStaInfo, *tpPmmStaInfo;
 
 typedef struct sPmmTim
@@ -186,7 +186,7 @@ typedef struct sAniSirPmm
 
     tANI_U8  gPmmPsPollUpdate:1; // set when any sta state is update due to PS-Poll
     tANI_U8  rsvd: 7;
-   
+
    /// STA Power management state array
     /**
      * An entry in this array records the power save state for an STA
@@ -200,13 +200,7 @@ typedef struct sAniSirPmm
     /// Flag to track if we are in a missed beacon scenario
     tANI_U8 inMissedBeaconScenario;
 
-#ifdef ANI_PRODUCT_TYPE_AP
-    tPmmStaState *gpPmmStaState; // Used for HCF - PS Poll 
-    tANI_U8 *gpPmmPSState;          // To Store the PS States in AP
-#endif
-#ifdef WLAN_SOFTAP_FEATURE
     tPmmTim gPmmTim;
-#endif
 
 
     //Reason for which PMC is sending an EXIT_BMPS_REQ to PE

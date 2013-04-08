@@ -410,7 +410,6 @@ typedef enum
 #define CFG_CRDA_DEFAULT_COUNTRY_CODE_MAX        "ZZ"
 #define CFG_CRDA_DEFAULT_COUNTRY_CODE_DEFAULT    "ZZ"
 
-#ifdef WLAN_SOFTAP_FEATURE
 #define CFG_AP_QOS_UAPSD_MODE_NAME             "gEnableApUapsd" // ACs to setup U-APSD for at assoc
 #define CFG_AP_QOS_UAPSD_MODE_MIN              ( 0 )
 #define CFG_AP_QOS_UAPSD_MODE_MAX              ( 1 ) 
@@ -504,7 +503,6 @@ typedef enum
 #define CFG_GO_KEEP_ALIVE_PERIOD_MAX           ( 255)
 #define CFG_GO_KEEP_ALIVE_PERIOD_DEFAULT       ( 20 )
 
-#endif
 
 #define CFG_BEACON_INTERVAL_NAME               "gBeaconInterval"
 #define CFG_BEACON_INTERVAL_MIN                WNI_CFG_BEACON_INTERVAL_STAMIN
@@ -584,7 +582,7 @@ typedef enum
 #define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_NAME       "gActiveMaxChannelTimeConc"
 #define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_MIN        ( 0 )
 #define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_MAX        ( 10000 )
-#define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_DEFAULT    ( 27 )
+#define CFG_ACTIVE_MAX_CHANNEL_TIME_CONC_DEFAULT    ( 40 )
 
 #define CFG_ACTIVE_MIN_CHANNEL_TIME_CONC_NAME       "gActiveMinChannelTimeConc"
 #define CFG_ACTIVE_MIN_CHANNEL_TIME_CONC_MIN        ( 0 )
@@ -1314,10 +1312,8 @@ typedef enum
 #define CFG_VOS_TRACE_ENABLE_WDA_NAME     "vosTraceEnableWDA"
 #define CFG_VOS_TRACE_ENABLE_SYS_NAME     "vosTraceEnableSYS"
 #define CFG_VOS_TRACE_ENABLE_VOSS_NAME    "vosTraceEnableVOSS"
-#ifdef WLAN_SOFTAP_FEATURE
 #define CFG_VOS_TRACE_ENABLE_SAP_NAME     "vosTraceEnableSAP"
 #define CFG_VOS_TRACE_ENABLE_HDD_SAP_NAME "vosTraceEnableHDDSAP"
-#endif
 
 #define CFG_VOS_TRACE_ENABLE_MIN          (0)
 #define CFG_VOS_TRACE_ENABLE_MAX          (0xff)
@@ -1738,7 +1734,6 @@ typedef struct
    v_MACADDR_t   intfMacAddr[VOS_MAX_CONCURRENCY_PERSONA];
    v_U8_t        crdaDefaultCountryCode [3];
 
-#ifdef WLAN_SOFTAP_FEATURE
    v_BOOL_t      apUapsdEnabled;
    v_BOOL_t      apRandomBssidEnabled;
    v_BOOL_t      apProtEnabled;
@@ -1756,7 +1751,6 @@ typedef struct
    v_U8_t        enableLTECoex;
    v_U32_t       apKeepAlivePeriod;
    v_U32_t       goKeepAlivePeriod;
-#endif
    v_U32_t       nBeaconInterval;
    v_U8_t        nTxPowerCap;   //In dBm
    v_BOOL_t      fIsLowGainOverride;
@@ -1929,18 +1923,14 @@ typedef struct
    v_U16_t                     vosTraceEnableWDA;
    v_U16_t                     vosTraceEnableSYS;
    v_U16_t                     vosTraceEnableVOSS;
-#ifdef WLAN_SOFTAP_FEATURE
    v_U16_t                     vosTraceEnableSAP;
    v_U16_t                     vosTraceEnableHDDSAP;
-#endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    /* WDI Trace Control */
    v_U32_t                     wdiTraceEnableDAL;
    v_U32_t                     wdiTraceEnableCTL;
    v_U32_t                     wdiTraceEnableDAT;
    v_U32_t                     wdiTraceEnablePAL;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
    v_U16_t                     nTeleBcnTransListenInterval;
    v_U16_t                     nTeleBcnMaxListenInterval;
    v_U16_t                     nTeleBcnTransLiNumIdleBeacons;

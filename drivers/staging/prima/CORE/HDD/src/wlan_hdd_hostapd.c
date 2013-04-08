@@ -556,7 +556,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             sapCleanupChannelList();
 
             pHddApCtx->operatingChannel = 0; //Invalidate the channel info.
-            vos_event_set(&pHostapdState->vosEvent);
             goto stopbss;
         case eSAP_STA_SET_KEY_EVENT:
             //TODO: forward the message to hostapd once implementtation is done for now just print
@@ -862,6 +861,12 @@ stopbss :
 
         /* reclaim all resources allocated to the BSS */
         hdd_softap_stop_bss(pHostapdAdapter);
+
+        /* once the event is set, structure dev/pHostapdAdapter should
+         * not be touched since they are now subject to being deleted
+         * by another thread */
+        if (eSAP_STOP_BSS_EVENT == sapEvent)
+            vos_event_set(&pHostapdState->vosEvent);
 
         /* notify userspace that the BSS has stopped */
         memset(&we_custom_event, '\0', sizeof(we_custom_event));
@@ -1290,14 +1295,10 @@ static iw_softap_disassoc_sta(struct net_device *dev,
     v_U8_t *peerMacAddr;    
     
     ENTER();
-    /* the comparison below is needed since if iwpriv tool is used for calling this ioctl
-     * data is passed in extra (less than 16 octets); however in android wifi framework
-     * data is placed in wrqu->data.pointer.
+    /* iwpriv tool or framework calls this ioctl with
+     * data passed in extra (less than 16 octets);
      */
-    if ((v_U8_t*)wrqu == (v_U8_t*)extra)
-        peerMacAddr = (v_U8_t *)(extra);
-    else
-        peerMacAddr = (v_U8_t *)(wrqu->data.pointer);
+    peerMacAddr = (v_U8_t *)(extra);
 
     hddLog(LOG1, "data %02x:%02x:%02x:%02x:%02x:%02x",
             peerMacAddr[0], peerMacAddr[1], peerMacAddr[2],
@@ -1415,11 +1416,7 @@ static iw_softap_commit(struct net_device *dev,
             // The actual processing may eventually be more extensive than this.
             // Right now, just consume any PMKIDs that are  sent in by the app.
             status = hdd_softap_unpackIE( 
-#if defined(FEATURE_WLAN_NON_INTEGRATED_SOC)
-                                  vos_get_context( VOS_MODULE_ID_HAL, pVosContext),
-#else
                                   vos_get_context( VOS_MODULE_ID_PE, pVosContext),
-#endif
                                   &RSNEncryptType,
                                   &mcRSNEncryptType,
                                   &RSNAuthType,

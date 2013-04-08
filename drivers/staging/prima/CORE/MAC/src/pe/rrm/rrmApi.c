@@ -62,11 +62,7 @@
 #include "wniApi.h"
 #include "sirApi.h"
 #include "aniGlobal.h"
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-#include "wniCfgAp.h"
-#else
 #include "wniCfgSta.h"
-#endif
 #include "limTypes.h"
 #include "limUtils.h"
 #include "limSendSmeRspMessages.h"

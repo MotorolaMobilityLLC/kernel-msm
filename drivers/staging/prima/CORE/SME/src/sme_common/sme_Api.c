@@ -81,9 +81,7 @@
 #include "wlan_qct_wda.h"
 #include "halMsgApi.h"
 
-#ifdef WLAN_SOFTAP_FEATURE
 #include "sapApi.h"
-#endif
 
 
 
@@ -958,7 +956,6 @@ eHalStatus sme_Open(tHalHandle hHal)
       if(!HAL_STATUS_SUCCESS((status = initSmeCmdList(pMac))))
           break;
 
-#ifdef WLAN_SOFTAP_FEATURE
       {
          v_PVOID_t pvosGCtx = vos_get_global_context(VOS_MODULE_ID_SAP, NULL);
          if ( NULL == pvosGCtx ){
@@ -974,7 +971,6 @@ eHalStatus sme_Open(tHalHandle hHal)
              break;
          }
       }
-#endif
 #if defined WLAN_FEATURE_VOWIFI
       status = rrmOpen(pMac);
       if ( ! HAL_STATUS_SUCCESS( status ) ) {
@@ -996,7 +992,6 @@ eHalStatus sme_Open(tHalHandle hHal)
    return status;
 }
 
-#ifdef WLAN_SOFTAP_FEATURE
 /*--------------------------------------------------------------------------
 
   \brief sme_set11dinfo() - Set the 11d information about valid channels
@@ -1084,7 +1079,6 @@ eHalStatus sme_setRegInfo(tHalHandle hHal,  tANI_U8 *apCntryCode)
     return status;
 }
 
-#endif
 #ifdef FEATURE_WLAN_SCAN_PNO
 /*--------------------------------------------------------------------------
 
@@ -1351,14 +1345,12 @@ eHalStatus sme_Start(tHalHandle hHal)
          break;
       }
 
-#ifdef WLAN_SOFTAP_FEATURE
       status = WLANSAP_Start(vos_get_global_context(VOS_MODULE_ID_SAP, NULL));
       if ( ! HAL_STATUS_SUCCESS( status ) ) {
          smsLog( pMac, LOGE, "WLANSAP_Start failed during smeStart with status=%d\n",
                  status );
          break;
       }
-#endif
       pMac->sme.state = SME_STATE_START;
    }while (0);
 
@@ -1812,14 +1804,12 @@ eHalStatus sme_Stop(tHalHandle hHal, tANI_BOOLEAN pmcFlag)
    eHalStatus fail_status = eHAL_STATUS_SUCCESS;
    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
 
-#ifdef WLAN_SOFTAP_FEATURE
    status = WLANSAP_Stop(vos_get_global_context(VOS_MODULE_ID_SAP, NULL));
    if ( ! HAL_STATUS_SUCCESS( status ) ) {
       smsLog( pMac, LOGE, "WLANSAP_Stop failed during smeStop with status=%d\n",
                           status );
       fail_status = status;
    }
-#endif
 
    p2pStop(hHal);
 
@@ -1885,14 +1875,12 @@ eHalStatus sme_Close(tHalHandle hHal)
       fail_status = status;
    }
 
-#ifdef WLAN_SOFTAP_FEATURE
    status = WLANSAP_Close(vos_get_global_context(VOS_MODULE_ID_SAP, NULL));
    if ( ! HAL_STATUS_SUCCESS( status ) ) {
       smsLog( pMac, LOGE, "WLANSAP_close failed during sme close with status=%d\n",
               status );
       fail_status = status;
    }
-#endif
 
 #ifndef WLAN_MDM_CODE_REDUCTION_OPT
    status = btcClose(hHal);
@@ -2444,7 +2432,6 @@ eHalStatus sme_RoamDisconnect(tHalHandle hHal, tANI_U8 sessionId, eCsrRoamDiscon
    return (status);
 }
 
-#ifdef WLAN_SOFTAP_FEATURE
 /* ---------------------------------------------------------------------------
     \fn sme_RoamStopBss
     \brief To stop BSS for Soft AP. This is an asynchronous API.
@@ -2669,7 +2656,6 @@ eHalStatus sme_RoamGetWpsSessionOverlap(tHalHandle hHal, tANI_U8 sessionId,
    return (status);
 }
 
-#endif
 
 /* ---------------------------------------------------------------------------
     \fn sme_RoamGetConnectState
@@ -3733,10 +3719,8 @@ eHalStatus sme_RoamSetKey(tHalHandle hHal, tANI_U8 sessionId, tCsrRoamSetKey *pS
    eHalStatus status = eHAL_STATUS_FAILURE;
    tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
    tANI_U32 roamId;
-#ifdef WLAN_SOFTAP_FEATURE
    tANI_U32 i;
    tCsrRoamSession *pSession = NULL;
-#endif
 
    status = sme_AcquireGlobalLock( &pMac->sme );
    if ( HAL_STATUS_SUCCESS( status ) )
@@ -3747,7 +3731,6 @@ eHalStatus sme_RoamSetKey(tHalHandle hHal, tANI_U8 sessionId, tCsrRoamSetKey *pS
          *pRoamId = roamId;
       }
 
-#ifdef WLAN_SOFTAP_FEATURE
       smsLog(pMac, LOG2, FL("keyLength\n"), pSetKey->keyLength);
 
       for(i=0; i<pSetKey->keyLength; i++)
@@ -3779,7 +3762,6 @@ eHalStatus sme_RoamSetKey(tHalHandle hHal, tANI_U8 sessionId, tCsrRoamSetKey *pS
             }
          }
       }
-#endif
 
       status = csrRoamSetKey ( pMac, sessionId, pSetKey, roamId );
       sme_ReleaseGlobalLock( &pMac->sme );
@@ -5033,7 +5015,6 @@ eHalStatus sme_CloseSession(tHalHandle hHal, tANI_U8 sessionId,
    return ( status );
 }
 
-#ifdef WLAN_SOFTAP_FEATURE
 /* ---------------------------------------------------------------------------
 
     \fn sme_RoamUpdateAPWPSIE
@@ -5096,7 +5077,6 @@ eHalStatus sme_RoamUpdateAPWPARSNIEs(tHalHandle hHal, tANI_U8 sessionId, tSirRSN
 
    return (status);
 }
-#endif
 /* ---------------------------------------------------------------------------
 
     \fn sme_ChangeMCCBeaconInterval
@@ -5368,9 +5348,7 @@ eHalStatus sme_GetOperationChannel(tHalHandle hHal, tANI_U32 *pChannel, tANI_U8 
 
        if(( pSession->connectedProfile.BSSType == eCSR_BSS_TYPE_INFRASTRUCTURE ) || 
           ( pSession->connectedProfile.BSSType == eCSR_BSS_TYPE_IBSS ) ||
-#ifdef WLAN_SOFTAP_FEATURE
           ( pSession->connectedProfile.BSSType == eCSR_BSS_TYPE_INFRA_AP ) ||
-#endif
           ( pSession->connectedProfile.BSSType == eCSR_BSS_TYPE_START_IBSS ))
        {
            *pChannel =pSession->connectedProfile.operationChannel;
@@ -6594,7 +6572,6 @@ eHalStatus sme_SetMaxTxPower(tHalHandle hHal, tSirMacAddr pBssid,
     return eHAL_STATUS_SUCCESS;
 }
 
-#ifdef WLAN_SOFTAP_FEATURE
 /* ---------------------------------------------------------------------------
 
     \fn sme_HideSSID
@@ -6645,7 +6622,6 @@ eHalStatus sme_HideSSID(tHalHandle hHal, v_U8_t sessionId, v_U8_t ssidHidden)
     }
    return status;
 }
-#endif
 
 /* ---------------------------------------------------------------------------
 

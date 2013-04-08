@@ -66,7 +66,6 @@
 2010-12-30    smiryala     UMAC convergence changes
 2010-08-19    adwivedi    WLAN DAL AL(WDA) layer for Prima
 ===========================================================================*/
-#if defined( FEATURE_WLAN_INTEGRATED_SOC )
 #include "vos_mq.h" 
 #include "vos_api.h" 
 #include "vos_packet.h" 
@@ -88,10 +87,8 @@
 #include "limUtils.h"
 #include "btcApi.h"
 #include "vos_sched.h"
-#ifdef ANI_MANF_DIAG
 #include "pttMsgApi.h"
 #include "wlan_qct_sys.h"
-#endif /* ANI_MANF_DIAG */
 /* Used MACRO's */
 /* Get WDA context from vOSS module */
 #define VOS_GET_WDA_CTXT(a)            vos_get_context(VOS_MODULE_ID_WDA, a)
@@ -3671,7 +3668,6 @@ void WDA_UpdateBSSParams(tWDA_CbContext *pWDA,
          }
          else
          {
-#ifdef WLAN_SOFTAP_FEATURE
             for( keyIndex=0; keyIndex < SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS; 
                                                                   keyIndex++)
             {
@@ -3692,24 +3688,6 @@ void WDA_UpdateBSSParams(tWDA_CbContext *pWDA,
             }
             wdiBssParams->wdiExtSetKeyParam.ucNumKeys = 
                SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS;
-#else
-            wdiBssParams->wdiExtSetKeyParam.wdiKey[0].keyId =
-               wdaBssParams->extSetStaKeyParam.key.keyId;
-            wdiBssParams->wdiExtSetKeyParam.wdiKey[0].unicast = 
-               wdaBssParams->extSetStaKeyParam.key.unicast;
-            wdiBssParams->wdiExtSetKeyParam.wdiKey[0].keyDirection =
-               wdaBssParams->extSetStaKeyParam.key.keyDirection;
-            vos_mem_copy(wdiBssParams->wdiExtSetKeyParam.wdiKey[0].keyRsc, 
-                         wdaBssParams->extSetStaKeyParam.key.keyRsc, WLAN_MAX_KEY_RSC_LEN);
-            wdiBssParams->wdiExtSetKeyParam.wdiKey[0].paeRole =
-               wdaBssParams->extSetStaKeyParam.key.paeRole;
-            wdiBssParams->wdiExtSetKeyParam.wdiKey[0].keyLength =
-               wdaBssParams->extSetStaKeyParam.key.keyLength;
-            vos_mem_copy(wdiBssParams->wdiExtSetKeyParam.wdiKey[0].key, 
-                         wdaBssParams->extSetStaKeyParam.key[keyIndex].key, 
-                         SIR_MAC_MAX_KEY_LENGTH);
-            wdiBssParams->wdiExtSetKeyParam.ucNumKeys = 1;
-#endif
          }
       }
       wdiBssParams->wdiExtSetKeyParam.ucSingleTidRc = wdaBssParams->extSetStaKeyParam.singleTidRc;
@@ -4397,7 +4375,6 @@ VOS_STATUS WDA_ProcessSetStaKeyReq(tWDA_CbContext *pWDA,
       }
       else
       {
-#ifdef WLAN_SOFTAP_FEATURE
          for( keyIndex=0; keyIndex < SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS; 
                                                                   keyIndex++)
          {
@@ -4423,24 +4400,6 @@ VOS_STATUS WDA_ProcessSetStaKeyReq(tWDA_CbContext *pWDA,
          }
          wdiSetStaKeyParam->wdiKeyInfo.ucNumKeys = 
                                           SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS;
-#else
-         wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyId =
-                                                setStaKeyParams->key.keyId;
-         wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].unicast = 
-                                                setStaKeyParams->key.unicast;
-         wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyDirection =
-                                             setStaKeyParams->key.keyDirection;
-         vos_mem_copy(wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyRsc, 
-                           setStaKeyParams->key.keyRsc, WLAN_MAX_KEY_RSC_LEN);
-         wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].paeRole =
-                                            setStaKeyParams->key.paeRole;
-         wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyLength =
-                                             setStaKeyParams->key.keyLength;
-         vos_mem_copy(wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].key, 
-                          setStaKeyParams->key[keyIndex].key, 
-                                              SIR_MAC_MAX_KEY_LENGTH);
-         wdiSetStaKeyParam->wdiKeyInfo.ucNumKeys = 1;
-#endif
       }
    }
    wdiSetStaKeyParam->wdiKeyInfo.ucSingleTidRc = setStaKeyParams->singleTidRc;
@@ -4531,7 +4490,6 @@ VOS_STATUS WDA_ProcessSetBcastStaKeyReq(tWDA_CbContext *pWDA,
    wdiSetStaKeyParam->wdiKeyInfo.ucDefWEPIdx = setStaKeyParams->defWEPIdx;
    if(setStaKeyParams->encType != eSIR_ED_NONE)
    {
-#ifdef WLAN_SOFTAP_FEATURE
       for( keyIndex=0; keyIndex < SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS; 
                                                                keyIndex++)
       {
@@ -4552,24 +4510,6 @@ VOS_STATUS WDA_ProcessSetBcastStaKeyReq(tWDA_CbContext *pWDA,
       }
       wdiSetStaKeyParam->wdiKeyInfo.ucNumKeys = 
                                        SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS;
-#else
-      wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyId =
-                                             setStaKeyParams->key.keyId;
-      wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].unicast = 
-                                             setStaKeyParams->key.unicast;
-      wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyDirection =
-                                          setStaKeyParams->key.keyDirection;
-      vos_mem_copy(wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyRsc, 
-                        setStaKeyParams->key.keyRsc, WLAN_MAX_KEY_RSC_LEN);
-      wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].paeRole =
-                                         setStaKeyParams->key.paeRole;
-      wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].keyLength =
-                                          setStaKeyParams->key.keyLength;
-      vos_mem_copy(wdiSetStaKeyParam->wdiKeyInfo.wdiKey[0].key, 
-                       setStaKeyParams->key[keyIndex].key, 
-                                           SIR_MAC_MAX_KEY_LENGTH);
-      wdiSetStaKeyParam->wdiKeyInfo.ucNumKeys = 1;
-#endif
    }
    wdiSetStaKeyParam->wdiKeyInfo.ucSingleTidRc = setStaKeyParams->singleTidRc;
    /* Store set key pointer, as this will be used for response */
@@ -5859,10 +5799,8 @@ VOS_STATUS WDA_ProcessSendBeacon(tWDA_CbContext *pWDA,
                               pSendbeaconParams->bssId, sizeof(tSirMacAddr));
    wdiSendBeaconReqParam.wdiSendBeaconParamsInfo.beaconLength = 
                               pSendbeaconParams->beaconLength;
-#ifdef WLAN_SOFTAP_FEATURE
    wdiSendBeaconReqParam.wdiSendBeaconParamsInfo.timIeOffset = 
                               pSendbeaconParams->timIeOffset;
-#endif
 #ifdef WLAN_FEATURE_P2P
    wdiSendBeaconReqParam.wdiSendBeaconParamsInfo.usP2PIeOffset = 
                               pSendbeaconParams->p2pIeOffset;
@@ -8606,7 +8544,6 @@ VOS_STATUS WDA_ProcessBtAmpEventReq(tWDA_CbContext *pWDA,
    return CONVERT_WDI2VOS_STATUS(status) ;
 }
 
-#ifdef ANI_MANF_DIAG
 /*
  * FUNCTION: WDA_FTMCommandReqCallback
  * Handle FTM CMD response came from HAL
@@ -8625,10 +8562,8 @@ void WDA_FTMCommandReqCallback(void *ftmCmdRspData,
    /* Release Current FTM Command Request */
    vos_mem_free(pWDA->wdaFTMCmdReq);
    pWDA->wdaFTMCmdReq = NULL;
-#ifndef WLAN_FTM_STUB
    /* Post FTM Responce to HDD FTM */
    wlan_sys_ftm(ftmCmdRspData);
-#endif /* WLAN_FTM_STUB */
    return;
 }
 /*
@@ -8655,7 +8590,6 @@ VOS_STATUS WDA_ProcessFTMCommand(tWDA_CbContext *pWDA,
    status = WDI_FTMCommandReq(ftmCMDReq, WDA_FTMCommandReqCallback, pWDA);
    return status;
 }
-#endif /* ANI_MANF_DIAG */
 #ifdef FEATURE_OEM_DATA_SUPPORT
 /*
  * FUNCTION: WDA_StartOemDataReqCallback
@@ -9944,13 +9878,11 @@ VOS_STATUS WDA_McProcessMsg( v_CONTEXT_t pVosContext, vos_msg_t *pMsg )
          break;
       }
 #endif /* WLAN_FEATURE_VOWIFI_11R */
-#ifdef ANI_MANF_DIAG
       case WDA_FTM_CMD_REQ:
       {
          WDA_ProcessFTMCommand(pWDA, (tPttMsgbuffer *)pMsg->bodyptr) ;
          break ;
       }
-#endif /* ANI_MANF_DIAG */
 #ifdef FEATURE_OEM_DATA_SUPPORT
       case WDA_START_OEM_DATA_REQ:
       {
@@ -10142,10 +10074,22 @@ void WDA_lowLevelIndCallback(WDI_LowLevelIndType *wdiLowLevelInd,
       }
       case WDI_MISSED_BEACON_IND:
       {
+         tpSirSmeMissedBeaconInd pMissBeacInd =
+            (tpSirSmeMissedBeaconInd)vos_mem_malloc(sizeof(tSirSmeMissedBeaconInd));
          VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                      "Received WDI_MISSED_BEACON_IND from WDI ");
          /* send IND to PE */
-         WDA_SendMsg(pWDA, WDA_MISSED_BEACON_IND, NULL, 0) ;
+         if(NULL == pMissBeacInd)
+         {
+             VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+                                 "%s: VOS MEM Alloc Failure", __func__);
+             break;
+         }
+         pMissBeacInd->messageType = WDA_MISSED_BEACON_IND;
+         pMissBeacInd->length = sizeof(tSirSmeMissedBeaconInd);
+         pMissBeacInd->bssIdx =
+             wdiLowLevelInd->wdiIndicationData.wdiMissedBeaconInd.bssIdx;
+         WDA_SendMsg(pWDA, WDA_MISSED_BEACON_IND, (void *)pMissBeacInd , 0) ;
          break ;
       }
       case WDI_UNKNOWN_ADDR2_FRAME_RX_IND:
@@ -10993,7 +10937,6 @@ eHalStatus WDA_SetRegDomain(void * clientCtxt, v_REGDOMAIN_t regId)
    }
    return eHAL_STATUS_SUCCESS;
 }
-#endif  /* FEATURE_WLAN_INTEGRATED_SOC */
 
 #ifdef FEATURE_WLAN_SCAN_PNO
 /*

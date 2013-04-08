@@ -102,9 +102,7 @@
 
 #include "wlan_hal_msg.h"
 
-#ifdef ANI_MANF_DIAG
 #include "pttMsgApi.h"
-#endif /* ANI_MANF_DIAG */
 
 /*===========================================================================
    WLAN DAL Control Path Internal Data Definitions and Declarations
@@ -285,11 +283,7 @@ WDI_ReqProcFuncType  pfnReqProcTbl[WDI_MAX_UMAC_IND] =
 #endif /* WLAN_FEATURE_VOWIFI_11R */
   WDI_ProcessAddSTASelfReq,         /* WDI_ADD_STA_SELF_REQ */
   WDI_ProcessDelSTASelfReq,          /* WDI DEL STA SELF REQ */
-#ifdef ANI_MANF_DIAG
   WDI_ProcessFTMCommandReq,            /* WDI_FTM_CMD_REQ */
-#else
-  NULL,
-#endif /* ANI_MANF_DIAG */
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
   WDI_ProcessStartOemDataReq,     /*WDI_START_OEM_DATA_REQ*/
@@ -463,11 +457,7 @@ WDI_RspProcFuncType  pfnRspProcTbl[WDI_MAX_RESP] =
   NULL,
 #endif
 
-#ifdef ANI_MANF_DIAG
   WDI_ProcessFTMCommandRsp,         /* WDI_FTM_CMD_RESP */
-#else
-  NULL,
-#endif /* ANI_MANF_DIAG */
 
   WDI_ProcessKeepAliveRsp,       /* WDI_KEEP_ALIVE_RESP  */
 
@@ -5258,7 +5248,6 @@ WDI_AggrAddTSReq
 
 #endif /* WLAN_FEATURE_VOWIFI_11R */
 
-#ifdef ANI_MANF_DIAG
 /**
  @brief WDI_FTMCommandReq
         Post FTM Command Event
@@ -5303,7 +5292,6 @@ WDI_FTMCommandReq
 
   return WDI_PostMainEvent(&gWDICb, WDI_REQUEST_EVENT, &wdiEventData);
 }
-#endif /* ANI_MANF_DIAG */
 /**
  @brief WDI_HostResumeReq will be called
 
@@ -8476,7 +8464,6 @@ WDI_ProcessSetStaKeyReq
 
   halSetStaKeyReqMsg.setStaKeyParams.singleTidRc = pwdiSetSTAKeyParams->wdiKeyInfo.ucSingleTidRc;
 
-#ifdef WLAN_SOFTAP_FEATURE
   for(keyIndex = 0; keyIndex < pwdiSetSTAKeyParams->wdiKeyInfo.ucNumKeys ;
                                                                  keyIndex++)
   {
@@ -8497,24 +8484,6 @@ WDI_ProcessSetStaKeyReq
                          pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].key,
                         WDI_MAX_KEY_LENGTH);
    }
-#else
-  halSetStaKeyReqMsg.setStaKeyParams.key.keyId =
-                      pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].keyId;
-  halSetStaKeyReqMsg.setStaKeyParams.key.unicast =
-                     pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].unicast;
-  halSetStaKeyReqMsg.setStaKeyParams.key.keyDirection =
-                pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].keyDirection;
-  wpalMemoryCopy(halSetStaKeyReqMsg.setStaKeyParams.key.keyRsc,
-                     pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].keyRsc,
-                     WDI_MAX_KEY_RSC_LEN);
-  halSetStaKeyReqMsg.setStaKeyParams.key.paeRole =
-                     pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].paeRole;
-  halSetStaKeyReqMsg.setStaKeyParams.key.keyLength =
-                   pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].keyLength;
-  wpalMemoryCopy(halSetStaKeyReqMsg.setStaKeyParams.key.key,
-                         pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].key,
-                        WDI_MAX_KEY_LENGTH);
-#endif
 
   wpalMemoryCopy( pSendBuffer+usDataOffset,
                     &halSetStaKeyReqMsg.setStaKeyParams,
@@ -8791,7 +8760,6 @@ WDI_ProcessSetStaBcastKeyReq
 
   halSetStaKeyReqMsg.setStaKeyParams.singleTidRc = pwdiSetSTAKeyParams->wdiKeyInfo.ucSingleTidRc;
 
-#ifdef WLAN_SOFTAP_FEATURE
   for(keyIndex = 0; keyIndex < pwdiSetSTAKeyParams->wdiKeyInfo.ucNumKeys ;
                                                                  keyIndex++)
   {
@@ -8812,24 +8780,6 @@ WDI_ProcessSetStaBcastKeyReq
                          pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[keyIndex].key,
                         WDI_MAX_KEY_LENGTH);
    }
-#else
-  halSetStaKeyReqMsg.setStaKeyParams.key.keyId =
-                      pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].keyId;
-  halSetStaKeyReqMsg.setStaKeyParams.key.unicast =
-                     pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].unicast;
-  halSetStaKeyReqMsg.setStaKeyParams.key.keyDirection =
-                pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].keyDirection;
-  wpalMemoryCopy(halSetStaKeyReqMsg.setStaKeyParams.key.keyRsc,
-                     pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].keyRsc,
-                     WDI_MAX_KEY_RSC_LEN);
-  halSetStaKeyReqMsg.setStaKeyParams.key.paeRole =
-                     pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].paeRole;
-  halSetStaKeyReqMsg.setStaKeyParams.key.keyLength =
-                   pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].keyLength;
-  wpalMemoryCopy(halSetStaKeyReqMsg.setStaKeyParams.key.key,
-                         pwdiSetSTAKeyParams->wdiKeyInfo.wdiKey[0].key,
-                        WDI_MAX_KEY_LENGTH);
-#endif
 
   wpalMemoryCopy( pSendBuffer+usDataOffset,
                     &halSetStaKeyReqMsg.setStaKeyParams,
@@ -11468,10 +11418,8 @@ WDI_ProcessSendBeaconParamsReq
   wpalMemoryCopy(halSendBeaconReq.sendBeaconParam.beacon,
                   pwdiSendBeaconParams->wdiSendBeaconParamsInfo.beacon,
                   pwdiSendBeaconParams->wdiSendBeaconParamsInfo.beaconLength);
-#ifdef WLAN_SOFTAP_FEATURE
   halSendBeaconReq.sendBeaconParam.timIeOffset =
                   pwdiSendBeaconParams->wdiSendBeaconParamsInfo.timIeOffset;
-#endif
 #ifdef WLAN_FEATURE_P2P
   halSendBeaconReq.sendBeaconParam.p2pIeOffset =
                   pwdiSendBeaconParams->wdiSendBeaconParamsInfo.usP2PIeOffset;
@@ -18420,6 +18368,7 @@ WDI_ProcessMissedBeaconInd
   WDI_Status           wdiStatus;
   eHalStatus           halStatus;
   WDI_LowLevelIndType  wdiInd;
+  tpHalMissedBeaconIndParams halMissedBeaconIndParams;
   /*- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
   /*-------------------------------------------------------------------------
@@ -18433,7 +18382,7 @@ WDI_ProcessMissedBeaconInd
      WDI_ASSERT(0);
      return WDI_STATUS_E_FAILURE;
   }
-
+  halMissedBeaconIndParams = (tpHalMissedBeaconIndParams)pEventData->pEventData;
   /*-------------------------------------------------------------------------
     Extract indication and send it to UMAC
   -------------------------------------------------------------------------*/
@@ -18443,7 +18392,8 @@ WDI_ProcessMissedBeaconInd
 
   /*Fill in the indication parameters*/
   wdiInd.wdiIndicationType = WDI_MISSED_BEACON_IND;
-
+  wdiInd.wdiIndicationData.wdiMissedBeaconInd.bssIdx =
+                                       halMissedBeaconIndParams->bssIdx;
   if ( pWDICtx->wdiLowLevelIndCB )
   {
     /*Notify UMAC*/
@@ -19006,7 +18956,6 @@ WDI_ProcessTxPerHitInd
   return WDI_STATUS_SUCCESS;
 }/*WDI_ProcessTxPerHitInd*/
 
-#ifdef ANI_MANF_DIAG
 /**
  @brief WDI_ProcessFTMCommandReq
         Process FTM Command, simply route to HAL
@@ -19110,7 +19059,6 @@ WDI_ProcessFTMCommandRsp
 
   return WDI_STATUS_SUCCESS;
 }
-#endif /* ANI_MANF_DIAG */
 /**
  @brief WDI_ProcessHalDumpCmdReq
         Process hal dump Command, simply route to HAL
@@ -21197,10 +21145,8 @@ WDI_2_HAL_REQ_TYPE
   case WDI_AGGR_ADD_TS_REQ:
      return WLAN_HAL_AGGR_ADD_TS_REQ;
 #endif /* WLAN_FEATURE_VOWIFI_11R */
-#ifdef ANI_MANF_DIAG
   case WDI_FTM_CMD_REQ:
     return WLAN_HAL_PROCESS_PTT_REQ;
-#endif /* ANI_MANF_DIAG */
   case WDI_ADD_STA_SELF_REQ:
     return WLAN_HAL_ADD_STA_SELF_REQ;
   case WDI_DEL_STA_SELF_REQ:
@@ -21417,10 +21363,8 @@ HAL_2_WDI_RSP_TYPE
     return WDI_FLUSH_AC_RESP;
   case WLAN_HAL_SIGNAL_BTAMP_EVENT_RSP:
     return WDI_BTAMP_EVENT_RESP;
-#ifdef ANI_MANF_DIAG
   case WLAN_HAL_PROCESS_PTT_RSP:
     return  WDI_FTM_CMD_RESP;
-#endif /* ANI_MANF_DIAG */
   case WLAN_HAL_ADD_STA_SELF_RSP:
     return WDI_ADD_STA_SELF_RESP;
 case WLAN_HAL_DEL_STA_SELF_RSP:
@@ -22178,7 +22122,6 @@ WDI_CopyWDIConfigBSSToHALConfigBSS
 
      phalConfigBSS->extSetStaKeyParam.singleTidRc = pwdiConfigBSS->wdiExtSetKeyParam.ucSingleTidRc;
 
-#ifdef WLAN_SOFTAP_FEATURE
      for(keyIndex = 0; keyIndex < pwdiConfigBSS->wdiExtSetKeyParam.ucNumKeys ;
           keyIndex++)
      {
@@ -22199,24 +22142,6 @@ WDI_CopyWDIConfigBSSToHALConfigBSS
                        pwdiConfigBSS->wdiExtSetKeyParam.wdiKey[keyIndex].key,
                        WDI_MAX_KEY_LENGTH);
      }
-#else
-     phalConfigBSS->extSetStaKeyParam.key.keyId =
-        pwdiConfigBSS->wdiExtSetKeyParam.wdiKey[0].keyId;
-     phalConfigBSS->extSetStaKeyParam.key.unicast =
-        pwdiConfigBSS->wdiExtSetKeyParam.wdiKey[0].unicast;
-     phalConfigBSS->extSetStaKeyParam.key.keyDirection =
-        pwdiConfigBSS->wdiExtSetKeyParam.wdiKey[0].keyDirection;
-     wpalMemoryCopy(phalConfigBSS->extSetStaKeyParam.key.keyRsc,
-                    pwdiConfigBSS->wdiExtSetKeyParam.wdiKey[0].keyRsc,
-                    WDI_MAX_KEY_RSC_LEN);
-     phalConfigBSS->extSetStaKeyParam.key.paeRole =
-        pwdiConfigBSS->wdiExtSetKeyParam.wdiKey[0].paeRole;
-     phalConfigBSS->extSetStaKeyParam.key.keyLength =
-        pwdiConfigBSS->wdiExtSetKeyParam.wdiKey[0].keyLength;
-     wpalMemoryCopy(phalConfigBSS->extSetStaKeyParam.key.key,
-                    pwdiConfigBSS->wdiExtSetKeyParam.wdiKey[0].key,
-                    WDI_MAX_KEY_LENGTH);
-#endif
   }
   else/* phalConfigBSS->extSetStaKeyParamValid is not set */
   {
@@ -23200,8 +23125,6 @@ WDI_PackUpdateScanParamsReqEx
    tUpdateScanParamsEx           updateScanParams = {0};
 
 
-   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_INFO,
-               "Begin WDI Update Scan Parameters New Style Params");
    /*-----------------------------------------------------------------------
      Get message buffer
    -----------------------------------------------------------------------*/
@@ -23247,9 +23170,6 @@ WDI_PackUpdateScanParamsReqEx
 
    pWDICtx->wdiReqStatusCB     = pwdiUpdateScanParams->wdiReqStatusCB;
    pWDICtx->pReqStatusUserData = pwdiUpdateScanParams->pUserData;
-
-   WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_INFO,
-               "End Update Scan Parameters New Style");
 
    /*Set the output values*/
    *ppSendBuffer = pSendBuffer;

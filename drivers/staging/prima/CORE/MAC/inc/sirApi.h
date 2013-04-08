@@ -502,9 +502,7 @@ typedef struct sSirSmeStartReq
     tANI_U16     transcationId;  //Added for BT-AMP Support
     tSirMacAddr  bssId;          //Added For BT-AMP Support   
     tANI_U32   roamingAtPolaris;
-#if (WNI_POLARIS_FW_PRODUCT == WLAN_STA) || defined(ANI_AP_CLIENT_SDK)
     tANI_U32   sendNewBssInd;
-#endif
 } tSirSmeStartReq, *tpSirSmeStartReq;
 
 /// Definition for indicating all modules ready on STA
@@ -524,18 +522,6 @@ typedef struct sSirSmeStartRsp
     tANI_U16             transactionId;     
 } tSirSmeStartRsp, *tpSirSmeStartRsp;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
-/**
- * Trigger Type
- */
-typedef enum {
-    // During Initialization and NM triggers only
-    eSIR_TRIGGER_INIT_NM,
-
-    // During Initialization, NM triggers and Periodic evaluation
-    eSIR_TRIGGER_INIT_NM_PERIODIC
-}tSirDfsTrigType;
-#endif
 
 /// Definition for Load structure
 typedef struct sSirLoad
@@ -548,9 +534,7 @@ typedef struct sSirLoad
 typedef enum eSirBssType
 {
     eSIR_INFRASTRUCTURE_MODE,
-#ifdef WLAN_SOFTAP_FEATURE
     eSIR_INFRA_AP_MODE,                    //Added for softAP support
-#endif
     eSIR_IBSS_MODE,
     eSIR_BTAMP_STA_MODE,                     //Added for BT-AMP support
     eSIR_BTAMP_AP_MODE,                     //Added for BT-AMP support
@@ -642,13 +626,7 @@ typedef struct sSirSmeStartBssReq
     tSirMacSSid             ssId;
     tANI_U8                 channelId;
     ePhyChanBondState       cbMode;
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
-    tSirAlternateRadioList  alternateRadioList;
-    tANI_S8                 powerLevel;
-    tSirWdsInfo             wdsInfo;
-#endif
     
-#ifdef WLAN_SOFTAP_FEATURE
     tANI_U8                 privacy;
     tANI_U8                 apUapsdEnable;
     tANI_U8                 ssidHidden;
@@ -659,7 +637,6 @@ typedef struct sSirSmeStartBssReq
     tAniAuthType            authType;
     tANI_U32                dtimPeriod;
     tANI_U8                 wps_state;
-#endif
     tVOS_CON_MODE           bssPersona;
 
     tANI_U8                 txLdpcIniFeatureEnabled;
@@ -671,10 +648,6 @@ typedef struct sSirSmeStartBssReq
     tSirMacRateSet          operationalRateSet;// Has 11a or 11b rates
     tSirMacRateSet          extendedRateSet;    // Has 11g rates
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U8                 numSSID;
-    tSirMacSSid             ssIdList[ANI_MAX_NUM_OF_SSIDS];
-#endif
 } tSirSmeStartBssReq, *tpSirSmeStartBssReq;
 
 #define GET_IE_LEN_IN_BSS(lenInBss) ( lenInBss + sizeof(lenInBss) - \
@@ -743,45 +716,6 @@ typedef struct sSirSmeStartBssRsp
     tSirBssDescription  bssDescription;//Peer BSS description
 } tSirSmeStartBssRsp, *tpSirSmeStartBssRsp;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
-typedef struct sSirMeasControl
-{
-    // Periodic Measurements enabled flag
-    tAniBool             periodicMeasEnabled;
-    // Indicates whether to involve STAs in measurements or not
-    tAniBool             involveSTAs;
-    // Basic or enhanced measurement metrics
-    // 0 - for basic, 1 - for enhanced
-    tANI_U8                   metricsType;
-    // Indicates active or passive scanning
-    tSirScanType         scanType;
-    // Following indicates how often measurements
-    // on each channel are made for long-scan-duration
-    tANI_U8                   longChannelScanPeriodicity;
-    //
-    // Channel Bonding plus 11H related scan control
-    // 0 - CB and/or 11H is disabled
-    // 1 - CB and 11H is enabled
-    //
-    tANI_BOOLEAN    cb11hEnabled;
-} tSirMeasControl, *tpSirMeasControl;
-
-typedef struct sSirMeasDuration
-{
-    // Following indicates time duration over which
-    // all channels in the channelList to be measured once
-    tANI_U32                  shortTermPeriod;
-    // Following indicates time duration over which
-    // cached DFS measurements are averaged
-    tANI_U32                  averagingPeriod;
-    // Following indicates time duration for making
-    // DFS measurements on each channel
-    tANI_U32                  shortChannelScanDuration;
-    // Following indicates time duration for making
-    // DFS measurements on each channel for long term measurements
-    tANI_U32                  longChannelScanDuration;
-} tSirMeasDuration, *tpSirMeasDuration;
-#endif
 
 typedef struct sSirChannelList
 {
@@ -802,152 +736,6 @@ typedef struct sCCXTspecTspecInfo {
 } tCCXTspecInfo;
 #endif
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-/// Definition for Neighbor BSS info
-typedef struct sSirNeighborBssInfo
-{
-    tSirMacAddr             bssId;
-    tANI_U8                 channelId;
-    tAniBool                wniIndicator;
-    tSirBssType             bssType;
-    tANI_U8                 sinr;
-    tANI_S8                 rssi;
-    tSirLoad                load;
-    tAniSSID                ssId;
-    tAniApName              apName;
-    tSirRSNie               rsnIE;
-#if 0    
-    tDot11fIEHTCaps         HTCaps;
-    tDot11fIEHTInfo         HTInfo;
-#endif
-    tSirNwType              nwType;             // Indicates 11a/b/g
-    tANI_U16                capabilityInfo;
-    tSirMacRateSet          operationalRateSet; // Has 11a or 11b rates
-    tSirMacRateSet          extendedRateSet;    // Has 11g rates
-    tANI_U16                beaconInterval;
-    tANI_U8                 dtimPeriod;
-    tANI_U8                 HTCapsPresent;
-    tANI_U8                 HTInfoPresent;
-    tANI_U8                 wmeInfoPresent;
-    tANI_U8                 wmeEdcaPresent;
-    tANI_U8                 wsmCapablePresent;
-    tANI_U8                 hcfEnabled;
-    tANI_U16                propIECapability;
-    tANI_U32                localPowerConstraints;
-    tANI_S32                aggrRssi;
-    tANI_U32                dataCount;
-    tANI_U32                totalPackets;
-} tSirNeighborBssInfo, *tpSirNeighborBssInfo;
-
-
-/// Definition for Neighbor BSS with WDS info
-typedef struct sSirNeighborBssWdsInfo
-{
-    tSirNeighborBssInfo    neighborBssInfo;
-    tSirWdsInfo            wdsInfo;
-} tSirNeighborBssWdsInfo, *tpSirNeighborBssWdsInfo;
-
-/// Definition for Neighbor BSS list
-typedef struct sSirNeighborBssList
-{
-    tANI_U32                  numBss;
-    tSirNeighborBssInfo  bssList[1];
-} tSirNeighborBssList, *tpSirNeighborBssList;
-
-/// Definition for Neighbor BSS list with WDS info
-typedef struct sSirNeighborBssWdsList
-{
-    tANI_U32                     numBssWds;
-    tSirNeighborBssWdsInfo  bssWdsList[1];
-} tSirNeighborBssWdsList, *tpSirNeighborBssWdsList;
-
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-/// Definition for kick starting measurements
-/// ---> MAC
-typedef struct sSirSmeMeasurementReq
-{
-    tANI_U16                  messageType; // eWNI_SME_MEASUREMENT_REQ
-    tANI_U16                  length;
-    tSirMeasControl      measControl;
-    tSirMeasDuration     measDuration;
-    // This indicates how often SME_MEASUREMENT_IND message
-    // is sent to host
-    tANI_U32                  measIndPeriod;
-    // This channel list will have current channel also
-    tSirChannelList      channelList;
-} tSirSmeMeasurementReq, *tpSirSmeMeasurementReq;
-
-/// Definition for response message to previously
-/// issued Measurement request
-/// MAC --->
-typedef struct sSirSmeMeasurementRsp
-{
-    tANI_U16                    messageType; // eWNI_SME_MEASUREMENT_RSP
-    tANI_U16                    length;
-    tSirResultCodes        statusCode;
-    tANI_U16            transactionId;     // Transaction ID for cmd
-} tSirSmeMeasurementRsp, *tpSirSmeMeasurementRsp;
-
-/// Definition for Measurement Matrix info
-// NOTE: This should include current channel measurements
-typedef struct sSirMeasMatrixInfo
-{
-    tANI_U8          channelNumber;
-    tANI_S8          compositeRssi;
-    tANI_S32         aggrRssi;     // Due to all packets in this channel
-    tANI_U32         totalPackets;
-} tSirMeasMatrixInfo, *tpSirMeasMatrixInfo;
-
-/// Definition for Measurement Matrix List
-typedef struct sSirMeasMatrixList
-{
-    tANI_U8                  numChannels;
-    tSirMeasMatrixInfo  measMatrixList[1];
-} tSirMeasMatrixList, *tpSirMeasMatrixList;
-/// Definition for Measurement indication
-/// MAC --->
-/// Note : This is only sent when there was prior
-///        SME_MEASUREMENT_REQ received by MAC
-typedef struct sSirSmeMeasurementInd
-{
-    tANI_U16                    messageType; // eWNI_SME_MEASUREMENT_IND
-    tANI_U16                    length;
-    tANI_U32               duration;
-    tSirLoad               currentLoad; // on this AP radio
-    tSirMeasMatrixList     measMatrixList;
-    tSirNeighborBssWdsList neighborBssWdsList;
-} tSirSmeMeasurementInd, *tpSirSmeMeasurementInd;
-
-/// Definition for Backhaul Link status change Indication
-/// MAC --->
-typedef struct sSirSmeWdsInfoInd
-{
-    tANI_U16                messageType; // eWNI_SME_WDS_INFO_IND
-    tANI_U16                length;
-    tSirWdsInfo        wdsInfo;
-} tSirSmeWdsInfoInd, *tpSirSmeWdsInfoInd;
-
-/// Definition for Backhaul Link Info Set Request
-/// ---> MAC
-typedef struct sSirSmeSetWdsInfoReq
-{
-    tANI_U16                messageType; // eWNI_SME_SET_WDS_INFO_REQ
-    tANI_U16                length;
-    tANI_U16                transactionId;     
-    tSirWdsInfo        wdsInfo;
-} tSirSmeSetWdsInfoReq, *tpSirSmeSetWdsInfoReq;
-
-/// Definition for Backhaul Link Lnfo Set Response
-/// MAC --->
-typedef struct sSirSmeSetWdsInfoRsp
-{
-    tANI_U16                messageType; // eWNI_SME_SET_WDS_INFO_RSP
-    tANI_U16                length;
-    tSirResultCodes    statusCode;
-    tANI_U16                transactionId;     
-} tSirSmeSetWdsInfoRsp, *tpSirSmeSetWdsInfoRsp;
-#endif
-#endif
 
 /// Definition for Radar Info
 typedef struct sSirRadarInfo
@@ -1167,24 +955,7 @@ typedef struct sSirSmeAuthRsp
                                        //Otherwise it holds status code.
 } tSirSmeAuthRsp, *tpSirSmeAuthRsp;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-/// Association type
-typedef enum eSirAssocType
-{
-    eSIR_NORMAL,
-    eSIR_TRANSFERRED,
-    eSIR_DONOT_USE_ASSOC_TYPE = SIR_MAX_ENUM_SIZE
-} tSirAssocType;
-#endif
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) 
-typedef enum eSirBpIndicatorType
-{
-    eSIR_WIRELESS_BP,
-    eSIR_WIRED_BP
-} tSirBpIndicatorType;
-
-#endif
 
 /// Definition for Join/Reassoc info - Reshmi: need to check if this is a def which moved from elsehwere.
 typedef struct sJoinReassocInfo
@@ -1223,11 +994,6 @@ typedef struct sSirSmeJoinReq
      */
     tANI_U8                 uapsdPerAcBitmask;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    tSirAssocType       assocType;              // Indicates whether STA is
-                                                // sending (Re) Association
-                                                // due to load balance or not
-#endif
     tSirMacRateSet      operationalRateSet;// Has 11a or 11b rates
     tSirMacRateSet      extendedRateSet;    // Has 11g rates
     tSirRSNie           rsnIE;                  // RSN IE to be sent in
@@ -1268,19 +1034,11 @@ typedef struct sSirSmeJoinReq
     tANI_U8             txBFCsnValue;
 #endif
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
-    tAniBool            bpIndicator;
-    tSirBpIndicatorType bpType;
-    tSirNeighborBssList neighborBssList;        // TBD Move this outside 'AP'
-                                                // flag
-#endif
     tAniTitanCBNeighborInfo cbNeighbors;
     tAniBool            spectrumMgtIndicator;
     tSirMacPowerCapInfo powerCap;
     tSirSupChnl         supportedChannels;
-//#if (WNI_POLARIS_FW_PRODUCT == WLAN_STA )
     tSirBssDescription  bssDescription;
-//#endif
 
 } tSirSmeJoinReq, *tpSirSmeJoinReq;
 
@@ -1293,16 +1051,7 @@ typedef struct sSirSmeJoinRsp
     tANI_U8                 sessionId;         // Session ID
     tANI_U16                transactionId;     // Transaction ID for cmd
     tSirResultCodes    statusCode;
-#if (WNI_POLARIS_FW_PRODUCT == WLAN_STA)
     tAniAuthType       authType;
-//    tANI_U16           staId;             // Station ID for peer
-#endif
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    // Following are needed for Roaming algorithm
-    // to 'associate' with an alternate BSS.
-    tSirMacAddr        alternateBssId;
-    tANI_U8                 alternateChannelId;
-#endif
     tANI_U16        protStatusCode; //It holds reasonCode when join fails due to deauth/disassoc frame.
                                     //Otherwise it holds status code.
     tANI_U16        aid;
@@ -1367,23 +1116,11 @@ typedef struct sSirSmeAssocInd
     tSirRSNie            rsnIE;// RSN IE received from peer
     tSirAddie            addIE;// Additional IE received from peer, which possibly include WSC IE and/or P2P IE
 
-#if defined (ANI_PRODUCT_TYPE_AP)
-    tANI_U16                  seqNum;
-    tAniBool             wniIndicator;
-    tAniBool             bpIndicator;
-    tSirBpIndicatorType  bpType;
-    tSirAssocType        assocType; // Indicates whether STA is LB'ed or not
-    tSirLoad             load; // Current load on the radio for LB
-    tSirNeighborBssList  neighborList; // List received from STA
-    tANI_U16                  capabilityInfo; // STA capability
-    tSirNwType           nwType;            // Indicates 11a/b/g
-#endif
     // powerCap & supportedChannels are present only when
     // spectrumMgtIndicator flag is set
     tAniBool                spectrumMgtIndicator;
     tSirMacPowerCapInfo     powerCap;
     tSirSupChnl             supportedChannels;
-#ifdef WLAN_SOFTAP_FEATURE
     tAniBool             wmmEnabledSta; /* if present - STA is WMM enabled */
     tAniBool             reassocReq;
     // Required for indicating the frames to upper layer
@@ -1391,7 +1128,6 @@ typedef struct sSirSmeAssocInd
     tANI_U8*             beaconPtr;
     tANI_U32             assocReqLength;
     tANI_U8*             assocReqPtr;
-#endif
 } tSirSmeAssocInd, *tpSirSmeAssocInd;
 
 
@@ -1426,30 +1162,17 @@ typedef struct sSirSmeReassocInd
 
     tSirAddie           addIE;  // Additional IE received from peer
     
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    tANI_U16             seqNum;
-    tAniBool             wniIndicator;
-    tAniBool             bpIndicator;
-    tSirBpIndicatorType  bpType;
-    tSirAssocType        reassocType; // Indicates whether STA is LB'ed or not
-    tSirLoad             load; // Current load on the radio for LB
-    tSirNeighborBssList  neighborList; // List received from STA
-    tANI_U16             capabilityInfo; // STA capability
-    tSirNwType           nwType;            // Indicates 11a/b/g
-#endif
     // powerCap & supportedChannels are present only when
     // spectrumMgtIndicator flag is set
     tAniBool                spectrumMgtIndicator;
     tSirMacPowerCapInfo     powerCap;
     tSirSupChnl             supportedChannels;
-#ifdef WLAN_SOFTAP_FEATURE
     // Required for indicating the frames to upper layer
     // TODO: use the appropriate names to distinguish between the other similar names used above for station mode of operation
     tANI_U32             beaconLength;
     tANI_U8*             beaconPtr;
     tANI_U32             assocReqLength;
     tANI_U8*             assocReqPtr;
-#endif
 } tSirSmeReassocInd, *tpSirSmeReassocInd;
 
 /// Definition for Reassociation confirm
@@ -1466,22 +1189,6 @@ typedef struct sSirSmeReassocCnf
     tANI_U8                   alternateChannelId;
 } tSirSmeReassocCnf, *tpSirSmeReassocCnf;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
-typedef enum {
-    // Based on Periodic evaluation
-    eSIR_PERIODIC_EVALATION,
-
-    // Dectection of primary users such as RADARs
-    eSIR_DETECTION_OF_RADAR,
-
-    // Degradation in system performance (eg. Triggered by
-    //  increase in PER beyond a certain threshold)
-    eSIR_PERFORMANCE_DEGRADATION,
-
-    // Frequency changed due to previously issued SWITCH_CHANNEL_REQ
-    eSIR_UPPER_LAYER_TRIGGERED
-}tSirFreqChangeReason;
-#endif
 
 /// Enum definition for  Wireless medium status change codes
 typedef enum eSirSmeStatusChangeCode
@@ -1563,24 +1270,16 @@ typedef struct sSirSmeWmStatusChangeNtf
         // none for eSIR_SME_LEAVING_BSS
         // none for eSIR_SME_IBSS_ACTIVE
         // none for eSIR_SME_IBSS_INACTIVE
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
-        tSirRadarInfo          radarInfo;         // eSIR_SME_RADAR_DETECTED
-#endif
         tSirNewIbssPeerInfo     newIbssPeerInfo;  // eSIR_SME_IBSS_NEW_PEER
         tSirSmeApNewCaps        apNewCaps;        // eSIR_SME_AP_CAPS_CHANGED
         tSirBackgroundScanInfo  bkgndScanInfo;    // eSIR_SME_BACKGROUND_SCAN_FAIL
         tAniTitanCBNeighborInfo cbNeighbors;      // eSIR_SME_CB_LEGACY_BSS_FOUND_BY_STA
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-        tSirNeighborBssWdsInfo  neighborWdsInfo;  // eSIR_SME_CB_LEGACY_BSS_FOUND_BY_AP
-#endif
     } statusChangeInfo;
 } tSirSmeWmStatusChangeNtf, *tpSirSmeWmStatusChangeNtf;
 
 /// Definition for Disassociation request
 typedef
-#ifdef WLAN_SOFTAP_FEATURE
 __ani_attr_pre_packed
-#endif
 struct sSirSmeDisassocReq
 {
     tANI_U16            messageType; // eWNI_SME_DISASSOC_REQ
@@ -1592,20 +1291,11 @@ struct sSirSmeDisassocReq
     tANI_U16         reasonCode;
     tANI_U8          doNotSendOverTheAir;  //This flag tells LIM whether to send the disassoc OTA or not
                                            //This will be set in while handing off from one AP to other
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16         aid;
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    tANI_U16         seqNum;
-#endif
-#endif
 }
-#ifdef WLAN_SOFTAP_FEATURE
 __ani_attr_packed
-#endif
 tSirSmeDisassocReq, *tpSirSmeDisassocReq;
 
 /// Definition for Tkip countermeasures request
-#ifdef WLAN_SOFTAP_FEATURE
 typedef __ani_attr_pre_packed struct sSirSmeTkipCntrMeasReq
 {
     tANI_U16            messageType;    // eWNI_SME_DISASSOC_REQ
@@ -1615,7 +1305,6 @@ typedef __ani_attr_pre_packed struct sSirSmeTkipCntrMeasReq
     tSirMacAddr         bssId;          // Peer BSSID
     tANI_BOOLEAN        bEnable;        // Start/stop countermeasures
 } __ani_attr_packed tSirSmeTkipCntrMeasReq, *tpSirSmeTkipCntrMeasReq;
-#endif
 
 typedef struct sAni64BitCounters
 {
@@ -1796,7 +1485,6 @@ typedef struct sAniStatSummaryStruct
     tSirMacAddr macAddr; //Mac Address of the station from which above RSSI and rate is from.
 }tAniStatSummaryStruct,*tpAniStatSummaryStruct;
 
-#if (WNI_POLARIS_FW_PRODUCT == WLAN_STA)
 //structure for stats that may be reset, like the ones in sta descriptor
 //The stats are saved into here before reset. It should be tANI_U32 aligned.
 typedef struct _sPermStaStats
@@ -1826,7 +1514,6 @@ typedef struct _sPermStaStats
     tANI_U32 expanPktRxCntLo;
 }tPermanentStaStats;
 
-#endif//#if (WNI_POLARIS_FW_PRODUCT == WLAN_STA)
 
 
 
@@ -1839,17 +1526,10 @@ typedef struct sSirSmeDisassocRsp
     tANI_U16           transactionId;     // Transaction ID for cmd
     tSirResultCodes    statusCode;
     tSirMacAddr        peerMacAddr;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16           aid;
-#endif
     tAniStaStatStruct  perStaStats; // STA stats
-#ifdef WLAN_SOFTAP_FEATURE
     tANI_U16           staId;
-#endif     
 }
-#ifdef WLAN_SOFTAP_FEATURE
 __ani_attr_packed
-#endif
  tSirSmeDisassocRsp, *tpSirSmeDisassocRsp;
 
 /// Definition for Disassociation indication from peer
@@ -1862,13 +1542,8 @@ typedef struct sSirSmeDisassocInd
     tSirResultCodes     statusCode;
     tSirMacAddr         bssId;            
     tSirMacAddr         peerMacAddr;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16            aid;
-#endif
     tAniStaStatStruct  perStaStats; // STA stats
-#ifdef WLAN_SOFTAP_FEATURE
     tANI_U16            staId;
-#endif
     tANI_U32            reasonCode;
 } tSirSmeDisassocInd, *tpSirSmeDisassocInd;
 
@@ -1881,9 +1556,6 @@ typedef struct sSirSmeDisassocCnf
     tSirResultCodes     statusCode;
     tSirMacAddr         bssId;            
     tSirMacAddr         peerMacAddr;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16            aid;
-#endif
 } tSirSmeDisassocCnf, *tpSirSmeDisassocCnf;
 
 /// Definition for Deauthetication request
@@ -1896,9 +1568,6 @@ typedef struct sSirSmeDeauthReq
     tSirMacAddr         bssId;         // AP BSSID
     tSirMacAddr         peerMacAddr;
     tANI_U16            reasonCode;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16         aid;
-#endif
 } tSirSmeDeauthReq, *tpSirSmeDeauthReq;
 
 /// Definition for Deauthetication response
@@ -1910,9 +1579,6 @@ typedef struct sSirSmeDeauthRsp
     tANI_U16            transactionId;     // Transaction ID for cmd
     tSirResultCodes     statusCode;
     tSirMacAddr        peerMacAddr;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16                aid;
-#endif
 } tSirSmeDeauthRsp, *tpSirSmeDeauthRsp;
 
 /// Definition for Deauthetication indication from peer
@@ -1925,13 +1591,8 @@ typedef struct sSirSmeDeauthInd
     tSirResultCodes     statusCode;
     tSirMacAddr         bssId;// AP BSSID
     tSirMacAddr         peerMacAddr;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16            aid;
-#endif
 
-#ifdef WLAN_SOFTAP_FEATURE
     tANI_U16            staId;
-#endif
     tANI_U32            reasonCode;
 } tSirSmeDeauthInd, *tpSirSmeDeauthInd;
 
@@ -1944,9 +1605,6 @@ typedef struct sSirSmeDeauthCnf
     tSirResultCodes     statusCode;
     tSirMacAddr         bssId;             // AP BSSID
     tSirMacAddr        peerMacAddr;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16                aid;
-#endif
 } tSirSmeDeauthCnf, *tpSirSmeDeauthCnf;
 
 /// Definition for stop BSS request message
@@ -1970,65 +1628,6 @@ typedef struct sSirSmeStopBssRsp
     tANI_U16            transactionId;     // Transaction ID for cmd
 } tSirSmeStopBssRsp, *tpSirSmeStopBssRsp;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
-/// Definition for Channel Select request
-/// ---> MAC
-typedef struct sSirSmeSelectChannelReq
-{
-    tANI_U16                messageType; // eWNI_SME_SELECT_CHL_REQ
-    tANI_U16                length;
-    tANI_U16            transactionId;     // Transaction ID for cmd
-    tANI_U8                 channelId;
-} tSirSmeSelectChannelReq, *tpSirSmeSelectChannelReq;
-
-/// Definition for Channel Select response
-/// MAC --->
-typedef struct sSirSmeSelectChannelRsp
-{
-    tANI_U16                messageType; // eWNI_SME_SELECT_CHL_RSP
-    tANI_U16                length;
-    tSirResultCodes    statusCode;
-    tANI_U16            transactionId;     // Transaction ID for cmd
-} tSirSmeSelectChannelRsp, *tpSirSmeSelectChannelRsp;
-
-/// Definition for Channel Switch request
-/// ---> MAC
-typedef struct sSirSmeSwitchChannelReq
-{
-    // eWNI_SME_SWITCH_CHL_REQ,
-    // eWNI_SME_SWITCH_CHL_CB_PRIMARY_REQ,
-    // eWNI_SME_SWITCH_CHL_CB_SECONDARY_REQ
-    tANI_U16                messageType;
-
-    tANI_U16                length;
-    tANI_U16            transactionId;     // Transaction ID for cmd
-    tANI_U8                 channelId;
-    //
-    // The cbMode field is applicable to TITAN only.
-    // This indicates as to how the CB secondary
-    // channel will be used (if at all).
-    //
-    // In a non-CB environment, with 11H enabled,
-    // this field will be ignored
-    //
-    ePhyChanBondState    cbMode;
-
-    // dtimFactor indicates the number of DTIM
-    // Beacon before LIM switches channel
-    tANI_U32                dtimFactor;
-} tSirSmeSwitchChannelReq, *tpSirSmeSwitchChannelReq;
-
-/// Definition for Channel Switch response
-/// MAC --->
-typedef struct sSirSmeSwitchChannelRsp
-{
-    tANI_U16                messageType; // eWNI_SME_SWITCH_CHL_RSP
-    tANI_U16                length;
-    tSirResultCodes    statusCode;
-    tANI_U16            transactionId;     // Transaction ID for cmd
-} tSirSmeSwitchChannelRsp, *tpSirSmeSwitchChannelRsp;
-
-#endif
 
 
 /// Definition for Channel Switch indication for station
@@ -2049,9 +1648,6 @@ typedef struct sirUlaCompleteInd
     tANI_U16                length;
     tSirResultCodes    statusCode;
     tSirMacAddr        peerMacAddr;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16                aid;
-#endif
 } tSirUlaCompleteInd, *tpSirUlaCompleteInd;
 
 /// Definition for ULA complete confirmation message
@@ -2061,9 +1657,6 @@ typedef struct sirUlaCompleteCnf
     tANI_U16                length;
     tSirResultCodes    statusCode;
     tSirMacAddr        peerMacAddr;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16                aid;
-#endif
 } tSirUlaCompleteCnf, *tpSirUlaCompleteCnf;
 
 /// Definition for Neighbor BSS indication
@@ -2074,12 +1667,7 @@ typedef struct sSirSmeNeighborBssInd
     tANI_U16                    messageType; // eWNI_SME_NEIGHBOR_BSS_IND
     tANI_U16                    length;
     tANI_U8                     sessionId;
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
-    tSirNeighborBssInfo    neighborInfo;
-    tSirWdsInfo            wdsInfo;
-#else
     tSirBssDescription     bssDescription[1];
-#endif
 } tSirSmeNeighborBssInd, *tpSirSmeNeighborBssInd;
 
 /// Definition for MIC failure indication
@@ -2094,6 +1682,12 @@ typedef struct sSirSmeMicFailureInd
     tSirMicFailureInfo     info;
 } tSirSmeMicFailureInd, *tpSirSmeMicFailureInd;
 
+typedef struct sSirSmeMissedBeaconInd
+{
+    tANI_U16                    messageType; // eWNI_SME_MISSED_BEACON_IND
+    tANI_U16                    length;
+    tANI_U8                     bssIdx;
+} tSirSmeMissedBeaconInd, *tpSirSmeMissedBeaconInd;
 
 /// Definition for Set Context request
 /// ---> MAC
@@ -2105,9 +1699,6 @@ typedef struct sSirSmeSetContextReq
     tANI_U16           transactionId; //Transaction ID for cmd
     tSirMacAddr        peerMacAddr;
     tSirMacAddr        bssId;      // BSSID
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16                aid;
-#endif
     // TBD Following QOS fields to be uncommented
     //tAniBool           qosInfoPresent;
     //tSirQos            qos;
@@ -2124,9 +1715,6 @@ typedef struct sSirSmeSetContextRsp
     tANI_U16            transactionId;     // Transaction ID for cmd
     tSirResultCodes     statusCode;
     tSirMacAddr             peerMacAddr;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16                aid;
-#endif
 } tSirSmeSetContextRsp, *tpSirSmeSetContextRsp;
 
 /// Definition for Remove Key Context request
@@ -2139,9 +1727,6 @@ typedef struct sSirSmeRemoveKeyReq
     tANI_U16            transactionId;     // Transaction ID for cmd
     tSirMacAddr         bssId;             // BSSID
     tSirMacAddr             peerMacAddr;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16                aid;
-#endif
     tANI_U8    edType;
     tANI_U8    wepType;
     tANI_U8    keyId;
@@ -2158,9 +1743,6 @@ typedef struct sSirSmeRemoveKeyRsp
     tANI_U16            transactionId;     // Transaction ID for cmd
     tSirResultCodes     statusCode;
     tSirMacAddr             peerMacAddr;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16                aid;
-#endif
 } tSirSmeRemoveKeyRsp, *tpSirSmeRemoveKeyRsp;
 
 /// Definition for Set Power request
@@ -2183,29 +1765,6 @@ typedef struct sSirSmeSetPowerRsp
     tANI_U16            transactionId;     // Transaction ID for cmd
 } tSirSmeSetPowerRsp, *tpSirSmeSetPowerRsp;
 
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && (WNI_POLARIS_FW_PRODUCT == AP)
-/// Definition for Client Side Load Balancing request
-/// ---> MAC
-typedef struct sSirSmeSetClientLoadBalanceReq
-{
-    tANI_U16                messageType; // eWNI_SME_CLIENT_LOAD_BALANCE_REQ
-    tANI_U16                length;
-    tANI_U16            transactionId;     // Transaction ID for cmd
-    tSirMacAddr             alternateBssId;
-    tANI_U8                 alternateChannelId;
-    tANI_U8                 numberStas;
-} tSirSmeClientLoadBalanceReq, *tpSirSmeClientLoadBalanceReq;
-
-/// Definition for Client Side Load Balancing response
-/// MAC --->
-typedef struct sSirSmeSetClientLoadBalanceRsp
-{
-    tANI_U16                messageType; // eWNI_SME_CLIENT_LOAD_BALANCE_RSP
-    tANI_U16                length;
-    tANI_U16            transactionId;     // Transaction ID for cmd
-    tSirResultCodes         statusCode;
-} tSirSmeClientLoadBalanceRsp, *tpSirSmeClientLoadBalanceRsp;
-#endif
 
 /// Definition for Link Test Start response
 /// MAC --->
@@ -2215,9 +1774,6 @@ typedef struct sSirSmeLinkTestStartRsp
     tANI_U16                length;
     tSirMacAddr        peerMacAddr;
     tSirResultCodes    statusCode;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16                aid;
-#endif
 } tSirSmeLinkTestStartRsp, *tpSirSmeLinkTestStartRsp;
 
 /// Definition for Link Test Stop response
@@ -2228,9 +1784,6 @@ typedef struct sSirSmeLinkTestStopRsp
     tANI_U16                length;
     tSirMacAddr        peerMacAddr;
     tSirResultCodes    statusCode;
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U16                aid;
-#endif
 } tSirSmeLinkTestStopRsp, *tpSirSmeLinkTestStopRsp;
 
 /// Definition for kick starting DFS measurements
@@ -3137,7 +2690,6 @@ typedef struct sLimScanChnInfo
     tLimScanChn scanChn[SIR_MAX_SUPPORTED_CHANNEL_LIST];
 }tLimScanChnInfo;
 
-#ifdef WLAN_SOFTAP_FEATURE
 typedef struct sSirSmeGetAssocSTAsReq
 {
     tANI_U16    messageType;    // eWNI_SME_GET_ASSOC_STAS_REQ
@@ -3148,7 +2700,6 @@ typedef struct sSirSmeGetAssocSTAsReq
     void        *pSapEventCallback;
     void        *pAssocStasArray;// Pointer to allocated memory passed in WLANSAP_GetAssocStations API
 } tSirSmeGetAssocSTAsReq, *tpSirSmeGetAssocSTAsReq;
-#endif
 
 typedef struct sSmeMaxAssocInd
 {
@@ -3516,7 +3067,6 @@ typedef struct sSirHalWowlExitParams
     tANI_U8  bssIdx;
 } tSirHalWowlExitParams, *tpSirHalWowlExitParams;
 
-#ifdef WLAN_SOFTAP_FEATURE
 
 #define SIR_MAX_NAME_SIZE 64
 #define SIR_MAX_TEXT_SIZE 32
@@ -3683,7 +3233,6 @@ typedef struct sSirUpdateAPWPARSNIEsReq
     tSirRSNie      APWPARSNIEs;
 } tSirUpdateAPWPARSNIEsReq, *tpSirUpdateAPWPARSNIEsReq;
 
-#endif
 
 // SME -> HAL - This is the host offload request. 
 #define SIR_IPV4_ARP_REPLY_OFFLOAD                  0

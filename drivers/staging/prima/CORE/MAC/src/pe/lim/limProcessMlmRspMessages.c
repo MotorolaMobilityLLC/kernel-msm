@@ -51,11 +51,7 @@
  *
  */
 #include "wniApi.h"
-#ifdef ANI_PRODUCT_TYPE_AP
-#include "wniCfgAp.h"
-#else
 #include "wniCfgSta.h"
-#endif
 #include "cfgApi.h"
 #include "sirApi.h"
 #include "schApi.h"
@@ -410,12 +406,10 @@ limProcessMlmStartCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         {
              limLog(pMac, LOG1, FL("*** Started BSS in BT_AMP AP SIDE***\n"));
         }
-#ifdef WLAN_SOFTAP_FEATURE
         else if(psessionEntry->bssType == eSIR_INFRA_AP_MODE)
         {
              limLog(pMac, LOG1, FL("*** Started BSS in INFRA AP SIDE***\n"));
         }
-#endif
         else
             PELOG1(limLog(pMac, LOG1, FL("*** Started BSS ***\n"));)
     }
@@ -429,13 +423,11 @@ limProcessMlmStartCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     limSendSmeStartBssRsp(pMac, eWNI_SME_START_BSS_RSP,
                           ((tLimMlmStartCnf *) pMsgBuf)->resultCode,psessionEntry,
                           smesessionId,smetransactionId);
-#ifdef WLAN_SOFTAP_FEATURE
     if (((tLimMlmStartCnf *) pMsgBuf)->resultCode == eSIR_SME_SUCCESS)
     {
         //Configure beacon and send beacons to HAL
         limSendBeaconInd(pMac, psessionEntry);
     }
-#endif
 }
 
  /*** end limProcessMlmStartCnf() ***/
@@ -633,18 +625,6 @@ limProcessMlmAuthCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                 psessionEntry->limMlmState = eLIM_MLM_IDLE_STATE;
                 MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
 
-#if defined(ANI_AP_CLIENT_SDK)
-                if (psessionEntry->limSystemRole == eLIM_STA_ROLE)
-                {
-                    tSirMacAddr nullMacAddr = {0, 0, 0, 0, 0, 0};
-                    PELOGE(limLog(pMac, LOGE, FL("Setting current BSSID as NULL in cfg\n"));)
-                    palCopyMemory(pMac->hHdd, pMac->lim.gLimBssid, nullMacAddr, sizeof(tSirMacAddr));
-                    if (cfgSetStr(pMac, WNI_CFG_BSSID, nullMacAddr, sizeof(tSirMacAddr)) != eSIR_SUCCESS)
-                    {
-                        limLog(pMac, LOGP, FL("Could not update BSSID on CFG"));
-                    }
-                }
-#endif
                 /**
                  * Need to send Join response with
                  * auth failure to Host.
@@ -845,17 +825,6 @@ limProcessMlmAssocCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         PELOG1(limLog(pMac, LOG1, FL("*** Association failure ***\n"));)
         psessionEntry->limSmeState = eLIM_SME_JOIN_FAILURE_STATE;
         MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, psessionEntry->peSessionId, pMac->lim.gLimSmeState));
-#if defined(ANI_AP_CLIENT_SDK)
-        if (psessionEntry->limSystemRole == eLIM_STA_ROLE)
-        {
-            tSirMacAddr nullMacAddr = {0, 0, 0, 0, 0, 0};
-            palCopyMemory(pMac->hHdd, pMac->lim.gLimBssid, nullMacAddr, sizeof(tSirMacAddr));
-            if (cfgSetStr(pMac, WNI_CFG_BSSID, nullMacAddr, sizeof(tSirMacAddr)) != eSIR_SUCCESS)
-            {
-                limLog(pMac, LOGP, FL("Could not update BSSID on CFG"));
-            }
-        }
-#endif
         /**
          * Need to send Join response with
          * Association failure to Host.
@@ -1013,16 +982,7 @@ limProcessMlmReassocInd(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         return;
     }
     /// Inform Host of STA reassociation
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    len = sizeof(tSirSmeReassocInd) -
-          sizeof(tSirNeighborBssInfo) +
-          (((tpLimMlmReassocInd) pMsgBuf)->numBss *
-           sizeof(tSirNeighborBssInfo)) -
-           SIR_MAC_MAX_SSID_LENGTH +
-           ((tpLimMlmReassocInd) pMsgBuf)->ssId.length;
-#else
     len = sizeof(tSirSmeReassocInd);
-#endif
     if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pSirSmeReassocInd, len))
     {
         // Log error
@@ -1168,10 +1128,8 @@ limFillAssocIndParams(tpAniSirGlobal pMac, tpLimMlmAssocInd pAssocInd,
                      (tANI_U8 *) &(pAssocInd->supportedChannels.channelList),
                      pAssocInd->supportedChannels.numChnl);
     }
-#ifdef WLAN_SOFTAP_FEATURE
     // Fill in WmmInfo
     pSirSmeAssocInd->wmmEnabledSta = pAssocInd->WmmStaInfoPresent;
-#endif
 } /*** end limAssocIndSerDes() ***/
 
 
@@ -1213,16 +1171,7 @@ limProcessMlmAssocInd(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         return;
     }
     /// Inform Host of STA association
-#if defined (ANI_PRODUCT_TYPE_AP)
-    len = sizeof(tSirSmeAssocInd) -
-              sizeof(tSirNeighborBssInfo) +
-              (((tpLimMlmAssocInd) pMsgBuf)->numBss *
-               sizeof(tSirNeighborBssInfo)) -
-              SIR_MAC_MAX_SSID_LENGTH +
-              ((tpLimMlmAssocInd) pMsgBuf)->ssId.length;
-#else
     len = sizeof(tSirSmeAssocInd);
-#endif
     if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pSirSmeAssocInd, len))
     {
         // Log error
@@ -1231,15 +1180,8 @@ limProcessMlmAssocInd(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         return;
     }
 
-#if defined (ANI_PRODUCT_TYPE_AP)
-    sirStoreU16N((tANI_U8 *) &pSirSmeAssocInd->messageType,
-                 eWNI_SME_ASSOC_IND);
-    limAssocIndSerDes(pMac, (tpLimMlmAssocInd) pMsgBuf,
-                      (tANI_U8 *) &(pSirSmeAssocInd->length), psessionEntry);
-#else
     pSirSmeAssocInd->messageType = eWNI_SME_ASSOC_IND;
     limFillAssocIndParams(pMac, (tpLimMlmAssocInd) pMsgBuf, pSirSmeAssocInd, psessionEntry);
-#endif
     msgQ.type = eWNI_SME_ASSOC_IND;
     msgQ.bodyptr = pSirSmeAssocInd;
     msgQ.bodyval = 0;
@@ -1254,9 +1196,7 @@ limProcessMlmAssocInd(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         return;
     }
     pSirSmeAssocInd->staId = pStaDs->staIndex;
-#ifdef WLAN_SOFTAP_FEATURE
    pSirSmeAssocInd->reassocReq = pStaDs->mlmStaContext.subType;
-#endif
     MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
     limDiagEventReport(pMac, WLAN_PE_DIAG_ASSOC_IND_EVENT, psessionEntry, 0, 0);
@@ -1382,9 +1322,6 @@ limProcessMlmDisassocCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                  pMlmDisassocCnf->resultCode;
     if ((psessionEntry->limSystemRole == eLIM_STA_ROLE)|| (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))
     {
-#if defined(ANI_AP_CLIENT_SDK)
-        tSirMacAddr         nullMacAddr = {0, 0, 0, 0, 0, 0};
-#endif
         // Disassociate Confirm from MLM
         if ( (psessionEntry->limSmeState != eLIM_SME_WT_DISASSOC_STATE) &&
              (psessionEntry->limSmeState != eLIM_SME_WT_DEAUTH_STATE) )
@@ -1399,17 +1336,6 @@ limProcessMlmDisassocCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                FL("received unexpected MLM_DISASSOC_CNF in state %X\n"),psessionEntry->limSmeState);)
             return;
         }
-#if defined(ANI_AP_CLIENT_SDK)
-        // Whenever there is a disassoc notification, make sure the bssId is cleared so that
-        // if the station finds the same AP to which it was associated, it can try to associate
-        // with it again. If this is not done, the beacons/probe rsp from this AP will not be given
-        // up to WSM and it never see this is AP unless a cga/reboot is done.
-        palCopyMemory(pMac->hHdd, pMac->lim.gLimBssid, nullMacAddr, sizeof(tSirMacAddr));
-        if (cfgSetStr(pMac, WNI_CFG_BSSID, nullMacAddr, sizeof(tSirMacAddr)) != eSIR_SUCCESS)
-        {
-            limLog(pMac, LOGP, FL("Could not update BSSID on CFG"));
-        }
-#endif
         if (pMac->lim.gLimRspReqd)
             pMac->lim.gLimRspReqd = false;
         if (pMlmDisassocCnf->disassocTrigger ==
@@ -1543,9 +1469,6 @@ limProcessMlmDeauthCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
           pMlmDeauthCnf->aid : 1;
     if ((psessionEntry->limSystemRole == eLIM_STA_ROLE)|| (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE))
     {
-        #if defined(ANI_AP_CLIENT_SDK)
-        tSirMacAddr         nullMacAddr = {0, 0, 0, 0, 0, 0};
-        #endif
         // Deauth Confirm from MLM
         if (psessionEntry->limSmeState != eLIM_SME_WT_DEAUTH_STATE)
         {
@@ -1559,17 +1482,6 @@ limProcessMlmDeauthCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                psessionEntry->limSmeState);)
             return;
         }
-#if defined(ANI_AP_CLIENT_SDK)
-        // Whenever there is a disassoc notification, make sure the bssId is cleared so that
-        // if the station finds the same AP to which it was associated, it can try to associate
-        // with it again. If this is not done, the beacons/probe rsp from this AP will not be given
-        // up to WSM and it never see this is AP unless a cga/reboot is done.
-        palCopyMemory(pMac->hHdd, pMac->lim.gLimBssid, nullMacAddr, sizeof(tSirMacAddr));
-        if (cfgSetStr(pMac, WNI_CFG_BSSID, nullMacAddr, sizeof(tSirMacAddr)) != eSIR_SUCCESS)
-        {
-            limLog(pMac, LOGP, FL("Could not update BSSID on CFG"));
-        }
-#endif
         if (pMlmDeauthCnf->resultCode == eSIR_SME_SUCCESS)
         {
             psessionEntry->limSmeState = eLIM_SME_IDLE_STATE;
@@ -1583,20 +1495,11 @@ limProcessMlmDeauthCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         if (pMac->lim.gLimRspReqd)
             pMac->lim.gLimRspReqd = false;
     }
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-    // BP deauthenticated by AP or vice versa
-    // Send SME_DISASSOC_RSP to host.
-    limSendSmeDisassocNtf(pMac, pMlmDeauthCnf->peerMacAddr,
-                          resultCode,
-                          pMlmDeauthCnf->deauthTrigger,
-                          aid);
-#else
     // On STA or on BASIC AP, send SME_DEAUTH_RSP to host
     limSendSmeDeauthNtf(pMac, pMlmDeauthCnf->peerMacAddr,
                         resultCode,
                         pMlmDeauthCnf->deauthTrigger,
                         aid,psessionEntry->smeSessionId,psessionEntry->transactionId);
-#endif
 } /*** end limProcessMlmDeauthCnf() ***/
 
 /**
@@ -1623,9 +1526,6 @@ limProcessMlmPurgeStaInd(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     tSirResultCodes      resultCode;
     tpLimMlmPurgeStaInd  pMlmPurgeStaInd;
     tpPESession          psessionEntry;
-#if defined(ANI_AP_CLIENT_SDK)
-    tSirMacAddr         nullMacAddr = {0, 0, 0, 0, 0, 0};
-#endif
     if(pMsgBuf == NULL)
     {
         PELOGE(limLog(pMac, LOGE,FL("Buffer is Pointing to NULL\n"));)
@@ -1670,35 +1570,14 @@ limProcessMlmPurgeStaInd(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
                 psessionEntry->limSmeState = eLIM_SME_IDLE_STATE;
                 MTRACE(macTrace(pMac, TRACE_CODE_SME_STATE, psessionEntry->peSessionId, psessionEntry->limSmeState));
 
-#if defined(ANI_AP_CLIENT_SDK)
-                // Whenever there is a disassoc notification, make sure the bssId is cleared so that
-                // if the station finds the same AP to which it was associated, it can try to associate
-                // with it again. If this is not done, the beacons/probe rsp from this AP will not be given
-                // up to WSM and it never see this is AP unless a cga/reboot is done.
-                palCopyMemory(pMac->hHdd, pMac->lim.gLimBssid, nullMacAddr, sizeof(tSirMacAddr));
-                if (cfgSetStr(pMac, WNI_CFG_BSSID, nullMacAddr, sizeof(tSirMacAddr)) != eSIR_SUCCESS)
-                {
-                    limLog(pMac, LOGP, FL("Could not update BSSID on CFG"));
-                }
-#endif
             }
             if (pMlmPurgeStaInd->purgeTrigger == eLIM_PEER_ENTITY_DEAUTH)
             {
-#if (WNI_POLARIS_FW_PACKAGE == ADVANCED) && defined(ANI_PRODUCT_TYPE_AP)
-                // BP deauthenticated by AP or vice versa
-                // Send SME_DISASSOC_IND to host.
-                limSendSmeDisassocNtf(pMac,
-                                    pMlmPurgeStaInd->peerMacAddr,
-                                    resultCode,
-                                    pMlmPurgeStaInd->purgeTrigger,
-                                    pMlmPurgeStaInd->aid,psessionEntry);
-#else
                 limSendSmeDeauthNtf(pMac,
                             pMlmPurgeStaInd->peerMacAddr,
                             resultCode,
                             pMlmPurgeStaInd->purgeTrigger,
                             pMlmPurgeStaInd->aid,psessionEntry->smeSessionId,psessionEntry->transactionId);
-#endif
             }
             else
                 limSendSmeDisassocNtf(pMac,
@@ -1750,11 +1629,7 @@ limProcessMlmSetKeysCnf(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         pMlmSetKeysCnf->resultCode );
     limSendSmeSetContextRsp(pMac,
                             pMlmSetKeysCnf->peerMacAddr,
-#ifdef ANI_PRODUCT_TYPE_AP
-                            pMlmSetKeysCnf->aid,
-#else
                             1,
-#endif
                             (tSirResultCodes) pMlmSetKeysCnf->resultCode,psessionEntry,psessionEntry->smeSessionId,
                             psessionEntry->transactionId);
 } /*** end limProcessMlmSetKeysCnf() ***/
@@ -1963,17 +1838,13 @@ void limProcessMlmAddStaRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession 
     //the deffered flag.
     SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
     if ((psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE)
-#ifdef WLAN_SOFTAP_FEATURE
     || (psessionEntry->limSystemRole == eLIM_AP_ROLE)
-#endif
     )
     {
         limProcessBtAmpApMlmAddStaRsp(pMac, limMsgQ,psessionEntry);
         return;
     }
-#if defined(ANI_PRODUCT_TYPE_CLIENT) || defined(ANI_AP_CLIENT_SDK)
     limProcessStaMlmAddStaRsp(pMac, limMsgQ,psessionEntry);
-#endif
 }
 void limProcessStaMlmAddStaRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ ,tpPESession psessionEntry)
 {
@@ -2073,18 +1944,14 @@ void limProcessMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession 
 
     if (((psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE)  ||
          (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE)
-#ifdef WLAN_SOFTAP_FEATURE
          || (psessionEntry->limSystemRole == eLIM_AP_ROLE)
-#endif
          ) &&
         (psessionEntry->statypeForBss == STA_ENTRY_SELF))
     {
         limProcessBtAmpApMlmDelBssRsp(pMac, limMsgQ,psessionEntry);
         return;
     }
-#if defined(ANI_PRODUCT_TYPE_CLIENT) || defined(ANI_AP_CLIENT_SDK)
     limProcessStaMlmDelBssRsp(pMac, limMsgQ,psessionEntry);
-#endif
 
    if(!limIsInMCC(pMac))
    {
@@ -2219,10 +2086,8 @@ void limProcessBtAmpApMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPES
 #endif
     dphHashTableClassInit(pMac, &psessionEntry->dph.dphHashTable);//TBD-RAJESH is it needed ?
     limDeletePreAuthList(pMac);
-#ifdef WLAN_SOFTAP_FEATURE
     //Initialize number of associated stations during cleanup
     psessionEntry->gLimNumOfCurrentSTAs = 0;
-#endif
     end:
     limSendSmeRsp(pMac, eWNI_SME_STOP_BSS_RSP, rc,  psessionEntry->smeSessionId,  psessionEntry->transactionId);
     peDeleteSession(pMac, psessionEntry);
@@ -2252,17 +2117,13 @@ void limProcessMlmDelStaRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
     }
 
     if ((psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE)
-#ifdef WLAN_SOFTAP_FEATURE
       || (psessionEntry->limSystemRole == eLIM_AP_ROLE)
-#endif
     )
     {
         limProcessBtAmpApMlmDelStaRsp(pMac,limMsgQ,psessionEntry);
         return;
     }
-#if defined(ANI_PRODUCT_TYPE_CLIENT) || defined(ANI_AP_CLIENT_SDK)
     limProcessStaMlmDelStaRsp(pMac, limMsgQ,psessionEntry);
-#endif
 }
 
 void limProcessBtAmpApMlmDelStaRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession psessionEntry)
@@ -2552,18 +2413,12 @@ limProcessApMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ)
         }
         psessionEntry->bssIdx     = (tANI_U8) pAddBssParams->bssIdx;
 
-#ifdef ANI_PRODUCT_TYPE_AP
-        psessionEntry->limSystemRole = eLIM_AP_ROLE;
-#else
         psessionEntry->limSystemRole = eLIM_STA_IN_IBSS_ROLE;
-#endif
 
-#ifdef WLAN_SOFTAP_FEATURE
         if ( eSIR_INFRA_AP_MODE == pAddBssParams->bssType )
             psessionEntry->limSystemRole = eLIM_AP_ROLE;
         else
             psessionEntry->limSystemRole = eLIM_STA_IN_IBSS_ROLE;
-#endif
         schEdcaProfileUpdate(pMac, psessionEntry);
         limInitPreAuthList(pMac);
         limInitPeerIdxpool(pMac,psessionEntry);
@@ -2968,7 +2823,6 @@ void limSetLinkStateForPostAssocCallback(tpAniSirGlobal pMac, void *msgParam )
         else
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
         pAddStaParams->greenFieldCapable = limGetHTCapability( pMac, eHT_GREENFIELD, psessionEntry);
         pAddStaParams->txChannelWidthSet = limGetHTCapability( pMac, eHT_SUPPORTED_CHANNEL_WIDTH_SET, psessionEntry);
         pAddStaParams->mimoPS            = limGetHTCapability( pMac, eHT_MIMO_POWER_SAVE, psessionEntry );
@@ -2981,20 +2835,6 @@ void limSetLinkStateForPostAssocCallback(tpAniSirGlobal pMac, void *msgParam )
         pAddStaParams->fDsssCckMode40Mhz = limGetHTCapability( pMac, eHT_DSSS_CCK_MODE_40MHZ, psessionEntry);
         pAddStaParams->fShortGI20Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_20MHZ, psessionEntry);
         pAddStaParams->fShortGI40Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_40MHZ, psessionEntry);
-#else
-        pAddStaParams->greenFieldCapable = limGetHTCapability( pMac, eHT_GREENFIELD );
-        pAddStaParams->txChannelWidthSet = limGetHTCapability( pMac, eHT_SUPPORTED_CHANNEL_WIDTH_SET );
-        pAddStaParams->mimoPS            = limGetHTCapability( pMac, eHT_MIMO_POWER_SAVE );
-        pAddStaParams->rifsMode          = limGetHTCapability( pMac, eHT_RIFS_MODE );
-        pAddStaParams->lsigTxopProtection = limGetHTCapability( pMac, eHT_LSIG_TXOP_PROTECTION );
-        pAddStaParams->delBASupport      = limGetHTCapability( pMac, eHT_DELAYED_BA );
-        pAddStaParams->maxAmpduDensity   = limGetHTCapability( pMac, eHT_MPDU_DENSITY );
-        pAddStaParams->maxAmpduSize   = limGetHTCapability(pMac, eHT_MAX_RX_AMPDU_FACTOR);
-        pAddStaParams->maxAmsduSize      = limGetHTCapability( pMac, eHT_MAX_AMSDU_LENGTH );
-        pAddStaParams->fDsssCckMode40Mhz = limGetHTCapability( pMac, eHT_DSSS_CCK_MODE_40MHZ);
-        pAddStaParams->fShortGI20Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_20MHZ);
-        pAddStaParams->fShortGI40Mhz     = limGetHTCapability( pMac, eHT_SHORT_GI_40MHZ);
-#endif
     }
 
     if (wlan_cfgGetInt(pMac, WNI_CFG_LISTEN_INTERVAL, &listenInterval) != eSIR_SUCCESS)
@@ -3421,9 +3261,6 @@ void limProcessMlmSetStaKeyRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
         if( NULL != lpLimMlmSetKeysReq )
         {
             palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmSetKeysCnf.peerMacAddr, (tANI_U8 *) lpLimMlmSetKeysReq->peerMacAddr, sizeof(tSirMacAddr) );
-#ifdef ANI_PRODUCT_TYPE_AP
-            mlmSetKeysCnf.aid = lpLimMlmSetKeysReq->aid;
-#endif
             // Free the buffer cached for the global pMac->lim.gpLimMlmSetKeysReq
             palFreeMemory(pMac->hHdd, (tANI_U8 *) pMac->lim.gpLimMlmSetKeysReq);
             pMac->lim.gpLimMlmSetKeysReq = NULL;
@@ -3492,9 +3329,6 @@ void limProcessMlmSetBssKeyRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
         if( NULL != lpLimMlmSetKeysReq )
         {
             palCopyMemory( pMac->hHdd, (tANI_U8 *) &mlmSetKeysCnf.peerMacAddr, (tANI_U8 *) lpLimMlmSetKeysReq->peerMacAddr, sizeof(tSirMacAddr) );
-#ifdef ANI_PRODUCT_TYPE_AP
-            mlmSetKeysCnf.aid = lpLimMlmSetKeysReq->aid;
-#endif
             // Free the buffer cached for the global pMac->lim.gpLimMlmSetKeysReq
             palFreeMemory(pMac->hHdd, (tANI_U8 *) pMac->lim.gpLimMlmSetKeysReq);
             pMac->lim.gpLimMlmSetKeysReq = NULL;
@@ -3593,77 +3427,6 @@ void limProcessMlmRemoveKeyRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
     }
 }
 
-#if (defined(ANI_PRODUCT_TYPE_AP) || defined(ANI_PRODUCT_TYPE_AP_SDK))
-/**----------------------------------------------------
-\fn     __limProcessFinishLearnRsp
-\brief  Handle finish learn rsp state, only for AP.
-\param  pMac
-\return NONE
------------------------------------------------------*/
-static void __limProcessFinishLearnRsp(tpAniSirGlobal pMac)
-{
-    PELOG2(limLog(pMac, LOG2, FL("System Role: %d\n"), pMac->lim.gLimSystemRole);)
-    if (pMac->lim.gpLimMeasReq == NULL)
-    {
-        limRestorePreLearnState(pMac);
-        return;
-    }
-    /**
-      * Initial measurement -> periodic measurement should keep enabled, so that
-      * if system Role is UNKNOWN LIM can send indication to WSM. Overloading
-      * periodic measurement to distinguish initial measurement and radar
-      * detect park basically to avoid sending measurement indication after
-      * radar detect park.
-      * Radar detect park -> periodic measurement should be disabled, so that
-      * LIM wont send indication even when role is UNKNOWN.
-      * Final measurement -> periodic measurement should be enabled, so that
-      * LIM could start measurement indication timer.
-      */
-    if (pMac->lim.gpLimMeasReq->measControl.periodicMeasEnabled &&
-                !pMac->lim.gLimMeasParams.isMeasIndTimerActive)
-    {
-#if 0 /* Will we be ever in UNKNOWN ROLE: Veerendra */
-        if (pMac->lim.gLimSystemRole == eLIM_UNKNOWN_ROLE)
-        {
-            limSendSmeMeasurementInd(pMac);
-            limCleanupMeasResources(pMac);
-            limRestorePreLearnState(pMac);
-            return;
-        }
-        else
-#endif
-        {
-#ifdef GEN6_TODO
-            /* revisit this piece of code to assign the appropriate sessionId below
-             * priority - MEDIUM
-             */
-            pMac->lim.gLimMeasParams.measurementIndTimer.sessionId = sessionId;
-#endif
-            // Activate periodic measurement indication timer
-            if (tx_timer_activate(
-               &pMac->lim.gLimMeasParams.measurementIndTimer)
-               != TX_SUCCESS)
-            {
-                limLog(pMac, LOGP, FL("could not start Meas IND timer\n"));
-                return;
-            }
-            pMac->lim.gLimMeasParams.isMeasIndTimerActive = 1;
-        }
-    }
-    if (pMac->lim.gLimMeasParams.nextLearnChannelId >=
-            pMac->lim.gpLimMeasReq->channelList.numChannels - 1)
-    {
-        // All channels in the channel set are learned.
-        pMac->lim.gLimMeasParams.nextLearnChannelId = 0;
-    }
-    // Go back to previous state.
-    limRestorePreLearnState(pMac);
-    // Restart the learn interval timer.
-    if (pMac->lim.gpLimMeasReq->measControl.periodicMeasEnabled)
-        limReEnableLearnMode(pMac);
-    return;
-}
-#endif
 
 /** ---------------------------------------------------------------------
 \fn      limProcessInitScanRsp
@@ -3678,9 +3441,6 @@ void limProcessInitScanRsp(tpAniSirGlobal pMac,  void *body)
 {
     tpInitScanParams    pInitScanParam;
     eHalStatus          status;
-#if defined(ANI_PRODUCT_TYPE_AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    tANI_U8             channelNum;
-#endif
     SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
     pInitScanParam = (tpInitScanParams) body;
     status = pInitScanParam->status;
@@ -3715,17 +3475,6 @@ void limProcessInitScanRsp(tpAniSirGlobal pMac,  void *body)
                 * changed before this response message is sent.
                 */
                limCompleteMlmScan(pMac, eSIR_SME_HAL_SCAN_INIT_FAILED);
-#if defined(ANI_PRODUCT_TYPE_AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-                /* For handling the measurement request from WSM as scan request in LIM*/
-#if 0
-               if (pMac->lim.gLimSystemRole == eLIM_STA_ROLE && pMac->lim.gpLimMeasReq != NULL)
-                {
-                    limRestorePreLearnState(pMac);
-                    pMac->lim.gLimHalScanState = eLIM_HAL_IDLE_SCAN_STATE;
-                    limReEnableLearnMode(pMac);
-                }
-#endif
-#endif
                 return;
             }
             else if (status == eHAL_STATUS_SUCCESS)
@@ -3738,22 +3487,6 @@ void limProcessInitScanRsp(tpAniSirGlobal pMac,  void *body)
             }
             limContinueChannelScan(pMac);
             break;
-#if defined(ANI_PRODUCT_TYPE_AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-        case eLIM_HAL_INIT_LEARN_WAIT_STATE:
-//            if (pMac->lim.gLimSystemRole == eLIM_AP_ROLE)
-            {
-                if (status != (tANI_U32) eHAL_STATUS_SUCCESS)
-                {
-                    limRestorePreLearnState(pMac);
-                    pMac->lim.gLimHalScanState = eLIM_HAL_IDLE_SCAN_STATE;
-                    limReEnableLearnMode(pMac);
-                    return;
-                }
-                channelNum = limGetCurrentLearnChannel(pMac);
-                limSendHalStartScanReq(pMac, channelNum, eLIM_HAL_START_LEARN_WAIT_STATE);
-            }
-            break;
-#endif
 //WLAN_SUSPEND_LINK Related
         case eLIM_HAL_SUSPEND_LINK_WAIT_STATE:
             if( pMac->lim.gpLimSuspendCallback )
@@ -4110,24 +3843,6 @@ void limProcessStartScanRsp(tpAniSirGlobal pMac,  void *body)
                limContinuePostChannelScan(pMac);
             }
             break;
-#if defined(ANI_PRODUCT_TYPE_AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-        case eLIM_HAL_START_LEARN_WAIT_STATE:
- //           if (pMac->lim.gLimSystemRole == eLIM_AP_ROLE)
-            {
-                if (status != (tANI_U32) eHAL_STATUS_SUCCESS)
-                {
-                    //Set the resume channel to Any valid channel (invalid). 
-                    //This will instruct HAL to set it to any previous valid channel.
-                    peSetResumeChannel(pMac, 0, 0);
-                    limSendHalFinishScanReq(pMac, eLIM_HAL_FINISH_LEARN_WAIT_STATE);
-                }
-                else
-                {
-                    limContinueChannelLearn(pMac);
-                }
-            }
-            break;
-#endif
         default:
             limLog(pMac, LOGW, FL("Rcvd StartScanRsp not in WAIT State, state %d\n"),
                      pMac->lim.gLimHalScanState);
@@ -4139,9 +3854,6 @@ void limProcessEndScanRsp(tpAniSirGlobal pMac,  void *body)
 {
     tpEndScanParams     pEndScanParam;
     eHalStatus          status;
-#if defined(ANI_PRODUCT_TYPE_AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-    tANI_U8             channelNum;
-#endif
     SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
     pEndScanParam = (tpEndScanParams) body;
     status = pEndScanParam->status;
@@ -4161,33 +3873,6 @@ void limProcessEndScanRsp(tpAniSirGlobal pMac,  void *body)
                limContinueChannelScan(pMac);
             }
             break;
-#if defined(ANI_PRODUCT_TYPE_AP) && (WNI_POLARIS_FW_PACKAGE == ADVANCED)
-        case eLIM_HAL_END_LEARN_WAIT_STATE:
-            if (status != (tANI_U32) eHAL_STATUS_SUCCESS)
-            {
-                //Set the resume channel to Any valid channel (invalid). 
-                //This will instruct HAL to set it to any previous valid channel.
-                peSetResumeChannel(pMac, 0, 0);
-                limSendHalFinishScanReq(pMac, eLIM_HAL_FINISH_LEARN_WAIT_STATE);
-            }
-#if 0 /* Will we be in UNKNOWN ROLE ever in this context: Veerendra */
-            else if (pMac->lim.gLimSystemRole == eLIM_UNKNOWN_ROLE)
-            {
-               /** Before starting BSS, we do complete set of measurement before putting
-                *   softmac back into normal mode.
-                */
-               channelNum = limGetCurrentLearnChannel(pMac);
-               limSendHalStartScanReq(pMac, channelNum, eLIM_HAL_START_LEARN_WAIT_STATE);
-            }
-            else
-#endif
-            {
-               limLog(pMac, LOGW, FL("ERROR! This state is set only when AP in UNKNOWN_ROLE\n"),
-                        pMac->lim.gLimHalScanState);
-                limSendHalFinishScanReq(pMac, eLIM_HAL_FINISH_LEARN_WAIT_STATE);
-            }
-            break;
-#endif
         default:
             limLog(pMac, LOGW, FL("Rcvd endScanRsp not in WAIT State, state %d\n"),
                         pMac->lim.gLimHalScanState);
@@ -4284,28 +3969,11 @@ void limProcessFinishScanRsp(tpAniSirGlobal pMac,  void *body)
                 */
                 limStartQuietOnSession(pMac);
             }
-#ifdef ANI_PRODUCT_TYPE_AP
-            /* For handling the measurement request from WSM as scan request in LIM*/
-#if 0
-            if (pMac->lim.gLimSystemRole == eLIM_STA_ROLE && pMac->lim.gpLimMeasReq != NULL)
-            {
-                limSendSmeMeasurementInd(pMac);
-                limCleanupMeasResources(pMac);
-                limRestorePreLearnState(pMac);
-            }
-#endif
-#endif
             if (status != (tANI_U32) eHAL_STATUS_SUCCESS)
             {
                PELOGW(limLog(pMac, LOGW, FL("EndScanRsp with failed status= %d\n"), status);)
             }
             break;
-#if (defined(ANI_PRODUCT_TYPE_AP) || defined(ANI_PRODUCT_TYPE_AP_SDK))
-        case eLIM_HAL_FINISH_LEARN_WAIT_STATE:
-            pMac->lim.gLimHalScanState = eLIM_HAL_IDLE_SCAN_STATE;
-            __limProcessFinishLearnRsp(pMac);
-            break;
-#endif //#if (defined(ANI_PRODUCT_TYPE_AP) || defined(ANI_PRODUCT_TYPE_AP_SDK))
 //WLAN_SUSPEND_LINK Related
         case eLIM_HAL_RESUME_LINK_WAIT_STATE:
             if( pMac->lim.gpLimResumeCallback )
@@ -4744,15 +4412,12 @@ limHandleDelBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode pStaDs,tpPESe
    /* Update PE session Id*/
     mlmReassocCnf.sessionId = psessionEntry->peSessionId;
     switch (psessionEntry->limMlmState) {
-#if defined(ANI_PRODUCT_TYPE_CLIENT) || defined(ANI_AP_CLIENT_SDK)
         case eLIM_SME_WT_REASSOC_STATE :
         {
             tpSirAssocRsp assocRsp;
             tpDphHashNode   pStaDs;
             tSirRetStatus       retStatus = eSIR_SUCCESS;
-#ifdef ANI_PRODUCT_TYPE_CLIENT
             tSchBeaconStruct beaconStruct;
-#endif
             /** Delete the older STA Table entry */
             limDeleteDphHashEntry(pMac, psessionEntry->bssId, DPH_STA_HASH_INDEX_PEER, psessionEntry);
        /**
@@ -4774,7 +4439,6 @@ limHandleDelBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode pStaDs,tpPESe
             assocRsp = (tpSirAssocRsp)psessionEntry->limAssocResponseData;
             limUpdateAssocStaDatas(pMac, pStaDs, assocRsp,psessionEntry);
             limUpdateReAssocGlobals(pMac, assocRsp,psessionEntry);
-#ifdef ANI_PRODUCT_TYPE_CLIENT
             limExtractApCapabilities( pMac,
                   (tANI_U8 *) psessionEntry->pLimReAssocReq->bssDescription.ieFields,
                   limGetIElenFromBssDescription( &psessionEntry->pLimReAssocReq->bssDescription ),
@@ -4793,13 +4457,6 @@ limHandleDelBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode pStaDs,tpPESe
                 limLog( pMac, LOGE, FL( "Posting ADDBSS in the ReAssocContext has Failed \n"));
                 retStatus = eSIR_FAILURE;
             }
-#elif defined(ANI_AP_CLIENT_SDK)
-            if (eSIR_SUCCESS != limStaSendAddBss( pMac, (*assocRsp), &psessionEntry->pLimReAssocReq->neighborBssList.bssList[0],
-                                                  false, psessionEntry))  {
-                limLog( pMac, LOGE, FL( "Posting ADDBSS in the ReAssocContext has Failed \n"));
-                retStatus = eSIR_FAILURE;
-            }
-#endif
             if (retStatus != eSIR_SUCCESS)
             {
                 mlmReassocCnf.resultCode = eSIR_SME_RESOURCES_UNAVAILABLE;
@@ -4830,7 +4487,6 @@ limHandleDelBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode pStaDs,tpPESe
             limPostSmeMessage(pMac, LIM_MLM_REASSOC_CNF, (tANI_U32 *) &mlmReassocCnf);
         }
         break;
-#endif
         default:
             PELOGE(limLog(pMac, LOGE, FL("DelBss is being invoked in the wrong system Role /unhandled  SME State\n"));)
             mlmReassocCnf.resultCode = eSIR_SME_REFUSED;
@@ -4924,12 +4580,10 @@ limHandleAddBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPES
     psessionEntry->limMlmState = eLIM_MLM_IDLE_STATE;
     MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
     switch (psessionEntry->limSmeState) {
-#if defined(ANI_PRODUCT_TYPE_CLIENT) || defined(ANI_AP_CLIENT_SDK)
         case eLIM_SME_WT_REASSOC_STATE : {
             tpSirAssocRsp assocRsp;
             tpDphHashNode   pStaDs;
             tSirRetStatus       retStatus = eSIR_SUCCESS;
-#ifdef ANI_PRODUCT_TYPE_CLIENT
             tSchBeaconStruct *pBeaconStruct;
             if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
                                                         (void **)&pBeaconStruct, sizeof(tSchBeaconStruct)))
@@ -4940,7 +4594,6 @@ limHandleAddBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPES
                 goto Error;
             }
 
-#endif
             // Get the AP entry from DPH hash table
             pStaDs = dphGetHashEntry(pMac, DPH_STA_HASH_INDEX_PEER, &psessionEntry->dph.dphHashTable);
             if (pStaDs == NULL )
@@ -4957,7 +4610,6 @@ limHandleAddBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPES
             assocRsp = (tpSirAssocRsp)psessionEntry->limAssocResponseData;
             limUpdateAssocStaDatas(pMac, pStaDs, assocRsp, psessionEntry);
             limUpdateReAssocGlobals(pMac, assocRsp, psessionEntry);
-#ifdef ANI_PRODUCT_TYPE_CLIENT
             limExtractApCapabilities( pMac,
                   (tANI_U8 *) psessionEntry->pLimReAssocReq->bssDescription.ieFields,
                   limGetIElenFromBssDescription( &psessionEntry->pLimReAssocReq->bssDescription ),
@@ -4978,12 +4630,6 @@ limHandleAddBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPES
                 limLog( pMac, LOGE, FL( "Posting ADDBSS in the ReAssocContext has Failed \n"));
                 retStatus = eSIR_FAILURE;
             }
-#elif defined(ANI_AP_CLIENT_SDK)
-            if (eSIR_SUCCESS != limStaSendAddBss( pMac, (*assocRsp), &pMac->lim.gpLimReassocReq->neighborBssList.bssList[0], true))  {
-                limLog( pMac, LOGE, FL( "Posting ADDBSS in the ReAssocContext has Failed \n"));
-                retStatus = eSIR_FAILURE;
-            }
-#endif
             if (retStatus != eSIR_SUCCESS)
             {
                 mlmReassocCnf.resultCode = eSIR_SME_RESOURCES_UNAVAILABLE;
@@ -5015,7 +4661,6 @@ limHandleAddBssInReAssocContext(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPES
             limPostSmeMessage(pMac, LIM_MLM_REASSOC_CNF, (tANI_U32 *) &mlmReassocCnf);
         }
         break;
-#endif
         default:
             PELOGE(limLog(pMac, LOGE, FL("DelBss is being invoked in the wrong system Role /unhandled  SME State\n"));)
             mlmReassocCnf.resultCode = eSIR_SME_REFUSED;
@@ -5133,7 +4778,6 @@ end:
 } /*** end __limProcessSmeAssocCnfNew() ***/
 #endif
 
-#ifdef WLAN_SOFTAP_FEATURE
 void
 limSendBeaconInd(tpAniSirGlobal pMac, tpPESession psessionEntry){
     tBeaconGenParams *pBeaconGenParams = NULL;
@@ -5159,4 +4803,3 @@ limSendBeaconInd(tpAniSirGlobal pMac, tpPESession psessionEntry){
     schProcessPreBeaconInd(pMac, &limMsg);
     return;
 }
-#endif

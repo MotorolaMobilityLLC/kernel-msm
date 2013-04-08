@@ -92,11 +92,7 @@
 //****************** MISC defs *********************************
 
 /// Maximum allowable size of a beacon frame
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-#define SCH_MAX_BEACON_SIZE    2048
-#else
 #define SCH_MAX_BEACON_SIZE    512
-#endif
 
 #define SCH_MAX_PROBE_RESP_SIZE 512
 
@@ -109,7 +105,7 @@ struct schMisc {
 
     /// Trailing portion of the beacon frame to be written to TFP
     tANI_U8 *gSchBeaconFrameEnd;
-    
+
     /// Size of the beginning portion
     tANI_U16 gSchBeaconOffsetBegin;
     /// Size of the trailing portion
@@ -156,7 +152,7 @@ struct schMisc {
     /// flag to indicate that beacon template has been updated
     tANI_U8   fBeaconChanged;
 
-#if defined(WLAN_SOFTAP_FEATURE) && defined(WLAN_FEATURE_P2P) 
+#if defined(WLAN_FEATURE_P2P)
     tANI_U16 p2pIeOffset;
 #endif
 
@@ -188,9 +184,6 @@ typedef struct sAniSirSch
     /// Whether scan request is received by SCH or not
     tANI_U8 gSchScanReqRcvd;
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    tANI_U8 gSchRRRecd;
-#endif
 
     /// Debug flag to disable beacon generation
     tANI_U32 gSchGenBeacon;

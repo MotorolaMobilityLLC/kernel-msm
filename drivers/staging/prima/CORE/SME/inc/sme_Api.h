@@ -291,7 +291,6 @@ eHalStatus sme_UpdateConfig(tHalHandle hHal, tpSmeConfigParams pSmeConfigParams)
 eHalStatus sme_UpdateChannelConfig(tHalHandle hHal);
 
 #endif // FEATURE_WLAN_SCAN_PNLO
-#ifdef WLAN_SOFTAP_FEATURE
 /*--------------------------------------------------------------------------
   
   \brief sme_set11dinfo() - Set the 11d information about valid channels
@@ -331,7 +330,6 @@ eHalStatus sme_getSoftApDomain(tHalHandle hHal,  v_REGDOMAIN_t *domainIdSoftAp);
 
 eHalStatus sme_setRegInfo(tHalHandle hHal,  tANI_U8 *apCntryCode);
 
-#endif
 
 /* ---------------------------------------------------------------------------
     \fn sme_ChangeConfigParams
@@ -561,7 +559,6 @@ eHalStatus sme_RoamConnectToLastProfile(tHalHandle hHal, tANI_U8 sessionId);
   ---------------------------------------------------------------------------*/
 eHalStatus sme_RoamDisconnect(tHalHandle hHal, tANI_U8 sessionId, eCsrRoamDisconnectReason reason);
 
-#ifdef WLAN_SOFTAP_FEATURE
 /* ---------------------------------------------------------------------------
     \fn sme_RoamStopBss
     \brief a wrapper function to request CSR to stop bss
@@ -626,7 +623,6 @@ eHalStatus sme_RoamTKIPCounterMeasures(tHalHandle hHal, tANI_U8 sessionId, tANI_
 eHalStatus sme_RoamGetWpsSessionOverlap(tHalHandle hHal, tANI_U8 sessionId,
                                         void *pUsrContext, void *pfnSapEventCallback,
                                         v_MACADDR_t pRemoveMac);
-#endif
 
 /* ---------------------------------------------------------------------------
     \fn sme_RoamGetConnectState
@@ -1606,7 +1602,6 @@ eHalStatus sme_getOemDataRsp(tHalHandle hHal,
 #endif /*FEATURE_OEM_DATA_SUPPORT*/
 
 
-#ifdef WLAN_SOFTAP_FEATURE
 
 /* ---------------------------------------------------------------------------
 
@@ -1653,7 +1648,6 @@ eHalStatus sme_RoamUpdateAPWPARSNIEs(tHalHandle hHal, tANI_U8 sessionId, tSirRSN
 eHalStatus sme_ChangeMCCBeaconInterval(tHalHandle hHal, tANI_U8 sessionId);
 
 
-#endif
 
 /* ---------------------------------------------------------------------------
   \fn sme_sendBTAmpEvent
@@ -2125,7 +2119,6 @@ eHalStatus sme_p2pGetResultFilter(tHalHandle hHal, tANI_U8 HDDSessionId,
 eHalStatus sme_SetMaxTxPower(tHalHandle hHal, tSirMacAddr pBssid, 
                              tSirMacAddr pSelfMacAddress, v_S7_t dB);
 
-#ifdef WLAN_SOFTAP_FEATURE
 /* ---------------------------------------------------------------------------
 
     \fn sme_HideSSID
@@ -2140,7 +2133,6 @@ eHalStatus sme_SetMaxTxPower(tHalHandle hHal, tSirMacAddr pBssid,
 
   -------------------------------------------------------------------------------*/
 eHalStatus sme_HideSSID(tHalHandle hHal, v_U8_t sessionId, v_U8_t ssidHidden);
-#endif
 
 /* ---------------------------------------------------------------------------
 

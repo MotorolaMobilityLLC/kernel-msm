@@ -397,9 +397,7 @@ eHalStatus oemData_IsOemDataReqAllowed(tHalHandle hHal)
         if(CSR_IS_SESSION_VALID(pMac, sessionId))
         {
             if(csrIsConnStateIbss(pMac, sessionId) || csrIsBTAMP(pMac, sessionId) 
-#ifdef WLAN_SOFTAP_FEATURE
                || csrIsConnStateConnectedInfraAp(pMac, sessionId)
-#endif
                )
             {
                 //co-exist with IBSS or BT-AMP or Soft-AP mode is not supported

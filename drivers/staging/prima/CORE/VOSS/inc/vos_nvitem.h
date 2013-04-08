@@ -124,7 +124,7 @@ ADD_VNV_ITEM( VNV_TABLE_VIRTUAL_RATE, 1, 4, VNV_TABLE_VIRTUAL_RATE_I ) \
 #define VOS_NV_FREQUENCY_FOR_1_3V_SUPPLY_1P6MH 1   //1.6 Mhz
 
 
-/*! 
+/*!
  * The path (from the root of the DPP_FOLDER_PATH\QCOM) to the file containing
  * the CLPC provisioning data. This is being temporarily put here. This should go
  * to esp_dpp.h where the WLAN_PROVISION_DATA is present.
@@ -599,6 +599,23 @@ VOS_STATUS vos_nv_getChannelListWithPower(tChannelListWithPower *pChannels20MHz 
                                           );
 
 /**------------------------------------------------------------------------
+  \brief vos_nv_get5GChannelListWithPower() - function to return the list of
+          supported 5G channels with the power limit info too.
+  \param pChannels20MHz - list of 20 Mhz channels
+  \param pNum20MHzChannelsFound - number of 20 Mhz channels
+  \param pChannels40MHz - list of 20 Mhz channels
+  \param pNum40MHzChannelsFound - number of 20 Mhz channels
+  \return status of the NV read operation
+  \Note: 40Mhz not currently supported
+  \sa
+  -------------------------------------------------------------------------*/
+VOS_STATUS vos_nv_get5GChannelListWithPower(tChannelListWithPower *pChannels20MHz /*[NUM_LEGIT_RF_CHANNELS] */,
+                                          tANI_U8 *pNum20MHzChannelsFound,
+                                          tChannelListWithPower *pChannels40MHz /*[NUM_CHAN_BOND_CHANNELS] */,
+                                          tANI_U8 *pNum40MHzChannelsFound
+                                          );
+
+/**------------------------------------------------------------------------
 
   \brief vos_nv_open() - initialize the NV module
 
@@ -628,18 +645,16 @@ VOS_STATUS vos_nv_open(void);
 VOS_STATUS vos_nv_close(void);
 
 /**------------------------------------------------------------------------
-  \brief vos_nv_getBuffer - 
+  \brief vos_nv_getNVBuffer -
   \param pBuffer  - to return the buffer address
-            pNvBitmap - Nv Bit map
-            pSize     - buffer size.
+         pSize    - buffer size.
   \return status of the NV read operation
   \sa
   -------------------------------------------------------------------------*/
 VOS_STATUS vos_nv_getNVBuffer(v_VOID_t **pNvBuffer ,v_SIZE_t *pSize);
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /**------------------------------------------------------------------------
-  \brief vos_nv_setRegDomain - 
+  \brief vos_nv_setRegDomain -
   \param clientCtxt  - Client Context, Not used for PRIMA
               regId  - Regulatory Domain ID
   \return status set REG domain operation
@@ -648,7 +663,7 @@ VOS_STATUS vos_nv_getNVBuffer(v_VOID_t **pNvBuffer ,v_SIZE_t *pSize);
 VOS_STATUS vos_nv_setRegDomain(void * clientCtxt, v_REGDOMAIN_t regId);
 
 /**------------------------------------------------------------------------
-  \brief vos_nv_getChannelEnabledState - 
+  \brief vos_nv_getChannelEnabledState -
   \param rfChannel  - input channel number to know enabled state
   \return eNVChannelEnabledType enabled state for channel
              * enabled
@@ -661,6 +676,5 @@ eNVChannelEnabledType vos_nv_getChannelEnabledState
 (
    v_U32_t    rfChannel
 );
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 #endif // __VOS_NVITEM_H

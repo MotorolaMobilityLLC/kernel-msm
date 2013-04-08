@@ -53,11 +53,7 @@
 #include "wniApi.h"
 #include "sirApi.h"
 #include "aniGlobal.h"
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-#include "wniCfgAp.h"
-#else
 #include "wniCfgSta.h"
-#endif
 #include "schApi.h"
 #include "utilsApi.h"
 #include "limTypes.h"
@@ -483,145 +479,6 @@ __limProcessOperatingModeActionFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo
 static void
 __limProcessAddTsReq(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession psessionEntry)
 {
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-
-    tSirAddtsReqInfo addts;
-    tSirRetStatus    retval;
-    tpSirMacMgmtHdr  pHdr;
-    tSirMacScheduleIE schedule;
-    tpDphHashNode    pSta;
-    tANI_U16              status;
-    tANI_U16              aid;
-    tANI_U32              frameLen;
-    tANI_U8              *pBody;
-    tANI_U8 tspecIdx = 0; //index in the sch tspec table.
-
-    pHdr = WDA_GET_RX_MAC_HEADER(pRxPacketInfo);
-    pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
-    frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
-
-
-    if ((psessionEntry->limSystemRole != eLIM_AP_ROLE)||(psessionEntry->limSystemRole != eLIM_BT_AMP_AP_ROLE))
-    {
-        PELOGW(limLog(pMac, LOGW, FL("AddTs request at non-AP: ignoring\n"));)
-        return;
-    }
-
-    pSta = dphLookupHashEntry(pMac, pHdr->sa, &aid, &psessionEntry->dph.dphHashTable);
-    if (pSta == NULL)
-    {
-        PELOGE(limLog(pMac, LOGE, FL("Station context not found - ignoring AddTs\n"));)
-        return;
-    }
-
-    PELOGW(limLog(pMac, LOGW, "AddTs Request from STA %d\n", aid);)
-    retval = sirConvertAddtsReq2Struct(pMac, pBody, frameLen, &addts);
-    if (retval != eSIR_SUCCESS)
-    {
-        PELOGW(limLog(pMac, LOGW, FL("AddTs parsing failed (error %d)\n"), retval);)
-        return;
-    }
-
-    status = eSIR_MAC_SUCCESS_STATUS;
-
-
-    if (addts.wmeTspecPresent)
-    {
-        if ((! psessionEntry->limWmeEnabled) || (! pSta->wmeEnabled))
-        {
-            PELOGW(limLog(pMac, LOGW, FL("Ignoring addts request: wme not enabled/capable\n"));)
-            status = eSIR_MAC_WME_REFUSED_STATUS;
-        }
-        else
-        {
-            PELOG2(limLog(pMac, LOG2, FL("WME Addts received\n"));)
-        }
-    }
-    else if (addts.wsmTspecPresent)
-    {
-        if ((! psessionEntry->limWsmEnabled) || (! pSta->wsmEnabled))
-        {
-            PELOGW(limLog(pMac, LOGW, FL("Ignoring addts request: wsm not enabled/capable\n"));)
-            status = eSIR_MAC_REQ_DECLINED_STATUS;
-        }
-        else
-        {
-            PELOG2(limLog(pMac, LOG2, FL("WSM Addts received\n"));)
-        }
-    }
-    else if ((! psessionEntry->limQosEnabled) || (! pSta->lleEnabled))
-    {
-        PELOGW(limLog(pMac, LOGW, FL("Ignoring addts request: qos not enabled/capable\n"));)
-        status = eSIR_MAC_REQ_DECLINED_STATUS;
-    }
-    else
-    {
-        PELOG2(limLog(pMac, LOG2, FL("11e QoS Addts received\n"));)
-    }
-
-    // for edca, if no Admit Control, ignore the request
-    if ((status == eSIR_MAC_SUCCESS_STATUS) &&
-        (addts.tspec.tsinfo.traffic.accessPolicy == SIR_MAC_ACCESSPOLICY_EDCA) &&
-        (! psessionEntry->gLimEdcaParamsBC[upToAc(addts.tspec.tsinfo.traffic.userPrio)].aci.acm))
-    {
-        limLog(pMac, LOGW, FL("AddTs with UP %d has no ACM - ignoring request\n"),
-               addts.tspec.tsinfo.traffic.userPrio);
-        status = (addts.wmeTspecPresent) ?
-                 eSIR_MAC_WME_REFUSED_STATUS : eSIR_MAC_UNSPEC_FAILURE_STATUS;
-    }
-
-    if (status != eSIR_MAC_SUCCESS_STATUS)
-    {
-        limSendAddtsRspActionFrame(pMac, pHdr->sa, status, &addts, NULL,psessionEntry);
-        return;
-    }
-
-    // try to admit the STA and send the appropriate response
-    retval = limAdmitControlAddTS(pMac, &pSta->staAddr[0], &addts, NULL, pSta->assocId, true, &schedule, &tspecIdx, psessionEntry);
-    if (retval != eSIR_SUCCESS)
-    {
-        PELOGW(limLog(pMac, LOGW, FL("Unable to admit TS\n"));)
-        status = (addts.wmeTspecPresent) ?
-                 eSIR_MAC_WME_REFUSED_STATUS : eSIR_MAC_UNSPEC_FAILURE_STATUS;
-    }
-    else if (addts.tspec.tsinfo.traffic.accessPolicy == SIR_MAC_ACCESSPOLICY_EDCA)
-    {
-        if(eSIR_SUCCESS != limSendHalMsgAddTs(pMac, pSta->staIndex, tspecIdx, addts.tspec, psessionEntry->peSessionId))
-        {
-          limLog(pMac, LOGW, FL("AddTs with UP %d failed in limSendHalMsgAddTs - ignoring request\n"),
-                 addts.tspec.tsinfo.traffic.userPrio);
-          status = (addts.wmeTspecPresent) ?
-                   eSIR_MAC_WME_REFUSED_STATUS : eSIR_MAC_UNSPEC_FAILURE_STATUS;
-
-           limAdmitControlDeleteTS(pMac, pSta->assocId, &addts.tspec.tsinfo, NULL, &tspecIdx);
-        }
-        if (status != eSIR_MAC_SUCCESS_STATUS)
-        {
-            limSendAddtsRspActionFrame(pMac, pHdr->sa, status, &addts, NULL,psessionEntry);
-            return;
-        }
-    }
-#if 0 //only EDCA is supported now.
-    else if (addts.numTclas > 1)
-    {
-        limLog(pMac, LOGE, FL("Sta %d: Too many Tclas (%d), only 1 supported\n"),
-               aid, addts.numTclas);
-        status = (addts.wmeTspecPresent) ?
-                 eSIR_MAC_WME_REFUSED_STATUS : eSIR_MAC_UNSPEC_FAILURE_STATUS;
-    }
-    else if (addts.numTclas == 1)
-    {
-        limLog(pMac, LOGW, "AddTs Request from STA %d: tsid %d, UP %d, OK!\n", aid,
-               addts.tspec.tsinfo.traffic.tsid, addts.tspec.tsinfo.traffic.userPrio);
-        status = eSIR_MAC_SUCCESS_STATUS;
-    }
-#endif
-
-    limLog(pMac, LOGW, "AddTs Request from STA %d: Sending AddTs Response with status %d\n",
-           aid, status);
-
-    limSendAddtsRspActionFrame(pMac, pHdr->sa, status, &addts, &schedule,psessionEntry);
-#endif
 }
 
 
@@ -903,14 +760,7 @@ __limProcessDelTsReq(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession pse
     if ((tsinfo->traffic.accessPolicy == SIR_MAC_ACCESSPOLICY_EDCA))
     {
     
-#if(defined(ANI_PRODUCT_TYPE_AP) || defined(ANI_PRODUCT_TYPE_AP_SDK))
-        if ((psessionEntry->limSystemRole == eLIM_AP_ROLE &&
-        (! psessionEntry->gLimEdcaParamsBC[upToAc(tsinfo->traffic.userPrio)].aci.acm)) ||
-        (psessionEntry->limSystemRole != eLIM_AP_ROLE &&
-        (! psessionEntry->gLimEdcaParams[upToAc(tsinfo->traffic.userPrio)].aci.acm)))
-#else
         if ((upToAc(tsinfo->traffic.userPrio) >= MAX_NUM_AC) || (! psessionEntry->gLimEdcaParams[upToAc(tsinfo->traffic.userPrio)].aci.acm))
-#endif
         {
             limLog(pMac, LOGW, FL("DelTs with UP %d has no AC - ignoring request\n"),
                    tsinfo->traffic.userPrio);

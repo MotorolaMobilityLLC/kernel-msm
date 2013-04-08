@@ -40,14 +40,10 @@
  */
 
 /**=========================================================================
-  
+
   \file  vos_api.c
 
   \brief Stub file for all virtual Operating System Services (vOSS) APIs
-               
-   Copyright 2008 (c) Qualcomm, Incorporated.  All Rights Reserved.
-   
-   Qualcomm Confidential and Proprietary.
   
   ========================================================================*/
  /*=========================================================================== 
@@ -70,12 +66,6 @@
 /*--------------------------------------------------------------------------
   Include Files
   ------------------------------------------------------------------------*/
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-#include "aniGlobal.h"
-#include "halTypes.h"
-#include "wlan_qct_sal.h"
-#include "wlan_qct_bal.h"
-#endif
 #include <vos_mq.h>
 #include "vos_sched.h"
 #include <vos_api.h>
@@ -94,9 +84,7 @@
 #include <linux/vmalloc.h>
 #include "wlan_hdd_cfg80211.h"
 
-#ifdef WLAN_SOFTAP_FEATURE
 #include "sapApi.h"
-#endif
 
 
 
@@ -130,16 +118,10 @@ static pVosContextType gpVosContext;
  * ------------------------------------------------------------------------*/
 v_VOID_t vos_sys_probe_thread_cback ( v_VOID_t *pUserData );
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-v_VOID_t vos_sys_start_complete_cback  ( v_VOID_t *pUserData );
-#endif
 v_VOID_t vos_core_return_msg(v_PVOID_t pVContext, pVosMsgWrapper pMsgWrapper);
 
 v_VOID_t vos_fetch_tl_cfg_parms ( WLANTL_ConfigInfoType *pTLConfig, 
     hdd_config_t * pConfig );
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-VOS_STATUS vos_get_fwbinary( v_VOID_t **ppBinary, v_SIZE_t *pNumBytes );
-#endif
 
 
 /*---------------------------------------------------------------------------
@@ -293,7 +275,6 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
       VOS_ASSERT(0);
       return VOS_STATUS_E_FAILURE;
    }
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    if (vos_event_init( &(gpVosContext->wdaCompleteEvent) ) != VOS_STATUS_SUCCESS )
    {
       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
@@ -302,15 +283,6 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
     
       goto err_probe_event;
    }
-
-   /* Saving the HDD context */
-   /* This is saved in hdd_wlan_start_up before calling vos_open
-      gpVosContext->pHDDContext = pHddContext;*/
- 
-   VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-               "%s: HDD context is saved successfully", __func__);
-   
-#endif
 
    /* Initialize the free message queue */
    vStatus = vos_mq_init(&gpVosContext->freeVosMq);
@@ -321,11 +293,7 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                 "%s: Failed to initialize VOS free message queue", __func__);
       VOS_ASSERT(0);
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-      goto err_probe_event;
-#else
       goto err_wda_complete_event;
-#endif
    }
 
    for (iter = 0; iter < VOS_CORE_MAX_MESSAGES; iter++)
@@ -335,20 +303,6 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
       INIT_LIST_HEAD(&gpVosContext->aMsgWrappers[iter].msgNode);
       vos_mq_put(&gpVosContext->freeVosMq, &(gpVosContext->aMsgWrappers[iter]));
    }
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-   /* Initialize here the VOS Packet sub module */
-   vStatus = vos_packet_open( gpVosContext, &gpVosContext->vosPacket,
-                              sizeof( vos_pkt_context_t ) );
-
-   if ( !VOS_IS_STATUS_SUCCESS( vStatus ) )
-   {
-      /* Critical Error ...  Cannot proceed further */
-      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "%s: Failed to open VOS Packet Module", __func__);
-      VOS_ASSERT(0);
-      goto err_msg_queue;
-   }
-#endif   
 
    /* Now Open the VOS Scheduler */
    vStatus= vos_sched_open(gpVosContext, &gpVosContext->vosSched,
@@ -360,14 +314,9 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                 "%s: Failed to open VOS Scheduler", __func__);
       VOS_ASSERT(0);
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-      goto err_packet_close;
-#else
       goto err_msg_queue;
-#endif
    }
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
    /*
    ** Need to open WDA first because it calls WDI_Init, which calls wpalOpen
    ** The reason that is needed becasue vos_packet_open need to use PAL APIs
@@ -403,7 +352,6 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
       VOS_ASSERT(0);
       goto err_wda_close;
    }
-#endif
 
    /* Open the SYS module */
    vStatus = sysOpen(gpVosContext);
@@ -414,11 +362,7 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
       VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
                 "%s: Failed to open SYS module", __func__);
       VOS_ASSERT(0);
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-      goto err_sched_close;
-#else
       goto err_packet_close;
-#endif
    }
 
 
@@ -431,33 +375,6 @@ VOS_STATUS vos_open( v_CONTEXT_t *pVosContext, v_SIZE_t hddContextSize )
                 "%s: Failed to initialize the NV module", __func__);
      goto err_sys_close;
    }
-#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
-   /* Probe the MC thread */
-   sysMcThreadProbe(gpVosContext, 
-                    &vos_sys_probe_thread_cback,
-                    gpVosContext);
-
-   if (vos_wait_single_event(&gpVosContext->ProbeEvent, 0)!= VOS_STATUS_SUCCESS)
-   {
-      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "%s: Failed to probe MC Thread", __func__);
-      VOS_ASSERT(0);
-      goto err_nv_close;
-   }
-
-   /*Now probe the Tx thread */
-   sysTxThreadProbe(gpVosContext, 
-                    &vos_sys_probe_thread_cback,
-                    gpVosContext);
-   
-   if (vos_wait_single_event(&gpVosContext->ProbeEvent, 0)!= VOS_STATUS_SUCCESS)
-   {
-      VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-                "%s: Failed to probe TX Thread", __func__);
-      VOS_ASSERT(0);
-      goto err_nv_close;
-   }
-#endif
 
    /* If we arrive here, both threads dispacthing messages correctly */
    
@@ -529,29 +446,21 @@ err_nv_close:
 err_sys_close:   
    sysClose(gpVosContext);
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 err_packet_close:
    vos_packet_close( gpVosContext );
 
 err_wda_close:
    WDA_close(gpVosContext);
-#endif
 
 err_sched_close:   
    vos_sched_close(gpVosContext);
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-err_packet_close:
-   vos_packet_close( gpVosContext );
-#endif
 
 err_msg_queue:
    vos_mq_deinit(&gpVosContext->freeVosMq);
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 err_wda_complete_event:
    vos_event_destroy( &gpVosContext->wdaCompleteEvent );
-#endif
 
 err_probe_event:
    vos_event_destroy(&gpVosContext->ProbeEvent);
@@ -560,7 +469,6 @@ err_probe_event:
 
 } /* vos_open() */
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /*---------------------------------------------------------------------------
 
   \brief vos_preStart() -
@@ -652,7 +560,6 @@ VOS_STATUS vos_preStart( v_CONTEXT_t vosContext )
 
    return VOS_STATUS_SUCCESS;
 }
-#endif
 
 /*---------------------------------------------------------------------------
   
@@ -693,10 +600,6 @@ VOS_STATUS vos_start( v_CONTEXT_t vosContext )
   tSirRetStatus sirStatus     = eSIR_SUCCESS;
   pVosContextType pVosContext = (pVosContextType)vosContext;
   tHalMacStartParameters halStartParams;
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  v_VOID_t *pFwBinary = NULL;
-  v_SIZE_t  numFwBytes = 0;
-#endif
 
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
             "%s: Starting Libra SW", __func__);
@@ -709,23 +612,6 @@ VOS_STATUS vos_start( v_CONTEXT_t vosContext )
      return VOS_STATUS_E_FAILURE;
   }
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  if (( pVosContext->pBALContext == NULL) || ( pVosContext->pMACContext == NULL)
-     || ( pVosContext->pTLContext == NULL))
-  {
-     if (pVosContext->pBALContext == NULL)
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-            "%s: BAL NULL context", __func__);
-     else if (pVosContext->pMACContext == NULL)
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-            "%s: MAC NULL context", __func__);
-     else
-        VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-            "%s: TL NULL context", __func__);
-     
-     return VOS_STATUS_E_FAILURE;
-  }
-#else
   if (( pVosContext->pWDAContext == NULL) || ( pVosContext->pMACContext == NULL)
      || ( pVosContext->pTLContext == NULL))
   {
@@ -793,60 +679,17 @@ VOS_STATUS vos_start( v_CONTEXT_t vosContext )
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
             "%s: WDA correctly started", __func__);
 
-#endif
   /* Start the MAC */
   vos_mem_zero((v_PVOID_t)&halStartParams, sizeof(tHalMacStartParameters));
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  /* Attempt to get the firmware binary through VOS.  We need to pass this
-     to the MAC when starting. */
-  vStatus = vos_get_fwbinary(&pFwBinary, &numFwBytes);
-  
-  if ( !VOS_IS_STATUS_SUCCESS( vStatus ) )
-  {
-    VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-             "%s: Failed to get firmware binary", __func__);
-    return VOS_STATUS_E_FAILURE;
-  }
-
-  VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
-             "%s: Firmware binary file found", __func__);
-   
-
-  //Begining kernel 2.6.31, memory buffer returned by request_firmware API
-  //cannot be overwritten. So need to copy the firmware into a separate buffer
-  //as HAL needs to modify the endianess of FW binary.
-
-  //Kernel may not have ~40 pages of free buffers always, so
-  //Store the pointer to the buffer provided by kernel for now,
-  //When required copy it to local buffer for translation.
-  //This is done in vos_api.c, during firmware download
-  //This would provide common fix for ftm driver issue aswell, 
-  //which is not creating the copy of firmware image for endian conversion.
-  halStartParams.FW.cbImage = numFwBytes;
-  halStartParams.FW.pImage = pFwBinary;
-
- //determine the driverType for the mode of operation
- halStartParams.driverType = eDRIVER_TYPE_PRODUCTION;
-#endif
   /* Start the MAC */
   sirStatus = macStart(pVosContext->pMACContext,(v_PVOID_t)&halStartParams);
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  hdd_release_firmware(WLAN_FW_FILE, pVosContext->pHDDContext);
-
-  halStartParams.FW.pImage = NULL;
-  halStartParams.FW.cbImage = 0;
-#endif 
   if (eSIR_SUCCESS != sirStatus)
   {
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
               "%s: Failed to start MAC", __func__);
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-    return VOS_STATUS_E_FAILURE;
-#else
     goto err_wda_stop;
-#endif
   }
    
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
@@ -876,62 +719,11 @@ VOS_STATUS vos_start( v_CONTEXT_t vosContext )
 
   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
             "TL correctly started");
-#ifndef FEATURE_WLAN_INTEGRATED_SOC  
-  /* START SYS. This will trigger the CFG download */
-  sysMcStart(pVosContext, vos_sys_start_complete_cback, pVosContext);
-
-  if (vos_wait_single_event(&gpVosContext->ProbeEvent, 0)!= VOS_STATUS_SUCCESS)
-  {
-     VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,
-               "%s: Failed to start SYS module", __func__);
-     goto err_tl_stop;
-  }
-  
-  {
-      tpAniSirGlobal pMac = PMAC_STRUCT( pVosContext->pMACContext );
-
-      if(pMac->lim.gLimTimersCreated == 0)
-      {
-          VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_FATAL,"%s: Failed to create lim timers",__func__);
-          goto err_tl_stop;
-      }
-  }
-
-
-   /**
-   EVM issue is observed with 1.6Mhz freq for 1.3V RF supply in wlan standalone case.
-   During concurrent operation (e.g. WLAN and WCDMA) this issue is not observed.
-   To workaround, wlan will vote for 3.2Mhz during startup and will vote for 1.6Mhz
-   during exit.
-   Since using 3.2Mhz has a side effect on power (extra 200ua), this is left configurable.
-   If customers do their design right, they should not see the EVM issue and in that case they
-   can decide to keep 1.6Mhz by setting an NV.
-   If NV item is not present, use the default 3.2Mhz
-   vos_stop is also invoked if wlan startup seq fails (after vos_start, where 3.2Mhz is voted.)
-   */
-  {
-   sFreqFor1p3VSupply freq;
-   vStatus = vos_nv_read( NV_TABLE_FREQUENCY_FOR_1_3V_SUPPLY, &freq, NULL,
-         sizeof(freq) );
-   if (VOS_STATUS_SUCCESS != vStatus)
-    freq.freqFor1p3VSupply = VOS_NV_FREQUENCY_FOR_1_3V_SUPPLY_3P2MH;
-
-    if (vos_chipVoteFreqFor1p3VSupply(NULL, NULL, NULL, freq.freqFor1p3VSupply) != VOS_STATUS_SUCCESS)
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                   "%s: Failed to set the freq %d for 1.3V Supply",
-                   __func__, freq.freqFor1p3VSupply );
-  }
-
-#endif
   VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_INFO,
             "%s: VOSS Start is successful!!", __func__);
 
   return VOS_STATUS_SUCCESS;
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-err_tl_stop:
-  WLANTL_Stop(pVosContext);
-#endif
 
 err_sme_stop:
   sme_Stop(pVosContext->pMACContext, TRUE);
@@ -939,7 +731,6 @@ err_sme_stop:
 err_mac_stop:
   macStop( pVosContext->pMACContext, HAL_STOP_TYPE_SYS_RESET );
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 err_wda_stop:   
   vos_event_reset( &(gpVosContext->wdaCompleteEvent) );
   vStatus = WDA_stop( pVosContext, HAL_STOP_TYPE_RF_KILL);
@@ -971,7 +762,6 @@ err_wda_stop:
        WDA_setNeedShutdown(vosContext);
     }
   }
-#endif
 
   return VOS_STATUS_E_FAILURE;
    
@@ -983,7 +773,6 @@ VOS_STATUS vos_stop( v_CONTEXT_t vosContext )
 {
   VOS_STATUS vosStatus;
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   /* WDA_Stop is called before the SYS so that the processing of Riva 
   pending responces will not be handled during uninitialization of WLAN driver */
   vos_event_reset( &(gpVosContext->wdaCompleteEvent) );
@@ -1017,7 +806,6 @@ VOS_STATUS vos_stop( v_CONTEXT_t vosContext )
        WDA_setNeedShutdown(vosContext);
     }
   }
-#endif
 
   /* SYS STOP will stop SME and MAC */
   vosStatus = sysStop( vosContext);
@@ -1036,18 +824,6 @@ VOS_STATUS vos_stop( v_CONTEXT_t vosContext )
      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
   }
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-   /**
-   EVM issue is observed with 1.6Mhz freq for 1.3V supply in wlan standalone case.
-   During concurrent operation (e.g. WLAN and WCDMA) this issue is not observed.
-   To workaround, wlan will vote for 3.2Mhz during startup and will vote for 1.6Mhz
-   during exit.
-   vos_stop is also invoked if wlan startup seq fails (after vos_start, where 3.2Mhz is voted.)
-   */
-   if (vos_chipVoteFreqFor1p3VSupply(NULL, NULL, NULL, VOS_NV_FREQUENCY_FOR_1_3V_SUPPLY_1P6MH) != VOS_STATUS_SUCCESS)
-        VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-               "%s: Failed to set the freq to 1.6Mhz for 1.3V Supply", __func__ );
-#endif
 
   return VOS_STATUS_SUCCESS;
 }
@@ -1112,7 +888,6 @@ VOS_STATUS vos_close( v_CONTEXT_t vosContext )
      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
   }
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   if ( TRUE == WDA_needShutdown(vosContext ))
   {
      /* if WDA stop failed, call WDA shutdown to cleanup WDA/WDI */
@@ -1147,21 +922,10 @@ VOS_STATUS vos_close( v_CONTEXT_t vosContext )
          "%s: Failed to close VOSS Packet", __func__);
      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
   }
-#endif
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-  vosStatus = vos_packet_close( vosContext );
-  if (!VOS_IS_STATUS_SUCCESS(vosStatus))
-  {
-     VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-         "%s: Failed to close VOSS Packet", __func__);
-     VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
-  }
-#endif
 
   vos_mq_deinit(&((pVosContextType)vosContext)->freeVosMq);
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
   vosStatus = vos_event_destroy(&gpVosContext->wdaCompleteEvent);
   if (!VOS_IS_STATUS_SUCCESS(vosStatus))
   {
@@ -1169,7 +933,6 @@ VOS_STATUS vos_close( v_CONTEXT_t vosContext )
          "%s: failed to destroy wdaCompleteEvent", __func__);
      VOS_ASSERT( VOS_IS_STATUS_SUCCESS( vosStatus ) );
   }
-#endif
 
   vosStatus = vos_event_destroy(&gpVosContext->ProbeEvent);
   if (!VOS_IS_STATUS_SUCCESS(vosStatus))
@@ -1228,25 +991,6 @@ v_VOID_t* vos_get_context( VOS_MODULE_ID moduleId,
       break;
     }
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-    case VOS_MODULE_ID_BAL:
-    {
-      pModContext = gpVosContext->pBALContext;
-      break;
-    }   
-
-    case VOS_MODULE_ID_SAL:
-    {
-      pModContext = gpVosContext->pSALContext;
-      break;
-    }   
-
-    case VOS_MODULE_ID_SSC:   
-    {
-      pModContext = gpVosContext->pSSCContext;
-      break;
-    }
-#endif
 #ifdef WLAN_BTAMP_FEATURE
     case VOS_MODULE_ID_BAP:
     {
@@ -1255,7 +999,6 @@ v_VOID_t* vos_get_context( VOS_MODULE_ID moduleId,
     }    
 #endif //WLAN_BTAMP_FEATURE
 
-#ifdef WLAN_SOFTAP_FEATURE
     case VOS_MODULE_ID_SAP:
     {
       pModContext = gpVosContext->pSAPContext;
@@ -1267,7 +1010,6 @@ v_VOID_t* vos_get_context( VOS_MODULE_ID moduleId,
       pModContext = gpVosContext->pHDDSoftAPContext;
       break;
     }
-#endif
 
     case VOS_MODULE_ID_HDD:
     {
@@ -1276,9 +1018,6 @@ v_VOID_t* vos_get_context( VOS_MODULE_ID moduleId,
     }
 
     case VOS_MODULE_ID_SME:
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-    case VOS_MODULE_ID_HAL:
-#endif
     case VOS_MODULE_ID_PE:
     {
       /* 
@@ -1288,14 +1027,12 @@ v_VOID_t* vos_get_context( VOS_MODULE_ID moduleId,
       break;
     }
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
     case VOS_MODULE_ID_WDA:
     {
       /* For WDA module */
       pModContext = gpVosContext->pWDAContext;
       break;
     }
-#endif
 
     case VOS_MODULE_ID_VOSS:
     {
@@ -1466,25 +1203,6 @@ VOS_STATUS vos_alloc_context( v_VOID_t *pVosContext, VOS_MODULE_ID moduleID,
       break;
     }
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-    case VOS_MODULE_ID_BAL:
-    {
-      pGpModContext = &(gpVosContext->pBALContext);
-      break;
-    }
-
-    case VOS_MODULE_ID_SAL:
-    {
-      pGpModContext = &(gpVosContext->pSALContext);
-      break;
-    }   
-
-    case VOS_MODULE_ID_SSC:
-    {
-      pGpModContext = &(gpVosContext->pSSCContext); 
-      break;
-    }
-#endif
 #ifdef WLAN_BTAMP_FEATURE
     case VOS_MODULE_ID_BAP:
     {
@@ -1493,30 +1211,21 @@ VOS_STATUS vos_alloc_context( v_VOID_t *pVosContext, VOS_MODULE_ID moduleID,
     }    
 #endif //WLAN_BTAMP_FEATURE
 
-#ifdef WLAN_SOFTAP_FEATURE
     case VOS_MODULE_ID_SAP:
     {
       pGpModContext = &(gpVosContext->pSAPContext);
       break;
     }
-#endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
     case VOS_MODULE_ID_WDA:
     {
       pGpModContext = &(gpVosContext->pWDAContext);
       break;
     }
-#endif
     case VOS_MODULE_ID_SME:
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-    case VOS_MODULE_ID_HAL:
-#endif
     case VOS_MODULE_ID_PE:
     case VOS_MODULE_ID_HDD:
-#ifdef WLAN_SOFTAP_FEATURE
     case VOS_MODULE_ID_HDD_SOFTAP:
-#endif
     default:
     {     
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: Module ID %i "
@@ -1618,25 +1327,6 @@ VOS_STATUS vos_free_context( v_VOID_t *pVosContext, VOS_MODULE_ID moduleID,
       break;
     }
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-    case VOS_MODULE_ID_BAL:
-    {
-      pGpModContext = &(gpVosContext->pBALContext);
-      break;
-    }   
-
-    case VOS_MODULE_ID_SAL:
-    {
-      pGpModContext = &(gpVosContext->pSALContext);
-      break;
-    }   
-
-    case VOS_MODULE_ID_SSC:
-    {
-      pGpModContext = &(gpVosContext->pSSCContext); 
-      break;
-    }
-#endif
 #ifdef WLAN_BTAMP_FEATURE
     case VOS_MODULE_ID_BAP:
     {
@@ -1645,30 +1335,21 @@ VOS_STATUS vos_free_context( v_VOID_t *pVosContext, VOS_MODULE_ID moduleID,
     }
 #endif //WLAN_BTAMP_FEATURE
  
-#ifdef WLAN_SOFTAP_FEATURE
     case VOS_MODULE_ID_SAP:
     {
       pGpModContext = &(gpVosContext->pSAPContext); 
       break;
     }
-#endif
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
     case VOS_MODULE_ID_WDA:
     {
       pGpModContext = &(gpVosContext->pWDAContext);
       break;
     }
-#endif
     case VOS_MODULE_ID_HDD:
     case VOS_MODULE_ID_SME:
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-    case VOS_MODULE_ID_HAL:
-#endif
     case VOS_MODULE_ID_PE:
-#ifdef WLAN_SOFTAP_FEATURE
     case VOS_MODULE_ID_HDD_SOFTAP:
-#endif
     default:
     {     
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "%s: Module ID %i "
@@ -1771,14 +1452,6 @@ VOS_STATUS vos_mq_post_message( VOS_MQ_ID msgQueueId, vos_msg_t *pMsg )
        break;
     }
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-    /// Message Queue ID for messages bound for HAL
-    case VOS_MQ_ID_HAL: 
-    {
-       pTargetMq = &(gpVosContext->vosSched.halMcMq);
-       break;
-    }
-#else
     /// Message Queue ID for messages bound for WDA
     case VOS_MQ_ID_WDA: 
     {
@@ -1792,7 +1465,6 @@ VOS_STATUS vos_mq_post_message( VOS_MQ_ID msgQueueId, vos_msg_t *pMsg )
        pTargetMq = &(gpVosContext->vosSched.wdiMcMq);
        break;
     }
-#endif
 
     /// Message Queue ID for messages bound for TL
     case VOS_MQ_ID_TL: 
@@ -1912,21 +1584,12 @@ VOS_STATUS vos_tx_mq_serialize( VOS_MQ_ID msgQueueId, vos_msg_t *pMsg )
        break;
     }
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-    /// Message Queue ID for messages bound for SSC
-    case VOS_MQ_ID_SSC:  
-    {
-       pTargetMq = &(gpVosContext->vosSched.sscTxMq);
-       break;
-    }
-#else
     /// Message Queue ID for messages bound for SSC
     case VOS_MQ_ID_WDI:  
     {
        pTargetMq = &(gpVosContext->vosSched.wdiTxMq);
        break;
     }
-#endif 
     
     /// Message Queue ID for messages bound for the SYS module
     case VOS_MQ_ID_SYS:
@@ -1980,7 +1643,6 @@ VOS_STATUS vos_tx_mq_serialize( VOS_MQ_ID msgQueueId, vos_msg_t *pMsg )
 
 } /* vos_tx_mq_serialize()*/
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 /**---------------------------------------------------------------------------
 
   \brief vos_rx_mq_serialize() - serialize a message to the Rx execution flow
@@ -2091,7 +1753,6 @@ VOS_STATUS vos_rx_mq_serialize( VOS_MQ_ID msgQueueId, vos_msg_t *pMsg )
 
 } /* vos_rx_mq_serialize()*/
 
-#endif
 v_VOID_t 
 vos_sys_probe_thread_cback 
 ( 
@@ -2114,29 +1775,6 @@ vos_sys_probe_thread_cback
 
 } /* vos_sys_probe_thread_cback() */
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-v_VOID_t vos_sys_start_complete_cback
-( 
-  v_VOID_t *pUserData
-)
-{
-
-  if (gpVosContext != pUserData)
-  {
-     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-         "%s: gpVosContext != pUserData", __func__);
-     return;
-  } 
-
-  if (vos_event_set(&gpVosContext->ProbeEvent)!= VOS_STATUS_SUCCESS)
-  {
-     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, 
-         "%s: vos_event_set failed", __func__);
-     return;
-  }
-
-} /* vos_sys_start_complete_cback() */
-#else
 v_VOID_t vos_WDAComplete_cback
 (
   v_VOID_t *pUserData
@@ -2158,7 +1796,6 @@ v_VOID_t vos_WDAComplete_cback
   }
 
 } /* vos_WDAComplete_cback() */
-#endif
 
 v_VOID_t vos_core_return_msg
 (
@@ -2223,9 +1860,7 @@ vos_fetch_tl_cfg_parms
   pTLConfig->ucAcWeights[2] = pConfig->WfqViWeight;
   pTLConfig->ucAcWeights[3] = pConfig->WfqVoWeight;
   pTLConfig->uDelayedTriggerFrmInt = pConfig->DelayedTriggerFrmInt;
-#ifdef WLAN_SOFTAP_FEATURE
   pTLConfig->uMinFramesProcThres = pConfig->MinFramesProcThres;
-#endif
 
 }
 

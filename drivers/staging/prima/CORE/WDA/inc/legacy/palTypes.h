@@ -64,33 +64,9 @@
 #include "vos_api.h"
 #endif /* WINXP_APPS_BUILD */
 
-#ifdef FEATURE_WLAN_INTEGRATED_SOC
 #include "halLegacyPalTypes.h"
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 #ifndef MK_IMAGE_HDR
-// values to check against for code that is Client/AP specific.  
-// the build will define one of the following: 
-// ANI_PRODUCT_TYPE_CLIENT 
-// ANI_PRODUCT_TYPE_AP
-// ANI_PRODUCT_TYPE_AP_SDK 
-//
-// Validate the Product type being built....
-//
-#if ( defined( ANI_PRODUCT_TYPE_CLIENT ) && ( defined( ANI_PRODUCT_TYPE_AP ) || defined( ANI_PRODUCT_TYPE_AP_SDK ) ) ) 
-#error "more than one ANI_PRODUCT_TYPE_xxx is defined for this build"
-
-#elif ( defined( ANI_PRODUCT_TYPE_AP ) && ( defined( ANI_PRODUCT_TYPE_CLIENT ) || defined( ANI_PRODUCT_TYPE_AP_SDK ) ) ) 
-#error "more than one ANI_PRODUCT_TYPE_xxx is defined for this build"
-
-#elif ( defined( ANI_PRODUCT_TYPE_AP_SDK ) && ( defined( ANI_PRODUCT_TYPE_CLIENT ) || defined( ANI_PRODUCT_TYPE_AP ) ) ) 
-#error "more than one ANI_PRODUCT_TYPE_xxx is defined for this build"
-
-#elif !( defined( ANI_PRODUCT_TYPE_CLIENT ) || defined( ANI_PRODUCT_TYPE_AP ) || defined( ANI_PRODUCT_TYPE_AP_SDK ) )
-#error "NONE of the ANI_PRODUCT_TYPE_xxxx are defined for this build"
-
-#endif
-
 
 //
 // Validate the Bus type being built....
@@ -214,24 +190,6 @@
 
 // Common type definitions...
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-typedef unsigned char  tANI_U8;
-typedef   signed char  tANI_S8;
-
-typedef unsigned short tANI_U16;
-typedef   signed short tANI_S16;
-
-typedef unsigned long  tANI_U32;
-typedef   signed long  tANI_S32;
-
-#if defined ANI_OS_TYPE_WINDOWS
-typedef unsigned __int64 tANI_U64;
-#else
-typedef unsigned long long tANI_U64;
-#endif
-
-typedef tANI_U8 tANI_BYTE;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 #if defined( ANI_OS_TYPE_WINDOWS )
 #if defined(_WIN64)
@@ -246,9 +204,6 @@ typedef tANI_U32     tANI_U32_OR_PTR;
 // Buffer address; could be virt or phys; could be 32- or 64-bit depending on compile option
 typedef tANI_U32_OR_PTR    tANI_BUFFER_ADDR;
 // which boolean is the most usefule...or both ?
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-typedef tANI_U8 tANI_BOOLEAN;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 
 typedef enum tagAniBoolean 
 {
@@ -326,7 +281,4 @@ typedef void * tPalSemaphoreHandle;
 
 #define PAL_TICKS_PER_SECOND        100
 
-#ifndef FEATURE_WLAN_INTEGRATED_SOC
-typedef tANI_U32 tANI_TIMESTAMP;
-#endif /* FEATURE_WLAN_INTEGRATED_SOC */
 #endif

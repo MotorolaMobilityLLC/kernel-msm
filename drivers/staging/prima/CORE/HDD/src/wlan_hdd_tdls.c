@@ -174,7 +174,7 @@ static v_VOID_t wlan_hdd_tdls_discover_peer_cb( v_PVOID_t userData )
                     pHddTdlsCtx->discovery_peer_cnt--;
 
                     if ((eTDLS_CAP_UNKNOWN == curr_peer->tdls_support) &&
-                        (eTDLS_LINK_NOT_CONNECTED == curr_peer->link_status) &&
+                        (eTDLS_LINK_IDLE == curr_peer->link_status) &&
                          (curr_peer->tx_pkt >=
                              pHddTdlsCtx->threshold_config.tx_packet_n)) {
 
@@ -245,6 +245,7 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
     struct list_head *head;
     struct list_head *pos;
     hddTdlsPeer_t *curr_peer;
+    hdd_adapter_t *pAdapter;
 
 
     if (mutex_lock_interruptible(&tdls_lock))
@@ -260,16 +261,25 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
         return;
     }
 
+    pAdapter = WLAN_HDD_GET_PRIV_PTR(pHddTdlsCtx->dev);
+
+    if (NULL == pAdapter)
+    {
+        mutex_unlock(&tdls_lock);
+        return;
+    }
+
     for (i = 0; i < 256; i++) {
         head = &pHddTdlsCtx->peer_list[i];
 
         list_for_each (pos, head) {
             curr_peer = list_entry (pos, hddTdlsPeer_t, node);
 
-            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-                       "hdd update cb - %d: " MAC_ADDRESS_STR " -> %d\n", i,
+            VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+                       "hdd update cb - %d: " MAC_ADDRESS_STR " -> %d link_status -> %d"
+                       "tdls_support -> %d", i,
                        MAC_ADDR_ARRAY(curr_peer->peerMac),
-                       curr_peer->tx_pkt);
+                       curr_peer->tx_pkt, curr_peer->link_status, curr_peer->tdls_support);
 
             if (eTDLS_CAP_SUPPORTED == curr_peer->tdls_support) {
                 VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
@@ -278,7 +288,8 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
                         pHddTdlsCtx->threshold_config.tx_packet_n,
                         MAC_ADDR_ARRAY(curr_peer->peerMac), curr_peer->link_status);
 
-                if (eTDLS_LINK_CONNECTED != curr_peer->link_status) {
+                if ((eTDLS_LINK_IDLE == curr_peer->link_status) ||
+                    (eTDLS_LINK_DISCOVERING == curr_peer->link_status)){
                     if (curr_peer->tx_pkt >=
                             pHddTdlsCtx->threshold_config.tx_packet_n) {
 
@@ -288,10 +299,13 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
 
                             VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL, "-> Tput trigger TDLS SETUP");
 #ifdef CONFIG_TDLS_IMPLICIT
-                            cfg80211_tdls_oper_request(pHddTdlsCtx->dev,
-                                                       curr_peer->peerMac,
-                                                       NL80211_TDLS_SETUP, FALSE,
-                                                       GFP_KERNEL);
+
+                            curr_peer->link_status = eTDLS_LINK_DISCOVERING;
+                            sme_SendTdlsMgmtFrame(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                                  pAdapter->sessionId,
+                                                  curr_peer->peerMac,
+                                                  WLAN_TDLS_DISCOVERY_REQUEST,
+                                                  1, 0, NULL, 0, 0);
 #endif
                         }
                         else
@@ -391,13 +405,14 @@ static v_VOID_t wlan_hdd_tdls_update_peer_cb( v_PVOID_t userData )
 
                         if (++curr_peer->discovery_attempt <
                                  pHddTdlsCtx->threshold_config.discovery_tries_n) {
-                            curr_peer->tdls_support = eTDLS_CAP_NOT_SUPPORTED;
                             sme_SendTdlsMgmtFrame(WLAN_HDD_GET_HAL_CTX(pAdapter),
                                                   pAdapter->sessionId,
                                                   curr_peer->peerMac,
                                                   WLAN_TDLS_DISCOVERY_REQUEST,
                                                   1, 0, NULL, 0, 0);
                         }
+                        else
+                            curr_peer->tdls_support = eTDLS_CAP_NOT_SUPPORTED;
 
                         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
                                 "Tput triggering TDLS discovery: " MAC_ADDRESS_STR "!",
@@ -705,7 +720,7 @@ void wlan_hdd_tdls_set_link_status(hddTdlsPeer_t *curr_peer, int status)
 
 }
 
-int wlan_hdd_tdls_set_cap(u8 *mac, int cap)
+int wlan_hdd_tdls_recv_discovery_resp(u8 *mac)
 {
     hddTdlsPeer_t *curr_peer;
 
@@ -714,8 +729,22 @@ int wlan_hdd_tdls_set_cap(u8 *mac, int cap)
     curr_peer = wlan_hdd_tdls_get_peer(mac);
     if (curr_peer == NULL)
         return -1;
+    VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+               "Discovery Response from : " MAC_ADDRESS_STR "link_status -> %d",
+               MAC_ADDR_ARRAY(curr_peer->peerMac), curr_peer->link_status);
+    if (curr_peer->link_status == eTDLS_LINK_DISCOVERING)
+    {
+        cfg80211_tdls_oper_request(pHddTdlsCtx->dev,
+                                   curr_peer->peerMac,
+                                   NL80211_TDLS_SETUP, FALSE,
+                                   GFP_KERNEL);
+        curr_peer->link_status = eTDLS_LINK_CONNECTING;
+    }
+    VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
+               "Peer with MAC : " MAC_ADDRESS_STR " transitioned to %d",
+               MAC_ADDR_ARRAY(curr_peer->peerMac), curr_peer->link_status);
 
-    curr_peer->tdls_support = cap;
+    curr_peer->tdls_support = eTDLS_CAP_SUPPORTED;
 
     return 0;
 }
@@ -922,9 +951,8 @@ int wlan_hdd_tdls_reset_peer(u8 *mac)
     if (curr_peer == NULL)
         return -1;
 
-    curr_peer->link_status = eTDLS_LINK_NOT_CONNECTED;
+    curr_peer->link_status = eTDLS_LINK_IDLE;
     curr_peer->staId = 0;
-    curr_peer->rssi = -120;
 
     if(eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode) {
         vos_timer_stop( &curr_peer->peerIdleTimer );

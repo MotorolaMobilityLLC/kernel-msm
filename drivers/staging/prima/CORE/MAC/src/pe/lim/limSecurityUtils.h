@@ -59,11 +59,7 @@
                                 SIR_MAC_WEP_ICV_LENGTH)
 struct tLimPreAuthNode;
 
-#ifdef WLAN_SOFTAP_FEATURE
 tANI_U8        limIsAuthAlgoSupported(tpAniSirGlobal, tAniAuthType, tpPESession);
-#else
-tANI_U8        limIsAuthAlgoSupported(tpAniSirGlobal, tAniAuthType);
-#endif
 
 // MAC based authentication related functions
 void               limInitPreAuthList(tpAniSirGlobal);

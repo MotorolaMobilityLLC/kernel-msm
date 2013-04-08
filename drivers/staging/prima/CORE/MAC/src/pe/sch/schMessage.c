@@ -52,7 +52,7 @@
 #include "palTypes.h"
 #include "sirCommon.h"
 
-#include "wniCfgAp.h"
+#include "wniCfgSta.h"
 #include "aniGlobal.h"
 #include "cfgApi.h"
 #include "limApi.h"
@@ -235,12 +235,6 @@ void schProcessMessage(tpAniSirGlobal pMac,tpSirMsgQ pSchMsg)
            PELOG3(schLog(pMac, LOG3,
                    FL("Received STOP_SCAN_NTF from LIM\n"));)
             pMac->sch.gSchScanReqRcvd = false;
-#ifdef WMM_SA
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-            if (psessionEntry->limSystemRole == eLIM_AP_ROLE && pMac->sch.gSchHcfEnabled)
-                startCFB();
-#endif
-#endif
             break;
 
         case SIR_CFG_PARAM_UPDATE_IND:
@@ -330,10 +324,6 @@ void schProcessMessageQueue(tpAniSirGlobal pMac)
 {
     tSirMsgQ schMsg;
 
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    if (pMac->lim.gLimSystemRole == eLIM_AP_ROLE)
-        pMac->sch.gSchRRRecd = false;
-#endif
     memset(&schMsg, 0, sizeof(tSirMsgQ));
     while (1)
     {
@@ -343,38 +333,8 @@ void schProcessMessageQueue(tpAniSirGlobal pMac)
 
         schProcessMessage(pMac, &schMsg);
     }
-#ifdef WMM_SA
-#if (WNI_POLARIS_FW_PRODUCT == AP)
-    if (pMac->lim.gLimSystemRole == eLIM_AP_ROLE && pMac->sch.gSchRRRecd)
-        startCFB();
-#endif
-#endif
 }
 
-#if 0 /* This function is not used anywhere */
-// set the default values for all params of interest
-void
-schUpdateQosInfo( tpAniSirGlobal pMac)
-{
-    // need to populate local info only on AP or IBSS, beacon processing
-    // takes care of others
-    psessionEntry->gLimEdcaParamSetCount = 0xFF;
-
-    if (pMac->lim.gLimSystemRole == eLIM_STA_IN_IBSS_ROLE)
-    {
-        schQosUpdateLocal(pMac);
-    }
-    else if (pMac->lim.gLimSystemRole == eLIM_AP_ROLE)
-    {
-        // fill local AP values
-        schQosUpdateLocal(pMac);
-
-        // fill broadcast values
-        schQosUpdateBroadcast(pMac, psessionEntry);
-    }
-}
-
-#endif
 
 // get the local or broadcast parameters based on the profile sepcified in the config
 // params are delivered in this order: BK, BE, VI, VO
