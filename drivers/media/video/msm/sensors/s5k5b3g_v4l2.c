@@ -398,6 +398,7 @@ static int32_t s5k5b3g_regulator_off(struct regulator **reg, char *regname)
 	}
 
 	regulator_put(*reg);
+	*reg = NULL;
 
 reg_off_done:
 	return rc;
