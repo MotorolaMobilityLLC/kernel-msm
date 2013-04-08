@@ -1201,12 +1201,15 @@ static int msm_mi2s_rx_hw_params(struct snd_pcm_substream *substream,
 	int bit_clk_set;
 	bit_clk_set = 12288000/(rate * 2 * 16);
 	clk_set_rate(mi2s_rx_bit_clk, bit_clk_set);
-
-	ret = snd_soc_dai_set_sysclk(codec_dai, 0, TABLA_EXT_CLK_RATE,
+	/* if it is msm stub dummy codec dai, it doesnt support this op
+	 * causes an unneseccary failure to startup path. */
+	if (strncmp(codec_dai->name, "msm-stub-tx", 11)) {
+		ret = snd_soc_dai_set_sysclk(codec_dai, 0, TABLA_EXT_CLK_RATE,
 					SND_SOC_CLOCK_IN);
-	if (ret < 0) {
-		pr_err("can't set rx codec clk configuration\n");
-		return ret;
+		if (ret < 0) {
+			pr_err("can't set rx codec clk configuration\n");
+			return ret;
+		}
 	}
 	return 1;
 }
@@ -2019,6 +2022,19 @@ static struct snd_soc_dai_link mmi_dai_links[] = {
 		.ops = &msm_mi2s_rx_be_ops,
 	},
 #endif
+	/* MI2S I2S TX BACK END DAI Link */
+	{
+		.name = LPASS_BE_MI2S_TX,
+		.stream_name = "MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-tx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_MI2S_TX,
+		.be_hw_params_fixup = msm8960_be_hw_params_fixup,
+		.ops = &msm_mi2s_rx_be_ops,
+	},
 	/* MI2S I2S RX BACK END DAI Link */
 	{
 		.name = LPASS_BE_MI2S_RX,
@@ -2176,8 +2192,6 @@ static void msm8960_of_add_dai_links(struct snd_soc_card *card,
 			memcpy(tbl, cur, sizeof(struct snd_soc_dai_link));
 			tbl++;
 			card->num_links++;
-
-			break;
 		}
 	}
 }
