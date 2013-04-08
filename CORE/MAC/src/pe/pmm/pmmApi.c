@@ -2157,17 +2157,23 @@ void pmmEnterWowlRequestHandler(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
 #endif //FEATURE_WLAN_DIAG_SUPPORT
 
     pSmeWowlParams = (tpSirSmeWowlEnterParams)(pMbMsg->data);
-
-    if((pSessionEntry = peFindSessionByBssid(pMac,pSmeWowlParams->bssId,&peSessionId))== NULL)
+    if (NULL == pSmeWowlParams)
     {
-         limLog(pMac, LOGE,
+        limLog(pMac, LOGE,
+               FL("NULL message received"));
+        return;
+    }
+
+    pSessionEntry = peFindSessionByBssid(pMac, pSmeWowlParams->bssId,
+                                         &peSessionId);
+    if (NULL == pSessionEntry)
+    {
+        limLog(pMac, LOGE,
                FL("session does not exist for given BSSId"));
         goto end;
     }
     pMac->pmm.sessionId = peSessionId;
 
-    if (NULL == pSmeWowlParams)
-        return;
 // Need to fix it ASAP - TBH
 #if 0
     if (pMac->lim.gLimSmeState != eLIM_SME_LINK_EST_STATE)
