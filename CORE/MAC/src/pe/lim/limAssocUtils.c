@@ -2456,7 +2456,7 @@ limDelSta(
     msgQ.bodyval = 0;
 
     limLog( pMac, LOG1, FL( "Sending SIR_HAL_DELETE_STA_REQ for STAID: %X and AssocID: %d" ),
-    pDelStaParams->staIdx, pDelStaParams->assocId);
+                    pDelStaParams->staIdx, pDelStaParams->assocId);
     MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
     retCode = wdaPostCtrlMsg( pMac, &msgQ );
     if( eSIR_SUCCESS != retCode)
