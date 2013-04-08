@@ -1523,7 +1523,7 @@ VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8
     }
 
     /*removing empty spaces*/
-    while ((SPACE_ASCII_VALUE  == *inPtr)&& ('\0' !=  *inPtr) ) inPtr++;
+    while ((SPACE_ASCII_VALUE  == *inPtr) && ('\0' !=  *inPtr)) inPtr++;
 
     /*no argument followed by spaces*/
     if ('\0' == *inPtr)
@@ -1534,7 +1534,12 @@ VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8
     /*getting the first argument ie the number of channels*/
     sscanf(inPtr, "%32s ", buf);
     v = kstrtos32(buf, 10, &tempInt);
-    if ((v < 0) || (tempInt <= 0)) return -EINVAL;
+    if ((v < 0) ||
+        (tempInt <= 0) ||
+        (tempInt > WNI_CFG_VALID_CHANNEL_LIST_LEN))
+    {
+       return -EINVAL;
+    }
 
     *pNumChannels = tempInt;
 
@@ -1560,7 +1565,7 @@ VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8
         }
 
         /*removing empty space*/
-        while ((SPACE_ASCII_VALUE == *inPtr) && ('\0' != *inPtr) ) inPtr++;
+        while ((SPACE_ASCII_VALUE == *inPtr) && ('\0' != *inPtr)) inPtr++;
 
         /*no channel list after the number of channels argument and spaces*/
         if ( '\0' == *inPtr )
@@ -1576,9 +1581,14 @@ VOS_STATUS hdd_parse_channellist(tANI_U8 *pValue, tANI_U8 *pChannelList, tANI_U8
             }
         }
 
-        sscanf(inPtr, "%s ", buf);
+        sscanf(inPtr, "%32s ", buf);
         v = kstrtos32(buf, 10, &tempInt);
-        if ((v < 0) || (tempInt <= 0)) return -EINVAL;
+        if ((v < 0) ||
+            (tempInt <= 0) ||
+            (tempInt > WNI_CFG_CURRENT_CHANNEL_STAMAX))
+        {
+           return -EINVAL;
+        }
         pChannelList[j] = tempInt;
 
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
