@@ -368,6 +368,7 @@ void recover_fsync_data(struct f2fs_sb_info *sbi)
 	recover_data(sbi, &inode_list, CURSEG_WARM_NODE);
 	sbi->por_doing = 0;
 	BUG_ON(!list_empty(&inode_list));
+	f2fs_msg(sbi->sb, KERN_INFO, "recovery complete");
 out:
 	destroy_fsync_dnodes(sbi, &inode_list);
 	kmem_cache_destroy(fsync_entry_slab);
