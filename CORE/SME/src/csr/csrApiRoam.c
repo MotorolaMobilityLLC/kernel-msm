@@ -8510,16 +8510,16 @@ static void csrUpdateRssi(tpAniSirGlobal pMac, void* pMsg)
 #if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
 void csrRoamRssiRspProcessor(tpAniSirGlobal pMac, void* pMsg)
 {
-    v_S7_t  rssi = 0;
     tAniGetRoamRssiRsp* pRoamRssiRsp = (tAniGetRoamRssiRsp*)pMsg;
 
-    /* Get roam Rssi request is backed up and passed back to the response,
-       Extract the request message to fetch callback */
-    tpAniGetRssiReq reqBkp = (tAniGetRssiReq*)pRoamRssiRsp->rssiReq;
-    if(pRoamRssiRsp)
+    if (NULL != pRoamRssiRsp)
     {
-        rssi = pRoamRssiRsp->rssi;
-        if((reqBkp) && (NULL != reqBkp->rssiCallback))
+        /* Get roam Rssi request is backed up and passed back to the response,
+           Extract the request message to fetch callback */
+        tpAniGetRssiReq reqBkp = (tAniGetRssiReq*)pRoamRssiRsp->rssiReq;
+        v_S7_t rssi = pRoamRssiRsp->rssi;
+
+        if ((NULL != reqBkp) && (NULL != reqBkp->rssiCallback))
         {
             ((tCsrRssiCallback)(reqBkp->rssiCallback))(rssi, pRoamRssiRsp->staId, reqBkp->pDevContext);
             reqBkp->rssiCallback = NULL;
