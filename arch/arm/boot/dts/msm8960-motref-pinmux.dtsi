@@ -49,7 +49,7 @@
 			qcom,pin-num = <2>;
 			qcom,suspended@1 {
 				qcom,func = <0>;  /* gpio_in_out(2)         */
-				qcom,pull = <1>;  /* down                   */
+				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <2>;   /* out_low                */
 			};
