@@ -1028,6 +1028,7 @@ static int32_t ov10820_regulator_off(struct regulator **reg, char *regname)
 	}
 
 	regulator_put(*reg);
+	*reg = NULL;
 
 reg_off_done:
 	return rc;
