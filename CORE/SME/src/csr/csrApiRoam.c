@@ -1149,7 +1149,7 @@ eHalStatus csrInitCountryValidChannelList(tpAniSirGlobal pMac,
 {
     eHalStatus status = eHAL_STATUS_SUCCESS;
     tpCsrNeighborRoamControlInfo    pNeighborRoamInfo = &pMac->roam.neighborRoamInfo;
-    tANI_U8 *pOutChannelList = pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.ChannelList;
+    tANI_U8 **pOutChannelList = &pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.ChannelList;
     tANI_U8 *pNumChannels = &pNeighborRoamInfo->cfgParams.countryChannelInfo.countryValidChannelList.numOfChannels;
     const tANI_U8 *pChannelList = NULL;
 
@@ -1171,16 +1171,12 @@ eHalStatus csrInitCountryValidChannelList(tpAniSirGlobal pMac,
     else
         return eHAL_STATUS_INVALID_PARAMETER;
 
-    /* Free up the memory first */
-    if (NULL != pOutChannelList)
-    {
-        vos_mem_free(pOutChannelList);
-        pOutChannelList = NULL;
-    }
+    /* Free any existing channel list */
+    vos_mem_free(*pOutChannelList);
 
-    pOutChannelList = vos_mem_malloc(*pNumChannels);
+    *pOutChannelList = vos_mem_malloc(*pNumChannels);
 
-    if (NULL == pOutChannelList)
+    if (NULL == *pOutChannelList)
     {
         smsLog(pMac, LOGE, FL("Memory Allocation for CFG Channel List failed"));
         *pNumChannels = 0;
@@ -1188,7 +1184,7 @@ eHalStatus csrInitCountryValidChannelList(tpAniSirGlobal pMac,
     }
 
     /* Update the roam global structure */
-    palCopyMemory(pMac->hHdd, pOutChannelList, pChannelList, *pNumChannels);
+    palCopyMemory(pMac->hHdd, *pOutChannelList, pChannelList, *pNumChannels);
     return status;
 }
 
