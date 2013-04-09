@@ -13,7 +13,7 @@
 /dts-v1/;
 /include/ "msm8226.dtsi"
 /include/ "dsi-panel-mot-auo-720p-video.dtsi"
-/include/ "msm8226-camera-sensor-cdp-mtp-qrd.dtsi"
+/include/ "msm8226-camera-sensor-falcon.dtsi"
 
 / {
 	model = "Qualcomm MSM 8226 MTP";
