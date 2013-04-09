@@ -1277,6 +1277,7 @@ copy_from_user_failed:
 payload_alloc_fail:
 	kfree(event_qcmd);
 event_qcmd_alloc_fail:
+	mutex_unlock(&pcam->event_lock);
 	return rc;
 }
 
