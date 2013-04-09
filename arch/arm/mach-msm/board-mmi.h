@@ -62,11 +62,12 @@ static inline void mmi_vibrator_init(void) { }
 #endif
 
 /* set of data provided to the modem over SMEM */
-#define MMI_UNIT_INFO_VER 1
+#define MMI_UNIT_INFO_VER 2
 #define BARCODE_MAX_LEN 64
 #define MACHINE_MAX_LEN 32
 #define CARRIER_MAX_LEN 64
 #define BASEBAND_MAX_LEN 96
+#define DEVICE_MAX_LEN 32
 struct mmi_unit_info {
 	uint32_t version;
 	uint32_t system_rev;
@@ -76,7 +77,8 @@ struct mmi_unit_info {
 	char barcode[BARCODE_MAX_LEN+1];
 	char carrier[CARRIER_MAX_LEN+1];
 	char baseband[BASEBAND_MAX_LEN+1];
-	uint32_t prod_id;
+	char device[DEVICE_MAX_LEN+1];
+	uint32_t radio;
 };
 
 extern struct msm_camera_sensor_info msm_camera_sensor_s5k5b3g_data;

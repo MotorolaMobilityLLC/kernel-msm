@@ -240,6 +240,26 @@ int __init board_bareboard_init(char *s)
 }
 __setup("bare_board=", board_bareboard_init);
 
+#define ANDROIDBOOT_DEVICE_MAX_LEN 32
+static char androidboot_device[ANDROIDBOOT_DEVICE_MAX_LEN + 1];
+int __init setup_androidboot_device_init(char *s)
+{
+	strlcpy(androidboot_device, s, ANDROIDBOOT_DEVICE_MAX_LEN + 1);
+	return 1;
+}
+__setup("androidboot.device=", setup_androidboot_device_init);
+
+static unsigned int androidboot_radio;
+int __init setup_androidboot_radio_init(char *s)
+{
+	int retval = kstrtouint(s, 16, &androidboot_radio);
+
+	if (retval < 0)
+		return 0;
+
+	return 1;
+}
+__setup("androidboot.radio=", setup_androidboot_radio_init);
 
 static char extended_baseband[BASEBAND_MAX_LEN+1] = "\0";
 static int __init mot_parse_atag_baseband(const struct tag *tag)
@@ -271,14 +291,15 @@ static void __init mmi_unit_info_init(void){
 	}
 
 	mui->version = MMI_UNIT_INFO_VER;
-	mui->prod_id = prod_id;
 	mui->system_rev = system_rev;
 	mui->system_serial_low = system_serial_low;
 	mui->system_serial_high = system_serial_high;
-	strncpy(mui->machine, machine_desc->name, MACHINE_MAX_LEN);
-	strncpy(mui->barcode, serialno, BARCODE_MAX_LEN);
-	strncpy(mui->baseband, extended_baseband, BASEBAND_MAX_LEN);
-	strncpy(mui->carrier, carrier, CARRIER_MAX_LEN);
+	strlcpy(mui->machine, machine_desc->name, MACHINE_MAX_LEN + 1);
+	strlcpy(mui->barcode, serialno, BARCODE_MAX_LEN + 1);
+	strlcpy(mui->baseband, extended_baseband, BASEBAND_MAX_LEN + 1);
+	strlcpy(mui->carrier, carrier, CARRIER_MAX_LEN + 1);
+	strlcpy(mui->device, androidboot_device, DEVICE_MAX_LEN + 1);
+	mui->radio = androidboot_radio;
 
 	if (mui->version != MMI_UNIT_INFO_VER) {
 		pr_err("%s: unexpected unit_info version %d in SMEM\n",
@@ -286,12 +307,11 @@ static void __init mmi_unit_info_init(void){
 	}
 
 	pr_err("mmi_unit_info (SMEM) for modem: version = 0x%02x,"
-		" prod_id = 0x%08x, system_rev = 0x%08x,"
-		" system_serial = 0x%08x%08x,"
-		" machine = '%s', barcode = '%s',"
-		" baseband = '%s', carrier = '%s'\n",
+		" device = '%s', radio = %d, system_rev = 0x%04x,"
+		" system_serial = 0x%08x%08x, machine = '%s',"
+		" barcode = '%s', baseband = '%s', carrier = '%s'\n",
 		mui->version,
-		mui->prod_id, mui->system_rev,
+		mui->device, mui->radio, mui->system_rev,
 		mui->system_serial_high, mui->system_serial_low,
 		mui->machine, mui->barcode,
 		mui->baseband, mui->carrier);
