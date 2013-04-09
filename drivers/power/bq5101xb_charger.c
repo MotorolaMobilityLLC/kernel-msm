@@ -273,6 +273,7 @@ static int bq5101xb_get_property(struct power_supply *psy,
 				 union power_supply_propval *val)
 {
 	struct bq5101xb_chip *chip;
+	int batt_health = POWER_SUPPLY_HEALTH_UNKNOWN;
 
 	if (!psy || !psy->dev || !val) {
 		pr_err("bq5101xb_get_property NO dev!\n");
@@ -285,6 +286,12 @@ static int bq5101xb_get_property(struct power_supply *psy,
 		return -ENODEV;
 	}
 
+	if (chip->batt_psy)
+		if (bq5101xb_get_batt_info(chip->batt_psy,
+					   POWER_SUPPLY_PROP_HEALTH,
+					   &batt_health))
+			dev_err(chip->dev, "Error Reading Health\n");
+
 	val->intval = 0;
 
 	switch (psp) {
@@ -295,6 +302,8 @@ static int bq5101xb_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ONLINE:
 		if (chip->state == BQ5101XB_RUNNING)
 			val->intval = 1;
+		if (batt_health == POWER_SUPPLY_HEALTH_DEAD)
+			val->intval = 0;
 		break;
 	default:
 		return -EINVAL;
