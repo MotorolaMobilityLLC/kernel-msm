@@ -116,6 +116,7 @@
 
 #define GYRO_X				0x43
 
+#define MAG_CAL				0x48
 #define MAG_HX				0x49
 
 #define DISP_ROTATE_DATA		0x4A
@@ -182,6 +183,8 @@ static unsigned short g_algo_state;
 static unsigned char g_motion_dur;
 static unsigned char g_zmotion_dur;
 static unsigned char g_control_reg[MSP_CONTROL_REG_SIZE];
+static unsigned char g_mag_cal[MSP_MAG_CAL_SIZE];
+
 struct algo_requst_t {
 	char size;
 	char data[28];
@@ -674,6 +677,13 @@ int msp430_reset_and_init(void)
 		gpio_set_value(msp_req_gpio, 1);
 	}
 
+	msp_cmdbuff[0] = MAG_CAL;
+	memcpy(&msp_cmdbuff[1], g_mag_cal, MSP_MAG_CAL_SIZE);
+	err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff,
+		MSP_MAG_CAL_SIZE);
+	if (err < 0)
+		ret_err = err;
+
 	return ret_err;
 }
 
@@ -907,7 +917,8 @@ static void msp430_irq_work_func(struct work_struct *work)
 		x = (msp_cmdbuff[0] << 8) | msp_cmdbuff[1];
 		y = (msp_cmdbuff[2] << 8) | msp_cmdbuff[3];
 		z = (msp_cmdbuff[4] << 8) | msp_cmdbuff[5];
-		msp430_as_data_buffer_write(ps_msp430, DT_MAG, x, y, z, 0);
+		msp430_as_data_buffer_write(ps_msp430, DT_MAG, x, y, z,
+			msp_cmdbuff[12]);
 
 		dev_dbg(&ps_msp430->client->dev,
 			"Sending mag(x,y,z)values:x=%d,y=%d,z=%d\n",
@@ -1080,8 +1091,7 @@ static void msp430_irq_wake_work_func(struct work_struct *work)
 		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff,
 			1, ESR_SIZE);
 		if (err >= 0) {
-			strlcpy(stat_string, msp_cmdbuff,
-				ARRAY_SIZE(stat_string));
+			memcpy(stat_string, msp_cmdbuff, ESR_SIZE);
 			stat_string[ESR_SIZE] = 0;
 			dev_err(&ps_msp430->client->dev,
 				"MSP430 Error: %s\n", stat_string);
@@ -1816,6 +1826,33 @@ static long msp430_misc_ioctl(struct file *file, unsigned int cmd,
 			"Get algos config: 0x%x", (bytes[1] << 8) | bytes[0]);
 		if (copy_to_user(argp, bytes, sizeof(bytes)))
 			err = -EFAULT;
+		break;
+	case MSP430_IOCTL_GET_MAG_CAL:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_GET_MAG_CAL");
+		msp_cmdbuff[0] = MAG_CAL;
+		err = msp430_i2c_write_read(ps_msp430, msp_cmdbuff, 1,
+			MSP_MAG_CAL_SIZE);
+		if (err < 0) {
+			dev_err(&ps_msp430->client->dev,
+				"Reading get mag cal failed\n");
+			break;
+		}
+		if (copy_to_user(argp, &msp_cmdbuff[0], MSP_MAG_CAL_SIZE))
+			err = -EFAULT;
+
+		break;
+	case MSP430_IOCTL_SET_MAG_CAL:
+		dev_dbg(&ps_msp430->client->dev, "MSP430_IOCTL_SET_MAG_CAL");
+		if (copy_from_user(&msp_cmdbuff[1], argp, MSP_MAG_CAL_SIZE)) {
+			dev_err(&ps_msp430->client->dev,
+				"Copy set mag cal returned error\n");
+			err = -EFAULT;
+			break;
+		}
+		memcpy(g_mag_cal, &msp_cmdbuff[1], MSP_MAG_CAL_SIZE);
+		msp_cmdbuff[0] = MAG_CAL;
+		err = msp430_i2c_write(ps_msp430, msp_cmdbuff,
+			(MSP_MAG_CAL_SIZE + 1));
 		break;
 	case MSP430_IOCTL_SET_MOTION_DUR:
 		dev_dbg(&ps_msp430->client->dev,
