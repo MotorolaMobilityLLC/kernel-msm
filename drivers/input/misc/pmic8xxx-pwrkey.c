@@ -19,6 +19,7 @@
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/log2.h>
+#include <linux/delay.h>
 
 #include <linux/mfd/pm8xxx/core.h>
 #include <linux/input/pmic8xxx-pwrkey.h>
@@ -169,6 +170,26 @@ static ssize_t pmic8xxx_debounce_store(struct device *dev,
 
 static DEVICE_ATTR(debounce_us, 0664, NULL, pmic8xxx_debounce_store);
 
+static ssize_t pwrkey_trigger_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t n)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct pmic8xxx_pwrkey *pwrkey = platform_get_drvdata(pdev);
+	unsigned long delay_ms = 0;
+
+	if (strict_strtoul(buf, 10, &delay_ms))
+		return -EINVAL;
+
+	pwrkey_press_irq(pwrkey->key_press_irq, pwrkey);
+	if (delay_ms > 0)
+		msleep(delay_ms);
+	pwrkey_release_irq(pwrkey->key_release_irq, pwrkey);
+
+	return n;
+}
+
+static DEVICE_ATTR(pwrkey_trigger, 0200, NULL, pwrkey_trigger_store);
+
 static int __devinit pmic8xxx_pwrkey_probe(struct platform_device *pdev)
 {
 	struct input_dev *pwr;
@@ -262,6 +283,8 @@ static int __devinit pmic8xxx_pwrkey_probe(struct platform_device *pdev)
 
 	device_init_wakeup(&pdev->dev, pdata->wakeup);
 
+	device_create_file(&pdev->dev, &dev_attr_pwrkey_trigger);
+
 	return 0;
 
 free_rel_irq:
@@ -284,6 +307,8 @@ static int __devexit pmic8xxx_pwrkey_remove(struct platform_device *pdev)
 	struct pmic8xxx_pwrkey *pwrkey = platform_get_drvdata(pdev);
 	int key_release_irq = platform_get_irq(pdev, 0);
 	int key_press_irq = platform_get_irq(pdev, 1);
+
+	device_remove_file(&pdev->dev, &dev_attr_pwrkey_trigger);
 
 	device_init_wakeup(&pdev->dev, 0);
 
