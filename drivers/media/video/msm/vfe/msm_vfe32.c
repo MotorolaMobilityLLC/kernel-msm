@@ -59,6 +59,7 @@ struct vfe32_isr_queue_cmd {
 	struct list_head list;
 	uint32_t                           vfeInterruptStatus0;
 	uint32_t                           vfeInterruptStatus1;
+	uint32_t                           vfeCamifStatus;
 };
 
 static struct vfe32_cmd_type vfe32_cmd[] = {
@@ -3573,6 +3574,12 @@ static inline void vfe32_read_irq_status(
 	out->camifStatus = msm_camera_io_r(temp);
 	CDBG("camifStatus  = 0x%x\n", out->camifStatus);
 
+	/* Clear out CAMIF errors to prevent overloading IRQ/tasklet */
+	if (out->vfeIrqStatus1 & VFE32_IMASK_CAMIF_ERROR &&
+	    out->camifStatus & VFE32_CAMIF_ERR_MASK)
+		msm_camera_io_w(CAMIF_COMMAND_CLEAR,
+			axi_ctrl->share_ctrl->vfebase + VFE_CAMIF_COMMAND);
+
 	/* clear the pending interrupt of the same kind.*/
 	msm_camera_io_w(out->vfeIrqStatus0,
 		axi_ctrl->share_ctrl->vfebase + VFE_IRQ_CLEAR_0);
@@ -4214,7 +4221,7 @@ static void vfe32_process_camif_sof_irq(
 }
 
 static void vfe32_process_error_irq(
-	struct axi_ctrl_t *axi_ctrl, uint32_t errStatus)
+	struct axi_ctrl_t *axi_ctrl, uint32_t errStatus, uint32_t camifStatus)
 {
 	uint32_t reg_value;
 	if (errStatus & VFE32_IMASK_VIOLATION) {
@@ -4225,12 +4232,9 @@ static void vfe32_process_error_irq(
 	}
 
 	if (errStatus & VFE32_IMASK_CAMIF_ERROR) {
-		pr_err("vfe32_irq: camif errors\n");
-		reg_value = msm_camera_io_r(
-			axi_ctrl->share_ctrl->vfebase + VFE_CAMIF_STATUS);
+		pr_err("vfe32_irq: camif errors: 0x%x\n", camifStatus);
 		v4l2_subdev_notify(&axi_ctrl->subdev,
 			NOTIFY_VFE_CAMIF_ERROR, (void *)NULL);
-		pr_err("camifStatus  = 0x%x\n", reg_value);
 		vfe32_send_isp_msg(&axi_ctrl->subdev,
 			axi_ctrl->share_ctrl->vfeFrameId, MSG_ID_CAMIF_ERROR);
 	}
@@ -5479,7 +5483,8 @@ static void axi32_do_tasklet(unsigned long data)
 					vfe32_process_error_irq(
 						axi_ctrl,
 						qcmd->vfeInterruptStatus1 &
-						VFE32_IMASK_VFE_ERROR_ONLY_1);
+						VFE32_IMASK_VFE_ERROR_ONLY_1,
+						qcmd->vfeCamifStatus);
 			}
 
 			/* then process stats irq. */
@@ -5596,6 +5601,7 @@ static irqreturn_t vfe32_parse_irq(int irq_num, void *data)
 
 	qcmd->vfeInterruptStatus0 = irq.vfeIrqStatus0;
 	qcmd->vfeInterruptStatus1 = irq.vfeIrqStatus1;
+	qcmd->vfeCamifStatus = irq.camifStatus;
 
 	spin_lock_irqsave(&axi_ctrl->tasklet_lock, flags);
 	list_add_tail(&qcmd->list, &axi_ctrl->tasklet_q);

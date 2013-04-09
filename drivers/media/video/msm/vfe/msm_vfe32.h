@@ -829,6 +829,8 @@ struct vfe32_output_ch {
 
 #define VFE_COM_STATUS 0x000FE000
 
+#define VFE32_CAMIF_ERR_MASK 0x7FFFFFFF
+
 struct vfe32_output_path {
 	uint16_t output_mode;     /* bitmask  */
 
