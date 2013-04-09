@@ -24,6 +24,8 @@
 
 static struct mipi_mot_panel *mot_panel;
 static int is_bl_supported(struct msm_fb_data_type *);
+static int is_pre_es2(struct msm_fb_data_type *);
+static int is_aid_workaround_needed(struct msm_fb_data_type *);
 
 /* TODO: Need to confirm */
 static struct mipi_dsi_phy_ctrl dsi_cmd_mode_phy_db = {
@@ -62,10 +64,7 @@ static char c7_reg[2] = {0xc7, 0x03};
 static char p3_off[2] = {0xb0, 0x02};
 static char p3_data[2] = {0xb1, 0x1a};
 
-
-
 #define DEFAULT_DELAY 1
-#define BL_SUPPORTED is_bl_supported
 
 static struct mipi_mot_cmd_seq acl_enable_disable_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY,
@@ -73,8 +72,14 @@ static struct mipi_mot_cmd_seq acl_enable_disable_seq[] = {
 };
 
 static struct mipi_mot_cmd_seq set_brightness_seq[] = {
-	MIPI_MOT_TX_DEF(BL_SUPPORTED, DTYPE_DCS_WRITE1,
+	MIPI_MOT_TX_DEF(is_bl_supported, DTYPE_DCS_WRITE1,
 			DEFAULT_DELAY, brightness_ctrl),
+};
+
+static struct mipi_mot_cmd_seq aid_workaround_seq[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, c7_reg),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_off),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_data)
 };
 
 static struct mipi_mot_cmd_seq smd_hd_497_init_seq[] = {
@@ -89,17 +94,15 @@ static struct mipi_mot_cmd_seq smd_hd_497_init_seq[] = {
 			DEFAULT_DELAY, switch_pwr_to_mem_1),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, switch_pwr_to_mem_2),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
+	MIPI_MOT_TX_DEF(is_pre_es2, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, acl_default_setting),
-	MIPI_MOT_TX_DEF(BL_SUPPORTED, DTYPE_DCS_LWRITE,
+	MIPI_MOT_TX_DEF(is_bl_supported, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, disp_ctrl),
-	MIPI_MOT_EXEC_SEQ(BL_SUPPORTED, set_brightness_seq),
+	MIPI_MOT_EXEC_SEQ(is_bl_supported, set_brightness_seq),
 	MIPI_MOT_EXEC_SEQ(NULL, acl_enable_disable_seq),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, acl_enable_disable_settings),
-	MIPI_MOT_TX_DEF(BL_SUPPORTED, DTYPE_DCS_WRITE1, DEFAULT_DELAY, c7_reg),
-	MIPI_MOT_TX_DEF(BL_SUPPORTED, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_off),
-	MIPI_MOT_TX_DEF(BL_SUPPORTED, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_data),
+	MIPI_MOT_EXEC_SEQ(is_aid_workaround_needed, aid_workaround_seq),
 };
 
 static struct mipi_mot_cmd_seq smd_hd_497_disp_off_seq[] = {
@@ -248,6 +251,16 @@ static int is_bl_supported(struct msm_fb_data_type *mfd)
 	}
 
 	return ((is_bl_supported == 1) ? 1 : 0);
+}
+
+static int is_pre_es2(struct msm_fb_data_type *mfd)
+{
+	return (mipi_mot_get_controller_ver(mfd) < 2) ? 1 : 0;
+}
+
+static int is_aid_workaround_needed(struct msm_fb_data_type *mfd)
+{
+	return is_pre_es2(mfd) && is_bl_supported(mfd);
 }
 
 static void panel_en_from_partial(struct msm_fb_data_type *mfd)
