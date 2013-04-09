@@ -80,6 +80,8 @@ extern void early_paging_init(const struct machine_desc *,
 extern void sanity_check_meminfo(void);
 extern enum reboot_mode reboot_mode;
 extern void setup_dma_zone(const struct machine_desc *desc);
+void __attribute__((weak)) mach_cpuinfo_show(struct seq_file *m, void *v);
+
 
 unsigned int processor_id;
 EXPORT_SYMBOL(processor_id);
@@ -1127,6 +1129,9 @@ static int c_show(struct seq_file *m, void *v)
 		   system_serial_high, system_serial_low);
 	seq_printf(m, "Processor\t: %s rev %d (%s)\n",
 		   cpu_name, read_cpuid_id() & 15, elf_platform);
+
+	if (mach_cpuinfo_show)
+		mach_cpuinfo_show(m, v);
 
 	return 0;
 }
