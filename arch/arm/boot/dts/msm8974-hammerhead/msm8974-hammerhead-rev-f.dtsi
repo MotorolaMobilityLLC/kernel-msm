@@ -348,6 +348,11 @@
 	interrupts = <0 1 2>;
 	#interrupt-cells = <1>;
 	interrupt-map-mask = <0xffffffff>;
+
+	/* Qualcomm / Broadcom WiFi solution definition. You must choose one solution */
+
+	/* Qualcomm WiFi solution - Start */
+	/*
 	interrupt-map = <0 &intc 0 125 0
 		1 &intc 0 220 0
 		2 &msmgpio 35 0x3>;
@@ -358,8 +363,22 @@
 	qcom,sdcc-sup-voltages = <1800 2950>;
 	qcom,sdcc-nonremovable = <1>;
 	qcom,sup-voltages = <1800 2950>;
-        qcom,nonremovable;
+	*/
+	/* Qualcomm WiFi solution - End */
 
+	/* Broadcom WiFi solution - Start */
+	interrupt-map = <0 &intc 0 125 0
+		1 &intc 0 220 0
+		2 &msmgpio 74 0x3>;
+	interrupt-names = "core_irq", "bam_irq", "wlan_oob_irq";
+	qcom,bus-width = <4>;
+
+	qcom,sdcc-sup-voltages = <1800 2950>;
+	qcom,sup-voltages = <1800 2950>;
+	qcom,wifi-control-func;
+	/* Broadcom WiFi solution - End */
+
+	qcom,nonremovable;
 	qcom,vdd-io-voltage-level = <1800000 1800000>;
 	qcom,vdd-io-current-level = <6 22000>;
 
