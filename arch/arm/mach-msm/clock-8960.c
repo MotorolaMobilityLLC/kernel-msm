@@ -380,6 +380,16 @@ enum vdd_dig_levels {
 	VDD_DIG_NUM
 };
 
+unsigned long __cpuinit calibrate_delay_is_known(void)
+{
+	if (cpu_is_msm8960ab()) {
+		pr_info("Using known delay for msm8960ab as:");
+		/* lpj/bogomips printed on same line in calibrate_delay() */
+		return 67660;
+	}
+	return 0;
+}
+
 static int set_vdd_dig_8960(struct clk_vdd_class *vdd_class, int level)
 {
 	static const int vdd_uv[] = {
