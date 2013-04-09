@@ -3329,7 +3329,7 @@ static void __init apq8064_common_init(void)
 			platform_device_register(&sglte2_qsc_8064_device);
 
 			/* GSBI4 UART device for Primay IPC */
-			apq8064_uartdm_gsbi4_pdata.wakeup_irq = gpio_to_irq(10);
+			apq8064_uartdm_gsbi4_pdata.wakeup_irq = gpio_to_irq(11);
 			apq8064_device_uartdm_gsbi4.dev.platform_data =
 						&apq8064_uartdm_gsbi4_pdata;
 			platform_device_register(&apq8064_device_uartdm_gsbi4);
