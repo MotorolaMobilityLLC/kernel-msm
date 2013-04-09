@@ -1624,6 +1624,11 @@ static int pm_power_get_property_mains(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = 0;
 
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+		if (alarm_state == PM_BATT_ALARM_SHUTDOWN)
+			return 0;
+#endif
+
 		if (the_chip->has_dc_supply) {
 			val->intval = 1;
 			return 0;
@@ -1771,6 +1776,11 @@ static int pm_power_get_property_usb(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PRESENT:
 	case POWER_SUPPLY_PROP_ONLINE:
 		val->intval = 0;
+
+#ifdef CONFIG_PM8921_EXTENDED_INFO
+		if (alarm_state == PM_BATT_ALARM_SHUTDOWN)
+			return 0;
+#endif
 
 		if (the_chip->usb_type == POWER_SUPPLY_TYPE_USB)
 			val->intval = is_usb_chg_plugged_in(the_chip);
