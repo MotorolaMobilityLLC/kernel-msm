@@ -4332,6 +4332,121 @@ int wlan_hdd_cfg80211_pmksa_candidate_notify(
 }
 #endif //FEATURE_WLAN_LFR
 
+#ifdef FEATURE_WLAN_LFR_METRICS
+/*
+ * FUNCTION: wlan_hdd_cfg80211_roam_metrics_preauth
+ * 802.11r/LFR metrics reporting function to report preauth initiation
+ *
+ */
+#define MAX_LFR_METRICS_EVENT_LENGTH 100
+VOS_STATUS wlan_hdd_cfg80211_roam_metrics_preauth(hdd_adapter_t *pAdapter,
+                                                  tCsrRoamInfo *pRoamInfo)
+{
+    unsigned char metrics_notification[MAX_LFR_METRICS_EVENT_LENGTH + 1];
+    union iwreq_data wrqu;
+
+    ENTER();
+
+    if (NULL == pAdapter)
+    {
+        hddLog(LOGE, "%s: pAdapter is NULL!", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    /* create the event */
+    memset(&wrqu, 0, sizeof(wrqu));
+    memset(metrics_notification, 0, sizeof(metrics_notification));
+
+    wrqu.data.pointer = metrics_notification;
+    wrqu.data.length = scnprintf(metrics_notification,
+        sizeof(metrics_notification), "QCOM: LFR_PREAUTH_INIT "
+        MAC_ADDRESS_STR, MAC_ADDR_ARRAY(pRoamInfo->bssid));
+
+    wireless_send_event(pAdapter->dev, IWEVCUSTOM, &wrqu, metrics_notification);
+
+    EXIT();
+
+    return VOS_STATUS_SUCCESS;
+}
+
+/*
+ * FUNCTION: wlan_hdd_cfg80211_roam_metrics_preauth_status
+ * 802.11r/LFR metrics reporting function to report preauth completion
+ * or failure
+ */
+VOS_STATUS wlan_hdd_cfg80211_roam_metrics_preauth_status(
+    hdd_adapter_t *pAdapter, tCsrRoamInfo *pRoamInfo, bool preauth_status)
+{
+    unsigned char metrics_notification[MAX_LFR_METRICS_EVENT_LENGTH + 1];
+    union iwreq_data wrqu;
+
+    ENTER();
+
+    if (NULL == pAdapter)
+    {
+        hddLog(LOGE, "%s: pAdapter is NULL!", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    /* create the event */
+    memset(&wrqu, 0, sizeof(wrqu));
+    memset(metrics_notification, 0, sizeof(metrics_notification));
+
+    scnprintf(metrics_notification, sizeof(metrics_notification),
+        "QCOM: LFR_PREAUTH_STATUS "MAC_ADDRESS_STR,
+        MAC_ADDR_ARRAY(pRoamInfo->bssid));
+
+    if (1 == preauth_status)
+        strncat(metrics_notification, " TRUE", 5);
+    else
+        strncat(metrics_notification, " FALSE", 6);
+
+    wrqu.data.pointer = metrics_notification;
+    wrqu.data.length = strlen(metrics_notification);
+
+    wireless_send_event(pAdapter->dev, IWEVCUSTOM, &wrqu, metrics_notification);
+
+    EXIT();
+
+    return VOS_STATUS_SUCCESS;
+}
+
+/*
+ * FUNCTION: wlan_hdd_cfg80211_roam_metrics_handover
+ * 802.11r/LFR metrics reporting function to report handover initiation
+ *
+ */
+VOS_STATUS wlan_hdd_cfg80211_roam_metrics_handover(hdd_adapter_t * pAdapter,
+                                                   tCsrRoamInfo *pRoamInfo)
+{
+    unsigned char metrics_notification[MAX_LFR_METRICS_EVENT_LENGTH + 1];
+    union iwreq_data wrqu;
+
+    ENTER();
+
+    if (NULL == pAdapter)
+    {
+        hddLog(LOGE, "%s: pAdapter is NULL!", __func__);
+        return VOS_STATUS_E_FAILURE;
+    }
+
+    /* create the event */
+    memset(&wrqu, 0, sizeof(wrqu));
+    memset(metrics_notification, 0, sizeof(metrics_notification));
+
+    wrqu.data.pointer = metrics_notification;
+    wrqu.data.length = scnprintf(metrics_notification,
+        sizeof(metrics_notification), "QCOM: LFR_PREAUTH_HANDOVER "
+        MAC_ADDRESS_STR, MAC_ADDR_ARRAY(pRoamInfo->bssid));
+
+    wireless_send_event(pAdapter->dev, IWEVCUSTOM, &wrqu, metrics_notification);
+
+    EXIT();
+
+    return VOS_STATUS_SUCCESS;
+}
+#endif
+
 /*
  * FUNCTION: hdd_cfg80211_scan_done_callback
  * scanning callback function, called after finishing scan
@@ -4365,7 +4480,7 @@ static eHalStatus hdd_cfg80211_scan_done_callback(tHalHandle halHandle,
        goto allow_suspend;
     }
 
-    if(pScanInfo->mScanPending != VOS_TRUE)
+    if (pScanInfo->mScanPending != VOS_TRUE)
     {
         VOS_ASSERT(pScanInfo->mScanPending);
         goto allow_suspend;
