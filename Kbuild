@@ -35,6 +35,11 @@ ifeq ($(KERNEL_BUILD),0)
 	#Flag to enable Fast Transition (11r) feature
 	CONFIG_QCOM_VOWIFI_11R := n
 
+	#Flag to enable Protected Managment Frames (11w) feature
+	ifneq ($(CONFIG_PRONTO_WLAN),)
+	CONFIG_WLAN_FEATURE_11W := y
+	endif
+
 endif
 
 # Feature flags which are not (currently) configurable via Kconfig
@@ -580,6 +585,10 @@ endif
 
 # enable the MAC Address auto-generation feature
 CDEFINES += -DWLAN_AUTOGEN_MACADDR_FEATURE
+
+ifeq ($(CONFIG_WLAN_FEATURE_11W),y)
+CDEFINES += -DWLAN_FEATURE_11W
+endif
 
 ifneq (, $(filter msm8960, $(BOARD_PLATFORM)))
 EXTRA_CFLAGS += -march=armv7-a
