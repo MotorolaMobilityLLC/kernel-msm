@@ -397,6 +397,8 @@ static int msm_isp_notify_vfe(struct msm_cam_media_controller *pmctl,
 			stats->rs.fd, (uint32_t)stats->rs.buff,
 			stats->cs.fd, (uint32_t)stats->cs.buff,
 			stats->ihist.fd, (uint32_t)stats->ihist.buff);
+		CDBG("%s:bhist/skin(%d, %x) ", __func__,
+			stats->skin.fd, (uint32_t)stats->skin.buff);
 
 		stats_buf = kmalloc(sizeof(struct msm_stats_buf), GFP_ATOMIC);
 		if (!stats_buf) {
