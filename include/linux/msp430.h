@@ -81,7 +81,11 @@
 		_IOR(MSP430_IOCTL_BASE, 28, char*)
 #define MSP430_IOCTL_SET_ALGOS	\
 		_IOW(MSP430_IOCTL_BASE, 29, char*)
-/* 30-32 unused */
+#define MSP430_IOCTL_GET_MAG_CAL \
+		_IOR(MSP430_IOCTL_BASE, 30, unsigned char*)
+#define MSP430_IOCTL_SET_MAG_CAL \
+		_IOW(MSP430_IOCTL_BASE, 31, unsigned char*)
+/* 32 unused */
 #define MSP430_IOCTL_SET_MOTION_DUR	\
 		_IOW(MSP430_IOCTL_BASE, 33, unsigned int)
 /* 34 unused */
@@ -110,6 +114,7 @@
 #define MSP_CONTROL_REG_SIZE 200
 #define MSP_STATUS_REG_SIZE 8
 #define MSP_TOUCH_REG_SIZE  8
+#define MSP_MAG_CAL_SIZE 26
 
 #ifdef __KERNEL__
 #define LIGHTING_TABLE_SIZE 32
