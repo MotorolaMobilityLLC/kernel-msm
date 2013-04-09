@@ -43,6 +43,7 @@ struct mmi_battery_info {
 	unsigned char eeprom[EEPROM_SIZE];
 	unsigned char uid[UID_SIZE];
 	struct delayed_work work;
+	struct workqueue_struct *wq;
 	unsigned char eeprom_read_cnt;
 	struct mmi_battery_cell cell_info;
 };
@@ -172,14 +173,14 @@ static void mmi_battery_eeprom_read_work(struct work_struct *work)
 
 	if (read_size != EEPROM_SIZE) {
 		if (dev_info->eeprom_read_cnt <= MAX_EEPROM_READ_CNT)
-			schedule_delayed_work(&dev_info->work,
+			queue_delayed_work(dev_info->wq, &dev_info->work,
 					      msecs_to_jiffies(100));
 	} else {
 		batt_valid = mmi_battery_valid_eeprom(dev_info);
 		if (batt_valid == MMI_BATTERY_VALID)
 			mmi_battery_decode_eeprom(dev_info);
 		else if (dev_info->eeprom_read_cnt <= MAX_EEPROM_READ_CNT)
-			schedule_delayed_work(&dev_info->work,
+			queue_delayed_work(dev_info->wq, &dev_info->work,
 					      msecs_to_jiffies(100));
 	}
 
@@ -365,10 +366,18 @@ static int __devinit mmi_battery_probe(struct platform_device *pdev)
 
 	the_batt = dev_info;
 
+	dev_info->wq = create_singlethread_workqueue("mmi_batt_wq");
+	if (!dev_info->wq) {
+		ret = -ENOMEM;
+		goto error_create_wq;
+	}
 	INIT_DELAYED_WORK(&dev_info->work,  mmi_battery_eeprom_read_work);
-	schedule_delayed_work(&dev_info->work, msecs_to_jiffies(100));
+	queue_delayed_work(dev_info->wq, &dev_info->work,
+					msecs_to_jiffies(100));
 	return 0;
 
+error_create_wq:
+	sysfs_remove_bin_file(&dev_info->dev->kobj, &mmi_battery_uid_attr);
 error_create_uid_file:
 	sysfs_remove_bin_file(&dev_info->dev->kobj, &mmi_battery_eeprom_attr);
 error_create_eeprom_file:
@@ -392,6 +401,9 @@ static int __devexit mmi_battery_remove(struct platform_device *pdev)
 	sysfs_remove_bin_file(&dev_info->dev->kobj, &mmi_battery_eeprom_attr);
 	sysfs_remove_bin_file(&dev_info->dev->kobj, &mmi_battery_uid_attr);
 	the_batt = NULL;
+	cancel_delayed_work(&dev_info->work);
+	if (dev_info->wq)
+		destroy_workqueue(dev_info->wq);
 	kfree(dev_info);
 	return 0;
 }
