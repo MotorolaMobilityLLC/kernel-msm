@@ -477,7 +477,7 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 	static int power_supply_type;
 	struct dwc3_otg *dotg = container_of(phy->otg, struct dwc3_otg, otg);
 	struct power_supply *usb_psy = NULL;
-
+	struct power_supply *ac_psy = NULL;
 
 	if (!dotg->psy || !dotg->charger) {
 		dev_err(phy->dev, "no usb power supply/charger registered\n");
@@ -510,10 +510,12 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 
 	dev_info(phy->dev, "Avail curr from USB = %u\n", mA);
 
-	if (dotg->charger->chg_type == DWC3_DCP_CHARGER) {
+	ac_psy = power_supply_get_by_name("ac");
+
+	if (dotg->charger->chg_type == DWC3_DCP_CHARGER && ac_psy) {
 		pr_info("%s: overide dotg->psy to ac->psy\n", __func__);
 		usb_psy = dotg->psy;
-		dotg->psy = power_supply_get_by_name("ac");
+		dotg->psy = ac_psy;
 	}
 	pr_info("dotg->charger->max_power = %d "\
 			"ma = %d\n", dotg->charger->max_power, mA);
@@ -528,9 +530,17 @@ static int dwc3_otg_set_power(struct usb_phy *phy, unsigned mA)
 		/* Disable charging */
 		if (power_supply_set_online(dotg->psy, false))
 			goto psy_error;
+		if (!usb_psy) {
+			if (power_supply_set_online(ac_psy, false))
+				goto psy_error;
+		}
 		/* Set max current limit */
 		if (power_supply_set_current_limit(dotg->psy, 0))
 			goto psy_error;
+		if (!usb_psy) {
+			if (power_supply_set_current_limit(ac_psy, 0))
+				goto psy_error;
+		}
 	}
 
 	if (usb_psy)
