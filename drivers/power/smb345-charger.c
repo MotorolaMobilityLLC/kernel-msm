@@ -96,9 +96,13 @@
 #define FLOAT_VOLT_MASK	0x3F
 #define STAT_OUTPUT_EN		0x20
 #define GPIO_AC_OK		APQ_AP_ACOK
+#define WPC_DEBOUNCE_INTERVAL	(1 * HZ)
+#define WPC_STABLE_INTERVAL	(4 * HZ)
+#define WPC_INIT_DET_INTERVAL	(22 * HZ)
 
 /* Functions declaration */
 extern int  bq27541_battery_callback(unsigned usb_cable_state);
+extern int  bq27541_wireless_callback(unsigned wireless_state);
 extern void touch_callback(unsigned cable_status);
 static ssize_t smb345_reg_show(struct device *dev, struct device_attribute *attr, char *buf);
 
@@ -107,6 +111,9 @@ static struct smb345_charger *charger;
 static struct workqueue_struct *smb345_wq;
 struct wake_lock charger_wakelock;
 static int charge_en_flag = 1;
+struct wake_lock wireless_wakelock;
+bool wireless_on;
+bool otg_on;
 
 /* Sysfs interface */
 static DEVICE_ATTR(reg_status, S_IWUSR | S_IRUGO, smb345_reg_show, NULL);
@@ -211,6 +218,14 @@ int smb345_volatile_writes(struct i2c_client *client, uint8_t value)
 	return ret;
 }
 
+int wireless_is_plugged(void)
+{
+	if (charger->wpc_pok_gpio != -1)
+		return !(gpio_get_value(charger->wpc_pok_gpio));
+	else
+		return 0;
+}
+
 static int smb345_pin_control(bool state)
 {
 	struct i2c_client *client = charger->client;
@@ -309,6 +324,8 @@ smb345_set_InputCurrentlimit(struct i2c_client *client, u32 current_setting)
 		setting |= 0x07;
 	else if(current_setting == 1800)
 		setting |= 0x06;
+	else if (current_setting == 1200)
+		setting |= 0x04;
 	else if(current_setting == 900)
 		setting |= 0x03;
 	else if(current_setting == 500)
@@ -329,6 +346,8 @@ smb345_set_InputCurrentlimit(struct i2c_client *client, u32 current_setting)
 		charger->curr_limit = 2000;
 	else if(current_setting == 1800)
 		charger->curr_limit = 1800;
+	else if (current_setting == 1200)
+		charger->curr_limit = 1200;
 	else if(current_setting == 900)
 		charger->curr_limit = 900;
 	else if(current_setting == 500)
@@ -377,6 +396,194 @@ error:
 static irqreturn_t smb345_inok_isr(int irq, void *dev_id)
 {
 	return IRQ_HANDLED;
+}
+
+static irqreturn_t smb345_wireless_isr(int irq, void *dev_id)
+{
+	struct smb345_charger *smb = dev_id;
+
+	queue_delayed_work(smb345_wq, &smb->wireless_isr_work, WPC_DEBOUNCE_INTERVAL);
+
+	return IRQ_HANDLED;
+}
+
+static int smb345_wireless_irq(struct smb345_charger *smb)
+{
+	int err = 0 ;
+	unsigned gpio = charger->wpc_pok_gpio;
+	unsigned irq_num = gpio_to_irq(gpio);
+
+	err = gpio_request(gpio, "wpc_pok");
+	if (err)
+		SMB_ERR("gpio %d request failed\n", gpio);
+
+	err = gpio_direction_input(gpio);
+	if (err)
+		SMB_ERR("gpio %d unavaliable for input\n", gpio);
+
+	err = request_irq(irq_num, smb345_wireless_isr,
+		IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING | IRQF_SHARED,
+		"wpc_pok", smb);
+	if (err < 0) {
+		SMB_ERR("%s irq %d request failed\n", "wpc_pok", irq_num);
+		goto fault ;
+	}
+	enable_irq_wake(irq_num);
+	SMB_NOTICE("GPIO pin irq %d requested ok, wpc_pok = %s\n", irq_num,
+		gpio_get_value(gpio) ? "H" : "L");
+	return 0;
+
+fault:
+	gpio_free(gpio);
+	return err;
+}
+
+int
+smb345_set_WCInputCurrentlimit(struct i2c_client *client, u32 current_setting)
+{
+	int ret = 0, retval;
+	u8 setting;
+
+	ret = smb345_volatile_writes(client, smb345_ENABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() error in configuring charger..\n",
+								__func__);
+		goto error;
+	}
+
+	if (current_setting != 0) {
+		retval = smb345_read(client, smb345_CHRG_CRNTS);
+		if (retval < 0) {
+			dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
+				__func__, smb345_CHRG_CRNTS);
+			goto error;
+		}
+
+		setting = retval & 0x0F;
+		if (current_setting == 2000)
+			setting |= 0x70;
+		else if (current_setting == 1800)
+			setting |= 0x60;
+		else if (current_setting == 1200)
+			setting |= 0x40;
+		else if (current_setting == 900)
+			setting |= 0x30;
+		else if (current_setting == 700)
+			setting |= 0x20;
+		else if (current_setting == 500)
+			setting |= 0x10;
+
+		SMB_NOTICE("Set ICL=%u retval =%x setting=%x\n",
+			current_setting, retval, setting);
+
+		ret = smb345_write(client, smb345_CHRG_CRNTS, setting);
+		if (ret < 0) {
+			dev_err(&client->dev, "%s(): Failed in writing 0x%02x to register"
+				"0x%02x\n", __func__, setting, smb345_CHRG_CRNTS);
+			goto error;
+		}
+	}
+
+	retval = smb345_read(client, smb345_VRS_FUNC);
+	if (retval < 0) {
+		dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
+				__func__, smb345_VRS_FUNC);
+		goto error;
+	}
+
+	setting = retval & (~(BIT(4)));
+	SMB_NOTICE("Disable AICL, retval=%x setting=%x\n", retval, setting);
+	ret = smb345_write(client, smb345_VRS_FUNC, setting);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s(): Failed in writing 0x%02x to register"
+			"0x%02x\n", __func__, setting, smb345_VRS_FUNC);
+		goto error;
+	}
+
+	ret = smb345_volatile_writes(client, smb345_DISABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() error in configuring charger..\n",
+								__func__);
+		goto error;
+	}
+
+error:
+	return ret;
+}
+
+static void wireless_set(void)
+{
+	wireless_on = true;
+	wake_lock(&wireless_wakelock);
+	smb345_set_WCInputCurrentlimit(charger->client, 900);
+	bq27541_wireless_callback(wireless_on);
+	queue_delayed_work(smb345_wq, &charger->wireless_reAICL_work, WPC_STABLE_INTERVAL);
+}
+
+static void wireless_reset(void)
+{
+	wireless_on = false;
+	if (delayed_work_pending(&charger->wireless_reAICL_work))
+		cancel_delayed_work(&charger->wireless_reAICL_work);
+	bq27541_wireless_callback(wireless_on);
+	if (wake_lock_active(&wireless_wakelock))
+		wake_unlock(&wireless_wakelock);
+}
+
+static void wireless_isr_work_function(struct work_struct *dat)
+{
+	if (delayed_work_pending(&charger->wireless_isr_work))
+		cancel_delayed_work(&charger->wireless_isr_work);
+
+	SMB_NOTICE("wireless state = %d\n", wireless_is_plugged());
+
+	if (wireless_is_plugged())
+		wireless_set();
+	else
+		wireless_reset();
+}
+
+static void wireless_det_work_function(struct work_struct *dat)
+{
+	if (wireless_is_plugged())
+		wireless_set();
+}
+
+static void wireless_reAICL_work_function(struct work_struct *dat)
+{
+	int ret = 0, retval;
+	u8 setting;
+	struct i2c_client *client = charger->client;
+
+	if (delayed_work_pending(&charger->wireless_reAICL_work))
+		cancel_delayed_work(&charger->wireless_reAICL_work);
+
+	ret = smb345_volatile_writes(client, smb345_ENABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() error in configuring charger..\n",
+								__func__);
+	}
+
+	retval = smb345_read(client, smb345_VRS_FUNC);
+	if (retval < 0) {
+		dev_err(&client->dev, "%s(): Failed in reading 0x%02x",
+				__func__, smb345_VRS_FUNC);
+	}
+
+	setting = retval | BIT(4);
+	SMB_NOTICE("enable AICL, retval=%x setting=%x\n", retval, setting);
+	ret = smb345_write(client, smb345_VRS_FUNC, setting);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s(): Failed in writing 0x%02x to register"
+			"0x%02x\n", __func__, setting, smb345_VRS_FUNC);
+	}
+
+	ret = smb345_volatile_writes(client, smb345_DISABLE_WRITE);
+	if (ret < 0) {
+		dev_err(&client->dev, "%s() error in configuring charger..\n",
+								__func__);
+	}
+	wake_unlock(&wireless_wakelock);
 }
 
 static int smb345_inok_irq(struct smb345_charger *smb)
@@ -471,15 +678,22 @@ void smb345_otg_status(bool on)
 	struct i2c_client *client = charger->client;
 	int ret;
 
-	SMB_NOTICE("otg function: %s", on? "on":"off");
+	SMB_NOTICE("otg function: %s\n", on ? "on" : "off");
 
 	if (on) {
+		otg_on = true;
 		/* ENABLE OTG */
 		ret = smb345_configure_otg(client);
-		if (ret < 0)
+		if (ret < 0) {
 			dev_err(&client->dev, "%s() error in configuring"
 				"otg..\n", __func__);
-	}
+			return;
+		}
+	} else
+		otg_on = false;
+
+	if (wireless_is_plugged())
+		wireless_set();
 }
 EXPORT_SYMBOL_GPL(smb345_otg_status);
 
@@ -531,11 +745,10 @@ int usb_cable_type_detect(unsigned int chgr_type)
 {
 	struct i2c_client *client = charger->client;
 	int  success = 0;
-	int ac_ok = GPIO_AC_OK;
 
 	mutex_lock(&charger->usb_lock);
 
-	if (gpio_get_value(ac_ok) && (chgr_type == CHARGER_NONE)) {
+	if (chgr_type == CHARGER_NONE) {
 		SMB_NOTICE("INOK=H\n");
 		success =  bq27541_battery_callback(non_cable);
 		touch_callback(non_cable);
@@ -557,13 +770,14 @@ int usb_cable_type_detect(unsigned int chgr_type)
 				SMB_NOTICE("Cable: ACA\n");
 			} else {
 				SMB_NOTICE("Cable: TBD\n");
+				goto done;
 			}
-			smb345_set_InputCurrentlimit(client, 2000);
+			smb345_set_InputCurrentlimit(client, 1200);
 			success =  bq27541_battery_callback(ac_cable);
 			touch_callback(ac_cable);
 		}
 	}
-
+done:
 	mutex_unlock(&charger->usb_lock);
 	return success;
 }
@@ -658,6 +872,7 @@ static int __devinit smb345_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct i2c_adapter *adapter = to_i2c_adapter(client->dev.parent);
+	struct smb345_platform_data *platform_data;
 	int ret;
 
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE))
@@ -686,16 +901,42 @@ static int __devinit smb345_probe(struct i2c_client *client,
 
 	smb345_wq = create_singlethread_workqueue("smb345_wq");
 
+	INIT_DELAYED_WORK_DEFERRABLE(&charger->wireless_isr_work,
+		wireless_isr_work_function);
+	INIT_DELAYED_WORK_DEFERRABLE(&charger->wireless_det_work,
+		wireless_det_work_function);
+	INIT_DELAYED_WORK_DEFERRABLE(&charger->wireless_reAICL_work,
+		wireless_reAICL_work_function);
+
 	wake_lock_init(&charger_wakelock, WAKE_LOCK_SUSPEND,
 			"charger_configuration");
+	wake_lock_init(&wireless_wakelock, WAKE_LOCK_SUSPEND,
+			"wireless_charger");
 	charger->curr_limit = UINT_MAX;
 	charger->cur_cable_type = non_cable;
 	charger->old_cable_type = non_cable;
+	charger->wpc_pok_gpio = -1;
+	wireless_on = false;
+	otg_on = false;
 
 	ret = smb345_inok_irq(charger);
 	if (ret) {
 		SMB_ERR("Failed in requesting ACOK# pin isr\n");
 		goto error;
+	}
+
+	if (client->dev.platform_data) {
+		platform_data = client->dev.platform_data;
+		if (platform_data->wpc_pok_gpio != -1) {
+			charger->wpc_pok_gpio = platform_data->wpc_pok_gpio;
+			ret = smb345_wireless_irq(charger);
+			if (ret) {
+				SMB_ERR("Failed in requesting WPC_POK# pin isr\n");
+				goto error;
+			}
+
+			queue_delayed_work(smb345_wq, &charger->wireless_det_work, WPC_INIT_DET_INTERVAL);
+		}
 	}
 
 	printk("smb345_probe-\n");

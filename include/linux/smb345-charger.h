@@ -81,6 +81,9 @@ struct smb345_charger {
 	#endif
 	struct delayed_work	inok_isr_work;
 	struct delayed_work	cable_det_work;
+	struct delayed_work	wireless_isr_work;
+	struct delayed_work	wireless_det_work;
+	struct delayed_work	wireless_reAICL_work;
 	struct mutex		apsd_lock;
 	struct mutex		usb_lock;
 	struct mutex		pinctrl_lock;
@@ -90,6 +93,11 @@ struct smb345_charger {
 	enum cable_type old_cable_type;
 	unsigned long time_of_1800mA_limit;
 	unsigned int curr_limit;
+	unsigned int wpc_pok_gpio;
+};
+
+struct smb345_platform_data {
+	unsigned int wpc_pok_gpio;
 };
 
 #endif /*__LINUX_smb345_CHARGER_H */

@@ -67,6 +67,8 @@ unsigned bq27541_battery_cable_status = 0;
 unsigned bq27541_battery_driver_ready = 0;
 static int ac_on ;
 static int usb_on ;
+extern bool wireless_on;
+extern bool otg_on;
 static unsigned int 	battery_current;
 static unsigned int  battery_remaining_capacity;
 struct workqueue_struct *bq27541_battery_work_queue = NULL;
@@ -107,6 +109,7 @@ typedef enum {
 	Charger_Type_Battery = 0,
 	Charger_Type_AC,
 	Charger_Type_USB,
+	Charger_Type_WIRELESS,
 	Charger_Type_Num,
 	Charger_Type_Force32 = 0x7FFFFFFF
 } Charger_Type;
@@ -170,6 +173,8 @@ static int power_get_property(struct power_supply *psy,
 			val->intval =  1;
 		   else if (psy->type == POWER_SUPPLY_TYPE_USB && usb_on)
 			val->intval =  1;
+		   else if (psy->type == POWER_SUPPLY_TYPE_WIRELESS && wireless_on)
+			val->intval =  1;
 		   else
 			val->intval = 0;
 		break;
@@ -216,6 +221,15 @@ static struct power_supply bq27541_supply[] = {
 		.get_property = power_get_property,
 	},
 #endif
+	{
+		.name		= "wireless",
+		.type		= POWER_SUPPLY_TYPE_WIRELESS,
+		.supplied_to	= supply_list,
+		.num_supplicants = ARRAY_SIZE(supply_list),
+		.properties =	power_properties,
+		.num_properties = ARRAY_SIZE(power_properties),
+		.get_property = power_get_property,
+	},
 };
 
 static struct bq27541_device_info {
@@ -458,6 +472,22 @@ int bq27541_battery_callback(unsigned usb_cable_state)
 }
 EXPORT_SYMBOL(bq27541_battery_callback);
 
+int bq27541_wireless_callback(unsigned wireless_state)
+{
+	printk(KERN_NOTICE "========================================================\n");
+	printk(KERN_NOTICE "bq27541_wireless_callback  wireless_state = %x\n", wireless_state) ;
+	printk(KERN_NOTICE "========================================================\n");
+
+	power_supply_changed(&bq27541_supply[Charger_Type_WIRELESS]);
+
+	cancel_delayed_work(&bq27541_device->status_poll_work);
+	queue_delayed_work(bq27541_battery_work_queue,
+		&bq27541_device->status_poll_work, 2*HZ);
+
+	return 1;
+}
+EXPORT_SYMBOL(bq27541_wireless_callback);
+
 static int bq27541_get_health(enum power_supply_property psp,
 	union power_supply_propval *val)
 {
@@ -499,7 +529,7 @@ static int bq27541_get_psp(int reg_offset, enum power_supply_property psp,
 	if (psp == POWER_SUPPLY_PROP_STATUS) {
 		ret = bq27541_device->bat_status = rt_value;
 
-		if (ac_on || usb_on) {		/* Charging detected */
+		if ((ac_on || usb_on || wireless_on) && !otg_on) {/* Charging detected */
 			if (bq27541_device->old_capacity == 100) {
 				val->intval = POWER_SUPPLY_STATUS_FULL;
 			} else {

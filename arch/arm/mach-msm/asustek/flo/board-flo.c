@@ -81,6 +81,9 @@
 #ifdef CONFIG_MACH_ASUSTEK
 #include <mach/board_asustek.h>
 #endif
+#include <linux/smb345-charger.h>
+
+#define GPIO_WPC_POK 34
 
 #include "msm_watchdog.h"
 #include "board-flo.h"
@@ -1082,11 +1085,49 @@ static void __init apq8064_ehci_host_init(void)
 	}
 }
 
-static struct i2c_board_info smb345_charger_i2c_info[] __initdata = {
+static struct smb345_platform_data smb345_pdata_SR2 = {
+	.wpc_pok_gpio = GPIO_WPC_POK,
+};
+
+static struct smb345_platform_data smb345_pdata_SR1 = {
+	.wpc_pok_gpio = -1,
+};
+
+static struct i2c_board_info smb345_charger_i2c_info_SR1[] __initdata = {
 	{
 		I2C_BOARD_INFO("smb345", 0x6a),
+		.platform_data = &smb345_pdata_SR1,
 	},
 };
+
+static struct i2c_board_info smb345_charger_i2c_info_SR2[] __initdata = {
+	{
+		I2C_BOARD_INFO("smb345", 0x6a),
+		.platform_data = &smb345_pdata_SR2,
+	},
+};
+
+static void smb345_init(void)
+{
+	hw_rev revision = HW_REV_INVALID;
+
+	revision = asustek_get_hw_rev();
+
+	switch (revision) {
+	case HW_REV_B:
+	case HW_REV_C:
+	case HW_REV_D:
+		i2c_register_board_info(APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+			smb345_charger_i2c_info_SR2,
+			ARRAY_SIZE(smb345_charger_i2c_info_SR2));
+		break;
+	default:
+		i2c_register_board_info(APQ_8064_GSBI1_QUP_I2C_BUS_ID,
+			smb345_charger_i2c_info_SR1,
+			ARRAY_SIZE(smb345_charger_i2c_info_SR1));
+		break;
+	}
+}
 
 #if 0
 static struct smb349_platform_data smb349_data __initdata = {
@@ -2854,12 +2895,6 @@ static struct i2c_board_info bq27541_bat_device_info[] = {
 };
 
 static struct i2c_registry apq8064_i2c_devices[] __initdata = {
-	{
-		I2C_SURF | I2C_FFA | I2C_LIQUID | I2C_RUMI,
-		APQ_8064_GSBI1_QUP_I2C_BUS_ID,
-		smb345_charger_i2c_info,
-		ARRAY_SIZE(smb345_charger_i2c_info)
-	},
 #if 0
 	{
 		I2C_LIQUID,
@@ -3246,6 +3281,8 @@ static void __init apq8064_common_init(void)
 #endif
 	apq8064_i2c_init();
 	register_i2c_devices();
+
+	smb345_init();
 
 	apq8064_device_qup_spi_gsbi5.dev.platform_data =
 						&apq8064_qup_spi_gsbi5_pdata;

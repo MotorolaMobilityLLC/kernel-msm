@@ -305,6 +305,12 @@ struct msm_gpiomux_config vcap_configs[] = {
 };
 #endif
 
+static struct gpiomux_setting wpc_pok_pin_setting = {
+		.func = GPIOMUX_FUNC_GPIO,
+		.pull = GPIOMUX_PULL_UP,
+		.dir = GPIOMUX_IN,
+};
+
 static struct gpiomux_setting stat_pin_setting = {
 		.func = GPIOMUX_FUNC_GPIO,
 		.pull = GPIOMUX_PULL_NONE,
@@ -315,6 +321,16 @@ static struct gpiomux_setting acok_pin_setting = {
 		.func = GPIOMUX_FUNC_GPIO,
 		.pull = GPIOMUX_PULL_NONE,
 		.dir = GPIOMUX_IN,
+};
+
+struct msm_gpiomux_config wpc_pok_configs[] = {
+	{
+		.gpio = 34,
+		.settings = {
+			[GPIOMUX_SUSPENDED] =	&wpc_pok_pin_setting,
+			[GPIOMUX_ACTIVE] =		&wpc_pok_pin_setting,
+		}
+	},
 };
 
 struct msm_gpiomux_config smb345_pin_configs[] = {
@@ -1768,6 +1784,17 @@ void __init apq8064_init_gpiomux(void)
 
 	msm_gpiomux_install(smb345_pin_configs,
 			ARRAY_SIZE(smb345_pin_configs));
+
+	switch (revision) {
+	case HW_REV_B:
+	case HW_REV_C:
+	case HW_REV_D:
+		msm_gpiomux_install(wpc_pok_configs,
+			ARRAY_SIZE(wpc_pok_configs));
+		break;
+	default:
+		break;
+	}
 
 	if (machine_is_apq8064_flo() || machine_is_apq8064_deb())
 		msm_gpiomux_install(apq8064_bcm2079x_nfc_configs,
