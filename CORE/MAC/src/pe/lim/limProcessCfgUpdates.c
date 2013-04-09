@@ -518,13 +518,11 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
         {
             limDeactivateAndChangeTimer(pMac, eLIM_HEART_BEAT_TIMER);
             pMac->sys.gSysEnableLinkMonitorMode = 0;
-            PELOGE(limLog(pMac, LOGE, "Deactivating heartbeat link monitoring\n");)
         } 
         else 
         {
             tANI_U16 sessionId;
             pMac->sys.gSysEnableLinkMonitorMode = 1;
-            PELOGE(limLog(pMac, LOGE, "Reactivating heartbeat link monitoring\n");)
             for(sessionId = 0; sessionId < pMac->lim.maxBssId; sessionId++)
             {
                 if( (pMac->lim.gpSession[sessionId].valid )&&
@@ -534,11 +532,15 @@ limHandleCFGparamUpdate(tpAniSirGlobal pMac, tANI_U32 cfgId)
                 {
                     PELOG2(limLog(pMac, LOG2, "HB link monitoring reactivated"
                            " for session=%d", sessionId);)
+                    PELOGW(limLog(pMac, LOGW, "Before reactivating HB timer; parameters are"
+                           " session=%d limMlmState=%d pmmState=%d", sessionId,
+                             pMac->lim.gpSession[sessionId].limMlmState,
+                             pMac->pmm.gPmmState);)
                     limReactivateHeartBeatTimer(pMac, &pMac->lim.gpSession[sessionId]);
                 }
                 else if ( pMac->lim.gpSession[sessionId].valid )
                 {
-                    PELOG2(limLog(pMac, LOG2, "HB link monitoring not reactivated-"
+                    PELOGW(limLog(pMac, LOGW, "HB link monitoring not reactivated-"
                            "session=%d, limMlmState=%d, gPmmState=%d", 
                            sessionId, pMac->lim.gpSession[sessionId].limMlmState,
                            pMac->pmm.gPmmState);)
