@@ -940,7 +940,7 @@ static int64_t read_mmi_battery_chrg(int64_t battery_id,
 	int ret;
 	size_t len = sizeof(struct pm8921_charger_battery_data);
 
-	for (i = 0; i < 50; i++) {
+	for (i = 0; i < 1200; i++) {
 		if (battery_timeout)
 			break;
 		cell_info = mmi_battery_get_info();
@@ -951,7 +951,7 @@ static int64_t read_mmi_battery_chrg(int64_t battery_id,
 				return (int64_t) cell_info->batt_valid;
 			}
 		}
-		msleep(500);
+		usleep_range(10000, 15000);
 	}
 
 	battery_timeout = 1;
@@ -967,7 +967,7 @@ static int64_t read_mmi_battery_bms(int64_t battery_id,
 	int ret;
 	size_t len = sizeof(struct bms_battery_data);
 
-	for (i = 0; i < 50; i++) {
+	for (i = 0; i < 1200; i++) {
 		if (battery_timeout)
 			break;
 		cell_info = mmi_battery_get_info();
@@ -978,7 +978,7 @@ static int64_t read_mmi_battery_bms(int64_t battery_id,
 				return (int64_t) cell_info->batt_valid;
 			}
 		}
-		msleep(500);
+		usleep_range(10000, 15000);
 	}
 
 	battery_timeout = 1;
