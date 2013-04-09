@@ -117,6 +117,7 @@ static enum w1_ds2502_state w1_ds2502_identify(struct w1_slave *sl,
 
 		/* Determine if all devices have fallen off the bus. */
 		if ((read_bit == 1) && (read_complement_bit == 1)) {
+			pr_err("%s: STATE_RETRY_DETECT\n", __func__);
 			next_state = STATE_RETRY_DETECT;
 			error_found = -EFAULT;
 			break;
@@ -162,6 +163,8 @@ static enum w1_ds2502_state w1_ds2502_send_command(struct w1_slave *sl)
 
 	if (bus_crc == computed_crc)
 		next_state = STATE_RX_DATA;
+	else
+		pr_err("%s: crc err\n", __func__);
 
 	return next_state;
 }
@@ -191,6 +194,7 @@ static enum w1_ds2502_state w1_ds2502_rx_data(struct w1_slave *sl,
 			    rx_data[rx_data_index + EEPROM_PAGE_SIZE])
 				crc_success = 1;
 			else {
+				pr_err("%s: RX Data crc error\n", __func__);
 				crc_success = 0;
 				break;
 			}
@@ -259,21 +263,15 @@ static enum w1_ds2502_state w1_ds2502_retry(struct w1_slave *sl,
 	return next_state;
 }
 
-static DEFINE_SPINLOCK(test_lock);
-
-ssize_t w1_ds2502_read_eeprom(struct w1_slave *sl,
-				     char *buf,
-				     size_t count)
+static ssize_t w1_ds2502_read_eeprom_nolock(struct w1_slave *sl,
+						char *buf,
+						size_t count)
 {
 	unsigned char retry_count = 0;
 	enum w1_ds2502_state state = STATE_DETECT;
 	unsigned char serial_number_index = 0;
 	static bool multiple_devices_found;
 	struct w1_ds2502_data *data = sl->family_data;
-	unsigned long flags;
-
-	mutex_lock(&sl->master->mutex);
-	spin_lock_irqsave(&test_lock, flags);
 
 	data->status = -EINVAL;
 	memset(data->unique_id, 0xFF, UID_SIZE);
@@ -308,10 +306,27 @@ ssize_t w1_ds2502_read_eeprom(struct w1_slave *sl,
 			break;
 		}
 	}
-	spin_unlock_irqrestore(&test_lock, flags);
-	mutex_unlock(&sl->master->mutex);
 
 	return (data->status == 0) ? count : 0;
+}
+
+ssize_t w1_ds2502_read_eeprom(struct w1_slave *sl,
+				char *buf,
+				size_t count)
+{
+	ssize_t rc;
+
+	mutex_lock(&sl->master->mutex);
+	rc = w1_ds2502_read_eeprom_nolock(sl, buf, count);
+	if (!rc) {
+		unsigned long flags;
+		pr_err("%s: Retry with IRQ disable\n", __func__);
+		local_irq_save(flags);
+		rc = w1_ds2502_read_eeprom_nolock(sl, buf, count);
+		local_irq_restore(flags);
+	}
+	mutex_unlock(&sl->master->mutex);
+	return rc;
 }
 EXPORT_SYMBOL(w1_ds2502_read_eeprom);
 
