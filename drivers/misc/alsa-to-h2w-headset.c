@@ -41,9 +41,6 @@ struct alsa_to_h2w_data {
 static char *name_headsets_with_mic = "Headset with a mic";
 static char *name_headsets_no_mic = "Headphone";
 static char *name_headsets_pull_out = "No Device";
-static char *state_headsets_with_mic = "1";
-static char *state_headsets_no_mic = "2";
-static char *state_headsets_pull_out = "0";
 
 static struct alsa_to_h2w_data *headset_switch_data;
 
@@ -166,37 +163,16 @@ static ssize_t headset_print_name(struct switch_dev *sdev, char *buf)
 	}
 
 	if (name)
-		return snprintf(buf, sizeof(name) + 2, "%s\n", name);
+		return sprintf(buf, "%s\n", name);
 	else
 		return -EINVAL;
 }
 
 static ssize_t headset_print_state(struct switch_dev *sdev, char *buf)
 {
-	const char *state;
-
 	if (!buf)
 		return -EINVAL;
-
-	switch (switch_get_state(sdev)) {
-	case 0:
-		state = state_headsets_pull_out;
-		break;
-	case 1:
-		state = state_headsets_with_mic;
-		break;
-	case 2:
-		state = state_headsets_no_mic;
-		break;
-	default:
-		state = NULL;
-		break;
-	}
-
-	if (state)
-		return snprintf(buf, sizeof(state) + 2, "%s\n", state);
-	else
-		return -EINVAL;
+	return sprintf(buf, "%d\n", switch_get_state(sdev));
 }
 
 static int __devinit alsa_to_h2w_probe(struct platform_device *pdev)
