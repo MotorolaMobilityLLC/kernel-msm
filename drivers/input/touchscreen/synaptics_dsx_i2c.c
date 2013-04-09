@@ -318,6 +318,7 @@ static struct synaptics_rmi4_func_packet_regs f12_ctrl_regs = {
 static struct f12_c20_0_type f12_c20_0_store;
 static struct f12_c23_0_type f12_c23_0_store;
 static struct f12_c23_1_type f12_c23_1_store;
+static unsigned char tsb_buff_clean_flag = 1;
 
 #define LAST_SUBPACKET_ROW_IND_MASK 0x80
 #define NR_SUBPKT_PRESENCE_BITS 7
@@ -849,7 +850,7 @@ static int synaptics_dsx_ic_reset(struct synaptics_rmi4_data *rmi4_data)
 	}
 
 	gpio_set_value(platform_data->reset_gpio, 0);
-	udelay(1000);
+	udelay(1500);
 	gpio_set_value(platform_data->reset_gpio, 1);
 
 	retval = down_timeout(&reset_semaphore, msecs_to_jiffies(50));
@@ -1698,20 +1699,19 @@ static void synaptics_rmi4_f1a_report(struct synaptics_rmi4_data *rmi4_data,
 	unsigned char *data;
 	unsigned short data_addr = fhandler->full_addr.data_base;
 	struct synaptics_rmi4_f1a_handle *f1a = fhandler->data;
-	static unsigned char do_once = 1;
 	static bool current_status[MAX_NUMBER_OF_BUTTONS];
 #ifdef NO_0D_WHILE_2D
 	static bool before_2d_status[MAX_NUMBER_OF_BUTTONS];
 	static bool while_2d_status[MAX_NUMBER_OF_BUTTONS];
 #endif
 
-	if (do_once) {
+	if (tsb_buff_clean_flag) {
 		memset(current_status, 0, sizeof(current_status));
 #ifdef NO_0D_WHILE_2D
 		memset(before_2d_status, 0, sizeof(before_2d_status));
 		memset(while_2d_status, 0, sizeof(while_2d_status));
 #endif
-		do_once = 0;
+		tsb_buff_clean_flag = 0;
 	}
 
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
@@ -2719,6 +2719,13 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 	input_mt_sync(rmi4_data->input_dev);
 	input_sync(rmi4_data->input_dev);
 
+	/* reset some TSB global vars like fingers_on_2d after resume
+	 * of reset touch IC
+	 */
+	if (rmi4_data->button_0d_enabled) {
+		tsb_buff_clean_flag = 1;
+		rmi4_data->fingers_on_2d = false;
+	}
 	current_state = synaptics_dsx_get_state_safe(rmi4_data);
 
 	if (rmi4_data->reset_on_resume) {
