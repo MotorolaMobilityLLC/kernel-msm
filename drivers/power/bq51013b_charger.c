@@ -32,7 +32,6 @@ struct bq51013b_chip {
 	struct power_supply wlc_psy;
 	unsigned int chg_ctrl_gpio;
 	unsigned int wlc_int_gpio;
-	int wlc_present;
 	int current_ma;
 	int present;
 };
@@ -233,7 +232,7 @@ static int bq51013b_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, chip);
 
-	chip->wlc_present = bq51013b_charger_is_present(chip);
+	chip->present = bq51013b_charger_is_present(chip);
 
 	return 0;
 
