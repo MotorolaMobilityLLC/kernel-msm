@@ -151,7 +151,7 @@
 			qcom,pin-num = <20>;
 			qcom,suspended@1 {
 				qcom,func = <1>;  /* gsbi4(1)               */
-				qcom,pull = <3>;  /* up                     */
+				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <0>;   /* n/a                    */
 			};
@@ -162,7 +162,7 @@
 			qcom,pin-num = <21>;
 			qcom,suspended@1 {
 				qcom,func = <1>;  /* gsbi4(1)               */
-				qcom,pull = <3>;  /* up                     */
+				qcom,pull = <0>;  /* none                   */
 				qcom,drv = <0>;   /* 2ma                    */
 				qcom,dir = <0>;   /* n/a                    */
 			};
