@@ -1178,20 +1178,23 @@ static int32_t ov10820_power_down(
 	gpio_direction_output(info->sensor_reset, 0);
 	usleep(500);
 
-	/*Set Dig En Low */
-	gpio_direction_output(info->oem_data->sensor_dig_en, 0);
-	usleep(500);
-
 	if (info->oem_data->sensor_using_separate_dvdd)
 		ov10820_regulator_off(&cam_dvdd, "cam_dvdd");
 	else
 		ov10820_regulator_off(&cam_vdig, "cam_vdig");
 
+	usleep_range(500, 1000);
+
 	/* Turn off AF regulator supply */
 	ov10820_regulator_off(&cam_afvdd, NULL);
 
-	/*Set pwd low*/
+	/*Set pwd low, which also sets avdd low*/
 	gpio_direction_output(info->sensor_pwd, 0);
+	usleep(500);
+
+	/*Set Dig En Low */
+	gpio_direction_output(info->oem_data->sensor_dig_en, 0);
+	usleep(500);
 
 	/*Clean up*/
 	gpio_free(info->sensor_pwd);
