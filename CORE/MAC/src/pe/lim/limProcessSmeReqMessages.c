@@ -4595,7 +4595,7 @@ __limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 noaDuration)
 
         // send the scan response back with status failure and do not even call insert NOA
         limSendSmeScanRsp(pMac, sizeof(tSirSmeScanRsp), eSIR_SME_SCAN_FAILED, pMac->lim.gSmeSessionId, pMac->lim.gTransactionId);
-        palFreeMemory( pMac->hHdd, (void **) &pMsgNoA);
+        palFreeMemory( pMac->hHdd, pMsgNoA);
         goto error;
     }
 
