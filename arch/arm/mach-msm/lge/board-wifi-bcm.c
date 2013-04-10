@@ -336,6 +336,7 @@ static int bcm_wifi_get_mac_addr(unsigned char *buf)
 	uint rand_mac;
 	static unsigned char mymac[ETHER_ADDR_LEN] = {0,};
 	const unsigned char nullmac[ETHER_ADDR_LEN] = {0,};
+	const unsigned char bcastmac[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
 	if (buf == NULL)
 		return -EAGAIN;
@@ -379,7 +380,15 @@ static int bcm_wifi_get_mac_addr(unsigned char *buf)
 				macbin[0], macbin[1], macbin[2],
 				macbin[3], macbin[4], macbin[5]);
 
+		if (memcmp(macbin, nullmac, ETHER_ADDR_LEN) == 0 ||
+				memcmp(macbin, bcastmac, ETHER_ADDR_LEN) == 0) {
+			filp_close(fp, NULL);
+			goto random_mac;
+		}
 		memcpy(buf, macbin, ETHER_ADDR_LEN);
+	} else {
+		filp_close(fp, NULL);
+		goto random_mac;
 	}
 
 	filp_close(fp, NULL);
