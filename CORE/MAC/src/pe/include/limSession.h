@@ -351,7 +351,8 @@ typedef struct sPESession           // Added to Support BT-AMP
 #ifdef FEATURE_WLAN_TDLS
     tANI_U32  peerAIDBitmap[2];
 #endif
-
+    tANI_BOOLEAN fWaitForProbeRsp;
+    tANI_BOOLEAN fIgnoreCapsChange;
 }tPESession, *tpPESession;
 
 #define LIM_MAX_ACTIVE_SESSIONS 4
