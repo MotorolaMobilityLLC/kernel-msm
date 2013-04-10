@@ -1,3 +1,10 @@
+config IMX179
+	bool "Sensor imx179 (Sony 8MP)"
+	depends on MSMB_CAMERA
+	---help---
+	  Support for IMX179 sensor driver.
+	  The number of effective pixel is 3280x2464.
+
 config MSM_CAMERA_SENSOR
 	    bool "Qualcomm MSM camera sensor support"
 	    depends on MSMB_CAMERA

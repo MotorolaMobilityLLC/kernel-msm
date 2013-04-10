@@ -76,6 +76,10 @@ enum msm_sensor_clk_type_t {
 enum msm_sensor_power_seq_gpio_t {
 	SENSOR_GPIO_RESET,
 	SENSOR_GPIO_STANDBY,
+	SENSOR_GPIO_VANA,
+	SENSOR_GPIO_VDIG,
+	SENSOR_GPIO_VIO,
+	SENSOR_GPIO_VCM,
 	SENSOR_GPIO_MAX,
 };
 

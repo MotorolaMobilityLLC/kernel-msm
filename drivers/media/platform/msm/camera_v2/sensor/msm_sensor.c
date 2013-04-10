@@ -533,6 +533,74 @@ static int32_t msm_sensor_init_gpio_pin_tbl(struct device_node *of_node,
 			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_RESET]);
 	}
 
+	if (of_property_read_bool(of_node, "qcom,gpio-vana") == true) {
+		rc = of_property_read_u32(of_node, "qcom,gpio-vana", &val);
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-vana failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-vana invalid %d\n",
+				__func__, __LINE__, val);
+			goto ERROR;
+		}
+		gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VANA] =
+			gpio_array[val];
+		CDBG("%s qcom,gpio-vana %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VANA]);
+	}
+
+	if (of_property_read_bool(of_node, "qcom,gpio-vdig") == true) {
+			rc = of_property_read_u32(of_node, "qcom,gpio-vdig", &val);
+			if (rc < 0) {
+				pr_err("%s:%d read qcom,gpio-vdig failed rc %d\n",
+					__func__, __LINE__, rc);
+				goto ERROR;
+			} else if (val >= gpio_array_size) {
+				pr_err("%s:%d qcom,gpio-vdig invalid %d\n",
+					__func__, __LINE__, val);
+				goto ERROR;
+			}
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VDIG] =
+				gpio_array[val];
+			CDBG("%s qcom,gpio-vdig %d\n", __func__,
+				gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VDIG]);
+	}
+
+	if (of_property_read_bool(of_node, "qcom,gpio-vio") == true) {
+			rc = of_property_read_u32(of_node, "qcom,gpio-vio", &val);
+			if (rc < 0) {
+				pr_err("%s:%d read qcom,gpio-vio failed rc %d\n",
+					__func__, __LINE__, rc);
+				goto ERROR;
+			} else if (val >= gpio_array_size) {
+				pr_err("%s:%d qcom,gpio-vio invalid %d\n",
+					__func__, __LINE__, val);
+				goto ERROR;
+			}
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VIO] =
+				gpio_array[val];
+			CDBG("%s qcom,gpio-vio %d\n", __func__,
+				gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VIO]);
+	}
+
+	if (of_property_read_bool(of_node, "qcom,gpio-vcm") == true) {
+			rc = of_property_read_u32(of_node, "qcom,gpio-vcm", &val);
+			if (rc < 0) {
+				pr_err("%s:%d read qcom,gpio-vcm failed rc %d\n",
+					__func__, __LINE__, rc);
+				goto ERROR;
+			} else if (val >= gpio_array_size) {
+				pr_err("%s:%d qcom,gpio-vcm invalid %d\n",
+					__func__, __LINE__, val);
+				goto ERROR;
+			}
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VCM] =
+				gpio_array[val];
+			CDBG("%s qcom,gpio-vcm %d\n", __func__,
+				gconf->gpio_num_info->gpio_num[SENSOR_GPIO_VCM]);
+	}
+
 	if (of_property_read_bool(of_node, "qcom,gpio-standby") == true) {
 		rc = of_property_read_u32(of_node, "qcom,gpio-standby", &val);
 		if (rc < 0) {
