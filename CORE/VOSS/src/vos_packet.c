@@ -873,7 +873,7 @@ VOS_STATUS vos_pkt_wrap_data_packet( vos_pkt_t **ppPacket,
    if (unlikely(VOS_PKT_TYPE_TX_802_3_DATA != pktType))
    {
       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-                "VPKT [%d]: invalid pktType", __LINE__, pktType);
+                "VPKT [%d]: invalid pktType %d", __LINE__, pktType);
       return VOS_STATUS_E_INVAL;
    }
 

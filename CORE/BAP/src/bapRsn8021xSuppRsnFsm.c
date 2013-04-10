@@ -797,7 +797,7 @@ int checkPeerReplayCounter(tSuppRsnFsm *fsm,
     if (cmp > 0) 
     {
         VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
-            "BP radio %d got old EAPOL replay counter from AP\n" );
+            "BP got old EAPOL replay counter from AP" );
         retVal = ANI_E_REPLAY_CHECK_FAILED;
 
     } 
@@ -875,7 +875,7 @@ int checkTransition(tSuppRsnFsm *fsm, void *arg)
 
                     VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_ERROR,
                                     "Resending EAPOL-Key Msg2 from "
-                                  "supplicant radio %d to AP\n" );
+                                  "supplicant to AP" );
                     retVal = gotoStateStaKeyStart(fsm, data, eANI_BOOLEAN_TRUE);
 
                 } 

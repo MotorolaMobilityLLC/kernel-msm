@@ -1128,8 +1128,17 @@ eHalStatus csrNeighborRoamPrepareScanProfileFilter(tpAniSirGlobal pMac, tCsrScan
     pScanFilter->SSIDs.SSIDList->SSID.length =  pCurProfile->SSID.length;
     vos_mem_copy((void *)pScanFilter->SSIDs.SSIDList->SSID.ssId, (void *)pCurProfile->SSID.ssId, pCurProfile->SSID.length); 
 
-    NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Filtering for SSID %s from scan results.. SSID Length = %d"),
-                        pScanFilter->SSIDs.SSIDList->SSID.ssId, pScanFilter->SSIDs.SSIDList->SSID.length);
+    NEIGHBOR_ROAM_DEBUG(pMac, LOGE, FL("Filtering from scan results for"
+                        "SSID = 0x%08lx%08lx%08lx%08lx%08lx%08lx%08lx%08lx\nSSID Length = %d"),
+                        pScanFilter->SSIDs.SSIDList->SSID.ssId[0],
+                        pScanFilter->SSIDs.SSIDList->SSID.ssId[4],
+                        pScanFilter->SSIDs.SSIDList->SSID.ssId[8],
+                        pScanFilter->SSIDs.SSIDList->SSID.ssId[12],
+                        pScanFilter->SSIDs.SSIDList->SSID.ssId[16],
+                        pScanFilter->SSIDs.SSIDList->SSID.ssId[20],
+                        pScanFilter->SSIDs.SSIDList->SSID.ssId[24],
+                        pScanFilter->SSIDs.SSIDList->SSID.ssId[28],
+                        pScanFilter->SSIDs.SSIDList->SSID.length);
     pScanFilter->authType.numEntries = 1;
     pScanFilter->authType.authType[0] = pCurProfile->AuthType;
 

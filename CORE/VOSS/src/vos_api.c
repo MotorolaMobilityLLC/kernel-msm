@@ -1599,7 +1599,7 @@ VOS_STATUS vos_tx_mq_serialize( VOS_MQ_ID msgQueueId, vos_msg_t *pMsg )
     default:
 
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-              "Trying to queue msg into unknown Tx Msg queue ID %d",
+              "%s: Trying to queue msg into unknown Tx Msg queue ID %d",
                __func__, msgQueueId);
 
     return VOS_STATUS_E_FAILURE;
@@ -1709,7 +1709,7 @@ VOS_STATUS vos_rx_mq_serialize( VOS_MQ_ID msgQueueId, vos_msg_t *pMsg )
     default:
 
     VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
-              "Trying to queue msg into unknown Rx Msg queue ID %d",
+              "%s: Trying to queue msg into unknown Rx Msg queue ID %d",
                __func__, msgQueueId);
 
     return VOS_STATUS_E_FAILURE;
