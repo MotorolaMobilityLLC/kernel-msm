@@ -655,7 +655,7 @@ apq8064_rpm_regulator_init_data[] __devinitdata = {
 	/*     ID  a_on pd ss                   supply */
 	RPM_VS(LVS1, 0, 1, 0,                   "8921_s4"),
 	RPM_VS(LVS3, 0, 1, 0,                   "8921_s4"),
-	RPM_VS(LVS4, 0, 1, 0,                   "8921_s4"),
+	RPM_VS(LVS4, 1, 1, 0,                   "8921_s4"),
 	RPM_VS(LVS5, 0, 1, 0,                   "8921_s4"),
 	RPM_VS(LVS6, 0, 1, 0,                   "8921_s4"),
 	RPM_VS(LVS7, 0, 1, 1,                   "8921_s4"),

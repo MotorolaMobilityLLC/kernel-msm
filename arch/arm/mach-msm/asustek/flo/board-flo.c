@@ -3368,14 +3368,42 @@ static struct platform_device asustek_lid_device = {
 	.id		= -1,
 };
 
-void __init asustek_add_lid(void)
+int __init asustek_add_lid(void)
 {
+	static struct regulator *lid_reg;
+	int rc = -EINVAL;
 	hw_rev revision = HW_REV_INVALID;
 	revision = asustek_get_hw_rev();
 
 	switch (revision) {
 	case HW_REV_C:
 	case HW_REV_D:
+		if(machine_is_apq8064_flo())
+			lid_reg = regulator_get(NULL, "8921_l17");
+		else if(machine_is_apq8064_deb())
+			lid_reg = regulator_get(NULL, "8921_l9");
+		else{
+			pr_err("lid unkown devices\n");
+			return rc;
+		}
+
+		if (IS_ERR(lid_reg)){
+			pr_err("lid get regulator failed\n");
+			return rc;
+		}
+
+		rc = regulator_set_voltage(lid_reg, 3000000, 3000000);
+		if(rc){
+			pr_err("lid regulator set voltage failed\n");
+			goto reg_put;
+		}
+
+		rc = regulator_enable(lid_reg);
+		if(rc){
+			pr_err("lid regulator enable failed\n");
+			goto reg_put;
+		}
+
 		platform_device_register(&asustek_lid_device);
 		break;
 	case HW_REV_A:
@@ -3384,6 +3412,11 @@ void __init asustek_add_lid(void)
 		/* not support yet */
 		break;
 	}
+
+	return 0;
+reg_put:
+	regulator_put(lid_reg);
+	return rc;
 }
 #endif
 
@@ -3394,6 +3427,7 @@ static void __init apq8064_allocate_memory_regions(void)
 
 static void __init apq8064_cdp_init(void)
 {
+	int rc = 0;
 	printk(KERN_NOTICE "MIDR      = 0x%08x\n", read_cpuid_id());
 	if (meminfo_init(SYS_MEMORY, SZ_256M) < 0)
 		pr_err("meminfo_init() failed!\n");
@@ -3429,7 +3463,9 @@ static void __init apq8064_cdp_init(void)
 #endif
 
 #ifdef CONFIG_INPUT_LID
-	asustek_add_lid();
+	rc = asustek_add_lid();
+	if(rc)
+		pr_err("asustek_add_lid() failed!\n");
 #endif
 
 	change_memory_power = &apq8064_change_memory_power;
