@@ -165,31 +165,6 @@ enum kgsl_property_type {
 	KGSL_PROP_VERSION         = 0x00000008,
 	KGSL_PROP_GPU_RESET_STAT  = 0x00000009,
 	KGSL_PROP_PWRCTRL         = 0x0000000E,
-	KGSL_PROP_FAULT_TOLERANCE = 0x00000011,
-};
-
-/* Fault Tolerance policy flags */
-#define  KGSL_FT_DISABLE                  0x00000001
-#define  KGSL_FT_REPLAY                   0x00000002
-#define  KGSL_FT_SKIPIB                   0x00000004
-#define  KGSL_FT_SKIPFRAME                0x00000008
-#define  KGSL_FT_DEFAULT_POLICY           (KGSL_FT_REPLAY + KGSL_FT_SKIPIB)
-
-/* Pagefault policy flags */
-#define KGSL_FT_PAGEFAULT_INT_ENABLE         0x00000001
-#define KGSL_FT_PAGEFAULT_GPUHALT_ENABLE     0x00000002
-#define KGSL_FT_PAGEFAULT_LOG_ONE_PER_PAGE   0x00000004
-#define KGSL_FT_PAGEFAULT_LOG_ONE_PER_INT    0x00000008
-#define KGSL_FT_PAGEFAULT_DEFAULT_POLICY     (KGSL_FT_PAGEFAULT_INT_ENABLE + \
-					KGSL_FT_PAGEFAULT_LOG_ONE_PER_PAGE)
-
-/* Fault tolerance config */
-struct kgsl_ft_config {
-	unsigned int ft_policy;    /* Fault Tolerance policy flags */
-	unsigned int ft_pf_policy; /* Pagefault policy flags */
-	unsigned int ft_pm_dump;   /* KGSL enable postmortem dump */
-	unsigned int ft_detect_ms;
-	unsigned int ft_dos_timeout_ms;
 };
 
 struct kgsl_shadowprop {
