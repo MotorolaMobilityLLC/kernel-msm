@@ -397,6 +397,7 @@ struct mxt_data {
 	atomic_t st_enabled;
 	atomic_t st_pending_irqs;
 	struct completion st_completion;
+	struct completion st_powerdown;
 #endif
 };
 
@@ -1001,8 +1002,8 @@ static void mxt_handle_touch_suppression(struct mxt_data *data, u8 status)
 static irqreturn_t mxt_filter_interrupt(struct mxt_data *data)
 {
 	if (atomic_read(&data->st_enabled)) {
-		atomic_cmpxchg(&data->st_pending_irqs, 0, 1);
-		complete(&data->st_completion);
+		if (atomic_cmpxchg(&data->st_pending_irqs, 0, 1) == 0)
+			complete(&data->st_completion);
 		return IRQ_HANDLED;
 	}
 	return IRQ_NONE;
@@ -1998,6 +1999,7 @@ static ssize_t mxt_secure_touch_enable_store(struct device *dev,
 		atomic_set(&data->st_enabled, 0);
 		complete(&data->st_completion);
 		mxt_interrupt(data->client->irq, data);
+		complete(&data->st_powerdown);
 		break;
 	case 1:
 		if (atomic_read(&data->st_enabled)) {
@@ -2010,6 +2012,8 @@ static ssize_t mxt_secure_touch_enable_store(struct device *dev,
 			err = -EIO;
 			break;
 		}
+		INIT_COMPLETION(data->st_completion);
+		INIT_COMPLETION(data->st_powerdown);
 		atomic_set(&data->st_pending_irqs, 0);
 		atomic_set(&data->st_enabled, 1);
 		break;
@@ -2037,7 +2041,7 @@ static ssize_t mxt_secure_touch_show(struct device *dev,
 		return err;
 
 	if (atomic_cmpxchg(&data->st_pending_irqs, 1, 0) != 1)
-		return -EBADF;
+		return -EINVAL;
 
 	return scnprintf(buf, PAGE_SIZE, "%u", 1);
 }
@@ -2066,9 +2070,25 @@ static const struct attribute_group mxt_attr_group = {
 	.attrs = mxt_attrs,
 };
 
+
+#if defined(CONFIG_SECURE_TOUCH)
+static void mxt_secure_touch_stop(struct mxt_data *data)
+{
+	if (atomic_read(&data->st_enabled)) {
+		complete(&data->st_completion);
+		wait_for_completion_interruptible(&data->st_powerdown);
+	}
+}
+#else
+static void mxt_secure_touch_stop(struct mxt_data *data)
+{
+}
+#endif
+
 static int mxt_start(struct mxt_data *data)
 {
 	int error;
+	mxt_secure_touch_stop(data);
 
 	/* restore the old power state values and reenable touch */
 	error = __mxt_write_reg(data->client, data->t7_start_addr,
@@ -2086,6 +2106,7 @@ static int mxt_stop(struct mxt_data *data)
 {
 	int error;
 	u8 t7_data[T7_DATA_SIZE] = {0};
+	mxt_secure_touch_stop(data);
 
 	error = __mxt_write_reg(data->client, data->t7_start_addr,
 				T7_DATA_SIZE, t7_data);
@@ -2467,6 +2488,7 @@ static int mxt_resume(struct device *dev)
 
 	/* calibrate */
 	if (data->pdata->need_calibration) {
+		mxt_secure_touch_stop(data);
 		error = mxt_write_object(data, MXT_GEN_COMMAND_T6,
 					MXT_COMMAND_CALIBRATE, 1);
 		if (error < 0)
@@ -2802,12 +2824,13 @@ static void mxt_late_resume(struct early_suspend *h)
 #endif
 
 #if defined(CONFIG_SECURE_TOUCH)
-static void __devinit secure_touch_init(struct mxt_data *data)
+static void __devinit mxt_secure_touch_init(struct mxt_data *data)
 {
 	init_completion(&data->st_completion);
+	init_completion(&data->st_powerdown);
 }
 #else
-static void __devinit secure_touch_init(struct mxt_data *data)
+static void __devinit mxt_secure_touch_init(struct mxt_data *data)
 {
 }
 #endif
@@ -3004,7 +3027,7 @@ static int __devinit mxt_probe(struct i2c_client *client,
 
 	mxt_debugfs_init(data);
 
-	secure_touch_init(data);
+	mxt_secure_touch_init(data);
 
 	return 0;
 
