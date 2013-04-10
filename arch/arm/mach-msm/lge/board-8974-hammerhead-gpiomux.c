@@ -385,66 +385,87 @@ static struct msm_gpiomux_config sd_card_det __initdata = {
 
 static struct msm_gpiomux_config msm_sensor_configs[] __initdata = {
 	{
-		.gpio = 15, /* CAM_MCLK0 */
+		.gpio = 15, /* MAIN_CAM_MCLK */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[0],
 			[GPIOMUX_SUSPENDED] = &cam_settings[1],
 		},
 	},
 	{
-		.gpio = 16, /* 13M_VANA / CAM_MCLK1 */
+		.gpio = 16, /* 13M_VANA */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
 			[GPIOMUX_SUSPENDED] = &cam_settings[4],
 		},
 	},
 	{
-		.gpio = 17, /* CAM_MCLK2 */
+		.gpio = 17, /* VT_CAM_MCLK */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[0],
 			[GPIOMUX_SUSPENDED] = &cam_settings[1],
 		},
 	},
 	{
-		.gpio = 18, /* WEBCAM1_RESET_N / CAM_MCLK3 */
+		.gpio = 18, /* VT_CAM_RESET_N */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[3],
 			[GPIOMUX_SUSPENDED] = &cam_settings[4],
 		},
 	},
 	{
-		.gpio = 19, /* CCI_I2C_SDA0 */
+		.gpio = 19, /* CAM0_I2C_SDA */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[0],
 			[GPIOMUX_SUSPENDED] = &cam_settings[2],
 		},
 	},
 	{
-		.gpio = 20, /* CCI_I2C_SCL0 */
+		.gpio = 20, /* CAM0_I2C_SCL */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[0],
 			[GPIOMUX_SUSPENDED] = &cam_settings[2],
 		},
 	},
 	{
-		.gpio = 21, /* CCI_I2C_SDA1 */
+		.gpio = 21, /* CAM1_I2C_SDA */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[0],
 			[GPIOMUX_SUSPENDED] = &cam_settings[2],
 		},
 	},
 	{
-		.gpio = 22, /* CCI_I2C_SCL1 */
+		.gpio = 22, /* CAM1_I2C_SCL */
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &cam_settings[0],
 			[GPIOMUX_SUSPENDED] = &cam_settings[2],
 		},
 	},
 	{
-		.gpio = 90, /* CAM1_RST_N */
+		.gpio = 30, /* VT_LDO_EN */
 		.settings = {
-			[GPIOMUX_ACTIVE]    = &cam_settings[0],
-			[GPIOMUX_SUSPENDED] = &cam_settings[1],
+			[GPIOMUX_ACTIVE]    = &cam_settings[3],
+			[GPIOMUX_SUSPENDED] = &cam_settings[4],
+		},
+	},
+	{
+		.gpio = 57, /* 13M_VCM_EN */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[3],
+			[GPIOMUX_SUSPENDED] = &cam_settings[4],
+		},
+	},
+	{
+		.gpio = 90, /* MAIN_CAM_RESET_N */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[3],
+			[GPIOMUX_SUSPENDED] = &cam_settings[4],
+		},
+	},
+	{
+		.gpio = 96, /* 13M_VIO_EN */
+		.settings = {
+			[GPIOMUX_ACTIVE]    = &cam_settings[3],
+			[GPIOMUX_SUSPENDED] = &cam_settings[4],
 		},
 	},
 };
@@ -722,14 +743,6 @@ static struct msm_gpiomux_config msm8974_sdc4_configs[] __initdata = {
 		.settings = {
 			[GPIOMUX_ACTIVE]    = &sdc4_cmd_data_0_3_actv_cfg,
 			[GPIOMUX_SUSPENDED] = &sdc4_data_1_suspend_cfg,
-		},
-	},
-	{
-		/* DAT0 */
-		.gpio      = 96,
-		.settings = {
-			[GPIOMUX_ACTIVE]    = &sdc4_cmd_data_0_3_actv_cfg,
-			[GPIOMUX_SUSPENDED] = &sdc4_suspend_cfg,
 		},
 	},
 	{

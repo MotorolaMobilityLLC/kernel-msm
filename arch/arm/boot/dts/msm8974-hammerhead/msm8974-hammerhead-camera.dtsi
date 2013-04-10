@@ -17,33 +17,35 @@
 	qcom,cci@fda0C000 {
 		qcom,camera@20 {
 			status = "ok";
-			compatible = "qcom,imx135";
+			compatible = "qcom,imx179";
 			reg = <0x20 0x0>;
-			qcom,slave-id = <0x20 0x0 0x0>;
+			qcom,slave-id = <0x20 0x0002 0x8179>;
 			qcom,csiphy-sd-index = <0>;
 			qcom,csid-sd-index = <0>;
+			qcom,actuator-src = <&actuator0>;
 			qcom,flash-type = <0>;
+			qcom,led-flash-src = <&led_flash0>;
 			qcom,mount-angle = <90>;
-			qcom,sensor-name = "imx135";
+			qcom,sensor-name = "imx179";
 			cam_vdig-supply = <&pm8941_l3>;
-			cam_vio-supply = <&pm8941_lvs2>;
-			cam_vaf-supply = <&pm8941_l19>;
 			qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana", "cam_vaf";
-			qcom,cam-vreg-type = <0 1 0 0 >;
-			// Need to be changed the AF setting value as LGIT module: 1.8V, Sony module: 2.8V
-			qcom,cam-vreg-min-voltage = <1225000 0 0 2900000>;
-			qcom,cam-vreg-max-voltage = <1225000 0 0 2900000>;
-			qcom,cam-vreg-op-mode = <105000 0 0 100000>;
+			qcom,cam-vreg-type = <0 0 0 0 >;
+			qcom,cam-vreg-min-voltage = <1225000 0 0 0>;
+			qcom,cam-vreg-max-voltage = <1225000 0 0 0>;
+			qcom,cam-vreg-op-mode = <1225000 0 0 0>;
 			qcom,gpio-no-mux = <0>;
-			// MAIN_CAM_MCLK, Need to be set as 24MHz, 19.2MHz is set temporarily.
 			gpios = <&msmgpio 15 0>, 		// MCLK
-				<&msmgpio 90 0>,			// MAIN_CAM_RESET
-				<&msmgpio 16 0>;			//13M_VANA_EN
+				<&msmgpio 90 0>,		// MAIN_CAM_RESET
+				<&msmgpio 16 0>,		// 13M_VANA_EN
+				<&msmgpio 96 0>,		// 13M_VIO_EN
+				<&msmgpio 57 0>;		// 13M_VCM_EN
 			qcom,gpio-reset = <1>; 			// Set gpio_90 as reset
 			qcom,gpio-vana = <2>;			// Set gpio_16 as VANA
-			qcom,gpio-req-tbl-num = <0 1 2>; 	// <0: gpio 15>,<1: gpio 90>,<2: gpio 15>
-			qcom,gpio-req-tbl-flags = <0 1 0>; 	// <gpio 16: dir_in>,<gpio 15: dir_in>,<gpio 90: dir_out>
-			qcom,gpio-req-tbl-label =  "CAMIF_MCLK", "CAM_RESET1", "MAIN_VANA_EN";
+			qcom,gpio-vio = <3>;			// Set gpio_96 as VIO
+			qcom,gpio-vcm = <4>;			// Set gpio_57 as VCM
+			qcom,gpio-req-tbl-num = <0 1 2 3 4>;
+			qcom,gpio-req-tbl-flags = <0 0 0 0 0>;
+			qcom,gpio-req-tbl-label =  "CAMIF_MCLK", "CAM_RESET1", "MAIN_VANA_EN", "MAIN_VIO_EN", "MAIN_VCM_EN";
 			qcom,csi-lane-assign = <0x4320>;
 			qcom,csi-lane-mask = <0x1F>;
 			qcom,sensor-position = <0>;
