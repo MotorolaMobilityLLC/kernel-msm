@@ -2896,7 +2896,7 @@ pmcPrepareProbeReqTemplate(tpAniSirGlobal pMac,
     else if ( DOT11F_WARNED( nStatus ) )
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-            "There were warnings while packing a Probe Request (0x%08x)." );
+            "There were warnings while packing a Probe Request" );
     }
 
     *pusLen = nPayload + sizeof(tSirMacMgmtHdr); 
@@ -3114,7 +3114,7 @@ eHalStatus pmcGetFilterMatchCount
     tCsrRoamSession *pSession = CSR_GET_SESSION( pMac, sessionId );
 
     VOS_TRACE( VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-        "%s: filterId = %d", __func__);
+        "%s", __func__);
 
     if(NULL == pSession )
     {
