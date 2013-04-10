@@ -728,7 +728,7 @@ int adreno_dump(struct kgsl_device *device, int manual)
 	if (!device->pm_dump_enable) {
 
 		KGSL_LOG_DUMP(device,
-			"RBBM STATUS %08X | IB1:%08X/%08X | IB2: %08X/%08X"
+			"STATUS %08X | IB1:%08X/%08X | IB2: %08X/%08X"
 			" | RPTR: %04X | WPTR: %04X\n",
 			rbbm_status,  cp_ib1_base, cp_ib1_bufsz, cp_ib2_base,
 			cp_ib2_bufsz, cp_rb_rptr, cp_rb_wptr);
