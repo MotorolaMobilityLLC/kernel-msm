@@ -12,5 +12,8 @@
 
 /dts-v1/;
 
-/include/ "msm8960ab-ultra-common-p2.dtsi"
+/include/ "msm8960ab-ultra-common-p1.dtsi"
+
+/include/ "msm8960ab-ultra-maxx-common.dtsi"
+
 
