@@ -12,4 +12,14 @@
 
 / {
 	mmi,product = "mmi,msm8960ab-ultra-maxx";
+
+	System@0 {
+		WirelessChargerIC@0 {
+			class = [576972656c65737343686172676572494300];
+			type = <0x0003001b>;
+			wireless_complete_gpio = <0x0000004d>;
+			wireless_terminate_gpio = <0x00000020>;
+			wireless_good_gpio = <0x00000021>;
+		};
+	};
 };
