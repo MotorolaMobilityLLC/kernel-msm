@@ -803,10 +803,10 @@ static struct device_attribute attrs[] = {
 	__ATTR(reset, S_IWUSR | S_IWGRP,
 			synaptics_rmi4_show_error,
 			synaptics_rmi4_f01_reset_store),
-	__ATTR(productinfo, S_IRUSR | S_IRGRP,
+	__ATTR(productinfo, S_IRUGO,
 			synaptics_rmi4_f01_productinfo_show,
 			synaptics_rmi4_store_error),
-	__ATTR(buildid, S_IRUSR | S_IRGRP,
+	__ATTR(buildid, S_IRUGO,
 			synaptics_rmi4_f01_buildid_show,
 			synaptics_rmi4_store_error),
 	__ATTR(flashprog, S_IRUSR | S_IRGRP,
@@ -824,7 +824,7 @@ static struct device_attribute attrs[] = {
 	__ATTR(hw_irqstat, S_IRUSR | S_IRGRP,
 			synaptics_rmi4_hw_irqstat_show,
 			synaptics_rmi4_store_error),
-	__ATTR(ic_ver, S_IRUSR | S_IRGRP,
+	__ATTR(ic_ver, S_IRUGO,
 			synaptics_rmi4_ic_ver_show,
 			synaptics_rmi4_store_error),
 };
@@ -938,8 +938,10 @@ static int synaptics_dsx_sensor_ready_state(
 				rmi4_data->f01_data_base_addr,
 				status.data,
 				sizeof(status.data));
-	if (retval < 0)
+	if (retval < 0) {
+		pr_err("failed to query touch ic status\n");
 		return retval;
+	}
 
 	state = synaptics_dsx_get_state_safe(rmi4_data);
 
@@ -3215,7 +3217,7 @@ static void synaptics_rmi4_sensor_sleep(struct synaptics_rmi4_data *rmi4_data)
 		return;
 	}
 
-	if (rmi4_data->normal_mode > 0) {
+	if (rmi4_data->normal_mode >= 0) {
 		clear_mask = MASK_3BIT;
 		set_mask |= NO_SLEEP_OFF;
 	}
