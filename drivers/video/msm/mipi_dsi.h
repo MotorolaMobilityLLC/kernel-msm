@@ -393,6 +393,7 @@ void mipi_dsi_wait4video_done(void);
 int mipi_dsi_panel_power_enable(int on);
 void mipi_dsi_regs_dump(void);
 void mipi_dsi_clear_dump_flag(void);
+void mipi_set_mem_start_mem_cont(int mem_start, int mem_cont);
 
 #ifdef CONFIG_FB_MSM_MDP303
 void update_lane_config(struct msm_panel_info *pinfo);
