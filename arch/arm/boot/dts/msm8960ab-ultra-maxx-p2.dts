@@ -14,3 +14,5 @@
 
 /include/ "msm8960ab-ultra-common-p2.dtsi"
 
+/include/ "msm8960ab-ultra-maxx-common.dtsi"
+
