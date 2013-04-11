@@ -1034,7 +1034,7 @@ static struct msm_bus_scale_pdata usb_bus_scale_pdata = {
 };
 
 static int phy_init_seq[] = {
-	0x6B, 0x81, /* update DC voltage level */
+	0x6D, 0x81, /* update DC voltage level */
 	0x24, 0x82, /* set pre-emphasis and rise/fall time */
 	-1
 };
