@@ -51,6 +51,7 @@ should not be more than 2000 */
 #define TDLS_CTX_MAGIC 0x54444c53    // "TDLS"
 
 #define TDLS_MAX_SCAN_SCHEDULE          10
+#define TDLS_MAX_SCAN_REJECT            5
 #define TDLS_DELAY_SCAN_PER_CONNECTION 100
 
 #define TDLS_IS_CONNECTED(peer)  \
@@ -79,6 +80,7 @@ typedef struct
     struct cfg80211_scan_request *scan_request;
     int magic;
     int attempt;
+    int reject;
     struct delayed_work tdls_scan_work;
 } tdls_scan_context_t;
 
@@ -216,13 +218,13 @@ void wlan_hdd_tdls_check_bmps(hdd_adapter_t *pAdapter);
 
 u8 wlan_hdd_tdls_is_peer_progress(hdd_adapter_t *pAdapter, u8 *mac);
 
-u8 wlan_hdd_tdls_is_progress(hdd_adapter_t *pAdapter, u8* mac, u8 skip_self);
+hddTdlsPeer_t *wlan_hdd_tdls_is_progress(hdd_context_t *pHddCtx, u8* mac, u8 skip_self, tANI_BOOLEAN mutexLock);
 
 void wlan_hdd_tdls_set_mode(hdd_context_t *pHddCtx,
                             eTDLSSupportMode tdls_mode,
                             v_BOOL_t bUpdateLast);
 
-void wlan_hdd_tdls_pre_setup(tdlsCtx_t *pHddTdlsCtx, hddTdlsPeer_t *curr_peer);
+static void wlan_hdd_tdls_pre_setup(tdlsCtx_t *pHddTdlsCtx, hddTdlsPeer_t *curr_peer);
 
 tANI_U32 wlan_hdd_tdls_discovery_sent_cnt(hdd_context_t *pHddCtx);
 
