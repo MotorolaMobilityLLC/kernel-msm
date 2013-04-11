@@ -802,7 +802,6 @@ static int __devinit tpa6165_probe(struct i2c_client *client,
 	struct tpa6165_data *tpa6165;
 	struct tpa6165a2_platform_data *tpa6165_pdata;
 	int err;
-	u8 dev_ver;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "check_functionality failed\n");
@@ -880,12 +879,6 @@ static int __devinit tpa6165_probe(struct i2c_client *client,
 
 	wake_lock_init(&tpa6165->wake_lock, WAKE_LOCK_SUSPEND, "hs_det");
 
-	/* read version no */
-	err = tpa6165_reg_read(tpa6165, TPA6165_DEV_REV_ID_REG , &dev_ver);
-	if (err != 0 || (dev_ver) != 0x40) {
-		dev_err(&client->dev, "Failed to verify tpa6165 ver id!\n");
-		goto tpa6165_dev_id_fail;
-	}
 	/* Initialize device registers */
 	tpa6165_initialize();
 
@@ -907,7 +900,6 @@ static int __devinit tpa6165_probe(struct i2c_client *client,
 	return 0;
 
 irq_fail:
-tpa6165_dev_id_fail:
 	wake_lock_destroy(&tpa6165->wake_lock);
 reg_enable_micvdd_fail:
 	regulator_put(tpa6165->micvdd);
