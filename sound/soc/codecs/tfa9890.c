@@ -1004,10 +1004,24 @@ static int tfa9890_hw_params(struct snd_pcm_substream *substream,
 static int tfa9890_mute(struct snd_soc_dai *dai, int mute)
 {
 	struct snd_soc_codec *codec = dai->codec;
+	u16 val;
+	u16 tries = 0;
 
-	if (mute)
-		tfa9890_set_mute(codec, TFA9890_DIGITAL_MUTE);
-	else
+	if (mute) {
+		tfa9890_set_mute(codec, TFA9890_AMP_MUTE);
+		do {
+			/* need to wait for amp to stop switching, to minimize
+			 * pop, else I2S clk is going away too soon interrupting
+			 * the dsp from smothering the amp pop while turning it
+			 * off, It shouldn't take more than 50 ms for the amp
+			 * switching to stop.
+			 */
+			val = snd_soc_read(codec, TFA9890_SYS_STATUS_REG);
+			if (!(val & TFA9890_STATUS_AMP_SWS))
+				break;
+			usleep_range(10000, 10000);
+		} while ((++tries < 20));
+	} else
 		tfa9890_set_mute(codec, TFA9890_MUTE_OFF);
 
 	return 0;
