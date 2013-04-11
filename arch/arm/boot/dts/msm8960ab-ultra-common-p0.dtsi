@@ -1,0 +1,62 @@
+/* Copyright (c) 2013, Motorola Mobility LLC. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/include/ "msm8960ab-ultra-common.dtsi"
+
+/include/ "msm8960ab-ultra-p0-legacy.dtsi"
+
+/ {
+	mmi,revision = "p0";
+
+	sound {
+		qcom,msm8960-card-longname =
+			"msm8960-snd-card-wcd,tlv320aic3253_codec";
+
+		dai-tfa9890 {
+			status = "disabled";
+		};
+
+		dai-tlv320 {
+			compatible = "qcom,msm8960-dai-link";
+			qcom,msm8960-codec-name = "tlv320aic3253_codec";
+		};
+	};
+};
+
+/* GSBI10 - I2C */
+&i2c10 {
+	/* TI tlv320aic3253 */
+	aic3253@18 {
+		compatible = "ti,aic3253";
+		reg = <0x18>;
+		gpios = <&pm8921_gpio 18 0>, /* RESET */
+			<&pm8921_gpio 8 0>;  /* MCLK  */
+		aic_vdd-supply = <&rpm_8921_s4>;
+	};
+
+	tas2552@41 {
+		compatible = "ti,tas2552";
+		reg = <0x41>;
+		tas_avdd-supply = <&rpm_8921_s4>;
+	};
+
+	tfa9890@34 {
+		status = "disabled";
+	};
+};
+
+/* GSBI12 - I2C */
+&i2c12 {
+	msp430@48 {
+		msp430_fw_version = "_obake_p0";
+	};
+};
