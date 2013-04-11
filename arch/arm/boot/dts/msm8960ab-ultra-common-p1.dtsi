@@ -10,7 +10,19 @@
  * GNU General Public License for more details.
  */
 
-/dts-v1/;
+/include/ "msm8960ab-ultra-common.dtsi"
 
-/include/ "msm8960ab-ultra-common-p2.dtsi"
+/include/ "msm8960ab-ultra-p1-legacy.dtsi"
+
+/ {
+	mmi,revision = "p1";
+
+};
+
+/* GSBI12 - I2C */
+&i2c12 {
+        msp430@48 {
+                msp430_fw_version = "_obake_p1";
+        };
+};
 
