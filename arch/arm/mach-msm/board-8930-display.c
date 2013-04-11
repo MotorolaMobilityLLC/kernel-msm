@@ -460,6 +460,9 @@ static struct msm_bus_scale_pdata mdp_bus_scale_pdata = {
 static struct msm_panel_common_pdata mdp_pdata = {
 	.gpio = MDP_VSYNC_GPIO,
 	.mdp_max_clk = 200000000,
+	.mdp_max_bw = 2000000000,
+	.mdp_bw_ab_factor = 115,
+	.mdp_bw_ib_factor = 125,
 #ifdef CONFIG_MSM_BUS_SCALING
 	.mdp_bus_scale_table = &mdp_bus_scale_pdata,
 #endif
@@ -519,7 +522,7 @@ static struct mipi_dsi_phy_ctrl dsi_novatek_cmd_mode_phy_db = {
 	/* pll control */
 	{0x0, 0xe, 0x30, 0xda, 0x00, 0x10, 0x0f, 0x61,
 	0x40, 0x07, 0x03,
-	0x00, 0x1a, 0x00, 0x00, 0x02, 0x00, 0x20, 0x00, 0x02},
+	0x00, 0x1a, 0x00, 0x00, 0x02, 0x0e, 0x01, 0x00, 0x02},
 };
 
 static struct mipi_dsi_panel_platform_data novatek_pdata = {

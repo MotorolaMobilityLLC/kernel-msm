@@ -175,6 +175,8 @@ struct sitar_mbhc_config {
 	unsigned int gpio;
 	unsigned int gpio_irq;
 	int gpio_level_insert;
+	/* swap_gnd_mic returns true if extern GND/MIC swap switch toggled */
+	bool (*swap_gnd_mic) (struct snd_soc_codec *);
 };
 
 extern int sitar_hs_detect(struct snd_soc_codec *codec,
