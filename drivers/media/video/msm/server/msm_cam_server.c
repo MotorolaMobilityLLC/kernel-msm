@@ -445,7 +445,7 @@ static int msm_server_control(struct msm_cam_server_dev *server_dev,
 			break;
 		D("%s: wait_event interrupted by signal, remain_count = %d",
 			__func__, wait_count);
-	} while (wait_count > 0);
+	} while (1);
 	D("Waiting is over for config status\n");
 	if (list_empty_careful(&queue->list)) {
 		if (!rc)
@@ -1108,9 +1108,9 @@ int msm_server_v4l2_unsubscribe_event(struct v4l2_fh *fh,
 					isp_event->isp_data.isp_msg.len = 0;
 					isp_event->isp_data.isp_msg.data = NULL;
 				}
+				kfree(isp_event);
+				*((uint32_t *)ev.u.data) = 0;
 			}
-			kfree(isp_event);
-			*((uint32_t *)ev.u.data) = 0;
 		}
 	}
 
@@ -3055,6 +3055,8 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 						break;
 					}
 					kfree(k_msg_value);
+					k_isp_event->isp_data.isp_msg.len = 0;
+					k_isp_event->isp_data.isp_msg.data = 0;
 					k_msg_value = NULL;
 				}
 			}
@@ -3068,6 +3070,7 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 			break;
 		}
 		kfree(k_isp_event);
+		*((uint32_t *)ev.u.data) = 0;
 		k_isp_event = NULL;
 
 		/* Copy the v4l2_event structure back to the user*/

@@ -409,7 +409,6 @@ config  ARCH_MSM_KRAITMP
 	select HAVE_ARCH_HAS_CURRENT_TIMER
 	select MSM_JTAG if CORESIGHT_ETM
 	bool
-	select HAVE_HW_BRKPT_RESERVED_RW_ACCESS
 
 config  ARCH_MSM_CORTEXMP
 	select MSM_SMP
@@ -420,7 +419,6 @@ config  MSM_KRAIT_WFE_FIXUP
 
 config  ARCH_MSM_CORTEX_A5
 	bool
-	select HAVE_HW_BRKPT_RESERVED_RW_ACCESS
 
 config ARCH_MSM7X27A
 	bool
@@ -1499,6 +1497,16 @@ config MSM_IPC_ROUTER_SMD_XPRT
 	bool "MSM SMD XPRT Layer"
 	help
 	  SMD Transport Layer for IPC Router
+
+config MSM_IPC_ROUTER_SECURITY
+	depends on MSM_IPC_ROUTER
+	bool "MSM IPC Router Security support"
+	help
+	  This feature of IPC Router will enforce security rules
+	  configured by a security script from the user-space. IPC Router
+	  once configured with the security rules will ensure that the
+	  sender of the message to a service belongs to the relevant
+	  Linux group as configured by the security script.
 
 config MSM_ONCRPCROUTER_DEBUG
 	depends on MSM_ONCRPCROUTER

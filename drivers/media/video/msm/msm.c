@@ -957,8 +957,10 @@ static int msm_open(struct file *f)
 			goto msm_cam_server_begin_session_failed;
 		}
 #ifdef CONFIG_MSM_MULTIMEDIA_USE_ION
-		pmctl->client = msm_ion_client_create(-1, "camera");
-		kref_init(&pmctl->refcount);
+		if (!pmctl->client) {
+			pmctl->client = msm_ion_client_create(-1, "camera");
+			kref_init(&pmctl->refcount);
+		}
 		ion_client_created = 1;
 #endif
 
@@ -984,6 +986,7 @@ static int msm_open(struct file *f)
 		msm_queue_init(&pcam->eventData_q, "eventData");
 	}
 	pcam_inst->vbqueue_initialized = 0;
+	pcam_inst->sequence = 0;
 	rc = 0;
 
 	f->private_data = &pcam_inst->eventHandle;
@@ -1104,6 +1107,7 @@ void msm_release_ion_client(struct kref *ref)
 		struct msm_cam_media_controller, refcount);
 	pr_err("%s Calling ion_client_destroy\n", __func__);
 	ion_client_destroy(mctl->client);
+	mctl->client = NULL;
 }
 
 static int msm_close(struct file *f)
@@ -1235,6 +1239,10 @@ long msm_v4l2_evt_notify(struct msm_cam_media_controller *mctl,
 	v4l2_ev = evt_payload.evt;
 	v4l2_ev.id = 0;
 	pcam = mctl->pcam_ptr;
+	if(!pcam) {
+		pr_err("%s: pcam is NULL\n", __func__);
+		return -EINVAL;
+	}
 	ktime_get_ts(&v4l2_ev.timestamp);
 	if (evt_payload.payload_length > 0 && evt_payload.payload != NULL) {
 		mutex_lock(&pcam->event_lock);

@@ -191,6 +191,7 @@
 #define VIDC_1080P_ITLB_MISS_EXCEPTION_HANDLER        0x100
 #define VIDC_1080P_DATA_PAGE_FAULT_EXCEPTION_HANDLER  0x200
 #define VIDC_1080P_INST_PAGE_FAULT_EXCEPTION_HANDLER  0x400
+#define VIDC_1080P_MAX_DEC_DPB                        19
 #define VIDC_1080P_SLICE_BATCH_MAX_STRM_BFR           8
 #define VIDC_1080P_SLICE_BATCH_IN_SIZE(idx)           (4 * sizeof(u32) + \
 							idx * sizeof(u32))
