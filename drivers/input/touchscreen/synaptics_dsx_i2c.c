@@ -634,6 +634,16 @@ static struct synaptics_dsx_platform_data *
 		rmi4_data->one_touch_enabled = true;
 	}
 
+	if (!of_property_read_bool(np, "synaptics,normal-mode")) {
+		pr_notice("using normal mode settings from tdat\n");
+		rmi4_data->normal_mode = -1;
+	} else {
+		of_property_read_u32(np, "synaptics,normal-mode",
+					&rmi4_data->normal_mode);
+		pr_notice("%s mode\n", rmi4_data->normal_mode ?
+				"using normal" : "enforce no sleep");
+	}
+
 	return pdata;
 }
 #else
@@ -3190,6 +3200,8 @@ static void synaptics_rmi4_sensor_sleep(struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval;
 	unsigned char device_ctrl;
+	unsigned char clear_mask = MASK_2BIT;
+	unsigned char set_mask = SENSOR_SLEEP;
 
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 			rmi4_data->f01_ctrl_base_addr,
@@ -3203,8 +3215,16 @@ static void synaptics_rmi4_sensor_sleep(struct synaptics_rmi4_data *rmi4_data)
 		return;
 	}
 
-	device_ctrl = (device_ctrl & ~MASK_2BIT);
-	device_ctrl = (device_ctrl | SENSOR_SLEEP);
+	if (rmi4_data->normal_mode > 0) {
+		clear_mask = MASK_3BIT;
+		set_mask |= NO_SLEEP_OFF;
+	}
+
+	device_ctrl = (device_ctrl & ~clear_mask);
+	device_ctrl = (device_ctrl | set_mask);
+
+	dev_dbg(&(rmi4_data->input_dev->dev),
+			"%s: Sleep mode 0x%x\n", __func__, device_ctrl);
 
 	retval = synaptics_rmi4_i2c_write(rmi4_data,
 			rmi4_data->f01_ctrl_base_addr,
@@ -3234,6 +3254,8 @@ static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data)
 {
 	int retval;
 	unsigned char device_ctrl;
+	unsigned char clear_mask = MASK_3BIT;
+	unsigned char set_mask = NORMAL_OPERATION;
 
 	retval = synaptics_rmi4_i2c_read(rmi4_data,
 			rmi4_data->f01_ctrl_base_addr,
@@ -3247,8 +3269,16 @@ static void synaptics_rmi4_sensor_wake(struct synaptics_rmi4_data *rmi4_data)
 		return;
 	}
 
-	device_ctrl = (device_ctrl & ~MASK_2BIT);
-	device_ctrl = (device_ctrl | NORMAL_OPERATION);
+	if (rmi4_data->normal_mode < 0)
+		clear_mask = MASK_2BIT;
+	else if (rmi4_data->normal_mode == 0)
+		set_mask |= NO_SLEEP_ON;
+
+	device_ctrl = (device_ctrl & ~clear_mask);
+	device_ctrl = (device_ctrl | set_mask);
+
+	dev_dbg(&(rmi4_data->input_dev->dev),
+			"%s: Wake up to mode 0x%x\n", __func__, device_ctrl);
 
 	retval = synaptics_rmi4_i2c_write(rmi4_data,
 			rmi4_data->f01_ctrl_base_addr,
