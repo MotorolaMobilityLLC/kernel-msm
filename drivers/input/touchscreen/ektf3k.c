@@ -391,10 +391,13 @@ static int check_fw_version(const unsigned char*firmware, unsigned int size, int
 	 
 	 touch_debug(DEBUG_INFO, "The firmware was version 0x%X and id:0x%X\n", version, id);
 
-	 if (id == 0x3029 && BOOTCODE_VERSION == 0x6046)
-	     return fw_version == 0xFFFF ? 1 : version - fw_version; // if the touch firmware was empty, always update firmware
-	 else 
-	     return 0; // this buffer doesn't contain the touch firmware
+	 if (id == 0x3029 && BOOTCODE_VERSION >= 0x6046) {
+		/*if the touch firmware was empty, always update firmware*/
+		return fw_version == 0xFFFF ? 1 : version - fw_version;
+	 } else {
+		/*this buffer doesn't contain the touch firmware*/
+		return 0;
+	 }
 	 
 }
 
