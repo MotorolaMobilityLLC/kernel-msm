@@ -50,6 +50,7 @@ extern int32_t ov660_use_work_around_blc(void);
 extern int32_t ov660_check_probe(void);
 extern int32_t ov660_initialize_8MP(void);
 extern int32_t ov660_initialize_10MP(uint16_t revision);
+extern int32_t ov660_read_revision(void);
 
 #endif /* __OV660_V4L2_H__ */
 
