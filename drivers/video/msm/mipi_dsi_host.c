@@ -965,6 +965,17 @@ void mipi_dsi_host_init(struct mipi_panel_info *pinfo)
 	wmb();
 }
 
+void mipi_set_mem_start_mem_cont(int mem_start, int mem_cont)
+{
+	uint32 data;
+
+	data = mem_cont & 0x0ff;
+	data <<= 8;
+	data |= (mem_start & 0x0ff);
+	data |= (MIPI_INP(MIPI_DSI_BASE + 0x0040) & (~0xffff));
+	MIPI_OUTP(MIPI_DSI_BASE + 0x0040, data);
+}
+
 void mipi_set_tx_power_mode(int mode)
 {
 	uint32 data = MIPI_INP(MIPI_DSI_BASE + 0x38);

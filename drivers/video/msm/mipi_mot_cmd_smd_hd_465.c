@@ -88,6 +88,9 @@ static char disp_ctrl[2] = {0x53, 0x20};
 /* default 150 nits */
 static char brightness_ctrl[2] = {0x51, 0x7f};
 
+static char normal_col[] = {0x2a, 0x00, 0x00, 0x02, 0xcf};
+static char normal_row[] = {0x2b, 0x00, 0x00, 0x04, 0xff};
+
 static struct mipi_mot_cmd_seq acl_enable_disable_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY,
 			acl_enable_disable_settings),
@@ -97,34 +100,57 @@ static struct mipi_mot_cmd_seq set_brightness_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, brightness_ctrl),
 };
 
-static int is_controller_ver_1(struct msm_fb_data_type *);
-static int is_controller_ver_2(struct msm_fb_data_type *);
-#define VER_1		is_controller_ver_1
-#define VER_2		is_controller_ver_2
-
-static struct mipi_mot_cmd_seq smd_hd_465_init_seq[] = {
-	MIPI_MOT_TX_EXIT_SLEEP(NULL),
+static struct mipi_mot_cmd_seq unlock_mtp_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_2),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_mtp),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, unlock_lvl_3),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, enable_te),
+};
+
+static struct mipi_mot_cmd_seq image_retention_wa_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, switch_pwr_to_mem_1),
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, switch_pwr_to_mem_2),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE,
+};
+
+static struct mipi_mot_cmd_seq set_window_size[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, normal_col),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, normal_row),
+};
+
+static struct mipi_mot_cmd_seq brightness_wa_seq[] = {
+	/* C8, C9, C7 sequence only for non-mtped panels */
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, C8_offset),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, C8_data),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, C9_offset),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, C9_data),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, C7_reg),
+};
+
+static struct mipi_mot_cmd_seq aid_wa_seq[] = {
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_off),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_data),
+};
+
+static int is_evt0_sample(struct msm_fb_data_type *mfd);
+static int is_es1_evt0_sample(struct msm_fb_data_type *);
+static int is_acl_default_setting_needed(struct msm_fb_data_type *);
+
+static struct mipi_mot_cmd_seq smd_hd_465_init_seq[] = {
+	MIPI_MOT_TX_EXIT_SLEEP(NULL),
+	MIPI_MOT_EXEC_SEQ(is_evt0_sample, unlock_mtp_seq),
+	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_WRITE1, DEFAULT_DELAY, enable_te),
+	MIPI_MOT_EXEC_SEQ(is_evt0_sample, image_retention_wa_seq),
+	MIPI_MOT_TX_DEF(is_acl_default_setting_needed, DTYPE_DCS_LWRITE,
 			DEFAULT_DELAY, acl_default_setting),
 	/* C8, C9, C7 sequence only for non-mtped panels */
-	MIPI_MOT_TX_DEF(VER_1, DTYPE_DCS_WRITE1, DEFAULT_DELAY, C8_offset),
-	MIPI_MOT_TX_DEF(VER_1, DTYPE_DCS_LWRITE, DEFAULT_DELAY, C8_data),
-	MIPI_MOT_TX_DEF(VER_1, DTYPE_DCS_WRITE1, DEFAULT_DELAY, C9_offset),
-	MIPI_MOT_TX_DEF(VER_1, DTYPE_DCS_LWRITE, DEFAULT_DELAY, C9_data),
-	MIPI_MOT_TX_DEF(VER_1, DTYPE_DCS_WRITE1, DEFAULT_DELAY, C7_reg),
-	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, DEFAULT_DELAY, disp_ctrl),
+	MIPI_MOT_EXEC_SEQ(is_es1_evt0_sample, brightness_wa_seq),
+	MIPI_MOT_TX_DEF(is_evt0_sample, DTYPE_DCS_LWRITE,
+			DEFAULT_DELAY, disp_ctrl),
 	MIPI_MOT_EXEC_SEQ(NULL, set_brightness_seq),
 	MIPI_MOT_EXEC_SEQ(NULL, acl_enable_disable_seq),
-	MIPI_MOT_TX_DEF(VER_2, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_off),
-	MIPI_MOT_TX_DEF(VER_2, DTYPE_DCS_WRITE1, DEFAULT_DELAY, p3_data),
+	MIPI_MOT_EXEC_SEQ(is_es1_evt0_sample, aid_wa_seq),
+	MIPI_MOT_EXEC_SEQ(is_evt0_sample, set_window_size),
 };
 
 static struct mipi_mot_cmd_seq smd_hd_465_disp_off_seq[] = {
@@ -142,8 +168,6 @@ static char frame[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-static char normal_col[] = {0x2a, 0x00, 0x00, 0x02, 0xcf};
-static char normal_row[] = {0x2b, 0x00, 0x00, 0x04, 0xff};
 
 static struct mipi_mot_cmd_seq correct_shift_seq[] = {
 	MIPI_MOT_TX_DEF(NULL, DTYPE_DCS_LWRITE, 0, small_col),
@@ -160,14 +184,31 @@ static struct mipi_mot_cmd_seq smd_hd_465_en_from_partial_seq[] = {
 	MIPI_MOT_EXEC_SEQ(NULL, correct_shift_seq),
 };
 
-static int is_controller_ver_1(struct msm_fb_data_type *mfd)
+static int is_evt0_sample(struct msm_fb_data_type *mfd)
 {
-	return (mipi_mot_get_controller_ver(mfd) < 2) ? 1 : 0;
+	if ((mipi_mot_get_controller_ver(mfd) < 5) &&
+			(mipi_mot_get_controller_drv_ver(mfd) == 1))
+		return 1;
+	else
+		return 0;
 }
 
-static int is_controller_ver_2(struct msm_fb_data_type *mfd)
+static int is_es1_evt0_sample(struct msm_fb_data_type *mfd)
 {
-	return (mipi_mot_get_controller_ver(mfd) == 2) ? 1 : 0;
+	if ((mipi_mot_get_controller_ver(mfd) < 2) &&
+			(mipi_mot_get_controller_drv_ver(mfd) == 1))
+		return 1;
+	else
+		return 0;
+}
+
+static int is_acl_default_setting_needed(struct msm_fb_data_type *mfd)
+{
+	if ((mipi_mot_get_controller_ver(mfd) < 3) &&
+			(mipi_mot_get_controller_drv_ver(mfd) == 1))
+		return 1;
+	else
+		return 0;
 }
 
 static void enable_acl(struct msm_fb_data_type *mfd)
@@ -193,6 +234,12 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 		 * be same with it in bootloader.
 		 */
 		idx = DEFAULT_BRIGHTNESS;
+		/* Work around for the first ES1 display sample issue */
+		if (is_evt0_sample(mfd)) {
+			mipi_set_mem_start_mem_cont(0x3c, 0x3c);
+			mot_panel->pinfo.mipi.wr_mem_start = 0x3c;
+		}
+
 		first_boot = false;
 	} else
 		idx = mfd->bl_level;
@@ -204,8 +251,10 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 
 	brightness_ctrl[1] = idx;
 	acl_enable_disable_settings[1] = (mot_panel->acl_enabled == 1) ? 3 : 0;
+
 	mipi_mot_exec_cmd_seq(mfd, smd_hd_465_init_seq,
 			ARRAY_SIZE(smd_hd_465_init_seq));
+
 	return 0;
 }
 
@@ -319,7 +368,7 @@ static int __init mipi_mot_cmd_smd_hd_465_init(void)
 	pinfo->mipi.interleave_max = 1;
 	pinfo->mipi.insert_dcs_cmd = TRUE;
 	pinfo->mipi.wr_mem_continue = 0x3c;
-	pinfo->mipi.wr_mem_start = 0x3c;
+	pinfo->mipi.wr_mem_start = 0x2c;
 	pinfo->mipi.dsi_phy_db = &dsi_cmd_mode_phy_db;
 	pinfo->mipi.esc_byte_ratio = 2;
 	pinfo->mipi.tx_eot_append = 0x01;
