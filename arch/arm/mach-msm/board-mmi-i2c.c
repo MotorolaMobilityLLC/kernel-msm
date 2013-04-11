@@ -426,6 +426,13 @@ static int __init ov10820_init_i2c_device(struct i2c_board_info *info,
 	of_property_read_u32(node, "allow_asic_bypass",
 			&ov10820_oem_data.sensor_allow_asic_bypass);
 
+	/* Since ASIC revision is not being populated for rev 1b, and
+	 * the other method requires more than 50ms for detection, and
+	 * starting from p2 builds, all asic's are rev 1b, which allows
+	 * for 24 fps. Will use this flag to enable 24 fps */
+	of_property_read_u32(node, "is_asic_ver_r1b",
+			&ov10820_oem_data.sensor_asic_revision);
+
 	msm_camera_sensor_ov10820_data.oem_data = &ov10820_oem_data;
 	info->platform_data = &msm_camera_sensor_ov10820_data;
 
