@@ -33,6 +33,10 @@ Required properties:
         flag to enable panel driver driven suspend/resume
  - synaptics,one-touch-enabled:
         flag to enable configuring one touch on entering to suspend
+ - synaptics,normal-mode:
+	<0>         - enforce no sleep mode
+	<1>         - use normal mode and clear no sleep bit if it's set
+	not defined - use mode settings programmed in firmware
 
 Example:
 	i2c@16200000 {
@@ -64,6 +68,7 @@ Example:
 			gpios = <&msmgpio 46 0>, /* IRQ */
 				<&msmgpio 63 0>; /* RESET */
 
+			synaptics,normal-mode = <1>;
 			synaptics,purge-enabled;
 			synaptics,reset-on-resume;
 			synaptics,shared-regulator;
