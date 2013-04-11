@@ -224,8 +224,13 @@ u32 vcd_sched_mark_client_eof(struct vcd_sched_clnt_ctx *sched_cctxt)
 		buffer = list_entry(sched_cctxt->ip_frm_list.prev,
 			struct vcd_buffer_entry, sched_list);
 		buffer->frame.flags |= VCD_FRAME_FLAG_EOS;
-	} else
+		VCD_MSG_LOW("%s: added EOS flag to last buffer entry",
+			__func__);
+	} else {
 		rc = VCD_ERR_QEMPTY;
+		VCD_MSG_HIGH("%s: EOS need to be processed as last buffer",
+			__func__);
+	}
 	return rc;
 }
 
