@@ -70,6 +70,7 @@ struct tpa6165_data {
 	int alwayson_micb;
 	struct mutex lock;
 	struct wake_lock wake_lock;
+	struct work_struct work;
 };
 
 static const struct tpa6165_regs tpa6165_reg_defaults[] = {
@@ -234,10 +235,10 @@ error:
 	return retval;
 }
 
-static int tpa6165_initialize(void)
+static void tpa6165_initialize_work(struct work_struct *work)
 {
 	int i;
-	int retval = -EINVAL;
+	int retval;
 	struct tpa6165_data *tpa6165 = i2c_get_clientdata(tpa6165_client);
 
 	/* Initialize device registers */
@@ -247,11 +248,10 @@ static int tpa6165_initialize(void)
 		if (retval != 0)
 			goto error;
 	}
+	pr_info("tpa6165_initialize success\n");
 error:
-	return retval;
+	return;
 }
-
-
 
 #ifdef CONFIG_DEBUG_FS
 
@@ -880,7 +880,8 @@ static int __devinit tpa6165_probe(struct i2c_client *client,
 	wake_lock_init(&tpa6165->wake_lock, WAKE_LOCK_SUSPEND, "hs_det");
 
 	/* Initialize device registers */
-	tpa6165_initialize();
+	INIT_WORK(&tpa6165->work,  tpa6165_initialize_work);
+	schedule_work(&tpa6165->work);
 
 	tpa6165->gpio_irq = gpio_to_irq(tpa6165->gpio);
 	/* active low interrupt */
