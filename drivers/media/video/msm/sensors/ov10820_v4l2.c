@@ -44,6 +44,10 @@ static struct msm_sensor_ctrl_t ov10820_s_ctrl;
 static bool ov660_exists;
 static uint16_t revision;
 
+/* Used for debugging purposes */
+static int ov10820_ov660_rev_check;
+module_param(ov10820_ov660_rev_check, int, 0644);
+
 static struct msm_cam_clk_info cam_mot_8960_clk_info[] = {
 	{"cam_clk", MSM_SENSOR_MCLK_24HZ},
 };
@@ -1047,12 +1051,13 @@ static int32_t ov10820_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 		goto power_up_done;
 	}
 
-	pr_debug("%s: R: %d, P: %d D: %d DVDD %d\n",
+	pr_debug("%s: R: %d, P: %d D: %d DVDD %d ASIC rev %d\n",
 			__func__,
 			info->sensor_reset,
 			info->sensor_pwd,
 			info->oem_data->sensor_dig_en,
-			info->oem_data->sensor_using_separate_dvdd);
+			info->oem_data->sensor_using_separate_dvdd,
+			info->oem_data->sensor_asic_revision);
 
 	/* Request gpios */
 	rc = gpio_request(info->sensor_pwd, "ov10820");
@@ -1257,6 +1262,7 @@ static int32_t ov10820_get_module_info(struct msm_sensor_ctrl_t *s_ctrl)
 		s_ctrl->sensor_otp.otp_info = ov10820_otp_info.otp_info;
 		s_ctrl->sensor_otp.size = ov10820_otp_info.size;
 		s_ctrl->sensor_otp.hw_rev = revision;
+		s_ctrl->sensor_otp.asic_rev = ov10820_otp_info.asic_rev;
 		return 0;
 	} else {
 		pr_err("%s: Unable to get module info as otp failed!\n",
@@ -1366,6 +1372,12 @@ static int32_t ov10820_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 		ov660_exists = true;
 	if (ov660_exists) {
 		ov660_set_i2c_bypass(1);
+		if (ov10820_ov660_rev_check == 0x1) {
+			ov660_read_revision();
+			/* Reset Flag automatically */
+			ov10820_ov660_rev_check = 0x0;
+			return -EINVAL;
+		}
 	}
 
 	/* TODO Need to understand if better way to read chip id is
@@ -1434,6 +1446,7 @@ check_chipid:
 		ov10820_otp_info.otp_info = (uint8_t *)ov10820_otp;
 		ov10820_otp_info.size = OV10820_OTP_SIZE;
 	}
+	ov10820_otp_info.asic_rev = info->oem_data->sensor_asic_revision;
 
 	return 0;
 }
