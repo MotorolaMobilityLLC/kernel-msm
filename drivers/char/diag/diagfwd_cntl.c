@@ -316,33 +316,32 @@ void diagfwd_cntl_exit(void)
 	platform_driver_unregister(&diag_smd_lite_cntl_driver);
 }
 
-void diag_send_diag_mode_update(int optimized)
+void diag_send_diag_mode_update(int real_time)
 {
 	int i;
-
-	pr_debug("diag: diag_send_diag_mode_update, optimized:%d", optimized);
-	for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++)
+	for (i = 0; i < NUM_SMD_CONTROL_CHANNELS; i++) {
 		diag_send_diag_mode_update_by_smd(&driver->smd_cntl[i],
-							optimized);
+							real_time);
+	}
 }
 
 void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
-							int optimized)
+							int real_time)
 {
 	struct diag_ctrl_msg_diagmode diagmode;
-	int real_time;
+	char buf[sizeof(struct diag_ctrl_msg_diagmode)];
+	int msg_size = sizeof(struct diag_ctrl_msg_diagmode);
+	int wr_size = -ENOMEM, retry_count = 0, timer;
 
-	/* Send command to control channel only */
+	/* For now only allow the modem to receive the message */
 	if (!smd_info || smd_info->type != SMD_CNTL_TYPE)
 		return;
-
-	real_time = (optimized == 1) ? 0 : 1;
 
 	mutex_lock(&driver->diag_cntl_mutex);
 	diagmode.ctrl_pkt_id = DIAG_CTRL_MSG_DIAGMODE;
 	diagmode.ctrl_pkt_data_len = 36;
 	diagmode.version = 1;
-	diagmode.sleep_vote = real_time;
+	diagmode.sleep_vote = real_time ? 1 : 0;
 	/*
 	 * 0 - Disables real-time logging (to prevent
 	 *     frequent APPS wake-ups, etc.).
@@ -355,10 +354,33 @@ void diag_send_diag_mode_update_by_smd(struct diag_smd_info *smd_info,
 	diagmode.sleep_time = 0;
 	diagmode.drain_timer_val = 0;
 	diagmode.event_stale_timer_val = 0;
-	pr_debug("diag: diag_send_diag_mode_update_by_smd, real_time:%d",
-		real_time);
 
-	diag_send_ctrl_msg(smd_info, &diagmode, sizeof(diagmode));
+	memcpy(buf, &diagmode, msg_size);
+
+	if (smd_info->ch) {
+		while (retry_count < 3) {
+			wr_size = smd_write(smd_info->ch, buf, msg_size);
+			if (wr_size == -ENOMEM) {
+				retry_count++;
+				for (timer = 0; timer < 5; timer++)
+					udelay(2000);
+			} else {
+				struct diag_smd_info *data =
+				&driver->smd_data[smd_info->peripheral];
+				driver->real_time_mode = real_time;
+				process_lock_enabling(&data->nrt_lock,
+								real_time);
+				break;
+			}
+		}
+		if (wr_size != msg_size)
+			pr_err("diag: proc %d fail feature update %d, tried %d",
+				smd_info->peripheral,
+				wr_size, msg_size);
+	} else {
+		pr_err("diag: ch invalid, feature update on proc %d\n",
+				smd_info->peripheral);
+	}
 
 	mutex_unlock(&driver->diag_cntl_mutex);
 }
