@@ -72,11 +72,9 @@
 #include "csrInternal.h"
 #include "limGlobal.h"
 #include "wlan_qct_tl.h"
+#include "vos_trace.h"
 
 #ifdef TRACE_RECORD
-static tTraceRecord gTraceTbl[MAX_TRACE_RECORDS];
-static tTraceData gTraceData;
-static tpTraceCb traceCBTable[VOS_MODULE_ID_MAX];
 
 /* ---------------------------------------------------------------------------
     \fn macTraceGetHDDWlanConnState
@@ -803,8 +801,6 @@ tANI_U8* macTraceGetWdaMsgString( tANI_U16 wdaMsg )
     }
 }
 
-
-
 tANI_U8* macTraceGetLimMsgString( tANI_U16 limMsg )
 {
     switch( limMsg )
@@ -869,9 +865,6 @@ tANI_U8* macTraceGetLimMsgString( tANI_U16 limMsg )
     }
 }
 
-
-
-
 tANI_U8* macTraceGetCfgMsgString( tANI_U16 cfgMsg )
 {
     switch( cfgMsg )
@@ -909,152 +902,20 @@ tANI_U8* macTraceGetModuleString( tANI_U8 moduleId  )
     //return gVosTraceInfo[moduleId].moduleNameStr;
 }
 
-
-
-
-
-
-
-
-
-
-void macTraceInit(tpAniSirGlobal pMac)
-{
-    tANI_U8 i;
-    gTraceData.head = INVALID_TRACE_ADDR;
-    gTraceData.tail = INVALID_TRACE_ADDR;
-    gTraceData.num = 0;
-    gTraceData.enable = TRUE;
-    gTraceData.dumpCount = DEFAULT_TRACE_DUMP_COUNT;
-    gTraceData.numSinceLastDump = 0;
-
-    for(i=0; i<VOS_MODULE_ID_MAX; i++)
-        traceCBTable[i] = NULL;
-
-}
-
-
-
-
-
 void macTraceReset(tpAniSirGlobal pMac)
 {
 }
-
 
 void macTrace(tpAniSirGlobal pMac,  tANI_U8 code, tANI_U8 session, tANI_U32 data)
 {
     //Today macTrace is being invoked by PE only, need to remove this function once PE is migrated to using new trace API.
     macTraceNew(pMac, VOS_MODULE_ID_PE, code, session, data);
-
-#if 0
-    tpTraceRecord rec = NULL;
-
-    //limLog(pMac, LOGE, "mac Trace code: %d, data: %x, head: %d, tail: %d\n",  code, data, gTraceData.head, gTraceData.tail);
-
-    if(!gTraceData.enable)
-        return;
-    gTraceData.num++;
-
-    if (gTraceData.head == INVALID_TRACE_ADDR)
-    {
-        /* first record */
-        gTraceData.head = 0;
-        gTraceData.tail = 0;
-    }
-    else
-    {
-        /* queue is not empty */
-        tANI_U32 tail = gTraceData.tail + 1;
-
-        if (tail == MAX_TRACE_RECORDS)
-            tail = 0;
-
-        if (gTraceData.head == tail)
-        {
-            /* full */
-            if (++gTraceData.head == MAX_TRACE_RECORDS)
-                gTraceData.head = 0;
-        }
-
-        gTraceData.tail = tail;
-    }
-
-    rec = &gTraceTbl[gTraceData.tail];
-    rec->code = code;
-    rec->session = session;
-    rec->data = data;
-    rec->time = vos_timer_get_system_time();
-    rec->module =  VOS_MODULE_ID_PE;
-    gTraceData.numSinceLastDump ++;
-
-    if(gTraceData.numSinceLastDump == gTraceData.dumpCount)
-        {
-            limLog(pMac, LOGE, "Trace Dump last %d traces\n",  gTraceData.dumpCount);
-            macTraceDumpAll(pMac, 0, 0, gTraceData.dumpCount);
-            gTraceData.numSinceLastDump = 0;
-        }
-    #endif
-
 }
-
-
 
 void macTraceNew(tpAniSirGlobal pMac, tANI_U8 module, tANI_U8 code, tANI_U8 session, tANI_U32 data)
 {
-    tpTraceRecord rec = NULL;
-
-    //limLog(pMac, LOGE, "mac Trace code: %d, data: %x, head: %d, tail: %d\n",  code, data, gTraceData.head, gTraceData.tail);
-
-    if(!gTraceData.enable)
-        return;
-    //If module is not registered, don't record for that module.
-    if(traceCBTable[module] == NULL)
-        return;
-    pe_AcquireGlobalLock( &pMac->lim );
-
-    gTraceData.num++;
-
-    if (gTraceData.head == INVALID_TRACE_ADDR)
-    {
-        /* first record */
-        gTraceData.head = 0;
-        gTraceData.tail = 0;
-    }
-    else
-    {
-        /* queue is not empty */
-        tANI_U32 tail = gTraceData.tail + 1;
-
-        if (tail == MAX_TRACE_RECORDS)
-            tail = 0;
-
-        if (gTraceData.head == tail)
-        {
-            /* full */
-            if (++gTraceData.head == MAX_TRACE_RECORDS)
-                gTraceData.head = 0;
-        }
-
-        gTraceData.tail = tail;
-    }
-
-    rec = &gTraceTbl[gTraceData.tail];
-    rec->code = code;
-    rec->session = session;
-    rec->data = data;
-    rec->time = vos_timer_get_system_time();
-    rec->module =  module;
-    gTraceData.numSinceLastDump ++;
-    pe_ReleaseGlobalLock( &pMac->lim );
-
+    vos_trace(module, code, session, data);
 }
-
-
-
-
-
-
 
 tANI_U8* macTraceMsgString(tpAniSirGlobal pMac, tANI_U32 msgType)
 {
@@ -1077,89 +938,5 @@ tANI_U8* macTraceMsgString(tpAniSirGlobal pMac, tANI_U32 msgType)
                 return ((tANI_U8*)"Unknown MsgType");
     }
 }
-
-
-
-
-
-
-void macTraceDumpAll(tpAniSirGlobal pMac, tANI_U8 code, tANI_U8 session, tANI_U32 count)
-{
-    tpTraceRecord pRecord;
-    tANI_S32 i, tail;
-
-
-    if(!gTraceData.enable)
-    {
-        VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR, "Tracing Disabled \n");
-        return;
-    }
-
-    VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
-                            "Total Records: %d, Head: %d, Tail: %d\n", gTraceData.num, gTraceData.head, gTraceData.tail);
-
-    pe_AcquireGlobalLock( &pMac->lim );
-    if (gTraceData.head != INVALID_TRACE_ADDR)
-    {
-
-        i = gTraceData.head;
-        tail = gTraceData.tail;
-
-        if (count)
-        {
-            if (count > gTraceData.num)
-                count = gTraceData.num;
-            if (count > MAX_TRACE_RECORDS)
-                count = MAX_TRACE_RECORDS;
-            if(tail >= (count + 1))
-            {
-                i = tail - count + 1;
-            }
-            else
-            {
-                i = MAX_TRACE_RECORDS - ((count + 1) - tail);
-            }
-        }
-
-        pRecord = &gTraceTbl[i];
-
-        for (;;)
-        {
-            if (   (code == 0 || (code == pRecord->code)) &&
-                    (traceCBTable[pRecord->module] != NULL))
-                traceCBTable[pRecord->module](pMac, pRecord, (tANI_U16)i);
-
-            if (i == tail)
-                break;
-            i += 1;
-
-            if (i == MAX_TRACE_RECORDS)
-            {
-                i = 0;
-                pRecord = &gTraceTbl[0];
-            }
-            else
-                pRecord += 1;
-        }
-        gTraceData.numSinceLastDump = 0;
-
-    }
-    pe_ReleaseGlobalLock( &pMac->lim );
-
-}
-
-
-void macTraceCfg(tpAniSirGlobal pMac, tANI_U32 enable, tANI_U32 dumpCount, tANI_U32 code, tANI_U32 session)
-{
-    gTraceData.enable = (tANI_U8)enable;
-    gTraceData.dumpCount= (tANI_U16)dumpCount;
-    gTraceData.numSinceLastDump = 0;
-}
-
-void macTraceRegister( tpAniSirGlobal pMac, VOS_MODULE_ID moduleId,    tpTraceCb traceCb)
-{
-    traceCBTable[moduleId] = traceCb;
-}
-
 
 #endif

@@ -62,6 +62,7 @@
 
 #include "limGlobal.h"
 #include "macTrace.h"
+#include "vos_trace.h"
 #ifdef LIM_TRACE_RECORD
 
 
@@ -116,24 +117,13 @@ void limTraceUpdateMgmtStat(tpAniSirGlobal pMac, tANI_U8 subtype);
 void limTraceDumpMgmtStat(tpAniSirGlobal pMac, tANI_U8 subtype);
 tANI_U8* limTraceGetMlmStateString( tANI_U32 mlmState );
 tANI_U8* limTraceGetSmeStateString( tANI_U32 smeState );
-void limTraceDump(tpAniSirGlobal pMac, tpTraceRecord pRecord, tANI_U16 recIndex);
+void limTraceDump(tpAniSirGlobal pMac, tpvosTraceRecord pRecord, tANI_U16 recIndex);
 void macTraceMsgTx(tpAniSirGlobal pMac, tANI_U8 session, tANI_U32 data);
 void macTraceMsgRx(tpAniSirGlobal pMac, tANI_U8 session, tANI_U32 data);
 
 void macTraceMsgRxNew(tpAniSirGlobal pMac, tANI_U8 module, tANI_U8 session, tANI_U32 data);
 void macTraceMsgTxNew(tpAniSirGlobal pMac, tANI_U8 module, tANI_U8 session, tANI_U32 data);
-
-
-
-
-
-#define MTRACE(p) p
-#define NO_SESSION 0xFF
-
-#else
-#define MTRACE(p) {  }
-
-#endif
+#endif //endof LIM_TRACE_RECORD MACRO
 
 #endif
 
