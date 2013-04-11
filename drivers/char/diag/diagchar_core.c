@@ -293,7 +293,7 @@ static int diagchar_close(struct inode *inode, struct file *file)
 	if (driver->logging_process_id == current->tgid) {
 		driver->logging_mode = USB_MODE;
 		/* set to non-optimized mode */
-		diag_send_diag_mode_update(DIAG_NON_OPTIMIZED_MODE);
+		diag_send_diag_mode_update(MODE_REALTIME);
 		diagfwd_connect();
 #ifdef CONFIG_DIAGFWD_BRIDGE_CODE
 		diag_clear_hsic_tbl();
@@ -799,13 +799,6 @@ int diag_switch_logging(unsigned long ioarg)
 	mutex_lock(&driver->diagchar_mutex);
 	temp = driver->logging_mode;
 	driver->logging_mode = (int)ioarg;
-
-	if (driver->logging_mode == MEMORY_DEVICE_MODE_NRT) {
-		diag_send_diag_mode_update(MODE_NONREALTIME);
-		driver->logging_mode = MEMORY_DEVICE_MODE;
-	} else {
-		diag_send_diag_mode_update(MODE_REALTIME);
-	}
 
 	if (temp == driver->logging_mode) {
 		mutex_unlock(&driver->diagchar_mutex);

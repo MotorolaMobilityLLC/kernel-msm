@@ -15,9 +15,6 @@
 
 #include "diagfwd.h"
 
-#define DIAG_NON_OPTIMIZED_MODE		0
-#define DIAG_OPTIMIZED_MODE		1
-
 int chk_equip_id_and_mask(int equip_id, uint8_t *buf);
 void diag_send_event_mask_update(smd_channel_t *, int num_bytes);
 void diag_send_msg_mask_update(smd_channel_t *, int ssid_first,
