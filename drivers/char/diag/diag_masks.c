@@ -121,7 +121,8 @@ static void diag_set_msg_mask(int rt_mask)
 	if ((driver->logging_mode == MEMORY_DEVICE_MODE)
 	    && smd_opened) {
 		pr_debug("diag: diag_set_msg_mask, send optimized cmd\n");
-		diag_send_diag_mode_update(optimized_logging);
+		diag_send_diag_mode_update((optimized_logging == 1) ?
+					MODE_NONREALTIME : MODE_REALTIME);
 	} else if (!smd_opened && optimized_logging) {
 		pr_debug("diag: diag_set_msg_mask, cache optimized cmd\n");
 		optimized_cmd_cached = 1;
@@ -313,6 +314,8 @@ static void diag_update_log_mask(int equip_id, uint8_t *buf, int num_items)
 
 void diag_mask_update_fn(struct work_struct *work)
 {
+	static int smd_channel_count = 0;
+
 	struct diag_smd_info *smd_info = container_of(work,
 						struct diag_smd_info,
 						diag_notify_update_smd_work);
@@ -332,14 +335,17 @@ void diag_mask_update_fn(struct work_struct *work)
 		/* we have to set non-optimized before setting optimized,
 		 * otherwise optimized won't work as expected.
 		 */
+		pr_debug("diag: %s, optimized = %d, cmd_cached = %d\n",
+			__func__, optimized_logging, optimized_cmd_cached);
 		diag_send_diag_mode_update_by_smd(smd_info,
-			DIAG_NON_OPTIMIZED_MODE);
+			MODE_REALTIME);
 
 		/* optimized */
-		if (optimized_logging && optimized_cmd_cached)
-			diag_send_diag_mode_update_by_smd(smd_info,
-			DIAG_OPTIMIZED_MODE);
-		smd_opened = 1;
+		smd_channel_count++;
+		if (smd_channel_count == 3)
+			smd_opened = 1;
+		if (optimized_logging && optimized_cmd_cached && smd_opened)
+			diag_send_diag_mode_update(MODE_NONREALTIME);
 	}
 
 	smd_info->notify_context = 0;
