@@ -81,13 +81,22 @@ TRACE_EVENT(oom_kill_shared,
 		TP_printk("%d %s", __entry->pid_nr, __entry->comm)
 );
 
+#if BITS_PER_LONG == 32
+#define INT_DIGITS	(10)
+#else
+#define INT_DIGITS	(20)
+#endif
+/* "NODE_ID:ZONE_ID:NR_FREE:NR_FILE " */
+#define ZINFO_DIGITS	((INT_DIGITS + 1) * 4)	/* end with ignorable ' ' */
+#define ZINFO_LENGTH	(ZINFO_DIGITS * MAX_NR_ZONES * MAX_NUMNODES)
+
 TRACE_EVENT(lmk_kill,
 		TP_PROTO(pid_t pid_nr, const char *comm,
 			int selected_oom_adj, int selected_tasksize,
-			int min_adj),
+			int min_adj, gfp_t gfp_mask, const char *zinfo),
 
 		TP_ARGS(pid_nr, comm, selected_oom_adj, selected_tasksize,
-			min_adj),
+			min_adj, gfp_mask, zinfo),
 
 		TP_STRUCT__entry(
 			__field(pid_t,		pid_nr)
@@ -97,6 +106,8 @@ TRACE_EVENT(lmk_kill,
 			__field(int,		min_adj)
 			__field(long,		cached)
 			__field(unsigned long,	freeswap)
+			__field(gfp_t,		gfp_mask)
+			__array(char,		zinfo,	ZINFO_LENGTH)
 		),
 
 		TP_fast_assign(
@@ -117,12 +128,15 @@ TRACE_EVENT(lmk_kill,
 			__entry->selected_tasksize = selected_tasksize;
 			__entry->min_adj = min_adj;
 			__entry->freeswap = i.freeswap << (PAGE_SHIFT - 10);
+			__entry->gfp_mask = gfp_mask;
+			strlcpy(__entry->zinfo, zinfo, ZINFO_LENGTH);
 		),
 
-		TP_printk("%d %s %d %d %d %ld %lu", __entry->pid_nr,
+		TP_printk("%d %s %d %d %d %ld %lu 0x%x %s", __entry->pid_nr,
 				__entry->comm, __entry->selected_oom_adj,
 				__entry->selected_tasksize, __entry->min_adj,
-				__entry->cached, __entry->freeswap)
+				__entry->cached, __entry->freeswap,
+				__entry->gfp_mask, __entry->zinfo)
 );
 
 #endif /* _TRACE_MEMKILL_H */
