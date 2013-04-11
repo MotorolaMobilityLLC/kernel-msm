@@ -77,6 +77,7 @@
   Include Files
   ------------------------------------------------------------------------*/
 #include <vos_trace.h>
+#include <aniGlobal.h>
 /*--------------------------------------------------------------------------
   Preprocessor definitions and constants
   ------------------------------------------------------------------------*/
@@ -124,8 +125,23 @@ moduleTraceInfo gVosTraceInfo[ VOS_MODULE_ID_MAX ] =
    [VOS_MODULE_ID_HDD_SOFTAP] = { VOS_DEFAULT_TRACE_LEVEL, "HSP" },
    [VOS_MODULE_ID_PMC]        = { VOS_DEFAULT_TRACE_LEVEL, "PMC" },
 };
+/*-------------------------------------------------------------------------
+  Static and Global variables
+  ------------------------------------------------------------------------*/
+static spinlock_t ltraceLock;
 
-
+static tvosTraceRecord gvosTraceTbl[MAX_VOS_TRACE_RECORDS];
+// Global vosTraceData
+static tvosTraceData gvosTraceData;
+/*
+ * all the call back functions for dumping MTRACE messages from ring buffer
+ * are stored in vostraceCBTable,these callbacks are initialized during init only
+ * so, we will make a copy of these call back functions and maintain in to
+ * vostraceRestoreCBTable. Incase if we make modifications to vostraceCBTable,
+ * we can certainly retrieve all the call back functions back from Restore Table
+ */
+static tpvosTraceCb vostraceCBTable[VOS_MODULE_ID_MAX];
+static tpvosTraceCb vostraceRestoreCBTable[VOS_MODULE_ID_MAX];
 /*-------------------------------------------------------------------------
   Functions
   ------------------------------------------------------------------------*/
@@ -426,3 +442,281 @@ void vos_trace_hex_dump( VOS_MODULE_ID module, VOS_TRACE_LEVEL level,
 }
 
 #endif
+
+/*-----------------------------------------------------------------------------
+  \brief vosTraceEnable() - Enable MTRACE for specific modules whose bits are
+  set in bitmask. set the bitmask according to enum value of the modules.
+
+  this functions will be called when you issue ioctl as mentioned following
+  [iwpriv wlan0 setdumplog <value>].
+  <value> - Decimal number, i.e. 64 decimal value shows only SME module,
+  128 decimal value shows only PE module, 192 decimal value shows PE and SME.
+
+  \param - bitmask_of_moduleId - as explained above set bitmask according to
+  enum of the modules.
+  32 [dec]  = 0010 0000 [bin] <enum of HDD is 5>
+  64 [dec]  = 0100 0000 [bin] <enum of SME is 6>
+  128 [dec] = 1000 0000 [bin] <enum of PE is 7>
+  ---------------------------------------------------------------------------*/
+void vosTraceEnable(v_U32_t bitmask_of_moduleId)
+{
+    int i;
+    if (bitmask_of_moduleId)
+    {
+       for (i=0; i<VOS_MODULE_ID_MAX; i++)
+       {
+           if (!((bitmask_of_moduleId >> i) & 1 ))
+           {
+              vostraceRestoreCBTable[i] = vostraceCBTable[i];
+              vostraceCBTable[i] = NULL;
+           }
+       }
+    }
+    else
+    {
+       for (i=0; i<VOS_MODULE_ID_MAX; i++)
+       {
+           if (NULL != vostraceRestoreCBTable[i])
+           {
+              vostraceCBTable[i] = vostraceRestoreCBTable[i];
+           }
+       }
+    }
+}
+
+/*-----------------------------------------------------------------------------
+  \brief vosTraceInit() - Initializes vos trace structures and variables.
+
+  Called immediately after vos_preopen, so that we can start recording HDD
+  events ASAP.
+  ----------------------------------------------------------------------------*/
+void vosTraceInit()
+{
+    v_U8_t i;
+    gvosTraceData.head = INVALID_VOS_TRACE_ADDR;
+    gvosTraceData.tail = INVALID_VOS_TRACE_ADDR;
+    gvosTraceData.num = 0;
+    gvosTraceData.enable = TRUE;
+    gvosTraceData.dumpCount = DEFAULT_VOS_TRACE_DUMP_COUNT;
+    gvosTraceData.numSinceLastDump = 0;
+
+    for (i=0; i<VOS_MODULE_ID_MAX; i++)
+    {
+        vostraceCBTable[i] = NULL;
+        vostraceRestoreCBTable[i] = NULL;
+    }
+}
+
+/*-----------------------------------------------------------------------------
+  \brief vos_trace() - puts the messages in to ring-buffer
+
+  This function will be called from each module who wants record the messages
+  in circular queue. Before calling this functions make sure you have
+  registered your module with voss through vosTraceRegister function.
+
+  \param module - enum of module, basically module id.
+  \param code -
+  \param session -
+  \param data - actual message contents.
+  ----------------------------------------------------------------------------*/
+void vos_trace(v_U8_t module, v_U8_t code, v_U8_t session, v_U32_t data)
+{
+    tpvosTraceRecord rec = NULL;
+
+
+    if (!gvosTraceData.enable)
+    {
+        return;
+    }
+    //If module is not registered, don't record for that module.
+    if (NULL == vostraceCBTable[module])
+    {
+        return;
+    }
+
+    /* Aquire the lock so that only one thread at a time can fill the ring buffer */
+    spin_lock(&ltraceLock);
+
+    gvosTraceData.num++;
+
+    if (gvosTraceData.num > MAX_VOS_TRACE_RECORDS)
+    {
+        gvosTraceData.num = MAX_VOS_TRACE_RECORDS;
+    }
+
+    if (INVALID_VOS_TRACE_ADDR == gvosTraceData.head)
+    {
+        /* first record */
+        gvosTraceData.head = 0;
+        gvosTraceData.tail = 0;
+    }
+    else
+    {
+        /* queue is not empty */
+        v_U32_t tail = gvosTraceData.tail + 1;
+
+        if (MAX_VOS_TRACE_RECORDS == tail)
+        {
+            tail = 0;
+        }
+
+        if (gvosTraceData.head == tail)
+        {
+            /* full */
+            if (MAX_VOS_TRACE_RECORDS == ++gvosTraceData.head)
+            {
+                gvosTraceData.head = 0;
+            }
+        }
+
+        gvosTraceData.tail = tail;
+    }
+
+    rec = &gvosTraceTbl[gvosTraceData.tail];
+    rec->code = code;
+    rec->session = session;
+    rec->data = data;
+    rec->time = vos_timer_get_system_time();
+    rec->module =  module;
+    gvosTraceData.numSinceLastDump ++;
+    spin_unlock(&ltraceLock);
+}
+
+
+/*-----------------------------------------------------------------------------
+  \brief vos_trace_spin_lock_init() - Initializes the lock variable before use
+
+  This function will be called from vos_preOpen, we will have lock available
+  to use ASAP.
+  ----------------------------------------------------------------------------*/
+VOS_STATUS vos_trace_spin_lock_init()
+{
+    spin_lock_init(&ltraceLock);
+
+    return VOS_STATUS_SUCCESS;
+}
+
+/*-----------------------------------------------------------------------------
+  \brief vosTraceRegister() - Registers the call back functions to display the
+  messages in particular format mentioned in these call back functions.
+
+  this functions should be called by interested module in their init part as
+  we will be ready to register as soon as modules are up.
+
+  \param moduleID - enum value of module
+  \param vostraceCb - call back functions to display the messages in particular
+  format.
+  ----------------------------------------------------------------------------*/
+void vosTraceRegister(VOS_MODULE_ID moduleID, tpvosTraceCb vostraceCb)
+{
+    vostraceCBTable[moduleID] = vostraceCb;
+}
+
+/*------------------------------------------------------------------------------
+  \brief vosTraceDumpAll() - Dump data from ring buffer via call back functions
+  registered with VOSS
+
+  This function will be called up on issueing ioctl call as mentioned following
+  [iwpriv wlan0 dumplog 0 0 <n> <bitmask_of_module>]
+
+  <n> - number lines to dump starting from tail to head.
+
+  <bitmask_of_module> - if anybody wants to know how many messages were recorded
+  for particular module/s mentioned by setbit in bitmask from last <n> messages.
+  it is optional, if you don't provide then it will dump everything from buffer.
+
+  \param pMac - context of particular module
+  \param code -
+  \param session -
+  \param count - number of lines to dump starting from tail to head
+  ----------------------------------------------------------------------------*/
+void vosTraceDumpAll(void *pMac, v_U8_t code, v_U8_t session,
+                     v_U32_t count, v_U32_t bitmask_of_module)
+{
+    tvosTraceRecord pRecord;
+    tANI_S32 i, tail;
+
+
+    if (!gvosTraceData.enable)
+    {
+        VOS_TRACE( VOS_MODULE_ID_SYS,
+                   VOS_TRACE_LEVEL_ERROR, "Tracing Disabled");
+        return;
+    }
+
+    VOS_TRACE( VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_ERROR,
+               "Total Records: %d, Head: %d, Tail: %d",
+               gvosTraceData.num, gvosTraceData.head, gvosTraceData.tail);
+
+    /* Aquire the lock so that only one thread at a time can read the ring buffer */
+    spin_lock(&ltraceLock);
+
+    if (gvosTraceData.head != INVALID_VOS_TRACE_ADDR)
+    {
+        i = gvosTraceData.head;
+        tail = gvosTraceData.tail;
+
+        if (count)
+        {
+            if (count > gvosTraceData.num)
+            {
+                count = gvosTraceData.num;
+            }
+            if (tail >= (count - 1))
+            {
+                i = tail - count + 1;
+            }
+            else if (count != MAX_VOS_TRACE_RECORDS)
+            {
+                i = MAX_VOS_TRACE_RECORDS - ((count - 1) - tail);
+            }
+        }
+
+        pRecord = gvosTraceTbl[i];
+        /* right now we are not using numSinceLastDump member but in future
+           we might re-visit and use this member to track how many latest
+           messages got added while we were dumping from ring buffer */
+        gvosTraceData.numSinceLastDump = 0;
+        spin_unlock(&ltraceLock);
+        for (;;)
+        {
+            if ((code == 0 || (code == pRecord.code)) &&
+                    (vostraceCBTable[pRecord.module] != NULL))
+            {
+                if (0 == bitmask_of_module)
+                {
+                   vostraceCBTable[pRecord.module](pMac, &pRecord, (v_U16_t)i);
+                }
+                else
+                {
+                   if (bitmask_of_module & (1 << pRecord.module))
+                   {
+                      vostraceCBTable[pRecord.module](pMac, &pRecord, (v_U16_t)i);
+                   }
+                }
+            }
+
+            if (i == tail)
+            {
+                break;
+            }
+            i += 1;
+
+            spin_lock(&ltraceLock);
+            if (MAX_VOS_TRACE_RECORDS == i)
+            {
+                i = 0;
+                pRecord= gvosTraceTbl[0];
+            }
+            else
+            {
+                pRecord = gvosTraceTbl[i];
+            }
+            spin_unlock(&ltraceLock);
+        }
+    }
+    else
+    {
+        spin_unlock(&ltraceLock);
+    }
+}

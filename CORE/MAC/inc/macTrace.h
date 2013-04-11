@@ -70,51 +70,12 @@
 #define MAC_TRACE_GET_MSG_ID(data)       (data & 0xffff)
 
 
-typedef struct  sTraceRecord
-{
-    tANI_U32 time;
-    tANI_U8 module;
-    tANI_U8 code;
-    tANI_U8 session;
-    tANI_U32 data;
-}tTraceRecord, *tpTraceRecord;
-
 #define eLOG_NODROP_MISSED_BEACON_SCENARIO 0
 #define eLOG_PROC_DEAUTH_FRAME_SCENARIO 1
 
-#define MAX_TRACE_RECORDS 2000
-#define INVALID_TRACE_ADDR 0xffffffff
-#define DEFAULT_TRACE_DUMP_COUNT 0
-
-
-
-typedef void (*tpTraceCb)(tpAniSirGlobal, tpTraceRecord, tANI_U16);
-
-
-
-
-typedef struct sTraceData
-{
-    tANI_U32 head;
-    tANI_U32 tail;
-    tANI_U32 num;
-    tANI_U16 numSinceLastDump;
-
-    //Config for controlling the trace
-    tANI_U8 enable;
-    tANI_U16 dumpCount; //will dump after number of records reach this number.
-
-}tTraceData;
-
-
-
-void macTraceInit(tpAniSirGlobal pMac);
 void macTraceReset(tpAniSirGlobal pMac);
 void macTrace(tpAniSirGlobal pMac,  tANI_U8 code, tANI_U8 session, tANI_U32 data);
 void macTraceNew(tpAniSirGlobal pMac,  tANI_U8 module, tANI_U8 code, tANI_U8 session, tANI_U32 data);
-void macTraceDumpAll(tpAniSirGlobal pMac, tANI_U8 code, tANI_U8 session, tANI_U32 count);
-void macTraceCfg(tpAniSirGlobal pMac, tANI_U32 enable, tANI_U32 dumpWhenFull, tANI_U32 code, tANI_U32 session);
-void macTraceRegister( tpAniSirGlobal pMac, VOS_MODULE_ID moduleId,    tpTraceCb traceCb);
 tANI_U8* macTraceGetCfgMsgString( tANI_U16 cfgMsg );
 tANI_U8* macTraceGetLimMsgString( tANI_U16 limMsg );
 tANI_U8* macTraceGetWdaMsgString( tANI_U16 wdaMsg );
