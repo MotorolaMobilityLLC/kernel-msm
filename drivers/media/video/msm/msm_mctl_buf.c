@@ -264,7 +264,7 @@ static void msm_vb2_ops_buf_cleanup(struct vb2_buffer *vb)
 		spin_unlock_irqrestore(&pcam_inst->vq_irqlock, flags);
 	}
 	pmctl = msm_cam_server_get_mctl(pcam->mctl_handle);
-	if (pmctl == NULL) {
+	if (pmctl == NULL || pmctl->client == NULL) {
 		pr_err("%s No mctl found\n", __func__);
 		buf->state = MSM_BUFFER_STATE_UNUSED;
 		return;
@@ -453,6 +453,7 @@ int msm_mctl_buf_done_proc(
 		buf->vidbuf.v4l2_buf.timestamp = cam_ts->timestamp;
 		buf->vidbuf.v4l2_buf.sequence  = cam_ts->frame_id;
 	}
+	pcam_inst->sequence = buf->vidbuf.v4l2_buf.sequence;
 	D("%s Notify user about buffer %d image_mode %d frame_id %d", __func__,
 		buf->vidbuf.v4l2_buf.index, pcam_inst->image_mode,
 		buf->vidbuf.v4l2_buf.sequence);
@@ -857,7 +858,7 @@ int msm_mctl_buf_done_pp(struct msm_cam_media_controller *pmctl,
 	cam_ts.present = 1;
 	cam_ts.timestamp = ret_frame->timestamp;
 	cam_ts.frame_id   = ret_frame->frame_id;
-	if (ret_frame->dirty)
+	if (ret_frame->dirty || (ret_frame->frame_id < pcam_inst->sequence))
 		/* the frame is dirty, not going to disptach to app */
 		rc = msm_mctl_release_free_buf(pmctl, pcam_inst, frame);
 	else

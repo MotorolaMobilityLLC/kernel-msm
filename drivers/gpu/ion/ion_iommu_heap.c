@@ -76,12 +76,14 @@ static struct page_info *alloc_largest_available(unsigned long size,
 		if (max_order < orders[i])
 			continue;
 
-		gfp = __GFP_IO | __GFP_FS | __GFP_HIGHMEM;
-		if (orders[i])
-			gfp |=  __GFP_NOWARN | __GFP_NORETRY | __GFP_COMP;
-		else
-			gfp |=  __GFP_WAIT;
+		gfp = __GFP_HIGHMEM;
 
+		if (orders[i]) {
+			gfp |= __GFP_COMP | __GFP_NORETRY |
+			       __GFP_NO_KSWAPD | __GFP_NOWARN;
+		} else {
+			gfp |= GFP_KERNEL;
+		}
 		page = alloc_pages(gfp, orders[i]);
 		if (!page)
 			continue;
@@ -331,6 +333,14 @@ int ion_iommu_heap_map_iommu(struct ion_buffer *buffer,
 
 	data->mapped_size = iova_length;
 	extra = iova_length - buffer->size;
+
+	/* Use the biggest alignment to allow bigger IOMMU mappings.
+	 * Use the first entry since the first entry will always be the
+	 * biggest entry. To take advantage of bigger mapping sizes both the
+	 * VA and PA addresses have to be aligned to the biggest size.
+	 */
+	if (buffer->sg_table->sgl->length > align)
+		align = buffer->sg_table->sgl->length;
 
 	ret = msm_allocate_iova_address(domain_num, partition_num,
 						data->mapped_size, align,

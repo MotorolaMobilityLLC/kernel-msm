@@ -359,6 +359,7 @@ struct msm_cam_v4l2_dev_inst {
 	int vbqueue_initialized;
 	struct mutex inst_lock;
 	uint32_t inst_handle;
+	uint32_t sequence;
 };
 
 struct msm_cam_mctl_node {
