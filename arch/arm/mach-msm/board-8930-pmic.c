@@ -340,6 +340,12 @@ static struct pm8921_charger_platform_data pm8921_chg_pdata __devinitdata = {
 	.rconn_mohm		= 18,
 };
 
+static struct pm8xxx_vibrator_platform_data pm8038_vib_pdata = {
+	.initial_vibrate_ms = 500,
+	.level_mV = 3000,
+	.max_timeout_ms = 15000,
+};
+
 #define PM8038_WLED_MAX_CURRENT		25
 #define PM8XXX_LED_PWM_PERIOD		1000
 #define PM8XXX_LED_PWM_DUTY_MS		20
@@ -585,6 +591,9 @@ void __init msm8930_init_pmic(void)
 			pm8921_bms_pdata.battery_type = BATT_PALLADIUM;
 		else if (machine_is_msm8930_cdp())
 			pm8921_chg_pdata.has_dc_supply = true;
+		if (machine_is_msm8930_evt())
+			pm8038_platform_data.vibrator_pdata =
+				&pm8038_vib_pdata;
 	} else {
 		/* PM8917 configuration */
 		pmic_reset_irq = PM8917_IRQ_BASE + PM8921_RESOUT_IRQ;

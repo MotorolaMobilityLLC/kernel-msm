@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -469,6 +469,42 @@ void vidc_cleanup_addr_table(struct video_client_ctx *client_ctx,
 					client_ctx->h264_mv_ion_handle);
 			client_ctx->h264_mv_ion_handle = NULL;
 		}
+	}
+
+	if (client_ctx->vcd_meta_buffer.client_data)
+		msm_subsystem_unmap_buffer((struct msm_mapped_buffer *)
+		client_ctx->vcd_meta_buffer.client_data);
+	if (!IS_ERR_OR_NULL(client_ctx->meta_buffer_ion_handle)) {
+			ion_unmap_kernel(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_ion_handle);
+		if (!res_trk_check_for_sec_session() &&
+		   (res_trk_get_core_type() != (u32)VCD_CORE_720P)) {
+			ion_unmap_iommu(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_ion_handle,
+				VIDEO_DOMAIN,
+				VIDEO_MAIN_POOL);
+		}
+		ion_free(client_ctx->user_ion_client,
+			client_ctx->meta_buffer_ion_handle);
+		client_ctx->meta_buffer_ion_handle = NULL;
+	}
+
+	if (client_ctx->vcd_meta_buffer.client_data_iommu)
+		msm_subsystem_unmap_buffer((struct msm_mapped_buffer *)
+		client_ctx->vcd_meta_buffer.client_data_iommu);
+	if (!IS_ERR_OR_NULL(client_ctx->meta_buffer_iommu_ion_handle)) {
+		ion_unmap_kernel(client_ctx->user_ion_client,
+			client_ctx->meta_buffer_iommu_ion_handle);
+		if (res_trk_check_for_sec_session() &&
+		   (res_trk_get_core_type() != (u32)VCD_CORE_720P)) {
+			ion_unmap_iommu(client_ctx->user_ion_client,
+				client_ctx->meta_buffer_iommu_ion_handle,
+				VIDEO_DOMAIN,
+				VIDEO_MAIN_POOL);
+		}
+		ion_free(client_ctx->user_ion_client,
+			client_ctx->meta_buffer_iommu_ion_handle);
+		client_ctx->meta_buffer_iommu_ion_handle = NULL;
 	}
 bail_out_cleanup:
 	return;

@@ -267,9 +267,6 @@ int mdp4_dsi_video_pipe_commit(int cndx, int wait)
 	}
 	mutex_unlock(&vctrl->update_lock);
 
-	/* free previous committed iommu back to pool */
-	mdp4_overlay_iommu_unmap_freelist(mixer);
-
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	if (vctrl->ov_koff != vctrl->ov_done) {
 		spin_unlock_irqrestore(&vctrl->spin_lock, flags);
@@ -298,9 +295,38 @@ int mdp4_dsi_video_pipe_commit(int cndx, int wait)
 			cnt++;
 			real_pipe = mdp4_overlay_ndx2pipe(pipe->pipe_ndx);
 			if (real_pipe && real_pipe->pipe_used) {
-				/* pipe not unset */
+				/*
+				 * commit pipes which are in pending queue
+				 * and not be unset yet
+				 */
 				mdp4_overlay_vsync_commit(pipe);
 			}
+		}
+	}
+
+	mdp4_mixer_stage_commit(mixer);
+
+	/* start timing generator & mmu if they are not started yet */
+	mdp4_overlay_dsi_video_start();
+
+	/*
+	 * there has possibility that pipe commit come very close to next vsync
+	 * this may cause two consecutive pie_commits happen within same vsync
+	 * period which casue iommu page fault when previous iommu buffer
+	 * freed. Set ION_IOMMU_UNMAP_DELAYED flag at ion_map_iommu() to
+	 * add delay unmap iommu buffer to fix this problem.
+	 * Also ion_unmap_iommu() may take as long as 9 ms to free an ion buffer.
+	 * therefore mdp4_overlay_iommu_unmap_freelist(mixer) should be called
+	 * ater stage_commit() to ensure pipe_commit (up to stage_commit)
+	 * is completed within vsync period.
+	 */
+
+	/* free previous committed iommu back to pool */
+	mdp4_overlay_iommu_unmap_freelist(mixer);
+
+	pipe = vp->plist;
+	for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
+		if (pipe->pipe_used) {
 			/* free previous iommu to freelist
 			* which will be freed at next
 			* pipe_commit
@@ -309,11 +335,6 @@ int mdp4_dsi_video_pipe_commit(int cndx, int wait)
 			pipe->pipe_used = 0; /* clear */
 		}
 	}
-
-	mdp4_mixer_stage_commit(mixer);
-
-	/* start timing generator & mmu if they are not started yet */
-	mdp4_overlay_dsi_video_start();
 
 	pipe = vctrl->base_pipe;
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
@@ -395,6 +416,7 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 	struct vsycn_ctrl *vctrl;
 	struct mdp4_overlay_pipe *pipe;
 	unsigned long flags;
+	int ret;
 	unsigned int data;
 
 	if (cndx >= MAX_CONTROLLER) {
@@ -418,12 +440,13 @@ void mdp4_dsi_video_wait4vsync(int cndx)
 
 	vctrl->wait_vsync_cnt++;
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
-
-	if (!wait_for_completion_timeout(&vctrl->vsync_comp, WAIT_TOUT)) {
-		pr_err("%s %d  TIMEOUT_\n", __func__, __LINE__);
+	/* double the timeout in vsync time stamp generation */
+	ret = wait_for_completion_interruptible_timeout(&vctrl->vsync_comp,
+		msecs_to_jiffies(VSYNC_PERIOD * 8));
+	if (ret <= 0) {
+		pr_err("%s timeout ret=%d", __func__, ret);
 		mdp4_hang_panic();
 	}
-
 	mdp4_video_vsync_irq_ctrl(cndx, 0);
 	mdp4_stat.wait4vsync0++;
 }
@@ -496,6 +519,10 @@ ssize_t mdp4_dsi_video_show_event(struct device *dev,
 	ssize_t ret = 0;
 	unsigned long flags;
 	u64 vsync_tick;
+	ktime_t ctime;
+	u32 ctick, ptick;
+	int diff;
+
 
 	cndx = 0;
 	vctrl = &vsync_ctrl_db[0];
@@ -503,6 +530,29 @@ ssize_t mdp4_dsi_video_show_event(struct device *dev,
 	if (atomic_read(&vctrl->suspend) > 0 ||
 		atomic_read(&vctrl->vsync_resume) == 0)
 		return 0;
+
+	/*
+	 * show_event thread keep spinning on vctrl->vsync_comp
+	 * race condition on x.done if multiple thread blocked
+	 * at wait_for_completion(&vctrl->vsync_comp)
+	 *
+	 * if show_event thread waked up first then it will come back
+	 * and call INIT_COMPLETION(vctrl->vsync_comp) which set x.done = 0
+	 * then second thread wakeed up which set x.done = 0x7ffffffd
+	 * after that wait_for_completion will never wait.
+	 * To avoid this, force show_event thread to sleep 5 ms here
+	 * since it has full vsycn period (16.6 ms) to wait
+	 */
+	ctime = ktime_get();
+	ctick = (u32)ktime_to_us(ctime);
+	ptick = (u32)ktime_to_us(vctrl->vsync_time);
+	ptick += 5000;	/* 5ms */
+	diff = ptick - ctick;
+	if (diff > 0) {
+		if (diff > 1000) /* 1 ms */
+			diff = 1000;
+		usleep(diff);
+	}
 
 	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	if (vctrl->wait_vsync_cnt == 0)
@@ -512,6 +562,7 @@ ssize_t mdp4_dsi_video_show_event(struct device *dev,
 	ret = wait_for_completion_interruptible_timeout(&vctrl->vsync_comp,
 		msecs_to_jiffies(VSYNC_PERIOD * 4));
 	if (ret <= 0) {
+		complete_all(&vctrl->vsync_comp);
 		vctrl->wait_vsync_cnt = 0;
 		vctrl->vsync_time = ktime_get();
 	}
@@ -576,7 +627,8 @@ static void mdp4_dsi_video_tg_off(struct vsycn_ctrl *vctrl)
 	MDP_OUTP(MDP_BASE + DSI_VIDEO_BASE, 0); /* turn off timing generator */
 	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 
-	mdp4_dsi_video_wait4vsync(0);
+	/* some delay after turning off the tg */
+	msleep(20);
 }
 
 int mdp4_dsi_video_splash_done(struct platform_device *pdev)
@@ -841,6 +893,7 @@ int mdp4_dsi_video_off(struct platform_device *pdev)
 	atomic_set(&vctrl->vsync_resume, 0);
 
 	complete_all(&vctrl->vsync_comp);
+	vctrl->wait_vsync_cnt = 0;
 
 	if (pipe->ov_blt_addr) {
 		spin_lock_irqsave(&vctrl->spin_lock, flags);
@@ -1057,18 +1110,15 @@ void mdp4_primary_vsync_dsi_video(void)
 	int cndx;
 	struct vsycn_ctrl *vctrl;
 
-
 	cndx = 0;
 	vctrl = &vsync_ctrl_db[cndx];
 	pr_debug("%s: cpu=%d\n", __func__, smp_processor_id());
 
 	spin_lock(&vctrl->spin_lock);
-	vctrl->vsync_time = ktime_get();
 
-	if (vctrl->wait_vsync_cnt) {
-		complete_all(&vctrl->vsync_comp);
-		vctrl->wait_vsync_cnt = 0;
-	}
+	vctrl->vsync_time = ktime_get();
+	complete_all(&vctrl->vsync_comp);
+	vctrl->wait_vsync_cnt = 0;
 	spin_unlock(&vctrl->spin_lock);
 }
 

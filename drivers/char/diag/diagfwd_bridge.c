@@ -66,7 +66,9 @@ void connect_bridge(int process_cable, int index)
 		diagfwd_connect_smux();
 	} else {
 		if (index < MAX_HSIC_CH &&
-					diag_hsic[index].hsic_device_enabled) {
+			diag_hsic[index].hsic_device_enabled &&
+			(driver->logging_mode != MEMORY_DEVICE_MODE ||
+			diag_hsic[index].hsic_data_requested)) {
 			diag_hsic[index].in_busy_hsic_read_on_device = 0;
 			diag_hsic[index].in_busy_hsic_write = 0;
 			/* If the HSIC (diag_bridge) platform
@@ -127,20 +129,24 @@ int diagfwd_disconnect_bridge(int process_cable)
 				usb_diag_free_req(diag_bridge[i].ch);
 			}
 
-			if (i == SMUX && driver->diag_smux_enabled &&
+			if (i == SMUX) {
+				if (driver->diag_smux_enabled &&
 					driver->logging_mode == USB_MODE) {
-				driver->in_busy_smux = 1;
-				driver->lcid = LCID_INVALID;
-				driver->smux_connected = 0;
-				/* Turn off communication over usb and smux */
-				msm_smux_close(LCID_VALID);
+					driver->in_busy_smux = 1;
+					driver->lcid = LCID_INVALID;
+					driver->smux_connected = 0;
+					/*
+					 * Turn off communication over usb
+					 * and smux
+					 */
+					msm_smux_close(LCID_VALID);
+				}
 			}  else {
 				if (diag_hsic[i].hsic_device_enabled &&
-				     driver->logging_mode !=
-							MEMORY_DEVICE_MODE) {
+				     (driver->logging_mode != MEMORY_DEVICE_MODE
+				     || !diag_hsic[i].hsic_data_requested)) {
 					diag_hsic[i].
-						in_busy_hsic_read_on_device
-						= 1;
+						in_busy_hsic_read_on_device = 1;
 					diag_hsic[i].in_busy_hsic_write = 1;
 					/* Turn off communication over usb
 					 * and HSIC */
