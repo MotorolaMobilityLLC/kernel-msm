@@ -625,6 +625,8 @@ int32_t msm_sensor_config(struct msm_sensor_ctrl_t *s_ctrl, void __user *argp)
 			cdata.cfg.module_info.size = s_ctrl->sensor_otp.size;
 			cdata.cfg.module_info.hw_rev =
 				s_ctrl->sensor_otp.hw_rev;
+			cdata.cfg.module_info.asic_rev =
+				s_ctrl->sensor_otp.asic_rev;
 
 			if (copy_to_user((void *)argp,
 					&cdata,
