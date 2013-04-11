@@ -645,6 +645,7 @@ void mdp4_lcdc_wait4vsync(int cndx);
 void mdp4_overlay_lcdc_vsync_push(struct msm_fb_data_type *mfd,
 				struct mdp4_overlay_pipe *pipe);
 void mdp4_mddi_overlay_dmas_restore(void);
+void mdp4_overlay_solidfill_init(struct mdp4_overlay_pipe *pipe);
 void mdp4_dsi_panel_on(struct msm_fb_data_type *mfd);
 void mdp4_dsi_panel_off(struct msm_fb_data_type *mfd);
 
