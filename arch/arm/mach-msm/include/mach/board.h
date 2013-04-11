@@ -263,6 +263,7 @@ struct oem_camera_sensor_data {
 	int sensor_vdig_on_always;
 	int sensor_using_shared_mipi;
 	int sensor_allow_asic_bypass;
+	int sensor_asic_revision;
 };
 
 struct msm_camera_sensor_info {
