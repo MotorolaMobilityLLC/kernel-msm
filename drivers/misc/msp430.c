@@ -48,8 +48,8 @@
 
 #define NAME			     "msp430"
 
-#define I2C_RETRY_DELAY			5
 #define I2C_RETRIES			5
+#define RESET_RETRIES		2
 #define I2C_RESPONSE_LENGTH		8
 #define MSP430_MAXDATA_LENGTH		250
 #define MSP430_DELAY_USEC		10
@@ -67,6 +67,7 @@
 #define MSP430_CMDLENGTH_BYTES		2
 #define G_MAX				0x7FFF
 #define MSP430_CLIENT_MASK		0xF0
+#define MSP430_RESET_DELAY	400
 
 /* MSP430 memory map */
 #define ID				0x00
@@ -171,6 +172,8 @@
 static long time_delta;
 static unsigned int msp430_irq_disable;
 module_param_named(irq_disable, msp430_irq_disable, uint, 0644);
+
+static unsigned short i2c_retry_delay = 10;
 
 /* Remember the sensor state */
 static unsigned short g_acc_delay;
@@ -350,8 +353,8 @@ static void msp430_early_suspend(struct early_suspend *handler);
 static void msp430_late_resume(struct early_suspend *handler);
 #endif
 
-static int msp430_i2c_write_read(struct msp430_data *ps_msp430, u8 *buf,
-			int writelen, int readlen)
+static int msp430_i2c_write_read_no_reset(struct msp430_data *ps_msp430,
+			u8 *buf, int writelen, int readlen)
 {
 	int tries, err = 0;
 	struct msp_response *response;
@@ -384,7 +387,7 @@ static int msp430_i2c_write_read(struct msp430_data *ps_msp430, u8 *buf,
 	do {
 		err = i2c_transfer(ps_msp430->client->adapter, msgs, 2);
 		if (err != 2)
-			msleep_interruptible(I2C_RETRY_DELAY);
+			msleep_interruptible(i2c_retry_delay);
 	} while ((err != 2) && (++tries < I2C_RETRIES));
 	if (err != 2) {
 		dev_err(&ps_msp430->client->dev, "Read transfer error\n");
@@ -409,8 +412,8 @@ static int msp430_i2c_write_read(struct msp430_data *ps_msp430, u8 *buf,
 	return err;
 }
 
-
-static int msp430_i2c_read(struct msp430_data *ps_msp430, u8 *buf, int len)
+static int msp430_i2c_read_no_reset(struct msp430_data *ps_msp430,
+			u8 *buf, int len)
 {
 	int tries, err = 0;
 
@@ -422,20 +425,21 @@ static int msp430_i2c_read(struct msp430_data *ps_msp430, u8 *buf, int len)
 	do {
 		err = i2c_master_recv(ps_msp430->client, buf, len);
 		if (err < 0)
-			msleep_interruptible(I2C_RETRY_DELAY);
+			msleep_interruptible(i2c_retry_delay);
 	} while ((err < 0) && (++tries < I2C_RETRIES));
 	if (err < 0) {
-		dev_err(&ps_msp430->client->dev, "read transfer error\n");
+		dev_err(&ps_msp430->client->dev, "i2c read transfer error\n");
 		err = -EIO;
 	} else {
-		dev_dbg(&ps_msp430->client->dev, "Read was successsful:\n");
+		dev_dbg(&ps_msp430->client->dev, "i2c read was successsful:\n");
 		for (tries = 0; tries < err ; tries++)
 			dev_dbg(&ps_msp430->client->dev, "%02x", buf[tries]);
 	}
 	return err;
 }
 
-static int msp430_i2c_write(struct msp430_data *ps_msp430, u8 *buf, int len)
+static int msp430_i2c_write_no_reset(struct msp430_data *ps_msp430,
+			u8 *buf, int len)
 {
 	int err = 0;
 	int tries = 0;
@@ -447,15 +451,15 @@ static int msp430_i2c_write(struct msp430_data *ps_msp430, u8 *buf, int len)
 	do {
 		err = i2c_master_send(ps_msp430->client, buf, len);
 		if (err < 0)
-			msleep_interruptible(I2C_RETRY_DELAY);
+			msleep_interruptible(i2c_retry_delay);
 	} while ((err < 0) && (++tries < I2C_RETRIES));
 
 	if (err < 0) {
-		dev_err(&ps_msp430->client->dev, "msp430: write error\n");
+		dev_err(&ps_msp430->client->dev, "i2c write error\n");
 		err = -EIO;
 	} else {
 		dev_dbg(&ps_msp430->client->dev,
-			"msp430 i2c write successful\n");
+			"i2c write successful\n");
 		err = 0;
 	}
 	return err;
@@ -513,7 +517,7 @@ static int msp430_load_brightness_table(struct msp430_data *ps_msp430)
 		msp_cmdbuff[(2 * index) + 2]
 			= ps_msp430->pdata->lux_table[index] & 0xFF;
 	}
-	err = msp430_i2c_write(ps_msp430, msp_cmdbuff,
+	err = msp430_i2c_write_no_reset(ps_msp430, msp_cmdbuff,
 				(2 * LIGHTING_TABLE_SIZE) + 1);
 	if (err)
 		return err;
@@ -523,22 +527,23 @@ static int msp430_load_brightness_table(struct msp430_data *ps_msp430)
 		msp_cmdbuff[index + 1]
 				= ps_msp430->pdata->brightness_table[index];
 	}
-	err = msp430_i2c_write(ps_msp430, msp_cmdbuff, LIGHTING_TABLE_SIZE + 1);
+	err = msp430_i2c_write_no_reset(ps_msp430, msp_cmdbuff,
+			LIGHTING_TABLE_SIZE + 1);
 	dev_dbg(&ps_msp430->client->dev, "Brightness tables loaded\n");
 	return err;
 }
 
-void msp430_reset(struct msp430_platform_data *pdata)
+static void msp430_reset(struct msp430_platform_data *pdata)
 {
 	dev_err(&msp430_misc_data->client->dev, "msp430_reset\n");
-	msleep_interruptible(I2C_RETRY_DELAY);
+	msleep_interruptible(i2c_retry_delay);
 	gpio_set_value(pdata->gpio_reset, 0);
-	msleep_interruptible(I2C_RETRY_DELAY);
+	msleep_interruptible(i2c_retry_delay);
 	gpio_set_value(pdata->gpio_reset, 1);
-	msleep_interruptible(I2C_RETRY_DELAY);
+	msleep_interruptible(MSP430_RESET_DELAY);
 }
 
-int msp430_reset_and_init(void)
+static int msp430_reset_and_init(void)
 {
 	struct msp430_platform_data *pdata;
 	struct timespec current_time;
@@ -559,61 +564,64 @@ int msp430_reset_and_init(void)
 	}
 
 	msp430_reset(pdata);
+	i2c_retry_delay = 200;
 
 	msp_cmdbuff[0] = ACCEL_UPDATE_RATE;
 	msp_cmdbuff[1] = g_acc_delay;
-	err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 2);
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
+	i2c_retry_delay = 10;
+
 	msp_cmdbuff[0] = MAG_UPDATE_RATE;
 	msp_cmdbuff[1] = g_mag_delay;
-	err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 2);
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
 	msp_cmdbuff[0] = GYRO_UPDATE_RATE;
 	msp_cmdbuff[1] = g_gyro_delay;
-	err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 2);
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
 	msp_cmdbuff[0] = PRESSURE_UPDATE_RATE;
 	msp_cmdbuff[1] = g_baro_delay;
-	err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 2);
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
 	msp_cmdbuff[0] = NONWAKESENSOR_CONFIG;
 	msp_cmdbuff[1] = g_nonwake_sensor_state & 0xFF;
 	msp_cmdbuff[2] = g_nonwake_sensor_state >> 8;
-	err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 3);
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 3);
 	if (err < 0)
 		ret_err = err;
 
 	msp_cmdbuff[0] = WAKESENSOR_CONFIG;
 	msp_cmdbuff[1] = g_wake_sensor_state & 0xFF;
 	msp_cmdbuff[2] = g_wake_sensor_state >> 8;
-	err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 3);
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 3);
 	if (err < 0)
 		ret_err = err;
 
 	msp_cmdbuff[0] = ALGO_CONFIG;
 	msp_cmdbuff[1] = g_algo_state & 0xFF;
 	msp_cmdbuff[2] = g_algo_state >> 8;
-	err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 3);
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 3);
 	if (err < 0)
 		ret_err = err;
 
 	msp_cmdbuff[0] = MOTION_DUR;
 	msp_cmdbuff[1] = g_motion_dur;
-	err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 2);
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
 	msp_cmdbuff[0] = ZRMOTION_DUR;
 	msp_cmdbuff[1] = g_zmotion_dur;
-	err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 2);
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 2);
 	if (err < 0)
 		ret_err = err;
 
@@ -623,7 +631,7 @@ int msp430_reset_and_init(void)
 			memcpy(&msp_cmdbuff[1],
 				g_algo_requst[i].data,
 				g_algo_requst[i].size);
-			err = msp430_i2c_write(msp430_misc_data,
+			err = msp430_i2c_write_no_reset(msp430_misc_data,
 				msp_cmdbuff,
 				g_algo_requst[i].size + 1);
 		}
@@ -640,7 +648,7 @@ int msp430_reset_and_init(void)
 		= (pdata->ct406_recalibrate_threshold >> 8) & 0xff;
 	msp_cmdbuff[6] = pdata->ct406_recalibrate_threshold & 0xff;
 	msp_cmdbuff[7] = pdata->ct406_pulse_count & 0xff;
-	err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 8);
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff, 8);
 	if (err < 0) {
 		dev_err(&msp430_misc_data->client->dev,
 			"unable to write proximity settings %d\n", err);
@@ -663,13 +671,14 @@ int msp430_reset_and_init(void)
 		msp_cmdbuff[3] = (unsigned char)((current_time.tv_sec >> 8)
 			& 0xff);
 		msp_cmdbuff[4] = (unsigned char)((current_time.tv_sec) & 0xff);
-		err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff, 5);
+		err = msp430_i2c_write_no_reset(msp430_misc_data,
+						msp_cmdbuff, 5);
 		if (err < 0)
 			ret_err = err;
 
 		msp_cmdbuff[0] = MSP_CONTROL_REG;
 		memcpy(&msp_cmdbuff[1], g_control_reg, MSP_CONTROL_REG_SIZE);
-		err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff,
+		err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff,
 			MSP_CONTROL_REG_SIZE);
 		if (err < 0)
 			ret_err = err;
@@ -679,12 +688,89 @@ int msp430_reset_and_init(void)
 
 	msp_cmdbuff[0] = MAG_CAL;
 	memcpy(&msp_cmdbuff[1], g_mag_cal, MSP_MAG_CAL_SIZE);
-	err = msp430_i2c_write(msp430_misc_data, msp_cmdbuff,
+	err = msp430_i2c_write_no_reset(msp430_misc_data, msp_cmdbuff,
 		MSP_MAG_CAL_SIZE);
 	if (err < 0)
 		ret_err = err;
 
 	return ret_err;
+}
+
+static int msp430_i2c_write_read(struct msp430_data *ps_msp430, u8 *buf,
+			int writelen, int readlen)
+{
+	int tries, err = 0;
+
+	if (ps_msp430->mode == FACTORYMODE)
+		return err;
+	if (buf == NULL || writelen == 0 || readlen == 0)
+		return -EFAULT;
+
+	tries = 0;
+	do {
+		err = msp430_i2c_write_read_no_reset(ps_msp430,
+			buf, writelen, readlen);
+		if (err < 0)
+			msp430_reset_and_init();
+	} while ((err < 0) && (++tries < RESET_RETRIES));
+
+	if (err < 0) {
+		dev_err(&ps_msp430->client->dev, "write_read error\n");
+		err = -EIO;
+	} else {
+		dev_dbg(&ps_msp430->client->dev, "write_read successsful:\n");
+	}
+
+	return err;
+}
+
+static int msp430_i2c_read(struct msp430_data *ps_msp430, u8 *buf, int len)
+{
+	int tries, err = 0;
+
+	if (ps_msp430->mode == FACTORYMODE)
+		return err;
+	if (buf == NULL || len == 0)
+		return -EFAULT;
+	tries = 0;
+	do {
+		err = msp430_i2c_read_no_reset(ps_msp430, buf, len);
+		if (err < 0)
+			msp430_reset_and_init();
+	} while ((err < 0) && (++tries < RESET_RETRIES));
+	if (err < 0) {
+		dev_err(&ps_msp430->client->dev, "read error\n");
+		err = -EIO;
+	} else {
+		dev_dbg(&ps_msp430->client->dev, "read successsful:\n");
+	}
+	return err;
+}
+
+static int msp430_i2c_write(struct msp430_data *ps_msp430, u8 *buf, int len)
+{
+	int err = 0;
+	int tries = 0;
+
+	if (ps_msp430->mode == FACTORYMODE)
+		return err;
+
+	tries = 0;
+	do {
+		err = msp430_i2c_write_no_reset(ps_msp430, buf, len);
+		if (err < 0)
+			msp430_reset_and_init();
+	} while ((err < 0) && (++tries < RESET_RETRIES));
+
+	if (err < 0) {
+		dev_err(&ps_msp430->client->dev, "write error - %x\n", buf[0]);
+		err = -EIO;
+	} else {
+		dev_dbg(&ps_msp430->client->dev,
+			"write successful\n");
+		err = 0;
+	}
+	return err;
 }
 
 static ssize_t dock_print_name(struct switch_dev *switch_dev, char *buf)
@@ -1558,7 +1644,7 @@ static int msp430_get_version(struct msp430_data *ps_msp430)
 		dev_dbg(&ps_msp430->client->dev,
 			"Switch to normal to get version\n");
 		switch_msp430_mode(NORMALMODE);
-		msleep_interruptible(I2C_RETRY_DELAY);
+		msleep_interruptible(i2c_retry_delay);
 	}
 	dev_dbg(&ps_msp430->client->dev, "MSP software version: ");
 	msp_cmdbuff[0] = REV_ID;
