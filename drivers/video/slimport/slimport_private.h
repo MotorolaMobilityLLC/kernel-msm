@@ -27,15 +27,13 @@
 #define AUX_ERR  1
 #define AUX_OK   0
 
-#define LOG_TAG "[anx7808]"
-
 extern unchar sp_tx_hw_lt_done;
 extern bool sp_tx_hw_lt_enable;
 extern unchar sp_tx_link_config_done ;
 extern enum SP_TX_System_State sp_tx_system_state;
-extern unchar sp_tx_rx_anx7730;
+extern enum RX_CBL_TYPE sp_tx_rx_type;
+extern enum RX_CBL_TYPE  sp_tx_rx_type_backup;
 extern unchar sp_tx_pd_mode;
-extern unchar sp_tx_rx_mydp;
 extern unchar bedid_break;
 
 int sp_read_reg(uint8_t slave_addr, uint8_t offset, uint8_t *buf);
