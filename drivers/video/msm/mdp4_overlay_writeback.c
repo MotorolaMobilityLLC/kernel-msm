@@ -391,7 +391,7 @@ int mdp4_wfd_pipe_commit(struct msm_fb_data_type *mfd,
 		pipe = vp->plist;
 		for (i = 0; i < OVERLAY_PIPE_MAX; i++, pipe++) {
 			pipe->pipe_used = 0;
-			pr_info("%s: dequeue update failed, unsetting pipes\n",
+			pr_debug("%s: dequeue update failed, unsetting pipes\n",
 				__func__);
 		}
 		return cnt;
