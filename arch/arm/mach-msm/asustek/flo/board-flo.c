@@ -3100,47 +3100,46 @@ static struct i2c_board_info elan_i2c_devices[] = {
 
 static void touch_init(void){
 	int rc = 0;
-       struct elan_ktf3k_i2c_platform_data *platform;
-
-    // get LSV4 for i2c3
-    pm8921_lvs4 = regulator_get(NULL, "8921_lvs4");
-    if (IS_ERR(pm8921_lvs4)) {
-        pr_err("%s: regulator get of 8921_lvs4 failed (%ld)\n",
-                        __func__, PTR_ERR(pm8921_lvs4));
-        rc = PTR_ERR(pm8921_lvs4);
-        return;
-    }
-
-    rc = regulator_enable(pm8921_lvs4);
-    if (rc) {
-                pr_err("%s: regulator_enable of 8921_lvs4 failed(%d)\n",
-                        __func__, rc);
-        regulator_put(pm8921_lvs4);
-    }
+	struct elan_ktf3k_i2c_platform_data *platform;
+	if (asustek_get_hw_rev() == HW_REV_A) {/*for SR device*/
+		/*get LSV4 for i2c3*/
+		pm8921_lvs4 = regulator_get(NULL, "8921_lvs4");
+		if (IS_ERR(pm8921_lvs4)) {
+			pr_err("%s: regulator get of 8921_lvs4 failed (%ld)\n",
+				__func__, PTR_ERR(pm8921_lvs4));
+			rc = PTR_ERR(pm8921_lvs4);
+			return;
+		}
+		/*enable LSV4 for i2c3*/
+		rc = regulator_enable(pm8921_lvs4);
+		if (rc) {
+			pr_err("%s: regulator_enable of 8921_lvs4 failed(%d)\n",
+				__func__, rc);
+			regulator_put(pm8921_lvs4);
+		}
 	
-       // get LDO17
-       pm8921_l17_ts = regulator_get(NULL, "8921_l17");
-       if (IS_ERR(pm8921_l17_ts)) {
-       	pr_err("%s: regulator get of 8921_l17 failed (%ld)\n",
+		/*get LDO17*/
+		pm8921_l17_ts = regulator_get(NULL, "8921_l17");
+		if (IS_ERR(pm8921_l17_ts)) {
+			pr_err("%s: regulator get of 8921_l17 failed (%ld)\n",
 				__func__, PTR_ERR(pm8921_l17_ts));
-             return;
-       }
-	// set LDO17 to 3.0V
-	rc = regulator_set_voltage(pm8921_l17_ts, 3300000, 3300000);
- 	if (rc) {
-		pr_err("%s: regulator_set_voltage of 8921_l17 failed(%d)\n",
-  				__func__, rc);
-		regulator_put(pm8921_l17_ts);
+			return;
+		}
+		/*set LDO17 to 3.0V*/
+		rc = regulator_set_voltage(pm8921_l17_ts, 3300000, 3300000);
+		if (rc) {
+			pr_err("%s: regulator_set_voltage of 8921_l17 failed(%d)\n",
+				__func__, rc);
+			regulator_put(pm8921_l17_ts);
+		}
+		/*enable LDO17 for touch*/
+		rc = regulator_enable(pm8921_l17_ts);
+		if (rc) {
+			pr_err("%s: regulator_enable of 8921_l17 failed(%d)\n",
+				__func__, rc);
+			regulator_put(pm8921_l17_ts);
+		}
 	}
-
- 	//enable LDO17 for cap sensor
-  	rc = regulator_enable(pm8921_l17_ts);
-	if (rc) {
-		pr_err("%s: regulator_enable of 8921_l17 failed(%d)\n",
- 			__func__, rc);
-		regulator_put(pm8921_l17_ts);
-	}
-
 	//set gpio
 	gpio_request(TS_RESET_GPIO,"tp_reset");
  	gpio_direction_output(TS_RESET_GPIO,1);
