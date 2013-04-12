@@ -51,16 +51,22 @@
 #define GPIO_AUX_PCM_SYNC 65
 #define GPIO_AUX_PCM_CLK 66
 
-#define GPIO_HS_SW_SEL 66
-#define GPIO_HS_DET 50
+#define GPIO_HS_US_EURO_SEL_GPIO 80
+#define GPIO_HS_US_EURO_SEL_GPIO_SGLTE 66
+
+#define GPIO_HS_DET 37
+#define GPIO_HS_DET_SGLTE 50
 
 #define PM8038_GPIO_BASE		NR_GPIO_IRQS
 #define PM8038_GPIO_PM_TO_SYS(pm_gpio)  (pm_gpio - 1 + PM8038_GPIO_BASE)
+#define MSM8930_JACK_TYPES		(SND_JACK_HEADSET | SND_JACK_OC_HPHL | \
+					SND_JACK_OC_HPHR | SND_JACK_UNSUPPORTED)
 
 static int msm8930_spk_control;
 static int msm8930_slim_0_rx_ch = 1;
 static int msm8930_slim_0_tx_ch = 1;
 static int msm8930_pmic_spk_gain = DEFAULT_PMIC_SPK_GAIN;
+static int us_euro_gpio;
 
 static int msm8930_ext_spk_pamp;
 static int msm8930_btsco_rate = BTSCO_RATE_8KHZ;
@@ -70,7 +76,7 @@ static int msm_hdmi_rx_ch = 2;
 static struct clk *codec_clk;
 static int clk_users;
 
-static int msm8930_headset_gpios_configured;
+static int msm8930_useuro_gpio_requested;
 
 static struct snd_soc_jack hs_jack;
 static struct snd_soc_jack button_jack;
@@ -79,6 +85,7 @@ static atomic_t auxpcm_rsc_ref;
 static int msm8930_enable_codec_ext_clk(
 		struct snd_soc_codec *codec, int enable,
 		bool dapm);
+static bool msm8930_swap_gnd_mic(struct snd_soc_codec *codec);
 
 static u32 spkr_boost_enable_gpio = PM8038_GPIO_PM_TO_SYS(0x1);
 
@@ -112,6 +119,7 @@ static struct sitar_mbhc_config mbhc_cfg = {
 	.gpio = 0,
 	.gpio_irq = 0,
 	.gpio_level_insert = 1,
+	.swap_gnd_mic = NULL,
 };
 
 static void msm8930_ext_control(struct snd_soc_codec *codec)
@@ -347,6 +355,17 @@ static int msm8930_enable_codec_ext_clk(
 		}
 	}
 	return 0;
+}
+
+static bool msm8930_swap_gnd_mic(struct snd_soc_codec *codec)
+{
+	int value = 0;
+
+	value = gpio_get_value_cansleep(us_euro_gpio);
+	pr_debug("%s: US EURO select switch %d to %d\n", __func__, value,
+			!value);
+	gpio_set_value_cansleep(us_euro_gpio, !value);
+	return true;
 }
 
 static int msm8930_mclk_event(struct snd_soc_dapm_widget *w,
@@ -805,7 +824,7 @@ static int msm8930_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_sync(dapm);
 
 	err = snd_soc_jack_new(codec, "Headset Jack",
-		(SND_JACK_HEADSET | SND_JACK_OC_HPHL | SND_JACK_OC_HPHR),
+		MSM8930_JACK_TYPES,
 		&hs_jack);
 	if (err) {
 		pr_err("failed to create new jack\n");
@@ -820,10 +839,28 @@ static int msm8930_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	}
 	codec_clk = clk_get(cpu_dai->dev, "osr_clk");
 
-	mbhc_cfg.gpio = 37;
+	/*
+	 * Switch is present only in 8930 CDP and SGLTE
+	 */
+	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE ||
+		machine_is_msm8930_cdp())
+		mbhc_cfg.swap_gnd_mic = msm8930_swap_gnd_mic;
+
 	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
-		mbhc_cfg.gpio = GPIO_HS_DET;
+		mbhc_cfg.gpio = GPIO_HS_DET_SGLTE;
 		mbhc_cfg.gpio_level_insert = 0;
+	} else
+		mbhc_cfg.gpio = GPIO_HS_DET;
+
+	/*
+	 * GPIO for headset detect is present in all devices
+	 * MTP/Fluid/CDP/SGLTE
+	 */
+	err = gpio_request(mbhc_cfg.gpio, "HEADSET_DETECT");
+	if (err) {
+		pr_err("%s: Failed to request gpio %d\n",
+				__func__, mbhc_cfg.gpio);
+		return err;
 	}
 
 	mbhc_cfg.gpio_irq = gpio_to_irq(mbhc_cfg.gpio);
@@ -1440,35 +1477,31 @@ static struct platform_device *msm8930_snd_device;
 static int msm8930_configure_headset_mic_gpios(void)
 {
 	int ret;
-	int gpio_val = 0;
 
-	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)
-		gpio_val = GPIO_HS_SW_SEL;
-	else
-		gpio_val = 80;
-	ret = gpio_request(gpio_val, "US_EURO_SWITCH");
+	if (!us_euro_gpio)
+		return 0;
+
+	ret = gpio_request(us_euro_gpio, "US_EURO_SWITCH");
 	if (ret) {
-		pr_err("%s: Failed to request gpio %d\n", __func__, gpio_val);
+		pr_err("%s: Failed to request gpio %d\n", __func__,
+						us_euro_gpio);
 		return ret;
 	}
-	ret = gpio_direction_output(gpio_val, 0);
+	ret = gpio_direction_output(us_euro_gpio, 0);
 	if (ret) {
 		pr_err("%s: Unable to set direction\n", __func__);
-		gpio_free(gpio_val);
+		gpio_free(us_euro_gpio);
+		return ret;
 	}
-	msm8930_headset_gpios_configured = 0;
+	msm8930_useuro_gpio_requested = 1;
 	return 0;
 }
 static void msm8930_free_headset_mic_gpios(void)
 {
-	int gpio_val = 0;
-
-	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)
-		gpio_val = GPIO_HS_SW_SEL;
-	else
-		gpio_val = 80;
-	if (msm8930_headset_gpios_configured)
-		gpio_free(gpio_val);
+	if (msm8930_useuro_gpio_requested) {
+		gpio_free(us_euro_gpio);
+		msm8930_useuro_gpio_requested = 0;
+	}
 }
 
 static int __init msm8930_audio_init(void)
@@ -1500,11 +1533,13 @@ static int __init msm8930_audio_init(void)
 		return ret;
 	}
 
-	if (msm8930_configure_headset_mic_gpios()) {
+	if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE)
+		us_euro_gpio = GPIO_HS_US_EURO_SEL_GPIO_SGLTE;
+	else
+		us_euro_gpio = GPIO_HS_US_EURO_SEL_GPIO;
+
+	if (msm8930_configure_headset_mic_gpios())
 		pr_err("%s Fail to configure headset mic gpios\n", __func__);
-		msm8930_headset_gpios_configured = 0;
-	} else
-		msm8930_headset_gpios_configured = 1;
 
 	atomic_set(&auxpcm_rsc_ref, 0);
 	return ret;

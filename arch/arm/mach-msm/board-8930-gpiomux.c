@@ -127,6 +127,12 @@ static struct gpiomux_setting audio_spkr_boost = {
 	.pull = GPIOMUX_PULL_NONE,
 };
 
+static struct gpiomux_setting audio_useuro_switch = {
+	.func = GPIOMUX_FUNC_GPIO,
+	.drv = GPIOMUX_DRV_2MA,
+	.pull = GPIOMUX_PULL_NONE,
+};
+
 #if defined(CONFIG_KS8851) || defined(CONFIG_KS8851_MODULE)
 static struct gpiomux_setting gpio_eth_config = {
 	.pull = GPIOMUX_PULL_NONE,
@@ -552,6 +558,27 @@ static struct msm_gpiomux_config msm8960_audio_mbhc_configs[] __initdata = {
 			[GPIOMUX_SUSPENDED] = &audio_mbhc,
 		},
 	},
+	{
+		.gpio = 80,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &audio_useuro_switch,
+		},
+	},
+};
+
+static struct msm_gpiomux_config msm8960_audio_mbhc_configs_sglte[] __initdata = {
+	{
+		.gpio = 50,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &audio_mbhc,
+		},
+	},
+	{
+		.gpio = 66,
+		.settings = {
+			[GPIOMUX_SUSPENDED] = &audio_useuro_switch,
+		},
+	},
 };
 
 static struct msm_gpiomux_config msm8960_audio_spkr_configs[] __initdata = {
@@ -562,7 +589,6 @@ static struct msm_gpiomux_config msm8960_audio_spkr_configs[] __initdata = {
 		},
 	},
 };
-
 
 static struct msm_gpiomux_config msm8960_audio_auxpcm_configs[] __initdata = {
 	{
@@ -1010,6 +1036,9 @@ int __init sglte8930_init_gpiomux(void)
 
 	msm_gpiomux_install(msm8930_sd_det_config_evt,
 			ARRAY_SIZE(msm8930_sd_det_config_evt));
+
+	msm_gpiomux_install(msm8960_audio_mbhc_configs_sglte,
+			ARRAY_SIZE(msm8960_audio_mbhc_configs_sglte));
 
 	return 0;
 }
