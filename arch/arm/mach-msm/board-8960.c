@@ -1327,6 +1327,8 @@ static struct platform_device qcedev_device = {
 static struct mdm_platform_data sglte_platform_data = {
 	.mdm_version = "4.0",
 	.ramdump_delay_ms = 1000,
+	/* delay between two PS_HOLDs */
+	.ps_hold_delay_ms = 500,
 	.soft_reset_inverted = 1,
 	.peripheral_platform_device = NULL,
 	.ramdump_timeout_ms = 600000,
@@ -2582,60 +2584,20 @@ static struct platform_device msm8960_device_rpm_regulator __devinitdata = {
 	},
 };
 #ifdef CONFIG_SERIAL_MSM_HS
-static int configure_uart_gpios(int on)
-{
-	int ret = 0, i;
-	int uart_gpios[] = {93, 94, 95, 96};
-
-	for (i = 0; i < ARRAY_SIZE(uart_gpios); i++) {
-		if (on) {
-			ret = gpio_request(uart_gpios[i], NULL);
-			if (ret) {
-				pr_err("%s: unable to request uart gpio[%d]\n",
-						__func__, uart_gpios[i]);
-				break;
-			}
-		} else {
-			gpio_free(uart_gpios[i]);
-		}
-	}
-
-	if (ret && on && i)
-		for (; i >= 0; i--)
-			gpio_free(uart_gpios[i]);
-	return ret;
-}
-
 static struct msm_serial_hs_platform_data msm_uart_dm9_pdata = {
-	.gpio_config	= configure_uart_gpios,
+	.config_gpio		= 4,
+	.uart_tx_gpio		= 93,
+	.uart_rx_gpio		= 94,
+	.uart_cts_gpio		= 95,
+	.uart_rfr_gpio		= 96,
 };
 
-static int configure_gsbi8_uart_gpios(int on)
-{
-	int ret = 0, i;
-	int uart_gpios[] = {34, 35, 36, 37};
-
-	for (i = 0; i < ARRAY_SIZE(uart_gpios); i++) {
-		if (on) {
-			ret = gpio_request(uart_gpios[i], NULL);
-			if (ret) {
-				pr_err("%s: unable to request uart gpio[%d]\n",
-						__func__, uart_gpios[i]);
-				break;
-			}
-		} else {
-			gpio_free(uart_gpios[i]);
-		}
-	}
-
-	if (ret && on && i)
-		for (; i >= 0; i--)
-			gpio_free(uart_gpios[i]);
-	return ret;
-}
-
 static struct msm_serial_hs_platform_data msm_uart_dm8_pdata = {
-	.gpio_config	= configure_gsbi8_uart_gpios,
+	.config_gpio		= 4,
+	.uart_tx_gpio		= 34,
+	.uart_rx_gpio		= 35,
+	.uart_cts_gpio		= 36,
+	.uart_rfr_gpio		= 37,
 };
 #else
 static struct msm_serial_hs_platform_data msm_uart_dm8_pdata;

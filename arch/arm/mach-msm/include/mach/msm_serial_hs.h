@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008 Google, Inc.
+ * Copyright (C) 2010-2013, The Linux Foundation. All rights reserved.
  * Author: Nick Pelly <npelly@google.com>
  *
  * This software is licensed under the terms of the GNU General Public
@@ -17,14 +18,32 @@
 
 #include<linux/serial_core.h>
 
-/* Optional platform device data for msm_serial_hs driver.
- * Used to configure low power wakeup */
+/**
+ * struct msm_serial_hs_platform_data - platform device data
+ *                                      for msm hsuart device
+ * @wakeup_irq : IRQ line to be configured as Wakeup source.
+ * @inject_rx_on_wakeup : Set 1 if specific character to be inserted on wakeup
+ * @rx_to_inject : Character to be inserted on wakeup
+ * @config_gpio : Pass number of GPIOs to configure
+		 (2 for 2-wire UART, 4 for 4-wire UART)
+ * @userid : User-defined number to be used to enumerate device as tty<userid>
+ * @uart_tx_gpio: GPIO number for UART Tx Line.
+ * @uart_rx_gpio: GPIO number for UART Rx Line.
+ * @uart_cts_gpio: GPIO number for UART CTS Line.
+ * @uart_rfr_gpio: GPIO number for UART RFR Line.
+ * @userid: Number to be used as ttyHS<userid> instead of ttyHS<id>
+*/
+
 struct msm_serial_hs_platform_data {
 	int wakeup_irq;  /* wakeup irq */
 	/* bool: inject char into rx tty on wakeup */
 	unsigned char inject_rx_on_wakeup;
 	char rx_to_inject;
-	int (*gpio_config)(int);
+	unsigned config_gpio;
+	int uart_tx_gpio;
+	int uart_rx_gpio;
+	int uart_cts_gpio;
+	int uart_rfr_gpio;
 	int userid;
 };
 

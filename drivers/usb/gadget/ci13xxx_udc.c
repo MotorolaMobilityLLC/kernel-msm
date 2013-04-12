@@ -427,6 +427,7 @@ static int hw_ep_flush(int num, int dir)
 	int n = hw_ep_bit(num, dir);
 	struct ci13xxx_ep *mEp = &_udc->ci13xxx_ep[n];
 
+	/* Flush ep0 even when queue is empty */
 	if (_udc->skip_flush || (num && list_empty(&mEp->qh.queue)))
 		return 0;
 
