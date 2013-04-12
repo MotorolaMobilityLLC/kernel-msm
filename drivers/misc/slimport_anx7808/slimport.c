@@ -507,6 +507,14 @@ static int anx7808_i2c_probe(struct i2c_client *client,
 		goto err4;
 	}
 
+	/* to detect if slimport is connected when booting */
+	if (gpio_get_value(anx7808->pdata->gpio_cbl_det)) {
+		wake_lock(&anx7808->slimport_lock);
+		SP_DEV_DBG("%s : detect cable insertion\n", __func__);
+		queue_delayed_work(anx7808->workqueue, &anx7808->work, 0);
+		msm_otg_id_pin_irq_enabled(false);
+	}
+
 	goto exit;
 
 err4:
