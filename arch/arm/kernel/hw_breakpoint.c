@@ -216,6 +216,20 @@ static int get_num_brps(void)
 	return core_has_mismatch_brps() ? brps - 1 : brps;
 }
 
+/* Determine if halting mode is enabled */
+static int halting_mode_enabled(void)
+{
+	u32 dscr;
+
+	ARM_DBG_READ(c1, 0, dscr);
+
+	if (WARN_ONCE(dscr & ARM_DSCR_HDBGEN,
+		      "halting debug mode enabled. "
+		      "Unable to access hardware resources.\n"))
+		return -EPERM;
+	return 0;
+}
+
 /*
  * In order to access the breakpoint/watchpoint control registers,
  * we must be running in debug monitor mode. Unfortunately, we can
@@ -225,16 +239,14 @@ static int get_num_brps(void)
 static int enable_monitor_mode(void)
 {
 	u32 dscr;
-	int ret = 0;
+	int ret;
 
 	ARM_DBG_READ(c1, 0, dscr);
 
 	/* Ensure that halting mode is disabled. */
-	if (WARN_ONCE(dscr & ARM_DSCR_HDBGEN,
-		"halting debug mode enabled. Unable to access hardware resources.\n")) {
-		ret = -EPERM;
+	ret = halting_mode_enabled();
+	if (ret)
 		goto out;
-	}
 
 	/* If monitor mode is already enabled, just return. */
 	if (dscr & ARM_DSCR_MDBGEN)
@@ -853,18 +865,6 @@ static int hw_breakpoint_pending(unsigned long addr, unsigned int fsr,
 	return ret;
 }
 
-static void reset_brps_reserved_reg(int n)
-{
-	int i;
-
-	/* we must also reset any reserved registers. */
-	for (i = 0; i < n; ++i) {
-		write_wb_reg(ARM_BASE_BCR + i, 0UL);
-		write_wb_reg(ARM_BASE_BVR + i, 0UL);
-	}
-
-}
-
 /*
  * One-time initialisation.
  */
@@ -891,7 +891,7 @@ static struct undef_hook debug_reg_hook = {
 
 static void reset_ctrl_regs(void *unused)
 {
-	int i, err = 0, cpu = smp_processor_id();
+	int i, raw_num_brps, err = 0, cpu = smp_processor_id();
 	u32 dbg_power;
 
 	/*
@@ -947,19 +947,21 @@ static void reset_ctrl_regs(void *unused)
 	isb();
 
 reset_regs:
-	if (enable_monitor_mode())
+	if (halting_mode_enabled())
 		return;
 
-#ifdef CONFIG_HAVE_HW_BRKPT_RESERVED_RW_ACCESS
-	reset_brps_reserved_reg(core_num_brps);
-#else
-	reset_brps_reserved_reg(core_num_brps + core_num_reserved_brps);
-#endif
+	/* We must also reset any reserved registers. */
+	raw_num_brps = get_num_brp_resources();
+	for (i = 0; i < raw_num_brps; ++i) {
+		write_wb_reg(ARM_BASE_BCR + i, 0UL);
+		write_wb_reg(ARM_BASE_BVR + i, 0UL);
+	}
 
 	for (i = 0; i < core_num_wrps; ++i) {
 		write_wb_reg(ARM_BASE_WCR + i, 0UL);
 		write_wb_reg(ARM_BASE_WVR + i, 0UL);
 	}
+	enable_monitor_mode();
 }
 
 static int __cpuinit dbg_reset_notify(struct notifier_block *self,
