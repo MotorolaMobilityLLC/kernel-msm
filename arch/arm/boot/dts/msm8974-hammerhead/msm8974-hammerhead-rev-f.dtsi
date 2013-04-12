@@ -19,6 +19,7 @@
 /include/ "msm8974-hammerhead-camera.dtsi"
 /include/ "msm8974-hammerhead-rtc.dtsi"
 /include/ "msm8974-hammerhead-nfc.dtsi"
+/include/ "msm8974-hammerhead-regulator.dtsi"
 
 / {
 	serial@f991d000 {
