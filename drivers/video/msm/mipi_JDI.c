@@ -22,6 +22,8 @@
 #include <linux/gpio.h>
 #include <mach/board_asustek.h>
 #include <linux/syscore_ops.h>
+#include "mipi_dsi.h"
+#include "mdp4.h"
 
 #define PWM_FREQ_HZ 300
 #define PWM_PERIOD_USEC (USEC_PER_SEC / PWM_FREQ_HZ)
@@ -38,7 +40,9 @@
 
 static int gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR2;
 static int gpio_LCM_XRES = gpio_LCM_XRES_SR2;
+static bool first_cmd = true;
 static bool first = true;
+static hw_rev hw_revision;
 static unsigned gpio;
 static struct pm_gpio config;
 
@@ -62,6 +66,23 @@ static char DSI_control[3] = {0xB6, 0x3A, 0xD3};
 static char set_pixel_format[2] = {0x3A, 0x77};
 static char set_column_addr[5] = {0x2A, 0x00, 0x00, 0x04, 0xAF};
 static char set_page_addr[5] = {0x2B, 0x00, 0x00, 0x07, 0x7F};
+/* set brightness */
+static char write_display_brightness[] = {0x51, 0x00};
+/* enable LEDPWM pin output, turn on LEDPWM output, turn off pwm dimming */
+static char write_control_display[] = {0x53, 0x24};
+/* choose cabc mode, 0x00(-0%), 0x01(-15%), 0x02(-40%), 0x03(-54%),
+    disable SRE(sunlight readability enhancement) */
+static char write_cabc[] = {0x55, 0x00};
+/* for cabc mode 0x1(-15%) */
+static char backlight_control1[] = {0xB8, 0x07, 0x87, 0x26, 0x18, 0x00, 0x32};
+/* for cabc mode 0x2(-40%) */
+static char backlight_control2[] = {0xB9, 0x07, 0x75, 0x61, 0x20, 0x16, 0x87};
+/* for cabc mode 0x3(-54%) */
+static char backlight_control3[] = {0xBA, 0x07, 0x70, 0x81, 0x20, 0x45, 0xB4};
+/* for pwm frequency and dimming control */
+static char backlight_control4[] = {0xCE, 0x7D, 0x40, 0x48, 0x56, 0x67, 0x78,
+		0x88, 0x98, 0xA7, 0xB5, 0xC3, 0xD1, 0xDE, 0xE9, 0xF2, 0xFA,
+		0xFF, 0x04, 0x00, 0x0F, 0x0F, 0x42, 0x00};
 
 static struct dsi_cmd_desc JDI_display_on_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 5,
@@ -86,11 +107,55 @@ static struct dsi_cmd_desc JDI_display_on_cmds[] = {
 		sizeof(display_on), display_on},
 };
 
+/* use mipi command backlight after ER2 hw_id=(1,1) */
+static struct dsi_cmd_desc JDI_display_on_cmds_command_bl[] = {
+	{DTYPE_DCS_WRITE, 1, 0, 0, 5,
+		sizeof(sw_reset), sw_reset},
+	{DTYPE_GEN_WRITE2, 1, 0, 0, 0,
+		sizeof(MCAP), MCAP},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+		sizeof(interface_setting), interface_setting},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+		sizeof(interface_ID_setting), interface_ID_setting},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+		sizeof(DSI_control), DSI_control},
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,
+		sizeof(write_display_brightness), write_display_brightness},
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,
+		sizeof(write_control_display), write_control_display},
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,
+		sizeof(write_cabc), write_cabc},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+		sizeof(backlight_control1), backlight_control1},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+		sizeof(backlight_control2), backlight_control2},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+		sizeof(backlight_control3), backlight_control3},
+	{DTYPE_GEN_LWRITE, 1, 0, 0, 0,
+		sizeof(backlight_control4), backlight_control4},
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,
+		sizeof(set_pixel_format), set_pixel_format},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(set_column_addr), set_column_addr},
+	{DTYPE_DCS_LWRITE, 1, 0, 0, 0,
+		sizeof(set_page_addr), set_page_addr},
+	{DTYPE_DCS_WRITE, 1, 0, 0, 120,
+		sizeof(exit_sleep), exit_sleep},
+	{DTYPE_DCS_WRITE, 1, 0, 0, 50,
+		sizeof(display_on), display_on},
+};
+
 static struct dsi_cmd_desc JDI_display_off_cmds[] = {
 	{DTYPE_DCS_WRITE, 1, 0, 0, 20,
 		sizeof(display_off), display_off},
 	{DTYPE_DCS_WRITE, 1, 0, 0, 80,
 		sizeof(enter_sleep), enter_sleep},
+};
+
+static char bl_value[2] = {0x51, 0x0};
+static struct dsi_cmd_desc backlight_cmd[] = {
+	{DTYPE_DCS_WRITE1, 1, 0, 0, 0,
+		sizeof(bl_value), bl_value}
 };
 
 struct dcs_cmd_req cmdreq_JDI;
@@ -107,16 +172,24 @@ static int mipi_JDI_lcd_on(struct platform_device *pdev)
 	if (mfd->key != MFD_KEY)
 		return -EINVAL;
 
-	if (first)	{/* change first in setbacklight */
+	if (first_cmd)	{/* change first in setbacklight */
+		first_cmd = false;
 		pr_info("%s-, booting\n", __func__);
 		return 0;
 	}
 
 	msleep(20);
 
-	pr_info("%s, JDI display on command+\n", __func__);
-	cmdreq_JDI.cmds = JDI_display_on_cmds;
-	cmdreq_JDI.cmds_cnt = ARRAY_SIZE(JDI_display_on_cmds);
+	if (hw_revision != 0x3) {
+		pr_info("%s, JDI display on command+, pwm bl\n", __func__);
+		cmdreq_JDI.cmds = JDI_display_on_cmds;
+		cmdreq_JDI.cmds_cnt = ARRAY_SIZE(JDI_display_on_cmds);
+	} else {
+		pr_info("%s, JDI display on command+, command bl\n", __func__);
+		cmdreq_JDI.cmds = JDI_display_on_cmds_command_bl;
+		cmdreq_JDI.cmds_cnt =
+				ARRAY_SIZE(JDI_display_on_cmds_command_bl);
+	}
 	cmdreq_JDI.flags = CMD_REQ_COMMIT;
 	cmdreq_JDI.rlen = 0;
 	cmdreq_JDI.cb = NULL;
@@ -160,6 +233,21 @@ static int mipi_JDI_lcd_off(struct platform_device *pdev)
 	return 0;
 }
 
+static void JDI_command_backlight(int level)
+{
+	pr_debug("%s: back light level %d\n", __func__, level);
+	bl_value[1] = (char) level;
+
+	/* mdp4_dsi_cmd_busy_wait: will turn on dsi clock also */
+	mipi_dsi_mdp_busy_wait();
+
+	cmdreq_JDI.cmds = backlight_cmd;
+	cmdreq_JDI.cmds_cnt = ARRAY_SIZE(backlight_cmd);
+	cmdreq_JDI.flags = CMD_REQ_COMMIT;
+	cmdreq_JDI.rlen = 0;
+	cmdreq_JDI.cb = NULL;
+	mipi_dsi_cmdlist_put(&cmdreq_JDI);
+}
 static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 {
 	int ret;
@@ -178,16 +266,20 @@ static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 
 	if (bl_lpm) {
 		if (mfd->bl_level) {
-			ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL *
-				mfd->bl_level, PWM_PERIOD_USEC);
-			if (ret) {
-				pr_err("pwm_config on lpm failed %d\n", ret);
-				return;
-			}
-			ret = pwm_enable(bl_lpm);
-			if (ret)
-				pr_err("pwm enable on lpm failed, bl=%d\n",
-					mfd->bl_level);
+			if (hw_revision != 0x3) {
+				ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL *
+					mfd->bl_level, PWM_PERIOD_USEC);
+				if (ret) {
+					pr_err("pwm_config failed %d\n", ret);
+					return;
+				}
+				ret = pwm_enable(bl_lpm);
+				if (ret)
+					pr_err("pwm enable failed for bl %d\n",
+						mfd->bl_level);
+			} else
+				JDI_command_backlight(mfd->bl_level);
+
 			if (!bl_enable_sleep_control) {
 				msleep(20);
 				bl_enable_sleep_control = 1;
@@ -201,13 +293,16 @@ static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 				bl_enable_sleep_control = 0;
 				pr_info("%s: pwm disable\n", __func__);
 			}
-			ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL *
-				mfd->bl_level, PWM_PERIOD_USEC);
-			if (ret) {
-				pr_err("pwm_config on lpm failed %d\n", ret);
-				return;
-			}
-			pwm_disable(bl_lpm);
+			if (hw_revision != 0x3) {
+				ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL *
+					mfd->bl_level, PWM_PERIOD_USEC);
+				if (ret) {
+					pr_err("pwm_config failed %d\n", ret);
+					return;
+				}
+				pwm_disable(bl_lpm);
+			} else
+				JDI_command_backlight(mfd->bl_level);
 		}
 	}
 }
@@ -231,16 +326,20 @@ static void mipi_JDI_set_recovery_backlight(struct msm_fb_data_type *mfd)
 	}
 
 	if (bl_lpm) {
-		ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL *
-			recovery_backlight, PWM_PERIOD_USEC);
-		if (ret) {
-			pr_err("pwm_config on lpm failed %d\n", ret);
-			return;
-		}
-		ret = pwm_enable(bl_lpm);
-		if (ret)
-			pr_err("pwm enable on lpm failed, bl=%d\n",
-				recovery_backlight);
+		if (hw_revision != 0x3) {
+			ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL *
+				recovery_backlight, PWM_PERIOD_USEC);
+			if (ret) {
+				pr_err("pwm_config failed %d\n", ret);
+				return;
+			}
+			ret = pwm_enable(bl_lpm);
+			if (ret)
+				pr_err("pwm enable on lpm failed, bl=%d\n",
+					recovery_backlight);
+		} else
+			JDI_command_backlight(recovery_backlight);
+
 		msleep(20);
 		gpio_set_value_cansleep(gpio_LCD_BL_EN, 1);
 	}
@@ -255,12 +354,15 @@ static void mipi_JDI_lcd_shutdown(void)
 	msleep(20);
 
 	pr_info("%s: backlight off\n", __func__);
-	if (bl_lpm) {
-		ret = pwm_config(bl_lpm, 0, PWM_PERIOD_USEC);
-		if (ret)
-			pr_err("pwm_config on lpm failed %d\n", ret);
-		pwm_disable(bl_lpm);
-	}
+	if (hw_revision != 0x3) {
+		if (bl_lpm) {
+			ret = pwm_config(bl_lpm, 0, PWM_PERIOD_USEC);
+			if (ret)
+				pr_err("pwm_config failed %d\n", ret);
+			pwm_disable(bl_lpm);
+		}
+	} else
+		JDI_command_backlight(0);
 
 	pr_info("%s, JDI display off command+\n", __func__);
 	cmdreq_JDI.cmds = JDI_display_off_cmds;
@@ -287,8 +389,10 @@ struct syscore_ops panel_syscore_ops = {
 
 static int __devinit mipi_JDI_lcd_probe(struct platform_device *pdev)
 {
-	hw_rev hw_revision = asustek_get_hw_rev();
 	pr_info("%s+\n", __func__);
+
+	hw_revision = asustek_get_hw_rev();
+	pr_info("%s, hw_revision=%d\n", __func__, hw_revision);
 
 	if (pdev->id == 0) {
 		mipi_JDI_pdata = pdev->dev.platform_data;
