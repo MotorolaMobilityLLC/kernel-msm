@@ -2,7 +2,7 @@
 #define ELAN_X_MAX 	2240 //picasso 2624	2240  asus 2240 3008 2240
 #define ELAN_Y_MAX	1408 //picasso 1728	1408	asus 1280 1856 1408
 #define ELAN_X_MAX_571K 2240
-#define ELAN_Y_MAX_571K 1334
+#define ELAN_Y_MAX_571K 1344
 
 #define ELAN_X_MAX_370T  2112 
 #define ELAN_Y_MAX_370T  1280
