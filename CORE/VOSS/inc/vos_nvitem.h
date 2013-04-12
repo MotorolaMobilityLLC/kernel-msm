@@ -634,7 +634,53 @@ VOS_STATUS vos_nv_close(void);
   \return status of the NV read operation
   \sa
   -------------------------------------------------------------------------*/
-VOS_STATUS vos_nv_getNVBuffer(v_VOID_t **pNvBuffer ,v_SIZE_t *pSize);
+VOS_STATUS vos_nv_getNVBuffer(v_VOID_t **pNvBuffer, v_SIZE_t *pSize);
+
+/**------------------------------------------------------------------------
+  \brief vos_nv_getNVEncodedBuffer -
+  \param pBuffer  - to return the buffer address
+         pSize    - buffer size.
+  \return status of the NV read operation
+  \sa
+  -------------------------------------------------------------------------*/
+VOS_STATUS vos_nv_getNVEncodedBuffer(v_VOID_t **pNvBuffer, v_SIZE_t *pSize);
+
+
+/**------------------------------------------------------------------------
+  \brief vos_nv_getNVDictionary -
+  \param pBuffer  - to return the buffer address
+         pSize    - buffer size.
+  \return status of the NV read operation
+  \sa
+  -------------------------------------------------------------------------*/
+VOS_STATUS vos_nv_getNVDictionary(v_VOID_t **pNvBuffer, v_SIZE_t *pSize);
+
+/**------------------------------------------------------------------------
+  \brief vos_nv_isEmbeddedNV() - NV.bin is embedded or not
+
+  \return VOS_STATUS_SUCCESS - if NV is embedded
+          otherwise  - NOT embedded
+  \sa
+  -------------------------------------------------------------------------*/
+VOS_STATUS vos_nv_isEmbeddedNV(void);
+
+/**------------------------------------------------------------------------
+  \brief vos_nv_setNVEncodedBuffer() - set Encode Buffer
+
+  \return VOS_STATUS_SUCCESS - if able to set encoded buffer successfully
+          otherwise  - NOT able to set encoded data
+  \sa
+  -------------------------------------------------------------------------*/
+VOS_STATUS vos_nv_setNVEncodedBuffer(v_U8_t *pNvBuffer, v_SIZE_t size);
+
+/**------------------------------------------------------------------------
+  \brief vos_nv_get_dictionary_data() - read dictionary data
+
+  \return VOS_STATUS_SUCCESS - if dictionary data is read successfully
+          otherwise  - NOT able to read dictionary data
+  \sa
+  -------------------------------------------------------------------------*/
+VOS_STATUS vos_nv_get_dictionary_data(void);
 
 /**------------------------------------------------------------------------
   \brief vos_nv_setRegDomain -

@@ -9427,7 +9427,8 @@ VOS_STATUS WDA_NVDownload_Start(v_PVOID_t pVosContext)
    }
    
    /* Get the NV structure base address and size from VOS */
-   vos_nv_getNVBuffer(&pNvBuffer,&bufferSize);
+   vos_nv_getNVEncodedBuffer(&pNvBuffer,&bufferSize);
+
    wdiNvDownloadReqParam = (WDI_NvDownloadReqParamsType *)vos_mem_malloc(
                                           sizeof(WDI_NvDownloadReqParamsType)) ;
    if(NULL == wdiNvDownloadReqParam) 
