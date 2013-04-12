@@ -16,8 +16,8 @@
 /include/ "msm8226-camera-sensor-falcon.dtsi"
 
 / {
-	model = "Qualcomm MSM 8226 MTP";
-	compatible = "qcom,msm8226-mtp", "qcom,msm8226";
+	model = "Motorola QC-MSM8226 Falcon";
+	compatible = "qcom,msm8226-falcon", "qcom,msm8226";
 	qcom,msm-id = <145 0 65536>;
 
 	serial@f991f000 {
