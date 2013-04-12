@@ -487,7 +487,7 @@ struct ion_platform_heap msm8960_heaps[] = {
 		},
 		{
 			.id     = ION_ADSP_HEAP_ID,
-			.type   = ION_HEAP_TYPE_DMA,
+			.type   = ION_HEAP_TYPE_CARVEOUT,
 			.name   = ION_ADSP_HEAP_NAME,
 			.size   = MSM_ION_ADSP_SIZE,
 			.memory_type = ION_EBI_TYPE,
