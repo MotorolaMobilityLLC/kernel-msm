@@ -1108,9 +1108,9 @@ int msm_server_v4l2_unsubscribe_event(struct v4l2_fh *fh,
 					isp_event->isp_data.isp_msg.len = 0;
 					isp_event->isp_data.isp_msg.data = NULL;
 				}
+				kfree(isp_event);
+				*((uint32_t *)ev.u.data) = 0;
 			}
-			kfree(isp_event);
-			*((uint32_t *)ev.u.data) = 0;
 		}
 	}
 
@@ -3055,6 +3055,8 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 						break;
 					}
 					kfree(k_msg_value);
+					k_isp_event->isp_data.isp_msg.len = 0;
+					k_isp_event->isp_data.isp_msg.data = 0;
 					k_msg_value = NULL;
 				}
 			}
@@ -3068,6 +3070,7 @@ static long msm_ioctl_config(struct file *fp, unsigned int cmd,
 			break;
 		}
 		kfree(k_isp_event);
+		*((uint32_t *)ev.u.data) = 0;
 		k_isp_event = NULL;
 
 		/* Copy the v4l2_event structure back to the user*/
