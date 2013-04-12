@@ -25,12 +25,36 @@
 #ifdef CONFIG_LGE_HANDLE_PANIC
 #include <mach/lge_handle_panic.h>
 #endif
+#include <ram_console.h>
 
 #ifdef CONFIG_ANDROID_RAM_CONSOLE
 #define LGE_RAM_CONSOLE_SIZE (128 * SZ_1K * 2)
+static char bootreason[128] = {0,};
+
+int __init lge_boot_reason(char *s)
+{
+	int n;
+
+	if (*s == '=')
+		s++;
+	n = snprintf(bootreason, sizeof(bootreason),
+			"Boot info:\n"
+			"Last boot reason: %s\n", s);
+	bootreason[n] = '\0';
+	return 1;
+}
+__setup("bootreason", lge_boot_reason);
+
+struct ram_console_platform_data ram_console_pdata = {
+	.bootinfo = bootreason,
+};
+
 static struct platform_device ram_console_device = {
 	.name = "ram_console",
 	.id = -1,
+	.dev = {
+		.platform_data = &ram_console_pdata,
+	}
 };
 #endif
 
