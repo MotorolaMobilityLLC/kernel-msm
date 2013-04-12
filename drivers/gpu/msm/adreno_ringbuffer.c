@@ -542,10 +542,11 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 	/*
 	 * if the context was not created with per context timestamp
 	 * support, we must use the global timestamp since issueibcmds
-	 * will be returning that one.
+	 * will be returning that one, or if an internal issue then
+	 * use global timestamp.
 	 */
-	if (context && context->flags & CTXT_FLAGS_PER_CONTEXT_TS &&
-			!(flags & KGSL_CMD_FLAGS_INTERNAL_ISSUE))
+	if ((context && (context->flags & CTXT_FLAGS_PER_CONTEXT_TS)) &&
+		!(flags & KGSL_CMD_FLAGS_INTERNAL_ISSUE))
 		context_id = context->id;
 	else
 		context_id = KGSL_MEMSTORE_GLOBAL;
@@ -561,6 +562,11 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 
 	/* Add CP_COND_EXEC commands to generate CP_INTERRUPT */
 	total_sizedwords += context ? 13 : 0;
+
+	if ((context) && (context->flags & CTXT_FLAGS_PER_CONTEXT_TS) &&
+		(flags & (KGSL_CMD_FLAGS_INTERNAL_ISSUE |
+		KGSL_CMD_FLAGS_GET_INT)))
+			total_sizedwords += 2;
 
 	if (adreno_is_a3xx(adreno_dev))
 		total_sizedwords += 7;
@@ -705,6 +711,19 @@ adreno_ringbuffer_addcmds(struct adreno_ringbuffer *rb,
 		GSL_RB_WRITE(ringcmds, rcmd_gpu,
 			cp_type3_packet(CP_INTERRUPT, 1));
 		GSL_RB_WRITE(ringcmds, rcmd_gpu, CP_INT_CNTL__RB_INT_MASK);
+	}
+
+	/*
+	 * If per context timestamps are enabled and any of the kgsl
+	 * internal commands want INT to be generated trigger the INT
+	*/
+	if ((context) && (context->flags & CTXT_FLAGS_PER_CONTEXT_TS) &&
+		(flags & (KGSL_CMD_FLAGS_INTERNAL_ISSUE |
+		KGSL_CMD_FLAGS_GET_INT))) {
+			GSL_RB_WRITE(ringcmds, rcmd_gpu,
+				cp_type3_packet(CP_INTERRUPT, 1));
+			GSL_RB_WRITE(ringcmds, rcmd_gpu,
+				CP_INT_CNTL__RB_INT_MASK);
 	}
 
 	if (adreno_is_a3xx(adreno_dev)) {
