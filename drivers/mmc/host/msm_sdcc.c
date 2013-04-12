@@ -6208,6 +6208,7 @@ msmsdcc_probe(struct platform_device *pdev)
 	if (plat->wifi_control_func) {
 		plat->register_status_notify = wcf_status_register;
 		plat->status = wcf_status;
+		mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
 	}
 #endif
 

@@ -357,6 +357,7 @@
 	qcom,sdcc-sup-voltages = <1800 2950>;
 	qcom,sdcc-nonremovable = <1>;
 	qcom,sup-voltages = <1800 2950>;
+	qcom,nonremovable;
 	*/
 	/* Qualcomm WiFi solution - End */
 
@@ -372,10 +373,8 @@
 	qcom,wifi-control-func;
 	/* Broadcom WiFi solution - End */
 
-	qcom,nonremovable;
 	qcom,vdd-io-voltage-level = <1800000 1800000>;
 	qcom,vdd-io-current-level = <6 22000>;
-
 };
 
 &usb_otg {
