@@ -41,13 +41,10 @@
 static int gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR2;
 static int gpio_LCM_XRES = gpio_LCM_XRES_SR2;
 static bool first_cmd = true;
-static bool first = true;
 static hw_rev hw_revision;
-static unsigned gpio;
-static struct pm_gpio config;
 
 static struct mipi_dsi_panel_platform_data *mipi_JDI_pdata;
-static struct pwm_device *bl_lpm;
+extern struct pwm_device *bl_lpm;
 
 static struct dsi_buf JDI_tx_buf;
 static struct dsi_buf JDI_rx_buf;
@@ -256,14 +253,6 @@ static void mipi_JDI_set_backlight(struct msm_fb_data_type *mfd)
 
 	pr_debug("%s: back light level %d\n", __func__, mfd->bl_level);
 
-	if (first) {
-		ret = pm8xxx_gpio_config(gpio, &config);
-		if (ret)
-			pr_err("%s: pm8xxx_gpio_config failed: ret=%d\n",
-				 __func__, ret);
-		first = false;
-	}
-
 	if (bl_lpm) {
 		if (mfd->bl_level) {
 			if (hw_revision != 0x3) {
@@ -316,14 +305,6 @@ static void mipi_JDI_set_recovery_backlight(struct msm_fb_data_type *mfd)
 		recovery_backlight = mipi_JDI_pdata->recovery_backlight;
 
 	pr_info("%s: backlight level %d\n", __func__, recovery_backlight);
-
-	if (first) {
-		ret = pm8xxx_gpio_config(gpio, &config);
-		if (ret)
-			pr_err("%s: pm8xxx_gpio_config failed: ret=%d\n",
-				 __func__, ret);
-		first = false;
-	}
 
 	if (bl_lpm) {
 		if (hw_revision != 0x3) {
@@ -402,10 +383,9 @@ static int __devinit mipi_JDI_lcd_probe(struct platform_device *pdev)
 	if (mipi_JDI_pdata == NULL) {
 		pr_err("%s.invalid platform data.\n", __func__);
 		return -ENODEV;
-	} else {
-		bl_lpm = pwm_request(mipi_JDI_pdata->gpio[0],
-			"backlight");
 	}
+
+	/* already request bl_lpm in leds_pm8xxx.c, pm8xxx_led_probe() */
 
 	if (bl_lpm == NULL || IS_ERR(bl_lpm)) {
 		pr_err("%s pwm_request() failed\n", __func__);
@@ -422,18 +402,6 @@ static int __devinit mipi_JDI_lcd_probe(struct platform_device *pdev)
 		gpio_LCD_BL_EN = gpio_LCD_BL_EN_SR1;
 		gpio_LCM_XRES = gpio_LCM_XRES_SR1;
 	}
-
-	/* set PWM config */
-	gpio = gpio_PWM;
-	config.direction = PM_GPIO_DIR_OUT;
-	config.output_buffer = PM_GPIO_OUT_BUF_CMOS;
-	config.output_value = 0;
-	config.pull = PM_GPIO_PULL_NO;
-	config.vin_sel = PM_GPIO_VIN_L17;
-	config.out_strength = PM_GPIO_STRENGTH_HIGH;
-	config.function = PM_GPIO_FUNC_2;
-	config.inv_int_pol = 0;
-	config.disable_pin = 0;
 
 	pr_info("%s-\n", __func__);
 	return 0;

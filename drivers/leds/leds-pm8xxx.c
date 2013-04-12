@@ -1274,6 +1274,10 @@ static int __devinit pm8xxx_led_probe(struct platform_device *pdev)
 		}
 	}
 
+	/* Config PWM */
+	if ((pdata) && (pdata->pwm_init))
+		pdata->pwm_init();
+
 	return 0;
 
 fail_id_check:

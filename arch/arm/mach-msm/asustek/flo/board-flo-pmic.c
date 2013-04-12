@@ -31,6 +31,9 @@
 #include "board-flo.h"
 #include <mach/board_asustek.h>
 
+#include <linux/mfd/pm8xxx/core.h>
+#include <linux/mfd/pm8xxx/pwm.h>
+
 struct pm8xxx_gpio_init {
 	unsigned			gpio;
 	struct pm_gpio			config;
@@ -132,8 +135,8 @@ static struct pm8xxx_gpio_init pm8921_gpios[] __initdata = {
 	PM8921_GPIO_OUTPUT_BUFCONF(25, 0, LOW, CMOS), /* DISP_RESET_N */
 	//PM8921_GPIO_OUTPUT_FUNC(26, 0, PM_GPIO_FUNC_2), /* Bl: Off, PWM mode */
 	//PM8921_GPIO_OUTPUT_VIN(30, 1, PM_GPIO_VIN_VPH), /* SMB349 susp line */
-	 /* Bl: On, PWM mode */
-	PM8921_GPIO_OUTPUT_FUNC_L17(26, 1, PM_GPIO_FUNC_2),
+	/* Bl: On, PWM mode */
+	/* remove pwm function config because bootloader have done this*/
 	PM8921_GPIO_OUTPUT(2, 1, HIGH), /* SLIMPORT_PWR_DWN */
 	PM8921_GPIO_OUTPUT(1, 0, HIGH), /* SLIMPORT_RESET_N */
 	PM8921_GPIO_OUTPUT_FUNC(44, 0, PM_GPIO_FUNC_2),
@@ -339,11 +342,40 @@ static struct pm8xxx_led_config pm8921_led_configs[] = {
 	},
 };
 
+#define PWM_FREQ_HZ 300
+#define PWM_PERIOD_USEC (USEC_PER_SEC / PWM_FREQ_HZ)
+#define PWM_LEVEL 255
+#define PWM_DUTY_LEVEL \
+	(PWM_PERIOD_USEC / PWM_LEVEL)
+#define BL_INIT_LEVEL 102	/* 255 x 40% */
+
+struct pwm_device *bl_lpm;
+
+static void apq8064_pm8921_pwm_init(void)
+{
+	int ret;
+	pr_info("%s+\n", __func__);
+
+	bl_lpm = pwm_request(2,	"backlight");
+
+	ret = pwm_config(bl_lpm, PWM_DUTY_LEVEL * BL_INIT_LEVEL,
+		PWM_PERIOD_USEC);
+	if (ret)
+		pr_err("pwm_config on lpm failed %d\n", ret);
+
+	ret = pwm_enable(bl_lpm);
+	if (ret)
+		pr_err("pwm enable failed for bl %d\n", BL_INIT_LEVEL);
+
+	pr_info("%s-\n", __func__);
+}
+
 static struct pm8xxx_led_platform_data apq8064_pm8921_leds_pdata = {
 		.led_core = &pm8921_led_core_pdata,
 		.configs = pm8921_led_configs,
 		.num_configs = ARRAY_SIZE(pm8921_led_configs),
 		.use_pwm = 1,
+		.pwm_init = apq8064_pm8921_pwm_init,
 };
 
 static struct pm8xxx_adc_amux apq8064_pm8921_adc_channels_data[] = {
