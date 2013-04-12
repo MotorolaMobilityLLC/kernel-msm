@@ -109,6 +109,9 @@ VOS_STATUS vos_get_binary_blob( VOS_BINARY_ID binaryId,
         case VOS_BINARY_ID_HO_CONFIG:
            pFileName = WLAN_HO_CFG_FILE;
            break;
+        case VOS_BINARY_ID_DICT_CONFIG:
+           pFileName = WLAN_DICT_FILE;
+           break;
         default:
            VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR, "Invalid binaryID");
            return VosSts;

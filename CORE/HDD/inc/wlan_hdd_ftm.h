@@ -107,7 +107,7 @@
 
 #define WE_FTM_MAX_STR_LEN 1024
 
-#define MAX_NV_TABLE_SIZE  30000
+#define MAX_NV_TABLE_SIZE  40000
 
 typedef enum {
     WLAN_FTM_CMD_START = 1,

@@ -382,7 +382,10 @@ VOSS_OBJS :=    $(VOSS_SRC_DIR)/vos_api.o \
 		$(VOSS_SRC_DIR)/vos_timer.o \
 		$(VOSS_SRC_DIR)/vos_trace.o \
 		$(VOSS_SRC_DIR)/vos_types.o \
-		$(VOSS_SRC_DIR)/vos_utils.o
+                $(VOSS_SRC_DIR)/vos_utils.o \
+                $(VOSS_SRC_DIR)/wlan_nv_parser.o \
+                $(VOSS_SRC_DIR)/wlan_nv_stream_read.o \
+                $(VOSS_SRC_DIR)/wlan_nv_template_builtin.o
 
 ifeq ($(BUILD_DIAG_VERSION),1)
 VOSS_OBJS += $(VOSS_SRC_DIR)/vos_diag.o
