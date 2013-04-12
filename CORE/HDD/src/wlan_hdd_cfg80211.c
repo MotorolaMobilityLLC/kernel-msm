@@ -531,12 +531,12 @@ static const struct nla_policy wlan_hdd_tm_policy[WLAN_HDD_TM_ATTR_MAX + 1] =
 #endif /* WLAN_NL80211_TESTMODE */
 
 /*
- * FUNCTION: wlan_hdd_cfg80211_init
+ * FUNCTION: wlan_hdd_cfg80211_wiphy_alloc
  * This function is called by hdd_wlan_startup()
  * during initialization.
- * This function is used to initialize and register wiphy structure.
+ * This function is used to allocate wiphy structure.
  */
-struct wiphy *wlan_hdd_cfg80211_init(int priv_size)
+struct wiphy *wlan_hdd_cfg80211_wiphy_alloc(int priv_size)
 {
     struct wiphy *wiphy;
     ENTER();
@@ -625,23 +625,28 @@ int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand)
  * during initialization.
  * This function is used to initialize and register wiphy structure.
  */
-int wlan_hdd_cfg80211_register(struct device *dev,
+int wlan_hdd_cfg80211_init(struct device *dev,
                                struct wiphy *wiphy,
                                hdd_config_t *pCfg
                                )
 {
-
     int i, j;
-
+    hdd_context_t *pHddCtx = wiphy_priv(wiphy);
     ENTER();
 
     /* Now bind the underlying wlan device with wiphy */
     set_wiphy_dev(wiphy, dev);
 
     wiphy->mgmt_stypes = wlan_hdd_txrx_stypes;
-
-    wiphy->flags |=   WIPHY_FLAG_CUSTOM_REGULATORY;
-
+    if (memcmp(pHddCtx->cfg_ini->crdaDefaultCountryCode,
+                      CFG_CRDA_DEFAULT_COUNTRY_CODE_DEFAULT , 2) != 0)
+    {
+       wiphy->flags |=   WIPHY_FLAG_CUSTOM_REGULATORY;
+    }
+    else
+    {
+       wiphy->flags |=   WIPHY_FLAG_STRICT_REGULATORY;
+    }
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,4,0))
     wiphy->flags |= WIPHY_FLAG_HAVE_AP_SME
                  |  WIPHY_FLAG_AP_PROBE_RESP_OFFLOAD
@@ -768,10 +773,18 @@ int wlan_hdd_cfg80211_register(struct device *dev,
     wiphy->max_remain_on_channel_duration = 1000;
 #endif
 
-    /* Register our wiphy dev with cfg80211 */
+    EXIT();
+    return 0;
+}
+
+/* In this function we are registering wiphy. */
+int wlan_hdd_cfg80211_register(struct wiphy *wiphy)
+{
+    ENTER();
+ /* Register our wiphy dev with cfg80211 */
     if (0 > wiphy_register(wiphy))
     {
-        /* print eror */
+        /* print error */
         hddLog(VOS_TRACE_LEVEL_ERROR,"%s: wiphy register failed", __func__);
         return -EIO;
     }
@@ -784,7 +797,7 @@ int wlan_hdd_cfg80211_register(struct device *dev,
    If the gCrdaDefaultCountryCode is configured in ini file,
    we will try to call user space crda to get the regulatory settings for
    that country. We will timeout if we can't get it from crda.
-   It's called by hdd_wlan_startup() after wlan_hdd_cfg80211_register.
+   It's called by hdd_wlan_startup() after wlan_hdd_cfg80211_init.
 */
 int wlan_hdd_get_crda_regd_entry(struct wiphy *wiphy, hdd_config_t *pCfg)
 {
@@ -811,6 +824,45 @@ int wlan_hdd_get_crda_regd_entry(struct wiphy *wiphy, hdd_config_t *pCfg)
          crda_regulatory_entry_default(pCfg->crdaDefaultCountryCode, NUM_REG_DOMAINS-1);
    }
    return 0;
+}
+
+/* In this function we are updating channel list when,
+   regulatory domain is FCC and country code is US.
+   Here In FCC standard 5GHz UNII-1 Bands are indoor only.
+   As per FCC smart phone is not a indoor device.
+   GO should not opeate on indoor channels */
+void wlan_hdd_cfg80211_update_reg_info(struct wiphy *wiphy)
+{
+    int j;
+    hdd_context_t *pHddCtx = wiphy_priv(wiphy);
+    tANI_U8 defaultCountryCode[3] = SME_INVALID_COUNTRY_CODE;
+    //Default counrtycode from NV at the time of wiphy initialization.
+    if (eHAL_STATUS_SUCCESS != sme_GetDefaultCountryCodeFrmNv(pHddCtx->hHal,
+                                  &defaultCountryCode[0]))
+    {
+       hddLog(LOGE, FL("%s Failed to get default country code from NV"));
+    }
+    if ((defaultCountryCode[0]== 'U') && (defaultCountryCode[1]=='S'))
+    {
+       /* This will disable updating of NL channels from passive to
+          active if a beacon is received on passive channel.
+          If this flag is not disabled then nl can change passive channel to
+          active channels.
+       */
+       wiphy->flags |= WIPHY_FLAG_DISABLE_BEACON_HINTS;
+       if (NULL == wiphy->bands[IEEE80211_BAND_5GHZ])
+       {
+          hddLog(VOS_TRACE_LEVEL_ERROR,"%s: wiphy->bands[IEEE80211_BAND_5GHZ] is NULL",__func__ );
+          return;
+       }
+       for (j = 0; j < wiphy->bands[IEEE80211_BAND_5GHZ]->n_channels; j++)
+       {
+          struct ieee80211_supported_band *band = wiphy->bands[IEEE80211_BAND_5GHZ];
+          // Mark UNII -1 band channel as passive
+          if (WLAN_HDD_CHANNEL_IN_UNII_1_BAND(band->channels[j].center_freq))
+             band->channels[j].flags |= IEEE80211_CHAN_PASSIVE_SCAN;
+       }
+    }
 }
 
 /* In this function we will do all post VOS start initialization.

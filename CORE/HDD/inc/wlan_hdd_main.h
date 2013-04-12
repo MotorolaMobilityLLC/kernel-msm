@@ -171,6 +171,10 @@
 #define WLAN_HDD_IS_SOCIAL_CHANNEL(center_freq) \
 (((center_freq) == 2412) || ((center_freq) == 2437) || ((center_freq) == 2462))
 
+#define WLAN_HDD_CHANNEL_IN_UNII_1_BAND(center_freq) \
+(((center_freq) == 5180 ) || ((center_freq) == 5200) \
+|| ((center_freq) == 5220) || ((center_freq) == 5240))
+
 #ifdef WLAN_FEATURE_11W
 #define WLAN_HDD_SA_QUERY_ACTION_FRAME 8
 #endif
@@ -1132,6 +1136,7 @@ void hdd_set_ssr_required(e_hdd_ssr_required value);
 VOS_STATUS hdd_enable_bmps_imps(hdd_context_t *pHddCtx);
 VOS_STATUS hdd_disable_bmps_imps(hdd_context_t *pHddCtx, tANI_U8 session_type);
 
+void wlan_hdd_cfg80211_update_reg_info(struct wiphy *wiphy);
 VOS_STATUS wlan_hdd_restart_driver(hdd_context_t *pHddCtx);
 void hdd_exchange_version_and_caps(hdd_context_t *pHddCtx);
 void hdd_set_pwrparams(hdd_context_t *pHddCtx);
