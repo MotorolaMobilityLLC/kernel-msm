@@ -181,7 +181,7 @@ endif
 # Platform dependent feature
 #############################
 
-#DHDCFLAGS += -DGET_CUSTOM_MAC_ENABLE
+DHDCFLAGS += -DGET_CUSTOM_MAC_ENABLE
 ifeq ($(CONFIG_BCM4335),y)
 DHDCFLAGS += -DENABLE_INSMOD_NO_FW_LOAD
 endif
