@@ -482,19 +482,84 @@ static struct mmi_battery_cell mmi_eb40_lg_cell_data = {
 };
 
 
-/* Initial EU40 LG Tables and Charging Parameters */
+/* EU40 LG Tables and Charging Parameters */
 static struct single_row_lut mmi_eu40_lg_fcc_temp = {
 	.x	= {-10, 0, 23, 60},
-	.y	= {2940, 3309, 3468, 3443},
+	.y	= {2895, 3265, 3494, 3416},
 	.cols	= 4,
+};
+static struct single_row_lut mmi_eu40_lg_fcc_sf = {
+	.x	= {1, 100, 200, 300, 400, 500},
+	.y	= {100, 97, 95, 94, 93, 93},
+	.cols	= 6,
+};
+
+static struct sf_lut mmi_eu40_lg_pc_sf = {
+	.rows		= 10,
+	.cols		= 5,
+	.row_entries	= {100, 200, 300, 400, 500},
+	.percent	= {100, 90, 80, 70, 60, 50, 40, 30, 20, 10},
+	.sf		= {
+			{100, 100, 100, 100, 100},
+			{100, 100, 100, 100, 100},
+			{100, 100, 100, 100, 100},
+			{100, 100, 100, 100, 100},
+			{100, 100, 100, 100, 100},
+			{100, 100, 100, 100, 100},
+			{100, 100, 100, 100, 100},
+			{100, 100, 100, 100, 100},
+			{100, 100, 100, 100, 100},
+			{100, 100, 100, 100, 100}
+	},
+};
+
+static struct pc_temp_ocv_lut mmi_eu40_lg_pc_temp_ocv = {
+	.rows		= 29,
+	.cols		= 3,
+	.temp		= {-10, 23, 60},
+	.percent	= {100, 95, 90, 85, 80, 75, 70, 65, 60, 55,
+				50, 45, 40, 35, 30, 25, 20, 15, 10,
+				9, 8, 7, 6, 5, 4, 3, 2, 1, 0
+	},
+	.ocv		= {
+		 {4300, 4300, 4300},
+		 {4256, 4252, 4240},
+		 {4199, 4196, 4186},
+		 {4146, 4142, 4132},
+		 {4095, 4091, 4082},
+		 {4042, 4044, 4035},
+		 {3984, 3995, 3991},
+		 {3940, 3959, 3953},
+		 {3900, 3921, 3913},
+		 {3865, 3870, 3867},
+		 {3836, 3838, 3836},
+		 {3815, 3816, 3814},
+		 {3798, 3800, 3796},
+		 {3788, 3787, 3781},
+		 {3778, 3779, 3758},
+		 {3765, 3764, 3734},
+		 {3743, 3739, 3710},
+		 {3715, 3700, 3682},
+		 {3697, 3687, 3664},
+		 {3695, 3685, 3662},
+		 {3692, 3683, 3660},
+		 {3686, 3678, 3654},
+		 {3672, 3666, 3638},
+		 {3642, 3640, 3609},
+		 {3596, 3601, 3567},
+		 {3536, 3548, 3513},
+		 {3456, 3477, 3442},
+		 {3336, 3376, 3346},
+		 {3200, 3200, 3200},
+	},
 };
 
 static struct bms_battery_data  mmi_eu40_lg_metering_data = {
 	.fcc			= 3400,
 	.fcc_temp_lut		= &mmi_eu40_lg_fcc_temp,
-	.fcc_sf_lut		= &mmi_eb40_lg_fcc_sf,
-	.pc_temp_ocv_lut	= &mmi_eb40_lg_pc_temp_ocv,
-	.pc_sf_lut		= &mmi_eb40_lg_pc_sf,
+	.fcc_sf_lut		= &mmi_eu40_lg_fcc_sf,
+	.pc_temp_ocv_lut	= &mmi_eu40_lg_pc_temp_ocv,
+	.pc_sf_lut		= &mmi_eu40_lg_pc_sf,
 	.default_rbatt_mohm	= 135,
 };
 
@@ -505,7 +570,7 @@ static struct pm8921_charger_battery_data mmi_eu40_lg_charging_data = {
 	.term_current			= 169,
 	.cool_temp			= 0,
 	.warm_temp			= 45,
-	.max_bat_chg_current		= 3230,
+	.max_bat_chg_current		= 1700,
 	.cool_bat_chg_current		= 0,
 	.warm_bat_chg_current		= 0,
 	.cool_bat_voltage		= 4000,
