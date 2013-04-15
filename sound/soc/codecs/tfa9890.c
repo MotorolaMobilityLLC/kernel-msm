@@ -49,6 +49,7 @@
 #define TFA9890_RATES	SNDRV_PCM_RATE_8000_48000
 #define TFA9890_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE)
 
+#define FIRMWARE_NAME_SIZE     128
 
 struct tfa9890_priv {
 	struct i2c_client *control_data;
@@ -133,6 +134,8 @@ static const struct tfa9890_regs tfa9890_reg_defaults[] = {
 };
 
 /* presets tables per volume step for different modes */
+static char const *fw_path;
+
 static char const *tfa9890_preset_tables[] = {
 	"tfa9890_music_table.preset",
 	"tfa9890_voice_table.preset",
@@ -662,8 +665,17 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 	const struct firmware *fw_coeff;
 	u16 val;
 
+	char *fw_name;
+
+	fw_name = kzalloc(FIRMWARE_NAME_SIZE, GFP_KERNEL);
+	if (!fw_name) {
+		pr_err("tfa9890: Failed to allocate fw_name\n");
+		goto out;
+	}
+
 	/* Load DSP config and firmware files */
-	ret = request_firmware(&fw_speaker, "tfa9890.speaker", codec->dev);
+	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890.speaker", fw_path);
+	ret = request_firmware(&fw_speaker, fw_name, codec->dev);
 	if (ret) {
 		pr_err("tfa9890: Failed to locate speaker model!!");
 		goto out;
@@ -677,8 +689,8 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 			fw_speaker->size, TFA9890_DSP_WRITE, 0);
 	if (ret < 0)
 		goto out;
-
-	ret = request_firmware(&fw_config, "tfa9890.config", codec->dev);
+	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890.config", fw_path);
+	ret = request_firmware(&fw_config, fw_name, codec->dev);
 	if (ret) {
 		pr_err("tfa9890: Failed to locate dsp config!!");
 		goto out;
@@ -697,8 +709,9 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 	ret = tfa9890_set_mode(tfa9890);
 	if (ret < 0)
 		goto out;
+	scnprintf(fw_name, FIRMWARE_NAME_SIZE, "%s/tfa9890.eq", fw_path);
+	ret = request_firmware(&fw_coeff, fw_name, codec->dev);
 
-	ret = request_firmware(&fw_coeff, "tfa9890.eq", codec->dev);
 	if (ret) {
 		pr_err("tfa9890: Failed to locate DSP coefficients");
 		goto out;
@@ -718,8 +731,12 @@ static int tfa9890_load_config(struct tfa9890_priv *tfa9890)
 	val = val | TFA9890_SYSCTRL_CONFIGURED;
 	snd_soc_write(codec, TFA9890_SYS_CTL1_REG, val);
 
+	kfree(fw_name);
+
 	return 0;
 out:
+	kfree(fw_name);
+
 	return -EIO;
 }
 
@@ -793,19 +810,30 @@ static void tfa9890_load_preset(struct work_struct *work)
 	struct snd_soc_codec *codec = tfa9890->codec;
 	int ret;
 	int i;
+	char *preset_name;
+
+	preset_name = kzalloc(FIRMWARE_NAME_SIZE, GFP_KERNEL);
+	if (!preset_name) {
+		tfa9890->dsp_init = TFA9890_DSP_INIT_FAIL;
+		pr_err("tfa9890 : Load preset allocation failure\n");
+		return;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(fw_pst_table); i++) {
+		scnprintf(preset_name, FIRMWARE_NAME_SIZE, "%s/%s",
+				fw_path, tfa9890_preset_tables[i]);
 		ret = request_firmware(&fw_pst_table[i],
-				tfa9890_preset_tables[i],
+				preset_name,
 				codec->dev);
 		if (ret || (fw_pst_table[i]->size !=
 				tfa9890->max_vol_steps*TFA9890_PST_FW_SIZE)) {
 			pr_err("tfa9890: Failed to locate DSP preset table %s",
-					tfa9890_preset_tables[i]);
+					preset_name);
 			tfa9890->dsp_init = TFA9890_DSP_INIT_FAIL;
 			break;
 		}
 	}
+	kfree(preset_name);
 }
 
 static void tfa9890_dsp_init(struct work_struct *work)
@@ -1411,6 +1439,9 @@ tfa9890_of_init(struct i2c_client *client)
 {
 	struct tfa9890_pdata *pdata;
 	struct device_node *np = client->dev.of_node;
+
+	if (of_property_read_string(np, "tfa9890_bin_path", &fw_path))
+		fw_path = ".";
 
 	pdata = devm_kzalloc(&client->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata) {
