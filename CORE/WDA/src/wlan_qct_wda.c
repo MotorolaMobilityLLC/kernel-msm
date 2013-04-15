@@ -5609,6 +5609,8 @@ VOS_STATUS WDA_ProcessAddBASessionReq(tWDA_CbContext *pWDA,
                      (WDI_AddBASessionReqParamsType *)vos_mem_malloc(
                           sizeof(WDI_AddBASessionReqParamsType)) ;
    tWDA_ReqParams *pWdaParams ;
+   WLANTL_STAStateType tlSTAState = 0;
+
    VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_INFO,
                                           "------> %s " ,__func__);
    if(NULL == wdiAddBASessionReqParam) 
@@ -5660,6 +5662,27 @@ VOS_STATUS WDA_ProcessAddBASessionReq(tWDA_CbContext *pWDA,
    pWdaParams->wdaMsgParam = (void *)pAddBAReqParams ;
    /* store Params pass it to WDI */
    pWdaParams->wdaWdiApiMsgParam = (void *)wdiAddBASessionReqParam ;
+
+   /* In TDLS case, there is a possibility that TL hasn't registered peer yet, but
+      the peer thinks that we already setup TDLS link, and send us ADDBA request packet
+   */
+   if((VOS_STATUS_SUCCESS != WDA_TL_GET_STA_STATE(pWDA->pVosContext, pAddBAReqParams->staIdx, &tlSTAState)) ||
+    ((WLANTL_STA_CONNECTED != tlSTAState) && (WLANTL_STA_AUTHENTICATED != tlSTAState)))
+   {
+       VOS_TRACE( VOS_MODULE_ID_WDA, VOS_TRACE_LEVEL_ERROR,
+        "Peer staIdx %d hasn't established yet(%d). Send ADD BA failure to PE.\n", pAddBAReqParams->staIdx, tlSTAState );
+       status = WDI_STATUS_E_NOT_ALLOWED;
+       pAddBAReqParams->status =
+             CONVERT_WDI2SIR_STATUS(status) ;
+       WDA_SendMsg(pWDA, WDA_ADDBA_RSP, (void *)pAddBAReqParams , 0) ;
+       /*Reset the WDA state to READY */
+       pWDA->wdaState = WDA_READY_STATE;
+       vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
+       vos_mem_free(pWdaParams);
+
+       return CONVERT_WDI2VOS_STATUS(status) ;
+   }
+
    status = WDI_AddBASessionReq(wdiAddBASessionReqParam, 
               (WDI_AddBASessionRspCb)WDA_AddBASessionReqCallback, pWdaParams);
    if(IS_WDI_STATUS_FAILURE(status))
@@ -5671,6 +5694,8 @@ VOS_STATUS WDA_ProcessAddBASessionReq(tWDA_CbContext *pWDA,
       pAddBAReqParams->status =
             CONVERT_WDI2SIR_STATUS(status) ;
       WDA_SendMsg(pWDA, WDA_ADDBA_RSP, (void *)pAddBAReqParams , 0) ;
+      /*Reset the WDA state to READY */
+      pWDA->wdaState = WDA_READY_STATE;
       vos_mem_free(pWdaParams->wdaWdiApiMsgParam) ;
       vos_mem_free(pWdaParams);
    }
