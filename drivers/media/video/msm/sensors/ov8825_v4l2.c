@@ -93,9 +93,7 @@ static struct msm_camera_i2c_reg_conf ov8825_prev_settings[] = {
 	{0x3013, 0x39}, /*SC_PLL CTRL_S1*/
 	{0x3104, 0x20}, /*SCCB_PLL*/
 	{0x3106, 0x15}, /*SRB_CTRL*/
-	/*{0x3501, 0x4e},*/ /*AEC_HIGH*/
-	/*{0x3502, 0xa0},*/ /*AEC_LOW*/
-	/*{0x350b, 0x1f},*/ /*AGC*/
+	{0x350b, 0x1f}, /*AGC*/
 	{0x3600, 0x06}, /*ANACTRL0*/
 	{0x3601, 0x34}, /*ANACTRL1*/
 	{0x3700, 0x20}, /*SENCTROL0 Sensor control*/
@@ -183,9 +181,6 @@ static struct msm_camera_i2c_reg_conf ov8825_snap_settings[] = {
 	{0x3013, 0x39}, /*SC_PLL CTRL_S1*/
 	{0x3104, 0x20}, /*SCCB_PLL*/
 	{0x3106, 0x11}, /*SRB_CTRL*/
-	/*{0x3501, 0x9a},*/ /*AEC_HIGH*/
-	/*{0x3502, 0xa0},*/ /*AEC_LOW*/
-	/*{0x350b, 0x1f},*/ /*AGC*/
 	{0x3600, 0x07}, /*ANACTRL0*/
 	{0x3601, 0x33}, /*ANACTRL1*/
 	{0x3700, 0x10}, /*SENCTROL0 Sensor control*/
@@ -263,7 +258,6 @@ static struct msm_camera_i2c_reg_conf ov8825_recommend_settings[] = {
 	{0x3010, 0x00},
 	{0x3018, 0x00},
 	{0x3300, 0x00},
-	{0x3500, 0x00},
 	{0x3503, 0x07},
 	{0x3509, 0x00},
 	{0x3602, 0x42},
@@ -435,10 +429,10 @@ static struct msm_camera_i2c_reg_conf ov8825_recommend_settings[] = {
 	{0x5848, 0x00},
 	{0x5849, 0xd5},
 	{0x3503, 0x07},
-	/*{0x3500, 0x00},*/
-	/*{0x3501, 0x27},*/
-	/*{0x3502, 0x00},*/
-	/*{0x350b, 0xff},*/
+	{0x3500, 0x00},
+	{0x3501, 0x4e},
+	{0x3502, 0xa0},
+	{0x350b, 0xff},
 	{0x3400, 0x04},
 	{0x3401, 0x00},
 	{0x3402, 0x04},
@@ -514,92 +508,6 @@ static struct msm_camera_i2c_reg_conf ov8825_recommend_settings[] = {
 	{0x4818, 0x00},
 	{0x4819, 0xe0},
 	{0x482a, 0x05},
-
-	{0x3003, 0xce}, /*PLL_CTRL0*/
-#if OV8825_2LANES
-	{0x3004, 0xd4}, /*PLL_CTRL1*/
-	{0x3005, 0x00}, /*PLL_CTRL2*/
-#else
-	{0x3004, 0xce}, /*PLL_CTRL1*/
-	{0x3005, 0x10}, /*PLL_CTRL2*/
-#endif
-	{0x3006, 0x10}, /*PLL_CTRL3*/
-	{0x3007, 0x3b}, /*PLL_CTRL4*/
-#if OV8825_2LANES
-	{0x3011, 0x01}, /*MIPI_Lane_4_Lane*/
-#else
-	{0x3011, 0x02}, /*MIPI_Lane_4_Lane*/
-#endif
-	{0x3012, 0x80}, /*SC_PLL CTRL_S0*/
-	{0x3013, 0x39}, /*SC_PLL CTRL_S1*/
-	{0x3104, 0x20}, /*SCCB_PLL*/
-	{0x3106, 0x15}, /*SRB_CTRL*/
-	{0x3501, 0x4e}, /*AEC_HIGH*/
-	{0x3502, 0xa0}, /*AEC_LOW*/
-	{0x350b, 0x1f}, /*AGC*/
-	{0x3600, 0x06}, /*ANACTRL0*/
-	{0x3601, 0x34}, /*ANACTRL1*/
-	{0x3700, 0x20}, /*SENCTROL0 Sensor control*/
-	{0x3702, 0x50}, /*SENCTROL2 Sensor control*/
-	{0x3703, 0xcc}, /*SENCTROL3 Sensor control*/
-	{0x3704, 0x19}, /*SENCTROL4 Sensor control*/
-	{0x3705, 0x14}, /*SENCTROL5 Sensor control*/
-	{0x3706, 0x4b}, /*SENCTROL6 Sensor control*/
-	{0x3707, 0x63}, /*SENCTROL7 Sensor control*/
-	{0x3708, 0x84}, /*SENCTROL8 Sensor control*/
-	{0x3709, 0x40}, /*SENCTROL9 Sensor control*/
-	{0x370a, 0x12}, /*SENCTROLA Sensor control*/
-	{0x370e, 0x00}, /*SENCTROLE Sensor control*/
-	{0x3711, 0x0f}, /*SENCTROL11 Sensor control*/
-	{0x3712, 0x9c}, /*SENCTROL12 Sensor control*/
-	{0x3724, 0x01}, /*Reserved*/
-	{0x3725, 0x92}, /*Reserved*/
-	{0x3726, 0x01}, /*Reserved*/
-	{0x3727, 0xa9}, /*Reserved*/
-	{0x3800, 0x00}, /*HS(HREF start High)*/
-	{0x3801, 0x00}, /*HS(HREF start Low)*/
-	{0x3802, 0x00}, /*VS(Vertical start High)*/
-	{0x3803, 0x00}, /*VS(Vertical start Low)*/
-	{0x3804, 0x0c}, /*HW = 3295*/
-	{0x3805, 0xdf}, /*HW*/
-	{0x3806, 0x09}, /*VH = 2459*/
-	{0x3807, 0x9b}, /*VH*/
-	{0x3808, 0x06}, /*ISPHO = 1632*/
-	{0x3809, 0x60}, /*ISPHO*/
-	{0x380a, 0x04}, /*ISPVO = 1224*/
-	{0x380b, 0xc8}, /*ISPVO*/
-	{0x380c, 0x0d}, /*HTS = 3516*/
-	{0x380d, 0xbc}, /*HTS*/
-	{0x380e, 0x04}, /*VTS = 1264*/
-	{0x380f, 0xf0}, /*VTS*/
-	{0x3810, 0x00}, /*HOFF = 8*/
-	{0x3811, 0x08}, /*HOFF*/
-	{0x3812, 0x00}, /*VOFF = 4*/
-	{0x3813, 0x04}, /*VOFF*/
-	{0x3814, 0x31}, /*X INC*/
-	{0x3815, 0x31}, /*Y INC*/
-	{0x3820, 0x87}, /*Timing Reg20:Vflip*/
-	{0x3821, 0x11}, /*Timing Reg21:Hmirror*/
-	{0x3f00, 0x00}, /*PSRAM Ctrl0*/
-	{0x3f01, 0xfc}, /*PSRAM Ctrl1*/
-	{0x3f05, 0x10}, /*PSRAM Ctrl5*/
-	{0x4600, 0x04}, /*VFIFO Ctrl0*/
-	{0x4601, 0x00}, /*VFIFO Read ST High*/
-	{0x4602, 0x30}, /*VFIFO Read ST Low*/
-#if OV8825_2LANES
-	{0x4837, 0x16}, /*MIPI PCLK PERIOD*/
-#else
-	{0x4837, 0x27}, /*MIPI PCLK PERIOD*/
-#endif
-	{0x5068, 0x00}, /*HSCALE_CTRL*/
-	{0x506a, 0x00}, /*VSCALE_CTRL*/
-	{0x5c00, 0x80}, /*PBLC CTRL00*/
-	{0x5c01, 0x00}, /*PBLC CTRL01*/
-	{0x5c02, 0x00}, /*PBLC CTRL02*/
-	{0x5c03, 0x00}, /*PBLC CTRL03*/
-	{0x5c04, 0x00}, /*PBLC CTRL04*/
-	{0x5c08, 0x10}, /*PBLC CTRL08*/
-	{0x6900, 0x61}, /*CADC CTRL00*/
 };
 
 static struct v4l2_subdev_info ov8825_subdev_info[] = {
@@ -667,7 +575,7 @@ static struct msm_sensor_id_info_t ov8825_id_info = {
 };
 
 static struct msm_sensor_exp_gain_info_t ov8825_exp_gain_info = {
-	.coarse_int_time_addr = 0x3501,
+	.coarse_int_time_addr = 0x3500,
 	.global_gain_addr = 0x350A,
 	.vert_offset = 6,
 };
@@ -926,7 +834,7 @@ static int32_t ov8825_write_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 	int_time[1] = line >> 4;
 	int_time[2] = line << 4;
 	msm_camera_i2c_write_seq(s_ctrl->sensor_i2c_client,
-		s_ctrl->sensor_exp_gain_info->coarse_int_time_addr-1,
+		s_ctrl->sensor_exp_gain_info->coarse_int_time_addr,
 		&int_time[0], 3);
 	msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 		s_ctrl->sensor_exp_gain_info->global_gain_addr, gain,
@@ -947,7 +855,7 @@ static int32_t ov8825_write_pic_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 	if (line > (fl_lines - offset))
 		fl_lines = line + offset;
 	CDBG("ov8825_write_exp_gain: %d %d %d\n", fl_lines, gain, line);
-	/*s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);*/
+	s_ctrl->func_tbl->sensor_group_hold_on(s_ctrl);
 	msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 		s_ctrl->sensor_output_reg_addr->frame_length_lines, fl_lines,
 		MSM_CAMERA_I2C_WORD_DATA);
@@ -955,7 +863,7 @@ static int32_t ov8825_write_pic_exp_gain(struct msm_sensor_ctrl_t *s_ctrl,
 	int_time[1] = line >> 4;
 	int_time[2] = line << 4;
 	msm_camera_i2c_write_seq(s_ctrl->sensor_i2c_client,
-		s_ctrl->sensor_exp_gain_info->coarse_int_time_addr-1,
+		s_ctrl->sensor_exp_gain_info->coarse_int_time_addr,
 		&int_time[0], 3);
 	msm_camera_i2c_write(s_ctrl->sensor_i2c_client,
 		s_ctrl->sensor_exp_gain_info->global_gain_addr, gain,
