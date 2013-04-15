@@ -162,7 +162,7 @@ static int max17048_set_reset(struct i2c_client *client)
 static int max17048_get_capacity_from_soc(void)
 {
 	u8 buf[2];
-	long batt_soc = 0;
+	int batt_soc = 0;
 
 	if (ref == NULL)
 		return 100;
@@ -172,8 +172,12 @@ static int max17048_get_capacity_from_soc(void)
 
 	pr_debug("%s: SOC raw = 0x%x%x\n", __func__, buf[0], buf[1]);
 
-	batt_soc = ((buf[0]*256)+buf[1])*19531; /* 0.001953125 */
+	batt_soc = (((int)buf[0]*256)+buf[1])*19531; /* 0.001953125 */
 	batt_soc /= 10000000;
+
+	if (batt_soc > 100)
+		batt_soc = 100;
+
 	return batt_soc;
 }
 
