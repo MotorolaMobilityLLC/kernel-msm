@@ -271,7 +271,13 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.mem_hid = MEMTYPE_EBI1,
 #endif
 	.mdp_iommu_split_domain = 1,
+	.cont_splash_enabled = 0x01,
 };
+
+static char mipi_dsi_splash_is_enabled(void)
+{
+	return mdp_pdata.cont_splash_enabled;
+}
 
 void __init apq8064_mdp_writeback(struct memtype_reserve* reserve_table)
 {
@@ -600,6 +606,7 @@ static int mipi_dsi_panel_power(int on)
 
 static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 	.dsi_power_save = mipi_dsi_panel_power,
+	.splash_is_enabled = mipi_dsi_splash_is_enabled,
 };
 
 #if 0
