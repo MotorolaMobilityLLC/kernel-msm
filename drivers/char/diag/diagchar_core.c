@@ -729,21 +729,22 @@ void diag_cmp_logging_modes_diagfwd_bridge(int old_mode, int new_mode)
 				diag_hsic[i].hsic_data_requested =
 					driver->real_time_mode ? 1 : 0;
 		diagfwd_connect_bridge(0);
-	} else if (old_mode == USB_MODE && new_mode
-					 == NO_LOGGING_MODE) {
+	} else if ((old_mode == USB_MODE || old_mode == TTY_MODE) &&
+			new_mode == NO_LOGGING_MODE) {
 		diagfwd_disconnect_bridge(0);
-	} else if (old_mode == NO_LOGGING_MODE && new_mode
-					== USB_MODE) {
+	} else if (old_mode == NO_LOGGING_MODE &&
+			(new_mode == USB_MODE || new_mode == TTY_MODE)) {
+		diagfwd_connect();
 		diagfwd_connect_bridge(0);
-	} else if (old_mode == USB_MODE && new_mode
-					== MEMORY_DEVICE_MODE) {
+	} else if ((old_mode == USB_MODE || old_mode == TTY_MODE) &&
+			new_mode == MEMORY_DEVICE_MODE) {
 		if (driver->real_time_mode)
 			diagfwd_cancel_hsic(REOPEN_HSIC);
 		else
 			diagfwd_cancel_hsic(DONT_REOPEN_HSIC);
 		diagfwd_connect_bridge(0);
-	} else if (old_mode == MEMORY_DEVICE_MODE && new_mode
-					== USB_MODE) {
+	} else if (old_mode == MEMORY_DEVICE_MODE &&
+			(new_mode == USB_MODE || new_mode == TTY_MODE)) {
 		diag_clear_hsic_tbl();
 		diagfwd_cancel_hsic(REOPEN_HSIC);
 		diagfwd_connect_bridge(0);
@@ -899,6 +900,14 @@ int diag_switch_logging(unsigned long ioarg)
 		diagfwd_connect();
 		diag_cmp_logging_modes_diagfwd_bridge(temp,
 						driver->logging_mode);
+	} else if (temp == USB_MODE && driver->logging_mode == TTY_MODE) {
+		usb_diag_close(driver->legacy_ch);
+		driver->legacy_ch = tty_diag_channel_open(DIAG_LEGACY,
+					driver, diag_usb_legacy_notifier);
+	} else if (temp == TTY_MODE && driver->logging_mode == USB_MODE) {
+		tty_diag_channel_close(driver->legacy_ch);
+		driver->legacy_ch = usb_diag_open(DIAG_LEGACY,
+					driver, diag_usb_legacy_notifier);
 	}
 	success = 1;
 	return success;
