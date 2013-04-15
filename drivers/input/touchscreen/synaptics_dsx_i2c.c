@@ -877,6 +877,25 @@ static int synaptics_dsx_ic_reset(struct synaptics_rmi4_data *rmi4_data)
 	return 0;
 }
 
+static int synaptics_dsx_alloc_input(struct synaptics_rmi4_data *rmi4_data)
+{
+	rmi4_data->input_dev = input_allocate_device();
+	if (IS_ERR_OR_NULL(rmi4_data->input_dev))
+		return PTR_ERR(rmi4_data->input_dev);
+
+	rmi4_data->input_dev->name = DRIVER_NAME;
+	rmi4_data->input_dev->phys = INPUT_PHYS_NAME;
+	rmi4_data->input_dev->id.bustype = BUS_I2C;
+	rmi4_data->input_dev->dev.parent = &rmi4_data->i2c_client->dev;
+
+	set_bit(EV_SYN, rmi4_data->input_dev->evbit);
+	input_set_drvdata(rmi4_data->input_dev, rmi4_data);
+
+	pr_debug("allocated input device\n");
+
+	return 0;
+}
+
 #define DSX(a)	(#a)
 static const char * const synaptics_state_names[] = SYNAPTICS_DSX_STATES;
 #undef DSX
@@ -2723,6 +2742,7 @@ static void synaptics_rmi4_cleanup(struct synaptics_rmi4_data *rmi4_data)
 static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 {
 	int current_state, retval;
+	bool need_to_query = false;
 	unsigned char command = 0x01;
 	/*
 	 * Enforce touch release event report to work-around such event
@@ -2741,8 +2761,18 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 	current_state = synaptics_dsx_get_state_safe(rmi4_data);
 
 	if (rmi4_data->reset_on_resume) {
-		if (current_state == STATE_UNKNOWN)
+		if (current_state == STATE_UNKNOWN) {
 			synaptics_rmi4_cleanup(rmi4_data);
+
+			if (rmi4_data->input_registered) {
+				input_unregister_device(rmi4_data->input_dev);
+				rmi4_data->input_dev = NULL;
+				rmi4_data->input_registered = false;
+
+				pr_debug("de-allocated input device\n");
+			}
+			need_to_query = true;
+		}
 
 		/* do hard reset instead of soft */
 		synaptics_dsx_ic_reset(rmi4_data);
@@ -2761,7 +2791,17 @@ static int synaptics_rmi4_reset_device(struct synaptics_rmi4_data *rmi4_data)
 		msleep(100);
 	}
 
-	if (current_state == STATE_UNKNOWN) {
+	if (need_to_query) {
+		if (!rmi4_data->input_dev) {
+			retval = synaptics_dsx_alloc_input(rmi4_data);
+			if (retval < 0) {
+				dev_err(&rmi4_data->i2c_client->dev,
+					"%s: Failed to allocate input device\n",
+					__func__);
+				return retval;
+			}
+		}
+
 		retval = synaptics_rmi4_query_device(rmi4_data);
 		if (retval < 0) {
 			dev_err(&rmi4_data->i2c_client->dev,
@@ -2977,24 +3017,17 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 	/* get irq number initialized before calling reset */
 	rmi4_data->irq = gpio_to_irq(platform_data->irq_gpio);
 
+	i2c_set_clientdata(client, rmi4_data);
+
 	synaptics_dsx_ic_reset(rmi4_data);
 
-	rmi4_data->input_dev = input_allocate_device();
-	if (rmi4_data->input_dev == NULL) {
+	retval = synaptics_dsx_alloc_input(rmi4_data);
+	if (retval < 0) {
 		dev_err(&client->dev,
 				"%s: Failed to allocate input device\n",
 				__func__);
-		retval = -ENOMEM;
 		goto err_input_device;
 	}
-
-	i2c_set_clientdata(client, rmi4_data);
-
-	rmi4_data->input_dev->name = DRIVER_NAME;
-	rmi4_data->input_dev->phys = INPUT_PHYS_NAME;
-	rmi4_data->input_dev->id.bustype = BUS_I2C;
-	rmi4_data->input_dev->dev.parent = &client->dev;
-	input_set_drvdata(rmi4_data->input_dev, rmi4_data);
 
 	retval = synaptics_rmi4_query_device(rmi4_data);
 	if (retval < 0) {
@@ -3003,8 +3036,6 @@ static int __devinit synaptics_rmi4_probe(struct i2c_client *client,
 				__func__);
 		goto err_query_device;
 	}
-
-	set_bit(EV_SYN, rmi4_data->input_dev->evbit);
 
 	rmi4_data->regulator = regulator_get(&client->dev, "touch_vdd");
 	if (IS_ERR(rmi4_data->regulator)) {
