@@ -73,7 +73,7 @@
 			ti,tpa6165-always-on-micbias = <1>;
 		};
 
-		tfa9890@34 {
+		ptfa9890: tfa9890@34 {
 			compatible = "nxp,tfa9890";
 			reg = <0x34>;
 			gpios = <&pm8921_gpio 18 0>;     /* RESET */
