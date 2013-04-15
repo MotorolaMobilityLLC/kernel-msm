@@ -117,3 +117,8 @@
 		overdrive_voltage = <0xA0>;
 	};
 };
+
+/* Audio Firmware Files selection: Obake */
+&ptfa9890 {
+        tfa9890_bin_path = "obake";
+};
