@@ -872,6 +872,8 @@ static int synaptics_dsx_ic_reset(struct synaptics_rmi4_data *rmi4_data)
 		return -ETIMEDOUT;
 	}
 
+	/* delay extra 0.5 ms to ensure 1st i2c bus accessing works correctly */
+	udelay(500);
 	pr_debug("successful reset took %ums\n",
 				jiffies_to_msecs(jiffies-start));
 	return 0;
