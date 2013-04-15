@@ -166,3 +166,8 @@
 			<0>;                 /* MIPI_BUSY */
 	};
 };
+
+/* Audio Firmware Files selection: Obakem */
+&ptfa9890 {
+        tfa9890_bin_path = "obakem";
+};
