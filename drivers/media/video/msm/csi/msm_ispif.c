@@ -288,6 +288,7 @@ static int msm_ispif_config(struct ispif_device *ispif,
 		msm_ispif_enable_intf_cids(ispif, intftype,
 			ispif_params[i].cid_mask, vfe_intf);
 	}
+	msm_camera_io_w(0x40, ispif->base + ISPIF_CTRL_ADDR);
 
 	msm_camera_io_w(ISPIF_IRQ_STATUS_MASK, ispif->base +
 					ISPIF_IRQ_MASK_ADDR);
