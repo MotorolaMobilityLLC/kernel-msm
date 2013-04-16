@@ -147,6 +147,7 @@ static int restart_level_set(const char *val, struct kernel_param *kp)
 {
 	int ret;
 	int old_val = restart_level;
+	int subtype;
 
 	if (cpu_is_msm9615()) {
 		pr_err("Only Phase 1 subsystem restart is supported\n");
@@ -159,7 +160,9 @@ static int restart_level_set(const char *val, struct kernel_param *kp)
 
 	switch (restart_level) {
 	case RESET_SUBSYS_INDEPENDENT:
-		if (socinfo_get_platform_subtype() == PLATFORM_SUBTYPE_SGLTE) {
+		subtype = socinfo_get_platform_subtype();
+		if ((subtype == PLATFORM_SUBTYPE_SGLTE) ||
+			(subtype == PLATFORM_SUBTYPE_SGLTE2)) {
 			pr_info("Phase 3 is currently unsupported. Using phase 2 instead.\n");
 			restart_level = RESET_SUBSYS_COUPLED;
 		}
