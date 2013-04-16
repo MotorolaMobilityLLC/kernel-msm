@@ -86,16 +86,9 @@
 #include "wmmApsd.h"
 #endif
 
-#ifdef VOSS_ENABLED
 #include "vos_types.h"
 #include "vos_packet.h"
 #include "vos_memory.h"
-#endif
-
-#ifdef WLAN_FEATURE_P2P
-/* In P2P GO case, we want to call scan on NOA start indication from limProcessMessages */
-extern void __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf);
-#endif
 
 void limLogSessionStates(tpAniSirGlobal pMac);
 
@@ -156,9 +149,8 @@ defMsgDecision(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         (limMsg->type != WDA_WOWL_ENTER_RSP) &&
         (limMsg->type != WDA_WOWL_EXIT_RSP) &&
         (limMsg->type != WDA_SWITCH_CHANNEL_RSP) &&
-#ifdef WLAN_FEATURE_P2P 
         (limMsg->type != WDA_P2P_NOA_ATTR_IND) &&
-#endif
+        (limMsg->type != WDA_P2P_NOA_START_IND) &&
 #ifdef FEATURE_OEM_DATA_SUPPORT
         (limMsg->type != WDA_START_OEM_DATA_RSP) &&
 #endif
@@ -225,48 +217,6 @@ __limHandleBeacon(tpAniSirGlobal pMac, tpSirMsgQ pMsg, tpPESession psessionEntry
 void limProcessNormalHddMsg(tpAniSirGlobal pMac, tSirMsgQ *pLimMsg, tANI_U8 fRspReqd);
 
 /**
- * limProcessMessageQueue
- *
- *FUNCTION:
- * This function is called by LIM thread entry function. This
- * function fetches messages posted to the message queue
- * limMsgQ.
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  pMac - Pointer to Global MAC structure
- * @return None
- */
-
-void
-limProcessMessageQueue(tpAniSirGlobal pMac)
-{
-    tSirMsgQ  limMsg = { 0, 0, 0 };
-
-    if(pMac->gDriverType == eDRIVER_TYPE_MFG)
-    {
-        return;
-    }
-
-    if (tx_queue_receive( &pMac->sys.gSirLimMsgQ, (void *) &limMsg, TX_WAIT_FOREVER)
-            == TX_SUCCESS)
-    {
-        PELOG3(limLog(pMac, LOG3, FL("LIM Received message %s\n"), limMsgStr(limMsg.type));)
-        limPrintMsgInfo(pMac, LOG3, &limMsg);
-        limMessageProcessor(pMac, &limMsg);
-    } // if (tx_queue_receive)
-    
-} /*** end limProcessMessageQueue() ***/
-
-
-
-/**
  * limDeferMsg()
  *
  *FUNCTION:
@@ -291,29 +241,17 @@ tANI_U32
 limDeferMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg)
 {
     tANI_U32 retCode = TX_SUCCESS;
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-   PELOG3(limLog(pMac, LOG3, FL("Deferring message %X in Learn mode\n"),
-           pMsg->type);
-    limPrintMsgName(pMac, LOG3, pMsg->type);)
-    retCode = tx_queue_send(&pMac->sys.gSirLimDeferredMsgQ,
-                            pMsg,
-                            TX_NO_WAIT);
+
+    retCode = limWriteDeferredMsgQ(pMac, pMsg);
+
     if (retCode == TX_SUCCESS)
-        pMac->lim.gLimNumDeferredMsgs++;
-#else
-
-        retCode = limWriteDeferredMsgQ(pMac, pMsg);
-
-#endif
-    if(retCode == TX_SUCCESS)
-        {
-            MTRACE(macTraceMsgRx(pMac, NO_SESSION, LIM_TRACE_MAKE_RXMSG(pMsg->type, LIM_MSG_DEFERRED));)
-        }
+    {
+        MTRACE(macTraceMsgRx(pMac, NO_SESSION, LIM_TRACE_MAKE_RXMSG(pMsg->type, LIM_MSG_DEFERRED));)
+    }
     else
-        {
-            MTRACE(macTraceMsgRx(pMac, NO_SESSION, LIM_TRACE_MAKE_RXMSG(pMsg->type, LIM_MSG_DROPPED));)
-        }
-
+    {
+        MTRACE(macTraceMsgRx(pMac, NO_SESSION, LIM_TRACE_MAKE_RXMSG(pMsg->type, LIM_MSG_DROPPED));)
+    }
 
     return retCode;
 } /*** end limDeferMsg() ***/
@@ -374,12 +312,10 @@ limHandleFramesInScanState(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pRxPa
     {
       limProcessProbeReqFrame_multiple_BSS(pMac, pRxPacketInfo, psessionEntry);
     }
-#if defined WLAN_FEATURE_P2P
     else if ((fc.type == SIR_MAC_MGMT_FRAME) && (fc.subType == SIR_MAC_MGMT_ACTION))
     {
        limProcessActionFrameNoSession( pMac, pRxPacketInfo);
     }
-#endif
     else
     {
         *deferMsg = true;
@@ -401,93 +337,6 @@ limHandleFramesInScanState(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pRxPa
 \ -------------------------------------------------------------- */
 static void limHandleUnknownA2IndexFrames(tpAniSirGlobal pMac, void *pRxPacketInfo,tpPESession psessionEntry)
 {
-#ifndef ANI_CHIPSET_VOLANS
-    tpSirMacDataHdr3a pMacHdr;
-
-    /** This prevents from disassoc/deauth being sent in a burst,
-        and gLimDisassocFrameCredit is reset for every 10 seconds.*/
-    if (pMac->lim.gLimDisassocFrameCredit > pMac->lim.gLimDisassocFrameThreshold)
-        return;
-
-    pMac->lim.gLimDisassocFrameCredit++;
-
-    pMacHdr = WDA_GET_RX_MPDUHEADER3A(pRxPacketInfo);
-
-    if (limIsGroupAddr(pMacHdr->addr2))
-    {
-        PELOG2(limLog(pMac, LOG2, FL("Ignoring A2 Invalid Packet received for MC/BC:\n"));
-        limPrintMacAddr(pMac, pMacHdr->addr2, LOG2);)
-
-        return;
-    }
-
-    if (((psessionEntry->limSystemRole == eLIM_AP_ROLE) || (psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE) )&&
-        (psessionEntry->limMlmState == eLIM_MLM_BSS_STARTED_STATE))
-    {
-        switch (pMacHdr->fc.type)
-        {
-            case SIR_MAC_MGMT_FRAME:
-                switch (pMacHdr->fc.subType)
-                {
-                    case SIR_MAC_MGMT_ACTION:
-                        // Send Disassociation frame to
-                        // sender if role is AP
-                        PELOG1(limLog(pMac, LOG1, FL("Send Disassoc Frame due to Invalid Addr2 packet"));
-                        limPrintMacAddr(pMac, pMacHdr->addr2, LOG1);)
-                        limSendDisassocMgmtFrame(pMac,
-                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2, psessionEntry, FALSE);
-                        break;
-
-                    default:
-                        break;
-
-                }
-                break;
-
-            case SIR_MAC_CTRL_FRAME:
-                switch (pMacHdr->fc.subType)
-                {
-                    case SIR_MAC_CTRL_PS_POLL:
-                    case SIR_MAC_CTRL_BAR:
-                        // Send Disassociation frame to
-                        // sender if role is AP
-                        PELOG1(limLog(pMac, LOG1, FL("Send Disassoc Frame due to Invalid Addr2 packet"));
-                        limPrintMacAddr(pMac, pMacHdr->addr2, LOG1);)
-                        limSendDisassocMgmtFrame(pMac,
-                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2, psessionEntry, FALSE);
-                        break;
-
-                    default:
-                        break;
-                }
-                break;
-
-            case SIR_MAC_DATA_FRAME:
-                switch (pMacHdr->fc.subType)
-                {
-                    case SIR_MAC_DATA_NULL:
-                    case SIR_MAC_DATA_QOS_NULL:
-                        // Send Disassociation frame to
-                        // sender if role is AP
-                        PELOG1(limLog(pMac, LOG1, FL("Send Disassoc Frame due to Invalid Addr2 packet"));
-                        limPrintMacAddr(pMac, pMacHdr->addr2, LOG1);)
-                        limSendDisassocMgmtFrame(pMac,
-                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2, psessionEntry, FALSE);
-                        break;
-
-                    default:
-                        // Send Deauthentication frame to
-                        // sender if role is AP
-                        PELOG1(limLog(pMac, LOG1, FL("Sending Deauth frame due to Invalid Addr2 packet"));
-                        limPrintMacAddr(pMac, pMacHdr->addr2, LOG1);)
-                        limSendDeauthMgmtFrame(pMac,
-                           eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMacHdr->addr2,psessionEntry);
-                        break;
-                }
-                break;
-        }
-    }
-#else
       /* addr2 mismatch interrupt occurred this means previous 
        disassociation was not successful
        In Volans pRxPacketInfo only contains pointer 48-bit address2 field */
@@ -495,11 +344,9 @@ static void limHandleUnknownA2IndexFrames(tpAniSirGlobal pMac, void *pRxPacketIn
        //Dinesh need one more arguement. 
        //limSendDisassocMgmtFrame(pMac, eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON,(tANI_U8 *) pRxPacketInfo);
     //TODO: verify this   
-#if defined WLAN_FEATURE_P2P
     //This could be a public action frame.
     if( psessionEntry->limSystemRole == eLIM_P2P_DEVICE_ROLE )
         limProcessActionFrameNoSession(pMac, (tANI_U8 *) pRxPacketInfo);
-#endif
 
 #ifdef FEATURE_WLAN_TDLS
     {
@@ -546,12 +393,10 @@ static void limHandleUnknownA2IndexFrames(tpAniSirGlobal pMac, void *pRxPacketIn
     }
 #endif
 
-#endif
 
     return;
 }
 
-#ifdef WLAN_FEATURE_P2P
 /**
  * limCheckMgmtRegisteredFrames()
  *
@@ -659,7 +504,6 @@ limCheckMgmtRegisteredFrames(tpAniSirGlobal pMac, tANI_U8 *pBd,
 
     return match;
 } /*** end  limCheckMgmtRegisteredFrames() ***/
-#endif /* WLAN_FEATURE_P2P */
 
 
 /**
@@ -758,9 +602,7 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
         if((fc.subType != SIR_MAC_MGMT_PROBE_RSP )&&
             (fc.subType != SIR_MAC_MGMT_BEACON)&&
             (fc.subType != SIR_MAC_MGMT_PROBE_REQ)
-#if defined WLAN_FEATURE_P2P
             && (fc.subType != SIR_MAC_MGMT_ACTION ) //Public action frame can be received from non-associated stations.
-#endif
           )
         {
 
@@ -770,11 +612,16 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
                limPktFree(pMac, HAL_TXRX_FRM_802_11_MGMT, pRxPacketInfo, limMsg->bodyptr);
                return;
             }
-        } 
+        }
+        //  For p2p resp frames search for valid session with DA as
+        //  BSSID will be SA and session will be present with DA only
+        if(fc.subType == SIR_MAC_MGMT_ACTION )
+        {
+           psessionEntry = peFindSessionByBssid(pMac,pHdr->da,&sessionId);
+        }
     }
 
 
-#ifdef WLAN_FEATURE_P2P 
     /* Check if frame is registered by HDD */
     if(limCheckMgmtRegisteredFrames(pMac, pRxPacketInfo, psessionEntry))
     {        
@@ -782,7 +629,6 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
         limPktFree(pMac, HAL_TXRX_FRM_802_11_MGMT, pRxPacketInfo, limMsg->bodyptr);
         return;
     }
-#endif 
 
 
 
@@ -905,19 +751,15 @@ limHandle80211Frames(tpAniSirGlobal pMac, tpSirMsgQ limMsg, tANI_U8 *pDeferMsg)
                     break;
 
                 case SIR_MAC_MGMT_ACTION:
-#if defined WLAN_FEATURE_P2P
                    if(psessionEntry == NULL)
                       limProcessActionFrameNoSession(pMac, pRxPacketInfo);
                    else
                    {
-#endif
                       if (WDA_GET_RX_UNKNOWN_UCAST(pRxPacketInfo))
                          limHandleUnknownA2IndexFrames(pMac, pRxPacketInfo,psessionEntry);
                      else
                          limProcessActionFrame(pMac, pRxPacketInfo,psessionEntry);
-#if defined WLAN_FEATURE_P2P
                    }
-#endif
                    break;
                 default:
                     // Received Management frame of 'reserved' subtype
@@ -1186,9 +1028,12 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
                 // Defer processsing this message
                 if (limDeferMsg(pMac, limMsg) != TX_SUCCESS)
                 {
+                    if(!(pMac->lim.deferredMsgCnt & 0xF))
+                    {
                     PELOGE(limLog(pMac, LOGE, FL("Unable to Defer message(0x%X) limSmeState %d (prev sme state %d) sysRole %d mlm state %d (prev mlm state %d)\n"),
                         limMsg->type, pMac->lim.gLimSmeState,  pMac->lim.gLimPrevSmeState,
                         pMac->lim.gLimSystemRole,  pMac->lim.gLimMlmState,  pMac->lim.gLimPrevMlmState);)
+                    }
                     limLogSessionStates(pMac);
                     limPrintMsgName(pMac, LOGE, limMsg->type);
                 }
@@ -1236,7 +1081,6 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
             pMac->lim.numBbt++;
 #endif
 
-#ifdef VOSS_ENABLED
             {
                 v_U16_t     pktLen = 0;
                 vos_pkt_t  *pVosPkt;
@@ -1306,15 +1150,10 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
                     vos_pkt_return_packet(pVosPkt);
                 }
             }
-#else
-            limHandle80211Frames(pMac, limMsg);
-#endif
             break;
 
         case eWNI_SME_SCAN_REQ:
-#ifdef WLAN_FEATURE_P2P
         case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
-#endif
         case eWNI_SME_DISASSOC_REQ:
         case eWNI_SME_DEAUTH_REQ:
         case eWNI_SME_STA_STAT_REQ:
@@ -1323,6 +1162,9 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case eWNI_SME_STAT_SUMM_REQ:
         case eWNI_SME_GET_SCANNED_CHANNEL_REQ:
         case eWNI_SME_GET_STATISTICS_REQ:
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+        case eWNI_SME_GET_ROAM_RSSI_REQ:
+#endif
 #ifdef FEATURE_OEM_DATA_SUPPORT
         case eWNI_SME_OEM_DATA_REQ:
 #endif
@@ -1336,6 +1178,7 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case eWNI_SME_TDLS_LINK_START_REQ:
         case eWNI_SME_TDLS_TEARDOWN_REQ:
 #endif
+        case eWNI_SME_RESET_AP_CAPS_CHANGED:
             // These messages are from HDD
             limProcessNormalHddMsg(pMac, limMsg, true);  //need to response to hdd
             break;
@@ -1394,10 +1237,8 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 #endif
         case eWNI_SME_ADD_STA_SELF_REQ:
         case eWNI_SME_DEL_STA_SELF_REQ:
-#ifdef WLAN_FEATURE_P2P
         case eWNI_SME_REGISTER_MGMT_FRAME_REQ:
         case eWNI_SME_UPDATE_NOA:
-#endif
             // These messages are from HDD
             limProcessNormalHddMsg(pMac, limMsg, false);   //no need to response to hdd
             break;
@@ -1425,7 +1266,6 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
             }
         }
             break;
-#if defined WLAN_FEATURE_P2P
         case eWNI_SME_SEND_ACTION_FRAME_IND:
             limSendP2PActionFrame(pMac, limMsg);
             palFreeMemory(pMac->hHdd, (tANI_U8 *)limMsg->bodyptr);
@@ -1441,36 +1281,43 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         {
             tpPESession psessionEntry = &pMac->lim.gpSession[0];
             tANI_U8  i;
+            tANI_U8 p2pGOExists = 0;
             
             limLog(pMac, LOG1, "LIM received NOA start %x\n", limMsg->type);
+
+            /* Since insert NOA is done and NOA start msg received, we should deactivate the Insert NOA timer */
+            limDeactivateAndChangeTimer(pMac, eLIM_INSERT_SINGLESHOT_NOA_TIMER);
+
             for(i=0; i < pMac->lim.maxBssId; i++)
             {
                 psessionEntry = &pMac->lim.gpSession[i];
                 if   ( (psessionEntry != NULL) && (psessionEntry->valid) &&
                     (psessionEntry->pePersona == VOS_P2P_GO_MODE))
                 { //Save P2P NOA start attributes for P2P Go persona
+                    p2pGOExists = 1;
                     palCopyMemory(pMac->hHdd, &psessionEntry->p2pGoPsNoaStartInd, limMsg->bodyptr, sizeof(tSirP2PNoaStart));
-                    
-                    if ((pMac->lim.gpLimSmeScanReq != NULL) && (psessionEntry->p2pGoPsNoaStartInd.status == eHAL_STATUS_SUCCESS))
+                    if (psessionEntry->p2pGoPsNoaStartInd.status != eHAL_STATUS_SUCCESS)
                     {
-                        /* We received the NOA start indication. Now we can send down the scan request */
-                        __limProcessSmeScanReq(pMac, (tANI_U32 *)pMac->lim.gpLimSmeScanReq);
-                        /* Since insert NOA is done and NOA start msg received, we should deactivate the Insert NOA timer */
-                        limDeactivateAndChangeTimer(pMac, eLIM_INSERT_SINGLESHOT_NOA_TIMER);
-                        /* __limProcessSmeScanReq consumed the buffer. We can free it. */
-                        palFreeMemory( pMac->hHdd, (tANI_U8 *) pMac->lim.gpLimSmeScanReq);
-                        pMac->lim.gpLimSmeScanReq = NULL;
+                        limLog(pMac, LOGW, FL("GO NOA start failure status %d reported by FW."
+                            " - still go ahead with deferred sme req. This is just info\n"),
+                            psessionEntry->p2pGoPsNoaStartInd.status);
                     }
-                    else
-                        limLog(pMac, LOGE, FL("GO NOA start failure reported by FW - don't do scan\n"));
                     break;
                 }
             }
-        }
+
+            if (p2pGOExists == 0)
+            {
+                limLog(pMac, LOGW, FL("By the time, we received NOA start, GO is already removed."
+                        " - still go ahead with deferred sme req. This is just info\n"));
+            }
+
+            /* We received the NOA start indication. Now we can send down the SME request which requires off-channel operation */
+            limProcessRegdDefdSmeReqAfterNOAStart(pMac);
             palFreeMemory(pMac->hHdd, (tANI_U8 *)limMsg->bodyptr);
             limMsg->bodyptr = NULL;
+         }
             break;
-            
 
         case SIR_HAL_P2P_NOA_ATTR_IND:
             {
@@ -1516,7 +1363,6 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
             break;
 
             
-#endif
         /* eWNI_SME_PRE_CHANNEL_SWITCH_FULL_POWER Message comes after the
          * device comes out of full power for the full power request sent 
          * because of channel switch with switch count as 0, so call the same 
@@ -1617,10 +1463,8 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
 #ifdef WLAN_FEATURE_VOWIFI_11R
         case SIR_LIM_FT_PREAUTH_RSP_TIMEOUT:
 #endif
-#ifdef WLAN_FEATURE_P2P
         case SIR_LIM_REMAIN_CHN_TIMEOUT:
         case SIR_LIM_INSERT_SINGLESHOT_NOA_TIMEOUT:
-#endif
         case SIR_LIM_DISASSOC_ACK_TIMEOUT:
         case SIR_LIM_DEAUTH_ACK_TIMEOUT:
             // These timeout messages are handled by MLM sub module
@@ -1896,6 +1740,12 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
         case WDA_GET_STATISTICS_RSP:
             limSendSmePEStatisticsRsp ( pMac, limMsg->type, (void *)limMsg->bodyptr);
             break;
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+        case WDA_GET_ROAM_RSSI_RSP:
+            limSendSmePEGetRoamRssiRsp ( pMac, limMsg->type, (void *)limMsg->bodyptr);
+            break;
+#endif
+
 
         case WDA_SET_MIMOPS_RSP:            //limProcessSetMimoRsp(pMac, limMsg);
         case WDA_SET_TX_POWER_RSP:          //limProcessSetTxPowerRsp(pMac, limMsg);
@@ -1917,7 +1767,6 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
             }
             break;
 
-#ifdef ANI_CHIPSET_VOLANS
        case SIR_LIM_ADDR2_MISS_IND:
        {
            limLog(pMac, LOGE,
@@ -1932,7 +1781,6 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
            vos_mem_free((v_VOID_t *)(limMsg->bodyptr));
            break;
        }
-#endif
 
 #ifdef WLAN_FEATURE_VOWIFI_11R
     case WDA_AGGR_QOS_RSP:
@@ -1983,6 +1831,8 @@ limProcessMessages(tpAniSirGlobal pMac, tpSirMsgQ  limMsg)
                   limLog(pMac, LOGE, FL("Fail to send Beacon Filter Info \n"));
                }
             }
+            vos_mem_free((v_VOID_t *)(limMsg->bodyptr));
+            limMsg->bodyptr = NULL;
 #endif
         }
         break;
@@ -2032,18 +1882,6 @@ limProcessDeferredMessageQueue(tpAniSirGlobal pMac)
 {
     tSirMsgQ  limMsg = { 0, 0, 0 };
 
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_OSX)
-    while (TX_SUCCESS == tx_queue_receive(&pMac->sys.gSirLimDeferredMsgQ, (void *) &limMsg, TX_NO_WAIT))
-    {
-        PELOG3(limLog(pMac, LOG3, FL("Processing deferred message %X\n"), limMsg.type);)
-        limPrintMsgName(pMac, LOG3, limMsg.type);
-        pMac->lim.gLimNumDeferredMsgs--;
-        limProcessMessages(pMac, &limMsg);
-
-        if(true != GET_LIM_PROCESS_DEFD_MESGS(pMac))
-            break;
-    }
-#else
     tSirMsgQ *readMsg;
     tANI_U16  size;
 
@@ -2065,7 +1903,6 @@ limProcessDeferredMessageQueue(tpAniSirGlobal pMac)
                 break;
         }
     }
-#endif
 } /*** end limProcessDeferredMessageQueue() ***/
 
 

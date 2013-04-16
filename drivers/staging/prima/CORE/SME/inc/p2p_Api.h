@@ -520,6 +520,7 @@ eHalStatus p2pSendAction( tHalHandle hHal, tANI_U8 sessionId,
                            tANI_U16 wait, tANI_BOOLEAN noack);
 eHalStatus p2pCancelRemainOnChannel( tHalHandle hHal, tANI_U8 sessionId );
 eHalStatus p2pSetPs( tHalHandle hHal, tP2pPsConfig *pNoA );
+tSirRFBand GetRFBand(tANI_U8 channel);
 #ifdef WLAN_FEATURE_P2P_INTERNAL
 eHalStatus p2pRemainOnChannelCallback(tHalHandle halHandle, void *pContext, eHalStatus scan_status);
 eHalStatus P2P_DiscoverRequest(tHalHandle hHal, tANI_U8 SessionID, tP2PDiscoverRequest *pDiscoverRequest, 

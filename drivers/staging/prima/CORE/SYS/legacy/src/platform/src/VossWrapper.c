@@ -92,44 +92,6 @@
 #define TIMER_NAME "N/A"
 #endif
 
-// Routine used to retrieve the Winwrapper context pointer from the pMac structure
-extern tpAniSirTxWrapper sysGetTxWrapperContext(v_PVOID_t pMac);
-
-
- 
- /**---------------------------------------------------------------------
- * tx_voss_wrapper_init() 
- *
- * FUNCTION:  Initialize the VOSS wrapper 
- *
- * LOGIC:
- *       - Just allocate the spinlock used for critical section implementation.
- *
- * ASSUMPTIONS:
- *        - None.
- *
- * NOTE:
- *
- * @param  None.
- *
- * @return None.
- *
- */
-v_VOID_t tx_voss_wrapper_init(v_PVOID_t pMacGlobal, v_PVOID_t pAdapter)
-{
-    tpAniSirTxWrapper pTxWrapper = sysGetTxWrapperContext(pMacGlobal);
-
-    // if already allocated, then don't allcoate again...
-    if ( !pTxWrapper->pAdapter )
-    {
-        // Store the pointer to the MAC globals structure, in the Tx wrapper context
-        pTxWrapper->pAdapter = pAdapter;
-
-    }
-}
-
-
-
 /**---------------------------------------------------------------------
  * tx_time_get() 
  *
@@ -322,12 +284,22 @@ static v_VOID_t tx_main_timer_func( v_PVOID_t functionContext )
 {
    TX_TIMER *timer_ptr = (TX_TIMER *)functionContext;
 
-   VOS_ASSERT(NULL != timer_ptr);
 
-   VOS_ASSERT(NULL != timer_ptr->pExpireFunc);
+   if (NULL == timer_ptr)
+   {
+       VOS_ASSERT(0);
+       return;
+   }
+
+
+   if (NULL == timer_ptr->pExpireFunc)
+   {
+       VOS_ASSERT(0);
+       return;
+   }
 
    VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_INFO, 
-             "Timer %s triggered\n", TIMER_NAME);
+             "Timer %s triggered", TIMER_NAME);
 
    // Now call the actual timer function, taking the function pointer,
    // from the timer structure.
@@ -344,7 +316,7 @@ static v_VOID_t tx_main_timer_func( v_PVOID_t functionContext )
       if (VOS_STATUS_SUCCESS != status)
       {
          VOS_TRACE(VOS_MODULE_ID_SYS, VOS_TRACE_LEVEL_WARN, 
-             "Unable to reschedule timer %s; status=%d\n", TIMER_NAME, status);
+             "Unable to reschedule timer %s; status=%d", TIMER_NAME, status);
       }
    }
 } /*** tx_timer_change() ***/
@@ -441,7 +413,7 @@ v_UINT_t tx_timer_create_intern( v_PVOID_t pMacGlobal, TX_TIMER *timer_ptr,
 
 #ifdef WLAN_DEBUG
     // Store the timer name
-    vos_mem_copy(timer_ptr->timerName, name_ptr, sizeof(timer_ptr->timerName));
+    strlcpy(timer_ptr->timerName, name_ptr, sizeof(timer_ptr->timerName));
 #endif // Store the timer name, for Debug build only
 
     status = vos_timer_init( &timer_ptr->vosTimer, VOS_TIMER_TYPE_SW, 

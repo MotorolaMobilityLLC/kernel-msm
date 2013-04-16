@@ -61,13 +61,11 @@
 #include <linux/skbuff.h>
 #include <linux/etherdevice.h>
 
-#ifdef CONFIG_CFG80211
 #include <wlan_hdd_p2p.h>
 #include <linux/wireless.h>
 #include <net/cfg80211.h>
 #include <net/ieee80211_radiotap.h>
 #include "sapApi.h"
-#endif
 
 #ifdef FEATURE_WLAN_TDLS
 #include "wlan_hdd_tdls.h"
@@ -92,9 +90,7 @@ const v_U8_t hdd_QdiscAcToTlAC[] = {
    WLANTL_AC_BK,
 };
 
-#ifdef CONFIG_CFG80211
 static struct sk_buff* hdd_mon_tx_fetch_pkt(hdd_adapter_t* pAdapter);
-#endif
 
 /*--------------------------------------------------------------------------- 
   Type declarations
@@ -213,7 +209,6 @@ static VOS_STATUS hdd_flush_tx_queues( hdd_adapter_t *pAdapter )
    return status;
 }
 
-#ifdef CONFIG_CFG80211
 static struct sk_buff* hdd_mon_tx_fetch_pkt(hdd_adapter_t* pAdapter)
 {
    skb_list_node_t *pktNode = NULL;
@@ -522,7 +517,6 @@ fail:
    kfree_skb(skb);
    return NETDEV_TX_OK;
 }
-#endif
 /**============================================================================
   @brief hdd_hard_start_xmit() - Function registered with the Linux OS for 
   transmitting packets. There are 2 versions of this function. One that uses
@@ -567,12 +561,15 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 #endif // HDD_WMM_DEBUG
 
    spin_lock(&pAdapter->wmm_tx_queue[ac].lock);
+   /*CR 463598,384996*/
    /*For every increment of 10 pkts in the queue, we inform TL about pending pkts.
-    * We check for +1 in the logic,to take care of Zero count which 
-    * occurs very frequently in low traffic cases */
+    *We check for +1 in the logic,to take care of Zero count which
+    *occurs very frequently in low traffic cases */
    if((pAdapter->wmm_tx_queue[ac].count + 1) % 10 == 0)
    {
-           VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"%s:Queue is Filling up.Inform TL again about pending packets", __func__);
+           /* Use the following debug statement during Engineering Debugging.There are chance that this will lead to a Watchdog Bark
+            * if it is in the mainline code and if the log level is enabled by someone for debugging
+           VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"%s:Queue is Filling up.Inform TL again about pending packets", __func__);*/
            WLANTL_STAPktPending( (WLAN_HDD_GET_CTX(pAdapter))->pvosContext, pHddStaCtx->conn_info.staId[0], ac );
    }
    //If we have already reached the max queue size, disable the TX queue
@@ -674,6 +671,9 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
   ===========================================================================*/
 void hdd_tx_timeout(struct net_device *dev)
 {
+   hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
+   tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
+
    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
       "%s: Transmission timeout occurred", __func__);
    //Getting here implies we disabled the TX queues for too long. Queues are 
@@ -682,7 +682,16 @@ void hdd_tx_timeout(struct net_device *dev)
    //do possible recovery here
 
    //testing underlying data path stall
-   sme_transportDebug(0, 1);
+   //FTM mode, data path is not initiated
+   if (VOS_FTM_MODE == hdd_get_conparam())
+   {
+      VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+         "%s: FTM mode, how initiated TX?", __func__);
+   }
+   else
+   {
+      sme_transportDebug(hHal, 0, 1);
+   }
 } 
 
 
@@ -1064,6 +1073,7 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
    }
 
 #ifdef FEATURE_WLAN_TDLS
+    if (eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode)
     {
         hdd_station_ctx_t *pHddStaCtx = &pAdapter->sessionCtx.station;
         u8 mac[6];
@@ -1076,10 +1086,10 @@ VOS_STATUS hdd_tx_fetch_packet_cbk( v_VOID_t *vosContext,
         } else if (memcmp(pHddStaCtx->conn_info.bssId,
                             mac, 6) != 0) {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
-                      "extract mac:%x %x %x %x %x %x",
-                      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5] );
+                      "extract mac: " MAC_ADDRESS_STR,
+                      MAC_ADDR_ARRAY(mac) );
 
-            wlan_hdd_tdls_increment_pkt_count(mac, 1);
+            wlan_hdd_tdls_increment_pkt_count(pAdapter, mac, 1);
         } else {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
                        "packet da is bssid, not adding to peer list");
@@ -1383,6 +1393,8 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
       }
 
 #ifdef FEATURE_WLAN_TDLS
+    if ((eTDLS_SUPPORT_ENABLED == pHddCtx->tdls_mode) &&
+         0 != pHddCtx->connected_peer_count)
     {
         hdd_station_ctx_t *pHddStaCtx = &pAdapter->sessionCtx.station;
         u8 mac[6];
@@ -1394,11 +1406,17 @@ VOS_STATUS hdd_rx_packet_cbk( v_VOID_t *vosContext,
                       "rx broadcast packet, not adding to peer list");
         } else if (memcmp(pHddStaCtx->conn_info.bssId,
                             mac, 6) != 0) {
+            hddTdlsPeer_t *curr_peer;
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
-                      "rx extract mac:%x %x %x %x %x %x",
-                      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5] );
-
-            wlan_hdd_tdls_increment_pkt_count(mac, 0);
+                      "rx extract mac:" MAC_ADDRESS_STR,
+                      MAC_ADDR_ARRAY(mac) );
+            curr_peer = wlan_hdd_tdls_find_peer(pAdapter, mac);
+            if ((NULL != curr_peer) && (eTDLS_LINK_CONNECTED == curr_peer->link_status))
+            {
+                wlan_hdd_tdls_increment_pkt_count(pAdapter, mac, 0);
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"rssi is %d", pRxMetaInfo->rssiAvg);
+                wlan_hdd_tdls_set_rssi (pAdapter, mac, pRxMetaInfo->rssiAvg);
+            }
         } else {
             VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_MED,
                        "rx packet sa is bssid, not adding to peer list");

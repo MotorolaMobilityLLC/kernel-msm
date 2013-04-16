@@ -90,6 +90,7 @@
 #include <linux/wcnss_wlan.h>
 #include <linux/inetdevice.h>
 #include <wlan_hdd_cfg.h>
+#include <wlan_hdd_cfg80211.h>
 /**-----------------------------------------------------------------------------
 *   Preprocessor definitions and constants
 * ----------------------------------------------------------------------------*/
@@ -639,6 +640,8 @@ void hdd_conf_mcastbcast_filter(hdd_context_t* pHddCtx, v_BOOL_t setfilter)
 
     wlanRxpFilterParam->setMcstBcstFilter = setfilter;
     halStatus = sme_ConfigureRxpFilter(pHddCtx->hHal, wlanRxpFilterParam);
+    if (eHAL_STATUS_SUCCESS != halStatus)
+        vos_mem_free(wlanRxpFilterParam);
     if(setfilter && (eHAL_STATUS_SUCCESS == halStatus))
        pHddCtx->hdd_mcastbcast_filter_set = TRUE;
 }
@@ -714,28 +717,32 @@ static void hdd_conf_suspend_ind(hdd_context_t* pHddCtx,
     if(eHAL_STATUS_SUCCESS == halStatus)
     {
         pHddCtx->hdd_mcastbcast_filter_set = TRUE;
+    } else {
+        vos_mem_free(wlanSuspendParam);
     }
 }
 
 static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter)
 {
+    eHalStatus halStatus = eHAL_STATUS_FAILURE;
     VOS_STATUS vstatus;
     hdd_context_t* pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
-    tpSirWlanResumeParam wlanResumeParam =
-      vos_mem_malloc(sizeof(tSirWlanResumeParam));
-
-    if(NULL == wlanResumeParam)
-    {
-        hddLog(VOS_TRACE_LEVEL_FATAL,
-           "%s: vos_mem_alloc failed ", __func__);
-        return;
-    }
+    tpSirWlanResumeParam wlanResumeParam;
 
     hddLog(VOS_TRACE_LEVEL_INFO,
       "%s: send wlan resume indication", __func__);
 
     if (pHddCtx->hdd_mcastbcast_filter_set == TRUE)
     {
+        wlanResumeParam = vos_mem_malloc(sizeof(tSirWlanResumeParam));
+
+        if(NULL == wlanResumeParam)
+        {
+            hddLog(VOS_TRACE_LEVEL_FATAL,
+               "%s: vos_mem_alloc failed ", __func__);
+            return;
+        }
+
         if (pHddCtx->cfg_ini->fhostArpOffload)
         {
             vstatus = hdd_conf_hostarpoffload(pAdapter, FALSE);
@@ -755,9 +762,12 @@ static void hdd_conf_resume_ind(hdd_adapter_t *pAdapter)
             wlanResumeParam->configuredMcstBcstFilterSetting =
                                         pHddCtx->cfg_ini->mcastBcastFilterSetting;
         }
-        sme_ConfigureResumeReq(pHddCtx->hHal, wlanResumeParam);
+        halStatus = sme_ConfigureResumeReq(pHddCtx->hHal, wlanResumeParam);
+        if (eHAL_STATUS_SUCCESS != halStatus)
+            vos_mem_free(wlanResumeParam);
         pHddCtx->hdd_mcastbcast_filter_set = FALSE;
     }
+
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING    
     if (pHddCtx->cfg_ini->isMcAddrListFilter)
@@ -894,6 +904,33 @@ void hdd_suspend_wlan(void)
 
    /*Suspend notification sent down to driver*/
    hdd_conf_suspend_ind(pHddCtx, pAdapter);
+
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+       if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+           (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
+       {
+           eHalStatus ret;
+           hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+           if ((eConnectionState_Associated == pHddStaCtx->conn_info.connState) &&
+                    (TRUE == pHddStaCtx->gtkOffloadRequestParams.requested))
+           {
+               ret = sme_SetGTKOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                              &pHddStaCtx->gtkOffloadRequestParams.gtkOffloadReqParams,
+                              pAdapter->sessionId);
+               if (eHAL_STATUS_SUCCESS != ret)
+               {
+                   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                           "%s: sme_SetGTKOffload failed, returned %d",
+                           __func__, ret);
+               }
+               pHddStaCtx->gtkOffloadRequestParams.requested = FALSE;
+               VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                       "%s: sme_SetGTKOffload successfull",
+                       __func__);
+           }
+       }
+#endif
+
    status = hdd_get_next_adapter ( pHddCtx, pAdapterNode, &pNext );
    pAdapterNode = pNext;
   }
@@ -926,8 +963,7 @@ static void hdd_PowerStateChangedCB
        pHddCtx->hdd_ignore_dtim_enabled = TRUE;
    }
    spin_lock(&pHddCtx->filter_lock);
-   if((newState == BMPS) &&  pHddCtx->hdd_wlan_suspended
-          && (pHddCtx->hdd_mcastbcast_filter_set != TRUE)) {
+   if((newState == BMPS) &&  pHddCtx->hdd_wlan_suspended) {
       spin_unlock(&pHddCtx->filter_lock);
       hdd_conf_mcastbcast_filter(pHddCtx, TRUE);
       if(pHddCtx->hdd_mcastbcast_filter_set != TRUE)
@@ -990,6 +1026,52 @@ void hdd_unregister_mcast_bcast_filter(hdd_context_t *pHddCtx)
       pmcDeregisterDeviceStateUpdateInd(smeContext, hdd_PowerStateChangedCB);
    }
 }
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+void  wlan_hdd_update_and_dissable_gtk_offload(hdd_adapter_t *pAdapter)
+{
+    eHalStatus ret;
+    tpSirGtkOffloadParams pGtkOffloadReqParams;
+    hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+
+    pGtkOffloadReqParams =
+                 &pHddStaCtx->gtkOffloadRequestParams.gtkOffloadReqParams;
+
+    if ((eConnectionState_Associated == pHddStaCtx->conn_info.connState) &&
+        (0 !=  memcmp(&pGtkOffloadReqParams->bssId,
+                     &pHddStaCtx->conn_info.bssId, WNI_CFG_BSSID_LEN)) &&
+        (FALSE == pHddStaCtx->gtkOffloadRequestParams.requested))
+    {
+        /* Host driver has previously  offloaded GTK rekey  */
+        ret = sme_GetGTKOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                wlan_hdd_cfg80211_update_replayCounterCallback,
+                                pAdapter, pAdapter->sessionId);
+        if (eHAL_STATUS_SUCCESS != ret)
+        {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    "%s: sme_GetGTKOffload failed, returned %d",
+                    __func__, ret);
+        }
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                "%s: sme_GetGTKOffload successfull", __func__);
+
+        /* Sending GTK offload dissable */
+        pGtkOffloadReqParams->ulFlags = GTK_OFFLOAD_DISABLE;
+        ret = sme_SetGTKOffload(WLAN_HDD_GET_HAL_CTX(pAdapter),
+                                pGtkOffloadReqParams, pAdapter->sessionId);
+
+        if (eHAL_STATUS_SUCCESS != ret)
+        {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    "%s: failed to dissable GTK offload, returned %d",
+                    __func__, ret);
+        }
+        pHddStaCtx->gtkOffloadRequestParams.requested = FALSE;
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                "%s: successfully dissabled GTK offload request to HAL",
+                __func__);
+    }
+}
+#endif /*WLAN_FEATURE_GTK_OFFLOAD*/
 
 void hdd_resume_wlan(void)
 {
@@ -1037,6 +1119,15 @@ void hdd_resume_wlan(void)
             pAdapterNode = pNext;
             continue;
        }
+
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+       if ((WLAN_HDD_INFRA_STATION == pAdapter->device_mode) ||
+           (WLAN_HDD_P2P_CLIENT == pAdapter->device_mode))
+       {
+           wlan_hdd_update_and_dissable_gtk_offload(pAdapter);
+       }
+#endif
+
 #ifdef SUPPORT_EARLY_SUSPEND_STANDBY_DEEPSLEEP   
        if(pHddCtx->hdd_ps_state == eHDD_SUSPEND_DEEP_SLEEP) 
        {
@@ -1504,12 +1595,8 @@ err_vosclose:
        kfree(pHddCtx->cfg_ini);
        pHddCtx->cfg_ini= NULL;
 
-#ifdef CONFIG_CFG80211
        wiphy_unregister(pHddCtx->wiphy);
        wiphy_free(pHddCtx->wiphy);
-#else
-       vos_mem_free(pHddCtx);
-#endif
    }
    vos_preClose(&pVosContext);
 

@@ -136,13 +136,22 @@ static tpDphHashNode limTdlsDelSta(tpAniSirGlobal pMac, tSirMacAddr peerMac,
                                                  tpPESession psessionEntry) ;
 
 #endif
-static tSirRetStatus limTdlsSetupAddSta(tpAniSirGlobal pMac, tSirMacAddr, 
-             tLimTdlsLinkSetupPeer *setupPeer, tpPESession psessionEntry) ;
+static tSirRetStatus limTdlsSetupAddSta(tpAniSirGlobal pMac,
+                                        tSirTdlsAddStaReq *pAddStaReq,
+					tpPESession psessionEntry) ;
 void PopulateDot11fLinkIden(tpAniSirGlobal pMac, tpPESession psessionEntry,
                           tDot11fIELinkIdentifier *linkIden, 
                              tSirMacAddr peerMac , tANI_U8 reqType) ;
 void PopulateDot11fTdlsExtCapability(tpAniSirGlobal pMac, 
                                     tDot11fIEExtCap *extCapability) ;
+
+void limLogVHTCap(tpAniSirGlobal pMac,
+                              tDot11fIEVHTCaps *pDot11f);
+tSirRetStatus limPopulateVhtMcsSet(tpAniSirGlobal pMac,
+                                  tpSirSupportedRates pRates,
+                                  tDot11fIEVHTCaps *pPeerVHTCaps,
+                                  tpPESession psessionEntry);
+ePhyChanBondState  limGetHTCBState(ePhyChanBondState aniCBMode);
 /*
  * TDLS data frames will go out/come in as non-qos data.
  * so, eth_890d_header will be aligned access..
@@ -196,7 +205,7 @@ typedef enum tdlsLinkSetupStatus
 
 /* TODO, Move this parameters to configuration */
 #define PEER_PSM_SUPPORT          (0)
-#define PEER_BUFFER_STA_SUPPORT   (1)
+#define PEER_BUFFER_STA_SUPPORT   (0)
 #define CH_SWITCH_SUPPORT         (0)
 #define TDLS_SUPPORT              (1)
 #define TDLS_PROHIBITED           (0)
@@ -1194,8 +1203,37 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
      */
 
     /* Include HT Capability IE */
-    PopulateDot11fHTCaps( pMac, psessionEntry, &tdlsSetupReq.HTCaps );
-
+    PopulateDot11fHTCaps( pMac, NULL, &tdlsSetupReq.HTCaps );
+    if (psessionEntry->currentOperChannel <= SIR_11B_CHANNEL_END)
+    {
+        tdlsSetupReq.HTCaps.present = 1;
+        tdlsSetupReq.HTCaps.supportedChannelWidthSet = 0;
+    }
+    else
+    {
+        if (tdlsSetupReq.HTCaps.present)
+        {
+            tdlsSetupReq.HTCaps.supportedChannelWidthSet = 1; // pVhtCaps->supportedChannelWidthSet;
+        }
+    }
+    /* Include VHT Capability IE */
+    PopulateDot11fVHTCaps( pMac, &tdlsSetupReq.VHTCaps );
+    if (psessionEntry->currentOperChannel <= SIR_11B_CHANNEL_END)
+    {
+        tdlsSetupReq.VHTCaps.present = 0;
+        tdlsSetupReq.VHTCaps.supportedChannelWidthSet = 0;
+        tdlsSetupReq.VHTCaps.ldpcCodingCap = 0;
+        tdlsSetupReq.VHTCaps.suBeamFormerCap = 0;
+    }
+    else
+    {
+        if (tdlsSetupReq.VHTCaps.present)
+        {
+            tdlsSetupReq.VHTCaps.supportedChannelWidthSet = 1; // pVhtCaps->supportedChannelWidthSet;
+            tdlsSetupReq.VHTCaps.ldpcCodingCap = 1; // pVhtCaps->ldpcCodingCap
+            tdlsSetupReq.VHTCaps.suBeamFormerCap = 1; // pVhtCaps->suBeamFormerCap
+        }
+    }
     /* 
      * now we pack it.  First, how much space are we going to need?
      */
@@ -1268,6 +1306,10 @@ tSirRetStatus limSendTdlsLinkSetupReqFrame(tpAniSirGlobal pMac,
         tdlsSetupReq.LinkIdentifier.bssid[5]);
     }
 #endif
+    limLog( pMac, LOGW, FL("%s: SupportedChnlWidth %x rxMCSMap %x rxMCSMap %x txSupDataRate %x"),
+            __func__, tdlsSetupReq.VHTCaps.supportedChannelWidthSet, tdlsSetupReq.VHTCaps.rxMCSMap,
+            tdlsSetupReq.VHTCaps.txMCSMap, tdlsSetupReq.VHTCaps.txSupDataRate );
+
     status = dot11fPackTDLSSetupReq( pMac, &tdlsSetupReq, pFrame 
                                + header_offset, nPayload, &nPayload );
 
@@ -1587,12 +1629,37 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
     tdlsSetupRsp.QOSCapsStation.acvi_uapsd = 1;
     tdlsSetupRsp.QOSCapsStation.acvo_uapsd = 1;
 
-    /* Include HT Info IE */
-//    if ( setupReq->HTCaps.present)
-//    {
-        PopulateDot11fHTCaps( pMac, psessionEntry, &tdlsSetupRsp.HTCaps );
-//    }
-
+    PopulateDot11fHTCaps( pMac, NULL, &tdlsSetupRsp.HTCaps );
+    if (psessionEntry->currentOperChannel <= SIR_11B_CHANNEL_END)
+    {
+        tdlsSetupRsp.HTCaps.present = 1;
+        tdlsSetupRsp.HTCaps.supportedChannelWidthSet = 0;
+    }
+    else
+    {
+        if (tdlsSetupRsp.HTCaps.present)
+        {
+            tdlsSetupRsp.HTCaps.supportedChannelWidthSet = 1; // pVhtCaps->supportedChannelWidthSet;
+        }
+    }
+    /* Include VHT Capability IE */
+    PopulateDot11fVHTCaps( pMac, &tdlsSetupRsp.VHTCaps );
+    if (psessionEntry->currentOperChannel <= SIR_11B_CHANNEL_END)
+    {
+        tdlsSetupRsp.VHTCaps.present = 0;
+        tdlsSetupRsp.VHTCaps.supportedChannelWidthSet = 0;
+        tdlsSetupRsp.VHTCaps.ldpcCodingCap = 0;
+        tdlsSetupRsp.VHTCaps.suBeamFormerCap = 0;
+    }
+    else
+    {
+        if (tdlsSetupRsp.VHTCaps.present)
+        {
+            tdlsSetupRsp.VHTCaps.supportedChannelWidthSet = 1; // pVhtCaps->supportedChannelWidthSet;
+            tdlsSetupRsp.VHTCaps.ldpcCodingCap = 1; // pVhtCaps->ldpcCodingCap
+            tdlsSetupRsp.VHTCaps.suBeamFormerCap = 1; // pVhtCaps->suBeamFormerCap
+        }
+    }
     tdlsSetupRsp.Status.status = setupStatus ;
 
     /* 
@@ -1668,6 +1735,9 @@ static tSirRetStatus limSendTdlsSetupRspFrame(tpAniSirGlobal pMac,
         tdlsSetupRsp.LinkIdentifier.bssid[5]);
     }
 #endif
+    limLog( pMac, LOGW, FL("%s: SupportedChnlWidth %x rxMCSMap %x rxMCSMap %x txSupDataRate %x"),
+            __func__, tdlsSetupRsp.VHTCaps.supportedChannelWidthSet, tdlsSetupRsp.VHTCaps.rxMCSMap,
+            tdlsSetupRsp.VHTCaps.txMCSMap, tdlsSetupRsp.VHTCaps.txSupDataRate );
     status = dot11fPackTDLSSetupRsp( pMac, &tdlsSetupRsp, pFrame 
                                + header_offset, nPayload, &nPayload );
 
@@ -1767,10 +1837,15 @@ tSirRetStatus limSendTdlsLinkSetupCnfFrame(tpAniSirGlobal pMac, tSirMacAddr peer
      */
 
     /* Include HT Info IE */
-    //if ( tdlsSetupCnf.HTCaps.present)
-    //{
-    //    PopulateDot11fHTInfo( pMac, &tdlsSetupCnf.HTInfo, psessionEntry );
-   // }
+    /* Need to also check the Self Capability ??? TODO Sunil */
+    if ( true == psessionEntry->htCapability)
+    {
+        PopulateDot11fHTInfo( pMac, &tdlsSetupCnf.HTInfo, psessionEntry );
+    }
+    if ( true == psessionEntry->vhtCapability)
+    {
+        PopulateDot11fVHTOperation( pMac, &tdlsSetupCnf.VHTOperation);
+    }
 
     /* 
      * now we pack it.  First, how much space are we going to need?
@@ -2114,22 +2189,442 @@ void limTdlsUpdateLinkRspPeerInfo(tpAniSirGlobal pMac,
     return ;
 }
 #endif
+
+/* This Function is similar to PopulateDot11fHTCaps , except that the HT Capabilities
+ * are considered from the AddStaReq rather from the cfg.dat as in PopulateDot11fHTCaps
+ */
+static tSirRetStatus limTdlsPopulateDot11fHTCaps(tpAniSirGlobal pMac, tpPESession psessionEntry,
+            tSirTdlsAddStaReq *pTdlsAddStaReq, tDot11fIEHTCaps *pDot11f)
+{
+    tANI_U32                         nCfgValue;
+    tANI_U8                          nCfgValue8;
+    tSirMacHTParametersInfo         *pHTParametersInfo;
+    union {
+        tANI_U16                        nCfgValue16;
+        tSirMacHTCapabilityInfo         htCapInfo;
+        tSirMacExtendedHTCapabilityInfo extHtCapInfo;
+    } uHTCapabilityInfo;
+
+    tSirMacTxBFCapabilityInfo       *pTxBFCapabilityInfo;
+    tSirMacASCapabilityInfo         *pASCapabilityInfo;
+
+    nCfgValue = pTdlsAddStaReq->htCap.capInfo;
+
+    uHTCapabilityInfo.nCfgValue16 = nCfgValue & 0xFFFF;
+
+    pDot11f->advCodingCap             = uHTCapabilityInfo.htCapInfo.advCodingCap;
+    pDot11f->mimoPowerSave            = uHTCapabilityInfo.htCapInfo.mimoPowerSave;
+    pDot11f->greenField               = uHTCapabilityInfo.htCapInfo.greenField;
+    pDot11f->shortGI20MHz             = uHTCapabilityInfo.htCapInfo.shortGI20MHz;
+    pDot11f->shortGI40MHz             = uHTCapabilityInfo.htCapInfo.shortGI40MHz;
+    pDot11f->txSTBC                   = uHTCapabilityInfo.htCapInfo.txSTBC;
+    pDot11f->rxSTBC                   = uHTCapabilityInfo.htCapInfo.rxSTBC;
+    pDot11f->delayedBA                = uHTCapabilityInfo.htCapInfo.delayedBA;
+    pDot11f->maximalAMSDUsize         = uHTCapabilityInfo.htCapInfo.maximalAMSDUsize;
+    pDot11f->dsssCckMode40MHz         = uHTCapabilityInfo.htCapInfo.dsssCckMode40MHz;
+    pDot11f->psmp                     = uHTCapabilityInfo.htCapInfo.psmp;
+    pDot11f->stbcControlFrame         = uHTCapabilityInfo.htCapInfo.stbcControlFrame;
+    pDot11f->lsigTXOPProtection       = uHTCapabilityInfo.htCapInfo.lsigTXOPProtection;
+
+    // All sessionized entries will need the check below
+    if (psessionEntry == NULL) // Only in case of NO session
+    {
+        pDot11f->supportedChannelWidthSet = uHTCapabilityInfo.htCapInfo.supportedChannelWidthSet;
+    }
+    else
+    {
+        pDot11f->supportedChannelWidthSet = psessionEntry->htSupportedChannelWidthSet;
+    }
+
+    /* Ensure that shortGI40MHz is Disabled if supportedChannelWidthSet is
+       eHT_CHANNEL_WIDTH_20MHZ */
+    if(pDot11f->supportedChannelWidthSet == eHT_CHANNEL_WIDTH_20MHZ)
+    {
+       pDot11f->shortGI40MHz = 0;
+    }
+
+    dot11fLog(pMac, LOG2, FL("SupportedChnlWidth: %d, mimoPS: %d, GF: %d, shortGI20:%d, shortGI40: %d, dsssCck: %d"),
+                                            pDot11f->supportedChannelWidthSet, pDot11f->mimoPowerSave,  pDot11f->greenField,
+                                            pDot11f->shortGI20MHz, pDot11f->shortGI40MHz, pDot11f->dsssCckMode40MHz);
+
+    nCfgValue = pTdlsAddStaReq->htCap.ampduParamsInfo;
+
+    nCfgValue8 = ( tANI_U8 ) nCfgValue;
+    pHTParametersInfo = ( tSirMacHTParametersInfo* ) &nCfgValue8;
+
+    pDot11f->maxRxAMPDUFactor = pHTParametersInfo->maxRxAMPDUFactor;
+    pDot11f->mpduDensity      = pHTParametersInfo->mpduDensity;
+    pDot11f->reserved1        = pHTParametersInfo->reserved;
+
+    dot11fLog( pMac, LOG2, FL( "AMPDU Param: %x" ), nCfgValue);
+
+    palCopyMemory(pMac->hHdd, pDot11f->supportedMCSSet,  pTdlsAddStaReq->htCap.suppMcsSet, SIZE_OF_SUPPORTED_MCS_SET);
+
+    nCfgValue = pTdlsAddStaReq->htCap.extendedHtCapInfo;
+
+    uHTCapabilityInfo.nCfgValue16 = nCfgValue & 0xFFFF;
+
+    pDot11f->pco            = uHTCapabilityInfo.extHtCapInfo.pco;
+    pDot11f->transitionTime = uHTCapabilityInfo.extHtCapInfo.transitionTime;
+    pDot11f->mcsFeedback    = uHTCapabilityInfo.extHtCapInfo.mcsFeedback;
+
+    nCfgValue = pTdlsAddStaReq->htCap.txBFCapInfo;
+
+    pTxBFCapabilityInfo = ( tSirMacTxBFCapabilityInfo* ) &nCfgValue;
+    pDot11f->txBF                                       = pTxBFCapabilityInfo->txBF;
+    pDot11f->rxStaggeredSounding                        = pTxBFCapabilityInfo->rxStaggeredSounding;
+    pDot11f->txStaggeredSounding                        = pTxBFCapabilityInfo->txStaggeredSounding;
+    pDot11f->rxZLF                                      = pTxBFCapabilityInfo->rxZLF;
+    pDot11f->txZLF                                      = pTxBFCapabilityInfo->txZLF;
+    pDot11f->implicitTxBF                               = pTxBFCapabilityInfo->implicitTxBF;
+    pDot11f->calibration                                = pTxBFCapabilityInfo->calibration;
+    pDot11f->explicitCSITxBF                            = pTxBFCapabilityInfo->explicitCSITxBF;
+    pDot11f->explicitUncompressedSteeringMatrix         = pTxBFCapabilityInfo->explicitUncompressedSteeringMatrix;
+    pDot11f->explicitBFCSIFeedback                      = pTxBFCapabilityInfo->explicitBFCSIFeedback;
+    pDot11f->explicitUncompressedSteeringMatrixFeedback = pTxBFCapabilityInfo->explicitUncompressedSteeringMatrixFeedback;
+    pDot11f->explicitCompressedSteeringMatrixFeedback   = pTxBFCapabilityInfo->explicitCompressedSteeringMatrixFeedback;
+    pDot11f->csiNumBFAntennae                           = pTxBFCapabilityInfo->csiNumBFAntennae;
+    pDot11f->uncompressedSteeringMatrixBFAntennae       = pTxBFCapabilityInfo->uncompressedSteeringMatrixBFAntennae;
+    pDot11f->compressedSteeringMatrixBFAntennae         = pTxBFCapabilityInfo->compressedSteeringMatrixBFAntennae;
+
+    nCfgValue = pTdlsAddStaReq->htCap.antennaSelectionInfo;
+
+    nCfgValue8 = ( tANI_U8 ) nCfgValue;
+
+    pASCapabilityInfo = ( tSirMacASCapabilityInfo* ) &nCfgValue8;
+    pDot11f->antennaSelection         = pASCapabilityInfo->antennaSelection;
+    pDot11f->explicitCSIFeedbackTx    = pASCapabilityInfo->explicitCSIFeedbackTx;
+    pDot11f->antennaIndicesFeedbackTx = pASCapabilityInfo->antennaIndicesFeedbackTx;
+    pDot11f->explicitCSIFeedback      = pASCapabilityInfo->explicitCSIFeedback;
+    pDot11f->antennaIndicesFeedback   = pASCapabilityInfo->antennaIndicesFeedback;
+    pDot11f->rxAS                     = pASCapabilityInfo->rxAS;
+    pDot11f->txSoundingPPDUs          = pASCapabilityInfo->txSoundingPPDUs;
+
+    pDot11f->present = 1;
+
+    return eSIR_SUCCESS;
+
+}
+
+tSirRetStatus
+limTdlsPopulateDot11fVHTCaps(tpAniSirGlobal pMac,
+                      tSirTdlsAddStaReq *pTdlsAddStaReq,
+                      tDot11fIEVHTCaps  *pDot11f)
+{
+    tANI_U32             nCfgValue=0;
+    union {
+        tANI_U32                       nCfgValue32;
+        tSirMacVHTCapabilityInfo       vhtCapInfo;
+    } uVHTCapabilityInfo;
+    union {
+        tANI_U16                       nCfgValue16;
+        tSirMacVHTTxSupDataRateInfo    vhtTxSupDataRateInfo;
+        tSirMacVHTRxSupDataRateInfo    vhtRxsupDataRateInfo;
+    } uVHTSupDataRateInfo;
+
+    pDot11f->present = 1;
+
+    nCfgValue = pTdlsAddStaReq->vhtCap.vhtCapInfo;
+    uVHTCapabilityInfo.nCfgValue32 = nCfgValue;
+
+    pDot11f->maxMPDULen =  uVHTCapabilityInfo.vhtCapInfo.maxMPDULen;
+    pDot11f->supportedChannelWidthSet =  uVHTCapabilityInfo.vhtCapInfo.supportedChannelWidthSet;
+    pDot11f->ldpcCodingCap =  uVHTCapabilityInfo.vhtCapInfo.ldpcCodingCap;
+    pDot11f->shortGI80MHz =  uVHTCapabilityInfo.vhtCapInfo.shortGI80MHz;
+    pDot11f->shortGI160and80plus80MHz =  uVHTCapabilityInfo.vhtCapInfo.shortGI160and80plus80MHz;
+    pDot11f->txSTBC =  uVHTCapabilityInfo.vhtCapInfo.txSTBC;
+    pDot11f->rxSTBC =  uVHTCapabilityInfo.vhtCapInfo.rxSTBC;
+    pDot11f->suBeamFormerCap =  uVHTCapabilityInfo.vhtCapInfo.suBeamFormerCap;
+    pDot11f->suBeamformeeCap =  uVHTCapabilityInfo.vhtCapInfo.suBeamformeeCap;
+    pDot11f->csnofBeamformerAntSup =  uVHTCapabilityInfo.vhtCapInfo.csnofBeamformerAntSup;
+    pDot11f->numSoundingDim =  uVHTCapabilityInfo.vhtCapInfo.numSoundingDim;
+    pDot11f->muBeamformerCap =  uVHTCapabilityInfo.vhtCapInfo.muBeamformerCap;
+    pDot11f->muBeamformeeCap =  uVHTCapabilityInfo.vhtCapInfo.muBeamformeeCap;
+    pDot11f->vhtTXOPPS =  uVHTCapabilityInfo.vhtCapInfo.vhtTXOPPS;
+    pDot11f->htcVHTCap =  uVHTCapabilityInfo.vhtCapInfo.htcVHTCap;
+    pDot11f->maxAMPDULenExp =  uVHTCapabilityInfo.vhtCapInfo.maxAMPDULenExp;
+    pDot11f->vhtLinkAdaptCap =  uVHTCapabilityInfo.vhtCapInfo.vhtLinkAdaptCap;
+    pDot11f->rxAntPattern =  uVHTCapabilityInfo.vhtCapInfo.rxAntPattern;
+    pDot11f->txAntPattern =  uVHTCapabilityInfo.vhtCapInfo.txAntPattern;
+    pDot11f->reserved1= uVHTCapabilityInfo.vhtCapInfo.reserved1;
+
+    pDot11f->rxMCSMap = pTdlsAddStaReq->vhtCap.suppMcs.rxMcsMap;
+
+    nCfgValue = pTdlsAddStaReq->vhtCap.suppMcs.rxHighest;
+    uVHTSupDataRateInfo.nCfgValue16 = nCfgValue & 0xffff;
+    pDot11f->rxHighSupDataRate = uVHTSupDataRateInfo.vhtRxsupDataRateInfo.rxSupDataRate;
+
+    pDot11f->txMCSMap = pTdlsAddStaReq->vhtCap.suppMcs.txMcsMap;
+
+    nCfgValue = pTdlsAddStaReq->vhtCap.suppMcs.txHighest;
+    uVHTSupDataRateInfo.nCfgValue16 = nCfgValue & 0xffff;
+    pDot11f->txSupDataRate = uVHTSupDataRateInfo.vhtTxSupDataRateInfo.txSupDataRate;
+
+    pDot11f->reserved3= uVHTSupDataRateInfo.vhtTxSupDataRateInfo.reserved;
+
+    limLogVHTCap(pMac, pDot11f);
+
+    return eSIR_SUCCESS;
+
+}
+
+static tSirRetStatus
+limTdlsPopulateMatchingRateSet(tpAniSirGlobal pMac,
+                           tpDphHashNode pStaDs,
+                           tANI_U8 *pSupportedRateSet,
+                           tANI_U8 supporteRatesLength,
+                           tANI_U8* pSupportedMCSSet,
+                           tSirMacPropRateSet *pAniLegRateSet,
+                           tpPESession  psessionEntry,
+                           tDot11fIEVHTCaps *pVHTCaps)
+
+{
+    tSirMacRateSet    tempRateSet;
+    tANI_U32          i,j,val,min,isArate;
+    tSirMacRateSet    tempRateSet2;
+    tANI_U32 phyMode;
+    tANI_U8 mcsSet[SIZE_OF_SUPPORTED_MCS_SET];
+    isArate=0;
+
+    // limGetPhyMode(pMac, &phyMode);
+    limGetPhyMode(pMac, &phyMode, NULL);
+
+    // get own rate set
+    val = WNI_CFG_OPERATIONAL_RATE_SET_LEN;
+    if (wlan_cfgGetStr(pMac, WNI_CFG_OPERATIONAL_RATE_SET,
+					  (tANI_U8 *) &tempRateSet.rate,
+					  &val) != eSIR_SUCCESS)
+    {
+        /// Could not get rateset from CFG. Log error.
+        limLog(pMac, LOGP, FL("could not retrieve rateset\n"));
+    }
+    tempRateSet.numRates = val;
+
+    if (phyMode == WNI_CFG_PHY_MODE_11G)
+    {
+
+        // get own extended rate set
+        val = WNI_CFG_EXTENDED_OPERATIONAL_RATE_SET_LEN;
+        if (wlan_cfgGetStr(pMac, WNI_CFG_EXTENDED_OPERATIONAL_RATE_SET,
+						  (tANI_U8 *) &tempRateSet2.rate,
+						  &val) != eSIR_SUCCESS)
+        tempRateSet2.numRates = val;
+    }
+    else
+        tempRateSet2.numRates = 0;
+
+    if ((tempRateSet.numRates + tempRateSet2.numRates) > 12)
+    {
+        PELOGE(limLog(pMac, LOGE, FL("more than 12 rates in CFG\n"));)
+        goto error;
+    }
+
+    /**
+         * Handling of the rate set IEs is the following:
+         * - keep only rates that we support and that the station supports
+         * - sort and the rates into the pSta->rate array
+         */
+
+    // Copy all rates in tempRateSet, there are 12 rates max
+    for (i = 0; i < tempRateSet2.numRates; i++)
+        tempRateSet.rate[i + tempRateSet.numRates] = tempRateSet2.rate[i];
+
+    tempRateSet.numRates += tempRateSet2.numRates;
+
+    /**
+         * Sort rates in tempRateSet (they are likely to be already sorted)
+         * put the result in tempRateSet2
+         */
+    tempRateSet2.numRates = 0;
+
+    for (i = 0;i < tempRateSet.numRates; i++)
+    {
+        min = 0;
+        val = 0xff;
+
+        for(j = 0;j < tempRateSet.numRates; j++)
+            if ((tANI_U32) (tempRateSet.rate[j] & 0x7f) < val)
+            {
+                val = tempRateSet.rate[j] & 0x7f;
+                min = j;
+            }
+
+        tempRateSet2.rate[tempRateSet2.numRates++] = tempRateSet.rate[min];
+        tempRateSet.rate[min] = 0xff;
+    }
+
+    /**
+     * Copy received rates in tempRateSet, the parser has ensured
+     * unicity of the rates so there cannot be more than 12 . Need to Check this
+     * TODO Sunil.
+     */
+    for (i = 0; i < supporteRatesLength; i++)
+    {
+        tempRateSet.rate[i] = pSupportedRateSet[i];
+    }
+
+    tempRateSet.numRates = supporteRatesLength;
+
+    {
+        tpSirSupportedRates  rates = &pStaDs->supportedRates;
+        tANI_U8 aRateIndex = 0;
+        tANI_U8 bRateIndex = 0;
+        palZeroMemory( pMac->hHdd, (tANI_U8 *) rates, sizeof(tSirSupportedRates));
+
+        for (i = 0;i < tempRateSet2.numRates; i++)
+        {
+            for (j = 0;j < tempRateSet.numRates; j++)
+            {
+                if ((tempRateSet2.rate[i] & 0x7F) ==
+                    (tempRateSet.rate[j] & 0x7F))
+                {
+#ifdef FEATURE_WLAN_NON_INTEGRATED_SOC
+                    if ((bRateIndex > HAL_NUM_11B_RATES) || (aRateIndex > HAL_NUM_11A_RATES))
+                    {
+                        limLog(pMac, LOGE, FL("Invalid number of rates (11b->%d, 11a->%d)\n"),
+                               bRateIndex, aRateIndex);
+                        return eSIR_FAILURE;
+                    }
+#endif
+                    if (sirIsArate(tempRateSet2.rate[i] & 0x7f))
+                    {
+                        isArate=1;
+                        rates->llaRates[aRateIndex++] = tempRateSet2.rate[i];
+                    }
+                    else
+                        rates->llbRates[bRateIndex++] = tempRateSet2.rate[i];
+                    break;
+                }
+            }
+        }
+    }
+
+
+    //compute the matching MCS rate set, if peer is 11n capable and self mode is 11n
+#ifdef FEATURE_WLAN_TDLS
+    if (pStaDs->mlmStaContext.htCapability)
+#else
+    if (IS_DOT11_MODE_HT(psessionEntry->dot11mode) &&
+       (pStaDs->mlmStaContext.htCapability))
+#endif
+    {
+        val = SIZE_OF_SUPPORTED_MCS_SET;
+        if (wlan_cfgGetStr(pMac, WNI_CFG_SUPPORTED_MCS_SET,
+                           mcsSet,
+                           &val) != eSIR_SUCCESS)
+        {
+            /// Could not get rateset from CFG. Log error.
+            limLog(pMac, LOGP, FL("could not retrieve supportedMCSSet\n"));
+            goto error;
+        }
+
+        for (i=0; i<val; i++)
+            pStaDs->supportedRates.supportedMCSSet[i] = mcsSet[i] & pSupportedMCSSet[i];
+
+        PELOG2(limLog(pMac, LOG2, FL("limPopulateMatchingRateSet: MCS Rate Set Bitmap from CFG and DPH :"));)
+        for (i=0; i<SIR_MAC_MAX_SUPPORTED_MCS_SET; i++)
+        {
+            PELOG2(limLog(pMac, LOG2,FL("%x %x "), mcsSet[i], pStaDs->supportedRates.supportedMCSSet[i]);)
+        }
+    }
+
+#ifdef WLAN_FEATURE_11AC
+    limPopulateVhtMcsSet(pMac, &pStaDs->supportedRates, pVHTCaps, psessionEntry);
+#endif
+    /**
+         * Set the erpEnabled bit iff the phy is in G mode and at least
+         * one A rate is supported
+         */
+    if ((phyMode == WNI_CFG_PHY_MODE_11G) && isArate)
+        pStaDs->erpEnabled = eHAL_SET;
+
+
+
+    return eSIR_SUCCESS;
+
+ error:
+
+    return eSIR_FAILURE;
+}
+
+static int limTdlsSelectCBMode(tDphHashNode *pStaDs, tpPESession psessionEntry)
+{
+    tANI_U8 channel = psessionEntry->currentOperChannel;
+
+    if ( pStaDs->mlmStaContext.vhtCapability )
+    {
+        if ( channel== 36 || channel == 52 || channel == 100 ||
+             channel == 116 || channel == 149 )
+        {
+           return PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_LOW - 1;
+        }
+        else if ( channel == 40 || channel == 56 || channel == 104 ||
+             channel == 120 || channel == 153 )
+        {
+           return PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_LOW - 1;
+        }
+        else if ( channel == 44 || channel == 60 || channel == 108 ||
+                  channel == 124 || channel == 157 )
+        {
+           return PHY_QUADRUPLE_CHANNEL_20MHZ_LOW_40MHZ_HIGH -1;
+        }
+        else if ( channel == 48 || channel == 64 || channel == 112 ||
+             channel == 128 || channel == 161 )
+        {
+            return PHY_QUADRUPLE_CHANNEL_20MHZ_HIGH_40MHZ_HIGH - 1;
+        }
+        else if ( channel == 165 )
+        {
+            return 0;
+        }
+    }
+    else if ( pStaDs->mlmStaContext.htCapability )
+    {
+        if ( channel== 40 || channel == 48 || channel == 56 ||
+             channel == 64 || channel == 104 || channel == 112 ||
+             channel == 120 || channel == 128 || channel == 136 ||
+             channel == 144 || channel == 153 || channel == 161 )
+        {
+           return 1;
+        }
+        else if ( channel== 36 || channel == 44 || channel == 52 ||
+             channel == 60 || channel == 100 || channel == 108 ||
+             channel == 116 || channel == 124 || channel == 132 ||
+             channel == 140 || channel == 149 || channel == 157 )
+        {
+           return 2;
+        }
+        else if ( channel == 165 )
+        {
+           return 0;
+        }
+    }
+    return 0;
+}
+
 /*
  * update HASH node entry info
  */
 static void limTdlsUpdateHashNodeInfo(tpAniSirGlobal pMac, tDphHashNode *pStaDs,
-              tLimTdlsLinkSetupPeer *setupPeerInfo, tpPESession psessionEntry)
+              tSirTdlsAddStaReq *pTdlsAddStaReq, tpPESession psessionEntry)
 {
     //tDot11fIEHTCaps *htCaps = &setupPeerInfo->tdlsPeerHTCaps ;
     tDot11fIEHTCaps htCap, *htCaps;
 #ifdef WLAN_FEATURE_11AC
     tDot11fIEVHTCaps vhtCap, *pVhtCaps;
+    tANI_U8 cbMode;
 #endif
     tpDphHashNode pSessStaDs = NULL;
     tANI_U16 aid;
 
-    //HACK- to get the session's htcaps.
-    PopulateDot11fHTCaps(pMac, psessionEntry, &htCap);
+    if (pTdlsAddStaReq->tdlsAddOper == TDLS_OPER_ADD)
+    {
+        PopulateDot11fHTCaps(pMac, psessionEntry, &htCap);
+    }
+    else if (pTdlsAddStaReq->tdlsAddOper == TDLS_OPER_UPDATE)
+    {
+        limTdlsPopulateDot11fHTCaps(pMac, NULL, pTdlsAddStaReq, &htCap);
+    }
     htCaps = &htCap;
     if (htCaps->present)
     {
@@ -2147,7 +2642,6 @@ static void limTdlsUpdateHashNodeInfo(tpAniSirGlobal pMac, tDphHashNode *pStaDs,
                              &pStaDs->supportedRates.rxHighestDataRate, 
                                                  htCaps->supportedMCSSet);
         pStaDs->baPolicyFlag = 0xFF;
-
         pMac->lim.gLimTdlsLinkMode = TDLS_LINK_MODE_N ;
     }
     else
@@ -2156,21 +2650,31 @@ static void limTdlsUpdateHashNodeInfo(tpAniSirGlobal pMac, tDphHashNode *pStaDs,
         pMac->lim.gLimTdlsLinkMode = TDLS_LINK_MODE_BG ;
     }
 #ifdef WLAN_FEATURE_11AC
-    //HACK- this needs to get from peer
-    PopulateDot11fVHTCaps(pMac, &vhtCap);
+    limTdlsPopulateDot11fVHTCaps(pMac, pTdlsAddStaReq, &vhtCap);
     pVhtCaps = &vhtCap;
     if (pVhtCaps->present)
     {
         pStaDs->mlmStaContext.vhtCapability = 1 ;
-        pStaDs->vhtSupportedChannelWidthSet= 1; // pVhtCaps->supportedChannelWidthSet;
-        pStaDs->vhtLdpcCapable = 1; // pVhtCaps->ldpcCodingCap
-        pStaDs->vhtBeamFormerCapable= 1; // pVhtCaps->suBeamFormerCap
-
+        pStaDs->vhtSupportedChannelWidthSet= pVhtCaps->supportedChannelWidthSet;
+        pStaDs->vhtLdpcCapable = pVhtCaps->ldpcCodingCap;
+        pStaDs->vhtBeamFormerCapable= pVhtCaps->suBeamFormerCap;
+        // TODO , is it necessary , Sunil???
         pMac->lim.gLimTdlsLinkMode = TDLS_LINK_MODE_AC;
     }
     else
     {
         pStaDs->mlmStaContext.vhtCapability = 0 ;
+    }
+#endif
+    /*Calculate the Secondary Coannel Offset */
+    cbMode = limTdlsSelectCBMode(pStaDs, psessionEntry);
+
+    pStaDs->htSecondaryChannelOffset = cbMode;
+
+#ifdef WLAN_FEATURE_11AC
+    if ( pStaDs->mlmStaContext.vhtCapability )
+    {
+        pStaDs->htSecondaryChannelOffset = limGetHTCBState(cbMode);
     }
 #endif
     
@@ -2181,26 +2685,23 @@ static void limTdlsUpdateHashNodeInfo(tpAniSirGlobal pMac, tDphHashNode *pStaDs,
     pStaDs->qosMode    = 1;
     pStaDs->wmeEnabled = 1;
     pStaDs->lleEnabled = 0;
-    pStaDs->qos.capability.qosInfo = pSessStaDs->qos.capability.qosInfo; //setupPeerInfo->qosCaps.qosInfo;
+    /*  TDLS Dummy AddSTA does not have qosInfo , is it OK ??
+     */
+    pStaDs->qos.capability.qosInfo = (*(tSirMacQosInfoStation *) &pTdlsAddStaReq->uapsd_queues);
 
     /* populate matching rate set */
-#if 0
-#ifdef WLAN_FEATURE_11AC
-    limPopulateMatchingRateSet(pMac, pStaDs, &setupPeerInfo->supportedRates,
-                          &setupPeerInfo->extendedRates, 
-                     (tANI_U8 *)setupPeerInfo->tdlsPeerHTCaps.supportedMCSSet,
-                            &pStaDs->mlmStaContext.propRateSet, psessionEntry, NULL);
-#else
-    limPopulateMatchingRateSet(pMac, pStaDs, &setupPeerInfo->supportedRates,
-                          &setupPeerInfo->extendedRates, 
-                     (tANI_U8 *)setupPeerInfo->tdlsPeerHTCaps.supportedMCSSet,
-                            &pStaDs->mlmStaContext.propRateSet, psessionEntry);
-#endif
-#else
-    palCopyMemory( pMac->hHdd, &pStaDs->supportedRates, &pSessStaDs->supportedRates, sizeof(pStaDs->supportedRates));
-#endif
 
-    pStaDs->mlmStaContext.capabilityInfo = pSessStaDs->mlmStaContext.capabilityInfo;// setupPeerInfo->capabilityInfo;
+    /* TDLS Dummy AddSTA does not have HTCap,VHTCap,Rates info , is it OK ??
+     */
+    limTdlsPopulateMatchingRateSet(pMac, pStaDs, pTdlsAddStaReq->supported_rates,
+                                   pTdlsAddStaReq->supported_rates_length,
+                                   (tANI_U8 *)pTdlsAddStaReq->htCap.suppMcsSet,
+                                   &pStaDs->mlmStaContext.propRateSet,
+                                   psessionEntry, (tDot11fIEVHTCaps *)&pTdlsAddStaReq->vhtCap);
+
+    /*  TDLS Dummy AddSTA does not have right capability , is it OK ??
+     */
+    pStaDs->mlmStaContext.capabilityInfo = ( *(tSirMacCapabilityInfo *) &pTdlsAddStaReq->capability);
 
     return ; 
 }
@@ -3622,7 +4123,7 @@ static tSirRetStatus limTdlsDisAddSta(tpAniSirGlobal pMac, tSirMacAddr peerMac,
 
         pStaDs->staType = STA_ENTRY_TDLS_PEER ;
 
-        status = limAddSta(pMac, pStaDs, psessionEntry);
+        status = limAddSta(pMac, pStaDs, false, psessionEntry);
 
         if(eSIR_SUCCESS != status)
         {
@@ -3637,15 +4138,15 @@ static tSirRetStatus limTdlsDisAddSta(tpAniSirGlobal pMac, tSirMacAddr peerMac,
 /*
  * Add STA for TDLS setup procedure 
  */ 
-static tSirRetStatus limTdlsSetupAddSta(tpAniSirGlobal pMac, 
-                        tSirMacAddr peerMac, tLimTdlsLinkSetupPeer *setupPeer,
-                                            tpPESession psessionEntry)
+static tSirRetStatus limTdlsSetupAddSta(tpAniSirGlobal pMac,
+                                        tSirTdlsAddStaReq *pAddStaReq,
+                                        tpPESession psessionEntry)
 {
     tpDphHashNode pStaDs = NULL ;
     tSirRetStatus status = eSIR_SUCCESS ;
     tANI_U16 aid = 0 ;
 
-    pStaDs = dphLookupHashEntry(pMac, peerMac, &aid,
+    pStaDs = dphLookupHashEntry(pMac, pAddStaReq->peerMac, &aid,
                                       &psessionEntry->dph.dphHashTable);
     if(NULL == pStaDs)
     {
@@ -3654,9 +4155,8 @@ static tSirRetStatus limTdlsSetupAddSta(tpAniSirGlobal pMac,
         if( !aid )
         {
             VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
-              ("%s: No more free AID for peer %02x:%02x:%02x:%02x:%02x:%02x"),
-                         __func__, peerMac[0], peerMac[1], peerMac[2],
-                         peerMac[3], peerMac[4], peerMac[5]) ;
+              ("%s: No more free AID for peer " MAC_ADDRESS_STR),
+                __func__, MAC_ADDR_ARRAY(pAddStaReq->peerMac)) ;
             return eSIR_FAILURE;
         }
 
@@ -3664,9 +4164,8 @@ static tSirRetStatus limTdlsSetupAddSta(tpAniSirGlobal pMac,
         SET_PEER_AID_BITMAP(psessionEntry->peerAIDBitmap, aid);
 
         VOS_TRACE(VOS_MODULE_ID_PE, TDLS_DEBUG_LOG_LEVEL,
-              ("limTdlsSetupAddSta: Aid = %d, for peer = %02x,%02x,%02x,%02x,%02x,%02x\n"),
-                         aid, peerMac[0],peerMac[1],peerMac[2],
-                         peerMac[3],peerMac[4],peerMac[5]) ;
+              ("limTdlsSetupAddSta: Aid = %d, for peer =" MAC_ADDRESS_STR),
+                aid, MAC_ADDR_ARRAY(pAddStaReq->peerMac));
         pStaDs = dphGetHashEntry(pMac, aid, &psessionEntry->dph.dphHashTable);
 
         if (pStaDs)
@@ -3675,32 +4174,23 @@ static tSirRetStatus limTdlsSetupAddSta(tpAniSirGlobal pMac,
             limDeleteDphHashEntry(pMac, pStaDs->staAddr, aid, psessionEntry);
         }
 
-        pStaDs = dphAddHashEntry(pMac, peerMac, aid,
+        pStaDs = dphAddHashEntry(pMac, pAddStaReq->peerMac, aid,
                                              &psessionEntry->dph.dphHashTable) ;
 
         if(NULL == pStaDs)
         {
             VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
                         (" add hash entry failed\n")) ;
-            status = eSIR_FAILURE ;
             VOS_ASSERT(0) ;
+            return eSIR_FAILURE;
         }
     }
-    else
-    {
-        VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_ERROR,
-                    (" there is hash entry for this client\n")) ;
-        /*TODO: for now We are returning from here but we should tell
-          firmware that station configuration is modified once we
-          got that from supplicant*/
-        return eSIR_FAILURE;
-    }
 
-    limTdlsUpdateHashNodeInfo(pMac, pStaDs, setupPeer, psessionEntry) ;
+    limTdlsUpdateHashNodeInfo(pMac, pStaDs, pAddStaReq, psessionEntry) ;
 
     pStaDs->staType = STA_ENTRY_TDLS_PEER ;
 
-    status = limAddSta(pMac, pStaDs, psessionEntry);
+    status = limAddSta(pMac, pStaDs, (pAddStaReq->tdlsAddOper == TDLS_OPER_UPDATE) ? true: false, psessionEntry);
 
     if(eSIR_SUCCESS != status)
     {
@@ -4309,8 +4799,8 @@ void limStartTdlsTimer(tpAniSirGlobal pMac, tANI_U8 sessionId, TX_TIMER *timer,
  * Once Link is setup with PEER, send Add STA ind to SME
  */
 static eHalStatus limSendSmeTdlsAddStaRsp(tpAniSirGlobal pMac, 
-                   tANI_U8 sessionId, tSirMacAddr peerMac, tDphHashNode   *pStaDs,
-                   tANI_U8 status)
+                   tANI_U8 sessionId, tSirMacAddr peerMac, tANI_U8 updateSta,
+                   tDphHashNode  *pStaDs, tANI_U8 status)
 {
     tSirMsgQ  mmhMsg = {0} ;
     tSirTdlsAddStaRsp *addStaRsp = NULL ;
@@ -4335,6 +4825,11 @@ static eHalStatus limSendSmeTdlsAddStaRsp(tpAniSirGlobal pMac,
         palCopyMemory( pMac->hHdd, addStaRsp->peerMac, 
                 (tANI_U8 *) peerMac, sizeof(tSirMacAddr));
     }
+    if (updateSta)
+        addStaRsp->tdlsAddOper = TDLS_OPER_UPDATE;
+    else
+        addStaRsp->tdlsAddOper = TDLS_OPER_ADD;
+
     addStaRsp->length = sizeof(tSirTdlsAddStaRsp) ;
     addStaRsp->messageType = eWNI_SME_TDLS_ADD_STA_RSP ;
 
@@ -4428,7 +4923,7 @@ eHalStatus limProcessTdlsAddStaRsp(tpAniSirGlobal pMac, void *msg,
 #endif
 add_sta_error:
     status = limSendSmeTdlsAddStaRsp(pMac, psessionEntry->smeSessionId, 
-                                        pAddStaParams->staMac, pStaDs, status) ;
+                                        pAddStaParams->staMac, pAddStaParams->updateSta, pStaDs, status) ;
     palFreeMemory( pMac->hHdd, (void *) pAddStaParams );
     return status ;
 }
@@ -4725,7 +5220,6 @@ tSirRetStatus limProcessSmeTdlsAddStaReq(tpAniSirGlobal pMac,
     tSirTdlsAddStaReq *pAddStaReq = (tSirTdlsAddStaReq*) pMsgBuf ;
     tpPESession psessionEntry;
     tANI_U8      sessionId;
-    tLimTdlsLinkSetupPeer setupPeer = {0};
 
     VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_INFO,
                                   ("Send Mgmt Recieved\n")) ;
@@ -4764,8 +5258,7 @@ tSirRetStatus limProcessSmeTdlsAddStaReq(tpAniSirGlobal pMac,
      pMac->lim.gLimAddStaTdls = true ;
 
      /* To start with, send add STA request to HAL */
-     if(eSIR_FAILURE == limTdlsSetupAddSta(pMac, pAddStaReq->peerMac, 
-                                               &setupPeer, psessionEntry))
+     if (eSIR_FAILURE == limTdlsSetupAddSta(pMac, pAddStaReq, psessionEntry))
      {
          limLog(pMac, LOGE, "%s: Add TDLS Station request failed \n", __func__);
          goto lim_tdls_add_sta_error;
@@ -4773,7 +5266,8 @@ tSirRetStatus limProcessSmeTdlsAddStaReq(tpAniSirGlobal pMac,
      return eSIR_SUCCESS;
 lim_tdls_add_sta_error:
      limSendSmeTdlsAddStaRsp(pMac, 
-                   pAddStaReq->sessionId, pAddStaReq->peerMac, NULL, eSIR_FAILURE );
+                   pAddStaReq->sessionId, pAddStaReq->peerMac,
+                   (pAddStaReq->tdlsAddOper == TDLS_OPER_UPDATE), NULL, eSIR_FAILURE );
 
    return eSIR_SUCCESS;
 }

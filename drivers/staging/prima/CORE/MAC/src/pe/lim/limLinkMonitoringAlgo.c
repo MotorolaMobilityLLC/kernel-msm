@@ -116,12 +116,12 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
 
     if(NULL == pMsg)
     {
-        PELOGE(limLog(pMac, LOGE,FL("Invalid body pointer in message\n"));)
+        PELOGE(limLog(pMac, LOGE,FL("Invalid body pointer in message"));)
         return;
     }
     if((psessionEntry = peFindSessionByBssid(pMac,pMsg->bssId,&sessionId))== NULL)
     {
-        PELOGE(limLog(pMac, LOGE,FL("session does not exist for given BSSId\n"));)
+        PELOGE(limLog(pMac, LOGE,FL("session does not exist for given BSSId"));)
             palFreeMemory(pMac->hHdd, pMsg);
         return;
     }
@@ -130,12 +130,12 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     {
         case HAL_DEL_STA_REASON_CODE_KEEP_ALIVE:
         case HAL_DEL_STA_REASON_CODE_TIM_BASED:
-             PELOGE(limLog(pMac, LOGE, FL(" Deleting station: staId = %d, reasonCode = %d\n"), pMsg->staId, pMsg->reasonCode);)
-             pStaDs = dphGetHashEntry(pMac, pMsg->assocId, &psessionEntry->dph.dphHashTable);
+             PELOGE(limLog(pMac, LOGE, FL(" Deleting station: staId = %d, reasonCode = %d"), pMsg->staId, pMsg->reasonCode);)
+             pStaDs = dphLookupAssocId(pMac, pMsg->staId, &pMsg->assocId, &psessionEntry->dph.dphHashTable);
 
              if (!pStaDs)
              {
-                 PELOGE(limLog(pMac, LOGE, FL("Skip STA deletion (invalid STA) limSystemRole=%d\n"),psessionEntry->limSystemRole);)
+                 PELOGE(limLog(pMac, LOGE, FL("Skip STA deletion (invalid STA) limSystemRole=%d"),psessionEntry->limSystemRole);)
                  palFreeMemory(pMac->hHdd, pMsg);
                  return;
              }
@@ -145,7 +145,7 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
               */
              if (pStaDs->staIndex != pMsg->staId)
              {
-                 PELOGE(limLog(pMac, LOGE, FL("staid mismatch: %d vs %d \n"), pStaDs->staIndex, pMsg->staId);)
+                 PELOGE(limLog(pMac, LOGE, FL("staid mismatch: %d vs %d "), pStaDs->staIndex, pMsg->staId);)
                  palFreeMemory(pMac->hHdd, pMsg);
                  return;
              }
@@ -153,7 +153,7 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
              if((eLIM_BT_AMP_AP_ROLE == psessionEntry->limSystemRole) ||
                      (eLIM_AP_ROLE == psessionEntry->limSystemRole))
              {
-                 PELOG1(limLog(pMac, LOG1, FL("SAP:lim Delete Station Context (staId: %d, assocId: %d) \n"),
+                 PELOG1(limLog(pMac, LOG1, FL("SAP:lim Delete Station Context (staId: %d, assocId: %d) "),
                              pMsg->staId, pMsg->assocId);)
                  limTriggerSTAdeletion(pMac, pStaDs, psessionEntry);
              }
@@ -174,7 +174,7 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
 #endif
                     //TearDownLink with AP
                     tLimMlmDeauthInd  mlmDeauthInd;
-                    PELOGW(limLog(pMac, LOGW, FL("lim Delete Station Context (staId: %d, assocId: %d) \n"),
+                    PELOGW(limLog(pMac, LOGW, FL("lim Delete Station Context (staId: %d, assocId: %d) "),
                                 pMsg->staId, pMsg->assocId);)
 
                     pStaDs->mlmStaContext.disassocReason = eSIR_MAC_UNSPEC_FAILURE_REASON;
@@ -200,13 +200,13 @@ limDeleteStaContext(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
              break;        
 
         case HAL_DEL_STA_REASON_CODE_UNKNOWN_A2:
-             PELOGE(limLog(pMac, LOGE, FL(" Deleting Unknown station \n"));)
+             PELOGE(limLog(pMac, LOGE, FL(" Deleting Unknown station "));)
              limPrintMacAddr(pMac, pMsg->addr2, LOGE);
              limSendDeauthMgmtFrame( pMac, eSIR_MAC_CLASS3_FRAME_FROM_NON_ASSOC_STA_REASON, pMsg->addr2, psessionEntry, FALSE);
              break;
 
         default:
-             PELOGE(limLog(pMac, LOGE, FL(" Unknown reason code \n"));)
+             PELOGE(limLog(pMac, LOGE, FL(" Unknown reason code "));)
              break;
 
     }
@@ -242,7 +242,7 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
 
     if (! pStaDs)
     {
-        PELOGW(limLog(pMac, LOGW, FL("Skip STA deletion (invalid STA)\n"));)
+        PELOGW(limLog(pMac, LOGW, FL("Skip STA deletion (invalid STA)"));)
         return;
     }
     /**
@@ -253,7 +253,7 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
 
     if( eHAL_STATUS_SUCCESS != palAllocateMemory( pMac->hHdd, (void **)&pSmeDeauthReq, sizeof(tSirSmeDeauthReq)))
     {
-        limLog(pMac, LOGP, FL("palAllocateMemory failed for eWNI_SME_DEAUTH_REQ \n"));
+        limLog(pMac, LOGP, FL("palAllocateMemory failed for eWNI_SME_DEAUTH_REQ "));
         return;
     }
 
@@ -304,7 +304,7 @@ limTriggerSTAdeletion(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpPESession pse
 
   
     //Fill in length
-    limCopyU16((tANI_U8*)pLen, msgLength);
+    limCopyU16((tANI_U8*)pLen , msgLength);
 
     limPostSmeMessage(pMac, eWNI_SME_DISASSOC_REQ, (tANI_U32 *) pSmeDeauthReq);
     palFreeMemory( pMac->hHdd, pSmeDeauthReq );
@@ -340,7 +340,7 @@ limTearDownLinkWithAp(tpAniSirGlobal pMac, tANI_U8 sessionId, tSirMacReasonCodes
 
     if((psessionEntry = peFindSessionBySessionId(pMac, sessionId))== NULL)
     {
-        limLog(pMac, LOGP,FL("Session Does not exist for given sessionID\n"));
+        limLog(pMac, LOGP,FL("Session Does not exist for given sessionID"));
         return;
     }
     /**
@@ -351,7 +351,7 @@ limTearDownLinkWithAp(tpAniSirGlobal pMac, tANI_U8 sessionId, tSirMacReasonCodes
 
     pMac->pmm.inMissedBeaconScenario = FALSE;
     limLog(pMac, LOGW,
-       FL("No ProbeRsp from AP after HB failure. Tearing down link\n"));
+       FL("No ProbeRsp from AP after HB failure. Tearing down link"));
 
     // Deactivate heartbeat timer
     limHeartBeatDeactivateAndChangeTimer(pMac, psessionEntry);
@@ -466,7 +466,7 @@ void limHandleHeartBeatFailure(tpAniSirGlobal pMac,tpPESession psessionEntry)
         /**
          * Beacon frame not received within heartbeat timeout.
          */
-        PELOGW(limLog(pMac, LOGW, FL("Heartbeat Failure\n"));)
+        PELOGW(limLog(pMac, LOGW, FL("Heartbeat Failure"));)
         pMac->lim.gLimHBfailureCntInLinkEstState++;
 
         /**
@@ -482,7 +482,7 @@ void limHandleHeartBeatFailure(tpAniSirGlobal pMac,tpPESession psessionEntry)
              * it is still around. Wait until certain
              * timeout for Probe Response from AP.
              */
-            PELOGW(limLog(pMac, LOGW, FL("Heart Beat missed from AP. Sending Probe Req\n"));)
+            PELOGW(limLog(pMac, LOGW, FL("Heart Beat missed from AP. Sending Probe Req"));)
             /* for searching AP, we don't include any additional IE */
             limSendProbeReqMgmtFrame(pMac, &psessionEntry->ssId, psessionEntry->bssId,
                                       psessionEntry->currentOperChannel,psessionEntry->selfMacAddr,
@@ -503,7 +503,7 @@ void limHandleHeartBeatFailure(tpAniSirGlobal pMac,tpPESession psessionEntry)
             * or in states other than link-established state.
             * Log error.
             */
-        PELOG1(limLog(pMac, LOG1, FL("received heartbeat timeout in state %X\n"),
+        PELOG1(limLog(pMac, LOG1, FL("received heartbeat timeout in state %X"),
                psessionEntry->limMlmState);)
         limPrintMlmState(pMac, LOG1, psessionEntry->limMlmState);
         pMac->lim.gLimHBfailureCntInOtherStates++;

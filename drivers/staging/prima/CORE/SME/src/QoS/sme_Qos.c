@@ -3064,13 +3064,13 @@ eHalStatus sme_QosCCXProcessReassocTspecRsp(tpAniSirGlobal pMac, v_U8_t sessionI
     tspecIeLen = pCsrConnectedInfo->nTspecIeLength;
     if (tspecIeLen < sizeof(tDot11fIEWMMTSPEC)) {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
-                FL("CCX Tspec IE len %d less than min %d"), 
+                FL("CCX Tspec IE len %d less than min %d"),
                 tspecIeLen, sizeof(tDot11fIEWMMTSPEC));
         return eHAL_STATUS_FAILURE;
     }
 
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN,
-             "TspecLen = %d, pbFrames = %p, pTspecIE = %p\n", 
+             "TspecLen = %d, pbFrames = %p, pTspecIE = %p",
              tspecIeLen, pCsrConnectedInfo->pbFrames, pTspecIE);
 
     numTspec = (tspecIeLen)/sizeof(tDot11fIEWMMTSPEC);
@@ -3078,8 +3078,8 @@ eHalStatus sme_QosCCXProcessReassocTspecRsp(tpAniSirGlobal pMac, v_U8_t sessionI
         ac = sme_QosUpToAc(pTspecIE->user_priority);
         pACInfo = &pSession->ac_info[ac];
         tspec_mask_status = pACInfo->tspec_mask_status;
-        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN, 
-                FL("UP=%d, ac=%d, tspec_mask_status=%x"), 
+        VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN,
+                FL("UP=%d, ac=%d, tspec_mask_status=%x"),
                 pTspecIE->user_priority, ac,  tspec_mask_status );
 
             for (tspec_flow_index = 0; tspec_flow_index < SME_QOS_TSPEC_INDEX_MAX; tspec_flow_index++) {
@@ -3224,6 +3224,9 @@ eHalStatus sme_QosCreateTspecRICIE(tpAniSirGlobal pMac, sme_QosWmmTspecInfo *pTs
     VOS_ASSERT(NULL != pRICLength);
     VOS_ASSERT(NULL != pRICIdentifier);
 
+    if (pRICBuffer == NULL || pRICIdentifier == NULL || pRICLength == NULL)
+        return eHAL_STATUS_FAILURE;
+
     vos_mem_zero(&ricIE, sizeof(tDot11fIERICDataDesc));
 
     ricIE.present = 1;
@@ -3345,7 +3348,7 @@ eHalStatus sme_QosProcessFTReassocReqEv(tpAniSirGlobal pMac, v_U8_t sessionId, v
                     (pACInfo->tspec_mask_status & (1<<tspec_flow_index)))
             {
                 VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-                        FL("Copying the currentQos to requestedQos for AC=%d, flow=%d\n"),
+                        FL("Copying the currentQos to requestedQos for AC=%d, flow=%d"),
                         ac, tspec_flow_index );
 
                 pACInfo->requested_QoSInfo[tspec_flow_index] = pACInfo->curr_QoSInfo[tspec_flow_index];
@@ -3447,10 +3450,10 @@ eHalStatus sme_QosFTAggrQosReq( tpAniSirGlobal pMac, v_U8_t sessionId )
         for( j = 0; j < SME_QOS_TSPEC_INDEX_MAX; j++ )
         {
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                    FL("ac=%d, tspec_mask_staus=%x, tspec_index=%d\n"), 
+                    FL("ac=%d, tspec_mask_staus=%x, tspec_index=%d"),
                     i, pSession->ac_info[i].tspec_mask_status, j);
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-                    FL("direction = %d\n"), pSession->ac_info[i].addTsRsp[j].rsp.tspec.tsinfo.traffic.direction);
+                    FL("direction = %d"), pSession->ac_info[i].addTsRsp[j].rsp.tspec.tsinfo.traffic.direction);
             // Check if any flow is active on this AC
             if ((pSession->ac_info[i].tspec_mask_status) & (1 << j))
             {
@@ -3459,7 +3462,7 @@ eHalStatus sme_QosFTAggrQosReq( tpAniSirGlobal pMac, v_U8_t sessionId )
                         (direction == SME_QOS_WMM_TS_DIR_BOTH))
                 {
                     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_WARN, 
-                            FL("Found tspec entry AC=%d, flow=%d, direction = %d\n"), i, j, direction);
+                            FL("Found tspec entry AC=%d, flow=%d, direction = %d"), i, j, direction);
                     pMsg->aggrInfo.aggrAddTsInfo[i].dialogToken =
                         sme_QosAssignDialogToken();
                     pMsg->aggrInfo.aggrAddTsInfo[i].lleTspecPresent =
@@ -3490,7 +3493,7 @@ eHalStatus sme_QosFTAggrQosReq( tpAniSirGlobal pMac, v_U8_t sessionId )
     }
 
     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-            "Sending aggregated message to HAL 0x%x\n", pMsg->aggrInfo.tspecIdx);
+            "Sending aggregated message to HAL 0x%x", pMsg->aggrInfo.tspecIdx);
 
     if(HAL_STATUS_SUCCESS(palSendMBMessage(pMac->hHdd, pMsg)))
     {
@@ -3550,9 +3553,15 @@ eHalStatus sme_QosProcessFTRICResponse(tpAniSirGlobal pMac, v_U8_t sessionId, tD
     //Process Delay element
     if (pRicDataDesc->TSDelay.present)
         ConvertTSDelay(pMac, &pAddtsRsp->rsp.delay, &pRicDataDesc->TSDelay);
+
+    //Need to call for WMMTSPEC
+    if (pRicDataDesc->WMMTSPEC.present)
+    {
+        ConvertWMMTSPEC(pMac, &pAddtsRsp->rsp.tspec, &pRicDataDesc->WMMTSPEC);
+    }
     //return sme_QosProcessAddTsRsp(pMac, &addtsRsp);
     return eHAL_STATUS_SUCCESS;
-   }
+}
 eHalStatus sme_QosProcessAggrQosRsp(tpAniSirGlobal pMac, void *pMsgBuf)
 {
     tpSirAggrQosRsp pAggrRsp = (tpSirAggrQosRsp)pMsgBuf;
@@ -3574,7 +3583,7 @@ eHalStatus sme_QosProcessAggrQosRsp(tpAniSirGlobal pMac, void *pMsgBuf)
                 addTsRsp[j].rsp.tspec.tsinfo.traffic.direction;
 
             VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                    FL("Addts rsp from LIM AC=%d, flow=%d dir=%d, tspecIdx=%x\n"),
+                    FL("Addts rsp from LIM AC=%d, flow=%d dir=%d, tspecIdx=%x"),
                     i, j, direction, pAggrRsp->aggrInfo.tspecIdx);
             // Check if the direction is Uplink or bi-directional
             if( ((1<<i) & pAggrRsp->aggrInfo.tspecIdx) &&
@@ -3588,7 +3597,7 @@ eHalStatus sme_QosProcessAggrQosRsp(tpAniSirGlobal pMac, void *pMsgBuf)
                 addtsRsp.rsp.tspec = pAggrRsp->aggrInfo.aggrRsp[i].tspec;
 
                 VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO,
-                        FL("%s: Processing Addts rsp from LIM AC=%d, flow=%d\n"), i, j);
+                        FL("%s: Processing Addts rsp from LIM AC=%d, flow=%d"), i, j);
                 /* post ADD TS response for each */
                 if (sme_QosProcessAddTsRsp(pMac, &addtsRsp) != eHAL_STATUS_SUCCESS)
                 {
@@ -3628,8 +3637,9 @@ eHalStatus sme_QosProcessFTReassocRspEv(tpAniSirGlobal pMac, v_U8_t sessionId, v
 
     pSession = &sme_QosCb.sessionInfo[sessionId];
 
-    pRicDataDesc = (tDot11fIERICDataDesc *)pCsrConnectedInfo->pbFrames + pCsrConnectedInfo->nBeaconLength +
-        pCsrConnectedInfo->nAssocReqLength + pCsrConnectedInfo->nAssocRspLength;
+    pRicDataDesc = (tDot11fIERICDataDesc *)((pCsrConnectedInfo->pbFrames) +
+        (pCsrConnectedInfo->nBeaconLength + pCsrConnectedInfo->nAssocReqLength +
+        pCsrConnectedInfo->nAssocRspLength));
 
     for(ac = SME_QOS_EDCA_AC_BE; ac < SME_QOS_EDCA_AC_MAX; ac++)
     {
@@ -3665,13 +3675,13 @@ eHalStatus sme_QosProcessFTReassocRspEv(tpAniSirGlobal pMac, v_U8_t sessionId, v
                             else
                             {
                                 VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO, 
-                                        FL("Processing RIC Response for AC %d, TSPEC Flow index %d with RIC ID %d \n"),
+                                        FL("Processing RIC Response for AC %d, TSPEC Flow index %d with RIC ID %d "),
                                         ac, tspec_flow_index, pRicDataDesc->RICData.Identifier);
                                 status = sme_QosProcessFTRICResponse(pMac, sessionId, pRicDataDesc, ac, tspec_flow_index);
                                 if (eHAL_STATUS_SUCCESS != status)
                                 {
                                     VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-                                            FL("Failed with status %d for AC %d in TSPEC Flow index = %d\n"),
+                                            FL("Failed with status %d for AC %d in TSPEC Flow index = %d"),
                                             status, ac, tspec_flow_index);
                                 }
                             }
@@ -3688,7 +3698,7 @@ eHalStatus sme_QosProcessFTReassocRspEv(tpAniSirGlobal pMac, v_U8_t sessionId, v
     if (ricRspLen)
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-                FL("RIC Response still follows despite traversing through all ACs. Remaining len = %d\n"), ricRspLen);
+                FL("RIC Response still follows despite traversing through all ACs. Remaining len = %d"), ricRspLen);
         VOS_ASSERT(0);
     }
 
@@ -3908,6 +3918,7 @@ eHalStatus sme_QosDelTsReq(tpAniSirGlobal pMac,
       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
                 "%s: %d: BSS descriptor is NULL so we don't send request to PE",
                 __func__, __LINE__);
+      vos_mem_free(pMsg);
       return eHAL_STATUS_FAILURE;
    }
    vos_mem_copy( &pMsg->bssId[ 0 ], 
@@ -4345,7 +4356,8 @@ eHalStatus sme_QosProcessReassocReqEv(tpAniSirGlobal pMac, v_U8_t sessionId, voi
   --------------------------------------------------------------------------*/
 eHalStatus sme_QosProcessReassocSuccessEv(tpAniSirGlobal pMac, v_U8_t sessionId, void * pEvent_info)
 {
-   tpSirSmeJoinRsp pSmeJoinRsp = (tpSirSmeJoinRsp) pEvent_info;
+
+   tCsrRoamSession *pCsrRoamSession = CSR_GET_SESSION( pMac, sessionId );
    sme_QosSessionInfo *pSession;
    sme_QosACInfo *pACInfo;
    sme_QosEdcaAcType ac, ac_index;
@@ -4400,14 +4412,14 @@ eHalStatus sme_QosProcessReassocSuccessEv(tpAniSirGlobal pMac, v_U8_t sessionId,
    if (pSession->ftHandoffInProgress)
    {
        if (csrRoamIs11rAssoc(pMac)) {
-           if (pSmeJoinRsp->parsedRicRspLen) {
+           if (pCsrRoamSession->connectedInfo.nRICRspLength) {
                status = sme_QosProcessFTReassocRspEv(pMac, sessionId, pEvent_info);
            }
        }
 #ifdef FEATURE_WLAN_CCX
        // If CCX association check for TSPEC IEs in the reassoc rsp frame
        if (csrRoamIsCCXAssoc(pMac)) {
-           if (pSmeJoinRsp->tspecIeLen) {
+           if (pCsrRoamSession->connectedInfo.nTspecIeLength) {
                status = sme_QosCCXProcessReassocTspecRsp(pMac, sessionId, pEvent_info);
            }
        }
@@ -4966,7 +4978,7 @@ eHalStatus sme_QosProcessPreauthSuccessInd(tpAniSirGlobal pMac, v_U8_t sessionId
         for(ac = SME_QOS_EDCA_AC_BE; ac < SME_QOS_EDCA_AC_MAX; ac++)
         {
             volatile v_U8_t   tspec_index = 0;
-
+            ricIELength = 0;
             pACInfo = &pSession->ac_info[ac];
             tspec_pending_status = pACInfo->tspec_pending;
             tspec_mask_status = pACInfo->tspec_mask_status;

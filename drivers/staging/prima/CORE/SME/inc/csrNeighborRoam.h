@@ -234,7 +234,18 @@ VOS_STATUS csrNeighborRoamCreateChanListFromNeighborReport(tpAniSirGlobal pMac);
 void csrNeighborRoamTranistionPreauthDoneToDisconnected(tpAniSirGlobal pMac);
 tANI_BOOLEAN csrNeighborRoamStatePreauthDone(tpAniSirGlobal pMac);
 tANI_BOOLEAN csrNeighborRoamScanRspPending(tHalHandle hHal);
+tANI_BOOLEAN csrNeighborMiddleOfRoaming(tHalHandle hHal);
 VOS_STATUS csrNeighborRoamSetLookupRssiThreshold(tpAniSirGlobal pMac, v_U8_t neighborLookupRssiThreshold);
+VOS_STATUS csrNeighborRoamUpdateFastRoamingEnabled(tpAniSirGlobal pMac, const v_BOOL_t fastRoamEnabled);
+VOS_STATUS csrNeighborRoamUpdateCcxModeEnabled(tpAniSirGlobal pMac, const v_BOOL_t ccxMode);
+VOS_STATUS csrNeighborRoamChannelsFilterByCurrentBand(
+                      tpAniSirGlobal pMac,
+                      tANI_U8*  pInputChannelList,
+                      int       inputNumOfChannels,
+                      tANI_U8*  pOutputChannelList,
+                      int*      pMergedOutputNumOfChannels
+                      );
+
 
 
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */

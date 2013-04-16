@@ -92,6 +92,8 @@
 #include "wlan_qct_pal_trace.h"
 
 #include "wlan_qct_dev_defs.h"
+#define MAC_ADDR_ARRAY(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
+#define MAC_ADDRESS_STR "%02x:%02x:%02x:%02x:%02x:%02x"
 
 extern uint8 WDA_IsWcnssWlanCompiledVersionGreaterThanOrEqual(uint8 major, uint8 minor, uint8 version, uint8 revision);
 extern uint8 WDA_IsWcnssWlanReportedVersionGreaterThanOrEqual(uint8 major, uint8 minor, uint8 version, uint8 revision);
@@ -135,10 +137,8 @@ WDI_DP_UtilsInit
 {
   WDI_RxBdType*  pAmsduRxBdFixMask; 
 
-#ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
     // WQ to be used for filling the TxBD
   pWDICtx->ucDpuRF = BMUWQ_BTQM_TX_MGMT; 
-#endif //FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
 
 #ifdef WLAN_PERF
   pWDICtx->uBdSigSerialNum = 0;
@@ -456,13 +456,11 @@ WDI_FillTxBd
      -----------------------------------------------------------------------*/
     pBd->bdt   = HWBD_TYPE_GENERIC; 
 
-#ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
     // Route all trigger enabled frames to FW WQ, for FW to suspend trigger frame generation 
     // when no traffic is exists on trigger enabled ACs
     if(ucTxFlag & WDI_TRIGGER_ENABLED_AC_MASK) {
         pBd->dpuRF = pWDICtx->ucDpuRF; 
     } else 
-#endif //FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
     {
         pBd->dpuRF = BMUWQ_BTQM_TX_MGMT; 
     }
@@ -679,7 +677,9 @@ WDI_FillTxBd
            if (WDI_STATUS_SUCCESS != wdiStatus) 
            {
                 WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR, "WDI_STATableFindStaidByAddr failed");
-                return WDI_STATUS_E_FAILURE;
+                WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR, "STA ID = %d " MAC_ADDRESS_STR,
+                                        ucStaId, MAC_ADDR_ARRAY(*(wpt_macAddr*)pAddr2));
+                return WDI_STATUS_E_NOT_ALLOWED;
            }
 #else
             ucStaId = pWDICtx->ucSelfStaId;
@@ -793,7 +793,7 @@ WDI_FillTxBd
                                               *(wpt_macAddr*)pAddr2, &ucStaId ); 
               if (WDI_STATUS_SUCCESS != wdiStatus)
               {
-                return WDI_STATUS_E_FAILURE;
+                return WDI_STATUS_E_NOT_ALLOWED;
               }
 
               // Get the Bss Index related to the staId
@@ -844,7 +844,25 @@ WDI_FillTxBd
                 if(!ucUnicastDst)
                     pBd->dpuDescIdx = pSta->bcastMgmtDpuIndex; /* IGTK */
                 else
-                    pBd->dpuDescIdx = pSta->dpuIndex; /* PTK */
+                {
+                    wpt_uint8 peerStaId;
+
+                    //We need to find the peer's station's DPU index to send this
+                    //frame using PTK
+                    wdiStatus = WDI_STATableFindStaidByAddr( pWDICtx,
+                                        *(wpt_macAddr*)pDestMacAddr, &peerStaId );
+                    if (WDI_STATUS_SUCCESS != wdiStatus)
+                    {
+                        WPAL_TRACE(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                           "%s failed to find peer sta %02X-%02X-%02X-%02X-%02X-%02X",
+                           __FUNCTION__, ((wpt_uint8 *)pDestMacAddr)[0],
+                           ((wpt_uint8 *)pDestMacAddr)[1], ((wpt_uint8 *)pDestMacAddr)[5],
+                           ((wpt_uint8 *)pDestMacAddr)[3], ((wpt_uint8 *)pDestMacAddr)[4],
+                           ((wpt_uint8 *)pDestMacAddr)[5]);
+                        return WDI_STATUS_E_FAILURE;
+                    }
+                    pBd->dpuDescIdx = ((WDI_StaStruct*)pWDICtx->staTable)[peerStaId].dpuIndex; /* PTK */
+                }
             }
             else
             {

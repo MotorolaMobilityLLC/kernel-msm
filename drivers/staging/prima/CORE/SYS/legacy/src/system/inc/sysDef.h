@@ -54,28 +54,17 @@
 #ifndef __SYSDEF_H
 #define __SYSDEF_H
 
-/// Sirius system level defitions
+/// Sirius system level definitions
 // NOTE: Do not program system timer tick duration to less than 1msec
 
 /// System timer tick duration in nanoseconds
-#if defined ANI_OS_TYPE_LINUX
-#define SYS_TICK_DUR_NS     1000000    // 1ms
-#define SYS_TICK_TO_MICRO_SECOND   1000
-#elif defined ANI_OS_TYPE_OSX
 #define SYS_TICK_DUR_NS     10000000    // 10ms
 #define SYS_TICK_TO_MICRO_SECOND   10000
-#elif defined ANI_OS_TYPE_WINDOWS
-#define SYS_TICK_DUR_NS     20000000    // 20ms
-#define SYS_TICK_TO_MICRO_SECOND   20000
-#else
-#define SYS_TICK_DUR_NS     10000000    // 10ms
-#define SYS_TICK_TO_MICRO_SECOND   10000
-#endif
 
-/// System timer tick duration in miliseconds
+/// System timer tick duration in milliseconds
 #define SYS_TICK_DUR_MS     (SYS_TICK_DUR_NS/1000000)
 
-/// Clocks in a milisecond
+/// Clocks in a millisecond
 #define SYS_CLOCKS_PER_MS   120000 // 120 MHz
 
 // In Milliseconds

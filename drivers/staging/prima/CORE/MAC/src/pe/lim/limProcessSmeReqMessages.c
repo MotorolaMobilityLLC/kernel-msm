@@ -97,7 +97,10 @@
  * taking care of sending null data and receiving ACK to/from AP/Also SetChannel with calibration is taking
  * around 7ms .
  */
-#define SCAN_MESSAGING_OVERHEAD 10 // in msecs
+#define SCAN_MESSAGING_OVERHEAD             20      // in msecs
+#define JOIN_NOA_DURATION                   2000    // in msecs
+#define OEM_DATA_NOA_DURATION               60      // in msecs
+#define DEFAULT_PASSIVE_MAX_CHANNEL_TIME    110     // in msecs
 
 #define CONV_MS_TO_US 1024 //conversion factor from ms to us
 
@@ -105,7 +108,7 @@
 static void __limProcessSmeStartReq(tpAniSirGlobal, tANI_U32 *);
 static tANI_BOOLEAN __limProcessSmeSysReadyInd(tpAniSirGlobal, tANI_U32 *);
 static tANI_BOOLEAN __limProcessSmeStartBssReq(tpAniSirGlobal, tpSirMsgQ pMsg);
-void __limProcessSmeScanReq(tpAniSirGlobal, tANI_U32 *);
+static void __limProcessSmeScanReq(tpAniSirGlobal, tANI_U32 *);
 static void __limProcessSmeJoinReq(tpAniSirGlobal, tANI_U32 *);
 static void __limProcessSmeReassocReq(tpAniSirGlobal, tANI_U32 *);
 static void __limProcessSmeDisassocReq(tpAniSirGlobal, tANI_U32 *);
@@ -116,13 +119,9 @@ static tANI_BOOLEAN __limProcessSmeStopBssReq(tpAniSirGlobal, tpSirMsgQ pMsg);
 
 void __limProcessSmeAssocCnfNew(tpAniSirGlobal, tANI_U32, tANI_U32 *);
 
-#ifdef VOSS_ENABLED
 extern void peRegisterTLHandle(tpAniSirGlobal pMac);
-#endif
 
-#ifdef WLAN_FEATURE_P2P
 extern int limProcessRemainOnChnlReq(tpAniSirGlobal pMac, tANI_U32 *pMsg);
-#endif
 
 #ifdef BACKGROUND_SCAN_ENABLED
 
@@ -178,12 +177,10 @@ __limFreshScanReqd(tpAniSirGlobal pMac, tANI_U8 returnFreshResults)
                            (pMac->lim.gpSession[i].limSystemRole == eLIM_BT_AMP_AP_ROLE)||
                            (pMac->lim.gpSession[i].limSystemRole == eLIM_BT_AMP_STA_ROLE) )&&
                        (pMac->lim.gpSession[i].limSmeState == eLIM_SME_NORMAL_STATE) )
-#ifdef WLAN_FEATURE_P2P
                ||  ( ( ( (pMac->lim.gpSession[i].bssType == eSIR_INFRA_AP_MODE) 
                       && ( pMac->lim.gpSession[i].pePersona == VOS_P2P_GO_MODE) )
                     || (pMac->lim.gpSession[i].limSystemRole == eLIM_AP_ROLE) )
                   && (pMac->lim.gpSession[i].limSmeState == eLIM_SME_NORMAL_STATE) )
-#endif
              ))
                 {
                 validState = FALSE;
@@ -435,16 +432,14 @@ __limProcessSmeSysReadyInd(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     msg.bodyptr =  pMsgBuf;
     msg.bodyval = 0;
 
-#ifdef VOSS_ENABLED
-    if(pMac->gDriverType != eDRIVER_TYPE_MFG)
+    if (pMac->gDriverType != eDRIVER_TYPE_MFG)
     {
-    peRegisterTLHandle(pMac);
+        peRegisterTLHandle(pMac);
     }
-#endif
     PELOGW(limLog(pMac, LOGW, FL("sending WDA_SYS_READY_IND msg to HAL\n"));)
     MTRACE(macTraceMsgTx(pMac, NO_SESSION, msg.type));
 
-    if(eSIR_SUCCESS != wdaPostCtrlMsg(pMac, &msg))
+    if (eSIR_SUCCESS != wdaPostCtrlMsg(pMac, &msg))
     {
         limLog(pMac, LOGP, FL("wdaPostCtrlMsg failed\n"));
         return eANI_BOOLEAN_TRUE;
@@ -841,7 +836,7 @@ __limHandleSmeStartBssRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
              *reserved reserved RIFS Lsig n-GF ht20 11g 11b*/
             palCopyMemory( pMac->hHdd, (void *) &psessionEntry->cfgProtection,
                           (void *) &pSmeStartBssReq->ht_capab,
-                          sizeof( tCfgProtection ));
+                          sizeof( tANI_U16 ));
             psessionEntry->pAPWPSPBCSession = NULL; // Initialize WPS PBC session link list
         }
 
@@ -1084,7 +1079,7 @@ void limGetRandomBssid(tpAniSirGlobal pMac, tANI_U8 *data)
  * @return None
  */
 
-void
+static void
 __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 {
     tANI_U32            len;
@@ -1307,9 +1302,7 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         pMlmScanReq->minChannelTimeBtc = pScanReq->minChannelTimeBtc;
         pMlmScanReq->maxChannelTimeBtc = pScanReq->maxChannelTimeBtc;
         pMlmScanReq->dot11mode = pScanReq->dot11mode;
-#ifdef WLAN_FEATURE_P2P
         pMlmScanReq->p2pSearch = pScanReq->p2pSearch;
-#endif
 
         //Store the smeSessionID and transaction ID for later use.
         pMac->lim.gSmeSessionId = pScanReq->sessionId;
@@ -1591,6 +1584,18 @@ __limProcessSmeJoinReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         psessionEntry->htSupportedChannelWidthSet = (pSmeJoinReq->cbMode)?1:0; // This is already merged value of peer and self - done by csr in csrGetCBModeFromIes
         psessionEntry->htRecommendedTxWidthSet = psessionEntry->htSupportedChannelWidthSet;
         psessionEntry->htSecondaryChannelOffset = pSmeJoinReq->cbMode;
+
+        /* Record if management frames need to be protected */
+#ifdef WLAN_FEATURE_11W
+        if(eSIR_ED_AES_128_CMAC == pSmeJoinReq->MgmtEncryptionType)
+        {
+            psessionEntry->limRmfEnabled = 1;
+        }
+        else
+        {
+            psessionEntry->limRmfEnabled = 0;
+        }
+#endif
 
         /*Store Persona */
         psessionEntry->pePersona = pSmeJoinReq->staPersona;
@@ -3188,7 +3193,6 @@ __limCounterMeasures(tpAniSirGlobal pMac, tpPESession psessionEntry)
          
         limSendDisassocMgmtFrame(pMac, eSIR_MAC_MIC_FAILURE_REASON, mac, psessionEntry, FALSE);
 
-    tx_thread_sleep(10);
 };
 
 
@@ -3956,6 +3960,54 @@ __limProcessSmeGetStatisticsRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 }
 
 
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+/**
+ * __limProcessSmeGetRoamRssiRequest()
+ *
+ *FUNCTION:
+ *
+ *
+ *NOTE:
+ *
+ * @param  pMac      Pointer to Global MAC structure
+ * @param  *pMsgBuf  A pointer to the SME message buffer
+ * @return None
+ */
+static void
+__limProcessSmeGetRoamRssiRequest(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
+{
+    tpAniGetRssiReq    pPEGetRoamRssiReq = NULL;
+    tSirMsgQ msgQ;
+
+    pPEGetRoamRssiReq = (tpAniGetRssiReq) pMsgBuf;
+    msgQ.type = WDA_GET_ROAM_RSSI_REQ;
+
+    if ( !pMac->lim.gLimRspReqd )
+    {
+        palFreeMemory( pMac, pMsgBuf );
+        return;
+    }
+    else
+    {
+        pMac->lim.gLimRspReqd = FALSE;
+    }
+
+    msgQ.reserved = 0;
+    msgQ.bodyptr = pMsgBuf;
+    msgQ.bodyval = 0;
+    MTRACE(macTraceMsgTx(pMac, NO_SESSION, msgQ.type));
+
+    if( eSIR_SUCCESS != (wdaPostCtrlMsg( pMac, &msgQ ))){
+        palFreeMemory( pMac, pMsgBuf );
+        limLog(pMac, LOGP, "Unable to forward request\n");
+        return;
+    }
+
+    return;
+}
+#endif
+
+
 static void
 __limProcessSmeUpdateAPWPSIEs(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 {
@@ -3971,19 +4023,19 @@ __limProcessSmeUpdateAPWPSIEs(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         limLog(pMac, LOGE,FL("Buffer is Pointing to NULL\n"));
         return;
     }
-    
+
     if( palAllocateMemory( pMac->hHdd, (void **)&pUpdateAPWPSIEsReq, sizeof(tSirUpdateAPWPSIEsReq)))
     {
         limLog(pMac, LOGP, FL("call to palAllocateMemory failed for pUpdateAPWPSIEsReq\n"));
         return;
     }
 
-    if ((limUpdateAPWPSIEsReqSerDes(pMac, pUpdateAPWPSIEsReq, (tANI_U8 *) pMsgBuf) == eSIR_FAILURE)) 
+    if ((limUpdateAPWPSIEsReqSerDes(pMac, pUpdateAPWPSIEsReq, (tANI_U8 *) pMsgBuf) == eSIR_FAILURE))
     {
-        limLog(pMac, LOGW, FL("received invalid SME_SETCONTEXT_REQ message\n")); 
+        limLog(pMac, LOGW, FL("received invalid SME_SETCONTEXT_REQ message\n"));
         goto end;
     }
-    
+
     if((psessionEntry = peFindSessionByBssid(pMac, pUpdateAPWPSIEsReq->bssId, &sessionId)) == NULL)
     {
         limLog(pMac, LOGW, FL("Session does not exist for given BSSID\n"));
@@ -3991,9 +4043,9 @@ __limProcessSmeUpdateAPWPSIEs(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     }
 
     palCopyMemory(pMac->hHdd, &psessionEntry->APWPSIEs, &pUpdateAPWPSIEsReq->APWPSIEs, sizeof(tSirAPWPSIEs));
-    
+
     schSetFixedBeaconFields(pMac, psessionEntry);
-    limSendBeaconInd(pMac, psessionEntry); 
+    limSendBeaconInd(pMac, psessionEntry);
 
 end:
     palFreeMemory( pMac->hHdd, pUpdateAPWPSIEsReq);
@@ -4273,6 +4325,11 @@ limSendSetMaxTxPowerReq ( tpAniSirGlobal pMac, tPowerdBm txPower, tpPESession pS
 #if defined(WLAN_VOWIFI_DEBUG) || defined(FEATURE_WLAN_CCX)
    PELOG1(limLog( pMac, LOG1, "%s:%d: Allocated memory for pMaxTxParams...will be freed in other module\n", __func__, __LINE__ );)
 #endif
+   if( pMaxTxParams == NULL )
+   {
+      limLog( pMac, LOGE, "%s:%d: pMaxTxParams is NULL\n", __func__, __LINE__);
+      return eSIR_FAILURE;
+   }
    pMaxTxParams->power = txPower;
    palCopyMemory( pMac->hHdd, pMaxTxParams->bssId, pSessionEntry->bssId, sizeof(tSirMacAddr) );
    palCopyMemory( pMac->hHdd, pMaxTxParams->selfStaMacAddr, pSessionEntry->selfMacAddr, sizeof(tSirMacAddr) );
@@ -4395,7 +4452,6 @@ __limProcessSmeDelStaSelfReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 } /*** end __limProcessSmeDelStaSelfReq() ***/
 
 
-#ifdef WLAN_FEATURE_P2P
 /**
  * __limProcessSmeRegisterMgmtFrameReq()
  *
@@ -4495,21 +4551,17 @@ __limProcessSmeRegisterMgmtFrameReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 } /*** end __limProcessSmeRegisterMgmtFrameReq() ***/
 
 static tANI_BOOLEAN
-__limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
+__limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 noaDuration)
 {
     tpP2pPsParams pMsgNoA;
     tSirMsgQ msg;
-    tpSirSmeScanReq     pScanReq;
-    tANI_U32 val = 0;
-    tANI_U8 i = 0;
 
-    pScanReq = (tpSirSmeScanReq) pMsgBuf;
     if( eHAL_STATUS_SUCCESS != palAllocateMemory(
                   pMac->hHdd, (void **) &pMsgNoA, sizeof( tP2pPsConfig )))
     {
         limLog( pMac, LOGP,
                      FL( "Unable to allocate memory during NoA Update\n" ));
-        return TRUE;
+        goto error;
     }
 
     palZeroMemory( pMac->hHdd, (tANI_U8 *)pMsgNoA, sizeof(tP2pPsConfig));
@@ -4520,51 +4572,14 @@ __limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     pMsgNoA->interval = 0;
     pMsgNoA->count = 0;
 
-    pMac->lim.gpLimSmeScanReq = pScanReq;
-
     /* Below params used for Single Shot NOA - so assign proper values */
     pMsgNoA->psSelection = P2P_SINGLE_NOA;
-
-    /* Calculate the total duration of scan for all the channels
-     * listed in the channel list */
-    pMsgNoA->single_noa_duration = 0;
-
-    if (wlan_cfgGetInt(pMac, WNI_CFG_PASSIVE_MAXIMUM_CHANNEL_TIME, &val) != eSIR_SUCCESS)
-    {
-        /*
-         * Could not get max channel value
-         * from CFG. Log error.
-         */
-        limLog(pMac, LOGP, FL("could not retrieve passive max channel value\n"));
-
-        /* use a default value of 110ms */
-        val = 110;
-    }
-
-    for (i = 0; i < pMac->lim.gpLimSmeScanReq->channelList.numChannels; i++) {
-        tANI_U8 channelNum = pMac->lim.gpLimSmeScanReq->channelList.channelNumber[i];
-
-        if (limActiveScanAllowed(pMac, channelNum)) {
-            /* Use min + max channel time to calculate the total duration of scan */
-            pMsgNoA->single_noa_duration += pMac->lim.gpLimSmeScanReq->minChannelTime + pMac->lim.gpLimSmeScanReq->maxChannelTime;
-        } else {
-            /* using the value from WNI_CFG_PASSIVE_MINIMUM_CHANNEL_TIME as is done in
-             * void limContinuePostChannelScan(tpAniSirGlobal pMac)
-             */
-            pMsgNoA->single_noa_duration += val;
-        }
-    }
-
-    /* Adding an overhead of 5ms to account for the scan messaging delays */
-    pMsgNoA->single_noa_duration += SCAN_MESSAGING_OVERHEAD;
-
-    /* Multiplying with 1024 since riva is expecting in micro Seconds */
-     pMsgNoA->single_noa_duration *= CONV_MS_TO_US;
+    pMsgNoA->single_noa_duration = noaDuration;
 
     /* Start Insert NOA timer
      * If insert NOA req fails or NOA rsp fails or start NOA indication doesn't come from FW due to GO session deletion
-     * or any other failure or reason, we still need to send probe response to SME with failure status. The insert NOA
-     * timer of 500 ms will ensure a response back to SME/HDD for the scan req
+     * or any other failure or reason, we still need to process the deferred SME req. The insert NOA
+     * timer of 500 ms will ensure the stored SME req always gets processed
      */
     if (tx_timer_activate(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer)
                                       == TX_TIMER_ERROR)
@@ -4575,8 +4590,11 @@ __limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
         // send the scan response back with status failure and do not even call insert NOA
         limSendSmeScanRsp(pMac, sizeof(tSirSmeScanRsp), eSIR_SME_SCAN_FAILED, pMac->lim.gSmeSessionId, pMac->lim.gTransactionId);
-        return TRUE;
+        palFreeMemory( pMac->hHdd, (void **) &pMsgNoA);
+        goto error;
     }
+
+    MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, NO_SESSION, eLIM_INSERT_SINGLESHOT_NOA_TIMER));
 
     msg.type = WDA_SET_P2P_GO_NOA_REQ;
     msg.reserved = 0;
@@ -4587,14 +4605,151 @@ __limInsertSingleShotNOAForScan(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
     {
         /* In this failure case, timer is already started, so its expiration will take care of sending scan response */
         limLog(pMac, LOGP, FL("wdaPost Msg failed\n"));
-        return TRUE;
+        /* Deactivate the NOA timer in failure case */
+        limDeactivateAndChangeTimer(pMac, eLIM_INSERT_SINGLESHOT_NOA_TIMER);
+        goto error;
     }
+    return FALSE;
 
+error:
+    /* In any of the failure cases, just go ahead with the processing of registered deferred SME request without
+     * worrying about the NOA
+     */
+    limProcessRegdDefdSmeReqAfterNOAStart(pMac);
+    // msg buffer is consumed and freed in above function so return FALSE
     return FALSE;
 
 }
 
-#endif
+static void __limRegisterDeferredSmeReqForNOAStart(tpAniSirGlobal pMac, tANI_U16 msgType, tANI_U32 *pMsgBuf)
+{
+    limLog(pMac, LOG1, FL("Reg msgType %d\n"), msgType) ;
+    pMac->lim.gDeferMsgTypeForNOA = msgType;
+    pMac->lim.gpDefdSmeMsgForNOA = pMsgBuf;
+}
+
+static void __limDeregisterDeferredSmeReqAfterNOAStart(tpAniSirGlobal pMac)
+{
+    limLog(pMac, LOG1, FL("Dereg msgType %d\n"), pMac->lim.gDeferMsgTypeForNOA) ;
+    pMac->lim.gDeferMsgTypeForNOA = 0;
+    if (pMac->lim.gpDefdSmeMsgForNOA != NULL)
+    {
+        /* __limProcessSmeScanReq consumed the buffer. We can free it. */
+        palFreeMemory( pMac->hHdd, (tANI_U32 *) pMac->lim.gpDefdSmeMsgForNOA);
+        pMac->lim.gpDefdSmeMsgForNOA = NULL;
+    }
+}
+
+static
+tANI_U32 limCalculateNOADuration(tpAniSirGlobal pMac, tANI_U16 msgType, tANI_U32 *pMsgBuf)
+{
+    tANI_U32 noaDuration = 0;
+
+    switch (msgType)
+    {
+        case eWNI_SME_SCAN_REQ:
+        {
+            tANI_U32 val;
+            tANI_U8 i;
+            tpSirSmeScanReq pScanReq = (tpSirSmeScanReq) pMsgBuf;
+            if (wlan_cfgGetInt(pMac, WNI_CFG_PASSIVE_MAXIMUM_CHANNEL_TIME, &val) != eSIR_SUCCESS)
+            {
+                /*
+                 * Could not get max channel value
+                 * from CFG. Log error.
+                 */
+                limLog(pMac, LOGP, FL("could not retrieve passive max channel value\n"));
+
+                /* use a default value of 110ms */
+                val = DEFAULT_PASSIVE_MAX_CHANNEL_TIME;
+            }
+
+            for (i = 0; i < pScanReq->channelList.numChannels; i++) {
+                tANI_U8 channelNum = pScanReq->channelList.channelNumber[i];
+
+                if (limActiveScanAllowed(pMac, channelNum)) {
+                    /* Use min + max channel time to calculate the total duration of scan */
+                    noaDuration += pScanReq->minChannelTime + pScanReq->maxChannelTime;
+                } else {
+                    /* using the value from WNI_CFG_PASSIVE_MINIMUM_CHANNEL_TIME as is done in
+                     * void limContinuePostChannelScan(tpAniSirGlobal pMac)
+                     */
+                    noaDuration += val;
+                }
+            }
+
+            /* Adding an overhead of 20ms to account for the scan messaging delays */
+            noaDuration += SCAN_MESSAGING_OVERHEAD;
+            noaDuration *= CONV_MS_TO_US;
+
+            break;
+        }
+
+        case eWNI_SME_OEM_DATA_REQ:
+            noaDuration = OEM_DATA_NOA_DURATION*CONV_MS_TO_US; // use 60 msec as default
+            break;
+
+        case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
+        {
+            tSirRemainOnChnReq *pRemainOnChnReq = (tSirRemainOnChnReq *) pMsgBuf;
+            noaDuration = (pRemainOnChnReq->duration)*CONV_MS_TO_US;
+            break;
+        }
+
+        case eWNI_SME_JOIN_REQ:
+            noaDuration = JOIN_NOA_DURATION*CONV_MS_TO_US;
+            break;
+
+        default:
+            noaDuration = 0;
+            break;
+
+    }
+    limLog(pMac, LOGW, FL("msgType %d noa %d\n"), msgType, noaDuration);
+    return noaDuration;
+}
+
+void limProcessRegdDefdSmeReqAfterNOAStart(tpAniSirGlobal pMac)
+{
+    tANI_BOOLEAN bufConsumed = TRUE;
+
+    limLog(pMac, LOG1, FL("Process defd sme req %d\n"), pMac->lim.gDeferMsgTypeForNOA);
+    if ( (pMac->lim.gDeferMsgTypeForNOA != 0) &&
+         (pMac->lim.gpDefdSmeMsgForNOA != NULL) )
+    {
+        switch (pMac->lim.gDeferMsgTypeForNOA)
+        {
+            case eWNI_SME_SCAN_REQ:
+                __limProcessSmeScanReq(pMac, pMac->lim.gpDefdSmeMsgForNOA);
+                break;
+            case eWNI_SME_OEM_DATA_REQ:
+                __limProcessSmeOemDataReq(pMac, pMac->lim.gpDefdSmeMsgForNOA);
+                break;
+            case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
+                bufConsumed = limProcessRemainOnChnlReq(pMac, pMac->lim.gpDefdSmeMsgForNOA);
+                /* limProcessRemainOnChnlReq doesnt want us to free the buffer since
+                 * it is freed in limRemainOnChnRsp. this change is to avoid "double free"
+                 */
+                if (FALSE == bufConsumed)
+                {
+                    pMac->lim.gpDefdSmeMsgForNOA = NULL;
+                }
+                break;
+            case eWNI_SME_JOIN_REQ:
+                __limProcessSmeJoinReq(pMac, pMac->lim.gpDefdSmeMsgForNOA);
+                break;
+            default:
+                limLog(pMac, LOGE, FL("Unknown deferred msg type %d\n"), pMac->lim.gDeferMsgTypeForNOA);
+                break;
+        }
+        __limDeregisterDeferredSmeReqAfterNOAStart(pMac);
+    }
+    else
+    {
+        limLog( pMac, LOGW, FL("start received from FW when no sme deferred msg pending. Do nothing."
+            "It might happen sometime when NOA start ind and timeout happen at the same time\n"));
+    }
+}
 
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 /*
@@ -4901,6 +5056,30 @@ lim_tdls_teardown_req_error:
 
 #endif
 
+static void
+__limProcessSmeResetApCapsChange(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
+{
+    tpSirResetAPCapsChange pResetCapsChange;
+    tpPESession             psessionEntry;
+    tANI_U8  sessionId = 0;
+    if (pMsgBuf == NULL)
+    {
+        limLog(pMac, LOGE,FL("Buffer is Pointing to NULL\n"));
+        return;
+    }
+
+    pResetCapsChange = (tpSirResetAPCapsChange)pMsgBuf;
+    psessionEntry = peFindSessionByBssid(pMac, pResetCapsChange->bssId, &sessionId);
+    if (psessionEntry == NULL)
+    {
+        limLog(pMac, LOGE, FL("Session does not exist for given BSSID\n"));
+        return;
+    }
+
+    psessionEntry->limSentCapsChangeNtf = false;
+    return;
+}
+
 /**
  * limProcessSmeReqMessages()
  *
@@ -4933,6 +5112,28 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
          limSmeStateStr(pMac->lim.gLimSmeState), pMac->lim.gLimSmeState,
          limMlmStateStr(pMac->lim.gLimMlmState), pMac->lim.gLimMlmState );)
 
+    /* Special handling of some SME Req msgs where we have an existing GO session and
+     * want to insert NOA before processing those msgs. These msgs will be processed later when
+     * start event happens
+     */
+    switch (pMsg->type)
+    {
+        case eWNI_SME_SCAN_REQ:
+        case eWNI_SME_OEM_DATA_REQ:
+        case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
+        case eWNI_SME_JOIN_REQ:
+            /* If we have an existing P2P GO session we need to insert NOA before actually process this SME Req */
+            if ((limIsNOAInsertReqd(pMac) == TRUE) && IS_FEATURE_SUPPORTED_BY_FW(P2P_GO_NOA_DECOUPLE_INIT_SCAN))
+            {
+                tANI_U32 noaDuration;
+                __limRegisterDeferredSmeReqForNOAStart(pMac, pMsg->type, pMsgBuf);
+                noaDuration = limCalculateNOADuration(pMac, pMsg->type, pMsgBuf);
+                bufConsumed = __limInsertSingleShotNOAForScan(pMac, noaDuration);
+                return bufConsumed;
+            }
+    }
+    /* If no insert NOA required then execute the code below */
+
     switch (pMsg->type)
     {
         case eWNI_SME_START_REQ:
@@ -4943,34 +5144,19 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             bufConsumed = __limProcessSmeSysReadyInd(pMac, pMsgBuf);
             break;
 
-
         case eWNI_SME_START_BSS_REQ:
             bufConsumed = __limProcessSmeStartBssReq(pMac, pMsg);
             break;
 
         case eWNI_SME_SCAN_REQ:
-#ifdef WLAN_FEATURE_P2P
-            /* If we are in P2P GO mode we need to insert NOA before actually starting a scan */
-            if ((limIsNOAInsertReqd(pMac) == TRUE) && IS_FEATURE_SUPPORTED_BY_FW(P2P_GO_NOA_DECOUPLE_INIT_SCAN))
-            {
-                bufConsumed = __limInsertSingleShotNOAForScan(pMac, pMsgBuf);
-            }
-            else
-            {
-#endif
-                __limProcessSmeScanReq(pMac, pMsgBuf);
-#ifdef WLAN_FEATURE_P2P
-            }
-#endif
+            __limProcessSmeScanReq(pMac, pMsgBuf);
             break;
 
 #ifdef FEATURE_OEM_DATA_SUPPORT
         case eWNI_SME_OEM_DATA_REQ:
             __limProcessSmeOemDataReq(pMac, pMsgBuf);
-
             break;
 #endif
-#ifdef WLAN_FEATURE_P2P
         case eWNI_SME_REMAIN_ON_CHANNEL_REQ:
             bufConsumed = limProcessRemainOnChnlReq(pMac, pMsgBuf);
             break;
@@ -4978,10 +5164,8 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
         case eWNI_SME_UPDATE_NOA:
             __limProcessSmeNoAUpdate(pMac, pMsgBuf);
             break;
-#endif
         case eWNI_SME_JOIN_REQ:
             __limProcessSmeJoinReq(pMac, pMsgBuf);
-
             break;
 
         case eWNI_SME_AUTH_REQ:
@@ -5068,6 +5252,13 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             //HAL consumes pMsgBuf. It will be freed there. Set bufConsumed to false.
             bufConsumed = FALSE;
             break;              
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+        case eWNI_SME_GET_ROAM_RSSI_REQ:
+            __limProcessSmeGetRoamRssiRequest( pMac, pMsgBuf);
+            //HAL consumes pMsgBuf. It will be freed there. Set bufConsumed to false.
+            bufConsumed = FALSE;
+            break;
+#endif
         case eWNI_SME_DEL_BA_PEER_IND:
             limProcessSmeDelBaPeerInd(pMac, pMsgBuf);
             break;
@@ -5132,11 +5323,9 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             __limProcessSmeDelStaSelfReq( pMac, pMsgBuf );
             break;
 
-#ifdef WLAN_FEATURE_P2P
         case eWNI_SME_REGISTER_MGMT_FRAME_REQ:
             __limProcessSmeRegisterMgmtFrameReq( pMac, pMsgBuf );
             break;
-#endif        
 #ifdef FEATURE_WLAN_TDLS
         case eWNI_SME_TDLS_SEND_MGMT_REQ:
             limProcessSmeTdlsMgmtSendReq(pMac, pMsgBuf);
@@ -5159,6 +5348,13 @@ limProcessSmeReqMessages(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
             limProcessSmeTeardownReq(pMac,  pMsgBuf);
             break ;
 #endif
+        case eWNI_SME_RESET_AP_CAPS_CHANGED:
+            __limProcessSmeResetApCapsChange(pMac, pMsgBuf);
+            break;
+
+        case eWNI_SME_SET_TX_POWER_REQ:
+            limSendSetTxPowerReq(pMac,  pMsgBuf);
+            break ;
 
         default:
             vos_mem_free((v_VOID_t*)pMsg->bodyptr);

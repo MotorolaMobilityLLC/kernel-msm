@@ -81,6 +81,9 @@ typedef enum
     eCSR_AUTH_TYPE_CCKM_WPA,
     eCSR_AUTH_TYPE_CCKM_RSN,
 #endif /* FEATURE_WLAN_CCX */
+#ifdef WLAN_FEATURE_11W
+    eCSR_AUTH_TYPE_RSN_PSK_SHA256,
+#endif
     eCSR_NUM_OF_SUPPORT_AUTH_TYPE,
     eCSR_AUTH_TYPE_FAILED = 0xff,
     eCSR_AUTH_TYPE_UNKNOWN = eCSR_AUTH_TYPE_FAILED,
@@ -255,6 +258,17 @@ typedef struct tagCsrBSSIDs
     tCsrBssid *bssid;
 }tCsrBSSIDs;
 
+typedef struct tagCsrStaParams
+{
+    tANI_U16   capability;
+    tANI_U8    extn_capability[SIR_MAC_MAX_EXTN_CAP];
+    tANI_U8    supported_rates_len;
+    tANI_U8    supported_rates[SIR_MAC_MAX_SUPP_RATES];
+    tSirHTCap  HTCap;
+    tSirVHTCap VHTCap;
+    tANI_U8    uapsd_queues;
+    tANI_U8    max_sp;
+}tCsrStaParams;
 
 typedef struct tagCsrScanRequest
 {
@@ -271,10 +285,8 @@ typedef struct tagCsrScanRequest
     tANI_U32 uIEFieldLen;
     tANI_U8 *pIEField;
     eCsrRequestType requestType;    //11d scan or full scan
-#ifdef WLAN_FEATURE_P2P
     tANI_BOOLEAN p2pSearch;
     tANI_BOOLEAN skipDfsChnlInP2pSearch;
-#endif
 }tCsrScanRequest;
 
 typedef struct tagCsrBGScanRequest
@@ -450,6 +462,9 @@ typedef enum
     eCSR_ROAM_DISCONNECT_ALL_P2P_CLIENTS, //Disaconnect all the clients
     eCSR_ROAM_SEND_P2P_STOP_BSS, //Stopbss triggered from SME due to different
                                  // beacon interval
+#ifdef WLAN_FEATURE_11W
+    eCSR_ROAM_UNPROT_MGMT_FRAME_IND,
+#endif
 
 }eRoamCmdStatus;
 
@@ -526,15 +541,14 @@ typedef enum
     // INFRA disassociated
     eCSR_ROAM_RESULT_INFRA_DISASSOCIATED,
     eCSR_ROAM_RESULT_WPS_PBC_PROBE_REQ_IND,
-#ifdef WLAN_FEATURE_P2P
     eCSR_ROAM_RESULT_SEND_ACTION_FAIL,
-#endif
     // peer rejected assoc because max assoc limit reached. callback gets pointer to peer
     eCSR_ROAM_RESULT_MAX_ASSOC_EXCEEDED,
     //Assoc rejected due to concurrent session running on a different channel
     eCSR_ROAM_RESULT_ASSOC_FAIL_CON_CHANNEL,
 #ifdef FEATURE_WLAN_TDLS
     eCSR_ROAM_RESULT_ADD_TDLS_PEER,
+    eCSR_ROAM_RESULT_UPDATE_TDLS_PEER,
     eCSR_ROAM_RESULT_DELETE_TDLS_PEER,
     eCSR_ROAM_RESULT_TEARDOWN_TDLS_PEER_IND,
     eCSR_ROAM_RESULT_DELETE_ALL_TDLS_PEER_IND,
@@ -696,7 +710,8 @@ typedef enum
 
 }eCsrWEPStaticKeyID;
 
-#define CSR_MAX_NUM_KEY     (eCSR_SECURITY_WEP_STATIC_KEY_ID_MAX + 1)
+// Two extra key indicies are used for the IGTK (which is used by BIP)
+#define CSR_MAX_NUM_KEY     (eCSR_SECURITY_WEP_STATIC_KEY_ID_MAX + 2 + 1)
 
 typedef enum
 {
@@ -816,6 +831,13 @@ typedef struct tagCsrRoamProfile
     tCsrEncryptionList mcEncryptionType;
     //This field is for output only, not for input
     eCsrEncryptionType negotiatedMCEncryptionType;
+
+#ifdef WLAN_FEATURE_11W
+    // Management Frame Protection
+    tANI_BOOLEAN MFPEnabled;
+    tANI_U8 MFPRequired;
+    tANI_U8 MFPCapable;
+#endif
 
     tCsrKeys Keys;
     eCsrCBChoice CBMode; //up, down or auto
@@ -1064,6 +1086,7 @@ typedef struct tagCsrConfigParam
     tANI_BOOLEAN fIgnore_chan165;
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
     tANI_BOOLEAN nRoamPrefer5GHz;
+    tANI_BOOLEAN nRoamIntraBand;
 #endif
 
     tANI_U8 scanCfgAgingTime;
@@ -1127,10 +1150,8 @@ typedef struct tagCsrRoamInfo
 #ifdef FEATURE_WLAN_CCX
     tANI_BOOLEAN isCCXAssoc;
 #endif
-#ifdef WLAN_FEATURE_P2P
     void* pRemainCtx;
     tANI_U32 rxChan;
-#endif
 
 #ifdef FEATURE_WLAN_TDLS
     tANI_U8 staType;

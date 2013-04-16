@@ -599,23 +599,6 @@ VOS_STATUS vos_nv_getChannelListWithPower(tChannelListWithPower *pChannels20MHz 
                                           );
 
 /**------------------------------------------------------------------------
-  \brief vos_nv_get5GChannelListWithPower() - function to return the list of
-          supported 5G channels with the power limit info too.
-  \param pChannels20MHz - list of 20 Mhz channels
-  \param pNum20MHzChannelsFound - number of 20 Mhz channels
-  \param pChannels40MHz - list of 20 Mhz channels
-  \param pNum40MHzChannelsFound - number of 20 Mhz channels
-  \return status of the NV read operation
-  \Note: 40Mhz not currently supported
-  \sa
-  -------------------------------------------------------------------------*/
-VOS_STATUS vos_nv_get5GChannelListWithPower(tChannelListWithPower *pChannels20MHz /*[NUM_LEGIT_RF_CHANNELS] */,
-                                          tANI_U8 *pNum20MHzChannelsFound,
-                                          tChannelListWithPower *pChannels40MHz /*[NUM_CHAN_BOND_CHANNELS] */,
-                                          tANI_U8 *pNum40MHzChannelsFound
-                                          );
-
-/**------------------------------------------------------------------------
 
   \brief vos_nv_open() - initialize the NV module
 

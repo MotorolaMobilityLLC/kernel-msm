@@ -68,48 +68,9 @@ logDump.c
 #ifdef ANI_LOGDUMP
 
 #define MAX_OVERFLOW_MSG    400
-#if defined(ANI_OS_TYPE_WINDOWS)
 #define MAX_LOGDUMP_SIZE    ((4*1024) - MAX_OVERFLOW_MSG)
-#else
-#define MAX_LOGDUMP_SIZE    ((4*1024) - MAX_OVERFLOW_MSG)
-#endif
 
-#if defined (ANI_OS_TYPE_LINUX)
-
-#include <sysDebug.h>
-
-#elif defined(ANI_OS_TYPE_WINDOWS)
-
-#include "stdarg.h"
-#include "sirTypes.h"
-
-
-#ifdef ANI_DVT_DEBUG
-#include "dvtModuleApi.h"
-#endif
-
-#include "pmmApi.h"
-#include "csrApi.h"
-
-#elif defined(ANI_OS_TYPE_OSX)
-
-#include "stdarg.h"
-
-#elif defined(ANI_OS_TYPE_AMSS)
-
-#include "comdef.h"
-#include "string.h"
-
-#include "AEEstd.h"
-
-#include "sirTypes.h"
-#include "halInterrupts.h"
-
-#include "pmmApi.h"
-#include "halInternal.h"
-#include "csrApi.h"
-
-#elif defined(ANI_OS_TYPE_ANDROID)
+#if   defined(ANI_OS_TYPE_ANDROID)
 
 #include <linux/kernel.h>
 
@@ -175,38 +136,17 @@ int log_sprintf(tpAniSirGlobal pMac, char *pBuf, char *fmt, ...)
     tANI_S32 ret = 0;
 #ifdef WLAN_DEBUG
 
-#if defined(ANI_OS_TYPE_AMSS)
-    AEEVaList args;
-    AEEVA_START(args, fmt);
-#else
     va_list args;
     va_start(args, fmt);
-#endif
 
     if (pMac->gCurrentLogSize >= MAX_LOGDUMP_SIZE)
         return 0;
 
-#if defined (ANI_OS_TYPE_WINDOWS)
-    ret = _vsnprintf(pBuf, (MAX_LOGDUMP_SIZE - pMac->gCurrentLogSize), fmt, args);
-#elif (defined (ANI_OS_TYPE_LINUX) || defined (ANI_OS_TYPE_ANDROID))
+#if    defined (ANI_OS_TYPE_ANDROID)
     ret = vsnprintf(pBuf, (MAX_LOGDUMP_SIZE - pMac->gCurrentLogSize), fmt, args);
-#elif defined (ANI_OS_TYPE_OSX)
-    ret = vsnprintf(pBuf, (MAX_LOGDUMP_SIZE - pMac->gCurrentLogSize), fmt, args);
-    /* BSD kernel has a bug that vsnprintf() always return 0.
-     * See bsd/kern/subr_prf.c 
-     * Need to verify ...
-     */
-    if (ret >= 0)
-        ret = strlen(pBuf);
-#elif defined (ANI_OS_TYPE_AMSS)
-    ret = std_vstrlprintf(pBuf, (MAX_LOGDUMP_SIZE - pMac->gCurrentLogSize), fmt, args);
 #endif
 
-#if defined(ANI_OS_TYPE_AMSS)
-    AEEVA_END(args);
-#else
     va_end(args);
-#endif
 
     /* If an output error is encountered, a negative value is returned by vsnprintf */
     if (ret < 0)
@@ -217,22 +157,7 @@ int log_sprintf(tpAniSirGlobal pMac, char *pBuf, char *fmt, ...)
         pBuf += (MAX_LOGDUMP_SIZE - pMac->gCurrentLogSize);
         pMac->gCurrentLogSize = MAX_LOGDUMP_SIZE;
 
-#if defined (ANI_OS_TYPE_WINDOWS)
-        ret = _snprintf(pBuf, MAX_OVERFLOW_MSG, "\n-> ***********"
-                "\nOutput Exceeded the Buffer Size, message truncated!!\n<- ***********\n");
-#elif (defined (ANI_OS_TYPE_LINUX) || defined (ANI_OS_TYPE_ANDROID))
-        ret = snprintf(pBuf, MAX_OVERFLOW_MSG, "\n-> ***********"
-                "\nOutput Exceeded the Buffer Size, message truncated!!\n<- ***********\n");
-#elif defined (ANI_OS_TYPE_OSX)
-        ret = snprintf(pBuf, MAX_OVERFLOW_MSG, "\n-> ***********"
-                "\nOutput Exceeded the Buffer Size, message truncated!!\n<- ***********\n");
-        /* BSD kernel has a bug that snprintf() always return 0.
-         * See bsd/kern/subr_prf.c 
-         * but NEED TO VERIFY ...
-         */
-        if (ret >= 0)
-            ret = strlen(pBuf);
-#elif defined (ANI_OS_TYPE_AMSS)
+#if    defined (ANI_OS_TYPE_ANDROID)
         ret = snprintf(pBuf, MAX_OVERFLOW_MSG, "\n-> ***********"
                 "\nOutput Exceeded the Buffer Size, message truncated!!\n<- ***********\n");
 #endif
@@ -247,10 +172,6 @@ int log_sprintf(tpAniSirGlobal pMac, char *pBuf, char *fmt, ...)
     pMac->gCurrentLogSize += ret;
 
 
-#if defined (ANI_OS_TYPE_WINDOWS)
-    //DbgPrint("%s", pBuf);
-    sysLog(pMac, LOGE, FL("%s"), pBuf);
-#endif
 #endif //for #ifdef WLAN_DEBUG
     return ret;
 }
@@ -420,190 +341,6 @@ char * dump_log_level_set( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tA
     return p;
 }
 
-#ifdef WLAN_DEBUG    
-static tLogdRegList dataType[] =
-{
-    {SIR_MAC_DATA_DATA, "DATA "},
-    {SIR_MAC_DATA_DATA_ACK, "D+A  "},
-    {SIR_MAC_DATA_DATA_POLL, "D+P  "},
-    {SIR_MAC_DATA_DATA_ACK_POLL, "D+A+P"},
-    {SIR_MAC_DATA_NULL, "NULL "},
-    {SIR_MAC_DATA_NULL_ACK, "ACK  "},
-    {SIR_MAC_DATA_NULL_POLL, "POLL "},
-    {SIR_MAC_DATA_NULL_ACK_POLL, "A+P  "},
-    {SIR_MAC_DATA_QOS_DATA, "QDATA"},
-    {SIR_MAC_DATA_QOS_DATA_ACK, "QD+A "},
-    {SIR_MAC_DATA_QOS_DATA_POLL, "QD+P "},
-    {SIR_MAC_DATA_QOS_DATA_ACK_POLL, "QD+AP"},
-    {SIR_MAC_DATA_QOS_NULL, "QNULL"},
-    {SIR_MAC_DATA_QOS_NULL_POLL, "QACK "},
-    {SIR_MAC_DATA_QOS_NULL_ACK_POLL, "Q+A+P"}
-};
-
-static tLogdRegList mgmtType[] = {
-    {SIR_MAC_MGMT_BEACON, "BEACON   "},
-    {SIR_MAC_MGMT_ASSOC_REQ, "ASSOCREQ "},
-    {SIR_MAC_MGMT_ASSOC_RSP, "ASSOCRSP "},
-    {SIR_MAC_MGMT_REASSOC_RSP, "REASSRSP "},
-    {SIR_MAC_MGMT_REASSOC_REQ, "REASSREQ "},
-    {SIR_MAC_MGMT_PROBE_REQ, "PROBEREQ "},
-    {SIR_MAC_MGMT_PROBE_RSP, "PROBERSP "},
-    {SIR_MAC_MGMT_AUTH, "AUTH     "},
-    {SIR_MAC_MGMT_DEAUTH, "DEAUTH   "},
-    {SIR_MAC_MGMT_DISASSOC, "DISASSOC "},
-    {SIR_MAC_MGMT_ACTION, "ACTION   "}
-};
-
-static tLogdRegList ctlType[] = {
-    {SIR_MAC_CTRL_RTS, "RTS(CTL) "},
-    {SIR_MAC_CTRL_CTS, "CTS(CTL) "},
-    {SIR_MAC_CTRL_ACK, "ACK(CTL) "},
-    {SIR_MAC_CTRL_PS_POLL, "PS-POLL  "},
-    {SIR_MAC_CTRL_BAR, "BAR      "},
-    {SIR_MAC_CTRL_BA,  "BA       "},
-    {SIR_MAC_CTRL_CF_END,"CF-END   "},
-    {SIR_MAC_CTRL_CF_END_ACK,"CFE+ACK  "}
-};
-
-static char * printMesgName(tpAniSirGlobal pMac, char *p, tANI_U32 type, tANI_U32 subType, tANI_U32 tcId)
-{
-    tLogdRegList *pEntry = NULL;
-    tANI_U32 nEntries, i;
-
-    switch (type)
-    {
-        case SIR_MAC_DATA_FRAME:
-            pEntry   = &dataType[0];
-            nEntries = sizeof(dataType)/sizeof(dataType[0]);
-            break;
-        case SIR_MAC_MGMT_FRAME:
-            pEntry   = &mgmtType[0];
-            nEntries = sizeof(mgmtType)/sizeof(mgmtType[0]);
-            break;
-        case SIR_MAC_CTRL_FRAME:
-            pEntry   = &ctlType[0];
-            nEntries = sizeof(ctlType)/sizeof(ctlType[0]);
-            break;
-        default:
-            p += log_sprintf( pMac, p, "RESERVED ");
-            return p;
-    }
-
-    for (i=0; i < nEntries; i++, pEntry++) {
-        if (pEntry->addr == subType) {
-            p += log_sprintf( pMac, p, "%s", pEntry->name);
-            break;
-        }
-    }
-
-    if (i >= nEntries)
-        p += log_sprintf( pMac, p, "RESERVED ");
-
-    if (type == SIR_MAC_DATA_FRAME)
-        p += log_sprintf( pMac, p, "(%d) ", tcId);
-    return p;
-}
-
-char * dump_thread_info( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
-{
-    tANI_U32 i, j;
-
-    p += log_sprintf( pMac, p, "\n**** BBT RECEIVE **** \n");
-    p += log_sprintf( pMac, p, "\nBBT CRC errors received   : %d\n",
-            pMac->sys.gSysBbtCrcFail);
-    p += log_sprintf( pMac, p, "BBT duplicates received   : %d\n",
-            pMac->sys.gSysBbtDuplicates);
-    p += log_sprintf( pMac, p, "BBT total frames received : %d\n",
-            pMac->sys.gSysBbtReceived);
-    p += log_sprintf( pMac, p, "\tPosted to LIM : %d\n",
-            pMac->sys.gSysBbtPostedToLim);
-    p += log_sprintf( pMac, p, "\tPosted to SCH : %d\n",
-            pMac->sys.gSysBbtPostedToSch);
-    p += log_sprintf( pMac, p, "\tPosted to PMM : %d\n",
-            pMac->sys.gSysBbtPostedToPmm);
-    p += log_sprintf( pMac, p, "\tPosted to HAL : %d\n",
-            pMac->sys.gSysBbtPostedToHal);
-    p += log_sprintf( pMac, p, "\tDropped       : %d\n",
-            pMac->sys.gSysBbtDropped);
-    p += log_sprintf( pMac, p, "\t\tLearn mode frame out of learn mode : %d\n",
-            pMac->sys.gSysBbtLearnFrameInv);
-    p += log_sprintf( pMac, p, "\t\tNon-learn mode frame in learn mode : %d\n",
-            pMac->sys.gSysBbtNonLearnFrameInv);
-
-    p += log_sprintf( pMac, p, "\nMGMT RX frame counts\n");
-    for (i = 0; i < 16; i++) {
-        if (pMac->sys.gSysFrameCount[0][i]) {
-            p += log_sprintf( pMac, p, "\t");
-            p = printMesgName( pMac, p, 0, i, 0);
-            p += log_sprintf( pMac, p, "[%d] %d\n", i, pMac->sys.gSysFrameCount[0][i]);
-        }
-    }
-
-    p += log_sprintf( pMac, p, "CTRL RX frame counts\n");
-
-    for (i = 0; i < 16; i++) {
-        if (pMac->sys.gSysFrameCount[1][i]) {
-            p += log_sprintf( pMac, p, "\t");
-            p = printMesgName(pMac, p, 1, i, 0);
-            p += log_sprintf( pMac, p, "[%d] %d\n", i, pMac->sys.gSysFrameCount[1][i]);
-        }
-    }
-
-    p += log_sprintf( pMac, p, "DATA RX frame counts\n");
-    for (i = 0; i < 16; i++) {
-        if (pMac->sys.gSysFrameCount[2][i]) {
-            p += log_sprintf( pMac, p, "\t");
-            p = printMesgName(pMac, p, 2, i, 0);
-            p += log_sprintf( pMac, p, "[%d] %d\n", i,
-                    pMac->sys.gSysFrameCount[2][i]);
-        }
-    }
-
-    if (pMac->sch.gSchBBXportRcvCnt) {
-        p += log_sprintf( pMac, p, "\nSCH processed messages : %d\n",
-                pMac->sch.gSchBBXportRcvCnt);
-        p += log_sprintf( pMac, p, "\tBeacons  : %d\n", pMac->sch.gSchBcnRcvCnt);
-        p += log_sprintf( pMac, p, "\t\tignored  : %d\n", pMac->sch.gSchBcnIgnored);
-        p += log_sprintf( pMac, p, "\t\tin error : %d\n", pMac->sch.gSchBcnParseErrorCnt);
-        p += log_sprintf( pMac, p, "\tQoS null : %d\n", pMac->sch.gSchRRRcvCnt);
-        p += log_sprintf( pMac, p, "\tDropped  : %d\n", pMac->sch.gSchUnknownRcvCnt);
-    }
-
-
-    p += log_sprintf( pMac, p, "\nLIM processed messages : %d\n", pMac->lim.numTot);
-    if (pMac->lim.numTot) {
-        p += log_sprintf( pMac, p, "\tSME Messages (HDD) : %d\n", pMac->lim.numSme);
-        p += log_sprintf( pMac, p, "\tMAC Messages (BBT) : %d\n", pMac->lim.numBbt);
-        p += log_sprintf( pMac, p, "\t\tBad Protocol\t: %d\n", pMac->lim.numProtErr);
-        p += log_sprintf( pMac, p, "\t\tIn Learn mode\t: %d (ignored %d)\n",
-                pMac->lim.numLearn, pMac->lim.numLearnIgnore);
-
-        for (i=0; i<4; i++) {
-            for (j=0; j<16; j++) {
-                if (pMac->lim.numMAC[i][j]) {
-                    p += log_sprintf( pMac, p, "\t\t");
-                    p = printMesgName(pMac, p, i, j, 0);
-                    p += log_sprintf( pMac, p, "\t: %d\n", pMac->lim.numMAC[i][j]);
-                }
-            }
-        }
-
-        p += log_sprintf( pMac, p, "\tBeacons received : %d\n", pMac->lim.gLimNumBeaconsRcvd);
-        p += log_sprintf( pMac, p, "\t\tIgnored : %d\n", pMac->lim.gLimNumBeaconsIgnored);
-    }
-
-    if (pMac->sys.gSysFrameCount[SIR_MAC_MGMT_FRAME][SIR_MAC_MGMT_PROBE_REQ]) {
-        p += log_sprintf( pMac, p, "\nProbe Requests Received: %d\n",
-                pMac->sys.gSysFrameCount[SIR_MAC_MGMT_FRAME][SIR_MAC_MGMT_PROBE_REQ]);
-        p += log_sprintf( pMac, p, "\tIgnored  \t: %d\n", pMac->sys.probeIgnore);
-        p += log_sprintf( pMac, p, "\tSSID miss\t: %d\n", pMac->sys.probeBadSsid);
-        p += log_sprintf( pMac, p, "\tParse err\t: %d\n", pMac->sys.probeError);
-        p += log_sprintf( pMac, p, "\tResponded\t: %d\n", pMac->sys.probeRespond);
-    }
-
-    return p;
-}
-#endif
 
 /* Initialize the index */
 void logDumpInit(tpAniSirGlobal pMac)

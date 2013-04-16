@@ -255,15 +255,15 @@
 #define SIR_MAC_BLKACK_ADD_REQ      0
 #define SIR_MAC_BLKACK_ADD_RSP      1
 #define SIR_MAC_BLKACK_DEL          2
-#if defined WLAN_FEATURE_P2P
 #define SIR_MAC_ACTION_VENDOR_SPECIFIC 9
 #define SIR_MAC_ACTION_VENDOR_SPECIFIC_CATEGORY     0x7F
 #define SIR_MAC_ACTION_P2P_SUBTYPE_PRESENCE_RSP     2
-#endif
 
 #ifdef WLAN_FEATURE_11W
 //11w SA query request/response action frame category code
-#define SIR_MAC_ACTION_SA_QUERY               8 
+#define SIR_MAC_ACTION_SA_QUERY          8
+#define SIR_MAC_SA_QUERY_REQ             0
+#define SIR_MAC_SA_QUERY_RSP             1
 #endif
 
 #ifdef FEATURE_WLAN_TDLS
@@ -449,14 +449,12 @@
 #define SIR_MAC_WSM_OUI             SIR_MAC_WME_OUI
 #define SIR_MAC_WSC_OUI             "\x00\x50\xf2\x04"
 #define SIR_MAC_WSC_OUI_SIZE        4
-#ifdef WLAN_FEATURE_P2P
 #define SIR_MAC_P2P_OUI             "\x50\x6f\x9a\x09"
 #define SIR_MAC_P2P_OUI_SIZE        4
 #define SIR_P2P_NOA_ATTR            12
 #define SIR_MAX_NOA_ATTR_LEN        31
 #define SIR_MAX_NOA_DESCR           2
 #define SIR_P2P_IE_HEADER_LEN       6
-#endif
 
 // min size of wme oui header: oui(3) + type + subtype + version
 #define SIR_MAC_OUI_WME_HDR_MIN       6
@@ -1589,6 +1587,129 @@ typedef  struct sSirMacRpiReportIE
     tSirMacRpiReport     rpiReport;
 } tSirMacRpiReportIE, *tpSirMacRpiReportIE;
 
+#define SIR_MAC_MAX_SUPP_RATES            32
+
+#define SIR_MAC_MAX_EXTN_CAP               8
+
+// VHT Capabilities Info
+typedef __ani_attr_pre_packed struct sSirMacVHTCapabilityInfo
+{
+#ifndef ANI_LITTLE_BIT_ENDIAN
+    tANI_U32        reserved1: 2;
+    tANI_U32     txAntPattern: 1;
+    tANI_U32     rxAntPattern: 1;
+    tANI_U32  vhtLinkAdaptCap: 2;
+    tANI_U32   maxAMPDULenExp: 3;
+    tANI_U32        htcVHTCap: 1;
+    tANI_U32        vhtTXOPPS: 1;
+    tANI_U32  muBeamformeeCap: 1;
+    tANI_U32  muBeamformerCap: 1;
+    tANI_U32   numSoundingDim: 3;
+    tANI_U32 csnofBeamformerAntSup: 3;
+    tANI_U32  suBeamformeeCap: 1;
+    tANI_U32  suBeamFormerCap: 1;
+    tANI_U32           rxSTBC: 3;
+    tANI_U32           txSTBC: 1;
+    tANI_U32 shortGI160and80plus80MHz: 1;
+    tANI_U32     shortGI80MHz: 1;
+    tANI_U32    ldpcCodingCap: 1;
+    tANI_U32 supportedChannelWidthSet: 2;
+    tANI_U32       maxMPDULen: 2;
+#else
+    tANI_U32       maxMPDULen: 2;
+    tANI_U32 supportedChannelWidthSet: 2;
+    tANI_U32    ldpcCodingCap: 1;
+    tANI_U32     shortGI80MHz: 1;
+    tANI_U32 shortGI160and80plus80MHz: 1;
+    tANI_U32           txSTBC: 1;
+    tANI_U32           rxSTBC: 3;
+    tANI_U32  suBeamFormerCap: 1;
+    tANI_U32  suBeamformeeCap: 1;
+    tANI_U32 csnofBeamformerAntSup: 3;
+    tANI_U32   numSoundingDim: 3;
+    tANI_U32  muBeamformerCap: 1;
+    tANI_U32  muBeamformeeCap: 1;
+    tANI_U32        vhtTXOPPS: 1;
+    tANI_U32        htcVHTCap: 1;
+    tANI_U32   maxAMPDULenExp: 3;
+    tANI_U32  vhtLinkAdaptCap: 2;
+    tANI_U32     rxAntPattern: 1;
+    tANI_U32     txAntPattern: 1;
+    tANI_U32        reserved1: 2;
+#endif
+} __ani_attr_packed tSirMacVHTCapabilityInfo;
+
+typedef __ani_attr_pre_packed struct sSirMacVHTTxSupDataRateInfo
+{
+#ifndef ANI_LITTLE_BIT_ENDIAN
+    tANI_U16 reserved: 3;
+    tANI_U16 txSupDataRate: 13;
+#else
+    tANI_U16 txSupDataRate: 13;
+    tANI_U16 reserved: 3;
+#endif
+}__ani_attr_packed tSirMacVHTTxSupDataRateInfo;
+
+typedef __ani_attr_pre_packed struct sSirMacVHTRxSupDataRateInfo
+{
+#ifndef ANI_LITTLE_BIT_ENDIAN
+    tANI_U16 reserved: 3;
+    tANI_U16 rxSupDataRate: 13;
+#else
+    tANI_U16 rxSupDataRate: 13;
+    tANI_U16 reserved: 3;
+#endif
+}__ani_attr_packed tSirMacVHTRxSupDataRateInfo;
+
+/**
+ * struct sSirVhtMcsInfo - VHT MCS information
+ * @rx_mcs_map: RX MCS map 2 bits for each stream, total 8 streams
+ * @rx_highest: Indicates highest long GI VHT PPDU data rate
+ *      STA can receive. Rate expressed in units of 1 Mbps.
+ *      If this field is 0 this value should not be used to
+ *      consider the highest RX data rate supported.
+ * @tx_mcs_map: TX MCS map 2 bits for each stream, total 8 streams
+ * @tx_highest: Indicates highest long GI VHT PPDU data rate
+ *      STA can transmit. Rate expressed in units of 1 Mbps.
+ *      If this field is 0 this value should not be used to
+ *      consider the highest TX data rate supported.
+ */
+typedef struct sSirVhtMcsInfo {
+    tANI_U16 rxMcsMap;
+    tANI_U16 rxHighest;
+    tANI_U16 txMcsMap;
+    tANI_U16 txHighest;
+}tSirVhtMcsInfo;
+
+/**
+ * struct sSirVHtCap - VHT capabilities
+ *
+ * This structure is the "VHT capabilities element" as
+ * described in 802.11ac D3.0 8.4.2.160
+ * @vht_cap_info: VHT capability info
+ * @supp_mcs: VHT MCS supported rates
+ */
+typedef struct sSirVHtCap {
+    tANI_U32       vhtCapInfo;
+    tSirVhtMcsInfo suppMcs;
+}tSirVHTCap;
+
+/**
+ * struct sSirHtCap - HT capabilities
+ *
+ * This structure refers to "HT capabilities element" as
+ * described in 802.11n draft section 7.3.2.52
+ */
+
+
+typedef struct sSirHtCap {
+    tANI_U16 capInfo;
+    tANI_U8  ampduParamsInfo;
+    tANI_U8  suppMcsSet[16];
+    tANI_U16 extendedHtCapInfo;
+    tANI_U32 txBFCapInfo;
+    tANI_U8  antennaSelectionInfo;
+}tSirHTCap;
 
 // HT Cap and HT IE Size defines
 #define HT_CAPABILITY_IE_SIZE                       28
@@ -2207,7 +2328,6 @@ typedef __ani_attr_pre_packed struct sSirMacActionFrameHdr
     tANI_U8    actionID;
 } __ani_attr_packed tSirMacActionFrameHdr, *tpSirMacActionFrameHdr;
 
-#if defined WLAN_FEATURE_P2P
 typedef __ani_attr_pre_packed struct sSirMacVendorSpecificPublicActionFrameHdr
 {
     tANI_U8    category;
@@ -2226,7 +2346,6 @@ typedef __ani_attr_pre_packed struct sSirMacP2PActionFrameHdr
 } __ani_attr_packed tSirMacP2PActionFrameHdr, *tpSirMacP2PActionFrameHdr;
 
 
-#endif
 
 typedef  struct sSirMacMeasActionFrameHdr
 {

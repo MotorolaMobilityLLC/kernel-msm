@@ -166,7 +166,7 @@ void limUpdateAssocStaDatas(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpSirAsso
        if (limPopulateOwnRateSet(pMac, &pStaDs->supportedRates, pAssocRsp->HTCaps.supportedMCSSet, false,psessionEntry) != eSIR_SUCCESS) 
 #endif
        {
-           limLog(pMac, LOGP, FL("could not get rateset and extended rate set\n"));
+           limLog(pMac, LOGP, FL("could not get rateset and extended rate set"));
            return;
        }
    
@@ -180,7 +180,7 @@ void limUpdateAssocStaDatas(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpSirAsso
                      (tANI_U8 *) &pStaDs->mlmStaContext.propRateSet.propRate,
                      &val) != eSIR_SUCCESS) {
            /// Could not get prop rateset from CFG. Log error.
-           limLog(pMac, LOGP, FL("could not retrieve prop rateset\n"));
+           limLog(pMac, LOGP, FL("could not retrieve prop rateset"));
            return;
        }
        pStaDs->mlmStaContext.propRateSet.numPropRates = (tANI_U8) val;
@@ -194,10 +194,10 @@ void limUpdateAssocStaDatas(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpSirAsso
            if (pAssocRsp->edcaPresent) {
                tSirRetStatus status;
                status = schBeaconEdcaProcess(pMac,&pAssocRsp->edca, psessionEntry);
-              PELOG2(limLog(pMac, LOG2, "Edca set update based on AssocRsp: status %d\n",
+              PELOG2(limLog(pMac, LOG2, "Edca set update based on AssocRsp: status %d",
                       status);)
                if (status != eSIR_SUCCESS) {
-                   PELOGE(limLog(pMac, LOGE, FL("Edca error in AssocResp \n"));)
+                   PELOGE(limLog(pMac, LOGE, FL("Edca error in AssocResp "));)
                } else { // update default tidmap based on ACM
                    pStaDs->qosMode    = 1;
                    pStaDs->lleEnabled = 1;
@@ -211,10 +211,10 @@ void limUpdateAssocStaDatas(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpSirAsso
        {
            tSirRetStatus status;
            status = schBeaconEdcaProcess(pMac,&pAssocRsp->edca, psessionEntry);
-           PELOGW(limLog(pMac, LOGW, "WME Edca set update based on AssocRsp: status %d\n", status);)
+           PELOGW(limLog(pMac, LOGW, "WME Edca set update based on AssocRsp: status %d", status);)
 
            if (status != eSIR_SUCCESS)
-               PELOGE(limLog(pMac, LOGE, FL("WME Edca error in AssocResp - ignoring\n"));)
+               PELOGE(limLog(pMac, LOGE, FL("WME Edca error in AssocResp - ignoring"));)
            else { // update default tidmap based on HashACM
                pStaDs->qosMode    = 1;
                pStaDs->wmeEnabled = 1;
@@ -235,7 +235,12 @@ void limUpdateAssocStaDatas(tpAniSirGlobal pMac, tpDphHashNode pStaDs, tpSirAsso
            pStaDs->wmeEnabled = 1;
        }
 
-
+#ifdef WLAN_FEATURE_11W
+       if(psessionEntry->limRmfEnabled)
+       {
+           pStaDs->rmfEnabled = 1;
+       }
+#endif
 }
 
 /**
@@ -332,7 +337,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     if(eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd, 
                                                 (void **)&pBeaconStruct, sizeof(tSchBeaconStruct)))
     {
-        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessAssocRspFrame\n") );
+        limLog(pMac, LOGE, FL("Unable to PAL allocate memory in limProcessAssocRspFrame") );
         return;
     }
 
@@ -342,7 +347,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         // Should not have received Re/Association Response
         // frame on AP. Log error
         limLog(pMac, LOGE,
-               FL("received Re/Assoc response frame on role %d \n"),
+               FL("received Re/Assoc response frame on role %d "),
                psessionEntry->limSystemRole);
 
         palFreeMemory(pMac->hHdd, pBeaconStruct);
@@ -365,14 +370,14 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         /// Received unexpected Re/Association Response frame
 
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-        PELOG1(limLog(pMac, LOG1,  FL("mlm state is set to %d session=%d\n"), 
+        PELOG1(limLog(pMac, LOG1,  FL("mlm state is set to %d session=%d"),
             psessionEntry->limMlmState, psessionEntry->peSessionId);)
 #endif
         // Log error
         if (!pHdr->fc.retry)
         {
             limLog(pMac, LOGE,
-               FL("received Re/Assoc rsp frame in unexpected state\n"));
+               FL("received Re/Assoc rsp frame in unexpected state"));
             limPrintMlmState(pMac, LOGE, psessionEntry->limMlmState);
         }
         palFreeMemory(pMac->hHdd, pBeaconStruct);
@@ -383,7 +388,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
                                 eSIR_SUCCESS)
     {
         /// Could not get BSSID from CFG. Log error.
-        limLog(pMac, LOGP, FL("could not retrieve BSSID\n"));
+        limLog(pMac, LOGP, FL("could not retrieve BSSID"));
         palFreeMemory(pMac->hHdd, pBeaconStruct);
         return;
     }
@@ -429,7 +434,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     }
 
    if ( palAllocateMemory(pMac->hHdd, (void **)&pAssocRsp, sizeof(*pAssocRsp)) != eHAL_STATUS_SUCCESS) {
-        limLog(pMac, LOGP, FL("Pal Allocate Memory failed in AssocRsp\n"));
+        limLog(pMac, LOGP, FL("Pal Allocate Memory failed in AssocRsp"));
         palFreeMemory(pMac->hHdd, pBeaconStruct);
 
         return;
@@ -450,9 +455,9 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     {
         if (palFreeMemory(pMac->hHdd, pAssocRsp) != eHAL_STATUS_SUCCESS) 
         {
-            limLog(pMac, LOGP, FL("PalFree Memory failed \n"));
+            limLog(pMac, LOGP, FL("PalFree Memory failed "));
         }
-        PELOGE(limLog(pMac, LOGE, FL("Parse error Assoc resp subtype %d, length=%d\n"), frameLen,subType);)
+        PELOGE(limLog(pMac, LOGE, FL("Parse error Assoc resp subtype %d, length=%d"), frameLen,subType);)
         palFreeMemory(pMac->hHdd, pBeaconStruct);
 
         return;
@@ -548,7 +553,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         
         // Log error
         limLog(pMac, LOGE,
-               FL("received Re/AssocRsp frame with IBSS capability\n"));
+               FL("received Re/AssocRsp frame with IBSS capability"));
         palFreeMemory(pMac->hHdd, pAssocRsp);
         palFreeMemory(pMac->hHdd, pBeaconStruct);
 
@@ -564,7 +569,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         palFreeMemory(pMac->hHdd, pAssocRsp);
         palFreeMemory(pMac->hHdd, pBeaconStruct);
 
-        limLog(pMac, LOGP, FL("could not retrieve Capabilities value\n"));
+        limLog(pMac, LOGP, FL("could not retrieve Capabilities value"));
         return;
     }
     limCopyU16((tANI_U8 *) &localCapabilities, caps);
@@ -589,7 +594,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         // Re/Association response was received
         // either with failure code.
         // Log error.
-        PELOGE(limLog(pMac, LOGE, FL("received Re/AssocRsp frame failure code %d\n"), pAssocRsp->statusCode);)
+        PELOGE(limLog(pMac, LOGE, FL("received Re/AssocRsp frame failure code %d"), pAssocRsp->statusCode);)
         // Need to update 'association failure' error counter
         // along with STATUS CODE
 
@@ -616,7 +621,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
         // Re/Association response was received
         // with invalid AID value
         // Log error
-        PELOGW(limLog(pMac, LOGW, FL("received Re/AssocRsp frame with invalid aid %X \n"),  pAssocRsp->aid);)
+        PELOGW(limLog(pMac, LOGW, FL("received Re/AssocRsp frame with invalid aid %X "),  pAssocRsp->aid);)
         mlmAssocCnf.resultCode = eSIR_SME_INVALID_ASSOC_RSP_RXED;
         mlmAssocCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
 
@@ -639,20 +644,22 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
             if (limSetLinkState(pMac, eSIR_LINK_POSTASSOC_STATE, psessionEntry->bssId,
                                 psessionEntry->selfMacAddr, NULL, NULL) != eSIR_SUCCESS)
             {
-                    PELOGE(limLog(pMac, LOGE, FL("Set link state to POSTASSOC failed\n"));)
-                            return;
+                PELOGE(limLog(pMac, LOGE, FL("Set link state to POSTASSOC failed"));)
+                palFreeMemory(pMac->hHdd, pBeaconStruct);
+                palFreeMemory(pMac->hHdd, pAssocRsp);
+                return;
             }
     }
     if (subType == LIM_REASSOC)
     {
         // Log success
-        PELOG1(limLog(pMac, LOG1, FL("Successfully Reassociated with BSS\n"));)
+        PELOG1(limLog(pMac, LOG1, FL("Successfully Reassociated with BSS"));)
 #ifdef FEATURE_WLAN_CCX
         {
             tANI_U8 cnt = 0;
             if (pAssocRsp->tsmPresent)
             {
-                limLog(pMac, LOGW, "TSM IE Present in Reassoc Rsp\n");
+                limLog(pMac, LOGW, "TSM IE Present in Reassoc Rsp");
                 // Start the TSM  timer only if the TSPEC Ie is present in the reassoc rsp
                 if (pAssocRsp->tspecPresent) {
                     // Find the TSPEC IE with VO user priority
@@ -669,7 +676,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
                         }
                     }
                 } else {
-                    limLog(pMac, LOGE, "TSM present but TSPEC IE not present in Reassoc Rsp\n");
+                    limLog(pMac, LOGE, "TSM present but TSPEC IE not present in Reassoc Rsp");
                 }
             }
         }
@@ -774,7 +781,7 @@ limProcessAssocRspFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tANI_U8 sub
     if ((pStaDs = dphGetHashEntry(pMac, DPH_STA_HASH_INDEX_PEER, &psessionEntry->dph.dphHashTable)) == NULL) 
     {
         // Could not add hash table entry
-        PELOGE(limLog(pMac, LOGE, FL("could not get hash entry at DPH for \n"));)
+        PELOGE(limLog(pMac, LOGE, FL("could not get hash entry at DPH for "));)
         limPrintMacAddr(pMac, pHdr->sa, LOGE);
 
         mlmAssocCnf.resultCode = eSIR_SME_RESOURCES_UNAVAILABLE;
@@ -834,7 +841,7 @@ assocReject:
                     || ((subType == LIM_REASSOC) && (psessionEntry->limMlmState == eLIM_MLM_WT_FT_REASSOC_RSP_STATE))
 #endif
        ) {
-        PELOGE(limLog(pMac, LOGE,  FL("Assoc Rejected by the peer. Reason: %d\n"), mlmAssocCnf.resultCode);)
+        PELOGE(limLog(pMac, LOGE,  FL("Assoc Rejected by the peer. Reason: %d"), mlmAssocCnf.resultCode);)
         psessionEntry->limMlmState = eLIM_MLM_IDLE_STATE;
         MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
 

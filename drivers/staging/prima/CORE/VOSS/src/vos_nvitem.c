@@ -63,14 +63,12 @@
 #include "vos_api.h"
 #include "wlan_hdd_misc.h"
 #include "vos_sched.h"
-#ifdef CONFIG_CFG80211
 #include "wlan_hdd_main.h"
 #include <net/cfg80211.h>
 static char crda_alpha2[2] = {0, 0}; /* country code from initial crda req */
 static char run_time_alpha2[2] = {0, 0}; /* country code from none-default country req */
 static v_BOOL_t crda_regulatory_entry_valid = VOS_FALSE;
 static v_BOOL_t crda_regulatory_run_time_entry_valid = VOS_FALSE;
-#endif
 
 /*----------------------------------------------------------------------------
  * Preprocessor Definitions and Constants
@@ -345,7 +343,7 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_NO_5GHZ, {'T', 'M'}},  //TURKMENISTAN
         { REGDOMAIN_N_AMER_EXC_FCC, {'T', 'N'}},  //TUNISIA
         { REGDOMAIN_NO_5GHZ, {'T', 'O'}},  //TONGA
-        { REGDOMAIN_N_AMER_EXC_FCC, {'T', 'R'}},  //TURKEY
+        { REGDOMAIN_ETSI, {'T', 'R'}},  //TURKEY
         { REGDOMAIN_WORLD,   {'T', 'T'}},  //TRINIDAD AND TOBAGO
         { REGDOMAIN_NO_5GHZ, {'T', 'V'}},  //TUVALU
         { REGDOMAIN_WORLD,   {'T', 'W'}},  //TAIWAN, PROVINCE OF CHINA
@@ -360,7 +358,7 @@ static CountryInfoTable_t countryInfoTable =
         { REGDOMAIN_HI_5GHZ, {'V', 'E'}},  //VENEZUELA
         { REGDOMAIN_ETSI,    {'V', 'G'}},  //VIRGIN ISLANDS, BRITISH
         { REGDOMAIN_FCC,     {'V', 'I'}},  //VIRGIN ISLANDS, US
-        { REGDOMAIN_N_AMER_EXC_FCC, {'V', 'N'}},  //VIET NAM
+        { REGDOMAIN_WORLD, {'V', 'N'}},  //VIET NAM
         { REGDOMAIN_NO_5GHZ, {'V', 'U'}},  //VANUATU
         { REGDOMAIN_WORLD,   {'W', 'F'}},  //WALLIS AND FUTUNA
         { REGDOMAIN_N_AMER_EXC_FCC, {'W', 'S'}},  //SOMOA
@@ -795,7 +793,6 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
             ("Reg domain table is empty\r\n") );
       return VOS_STATUS_E_EMPTY;
    }
-#ifdef CONFIG_CFG80211
    /* If CRDA regulatory settings is valid, i.e. crda is enabled
       and reg_notifier is called back.
       Intercept here and redirect to the Reg domain table's CRDA
@@ -831,6 +828,13 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
                pHddCtx = vos_get_context(VOS_MODULE_ID_HDD, pVosContext);
            else
                return VOS_STATUS_E_EXISTS;
+           if (NULL == pHddCtx)
+           {
+              VOS_TRACE( VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                    ("Invalid pHddCtx pointer\r\n") );
+              return VOS_STATUS_E_FAULT;
+           }
+
            wiphy = pHddCtx->wiphy;
            init_completion(&pHddCtx->driver_crda_req);
            regulatory_hint(wiphy, countryCode);
@@ -847,7 +851,6 @@ VOS_STATUS vos_nv_getRegDomainFromCountryCode( v_REGDOMAIN_t *pRegDomain,
            return VOS_STATUS_E_EXISTS;
        }
    }
-#endif
 
    // iterate the country info table until end of table or the country code
    // is found
@@ -1299,7 +1302,7 @@ VOS_STATUS vos_nv_read( VNV_TYPE type, v_VOID_t *outputVoidBuffer,
                status = VOS_STATUS_E_INVAL;
            }
            else {
-               memcpy(outputVoidBuffer,&gnvEFSTable->halnv.tables.pktTypePwrLimits[0][0],bufferSize);
+               memcpy(outputVoidBuffer,gnvEFSTable->halnv.tables.pktTypePwrLimits,bufferSize);
            }
            break;
        case VNV_OFDM_CMD_PWR_OFFSET:
@@ -1527,7 +1530,7 @@ VOS_STATUS vos_nv_write( VNV_TYPE type, v_VOID_t *inputVoidBuffer,
                 status = VOS_STATUS_E_INVAL;
             }
             else {
-                memcpy(&gnvEFSTable->halnv.tables.pktTypePwrLimits[0][0],inputVoidBuffer,bufferSize);
+                memcpy(gnvEFSTable->halnv.tables.pktTypePwrLimits,inputVoidBuffer,bufferSize);
             }
             break;
 
@@ -1590,47 +1593,6 @@ VOS_STATUS vos_nv_write( VNV_TYPE type, v_VOID_t *inputVoidBuffer,
       }
    }
    return status;
-}
-
-VOS_STATUS vos_nv_get5GChannelListWithPower(tChannelListWithPower *channels20MHz /*[NUM_LEGIT_RF_CHANNELS] */,
-                                          tANI_U8 *num20MHzChannelsFound,
-                                          tChannelListWithPower *channels40MHz /*[NUM_CHAN_BOND_CHANNELS] */,
-                                          tANI_U8 *num40MHzChannelsFound
-                                          )
-{
-    VOS_STATUS status = VOS_STATUS_SUCCESS;
-    int i, count;
-
-
-    if ( channels20MHz && num20MHzChannelsFound )
-    {
-        count = 0;
-        for ( i = RF_CHAN_36; i <= RF_CHAN_165; i++ )
-        {
-            if ( regChannels[i].enabled )
-            {
-                channels20MHz[count].chanId = rfChannels[i].channelNum;
-                channels20MHz[count++].pwr  = regChannels[i].pwrLimit;
-            }
-        }
-        *num20MHzChannelsFound = (tANI_U8)count;
-    }
-
-    if ( channels40MHz && num40MHzChannelsFound )
-    {
-        count = 0;
-        //center channels for 5 Ghz 40 MHz channels
-        for ( i = RF_CHAN_BOND_38; i <= RF_CHAN_BOND_163; i++ )
-        {
-            if ( regChannels[i].enabled )
-            {
-                channels40MHz[count].chanId = rfChannels[i].channelNum;
-                channels40MHz[count++].pwr  = regChannels[i].pwrLimit;
-            }
-        }
-        *num40MHzChannelsFound = (tANI_U8)count;
-    }
-    return status;
 }
 
 /**------------------------------------------------------------------------
@@ -1850,7 +1812,6 @@ eNVChannelEnabledType vos_nv_getChannelEnabledState
 /******************************************************************
  Add CRDA regulatory support
 *******************************************************************/
-#ifdef CONFIG_CFG80211
 
 static int bw20_ch_index_to_bw40_ch_index(int k)
 {
@@ -2329,4 +2290,3 @@ int wlan_hdd_crda_reg_notifier(struct wiphy *wiphy,
     }
 return 0;
 }
-#endif

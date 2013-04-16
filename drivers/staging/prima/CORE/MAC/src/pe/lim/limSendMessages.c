@@ -576,27 +576,50 @@ state,tSirMacAddr bssId, tSirMacAddr selfMacAddr, int ft, tpPESession psessionEn
 \param   tpSirSetTxPowerReq  request message
 \return  None
   -----------------------------------------------------------*/
-tSirRetStatus limSendSetTxPowerReq(tpAniSirGlobal pMac,  tpSirSetTxPowerReq pTxPowerReq)
+tSirRetStatus limSendSetTxPowerReq(tpAniSirGlobal pMac,  tANI_U32 *pMsgBuf)
 {
-    tSirRetStatus  retCode = eSIR_SUCCESS;
-    tSirMsgQ       msgQ;
-    if (NULL == pTxPowerReq)
-        return retCode;
+    tSirSetTxPowerReq   *txPowerReq;
+    tSirRetStatus        retCode = eSIR_SUCCESS;
+    tSirMsgQ             msgQ;
+    tpPESession          psessionEntry;
+    tANI_U8              sessionId = 0;
+
+    if (NULL == pMsgBuf)
+        return eSIR_FAILURE;
+
+    palAllocateMemory(pMac->hHdd, (void **)&txPowerReq, sizeof(tSirSetTxPowerReq));
+    if (NULL == txPowerReq)
+    {
+        return eSIR_FAILURE;
+    }
+    palCopyMemory(pMac->hHdd, txPowerReq, (tSirSetTxPowerReq *)pMsgBuf, sizeof(tSirSetTxPowerReq));
+
+    /* Found corresponding seesion to find BSS IDX */
+    psessionEntry = peFindSessionByBssid(pMac, txPowerReq->bssId, &sessionId);
+    if (NULL == psessionEntry)
+    {
+        palFreeMemory(pMac->hHdd, (tANI_U8 *) txPowerReq);
+        limLog(pMac, LOGE, FL("Session does not exist for given BSSID"));
+        return eSIR_FAILURE;
+    }
+
+    /* FW API requests BSS IDX */
+    txPowerReq->bssIdx = psessionEntry->bssIdx;
+
     msgQ.type = WDA_SET_TX_POWER_REQ;
     msgQ.reserved = 0;
-    msgQ.bodyptr = pTxPowerReq;
+    msgQ.bodyptr = txPowerReq;
     msgQ.bodyval = 0;
-    PELOGW(limLog(pMac, LOGW, FL( "Sending WDA_SET_TX_POWER_REQ to WDA"));)
+    PELOGW(limLog(pMac, LOGW, FL("Sending WDA_SET_TX_POWER_REQ to WDA"));)
     MTRACE(macTraceMsgTx(pMac, NO_SESSION, msgQ.type));
-    if( eSIR_SUCCESS != (retCode = wdaPostCtrlMsg( pMac, &msgQ )))
+    retCode = wdaPostCtrlMsg(pMac, &msgQ);
+    if (eSIR_SUCCESS != retCode)
     {
-        limLog( pMac, LOGP, FL("Posting WDA_SET_TX_POWER_REQ to WDA failed, reason=%X"), retCode );
-        if (NULL != pTxPowerReq)
-        {
-            palFreeMemory( pMac->hHdd, (tANI_U8 *) pTxPowerReq);
-        }
+        limLog(pMac, LOGP, FL("Posting WDA_SET_TX_POWER_REQ to WDA failed, reason=%X"), retCode);
+        palFreeMemory(pMac->hHdd, (tANI_U8 *) txPowerReq);
         return retCode;
     }
+
     return retCode;
 }
 /** ---------------------------------------------------------
@@ -845,5 +868,56 @@ tSirRetStatus limSendTdlsLinkTeardown(tpAniSirGlobal pMac, tANI_U16 staId)
     return retCode;
 }
 
+#endif
+
+#ifdef WLAN_FEATURE_11W
+/** ---------------------------------------------------------
+\fn      limSendExcludeUnencryptInd
+\brief   LIM sends a message to HAL to indicate whether to
+         ignore or indicate the unprotected packet error
+\param   tpAniSirGlobal  pMac
+\param   tANI_BOOLEAN excludeUnenc - true: ignore, false:
+         indicate
+\param   tpPESession  psessionEntry - session context
+\return  status
+  -----------------------------------------------------------*/
+tSirRetStatus limSendExcludeUnencryptInd(tpAniSirGlobal pMac,
+                                         tANI_BOOLEAN excludeUnenc,
+                                         tpPESession  psessionEntry)
+{
+    tSirRetStatus   retCode = eSIR_SUCCESS;
+    tSirMsgQ msgQ;
+    tSirWlanExcludeUnencryptParam * pExcludeUnencryptParam;
+
+    if (eHAL_STATUS_SUCCESS != palAllocateMemory(pMac->hHdd,
+                                                  (void **) &pExcludeUnencryptParam,
+                                                  sizeof(tSirWlanExcludeUnencryptParam)))
+    {
+        limLog(pMac, LOGP,
+            FL( "Unable to PAL allocate memory during limSendExcludeUnencryptInd"));
+        return eSIR_MEM_ALLOC_FAILED;
+    }
+
+    pExcludeUnencryptParam->excludeUnencrypt = excludeUnenc;
+    sirCopyMacAddr(pExcludeUnencryptParam->bssId, psessionEntry->bssId);
+
+    msgQ.type =  WDA_EXCLUDE_UNENCRYPTED_IND;
+    msgQ.reserved = 0;
+    msgQ.bodyptr = pExcludeUnencryptParam;
+    msgQ.bodyval = 0;
+    PELOG3(limLog(pMac, LOG3,
+                FL("Sending WDA_EXCLUDE_UNENCRYPTED_IND"));)
+    MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, msgQ.type));
+    retCode = wdaPostCtrlMsg(pMac, &msgQ);
+    if (eSIR_SUCCESS != retCode)
+    {
+        palFreeMemory(pMac->hHdd, pExcludeUnencryptParam);
+        limLog(pMac, LOGP,
+               FL("Posting  WDA_EXCLUDE_UNENCRYPTED_IND to WDA failed, reason=%X"),
+               retCode);
+    }
+
+    return retCode;
+}
 #endif
 

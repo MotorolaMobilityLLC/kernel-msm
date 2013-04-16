@@ -51,7 +51,6 @@
                Qualcomm Confidential and Proprietary.
 
 ==========================================================================*/
-#ifdef CONFIG_CFG80211
 #define ACTION_FRAME_TX_TIMEOUT 2000
 #define WAIT_CANCEL_REM_CHAN    1000
 #define WAIT_REM_CHAN_READY     1000
@@ -65,6 +64,10 @@
 #define P2P_WILDCARD_SSID_LEN                    7
 #define P2P_WILDCARD_SSID                        "DIRECT-"
 
+#ifdef WLAN_FEATURE_11W
+#define WLAN_HDD_SET_WEP_FRM_FC(__fc__)     ( (__fc__) = ((__fc__) | 0x40))
+#endif //WLAN_FEATURE_11W
+
 enum hdd_rx_flags {
     HDD_RX_FLAG_DECRYPTED        = 1 << 0,
     HDD_RX_FLAG_MMIC_STRIPPED    = 1 << 1,
@@ -72,7 +75,6 @@ enum hdd_rx_flags {
 };
 
 
-#ifdef WLAN_FEATURE_P2P
 #define P2P_POWER_SAVE_TYPE_OPPORTUNISTIC        (1 << 0)
 #define P2P_POWER_SAVE_TYPE_PERIODIC_NOA         (1 << 1)
 #define P2P_POWER_SAVE_TYPE_SINGLE_NOA           (1 << 2)
@@ -172,7 +174,6 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
                      const u8 *buf, size_t len, u64 *cookie );
 #endif
 
-#endif // WLAN_FEATURE_P2P
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,7,0))
 struct wireless_dev* wlan_hdd_add_virtual_intf(
@@ -199,6 +200,5 @@ int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct wireless_dev *wdev );
 int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct net_device *dev );
 #endif
 
-#endif // CONFIG_CFG80211
 
 #endif // __P2P_H

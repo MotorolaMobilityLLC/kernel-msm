@@ -107,9 +107,7 @@ typedef struct sSirProbeRespBeacon
     tDot11fIEQuiet            quietIE;
     tDot11fIEHTCaps           HTCaps;
     tDot11fIEHTInfo           HTInfo;
-#ifdef WLAN_FEATURE_P2P
     tDot11fIEP2PProbeRes      P2PProbeRes;
-#endif
 #ifdef WLAN_FEATURE_VOWIFI_11R
     tANI_U8                   mdie[SIR_MDIE_SIZE];
 #endif
@@ -290,7 +288,7 @@ void dot11fLog(tpAniSirGlobal pMac, int nSev, const char *lpszFormat, ...);
         if ( eSIR_SUCCESS != (nStatus) )                             \
         {                                                            \
             dot11fLog( (pMac), LOGP, FL("Failed to retrieve "        \
-                                        #nItem " from CFG (%d).\n"), \
+                                        #nItem " from CFG (%d)."), \
                        (nStatus) );                                  \
             return nStatus;                                          \
         }                                                            \
@@ -301,7 +299,7 @@ void dot11fLog(tpAniSirGlobal pMac, int nSev, const char *lpszFormat, ...);
         if ( eSIR_SUCCESS != (nStatus) )                             \
         {                                                            \
             dot11fLog( (pMac), LOGP, FL("Failed to retrieve "        \
-                                        #nItem " from CFG (%d).\n"), \
+                                        #nItem " from CFG (%d)."), \
                        (nStatus) );                                  \
             return;                                                  \
         }                                                            \
@@ -313,7 +311,7 @@ void dot11fLog(tpAniSirGlobal pMac, int nSev, const char *lpszFormat, ...);
         if ( eSIR_SUCCESS != (nStatus) )                                \
         {                                                               \
             dot11fLog( (pMac), LOGP, FL("Failed to retrieve "           \
-                                        #nItem " from CFG (%d).\n"),    \
+                                        #nItem " from CFG (%d)."),    \
                        (nStatus) );                                     \
             return nStatus;                                             \
         }                                                               \
@@ -326,7 +324,7 @@ void dot11fLog(tpAniSirGlobal pMac, int nSev, const char *lpszFormat, ...);
         if ( eSIR_SUCCESS != (nStatus) )                                \
         {                                                               \
             dot11fLog( (pMac), LOGP, FL("Failed to retrieve "           \
-                                        #nItem " from CFG (%d).\n"),    \
+                                        #nItem " from CFG (%d)."),    \
                        (nStatus) );                                     \
             return;                                                     \
         }                                                               \
@@ -799,11 +797,9 @@ tSirRetStatus PopulateDot11fAssocResWscIE(tpAniSirGlobal pMac,
                                           tDot11fIEWscAssocRes *pDot11f, 
                                           tpSirAssocReq pRcvdAssocReq);
 
-#ifdef WLAN_FEATURE_P2P
 tSirRetStatus PopulateDot11AssocResP2PIE(tpAniSirGlobal pMac, 
                                        tDot11fIEP2PAssocRes *pDot11f, 
                                        tpSirAssocReq pRcvdAssocReq);
-#endif
 
 tSirRetStatus PopulateDot11fWscInAssocRes(tpAniSirGlobal pMac,
                                           tDot11fIEWscAssocRes *pDot11f);

@@ -211,14 +211,12 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
 
     //PELOG3(sirDumpBuf(pMac, SIR_LIM_MODULE_ID, LOG3, (tANI_U8*)pBd, ((tpHalBufDesc) pBd)->mpduDataOffset + frameLen);)
 
-#ifdef WLAN_FEATURE_P2P
     //Restore default failure timeout
     if (VOS_P2P_CLIENT_MODE == psessionEntry->pePersona && psessionEntry->defaultAuthFailureTimeout)
     {
         ccmCfgSetInt(pMac,WNI_CFG_AUTHENTICATE_FAILURE_TIMEOUT ,
                           psessionEntry->defaultAuthFailureTimeout, NULL, eANI_BOOLEAN_FALSE);
     }
-#endif
    
     /// Determine if WEP bit is set in the FC or received MAC header
     if (pHdr->fc.wep)
@@ -292,7 +290,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
              * Could not get Privacy option
              * from CFG. Log error.
              */
-            limLog(pMac, LOGP, FL("could not retrieve Privacy option\n"));
+            limLog(pMac, LOGP, FL("could not retrieve Privacy option"));
         }
 
         cfgPrivacyOptImp = (tANI_U8)val;
@@ -459,7 +457,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                     /// Could not get Default key from CFG.
                     //Log error.
                     limLog(pMac, LOGP,
-                           FL("could not retrieve Default key\n"));
+                           FL("could not retrieve Default key"));
 
                     /**
                      * Send Authentication frame
@@ -488,7 +486,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                                                         (tANI_U16) (frameLen-SIR_MAC_WEP_IV_LENGTH));
                     if (decryptResult == LIM_DECRYPT_ICV_FAIL)
                     {
-                        PELOGW(limLog(pMac, LOGW, FL("=====> decryptResult == LIM_DECRYPT_ICV_FAIL ...\n"));)
+                        PELOGW(limLog(pMac, LOGW, FL("=====> decryptResult == LIM_DECRYPT_ICV_FAIL ..."));)
                         /// ICV failure
                         limDeletePreAuthNode(pMac,
                                              pHdr->sa);
@@ -556,7 +554,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
     pRxAuthFrameBody = &rxAuthFrame;
 
    PELOGW(limLog(pMac, LOGW,
-           FL("Received Auth frame with type=%d seqnum=%d, status=%d (%d)\n"),
+           FL("Received Auth frame with type=%d seqnum=%d, status=%d (%d)"),
            (tANI_U32) pRxAuthFrameBody->authAlgoNumber,
            (tANI_U32) pRxAuthFrameBody->authTransactionSeqNumber,
            (tANI_U32) pRxAuthFrameBody->authStatusCode,(tANI_U32)pMac->lim.gLimNumPreAuthContexts);)
@@ -624,7 +622,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                                                     eLIM_AUTH_RSP_TIMER,
                                                     pAuthNode->authNodeIdx);
                     }
-                    PELOGE(limLog(pMac, LOGE, FL("STA is initiating brand-new Authentication ...\n"));)
+                    PELOGE(limLog(pMac, LOGE, FL("STA is initiating brand-new Authentication ..."));)
                     limDeletePreAuthNode(pMac,
                                          pHdr->sa);
                     /**
@@ -651,7 +649,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
 
                     if (NULL != pStaDs)
                     {
-                        PELOGE(limLog(pMac, LOGE, FL("lim Delete Station Context (staId: %d, assocId: %d) \n"),pStaDs->staIndex, assocId);)
+                        PELOGE(limLog(pMac, LOGE, FL("lim Delete Station Context (staId: %d, assocId: %d) "),pStaDs->staIndex, assocId);)
                         limSendDeauthMgmtFrame(pMac,
                                eSIR_MAC_UNSPEC_FAILURE_REASON, (tANI_U8 *) pAuthNode->peerMacAddr, psessionEntry, FALSE);
                         limTriggerSTAdeletion(pMac, pStaDs, psessionEntry);
@@ -665,7 +663,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                      * but ACK lost at STA side, in this case 2nd auth frame is already 
                      * in transmission queue
                      * */
-                    PELOGE(limLog(pMac, LOGE, FL("STA is initiating Authentication after ACK lost...\n"));)
+                    PELOGE(limLog(pMac, LOGE, FL("STA is initiating Authentication after ACK lost..."));)
                     return;
                 }
             }
@@ -677,7 +675,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                  * from CFG. Log error.
                  */
                 limLog(pMac, LOGP,
-                       FL("could not retrieve MaxNumPreAuth\n"));
+                       FL("could not retrieve MaxNumPreAuth"));
             }
             if (pMac->lim.gLimNumPreAuthContexts == maxNumPreAuth)
             {
@@ -708,7 +706,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                 switch (pRxAuthFrameBody->authAlgoNumber)
                 {
                     case eSIR_OPEN_SYSTEM:
-                        PELOGW(limLog(pMac, LOGW, FL("=======> eSIR_OPEN_SYSTEM  ...\n"));)
+                        PELOGW(limLog(pMac, LOGW, FL("=======> eSIR_OPEN_SYSTEM  ..."));)
                         /// Create entry for this STA in pre-auth list
                         pAuthNode = limAcquireFreePreAuthNode(pMac, &pMac->lim.gLimPreAuthTimerTable);
                         if (pAuthNode == NULL)
@@ -721,7 +719,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                             return;
                         }
 
-                        PELOG1(limLog(pMac, LOG1, FL("Alloc new data: %x peer \n"), pAuthNode);
+                        PELOG1(limLog(pMac, LOG1, FL("Alloc new data: %x peer "), pAuthNode);
                         limPrintMacAddr(pMac, pHdr->sa, LOG1);)
 
                         palCopyMemory( pMac->hHdd,
@@ -768,7 +766,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                         break;
 
                     case eSIR_SHARED_KEY:
-                        PELOGW(limLog(pMac, LOGW, FL("=======> eSIR_SHARED_KEY  ...\n"));)
+                        PELOGW(limLog(pMac, LOGW, FL("=======> eSIR_SHARED_KEY  ..."));)
                         if(psessionEntry->limSystemRole == eLIM_AP_ROLE)
                         {
                             val = psessionEntry->privacy;
@@ -782,7 +780,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                              * from CFG. Log error.
                              */
                             limLog(pMac, LOGP,
-                                   FL("could not retrieve Privacy option\n"));
+                                   FL("could not retrieve Privacy option"));
                         }
                         cfgPrivacyOptImp = (tANI_U8)val;
                         if (!cfgPrivacyOptImp)
@@ -844,7 +842,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                             pAuthNode->fTimerStarted = 0;
                             limAddPreAuthNode(pMac, pAuthNode);
 
-                            PELOG1(limLog(pMac, LOG1, FL("Alloc new data: %x id %d peer \n"),
+                            PELOG1(limLog(pMac, LOG1, FL("Alloc new data: %x id %d peer "),
                                           pAuthNode, pAuthNode->authNodeIdx);)
                             PELOG1(limPrintMacAddr(pMac, pHdr->sa, LOG1);)
 
@@ -1071,7 +1069,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                         return;
                     }
 
-                    PELOG1(limLog(pMac, LOG1, FL("Alloc new data: %x peer \n"), pAuthNode);)
+                    PELOG1(limLog(pMac, LOG1, FL("Alloc new data: %x peer "), pAuthNode);)
                     PELOG1(limPrintMacAddr(pMac, pHdr->sa, LOG1);)
 
                     palCopyMemory( pMac->hHdd,
@@ -1102,7 +1100,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                          * from CFG. Log error.
                          */
                         limLog(pMac, LOGP,
-                               FL("could not retrieve Privacy option\n"));
+                               FL("could not retrieve Privacy option"));
                     }
                     cfgPrivacyOptImp = (tANI_U8)val;
                     if (!cfgPrivacyOptImp)
@@ -1139,7 +1137,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                         {
                             // Log error
                             PELOGE(limLog(pMac, LOGE,
-                                   FL("received Auth frame with invalid challenge text IE\n"));)
+                                   FL("received Auth frame with invalid challenge text IE"));)
 
                             return;
                         }
@@ -1220,7 +1218,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                                  * from CFG. Log error.
                                  */
                                 limLog(pMac, LOGP,
-                                       FL("could not retrieve Default keyId\n"));
+                                       FL("could not retrieve Default keyId"));
                             }
                             keyId = (tANI_U8)val;
 
@@ -1241,7 +1239,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
                                 /// Could not get Default key from CFG.
                                 //Log error.
                                 limLog(pMac, LOGP,
-                                       FL("could not retrieve Default key\n"));
+                                       FL("could not retrieve Default key"));
 
                                 authFrame.authAlgoNumber =
                                 pRxAuthFrameBody->authAlgoNumber;
@@ -1512,7 +1510,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
 
                     // Log error
                     PELOGE( limLog(pMac, LOGW,
-                                   FL("Challenge failure for peer "MAC_ADDRESS_STR), 
+                                   FL("Challenge failure for peer "MAC_ADDRESS_STR),
                                    MAC_ADDR_ARRAY(pHdr->sa));)
                     return;
                 }
@@ -1610,7 +1608,7 @@ limProcessAuthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession pse
 
                     return;
                 }
-                PELOG1(limLog(pMac, LOG1, FL("Alloc new data: %x peer \n"), pAuthNode);
+                PELOG1(limLog(pMac, LOG1, FL("Alloc new data: %x peer "), pAuthNode);
                 limPrintMacAddr(pMac, pHdr->sa, LOG1);)
 
                 palCopyMemory( pMac->hHdd,
@@ -1713,7 +1711,7 @@ tSirRetStatus limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, vo
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
     limPrintMacAddr(pMac, pHdr->bssId, LOG2);
     limPrintMacAddr(pMac, pMac->ft.ftPEContext.pFTPreAuthReq->preAuthbssId, LOG2);
-    limLog(pMac,LOG2,FL("seqControl 0x%X\n"), 
+    limLog(pMac,LOG2,FL("seqControl 0x%X"),
             ((pHdr->seqControl.seqNumHi << 8) | 
             (pHdr->seqControl.seqNumLo << 4) |
             (pHdr->seqControl.fragNum)));
@@ -1807,7 +1805,7 @@ tSirRetStatus limProcessAuthFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pBd, vo
 
         default:
 #ifdef WLAN_FEATURE_VOWIFI_11R_DEBUG
-            PELOGE(limLog( pMac, LOGE, "Seq. no incorrect expected 2 received %d\n", 
+            PELOGE(limLog( pMac, LOGE, "Seq. no incorrect expected 2 received %d",
                 (tANI_U32) pRxAuthFrameBody->authTransactionSeqNumber);)
 #endif
             break;
