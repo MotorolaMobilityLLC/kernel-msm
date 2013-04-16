@@ -3248,6 +3248,9 @@ static int mdp_probe(struct platform_device *pdev)
 			mfd->vsync_sysfs_created = 1;
 		}
 	}
+
+	mdp4_hang_init();
+
 	return 0;
 
       mdp_probe_err:
