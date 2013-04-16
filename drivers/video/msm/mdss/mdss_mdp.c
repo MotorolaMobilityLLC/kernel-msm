@@ -893,16 +893,16 @@ static u32 mdss_mdp_res_init(struct mdss_data_type *mdata)
 	return rc;
 }
 
-void mdss_mdp_footswitch_ctrl_splash(struct mdss_data_type *mdata, int on)
+void mdss_mdp_footswitch_ctrl_splash(int on)
 {
-	if (mdata != NULL) {
+	if (mdss_res != NULL) {
 		if (on) {
 			pr_info("Enable MDP FS for splash.\n");
-			regulator_enable(mdata->fs);
-			mdss_hw_init(mdata);
+			regulator_enable(mdss_res->fs);
+			mdss_hw_init(mdss_res);
 		} else {
 			pr_info("Disable MDP FS for splash.\n");
-			regulator_disable(mdata->fs);
+			regulator_disable(mdss_res->fs);
 		}
 	} else {
 		pr_warn("mdss mdata not initialized\n");
