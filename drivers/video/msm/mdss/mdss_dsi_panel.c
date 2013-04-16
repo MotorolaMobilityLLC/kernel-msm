@@ -227,7 +227,7 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	mdss_dsi_cmds_tx(pdata, &dsi_panel_tx_buf,
 			&dsi_tear_off_cmd, 1);
 
-	if (!gpio_get_value(ctrl_pdata->disp_en_gpio))
+	if (!gpio_get_value(ctrl->disp_en_gpio))
 		return 0;
 
 	if (ctrl->off_cmds->size)
