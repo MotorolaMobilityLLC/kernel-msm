@@ -80,3 +80,4 @@ obj-$(CONFIG_SEC_DRIVER) += sec/
 obj-$(CONFIG_C55_CTRL) += c55_ctrl.o
 obj-$(CONFIG_ALSA_TO_H2W) += alsa-to-h2w-headset.o
 obj-$(CONFIG_HOB_SHARED_RAM) += hob_ram_mmap.o
+obj-$(CONFIG_DROPBOX) += dropbox.o
