@@ -42,7 +42,8 @@ struct bq5101xb_chip {
 enum bq5101xb_state {
 	BQ5101XB_WAIT = 0,
 	BQ5101XB_RUNNING,
-	BQ5101XB_OUT_OF_TEMP,
+	BQ5101XB_OUT_OF_TEMP_HOT,
+	BQ5101XB_OUT_OF_TEMP_COLD,
 	BQ5101XB_CHRG_CMPLT,
 	BQ5101XB_WIRED_CONN,
 };
@@ -214,24 +215,40 @@ static void bq5101xb_worker(struct work_struct *work)
 		} else if (!powered) {
 			bq5101xb_set_pins(pdata, 0, 0, 1, 0);
 			chip->state = BQ5101XB_WAIT;
-		} else if ((batt_temp >= pdata->hot_temp) ||
-			   (batt_temp <= pdata->cold_temp)) {
+		} else if (batt_temp >= pdata->hot_temp) {
 			bq5101xb_set_pins(pdata, 0, 0, 1, 1);
-			chip->state = BQ5101XB_OUT_OF_TEMP;
+			chip->state = BQ5101XB_OUT_OF_TEMP_HOT;
+		} else if (batt_temp <= pdata->cold_temp) {
+			bq5101xb_set_pins(pdata, 0, 0, 1, 1);
+			chip->state = BQ5101XB_OUT_OF_TEMP_COLD;
 		} else if ((batt_soc >= BQ5101XB_CHRG_CMPLT_SOC) &&
 			   (batt_status == POWER_SUPPLY_STATUS_FULL)) {
 			bq5101xb_set_pins(pdata, 1, 1, 0, 0);
 			chip->state = BQ5101XB_CHRG_CMPLT;
 		}
 		break;
-	case BQ5101XB_OUT_OF_TEMP:
+	case BQ5101XB_OUT_OF_TEMP_HOT:
 		if (wired && (pdata->priority == BQ5101XB_WIRED)) {
 			bq5101xb_set_pins(pdata, 1, 1, 0, 0);
 			chip->state = BQ5101XB_WIRED_CONN;
-		} else if ((batt_temp < (pdata->hot_temp -
-					 BQ5101XB_TEMP_HYS)) ||
-			   (batt_temp > (pdata->cold_temp +
-					 BQ5101XB_TEMP_HYS))) {
+		} else if (batt_temp < (pdata->hot_temp -
+					BQ5101XB_TEMP_HYS)) {
+			if ((batt_soc >= BQ5101XB_CHRG_CMPLT_SOC) &&
+			    (batt_status == POWER_SUPPLY_STATUS_FULL)) {
+				bq5101xb_set_pins(pdata, 1, 1, 0, 0);
+				chip->state = BQ5101XB_CHRG_CMPLT;
+			} else {
+				bq5101xb_set_pins(pdata, 0, 0, 1, 0);
+				chip->state = BQ5101XB_RUNNING;
+			}
+		}
+		break;
+	case BQ5101XB_OUT_OF_TEMP_COLD:
+		if (wired && (pdata->priority == BQ5101XB_WIRED)) {
+			bq5101xb_set_pins(pdata, 1, 1, 0, 0);
+			chip->state = BQ5101XB_WIRED_CONN;
+		} else if (batt_temp > (pdata->cold_temp +
+					BQ5101XB_TEMP_HYS)) {
 			if ((batt_soc >= BQ5101XB_CHRG_CMPLT_SOC) &&
 			    (batt_status == POWER_SUPPLY_STATUS_FULL)) {
 				bq5101xb_set_pins(pdata, 1, 1, 0, 0);
@@ -246,10 +263,12 @@ static void bq5101xb_worker(struct work_struct *work)
 		if (wired && (pdata->priority == BQ5101XB_WIRED)) {
 			bq5101xb_set_pins(pdata, 1, 1, 0, 0);
 			chip->state = BQ5101XB_WIRED_CONN;
-		} else if ((batt_temp >= pdata->hot_temp) ||
-			   (batt_temp <= pdata->cold_temp)) {
+		} else if (batt_temp >= pdata->hot_temp) {
 			bq5101xb_set_pins(pdata, 0, 0, 1, 1);
-			chip->state = BQ5101XB_OUT_OF_TEMP;
+			chip->state = BQ5101XB_OUT_OF_TEMP_HOT;
+		} else if (batt_temp <= pdata->cold_temp) {
+			bq5101xb_set_pins(pdata, 0, 0, 1, 1);
+			chip->state = BQ5101XB_OUT_OF_TEMP_COLD;
 		} else if ((batt_soc <= pdata->resume_soc) ||
 			   (batt_volt <= pdata->resume_vbatt)){
 			bq5101xb_set_pins(pdata, 0, 0, 1, 0);
