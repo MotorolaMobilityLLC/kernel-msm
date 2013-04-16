@@ -220,14 +220,15 @@ typedef enum
 #define HDD_WPS_ELEM_REGISTRA_CONF_METHODS  0x1053
 
 
- 
+
 #define WPS_OUI_TYPE   "\x00\x50\xf2\x04"
 #define WPS_OUI_TYPE_SIZE  4
- 
-#ifdef WLAN_FEATURE_P2P
+
+#define SS_OUI_TYPE    "\x00\x16\x32"
+#define SS_OUI_TYPE_SIZE   3
+
 #define P2P_OUI_TYPE   "\x50\x6f\x9a\x09"
 #define P2P_OUI_TYPE_SIZE  4
-#endif
 
 #define HS20_OUI_TYPE   "\x50\x6f\x9a\x10"
 #define HS20_OUI_TYPE_SIZE  4
@@ -322,10 +323,8 @@ typedef struct ccp_freq_chan_map_s{
 #define wlan_hdd_get_wps_ie_ptr(ie, ie_len) \
     wlan_hdd_get_vendor_oui_ie_ptr(WPS_OUI_TYPE, WPS_OUI_TYPE_SIZE, ie, ie_len)
 
-#ifdef WLAN_FEATURE_P2P
 #define wlan_hdd_get_p2p_ie_ptr(ie, ie_len) \
     wlan_hdd_get_vendor_oui_ie_ptr(P2P_OUI_TYPE, P2P_OUI_TYPE_SIZE, ie, ie_len)
-#endif
 
 #ifdef WLAN_FEATURE_WFD
 #define wlan_hdd_get_wfd_ie_ptr(ie, ie_len) \
@@ -413,12 +412,11 @@ VOS_STATUS wlan_hdd_get_classAstats(hdd_adapter_t *pAdapter);
 VOS_STATUS wlan_hdd_get_station_stats(hdd_adapter_t *pAdapter);
 
 VOS_STATUS wlan_hdd_get_rssi(hdd_adapter_t *pAdapter, v_S7_t *rssi_value);
-#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
-VOS_STATUS wlan_hdd_get_roam_rssi(hdd_adapter_t *pAdapter, v_S7_t *rssi_value);
-#endif
-
 #ifdef FEATURE_WLAN_TDLS
 VOS_STATUS iw_set_tdls_params(struct net_device *dev, struct iw_request_info *info, union iwreq_data *wrqu, char *extra, int nOffset);
+#endif
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+VOS_STATUS wlan_hdd_get_roam_rssi(hdd_adapter_t *pAdapter, v_S7_t *rssi_value);
 #endif
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING

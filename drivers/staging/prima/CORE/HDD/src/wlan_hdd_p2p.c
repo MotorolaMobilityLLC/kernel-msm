@@ -50,7 +50,6 @@
   Qualcomm Confidential and Proprietary.
 
   ========================================================================*/
-#ifdef CONFIG_CFG80211
 
 #include <wlan_hdd_includes.h>
 #include <wlan_hdd_hostapd.h>
@@ -119,7 +118,6 @@ static void hdd_sendMgmtFrameOverMonitorIface( hdd_adapter_t *pMonAdapter,
                                                tANI_U8* pbFrames,
                                                tANI_U8 frameType );
 
-#ifdef WLAN_FEATURE_P2P
 eHalStatus wlan_hdd_remain_on_channel_callback( tHalHandle hHal, void* pCtx,
                                                 eHalStatus status )
 {
@@ -556,6 +554,9 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
     tANI_U8 subType = WLAN_HDD_GET_SUBTYPE_FRM_FC(buf[0]);
     tActionFrmType actionFrmType;
     bool noack = 0;
+#ifdef WLAN_FEATURE_11W
+    tANI_U8 *pTxFrmBuf = (tANI_U8 *) buf; // For SA Query, we have to set protect bit
+#endif
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
     hdd_adapter_t *goAdapter;
@@ -787,7 +788,17 @@ int wlan_hdd_action( struct wiphy *wiphy, struct net_device *dev,
                 hddLog(LOG1, "%s: HDD_GO_NEG_REQ_ACK_PENDING \n", __func__);
             }
         }
-
+#ifdef WLAN_FEATURE_11W
+        if ((type == SIR_MAC_MGMT_FRAME) &&
+                (subType == SIR_MAC_MGMT_ACTION) &&
+                (buf[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_SA_QUERY_ACTION_FRAME))
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                     "%s: Calling sme_sendAction. For Category %s", __func__, "SA Query");
+            // Since this is an SA Query Action Frame, we have to protect it
+            WLAN_HDD_SET_WEP_FRM_FC(pTxFrmBuf[1]);
+        }
+#endif
         if (eHAL_STATUS_SUCCESS !=
                sme_sendAction( WLAN_HDD_GET_HAL_CTX(pAdapter),
                                sessionId, buf, len, extendedWait, noack))
@@ -1114,7 +1125,6 @@ int hdd_setP2pPs( struct net_device *dev, void *msgData )
     sme_p2pSetPs(hHal, &NoA);
     return status;
 }
-#endif
 
 static tANI_U8 wlan_hdd_get_session_type( enum nl80211_iftype type )
 {
@@ -1259,7 +1269,8 @@ int wlan_hdd_del_virtual_intf( struct wiphy *wiphy, struct net_device *dev )
 }
 
 void hdd_sendMgmtFrameOverMonitorIface( hdd_adapter_t *pMonAdapter,
-                                        tANI_U32 nFrameLength, tANI_U8* pbFrames,
+                                        tANI_U32 nFrameLength,
+                                        tANI_U8* pbFrames,
                                         tANI_U8 frameType )  
 {
     //Indicate a Frame over Monitor Intf.
@@ -1275,7 +1286,11 @@ void hdd_sendMgmtFrameOverMonitorIface( hdd_adapter_t *pMonAdapter,
 #endif
     hddLog( LOG1, FL("Indicate Frame over Monitor Intf"));
 
-    VOS_ASSERT( (pbFrames != NULL) );
+    if (NULL == pbFrames)
+    {
+        hddLog(LOGE, FL("NULL frame pointer"));
+        return;
+    }
 
     /* room for the radiotap header based on driver features
      * 1 Byte for RADIO TAP Flag, 1 Byte padding and 2 Byte for
@@ -1349,7 +1364,19 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
 
     if (NULL == pAdapter)
     {
-        hddLog( LOGE, FL("pAdapter is NULL"));
+        hddLog(LOGE, FL("pAdapter is NULL"));
+        return;
+    }
+
+    if (0 == nFrameLength)
+    {
+        hddLog(LOGE, FL("Frame Length is Invalid ZERO"));
+        return;
+    }
+
+    if (NULL == pbFrames)
+    {
+        hddLog(LOGE, FL("pbFrames is NULL"));
         return;
     }
 
@@ -1376,6 +1403,7 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
          }
     }
 
+
     if (NULL == pAdapter->dev)
     {
         hddLog( LOGE, FL("pAdapter->dev is NULL"));
@@ -1388,26 +1416,13 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
         return;
     }
 
-    if( !nFrameLength )
-    {
-        hddLog( LOGE, FL("Frame Length is Invalid ZERO"));
-        return;
-    }
-
-    if (NULL == pbFrames) {
-        hddLog( LOGE, FL("pbFrames is NULL"));
-        return;
-    }
-
-
-    if( ( WLAN_HDD_SOFTAP == pAdapter->device_mode ) 
-            || ( WLAN_HDD_P2P_GO == pAdapter->device_mode )
-      )
+    if ((WLAN_HDD_SOFTAP == pAdapter->device_mode) ||
+        (WLAN_HDD_P2P_GO == pAdapter->device_mode ))
     {
         hdd_adapter_t *pMonAdapter =
             hdd_get_mon_adapter( WLAN_HDD_GET_CTX(pAdapter) );
 
-        if( NULL != pMonAdapter )
+        if (NULL != pMonAdapter)
         {
             hddLog( LOG1, FL("Indicate Frame over Monitor Interface"));
             hdd_sendMgmtFrameOverMonitorIface( pMonAdapter, nFrameLength,
@@ -1490,13 +1505,17 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
 #ifdef FEATURE_WLAN_TDLS
             else if(pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+1] == WLAN_HDD_PUBLIC_ACTION_TDLS_DISC_RESP)
             {
-                wlan_hdd_tdls_recv_discovery_resp(&pbFrames[WLAN_HDD_80211_FRM_DA_OFFSET+6]);
-                wlan_hdd_tdls_set_rssi(&pbFrames[WLAN_HDD_80211_FRM_DA_OFFSET+6], rxRssi);
-                hddLog(VOS_TRACE_LEVEL_ERROR,"[TDLS] TDLS Discovery Response <--- OTA");
+                u8 *mac = &pbFrames[WLAN_HDD_80211_FRM_DA_OFFSET+6];
+#ifdef WLAN_FEATURE_TDLS_DEBUG
+                hddLog(VOS_TRACE_LEVEL_ERROR,"[TDLS] TDLS Discovery Response," MAC_ADDRESS_STR " RSSI[%d] <--- OTA",
+                 MAC_ADDR_ARRAY(mac),rxRssi);
+#endif
+                wlan_hdd_tdls_set_rssi(pAdapter, mac, rxRssi);
+                wlan_hdd_tdls_recv_discovery_resp(pAdapter, mac);
             }
 #endif
         }
-#ifdef FEATURE_WLAN_TDLS
+#ifdef WLAN_FEATURE_TDLS_DEBUG
         if(pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET] == WLAN_HDD_TDLS_ACTION_FRAME)
         {
             actionFrmType = pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+1];
@@ -1656,4 +1675,3 @@ static void hdd_wlan_tx_complete( hdd_adapter_t* pAdapter,
     netif_tx_start_all_queues( pAdapter->dev ); 
 
 }
-#endif // CONFIG_CFG80211

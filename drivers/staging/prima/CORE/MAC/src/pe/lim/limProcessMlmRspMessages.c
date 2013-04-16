@@ -1915,7 +1915,7 @@ void limProcessStaMlmAddStaRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ ,tpPESess
     }
     else
     {
-        limLog( pMac, LOGW, FL( "ADD_STA failed!\n"));
+        limLog( pMac, LOGE, FL( "ADD_STA failed!"));
         mlmAssocCnf.resultCode = (tSirResultCodes) eSIR_SME_REFUSED;
     }
 end:
@@ -1957,6 +1957,18 @@ void limProcessMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession 
    {
       WDA_TrafficStatsTimerActivate(FALSE);
    }
+
+#ifdef WLAN_FEATURE_11W
+    if (psessionEntry->limRmfEnabled)
+    {
+        if ( eSIR_SUCCESS != limSendExcludeUnencryptInd(pMac, TRUE, psessionEntry) )
+        {
+            limLog( pMac, LOGE,
+                    FL( "Could not send down Exclude Unencrypted Indication!" ),
+                    psessionEntry->limMlmState );
+        }
+    }
+#endif
 }
 
 void limProcessStaMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession psessionEntry)
@@ -2000,7 +2012,7 @@ void limProcessStaMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESessi
     }
     else
     {
-        limLog( pMac, LOGP, FL( "DEL BSS failed!\n" ) );
+        limLog( pMac, LOGE, FL( "DEL BSS failed!" ) );
         palFreeMemory( pMac->hHdd, (void *) pDelBssParams );
         return;
     }
@@ -2168,7 +2180,7 @@ void limProcessBtAmpApMlmDelStaRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPES
        if(eLIM_MLM_WT_ASSOC_DEL_STA_RSP_STATE == pStaDs->mlmStaContext.mlmState)
        {
             palFreeMemory( pMac->hHdd, (void *) pDelStaParams );
-            if (limAddSta(pMac, pStaDs,psessionEntry) != eSIR_SUCCESS)
+            if (limAddSta(pMac, pStaDs, false, psessionEntry) != eSIR_SUCCESS)
             {
                 PELOGE(limLog(pMac, LOGE,
                        FL("could not Add STA with assocId=%d\n"),
@@ -2253,7 +2265,7 @@ void limProcessStaMlmDelStaRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESessi
     }
     else
     {
-        limLog( pMac, LOGW, FL( "DEL_STA failed!\n" ));
+        limLog( pMac, LOGE, FL( "DEL_STA failed for sta Id %d\n" ), pStaDs->staIndex);
         statusCode = eSIR_SME_REFUSED;
     }
 end:
@@ -2875,7 +2887,8 @@ end:
     mlmReassocCnf.resultCode = eSIR_SME_FT_REASSOC_FAILURE;
     mlmReassocCnf.protStatusCode = eSIR_MAC_UNSPEC_FAILURE_STATUS;
     /* Update PE sessio Id*/
-    mlmReassocCnf.sessionId = psessionEntry->peSessionId;
+    if (psessionEntry != NULL)
+        mlmReassocCnf.sessionId = psessionEntry->peSessionId;
 
     limPostSmeMessage(pMac, LIM_MLM_REASSOC_CNF, (tANI_U32 *) &mlmReassocCnf);
 }
@@ -3183,6 +3196,18 @@ void limProcessMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
     {
        WDA_TrafficStatsTimerActivate(TRUE);
     }
+
+#ifdef WLAN_FEATURE_11W
+    if (psessionEntry->limRmfEnabled)
+    {
+        if ( eSIR_SUCCESS != limSendExcludeUnencryptInd(pMac, FALSE, psessionEntry) )
+        {
+            limLog( pMac, LOGE,
+                    FL( "Could not send down Exclude Unencrypted Indication!" ),
+                    psessionEntry->limMlmState );
+        }
+    }
+#endif
 }
 /**
  * limProcessMlmSetKeyRsp()
@@ -3670,7 +3695,6 @@ static void limProcessSwitchChannelJoinReq(tpAniSirGlobal pMac, tpPESession pses
         goto error;
     }
 
-#ifdef WLAN_FEATURE_P2P
     if( psessionEntry->pePersona == VOS_P2P_CLIENT_MODE )
     {
         // Activate Join Periodic Probe Req timer
@@ -3680,7 +3704,6 @@ static void limProcessSwitchChannelJoinReq(tpAniSirGlobal pMac, tpPESession pses
             goto error;
         }
     }
-#endif
 
     return;
 error:  
@@ -4126,6 +4149,22 @@ pMlmAddBACnf = (tpLimMlmAddBACnf) pMsgBuf;
       pSta->tcCfg[pMlmAddBACnf->baTID].fRxBApolicy = pMlmAddBACnf->baPolicy;
       pSta->tcCfg[pMlmAddBACnf->baTID].rxBufSize = pMlmAddBACnf->baBufferSize;
       pSta->tcCfg[pMlmAddBACnf->baTID].tuRxBAWaitTimeout = pMlmAddBACnf->baTimeout;
+      // Package LIM_MLM_ADDBA_RSP to MLME, with proper
+      // status code. MLME will then send an ADDBA RSP
+      // over the air to the peer MAC entity
+      if( eSIR_SUCCESS != limPostMlmAddBARsp( pMac,
+            pMlmAddBACnf->peerMacAddr,
+            pMlmAddBACnf->addBAResultCode,
+            pMlmAddBACnf->baDialogToken,
+            (tANI_U8) pMlmAddBACnf->baTID,
+            (tANI_U8) pMlmAddBACnf->baPolicy,
+            pMlmAddBACnf->baBufferSize,
+            pMlmAddBACnf->baTimeout,psessionEntry))
+      {
+        PELOGW(limLog( pMac, LOGW,
+            FL( "Failed to post LIM_MLM_ADDBA_RSP to " ));
+        limPrintMacAddr( pMac, pMlmAddBACnf->peerMacAddr, LOGW );)
+      }
     }
     else
     {
@@ -4134,27 +4173,6 @@ pMlmAddBACnf = (tpLimMlmAddBACnf) pMsgBuf;
       pSta->tcCfg[pMlmAddBACnf->baTID].fTxBApolicy = pMlmAddBACnf->baPolicy;
       pSta->tcCfg[pMlmAddBACnf->baTID].txBufSize = pMlmAddBACnf->baBufferSize;
       pSta->tcCfg[pMlmAddBACnf->baTID].tuTxBAWaitTimeout = pMlmAddBACnf->baTimeout;
-    }
-  }
-  if( eBA_RECIPIENT == pMlmAddBACnf->baDirection )
-  {
-    //
-    // Package LIM_MLM_ADDBA_RSP to MLME, with proper
-    // status code. MLME will then send an ADDBA RSP
-    // over the air to the peer MAC entity
-    //
-    if( eSIR_SUCCESS != limPostMlmAddBARsp( pMac,
-          pMlmAddBACnf->peerMacAddr,
-          pMlmAddBACnf->addBAResultCode,
-          pMlmAddBACnf->baDialogToken,
-          (tANI_U8) pMlmAddBACnf->baTID,
-          (tANI_U8) pMlmAddBACnf->baPolicy,
-          pMlmAddBACnf->baBufferSize,
-          pMlmAddBACnf->baTimeout,psessionEntry))
-    {
-      PELOGW(limLog( pMac, LOGW,
-          FL( "Failed to post LIM_MLM_ADDBA_RSP to " ));
-      limPrintMacAddr( pMac, pMlmAddBACnf->peerMacAddr, LOGW );)
     }
   }
   // Free the memory allocated for LIM_MLM_ADDBA_CNF

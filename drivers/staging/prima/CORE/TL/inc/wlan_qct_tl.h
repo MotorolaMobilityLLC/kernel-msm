@@ -39,23 +39,29 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-
 #ifndef WLAN_QCT_WLANTL_H
 #define WLAN_QCT_WLANTL_H
 
 /*===========================================================================
 
-               W L A N   T R A N S P O R T   L A Y E R 
+               W L A N   T R A N S P O R T   L A Y E R
                        E X T E R N A L  A P I
-                
-                   
+
+
 DESCRIPTION
-  This file contains the external API exposed by the wlan transport layer 
+  This file contains the external API exposed by the wlan transport layer
   module.
+<<<<<<< HEAD:CORE/TL/inc/wlan_qct_tl.h
   
       
   Copyright (c) 2008 QUALCOMM Incorporated. All Rights Reserved.
   Qualcomm Confidential and Proprietary
+=======
+
+
+  Copyright (c) 2008 Qualcomm Technologies, Inc. All Rights Reserved.
+  Qualcomm Technologies Confidential and Proprietary
+>>>>>>> 326d6cf... wlan: remove obsolete ANI_CHIPSET_VOLANS featurization:prima/CORE/TL/inc/wlan_qct_tl.h
 ===========================================================================*/
 
 
@@ -150,9 +156,11 @@ when        who    what, where, why
 //#define WLANTL_BC_STA_ID  0x00
 
 
-#ifdef ANI_CHIPSET_VOLANS
 #define WLANTL_MAX_TID                        15
-#endif
+/* Default RSSI average Alpha */
+#define WLANTL_HO_DEFAULT_ALPHA               5
+#define WLANTL_HO_TDLS_ALPHA                  7
+
 /*--------------------------------------------------------------------------
   Access category enum used by TL
   - order must be kept as these values are used to setup the AC mask
@@ -297,11 +305,9 @@ typedef struct
 
   /*Initial state at which the STA should be brought up to*/
   WLANTL_STAStateType ucInitState;
-#ifdef ANI_CHIPSET_VOLANS
  /* 1 means replay check is needed for the station,
     0 means replay check is not needed for the station*/ 
   v_BOOL_t      ucIsReplayCheckValid; 
-#endif
 }WLAN_STADescType;
 
 /*---------------------------------------------------------------------------
@@ -434,6 +440,8 @@ typedef struct
   v_U8_t    ucUP;
   /* Address 3 Index of the received packet */
   v_U16_t   ucDesSTAId;
+ /*Rssi based on the received packet */
+  v_S7_t    rssiAvg;
 }WLANTL_RxMetaInfoType;
 
 
@@ -1098,6 +1106,44 @@ WLANTL_ChangeSTAState
   WLANTL_STAStateType   tlSTAState 
 );
 
+/*===========================================================================
+
+  FUNCTION    WLANTL_STAPtkInstalled
+
+  DESCRIPTION
+
+    HDD will make this notification whenever PTK is installed for the STA
+
+  DEPENDENCIES
+
+    A station must have been registered before the change state can be
+    called.
+
+  PARAMETERS
+
+   pvosGCtx:        pointer to the global vos context; a handle to TL's
+                    control block can be extracted from its context
+   ucSTAId:         identifier for the STA for which Pairwise key is
+                    installed
+
+  RETURN VALUE
+
+    The result code associated with performing the operation
+
+    VOS_STATUS_E_FAULT:  Station ID is outside array boundaries or pointer to
+                         TL cb is NULL ; access would cause a page fault
+    VOS_STATUS_E_EXISTS: Station was not registered
+    VOS_STATUS_SUCCESS:  Everything is good :)
+
+  SIDE EFFECTS
+
+============================================================================*/
+VOS_STATUS
+WLANTL_STAPtkInstalled
+(
+  v_PVOID_t             pvosGCtx,
+  v_U8_t                ucSTAId
+);
 /*===========================================================================
 
   FUNCTION    WLANTL_GetSTAState
@@ -2282,7 +2328,6 @@ VOS_STATUS WLANTL_ResetSpecStatistic
    WLANTL_TRANSFER_STATIC_TYPE  statType,
    v_U8_t                       STAid
 );
-#ifdef ANI_CHIPSET_VOLANS
 /*===============================================================================
   FUNCTION      WLANTL_IsReplayPacket
    
@@ -2324,7 +2369,6 @@ WLANTL_GetReplayCounterFromRxBD
 (
    v_U8_t *pucRxBDHeader
 );
-#endif /*End of #ifdef ANI_CHIPSET_VOLANS*/
 
 
 

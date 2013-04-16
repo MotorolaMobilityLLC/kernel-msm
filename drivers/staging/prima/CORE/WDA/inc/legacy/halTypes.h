@@ -390,7 +390,7 @@ typedef enum
 
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
 #define HAL_NUM_ASSOC_STA           32
-#define HAL_NUM_STA                 38
+#define HAL_NUM_STA                 41
 #define HAL_NUM_HW_STA              16
 #define HAL_NUM_GPSTA               4
 #define HAL_NUM_VSTA                (HAL_NUM_STA - HAL_NUM_HW_STA)

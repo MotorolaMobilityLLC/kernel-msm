@@ -364,7 +364,6 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
     eHalStatus            status;
     tANI_U8               dontUpdateAll = 0;
 
-#ifdef WLAN_FEATURE_P2P
     tSirMacAddr bssid = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
     tANI_BOOLEAN fFound = FALSE;
     tpSirMacDataHdr3a pHdr;
@@ -385,7 +384,6 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
             }
         }
     }
-#endif
 
     /**
      * Compare SSID with the one sent in
@@ -529,21 +527,8 @@ limCheckAndAddBssDescription(tpAniSirGlobal pMac,
 
         if ( ( pMac->lim.gLimReturnAfterFirstMatch & 0x01 ) ||
              ( pMac->lim.gLim24Band11dScanDone && ( pMac->lim.gLimReturnAfterFirstMatch & 0x40 ) ) ||
-             ( pMac->lim.gLim50Band11dScanDone && ( pMac->lim.gLimReturnAfterFirstMatch & 0x80 ) ) 
-#ifdef WLAN_FEATURE_P2P
-             || fFound
-#endif
-             )
-/*
-        if ((pMac->lim.gLimReturnAfterFirstMatch & 0x01) ||
-            (pMac->lim.gLim24Band11dScanDone &&
-             !(pMac->lim.gLimReturnAfterFirstMatch & 0xC0)) ||
-            (pMac->lim.gLim50Band11dScanDone &&
-             !(pMac->lim.gLimReturnAfterFirstMatch & 0xC0)) ||
-            (pMac->lim.gLim24Band11dScanDone &&
-             pMac->lim.gLim50Band11dScanDone &&
-             pMac->lim.gLimReturnAfterFirstMatch & 0xC0))
-*/
+             ( pMac->lim.gLim50Band11dScanDone && ( pMac->lim.gLimReturnAfterFirstMatch & 0x80 ) ) ||
+              fFound )
         {
             /**
              * Stop scanning and return the BSS description(s)

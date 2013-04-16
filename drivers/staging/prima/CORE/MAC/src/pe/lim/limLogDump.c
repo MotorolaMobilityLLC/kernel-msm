@@ -1643,45 +1643,6 @@ dump_lim_sme_reassoc_req( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tAN
 static char *
 dump_lim_dot11h_stats( tpAniSirGlobal pMac, tANI_U32 arg1, tANI_U32 arg2, tANI_U32 arg3, tANI_U32 arg4, char *p)
 {
-#if 0
-    unsigned int i;
-    (void) arg1; (void) arg2; (void) arg3; (void) arg4;
-
-    p += log_sprintf(pMac, p, "11h Enabled = %s\n", pMac->lim.gLim11hEnable? "TRUE": "FALSE");
-
-    p += log_sprintf(pMac, p, "Is system in learn mode = %s\n",
-                              pMac->lim.gLimSystemInScanLearnMode?"YES": "NO");
-    
-    p += log_sprintf(pMac, p, "Quiet Enabled = %s\n", (pMac->lim.gLimSpecMgmt.fQuietEnabled)?"YES": "NO");
-    p += log_sprintf(pMac, p, "Quiet state = %d\n", pMac->lim.gLimSpecMgmt.quietState);
-    p += log_sprintf(pMac, p, "Quiet Count = %d\n", pMac->lim.gLimSpecMgmt.quietCount);
-    p += log_sprintf(pMac, p, "Quiet Duration in ticks = %d\n", pMac->lim.gLimSpecMgmt.quietDuration);
-    p += log_sprintf(pMac, p, "Quiet Duration in TU = %d\n", pMac->lim.gLimSpecMgmt.quietDuration_TU);
-    
-    p += log_sprintf(pMac, p, "Channel switch state = %d\n", pMac->lim.gLimSpecMgmt.dot11hChanSwState);
-    p += log_sprintf(pMac, p, "Channel switch mode = %s\n",
-            (pMac->lim.gLimChannelSwitch.switchMode == eSIR_CHANSW_MODE_SILENT)?"SILENT": "NORMAL");
-    p += log_sprintf(pMac, p, "Channel switch primary channel = %d\n",
-                              pMac->lim.gLimChannelSwitch.primaryChannel);
-    p += log_sprintf(pMac, p, "Channel switch secondary sub band = %d\n",
-                              pMac->lim.gLimChannelSwitch.secondarySubBand);
-    p += log_sprintf(pMac, p, "Channel switch switch count = %d\n",
-                              pMac->lim.gLimChannelSwitch.switchCount);
-    p += log_sprintf(pMac, p, "Channel switch switch timeout value = %d\n",
-                              pMac->lim.gLimChannelSwitch.switchTimeoutValue);
-
-    p += log_sprintf(pMac, p, "Radar interrupt configured = %s\n",
-                              pMac->lim.gLimSpecMgmt.fRadarIntrConfigured?"YES": "NO");
-    p += log_sprintf(pMac, p, "Radar detected in current operating channel = %s\n",
-                              pMac->lim.gLimSpecMgmt.fRadarDetCurOperChan?"YES": "NO");
-    p += log_sprintf(pMac, p, "Radar detected channels...\n");
-    for (i = 0; i < pMac->sys.radarDetectCount; i++)
-    {
-        p += log_sprintf(pMac, p, "%d ", pMac->sys.detRadarChIds[i]);
-    }
-    p += log_sprintf(pMac, p, "\n");
-    
-#endif
     return p;
 }
 
@@ -2378,7 +2339,10 @@ dump_lim_mcc_policy_maker(tpAniSirGlobal pMac, tANI_U32 arg1,tANI_U32 arg2,tANI_
       v_VOID_t * pVosContext = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
       tWDA_CbContext *pWDA =  vos_get_context(VOS_MODULE_ID_WDA, pVosContext);
       ccmCfgSetInt(pMac, WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, TRUE, NULL, eANI_BOOLEAN_FALSE);
-      WDA_TimerTrafficStatsInd(pWDA);
+      if(pWDA != NULL)
+      {
+          WDA_TimerTrafficStatsInd(pWDA);
+      }
       WDA_TrafficStatsTimerActivate(FALSE);
       ccmCfgSetInt(pMac, WNI_CFG_ENABLE_MCC_ADAPTIVE_SCHED, FALSE,NULL, eANI_BOOLEAN_FALSE);
    }
@@ -2386,7 +2350,7 @@ dump_lim_mcc_policy_maker(tpAniSirGlobal pMac, tANI_U32 arg1,tANI_U32 arg2,tANI_
    {
       v_VOID_t * pVosContext = vos_get_global_context(VOS_MODULE_ID_WDA, NULL);
       tWDA_CbContext *pWDA =  vos_get_context(VOS_MODULE_ID_WDA, pVosContext);
-      if (tx_timer_change(&pWDA->wdaTimers.trafficStatsTimer, arg2/10, arg2/10) != TX_SUCCESS)
+      if (pWDA != NULL && tx_timer_change(&pWDA->wdaTimers.trafficStatsTimer, arg2/10, arg2/10) != TX_SUCCESS)
       {
           limLog(pMac, LOGP, FL("Disable timer before changing timeout value"));
       }

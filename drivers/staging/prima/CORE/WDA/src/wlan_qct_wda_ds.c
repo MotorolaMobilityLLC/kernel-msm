@@ -923,9 +923,12 @@ WDA_DS_TxFrames
     if ( WDI_STATUS_SUCCESS != wdiStatus )
     {
       VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
-                   "WDA : Pushing a packet to WDI failed.");
-      uTxFailCount++;
-      VOS_ASSERT( wdiStatus != WDI_STATUS_E_NOT_ALLOWED );
+                  "WDA : Pushing a packet to WDI failed." );
+      if ( WDI_STATUS_E_NOT_ALLOWED != wdiStatus )
+      {
+        uTxFailCount++;
+      }
+      VOS_ASSERT( wdiStatus == WDI_STATUS_E_NOT_ALLOWED );
       //We need to free the packet here
       vos_pkt_get_user_data_ptr(pTxPacket, VOS_PKT_USER_DATA_ID_TL, (void **)&pfnTxComp);
       if(pfnTxComp)
@@ -986,9 +989,12 @@ WDA_DS_TxFrames
     if ( WDI_STATUS_SUCCESS != wdiStatus )
     {
       VOS_TRACE( VOS_MODULE_ID_TL, VOS_TRACE_LEVEL_WARN,
-                   "WDA : Pushing a packet to WDI failed.");
-      uTxFailCount++;
-      VOS_ASSERT( wdiStatus != WDI_STATUS_E_NOT_ALLOWED );
+                  "WDA : Pushing a packet to WDI failed." );
+      if ( WDI_STATUS_E_NOT_ALLOWED != wdiStatus )
+      {
+        uTxFailCount++;
+      }
+      VOS_ASSERT( wdiStatus == WDI_STATUS_E_NOT_ALLOWED );
       //We need to free the packet here
       vos_pkt_get_user_data_ptr(pTxPacket, VOS_PKT_USER_DATA_ID_TL, (void **)&pfnTxComp);
       if(pfnTxComp)

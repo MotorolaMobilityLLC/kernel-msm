@@ -687,7 +687,6 @@ limCreateTimers(tpAniSirGlobal pMac)
     }
 #endif
 
-#ifdef WLAN_FEATURE_P2P
     cfgValue = 1000;
     cfgValue = SYS_MS_TO_TICKS(cfgValue);
     if (tx_timer_create(&pMac->lim.limTimers.gLimRemainOnChannelTimer,
@@ -702,7 +701,6 @@ limCreateTimers(tpAniSirGlobal pMac)
         goto err_timer;
     }
 
-#endif
 
     cfgValue = 1000;
     cfgValue = SYS_MS_TO_TICKS(cfgValue);
@@ -728,7 +726,6 @@ limCreateTimers(tpAniSirGlobal pMac)
         goto err_timer;
     }
 
-#ifdef WLAN_FEATURE_P2P
     cfgValue = LIM_INSERT_SINGLESHOTNOA_TIMEOUT_VALUE; // (> no of BI* no of TUs per BI * 1TU in msec + p2p start time offset*1 TU in msec = 2*100*1.024 + 5*1.024 = 204.8 + 5.12 = 209.20)
     cfgValue = SYS_MS_TO_TICKS(cfgValue);
     if (tx_timer_create(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer,
@@ -740,16 +737,13 @@ limCreateTimers(tpAniSirGlobal pMac)
         limLog(pMac, LOGP, FL("could not create Single Shot NOA Insert Timeout timer\n"));
         goto err_timer;
     }
-#endif
 
     return TX_SUCCESS;
 
     err_timer:
         tx_timer_delete(&pMac->lim.limTimers.gLimDeauthAckTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimDisassocAckTimer);
-#ifdef WLAN_FEATURE_P2P
         tx_timer_delete(&pMac->lim.limTimers.gLimRemainOnChannelTimer);
-#endif
     #ifdef FEATURE_WLAN_CCX
         tx_timer_delete(&pMac->lim.limTimers.gLimCcxTsmTimer);
     #endif
@@ -776,9 +770,7 @@ limCreateTimers(tpAniSirGlobal pMac)
         tx_timer_delete(&pMac->lim.limTimers.gLimMaxChannelTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimPeriodicProbeReqTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimMinChannelTimer);
-#ifdef WLAN_FEATURE_P2P
         tx_timer_delete(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer);
-#endif
 
         if(NULL != pMac->lim.gLimPreAuthTimerTable.pTable)
             palFreeMemory(pMac->hHdd, pMac->lim.gLimPreAuthTimerTable.pTable);
@@ -1655,7 +1647,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
              }
              break;
 #endif
-#ifdef WLAN_FEATURE_P2P
         case eLIM_REMAIN_CHN_TIMER:
             if (tx_timer_deactivate(&pMac->lim.limTimers.gLimRemainOnChannelTimer) != TX_SUCCESS)
             {
@@ -1679,7 +1670,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
                 return;
             }
             break;
-#endif
     case eLIM_DISASSOC_ACK_TIMER:
             if (tx_timer_deactivate(&pMac->lim.limTimers.gLimDisassocAckTimer) != TX_SUCCESS)
             {
@@ -1728,7 +1718,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             }
             break;
 
-#ifdef WLAN_FEATURE_P2P
     case eLIM_INSERT_SINGLESHOT_NOA_TIMER:
         if (tx_timer_deactivate(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer) != TX_SUCCESS)
         {
@@ -1752,7 +1741,6 @@ limDeactivateAndChangeTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
             return;
         }
         break;
-#endif
 
         default:
             // Invalid timerId. Log error
@@ -1841,92 +1829,6 @@ limReactivateHeartBeatTimer(tpAniSirGlobal pMac, tpPESession psessionEntry)
     }
 
 } /****** end limReactivateHeartBeatTimer() ******/
-
-#if 0
-/******
- * Note: Use this code once you have converted all
- * limReactivateHeartBeatTimer() calls to
- * limReactivateTimer() calls.
- *
- ******/
-
-Now, in dev/btamp2,
-here are all the references to limReactivateHeartBeatTimer().
-
-C symbol: limReactivateHeartBeatTimer
-
-  File                      Function                  Line
-0 limTimerUtils.h           <global>                    55 void limReactivateHeartBeatTimer(tpAniSirGlobal , tpPESession);
-1 limIbssPeerMgmt.c         limIbssHeartBeatHandle    1282 limReactivateHeartBeatTimer(pMac, psessionEntry);
-2 limLinkMonitoringAlgo.c   limHandleHeartBeatFailure  395 limReactivateHeartBeatTimer(pMac, psessionEntry);
-3 limLinkMonitoringAlgo.c   limHandleHeartBeatFailure  410 limReactivateHeartBeatTimer(pMac, psessionEntry);
-4 limProcessMlmRspMessages. limProcessStaMlmAddStaRsp 2111 limReactivateHeartBeatTimer(pMac, psessionEntry);
-5 limProcessMlmRspMessages_ limProcessStaMlmAddStaRsp 2350 limReactivateHeartBeatTimer(pMac, psessionEntry);
-6 limProcessMlmRspMessages_ limProcessStaMlmAddStaRsp 2111 limReactivateHeartBeatTimer(pMac, psessionEntry);
-7 limTimerUtils.c           limReactivateHeartBeatTim 1473 limReactivateHeartBeatTimer(tpAniSirGlobal pMac, tpPESession psessionEntry)
-8 limUtils.c                limHandleHeartBeatFailure 6743 limReactivateHeartBeatTimer(pMac, psessionEntry);
-9 limUtils.c                limHandleHeartBeatFailure 6751 limReactivateHeartBeatTimer(pMac, psessionEntry);
-
-Now, in main/latest, on the other hand,
-here are all the references to limReactivateTimer().
-
-C symbol: limReactivateTimer
-
-  File                      Function                  Line
-0 limTimerUtils.h           <global>                    54 void limReactivateTimer(tpAniSirGlobal, tANI_U32);
-1 limIbssPeerMgmt.c         limIbssHeartBeatHandle    1183 limReactivateTimer(pMac, eLIM_HEART_BEAT_TIMER);
-2 limIbssPeerMgmt.c         limIbssHeartBeatHandle    1246 limReactivateTimer(pMac, eLIM_HEART_BEAT_TIMER);
-3 limLinkMonitoringAlgo.c   limHandleHeartBeatFailure  283 limReactivateTimer(pMac, eLIM_HEART_BEAT_TIMER);
-4 limLinkMonitoringAlgo.c   limHandleHeartBeatFailure  320 limReactivateTimer(pMac, eLIM_HEART_BEAT_TIMER);
-5 limLinkMonitoringAlgo.c   limHandleHeartBeatFailure  335 limReactivateTimer(pMac, eLIM_HEART_BEAT_TIMER);
-6 limProcessMessageQueue.c  limProcessMessages        1210 limReactivateTimer(pMac, eLIM_HEART_BEAT_TIMER);
-7 limProcessMessageQueue.c  limProcessMessages        1218 limReactivateTimer(pMac, eLIM_HEART_BEAT_TIMER);
-8 limProcessMlmRspMessages. limProcessStaMlmAddStaRsp 1726 limReactivateTimer(pMac, eLIM_HEART_BEAT_TIMER);
-9 limTimerUtils.c           limReactivateTimer        1451 limReactivateTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
-
-
-/**
- * limReactivateTimer()
- *
- *FUNCTION:
- * This function is called to deactivate, change and
- * activate a timer
- *
- *LOGIC:
- *
- *ASSUMPTIONS:
- * NA
- *
- *NOTE:
- * NA
- *
- * @param  pMac    - Pointer to Global MAC structure
- * @param  timerId - enum of timer to be deactivated and changed
- *                   This enum is defined in limUtils.h file
- *
- * @return None
- */
-
-void
-limReactivateTimer(tpAniSirGlobal pMac, tANI_U32 timerId)
-{
-    if (timerId == eLIM_HEART_BEAT_TIMER)
-    {
-       PELOG3(limLog(pMac, LOG3, FL("Rxed Heartbeat. Count=%d\n"),
-               pMac->lim.gLimRxedBeaconCntDuringHB);)
-        limDeactivateAndChangeTimer(pMac, eLIM_HEART_BEAT_TIMER);
-        MTRACE(macTrace(pMac, TRACE_CODE_TIMER_ACTIVATE, 0, eLIM_HEART_BEAT_TIMER));
-        if (limActivateHearBeatTimer(pMac) != TX_SUCCESS)
-        {
-            /// Could not activate Heartbeat timer.
-            // Log error
-            limLog(pMac, LOGP,
-                   FL("could not activate Heartbeat timer\n"));
-        }
-        limResetHBPktCount(pMac);
-    }
-} /****** end limReactivateTimer() ******/
-#endif
 
 
 /**

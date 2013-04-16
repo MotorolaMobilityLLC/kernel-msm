@@ -65,7 +65,7 @@
 #include <csrApi.h>
 
 //Number of items that can be configured
-#define MAX_CFG_INI_ITEMS   256
+#define MAX_CFG_INI_ITEMS   320
 
 // Defines for all of the things we read from the configuration (registry).
 
@@ -363,6 +363,11 @@ typedef enum
 #define CFG_ROAM_PREFER_5GHZ_MIN              ( 0 )  
 #define CFG_ROAM_PREFER_5GHZ_MAX              ( 1 )  
 #define CFG_ROAM_PREFER_5GHZ_DEFAULT          ( 1 )
+
+#define CFG_ROAM_INTRA_BAND                   "gRoamIntraBand"
+#define CFG_ROAM_INTRA_BAND_MIN               ( 0 )
+#define CFG_ROAM_INTRA_BAND_MAX               ( 1 )
+#define CFG_ROAM_INTRA_BAND_DEFAULT           ( 0 )
 #endif
 
 #define CFG_STAT_TIMER_INTERVAL_NAME           "gStatTimerInterval"
@@ -503,6 +508,10 @@ typedef enum
 #define CFG_GO_KEEP_ALIVE_PERIOD_MAX           ( 255)
 #define CFG_GO_KEEP_ALIVE_PERIOD_DEFAULT       ( 20 )
 
+#define CFG_AP_LINK_MONITOR_PERIOD_NAME          "gApLinkMonitorPeriod"
+#define CFG_AP_LINK_MONITOR_PERIOD_MIN           ( 0 )
+#define CFG_AP_LINK_MONITOR_PERIOD_MAX           ( 255)
+#define CFG_AP_LINK_MONITOR_PERIOD_DEFAULT       ( 3 )
 
 #define CFG_BEACON_INTERVAL_NAME               "gBeaconInterval"
 #define CFG_BEACON_INTERVAL_MIN                WNI_CFG_BEACON_INTERVAL_STAMIN
@@ -786,7 +795,15 @@ typedef enum
 #define CFG_IMMEDIATE_ROAM_RSSI_DIFF_MIN                    (0)
 #define CFG_IMMEDIATE_ROAM_RSSI_DIFF_MAX                    (125)
 #define CFG_IMMEDIATE_ROAM_RSSI_DIFF_DEFAULT                (3)
+
 #endif /* (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR) */
+
+#ifdef FEATURE_WLAN_OKC
+#define CFG_OKC_FEATURE_ENABLED_NAME                       "OkcEnabled"
+#define CFG_OKC_FEATURE_ENABLED_MIN                        (0)
+#define CFG_OKC_FEATURE_ENABLED_MAX                        (1)
+#define CFG_OKC_FEATURE_ENABLED_DEFAULT                    (1)
+#endif
 
 #define CFG_QOS_WMM_PKT_CLASSIFY_BASIS_NAME                "PktClassificationBasis" // DSCP or 802.1Q
 #define CFG_QOS_WMM_PKT_CLASSIFY_BASIS_MIN                  (0)
@@ -1118,7 +1135,7 @@ typedef enum
 #define CFG_NEIGHBOR_SCAN_RESULTS_REFRESH_PERIOD_DEFAULT      (20000)
 
 #define CFG_EMPTY_SCAN_REFRESH_PERIOD_NAME         "gEmptyScanRefreshPeriod"
-#define CFG_EMPTY_SCAN_REFRESH_PERIOD_MIN          (1000)
+#define CFG_EMPTY_SCAN_REFRESH_PERIOD_MIN          (0)
 #define CFG_EMPTY_SCAN_REFRESH_PERIOD_MAX          (60000)
 #define CFG_EMPTY_SCAN_REFRESH_PERIOD_DEFAULT      (0)
 #endif /* WLAN_FEATURE_NEIGHBOR_ROAMING */
@@ -1268,12 +1285,10 @@ typedef enum
 #define CFG_LINK_SPEED_RSSI_LOW_MAX                (  0 )
 #define CFG_LINK_SPEED_RSSI_LOW_DEFAULT            ( -80 )
 
-#ifdef WLAN_FEATURE_P2P
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_NAME                "isP2pDeviceAddrAdministrated"
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_MIN                 ( 0 )
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_MAX                 ( 1 )
 #define CFG_P2P_DEVICE_ADDRESS_ADMINISTRATED_DEFAULT             ( 0 )
-#endif
 
 #ifdef WLAN_FEATURE_PACKET_FILTERING
 #define CFG_MC_ADDR_LIST_FILTER_NAME               "isMcAddrListFilter"
@@ -1531,32 +1546,32 @@ typedef enum
 #define CFG_TDLS_IMPLICIT_TRIGGER_DEFAULT           ( 0 )
 
 #define CFG_TDLS_TX_STATS_PERIOD                    "gTDLSTxStatsPeriod"
-#define CFG_TDLS_TX_STATS_PERIOD_MIN                ( 0 )
+#define CFG_TDLS_TX_STATS_PERIOD_MIN                ( 2000 )
 #define CFG_TDLS_TX_STATS_PERIOD_MAX                ( 4294967295UL )
-#define CFG_TDLS_TX_STATS_PERIOD_DEFAULT            ( 2000 )
+#define CFG_TDLS_TX_STATS_PERIOD_DEFAULT            ( 5000 )
 
 #define CFG_TDLS_TX_PACKET_THRESHOLD                "gTDLSTxPacketThreshold"
 #define CFG_TDLS_TX_PACKET_THRESHOLD_MIN            ( 0 )
 #define CFG_TDLS_TX_PACKET_THRESHOLD_MAX            ( 4294967295UL )
-#define CFG_TDLS_TX_PACKET_THRESHOLD_DEFAULT        ( 1000 )
+#define CFG_TDLS_TX_PACKET_THRESHOLD_DEFAULT        ( 100 )
 
 #define CFG_TDLS_DISCOVERY_PERIOD                   "gTDLSDiscoveryPeriod"
-#define CFG_TDLS_DISCOVERY_PERIOD_MIN               ( 0 )
+#define CFG_TDLS_DISCOVERY_PERIOD_MIN               ( 5000 )
 #define CFG_TDLS_DISCOVERY_PERIOD_MAX               ( 4294967295UL )
-#define CFG_TDLS_DISCOVERY_PERIOD_DEFAULT           ( 60000 )
+#define CFG_TDLS_DISCOVERY_PERIOD_DEFAULT           ( 20000 )
 
 #define CFG_TDLS_MAX_DISCOVERY_ATTEMPT              "gTDLSMaxDiscoveryAttempt"
-#define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_MIN          ( 0 )
+#define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_MIN          ( 1 )
 #define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_MAX          ( 100 )
-#define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_DEFAULT      ( 5 )
+#define CFG_TDLS_MAX_DISCOVERY_ATTEMPT_DEFAULT      ( 3 )
 
 #define CFG_TDLS_IDLE_TIMEOUT                       "gTDLSIdleTimeout"
-#define CFG_TDLS_IDLE_TIMEOUT_MIN                   ( 0 )
+#define CFG_TDLS_IDLE_TIMEOUT_MIN                   ( 2000 )
 #define CFG_TDLS_IDLE_TIMEOUT_MAX                   ( 40000 )
 #define CFG_TDLS_IDLE_TIMEOUT_DEFAULT               ( 5000 )
 
 #define CFG_TDLS_IDLE_PACKET_THRESHOLD              "gTDLSIdlePacketThreshold"
-#define CFG_TDLS_IDLE_PACKET_THRESHOLD_MIN          ( 0 )
+#define CFG_TDLS_IDLE_PACKET_THRESHOLD_MIN          ( 1 )
 #define CFG_TDLS_IDLE_PACKET_THRESHOLD_MAX          ( 40000 )
 #define CFG_TDLS_IDLE_PACKET_THRESHOLD_DEFAULT      ( 5 )
 
@@ -1567,8 +1582,8 @@ typedef enum
 
 #define CFG_TDLS_RSSI_TRIGGER_THRESHOLD             "gTDLSRSSITriggerThreshold"
 #define CFG_TDLS_RSSI_TRIGGER_THRESHOLD_MIN         ( -120 )
-#define CFG_TDLS_RSSI_TRIGGER_THRESHOLD_MAX         ( 100 )
-#define CFG_TDLS_RSSI_TRIGGER_THRESHOLD_DEFAULT     ( 0 )
+#define CFG_TDLS_RSSI_TRIGGER_THRESHOLD_MAX         ( 0 )
+#define CFG_TDLS_RSSI_TRIGGER_THRESHOLD_DEFAULT     ( -75 )
 
 #define CFG_TDLS_RSSI_TEARDOWN_THRESHOLD            "gTDLSRSSITeardownThreshold"
 #define CFG_TDLS_RSSI_TEARDOWN_THRESHOLD_MIN        ( -120 )
@@ -1751,6 +1766,7 @@ typedef struct
    v_U8_t        enableLTECoex;
    v_U32_t       apKeepAlivePeriod;
    v_U32_t       goKeepAlivePeriod;
+   v_U32_t       apLinkMonitorPeriod;
    v_U32_t       nBeaconInterval;
    v_U8_t        nTxPowerCap;   //In dBm
    v_BOOL_t      fIsLowGainOverride;
@@ -1843,7 +1859,9 @@ typedef struct
    v_U8_t                       RoamRssiDiff;
    v_U8_t                       nImmediateRoamRssiDiff;
 #endif
-
+#ifdef FEATURE_WLAN_OKC
+   v_BOOL_t                     isOkcIniFeatureEnabled;
+#endif
    hdd_wmm_classification_t     PktClassificationBasis; // DSCP or 802.1Q
    v_BOOL_t                     bImplicitQosEnabled;
 
@@ -1946,14 +1964,13 @@ typedef struct
    v_S31_t                     linkSpeedRssiHigh;
 #if  defined (WLAN_FEATURE_VOWIFI_11R) || defined (FEATURE_WLAN_CCX) || defined(FEATURE_WLAN_LFR)
    v_BOOL_t                    nRoamPrefer5GHz;
+   v_BOOL_t                    nRoamIntraBand;
 #endif
    v_S31_t                     linkSpeedRssiMid;
    v_S31_t                     linkSpeedRssiLow;
    v_U8_t                      enableMCC;
    v_U8_t                      allowMCCGODiffBI;
-#ifdef WLAN_FEATURE_P2P
    v_BOOL_t                    isP2pDeviceAddrAdministrated;
-#endif
    v_U8_t                      thermalMitigationEnable;
 #ifdef WLAN_FEATURE_PACKET_FILTERING
    v_BOOL_t                    isMcAddrListFilter;
@@ -2010,6 +2027,7 @@ v_BOOL_t hdd_update_config_dat ( hdd_context_t *pHddCtx );
 VOS_STATUS hdd_cfg_get_config(hdd_context_t *pHddCtx, char *pBuf, int buflen);
 eCsrPhyMode hdd_cfg_xlate_to_csr_phy_mode( eHddDot11Mode dot11Mode );
 VOS_STATUS hdd_execute_config_command(hdd_context_t *pHddCtx, char *command);
+tANI_BOOLEAN hdd_is_okc_mode_enabled(hdd_context_t *pHddCtx);
 
 #define FIELD_OFFSET(__type, __field) ((unsigned int)(&((__type *)0)->__field))
 #define VAR_OFFSET( _Struct, _Var ) ( (unsigned int) FIELD_OFFSET(_Struct, _Var ) )

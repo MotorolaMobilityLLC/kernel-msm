@@ -77,7 +77,6 @@
 const tANI_U8 P2pOui[] = {0x50, 0x6F, 0x9A, 0x9};
 
 
-#if defined(WLAN_FEATURE_P2P)
 tSirRetStatus schGetP2pIeOffset(tANI_U8 *pExtraIe, tANI_U32 extraIeLen, tANI_U16 *pP2pIeOffset)
 {
     tSirRetStatus status = eSIR_FAILURE;   
@@ -107,7 +106,6 @@ tSirRetStatus schGetP2pIeOffset(tANI_U8 *pExtraIe, tANI_U32 extraIeLen, tANI_U16
 
      return status;
 }
-#endif
 
 tSirRetStatus schAppendAddnIE(tpAniSirGlobal pMac, tpPESession psessionEntry,
                                      tANI_U8 *pFrame, tANI_U32 maxBeaconSize,
@@ -141,7 +139,6 @@ tSirRetStatus schAppendAddnIE(tpAniSirGlobal pMac, tpPESession psessionEntry,
                           WNI_CFG_PROBE_RSP_BCN_ADDNIE_DATA, &addIE[0], &len))
                           == eSIR_SUCCESS)
             {
-#ifdef WLAN_FEATURE_P2P
                 tANI_U8* pP2pIe = limGetP2pIEPtr(pMac, &addIE[0], len);
                 if(pP2pIe != NULL)
                 {
@@ -165,7 +162,6 @@ tSirRetStatus schAppendAddnIE(tpAniSirGlobal pMac, tpPESession psessionEntry,
                         }
                     }
                 }
-#endif
                 vos_mem_copy(pFrame, &addIE[0], len);
                 *nBytes = *nBytes + len;
             }
@@ -203,25 +199,23 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     tANI_U32        i, nStatus, nBytes;
     tANI_U32        wpsApEnable=0, tmp;
     tDot11fIEWscProbeRes      *pWscProbeRes;
-#ifdef WLAN_FEATURE_P2P
     tANI_U8  *pExtraIe = NULL;
     tANI_U32 extraIeLen =0;
     tANI_U16 extraIeOffset = 0;
     tANI_U16 p2pIeOffset = 0;
     tSirRetStatus status = eSIR_SUCCESS;
-#endif
 
     status = palAllocateMemory(pMac->hHdd, (void **)&pBcn1, sizeof(tDot11fBeacon1));
     if(status != eSIR_SUCCESS)
     {
-        schLog(pMac, LOGE, FL("Failed to allocate memory\n") );
+        schLog(pMac, LOGE, FL("Failed to allocate memory") );
         return eSIR_FAILURE;
     }
 
     status = palAllocateMemory(pMac->hHdd, (void **)&pBcn2, sizeof(tDot11fBeacon2));
     if(status != eSIR_SUCCESS)
     {
-        schLog(pMac, LOGE, FL("Failed to allocate memory\n") );
+        schLog(pMac, LOGE, FL("Failed to allocate memory") );
         palFreeMemory(pMac->hHdd, pBcn1);
         return eSIR_FAILURE;
     }
@@ -229,13 +223,13 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     status = palAllocateMemory(pMac->hHdd, (void **)&pWscProbeRes, sizeof(tDot11fIEWscProbeRes));
     if(status != eSIR_SUCCESS)
     {
-        schLog(pMac, LOGE, FL("Failed to allocate memory\n") );
+        schLog(pMac, LOGE, FL("Failed to allocate memory") );
         palFreeMemory(pMac->hHdd, pBcn1);
         palFreeMemory(pMac->hHdd, pBcn2);
         return eSIR_FAILURE;
     }
 
-    PELOG1(schLog(pMac, LOG1, FL("Setting fixed beacon fields\n"));)
+    PELOG1(schLog(pMac, LOG1, FL("Setting fixed beacon fields"));)
 
     /*
      * First set the fixed fields
@@ -309,7 +303,7 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     if ( DOT11F_FAILED( nStatus ) )
     {
       schLog( pMac, LOGE, FL("Failed to packed a tDot11fBeacon1 (0x%0"
-                             "8x.).\n"), nStatus );
+                             "8x.)."), nStatus );
       palFreeMemory(pMac->hHdd, pBcn1);
       palFreeMemory(pMac->hHdd, pBcn2);
       palFreeMemory(pMac->hHdd, pWscProbeRes);
@@ -318,12 +312,12 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     else if ( DOT11F_WARNED( nStatus ) )
     {
       schLog( pMac, LOGE, FL("There were warnings while packing a tDo"
-                             "t11fBeacon1 (0x%08x.).\n"), nStatus );
+                             "t11fBeacon1 (0x%08x.)."), nStatus );
     }
     /*changed  to correct beacon corruption */
     palZeroMemory( pMac->hHdd, ( tANI_U8*) pBcn2, sizeof( tDot11fBeacon2 ) );
     pMac->sch.schObject.gSchBeaconOffsetBegin = offset + ( tANI_U16 )nBytes;
-    schLog( pMac, LOG1, FL("Initialized beacon begin, offset %d\n"), offset );
+    schLog( pMac, LOG1, FL("Initialized beacon begin, offset %d"), offset );
 
     /*
      * Initialize the 'new' fields at the end of the beacon
@@ -354,7 +348,7 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
 #ifdef WLAN_FEATURE_11AC
     if(psessionEntry->vhtCapability)
     {        
-        limLog( pMac, LOGW, FL("Populate VHT IEs in Beacon\n"));
+        limLog( pMac, LOGW, FL("Populate VHT IEs in Beacon"));
         PopulateDot11fVHTCaps( pMac, &pBcn2->VHTCaps );
         PopulateDot11fVHTOperation( pMac, &pBcn2->VHTOperation);
         // we do not support multi users yet
@@ -390,7 +384,7 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     else
     {
         if (wlan_cfgGetInt(pMac, (tANI_U16) WNI_CFG_WPS_ENABLE, &tmp) != eSIR_SUCCESS)
-            limLog(pMac, LOGP,"Failed to cfg get id %d\n", WNI_CFG_WPS_ENABLE );
+            limLog(pMac, LOGP,"Failed to cfg get id %d", WNI_CFG_WPS_ENABLE );
 
         wpsApEnable = tmp & WNI_CFG_WPS_ENABLE_AP;
 
@@ -449,7 +443,7 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     if ( DOT11F_FAILED( nStatus ) )
     {
       schLog( pMac, LOGE, FL("Failed to packed a tDot11fBeacon2 (0x%0"
-                             "8x.).\n"), nStatus );
+                             "8x.)."), nStatus );
       palFreeMemory(pMac->hHdd, pBcn1);
       palFreeMemory(pMac->hHdd, pBcn2);
       palFreeMemory(pMac->hHdd, pWscProbeRes);
@@ -458,13 +452,11 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     else if ( DOT11F_WARNED( nStatus ) )
     {
       schLog( pMac, LOGE, FL("There were warnings while packing a tDo"
-                             "t11fBeacon2 (0x%08x.).\n"), nStatus );
+                             "t11fBeacon2 (0x%08x.)."), nStatus );
     }
 
-#if defined(WLAN_FEATURE_P2P)
     pExtraIe = pMac->sch.schObject.gSchBeaconFrameEnd + nBytes;
     extraIeOffset = nBytes;
-#endif
 
     //TODO: Append additional IE here.
     schAppendAddnIE(pMac, psessionEntry, 
@@ -473,7 +465,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
 
     pMac->sch.schObject.gSchBeaconOffsetEnd = ( tANI_U16 )nBytes;
 
-#if defined(WLAN_FEATURE_P2P)
     extraIeLen = nBytes - extraIeOffset;
 
     //Get the p2p Ie Offset
@@ -490,9 +481,8 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     {
        pMac->sch.schObject.p2pIeOffset = 0;
     }
-#endif
 
-    schLog( pMac, LOG1, FL("Initialized beacon end, offset %d\n"),
+    schLog( pMac, LOG1, FL("Initialized beacon end, offset %d"),
             pMac->sch.schObject.gSchBeaconOffsetEnd );
 
     pMac->sch.schObject.fBeaconChanged = 1;
@@ -751,7 +741,7 @@ void writeBeaconToMemory(tpAniSirGlobal pMac, tANI_U16 size, tANI_U16 length, tp
         pBeacon->beaconLength = (tANI_U32) size - sizeof( tANI_U32 );
 
     // write size bytes from gSchBeaconFrameBegin
-    PELOG2(schLog(pMac, LOG2, FL("Beacon size - %d bytes\n"), size);)
+    PELOG2(schLog(pMac, LOG2, FL("Beacon size - %d bytes"), size);)
     PELOG2(sirDumpBuf(pMac, SIR_SCH_MODULE_ID, LOG2, pMac->sch.schObject.gSchBeaconFrameBegin, size);)
 
     if (! pMac->sch.schObject.fBeaconChanged)
@@ -769,7 +759,7 @@ void writeBeaconToMemory(tpAniSirGlobal pMac, tANI_U16 size, tANI_U16 length, tp
 
         size = (size + 3) & (~3);
         if( eSIR_SUCCESS != schSendBeaconReq( pMac, pMac->sch.schObject.gSchBeaconFrameBegin, size , psessionEntry))
-            PELOGE(schLog(pMac, LOGE, FL("schSendBeaconReq() returned an error (zsize %d)\n"), size);)
+            PELOGE(schLog(pMac, LOGE, FL("schSendBeaconReq() returned an error (zsize %d)"), size);)
         else
         {
             pMac->sch.gSchBeaconsWritten++;
@@ -803,7 +793,7 @@ schProcessPreBeaconInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
 
     if((psessionEntry = peFindSessionByBssid(pMac,pMsg->bssId, &sessionId))== NULL)
     {
-        PELOGE(schLog(pMac, LOGE, FL("session lookup fails\n"));)
+        PELOGE(schLog(pMac, LOGE, FL("session lookup fails"));)
         goto end;
     } 
            
@@ -812,7 +802,7 @@ schProcessPreBeaconInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     // If SME is not in normal mode, no need to generate beacon
     if (psessionEntry->limSmeState  != eLIM_SME_NORMAL_STATE)
     {
-        PELOGE(schLog(pMac, LOG1, FL("PreBeaconInd received in invalid state: %d\n"), psessionEntry->limSmeState);)
+        PELOGE(schLog(pMac, LOG1, FL("PreBeaconInd received in invalid state: %d"), psessionEntry->limSmeState);)
         goto end;
     }
 
@@ -825,7 +815,7 @@ schProcessPreBeaconInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
         if(psessionEntry->statypeForBss == STA_ENTRY_SELF)
             writeBeaconToMemory(pMac, (tANI_U16) beaconSize, (tANI_U16)beaconSize, psessionEntry);
     else
-        PELOGE(schLog(pMac, LOGE, FL("can not send beacon for PEER session entry\n"));)
+        PELOGE(schLog(pMac, LOGE, FL("can not send beacon for PEER session entry"));)
         break;
 
     case eLIM_AP_ROLE:{
@@ -837,7 +827,7 @@ schProcessPreBeaconInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
          writeBeaconToMemory(pMac, (tANI_U16) beaconSize, (tANI_U16)beaconSize, psessionEntry);
      }
      else
-         PELOGE(schLog(pMac, LOGE, FL("can not send beacon for PEER session entry\n"));)
+         PELOGE(schLog(pMac, LOGE, FL("can not send beacon for PEER session entry"));)
          }
      break;
 

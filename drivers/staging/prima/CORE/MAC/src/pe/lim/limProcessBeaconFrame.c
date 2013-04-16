@@ -139,6 +139,16 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
             return;
         }
 
+        /*during scanning, when any session is active, and beacon/Pr belongs to
+          one of the session, fill up the following, TBD - HB couter */
+        if ((!psessionEntry->lastBeaconDtimPeriod) &&
+            (sirCompareMacAddr( psessionEntry->bssId, pBeacon->bssid)))
+        {
+            palCopyMemory( pMac->hHdd, ( tANI_U8* )&psessionEntry->lastBeaconTimeStamp, ( tANI_U8* )pBeacon->timeStamp, sizeof(tANI_U64) );
+            psessionEntry->lastBeaconDtimCount = pBeacon->tim.dtimCount;
+            psessionEntry->lastBeaconDtimPeriod= pBeacon->tim.dtimPeriod;
+            psessionEntry->currentBssBeaconCnt++;
+        }
 
         MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT_TSF, 0, pBeacon->timeStamp[0]);)
         MTRACE(macTrace(pMac, TRACE_CODE_RX_MGMT_TSF, 0, pBeacon->timeStamp[1]);)
@@ -147,11 +157,9 @@ limProcessBeaconFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo,tpPESession ps
         if ((pMac->lim.gLimMlmState  == eLIM_MLM_WT_PROBE_RESP_STATE) ||
             (pMac->lim.gLimMlmState  == eLIM_MLM_PASSIVE_SCAN_STATE))
         {
-#ifdef WLAN_FEATURE_P2P
             //If we are scanning for P2P, only accept probe rsp
             if((pMac->lim.gLimHalScanState != eLIM_HAL_SCANNING_STATE) || (NULL == pMac->lim.gpLimMlmScanReq) 
                || !pMac->lim.gpLimMlmScanReq->p2pSearch )
-#endif
             {
                 limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo, 
                        ((pMac->lim.gLimHalScanState == eLIM_HAL_SCANNING_STATE) ? eANI_BOOLEAN_TRUE : eANI_BOOLEAN_FALSE), 
@@ -273,11 +281,9 @@ limProcessBeaconFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
         if ( (pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) ||
              (pMac->lim.gLimMlmState == eLIM_MLM_PASSIVE_SCAN_STATE) )
         {
-#ifdef WLAN_FEATURE_P2P
             //If we are scanning for P2P, only accept probe rsp
             if((pMac->lim.gLimHalScanState != eLIM_HAL_SCANNING_STATE) || (NULL == pMac->lim.gpLimMlmScanReq) 
                || !pMac->lim.gpLimMlmScanReq->p2pSearch )
-#endif
             {
                 limCheckAndAddBssDescription(pMac, pBeacon, pRxPacketInfo, eANI_BOOLEAN_TRUE, eANI_BOOLEAN_FALSE);
             }

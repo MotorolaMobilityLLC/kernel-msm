@@ -335,6 +335,13 @@ wpt_status dxeChannelRegisterDump
    wpt_status                status      = eWLAN_PAL_STATUS_SUCCESS;
    wpt_uint32                regValue    = 0;
 
+   if(channelEntry->channelType > WDTS_CHANNEL_RX_HIGH_PRI)
+   {
+      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
+               "INVALID Channel type");
+      return eWLAN_PAL_STATUS_E_INVAL;
+   }
+
    HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_FATAL,
             "%s Channel register dump for %s, base address 0x%x", 
                    channelType[channelEntry->channelType],
@@ -2116,7 +2123,7 @@ static wpt_int32 dxeRXFrameRouteUpperLayer
       currentCtrlBlk->xfrFrame = NULL;
 
       /* Now try to refill the ring with empty Rx buffers to keep DXE busy */
-      dxeRXFrameRefillRing(dxeCtxt,channelEntry);
+      dxeRXFrameRefillRing(dxeCtxt, channelEntry);
 
       /* Test next contorl block
        * if valid, this control block also has new RX frame must be handled */
@@ -2132,7 +2139,8 @@ static wpt_int32 dxeRXFrameRouteUpperLayer
 
    /* Deliver all the reaped RX frames to upper layers */
    i = 0;
-   while(i < frameCount) {
+   while(i < frameCount)
+   {
       dxeCtxt->rxReadyCB(dxeCtxt->clientCtxt, rx_reaped_buf[i], channelEntry->channelType);
       i++;
    }
@@ -2162,7 +2170,8 @@ static wpt_int32 dxeRXFrameRouteUpperLayer
 static wpt_status dxeRXFrameReady
 (
    WLANDXE_CtrlBlkType     *dxeCtxt,
-   WLANDXE_ChannelCBType   *channelEntry
+   WLANDXE_ChannelCBType   *channelEntry,
+   wpt_uint32               chStat
 )
 {
    wpt_status                status = eWLAN_PAL_STATUS_SUCCESS;
@@ -2188,16 +2197,29 @@ static wpt_status dxeRXFrameReady
    frameCount = dxeRXFrameRouteUpperLayer(dxeCtxt, channelEntry);
 
    if(0 > frameCount)
-      {
-         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+   {
+      HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
                "dxeRXFrameReady RX frame route fail");
-         return eWLAN_PAL_STATUS_E_INVAL;
-      }
+      return eWLAN_PAL_STATUS_E_INVAL;
+   }
 
-  if((0 == frameCount) &&
+   if((0 == frameCount) &&
       ((WLANDXE_POWER_STATE_BMPS == dxeCtxt->hostPowerState) ||
        (WLANDXE_POWER_STATE_FULL == dxeCtxt->hostPowerState)))
    {
+      /* None of the frame handled and CH is not enabled
+       * RX CH wrap around happen and No RX free frame
+       * RX side should wait till new free frame available in the pool
+       * Do not try reload driver at here*/
+      if(!(chStat & WLANDXE_CH_CTRL_EN_MASK))
+      {
+         HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
+                  "dxeRXFrameReady %s RING Wrapped, RX Free Low 0x%x",
+                  channelType[channelEntry->channelType], chStat);
+         channelEntry->numFragmentCurrentChain = 0;
+         return eWLAN_PAL_STATUS_SUCCESS;
+      }
+
       currentCtrlBlk = channelEntry->headCtrlBlk;
       currentDesc    = currentCtrlBlk->linkedDesc;
       descCtrl       = currentDesc->descCtrl.ctrl;
@@ -2471,7 +2493,8 @@ void dxeRXEventHandler
        * First high priority */
       channelCb = &dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_HIGH_PRI];
       status = dxeRXFrameReady(dxeCtxt,
-                               channelCb);
+                               channelCb,
+                               chHighStat);
       if(eWLAN_PAL_STATUS_SUCCESS != status)
       {
          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
@@ -2481,7 +2504,8 @@ void dxeRXEventHandler
        /* Second low priority */
       channelCb = &dxeCtxt->dxeChannel[WDTS_CHANNEL_RX_LOW_PRI];
       status = dxeRXFrameReady(dxeCtxt,
-                               channelCb);
+                               channelCb,
+                               chLowStat);
       if(eWLAN_PAL_STATUS_SUCCESS != status)
       {
          HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_ERROR,
@@ -2533,12 +2557,14 @@ void dxeRXEventHandler
       {
          /* Handle RX Ready for high priority channel */
          status = dxeRXFrameReady(dxeCtxt,
-                                  channelCb);
+                                  channelCb,
+                                  chHighStat);
       }
       else if(WLANDXE_CH_STAT_MASKED_MASK & chHighStat)
       {
          status = dxeRXFrameReady(dxeCtxt,
-                                  channelCb);
+                                  channelCb,
+                                  chHighStat);
       }
       HDXE_MSG(eWLAN_MODULE_DAL_DATA, eWLAN_PAL_TRACE_LEVEL_INFO,
                "RX HIGH CH EVNT STAT 0x%x, %d frames handled", chHighStat, channelCb->numFragmentCurrentChain);
@@ -2579,7 +2605,8 @@ void dxeRXEventHandler
       {
          /* Handle RX Ready for high priority channel */
          status = dxeRXFrameReady(dxeCtxt,
-                                  channelCb);
+                                  channelCb,
+                                  chStat);
       }
       /* Update the Rx DONE histogram */
       channelCb->rxDoneHistogram = (channelCb->rxDoneHistogram << 1);
@@ -2622,7 +2649,8 @@ void dxeRXEventHandler
       {
          /* Handle RX Ready for low priority channel */
          status = dxeRXFrameReady(dxeCtxt,
-                                  channelCb);
+                                  channelCb,
+                                  chLowStat);
        }
 
       /* Update the Rx DONE histogram */

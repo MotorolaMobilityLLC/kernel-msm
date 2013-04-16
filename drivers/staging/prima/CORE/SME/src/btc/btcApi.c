@@ -120,7 +120,7 @@ VOS_STATUS btcOpen (tHalHandle hHal)
    }
    if( !HAL_STATUS_SUCCESS(pmcRegisterDeviceStateUpdateInd( pMac, btcPowerStateCB, pMac )) )
    {
-       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "btcOpen: Fail to register PMC callback\n");
+       VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "btcOpen: Fail to register PMC callback");
        return VOS_STATUS_E_FAILURE;
    }
    return VOS_STATUS_SUCCESS;
@@ -791,7 +791,7 @@ static VOS_STATUS btcDeferAclCreate( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
 {
     VOS_STATUS status = VOS_STATUS_SUCCESS;
     tpSmeBtAclEventHist pAclEventHist;
-    tSmeBtAclConnectionParam *pAclEvent;
+    tSmeBtAclConnectionParam *pAclEvent = NULL;
     do
     {
         //Find a match
@@ -811,7 +811,7 @@ static VOS_STATUS btcDeferAclCreate( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
             }
             else
             {
-                smsLog(pMac, LOGE, FL(" failed to find ACL event slot\n"));
+                smsLog(pMac, LOGE, FL(" failed to find ACL event slot"));
                 status = VOS_STATUS_E_RESOURCES;
             }
             //done
@@ -840,7 +840,7 @@ static VOS_STATUS btcDeferAclCreate( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
                     tSmeBtEvent btEvent;
                     //The last event we have is success completion event. 
                     //Should not get a creation event before creation.
-                    smsLog(pMac, LOGE, FL("  Missing disconnect event on handle %d\n"), pAclEvent->connectionHandle);
+                    smsLog(pMac, LOGE, FL("  Missing disconnect event on handle %d"), pAclEvent->connectionHandle);
                     //Fake a disconnect event
                     btEvent.btEventType = BT_EVENT_DISCONNECTION_COMPLETE;
                     btEvent.uEventParam.btDisconnect.connectionHandle = pAclEvent->connectionHandle;
@@ -858,7 +858,7 @@ static VOS_STATUS btcDeferAclCreate( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
             }
             else
             {
-                smsLog(pMac, LOGE, FL(" ACL event overflow\n"));
+                smsLog(pMac, LOGE, FL(" ACL event overflow"));
                 VOS_ASSERT(0);
             }
         }
@@ -897,7 +897,7 @@ static VOS_STATUS btcDeferAclComplete( tpAniSirGlobal pMac, tpSmeBtEvent pEvent 
                 }
                 else
                 {
-                    smsLog(pMac, LOGE, FL(" ACL completion fail but last event(%d) not creation\n"),
+                    smsLog(pMac, LOGE, FL(" ACL completion fail but last event(%d) not creation"),
                         pAclEventHist->btEventType[pAclEventHist->bNextEventIdx-1]);
                 }
             }
@@ -919,13 +919,13 @@ static VOS_STATUS btcDeferAclComplete( tpAniSirGlobal pMac, tpSmeBtEvent pEvent 
             }
             else
             {
-                smsLog(pMac, LOGE, FL(" ACL event overflow\n"));
+                smsLog(pMac, LOGE, FL(" ACL event overflow"));
                 VOS_ASSERT(0);
             }
         }
         else
         {
-            smsLog( pMac, LOGE, FL(" cannot find match for failed BT_EVENT_ACL_CONNECTION_COMPLETE of bdAddr (%02X-%02X-%02X-%02X-%02X-%02X)\n"),
+            smsLog( pMac, LOGE, FL(" cannot find match for failed BT_EVENT_ACL_CONNECTION_COMPLETE of bdAddr (%02X-%02X-%02X-%02X-%02X-%02X)"),
                 pEvent->uEventParam.btAclConnection.bdAddr[0],
                 pEvent->uEventParam.btAclConnection.bdAddr[1],
                 pEvent->uEventParam.btAclConnection.bdAddr[2],
@@ -949,7 +949,7 @@ static VOS_STATUS btcDeferSyncCreate( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
 {
     VOS_STATUS status = VOS_STATUS_SUCCESS;
     tpSmeBtSyncEventHist pSyncEventHist;
-    tSmeBtSyncConnectionParam *pSyncEvent;
+    tSmeBtSyncConnectionParam *pSyncEvent = NULL;
     do
     {
         //Find a match
@@ -969,7 +969,7 @@ static VOS_STATUS btcDeferSyncCreate( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
             }
             else
             {
-                smsLog(pMac, LOGE, FL(" failed to find SYNC event slot\n"));
+                smsLog(pMac, LOGE, FL(" failed to find SYNC event slot"));
                 status = VOS_STATUS_E_RESOURCES;
             }
             //done
@@ -999,7 +999,7 @@ static VOS_STATUS btcDeferSyncCreate( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
                     tSmeBtEvent btEvent;
                     //The last event we have is success completion event. 
                     //Should not get a creation event before creation.
-                    smsLog(pMac, LOGE, FL("  Missing disconnect event on handle %d\n"), pSyncEvent->connectionHandle);
+                    smsLog(pMac, LOGE, FL("  Missing disconnect event on handle %d"), pSyncEvent->connectionHandle);
                     //Fake a disconnect event
                     btEvent.btEventType = BT_EVENT_DISCONNECTION_COMPLETE;
                     btEvent.uEventParam.btDisconnect.connectionHandle = pSyncEvent->connectionHandle;
@@ -1017,7 +1017,7 @@ static VOS_STATUS btcDeferSyncCreate( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
             }
             else
             {
-                smsLog(pMac, LOGE, FL(" SYNC event overflow\n"));
+                smsLog(pMac, LOGE, FL(" SYNC event overflow"));
             }
         }
     }while(0);
@@ -1056,7 +1056,7 @@ static VOS_STATUS btcDeferSyncComplete( tpAniSirGlobal pMac, tpSmeBtEvent pEvent
                 }
                 else
                 {
-                    smsLog(pMac, LOGE, FL(" SYNC completion fail but last event(%d) not creation\n"),
+                    smsLog(pMac, LOGE, FL(" SYNC completion fail but last event(%d) not creation"),
                         pSyncEventHist->btEventType[pSyncEventHist->bNextEventIdx-1]);
                 }
             }
@@ -1079,12 +1079,12 @@ static VOS_STATUS btcDeferSyncComplete( tpAniSirGlobal pMac, tpSmeBtEvent pEvent
             }
             else
             {
-                smsLog(pMac, LOGE, FL(" SYNC event overflow\n"));
+                smsLog(pMac, LOGE, FL(" SYNC event overflow"));
             }
         }
         else
         {
-            smsLog( pMac, LOGE, FL(" cannot find match for BT_EVENT_SYNC_CONNECTION_COMPLETE of bdAddr (%02X-%02X-%02X-%02X-%02X-%02X)\n"),
+            smsLog( pMac, LOGE, FL(" cannot find match for BT_EVENT_SYNC_CONNECTION_COMPLETE of bdAddr (%02X-%02X-%02X-%02X-%02X-%02X)"),
                 pEvent->uEventParam.btSyncConnection.bdAddr[0],
                 pEvent->uEventParam.btSyncConnection.bdAddr[1],
                 pEvent->uEventParam.btSyncConnection.bdAddr[2],
@@ -1122,7 +1122,7 @@ static VOS_STATUS btcDeferDisconnectEventForACL( tpAniSirGlobal pMac, tpSmeBtEve
     {
         if( pAclEventHist->bNextEventIdx > BT_MAX_NUM_EVENT_ACL_DEFERRED)
         {
-            smsLog(pMac, LOGE, FL(" ACL event history index:%d overflow, resetting to BT_MAX_NUM_EVENT_ACL_DEFERRED\n"), pAclEventHist->bNextEventIdx);
+            smsLog(pMac, LOGE, FL(" ACL event history index:%d overflow, resetting to BT_MAX_NUM_EVENT_ACL_DEFERRED"), pAclEventHist->bNextEventIdx);
             pAclEventHist->bNextEventIdx = BT_MAX_NUM_EVENT_ACL_DEFERRED;
         }
         //Looking backwords
@@ -1161,7 +1161,7 @@ static VOS_STATUS btcDeferDisconnectEventForACL( tpAniSirGlobal pMac, tpSmeBtEve
             }
             else
             {
-                smsLog(pMac, LOGE, FL(" ACL event overflow\n"));
+                smsLog(pMac, LOGE, FL(" ACL event overflow"));
                 status = VOS_STATUS_E_FAILURE;
             }
         }
@@ -1206,7 +1206,7 @@ static VOS_STATUS btcDeferDisconnectEventForSync( tpAniSirGlobal pMac, tpSmeBtEv
     {
         if( pSyncEventHist->bNextEventIdx > BT_MAX_NUM_EVENT_SCO_DEFERRED)
         {
-            smsLog(pMac, LOGE, FL(" SYNC event history index:%d overflow, resetting to BT_MAX_NUM_EVENT_SCO_DEFERRED\n"), pSyncEventHist->bNextEventIdx);
+            smsLog(pMac, LOGE, FL(" SYNC event history index:%d overflow, resetting to BT_MAX_NUM_EVENT_SCO_DEFERRED"), pSyncEventHist->bNextEventIdx);
             pSyncEventHist->bNextEventIdx = BT_MAX_NUM_EVENT_SCO_DEFERRED;
         }
         //Looking backwords
@@ -1246,7 +1246,7 @@ static VOS_STATUS btcDeferDisconnectEventForSync( tpAniSirGlobal pMac, tpSmeBtEv
             }
             else
             {
-                smsLog(pMac, LOGE, FL(" SYNC event overflow\n"));
+                smsLog(pMac, LOGE, FL(" SYNC event overflow"));
                 status = VOS_STATUS_E_FAILURE;
             }
         }
@@ -1277,7 +1277,7 @@ static VOS_STATUS btcDeferDisconnEvent( tpAniSirGlobal pMac, tpSmeBtEvent pEvent
     tpSmeBtDisconnectEventHist pDisconnEventHist;
     if( BT_INVALID_CONN_HANDLE == pEvent->uEventParam.btDisconnect.connectionHandle )
     {
-        smsLog( pMac, LOGE, FL(" invalid handle\n") );
+        smsLog( pMac, LOGE, FL(" invalid handle") );
         return (VOS_STATUS_E_INVAL);
     }
     //Check ACL first
@@ -1300,7 +1300,7 @@ static VOS_STATUS btcDeferDisconnEvent( tpAniSirGlobal pMac, tpSmeBtEvent pEvent
         }
         else
         {
-            smsLog( pMac, LOGE, FL(" cannot find match for BT_EVENT_DISCONNECTION_COMPLETE of handle (%d)\n"),
+            smsLog( pMac, LOGE, FL(" cannot find match for BT_EVENT_DISCONNECTION_COMPLETE of handle (%d)"),
                 pEvent->uEventParam.btDisconnect.connectionHandle);
             status = VOS_STATUS_E_EMPTY;
         }
@@ -1359,7 +1359,7 @@ static VOS_STATUS btcDeferEvent( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
     case BT_EVENT_SYNC_CONNECTION_UPDATED:
         if( BT_INVALID_CONN_HANDLE == pEvent->uEventParam.btDisconnect.connectionHandle )
         {
-            smsLog( pMac, LOGE, FL(" invalid handle\n") );
+            smsLog( pMac, LOGE, FL(" invalid handle") );
             status = VOS_STATUS_E_INVAL;
             break;
         }
@@ -1374,7 +1374,7 @@ static VOS_STATUS btcDeferEvent( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
         }
         else
         {
-            smsLog( pMac, LOGE, FL(" cannot find match for BT_EVENT_SYNC_CONNECTION_UPDATED of handle (%d)\n"),
+            smsLog( pMac, LOGE, FL(" cannot find match for BT_EVENT_SYNC_CONNECTION_UPDATED of handle (%d)"),
                 pEvent->uEventParam.btSyncConnection.connectionHandle );
             status = VOS_STATUS_E_EMPTY;
         }
@@ -1385,7 +1385,7 @@ static VOS_STATUS btcDeferEvent( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
     case BT_EVENT_MODE_CHANGED:
         if( BT_INVALID_CONN_HANDLE == pEvent->uEventParam.btDisconnect.connectionHandle )
         {
-            smsLog( pMac, LOGE, FL(" invalid handle\n") );
+            smsLog( pMac, LOGE, FL(" invalid handle") );
             status = VOS_STATUS_E_INVAL;
             break;
         }
@@ -1400,7 +1400,7 @@ static VOS_STATUS btcDeferEvent( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
         }
         else
         {
-            smsLog( pMac, LOGE, FL(" cannot find match for BT_EVENT_MODE_CHANGED of handle (%d)\n"),
+            smsLog( pMac, LOGE, FL(" cannot find match for BT_EVENT_MODE_CHANGED of handle (%d)"),
                 pEvent->uEventParam.btAclModeChange.connectionHandle);
             status = VOS_STATUS_E_EMPTY;
         }
@@ -1414,7 +1414,7 @@ static VOS_STATUS btcDeferEvent( tpAniSirGlobal pMac, tpSmeBtEvent pEvent )
         pReplay->btcEventHist.fA2DPStarted = VOS_FALSE;
         break;
     default:
-        smsLog( pMac, LOGE, FL(" event (%d) is not deferred\n"), pEvent->btEventType );
+        smsLog( pMac, LOGE, FL(" event (%d) is not deferred"), pEvent->btEventType );
         status = VOS_STATUS_E_NOSUPPORT;
         break;
     }
@@ -1744,13 +1744,13 @@ void btcUapsdCheck( tpAniSirGlobal pMac, tpSmeBtEvent pBtEvent )
            {
                //All SCO is disconnected
                pMac->btc.btcUapsdOk = VOS_TRUE;
-               smsLog( pMac, LOGE, "BT event (DISCONNECTION) happens, UAPSD-allowed flag (%d) change to TRUE \n", 
+               smsLog( pMac, LOGE, "BT event (DISCONNECTION) happens, UAPSD-allowed flag (%d) change to TRUE",
                         pBtEvent->btEventType, pMac->btc.btcUapsdOk );
            }
        }
        break;
    case BT_EVENT_DEVICE_SWITCHED_OFF:
-       smsLog( pMac, LOGE, "BT event (DEVICE_OFF) happens, UAPSD-allowed flag (%d) change to TRUE \n", 
+       smsLog( pMac, LOGE, "BT event (DEVICE_OFF) happens, UAPSD-allowed flag (%d) change to TRUE",
                         pBtEvent->btEventType, pMac->btc.btcUapsdOk );
        //Clean up SCO
        for(i=0; i < BT_MAX_SCO_SUPPORT; i++)
@@ -1761,7 +1761,7 @@ void btcUapsdCheck( tpAniSirGlobal pMac, tpSmeBtEvent pBtEvent )
        pMac->btc.btcUapsdOk = VOS_TRUE;
        break;
    case BT_EVENT_A2DP_STREAM_STOP:
-       smsLog( pMac, LOGE, "BT event  (A2DP_STREAM_STOP) happens, UAPSD-allowed flag (%d) \n", 
+       smsLog( pMac, LOGE, "BT event  (A2DP_STREAM_STOP) happens, UAPSD-allowed flag (%d)",
             pMac->btc.btcUapsdOk );
        pMac->btc.fA2DPUp = VOS_FALSE;
        //Check whether SCO is on
@@ -1775,13 +1775,13 @@ void btcUapsdCheck( tpAniSirGlobal pMac, tpSmeBtEvent pBtEvent )
        if( BT_MAX_SCO_SUPPORT == i )
        {
             pMac->btc.fA2DPTrafStop = VOS_TRUE;
-           smsLog( pMac, LOGE, "BT_EVENT_A2DP_STREAM_STOP: UAPSD-allowed flag is now %d\n",
+           smsLog( pMac, LOGE, "BT_EVENT_A2DP_STREAM_STOP: UAPSD-allowed flag is now %d",
                    pMac->btc.btcUapsdOk );
        }
        break;
 
    case BT_EVENT_MODE_CHANGED:
-       smsLog( pMac, LOGE, "BT event (BT_EVENT_MODE_CHANGED) happens, Mode (%d) UAPSD-allowed flag (%d)\n",
+       smsLog( pMac, LOGE, "BT event (BT_EVENT_MODE_CHANGED) happens, Mode (%d) UAPSD-allowed flag (%d)",
                pBtEvent->uEventParam.btAclModeChange.mode, pMac->btc.btcUapsdOk );
        if(pBtEvent->uEventParam.btAclModeChange.mode == BT_ACL_SNIFF)
        {
@@ -1800,7 +1800,7 @@ void btcUapsdCheck( tpAniSirGlobal pMac, tpSmeBtEvent pBtEvent )
                    pMac->btc.btcUapsdOk = VOS_TRUE;
                    pMac->btc.fA2DPTrafStop = VOS_FALSE;
                }
-               smsLog( pMac, LOGE, "BT_EVENT_MODE_CHANGED with Mode:%d UAPSD-allowed flag is now %d\n",
+               smsLog( pMac, LOGE, "BT_EVENT_MODE_CHANGED with Mode:%d UAPSD-allowed flag is now %d",
                        pBtEvent->uEventParam.btAclModeChange.mode,pMac->btc.btcUapsdOk );
            }
        }
@@ -1808,7 +1808,7 @@ void btcUapsdCheck( tpAniSirGlobal pMac, tpSmeBtEvent pBtEvent )
    case BT_EVENT_CREATE_SYNC_CONNECTION:
        {
            pMac->btc.btcUapsdOk = VOS_FALSE;
-           smsLog( pMac, LOGE, "BT_EVENT_CREATE_SYNC_CONNECTION (%d) happens, UAPSD-allowed flag (%d) change to FALSE \n", 
+           smsLog( pMac, LOGE, "BT_EVENT_CREATE_SYNC_CONNECTION (%d) happens, UAPSD-allowed flag (%d) change to FALSE",
                    pBtEvent->btEventType, pMac->btc.btcUapsdOk );
        }
        break;
@@ -1830,7 +1830,7 @@ void btcUapsdCheck( tpAniSirGlobal pMac, tpSmeBtEvent pBtEvent )
 
            if( i >= BT_MAX_SCO_SUPPORT )
            {
-               smsLog(pMac, LOGE, FL("Too many SCO, ignore this one\n"));
+               smsLog(pMac, LOGE, FL("Too many SCO, ignore this one"));
            }
        }
        else
@@ -1848,11 +1848,11 @@ void btcUapsdCheck( tpAniSirGlobal pMac, tpSmeBtEvent pBtEvent )
            {
                pMac->btc.btcUapsdOk = VOS_TRUE;
            }
-           smsLog(pMac, LOGE, FL("TSYNC complete failed\n"));
+           smsLog(pMac, LOGE, FL("TSYNC complete failed"));
        }
        break;
    case BT_EVENT_A2DP_STREAM_START:
-       smsLog( pMac, LOGE, "BT_EVENT_A2DP_STREAM_START (%d) happens, UAPSD-allowed flag (%d) change to FALSE \n", 
+       smsLog( pMac, LOGE, "BT_EVENT_A2DP_STREAM_START (%d) happens, UAPSD-allowed flag (%d) change to FALSE",
                 pBtEvent->btEventType, pMac->btc.btcUapsdOk );
        pMac->btc.fA2DPTrafStop = VOS_FALSE;
        pMac->btc.btcUapsdOk = VOS_FALSE;
@@ -1860,7 +1860,7 @@ void btcUapsdCheck( tpAniSirGlobal pMac, tpSmeBtEvent pBtEvent )
        break;
    default:
        //No change for these events
-       smsLog( pMac, LOGE, "BT event (%d) happens, UAPSD-allowed flag (%d) no change \n", 
+       smsLog( pMac, LOGE, "BT event (%d) happens, UAPSD-allowed flag (%d) no change",
                     pBtEvent->btEventType, pMac->btc.btcUapsdOk );
        break;
    }
@@ -1886,7 +1886,7 @@ eHalStatus btcHandleCoexInd(tHalHandle hHal, void* pMsg)
 
    if (NULL == pMsg)
    {
-      smsLog(pMac, LOGE, "in %s msg ptr is NULL\n", __func__);
+      smsLog(pMac, LOGE, "in %s msg ptr is NULL", __func__);
       status = eHAL_STATUS_FAILURE;
    }
    else
@@ -1915,13 +1915,13 @@ eHalStatus btcHandleCoexInd(tHalHandle hHal, void* pMsg)
      else if (pSmeCoexInd->coexIndType == SIR_COEX_IND_TYPE_SCAN_COMPROMISED)
      {
          pMac->btc.btcScanCompromise = VOS_TRUE;
-         smsLog(pMac, LOGW, "Coex indication in %s(), type - SIR_COEX_IND_TYPE_SCAN_COMPROMISED ",
+         smsLog(pMac, LOGW, "Coex indication in %s(), type - SIR_COEX_IND_TYPE_SCAN_COMPROMISED",
              __func__);
      }
      else if (pSmeCoexInd->coexIndType == SIR_COEX_IND_TYPE_SCAN_NOT_COMPROMISED)
      {
          pMac->btc.btcScanCompromise = VOS_FALSE;
-         smsLog(pMac, LOGW, "Coex indication in %s(), type - SIR_COEX_IND_TYPE_SCAN_NOT_COMPROMISED ",
+         smsLog(pMac, LOGW, "Coex indication in %s(), type - SIR_COEX_IND_TYPE_SCAN_NOT_COMPROMISED",
              __func__);
      }
      // unknown indication type

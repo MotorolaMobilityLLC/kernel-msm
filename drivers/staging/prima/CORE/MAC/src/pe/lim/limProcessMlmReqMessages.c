@@ -166,11 +166,9 @@ limProcessMlmReqMessages(tpAniSirGlobal pMac, tpSirMsgQ Msg)
 #ifdef WLAN_FEATURE_VOWIFI_11R
         case SIR_LIM_FT_PREAUTH_RSP_TIMEOUT:limProcessFTPreauthRspTimeout(pMac); break;
 #endif
-#ifdef WLAN_FEATURE_P2P
         case SIR_LIM_REMAIN_CHN_TIMEOUT:    limProcessRemainOnChnTimeout(pMac); break;
         case SIR_LIM_INSERT_SINGLESHOT_NOA_TIMEOUT:   
                                             limProcessInsertSingleShotNOATimeout(pMac); break;
-#endif
         case SIR_LIM_DISASSOC_ACK_TIMEOUT:  limProcessDisassocAckTimeout(pMac); break;
         case SIR_LIM_DEAUTH_ACK_TIMEOUT:    limProcessDeauthAckTimeout(pMac); break;
         case LIM_MLM_ADDBA_REQ:             limProcessMlmAddBAReq( pMac, Msg->bodyptr ); break;
@@ -644,14 +642,12 @@ static void __limCreateInitScanRawFrame(tpAniSirGlobal pMac,
 
                 }
             }
-#ifdef WLAN_FEATURE_P2P
             else if( (eLIM_AP_ROLE == pMac->lim.gpSession[i].limSystemRole ) 
                     && ( VOS_P2P_GO_MODE == pMac->lim.gpSession[i].pePersona )
                    )
             {
                 pInitScanParam->useNoA = TRUE;
             }
-#endif
         }
     }
     if (pInitScanParam->scanEntry.activeBSScnt)
@@ -770,12 +766,10 @@ limSendHalInitScanReq(tpAniSirGlobal pMac, tLimLimHalScanState nextState, tSirLi
             }
         }
         __limCreateInitScanRawFrame(pMac, pInitScanParam);
-#ifdef WLAN_FEATURE_P2P
         if (pInitScanParam->useNoA)
         {
             pInitScanParam->scanDuration = pMac->lim.gTotalScanDuration;
         }
-#endif       
         /* Inform HAL whether it should check for traffic on the link
          * prior to performing a background scan
          */
@@ -1451,12 +1445,10 @@ mlm_add_sta(
                                           pSta->greenFieldCapable, pSta->txChannelWidthSet, pSta->mimoPS, pSta->lsigTxopProtection, 
                                           pSta->fDsssCckMode40Mhz,pSta->fShortGI20Mhz, pSta->fShortGI40Mhz);
 
-#ifdef WLAN_FEATURE_P2P
      if (VOS_P2P_GO_MODE == psessionEntry->pePersona)
      {
          pSta->p2pCapableSta = 1;
      }
-#endif
 
     //Disable BA. It will be set as part of ADDBA negotiation.
     for( i = 0; i < STACFG_MAX_TC; i++ )
@@ -1770,12 +1762,10 @@ static tANI_U8 __limMlmScanAllowed(tpAniSirGlobal pMac)
                            (pMac->lim.gpSession[i].limSystemRole == eLIM_BT_AMP_AP_ROLE)||
                            (pMac->lim.gpSession[i].limSystemRole == eLIM_BT_AMP_STA_ROLE) )&&
                        (pMac->lim.gpSession[i].limMlmState == eLIM_MLM_BSS_STARTED_STATE) )
-#ifdef WLAN_FEATURE_P2P
                ||  ( ( ( (pMac->lim.gpSession[i].bssType == eSIR_INFRA_AP_MODE) 
                       && ( pMac->lim.gpSession[i].pePersona == VOS_P2P_GO_MODE) )
                     || (pMac->lim.gpSession[i].limSystemRole == eLIM_AP_ROLE) )
                   && (pMac->lim.gpSession[i].limMlmState == eLIM_MLM_BSS_STARTED_STATE) )
-#endif
                 ))
             {
                 return FALSE;
@@ -1848,7 +1838,6 @@ limProcessMlmScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
         pMac->lim.gLimSystemInScanLearnMode = 1;
 
-#ifdef WLAN_FEATURE_P2P
         /* temporary fix to handle case where NOA duration calculation is incorrect
          * for scanning on DFS channels */
 
@@ -1882,7 +1871,6 @@ limProcessMlmScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
 
         /* Adding an overhead of 5ms to account for the scan messaging delays */
         pMac->lim.gTotalScanDuration += 5;
-#endif
         limSetScanMode(pMac);
     }
     else
@@ -3962,14 +3950,12 @@ limProcessAuthFailureTimeout(tpAniSirGlobal pMac)
              * before Auth Failure timeout.
              * Issue MLM auth confirm with timeout reason code
              */
-#ifdef WLAN_FEATURE_P2P
              //Restore default failure timeout
              if (VOS_P2P_CLIENT_MODE == psessionEntry->pePersona && psessionEntry->defaultAuthFailureTimeout)
              {
                  ccmCfgSetInt(pMac,WNI_CFG_AUTHENTICATE_FAILURE_TIMEOUT ,
                                        psessionEntry->defaultAuthFailureTimeout, NULL, eANI_BOOLEAN_FALSE);
              }
-#endif
             limRestoreFromAuthState(pMac,eSIR_SME_AUTH_TIMEOUT_RESULT_CODE,eSIR_MAC_UNSPEC_FAILURE_REASON,psessionEntry);
             break;
 

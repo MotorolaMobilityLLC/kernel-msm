@@ -42,25 +42,21 @@
 /*===========================================================================
 
                       b a p M o d u l e . C
-                                               
+
   OVERVIEW:
-  
+
   This software unit holds the implementation of the WLAN BAP modules
   Module support functions. It is also where the global BAP module
-  context, and per-instance (returned in BAP_Open device open) contexts. 
-  
+  context, and per-instance (returned in BAP_Open device open) contexts.
+
   The functions externalized by this module are to be called by the device
   specific BAP Shim Layer (BSL) (in HDD) which implements a stream device on a
   particular platform.
 
-  DEPENDENCIES: 
+  DEPENDENCIES:
 
-  Are listed for each API below. 
-  
-  
-  Copyright (c) 2008 QUALCOMM Incorporated.
-  All Rights Reserved.
-  Qualcomm Confidential and Proprietary
+  Are listed for each API below.
+
 ===========================================================================*/
 
 /*===========================================================================
@@ -103,7 +99,7 @@
 //#include "assert.h" 
 #include "bapApiTimer.h"
 
-#if defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_ANDROID)
+#if defined(ANI_OS_TYPE_ANDROID)
 #include "bap_hdd_main.h"
 #endif
 
@@ -445,7 +441,7 @@ WLANBAP_Close
    ------------------------------------------------------------------------*/
   VOS_TRACE( VOS_MODULE_ID_BAP, VOS_TRACE_LEVEL_INFO_HIGH, "WLANBAP_Close");
   WLANBAP_CleanCB(pBtampCtx, 1 /* empty queues/lists/pkts if any*/);
-#if (defined(ANI_OS_TYPE_LINUX) || defined(ANI_OS_TYPE_ANDROID))&& defined(WLAN_BTAMP_FEATURE)
+#if  defined(ANI_OS_TYPE_ANDROID) && defined(WLAN_BTAMP_FEATURE)
   BSL_Deinit(pvosGCtx);
 #endif
   /*------------------------------------------------------------------------

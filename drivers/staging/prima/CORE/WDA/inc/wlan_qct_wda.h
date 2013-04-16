@@ -308,7 +308,7 @@ typedef struct
    TX_TIMER trafficStatsTimer ;
 }tWdaTimers ;
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
-#define WDA_MAX_STA    (38)
+#define WDA_MAX_STA    (41)
 #else
 #define WDA_MAX_STA    (16)
 #endif
@@ -499,6 +499,7 @@ tBssSystemRole wdaGetGlobalSystemRole(tpAniSirGlobal pMac);
 // FIXME Temporary value for R33D integaration
 //#define WDA_TL_TX_FRAME_TIMEOUT  20000 /* in msec a very high upper limit */
 
+#define DPU_FEEDBACK_UNPROTECTED_ERROR 0x0F
 
 
 /* ---------------------------------------------------------------------------
@@ -695,7 +696,10 @@ tBssSystemRole wdaGetGlobalSystemRole(tpAniSirGlobal pMac);
 /* WDA_GETRSSI1 ***************************************************************/
 #  define WDA_GETRSSI1(pRxMeta) (((WDI_DS_RxMetaInfoType*)(pRxMeta))->rssi1)
 
-
+/* WDA_GET_RX_RMF *****************************************************/
+#ifdef WLAN_FEATURE_11W
+#  define WDA_GET_RX_RMF(pRxMeta) (((WDI_DS_RxMetaInfoType*)(pRxMeta))->rmf)
+#endif
 
 /* --------------------------------------------------------------------*/
 
@@ -886,6 +890,9 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_TIMER_ADC_RSSI_STATS       SIR_HAL_TIMER_ADC_RSSI_STATS
 #define WDA_TIMER_TRAFFIC_STATS_IND    SIR_HAL_TRAFFIC_STATS_IND
 
+#ifdef WLAN_FEATURE_11W
+#define WDA_EXCLUDE_UNENCRYPTED_IND    SIR_HAL_EXCLUDE_UNENCRYPTED_IND
+#endif
 
 #ifdef FEATURE_WLAN_CCX
 #define WDA_TSM_STATS_REQ              SIR_HAL_TSM_STATS_REQ
@@ -940,13 +947,11 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_UPDATE_PROBE_RSP_TEMPLATE_IND     SIR_HAL_UPDATE_PROBE_RSP_TEMPLATE_IND
 #define WDA_SIGNAL_BTAMP_EVENT         SIR_HAL_SIGNAL_BTAMP_EVENT
 
-#ifdef ANI_CHIPSET_VOLANS
 #ifdef FEATURE_OEM_DATA_SUPPORT
 /* PE <-> HAL OEM_DATA RELATED MESSAGES */
 #define WDA_START_OEM_DATA_REQ         SIR_HAL_START_OEM_DATA_REQ 
 #define WDA_START_OEM_DATA_RSP         SIR_HAL_START_OEM_DATA_RSP
 #define WDA_FINISH_OEM_DATA_REQ        SIR_HAL_FINISH_OEM_DATA_REQ
-#endif
 #endif
 
 #define WDA_SET_MAX_TX_POWER_REQ       SIR_HAL_SET_MAX_TX_POWER_REQ
@@ -966,9 +971,7 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #define WDA_ADD_STA_SELF_REQ           SIR_HAL_ADD_STA_SELF_REQ
 #define WDA_DEL_STA_SELF_REQ           SIR_HAL_DEL_STA_SELF_REQ
 
-#ifdef WLAN_FEATURE_P2P
 #define WDA_SET_P2P_GO_NOA_REQ         SIR_HAL_SET_P2P_GO_NOA_REQ
-#endif
 
 #define WDA_TX_COMPLETE_TIMEOUT_IND  (WDA_MSG_TYPES_END - 1)
 #define WDA_WLAN_SUSPEND_IND           SIR_HAL_WLAN_SUSPEND_IND
@@ -1023,6 +1026,9 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb);
 #ifdef WLAN_FEATURE_11AC
 #define WDA_UPDATE_OP_MODE         SIR_HAL_UPDATE_OP_MODE
 #endif
+
+#define WDA_GET_ROAM_RSSI_REQ      SIR_HAL_GET_ROAM_RSSI_REQ
+#define WDA_GET_ROAM_RSSI_RSP      SIR_HAL_GET_ROAM_RSSI_RSP
 
 tSirRetStatus wdaPostCtrlMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg);
 
@@ -1764,6 +1770,7 @@ tANI_U8 WDA_getFwWlanFeatCaps(tANI_U8 featEnumValue);
     Or if host driver detects any abnormal stcuk may display
 
   PARAMETERS
+    pMac : upper MAC context pointer
     displaySnapshot : Display DXE snapshot option
     enableStallDetect : Enable stall detect feature
                         This feature will take effect to data performance
@@ -1775,8 +1782,9 @@ tANI_U8 WDA_getFwWlanFeatCaps(tANI_U8 featEnumValue);
 ===========================================================================*/
 void WDA_TransportChannelDebug
 (
-   v_BOOL_t   displaySnapshot,
-   v_BOOL_t   toggleStallDetect
+  tpAniSirGlobal pMac,
+  v_BOOL_t       displaySnapshot,
+  v_BOOL_t       toggleStallDetect
 );
 
 /*==========================================================================

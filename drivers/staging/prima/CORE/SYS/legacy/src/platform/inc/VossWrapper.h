@@ -49,7 +49,7 @@ extern "C" {
 /*===========================================================================
   @file VossWrapper.h
 
-  @brief This header file contains the various structure definitions and 
+  @brief This header file contains the various structure definitions and
   function prototypes for the RTOS abstraction layer, implemented for VOSS
 
   Copyright (c) 2008 QUALCOMM Incorporated.
@@ -57,30 +57,30 @@ extern "C" {
   Qualcomm Confidential and Proprietary
 ===========================================================================*/
 
-/*=========================================================================== 
-    
-                       EDIT HISTORY FOR FILE 
-   
-   
-  This section contains comments describing changes made to the module. 
-  Notice that changes are listed in reverse chronological order. 
-   
-   
-  $Header:$ $DateTime: $ $Author: $ 
-   
-   
-  when        who    what, where, why 
+/*===========================================================================
+
+                       EDIT HISTORY FOR FILE
+
+
+  This section contains comments describing changes made to the module.
+  Notice that changes are listed in reverse chronological order.
+
+
+  $Header:$ $DateTime: $ $Author: $
+
+
+  when        who    what, where, why
   --------    ---    --------------------------------------------------------
   12/15/08    sho    Resolved warnings and errors from AMSS compiler when
                      this is ported to WM
   11/20/08    sho    Renamed this to VossWrapper.h; remove all dependencies
                      on WM platform and allow this to work on all VOSS enabled
                      platforms
-  06/24/08    tbh    Modified the file to remove the dependecy on HDD files as 
-                     part of Gen6 bring up process. 
-  10/29/02 Neelay Das Created file. 
-     
-===========================================================================*/ 
+  06/24/08    tbh    Modified the file to remove the dependecy on HDD files as
+                     part of Gen6 bring up process.
+  10/29/02 Neelay Das Created file.
+
+===========================================================================*/
 
 /*---------------------------------------------------------------------------
  * Include Files
@@ -137,66 +137,11 @@ extern "C" {
 // Signature with which the TX_TIMER struct is initialized, when the timer is created
 #define TX_AIRGO_TMR_SIGNATURE   0xDEADBEEF
 
-
-/* Just #define out the thread and queue specific threadX calls, since the plan is to keep
-   the Windows port of the MAC non-threaded */
-
-#define  tx_thread_create(a, b, c, d, e, f, g, h, i)
-#define  tx_thread_delete(a)
-#define  tx_thread_resume(a)
-
-// Please note that for the Windows implementation for this routine the time is specified in terms of
-// microseconds and not timer ticks. Also, the DDK recommends that this routine should not be called with
-// sleep durations of more than 50 usecs.
-#define  tx_thread_sleep(uSecs)
-
-#define  tx_thread_suspend(a)
-#define  tx_thread_terminate(a)
-#define  tx_thread_identify() NULL
-
-#define  tx_queue_create(a, b, c, d, e) TX_SUCCESS
-#define  tx_queue_delete(a) TX_SUCCESS
-#define  tx_queue_get_ptr(a)    TX_SUCCESS
-#define  tx_queue_flush(a)  TX_SUCCESS
-#define  tx_queue_receive(a, b, c)  TX_SUCCESS
-#define  tx_queue_send(a, b, c) TX_SUCCESS
-
-#define  tx_disable_intr()
-#define  tx_enable_intr() 
-
-
-#define TX_DISABLE_INTR tx_disable_intr()
-#define TX_ENABLE_INTR  tx_enable_intr()
-
 #ifdef TIMER_MANAGER
 #define  tx_timer_create(a, b, c, d, e, f, g)   tx_timer_create_intern_debug((v_PVOID_t)pMac, a, b, c, d, e, f, g, __FILE__, __LINE__)
 #else
 #define  tx_timer_create(a, b, c, d, e, f, g)   tx_timer_create_intern((v_PVOID_t)pMac, a, b, c, d, e, f, g)
 #endif
-
-
-/*-------------------------------------------------------------------------*/
-/*  ThreadX structures are not mapped to Windows structures for the        */
-/*  following reasons:                                                     */
-/*      - Windows structures are written in C and they are not C++ aware.  */
-/*      - There should not be any dependency between MAC FW include tree   */
-/*        and Windows include tree.                                        */
-/*                                                                         */
-/*  Instead, ThreadX structures are defined here as void*.  This will be   */
-/*  used by the wrapper functions to save the pointer of the actual Windows*/
-/*  structure.  Windows structure is allocated in ?                        */
-/*-------------------------------------------------------------------------*/
-
-typedef v_PVOID_t TX_THREAD;
-typedef v_PVOID_t TX_QUEUE;
-typedef v_PVOID_t TX_MUTEX;
-
-/*--------------------------------------------------------------------*/
-/* Semaphore structure                                                */
-/* This structure is used to mimic the binary semaphore functionality */
-/* available on ThreadX.                                              */
-/*--------------------------------------------------------------------*/
-typedef v_SLONG_t TX_SEMAPHORE;
 
 /*--------------------------------------------------------------------*/
 /* Timer structure                                                    */
@@ -226,21 +171,12 @@ typedef struct TX_TIMER_STRUCT
 
 #define TX_TIMER_VALID(timer) (timer.pMac != 0)
 
-typedef struct sAniSirTxWrapper
-{
-    // Back pointer to the pAdapter structure, needed for some of the internal routines
-    v_PVOID_t  pAdapter;
-
-} tAniSirTxWrapper, *tpAniSirTxWrapper;
-
-
-
 extern v_ULONG_t tx_time_get(v_VOID_t);
 extern v_UINT_t  tx_timer_activate(TX_TIMER*);
 extern v_UINT_t  tx_timer_change(TX_TIMER*, v_ULONG_t, v_ULONG_t);
 extern v_UINT_t  tx_timer_change_context(TX_TIMER*, tANI_U32);
 #ifdef TIMER_MANAGER
-extern v_UINT_t  tx_timer_create_intern_debug(v_PVOID_t, TX_TIMER*, char *, v_VOID_t(*)(v_PVOID_t, tANI_U32), 
+extern v_UINT_t  tx_timer_create_intern_debug(v_PVOID_t, TX_TIMER*, char *, v_VOID_t(*)(v_PVOID_t, tANI_U32),
                tANI_U32, v_ULONG_t, v_ULONG_t, v_ULONG_t, char* fileName, v_U32_t lineNum );
 #else
 extern v_UINT_t  tx_timer_create_intern(v_PVOID_t, TX_TIMER*, char *, v_VOID_t(*)(v_PVOID_t, tANI_U32), tANI_U32, v_ULONG_t, v_ULONG_t, v_ULONG_t);
@@ -248,23 +184,6 @@ extern v_UINT_t  tx_timer_create_intern(v_PVOID_t, TX_TIMER*, char *, v_VOID_t(*
 extern v_UINT_t  tx_timer_deactivate(TX_TIMER*);
 extern v_UINT_t  tx_timer_delete(TX_TIMER*);
 extern v_BOOL_t  tx_timer_running(TX_TIMER*);
-
-
-
-// Routines needed to initialize and cleanup the Windows wrapper
-extern v_VOID_t tx_voss_wrapper_init(v_PVOID_t, v_PVOID_t);
-
-#define schAddDphActivityQueueWin( a, b, c )
-
-// Debug display related globals
-extern v_ULONG_t gDbgLevel;
-extern v_ULONG_t gDbgMask;
-extern int gHalBufCnt;
-
-/* forward declaration From HDDUtil.h used by some internal files */
-
-extern v_U64_t utilGetCurrentTime(void);
-
 
 #ifdef __cplusplus
 }

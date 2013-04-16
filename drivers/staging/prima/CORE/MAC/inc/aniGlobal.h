@@ -64,9 +64,7 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 #include "halTypes.h"
 #include "sirCommon.h"
 #include "aniSystemDefs.h"
-#ifndef ANI_OS_TYPE_OSX
 #include "sysDef.h"
-#endif
 #include "dphGlobal.h"
 #include "limGlobal.h"
 #include "pmmGlobal.h"
@@ -103,9 +101,7 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 #include "ccxApi.h"
 #include "ccxGlobal.h"
 #endif
-#ifdef WLAN_FEATURE_P2P
 #include "p2p_Api.h"
-#endif
 
 #if defined WLAN_FEATURE_VOWIFI_11R
 #include <limFTDefs.h>
@@ -145,14 +141,12 @@ typedef struct sAniSirGlobal *tpAniSirGlobal;
 /* max number of legacy bssid we can store during scan on one channel */
 #define MAX_NUM_LEGACY_BSSID_PER_CHANNEL    10
 
-#if defined WLAN_FEATURE_P2P
 #define P2P_WILDCARD_SSID "DIRECT-" //TODO Put it in proper place;
 #define P2P_WILDCARD_SSID_LEN 7
 
 #ifdef WLAN_FEATURE_CONCURRENT_P2P
 #define MAX_NO_OF_P2P_SESSIONS  5
 #endif //WLAN_FEATURE_CONCURRENT_P2P
-#endif //WLAN_FEATURE_P2P
 
 #define SPACE_ASCII_VALUE  32
 
@@ -247,9 +241,7 @@ typedef struct sLimTimers
 #ifdef FEATURE_WLAN_CCX
     TX_TIMER           gLimCcxTsmTimer;
 #endif
-#ifdef WLAN_FEATURE_P2P
     TX_TIMER           gLimRemainOnChannelTimer;
-#endif
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
     TX_TIMER           gLimTdlsDisRspWaitTimer;
     TX_TIMER           gLimTdlsLinkSetupRspTimeouTimer;
@@ -259,10 +251,8 @@ typedef struct sLimTimers
     TX_TIMER           gLimPeriodicJoinProbeReqTimer;
     TX_TIMER           gLimDisassocAckTimer;
     TX_TIMER           gLimDeauthAckTimer;
-#ifdef WLAN_FEATURE_P2P
     // This timer is started when single shot NOA insert msg is sent to FW for scan in P2P GO mode
     TX_TIMER           gLimP2pSingleShotNoaInsertTimer;
-#endif
 //********************TIMER SECTION ENDS**************************************************
 // ALL THE FIELDS BELOW THIS CAN BE ZEROED OUT in limInitialize
 //****************************************************************************************
@@ -320,9 +310,12 @@ typedef struct sAniSirLim
     tANI_U32   gLimCurrentScanChannelId;
 
     // Hold onto SCAN criteria
-#ifdef WLAN_FEATURE_P2P
-    tSirSmeScanReq *gpLimSmeScanReq; // this one is used in P2P GO case when scan needs to be actually done a few BIs later after publishing NOA
-#endif
+    /* The below is used in P2P GO case when we need to defer processing SME Req
+     * to LIM and insert NOA first and process SME req once SNOA is started
+     */
+    tANI_U16 gDeferMsgTypeForNOA;
+    tANI_U32 *gpDefdSmeMsgForNOA;
+
     tLimMlmScanReq *gpLimMlmScanReq;
 
     /// This indicates total length of 'matched' scan results
@@ -363,11 +356,9 @@ typedef struct sAniSirLim
     tANI_U32 gLimTriggerBackgroundScanDuringQuietBss;
 
 
-#ifdef WLAN_FEATURE_P2P
     // This variable store the total duration to do scan
     tANI_U32 gTotalScanDuration;
     tANI_U32 p2pRemOnChanTimeStamp;
-#endif    
 
     // abort scan is used to abort an on-going scan
     tANI_U8 abortScan;
@@ -893,10 +884,8 @@ tLimMlmOemDataReq       *gpLimMlmOemDataReq;
 tLimMlmOemDataRsp       *gpLimMlmOemDataRsp;
 #endif
 
-#ifdef WLAN_FEATURE_P2P
     tSirRemainOnChnReq  *gpLimRemainOnChanReq; //hold remain on chan request in this buf
     vos_list_t  gLimMgmtFrameRegistratinQueue;
-#endif
     tANI_U32    mgmtFrameSessionId;
     tSirBackgroundScanMode gLimBackgroundScanMode;
 
@@ -905,9 +894,9 @@ tLimMlmOemDataRsp       *gpLimMlmOemDataRsp;
     tANI_U8 reAssocRetryAttempt;
 #endif
     tLimDisassocDeauthCnfReq limDisassocDeauthCnfReq;
+    tANI_U8 deferredMsgCnt;
 } tAniSirLim, *tpAniSirLim;
 
-#ifdef WLAN_FEATURE_P2P
 typedef struct sLimMgmtFrameRegistration
 {
     vos_list_node_t node;     // MUST be first element
@@ -916,7 +905,6 @@ typedef struct sLimMgmtFrameRegistration
     tANI_U16        sessionId;
     tANI_U8         matchData[1];
 } tLimMgmtFrameRegistration, *tpLimMgmtFrameRegistration;
-#endif
 
 #if defined WLAN_FEATURE_VOWIFI
 typedef struct sRrmContext
@@ -990,9 +978,6 @@ typedef struct sAniSirGlobal
 
 {
     tDriverType  gDriverType;
-#if defined(ANI_OS_TYPE_RTAI_LINUX)
-    struct rtLibApp * rt;
-#endif
 
     // we should be able to save this hddHandle in here and deprecate
     // the pAdapter.  For now, compiles are a problem because there
@@ -1010,9 +995,6 @@ typedef struct sAniSirGlobal
     tAniSirSch   sch;
     tAniSirSys   sys;
     tAniSirUtils utils;
-
-
-    tAniSirTxWrapper txWrapper;
     // PAL/HDD handle
     tHddHandle hHdd;
 
@@ -1038,12 +1020,10 @@ typedef struct sAniSirGlobal
 #if defined WLAN_FEATURE_VOWIFI
     tRrmContext rrm;
 #endif
-#ifdef WLAN_FEATURE_P2P
 #ifdef WLAN_FEATURE_CONCURRENT_P2P
     tp2pContext p2pContext[MAX_NO_OF_P2P_SESSIONS];
 #else
     tp2pContext p2pContext;
-#endif
 #endif
 
 #if defined WLAN_FEATURE_VOWIFI_11R
@@ -1057,6 +1037,9 @@ typedef struct sAniSirGlobal
     /* Instead of static allocation I will dyanamically allocate memory for dumpTableEntry
         Thinking of using linkedlist  */ 
     tDumpModuleEntry *dumpTableEntry[MAX_DUMP_TABLE_ENTRY];
+#ifdef FEATURE_WLAN_TDLS
+    v_BOOL_t isTdlsPowerSaveProhibited;
+#endif
     
 } tAniSirGlobal;
 

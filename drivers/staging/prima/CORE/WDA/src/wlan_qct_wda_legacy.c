@@ -125,26 +125,11 @@ wdaPostCfgMsg(tpAniSirGlobal pMac, tSirMsgQ *pMsg)
 
    do
    {
-#ifdef ANI_OS_TYPE_RTAI_LINUX
-
-      // Posts message to the queue
-
-      if (tx_queue_send(&pMac->sys.gSirMntMsgQ, pMsg,
-                       TX_NO_WAIT) != TX_SUCCESS)
-      {
-         wdaLog(pMac, LOGP, FL("Queue send Failed! rc (%X)\n"),
-                eSIR_SYS_TX_Q_SEND_FAILED);
-         rc = eSIR_SYS_TX_Q_SEND_FAILED;
-         break;
-      }
-
-#else
       // For Windows based MAC, instead of posting message to different
       // queues we will call the handler routines directly
 
       cfgProcessMbMsg(pMac, (tSirMbMsg*)pMsg->bodyptr);
       rc = eSIR_SUCCESS;
-#endif
    } while (0);
 
    return rc;
@@ -180,14 +165,6 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb)
    tSirMsgQ msg;
    tpAniSirGlobal pMac = (tpAniSirGlobal)pSirGlobal;
 
-#ifdef ANI_OS_TYPE_RTAI_LINUX
-
-   msg.type = pMb->type;
-   msg.bodyptr = pMb;
-   msg.bodyval = 0;
-   WDALOG3( wdaLog(pMac, LOG3, FL("msgType %d, msgLen %d\n" ),
-        pMb->type, pMb->msgLen));
-#else
 
    tSirMbMsg* pMbLocal;
    msg.type = pMb->type;
@@ -210,7 +187,6 @@ tSirRetStatus uMacPostCtrlMsg(void* pSirGlobal, tSirMbMsg* pMb)
 
    palCopyMemory(pMac, (void *)pMbLocal, (void *)pMb, pMb->msgLen);
    msg.bodyptr = pMbLocal;
-#endif
 
    switch (msg.type & HAL_MMH_MB_MSG_TYPE_MASK)
    {

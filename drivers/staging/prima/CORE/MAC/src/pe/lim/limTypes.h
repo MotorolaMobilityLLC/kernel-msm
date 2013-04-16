@@ -674,9 +674,7 @@ void limProcessAssocRspFrame(tpAniSirGlobal, tANI_U8 *, tANI_U8,tpPESession);
 void limProcessDisassocFrame(tpAniSirGlobal, tANI_U8 *,tpPESession);
 void limProcessDeauthFrame(tpAniSirGlobal, tANI_U8 *,tpPESession);
 void limProcessActionFrame(tpAniSirGlobal, tANI_U8 *,tpPESession);
-#if defined WLAN_FEATURE_P2P
 void limProcessActionFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxMetaInfo);
-#endif
 
 
 tSirRetStatus limPopulateMacHeader(tpAniSirGlobal, tANI_U8*, tANI_U8, tANI_U8, tSirMacAddr,tSirMacAddr);
@@ -871,7 +869,7 @@ void limProcessLearnIntervalTimeout(tpAniSirGlobal pMac);
 #ifdef WLAN_FEATURE_11W
 //11w SA query request action frame handler
 tSirRetStatus limSendSaQueryResponseFrame( tpAniSirGlobal pMac, 
-                   tANI_U16 transId, tSirMacAddr peer,tpPESession psessionEntry);
+                   tANI_U8 *transId, tSirMacAddr peer,tpPESession psessionEntry);
 #endif
 // Inline functions
 
@@ -1061,7 +1059,6 @@ void
 limChangeChannelWithCallback(tpAniSirGlobal pMac, tANI_U8 newChannel, 
    CHANGE_CHANNEL_CALLBACK callback, tANI_U32 *cbdata, tpPESession psessionEntry);
 
-#ifdef WLAN_FEATURE_P2P
 void limSendSmeMgmtFrameInd(
                     tpAniSirGlobal pMac, tANI_U8 frameType,
                     tANI_U8  *frame, tANI_U32 frameLen, tANI_U16 sessionId,
@@ -1072,7 +1069,7 @@ void limProcessInsertSingleShotNOATimeout(tpAniSirGlobal pMac);
 void limSendP2PActionFrame(tpAniSirGlobal pMac, tpSirMsgQ pMsg);
 void limAbortRemainOnChan(tpAniSirGlobal pMac);
 tSirRetStatus __limProcessSmeNoAUpdate(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf);
-#endif
+void limProcessRegdDefdSmeReqAfterNOAStart(tpAniSirGlobal pMac);
 #ifdef FEATURE_WLAN_TDLS_INTERNAL
 void limProcessTdlsFrame(tpAniSirGlobal, tANI_U32 *);
 void limProcessTdlsPublicActionFrame(tpAniSirGlobal pMac, tANI_U32 *pBd, 

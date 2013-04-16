@@ -90,9 +90,7 @@
 #include "wlan_nlink_common.h"
 #include "wlan_btc_svc.h"
 #include <bap_hdd_main.h>
-#if defined CONFIG_CFG80211
 #include "wlan_hdd_p2p.h"
-#endif
 
 #define    IS_UP(_dev) \
     (((_dev)->flags & (IFF_RUNNING|IFF_UP)) == (IFF_RUNNING|IFF_UP))
@@ -100,8 +98,11 @@
     (IS_UP((_ic)->ic_dev) && (_ic)->ic_roaming == IEEE80211_ROAMING_AUTO)
 #define WE_WLAN_VERSION     1
 #define STATS_CONTEXT_MAGIC 0x53544154
-#define WE_GET_STA_INFO_SIZE 50
-#define WE_SAP_MAX_STA_INFO (WE_GET_STA_INFO_SIZE * WLAN_MAX_STA_COUNT)
+#define WE_GET_STA_INFO_SIZE 30
+/* WEXT limition: MAX allowed buf len for any *
+ * IW_PRIV_TYPE_CHAR is 2Kbytes *
+ */
+#define WE_SAP_MAX_STA_INFO 0x7FF
 
 struct statsContext
 {
@@ -257,7 +258,6 @@ int hdd_hostapd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_FATAL,
            "***HOSTAPD*** : Received %s cmd from Wi-Fi GUI***", command);
 
-#ifdef WLAN_FEATURE_P2P
         if(strncmp(command, "P2P_SET_NOA", 11) == 0 )   
         {
             hdd_setP2pNoa(dev, command);
@@ -266,7 +266,6 @@ int hdd_hostapd_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
         {
             hdd_setP2pOpps(dev, command);
         }
-#endif
 
         /*
            command should be a string having format
@@ -508,7 +507,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             // Send current operating channel of SoftAP to BTC-ES
             send_btc_nlink_msg(WLAN_BTC_SOFTAP_BSS_START, 0);
 
-#ifdef CONFIG_CFG80211            
             //Check if there is any group key pending to set.
             if( pHddApCtx->groupKey.keyLength )
             {
@@ -536,7 +534,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                     pHddApCtx->wepKey[i].keyLength = 0;
                 }
            }
-#endif
             //Fill the params for sending IWEVCUSTOM Event with SOFTAP.enabled
             startBssEvent = "SOFTAP.enabled";
             memset(&we_custom_start_event, '\0', sizeof(we_custom_start_event));
@@ -545,7 +542,7 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             wrqu.data.length = strlen(startBssEvent);
             we_event = IWEVCUSTOM;
             we_custom_event_generic = we_custom_start_event;
-
+            hdd_dump_concurrency_info(pHddCtx);
             break; //Event will be sent after Switch-Case stmt 
 
         case eSAP_STOP_BSS_EVENT:
@@ -582,7 +579,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             we_event = IWEVMICHAELMICFAILURE;
             we_custom_event_generic = (v_BYTE_t *)&msg;
         }
-#ifdef CONFIG_CFG80211
       /* inform mic failure to nl80211 */
         cfg80211_michael_mic_failure(dev, 
                                      pSapEvent->sapevt.
@@ -593,7 +589,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                                      pSapEvent->sapevt.sapStationMICFailureEvent.keyId, 
                                      pSapEvent->sapevt.sapStationMICFailureEvent.TSC, 
                                      GFP_KERNEL);
-#endif
             break;
         
         case eSAP_STA_ASSOC_EVENT:
@@ -650,7 +645,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             }
             wake_lock_timeout(&pHddCtx->sap_wake_lock, HDD_SAP_WAKE_LOCK_DURATION);
 #endif
-#ifdef CONFIG_CFG80211
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
             {
                 struct station_info staInfo;
@@ -674,7 +668,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                     hddLog(LOGE, FL(" Assoc Ie length is too long \n"));
                 }
              }
-#endif
 #endif
             pScanInfo =  &pHddCtx->scan_info;
             // Lets do abort scan to ensure smooth authentication for client
@@ -727,12 +720,10 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                         VOS_ASSERT(vos_timer_getCurrentState(&pHddApCtx->hdd_ap_inactivity_timer) == VOS_TIMER_STATE_STOPPED);
                 }
             }
-#ifdef CONFIG_CFG80211
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))
             cfg80211_del_sta(dev,
                             (const u8 *)&pSapEvent->sapevt.sapStationDisassocCompleteEvent.staMac.bytes[0],
                             GFP_KERNEL);
-#endif
 #endif
             //Update the beacon Interval if it is P2P GO
             hdd_change_mcc_go_beacon_interval(pHostapdAdapter);
@@ -772,7 +763,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
             }
             vos_mem_free(pSapEvent->sapevt.sapAssocStaListEvent.pAssocStas);// Release caller allocated memory here
             return VOS_STATUS_SUCCESS;
-#ifdef WLAN_FEATURE_P2P
         case eSAP_INDICATE_MGMT_FRAME:
            hdd_indicateMgmtFrame( pHostapdAdapter, 
                                  pSapEvent->sapevt.sapManagementFrameInfo.nFrameLength,
@@ -789,7 +779,6 @@ VOS_STATUS hdd_hostapd_SAPEventCB( tpSap_Event pSapEvent, v_PVOID_t usrDataForCa
                                 pSapEvent->sapevt.sapActionCnf.actionSendSuccess ) ? 
                                 TRUE : FALSE );
            return VOS_STATUS_SUCCESS;
-#endif
         case eSAP_UNKNOWN_STA_JOIN:
             snprintf(unknownSTAEvent, IW_CUSTOM_MAX, "JOIN_UNKNOWN_STA-%02x:%02x:%02x:%02x:%02x:%02x",
                 pSapEvent->sapevt.sapUnknownSTAJoin.macaddr.bytes[0],
@@ -876,6 +865,7 @@ stopbss :
         we_event = IWEVCUSTOM;
         we_custom_event_generic = we_custom_event;
         wireless_send_event(dev, we_event, &wrqu, (char *)we_custom_event_generic);
+        hdd_dump_concurrency_info(pHddCtx);
     }
     return VOS_STATUS_SUCCESS;
 }
@@ -1198,35 +1188,58 @@ static iw_softap_getchannel(struct net_device *dev,
 }
 
 int
-static iw_softap_set_tx_power(struct net_device *dev,
+static iw_softap_set_max_tx_power(struct net_device *dev,
                         struct iw_request_info *info,
                         union iwreq_data *wrqu, char *extra)
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
-    int cmd_len = wrqu->data.length;
-    int *value = (int *) kmalloc(cmd_len+1, GFP_KERNEL);
+    int *value = (int *)extra;
     int set_value;
     tSirMacAddr bssid = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
     tSirMacAddr selfMac = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
-    if(value == NULL)
+    if (NULL == value)
         return -ENOMEM;
 
-    if(copy_from_user((char *) value, (char*)(wrqu->data.pointer), cmd_len)) {
-        hddLog(VOS_TRACE_LEVEL_FATAL, "%s -- copy_from_user --data pointer failed! bailing",
+    set_value = value[0];
+    if (eHAL_STATUS_SUCCESS != sme_SetMaxTxPower(hHal, bssid, selfMac, set_value))
+    {
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Setting maximum tx power failed",
                 __func__);
-        kfree(value);
-        return -EFAULT;
+        return -EIO;
+    }
+
+    return 0;
+}
+
+int
+static iw_softap_set_tx_power(struct net_device *dev,
+                        struct iw_request_info *info,
+                        union iwreq_data *wrqu, char *extra)
+{
+    hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
+    v_CONTEXT_t pVosContext = (WLAN_HDD_GET_CTX(pHostapdAdapter))->pvosContext;
+    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
+    int *value = (int *)extra;
+    int set_value;
+    ptSapContext  pSapCtx = NULL;
+
+    if (NULL == value)
+        return -ENOMEM;
+
+    pSapCtx = VOS_GET_SAP_CB(pVosContext);
+    if (NULL == pSapCtx)
+    {
+        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_ERROR,
+                   "%s: Invalid SAP pointer from pvosGCtx", __func__);
+        return VOS_STATUS_E_FAULT;
     }
 
     set_value = value[0];
-    kfree(value);
-
-    if( sme_SetMaxTxPower(hHal, bssid, selfMac, set_value) !=
-            eHAL_STATUS_SUCCESS )
+    if (eHAL_STATUS_SUCCESS != sme_SetTxPower(hHal, pSapCtx->sessionId, set_value))
     {
-        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Setting maximum tx power failed",
+        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Setting tx power failed",
                 __func__);
         return -EIO;
     }
@@ -1441,6 +1454,12 @@ static iw_softap_commit(struct net_device *dev,
         pConfig->mcRSNEncryptType =  eCSR_ENCRYPT_TYPE_NONE;
         hddLog( LOG1, FL("EncryptionType = %d mcEncryptionType = %d\n"), 
                          pConfig->RSNEncryptType, pConfig->mcRSNEncryptType);
+    }
+
+    if (pConfig->RSNWPAReqIELength > QCSAP_MAX_OPT_IE) {
+        hddLog(LOGE, FL("RSNWPAReqIELength: %d too large"), pConfig->RSNWPAReqIELength);
+        kfree(pConfig);
+        return -EIO;
     }
 
     pConfig->SSIDinfo.ssidHidden = pCommitConfig->SSIDinfo.ssidHidden; 
@@ -2429,15 +2448,22 @@ static int iw_softap_version(struct net_device *dev,
     return 0;
 }
 
-VOS_STATUS hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf)
+VOS_STATUS hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf, int buf_len)
 {
     v_U8_t i;
+    int len = 0;
+    const char sta_info_header[] = "staId staAddress\n";
+
+    len = snprintf(pBuf, buf_len, sta_info_header);
+    pBuf += len;
+    buf_len -= len;
 
     for (i = 0; i < WLAN_MAX_STA_COUNT; i++)
     {
         if(pAdapter->aStaInfo[i].isUsed)
         {
-            pBuf += snprintf(pBuf, WE_GET_STA_INFO_SIZE, "staIndex = %d staAddress =.%02x:%02x:%02x:%02x:%02x:%02x\n",
+            len = snprintf(pBuf, buf_len, "%*d .%02x:%02x:%02x:%02x:%02x:%02x\n",
+                                       strlen("staId"),
                                        pAdapter->aStaInfo[i].ucSTAId,
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[0],
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[1],
@@ -2445,6 +2471,12 @@ VOS_STATUS hdd_softap_get_sta_info(hdd_adapter_t *pAdapter, v_U8_t *pBuf)
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[3],
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[4],
                                        pAdapter->aStaInfo[i].macAddrSTA.bytes[5]);
+            pBuf += len;
+            buf_len -= len;
+        }
+        if(WE_GET_STA_INFO_SIZE > buf_len)
+        {
+            break;
         }
     }
     return VOS_STATUS_SUCCESS;
@@ -2458,7 +2490,7 @@ static int iw_softap_get_sta_info(struct net_device *dev,
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     VOS_STATUS status;
     ENTER();
-    status = hdd_softap_get_sta_info(pHostapdAdapter, extra);
+    status = hdd_softap_get_sta_info(pHostapdAdapter, extra, wrqu->data.length);
     if ( !VOS_IS_STATUS_SUCCESS( status ) ) {
        hddLog(VOS_TRACE_LEVEL_ERROR, "%s Failed!!!\n",__func__);
        return -EINVAL;
@@ -2743,12 +2775,10 @@ static const struct iw_priv_args hostapd_private_args[] = {
        IW_PRIV_TYPE_INT | MAX_VAR_ARGS,
        0, 
        "dump" },
-#ifdef WLAN_FEATURE_P2P
    {   WE_P2P_NOA_CMD,
        IW_PRIV_TYPE_INT | MAX_VAR_ARGS,
        0, 
        "SetP2pPs" },
-#endif
      /* handlers for sub ioctl */
     {
         WE_MCC_CONFIG_CREDENTIAL,
@@ -2780,6 +2810,12 @@ static const struct iw_priv_args hostapd_private_args[] = {
         IW_PRIV_TYPE_INT| IW_PRIV_SIZE_FIXED | 1,
         0,
         "setTxPower" },
+
+    /* handlers for main ioctl */
+    {   QCSAP_IOCTL_SET_MAX_TX_POWER,
+        IW_PRIV_TYPE_INT| IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "setTxMaxPower" },
 };
 
 static const iw_handler hostapd_private[] = {
@@ -2804,6 +2840,7 @@ static const iw_handler hostapd_private[] = {
    [QCSAP_IOCTL_GET_STA_INFO - SIOCIWFIRSTPRIV] = iw_softap_get_sta_info,
    [QCSAP_IOCTL_PRIV_GET_SOFTAP_LINK_SPEED - SIOCIWFIRSTPRIV]     = iw_get_softap_linkspeed,
    [QCSAP_IOCTL_SET_TX_POWER - SIOCIWFIRSTPRIV]   = iw_softap_set_tx_power,
+   [QCSAP_IOCTL_SET_MAX_TX_POWER - SIOCIWFIRSTPRIV]   = iw_softap_set_max_tx_power,
 };
 const struct iw_handler_def hostapd_handler_def = {
    .num_standard     = sizeof(hostapd_handler) / sizeof(hostapd_handler[0]),
@@ -2892,9 +2929,7 @@ VOS_STATUS hdd_init_ap_mode( hdd_adapter_t *pAdapter )
        hddLog(VOS_TRACE_LEVEL_FATAL, "%s: hdd_softap_init_tx_rx failed", __func__);
     }
     
-#ifdef CONFIG_CFG80211
     wlan_hdd_set_monitor_tx_adapter( WLAN_HDD_GET_CTX(pAdapter), pAdapter );
-#endif
     EXIT();
     return status;
 }
@@ -2905,11 +2940,7 @@ hdd_adapter_t* hdd_wlan_create_ap_dev( hdd_context_t *pHddCtx, tSirMacAddr macAd
     hdd_adapter_t *pHostapdAdapter = NULL;
     v_CONTEXT_t pVosContext= NULL;
 
-#ifdef CONFIG_CFG80211
    pWlanHostapdDev = alloc_netdev_mq(sizeof(hdd_adapter_t), iface_name, ether_setup, NUM_TX_QUEUES);
-#else   
-   pWlanHostapdDev = alloc_etherdev_mq(sizeof(hdd_adapter_t), NUM_TX_QUEUES);
-#endif
 
     if (pWlanHostapdDev != NULL)
     {
@@ -2942,12 +2973,10 @@ hdd_adapter_t* hdd_wlan_create_ap_dev( hdd_context_t *pHddCtx, tSirMacAddr macAd
         vos_mem_copy(pHostapdAdapter->macAddressCurrent.bytes, (void *)macAddr, sizeof(tSirMacAddr));
 
         pWlanHostapdDev->destructor = free_netdev;
-#ifdef CONFIG_CFG80211
         pWlanHostapdDev->ieee80211_ptr = &pHostapdAdapter->wdev ;
         pHostapdAdapter->wdev.wiphy = pHddCtx->wiphy;  
         pHostapdAdapter->wdev.netdev =  pWlanHostapdDev;
         init_completion(&pHostapdAdapter->tx_action_cnf_event);
-#endif 
         init_completion(&pHostapdAdapter->cancel_rem_on_chan_var);
         init_completion(&pHostapdAdapter->rem_on_chan_ready_event);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,38))

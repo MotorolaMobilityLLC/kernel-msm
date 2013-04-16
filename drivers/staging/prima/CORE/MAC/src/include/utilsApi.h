@@ -41,7 +41,6 @@
 
 /*
  *
- *
  * Airgo Networks, Inc proprietary. All rights reserved.
  * Author:              Kevin Nguyen
  * Date:                02/27/02
@@ -58,31 +57,7 @@
 #include <sirCommon.h>
 #include "aniGlobal.h"
 #include "utilsGlobal.h"
-#if defined VOSS_ENABLED
 #include "VossWrapper.h"
-#elif defined ANI_OS_TYPE_LINUX
-#include "rtaiWrapper.h"
-#elif defined ANI_OS_TYPE_OSX
-#include "palApiPci.h"
-#endif
-
-
-#if defined ANI_OS_TYPE_LINUX
-
-extern void rt_sched_lock();
-extern void rt_sched_unlock();
-
-#define SIR_DECLARE_FLAGS   (tANI_U32 flags)
-#define SIR_SCHED_LOCK()    rt_sched_lock()
-#define SIR_SCHED_UNLOCK()  rt_sched_unlock()
-
-#else
-
-#define SIR_DECLARE_FLAGS
-#define SIR_SCHED_LOCK()    TX_DISABLE_INTR;
-#define SIR_SCHED_UNLOCK()  TX_ENABLE_INTR;
-
-#endif
 
 #define LOG_INDEX_FOR_MODULE( modId ) ( ( modId ) - LOG_FIRST_MODULE_ID )
 #define GET_MIN_VALUE(__val1, __val2) ((__val1 < __val2) ? __val1 : __val2)
@@ -129,34 +104,6 @@ extern void cfgDeInit(tpAniSirGlobal);
 
 void sirDumpBuf(tpAniSirGlobal pMac, tANI_U8 modId, tANI_U32 level, tANI_U8 *buf, tANI_U32 size);
 
-#if defined ANI_OS_TYPE_LINUX
-
-
-    struct rtLibApp;
-    void* rtaiBufAlloc(struct rtLibApp * rt, tANI_U16 size, tANI_U32 waitOpt);
-    tSirRetStatus rtaiBufInit(unsigned int radioId,  t_mac_block_table* block_table);
-    tANI_U16 rtaiBufAvail(tANI_U16 size);
-
-extern void sysSuspendThreads(tpAniSirGlobal pMac);
-
-#define sharedBufAlloc(pMac, x, y) rtaiBufAlloc(pMac->rt,x,y)
-#define bufInit(x) rtaiBufInit(x)
-#define bufAvail(x) rtaiBufAvail(x)
-
-#define BUF_32                  32
-#define BUF_64                  64
-#define BUF_96                  96
-#define BUF_128                 128
-#define BUF_160                 160
-#define BUF_256                 256
-#define BUF_512                 512
-#define BUF_1024                1024
-#define BUF_1536                1536
-#define BUF_2048                2048
-#define BUF_8192                8192
-#define RTAI_MAX_BUF_SIZE       BUF_8192
-
-#endif
 
 // --------------------------------------------------------------------
 /**
@@ -728,79 +675,6 @@ static inline tANI_U8 convertCW(tANI_U16 cw)
 #define WLAN_UP_TO_AC_MAP            0x33220110
 #define upToAc(up)                ((WLAN_UP_TO_AC_MAP >> ((up) << 2)) & 0x03)
 
-#if defined VOSS_ENABLED
-
-#define sirBusyWait(microsecond)   vos_busy_wait(microsecond / 1000)
-#define sirSleepWait(duration)  vos_sleep_us(duration)
-
-#elif defined ANI_OS_TYPE_LINUX
-    //rt_busy_sleep(duration)
-
-#define sirBusyWait(duration)   tx_busy_wait(duration)
-
-#define sirSleepWait(duration)  sirSleepWaitIntern(duration)
-
-#elif defined ANI_OS_TYPE_WINDOWS
-
-#define sirBusyWait(duration)   sirBusyWaitIntern(pMac, duration)
-
-#define sirSleepWait(duration)  sirSleepWaitIntern(pMac, duration)
-
-#elif defined ANI_OS_TYPE_OSX
-#define sirBusyWait(duration) palBusyWait(duration)
-#define sirSleepWait(duration) palSleepWait(duration)
-#endif
-
-
-
-/**---------------------------------------------------------------------
- * sirSleepWait
- *
- * FUNCTION:
- * This function is called to yield the CPU for a given duration
- *
- * LOGIC:
- *
- * ASSUMPTIONS:
- * None.
- *
- * NOTE:
- *
- * @param  duration    Duration to yield (nanoseconds)
- * @return None
- */
-
-#if defined ANI_OS_TYPE_WINDOWS
-
-static inline void
-sirSleepWaitIntern(void *pMac, tANI_U32 duration)
-
-#else
-
-static inline void
-sirSleepWaitIntern(tANI_U32 duration)
-
-#endif
-{
-#if defined ANI_OS_TYPE_LINUX
-    //temporary measure: not sure we can sleep less than 500usec on rtai
-    //so sleep at this amount of time so as we are garanteed to yield
-    if (duration<500000)
-        duration=500000;
-    tx_thread_sleep(duration);
-    //    rt_sleep(duration/40/*temporary magic number: clock is 25MHz*/);
-#elif defined ANI_OS_TYPE_WINDOWS
-    // Can't sleep on windows at dispatch level
-    // what to do here?
-    if (duration >= 50000)
-    {
-        tANI_U32     i;
-
-        for (i = duration / 50000; i; i--)
-            sirBusyWait(50000);
-    }
-#endif
-} // sirSleepWait
 
 // -------------------------------------------------------------------
 
@@ -868,7 +742,7 @@ halRoundS32(tANI_S32 p)
 void ConverttoBigEndian(void *ptr, tANI_U16 size);
 void CreateScanCtsFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr, tSirMacAddr selfMac);
 void CreateScanDataNullFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr,
-                             tANI_U8 pwrMgmt, tSirMacAddr bssid, 
+                             tANI_U8 pwrMgmt, tSirMacAddr bssid,
                              tSirMacAddr selfMacAddr);
 void CreateInitScanRawFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr, tBssSystemRole role);
 void CreateFinishScanRawFrame(tpAniSirGlobal pMac, tSirMacMgmtHdr *macMgmtHdr, tBssSystemRole role);

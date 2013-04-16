@@ -198,12 +198,12 @@ static eHalStatus sme_RrmSendBeaconReportXmitInd( tpAniSirGlobal pMac, tCsrScanR
 
 
 #if defined WLAN_VOWIFI_DEBUG
-   smsLog( pMac, LOGE, "Beacon report xmit Ind to PE\n");
+   smsLog( pMac, LOGE, "Beacon report xmit Ind to PE");
 #endif
 
    if( NULL == pResultArr && !measurementDone )
    {
-      smsLog( pMac, LOGE, "Beacon report xmit Ind to PE Failed\n");
+      smsLog( pMac, LOGE, "Beacon report xmit Ind to PE Failed");
       return eHAL_STATUS_FAILURE;
    }
 
@@ -221,7 +221,7 @@ static eHalStatus sme_RrmSendBeaconReportXmitInd( tpAniSirGlobal pMac, tCsrScanR
        }
        vos_mem_zero( pBeaconRep, length );
 #if defined WLAN_VOWIFI_DEBUG
-       smsLog( pMac, LOGE, FL("Allocated memory for pBeaconRep\n"));
+       smsLog( pMac, LOGE, FL("Allocated memory for pBeaconRep"));
 #endif
        pBeaconRep->messageType = eWNI_SME_BEACON_REPORT_RESP_XMIT_IND;
        pBeaconRep->length = length;
@@ -261,7 +261,7 @@ static eHalStatus sme_RrmSendBeaconReportXmitInd( tpAniSirGlobal pMac, tCsrScanR
 
        status = palSendMBMessage(pMac->hHdd, pBeaconRep);
 
-       smsLog( pMac, LOGW, "SME Sent BcnRepXmit to PE numBss %d\n", pBeaconRep->numBssDesc);
+       smsLog( pMac, LOGW, "SME Sent BcnRepXmit to PE numBss %d", pBeaconRep->numBssDesc);
 
    } while (pCurResult);
 
@@ -294,7 +294,7 @@ static eHalStatus sme_RrmSendScanResult( tpAniSirGlobal pMac, tANI_U8 num_chan, 
    tANI_U32 sessionId;
 
 #if defined WLAN_VOWIFI_DEBUG
-   smsLog( pMac, LOGE, "Send scan result to PE \n");
+   smsLog( pMac, LOGE, "Send scan result to PE ");
 #endif
 
    vos_mem_zero( &filter, sizeof(filter) );
@@ -312,7 +312,7 @@ static eHalStatus sme_RrmSendScanResult( tpAniSirGlobal pMac, tANI_U8 num_chan, 
          return eHAL_STATUS_FAILURE;
       }
 #if defined WLAN_VOWIFI_DEBUG
-      smsLog( pMac, LOGE, FL("Allocated memory for SSIDList\n"));
+      smsLog( pMac, LOGE, FL("Allocated memory for SSIDList"));
 #endif
       vos_mem_zero( filter.SSIDs.SSIDList, sizeof(tCsrSSIDInfo) );
 
@@ -338,7 +338,7 @@ static eHalStatus sme_RrmSendScanResult( tpAniSirGlobal pMac, tANI_U8 num_chan, 
       //Free the memory allocated for SSIDList.
       vos_mem_free( filter.SSIDs.SSIDList );
 #if defined WLAN_VOWIFI_DEBUG
-      smsLog( pMac, LOGE, FL("Free memory for SSIDList\n") );
+      smsLog( pMac, LOGE, FL("Free memory for SSIDList") );
 #endif
    }
 
@@ -410,7 +410,7 @@ static eHalStatus sme_RrmScanRequestCallback(tHalHandle halHandle, void *pContex
 
 
 #if defined WLAN_VOWIFI_DEBUG
-   smsLog( pMac, LOGE, "Scan Request callback \n");
+   smsLog( pMac, LOGE, "Scan Request callback ");
 #endif
    //if any more channels are pending, start a timer of a random value within randomization interval.
    //
@@ -426,7 +426,7 @@ static eHalStatus sme_RrmScanRequestCallback(tHalHandle halHandle, void *pContex
       interval = time_tick % (pSmeRrmContext->randnIntvl - 10 + 1) + 10;
 
 #if defined WLAN_VOWIFI_DEBUG
-      smsLog( pMac, LOGE, "Set timer for interval %d \n", interval);
+      smsLog( pMac, LOGE, "Set timer for interval %d ", interval);
 #endif
       vos_timer_start( &pSmeRrmContext->IterMeasTimer, interval );
 
@@ -437,7 +437,7 @@ static eHalStatus sme_RrmScanRequestCallback(tHalHandle halHandle, void *pContex
       sme_RrmSendScanResult( pMac, 1, &pSmeRrmContext->channelList.ChannelList[pSmeRrmContext->currentIndex], true );
       vos_mem_free( pSmeRrmContext->channelList.ChannelList );
 #if defined WLAN_VOWIFI_DEBUG
-      smsLog( pMac, LOGE, FL("Free memory for ChannelList\n") );
+      smsLog( pMac, LOGE, FL("Free memory for ChannelList") );
 #endif
    }
 
@@ -465,7 +465,7 @@ eHalStatus sme_RrmIssueScanReq( tpAniSirGlobal pMac )
    tANI_U32 sessionId;
 
 #if defined WLAN_VOWIFI_DEBUG
-   smsLog( pMac, LOGE, "Issue scan request \n" );
+   smsLog( pMac, LOGE, "Issue scan request " );
 #endif
 
    vos_mem_zero( &scanRequest, sizeof(scanRequest));
@@ -487,7 +487,7 @@ eHalStatus sme_RrmIssueScanReq( tpAniSirGlobal pMac )
          return eHAL_STATUS_FAILURE;
       }
 #if defined WLAN_VOWIFI_DEBUG
-      smsLog( pMac, LOGE, FL("Allocated memory for pSSIDList\n"));
+      smsLog( pMac, LOGE, FL("Allocated memory for pSSIDList"));
 #endif
       vos_mem_zero( scanRequest.SSIDs.SSIDList, sizeof(tCsrSSIDInfo) );
       scanRequest.SSIDs.SSIDList->SSID.length = pSmeRrmContext->ssId.length;
@@ -498,7 +498,7 @@ eHalStatus sme_RrmIssueScanReq( tpAniSirGlobal pMac )
    scanRequest.minChnTime = 0; //pSmeRrmContext->duration; Dont use min timeout.
    scanRequest.maxChnTime = pSmeRrmContext->duration;
 #if defined WLAN_VOWIFI_DEBUG
-   smsLog( pMac, LOGE, "For Duration %d \n", pSmeRrmContext->duration );
+   smsLog( pMac, LOGE, "For Duration %d ", pSmeRrmContext->duration );
 #endif
 
    /* set BSSType to default type */
@@ -509,7 +509,7 @@ eHalStatus sme_RrmIssueScanReq( tpAniSirGlobal pMac )
 
    scanRequest.ChannelInfo.ChannelList = &pSmeRrmContext->channelList.ChannelList[pSmeRrmContext->currentIndex];
 #if defined WLAN_VOWIFI_DEBUG
-   smsLog( pMac, LOGE, "On channel %d \n", pSmeRrmContext->channelList.ChannelList[pSmeRrmContext->currentIndex] );
+   smsLog( pMac, LOGE, "On channel %d ", pSmeRrmContext->channelList.ChannelList[pSmeRrmContext->currentIndex] );
 #endif
 
    /* set requestType to full scan */
@@ -522,7 +522,7 @@ eHalStatus sme_RrmIssueScanReq( tpAniSirGlobal pMac )
    {
       vos_mem_free(scanRequest.SSIDs.SSIDList);
 #if defined WLAN_VOWIFI_DEBUG
-      smsLog( pMac, LOGE, FL("Free memory for SSIDList\n"));
+      smsLog( pMac, LOGE, FL("Free memory for SSIDList"));
 #endif
    }
 
@@ -549,7 +549,7 @@ void sme_RrmProcessBeaconReportReqInd(tpAniSirGlobal pMac, void *pMsgBuf)
    tANI_U32 len,i;  
 
 #if defined WLAN_VOWIFI_DEBUG
-   smsLog( pMac, LOGE, "Received Beacon report request ind Channel = %d\n", pBeaconReq->channelInfo.channelNum );
+   smsLog( pMac, LOGE, "Received Beacon report request ind Channel = %d", pBeaconReq->channelInfo.channelNum );
 #endif
    //section 11.10.8.1 (IEEE Std 802.11k-2008) 
    //channel 0 and 255 has special meaning.
@@ -565,12 +565,12 @@ void sme_RrmProcessBeaconReportReqInd(tpAniSirGlobal pMac, void *pMsgBuf)
          return;
       }
 #if defined WLAN_VOWIFI_DEBUG
-      smsLog( pMac, LOGE, FL("Allocated memory for ChannelList\n") );
+      smsLog( pMac, LOGE, FL("Allocated memory for ChannelList") );
 #endif
       csrGetCfgValidChannels( pMac, pSmeRrmContext->channelList.ChannelList, &len );
       pSmeRrmContext->channelList.numOfChannels = (tANI_U8)len;
 #if defined WLAN_VOWIFI_DEBUG
-      smsLog( pMac, LOGE, "channel == 0 perfoming on all channels \n");
+      smsLog( pMac, LOGE, "channel == 0 performing on all channels");
 #endif
    }
    else
@@ -584,7 +584,7 @@ void sme_RrmProcessBeaconReportReqInd(tpAniSirGlobal pMac, void *pMsgBuf)
          len = 1;
 #if defined WLAN_VOWIFI_DEBUG
       else
-         smsLog( pMac, LOGE, "channel == 255  \n");
+         smsLog( pMac, LOGE, "channel == 255");
 #endif
 
       len += pBeaconReq->channelList.numChannels;
@@ -596,19 +596,19 @@ void sme_RrmProcessBeaconReportReqInd(tpAniSirGlobal pMac, void *pMsgBuf)
          return;
       }
 #if defined WLAN_VOWIFI_DEBUG
-      smsLog( pMac, LOGE, FL("Allocated memory for ChannelList\n") );
+      smsLog( pMac, LOGE, FL("Allocated memory for ChannelList") );
 #endif
 
       if ( pBeaconReq->channelInfo.channelNum != 255 )
       {
 #if defined WLAN_VOWIFI_DEBUG
-         smsLog( pMac, LOGE, "channel == %d  \n", pBeaconReq->channelInfo.channelNum );
+         smsLog( pMac, LOGE, "channel == %d  ", pBeaconReq->channelInfo.channelNum );
 #endif
          if(csrRoamIsChannelValid( pMac, pBeaconReq->channelInfo.channelNum ))
             pSmeRrmContext->channelList.ChannelList[pSmeRrmContext->channelList.numOfChannels++] = pBeaconReq->channelInfo.channelNum;
 #if defined WLAN_VOWIFI_DEBUG
          else
-            smsLog( pMac, LOGE, "is Invalid channel, Ignoring this channel\n" ); 
+            smsLog( pMac, LOGE, "is Invalid channel, Ignoring this channel" );
 #endif
       }
 
@@ -643,24 +643,24 @@ void sme_RrmProcessBeaconReportReqInd(tpAniSirGlobal pMac, void *pMsgBuf)
          pSmeRrmContext->randnIntvl = VOS_MAX( pBeaconReq->randomizationInterval, pSmeRrmContext->rrmConfig.maxRandnInterval );
          pSmeRrmContext->currentIndex = 0;
 #if defined WLAN_VOWIFI_DEBUG
-         smsLog( pMac, LOGE, "Send beacon report after scan \n" );
+         smsLog( pMac, LOGE, "Send beacon report after scan " );
 #endif
          sme_RrmIssueScanReq( pMac ); 
          break;
       case 2: //Table
          //Get the current scan results for the given channel and send it.
 #if defined WLAN_VOWIFI_DEBUG
-         smsLog( pMac, LOGE, "Send beacon report from table \n" );
+         smsLog( pMac, LOGE, "Send beacon report from table " );
 #endif
          sme_RrmSendScanResult( pMac, pSmeRrmContext->channelList.numOfChannels, pSmeRrmContext->channelList.ChannelList, true );
          vos_mem_free( pSmeRrmContext->channelList.ChannelList );
 #if defined WLAN_VOWIFI_DEBUG
-         smsLog( pMac, LOGE, FL("Free memory for ChannelList\n") );
+         smsLog( pMac, LOGE, FL("Free memory for ChannelList") );
 #endif
          break;
       default:
 #if defined WLAN_VOWIFI_DEBUG
-         smsLog( pMac, LOGE, "Unknown beacon report request mode\n");
+         smsLog( pMac, LOGE, "Unknown beacon report request mode");
 #endif
          /* Indicate measurement completion to PE */
          /* If this is not done, pCurrentReq pointer will not be freed and 
@@ -693,11 +693,11 @@ VOS_STATUS sme_RrmNeighborReportRequest(tpAniSirGlobal pMac, tANI_U8 sessionId,
    tCsrRoamSession *pSession;
 
 #if defined WLAN_VOWIFI_DEBUG
-   smsLog( pMac, LOGE, FL("Request to send Neighbor report request received \n"));
+   smsLog( pMac, LOGE, FL("Request to send Neighbor report request received "));
 #endif
    if( !CSR_IS_SESSION_VALID( pMac, sessionId ) )
    {  
-      smsLog( pMac, LOGE, FL("Invalid session %d\n"), sessionId );
+      smsLog( pMac, LOGE, FL("Invalid session %d"), sessionId );
       return VOS_STATUS_E_INVAL;
    }
    pSession = CSR_GET_SESSION( pMac, sessionId );
@@ -719,13 +719,13 @@ VOS_STATUS sme_RrmNeighborReportRequest(tpAniSirGlobal pMac, tANI_U8 sessionId,
    
    vos_mem_zero( pMsg, sizeof(tSirNeighborReportReqInd) );
 #if defined WLAN_VOWIFI_DEBUG
-   smsLog( pMac, LOGE, FL(" Allocated memory for Neighbor request\n") );
+   smsLog( pMac, LOGE, FL(" Allocated memory for Neighbor request") );
 #endif
 
    rrmLLPurgeNeighborCache(pMac, &pMac->rrm.rrmSmeContext.neighborReportCache);
 
 #if defined WLAN_VOWIFI_DEBUG
-   smsLog( pMac, LOGE, FL("Purged the neighbor cache before sending Neighbor request: Status = %d\n"), status );
+   smsLog( pMac, LOGE, FL("Purged the neighbor cache before sending Neighbor request: Status = %d"), status );
 #endif
 
    pMsg->messageType = eWNI_SME_NEIGHBOR_REPORT_REQ_IND;
@@ -837,7 +837,7 @@ void rrmStoreNeighborRptByRoamScore(tpAniSirGlobal pMac, tpRrmNeighborReportDesc
 
    if (csrLLIsListEmpty(&pSmeRrmContext->neighborReportCache, LL_ACCESS_LOCK))
    {
-       smsLog(pMac, LOGE, FL("Neighbor report cache is empty.. Adding a entry now\n"));
+       smsLog(pMac, LOGE, FL("Neighbor report cache is empty.. Adding a entry now"));
         /* Neighbor list cache is empty. Insert this entry in the tail */
        csrLLInsertTail(&pSmeRrmContext->neighborReportCache, &pNeighborReportDesc->List, LL_ACCESS_LOCK);
        return;
@@ -900,7 +900,7 @@ eHalStatus sme_RrmProcessNeighborReport(tpAniSirGlobal pMac, void *pMsgBuf)
        pNeighborReportDesc = vos_mem_malloc(sizeof(tRrmNeighborReportDesc));
        if (NULL == pNeighborReportDesc)
        {
-           smsLog( pMac, LOGE, "Failed to allocate memory for RRM Neighbor report desc\n");
+           smsLog( pMac, LOGE, "Failed to allocate memory for RRM Neighbor report desc");
            status = eHAL_STATUS_FAILED_ALLOC;
            goto end;
             
@@ -910,7 +910,7 @@ eHalStatus sme_RrmProcessNeighborReport(tpAniSirGlobal pMac, void *pMsgBuf)
        pNeighborReportDesc->pNeighborBssDescription = vos_mem_malloc(sizeof(tSirNeighborBssDescription));
        if (NULL == pNeighborReportDesc->pNeighborBssDescription)
        {
-           smsLog( pMac, LOGE, "Failed to allocate memory for RRM Neighbor report BSS Description\n");
+           smsLog( pMac, LOGE, "Failed to allocate memory for RRM Neighbor report BSS Description");
            status = eHAL_STATUS_FAILED_ALLOC;
            goto end;
        }
@@ -919,7 +919,7 @@ eHalStatus sme_RrmProcessNeighborReport(tpAniSirGlobal pMac, void *pMsgBuf)
                                                 sizeof(tSirNeighborBssDescription));
 
 #if defined WLAN_VOWIFI_DEBUG
-       smsLog( pMac, LOGE, "Received neighbor report with Neighbor BSSID: %02x:%02x:%02x:%02x:%02x:%02x \n",
+       smsLog( pMac, LOGE, "Received neighbor report with Neighbor BSSID: %02x:%02x:%02x:%02x:%02x:%02x ",
                     pNeighborRpt->sNeighborBssDescription[i].bssId[0], 
                     pNeighborRpt->sNeighborBssDescription[i].bssId[1], 
                     pNeighborRpt->sNeighborBssDescription[i].bssId[2], 
@@ -938,7 +938,7 @@ eHalStatus sme_RrmProcessNeighborReport(tpAniSirGlobal pMac, void *pMsgBuf)
        }
        else
        {
-           smsLog(pMac, LOGE, FL("Roam score of BSSID  %02x:%02x:%02x:%02x:%02x:%02x is 0, Ignoring.."), 
+           smsLog(pMac, LOGE, FL("Roam score of BSSID  %02x:%02x:%02x:%02x:%02x:%02x is 0, Ignoring.."),
                         pNeighborRpt->sNeighborBssDescription[i].bssId[0],
                         pNeighborRpt->sNeighborBssDescription[i].bssId[1],
                         pNeighborRpt->sNeighborBssDescription[i].bssId[2],
@@ -979,7 +979,7 @@ eHalStatus sme_RrmMsgProcessor( tpAniSirGlobal pMac,  v_U16_t msg_type,
                                 void *pMsgBuf)
 {
    VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_INFO_HIGH, 
-         FL(" Msg = %d for RRM measurement\n") , msg_type );
+         FL(" Msg = %d for RRM measurement") , msg_type );
 
    //switch on the msg type & make the state transition accordingly
    switch(msg_type)
@@ -995,7 +995,7 @@ eHalStatus sme_RrmMsgProcessor( tpAniSirGlobal pMac,  v_U16_t msg_type,
       default:
          //err msg
          VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, 
-               FL("sme_RrmMsgProcessor:unknown msg type = %d\n"), msg_type);
+               FL("sme_RrmMsgProcessor:unknown msg type = %d"), msg_type);
 
          break;
    }
@@ -1023,7 +1023,7 @@ void rrmIterMeasTimerHandle( v_PVOID_t userData )
 {
    tpAniSirGlobal pMac = (tpAniSirGlobal) userData;
 #if defined WLAN_VOWIFI_DEBUG
-   smsLog( pMac, LOGE, "Randomization timer expired...send on next channel \n");
+   smsLog( pMac, LOGE, "Randomization timer expired...send on next channel ");
 #endif
     //Issue a scan req for next channel.
     sme_RrmIssueScanReq( pMac ); 
@@ -1047,7 +1047,7 @@ void rrmNeighborRspTimeoutHandler
 {
    tpAniSirGlobal pMac = (tpAniSirGlobal) userData;
 #if defined WLAN_VOWIFI_DEBUG
-   smsLog( pMac, LOGE, "Neighbor Response timed out \n");
+   smsLog( pMac, LOGE, "Neighbor Response timed out ");
 #endif
     rrmIndicateNeighborReportResult(pMac, VOS_STATUS_E_FAILURE);
     return;
@@ -1250,7 +1250,7 @@ tRrmNeighborReportDesc* smeRrmGetFirstBssEntryFromNeighborCache( tpAniSirGlobal 
    if(!pEntry || !csrLLCount(&pSmeRrmContext->neighborReportCache))
    {
       //list empty
-      smsLog(pMac, LOGW, FL("List empty\n"));
+      smsLog(pMac, LOGW, FL("List empty"));
       return NULL;
    }
 
@@ -1282,7 +1282,7 @@ tRrmNeighborReportDesc* smeRrmGetNextBssEntryFromNeighborCache( tpAniSirGlobal p
    if(!pEntry)
    {
       //list empty
-      smsLog(pMac, LOGW, FL("List empty\n"));
+      smsLog(pMac, LOGW, FL("List empty"));
       return NULL;
    }
 
@@ -1298,7 +1298,7 @@ void csrCcxSendAdjacentApRepMsg(tpAniSirGlobal pMac, tCsrRoamSession *pSession)
    tANI_U16 length;
    tANI_U32 roamTS2;
    
-   smsLog( pMac, LOG1, "Adjacent AP Report Msg to PE\n");
+   smsLog( pMac, LOG1, "Adjacent AP Report Msg to PE");
 
    length = sizeof(tSirAdjacentApRepInd );
    pAdjRep = vos_mem_malloc ( length );

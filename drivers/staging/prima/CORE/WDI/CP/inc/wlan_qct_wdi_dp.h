@@ -124,9 +124,7 @@ when        who    what, where, why
 #define WDI_WAPI_STA_MASK            0x8  //bit 3. If set, this frame is for WAPI station
 #endif
 
-#ifdef FEATURE_WLAN_UAPSD_FW_TRG_FRAMES
 #define WDI_TRIGGER_ENABLED_AC_MASK         0x10 //bit 4 for data frames belonging to trigger enabled AC
-#endif
 #define WDI_USE_NO_ACK_REQUESTED_MASK       0x20
 
 #define WDI_USE_BD_RATE2_FOR_MANAGEMENT_FRAME 0x40 // Bit 6 will be used to control BD rate for Management frames
@@ -347,6 +345,10 @@ when        who    what, where, why
 #define WDI_RX_BD_GET_PMICMD_20TO23(_pvBDHeader)        (((WDI_RxBdType*)_pvBDHeader)->pmiCmd4to23[4])
 
 #define WDI_RX_BD_GET_PMICMD_24TO25(_pvBDHeader)        (((WDI_RxBdType*)_pvBDHeader)->pmiCmd24to25)
+
+#ifdef WLAN_FEATURE_11W
+#define WDI_RX_BD_GET_RMF( _pvBDHeader )         (((WDI_RxBdType*)_pvBDHeader)->rmf)
+#endif
 
 #define WDI_RX_BD_ASF_SET               1 /*The value of the field when set and pkt is AMSDU*/
 

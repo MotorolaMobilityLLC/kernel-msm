@@ -393,9 +393,7 @@ STATIC const WLANTL_STAFsmEntryType tlSTAFsm[WLANTL_STA_MAX_STATE] =
 typedef struct
 {
    v_BOOL_t     isAvailable;
-#ifdef ANI_CHIPSET_VOLANS
    v_U64_t      ullReplayCounter[WLANTL_MAX_WINSIZE];
-#endif
    v_PVOID_t    arrayBuffer[WLANTL_MAX_WINSIZE];
 } WLANTL_REORDER_BUFFER_T;
 
@@ -510,6 +508,9 @@ typedef struct
   /* Value of the averaged RSSI for this station in BMPS */
   v_S7_t                        rssiAvgBmps;
 
+  /* Value of the Alpha to calculate RSSI average */
+  v_S7_t                        rssiAlpha;
+
   /* Value of the averaged RSSI for this station */
   v_U32_t                       uLinkQualityAvg;
 
@@ -620,7 +621,6 @@ typedef struct
   /* Queue to keep unicast station management frame */
   vos_list_t pStaManageQ;
 
-#ifdef ANI_CHIPSET_VOLANS
  /* 1 means replay check is needed for the station,
   * 0 means replay check is not needed for the station*/
   v_BOOL_t      ucIsReplayCheckValid;
@@ -631,8 +631,11 @@ typedef struct
  /* It contains no of replay packets found per STA.
     It is for debugging purpose only.*/
   v_U32_t       ulTotalReplayPacketsDetected;
-#endif
 
+ /* Set when pairwise key is installed, if ptkInstalled is
+    1 then we have to encrypt the data irrespective of TL
+    state (CONNECTED/AUTHENTICATED) */
+  v_U8_t ptkInstalled;
 }WLANTL_STAClientType;
 
 /*---------------------------------------------------------------------------

@@ -62,7 +62,7 @@
 #include "dot11f.h"
 #include "wmmApsd.h"
 #include "limTrace.h"
-#ifdef FEATURE_WLAN_DIAG_SUPPORT 
+#ifdef FEATURE_WLAN_DIAG_SUPPORT
 #include "vos_diag_core_event.h"
 #endif //FEATURE_WLAN_DIAG_SUPPORT
 #include "limIbssPeerMgmt.h"
@@ -560,6 +560,12 @@ char *limMsgStr(tANI_U32 msgType)
             return "eWNI_SME_DELTS_RSP\n";
         case eWNI_SME_DELTS_IND:
             return "eWNI_SME_DELTS_IND\n";
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+        case eWNI_SME_GET_ROAM_RSSI_REQ:
+            return "eWNI_SME_GET_ROAM_RSSI_REQ\n";
+        case eWNI_SME_GET_ROAM_RSSI_RSP:
+            return "eWNI_SME_GET_ROAM_RSSI_RSP\n";
+#endif
 
         case WDA_SUSPEND_ACTIVITY_RSP:
             return "WDA_SUSPEND_ACTIVITY_RSP\n";
@@ -853,22 +859,12 @@ limPrintMsgName(tpAniSirGlobal pMac, tANI_U16 logLevel, tANI_U32 msgType)
 void
 limPrintMsgInfo(tpAniSirGlobal pMac, tANI_U16 logLevel, tSirMsgQ *msg)
 {
-    //tSirMacFrameCtl  fc; // FIXME_GEN4 - ASAP!!
-#if defined (ANI_OS_TYPE_LINUX) || defined (ANI_OS_TYPE_OSX)
-    tANI_U32              *pRxPacketInfo;
-#endif
     if (logLevel <= pMac->utils.gLogDbgLevel[SIR_LIM_MODULE_ID - LOG_FIRST_MODULE_ID])
     {
         switch (msg->type)
         {
             case SIR_BB_XPORT_MGMT_MSG:
-#if defined (ANI_OS_TYPE_LINUX) || defined (ANI_OS_TYPE_OSX)
-#ifndef GEN6_ONWARDS //PAL does not provide this API GEN6 onwards.
-                palGetPacketDataPtr( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, (void *) msg->bodyptr, (void **) &pRxPacketInfo );
-#endif //GEN6_ONWARDS
-#else
                 limPrintMsgName(pMac, logLevel,msg->type);
-#endif
                 break;
             default:
                 limPrintMsgName(pMac, logLevel,msg->type);
@@ -1075,11 +1071,9 @@ limCleanupMlm(tpAniSirGlobal pMac)
         tx_timer_delete(&pMac->lim.limTimers.gLimFTPreAuthRspTimer);
 #endif
 
-#ifdef WLAN_FEATURE_P2P
         // Deactivate and delete remain on channel timer
         tx_timer_deactivate(&pMac->lim.limTimers.gLimRemainOnChannelTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimRemainOnChannelTimer);
-#endif
 
 #ifdef FEATURE_WLAN_CCX
         // Deactivate and delete TSM
@@ -1093,10 +1087,8 @@ limCleanupMlm(tpAniSirGlobal pMac)
         tx_timer_deactivate(&pMac->lim.limTimers.gLimDeauthAckTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimDeauthAckTimer);
 
-#ifdef WLAN_FEATURE_P2P
         tx_timer_deactivate(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer);
         tx_timer_delete(&pMac->lim.limTimers.gLimP2pSingleShotNoaInsertTimer);
-#endif
 
         pMac->lim.gLimTimersCreated = 0;
     }
@@ -1228,26 +1220,8 @@ limIsGroupAddr(tSirMacAddr macAddr)
 tANI_U32
 limPostMsgApiNoWait(tpAniSirGlobal pMac, tSirMsgQ *pMsg)
 {
-#ifdef ANI_OS_TYPE_WINDOWS
-    tANI_U32 retCode;
-
-    if ((retCode = tx_queue_send(&pMac->sys.gSirLimMsgQ, pMsg, TX_NO_WAIT))
-        != TX_SUCCESS)
-    {
-        // Failure in sending DFS duration timeout indication
-        // to LIM thread
-
-        // Log error
-        limLog(pMac, LOGP,
-               FL("could not post a message %X to LIM msgq, status=%d\n"),
-               pMsg->type, retCode);
-    }
-
-    return retCode;
-#else
     limProcessMessages(pMac, pMsg);
     return TX_SUCCESS;
-#endif
 } /*** end limPostMsgApiNoWait() ***/
 
 
@@ -1353,7 +1327,14 @@ tANI_U8 limWriteDeferredMsgQ(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
          **/
     if (pMac->lim.gLimDeferredMsgQ.size >= MAX_DEFERRED_QUEUE_LEN)
     {
-        PELOGE(limLog(pMac, LOGE, FL("Deferred Message Queue is full. Msg: %d\n"), limMsg->type);)
+        if(!(pMac->lim.deferredMsgCnt & 0xF))
+        {
+            PELOGE(limLog(pMac, LOGE, FL("Deferred Message Queue is full. Msg:%d Messages Failed:%d\n"), limMsg->type, ++pMac->lim.deferredMsgCnt);)
+        }
+        else
+        {
+            pMac->lim.deferredMsgCnt++;
+        }
         return TX_QUEUE_FULL;
     }
 
@@ -1397,6 +1378,12 @@ tANI_U8 limWriteDeferredMsgQ(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     }
 
     ++pMac->lim.gLimDeferredMsgQ.size;
+
+    /* reset the count here since we are able to defer the message */
+    if(pMac->lim.deferredMsgCnt != 0)
+    {
+        pMac->lim.deferredMsgCnt = 0;
+    }
 
     /*
     ** if the write pointer hits the end of the queue, rewind it
@@ -5527,16 +5514,18 @@ limProcessAddBaInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     tpBaActivityInd     pBaActivityInd;
     tpPESession         psessionEntry;
     tANI_U8             sessionId;
-
+#ifdef FEATURE_WLAN_TDLS
+    boolean             htCapable = FALSE;
+#endif
     
 
-    if(limMsg->bodyptr == NULL)
+    if (limMsg->bodyptr == NULL)
         return;
     
     pBaActivityInd = (tpBaActivityInd)limMsg->bodyptr;
     baCandidateCnt = pBaActivityInd->baCandidateCnt;
 
-    if((psessionEntry = peFindSessionByBssid(pMac,pBaActivityInd->bssId,&sessionId))== NULL)
+    if ((psessionEntry = peFindSessionByBssid(pMac,pBaActivityInd->bssId,&sessionId))== NULL)
     {
         limLog(pMac, LOGE,FL("session does not exist for given BSSId\n"));
         palFreeMemory(pMac->hHdd, limMsg->bodyptr);
@@ -5544,28 +5533,58 @@ limProcessAddBaInd(tpAniSirGlobal pMac, tpSirMsgQ limMsg)
     }
        
     //if we are not HT capable we don't need to handle BA timeout indication from HAL.
-    if( (baCandidateCnt  > pMac->lim.maxStation) || !psessionEntry->htCapability )
+#ifdef FEATURE_WLAN_TDLS
+    if ((baCandidateCnt  > pMac->lim.maxStation))
+#else
+    if ((baCandidateCnt  > pMac->lim.maxStation) || !psessionEntry->htCapability )
+#endif
     {
         palFreeMemory(pMac->hHdd, limMsg->bodyptr);
         return;
     }
+
+#ifdef FEATURE_WLAN_TDLS
+    //if we have TDLS peers, we should look at peers HT capability, which can be different than
+    //AP capability
+    pBaCandidate =  (tpAddBaCandidate) (((tANI_U8*)pBaActivityInd) + sizeof(tBaActivityInd));
+
+    for (i=0; i<baCandidateCnt; i++, pBaCandidate++)
+    {
+       pSta = dphLookupHashEntry(pMac, pBaCandidate->staAddr, &assocId, &psessionEntry->dph.dphHashTable);
+       if ((NULL == pSta) || (!pSta->valid))
+           continue;
+
+       if (STA_ENTRY_TDLS_PEER == pSta->staType)
+           htCapable = pSta->mlmStaContext.htCapability;
+       else
+           htCapable = psessionEntry->htCapability;
+
+       if (htCapable)
+           break;
+    }
+    if (!htCapable)
+    {
+        palFreeMemory(pMac->hHdd, limMsg->bodyptr);
+        return;
+    }
+#endif
   
     //delete the complete dialoguetoken linked list
     limDeleteDialogueTokenList(pMac);
     pBaCandidate =  (tpAddBaCandidate) (((tANI_U8*)pBaActivityInd) + sizeof(tBaActivityInd));
 
-    for(i=0; i<baCandidateCnt; i++, pBaCandidate++) 
+    for (i=0; i<baCandidateCnt; i++, pBaCandidate++)
     {
        pSta = dphLookupHashEntry(pMac, pBaCandidate->staAddr, &assocId, &psessionEntry->dph.dphHashTable);
-       if( (NULL == pSta) || (!pSta->valid))
-        continue;
+       if ((NULL == pSta) || (!pSta->valid))
+           continue;
 
         for (tid=0; tid<STACFG_MAX_TC; tid++)
         {
-            if( (eBA_DISABLE == pSta->tcCfg[tid].fUseBATx) && 
+            if((eBA_DISABLE == pSta->tcCfg[tid].fUseBATx) &&
                  (pBaCandidate->baInfo[tid].fBaEnable))
             {
-               PELOG2(limLog(pMac, LOG2, FL("BA setup for staId = %d, TID: %d, SSN:%d.\n"),
+               PELOG2(limLog(pMac, LOG2, FL("BA setup for staId = %d, TID: %d, SSN: %d"),
                         pSta->staIndex, tid, pBaCandidate->baInfo[tid].startingSeqNum);)
                 limPostMlmAddBAReq(pMac, pSta, tid, pBaCandidate->baInfo[tid].startingSeqNum,psessionEntry);  
             }
@@ -6317,10 +6336,6 @@ void limPktFree (
     void            *pBody)
 {
     (void) pMac; (void) frmType; (void) pRxPacketInfo; (void) pBody;
-#if defined ANI_OS_TYPE_LINUX || defined ANI_OS_TYPE_OSX
-    // Free up allocated SK BUF
-    palPktFree( pMac->hHdd, frmType, pRxPacketInfo, pBody) ;
-#endif
 }
 
 /**
@@ -6348,13 +6363,7 @@ void limPktFree (
 void
 limGetBDfromRxPacket(tpAniSirGlobal pMac, void *body, tANI_U32 **pRxPacketInfo)
 {
-#if defined (ANI_OS_TYPE_LINUX) || defined (ANI_OS_TYPE_OSX)
-#ifndef GEN6_ONWARDS
-    palGetPacketDataPtr( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, (void *) body, (void **) pRxPacketInfo );
-#endif //GEN6_ONWARDS
-#else
     *pRxPacketInfo = (tANI_U32 *) body;
-#endif
 } /*** end limGetBDfromRxPacket() ***/
 
 
@@ -7380,7 +7389,6 @@ v_U8_t* limGetVendorIEOuiPtr(tpAniSirGlobal pMac, tANI_U8 *oui, tANI_U8 oui_size
     return NULL;
 }
 
-#ifdef WLAN_FEATURE_P2P
 //Returns length of P2P stream and Pointer ie passed to this function is filled with noa stream
 
 v_U8_t limBuildP2pIe(tpAniSirGlobal pMac, tANI_U8 *ie, tANI_U8 *data, tANI_U8 ie_len)
@@ -7545,7 +7553,6 @@ tANI_BOOLEAN limIsNOAInsertReqd(tpAniSirGlobal pMac)
     return FALSE;
 }
 
-#endif
 
 tANI_BOOLEAN limIsconnectedOnDFSChannel(tANI_U8 currentChannel)
 {

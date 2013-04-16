@@ -18,26 +18,6 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/*
- * Copyright (c) 2012, The Linux Foundation. All rights reserved.
- *
- * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
- *
- *
- * Permission to use, copy, modify, and/or distribute this software for
- * any purpose with or without fee is hereby granted, provided that the
- * above copyright notice and this permission notice appear in all
- * copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
- * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
- * AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
- * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
- * PERFORMANCE OF THIS SOFTWARE.
- */
 
 /*==========================================================================
  *
@@ -47,7 +27,7 @@
  *
  *  @author:   Kumar Anand
  *
- *             Copyright (C) 2010, Qualcomm, Inc. 
+ *             Copyright (C) 2010, Qualcomm Technologies, Inc. 
  *             All rights reserved.
  *
  *=========================================================================*/
@@ -172,11 +152,15 @@
 #define QWLAN_HAL_CFG_MAX_ASSOC_LIMIT                    98
 #define QWLAN_HAL_CFG_ENABLE_LPWR_IMG_TRANSITION         99
 #define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER     100
-#define QWLAN_HAL_CFG_MAX_PARAMS                        101
+#define QWLAN_HAL_CFG_ENABLE_DETECT_PS_SUPPORT          101
+#define QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT           102
+#define QWLAN_HAL_CFG_BTC_DWELL_TIME_MULTIPLIER         103
+#define QWLAN_HAL_CFG_MAX_PARAMS                        104
+
 
 
 /* Total number of Integer CFGs. This is used while allocating the memory for TLV */
-#define QWLAN_HAL_CFG_INTEGER_PARAM                      97
+#define QWLAN_HAL_CFG_INTEGER_PARAM                      100
 
 
 /*-------------------------------------------------------------------------
@@ -293,7 +277,7 @@
  * Mapping is defined in the gHalUserFixedRateCfgToTpeRateTable
  */
 #define QWLAN_HAL_CFG_FIXED_RATE_STAMIN                        0
-#define QWLAN_HAL_CFG_FIXED_RATE_STAMAX                        44
+#define QWLAN_HAL_CFG_FIXED_RATE_STAMAX                        226
 #define QWLAN_HAL_CFG_FIXED_RATE_STADEF                        0
 #define QWLAN_HAL_CFG_FIXED_RATE_AUTO                          0
 #define QWLAN_HAL_CFG_FIXED_RATE_1MBPS                         1
@@ -754,6 +738,23 @@
 #define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER_MIN    0
 #define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER_MAX    1
 #define QWLAN_HAL_CFG_ENABLE_MCC_ADAPTIVE_SCHEDULER_DEF    0
+
+/* QWLAN_HAL_CFG_ENABLE_DETECT_PS_SUPPORT */
+#define QWLAN_HAL_CFG_ENABLE_DETECT_PS_SUPPORT_MIN    0
+#define QWLAN_HAL_CFG_ENABLE_DETECT_PS_SUPPORT_MAX    1
+#define QWLAN_HAL_CFG_ENABLE_DETECT_PS_SUPPORT_DEF    0
+
+/* QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT */
+#define QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT_MIN  1
+#define QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT_MAX  255
+#define QWLAN_HAL_CFG_AP_LINK_MONITOR_TIMEOUT_DEF  3
+
+/*QWLAN_HAL_CFG_BTC_DWELL_TIME_MULTIPLIER*/
+/*This value is multiplied to ChannelDwellTime
+ *i.e If value is 300 then ChannelDwellTime is (3*ChannelDwelltime)*/
+#define QWLAN_HAL_CFG_BTC_DWELL_TIME_MULTIPLIER_MIN    0
+#define QWLAN_HAL_CFG_BTC_DWELL_TIME_MULTIPLIER_MAX    300
+#define QWLAN_HAL_CFG_BTC_DWELL_TIME_MULTIPLIER_DEF    300
 
 #endif //__WLAN_HAL_CFG_H__
 

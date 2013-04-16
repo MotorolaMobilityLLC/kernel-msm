@@ -2232,6 +2232,67 @@ limSendSmePEStatisticsRsp(tpAniSirGlobal pMac, tANI_U16 msgType, void* stats)
 
 } /*** end limSendSmePEStatisticsRsp() ***/
 
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+/**
+ * limSendSmePEGetRoamRssiRsp()
+ *
+ *FUNCTION:
+ * This function is called to send roam rssi response to HDD.
+ * This function posts the result back to HDD. This is a response to
+ * HDD's request to get roam rssi.
+ *
+ *PARAMS:
+ *
+ *LOGIC:
+ *
+ *ASSUMPTIONS:
+ * NA
+ *
+ *NOTE:
+ * NA
+ *
+ * @param pMac         Pointer to Global MAC structure
+ * @param p80211Stats  Statistics sent in response
+ * @param resultCode   TODO:
+ *
+ *
+ * @return none
+ */
+
+void
+limSendSmePEGetRoamRssiRsp(tpAniSirGlobal pMac, tANI_U16 msgType, void* stats)
+{
+    tSirMsgQ              mmhMsg;
+    tANI_U8 sessionId;
+    tAniGetRoamRssiRsp *pPeStats = (tAniGetRoamRssiRsp *) stats;
+    tpPESession pPeSessionEntry = NULL;
+
+    //Get the Session Id based on Sta Id
+    pPeSessionEntry = peFindSessionByStaId(pMac, pPeStats->staId, &sessionId);
+
+    //Fill the Session Id
+    if(NULL != pPeSessionEntry)
+    {
+      //Fill the Session Id
+      pPeStats->sessionId = pPeSessionEntry->smeSessionId;
+    }
+
+    pPeStats->msgType = eWNI_SME_GET_ROAM_RSSI_RSP;
+
+    //msgType should be WDA_GET_STATISTICS_RSP
+    mmhMsg.type = eWNI_SME_GET_ROAM_RSSI_RSP;
+
+    mmhMsg.bodyptr = stats;
+    mmhMsg.bodyval = 0;
+    MTRACE(macTraceMsgTx(pMac, sessionId, mmhMsg.type));
+    limSysProcessMmhMsgApi(pMac, &mmhMsg, ePROT);
+
+    return;
+
+} /*** end limSendSmePEGetRoamRssiRsp() ***/
+
+#endif
+
 
 void
 limSendSmeIBSSPeerInd(

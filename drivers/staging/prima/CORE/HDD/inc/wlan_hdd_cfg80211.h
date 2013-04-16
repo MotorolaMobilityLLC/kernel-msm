@@ -57,7 +57,6 @@
   
 /* $HEADER$ */
 
-#ifdef CONFIG_CFG80211
 
 //value for initial part of frames and number of bytes to be compared
 #define GAS_INITIAL_REQ "\x04\x0a"  
@@ -77,6 +76,12 @@
 
 #define P2P_ACTION_FRAME "\x7f\x50\x6f\x9a\x09"
 #define P2P_ACTION_FRAME_SIZE 5
+
+#define SA_QUERY_FRAME_REQ "\x08\x00"
+#define SA_QUERY_FRAME_REQ_SIZE 2
+
+#define SA_QUERY_FRAME_RSP "\x08\x01"
+#define SA_QUERY_FRAME_RSP_SIZE 2
 
 #define HDD_P2P_WILDCARD_SSID "DIRECT-" //TODO Put it in proper place;
 #define HDD_P2P_WILDCARD_SSID_LEN 7
@@ -131,6 +136,12 @@ void wlan_hdd_cfg80211_set_key_wapi(hdd_adapter_t* pAdapter,
 #endif
 struct wiphy *wlan_hdd_cfg80211_init(int priv_size);
 
+int wlan_hdd_cfg80211_scan( struct wiphy *wiphy,
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,6,0))
+                            struct net_device *dev,
+#endif
+                            struct cfg80211_scan_request *request);
+
 int wlan_hdd_cfg80211_register(struct device *dev,
                                struct wiphy *wiphy,
                                hdd_config_t *pCfg
@@ -148,7 +159,10 @@ extern v_VOID_t hdd_connSetConnectionState( hdd_station_ctx_t *pHddStaCtx,
 int wlan_hdd_cfg80211_send_tdls_discover_req(struct wiphy *wiphy,
                             struct net_device *dev, u8 *peer);
 #endif
+#ifdef WLAN_FEATURE_GTK_OFFLOAD
+extern void wlan_hdd_cfg80211_update_replayCounterCallback(void *callbackContext,
+                            tpSirGtkOffloadGetInfoRspParams pGtkOffloadGetInfoRsp);
+#endif
 
-#endif // CONFIG_CFG80211
 
 #endif

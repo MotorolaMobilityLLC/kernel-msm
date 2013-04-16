@@ -52,10 +52,8 @@
 #ifndef CSRINTERNAL_H__
 #define CSRINTERNAL_H__
 
-#if defined(VOSS_ENABLED)
 #include "vos_status.h"
 #include "vos_lock.h"
-#endif //#if defined(VOSS_ENABLED)
 
 #include "palTimer.h"
 #include "csrSupport.h"
@@ -100,6 +98,10 @@
 #define CSR_IS_ROAM_PREFER_5GHZ( pMac ) \
 ( \
    (((pMac)->roam.configParam.nRoamPrefer5GHz)?eANI_BOOLEAN_TRUE:eANI_BOOLEAN_FALSE) \
+)
+#define CSR_IS_ROAM_INTRA_BAND_ENABLED( pMac ) \
+( \
+   (((pMac)->roam.configParam.nRoamIntraBand)?eANI_BOOLEAN_TRUE:eANI_BOOLEAN_FALSE) \
 )
 #endif
 
@@ -598,6 +600,7 @@ typedef struct tagCsrConfig
     tANI_U8   RoamRssiDiff;
     tANI_U8   nImmediateRoamRssiDiff;
     tANI_BOOLEAN nRoamPrefer5GHz;
+    tANI_BOOLEAN nRoamIntraBand;
 #endif
 
 #ifdef WLAN_FEATURE_NEIGHBOR_ROAMING
@@ -684,9 +687,9 @@ typedef struct tagCsrScanStruct
     tDblLinkList channelPowerInfoList5G;
     tANI_U32 nLastAgeTimeOut;
     tANI_U32 nAgingCountDown;
-    tANI_U8 countryCodeDefault[WNI_CFG_COUNTRY_CODE_LEN+1];     //The country code from NV
-    tANI_U8 countryCodeCurrent[WNI_CFG_COUNTRY_CODE_LEN+1];
-    tANI_U8 countryCode11d[WNI_CFG_COUNTRY_CODE_LEN+1];
+    tANI_U8 countryCodeDefault[WNI_CFG_COUNTRY_CODE_LEN];     //The country code from NV
+    tANI_U8 countryCodeCurrent[WNI_CFG_COUNTRY_CODE_LEN];
+    tANI_U8 countryCode11d[WNI_CFG_COUNTRY_CODE_LEN];
     v_REGDOMAIN_t domainIdDefault;  //default regulatory domain
     v_REGDOMAIN_t domainIdCurrent;  //current regulatory domain
     tANI_BOOLEAN f11dInfoApplied;
@@ -1079,7 +1082,9 @@ void csrScanResumeIMPS( tpAniSirGlobal pMac );
 
 eHalStatus csrInitGetChannels(tpAniSirGlobal pMac);
 // Getting the 5GHz Channel list
-eHalStatus csrGet5GChannels(tpAniSirGlobal pMac) ;
+eHalStatus csrGet5GChannels(tpAniSirGlobal pMac);
+// Getting the 2.4GHz Channel list
+eHalStatus csrGet24GChannels(tpAniSirGlobal pMac);
 
 eHalStatus csrSetModifyProfileFields(tpAniSirGlobal pMac, tANI_U32 sessionId,
                                      tCsrRoamModifyProfileFields *pModifyProfileFields);
@@ -1171,6 +1176,14 @@ eHalStatus csrGetStatistics(tpAniSirGlobal pMac, eCsrStatsRequesterType requeste
 
 
 eHalStatus csrGetRssi(tpAniSirGlobal pMac,tCsrRssiCallback callback,tANI_U8 staId,tCsrBssid bssId,void * pContext,void * pVosContext);
+#if defined WLAN_FEATURE_VOWIFI_11R || defined FEATURE_WLAN_CCX || defined(FEATURE_WLAN_LFR)
+eHalStatus csrGetRoamRssi(tpAniSirGlobal pMac,
+                          tCsrRssiCallback callback,
+                          tANI_U8 staId,
+                          tCsrBssid bssId,
+                          void * pContext,
+                          void * pVosContext);
+#endif
 eHalStatus csrRoamRegisterCallback(tpAniSirGlobal pMac, csrRoamCompleteCallback callback, void *pContext);
 /* ---------------------------------------------------------------------------
     \fn csrGetConfigParam

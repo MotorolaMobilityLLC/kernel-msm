@@ -76,7 +76,7 @@
 #define SCH_DIAG_RR_LOWER_RATE        0x2
 
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
-#define TIM_IE_SIZE 0xA
+#define TIM_IE_SIZE 0xB
 #else
 #define TIM_IE_SIZE 0x7
 #endif
@@ -152,9 +152,7 @@ struct schMisc {
     /// flag to indicate that beacon template has been updated
     tANI_U8   fBeaconChanged;
 
-#if defined(WLAN_FEATURE_P2P)
     tANI_U16 p2pIeOffset;
-#endif
 
 };
 
