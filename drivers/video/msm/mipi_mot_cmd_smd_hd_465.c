@@ -234,12 +234,6 @@ static int panel_enable(struct msm_fb_data_type *mfd)
 		 * be same with it in bootloader.
 		 */
 		idx = DEFAULT_BRIGHTNESS;
-		/* Work around for the first ES1 display sample issue */
-		if (is_evt0_sample(mfd)) {
-			mipi_set_mem_start_mem_cont(0x3c, 0x3c);
-			mot_panel->pinfo.mipi.wr_mem_start = 0x3c;
-		}
-
 		first_boot = false;
 	} else
 		idx = mfd->bl_level;
@@ -265,6 +259,14 @@ static int panel_disable(struct msm_fb_data_type *mfd)
 	return 0;
 }
 
+/* Work around for the EVT0 display sample issue */
+static int panel_enable_wa(struct msm_fb_data_type *mfd)
+{
+	if (is_evt0_sample(mfd))
+		mipi_set_mem_start_mem_cont(0x3c, 0x3c);
+
+	return 0;
+}
 static void panel_set_backlight(struct msm_fb_data_type *mfd)
 {
 
@@ -379,6 +381,7 @@ static int __init mipi_mot_cmd_smd_hd_465_init(void)
 
 	mot_panel->panel_enable = panel_enable;
 	mot_panel->panel_disable = panel_disable;
+	mot_panel->panel_enable_wa = panel_enable_wa;
 	mot_panel->set_backlight = panel_set_backlight;
 	mot_panel->enable_acl = enable_acl;
 	mot_panel->enable_te = mipi_mot_set_tear;
