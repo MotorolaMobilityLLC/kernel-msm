@@ -193,17 +193,6 @@ int mdss_mdp_smp_setup(struct mdss_data_type *mdata, u32 cnt, u32 size)
 	return 0;
 }
 
-int mdss_mdp_smp_setup(struct mdss_data_type *mdata, u32 cnt, u32 size)
-{
-	if (!mdata)
-		return -EINVAL;
-
-	mdata->smp_mb_cnt = cnt;
-	mdata->smp_mb_size = size;
-
-	return 0;
-}
-
 void mdss_mdp_pipe_unmap(struct mdss_mdp_pipe *pipe)
 {
 	int tmp;
