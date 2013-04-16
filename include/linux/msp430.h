@@ -231,7 +231,8 @@ enum MSP430_data_types {
 	DT_NOMOVE,
 	DT_CAMERA_ACT,
 	DT_ALGO_EVT,
-	DT_ACCUM_MVMT
+	DT_ACCUM_MVMT,
+	DT_RESET
 };
 
 enum {
