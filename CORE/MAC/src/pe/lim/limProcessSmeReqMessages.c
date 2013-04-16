@@ -384,6 +384,9 @@ __limProcessSmeStartReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
         /// By default return unique scan results
         pMac->lim.gLimReturnUniqueResults = true;
         pMac->lim.gLimSmeScanResultLength = 0;
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+        pMac->lim.gLimSmeLfrScanResultLength = 0;
+#endif
 
         if (((tSirSmeStartReq *) pMsgBuf)->sendNewBssInd)
         {
@@ -1326,24 +1329,58 @@ __limProcessSmeScanReq(tpAniSirGlobal pMac, tANI_U32 *pMsgBuf)
             tANI_U16    scanRspLen = sizeof(tSirSmeScanRsp);
 
             pMac->lim.gLimRspReqd = false;
-
-            if (pMac->lim.gLimSmeScanResultLength == 0)
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+            if (pScanReq->returnFreshResults & SIR_BG_SCAN_RETURN_LFR_CACHED_RESULTS)
             {
-                limSendSmeScanRsp(pMac, scanRspLen, eSIR_SME_SUCCESS, pScanReq->sessionId, pScanReq->transactionId);
+                pMac->lim.gLimSmeLfrScanResultLength = pMac->lim.gLimMlmLfrScanResultLength;
+                if (pMac->lim.gLimSmeLfrScanResultLength == 0)
+                {
+                    limSendSmeLfrScanRsp(pMac, scanRspLen,
+                                         eSIR_SME_SUCCESS,
+                                         pScanReq->sessionId,
+                                         pScanReq->transactionId);
+                }
+                else
+                {
+                    scanRspLen = sizeof(tSirSmeScanRsp) +
+                                 pMac->lim.gLimSmeLfrScanResultLength -
+                                 sizeof(tSirBssDescription);
+                    limSendSmeLfrScanRsp(pMac, scanRspLen, eSIR_SME_SUCCESS,
+                               pScanReq->sessionId, pScanReq->transactionId);
+                }
             }
             else
             {
-                scanRspLen = sizeof(tSirSmeScanRsp) +
-                             pMac->lim.gLimSmeScanResultLength -
-                             sizeof(tSirBssDescription);
-                limSendSmeScanRsp(pMac, scanRspLen, eSIR_SME_SUCCESS, pScanReq->sessionId, pScanReq->transactionId);
+#endif
+               if (pMac->lim.gLimSmeScanResultLength == 0)
+               {
+                  limSendSmeScanRsp(pMac, scanRspLen, eSIR_SME_SUCCESS,
+                          pScanReq->sessionId, pScanReq->transactionId);
+               }
+               else
+               {
+                  scanRspLen = sizeof(tSirSmeScanRsp) +
+                               pMac->lim.gLimSmeScanResultLength -
+                               sizeof(tSirBssDescription);
+                  limSendSmeScanRsp(pMac, scanRspLen, eSIR_SME_SUCCESS,
+                                  pScanReq->sessionId, pScanReq->transactionId);
+               }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
             }
+#endif
 
             if (pScanReq->returnFreshResults & SIR_BG_SCAN_PURGE_RESUTLS)
             {
                 // Discard previously cached scan results
                 limReInitScanResults(pMac);
             }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+            if (pScanReq->returnFreshResults & SIR_BG_SCAN_PURGE_LFR_RESULTS)
+            {
+                // Discard previously cached scan results
+                limReInitLfrScanResults(pMac);
+            }
+#endif
 
         } // if (pMac->lim.gLimRspReqd)
     } // else ((pMac->lim.gLimSmeState == eLIM_SME_IDLE_STATE) || ...

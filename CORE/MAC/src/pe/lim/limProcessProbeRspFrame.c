@@ -357,11 +357,19 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
              WDA_GET_RX_MPDU_LEN(pRxPacketInfo));
     limPrintMacAddr(pMac, pHdr->sa, LOG2);
 
-    if (limDeactivateMinChannelTimerDuringScan(pMac) != eSIR_SUCCESS)
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (!(WDA_GET_OFFLOADSCANLEARN(pRxPacketInfo) ||
+          WDA_GET_ROAMCANDIDATEIND(pRxPacketInfo)))
     {
-        palFreeMemory(pMac->hHdd, pProbeRsp);
-        return;
+#endif
+       if (limDeactivateMinChannelTimerDuringScan(pMac) != eSIR_SUCCESS)
+       {
+          palFreeMemory(pMac->hHdd, pProbeRsp);
+          return;
+       }
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
     }
+#endif
      // Validate IE information before processing Probe Response Frame
     if (limValidateIEInformationInProbeRspFrame(pRxPacketInfo) != eSIR_SUCCESS)
     {
@@ -376,9 +384,30 @@ limProcessProbeRspFrameNoSession(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo)
      *   - eLIM_MLM_BSS_STARTED_STATE
      *  Hence, expect Probe Response only when
      *   1. STA is in scan mode waiting for Beacon/Probe response 
+     *   2. LFR logic in FW sends up candidate frames
      *  
      *  Ignore Probe Response frame in all other states
      */
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+    if (WDA_GET_OFFLOADSCANLEARN(pRxPacketInfo))
+    {
+        frameLen = WDA_GET_RX_PAYLOAD_LEN(pRxPacketInfo);
+
+        // Get pointer to Probe Response frame body
+        pBody = WDA_GET_RX_MPDU_DATA(pRxPacketInfo);
+
+        if (sirConvertProbeFrame2Struct(pMac, pBody, frameLen, pProbeRsp) == eSIR_FAILURE)
+        {
+            limLog(pMac, LOG1, FL("Parse error ProbeResponse, length=%d\n"), frameLen);
+            palFreeMemory(pMac->hHdd, pProbeRsp);
+            return;
+        }
+        limLog( pMac, LOG2, FL("Save this probe rsp in LFR cache"));
+        limCheckAndAddBssDescription(pMac, pProbeRsp, pRxPacketInfo,
+                                     eANI_BOOLEAN_FALSE, eANI_BOOLEAN_TRUE);
+    }
+    else
+#endif
     if( (pMac->lim.gLimMlmState == eLIM_MLM_WT_PROBE_RESP_STATE) ||
         (pMac->lim.gLimMlmState == eLIM_MLM_PASSIVE_SCAN_STATE)  ||     //mlm state check should be global - 18th oct
         (pMac->lim.gLimMlmState == eLIM_MLM_LEARN_STATE) )
