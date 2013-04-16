@@ -970,7 +970,7 @@ static inline int msm_use_dm(struct msm_spi *dd, struct spi_transfer *tr,
 	}
 
 	if (tr->cs_change &&
-	   ((bpw != 8) || (bpw != 16) || (bpw != 32)))
+	   ((bpw != 8) && (bpw != 16) && (bpw != 32)))
 		return 0;
 	return 1;
 }
