@@ -69,7 +69,7 @@ static u32 fdt_start_address; /* flattened device tree address */
 static u32 fdt_size;
 static u32 prod_id;
 
-#define EXPECTED_MBM_PROTOCOL_VER 1
+#define EXPECTED_MBM_PROTOCOL_VER 2
 static u32 mbmprotocol;
 
 struct dt_gpiomux {
