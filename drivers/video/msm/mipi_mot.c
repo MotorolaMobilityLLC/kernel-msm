@@ -142,6 +142,43 @@ end:
 	return controller_drv_ver;
 }
 
+static ssize_t panel_man_id_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "0x%02x\n",
+		get_manufacture_id(mot_panel.mfd));
+}
+
+static ssize_t panel_controller_ver_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "0x%02x\n",
+		get_controller_ver(mot_panel.mfd));
+}
+
+static ssize_t panel_controller_drv_ver_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "0x%02x\n",
+		get_controller_drv_ver(mot_panel.mfd));
+}
+
+static DEVICE_ATTR(man_id, S_IRUGO,
+					panel_man_id_show, NULL);
+static DEVICE_ATTR(controller_ver, S_IRUGO,
+					panel_controller_ver_show, NULL);
+static DEVICE_ATTR(controller_drv_ver, S_IRUGO,
+					panel_controller_drv_ver_show, NULL);
+static struct attribute *panel_id_attrs[] = {
+	&dev_attr_man_id.attr,
+	&dev_attr_controller_ver.attr,
+	&dev_attr_controller_drv_ver.attr,
+	NULL,
+};
+static struct attribute_group panel_id_attr_group = {
+	.attrs = panel_id_attrs,
+};
+
 static ssize_t panel_acl_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -653,6 +690,13 @@ static int __devinit mipi_mot_lcd_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+	ret = sysfs_create_group(&mot_panel.mfd->fbi->dev->kobj,
+		&panel_id_attr_group);
+	if (ret < 0) {
+		pr_err("%s: panel_id files creation failed\n", __func__);
+		goto err;
+	}
+
 	if (mot_panel.acl_support_present == TRUE) {
 		ret = sysfs_create_group(&mot_panel.mfd->fbi->dev->kobj,
 							&acl_attr_group);
@@ -706,6 +750,8 @@ static int __devexit mipi_mot_lcd_remove(struct platform_device *pdev)
 		sysfs_remove_group(&mot_panel.mfd->fbi->dev->kobj,
 							&acl_attr_group);
 	}
+	sysfs_remove_group(&mot_panel.mfd->fbi->dev->kobj,
+						&panel_id_attr_group);
 	if (mot_panel.reboot_notifier.notifier_call)
 		unregister_reboot_notifier(&mot_panel.reboot_notifier);
 	mutex_destroy(&mot_panel.lock);
