@@ -2593,14 +2593,170 @@ static int mdp4_overlay_req2pipe(struct mdp_overlay *req, int mixer,
 	return 0;
 }
 
+static int mdp4_calc_req_mdp_clk(struct msm_fb_data_type *mfd,
+				 u32 src_h, u32 dst_h, u32 src_w, u32 dst_w)
+{
+	u32 pclk, hsync;
+	u32 xscale, yscale;
+	u32 shift = 16;
+	u64 rst;
+
+	pr_debug("%s: pipe sets: panel res(x,y)=(%d,%d)\n",
+		 __func__,  mfd->panel_info.xres, mfd->panel_info.yres);
+
+	pr_debug("%s: src_h=%d, dst_h=%d, src_w=%d, dst_w=%d\n",
+		 __func__, src_h, dst_h, src_w, dst_w);
+
+	pclk = (mfd->panel_info.type == MIPI_VIDEO_PANEL ||
+		mfd->panel_info.type == MIPI_CMD_PANEL) ?
+		mfd->panel_info.mipi.dsi_pclk_rate :
+		mfd->panel_info.clk_rate;
+
+	if (!pclk) {
+		pr_err("%s panel pixel clk is zero!\n", __func__);
+		return mdp_max_clk;
+	}
+
+	pr_debug("%s: mdp panel pixel clk is %d.\n", __func__, pclk);
+
+	hsync = mfd->panel_info.lcdc.h_back_porch +
+		mfd->panel_info.lcdc.h_front_porch +
+		mfd->panel_info.lcdc.h_pulse_width +
+		mfd->panel_info.xres;
+
+	/*
+	 * For the scaling cases, adding extra 20% margin
+	 */
+	if ((src_h != dst_h) || (src_w != dst_w)) {
+		hsync *= 100;
+		hsync /= 120;
+	}
+
+	if (!hsync) {
+		pr_err("%s: panel hsync is zero!\n", __func__);
+		return mdp_max_clk;
+	}
+
+	pr_debug("%s: panel hsync is %d.\n", __func__, hsync);
+
+	if (!src_h) {
+		pr_err("%s: src_h is zero!\n", __func__);
+		return mdp_max_clk;
+	}
+
+	if (!dst_h) {
+		pr_err("%s: dst_h is zero!\n", __func__);
+		return mdp_max_clk;
+	}
+
+	if (!src_w) {
+		pr_err("%s: src_w is zero!\n", __func__);
+		return mdp_max_clk;
+	}
+
+	if (!dst_w) {
+		pr_err("%s: dst_w is zero!\n", __func__);
+		return mdp_max_clk;
+	}
+
+	xscale = mfd->panel_info.xres;
+	xscale += src_w;
+
+	if (xscale < dst_w) {
+		pr_err("%s: xres+src_w cannot be less than dst_w!\n",
+		       __func__);
+		return mdp_max_clk;
+	}
+
+	xscale -= dst_w;
+	xscale <<= shift;
+	xscale /= hsync;
+	pr_debug("%s: the right %d shifted xscale is %d.\n",
+		 __func__, shift, xscale);
+
+	if (src_h > dst_h) {
+		yscale = src_h;
+		yscale <<= shift;
+		yscale /= dst_h;
+	} else {		/* upscale */
+		yscale = dst_h;
+		yscale <<= shift;
+		yscale /= src_h;
+	}
+
+	yscale *= src_w;
+	yscale /= hsync;
+
+	pr_debug("%s: the right %d shifted yscale is %d.\n",
+		 __func__, shift, yscale);
+
+	rst = pclk;
+	if (yscale > xscale)
+		rst *= yscale;
+	else
+		rst *= xscale;
+
+	rst >>= shift;
+
+	/*
+	 * There is one special case for the panels that have low
+	 * v_back_porch (<=4), mdp clk should be fast enough to buffer
+	 * 4 lines input during back porch time if scaling is
+	 * required(FIR).
+	 */
+	if ((mfd->panel_info.lcdc.v_back_porch <= 4) &&
+	    (src_h != dst_h) &&
+	    (mfd->panel_info.lcdc.v_back_porch)) {
+		u32 clk = 0;
+		clk = 4 * (pclk >> shift) / mfd->panel_info.lcdc.v_back_porch;
+		clk <<= shift;
+		pr_debug("%s: mdp clk rate %d based on low vbp %d\n",
+			 __func__, clk, mfd->panel_info.lcdc.v_back_porch);
+		rst = (rst > clk) ? rst : clk;
+	}
+
+	/*
+	 * If the calculated mdp clk is less than panel pixel clk,
+	 * most likely due to upscaling, mdp clk rate will be set to
+	 * greater than pclk. Now the driver uses 1.15 as the
+	 * factor. Ideally this factor is passed from board file.
+	 */
+	if (rst < pclk) {
+		rst = ((pclk >> shift) * 23 / 20) << shift;
+		pr_debug("%s calculated mdp clk is less than pclk.\n",
+			__func__);
+	}
+	pr_debug("%s: required mdp clk %d\n", __func__, (u32)rst);
+
+	return (u32)rst;
+}
+
+static int mdp4_calc_req_blt(struct msm_fb_data_type *mfd,
+			     struct mdp_overlay *req)
+{
+	int ret = 0;
+
+	if (!req) {
+		pr_err("%s: req is null!\n", __func__);
+		return ret;
+	}
+
+	if (!mfd) {
+		pr_err("%s: mfd is null!\n", __func__);
+		return ret;
+	}
+
+	if (mdp4_calc_req_mdp_clk
+		(mfd, req->src_rect.h, req->dst_rect.h,
+		 req->src_rect.w, req->dst_rect.w) > mdp_max_clk)
+		ret = -EINVAL;
+
+	return ret;
+}
+
 static int mdp4_calc_pipe_mdp_clk(struct msm_fb_data_type *mfd,
 				  struct mdp4_overlay_pipe *pipe)
 {
-	u32 pclk;
-	u32 xscale, yscale;
-	u32 hsync = 0;
-	u32 shift = 16;
-	u64 rst;
 	int ret = -EINVAL;
 
 	if (!pipe) {
@@ -2623,146 +2779,13 @@ static int mdp4_calc_pipe_mdp_clk(struct msm_fb_data_type *mfd,
 		return 0;
 	}
 
-	pr_debug("%s: pipe sets: panel res(x,y)=(%d,%d)\n",
-		 __func__,  mfd->panel_info.xres, mfd->panel_info.yres);
 	pr_debug("%s: src(w,h)(%d,%d),src(x,y)(%d,%d)\n",
 		 __func__,  pipe->src_w, pipe->src_h, pipe->src_x, pipe->src_y);
 	pr_debug("%s: dst(w,h)(%d,%d),dst(x,y)(%d,%d)\n",
 		 __func__, pipe->dst_w, pipe->dst_h, pipe->dst_x, pipe->dst_y);
 
-	pclk = (mfd->panel_info.type == MIPI_VIDEO_PANEL ||
-		mfd->panel_info.type == MIPI_CMD_PANEL) ?
-		mfd->panel_info.mipi.dsi_pclk_rate :
-		mfd->panel_info.clk_rate;
-	if (!pclk) {
-		pipe->req_clk = mdp_max_clk;
-		pr_err("%s panel pixel clk is zero!\n", __func__);
-		return ret;
-	}
-	pr_debug("%s: mdp panel pixel clk is %d.\n",
-		 __func__, pclk);
-
-	if (!pipe->dst_h) {
-		pr_err("%s: pipe dst_h is zero!\n", __func__);
-		pipe->req_clk = mdp_max_clk;
-		return ret;
-	}
-
-	if (!pipe->src_h) {
-		pr_err("%s: pipe src_h is zero!\n", __func__);
-		pipe->req_clk = mdp_max_clk;
-		return ret;
-	}
-
-	if (!pipe->dst_w) {
-		pr_err("%s: pipe dst_w is zero!\n", __func__);
-		pipe->req_clk = mdp_max_clk;
-		return ret;
-	}
-
-	if (!pipe->dst_h) {
-		pr_err("%s: pipe dst_h is zero!\n", __func__);
-		pipe->req_clk = mdp_max_clk;
-		return ret;
-	}
-
-	/*
-	 * For the scaling cases, make more margin by removing porch
-	 * values and adding extra 20%.
-	 */
-	if ((pipe->src_h != pipe->dst_h) ||
-	    (pipe->src_w != pipe->dst_w)) {
-		hsync = mfd->panel_info.xres;
-		hsync *= 100;
-		hsync /= 120;
-		pr_debug("%s: panel hsync is %d. with scaling\n",
-			__func__, hsync);
-
-	} else {
-		hsync = mfd->panel_info.lcdc.h_back_porch +
-			mfd->panel_info.lcdc.h_front_porch +
-			mfd->panel_info.lcdc.h_pulse_width +
-			mfd->panel_info.xres;
-		pr_debug("%s: panel hsync is %d.\n",
-			__func__, hsync);
-	}
-
-	if (!hsync) {
-		pipe->req_clk = mdp_max_clk;
-		pr_err("%s: panel hsync is zero!\n", __func__);
-		return 0;
-	}
-
-	xscale = mfd->panel_info.xres;
-	xscale += pipe->src_w;
-
-	if (xscale < pipe->dst_w) {
-		pipe->req_clk = mdp_max_clk;
-		pr_err("%s: xres+src_w cannot be less than dst_w!\n",
-		       __func__);
-		return ret;
-	}
-
-	xscale -= pipe->dst_w;
-	xscale <<= shift;
-	xscale /= hsync;
-	pr_debug("%s: the right %d shifted xscale is %d.\n",
-		 __func__, shift, xscale);
-
-	if (pipe->src_h > pipe->dst_h) {
-		yscale = pipe->src_h;
-		yscale <<= shift;
-		yscale /= pipe->dst_h;
-	} else {		/* upscale */
-		yscale = pipe->dst_h;
-		yscale <<= shift;
-		yscale /= pipe->src_h;
-	}
-
-	yscale *= pipe->src_w;
-	yscale /= hsync;
-
-	pr_debug("%s: the right %d shifted yscale is %d.\n",
-		 __func__, shift, yscale);
-
-	rst = pclk;
-	if (yscale > xscale)
-		rst *= yscale;
-	else
-		rst *= xscale;
-
-	rst >>= shift;
-
-	/*
-	 * There is one special case for the panels that have low
-	 * v_back_porch (<=4), mdp clk should be fast enough to buffer
-	 * 4 lines input during back porch time if scaling is
-	 * required(FIR).
-	 */
-	if ((mfd->panel_info.lcdc.v_back_porch <= 4) &&
-	    (pipe->src_h != pipe->dst_h) &&
-	    (mfd->panel_info.lcdc.v_back_porch)) {
-		u32 clk = 0;
-		clk = 4 * (pclk >> shift) / mfd->panel_info.lcdc.v_back_porch;
-		clk <<= shift;
-		pr_debug("%s: mdp clk rate %d based on low vbp %d\n",
-			 __func__, clk, mfd->panel_info.lcdc.v_back_porch);
-		rst = (rst > clk) ? rst : clk;
-	}
-
-	/*
-	 * If the calculated mdp clk is less than panel pixel clk,
-	 * most likely due to upscaling, mdp clk rate will be set to
-	 * greater than pclk. Now the driver uses 1.15 as the
-	 * factor. Ideally this factor is passed from board file.
-	 */
-	if (rst < pclk) {
-		rst = ((pclk >> shift) * 23 / 20) << shift;
-		pr_debug("%s calculated mdp clk is less than pclk.\n",
-			__func__);
-	}
-
-	pipe->req_clk = (u32) rst;
+	pipe->req_clk = mdp4_calc_req_mdp_clk
+		(mfd, pipe->src_h, pipe->dst_h, pipe->src_w, pipe->dst_w);
 
 	pr_debug("%s: required mdp clk %d mixer %d pipe ndx %d\n",
 		 __func__, pipe->req_clk, pipe->mixer_num, pipe->pipe_ndx);
@@ -3240,6 +3263,14 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 	}
 
 	mixer = mfd->panel_info.pdest;	/* DISPLAY_1 or DISPLAY_2 */
+
+	ret = mdp4_calc_req_blt(mfd, req);
+
+	if (ret < 0) {
+		mutex_unlock(&mfd->dma->ov_mutex);
+		pr_err("%s: blt mode is required! ret=%d\n", __func__, ret);
+		return ret;
+	}
 
 	ret = mdp4_overlay_req2pipe(req, mixer, &pipe, mfd);
 
