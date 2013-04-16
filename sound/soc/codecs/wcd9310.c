@@ -2206,6 +2206,7 @@ static int tabla_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_codec *codec = w->codec;
 	struct tabla_priv *tabla = snd_soc_codec_get_drvdata(codec);
+	struct wcd9xxx_pdata *pdata = tabla->pdata;
 	u8  dmic_clk_en;
 	s32 *dmic_clk_cnt;
 	unsigned int dmic;
@@ -2254,6 +2255,16 @@ static int tabla_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+
+		if (!pdata->is_micbias1_capless) {
+			/* set micbias1 cap mode = No external bypass cap */
+			snd_soc_update_bits(codec,
+				TABLA_A_MICB_1_CTL, 0x10, 0x10);
+		} else {
+			/* set micbias1 cap mode = External bypass cap */
+			snd_soc_update_bits(codec,
+				TABLA_A_MICB_1_CTL, 0x10, 0x0);
+		}
 
 		(*dmic_clk_cnt)++;
 		if (*dmic_clk_cnt == 1)

@@ -1279,6 +1279,7 @@ static struct wcd9xxx_pdata apq8064_tabla20_platform_data = {
 	.irq_base = TABLA_INTERRUPT_BASE,
 	.num_irqs = NR_WCD9XXX_IRQS,
 	.reset_gpio = PM8921_GPIO_PM_TO_SYS(34),
+	.is_micbias1_capless = 1,
 	.micbias = {
 		.ldoh_v = TABLA_LDOH_2P85_V,
 		.cfilt1_mv = 1800,
@@ -2814,6 +2815,15 @@ static struct msm_i2c_platform_data mpq8064_i2c_qup_gsbi5_pdata = {
 	.src_clk_rate = 24000000,
 };
 
+static void __init apq8064_audio_init(void)
+{
+	unsigned hw_revision = HW_REV_INVALID;
+
+	hw_revision = asustek_get_hw_rev();
+	if (machine_is_apq8064_flo() && (hw_revision == HW_REV_C))
+		apq8064_tabla20_platform_data.is_micbias1_capless = 0;
+}
+
 #define GSBI_DUAL_MODE_CODE 0x60
 #define MSM_GSBI1_PHYS		0x12440000
 static void __init apq8064_i2c_init(void)
@@ -3282,6 +3292,7 @@ static void __init apq8064_common_init(void)
 	register_i2c_devices();
 
 	smb345_init();
+	apq8064_audio_init();
 
 	apq8064_device_qup_spi_gsbi5.dev.platform_data =
 						&apq8064_qup_spi_gsbi5_pdata;
