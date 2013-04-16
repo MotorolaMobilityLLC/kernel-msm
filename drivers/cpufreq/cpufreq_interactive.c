@@ -29,6 +29,7 @@
 #include <linux/workqueue.h>
 #include <linux/kthread.h>
 #include <linux/slab.h>
+#include <linux/input.h>
 #include <asm/cputime.h>
 
 #define CREATE_TRACE_POINTS
@@ -90,6 +91,20 @@ static unsigned long timer_rate;
  */
 #define DEFAULT_ABOVE_HISPEED_DELAY DEFAULT_TIMER_RATE
 static unsigned long above_hispeed_delay_val;
+
+/*
+ * Boost pulse to hispeed on touchscreen input.
+ */
+
+static int input_boost_val;
+
+struct cpufreq_interactive_inputopen {
+	struct input_handle *handle;
+	struct work_struct inputopen_work;
+};
+
+static struct cpufreq_interactive_inputopen inputopen;
+static struct workqueue_struct *inputopen_wq;
 
 /*
  * Non-zero means longer-term speed boost active.
@@ -441,6 +456,96 @@ static void cpufreq_interactive_boost(void)
 		wake_up_process(speedchange_task);
 }
 
+/*
+ * Pulsed boost on input event raises CPUs to hispeed_freq and lets
+ * usual algorithm of min_sample_time  decide when to allow speed
+ * to drop.
+ */
+
+static void cpufreq_interactive_input_event(struct input_handle *handle,
+					    unsigned int type,
+					    unsigned int code, int value)
+{
+	if (input_boost_val && type == EV_SYN && code == SYN_REPORT) {
+		trace_cpufreq_interactive_boost("input");
+		cpufreq_interactive_boost();
+	}
+}
+
+static void cpufreq_interactive_input_open(struct work_struct *w)
+{
+	struct cpufreq_interactive_inputopen *io =
+		container_of(w, struct cpufreq_interactive_inputopen,
+			     inputopen_work);
+	int error;
+
+	error = input_open_device(io->handle);
+	if (error)
+		input_unregister_handle(io->handle);
+}
+
+static int cpufreq_interactive_input_connect(struct input_handler *handler,
+					     struct input_dev *dev,
+					     const struct input_device_id *id)
+{
+	struct input_handle *handle;
+	int error;
+
+	pr_info("%s: connect to %s\n", __func__, dev->name);
+	handle = kzalloc(sizeof(struct input_handle), GFP_KERNEL);
+	if (!handle)
+		return -ENOMEM;
+
+	handle->dev = dev;
+	handle->handler = handler;
+	handle->name = "cpufreq_interactive";
+
+	error = input_register_handle(handle);
+	if (error)
+		goto err;
+
+	inputopen.handle = handle;
+	queue_work(inputopen_wq, &inputopen.inputopen_work);
+	return 0;
+err:
+	kfree(handle);
+	return error;
+}
+
+static void cpufreq_interactive_input_disconnect(struct input_handle *handle)
+{
+	input_close_device(handle);
+	input_unregister_handle(handle);
+	kfree(handle);
+}
+
+static const struct input_device_id cpufreq_interactive_ids[] = {
+	{
+		.flags = INPUT_DEVICE_ID_MATCH_EVBIT |
+			 INPUT_DEVICE_ID_MATCH_ABSBIT,
+		.evbit = { BIT_MASK(EV_ABS) },
+		.absbit = { [BIT_WORD(ABS_MT_POSITION_X)] =
+			    BIT_MASK(ABS_MT_POSITION_X) |
+			    BIT_MASK(ABS_MT_POSITION_Y) },
+	}, /* multi-touch touchscreen */
+	{
+		.flags = INPUT_DEVICE_ID_MATCH_KEYBIT |
+			 INPUT_DEVICE_ID_MATCH_ABSBIT,
+		.keybit = { [BIT_WORD(BTN_TOUCH)] = BIT_MASK(BTN_TOUCH) },
+		.absbit = { [BIT_WORD(ABS_X)] =
+			    BIT_MASK(ABS_X) | BIT_MASK(ABS_Y) },
+	}, /* touchpad */
+	{ },
+};
+
+static struct input_handler cpufreq_interactive_input_handler = {
+	.event          = cpufreq_interactive_input_event,
+	.connect        = cpufreq_interactive_input_connect,
+	.disconnect     = cpufreq_interactive_input_disconnect,
+	.name           = "cpufreq_interactive",
+	.id_table       = cpufreq_interactive_ids,
+};
+
 static ssize_t show_target_load(
 	struct kobject *kobj, struct attribute *attr, char *buf)
 {
@@ -464,6 +569,7 @@ static ssize_t store_target_load(
 static struct global_attr target_load_attr =
 	__ATTR(target_load, S_IRUGO | S_IWUSR,
 		show_target_load, store_target_load);
+
 
 static ssize_t show_hispeed_freq(struct kobject *kobj,
 				 struct attribute *attr, char *buf)
@@ -577,6 +683,27 @@ static ssize_t store_timer_rate(struct kobject *kobj,
 static struct global_attr timer_rate_attr = __ATTR(timer_rate, 0644,
 		show_timer_rate, store_timer_rate);
 
+static ssize_t show_input_boost(struct kobject *kobj, struct attribute *attr,
+				char *buf)
+{
+	return sprintf(buf, "%u\n", input_boost_val);
+}
+
+static ssize_t store_input_boost(struct kobject *kobj, struct attribute *attr,
+				 const char *buf, size_t count)
+{
+	int ret;
+	unsigned long val;
+
+	ret = strict_strtoul(buf, 0, &val);
+	if (ret < 0)
+		return ret;
+	input_boost_val = val;
+	return count;
+}
+
+define_one_global_rw(input_boost);
+
 static ssize_t show_boost(struct kobject *kobj, struct attribute *attr,
 			  char *buf)
 {
@@ -632,6 +759,7 @@ static struct attribute *interactive_attributes[] = {
 	&above_hispeed_delay.attr,
 	&min_sample_time_attr.attr,
 	&timer_rate_attr.attr,
+	&input_boost.attr,
 	&boost.attr,
 	&boostpulse.attr,
 	NULL,
@@ -720,6 +848,11 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			return rc;
 		}
 
+		rc = input_register_handler(&cpufreq_interactive_input_handler);
+		if (rc)
+			pr_warn("%s: failed to register input handler\n",
+				__func__);
+
 		idle_notifier_register(&cpufreq_interactive_idle_nb);
 
 		mutex_unlock(&gov_lock);
@@ -736,12 +869,14 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			up_write(&pcpu->enable_sem);
 		}
 
+		flush_work(&inputopen.inputopen_work);
 		if (--active_count > 0) {
 			mutex_unlock(&gov_lock);
 			return 0;
 		}
 
 		idle_notifier_unregister(&cpufreq_interactive_idle_nb);
+		input_unregister_handler(&cpufreq_interactive_input_handler);
 		sysfs_remove_group(cpufreq_global_kobject,
 				&interactive_attr_group);
 		mutex_unlock(&gov_lock);
@@ -792,10 +927,21 @@ static int __init cpufreq_interactive_init(void)
 	sched_setscheduler_nocheck(speedchange_task, SCHED_FIFO, &param);
 	get_task_struct(speedchange_task);
 
+	inputopen_wq = create_workqueue("cfinteractive");
+
+	if (!inputopen_wq)
+		goto err_freetask;
+
+	INIT_WORK(&inputopen.inputopen_work, cpufreq_interactive_input_open);
+
 	/* NB: wake up so the thread does not look hung to the freezer */
 	wake_up_process(speedchange_task);
 
 	return cpufreq_register_governor(&cpufreq_gov_interactive);
+
+err_freetask:
+	put_task_struct(speedchange_task);
+	return -ENOMEM;
 }
 
 #ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_INTERACTIVE
@@ -809,6 +955,7 @@ static void __exit cpufreq_interactive_exit(void)
 	cpufreq_unregister_governor(&cpufreq_gov_interactive);
 	kthread_stop(speedchange_task);
 	put_task_struct(speedchange_task);
+	destroy_workqueue(inputopen_wq);
 }
 
 module_exit(cpufreq_interactive_exit);
